@@ -30,8 +30,37 @@ namespace ui::monitor_settings {
 // Persistent settings for monitor settings UI
 static ui::new_ui::BoolSetting g_setting_auto_apply_resolution("AutoApplyResolution", false);
 static ui::new_ui::BoolSetting g_setting_auto_apply_refresh("AutoApplyRefresh", false);
-static ui::new_ui::IntSetting g_setting_selected_resolution_index("SelectedResolutionIndex", 0, 0, 10000);
-static ui::new_ui::IntSetting g_setting_selected_refresh_index("SelectedRefreshIndex", 0, 0, 10000);
+
+// Per-display persisted selections (support displays 0..3)
+static ui::new_ui::IntSetting g_setting_selected_resolution_index_0("SelectedResolutionIndex_0", 0, 0, 10000);
+static ui::new_ui::IntSetting g_setting_selected_resolution_index_1("SelectedResolutionIndex_1", 0, 0, 10000);
+static ui::new_ui::IntSetting g_setting_selected_resolution_index_2("SelectedResolutionIndex_2", 0, 0, 10000);
+static ui::new_ui::IntSetting g_setting_selected_resolution_index_3("SelectedResolutionIndex_3", 0, 0, 10000);
+
+static ui::new_ui::IntSetting g_setting_selected_refresh_index_0("SelectedRefreshIndex_0", 0, 0, 10000);
+static ui::new_ui::IntSetting g_setting_selected_refresh_index_1("SelectedRefreshIndex_1", 0, 0, 10000);
+static ui::new_ui::IntSetting g_setting_selected_refresh_index_2("SelectedRefreshIndex_2", 0, 0, 10000);
+static ui::new_ui::IntSetting g_setting_selected_refresh_index_3("SelectedRefreshIndex_3", 0, 0, 10000);
+
+static ui::new_ui::IntSetting &GetResSettingForDisplay(int display_index) {
+    switch (display_index) {
+        case 0: return g_setting_selected_resolution_index_0;
+        case 1: return g_setting_selected_resolution_index_1;
+        case 2: return g_setting_selected_resolution_index_2;
+        case 3: return g_setting_selected_resolution_index_3;
+        default: return g_setting_selected_resolution_index_0;
+    }
+}
+
+static ui::new_ui::IntSetting &GetRefreshSettingForDisplay(int display_index) {
+    switch (display_index) {
+        case 0: return g_setting_selected_refresh_index_0;
+        case 1: return g_setting_selected_refresh_index_1;
+        case 2: return g_setting_selected_refresh_index_2;
+        case 3: return g_setting_selected_refresh_index_3;
+        default: return g_setting_selected_refresh_index_0;
+    }
+}
 
 static void EnsurePersistentSettingsLoadedOnce() {
     static bool loaded = false;
@@ -39,13 +68,17 @@ static void EnsurePersistentSettingsLoadedOnce() {
     loaded = true;
     g_setting_auto_apply_resolution.Load();
     g_setting_auto_apply_refresh.Load();
-    g_setting_selected_resolution_index.Load();
-    g_setting_selected_refresh_index.Load();
     s_auto_apply_resolution_change = g_setting_auto_apply_resolution.GetValue();
     s_auto_apply_refresh_rate_change = g_setting_auto_apply_refresh.GetValue();
-    // Initialize selected indices from saved state
-    s_selected_resolution_index = static_cast<float>(g_setting_selected_resolution_index.GetValue());
-    s_selected_refresh_rate_index = static_cast<float>(g_setting_selected_refresh_index.GetValue());
+    // Load per-display saved indices (do not override current selections here)
+    g_setting_selected_resolution_index_0.Load();
+    g_setting_selected_resolution_index_1.Load();
+    g_setting_selected_resolution_index_2.Load();
+    g_setting_selected_resolution_index_3.Load();
+    g_setting_selected_refresh_index_0.Load();
+    g_setting_selected_refresh_index_1.Load();
+    g_setting_selected_refresh_index_2.Load();
+    g_setting_selected_refresh_index_3.Load();
 }
 
 // Auto-apply retry state
@@ -315,25 +348,27 @@ void HandleAutoDetection() {
                     if (display && display->monitor_handle == current_monitor) {
                         // Set to Auto (Current) since that's where this monitor will be
                         s_selected_monitor_index = 0.0f;
-                        
-                        // Use the new methods to find closest supported modes to current settings
-                        auto closest_resolution_index = display->FindClosestResolutionIndex();
-                        if (closest_resolution_index.has_value()) {
-                            s_selected_resolution_index = static_cast<float>(closest_resolution_index.value());
-                            
-                            // Find closest refresh rate within this resolution
-                            // Default to Current Refresh Rate (index 0 in UI)
-                            s_selected_refresh_rate_index = 0.0f;
-                            std::ostringstream found_oss;
-                            found_oss << "Auto-detected: Resolution " << s_selected_resolution_index 
-                                      << " (closest to current " << display->GetCurrentResolutionString() 
-                                      << "), Refresh Rate 0 (Current: " << display->GetCurrentRefreshRateString() << ")";
-                            LogInfo(found_oss.str().c_str());
+                        // Prefer saved indices for this display (0..3). If out of range, fallback to closest
+                        if (i >= 0 && i <= 3) {
+                            auto &resSetting = GetResSettingForDisplay(i);
+                            auto &refSetting = GetRefreshSettingForDisplay(i);
+                            // Ensure settings loaded already in EnsurePersistentSettingsLoadedOnce
+                            int savedRes = resSetting.GetValue();
+                            int savedRef = refSetting.GetValue();
+                            s_selected_resolution_index = static_cast<float>(savedRes);
+                            s_selected_refresh_rate_index = static_cast<float>(savedRef);
                         } else {
-                            // Fallback to first resolution if no match found
-                            s_selected_resolution_index = 0.0f;
-                            s_selected_refresh_rate_index = 0.0f;
-                            LogWarn("No resolution match found, using first available");
+                            // Use the new methods to find closest supported modes to current settings
+                            auto closest_resolution_index = display->FindClosestResolutionIndex();
+                            if (closest_resolution_index.has_value()) {
+                                s_selected_resolution_index = static_cast<float>(closest_resolution_index.value());
+                                // Default to Current Refresh Rate (index 0 in UI)
+                                s_selected_refresh_rate_index = 0.0f;
+                            } else {
+                                // Fallback to first resolution if no match found
+                                s_selected_resolution_index = 0.0f;
+                                s_selected_refresh_rate_index = 0.0f;
+                            }
                         }
                         break;
                     }
@@ -377,23 +412,22 @@ void HandleMonitorSelection(const std::vector<std::string>& monitor_labels) {
                             for (int j = 0; j < static_cast<int>(display_cache::g_displayCache.GetDisplayCount()); j++) {
                                 const auto* display = display_cache::g_displayCache.GetDisplay(j);
                                 if (display && display->monitor_handle == current_monitor) {
-                                    // Use this monitor for resolution and refresh rate selection
-                                    auto closest_resolution_index = display->FindClosestResolutionIndex();
-                                    if (closest_resolution_index.has_value()) {
-                                        s_selected_resolution_index = static_cast<float>(closest_resolution_index.value());
-                                        
-                                        // Default to Current Refresh Rate (index 0 in UI)
-                                        s_selected_refresh_rate_index = 0.0f;
-                                        std::ostringstream auto_select_oss;
-                                        auto_select_oss << "Auto (Current) selected - using monitor " << j << ": Resolution " 
-                                                       << s_selected_resolution_index << " (closest to current " 
-                                                       << display->GetCurrentResolutionString() << "), Refresh Rate 0 (Current: " 
-                                                       << display->GetCurrentRefreshRateString() << ")";
-                                        LogInfo(auto_select_oss.str().c_str());
+                                    // Prefer saved indices for this display (0..3)
+                                    if (j >= 0 && j <= 3) {
+                                        auto &resSetting = GetResSettingForDisplay(j);
+                                        auto &refSetting = GetRefreshSettingForDisplay(j);
+                                        s_selected_resolution_index = static_cast<float>(resSetting.GetValue());
+                                        s_selected_refresh_rate_index = static_cast<float>(refSetting.GetValue());
                                     } else {
-                                        s_selected_resolution_index = 0.0f;
-                                        s_selected_refresh_rate_index = 0.0f;
-                                        LogWarn("No resolution match found for Auto (Current), using first available");
+                                        // Fallback: closest to current
+                                        auto closest_resolution_index = display->FindClosestResolutionIndex();
+                                        if (closest_resolution_index.has_value()) {
+                                            s_selected_resolution_index = static_cast<float>(closest_resolution_index.value());
+                                            s_selected_refresh_rate_index = 0.0f;
+                                        } else {
+                                            s_selected_resolution_index = 0.0f;
+                                            s_selected_refresh_rate_index = 0.0f;
+                                        }
                                     }
                                     break;
                                 }
@@ -404,25 +438,22 @@ void HandleMonitorSelection(const std::vector<std::string>& monitor_labels) {
                     // Regular monitor selected - auto-select closest resolution and refresh rate for the newly selected monitor
                     const auto* display = display_cache::g_displayCache.GetDisplay(i - 1); // -1 because monitors start at index 1 now
                     if (display) {
-                        // Find closest supported resolution to current settings
-                        auto closest_resolution_index = display->FindClosestResolutionIndex();
-                        if (closest_resolution_index.has_value()) {
-                            s_selected_resolution_index = static_cast<float>(closest_resolution_index.value());
-                            
-                            // Find closest refresh rate within this resolution
-                            // Default to Current Refresh Rate (index 0 in UI)
-                            s_selected_refresh_rate_index = 0.0f;
-                            std::ostringstream auto_select_oss;
-                            auto_select_oss << "Auto-selected for monitor " << (i - 1) << ": Resolution " 
-                                           << s_selected_resolution_index << " (closest to current " 
-                                           << display->GetCurrentResolutionString() << "), Refresh Rate 0 (Current: " 
-                                           << display->GetCurrentRefreshRateString() << ")";
-                            LogInfo(auto_select_oss.str().c_str());
+                        int actual = i - 1;
+                        if (actual >= 0 && actual <= 3) {
+                            auto &resSetting = GetResSettingForDisplay(actual);
+                            auto &refSetting = GetRefreshSettingForDisplay(actual);
+                            s_selected_resolution_index = static_cast<float>(resSetting.GetValue());
+                            s_selected_refresh_rate_index = static_cast<float>(refSetting.GetValue());
                         } else {
-                            // Fallback to first resolution if no match found
-                            s_selected_resolution_index = 0.0f;
-                            s_selected_refresh_rate_index = 0.0f;
-                            LogWarn("No resolution match found for auto-selection, using first available");
+                            // Fallback to closest/current
+                            auto closest_resolution_index = display->FindClosestResolutionIndex();
+                            if (closest_resolution_index.has_value()) {
+                                s_selected_resolution_index = static_cast<float>(closest_resolution_index.value());
+                                s_selected_refresh_rate_index = 0.0f;
+                            } else {
+                                s_selected_resolution_index = 0.0f;
+                                s_selected_refresh_rate_index = 0.0f;
+                            }
                         }
                     }
                 }
@@ -460,13 +491,18 @@ void HandleResolutionSelection(int selected_monitor_index) {
         actual_monitor_index = selected_monitor_index - 1;
     }
     
+    // Determine persistence slot (0..3)
+    int persist_slot = (actual_monitor_index < 0) ? 0 : ((actual_monitor_index > 3) ? 3 : actual_monitor_index);
+    auto &resSetting = GetResSettingForDisplay(persist_slot);
+    auto &refSetting = GetRefreshSettingForDisplay(persist_slot);
+
     auto resolution_labels = display_cache::g_displayCache.GetResolutionLabels(actual_monitor_index);
     if (!resolution_labels.empty()) {
         // Clamp saved index to available range
         if (s_selected_resolution_index < 0 || s_selected_resolution_index >= static_cast<int>(resolution_labels.size())) {
             s_selected_resolution_index = 0.0f;
-            g_setting_selected_resolution_index.SetValue(0);
-            g_setting_selected_resolution_index.Save();
+            resSetting.SetValue(0);
+            resSetting.Save();
         }
         ImGui::BeginGroup();
         ImGui::PushID("resolution_combo");
@@ -476,10 +512,10 @@ void HandleResolutionSelection(int selected_monitor_index) {
                 if (ImGui::Selectable(resolution_labels[i].c_str(), is_selected)) {
                     s_selected_resolution_index = static_cast<float>(i);
                     s_selected_refresh_rate_index = 0.f; // Reset refresh rate when resolution changes
-                    g_setting_selected_resolution_index.SetValue(i);
-                    g_setting_selected_resolution_index.Save();
-                    g_setting_selected_refresh_index.SetValue(0);
-                    g_setting_selected_refresh_index.Save();
+                    resSetting.SetValue(i);
+                    resSetting.Save();
+                    refSetting.SetValue(0);
+                    refSetting.Save();
                     if (s_auto_apply_resolution_change) {
                         // Disable auto-apply if a confirmation is pending
                         if (!g_has_pending_confirmation.load()) {
@@ -543,6 +579,10 @@ void HandleRefreshRateSelection(int selected_monitor_index, int selected_resolut
             actual_monitor_index = selected_monitor_index - 1;
         }
         
+        // Determine persistence slot (0..3)
+        int persist_slot = (actual_monitor_index < 0) ? 0 : ((actual_monitor_index > 3) ? 3 : actual_monitor_index);
+        auto &refSetting = GetRefreshSettingForDisplay(persist_slot);
+
         auto resolution_labels = display_cache::g_displayCache.GetResolutionLabels(actual_monitor_index);
         if (s_selected_resolution_index < static_cast<int>(resolution_labels.size())) {
             auto refresh_rate_labels = display_cache::g_displayCache.GetRefreshRateLabels(actual_monitor_index, selected_resolution_index);
@@ -550,8 +590,8 @@ void HandleRefreshRateSelection(int selected_monitor_index, int selected_resolut
                 // Clamp saved index to available range
                 if (s_selected_refresh_rate_index < 0 || s_selected_refresh_rate_index >= static_cast<int>(refresh_rate_labels.size())) {
                     s_selected_refresh_rate_index = 0.0f;
-                    g_setting_selected_refresh_index.SetValue(0);
-                    g_setting_selected_refresh_index.Save();
+                    refSetting.SetValue(0);
+                    refSetting.Save();
                 }
                 ImGui::BeginGroup();
                 ImGui::PushID("refresh_rate_combo");
@@ -560,8 +600,8 @@ void HandleRefreshRateSelection(int selected_monitor_index, int selected_resolut
                         const bool is_selected = (i == static_cast<int>(s_selected_refresh_rate_index));
                         if (ImGui::Selectable(refresh_rate_labels[i].c_str(), is_selected)) {
                             s_selected_refresh_rate_index = static_cast<float>(i);
-                            g_setting_selected_refresh_index.SetValue(i);
-                            g_setting_selected_refresh_index.Save();
+                            refSetting.SetValue(i);
+                            refSetting.Save();
                             if (s_auto_apply_refresh_rate_change) {
                                 if (!g_has_pending_confirmation.load()) {
                                     StartRefreshAutoApplyWithBackoff();

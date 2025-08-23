@@ -95,17 +95,18 @@ bool OnCreateSwapchainCapture(reshade::api::swapchain_desc& desc, void* hwnd) {
       modified = true;
     }
     
+    /*
     if (modified) {
       extern void LogInfo(const char* message);
       std::ostringstream oss;
       oss << "Sync interval modified to " << desc.sync_interval << " for swapchain creation";
       ::LogInfo(oss.str().c_str());
-    }
+    }*/
   }
   
   // Store the sync interval for UI display
-  std::scoped_lock lk(g_sync_mutex);
-  g_hwnd_to_syncinterval[static_cast<HWND>(hwnd)] = desc.sync_interval; // UINT32_MAX or 0..4
+  //std::scoped_lock lk(g_sync_mutex);
+  //g_hwnd_to_syncinterval[static_cast<HWND>(hwnd)] = desc.sync_interval; // UINT32_MAX or 0..4
   
   return modified; // return true if we modified the desc
 }

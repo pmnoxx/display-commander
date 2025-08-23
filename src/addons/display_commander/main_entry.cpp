@@ -20,7 +20,7 @@ namespace {
 // Destroy device handler to restore display if needed
 void OnDestroyDevice(reshade::api::device* /*device*/) {
   LogInfo("ReShade device destroyed - Attempting to restore display settings");
-    renodx::display_restore::RestoreAllIfEnabled();
+    display_restore::RestoreAllIfEnabled();
 }
 } // namespace
 
@@ -53,7 +53,7 @@ bool OnReShadeOverlayOpen(reshade::api::effect_runtime* runtime, bool open, resh
 namespace {
 void OnRegisterOverlayDisplayCommander(reshade::api::effect_runtime* runtime) {
     // Draw the new UI
-    renodx::ui::new_ui::DrawNewUISystem();
+    ui::new_ui::DrawNewUISystem();
 }
 }  // namespace
 
@@ -62,9 +62,9 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
     case DLL_PROCESS_ATTACH:
       if (!reshade::register_addon(h_module)) return FALSE;
       // Ensure UI system is initialized
-      renodx::ui::new_ui::InitializeNewUISystem();
+      ui::new_ui::InitializeNewUISystem();
       // Install process-exit safety hooks to restore display on abnormal exits
-      renodx::process_exit_hooks::Initialize();
+      process_exit_hooks::Initialize();
       
       // Capture sync interval on swapchain creation for UI
 #if RESHADE_API_VERSION >= 17
@@ -83,12 +83,12 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
       
       // Register our fullscreen prevention event handler
       reshade::register_event<reshade::addon_event::set_fullscreen_state>(
-          renodx::display_commander::events::OnSetFullscreenState);
+          display_commander::events::OnSetFullscreenState);
 
       g_attach_time = std::chrono::steady_clock::now();
       g_shutdown.store(false);
       std::thread(RunBackgroundAudioMonitor).detach();
-      renodx::background::StartBackgroundTasks();
+      background::StartBackgroundTasks();
       
       // NVAPI HDR monitor will be started after settings load below if enabled
       // Seed default fps limit snapshot
@@ -106,9 +106,9 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
       break;
     case DLL_PROCESS_DETACH:
       // Safety: attempt restore on detach as well (idempotent)
-      renodx::display_restore::RestoreAllIfEnabled();
+      display_restore::RestoreAllIfEnabled();
       // Uninstall process-exit hooks
-      renodx::process_exit_hooks::Shutdown();
+      process_exit_hooks::Shutdown();
       
             // Clean up continuous monitoring if it's running
       StopContinuousMonitoring();
@@ -128,10 +128,10 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
       reshade::unregister_overlay("###settings", OnRegisterOverlayDisplayCommander);
       
       reshade::unregister_event<reshade::addon_event::set_fullscreen_state>(
-          renodx::display_commander::events::OnSetFullscreenState);
+          display_commander::events::OnSetFullscreenState);
       reshade::unregister_event<reshade::addon_event::init_swapchain>(OnInitSwapchain);
       reshade::unregister_event<reshade::addon_event::create_swapchain>(OnCreateSwapchainCapture);
-      renodx::display_restore::RestoreAllIfEnabled(); // restore display settings on exit
+      display_restore::RestoreAllIfEnabled(); // restore display settings on exit
       reshade::unregister_event<reshade::addon_event::destroy_device>(OnDestroyDevice);
       reshade::unregister_addon(h_module);
       g_shutdown.store(true);
@@ -184,7 +184,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
 
     // Initialize Custom FPS Limiter system if any FPS limits are set
     if (s_fps_limit > 0.0f || s_fps_limit_background > 0.0f) {
-      if (renodx::dxgi::fps_limiter::g_customFpsLimiterManager && renodx::dxgi::fps_limiter::g_customFpsLimiterManager->InitializeCustomFpsLimiterSystem()) {
+      if (dxgi::fps_limiter::g_customFpsLimiterManager && dxgi::fps_limiter::g_customFpsLimiterManager->InitializeCustomFpsLimiterSystem()) {
         LogInfo("Custom FPS Limiter system auto-initialized at startup (FPS limits detected)");
       } else {
         LogWarn("Failed to initialize Custom FPS Limiter system at startup");

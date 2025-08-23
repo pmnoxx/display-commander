@@ -3,7 +3,7 @@
 #include <windows.h>
 #include <string>
 
-namespace renodx::display_restore {
+namespace display_restore {
 
 // Capture the original mode for a monitor if not already captured
 void MarkOriginalForMonitor(HMONITOR monitor);
@@ -36,6 +36,6 @@ bool RestoreDisplayByIndex(int display_index);
 // Restore only a single display (by device name). Returns true on success.
 bool RestoreDisplayByDeviceName(const std::wstring &device_name);
 
-} // namespace renodx::display_restore
+} // namespace display_restore
 
 

@@ -3,14 +3,14 @@
 #include <chrono>
 
 // Global state
-std::atomic<bool> renodx::background::g_background_tasks_running{false};
-std::thread renodx::background::g_background_tasks_thread;
+std::atomic<bool> background::g_background_tasks_running{false};
+std::thread background::g_background_tasks_thread;
 
 // Main background task coordinator thread function
 void BackgroundTasksThread() {
     LogInfo("Background tasks coordinator thread started");
     
-    while (renodx::background::g_background_tasks_running.load()) {
+    while (background::g_background_tasks_running.load()) {
         // Audio management is handled by RunBackgroundAudioMonitor in main_entry.cpp
         // No additional audio tasks needed here to avoid conflicts
         
@@ -21,7 +21,7 @@ void BackgroundTasksThread() {
     LogInfo("Background tasks coordinator thread stopped");
 }
 
-void renodx::background::StartBackgroundTasks() {
+void background::StartBackgroundTasks() {
     if (g_background_tasks_running.load()) {
         LogWarn("Background tasks are already running");
         return;
@@ -33,7 +33,7 @@ void renodx::background::StartBackgroundTasks() {
     LogInfo("Background tasks coordinator started");
 }
 
-void renodx::background::StopBackgroundTasks() {
+void background::StopBackgroundTasks() {
     if (!g_background_tasks_running.load()) {
         LogWarn("Background tasks are not running");
         return;

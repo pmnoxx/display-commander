@@ -4,7 +4,7 @@
 #include <deque>
 #include <thread>
 
-namespace renodx::dxgi::fps_limiter {
+namespace dxgi::fps_limiter {
 
 class CustomFpsLimiter {
 public:
@@ -58,4 +58,4 @@ private:
     bool m_frame_in_progress = false;
 };
 
-} // namespace renodx::dxgi::fps_limiter
+} // namespace dxgi::fps_limiter

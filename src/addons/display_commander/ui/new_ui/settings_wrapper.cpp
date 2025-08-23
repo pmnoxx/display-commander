@@ -11,7 +11,7 @@
 #undef max
 #endif
 
-namespace renodx::ui::new_ui {
+namespace ui::new_ui {
 
 // SettingBase implementation
 SettingBase::SettingBase(const std::string& key, const std::string& section)
@@ -249,4 +249,4 @@ void LoadTabSettings(const std::vector<SettingBase*>& settings) {
     }
 }
 
-} // namespace renodx::ui::new_ui
+} // namespace ui::new_ui

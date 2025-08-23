@@ -8,7 +8,7 @@
 #include <algorithm>
 #include <sstream>
 
-namespace renodx::resolution {
+namespace resolution {
 
 // Helper function to get available resolutions for a monitor
 std::vector<std::string> GetResolutionLabels(int monitor_index);
@@ -32,4 +32,4 @@ bool ApplyDisplaySettingsModern(int monitor_index, int width, int height, UINT32
 // Helper function to apply display settings using DXGI API with fractional refresh rates
 bool ApplyDisplaySettingsDXGI(int monitor_index, int width, int height, UINT32 refresh_numerator, UINT32 refresh_denominator);
 
-} // namespace renodx::resolution
+} // namespace resolution

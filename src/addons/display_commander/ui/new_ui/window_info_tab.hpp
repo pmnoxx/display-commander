@@ -3,7 +3,7 @@
 #include <deps/imgui/imgui.h>
 #include <functional>
 
-namespace renodx::ui::new_ui {
+namespace ui::new_ui {
 
 // Draw the window info tab content
 void DrawWindowInfoTab();
@@ -29,4 +29,4 @@ void DrawCursorInfo();
 // Draw target state and change requirements
 void DrawTargetState();
 
-} // namespace renodx::ui::new_ui
+} // namespace ui::new_ui

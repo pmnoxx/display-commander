@@ -16,7 +16,7 @@
 #include "../ui_display_tab.hpp"
 
 // Global variable declaration
-extern std::unique_ptr<renodx::dxgi::fps_limiter::CustomFpsLimiterManager> renodx::dxgi::fps_limiter::g_customFpsLimiterManager;
+extern std::unique_ptr<dxgi::fps_limiter::CustomFpsLimiterManager> dxgi::fps_limiter::g_customFpsLimiterManager;
 
 // External constants for width and height options
 extern const int WIDTH_OPTIONS[];
@@ -25,7 +25,7 @@ extern const int HEIGHT_OPTIONS[];
 // External global variables
 extern float s_background_feature_enabled;
 
-namespace renodx::ui::new_ui {
+namespace ui::new_ui {
 
 void InitMainNewTab() {
 
@@ -297,7 +297,7 @@ void DrawDisplaySettings() {
         
         if (fps_limit > 0.0f) {
             // Custom FPS Limiter is always enabled, just initialize if needed
-            if (renodx::dxgi::fps_limiter::g_customFpsLimiterManager && renodx::dxgi::fps_limiter::g_customFpsLimiterManager->InitializeCustomFpsLimiterSystem()) {
+            if (dxgi::fps_limiter::g_customFpsLimiterManager && dxgi::fps_limiter::g_customFpsLimiterManager->InitializeCustomFpsLimiterSystem()) {
                 LogWarn("Custom FPS Limiter system auto-initialized");
             } else {
                 LogWarn("Failed to initialize Custom FPS Limiter system");
@@ -305,8 +305,8 @@ void DrawDisplaySettings() {
             }
             
             // Update the custom FPS limiter
-            if (renodx::dxgi::fps_limiter::g_customFpsLimiterManager) {
-                auto& limiter = renodx::dxgi::fps_limiter::g_customFpsLimiterManager->GetFpsLimiter();
+            if (dxgi::fps_limiter::g_customFpsLimiterManager) {
+                auto& limiter = dxgi::fps_limiter::g_customFpsLimiterManager->GetFpsLimiter();
                 limiter.SetTargetFps(fps_limit);
                 limiter.SetEnabled(true);
                 
@@ -316,8 +316,8 @@ void DrawDisplaySettings() {
             }
         } else {
             // FPS limit set to 0, disable the limiter
-            if (renodx::dxgi::fps_limiter::g_customFpsLimiterManager) {
-                auto& limiter = renodx::dxgi::fps_limiter::g_customFpsLimiterManager->GetFpsLimiter();
+            if (dxgi::fps_limiter::g_customFpsLimiterManager) {
+                auto& limiter = dxgi::fps_limiter::g_customFpsLimiterManager->GetFpsLimiter();
                 limiter.SetEnabled(false);
                 LogInfo("FPS limit removed (no limit)");
             }
@@ -334,7 +334,7 @@ void DrawDisplaySettings() {
         
         if (fps_limit_bg > 0.0f) {
             // Custom FPS Limiter is always enabled, just initialize if needed
-            if (renodx::dxgi::fps_limiter::g_customFpsLimiterManager && renodx::dxgi::fps_limiter::g_customFpsLimiterManager->InitializeCustomFpsLimiterSystem()) {
+            if (dxgi::fps_limiter::g_customFpsLimiterManager && dxgi::fps_limiter::g_customFpsLimiterManager->InitializeCustomFpsLimiterSystem()) {
                 LogWarn("Custom FPS Limiter system auto-initialized");
             } else {
                 LogWarn("Failed to initialize Custom FPS Limiter system");
@@ -347,8 +347,8 @@ void DrawDisplaySettings() {
             const bool is_background = (hwnd != nullptr && GetForegroundWindow() != hwnd);
             
             if (is_background && fps_limit_bg >= 0.f) {
-                if (renodx::dxgi::fps_limiter::g_customFpsLimiterManager) {
-                    auto& limiter = renodx::dxgi::fps_limiter::g_customFpsLimiterManager->GetFpsLimiter();
+                if (dxgi::fps_limiter::g_customFpsLimiterManager) {
+                    auto& limiter = dxgi::fps_limiter::g_customFpsLimiterManager->GetFpsLimiter();
                     limiter.SetTargetFps(fps_limit_bg);
                     limiter.SetEnabled(true);
                     
@@ -359,8 +359,8 @@ void DrawDisplaySettings() {
             }
         } else {
             // Background FPS limit set to 0, disable the limiter
-            if (renodx::dxgi::fps_limiter::g_customFpsLimiterManager) {
-                auto& limiter = renodx::dxgi::fps_limiter::g_customFpsLimiterManager->GetFpsLimiter();
+            if (dxgi::fps_limiter::g_customFpsLimiterManager) {
+                auto& limiter = dxgi::fps_limiter::g_customFpsLimiterManager->GetFpsLimiter();
                 limiter.SetEnabled(false);
                 LogInfo("Background FPS limit removed (no limit)");
             }
@@ -729,4 +729,4 @@ void DrawImportantInfo() {
     }
 }
 
-} // namespace renodx::ui::new_ui
+} // namespace ui::new_ui

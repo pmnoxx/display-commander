@@ -5,7 +5,7 @@
 #include <sstream>
 #include <iomanip>
 
-namespace renodx::ui::new_ui {
+namespace ui::new_ui {
 
 void DrawDeviceInfoTab() {
     ImGui::Text("Device Info Tab - Graphics Device and Display Information");
@@ -344,4 +344,4 @@ void DrawDxgiDeviceInfoDetailed() {
     }
 }
 
-} // namespace renodx::ui::new_ui
+} // namespace ui::new_ui

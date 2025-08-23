@@ -4,7 +4,7 @@
 #include <cstdlib>
 #include <atomic>
 
-namespace renodx::process_exit_hooks {
+namespace process_exit_hooks {
 
 namespace {
 std::atomic<bool> g_installed{false};
@@ -12,12 +12,12 @@ LPTOP_LEVEL_EXCEPTION_FILTER g_prev_filter = nullptr;
 
 void AtExitHandler() {
   // Best-effort restore on normal process exit
-  renodx::display_restore::RestoreAllIfEnabled();
+  display_restore::RestoreAllIfEnabled();
 }
 
 LONG WINAPI UnhandledExceptionHandler(EXCEPTION_POINTERS* exception_info) {
   // Best-effort restore on crash paths
-  renodx::display_restore::RestoreAllIfEnabled();
+  display_restore::RestoreAllIfEnabled();
   // Chain to previous filter if any
   if (g_prev_filter != nullptr) return g_prev_filter(exception_info);
   return EXCEPTION_EXECUTE_HANDLER;
@@ -43,6 +43,6 @@ void Shutdown() {
   g_prev_filter = nullptr;
 }
 
-} // namespace renodx::process_exit_hooks
+} // namespace process_exit_hooks
 
 

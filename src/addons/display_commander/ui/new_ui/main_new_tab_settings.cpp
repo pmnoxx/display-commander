@@ -1,7 +1,7 @@
 #include "main_new_tab_settings.hpp"
 #include "../../addon.hpp"
 
-namespace renodx::ui::new_ui {
+namespace ui::new_ui {
 
 // Global instance
 MainNewTabSettings g_main_new_tab_settings;
@@ -57,4 +57,4 @@ std::vector<SettingBase*> MainNewTabSettings::GetAllSettings() {
     return all_settings_;
 }
 
-} // namespace renodx::ui::new_ui
+} // namespace ui::new_ui

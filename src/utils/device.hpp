@@ -2,7 +2,7 @@
 
 #include <include/reshade.hpp>
 
-namespace renodx::utils::device {
+namespace utils::device {
 
 static bool IsDirectX(const reshade::api::device_api& device_api) {
   switch (device_api) {
@@ -35,6 +35,6 @@ static bool IsDXGI(const reshade::api::device* device) {
   return IsDXGI(device->get_api());
 }
 
-}  // namespace renodx::utils::device
+}  // namespace utils::device
 
 

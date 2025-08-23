@@ -3,7 +3,7 @@
 #include "settings_wrapper.hpp"
 #include <vector>
 
-namespace renodx::ui::new_ui {
+namespace ui::new_ui {
 
 // Settings manager for the main new tab
 class MainNewTabSettings {
@@ -54,4 +54,4 @@ private:
 // Global instance
 extern MainNewTabSettings g_main_new_tab_settings;
 
-} // namespace renodx::ui::new_ui
+} // namespace ui::new_ui

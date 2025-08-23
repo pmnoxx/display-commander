@@ -8,7 +8,7 @@
 
 using Microsoft::WRL::ComPtr;
 
-namespace renodx::display_cache {
+namespace display_cache {
 
 // Global instance
 DisplayCache g_displayCache;
@@ -462,4 +462,4 @@ bool DisplayCache::GetSupportedModes(size_t display_index, std::vector<Resolutio
     return true;
 }
 
-} // namespace renodx::display_cache
+} // namespace display_cache

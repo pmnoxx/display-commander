@@ -11,7 +11,7 @@
 #include <dxgi1_6.h>
 #include <wrl/client.h>
 
-namespace renodx::ui::new_ui {
+namespace ui::new_ui {
 
 void DrawSwapchainTab() {
     ImGui::Text("Swapchain Tab - DXGI Information");
@@ -330,4 +330,4 @@ void DrawDxgiCompositionInfo() {
     }
 }
 
-} // namespace renodx::ui::new_ui
+} // namespace ui::new_ui

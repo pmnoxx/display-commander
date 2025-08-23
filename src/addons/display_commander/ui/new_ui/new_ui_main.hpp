@@ -2,7 +2,7 @@
 
 #include "new_ui_tabs.hpp"
 
-namespace renodx::ui::new_ui {
+namespace ui::new_ui {
 
 // Main entry point for the new UI system
 class NewUISystem {
@@ -36,4 +36,4 @@ void InitializeNewUISystem();
 void DrawNewUISystem();
 bool IsNewUIEnabled();
 
-} // namespace renodx::ui::new_ui
+} // namespace ui::new_ui

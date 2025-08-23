@@ -19,8 +19,8 @@ void OnBeginRenderPass(reshade::api::command_list* cmd_list, uint32_t count, con
     // Call custom FPS limiter frame begin if enabled
     extern const float s_custom_fps_limiter_enabled;
     if (s_custom_fps_limiter_enabled > 0.5f) {
-        if (renodx::dxgi::fps_limiter::g_customFpsLimiterManager) {
-            auto& limiter = renodx::dxgi::fps_limiter::g_customFpsLimiterManager->GetFpsLimiter();
+        if (dxgi::fps_limiter::g_customFpsLimiterManager) {
+            auto& limiter = dxgi::fps_limiter::g_customFpsLimiterManager->GetFpsLimiter();
             if (limiter.IsEnabled()) {
                 limiter.OnFrameBegin();
             }
@@ -32,8 +32,8 @@ void OnEndRenderPass(reshade::api::command_list* cmd_list) {
     // Call custom FPS limiter frame end if enabled
     extern const float s_custom_fps_limiter_enabled;
     if (s_custom_fps_limiter_enabled > 0.5f) {
-        if (renodx::dxgi::fps_limiter::g_customFpsLimiterManager) {
-            auto& limiter = renodx::dxgi::fps_limiter::g_customFpsLimiterManager->GetFpsLimiter();
+        if (dxgi::fps_limiter::g_customFpsLimiterManager) {
+            auto& limiter = dxgi::fps_limiter::g_customFpsLimiterManager->GetFpsLimiter();
             if (limiter.IsEnabled()) {
                 limiter.OnFrameEnd();
             }
@@ -264,8 +264,8 @@ void OnPresentUpdate(
     }
     
     // Apply the FPS limit to the Custom FPS Limiter
-    if (renodx::dxgi::fps_limiter::g_customFpsLimiterManager) {
-      auto& limiter = renodx::dxgi::fps_limiter::g_customFpsLimiterManager->GetFpsLimiter();
+    if (dxgi::fps_limiter::g_customFpsLimiterManager) {
+      auto& limiter = dxgi::fps_limiter::g_customFpsLimiterManager->GetFpsLimiter();
       if (target_fps > 0.0f) {
         limiter.SetTargetFps(target_fps);
         limiter.SetEnabled(true);
@@ -373,7 +373,7 @@ void FixHDR10Colorspace(reshade::api::swapchain* swapchain) {
   
   // Use the proper ChangeColorSpace function from utils
   // This handles all the DXGI interface management and runtime updates properly
-  if (renodx::utils::swapchain::ChangeColorSpace(swapchain, reshade::api::color_space::hdr10_st2084)) {
+  if (utils::swapchain::ChangeColorSpace(swapchain, reshade::api::color_space::hdr10_st2084)) {
     LogInfo("Successfully changed colorspace from sRGB to HDR10 ST2084");
     
     // Verify the change took effect

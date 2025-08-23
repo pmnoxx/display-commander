@@ -6,7 +6,7 @@
 #include "main_new_tab.hpp"
 #include "../../addon.hpp"
 
-namespace renodx::ui::new_ui {
+namespace ui::new_ui {
 
 // Global tab manager instance
 TabManager g_tab_manager;
@@ -50,26 +50,26 @@ void TabManager::Draw() {
 void InitializeNewUI() {
     LogInfo("XXX Initializing new UI");
     // Ensure settings for main and developer tabs are loaded at UI init time
-    renodx::ui::new_ui::InitMainNewTab();
-    renodx::ui::new_ui::InitDeveloperNewTab();
+    ui::new_ui::InitMainNewTab();
+    ui::new_ui::InitDeveloperNewTab();
 
     g_tab_manager.AddTab("Main", "main_new", []() {
-        renodx::ui::new_ui::DrawMainNewTab();
+        ui::new_ui::DrawMainNewTab();
     });
     g_tab_manager.AddTab("Developer", "developer_new", []() {
-        renodx::ui::new_ui::DrawDeveloperNewTab();
+        ui::new_ui::DrawDeveloperNewTab();
     });
     
     g_tab_manager.AddTab("Device Info", "device_info", []() {
-        renodx::ui::new_ui::DrawDeviceInfoTab();
+        ui::new_ui::DrawDeviceInfoTab();
     });
     
     g_tab_manager.AddTab("Window Info", "window_info", []() {
-        renodx::ui::new_ui::DrawWindowInfoTab();
+        ui::new_ui::DrawWindowInfoTab();
     });
     
     g_tab_manager.AddTab("Swapchain", "swapchain", []() {
-        renodx::ui::new_ui::DrawSwapchainTab();
+        ui::new_ui::DrawSwapchainTab();
     });
     
 }
@@ -79,4 +79,4 @@ void DrawNewUI() {
     g_tab_manager.Draw();
 }
 
-} // namespace renodx::ui::new_ui
+} // namespace ui::new_ui

@@ -3,7 +3,7 @@
 #include <deps/imgui/imgui.h>
 #include <functional>
 
-namespace renodx::ui::new_ui {
+namespace ui::new_ui {
 
 void InitMainNewTab();
 
@@ -30,4 +30,4 @@ void DrawBasicReflexSettings();
 // Draw important information section (PCL AV Latency, Reflex Status, Flip State)
 void DrawImportantInfo();
 
-} // namespace renodx::ui::new_ui
+} // namespace ui::new_ui

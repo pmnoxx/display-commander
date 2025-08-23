@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-namespace renodx::ui::new_ui {
+namespace ui::new_ui {
 
 // Tab structure for the new UI system
 struct Tab {
@@ -47,4 +47,4 @@ void InitializeNewUI();
 // Draw the new UI
 void DrawNewUI();
 
-} // namespace renodx::ui::new_ui
+} // namespace ui::new_ui

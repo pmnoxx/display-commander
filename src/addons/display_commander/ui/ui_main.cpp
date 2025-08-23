@@ -13,12 +13,12 @@ void InitializeUISettings() {
     
     static bool cache_initialized = false;
     if (!cache_initialized) {
-        renodx::ui::InitializeDisplayCache();
+        ui::InitializeDisplayCache();
         cache_initialized = true;
     }
 
     // Initialize the new UI system directly (no settings2 wrapper)
-    renodx::ui::new_ui::InitializeNewUISystem();
+    ui::new_ui::InitializeNewUISystem();
     
     
     // Mark as initialized

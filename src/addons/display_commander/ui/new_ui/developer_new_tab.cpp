@@ -9,7 +9,7 @@
 #include <iomanip>
 #include <thread>
 
-namespace renodx::ui::new_ui {
+namespace ui::new_ui {
 
 void InitDeveloperNewTab() {
     // Ensure settings are loaded
@@ -194,10 +194,9 @@ void DrawSyncIntervalSettings() {
     
     // Get current monitor refresh rate for calculations
     int refresh_rate = 60; // Default fallback
-    extern renodx::display_cache::DisplayCache g_displayCache;
-    if (::g_displayCache.IsInitialized()) {
-        renodx::display_cache::RationalRefreshRate refresh_rate_rational;
-        if (::g_displayCache.GetCurrentRefreshRate(0, refresh_rate_rational)) {
+    if (display_cache::g_displayCache.IsInitialized()) {
+        display_cache::RationalRefreshRate refresh_rate_rational;
+        if (display_cache::g_displayCache.GetCurrentRefreshRate(0, refresh_rate_rational)) {
             refresh_rate = static_cast<int>(refresh_rate_rational.ToHz());
         }
     }
@@ -471,4 +470,4 @@ void DrawLatencyDisplay() {
     }
 }
 
-} // namespace renodx::ui::new_ui
+} // namespace ui::new_ui

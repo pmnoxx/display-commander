@@ -2,7 +2,7 @@
 #include "../addon.hpp"
 #include <algorithm>
 
-namespace renodx::dxgi::fps_limiter {
+namespace dxgi::fps_limiter {
 
 CustomFpsLimiter::CustomFpsLimiter()
     : m_target_fps(0.0f)
@@ -154,4 +154,4 @@ void CustomFpsLimiter::SetTargetFps(float fps)
     // LogWarn("Custom FPS Limiter: Target FPS set to %f", fps);
 }
 
-} // namespace renodx::dxgi::fps_limiter
+} // namespace dxgi::fps_limiter

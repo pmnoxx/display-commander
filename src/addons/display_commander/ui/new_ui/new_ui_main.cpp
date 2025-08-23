@@ -1,7 +1,7 @@
 #include "new_ui_main.hpp"
 #include "../../addon.hpp"
 
-namespace renodx::ui::new_ui {
+namespace ui::new_ui {
 
 // Singleton instance
 NewUISystem& NewUISystem::GetInstance() {
@@ -46,4 +46,4 @@ bool IsNewUIEnabled() {
     return NewUISystem::GetInstance().IsEnabled();
 }
 
-} // namespace renodx::ui::new_ui
+} // namespace ui::new_ui

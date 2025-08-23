@@ -57,7 +57,7 @@ The DeveloperNew tab is a complete migration of the old developer functionality 
 - Logging functions for debug output
 
 ### Migration Approach
-Instead of using the old `renodx::utils::settings2::Setting` system, this implementation:
+Instead of using the old `utils::settings2::Setting` system, this implementation:
 1. Directly manipulates the external variables (e.g., `s_prevent_fullscreen`, `s_spoof_fullscreen_state`)
 2. Uses ImGui widgets (checkboxes, combo boxes, sliders) for user interaction
 3. Maintains the same functionality and behavior as the original settings

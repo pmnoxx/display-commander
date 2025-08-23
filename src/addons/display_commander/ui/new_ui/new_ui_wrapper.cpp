@@ -2,14 +2,14 @@
 #include "new_ui_main.hpp"
 #include "../../addon.hpp"
 
-namespace renodx::ui::new_ui {
+namespace ui::new_ui {
 
-void AddNewUISettings(std::vector<renodx::utils::settings2::Setting*>& settings) {
+void AddNewUISettings(std::vector<utils::settings2::Setting*>& settings) {
     // Add a single custom setting that wraps the entire new UI system
-    settings.push_back(new renodx::utils::settings2::Setting{
+    settings.push_back(new utils::settings2::Setting{
         .key = "NewUISystem",
         .binding = nullptr,
-        .value_type = renodx::utils::settings2::SettingValueType::CUSTOM,
+        .value_type = utils::settings2::SettingValueType::CUSTOM,
         .default_value = 0.f,
         .label = "New UI System",
         .section = "General",
@@ -37,4 +37,4 @@ bool ShouldUseNewUI() {
     return true;
 }
 
-} // namespace renodx::ui::new_ui
+} // namespace ui::new_ui

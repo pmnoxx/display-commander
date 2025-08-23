@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <include/reshade.hpp>
 
-namespace renodx::utils::data {
+namespace utils::data {
 
 template <typename T>
 inline T* Get(const reshade::api::api_object* api_object) {
@@ -41,6 +41,6 @@ inline void Delete(reshade::api::api_object* api_object) {
   api_object->set_private_data(reinterpret_cast<const uint8_t*>(&__uuidof(T)), 0);
 }
 
-}  // namespace renodx::utils::data
+}  // namespace utils::data
 
 

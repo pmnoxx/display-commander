@@ -147,7 +147,7 @@ GlobalWindowState g_window_state;
 BackgroundWindowManager g_backgroundWindowManager;
 
 // Global Custom FPS Limiter Manager instance
-namespace renodx::dxgi::fps_limiter {
+namespace dxgi::fps_limiter {
 std::unique_ptr<CustomFpsLimiterManager> g_customFpsLimiterManager = std::make_unique<CustomFpsLimiterManager>();
 }
 // Global DXGI Device Info Manager instance

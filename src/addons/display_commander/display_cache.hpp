@@ -11,7 +11,7 @@
 #include <cmath> // Added for std::round
 #include <algorithm> // Added for std::max_element
 
-namespace renodx::display_cache {
+namespace display_cache {
 
 // Rational refresh rate structure
 struct RationalRefreshRate {
@@ -349,4 +349,4 @@ public:
 // Global instance
 extern DisplayCache g_displayCache;
 
-} // namespace renodx::display_cache
+} // namespace display_cache

@@ -5,7 +5,7 @@
 #include <set>
 #include <mutex>
 
-namespace renodx::display_restore {
+namespace display_restore {
 
 namespace {
 
@@ -22,7 +22,7 @@ std::set<std::wstring> s_devices_changed; // devices we modified
 
 bool GetCurrentForDevice(const std::wstring &device_name, OriginalMode &out) {
 	// Walk display cache for this device
-	const auto &cache = renodx::display_cache::g_displayCache;
+	const auto &cache = display_cache::g_displayCache;
 	for (size_t i = 0; i < cache.GetDisplayCount(); ++i) {
 		const auto *disp = cache.GetDisplay(i);
 		if (disp == nullptr) continue;
@@ -85,14 +85,14 @@ void MarkOriginalForDeviceName(const std::wstring &device_name) {
 
 void MarkOriginalForDisplayIndex(int display_index) {
 	if (display_index < 0) return;
-	const auto *disp = renodx::display_cache::g_displayCache.GetDisplay(static_cast<size_t>(display_index));
+	const auto *disp = display_cache::g_displayCache.GetDisplay(static_cast<size_t>(display_index));
 	if (disp == nullptr) return;
 	MarkOriginalForDeviceName(disp->device_name);
 }
 
 void MarkDeviceChangedByDisplayIndex(int display_index) {
 	if (display_index < 0) return;
-	const auto *disp = renodx::display_cache::g_displayCache.GetDisplay(static_cast<size_t>(display_index));
+	const auto *disp = display_cache::g_displayCache.GetDisplay(static_cast<size_t>(display_index));
 	if (disp == nullptr) return;
 	MarkDeviceChangedByDeviceName(disp->device_name);
 }
@@ -160,11 +160,11 @@ bool RestoreDisplayByDeviceName(const std::wstring &device_name) {
 
 bool RestoreDisplayByIndex(int display_index) {
 	if (display_index < 0) return false;
-	const auto *disp = renodx::display_cache::g_displayCache.GetDisplay(static_cast<size_t>(display_index));
+	const auto *disp = display_cache::g_displayCache.GetDisplay(static_cast<size_t>(display_index));
 	if (disp == nullptr) return false;
 	return RestoreDisplayByDeviceName(disp->device_name);
 }
 
-} // namespace renodx::display_restore
+} // namespace display_restore
 
 

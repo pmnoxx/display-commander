@@ -17,12 +17,12 @@ extern float s_selected_resolution_index;
 extern float s_selected_refresh_rate_index;
 extern bool s_initial_auto_selection_done;
 
-namespace renodx::ui {
+namespace ui {
 
 // Initialize the display cache for the UI
 void InitializeDisplayCache() {
-    if (!renodx::display_cache::g_displayCache.IsInitialized()) {
-        renodx::display_cache::g_displayCache.Initialize();
+    if (!display_cache::g_displayCache.IsInitialized()) {
+        display_cache::g_displayCache.Initialize();
     }
 }
 
@@ -30,11 +30,11 @@ void InitializeDisplayCache() {
 std::vector<std::string> GetMonitorLabelsFromCache() {
     std::vector<std::string> labels;
     
-    if (!renodx::display_cache::g_displayCache.IsInitialized()) {
-        renodx::display_cache::g_displayCache.Initialize();
+    if (!display_cache::g_displayCache.IsInitialized()) {
+        display_cache::g_displayCache.Initialize();
     }
     
-    size_t display_count = renodx::display_cache::g_displayCache.GetDisplayCount();
+    size_t display_count = display_cache::g_displayCache.GetDisplayCount();
     labels.reserve(display_count + 1); // +1 for Auto (Current) option
     
     // Add Auto (Current) as the first option (index 0)
@@ -76,7 +76,7 @@ std::vector<std::string> GetMonitorLabelsFromCache() {
     
     // Add the regular monitor options (starting from index 1)
     for (size_t i = 0; i < display_count; ++i) {
-            const auto* display = renodx::display_cache::g_displayCache.GetDisplay(i);
+            const auto* display = display_cache::g_displayCache.GetDisplay(i);
             if (display) {
                 std::ostringstream oss;
                 
@@ -117,11 +117,11 @@ std::vector<std::string> GetMonitorLabelsFromCache() {
 
 // Helper function to get max monitor index using the display cache
 float GetMaxMonitorIndexFromCache() {
-    if (!renodx::display_cache::g_displayCache.IsInitialized()) {
-        renodx::display_cache::g_displayCache.Initialize();
+    if (!display_cache::g_displayCache.IsInitialized()) {
+        display_cache::g_displayCache.Initialize();
     }
     
-    size_t display_count = renodx::display_cache::g_displayCache.GetDisplayCount();
+    size_t display_count = display_cache::g_displayCache.GetDisplayCount();
     // +1 because we now have Auto (Current) as index 0, so monitors start at index 1
     return static_cast<float>((std::max)(0, static_cast<int>(display_count)));
 }
@@ -147,11 +147,11 @@ std::string GetCurrentDisplayInfoFromCache() {
     }
     
     // Use the display cache to get monitor information
-    if (!renodx::display_cache::g_displayCache.IsInitialized()) {
-        renodx::display_cache::g_displayCache.Initialize();
+    if (!display_cache::g_displayCache.IsInitialized()) {
+        display_cache::g_displayCache.Initialize();
     }
     
-    const auto* display = renodx::display_cache::g_displayCache.GetDisplayByHandle(monitor);
+    const auto* display = display_cache::g_displayCache.GetDisplayByHandle(monitor);
     if (!display) {
         return "Failed to get display info from cache";
     }
@@ -179,7 +179,7 @@ std::string GetCurrentDisplayInfo() {
 // Handle monitor settings UI (extracted from on_draw lambda)
 bool HandleMonitorSettingsUI() {
     // Handle display cache refresh logic (every 60 frames)
-    renodx::ui::monitor_settings::HandleDisplayCacheRefresh();
+    ui::monitor_settings::HandleDisplayCacheRefresh();
     
     // Get current monitor labels (now with precise refresh rates and raw rational values)
     auto monitor_labels = GetMonitorLabelsFromCache();
@@ -189,30 +189,30 @@ bool HandleMonitorSettingsUI() {
             }
             
         // Handle auto-detection of current display settings
-    renodx::ui::monitor_settings::HandleAutoDetection();
+    ui::monitor_settings::HandleAutoDetection();
     
         // Handle monitor selection UI
-    renodx::ui::monitor_settings::HandleMonitorSelection(monitor_labels);
+    ui::monitor_settings::HandleMonitorSelection(monitor_labels);
     
     // Handle resolution selection UI
-    renodx::ui::monitor_settings::HandleResolutionSelection(static_cast<int>(s_selected_monitor_index));
+    ui::monitor_settings::HandleResolutionSelection(static_cast<int>(s_selected_monitor_index));
     
     // Handle refresh rate selection UI
-    renodx::ui::monitor_settings::HandleRefreshRateSelection(static_cast<int>(s_selected_monitor_index), static_cast<int>(s_selected_resolution_index));
+    ui::monitor_settings::HandleRefreshRateSelection(static_cast<int>(s_selected_monitor_index), static_cast<int>(s_selected_resolution_index));
 
     // Handle auto-restore resolution checkbox
-    renodx::ui::monitor_settings::HandleAutoRestoreResolutionCheckbox();
+    ui::monitor_settings::HandleAutoRestoreResolutionCheckbox();
 
     // Inline auto-apply checkboxes are now rendered next to their respective combos
 
     // Handle the DXGI API Apply Button
-    renodx::ui::monitor_settings::HandleDXGIAPIApplyButton();
+    ui::monitor_settings::HandleDXGIAPIApplyButton();
     
     // While a resolution change is pending confirmation, show confirm/revert UI
-    renodx::ui::monitor_settings::HandlePendingConfirmationUI();
+    ui::monitor_settings::HandlePendingConfirmationUI();
     
     return false; // No value change
 }
 
 
-} // namespace renodx::ui
+} // namespace ui

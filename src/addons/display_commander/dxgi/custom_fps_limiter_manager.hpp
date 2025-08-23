@@ -2,7 +2,7 @@
 
 #include "custom_fps_limiter.hpp"
 
-namespace renodx::dxgi::fps_limiter {
+namespace dxgi::fps_limiter {
 
 class CustomFpsLimiterManager {
 public:
@@ -25,4 +25,4 @@ private:
 // Global instance
 extern std::unique_ptr<CustomFpsLimiterManager> g_customFpsLimiterManager;
 
-} // namespace renodx::dxgi::fps_limiter
+} // namespace dxgi::fps_limiter

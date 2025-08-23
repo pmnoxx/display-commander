@@ -3,7 +3,7 @@
 #include <deps/imgui/imgui.h>
 #include <functional>
 
-namespace renodx::ui::new_ui {
+namespace ui::new_ui {
 
 // Draw the swapchain tab content
 void DrawSwapchainTab();
@@ -17,4 +17,4 @@ void DrawAdapterInfo();
 // Draw DXGI composition information
 void DrawDxgiCompositionInfo();
 
-} // namespace renodx::ui::new_ui
+} // namespace ui::new_ui

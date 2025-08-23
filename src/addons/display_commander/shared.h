@@ -2,8 +2,8 @@
 #define SRC_TEMPLATE_SHARED_H_
 
 // #define RENODX_PEAK_WHITE_NITS                 1000.f
-// #define RENODX_DIFFUSE_WHITE_NITS              renodx::color::bt2408::REFERENCE_WHITE
-// #define RENODX_GRAPHICS_WHITE_NITS             renodx::color::bt2408::GRAPHICS_WHITE
+// #define RENODX_DIFFUSE_WHITE_NITS              color::bt2408::REFERENCE_WHITE
+// #define RENODX_GRAPHICS_WHITE_NITS             color::bt2408::GRAPHICS_WHITE
 // #define RENODX_COLOR_GRADE_STRENGTH            1.f
 // #define RENODX_TONE_MAP_TYPE                   TONE_MAP_TYPE_RENO_DRT
 // #define RENODX_TONE_MAP_EXPOSURE               1.f
@@ -165,7 +165,7 @@ cbuffer shader_injection : register(b13) {
 #define RENODX_SWAP_CHAIN_CLAMP_COLOR_SPACE    shader_injection.swap_chain_clamp_color_space
 #define RENODX_SWAP_CHAIN_ENCODING             shader_injection.swap_chain_encoding
 #define RENODX_SWAP_CHAIN_ENCODING_COLOR_SPACE shader_injection.swap_chain_encoding_color_space
-#define RENODX_RENO_DRT_TONE_MAP_METHOD        renodx::tonemap::renodrt::config::tone_map_method::REINHARD
+#define RENODX_RENO_DRT_TONE_MAP_METHOD        tonemap::renodrt::config::tone_map_method::REINHARD
 
 #define RENODX_RENO_DRT_WHITE_CLIP               shader_injection.reno_drt_white_clip
 

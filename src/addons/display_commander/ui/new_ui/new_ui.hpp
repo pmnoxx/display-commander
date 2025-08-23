@@ -15,4 +15,4 @@
 #include "new_ui_wrapper.hpp"
 
 // Convenience namespace for easy access
-namespace new_ui = renodx::ui::new_ui;
+namespace new_ui = ui::new_ui;

@@ -3,7 +3,7 @@
 #include <deps/imgui/imgui.h>
 #include <functional>
 
-namespace renodx::ui::new_ui {
+namespace ui::new_ui {
 
 // Draw the developer new tab content
 void DrawDeveloperNewTab();
@@ -26,4 +26,4 @@ void DrawSyncIntervalSettings();
 // Draw latency display section
 void DrawLatencyDisplay();
 
-} // namespace renodx::ui::new_ui
+} // namespace ui::new_ui

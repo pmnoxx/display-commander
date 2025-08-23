@@ -3,7 +3,7 @@
 #include <vector>
 #include <string>
 
-namespace renodx::ui::monitor_settings {
+namespace ui::monitor_settings {
 
 // Handle display cache refresh logic (every 60 frames)
 void HandleDisplayCacheRefresh();
@@ -32,4 +32,4 @@ void HandleDXGIAPIApplyButton();
 // Handle the pending confirmation UI and countdown/revert logic
 void HandlePendingConfirmationUI();
 
-} // namespace renodx::ui::monitor_settings
+} // namespace ui::monitor_settings

@@ -5,7 +5,7 @@
 #include <string>
 
 // Forward declarations
-namespace renodx::utils::settings2 {
+namespace utils::settings2 {
     struct Setting;
 }
 
@@ -32,7 +32,7 @@ extern float s_fps_limit_background;
 extern float s_window_info_display;
 
 // Settings vector declaration
-extern std::vector<renodx::utils::settings2::Setting*> settings;
+extern std::vector<utils::settings2::Setting*> settings;
 
 // Helper functions for labels
 std::vector<std::string> MakeLabels(const std::vector<int>& options, int default_index);

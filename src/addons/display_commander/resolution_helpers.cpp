@@ -8,7 +8,7 @@
 
 using Microsoft::WRL::ComPtr;
 
-namespace renodx::resolution {
+namespace resolution {
 
 // Helper function to get available resolutions for a monitor
 std::vector<std::string> GetResolutionLabels(int monitor_index) {
@@ -578,4 +578,4 @@ bool ApplyDisplaySettingsDXGI(int monitor_index, int width, int height, UINT32 r
     return false;
 }
 
-} // namespace renodx::resolution
+} // namespace resolution

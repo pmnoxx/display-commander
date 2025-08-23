@@ -5,7 +5,7 @@
 #include <string>
 #include <functional>
 
-namespace renodx::ui::new_ui {
+namespace ui::new_ui {
 
 // Constants
 static constexpr auto DEFAULT_SECTION = "DisplayCommander";
@@ -145,4 +145,4 @@ void SpacingSetting();
 // Utility function to load all settings for a tab
 void LoadTabSettings(const std::vector<SettingBase*>& settings);
 
-} // namespace renodx::ui::new_ui
+} // namespace ui::new_ui

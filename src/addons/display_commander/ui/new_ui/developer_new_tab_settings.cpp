@@ -18,7 +18,7 @@ extern float s_reflex_debug_output;
 extern float s_remove_top_bar;
 extern float s_sync_interval;
 
-namespace renodx::ui::new_ui {
+namespace ui::new_ui {
 
 // Constructor - initialize all settings with proper keys and default values
 DeveloperTabSettings::DeveloperTabSettings()
@@ -88,7 +88,7 @@ void DeveloperTabSettings::SaveAll() {
     sync_interval.Save();
 }
 
-std::vector<renodx::ui::new_ui::SettingBase*> DeveloperTabSettings::GetAllSettings() {
+std::vector<ui::new_ui::SettingBase*> DeveloperTabSettings::GetAllSettings() {
     return {
         &prevent_fullscreen,
         &spoof_fullscreen_state,
@@ -117,4 +117,4 @@ void AddDeveloperNewTabSettings(std::vector<void*>& settings) {
     // This function is kept for backward compatibility but doesn't add any new settings
 }
 
-} // namespace renodx::ui::new_ui
+} // namespace ui::new_ui

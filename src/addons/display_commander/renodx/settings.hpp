@@ -14,7 +14,7 @@
 
 #define ICON_FK_UNDO u8"\uf0e2"
 
-namespace renodx::utils::settings2 {
+namespace utils::settings2 {
 
 // Keep minimal types used by legacy UI wrappers
 
@@ -100,4 +100,4 @@ struct Setting {
 
 using Settings = std::vector<Setting*>;
 
-}  // namespace renodx::utils::settings2
+}  // namespace utils::settings2

@@ -4,7 +4,7 @@
 #include <deps/imgui/imgui.h>
 #include <sstream>
 
-namespace renodx::ui::new_ui {
+namespace ui::new_ui {
 
 void DrawWindowInfoTab() {
     ImGui::Text("Window Info Tab - Window Debugging and State");
@@ -215,4 +215,4 @@ void DrawTargetState() {
     }
 }
 
-} // namespace renodx::ui::new_ui
+} // namespace ui::new_ui

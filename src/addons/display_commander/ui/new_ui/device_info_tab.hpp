@@ -3,7 +3,7 @@
 #include <deps/imgui/imgui.h>
 #include <functional>
 
-namespace renodx::ui::new_ui {
+namespace ui::new_ui {
 
 // Draw the device info tab content
 void DrawDeviceInfoTab();
@@ -26,4 +26,4 @@ void DrawHdrAndColorspaceControls();
 // Draw device refresh controls
 void DrawDeviceRefreshControls();
 
-} // namespace renodx::ui::new_ui
+} // namespace ui::new_ui

@@ -9,6 +9,10 @@
 #include <thread>
 #include <atomic>
 #include <iomanip>
+#include <algorithm>
+#include <vector>
+#include <deque>
+#include <utility>
 #include "../ui_display_tab.hpp"
 
 // Global variable declaration
@@ -59,6 +63,14 @@ void InitMainNewTab() {
         s_mute_in_background_if_other_audio = g_main_new_tab_settings.mute_in_background_if_other_audio.GetValue() ? 1.0f : 0.0f;
         s_reflex_enabled = g_main_new_tab_settings.reflex_enabled.GetValue() ? 1.0f : 0.0f;
         settings_loaded_once = true;
+
+        // If manual Audio Mute is OFF, proactively unmute on startup
+        if (s_audio_mute < 0.5f) {
+            if (::SetMuteForCurrentProcess(false)) {
+                ::g_muted_applied.store(false);
+                LogInfo("Audio unmuted at startup (Audio Mute is OFF)");
+            }
+        }
     }
 }
 
@@ -569,6 +581,64 @@ void DrawImportantInfo() {
     ImGui::Separator();
     
     ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.8f, 1.0f), "=== Important Information ===");
+    
+    // FPS Counter with 1% Low and 0.1% Low over past 60s
+    {
+        ImGuiIO &io = ImGui::GetIO();
+        static std::deque<std::pair<double, float>> fps_samples_60s; // (elapsed_time_s, fps)
+        static double accumulated_time_s = 0.0;
+        const float current_fps = (io.DeltaTime > 0.0f) ? (1.0f / io.DeltaTime) : 0.0f;
+
+        accumulated_time_s += static_cast<double>(io.DeltaTime);
+
+        if (current_fps > 0.0f) {
+            fps_samples_60s.emplace_back(accumulated_time_s, current_fps);
+        }
+
+        // Prune samples older than 60 seconds
+        const double window_start = accumulated_time_s - 60.0;
+        while (!fps_samples_60s.empty() && fps_samples_60s.front().first < window_start) {
+            fps_samples_60s.pop_front();
+        }
+
+        const float fps_display = io.Framerate; // ImGui smoothed FPS
+
+        float one_percent_low = 0.0f;
+        float point_one_percent_low = 0.0f;
+        if (!fps_samples_60s.empty()) {
+            std::vector<float> values;
+            values.reserve(fps_samples_60s.size());
+            for (const auto &s : fps_samples_60s) values.push_back(s.second);
+            std::sort(values.begin(), values.end()); // ascending
+
+            const size_t size = values.size();
+            const size_t count_1 = (std::max<size_t>)(static_cast<size_t>(static_cast<double>(size) * 0.01), 1);
+            const size_t count_01 = (std::max<size_t>)(static_cast<size_t>(static_cast<double>(size) * 0.001), 1);
+
+            double sum_1 = 0.0;
+            for (size_t i = 0; i < count_1; ++i) sum_1 += static_cast<double>(values[i]);
+            one_percent_low = static_cast<float>(sum_1 / static_cast<double>(count_1));
+
+            double sum_01 = 0.0;
+            for (size_t i = 0; i < count_01; ++i) sum_01 += static_cast<double>(values[i]);
+            point_one_percent_low = static_cast<float>(sum_01 / static_cast<double>(count_01));
+        }
+
+        std::ostringstream fps_oss;
+        fps_oss << "FPS: " << std::fixed << std::setprecision(1) << fps_display
+                << "   (1% Low: " << std::setprecision(1) << one_percent_low
+                << ", 0.1% Low: " << std::setprecision(1) << point_one_percent_low << ") over past 60s";
+        ImGui::TextUnformatted(fps_oss.str().c_str());
+
+        ImGui::SameLine();
+        if (ImGui::Button("Reset 60s Stats")) {
+            fps_samples_60s.clear();
+            accumulated_time_s = 0.0;
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Reset the rolling 60-second FPS statistics.");
+        }
+    }
     
     // PCL AV Latency Display
     extern std::atomic<float> g_pcl_av_latency_ms;

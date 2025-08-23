@@ -1,3 +1,8 @@
+## v0.1.1 (2025-08-23)
+
+- Added FPS counter with Min FPS and 1% Low metrics to Important Information section
+- Enhanced performance monitoring with real-time FPS statistics
+
 ## v0.1.0 (2025-08-23)
 
 - Initial release of Display Commander addon

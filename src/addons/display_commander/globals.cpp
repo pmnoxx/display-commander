@@ -25,7 +25,7 @@ float s_move_to_zero_if_out = 2.f; // default to top right
 float s_prevent_fullscreen = 0.f;
 
 // NVAPI Fullscreen Prevention
-float s_nvapi_fullscreen_prevention = 1.f; // enabled by default
+float s_nvapi_fullscreen_prevention = 0.f; // disabled by default
 // NVAPI HDR logging
 float s_nvapi_hdr_logging = 0.f;
 float s_nvapi_hdr_interval_sec = 5.f;

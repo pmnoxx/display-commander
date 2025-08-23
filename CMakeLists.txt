@@ -2,11 +2,6 @@ cmake_minimum_required(VERSION 3.20)
 
 project(reshade_display_commander VERSION 0.1.0 LANGUAGES CXX)
 
-# Require Ninja generator
-if(NOT (CMAKE_GENERATOR STREQUAL "Ninja" OR CMAKE_GENERATOR STREQUAL "Ninja Multi-Config"))
-  message(FATAL_ERROR "This project requires the Ninja generator. Configure with: cmake -S . -B build -G Ninja")
-endif()
-
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 

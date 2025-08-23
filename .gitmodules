@@ -1,0 +1,15 @@
+[submodule "external/reshade"]
+	path = external/reshade
+	url = https://github.com/crosire/reshade
+
+[submodule "external/gtl"]
+	path = external/gtl
+	url = https://github.com/pmem/gtl
+
+[submodule "external/SpecialK"]
+	path = external/SpecialK
+	url = https://github.com/SpecialKO/SpecialK
+
+[submodule "external/Streamline"]
+	path = external/Streamline
+	url = https://github.com/NVIDIA/Streamline

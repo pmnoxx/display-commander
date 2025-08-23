@@ -37,6 +37,11 @@ public:
     BoolSetting mute_in_background_if_other_audio;
     BoolSetting audio_volume_auto_apply;
     
+    // Input Blocking (Background) Settings
+    BoolSetting block_mouse_in_background;
+    BoolSetting block_keyboard_in_background;
+    BoolSetting block_mouse_cursor_warping_in_background;
+    
     // Reflex Settings
     BoolSetting reflex_enabled;
 

@@ -235,6 +235,28 @@ void OnPresentUpdate(
     }
   }
 
+  // Apply input blocking based on background/foreground state every frame
+  {
+    reshade::api::effect_runtime* runtime = g_reshade_runtime.load();
+    if (runtime != nullptr) {
+      HWND hwnd = g_last_swapchain_hwnd.load();
+      if (hwnd == nullptr) hwnd = GetForegroundWindow();
+      const bool is_background = (hwnd != nullptr && GetForegroundWindow() != hwnd);
+      const bool block_mouse = (s_block_mouse_in_background >= 0.5f) && is_background;
+      const bool block_keyboard = (s_block_keyboard_in_background >= 0.5f) && is_background;
+      const bool block_warp = (s_block_mouse_cursor_warping_in_background >= 0.5f) && is_background;
+      if (block_mouse) {  
+        runtime->block_mouse_input(block_mouse);
+      }
+      if (block_keyboard) {
+        runtime->block_keyboard_input(block_keyboard);
+      }
+      if (block_warp) {
+        runtime->block_mouse_cursor_warping(block_warp);
+      }
+    }
+  }
+
   // CONTINUOUS RENDERING FEATURE COMPLETELY REMOVED - Focus spoofing is now handled by Win32 hooks
   // This provides a much cleaner and more effective solution
   

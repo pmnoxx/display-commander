@@ -21,6 +21,9 @@ MainNewTabSettings::MainNewTabSettings()
       mute_in_background("mute_in_background", false, "renodx_main_tab"),
       mute_in_background_if_other_audio("mute_in_background_if_other_audio", true, "renodx_main_tab"),
       audio_volume_auto_apply("audio_volume_auto_apply", true, "renodx_main_tab"),
+      block_mouse_in_background("block_mouse_in_background", false, "renodx_main_tab"),
+      block_keyboard_in_background("block_keyboard_in_background", false, "renodx_main_tab"),
+      block_mouse_cursor_warping_in_background("block_mouse_cursor_warping_in_background", false, "renodx_main_tab"),
       reflex_enabled("reflex_enabled", false, "renodx_main_tab") {
     
     // Initialize the all_settings_ vector
@@ -39,6 +42,9 @@ MainNewTabSettings::MainNewTabSettings()
         &mute_in_background,
         &mute_in_background_if_other_audio,
         &audio_volume_auto_apply,
+        &block_mouse_in_background,
+        &block_keyboard_in_background,
+        &block_mouse_cursor_warping_in_background,
         &reflex_enabled
     };
 }

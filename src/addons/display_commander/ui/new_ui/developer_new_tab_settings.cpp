@@ -21,19 +21,19 @@ namespace renodx::ui::new_ui {
 
 // Constructor - initialize all settings with proper keys and default values
 DeveloperTabSettings::DeveloperTabSettings()
-    : prevent_fullscreen("PreventFullscreen", false, "DisplayCommanderNew")
+    : prevent_fullscreen("PreventFullscreen", true, "DisplayCommanderNew")
     , spoof_fullscreen_state("SpoofFullscreenState", false, "DisplayCommanderNew")
     , spoof_window_focus("SpoofWindowFocus", false, "DisplayCommanderNew")
     , continuous_monitoring("ContinuousMonitoring", true, "DisplayCommanderNew")
     , prevent_always_on_top("PreventAlwaysOnTop", true, "DisplayCommanderNew")
     , remove_top_bar("RemoveTopBar", false, "DisplayCommanderNew")
     , fix_hdr10_colorspace("FixHDR10Colorspace", false, "DisplayCommanderNew")
-    , nvapi_fullscreen_prevention("NvapiFullscreenPrevention", true, "DisplayCommanderNew")
+    , nvapi_fullscreen_prevention("NvapiFullscreenPrevention", false, "DisplayCommanderNew")
     , nvapi_hdr_logging("NvapiHDRLogging", false, "DisplayCommanderNew")
     , nvapi_hdr_interval_sec("NvapiHDRInterval", 5.0f, 1.0f, 60.0f, "DisplayCommanderNew")
     , nvapi_force_hdr10("NvapiForceHDR10", false, "DisplayCommanderNew")
     , reflex_enabled("ReflexEnabled", true, "DisplayCommanderNew")
-    , reflex_debug_output("ReflexDebugOutput", true, "DisplayCommanderNew")
+    , reflex_debug_output("ReflexDebugOutput", false, "DisplayCommanderNew")
 {
 }
 

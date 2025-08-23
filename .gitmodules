@@ -1,6 +1,7 @@
 [submodule "external/reshade"]
 	path = external/reshade
-	url = https://github.com/crosire/reshade
+	url = https://github.com/pmnoxx/reshade.git
+	branch = feature/input-blocking-api
 
 [submodule "external/gtl"]
 	path = external/gtl

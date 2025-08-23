@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Ensure submodules are initialized
-git submodule update --init --recursive
+# git submodule update --init --recursive
 
 # Build the project
 cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release

@@ -7,10 +7,13 @@
 
 namespace renodx::ui::new_ui {
 
+// Constants
+static constexpr auto DEFAULT_SECTION = "DisplayCommander";
+
 // Base class for settings that automatically handle loading/saving
 class SettingBase {
 public:
-    SettingBase(const std::string& key, const std::string& section = "DisplayCommanderNew");
+    SettingBase(const std::string& key, const std::string& section = DEFAULT_SECTION);
     virtual ~SettingBase() = default;
     
     // Load the setting value from Reshade config
@@ -34,7 +37,7 @@ protected:
 class FloatSetting : public SettingBase {
 public:
     FloatSetting(const std::string& key, float default_value, float min = 0.0f, float max = 100.0f, 
-                 const std::string& section = "DisplayCommanderNew");
+                 const std::string& section = DEFAULT_SECTION);
     
     void Load() override;
     void Save() override;
@@ -56,7 +59,7 @@ private:
 class IntSetting : public SettingBase {
 public:
     IntSetting(const std::string& key, int default_value, int min = 0, int max = 100,
-               const std::string& section = "DisplayCommanderNew");
+               const std::string& section = DEFAULT_SECTION);
     
     void Load() override;
     void Save() override;
@@ -78,7 +81,7 @@ private:
 class BoolSetting : public SettingBase {
 public:
     BoolSetting(const std::string& key, bool default_value, 
-                const std::string& section = "DisplayCommanderNew");
+                const std::string& section = DEFAULT_SECTION);
     
     void Load() override;
     void Save() override;
@@ -97,7 +100,7 @@ class ComboSetting : public SettingBase {
 public:
     ComboSetting(const std::string& key, int default_value, 
                  const std::vector<const char*>& labels,
-                 const std::string& section = "DisplayCommanderNew");
+                 const std::string& section = DEFAULT_SECTION);
     
     void Load() override;
     void Save() override;

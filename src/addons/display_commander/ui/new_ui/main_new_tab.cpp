@@ -62,6 +62,9 @@ void InitMainNewTab() {
         s_mute_in_background = g_main_new_tab_settings.mute_in_background.GetValue() ? 1.0f : 0.0f;
         s_mute_in_background_if_other_audio = g_main_new_tab_settings.mute_in_background_if_other_audio.GetValue() ? 1.0f : 0.0f;
         s_reflex_enabled = g_main_new_tab_settings.reflex_enabled.GetValue() ? 1.0f : 0.0f;
+        s_block_mouse_in_background = g_main_new_tab_settings.block_mouse_in_background.GetValue() ? 1.0f : 0.0f;
+        s_block_keyboard_in_background = g_main_new_tab_settings.block_keyboard_in_background.GetValue() ? 1.0f : 0.0f;
+        s_block_mouse_cursor_warping_in_background = g_main_new_tab_settings.block_mouse_cursor_warping_in_background.GetValue() ? 1.0f : 0.0f;
         settings_loaded_once = true;
 
         // If manual Audio Mute is OFF, proactively unmute on startup
@@ -97,6 +100,40 @@ void DrawMainNewTab() {
     ImGui::Spacing();
     ImGui::Separator();
     
+    // Input Blocking (Background) Section
+    {
+        ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== Input Control (Background) ===");
+        bool bm = g_main_new_tab_settings.block_mouse_in_background.GetValue();
+        if (ImGui::Checkbox("Block Mouse Input in Background", &bm)) {
+            g_main_new_tab_settings.block_mouse_in_background.SetValue(bm);
+            s_block_mouse_in_background = bm ? 1.0f : 0.0f;
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("When enabled, mouse input is blocked while the game window is not focused.");
+        }
+
+        bool bk = g_main_new_tab_settings.block_keyboard_in_background.GetValue();
+        if (ImGui::Checkbox("Block Keyboard Input in Background", &bk)) {
+            g_main_new_tab_settings.block_keyboard_in_background.SetValue(bk);
+            s_block_keyboard_in_background = bk ? 1.0f : 0.0f;
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("When enabled, keyboard input is blocked while the game window is not focused.");
+        }
+
+        bool bw = g_main_new_tab_settings.block_mouse_cursor_warping_in_background.GetValue();
+        if (ImGui::Checkbox("Block Mouse Cursor Warping in Background", &bw)) {
+            g_main_new_tab_settings.block_mouse_cursor_warping_in_background.SetValue(bw);
+            s_block_mouse_cursor_warping_in_background = bw ? 1.0f : 0.0f;
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("When enabled, cursor warping is blocked while the game window is not focused.");
+        }
+    }
+
+    ImGui::Spacing();
+    ImGui::Separator();
+
     // Window Controls Section
     DrawWindowControls();
     

@@ -74,6 +74,11 @@ bool OnCreateSwapchainCapture(reshade::api::swapchain_desc& desc, void* hwnd) {
     if (sync_value == 0) {
       // Application-Controlled: don't modify
     } else if (sync_value == 1) {
+      // On DXGI flip-model swap chains (DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL/FLIP_DISCARD), 
+      // Present only accepts SyncInterval 0 or 1. 
+      // Passing 2–4 is invalid and typically causes DXGI_ERROR_INVALID_CALL or a stall, 
+      // which looks like a freeze/black screen.
+      // https://learn.microsoft.com/en-us/windows/win32/api/dxgi/nf-dxgi-idxgiswapchain-present
       // No-VSync (0)
       desc.sync_interval = 0;
       modified = true;
@@ -82,16 +87,20 @@ bool OnCreateSwapchainCapture(reshade::api::swapchain_desc& desc, void* hwnd) {
       desc.sync_interval = 1;
       modified = true;
     } else if (sync_value == 3) {
+      // Only use 2–4 if the swap effect is bitblt (DXGI_SWAP_EFFECT_SEQUENTIAL/DISCARD) or you’re in exclusive fullscreen.
       // V-Sync 2x (2)
       desc.sync_interval = 2;
+      desc.present_mode = DXGI_SWAP_EFFECT_SEQUENTIAL;
       modified = true;
     } else if (sync_value == 4) {
       // V-Sync 3x (3)
       desc.sync_interval = 3;
+      desc.present_mode = DXGI_SWAP_EFFECT_SEQUENTIAL;
       modified = true;
     } else if (sync_value == 5) {
       // V-Sync 4x (4)
       desc.sync_interval = 4;
+      desc.present_mode = DXGI_SWAP_EFFECT_SEQUENTIAL;
       modified = true;
     }
     

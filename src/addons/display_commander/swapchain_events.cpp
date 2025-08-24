@@ -61,7 +61,7 @@ uint32_t GetSwapchainSyncInterval(reshade::api::swapchain* swapchain) {
 // Get the sync interval coefficient for FPS calculation
 float GetSyncIntervalCoefficient(float sync_interval_value) {
   // Map sync interval values to their corresponding coefficients
-  // 3 = V-Sync (1x), 4 = V-Sync 2x, 5 = V-Sync 3x, 6 = V-Sync 4x, 7 = V-Sync 8x
+  // 3 = V-Sync (1x), 4 = V-Sync 2x, 5 = V-Sync 3x, 6 = V-Sync 4x
   switch (static_cast<int>(sync_interval_value)) {
     case 0: return 0.0f;   // App Controlled
     case 1: return 0.0f;   // No-VSync
@@ -69,7 +69,6 @@ float GetSyncIntervalCoefficient(float sync_interval_value) {
     case 3: return 2.0f;   // V-Sync 2x
     case 4: return 3.0f;   // V-Sync 3x
     case 5: return 4.0f;   // V-Sync 4x
-    case 6: return 8.0f;   // V-Sync 8x
     default: return 1.0f;  // Fallback
   }
 }

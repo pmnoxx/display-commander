@@ -68,7 +68,7 @@ void InitMainNewTab() {
         s_audio_mute = g_main_new_tab_settings.audio_mute.GetValue() ? 1.0f : 0.0f;
         s_mute_in_background = g_main_new_tab_settings.mute_in_background.GetValue() ? 1.0f : 0.0f;
         s_mute_in_background_if_other_audio = g_main_new_tab_settings.mute_in_background_if_other_audio.GetValue() ? 1.0f : 0.0f;
-        s_reflex_enabled = g_main_new_tab_settings.reflex_enabled.GetValue() ? 1.0f : 0.0f;
+     
         s_block_mouse_in_background = g_main_new_tab_settings.block_mouse_in_background.GetValue() ? 1.0f : 0.0f;
         s_block_keyboard_in_background = g_main_new_tab_settings.block_keyboard_in_background.GetValue() ? 1.0f : 0.0f;
         s_block_mouse_cursor_warping_in_background = g_main_new_tab_settings.block_mouse_cursor_warping_in_background.GetValue() ? 1.0f : 0.0f;
@@ -153,9 +153,6 @@ void DrawMainNewTab() {
     ImGui::Spacing();
     ImGui::Separator();
     
-    // Basic Reflex Settings Section
-    DrawBasicReflexSettings();
-
     DrawImportantInfo();
 }
 
@@ -631,21 +628,6 @@ void DrawMonitorDisplaySettings() {
     ImGui::TextColored(ImVec4(0.9f, 0.9f, 0.9f, 1.0f), "Current Display Info:");
     std::string display_info = GetCurrentDisplayInfoFromCache();
     ImGui::TextWrapped("%s", display_info.c_str());
-}
-
-void DrawBasicReflexSettings() {
-    ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "=== Basic Reflex Settings ===");
-    
-    // Enable NVIDIA Reflex checkbox (persistent)
-    if (CheckboxSetting(g_main_new_tab_settings.reflex_enabled, "Enable NVIDIA Reflex")) {
-        s_reflex_enabled = g_main_new_tab_settings.reflex_enabled.GetValue() ? 1.0f : 0.0f;
-        std::ostringstream oss;
-        oss << "NVIDIA Reflex " << (g_main_new_tab_settings.reflex_enabled.GetValue() ? "enabled" : "disabled");
-        LogInfo(oss.str().c_str());
-    }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Enable NVIDIA Reflex for reduced latency. This setting appears in the basic tab for easy access.");
-    }
 }
 
 void DrawImportantInfo() {

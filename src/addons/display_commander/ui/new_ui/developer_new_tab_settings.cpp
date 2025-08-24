@@ -1,5 +1,6 @@
 #include "developer_new_tab_settings.hpp"
 #include "../../renodx/settings.hpp"
+#include <minwindef.h>
 
 // External declarations for the global variables
 extern float s_prevent_fullscreen;
@@ -34,7 +35,7 @@ DeveloperTabSettings::DeveloperTabSettings()
     , nvapi_hdr_logging("NvapiHDRLogging", false, "DisplayCommanderNew")
     , nvapi_hdr_interval_sec("NvapiHDRInterval", 5.0f, 1.0f, 60.0f, "DisplayCommanderNew")
     , nvapi_force_hdr10("NvapiForceHDR10", false, "DisplayCommanderNew")
-    , reflex_enabled("ReflexEnabled", true, "DisplayCommanderNew")
+    , reflex_enabled("ReflexEnabled", false, "DisplayCommanderNew")
     , reflex_debug_output("ReflexDebugOutput", false, "DisplayCommanderNew")
     , sync_interval("SyncInterval", 0, {"Application-Controlled", "No-VSync (0)", "V-Sync", "V-Sync 2x", "V-Sync 3x", "V-Sync 4x", "V-Sync 8x"}, "DisplayCommanderNew")
     , enable_unstable_reshade_features("EnableUnstableReShadeFeatures", false, "DisplayCommanderNew")

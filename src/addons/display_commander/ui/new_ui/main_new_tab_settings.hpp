@@ -43,9 +43,6 @@ public:
     BoolSetting block_mouse_in_background;
     BoolSetting block_keyboard_in_background;
     BoolSetting block_mouse_cursor_warping_in_background;
-    
-    // Reflex Settings
-    BoolSetting reflex_enabled;
 
 private:
     std::vector<SettingBase*> all_settings_;

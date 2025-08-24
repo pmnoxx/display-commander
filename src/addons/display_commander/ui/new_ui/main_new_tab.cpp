@@ -145,7 +145,7 @@ void DrawMainNewTab() {
         if (!unstable_enabled) ImGui::BeginDisabled();
         bool block_any_in_background =
             g_main_new_tab_settings.block_input_in_background.GetValue();
-        if (ImGui::Checkbox("Block Input in Background", &block_any_in_background)) {
+        if (ImGui::Checkbox("Block Input in Background (Custom DLL needed)", &block_any_in_background)) {
             g_main_new_tab_settings.block_input_in_background.SetValue(block_any_in_background);
             s_block_input_in_background = block_any_in_background ? 1.0f : 0.0f;
         }
@@ -369,7 +369,7 @@ void DrawDisplaySettings() {
         ImGui::TextColored(ImVec4(0.8f, 0.9f, 1.0f, 1.0f), "=== VSync & Tearing ===");
 
         bool vs_on = g_main_new_tab_settings.force_vsync_on.GetValue();
-        if (ImGui::Checkbox("Force VSync ON (Unstable)", &vs_on)) {
+        if (ImGui::Checkbox("Force VSync ON (Custom DLL needed)", &vs_on)) {
             // Mutual exclusion
             if (vs_on) {
                 g_main_new_tab_settings.force_vsync_off.SetValue(false);

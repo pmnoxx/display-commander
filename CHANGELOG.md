@@ -1,4 +1,16 @@
-## v0.2.4 (2025-01-27)
+## v0.3.0 (2025-08-24)
+
+- **Complete UI modernization** - Migrated from legacy settings-based UI to modern ImGui-based interface
+- **New tabbed interface** - Reorganized UI into logical tabs: Main, Device Info, Window Info, Swapchain, and Developer
+- **Enhanced developer features** - Complete rewrite of developer tab with improved NVAPI status display and HDR controls
+- **Improved settings management** - New settings wrapper system for better organization and persistence
+- **Better user experience** - More responsive UI with immediate feedback and better visual organization
+- **Enhanced monitor management** - Improved multi-monitor support with better resolution and refresh rate handling
+- **Developer tool improvements** - Better NVAPI integration, HDR10 colorspace fixes, and comprehensive debugging tools
+- **Code architecture improvements** - Streamlined addon structure with better separation of concerns
+- **Performance optimizations** - Improved caching and reduced unnecessary operations for better responsiveness
+
+## v0.2.4 (2025-08-23)
 
 - **Improved compatibility** - Dropped custom DLL requirement, making addon more accessible to all users
 - **New developer toggle** - Added "Enable unstable ReShade features" checkbox for advanced users who need custom dxgi.dll
@@ -6,14 +18,14 @@
 - **Better user experience** - Clear separation between stable and experimental features
 - **Enhanced safety** - Prevents accidental use of potentially unstable features by default
 
-## v0.2.3 (2025-01-27)
+## v0.2.3 (2025-08-23)
 
 - **V-Sync 2x-4x implementation** - Implemented v-sync 2x, 3x, 4x functionality in supported games
 - **Swapchain improvements** - Enhanced swapchain event handling for better v-sync compatibility
 - **Window management updates** - Improved window management system for v-sync modes
 - **Code optimization** - Streamlined addon structure and removed unnecessary code
 
-## v0.2.2 (2025-01-27)
+## v0.2.2 (2025-08-23)
 
 - **Critical bug fix** - Fixed sync interval crashes by preventing invalid Present calls on flip-model swap chains
 - **DXGI swap effect detection** - Added detection of swap effect type to avoid invalid sync intervals

@@ -385,31 +385,6 @@ void DrawLatencyDisplay() {
         oss << "Reflex Status: Inactive";
     }
     ImGui::TextUnformatted(oss.str().c_str());
-    
-    // Debug Button to show atomic variable values
-    if (ImGui::Button("Log All Latency Values")) {
-        extern std::atomic<float> g_average_latency_ms;
-        extern std::atomic<float> g_min_latency_ms;
-        extern std::atomic<float> g_max_latency_ms;
-        
-        oss.str("");
-        oss.clear();
-        oss << "=== LATENCY DEBUG INFO ===" << std::endl;
-        oss << "Current Latency: " << std::fixed << std::setprecision(2) << ::g_current_latency_ms.load() << " ms" << std::endl;
-        oss << "PCL AV Latency: " << std::fixed << std::setprecision(2) << ::g_pcl_av_latency_ms.load() << " ms" << std::endl;
-        oss << "Average Latency: " << std::fixed << std::setprecision(2) << ::g_average_latency_ms.load() << " ms" << std::endl;
-        oss << "Min Latency: " << std::fixed << std::setprecision(2) << ::g_min_latency_ms.load() << " ms" << std::endl;
-        oss << "Max Latency: " << std::fixed << std::setprecision(2) << ::g_max_latency_ms.load() << " ms" << std::endl;
-        oss << "Current Frame: " << ::g_current_frame.load() << std::endl;
-        oss << "Reflex Active: " << (::g_reflex_active.load() ? "Yes" : "No") << std::endl;
-        oss << "========================";
-        
-        extern void LogInfo(const char* message);
-        ::LogInfo(oss.str().c_str());
-    }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Click to log all current latency values for debugging");
-    }
 }
 
 } // namespace ui::new_ui

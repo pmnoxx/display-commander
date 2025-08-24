@@ -178,6 +178,7 @@ void DrawSyncIntervalSettings() {
     g_developerTabSettings.sync_interval.SetValue(0);
     if (ComboSettingWrapper(g_developerTabSettings.sync_interval, "Sync Interval (Disabled)")) {
         s_sync_interval = static_cast<float>(g_developerTabSettings.sync_interval.GetValue());
+        s_sync_interval = 0.0f;
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Control the sync interval for frame presentation. This setting requires a game restart to take effect.");

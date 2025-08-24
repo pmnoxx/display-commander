@@ -325,7 +325,7 @@ void DrawDisplaySettings() {
     
     // FPS Limit slider
     float fps_limit = s_fps_limit;
-    if (ImGui::SliderFloat("FPS Limit", &fps_limit, 0.0f, 240.0f, fps_limit > 0.0f ? "%.0f FPS" : "No Limit")) {
+    if (ImGui::SliderFloat("FPS Limit", &fps_limit, 0.0f, 240.0f, fps_limit > 0.0f ? "%.3f FPS" : "No Limit")) {
         s_fps_limit = fps_limit;
         
         if (fps_limit > 0.0f) {
@@ -344,7 +344,9 @@ void DrawDisplaySettings() {
                 limiter.SetEnabled(true);
                 
                 std::ostringstream oss;
-                oss << "FPS limit applied: " << static_cast<int>(fps_limit) << " FPS (via Custom FPS Limiter)";
+                oss.setf(std::ios::fixed);
+                oss << std::setprecision(3);
+                oss << "FPS limit applied: " << fps_limit << " FPS (via Custom FPS Limiter)";
                 LogInfo(oss.str().c_str());
             }
         } else {
@@ -366,41 +368,46 @@ void DrawDisplaySettings() {
         int y = static_cast<int>(std::round(refresh_hz));
         if (y > 0) {
             bool first = true;
+            // Add No Limit button at the beginning
+            if (ImGui::Button("No Limit")) {
+                s_fps_limit = 0.0f;
+                if (dxgi::fps_limiter::g_customFpsLimiterManager) {
+                    auto& limiter = dxgi::fps_limiter::g_customFpsLimiterManager->GetFpsLimiter();
+                    limiter.SetEnabled(false);
+                    LogInfo("FPS limit removed (no limit)");
+                }
+            }
+            first = false;
             for (int x = 1; x <= 15; ++x) {
                 if (y % x == 0) {
-                    int candidate = y / x;
-                    if (candidate >= 30) {
+                    int candidate_rounded = y / x;
+                    float candidate_precise = refresh_hz / x;
+                    if (candidate_rounded >= 30) {
                         if (!first) ImGui::SameLine();
                         first = false;
-                        bool is_highest = (x == 1);
-                        std::string label = is_highest ? std::string("No Limit") : std::to_string(candidate);
+                        std::string label = std::to_string(candidate_rounded);
                         if (ImGui::Button(label.c_str())) {
-                            float target_fps = is_highest ? 0.0f : static_cast<float>(candidate);
+                            float target_fps = candidate_precise;
                             s_fps_limit = target_fps;
                             
-                            if (target_fps > 0.0f) {
-                                // Ensure limiter system is initialized
-                                if (dxgi::fps_limiter::g_customFpsLimiterManager && dxgi::fps_limiter::g_customFpsLimiterManager->InitializeCustomFpsLimiterSystem()) {
-                                    LogWarn("Custom FPS Limiter system auto-initialized");
-                                } else if (!dxgi::fps_limiter::g_customFpsLimiterManager) {
-                                    LogWarn("Failed to initialize Custom FPS Limiter system");
-                                }
-                                // Apply the selected FPS limit immediately
-                                if (dxgi::fps_limiter::g_customFpsLimiterManager) {
-                                    auto& limiter = dxgi::fps_limiter::g_customFpsLimiterManager->GetFpsLimiter();
-                                    limiter.SetTargetFps(target_fps);
-                                    limiter.SetEnabled(true);
-                                    std::ostringstream oss;
-                                    oss << "FPS limit applied: " << candidate << " FPS (via Custom FPS Limiter)";
-                                    LogInfo(oss.str().c_str());
-                                }
-                            } else {
-                                // Disable limiter for no limit
-                                if (dxgi::fps_limiter::g_customFpsLimiterManager) {
-                                    auto& limiter = dxgi::fps_limiter::g_customFpsLimiterManager->GetFpsLimiter();
-                                    limiter.SetEnabled(false);
-                                    LogInfo("FPS limit removed (no limit)");
-                                }
+                            // Ensure limiter system is initialized
+                            if (dxgi::fps_limiter::g_customFpsLimiterManager && dxgi::fps_limiter::g_customFpsLimiterManager->InitializeCustomFpsLimiterSystem()) {
+                                LogWarn("Custom FPS Limiter system auto-initialized");
+                            } else if (!dxgi::fps_limiter::g_customFpsLimiterManager) {
+                                LogWarn("Failed to initialize Custom FPS Limiter system");
+                            }
+                            
+                            // Apply the selected FPS limit immediately
+                            if (dxgi::fps_limiter::g_customFpsLimiterManager) {
+                                auto& limiter = dxgi::fps_limiter::g_customFpsLimiterManager->GetFpsLimiter();
+                                limiter.SetTargetFps(target_fps);
+                                limiter.SetEnabled(true);
+                                
+                                std::ostringstream oss;
+                                oss.setf(std::ios::fixed);
+                                oss << std::setprecision(3);
+                                oss << "FPS limit applied: " << target_fps << " FPS (via Custom FPS Limiter)";
+                                LogInfo(oss.str().c_str());
                             }
                         }
                     }
@@ -408,10 +415,9 @@ void DrawDisplaySettings() {
             }
             // Add 95% button at the end
             if (!first) ImGui::SameLine();
-            int candidate95 = static_cast<int>(std::round(static_cast<double>(y) * 0.95));
-            candidate95 = (candidate95 < 1) ? 1 : candidate95;
             if (ImGui::Button("95%")) {
-                float target_fps = static_cast<float>(candidate95);
+                double precise_target = refresh_hz * 0.95; // do not round on apply
+                float target_fps = static_cast<float>(precise_target < 1.0 ? 1.0 : precise_target);
                 s_fps_limit = target_fps;
                 if (target_fps > 0.0f) {
                     if (dxgi::fps_limiter::g_customFpsLimiterManager && dxgi::fps_limiter::g_customFpsLimiterManager->InitializeCustomFpsLimiterSystem()) {
@@ -424,7 +430,9 @@ void DrawDisplaySettings() {
                         limiter.SetTargetFps(target_fps);
                         limiter.SetEnabled(true);
                         std::ostringstream oss;
-                        oss << "FPS limit applied: " << candidate95 << " FPS (95% of refresh via Custom FPS Limiter)";
+                        oss.setf(std::ios::fixed);
+                        oss << std::setprecision(3);
+                        oss << "FPS limit applied: " << target_fps << " FPS (95% of refresh via Custom FPS Limiter)";
                         LogInfo(oss.str().c_str());
                     }
                 } else {

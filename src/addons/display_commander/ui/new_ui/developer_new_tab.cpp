@@ -379,44 +379,6 @@ void DrawReflexSettings() {
         extern std::atomic<bool> g_reflex_settings_changed;
         ::g_reflex_settings_changed.store(true);
     }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Enable NVIDIA Reflex for reduced latency. Requires NVIDIA GPU and drivers.");
-    }
-    
-    // Reflex Low Latency Mode (disabled)
-    ImGui::BeginDisabled();
-    bool low_latency_mode = (s_reflex_low_latency_mode >= 0.5f);
-    ImGui::Checkbox("Reflex Low Latency Mode (disabled)", &low_latency_mode);
-    ImGui::EndDisabled();
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Enable low latency mode for reduced input lag. (Currently disabled)");
-    }
-    
-    // Reflex Low Latency Boost (disabled)
-    ImGui::BeginDisabled();
-    bool low_latency_boost = (s_reflex_low_latency_boost >= 0.5f);
-    ImGui::Checkbox("Reflex Low Latency Boost (disabled)", &low_latency_boost);
-    ImGui::EndDisabled();
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Request maximum GPU clock frequency for lower latency in CPU-limited scenarios. (Currently disabled)");
-    }
-    
-    // Reflex Use Markers (disabled)
-    ImGui::BeginDisabled();
-    bool use_markers = (s_reflex_use_markers >= 0.5f);
-    ImGui::Checkbox("Reflex Use Markers (disabled)", &use_markers);
-    ImGui::EndDisabled();
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Allow latency markers to be used for runtime optimizations. (Currently disabled)");
-    }
-    
-    // Reflex Debug Output
-    if (CheckboxSetting(g_developerTabSettings.reflex_debug_output, "Reflex Debug Output")) {
-        s_reflex_debug_output = g_developerTabSettings.reflex_debug_output.GetValue() ? 1.0f : 0.0f;
-    }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Enable or disable Reflex debug messages in the log.");
-    }
 }
 
 void DrawLatencyDisplay() {

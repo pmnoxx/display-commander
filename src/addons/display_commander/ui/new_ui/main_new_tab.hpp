@@ -24,9 +24,6 @@ void DrawAudioSettings();
 // Draw window controls section
 void DrawWindowControls();
 
-// Draw basic reflex settings section
-void DrawBasicReflexSettings();
-
 // Draw important information section (PCL AV Latency, Reflex Status, Flip State)
 void DrawImportantInfo();
 

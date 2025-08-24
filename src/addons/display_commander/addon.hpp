@@ -279,9 +279,6 @@ bool NeedsWindowAdjustment(HWND hwnd, int& out_width, int& out_height, int& out_
 void OnInitSwapchain(reshade::api::swapchain* swapchain, bool resize);
 void OnPresentUpdate(reshade::api::command_queue* queue, reshade::api::swapchain* swapchain, const reshade::api::rect* source_rect, const reshade::api::rect* dest_rect, uint32_t dirty_rect_count, const reshade::api::rect* dirty_rects);
 
-// HDR10 colorspace fixing
-void FixHDR10Colorspace(reshade::api::swapchain* swapchain);
-
 // Current swapchain colorspace for UI display
 extern reshade::api::color_space g_current_colorspace;
 

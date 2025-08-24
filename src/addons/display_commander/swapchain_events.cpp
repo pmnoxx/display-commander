@@ -176,11 +176,6 @@ void OnInitSwapchain(reshade::api::swapchain* swapchain, bool resize) {
   LogDebug(resize ? "Schedule auto-apply on swapchain init (resize)"
                   : "Schedule auto-apply on swapchain init");
   
-  // Fix HDR10 colorspace if enabled and needed
-  if (s_fix_hdr10_colorspace >= 0.5f) {
-    FixHDR10Colorspace(swapchain);
-  }
-  
   // Note: Minimize hook removed - use continuous monitoring instead
 
   // Set Reflex sleep mode and latency markers if enabled
@@ -316,69 +311,5 @@ void OnPresentUpdate(
         last_block_warp = block_warp;
       }
     }
-  }
-
-  // CONTINUOUS RENDERING FEATURE COMPLETELY REMOVED - Focus spoofing is now handled by Win32 hooks
-  // This provides a much cleaner and more effective solution
-  
-  if ((c % 30) != 0) return;
-
-  // Colorspace/device enumeration moved to background monitoring thread
-  // Composition state change logging moved to background monitoring thread
-}
-
-// Fix HDR10 colorspace when swapchain format is RGB10A2 and colorspace is not already HDR10
-void FixHDR10Colorspace(reshade::api::swapchain* swapchain) {
-  if (swapchain == nullptr) return;
-  
-  // Update timestamp
-  auto now = std::chrono::system_clock::now();
-  auto time_t = std::chrono::system_clock::to_time_t(now);
-  std::stringstream ss;
-  struct tm timeinfo;
-  localtime_s(&timeinfo, &time_t);
-  ss << std::put_time(&timeinfo, "%H:%M:%S");
-  g_hdr10_override_timestamp = ss.str();
-  
-  // Get the device to check backbuffer format
-  auto* device = swapchain->get_device();
-  if (device == nullptr || swapchain->get_back_buffer_count() == 0) return;
-  
-  // Get backbuffer description to check format
-  auto bb = swapchain->get_back_buffer(0);
-  auto desc = device->get_resource_desc(bb);
-  
-  // Only proceed if format is RGB10A2 (R10G10B10A2_UNORM)
-  if (desc.texture.format != reshade::api::format::r10g10b10a2_unorm) {
-    return;
-  }
-  
-  // Only proceed if current colorspace is sRGB (srgb_nonlinear)
-  auto current_colorspace = swapchain->get_color_space();
-  if (current_colorspace != reshade::api::color_space::srgb_nonlinear) {
-    g_hdr10_override_status = "Skipped: colorspace not sRGB";
-    LogDebug("Skipping HDR10 colorspace fix: current colorspace is not sRGB");
-    return;
-  }
-  
-  // Use the proper ChangeColorSpace function from utils
-  // This handles all the DXGI interface management and runtime updates properly
-  if (utils::swapchain::ChangeColorSpace(swapchain, reshade::api::color_space::hdr10_st2084)) {
-    LogInfo("Successfully changed colorspace from sRGB to HDR10 ST2084");
-    
-    // Verify the change took effect
-    auto new_colorspace = swapchain->get_color_space();
-    if (new_colorspace == reshade::api::color_space::hdr10_st2084) {
-      g_hdr10_override_status = "Success: changed to HDR10 ST2084";
-      LogInfo("Colorspace change verified: now using HDR10 ST2084");
-    } else {
-      g_hdr10_override_status = "Warning: change may not have taken effect";
-      std::ostringstream oss;
-      oss << "Colorspace change may not have taken effect. Current: " << static_cast<int>(new_colorspace);
-      LogWarn(oss.str().c_str());
-    }
-  } else {
-    g_hdr10_override_status = "Failed: ChangeColorSpace returned false";
-    LogWarn("Failed to change colorspace to HDR10 ST2084");
   }
 }

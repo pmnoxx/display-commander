@@ -175,7 +175,8 @@ void DrawSyncIntervalSettings() {
     ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "=== Sync Interval Settings ===");
     
     // Sync Interval dropdown
-    if (ComboSettingWrapper(g_developerTabSettings.sync_interval, "Sync Interval")) {
+    g_developerTabSettings.sync_interval.SetValue(0);
+    if (ComboSettingWrapper(g_developerTabSettings.sync_interval, "Sync Interval (Disabled)")) {
         s_sync_interval = static_cast<float>(g_developerTabSettings.sync_interval.GetValue());
     }
     if (ImGui::IsItemHovered()) {

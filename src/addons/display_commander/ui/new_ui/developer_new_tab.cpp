@@ -3,6 +3,7 @@
 #include "settings_wrapper.hpp"
 #include "../../addon.hpp"
 #include "../../nvapi/nvapi_fullscreen_prevention.hpp"
+#include "../../nvapi/nvapi_hdr_monitor.hpp"
 #include "../ui_common.hpp"
 #include "../../display_cache.hpp"
 #include <sstream>
@@ -234,6 +235,8 @@ void DrawNvapiSettings() {
     // HDR10 Colorspace Fix
     if (CheckboxSetting(g_developerTabSettings.fix_hdr10_colorspace, "Fix NVAPI HDR10 Colorspace for reshade addon")) {
         s_fix_hdr10_colorspace = g_developerTabSettings.fix_hdr10_colorspace.GetValue() ? 1.0f : 0.0f;
+
+        
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Automatically fix HDR10 colorspace when swapchain format is RGB10A2 and colorspace is currently sRGB. Only works when the game is using sRGB colorspace.");
@@ -253,7 +256,6 @@ void DrawNvapiSettings() {
             s_nvapi_hdr_logging = g_developerTabSettings.nvapi_hdr_logging.GetValue() ? 1.0f : 0.0f;
             
             if (g_developerTabSettings.nvapi_hdr_logging.GetValue()) {
-                extern void RunBackgroundNvapiHdrMonitor();
                 std::thread(::RunBackgroundNvapiHdrMonitor).detach();
             }
         }

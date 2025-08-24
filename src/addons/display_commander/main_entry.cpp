@@ -9,6 +9,7 @@
 #include "dxgi/custom_fps_limiter_manager.hpp"
 #include "dxgi/dxgi_device_info.hpp"
 #include "nvapi/nvapi_fullscreen_prevention.hpp"
+#include "nvapi/nvapi_hdr_monitor.hpp"
 // Restore display settings on exit if enabled
 #include "display_restore.hpp"
 #include "process_exit_hooks.hpp"

@@ -163,7 +163,6 @@ extern float s_nvapi_fullscreen_prevention;
 // NVAPI HDR logging
 extern float s_nvapi_hdr_logging;
 extern float s_nvapi_hdr_interval_sec;
-// NVAPI Force HDR10
 extern float s_nvapi_force_hdr10;
 
 // Spoof Fullscreen State (for applications that query fullscreen status)
@@ -278,9 +277,6 @@ void OnPresentUpdate(reshade::api::command_queue* queue, reshade::api::swapchain
 
 // HDR10 colorspace fixing
 void FixHDR10Colorspace(reshade::api::swapchain* swapchain);
-// Background NVAPI HDR monitor
-void RunBackgroundNvapiHdrMonitor();
-void LogNvapiHdrOnce();
 
 // Current swapchain colorspace for UI display
 extern reshade::api::color_space g_current_colorspace;

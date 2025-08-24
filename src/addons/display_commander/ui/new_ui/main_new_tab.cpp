@@ -662,11 +662,11 @@ void DrawImportantInfo() {
         ::g_perf_text_lock.unlock();
         ImGui::TextUnformatted(local_text.c_str());
         ImGui::SameLine();
-        if (ImGui::Button("Reset 60s Stats")) {
+        if (ImGui::Button("Reset Stats")) {
             ::g_perf_reset_requested.store(true, std::memory_order_release);
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Reset the rolling 60-second FPS statistics (background computed).");
+            ImGui::SetTooltip("Reset FPS/frametime statistics. Metrics are computed since reset.");
         }
     }
     

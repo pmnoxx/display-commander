@@ -73,6 +73,10 @@ void InitializeNewUI() {
         ui::new_ui::DrawSwapchainTab();
     });
     
+    g_tab_manager.AddTab("Important Info", "important_info", []() {
+        ui::new_ui::DrawImportantInfo();
+    });
+    
 }
 
 // Draw the new UI

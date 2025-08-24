@@ -303,34 +303,9 @@ void OnPresentUpdate(
   // This provides a much cleaner and more effective solution
   
   if ((c % 30) != 0) return;
-  
-  
-  // Composition state is maintained by monitoring thread; just throttle returns
-  
-  // Record per-frame FPS sample for background aggregation (lock-free ring)
-  {
-    extern std::atomic<double> g_perf_time_seconds;
-    extern std::atomic<uint32_t> g_perf_ring_head;
-    extern PerfSample g_perf_ring[kPerfRingCapacity];
-    static auto start_tp = std::chrono::steady_clock::now();
-    auto now_tp = std::chrono::steady_clock::now();
-    const double elapsed = std::chrono::duration<double>(now_tp - start_tp).count();
-    g_perf_time_seconds.store(elapsed, std::memory_order_release);
-    static double last_tp = 0.0;
-    const double dt = elapsed - last_tp;
-    if (dt > 0.0) {
-      const float fps = static_cast<float>(1.0 / dt);
-      uint32_t idx = g_perf_ring_head.fetch_add(1, std::memory_order_acq_rel);
-      g_perf_ring[idx & (kPerfRingCapacity - 1)] = PerfSample{elapsed, fps};
-      last_tp = elapsed;
-    }
-  }
-  
+
   // Colorspace/device enumeration moved to background monitoring thread
-  
   // Composition state change logging moved to background monitoring thread
-
-
 }
 
 // Fix HDR10 colorspace when swapchain format is RGB10A2 and colorspace is not already HDR10

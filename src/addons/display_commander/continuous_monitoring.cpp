@@ -5,6 +5,9 @@
 #include <thread>
 #include <chrono>
 #include <sstream>
+#include <vector>
+#include <algorithm>
+#include <cmath>
 
 // Forward declarations
 void ComputeDesiredSize(int& out_w, int& out_h);
@@ -157,7 +160,6 @@ void ContinuousMonitoringThread() {
             extern std::string g_perf_text_shared;
 
             const double now_s = g_perf_time_seconds.load(std::memory_order_acquire);
-            const double window_start = now_s - 60.0;
 
             // Handle reset: clear samples efficiently by advancing head and zeroing text
             if (g_perf_reset_requested.exchange(false, std::memory_order_acq_rel)) {
@@ -165,15 +167,19 @@ void ContinuousMonitoringThread() {
                 g_perf_text_shared.clear();
             }
 
-            // Copy recent samples into a local vector for computation
+            // Copy samples since last reset into local vectors for computation
             std::vector<float> fps_values;
+            std::vector<float> frame_times_ms;
             fps_values.reserve(2048);
+            frame_times_ms.reserve(2048);
             const uint32_t head = g_perf_ring_head.load(std::memory_order_acquire);
-            const uint32_t start = (head > kPerfRingCapacity) ? (head - static_cast<uint32_t>(kPerfRingCapacity)) : 0u;
+            const uint32_t count = (head > static_cast<uint32_t>(kPerfRingCapacity)) ? static_cast<uint32_t>(kPerfRingCapacity) : head;
+            const uint32_t start = head - count;
             for (uint32_t i = start; i < head; ++i) {
                 const PerfSample& s = g_perf_ring[i & (kPerfRingCapacity - 1)];
-                if (s.timestamp_seconds >= window_start && s.timestamp_seconds <= now_s && s.fps > 0.0f) {
+                if (s.fps > 0.0f) {
                     fps_values.push_back(s.fps);
+                    frame_times_ms.push_back(1000.0f / s.fps);
                 }
             }
 
@@ -181,35 +187,57 @@ void ContinuousMonitoringThread() {
             float frame_time_ms = 0.0f;
             float one_percent_low = 0.0f;
             float point_one_percent_low = 0.0f;
+            float p99_frame_time_ms = 0.0f;    // Top 1% (99th percentile) frame time
+            float p999_frame_time_ms = 0.0f;   // Top 0.1% (99.9th percentile) frame time
 
             if (!fps_values.empty()) {
-                // Use median FPS as display to avoid spikes, fall back to mean
-                std::sort(fps_values.begin(), fps_values.end());
-                const size_t n = fps_values.size();
-                fps_display = (n % 2 == 1) ? fps_values[n / 2] : 0.5f * (fps_values[n / 2 - 1] + fps_values[n / 2]);
-                if (fps_display <= 0.0f) {
-                    double sum = 0.0;
-                    for (float v : fps_values) sum += v;
-                    fps_display = static_cast<float>(sum / static_cast<double>(n));
-                }
-                frame_time_ms = (fps_display > 0.0f) ? (1000.0f / fps_display) : 0.0f;
+                // Average FPS over entire interval since reset = frames / total_time
+                std::vector<float> fps_sorted = fps_values;
+                std::sort(fps_sorted.begin(), fps_sorted.end());
+                const size_t n = fps_sorted.size();
+                double total_frame_time_ms = 0.0;
+                for (float ft : frame_times_ms) total_frame_time_ms += static_cast<double>(ft);
+                const double total_seconds = total_frame_time_ms / 1000.0;
+                fps_display = (total_seconds > 0.0) ? static_cast<float>(static_cast<double>(n) / total_seconds) : 0.0f;
+                // Median frame time for display in ms
+                std::vector<float> ft_for_median = frame_times_ms;
+                std::sort(ft_for_median.begin(), ft_for_median.end());
+                frame_time_ms = (n % 2 == 1) ? ft_for_median[n / 2] : 0.5f * (ft_for_median[n / 2 - 1] + ft_for_median[n / 2]);
 
-                const size_t count_1 = (std::max<size_t>)(static_cast<size_t>(static_cast<double>(n) * 0.01), size_t(1));
-                const size_t count_01 = (std::max<size_t>)(static_cast<size_t>(static_cast<double>(n) * 0.001), size_t(1));
-                double sum_1 = 0.0;
-                for (size_t i = 0; i < count_1; ++i) sum_1 += static_cast<double>(fps_values[i]);
-                one_percent_low = static_cast<float>(sum_1 / static_cast<double>(count_1));
-                double sum_01 = 0.0;
-                for (size_t i = 0; i < count_01; ++i) sum_01 += static_cast<double>(fps_values[i]);
-                point_one_percent_low = static_cast<float>(sum_01 / static_cast<double>(count_01));
+                // Compute lows and top frame times using frame time distribution (more robust)
+                std::vector<float> ft_sorted = frame_times_ms;
+                std::sort(ft_sorted.begin(), ft_sorted.end()); // ascending: fast -> slow
+                const size_t m = ft_sorted.size();
+                const size_t count_1 = (std::max<size_t>)(static_cast<size_t>(static_cast<double>(m) * 0.01), size_t(1));
+                const size_t count_01 = (std::max<size_t>)(static_cast<size_t>(static_cast<double>(m) * 0.001), size_t(1));
+
+                // Average of slowest 1% and 0.1% frametimes, then convert to FPS
+                double sum_ft_1 = 0.0;
+                for (size_t i = m - count_1; i < m; ++i) sum_ft_1 += static_cast<double>(ft_sorted[i]);
+                const double avg_ft_1 = sum_ft_1 / static_cast<double>(count_1);
+                one_percent_low = (avg_ft_1 > 0.0) ? static_cast<float>(1000.0 / avg_ft_1) : 0.0f;
+
+                double sum_ft_01 = 0.0;
+                for (size_t i = m - count_01; i < m; ++i) sum_ft_01 += static_cast<double>(ft_sorted[i]);
+                const double avg_ft_01 = sum_ft_01 / static_cast<double>(count_01);
+                point_one_percent_low = (avg_ft_01 > 0.0) ? static_cast<float>(1000.0 / avg_ft_01) : 0.0f;
+
+                // Percentile frame times (top 1%/0.1% = 99th/99.9th percentile)
+                const size_t idx_p99 = (m > 1) ? (std::min<size_t>)(m - 1, static_cast<size_t>(std::ceil(static_cast<double>(m) * 0.99)) - 1) : 0;
+                const size_t idx_p999 = (m > 1) ? (std::min<size_t>)(m - 1, static_cast<size_t>(std::ceil(static_cast<double>(m) * 0.999)) - 1) : 0;
+                p99_frame_time_ms = ft_sorted[idx_p99];
+                p999_frame_time_ms = ft_sorted[idx_p999];
             }
 
             // Publish shared text (once per loop ~1s)
             std::ostringstream fps_oss;
             fps_oss << "FPS: " << std::fixed << std::setprecision(1) << fps_display
-                    << " (" << std::setprecision(1) << frame_time_ms << " ms)"
+                    << " (" << std::setprecision(1) << frame_time_ms << " ms median)"
                     << "   (1% Low: " << std::setprecision(1) << one_percent_low
-                    << ", 0.1% Low: " << std::setprecision(1) << point_one_percent_low << ") over past 60s";
+                    << ", 0.1% Low: " << std::setprecision(1) << point_one_percent_low << ")"
+                    << "   Top FT: P99 " << std::setprecision(1) << p99_frame_time_ms << " ms"
+                    << ", P99.9 " << std::setprecision(1) << p999_frame_time_ms << " ms"
+                    << " since reset";
             ::g_perf_text_lock.lock();
             g_perf_text_shared = fps_oss.str();
             ::g_perf_text_lock.unlock();

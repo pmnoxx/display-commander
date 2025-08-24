@@ -21,10 +21,7 @@ Note: Applying window operations from the main thread can crash some apps. This 
 - Live indicators: PCL AV latency (30-frame average), Reflex status, and flip state
 
 ## Known Bugs
-
-- **NVAPI HDR support is broken at the moment** - Developer Tab has performance issues / setting colorspace isn't working.
-- **Sync interval 2x-4x (vsync) is broken in ReShade** - V-sync functionality may not work as expected
-- **Multiple monitors with different resolutions/refresh rates aren't supported** - The addon may not handle multi-monitor setups with varying display specifications correctly
+- ...
 
 ## Requirements
 

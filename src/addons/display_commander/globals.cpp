@@ -50,6 +50,11 @@ float s_sync_interval = -1.f;
 float s_custom_fps_limit = 0.f;
 const float s_custom_fps_limiter_enabled = 1.0f; // Always enabled
 
+// VSync and tearing controls
+float s_force_vsync_on = 0.f;
+float s_force_vsync_off = 0.f;
+float s_allow_tearing = 0.f;
+
 // Monitor and display settings
 float s_target_monitor_index = 0.f;
 float s_dxgi_composition_state = 0.f;

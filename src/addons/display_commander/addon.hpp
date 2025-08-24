@@ -176,6 +176,10 @@ extern float s_fps_limit;
 extern float s_sync_interval;
 extern float s_custom_fps_limit;
 extern const float s_custom_fps_limiter_enabled;
+// VSync and tearing controls
+extern float s_force_vsync_on;
+extern float s_force_vsync_off;
+extern float s_allow_tearing;
 extern float s_target_monitor_index;
 extern float s_dxgi_composition_state;
 

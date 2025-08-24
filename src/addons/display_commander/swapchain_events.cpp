@@ -80,8 +80,18 @@ bool OnCreateSwapchainCapture(reshade::api::device_api /*api*/, reshade::api::sw
   // Apply sync interval setting if enabled
   bool modified = false;
   extern float s_sync_interval;
+  extern float s_force_vsync_on;
+  extern float s_force_vsync_off;
+  extern float s_allow_tearing;
   
-  if (s_sync_interval >= 0.0f) {
+  // Explicit VSYNC overrides take precedence over generic sync-interval dropdown
+  if (s_force_vsync_on >= 0.5f) {
+    desc.sync_interval = 1; // VSYNC on
+    modified = true;
+  } else if (s_force_vsync_off >= 0.5f) {
+    desc.sync_interval = 0; // VSYNC off
+    modified = true;
+  } else if (s_sync_interval >= 0.0f) {
     // Detect DXGI swap effect category to avoid invalid Present calls
     const bool is_dxgi_flip = (desc.present_mode == DXGI_SWAP_EFFECT_FLIP_DISCARD || desc.present_mode == DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL);
     const bool is_dxgi_bitblt = (desc.present_mode == DXGI_SWAP_EFFECT_DISCARD || desc.present_mode == DXGI_SWAP_EFFECT_SEQUENTIAL);
@@ -95,9 +105,19 @@ bool OnCreateSwapchainCapture(reshade::api::device_api /*api*/, reshade::api::sw
       modified = true;
     } else if (sync_value >= 2) {
       // V-Sync (1)
-    //  desc.sync_interval = 0;//1;
+      desc.sync_interval = 1;
       modified = true;
     } 
+  }
+  // Apply tearing preference if requested and applicable
+  if (s_allow_tearing >= 0.5f) {
+    // Only attempt when flip model is used; ReShade exposes present_flags for creation flags
+    const bool is_flip = (desc.present_mode == DXGI_SWAP_EFFECT_FLIP_DISCARD || desc.present_mode == DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL);
+    if (is_flip) {
+      // DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING is 0x00000800 in DXGI, mapped via present_flags for creation here
+      desc.present_flags |= 0x00000800u; // DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING
+      modified = true;
+    }
   }
   
   // Store the sync interval for UI display

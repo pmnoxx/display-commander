@@ -30,6 +30,10 @@ public:
     FloatSetting fps_limit;
     FloatSetting fps_limit_background;
     
+    // VSync & Tearing
+    BoolSetting force_vsync_on;
+    BoolSetting force_vsync_off;
+    BoolSetting allow_tearing;
 
     
     // Audio Settings

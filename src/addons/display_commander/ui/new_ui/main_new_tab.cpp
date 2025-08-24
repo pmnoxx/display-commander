@@ -69,6 +69,10 @@ void InitMainNewTab() {
         s_audio_mute = g_main_new_tab_settings.audio_mute.GetValue() ? 1.0f : 0.0f;
         s_mute_in_background = g_main_new_tab_settings.mute_in_background.GetValue() ? 1.0f : 0.0f;
         s_mute_in_background_if_other_audio = g_main_new_tab_settings.mute_in_background_if_other_audio.GetValue() ? 1.0f : 0.0f;
+        // VSync & Tearing
+        s_force_vsync_on = g_main_new_tab_settings.force_vsync_on.GetValue() ? 1.0f : 0.0f;
+        s_force_vsync_off = g_main_new_tab_settings.force_vsync_off.GetValue() ? 1.0f : 0.0f;
+        s_allow_tearing = g_main_new_tab_settings.allow_tearing.GetValue() ? 1.0f : 0.0f;
      
         s_block_mouse_in_background = g_main_new_tab_settings.block_mouse_in_background.GetValue() ? 1.0f : 0.0f;
         s_block_keyboard_in_background = g_main_new_tab_settings.block_keyboard_in_background.GetValue() ? 1.0f : 0.0f;
@@ -394,6 +398,56 @@ void DrawDisplaySettings() {
         ImGui::SetTooltip("Set FPS limit for the game (0 = no limit). Now uses the new Custom FPS Limiter system.");
     }
     
+    // VSync & Tearing controls
+    {
+        ImGui::Spacing();
+        ImGui::TextColored(ImVec4(0.8f, 0.9f, 1.0f, 1.0f), "=== VSync & Tearing ===");
+
+        bool vs_on = g_main_new_tab_settings.force_vsync_on.GetValue();
+        if (ImGui::Checkbox("Force VSync ON (Unstable)", &vs_on)) {
+            // Mutual exclusion
+            if (vs_on) {
+                g_main_new_tab_settings.force_vsync_off.SetValue(false);
+                s_force_vsync_off = 0.0f;
+            }
+            g_main_new_tab_settings.force_vsync_on.SetValue(vs_on);
+            s_force_vsync_on = vs_on ? 1.0f : 0.0f;
+            LogInfo(vs_on ? "Force VSync ON enabled" : "Force VSync ON disabled");
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Forces sync interval = 1 (may require swapchain recreation by the game).");
+        }
+
+        ImGui::SameLine();
+
+        bool vs_off = g_main_new_tab_settings.force_vsync_off.GetValue();
+        if (ImGui::Checkbox("Force VSync OFF", &vs_off)) {
+            // Mutual exclusion
+            if (vs_off) {
+                g_main_new_tab_settings.force_vsync_on.SetValue(false);
+                s_force_vsync_on = 0.0f;
+            }
+            g_main_new_tab_settings.force_vsync_off.SetValue(vs_off);
+            s_force_vsync_off = vs_off ? 1.0f : 0.0f;
+            LogInfo(vs_off ? "Force VSync OFF enabled" : "Force VSync OFF disabled");
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Forces sync interval = 0 (immediate). Use with 'Enable Tearing' for true VSYNC off in windowed.");
+        }
+
+        ImGui::SameLine();
+
+        bool allow_t = g_main_new_tab_settings.allow_tearing.GetValue();
+        if (ImGui::Checkbox("Enable Tearing (DXGI)", &allow_t)) {
+            g_main_new_tab_settings.allow_tearing.SetValue(allow_t);
+            s_allow_tearing = allow_t ? 1.0f : 0.0f;
+            LogInfo(allow_t ? "DXGI tearing enabled (flag will be applied on swapchain)" : "DXGI tearing disabled");
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Sets DXGI swapchain Allow Tearing flag (Flip Model + OS support required). Applies on swapchain creation.");
+        }
+    }
+
     // Quick-set buttons based on current monitor refresh rate
     {
         double refresh_hz = ::g_window_state.current_monitor_refresh_rate.ToHz();

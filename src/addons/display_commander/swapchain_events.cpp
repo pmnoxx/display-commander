@@ -290,25 +290,12 @@ void OnPresentUpdate(
   {
     reshade::api::effect_runtime* runtime = g_reshade_runtime.load();
     if (runtime != nullptr) {
-      static bool last_block_mouse = false;
-      static bool last_block_keyboard = false;
-      static bool last_block_warp = false;
       extern std::atomic<bool> g_app_in_background;
       const bool is_background = g_app_in_background.load(std::memory_order_acquire);
-      const bool block_mouse = (s_block_mouse_in_background >= 0.5f) && is_background;
-      const bool block_keyboard = (s_block_keyboard_in_background >= 0.5f) && is_background;
-      const bool block_warp = (s_block_mouse_cursor_warping_in_background >= 0.5f) && is_background;
-      if (block_mouse != last_block_mouse) {
-        runtime->block_mouse_input(block_mouse);
-        last_block_mouse = block_mouse;
-      }
-      if (block_keyboard != last_block_keyboard) {
-        runtime->block_keyboard_input(block_keyboard);
-        last_block_keyboard = block_keyboard;
-      }
-      if (block_warp != last_block_warp) {
-        runtime->block_mouse_cursor_warping(block_warp);
-        last_block_warp = block_warp;
+      const bool wants_block_input = (s_block_input_in_background >= 0.5f) && is_background;
+      // Call every frame as long as any blocking is desired
+      if (is_background && wants_block_input) {
+        runtime->block_input_next_frame();
       }
     }
   }

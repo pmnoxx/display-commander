@@ -73,10 +73,7 @@ void InitMainNewTab() {
         s_force_vsync_on = g_main_new_tab_settings.force_vsync_on.GetValue() ? 1.0f : 0.0f;
         s_force_vsync_off = g_main_new_tab_settings.force_vsync_off.GetValue() ? 1.0f : 0.0f;
         s_allow_tearing = g_main_new_tab_settings.allow_tearing.GetValue() ? 1.0f : 0.0f;
-     
-        s_block_mouse_in_background = g_main_new_tab_settings.block_mouse_in_background.GetValue() ? 1.0f : 0.0f;
-        s_block_keyboard_in_background = g_main_new_tab_settings.block_keyboard_in_background.GetValue() ? 1.0f : 0.0f;
-        s_block_mouse_cursor_warping_in_background = g_main_new_tab_settings.block_mouse_cursor_warping_in_background.GetValue() ? 1.0f : 0.0f;
+        s_block_input_in_background = g_main_new_tab_settings.block_input_in_background.GetValue() ? 1.0f : 0.0f;
         settings_loaded_once = true;
 
         // If manual Audio Mute is OFF, proactively unmute on startup
@@ -146,31 +143,14 @@ void DrawMainNewTab() {
         ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== Input Control (Background) ===");
         const bool unstable_enabled = (::s_enable_unstable_reshade_features >= 0.5f);
         if (!unstable_enabled) ImGui::BeginDisabled();
-        bool bm = g_main_new_tab_settings.block_mouse_in_background.GetValue();
-        if (ImGui::Checkbox("Block Mouse Input in Background", &bm)) {
-            g_main_new_tab_settings.block_mouse_in_background.SetValue(bm);
-            s_block_mouse_in_background = bm ? 1.0f : 0.0f;
+        bool block_any_in_background =
+            g_main_new_tab_settings.block_input_in_background.GetValue();
+        if (ImGui::Checkbox("Block Input in Background", &block_any_in_background)) {
+            g_main_new_tab_settings.block_input_in_background.SetValue(block_any_in_background);
+            s_block_input_in_background = block_any_in_background ? 1.0f : 0.0f;
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("When enabled, mouse input is blocked while the game window is not focused.");
-        }
-
-        bool bk = g_main_new_tab_settings.block_keyboard_in_background.GetValue();
-        if (ImGui::Checkbox("Block Keyboard Input in Background", &bk)) {
-            g_main_new_tab_settings.block_keyboard_in_background.SetValue(bk);
-            s_block_keyboard_in_background = bk ? 1.0f : 0.0f;
-        }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("When enabled, keyboard input is blocked while the game window is not focused.");
-        }
-
-        bool bw = g_main_new_tab_settings.block_mouse_cursor_warping_in_background.GetValue();
-        if (ImGui::Checkbox("Block Mouse Cursor Warping in Background", &bw)) {
-            g_main_new_tab_settings.block_mouse_cursor_warping_in_background.SetValue(bw);
-            s_block_mouse_cursor_warping_in_background = bw ? 1.0f : 0.0f;
-        }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("When enabled, cursor warping is blocked while the game window is not focused.");
+            ImGui::SetTooltip("Blocks mouse, keyboard, and cursor warping while the game window is not focused.");
         }
         if (!unstable_enabled) ImGui::EndDisabled();
         if (!unstable_enabled) {
@@ -292,21 +272,6 @@ void DrawDisplaySettings() {
             monitor_c_labels.push_back(label.c_str());
         }
     }
-    /*
-    // Fallback: if cache empty, build once synchronously (first-time UI open)
-    if (monitor_c_labels.empty()) {
-        auto labels = MakeMonitorLabels();
-        ::g_monitor_labels_lock.lock();
-        ::g_monitor_labels = labels;
-        monitor_labels_local = ::g_monitor_labels;
-        ::g_monitor_labels_lock.unlock();
-        monitor_c_labels.clear();
-        monitor_c_labels.reserve(monitor_labels_local.size());
-        for (const auto& label : monitor_labels_local) {
-            monitor_c_labels.push_back(label.c_str());
-        }
-        ::g_monitor_labels_need_update.store(false);
-    }*/
     int monitor_index = static_cast<int>(s_target_monitor_index);
     if (ImGui::Combo("Target Monitor", &monitor_index, monitor_c_labels.data(), static_cast<int>(monitor_c_labels.size()))) {
         s_target_monitor_index = static_cast<float>(monitor_index);

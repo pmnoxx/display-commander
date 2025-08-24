@@ -186,9 +186,7 @@ extern float s_dxgi_composition_state;
 extern float s_spoof_window_focus;
 
 // Input blocking in background
-extern float s_block_mouse_in_background;
-extern float s_block_keyboard_in_background;
-extern float s_block_mouse_cursor_warping_in_background;
+extern float s_block_input_in_background;
 
 extern std::atomic<int> g_comp_query_counter;
 extern std::atomic<int> g_comp_last_logged;

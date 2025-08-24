@@ -44,9 +44,7 @@ public:
     BoolSetting audio_volume_auto_apply;
     
     // Input Blocking (Background) Settings
-    BoolSetting block_mouse_in_background;
-    BoolSetting block_keyboard_in_background;
-    BoolSetting block_mouse_cursor_warping_in_background;
+    BoolSetting block_input_in_background;
 
 private:
     std::vector<SettingBase*> all_settings_;

@@ -62,9 +62,7 @@ float s_dxgi_composition_state = 0.f;
 float s_spoof_window_focus = 0.f;
 
 // Input blocking in background (0.0f off, 1.0f on)
-float s_block_mouse_in_background = 0.f;
-float s_block_keyboard_in_background = 0.f;
-float s_block_mouse_cursor_warping_in_background = 0.f;
+float s_block_input_in_background = 0.f;
 
 // Fix HDR10 color space when backbuffer is RGB10A2
 float s_fix_hdr10_colorspace = 0.f;

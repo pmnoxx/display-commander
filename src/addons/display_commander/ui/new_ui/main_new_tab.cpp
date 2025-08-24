@@ -400,14 +400,26 @@ void DrawDisplaySettings() {
         int y = static_cast<int>(std::round(refresh_hz));
         if (y > 0) {
             bool first = true;
+            const float selected_epsilon = 0.01f;
             // Add No Limit button at the beginning
-            if (ImGui::Button("No Limit")) {
+            {
+                bool selected = (std::fabs(s_fps_limit - 0.0f) <= selected_epsilon);
+                if (selected) {
+                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.20f, 0.60f, 0.20f, 1.0f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.20f, 0.70f, 0.20f, 1.0f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.10f, 0.50f, 0.10f, 1.0f));
+                }
+                if (ImGui::Button("No Limit")) {
                 s_fps_limit = 0.0f;
                 g_main_new_tab_settings.fps_limit.SetValue(0.0f);
                 if (dxgi::fps_limiter::g_customFpsLimiterManager) {
                     auto& limiter = dxgi::fps_limiter::g_customFpsLimiterManager->GetFpsLimiter();
                     limiter.SetEnabled(false);
                     LogInfo("FPS limit removed (no limit)");
+                }
+                }
+                if (selected) {
+                    ImGui::PopStyleColor(3);
                 }
             }
             first = false;
@@ -419,7 +431,14 @@ void DrawDisplaySettings() {
                         if (!first) ImGui::SameLine();
                         first = false;
                         std::string label = std::to_string(candidate_rounded);
-                        if (ImGui::Button(label.c_str())) {
+                        {
+                            bool selected = (std::fabs(s_fps_limit - candidate_precise) <= selected_epsilon);
+                            if (selected) {
+                                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.20f, 0.60f, 0.20f, 1.0f));
+                                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.20f, 0.70f, 0.20f, 1.0f));
+                                ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.10f, 0.50f, 0.10f, 1.0f));
+                            }
+                            if (ImGui::Button(label.c_str())) {
                             float target_fps = candidate_precise;
                             s_fps_limit = target_fps;
                             g_main_new_tab_settings.fps_limit.SetValue(target_fps);
@@ -443,13 +462,26 @@ void DrawDisplaySettings() {
                                 oss << "FPS limit applied: " << target_fps << " FPS (via Custom FPS Limiter)";
                                 LogInfo(oss.str().c_str());
                             }
+                            }
+                            if (selected) {
+                                ImGui::PopStyleColor(3);
+                            }
                         }
                     }
                 }
             }
             // Add 95% button at the end
             if (!first) ImGui::SameLine();
-            if (ImGui::Button("95%")) {
+            {
+                float precise_target = static_cast<float>(refresh_hz * 0.95);
+                if (precise_target < 1.0f) precise_target = 1.0f;
+                bool selected = (std::fabs(s_fps_limit - precise_target) <= selected_epsilon);
+                if (selected) {
+                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.20f, 0.60f, 0.20f, 1.0f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.20f, 0.70f, 0.20f, 1.0f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.10f, 0.50f, 0.10f, 1.0f));
+                }
+                if (ImGui::Button("95%")) {
                 double precise_target = refresh_hz * 0.95; // do not round on apply
                 float target_fps = static_cast<float>(precise_target < 1.0 ? 1.0 : precise_target);
                 s_fps_limit = target_fps;
@@ -476,6 +508,10 @@ void DrawDisplaySettings() {
                         limiter.SetEnabled(false);
                         LogInfo("FPS limit removed (no limit)");
                     }
+                }
+                }
+                if (selected) {
+                    ImGui::PopStyleColor(3);
                 }
             }
         }

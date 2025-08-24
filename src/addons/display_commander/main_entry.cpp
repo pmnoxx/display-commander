@@ -32,6 +32,10 @@ void OnInitEffectRuntime(reshade::api::effect_runtime* runtime) {
     if (runtime != nullptr) {
         g_reshade_runtime.store(runtime);
         LogInfo("ReShade effect runtime initialized - Input blocking now available");
+        
+        if (s_fix_hdr10_colorspace >= 0.5f) {
+          runtime->set_color_space(reshade::api::color_space::hdr10_st2084);
+        }
     }
 }
 
@@ -48,6 +52,7 @@ bool OnReShadeOverlayOpen(reshade::api::effect_runtime* runtime, bool open, resh
     }
     return false; // Don't prevent ReShade from opening/closing the overlay
 }
+
 
 // Direct overlay draw callback (no settings2 indirection)
 namespace {

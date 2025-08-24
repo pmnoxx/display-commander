@@ -67,11 +67,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
       process_exit_hooks::Initialize();
       
       // Capture sync interval on swapchain creation for UI
-#if RESHADE_API_VERSION >= 17
       reshade::register_event<reshade::addon_event::create_swapchain>(OnCreateSwapchainCapture);
-#else
-      reshade::register_event<reshade::addon_event::create_swapchain>(OnCreateSwapchainCapture);
-#endif
 
       reshade::register_event<reshade::addon_event::init_swapchain>(OnInitSwapchain);
       

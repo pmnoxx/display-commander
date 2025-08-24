@@ -3,6 +3,7 @@
 #include "dxgi/dxgi_device_info.hpp"
 #include "dxgi/custom_fps_limiter_manager.hpp"
 #include "resolution_helpers.hpp"
+#include "display_cache.hpp"
 #include <dxgi1_4.h>
 #include "utils.hpp"
 #include <chrono>
@@ -58,11 +59,7 @@ uint32_t GetSwapchainSyncInterval(reshade::api::swapchain* swapchain) {
 }
 
 // Capture sync interval during create_swapchain
-#if RESHADE_API_VERSION >= 17
 bool OnCreateSwapchainCapture(reshade::api::device_api /*api*/, reshade::api::swapchain_desc& desc, void* hwnd) {
-#else
-bool OnCreateSwapchainCapture(reshade::api::swapchain_desc& desc, void* hwnd) {
-#endif
   if (hwnd == nullptr) return false;
   
   // Apply sync interval setting if enabled
@@ -81,30 +78,11 @@ bool OnCreateSwapchainCapture(reshade::api::swapchain_desc& desc, void* hwnd) {
       // No-VSync (0)
       desc.sync_interval = 0;
       modified = true;
-    } else if (sync_value == 2) {
+    } else if (sync_value >= 2) {
       // V-Sync (1)
-      desc.sync_interval = 1;
+      desc.sync_interval = 0;//1;
       modified = true;
-    } else if (sync_value >= 3 && sync_value <= 5) {
-      // V-Sync 2x..4x (2..4)
-      const uint32_t desired_interval = static_cast<uint32_t>(sync_value - 1); // 3->2, 4->3, 5->4
-      if (is_dxgi_bitblt) {
-        // Only valid on bitblt swap effects (sequential/discard). Do NOT change present_mode.
-        desc.sync_interval = desired_interval;
-      } else {
-        // Clamp to 1 on flip-model or unknown APIs to prevent crashes
-        desc.sync_interval = 1;
-      }
-      modified = true;
-    }
-    
-    /*
-    if (modified) {
-      extern void LogInfo(const char* message);
-      std::ostringstream oss;
-      oss << "Sync interval modified to " << desc.sync_interval << " for swapchain creation (present_mode=" << desc.present_mode << ")";
-      ::LogInfo(oss.str().c_str());
-    }*/
+    } 
   }
   
   // Store the sync interval for UI display
@@ -266,7 +244,17 @@ void OnPresentUpdate(
       extern float s_fps_limit;  // Use foreground FPS limit from UI settings
       target_fps = s_fps_limit;
     }
-    
+    if (s_sync_interval >= 3.f) {
+      float monitor_refresh_hz = g_window_state.current_monitor_refresh_rate.ToHz();
+      if (monitor_refresh_hz > 0.f) {
+        if (target_fps > 0.f) {
+          target_fps = min(target_fps, monitor_refresh_hz / static_cast<float>(s_sync_interval - 1));
+        } else {
+          target_fps = monitor_refresh_hz / (s_sync_interval - 1);
+        }
+      }
+    }
+
     // Apply the FPS limit to the Custom FPS Limiter
     if (dxgi::fps_limiter::g_customFpsLimiterManager) {
       auto& limiter = dxgi::fps_limiter::g_customFpsLimiterManager->GetFpsLimiter();

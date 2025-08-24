@@ -1,6 +1,7 @@
 #include "../addon.hpp"
 #include "../utils.hpp"
 #include "../resolution_helpers.hpp"
+#include "../display_cache.hpp"
 #include "window_management.hpp"
 #include <thread>
 #include <algorithm>
@@ -9,8 +10,8 @@
 // Forward declaration
 void ComputeDesiredSize(int& out_w, int& out_h);
 
-HMONITOR FindTargetMonitor(HWND hwnd, const RECT& wr_current, float target_monitor_index, MONITORINFO& mi) {
-  HMONITOR hmon = nullptr;
+int FindTargetMonitor(HWND hwnd, const RECT& wr_current, float target_monitor_index, MONITORINFO& mi) {
+  int monitor_index = 0;
   
   if (target_monitor_index > 0.5f) {
     // Use the legacy target monitor setting
@@ -21,7 +22,7 @@ HMONITOR FindTargetMonitor(HWND hwnd, const RECT& wr_current, float target_monit
       LogError("FindTargetMonitor: Invalid target monitor index, using default (0)");
       index = 0;
     }
-    hmon = g_monitors[index].handle;
+    monitor_index = index;
     mi = g_monitors[index].info;
   } else {
     // When target monitor is 0, find the monitor where the game is currently on
@@ -34,16 +35,17 @@ HMONITOR FindTargetMonitor(HWND hwnd, const RECT& wr_current, float target_monit
     const int window_center_y = (wr_current.top + wr_current.bottom) / 2;
     
     bool found_monitor = false;
-    for (const auto& monitor : g_monitors) {
+    for (size_t i = 0; i < g_monitors.size(); ++i) {
+      const auto& monitor = g_monitors[i];
       const RECT& mr = monitor.info.rcMonitor;
       if (window_center_x >= mr.left && window_center_x < mr.right &&
           window_center_y >= mr.top && window_center_y < mr.bottom) {
-        hmon = monitor.handle;
+        monitor_index = static_cast<int>(i);
         mi = monitor.info;
         found_monitor = true;
         
         std::ostringstream oss;
-        oss << "CalculateWindowState: Game window is on monitor " << (&monitor - &g_monitors[0]) 
+        oss << "CalculateWindowState: Game window is on monitor " << monitor_index 
             << " (position: " << window_center_x << "," << window_center_y << ")";
         LogDebug(oss.str());
         break;
@@ -52,8 +54,16 @@ HMONITOR FindTargetMonitor(HWND hwnd, const RECT& wr_current, float target_monit
     
     if (!found_monitor) {
       // Fallback: use the monitor closest to the window
-      hmon = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+      HMONITOR hmon = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
       GetMonitorInfoW(hmon, &mi);
+      
+      // Find the index of this monitor in our list
+      for (size_t i = 0; i < g_monitors.size(); ++i) {
+        if (g_monitors[i].handle == hmon) {
+          monitor_index = static_cast<int>(i);
+          break;
+        }
+      }
       
       std::ostringstream oss;
       oss << "CalculateWindowState: Could not determine exact monitor, using closest monitor as fallback";
@@ -61,7 +71,19 @@ HMONITOR FindTargetMonitor(HWND hwnd, const RECT& wr_current, float target_monit
     }
   }
   
-  return hmon;
+  // Get the current refresh rate for the target monitor
+  if (display_cache::g_displayCache.IsInitialized()) {
+    g_window_state.current_monitor_refresh_rate = display_cache::RationalRefreshRate();
+    if (display_cache::g_displayCache.GetCurrentRefreshRate(monitor_index, g_window_state.current_monitor_refresh_rate)) {
+      std::ostringstream oss;
+      oss << "FindTargetMonitor: Monitor " << monitor_index << " refresh rate: " << g_window_state.current_monitor_refresh_rate.ToString();
+      LogDebug(oss.str());
+    } else {
+      LogWarn(("FindTargetMonitor: Could not get refresh rate for monitor " + std::to_string(monitor_index)).c_str());
+    }
+  }
+  
+  return monitor_index;
 }
 
 // First function: Calculate and update global window state
@@ -110,11 +132,10 @@ void  CalculateWindowState(HWND hwnd, const char* reason) {
   g_window_state.style_mode = WindowStyleMode::BORDERLESS;
 
   // First, determine the target monitor based on game's intended display
-  HMONITOR hmon = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
   MONITORINFOEXW mi{};
   
   // Use target monitor if specified
-  hmon = FindTargetMonitor(hwnd, wr_current, s_target_monitor_index, mi);
+  g_window_state.current_monitor_index = FindTargetMonitor(hwnd, wr_current, s_target_monitor_index, mi);
   
   
   // Clamp desired size to fit within the target monitor's dimensions

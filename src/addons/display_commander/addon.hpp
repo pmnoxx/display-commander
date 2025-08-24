@@ -22,6 +22,7 @@
 #include "utils.hpp"
 #include "reflex/reflex_management.hpp"
 #include "renodx/settings.hpp"
+#include "display_cache.hpp"
 
 
 // WASAPI per-app volume control
@@ -92,6 +93,8 @@ struct GlobalWindowState {
   std::string reason = "unknown";
   
   int show_cmd = 0;
+  int current_monitor_index = 0;
+  display_cache::RationalRefreshRate current_monitor_refresh_rate;
   
   void reset() {
     desired_width = 0;
@@ -105,6 +108,8 @@ struct GlobalWindowState {
     style_changed = false;
     style_mode = WindowStyleMode::BORDERLESS;
     reason = "unknown";
+    current_monitor_index = 0;
+    current_monitor_refresh_rate = display_cache::RationalRefreshRate();
   }
 };
 
@@ -256,8 +261,4 @@ extern std::string g_hdr10_override_timestamp;
 uint32_t GetSwapchainSyncInterval(reshade::api::swapchain* swapchain);
 
 // Event to capture sync interval from swapchain creation
-#if RESHADE_API_VERSION >= 17
 bool OnCreateSwapchainCapture(reshade::api::device_api api, reshade::api::swapchain_desc& desc, void* hwnd);
-#else
-bool OnCreateSwapchainCapture(reshade::api::swapchain_desc& desc, void* hwnd);
-#endif

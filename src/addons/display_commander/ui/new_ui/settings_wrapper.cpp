@@ -26,11 +26,18 @@ FloatSetting::FloatSetting(const std::string& key, float default_value, float mi
 void FloatSetting::Load() {
     float loaded_value;
     if (reshade::get_config_value(nullptr, section_.c_str(), key_.c_str(), loaded_value)) {
-        // Clamp the loaded value to valid range
-        value_ = std::max(min_, std::min(max_, loaded_value));
+        // If loaded value is invalid (NaN/Inf or out of range), fall back to default
+        if (!std::isfinite(loaded_value) || loaded_value < min_ || loaded_value > max_) {
+            const float safe_default = std::max(min_, std::min(max_, default_value_));
+            value_ = safe_default;
+            Save();
+        } else {
+            value_ = loaded_value;
+        }
     } else {
         // Use default value if not found
-        value_ = default_value_;
+        const float safe_default = std::max(min_, std::min(max_, default_value_));
+        value_ = safe_default;
     }
 }
 
@@ -51,11 +58,18 @@ IntSetting::IntSetting(const std::string& key, int default_value, int min, int m
 void IntSetting::Load() {
     int loaded_value;
     if (reshade::get_config_value(nullptr, section_.c_str(), key_.c_str(), loaded_value)) {
-        // Clamp the loaded value to valid range
-        value_ = std::max(min_, std::min(max_, loaded_value));
+        // If loaded value is out of range, fall back to default
+        if (loaded_value < min_ || loaded_value > max_) {
+            const int safe_default = std::max(min_, std::min(max_, default_value_));
+            value_ = safe_default;
+            Save();
+        } else {
+            value_ = loaded_value;
+        }
     } else {
         // Use default value if not found
-        value_ = default_value_;
+        const int safe_default = std::max(min_, std::min(max_, default_value_));
+        value_ = safe_default;
     }
 }
 
@@ -76,7 +90,13 @@ BoolSetting::BoolSetting(const std::string& key, bool default_value, const std::
 void BoolSetting::Load() {
     int loaded_value;
     if (reshade::get_config_value(nullptr, section_.c_str(), key_.c_str(), loaded_value)) {
-        value_ = (loaded_value != 0);
+        // Only accept strict 0/1, otherwise fall back to default
+        if (loaded_value == 0 || loaded_value == 1) {
+            value_ = (loaded_value != 0);
+        } else {
+            value_ = default_value_;
+            Save();
+        }
     } else {
         // Use default value if not found
         value_ = default_value_;
@@ -100,8 +120,17 @@ ComboSetting::ComboSetting(const std::string& key, int default_value, const std:
 void ComboSetting::Load() {
     int loaded_value;
     if (reshade::get_config_value(nullptr, section_.c_str(), key_.c_str(), loaded_value)) {
-        // Clamp the loaded value to valid range
-        value_ = std::max(0, std::min(static_cast<int>(labels_.size()) - 1, loaded_value));
+        // If loaded index is out of range (e.g., labels changed), fall back to default
+        const int max_index = static_cast<int>(labels_.size()) - 1;
+        if (loaded_value < 0 || loaded_value > max_index) {
+            int safe_default = default_value_;
+            if (safe_default < 0) safe_default = 0;
+            if (safe_default > max_index) safe_default = std::max(0, max_index);
+            value_ = safe_default;
+            Save();
+        } else {
+            value_ = loaded_value;
+        }
     } else {
         // Use default value if not found
         value_ = default_value_;

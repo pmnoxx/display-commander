@@ -111,42 +111,6 @@ void DrawHdrAndColorspaceControls() {
         }
         ImGui::SameLine();
         ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "Reset HDR metadata for HDR10 displays");
-
-        // Colorspace selector
-        ImGui::SameLine();
-        if (ImGui::Button("Set Colorspace")) {
-            // Colorspace selection will be handled in the dropdown below
-        }
-        ImGui::SameLine();
-        ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "Set swapchain colorspace");
-        
-        // Colorspace dropdown
-        static int selected_colorspace = 0;
-        const char* colorspace_names[] = {
-            "sRGB (Non-Linear)",
-            "Extended sRGB (Linear)", 
-            "HDR10 (ST2084/PQ)",
-            "HDR10 (HLG)"
-        };
-        const reshade::api::color_space colorspace_values[] = {
-            reshade::api::color_space::srgb_nonlinear,
-            reshade::api::color_space::extended_srgb_linear,
-            reshade::api::color_space::hdr10_st2084,
-            reshade::api::color_space::hdr10_hlg
-        };
-        
-        if (ImGui::Combo("Colorspace", &selected_colorspace, colorspace_names, IM_ARRAYSIZE(colorspace_names))) {
-            // Apply the selected colorspace
-            if (g_dxgiDeviceInfoManager && g_dxgiDeviceInfoManager->IsInitialized()) {
-                bool success = g_dxgiDeviceInfoManager->SetColorspace(colorspace_values[selected_colorspace]);
-                
-                if (success) {
-                    LogInfo(("Colorspace changed to: " + std::string(colorspace_names[selected_colorspace])).c_str());
-                } else {
-                    LogWarn(("Failed to change colorspace to: " + std::string(colorspace_names[selected_colorspace])).c_str());
-                }
-            }
-        }
     }
 }
 

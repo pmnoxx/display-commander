@@ -1,5 +1,6 @@
 #include "dxgi_device_info.hpp"
 #include "../addon.hpp"
+#include <dxgi1_4.h>
 #include <dxgi1_6.h>
 #include <d3d11.h>
 #include <dbghelp.h>
@@ -256,67 +257,6 @@ bool DXGIDeviceInfoManager::GetAdapterFromReShadeDevice() {
     }
 }
 
-bool DXGIDeviceInfoManager::SetColorspace(reshade::api::color_space colorspace) {
-    try {
-        // Get ReShade's existing swapchain
-        auto* swapchain = g_last_swapchain_ptr.load();
-        if (!swapchain) {
-            LogWarn("Colorspace setting: No ReShade swapchain available");
-            return false;
-        }
-
-        // Get the native DXGI swapchain from ReShade
-        IDXGISwapChain* dxgi_swapchain = reinterpret_cast<IDXGISwapChain*>(swapchain->get_native());
-        if (!dxgi_swapchain) {
-            LogWarn("Colorspace setting: Failed to get native DXGI swapchain from ReShade");
-            return false;
-        }
-
-        // Get IDXGISwapChain4 for colorspace setting
-        Microsoft::WRL::ComPtr<IDXGISwapChain4> swapchain4;
-        HRESULT hr = dxgi_swapchain->QueryInterface(IID_PPV_ARGS(&swapchain4));
-        if (FAILED(hr)) {
-            LogWarn("Colorspace setting: Failed to get IDXGISwapChain4 from ReShade swapchain");
-            return false;
-        }
-
-        // Convert ReShade colorspace to DXGI colorspace
-        DXGI_COLOR_SPACE_TYPE dxgi_colorspace;
-        switch (colorspace) {
-            case reshade::api::color_space::srgb_nonlinear:
-                dxgi_colorspace = DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
-                break;
-            case reshade::api::color_space::extended_srgb_linear:
-                dxgi_colorspace = DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709;
-                break;
-            case reshade::api::color_space::hdr10_st2084:
-                dxgi_colorspace = DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020;
-                break;
-            case reshade::api::color_space::hdr10_hlg:
-                dxgi_colorspace = DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020; // HLG uses same primaries
-                break;
-            default:
-                LogWarn("Colorspace setting: Unsupported colorspace");
-                return false;
-        }
-
-        // Set the colorspace
-        hr = swapchain4->SetColorSpace1(dxgi_colorspace);
-        if (SUCCEEDED(hr)) {
-            LogInfo("Colorspace set successfully");
-            return true;
-        } else {
-            LogWarn("Colorspace setting: Failed to set colorspace");
-            return false;
-        }
-
-    } catch (...) {
-        LogWarn("Colorspace setting: Exception occurred during colorspace setting");
-        LogStackTrace("SetColorspace");
-        return false;
-    }
-}
-
 bool DXGIDeviceInfoManager::EnumerateOutputs(IDXGIAdapter* adapter, DXGIAdapterInfo& adapter_info) {
     try {
         if (!adapter) {
@@ -521,47 +461,6 @@ bool DXGIDeviceInfoManager::ResetHDRMetadataForOutput(const DXGIOutputInfo& outp
     } catch (...) {
         LogWarn("HDR metadata reset: Exception occurred during reset");
         LogStackTrace("ResetHDRMetadataForOutput");
-        return false;
-    }
-}
-
-bool DXGIDeviceInfoManager::SetScRGBColorspace() {
-    try {
-        // Get ReShade's existing swapchain
-        auto* swapchain = g_last_swapchain_ptr.load();
-        if (!swapchain) {
-            LogWarn("scRGB colorspace setting: No ReShade swapchain available");
-            return false;
-        }
-
-        // Get the native DXGI swapchain from ReShade
-        IDXGISwapChain* dxgi_swapchain = reinterpret_cast<IDXGISwapChain*>(swapchain->get_native());
-        if (!dxgi_swapchain) {
-            LogWarn("scRGB colorspace setting: Failed to get native DXGI swapchain from ReShade");
-            return false;
-        }
-
-        // Get IDXGISwapChain4 for colorspace setting
-        Microsoft::WRL::ComPtr<IDXGISwapChain4> swapchain4;
-        HRESULT hr = dxgi_swapchain->QueryInterface(IID_PPV_ARGS(&swapchain4));
-        if (FAILED(hr)) {
-            LogWarn("scRGB colorspace setting: Failed to get IDXGISwapChain4 from ReShade swapchain");
-            return false;
-        }
-
-        // Set scRGB colorspace (16-bit linear RGB with extended range)
-        hr = swapchain4->SetColorSpace1(DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709);
-        if (SUCCEEDED(hr)) {
-            LogInfo("scRGB colorspace set successfully");
-            return true;
-        } else {
-            LogWarn("scRGB colorspace setting: Failed to set scRGB colorspace");
-            return false;
-        }
-
-    } catch (...) {
-        LogWarn("scRGB colorspace setting: Exception occurred during colorspace setting");
-        LogStackTrace("SetScRGBColorspace");
         return false;
     }
 }

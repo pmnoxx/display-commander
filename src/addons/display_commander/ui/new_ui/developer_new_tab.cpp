@@ -177,21 +177,6 @@ void DrawSyncIntervalSettings() {
     // Sync Interval dropdown
     if (ComboSettingWrapper(g_developerTabSettings.sync_interval, "Sync Interval")) {
         s_sync_interval = static_cast<float>(g_developerTabSettings.sync_interval.GetValue());
-        
-        // Log the change
-        std::ostringstream oss;
-        oss << "Sync interval changed to ";
-        switch (g_developerTabSettings.sync_interval.GetValue()) {
-            case 0: oss << "Application-Controlled"; break;
-            case 1: oss << "No-VSync (0)"; break;
-            case 2: oss << "V-Sync (1)"; break;
-            case 3: oss << "V-Sync 2x (2) incompatible with flip-model swap chains (extra latency)"; break;
-            case 4: oss << "V-Sync 3x (3) incompatible with flip-model swap chains (extra latency)"; break;
-            case 5: oss << "V-Sync 4x (4) incompatible with flip-model swap chains (extra latency)"; break;
-            default: oss << "Unknown"; break;
-        }
-        extern void LogInfo(const char* message);
-        ::LogInfo(oss.str().c_str());
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Control the sync interval for frame presentation. This setting requires a game restart to take effect.");
@@ -209,24 +194,7 @@ void DrawSyncIntervalSettings() {
             refresh_rate = static_cast<int>(refresh_rate_rational.ToHz());
         }
     }
-    
-    ImGui::BulletText("Application-Controlled: Uses game's default sync interval");
-    ImGui::BulletText("No-VSync (0): Immediate presentation, potential tearing");
-    ImGui::BulletText("V-Sync (1): Synchronized with monitor refresh rate (%d FPS on %dHz)", refresh_rate, refresh_rate);
-    
-    if (refresh_rate >= 120) {
-        ImGui::BulletText("V-Sync 2x (2): Present every 2 refresh cycles (%d FPS on %dHz)", refresh_rate / 2, refresh_rate);
-        ImGui::BulletText("V-Sync 3x (3): Present every 3 refresh cycles (%d FPS on %dHz)", refresh_rate / 3, refresh_rate);
-        ImGui::BulletText("V-Sync 4x (4): Present every 4 refresh cycles (%d FPS on %dHz)", refresh_rate / 4, refresh_rate);
-    } else if (refresh_rate >= 60) {
-        ImGui::BulletText("V-Sync 2x (2): Present every 2 refresh cycles (%d FPS on %dHz)", refresh_rate / 2, refresh_rate);
-        ImGui::BulletText("V-Sync 3x (3): Present every 3 refresh cycles (%d FPS on %dHz)", refresh_rate / 3, refresh_rate);
-    } else {
-        ImGui::BulletText("V-Sync 2x (2): Present every 2 refresh cycles (%d FPS on %dHz)", refresh_rate / 2, refresh_rate);
-    }
-    
     ImGui::Spacing();
-    ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.8f, 1.0f), "Note: This setting requires a game restart to take effect.");
 }
 
 void DrawNvapiSettings() {

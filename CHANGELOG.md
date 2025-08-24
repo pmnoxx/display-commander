@@ -1,3 +1,10 @@
+## v0.2.3 (2025-01-27)
+
+- **V-Sync 2x-4x implementation** - Implemented v-sync 2x, 3x, 4x functionality in supported games
+- **Swapchain improvements** - Enhanced swapchain event handling for better v-sync compatibility
+- **Window management updates** - Improved window management system for v-sync modes
+- **Code optimization** - Streamlined addon structure and removed unnecessary code
+
 ## v0.2.2 (2025-01-27)
 
 - **Critical bug fix** - Fixed sync interval crashes by preventing invalid Present calls on flip-model swap chains

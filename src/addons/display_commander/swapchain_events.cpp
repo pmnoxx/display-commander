@@ -80,7 +80,7 @@ bool OnCreateSwapchainCapture(reshade::api::device_api /*api*/, reshade::api::sw
       modified = true;
     } else if (sync_value >= 2) {
       // V-Sync (1)
-      desc.sync_interval = 0;//1;
+    //  desc.sync_interval = 0;//1;
       modified = true;
     } 
   }

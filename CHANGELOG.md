@@ -1,3 +1,11 @@
+## v0.2.4 (2025-01-27)
+
+- **Improved compatibility** - Dropped custom DLL requirement, making addon more accessible to all users
+- **New developer toggle** - Added "Enable unstable ReShade features" checkbox for advanced users who need custom dxgi.dll
+- **Input control gating** - Input blocking features now require explicit opt-in via developer toggle for safety
+- **Better user experience** - Clear separation between stable and experimental features
+- **Enhanced safety** - Prevents accidental use of potentially unstable features by default
+
 ## v0.2.3 (2025-01-27)
 
 - **V-Sync 2x-4x implementation** - Implemented v-sync 2x, 3x, 4x functionality in supported games

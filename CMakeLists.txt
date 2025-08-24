@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 
-project(reshade_display_commander VERSION 0.2.2 LANGUAGES CXX)
+project(reshade_display_commander VERSION 0.2.4 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)

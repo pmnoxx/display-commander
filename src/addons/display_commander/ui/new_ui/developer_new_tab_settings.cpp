@@ -36,7 +36,7 @@ DeveloperTabSettings::DeveloperTabSettings()
     , nvapi_force_hdr10("NvapiForceHDR10", false, "DisplayCommanderNew")
     , reflex_enabled("ReflexEnabled", true, "DisplayCommanderNew")
     , reflex_debug_output("ReflexDebugOutput", false, "DisplayCommanderNew")
-    , sync_interval("SyncInterval", 0, {"Application-Controlled", "No-VSync (0)", "V-Sync (1)", "V-Sync 2x (2)", "V-Sync 3x (3)", "V-Sync 4x (4)"}, "DisplayCommanderNew")
+    , sync_interval("SyncInterval", 0, {"Application-Controlled", "No-VSync (0)", "V-Sync", "V-Sync 2x", "V-Sync 3x", "V-Sync 4x", "V-Sync 8x"}, "DisplayCommanderNew")
     , enable_unstable_reshade_features("EnableUnstableReShadeFeatures", false, "DisplayCommanderNew")
 {
 }

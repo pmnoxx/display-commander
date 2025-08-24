@@ -58,6 +58,22 @@ uint32_t GetSwapchainSyncInterval(reshade::api::swapchain* swapchain) {
   return UINT32_MAX;
 }
 
+// Get the sync interval coefficient for FPS calculation
+float GetSyncIntervalCoefficient(float sync_interval_value) {
+  // Map sync interval values to their corresponding coefficients
+  // 3 = V-Sync (1x), 4 = V-Sync 2x, 5 = V-Sync 3x, 6 = V-Sync 4x, 7 = V-Sync 8x
+  switch (static_cast<int>(sync_interval_value)) {
+    case 0: return 0.0f;   // App Controlled
+    case 1: return 0.0f;   // No-VSync
+    case 2: return 1.0f;   // V-Sync
+    case 3: return 2.0f;   // V-Sync 2x
+    case 4: return 3.0f;   // V-Sync 3x
+    case 5: return 4.0f;   // V-Sync 4x
+    case 6: return 8.0f;   // V-Sync 8x
+    default: return 1.0f;  // Fallback
+  }
+}
+
 // Capture sync interval during create_swapchain
 bool OnCreateSwapchainCapture(reshade::api::device_api /*api*/, reshade::api::swapchain_desc& desc, void* hwnd) {
   if (hwnd == nullptr) return false;
@@ -247,10 +263,11 @@ void OnPresentUpdate(
     if (s_sync_interval >= 3.f) {
       float monitor_refresh_hz = g_window_state.current_monitor_refresh_rate.ToHz();
       if (monitor_refresh_hz > 0.f) {
+        float coefficient = GetSyncIntervalCoefficient(s_sync_interval);
         if (target_fps > 0.f) {
-          target_fps = min(target_fps, monitor_refresh_hz / static_cast<float>(s_sync_interval - 1));
+          target_fps = min(target_fps, monitor_refresh_hz / coefficient);
         } else {
-          target_fps = monitor_refresh_hz / (s_sync_interval - 1);
+          target_fps = monitor_refresh_hz / coefficient;
         }
       }
     }

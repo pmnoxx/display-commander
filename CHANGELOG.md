@@ -1,3 +1,12 @@
+## v0.2.2 (2025-01-27)
+
+- **Critical bug fix** - Fixed sync interval crashes by preventing invalid Present calls on flip-model swap chains
+- **DXGI swap effect detection** - Added detection of swap effect type to avoid invalid sync intervals
+- **Multi-vblank safety** - Clamp multi-vblank (2-4) to 1 on flip-model chains to prevent crashes
+- **V-Sync 2x-4x compatibility** - Only allow 2-4 v-blanks on bitblt swap effects (SEQUENTIAL/DISCARD)
+- **Stability improvements** - Removed present_mode override that could cause compatibility issues
+- **Crash prevention** - Fixes games crashing with sync_value == 3 (V-Sync 2x)
+
 ## v0.2.1 (2025-08-23)
 
 - **Documentation improvements** - Added direct download links to latest builds in README for easier access

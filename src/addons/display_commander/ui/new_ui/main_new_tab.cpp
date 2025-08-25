@@ -39,6 +39,9 @@ static std::vector<const char*> s_cached_monitor_c_labels;
 static std::chrono::steady_clock::time_point s_last_monitor_cache_update = std::chrono::steady_clock::now();
 static const std::chrono::milliseconds MONITOR_CACHE_TTL = std::chrono::milliseconds(1000); // Update cache every 1 second
 
+// Flag to indicate a restart is required after changing VSync/tearing options
+static bool s_restart_needed_vsync_tearing = false;
+
 void InitMainNewTab() {
 
     static bool settings_loaded_once = false;
@@ -376,9 +379,11 @@ void DrawDisplaySettings() {
     {
         ImGui::Spacing();
         ImGui::TextColored(ImVec4(0.8f, 0.9f, 1.0f, 1.0f), "=== VSync & Tearing ===");
+        bool vsync_tearing_changed = false;
 
         bool vs_on = g_main_new_tab_settings.force_vsync_on.GetValue();
         if (ImGui::Checkbox("Force VSync ON (Custom DLL needed)", &vs_on)) {
+            vsync_tearing_changed = true;
             // Mutual exclusion
             if (vs_on) {
                 g_main_new_tab_settings.force_vsync_off.SetValue(false);
@@ -398,6 +403,7 @@ void DrawDisplaySettings() {
 
         bool vs_off = g_main_new_tab_settings.force_vsync_off.GetValue();
         if (ImGui::Checkbox("Force VSync OFF", &vs_off)) {
+            vsync_tearing_changed = true;
             // Mutual exclusion
             if (vs_off) {
                 g_main_new_tab_settings.force_vsync_on.SetValue(false);
@@ -415,6 +421,7 @@ void DrawDisplaySettings() {
 
         bool allow_t = g_main_new_tab_settings.allow_tearing.GetValue();
         if (ImGui::Checkbox("Allow Tearing (DXGI)", &allow_t)) {
+            vsync_tearing_changed = true;
             // Mutual exclusion with Prevent Tearing
             if (allow_t) {
                 g_main_new_tab_settings.prevent_tearing.SetValue(false);
@@ -434,6 +441,7 @@ void DrawDisplaySettings() {
 
         bool prevent_t = g_main_new_tab_settings.prevent_tearing.GetValue();
         if (ImGui::Checkbox("Prevent Tearing", &prevent_t)) {
+            vsync_tearing_changed = true;
             // Mutual exclusion with Enable Tearing
             if (prevent_t) {
                 g_main_new_tab_settings.allow_tearing.SetValue(false);
@@ -445,6 +453,17 @@ void DrawDisplaySettings() {
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Prevents tearing by clearing DXGI tearing flags and preferring sync. Mutually exclusive with Enable Tearing.");
+        }
+
+        // If any of the VSync/tearing settings changed this frame, mark restart as required
+        if (vsync_tearing_changed) {
+            s_restart_needed_vsync_tearing = true;
+        }
+
+        // Display restart-required notice if flagged
+        if (s_restart_needed_vsync_tearing) {
+            ImGui::Spacing();
+            ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "Game restart required to apply VSync/tearing changes.");
         }
     }
 

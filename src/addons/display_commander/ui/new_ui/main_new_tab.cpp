@@ -532,7 +532,7 @@ void DrawDisplaySettings() {
             // Add 95% button at the end
             if (!first) ImGui::SameLine();
             {
-                float precise_target = static_cast<float>(refresh_hz * 0.95);
+                float precise_target = static_cast<float>(refresh_hz * 0.96);
                 if (precise_target < 1.0f) precise_target = 1.0f;
                 bool selected = (std::fabs(s_fps_limit - precise_target) <= selected_epsilon);
                 if (selected) {

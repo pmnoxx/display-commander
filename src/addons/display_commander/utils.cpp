@@ -5,17 +5,17 @@
 #include <algorithm>
 
 // External declarations needed by utility functions
-extern float s_windowed_width;
-extern float s_windowed_height;
-extern float s_window_mode;
-extern float s_aspect_index;
+extern std::atomic<int> s_windowed_width;
+extern std::atomic<int> s_windowed_height;
+extern std::atomic<int> s_window_mode;
+extern std::atomic<int> s_aspect_index;
 
 // New resolution system variables
-extern float s_selected_monitor_index;
-extern float s_selected_resolution_index;
-extern float s_selected_refresh_rate_index;
+extern std::atomic<int> s_selected_monitor_index;
+extern std::atomic<int> s_selected_resolution_index;
+extern std::atomic<int> s_selected_refresh_rate_index;
 
-extern bool s_initial_auto_selection_done;
+extern std::atomic<bool> s_initial_auto_selection_done;
 
 extern std::vector<MonitorInfo> g_monitors;
 extern std::atomic<HWND> g_last_swapchain_hwnd;
@@ -139,15 +139,15 @@ bool IsExclusiveFullscreen(HWND hwnd) {
 // Spoof fullscreen state detection based on user settings
 bool GetSpoofedFullscreenState(HWND hwnd) {
     // Import the global variable
-    extern float s_spoof_fullscreen_state;
+    extern std::atomic<int> s_spoof_fullscreen_state;
     
     // If spoofing is disabled, return actual state
-    if (s_spoof_fullscreen_state < 0.5f) {
+    if (s_spoof_fullscreen_state.load() == 0) {
         return IsExclusiveFullscreen(hwnd);
     }
     
     // Spoof as fullscreen (value 1)
-    if (s_spoof_fullscreen_state < 1.5f) {
+    if (s_spoof_fullscreen_state.load() == 1) {
         return true;
     }
     
@@ -157,24 +157,22 @@ bool GetSpoofedFullscreenState(HWND hwnd) {
 
 // Get the current spoofing setting value (0=disabled, 1=spoof as fullscreen, 2=spoof as windowed)
 int GetFullscreenSpoofingMode() {
-    extern float s_spoof_fullscreen_state;
-    if (s_spoof_fullscreen_state < 0.5f) return 0;
-    if (s_spoof_fullscreen_state < 1.5f) return 1;
-    return 2;
+    extern std::atomic<int> s_spoof_fullscreen_state;
+    return s_spoof_fullscreen_state.load();
 }
 
 // Spoof window focus state detection based on user settings
 bool GetSpoofedWindowFocus(HWND hwnd) {
     // Import the global variable
-    extern float s_spoof_window_focus;
+    extern std::atomic<int> s_spoof_window_focus;
     
     // If spoofing is disabled, return actual state
-    if (s_spoof_window_focus < 0.5f) {
+    if (s_spoof_window_focus.load() == 0) {
         return (GetForegroundWindow() == hwnd);
     }
     
     // Spoof as focused (value 1)
-    if (s_spoof_window_focus < 1.5f) {
+    if (s_spoof_window_focus.load() == 1) {
         return true;
     }
     
@@ -184,10 +182,8 @@ bool GetSpoofedWindowFocus(HWND hwnd) {
 
 // Get the current focus spoofing setting value (0=disabled, 1=spoof as focused, 2=spoof as unfocused)
 int GetWindowFocusSpoofingMode() {
-    extern float s_spoof_window_focus;
-    if (s_spoof_window_focus < 0.5f) return 0;
-    if (s_spoof_window_focus < 1.5f) return 1;
-    return 2;
+    extern std::atomic<int> s_spoof_window_focus;
+    return s_spoof_window_focus.load();
 }
 
 bool IsBorderlessStyleBits(LONG_PTR style) {

@@ -4,25 +4,25 @@
 #include <atomic>
 
 // External declarations for the global variables
-extern float s_prevent_fullscreen;
-extern float s_spoof_fullscreen_state;
-extern float s_spoof_window_focus;
+extern std::atomic<bool> s_prevent_fullscreen;
+extern std::atomic<int> s_spoof_fullscreen_state;
+extern std::atomic<int> s_spoof_window_focus;
 extern std::atomic<bool> s_continuous_monitoring_enabled;
 extern std::atomic<bool> s_prevent_always_on_top;
 extern std::atomic<bool> s_background_feature_enabled;
-extern float s_fix_hdr10_colorspace;
-extern float s_nvapi_fullscreen_prevention;
-extern float s_nvapi_hdr_logging;
+extern std::atomic<bool> s_fix_hdr10_colorspace;
+extern std::atomic<bool> s_nvapi_fullscreen_prevention;
+extern std::atomic<bool> s_nvapi_hdr_logging;
 extern float s_nvapi_hdr_interval_sec;
-extern float s_nvapi_force_hdr10;
+extern std::atomic<bool> s_nvapi_force_hdr10;
 extern std::atomic<bool> s_reflex_enabled;
 extern std::atomic<bool> s_reflex_debug_output;
-extern float s_remove_top_bar;
+extern std::atomic<bool> s_remove_top_bar;
 extern std::atomic<bool> s_enable_unstable_reshade_features;
-extern float s_enable_resolution_override;
+extern std::atomic<bool> s_enable_resolution_override;
 extern float s_override_resolution_width;
 extern float s_override_resolution_height;
-extern float s_enable_mute_unmute_shortcut;
+extern std::atomic<bool> s_enable_mute_unmute_shortcut;
 extern float s_fps_extra_wait_ms;
 
 namespace ui::new_ui {
@@ -73,25 +73,25 @@ void DeveloperTabSettings::LoadAll() {
     enable_mute_unmute_shortcut.Load();
     
     // Update global variables to maintain compatibility
-    s_prevent_fullscreen = prevent_fullscreen.GetValue() ? 1.0f : 0.0f;
-    s_spoof_fullscreen_state = spoof_fullscreen_state.GetValue() ? 1.0f : 0.0f;
-    s_spoof_window_focus = spoof_window_focus.GetValue() ? 1.0f : 0.0f;
+    s_prevent_fullscreen.store(prevent_fullscreen.GetValue());
+    s_spoof_fullscreen_state.store(spoof_fullscreen_state.GetValue());
+    s_spoof_window_focus.store(spoof_window_focus.GetValue());
     s_continuous_monitoring_enabled.store(continuous_monitoring.GetValue());
     s_prevent_always_on_top.store(prevent_always_on_top.GetValue());
-    s_remove_top_bar = remove_top_bar.GetValue() ? 1.0f : 0.0f;
-    s_fix_hdr10_colorspace = fix_hdr10_colorspace.GetValue() ? 1.0f : 0.0f;
-    s_nvapi_fullscreen_prevention = nvapi_fullscreen_prevention.GetValue() ? 1.0f : 0.0f;
-    s_nvapi_hdr_logging = nvapi_hdr_logging.GetValue() ? 1.0f : 0.0f;
+    s_remove_top_bar.store(remove_top_bar.GetValue());
+    s_fix_hdr10_colorspace.store(fix_hdr10_colorspace.GetValue());
+    s_nvapi_fullscreen_prevention.store(nvapi_fullscreen_prevention.GetValue());
+    s_nvapi_hdr_logging.store(nvapi_hdr_logging.GetValue());
     s_nvapi_hdr_interval_sec = nvapi_hdr_interval_sec.GetValue();
-    s_nvapi_force_hdr10 = nvapi_force_hdr10.GetValue() ? 1.0f : 0.0f;
+    s_nvapi_force_hdr10.store(nvapi_force_hdr10.GetValue());
     s_reflex_enabled.store(reflex_enabled.GetValue());
-    s_reflex_debug_output = reflex_debug_output.GetValue() ? 1.0f : 0.0f;
+    s_reflex_debug_output.store(reflex_debug_output.GetValue());
     s_fps_extra_wait_ms = fps_extra_wait_ms.GetValue();
-    s_enable_unstable_reshade_features = enable_unstable_reshade_features.GetValue() ? 1.0f : 0.0f;
-    s_enable_resolution_override = enable_resolution_override.GetValue() ? 1.0f : 0.0f;
+    s_enable_unstable_reshade_features.store(enable_unstable_reshade_features.GetValue());
+    s_enable_resolution_override.store(enable_resolution_override.GetValue());
     s_override_resolution_width = static_cast<float>(override_resolution_width.GetValue());
     s_override_resolution_height = static_cast<float>(override_resolution_height.GetValue());
-    s_enable_mute_unmute_shortcut = enable_mute_unmute_shortcut.GetValue() ? 1.0f : 0.0f;
+    s_enable_mute_unmute_shortcut.store(enable_mute_unmute_shortcut.GetValue());
 }
 
 void DeveloperTabSettings::SaveAll() {

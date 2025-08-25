@@ -34,7 +34,7 @@ void OnInitEffectRuntime(reshade::api::effect_runtime* runtime) {
         g_reshade_runtime.store(runtime);
         LogInfo("ReShade effect runtime initialized - Input blocking now available");
         
-        if (s_fix_hdr10_colorspace >= 0.5f) {
+        if (s_fix_hdr10_colorspace.load()) {
           runtime->set_color_space(reshade::api::color_space::hdr10_st2084);
         }
     }
@@ -157,7 +157,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
 
     
     // Initialize NVAPI fullscreen prevention if enabled and not already initialized
-    if (s_nvapi_fullscreen_prevention >= 0.5f && !::g_nvapiFullscreenPrevention.IsAvailable()) {
+            if (s_nvapi_fullscreen_prevention.load() && !::g_nvapiFullscreenPrevention.IsAvailable()) {
       if (::g_nvapiFullscreenPrevention.Initialize()) {
         LogInfo("NVAPI initialized proactively for fullscreen prevention");
         if (::g_nvapiFullscreenPrevention.SetFullscreenPrevention(true)) {
@@ -180,7 +180,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
     }
 
     // Start NVAPI HDR monitor if enabled
-    if (s_nvapi_hdr_logging >= 0.5f) {
+    if (s_nvapi_hdr_logging.load()) {
       std::thread(RunBackgroundNvapiHdrMonitor).detach();
     }
 

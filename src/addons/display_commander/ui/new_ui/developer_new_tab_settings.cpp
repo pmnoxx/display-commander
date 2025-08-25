@@ -1,23 +1,24 @@
 #include "developer_new_tab_settings.hpp"
 #include "../../renodx/settings.hpp"
 #include <minwindef.h>
+#include <atomic>
 
 // External declarations for the global variables
 extern float s_prevent_fullscreen;
 extern float s_spoof_fullscreen_state;
 extern float s_spoof_window_focus;
-extern float s_continuous_monitoring_enabled;
-extern float s_prevent_always_on_top;
-extern float s_background_feature_enabled;
+extern std::atomic<bool> s_continuous_monitoring_enabled;
+extern std::atomic<bool> s_prevent_always_on_top;
+extern std::atomic<bool> s_background_feature_enabled;
 extern float s_fix_hdr10_colorspace;
 extern float s_nvapi_fullscreen_prevention;
 extern float s_nvapi_hdr_logging;
 extern float s_nvapi_hdr_interval_sec;
 extern float s_nvapi_force_hdr10;
-extern float s_reflex_enabled;
-extern float s_reflex_debug_output;
+extern std::atomic<bool> s_reflex_enabled;
+extern std::atomic<bool> s_reflex_debug_output;
 extern float s_remove_top_bar;
-extern float s_enable_unstable_reshade_features;
+extern std::atomic<bool> s_enable_unstable_reshade_features;
 extern float s_enable_resolution_override;
 extern float s_override_resolution_width;
 extern float s_override_resolution_height;
@@ -75,15 +76,15 @@ void DeveloperTabSettings::LoadAll() {
     s_prevent_fullscreen = prevent_fullscreen.GetValue() ? 1.0f : 0.0f;
     s_spoof_fullscreen_state = spoof_fullscreen_state.GetValue() ? 1.0f : 0.0f;
     s_spoof_window_focus = spoof_window_focus.GetValue() ? 1.0f : 0.0f;
-    s_continuous_monitoring_enabled = continuous_monitoring.GetValue() ? 1.0f : 0.0f;
-    s_prevent_always_on_top = prevent_always_on_top.GetValue() ? 1.0f : 0.0f;
+    s_continuous_monitoring_enabled.store(continuous_monitoring.GetValue());
+    s_prevent_always_on_top.store(prevent_always_on_top.GetValue());
     s_remove_top_bar = remove_top_bar.GetValue() ? 1.0f : 0.0f;
     s_fix_hdr10_colorspace = fix_hdr10_colorspace.GetValue() ? 1.0f : 0.0f;
     s_nvapi_fullscreen_prevention = nvapi_fullscreen_prevention.GetValue() ? 1.0f : 0.0f;
     s_nvapi_hdr_logging = nvapi_hdr_logging.GetValue() ? 1.0f : 0.0f;
     s_nvapi_hdr_interval_sec = nvapi_hdr_interval_sec.GetValue();
     s_nvapi_force_hdr10 = nvapi_force_hdr10.GetValue() ? 1.0f : 0.0f;
-    s_reflex_enabled = reflex_enabled.GetValue() ? 1.0f : 0.0f;
+    s_reflex_enabled.store(reflex_enabled.GetValue());
     s_reflex_debug_output = reflex_debug_output.GetValue() ? 1.0f : 0.0f;
     s_fps_extra_wait_ms = fps_extra_wait_ms.GetValue();
     s_enable_unstable_reshade_features = enable_unstable_reshade_features.GetValue() ? 1.0f : 0.0f;

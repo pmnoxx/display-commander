@@ -103,7 +103,7 @@ void  CalculateWindowState(HWND hwnd, const char* reason) {
   local_state.new_ex_style = current_ex_style & ~(WS_EX_DLGMODALFRAME | WS_EX_WINDOWEDGE | WS_EX_CLIENTEDGE | WS_EX_STATICEDGE);
   
   // PREVENT ALWAYS ON TOP: Remove WS_EX_TOPMOST and WS_EX_TOOLWINDOW styles
-  if (s_prevent_always_on_top >= 0.5f && (local_state.new_ex_style & (WS_EX_TOPMOST | WS_EX_TOOLWINDOW))) {
+  if (s_prevent_always_on_top.load() && (local_state.new_ex_style & (WS_EX_TOPMOST | WS_EX_TOOLWINDOW))) {
     local_state.new_ex_style &= ~(WS_EX_TOPMOST | WS_EX_TOOLWINDOW);
     
     // Log if we're removing always on top styles

@@ -10,6 +10,7 @@
 
 // Global instance is defined in globals.cpp
 extern BackgroundWindowManager g_backgroundWindowManager;
+extern std::atomic<bool> s_background_feature_enabled;
 
 BackgroundWindowManager::BackgroundWindowManager() 
     : m_background_hwnd(nullptr)
@@ -286,8 +287,7 @@ void BackgroundWindowManager::UpdateBackgroundWindow(HWND game_hwnd) {
     }
     
     // Check if background feature is enabled
-    extern float s_background_feature_enabled;
-    if (s_background_feature_enabled < 0.5f) {
+    if (!s_background_feature_enabled.load()) {
         // Feature disabled, destroy background window if it exists
         if (m_has_background_window.load()) {
         

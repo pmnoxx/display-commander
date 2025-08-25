@@ -7,7 +7,7 @@
 // External declarations for settings
 
 
-extern float s_reflex_debug_output;
+extern std::atomic<bool> s_reflex_debug_output;
 
 
 

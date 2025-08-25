@@ -12,7 +12,7 @@ namespace utils::settings2 {
 // External declarations for settings
 
 
-extern float s_reflex_debug_output;
+extern std::atomic<bool> s_reflex_debug_output;
 extern float s_remove_top_bar;
 extern float s_suppress_maximize;
 

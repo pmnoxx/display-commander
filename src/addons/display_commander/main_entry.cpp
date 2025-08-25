@@ -150,7 +150,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
     // InitializeSwapchain removed from proxy
     
     // Check if continuous monitoring should be enabled
-    if (s_continuous_monitoring_enabled >= 0.5f) {
+    if (s_continuous_monitoring_enabled.load()) {
       StartContinuousMonitoring();
       LogInfo("Continuous monitoring started proactively");
     }
@@ -171,7 +171,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
     }
 
     // Initialize Reflex hooks if enabled
-    if (s_reflex_enabled >= 0.5f) {
+    if (s_reflex_enabled.load()) {
       if (InstallReflexHooks()) {
         LogInfo("Reflex hooks initialized proactively");
       } else {

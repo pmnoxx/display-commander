@@ -9,6 +9,7 @@
 #include <sstream>
 #include <iomanip>
 #include <thread>
+#include <atomic>
 
 namespace ui::new_ui {
 
@@ -337,7 +338,7 @@ void DrawReflexSettings() {
     
     // Enable NVIDIA Reflex
     if (CheckboxSetting(g_developerTabSettings.reflex_enabled, "Enable NVIDIA Reflex")) {
-        s_reflex_enabled = g_developerTabSettings.reflex_enabled.GetValue() ? 1.0f : 0.0f;
+        s_reflex_enabled.store(g_developerTabSettings.reflex_enabled.GetValue());
         
         if (g_developerTabSettings.reflex_enabled.GetValue()) {
             extern void InstallReflexHooks();

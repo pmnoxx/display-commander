@@ -1,4 +1,8 @@
 #include "main_new_tab.hpp"
+#include "../../renodx/settings.hpp"
+#include "../../background_window.hpp"
+#include "../../dxgi/custom_fps_limiter_manager.hpp"
+#include <atomic>
 #include "main_new_tab_settings.hpp"
 #include "developer_new_tab_settings.hpp"
 #include "../../addon.hpp"
@@ -25,7 +29,7 @@ extern const int WIDTH_OPTIONS[];
 extern const int HEIGHT_OPTIONS[];
 
 // External global variables
-extern float s_background_feature_enabled;
+extern std::atomic<bool> s_background_feature_enabled;
 
 namespace ui::new_ui {
 
@@ -61,7 +65,7 @@ void InitMainNewTab() {
         }
         s_aspect_index = static_cast<float>(g_main_new_tab_settings.aspect_index.GetValue());
         s_target_monitor_index = static_cast<float>(g_main_new_tab_settings.target_monitor_index.GetValue());
-        s_background_feature_enabled = g_main_new_tab_settings.background_feature.GetValue() ? 1.0f : 0.0f;
+        s_background_feature_enabled.store(g_main_new_tab_settings.background_feature.GetValue());
         s_move_to_zero_if_out = static_cast<float>(g_main_new_tab_settings.alignment.GetValue());
         s_fps_limit = g_main_new_tab_settings.fps_limit.GetValue();
         s_fps_limit_background = g_main_new_tab_settings.fps_limit_background.GetValue();
@@ -194,7 +198,7 @@ void DrawDisplaySettings() {
     // Auto-apply (continuous monitoring) checkbox next to Window Mode
     ImGui::SameLine();
     if (CheckboxSetting(g_developerTabSettings.continuous_monitoring, "Auto-apply")) {
-        s_continuous_monitoring_enabled = g_developerTabSettings.continuous_monitoring.GetValue() ? 1.0f : 0.0f;
+        s_continuous_monitoring_enabled.store(g_developerTabSettings.continuous_monitoring.GetValue());
         if (g_developerTabSettings.continuous_monitoring.GetValue()) {
             ::StartContinuousMonitoring();
         } else {
@@ -290,7 +294,7 @@ void DrawDisplaySettings() {
     // Background Black Curtain checkbox (only shown in Borderless Windowed modes)
     if (s_window_mode < 1.5f) {
         if (CheckboxSetting(g_main_new_tab_settings.background_feature, "Background Black Curtain")) {
-            s_background_feature_enabled = g_main_new_tab_settings.background_feature.GetValue() ? 1.0f : 0.0f;
+            s_background_feature_enabled.store(g_main_new_tab_settings.background_feature.GetValue());
             LogInfo("Background black curtain setting changed");
         }
         if (ImGui::IsItemHovered()) {

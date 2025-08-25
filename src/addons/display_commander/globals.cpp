@@ -3,6 +3,7 @@
 #include "background_window.hpp" // Added this line
 #include "dxgi/custom_fps_limiter_manager.hpp"
 #include "dxgi/dxgi_device_info.hpp"
+#include <atomic>
 
 // Global variables
 // UI mode removed - now using new tab system
@@ -12,7 +13,7 @@ float s_windowed_width = 3440.f; // 21:9 ultrawide width
 float s_windowed_height = 1440.f; // 21:9 ultrawide height
 float s_window_mode = 0.f; // 0 = Borderless Windowed (Aspect Ratio), 1 = Borderless Windowed (Width/Height), 2 = Borderless Fullscreen
 float s_remove_top_bar = 1.f; // Suppress top bar/border messages enabled by default for borderless windows
-float s_suppress_move_resize_messages = 1.f; // Suppress move/resize messages by default
+std::atomic<bool> s_suppress_move_resize_messages = 1.f; // Suppress move/resize messages by default
 
 float s_suppress_maximize = 1.f; // Suppress maximize messages by default
 float s_aspect_index = 4.f; // 21:9 ultrawide
@@ -46,7 +47,7 @@ float s_fps_limit = 0.f;
 float s_fps_extra_wait_ms = 0.f;
 // Custom FPS Limiter settings
 float s_custom_fps_limit = 0.f;
-const float s_custom_fps_limiter_enabled = 1.0f; // Always enabled
+std::atomic<bool> s_custom_fps_limiter_enabled{true}; // Always enabled
 
 // VSync and tearing controls
 float s_force_vsync_on = 0.f;
@@ -73,10 +74,10 @@ std::atomic<reshade::api::effect_runtime*> g_reshade_runtime = nullptr;
 float s_prevent_windows_minimize = 0.f;
 
 // Prevent always on top behavior
-float s_prevent_always_on_top = 1.f; // Prevent games from staying on top by default
+std::atomic<bool> s_prevent_always_on_top{true}; // Prevent games from staying on top by default
 
 // Background feature - show black window behind game when not fullscreen
-float s_background_feature_enabled = 0.f; // Disabled by default
+std::atomic<bool> s_background_feature_enabled{false}; // Disabled by default
 
 // Enforce desired window settings
 float s_enforce_desired_window = 1.f; // Enable window enforcement
@@ -99,11 +100,11 @@ bool s_auto_apply_resolution_change = false; // Disabled by default
 bool s_auto_apply_refresh_rate_change = false; // Disabled by default
 
 // Reflex settings
-float s_reflex_enabled = 1.f; // Enabled by default
-float s_reflex_low_latency_mode = 0.f; // Low latency mode disabled by default
-float s_reflex_low_latency_boost = 0.f; // Boost disabled by default
-float s_reflex_use_markers = 0.f; // Use markers disabled by default
-float s_reflex_debug_output = 0.f; // Debug output disabled by default
+std::atomic<bool> s_reflex_enabled{true}; // Enabled by default
+std::atomic<bool> s_reflex_low_latency_mode{false}; // Low latency mode disabled by default
+std::atomic<bool> s_reflex_low_latency_boost{false}; // Boost disabled by default
+std::atomic<bool> s_reflex_use_markers{false}; // Use markers disabled by default
+std::atomic<bool> s_reflex_debug_output = 0.f; // Debug output disabled by default
 
 // Atomic variables
 std::atomic<int> g_comp_query_counter{0};
@@ -128,12 +129,12 @@ std::unique_ptr<ReflexManager> g_reflexManager;
 std::atomic<bool> g_reflex_settings_changed{false};
 
 // Continuous monitoring system
-float s_continuous_monitoring_enabled = 1.f; // Enabled by default
+std::atomic<bool> s_continuous_monitoring_enabled{true}; // Enabled by default
 std::atomic<bool> g_monitoring_thread_running{false};
 std::thread g_monitoring_thread;
 
 // Continuous rendering system
-float s_continuous_rendering_enabled = 0.f; // Off by default
+std::atomic<bool> s_continuous_rendering_enabled{false}; // Off by default
 float s_continuous_rendering_throttle = 2.f; // Throttle to every 2nd frame by default
 float s_force_continuous_rendering = 1.f; // Force continuous rendering on every frame (enabled by default for focus spoofing)
 // CONTINUOUS RENDERING THREAD VARIABLES REMOVED - Focus spoofing is now handled by Win32 hooks
@@ -189,7 +190,7 @@ std::string g_hdr10_override_timestamp = "Never";
 std::atomic<std::shared_ptr<const std::vector<std::string>>> g_monitor_labels{std::make_shared<const std::vector<std::string>>()} ;
 
 // Experimental/Unstable features toggle
-float s_enable_unstable_reshade_features = 0.f; // Disabled by default
+std::atomic<bool> s_enable_unstable_reshade_features = false; // Disabled by default
 
 // Resolution Override Settings (Experimental)
 float s_enable_resolution_override = 0.f; // Disabled by default

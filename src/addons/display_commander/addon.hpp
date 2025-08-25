@@ -84,12 +84,12 @@ void OnEndRenderPass(reshade::api::command_list* cmd_list);
 extern std::atomic<bool> g_reflex_settings_changed;
 
 // Continuous monitoring system
-extern float s_continuous_monitoring_enabled;
+extern std::atomic<bool> s_continuous_monitoring_enabled;
 extern std::atomic<bool> g_monitoring_thread_running;
 extern std::thread g_monitoring_thread;
 
 // Continuous rendering system
-extern float s_continuous_rendering_enabled;
+extern std::atomic<bool> s_continuous_rendering_enabled;
 extern float s_force_continuous_rendering;
 extern float s_continuous_rendering_throttle;
 // CONTINUOUS RENDERING THREAD VARIABLES REMOVED - Focus spoofing is now handled by Win32 hooks
@@ -137,17 +137,17 @@ struct GlobalWindowState {
 // UI mode removed - now using new tab system
 
 // Reflex settings
-extern float s_reflex_enabled;
-extern float s_reflex_low_latency_mode;
-extern float s_reflex_low_latency_boost;
-extern float s_reflex_use_markers;
-extern float s_enable_unstable_reshade_features;
+extern std::atomic<bool> s_reflex_enabled;
+extern std::atomic<bool> s_reflex_low_latency_mode;
+extern std::atomic<bool> s_reflex_low_latency_boost;
+extern std::atomic<bool> s_reflex_use_markers;
+extern std::atomic<bool> s_enable_unstable_reshade_features;
 
 extern float s_windowed_width;
 extern float s_windowed_height;
 extern float s_window_mode;
 extern float s_remove_top_bar;
-extern float s_suppress_move_resize_messages;
+extern std::atomic<bool> s_suppress_move_resize_messages;
 
 extern float s_suppress_maximize;
 extern float s_aspect_index;
@@ -175,7 +175,7 @@ extern float s_fps_limit;
 // Extra wait time for FPS limiter in milliseconds
 extern float s_fps_extra_wait_ms;
 extern float s_custom_fps_limit;
-extern const float s_custom_fps_limiter_enabled;
+extern std::atomic<bool> s_custom_fps_limiter_enabled;
 // VSync and tearing controls
 extern float s_force_vsync_on;
 extern float s_force_vsync_off;
@@ -211,7 +211,10 @@ extern float s_fix_hdr10_colorspace;
 extern float s_prevent_windows_minimize;
 
 // Prevent always on top behavior
-extern float s_prevent_always_on_top;
+extern std::atomic<bool> s_prevent_always_on_top;
+
+// Background feature - show black window behind game when not fullscreen
+extern std::atomic<bool> s_background_feature_enabled;
 
 // Enforce desired window settings
 extern float s_enforce_desired_window;
@@ -298,7 +301,7 @@ uint32_t GetSwapchainSyncInterval(reshade::api::swapchain* swapchain);
 bool OnCreateSwapchainCapture(reshade::api::device_api api, reshade::api::swapchain_desc& desc, void* hwnd);
 
 // Experimental/Unstable features toggle
-extern float s_enable_unstable_reshade_features;
+extern std::atomic<bool> s_enable_unstable_reshade_features;
 
 // Resolution Override Settings (Experimental)
 extern float s_enable_resolution_override;

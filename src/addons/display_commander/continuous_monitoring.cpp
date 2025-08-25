@@ -13,16 +13,16 @@
 void ComputeDesiredSize(int& out_w, int& out_h);
 
 // Global variables for monitoring
-extern float s_continuous_monitoring_enabled;
+extern std::atomic<bool> s_continuous_monitoring_enabled;
 extern std::atomic<bool> g_monitoring_thread_running;
 extern std::thread g_monitoring_thread;
 extern std::atomic<HWND> g_last_swapchain_hwnd;
 
 // Additional global variables needed for monitoring
 extern float s_remove_top_bar;
-extern float s_prevent_always_on_top;
+extern std::atomic<bool> s_prevent_always_on_top;
 
-extern float s_background_feature_enabled; // Added this line
+extern std::atomic<bool> s_background_feature_enabled; // Added this line
 
 // ReShade runtime for input blocking
 
@@ -42,7 +42,7 @@ void ContinuousMonitoringThread() {
     auto last_cache_refresh = std::chrono::steady_clock::now();
     while (g_monitoring_thread_running.load()) {
         // Check if monitoring is still enabled
-        if (s_continuous_monitoring_enabled < 0.5f) {
+        if (!s_continuous_monitoring_enabled.load()) {
             break;
         }
         
@@ -70,7 +70,7 @@ void ContinuousMonitoringThread() {
             static int background_check_counter = 0;
             if (++background_check_counter % 10 == 0) { // Log every 10 seconds
                 std::ostringstream oss;
-                oss << "Continuous monitoring: Background feature check - s_background_feature_enabled = " << s_background_feature_enabled 
+                oss << "Continuous monitoring: Background feature check - s_background_feature_enabled = " << (s_background_feature_enabled.load() ? "true" : "false") 
                     << ", has_background_window = " << g_backgroundWindowManager.HasBackgroundWindow();
                 LogInfo(oss.str().c_str());
             }
@@ -84,7 +84,7 @@ void ContinuousMonitoringThread() {
          //       g_backgroundWindowManager.DestroyBackgroundWindow();
             }
             
-            if (s_background_feature_enabled >= 0.5f) {
+            if (s_background_feature_enabled.load()) {
                 // Only create/update background window if main window has focus
                 if (foreground_window == hwnd) {
                     LogInfo("Continuous monitoring: Calling UpdateBackgroundWindow for background window management");
@@ -96,7 +96,7 @@ void ContinuousMonitoringThread() {
                 }
             } else {
                 if (background_check_counter % 10 == 0) { // Log occasionally
-                    LogInfo("Continuous monitoring: Background feature disabled (s_background_feature_enabled < 0.5f)");
+                    LogInfo("Continuous monitoring: Background feature disabled (s_background_feature_enabled = false)");
                 }
             }
         }
@@ -265,7 +265,7 @@ void StartContinuousMonitoring() {
         return;
     }
     
-    if (s_continuous_monitoring_enabled < 0.5f) {
+    if (!s_continuous_monitoring_enabled.load()) {
         LogDebug("Continuous monitoring disabled, not starting");
         return;
     }

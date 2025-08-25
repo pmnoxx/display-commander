@@ -20,8 +20,8 @@
 // Frame lifecycle hooks for custom FPS limiter
 void OnBeginRenderPass(reshade::api::command_list* cmd_list, uint32_t count, const reshade::api::render_pass_render_target_desc* rts, const reshade::api::render_pass_depth_stencil_desc* ds) {
     // Call custom FPS limiter frame begin if enabled
-    extern const float s_custom_fps_limiter_enabled;
-    if (s_custom_fps_limiter_enabled > 0.5f) {
+    extern std::atomic<bool> s_custom_fps_limiter_enabled;
+    if (s_custom_fps_limiter_enabled.load()) {
         if (dxgi::fps_limiter::g_customFpsLimiterManager) {
             auto& limiter = dxgi::fps_limiter::g_customFpsLimiterManager->GetFpsLimiter();
             if (limiter.IsEnabled()) {
@@ -33,8 +33,8 @@ void OnBeginRenderPass(reshade::api::command_list* cmd_list, uint32_t count, con
 
 void OnEndRenderPass(reshade::api::command_list* cmd_list) {
     // Call custom FPS limiter frame end if enabled
-    extern const float s_custom_fps_limiter_enabled;
-    if (s_custom_fps_limiter_enabled > 0.5f) {
+    extern std::atomic<bool> s_custom_fps_limiter_enabled;
+    if (s_custom_fps_limiter_enabled.load()) {
         if (dxgi::fps_limiter::g_customFpsLimiterManager) {
             auto& limiter = dxgi::fps_limiter::g_customFpsLimiterManager->GetFpsLimiter();
             if (limiter.IsEnabled()) {
@@ -192,7 +192,8 @@ void OnInitSwapchain(reshade::api::swapchain* swapchain, bool resize) {
   // Note: Minimize hook removed - use continuous monitoring instead
 
   // Set Reflex sleep mode and latency markers if enabled
-  if (s_reflex_enabled >= 0.5f) {
+  extern std::atomic<bool> s_reflex_enabled;
+  if (s_reflex_enabled.load()) {
     SetReflexSleepMode(swapchain);
     SetReflexLatencyMarkers(swapchain);
     // Also call sleep to start the frame properly
@@ -234,7 +235,9 @@ void OnPresentUpdate(
   }
   
   // Call Reflex functions on EVERY frame (not throttled)
-  if (s_reflex_enabled >= 0.5f && s_reflex_use_markers >= 0.5f) {
+  extern std::atomic<bool> s_reflex_enabled;
+  extern std::atomic<bool> s_reflex_use_markers;
+  if (s_reflex_enabled.load() && s_reflex_use_markers.load()) {
     extern std::unique_ptr<ReflexManager> g_reflexManager;
     extern std::atomic<bool> g_reflex_settings_changed;
     
@@ -259,8 +262,8 @@ void OnPresentUpdate(
   }
 
   // Call Custom FPS Limiter on EVERY frame (not throttled)
-  extern const float s_custom_fps_limiter_enabled;
-  if (s_custom_fps_limiter_enabled > 0.5f) {
+  extern std::atomic<bool> s_custom_fps_limiter_enabled;
+  if (s_custom_fps_limiter_enabled.load()) {
     // Use background flag computed by monitoring thread; avoid GetForegroundWindow here
     extern std::atomic<bool> g_app_in_background;
     extern float s_fps_limit_background;

@@ -12,11 +12,11 @@ TRACELOGGING_DEFINE_PROVIDER(
     (0x0d216f06, 0x82a6, 0x4d49, 0xbc, 0x4f, 0x8f, 0x38, 0xae, 0x56, 0xef, 0xab));
 
 // External global variables for Reflex settings
-extern float s_reflex_enabled;
-extern float s_reflex_low_latency_mode;
-extern float s_reflex_low_latency_boost;
-extern float s_reflex_use_markers;
-extern float s_reflex_debug_output;
+extern std::atomic<bool> s_reflex_enabled;
+extern std::atomic<bool> s_reflex_low_latency_mode;
+extern std::atomic<bool> s_reflex_low_latency_boost;
+extern std::atomic<bool> s_reflex_use_markers;
+extern std::atomic<bool> s_reflex_debug_output;
 
 // ETW provider callback for proper registration
 void WINAPI PCLStatsComponentProviderCb(
@@ -143,13 +143,13 @@ bool ReflexManager::SetSleepMode(reshade::api::swapchain* swapchain)
     // Set up sleep mode parameters - ensure Reflex is properly enabled
     NV_SET_SLEEP_MODE_PARAMS params = {};
     params.version = NV_SET_SLEEP_MODE_PARAMS_VER1;
-    params.bLowLatencyMode = s_reflex_enabled >= 0.5f && s_reflex_low_latency_mode >= 0.5f;
-    params.bLowLatencyBoost = s_reflex_enabled >= 0.5f && s_reflex_low_latency_boost >= 0.5f;
+    params.bLowLatencyMode = s_reflex_enabled.load() && s_reflex_low_latency_mode.load();
+    params.bLowLatencyBoost = s_reflex_enabled.load() && s_reflex_low_latency_boost.load();
     params.minimumIntervalUs = 0; // No frame rate limit
-    params.bUseMarkersToOptimize = s_reflex_enabled >= 0.5f && s_reflex_use_markers >= 0.5f;
+    params.bUseMarkersToOptimize = s_reflex_enabled.load() && s_reflex_use_markers >= 0.5f;
 
     // Ensure at least low latency mode is enabled if Reflex is enabled
-    if (s_reflex_enabled >= 0.5f) {
+    if (s_reflex_enabled.load()) {
         params.bLowLatencyMode = true;
         params.bUseMarkersToOptimize = true;
     }
@@ -443,20 +443,20 @@ std::string ReflexManager::GetReflexStatus() const {
         return "Not Initialized";
     }
     
-    if (s_reflex_enabled < 0.5f) {
+    if (!s_reflex_enabled.load()) {
         return "Disabled";
     }
     
     std::ostringstream oss;
     oss << "Active (Frame " << current_frame_.load() << ")";
     
-    if (s_reflex_low_latency_mode >= 0.5f) {
+    if (s_reflex_low_latency_mode.load()) {
         oss << " - Low Latency";
     }
-    if (s_reflex_low_latency_boost >= 0.5f) {
+    if (s_reflex_low_latency_boost.load()) {
         oss << " + Boost";
     }
-    if (s_reflex_use_markers >= 0.5f) {
+    if (s_reflex_use_markers.load()) {
         oss << " + Markers";
     }
     
@@ -479,16 +479,16 @@ ReflexManager::LatencyData ReflexManager::GetLatencyDataSafe() const {
     // Generate status string
     if (!is_initialized_) {
         data.status = "Not Initialized";
-    } else if (s_reflex_enabled < 0.5f) {
+    } else if (!s_reflex_enabled.load()) {
         data.status = "Disabled";
     } else {
         std::ostringstream oss;
         oss << "Active (Frame " << data.current_frame << ")";
         
-        if (s_reflex_low_latency_mode >= 0.5f) {
+        if (s_reflex_low_latency_mode.load()) {
             oss << " - Low Latency";
         }
-        if (s_reflex_low_latency_boost >= 0.5f) {
+        if (s_reflex_low_latency_boost.load()) {
             oss << " + Boost";
         }
         if (s_reflex_use_markers >= 0.5f) {
@@ -611,19 +611,19 @@ void UninstallReflexHooks() {
 }
 
 void SetReflexLatencyMarkers(reshade::api::swapchain* swapchain) {
-    if (g_reflexManager && s_reflex_enabled >= 0.5f) {
+    if (g_reflexManager && s_reflex_enabled.load()) {
         g_reflexManager->SetLatencyMarkers(swapchain);
     }
 }
 
 void SetReflexSleepMode(reshade::api::swapchain* swapchain) {
-    if (g_reflexManager && s_reflex_enabled >= 0.5f) {
+    if (g_reflexManager && s_reflex_enabled.load()) {
         g_reflexManager->SetSleepMode(swapchain);
     }
 }
 
 void SetReflexPresentMarkers(reshade::api::swapchain* swapchain) {
-    if (g_reflexManager && s_reflex_enabled >= 0.5f) {
+    if (g_reflexManager && s_reflex_enabled.load()) {
         g_reflexManager->SetPresentMarkers(swapchain);
     }
 }
@@ -663,10 +663,10 @@ void ReflexManager::PCLStatsInit()
     
     // Send flags event for better NVIDIA overlay compatibility
     uint32_t flags = 0;
-    if (s_reflex_enabled >= 0.5f) flags |= 0x1;
-    if (s_reflex_low_latency_mode >= 0.5f) flags |= 0x2;
-    if (s_reflex_low_latency_boost >= 0.5f) flags |= 0x4;
-    if (s_reflex_use_markers >= 0.5f) flags |= 0x8;
+    if (s_reflex_enabled.load()) flags |= 0x1;
+    if (s_reflex_low_latency_mode.load()) flags |= 0x2;
+    if (s_reflex_low_latency_boost.load()) flags |= 0x4;
+    if (s_reflex_use_markers.load()) flags |= 0x8;
     
     if (s_reflex_debug_output >= 0.5f) {
         LogDebug("Reflex: Sending PCLStatsFlags ETW event with flags: " + std::to_string(flags));
@@ -824,10 +824,10 @@ void ReflexManager::PCLStatsMarkerV2(uint32_t marker_type, uint64_t frame_id)
 
     // Calculate flags (same as in PCLStatsInit)
     uint32_t flags = 0;
-    if (s_reflex_enabled >= 0.5f) flags |= 0x1;
-    if (s_reflex_low_latency_mode >= 0.5f) flags |= 0x2;
-    if (s_reflex_low_latency_boost >= 0.5f) flags |= 0x4;
-    if (s_reflex_use_markers >= 0.5f) flags |= 0x8;
+    if (s_reflex_enabled.load()) flags |= 0x1;
+    if (s_reflex_low_latency_mode.load()) flags |= 0x2;
+    if (s_reflex_low_latency_boost.load()) flags |= 0x4;
+    if (s_reflex_use_markers.load()) flags |= 0x8;
 
     // Send V2 ETW event with flags (same format as Special-K's PCLSTATS_MARKER_V2)
     TraceLoggingWrite(

@@ -185,10 +185,8 @@ reshade::api::color_space g_current_colorspace = reshade::api::color_space::unkn
 std::string g_hdr10_override_status = "Not applied";
 std::string g_hdr10_override_timestamp = "Never";
 
-// Monitor labels cache (updated by background thread)
-SpinLock g_monitor_labels_lock;
-std::vector<std::string> g_monitor_labels;
-std::atomic<bool> g_monitor_labels_need_update{true};
+// Monitor labels cache (updated by background thread) - lock-free publication
+std::atomic<std::shared_ptr<const std::vector<std::string>>> g_monitor_labels{std::make_shared<const std::vector<std::string>>()} ;
 
 // Experimental/Unstable features toggle
 float s_enable_unstable_reshade_features = 0.f; // Disabled by default

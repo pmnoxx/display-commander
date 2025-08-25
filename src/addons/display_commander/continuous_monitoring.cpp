@@ -106,10 +106,8 @@ void ContinuousMonitoringThread() {
             // Refresh every 2 seconds to avoid excessive work
             if ((seconds_counter % 2) == 0) {
                 auto labels = MakeMonitorLabels();
-                ::g_monitor_labels_lock.lock();
-                ::g_monitor_labels = std::move(labels);
-                ::g_monitor_labels_lock.unlock();
-                ::g_monitor_labels_need_update.store(false, std::memory_order_release);
+                auto next = std::make_shared<const std::vector<std::string>>(std::move(labels));
+                ::g_monitor_labels.store(next, std::memory_order_release);
             }
         }
 

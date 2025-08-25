@@ -56,6 +56,12 @@ void DrawDeveloperNewTab() {
     ImGui::Spacing();
     ImGui::Separator();
     
+    // Keyboard Shortcuts Section (Experimental)
+    DrawKeyboardShortcutsSettings();
+    
+    ImGui::Spacing();
+    ImGui::Separator();
+    
     // Latency Display Section
     DrawLatencyDisplay();
 }
@@ -357,44 +363,6 @@ void DrawReflexSettings() {
     }
 }
 
-void DrawLatencyDisplay() {
-    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "=== Latency Information ===");
-    
-    // Current Latency Display
-    extern std::atomic<float> g_current_latency_ms;
-    float latency = ::g_current_latency_ms.load();
-    
-    std::ostringstream oss;
-    oss << "Current Latency: " << std::fixed << std::setprecision(2) << latency << " ms";
-    ImGui::TextUnformatted(oss.str().c_str());
-    
-    // PCL AV Latency Display (Most Important)
-    extern std::atomic<float> g_pcl_av_latency_ms;
-    float pcl_latency = ::g_pcl_av_latency_ms.load();
-    
-    oss.str("");
-    oss.clear();
-    oss << "PCL AV Latency: " << std::fixed << std::setprecision(2) << pcl_latency << " ms";
-    ImGui::TextUnformatted(oss.str().c_str());
-    ImGui::SameLine();
-    ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "(30-frame avg)");
-    
-    // Reflex Status Display
-    extern std::atomic<bool> g_reflex_active;
-    extern std::atomic<uint64_t> g_current_frame;
-    bool is_active = ::g_reflex_active.load();
-    uint64_t frame = ::g_current_frame.load();
-    
-    oss.str("");
-    oss.clear();
-    if (is_active) {
-        oss << "Reflex Status: Active (Frame " << frame << ")";
-    } else {
-        oss << "Reflex Status: Inactive";
-    }
-    ImGui::TextUnformatted(oss.str().c_str());
-}
-
 void DrawResolutionOverrideSettings() {
     ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "=== Resolution Override (Experimental) ===");
     
@@ -441,6 +409,73 @@ void DrawResolutionOverrideSettings() {
     if (!unstable_enabled) {
         ImGui::TextDisabled("Enable 'unstable ReShade features' above to use resolution override.");
     }
+}
+
+void DrawKeyboardShortcutsSettings() {
+    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "=== Keyboard Shortcuts (Experimental) ===");
+    
+    // Check if unstable features are enabled
+    const bool unstable_enabled = (::s_enable_unstable_reshade_features >= 0.5f);
+    if (!unstable_enabled) ImGui::BeginDisabled();
+    
+    // Enable Mute/Unmute Shortcut (Ctrl+M)
+    if (CheckboxSetting(g_developerTabSettings.enable_mute_unmute_shortcut, "Enable Mute/Unmute Shortcut (Ctrl+M)")) {
+        ::s_enable_mute_unmute_shortcut = g_developerTabSettings.enable_mute_unmute_shortcut.GetValue() ? 1.0f : 0.0f;
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Enable keyboard shortcut Ctrl+M to quickly mute/unmute audio. Requires 'unstable ReShade features' to be enabled.");
+    }
+    
+    // Info text
+    if (g_developerTabSettings.enable_mute_unmute_shortcut.GetValue()) {
+        ImGui::Indent();
+        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Press Ctrl+M to toggle audio mute state");
+        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Shortcut works globally when enabled");
+        ImGui::Unindent();
+    }
+    
+    if (!unstable_enabled) ImGui::EndDisabled();
+    if (!unstable_enabled) {
+        ImGui::TextDisabled("Enable 'unstable ReShade features' above to use keyboard shortcuts.");
+    }
+}
+
+void DrawLatencyDisplay() {
+    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "=== Latency Information ===");
+    
+    // Current Latency Display
+    extern std::atomic<float> g_current_latency_ms;
+    float latency = ::g_current_latency_ms.load();
+    
+    std::ostringstream oss;
+    oss << "Current Latency: " << std::fixed << std::setprecision(2) << latency << " ms";
+    ImGui::TextUnformatted(oss.str().c_str());
+    
+    // PCL AV Latency Display (Most Important)
+    extern std::atomic<float> g_pcl_av_latency_ms;
+    float pcl_latency = ::g_pcl_av_latency_ms.load();
+    
+    oss.str("");
+    oss.clear();
+    oss << "PCL AV Latency: " << std::fixed << std::setprecision(2) << pcl_latency << " ms";
+    ImGui::TextUnformatted(oss.str().c_str());
+    ImGui::SameLine();
+    ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "(30-frame avg)");
+    
+    // Reflex Status Display
+    extern std::atomic<bool> g_reflex_active;
+    extern std::atomic<uint64_t> g_current_frame;
+    bool is_active = ::g_reflex_active.load();
+    uint64_t frame = ::g_current_frame.load();
+    
+    oss.str("");
+    oss.clear();
+    if (is_active) {
+        oss << "Reflex Status: Active (Frame " << frame << ")";
+    } else {
+        oss << "Reflex Status: Inactive";
+    }
+    ImGui::TextUnformatted(oss.str().c_str());
 }
 
 } // namespace ui::new_ui

@@ -26,6 +26,9 @@ void DrawSyncIntervalSettings();
 // Draw resolution override settings section (Experimental)
 void DrawResolutionOverrideSettings();
 
+// Draw keyboard shortcuts settings section
+void DrawKeyboardShortcutsSettings();
+
 // Draw latency display section
 void DrawLatencyDisplay();
 

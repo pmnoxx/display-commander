@@ -197,3 +197,6 @@ float s_enable_unstable_reshade_features = 0.f; // Disabled by default
 float s_enable_resolution_override = 0.f; // Disabled by default
 float s_override_resolution_width = 1920.f; // Default to 1920
 float s_override_resolution_height = 1080.f; // Default to 1080
+
+// Keyboard Shortcut Settings (Experimental)
+float s_enable_mute_unmute_shortcut = 0.f; // Disabled by default

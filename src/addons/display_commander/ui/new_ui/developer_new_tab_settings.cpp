@@ -22,6 +22,7 @@ extern float s_enable_unstable_reshade_features;
 extern float s_enable_resolution_override;
 extern float s_override_resolution_width;
 extern float s_override_resolution_height;
+extern float s_enable_mute_unmute_shortcut;
 
 namespace ui::new_ui {
 
@@ -45,6 +46,7 @@ DeveloperTabSettings::DeveloperTabSettings()
     , enable_resolution_override("EnableResolutionOverride", false, "DisplayCommanderNew")
     , override_resolution_width("OverrideResolutionWidth", 1920, 1, 7680, "DisplayCommanderNew")
     , override_resolution_height("OverrideResolutionHeight", 1080, 1, 4320, "DisplayCommanderNew")
+    , enable_mute_unmute_shortcut("EnableMuteUnmuteShortcut", false, "DisplayCommanderNew")
 {
 }
 
@@ -67,6 +69,7 @@ void DeveloperTabSettings::LoadAll() {
     enable_resolution_override.Load();
     override_resolution_width.Load();
     override_resolution_height.Load();
+    enable_mute_unmute_shortcut.Load();
     
     // Update global variables to maintain compatibility
     s_prevent_fullscreen = prevent_fullscreen.GetValue() ? 1.0f : 0.0f;
@@ -87,6 +90,7 @@ void DeveloperTabSettings::LoadAll() {
     s_enable_resolution_override = enable_resolution_override.GetValue() ? 1.0f : 0.0f;
     s_override_resolution_width = static_cast<float>(override_resolution_width.GetValue());
     s_override_resolution_height = static_cast<float>(override_resolution_height.GetValue());
+    s_enable_mute_unmute_shortcut = enable_mute_unmute_shortcut.GetValue() ? 1.0f : 0.0f;
 }
 
 void DeveloperTabSettings::SaveAll() {
@@ -107,6 +111,7 @@ void DeveloperTabSettings::SaveAll() {
     enable_resolution_override.Save();
     override_resolution_width.Save();
     override_resolution_height.Save();
+    enable_mute_unmute_shortcut.Save();
 }
 
 std::vector<ui::new_ui::SettingBase*> DeveloperTabSettings::GetAllSettings() {
@@ -128,7 +133,8 @@ std::vector<ui::new_ui::SettingBase*> DeveloperTabSettings::GetAllSettings() {
         &enable_unstable_reshade_features,
         &enable_resolution_override,
         &override_resolution_width,
-        &override_resolution_height
+        &override_resolution_height,
+        &enable_mute_unmute_shortcut
     };
 }
 

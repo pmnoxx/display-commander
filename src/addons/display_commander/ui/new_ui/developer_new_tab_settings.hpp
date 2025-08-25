@@ -46,6 +46,9 @@ public:
     ui::new_ui::IntSetting override_resolution_width;
     ui::new_ui::IntSetting override_resolution_height;
     
+    // Keyboard Shortcut Settings (Experimental)
+    ui::new_ui::BoolSetting enable_mute_unmute_shortcut;
+    
     // Sync Interval Settings
     ui::new_ui::ComboSetting sync_interval;
     

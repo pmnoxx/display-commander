@@ -4,6 +4,7 @@
 #include "dxgi/custom_fps_limiter_manager.hpp"
 #include "resolution_helpers.hpp"
 #include "display_cache.hpp"
+#include "audio/audio_management.hpp"
 #include <dxgi1_4.h>
 #include "utils.hpp"
 #include <chrono>
@@ -11,6 +12,7 @@
 #include <sstream>
 #include <unordered_map>
 #include <mutex>
+#include <minwindef.h>
 
 // Use renodx2 utilities for swapchain color space changes
 #include <utils/swapchain.hpp>
@@ -318,6 +320,34 @@ void OnPresentUpdate(
       // Call every frame as long as any blocking is desired
       if (is_background && wants_block_input) {
         runtime->block_input_next_frame();
+      }
+    }
+  }
+  
+  // Handle keyboard shortcuts (Experimental)
+  if (s_enable_mute_unmute_shortcut >= 0.5f) {
+    extern std::atomic<reshade::api::effect_runtime*> g_reshade_runtime;
+    
+    // Get the runtime from the atomic variable
+    reshade::api::effect_runtime* runtime = g_reshade_runtime.load();
+    if (runtime != nullptr) {
+      // Check for Ctrl+M shortcut
+      if (runtime->is_key_pressed('M') && runtime->is_key_down(VK_CONTROL)) {
+        extern float s_audio_mute;
+        extern std::atomic<bool> g_muted_applied;
+        
+        // Toggle mute state
+        bool new_mute_state = (s_audio_mute < 0.5f);
+        if (SetMuteForCurrentProcess(new_mute_state)) {
+          s_audio_mute = new_mute_state ? 1.0f : 0.0f;
+          g_muted_applied.store(new_mute_state);
+          
+          // Log the action
+          extern void LogInfo(const char* message);
+          std::ostringstream oss;
+          oss << "Audio " << (new_mute_state ? "muted" : "unmuted") << " via Ctrl+M shortcut";
+          LogInfo(oss.str().c_str());
+        }
       }
     }
   }

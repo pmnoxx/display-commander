@@ -302,3 +302,6 @@ extern float s_enable_unstable_reshade_features;
 extern float s_enable_resolution_override;
 extern float s_override_resolution_width;
 extern float s_override_resolution_height;
+
+// Keyboard Shortcut Settings (Experimental)
+extern float s_enable_mute_unmute_shortcut;

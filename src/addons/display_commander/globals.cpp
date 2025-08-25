@@ -30,7 +30,6 @@ std::atomic<bool> s_nvapi_fullscreen_prevention{false}; // disabled by default
 // NVAPI HDR logging
 std::atomic<bool> s_nvapi_hdr_logging{false};
 std::atomic<float> s_nvapi_hdr_interval_sec{5.f};
-std::atomic<bool> s_nvapi_force_hdr10{false}; // disabled by default
 
 // Spoof Fullscreen State (for applications that query fullscreen status)
 std::atomic<int> s_spoof_fullscreen_state{0}; // 0 = Disabled, 1 = Spoof as Fullscreen, 2 = Spoof as Windowed

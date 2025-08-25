@@ -14,7 +14,6 @@ extern std::atomic<bool> s_fix_hdr10_colorspace;
 extern std::atomic<bool> s_nvapi_fullscreen_prevention;
 extern std::atomic<bool> s_nvapi_hdr_logging;
 extern std::atomic<float> s_nvapi_hdr_interval_sec;
-extern std::atomic<bool> s_nvapi_force_hdr10;
 extern std::atomic<bool> s_reflex_enabled;
 extern std::atomic<bool> s_reflex_debug_output;
 extern std::atomic<bool> s_remove_top_bar;
@@ -39,7 +38,6 @@ DeveloperTabSettings::DeveloperTabSettings()
     , nvapi_fullscreen_prevention("NvapiFullscreenPrevention", false, "DisplayCommander")
     , nvapi_hdr_logging("NvapiHDRLogging", false, "DisplayCommander")
     , nvapi_hdr_interval_sec("NvapiHDRInterval", 5.0f, 1.0f, 60.0f, "DisplayCommander")
-    , nvapi_force_hdr10("NvapiForceHDR10", false, "DisplayCommander")
     , reflex_enabled("ReflexEnabled", false, "DisplayCommander")
     , reflex_debug_output("ReflexDebugOutput", false, "DisplayCommander")
     , fps_extra_wait_ms("FpsLimiterExtraWaitMs", 0.0f, 0.0f, 10.0f, "DisplayCommander")
@@ -62,7 +60,6 @@ void DeveloperTabSettings::LoadAll() {
     nvapi_fullscreen_prevention.Load();
     nvapi_hdr_logging.Load();
     nvapi_hdr_interval_sec.Load();
-    nvapi_force_hdr10.Load();
     reflex_enabled.Load();
     reflex_debug_output.Load();
     fps_extra_wait_ms.Load();
@@ -83,7 +80,6 @@ void DeveloperTabSettings::LoadAll() {
     s_nvapi_fullscreen_prevention.store(nvapi_fullscreen_prevention.GetValue());
     s_nvapi_hdr_logging.store(nvapi_hdr_logging.GetValue());
     s_nvapi_hdr_interval_sec.store(nvapi_hdr_interval_sec.GetValue());
-    s_nvapi_force_hdr10.store(nvapi_force_hdr10.GetValue());
     s_reflex_enabled.store(reflex_enabled.GetValue());
     s_reflex_debug_output.store(reflex_debug_output.GetValue());
     s_fps_extra_wait_ms.store(fps_extra_wait_ms.GetValue());
@@ -104,7 +100,6 @@ void DeveloperTabSettings::SaveAll() {
     fix_hdr10_colorspace.Save();
     nvapi_hdr_logging.Save();
     nvapi_hdr_interval_sec.Save();
-    nvapi_force_hdr10.Save();
     reflex_enabled.Save();
     reflex_debug_output.Save();
     fps_extra_wait_ms.Save();
@@ -127,7 +122,6 @@ std::vector<ui::new_ui::SettingBase*> DeveloperTabSettings::GetAllSettings() {
         &nvapi_fullscreen_prevention,
         &nvapi_hdr_logging,
         &nvapi_hdr_interval_sec,
-        &nvapi_force_hdr10,
         &reflex_enabled,
         &reflex_debug_output,
         &fps_extra_wait_ms,

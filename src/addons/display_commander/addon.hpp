@@ -155,7 +155,6 @@ extern std::atomic<bool> s_nvapi_fullscreen_prevention;
 // NVAPI HDR logging
 extern std::atomic<bool> s_nvapi_hdr_logging;
 extern std::atomic<float> s_nvapi_hdr_interval_sec;
-extern std::atomic<bool> s_nvapi_force_hdr10;
 
 // Spoof Fullscreen State (for applications that query fullscreen status)
 extern std::atomic<int> s_spoof_fullscreen_state;

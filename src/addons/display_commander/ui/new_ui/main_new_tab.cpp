@@ -9,6 +9,7 @@
 #include "../../audio/audio_management.hpp"
 #include "../../dxgi/custom_fps_limiter.hpp"
 #include "../../dxgi/custom_fps_limiter_manager.hpp"
+#include <minwindef.h>
 #include <sstream>
 #include <thread>
 #include <atomic>
@@ -398,6 +399,8 @@ void DrawDisplaySettings() {
                 s_force_vsync_on.store(false);
                 g_main_new_tab_settings.prevent_tearing.SetValue(false);
                 s_prevent_tearing.store(false);
+                g_main_new_tab_settings.allow_tearing.SetValue(true);
+                s_allow_tearing.store(true);
             }
             g_main_new_tab_settings.force_vsync_off.SetValue(vs_off);
             s_force_vsync_off.store(vs_off);
@@ -416,6 +419,10 @@ void DrawDisplaySettings() {
             if (allow_t) {
                 g_main_new_tab_settings.prevent_tearing.SetValue(false);
                 s_prevent_tearing.store(false);
+            }
+            if (!allow_t) {
+                g_main_new_tab_settings.force_vsync_off.SetValue(false);
+                s_force_vsync_off.store(false);
             }
             g_main_new_tab_settings.allow_tearing.SetValue(allow_t);
             s_allow_tearing.store(allow_t);

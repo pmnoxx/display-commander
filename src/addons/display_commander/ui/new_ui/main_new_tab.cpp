@@ -525,14 +525,26 @@ void DrawDisplaySettings() {
                             if (selected) {
                                 ImGui::PopStyleColor(3);
                             }
+                            // Add tooltip showing the precise calculation
+                            if (ImGui::IsItemHovered()) {
+                                std::ostringstream tooltip_oss;
+                                tooltip_oss.setf(std::ios::fixed);
+                                tooltip_oss << std::setprecision(3);
+                                tooltip_oss << "FPS = " << refresh_hz << " ÷ " << x << " = " << candidate_precise << " FPS\n\n";
+                                tooltip_oss << "Creates a smooth frame rate that divides evenly\n";
+                                tooltip_oss << "into the monitor's refresh rate.";
+                                ImGui::SetTooltip("%s", tooltip_oss.str().c_str());
+                            }
                         }
                     }
                 }
             }
-            // Add 95% button at the end
+            // Add Reflex Cap button at the end
             if (!first) ImGui::SameLine();
             {
-                float precise_target = static_cast<float>(refresh_hz * 0.96);
+                // Reflex formula: refresh_hz - (refresh_hz * refresh_hz / 3600)
+                double reflex_target = refresh_hz - (refresh_hz * refresh_hz / 3600.0);
+                float precise_target = static_cast<float>(reflex_target);
                 if (precise_target < 1.0f) precise_target = 1.0f;
                 bool selected = (std::fabs(s_fps_limit.load() - precise_target) <= selected_epsilon);
                 if (selected) {
@@ -540,8 +552,8 @@ void DrawDisplaySettings() {
                     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.20f, 0.70f, 0.20f, 1.0f));
                     ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.10f, 0.50f, 0.10f, 1.0f));
                 }
-                if (ImGui::Button("96%")) {
-                double precise_target = refresh_hz * 0.96; // do not round on apply
+                if (ImGui::Button("Reflex Cap")) {
+                double precise_target = reflex_target; // do not round on apply
                 float target_fps = static_cast<float>(precise_target < 1.0 ? 1.0 : precise_target);
                 s_fps_limit.store(target_fps);
                 g_main_new_tab_settings.fps_limit.SetValue(target_fps);
@@ -558,7 +570,7 @@ void DrawDisplaySettings() {
                         std::ostringstream oss;
                         oss.setf(std::ios::fixed);
                         oss << std::setprecision(3);
-                        oss << "FPS limit applied: " << target_fps << " FPS (96% of refresh via Custom FPS Limiter)";
+                        oss << "FPS limit applied: " << target_fps << " FPS (Reflex Cap via Custom FPS Limiter)";
                         LogInfo(oss.str().c_str());
                     }
                 } else {
@@ -571,6 +583,17 @@ void DrawDisplaySettings() {
                 }
                 if (selected) {
                     ImGui::PopStyleColor(3);
+                }
+                // Add tooltip explaining the Reflex formula
+                if (ImGui::IsItemHovered()) {
+                    std::ostringstream tooltip_oss;
+                    tooltip_oss.setf(std::ios::fixed);
+                    tooltip_oss << std::setprecision(3);
+                    tooltip_oss << "Reflex Cap: FPS = " << refresh_hz << " - (" << refresh_hz << "² / 3600)\n";
+                    tooltip_oss << "= " << refresh_hz << " - " << (refresh_hz * refresh_hz / 3600.0) << " = " << reflex_target << " FPS\n\n";
+                    tooltip_oss << "Creates a ~0.3ms frame time buffer to optimize latency\n";
+                    tooltip_oss << "and prevent tearing, similar to NVIDIA Reflex Low Latency Mode.";
+                    ImGui::SetTooltip("%s", tooltip_oss.str().c_str());
                 }
             }
         }

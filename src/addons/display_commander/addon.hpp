@@ -276,10 +276,16 @@ void OnPresentUpdate(reshade::api::command_queue* queue, reshade::api::swapchain
 
 
 // HDR10 colorspace override status for UI display
-extern std::string g_hdr10_override_status;
+extern std::atomic<std::shared_ptr<std::string>> g_hdr10_override_status;
 
 // HDR10 colorspace override timestamp for UI display
-extern std::string g_hdr10_override_timestamp;
+extern std::atomic<std::shared_ptr<std::string>> g_hdr10_override_timestamp;
+
+// Helper function for updating HDR10 override status atomically
+void UpdateHdr10OverrideStatus(const std::string& status);
+
+// Helper function for updating HDR10 override timestamp atomically
+void UpdateHdr10OverrideTimestamp(const std::string& timestamp);
 
 // Note: GetIndependentFlipState is implemented in the .cpp file as it's complex
 

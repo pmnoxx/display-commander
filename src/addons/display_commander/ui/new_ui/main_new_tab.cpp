@@ -500,8 +500,8 @@ void DrawDisplaySettings() {
                     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.20f, 0.70f, 0.20f, 1.0f));
                     ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.10f, 0.50f, 0.10f, 1.0f));
                 }
-                if (ImGui::Button("95%")) {
-                double precise_target = refresh_hz * 0.95; // do not round on apply
+                if (ImGui::Button("96%")) {
+                double precise_target = refresh_hz * 0.96; // do not round on apply
                 float target_fps = static_cast<float>(precise_target < 1.0 ? 1.0 : precise_target);
                 s_fps_limit = target_fps;
                 g_main_new_tab_settings.fps_limit.SetValue(target_fps);
@@ -518,7 +518,7 @@ void DrawDisplaySettings() {
                         std::ostringstream oss;
                         oss.setf(std::ios::fixed);
                         oss << std::setprecision(3);
-                        oss << "FPS limit applied: " << target_fps << " FPS (95% of refresh via Custom FPS Limiter)";
+                        oss << "FPS limit applied: " << target_fps << " FPS (96% of refresh via Custom FPS Limiter)";
                         LogInfo(oss.str().c_str());
                     }
                 } else {

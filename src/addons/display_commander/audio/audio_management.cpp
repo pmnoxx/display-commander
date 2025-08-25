@@ -189,17 +189,17 @@ void RunBackgroundAudioMonitor() {
     bool want_mute = false;
     
     // Check if manual mute is enabled - if so, always mute regardless of background state
-    if (s_audio_mute >= 0.5f) {
+    if (s_audio_mute.load()) {
       want_mute = true;
     }
     // Only apply background mute logic if manual mute is OFF
-    else if (s_mute_in_background >= 0.5f || s_mute_in_background_if_other_audio >= 0.5f) {
+    else if (s_mute_in_background.load() || s_mute_in_background_if_other_audio.load()) {
       HWND hwnd = g_last_swapchain_hwnd.load();
       if (hwnd == nullptr) hwnd = GetForegroundWindow();
       // Use actual focus state for background audio (not spoofed)
       const bool is_background = (hwnd != nullptr && GetForegroundWindow() != hwnd);
       if (is_background) {
-        if (s_mute_in_background_if_other_audio >= 0.5f) {
+        if (s_mute_in_background_if_other_audio.load()) {
           // Only mute if some other app is outputting audio
           want_mute = IsOtherAppPlayingAudio();
         } else {

@@ -19,7 +19,7 @@ extern std::thread g_monitoring_thread;
 extern std::atomic<HWND> g_last_swapchain_hwnd;
 
 // Additional global variables needed for monitoring
-extern float s_remove_top_bar;
+extern std::atomic<bool> s_remove_top_bar;
 extern std::atomic<bool> s_prevent_always_on_top;
 
 extern std::atomic<bool> s_background_feature_enabled; // Added this line

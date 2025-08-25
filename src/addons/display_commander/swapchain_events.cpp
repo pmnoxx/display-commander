@@ -81,20 +81,20 @@ bool OnCreateSwapchainCapture(reshade::api::device_api /*api*/, reshade::api::sw
   
   // Apply sync interval setting if enabled
   bool modified = false;
-  extern float s_force_vsync_on;
-  extern float s_force_vsync_off;
-  extern float s_allow_tearing;
-  extern float s_prevent_tearing;
+  extern std::atomic<bool> s_force_vsync_on;
+  extern std::atomic<bool> s_force_vsync_off;
+  extern std::atomic<bool> s_allow_tearing;
+  extern std::atomic<bool> s_prevent_tearing;
   
   // Apply tearing preference if requested and applicable
   {
     const bool is_flip = (desc.present_mode == DXGI_SWAP_EFFECT_FLIP_DISCARD || desc.present_mode == DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL);
     if (is_flip) {
-      if (s_prevent_tearing >= 0.5f) {
+      if (s_prevent_tearing.load()) {
         // Clear allow tearing flag when preventing tearing
         desc.present_flags &= ~DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
         modified = true;
-      } else if (s_allow_tearing >= 0.5f) {
+      } else if (s_allow_tearing.load()) {
         // Enable tearing when requested
         desc.present_flags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
         modified = true;
@@ -102,21 +102,21 @@ bool OnCreateSwapchainCapture(reshade::api::device_api /*api*/, reshade::api::sw
     }
   }
   // Explicit VSYNC overrides take precedence over generic sync-interval dropdown
-  if (s_force_vsync_on >= 0.5f) {
+  if (s_force_vsync_on.load()) {
     desc.sync_interval = 1; // VSYNC on
     desc.present_flags &= ~DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
     modified = true;
-  } else if (s_force_vsync_off >= 0.5f) {
+  } else if (s_force_vsync_off.load()) {
     desc.sync_interval = 0; // VSYNC off
     modified = true;
   }
   
   // Apply resolution override if enabled (Experimental)
-  extern float s_enable_resolution_override;
+  extern std::atomic<bool> s_enable_resolution_override;
   extern float s_override_resolution_width;
   extern float s_override_resolution_height;
   
-  if (s_enable_resolution_override >= 0.5f) {
+  if (s_enable_resolution_override.load()) {
     const int width = static_cast<int>(s_override_resolution_width);
     const int height = static_cast<int>(s_override_resolution_height);
     
@@ -296,7 +296,7 @@ void OnPresentUpdate(
     if (runtime != nullptr) {
       extern std::atomic<bool> g_app_in_background;
       const bool is_background = g_app_in_background.load(std::memory_order_acquire);
-      const bool wants_block_input = (s_block_input_in_background >= 0.5f) && is_background;
+      const bool wants_block_input = s_block_input_in_background.load() && is_background;
       // Call every frame as long as any blocking is desired
       if (is_background && wants_block_input) {
         runtime->block_input_next_frame();
@@ -305,7 +305,7 @@ void OnPresentUpdate(
   }
   
   // Handle keyboard shortcuts (Experimental)
-  if (s_enable_mute_unmute_shortcut >= 0.5f) {
+  if (s_enable_mute_unmute_shortcut.load()) {
     extern std::atomic<reshade::api::effect_runtime*> g_reshade_runtime;
     
     // Get the runtime from the atomic variable
@@ -313,13 +313,13 @@ void OnPresentUpdate(
     if (runtime != nullptr) {
       // Check for Ctrl+M shortcut
       if (runtime->is_key_pressed('M') && runtime->is_key_down(VK_CONTROL)) {
-        extern float s_audio_mute;
+        extern std::atomic<bool> s_audio_mute;
         extern std::atomic<bool> g_muted_applied;
         
         // Toggle mute state
-        bool new_mute_state = (s_audio_mute < 0.5f);
+        bool new_mute_state = !s_audio_mute.load();
         if (SetMuteForCurrentProcess(new_mute_state)) {
-          s_audio_mute = new_mute_state ? 1.0f : 0.0f;
+          s_audio_mute.store(new_mute_state);
           g_muted_applied.store(new_mute_state);
           
           // Log the action

@@ -70,24 +70,24 @@ void InitMainNewTab() {
         s_fps_limit = g_main_new_tab_settings.fps_limit.GetValue();
         s_fps_limit_background = g_main_new_tab_settings.fps_limit_background.GetValue();
         s_audio_volume_percent = g_main_new_tab_settings.audio_volume_percent.GetValue();
-        s_audio_mute = g_main_new_tab_settings.audio_mute.GetValue() ? 1.0f : 0.0f;
-        s_mute_in_background = g_main_new_tab_settings.mute_in_background.GetValue() ? 1.0f : 0.0f;
-        s_mute_in_background_if_other_audio = g_main_new_tab_settings.mute_in_background_if_other_audio.GetValue() ? 1.0f : 0.0f;
+        s_audio_mute.store(g_main_new_tab_settings.audio_mute.GetValue());
+        s_mute_in_background.store(g_main_new_tab_settings.mute_in_background.GetValue());
+        s_mute_in_background_if_other_audio.store(g_main_new_tab_settings.mute_in_background_if_other_audio.GetValue());
         // VSync & Tearing
-        s_force_vsync_on = g_main_new_tab_settings.force_vsync_on.GetValue() ? 1.0f : 0.0f;
-        s_force_vsync_off = g_main_new_tab_settings.force_vsync_off.GetValue() ? 1.0f : 0.0f;
-        s_allow_tearing = g_main_new_tab_settings.allow_tearing.GetValue() ? 1.0f : 0.0f;
-        s_prevent_tearing = g_main_new_tab_settings.prevent_tearing.GetValue() ? 1.0f : 0.0f;
+        s_force_vsync_on.store(g_main_new_tab_settings.force_vsync_on.GetValue());
+        s_force_vsync_off.store(g_main_new_tab_settings.force_vsync_off.GetValue());
+        s_allow_tearing.store(g_main_new_tab_settings.allow_tearing.GetValue());
+        s_prevent_tearing.store(g_main_new_tab_settings.prevent_tearing.GetValue());
         // Resolve persisted conflicts: Prevent Tearing takes precedence
-        if (s_prevent_tearing >= 0.5f && s_allow_tearing >= 0.5f) {
+        if (s_prevent_tearing.load() && s_allow_tearing.load()) {
             g_main_new_tab_settings.allow_tearing.SetValue(false);
-            s_allow_tearing = 0.0f;
+            s_allow_tearing.store(false);
         }
-        s_block_input_in_background = g_main_new_tab_settings.block_input_in_background.GetValue() ? 1.0f : 0.0f;
+        s_block_input_in_background.store(g_main_new_tab_settings.block_input_in_background.GetValue());
         settings_loaded_once = true;
 
         // If manual Audio Mute is OFF, proactively unmute on startup
-        if (s_audio_mute < 0.5f) {
+        if (!s_audio_mute.load()) {
             if (::SetMuteForCurrentProcess(false)) {
                 ::g_muted_applied.store(false);
                 LogInfo("Audio unmuted at startup (Audio Mute is OFF)");
@@ -151,13 +151,13 @@ void DrawMainNewTab() {
     // Input Blocking (Background) Section
     {
         ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== Input Control (Background) ===");
-        const bool unstable_enabled = (::s_enable_unstable_reshade_features >= 0.5f);
+        const bool unstable_enabled = ::s_enable_unstable_reshade_features.load();
         if (!unstable_enabled) ImGui::BeginDisabled();
         bool block_any_in_background =
             g_main_new_tab_settings.block_input_in_background.GetValue();
         if (ImGui::Checkbox("Block Input in Background (Custom DLL needed)", &block_any_in_background)) {
             g_main_new_tab_settings.block_input_in_background.SetValue(block_any_in_background);
-            s_block_input_in_background = block_any_in_background ? 1.0f : 0.0f;
+            s_block_input_in_background.store(block_any_in_background);
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Blocks mouse, keyboard, and cursor warping while the game window is not focused.");
@@ -382,12 +382,12 @@ void DrawDisplaySettings() {
             // Mutual exclusion
             if (vs_on) {
                 g_main_new_tab_settings.force_vsync_off.SetValue(false);
-                s_force_vsync_off = 0.0f;
+                s_force_vsync_off.store(false);
                 g_main_new_tab_settings.allow_tearing.SetValue(false);
-                s_allow_tearing = 0.0f;
+                s_allow_tearing.store(false);
             }
             g_main_new_tab_settings.force_vsync_on.SetValue(vs_on);
-            s_force_vsync_on = vs_on ? 1.0f : 0.0f;
+            s_force_vsync_on.store(vs_on);
             LogInfo(vs_on ? "Force VSync ON enabled" : "Force VSync ON disabled");
         }
         if (ImGui::IsItemHovered()) {
@@ -401,10 +401,10 @@ void DrawDisplaySettings() {
             // Mutual exclusion
             if (vs_off) {
                 g_main_new_tab_settings.force_vsync_on.SetValue(false);
-                s_force_vsync_on = 0.0f;
+                s_force_vsync_on.store(false);
             }
             g_main_new_tab_settings.force_vsync_off.SetValue(vs_off);
-            s_force_vsync_off = vs_off ? 1.0f : 0.0f;
+            s_force_vsync_off.store(vs_off);
             LogInfo(vs_off ? "Force VSync OFF enabled" : "Force VSync OFF disabled");
         }
         if (ImGui::IsItemHovered()) {
@@ -418,12 +418,12 @@ void DrawDisplaySettings() {
             // Mutual exclusion with Prevent Tearing
             if (allow_t) {
                 g_main_new_tab_settings.prevent_tearing.SetValue(false);
-                s_prevent_tearing = 0.0f;
+                s_prevent_tearing.store(false);
                 g_main_new_tab_settings.force_vsync_on.SetValue(false);
-                s_force_vsync_on = 0.0f;
+                s_force_vsync_on.store(false);
             }
             g_main_new_tab_settings.allow_tearing.SetValue(allow_t);
-            s_allow_tearing = allow_t ? 1.0f : 0.0f;
+            s_allow_tearing.store(allow_t);
             LogInfo(allow_t ? "DXGI tearing allowed enabled (flag will be applied on swapchain)" : "DXGI tearing allowed disabled");
         }
         if (ImGui::IsItemHovered()) {
@@ -437,10 +437,10 @@ void DrawDisplaySettings() {
             // Mutual exclusion with Enable Tearing
             if (prevent_t) {
                 g_main_new_tab_settings.allow_tearing.SetValue(false);
-                s_allow_tearing = 0.0f;
+                s_allow_tearing.store(false);
             }
             g_main_new_tab_settings.prevent_tearing.SetValue(prevent_t);
-            s_prevent_tearing = prevent_t ? 1.0f : 0.0f;
+            s_prevent_tearing.store(prevent_t);
             LogInfo(prevent_t ? "Prevent Tearing enabled (tearing flags will be cleared)" : "Prevent Tearing disabled");
         }
         if (ImGui::IsItemHovered()) {
@@ -657,9 +657,9 @@ void DrawAudioSettings() {
     }
     
     // Audio Mute checkbox
-    bool audio_mute = (s_audio_mute >= 0.5f);
+    bool audio_mute = s_audio_mute.load();
     if (ImGui::Checkbox("Audio Mute", &audio_mute)) {
-        s_audio_mute = audio_mute ? 1.0f : 0.0f;
+        s_audio_mute.store(audio_mute);
         
         // Apply mute/unmute immediately
         if (::SetMuteForCurrentProcess(audio_mute)) {
@@ -678,17 +678,17 @@ void DrawAudioSettings() {
     }
     
     // Mute in Background checkbox (disabled if Mute is ON)
-    bool mute_in_bg = (s_mute_in_background >= 0.5f);
-    if (s_audio_mute >= 0.5f) {
+    bool mute_in_bg = s_mute_in_background.load();
+    if (s_audio_mute.load()) {
         ImGui::BeginDisabled();
     }
     if (ImGui::Checkbox("Mute In Background", &mute_in_bg)) {
-        s_mute_in_background = mute_in_bg ? 1.0f : 0.0f;
+        s_mute_in_background.store(mute_in_bg);
         
         // Reset applied flag so the monitor thread reapplies desired state
         ::g_muted_applied.store(false);
         // Also apply the current mute state immediately if manual mute is off
-        if (s_audio_mute < 0.5f) {
+        if (!s_audio_mute.load()) {
             HWND hwnd = g_last_swapchain_hwnd.load();
             if (hwnd == nullptr) hwnd = GetForegroundWindow();
             // Use actual focus state for background audio (not spoofed)
@@ -704,20 +704,20 @@ void DrawAudioSettings() {
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Mute the game's audio when it is not the foreground window.");
     }
-    if (s_audio_mute >= 0.5f) {
+    if (s_audio_mute.load()) {
         ImGui::EndDisabled();
     }
 
     // Mute in Background only if other app plays audio
-    bool mute_in_bg_if_other = (s_mute_in_background_if_other_audio >= 0.5f);
-    if (s_audio_mute >= 0.5f) {
+    bool mute_in_bg_if_other = s_mute_in_background_if_other_audio.load();
+    if (s_audio_mute.load()) {
         ImGui::BeginDisabled();
     }
     if (ImGui::Checkbox("Mute In Background (only if other app has audio)", &mute_in_bg_if_other)) {
-        s_mute_in_background_if_other_audio = mute_in_bg_if_other ? 1.0f : 0.0f;
+        s_mute_in_background_if_other_audio.store(mute_in_bg_if_other);
         g_main_new_tab_settings.mute_in_background_if_other_audio.SetValue(mute_in_bg_if_other);
         ::g_muted_applied.store(false);
-        if (s_audio_mute < 0.5f) {
+        if (!s_audio_mute.load()) {
             HWND hwnd = g_last_swapchain_hwnd.load();
             if (hwnd == nullptr) hwnd = GetForegroundWindow();
             bool is_background = (hwnd != nullptr && GetForegroundWindow() != hwnd);
@@ -732,7 +732,7 @@ void DrawAudioSettings() {
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Mute only if app is background AND another app outputs audio.");
     }
-    if (s_audio_mute >= 0.5f) {
+    if (s_audio_mute.load()) {
         ImGui::EndDisabled();
     }
 }

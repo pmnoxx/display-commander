@@ -90,7 +90,7 @@ extern std::thread g_monitoring_thread;
 
 // Continuous rendering system
 extern std::atomic<bool> s_continuous_rendering_enabled;
-extern float s_force_continuous_rendering;
+extern std::atomic<bool> s_force_continuous_rendering;
 extern float s_continuous_rendering_throttle;
 // CONTINUOUS RENDERING THREAD VARIABLES REMOVED - Focus spoofing is now handled by Win32 hooks
 
@@ -143,33 +143,33 @@ extern std::atomic<bool> s_reflex_low_latency_boost;
 extern std::atomic<bool> s_reflex_use_markers;
 extern std::atomic<bool> s_enable_unstable_reshade_features;
 
-extern float s_windowed_width;
-extern float s_windowed_height;
-extern float s_window_mode;
-extern float s_remove_top_bar;
+extern std::atomic<int> s_windowed_width;
+extern std::atomic<int> s_windowed_height;
+extern std::atomic<int> s_window_mode; // 0 = Windowed, 1 = Borderless, 2 = Overlapped Window
+extern std::atomic<bool> s_remove_top_bar;
 extern std::atomic<bool> s_suppress_move_resize_messages;
 
-extern float s_suppress_maximize;
-extern float s_aspect_index;
+extern std::atomic<bool> s_suppress_maximize;
+extern std::atomic<int> s_aspect_index; // 0 = 16:9, 1 = 16:10, 2 = 4:3, 3 = 3:2, 4 = 1:1, 5 = 1:2, 6 = 2:3, 7 = 3:4, 8 = 9:16, 9 = 10:16
 // Window alignment when repositioning is needed (0 = None, 1 = Top Left, 2 = Top Right, 3 = Bottom Left, 4 = Bottom Right)
-extern float s_move_to_zero_if_out;
+extern std::atomic<int> s_move_to_zero_if_out; // 0 = Disabled, 1 = Move to zero if out, 2 = Move to zero if out and windowed
 
 // Prevent Fullscreen
-extern float s_prevent_fullscreen;
+extern std::atomic<bool> s_prevent_fullscreen;
 
 // NVAPI Fullscreen Prevention
-extern float s_nvapi_fullscreen_prevention;
+extern std::atomic<bool> s_nvapi_fullscreen_prevention;
 // NVAPI HDR logging
-extern float s_nvapi_hdr_logging;
+extern std::atomic<bool> s_nvapi_hdr_logging;
 extern float s_nvapi_hdr_interval_sec;
-extern float s_nvapi_force_hdr10;
+extern std::atomic<bool> s_nvapi_force_hdr10;
 
 // Spoof Fullscreen State (for applications that query fullscreen status)
-extern float s_spoof_fullscreen_state;
-extern float s_mute_in_background;
-extern float s_mute_in_background_if_other_audio;
+extern std::atomic<int> s_spoof_fullscreen_state;
+extern std::atomic<bool> s_mute_in_background;
+extern std::atomic<bool> s_mute_in_background_if_other_audio;
 extern float s_audio_volume_percent;
-extern float s_audio_mute;
+extern std::atomic<bool> s_audio_mute;
 extern float s_fps_limit_background;
 extern float s_fps_limit;
 // Extra wait time for FPS limiter in milliseconds
@@ -177,17 +177,17 @@ extern float s_fps_extra_wait_ms;
 extern float s_custom_fps_limit;
 extern std::atomic<bool> s_custom_fps_limiter_enabled;
 // VSync and tearing controls
-extern float s_force_vsync_on;
-extern float s_force_vsync_off;
-extern float s_allow_tearing;
-extern float s_prevent_tearing;
+extern std::atomic<bool> s_force_vsync_on;
+extern std::atomic<bool> s_force_vsync_off;
+extern std::atomic<bool> s_allow_tearing;
+extern std::atomic<bool> s_prevent_tearing;
 extern float s_target_monitor_index;
 extern float s_dxgi_composition_state;
 
-extern float s_spoof_window_focus;
+extern std::atomic<int> s_spoof_window_focus;
 
 // Input blocking in background
-extern float s_block_input_in_background;
+extern std::atomic<bool> s_block_input_in_background;
 
 extern std::atomic<int> g_comp_query_counter;
 extern std::atomic<int> g_comp_last_logged;
@@ -205,10 +205,10 @@ extern std::atomic<float> g_default_fps_limit;
 extern std::vector<MonitorInfo> g_monitors;
 
 // Fix HDR10 color space when backbuffer is RGB10A2
-extern float s_fix_hdr10_colorspace;
+extern std::atomic<bool> s_fix_hdr10_colorspace;
 
 // Window minimize prevention
-extern float s_prevent_windows_minimize;
+extern std::atomic<bool> s_prevent_windows_minimize;
 
 // Prevent always on top behavior
 extern std::atomic<bool> s_prevent_always_on_top;
@@ -217,7 +217,7 @@ extern std::atomic<bool> s_prevent_always_on_top;
 extern std::atomic<bool> s_background_feature_enabled;
 
 // Enforce desired window settings
-extern float s_enforce_desired_window;
+extern std::atomic<bool> s_enforce_desired_window;
 
 // Desktop Resolution Override
 extern float s_selected_monitor_index;
@@ -304,9 +304,9 @@ bool OnCreateSwapchainCapture(reshade::api::device_api api, reshade::api::swapch
 extern std::atomic<bool> s_enable_unstable_reshade_features;
 
 // Resolution Override Settings (Experimental)
-extern float s_enable_resolution_override;
+extern std::atomic<bool> s_enable_resolution_override;
 extern float s_override_resolution_width;
 extern float s_override_resolution_height;
 
 // Keyboard Shortcut Settings (Experimental)
-extern float s_enable_mute_unmute_shortcut;
+extern std::atomic<bool> s_enable_mute_unmute_shortcut;

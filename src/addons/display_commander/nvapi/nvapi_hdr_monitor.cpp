@@ -9,7 +9,7 @@
 // Background NVAPI HDR monitor thread
 void RunBackgroundNvapiHdrMonitor() {
     // Ensure NVAPI is initialized if we plan to log
-    if (s_nvapi_hdr_logging < 0.5f) return;
+    if (!s_nvapi_hdr_logging.load()) return;
     if (!g_nvapiFullscreenPrevention.IsAvailable()) {
         if (!g_nvapiFullscreenPrevention.Initialize()) {
             LogWarn("NVAPI HDR monitor: failed to initialize NVAPI");
@@ -20,7 +20,7 @@ void RunBackgroundNvapiHdrMonitor() {
     LogInfo("NVAPI HDR monitor: started");
 
     while (!g_shutdown.load()) {
-        if (s_nvapi_hdr_logging >= 0.5f) {
+        if (s_nvapi_hdr_logging.load()) {
             bool hdr = false; std::string cs; std::string name;
             if (g_nvapiFullscreenPrevention.QueryHdrStatus(hdr, cs, name)) {
                 std::ostringstream oss;

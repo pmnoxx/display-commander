@@ -66,7 +66,7 @@ void DrawDeveloperSettings() {
     
     // Enable unstable ReShade features (requires custom dxgi.dll)
     if (CheckboxSetting(g_developerTabSettings.enable_unstable_reshade_features, "Enable unstable ReShade features (requires custom dxgi.dll)")) {
-        ::s_enable_unstable_reshade_features = g_developerTabSettings.enable_unstable_reshade_features.GetValue() ? 1.0f : 0.0f;
+        ::s_enable_unstable_reshade_features.store(g_developerTabSettings.enable_unstable_reshade_features.GetValue());
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Enable experimental features that rely on a custom dxgi.dll build. Off by default.");
@@ -75,7 +75,7 @@ void DrawDeveloperSettings() {
     // Prevent Fullscreen (global)
     if (CheckboxSetting(g_developerTabSettings.prevent_fullscreen, "Prevent Fullscreen")) {
         // Update global variable for compatibility
-        s_prevent_fullscreen = g_developerTabSettings.prevent_fullscreen.GetValue() ? 1.0f : 0.0f;
+        s_prevent_fullscreen.store(g_developerTabSettings.prevent_fullscreen.GetValue());
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Prevent exclusive fullscreen; keep borderless/windowed for stability and HDR.");
@@ -86,7 +86,7 @@ void DrawDeveloperSettings() {
     int spoof_fullscreen_state = static_cast<int>(g_developerTabSettings.spoof_fullscreen_state.GetValue());
     if (ImGui::Combo("Spoof Fullscreen State", &spoof_fullscreen_state, spoof_fullscreen_labels, 3)) {
         g_developerTabSettings.spoof_fullscreen_state.SetValue(spoof_fullscreen_state != 0);
-        s_spoof_fullscreen_state = static_cast<float>(spoof_fullscreen_state);
+        s_spoof_fullscreen_state.store(spoof_fullscreen_state != 0);
         
         // Log the change
         std::ostringstream oss;
@@ -106,11 +106,11 @@ void DrawDeveloperSettings() {
     }
     
     // Reset button for Fullscreen State (only show if not at default)
-    if (s_spoof_fullscreen_state != 0.0f) {
+    if (s_spoof_fullscreen_state.load() != false) {
         ImGui::SameLine();
         if (ImGui::Button("Reset##DevFullscreen")) {
             g_developerTabSettings.spoof_fullscreen_state.SetValue(false);
-            s_spoof_fullscreen_state = 0.0f;
+            s_spoof_fullscreen_state.store(false);
             extern void LogInfo(const char* message);
             ::LogInfo("Fullscreen state spoofing reset to disabled");
         }
@@ -123,8 +123,8 @@ void DrawDeveloperSettings() {
     const char* spoof_focus_labels[] = {"Disabled", "Spoof as Focused", "Spoof as Unfocused"};
     int spoof_focus_state = static_cast<int>(g_developerTabSettings.spoof_window_focus.GetValue());
     if (ImGui::Combo("Spoof Window Focus", &spoof_focus_state, spoof_focus_labels, 3)) {
-        g_developerTabSettings.spoof_window_focus.SetValue(spoof_focus_state != 0);
-        s_spoof_window_focus = static_cast<float>(spoof_focus_state);
+        g_developerTabSettings.spoof_window_focus.SetValue(spoof_focus_state);
+        s_spoof_window_focus.store(spoof_focus_state);
         
         // Log the change
         std::ostringstream oss;
@@ -144,11 +144,11 @@ void DrawDeveloperSettings() {
     }
     
     // Reset button for Window Focus (only show if not at default)
-    if (s_spoof_window_focus != 0.0f) {
+    if (s_spoof_window_focus.load() != false) {
         ImGui::SameLine();
         if (ImGui::Button("Reset##DevFocus")) {
-            g_developerTabSettings.spoof_window_focus.SetValue(false);
-            s_spoof_window_focus = 0.0f;
+            g_developerTabSettings.spoof_window_focus.SetValue(0);
+            s_spoof_window_focus.store(0);
             extern void LogInfo(const char* message);
             ::LogInfo("Window focus spoofing reset to disabled");
         }
@@ -163,7 +163,7 @@ void DrawDeveloperSettings() {
     
     // Prevent Always On Top
     if (CheckboxSetting(g_developerTabSettings.prevent_always_on_top, "Prevent Always On Top")) {
-        s_prevent_always_on_top = g_developerTabSettings.prevent_always_on_top.GetValue() ? 1.0f : 0.0f;
+        s_prevent_always_on_top.store(g_developerTabSettings.prevent_always_on_top.GetValue());
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Prevents windows from becoming always on top, even if they are moved or resized.");
@@ -171,7 +171,7 @@ void DrawDeveloperSettings() {
     
     // Remove Top Bar
     if (CheckboxSetting(g_developerTabSettings.remove_top_bar, "Remove Top Bar")) {
-        s_remove_top_bar = g_developerTabSettings.remove_top_bar.GetValue() ? 1.0f : 0.0f;
+        s_remove_top_bar.store(g_developerTabSettings.remove_top_bar.GetValue());
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Remove the window title bar for a borderless appearance.");
@@ -209,7 +209,7 @@ void DrawNvapiSettings() {
     
     // HDR10 Colorspace Fix
     if (CheckboxSetting(g_developerTabSettings.fix_hdr10_colorspace, "Fix NVAPI HDR10 Colorspace for reshade addon")) {
-        s_fix_hdr10_colorspace = g_developerTabSettings.fix_hdr10_colorspace.GetValue() ? 1.0f : 0.0f;
+        s_fix_hdr10_colorspace.store(g_developerTabSettings.fix_hdr10_colorspace.GetValue());
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Automatically fix HDR10 colorspace when swapchain format is RGB10A2 and colorspace is currently sRGB. Only works when the game is using sRGB colorspace.");
@@ -217,16 +217,16 @@ void DrawNvapiSettings() {
     
     // NVAPI Fullscreen Prevention
     if (CheckboxSetting(g_developerTabSettings.nvapi_fullscreen_prevention, "NVAPI Fullscreen Prevention")) {
-        s_nvapi_fullscreen_prevention = g_developerTabSettings.nvapi_fullscreen_prevention.GetValue() ? 1.0f : 0.0f;
+        s_nvapi_fullscreen_prevention.store(g_developerTabSettings.nvapi_fullscreen_prevention.GetValue());
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Use NVAPI to prevent fullscreen mode at the driver level.");
     }
-    if (s_nvapi_fullscreen_prevention >= 0.5f && ::g_nvapiFullscreenPrevention.IsAvailable()) {
+            if (s_nvapi_fullscreen_prevention.load() && ::g_nvapiFullscreenPrevention.IsAvailable()) {
         
         // NVAPI HDR Logging
         if (CheckboxSetting(g_developerTabSettings.nvapi_hdr_logging, "NVAPI HDR Logging")) {
-            s_nvapi_hdr_logging = g_developerTabSettings.nvapi_hdr_logging.GetValue() ? 1.0f : 0.0f;
+            s_nvapi_hdr_logging.store(g_developerTabSettings.nvapi_hdr_logging.GetValue());
             
             if (g_developerTabSettings.nvapi_hdr_logging.GetValue()) {
                 std::thread(::RunBackgroundNvapiHdrMonitor).detach();
@@ -247,7 +247,7 @@ void DrawNvapiSettings() {
         
         // NVAPI Force HDR10
         if (CheckboxSetting(g_developerTabSettings.nvapi_force_hdr10, "NVAPI Force HDR10")) {
-            s_nvapi_force_hdr10 = g_developerTabSettings.nvapi_force_hdr10.GetValue() ? 1.0f : 0.0f;
+            s_nvapi_force_hdr10.store(g_developerTabSettings.nvapi_force_hdr10.GetValue());
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Force HDR10 mode using NVAPI.");
@@ -358,12 +358,12 @@ void DrawResolutionOverrideSettings() {
     ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "=== Resolution Override (Experimental) ===");
     
     // Check if unstable features are enabled
-    const bool unstable_enabled = (::s_enable_unstable_reshade_features >= 0.5f);
+    const bool unstable_enabled = ::s_enable_unstable_reshade_features.load();
     if (!unstable_enabled) ImGui::BeginDisabled();
     
     // Enable Resolution Override
     if (CheckboxSetting(g_developerTabSettings.enable_resolution_override, "Enable Resolution Override")) {
-        ::s_enable_resolution_override = g_developerTabSettings.enable_resolution_override.GetValue() ? 1.0f : 0.0f;
+        ::s_enable_resolution_override.store(g_developerTabSettings.enable_resolution_override.GetValue());
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Override the backbuffer resolution during swapchain creation. Same as ReShade ForceResolution.");
@@ -406,12 +406,12 @@ void DrawKeyboardShortcutsSettings() {
     ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "=== Keyboard Shortcuts (Experimental) ===");
     
     // Check if unstable features are enabled
-    const bool unstable_enabled = (::s_enable_unstable_reshade_features >= 0.5f);
+    const bool unstable_enabled = ::s_enable_unstable_reshade_features.load();
     if (!unstable_enabled) ImGui::BeginDisabled();
     
     // Enable Mute/Unmute Shortcut (Ctrl+M)
     if (CheckboxSetting(g_developerTabSettings.enable_mute_unmute_shortcut, "Enable Mute/Unmute Shortcut (Ctrl+M)")) {
-        ::s_enable_mute_unmute_shortcut = g_developerTabSettings.enable_mute_unmute_shortcut.GetValue() ? 1.0f : 0.0f;
+        ::s_enable_mute_unmute_shortcut.store(g_developerTabSettings.enable_mute_unmute_shortcut.GetValue());
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Enable keyboard shortcut Ctrl+M to quickly mute/unmute audio. Requires 'unstable ReShade features' to be enabled.");

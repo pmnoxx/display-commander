@@ -19,6 +19,9 @@ extern float s_reflex_debug_output;
 extern float s_remove_top_bar;
 extern float s_sync_interval;
 extern float s_enable_unstable_reshade_features;
+extern float s_enable_resolution_override;
+extern float s_override_resolution_width;
+extern float s_override_resolution_height;
 
 namespace ui::new_ui {
 
@@ -39,6 +42,9 @@ DeveloperTabSettings::DeveloperTabSettings()
     , reflex_debug_output("ReflexDebugOutput", false, "DisplayCommanderNew")
     , sync_interval("SyncInterval", 0, {"Application-Controlled", "No-VSync (0)", "V-Sync", "V-Sync 2x", "V-Sync 3x", "V-Sync 4x"}, "DisplayCommanderNew")
     , enable_unstable_reshade_features("EnableUnstableReShadeFeatures", false, "DisplayCommanderNew")
+    , enable_resolution_override("EnableResolutionOverride", false, "DisplayCommanderNew")
+    , override_resolution_width("OverrideResolutionWidth", 1920, 1, 7680, "DisplayCommanderNew")
+    , override_resolution_height("OverrideResolutionHeight", 1080, 1, 4320, "DisplayCommanderNew")
 {
 }
 
@@ -58,6 +64,9 @@ void DeveloperTabSettings::LoadAll() {
     reflex_debug_output.Load();
     sync_interval.Load();
     enable_unstable_reshade_features.Load();
+    enable_resolution_override.Load();
+    override_resolution_width.Load();
+    override_resolution_height.Load();
     
     // Update global variables to maintain compatibility
     s_prevent_fullscreen = prevent_fullscreen.GetValue() ? 1.0f : 0.0f;
@@ -75,6 +84,9 @@ void DeveloperTabSettings::LoadAll() {
     s_reflex_debug_output = reflex_debug_output.GetValue() ? 1.0f : 0.0f;
     s_sync_interval = static_cast<float>(sync_interval.GetValue());
     s_enable_unstable_reshade_features = enable_unstable_reshade_features.GetValue() ? 1.0f : 0.0f;
+    s_enable_resolution_override = enable_resolution_override.GetValue() ? 1.0f : 0.0f;
+    s_override_resolution_width = static_cast<float>(override_resolution_width.GetValue());
+    s_override_resolution_height = static_cast<float>(override_resolution_height.GetValue());
 }
 
 void DeveloperTabSettings::SaveAll() {
@@ -92,6 +104,9 @@ void DeveloperTabSettings::SaveAll() {
     reflex_debug_output.Save();
     sync_interval.Save();
     enable_unstable_reshade_features.Save();
+    enable_resolution_override.Save();
+    override_resolution_width.Save();
+    override_resolution_height.Save();
 }
 
 std::vector<ui::new_ui::SettingBase*> DeveloperTabSettings::GetAllSettings() {
@@ -110,7 +125,10 @@ std::vector<ui::new_ui::SettingBase*> DeveloperTabSettings::GetAllSettings() {
         &reflex_enabled,
         &reflex_debug_output,
         &sync_interval,
-        &enable_unstable_reshade_features
+        &enable_unstable_reshade_features,
+        &enable_resolution_override,
+        &override_resolution_width,
+        &override_resolution_height
     };
 }
 

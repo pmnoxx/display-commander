@@ -50,6 +50,12 @@ void DrawDeveloperNewTab() {
     ImGui::Spacing();
     ImGui::Separator();
     
+    // Resolution Override Settings Section (Experimental)
+    DrawResolutionOverrideSettings();
+    
+    ImGui::Spacing();
+    ImGui::Separator();
+    
     // Latency Display Section
     DrawLatencyDisplay();
 }
@@ -387,6 +393,54 @@ void DrawLatencyDisplay() {
         oss << "Reflex Status: Inactive";
     }
     ImGui::TextUnformatted(oss.str().c_str());
+}
+
+void DrawResolutionOverrideSettings() {
+    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "=== Resolution Override (Experimental) ===");
+    
+    // Check if unstable features are enabled
+    const bool unstable_enabled = (::s_enable_unstable_reshade_features >= 0.5f);
+    if (!unstable_enabled) ImGui::BeginDisabled();
+    
+    // Enable Resolution Override
+    if (CheckboxSetting(g_developerTabSettings.enable_resolution_override, "Enable Resolution Override")) {
+        ::s_enable_resolution_override = g_developerTabSettings.enable_resolution_override.GetValue() ? 1.0f : 0.0f;
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Override the backbuffer resolution during swapchain creation. Same as ReShade ForceResolution.");
+    }
+    
+    // Resolution Width and Height inputs
+    if (g_developerTabSettings.enable_resolution_override.GetValue()) {
+        ImGui::Indent();
+        
+        // Width input
+        if (SliderIntSetting(g_developerTabSettings.override_resolution_width, "Override Width")) {
+            ::s_override_resolution_width = static_cast<float>(g_developerTabSettings.override_resolution_width.GetValue());
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Width to override the backbuffer to. Must be > 0 to take effect.");
+        }
+        
+        // Height input
+        if (SliderIntSetting(g_developerTabSettings.override_resolution_height, "Override Height")) {
+            ::s_override_resolution_height = static_cast<float>(g_developerTabSettings.override_resolution_height.GetValue());
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Height to override the backbuffer to. Must be > 0 to take effect.");
+        }
+        
+        // Info text
+        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Override will only apply if both width and height are > 0");
+        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Changes take effect on next swapchain creation");
+        
+        ImGui::Unindent();
+    }
+    
+    if (!unstable_enabled) ImGui::EndDisabled();
+    if (!unstable_enabled) {
+        ImGui::TextDisabled("Enable 'unstable ReShade features' above to use resolution override.");
+    }
 }
 
 } // namespace ui::new_ui

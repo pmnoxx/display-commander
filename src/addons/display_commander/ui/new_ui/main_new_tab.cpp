@@ -73,6 +73,12 @@ void InitMainNewTab() {
         s_force_vsync_on = g_main_new_tab_settings.force_vsync_on.GetValue() ? 1.0f : 0.0f;
         s_force_vsync_off = g_main_new_tab_settings.force_vsync_off.GetValue() ? 1.0f : 0.0f;
         s_allow_tearing = g_main_new_tab_settings.allow_tearing.GetValue() ? 1.0f : 0.0f;
+        s_prevent_tearing = g_main_new_tab_settings.prevent_tearing.GetValue() ? 1.0f : 0.0f;
+        // Resolve persisted conflicts: Prevent Tearing takes precedence
+        if (s_prevent_tearing >= 0.5f && s_allow_tearing >= 0.5f) {
+            g_main_new_tab_settings.allow_tearing.SetValue(false);
+            s_allow_tearing = 0.0f;
+        }
         s_block_input_in_background = g_main_new_tab_settings.block_input_in_background.GetValue() ? 1.0f : 0.0f;
         settings_loaded_once = true;
 
@@ -404,12 +410,34 @@ void DrawDisplaySettings() {
 
         bool allow_t = g_main_new_tab_settings.allow_tearing.GetValue();
         if (ImGui::Checkbox("Enable Tearing (DXGI)", &allow_t)) {
+            // Mutual exclusion with Prevent Tearing
+            if (allow_t) {
+                g_main_new_tab_settings.prevent_tearing.SetValue(false);
+                s_prevent_tearing = 0.0f;
+            }
             g_main_new_tab_settings.allow_tearing.SetValue(allow_t);
             s_allow_tearing = allow_t ? 1.0f : 0.0f;
             LogInfo(allow_t ? "DXGI tearing enabled (flag will be applied on swapchain)" : "DXGI tearing disabled");
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Sets DXGI swapchain Allow Tearing flag (Flip Model + OS support required). Applies on swapchain creation.");
+        }
+
+        ImGui::SameLine();
+
+        bool prevent_t = g_main_new_tab_settings.prevent_tearing.GetValue();
+        if (ImGui::Checkbox("Prevent Tearing", &prevent_t)) {
+            // Mutual exclusion with Enable Tearing
+            if (prevent_t) {
+                g_main_new_tab_settings.allow_tearing.SetValue(false);
+                s_allow_tearing = 0.0f;
+            }
+            g_main_new_tab_settings.prevent_tearing.SetValue(prevent_t);
+            s_prevent_tearing = prevent_t ? 1.0f : 0.0f;
+            LogInfo(prevent_t ? "Prevent Tearing enabled (tearing flags will be cleared)" : "Prevent Tearing disabled");
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Prevents tearing by clearing DXGI tearing flags and preferring sync. Mutually exclusive with Enable Tearing.");
         }
     }
 

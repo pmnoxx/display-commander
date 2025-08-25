@@ -34,6 +34,7 @@ public:
     BoolSetting force_vsync_on;
     BoolSetting force_vsync_off;
     BoolSetting allow_tearing;
+    BoolSetting prevent_tearing;
 
     
     // Audio Settings

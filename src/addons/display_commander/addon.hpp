@@ -181,6 +181,7 @@ extern const float s_custom_fps_limiter_enabled;
 extern float s_force_vsync_on;
 extern float s_force_vsync_off;
 extern float s_allow_tearing;
+extern float s_prevent_tearing;
 extern float s_target_monitor_index;
 extern float s_dxgi_composition_state;
 

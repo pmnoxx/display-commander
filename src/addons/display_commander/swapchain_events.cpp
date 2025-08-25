@@ -80,21 +80,6 @@ bool OnCreateSwapchainCapture(reshade::api::device_api /*api*/, reshade::api::sw
   // Apply sync interval setting if enabled
   bool modified = false;
   
-  // Apply tearing preference if requested and applicable
-  {
-    const bool is_flip = (desc.present_mode == DXGI_SWAP_EFFECT_FLIP_DISCARD || desc.present_mode == DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL);
-    if (is_flip) {
-      if (s_prevent_tearing.load()) {
-        // Clear allow tearing flag when preventing tearing
-        desc.present_flags &= ~DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
-        modified = true;
-      } else if (s_allow_tearing.load()) {
-        // Enable tearing when requested
-        desc.present_flags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
-        modified = true;
-      }
-    }
-  }
   // Explicit VSYNC overrides take precedence over generic sync-interval dropdown
   if (s_force_vsync_on.load()) {
     desc.sync_interval = 1; // VSYNC on
@@ -102,6 +87,21 @@ bool OnCreateSwapchainCapture(reshade::api::device_api /*api*/, reshade::api::sw
   } else if (s_force_vsync_off.load()) {
     desc.sync_interval = 0; // VSYNC off
     modified = true;
+  }
+  // Apply tearing preference if requested and applicable
+  {
+    const bool is_flip = (desc.present_mode == DXGI_SWAP_EFFECT_FLIP_DISCARD || desc.present_mode == DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL);
+    if (is_flip) {
+      if (s_prevent_tearing.load() && desc.sync_interval < INT_MAX) {
+        // Clear allow tearing flag when preventing tearing
+        desc.present_flags &= ~DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
+        modified = true;
+      } else if (s_allow_tearing.load() && desc.sync_interval < INT_MAX) {
+        // Enable tearing when requested
+        desc.present_flags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
+        modified = true;
+      }
+    }
   }
   
   if (s_enable_resolution_override.load()) {
@@ -124,10 +124,89 @@ bool OnCreateSwapchainCapture(reshade::api::device_api /*api*/, reshade::api::sw
   if (desc.sync_interval > 0) {
     desc.present_flags &= ~DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
   }
-  
-  // Store the sync interval for UI display
-  //std::scoped_lock lk(g_sync_mutex);
-  //g_hwnd_to_syncinterval[static_cast<HWND>(hwnd)] = desc.sync_interval; // UINT32_MAX or 0..4
+
+  // Log sync interval and present flags with detailed explanation
+  {
+    std::ostringstream oss;
+    oss << "Swapchain Creation - Sync Interval: " << desc.sync_interval;
+    
+    // Map sync interval to human-readable description
+    switch (desc.sync_interval) {
+      case 0: oss << " (App Controlled)"; break;
+      case 1: oss << " (No V-Sync)"; break;
+      case 2: oss << " (V-Sync)"; break;
+      case 3: oss << " (V-Sync 2x)"; break;
+      case 4: oss << " (V-Sync 3x)"; break;
+      case 5: oss << " (V-Sync 4x)"; break;
+      default: oss << " (Unknown)"; break;
+    }
+    
+    oss << ", Present Flags: 0x" << std::hex << desc.present_flags << std::dec;
+    
+    // Show which features are enabled in present_flags
+    if (desc.present_flags == 0) {
+      oss << " (No special flags)";
+    } else {
+      oss << " - Enabled features:";
+      /*
+      
+        DXGI_SWAP_CHAIN_FLAG_NONPREROTATED	= 1,
+        DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH	= 2,
+        DXGI_SWAP_CHAIN_FLAG_GDI_COMPATIBLE	= 4,
+        DXGI_SWAP_CHAIN_FLAG_RESTRICTED_CONTENT	= 8,
+        DXGI_SWAP_CHAIN_FLAG_RESTRICT_SHARED_RESOURCE_DRIVER	= 16,
+        DXGI_SWAP_CHAIN_FLAG_DISPLAY_ONLY	= 32,
+        DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT	= 64,
+        DXGI_SWAP_CHAIN_FLAG_FOREGROUND_LAYER	= 128,
+        DXGI_SWAP_CHAIN_FLAG_FULLSCREEN_VIDEO	= 256,
+        DXGI_SWAP_CHAIN_FLAG_YUV_VIDEO	= 512,
+        DXGI_SWAP_CHAIN_FLAG_HW_PROTECTED	= 1024,
+        DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING	= 2048,
+        DXGI_SWAP_CHAIN_FLAG_RESTRICTED_TO_ALL_HOLOGRAPHIC_DISPLAYS	= 4096
+        */
+      if (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_NONPREROTATED) {
+        oss << " NONPREROTATED";
+      }
+      if (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH) {
+        oss << " ALLOW_MODE_SWITCH";
+      }
+      if (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_GDI_COMPATIBLE) {
+        oss << " GDI_COMPATIBLE";
+      }
+      if (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_RESTRICTED_CONTENT) {
+        oss << " RESTRICTED_CONTENT";
+      }
+      if (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_RESTRICT_SHARED_RESOURCE_DRIVER) {
+        oss << " RESTRICT_SHARED_RESOURCE_DRIVER";
+      }
+      if (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_DISPLAY_ONLY) {
+        oss << " DISPLAY_ONLY";
+      }
+      if (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT) {
+        oss << " FRAME_LATENCY_WAITABLE_OBJECT";
+      }
+      if (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_FOREGROUND_LAYER) {
+        oss << " FOREGROUND_LAYER";
+      }
+      if (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_FULLSCREEN_VIDEO) {
+        oss << " FULLSCREEN_VIDEO";
+      }
+      if (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_YUV_VIDEO) {
+        oss << " YUV_VIDEO";
+      }
+      if (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_HW_PROTECTED) {
+        oss << " HW_PROTECTED";
+      }
+      if (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING) {
+        oss << " ALLOW_TEARING";
+      }
+      if (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_RESTRICTED_TO_ALL_HOLOGRAPHIC_DISPLAYS) {
+        oss << " RESTRICTED_TO_ALL_HOLOGRAPHIC_DISPLAYS";
+      } 
+    }
+    
+    LogInfo(oss.str().c_str());
+  }
   
   return modified; // return true if we modified the desc
 }

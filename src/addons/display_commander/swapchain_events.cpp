@@ -81,7 +81,6 @@ bool OnCreateSwapchainCapture(reshade::api::device_api /*api*/, reshade::api::sw
   
   // Apply sync interval setting if enabled
   bool modified = false;
-  extern float s_sync_interval;
   extern float s_force_vsync_on;
   extern float s_force_vsync_off;
   extern float s_allow_tearing;
@@ -93,23 +92,6 @@ bool OnCreateSwapchainCapture(reshade::api::device_api /*api*/, reshade::api::sw
   } else if (s_force_vsync_off >= 0.5f) {
     desc.sync_interval = 0; // VSYNC off
     modified = true;
-  } else if (s_sync_interval >= 0.0f) {
-    // Detect DXGI swap effect category to avoid invalid Present calls
-    const bool is_dxgi_flip = (desc.present_mode == DXGI_SWAP_EFFECT_FLIP_DISCARD || desc.present_mode == DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL);
-    const bool is_dxgi_bitblt = (desc.present_mode == DXGI_SWAP_EFFECT_DISCARD || desc.present_mode == DXGI_SWAP_EFFECT_SEQUENTIAL);
-    
-    int sync_value = static_cast<int>(s_sync_interval);
-    if (sync_value == 0) {
-      // Application-Controlled: don't modify
-    } else if (sync_value == 1) {
-      // No-VSync (0)
-      desc.sync_interval = 0;
-      modified = true;
-    } else if (sync_value >= 2) {
-      // V-Sync (1)
-      desc.sync_interval = 1;
-      modified = true;
-    } 
   }
   // Apply tearing preference if requested and applicable
   if (s_allow_tearing >= 0.5f) {
@@ -285,18 +267,6 @@ void OnPresentUpdate(
       extern float s_fps_limit;  // Use foreground FPS limit from UI settings
       target_fps = s_fps_limit;
     }
-    if (s_sync_interval >= 3.f) {
-      float monitor_refresh_hz = g_window_state.current_monitor_refresh_rate.ToHz();
-      if (monitor_refresh_hz > 0.f) {
-        float coefficient = GetSyncIntervalCoefficient(s_sync_interval);
-        if (target_fps > 0.f) {
-          target_fps = min(target_fps, monitor_refresh_hz / coefficient);
-        } else {
-          target_fps = monitor_refresh_hz / coefficient;
-        }
-      }
-    }
-
     // Apply the FPS limit to the Custom FPS Limiter
     if (dxgi::fps_limiter::g_customFpsLimiterManager) {
       auto& limiter = dxgi::fps_limiter::g_customFpsLimiterManager->GetFpsLimiter();

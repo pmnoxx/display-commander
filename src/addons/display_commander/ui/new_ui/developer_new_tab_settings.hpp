@@ -51,9 +51,6 @@ public:
     // Keyboard Shortcut Settings (Experimental)
     ui::new_ui::BoolSetting enable_mute_unmute_shortcut;
     
-    // Sync Interval Settings
-    ui::new_ui::ComboSetting sync_interval;
-    
     // Get all settings for bulk operations
     std::vector<ui::new_ui::SettingBase*> GetAllSettings();
 };

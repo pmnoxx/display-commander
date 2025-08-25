@@ -32,12 +32,6 @@ void DrawDeveloperNewTab() {
     ImGui::Spacing();
     ImGui::Separator();
     
-    // Sync Interval Settings Section
-    DrawSyncIntervalSettings();
-    
-    ImGui::Spacing();
-    ImGui::Separator();
-    
     // NVAPI Settings Section (merged with HDR and Colorspace Settings)
     DrawNvapiSettings();
     
@@ -209,42 +203,12 @@ void DrawDeveloperSettings() {
     }
 }
 
-void DrawSyncIntervalSettings() {
-    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "=== Sync Interval Settings ===");
-    
-    // Sync Interval dropdown
-    g_developerTabSettings.sync_interval.SetValue(0);
-    if (ComboSettingWrapper(g_developerTabSettings.sync_interval, "Sync Interval (Disabled)")) {
-        s_sync_interval = static_cast<float>(g_developerTabSettings.sync_interval.GetValue());
-        s_sync_interval = 0.0f;
-    }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Control the sync interval for frame presentation. This setting requires a game restart to take effect.");
-    }
-    
-    // Information display
-    ImGui::Spacing();
-    ImGui::TextColored(ImVec4(0.9f, 0.9f, 0.9f, 1.0f), "Sync Interval Information:");
-    
-    // Get current monitor refresh rate for calculations
-    int refresh_rate = 60; // Default fallback
-    if (display_cache::g_displayCache.IsInitialized()) {
-        display_cache::RationalRefreshRate refresh_rate_rational;
-        if (display_cache::g_displayCache.GetCurrentRefreshRate(0, refresh_rate_rational)) {
-            refresh_rate = static_cast<int>(refresh_rate_rational.ToHz());
-        }
-    }
-    ImGui::Spacing();
-}
-
 void DrawNvapiSettings() {
     ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "=== NVAPI Settings ===");
     
     // HDR10 Colorspace Fix
     if (CheckboxSetting(g_developerTabSettings.fix_hdr10_colorspace, "Fix NVAPI HDR10 Colorspace for reshade addon")) {
         s_fix_hdr10_colorspace = g_developerTabSettings.fix_hdr10_colorspace.GetValue() ? 1.0f : 0.0f;
-
-        
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Automatically fix HDR10 colorspace when swapchain format is RGB10A2 and colorspace is currently sRGB. Only works when the game is using sRGB colorspace.");

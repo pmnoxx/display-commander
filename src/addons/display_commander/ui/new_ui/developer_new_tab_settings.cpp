@@ -17,7 +17,6 @@ extern float s_nvapi_force_hdr10;
 extern float s_reflex_enabled;
 extern float s_reflex_debug_output;
 extern float s_remove_top_bar;
-extern float s_sync_interval;
 extern float s_enable_unstable_reshade_features;
 extern float s_enable_resolution_override;
 extern float s_override_resolution_width;
@@ -43,7 +42,6 @@ DeveloperTabSettings::DeveloperTabSettings()
     , reflex_enabled("ReflexEnabled", false, "DisplayCommanderNew")
     , reflex_debug_output("ReflexDebugOutput", false, "DisplayCommanderNew")
     , fps_extra_wait_ms("FpsLimiterExtraWaitMs", 0.0f, 0.0f, 10.0f, "DisplayCommanderNew")
-    , sync_interval("SyncInterval", 0, {"Application-Controlled", "No-VSync (0)", "V-Sync", "V-Sync 2x", "V-Sync 3x", "V-Sync 4x"}, "DisplayCommanderNew")
     , enable_unstable_reshade_features("EnableUnstableReShadeFeatures", false, "DisplayCommanderNew")
     , enable_resolution_override("EnableResolutionOverride", false, "DisplayCommanderNew")
     , override_resolution_width("OverrideResolutionWidth", 1920, 1, 7680, "DisplayCommanderNew")
@@ -67,7 +65,6 @@ void DeveloperTabSettings::LoadAll() {
     reflex_enabled.Load();
     reflex_debug_output.Load();
     fps_extra_wait_ms.Load();
-    sync_interval.Load();
     enable_unstable_reshade_features.Load();
     enable_resolution_override.Load();
     override_resolution_width.Load();
@@ -89,7 +86,6 @@ void DeveloperTabSettings::LoadAll() {
     s_reflex_enabled = reflex_enabled.GetValue() ? 1.0f : 0.0f;
     s_reflex_debug_output = reflex_debug_output.GetValue() ? 1.0f : 0.0f;
     s_fps_extra_wait_ms = fps_extra_wait_ms.GetValue();
-    s_sync_interval = static_cast<float>(sync_interval.GetValue());
     s_enable_unstable_reshade_features = enable_unstable_reshade_features.GetValue() ? 1.0f : 0.0f;
     s_enable_resolution_override = enable_resolution_override.GetValue() ? 1.0f : 0.0f;
     s_override_resolution_width = static_cast<float>(override_resolution_width.GetValue());
@@ -111,7 +107,6 @@ void DeveloperTabSettings::SaveAll() {
     reflex_enabled.Save();
     reflex_debug_output.Save();
     fps_extra_wait_ms.Save();
-    sync_interval.Save();
     enable_unstable_reshade_features.Save();
     enable_resolution_override.Save();
     override_resolution_width.Save();
@@ -135,7 +130,6 @@ std::vector<ui::new_ui::SettingBase*> DeveloperTabSettings::GetAllSettings() {
         &reflex_enabled,
         &reflex_debug_output,
         &fps_extra_wait_ms,
-        &sync_interval,
         &enable_unstable_reshade_features,
         &enable_resolution_override,
         &override_resolution_width,

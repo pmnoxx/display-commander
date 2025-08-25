@@ -44,10 +44,6 @@ float s_fps_limit_background = 30.f;
 float s_fps_limit = 0.f;
 // Extra wait applied by custom FPS limiter (ms)
 float s_fps_extra_wait_ms = 0.f;
-
-// Sync interval setting (-1 = App Controlled, 0 = immediate, 1 = vsync, 2+ = multiple v-blanks)
-float s_sync_interval = -1.f;
-
 // Custom FPS Limiter settings
 float s_custom_fps_limit = 0.f;
 const float s_custom_fps_limiter_enabled = 1.0f; // Always enabled

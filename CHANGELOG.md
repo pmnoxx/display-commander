@@ -1,3 +1,14 @@
+## v0.3.1 (2025-08-26)
+
+- **Tearing control improvements** - Added "Allow Tearing" feature and automatic DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING application for sync_interval > 0
+- **Reflex enhancements** - Upgraded 95% button to 96% to match Reflex standards and renamed to 'Reflex Cap' button
+- **Latency reduction** - Added experimental feature to delay CPU sim thread by fixed amount to reduce latency
+- **Input shortcuts** - Added experimental Ctrl+M mute/unmute shortcut for quick audio control
+- **Backbuffer customization** - Added experimental feature to override backbuffer size
+- **UI improvements** - Fixed 96% button color and added warning about restarting games after changing v-sync/tearing options
+- **Performance optimizations** - Used shader_ptr instead of spinlock and fixed race conditions related to g_window_state
+- **Code quality** - Extensive code cleanup and removal of sync interval setting
+
 ## v0.3.0 (2025-08-24)
 
 - **Complete UI modernization** - Migrated from legacy settings-based UI to modern ImGui-based interface

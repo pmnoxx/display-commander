@@ -142,6 +142,7 @@ float s_force_continuous_rendering = 1.f; // Force continuous rendering on every
 
 // Global window state instance
 GlobalWindowState g_window_state;
+SpinLock g_window_state_lock;
 
 // Global background window manager instance
 BackgroundWindowManager g_backgroundWindowManager;

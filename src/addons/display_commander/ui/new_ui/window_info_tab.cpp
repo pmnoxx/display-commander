@@ -133,10 +133,13 @@ void DrawGlobalWindowState() {
             // Calculate desired state using global window state
             CalculateWindowState(hwnd, "ui_display");
             
+            ::g_window_state_lock.lock();
+            GlobalWindowState s = ::g_window_state;
+            ::g_window_state_lock.unlock();
             ImGui::Text("Current State:");
-            ImGui::Text("  Is Maximized: %s", g_window_state.show_cmd == SW_SHOWMAXIMIZED ? "YES" : "No");
-            ImGui::Text("  Is Minimized: %s", g_window_state.show_cmd == SW_SHOWMINIMIZED ? "YES" : "No");
-            ImGui::Text("  Is Restored: %s", g_window_state.show_cmd == SW_SHOWNORMAL ? "YES" : "No");
+            ImGui::Text("  Is Maximized: %s", s.show_cmd == SW_SHOWMAXIMIZED ? "YES" : "No");
+            ImGui::Text("  Is Minimized: %s", s.show_cmd == SW_SHOWMINIMIZED ? "YES" : "No");
+            ImGui::Text("  Is Restored: %s", s.show_cmd == SW_SHOWNORMAL ? "YES" : "No");
             
             // Check for mouse confinement properties
             bool has_system_menu = (GetWindowLongPtr(hwnd, GWL_STYLE) & WS_SYSMENU) != 0;
@@ -195,22 +198,25 @@ void DrawTargetState() {
     if (ImGui::CollapsingHeader("Target State & Changes", ImGuiTreeNodeFlags_DefaultOpen)) {
         HWND hwnd = g_last_swapchain_hwnd.load();
         if (hwnd != nullptr) {
+            ::g_window_state_lock.lock();
+            GlobalWindowState s2 = ::g_window_state;
+            ::g_window_state_lock.unlock();
             ImGui::Text("Target State:");
-            ImGui::Text("  Target Size: %dx%d", g_window_state.target_w, g_window_state.target_h);
-            ImGui::Text("  Target Position: (%d,%d)", g_window_state.target_x, g_window_state.target_y);
+            ImGui::Text("  Target Size: %dx%d", s2.target_w, s2.target_h);
+            ImGui::Text("  Target Position: (%d,%d)", s2.target_x, s2.target_y);
             
             ImGui::Separator();
             ImGui::Text("Change Requirements:");
-            ImGui::Text("  Needs Resize: %s", g_window_state.needs_resize ? "YES" : "No");
-            ImGui::Text("  Needs Move: %s", g_window_state.needs_move ? "YES" : "No");
-            ImGui::Text("  Style Changed: %s", g_window_state.style_changed ? "YES" : "No");
+            ImGui::Text("  Needs Resize: %s", s2.needs_resize ? "YES" : "No");
+            ImGui::Text("  Needs Move: %s", s2.needs_move ? "YES" : "No");
+            ImGui::Text("  Style Changed: %s", s2.style_changed ? "YES" : "No");
             
             ImGui::Text("Style Mode: %s", 
-                g_window_state.style_mode == WindowStyleMode::BORDERLESS ? "BORDERLESS" :
-                g_window_state.style_mode == WindowStyleMode::OVERLAPPED_WINDOW ? "WINDOWED" :
+                s2.style_mode == WindowStyleMode::BORDERLESS ? "BORDERLESS" :
+                s2.style_mode == WindowStyleMode::OVERLAPPED_WINDOW ? "WINDOWED" :
                 "KEEP");
             
-            ImGui::Text("Last Reason: %s", g_window_state.reason.c_str());
+            ImGui::Text("Last Reason: %s", s2.reason ? s2.reason : "unknown");
         }
     }
 }

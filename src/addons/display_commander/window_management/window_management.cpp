@@ -10,7 +10,7 @@
 // Forward declaration
 void ComputeDesiredSize(int& out_w, int& out_h);
 
-int FindTargetMonitor(HWND hwnd, const RECT& wr_current, float target_monitor_index, MONITORINFO& mi) {
+int FindTargetMonitor(HWND hwnd, const RECT& wr_current, float target_monitor_index, MONITORINFO& mi, display_cache::RationalRefreshRate& out_refresh) {
   int monitor_index = 0;
   
   if (target_monitor_index > 0.5f) {
@@ -73,10 +73,10 @@ int FindTargetMonitor(HWND hwnd, const RECT& wr_current, float target_monitor_in
   
   // Get the current refresh rate for the target monitor
   if (display_cache::g_displayCache.IsInitialized()) {
-    g_window_state.current_monitor_refresh_rate = display_cache::RationalRefreshRate();
-    if (display_cache::g_displayCache.GetCurrentRefreshRate(monitor_index, g_window_state.current_monitor_refresh_rate)) {
+    out_refresh = display_cache::RationalRefreshRate();
+    if (display_cache::g_displayCache.GetCurrentRefreshRate(monitor_index, out_refresh)) {
       std::ostringstream oss;
-      oss << "FindTargetMonitor: Monitor " << monitor_index << " refresh rate: " << g_window_state.current_monitor_refresh_rate.ToString();
+      oss << "FindTargetMonitor: Monitor " << monitor_index << " refresh rate: " << out_refresh.ToString();
       LogDebug(oss.str());
     } else {
       LogWarn(("FindTargetMonitor: Could not get refresh rate for monitor " + std::to_string(monitor_index)).c_str());
@@ -90,23 +90,21 @@ int FindTargetMonitor(HWND hwnd, const RECT& wr_current, float target_monitor_in
 void  CalculateWindowState(HWND hwnd, const char* reason) {
   if (hwnd == nullptr) return;
 
-  
-  
-  // Reset global state
-  g_window_state.reset();
-  g_window_state.reason = reason;
+  // Build a local snapshot to avoid readers observing partial state
+  GlobalWindowState local_state;
+  local_state.reason = reason;
 
   // Get current styles
   LONG_PTR current_style = GetWindowLongPtrW(hwnd, GWL_STYLE);
   LONG_PTR current_ex_style = GetWindowLongPtrW(hwnd, GWL_EXSTYLE);
   
   // Calculate new borderless styles
-  g_window_state.new_style = current_style & ~(WS_CAPTION | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU);
-  g_window_state.new_ex_style = current_ex_style & ~(WS_EX_DLGMODALFRAME | WS_EX_WINDOWEDGE | WS_EX_CLIENTEDGE | WS_EX_STATICEDGE);
+  local_state.new_style = current_style & ~(WS_CAPTION | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU);
+  local_state.new_ex_style = current_ex_style & ~(WS_EX_DLGMODALFRAME | WS_EX_WINDOWEDGE | WS_EX_CLIENTEDGE | WS_EX_STATICEDGE);
   
   // PREVENT ALWAYS ON TOP: Remove WS_EX_TOPMOST and WS_EX_TOOLWINDOW styles
-  if (s_prevent_always_on_top >= 0.5f && (g_window_state.new_ex_style & (WS_EX_TOPMOST | WS_EX_TOOLWINDOW))) {
-    g_window_state.new_ex_style &= ~(WS_EX_TOPMOST | WS_EX_TOOLWINDOW);
+  if (s_prevent_always_on_top >= 0.5f && (local_state.new_ex_style & (WS_EX_TOPMOST | WS_EX_TOOLWINDOW))) {
+    local_state.new_ex_style &= ~(WS_EX_TOPMOST | WS_EX_TOOLWINDOW);
     
     // Log if we're removing always on top styles
     if ((current_ex_style & (WS_EX_TOPMOST | WS_EX_TOOLWINDOW)) != 0) {
@@ -115,8 +113,8 @@ void  CalculateWindowState(HWND hwnd, const char* reason) {
       LogInfo(oss.str().c_str());
     }
   }
-  if (current_style != g_window_state.new_style || current_ex_style != g_window_state.new_ex_style) {
-    g_window_state.style_changed = true;
+  if (current_style != local_state.new_style || current_ex_style != local_state.new_ex_style) {
+    local_state.style_changed = true;
   }
   
   // Get current window state
@@ -126,52 +124,54 @@ void  CalculateWindowState(HWND hwnd, const char* reason) {
   // Detect window state (maximized, minimized, restored)
   WINDOWPLACEMENT wp = { sizeof(WINDOWPLACEMENT) };
   if (GetWindowPlacement(hwnd, &wp)) {
-    g_window_state.show_cmd = wp.showCmd;
+    local_state.show_cmd = wp.showCmd;
   }
   
-  g_window_state.style_mode = WindowStyleMode::BORDERLESS;
+  local_state.style_mode = WindowStyleMode::BORDERLESS;
 
   // First, determine the target monitor based on game's intended display
   MONITORINFOEXW mi{};
   
   // Use target monitor if specified
-  g_window_state.current_monitor_index = FindTargetMonitor(hwnd, wr_current, s_target_monitor_index, mi);
+  display_cache::RationalRefreshRate tmp_refresh;
+  local_state.current_monitor_index = FindTargetMonitor(hwnd, wr_current, s_target_monitor_index, mi, tmp_refresh);
+  local_state.current_monitor_refresh_rate = tmp_refresh;
   
   
   // Clamp desired size to fit within the target monitor's dimensions
   const int monitor_width = mi.rcMonitor.right - mi.rcMonitor.left;
   const int monitor_height = mi.rcMonitor.bottom - mi.rcMonitor.top;
   
-  if (g_window_state.desired_width > monitor_width) {
+  if (local_state.desired_width > monitor_width) {
     std::ostringstream oss;
-    oss << "CalculateWindowState: Desired width " << g_window_state.desired_width << " exceeds monitor width " << monitor_width << ", clamping";
+    oss << "CalculateWindowState: Desired width " << local_state.desired_width << " exceeds monitor width " << monitor_width << ", clamping";
     LogInfo(oss.str().c_str());
-    g_window_state.desired_width = monitor_width;
+    local_state.desired_width = monitor_width;
   }
   // Get desired dimensions and position from global settings
   // Use manual or aspect ratio mode
-  ComputeDesiredSize(g_window_state.desired_width, g_window_state.desired_height);
+  ComputeDesiredSize(local_state.desired_width, local_state.desired_height);
   
-  if (g_window_state.desired_height > monitor_height) {
+  if (local_state.desired_height > monitor_height) {
     std::ostringstream oss;
-    oss << "CalculateWindowState: Desired height " << g_window_state.desired_height << " exceeds monitor height " << monitor_height << ", clamping";
+    oss << "CalculateWindowState: Desired height " << local_state.desired_height << " exceeds monitor height " << monitor_height << ", clamping";
     LogInfo(oss.str().c_str());
-    g_window_state.desired_height = monitor_height;
+    local_state.desired_height = monitor_height;
   }
 
   
   // Calculate target dimensions
-  RECT client_rect = RectFromWH(g_window_state.desired_width, g_window_state.desired_height);
-  if (AdjustWindowRectEx(&client_rect, static_cast<DWORD>(g_window_state.new_style), FALSE, static_cast<DWORD>(g_window_state.new_ex_style)) == FALSE) {
+  RECT client_rect = RectFromWH(local_state.desired_width, local_state.desired_height);
+  if (AdjustWindowRectEx(&client_rect, static_cast<DWORD>(local_state.new_style), FALSE, static_cast<DWORD>(local_state.new_ex_style)) == FALSE) {
     LogWarn("AdjustWindowRectEx failed for CalculateWindowState.");
     return;
   }
-  g_window_state.target_w = client_rect.right - client_rect.left;
-  g_window_state.target_h = client_rect.bottom - client_rect.top;
+  local_state.target_w = client_rect.right - client_rect.left;
+  local_state.target_h = client_rect.bottom - client_rect.top;
   
   // Calculate target position - start with monitor top-left
-  g_window_state.target_x = mi.rcMonitor.left;
-  g_window_state.target_y = mi.rcMonitor.top;
+  local_state.target_x = mi.rcMonitor.left;
+  local_state.target_y = mi.rcMonitor.top;
   
   const RECT& mr = mi.rcMonitor;
   
@@ -179,42 +179,51 @@ void  CalculateWindowState(HWND hwnd, const char* reason) {
   switch (static_cast<int>(s_move_to_zero_if_out)) {
     default:
     case 1: // Top Left
-      g_window_state.target_x = mr.left;
-      g_window_state.target_y = mr.top;
+      local_state.target_x = mr.left;
+      local_state.target_y = mr.top;
       break;
     case 2: // Top Right
-      g_window_state.target_x = max(mr.left, mr.right - g_window_state.target_w);
-      g_window_state.target_y = mr.top;
+      local_state.target_x = max(mr.left, mr.right - local_state.target_w);
+      local_state.target_y = mr.top;
       break;
     case 3: // Bottom Left
-      g_window_state.target_x = mr.left;
-      g_window_state.target_y = max(mr.top, mr.bottom - g_window_state.target_h);
+      local_state.target_x = mr.left;
+      local_state.target_y = max(mr.top, mr.bottom - local_state.target_h);
       break;
     case 4: // Bottom Right
-      g_window_state.target_x = max(mr.left, mr.right - g_window_state.target_w);
-      g_window_state.target_y = max(mr.top, mr.bottom - g_window_state.target_h);
+      local_state.target_x = max(mr.left, mr.right - local_state.target_w);
+      local_state.target_y = max(mr.top, mr.bottom - local_state.target_h);
       break;
     case 5: // Center
-      g_window_state.target_x = max(mr.left, mr.left + (mr.right - mr.left - g_window_state.target_w) / 2);
-      g_window_state.target_y = max(mr.top, mr.top + (mr.bottom - mr.top - g_window_state.target_h) / 2);
+      local_state.target_x = max(mr.left, mr.left + (mr.right - mr.left - local_state.target_w) / 2);
+      local_state.target_y = max(mr.top, mr.top + (mr.bottom - mr.top - local_state.target_h) / 2);
       break;
   }
-  g_window_state.target_w = min(g_window_state.target_w, mr.right - mr.left);
-  g_window_state.target_h = min(g_window_state.target_h, mr.bottom - mr.top);
+  local_state.target_w = min(local_state.target_w, mr.right - mr.left);
+  local_state.target_h = min(local_state.target_h, mr.bottom - mr.top);
 
   // Check if any changes are actually needed
-  g_window_state.needs_resize = (g_window_state.target_w != (wr_current.right - wr_current.left)) || 
-                                (g_window_state.target_h != (wr_current.bottom - wr_current.top));
-  g_window_state.needs_move = (g_window_state.target_x != wr_current.left) || (g_window_state.target_y != wr_current.top);
+  local_state.needs_resize = (local_state.target_w != (wr_current.right - wr_current.left)) || 
+                                (local_state.target_h != (wr_current.bottom - wr_current.top));
+  local_state.needs_move = (local_state.target_x != wr_current.left) || (local_state.target_y != wr_current.top);
 
-  LogDebug("CalculateWindowState: target_w=" + std::to_string(g_window_state.target_w) + ", target_h=" + std::to_string(g_window_state.target_h));
+  LogDebug("CalculateWindowState: target_w=" + std::to_string(local_state.target_w) + ", target_h=" + std::to_string(local_state.target_h));
+
+  // Publish snapshot under a lightweight lock
+  g_window_state_lock.lock();
+  g_window_state = local_state;
+  g_window_state_lock.unlock();
 }
 
 // Second function: Apply the calculated window changes
 void ApplyWindowChange(HWND hwnd, const char* reason, bool force_apply) {
   if (hwnd == nullptr) return;
   
-  if (g_window_state.show_cmd == SW_SHOWMAXIMIZED) {
+  // Take a snapshot for show_cmd decision
+  g_window_state_lock.lock();
+  GlobalWindowState s0 = g_window_state;
+  g_window_state_lock.unlock();
+  if (s0.show_cmd == SW_SHOWMAXIMIZED) {
     ShowWindow(hwnd, SW_RESTORE);
     return;
   }
@@ -223,30 +232,33 @@ void ApplyWindowChange(HWND hwnd, const char* reason, bool force_apply) {
   CalculateWindowState(hwnd, reason);
 
   
+  // Copy the calculated state into a local snapshot for consistent use
+  g_window_state_lock.lock();
+  GlobalWindowState s = g_window_state;
+  g_window_state_lock.unlock();
+
   // Check if any changes are needed
-  if (g_window_state.needs_resize || g_window_state.needs_move || g_window_state.style_changed) {
-    //LogDebug("ApplyWindowChange: No changes needed");
-    if (g_window_state.target_w <= 16 || g_window_state.target_h <= 16) {
+  if (s.needs_resize || s.needs_move || s.style_changed) {
+    if (s.target_w <= 16 || s.target_h <= 16) {
       std::ostringstream oss;
-      oss << "ApplyWindowChange: Invalid target size " << g_window_state.target_w << "x" << g_window_state.target_h << ", skipping";
+      oss << "ApplyWindowChange: Invalid target size " << s.target_w << "x" << s.target_h << ", skipping";
       LogWarn(oss.str().c_str());
       return;
     }
-    if (g_window_state.style_changed) {
+    if (s.style_changed) {
       LogDebug("ApplyWindowChange: Setting new style and ex style");
-      SetWindowLongPtrW(hwnd, GWL_STYLE, g_window_state.new_style);
-      SetWindowLongPtrW(hwnd, GWL_EXSTYLE, g_window_state.new_ex_style);
+      SetWindowLongPtrW(hwnd, GWL_STYLE, s.new_style);
+      SetWindowLongPtrW(hwnd, GWL_EXSTYLE, s.new_ex_style);
     }
 
     UINT flags = SWP_NOZORDER | SWP_NOOWNERZORDER;   
     
     // Apply all changes in a single SetWindowPos call
-    if (!g_window_state.needs_resize) flags |= SWP_NOSIZE;
-    if (!g_window_state.needs_move) flags |= SWP_NOMOVE;
-    if (g_window_state.style_changed) flags |= SWP_FRAMECHANGED;
+    if (!s.needs_resize) flags |= SWP_NOSIZE;
+    if (!s.needs_move) flags |= SWP_NOMOVE;
+    if (s.style_changed) flags |= SWP_FRAMECHANGED;
     
-    SetWindowPos(hwnd, nullptr, g_window_state.target_x, g_window_state.target_y, 
-      g_window_state.target_w, g_window_state.target_h, flags);
+    SetWindowPos(hwnd, nullptr, s.target_x, s.target_y, s.target_w, s.target_h, flags);
   }
 }
 

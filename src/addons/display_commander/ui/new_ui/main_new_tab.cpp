@@ -447,7 +447,12 @@ void DrawDisplaySettings() {
 
     // Quick-set buttons based on current monitor refresh rate
     {
-        double refresh_hz = ::g_window_state.current_monitor_refresh_rate.ToHz();
+        double refresh_hz;
+        {
+            ::g_window_state_lock.lock();
+            refresh_hz = ::g_window_state.current_monitor_refresh_rate.ToHz();
+            ::g_window_state_lock.unlock();
+        }
         int y = static_cast<int>(std::round(refresh_hz));
         if (y > 0) {
             bool first = true;

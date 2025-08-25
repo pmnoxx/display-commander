@@ -111,7 +111,7 @@ struct GlobalWindowState {
   int new_style = 0;
   int new_ex_style = 0;
   WindowStyleMode style_mode = WindowStyleMode::BORDERLESS;
-  std::string reason = "unknown";
+  const char* reason = "unknown";
   
   int show_cmd = 0;
   int current_monitor_index = 0;
@@ -235,6 +235,7 @@ extern std::atomic<bool> g_reflex_settings_changed;
 
 // Global window state instance
 extern GlobalWindowState g_window_state;
+extern SpinLock g_window_state_lock;
 
 // Direct atomic variables for latency tracking (UI access)
 extern std::atomic<float> g_current_latency_ms;

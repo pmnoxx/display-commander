@@ -32,7 +32,6 @@ public:
     ui::new_ui::BoolSetting nvapi_fullscreen_prevention;
     ui::new_ui::BoolSetting nvapi_hdr_logging;
     ui::new_ui::FloatSetting nvapi_hdr_interval_sec;
-    ui::new_ui::BoolSetting nvapi_force_hdr10;
     
     // Reflex Settings
     ui::new_ui::BoolSetting reflex_enabled;

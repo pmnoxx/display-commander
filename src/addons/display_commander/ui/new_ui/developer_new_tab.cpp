@@ -253,13 +253,6 @@ void DrawNvapiSettings() {
             ImGui::SetTooltip("Interval between HDR monitor information logging.");
         }
         
-        // NVAPI Force HDR10
-        if (CheckboxSetting(g_developerTabSettings.nvapi_force_hdr10, "NVAPI Force HDR10")) {
-            s_nvapi_force_hdr10.store(g_developerTabSettings.nvapi_force_hdr10.GetValue());
-        }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Force HDR10 mode using NVAPI.");
-        }
         if (g_developerTabSettings.nvapi_hdr_logging.GetValue()) {
         
             // NVAPI Debug Information Display

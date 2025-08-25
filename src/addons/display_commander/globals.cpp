@@ -190,5 +190,10 @@ SpinLock g_monitor_labels_lock;
 std::vector<std::string> g_monitor_labels;
 std::atomic<bool> g_monitor_labels_need_update{true};
 
-// Developer flag: enable unstable ReShade features
-float s_enable_unstable_reshade_features = 0.f;
+// Experimental/Unstable features toggle
+float s_enable_unstable_reshade_features = 0.f; // Disabled by default
+
+// Resolution Override Settings (Experimental)
+float s_enable_resolution_override = 0.f; // Disabled by default
+float s_override_resolution_width = 1920.f; // Default to 1920
+float s_override_resolution_height = 1080.f; // Default to 1080

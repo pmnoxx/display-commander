@@ -120,6 +120,28 @@ bool OnCreateSwapchainCapture(reshade::api::device_api /*api*/, reshade::api::sw
     }
   }
   
+  // Apply resolution override if enabled (Experimental)
+  extern float s_enable_resolution_override;
+  extern float s_override_resolution_width;
+  extern float s_override_resolution_height;
+  
+  if (s_enable_resolution_override >= 0.5f) {
+    const int width = static_cast<int>(s_override_resolution_width);
+    const int height = static_cast<int>(s_override_resolution_height);
+    
+    // Only apply if both width and height are > 0 (same logic as ReShade ForceResolution)
+    if (width > 0 && height > 0) {
+      desc.back_buffer.texture.width = static_cast<uint32_t>(width);
+      desc.back_buffer.texture.height = static_cast<uint32_t>(height);
+      modified = true;
+      
+      // Log the resolution override for debugging
+      std::ostringstream oss;
+      oss << "Resolution Override applied: " << width << "x" << height;
+      LogInfo(oss.str().c_str());
+    }
+  }
+  
   // Store the sync interval for UI display
   //std::scoped_lock lk(g_sync_mutex);
   //g_hwnd_to_syncinterval[static_cast<HWND>(hwnd)] = desc.sync_interval; // UINT32_MAX or 0..4

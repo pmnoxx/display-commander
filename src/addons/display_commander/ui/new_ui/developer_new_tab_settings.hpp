@@ -41,6 +41,11 @@ public:
     // Experimental/Unstable features toggle
     ui::new_ui::BoolSetting enable_unstable_reshade_features;
     
+    // Resolution Override Settings (Experimental)
+    ui::new_ui::BoolSetting enable_resolution_override;
+    ui::new_ui::IntSetting override_resolution_width;
+    ui::new_ui::IntSetting override_resolution_height;
+    
     // Sync Interval Settings
     ui::new_ui::ComboSetting sync_interval;
     

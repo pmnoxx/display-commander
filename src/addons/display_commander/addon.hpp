@@ -294,3 +294,11 @@ uint32_t GetSwapchainSyncInterval(reshade::api::swapchain* swapchain);
 
 // Event to capture sync interval from swapchain creation
 bool OnCreateSwapchainCapture(reshade::api::device_api api, reshade::api::swapchain_desc& desc, void* hwnd);
+
+// Experimental/Unstable features toggle
+extern float s_enable_unstable_reshade_features;
+
+// Resolution Override Settings (Experimental)
+extern float s_enable_resolution_override;
+extern float s_override_resolution_width;
+extern float s_override_resolution_height;

@@ -23,6 +23,9 @@ void DrawReflexSettings();
 // Draw sync interval settings section
 void DrawSyncIntervalSettings();
 
+// Draw resolution override settings section (Experimental)
+void DrawResolutionOverrideSettings();
+
 // Draw latency display section
 void DrawLatencyDisplay();
 

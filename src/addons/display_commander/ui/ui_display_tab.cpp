@@ -12,10 +12,10 @@
 #include <atomic>
 
 // External variables
-extern float s_selected_monitor_index;
-extern float s_selected_resolution_index;
-extern float s_selected_refresh_rate_index;
-extern bool s_initial_auto_selection_done;
+extern std::atomic<int> s_selected_monitor_index;
+extern std::atomic<int> s_selected_resolution_index;
+extern std::atomic<int> s_selected_refresh_rate_index;
+extern std::atomic<bool> s_initial_auto_selection_done;
 
 namespace ui {
 

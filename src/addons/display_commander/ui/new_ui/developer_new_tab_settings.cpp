@@ -13,17 +13,17 @@ extern std::atomic<bool> s_background_feature_enabled;
 extern std::atomic<bool> s_fix_hdr10_colorspace;
 extern std::atomic<bool> s_nvapi_fullscreen_prevention;
 extern std::atomic<bool> s_nvapi_hdr_logging;
-extern float s_nvapi_hdr_interval_sec;
+extern std::atomic<float> s_nvapi_hdr_interval_sec;
 extern std::atomic<bool> s_nvapi_force_hdr10;
 extern std::atomic<bool> s_reflex_enabled;
 extern std::atomic<bool> s_reflex_debug_output;
 extern std::atomic<bool> s_remove_top_bar;
 extern std::atomic<bool> s_enable_unstable_reshade_features;
 extern std::atomic<bool> s_enable_resolution_override;
-extern float s_override_resolution_width;
-extern float s_override_resolution_height;
+extern std::atomic<int> s_override_resolution_width;
+extern std::atomic<int> s_override_resolution_height;
 extern std::atomic<bool> s_enable_mute_unmute_shortcut;
-extern float s_fps_extra_wait_ms;
+extern std::atomic<float> s_fps_extra_wait_ms;
 
 namespace ui::new_ui {
 
@@ -82,15 +82,15 @@ void DeveloperTabSettings::LoadAll() {
     s_fix_hdr10_colorspace.store(fix_hdr10_colorspace.GetValue());
     s_nvapi_fullscreen_prevention.store(nvapi_fullscreen_prevention.GetValue());
     s_nvapi_hdr_logging.store(nvapi_hdr_logging.GetValue());
-    s_nvapi_hdr_interval_sec = nvapi_hdr_interval_sec.GetValue();
+    s_nvapi_hdr_interval_sec.store(nvapi_hdr_interval_sec.GetValue());
     s_nvapi_force_hdr10.store(nvapi_force_hdr10.GetValue());
     s_reflex_enabled.store(reflex_enabled.GetValue());
     s_reflex_debug_output.store(reflex_debug_output.GetValue());
-    s_fps_extra_wait_ms = fps_extra_wait_ms.GetValue();
+    s_fps_extra_wait_ms.store(fps_extra_wait_ms.GetValue());
     s_enable_unstable_reshade_features.store(enable_unstable_reshade_features.GetValue());
     s_enable_resolution_override.store(enable_resolution_override.GetValue());
-    s_override_resolution_width = static_cast<float>(override_resolution_width.GetValue());
-    s_override_resolution_height = static_cast<float>(override_resolution_height.GetValue());
+    s_override_resolution_width.store(override_resolution_width.GetValue());
+    s_override_resolution_height.store(override_resolution_height.GetValue());
     s_enable_mute_unmute_shortcut.store(enable_mute_unmute_shortcut.GetValue());
 }
 

@@ -24,6 +24,7 @@
 #include "reflex/reflex_management.hpp"
 #include "renodx/settings.hpp"
 #include "display_cache.hpp"
+#include "globals.hpp"
 
 
 // Lightweight spinlock for short critical sections
@@ -91,7 +92,6 @@ extern std::thread g_monitoring_thread;
 // Continuous rendering system
 extern std::atomic<bool> s_continuous_rendering_enabled;
 extern std::atomic<bool> s_force_continuous_rendering;
-extern float s_continuous_rendering_throttle;
 // CONTINUOUS RENDERING THREAD VARIABLES REMOVED - Focus spoofing is now handled by Win32 hooks
 
 // FOCUS LOSS DETECTION VARIABLES REMOVED - Focus spoofing is now handled by Win32 hooks
@@ -161,28 +161,28 @@ extern std::atomic<bool> s_prevent_fullscreen;
 extern std::atomic<bool> s_nvapi_fullscreen_prevention;
 // NVAPI HDR logging
 extern std::atomic<bool> s_nvapi_hdr_logging;
-extern float s_nvapi_hdr_interval_sec;
+extern std::atomic<float> s_nvapi_hdr_interval_sec;
 extern std::atomic<bool> s_nvapi_force_hdr10;
 
 // Spoof Fullscreen State (for applications that query fullscreen status)
 extern std::atomic<int> s_spoof_fullscreen_state;
 extern std::atomic<bool> s_mute_in_background;
 extern std::atomic<bool> s_mute_in_background_if_other_audio;
-extern float s_audio_volume_percent;
+extern std::atomic<float> s_audio_volume_percent;
 extern std::atomic<bool> s_audio_mute;
-extern float s_fps_limit_background;
-extern float s_fps_limit;
+extern std::atomic<float> s_fps_limit_background;
+extern std::atomic<float> s_fps_limit;
 // Extra wait time for FPS limiter in milliseconds
-extern float s_fps_extra_wait_ms;
-extern float s_custom_fps_limit;
+extern std::atomic<float> s_fps_extra_wait_ms;
+extern std::atomic<float> s_custom_fps_limit;
 extern std::atomic<bool> s_custom_fps_limiter_enabled;
 // VSync and tearing controls
 extern std::atomic<bool> s_force_vsync_on;
 extern std::atomic<bool> s_force_vsync_off;
 extern std::atomic<bool> s_allow_tearing;
 extern std::atomic<bool> s_prevent_tearing;
-extern float s_target_monitor_index;
-extern float s_dxgi_composition_state;
+extern std::atomic<int> s_target_monitor_index;
+extern std::atomic<int> s_dxgi_composition_state;
 
 extern std::atomic<int> s_spoof_window_focus;
 
@@ -191,8 +191,6 @@ extern std::atomic<bool> s_block_input_in_background;
 
 extern std::atomic<int> g_comp_query_counter;
 extern std::atomic<int> g_comp_last_logged;
-// Last known swapchain pointer (for composition state queries)
-extern std::atomic<reshade::api::swapchain*> g_last_swapchain_ptr;
 extern std::atomic<uint64_t> g_init_apply_generation;
 extern std::atomic<reshade::api::effect_runtime*> g_reshade_runtime;
 extern std::chrono::steady_clock::time_point g_attach_time;
@@ -220,15 +218,15 @@ extern std::atomic<bool> s_background_feature_enabled;
 extern std::atomic<bool> s_enforce_desired_window;
 
 // Desktop Resolution Override
-extern float s_selected_monitor_index;
+extern std::atomic<int> s_selected_monitor_index;
 
 // Display Tab Enhanced Settings
-extern float s_selected_aspect_ratio;
-extern float s_selected_resolution_index;
-extern float s_selected_refresh_rate_index;
-extern bool s_auto_restore_resolution_on_close;
-extern bool s_auto_apply_resolution_change;
-extern bool s_auto_apply_refresh_rate_change;
+extern std::atomic<int> s_selected_aspect_ratio;
+extern std::atomic<int> s_selected_resolution_index;
+extern std::atomic<int> s_selected_refresh_rate_index;
+extern std::atomic<bool> s_auto_restore_resolution_on_close;
+extern std::atomic<bool> s_auto_apply_resolution_change;
+extern std::atomic<bool> s_auto_apply_refresh_rate_change;
 
 // Global Reflex manager instance
 extern std::unique_ptr<ReflexManager> g_reflexManager;
@@ -247,12 +245,6 @@ extern std::atomic<float> g_min_latency_ms;
 extern std::atomic<float> g_max_latency_ms;
 extern std::atomic<uint64_t> g_current_frame;
 extern std::atomic<bool> g_reflex_active;
-
-// Performance stats (FPS/frametime) shared state
-struct PerfSample {
-    double timestamp_seconds;
-    float fps;
-};
 
 // Lock-free ring buffer for recent FPS samples (60s window at ~240 Hz -> 14400 max)
 constexpr size_t kPerfRingCapacity = 16384;
@@ -282,8 +274,6 @@ bool NeedsWindowAdjustment(HWND hwnd, int& out_width, int& out_height, int& out_
 void OnInitSwapchain(reshade::api::swapchain* swapchain, bool resize);
 void OnPresentUpdate(reshade::api::command_queue* queue, reshade::api::swapchain* swapchain, const reshade::api::rect* source_rect, const reshade::api::rect* dest_rect, uint32_t dirty_rect_count, const reshade::api::rect* dirty_rects);
 
-// Current swapchain colorspace for UI display
-extern reshade::api::color_space g_current_colorspace;
 
 // HDR10 colorspace override status for UI display
 extern std::string g_hdr10_override_status;
@@ -305,8 +295,8 @@ extern std::atomic<bool> s_enable_unstable_reshade_features;
 
 // Resolution Override Settings (Experimental)
 extern std::atomic<bool> s_enable_resolution_override;
-extern float s_override_resolution_width;
-extern float s_override_resolution_height;
+extern std::atomic<int> s_override_resolution_width;
+extern std::atomic<int> s_override_resolution_height;
 
 // Keyboard Shortcut Settings (Experimental)
 extern std::atomic<bool> s_enable_mute_unmute_shortcut;

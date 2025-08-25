@@ -29,24 +29,24 @@ std::atomic<bool> s_prevent_fullscreen{false};
 std::atomic<bool> s_nvapi_fullscreen_prevention{false}; // disabled by default
 // NVAPI HDR logging
 std::atomic<bool> s_nvapi_hdr_logging{false};
-float s_nvapi_hdr_interval_sec = 5.f;
+std::atomic<float> s_nvapi_hdr_interval_sec{5.f};
 std::atomic<bool> s_nvapi_force_hdr10{false}; // disabled by default
 
 // Spoof Fullscreen State (for applications that query fullscreen status)
 std::atomic<int> s_spoof_fullscreen_state{0}; // 0 = Disabled, 1 = Spoof as Fullscreen, 2 = Spoof as Windowed
 std::atomic<bool> s_mute_in_background{false};
 std::atomic<bool> s_mute_in_background_if_other_audio{false};
-float s_audio_volume_percent = 100.f;
+std::atomic<float> s_audio_volume_percent{100.f};
 std::atomic<bool> s_audio_mute{false};
 
 // Performance: background FPS cap
-float s_fps_limit_background = 30.f;
+std::atomic<float> s_fps_limit_background{30.f};
 // FPS limit for foreground
-float s_fps_limit = 0.f;
+std::atomic<float> s_fps_limit{0.f};
 // Extra wait applied by custom FPS limiter (ms)
-float s_fps_extra_wait_ms = 0.f;
+std::atomic<float> s_fps_extra_wait_ms{0.f};
 // Custom FPS Limiter settings
-float s_custom_fps_limit = 0.f;
+std::atomic<float> s_custom_fps_limit{0.f};
 std::atomic<bool> s_custom_fps_limiter_enabled{true}; // Always enabled
 
 // VSync and tearing controls
@@ -56,8 +56,8 @@ std::atomic<bool> s_allow_tearing{false};
 std::atomic<bool> s_prevent_tearing{false};
 
 // Monitor and display settings
-float s_target_monitor_index = 0.f;
-float s_dxgi_composition_state = 0.f;
+std::atomic<int> s_target_monitor_index{0};
+std::atomic<int> s_dxgi_composition_state{0};
 
 std::atomic<int> s_spoof_window_focus{0}; // 0 = Disabled, 1 = Spoof as Focused, 2 = Spoof as Unfocused
 
@@ -83,21 +83,21 @@ std::atomic<bool> s_background_feature_enabled{false}; // Disabled by default
 std::atomic<bool> s_enforce_desired_window{true}; // Enable window enforcement
 
 // Desktop Resolution Override
-float s_selected_monitor_index = 0.f; // Primary monitor by default
+std::atomic<int> s_selected_monitor_index{0}; // Primary monitor by default
 
 // Display Tab Enhanced Settings
-float s_selected_aspect_ratio = 1.f; // Default to 16:9
-float s_selected_resolution_index = 0.f; // Default to first available resolution
-float s_selected_refresh_rate_index = 0.f; // Default to first available refresh rate
+std::atomic<int> s_selected_aspect_ratio{1}; // Default to 16:9
+std::atomic<int> s_selected_resolution_index{0}; // Default to first available resolution
+std::atomic<int> s_selected_refresh_rate_index{0}; // Default to first available refresh rate
 
-bool s_initial_auto_selection_done = false; // Track if we've done initial auto-selection
+std::atomic<bool> s_initial_auto_selection_done{false}; // Track if we've done initial auto-selection
 
 // Auto-restore resolution on game close
-bool s_auto_restore_resolution_on_close = true; // Enabled by default
+std::atomic<bool> s_auto_restore_resolution_on_close{true}; // Enabled by default
 
 // Auto-apply resolution and refresh rate changes
-bool s_auto_apply_resolution_change = false; // Disabled by default
-bool s_auto_apply_refresh_rate_change = false; // Disabled by default
+std::atomic<bool> s_auto_apply_resolution_change{false}; // Disabled by default
+std::atomic<bool> s_auto_apply_refresh_rate_change{false}; // Disabled by default
 
 // Reflex settings
 std::atomic<bool> s_reflex_enabled{true}; // Enabled by default
@@ -135,7 +135,6 @@ std::thread g_monitoring_thread;
 
 // Continuous rendering system
 std::atomic<bool> s_continuous_rendering_enabled{false}; // Off by default
-float s_continuous_rendering_throttle = 2.f; // Throttle to every 2nd frame by default
 std::atomic<bool> s_force_continuous_rendering{true}; // Force continuous rendering on every frame (enabled by default for focus spoofing)
 // CONTINUOUS RENDERING THREAD VARIABLES REMOVED - Focus spoofing is now handled by Win32 hooks
 
@@ -194,8 +193,8 @@ std::atomic<bool> s_enable_unstable_reshade_features = false; // Disabled by def
 
 // Resolution Override Settings (Experimental)
 std::atomic<bool> s_enable_resolution_override = false; // Disabled by default
-float s_override_resolution_width = 1920.f; // Default to 1920
-float s_override_resolution_height = 1080.f; // Default to 1080
+std::atomic<int> s_override_resolution_width{1920}; // Default to 1920
+std::atomic<int> s_override_resolution_height{1080}; // Default to 1080
 
 // Keyboard Shortcut Settings (Experimental)
 std::atomic<bool> s_enable_mute_unmute_shortcut = false; // Disabled by default

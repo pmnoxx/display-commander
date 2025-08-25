@@ -14,15 +14,8 @@
 #include "../../display_restore.hpp"
 #include "../new_ui/settings_wrapper.hpp"
 
-// External declarations
-extern std::atomic<HWND> g_last_swapchain_hwnd;
-extern float s_selected_monitor_index;
-extern float s_selected_resolution_index;
-extern float s_selected_refresh_rate_index;
-extern bool s_initial_auto_selection_done;
-extern bool s_auto_restore_resolution_on_close;
-extern bool s_auto_apply_resolution_change;
-extern bool s_auto_apply_refresh_rate_change;
+// Include the centralized globals header
+#include "../../globals.hpp"
 
 
 namespace ui::monitor_settings {
@@ -90,8 +83,8 @@ static std::atomic<bool> g_refresh_auto_apply_failed{false};
 // Helper: Apply current selection (DXGI first, then legacy) and return success
 static bool TryApplyCurrentSelectionOnce(int &out_monitor_index, int &out_width, int &out_height, display_cache::RationalRefreshRate &out_refresh_rate) {
     // Determine monitor index
-    int actual_monitor_index = static_cast<int>(s_selected_monitor_index);
-    if (s_selected_monitor_index == 0) {
+    int actual_monitor_index = static_cast<int>(s_selected_monitor_index.load());
+    if (s_selected_monitor_index.load() == 0) {
         HWND hwnd = g_last_swapchain_hwnd.load();
         if (hwnd) {
             HMONITOR current_monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
@@ -324,7 +317,7 @@ void HandleAutoDetection() {
                     const auto* display = display_cache::g_displayCache.GetDisplay(i);
                     if (display && display->monitor_handle == current_monitor) {
                         // Set to Auto (Current) since that's where this monitor will be
-                        s_selected_monitor_index = 0.0f;
+                        s_selected_monitor_index.store(0.0f);
                         // Prefer saved indices for this display (0..3). If out of range, fallback to closest
                         if (i >= 0 && i <= 3) {
                             auto &resSetting = GetResSettingForDisplay(i);
@@ -332,19 +325,19 @@ void HandleAutoDetection() {
                             // Ensure settings loaded already in EnsurePersistentSettingsLoadedOnce
                             int savedRes = resSetting.GetValue();
                             int savedRef = refSetting.GetValue();
-                            s_selected_resolution_index = static_cast<float>(savedRes);
-                            s_selected_refresh_rate_index = static_cast<float>(savedRef);
+                            s_selected_resolution_index.store(savedRes);
+                            s_selected_refresh_rate_index.store(savedRef);
                         } else {
                             // Use the new methods to find closest supported modes to current settings
                             auto closest_resolution_index = display->FindClosestResolutionIndex();
                             if (closest_resolution_index.has_value()) {
-                                s_selected_resolution_index = static_cast<float>(closest_resolution_index.value());
+                                s_selected_resolution_index.store(closest_resolution_index.value());
                                 // Default to Current Refresh Rate (index 0 in UI)
-                                s_selected_refresh_rate_index = 0.0f;
+                                s_selected_refresh_rate_index.store(0);
                             } else {
                                 // Fallback to first resolution if no match found
-                                s_selected_resolution_index = 0.0f;
-                                s_selected_refresh_rate_index = 0.0f;
+                                s_selected_resolution_index.store(0);
+                                s_selected_refresh_rate_index.store(0);
                             }
                         }
                         break;
@@ -377,7 +370,7 @@ void HandleMonitorSelection(const std::vector<std::string>& monitor_labels) {
         for (int i = 0; i < static_cast<int>(monitor_labels.size()); i++) {
             const bool is_selected = (i == static_cast<int>(s_selected_monitor_index));
             if (ImGui::Selectable(monitor_labels[i].c_str(), is_selected)) {
-                s_selected_monitor_index = static_cast<float>(i);
+                s_selected_monitor_index.store(i);
                 
                 if (i == 0) {
                     // Auto (Current) option selected - find the current monitor where the game is running
@@ -393,17 +386,17 @@ void HandleMonitorSelection(const std::vector<std::string>& monitor_labels) {
                                     if (j >= 0 && j <= 3) {
                                         auto &resSetting = GetResSettingForDisplay(j);
                                         auto &refSetting = GetRefreshSettingForDisplay(j);
-                                        s_selected_resolution_index = static_cast<float>(resSetting.GetValue());
-                                        s_selected_refresh_rate_index = static_cast<float>(refSetting.GetValue());
+                                        s_selected_resolution_index.store(resSetting.GetValue());
+                                        s_selected_refresh_rate_index.store(refSetting.GetValue());
                                     } else {
                                         // Fallback: closest to current
                                         auto closest_resolution_index = display->FindClosestResolutionIndex();
                                         if (closest_resolution_index.has_value()) {
-                                            s_selected_resolution_index = static_cast<float>(closest_resolution_index.value());
-                                            s_selected_refresh_rate_index = 0.0f;
+                                            s_selected_resolution_index.store(closest_resolution_index.value());
+                                            s_selected_refresh_rate_index.store(0);
                                         } else {
-                                            s_selected_resolution_index = 0.0f;
-                                            s_selected_refresh_rate_index = 0.0f;
+                                            s_selected_resolution_index.store(0);
+                                            s_selected_refresh_rate_index.store(0);
                                         }
                                     }
                                     break;
@@ -419,17 +412,17 @@ void HandleMonitorSelection(const std::vector<std::string>& monitor_labels) {
                         if (actual >= 0 && actual <= 3) {
                             auto &resSetting = GetResSettingForDisplay(actual);
                             auto &refSetting = GetRefreshSettingForDisplay(actual);
-                            s_selected_resolution_index = static_cast<float>(resSetting.GetValue());
-                            s_selected_refresh_rate_index = static_cast<float>(refSetting.GetValue());
+                            s_selected_resolution_index.store(resSetting.GetValue());
+                            s_selected_refresh_rate_index.store(refSetting.GetValue());
                         } else {
                             // Fallback to closest/current
                             auto closest_resolution_index = display->FindClosestResolutionIndex();
                             if (closest_resolution_index.has_value()) {
-                                s_selected_resolution_index = static_cast<float>(closest_resolution_index.value());
-                                s_selected_refresh_rate_index = 0.0f;
+                                s_selected_resolution_index.store(closest_resolution_index.value());
+                                s_selected_refresh_rate_index.store(0);
                             } else {
-                                s_selected_resolution_index = 0.0f;
-                                s_selected_refresh_rate_index = 0.0f;
+                                s_selected_resolution_index.store(0);
+                                s_selected_refresh_rate_index.store(0);
                             }
                         }
                     }
@@ -477,18 +470,18 @@ void HandleResolutionSelection(int selected_monitor_index) {
     if (!resolution_labels.empty()) {
         // Clamp saved index to available range
         if (s_selected_resolution_index < 0 || s_selected_resolution_index >= static_cast<int>(resolution_labels.size())) {
-            s_selected_resolution_index = 0.0f;
+            s_selected_resolution_index.store(0);
             resSetting.SetValue(0);
             resSetting.Save();
         }
         ImGui::BeginGroup();
         ImGui::PushID("resolution_combo");
-        if (ImGui::BeginCombo("Resolution", resolution_labels[static_cast<int>(s_selected_resolution_index)].c_str())) {
+        if (ImGui::BeginCombo("Resolution", resolution_labels[static_cast<int>(s_selected_resolution_index.load())].c_str())) {
             for (int i = 0; i < static_cast<int>(resolution_labels.size()); i++) {
-                const bool is_selected = (i == static_cast<int>(s_selected_resolution_index));
+                const bool is_selected = (i == s_selected_resolution_index.load());
                 if (ImGui::Selectable(resolution_labels[i].c_str(), is_selected)) {
-                    s_selected_resolution_index = static_cast<float>(i);
-                    s_selected_refresh_rate_index = 0.f; // Reset refresh rate when resolution changes
+                    s_selected_resolution_index.store(static_cast<float>(i));
+                                          s_selected_refresh_rate_index.store(0); // Reset refresh rate when resolution changes
                     resSetting.SetValue(i);
                     resSetting.Save();
                     refSetting.SetValue(0);
@@ -508,10 +501,12 @@ void HandleResolutionSelection(int selected_monitor_index) {
         }
         ImGui::PopID();
         ImGui::SameLine();
-        if (ImGui::Checkbox("Auto-apply##resolution", &s_auto_apply_resolution_change)) {
-            g_setting_auto_apply_resolution.SetValue(s_auto_apply_resolution_change);
+        bool auto_apply_resolution_change = s_auto_apply_resolution_change.load();
+        if (ImGui::Checkbox("Auto-apply##resolution", &auto_apply_resolution_change)) {
+            s_auto_apply_resolution_change.store(auto_apply_resolution_change);
+            g_setting_auto_apply_resolution.SetValue(auto_apply_resolution_change);
             g_setting_auto_apply_resolution.Save();
-            if (s_auto_apply_resolution_change) {
+            if (auto_apply_resolution_change) {
                 if (!g_has_pending_confirmation.load()) {
                     StartResolutionAutoApplyWithBackoff();
                 }
@@ -566,17 +561,17 @@ void HandleRefreshRateSelection(int selected_monitor_index, int selected_resolut
             if (!refresh_rate_labels.empty()) {
                 // Clamp saved index to available range
                 if (s_selected_refresh_rate_index < 0 || s_selected_refresh_rate_index >= static_cast<int>(refresh_rate_labels.size())) {
-                    s_selected_refresh_rate_index = 0.0f;
+                    s_selected_refresh_rate_index.store(0);
                     refSetting.SetValue(0);
                     refSetting.Save();
                 }
                 ImGui::BeginGroup();
                 ImGui::PushID("refresh_rate_combo");
-                if (ImGui::BeginCombo("Refresh Rate", refresh_rate_labels[static_cast<int>(s_selected_refresh_rate_index)].c_str())) {
+                if (ImGui::BeginCombo("Refresh Rate", refresh_rate_labels[static_cast<int>(s_selected_refresh_rate_index.load())].c_str())) {
                     for (int i = 0; i < static_cast<int>(refresh_rate_labels.size()); i++) {
-                        const bool is_selected = (i == static_cast<int>(s_selected_refresh_rate_index));
+                        const bool is_selected = (i == static_cast<int>(s_selected_refresh_rate_index.load()));
                         if (ImGui::Selectable(refresh_rate_labels[i].c_str(), is_selected)) {
-                            s_selected_refresh_rate_index = static_cast<float>(i);
+                            s_selected_refresh_rate_index.store(i);
                             refSetting.SetValue(i);
                             refSetting.Save();
                             if (s_auto_apply_refresh_rate_change) {
@@ -593,10 +588,12 @@ void HandleRefreshRateSelection(int selected_monitor_index, int selected_resolut
                 }
                 ImGui::PopID();
                 ImGui::SameLine();
-                if (ImGui::Checkbox("Auto-apply##refresh", &s_auto_apply_refresh_rate_change)) {
-                    g_setting_auto_apply_refresh.SetValue(s_auto_apply_refresh_rate_change);
+                bool auto_apply_refresh_rate_change = s_auto_apply_refresh_rate_change.load();
+                if (ImGui::Checkbox("Auto-apply##refresh", &auto_apply_refresh_rate_change)) {
+                    s_auto_apply_refresh_rate_change.store(auto_apply_refresh_rate_change);
+                    g_setting_auto_apply_refresh.SetValue(auto_apply_refresh_rate_change);
                     g_setting_auto_apply_refresh.Save();
-                    if (s_auto_apply_refresh_rate_change) {
+                    if (auto_apply_refresh_rate_change) {
                         if (!g_has_pending_confirmation.load()) {
                             StartRefreshAutoApplyWithBackoff();
                         }
@@ -623,9 +620,11 @@ void HandleAutoRestoreResolutionCheckbox() {
     ImGui::Separator();
     ImGui::Spacing();
     
-    if (ImGui::Checkbox("Restore display settings when game closes", &s_auto_restore_resolution_on_close)) {
+    bool auto_restore_resolution_on_close = s_auto_restore_resolution_on_close.load();
+    if (ImGui::Checkbox("Restore display settings when game closes", &auto_restore_resolution_on_close)) {
+        s_auto_restore_resolution_on_close.store(auto_restore_resolution_on_close);
         // Log the setting change
-        if (s_auto_restore_resolution_on_close) {
+        if (auto_restore_resolution_on_close) {
             LogInfo("Restore display settings when game closes: ENABLED");
         } else {
             LogInfo("Restore display settings when game closes: DISABLED");
@@ -641,9 +640,11 @@ void HandleAutoRestoreResolutionCheckbox() {
 void HandleAutoApplyCheckboxes() {
     ImGui::Spacing();
     
-    if (ImGui::Checkbox("Auto-apply resolution changes (TODO: implement)", &s_auto_apply_resolution_change)) {
+    bool auto_apply_resolution_change = s_auto_apply_resolution_change.load();
+    if (ImGui::Checkbox("Auto-apply resolution changes (TODO: implement)", &auto_apply_resolution_change)) {
+        s_auto_apply_resolution_change.store(auto_apply_resolution_change);
         // Log the setting change
-        if (s_auto_apply_resolution_change) {
+        if (auto_apply_resolution_change) {
             LogInfo("Auto-apply resolution changes: ENABLED");
         } else {
             LogInfo("Auto-apply resolution changes: DISABLED");
@@ -654,9 +655,11 @@ void HandleAutoApplyCheckboxes() {
         ImGui::SetTooltip("When enabled, automatically applies resolution changes immediately when a new resolution is selected.\nThis provides instant feedback without needing to click the apply button.");
     }
     
-    if (ImGui::Checkbox("Auto-apply refresh rate changes (TODO: implement)", &s_auto_apply_refresh_rate_change)) {
+    bool auto_apply_refresh_rate_change = s_auto_apply_refresh_rate_change.load();
+    if (ImGui::Checkbox("Auto-apply refresh rate changes (TODO: implement)", &auto_apply_refresh_rate_change)) {
+        s_auto_apply_refresh_rate_change.store(auto_apply_refresh_rate_change);
         // Log the setting change
-        if (s_auto_apply_refresh_rate_change) {
+        if (auto_apply_refresh_rate_change) {
             LogInfo("Auto-apply refresh rate changes: ENABLED");
         } else {
             LogInfo("Auto-apply refresh rate changes: DISABLED");
@@ -686,9 +689,9 @@ void HandleDXGIAPIApplyButton() {
         }
         // Apply the changes using the DXGI API for fractional refresh rates
         std::thread([](){
-            // If Auto (Current) is selected, find the current monitor where the game is running
-            int actual_monitor_index = static_cast<int>(s_selected_monitor_index);
-            if (s_selected_monitor_index == 0) {
+                          // If Auto (Current) is selected, find the current monitor where the game is running
+            int actual_monitor_index = s_selected_monitor_index.load();
+            if (s_selected_monitor_index.load() == 0) {
                 HWND hwnd = g_last_swapchain_hwnd.load();
                 if (hwnd) {
                     HMONITOR current_monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);

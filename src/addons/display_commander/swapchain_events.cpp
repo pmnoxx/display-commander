@@ -1,7 +1,6 @@
 #include "addon.hpp"
 #include "reflex/reflex_management.hpp"
 #include "dxgi/dxgi_device_info.hpp"
-#include "dxgi/custom_fps_limiter_manager.hpp"
 #include "resolution_helpers.hpp"
 #include "display_cache.hpp"
 #include "audio/audio_management.hpp"
@@ -16,6 +15,9 @@
 
 // Use renodx2 utilities for swapchain color space changes
 #include <utils/swapchain.hpp>
+#include "globals.hpp"
+#include "dxgi/custom_fps_limiter_manager.hpp"
+#include "dxgi/custom_fps_limiter.hpp"
 
 // Frame lifecycle hooks for custom FPS limiter
 void OnBeginRenderPass(reshade::api::command_list* cmd_list, uint32_t count, const reshade::api::render_pass_render_target_desc* rts, const reshade::api::render_pass_depth_stencil_desc* ds) {
@@ -113,12 +115,12 @@ bool OnCreateSwapchainCapture(reshade::api::device_api /*api*/, reshade::api::sw
   
   // Apply resolution override if enabled (Experimental)
   extern std::atomic<bool> s_enable_resolution_override;
-  extern float s_override_resolution_width;
-  extern float s_override_resolution_height;
+  extern std::atomic<int> s_override_resolution_width;
+  extern std::atomic<int> s_override_resolution_height;
   
   if (s_enable_resolution_override.load()) {
-    const int width = static_cast<int>(s_override_resolution_width);
-    const int height = static_cast<int>(s_override_resolution_height);
+    const int width = s_override_resolution_width.load();
+    const int height = s_override_resolution_height.load();
     
     // Only apply if both width and height are > 0 (same logic as ReShade ForceResolution)
     if (width > 0 && height > 0) {
@@ -174,10 +176,10 @@ void OnInitSwapchain(reshade::api::swapchain* swapchain, bool resize) {
   {
     DxgiBypassMode mode = GetIndependentFlipState(swapchain);
     switch (mode) {
-      case DxgiBypassMode::kUnknown: s_dxgi_composition_state = 0.f; break;
-      case DxgiBypassMode::kComposed: s_dxgi_composition_state = 1.f; break;
-      case DxgiBypassMode::kOverlay: s_dxgi_composition_state = 2.f; break;
-      case DxgiBypassMode::kIndependentFlip: s_dxgi_composition_state = 3.f; break;
+        case DxgiBypassMode::kUnknown: s_dxgi_composition_state.store(0); break;
+        case DxgiBypassMode::kComposed: s_dxgi_composition_state.store(1); break;
+        case DxgiBypassMode::kOverlay: s_dxgi_composition_state.store(2); break;
+        case DxgiBypassMode::kIndependentFlip: s_dxgi_composition_state.store(3); break;
     }
     std::ostringstream oss2;
     oss2 << "DXGI Composition State (onSwapChainInit): " << DxgiBypassModeToString(mode)
@@ -266,16 +268,16 @@ void OnPresentUpdate(
   if (s_custom_fps_limiter_enabled.load()) {
     // Use background flag computed by monitoring thread; avoid GetForegroundWindow here
     extern std::atomic<bool> g_app_in_background;
-    extern float s_fps_limit_background;
+    extern std::atomic<float> s_fps_limit_background;
     const bool is_background = g_app_in_background.load(std::memory_order_acquire);
     
     // Get the appropriate FPS limit based on focus state
     float target_fps = 0.0f;
     if (is_background) {
-      target_fps = s_fps_limit_background;  // Use background FPS limit
+      target_fps = s_fps_limit_background.load();  // Use background FPS limit
     } else {
-      extern float s_fps_limit;  // Use foreground FPS limit from UI settings
-      target_fps = s_fps_limit;
+      extern std::atomic<float> s_fps_limit;  // Use foreground FPS limit from UI settings
+      target_fps = s_fps_limit.load();
     }
     // Apply the FPS limit to the Custom FPS Limiter
     if (dxgi::fps_limiter::g_customFpsLimiterManager) {

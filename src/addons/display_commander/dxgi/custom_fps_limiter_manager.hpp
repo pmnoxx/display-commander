@@ -22,7 +22,4 @@ private:
     CustomFpsLimiter m_fpsLimiter;
 };
 
-// Global instance
-extern std::unique_ptr<CustomFpsLimiterManager> g_customFpsLimiterManager;
-
 } // namespace dxgi::fps_limiter

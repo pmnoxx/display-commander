@@ -182,7 +182,7 @@ void DrawDeveloperSettings() {
     ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "=== FPS Limiter Timing ===");
     const char* fmt_ms = "%.2f ms";
     if (SliderFloatSetting(g_developerTabSettings.fps_extra_wait_ms, "Extra wait before SIMULATION_START", fmt_ms)) {
-        ::s_fps_extra_wait_ms = g_developerTabSettings.fps_extra_wait_ms.GetValue();
+        ::s_fps_extra_wait_ms.store(g_developerTabSettings.fps_extra_wait_ms.GetValue());
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Delays CPU thread to decrease latency by a fixed amount.\nAdds a fixed delay before SIMULATION_START to pull simulation closer to present. Typical ~half frame time; range 0–10 ms.");
@@ -239,7 +239,7 @@ void DrawNvapiSettings() {
         
         // NVAPI HDR Interval
         if (SliderFloatSetting(g_developerTabSettings.nvapi_hdr_interval_sec, "HDR Logging Interval (seconds)", "%.1f")) {
-            s_nvapi_hdr_interval_sec = g_developerTabSettings.nvapi_hdr_interval_sec.GetValue();
+            s_nvapi_hdr_interval_sec.store(g_developerTabSettings.nvapi_hdr_interval_sec.GetValue());
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Interval between HDR monitor information logging.");
@@ -375,7 +375,7 @@ void DrawResolutionOverrideSettings() {
         
         // Width input
         if (SliderIntSetting(g_developerTabSettings.override_resolution_width, "Override Width")) {
-            ::s_override_resolution_width = static_cast<float>(g_developerTabSettings.override_resolution_width.GetValue());
+            ::s_override_resolution_width.store(static_cast<float>(g_developerTabSettings.override_resolution_width.GetValue()));
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Width to override the backbuffer to. Must be > 0 to take effect.");
@@ -383,7 +383,7 @@ void DrawResolutionOverrideSettings() {
         
         // Height input
         if (SliderIntSetting(g_developerTabSettings.override_resolution_height, "Override Height")) {
-            ::s_override_resolution_height = static_cast<float>(g_developerTabSettings.override_resolution_height.GetValue());
+            ::s_override_resolution_height.store(static_cast<float>(g_developerTabSettings.override_resolution_height.GetValue()));
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Height to override the backbuffer to. Must be > 0 to take effect.");

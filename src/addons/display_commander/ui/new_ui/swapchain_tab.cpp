@@ -324,7 +324,7 @@ void DrawDxgiCompositionInfo() {
         ImGui::Text("Colorspace: %s", colorspace_str.c_str());
         
         // Display HDR10 override status
-        ImGui::Text("HDR10 Colorspace Override: %s (Last: %s)", g_hdr10_override_status.c_str(), g_hdr10_override_timestamp.c_str());
+        ImGui::Text("HDR10 Colorspace Override: %s (Last: %s)", g_hdr10_override_status.load()->c_str(), g_hdr10_override_timestamp.load()->c_str());
     }
 }
 

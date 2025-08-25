@@ -182,8 +182,14 @@ std::vector<MonitorInfo> g_monitors;
 
 // Colorspace variables
 reshade::api::color_space g_current_colorspace = reshade::api::color_space::unknown;
-std::string g_hdr10_override_status = "Not applied";
-std::string g_hdr10_override_timestamp = "Never";
+
+// HDR10 override status (thread-safe, updated by background thread, read by UI thread)
+// Use UpdateHdr10OverrideStatus() to update, or g_hdr10_override_status.load()->c_str() to read
+std::atomic<std::shared_ptr<std::string>> g_hdr10_override_status{std::make_shared<std::string>("Not applied")};
+
+// HDR10 override timestamp (thread-safe, updated by background thread, read by UI thread)
+// Use UpdateHdr10OverrideTimestamp() to update, or g_hdr10_override_timestamp.load()->c_str() to read
+std::atomic<std::shared_ptr<std::string>> g_hdr10_override_timestamp{std::make_shared<std::string>("Never")};
 
 // Monitor labels cache (updated by background thread) - lock-free publication
 std::atomic<std::shared_ptr<const std::vector<std::string>>> g_monitor_labels{std::make_shared<const std::vector<std::string>>()} ;
@@ -198,3 +204,13 @@ std::atomic<int> s_override_resolution_height{1080}; // Default to 1080
 
 // Keyboard Shortcut Settings (Experimental)
 std::atomic<bool> s_enable_mute_unmute_shortcut = false; // Disabled by default
+
+// Helper function for updating HDR10 override status atomically
+void UpdateHdr10OverrideStatus(const std::string& status) {
+    g_hdr10_override_status.store(std::make_shared<std::string>(status));
+}
+
+// Helper function for updating HDR10 override timestamp atomically
+void UpdateHdr10OverrideTimestamp(const std::string& timestamp) {
+    g_hdr10_override_timestamp.store(std::make_shared<std::string>(timestamp));
+}

@@ -124,8 +124,14 @@ extern std::vector<MonitorInfo> g_monitors;
 
 // Colorspace variables (using int to avoid reshade dependency)
 extern reshade::api::color_space g_current_colorspace;
-extern std::string g_hdr10_override_status;
-extern std::string g_hdr10_override_timestamp;
+extern std::atomic<std::shared_ptr<std::string>> g_hdr10_override_status;
+extern std::atomic<std::shared_ptr<std::string>> g_hdr10_override_timestamp;
+
+// Helper function for updating HDR10 override status atomically
+void UpdateHdr10OverrideStatus(const std::string& status);
+
+// Helper function for updating HDR10 override timestamp atomically
+void UpdateHdr10OverrideTimestamp(const std::string& timestamp);
 
 // Experimental/Unstable features toggle
 extern std::atomic<bool> s_enable_unstable_reshade_features;

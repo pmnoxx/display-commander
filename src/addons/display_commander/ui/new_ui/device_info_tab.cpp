@@ -32,8 +32,8 @@ void DrawBasicDeviceInfo() {
         int bb_w = g_last_backbuffer_width.load();
         int bb_h = g_last_backbuffer_height.load();
         reshade::api::color_space colorspace = g_current_colorspace;
-        std::string hdr_status = g_hdr10_override_status;
-        std::string hdr_timestamp = g_hdr10_override_timestamp;
+        std::string hdr_status = *g_hdr10_override_status.load();
+        std::string hdr_timestamp = *g_hdr10_override_timestamp.load();
         
         // Display device information
         ImGui::Text("Current Window: %p", hwnd);

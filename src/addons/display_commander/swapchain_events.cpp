@@ -86,13 +86,14 @@ bool OnCreateSwapchainCapture(reshade::api::device_api /*api*/, reshade::api::sw
     modified = true;
   } else if (s_force_vsync_off.load()) {
     desc.sync_interval = 0; // VSYNC off
+    desc.present_flags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
     modified = true;
   }
   // Apply tearing preference if requested and applicable
   {
     const bool is_flip = (desc.present_mode == DXGI_SWAP_EFFECT_FLIP_DISCARD || desc.present_mode == DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL);
     if (is_flip) {
-      if (s_prevent_tearing.load() && desc.sync_interval < INT_MAX) {
+      if (s_prevent_tearing.load() && desc.sync_interval > 0 && desc.sync_interval < INT_MAX) {
         // Clear allow tearing flag when preventing tearing
         desc.present_flags &= ~DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
         modified = true;
@@ -120,11 +121,6 @@ bool OnCreateSwapchainCapture(reshade::api::device_api /*api*/, reshade::api::sw
       LogInfo(oss.str().c_str());
     }
   }
-
-  if (desc.sync_interval > 0) {
-    desc.present_flags &= ~DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
-  }
-
   // Log sync interval and present flags with detailed explanation
   {
     std::ostringstream oss;

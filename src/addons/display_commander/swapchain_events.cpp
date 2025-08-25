@@ -20,7 +20,6 @@
 // Frame lifecycle hooks for custom FPS limiter
 void OnBeginRenderPass(reshade::api::command_list* cmd_list, uint32_t count, const reshade::api::render_pass_render_target_desc* rts, const reshade::api::render_pass_depth_stencil_desc* ds) {
     // Call custom FPS limiter frame begin if enabled
-    extern std::atomic<bool> s_custom_fps_limiter_enabled;
     if (s_custom_fps_limiter_enabled.load()) {
         if (dxgi::fps_limiter::g_customFpsLimiterManager) {
             auto& limiter = dxgi::fps_limiter::g_customFpsLimiterManager->GetFpsLimiter();
@@ -33,7 +32,6 @@ void OnBeginRenderPass(reshade::api::command_list* cmd_list, uint32_t count, con
 
 void OnEndRenderPass(reshade::api::command_list* cmd_list) {
     // Call custom FPS limiter frame end if enabled
-    extern std::atomic<bool> s_custom_fps_limiter_enabled;
     if (s_custom_fps_limiter_enabled.load()) {
         if (dxgi::fps_limiter::g_customFpsLimiterManager) {
             auto& limiter = dxgi::fps_limiter::g_customFpsLimiterManager->GetFpsLimiter();
@@ -186,12 +184,10 @@ void OnInitSwapchain(reshade::api::swapchain* swapchain, bool resize) {
   // Note: Minimize hook removed - use continuous monitoring instead
 
   // Set Reflex sleep mode and latency markers if enabled
-  extern std::atomic<bool> s_reflex_enabled;
   if (s_reflex_enabled.load()) {
     SetReflexSleepMode(swapchain);
     SetReflexLatencyMarkers(swapchain);
     // Also call sleep to start the frame properly
-    extern std::unique_ptr<ReflexManager> g_reflexManager;
     if (g_reflexManager && g_reflexManager->IsAvailable()) {
       g_reflexManager->CallSleep(swapchain);
     }
@@ -211,9 +207,6 @@ void OnPresentUpdate(
 
   // Record per-frame FPS sample for background aggregation (lock-free ring)
   {
-    extern std::atomic<double> g_perf_time_seconds;
-    extern std::atomic<uint32_t> g_perf_ring_head;
-    extern PerfSample g_perf_ring[kPerfRingCapacity];
     static auto start_tp = std::chrono::steady_clock::now();
     auto now_tp = std::chrono::steady_clock::now();
     const double elapsed = std::chrono::duration<double>(now_tp - start_tp).count();
@@ -229,11 +222,7 @@ void OnPresentUpdate(
   }
   
   // Call Reflex functions on EVERY frame (not throttled)
-  extern std::atomic<bool> s_reflex_enabled;
-  extern std::atomic<bool> s_reflex_use_markers;
   if (s_reflex_enabled.load() && s_reflex_use_markers.load()) {
-    extern std::unique_ptr<ReflexManager> g_reflexManager;
-    extern std::atomic<bool> g_reflex_settings_changed;
     
     if (g_reflexManager && g_reflexManager->IsAvailable()) {
       // Force sleep mode update if settings have changed (required for NVIDIA overlay detection)
@@ -256,11 +245,8 @@ void OnPresentUpdate(
   }
 
   // Call Custom FPS Limiter on EVERY frame (not throttled)
-  extern std::atomic<bool> s_custom_fps_limiter_enabled;
   if (s_custom_fps_limiter_enabled.load()) {
     // Use background flag computed by monitoring thread; avoid GetForegroundWindow here
-    extern std::atomic<bool> g_app_in_background;
-    extern std::atomic<float> s_fps_limit_background;
     const bool is_background = g_app_in_background.load(std::memory_order_acquire);
     
     // Get the appropriate FPS limit based on focus state
@@ -268,7 +254,6 @@ void OnPresentUpdate(
     if (is_background) {
       target_fps = s_fps_limit_background.load();  // Use background FPS limit
     } else {
-      extern std::atomic<float> s_fps_limit;  // Use foreground FPS limit from UI settings
       target_fps = s_fps_limit.load();
     }
     // Apply the FPS limit to the Custom FPS Limiter
@@ -288,7 +273,6 @@ void OnPresentUpdate(
   {
     reshade::api::effect_runtime* runtime = g_reshade_runtime.load();
     if (runtime != nullptr) {
-      extern std::atomic<bool> g_app_in_background;
       const bool is_background = g_app_in_background.load(std::memory_order_acquire);
       const bool wants_block_input = s_block_input_in_background.load() && is_background;
       // Call every frame as long as any blocking is desired
@@ -300,16 +284,11 @@ void OnPresentUpdate(
   
   // Handle keyboard shortcuts (Experimental)
   if (s_enable_mute_unmute_shortcut.load()) {
-    extern std::atomic<reshade::api::effect_runtime*> g_reshade_runtime;
-    
     // Get the runtime from the atomic variable
     reshade::api::effect_runtime* runtime = g_reshade_runtime.load();
     if (runtime != nullptr) {
       // Check for Ctrl+M shortcut
       if (runtime->is_key_pressed('M') && runtime->is_key_down(VK_CONTROL)) {
-        extern std::atomic<bool> s_audio_mute;
-        extern std::atomic<bool> g_muted_applied;
-        
         // Toggle mute state
         bool new_mute_state = !s_audio_mute.load();
         if (SetMuteForCurrentProcess(new_mute_state)) {
@@ -317,7 +296,6 @@ void OnPresentUpdate(
           g_muted_applied.store(new_mute_state);
           
           // Log the action
-          extern void LogInfo(const char* message);
           std::ostringstream oss;
           oss << "Audio " << (new_mute_state ? "muted" : "unmuted") << " via Ctrl+M shortcut";
           LogInfo(oss.str().c_str());

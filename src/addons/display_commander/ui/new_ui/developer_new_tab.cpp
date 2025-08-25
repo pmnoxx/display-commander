@@ -11,6 +11,8 @@
 #include <thread>
 #include <atomic>
 
+static std::atomic<bool> s_restart_needed_nvapi(false);
+
 namespace ui::new_ui {
 
 void InitDeveloperNewTab() {
@@ -209,6 +211,7 @@ void DrawNvapiSettings() {
     // HDR10 Colorspace Fix
     if (CheckboxSetting(g_developerTabSettings.fix_hdr10_colorspace, "Fix NVAPI HDR10 Colorspace for reshade addon")) {
         s_fix_hdr10_colorspace.store(g_developerTabSettings.fix_hdr10_colorspace.GetValue());
+        s_restart_needed_nvapi.store(true);
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Automatically fix HDR10 colorspace when swapchain format is RGB10A2 and colorspace is currently sRGB. Only works when the game is using sRGB colorspace.");
@@ -217,11 +220,17 @@ void DrawNvapiSettings() {
     // NVAPI Fullscreen Prevention
     if (CheckboxSetting(g_developerTabSettings.nvapi_fullscreen_prevention, "NVAPI Fullscreen Prevention")) {
         s_nvapi_fullscreen_prevention.store(g_developerTabSettings.nvapi_fullscreen_prevention.GetValue());
+        s_restart_needed_nvapi.store(true);
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Use NVAPI to prevent fullscreen mode at the driver level.");
     }
-            if (s_nvapi_fullscreen_prevention.load() && ::g_nvapiFullscreenPrevention.IsAvailable()) {
+    // Display restart-required notice if flagged
+    if (s_restart_needed_nvapi.load()) {
+        ImGui::Spacing();
+        ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "Game restart required to apply NVAPI changes.");
+    }
+    if (s_nvapi_fullscreen_prevention.load() && ::g_nvapiFullscreenPrevention.IsAvailable()) {
         
         // NVAPI HDR Logging
         if (CheckboxSetting(g_developerTabSettings.nvapi_hdr_logging, "NVAPI HDR Logging")) {

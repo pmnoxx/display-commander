@@ -59,7 +59,7 @@ This implementation follows the exact same logic as ReShade's `ForceResolution` 
 
 ## Example Configuration
 ```ini
-[DisplayCommanderNew]
+[DisplayCommander]
 EnableUnstableReShadeFeatures=1
 EnableResolutionOverride=1
 OverrideResolutionWidth=2560

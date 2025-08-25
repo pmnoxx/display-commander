@@ -270,9 +270,8 @@ void DrawDisplaySettings() {
     std::vector<std::string> monitor_labels_local;
     std::vector<const char*> monitor_c_labels;
     {
-        ::g_monitor_labels_lock.lock();
-        monitor_labels_local = ::g_monitor_labels; // copy to avoid lifetime issues
-        ::g_monitor_labels_lock.unlock();
+        auto ptr = ::g_monitor_labels.load(std::memory_order_acquire);
+        monitor_labels_local = *ptr; // copy to avoid lifetime issues
         monitor_c_labels.reserve(monitor_labels_local.size());
         for (const auto& label : monitor_labels_local) {
             monitor_c_labels.push_back(label.c_str());

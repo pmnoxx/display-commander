@@ -18,6 +18,7 @@
 #include <chrono>
 #include <cstdint>
 #include <vector>
+#include <memory>
 
 #include "utils.hpp"
 #include "reflex/reflex_management.hpp"
@@ -39,10 +40,8 @@ private:
     std::atomic_flag _flag = ATOMIC_FLAG_INIT;
 };
 
-// Shared monitor labels cache (updated off the UI thread)
-extern SpinLock g_monitor_labels_lock;
-extern std::vector<std::string> g_monitor_labels;
-extern std::atomic<bool> g_monitor_labels_need_update;
+// Shared monitor labels cache (updated off the UI thread) - lock-free publication
+extern std::atomic<std::shared_ptr<const std::vector<std::string>>> g_monitor_labels;
 
 
 // WASAPI per-app volume control

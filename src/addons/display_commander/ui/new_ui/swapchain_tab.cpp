@@ -10,6 +10,7 @@
 #include <cstdio>
 #include <dxgi1_6.h>
 #include <wrl/client.h>
+#include "../../globals.hpp"
 
 namespace ui::new_ui {
 
@@ -27,9 +28,6 @@ void DrawSwapchainTab() {
 
 void DrawSwapchainInfo() {
     if (ImGui::CollapsingHeader("Swapchain Information", ImGuiTreeNodeFlags_DefaultOpen)) {
-        // Get current swapchain info from ReShade
-        extern std::atomic<reshade::api::swapchain*> g_last_swapchain_ptr;
-        extern reshade::api::color_space g_current_colorspace;
         
         auto* swapchain = ::g_last_swapchain_ptr.load();
         if (swapchain) {

@@ -3,22 +3,8 @@
 #include "resolution_helpers.hpp"
 #include <map>
 #include <algorithm>
+#include "globals.hpp"
 
-// External declarations needed by utility functions
-extern std::atomic<int> s_windowed_width;
-extern std::atomic<int> s_windowed_height;
-extern std::atomic<int> s_window_mode;
-extern std::atomic<int> s_aspect_index;
-
-// New resolution system variables
-extern std::atomic<int> s_selected_monitor_index;
-extern std::atomic<int> s_selected_resolution_index;
-extern std::atomic<int> s_selected_refresh_rate_index;
-
-extern std::atomic<bool> s_initial_auto_selection_done;
-
-extern std::vector<MonitorInfo> g_monitors;
-extern std::atomic<HWND> g_last_swapchain_hwnd;
 
 // Constant definitions
 const int WIDTH_OPTIONS[] = {0, 1280, 1366, 1600, 1920, 2560, 3440, 3840}; // 0 = current monitor width
@@ -138,8 +124,6 @@ bool IsExclusiveFullscreen(HWND hwnd) {
 
 // Spoof fullscreen state detection based on user settings
 bool GetSpoofedFullscreenState(HWND hwnd) {
-    // Import the global variable
-    extern std::atomic<int> s_spoof_fullscreen_state;
     
     // If spoofing is disabled, return actual state
     if (s_spoof_fullscreen_state.load() == 0) {

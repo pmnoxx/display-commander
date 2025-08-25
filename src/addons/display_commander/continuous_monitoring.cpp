@@ -8,31 +8,10 @@
 #include <vector>
 #include <algorithm>
 #include <cmath>
+#include "globals.hpp"
 
 // Forward declarations
 void ComputeDesiredSize(int& out_w, int& out_h);
-
-// Global variables for monitoring
-extern std::atomic<bool> s_continuous_monitoring_enabled;
-extern std::atomic<bool> g_monitoring_thread_running;
-extern std::thread g_monitoring_thread;
-extern std::atomic<HWND> g_last_swapchain_hwnd;
-
-// Additional global variables needed for monitoring
-extern std::atomic<bool> s_remove_top_bar;
-extern std::atomic<bool> s_prevent_always_on_top;
-
-extern std::atomic<bool> s_background_feature_enabled; // Added this line
-
-// ReShade runtime for input blocking
-
-
-// Background window manager
-extern class BackgroundWindowManager g_backgroundWindowManager;
-
-// Input blocking state
-
-extern std::atomic<bool> g_app_in_background;
 
 // Main monitoring thread function
 void ContinuousMonitoringThread() {
@@ -127,7 +106,7 @@ void ContinuousMonitoringThread() {
                 }
 
                 // Update shared state for fast reads on present
-                s_dxgi_composition_state = static_cast<float>(state);
+                s_dxgi_composition_state.store(state);
 
                 int last = g_comp_last_logged.load();
                 if (state != last) {

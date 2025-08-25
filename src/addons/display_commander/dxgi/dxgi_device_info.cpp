@@ -4,9 +4,7 @@
 #include <dxgi1_6.h>
 #include <d3d11.h>
 #include <dbghelp.h>
-
-// External declarations
-extern std::atomic<reshade::api::swapchain*> g_last_swapchain_ptr;
+#include "../globals.hpp"
 
 #pragma comment (lib, "dxgi.lib")
 #pragma comment (lib, "d3d11.lib")

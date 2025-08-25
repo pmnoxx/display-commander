@@ -39,8 +39,8 @@ void RunBackgroundNvapiHdrMonitor() {
             }
         }
 
-        int sleep_ms = (int)((std::max)(1.0f, s_nvapi_hdr_interval_sec) * 1000.0f);
-        std::this_thread::sleep_for(std::chrono::milliseconds(sleep_ms));
+        float sleep_ms = ((std::max)(1.0f, s_nvapi_hdr_interval_sec.load()) * 1000.0f);
+        std::this_thread::sleep_for(std::chrono::nanoseconds((long long)(sleep_ms * 1000000.0f)));
     }
 
     LogInfo("NVAPI HDR monitor: stopped");

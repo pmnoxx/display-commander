@@ -84,6 +84,7 @@ bool OnCreateSwapchainCapture(reshade::api::device_api /*api*/, reshade::api::sw
   extern float s_force_vsync_on;
   extern float s_force_vsync_off;
   extern float s_allow_tearing;
+  extern float s_prevent_tearing;
   
   // Explicit VSYNC overrides take precedence over generic sync-interval dropdown
   if (s_force_vsync_on >= 0.5f) {
@@ -94,13 +95,18 @@ bool OnCreateSwapchainCapture(reshade::api::device_api /*api*/, reshade::api::sw
     modified = true;
   }
   // Apply tearing preference if requested and applicable
-  if (s_allow_tearing >= 0.5f) {
-    // Only attempt when flip model is used; ReShade exposes present_flags for creation flags
+  {
     const bool is_flip = (desc.present_mode == DXGI_SWAP_EFFECT_FLIP_DISCARD || desc.present_mode == DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL);
     if (is_flip) {
-      // DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING is 0x00000800 in DXGI, mapped via present_flags for creation here
-      desc.present_flags |= 0x00000800u; // DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING
-      modified = true;
+      if (s_prevent_tearing >= 0.5f) {
+        // Clear allow tearing flag when preventing tearing
+        desc.present_flags &= ~DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
+        modified = true;
+      } else if (s_allow_tearing >= 0.5f) {
+        // Enable tearing when requested
+        desc.present_flags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
+        modified = true;
+      }
     }
   }
   

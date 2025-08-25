@@ -86,14 +86,6 @@ bool OnCreateSwapchainCapture(reshade::api::device_api /*api*/, reshade::api::sw
   extern float s_allow_tearing;
   extern float s_prevent_tearing;
   
-  // Explicit VSYNC overrides take precedence over generic sync-interval dropdown
-  if (s_force_vsync_on >= 0.5f) {
-    desc.sync_interval = 1; // VSYNC on
-    modified = true;
-  } else if (s_force_vsync_off >= 0.5f) {
-    desc.sync_interval = 0; // VSYNC off
-    modified = true;
-  }
   // Apply tearing preference if requested and applicable
   {
     const bool is_flip = (desc.present_mode == DXGI_SWAP_EFFECT_FLIP_DISCARD || desc.present_mode == DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL);
@@ -108,6 +100,15 @@ bool OnCreateSwapchainCapture(reshade::api::device_api /*api*/, reshade::api::sw
         modified = true;
       }
     }
+  }
+  // Explicit VSYNC overrides take precedence over generic sync-interval dropdown
+  if (s_force_vsync_on >= 0.5f) {
+    desc.sync_interval = 1; // VSYNC on
+    desc.present_flags &= ~DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
+    modified = true;
+  } else if (s_force_vsync_off >= 0.5f) {
+    desc.sync_interval = 0; // VSYNC off
+    modified = true;
   }
   
   // Apply resolution override if enabled (Experimental)

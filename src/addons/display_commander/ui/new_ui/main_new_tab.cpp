@@ -380,6 +380,8 @@ void DrawDisplaySettings() {
             if (vs_on) {
                 g_main_new_tab_settings.force_vsync_off.SetValue(false);
                 s_force_vsync_off = 0.0f;
+                g_main_new_tab_settings.allow_tearing.SetValue(false);
+                s_allow_tearing = 0.0f;
             }
             g_main_new_tab_settings.force_vsync_on.SetValue(vs_on);
             s_force_vsync_on = vs_on ? 1.0f : 0.0f;
@@ -403,21 +405,23 @@ void DrawDisplaySettings() {
             LogInfo(vs_off ? "Force VSync OFF enabled" : "Force VSync OFF disabled");
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Forces sync interval = 0 (immediate). Use with 'Enable Tearing' for true VSYNC off in windowed.");
+            ImGui::SetTooltip("Forces sync interval = 0 (immediate). Use with 'Allow Tearing' for true VSYNC off in windowed.");
         }
 
         ImGui::SameLine();
 
         bool allow_t = g_main_new_tab_settings.allow_tearing.GetValue();
-        if (ImGui::Checkbox("Enable Tearing (DXGI)", &allow_t)) {
+        if (ImGui::Checkbox("Allow Tearing (DXGI)", &allow_t)) {
             // Mutual exclusion with Prevent Tearing
             if (allow_t) {
                 g_main_new_tab_settings.prevent_tearing.SetValue(false);
                 s_prevent_tearing = 0.0f;
+                g_main_new_tab_settings.force_vsync_on.SetValue(false);
+                s_force_vsync_on = 0.0f;
             }
             g_main_new_tab_settings.allow_tearing.SetValue(allow_t);
             s_allow_tearing = allow_t ? 1.0f : 0.0f;
-            LogInfo(allow_t ? "DXGI tearing enabled (flag will be applied on swapchain)" : "DXGI tearing disabled");
+            LogInfo(allow_t ? "DXGI tearing allowed enabled (flag will be applied on swapchain)" : "DXGI tearing allowed disabled");
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Sets DXGI swapchain Allow Tearing flag (Flip Model + OS support required). Applies on swapchain creation.");

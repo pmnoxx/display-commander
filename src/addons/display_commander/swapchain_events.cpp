@@ -16,8 +16,6 @@
 // Use renodx2 utilities for swapchain color space changes
 #include <utils/swapchain.hpp>
 #include "globals.hpp"
-#include "dxgi/custom_fps_limiter_manager.hpp"
-#include "dxgi/custom_fps_limiter.hpp"
 
 // Frame lifecycle hooks for custom FPS limiter
 void OnBeginRenderPass(reshade::api::command_list* cmd_list, uint32_t count, const reshade::api::render_pass_render_target_desc* rts, const reshade::api::render_pass_depth_stencil_desc* ds) {
@@ -83,10 +81,6 @@ bool OnCreateSwapchainCapture(reshade::api::device_api /*api*/, reshade::api::sw
   
   // Apply sync interval setting if enabled
   bool modified = false;
-  extern std::atomic<bool> s_force_vsync_on;
-  extern std::atomic<bool> s_force_vsync_off;
-  extern std::atomic<bool> s_allow_tearing;
-  extern std::atomic<bool> s_prevent_tearing;
   
   // Apply tearing preference if requested and applicable
   {
@@ -106,17 +100,11 @@ bool OnCreateSwapchainCapture(reshade::api::device_api /*api*/, reshade::api::sw
   // Explicit VSYNC overrides take precedence over generic sync-interval dropdown
   if (s_force_vsync_on.load()) {
     desc.sync_interval = 1; // VSYNC on
-    desc.present_flags &= ~DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
     modified = true;
   } else if (s_force_vsync_off.load()) {
     desc.sync_interval = 0; // VSYNC off
     modified = true;
   }
-  
-  // Apply resolution override if enabled (Experimental)
-  extern std::atomic<bool> s_enable_resolution_override;
-  extern std::atomic<int> s_override_resolution_width;
-  extern std::atomic<int> s_override_resolution_height;
   
   if (s_enable_resolution_override.load()) {
     const int width = s_override_resolution_width.load();
@@ -133,6 +121,10 @@ bool OnCreateSwapchainCapture(reshade::api::device_api /*api*/, reshade::api::sw
       oss << "Resolution Override applied: " << width << "x" << height;
       LogInfo(oss.str().c_str());
     }
+  }
+
+  if (desc.sync_interval > 0) {
+    desc.present_flags &= ~DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
   }
   
   // Store the sync interval for UI display

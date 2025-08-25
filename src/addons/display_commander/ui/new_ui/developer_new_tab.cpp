@@ -181,6 +181,32 @@ void DrawDeveloperSettings() {
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Remove the window title bar for a borderless appearance.");
     }
+
+    // FPS Limiter Extra Wait (ms)
+    ImGui::Spacing();
+    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "=== FPS Limiter Timing ===");
+    const char* fmt_ms = "%.2f ms";
+    if (SliderFloatSetting(g_developerTabSettings.fps_extra_wait_ms, "Extra wait before SIMULATION_START", fmt_ms)) {
+        ::s_fps_extra_wait_ms = g_developerTabSettings.fps_extra_wait_ms.GetValue();
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Delays CPU thread to decrease latency by a fixed amount.\nAdds a fixed delay before SIMULATION_START to pull simulation closer to present. Typical ~half frame time; range 0–10 ms.");
+    }
+    ImGui::SameLine();
+    ImGui::TextDisabled("(?)");
+    if (ImGui::IsItemHovered()) {
+        ImGui::BeginTooltip();
+        ImGui::PushTextWrapPos(ImGui::GetFontSize() * 40.0f);
+        ImGui::TextUnformatted("Delays CPU thread to decrease latency by a fixed amount.");
+        ImGui::Separator();
+        ImGui::BulletText("Shifts SIMULATION_START later so simulation occurs closer to PRESENT.");
+        ImGui::BulletText("Effective when there is spare frame time (CPU/GPU finishes early).");
+        ImGui::BulletText("Recommended: 0.5–3.0 ms. Start small; too high can cause stutter/missed v-blank.");
+        ImGui::BulletText("Does not cap FPS; pair with an FPS limit for stable pacing if needed.");
+        ImGui::BulletText("Only affects CPU timing; has no effect if the game is already CPU-bound.");
+        ImGui::PopTextWrapPos();
+        ImGui::EndTooltip();
+    }
 }
 
 void DrawSyncIntervalSettings() {

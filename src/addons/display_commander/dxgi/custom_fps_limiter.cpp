@@ -74,6 +74,14 @@ void CustomFpsLimiter::UpdateTiming()
 
     // Use sleep for as much as reliably possible (exact RenoDX code)
     auto sleep_duration = time_till_next_frame - spin_lock_duration;
+
+    // Apply extra wait in milliseconds from developer setting
+    if (::s_fps_extra_wait_ms > 0.0f) {
+        const auto extra = std::chrono::duration_cast<std::chrono::nanoseconds>(
+            std::chrono::duration<double, std::milli>(static_cast<double>(::s_fps_extra_wait_ms))
+        );
+        sleep_duration += extra;
+    }
     
     // Debug: Log sleep calculation (can be removed later)
     if (frame_count % 60 == 0) {

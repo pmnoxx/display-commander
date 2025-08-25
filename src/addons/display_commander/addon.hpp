@@ -173,6 +173,8 @@ extern float s_audio_volume_percent;
 extern float s_audio_mute;
 extern float s_fps_limit_background;
 extern float s_fps_limit;
+// Extra wait time for FPS limiter in milliseconds
+extern float s_fps_extra_wait_ms;
 extern float s_sync_interval;
 extern float s_custom_fps_limit;
 extern const float s_custom_fps_limiter_enabled;

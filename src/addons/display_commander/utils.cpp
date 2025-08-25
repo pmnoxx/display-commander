@@ -141,15 +141,11 @@ bool GetSpoofedFullscreenState(HWND hwnd) {
 
 // Get the current spoofing setting value (0=disabled, 1=spoof as fullscreen, 2=spoof as windowed)
 int GetFullscreenSpoofingMode() {
-    extern std::atomic<int> s_spoof_fullscreen_state;
     return s_spoof_fullscreen_state.load();
 }
 
 // Spoof window focus state detection based on user settings
-bool GetSpoofedWindowFocus(HWND hwnd) {
-    // Import the global variable
-    extern std::atomic<int> s_spoof_window_focus;
-    
+bool GetSpoofedWindowFocus(HWND hwnd) {    
     // If spoofing is disabled, return actual state
     if (s_spoof_window_focus.load() == 0) {
         return (GetForegroundWindow() == hwnd);
@@ -166,7 +162,6 @@ bool GetSpoofedWindowFocus(HWND hwnd) {
 
 // Get the current focus spoofing setting value (0=disabled, 1=spoof as focused, 2=spoof as unfocused)
 int GetWindowFocusSpoofingMode() {
-    extern std::atomic<int> s_spoof_window_focus;
     return s_spoof_window_focus.load();
 }
 

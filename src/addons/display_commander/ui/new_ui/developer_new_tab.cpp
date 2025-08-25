@@ -136,7 +136,6 @@ void DrawDeveloperSettings() {
         } else {
             oss << "Spoof as Unfocused";
         }
-        extern void LogInfo(const char* message);
         ::LogInfo(oss.str().c_str());
     }
     if (ImGui::IsItemHovered()) {
@@ -349,7 +348,6 @@ void DrawReflexSettings() {
         }
         
         // Mark that Reflex settings have changed to force sleep mode update
-        extern std::atomic<bool> g_reflex_settings_changed;
         ::g_reflex_settings_changed.store(true);
     }
 }

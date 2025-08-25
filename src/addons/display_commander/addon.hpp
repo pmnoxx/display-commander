@@ -136,13 +136,6 @@ struct GlobalWindowState {
 // Global variables (extern declarations)
 // UI mode removed - now using new tab system
 
-// Reflex settings
-extern std::atomic<bool> s_reflex_enabled;
-extern std::atomic<bool> s_reflex_low_latency_mode;
-extern std::atomic<bool> s_reflex_low_latency_boost;
-extern std::atomic<bool> s_reflex_use_markers;
-extern std::atomic<bool> s_enable_unstable_reshade_features;
-
 extern std::atomic<int> s_windowed_width;
 extern std::atomic<int> s_windowed_height;
 extern std::atomic<int> s_window_mode; // 0 = Windowed, 1 = Borderless, 2 = Overlapped Window
@@ -184,8 +177,6 @@ extern std::atomic<bool> s_prevent_tearing;
 extern std::atomic<int> s_target_monitor_index;
 extern std::atomic<int> s_dxgi_composition_state;
 
-extern std::atomic<int> s_spoof_window_focus;
-
 // Input blocking in background
 extern std::atomic<bool> s_block_input_in_background;
 
@@ -214,20 +205,6 @@ extern std::atomic<bool> s_prevent_always_on_top;
 // Background feature - show black window behind game when not fullscreen
 extern std::atomic<bool> s_background_feature_enabled;
 
-// Enforce desired window settings
-extern std::atomic<bool> s_enforce_desired_window;
-
-// Desktop Resolution Override
-extern std::atomic<int> s_selected_monitor_index;
-
-// Display Tab Enhanced Settings
-extern std::atomic<int> s_selected_aspect_ratio;
-extern std::atomic<int> s_selected_resolution_index;
-extern std::atomic<int> s_selected_refresh_rate_index;
-extern std::atomic<bool> s_auto_restore_resolution_on_close;
-extern std::atomic<bool> s_auto_apply_resolution_change;
-extern std::atomic<bool> s_auto_apply_refresh_rate_change;
-
 // Global Reflex manager instance
 extern std::unique_ptr<ReflexManager> g_reflexManager;
 // Global flag for Reflex settings changes
@@ -236,15 +213,6 @@ extern std::atomic<bool> g_reflex_settings_changed;
 // Global window state instance
 extern GlobalWindowState g_window_state;
 extern SpinLock g_window_state_lock;
-
-// Direct atomic variables for latency tracking (UI access)
-extern std::atomic<float> g_current_latency_ms;
-extern std::atomic<float> g_pcl_av_latency_ms;
-extern std::atomic<float> g_average_latency_ms;
-extern std::atomic<float> g_min_latency_ms;
-extern std::atomic<float> g_max_latency_ms;
-extern std::atomic<uint64_t> g_current_frame;
-extern std::atomic<bool> g_reflex_active;
 
 // Lock-free ring buffer for recent FPS samples (60s window at ~240 Hz -> 14400 max)
 constexpr size_t kPerfRingCapacity = 16384;

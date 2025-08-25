@@ -153,3 +153,4 @@ extern std::chrono::steady_clock::time_point g_attach_time;
 
 // Import the global variable
 extern std::atomic<int> s_spoof_fullscreen_state;
+extern std::atomic<int> s_spoof_window_focus;

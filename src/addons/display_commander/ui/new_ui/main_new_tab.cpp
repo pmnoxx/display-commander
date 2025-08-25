@@ -21,15 +21,6 @@
 #include <chrono>
 #include "../ui_display_tab.hpp"
 
-// Global variable declaration
-extern std::unique_ptr<dxgi::fps_limiter::CustomFpsLimiterManager> dxgi::fps_limiter::g_customFpsLimiterManager;
-
-// External constants for width and height options
-extern const int WIDTH_OPTIONS[];
-extern const int HEIGHT_OPTIONS[];
-
-// External global variables
-extern std::atomic<bool> s_background_feature_enabled;
 
 namespace ui::new_ui {
 
@@ -49,27 +40,27 @@ void InitMainNewTab() {
         // Ensure developer settings (including continuous monitoring) are loaded so UI reflects saved state
         g_developerTabSettings.LoadAll();
         g_main_new_tab_settings.LoadSettings();
-        s_window_mode = static_cast<float>(g_main_new_tab_settings.window_mode.GetValue());
+        s_window_mode = g_main_new_tab_settings.window_mode.GetValue();
         {
             int idx = g_main_new_tab_settings.window_width.GetValue();
             idx = (std::max)(idx, 0);
             int max_idx = 7;
             idx = (std::min)(idx, max_idx);
-            s_windowed_width = (idx == 0) ? static_cast<float>(GetCurrentMonitorWidth())
-                                          : static_cast<float>(WIDTH_OPTIONS[idx]);
+            s_windowed_width = (idx == 0) ? GetCurrentMonitorWidth()
+                                          : WIDTH_OPTIONS[idx];
         }
         {
             int idx = g_main_new_tab_settings.window_height.GetValue();
             idx = (std::max)(idx, 0);
             int max_idx = 7;
             idx = (std::min)(idx, max_idx);
-            s_windowed_height = (idx == 0) ? static_cast<float>(GetCurrentMonitorHeight())
-                                           : static_cast<float>(HEIGHT_OPTIONS[idx]);
+            s_windowed_height = (idx == 0) ? GetCurrentMonitorHeight()
+                                           : HEIGHT_OPTIONS[idx];
         }
-        s_aspect_index = static_cast<float>(g_main_new_tab_settings.aspect_index.GetValue());
-        s_target_monitor_index.store(static_cast<float>(g_main_new_tab_settings.target_monitor_index.GetValue()));
+        s_aspect_index = g_main_new_tab_settings.aspect_index.GetValue();
+        s_target_monitor_index.store(g_main_new_tab_settings.target_monitor_index.GetValue());
         s_background_feature_enabled.store(g_main_new_tab_settings.background_feature.GetValue());
-        s_move_to_zero_if_out = static_cast<float>(g_main_new_tab_settings.alignment.GetValue());
+        s_move_to_zero_if_out = g_main_new_tab_settings.alignment.GetValue();
         s_fps_limit.store(g_main_new_tab_settings.fps_limit.GetValue());
         s_fps_limit_background.store(g_main_new_tab_settings.fps_limit_background.GetValue());
         s_audio_volume_percent.store(g_main_new_tab_settings.audio_volume_percent.GetValue());
@@ -319,7 +310,6 @@ void DrawDisplaySettings() {
     // Apply Changes button
     if (ImGui::Button("Apply Changes")) {
         // Force immediate application of window changes
-        extern std::atomic<uint64_t> g_init_apply_generation;
         ::g_init_apply_generation.fetch_add(1);
         LogInfo("Apply Changes button clicked - forcing immediate window update");
         std::ostringstream oss;
@@ -915,7 +905,6 @@ void DrawImportantInfo() {
     }
     
     // PCL AV Latency Display
-    extern std::atomic<float> g_pcl_av_latency_ms;
     float pcl_latency = ::g_pcl_av_latency_ms.load();
     
     std::ostringstream oss;
@@ -925,7 +914,6 @@ void DrawImportantInfo() {
     ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "(30-frame avg)");
     
     // Reflex Status Display
-    extern std::atomic<bool> g_reflex_active;
     bool is_active = ::g_reflex_active.load();
     
     oss.str("");
@@ -939,7 +927,6 @@ void DrawImportantInfo() {
     }
     
     // Flip State Display (renamed from DXGI Composition)
-    extern float s_dxgi_composition_state;
     const char* flip_state_str = "Unknown";
     int flip_state_case = static_cast<int>(::s_dxgi_composition_state);
     switch (flip_state_case) {

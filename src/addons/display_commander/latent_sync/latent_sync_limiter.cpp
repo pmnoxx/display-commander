@@ -17,9 +17,19 @@ static inline FARPROC LoadProcCached(FARPROC& slot, const wchar_t* mod, const ch
     return slot;
 }
 
-LatentSyncLimiter::LatentSyncLimiter() {}
+LatentSyncLimiter::LatentSyncLimiter() {
+    // Create and automatically start the VBlank monitor
+    m_vblank_monitor = std::make_unique<VBlankMonitor>();
+    m_vblank_monitor->StartMonitoring();
+}
 
 LatentSyncLimiter::~LatentSyncLimiter() {
+    // Stop and clean up the VBlank monitor
+    if (m_vblank_monitor) {
+        m_vblank_monitor->StopMonitoring();
+        m_vblank_monitor.reset();
+    }
+    
     if (m_hAdapter != 0) {
         if (LoadProcCached(m_pfnCloseAdapter, L"gdi32.dll", "D3DKMTCloseAdapter")) {
             D3DKMT_CLOSEADAPTER closeReq{}; closeReq.hAdapter = m_hAdapter;
@@ -158,6 +168,19 @@ void LatentSyncLimiter::OnPresentEnd() {
     std::ostringstream oss;
     oss << "Present duration: " << m_avg_present_ticks / 1000.0 << " ms";
     LogInfo(oss.str().c_str());
+}
+
+void LatentSyncLimiter::StartVBlankMonitoring() {
+    if (!m_vblank_monitor) {
+        m_vblank_monitor = std::make_unique<VBlankMonitor>();
+    }
+    m_vblank_monitor->StartMonitoring();
+}
+
+void LatentSyncLimiter::StopVBlankMonitoring() {
+    if (m_vblank_monitor) {
+        m_vblank_monitor->StopMonitoring();
+    }
 }
 
 } // namespace dxgi::fps_limiter

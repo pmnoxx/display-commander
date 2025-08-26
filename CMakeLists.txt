@@ -37,7 +37,6 @@ target_include_directories(display_commander
     ${CMAKE_CURRENT_LIST_DIR}/external/reshade            # provides include/reshade.hpp and deps/imgui
     ${CMAKE_CURRENT_LIST_DIR}/external/Streamline/include # Streamline headers if referenced
     ${CMAKE_CURRENT_LIST_DIR}/external/SpecialK/depends/include/nvapi
-    ${CMAKE_CURRENT_LIST_DIR}/external/SpecialK/src/imgui
 )
 
 # Link system libs

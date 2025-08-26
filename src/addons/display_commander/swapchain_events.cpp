@@ -322,7 +322,7 @@ void OnPresentUpdate(
     }
   }
 
-  // Call Custom FPS Limiter on EVERY frame (not throttled)
+  // Call FPS Limiter on EVERY frame (not throttled)
   if (s_custom_fps_limiter_enabled.load()) {
     // Use background flag computed by monitoring thread; avoid GetForegroundWindow here
     const bool is_background = g_app_in_background.load(std::memory_order_acquire);
@@ -334,15 +334,26 @@ void OnPresentUpdate(
     } else {
       target_fps = s_fps_limit.load();
     }
-    // Apply the FPS limit to the Custom FPS Limiter
+    // Apply FPS limit via selected limiter mode
     if (dxgi::fps_limiter::g_customFpsLimiterManager) {
-      auto& limiter = dxgi::fps_limiter::g_customFpsLimiterManager->GetFpsLimiter();
-      if (target_fps > 0.0f) {
-        limiter.SetTargetFps(target_fps);
-        limiter.SetEnabled(true);
-        limiter.LimitFrameRate();
+      if (s_fps_limiter_mode.load() == 1) {
+        auto& latent = dxgi::fps_limiter::g_customFpsLimiterManager->GetLatentLimiter();
+        if (target_fps > 0.0f) {
+          latent.SetTargetFps(target_fps);
+          latent.SetEnabled(true);
+          latent.LimitFrameRate();
+        } else {
+          latent.SetEnabled(false);
+        }
       } else {
-        limiter.SetEnabled(false);
+        auto& limiter = dxgi::fps_limiter::g_customFpsLimiterManager->GetFpsLimiter();
+        if (target_fps > 0.0f) {
+          limiter.SetTargetFps(target_fps);
+          limiter.SetEnabled(true);
+          limiter.LimitFrameRate();
+        } else {
+          limiter.SetEnabled(false);
+        }
       }
     }
   }

@@ -111,6 +111,9 @@ extern std::atomic<int> g_last_backbuffer_height;
 // Background/foreground state
 extern std::atomic<bool> g_app_in_background;
 
+// FPS limiter mode: 0 = Custom (Sleep/Spin), 1 = Latency Sync (VBlank)
+extern std::atomic<int> s_fps_limiter_mode;
+
 // Performance stats (FPS/frametime) shared state
 extern std::atomic<uint32_t> g_perf_ring_head;
 extern PerfSample g_perf_ring[];

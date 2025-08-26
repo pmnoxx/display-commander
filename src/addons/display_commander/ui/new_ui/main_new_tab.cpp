@@ -81,6 +81,9 @@ void InitMainNewTab() {
         s_block_input_in_background.store(g_main_new_tab_settings.block_input_in_background.GetValue());
         settings_loaded_once = true;
 
+        // FPS limiter mode
+        s_fps_limiter_mode.store(g_main_new_tab_settings.fps_limiter_mode.GetValue());
+
         // If manual Audio Mute is OFF, proactively unmute on startup
         if (!s_audio_mute.load()) {
             if (::SetMuteForCurrentProcess(false)) {
@@ -92,9 +95,12 @@ void InitMainNewTab() {
         // Apply saved FPS limiter settings on startup
         if (dxgi::fps_limiter::g_customFpsLimiterManager && dxgi::fps_limiter::g_customFpsLimiterManager->InitializeCustomFpsLimiterSystem()) {
             auto& limiter = dxgi::fps_limiter::g_customFpsLimiterManager->GetFpsLimiter();
+            auto& latent  = dxgi::fps_limiter::g_customFpsLimiterManager->GetLatentLimiter();
             if (s_fps_limit.load() > 0.0f) {
                 limiter.SetTargetFps(s_fps_limit.load());
                 limiter.SetEnabled(true);
+                latent.SetTargetFps(s_fps_limit.load());
+                latent.SetEnabled(true);
                 std::ostringstream oss;
                 oss.setf(std::ios::fixed);
                 oss << std::setprecision(3);
@@ -103,6 +109,7 @@ void InitMainNewTab() {
             } else {
                 // Ensure disabled if saved value is 0
                 limiter.SetEnabled(false);
+                latent.SetEnabled(false);
             }
 
             // If currently in background and a background limit is saved, apply it
@@ -112,6 +119,8 @@ void InitMainNewTab() {
             if (is_background && s_fps_limit_background > 0.0f) {
                 limiter.SetTargetFps(s_fps_limit_background);
                 limiter.SetEnabled(true);
+                latent.SetTargetFps(s_fps_limit_background);
+                latent.SetEnabled(true);
                 std::ostringstream oss;
                 oss << "Background FPS limit applied from saved settings: " << static_cast<int>(s_fps_limit_background) << " FPS";
                 LogInfo(oss.str().c_str());
@@ -324,6 +333,19 @@ void DrawDisplaySettings() {
     
     ImGui::Spacing();
     
+    // FPS Limiter Mode
+    {
+        if (ComboSettingWrapper(g_main_new_tab_settings.fps_limiter_mode, "FPS Limiter Mode")) {
+            s_fps_limiter_mode.store(g_main_new_tab_settings.fps_limiter_mode.GetValue());
+            LogInfo(s_fps_limiter_mode.load() == 0 ? "Limiter mode: Custom (Sleep/Spin)" : "Limiter mode: Latency Sync (VBlank)");
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Choose limiter: Custom sleep/spin or VBlank-based pacing");
+        }
+    }
+
+    ImGui::Spacing();
+
     // FPS Limit slider (persisted)
     {
         float current_value = g_main_new_tab_settings.fps_limit.GetValue();
@@ -340,11 +362,14 @@ void DrawDisplaySettings() {
                     return;
                 }
                 
-                // Update the custom FPS limiter
+                // Update the limiter targets
                 if (dxgi::fps_limiter::g_customFpsLimiterManager) {
                     auto& limiter = dxgi::fps_limiter::g_customFpsLimiterManager->GetFpsLimiter();
                     limiter.SetTargetFps(s_fps_limit.load());
                     limiter.SetEnabled(true);
+                    auto& latent = dxgi::fps_limiter::g_customFpsLimiterManager->GetLatentLimiter();
+                    latent.SetTargetFps(s_fps_limit.load());
+                    latent.SetEnabled(true);
                     
                     std::ostringstream oss;
                     oss.setf(std::ios::fixed);
@@ -353,10 +378,12 @@ void DrawDisplaySettings() {
                     LogInfo(oss.str().c_str());
                 }
             } else {
-                // FPS limit set to 0, disable the limiter
+                // FPS limit set to 0, disable the limiters
                 if (dxgi::fps_limiter::g_customFpsLimiterManager) {
                     auto& limiter = dxgi::fps_limiter::g_customFpsLimiterManager->GetFpsLimiter();
                     limiter.SetEnabled(false);
+                    auto& latent = dxgi::fps_limiter::g_customFpsLimiterManager->GetLatentLimiter();
+                    latent.SetEnabled(false);
                     LogInfo("FPS limit removed (no limit)");
                 }
             }
@@ -490,6 +517,8 @@ void DrawDisplaySettings() {
                 if (dxgi::fps_limiter::g_customFpsLimiterManager) {
                     auto& limiter = dxgi::fps_limiter::g_customFpsLimiterManager->GetFpsLimiter();
                     limiter.SetEnabled(false);
+                    auto& latent = dxgi::fps_limiter::g_customFpsLimiterManager->GetLatentLimiter();
+                    latent.SetEnabled(false);
                     LogInfo("FPS limit removed (no limit)");
                 }
                 }
@@ -530,6 +559,9 @@ void DrawDisplaySettings() {
                                 auto& limiter = dxgi::fps_limiter::g_customFpsLimiterManager->GetFpsLimiter();
                                 limiter.SetTargetFps(target_fps);
                                 limiter.SetEnabled(true);
+                                auto& latent = dxgi::fps_limiter::g_customFpsLimiterManager->GetLatentLimiter();
+                                latent.SetTargetFps(target_fps);
+                                latent.SetEnabled(true);
                                 
                                 std::ostringstream oss;
                                 oss.setf(std::ios::fixed);
@@ -593,6 +625,8 @@ void DrawDisplaySettings() {
                     if (dxgi::fps_limiter::g_customFpsLimiterManager) {
                         auto& limiter = dxgi::fps_limiter::g_customFpsLimiterManager->GetFpsLimiter();
                         limiter.SetEnabled(false);
+                        auto& latent = dxgi::fps_limiter::g_customFpsLimiterManager->GetLatentLimiter();
+                        latent.SetEnabled(false);
                         LogInfo("FPS limit removed (no limit)");
                     }
                 }
@@ -641,6 +675,9 @@ void DrawDisplaySettings() {
                         auto& limiter = dxgi::fps_limiter::g_customFpsLimiterManager->GetFpsLimiter();
                         limiter.SetTargetFps(s_fps_limit_background);
                         limiter.SetEnabled(true);
+                        auto& latent = dxgi::fps_limiter::g_customFpsLimiterManager->GetLatentLimiter();
+                        latent.SetTargetFps(s_fps_limit_background);
+                        latent.SetEnabled(true);
                         
                         std::ostringstream oss;
                         oss << "Background FPS limit applied immediately: " << static_cast<int>(s_fps_limit_background) << " FPS (via Custom FPS Limiter)";

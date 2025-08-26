@@ -36,21 +36,29 @@ target_include_directories(display_commander
   SYSTEM PUBLIC
     ${CMAKE_CURRENT_LIST_DIR}/external/reshade            # provides include/reshade.hpp and deps/imgui
     ${CMAKE_CURRENT_LIST_DIR}/external/Streamline/include # Streamline headers if referenced
-    ${CMAKE_CURRENT_LIST_DIR}/external/SpecialK/depends/include/nvapi
+    ${CMAKE_CURRENT_LIST_DIR}/external/nvapi              # official NVIDIA NVAPI headers (nvapi.h, NvApiDriverSettings.h)
 )
 
 # Link system libs
 target_link_libraries(display_commander PRIVATE dbghelp)
 
-# NVAPI linkage
-if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/external/SpecialK/depends/lib/nvapi")
+# NVAPI linkage (official NVIDIA NVAPI layout: x86/ and amd64/)
+if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/external/nvapi")
   if(CMAKE_SIZEOF_VOID_P EQUAL 4)
-    target_link_libraries(display_commander PRIVATE "${CMAKE_CURRENT_LIST_DIR}/external/SpecialK/depends/lib/nvapi/Win32/nvapi.lib")
+    if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/external/nvapi/x86/nvapi.lib")
+      target_link_libraries(display_commander PRIVATE "${CMAKE_CURRENT_LIST_DIR}/external/nvapi/x86/nvapi.lib")
+    else()
+      message(WARNING "NVAPI x86 import library not found at ${CMAKE_CURRENT_LIST_DIR}/external/nvapi/x86/nvapi.lib. NVAPI features may fail to link.")
+    endif()
   else()
-    target_link_libraries(display_commander PRIVATE "${CMAKE_CURRENT_LIST_DIR}/external/SpecialK/depends/lib/nvapi/x64/nvapi64.lib")
+    if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/external/nvapi/amd64/nvapi64.lib")
+      target_link_libraries(display_commander PRIVATE "${CMAKE_CURRENT_LIST_DIR}/external/nvapi/amd64/nvapi64.lib")
+    else()
+      message(WARNING "NVAPI x64 import library not found at ${CMAKE_CURRENT_LIST_DIR}/external/nvapi/amd64/nvapi64.lib. NVAPI features may fail to link.")
+    endif()
   endif()
 else()
-  message(WARNING "NVAPI libs not found at ${CMAKE_CURRENT_LIST_DIR}/external/SpecialK/depends/lib/nvapi. NVAPI features may fail to link.")
+  message(WARNING "NVAPI not found at ${CMAKE_CURRENT_LIST_DIR}/external/nvapi. Clone https://github.com/NVIDIA/nvapi into external/nvapi if you need NVAPI features.")
 endif()
 
 # Output naming

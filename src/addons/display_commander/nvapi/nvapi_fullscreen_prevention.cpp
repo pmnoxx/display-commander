@@ -1,6 +1,6 @@
 #include "nvapi_fullscreen_prevention.hpp"
 #include "../utils.hpp"
-#include "../../external/SpecialK/depends/include/nvapi/NvApiDriverSettings.h"
+#include <NvApiDriverSettings.h>
 #include <sstream>
 
 NVAPIFullscreenPrevention::NVAPIFullscreenPrevention() {
@@ -309,7 +309,7 @@ std::string NVAPIFullscreenPrevention::GetDriverVersion() const {
     
     // Format the driver version similar to SpecialK
     char ver_str[64];
-    snprintf(ver_str, sizeof(ver_str), "%03lu.%02lu", driverVersion / 100, driverVersion % 100);
+    snprintf(ver_str, sizeof(ver_str), "%03u.%02u", driverVersion / 100u, driverVersion % 100u);
     return std::string(ver_str);
 }
 

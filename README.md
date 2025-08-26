@@ -82,7 +82,7 @@ Notes:
 
 - This project requires the Ninja generator. If another generator is used, configuration will fail.
 - Initialize submodules before building: `git submodule update --init --recursive`.
-- NVAPI features are linked if `external/SpecialK/depends/lib/nvapi` is present. Missing NVAPI libs will only disable those features.
+- NVAPI features are linked if NVIDIA's NVAPI is present under `external/nvapi` (headers at `external/nvapi`, libs at `external/nvapi/{x86,amd64}`). Missing NVAPI libs will only disable those features.
 
 ## Continuous Integration
 
@@ -110,7 +110,7 @@ The HDR Den Discord community is the best place to get real-time help, discuss f
 
 - ReShade and its addon SDK
 - Dear ImGui (via ReShade dependencies)
-- Special K project (NVAPI headers/libs in `external/SpecialK`)
+- NVIDIA NVAPI headers/libs (`external/nvapi`)
 - Additional third-party code under `external/` (stb, fpng, etc.)
 
 See `CHANGELOG.md` for version history.

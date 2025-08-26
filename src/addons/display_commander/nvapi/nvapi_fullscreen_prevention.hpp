@@ -1,7 +1,7 @@
 #pragma once
 
 #include <windows.h>
-#include "../../external/SpecialK/depends/include/nvapi/nvapi.h"
+#include <nvapi.h>
 #include <string>
 
 // NVAPI Fullscreen Prevention Module

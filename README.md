@@ -115,3 +115,14 @@ The HDR Den Discord community is the best place to get real-time help, discuss f
 
 See `CHANGELOG.md` for version history.
 
+
+---
+
+<p align="center">
+  <a href="https://ko-fi.com/pmnox" target="_blank">
+    <img src="https://ko-fi.com/img/githubbutton_sm.svg" alt="Support on Ko‑fi" />
+  </a>
+  <br/>
+  <a href="https://ko-fi.com/pmnox">ko-fi.com/pmnox</a>
+  
+</p>

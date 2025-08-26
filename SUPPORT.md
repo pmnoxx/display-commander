@@ -82,6 +82,18 @@ If you'd like to contribute to the project:
 - **Discord**: [HDR Den Community](https://discord.com/invite/WJ9YZctPND)
 - **Support Thread**: [Direct Link](https://discord.com/channels/1161035767917850784/1403983735031857162)
 
+## Support the Project
+
+If you'd like to support ongoing development, consider donating: [Ko‑fi](https://ko-fi.com/pmnox)
+
+<p align="center">
+  <a href="https://ko-fi.com/pmnox" target="_blank">
+    <img src="https://ko-fi.com/img/githubbutton_sm.svg" alt="Support on Ko‑fi" />
+  </a>
+  <br/>
+  <a href="https://ko-fi.com/pmnox">ko-fi.com/pmnox</a>
+</p>
+
 ---
 
 *For the best support experience, we recommend using the HDR Den Discord server where you can get real-time help from the community.*

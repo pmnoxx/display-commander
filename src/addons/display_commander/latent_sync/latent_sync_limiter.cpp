@@ -97,27 +97,67 @@ void LatentSyncLimiter::LimitFrameRate() {
     scan.hAdapter = m_hAdapter;
     scan.VidPnSourceId = m_vidpn_source_id;
 
-    // Poll until we are in vblank once to start the frame at a consistent phase
-    // This mirrors a minimal Special-K approach without full calibration
-    int safety = 0;
+    // Compute adjusted scanline window accounting for average Present duration
     int monitor_height = GetCurrentMonitorHeight();
-    int actual_threshold = min(monitor_height - 1, static_cast<int>(s_scanline_threshold.load() * monitor_height));
-    int actual_threshold_end = actual_threshold + s_scanline_window.load();
+    s_scanline_threshold.store(0.99);
+    int base_threshold = min(monitor_height - 1, static_cast<int>(s_scanline_threshold.load() * monitor_height));
+    int window = s_scanline_window.load();
+
+    int adjusted_threshold = base_threshold;
+    if (monitor_height > 0 && m_refresh_hz > 0.0 && m_avg_present_ticks > 0.0) {
+        static LONGLONG s_qpc_freq = 0;
+        if (s_qpc_freq == 0) {
+            LARGE_INTEGER f; if (QueryPerformanceFrequency(&f)) s_qpc_freq = f.QuadPart;
+        }
+        if (s_qpc_freq > 0) {
+            const double ticks_per_refresh = static_cast<double>(s_qpc_freq) / m_refresh_hz;
+            const double ticks_per_scanline = ticks_per_refresh / static_cast<double>(monitor_height);
+            const int present_scanlines = static_cast<int>(std::lround((m_avg_present_ticks * 0.5) / ticks_per_scanline));
+            adjusted_threshold = max(0, base_threshold - max(0, present_scanlines));
+        }
+    }
+    int adjusted_threshold_end = adjusted_threshold + window;
+
+    // Poll until we are in desired window to start the frame at a consistent phase
+    int safety = 0;
     while (true) {
         if (reinterpret_cast<NTSTATUS (WINAPI*)(D3DKMT_GETSCANLINE*)>(m_pfnGetScanLine)(&scan) == 0) {
             if (scan.InVerticalBlank) {
                 if (s_scanline_threshold.load() == 100 || s_scanline_threshold.load() == 0) break;
                 std::this_thread::sleep_for(std::chrono::microseconds(1));
             } else {
-                if (scan.ScanLine >= actual_threshold && scan.ScanLine < actual_threshold_end) {
+                if (scan.ScanLine >= adjusted_threshold && scan.ScanLine < adjusted_threshold_end) {
                     break;
                 }
-                if (scan.ScanLine < actual_threshold - 500) {
+                if (scan.ScanLine < adjusted_threshold - 500) {
                     std::this_thread::sleep_for(std::chrono::microseconds(1));
                 }
             }
         }
     }
+}
+
+void LatentSyncLimiter::OnPresentBegin() {
+    LARGE_INTEGER t; QueryPerformanceCounter(&t);
+    m_qpc_present_begin = t.QuadPart;
+}
+
+void LatentSyncLimiter::OnPresentEnd() {
+    if (m_qpc_present_begin == 0) return;
+    LARGE_INTEGER now; QueryPerformanceCounter(&now);
+    LONGLONG dt = now.QuadPart - m_qpc_present_begin;
+    m_qpc_present_begin = 0;
+
+    // Exponential moving average of Present duration in ticks
+    const double alpha = 0.10; // smooth but responsive
+    if (m_avg_present_ticks <= 0.0)
+        m_avg_present_ticks = static_cast<double>(dt);
+    else
+        m_avg_present_ticks = alpha * static_cast<double>(dt) + (1.0 - alpha) * m_avg_present_ticks;
+
+    std::ostringstream oss;
+    oss << "Present duration: " << m_avg_present_ticks / 1000.0 << " ms";
+    LogInfo(oss.str().c_str());
 }
 
 } // namespace dxgi::fps_limiter

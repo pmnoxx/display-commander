@@ -207,6 +207,10 @@ void  CalculateWindowState(HWND hwnd, const char* reason) {
                                 (local_state.target_h != (wr_current.bottom - wr_current.top));
   local_state.needs_move = (local_state.target_x != wr_current.left) || (local_state.target_y != wr_current.top);
 
+  // Store current monitor dimensions
+  local_state.display_width = monitor_width;
+  local_state.display_height = monitor_height;
+
   LogDebug("CalculateWindowState: target_w=" + std::to_string(local_state.target_w) + ", target_h=" + std::to_string(local_state.target_h));
 
   // Publish snapshot under a lightweight lock

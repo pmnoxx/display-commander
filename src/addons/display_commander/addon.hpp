@@ -116,6 +116,10 @@ struct GlobalWindowState {
   int current_monitor_index = 0;
   display_cache::RationalRefreshRate current_monitor_refresh_rate;
   
+  // Current display dimensions
+  int display_width = 0;
+  int display_height = 0;
+  
   void reset() {
     desired_width = 0;
     desired_height = 0;
@@ -130,6 +134,8 @@ struct GlobalWindowState {
     reason = "unknown";
     current_monitor_index = 0;
     current_monitor_refresh_rate = display_cache::RationalRefreshRate();
+    display_width = 0;
+    display_height = 0;
   }
 };
 

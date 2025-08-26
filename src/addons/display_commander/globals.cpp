@@ -175,9 +175,9 @@ std::atomic<int> s_fps_limiter_mode{0};
 // 0 = Sync to VBlank (current), 1 = Sync based on scanline (experimental)
 std::atomic<int> s_latent_sync_mode{0};
 
-// Scanline threshold for latent sync (0 to monitor height)
-std::atomic<int> s_scanline_threshold{1700};
-std::atomic<int> s_scanline_window{30};
+// Scanline threshold ratio for latent sync (0.0 to 1.0, default 0.78 = 78%)
+std::atomic<float> s_scanline_threshold{0.78f};
+std::atomic<int> s_scanline_window{10};
 
 // Performance stats (FPS/frametime) shared state
 std::atomic<uint32_t> g_perf_ring_head{0};

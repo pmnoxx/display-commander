@@ -1,5 +1,14 @@
 # Support
 
+## ⚠️ Important: ReShade Version Requirement
+
+**This addon requires ReShade 6.5.1+ (nightly builds) and depends on features coming in ReShade 6.5.2+.**
+
+- **Stable ReShade releases are NOT compatible**
+- You must use nightly builds from [ReShade GitHub Actions](https://github.com/crosire/reshade/actions)
+- The required features are not yet available in public stable releases
+- Reference the [latest successful build](https://github.com/crosire/reshade/actions/runs/17221413324) for compatibility
+
 ## Getting Help
 
 If you need help with the Display Commander addon, there are several ways to get support:
@@ -30,7 +39,7 @@ To help us help you more effectively, please include:
 
 1. **Version Information**:
    - Display Commander version
-   - ReShade version
+   - **ReShade version (must be 6.5.1+ nightly)**
    - Game name and version
    - Windows version
 
@@ -53,9 +62,10 @@ To help us help you more effectively, please include:
 ## Common Issues
 
 ### Installation Problems
-- Ensure you have the latest version of ReShade installed
+- **Ensure you have ReShade 6.5.1+ (nightly version) installed** - stable releases are not compatible
 - Check that the addon files are in the correct directory
 - Verify game compatibility
+- If using stable ReShade, download a nightly build from [GitHub Actions](https://github.com/crosire/reshade/actions)
 
 ### HDR Issues
 - Confirm your monitor supports HDR

@@ -114,6 +114,13 @@ extern std::atomic<bool> g_app_in_background;
 // FPS limiter mode: 0 = Custom (Sleep/Spin), 1 = Latency Sync (VBlank)
 extern std::atomic<int> s_fps_limiter_mode;
 
+// Latent Sync pacing mode when Latent Sync limiter is active:
+// 0 = Sync to VBlank (current), 1 = Sync based on scanline (experimental)
+extern std::atomic<int> s_latent_sync_mode;
+
+// Scanline threshold for latent sync (0 to monitor height)
+extern std::atomic<int> s_scanline_threshold;
+
 // Performance stats (FPS/frametime) shared state
 extern std::atomic<uint32_t> g_perf_ring_head;
 extern PerfSample g_perf_ring[];

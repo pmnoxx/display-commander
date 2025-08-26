@@ -380,7 +380,7 @@ void DrawDisplaySettings() {
                 s_scanline_threshold.store(new_ratio);
             }
             if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("Scanline threshold ratio for latent sync (0%% to 100%% of monitor height). Higher values wait longer before starting frame pacing. Current: %.1f%% = %d pixels", 
+                ImGui::SetTooltip("(70.2% for 60hz at 4k, may have to be manually adjusted). Scanline threshold ratio for latent sync (0%% to 100%% of monitor height). Higher values wait longer before starting frame pacing. Current: %.1f%% = %d pixels", 
                     current_ratio * 100.0f, static_cast<int>(current_ratio * monitor_height));
             }
             

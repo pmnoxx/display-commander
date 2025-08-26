@@ -4,6 +4,8 @@ ReShade Display Commander is a ReShade addon that provides in-game control over 
 
 Note: Applying window operations from the main thread can crash some apps. This addon performs them on a background thread.
 
+**⚠️ Version Requirement**: This addon requires ReShade 6.5.1+ (nightly builds) and depends on features coming in ReShade 6.5.2+. Stable ReShade releases are not yet compatible.
+
 -Latest builds:
 -- x64: [display_commander.addon64](../../releases/latest/download/display_commander.addon64)      
 -- x86: [display_commander.addon32](../../releases/latest/download/display_commander.addon32)    
@@ -25,15 +27,20 @@ Note: Applying window operations from the main thread can crash some apps. This 
 
 ## Requirements
 
-- Windows with ReShade (addon support enabled)
+- Windows with ReShade 6.5.1+ (nightly version required)
+- **Important**: This addon depends on ReShade 6.5.2+ features that are not yet available in stable releases
 - The addon matching your game architecture: `.addon64` for 64-bit, `.addon32` for 32-bit
 
 ## Installation
+
+**Prerequisites**: You must have ReShade 6.5.1+ (nightly version) installed. Stable ReShade releases are not compatible.
 
 1. Download a prebuilt addon from Releases (CI uploads artifacts for both x64 and x86), or build from source.
 2. Copy the file `display_commander.addon64` (or `.addon32` for 32-bit) to the folder where ReShade is loaded for your game (the same folder as the ReShade runtime, e.g., `dxgi.dll`).
    - Alternatively, place it into your global ReShade installation directory (for example `D:\\Program Files\\ReShade`).
 3. Launch the game, open the ReShade overlay (Home by default), go to the Add-ons tab, and locate "Display Commander".
+
+**Note**: If you encounter compatibility issues, ensure you're using a ReShade nightly build from [GitHub Actions](https://github.com/crosire/reshade/actions) that includes the required 6.5.2+ features. You can reference the [latest successful build](https://github.com/crosire/reshade/actions/runs/17221413324) for compatibility.
 
 ## Usage
 
@@ -90,6 +97,7 @@ GitHub Actions builds x64 and x86 on pushes and PRs and uploads the resulting `.
 
 ## Troubleshooting
 
+- **"Addon not loading" or "Compatibility issues"**: Ensure you're using ReShade 6.5.1+ (nightly builds). Stable releases are not compatible.
 - "This project requires the Ninja generator": Configure with `-G Ninja` (or `"Ninja Multi-Config"` for the 32-bit example above).
 - "Missing submodule: external/reshade": Run `git submodule update --init --recursive`.
 - "NVAPI libs not found ...": Optional; only NVAPI-based features will be unavailable.

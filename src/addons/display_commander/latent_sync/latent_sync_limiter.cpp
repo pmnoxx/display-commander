@@ -104,7 +104,8 @@ void LatentSyncLimiter::LimitFrameRate() {
         // Poll until we are in vblank once to start the frame at a consistent phase
         // This mirrors a minimal Special-K approach without full calibration
         int safety = 0;
-        int actual_threshold = static_cast<int>(s_scanline_threshold.load() * GetCurrentMonitorHeight());
+        int monitor_height = GetCurrentMonitorHeight();
+        int actual_threshold = min(monitor_height - 1, static_cast<int>(s_scanline_threshold.load() * monitor_height));
         int actual_threshold_end = actual_threshold + s_scanline_window.load();
         while (true) {
             if (reinterpret_cast<NTSTATUS (WINAPI*)(D3DKMT_GETSCANLINE*)>(m_pfnGetScanLine)(&scan) == 0) {

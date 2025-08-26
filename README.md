@@ -6,9 +6,14 @@ Note: Applying window operations from the main thread can crash some apps. This 
 
 **⚠️ Version Requirement**: This addon requires ReShade 6.5.1+ (nightly builds) and depends on features coming in ReShade 6.5.2+. Stable ReShade releases are not yet compatible.
 
--Latest builds:
--- x64: [display_commander.addon64](../../releases/latest/download/display_commander.addon64)      
--- x86: [display_commander.addon32](../../releases/latest/download/display_commander.addon32)    
+**Latest compatible build**: [ReShade 6.5.1+ nightly build](https://github.com/crosire/reshade/actions/runs/17221413324)
+
+## 📥 Latest Builds
+
+| Architecture | Download |
+|-------------|----------|
+| **x64 (64-bit)** | [display_commander.addon64](../../releases/latest/download/display_commander.addon64) |
+| **x86 (32-bit)** | [display_commander.addon32](../../releases/latest/download/display_commander.addon32) |    
 
 ## Features
 

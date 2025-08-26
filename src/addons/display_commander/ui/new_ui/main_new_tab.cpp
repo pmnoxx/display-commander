@@ -83,8 +83,6 @@ void InitMainNewTab() {
 
         // FPS limiter mode
         s_fps_limiter_mode.store(g_main_new_tab_settings.fps_limiter_mode.GetValue());
-        // Latent sync mode
-        s_latent_sync_mode.store(g_main_new_tab_settings.latent_sync_mode.GetValue());
         // Scanline threshold
         s_scanline_threshold.store(g_main_new_tab_settings.scanline_threshold.GetValue());
         // Scanline window
@@ -352,48 +350,39 @@ void DrawDisplaySettings() {
 
     // Latent Sync Mode (only visible if Latent Sync limiter is selected)
     if (s_fps_limiter_mode.load() == 1) {
-        if (ComboSettingWrapper(g_main_new_tab_settings.latent_sync_mode, "Latency Sync Mode")) {
-            s_latent_sync_mode.store(g_main_new_tab_settings.latent_sync_mode.GetValue());
+        
+        // Get current monitor height for dynamic range
+        int monitor_height = GetCurrentMonitorHeight();
+        int monitor_width = GetCurrentMonitorWidth();
+        float current_ratio = g_main_new_tab_settings.scanline_threshold.GetValue();
+        
+        // Update display dimensions in GlobalWindowState
+        g_window_state_lock.lock();
+        g_window_state.display_width = monitor_width;
+        g_window_state.display_height = monitor_height;
+        g_window_state_lock.unlock();
+        
+        // Create a temporary slider with percentage range (0-100%)
+        float temp_ratio = current_ratio * 100.0f; // Convert to percentage for display
+        if (ImGui::SliderFloat("Scanline Threshold", &temp_ratio, 0.0f, 100.0f, "%.1f%%")) {
+            float new_ratio = temp_ratio / 100.0f; // Convert back to ratio
+            g_main_new_tab_settings.scanline_threshold.SetValue(new_ratio);
+            s_scanline_threshold.store(new_ratio);
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Select pacing: Sync to VBlank or Scanline-based (experimental; similar to Special-K)");
+            ImGui::SetTooltip("(70.2%% for 60hz at 4k, may have to be manually adjusted). Scanline threshold ratio for latent sync (0%% to 100%% of monitor height). Higher values wait longer before starting frame pacing. Current: %.1f%% = %d pixels", 
+                current_ratio * 100.0f, static_cast<int>(current_ratio * monitor_height));
         }
         
-        // Scanline Threshold (only visible if scanline mode is selected)
-        if (s_latent_sync_mode.load() == 1) {
-            // Get current monitor height for dynamic range
-            int monitor_height = GetCurrentMonitorHeight();
-            int monitor_width = GetCurrentMonitorWidth();
-            float current_ratio = g_main_new_tab_settings.scanline_threshold.GetValue();
-            
-            // Update display dimensions in GlobalWindowState
-            g_window_state_lock.lock();
-            g_window_state.display_width = monitor_width;
-            g_window_state.display_height = monitor_height;
-            g_window_state_lock.unlock();
-            
-            // Create a temporary slider with percentage range (0-100%)
-            float temp_ratio = current_ratio * 100.0f; // Convert to percentage for display
-            if (ImGui::SliderFloat("Scanline Threshold", &temp_ratio, 0.0f, 100.0f, "%.1f%%")) {
-                float new_ratio = temp_ratio / 100.0f; // Convert back to ratio
-                g_main_new_tab_settings.scanline_threshold.SetValue(new_ratio);
-                s_scanline_threshold.store(new_ratio);
-            }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("(70.2%% for 60hz at 4k, may have to be manually adjusted). Scanline threshold ratio for latent sync (0%% to 100%% of monitor height). Higher values wait longer before starting frame pacing. Current: %.1f%% = %d pixels", 
-                    current_ratio * 100.0f, static_cast<int>(current_ratio * monitor_height));
-            }
-            
-            // Scanline Window (only visible if scanline mode is selected)
-            int current_window = g_main_new_tab_settings.scanline_window.GetValue();
-            int temp_window = current_window;
-            if (ImGui::SliderInt("Scanline Window", &temp_window, 1, 1000, "%d")) {
-                g_main_new_tab_settings.scanline_window.SetValue(temp_window);
-                s_scanline_window.store(temp_window);
-            }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("Scanline window size for latent sync (1 to 1000). This defines the range of scanlines around the threshold where frame pacing is active.");
-            }
+        // Scanline Window (only visible if scanline mode is selected)
+        int current_window = g_main_new_tab_settings.scanline_window.GetValue();
+        int temp_window = current_window;
+        if (ImGui::SliderInt("Scanline Window", &temp_window, 1, 1000, "%d")) {
+            g_main_new_tab_settings.scanline_window.SetValue(temp_window);
+            s_scanline_window.store(temp_window);
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Scanline window size for latent sync (1 to 1000). This defines the range of scanlines around the threshold where frame pacing is active.");
         }
     }
 

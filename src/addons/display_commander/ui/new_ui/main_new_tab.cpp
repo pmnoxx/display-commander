@@ -87,6 +87,8 @@ void InitMainNewTab() {
         s_latent_sync_mode.store(g_main_new_tab_settings.latent_sync_mode.GetValue());
         // Scanline threshold
         s_scanline_threshold.store(g_main_new_tab_settings.scanline_threshold.GetValue());
+        // Scanline window
+        s_scanline_window.store(g_main_new_tab_settings.scanline_window.GetValue());
 
         // If manual Audio Mute is OFF, proactively unmute on startup
         if (!s_audio_mute.load()) {
@@ -377,6 +379,17 @@ void DrawDisplaySettings() {
             }
             if (ImGui::IsItemHovered()) {
                 ImGui::SetTooltip("Scanline threshold for latent sync (0 to monitor height). Higher values wait longer before starting frame pacing.");
+            }
+            
+            // Scanline Window (only visible if scanline mode is selected)
+            int current_window = g_main_new_tab_settings.scanline_window.GetValue();
+            int temp_window = current_window;
+            if (ImGui::SliderInt("Scanline Window", &temp_window, 1, 1000, "%d")) {
+                g_main_new_tab_settings.scanline_window.SetValue(temp_window);
+                s_scanline_window.store(temp_window);
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Scanline window size for latent sync (1 to 1000). This defines the range of scanlines around the threshold where frame pacing is active.");
             }
         }
     }

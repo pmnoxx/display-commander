@@ -103,7 +103,7 @@ void LatentSyncLimiter::LimitFrameRate() {
         int safety = 0;
         while (true) { //safety++ < 2000) {
             if (reinterpret_cast<NTSTATUS (WINAPI*)(D3DKMT_GETSCANLINE*)>(m_pfnGetScanLine)(&scan) == 0) {
-                if (scan.ScanLine >= s_scanline_threshold.load() && scan.ScanLine < s_scanline_threshold.load() + 100) break;
+                if (scan.ScanLine >= s_scanline_threshold.load() && scan.ScanLine < s_scanline_threshold.load() + s_scanline_window.load()) break;
 //                if (scan.InVerticalBlank) break;
             }
             // brief sleep to avoid hammering CPU; scanline granularity is ~tens of microseconds

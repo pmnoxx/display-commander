@@ -177,6 +177,7 @@ std::atomic<int> s_latent_sync_mode{0};
 
 // Scanline threshold for latent sync (0 to monitor height)
 std::atomic<int> s_scanline_threshold{1700};
+std::atomic<int> s_scanline_window{30};
 
 // Performance stats (FPS/frametime) shared state
 std::atomic<uint32_t> g_perf_ring_head{0};

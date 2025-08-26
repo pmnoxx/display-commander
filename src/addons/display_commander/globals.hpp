@@ -120,6 +120,7 @@ extern std::atomic<int> s_latent_sync_mode;
 
 // Scanline threshold for latent sync (0 to monitor height)
 extern std::atomic<int> s_scanline_threshold;
+extern std::atomic<int> s_scanline_window;
 
 // Performance stats (FPS/frametime) shared state
 extern std::atomic<uint32_t> g_perf_ring_head;

@@ -273,7 +273,17 @@ void OnInitSwapchain(reshade::api::swapchain* swapchain, bool resize) {
 }
 
 void OnPresentUpdateAfter(  reshade::api::command_queue* /*queue*/, reshade::api::swapchain* swapchain) {
-  
+  // Mark Present end for latent sync limiter timing
+  if (s_custom_fps_limiter_enabled.load()) {
+    if (dxgi::fps_limiter::g_customFpsLimiterManager) {
+      if (s_fps_limiter_mode.load() == 1) {
+        auto& latent = dxgi::fps_limiter::g_customFpsLimiterManager->GetLatentLimiter();
+        if (latent.IsEnabled()) {
+          latent.OnPresentEnd();
+        }
+      }
+    }
+  }
 }
 
 // Update composition state after presents (required for valid stats)
@@ -392,6 +402,18 @@ void OnPresentUpdateBefore(
           std::ostringstream oss;
           oss << "Audio " << (new_mute_state ? "muted" : "unmuted") << " via Ctrl+M shortcut";
           LogInfo(oss.str().c_str());
+        }
+      }
+    }
+  }
+
+  // Mark Present begin for latent sync limiter timing (right before Present executes)
+  if (s_custom_fps_limiter_enabled.load()) {
+    if (dxgi::fps_limiter::g_customFpsLimiterManager) {
+      if (s_fps_limiter_mode.load() == 1) {
+        auto& latent = dxgi::fps_limiter::g_customFpsLimiterManager->GetLatentLimiter();
+        if (latent.IsEnabled()) {
+          latent.OnPresentBegin();
         }
       }
     }

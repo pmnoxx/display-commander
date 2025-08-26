@@ -45,6 +45,10 @@ public:
     void OnFrameBegin() {}
     void OnFrameEnd() {}
 
+    // Present timing hooks (called around Present)
+    void OnPresentBegin();
+    void OnPresentEnd();
+
     void SetTargetFps(float fps) { m_target_fps = fps; }
     float GetTargetFps() const { return m_target_fps; }
 
@@ -76,6 +80,10 @@ private:
     FARPROC m_pfnCloseAdapter = nullptr;                  // "D3DKMTCloseAdapter"
     FARPROC m_pfnWaitForVerticalBlankEvent = nullptr;     // "D3DKMTWaitForVerticalBlankEvent"
     FARPROC m_pfnGetScanLine = nullptr;                   // "D3DKMTGetScanLine"
+
+    // Present timing state
+    LONGLONG m_qpc_present_begin = 0;
+    double   m_avg_present_ticks = 0.0; // exponentially weighted average of Present duration (ticks)
 };
 
 } // namespace dxgi::fps_limiter

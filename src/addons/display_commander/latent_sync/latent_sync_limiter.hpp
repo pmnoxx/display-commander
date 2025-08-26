@@ -26,6 +26,13 @@ struct D3DKMT_WAITFORVERTICALBLANKEVENT {
     D3DDDI_VIDEO_PRESENT_SOURCE_ID VidPnSourceId;
 };
 
+struct D3DKMT_GETSCANLINE {
+    D3DKMT_HANDLE hAdapter;
+    D3DDDI_VIDEO_PRESENT_SOURCE_ID VidPnSourceId;
+    BOOLEAN InVerticalBlank;
+    UINT    ScanLine;
+};
+
 namespace dxgi::fps_limiter {
 
 class LatentSyncLimiter {
@@ -68,6 +75,7 @@ private:
     FARPROC m_pfnOpenAdapterFromGdiDisplayName = nullptr; // "D3DKMTOpenAdapterFromGdiDisplayName"
     FARPROC m_pfnCloseAdapter = nullptr;                  // "D3DKMTCloseAdapter"
     FARPROC m_pfnWaitForVerticalBlankEvent = nullptr;     // "D3DKMTWaitForVerticalBlankEvent"
+    FARPROC m_pfnGetScanLine = nullptr;                   // "D3DKMTGetScanLine"
 };
 
 } // namespace dxgi::fps_limiter

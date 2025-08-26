@@ -83,6 +83,10 @@ void InitMainNewTab() {
 
         // FPS limiter mode
         s_fps_limiter_mode.store(g_main_new_tab_settings.fps_limiter_mode.GetValue());
+        // Latent sync mode
+        s_latent_sync_mode.store(g_main_new_tab_settings.latent_sync_mode.GetValue());
+        // Scanline threshold
+        s_scanline_threshold.store(g_main_new_tab_settings.scanline_threshold.GetValue());
 
         // If manual Audio Mute is OFF, proactively unmute on startup
         if (!s_audio_mute.load()) {
@@ -337,10 +341,43 @@ void DrawDisplaySettings() {
     {
         if (ComboSettingWrapper(g_main_new_tab_settings.fps_limiter_mode, "FPS Limiter Mode")) {
             s_fps_limiter_mode.store(g_main_new_tab_settings.fps_limiter_mode.GetValue());
-            LogInfo(s_fps_limiter_mode.load() == 0 ? "Limiter mode: Custom (Sleep/Spin)" : "Limiter mode: Latency Sync (VBlank)");
+            LogInfo(s_fps_limiter_mode.load() == 0 ? "Limiter mode: Custom (Sleep/Spin)" : "Limiter mode: Latency Sync");
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Choose limiter: Custom sleep/spin or VBlank-based pacing");
+            ImGui::SetTooltip("Choose limiter: Custom sleep/spin or Latent Sync pacing");
+        }
+    }
+
+    // Latent Sync Mode (only visible if Latent Sync limiter is selected)
+    if (s_fps_limiter_mode.load() == 1) {
+        if (ComboSettingWrapper(g_main_new_tab_settings.latent_sync_mode, "Latency Sync Mode")) {
+            s_latent_sync_mode.store(g_main_new_tab_settings.latent_sync_mode.GetValue());
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Select pacing: Sync to VBlank or Scanline-based (experimental; similar to Special-K)");
+        }
+        
+        // Scanline Threshold (only visible if scanline mode is selected)
+        if (s_latent_sync_mode.load() == 1) {
+            // Get current monitor height for dynamic range
+            int monitor_height = GetCurrentMonitorHeight();
+            int current_threshold = g_main_new_tab_settings.scanline_threshold.GetValue();
+            
+            // Ensure the current value is within the valid range
+            if (current_threshold > monitor_height) {
+                current_threshold = monitor_height;
+                g_main_new_tab_settings.scanline_threshold.SetValue(current_threshold);
+            }
+            
+            // Create a temporary slider with dynamic range
+            int temp_threshold = current_threshold;
+            if (ImGui::SliderInt("Scanline Threshold", &temp_threshold, 0, monitor_height, "%d")) {
+                g_main_new_tab_settings.scanline_threshold.SetValue(temp_threshold);
+                s_scanline_threshold.store(temp_threshold);
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Scanline threshold for latent sync (0 to monitor height). Higher values wait longer before starting frame pacing.");
+            }
         }
     }
 

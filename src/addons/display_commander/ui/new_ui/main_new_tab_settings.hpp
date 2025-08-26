@@ -27,6 +27,7 @@ public:
     ComboSetting alignment;
     
     // FPS Settings
+    ComboSetting fps_limiter_mode;
     FloatSetting fps_limit;
     FloatSetting fps_limit_background;
     

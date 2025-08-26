@@ -168,6 +168,9 @@ std::atomic<int> g_last_backbuffer_height{0};
 // Background/foreground state (updated by monitoring thread)
 std::atomic<bool> g_app_in_background{false};
 
+// FPS limiter mode: 0 = Custom (Sleep/Spin), 1 = Latency Sync (VBlank)
+std::atomic<int> s_fps_limiter_mode{0};
+
 // Performance stats (FPS/frametime) shared state
 std::atomic<uint32_t> g_perf_ring_head{0};
 PerfSample g_perf_ring[kPerfRingCapacity] = {};

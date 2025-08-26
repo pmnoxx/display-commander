@@ -3,35 +3,12 @@
 #include <windows.h>
 #include <chrono>
 #include <string>
+#include <thread>
+#include <atomic>
+#include <memory>
+#include "vblank_monitor.hpp"
 
-// Minimal D3DKMT interop (definitions adapted from d3dkmthk.h)
-typedef UINT D3DDDI_VIDEO_PRESENT_SOURCE_ID;
-typedef UINT D3DKMT_HANDLE;
-typedef LONG NTSTATUS;
-
-struct D3DKMT_OPENADAPTERFROMGDIDISPLAYNAME {
-    WCHAR DeviceName[32];
-    D3DKMT_HANDLE hAdapter;
-    LUID AdapterLuid;
-    D3DDDI_VIDEO_PRESENT_SOURCE_ID VidPnSourceId;
-};
-
-struct D3DKMT_CLOSEADAPTER {
-    D3DKMT_HANDLE hAdapter;
-};
-
-struct D3DKMT_WAITFORVERTICALBLANKEVENT {
-    D3DKMT_HANDLE hAdapter;
-    D3DKMT_HANDLE hDevice; // Unused here
-    D3DDDI_VIDEO_PRESENT_SOURCE_ID VidPnSourceId;
-};
-
-struct D3DKMT_GETSCANLINE {
-    D3DKMT_HANDLE hAdapter;
-    D3DDDI_VIDEO_PRESENT_SOURCE_ID VidPnSourceId;
-    BOOLEAN InVerticalBlank;
-    UINT    ScanLine;
-};
+// D3DKMT definitions are now provided by vblank_monitor.hpp
 
 namespace dxgi::fps_limiter {
 
@@ -55,6 +32,17 @@ public:
     void SetEnabled(bool enabled) { m_enabled = enabled; }
     bool IsEnabled() const { return m_enabled; }
 
+    // VBlank monitoring
+    void StartVBlankMonitoring();
+    void StopVBlankMonitoring();
+    
+    // VBlank monitoring statistics
+    bool IsVBlankMonitoringActive() const { return m_vblank_monitor && m_vblank_monitor->IsMonitoring(); }
+    uint64_t GetVBlankCount() const { return m_vblank_monitor ? m_vblank_monitor->GetVBlankCount() : 0; }
+    uint64_t GetStateChangeCount() const { return m_vblank_monitor ? m_vblank_monitor->GetStateChangeCount() : 0; }
+    double GetVBlankPercentage() const { return m_vblank_monitor ? m_vblank_monitor->GetVBlankPercentage() : 0.0; }
+    std::string GetVBlankStatsString() const { return m_vblank_monitor ? m_vblank_monitor->GetDetailedStatsString() : "VBlank monitor not initialized"; }
+
 private:
     bool EnsureAdapterBinding();
     bool UpdateDisplayBindingFromWindow(HWND hwnd);
@@ -66,6 +54,9 @@ private:
 
     // VBlank pacing state
     double m_vblank_accumulator = 0.0;
+    
+    // VBlank monitor instance
+    std::unique_ptr<VBlankMonitor> m_vblank_monitor;
 
     // Display binding
     D3DKMT_HANDLE m_hAdapter = 0;
@@ -84,6 +75,8 @@ private:
     // Present timing state
     LONGLONG m_qpc_present_begin = 0;
     double   m_avg_present_ticks = 0.0; // exponentially weighted average of Present duration (ticks)
+
+
 };
 
 } // namespace dxgi::fps_limiter

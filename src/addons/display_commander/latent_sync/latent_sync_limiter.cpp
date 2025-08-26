@@ -104,18 +104,15 @@ void LatentSyncLimiter::LimitFrameRate() {
         // Poll until we are in vblank once to start the frame at a consistent phase
         // This mirrors a minimal Special-K approach without full calibration
         int safety = 0;
-        while (true) { //safety++ < 2000) {
+        while (true) {
             if (reinterpret_cast<NTSTATUS (WINAPI*)(D3DKMT_GETSCANLINE*)>(m_pfnGetScanLine)(&scan) == 0) {
                 // Calculate actual threshold from ratio and current monitor height
                 int actual_threshold = static_cast<int>(s_scanline_threshold.load() * GetCurrentMonitorHeight());
                 if (scan.ScanLine >= actual_threshold && scan.ScanLine < actual_threshold + s_scanline_window.load()) break;
-//                if (scan.InVerticalBlank) break;
+                if (scan.InVerticalBlank && (s_scanline_threshold.load() == 100 || s_scanline_threshold.load() == 0)) break;
             }
-            // brief sleep to avoid hammering CPU; scanline granularity is ~tens of microseconds
-           // Sleep(0);
         }
         return;
-        // display frame
 
     } else {
         // VBlank-based pacing (current)

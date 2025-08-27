@@ -19,7 +19,8 @@ extern std::atomic<bool> s_vblank_seen;
 //extern std::atomic<LONGLONG> ticks_per_scanline;
 extern std::atomic<LONGLONG> ticks_per_refresh;
 extern std::atomic<LONGLONG> s_qpc_freq;
-extern std::atomic<LONGLONG> correction_ticks_delta;
+extern std::atomic<double> correction_ticks_delta;
+extern std::atomic<bool> on_present_ended;
 }
 
 // Simple logging wrapper to avoid dependency issues
@@ -135,6 +136,26 @@ bool VBlankMonitor::EnsureAdapterBinding() {
     return UpdateDisplayBindingFromWindow(hwnd);
 }
 
+LONGLONG get_now_ticks() {
+    LARGE_INTEGER now_ticks = { };
+    QueryPerformanceCounter(&now_ticks);
+    return now_ticks.QuadPart;
+}
+
+double expected_current_scanline(LONGLONG now_ticks, int total_height, bool add_correction) {
+    double cur_scanline = (now_ticks % ticks_per_refresh.load()) / (1.0 * ticks_per_refresh.load() / total_height);
+    if (add_correction) {
+        cur_scanline += correction_ticks_delta.load();
+    }
+    if (cur_scanline < 0) {
+        cur_scanline += total_height;
+    }
+    if (cur_scanline > total_height) {
+        cur_scanline -= total_height;
+    }
+    return cur_scanline;
+}
+
 void VBlankMonitor::MonitoringThread() {
     ::LogInfo("VBlank monitoring thread: entering main loop");
     
@@ -201,56 +222,35 @@ void VBlankMonitor::MonitoringThread() {
         scan.hAdapter = m_hAdapter;
         scan.VidPnSourceId = m_vidpn_source_id;
 
-        LARGE_INTEGER start_ticks = { };
-        QueryPerformanceCounter(&start_ticks);
+        LONGLONG start_ticks = get_now_ticks();
 
-        if (reinterpret_cast<NTSTATUS (WINAPI*)(D3DKMT_GETSCANLINE*)>(m_pfnGetScanLine)(&scan) == 0) {
-            LARGE_INTEGER end_ticks = { };
-            QueryPerformanceCounter(&end_ticks);
-            LONGLONG duration = end_ticks.QuadPart - start_ticks.QuadPart;
+        int expected_scanline = expected_current_scanline(start_ticks, timing_info[0].total_height, true);
 
-            LONGLONG mid_point = (start_ticks.QuadPart + end_ticks.QuadPart) / 2; // TODO: all values could be multipled by 2 for better precision
+        // don't run during vblank
+        if (expected_scanline >= 50 && expected_scanline <= 300 &&reinterpret_cast<NTSTATUS (WINAPI*)(D3DKMT_GETSCANLINE*)>(m_pfnGetScanLine)(&scan) == 0) {
+            LONGLONG end_ticks = get_now_ticks();
+            LONGLONG duration = end_ticks - start_ticks;
+
+            LONGLONG mid_point = (start_ticks + end_ticks) / 2; // TODO: all values could be multipled by 2 for better precision
 
             // shortest encountered duration
             if (min_scanline_duration == 0 || duration < min_scanline_duration) {
                 min_scanline_duration = duration;
             }
-            if (duration < 2 * min_scanline_duration && scan.ScanLine < 100) {
-                LONGLONG expected_ticks_for_scanline = (ticks_per_refresh_local * scan.ScanLine) / timing_info[0].total_height;
-
-                LONGLONG got_ticks_for_scanline = mid_point % ticks_per_refresh_local;
+            if (duration < 2 * min_scanline_duration) {
+                double expected_scanline = expected_current_scanline(mid_point, timing_info[0].total_height, false);
                 
-                LONGLONG new_delta = got_ticks_for_scanline - expected_ticks_for_scanline;
-                while (abs(new_delta - correction_ticks_delta.load()) > abs(new_delta - correction_ticks_delta.load() + ticks_per_refresh_local)) {
-                    new_delta += ticks_per_refresh_local;
-                } 
-                while (abs(new_delta - correction_ticks_delta.load()) > abs(new_delta - correction_ticks_delta.load() - ticks_per_refresh_local)) {
-                    new_delta -= ticks_per_refresh_local;
-                }
-
-
-                double alpha = 0.01;
-                double new_correction_ticks_delta = alpha * new_delta + (1 - alpha) * correction_ticks_delta.load();
-
-                while (new_correction_ticks_delta >= ticks_per_refresh_local) {
-                    new_correction_ticks_delta -= ticks_per_refresh_local;
-                }
-                while (new_correction_ticks_delta < 0) {
-                    new_correction_ticks_delta += ticks_per_refresh_local;
-                }
-
-                correction_ticks_delta.store(new_correction_ticks_delta);
                 std::this_thread::sleep_for(std::chrono::microseconds(100)); // 0.1ms
-            }
-            {
-                std::ostringstream oss2;
-                oss2 << "scan.ScanLine: " << scan.ScanLine;
-                oss2 << " lastScanLine: " << lastScanLine;
-                oss2 << " InVerticalBlank: " << (int)scan.InVerticalBlank;
-                oss2 << " scan.ScanLine - lastScanLine: " << (int)scan.ScanLine - lastScanLine;
-                oss2 << " correction_ticks_delta: " << correction_ticks_delta.load();
-                LogInfo(oss2.str().c_str());   
-                lastScanLine = scan.ScanLine;
+                {
+                    std::ostringstream oss2;
+                    oss2 << " scan.ScanLine(Delta): " << int(abs(scan.ScanLine - expected_current_scanline(mid_point, timing_info[0].total_height, true)));
+                    on_present_ended.store(false);
+                    LogInfo(oss2.str().c_str());   
+                    lastScanLine = scan.ScanLine;
+                }
+
+                double new_correction_ticks_delta = scan.ScanLine - expected_scanline; 
+                correction_ticks_delta.store(new_correction_ticks_delta);
             }
         }
     }

@@ -42,6 +42,7 @@ public:
     uint64_t GetStateChangeCount() const { return m_vblank_monitor ? m_vblank_monitor->GetStateChangeCount() : 0; }
     double GetVBlankPercentage() const { return m_vblank_monitor ? m_vblank_monitor->GetVBlankPercentage() : 0.0; }
     std::string GetVBlankStatsString() const { return m_vblank_monitor ? m_vblank_monitor->GetDetailedStatsString() : "VBlank monitor not initialized"; }
+    
 
 private:
     bool EnsureAdapterBinding();

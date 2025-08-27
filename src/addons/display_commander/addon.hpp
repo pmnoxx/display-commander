@@ -246,6 +246,7 @@ bool NeedsWindowAdjustment(HWND hwnd, int& out_width, int& out_height, int& out_
 // Swapchain event handlers
 void OnInitSwapchain(reshade::api::swapchain* swapchain, bool resize);
 void OnPresentUpdateBefore(reshade::api::command_queue *, reshade::api::swapchain* swapchain, const reshade::api::rect* source_rect, const reshade::api::rect* dest_rect, uint32_t dirty_rect_count, const reshade::api::rect* dirty_rects);
+void OnPresentUpdateBefore2(reshade::api::effect_runtime* runtime);
 void OnPresentUpdateAfter(reshade::api::command_queue* /*queue*/, reshade::api::swapchain* swapchain);
 
 // HDR10 colorspace override status for UI display

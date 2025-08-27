@@ -370,7 +370,9 @@ void OnPresentUpdateBefore(
       }
     }
   }
+}
 
+void OnPresentUpdateBefore2(reshade::api::effect_runtime* runtime) {
   if (g_reshade_runtime.load() != nullptr) {
     g_reshade_runtime.load()->get_command_queue()->flush_immediate_command_list();
   }

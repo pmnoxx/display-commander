@@ -97,6 +97,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
       // GetFpsLimit removed from proxy, use s_fps_limit directly
       g_default_fps_limit.store(s_fps_limit);
       reshade::register_event<reshade::addon_event::present>(OnPresentUpdateBefore);
+      reshade::register_event<reshade::addon_event::reshade_present>(OnPresentUpdateBefore2);
       reshade::register_event<reshade::addon_event::finish_present>(OnPresentUpdateAfter);
       
       // Register frame lifecycle hooks for custom FPS limiter
@@ -123,6 +124,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
       g_dxgiDeviceInfoManager.reset();
       
       reshade::unregister_event<reshade::addon_event::present>(OnPresentUpdateBefore);
+      reshade::unregister_event<reshade::addon_event::reshade_present>(OnPresentUpdateBefore2);
       reshade::unregister_event<reshade::addon_event::finish_present>(OnPresentUpdateAfter);
       
       // Unregister frame lifecycle hooks for custom FPS limiter

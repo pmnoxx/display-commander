@@ -134,7 +134,7 @@ void LatentSyncLimiter::LimitFrameRate() {
 
     extern double expected_current_scanline(LONGLONG now_ticks, int total_height, bool add_correction);
     double expected_scanline = expected_current_scanline(now_ticks, total_height, true);
-    double target_line = mid_vblank_scanline - (total_height * m_on_present_ticks) / ticks_per_refresh.load() - 20.0;
+    double target_line = mid_vblank_scanline - (total_height * m_on_present_ticks) / ticks_per_refresh.load() - 80.0;
 
     double diff_lines = target_line - expected_scanline;
     if (diff_lines < 0) {

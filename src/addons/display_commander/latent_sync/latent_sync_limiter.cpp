@@ -22,7 +22,7 @@ namespace dxgi::fps_limiter {
  //   std::atomic<LONGLONG> ticks_per_scanline{0};
     std::atomic<LONGLONG> ticks_per_refresh{0};
     std::atomic<LONGLONG> s_qpc_freq{0};
-    std::atomic<double> correction_ticks_delta{0};
+    std::atomic<double> correction_lines_delta{0};
     std::atomic<LONGLONG> prev_wait_target{0};
     double m_on_present_ms = 0.0;
     double m_on_present_ticks = 0.0;
@@ -154,7 +154,7 @@ void LatentSyncLimiter::LimitFrameRate() {
 //        oss << " ticks_per_scanline: " << ticks_per_scanline.load();
         oss << " wait_target: " << wait_target;
         oss << " now_ticks: " << now_ticks;
-        oss << " correction_ticks_delta: " << correction_ticks_delta.load();
+        oss << " correction_ticks_delta: " << correction_lines_delta.load();
         oss << " m_on_present_ticks: " << m_on_present_ticks;
         oss << " target_line: " << target_line;
         LogInfo(oss.str().c_str());   

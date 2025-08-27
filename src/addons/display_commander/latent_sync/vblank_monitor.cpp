@@ -16,10 +16,10 @@ extern std::atomic<double> s_vblank_ticks;
 extern std::atomic<double> s_active_ms;
 extern std::atomic<double> s_active_ticks;
 extern std::atomic<bool> s_vblank_seen;
-extern std::atomic<LONGLONG> ticks_per_scanline;
+//extern std::atomic<LONGLONG> ticks_per_scanline;
 extern std::atomic<LONGLONG> ticks_per_refresh;
-extern std::atomic<LONGLONG> correction_ticks;
 extern std::atomic<LONGLONG> s_qpc_freq;
+extern std::atomic<LONGLONG> correction_ticks_delta;
 }
 
 // Simple logging wrapper to avoid dependency issues
@@ -182,20 +182,20 @@ void VBlankMonitor::MonitoringThread() {
     }
 
     
-    ticks_per_scanline.store((timing_info[0].hsync_freq_numerator > 0) ?
-        (timing_info[0].hsync_freq_denominator * s_qpc_freq.load()) /
-        (timing_info[0].hsync_freq_numerator) : 1);
+ //   ticks_per_scanline.store((timing_info[0].hsync_freq_numerator > 0) ?
+  //      (timing_info[0].hsync_freq_denominator * s_qpc_freq.load()) /
+  //      (timing_info[0].hsync_freq_numerator) : 1);
 
     ticks_per_refresh.store((timing_info[0].vsync_freq_numerator > 0) ?
         (timing_info[0].vsync_freq_denominator * s_qpc_freq.load()) /
         (timing_info[0].vsync_freq_numerator) : 1);
 
-    LONGLONG get_scanline_min_duration = 0;
+    LONGLONG min_scanline_duration = 0;
     LONGLONG correction_ticks_local = 0;
 
     while (!m_should_stop.load()) {
         LONGLONG ticks_per_refresh_local = ticks_per_refresh.load();
-        LONGLONG ticks_per_scanline_local = ticks_per_scanline.load();
+ //       LONGLONG ticks_per_scanline_local = ticks_per_scanline.load();
 
         D3DKMT_GETSCANLINE scan{};
         scan.hAdapter = m_hAdapter;
@@ -209,28 +209,38 @@ void VBlankMonitor::MonitoringThread() {
             QueryPerformanceCounter(&end_ticks);
             LONGLONG duration = end_ticks.QuadPart - start_ticks.QuadPart;
 
-            LONGLONG mid_point = (start_ticks.QuadPart + end_ticks.QuadPart) / 2;
+            LONGLONG mid_point = (start_ticks.QuadPart + end_ticks.QuadPart) / 2; // TODO: all values could be multipled by 2 for better precision
 
             // shortest encountered duration
-            if (get_scanline_min_duration == 0 || duration < get_scanline_min_duration) {
-                get_scanline_min_duration = duration;
+            if (min_scanline_duration == 0 || duration < min_scanline_duration) {
+                min_scanline_duration = duration;
             }
-            if (duration < 2 * get_scanline_min_duration) {
-                LONGLONG expected_ticks_for_scanline = ticks_per_refresh_local * scan.ScanLine / timing_info[0].total_height;
+            if (duration < 2 * min_scanline_duration && scan.ScanLine < 100) {
+                LONGLONG expected_ticks_for_scanline = (ticks_per_refresh_local * scan.ScanLine) / timing_info[0].total_height;
 
                 LONGLONG got_ticks_for_scanline = mid_point % ticks_per_refresh_local;
                 
-                LONGLONG delta = got_ticks_for_scanline - expected_ticks_for_scanline;
-                while (delta > 0) {
-                    delta -= ticks_per_refresh_local;
+                LONGLONG new_delta = got_ticks_for_scanline - expected_ticks_for_scanline;
+                while (abs(new_delta - correction_ticks_delta.load()) > abs(new_delta - correction_ticks_delta.load() + ticks_per_refresh_local)) {
+                    new_delta += ticks_per_refresh_local;
                 } 
-                while (delta < 0) {
-                    delta += ticks_per_refresh_local;
+                while (abs(new_delta - correction_ticks_delta.load()) > abs(new_delta - correction_ticks_delta.load() - ticks_per_refresh_local)) {
+                    new_delta -= ticks_per_refresh_local;
                 }
 
-                double alpha = 0.001;
-                correction_ticks_local = alpha * delta + (1 - alpha) * correction_ticks.load();
-                correction_ticks.store(correction_ticks_local);
+
+                double alpha = 0.01;
+                double new_correction_ticks_delta = alpha * new_delta + (1 - alpha) * correction_ticks_delta.load();
+
+                while (new_correction_ticks_delta >= ticks_per_refresh_local) {
+                    new_correction_ticks_delta -= ticks_per_refresh_local;
+                }
+                while (new_correction_ticks_delta < 0) {
+                    new_correction_ticks_delta += ticks_per_refresh_local;
+                }
+
+                correction_ticks_delta.store(new_correction_ticks_delta);
+                std::this_thread::sleep_for(std::chrono::microseconds(100)); // 0.1ms
             }
             {
                 std::ostringstream oss2;
@@ -238,7 +248,7 @@ void VBlankMonitor::MonitoringThread() {
                 oss2 << " lastScanLine: " << lastScanLine;
                 oss2 << " InVerticalBlank: " << (int)scan.InVerticalBlank;
                 oss2 << " scan.ScanLine - lastScanLine: " << (int)scan.ScanLine - lastScanLine;
-                oss2 << " correction_ticks: " << correction_ticks.load();
+                oss2 << " correction_ticks_delta: " << correction_ticks_delta.load();
                 LogInfo(oss2.str().c_str());   
                 lastScanLine = scan.ScanLine;
             }

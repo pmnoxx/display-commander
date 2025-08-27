@@ -5,6 +5,7 @@
 #include <cwchar>
 #include <algorithm>
 #include <sstream>
+#include "../display/query_display.hpp"
 
 static uint64_t s_last_scan_time = 0;
 
@@ -14,10 +15,10 @@ namespace dxgi::fps_limiter {
     std::atomic<bool> s_vblank_seen{true};
     std::atomic<double> s_active_ms{0.0};
     std::atomic<double> s_active_ticks{0.0};
-    std::atomic<LONGLONG> ticks_per_scanline{0};
+ //   std::atomic<LONGLONG> ticks_per_scanline{0};
     std::atomic<LONGLONG> ticks_per_refresh{0};
     std::atomic<LONGLONG> s_qpc_freq{0};
-    std::atomic<LONGLONG> correction_ticks{0};
+    std::atomic<LONGLONG> correction_ticks_delta{0};
     std::atomic<LONGLONG> prev_wait_target{0};
     double m_on_present_ms = 0.0;
     double m_on_present_ticks = 0.0;
@@ -119,22 +120,25 @@ void LatentSyncLimiter::LimitFrameRate() {
     // Compute adjusted scanline window accounting for average Present duration
     int monitor_height = GetCurrentMonitorHeight();
   
-    // TODO
-    int total_height = 2223;
-    int active_height = 2160;
-    int mid_vblank_scanline = (active_height + total_height) / 2;
+    std::vector<DisplayTimingInfo> timing_info = QueryDisplayTimingInfo();
+    LONGLONG total_height = timing_info[0].total_height;
+    LONGLONG active_height = timing_info[0].active_height;
+    LONGLONG mid_vblank_scanline = (active_height + total_height) / 2;
 
     LARGE_INTEGER t; QueryPerformanceCounter(&t);
-    LONGLONG aligned_ticks_per_refresh = t.QuadPart - t.QuadPart % ticks_per_refresh.load();
-    LONGLONG wait_target = aligned_ticks_per_refresh + (ticks_per_refresh.load() * mid_vblank_scanline / total_height) + correction_ticks.load() - m_on_present_ticks;
+    LONGLONG now_ticks = t.QuadPart;
+    LONGLONG aligned_ticks_per_refresh = now_ticks - now_ticks % ticks_per_refresh.load();
+    LONGLONG wait_target = aligned_ticks_per_refresh + (ticks_per_refresh.load() * mid_vblank_scanline / total_height) + correction_ticks_delta.load() - m_on_present_ticks;
+    
+    LONGLONG target_line = mid_vblank_scanline - (total_height * m_on_present_ticks) / ticks_per_refresh.load();
  
-    while (wait_target > t.QuadPart) { 
+    while (wait_target > now_ticks) { 
         wait_target -= ticks_per_refresh.load();
     }
-    while (wait_target > t.QuadPart) { 
+    while (wait_target < now_ticks) { 
         wait_target += ticks_per_refresh.load();
     }
-    while (abs(wait_target - prev_wait_target.load()) < ticks_per_refresh.load() / 2) {
+    while (wait_target < prev_wait_target.load() + ticks_per_refresh.load() / 2) {
         wait_target += ticks_per_refresh.load();
     }
     prev_wait_target.store(wait_target);
@@ -143,11 +147,12 @@ void LatentSyncLimiter::LimitFrameRate() {
         std::ostringstream oss;
         oss << " mid_vblank_scanline: " << mid_vblank_scanline;
         oss << " ticks_per_refresh: " << ticks_per_refresh.load();
-        oss << " ticks_per_scanline: " << ticks_per_scanline.load();
+//        oss << " ticks_per_scanline: " << ticks_per_scanline.load();
         oss << " wait_target: " << wait_target;
         oss << " now_ticks: " << t.QuadPart;
-        oss << " correction_ticks: " << correction_ticks.load();
+        oss << " correction_ticks_delta: " << correction_ticks_delta.load();
         oss << " m_on_present_ticks: " << m_on_present_ticks;
+        oss << " target_line: " << target_line;
         LogInfo(oss.str().c_str());   
     }
 

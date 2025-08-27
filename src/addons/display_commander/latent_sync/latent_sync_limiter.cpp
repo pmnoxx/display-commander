@@ -9,7 +9,11 @@
 
 static uint64_t s_last_scan_time = 0;
 
+
+
+
 namespace dxgi::fps_limiter {
+    extern LONGLONG get_now_ticks();
     std::atomic<double> s_vblank_ms{0.0};
     std::atomic<double> s_vblank_ticks{0.0};
     std::atomic<bool> s_vblank_seen{true};
@@ -18,10 +22,11 @@ namespace dxgi::fps_limiter {
  //   std::atomic<LONGLONG> ticks_per_scanline{0};
     std::atomic<LONGLONG> ticks_per_refresh{0};
     std::atomic<LONGLONG> s_qpc_freq{0};
-    std::atomic<LONGLONG> correction_ticks_delta{0};
+    std::atomic<double> correction_ticks_delta{0};
     std::atomic<LONGLONG> prev_wait_target{0};
     double m_on_present_ms = 0.0;
     double m_on_present_ticks = 0.0;
+    std::atomic<bool> on_present_ended{false};
 
 static inline FARPROC LoadProcCached(FARPROC& slot, const wchar_t* mod, const char* name) {
     if (slot != nullptr) return slot;
@@ -125,23 +130,22 @@ void LatentSyncLimiter::LimitFrameRate() {
     LONGLONG active_height = timing_info[0].active_height;
     LONGLONG mid_vblank_scanline = (active_height + total_height) / 2;
 
-    LARGE_INTEGER t; QueryPerformanceCounter(&t);
-    LONGLONG now_ticks = t.QuadPart;
-    LONGLONG aligned_ticks_per_refresh = now_ticks - now_ticks % ticks_per_refresh.load();
-    LONGLONG wait_target = aligned_ticks_per_refresh + (ticks_per_refresh.load() * mid_vblank_scanline / total_height) + correction_ticks_delta.load() - m_on_present_ticks;
-    
-    LONGLONG target_line = mid_vblank_scanline - (total_height * m_on_present_ticks) / ticks_per_refresh.load();
- 
-    while (wait_target > now_ticks) { 
-        wait_target -= ticks_per_refresh.load();
+    LONGLONG now_ticks = get_now_ticks();
+
+    extern double expected_current_scanline(LONGLONG now_ticks, int total_height, bool add_correction);
+    double expected_scanline = expected_current_scanline(now_ticks, total_height, true);
+    double target_line = mid_vblank_scanline - (total_height * m_on_present_ticks) / ticks_per_refresh.load();
+
+    double diff_lines = target_line - expected_scanline;
+    if (diff_lines < 0) {
+        diff_lines += total_height;
     }
-    while (wait_target < now_ticks) { 
-        wait_target += ticks_per_refresh.load();
-    }
-    while (wait_target < prev_wait_target.load() + ticks_per_refresh.load() / 2) {
-        wait_target += ticks_per_refresh.load();
-    }
-    prev_wait_target.store(wait_target);
+
+    double delta_wait_time = diff_lines * (1.0 * ticks_per_refresh.load() / total_height);
+
+    LONGLONG wait_target = now_ticks + delta_wait_time;
+
+
 
     {
         std::ostringstream oss;
@@ -149,19 +153,26 @@ void LatentSyncLimiter::LimitFrameRate() {
         oss << " ticks_per_refresh: " << ticks_per_refresh.load();
 //        oss << " ticks_per_scanline: " << ticks_per_scanline.load();
         oss << " wait_target: " << wait_target;
-        oss << " now_ticks: " << t.QuadPart;
+        oss << " now_ticks: " << now_ticks;
         oss << " correction_ticks_delta: " << correction_ticks_delta.load();
         oss << " m_on_present_ticks: " << m_on_present_ticks;
         oss << " target_line: " << target_line;
         LogInfo(oss.str().c_str());   
     }
 
+    LONGLONG start_ticks = now_ticks;
     while (true) {
-        QueryPerformanceCounter(&t);
-        LONGLONG now_ticks = t.QuadPart;
-        if (now_ticks > wait_target) {
+        now_ticks = get_now_ticks();
+        if (now_ticks - start_ticks > delta_wait_time) {
             break;
         }
+    }
+    {
+        double expected_scanline = expected_current_scanline(now_ticks, total_height, true);
+        std::ostringstream oss;
+        oss << " expected_current_scanline: " << expected_scanline;
+        oss << " target_line: " << target_line;
+        LogInfo(oss.str().c_str());   
     }
 }
 
@@ -177,12 +188,19 @@ void LatentSyncLimiter::OnPresentEnd() {
         LogInfo(oss.str().c_str());   
         return;
     }
+    on_present_ended.store(true);
     LARGE_INTEGER now; QueryPerformanceCounter(&now);
     LONGLONG dt = now.QuadPart - m_qpc_present_begin;
     m_qpc_present_begin = 0;
     {
+        std::vector<DisplayTimingInfo> timing_info = QueryDisplayTimingInfo();
+        LONGLONG total_height = timing_info[0].total_height;
+
+        LONGLONG now_ticks = get_now_ticks();
         std::ostringstream oss;
-        oss << "Present duration(real): " << dt << " ticks";
+        oss << "OnPresentEnd: ";
+        extern double expected_current_scanline(LONGLONG now_ticks, int total_height, bool add_correction);
+        oss << " predicted scanline: " << int(expected_current_scanline(now_ticks, total_height, true));
         LogInfo(oss.str().c_str());   
     }
     // Exponential moving average of Present duration in ticks

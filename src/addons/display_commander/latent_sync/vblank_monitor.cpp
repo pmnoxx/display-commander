@@ -8,6 +8,11 @@
 #include <codecvt>
 #include <iostream>
 #include "../utils.hpp"
+namespace dxgi::fps_limiter {
+extern std::atomic<double> s_vblank_ms;
+extern std::atomic<double> s_active_ms;
+extern std::atomic<bool> s_vblank_seen;
+}
 
 // Simple logging wrapper to avoid dependency issues
 namespace {
@@ -174,6 +179,8 @@ void VBlankMonitor::MonitoringThread() {
                     auto vblank_ms = std::chrono::duration_cast<std::chrono::microseconds>(vblank_duration).count() / 1000.0;
                     std::ostringstream oss;
                     oss << "VBlank -> Active: spent " << std::fixed << std::setprecision(2) << vblank_ms << " ms in vblank";
+                    dxgi::fps_limiter::s_vblank_ms.store(vblank_ms);
+                    dxgi::fps_limiter::s_vblank_seen.store(true);
                     ::LogInfo(oss.str().c_str());
                     
                     m_active_start_time = now;
@@ -192,6 +199,7 @@ void VBlankMonitor::MonitoringThread() {
                     auto active_ms = std::chrono::duration_cast<std::chrono::microseconds>(active_duration).count() / 1000.0;
                     std::ostringstream oss;
                     oss << "Active -> VBlank: spent " << std::fixed << std::setprecision(2) << active_ms << " ms in active";
+                    dxgi::fps_limiter::s_active_ms.store(active_ms);
                     ::LogInfo(oss.str().c_str());
                     
                     m_vblank_start_time = now;

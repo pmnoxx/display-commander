@@ -8,6 +8,10 @@
 static uint64_t s_last_scan_time = 0;
 
 namespace dxgi::fps_limiter {
+    std::atomic<double> s_vblank_ms{0.0};
+    std::atomic<bool> s_vblank_seen{true};
+    std::atomic<double> s_active_ms{0.0};
+    double m_on_present_ms = 0.0;
 
 static inline FARPROC LoadProcCached(FARPROC& slot, const wchar_t* mod, const char* name) {
     if (slot != nullptr) return slot;
@@ -103,12 +107,18 @@ void LatentSyncLimiter::LimitFrameRate() {
     if (!LoadProcCached(m_pfnGetScanLine, L"gdi32.dll", "D3DKMTGetScanLine"))
         return;
 
+    while (!s_vblank_seen.load()) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+    s_vblank_seen.store(false); // TODO: fix race condition later on
+
     D3DKMT_GETSCANLINE scan{};
     scan.hAdapter = m_hAdapter;
     scan.VidPnSourceId = m_vidpn_source_id;
 
     // Compute adjusted scanline window accounting for average Present duration
     int monitor_height = GetCurrentMonitorHeight();
+    /*
     s_scanline_threshold.store(0.99);
     int base_threshold = min(monitor_height - 1, static_cast<int>(s_scanline_threshold.load() * monitor_height));
     int window = s_scanline_window.load();
@@ -127,7 +137,18 @@ void LatentSyncLimiter::LimitFrameRate() {
         }
     }
     int adjusted_threshold_end = adjusted_threshold + window;
+    */
+    // relative to vblankstart, we want to start the frame at a consistent phase
+    //  + s_vblank_ms.load() * 0.5
+    int adjusted_threshold = max(monitor_height / 2, min(monitor_height - 30, static_cast<int>(monitor_height + ((-m_on_present_ms  ) / s_active_ms.load() * monitor_height))));
+    int adjusted_threshold_end = min(monitor_height - 1, adjusted_threshold + 30);
 
+    std::ostringstream oss;
+    oss << "adjusted_threshold: " << adjusted_threshold << ", adjusted_threshold_end: " << adjusted_threshold_end;
+    oss << ", m_on_present_ms: " << m_on_present_ms;
+    oss << ", s_active_ms: " << s_active_ms.load();
+    oss << ", adjusting beforeOnPresent to be ms before vblank " << s_active_ms.load() * (monitor_height - adjusted_threshold) / monitor_height;
+    LogInfo(oss.str().c_str());
     // Poll until we are in desired window to start the frame at a consistent phase
     int safety = 0;
     while (true) {
@@ -168,6 +189,7 @@ void LatentSyncLimiter::OnPresentEnd() {
     std::ostringstream oss;
     oss << "Present duration: " << m_avg_present_ticks / 1000.0 << " ms";
     LogInfo(oss.str().c_str());
+    m_on_present_ms = m_avg_present_ticks / 1000.0;
 }
 
 void LatentSyncLimiter::StartVBlankMonitoring() {

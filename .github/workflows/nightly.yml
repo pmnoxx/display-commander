@@ -1,0 +1,116 @@
+name: Nightly Build
+
+on:
+  schedule:
+    # Run every day at 2:00 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch: # Allow manual triggering
+
+permissions:
+  contents: write
+
+jobs:
+  nightly-build:
+    name: Nightly Build (${{ matrix.arch }})
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            devcmd_arch: x64
+            artifact_suffix: addon64
+            artifact_name: zzz_display_commander.addon64
+          - arch: x86
+            devcmd_arch: x86
+            artifact_suffix: addon32
+            artifact_name: zzz_display_commander.addon32
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Ninja
+        uses: seanmiddleditch/gha-setup-ninja@v5
+
+      - name: Setup MSVC (${{ matrix.devcmd_arch }})
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: ${{ matrix.devcmd_arch }}
+
+      - name: Configure
+        shell: bash
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        shell: bash
+        run: |
+          cmake --build build --config Release --parallel
+
+      - name: Collect artifacts
+        id: collect
+        shell: bash
+        run: |
+          mkdir -p artifacts
+          files=$(find build -type f -name "*.${{ matrix.artifact_suffix }}" || true)
+          if [ -z "$files" ]; then
+            echo "No addon files found; listing build dir for debugging:" >&2
+            ls -la build || true
+            exit 1
+          fi
+          while IFS= read -r f; do
+            base=$(basename "$f")
+            # Rename to the new naming convention
+            new_name="${{ matrix.artifact_name }}"
+            cp "$f" "artifacts/$new_name"
+          done <<< "$files"
+          echo "artifact_dir=artifacts" >> $GITHUB_OUTPUT
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-zzz-display-commander-${{ matrix.artifact_suffix }}
+          path: ${{ steps.collect.outputs.artifact_dir }}/*
+          if-no-files-found: error
+          retention-days: 30 # Keep nightly builds for 30 days
+
+  nightly-release:
+    name: Nightly Release
+    needs: [ nightly-build ]
+    runs-on: windows-latest
+    steps:
+      - name: Download build artifacts (x64)
+        uses: actions/download-artifact@v4
+        with:
+          name: nightly-zzz-display-commander-addon64
+          path: artifacts
+
+      - name: Download build artifacts (x86)
+        uses: actions/download-artifact@v4
+        with:
+          name: nightly-zzz-display-commander-addon32
+          path: artifacts
+
+      - name: Create/Update Nightly Release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: nightly
+          name: Nightly Build
+          allowUpdates: true
+          artifacts: artifacts/*
+          token: ${{ secrets.GITHUB_TOKEN }}
+          body: |
+            ## Nightly Build
+            
+            This is an automated nightly build of Display Commander.
+            
+            **Build Date**: ${{ github.event.schedule || 'Manual Trigger' }}
+            
+            **Files**:
+            - `zzz_display_commander.addon64` - 64-bit version
+            - `zzz_display_commander.addon32` - 32-bit version
+            
+            **Note**: These are development builds. For stable releases, use the main releases.

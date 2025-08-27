@@ -13,7 +13,9 @@ Note: Applying window operations from the main thread can crash some apps. This 
 | Architecture | Download |
 |-------------|----------|
 | **x64 (64-bit)** | [zzz_display_commander.addon64](../../releases/latest/download/zzz_display_commander.addon64) |
-| **x86 (32-bit)** | [zzz_display_commander.addon32](../../releases/latest/download/zzz_display_commander.addon32) |    
+| **x86 (32-bit)** | [zzz_display_commander.addon32](../../releases/latest/download/zzz_display_commander.addon32) |
+
+**🔄 Nightly Builds**: For the latest development builds, check [Nightly Releases](../../releases/tag/nightly).    
 
 ## Features
 
@@ -103,6 +105,8 @@ Notes:
 ## Continuous Integration
 
 GitHub Actions builds x64 and x86 on pushes and PRs and uploads the resulting `.addon64` and `.addon32` as artifacts. Tag pushes also create releases.
+
+**🔄 Nightly Builds**: Automated builds run daily at 2:00 AM UTC and create a "Nightly" release with the latest development versions.
 
 ## Troubleshooting
 

@@ -370,6 +370,12 @@ void OnPresentUpdateBefore(
       }
     }
   }
+
+  if (g_reshade_runtime.load() != nullptr) {
+    g_reshade_runtime.load()->get_command_queue()->flush_immediate_command_list();
+  }
+
+
   // Call FPS Limiter on EVERY frame (not throttled)
   if (s_custom_fps_limiter_enabled.load()) {
     // Use background flag computed by monitoring thread; avoid GetForegroundWindow here

@@ -12,8 +12,8 @@ Note: Applying window operations from the main thread can crash some apps. This 
 
 | Architecture | Download |
 |-------------|----------|
-| **x64 (64-bit)** | [display_commander.addon64](../../releases/latest/download/display_commander.addon64) |
-| **x86 (32-bit)** | [display_commander.addon32](../../releases/latest/download/display_commander.addon32) |    
+| **x64 (64-bit)** | [zzz_display_commander.addon64](../../releases/latest/download/zzz_display_commander.addon64) |
+| **x86 (32-bit)** | [zzz_display_commander.addon32](../../releases/latest/download/zzz_display_commander.addon32) |    
 
 ## Features
 
@@ -26,6 +26,10 @@ Note: Applying window operations from the main thread can crash some apps. This 
 - Audio controls: Per-process volume, manual mute, mute in background, conditional background mute
 - NVIDIA Reflex: Simple on/off toggle with status
 - Live indicators: PCL AV latency (30-frame average), Reflex status, and flip state
+
+## Known Issues
+
+**⚠️ Load Order Requirement**: Display Commander must be loaded last by ReShade. This is why we've added the `zzz_` prefix to the filename - it ensures proper load order and prevents conflicts with other addons.
 
 ## Known Bugs
 - ...
@@ -41,7 +45,7 @@ Note: Applying window operations from the main thread can crash some apps. This 
 **Prerequisites**: You must have ReShade 6.5.1+ (nightly version) installed. Stable ReShade releases are not compatible.
 
 1. Download a prebuilt addon from Releases (CI uploads artifacts for both x64 and x86), or build from source.
-2. Copy the file `display_commander.addon64` (or `.addon32` for 32-bit) to the folder where ReShade is loaded for your game (the same folder as the ReShade runtime, e.g., `dxgi.dll`).
+2. Copy the file `zzz_display_commander.addon64` (or `.addon32` for 32-bit) to the folder where ReShade is loaded for your game (the same folder as the ReShade runtime, e.g., `dxgi.dll`).
    - Alternatively, place it into your global ReShade installation directory (for example `D:\\Program Files\\ReShade`).
 3. Launch the game, open the ReShade overlay (Home by default), go to the Add-ons tab, and locate "Display Commander".
 
@@ -79,7 +83,7 @@ Build (x64):
 ```bash
 cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
 cmake --build build --config Release --parallel
-# Output: build/display_commander.addon64
+# Output: build/zzz_display_commander.addon64
 ```
 
 Build (x86, 32-bit):
@@ -87,7 +91,7 @@ Build (x86, 32-bit):
 ```bash
 cmake -S . -B build32 -G "Ninja Multi-Config" -A Win32
 cmake --build build32 --config Release --parallel
-# Output: build32/Release/display_commander.addon32 (or build32/display_commander.addon32)
+# Output: build32/Release/zzz_display_commander.addon32 (or build32/zzz_display_commander.addon32)
 ```
 
 Notes:
@@ -106,7 +110,7 @@ GitHub Actions builds x64 and x86 on pushes and PRs and uploads the resulting `.
 - "This project requires the Ninja generator": Configure with `-G Ninja` (or `"Ninja Multi-Config"` for the 32-bit example above).
 - "Missing submodule: external/reshade": Run `git submodule update --init --recursive`.
 - "NVAPI libs not found ...": Optional; only NVAPI-based features will be unavailable.
-- "No addon files found" after build: Ensure Release config and correct architecture; check `build/` or `build32/Release/` for the expected output name.
+- "No addon files found" after build: Ensure Release config and correct architecture; check `build/` or `build32/Release/` for the expected output name (should be `zzz_display_commander.addon64` or `zzz_display_commander.addon32`).
 
 ## Support
 

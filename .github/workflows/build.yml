@@ -22,9 +22,11 @@ jobs:
           - arch: x64
             devcmd_arch: x64
             artifact_suffix: addon64
+            artifact_name: zzz_display_commander.addon64
           - arch: x86
             devcmd_arch: x86
             artifact_suffix: addon32
+            artifact_name: zzz_display_commander.addon32
 
     steps:
       - name: Checkout
@@ -63,14 +65,16 @@ jobs:
           fi
           while IFS= read -r f; do
             base=$(basename "$f")
-            cp "$f" "artifacts/$base"
+            # Rename to the new naming convention
+            new_name="${{ matrix.artifact_name }}"
+            cp "$f" "artifacts/$new_name"
           done <<< "$files"
           echo "artifact_dir=artifacts" >> $GITHUB_OUTPUT
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: display-commander-${{ matrix.artifact_suffix }}
+          name: zzz-display-commander-${{ matrix.artifact_suffix }}
           path: ${{ steps.collect.outputs.artifact_dir }}/*
           if-no-files-found: error
 
@@ -83,13 +87,13 @@ jobs:
       - name: Download build artifacts (x64)
         uses: actions/download-artifact@v4
         with:
-          name: display-commander-addon64
+          name: zzz-display-commander-addon64
           path: artifacts
 
       - name: Download build artifacts (x86)
         uses: actions/download-artifact@v4
         with:
-          name: display-commander-addon32
+          name: zzz-display-commander-addon32
           path: artifacts
 
       - name: Create Tag Release

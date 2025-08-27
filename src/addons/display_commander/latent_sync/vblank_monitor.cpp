@@ -19,7 +19,7 @@ extern std::atomic<bool> s_vblank_seen;
 //extern std::atomic<LONGLONG> ticks_per_scanline;
 extern std::atomic<LONGLONG> ticks_per_refresh;
 extern std::atomic<LONGLONG> s_qpc_freq;
-extern std::atomic<double> correction_ticks_delta;
+extern std::atomic<double> correction_lines_delta;
 extern std::atomic<bool> on_present_ended;
 }
 
@@ -145,7 +145,7 @@ LONGLONG get_now_ticks() {
 double expected_current_scanline(LONGLONG now_ticks, int total_height, bool add_correction) {
     double cur_scanline = (now_ticks % ticks_per_refresh.load()) / (1.0 * ticks_per_refresh.load() / total_height);
     if (add_correction) {
-        cur_scanline += correction_ticks_delta.load();
+        cur_scanline += correction_lines_delta.load();
     }
     if (cur_scanline < 0) {
         cur_scanline += total_height;
@@ -249,8 +249,8 @@ void VBlankMonitor::MonitoringThread() {
                     lastScanLine = scan.ScanLine;
                 }
 
-                double new_correction_ticks_delta = scan.ScanLine - expected_scanline; 
-                correction_ticks_delta.store(new_correction_ticks_delta);
+                double new_correction_lines_delta = scan.ScanLine - expected_scanline; 
+                correction_lines_delta.store(new_correction_lines_delta);
             }
         }
     }

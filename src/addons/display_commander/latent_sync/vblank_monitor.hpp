@@ -94,6 +94,8 @@ private:
     std::chrono::steady_clock::time_point m_last_state_change;
     std::chrono::steady_clock::time_point m_vblank_start_time;
     std::chrono::steady_clock::time_point m_active_start_time;
+    LONGLONG m_vblank_start_time_ticks = 0;
+    LONGLONG m_active_start_time_ticks = 0;
 
     // Timing statistics
     std::chrono::steady_clock::duration m_total_vblank_time{0};

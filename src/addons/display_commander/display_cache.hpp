@@ -115,12 +115,8 @@ struct DisplayInfo {
     int current_height;
     RationalRefreshRate current_refresh_rate;
     
-    // Display capabilities
-    bool supports_hdr;
-    bool supports_vrr;
     
-    DisplayInfo() : monitor_handle(nullptr), current_width(0), current_height(0), 
-                    supports_hdr(false), supports_vrr(false) {}
+    DisplayInfo() : monitor_handle(nullptr), current_width(0), current_height(0) {}
     
     // Get current resolution as string
     std::string GetCurrentResolutionString() const {
@@ -345,10 +341,13 @@ public:
     }
 
     // Swap internal data from another cache (used for atomic-like updates)
-    void SwapFrom(DisplayCache&& other);
+    void SwapFrom(DisplayCache&& other); 
 
     // Copy a display snapshot by index; returns false if out of range
     bool CopyDisplay(size_t index, DisplayInfo &out) const;
+    
+    // Print vSyncFreqDivider information for debugging
+    void PrintVSyncFreqDivider() const;
 };
 
 // Global instance

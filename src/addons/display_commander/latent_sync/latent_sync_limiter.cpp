@@ -4,14 +4,23 @@
 #include <dxgi1_6.h>
 #include <cwchar>
 #include <algorithm>
+#include <sstream>
 
 static uint64_t s_last_scan_time = 0;
 
 namespace dxgi::fps_limiter {
     std::atomic<double> s_vblank_ms{0.0};
+    std::atomic<double> s_vblank_ticks{0.0};
     std::atomic<bool> s_vblank_seen{true};
     std::atomic<double> s_active_ms{0.0};
+    std::atomic<double> s_active_ticks{0.0};
+    std::atomic<LONGLONG> ticks_per_scanline{0};
+    std::atomic<LONGLONG> ticks_per_refresh{0};
+    std::atomic<LONGLONG> s_qpc_freq{0};
+    std::atomic<LONGLONG> correction_ticks{0};
+    std::atomic<LONGLONG> prev_wait_target{0};
     double m_on_present_ms = 0.0;
+    double m_on_present_ticks = 0.0;
 
 static inline FARPROC LoadProcCached(FARPROC& slot, const wchar_t* mod, const char* name) {
     if (slot != nullptr) return slot;
@@ -101,15 +110,6 @@ void LatentSyncLimiter::LimitFrameRate() {
     // If no target FPS set, simply wait for one vblank to pace to refresh
     const bool cap_to_fps = (m_target_fps > 0.0f);
 
-    if (!EnsureAdapterBinding()) return;
-
-    // Scanline-based pacing (experimental)
-    if (!LoadProcCached(m_pfnGetScanLine, L"gdi32.dll", "D3DKMTGetScanLine"))
-        return;
-
-    while (!s_vblank_seen.load()) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
-    }
     s_vblank_seen.store(false); // TODO: fix race condition later on
 
     D3DKMT_GETSCANLINE scan{};
@@ -118,52 +118,44 @@ void LatentSyncLimiter::LimitFrameRate() {
 
     // Compute adjusted scanline window accounting for average Present duration
     int monitor_height = GetCurrentMonitorHeight();
-    /*
-    s_scanline_threshold.store(0.99);
-    int base_threshold = min(monitor_height - 1, static_cast<int>(s_scanline_threshold.load() * monitor_height));
-    int window = s_scanline_window.load();
+  
+    // TODO
+    int total_height = 2223;
+    int active_height = 2160;
+    int mid_vblank_scanline = (active_height + total_height) / 2;
 
-    int adjusted_threshold = base_threshold;
-    if (monitor_height > 0 && m_refresh_hz > 0.0 && m_avg_present_ticks > 0.0) {
-        static LONGLONG s_qpc_freq = 0;
-        if (s_qpc_freq == 0) {
-            LARGE_INTEGER f; if (QueryPerformanceFrequency(&f)) s_qpc_freq = f.QuadPart;
-        }
-        if (s_qpc_freq > 0) {
-            const double ticks_per_refresh = static_cast<double>(s_qpc_freq) / m_refresh_hz;
-            const double ticks_per_scanline = ticks_per_refresh / static_cast<double>(monitor_height);
-            const int present_scanlines = static_cast<int>(std::lround((m_avg_present_ticks * 0.5) / ticks_per_scanline));
-            adjusted_threshold = max(0, base_threshold - max(0, present_scanlines));
-        }
+    LARGE_INTEGER t; QueryPerformanceCounter(&t);
+    LONGLONG aligned_ticks_per_refresh = t.QuadPart - t.QuadPart % ticks_per_refresh.load();
+    LONGLONG wait_target = aligned_ticks_per_refresh + (ticks_per_refresh.load() * mid_vblank_scanline / total_height) + correction_ticks.load() - m_on_present_ticks;
+ 
+    while (wait_target > t.QuadPart) { 
+        wait_target -= ticks_per_refresh.load();
     }
-    int adjusted_threshold_end = adjusted_threshold + window;
-    */
-    // relative to vblankstart, we want to start the frame at a consistent phase
-    //  + s_vblank_ms.load() * 0.5
-    int adjusted_threshold = max(monitor_height / 2, min(monitor_height - 30, static_cast<int>(monitor_height + ((-m_on_present_ms  ) / s_active_ms.load() * monitor_height))));
-    int adjusted_threshold_end = min(monitor_height - 1, adjusted_threshold + 30);
+    while (wait_target > t.QuadPart) { 
+        wait_target += ticks_per_refresh.load();
+    }
+    while (abs(wait_target - prev_wait_target.load()) < ticks_per_refresh.load() / 2) {
+        wait_target += ticks_per_refresh.load();
+    }
+    prev_wait_target.store(wait_target);
 
-    std::ostringstream oss;
-    oss << "adjusted_threshold: " << adjusted_threshold << ", adjusted_threshold_end: " << adjusted_threshold_end;
-    oss << ", m_on_present_ms: " << m_on_present_ms;
-    oss << ", s_active_ms: " << s_active_ms.load();
-    oss << ", adjusting beforeOnPresent to be ms before vblank " << s_active_ms.load() * (monitor_height - adjusted_threshold) / monitor_height;
-    LogInfo(oss.str().c_str());
-    // Poll until we are in desired window to start the frame at a consistent phase
-    int safety = 0;
+    {
+        std::ostringstream oss;
+        oss << " mid_vblank_scanline: " << mid_vblank_scanline;
+        oss << " ticks_per_refresh: " << ticks_per_refresh.load();
+        oss << " ticks_per_scanline: " << ticks_per_scanline.load();
+        oss << " wait_target: " << wait_target;
+        oss << " now_ticks: " << t.QuadPart;
+        oss << " correction_ticks: " << correction_ticks.load();
+        oss << " m_on_present_ticks: " << m_on_present_ticks;
+        LogInfo(oss.str().c_str());   
+    }
+
     while (true) {
-        if (reinterpret_cast<NTSTATUS (WINAPI*)(D3DKMT_GETSCANLINE*)>(m_pfnGetScanLine)(&scan) == 0) {
-            if (scan.InVerticalBlank) {
-                if (s_scanline_threshold.load() == 100 || s_scanline_threshold.load() == 0) break;
-                std::this_thread::sleep_for(std::chrono::microseconds(1));
-            } else {
-                if (scan.ScanLine >= adjusted_threshold && scan.ScanLine < adjusted_threshold_end) {
-                    break;
-                }
-                if (scan.ScanLine < adjusted_threshold - 500) {
-                    std::this_thread::sleep_for(std::chrono::microseconds(1));
-                }
-            }
+        QueryPerformanceCounter(&t);
+        LONGLONG now_ticks = t.QuadPart;
+        if (now_ticks > wait_target) {
+            break;
         }
     }
 }
@@ -174,11 +166,20 @@ void LatentSyncLimiter::OnPresentBegin() {
 }
 
 void LatentSyncLimiter::OnPresentEnd() {
-    if (m_qpc_present_begin == 0) return;
+    if (m_qpc_present_begin == 0) {
+        std::ostringstream oss;
+        oss << "Present duration(real): 0 ticks";
+        LogInfo(oss.str().c_str());   
+        return;
+    }
     LARGE_INTEGER now; QueryPerformanceCounter(&now);
     LONGLONG dt = now.QuadPart - m_qpc_present_begin;
     m_qpc_present_begin = 0;
-
+    {
+        std::ostringstream oss;
+        oss << "Present duration(real): " << dt << " ticks";
+        LogInfo(oss.str().c_str());   
+    }
     // Exponential moving average of Present duration in ticks
     const double alpha = 0.10; // smooth but responsive
     if (m_avg_present_ticks <= 0.0)
@@ -187,9 +188,10 @@ void LatentSyncLimiter::OnPresentEnd() {
         m_avg_present_ticks = alpha * static_cast<double>(dt) + (1.0 - alpha) * m_avg_present_ticks;
 
     std::ostringstream oss;
-    oss << "Present duration: " << m_avg_present_ticks / 1000.0 << " ms";
+    oss << "Present duration: " << m_avg_present_ticks / 10000.0 << " ms " << m_avg_present_ticks << " ticks";
     LogInfo(oss.str().c_str());
-    m_on_present_ms = m_avg_present_ticks / 1000.0;
+    m_on_present_ms = m_avg_present_ticks / 10000.0;
+    m_on_present_ticks = m_avg_present_ticks;   
 }
 
 void LatentSyncLimiter::StartVBlankMonitoring() {

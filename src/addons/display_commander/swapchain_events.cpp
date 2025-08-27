@@ -336,6 +336,40 @@ void OnPresentUpdateBefore(
     }
   }
 
+
+  // Apply input blocking based on background/foreground; avoid OS calls and redundant writes
+  {
+    reshade::api::effect_runtime* runtime = g_reshade_runtime.load();
+    if (runtime != nullptr) {
+      const bool is_background = g_app_in_background.load(std::memory_order_acquire);
+      const bool wants_block_input = s_block_input_in_background.load() && is_background;
+      // Call every frame as long as any blocking is desired
+      if (is_background && wants_block_input) {
+        runtime->block_input_next_frame();
+      }
+    }
+  }
+  // Handle keyboard shortcuts (Experimental)
+  if (s_enable_mute_unmute_shortcut.load()) {
+    // Get the runtime from the atomic variable
+    reshade::api::effect_runtime* runtime = g_reshade_runtime.load();
+    if (runtime != nullptr) {
+      // Check for Ctrl+M shortcut
+      if (runtime->is_key_pressed('M') && runtime->is_key_down(VK_CONTROL)) {
+        // Toggle mute state
+        bool new_mute_state = !s_audio_mute.load();
+        if (SetMuteForCurrentProcess(new_mute_state)) {
+          s_audio_mute.store(new_mute_state);
+          g_muted_applied.store(new_mute_state);
+          
+          // Log the action
+          std::ostringstream oss;
+          oss << "Audio " << (new_mute_state ? "muted" : "unmuted") << " via Ctrl+M shortcut";
+          LogInfo(oss.str().c_str());
+        }
+      }
+    }
+  }
   // Call FPS Limiter on EVERY frame (not throttled)
   if (s_custom_fps_limiter_enabled.load()) {
     // Use background flag computed by monitoring thread; avoid GetForegroundWindow here
@@ -371,41 +405,7 @@ void OnPresentUpdateBefore(
       }
     }
   }
-
-  // Apply input blocking based on background/foreground; avoid OS calls and redundant writes
-  {
-    reshade::api::effect_runtime* runtime = g_reshade_runtime.load();
-    if (runtime != nullptr) {
-      const bool is_background = g_app_in_background.load(std::memory_order_acquire);
-      const bool wants_block_input = s_block_input_in_background.load() && is_background;
-      // Call every frame as long as any blocking is desired
-      if (is_background && wants_block_input) {
-        runtime->block_input_next_frame();
-      }
-    }
-  }
   
-  // Handle keyboard shortcuts (Experimental)
-  if (s_enable_mute_unmute_shortcut.load()) {
-    // Get the runtime from the atomic variable
-    reshade::api::effect_runtime* runtime = g_reshade_runtime.load();
-    if (runtime != nullptr) {
-      // Check for Ctrl+M shortcut
-      if (runtime->is_key_pressed('M') && runtime->is_key_down(VK_CONTROL)) {
-        // Toggle mute state
-        bool new_mute_state = !s_audio_mute.load();
-        if (SetMuteForCurrentProcess(new_mute_state)) {
-          s_audio_mute.store(new_mute_state);
-          g_muted_applied.store(new_mute_state);
-          
-          // Log the action
-          std::ostringstream oss;
-          oss << "Audio " << (new_mute_state ? "muted" : "unmuted") << " via Ctrl+M shortcut";
-          LogInfo(oss.str().c_str());
-        }
-      }
-    }
-  }
 
   // Mark Present begin for latent sync limiter timing (right before Present executes)
   if (s_custom_fps_limiter_enabled.load()) {

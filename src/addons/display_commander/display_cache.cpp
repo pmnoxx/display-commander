@@ -6,6 +6,9 @@
 #include <set>
 #include <windows.h>
 #include <immintrin.h>
+#include <sstream>
+#include <iomanip>
+#include "utils.hpp"
 
 using Microsoft::WRL::ComPtr;
 
@@ -47,28 +50,6 @@ std::wstring GetMonitorFriendlyName(HMONITOR monitor) {
     return L"Unknown Monitor";
 }
 
-// Helper function to check HDR support
-bool CheckHDRSupport(HMONITOR monitor) {
-    // This is a simplified check - in practice you'd want to use more sophisticated methods
-    // like checking DXGI capabilities or using the modern display configuration APIs
-    return false; // Placeholder
-}
-
-// Helper function to check VRR support
-bool CheckVRRSupport(HMONITOR monitor) {
-    // This is a simplified check - in practice you'd want to use more sophisticated methods
-    // like checking DXGI capabilities or using the modern display configuration APIs
-    return false; // Placeholder
-}
-
-// Helper function to get current refresh rate using modern Display Configuration API
-bool GetCurrentRefreshRateModern(const std::wstring& device_name, RationalRefreshRate& refresh_rate) {
-    // For now, return false to indicate this method is not available
-    // The Windows Display Configuration API requires specific SDK headers that may not be available
-    // We'll fall back to the DXGI approach which is more reliable
-    return false;
-}
-
 // Helper function to get current display settings
 bool GetCurrentDisplaySettings(HMONITOR monitor, int& width, int& height, RationalRefreshRate& refresh_rate) {
     MONITORINFOEXW mi;
@@ -76,24 +57,6 @@ bool GetCurrentDisplaySettings(HMONITOR monitor, int& width, int& height, Ration
     if (!GetMonitorInfoW(monitor, &mi)) {
         return false;
     }
-    
-    // First try to get current refresh rate using modern Display Configuration API
-    if (GetCurrentRefreshRateModern(mi.szDevice, refresh_rate)) {
-        // Get current resolution from DEVMODE
-        DEVMODEW dm;
-        dm.dmSize = sizeof(dm);
-        if (EnumDisplaySettingsW(mi.szDevice, ENUM_CURRENT_SETTINGS, &dm)) {
-            width = static_cast<int>(dm.dmPelsWidth);
-            height = static_cast<int>(dm.dmPelsHeight);
-            
-            // Debug: Log what we found via modern API
-            OutputDebugStringA(("Modern API: Current mode " + std::to_string(width) + "x" + 
-                               std::to_string(height) + " @ " + std::to_string(refresh_rate.numerator) + 
-                               "/" + std::to_string(refresh_rate.denominator) + "Hz\n").c_str());
-            return true;
-        }
-    }
-    
     // Fallback: Try to get current settings using DXGI for precise refresh rate
     ComPtr<IDXGIFactory1> factory;
     if (SUCCEEDED(CreateDXGIFactory1(IID_PPV_ARGS(&factory))) && factory) {
@@ -176,7 +139,7 @@ bool GetCurrentDisplaySettings(HMONITOR monitor, int& width, int& height, Ration
             break; // Found our adapter
         }
     }
-    
+    /*
     // Fallback to legacy API if DXGI fails
     DEVMODEW dm;
     dm.dmSize = sizeof(dm);
@@ -197,6 +160,7 @@ bool GetCurrentDisplaySettings(HMONITOR monitor, int& width, int& height, Ration
     OutputDebugStringA(("Legacy API: Current mode " + std::to_string(width) + "x" + 
                        std::to_string(height) + " @ " + std::to_string(refresh_rate.numerator) + 
                        "/" + std::to_string(refresh_rate.denominator) + "Hz\n").c_str());
+    */
     
     return true;
 }
@@ -344,10 +308,6 @@ bool DisplayCache::Refresh() {
                                      display_info->current_refresh_rate)) {
             continue;
         }
-        
-        // Check capabilities
-        display_info->supports_hdr = CheckHDRSupport(monitor);
-        display_info->supports_vrr = CheckVRRSupport(monitor);
         
         // Enumerate resolutions and refresh rates
         EnumerateDisplayModes(monitor, display_info->resolutions);
@@ -510,4 +470,48 @@ bool DisplayCache::CopyDisplay(size_t index, DisplayInfo &out) const {
     return true;
 }
 
+void DisplayCache::PrintVSyncFreqDivider() const {
+    SpinLockGuard guard(spinlock);
+    
+    if (displays.empty()) {
+        LogInfo("DisplayCache: No displays available to print vSyncFreqDivider");
+        return;
+    }
+    
+    for (size_t i = 0; i < displays.size(); ++i) {
+        const auto& display = displays[i];
+        if (!display) continue;
+        
+        std::ostringstream oss;
+        oss << "Display " << i << " (";
+        // Convert wstring to string for output
+        std::string friendly_name_str(display->friendly_name.begin(), display->friendly_name.end());
+        oss << friendly_name_str << "): ";
+        oss << "Current refresh rate: " << display->current_refresh_rate.ToString();
+        oss << " [Raw: " << display->current_refresh_rate.numerator << "/" << display->current_refresh_rate.denominator << "]";
+        
+        // Calculate vSyncFreqDivider equivalent (this is a conceptual representation)
+        // In SpecialK, vSyncFreqDivider is used to divide the vsync frequency
+        // Here we'll show the current refresh rate and potential divider values
+        double current_hz = display->current_refresh_rate.ToHz();
+        if (current_hz > 0.0) {
+            oss << " | vSyncFreqDivider equivalents: ";
+            for (int divider = 1; divider <= 6; ++divider) {
+                double divided_hz = current_hz / divider;
+                oss << divider << ":" << std::fixed << std::setprecision(2) << divided_hz << "Hz";
+                if (divider < 6) oss << ", ";
+            }
+        }
+        
+        LogInfo(oss.str().c_str());
+    }
+}
+
+
+
+
+
 } // namespace display_cache
+
+
+

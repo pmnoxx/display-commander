@@ -8,10 +8,18 @@
 #include <codecvt>
 #include <iostream>
 #include "../utils.hpp"
+#include "../display/query_display.hpp"
+
 namespace dxgi::fps_limiter {
 extern std::atomic<double> s_vblank_ms;
+extern std::atomic<double> s_vblank_ticks;
 extern std::atomic<double> s_active_ms;
+extern std::atomic<double> s_active_ticks;
 extern std::atomic<bool> s_vblank_seen;
+extern std::atomic<LONGLONG> ticks_per_scanline;
+extern std::atomic<LONGLONG> ticks_per_refresh;
+extern std::atomic<LONGLONG> correction_ticks;
+extern std::atomic<LONGLONG> s_qpc_freq;
 }
 
 // Simple logging wrapper to avoid dependency issues
@@ -27,6 +35,7 @@ VBlankMonitor::VBlankMonitor() {
     m_last_state_change = std::chrono::steady_clock::now();
     m_vblank_start_time = m_last_state_change;
     m_active_start_time = m_last_state_change;
+
 }
 
 VBlankMonitor::~VBlankMonitor() {
@@ -129,90 +138,111 @@ bool VBlankMonitor::EnsureAdapterBinding() {
 void VBlankMonitor::MonitoringThread() {
     ::LogInfo("VBlank monitoring thread: entering main loop");
     
-    uint64_t lastScanLine = 0;
+    int lastScanLine = 0;
+
+    if (!EnsureAdapterBinding()) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+
+    if (!LoadProcCached(m_pfnGetScanLine, L"gdi32.dll", "D3DKMTGetScanLine")) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+    int monitor_height = GetCurrentMonitorHeight();
+
+    LARGE_INTEGER liQpcFreq = { };
+    QueryPerformanceFrequency(&liQpcFreq);
+    s_qpc_freq.store(liQpcFreq.QuadPart);
+
+    std::vector<DisplayTimingInfo> timing_info = QueryDisplayTimingInfo();
+    {
+        std::ostringstream oss;
+        oss << "s_qpc_freq: " << s_qpc_freq.load();
+        LogInfo(oss.str().c_str());   
+        
+        for (const auto& timing : timing_info) {
+            std::ostringstream oss2;
+            oss2 << " display_name: " << WideCharToUTF8(timing.display_name) << "\n";
+            oss2 << " device_path: " << WideCharToUTF8(timing.device_path) << "\n";
+            oss2 << " connector_instance: " << (int)timing.connector_instance << "\n";
+            oss2 << " adapter_id: " << (int)timing.adapter_id << "\n";
+            oss2 << " target_id: " << (int)timing.target_id << "\n";
+            oss2 << " pixel_clock_hz: " << timing.pixel_clock_hz << "\n";
+            oss2 << " hsync_freq_numerator: " << timing.hsync_freq_numerator << "\n";
+            oss2 << " hsync_freq_denominator: " << timing.hsync_freq_denominator << "\n";
+            oss2 << " vsync_freq_numerator: " << timing.vsync_freq_numerator << "\n";
+            oss2 << " vsync_freq_denominator: " << timing.vsync_freq_denominator << "\n";
+            oss2 << " active_width: " << timing.active_width << "\n";
+            oss2 << " active_height: " << timing.active_height << "\n";
+            oss2 << " total_width: " << timing.total_width << "\n";
+            oss2 << " total_height: " << timing.total_height << "\n";
+            oss2 << " video_standard: " << timing.video_standard << "\n";
+
+            LogInfo(oss2.str().c_str());   
+        }    
+    }
+
+    
+    ticks_per_scanline.store((timing_info[0].hsync_freq_numerator > 0) ?
+        (timing_info[0].hsync_freq_denominator * s_qpc_freq.load()) /
+        (timing_info[0].hsync_freq_numerator) : 1);
+
+    ticks_per_refresh.store((timing_info[0].vsync_freq_numerator > 0) ?
+        (timing_info[0].vsync_freq_denominator * s_qpc_freq.load()) /
+        (timing_info[0].vsync_freq_numerator) : 1);
+
+    LONGLONG get_scanline_min_duration = 0;
+    LONGLONG correction_ticks_local = 0;
 
     while (!m_should_stop.load()) {
-        if (!EnsureAdapterBinding()) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-            continue;
-        }
-
-        if (!LoadProcCached(m_pfnGetScanLine, L"gdi32.dll", "D3DKMTGetScanLine")) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-            continue;
-        }
+        LONGLONG ticks_per_refresh_local = ticks_per_refresh.load();
+        LONGLONG ticks_per_scanline_local = ticks_per_scanline.load();
 
         D3DKMT_GETSCANLINE scan{};
         scan.hAdapter = m_hAdapter;
         scan.VidPnSourceId = m_vidpn_source_id;
 
+        LARGE_INTEGER start_ticks = { };
+        QueryPerformanceCounter(&start_ticks);
+
         if (reinterpret_cast<NTSTATUS (WINAPI*)(D3DKMT_GETSCANLINE*)>(m_pfnGetScanLine)(&scan) == 0) {
-            bool current_vblank = scan.InVerticalBlank != 0;
-            if (!current_vblank) {
-                if (scan.ScanLine < lastScanLine) {
-                    LogMessage("VBlank detected");
-                    current_vblank = true;
+            LARGE_INTEGER end_ticks = { };
+            QueryPerformanceCounter(&end_ticks);
+            LONGLONG duration = end_ticks.QuadPart - start_ticks.QuadPart;
+
+            LONGLONG mid_point = (start_ticks.QuadPart + end_ticks.QuadPart) / 2;
+
+            // shortest encountered duration
+            if (get_scanline_min_duration == 0 || duration < get_scanline_min_duration) {
+                get_scanline_min_duration = duration;
+            }
+            if (duration < 2 * get_scanline_min_duration) {
+                LONGLONG expected_ticks_for_scanline = ticks_per_refresh_local * scan.ScanLine / timing_info[0].total_height;
+
+                LONGLONG got_ticks_for_scanline = mid_point % ticks_per_refresh_local;
+                
+                LONGLONG delta = got_ticks_for_scanline - expected_ticks_for_scanline;
+                while (delta > 0) {
+                    delta -= ticks_per_refresh_local;
+                } 
+                while (delta < 0) {
+                    delta += ticks_per_refresh_local;
                 }
+
+                double alpha = 0.001;
+                correction_ticks_local = alpha * delta + (1 - alpha) * correction_ticks.load();
+                correction_ticks.store(correction_ticks_local);
+            }
+            {
+                std::ostringstream oss2;
+                oss2 << "scan.ScanLine: " << scan.ScanLine;
+                oss2 << " lastScanLine: " << lastScanLine;
+                oss2 << " InVerticalBlank: " << (int)scan.InVerticalBlank;
+                oss2 << " scan.ScanLine - lastScanLine: " << (int)scan.ScanLine - lastScanLine;
+                oss2 << " correction_ticks: " << correction_ticks.load();
+                LogInfo(oss2.str().c_str());   
                 lastScanLine = scan.ScanLine;
             }
-
-
-            bool state_changed = (current_vblank != m_last_vblank_state.load());
-            
-            if (state_changed) {
-                auto now = std::chrono::steady_clock::now();
-                
-                // Calculate duration of previous state
-                if (m_last_vblank_state.load()) {
-                    // Was in vblank, now active
-                    auto vblank_duration = now - m_vblank_start_time;
-                    m_total_vblank_time += vblank_duration;
-                    m_vblank_count++;
-                    
-                    {
-                        std::lock_guard<std::mutex> lock(m_stats_mutex);
-                        m_last_vblank_duration = vblank_duration;
-                        m_last_vblank_to_active = now;
-                    }
-                    
-                    // Log transition from vblank to active
-                    auto vblank_ms = std::chrono::duration_cast<std::chrono::microseconds>(vblank_duration).count() / 1000.0;
-                    std::ostringstream oss;
-                    oss << "VBlank -> Active: spent " << std::fixed << std::setprecision(2) << vblank_ms << " ms in vblank";
-                    dxgi::fps_limiter::s_vblank_ms.store(vblank_ms);
-                    dxgi::fps_limiter::s_vblank_seen.store(true);
-                    ::LogInfo(oss.str().c_str());
-                    
-                    m_active_start_time = now;
-                } else {
-                    // Was active, now in vblank
-                    auto active_duration = now - m_active_start_time;
-                    m_total_active_time += active_duration;
-                    
-                    {
-                        std::lock_guard<std::mutex> lock(m_stats_mutex);
-                        m_last_active_duration = active_duration;
-                        m_last_active_to_vblank = now;
-                    }
-                    
-                    // Log transition from active to vblank
-                    auto active_ms = std::chrono::duration_cast<std::chrono::microseconds>(active_duration).count() / 1000.0;
-                    std::ostringstream oss;
-                    oss << "Active -> VBlank: spent " << std::fixed << std::setprecision(2) << active_ms << " ms in active";
-                    dxgi::fps_limiter::s_active_ms.store(active_ms);
-                    ::LogInfo(oss.str().c_str());
-                    
-                    m_vblank_start_time = now;
-                }
-                
-                m_last_vblank_state = current_vblank;
-                m_last_state_change = now;
-                m_state_change_count++;
-            }
         }
-        
-        // Small sleep to avoid excessive CPU usage
-        std::this_thread::sleep_for(std::chrono::microseconds(100));
     }
     
     ::LogInfo("VBlank monitoring thread: exiting main loop");

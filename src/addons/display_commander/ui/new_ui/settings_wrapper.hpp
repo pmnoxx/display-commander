@@ -100,6 +100,28 @@ private:
     bool default_value_;
 };
 
+// Boolean setting wrapper that references an external atomic variable
+class BoolSettingRef : public SettingBase {
+public:
+    BoolSettingRef(const std::string& key, std::atomic<bool>& external_ref, bool default_value, 
+                   const std::string& section = DEFAULT_SECTION);
+    
+    void Load() override;
+    void Save() override;
+    
+    bool GetValue() const { return external_ref_.get().load(); }
+    void SetValue(bool value);
+    bool GetDefaultValue() const { return default_value_; }
+    
+    // Direct access to the referenced atomic value for performance-critical code
+    std::atomic<bool>& GetAtomic() { return external_ref_.get(); }
+    const std::atomic<bool>& GetAtomic() const { return external_ref_.get(); }
+
+private:
+    std::reference_wrapper<std::atomic<bool>> external_ref_;
+    bool default_value_;
+};
+
 // Combo setting wrapper
 class ComboSetting : public SettingBase {
 public:
@@ -131,6 +153,9 @@ bool SliderIntSetting(IntSetting& setting, const char* label, const char* format
 
 // Checkbox wrapper
 bool CheckboxSetting(BoolSetting& setting, const char* label);
+
+// Checkbox wrapper for BoolSettingRef
+bool CheckboxSetting(BoolSettingRef& setting, const char* label);
 
 // Combo wrapper
 bool ComboSettingWrapper(ComboSetting& setting, const char* label);

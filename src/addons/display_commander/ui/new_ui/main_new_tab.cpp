@@ -80,6 +80,8 @@ void InitMainNewTab() {
 
         // FPS limiter mode
         s_fps_limiter_mode.store(g_main_new_tab_settings.fps_limiter_mode.GetValue());
+        // Synchronize FPS limit by render start
+        g_synchronize_fps_limit_by_render_start.store(g_main_new_tab_settings.synchronize_fps_limit_by_render_start.GetValue());
         // Scanline offset
         s_scanline_offset.store(g_main_new_tab_settings.scanline_offset.GetValue());
 
@@ -355,6 +357,15 @@ void DrawDisplaySettings() {
                 }
             }
         }
+    }
+
+    // Synchronize FPS Limit by Render Start
+    if (CheckboxSetting(g_main_new_tab_settings.synchronize_fps_limit_by_render_start, "Synchronize FPS Limit by Render Start")) {
+        g_synchronize_fps_limit_by_render_start.store(g_main_new_tab_settings.synchronize_fps_limit_by_render_start.GetValue());
+        LogInfo(g_synchronize_fps_limit_by_render_start.load() ? "FPS limit synchronization by render start enabled" : "FPS limit synchronization by render start disabled");
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("When enabled, delays rendering to start at fixed period.\nThis increases latency, but improves frame time stability.\nMay be useful when we start rendering before FPS limiter sleep.");
     }
 
     // Latent Sync Mode (only visible if Latent Sync limiter is selected)

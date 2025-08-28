@@ -114,6 +114,13 @@ extern std::atomic<bool> g_app_in_background;
 // FPS limiter mode: 0 = Custom (Sleep/Spin), 1 = VBlank Scanline Sync (VBlank)
 extern std::atomic<int> s_fps_limiter_mode;
 
+// Synchronize FPS limit by render start (increases latency but improves frame time stability)
+extern std::atomic<bool> g_synchronize_fps_limit_by_render_start;
+
+// Latent Sync pacing mode when Latent Sync limiter is active:
+// 0 = Sync to VBlank (current), 1 = Sync based on scanline (experimental)
+extern std::atomic<int> s_latent_sync_mode;
+
 // Scanline threshold ratio for latent sync (0.0 to 1.0, default 0.78 = 78%)
 extern std::atomic<float> s_scanline_threshold;
 extern std::atomic<int> s_scanline_offset;

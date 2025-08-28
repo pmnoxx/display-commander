@@ -92,23 +92,23 @@ void BoolSetting::Load() {
     if (reshade::get_config_value(nullptr, section_.c_str(), key_.c_str(), loaded_value)) {
         // Only accept strict 0/1, otherwise fall back to default
         if (loaded_value == 0 || loaded_value == 1) {
-            value_ = (loaded_value != 0);
+            value_.store(loaded_value != 0);
         } else {
-            value_ = default_value_;
+            value_.store(default_value_);
             Save();
         }
     } else {
         // Use default value if not found
-        value_ = default_value_;
+        value_.store(default_value_);
     }
 }
 
 void BoolSetting::Save() {
-    reshade::set_config_value(nullptr, section_.c_str(), key_.c_str(), value_ ? 1 : 0);
+    reshade::set_config_value(nullptr, section_.c_str(), key_.c_str(), value_.load() ? 1 : 0);
 }
 
 void BoolSetting::SetValue(bool value) {
-    value_ = value;
+    value_.store(value);
     Save(); // Auto-save when value changes
 }
 

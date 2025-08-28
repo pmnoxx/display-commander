@@ -83,8 +83,8 @@ void InitMainNewTab() {
 
         // FPS limiter mode
         s_fps_limiter_mode.store(g_main_new_tab_settings.fps_limiter_mode.GetValue());
-        // Scanline window
-        s_scanline_window.store(g_main_new_tab_settings.scanline_window.GetValue());
+        // Scanline offset
+        s_scanline_offset.store(g_main_new_tab_settings.scanline_offset.GetValue());
 
         // If manual Audio Mute is OFF, proactively unmute on startup
         if (!s_audio_mute.load()) {
@@ -359,15 +359,15 @@ void DrawDisplaySettings() {
         g_window_state.display_height = monitor_height;
         g_window_state_lock.unlock();
         
-        // Scanline Window (only visible if scanline mode is selected)
-        int current_window = g_main_new_tab_settings.scanline_window.GetValue();
-        int temp_window = current_window;
-        if (ImGui::SliderInt("Scanline Window", &temp_window, 1, 1000, "%d")) {
-            g_main_new_tab_settings.scanline_window.SetValue(temp_window);
-            s_scanline_window.store(temp_window);
+        // Scanline Offset (only visible if scanline mode is selected)
+        int current_offset = g_main_new_tab_settings.scanline_offset.GetValue();
+        int temp_offset = current_offset;
+        if (ImGui::SliderInt("Scanline Offset", &temp_offset, -1000, 1000, "%d")) {
+            g_main_new_tab_settings.scanline_offset.SetValue(temp_offset);
+            s_scanline_offset.store(temp_offset);
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Scanline window size for latent sync (1 to 1000). This defines the range of scanlines around the threshold where frame pacing is active.");
+            ImGui::SetTooltip("Scanline offset for latent sync (-1000 to 1000). This defines the offset from the threshold where frame pacing is active.");
         }
     }
 

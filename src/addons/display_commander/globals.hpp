@@ -116,7 +116,7 @@ extern std::atomic<int> s_fps_limiter_mode;
 
 // Scanline threshold ratio for latent sync (0.0 to 1.0, default 0.78 = 78%)
 extern std::atomic<float> s_scanline_threshold;
-extern std::atomic<int> s_scanline_window;
+extern std::atomic<int> s_scanline_offset;
 
 // Performance stats (FPS/frametime) shared state
 extern std::atomic<uint32_t> g_perf_ring_head;

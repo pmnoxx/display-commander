@@ -19,7 +19,7 @@ public:
     // Get the FPS limiter instance
     CustomFpsLimiter& GetFpsLimiter() { return m_fpsLimiter; }
 
-    // Get the Latency Sync (VBlank) limiter instance
+    // Get the VBlank Scanline Sync (VBlank) limiter instance
     LatentSyncLimiter& GetLatentLimiter() { return m_latentLimiter; }
 
 private:

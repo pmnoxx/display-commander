@@ -336,22 +336,22 @@ void DrawDisplaySettings() {
     {
         if (ComboSettingWrapper(g_main_new_tab_settings.fps_limiter_mode, "FPS Limiter Mode")) {
             s_fps_limiter_mode.store(g_main_new_tab_settings.fps_limiter_mode.GetValue());
-            LogInfo(s_fps_limiter_mode.load() == 0 ? "Limiter mode: Custom (Sleep/Spin)" : "Limiter mode: Latency Sync");
+            LogInfo(s_fps_limiter_mode.load() == 0 ? "Limiter mode: Custom (Sleep/Spin)" : "Limiter mode: VBlank Scanline Sync");
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Choose limiter: Custom sleep/spin or Latent Sync pacing");
         }
         
-        // Warning for Latency Sync mode when required settings are not enabled
+        // Warning for VBlank Scanline Sync mode when required settings are not enabled
         if (g_main_new_tab_settings.fps_limiter_mode.GetValue() == 1) {
             bool force_vsync_off_enabled = g_main_new_tab_settings.force_vsync_off.GetValue();
             bool allow_tearing_enabled = g_main_new_tab_settings.allow_tearing.GetValue();
             
             if (!force_vsync_off_enabled || !allow_tearing_enabled) {
                 ImGui::Spacing();
-                ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "WARNING: Latency Sync only works with VSYNC-OFF and allow tearing");
+                ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "WARNING: VBlank Scanline Sync only works with VSYNC-OFF and allow tearing");
                 if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip("Latency Sync mode requires VSync to be disabled and tearing to be allowed for optimal frame pacing.");
+                    ImGui::SetTooltip("VBlank Scanline Sync mode requires VSync to be disabled and tearing to be allowed for optimal frame pacing.");
                 }
             }
         }

@@ -111,7 +111,7 @@ extern std::atomic<int> g_last_backbuffer_height;
 // Background/foreground state
 extern std::atomic<bool> g_app_in_background;
 
-// FPS limiter mode: 0 = Custom (Sleep/Spin), 1 = Latency Sync (VBlank)
+// FPS limiter mode: 0 = Custom (Sleep/Spin), 1 = VBlank Scanline Sync (VBlank)
 extern std::atomic<int> s_fps_limiter_mode;
 
 // Scanline threshold ratio for latent sync (0.0 to 1.0, default 0.78 = 78%)

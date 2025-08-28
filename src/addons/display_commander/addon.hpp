@@ -274,7 +274,7 @@ bool OnCreateSwapchainCapture(reshade::api::device_api api, reshade::api::swapch
 extern std::atomic<bool> s_enable_unstable_reshade_features;
 
 // Resolution Override Settings (Experimental)
-extern std::atomic<bool> s_enable_resolution_override;
+// Removed: s_enable_resolution_override is now handled by BoolSetting in developer tab settings
 extern std::atomic<int> s_override_resolution_width;
 extern std::atomic<int> s_override_resolution_height;
 

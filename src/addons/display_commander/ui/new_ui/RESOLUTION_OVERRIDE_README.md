@@ -15,7 +15,7 @@ When enabled, the resolution override intercepts the `create_swapchain` event an
 
 ### Logic
 The override only applies when:
-1. The feature is enabled (`s_enable_resolution_override >= 0.5f`)
+1. The feature is enabled (`g_developerTabSettings.enable_resolution_override.GetValue()`)
 2. Both width and height are greater than 0
 3. The swapchain creation event is triggered
 

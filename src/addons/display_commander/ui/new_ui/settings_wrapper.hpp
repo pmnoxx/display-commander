@@ -4,6 +4,7 @@
 #include <include/reshade.hpp>
 #include <string>
 #include <functional>
+#include <atomic> // Added for std::atomic
 
 namespace ui::new_ui {
 
@@ -86,12 +87,16 @@ public:
     void Load() override;
     void Save() override;
     
-    bool GetValue() const { return value_; }
+    bool GetValue() const { return value_.load(); }
     void SetValue(bool value);
     bool GetDefaultValue() const { return default_value_; }
+    
+    // Direct access to the atomic value for performance-critical code
+    std::atomic<bool>& GetAtomic() { return value_; }
+    const std::atomic<bool>& GetAtomic() const { return value_; }
 
 private:
-    bool value_;
+    std::atomic<bool> value_;
     bool default_value_;
 };
 

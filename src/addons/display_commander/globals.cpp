@@ -208,7 +208,7 @@ std::atomic<std::shared_ptr<const std::vector<std::string>>> g_monitor_labels{st
 std::atomic<bool> s_enable_unstable_reshade_features = false; // Disabled by default
 
 // Resolution Override Settings (Experimental)
-std::atomic<bool> s_enable_resolution_override = false; // Disabled by default
+// Removed: s_enable_resolution_override is now handled by BoolSetting in developer tab settings
 std::atomic<int> s_override_resolution_width{1920}; // Default to 1920
 std::atomic<int> s_override_resolution_height{1080}; // Default to 1080
 

@@ -16,6 +16,7 @@
 // Use renodx2 utilities for swapchain color space changes
 #include <utils/swapchain.hpp>
 #include "globals.hpp"
+#include "ui/new_ui/developer_new_tab_settings.hpp"
 
 // Frame lifecycle hooks for custom FPS limiter
 void OnBeginRenderPass(reshade::api::command_list* cmd_list, uint32_t count, const reshade::api::render_pass_render_target_desc* rts, const reshade::api::render_pass_depth_stencil_desc* ds) {
@@ -107,7 +108,7 @@ bool OnCreateSwapchainCapture(reshade::api::device_api /*api*/, reshade::api::sw
     }
   }
   
-  if (s_enable_resolution_override.load()) {
+  if (ui::new_ui::g_developerTabSettings.enable_resolution_override.GetValue()) {
     const int width = s_override_resolution_width.load();
     const int height = s_override_resolution_height.load();
     

@@ -363,7 +363,7 @@ void DrawResolutionOverrideSettings() {
     
     // Enable Resolution Override
     if (CheckboxSetting(g_developerTabSettings.enable_resolution_override, "Enable Resolution Override")) {
-        ::s_enable_resolution_override.store(g_developerTabSettings.enable_resolution_override.GetValue());
+        // No need to sync with separate atomic variable - BoolSetting is now atomic internally
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Override the backbuffer resolution during swapchain creation. Same as ReShade ForceResolution.");

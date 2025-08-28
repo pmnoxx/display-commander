@@ -18,7 +18,7 @@ extern std::atomic<bool> s_reflex_enabled;
 extern std::atomic<bool> s_reflex_debug_output;
 extern std::atomic<bool> s_remove_top_bar;
 extern std::atomic<bool> s_enable_unstable_reshade_features;
-extern std::atomic<bool> s_enable_resolution_override;
+// Removed: s_enable_resolution_override is now handled by BoolSetting in developer tab settings
 extern std::atomic<int> s_override_resolution_width;
 extern std::atomic<int> s_override_resolution_height;
 extern std::atomic<bool> s_enable_mute_unmute_shortcut;
@@ -84,7 +84,7 @@ void DeveloperTabSettings::LoadAll() {
     s_reflex_debug_output.store(reflex_debug_output.GetValue());
     s_fps_extra_wait_ms.store(fps_extra_wait_ms.GetValue());
     s_enable_unstable_reshade_features.store(enable_unstable_reshade_features.GetValue());
-    s_enable_resolution_override.store(enable_resolution_override.GetValue());
+    // Removed: s_enable_resolution_override is now handled by BoolSetting in developer tab settings
     s_override_resolution_width.store(override_resolution_width.GetValue());
     s_override_resolution_height.store(override_resolution_height.GetValue());
     s_enable_mute_unmute_shortcut.store(enable_mute_unmute_shortcut.GetValue());

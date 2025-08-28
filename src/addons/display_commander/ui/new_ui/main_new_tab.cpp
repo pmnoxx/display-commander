@@ -69,15 +69,11 @@ void InitMainNewTab() {
         s_audio_mute.store(g_main_new_tab_settings.audio_mute.GetValue());
         s_mute_in_background.store(g_main_new_tab_settings.mute_in_background.GetValue());
         s_mute_in_background_if_other_audio.store(g_main_new_tab_settings.mute_in_background_if_other_audio.GetValue());
-        // VSync & Tearing
-        s_force_vsync_on.store(g_main_new_tab_settings.force_vsync_on.GetValue());
-        s_force_vsync_off.store(g_main_new_tab_settings.force_vsync_off.GetValue());
-        s_allow_tearing.store(g_main_new_tab_settings.allow_tearing.GetValue());
-        s_prevent_tearing.store(g_main_new_tab_settings.prevent_tearing.GetValue());
+        // VSync & Tearing - all automatically synced via BoolSettingRef
         // Resolve persisted conflicts: Prevent Tearing takes precedence
         if (s_prevent_tearing.load() && s_allow_tearing.load()) {
             g_main_new_tab_settings.allow_tearing.SetValue(false);
-            s_allow_tearing.store(false);
+            // All VSync/tearing settings are automatically synced via BoolSettingRef
         }
         s_block_input_in_background.store(g_main_new_tab_settings.block_input_in_background.GetValue());
         settings_loaded_once = true;
@@ -447,10 +443,10 @@ void DrawDisplaySettings() {
             // Mutual exclusion
             if (vs_on) {
                 g_main_new_tab_settings.force_vsync_off.SetValue(false);
-                s_force_vsync_off.store(false);
+                // s_force_vsync_off is automatically synced via BoolSettingRef
             }
             g_main_new_tab_settings.force_vsync_on.SetValue(vs_on);
-            s_force_vsync_on.store(vs_on);
+            // s_force_vsync_on is automatically synced via BoolSettingRef
             LogInfo(vs_on ? "Force VSync ON enabled" : "Force VSync ON disabled");
         }
         if (ImGui::IsItemHovered()) {
@@ -465,14 +461,14 @@ void DrawDisplaySettings() {
             // Mutual exclusion
             if (vs_off) {
                 g_main_new_tab_settings.force_vsync_on.SetValue(false);
-                s_force_vsync_on.store(false);
+                // s_force_vsync_on is automatically synced via BoolSettingRef
              //   g_main_new_tab_settings.prevent_tearing.SetValue(false);
             //    s_prevent_tearing.store(false);
            //     g_main_new_tab_settings.allow_tearing.SetValue(true);
             //    s_allow_tearing.store(true);
             }
             g_main_new_tab_settings.force_vsync_off.SetValue(vs_off);
-            s_force_vsync_off.store(vs_off);
+            // s_force_vsync_off is automatically synced via BoolSettingRef
             LogInfo(vs_off ? "Force VSync OFF enabled" : "Force VSync OFF disabled");
         }
         if (ImGui::IsItemHovered()) {
@@ -487,14 +483,14 @@ void DrawDisplaySettings() {
             // Mutual exclusion with Prevent Tearing
             if (allow_t) {
                 g_main_new_tab_settings.prevent_tearing.SetValue(false);
-                s_prevent_tearing.store(false);
+                // s_prevent_tearing is automatically synced via BoolSettingRef
             }
             if (!allow_t) {
                 g_main_new_tab_settings.force_vsync_off.SetValue(false);
-                s_force_vsync_off.store(false);
+                // s_force_vsync_off is automatically synced via BoolSettingRef
             }
             g_main_new_tab_settings.allow_tearing.SetValue(allow_t);
-            s_allow_tearing.store(allow_t);
+            // s_allow_tearing is automatically synced via BoolSettingRef
             LogInfo(allow_t ? "DXGI tearing allowed enabled (flag will be applied on swapchain)" : "DXGI tearing allowed disabled");
         }
         if (ImGui::IsItemHovered()) {
@@ -509,10 +505,10 @@ void DrawDisplaySettings() {
             // Mutual exclusion with Enable Tearing
             if (prevent_t) {
                 g_main_new_tab_settings.allow_tearing.SetValue(false);
-                s_allow_tearing.store(false);
+                // s_allow_tearing is automatically synced via BoolSettingRef
             }
             g_main_new_tab_settings.prevent_tearing.SetValue(prevent_t);
-            s_prevent_tearing.store(prevent_t);
+            // s_prevent_tearing is automatically synced via BoolSettingRef
             LogInfo(prevent_t ? "Prevent Tearing enabled (tearing flags will be cleared)" : "Prevent Tearing disabled");
         }
         if (ImGui::IsItemHovered()) {

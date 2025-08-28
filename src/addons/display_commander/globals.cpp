@@ -168,7 +168,7 @@ std::atomic<int> g_last_backbuffer_height{0};
 // Background/foreground state (updated by monitoring thread)
 std::atomic<bool> g_app_in_background{false};
 
-// FPS limiter mode: 0 = Custom (Sleep/Spin), 1 = Latency Sync (VBlank)
+// FPS limiter mode: 0 = Custom (Sleep/Spin), 1 = VBlank Scanline Sync (VBlank)
 std::atomic<int> s_fps_limiter_mode{0};
 
 // Latent Sync pacing mode when Latent Sync limiter is active:

@@ -133,7 +133,7 @@ The HDR Den Discord community is the best place to get real-time help, discuss f
 - Dear ImGui (via ReShade dependencies)
 - NVIDIA NVAPI headers/libs (`external/nvapi`)
 - Additional third-party code under `external/` (stb, fpng, etc.)
-- **Latency Sync**: Based on the algorithm used in Special-K by Kaldaien
+- **VBlank Scanline Sync**: Based on the algorithm used in Special-K by Kaldaien
 
 See `CHANGELOG.md` for version history.
 

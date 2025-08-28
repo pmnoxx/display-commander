@@ -14,7 +14,7 @@ MainNewTabSettings::MainNewTabSettings()
       target_monitor_index("target_monitor_index", 0, {"Auto", "Monitor 1", "Monitor 2", "Monitor 3", "Monitor 4", "Monitor 5", "Monitor 6", "Monitor 7", "Monitor 8", "Monitor 9", "Monitor 10"}, "renodx_main_tab"),
       background_feature("background_feature", false, "renodx_main_tab"),
       alignment("alignment", 0, {"None", "Top Left", "Top Right", "Bottom Left", "Bottom Right", "Center"}, "renodx_main_tab"),
-      fps_limiter_mode("fps_limiter_mode", 0, {"Custom (Sleep/Spin) for VSync-ON", "Latency Sync for VSync-OFF(to avoid tearing)"}, "renodx_main_tab"),
+      fps_limiter_mode("fps_limiter_mode", 0, {"Custom (Sleep/Spin) for VSync-ON", "Latency Sync for VSync-OFF (Allow-tearingg only, current version works only with first display)"}, "renodx_main_tab"),
       scanline_offset("scanline_offset", 0, -1000, 1000, "renodx_main_tab"),
       fps_limit("fps_limit", 0.0f, 0.0f, 240.0f, "renodx_main_tab"),
       fps_limit_background("fps_limit_background", 0.0f, 0.0f, 240.0f, "renodx_main_tab"),

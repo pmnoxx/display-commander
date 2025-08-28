@@ -28,7 +28,6 @@ public:
     
     // FPS Settings
     ComboSetting fps_limiter_mode;
-    FloatSetting scanline_threshold;
     IntSetting scanline_window;
     FloatSetting fps_limit;
     FloatSetting fps_limit_background;

@@ -83,8 +83,6 @@ void InitMainNewTab() {
 
         // FPS limiter mode
         s_fps_limiter_mode.store(g_main_new_tab_settings.fps_limiter_mode.GetValue());
-        // Scanline threshold
-        s_scanline_threshold.store(g_main_new_tab_settings.scanline_threshold.GetValue());
         // Scanline window
         s_scanline_window.store(g_main_new_tab_settings.scanline_window.GetValue());
 
@@ -354,25 +352,12 @@ void DrawDisplaySettings() {
         // Get current monitor height for dynamic range
         int monitor_height = GetCurrentMonitorHeight();
         int monitor_width = GetCurrentMonitorWidth();
-        float current_ratio = g_main_new_tab_settings.scanline_threshold.GetValue();
         
         // Update display dimensions in GlobalWindowState
         g_window_state_lock.lock();
         g_window_state.display_width = monitor_width;
         g_window_state.display_height = monitor_height;
         g_window_state_lock.unlock();
-        
-        // Create a temporary slider with percentage range (0-100%)
-        float temp_ratio = current_ratio * 100.0f; // Convert to percentage for display
-        if (ImGui::SliderFloat("Scanline Threshold", &temp_ratio, 0.0f, 100.0f, "%.1f%%")) {
-            float new_ratio = temp_ratio / 100.0f; // Convert back to ratio
-            g_main_new_tab_settings.scanline_threshold.SetValue(new_ratio);
-            s_scanline_threshold.store(new_ratio);
-        }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("(70.2%% for 60hz at 4k, may have to be manually adjusted). Scanline threshold ratio for latent sync (0%% to 100%% of monitor height). Higher values wait longer before starting frame pacing. Current: %.1f%% = %d pixels", 
-                current_ratio * 100.0f, static_cast<int>(current_ratio * monitor_height));
-        }
         
         // Scanline Window (only visible if scanline mode is selected)
         int current_window = g_main_new_tab_settings.scanline_window.GetValue();

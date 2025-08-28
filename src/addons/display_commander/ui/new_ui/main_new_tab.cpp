@@ -466,10 +466,10 @@ void DrawDisplaySettings() {
             if (vs_off) {
                 g_main_new_tab_settings.force_vsync_on.SetValue(false);
                 s_force_vsync_on.store(false);
-                g_main_new_tab_settings.prevent_tearing.SetValue(false);
-                s_prevent_tearing.store(false);
-                g_main_new_tab_settings.allow_tearing.SetValue(true);
-                s_allow_tearing.store(true);
+             //   g_main_new_tab_settings.prevent_tearing.SetValue(false);
+            //    s_prevent_tearing.store(false);
+           //     g_main_new_tab_settings.allow_tearing.SetValue(true);
+            //    s_allow_tearing.store(true);
             }
             g_main_new_tab_settings.force_vsync_off.SetValue(vs_off);
             s_force_vsync_off.store(vs_off);
@@ -510,8 +510,6 @@ void DrawDisplaySettings() {
             if (prevent_t) {
                 g_main_new_tab_settings.allow_tearing.SetValue(false);
                 s_allow_tearing.store(false);
-                g_main_new_tab_settings.force_vsync_off.SetValue(false);
-                s_force_vsync_off.store(false);
             }
             g_main_new_tab_settings.prevent_tearing.SetValue(prevent_t);
             s_prevent_tearing.store(prevent_t);

@@ -100,6 +100,7 @@ bool OnCreateSwapchainCapture(reshade::api::device_api /*api*/, reshade::api::sw
   // Explicit VSYNC overrides take precedence over generic sync-interval dropdown
   if (s_force_vsync_on.load()) {
     desc.sync_interval = 1; // VSYNC on
+    desc.present_flags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
     modified = true;
   } else if (s_force_vsync_off.load()) {
     desc.sync_interval = 0; // VSYNC off
@@ -108,7 +109,7 @@ bool OnCreateSwapchainCapture(reshade::api::device_api /*api*/, reshade::api::sw
   }
   // Apply tearing preference if requested and applicable
   {
-    if (is_flip) {
+   /* if (is_flip) {
       if (s_prevent_tearing.load()  && desc.sync_interval < INT_MAX) {
         // Clear allow tearing flag when preventing tearing
         if (! desc.fullscreen_state) {
@@ -124,7 +125,7 @@ bool OnCreateSwapchainCapture(reshade::api::device_api /*api*/, reshade::api::sw
         desc.present_flags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
         modified = true;
       }
-    }
+    }*/
   }
   
   if (ui::new_ui::g_developerTabSettings.enable_resolution_override.GetValue()) {

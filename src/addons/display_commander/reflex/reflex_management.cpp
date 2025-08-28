@@ -112,6 +112,64 @@ bool ReflexManager::Initialize()
     return true;
 }
 
+// Render pass and present callback implementations
+void ReflexManager::OnBeginRenderPass(reshade::api::command_list* cmd_list, uint32_t count, const reshade::api::render_pass_render_target_desc* rts, const reshade::api::render_pass_depth_stencil_desc* ds) {
+    if (!IsAvailable() || !cmd_list) {
+        return;
+    }
+    
+    // Update frame ID for this render pass
+    ++frame_id_;
+    
+    // Set latency markers for the beginning of the render pass
+    if (s_reflex_use_markers.load()) {
+        // This could be enhanced to set specific markers for render pass begin
+        if (s_reflex_debug_output.load()) {
+            LogDebug("Reflex: Render pass begin for frame " + std::to_string(frame_id_.load()));
+        }
+    }
+}
+
+void ReflexManager::OnEndRenderPass(reshade::api::command_list* cmd_list) {
+    if (!IsAvailable() || !cmd_list) {
+        return;
+    }
+    
+    // Set latency markers for the end of the render pass
+    if (s_reflex_use_markers.load()) {
+        // This could be enhanced to set specific markers for render pass end
+        if (s_reflex_debug_output.load()) {
+            LogDebug("Reflex: Render pass end for frame " + std::to_string(frame_id_.load()));
+        }
+    }
+}
+
+void ReflexManager::OnPresentUpdateAfter(reshade::api::command_queue* queue, reshade::api::swapchain* swapchain) {
+    if (!IsAvailable() || !swapchain) {
+        return;
+    }
+    
+    // Update latency tracking after present
+    UpdateLatencyTracking();
+    
+    if (s_reflex_debug_output.load()) {
+        LogDebug("Reflex: Present update after for frame " + std::to_string(frame_id_.load()));
+    }
+}
+
+void ReflexManager::OnPresentUpdateBefore2(reshade::api::effect_runtime* runtime) {
+    if (!IsAvailable() || !runtime) {
+        return;
+    }
+    
+    // Update frame ID and prepare for present
+    ++frame_id_;
+    
+    if (s_reflex_debug_output.load()) {
+        LogDebug("Reflex: Present update before2 for frame " + std::to_string(frame_id_.load()));
+    }
+}
+
 void ReflexManager::Shutdown()
 {
     if (!is_initialized_) {

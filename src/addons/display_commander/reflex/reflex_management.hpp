@@ -51,6 +51,11 @@ public:
     bool CallSleep(reshade::api::swapchain* swapchain);
     bool SetPresentMarkers(reshade::api::swapchain* swapchain);
 
+    // Render pass and present callbacks
+    void OnBeginRenderPass(reshade::api::command_list* cmd_list, uint32_t count, const reshade::api::render_pass_render_target_desc* rts, const reshade::api::render_pass_depth_stencil_desc* ds);
+    void OnEndRenderPass(reshade::api::command_list* cmd_list);
+    void OnPresentUpdateAfter(reshade::api::command_queue* queue, reshade::api::swapchain* swapchain);
+    void OnPresentUpdateBefore2(reshade::api::effect_runtime* runtime);
 
 
     // PCLStats ETW tracing for NVIDIA overlay compatibility

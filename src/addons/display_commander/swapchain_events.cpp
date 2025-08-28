@@ -90,6 +90,12 @@ bool OnCreateSwapchainCapture(reshade::api::device_api /*api*/, reshade::api::sw
   
   // Apply sync interval setting if enabled
   bool modified = false;
+
+  uint32_t prev_sync_interval = UINT32_MAX;
+  uint32_t prev_present_flags = desc.present_flags;
+  uint32_t prev_back_buffer_count = desc.back_buffer_count;
+  const bool is_flip = (desc.present_mode == DXGI_SWAP_EFFECT_FLIP_DISCARD || desc.present_mode == DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL);
+  
   
   // Explicit VSYNC overrides take precedence over generic sync-interval dropdown
   if (s_force_vsync_on.load()) {
@@ -102,12 +108,15 @@ bool OnCreateSwapchainCapture(reshade::api::device_api /*api*/, reshade::api::sw
   }
   // Apply tearing preference if requested and applicable
   {
-    const bool is_flip = (desc.present_mode == DXGI_SWAP_EFFECT_FLIP_DISCARD || desc.present_mode == DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL);
     if (is_flip) {
-      if (s_prevent_tearing.load()) { //  && desc.sync_interval < INT_MAX
+      if (s_prevent_tearing.load()  && desc.sync_interval < INT_MAX) {
         // Clear allow tearing flag when preventing tearing
         if (! desc.fullscreen_state) {
           desc.present_flags &= ~DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
+          // If we are using flip model and we are not allowing tearing, we need to set the back buffer count to 2
+          if (desc.back_buffer_count == 1) {
+            desc.back_buffer_count = 2;
+          }
         }
         modified = true;
       } else if (s_allow_tearing.load() && desc.sync_interval < INT_MAX) {
@@ -137,42 +146,30 @@ bool OnCreateSwapchainCapture(reshade::api::device_api /*api*/, reshade::api::sw
   // Log sync interval and present flags with detailed explanation
   {
     std::ostringstream oss;
-    oss << "Swapchain Creation - Sync Interval: " << desc.sync_interval;
+    oss << " Swapchain Creation - Sync Interval: " << desc.sync_interval;
+    // desc.present_mode
+    oss << " Present Mode: " << desc.present_mode;
+    // desc.present_flags
+    oss << " Fullscreen State: " << desc.fullscreen_state;
+    // desc.back_buffer.texture.width
+    oss << " Sync Interval: " << prev_sync_interval << " -> " << desc.sync_interval;
     
-    // Map sync interval to human-readable description
-    switch (desc.sync_interval) {
-      case 0: oss << " (App Controlled)"; break;
-      case 1: oss << " (No V-Sync)"; break;
-      case 2: oss << " (V-Sync)"; break;
-      case 3: oss << " (V-Sync 2x)"; break;
-      case 4: oss << " (V-Sync 3x)"; break;
-      case 5: oss << " (V-Sync 4x)"; break;
-      default: oss << " (Unknown)"; break;
-    }
+    oss << ", Present Flags: 0x" << std::hex << prev_present_flags << " -> " << std::hex << desc.present_flags;
     
-    oss << ", Present Flags: 0x" << std::hex << desc.present_flags << std::dec;
-    
+    oss << " BackBufferCount: " << prev_back_buffer_count << " -> " << desc.back_buffer_count;
+
+    oss << " BackBuffer: " << desc.back_buffer.texture.width << "x" << desc.back_buffer.texture.height;
+
+    oss << " BackBuffer Format: " << (long long)desc.back_buffer.texture.format;
+
+    oss << " BackBuffer Usage: " << (long long)desc.back_buffer.usage;
+
+
     // Show which features are enabled in present_flags
     if (desc.present_flags == 0) {
       oss << " (No special flags)";
     } else {
       oss << " - Enabled features:";
-      /*
-      
-        DXGI_SWAP_CHAIN_FLAG_NONPREROTATED	= 1,
-        DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH	= 2,
-        DXGI_SWAP_CHAIN_FLAG_GDI_COMPATIBLE	= 4,
-        DXGI_SWAP_CHAIN_FLAG_RESTRICTED_CONTENT	= 8,
-        DXGI_SWAP_CHAIN_FLAG_RESTRICT_SHARED_RESOURCE_DRIVER	= 16,
-        DXGI_SWAP_CHAIN_FLAG_DISPLAY_ONLY	= 32,
-        DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT	= 64,
-        DXGI_SWAP_CHAIN_FLAG_FOREGROUND_LAYER	= 128,
-        DXGI_SWAP_CHAIN_FLAG_FULLSCREEN_VIDEO	= 256,
-        DXGI_SWAP_CHAIN_FLAG_YUV_VIDEO	= 512,
-        DXGI_SWAP_CHAIN_FLAG_HW_PROTECTED	= 1024,
-        DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING	= 2048,
-        DXGI_SWAP_CHAIN_FLAG_RESTRICTED_TO_ALL_HOLOGRAPHIC_DISPLAYS	= 4096
-        */
       if (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_NONPREROTATED) {
         oss << " NONPREROTATED";
       }

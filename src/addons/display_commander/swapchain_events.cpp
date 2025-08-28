@@ -29,6 +29,11 @@ void OnBeginRenderPass(reshade::api::command_list* cmd_list, uint32_t count, con
             }
         }
     }
+    
+    // Call Reflex manager callback if enabled
+    if (s_reflex_enabled.load() && g_reflexManager && g_reflexManager->IsAvailable()) {
+        g_reflexManager->OnBeginRenderPass(cmd_list, count, rts, ds);
+    }
 }
 
 void OnEndRenderPass(reshade::api::command_list* cmd_list) {
@@ -40,6 +45,11 @@ void OnEndRenderPass(reshade::api::command_list* cmd_list) {
                 limiter.OnFrameEnd();
             }
         }
+    }
+    
+    // Call Reflex manager callback if enabled
+    if (s_reflex_enabled.load() && g_reflexManager && g_reflexManager->IsAvailable()) {
+        g_reflexManager->OnEndRenderPass(cmd_list);
     }
 }
 
@@ -284,6 +294,11 @@ void OnPresentUpdateAfter(  reshade::api::command_queue* /*queue*/, reshade::api
       }
     }
   }
+  
+  // Call Reflex manager callback if enabled
+  if (s_reflex_enabled.load() && g_reflexManager && g_reflexManager->IsAvailable()) {
+    g_reflexManager->OnPresentUpdateAfter(/*queue*/nullptr, swapchain);
+  }
 }
 
 // Update composition state after presents (required for valid stats)
@@ -375,6 +390,11 @@ void OnPresentUpdateBefore(
 void OnPresentUpdateBefore2(reshade::api::effect_runtime* runtime) {
   if (g_reshade_runtime.load() != nullptr) {
     g_reshade_runtime.load()->get_command_queue()->flush_immediate_command_list();
+  }
+  
+  // Call Reflex manager callback if enabled
+  if (s_reflex_enabled.load() && g_reflexManager && g_reflexManager->IsAvailable()) {
+    g_reflexManager->OnPresentUpdateBefore2(runtime);
   }
 
 

@@ -8,7 +8,8 @@ Make changes conside.
 Avoid code duplication.
 Avoid redeclaring structures from headers.
 Avoid creating dummy code, for example `timing_info.device_name = "GPU Display";`, where "GPU Display" is the only option.
-Prefer creating non-working code fully commented out.
+Prefer creating non-working code fully commented out.\
+Prefer preserving original types of variables.
 
 If user prompt contains mistake, isn't explained very well, or would lead to buggy solution with side effects instead of fullfilling full query, explain the issue, and ask for clarification. 
 
@@ -18,4 +19,4 @@ Project submodules:
 - reshade
 - Special-K
 
-Start each response with "PROMPT SCORE XXX/100 (non-formatting issues: ...)"
+Start each response with "PROMPT (-X points: WHAT WOULD MAKE PROMPT BETTER WITH EXAMPLE ADDITION, X2: points: ..., ...) SCORE XXX/100". Write a list why points were removed, and aren't at 100, formatting isn't judged.

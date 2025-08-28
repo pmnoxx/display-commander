@@ -554,6 +554,8 @@ bool ReflexManager::SetPresentMarkers(reshade::api::swapchain* swapchain) {
     return true;
 }
 
+
+
 bool ReflexManager::CallSleep(reshade::api::swapchain* swapchain)
 {
     if (!IsAvailable() || !swapchain) {

@@ -51,6 +51,8 @@ public:
     bool CallSleep(reshade::api::swapchain* swapchain);
     bool SetPresentMarkers(reshade::api::swapchain* swapchain);
 
+
+
     // PCLStats ETW tracing for NVIDIA overlay compatibility
     void PCLStatsInit();
     void PCLStatsShutdown();

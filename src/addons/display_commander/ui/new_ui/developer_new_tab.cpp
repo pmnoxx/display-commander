@@ -11,6 +11,14 @@
 #include <thread>
 #include <atomic>
 
+// External declarations for Reflex settings
+extern std::atomic<bool> s_reflex_enabled;
+extern std::atomic<bool> s_reflex_low_latency_mode;
+extern std::atomic<bool> s_reflex_low_latency_boost;
+extern std::atomic<bool> s_reflex_use_markers;
+extern std::atomic<bool> s_reflex_debug_output;
+extern std::atomic<bool> g_reflex_settings_changed;
+
 static std::atomic<bool> s_restart_needed_nvapi(false);
 
 namespace ui::new_ui {
@@ -335,7 +343,7 @@ void DrawNvapiSettings() {
 }
 
 void DrawReflexSettings() {
-    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "=== Reflex Settings ===");
+    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 0.8f), "=== Reflex Settings ===");
     
     // Enable NVIDIA Reflex
     if (CheckboxSetting(g_developerTabSettings.reflex_enabled, "Enable NVIDIA Reflex")) {
@@ -351,6 +359,41 @@ void DrawReflexSettings() {
         
         // Mark that Reflex settings have changed to force sleep mode update
         ::g_reflex_settings_changed.store(true);
+    }
+    
+    // Low Latency Mode
+    if (CheckboxSetting(g_developerTabSettings.reflex_low_latency_mode, "Low Latency Mode")) {
+        ::s_reflex_low_latency_mode.store(g_developerTabSettings.reflex_low_latency_mode.GetValue());
+        ::g_reflex_settings_changed.store(true);
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Enable NVIDIA Reflex Low Latency Mode for reduced input lag.");
+    }
+    
+    // Low Latency Boost
+    if (CheckboxSetting(g_developerTabSettings.reflex_low_latency_boost, "Low Latency Boost")) {
+        ::s_reflex_low_latency_boost.store(g_developerTabSettings.reflex_low_latency_boost.GetValue());
+        ::g_reflex_settings_changed.store(true);
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Enable NVIDIA Reflex Low Latency Boost for maximum performance.");
+    }
+    
+    // Use Markers
+    if (CheckboxSetting(g_developerTabSettings.reflex_use_markers, "Use Markers")) {
+        ::s_reflex_use_markers.store(g_developerTabSettings.reflex_use_markers.GetValue());
+        ::g_reflex_settings_changed.store(true);
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Use NVIDIA Reflex markers for optimal frame timing optimization.");
+    }
+    
+    // Debug Output
+    if (CheckboxSetting(g_developerTabSettings.reflex_debug_output, "Debug Output")) {
+        ::s_reflex_debug_output.store(g_developerTabSettings.reflex_debug_output.GetValue());
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Enable debug output for NVIDIA Reflex operations.");
     }
 }
 

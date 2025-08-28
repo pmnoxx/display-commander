@@ -35,6 +35,9 @@ public:
     
     // Reflex Settings
     ui::new_ui::BoolSetting reflex_enabled;
+    ui::new_ui::BoolSetting reflex_low_latency_mode;
+    ui::new_ui::BoolSetting reflex_low_latency_boost;
+    ui::new_ui::BoolSetting reflex_use_markers;
     ui::new_ui::BoolSetting reflex_debug_output;
     // FPS limiter: extra wait before SIMULATION_START (ms)
     ui::new_ui::FloatSetting fps_extra_wait_ms;

@@ -15,6 +15,9 @@ extern std::atomic<bool> s_nvapi_fullscreen_prevention;
 extern std::atomic<bool> s_nvapi_hdr_logging;
 extern std::atomic<float> s_nvapi_hdr_interval_sec;
 extern std::atomic<bool> s_reflex_enabled;
+extern std::atomic<bool> s_reflex_low_latency_mode;
+extern std::atomic<bool> s_reflex_low_latency_boost;
+extern std::atomic<bool> s_reflex_use_markers;
 extern std::atomic<bool> s_reflex_debug_output;
 extern std::atomic<bool> s_remove_top_bar;
 extern std::atomic<bool> s_enable_unstable_reshade_features;
@@ -39,6 +42,9 @@ DeveloperTabSettings::DeveloperTabSettings()
     , nvapi_hdr_logging("NvapiHDRLogging", false, "DisplayCommander")
     , nvapi_hdr_interval_sec("NvapiHDRInterval", 5.0f, 1.0f, 60.0f, "DisplayCommander")
     , reflex_enabled("ReflexEnabled", false, "DisplayCommander")
+    , reflex_low_latency_mode("ReflexLowLatencyMode", false, "DisplayCommander")
+    , reflex_low_latency_boost("ReflexLowLatencyBoost", false, "DisplayCommander")
+    , reflex_use_markers("ReflexUseMarkers", false, "DisplayCommander")
     , reflex_debug_output("ReflexDebugOutput", false, "DisplayCommander")
     , fps_extra_wait_ms("FpsLimiterExtraWaitMs", 0.0f, 0.0f, 10.0f, "DisplayCommander")
     , enable_unstable_reshade_features("EnableUnstableReShadeFeatures", false, "DisplayCommander")
@@ -61,6 +67,9 @@ void DeveloperTabSettings::LoadAll() {
     nvapi_hdr_logging.Load();
     nvapi_hdr_interval_sec.Load();
     reflex_enabled.Load();
+    reflex_low_latency_mode.Load();
+    reflex_low_latency_boost.Load();
+    reflex_use_markers.Load();
     reflex_debug_output.Load();
     fps_extra_wait_ms.Load();
     enable_unstable_reshade_features.Load();
@@ -81,6 +90,9 @@ void DeveloperTabSettings::LoadAll() {
     s_nvapi_hdr_logging.store(nvapi_hdr_logging.GetValue());
     s_nvapi_hdr_interval_sec.store(nvapi_hdr_interval_sec.GetValue());
     s_reflex_enabled.store(reflex_enabled.GetValue());
+    s_reflex_low_latency_mode.store(reflex_low_latency_mode.GetValue());
+    s_reflex_low_latency_boost.store(reflex_low_latency_boost.GetValue());
+    s_reflex_use_markers.store(reflex_use_markers.GetValue());
     s_reflex_debug_output.store(reflex_debug_output.GetValue());
     s_fps_extra_wait_ms.store(fps_extra_wait_ms.GetValue());
     s_enable_unstable_reshade_features.store(enable_unstable_reshade_features.GetValue());
@@ -101,6 +113,9 @@ void DeveloperTabSettings::SaveAll() {
     nvapi_hdr_logging.Save();
     nvapi_hdr_interval_sec.Save();
     reflex_enabled.Save();
+    reflex_low_latency_mode.Save();
+    reflex_low_latency_boost.Save();
+    reflex_use_markers.Save();
     reflex_debug_output.Save();
     fps_extra_wait_ms.Save();
     enable_unstable_reshade_features.Save();
@@ -123,6 +138,9 @@ std::vector<ui::new_ui::SettingBase*> DeveloperTabSettings::GetAllSettings() {
         &nvapi_hdr_logging,
         &nvapi_hdr_interval_sec,
         &reflex_enabled,
+        &reflex_low_latency_mode,
+        &reflex_low_latency_boost,
+        &reflex_use_markers,
         &reflex_debug_output,
         &fps_extra_wait_ms,
         &enable_unstable_reshade_features,

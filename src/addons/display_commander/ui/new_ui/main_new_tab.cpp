@@ -655,7 +655,7 @@ void DrawDisplaySettings() {
         ImGui::SameLine();
 
         bool allow_t = g_main_new_tab_settings.allow_tearing.GetValue();
-        if (ImGui::Checkbox("Allow Tearing (RESHADE LACKS SUPPORT)", &allow_t)) {
+        if (ImGui::Checkbox("Allow Tearing (WIP)", &allow_t)) {
             vsync_tearing_changed = true;
             // Mutual exclusion with Prevent Tearing
             if (allow_t) {
@@ -677,7 +677,7 @@ void DrawDisplaySettings() {
         ImGui::SameLine();
 
         bool prevent_t = g_main_new_tab_settings.prevent_tearing.GetValue();
-        if (ImGui::Checkbox("Prevent Tearing (RESHADE LACKS SUPPORT)", &prevent_t)) {
+        if (ImGui::Checkbox("Prevent Tearing (WIP)", &prevent_t)) {
             vsync_tearing_changed = true;
             // Mutual exclusion with Enable Tearing
             if (prevent_t) {

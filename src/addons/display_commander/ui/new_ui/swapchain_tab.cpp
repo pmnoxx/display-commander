@@ -335,8 +335,22 @@ void DrawSwapchainEventCounters() {
         ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Event Counters (Green = Working, Red = Not Working)");
         ImGui::Separator();
         
+        // Event visibility flags - set to false to hide specific events
+        static bool event_visibility[] = {
+            false,   // reshade::addon_event::begin_render_pass (0 == ok)
+            false,   // reshade::addon_event::end_render_pass (0 == ok) 
+            true,   // reshade::addon_event::create_swapchain (vsync on/off won't work)
+            true,   // reshade::addon_event::init_swapchain
+            true,   // reshade::addon_event::finish_present
+            true,   // reshade::addon_event::present
+            true,   // reshade::addon_event::reshade_present
+            true,   // reshade::addon_event::init_command_list
+            true,   // reshade::addon_event::execute_command_list
+            false   // reshade::addon_event::bind_pipeline (suppressed by default)
+        };
+        
         // Display each event counter with color coding
-        const char* event_names[] = {
+        static const char* event_names[] = {
             "reshade::addon_event::begin_render_pass (0 == ok)",
             "reshade::addon_event::end_render_pass (0 == ok)", 
             "reshade::addon_event::create_swapchain (vsync on/off won't work)",
@@ -350,9 +364,17 @@ void DrawSwapchainEventCounters() {
         };
         
         uint32_t total_events = 0;
+        uint32_t visible_events = 0;
+        
         for (int i = 0; i < 10; i++) {
+            // Skip events that are set to invisible
+            if (!event_visibility[i]) {
+                continue;
+            }
+            
             uint32_t count = g_swapchain_event_counters[i].load();
             total_events += count;
+            visible_events++;
             
             // Green if > 0, red if 0
             ImVec4 color = (count > 0) ? ImVec4(0.0f, 1.0f, 0.0f, 1.0f) : ImVec4(1.0f, 0.0f, 0.0f, 1.0f);
@@ -360,7 +382,8 @@ void DrawSwapchainEventCounters() {
         }
         
         ImGui::Separator();
-        ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "Total Events: %u", total_events);
+        ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "Total Events (Visible): %u", total_events);
+        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Hidden Events: %u", 10 - visible_events);
         
         // Show status message
         if (total_events > 0) {

@@ -19,6 +19,8 @@ void DrawSwapchainTab() {
     ImGui::Separator();
     
     // Draw all swapchain-related sections
+    DrawSwapchainEventCounters();
+    ImGui::Spacing();
     DrawSwapchainInfo();
     ImGui::Spacing();
     DrawAdapterInfo();
@@ -325,6 +327,44 @@ void DrawDxgiCompositionInfo() {
         
         // Display HDR10 override status
         ImGui::Text("HDR10 Colorspace Override: %s (Last: %s)", g_hdr10_override_status.load()->c_str(), g_hdr10_override_timestamp.load()->c_str());
+    }
+}
+
+void DrawSwapchainEventCounters() {
+    if (ImGui::CollapsingHeader("Swapchain Event Counters", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Event Counters (Green = Working, Red = Not Working)");
+        ImGui::Separator();
+        
+        // Display each event counter with color coding
+        const char* event_names[] = {
+            "Begin Render Pass",
+            "End Render Pass", 
+            "Create Swapchain Capture",
+            "Init Swapchain",
+            "Present Update After",
+            "Present Update Before",
+            "Present Update Before2"
+        };
+        
+        uint32_t total_events = 0;
+        for (int i = 0; i < 7; i++) {
+            uint32_t count = g_swapchain_event_counters[i].load();
+            total_events += count;
+            
+            // Green if > 0, red if 0
+            ImVec4 color = (count > 0) ? ImVec4(0.0f, 1.0f, 0.0f, 1.0f) : ImVec4(1.0f, 0.0f, 0.0f, 1.0f);
+            ImGui::TextColored(color, "%s: %u", event_names[i], count);
+        }
+        
+        ImGui::Separator();
+        ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "Total Events: %u", total_events);
+        
+        // Show status message
+        if (total_events > 0) {
+            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Status: Swapchain events are working correctly");
+        } else {
+            ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "Status: No swapchain events detected - check if addon is properly loaded");
+        }
     }
 }
 

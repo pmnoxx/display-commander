@@ -227,3 +227,7 @@ void UpdateHdr10OverrideStatus(const std::string& status) {
 void UpdateHdr10OverrideTimestamp(const std::string& timestamp) {
     g_hdr10_override_timestamp.store(std::make_shared<std::string>(timestamp));
 }
+
+// Swapchain event counters - reset on each swapchain creation
+std::atomic<uint32_t> g_swapchain_event_counters[7] = {}; // Array for all On* events
+std::atomic<uint32_t> g_swapchain_event_total_count{0}; // Total events across all types

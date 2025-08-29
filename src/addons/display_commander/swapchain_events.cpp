@@ -20,6 +20,10 @@
 
 // Frame lifecycle hooks for custom FPS limiter
 void OnBeginRenderPass(reshade::api::command_list* cmd_list, uint32_t count, const reshade::api::render_pass_render_target_desc* rts, const reshade::api::render_pass_depth_stencil_desc* ds) {
+    // Increment event counter
+    g_swapchain_event_counters[SWAPCHAIN_EVENT_BEGIN_RENDER_PASS].fetch_add(1);
+    g_swapchain_event_total_count.fetch_add(1);
+    
     // Call custom FPS limiter frame begin if enabled
     if (s_custom_fps_limiter_enabled.load()) {
         if (dxgi::fps_limiter::g_customFpsLimiterManager) {
@@ -37,6 +41,10 @@ void OnBeginRenderPass(reshade::api::command_list* cmd_list, uint32_t count, con
 }
 
 void OnEndRenderPass(reshade::api::command_list* cmd_list) {
+    // Increment event counter
+    g_swapchain_event_counters[SWAPCHAIN_EVENT_END_RENDER_PASS].fetch_add(1);
+    g_swapchain_event_total_count.fetch_add(1);
+    
     // Call custom FPS limiter frame end if enabled
     if (s_custom_fps_limiter_enabled.load()) {
         if (dxgi::fps_limiter::g_customFpsLimiterManager) {
@@ -86,6 +94,16 @@ float GetSyncIntervalCoefficient(float sync_interval_value) {
 
 // Capture sync interval during create_swapchain
 bool OnCreateSwapchainCapture(reshade::api::device_api /*api*/, reshade::api::swapchain_desc& desc, void* hwnd) {
+  // Reset all event counters on new swapchain creation
+  for (int i = 0; i < 7; i++) {
+    g_swapchain_event_counters[i].store(0);
+  }
+  g_swapchain_event_total_count.store(0);
+  
+  // Increment event counter
+  g_swapchain_event_counters[SWAPCHAIN_EVENT_CREATE_SWAPCHAIN_CAPTURE].fetch_add(1);
+  g_swapchain_event_total_count.fetch_add(1);
+  
   if (hwnd == nullptr) return false;
   
   // Apply sync interval setting if enabled
@@ -219,6 +237,10 @@ bool OnCreateSwapchainCapture(reshade::api::device_api /*api*/, reshade::api::sw
 }
 
 void OnInitSwapchain(reshade::api::swapchain* swapchain, bool resize) {
+  // Increment event counter
+  g_swapchain_event_counters[SWAPCHAIN_EVENT_INIT_SWAPCHAIN].fetch_add(1);
+  g_swapchain_event_total_count.fetch_add(1);
+  
   // Update last known backbuffer size and colorspace
   auto* device = swapchain->get_device();
   if (device != nullptr && swapchain->get_back_buffer_count() > 0) {
@@ -281,6 +303,10 @@ void OnInitSwapchain(reshade::api::swapchain* swapchain, bool resize) {
 }
 
 void OnPresentUpdateAfter(  reshade::api::command_queue* /*queue*/, reshade::api::swapchain* swapchain) {
+  // Increment event counter
+  g_swapchain_event_counters[SWAPCHAIN_EVENT_PRESENT_UPDATE_AFTER].fetch_add(1);
+  g_swapchain_event_total_count.fetch_add(1);
+  
   // Mark Present end for latent sync limiter timing
   if (s_custom_fps_limiter_enabled.load()) {
     if (dxgi::fps_limiter::g_customFpsLimiterManager) {
@@ -304,6 +330,10 @@ void OnPresentUpdateBefore(
     reshade::api::command_queue* /*queue*/, reshade::api::swapchain* swapchain,
     const reshade::api::rect* /*source_rect*/, const reshade::api::rect* /*dest_rect*/,
     uint32_t /*dirty_rect_count*/, const reshade::api::rect* /*dirty_rects*/) {
+  
+  // Increment event counter
+  g_swapchain_event_counters[SWAPCHAIN_EVENT_PRESENT_UPDATE_BEFORE].fetch_add(1);
+  g_swapchain_event_total_count.fetch_add(1);
   
   // Avoid querying swapchain/device descriptors every frame. These are updated elsewhere.
   
@@ -385,11 +415,17 @@ void OnPresentUpdateBefore(
   }
 }
 
-void OnPresentUpdateBefore2(reshade::api::effect_runtime* runtime) {
-  if (g_reshade_runtime.load() != nullptr) {
-    g_reshade_runtime.load()->get_command_queue()->flush_immediate_command_list();
-  }
+void OnPresentUpdateBefore2(reshade::api::effect_runtime* runtime) { 
+  // Increment event counter
+  g_swapchain_event_counters[SWAPCHAIN_EVENT_PRESENT_UPDATE_BEFORE2].fetch_add(1);
+  g_swapchain_event_total_count.fetch_add(1);
   
+  if (!g_synchronize_fps_limit_by_render_start.load()){
+    if (g_reshade_runtime.load() != nullptr) {
+      g_reshade_runtime.load()->get_command_queue()->flush_immediate_command_list();
+    }
+  }
+    
   // Call Reflex manager callback if enabled
   if (s_reflex_enabled.load() && g_reflexManager && g_reflexManager->IsAvailable()) {
     g_reflexManager->OnPresentUpdateBefore2(runtime);

@@ -17,4 +17,7 @@ void DrawAdapterInfo();
 // Draw DXGI composition information
 void DrawDxgiCompositionInfo();
 
+// Draw swapchain event counters
+void DrawSwapchainEventCounters();
+
 } // namespace ui::new_ui

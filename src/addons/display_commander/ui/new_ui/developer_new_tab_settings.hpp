@@ -18,40 +18,40 @@ public:
     void SaveAll();
     
     // Developer Settings
-    ui::new_ui::BoolSetting prevent_fullscreen;
-    ui::new_ui::BoolSetting spoof_fullscreen_state;
-    ui::new_ui::BoolSetting spoof_window_focus;
-    ui::new_ui::BoolSetting continuous_monitoring;
-    ui::new_ui::BoolSetting prevent_always_on_top;
-    ui::new_ui::BoolSetting remove_top_bar;
+    ui::new_ui::BoolSettingRef prevent_fullscreen;
+    ui::new_ui::IntSettingRef spoof_fullscreen_state;
+    ui::new_ui::IntSettingRef spoof_window_focus;
+    ui::new_ui::BoolSettingRef continuous_monitoring;
+    ui::new_ui::BoolSettingRef prevent_always_on_top;
+    ui::new_ui::BoolSettingRef remove_top_bar;
     
     // HDR and Colorspace Settings
-    ui::new_ui::BoolSetting fix_hdr10_colorspace;
+    ui::new_ui::BoolSettingRef fix_hdr10_colorspace;
     
     // NVAPI Settings
-    ui::new_ui::BoolSetting nvapi_fullscreen_prevention;
-    ui::new_ui::BoolSetting nvapi_hdr_logging;
-    ui::new_ui::FloatSetting nvapi_hdr_interval_sec;
+    ui::new_ui::BoolSettingRef nvapi_fullscreen_prevention;
+    ui::new_ui::BoolSettingRef nvapi_hdr_logging;
+    ui::new_ui::FloatSettingRef nvapi_hdr_interval_sec;
     
     // Reflex Settings
-    ui::new_ui::BoolSetting reflex_enabled;
-    ui::new_ui::BoolSetting reflex_low_latency_mode;
-    ui::new_ui::BoolSetting reflex_low_latency_boost;
-    ui::new_ui::BoolSetting reflex_use_markers;
-    ui::new_ui::BoolSetting reflex_debug_output;
+    ui::new_ui::BoolSettingRef reflex_enabled;
+    ui::new_ui::BoolSettingRef reflex_low_latency_mode;
+    ui::new_ui::BoolSettingRef reflex_low_latency_boost;
+    ui::new_ui::BoolSettingRef reflex_use_markers;
+    ui::new_ui::BoolSettingRef reflex_debug_output;
     // FPS limiter: extra wait before SIMULATION_START (ms)
-    ui::new_ui::FloatSetting fps_extra_wait_ms;
+    ui::new_ui::FloatSettingRef fps_extra_wait_ms;
     
     // Experimental/Unstable features toggle
-    ui::new_ui::BoolSetting enable_unstable_reshade_features;
+    ui::new_ui::BoolSettingRef enable_unstable_reshade_features;
     
     // Resolution Override Settings (Experimental)
-    ui::new_ui::BoolSetting enable_resolution_override;
-    ui::new_ui::IntSetting override_resolution_width;
-    ui::new_ui::IntSetting override_resolution_height;
+    ui::new_ui::BoolSettingRef enable_resolution_override;
+    ui::new_ui::IntSettingRef override_resolution_width;
+    ui::new_ui::IntSettingRef override_resolution_height;
     
     // Keyboard Shortcut Settings (Experimental)
-    ui::new_ui::BoolSetting enable_mute_unmute_shortcut;
+    ui::new_ui::BoolSettingRef enable_mute_unmute_shortcut;
     
     // Get all settings for bulk operations
     std::vector<ui::new_ui::SettingBase*> GetAllSettings();

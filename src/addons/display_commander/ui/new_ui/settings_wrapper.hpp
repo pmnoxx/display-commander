@@ -149,6 +149,33 @@ private:
     float max_;
 };
 
+// Integer setting wrapper that references an external atomic variable
+class IntSettingRef : public SettingBase {
+public:
+    IntSettingRef(const std::string& key, std::atomic<int>& external_ref, int default_value, 
+                  int min = 0, int max = 100,
+                  const std::string& section = DEFAULT_SECTION);
+    
+    void Load() override;
+    void Save() override;
+    
+    int GetValue() const { return external_ref_.get().load(); }
+    void SetValue(int value);
+    int GetDefaultValue() const { return default_value_; }
+    int GetMin() const { return min_; }
+    int GetMax() const { return max_; }
+    
+    // Direct access to the referenced atomic value for performance-critical code
+    std::atomic<int>& GetAtomic() { return external_ref_.get(); }
+    const std::atomic<int>& GetAtomic() const { return external_ref_.get(); }
+
+private:
+    std::reference_wrapper<std::atomic<int>> external_ref_;
+    int default_value_;
+    int min_;
+    int max_;
+};
+
 // Combo setting wrapper
 class ComboSetting : public SettingBase {
 public:
@@ -180,6 +207,9 @@ bool SliderFloatSetting(FloatSettingRef& setting, const char* label, const char*
 
 // SliderInt wrapper
 bool SliderIntSetting(IntSetting& setting, const char* label, const char* format = "%d");
+
+// SliderInt wrapper for IntSettingRef
+bool SliderIntSetting(IntSettingRef& setting, const char* label, const char* format = "%d");
 
 // Checkbox wrapper
 bool CheckboxSetting(BoolSetting& setting, const char* label);

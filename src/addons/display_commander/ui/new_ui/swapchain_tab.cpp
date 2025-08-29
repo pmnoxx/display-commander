@@ -345,7 +345,7 @@ void DrawSwapchainEventCounters() {
             true,   // reshade::addon_event::present
             true,   // reshade::addon_event::reshade_present
             true,   // reshade::addon_event::init_command_list
-            true,   // reshade::addon_event::execute_command_list
+            false,   // reshade::addon_event::execute_command_list
             false   // reshade::addon_event::bind_pipeline (suppressed by default)
         };
         

@@ -81,7 +81,7 @@ void InitMainNewTab() {
         // FPS limiter mode
         s_fps_limiter_mode.store(g_main_new_tab_settings.fps_limiter_mode.GetValue());
         // Synchronize FPS limit by render start
-        // Note: BoolSettingRef automatically syncs with g_synchronize_fps_limit_by_render_start
+        g_synchronize_fps_limit_by_render_start.store(g_main_new_tab_settings.synchronize_fps_limit_by_render_start.GetValue());
         // Scanline offset
         s_scanline_offset.store(g_main_new_tab_settings.scanline_offset.GetValue());
 
@@ -184,6 +184,168 @@ void DrawMainNewTab() {
     
     DrawImportantInfo();
 }
+
+void DrawQuickResolutionChanger() {
+
+    // Quick-set buttons based on current monitor refresh rate
+    {
+        double refresh_hz;
+        {
+            ::g_window_state_lock.lock();
+            refresh_hz = ::g_window_state.current_monitor_refresh_rate.ToHz();
+            ::g_window_state_lock.unlock();
+        }
+        int y = static_cast<int>(std::round(refresh_hz));
+        if (y > 0) {
+            bool first = true;
+            const float selected_epsilon = 0.01f;
+            // Add No Limit button at the beginning
+            {
+                bool selected = (std::fabs(s_fps_limit.load() - 0.0f) <= selected_epsilon);
+                if (selected) {
+                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.20f, 0.60f, 0.20f, 1.0f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.20f, 0.70f, 0.20f, 1.0f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.10f, 0.50f, 0.10f, 1.0f));
+                }
+                if (ImGui::Button("No Limit")) {
+                s_fps_limit.store(0.0f);
+                g_main_new_tab_settings.fps_limit.SetValue(0.0f);
+                if (dxgi::fps_limiter::g_customFpsLimiterManager) {
+                    auto& limiter = dxgi::fps_limiter::g_customFpsLimiterManager->GetFpsLimiter();
+                    limiter.SetEnabled(false);
+                    auto& latent = dxgi::fps_limiter::g_customFpsLimiterManager->GetLatentLimiter();
+                    latent.SetEnabled(false);
+                    LogInfo("FPS limit removed (no limit)");
+                }
+                }
+                if (selected) {
+                    ImGui::PopStyleColor(3);
+                }
+            }
+            first = false;
+            for (int x = 1; x <= 15; ++x) {
+                if (y % x == 0) {
+                    int candidate_rounded = y / x;
+                    float candidate_precise = refresh_hz / x;
+                    if (candidate_rounded >= 30) {
+                        if (!first) ImGui::SameLine();
+                        first = false;
+                        std::string label = std::to_string(candidate_rounded);
+                        {
+                            bool selected = (std::fabs(s_fps_limit.load() - candidate_precise) <= selected_epsilon);
+                            if (selected) {
+                                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.20f, 0.60f, 0.20f, 1.0f));
+                                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.20f, 0.70f, 0.20f, 1.0f));
+                                ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.10f, 0.50f, 0.10f, 1.0f));
+                            }
+                            if (ImGui::Button(label.c_str())) {
+                            float target_fps = candidate_precise;
+                            s_fps_limit.store(target_fps);
+                            g_main_new_tab_settings.fps_limit.SetValue(target_fps);
+                            
+                            // Ensure limiter system is initialized
+                            if (dxgi::fps_limiter::g_customFpsLimiterManager && dxgi::fps_limiter::g_customFpsLimiterManager->InitializeCustomFpsLimiterSystem()) {
+                                LogWarn("Custom FPS Limiter system auto-initialized");
+                            } else if (!dxgi::fps_limiter::g_customFpsLimiterManager) {
+                                LogWarn("Failed to initialize Custom FPS Limiter system");
+                            }
+                            
+                            // Apply the selected FPS limit immediately
+                            if (dxgi::fps_limiter::g_customFpsLimiterManager) {
+                                auto& limiter = dxgi::fps_limiter::g_customFpsLimiterManager->GetFpsLimiter();
+                                limiter.SetTargetFps(target_fps);
+                                limiter.SetEnabled(true);
+                                auto& latent = dxgi::fps_limiter::g_customFpsLimiterManager->GetLatentLimiter();
+                                latent.SetTargetFps(target_fps);
+                                latent.SetEnabled(true);
+                                
+                                std::ostringstream oss;
+                                oss.setf(std::ios::fixed);
+                                oss << std::setprecision(3);
+                                oss << "FPS limit applied: " << target_fps << " FPS (via Custom FPS Limiter)";
+                                LogInfo(oss.str().c_str());
+                            }
+                            }
+                            if (selected) {
+                                ImGui::PopStyleColor(3);
+                            }
+                            // Add tooltip showing the precise calculation
+                            if (ImGui::IsItemHovered()) {
+                                std::ostringstream tooltip_oss;
+                                tooltip_oss.setf(std::ios::fixed);
+                                tooltip_oss << std::setprecision(3);
+                                tooltip_oss << "FPS = " << refresh_hz << " ÷ " << x << " = " << candidate_precise << " FPS\n\n";
+                                tooltip_oss << "Creates a smooth frame rate that divides evenly\n";
+                                tooltip_oss << "into the monitor's refresh rate.";
+                                ImGui::SetTooltip("%s", tooltip_oss.str().c_str());
+                            }
+                        }
+                    }
+                }
+            }
+            // Add Reflex Cap button at the end
+            if (!first) ImGui::SameLine();
+            {
+                // Reflex formula: refresh_hz - (refresh_hz * refresh_hz / 3600)
+                double reflex_target = refresh_hz - (refresh_hz * refresh_hz / 3600.0);
+                float precise_target = static_cast<float>(reflex_target);
+                if (precise_target < 1.0f) precise_target = 1.0f;
+                bool selected = (std::fabs(s_fps_limit.load() - precise_target) <= selected_epsilon);
+                if (selected) {
+                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.20f, 0.60f, 0.20f, 1.0f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.20f, 0.70f, 0.20f, 1.0f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.10f, 0.50f, 0.10f, 1.0f));
+                }
+                if (ImGui::Button("Reflex Cap")) {
+                double precise_target = reflex_target; // do not round on apply
+                float target_fps = static_cast<float>(precise_target < 1.0 ? 1.0 : precise_target);
+                s_fps_limit.store(target_fps);
+                g_main_new_tab_settings.fps_limit.SetValue(target_fps);
+                if (target_fps > 0.0f) {
+                    if (dxgi::fps_limiter::g_customFpsLimiterManager && dxgi::fps_limiter::g_customFpsLimiterManager->InitializeCustomFpsLimiterSystem()) {
+                        LogWarn("Custom FPS Limiter system auto-initialized");
+                    } else if (!dxgi::fps_limiter::g_customFpsLimiterManager) {
+                        LogWarn("Failed to initialize Custom FPS Limiter system");
+                    }
+                    if (dxgi::fps_limiter::g_customFpsLimiterManager) {
+                        auto& limiter = dxgi::fps_limiter::g_customFpsLimiterManager->GetFpsLimiter();
+                        limiter.SetTargetFps(target_fps);
+                        limiter.SetEnabled(true);
+                        std::ostringstream oss;
+                        oss.setf(std::ios::fixed);
+                        oss << std::setprecision(3);
+                        oss << "FPS limit applied: " << target_fps << " FPS (Reflex Cap via Custom FPS Limiter)";
+                        LogInfo(oss.str().c_str());
+                    }
+                } else {
+                    if (dxgi::fps_limiter::g_customFpsLimiterManager) {
+                        auto& limiter = dxgi::fps_limiter::g_customFpsLimiterManager->GetFpsLimiter();
+                        limiter.SetEnabled(false);
+                        auto& latent = dxgi::fps_limiter::g_customFpsLimiterManager->GetLatentLimiter();
+                        latent.SetEnabled(false);
+                        LogInfo("FPS limit removed (no limit)");
+                    }
+                }
+                }
+                if (selected) {
+                    ImGui::PopStyleColor(3);
+                }
+                // Add tooltip explaining the Reflex formula
+                if (ImGui::IsItemHovered()) {
+                    std::ostringstream tooltip_oss;
+                    tooltip_oss.setf(std::ios::fixed);
+                    tooltip_oss << std::setprecision(3);
+                    tooltip_oss << "Reflex Cap: FPS = " << refresh_hz << " - (" << refresh_hz << "² / 3600)\n";
+                    tooltip_oss << "= " << refresh_hz << " - " << (refresh_hz * refresh_hz / 3600.0) << " = " << reflex_target << " FPS\n\n";
+                    tooltip_oss << "Creates a ~0.3ms frame time buffer to optimize latency\n";
+                    tooltip_oss << "and prevent tearing, similar to NVIDIA Reflex Low Latency Mode.";
+                    ImGui::SetTooltip("%s", tooltip_oss.str().c_str());
+                }
+            }
+        }
+    }
+}
+
 
 void DrawDisplaySettings() {
     ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "=== Display Settings ===");
@@ -444,6 +606,10 @@ void DrawDisplaySettings() {
     
     // VSync & Tearing controls
     {
+        DrawQuickResolutionChanger();
+
+        ImGui::SameLine();
+        
         ImGui::Spacing();
         ImGui::TextColored(ImVec4(0.8f, 0.9f, 1.0f, 1.0f), "=== VSync & Tearing ===");
         bool vsync_tearing_changed = false;
@@ -538,164 +704,6 @@ void DrawDisplaySettings() {
         }
     }
 
-    // Quick-set buttons based on current monitor refresh rate
-    {
-        double refresh_hz;
-        {
-            ::g_window_state_lock.lock();
-            refresh_hz = ::g_window_state.current_monitor_refresh_rate.ToHz();
-            ::g_window_state_lock.unlock();
-        }
-        int y = static_cast<int>(std::round(refresh_hz));
-        if (y > 0) {
-            bool first = true;
-            const float selected_epsilon = 0.01f;
-            // Add No Limit button at the beginning
-            {
-                bool selected = (std::fabs(s_fps_limit.load() - 0.0f) <= selected_epsilon);
-                if (selected) {
-                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.20f, 0.60f, 0.20f, 1.0f));
-                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.20f, 0.70f, 0.20f, 1.0f));
-                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.10f, 0.50f, 0.10f, 1.0f));
-                }
-                if (ImGui::Button("No Limit")) {
-                s_fps_limit.store(0.0f);
-                g_main_new_tab_settings.fps_limit.SetValue(0.0f);
-                if (dxgi::fps_limiter::g_customFpsLimiterManager) {
-                    auto& limiter = dxgi::fps_limiter::g_customFpsLimiterManager->GetFpsLimiter();
-                    limiter.SetEnabled(false);
-                    auto& latent = dxgi::fps_limiter::g_customFpsLimiterManager->GetLatentLimiter();
-                    latent.SetEnabled(false);
-                    LogInfo("FPS limit removed (no limit)");
-                }
-                }
-                if (selected) {
-                    ImGui::PopStyleColor(3);
-                }
-            }
-            first = false;
-            for (int x = 1; x <= 15; ++x) {
-                if (y % x == 0) {
-                    int candidate_rounded = y / x;
-                    float candidate_precise = refresh_hz / x;
-                    if (candidate_rounded >= 30) {
-                        if (!first) ImGui::SameLine();
-                        first = false;
-                        std::string label = std::to_string(candidate_rounded);
-                        {
-                            bool selected = (std::fabs(s_fps_limit.load() - candidate_precise) <= selected_epsilon);
-                            if (selected) {
-                                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.20f, 0.60f, 0.20f, 1.0f));
-                                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.20f, 0.70f, 0.20f, 1.0f));
-                                ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.10f, 0.50f, 0.10f, 1.0f));
-                            }
-                            if (ImGui::Button(label.c_str())) {
-                            float target_fps = candidate_precise;
-                            s_fps_limit.store(target_fps);
-                            g_main_new_tab_settings.fps_limit.SetValue(target_fps);
-                            
-                            // Ensure limiter system is initialized
-                            if (dxgi::fps_limiter::g_customFpsLimiterManager && dxgi::fps_limiter::g_customFpsLimiterManager->InitializeCustomFpsLimiterSystem()) {
-                                LogWarn("Custom FPS Limiter system auto-initialized");
-                            } else if (!dxgi::fps_limiter::g_customFpsLimiterManager) {
-                                LogWarn("Failed to initialize Custom FPS Limiter system");
-                            }
-                            
-                            // Apply the selected FPS limit immediately
-                            if (dxgi::fps_limiter::g_customFpsLimiterManager) {
-                                auto& limiter = dxgi::fps_limiter::g_customFpsLimiterManager->GetFpsLimiter();
-                                limiter.SetTargetFps(target_fps);
-                                limiter.SetEnabled(true);
-                                auto& latent = dxgi::fps_limiter::g_customFpsLimiterManager->GetLatentLimiter();
-                                latent.SetTargetFps(target_fps);
-                                latent.SetEnabled(true);
-                                
-                                std::ostringstream oss;
-                                oss.setf(std::ios::fixed);
-                                oss << std::setprecision(3);
-                                oss << "FPS limit applied: " << target_fps << " FPS (via Custom FPS Limiter)";
-                                LogInfo(oss.str().c_str());
-                            }
-                            }
-                            if (selected) {
-                                ImGui::PopStyleColor(3);
-                            }
-                            // Add tooltip showing the precise calculation
-                            if (ImGui::IsItemHovered()) {
-                                std::ostringstream tooltip_oss;
-                                tooltip_oss.setf(std::ios::fixed);
-                                tooltip_oss << std::setprecision(3);
-                                tooltip_oss << "FPS = " << refresh_hz << " ÷ " << x << " = " << candidate_precise << " FPS\n\n";
-                                tooltip_oss << "Creates a smooth frame rate that divides evenly\n";
-                                tooltip_oss << "into the monitor's refresh rate.";
-                                ImGui::SetTooltip("%s", tooltip_oss.str().c_str());
-                            }
-                        }
-                    }
-                }
-            }
-            // Add Reflex Cap button at the end
-            if (!first) ImGui::SameLine();
-            {
-                // Reflex formula: refresh_hz - (refresh_hz * refresh_hz / 3600)
-                double reflex_target = refresh_hz - (refresh_hz * refresh_hz / 3600.0);
-                float precise_target = static_cast<float>(reflex_target);
-                if (precise_target < 1.0f) precise_target = 1.0f;
-                bool selected = (std::fabs(s_fps_limit.load() - precise_target) <= selected_epsilon);
-                if (selected) {
-                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.20f, 0.60f, 0.20f, 1.0f));
-                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.20f, 0.70f, 0.20f, 1.0f));
-                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.10f, 0.50f, 0.10f, 1.0f));
-                }
-                if (ImGui::Button("Reflex Cap")) {
-                double precise_target = reflex_target; // do not round on apply
-                float target_fps = static_cast<float>(precise_target < 1.0 ? 1.0 : precise_target);
-                s_fps_limit.store(target_fps);
-                g_main_new_tab_settings.fps_limit.SetValue(target_fps);
-                if (target_fps > 0.0f) {
-                    if (dxgi::fps_limiter::g_customFpsLimiterManager && dxgi::fps_limiter::g_customFpsLimiterManager->InitializeCustomFpsLimiterSystem()) {
-                        LogWarn("Custom FPS Limiter system auto-initialized");
-                    } else if (!dxgi::fps_limiter::g_customFpsLimiterManager) {
-                        LogWarn("Failed to initialize Custom FPS Limiter system");
-                    }
-                    if (dxgi::fps_limiter::g_customFpsLimiterManager) {
-                        auto& limiter = dxgi::fps_limiter::g_customFpsLimiterManager->GetFpsLimiter();
-                        limiter.SetTargetFps(target_fps);
-                        limiter.SetEnabled(true);
-                        std::ostringstream oss;
-                        oss.setf(std::ios::fixed);
-                        oss << std::setprecision(3);
-                        oss << "FPS limit applied: " << target_fps << " FPS (Reflex Cap via Custom FPS Limiter)";
-                        LogInfo(oss.str().c_str());
-                    }
-                } else {
-                    if (dxgi::fps_limiter::g_customFpsLimiterManager) {
-                        auto& limiter = dxgi::fps_limiter::g_customFpsLimiterManager->GetFpsLimiter();
-                        limiter.SetEnabled(false);
-                        auto& latent = dxgi::fps_limiter::g_customFpsLimiterManager->GetLatentLimiter();
-                        latent.SetEnabled(false);
-                        LogInfo("FPS limit removed (no limit)");
-                    }
-                }
-                }
-                if (selected) {
-                    ImGui::PopStyleColor(3);
-                }
-                // Add tooltip explaining the Reflex formula
-                if (ImGui::IsItemHovered()) {
-                    std::ostringstream tooltip_oss;
-                    tooltip_oss.setf(std::ios::fixed);
-                    tooltip_oss << std::setprecision(3);
-                    tooltip_oss << "Reflex Cap: FPS = " << refresh_hz << " - (" << refresh_hz << "² / 3600)\n";
-                    tooltip_oss << "= " << refresh_hz << " - " << (refresh_hz * refresh_hz / 3600.0) << " = " << reflex_target << " FPS\n\n";
-                    tooltip_oss << "Creates a ~0.3ms frame time buffer to optimize latency\n";
-                    tooltip_oss << "and prevent tearing, similar to NVIDIA Reflex Low Latency Mode.";
-                    ImGui::SetTooltip("%s", tooltip_oss.str().c_str());
-                }
-            }
-        }
-    }
-    
     // Background FPS Limit slider (persisted)
     {
         float current_bg = g_main_new_tab_settings.fps_limit_background.GetValue();

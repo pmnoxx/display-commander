@@ -347,7 +347,7 @@ void DrawSwapchainEventCounters() {
         };
         
         uint32_t total_events = 0;
-        for (int i = 0; i < 7; i++) {
+        for (int i = 2; i < 7; i++) {
             uint32_t count = g_swapchain_event_counters[i].load();
             total_events += count;
             

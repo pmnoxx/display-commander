@@ -129,94 +129,122 @@ void  CalculateWindowState(HWND hwnd, const char* reason) {
   
   local_state.style_mode = WindowStyleMode::BORDERLESS;
 
-  // First, determine the target monitor based on game's intended display
-  MONITORINFOEXW mi{};
-  
-  // Use target monitor if specified
+  // First, determine the target monitor using display cache (no FindTargetMonitor / MONITORINFOEXW)
+  if (!display_cache::g_displayCache.IsInitialized()) {
+    display_cache::g_displayCache.Initialize();
+  }
+
+  HMONITOR target_monitor_handle = nullptr;
+  int target_monitor_index = 0;
+  const size_t display_count = display_cache::g_displayCache.GetDisplayCount();
+
+  int requested_monitor = static_cast<int>(s_target_monitor_index.load()); // 0 = Auto (Current), 1..N = explicit
+  if (requested_monitor > 0 && display_count > 0) {
+    // Clamp to available displays; display indices are 0..display_count-1 in cache, but setting uses 1..N
+    target_monitor_index = (std::max)(0, (std::min)(requested_monitor - 1, static_cast<int>(display_count) - 1));
+    if (const auto *disp = display_cache::g_displayCache.GetDisplay(static_cast<size_t>(target_monitor_index))) {
+      target_monitor_handle = disp->monitor_handle;
+    }
+  } else {
+    // Auto: use the monitor where the window currently resides
+    target_monitor_handle = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+    // Find the corresponding display index in the cache
+    for (size_t i = 0; i < display_count; ++i) {
+      const auto *disp = display_cache::g_displayCache.GetDisplay(i);
+      if (disp && disp->monitor_handle == target_monitor_handle) {
+        target_monitor_index = static_cast<int>(i);
+        break;
+      }
+    }
+  }
+
+  // Get current refresh rate from cache
   display_cache::RationalRefreshRate tmp_refresh;
-  local_state.current_monitor_index = FindTargetMonitor(hwnd, wr_current, s_target_monitor_index, mi, tmp_refresh);
-  local_state.current_monitor_refresh_rate = tmp_refresh;
-  
-  
-  // Clamp desired size to fit within the target monitor's dimensions
-  const int monitor_width = mi.rcMonitor.right - mi.rcMonitor.left;
-  const int monitor_height = mi.rcMonitor.bottom - mi.rcMonitor.top;
-  
-  if (local_state.desired_width > monitor_width) {
-    std::ostringstream oss;
-    oss << "CalculateWindowState: Desired width " << local_state.desired_width << " exceeds monitor width " << monitor_width << ", clamping";
-    LogInfo(oss.str().c_str());
-    local_state.desired_width = monitor_width;
+  if (const auto *disp = display_cache::g_displayCache.GetDisplay(static_cast<size_t>(target_monitor_index))) {
+    tmp_refresh = disp->current_refresh_rate;
+    local_state.current_monitor_index = target_monitor_index;
+    local_state.current_monitor_refresh_rate = tmp_refresh;
+    
+    
+    const int monitor_width = disp->width;
+    const int monitor_height = disp->height;
+    
+    if (local_state.desired_width > monitor_width) {
+      std::ostringstream oss;
+      oss << "CalculateWindowState: Desired width " << local_state.desired_width << " exceeds monitor width " << monitor_width << ", clamping";
+      LogInfo(oss.str().c_str());
+      local_state.desired_width = monitor_width;
+    }
+    // Get desired dimensions and position from global settings
+    // Use manual or aspect ratio mode
+    ComputeDesiredSize(local_state.desired_width, local_state.desired_height);
+    
+    if (local_state.desired_height > monitor_height) {
+      std::ostringstream oss;
+      oss << "CalculateWindowState: Desired height " << local_state.desired_height << " exceeds monitor height " << monitor_height << ", clamping";
+      LogInfo(oss.str().c_str());
+      local_state.desired_height = monitor_height;
+    }
+
+    
+    // Calculate target dimensions
+    RECT client_rect = RectFromWH(local_state.desired_width, local_state.desired_height);
+    if (AdjustWindowRectEx(&client_rect, static_cast<DWORD>(local_state.new_style), FALSE, static_cast<DWORD>(local_state.new_ex_style)) == FALSE) {
+      LogWarn("AdjustWindowRectEx failed for CalculateWindowState.");
+      return;
+    }
+    local_state.target_w = client_rect.right - client_rect.left;
+    local_state.target_h = client_rect.bottom - client_rect.top;
+    
+    // Calculate target position - start with monitor top-left
+    local_state.target_x = disp->x;
+    local_state.target_y = disp->y;
+    
+    const RECT& mr = {disp->x, disp->y, disp->x + disp->width, disp->y + disp->height};
+    
+    // Apply alignment based on setting
+    switch (static_cast<int>(s_move_to_zero_if_out)) {
+      default:
+      case 1: // Top Left
+        local_state.target_x = mr.left;
+        local_state.target_y = mr.top;
+        break;
+      case 2: // Top Right
+        local_state.target_x = max(mr.left, mr.right - local_state.target_w);
+        local_state.target_y = mr.top;
+        break;
+      case 3: // Bottom Left
+        local_state.target_x = mr.left;
+        local_state.target_y = max(mr.top, mr.bottom - local_state.target_h);
+        break;
+      case 4: // Bottom Right
+        local_state.target_x = max(mr.left, mr.right - local_state.target_w);
+        local_state.target_y = max(mr.top, mr.bottom - local_state.target_h);
+        break;
+      case 5: // Center
+        local_state.target_x = max(mr.left, mr.left + (mr.right - mr.left - local_state.target_w) / 2);
+        local_state.target_y = max(mr.top, mr.top + (mr.bottom - mr.top - local_state.target_h) / 2);
+        break;
+    }
+    local_state.target_w = min(local_state.target_w, mr.right - mr.left);
+    local_state.target_h = min(local_state.target_h, mr.bottom - mr.top);
+
+    // Check if any changes are actually needed
+    local_state.needs_resize = (local_state.target_w != (wr_current.right - wr_current.left)) || 
+                                  (local_state.target_h != (wr_current.bottom - wr_current.top));
+    local_state.needs_move = (local_state.target_x != wr_current.left) || (local_state.target_y != wr_current.top);
+
+    // Store current monitor dimensions
+    local_state.display_width = monitor_width;
+    local_state.display_height = monitor_height;
+
+    LogDebug("CalculateWindowState: target_w=" + std::to_string(local_state.target_w) + ", target_h=" + std::to_string(local_state.target_h));
+
+    // Publish snapshot under a lightweight lock
+    g_window_state_lock.lock();
+    g_window_state = local_state;
+    g_window_state_lock.unlock();
   }
-  // Get desired dimensions and position from global settings
-  // Use manual or aspect ratio mode
-  ComputeDesiredSize(local_state.desired_width, local_state.desired_height);
-  
-  if (local_state.desired_height > monitor_height) {
-    std::ostringstream oss;
-    oss << "CalculateWindowState: Desired height " << local_state.desired_height << " exceeds monitor height " << monitor_height << ", clamping";
-    LogInfo(oss.str().c_str());
-    local_state.desired_height = monitor_height;
-  }
-
-  
-  // Calculate target dimensions
-  RECT client_rect = RectFromWH(local_state.desired_width, local_state.desired_height);
-  if (AdjustWindowRectEx(&client_rect, static_cast<DWORD>(local_state.new_style), FALSE, static_cast<DWORD>(local_state.new_ex_style)) == FALSE) {
-    LogWarn("AdjustWindowRectEx failed for CalculateWindowState.");
-    return;
-  }
-  local_state.target_w = client_rect.right - client_rect.left;
-  local_state.target_h = client_rect.bottom - client_rect.top;
-  
-  // Calculate target position - start with monitor top-left
-  local_state.target_x = mi.rcMonitor.left;
-  local_state.target_y = mi.rcMonitor.top;
-  
-  const RECT& mr = mi.rcMonitor;
-  
-  // Apply alignment based on setting
-  switch (static_cast<int>(s_move_to_zero_if_out)) {
-    default:
-    case 1: // Top Left
-      local_state.target_x = mr.left;
-      local_state.target_y = mr.top;
-      break;
-    case 2: // Top Right
-      local_state.target_x = max(mr.left, mr.right - local_state.target_w);
-      local_state.target_y = mr.top;
-      break;
-    case 3: // Bottom Left
-      local_state.target_x = mr.left;
-      local_state.target_y = max(mr.top, mr.bottom - local_state.target_h);
-      break;
-    case 4: // Bottom Right
-      local_state.target_x = max(mr.left, mr.right - local_state.target_w);
-      local_state.target_y = max(mr.top, mr.bottom - local_state.target_h);
-      break;
-    case 5: // Center
-      local_state.target_x = max(mr.left, mr.left + (mr.right - mr.left - local_state.target_w) / 2);
-      local_state.target_y = max(mr.top, mr.top + (mr.bottom - mr.top - local_state.target_h) / 2);
-      break;
-  }
-  local_state.target_w = min(local_state.target_w, mr.right - mr.left);
-  local_state.target_h = min(local_state.target_h, mr.bottom - mr.top);
-
-  // Check if any changes are actually needed
-  local_state.needs_resize = (local_state.target_w != (wr_current.right - wr_current.left)) || 
-                                (local_state.target_h != (wr_current.bottom - wr_current.top));
-  local_state.needs_move = (local_state.target_x != wr_current.left) || (local_state.target_y != wr_current.top);
-
-  // Store current monitor dimensions
-  local_state.display_width = monitor_width;
-  local_state.display_height = monitor_height;
-
-  LogDebug("CalculateWindowState: target_w=" + std::to_string(local_state.target_w) + ", target_h=" + std::to_string(local_state.target_h));
-
-  // Publish snapshot under a lightweight lock
-  g_window_state_lock.lock();
-  g_window_state = local_state;
-  g_window_state_lock.unlock();
 }
 
 // Second function: Apply the calculated window changes

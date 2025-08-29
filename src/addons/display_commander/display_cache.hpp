@@ -111,17 +111,18 @@ struct DisplayInfo {
     std::vector<Resolution> resolutions;
     
     // Current settings
-    int current_width;
-    int current_height;
+    int width;
+    int height;
     RationalRefreshRate current_refresh_rate;
+    int x;
+    int y;
     
-    
-    DisplayInfo() : monitor_handle(nullptr), current_width(0), current_height(0) {}
+    DisplayInfo() : monitor_handle(nullptr), width(0), height(0) {}
     
     // Get current resolution as string
     std::string GetCurrentResolutionString() const {
         std::ostringstream oss;
-        oss << current_width << " x " << current_height;
+        oss << width << " x " << height;
         return oss.str();
     }
     
@@ -171,14 +172,14 @@ struct DisplayInfo {
         
         // Find exact match first
         for (size_t i = 0; i < resolutions.size(); ++i) {
-            if (resolutions[i].width == current_width && resolutions[i].height == current_height) {
+            if (resolutions[i].width == width && resolutions[i].height == height) {
                 return i;
             }
         }
         
         // If no exact match, find closest by area
         size_t closest_index = 0;
-        int current_area = current_width * current_height;
+        int current_area = width * height;
         int min_diff = std::abs(resolutions[0].width * resolutions[0].height - current_area);
         
         for (size_t i = 1; i < resolutions.size(); ++i) {
@@ -244,7 +245,7 @@ struct DisplayInfo {
         // Map UI index to underlying resolution index
         size_t effective_index = resolution_index;
         if (resolution_index == 0) {
-            auto idx = FindResolutionIndex(current_width, current_height);
+            auto idx = FindResolutionIndex(width, height);
             if (!idx.has_value()) return {};
             effective_index = idx.value();
         } else {

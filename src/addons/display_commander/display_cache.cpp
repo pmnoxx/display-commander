@@ -51,7 +51,7 @@ std::wstring GetMonitorFriendlyName(HMONITOR monitor) {
 }
 
 // Helper function to get current display settings
-bool GetCurrentDisplaySettings(HMONITOR monitor, int& width, int& height, RationalRefreshRate& refresh_rate) {
+bool GetCurrentDisplaySettings(HMONITOR monitor, int& width, int& height, RationalRefreshRate& refresh_rate, int& x, int& y) {
     MONITORINFOEXW mi;
     mi.cbSize = sizeof(mi);
     if (!GetMonitorInfoW(monitor, &mi)) {
@@ -116,6 +116,8 @@ bool GetCurrentDisplaySettings(HMONITOR monitor, int& width, int& height, Ration
                             if (have_best) {
                                 width = static_cast<int>(best_mode.Width);
                                 height = static_cast<int>(best_mode.Height);
+                                x = static_cast<int>(dm.dmPosition.x);
+                                y = static_cast<int>(dm.dmPosition.y);
                                 refresh_rate.numerator = best_mode.RefreshRate.Numerator;
                                 refresh_rate.denominator = best_mode.RefreshRate.Denominator;
 
@@ -303,9 +305,11 @@ bool DisplayCache::Refresh() {
         display_info->friendly_name = GetMonitorFriendlyName(monitor);
         
         // Get current settings
-        if (!GetCurrentDisplaySettings(monitor, display_info->current_width, 
-                                     display_info->current_height, 
-                                     display_info->current_refresh_rate)) {
+        if (!GetCurrentDisplaySettings(monitor, display_info->width, 
+                                     display_info->height, 
+                                     display_info->current_refresh_rate,
+                                     display_info->x,
+                                     display_info->y)) {
             continue;
         }
         
@@ -375,8 +379,8 @@ bool DisplayCache::GetCurrentResolution(size_t display_index, int& width, int& h
     if (display_index >= displays.size()) return false;
     const auto* display = displays[display_index].get();
     if (!display) return false;
-    width = display->current_width;
-    height = display->current_height;
+    width = display->width;
+    height = display->height;
     return true;
 }
 
@@ -398,7 +402,7 @@ bool DisplayCache::GetRationalRefreshRate(size_t display_index, size_t resolutio
     // Map UI resolution index: 0 = Current Resolution, otherwise shift by one
     size_t effective_index = resolution_index;
     if (resolution_index == 0) {
-        auto idx = display->FindResolutionIndex(display->current_width, display->current_height);
+        auto idx = display->FindResolutionIndex(display->width, display->height);
         if (!idx.has_value()) return false;
         effective_index = idx.value();
     } else {
@@ -429,8 +433,8 @@ bool DisplayCache::GetCurrentDisplayInfo(size_t display_index, int& width, int& 
     if (display_index >= displays.size()) return false;
     const auto* display = displays[display_index].get();
     if (!display) return false;
-    width = display->current_width;
-    height = display->current_height;
+    width = display->width;
+    height = display->height;
     refresh_rate = display->current_refresh_rate;
     return true;
 }

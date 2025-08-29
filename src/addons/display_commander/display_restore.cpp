@@ -27,8 +27,8 @@ bool GetCurrentForDevice(const std::wstring &device_name, OriginalMode &out) {
 		const auto *disp = cache.GetDisplay(i);
 		if (disp == nullptr) continue;
 		if (disp->device_name == device_name) {
-			out.width = disp->current_width;
-			out.height = disp->current_height;
+			out.width = disp->width;
+			out.height = disp->height;
 			out.refresh_num = disp->current_refresh_rate.numerator;
 			out.refresh_den = disp->current_refresh_rate.denominator == 0 ? 1 : disp->current_refresh_rate.denominator;
 			return true;

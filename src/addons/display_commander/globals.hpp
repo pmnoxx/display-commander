@@ -168,3 +168,18 @@ extern std::chrono::steady_clock::time_point g_attach_time;
 // Import the global variable
 extern std::atomic<int> s_spoof_fullscreen_state;
 extern std::atomic<int> s_spoof_window_focus;
+
+// Swapchain event counters - reset on each swapchain creation
+extern std::atomic<uint32_t> g_swapchain_event_counters[7]; // Array for all On* events
+extern std::atomic<uint32_t> g_swapchain_event_total_count; // Total events across all types
+
+// Swapchain event counter indices
+enum SwapchainEventIndex {
+    SWAPCHAIN_EVENT_BEGIN_RENDER_PASS = 0,
+    SWAPCHAIN_EVENT_END_RENDER_PASS = 1,
+    SWAPCHAIN_EVENT_CREATE_SWAPCHAIN_CAPTURE = 2,
+    SWAPCHAIN_EVENT_INIT_SWAPCHAIN = 3,
+    SWAPCHAIN_EVENT_PRESENT_UPDATE_AFTER = 4,
+    SWAPCHAIN_EVENT_PRESENT_UPDATE_BEFORE = 5,
+    SWAPCHAIN_EVENT_PRESENT_UPDATE_BEFORE2 = 6
+};

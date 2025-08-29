@@ -15,7 +15,7 @@ MainNewTabSettings::MainNewTabSettings()
       background_feature("background_feature", false, "renodx_main_tab"),
       alignment("alignment", 0, {"None", "Top Left", "Top Right", "Bottom Left", "Bottom Right", "Center"}, "renodx_main_tab"),
       fps_limiter_mode("fps_limiter_mode", 0, {"Custom (Sleep/Spin) for VSync-ON", "VBlank Scanline Sync for VSync-OFF (Allow-tearingg only, current version works only with first display)"}, "renodx_main_tab"),
-      synchronize_fps_limit_by_render_start("synchronize_fps_limit_by_render_start", false, "renodx_main_tab"),
+      synchronize_fps_limit_by_render_start("synchronize_fps_limit_by_render_start", ::g_synchronize_fps_limit_by_render_start, false, "renodx_main_tab"),
       scanline_offset("scanline_offset", 0, -1000, 1000, "renodx_main_tab"),
       fps_limit("fps_limit", 0.0f, 0.0f, 240.0f, "renodx_main_tab"),
       fps_limit_background("fps_limit_background", 0.0f, 0.0f, 240.0f, "renodx_main_tab"),

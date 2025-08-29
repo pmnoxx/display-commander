@@ -337,17 +337,17 @@ void DrawSwapchainEventCounters() {
         
         // Display each event counter with color coding
         const char* event_names[] = {
-            "Begin Render Pass",
-            "End Render Pass", 
-            "Create Swapchain Capture",
-            "Init Swapchain",
-            "Present Update After",
-            "Present Update Before",
-            "Present Update Before2"
+            "reshade::addon_event::begin_render_pass (0 == ok)",
+            "reshade::addon_event::end_render_pass (0 == ok)", 
+            "reshade::addon_event::create_swapchain (vsync on/off won't work)",
+            "reshade::addon_event::init_swapchain",
+            "reshade::addon_event::finish_present",
+            "reshade::addon_event::present",
+            "reshade::addon_event::reshade_present"
         };
         
         uint32_t total_events = 0;
-        for (int i = 2; i < 7; i++) {
+        for (int i = 0; i < 7; i++) {
             uint32_t count = g_swapchain_event_counters[i].load();
             total_events += count;
             

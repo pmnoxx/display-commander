@@ -122,6 +122,33 @@ private:
     bool default_value_;
 };
 
+// Float setting wrapper that references an external atomic variable
+class FloatSettingRef : public SettingBase {
+public:
+    FloatSettingRef(const std::string& key, std::atomic<float>& external_ref, float default_value, 
+                    float min = 0.0f, float max = 100.0f,
+                    const std::string& section = DEFAULT_SECTION);
+    
+    void Load() override;
+    void Save() override;
+    
+    float GetValue() const { return external_ref_.get().load(); }
+    void SetValue(float value);
+    float GetDefaultValue() const { return default_value_; }
+    float GetMin() const { return min_; }
+    float GetMax() const { return max_; }
+    
+    // Direct access to the referenced atomic value for performance-critical code
+    std::atomic<float>& GetAtomic() { return external_ref_.get(); }
+    const std::atomic<float>& GetAtomic() const { return external_ref_.get(); }
+
+private:
+    std::reference_wrapper<std::atomic<float>> external_ref_;
+    float default_value_;
+    float min_;
+    float max_;
+};
+
 // Combo setting wrapper
 class ComboSetting : public SettingBase {
 public:
@@ -147,6 +174,9 @@ private:
 
 // SliderFloat wrapper
 bool SliderFloatSetting(FloatSetting& setting, const char* label, const char* format = "%.3f");
+
+// SliderFloat wrapper for FloatSettingRef
+bool SliderFloatSetting(FloatSettingRef& setting, const char* label, const char* format = "%.3f");
 
 // SliderInt wrapper
 bool SliderIntSetting(IntSetting& setting, const char* label, const char* format = "%d");

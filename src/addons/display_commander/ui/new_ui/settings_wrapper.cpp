@@ -142,6 +142,39 @@ void BoolSettingRef::SetValue(bool value) {
     Save(); // Auto-save when value changes
 }
 
+// FloatSettingRef implementation
+FloatSettingRef::FloatSettingRef(const std::string& key, std::atomic<float>& external_ref, float default_value, float min, float max, const std::string& section)
+    : SettingBase(key, section), external_ref_(external_ref), default_value_(default_value), min_(min), max_(max) {
+}
+
+void FloatSettingRef::Load() {
+    float loaded_value;
+    if (reshade::get_config_value(nullptr, section_.c_str(), key_.c_str(), loaded_value)) {
+        // If loaded value is invalid (NaN/Inf or out of range), fall back to default
+        if (!std::isfinite(loaded_value) || loaded_value < min_ || loaded_value > max_) {
+            const float safe_default = std::max(min_, std::min(max_, default_value_));
+            external_ref_.get().store(safe_default);
+            Save();
+        } else {
+            external_ref_.get().store(loaded_value);
+        }
+    } else {
+        // Use default value if not found
+        const float safe_default = std::max(min_, std::min(max_, default_value_));
+        external_ref_.get().store(safe_default);
+    }
+}
+
+void FloatSettingRef::Save() {
+    reshade::set_config_value(nullptr, section_.c_str(), key_.c_str(), external_ref_.get().load());
+}
+
+void FloatSettingRef::SetValue(float value) {
+    const float clamped_value = std::max(min_, std::min(max_, value));
+    external_ref_.get().store(clamped_value);
+    Save(); // Auto-save when value changes
+}
+
 // ComboSetting implementation
 ComboSetting::ComboSetting(const std::string& key, int default_value, const std::vector<const char*>& labels, const std::string& section)
     : SettingBase(key, section), value_(default_value), default_value_(default_value), labels_(labels) {
@@ -179,6 +212,32 @@ void ComboSetting::SetValue(int value) {
 // Wrapper function implementations
 
 bool SliderFloatSetting(FloatSetting& setting, const char* label, const char* format) {
+    float value = setting.GetValue();
+    bool changed = ImGui::SliderFloat(label, &value, setting.GetMin(), setting.GetMax(), format);
+    if (changed) {
+        setting.SetValue(value);
+    }
+    // Show reset-to-default button if value differs from default
+    {
+        float current = setting.GetValue();
+        float def = setting.GetDefaultValue();
+        if (fabsf(current - def) > 1e-6f) {
+            ImGui::SameLine();
+            ImGui::PushID(&setting);
+            if (ImGui::SmallButton(reinterpret_cast<const char*>(ICON_FK_UNDO))) {
+                setting.SetValue(def);
+                changed = true;
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Reset to default (%.3f)", def);
+            }
+            ImGui::PopID();
+        }
+    }
+    return changed;
+}
+
+bool SliderFloatSetting(FloatSettingRef& setting, const char* label, const char* format) {
     float value = setting.GetValue();
     bool changed = ImGui::SliderFloat(label, &value, setting.GetMin(), setting.GetMax(), format);
     if (changed) {

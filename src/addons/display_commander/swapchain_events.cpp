@@ -95,7 +95,7 @@ float GetSyncIntervalCoefficient(float sync_interval_value) {
 // Capture sync interval during create_swapchain
 bool OnCreateSwapchainCapture(reshade::api::device_api /*api*/, reshade::api::swapchain_desc& desc, void* hwnd) {
   // Reset all event counters on new swapchain creation
-  for (int i = 0; i < 7; i++) {
+  for (int i = 0; i < 10; i++) {
     g_swapchain_event_counters[i].store(0);
   }
   g_swapchain_event_total_count.store(0);
@@ -480,4 +480,35 @@ void OnPresentUpdateBefore2(reshade::api::effect_runtime* runtime) {
       }
     }
   }
+}
+
+// Additional event handlers for frame timing and composition
+
+void OnInitCommandList(reshade::api::command_list* cmd_list) {
+  // Increment event counter
+  g_swapchain_event_counters[SWAPCHAIN_EVENT_INIT_COMMAND_LIST].fetch_add(1);
+  g_swapchain_event_total_count.fetch_add(1);
+  
+  // Log command list creation for debugging
+  LogDebug("Command list initialized");
+}
+
+void OnExecuteCommandList(reshade::api::command_queue* queue, reshade::api::command_list* cmd_list) {
+  // Increment event counter
+  g_swapchain_event_counters[SWAPCHAIN_EVENT_EXECUTE_COMMAND_LIST].fetch_add(1);
+  g_swapchain_event_total_count.fetch_add(1);
+  
+  // This event could be used for frame timing analysis
+  // as it represents when GPU work is actually submitted
+  LogDebug("Command list executed");
+}
+
+void OnBindPipeline(reshade::api::command_list* cmd_list, reshade::api::pipeline_stage stages, reshade::api::pipeline pipeline) {
+  // Increment event counter
+  g_swapchain_event_counters[SWAPCHAIN_EVENT_BIND_PIPELINE].fetch_add(1);
+  g_swapchain_event_total_count.fetch_add(1);
+  
+  // This event tracks shader pipeline changes
+  // which is very useful for frame timing analysis
+  LogDebug("Pipeline bound");
 }

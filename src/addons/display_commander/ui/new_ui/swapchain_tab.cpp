@@ -343,11 +343,14 @@ void DrawSwapchainEventCounters() {
             "reshade::addon_event::init_swapchain",
             "reshade::addon_event::finish_present",
             "reshade::addon_event::present",
-            "reshade::addon_event::reshade_present"
+            "reshade::addon_event::reshade_present",
+            "reshade::addon_event::init_command_list",
+            "reshade::addon_event::execute_command_list",
+            "reshade::addon_event::bind_pipeline"
         };
         
         uint32_t total_events = 0;
-        for (int i = 0; i < 7; i++) {
+        for (int i = 0; i < 10; i++) {
             uint32_t count = g_swapchain_event_counters[i].load();
             total_events += count;
             

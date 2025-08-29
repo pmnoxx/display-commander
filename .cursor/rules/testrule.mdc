@@ -8,12 +8,13 @@ Make changes conside.
 Avoid code duplication.
 Avoid redeclaring structures from headers.
 Avoid creating dummy code, for example `timing_info.device_name = "GPU Display";`, where "GPU Display" is the only option.
-Prefer creating non-working code fully commented out.\
+Prefer creating non-working code fully commented out.
 Prefer preserving original types of variables.
 
 If user prompt contains mistake, isn't explained very well, or would lead to buggy solution with side effects instead of fullfilling full query, explain the issue, and ask for clarification. 
 
-
+Costs / limiting number of tokens isn't a priority. It's prefered to double/trible check to make sure everything is correct without making assumptions.
+User is cost insensitive.
 
 Project submodules:
 - Reshade (for ImGui deps)

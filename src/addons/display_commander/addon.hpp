@@ -249,6 +249,11 @@ void OnPresentUpdateBefore(reshade::api::command_queue *, reshade::api::swapchai
 void OnPresentUpdateBefore2(reshade::api::effect_runtime* runtime);
 void OnPresentUpdateAfter(reshade::api::command_queue* /*queue*/, reshade::api::swapchain* swapchain);
 
+// Additional event handlers for frame timing and composition
+void OnInitCommandList(reshade::api::command_list* cmd_list);
+void OnExecuteCommandList(reshade::api::command_queue* queue, reshade::api::command_list* cmd_list);
+void OnBindPipeline(reshade::api::command_list* cmd_list, reshade::api::pipeline_stage stages, reshade::api::pipeline pipeline);
+
 // HDR10 colorspace override status for UI display
 extern std::atomic<std::shared_ptr<std::string>> g_hdr10_override_status;
 

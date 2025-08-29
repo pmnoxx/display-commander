@@ -241,13 +241,13 @@ void VBlankMonitor::MonitoringThread() {
                 double expected_scanline = expected_current_scanline(mid_point, timing_info[0].total_height, false);
                 
                 std::this_thread::sleep_for(std::chrono::microseconds(100)); // 0.1ms
-                {
+             /*   {
                     std::ostringstream oss2;
                     oss2 << " scan.ScanLine(Delta): " << int(abs(scan.ScanLine - expected_current_scanline(mid_point, timing_info[0].total_height, true)));
                     on_present_ended.store(false);
                     LogInfo(oss2.str().c_str());   
                     lastScanLine = scan.ScanLine;
-                }
+                }*/
 
                 double new_correction_lines_delta = scan.ScanLine - expected_scanline; 
                 correction_lines_delta.store(new_correction_lines_delta);

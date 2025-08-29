@@ -81,6 +81,11 @@ void SetReflexSleepMode(reshade::api::swapchain* swapchain);
 void OnBeginRenderPass(reshade::api::command_list* cmd_list, uint32_t count, const reshade::api::render_pass_render_target_desc* rts, const reshade::api::render_pass_depth_stencil_desc* ds);
 void OnEndRenderPass(reshade::api::command_list* cmd_list);
 
+// Command list and queue lifecycle hooks
+void OnInitCommandList(reshade::api::command_list* cmd_list);
+void OnInitCommandQueue(reshade::api::command_queue* queue);
+void OnResetCommandList(reshade::api::command_list* cmd_list);
+
 // Global flags for Reflex management
 extern std::atomic<bool> g_reflex_settings_changed;
 

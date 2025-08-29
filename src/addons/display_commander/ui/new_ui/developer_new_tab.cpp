@@ -217,7 +217,7 @@ void DrawNvapiSettings() {
     ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "=== NVAPI Settings ===");
     
     // HDR10 Colorspace Fix
-    if (CheckboxSetting(g_developerTabSettings.fix_hdr10_colorspace, "Fix NVAPI HDR10 Colorspace for reshade addon")) {
+    if (CheckboxSetting(g_developerTabSettings.fix_hdr10_colorspace, "Set ReShade Effects Processing to HDR10 Colorspace")) {
         s_fix_hdr10_colorspace.store(g_developerTabSettings.fix_hdr10_colorspace.GetValue());
         s_restart_needed_nvapi.store(true);
     }

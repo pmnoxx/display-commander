@@ -106,6 +106,8 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
       
       // Register additional event handlers for frame timing and composition
       reshade::register_event<reshade::addon_event::init_command_list>(OnInitCommandList);
+      reshade::register_event<reshade::addon_event::init_command_queue>(OnInitCommandQueue);
+      reshade::register_event<reshade::addon_event::reset_command_list>(OnResetCommandList);
    //   reshade::register_event<reshade::addon_event::execute_command_list>(OnExecuteCommandList);
    //   reshade::register_event<reshade::addon_event::bind_pipeline>(OnBindPipeline);
       // Register overlay directly
@@ -138,6 +140,8 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
       
       // Unregister additional event handlers for frame timing and composition
       reshade::unregister_event<reshade::addon_event::init_command_list>(OnInitCommandList);
+      reshade::unregister_event<reshade::addon_event::init_command_queue>(OnInitCommandQueue);
+      reshade::unregister_event<reshade::addon_event::reset_command_list>(OnResetCommandList);
    //   reshade::unregister_event<reshade::addon_event::execute_command_list>(OnExecuteCommandList);
   //    reshade::unregister_event<reshade::addon_event::bind_pipeline>(OnBindPipeline);
       // Unregister overlay

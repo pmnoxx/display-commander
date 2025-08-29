@@ -95,7 +95,7 @@ float GetSyncIntervalCoefficient(float sync_interval_value) {
 // Capture sync interval during create_swapchain
 bool OnCreateSwapchainCapture(reshade::api::device_api /*api*/, reshade::api::swapchain_desc& desc, void* hwnd) {
   // Reset all event counters on new swapchain creation
-  for (int i = 0; i < 10; i++) {
+  for (int i = 0; i < 12; i++) {
     g_swapchain_event_counters[i].store(0);
   }
   g_swapchain_event_total_count.store(0);
@@ -491,6 +491,24 @@ void OnInitCommandList(reshade::api::command_list* cmd_list) {
   
   // Log command list creation for debugging
   LogDebug("Command list initialized");
+}
+
+void OnInitCommandQueue(reshade::api::command_queue* queue) {
+  // Increment event counter
+  g_swapchain_event_counters[SWAPCHAIN_EVENT_INIT_COMMAND_QUEUE].fetch_add(1);
+  g_swapchain_event_total_count.fetch_add(1);
+  
+  // Log command queue creation for debugging
+  LogDebug("Command queue initialized");
+}
+
+void OnResetCommandList(reshade::api::command_list* cmd_list) {
+  // Increment event counter
+  g_swapchain_event_counters[SWAPCHAIN_EVENT_RESET_COMMAND_LIST].fetch_add(1);
+  g_swapchain_event_total_count.fetch_add(1);
+  
+  // Log command list reset for debugging
+  LogDebug("Command list reset");
 }
 
 void OnExecuteCommandList(reshade::api::command_queue* queue, reshade::api::command_list* cmd_list) {

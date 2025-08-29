@@ -151,7 +151,7 @@ void UpdateHdr10OverrideTimestamp(const std::string& timestamp);
 extern std::atomic<bool> s_enable_unstable_reshade_features;
 
 // Resolution Override Settings (Experimental)
-// Removed: s_enable_resolution_override is now handled by BoolSetting in developer tab settings
+extern std::atomic<bool> s_enable_resolution_override;
 extern std::atomic<int> s_override_resolution_width;
 extern std::atomic<int> s_override_resolution_height;
 

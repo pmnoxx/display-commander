@@ -2,6 +2,7 @@
 
 #include "settings_wrapper.hpp"
 #include <vector>
+#include <atomic>
 
 namespace ui::new_ui {
 
@@ -30,8 +31,8 @@ public:
     ComboSetting fps_limiter_mode;
     BoolSettingRef synchronize_fps_limit_by_render_start;
     IntSetting scanline_offset;
-    FloatSetting fps_limit;
-    FloatSetting fps_limit_background;
+    FloatSettingRef fps_limit;
+    FloatSettingRef fps_limit_background;
     
     // VSync & Tearing
     BoolSettingRef force_vsync_on;

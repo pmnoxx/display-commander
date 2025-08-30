@@ -10,10 +10,30 @@
 // Forward declaration
 struct DisplayTimingInfo;
 
+// External timing function
+extern LONGLONG get_now_ticks();
+
 // Minimal D3DKMT interop (definitions adapted from d3dkmthk.h)
 typedef UINT D3DDDI_VIDEO_PRESENT_SOURCE_ID;
 typedef UINT D3DKMT_HANDLE;
 typedef LONG NTSTATUS;
+
+// NTSTATUS constants
+#ifndef STATUS_SUCCESS
+#define STATUS_SUCCESS ((NTSTATUS)0x00000000L)
+#endif
+#ifndef STATUS_ACCESS_VIOLATION
+#define STATUS_ACCESS_VIOLATION ((NTSTATUS)0xC0000005L)
+#endif
+#ifndef STATUS_INVALID_PARAMETER
+#define STATUS_INVALID_PARAMETER ((NTSTATUS)0xC000000DL)
+#endif
+#ifndef STATUS_OBJECT_NAME_NOT_FOUND
+#define STATUS_OBJECT_NAME_NOT_FOUND ((NTSTATUS)0xC0000034L)
+#endif
+#ifndef STATUS_OBJECT_PATH_NOT_FOUND
+#define STATUS_OBJECT_PATH_NOT_FOUND ((NTSTATUS)0xC000003AL)
+#endif
 
 struct D3DKMT_OPENADAPTERFROMGDIDISPLAYNAME {
     WCHAR DeviceName[32];

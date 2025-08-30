@@ -146,8 +146,22 @@ std::wstring VBlankMonitor::GetDisplayNameFromWindow(HWND hwnd) {
 
 bool VBlankMonitor::UpdateDisplayBindingFromWindow(HWND hwnd) {
     // Resolve display name
-    std::wstring name = GetDisplayNameFromWindow(hwnd);
-    if (name.empty()) return false;
+    std::wstring name;
+    if (hwnd != nullptr) {
+        name = GetDisplayNameFromWindow(hwnd);
+    } else {
+        // Fallback: use first available display
+        auto timing_info = QueryDisplayTimingInfo();
+        if (!timing_info.empty()) {
+            name = timing_info[0].display_name;
+        }
+    }
+    
+    if (name.empty()) {
+        LogInfo("No display name available for binding");
+        return false;
+    }
+    
     if (name == m_bound_display_name && m_hAdapter != 0) return true;
 
     // Rebind
@@ -166,26 +180,47 @@ bool VBlankMonitor::UpdateDisplayBindingFromWindow(HWND hwnd) {
     D3DKMT_OPENADAPTERFROMGDIDISPLAYNAME openReq{};
     wcsncpy_s(openReq.DeviceName, name.c_str(), _TRUNCATE);
     
-    if (reinterpret_cast<NTSTATUS (WINAPI*)(D3DKMT_OPENADAPTERFROMGDIDISPLAYNAME*)>(m_pfnOpenAdapterFromGdiDisplayName)(&openReq) == 0) {
+    auto open_status = reinterpret_cast<NTSTATUS (WINAPI*)(D3DKMT_OPENADAPTERFROMGDIDISPLAYNAME*)>(m_pfnOpenAdapterFromGdiDisplayName)(&openReq);
+    if (open_status == STATUS_SUCCESS) {
         m_hAdapter = openReq.hAdapter;
         m_vidpn_source_id = openReq.VidPnSourceId;
         m_bound_display_name = name;
         
         std::ostringstream oss;
-        oss << "VBlank monitor bound to display: " << name.length() << " characters";
-        ::LogInfo(oss.str().c_str());
+        oss << "VBlank monitor successfully bound to display: " << WideCharToUTF8(name) << " (Adapter: " << m_hAdapter << ", VidPnSourceId: " << m_vidpn_source_id << ")";
+        LogInfo(oss.str().c_str());
         return true;
+    } else {
+        std::ostringstream oss;
+        oss << "Failed to open adapter for display: " << WideCharToUTF8(name) << " (Status: " << open_status << ")";
+        LogInfo(oss.str().c_str());
     }
 
     return false;
 }
 
 bool VBlankMonitor::EnsureAdapterBinding() {
-    return (m_hAdapter != 0);
+    if (m_hAdapter != 0) {
+        return true;
+    }
     
     // Try to bind to foreground window if no specific binding
- //   HWND hwnd = GetForegroundWindow();
-   // return UpdateDisplayBindingFromWindow(hwnd);
+    HWND hwnd = GetForegroundWindow();
+    if (hwnd != nullptr) {
+        return UpdateDisplayBindingFromWindow(hwnd);
+    }
+    
+    // Fallback: try to bind to any available display
+    auto timing_info = QueryDisplayTimingInfo();
+    if (!timing_info.empty()) {
+        // Try to bind to the first available display
+        std::wstring display_name = timing_info[0].display_name;
+        if (!display_name.empty()) {
+            return UpdateDisplayBindingFromWindow(nullptr); // This will use the fallback logic
+        }
+    }
+    
+    return false;
 }
 
 LONGLONG get_now_ticks() {
@@ -267,6 +302,18 @@ void VBlankMonitor::MonitoringThread() {
 
     int lastScanLine = 0;
     while (!m_should_stop.load()) {
+        
+        // Ensure we have a valid adapter binding
+        if (m_hAdapter == 0 || m_vidpn_source_id == 0) {
+            LogInfo("Invalid adapter binding detected, attempting to rebind...");
+            if (!EnsureAdapterBinding()) {
+                LogInfo("Failed to establish adapter binding, sleeping...");
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                continue;
+            }
+            LogInfo("Adapter binding established successfully");
+        }
+        
         LONGLONG ticks_per_refresh_local = ticks_per_refresh.load();
 
         D3DKMT_GETSCANLINE scan{};
@@ -275,10 +322,28 @@ void VBlankMonitor::MonitoringThread() {
 
         LONGLONG start_ticks = get_now_ticks();
 
-        int expected_scanline = expected_current_scanline(start_ticks, current_display_timing.total_height, true);
+        int expected_scanline_tmp = expected_current_scanline(start_ticks, current_display_timing.total_height, true);
 
         // don't run during vblank
-        if (expected_scanline >= 50 && expected_scanline <= 300 &&reinterpret_cast<NTSTATUS (WINAPI*)(D3DKMT_GETSCANLINE*)>(m_pfnGetScanLine)(&scan) == 0) {
+        // expected_scanline_tmp >= 50 && expected_scanline_tmp <= current_display_timing.total_height / 2 &&
+        
+        // Ensure the function pointer is valid
+        if (m_pfnGetScanLine == nullptr) {
+            LogInfo("GetScanLine function pointer is null, attempting to reload...");
+            if (!LoadProcCached(m_pfnGetScanLine, L"gdi32.dll", "D3DKMTGetScanLine")) {
+                LogInfo("Failed to load GetScanLine function, sleeping...");
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                continue;
+            }
+        }
+        
+        auto nt_status = reinterpret_cast<NTSTATUS (WINAPI*)(D3DKMT_GETSCANLINE*)>(m_pfnGetScanLine)(&scan);
+        if (nt_status == STATUS_SUCCESS) {
+            {
+                std::ostringstream oss;
+                oss << "Scanline: " << scan.ScanLine << " ticks, expected_scanline: " << expected_scanline_tmp;
+                LogInfo(oss.str().c_str());
+            }
             LONGLONG end_ticks = get_now_ticks();
             LONGLONG duration = end_ticks - start_ticks;
 
@@ -290,20 +355,57 @@ void VBlankMonitor::MonitoringThread() {
             }
             if (duration < 2 * min_scanline_duration) {
                 double expected_scanline = expected_current_scanline(mid_point, current_display_timing.total_height, false);
-                
+                {
+                    std::ostringstream oss;
+                    oss << "Scanline diff: " << abs(scan.ScanLine - expected_current_scanline(mid_point, current_display_timing.total_height, true)) << " ticks";
+                    LogInfo(oss.str().c_str());
+                }
                 double new_correction_lines_delta = scan.ScanLine - expected_scanline; 
                 correction_lines_delta.store(new_correction_lines_delta);
             }
+        } else {
+           std::ostringstream oss;
+           oss << "Error getting scanline: " << nt_status;
+           
+           // Provide more specific error information
+           if (nt_status == STATUS_ACCESS_VIOLATION) {
+               oss << " (STATUS_ACCESS_VIOLATION - Invalid adapter handle or VidPn source ID)";
+           } else if (nt_status == STATUS_INVALID_PARAMETER) {
+               oss << " (STATUS_INVALID_PARAMETER - Invalid parameters)";
+           } else if (nt_status == STATUS_OBJECT_NAME_NOT_FOUND) {
+               oss << " (STATUS_OBJECT_NAME_NOT_FOUND - Display object not found)";
+           } else if (nt_status == STATUS_OBJECT_PATH_NOT_FOUND) {
+               oss << " (STATUS_OBJECT_PATH_NOT_FOUND - Display path not found)";
+           }
+           
+           oss << " - Adapter: " << m_hAdapter << ", VidPnSourceId: " << m_vidpn_source_id;
+           LogInfo(oss.str().c_str());
+           
+           // Try to rebind if we get access violation
+           if (nt_status == STATUS_ACCESS_VIOLATION) {
+               LogInfo("Attempting to rebind adapter due to access violation...");
+               if (EnsureAdapterBinding()) {
+                   LogInfo("Successfully rebound adapter");
+               } else {
+                   LogInfo("Failed to rebind adapter");
+               }
+           }
         }
         std::this_thread::sleep_for(std::chrono::microseconds(100)); // 0.1ms
 
         // auto switch to the correct monitor
-        if (expected_scanline < lastScanLine) {
+        if (expected_scanline_tmp < lastScanLine) {
             hwnd = g_last_swapchain_hwnd.load();
             current_display_timing = GetDisplayTimingInfoForWindow(hwnd);
+            
+            // Also refresh adapter binding when switching monitors
+            if (hwnd != nullptr) {
+                LogInfo("Switching monitors, refreshing adapter binding...");
+                UpdateDisplayBindingFromWindow(hwnd);
+            }
         }
 
-        lastScanLine = expected_scanline;
+        lastScanLine = expected_scanline_tmp;
     }
     
     ::LogInfo("VBlank monitoring thread: exiting main loop");

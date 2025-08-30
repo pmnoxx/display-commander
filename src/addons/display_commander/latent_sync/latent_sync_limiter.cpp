@@ -82,7 +82,7 @@ bool LatentSyncLimiter::UpdateDisplayBindingFromWindow(HWND hwnd) {
 
     D3DKMT_OPENADAPTERFROMGDIDISPLAYNAME openReq{};
     wcsncpy_s(openReq.DeviceName, name.c_str(), _TRUNCATE);
-    if ( reinterpret_cast<NTSTATUS (WINAPI*)(D3DKMT_OPENADAPTERFROMGDIDISPLAYNAME*)>(m_pfnOpenAdapterFromGdiDisplayName)(&openReq) == 0 ) {
+    if ( reinterpret_cast<NTSTATUS (WINAPI*)(D3DKMT_OPENADAPTERFROMGDIDISPLAYNAME*)>(m_pfnOpenAdapterFromGdiDisplayName)(&openReq) == STATUS_SUCCESS ) {
         m_hAdapter = openReq.hAdapter;
         m_vidpn_source_id = openReq.VidPnSourceId;
         m_bound_display_name = name;
@@ -155,7 +155,7 @@ void LatentSyncLimiter::LimitFrameRate() {
     {
         double expected_scanline = expected_current_scanline(now_ticks, total_height, true);
         std::ostringstream oss;
-        oss << " expected_current_scanline: " << expected_scanline;
+        oss << " fpslimiter expected_current_scanline: " << expected_scanline;
         oss << " target_line: " << target_line;
         LogInfo(oss.str().c_str());   
     }

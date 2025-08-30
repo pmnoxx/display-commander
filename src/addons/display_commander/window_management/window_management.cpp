@@ -247,9 +247,7 @@ void  CalculateWindowState(HWND hwnd, const char* reason) {
     LogDebug("CalculateWindowState: target_w=" + std::to_string(local_state.target_w) + ", target_h=" + std::to_string(local_state.target_h));
 
     // Publish snapshot under a lightweight lock
-            g_window_state_lock.lock();
-        *g_window_state = local_state;
-        g_window_state_lock.unlock();
+    g_window_state.store(std::make_shared<GlobalWindowState>(local_state));
   }
 }
 
@@ -262,40 +260,41 @@ void ApplyWindowChange(HWND hwnd, const char* reason, bool force_apply) {
 
   
   // Copy the calculated state into a local snapshot for consistent use
-          g_window_state_lock.lock();
-        GlobalWindowState s = *g_window_state;
-        g_window_state_lock.unlock();
+  auto window_state = g_window_state.load();
+  if (window_state) {
+    auto s = *window_state;
 
-  if (s.show_cmd == SW_SHOWMAXIMIZED) {
-    ShowWindow(hwnd, SW_RESTORE);
-    return;
-  }
-
-  // Check if any changes are needed
-  if (s.needs_resize || s.needs_move || s.style_changed || s.style_changed_ex) {
-    if (s.target_w <= 16 || s.target_h <= 16) {
-      std::ostringstream oss;
-      oss << "ApplyWindowChange: Invalid target size " << s.target_w << "x" << s.target_h << ", skipping";
-      LogWarn(oss.str().c_str());
+    if (s.show_cmd == SW_SHOWMAXIMIZED) {
+      ShowWindow(hwnd, SW_RESTORE);
       return;
     }
-    if (s.style_changed) {
-      LogDebug("ApplyWindowChange: Setting new style and ex style");
-      SetWindowLongPtrW(hwnd, GWL_STYLE, s.new_style);
-    }
-    if (s.style_changed_ex) {
-      LogDebug("ApplyWindowChange: Setting new ex style");
-      SetWindowLongPtrW(hwnd, GWL_EXSTYLE, s.new_ex_style);
-    }
 
-    UINT flags = SWP_NOZORDER | SWP_NOOWNERZORDER;   
-    
-    // Apply all changes in a single SetWindowPos call
-    if (!s.needs_resize) flags |= SWP_NOSIZE;
-    if (!s.needs_move) flags |= SWP_NOMOVE;
-    if (s.style_changed || s.style_changed_ex) flags |= SWP_FRAMECHANGED;
-    
-    SetWindowPos(hwnd, nullptr, s.target_x, s.target_y, s.target_w, s.target_h, flags);
+    // Check if any changes are needed
+    if (s.needs_resize || s.needs_move || s.style_changed || s.style_changed_ex) {
+      if (s.target_w <= 16 || s.target_h <= 16) {
+        std::ostringstream oss;
+        oss << "ApplyWindowChange: Invalid target size " << s.target_w << "x" << s.target_h << ", skipping";
+        LogWarn(oss.str().c_str());
+        return;
+      }
+      if (s.style_changed) {
+        LogDebug("ApplyWindowChange: Setting new style and ex style");
+        SetWindowLongPtrW(hwnd, GWL_STYLE, s.new_style);
+      }
+      if (s.style_changed_ex) {
+        LogDebug("ApplyWindowChange: Setting new ex style");
+        SetWindowLongPtrW(hwnd, GWL_EXSTYLE, s.new_ex_style);
+      }
+
+      UINT flags = SWP_NOZORDER | SWP_NOOWNERZORDER;   
+      
+      // Apply all changes in a single SetWindowPos call
+      if (!s.needs_resize) flags |= SWP_NOSIZE;
+      if (!s.needs_move) flags |= SWP_NOMOVE;
+      if (s.style_changed || s.style_changed_ex) flags |= SWP_FRAMECHANGED;
+      
+      SetWindowPos(hwnd, nullptr, s.target_x, s.target_y, s.target_w, s.target_h, flags);
+    }
   }
 }
 

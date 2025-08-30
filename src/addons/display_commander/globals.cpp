@@ -139,8 +139,7 @@ std::atomic<bool> s_force_continuous_rendering{true}; // Force continuous render
 // FOCUS LOSS DETECTION VARIABLES REMOVED - Focus spoofing is now handled by Win32 hooks
 
 // Global window state instance
-std::shared_ptr<GlobalWindowState> g_window_state = std::make_shared<GlobalWindowState>();
-SpinLock g_window_state_lock;
+std::atomic<std::shared_ptr<GlobalWindowState>> g_window_state = std::make_shared<GlobalWindowState>();
 
 // Global background window manager instance
 BackgroundWindowManager g_backgroundWindowManager;

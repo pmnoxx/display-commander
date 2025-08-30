@@ -221,9 +221,10 @@ extern std::unique_ptr<ReflexManager> g_reflexManager;
 // Global flag for Reflex settings changes
 extern std::atomic<bool> g_reflex_settings_changed;
 
-// Global window state instance
-extern std::shared_ptr<GlobalWindowState> g_window_state;
-extern SpinLock g_window_state_lock;
+// Global window state instance (lock-free)
+extern std::atomic<std::shared_ptr<GlobalWindowState>> g_window_state;
+
+
 
 // Lock-free ring buffer for recent FPS samples (60s window at ~240 Hz -> 14400 max)
 constexpr size_t kPerfRingCapacity = 16384;

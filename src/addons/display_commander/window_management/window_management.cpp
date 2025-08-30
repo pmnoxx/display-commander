@@ -89,6 +89,12 @@ int FindTargetMonitor(HWND hwnd, const RECT& wr_current, float target_monitor_in
 // First function: Calculate and update global window state
 void  CalculateWindowState(HWND hwnd, const char* reason) {
   if (hwnd == nullptr) return;
+  
+  // First, determine the target monitor using display cache (no FindTargetMonitor / MONITORINFOEXW)
+  if (!display_cache::g_displayCache.IsInitialized()) {
+    display_cache::g_displayCache.Initialize();
+  }
+
 
   // Build a local snapshot to avoid readers observing partial state
   GlobalWindowState local_state;
@@ -132,20 +138,17 @@ void  CalculateWindowState(HWND hwnd, const char* reason) {
   
   local_state.style_mode = WindowStyleMode::BORDERLESS;
 
-  // First, determine the target monitor using display cache (no FindTargetMonitor / MONITORINFOEXW)
-  if (!display_cache::g_displayCache.IsInitialized()) {
-    display_cache::g_displayCache.Initialize();
-  }
-
   HMONITOR target_monitor_handle = nullptr;
   int target_monitor_index = 0;
-  const size_t display_count = display_cache::g_displayCache.GetDisplayCount();
+  auto displays = display_cache::g_displayCache.GetDisplays();
+  size_t display_count = displays ? displays->size() : 0;
 
   int requested_monitor = static_cast<int>(s_target_monitor_index.load()); // 0 = Auto (Current), 1..N = explicit
   if (requested_monitor > 0 && display_count > 0) {
     // Clamp to available displays; display indices are 0..display_count-1 in cache, but setting uses 1..N
     target_monitor_index = (std::max)(0, (std::min)(requested_monitor - 1, static_cast<int>(display_count) - 1));
-    if (const auto *disp = display_cache::g_displayCache.GetDisplay(static_cast<size_t>(target_monitor_index))) {
+    if (target_monitor_index < static_cast<int>(display_count) && (*displays)[target_monitor_index]) {
+      const auto *disp = (*displays)[target_monitor_index].get();
       target_monitor_handle = disp->monitor_handle;
     }
   } else {
@@ -153,8 +156,7 @@ void  CalculateWindowState(HWND hwnd, const char* reason) {
     target_monitor_handle = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
     // Find the corresponding display index in the cache
     for (size_t i = 0; i < display_count; ++i) {
-      const auto *disp = display_cache::g_displayCache.GetDisplay(i);
-      if (disp && disp->monitor_handle == target_monitor_handle) {
+      if ((*displays)[i] && (*displays)[i]->monitor_handle == target_monitor_handle) {
         target_monitor_index = static_cast<int>(i);
         break;
       }
@@ -163,7 +165,8 @@ void  CalculateWindowState(HWND hwnd, const char* reason) {
 
   // Get current refresh rate from cache
   display_cache::RationalRefreshRate tmp_refresh;
-  if (const auto *disp = display_cache::g_displayCache.GetDisplay(static_cast<size_t>(target_monitor_index))) {
+  if (target_monitor_index < static_cast<int>(display_count) && (*displays)[target_monitor_index]) {
+    const auto *disp = (*displays)[target_monitor_index].get();
     tmp_refresh = disp->current_refresh_rate;
     local_state.current_monitor_index = target_monitor_index;
     local_state.current_monitor_refresh_rate = tmp_refresh;

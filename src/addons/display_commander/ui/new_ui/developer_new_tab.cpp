@@ -5,19 +5,14 @@
 #include "../../nvapi/nvapi_fullscreen_prevention.hpp"
 #include "../../nvapi/nvapi_hdr_monitor.hpp"
 #include "../ui_common.hpp"
+#include "../../globals.hpp"
+
 #include "../../display_cache.hpp"
 #include <sstream>
 #include <iomanip>
 #include <thread>
 #include <atomic>
 
-// External declarations for Reflex settings
-extern std::atomic<bool> s_reflex_enabled;
-extern std::atomic<bool> s_reflex_low_latency_mode;
-extern std::atomic<bool> s_reflex_low_latency_boost;
-extern std::atomic<bool> s_reflex_use_markers;
-extern std::atomic<bool> s_reflex_debug_output;
-extern std::atomic<bool> g_reflex_settings_changed;
 
 static std::atomic<bool> s_restart_needed_nvapi(false);
 
@@ -80,6 +75,14 @@ void DrawDeveloperSettings() {
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Enable experimental features that rely on a custom dxgi.dll build. Off by default.");
+    }
+    
+    // Performance optimization: Flush before present
+    if (CheckboxSetting(g_developerTabSettings.flush_before_present, "Flush Command Queue Before Present")) {
+        ::g_flush_before_present.store(g_developerTabSettings.flush_before_present.GetValue());
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Flush command queue before ReShade shaders process. Reduces latency and increases FPS by ensuring GPU commands are processed before shader execution.");
     }
     
     // Prevent Fullscreen (global)

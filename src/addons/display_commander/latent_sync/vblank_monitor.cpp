@@ -6,6 +6,7 @@
 #include <winnt.h>
 #include "../utils.hpp"
 #include "../display/query_display.hpp"
+#include "../../../utils/timing.hpp"
 
 // Forward declaration of the global variable
 extern std::atomic<HWND> g_last_swapchain_hwnd;
@@ -223,11 +224,7 @@ bool VBlankMonitor::EnsureAdapterBinding() {
     return false;
 }
 
-LONGLONG get_now_ticks() {
-    LARGE_INTEGER now_ticks = { };
-    QueryPerformanceCounter(&now_ticks);
-    return now_ticks.QuadPart;
-}
+
 
 double expected_current_scanline(LONGLONG now_ticks, int total_height, bool add_correction) {
     double cur_scanline = (now_ticks % ticks_per_refresh.load()) / (1.0 * ticks_per_refresh.load() / total_height);

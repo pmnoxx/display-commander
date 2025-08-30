@@ -3,10 +3,12 @@
 #include "audio/audio_management.hpp"
 #include <dxgi1_4.h>
 #include "utils.hpp"
+#include "utils/timing.hpp"
 #include <sstream>
 #include <unordered_map>
 #include <mutex>
 #include <minwindef.h>
+#include <atomic>
 
 // Use renodx2 utilities for swapchain color space changes
 #include <utils/swapchain.hpp>
@@ -15,6 +17,9 @@
 
 static std::atomic<LONGLONG> g_present_start_time{0};
 std::atomic<double> g_present_duration{0.0};
+
+// Render start time tracking
+std::atomic<LONGLONG> g_render_start_time{0};
 
 // Frame lifecycle hooks for custom FPS limiter
 void OnBeginRenderPass(reshade::api::command_list* cmd_list, uint32_t count, const reshade::api::render_pass_render_target_desc* rts, const reshade::api::render_pass_depth_stencil_desc* ds) {
@@ -59,6 +64,59 @@ void OnEndRenderPass(reshade::api::command_list* cmd_list) {
     }
 }
 
+// Draw event handlers for render timing
+bool OnDraw(reshade::api::command_list* cmd_list, uint32_t vertex_count, uint32_t instance_count, uint32_t first_vertex, uint32_t first_instance) {
+    // Increment event counter
+    g_swapchain_event_counters[SWAPCHAIN_EVENT_DRAW].fetch_add(1);
+    g_swapchain_event_total_count.fetch_add(1);
+    
+    // Set render start time if it's 0 (first draw call of the frame)
+    LONGLONG expected = 0;
+    if (g_render_start_time.compare_exchange_strong(expected, get_now_ticks())) {
+        // Successfully set the timestamp for the first draw call
+    }
+    if (g_app_in_background.load(std::memory_order_acquire)) {
+      return true; // Skip the draw call
+    }
+    
+    return false; // Don't skip the draw call
+}
+
+bool OnDrawIndexed(reshade::api::command_list* cmd_list, uint32_t index_count, uint32_t instance_count, uint32_t first_index, int32_t vertex_offset, uint32_t first_instance) {
+    // Increment event counter
+    g_swapchain_event_counters[SWAPCHAIN_EVENT_DRAW_INDEXED].fetch_add(1);
+    g_swapchain_event_total_count.fetch_add(1);
+    
+    // Set render start time if it's 0 (first draw call of the frame)
+    LONGLONG expected = 0;
+    if (g_render_start_time.compare_exchange_strong(expected, get_now_ticks())) {
+        // Successfully set the timestamp for the first draw call
+    }
+    if (g_app_in_background.load(std::memory_order_acquire)) {
+      return true; // Skip the draw call
+    }
+    
+    return false; // Don't skip the draw call
+}
+
+bool OnDrawOrDispatchIndirect(reshade::api::command_list* cmd_list, reshade::api::indirect_command type, reshade::api::resource buffer, uint64_t offset, uint32_t draw_count, uint32_t stride) {
+    // Increment event counter
+    g_swapchain_event_counters[SWAPCHAIN_EVENT_DRAW_OR_DISPATCH_INDIRECT].fetch_add(1);
+    g_swapchain_event_total_count.fetch_add(1);
+    
+    // Set render start time if it's 0 (first draw call of the frame)
+    LONGLONG expected = 0;
+    if (g_render_start_time.compare_exchange_strong(expected, get_now_ticks())) {
+        // Successfully set the timestamp for the first draw call
+    }
+    
+    if (g_app_in_background.load(std::memory_order_acquire)) {
+      return true; // Skip the draw call
+    }
+
+    return false; // Don't skip the draw call
+}
+
 // Track last requested sync interval per HWND detected at create_swapchain
 namespace {
 static std::mutex g_sync_mutex;
@@ -93,7 +151,7 @@ float GetSyncIntervalCoefficient(float sync_interval_value) {
 // Capture sync interval during create_swapchain
 bool OnCreateSwapchainCapture(reshade::api::device_api /*api*/, reshade::api::swapchain_desc& desc, void* hwnd) {
   // Reset all event counters on new swapchain creation
-  for (int i = 0; i < 13; i++) {
+  for (int i = 0; i < 16; i++) {
     g_swapchain_event_counters[i].store(0);
   }
   g_swapchain_event_total_count.store(0);
@@ -362,7 +420,9 @@ void OnPresentUpdateBefore(
     reshade::api::command_queue* /*queue*/, reshade::api::swapchain* swapchain,
     const reshade::api::rect* /*source_rect*/, const reshade::api::rect* /*dest_rect*/,
     uint32_t /*dirty_rect_count*/, const reshade::api::rect* /*dirty_rects*/) {
-  flush_command_queue(); // Flush command queue before addons start processing to reduce rendering latency caused by reshade
+  if (g_flush_before_present.load()) {
+    flush_command_queue(); // Flush command queue before addons start processing to reduce rendering latency caused by reshade
+  }
   
   // Increment event counter
   g_swapchain_event_counters[SWAPCHAIN_EVENT_PRESENT_UPDATE_BEFORE].fetch_add(1);

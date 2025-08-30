@@ -192,6 +192,9 @@ extern std::atomic<bool> g_reflex_active;
 // Present duration tracking
 extern std::atomic<double> g_present_duration;
 
+// Render start time tracking
+extern std::atomic<LONGLONG> g_render_start_time;
+
 // Backbuffer dimensions
 extern std::atomic<int> g_last_backbuffer_width;
 extern std::atomic<int> g_last_backbuffer_height;
@@ -241,6 +244,9 @@ extern std::atomic<bool> s_enable_unstable_reshade_features;
 // Keyboard Shortcut Settings (Experimental)
 extern std::atomic<bool> s_enable_mute_unmute_shortcut;
 
+// Performance optimization settings
+extern std::atomic<bool> g_flush_before_present;
+
 // Monitoring thread
 extern std::atomic<bool> g_monitoring_thread_running;
 extern std::thread g_monitoring_thread;
@@ -250,7 +256,7 @@ extern std::atomic<int> s_spoof_fullscreen_state;
 extern std::atomic<int> s_spoof_window_focus;
 
 // Swapchain event counters - reset on each swapchain creation
-extern std::atomic<uint32_t> g_swapchain_event_counters[13]; // Array for all On* events
+extern std::atomic<uint32_t> g_swapchain_event_counters[16]; // Array for all On* events
 extern std::atomic<uint32_t> g_swapchain_event_total_count; // Total events across all types
 
 // Swapchain event counter indices
@@ -267,5 +273,8 @@ enum SwapchainEventIndex {
     SWAPCHAIN_EVENT_BIND_PIPELINE = 9,
     SWAPCHAIN_EVENT_INIT_COMMAND_QUEUE = 10,
     SWAPCHAIN_EVENT_RESET_COMMAND_LIST = 11,
-    SWAPCHAIN_EVENT_PRESENT_FLAGS = 12
+    SWAPCHAIN_EVENT_PRESENT_FLAGS = 12,
+    SWAPCHAIN_EVENT_DRAW = 13,
+    SWAPCHAIN_EVENT_DRAW_INDEXED = 14,
+    SWAPCHAIN_EVENT_DRAW_OR_DISPATCH_INDIRECT = 15
 };

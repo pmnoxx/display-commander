@@ -24,6 +24,7 @@ extern std::atomic<bool> s_enable_unstable_reshade_features;
 
 extern std::atomic<bool> s_enable_mute_unmute_shortcut;
 extern std::atomic<float> s_fps_extra_wait_ms;
+extern std::atomic<bool> g_flush_before_present;
 
 namespace ui::new_ui {
 
@@ -48,6 +49,7 @@ DeveloperTabSettings::DeveloperTabSettings()
     , enable_unstable_reshade_features("EnableUnstableReShadeFeatures", s_enable_unstable_reshade_features, false, "DisplayCommander")
 
     , enable_mute_unmute_shortcut("EnableMuteUnmuteShortcut", s_enable_mute_unmute_shortcut, false, "DisplayCommander")
+    , flush_before_present("FlushBeforePresent", g_flush_before_present, true, "DisplayCommander")
 {
 }
 
@@ -71,6 +73,7 @@ void DeveloperTabSettings::LoadAll() {
     enable_unstable_reshade_features.Load();
 
     enable_mute_unmute_shortcut.Load();
+    flush_before_present.Load();
     
     // All Ref classes automatically sync with global variables
 }
@@ -99,7 +102,8 @@ std::vector<ui::new_ui::SettingBase*> DeveloperTabSettings::GetAllSettings() {
         &fps_extra_wait_ms,
         &enable_unstable_reshade_features,
 
-        &enable_mute_unmute_shortcut
+        &enable_mute_unmute_shortcut,
+        &flush_before_present
     };
 }
 

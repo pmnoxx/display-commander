@@ -3,7 +3,12 @@
 #include <algorithm>
 #include <cmath>
 #include <sstream>
-#include "../logging.hpp"
+#include "../addons/display_commander/utils.hpp"
+
+// NTSTATUS constants if not already defined
+#ifndef STATUS_SUCCESS
+#define STATUS_SUCCESS ((NTSTATUS)0x00000000L)
+#endif
 
 namespace utils {
 
@@ -148,3 +153,11 @@ void wait_until_qpc(LONGLONG target_qpc, HANDLE& timer_handle)
 }
 
 } // namespace utils
+
+// Global timing function
+LONGLONG get_now_ticks() {
+    LARGE_INTEGER now_ticks = { };
+    QueryPerformanceCounter(&now_ticks);
+    return now_ticks.QuadPart;
+}
+

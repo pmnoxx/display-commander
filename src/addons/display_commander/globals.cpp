@@ -184,6 +184,9 @@ std::atomic<bool> s_enable_unstable_reshade_features = false; // Disabled by def
 // Keyboard Shortcut Settings
 std::atomic<bool> s_enable_mute_unmute_shortcut = false; // Disabled by default
 
+// Performance optimization settings
+std::atomic<bool> g_flush_before_present = true; // Flush command queue before present to reduce latency (enabled by default)
+
 // Helper function for updating HDR10 override status atomically
 void UpdateHdr10OverrideStatus(const std::string& status) {
     g_hdr10_override_status.store(std::make_shared<std::string>(status));
@@ -195,5 +198,5 @@ void UpdateHdr10OverrideTimestamp(const std::string& timestamp) {
 }
 
 // Swapchain event counters - reset on each swapchain creation
-std::atomic<uint32_t> g_swapchain_event_counters[13] = {}; // Array for all On* events
+std::atomic<uint32_t> g_swapchain_event_counters[16] = {}; // Array for all On* events
 std::atomic<uint32_t> g_swapchain_event_total_count{0}; // Total events across all types

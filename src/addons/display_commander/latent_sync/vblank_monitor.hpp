@@ -11,7 +11,7 @@
 struct DisplayTimingInfo;
 
 // External timing function
-extern LONGLONG get_now_ticks();
+
 
 // Minimal D3DKMT interop (definitions adapted from d3dkmthk.h)
 typedef UINT D3DDDI_VIDEO_PRESENT_SOURCE_ID;

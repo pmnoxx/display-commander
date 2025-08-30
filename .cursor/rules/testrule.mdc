@@ -1,9 +1,6 @@
 ---
-description:
-globs:
 alwaysApply: true
 ---
-
 Make changes conside. 
 Avoid code duplication.
 Avoid redeclaring structures from headers.

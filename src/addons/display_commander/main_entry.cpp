@@ -103,6 +103,11 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
       reshade::register_event<reshade::addon_event::begin_render_pass>(OnBeginRenderPass);
       reshade::register_event<reshade::addon_event::end_render_pass>(OnEndRenderPass);
       
+      // Register draw event handlers for render timing
+      reshade::register_event<reshade::addon_event::draw>(OnDraw);
+      reshade::register_event<reshade::addon_event::draw_indexed>(OnDrawIndexed);
+      reshade::register_event<reshade::addon_event::draw_or_dispatch_indirect>(OnDrawOrDispatchIndirect);
+      
       // Register additional event handlers for frame timing and composition
       reshade::register_event<reshade::addon_event::init_command_list>(OnInitCommandList);
       reshade::register_event<reshade::addon_event::init_command_queue>(OnInitCommandQueue);
@@ -138,6 +143,10 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
       reshade::unregister_event<reshade::addon_event::begin_render_pass>(OnBeginRenderPass);
       reshade::unregister_event<reshade::addon_event::end_render_pass>(OnEndRenderPass);
       
+      // Unregister draw event handlers for render timing
+      reshade::unregister_event<reshade::addon_event::draw>(OnDraw);
+      reshade::unregister_event<reshade::addon_event::draw_indexed>(OnDrawIndexed);
+      reshade::unregister_event<reshade::addon_event::draw_or_dispatch_indirect>(OnDrawOrDispatchIndirect);
       // Unregister additional event handlers for frame timing and composition
       reshade::unregister_event<reshade::addon_event::init_command_list>(OnInitCommandList);
       reshade::unregister_event<reshade::addon_event::init_command_queue>(OnInitCommandQueue);

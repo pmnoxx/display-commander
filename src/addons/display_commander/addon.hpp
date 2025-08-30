@@ -42,6 +42,11 @@ void SetReflexSleepMode(reshade::api::swapchain* swapchain);
 void OnBeginRenderPass(reshade::api::command_list* cmd_list, uint32_t count, const reshade::api::render_pass_render_target_desc* rts, const reshade::api::render_pass_depth_stencil_desc* ds);
 void OnEndRenderPass(reshade::api::command_list* cmd_list);
 
+// Draw event handlers for render timing
+bool OnDraw(reshade::api::command_list* cmd_list, uint32_t vertex_count, uint32_t instance_count, uint32_t first_vertex, uint32_t first_instance);
+bool OnDrawIndexed(reshade::api::command_list* cmd_list, uint32_t index_count, uint32_t instance_count, uint32_t first_index, int32_t vertex_offset, uint32_t first_instance);
+bool OnDrawOrDispatchIndirect(reshade::api::command_list* cmd_list, reshade::api::indirect_command type, reshade::api::resource buffer, uint64_t offset, uint32_t draw_count, uint32_t stride);
+
 // Command list and queue lifecycle hooks
 void OnInitCommandList(reshade::api::command_list* cmd_list);
 void OnInitCommandQueue(reshade::api::command_queue* queue);

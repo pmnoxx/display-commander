@@ -14,6 +14,7 @@ endif()
 file(GLOB_RECURSE DISPLAY_COMMANDER_SOURCES
   CONFIGURE_DEPENDS
   ${CMAKE_CURRENT_LIST_DIR}/src/addons/display_commander/*.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/src/utils/*.cpp
 )
 
 if(DISPLAY_COMMANDER_SOURCES STREQUAL "")
@@ -30,8 +31,8 @@ endif()
 # Include directories
 target_include_directories(display_commander
   PRIVATE
+  ${CMAKE_CURRENT_LIST_DIR}/src
     ${CMAKE_CURRENT_LIST_DIR}/src/addons/display_commander
-    ${CMAKE_CURRENT_LIST_DIR}/src
     ${CMAKE_CURRENT_LIST_DIR}/include
   SYSTEM PUBLIC
     ${CMAKE_CURRENT_LIST_DIR}/external/reshade            # provides include/reshade.hpp and deps/imgui

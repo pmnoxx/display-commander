@@ -15,3 +15,7 @@ double get_timer_resolution_ms();
 void wait_until_qpc(LONGLONG target_qpc, HANDLE& timer_handle);
 
 } // namespace utils
+
+// Global timing function
+extern LONGLONG get_now_ticks();
+

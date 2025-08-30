@@ -4,6 +4,7 @@
 #include <dxgi1_6.h>
 #include <sstream>
 #include "../display/query_display.hpp"
+#include "../../../utils/timing.hpp"
 
 static uint64_t s_last_scan_time = 0;
 
@@ -11,7 +12,6 @@ static uint64_t s_last_scan_time = 0;
 
 
 namespace dxgi::fps_limiter {
-    extern LONGLONG get_now_ticks();
     std::atomic<LONGLONG> ticks_per_refresh{0};
     std::atomic<double> correction_lines_delta{0};
     std::atomic<double> m_on_present_ticks{0.0};

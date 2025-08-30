@@ -50,6 +50,9 @@ public:
     // Keyboard Shortcut Settings (Experimental)
     ui::new_ui::BoolSettingRef enable_mute_unmute_shortcut;
     
+    // Performance optimization settings
+    ui::new_ui::BoolSettingRef flush_before_present;
+    
     // Get all settings for bulk operations
     std::vector<ui::new_ui::SettingBase*> GetAllSettings();
 };

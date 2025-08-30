@@ -282,6 +282,61 @@ void OnPresentUpdateAfter(  reshade::api::command_queue* /*queue*/, reshade::api
   }
 }
 
+void HandleFpsLimiter() {
+  if (g_reshade_runtime.load() != nullptr) {
+    g_reshade_runtime.load()->get_command_queue()->flush_immediate_command_list();
+  }
+
+  // Call FPS Limiter on EVERY frame (not throttled)
+  if (s_custom_fps_limiter_enabled.load()) {
+    // Use background flag computed by monitoring thread; avoid GetForegroundWindow here
+    const bool is_background = g_app_in_background.load(std::memory_order_acquire);
+    
+    // Get the appropriate FPS limit based on focus state
+    float target_fps = 0.0f;
+    if (is_background) {
+      target_fps = s_fps_limit_background.load();  // Use background FPS limit
+    } else {
+      target_fps = s_fps_limit.load();
+    }
+    // Apply FPS limit via selected limiter mode
+    if (dxgi::fps_limiter::g_customFpsLimiterManager) {
+      if (s_fps_limiter_mode.load() == 1) {
+        auto& latent = dxgi::fps_limiter::g_customFpsLimiterManager->GetLatentLimiter();
+        if (target_fps > 0.0f) {
+          latent.SetTargetFps(target_fps);
+          latent.SetEnabled(true);
+          latent.LimitFrameRate();
+        } else {
+          latent.SetEnabled(false);
+        }
+      } else {
+        auto& limiter = dxgi::fps_limiter::g_customFpsLimiterManager->GetFpsLimiter();
+        if (target_fps > 0.0f) {
+          limiter.SetTargetFps(target_fps);
+          limiter.SetEnabled(true);
+          limiter.LimitFrameRate();
+        } else {
+          limiter.SetEnabled(false);
+        }
+      }
+    }
+  }
+  
+
+  // Mark Present begin for latent sync limiter timing (right before Present executes)
+  if (s_custom_fps_limiter_enabled.load()) {
+    if (dxgi::fps_limiter::g_customFpsLimiterManager) {
+      if (s_fps_limiter_mode.load() == 1) {
+        auto& latent = dxgi::fps_limiter::g_customFpsLimiterManager->GetLatentLimiter();
+        if (latent.IsEnabled()) {
+          latent.OnPresentBegin();
+        }
+      }
+    }
+  }
+}
+
 // Update composition state after presents (required for valid stats)
 void OnPresentUpdateBefore(
     reshade::api::command_queue* /*queue*/, reshade::api::swapchain* swapchain,
@@ -370,72 +425,26 @@ void OnPresentUpdateBefore(
       }
     }
   }
+
+  if (s_fps_limiter_injection.load() == 2) {
+    HandleFpsLimiter();
+  }
 }
 
 void OnPresentUpdateBefore2(reshade::api::effect_runtime* runtime) { 
   // Increment event counter
   g_swapchain_event_counters[SWAPCHAIN_EVENT_PRESENT_UPDATE_BEFORE2].fetch_add(1);
   g_swapchain_event_total_count.fetch_add(1);
-  
-  if (g_reshade_runtime.load() != nullptr) {
-    g_reshade_runtime.load()->get_command_queue()->flush_immediate_command_list();
-  }
-    
   // Call Reflex manager callback if enabled
   if (s_reflex_enabled.load() && g_reflexManager && g_reflexManager->IsAvailable()) {
     g_reflexManager->OnPresentUpdateBefore2(runtime);
   }
 
-
-  // Call FPS Limiter on EVERY frame (not throttled)
-  if (s_custom_fps_limiter_enabled.load()) {
-    // Use background flag computed by monitoring thread; avoid GetForegroundWindow here
-    const bool is_background = g_app_in_background.load(std::memory_order_acquire);
-    
-    // Get the appropriate FPS limit based on focus state
-    float target_fps = 0.0f;
-    if (is_background) {
-      target_fps = s_fps_limit_background.load();  // Use background FPS limit
-    } else {
-      target_fps = s_fps_limit.load();
-    }
-    // Apply FPS limit via selected limiter mode
-    if (dxgi::fps_limiter::g_customFpsLimiterManager) {
-      if (s_fps_limiter_mode.load() == 1) {
-        auto& latent = dxgi::fps_limiter::g_customFpsLimiterManager->GetLatentLimiter();
-        if (target_fps > 0.0f) {
-          latent.SetTargetFps(target_fps);
-          latent.SetEnabled(true);
-          latent.LimitFrameRate();
-        } else {
-          latent.SetEnabled(false);
-        }
-      } else {
-        auto& limiter = dxgi::fps_limiter::g_customFpsLimiterManager->GetFpsLimiter();
-        if (target_fps > 0.0f) {
-          limiter.SetTargetFps(target_fps);
-          limiter.SetEnabled(true);
-          limiter.LimitFrameRate();
-        } else {
-          limiter.SetEnabled(false);
-        }
-      }
-    }
-  }
-  
-
-  // Mark Present begin for latent sync limiter timing (right before Present executes)
-  if (s_custom_fps_limiter_enabled.load()) {
-    if (dxgi::fps_limiter::g_customFpsLimiterManager) {
-      if (s_fps_limiter_mode.load() == 1) {
-        auto& latent = dxgi::fps_limiter::g_customFpsLimiterManager->GetLatentLimiter();
-        if (latent.IsEnabled()) {
-          latent.OnPresentBegin();
-        }
-      }
-    }
+  if (s_fps_limiter_injection.load() == 1) {
+    HandleFpsLimiter();
   }
 }
+
 
 // Additional event handlers for frame timing and composition
 
@@ -500,5 +509,9 @@ void OnPresentFlags(uint32_t* present_flags) {
     std::ostringstream oss;
     oss << "Present flags callback: Stripped DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING, new flags: 0x" << std::hex << *present_flags;
     LogInfo(oss.str().c_str());
+  }
+
+  if (s_fps_limiter_injection.load() == 0) {
+    HandleFpsLimiter();
   }
 }

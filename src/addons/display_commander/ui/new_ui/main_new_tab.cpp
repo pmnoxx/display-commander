@@ -59,6 +59,8 @@ void InitMainNewTab() {
 
         // FPS limiter mode
         s_fps_limiter_mode.store(g_main_new_tab_settings.fps_limiter_mode.GetValue());
+        // FPS limiter injection timing
+        s_fps_limiter_injection.store(g_main_new_tab_settings.fps_limiter_injection.GetValue());
         // Scanline offset
         s_scanline_offset.store(g_main_new_tab_settings.scanline_offset.GetValue());
 
@@ -494,6 +496,25 @@ void DrawDisplaySettings() {
                     ImGui::SetTooltip("VBlank Scanline Sync mode requires VSync to be disabled for optimal frame pacing.");
                 }
             }
+        }
+    }
+
+    // FPS Limiter Injection Timing
+    {
+        int current_injection = g_main_new_tab_settings.fps_limiter_injection.GetValue();
+        int temp_injection = current_injection;
+        if (ImGui::SliderInt("FPS Limiter Injection", &temp_injection, 0, 2, "%d")) {
+            g_main_new_tab_settings.fps_limiter_injection.SetValue(temp_injection);
+            s_fps_limiter_injection.store(temp_injection);
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Choose when to inject FPS limiter: 0=OnPresentFlags (recommended), 1=OnPresentUpdateBefore2, 2=OnPresentUpdateBefore");
+        }
+        
+        // Show current injection timing info
+        const char* injection_labels[] = {"OnPresentFlags (Recommended)", "OnPresentUpdateBefore2", "OnPresentUpdateBefore"};
+        if (temp_injection >= 0 && temp_injection < 3) {
+            ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "Current: %s", injection_labels[temp_injection]);
         }
     }
 

@@ -170,7 +170,7 @@ extern std::atomic<int> s_spoof_fullscreen_state;
 extern std::atomic<int> s_spoof_window_focus;
 
 // Swapchain event counters - reset on each swapchain creation
-extern std::atomic<uint32_t> g_swapchain_event_counters[12]; // Array for all On* events
+extern std::atomic<uint32_t> g_swapchain_event_counters[13]; // Array for all On* events
 extern std::atomic<uint32_t> g_swapchain_event_total_count; // Total events across all types
 
 // Swapchain event counter indices
@@ -186,5 +186,6 @@ enum SwapchainEventIndex {
     SWAPCHAIN_EVENT_EXECUTE_COMMAND_LIST = 8,
     SWAPCHAIN_EVENT_BIND_PIPELINE = 9,
     SWAPCHAIN_EVENT_INIT_COMMAND_QUEUE = 10,
-    SWAPCHAIN_EVENT_RESET_COMMAND_LIST = 11
+    SWAPCHAIN_EVENT_RESET_COMMAND_LIST = 11,
+    SWAPCHAIN_EVENT_PRESENT_FLAGS = 12
 };

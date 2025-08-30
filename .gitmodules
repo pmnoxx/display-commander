@@ -1,7 +1,7 @@
 [submodule "external/reshade"]
 	path = external/reshade
 	url = https://github.com/pmnoxx/reshade.git
-	branch = main
+	branch = feat/present_flags
 
 [submodule "external/gtl"]
 	path = external/gtl

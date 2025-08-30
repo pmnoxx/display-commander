@@ -95,7 +95,7 @@ float GetSyncIntervalCoefficient(float sync_interval_value) {
 // Capture sync interval during create_swapchain
 bool OnCreateSwapchainCapture(reshade::api::device_api /*api*/, reshade::api::swapchain_desc& desc, void* hwnd) {
   // Reset all event counters on new swapchain creation
-  for (int i = 0; i < 12; i++) {
+  for (int i = 0; i < 13; i++) {
     g_swapchain_event_counters[i].store(0);
   }
   g_swapchain_event_total_count.store(0);
@@ -529,4 +529,21 @@ void OnBindPipeline(reshade::api::command_list* cmd_list, reshade::api::pipeline
   // This event tracks shader pipeline changes
   // which is very useful for frame timing analysis
   LogDebug("Pipeline bound");
+}
+
+// Present flags callback to strip DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING
+void OnPresentFlags(uint32_t* present_flags) {
+  // Increment event counter
+  g_swapchain_event_counters[SWAPCHAIN_EVENT_PRESENT_FLAGS].fetch_add(1);
+  g_swapchain_event_total_count.fetch_add(1);
+
+  // Always strip DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING flag
+  if (s_prevent_tearing.load() && *present_flags & DXGI_PRESENT_ALLOW_TEARING) {
+    *present_flags &= ~DXGI_PRESENT_ALLOW_TEARING;
+    
+    // Log the flag removal for debugging
+    std::ostringstream oss;
+    oss << "Present flags callback: Stripped DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING, new flags: 0x" << std::hex << *present_flags;
+    LogInfo(oss.str().c_str());
+  }
 }

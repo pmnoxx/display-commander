@@ -253,6 +253,7 @@ void OnInitSwapchain(reshade::api::swapchain* swapchain, bool resize);
 void OnPresentUpdateBefore(reshade::api::command_queue *, reshade::api::swapchain* swapchain, const reshade::api::rect* source_rect, const reshade::api::rect* dest_rect, uint32_t dirty_rect_count, const reshade::api::rect* dirty_rects);
 void OnPresentUpdateBefore2(reshade::api::effect_runtime* runtime);
 void OnPresentUpdateAfter(reshade::api::command_queue* /*queue*/, reshade::api::swapchain* swapchain);
+void OnPresentFlags(uint32_t* present_flags);
 
 // Additional event handlers for frame timing and composition
 void OnInitCommandList(reshade::api::command_list* cmd_list);

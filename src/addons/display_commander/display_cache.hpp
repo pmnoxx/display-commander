@@ -299,6 +299,9 @@ public:
     
     // Get number of displays
     size_t GetDisplayCount() const;
+
+    // Get all displays
+    std::shared_ptr<std::vector<std::unique_ptr<DisplayInfo>>> GetDisplays() const;
     
     // Get display by index
     const DisplayInfo* GetDisplay(size_t index) const;

@@ -29,12 +29,10 @@ void InitializeDisplayCache() {
 // Helper function to get monitor information using the display cache
 std::vector<std::string> GetMonitorLabelsFromCache() {
     std::vector<std::string> labels;
+
+    auto displays = display_cache::g_displayCache.GetDisplays();
     
-    if (!display_cache::g_displayCache.IsInitialized()) {
-        display_cache::g_displayCache.Initialize();
-    }
-    
-    size_t display_count = display_cache::g_displayCache.GetDisplayCount();
+    size_t display_count = displays->size();
     labels.reserve(display_count + 1); // +1 for Auto (Current) option
     
     // Add Auto (Current) as the first option (index 0)
@@ -76,7 +74,7 @@ std::vector<std::string> GetMonitorLabelsFromCache() {
     
     // Add the regular monitor options (starting from index 1)
     for (size_t i = 0; i < display_count; ++i) {
-            const auto* display = display_cache::g_displayCache.GetDisplay(i);
+            const auto* display = (*displays)[i].get();
             if (display) {
                 std::ostringstream oss;
                 
@@ -115,19 +113,8 @@ std::vector<std::string> GetMonitorLabelsFromCache() {
     return labels;
 }
 
-// Helper function to get max monitor index using the display cache
-float GetMaxMonitorIndexFromCache() {
-    if (!display_cache::g_displayCache.IsInitialized()) {
-        display_cache::g_displayCache.Initialize();
-    }
-    
-    size_t display_count = display_cache::g_displayCache.GetDisplayCount();
-    // +1 because we now have Auto (Current) as index 0, so monitors start at index 1
-    return static_cast<float>((std::max)(0, static_cast<int>(display_count)));
-}
-
 // Helper function to get current display info based on game position using the display cache
-std::string GetCurrentDisplayInfoFromCache() {
+std::string GetCurrentDisplayInfo() {
     HWND hwnd = g_last_swapchain_hwnd.load();
     
     if (!hwnd) {
@@ -146,11 +133,6 @@ std::string GetCurrentDisplayInfoFromCache() {
         return "Failed to determine monitor";
     }
     
-    // Use the display cache to get monitor information
-    if (!display_cache::g_displayCache.IsInitialized()) {
-        display_cache::g_displayCache.Initialize();
-    }
-    
     const auto* display = display_cache::g_displayCache.GetDisplayByHandle(monitor);
     if (!display) {
         return "Failed to get display info from cache";
@@ -166,14 +148,6 @@ std::string GetCurrentDisplayInfoFromCache() {
 // Legacy functions for backward compatibility (can be removed later)
 std::vector<std::string> GetMonitorLabels() {
     return GetMonitorLabelsFromCache();
-}
-
-float GetMaxMonitorIndex() {
-    return GetMaxMonitorIndexFromCache();
-}
-
-std::string GetCurrentDisplayInfo() {
-    return GetCurrentDisplayInfoFromCache();
 }
 
 // Handle monitor settings UI (extracted from on_draw lambda)

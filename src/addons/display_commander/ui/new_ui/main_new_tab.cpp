@@ -169,9 +169,8 @@ void DrawQuickResolutionChanger() {
     {
         double refresh_hz;
         {
-                    ::g_window_state_lock.lock();
-        refresh_hz = ::g_window_state->current_monitor_refresh_rate.ToHz();
-        ::g_window_state_lock.unlock();
+            auto window_state = ::g_window_state.load();
+            refresh_hz = window_state->current_monitor_refresh_rate.ToHz();
         }
         int y = static_cast<int>(std::round(refresh_hz));
         if (y > 0) {
@@ -506,10 +505,13 @@ void DrawDisplaySettings() {
         int monitor_width = current_monitor_width;
         
         // Update display dimensions in GlobalWindowState
-        g_window_state_lock.lock();
-        g_window_state->display_width = monitor_width;
-        g_window_state->display_height = monitor_height;
-        g_window_state_lock.unlock();
+        auto current_state = g_window_state.load();
+        if (current_state) {
+            auto new_state = std::make_shared<GlobalWindowState>(*current_state);
+            new_state->display_width = monitor_width;
+            new_state->display_height = monitor_height;
+            g_window_state.store(new_state);
+        }
         
         // Scanline Offset (only visible if scanline mode is selected)
         int current_offset = g_main_new_tab_settings.scanline_offset.GetValue();

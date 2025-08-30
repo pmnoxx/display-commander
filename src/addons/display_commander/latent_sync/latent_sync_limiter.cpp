@@ -88,9 +88,10 @@ bool LatentSyncLimiter::UpdateDisplayBindingFromWindow(HWND hwnd) {
         m_bound_display_name = name;
 
         // Try to cache refresh rate from global state if available
-        g_window_state_lock.lock();
-        m_refresh_hz = g_window_state->current_monitor_refresh_rate.ToHz();
-        g_window_state_lock.unlock();
+        auto window_state = g_window_state.load();
+        if (window_state) {
+            m_refresh_hz = window_state->current_monitor_refresh_rate.ToHz();
+        }
         return true;
     }
 

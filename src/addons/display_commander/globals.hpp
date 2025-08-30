@@ -83,8 +83,7 @@ extern std::atomic<bool> g_reflex_settings_changed;
 
 // Global instances
 extern std::unique_ptr<ReflexManager> g_reflexManager;
-extern std::shared_ptr<GlobalWindowState> g_window_state;
-extern SpinLock g_window_state_lock;
+extern std::atomic<std::shared_ptr<GlobalWindowState>> g_window_state;
 extern BackgroundWindowManager g_backgroundWindowManager;
 
 // Custom FPS Limiter Manager

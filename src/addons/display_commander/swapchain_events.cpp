@@ -293,10 +293,14 @@ void OnPresentUpdateAfter(  reshade::api::command_queue* /*queue*/, reshade::api
   }
 }
 
-void HandleFpsLimiter() {
+void flush_command_queue() {
   if (g_reshade_runtime.load() != nullptr) {
     g_reshade_runtime.load()->get_command_queue()->flush_immediate_command_list();
   }
+}
+
+void HandleFpsLimiter() {
+  flush_command_queue(); // todo only if sleep is happening()
 
   // Call FPS Limiter on EVERY frame (not throttled)
   if (s_custom_fps_limiter_enabled.load()) {
@@ -358,6 +362,7 @@ void OnPresentUpdateBefore(
     reshade::api::command_queue* /*queue*/, reshade::api::swapchain* swapchain,
     const reshade::api::rect* /*source_rect*/, const reshade::api::rect* /*dest_rect*/,
     uint32_t /*dirty_rect_count*/, const reshade::api::rect* /*dirty_rects*/) {
+  flush_command_queue(); // Flush command queue before addons start processing to reduce rendering latency caused by reshade
   
   // Increment event counter
   g_swapchain_event_counters[SWAPCHAIN_EVENT_PRESENT_UPDATE_BEFORE].fetch_add(1);

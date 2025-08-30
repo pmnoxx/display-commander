@@ -31,23 +31,18 @@ struct SpinLockGuard {
 DisplayCache g_displayCache;
 
 // Helper function to get monitor friendly name
-std::wstring GetMonitorFriendlyName(HMONITOR monitor) {
-    MONITORINFOEXW mi;
-    mi.cbSize = sizeof(mi);
-    if (GetMonitorInfoW(monitor, &mi)) {
-        // Try to get the monitor name from registry
-        DISPLAY_DEVICEW dd;
-        dd.cb = sizeof(dd);
-        if (EnumDisplayDevicesW(mi.szDevice, 0, &dd, 0)) {
-            if (dd.DeviceString[0] != '\0') {
-                return std::wstring(dd.DeviceString);
-            }
+std::wstring GetMonitorFriendlyName(MONITORINFOEXW &mi) {
+    // Try to get the monitor name from registry
+    DISPLAY_DEVICEW dd;
+    dd.cb = sizeof(dd);
+    if (EnumDisplayDevicesW(mi.szDevice, 0, &dd, 0)) {
+        if (dd.DeviceString[0] != '\0') {
+            return std::wstring(dd.DeviceString);
         }
-        
-        // Fallback to device name
-        return std::wstring(mi.szDevice);
     }
-    return L"Unknown Monitor";
+    
+    // Fallback to device name
+    return std::wstring(mi.szDevice);
 }
 
 // Helper function to get current display settings
@@ -141,28 +136,6 @@ bool GetCurrentDisplaySettings(HMONITOR monitor, int& width, int& height, Ration
             break; // Found our adapter
         }
     }
-    /*
-    // Fallback to legacy API if DXGI fails
-    DEVMODEW dm;
-    dm.dmSize = sizeof(dm);
-    if (!EnumDisplaySettingsW(mi.szDevice, ENUM_CURRENT_SETTINGS, &dm)) {
-        return false;
-    }
-    
-    width = static_cast<int>(dm.dmPelsWidth);
-    height = static_cast<int>(dm.dmPelsHeight);
-    
-    // For current refresh rate, we'll use the DEVMODE value as a fallback
-    // In practice, you might want to use the modern display configuration APIs
-    // to get the exact rational refresh rate
-    refresh_rate.numerator = static_cast<UINT32>(dm.dmDisplayFrequency);
-    refresh_rate.denominator = 1;
-    
-    // Debug: Log what we got from legacy API
-    OutputDebugStringA(("Legacy API: Current mode " + std::to_string(width) + "x" + 
-                       std::to_string(height) + " @ " + std::to_string(refresh_rate.numerator) + 
-                       "/" + std::to_string(refresh_rate.denominator) + "Hz\n").c_str());
-    */
     
     return true;
 }
@@ -302,7 +275,7 @@ bool DisplayCache::Refresh() {
         }
         
         display_info->device_name = mi.szDevice;
-        display_info->friendly_name = GetMonitorFriendlyName(monitor);
+        display_info->friendly_name = GetMonitorFriendlyName(mi);
         
         // Get current settings
         if (!GetCurrentDisplaySettings(monitor, display_info->width, 

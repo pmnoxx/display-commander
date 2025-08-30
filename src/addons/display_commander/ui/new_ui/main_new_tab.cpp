@@ -477,7 +477,7 @@ void DrawDisplaySettings() {
     {
         if (ComboSettingWrapper(g_main_new_tab_settings.fps_limiter_mode, "FPS Limiter Mode")) {
             s_fps_limiter_mode.store(g_main_new_tab_settings.fps_limiter_mode.GetValue());
-            LogInfo(s_fps_limiter_mode.load() == 0 ? "Limiter mode: Custom (Sleep/Spin)" : "Limiter mode: VBlank Scanline Sync");
+            LogInfo(s_fps_limiter_mode.load() == 0 ? "Custom (Sleep/Spin) for VRR" : "VBlank Scanline Sync for VSYNC-OFF or without VRR");
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Choose limiter: Custom sleep/spin or Latent Sync pacing");

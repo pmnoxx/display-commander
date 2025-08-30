@@ -3,8 +3,12 @@
 #include <sstream>
 #include <iomanip>
 #include <iostream>
+#include <winnt.h>
 #include "../utils.hpp"
 #include "../display/query_display.hpp"
+
+// Forward declaration of the global variable
+extern std::atomic<HWND> g_last_swapchain_hwnd;
 
 namespace dxgi::fps_limiter {
 extern std::atomic<LONGLONG> ticks_per_refresh;
@@ -19,6 +23,66 @@ namespace {
 }
 
 namespace dxgi::fps_limiter {
+
+// Helper function to get the correct DisplayTimingInfo for a specific window
+DisplayTimingInfo GetDisplayTimingInfoForWindow(HWND hwnd) {
+    if (hwnd == nullptr) {
+        // Fallback to first display if no window provided
+        auto timing_info = QueryDisplayTimingInfo();
+        if (!timing_info.empty()) {
+            return timing_info[0];
+        }
+        return DisplayTimingInfo{}; // Return empty struct
+    }
+
+    // Get the monitor that the window is on
+    HMONITOR hmon = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+    if (hmon == nullptr) {
+        // Fallback to first display if monitor query fails
+        auto timing_info = QueryDisplayTimingInfo();
+        if (!timing_info.empty()) {
+            return timing_info[0];
+        }
+        return DisplayTimingInfo{}; // Return empty struct
+    }
+
+    // Get monitor info to extract device name
+    MONITORINFOEXW mi{};
+    mi.cbSize = sizeof(mi);
+    if (!GetMonitorInfoW(hmon, &mi)) {
+        // Fallback to first display if monitor info query fails
+        auto timing_info = QueryDisplayTimingInfo();
+        if (!timing_info.empty()) {
+            return timing_info[0];
+        }
+        return DisplayTimingInfo{}; // Return empty struct
+    }
+
+    // Query all display timing info
+    auto timing_info = QueryDisplayTimingInfo();
+    
+    // Find the display that matches our monitor
+    for (const auto& timing : timing_info) {
+        // Try to match by device path first (most reliable)
+        if (!timing.device_path.empty() && timing.device_path == mi.szDevice) {
+            return timing;
+        }
+        
+        // Fallback: try to match by display name if device path doesn't match
+        if (!timing.display_name.empty() && timing.display_name == mi.szDevice) {
+            return timing;
+        }
+    }
+
+    // If no match found, return the first available timing info
+    if (!timing_info.empty()) {
+        
+        return timing_info[0];
+    }
+
+    // Return empty struct if nothing is available
+    return DisplayTimingInfo{};
+}
 
 VBlankMonitor::VBlankMonitor() {
     m_last_state_change = std::chrono::steady_clock::now();
@@ -147,7 +211,6 @@ double expected_current_scanline(LONGLONG now_ticks, int total_height, bool add_
 void VBlankMonitor::MonitoringThread() {
     ::LogInfo("VBlank monitoring thread: entering main loop");
     
-    int lastScanLine = 0;
 
     if (!EnsureAdapterBinding()) {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -156,19 +219,23 @@ void VBlankMonitor::MonitoringThread() {
     if (!LoadProcCached(m_pfnGetScanLine, L"gdi32.dll", "D3DKMTGetScanLine")) {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
-    int monitor_height = GetCurrentMonitorHeight();
 
     LARGE_INTEGER liQpcFreq = { };
     QueryPerformanceFrequency(&liQpcFreq);
     ticks_per_refresh.store(liQpcFreq.QuadPart);
 
-    std::vector<DisplayTimingInfo> timing_info = QueryDisplayTimingInfo();
+    // Get the current window HWND and corresponding display timing info
+    HWND hwnd = g_last_swapchain_hwnd.load();
+    DisplayTimingInfo current_display_timing = GetDisplayTimingInfoForWindow(hwnd);
+    
+    // Log all available timing info for debugging
+    std::vector<DisplayTimingInfo> all_timing_info = QueryDisplayTimingInfo();
     {
         std::ostringstream oss;
         oss << "ticks_per_refresh: " << ticks_per_refresh.load();
         LogInfo(oss.str().c_str());   
         
-        for (const auto& timing : timing_info) {
+        for (const auto& timing : all_timing_info) {
             std::ostringstream oss2;
             oss2 << " display_name: " << WideCharToUTF8(timing.display_name) << "\n";
             oss2 << " device_path: " << WideCharToUTF8(timing.device_path) << "\n";
@@ -190,21 +257,17 @@ void VBlankMonitor::MonitoringThread() {
         }    
     }
 
-    
- //   ticks_per_scanline.store((timing_info[0].hsync_freq_numerator > 0) ?
-  //      (timing_info[0].hsync_freq_denominator * ticks_per_refresh.load()) /
-  //      (timing_info[0].hsync_freq_numerator) : 1);
-
-    ticks_per_refresh.store((timing_info[0].vsync_freq_numerator > 0) ?
-        (timing_info[0].vsync_freq_denominator * ticks_per_refresh.load()) /
-        (timing_info[0].vsync_freq_numerator) : 1);
+    // Use the current display timing info for calculations
+    ticks_per_refresh.store((current_display_timing.vsync_freq_numerator > 0) ?
+        (current_display_timing.vsync_freq_denominator * ticks_per_refresh.load()) /
+        (current_display_timing.vsync_freq_numerator) : 1);
 
     LONGLONG min_scanline_duration = 0;
     LONGLONG correction_ticks_local = 0;
 
+    int lastScanLine = 0;
     while (!m_should_stop.load()) {
         LONGLONG ticks_per_refresh_local = ticks_per_refresh.load();
- //       LONGLONG ticks_per_scanline_local = ticks_per_scanline.load();
 
         D3DKMT_GETSCANLINE scan{};
         scan.hAdapter = m_hAdapter;
@@ -212,7 +275,7 @@ void VBlankMonitor::MonitoringThread() {
 
         LONGLONG start_ticks = get_now_ticks();
 
-        int expected_scanline = expected_current_scanline(start_ticks, timing_info[0].total_height, true);
+        int expected_scanline = expected_current_scanline(start_ticks, current_display_timing.total_height, true);
 
         // don't run during vblank
         if (expected_scanline >= 50 && expected_scanline <= 300 &&reinterpret_cast<NTSTATUS (WINAPI*)(D3DKMT_GETSCANLINE*)>(m_pfnGetScanLine)(&scan) == 0) {
@@ -226,14 +289,21 @@ void VBlankMonitor::MonitoringThread() {
                 min_scanline_duration = duration;
             }
             if (duration < 2 * min_scanline_duration) {
-                double expected_scanline = expected_current_scanline(mid_point, timing_info[0].total_height, false);
+                double expected_scanline = expected_current_scanline(mid_point, current_display_timing.total_height, false);
                 
-                std::this_thread::sleep_for(std::chrono::microseconds(100)); // 0.1ms
-
                 double new_correction_lines_delta = scan.ScanLine - expected_scanline; 
                 correction_lines_delta.store(new_correction_lines_delta);
             }
         }
+        std::this_thread::sleep_for(std::chrono::microseconds(100)); // 0.1ms
+
+        // auto switch to the correct monitor
+        if (expected_scanline < lastScanLine) {
+            hwnd = g_last_swapchain_hwnd.load();
+            current_display_timing = GetDisplayTimingInfoForWindow(hwnd);
+        }
+
+        lastScanLine = expected_scanline;
     }
     
     ::LogInfo("VBlank monitoring thread: exiting main loop");

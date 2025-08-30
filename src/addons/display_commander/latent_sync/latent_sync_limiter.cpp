@@ -111,9 +111,11 @@ void LatentSyncLimiter::LimitFrameRate() {
     // Compute adjusted scanline window accounting for average Present duration
     int monitor_height = GetCurrentMonitorHeight();
   
-    std::vector<DisplayTimingInfo> timing_info = QueryDisplayTimingInfo();
-    LONGLONG total_height = timing_info[0].total_height;
-    LONGLONG active_height = timing_info[0].active_height;
+    HWND hwnd = g_last_swapchain_hwnd.load();
+    DisplayTimingInfo current_display_timing = GetDisplayTimingInfoForWindow(hwnd);
+    
+    LONGLONG total_height = current_display_timing.total_height;
+    LONGLONG active_height = current_display_timing.active_height;
     LONGLONG mid_vblank_scanline = (active_height + total_height) / 2;
 
     LONGLONG now_ticks = get_now_ticks();
@@ -131,13 +133,10 @@ void LatentSyncLimiter::LimitFrameRate() {
 
     LONGLONG wait_target = now_ticks + delta_wait_time;
 
-
-
     {
         std::ostringstream oss;
         oss << " mid_vblank_scanline: " << mid_vblank_scanline;
         oss << " ticks_per_refresh: " << ticks_per_refresh.load();
-//        oss << " ticks_per_scanline: " << ticks_per_scanline.load();
         oss << " wait_target: " << wait_target;
         oss << " now_ticks: " << now_ticks;
         oss << " correction_ticks_delta: " << correction_lines_delta.load();

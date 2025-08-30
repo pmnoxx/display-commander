@@ -7,6 +7,9 @@
 #include <atomic>
 #include <mutex>
 
+// Forward declaration
+struct DisplayTimingInfo;
+
 // Minimal D3DKMT interop (definitions adapted from d3dkmthk.h)
 typedef UINT D3DDDI_VIDEO_PRESENT_SOURCE_ID;
 typedef UINT D3DKMT_HANDLE;
@@ -32,6 +35,8 @@ struct D3DKMT_GETSCANLINE {
 
 namespace dxgi::fps_limiter {
 
+// Helper function to get the correct DisplayTimingInfo for a specific window
+DisplayTimingInfo GetDisplayTimingInfoForWindow(HWND hwnd);
 
 
 class VBlankMonitor {

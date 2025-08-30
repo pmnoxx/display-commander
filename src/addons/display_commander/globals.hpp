@@ -130,7 +130,7 @@ extern std::string g_perf_text_shared;
 extern SpinLock g_perf_text_lock;
 
 // Vector variables
-extern std::vector<MonitorInfo> g_monitors;
+extern std::atomic<std::shared_ptr<const std::vector<MonitorInfo>>> g_monitors;
 
 // Colorspace variables (using int to avoid reshade dependency)
 extern reshade::api::color_space g_current_colorspace;

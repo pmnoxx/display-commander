@@ -259,10 +259,12 @@ void ComputeDesiredSize(int& out_w, int& out_h) {
 
 
 std::vector<std::string> MakeMonitorLabels() {
-    g_monitors.clear();
-    EnumDisplayMonitors(nullptr, nullptr, MonitorEnumProc, 0);
+    auto new_monitors = std::make_shared<std::vector<MonitorInfo>>();
+    EnumDisplayMonitors(nullptr, nullptr, MonitorEnumProc, reinterpret_cast<LPARAM>(new_monitors.get()));
+    g_monitors.store(new_monitors);
+    
     std::vector<std::string> labels;
-    labels.reserve(g_monitors.size() + 1);
+    labels.reserve(new_monitors->size() + 1);
     
     // Get the device name, resolution, refresh rate, and primary status of the monitor where the game is currently running
     std::string auto_label = "Auto (Current)";
@@ -301,8 +303,8 @@ std::vector<std::string> MakeMonitorLabels() {
     }
     labels.emplace_back(auto_label);
     
-    for (size_t i = 0; i < g_monitors.size(); ++i) {
-        const auto& mi = g_monitors[i].info;
+    for (size_t i = 0; i < new_monitors->size(); ++i) {
+        const auto& mi = (*new_monitors)[i].info;
         const RECT& r = mi.rcMonitor;
         const bool primary = (mi.dwFlags & MONITORINFOF_PRIMARY) != 0;
         
@@ -326,7 +328,10 @@ BOOL CALLBACK MonitorEnumProc(HMONITOR hmon, HDC hdc, LPRECT rect, LPARAM lparam
         MonitorInfo monitor_info;
         monitor_info.handle = hmon;
         monitor_info.info = info;
-        g_monitors.push_back(monitor_info);
+        auto* monitors = reinterpret_cast<std::vector<MonitorInfo>*>(lparam);
+        if (monitors) {
+            monitors->push_back(monitor_info);
+        }
     }
     
     return TRUE;

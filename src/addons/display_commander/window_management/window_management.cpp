@@ -16,59 +16,65 @@ int FindTargetMonitor(HWND hwnd, const RECT& wr_current, float target_monitor_in
   if (target_monitor_index > 0.5f) {
     // Use the legacy target monitor setting
     int index = static_cast<int>(target_monitor_index) - 1;
-    g_monitors.clear();
-    EnumDisplayMonitors(nullptr, nullptr, MonitorEnumProc, reinterpret_cast<LPARAM>(&g_monitors));
-    if (index < 0 || index >= static_cast<int>(g_monitors.size())) {
-      LogError("FindTargetMonitor: Invalid target monitor index, using default (0)");
-      index = 0;
-    }
-    monitor_index = index;
-    mi = g_monitors[index].info;
+  
+      auto new_monitors = std::make_shared<std::vector<MonitorInfo>>();
+      new_monitors->clear();
+      EnumDisplayMonitors(nullptr, nullptr, MonitorEnumProc, reinterpret_cast<LPARAM>(new_monitors.get()));
+      g_monitors.store(new_monitors);
+      
+      if (index < 0 || index >= static_cast<int>(new_monitors->size())) {
+          LogError("FindTargetMonitor: Invalid target monitor index, using default (0)");
+          index = 0;
+      }
+      monitor_index = index;
+      mi = (*new_monitors)[index].info;
   } else {
     // When target monitor is 0, find the monitor where the game is currently on
     // by comparing window position against each monitor's dimensions
-    g_monitors.clear();
-    EnumDisplayMonitors(nullptr, nullptr, MonitorEnumProc, reinterpret_cast<LPARAM>(&g_monitors));
-    
-    // Find which monitor contains the game window
-    const int window_center_x = (wr_current.left + wr_current.right) / 2;
-    const int window_center_y = (wr_current.top + wr_current.bottom) / 2;
-    
-    bool found_monitor = false;
-    for (size_t i = 0; i < g_monitors.size(); ++i) {
-      const auto& monitor = g_monitors[i];
-      const RECT& mr = monitor.info.rcMonitor;
-      if (window_center_x >= mr.left && window_center_x < mr.right &&
-          window_center_y >= mr.top && window_center_y < mr.bottom) {
-        monitor_index = static_cast<int>(i);
-        mi = monitor.info;
-        found_monitor = true;
-        
-        std::ostringstream oss;
-        oss << "CalculateWindowState: Game window is on monitor " << monitor_index 
-            << " (position: " << window_center_x << "," << window_center_y << ")";
-        LogDebug(oss.str());
-        break;
-      }
-    }
-    
-    if (!found_monitor) {
-      // Fallback: use the monitor closest to the window
-      HMONITOR hmon = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
-      GetMonitorInfoW(hmon, &mi);
+ 
+      auto new_monitors = std::make_shared<std::vector<MonitorInfo>>();
+      EnumDisplayMonitors(nullptr, nullptr, MonitorEnumProc, reinterpret_cast<LPARAM>(new_monitors.get()));
+      g_monitors.store(new_monitors);
       
-      // Find the index of this monitor in our list
-      for (size_t i = 0; i < g_monitors.size(); ++i) {
-        if (g_monitors[i].handle == hmon) {
+      // Find which monitor contains the game window
+      const int window_center_x = (wr_current.left + wr_current.right) / 2;
+      const int window_center_y = (wr_current.top + wr_current.bottom) / 2;
+      
+      bool found_monitor = false;
+      for (size_t i = 0; i < new_monitors->size(); ++i) {
+        const auto& monitor = (*new_monitors)[i];
+        const RECT& mr = monitor.info.rcMonitor;
+        if (window_center_x >= mr.left && window_center_x < mr.right &&
+            window_center_y >= mr.top && window_center_y < mr.bottom) {
           monitor_index = static_cast<int>(i);
+          mi = monitor.info;
+          found_monitor = true;
+          
+          std::ostringstream oss;
+          oss << "CalculateWindowState: Game window is on monitor " << monitor_index 
+              << " (position: " << window_center_x << "," << window_center_y << ")";
+          LogDebug(oss.str());
           break;
         }
       }
       
-      std::ostringstream oss;
-      oss << "CalculateWindowState: Could not determine exact monitor, using closest monitor as fallback";
-      LogWarn(oss.str().c_str());
-    }
+      if (!found_monitor) {
+        // Fallback: use the monitor closest to the window
+        HMONITOR hmon = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+        GetMonitorInfoW(hmon, &mi);
+        
+        // Find the index of this monitor in our list
+        for (size_t i = 0; i < new_monitors->size(); ++i) {
+          if ((*new_monitors)[i].handle == hmon) {
+            monitor_index = static_cast<int>(i);
+            break;
+          }
+        }
+        
+        std::ostringstream oss;
+        oss << "CalculateWindowState: Could not determine exact monitor, using closest monitor as fallback";
+        LogWarn(oss.str().c_str());
+      }
   }
   
   // Get the current refresh rate for the target monitor

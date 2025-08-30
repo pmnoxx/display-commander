@@ -463,6 +463,17 @@ void DrawLatencyDisplay() {
     ImGui::SameLine();
     ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "(30-frame avg)");
     
+    // Present Duration Display
+    extern std::atomic<double> g_present_duration;
+    double present_duration = ::g_present_duration.load();
+    
+    oss.str("");
+    oss.clear();
+    oss << "Present Duration: " << std::fixed << std::setprecision(6) << present_duration << " ms";
+    ImGui::TextUnformatted(oss.str().c_str());
+    ImGui::SameLine();
+    ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "(smoothed)");
+    
     // Reflex Status Display
     extern std::atomic<bool> g_reflex_active;
     extern std::atomic<uint64_t> g_current_frame;

@@ -932,6 +932,16 @@ void DrawImportantInfo() {
     ImGui::SameLine();
     ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "(30-frame avg)");
     
+    // Present Duration Display
+    double present_duration_sec = ::g_present_duration.load();
+    
+    oss.str("");
+    oss.clear();
+    oss << "Present Duration: " << std::fixed << std::setprecision(3) << (present_duration_sec * 1000.0) << " ms";
+    ImGui::TextUnformatted(oss.str().c_str());
+    ImGui::SameLine();
+    ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "(smoothed)");
+    
     // Reflex Status Display
     bool is_active = ::g_reflex_active.load();
     

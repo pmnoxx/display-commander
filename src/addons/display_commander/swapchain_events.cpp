@@ -14,7 +14,7 @@
 #include "latent_sync/latent_sync_limiter.hpp"
 
 static std::atomic<LONGLONG> g_present_start_time{0};
-static std::atomic<double> g_present_duration{0.0};
+std::atomic<double> g_present_duration{0.0};
 
 // Frame lifecycle hooks for custom FPS limiter
 void OnBeginRenderPass(reshade::api::command_list* cmd_list, uint32_t count, const reshade::api::render_pass_render_target_desc* rts, const reshade::api::render_pass_depth_stencil_desc* ds) {
@@ -269,7 +269,9 @@ void OnPresentUpdateAfter(  reshade::api::command_queue* /*queue*/, reshade::api
   g_swapchain_event_total_count.fetch_add(1);
 
   // g_present_duration
-  double g_present_duration_new = static_cast<double>( dxgi::fps_limiter::get_now_ticks() - g_present_start_time.load()) / dxgi::fps_limiter::ticks_per_second.load();
+  LARGE_INTEGER now_ticks;
+  QueryPerformanceCounter(&now_ticks);
+  double g_present_duration_new = static_cast<double>(now_ticks.QuadPart - g_present_start_time.load()) / 10000000.0; // Convert QPC ticks to seconds (QPC frequency is typically 10MHz)
   double alpha = 0.01;
   g_present_duration.store(alpha * g_present_duration_new + (1 - alpha) * g_present_duration.load());
   
@@ -346,7 +348,9 @@ void HandleFpsLimiter() {
   }
 
 
-  g_present_start_time.store(dxgi::fps_limiter::get_now_ticks());
+  LARGE_INTEGER start_ticks;
+  QueryPerformanceCounter(&start_ticks);
+  g_present_start_time.store(start_ticks.QuadPart);
 }
 
 // Update composition state after presents (required for valid stats)

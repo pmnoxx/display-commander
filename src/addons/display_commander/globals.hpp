@@ -189,6 +189,9 @@ extern std::atomic<float> g_max_latency_ms;
 extern std::atomic<uint64_t> g_current_frame;
 extern std::atomic<bool> g_reflex_active;
 
+// Present duration tracking
+extern std::atomic<double> g_present_duration;
+
 // Backbuffer dimensions
 extern std::atomic<int> g_last_backbuffer_width;
 extern std::atomic<int> g_last_backbuffer_height;

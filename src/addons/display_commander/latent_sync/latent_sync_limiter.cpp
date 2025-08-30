@@ -48,7 +48,6 @@ LatentSyncLimiter::~LatentSyncLimiter() {
 
 bool LatentSyncLimiter::EnsureAdapterBinding() {
     HWND hwnd = g_last_swapchain_hwnd.load();
-    if (hwnd == nullptr) hwnd = GetForegroundWindow();
     return UpdateDisplayBindingFromWindow(hwnd);
 }
 

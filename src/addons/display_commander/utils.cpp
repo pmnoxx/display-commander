@@ -66,15 +66,20 @@ RECT RectFromWH(int width, int height) {
 }
 
 // Utility function implementations
-void LogInfo(const char* msg) { 
-    reshade::log::message(reshade::log::level::info, msg); 
+void LogInfo(const char* msg, ...) { 
+    va_list args;
+    va_start(args, msg);
+    char buffer[1024];
+    vsnprintf(buffer, sizeof(buffer), msg, args);
+    va_end(args);
+    reshade::log::message(reshade::log::level::info, buffer); 
 }
 
-void LogWarn(const char* msg) { 
+void LogWarn(const char* msg, ...) { 
     reshade::log::message(reshade::log::level::warning, msg); 
 }
 
-void LogError(const char* msg) { 
+void LogError(const char* msg, ...) { 
     reshade::log::message(reshade::log::level::error, msg); 
 }
 

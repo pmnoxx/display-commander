@@ -195,7 +195,6 @@ void RunBackgroundAudioMonitor() {
     // Only apply background mute logic if manual mute is OFF
     else if (s_mute_in_background.load() || s_mute_in_background_if_other_audio.load()) {
       HWND hwnd = g_last_swapchain_hwnd.load();
-      if (hwnd == nullptr) hwnd = GetForegroundWindow();
       // Use actual focus state for background audio (not spoofed)
       const bool is_background = (hwnd != nullptr && GetForegroundWindow() != hwnd);
       if (is_background) {

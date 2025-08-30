@@ -117,11 +117,11 @@ bool VBlankMonitor::UpdateDisplayBindingFromWindow(HWND hwnd) {
 }
 
 bool VBlankMonitor::EnsureAdapterBinding() {
-    if (m_hAdapter != 0) return true;
+    return (m_hAdapter != 0);
     
     // Try to bind to foreground window if no specific binding
-    HWND hwnd = GetForegroundWindow();
-    return UpdateDisplayBindingFromWindow(hwnd);
+ //   HWND hwnd = GetForegroundWindow();
+   // return UpdateDisplayBindingFromWindow(hwnd);
 }
 
 LONGLONG get_now_ticks() {

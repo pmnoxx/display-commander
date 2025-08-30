@@ -134,14 +134,14 @@ void ContinuousMonitoringThread() {
             extern PerfSample g_perf_ring[kPerfRingCapacity];
             extern std::atomic<double> g_perf_time_seconds;
             extern std::atomic<bool> g_perf_reset_requested;
-            extern std::string g_perf_text_shared;
+            extern std::atomic<std::shared_ptr<const std::string>> g_perf_text_shared;
 
             const double now_s = g_perf_time_seconds.load(std::memory_order_acquire);
 
             // Handle reset: clear samples efficiently by advancing head and zeroing text
             if (g_perf_reset_requested.exchange(false, std::memory_order_acq_rel)) {
                 g_perf_ring_head.store(0, std::memory_order_release);
-                g_perf_text_shared.clear();
+                g_perf_text_shared.store(std::make_shared<const std::string>(""));
             }
 
             // Copy samples since last reset into local vectors for computation
@@ -215,9 +215,7 @@ void ContinuousMonitoringThread() {
                     << "   Top FT: P99 " << std::setprecision(1) << p99_frame_time_ms << " ms"
                     << ", P99.9 " << std::setprecision(1) << p999_frame_time_ms << " ms"
                     << " since reset";
-            ::g_perf_text_lock.lock();
-            g_perf_text_shared = fps_oss.str();
-            ::g_perf_text_lock.unlock();
+            g_perf_text_shared.store(std::make_shared<const std::string>(fps_oss.str()));
         }
         
         // Periodic display cache refresh off the UI thread

@@ -888,9 +888,10 @@ void DrawImportantInfo() {
     // FPS Counter with 1% Low and 0.1% Low over past 60s (computed in background)
     {
         std::string local_text;
-        ::g_perf_text_lock.lock();
-        local_text = ::g_perf_text_shared;
-        ::g_perf_text_lock.unlock();
+        auto shared_text = ::g_perf_text_shared.load();
+        if (shared_text) {
+            local_text = *shared_text;
+        }
         ImGui::TextUnformatted(local_text.c_str());
         ImGui::SameLine();
         if (ImGui::Button("Reset Stats")) {

@@ -232,8 +232,8 @@ extern std::atomic<uint32_t> g_perf_ring_head;
 extern PerfSample g_perf_ring[kPerfRingCapacity];
 extern std::atomic<double> g_perf_time_seconds;
 extern std::atomic<bool> g_perf_reset_requested;
-extern std::string g_perf_text_shared;
-extern SpinLock g_perf_text_lock;
+extern std::atomic<std::shared_ptr<const std::string>> g_perf_text_shared;
+
 
 
 // Function declarations

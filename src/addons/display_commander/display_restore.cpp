@@ -1,6 +1,6 @@
 #include "display_restore.hpp"
 #include "display_cache.hpp"
-#include "addon.hpp"
+#include "globals.hpp"
 #include <map>
 #include <set>
 #include <mutex>

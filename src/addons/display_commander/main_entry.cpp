@@ -87,7 +87,6 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
       reshade::register_event<reshade::addon_event::set_fullscreen_state>(
           display_commander::events::OnSetFullscreenState);
 
-      g_attach_time = std::chrono::steady_clock::now();
       g_shutdown.store(false);
       std::thread(RunBackgroundAudioMonitor).detach();
       background::StartBackgroundTasks();
@@ -95,7 +94,6 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
       // NVAPI HDR monitor will be started after settings load below if enabled
       // Seed default fps limit snapshot
       // GetFpsLimit removed from proxy, use s_fps_limit directly
-      g_default_fps_limit.store(s_fps_limit);
       reshade::register_event<reshade::addon_event::present>(OnPresentUpdateBefore);
       reshade::register_event<reshade::addon_event::reshade_present>(OnPresentUpdateBefore2);
       reshade::register_event<reshade::addon_event::finish_present>(OnPresentUpdateAfter);

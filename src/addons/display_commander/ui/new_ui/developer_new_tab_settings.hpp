@@ -45,10 +45,7 @@ public:
     // Experimental/Unstable features toggle
     ui::new_ui::BoolSettingRef enable_unstable_reshade_features;
     
-    // Resolution Override Settings (Experimental)
-    ui::new_ui::BoolSettingRef enable_resolution_override;
-    ui::new_ui::IntSettingRef override_resolution_width;
-    ui::new_ui::IntSettingRef override_resolution_height;
+
     
     // Keyboard Shortcut Settings (Experimental)
     ui::new_ui::BoolSettingRef enable_mute_unmute_shortcut;

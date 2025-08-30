@@ -1,7 +1,7 @@
 #include "window_info_tab.hpp"
-#include "../../addon.hpp"
 #include "../../window_management/window_management.hpp"
 #include <deps/imgui/imgui.h>
+#include "../../globals.hpp"
 #include <sstream>
 
 namespace ui::new_ui {

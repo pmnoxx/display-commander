@@ -4,9 +4,6 @@
 #include "../../utils.hpp"
 #include <deps/imgui/imgui.h>
 #include <sstream>
-#include <iomanip>
-#include <algorithm>
-#include <map>
 #include <cstdio>
 #include <dxgi1_6.h>
 #include <wrl/client.h>

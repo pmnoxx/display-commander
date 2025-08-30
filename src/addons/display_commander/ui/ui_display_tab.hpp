@@ -2,7 +2,6 @@
 
 #include <vector>
 #include "../renodx/settings.hpp"
-#include "../display_cache.hpp"
 
 namespace ui {
     void AddDisplayTabSettings(std::vector<utils::settings2::Setting*>& settings);

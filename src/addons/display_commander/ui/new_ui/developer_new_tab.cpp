@@ -404,45 +404,14 @@ void DrawResolutionOverrideSettings() {
     const bool unstable_enabled = ::s_enable_unstable_reshade_features.load();
     if (!unstable_enabled) ImGui::BeginDisabled();
     
-    // Enable Resolution Override
-    if (CheckboxSetting(g_developerTabSettings.enable_resolution_override, "Enable Resolution Override")) {
-        // No need to sync with separate atomic variable - BoolSetting is now atomic internally
-    }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Override the backbuffer resolution during swapchain creation. Same as ReShade ForceResolution.");
     }
     
-    // Resolution Width and Height inputs
-    if (g_developerTabSettings.enable_resolution_override.GetValue()) {
-        ImGui::Indent();
-        
-        // Width input
-        if (SliderIntSetting(g_developerTabSettings.override_resolution_width, "Override Width")) {
-            ::s_override_resolution_width.store(static_cast<float>(g_developerTabSettings.override_resolution_width.GetValue()));
-        }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Width to override the backbuffer to. Must be > 0 to take effect.");
-        }
-        
-        // Height input
-        if (SliderIntSetting(g_developerTabSettings.override_resolution_height, "Override Height")) {
-            ::s_override_resolution_height.store(static_cast<float>(g_developerTabSettings.override_resolution_height.GetValue()));
-        }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Height to override the backbuffer to. Must be > 0 to take effect.");
-        }
-        
-        // Info text
-        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Override will only apply if both width and height are > 0");
-        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Changes take effect on next swapchain creation");
-        
-        ImGui::Unindent();
-    }
+
     
     if (!unstable_enabled) ImGui::EndDisabled();
-    if (!unstable_enabled) {
-        ImGui::TextDisabled("Enable 'unstable ReShade features' above to use resolution override.");
-    }
+
 }
 
 void DrawKeyboardShortcutsSettings() {

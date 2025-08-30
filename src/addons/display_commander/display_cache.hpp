@@ -4,9 +4,9 @@
 #include <vector>
 #include <atomic>
 #include <string>
-#include <map>
 #include <memory>
-#include <optional>
+#include <map>
+#include <optional> // std::nullopt
 #include <sstream> // Added for std::ostringstream
 #include <iomanip> // Added for std::setprecision
 #include <cmath> // Added for std::round

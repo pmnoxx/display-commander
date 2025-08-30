@@ -1,5 +1,5 @@
 #include "background_window.hpp"
-#include "addon.hpp"
+#include "utils.hpp"
 #include <sstream>
 #include <algorithm>
 

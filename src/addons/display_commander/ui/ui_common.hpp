@@ -1,8 +1,7 @@
 #pragma once
 
-#include "../addon.hpp"
-#include <vector>
-#include "new_ui/new_ui_tabs.hpp"
+#include <atomic>
+#include "renodx/settings.hpp"
 
 // External declarations for settings
 

@@ -244,9 +244,9 @@ void  CalculateWindowState(HWND hwnd, const char* reason) {
     LogDebug("CalculateWindowState: target_w=" + std::to_string(local_state.target_w) + ", target_h=" + std::to_string(local_state.target_h));
 
     // Publish snapshot under a lightweight lock
-    g_window_state_lock.lock();
-    g_window_state = local_state;
-    g_window_state_lock.unlock();
+            g_window_state_lock.lock();
+        *g_window_state = local_state;
+        g_window_state_lock.unlock();
   }
 }
 
@@ -259,9 +259,9 @@ void ApplyWindowChange(HWND hwnd, const char* reason, bool force_apply) {
 
   
   // Copy the calculated state into a local snapshot for consistent use
-  g_window_state_lock.lock();
-  GlobalWindowState s = g_window_state;
-  g_window_state_lock.unlock();
+          g_window_state_lock.lock();
+        GlobalWindowState s = *g_window_state;
+        g_window_state_lock.unlock();
 
   if (s.show_cmd == SW_SHOWMAXIMIZED) {
     ShowWindow(hwnd, SW_RESTORE);

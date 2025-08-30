@@ -133,9 +133,9 @@ void DrawGlobalWindowState() {
             // Calculate desired state using global window state
             CalculateWindowState(hwnd, "ui_display");
             
-            ::g_window_state_lock.lock();
-            GlobalWindowState s = ::g_window_state;
-            ::g_window_state_lock.unlock();
+                    ::g_window_state_lock.lock();
+        GlobalWindowState s = *::g_window_state;
+        ::g_window_state_lock.unlock();
             ImGui::Text("Current State:");
             ImGui::Text("  Is Maximized: %s", s.show_cmd == SW_SHOWMAXIMIZED ? "YES" : "No");
             ImGui::Text("  Is Minimized: %s", s.show_cmd == SW_SHOWMINIMIZED ? "YES" : "No");
@@ -198,9 +198,9 @@ void DrawTargetState() {
     if (ImGui::CollapsingHeader("Target State & Changes", ImGuiTreeNodeFlags_DefaultOpen)) {
         HWND hwnd = g_last_swapchain_hwnd.load();
         if (hwnd != nullptr) {
-            ::g_window_state_lock.lock();
-            GlobalWindowState s2 = ::g_window_state;
-            ::g_window_state_lock.unlock();
+                    ::g_window_state_lock.lock();
+        GlobalWindowState s2 = *::g_window_state;
+        ::g_window_state_lock.unlock();
             ImGui::Text("Target State:");
             ImGui::Text("  Target Size: %dx%d", s2.target_w, s2.target_h);
             ImGui::Text("  Target Position: (%d,%d)", s2.target_x, s2.target_y);

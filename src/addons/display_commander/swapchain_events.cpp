@@ -11,6 +11,10 @@
 // Use renodx2 utilities for swapchain color space changes
 #include <utils/swapchain.hpp>
 #include "globals.hpp"
+#include "latent_sync/latent_sync_limiter.hpp"
+
+static std::atomic<LONGLONG> g_present_start_time{0};
+static std::atomic<double> g_present_duration{0.0};
 
 // Frame lifecycle hooks for custom FPS limiter
 void OnBeginRenderPass(reshade::api::command_list* cmd_list, uint32_t count, const reshade::api::render_pass_render_target_desc* rts, const reshade::api::render_pass_depth_stencil_desc* ds) {
@@ -263,6 +267,11 @@ void OnPresentUpdateAfter(  reshade::api::command_queue* /*queue*/, reshade::api
   // Increment event counter
   g_swapchain_event_counters[SWAPCHAIN_EVENT_PRESENT_UPDATE_AFTER].fetch_add(1);
   g_swapchain_event_total_count.fetch_add(1);
+
+  // g_present_duration
+  double g_present_duration_new = static_cast<double>( dxgi::fps_limiter::get_now_ticks() - g_present_start_time.load()) / dxgi::fps_limiter::ticks_per_second.load();
+  double alpha = 0.01;
+  g_present_duration.store(alpha * g_present_duration_new + (1 - alpha) * g_present_duration.load());
   
   // Mark Present end for latent sync limiter timing
   if (s_custom_fps_limiter_enabled.load()) {
@@ -335,6 +344,9 @@ void HandleFpsLimiter() {
       }
     }
   }
+
+
+  g_present_start_time.store(dxgi::fps_limiter::get_now_ticks());
 }
 
 // Update composition state after presents (required for valid stats)

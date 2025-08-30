@@ -108,7 +108,6 @@ void DrawDeveloperSettings() {
         } else {
             oss << "Spoof as Windowed";
         }
-        extern void LogInfo(const char* message);
         ::LogInfo(oss.str().c_str());
     }
     if (ImGui::IsItemHovered()) {
@@ -121,7 +120,6 @@ void DrawDeveloperSettings() {
         if (ImGui::Button("Reset##DevFullscreen")) {
             g_developerTabSettings.spoof_fullscreen_state.SetValue(false);
             s_spoof_fullscreen_state.store(false);
-            extern void LogInfo(const char* message);
             ::LogInfo("Fullscreen state spoofing reset to disabled");
         }
         if (ImGui::IsItemHovered()) {

@@ -136,8 +136,6 @@ void DrawMainNewTab() {
     // Input Blocking (Background) Section
     {
         ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== Input Control (Background) ===");
-        const bool unstable_enabled = ::s_enable_unstable_reshade_features.load();
-        if (!unstable_enabled) ImGui::BeginDisabled();
         bool block_any_in_background =
             g_main_new_tab_settings.block_input_in_background.GetValue();
         if (ImGui::Checkbox("Block Input in Background (Custom DLL needed)", &block_any_in_background)) {
@@ -146,10 +144,6 @@ void DrawMainNewTab() {
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Blocks mouse, keyboard, and cursor warping while the game window is not focused.");
-        }
-        if (!unstable_enabled) ImGui::EndDisabled();
-        if (!unstable_enabled) {
-            ImGui::TextDisabled("Enable 'unstable ReShade features' in Developer tab to use these.");
         }
     }
 

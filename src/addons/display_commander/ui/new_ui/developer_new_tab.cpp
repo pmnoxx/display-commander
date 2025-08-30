@@ -55,13 +55,13 @@ void DrawDeveloperNewTab() {
     ImGui::Spacing();
     ImGui::Separator();
     
-    // Resolution Override Settings Section (Experimental)
+    // Resolution Override Settings Section
     DrawResolutionOverrideSettings();
     
     ImGui::Spacing();
     ImGui::Separator();
     
-    // Keyboard Shortcuts Section (Experimental)
+    // Keyboard Shortcuts Section
     DrawKeyboardShortcutsSettings();
     
     ImGui::Spacing();
@@ -396,35 +396,22 @@ void DrawReflexSettings() {
 }
 
 void DrawResolutionOverrideSettings() {
-    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "=== Resolution Override (Experimental) ===");
-    
-    // Check if unstable features are enabled
-    const bool unstable_enabled = ::s_enable_unstable_reshade_features.load();
-    if (!unstable_enabled) ImGui::BeginDisabled();
+    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "=== Resolution Override ===");
     
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Override the backbuffer resolution during swapchain creation. Same as ReShade ForceResolution.");
     }
-    
-
-    
-    if (!unstable_enabled) ImGui::EndDisabled();
-
 }
 
 void DrawKeyboardShortcutsSettings() {
-    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "=== Keyboard Shortcuts (Experimental) ===");
-    
-    // Check if unstable features are enabled
-    const bool unstable_enabled = ::s_enable_unstable_reshade_features.load();
-    if (!unstable_enabled) ImGui::BeginDisabled();
+    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "=== Keyboard Shortcuts ===");
     
     // Enable Mute/Unmute Shortcut (Ctrl+M)
     if (CheckboxSetting(g_developerTabSettings.enable_mute_unmute_shortcut, "Enable Mute/Unmute Shortcut (Ctrl+M)")) {
         ::s_enable_mute_unmute_shortcut.store(g_developerTabSettings.enable_mute_unmute_shortcut.GetValue());
     }
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Enable keyboard shortcut Ctrl+M to quickly mute/unmute audio. Requires 'unstable ReShade features' to be enabled.");
+        ImGui::SetTooltip("Enable keyboard shortcut Ctrl+M to quickly mute/unmute audio.");
     }
     
     // Info text
@@ -433,11 +420,6 @@ void DrawKeyboardShortcutsSettings() {
         ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Press Ctrl+M to toggle audio mute state");
         ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Shortcut works globally when enabled");
         ImGui::Unindent();
-    }
-    
-    if (!unstable_enabled) ImGui::EndDisabled();
-    if (!unstable_enabled) {
-        ImGui::TextDisabled("Enable 'unstable ReShade features' above to use keyboard shortcuts.");
     }
 }
 

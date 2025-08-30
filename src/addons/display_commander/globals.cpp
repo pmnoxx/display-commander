@@ -181,7 +181,7 @@ std::atomic<bool> s_enable_unstable_reshade_features = false; // Disabled by def
 
 
 
-// Keyboard Shortcut Settings (Experimental)
+// Keyboard Shortcut Settings
 std::atomic<bool> s_enable_mute_unmute_shortcut = false; // Disabled by default
 
 // Helper function for updating HDR10 override status atomically

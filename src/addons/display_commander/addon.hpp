@@ -222,7 +222,7 @@ extern std::unique_ptr<ReflexManager> g_reflexManager;
 extern std::atomic<bool> g_reflex_settings_changed;
 
 // Global window state instance
-extern GlobalWindowState g_window_state;
+extern std::shared_ptr<GlobalWindowState> g_window_state;
 extern SpinLock g_window_state_lock;
 
 // Lock-free ring buffer for recent FPS samples (60s window at ~240 Hz -> 14400 max)

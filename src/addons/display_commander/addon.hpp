@@ -202,7 +202,7 @@ extern std::atomic<bool> g_shutdown;
 extern std::atomic<bool> g_muted_applied;
 extern std::atomic<float> g_default_fps_limit;
 
-extern std::vector<MonitorInfo> g_monitors;
+extern std::atomic<std::shared_ptr<const std::vector<MonitorInfo>>> g_monitors;
 
 // Fix HDR10 color space when backbuffer is RGB10A2
 extern std::atomic<bool> s_fix_hdr10_colorspace;

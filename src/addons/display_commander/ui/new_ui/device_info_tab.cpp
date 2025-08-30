@@ -3,8 +3,6 @@
 #include "../../dxgi/dxgi_device_info.hpp"
 #include <deps/imgui/imgui.h>
 #include <sstream>
-#include <iomanip>
-
 namespace ui::new_ui {
 
 void DrawDeviceInfoTab() {
@@ -49,10 +47,11 @@ void DrawBasicDeviceInfo() {
 void DrawMonitorInfo() {
     if (ImGui::CollapsingHeader("Monitor Information", ImGuiTreeNodeFlags_DefaultOpen)) {
         // Display monitor information
-        if (!g_monitors.empty()) {
-            ImGui::Text("Monitors (%zu):", g_monitors.size());
-            for (size_t i = 0; i < g_monitors.size(); ++i) {
-                const auto& monitor = g_monitors[i];
+        auto monitors = g_monitors.load();
+        if (monitors && !monitors->empty()) {
+            ImGui::Text("Monitors (%zu):", monitors->size());
+            for (size_t i = 0; i < monitors->size(); ++i) {
+                const auto& monitor = (*monitors)[i];
                 ImGui::Text("Monitor %zu: %ldx%ld at (%ld,%ld)", 
                            i + 1, 
                            monitor.info.rcMonitor.right - monitor.info.rcMonitor.left,
@@ -74,7 +73,7 @@ void DrawDeviceRefreshControls() {
             }
         }
         ImGui::SameLine();
-        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Click to refresh device information");
+        ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "Click to refresh device information");
         
         ImGui::SameLine();
         if (ImGui::Button("Force Re-enumeration")) {

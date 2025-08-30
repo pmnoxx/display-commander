@@ -186,7 +186,7 @@ std::string g_perf_text_shared;
 SpinLock g_perf_text_lock;
 
 // Vector variables
-std::vector<MonitorInfo> g_monitors;
+std::atomic<std::shared_ptr<const std::vector<MonitorInfo>>> g_monitors{std::make_shared<std::vector<MonitorInfo>>()};
 
 // Colorspace variables
 reshade::api::color_space g_current_colorspace = reshade::api::color_space::unknown;

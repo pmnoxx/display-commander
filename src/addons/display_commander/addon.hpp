@@ -182,7 +182,6 @@ extern std::atomic<bool> s_custom_fps_limiter_enabled;
 // VSync and tearing controls
 extern std::atomic<bool> s_force_vsync_on;
 extern std::atomic<bool> s_force_vsync_off;
-extern std::atomic<bool> s_allow_tearing;
 extern std::atomic<bool> s_prevent_tearing;
 extern std::atomic<int> s_target_monitor_index;
 extern std::atomic<int> s_dxgi_composition_state;

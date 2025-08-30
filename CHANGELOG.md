@@ -1,6 +1,6 @@
 ## v0.3.1 (2025-08-26)
 
-- **Tearing control improvements** - Added "Allow Tearing" feature and automatic DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING application for sync_interval > 0
+- **Tearing control improvements** - Removed "Allow Tearing" feature to simplify VSync controls
 - **Reflex enhancements** - Upgraded 95% button to 96% to match Reflex standards and renamed to 'Reflex Cap' button
 - **Latency reduction** - Added experimental feature to delay CPU sim thread by fixed amount to reduce latency
 - **Input shortcuts** - Added experimental Ctrl+M mute/unmute shortcut for quick audio control

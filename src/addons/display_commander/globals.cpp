@@ -51,7 +51,6 @@ std::atomic<bool> s_custom_fps_limiter_enabled{true}; // Always enabled
 // VSync and tearing controls
 std::atomic<bool> s_force_vsync_on{false};
 std::atomic<bool> s_force_vsync_off{false};
-std::atomic<bool> s_allow_tearing{false};
 std::atomic<bool> s_prevent_tearing{false};
 
 // Monitor and display settings

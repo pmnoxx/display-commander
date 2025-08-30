@@ -69,11 +69,6 @@ void InitMainNewTab() {
         s_mute_in_background.store(g_main_new_tab_settings.mute_in_background.GetValue());
         s_mute_in_background_if_other_audio.store(g_main_new_tab_settings.mute_in_background_if_other_audio.GetValue());
         // VSync & Tearing - all automatically synced via BoolSettingRef
-        // Resolve persisted conflicts: Prevent Tearing takes precedence
-        if (s_prevent_tearing.load() && s_allow_tearing.load()) {
-            g_main_new_tab_settings.allow_tearing.SetValue(false);
-            // All VSync/tearing settings are automatically synced via BoolSettingRef
-        }
         s_block_input_in_background.store(g_main_new_tab_settings.block_input_in_background.GetValue());
         settings_loaded_once = true;
 
@@ -507,13 +502,12 @@ void DrawDisplaySettings() {
         // Warning for VBlank Scanline Sync mode when required settings are not enabled
         if (g_main_new_tab_settings.fps_limiter_mode.GetValue() == 1) {
             bool force_vsync_off_enabled = g_main_new_tab_settings.force_vsync_off.GetValue();
-            bool allow_tearing_enabled = g_main_new_tab_settings.allow_tearing.GetValue();
             
-            if (!force_vsync_off_enabled || !allow_tearing_enabled) {
+            if (!force_vsync_off_enabled) {
                 ImGui::Spacing();
-                ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "WARNING: VBlank Scanline Sync only works with VSYNC-OFF and allow tearing");
+                ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "WARNING: VBlank Scanline Sync only works with VSYNC-OFF");
                 if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip("VBlank Scanline Sync mode requires VSync to be disabled and tearing to be allowed for optimal frame pacing.");
+                    ImGui::SetTooltip("VBlank Scanline Sync mode requires VSync to be disabled for optimal frame pacing.");
                 }
             }
         }
@@ -610,11 +604,11 @@ void DrawDisplaySettings() {
         
         ImGui::Spacing();
         ImGui::TextColored(ImVec4(0.8f, 0.9f, 1.0f, 1.0f), "=== VSync & Tearing ===");
-        bool vsync_tearing_changed = false;
+        bool vsync_changed = false;
 
         bool vs_on = g_main_new_tab_settings.force_vsync_on.GetValue();
         if (ImGui::Checkbox("Force VSync ON (Custom DLL needed)", &vs_on)) {
-            vsync_tearing_changed = true;
+            vsync_changed = true;
             // Mutual exclusion
             if (vs_on) {
                 g_main_new_tab_settings.force_vsync_off.SetValue(false);
@@ -625,73 +619,43 @@ void DrawDisplaySettings() {
             LogInfo(vs_on ? "Force VSync ON enabled" : "Force VSync ON disabled");
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Forces sync interval = 1 (may require swapchain recreation by the game).");
+            ImGui::SetTooltip("Forces sync interval = 1 (requires restart).");
         }
 
         ImGui::SameLine();
 
         bool vs_off = g_main_new_tab_settings.force_vsync_off.GetValue();
         if (ImGui::Checkbox("Force VSync OFF", &vs_off)) {
-            vsync_tearing_changed = true;
+            vsync_changed = true;
             // Mutual exclusion
             if (vs_off) {
                 g_main_new_tab_settings.force_vsync_on.SetValue(false);
                 // s_force_vsync_on is automatically synced via BoolSettingRef
              //   g_main_new_tab_settings.prevent_tearing.SetValue(false);
             //    s_prevent_tearing.store(false);
-           //     g_main_new_tab_settings.allow_tearing.SetValue(true);
-            //    s_allow_tearing.store(true);
             }
             g_main_new_tab_settings.force_vsync_off.SetValue(vs_off);
             // s_force_vsync_off is automatically synced via BoolSettingRef
             LogInfo(vs_off ? "Force VSync OFF enabled" : "Force VSync OFF disabled");
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Forces sync interval = 0 (immediate). Use with 'Allow Tearing' for true VSYNC off in windowed.");
-        }
-
-        ImGui::SameLine();
-
-        bool allow_t = g_main_new_tab_settings.allow_tearing.GetValue();
-        if (ImGui::Checkbox("Allow Tearing (WIP)", &allow_t)) {
-            vsync_tearing_changed = true;
-            // Mutual exclusion with Prevent Tearing
-            if (allow_t) {
-                g_main_new_tab_settings.prevent_tearing.SetValue(false);
-                // s_prevent_tearing is automatically synced via BoolSettingRef
-            }
-            if (!allow_t) {
-                g_main_new_tab_settings.force_vsync_off.SetValue(false);
-                // s_force_vsync_off is automatically synced via BoolSettingRef
-            }
-            g_main_new_tab_settings.allow_tearing.SetValue(allow_t);
-            // s_allow_tearing is automatically synced via BoolSettingRef
-            LogInfo(allow_t ? "DXGI tearing allowed enabled (flag will be applied on swapchain)" : "DXGI tearing allowed disabled");
-        }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Sets DXGI swapchain Allow Tearing flag (Flip Model + OS support required). Applies on swapchain creation.");
+            ImGui::SetTooltip("Forces sync interval = 0 (requires restart).");
         }
 
         ImGui::SameLine();
 
         bool prevent_t = g_main_new_tab_settings.prevent_tearing.GetValue();
-        if (ImGui::Checkbox("Prevent Tearing (WIP)", &prevent_t)) {
-            vsync_tearing_changed = true;
-            // Mutual exclusion with Enable Tearing
-            if (prevent_t) {
-                g_main_new_tab_settings.allow_tearing.SetValue(false);
-                // s_allow_tearing is automatically synced via BoolSettingRef
-            }
+        if (ImGui::Checkbox("Prevent Tearing", &prevent_t)) {
             g_main_new_tab_settings.prevent_tearing.SetValue(prevent_t);
             // s_prevent_tearing is automatically synced via BoolSettingRef
             LogInfo(prevent_t ? "Prevent Tearing enabled (tearing flags will be cleared)" : "Prevent Tearing disabled");
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Prevents tearing by clearing DXGI tearing flags and preferring sync. Mutually exclusive with Enable Tearing.");
+            ImGui::SetTooltip("Prevents tearing by clearing DXGI tearing flags and preferring sync.");
         }
 
-        // If any of the VSync/tearing settings changed this frame, mark restart as required
-        if (vsync_tearing_changed) {
+        // If any of the VSync settings changed this frame, mark restart as required
+        if (vsync_changed) {
             s_restart_needed_vsync_tearing = true;
         }
 
@@ -958,13 +922,6 @@ void DrawWindowControls() {
 
 void DrawMonitorDisplaySettings() {
     ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== Monitor & Display Resolution ===");
-    
-    // Initialize the display cache when first accessed
-    static bool cache_initialized = false;
-    if (!cache_initialized) {
-        InitializeDisplayCache();
-        cache_initialized = true;
-    }
     
     // Dynamic Monitor Settings
     if (ImGui::CollapsingHeader("Dynamic Monitor Settings", ImGuiTreeNodeFlags_DefaultOpen)) {

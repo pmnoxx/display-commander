@@ -37,7 +37,6 @@ public:
     // VSync & Tearing
     BoolSettingRef force_vsync_on;
     BoolSettingRef force_vsync_off;
-    BoolSettingRef allow_tearing;
     BoolSettingRef prevent_tearing;
 
     

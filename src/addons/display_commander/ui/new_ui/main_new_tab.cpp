@@ -975,7 +975,7 @@ void DrawMonitorDisplaySettings() {
     
     // Current Display Info
     ImGui::TextColored(ImVec4(0.9f, 0.9f, 0.9f, 1.0f), "Current Display Info:");
-    std::string display_info = GetCurrentDisplayInfoFromCache();
+    std::string display_info = GetCurrentDisplayInfo();
     ImGui::TextWrapped("%s", display_info.c_str());
 }
 

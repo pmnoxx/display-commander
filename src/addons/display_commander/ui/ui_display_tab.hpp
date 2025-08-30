@@ -14,7 +14,7 @@ namespace ui {
     std::vector<std::string> GetMonitorLabelsFromCache();
     
     // Get current display info using the display cache
-    std::string GetCurrentDisplayInfoFromCache();
+    std::string GetCurrentDisplayInfo();
     
     // Handle monitor settings UI (extracted from on_draw lambda)
     bool HandleMonitorSettingsUI();

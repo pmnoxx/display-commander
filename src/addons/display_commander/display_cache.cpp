@@ -410,6 +410,10 @@ bool DisplayCache::GetSupportedModes(size_t display_index, std::vector<Resolutio
     return true;
 }
 
+std::shared_ptr<std::vector<std::unique_ptr<DisplayInfo>>> DisplayCache::GetDisplays() const {
+    return displays.load(std::memory_order_acquire);
+}
+
 size_t DisplayCache::GetDisplayCount() const {
     auto displays_ptr = displays.load(std::memory_order_acquire);
     return displays_ptr ? displays_ptr->size() : 0;

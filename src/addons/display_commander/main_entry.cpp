@@ -99,6 +99,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
       reshade::register_event<reshade::addon_event::present>(OnPresentUpdateBefore);
       reshade::register_event<reshade::addon_event::reshade_present>(OnPresentUpdateBefore2);
       reshade::register_event<reshade::addon_event::finish_present>(OnPresentUpdateAfter);
+      reshade::register_event<reshade::addon_event::present_flags>(OnPresentFlags);
       
       // Register frame lifecycle hooks for custom FPS limiter
       reshade::register_event<reshade::addon_event::begin_render_pass>(OnBeginRenderPass);
@@ -133,6 +134,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
       reshade::unregister_event<reshade::addon_event::present>(OnPresentUpdateBefore);
       reshade::unregister_event<reshade::addon_event::reshade_present>(OnPresentUpdateBefore2);
       reshade::unregister_event<reshade::addon_event::finish_present>(OnPresentUpdateAfter);
+      reshade::unregister_event<reshade::addon_event::present_flags>(OnPresentFlags);
       
       // Unregister frame lifecycle hooks for custom FPS limiter
       reshade::unregister_event<reshade::addon_event::begin_render_pass>(OnBeginRenderPass);

@@ -348,7 +348,8 @@ void DrawSwapchainEventCounters() {
             false,   // reshade::addon_event::execute_command_list
             false,   // reshade::addon_event::bind_pipeline (suppressed by default)
             true,   // reshade::addon_event::init_command_queue
-            true    // reshade::addon_event::reset_command_list
+            true,   // reshade::addon_event::reset_command_list
+            true    // reshade::addon_event::present_flags
         };
         
         // Display each event counter with color coding
@@ -364,13 +365,14 @@ void DrawSwapchainEventCounters() {
             "reshade::addon_event::execute_command_list",
             "reshade::addon_event::bind_pipeline",
             "reshade::addon_event::init_command_queue",
-            "reshade::addon_event::reset_command_list"
+            "reshade::addon_event::reset_command_list",
+            "reshade::addon_event::present_flags"
         };
         
         uint32_t total_events = 0;
         uint32_t visible_events = 0;
         
-        for (int i = 0; i < 12; i++) {
+        for (int i = 0; i < 13; i++) {
             // Skip events that are set to invisible
             if (!event_visibility[i]) {
                 continue;
@@ -387,7 +389,7 @@ void DrawSwapchainEventCounters() {
         
         ImGui::Separator();
         ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "Total Events (Visible): %u", total_events);
-        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Hidden Events: %u", 12 - visible_events);
+        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Hidden Events: %u", 13 - visible_events);
         
         // Show status message
         if (total_events > 0) {

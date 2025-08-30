@@ -141,7 +141,6 @@ void ContinuousMonitoringThread() {
             // Handle reset: clear samples efficiently by advancing head and zeroing text
             if (g_perf_reset_requested.exchange(false, std::memory_order_acq_rel)) {
                 g_perf_ring_head.store(0, std::memory_order_release);
-                g_perf_text_shared.store(std::make_shared<const std::string>(""));
             }
 
             // Copy samples since last reset into local vectors for computation

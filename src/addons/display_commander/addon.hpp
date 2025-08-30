@@ -263,10 +263,10 @@ void OnExecuteCommandList(reshade::api::command_queue* queue, reshade::api::comm
 void OnBindPipeline(reshade::api::command_list* cmd_list, reshade::api::pipeline_stage stages, reshade::api::pipeline pipeline);
 
 // HDR10 colorspace override status for UI display
-extern std::atomic<std::shared_ptr<std::string>> g_hdr10_override_status;
+extern std::atomic<std::shared_ptr<const std::string>> g_hdr10_override_status;
 
 // HDR10 colorspace override timestamp for UI display
-extern std::atomic<std::shared_ptr<std::string>> g_hdr10_override_timestamp;
+extern std::atomic<std::shared_ptr<const std::string>> g_hdr10_override_timestamp;
 
 // Helper function for updating HDR10 override status atomically
 void UpdateHdr10OverrideStatus(const std::string& status);

@@ -152,11 +152,11 @@ std::unique_ptr<CustomFpsLimiterManager> g_customFpsLimiterManager = std::make_u
 std::unique_ptr<DXGIDeviceInfoManager> g_dxgiDeviceInfoManager = std::make_unique<DXGIDeviceInfoManager>();
 
 // Direct atomic variables for latency tracking (UI access)
-std::atomic<float> g_current_latency_ms{16.67f};
-std::atomic<float> g_pcl_av_latency_ms{16.67f};
-std::atomic<float> g_average_latency_ms{16.67f};
-std::atomic<float> g_min_latency_ms{16.67f};
-std::atomic<float> g_max_latency_ms{16.67f};
+std::atomic<float> g_current_latency_ms{0.0f};
+std::atomic<float> g_pcl_av_latency_ms{0.0f};
+std::atomic<float> g_average_latency_ms{0.0f};
+std::atomic<float> g_min_latency_ms{0.0f};
+std::atomic<float> g_max_latency_ms{0.0f};
 std::atomic<uint64_t> g_current_frame{0};
 std::atomic<bool> g_reflex_active{false};
 
@@ -193,11 +193,11 @@ reshade::api::color_space g_current_colorspace = reshade::api::color_space::unkn
 
 // HDR10 override status (thread-safe, updated by background thread, read by UI thread)
 // Use UpdateHdr10OverrideStatus() to update, or g_hdr10_override_status.load()->c_str() to read
-std::atomic<std::shared_ptr<std::string>> g_hdr10_override_status{std::make_shared<std::string>("Not applied")};
+std::atomic<std::shared_ptr<const std::string>> g_hdr10_override_status{std::make_shared<std::string>("Not applied")};
 
 // HDR10 override timestamp (thread-safe, updated by background thread, read by UI thread)
 // Use UpdateHdr10OverrideTimestamp() to update, or g_hdr10_override_timestamp.load()->c_str() to read
-std::atomic<std::shared_ptr<std::string>> g_hdr10_override_timestamp{std::make_shared<std::string>("Never")};
+std::atomic<std::shared_ptr<const std::string>> g_hdr10_override_timestamp{std::make_shared<std::string>("Never")};
 
 // Monitor labels cache (updated by background thread) - lock-free publication
 std::atomic<std::shared_ptr<const std::vector<std::string>>> g_monitor_labels{std::make_shared<const std::vector<std::string>>()} ;

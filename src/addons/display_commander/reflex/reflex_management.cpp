@@ -398,11 +398,11 @@ void ReflexManager::UpdateLatencyTracking() {
         extern std::atomic<float> g_max_latency_ms;
         extern std::atomic<uint64_t> g_current_frame;
         
-        g_current_latency_ms.store(16.67f);
-        g_pcl_av_latency_ms.store(16.67f);
-        g_average_latency_ms.store(16.67f);
-        g_min_latency_ms.store(16.67f);
-        g_max_latency_ms.store(16.67f);
+        g_current_latency_ms.store(0.0f);
+        g_pcl_av_latency_ms.store(0.0f);
+        g_average_latency_ms.store(0.0f);
+        g_min_latency_ms.store(0.0f);
+        g_max_latency_ms.store(0.0f);
         g_current_frame.store(0);
         return;
     }

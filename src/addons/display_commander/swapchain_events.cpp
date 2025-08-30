@@ -1,13 +1,8 @@
 #include "addon.hpp"
 #include "reflex/reflex_management.hpp"
-#include "dxgi/dxgi_device_info.hpp"
-#include "resolution_helpers.hpp"
-#include "display_cache.hpp"
 #include "audio/audio_management.hpp"
 #include <dxgi1_4.h>
 #include "utils.hpp"
-#include <chrono>
-#include <iomanip>
 #include <sstream>
 #include <unordered_map>
 #include <mutex>
@@ -16,7 +11,6 @@
 // Use renodx2 utilities for swapchain color space changes
 #include <utils/swapchain.hpp>
 #include "globals.hpp"
-#include "ui/new_ui/developer_new_tab_settings.hpp"
 
 // Frame lifecycle hooks for custom FPS limiter
 void OnBeginRenderPass(reshade::api::command_list* cmd_list, uint32_t count, const reshade::api::render_pass_render_target_desc* rts, const reshade::api::render_pass_depth_stencil_desc* ds) {
@@ -124,43 +118,6 @@ bool OnCreateSwapchainCapture(reshade::api::device_api /*api*/, reshade::api::sw
     desc.sync_interval = 0; // VSYNC off
     desc.present_flags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
     modified = true;
-  }
-  // Apply tearing preference if requested and applicable
-  {
-   /* if (is_flip) {
-      if (s_prevent_tearing.load()  && desc.sync_interval < INT_MAX) {
-        // Clear allow tearing flag when preventing tearing
-        if (! desc.fullscreen_state) {
-          desc.present_flags &= ~DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
-          // If we are using flip model and we are not allowing tearing, we need to set the back buffer count to 2
-          if (desc.back_buffer_count == 1) {
-            desc.back_buffer_count = 2;
-          }
-        }
-        modified = true;
-      } else if (s_allow_tearing.load() && desc.sync_interval < INT_MAX) {
-        // Enable tearing when requested
-        desc.present_flags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
-        modified = true;
-      }
-    }*/
-  }
-  
-  if (ui::new_ui::g_developerTabSettings.enable_resolution_override.GetValue()) {
-    const int width = s_override_resolution_width.load();
-    const int height = s_override_resolution_height.load();
-    
-    // Only apply if both width and height are > 0 (same logic as ReShade ForceResolution)
-    if (width > 0 && height > 0) {
-      desc.back_buffer.texture.width = static_cast<uint32_t>(width);
-      desc.back_buffer.texture.height = static_cast<uint32_t>(height);
-      modified = true;
-      
-      // Log the resolution override for debugging
-      std::ostringstream oss;
-      oss << "Resolution Override applied: " << width << "x" << height;
-      LogInfo(oss.str().c_str());
-    }
   }
   // Log sync interval and present flags with detailed explanation
   {

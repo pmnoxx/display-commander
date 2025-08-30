@@ -6,14 +6,9 @@
 
 #include <windows.h>
 #include <windef.h>
-#include "../../../external/reshade/include/reshade.hpp"
 
 #include <sstream>
-#include <thread>
 #include <atomic>
-#include <chrono>
-#include <cstdint>
-#include <cmath>
 #include <vector>
 
 // Structs needed for utility functions

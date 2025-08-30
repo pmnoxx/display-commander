@@ -1,11 +1,8 @@
 #include "addon.hpp"
 #include "utils.hpp"
 #include "background_window.hpp"
-#include "dxgi/dxgi_device_info.hpp"
 #include <thread>
-#include <chrono>
 #include <sstream>
-#include <vector>
 #include <algorithm>
 #include <cmath>
 #include "globals.hpp"

@@ -21,9 +21,7 @@ extern std::atomic<bool> s_reflex_use_markers;
 extern std::atomic<bool> s_reflex_debug_output;
 extern std::atomic<bool> s_remove_top_bar;
 extern std::atomic<bool> s_enable_unstable_reshade_features;
-extern std::atomic<bool> s_enable_resolution_override;
-extern std::atomic<int> s_override_resolution_width;
-extern std::atomic<int> s_override_resolution_height;
+
 extern std::atomic<bool> s_enable_mute_unmute_shortcut;
 extern std::atomic<float> s_fps_extra_wait_ms;
 
@@ -48,9 +46,7 @@ DeveloperTabSettings::DeveloperTabSettings()
     , reflex_debug_output("ReflexDebugOutput", s_reflex_debug_output, false, "DisplayCommander")
     , fps_extra_wait_ms("FpsLimiterExtraWaitMs", s_fps_extra_wait_ms, 0.0f, 0.0f, 10.0f, "DisplayCommander")
     , enable_unstable_reshade_features("EnableUnstableReShadeFeatures", s_enable_unstable_reshade_features, false, "DisplayCommander")
-    , enable_resolution_override("EnableResolutionOverride", s_enable_resolution_override, false, "DisplayCommander")
-    , override_resolution_width("OverrideResolutionWidth", s_override_resolution_width, 1920, 1, 7680, "DisplayCommander")
-    , override_resolution_height("OverrideResolutionHeight", s_override_resolution_height, 1080, 1, 4320, "DisplayCommander")
+
     , enable_mute_unmute_shortcut("EnableMuteUnmuteShortcut", s_enable_mute_unmute_shortcut, false, "DisplayCommander")
 {
 }
@@ -73,9 +69,7 @@ void DeveloperTabSettings::LoadAll() {
     reflex_debug_output.Load();
     fps_extra_wait_ms.Load();
     enable_unstable_reshade_features.Load();
-    enable_resolution_override.Load();
-    override_resolution_width.Load();
-    override_resolution_height.Load();
+
     enable_mute_unmute_shortcut.Load();
     
     // All Ref classes automatically sync with global variables
@@ -104,9 +98,7 @@ std::vector<ui::new_ui::SettingBase*> DeveloperTabSettings::GetAllSettings() {
         &reflex_debug_output,
         &fps_extra_wait_ms,
         &enable_unstable_reshade_features,
-        &enable_resolution_override,
-        &override_resolution_width,
-        &override_resolution_height,
+
         &enable_mute_unmute_shortcut
     };
 }

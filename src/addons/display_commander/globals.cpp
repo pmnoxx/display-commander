@@ -145,6 +145,9 @@ std::atomic<bool> g_app_in_background{false};
 // FPS limiter mode: 0 = Custom (Sleep/Spin), 1 = VBlank Scanline Sync (VBlank)
 std::atomic<int> s_fps_limiter_mode{0};
 
+// FPS limiter injection timing: 0 = OnPresentFlags (recommended), 1 = OnPresentUpdateBefore2, 2 = OnPresentUpdateBefore
+std::atomic<int> s_fps_limiter_injection{0};
+
 // Scanline offset
 std::atomic<int> s_scanline_offset{0};
 

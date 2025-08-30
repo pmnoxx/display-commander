@@ -2,8 +2,6 @@
 #include "../addon.hpp"
 #include "../utils.hpp"
 #include <dxgi1_6.h>
-#include <cwchar>
-#include <algorithm>
 #include <sstream>
 #include "../display/query_display.hpp"
 
@@ -14,19 +12,9 @@ static uint64_t s_last_scan_time = 0;
 
 namespace dxgi::fps_limiter {
     extern LONGLONG get_now_ticks();
-    std::atomic<double> s_vblank_ms{0.0};
-    std::atomic<double> s_vblank_ticks{0.0};
-    std::atomic<bool> s_vblank_seen{true};
-    std::atomic<double> s_active_ms{0.0};
-    std::atomic<double> s_active_ticks{0.0};
- //   std::atomic<LONGLONG> ticks_per_scanline{0};
     std::atomic<LONGLONG> ticks_per_refresh{0};
-    std::atomic<LONGLONG> s_qpc_freq{0};
     std::atomic<double> correction_lines_delta{0};
-    std::atomic<LONGLONG> prev_wait_target{0};
-    double m_on_present_ms = 0.0;
-    double m_on_present_ticks = 0.0;
-    std::atomic<bool> on_present_ended{false};
+    std::atomic<double> m_on_present_ticks{0.0};
 
 static inline FARPROC LoadProcCached(FARPROC& slot, const wchar_t* mod, const char* name) {
     if (slot != nullptr) return slot;
@@ -116,8 +104,6 @@ void LatentSyncLimiter::LimitFrameRate() {
     // If no target FPS set, simply wait for one vblank to pace to refresh
     const bool cap_to_fps = (m_target_fps > 0.0f);
 
-    s_vblank_seen.store(false); // TODO: fix race condition later on
-
     D3DKMT_GETSCANLINE scan{};
     scan.hAdapter = m_hAdapter;
     scan.VidPnSourceId = m_vidpn_source_id;
@@ -134,7 +120,7 @@ void LatentSyncLimiter::LimitFrameRate() {
 
     extern double expected_current_scanline(LONGLONG now_ticks, int total_height, bool add_correction);
     double expected_scanline = expected_current_scanline(now_ticks, total_height, true);
-    double target_line = mid_vblank_scanline - (total_height * m_on_present_ticks) / ticks_per_refresh.load() - 80.0 + s_scanline_offset.load();
+    double target_line = mid_vblank_scanline - (total_height * m_on_present_ticks.load()) / ticks_per_refresh.load() - 80.0 + s_scanline_offset.load();
 
     double diff_lines = target_line - expected_scanline;
     if (diff_lines < 0) {
@@ -188,7 +174,6 @@ void LatentSyncLimiter::OnPresentEnd() {
         LogInfo(oss.str().c_str());   
         return;
     }
-    on_present_ended.store(true);
     LARGE_INTEGER now; QueryPerformanceCounter(&now);
     LONGLONG dt = now.QuadPart - m_qpc_present_begin;
     m_qpc_present_begin = 0;
@@ -213,8 +198,7 @@ void LatentSyncLimiter::OnPresentEnd() {
     std::ostringstream oss;
     oss << "Present duration: " << m_avg_present_ticks / 10000.0 << " ms " << m_avg_present_ticks << " ticks";
     LogInfo(oss.str().c_str());
-    m_on_present_ms = m_avg_present_ticks / 10000.0;
-    m_on_present_ticks = m_avg_present_ticks;   
+    m_on_present_ticks.store(m_avg_present_ticks);   
 }
 
 void LatentSyncLimiter::StartVBlankMonitoring() {

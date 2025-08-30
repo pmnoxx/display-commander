@@ -1,26 +1,14 @@
 #include "vblank_monitor.hpp"
 #include <dxgi1_6.h>
-#include <cwchar>
-#include <algorithm>
 #include <sstream>
 #include <iomanip>
-#include <locale>
-#include <codecvt>
 #include <iostream>
 #include "../utils.hpp"
 #include "../display/query_display.hpp"
 
 namespace dxgi::fps_limiter {
-extern std::atomic<double> s_vblank_ms;
-extern std::atomic<double> s_vblank_ticks;
-extern std::atomic<double> s_active_ms;
-extern std::atomic<double> s_active_ticks;
-extern std::atomic<bool> s_vblank_seen;
-//extern std::atomic<LONGLONG> ticks_per_scanline;
 extern std::atomic<LONGLONG> ticks_per_refresh;
-extern std::atomic<LONGLONG> s_qpc_freq;
 extern std::atomic<double> correction_lines_delta;
-extern std::atomic<bool> on_present_ended;
 }
 
 // Simple logging wrapper to avoid dependency issues
@@ -172,12 +160,12 @@ void VBlankMonitor::MonitoringThread() {
 
     LARGE_INTEGER liQpcFreq = { };
     QueryPerformanceFrequency(&liQpcFreq);
-    s_qpc_freq.store(liQpcFreq.QuadPart);
+    ticks_per_refresh.store(liQpcFreq.QuadPart);
 
     std::vector<DisplayTimingInfo> timing_info = QueryDisplayTimingInfo();
     {
         std::ostringstream oss;
-        oss << "s_qpc_freq: " << s_qpc_freq.load();
+        oss << "ticks_per_refresh: " << ticks_per_refresh.load();
         LogInfo(oss.str().c_str());   
         
         for (const auto& timing : timing_info) {
@@ -204,11 +192,11 @@ void VBlankMonitor::MonitoringThread() {
 
     
  //   ticks_per_scanline.store((timing_info[0].hsync_freq_numerator > 0) ?
-  //      (timing_info[0].hsync_freq_denominator * s_qpc_freq.load()) /
+  //      (timing_info[0].hsync_freq_denominator * ticks_per_refresh.load()) /
   //      (timing_info[0].hsync_freq_numerator) : 1);
 
     ticks_per_refresh.store((timing_info[0].vsync_freq_numerator > 0) ?
-        (timing_info[0].vsync_freq_denominator * s_qpc_freq.load()) /
+        (timing_info[0].vsync_freq_denominator * ticks_per_refresh.load()) /
         (timing_info[0].vsync_freq_numerator) : 1);
 
     LONGLONG min_scanline_duration = 0;
@@ -241,13 +229,6 @@ void VBlankMonitor::MonitoringThread() {
                 double expected_scanline = expected_current_scanline(mid_point, timing_info[0].total_height, false);
                 
                 std::this_thread::sleep_for(std::chrono::microseconds(100)); // 0.1ms
-             /*   {
-                    std::ostringstream oss2;
-                    oss2 << " scan.ScanLine(Delta): " << int(abs(scan.ScanLine - expected_current_scanline(mid_point, timing_info[0].total_height, true)));
-                    on_present_ended.store(false);
-                    LogInfo(oss2.str().c_str());   
-                    lastScanLine = scan.ScanLine;
-                }*/
 
                 double new_correction_lines_delta = scan.ScanLine - expected_scanline; 
                 correction_lines_delta.store(new_correction_lines_delta);

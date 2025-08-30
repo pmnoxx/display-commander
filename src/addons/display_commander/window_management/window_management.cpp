@@ -113,8 +113,11 @@ void  CalculateWindowState(HWND hwnd, const char* reason) {
       LogInfo(oss.str().c_str());
     }
   }
-  if (current_style != local_state.new_style || current_ex_style != local_state.new_ex_style) {
+  if (current_style != local_state.new_style) {
     local_state.style_changed = true;
+  } 
+  if (current_ex_style != local_state.new_ex_style) {
+    local_state.style_changed_ex = true;
   }
   
   // Get current window state
@@ -251,15 +254,6 @@ void  CalculateWindowState(HWND hwnd, const char* reason) {
 void ApplyWindowChange(HWND hwnd, const char* reason, bool force_apply) {
   if (hwnd == nullptr) return;
   
-  // Take a snapshot for show_cmd decision
-  g_window_state_lock.lock();
-  GlobalWindowState s0 = g_window_state;
-  g_window_state_lock.unlock();
-  if (s0.show_cmd == SW_SHOWMAXIMIZED) {
-    ShowWindow(hwnd, SW_RESTORE);
-    return;
-  }
-  
   // First calculate the desired window state
   CalculateWindowState(hwnd, reason);
 
@@ -269,8 +263,13 @@ void ApplyWindowChange(HWND hwnd, const char* reason, bool force_apply) {
   GlobalWindowState s = g_window_state;
   g_window_state_lock.unlock();
 
+  if (s.show_cmd == SW_SHOWMAXIMIZED) {
+    ShowWindow(hwnd, SW_RESTORE);
+    return;
+  }
+
   // Check if any changes are needed
-  if (s.needs_resize || s.needs_move || s.style_changed) {
+  if (s.needs_resize || s.needs_move || s.style_changed || s.style_changed_ex) {
     if (s.target_w <= 16 || s.target_h <= 16) {
       std::ostringstream oss;
       oss << "ApplyWindowChange: Invalid target size " << s.target_w << "x" << s.target_h << ", skipping";
@@ -280,6 +279,9 @@ void ApplyWindowChange(HWND hwnd, const char* reason, bool force_apply) {
     if (s.style_changed) {
       LogDebug("ApplyWindowChange: Setting new style and ex style");
       SetWindowLongPtrW(hwnd, GWL_STYLE, s.new_style);
+    }
+    if (s.style_changed_ex) {
+      LogDebug("ApplyWindowChange: Setting new ex style");
       SetWindowLongPtrW(hwnd, GWL_EXSTYLE, s.new_ex_style);
     }
 
@@ -288,7 +290,7 @@ void ApplyWindowChange(HWND hwnd, const char* reason, bool force_apply) {
     // Apply all changes in a single SetWindowPos call
     if (!s.needs_resize) flags |= SWP_NOSIZE;
     if (!s.needs_move) flags |= SWP_NOMOVE;
-    if (s.style_changed) flags |= SWP_FRAMECHANGED;
+    if (s.style_changed || s.style_changed_ex) flags |= SWP_FRAMECHANGED;
     
     SetWindowPos(hwnd, nullptr, s.target_x, s.target_y, s.target_w, s.target_h, flags);
   }

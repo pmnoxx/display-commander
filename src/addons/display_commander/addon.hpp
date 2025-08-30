@@ -112,6 +112,7 @@ struct GlobalWindowState {
   bool needs_resize = false;
   bool needs_move = false;
   bool style_changed = false;
+  bool style_changed_ex = false;
   int new_style = 0;
   int new_ex_style = 0;
   WindowStyleMode style_mode = WindowStyleMode::BORDERLESS;
@@ -135,6 +136,7 @@ struct GlobalWindowState {
     needs_resize = false;
     needs_move = false;
     style_changed = false;
+    style_changed_ex = false;
     style_mode = WindowStyleMode::BORDERLESS;
     reason = "unknown";
     current_monitor_index = 0;

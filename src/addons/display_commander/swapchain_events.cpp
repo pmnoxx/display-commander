@@ -425,7 +425,7 @@ void OnPresentUpdateBefore(
       }
     }
   }
-  // Handle keyboard shortcuts (Experimental)
+  // Handle keyboard shortcuts
   if (s_enable_mute_unmute_shortcut.load()) {
     // Get the runtime from the atomic variable
     reshade::api::effect_runtime* runtime = g_reshade_runtime.load();

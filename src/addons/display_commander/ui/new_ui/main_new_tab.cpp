@@ -1,14 +1,9 @@
 #include "main_new_tab.hpp"
-#include "../../renodx/settings.hpp"
-#include "../../background_window.hpp"
-#include "../../dxgi/custom_fps_limiter_manager.hpp"
 #include <atomic>
 #include "main_new_tab_settings.hpp"
 #include "developer_new_tab_settings.hpp"
 #include "../../addon.hpp"
 #include "../../audio/audio_management.hpp"
-#include "../../dxgi/custom_fps_limiter.hpp"
-#include "../../dxgi/custom_fps_limiter_manager.hpp"
 #include <minwindef.h>
 #include <sstream>
 #include <thread>
@@ -16,24 +11,14 @@
 #include <iomanip>
 #include <algorithm>
 #include <cmath>
-#include <vector>
-#include <deque>
-#include <utility>
-#include <chrono>
 #include "../ui_display_tab.hpp"
 #include <deps/imgui/imgui.h>
 
 
 namespace ui::new_ui {
 
-// Cache for monitor information to avoid expensive operations every frame
-static std::vector<std::string> s_cached_monitor_labels;
-static std::vector<const char*> s_cached_monitor_c_labels;
-static std::chrono::steady_clock::time_point s_last_monitor_cache_update = std::chrono::steady_clock::now();
-static const std::chrono::milliseconds MONITOR_CACHE_TTL = std::chrono::milliseconds(1000); // Update cache every 1 second
-
 // Flag to indicate a restart is required after changing VSync/tearing options
-static bool s_restart_needed_vsync_tearing = false;
+static std::atomic<bool> s_restart_needed_vsync_tearing{false};
 
 void InitMainNewTab() {
 
@@ -74,8 +59,6 @@ void InitMainNewTab() {
 
         // FPS limiter mode
         s_fps_limiter_mode.store(g_main_new_tab_settings.fps_limiter_mode.GetValue());
-        // Synchronize FPS limit by render start
-        g_synchronize_fps_limit_by_render_start.store(g_main_new_tab_settings.synchronize_fps_limit_by_render_start.GetValue());
         // Scanline offset
         s_scanline_offset.store(g_main_new_tab_settings.scanline_offset.GetValue());
 
@@ -110,7 +93,6 @@ void InitMainNewTab() {
 
             // If currently in background and a background limit is saved, apply it
             HWND hwnd = g_last_swapchain_hwnd.load();
-            if (hwnd == nullptr) hwnd = GetForegroundWindow();
             const bool is_background = (hwnd != nullptr && GetForegroundWindow() != hwnd);
             float saved_bg_fps_limit = g_main_new_tab_settings.fps_limit_background.GetValue();
             if (is_background && saved_bg_fps_limit > 0.0f) {
@@ -341,6 +323,9 @@ void DrawQuickResolutionChanger() {
 
 
 void DrawDisplaySettings() {
+    int current_monitor_width = GetCurrentMonitorWidth();
+    int current_monitor_height = GetCurrentMonitorHeight();
+    
     ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "=== Display Settings ===");
     
     // Window Mode dropdown (with persistent setting)
@@ -388,7 +373,7 @@ void DrawDisplaySettings() {
             idx = (std::max)(idx, 0);
             int max_idx = 7;
             idx = (std::min)(idx, max_idx);
-            s_windowed_width = (idx == 0) ? static_cast<float>(GetCurrentMonitorWidth())
+            s_windowed_width = (idx == 0) ? static_cast<float>(current_monitor_width)
                                           : static_cast<float>(WIDTH_OPTIONS[idx]);
             LogInfo("Window width changed");
         }
@@ -408,7 +393,7 @@ void DrawDisplaySettings() {
             idx = (std::max)(idx, 0);
             int max_idx = 7;
             idx = (std::min)(idx, max_idx);
-            s_windowed_height = (idx == 0) ? static_cast<float>(GetCurrentMonitorHeight())
+            s_windowed_height = (idx == 0) ? static_cast<float>(current_monitor_height)
                                            : static_cast<float>(HEIGHT_OPTIONS[idx]);
             LogInfo("Window height changed");
         }
@@ -513,21 +498,12 @@ void DrawDisplaySettings() {
         }
     }
 
-    // Synchronize FPS Limit by Render Start
-    if (CheckboxSetting(g_main_new_tab_settings.synchronize_fps_limit_by_render_start, "Synchronize FPS Limit by Render Start")) {
-        // Note: BoolSettingRef automatically syncs with g_synchronize_fps_limit_by_render_start
-        LogInfo(g_synchronize_fps_limit_by_render_start.load() ? "FPS limit synchronization by render start enabled" : "FPS limit synchronization by render start disabled");
-    }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("When enabled, delays rendering to start at fixed period.\nThis increases latency, but improves frame time stability.\nMay be useful when we start rendering before FPS limiter sleep.");
-    }
-
     // Latent Sync Mode (only visible if Latent Sync limiter is selected)
     if (s_fps_limiter_mode.load() == 1) {
         
         // Get current monitor height for dynamic range
-        int monitor_height = GetCurrentMonitorHeight();
-        int monitor_width = GetCurrentMonitorWidth();
+        int monitor_height = current_monitor_height;
+        int monitor_width = current_monitor_width;
         
         // Update display dimensions in GlobalWindowState
         g_window_state_lock.lock();
@@ -604,11 +580,10 @@ void DrawDisplaySettings() {
         
         ImGui::Spacing();
         ImGui::TextColored(ImVec4(0.8f, 0.9f, 1.0f, 1.0f), "=== VSync & Tearing ===");
-        bool vsync_changed = false;
 
         bool vs_on = g_main_new_tab_settings.force_vsync_on.GetValue();
         if (ImGui::Checkbox("Force VSync ON (Custom DLL needed)", &vs_on)) {
-            vsync_changed = true;
+            s_restart_needed_vsync_tearing.store(true);
             // Mutual exclusion
             if (vs_on) {
                 g_main_new_tab_settings.force_vsync_off.SetValue(false);
@@ -626,13 +601,10 @@ void DrawDisplaySettings() {
 
         bool vs_off = g_main_new_tab_settings.force_vsync_off.GetValue();
         if (ImGui::Checkbox("Force VSync OFF", &vs_off)) {
-            vsync_changed = true;
+            s_restart_needed_vsync_tearing.store(true);
             // Mutual exclusion
             if (vs_off) {
                 g_main_new_tab_settings.force_vsync_on.SetValue(false);
-                // s_force_vsync_on is automatically synced via BoolSettingRef
-             //   g_main_new_tab_settings.prevent_tearing.SetValue(false);
-            //    s_prevent_tearing.store(false);
             }
             g_main_new_tab_settings.force_vsync_off.SetValue(vs_off);
             // s_force_vsync_off is automatically synced via BoolSettingRef
@@ -654,13 +626,8 @@ void DrawDisplaySettings() {
             ImGui::SetTooltip("Prevents tearing by clearing DXGI tearing flags and preferring sync.");
         }
 
-        // If any of the VSync settings changed this frame, mark restart as required
-        if (vsync_changed) {
-            s_restart_needed_vsync_tearing = true;
-        }
-
         // Display restart-required notice if flagged
-        if (s_restart_needed_vsync_tearing) {
+        if (s_restart_needed_vsync_tearing.load()) {
             ImGui::Spacing();
             ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "Game restart required to apply VSync/tearing changes.");
         }
@@ -684,7 +651,6 @@ void DrawDisplaySettings() {
                 
                 // Apply background FPS limit immediately if currently in background
                 HWND hwnd = g_last_swapchain_hwnd.load();
-                if (hwnd == nullptr) hwnd = GetForegroundWindow();
                 const bool is_background = (hwnd != nullptr && GetForegroundWindow() != hwnd);
                 
                 if (is_background && new_bg_fps_limit >= 0.f) {
@@ -783,7 +749,6 @@ void DrawAudioSettings() {
         // Also apply the current mute state immediately if manual mute is off
         if (!s_audio_mute.load()) {
             HWND hwnd = g_last_swapchain_hwnd.load();
-            if (hwnd == nullptr) hwnd = GetForegroundWindow();
             // Use actual focus state for background audio (not spoofed)
             bool want_mute = (mute_in_bg && hwnd != nullptr && GetForegroundWindow() != hwnd);
             if (::SetMuteForCurrentProcess(want_mute)) {
@@ -812,7 +777,6 @@ void DrawAudioSettings() {
         ::g_muted_applied.store(false);
         if (!s_audio_mute.load()) {
             HWND hwnd = g_last_swapchain_hwnd.load();
-            if (hwnd == nullptr) hwnd = GetForegroundWindow();
             bool is_background = (hwnd != nullptr && GetForegroundWindow() != hwnd);
             bool want_mute = (mute_in_bg_if_other && is_background && ::IsOtherAppPlayingAudio());
             if (::SetMuteForCurrentProcess(want_mute)) {
@@ -831,6 +795,14 @@ void DrawAudioSettings() {
 }
 
 void DrawWindowControls() {
+    int current_monitor_width = GetCurrentMonitorWidth();
+    int current_monitor_height = GetCurrentMonitorHeight();
+    HWND hwnd = g_last_swapchain_hwnd.load();
+    if (hwnd == nullptr) {
+        LogWarn("Maximize Window: no window handle available");
+        return;
+    }
+
     ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.8f, 1.0f), "=== Window Controls ===");
     
     // Window Control Buttons (Minimize, Restore, and Maximize side by side)
@@ -838,22 +810,10 @@ void DrawWindowControls() {
     
     // Minimize Window Button
     if (ImGui::Button("Minimize Window")) {
-        std::thread([](){
-            HWND hwnd = g_last_swapchain_hwnd.load();
-            if (hwnd == nullptr) hwnd = GetForegroundWindow();
-            if (hwnd == nullptr) {
-                LogWarn("Minimize Window: no window handle available");
-                return;
-            }
+        HWND hwnd = g_last_swapchain_hwnd.load();
+        std::thread([hwnd](){
             LogDebug("Minimize Window button pressed (bg thread)");
-            if (ShowWindow(hwnd, SW_MINIMIZE)) {
-                LogInfo("Window minimized successfully");
-            } else {
-                DWORD error = GetLastError();
-                std::ostringstream oss;
-                oss << "Failed to minimize window. Error: " << error;
-                LogWarn(oss.str().c_str());
-            }
+            ShowWindow(hwnd, SW_MINIMIZE);
         }).detach();
     }
     if (ImGui::IsItemHovered()) {
@@ -864,22 +824,9 @@ void DrawWindowControls() {
     
     // Restore Window Button
     if (ImGui::Button("Restore Window")) {
-        std::thread([](){
-            HWND hwnd = g_last_swapchain_hwnd.load();
-            if (hwnd == nullptr) hwnd = GetForegroundWindow();
-            if (hwnd == nullptr) {
-                LogWarn("Restore Window: no window handle available");
-                return;
-            }
+        std::thread([hwnd](){
             LogDebug("Restore Window button pressed (bg thread)");
-            if (ShowWindow(hwnd, SW_RESTORE)) {
-                LogInfo("Window restored successfully");
-            } else {
-                DWORD error = GetLastError();
-                std::ostringstream oss;
-                oss << "Failed to restore window. Error: " << error;
-                LogWarn(oss.str().c_str());
-            }
+            ShowWindow(hwnd, SW_RESTORE);
         }).detach();
     }
     if (ImGui::IsItemHovered()) {
@@ -890,18 +837,12 @@ void DrawWindowControls() {
     
     // Maximize Window Button
     if (ImGui::Button("Maximize Window")) {
-        std::thread([](){
-            HWND hwnd = g_last_swapchain_hwnd.load();
-            if (hwnd == nullptr) hwnd = GetForegroundWindow();
-            if (hwnd == nullptr) {
-                LogWarn("Maximize Window: no window handle available");
-                return;
-            }
+        std::thread([hwnd, current_monitor_width, current_monitor_height](){
             LogDebug("Maximize Window button pressed (bg thread)");
             
             // Set window dimensions to current monitor size
-            s_windowed_width = static_cast<float>(GetCurrentMonitorWidth());
-            s_windowed_height = static_cast<float>(GetCurrentMonitorHeight());
+            s_windowed_width = static_cast<float>(current_monitor_width);
+            s_windowed_height = static_cast<float>(current_monitor_height);
             
             // Update the settings to reflect the change
             g_main_new_tab_settings.window_width.SetValue(0); // 0 = Current Display

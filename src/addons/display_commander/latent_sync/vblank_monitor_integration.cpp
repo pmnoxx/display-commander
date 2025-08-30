@@ -2,9 +2,8 @@
 #include <memory>
 #include <string>
 #include <windows.h>
+#include "../utils.hpp"
 
-// Forward declaration for logging - this should be provided by the calling code
-extern void LogInfo(const char* msg);
 
 // Example of how to integrate VBlankMonitor with existing code
 namespace dxgi::fps_limiter {

@@ -29,7 +29,6 @@ public:
     
     // FPS Settings
     ComboSetting fps_limiter_mode;
-    BoolSettingRef synchronize_fps_limit_by_render_start;
     IntSetting scanline_offset;
     FloatSettingRef fps_limit;
     FloatSettingRef fps_limit_background;

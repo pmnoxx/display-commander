@@ -420,10 +420,8 @@ void OnPresentUpdateBefore2(reshade::api::effect_runtime* runtime) {
   g_swapchain_event_counters[SWAPCHAIN_EVENT_PRESENT_UPDATE_BEFORE2].fetch_add(1);
   g_swapchain_event_total_count.fetch_add(1);
   
-  if (!g_synchronize_fps_limit_by_render_start.load()){
-    if (g_reshade_runtime.load() != nullptr) {
-      g_reshade_runtime.load()->get_command_queue()->flush_immediate_command_list();
-    }
+  if (g_reshade_runtime.load() != nullptr) {
+    g_reshade_runtime.load()->get_command_queue()->flush_immediate_command_list();
   }
     
   // Call Reflex manager callback if enabled

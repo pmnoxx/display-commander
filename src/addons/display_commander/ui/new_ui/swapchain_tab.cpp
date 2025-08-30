@@ -281,7 +281,6 @@ void DrawDxgiCompositionInfo() {
         
         // Check exclusive fullscreen status
         HWND hwnd = g_last_swapchain_hwnd.load();
-        if (hwnd == nullptr) hwnd = GetForegroundWindow();
         const bool is_exclusive_fullscreen = GetSpoofedFullscreenState(hwnd);
         
         // Get backbuffer format

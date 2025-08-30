@@ -14,19 +14,6 @@ using Microsoft::WRL::ComPtr;
 
 namespace display_cache {
 
-// Simple spinlock guard
-struct SpinLockGuard {
-    std::atomic_flag &flag;
-    explicit SpinLockGuard(std::atomic_flag &f) : flag(f) {
-        while (flag.test_and_set(std::memory_order_acquire)) {
-            _mm_pause();
-        }
-    }
-    ~SpinLockGuard() {
-        flag.clear(std::memory_order_release);
-    }
-};
-
 // Global instance
 DisplayCache g_displayCache;
 
@@ -301,19 +288,19 @@ bool DisplayCache::Refresh() {
         new_displays.push_back(std::move(display_info));
     }
 
-    // Swap under a tiny critical section (no system calls here)
-    {
-        SpinLockGuard guard(spinlock);
-        displays.swap(new_displays);
-        is_initialized.store(true, std::memory_order_release);
-    }
+    // Atomically swap the new displays data
+    displays.store(std::make_shared<std::vector<std::unique_ptr<DisplayInfo>>>(std::move(new_displays)), std::memory_order_release);
+    is_initialized.store(true, std::memory_order_release);
 
-    return !displays.empty();
+    auto displays_ptr = displays.load(std::memory_order_acquire);
+    return displays_ptr && !displays_ptr->empty();
 }
 
 const DisplayInfo* DisplayCache::GetDisplayByHandle(HMONITOR monitor) const {
-    SpinLockGuard guard(spinlock);
-    for (const auto& display : displays) {
+    auto displays_ptr = displays.load(std::memory_order_acquire);
+    if (!displays_ptr) return nullptr;
+    
+    for (const auto& display : *displays_ptr) {
         if (display->monitor_handle == monitor) {
             return display.get();
         }
@@ -322,8 +309,10 @@ const DisplayInfo* DisplayCache::GetDisplayByHandle(HMONITOR monitor) const {
 }
 
 const DisplayInfo* DisplayCache::GetDisplayByDeviceName(const std::wstring& device_name) const {
-    SpinLockGuard guard(spinlock);
-    for (const auto& display : displays) {
+    auto displays_ptr = displays.load(std::memory_order_acquire);
+    if (!displays_ptr) return nullptr;
+    
+    for (const auto& display : *displays_ptr) {
         if (display->device_name == device_name) {
             return display.get();
         }
@@ -332,25 +321,25 @@ const DisplayInfo* DisplayCache::GetDisplayByDeviceName(const std::wstring& devi
 }
 
 std::vector<std::string> DisplayCache::GetResolutionLabels(size_t display_index) const {
-    SpinLockGuard guard(spinlock);
-    if (display_index >= displays.size()) return {};
-    const auto* display = displays[display_index].get();
+    auto displays_ptr = displays.load(std::memory_order_acquire);
+    if (!displays_ptr || display_index >= displays_ptr->size()) return {};
+    const auto* display = (*displays_ptr)[display_index].get();
     if (!display) return {};
     return display->GetResolutionLabels();
 }
 
 std::vector<std::string> DisplayCache::GetRefreshRateLabels(size_t display_index, size_t resolution_index) const {
-    SpinLockGuard guard(spinlock);
-    if (display_index >= displays.size()) return {};
-    const auto* display = displays[display_index].get();
+    auto displays_ptr = displays.load(std::memory_order_acquire);
+    if (!displays_ptr || display_index >= displays_ptr->size()) return {};
+    const auto* display = (*displays_ptr)[display_index].get();
     if (!display) return {};
     return display->GetRefreshRateLabels(resolution_index);
 }
 
 bool DisplayCache::GetCurrentResolution(size_t display_index, int& width, int& height) const {
-    SpinLockGuard guard(spinlock);
-    if (display_index >= displays.size()) return false;
-    const auto* display = displays[display_index].get();
+    auto displays_ptr = displays.load(std::memory_order_acquire);
+    if (!displays_ptr || display_index >= displays_ptr->size()) return false;
+    const auto* display = (*displays_ptr)[display_index].get();
     if (!display) return false;
     width = display->width;
     height = display->height;
@@ -358,9 +347,9 @@ bool DisplayCache::GetCurrentResolution(size_t display_index, int& width, int& h
 }
 
 bool DisplayCache::GetCurrentRefreshRate(size_t display_index, RationalRefreshRate& refresh_rate) const {
-    SpinLockGuard guard(spinlock);
-    if (display_index >= displays.size()) return false;
-    const auto* display = displays[display_index].get();
+    auto displays_ptr = displays.load(std::memory_order_acquire);
+    if (!displays_ptr || display_index >= displays_ptr->size()) return false;
+    const auto* display = (*displays_ptr)[display_index].get();
     if (!display) return false;
     refresh_rate = display->current_refresh_rate;
     return true;
@@ -368,9 +357,9 @@ bool DisplayCache::GetCurrentRefreshRate(size_t display_index, RationalRefreshRa
 
 bool DisplayCache::GetRationalRefreshRate(size_t display_index, size_t resolution_index, size_t refresh_rate_index,
                                          RationalRefreshRate& refresh_rate) const {
-    SpinLockGuard guard(spinlock);
-    if (display_index >= displays.size()) return false;
-    const auto* display = displays[display_index].get();
+    auto displays_ptr = displays.load(std::memory_order_acquire);
+    if (!displays_ptr || display_index >= displays_ptr->size()) return false;
+    const auto* display = (*displays_ptr)[display_index].get();
     if (!display) return false;
     // Map UI resolution index: 0 = Current Resolution, otherwise shift by one
     size_t effective_index = resolution_index;
@@ -402,9 +391,9 @@ bool DisplayCache::GetRationalRefreshRate(size_t display_index, size_t resolutio
 }
 
 bool DisplayCache::GetCurrentDisplayInfo(size_t display_index, int& width, int& height, RationalRefreshRate& refresh_rate) const {
-    SpinLockGuard guard(spinlock);
-    if (display_index >= displays.size()) return false;
-    const auto* display = displays[display_index].get();
+    auto displays_ptr = displays.load(std::memory_order_acquire);
+    if (!displays_ptr || display_index >= displays_ptr->size()) return false;
+    const auto* display = (*displays_ptr)[display_index].get();
     if (!display) return false;
     width = display->width;
     height = display->height;
@@ -413,50 +402,50 @@ bool DisplayCache::GetCurrentDisplayInfo(size_t display_index, int& width, int& 
 }
 
 bool DisplayCache::GetSupportedModes(size_t display_index, std::vector<Resolution>& resolutions) const {
-    SpinLockGuard guard(spinlock);
-    if (display_index >= displays.size()) return false;
-    const auto* display = displays[display_index].get();
+    auto displays_ptr = displays.load(std::memory_order_acquire);
+    if (!displays_ptr || display_index >= displays_ptr->size()) return false;
+    const auto* display = (*displays_ptr)[display_index].get();
     if (!display) return false;
     resolutions = display->resolutions;
     return true;
 }
 
 size_t DisplayCache::GetDisplayCount() const {
-    SpinLockGuard guard(spinlock);
-    return displays.size();
+    auto displays_ptr = displays.load(std::memory_order_acquire);
+    return displays_ptr ? displays_ptr->size() : 0;
 }
 
 const DisplayInfo* DisplayCache::GetDisplay(size_t index) const {
-    SpinLockGuard guard(spinlock);
-    if (index >= displays.size()) return nullptr;
-    return displays[index].get();
+    auto displays_ptr = displays.load(std::memory_order_acquire);
+    if (!displays_ptr || index >= displays_ptr->size()) return nullptr;
+    return (*displays_ptr)[index].get();
 }
 
 void DisplayCache::SwapFrom(DisplayCache&& other) {
     if (&other == this) return;
-    // Minimal critical section: swap only
-    SpinLockGuard guard(spinlock);
-    displays.swap(other.displays);
+    // Atomically swap the displays data
+    auto other_displays = other.displays.load(std::memory_order_acquire);
+    displays.store(other_displays, std::memory_order_release);
     is_initialized.store(other.is_initialized.load(std::memory_order_acquire), std::memory_order_release);
 }
 
 bool DisplayCache::CopyDisplay(size_t index, DisplayInfo &out) const {
-    SpinLockGuard guard(spinlock);
-    if (index >= displays.size() || !displays[index]) return false;
-    out = *displays[index];
+    auto displays_ptr = displays.load(std::memory_order_acquire);
+    if (!displays_ptr || index >= displays_ptr->size() || !(*displays_ptr)[index]) return false;
+    out = *(*displays_ptr)[index];
     return true;
 }
 
 void DisplayCache::PrintVSyncFreqDivider() const {
-    SpinLockGuard guard(spinlock);
+    auto displays_ptr = displays.load(std::memory_order_acquire);
     
-    if (displays.empty()) {
+    if (!displays_ptr || displays_ptr->empty()) {
         LogInfo("DisplayCache: No displays available to print vSyncFreqDivider");
         return;
     }
     
-    for (size_t i = 0; i < displays.size(); ++i) {
-        const auto& display = displays[i];
+    for (size_t i = 0; i < displays_ptr->size(); ++i) {
+        const auto& display = (*displays_ptr)[i];
         if (!display) continue;
         
         std::ostringstream oss;

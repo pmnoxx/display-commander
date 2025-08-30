@@ -285,12 +285,11 @@ struct DisplayInfo {
 // Main display cache class
 class DisplayCache {
 private:
-    std::vector<std::unique_ptr<DisplayInfo>> displays;
-    mutable std::atomic_flag spinlock = ATOMIC_FLAG_INIT;
+    std::atomic<std::shared_ptr<std::vector<std::unique_ptr<DisplayInfo>>>> displays;
     std::atomic<bool> is_initialized;
     
 public:
-    DisplayCache() : is_initialized(false) {}
+    DisplayCache() : displays(std::make_shared<std::vector<std::unique_ptr<DisplayInfo>>>()), is_initialized(false) {}
     
     // Initialize the cache by enumerating all displays
     bool Initialize();
@@ -337,7 +336,7 @@ public:
     
     // Clear the cache
     void Clear() {
-        displays.clear();
+        displays.store(std::make_shared<std::vector<std::unique_ptr<DisplayInfo>>>(), std::memory_order_release);
         is_initialized.store(false, std::memory_order_release);
     }
 

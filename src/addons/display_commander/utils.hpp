@@ -6,7 +6,7 @@
 
 #include <windows.h>
 #include <windef.h>
-#include <include/reshade.hpp>
+#include "../../../external/reshade/include/reshade.hpp"
 
 #include <sstream>
 #include <thread>

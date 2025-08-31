@@ -1,6 +1,10 @@
 #include "swapchain_events_power_saving.hpp"
 #include "globals.hpp"
+#include "utils/timing.hpp"
 #include <sstream>
+
+// Forward declarations for functions used in the ondraw methods
+void HandleRenderStartAndEndTimes();
 
 // Power saving settings - these can be controlled via UI
 std::atomic<bool> s_suppress_compute_in_background{true};
@@ -131,4 +135,52 @@ void OnUnmapResource(reshade::api::device* device, reshade::api::resource resour
     // Note: Unmap operations are typically required for cleanup, so we don't suppress them
     // This function is provided for consistency but always allows the operation
     // You could add logic here if needed for specific cases
+}
+
+// Power saving for draw calls
+bool OnDraw(reshade::api::command_list* cmd_list, uint32_t vertex_count, uint32_t instance_count, uint32_t first_vertex, uint32_t first_instance) {
+    // Increment event counter
+    g_swapchain_event_counters[SWAPCHAIN_EVENT_DRAW].fetch_add(1);
+    g_swapchain_event_total_count.fetch_add(1);
+    
+    // Set render start time if it's 0 (first draw call of the frame)
+    HandleRenderStartAndEndTimes();
+
+    if (ShouldSuppressOperation()) {
+      return true; // Skip the draw call
+    }
+    
+    return false; // Don't skip the draw call
+}
+
+// Power saving for indexed draw calls
+bool OnDrawIndexed(reshade::api::command_list* cmd_list, uint32_t index_count, uint32_t instance_count, uint32_t first_index, int32_t vertex_offset, uint32_t first_instance) {
+    // Increment event counter
+    g_swapchain_event_counters[SWAPCHAIN_EVENT_DRAW_INDEXED].fetch_add(1);
+    g_swapchain_event_total_count.fetch_add(1);
+    
+    // Set render start time if it's 0 (first draw call of the frame)
+    HandleRenderStartAndEndTimes();
+
+    if (ShouldSuppressOperation()) {
+      return true; // Skip the draw call
+    }
+    
+    return false; // Don't skip the draw call
+}
+
+// Power saving for indirect draw calls
+bool OnDrawOrDispatchIndirect(reshade::api::command_list* cmd_list, reshade::api::indirect_command type, reshade::api::resource buffer, uint64_t offset, uint32_t draw_count, uint32_t stride) {
+    // Increment event counter
+    g_swapchain_event_counters[SWAPCHAIN_EVENT_DRAW_OR_DISPATCH_INDIRECT].fetch_add(1);
+    g_swapchain_event_total_count.fetch_add(1);
+    
+    // Set render start time if it's 0 (first draw call of the frame)
+    HandleRenderStartAndEndTimes();
+
+    if (ShouldSuppressOperation()) {
+      return true; // Skip the draw call
+    }
+
+    return false; // Don't skip the draw call
 }

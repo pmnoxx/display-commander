@@ -21,6 +21,11 @@ void OnUnmapResource(reshade::api::device* device, reshade::api::resource resour
 // Helper function to determine if an operation should be suppressed for power saving
 bool ShouldSuppressOperation();
 
+// Power saving for draw calls
+bool OnDraw(reshade::api::command_list* cmd_list, uint32_t vertex_count, uint32_t instance_count, uint32_t first_vertex, uint32_t first_instance);
+bool OnDrawIndexed(reshade::api::command_list* cmd_list, uint32_t index_count, uint32_t instance_count, uint32_t first_index, int32_t vertex_offset, uint32_t first_instance);
+bool OnDrawOrDispatchIndirect(reshade::api::command_list* cmd_list, reshade::api::indirect_command type, reshade::api::resource buffer, uint64_t offset, uint32_t draw_count, uint32_t stride);
+
 // Power saving settings
 extern std::atomic<bool> s_suppress_compute_in_background;
 extern std::atomic<bool> s_suppress_copy_in_background;

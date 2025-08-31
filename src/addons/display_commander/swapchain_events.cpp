@@ -130,54 +130,8 @@ void OnEndRenderPass(reshade::api::command_list* cmd_list) {
 }
 
 
-// Draw event handlers for render timing 
-// Adds pwoer saving feature in background
-bool OnDraw(reshade::api::command_list* cmd_list, uint32_t vertex_count, uint32_t instance_count, uint32_t first_vertex, uint32_t first_instance) {
-    // Increment event counter
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_DRAW].fetch_add(1);
-    g_swapchain_event_total_count.fetch_add(1);
-    
-    // Set render start time if it's 0 (first draw call of the frame)
-    HandleRenderStartAndEndTimes();
-
-    if (s_no_render_in_background.load() && g_app_in_background.load(std::memory_order_acquire)) {
-      return true; // Skip the draw call
-    }
-    
-    return false; // Don't skip the draw call
-}
-
-// Adds pwoer saving feature in background
-bool OnDrawIndexed(reshade::api::command_list* cmd_list, uint32_t index_count, uint32_t instance_count, uint32_t first_index, int32_t vertex_offset, uint32_t first_instance) {
-    // Increment event counter
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_DRAW_INDEXED].fetch_add(1);
-    g_swapchain_event_total_count.fetch_add(1);
-    
-    // Set render start time if it's 0 (first draw call of the frame)
-    HandleRenderStartAndEndTimes();
-
-    if (s_no_render_in_background.load() && g_app_in_background.load(std::memory_order_acquire)) {
-      return true; // Skip the draw call
-    }
-    
-    return false; // Don't skip the draw call
-}
-
-// Adds pwoer saving feature in background
-bool OnDrawOrDispatchIndirect(reshade::api::command_list* cmd_list, reshade::api::indirect_command type, reshade::api::resource buffer, uint64_t offset, uint32_t draw_count, uint32_t stride) {
-    // Increment event counter
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_DRAW_OR_DISPATCH_INDIRECT].fetch_add(1);
-    g_swapchain_event_total_count.fetch_add(1);
-    
-    // Set render start time if it's 0 (first draw call of the frame)
-    HandleRenderStartAndEndTimes();
-
-    if (s_no_render_in_background.load() && g_app_in_background.load(std::memory_order_acquire)) {
-      return true; // Skip the draw call
-    }
-
-    return false; // Don't skip the draw call
-}
+// Draw event handlers for render timing and power saving
+// These are now implemented in swapchain_events_power_saving.cpp
 
 // Track last requested sync interval per HWND detected at create_swapchain
 namespace {

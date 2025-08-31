@@ -928,45 +928,56 @@ void DrawImportantInfo() {
     
     #define NS_TO_MS 1000000.0
     // Present Duration Display
-    double present_duration_ms = ::g_present_duration_ns.load() / NS_TO_MS;
     
     oss.str("");
     oss.clear();
-    oss << "Present Duration: " << std::fixed << std::setprecision(3) << present_duration_ms << " ms";
+    oss << "Present Duration: " << std::fixed << std::setprecision(3) << (::g_present_duration_ns.load() / NS_TO_MS) << " ms";
     ImGui::TextUnformatted(oss.str().c_str());
     ImGui::SameLine();
     ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "(smoothed)");
     
-    // Simulation Duration Display
-    double simulation_duration_ms = ::g_simulation_duration_ns.load() / NS_TO_MS;
     
     oss.str("");
     oss.clear();
-    oss << "Simulation Duration: " << std::fixed << std::setprecision(3) << simulation_duration_ms << " ms";
+    oss << "Simulation Duration: " << std::fixed << std::setprecision(3) << (::g_simulation_duration_ns.load() / NS_TO_MS) << " ms";
     ImGui::TextUnformatted(oss.str().c_str());
     ImGui::SameLine();
     ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "(smoothed)");
     
-    // FPS Limiter Start Duration Display
-    LONGLONG fps_sleep_before_on_present_ns = ::fps_sleep_before_on_present_ns.load();
-    
+    // Reshade Overhead Display
     oss.str("");
     oss.clear();
-    oss << "FPS Limiter Sleep Duration (before onPresent): " << std::fixed << std::setprecision(3) << (fps_sleep_before_on_present_ns / NS_TO_MS) << " ms";
+    oss << "Render Submit Duration: " << std::fixed << std::setprecision(3) << (::g_render_submit_duration_ns.load() / NS_TO_MS) << " ms";
+    ImGui::TextUnformatted(oss.str().c_str());
+    ImGui::SameLine();
+    ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "(smoothed)");
+    
+    // Reshade Overhead Display
+    oss.str("");
+    oss.clear();
+    oss << "Reshade Render Submit Duration: " << std::fixed << std::setprecision(3) << (::reshade_overhead_ns.load() / NS_TO_MS) << " ms";
+    ImGui::TextUnformatted(oss.str().c_str());
+    ImGui::SameLine();
+    ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "(smoothed)");
+
+
+
+    oss.str("");
+    oss.clear();
+    oss << "FPS Limiter Sleep Duration (before onPresent): " << std::fixed << std::setprecision(3) << (::fps_sleep_before_on_present_ns.load() / NS_TO_MS) << " ms";
     ImGui::TextUnformatted(oss.str().c_str());
     ImGui::SameLine();
     ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "(smoothed)");
 
     
     // FPS Limiter Start Duration Display
-    LONGLONG fps_sleep_after_on_present_ns = ::fps_sleep_after_on_present_ns.load();
-    
     oss.str("");
     oss.clear();
-    oss << "FPS Limiter Sleep Duration (after onPresent): " << std::fixed << std::setprecision(3) << (fps_sleep_after_on_present_ns / NS_TO_MS) << " ms";
+    oss << "FPS Limiter Sleep Duration (after onPresent): " << std::fixed << std::setprecision(3) << (::fps_sleep_after_on_present_ns.load() / NS_TO_MS) << " ms";
     ImGui::TextUnformatted(oss.str().c_str());
     ImGui::SameLine();
     ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "(smoothed)");
+
     
     // Reflex Status Display
     

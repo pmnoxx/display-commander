@@ -19,7 +19,7 @@ static std::atomic<LONGLONG> g_present_start_time_qpc{0};
 std::atomic<LONGLONG> g_present_duration_ns{0};
 
 // Render start time tracking
-std::atomic<LONGLONG> g_render_start_time{0};
+std::atomic<LONGLONG> g_submit_start_time_qpc{0};
 
 // Present after end time tracking
 std::atomic<LONGLONG> g_present_after_end_time{0};
@@ -32,6 +32,43 @@ std::atomic<LONGLONG> fps_sleep_before_on_present_ns{0};
 
 // FPS limiter start duration tracking (nanoseconds)
 std::atomic<LONGLONG> fps_sleep_after_on_present_ns{0};
+
+// Reshade overhead tracking (nanoseconds)
+std::atomic<LONGLONG> reshade_overhead_ns{0};
+
+// Render submit end time tracking (QPC)
+std::atomic<LONGLONG> g_render_submit_end_time_qpc{0};
+
+// Render submit duration tracking (nanoseconds)
+std::atomic<LONGLONG> g_render_submit_duration_ns{0};
+
+
+
+void HandleRenderStartAndEndTimes() {
+  LONGLONG expected = 0;
+  if (g_submit_start_time_qpc.load() == 0) {
+    LONGLONG now = get_now_qpc();
+    LONGLONG present_after_end_time = g_present_after_end_time.load();
+    if (present_after_end_time > 0 && g_submit_start_time_qpc.compare_exchange_strong(expected, now)) {
+        // Compare to g_present_after_end_time
+        #define QPC_TO_NS 100
+        LONGLONG g_simulation_duration_ns_new = (now - present_after_end_time) * QPC_TO_NS;
+        int alpha = 64;
+        g_simulation_duration_ns.store( (1 * g_simulation_duration_ns_new + (alpha - 1) * g_simulation_duration_ns.load()) / alpha);
+    }
+  }
+}
+
+void HandleEndRenderSubmit() {
+  LONGLONG now = get_now_qpc();
+  g_render_submit_end_time_qpc.store(now);
+  if (g_submit_start_time_qpc.load() > 0) {
+    LONGLONG g_render_submit_duration_ns_new = (now - g_submit_start_time_qpc.load()) * QPC_TO_NS;
+    int alpha = 64;
+    g_render_submit_duration_ns.store( (1 * g_render_submit_duration_ns_new + (alpha - 1) * g_render_submit_duration_ns.load()) / alpha);
+  }
+}
+
 
 // Frame lifecycle hooks for custom FPS limiter
 void OnBeginRenderPass(reshade::api::command_list* cmd_list, uint32_t count, const reshade::api::render_pass_render_target_desc* rts, const reshade::api::render_pass_depth_stencil_desc* ds) {
@@ -76,20 +113,6 @@ void OnEndRenderPass(reshade::api::command_list* cmd_list) {
     }
 }
 
-void HandleRenderStartAndEndTimes() {
-  LONGLONG expected = 0;
-  if (g_render_start_time.load() == 0) {
-    LONGLONG now = get_now_qpc();
-    LONGLONG present_after_end_time = g_present_after_end_time.load();
-    if (present_after_end_time > 0 && g_render_start_time.compare_exchange_strong(expected, now)) {
-        // Compare to g_present_after_end_time
-        #define QPC_TO_NS 100
-        LONGLONG g_simulation_duration_ns_new = (now - present_after_end_time) * QPC_TO_NS;
-        int alpha = 64;
-        g_simulation_duration_ns.store( (1 * g_simulation_duration_ns_new + (alpha - 1) * g_simulation_duration_ns.load()) / alpha);
-    }
-  }
-}
 
 // Draw event handlers for render timing
 bool OnDraw(reshade::api::command_list* cmd_list, uint32_t vertex_count, uint32_t instance_count, uint32_t first_vertex, uint32_t first_instance) {
@@ -368,7 +391,7 @@ void OnPresentUpdateAfter(  reshade::api::command_queue* /*queue*/, reshade::api
   }
 
   g_present_after_end_time.store(get_now_qpc());
-  g_render_start_time.store(0);
+  g_submit_start_time_qpc.store(0);
 }
 
 void flush_command_queue() {
@@ -442,6 +465,7 @@ void OnPresentUpdateBefore(
     reshade::api::command_queue* /*queue*/, reshade::api::swapchain* swapchain,
     const reshade::api::rect* /*source_rect*/, const reshade::api::rect* /*dest_rect*/,
     uint32_t /*dirty_rect_count*/, const reshade::api::rect* /*dirty_rects*/) {
+  HandleEndRenderSubmit();
   if (g_flush_before_present.load()) {
     flush_command_queue(); // Flush command queue before addons start processing to reduce rendering latency caused by reshade
   }

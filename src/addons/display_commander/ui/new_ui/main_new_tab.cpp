@@ -936,6 +936,16 @@ void DrawImportantInfo() {
     ImGui::SameLine();
     ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "(smoothed)");
     
+    // Simulation Duration Display
+    double simulation_duration_sec = ::g_simulation_duration.load();
+    
+    oss.str("");
+    oss.clear();
+    oss << "Simulation Duration: " << std::fixed << std::setprecision(3) << (simulation_duration_sec * 1000.0) << " ms";
+    ImGui::TextUnformatted(oss.str().c_str());
+    ImGui::SameLine();
+    ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "(smoothed)");
+    
     // Reflex Status Display
     bool is_active = ::g_reflex_active.load();
     

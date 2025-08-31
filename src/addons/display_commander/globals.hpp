@@ -192,6 +192,9 @@ extern std::atomic<bool> g_reflex_active;
 // Present duration tracking
 extern std::atomic<double> g_present_duration;
 
+// Simulation duration tracking
+extern std::atomic<double> g_simulation_duration;
+
 // Render start time tracking
 extern std::atomic<LONGLONG> g_render_start_time;
 

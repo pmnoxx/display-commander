@@ -44,7 +44,7 @@ std::atomic<LONGLONG> g_render_submit_end_time_qpc{0};
 // Render submit duration tracking (nanoseconds)
 std::atomic<LONGLONG> g_render_submit_duration_ns{0};
 
-std::atomic<int> l_frame_skipped_counter{0};
+std::atomic<int> l_frame_count{0};
 
 void HandleRenderStartAndEndTimes() {
   LONGLONG expected = 0;
@@ -318,6 +318,9 @@ bool OnCreateSwapchainCapture(reshade::api::device_api /*api*/, reshade::api::sw
 }
 
 void OnInitSwapchain(reshade::api::swapchain* swapchain, bool resize) {
+  // Reset frame count on swapchain init
+  l_frame_count.store(0);
+
   // Increment event counter
   g_swapchain_event_counters[SWAPCHAIN_EVENT_INIT_SWAPCHAIN].fetch_add(1);
   g_swapchain_event_total_count.fetch_add(1);
@@ -671,7 +674,7 @@ bool OnPresentFlags(uint32_t* present_flags) {
 
   if (s_no_present_in_background.load() && g_app_in_background.load(std::memory_order_acquire)) {
     //*present_flags = DXGI_PRESENT_DO_NOT_SEQUENCE;
-    return l_frame_skipped_counter.load() >= 60 && l_frame_skipped_counter.fetch_add(1) % 16 == 0;
+    return l_frame_count.load() >= 60 && l_frame_count.fetch_add(1) % 16 == 0;
   }
 
   // Return false by default to continue with normal present flow

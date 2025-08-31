@@ -243,31 +243,7 @@ bool VBlankMonitor::UpdateDisplayBindingFromWindow(HWND hwnd) {
         oss << "VBlank monitor successfully bound to display: " << WideCharToUTF8(name) << " (Adapter: " << m_hAdapter << ", VidPnSourceId: " << m_vidpn_source_id << ")";
         LogInfo(oss.str().c_str());
         
-        // Check if we got a valid VidPnSourceId
-        if (m_vidpn_source_id == 0) {
-            LogInfo("WARNING: VidPnSourceId is 0, this may cause binding issues");
-            LogInfo("This usually indicates the display topology is not fully established or the display name is not properly mapped");
-            
-            // Try to wait a bit and retry, as this might be a timing issue
-            LogInfo("Waiting 100ms for display topology to stabilize, then retrying...");
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-            
-            // Retry the binding
-            D3DKMT_OPENADAPTERFROMGDIDISPLAYNAME retryReq{};
-            wcsncpy_s(retryReq.DeviceName, name.c_str(), _TRUNCATE);
-            auto retry_status = reinterpret_cast<NTSTATUS (WINAPI*)(D3DKMT_OPENADAPTERFROMGDIDISPLAYNAME*)>(m_pfnOpenAdapterFromGdiDisplayName)(&retryReq);
-            if (retry_status == STATUS_SUCCESS && retryReq.VidPnSourceId != 0) {
-                std::ostringstream oss;
-                oss << "Retry successful! Got valid VidPnSourceId: " << retryReq.VidPnSourceId;
-                LogInfo(oss.str().c_str());
-                m_hAdapter = retryReq.hAdapter;
-                m_vidpn_source_id = retryReq.VidPnSourceId;
-            } else {
-                std::ostringstream oss;
-                oss << "Retry failed or still got invalid VidPnSourceId: " << retryReq.VidPnSourceId;
-                LogInfo(oss.str().c_str());
-            }
-        }
+        // VidPnSourceId of 0 is valid; no special handling required
         
         return true;
     } else {
@@ -415,8 +391,8 @@ void VBlankMonitor::MonitoringThread() {
     int lastScanLine = 0;
     while (!m_should_stop.load()) {
         
-        // Ensure we have a valid adapter binding
-        if (m_hAdapter == 0 || m_vidpn_source_id == 0) {
+        // Ensure we have a valid adapter binding (only treat sentinel as invalid)
+        if (m_hAdapter == 0 || m_vidpn_source_id == VBlankMonitor::kInvalidVidPnSource) {
             {
                 std::ostringstream oss;
                 HWND fg = GetForegroundWindow();

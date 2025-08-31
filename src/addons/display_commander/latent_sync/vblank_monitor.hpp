@@ -99,6 +99,9 @@ private:
     }
 
 private:
+    // Sentinel for uninitialized/invalid VidPn source id
+    static constexpr D3DDDI_VIDEO_PRESENT_SOURCE_ID kInvalidVidPnSource = static_cast<D3DDDI_VIDEO_PRESENT_SOURCE_ID>(-1);
+
     // Monitoring state
     std::thread m_monitor_thread;
     std::atomic<bool> m_monitoring{false};
@@ -106,7 +109,7 @@ private:
 
     // Display binding
     D3DKMT_HANDLE m_hAdapter = 0;
-    D3DDDI_VIDEO_PRESENT_SOURCE_ID m_vidpn_source_id = 0;
+    D3DDDI_VIDEO_PRESENT_SOURCE_ID m_vidpn_source_id = kInvalidVidPnSource;
     std::wstring m_bound_display_name;
 
     // Dynamic gdi32 entry points

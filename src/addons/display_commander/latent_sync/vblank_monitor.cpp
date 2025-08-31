@@ -155,11 +155,32 @@ bool VBlankMonitor::UpdateDisplayBindingFromWindow(HWND hwnd) {
     std::wstring name;
     if (hwnd != nullptr) {
         name = GetDisplayNameFromWindow(hwnd);
+        {
+            std::ostringstream oss;
+            oss << "Resolved display name from window: '" << WideCharToUTF8(name) << "'";
+            LogInfo(oss.str().c_str());
+        }
     } else {
         // Fallback: use first available display
         auto timing_info = QueryDisplayTimingInfo();
         if (!timing_info.empty()) {
             name = timing_info[0].display_name;
+            {
+                std::ostringstream oss;
+                oss << "Using fallback display name: '" << WideCharToUTF8(name) << "'";
+                LogInfo(oss.str().c_str());
+            }
+            
+            // Log all available display names for debugging
+            {
+                std::ostringstream oss;
+                oss << "All available display names:";
+                for (size_t i = 0; i < timing_info.size(); ++i) {
+                    oss << "\n  [" << i << "] display_name: '" << WideCharToUTF8(timing_info[i].display_name) << "'";
+                    oss << "\n      device_path: '" << WideCharToUTF8(timing_info[i].device_path) << "'";
+                }
+                LogInfo(oss.str().c_str());
+            }
         }
     }
     
@@ -200,8 +221,20 @@ bool VBlankMonitor::UpdateDisplayBindingFromWindow(HWND hwnd) {
     D3DKMT_OPENADAPTERFROMGDIDISPLAYNAME openReq{};
     wcsncpy_s(openReq.DeviceName, name.c_str(), _TRUNCATE);
     
+    {
+        std::ostringstream oss;
+        oss << "Attempting to open adapter for display: '" << WideCharToUTF8(name) << "'";
+        LogInfo(oss.str().c_str());
+    }
+    
     auto open_status = reinterpret_cast<NTSTATUS (WINAPI*)(D3DKMT_OPENADAPTERFROMGDIDISPLAYNAME*)>(m_pfnOpenAdapterFromGdiDisplayName)(&openReq);
     if (open_status == STATUS_SUCCESS) {
+        {
+            std::ostringstream oss;
+            oss << "D3DKMTOpenAdapterFromGdiDisplayName succeeded: hAdapter=" << openReq.hAdapter 
+                << ", VidPnSourceId=" << openReq.VidPnSourceId;
+            LogInfo(oss.str().c_str());
+        }
         m_hAdapter = openReq.hAdapter;
         m_vidpn_source_id = openReq.VidPnSourceId;
         m_bound_display_name = name;
@@ -209,11 +242,51 @@ bool VBlankMonitor::UpdateDisplayBindingFromWindow(HWND hwnd) {
         std::ostringstream oss;
         oss << "VBlank monitor successfully bound to display: " << WideCharToUTF8(name) << " (Adapter: " << m_hAdapter << ", VidPnSourceId: " << m_vidpn_source_id << ")";
         LogInfo(oss.str().c_str());
+        
+        // Check if we got a valid VidPnSourceId
+        if (m_vidpn_source_id == 0) {
+            LogInfo("WARNING: VidPnSourceId is 0, this may cause binding issues");
+            LogInfo("This usually indicates the display topology is not fully established or the display name is not properly mapped");
+            
+            // Try to wait a bit and retry, as this might be a timing issue
+            LogInfo("Waiting 100ms for display topology to stabilize, then retrying...");
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            
+            // Retry the binding
+            D3DKMT_OPENADAPTERFROMGDIDISPLAYNAME retryReq{};
+            wcsncpy_s(retryReq.DeviceName, name.c_str(), _TRUNCATE);
+            auto retry_status = reinterpret_cast<NTSTATUS (WINAPI*)(D3DKMT_OPENADAPTERFROMGDIDISPLAYNAME*)>(m_pfnOpenAdapterFromGdiDisplayName)(&retryReq);
+            if (retry_status == STATUS_SUCCESS && retryReq.VidPnSourceId != 0) {
+                std::ostringstream oss;
+                oss << "Retry successful! Got valid VidPnSourceId: " << retryReq.VidPnSourceId;
+                LogInfo(oss.str().c_str());
+                m_hAdapter = retryReq.hAdapter;
+                m_vidpn_source_id = retryReq.VidPnSourceId;
+            } else {
+                std::ostringstream oss;
+                oss << "Retry failed or still got invalid VidPnSourceId: " << retryReq.VidPnSourceId;
+                LogInfo(oss.str().c_str());
+            }
+        }
+        
         return true;
     } else {
         std::ostringstream oss;
         oss << "Failed to open adapter for display: " << WideCharToUTF8(name) << " (Status: " << open_status << ")";
         LogInfo(oss.str().c_str());
+        
+        // Provide more specific error information
+        if (open_status == STATUS_OBJECT_NAME_NOT_FOUND) {
+            LogInfo("STATUS_OBJECT_NAME_NOT_FOUND: The display name may not exist or may not be accessible");
+        } else if (open_status == STATUS_OBJECT_PATH_NOT_FOUND) {
+            LogInfo("STATUS_OBJECT_PATH_NOT_FOUND: The display path may be invalid or the display may not be ready");
+        } else if (open_status == 0xC0000022) { // STATUS_ACCESS_DENIED
+            LogInfo("STATUS_ACCESS_DENIED: Insufficient privileges to access the display adapter");
+        } else if (open_status == STATUS_INVALID_PARAMETER) {
+            LogInfo("STATUS_INVALID_PARAMETER: The display name format may be incorrect");
+        }
+        
+        LogInfo("This may indicate the display is not fully initialized or the D3DKMT system is not ready");
     }
 
     return false;

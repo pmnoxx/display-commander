@@ -674,7 +674,8 @@ bool OnPresentFlags(uint32_t* present_flags) {
 
   if (s_no_present_in_background.load() && g_app_in_background.load(std::memory_order_acquire)) {
     //*present_flags = DXGI_PRESENT_DO_NOT_SEQUENCE;
-    return l_frame_count.load() >= 60 && l_frame_count.fetch_add(1) % 16 == 0;
+    l_frame_count.fetch_add(1) ;
+    return l_frame_count.load() >= 60 && l_frame_count.load() % 8 != 0;
   }
 
   // Return false by default to continue with normal present flow

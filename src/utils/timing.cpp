@@ -155,7 +155,7 @@ void wait_until_qpc(LONGLONG target_qpc, HANDLE& timer_handle)
 } // namespace utils
 
 // Global timing function
-LONGLONG get_now_ticks() {
+LONGLONG get_now_qpc() {
     LARGE_INTEGER now_ticks = { };
     QueryPerformanceCounter(&now_ticks);
     return now_ticks.QuadPart;

@@ -926,25 +926,49 @@ void DrawImportantInfo() {
     ImGui::SameLine();
     ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "(30-frame avg)");
     
+    #define NS_TO_MS 1000000.0
     // Present Duration Display
-    double present_duration_sec = ::g_present_duration.load();
+    double present_duration_ms = ::g_present_duration_ns.load() / NS_TO_MS;
     
     oss.str("");
     oss.clear();
-    oss << "Present Duration: " << std::fixed << std::setprecision(3) << (present_duration_sec * 1000.0) << " ms";
+    oss << "Present Duration: " << std::fixed << std::setprecision(3) << present_duration_ms << " ms";
     ImGui::TextUnformatted(oss.str().c_str());
     ImGui::SameLine();
     ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "(smoothed)");
     
     // Simulation Duration Display
-    double simulation_duration_sec = ::g_simulation_duration.load();
+    double simulation_duration_ms = ::g_simulation_duration_ns.load() / NS_TO_MS;
     
     oss.str("");
     oss.clear();
-    oss << "Simulation Duration: " << std::fixed << std::setprecision(3) << (simulation_duration_sec * 1000.0) << " ms";
+    oss << "Simulation Duration: " << std::fixed << std::setprecision(3) << simulation_duration_ms << " ms";
     ImGui::TextUnformatted(oss.str().c_str());
     ImGui::SameLine();
     ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "(smoothed)");
+    
+    // FPS Limiter Start Duration Display
+    LONGLONG fps_sleep_before_on_present_ns = ::fps_sleep_before_on_present_ns.load();
+    
+    oss.str("");
+    oss.clear();
+    oss << "FPS Limiter Sleep Duration (before onPresent): " << std::fixed << std::setprecision(3) << (fps_sleep_before_on_present_ns / NS_TO_MS) << " ms";
+    ImGui::TextUnformatted(oss.str().c_str());
+    ImGui::SameLine();
+    ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "(smoothed)");
+
+    
+    // FPS Limiter Start Duration Display
+    LONGLONG fps_sleep_after_on_present_ns = ::fps_sleep_after_on_present_ns.load();
+    
+    oss.str("");
+    oss.clear();
+    oss << "FPS Limiter Sleep Duration (after onPresent): " << std::fixed << std::setprecision(3) << (fps_sleep_after_on_present_ns / NS_TO_MS) << " ms";
+    ImGui::TextUnformatted(oss.str().c_str());
+    ImGui::SameLine();
+    ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "(smoothed)");
+    
+    // Reflex Status Display
     
     // Reflex Status Display
     bool is_active = ::g_reflex_active.load();

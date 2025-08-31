@@ -317,7 +317,7 @@ void VBlankMonitor::MonitoringThread() {
         scan.hAdapter = m_hAdapter;
         scan.VidPnSourceId = m_vidpn_source_id;
 
-        LONGLONG start_ticks = get_now_ticks();
+        LONGLONG start_ticks = get_now_qpc();
 
         int expected_scanline_tmp = expected_current_scanline(start_ticks, current_display_timing.total_height, true);
 
@@ -341,7 +341,7 @@ void VBlankMonitor::MonitoringThread() {
                 oss << "Scanline: " << scan.ScanLine << " ticks, expected_scanline: " << expected_scanline_tmp;
                 LogInfo(oss.str().c_str());
             }
-            LONGLONG end_ticks = get_now_ticks();
+            LONGLONG end_ticks = get_now_qpc();
             LONGLONG duration = end_ticks - start_ticks;
 
             LONGLONG mid_point = (start_ticks + end_ticks) / 2; // TODO: all values could be multipled by 2 for better precision

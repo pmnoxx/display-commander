@@ -118,7 +118,7 @@ void LatentSyncLimiter::LimitFrameRate() {
     LONGLONG active_height = current_display_timing.active_height;
     LONGLONG mid_vblank_scanline = (active_height + total_height) / 2;
 
-    LONGLONG now_ticks = get_now_ticks();
+    LONGLONG now_ticks = get_now_qpc();
 
     extern double expected_current_scanline(LONGLONG now_ticks, int total_height, bool add_correction);
     double expected_scanline = expected_current_scanline(now_ticks, total_height, true);
@@ -147,7 +147,7 @@ void LatentSyncLimiter::LimitFrameRate() {
 
     LONGLONG start_ticks = now_ticks;
     while (true) {
-        now_ticks = get_now_ticks();
+        now_ticks = get_now_qpc();
         if (now_ticks - start_ticks > delta_wait_time) {
             break;
         }
@@ -180,7 +180,7 @@ void LatentSyncLimiter::OnPresentEnd() {
         std::vector<DisplayTimingInfo> timing_info = QueryDisplayTimingInfo();
         LONGLONG total_height = timing_info[0].total_height;
 
-        LONGLONG now_ticks = get_now_ticks();
+        LONGLONG now_ticks = get_now_qpc();
         std::ostringstream oss;
         oss << "OnPresentEnd: ";
         extern double expected_current_scanline(LONGLONG now_ticks, int total_height, bool add_correction);

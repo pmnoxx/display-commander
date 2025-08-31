@@ -450,7 +450,7 @@ void DrawLatencyDisplay() {
     
     // Present Duration Display
     extern std::atomic<double> g_present_duration;
-    double present_duration = ::g_present_duration.load();
+    double present_duration = ::g_present_duration_ns.load();
     
     oss.str("");
     oss.clear();

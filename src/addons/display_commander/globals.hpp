@@ -190,10 +190,17 @@ extern std::atomic<uint64_t> g_current_frame;
 extern std::atomic<bool> g_reflex_active;
 
 // Present duration tracking
-extern std::atomic<double> g_present_duration;
+extern std::atomic<LONGLONG> g_present_duration_ns;
 
 // Simulation duration tracking
-extern std::atomic<double> g_simulation_duration;
+extern std::atomic<LONGLONG> g_simulation_duration_ns;
+
+// FPS limiter start duration tracking (nanoseconds)
+extern std::atomic<LONGLONG> fps_sleep_before_on_present_ns;
+
+// FPS limiter start duration tracking (nanoseconds)
+extern std::atomic<LONGLONG> fps_sleep_after_on_present_ns;
+
 
 // Render start time tracking
 extern std::atomic<LONGLONG> g_render_start_time;

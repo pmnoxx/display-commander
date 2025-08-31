@@ -607,7 +607,7 @@ bool OnBindPipeline(reshade::api::command_list* cmd_list, reshade::api::pipeline
 }
 
 // Present flags callback to strip DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING
-bool OnPresentFlags(uint32_t* present_flags) {
+void OnPresentFlags(uint32_t* present_flags) {
   // Increment event counter
   g_swapchain_event_counters[SWAPCHAIN_EVENT_PRESENT_FLAGS].fetch_add(1);
   g_swapchain_event_total_count.fetch_add(1);
@@ -627,11 +627,9 @@ bool OnPresentFlags(uint32_t* present_flags) {
   }
 
   if (s_no_present_in_background.load() && g_app_in_background.load(std::memory_order_acquire)) {
-    //*present_flags = DXGI_PRESENT_DO_NOT_SEQUENCE;
-    l_frame_count.fetch_add(1) ;
-    return l_frame_count.load() >= 60 && l_frame_count.load() % 8 != 0;
+    *present_flags = DXGI_PRESENT_DO_NOT_SEQUENCE;
+    l_frame_count.fetch_add(1);
   }
 
-  // Return false by default to continue with normal present flow
-  return false;
+  return;
 }

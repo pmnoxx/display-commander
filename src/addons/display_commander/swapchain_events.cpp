@@ -21,6 +21,12 @@ std::atomic<double> g_present_duration{0.0};
 // Render start time tracking
 std::atomic<LONGLONG> g_render_start_time{0};
 
+// Present after end time tracking
+std::atomic<LONGLONG> g_present_after_end_time{0};
+
+// Simulation duration tracking
+std::atomic<double> g_simulation_duration{0.0};
+
 // Frame lifecycle hooks for custom FPS limiter
 void OnBeginRenderPass(reshade::api::command_list* cmd_list, uint32_t count, const reshade::api::render_pass_render_target_desc* rts, const reshade::api::render_pass_depth_stencil_desc* ds) {
     // Increment event counter
@@ -64,6 +70,20 @@ void OnEndRenderPass(reshade::api::command_list* cmd_list) {
     }
 }
 
+void HandleRenderStartAndEndTimes() {
+  LONGLONG expected = 0;
+  if (g_render_start_time.load() == 0) {
+    LONGLONG now = get_now_ticks();
+    LONGLONG present_after_end_time = g_present_after_end_time.load();
+    if (present_after_end_time > 0 && g_render_start_time.compare_exchange_strong(expected, now)) {
+        // Compare to g_present_after_end_time
+        double g_simulation_duration_new = (now - present_after_end_time) / 10000000.0;
+        double alpha = 0.01;
+        g_simulation_duration.store(alpha * g_simulation_duration_new + (1 - alpha) * g_simulation_duration.load());
+    }
+  }
+}
+
 // Draw event handlers for render timing
 bool OnDraw(reshade::api::command_list* cmd_list, uint32_t vertex_count, uint32_t instance_count, uint32_t first_vertex, uint32_t first_instance) {
     // Increment event counter
@@ -71,10 +91,7 @@ bool OnDraw(reshade::api::command_list* cmd_list, uint32_t vertex_count, uint32_
     g_swapchain_event_total_count.fetch_add(1);
     
     // Set render start time if it's 0 (first draw call of the frame)
-    LONGLONG expected = 0;
-    if (g_render_start_time.compare_exchange_strong(expected, get_now_ticks())) {
-        // Successfully set the timestamp for the first draw call
-    }
+    HandleRenderStartAndEndTimes();
     if (g_app_in_background.load(std::memory_order_acquire)) {
       return true; // Skip the draw call
     }
@@ -88,10 +105,7 @@ bool OnDrawIndexed(reshade::api::command_list* cmd_list, uint32_t index_count, u
     g_swapchain_event_total_count.fetch_add(1);
     
     // Set render start time if it's 0 (first draw call of the frame)
-    LONGLONG expected = 0;
-    if (g_render_start_time.compare_exchange_strong(expected, get_now_ticks())) {
-        // Successfully set the timestamp for the first draw call
-    }
+    HandleRenderStartAndEndTimes();
     if (g_app_in_background.load(std::memory_order_acquire)) {
       return true; // Skip the draw call
     }
@@ -105,10 +119,7 @@ bool OnDrawOrDispatchIndirect(reshade::api::command_list* cmd_list, reshade::api
     g_swapchain_event_total_count.fetch_add(1);
     
     // Set render start time if it's 0 (first draw call of the frame)
-    LONGLONG expected = 0;
-    if (g_render_start_time.compare_exchange_strong(expected, get_now_ticks())) {
-        // Successfully set the timestamp for the first draw call
-    }
+    HandleRenderStartAndEndTimes();
     
     if (g_app_in_background.load(std::memory_order_acquire)) {
       return true; // Skip the draw call
@@ -349,6 +360,10 @@ void OnPresentUpdateAfter(  reshade::api::command_queue* /*queue*/, reshade::api
   if (s_reflex_enabled.load() && g_reflexManager && g_reflexManager->IsAvailable()) {
     g_reflexManager->OnPresentUpdateAfter(/*queue*/nullptr, swapchain);
   }
+
+  g_present_after_end_time.store(get_now_ticks());
+  g_render_start_time.store(0);
+  
 }
 
 void flush_command_queue() {

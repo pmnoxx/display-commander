@@ -12,9 +12,7 @@ void OnBeginRenderPass(reshade::api::command_list* cmd_list, uint32_t count, con
 void OnEndRenderPass(reshade::api::command_list* cmd_list);
 
 // Draw event handlers for render timing and power saving
-bool OnDraw(reshade::api::command_list* cmd_list, uint32_t vertex_count, uint32_t instance_count, uint32_t first_vertex, uint32_t first_instance);
-bool OnDrawIndexed(reshade::api::command_list* cmd_list, uint32_t index_count, uint32_t instance_count, uint32_t first_index, int32_t vertex_offset, uint32_t first_instance);
-bool OnDrawOrDispatchIndirect(reshade::api::command_list* cmd_list, reshade::api::indirect_command type, reshade::api::resource buffer, uint64_t offset, uint32_t draw_count, uint32_t stride);
+// These are now implemented in swapchain_events_power_saving.cpp
 
 // Command list and queue lifecycle hooks
 void OnInitCommandList(reshade::api::command_list* cmd_list);

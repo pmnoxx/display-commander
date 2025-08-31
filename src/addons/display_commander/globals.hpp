@@ -123,6 +123,9 @@ extern std::atomic<int> s_target_monitor_index;
 extern std::atomic<int> s_dxgi_composition_state;
 extern std::atomic<bool> s_block_input_in_background;
 
+// Render blocking in background
+extern std::atomic<bool> s_no_render_in_background;
+
 // NVAPI Settings
 extern std::atomic<bool> s_nvapi_fullscreen_prevention;
 extern std::atomic<bool> s_nvapi_hdr_logging;

@@ -57,7 +57,7 @@ void OnUnmapResource(reshade::api::device* device, reshade::api::resource resour
 // ============================================================================
 
 // Helper function to determine if an operation should be suppressed for power saving
-bool ShouldSuppressOperation();
+bool ShouldBackgroundSuppressOperation();
 
 // ============================================================================
 // POWER SAVING SETTINGS

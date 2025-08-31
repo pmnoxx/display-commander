@@ -195,8 +195,12 @@ bool OnCreateSwapchainCapture(reshade::api::device_api /*api*/, reshade::api::sw
     desc.sync_interval = 0; // VSYNC off
     modified = true;
   }
-  if (s_prevent_tearing.load()) {
+  if (s_prevent_tearing.load() && (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING) != 0) {
     desc.present_flags &= ~DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
+    modified = true;
+  }
+  if (desc.back_buffer_count < 2) {
+    desc.back_buffer_count = 2;
     modified = true;
   }
   // Log sync interval and present flags with detailed explanation
@@ -374,6 +378,7 @@ void OnPresentUpdateAfter(  reshade::api::command_queue* /*queue*/, reshade::api
 }
 
 void flush_command_queue() {
+  if (ShouldBackgroundSuppressOperation()) return;
   if (g_reshade_runtime.load() != nullptr) {
     g_reshade_runtime.load()->get_command_queue()->flush_immediate_command_list();
   }
@@ -601,7 +606,7 @@ bool OnBindPipeline(reshade::api::command_list* cmd_list, reshade::api::pipeline
   LogDebug("Pipeline bound");
   
   // Power saving: skip pipeline binding in background if enabled
-  if (s_suppress_binding_in_background.load() && ShouldSuppressOperation()) {
+  if (s_suppress_binding_in_background.load() && ShouldBackgroundSuppressOperation()) {
     return true; // Skip the pipeline binding
   }
   

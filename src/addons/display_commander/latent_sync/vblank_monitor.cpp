@@ -146,6 +146,11 @@ std::wstring VBlankMonitor::GetDisplayNameFromWindow(HWND hwnd) {
 }
 
 bool VBlankMonitor::UpdateDisplayBindingFromWindow(HWND hwnd) {
+    {
+        std::ostringstream oss;
+        oss << "UpdateDisplayBindingFromWindow: hwnd=" << hwnd;
+        LogInfo(oss.str().c_str());
+    }
     // Resolve display name
     std::wstring name;
     if (hwnd != nullptr) {
@@ -163,10 +168,22 @@ bool VBlankMonitor::UpdateDisplayBindingFromWindow(HWND hwnd) {
         return false;
     }
     
-    if (name == m_bound_display_name && m_hAdapter != 0) return true;
+    if (name == m_bound_display_name && m_hAdapter != 0) {
+        std::ostringstream oss;
+        oss << "Already bound to display: " << WideCharToUTF8(name)
+            << ", hAdapter=" << m_hAdapter
+            << ", VidPnSourceId=" << m_vidpn_source_id;
+        LogInfo(oss.str().c_str());
+        return true;
+    }
 
     // Rebind
     if (m_hAdapter != 0) {
+        {
+            std::ostringstream oss;
+            oss << "Closing existing adapter handle before rebind: hAdapter=" << m_hAdapter;
+            LogInfo(oss.str().c_str());
+        }
         if (LoadProcCached(m_pfnCloseAdapter, L"gdi32.dll", "D3DKMTCloseAdapter")) {
             D3DKMT_CLOSEADAPTER closeReq{}; 
             closeReq.hAdapter = m_hAdapter;
@@ -175,8 +192,10 @@ bool VBlankMonitor::UpdateDisplayBindingFromWindow(HWND hwnd) {
         m_hAdapter = 0;
     }
 
-    if (!LoadProcCached(m_pfnOpenAdapterFromGdiDisplayName, L"gdi32.dll", "D3DKMTOpenAdapterFromGdiDisplayName"))
+    if (!LoadProcCached(m_pfnOpenAdapterFromGdiDisplayName, L"gdi32.dll", "D3DKMTOpenAdapterFromGdiDisplayName")) {
+        LogInfo("Failed to load D3DKMTOpenAdapterFromGdiDisplayName");
         return false;
+    }
 
     D3DKMT_OPENADAPTERFROMGDIDISPLAYNAME openReq{};
     wcsncpy_s(openReq.DeviceName, name.c_str(), _TRUNCATE);
@@ -201,14 +220,29 @@ bool VBlankMonitor::UpdateDisplayBindingFromWindow(HWND hwnd) {
 }
 
 bool VBlankMonitor::EnsureAdapterBinding() {
+    {
+        std::ostringstream oss;
+        oss << "EnsureAdapterBinding: hAdapter=" << m_hAdapter
+            << ", VidPnSourceId=" << m_vidpn_source_id
+            << ", bound_display_name=" << WideCharToUTF8(m_bound_display_name);
+        LogInfo(oss.str().c_str());
+    }
     if (m_hAdapter != 0) {
+        LogInfo("EnsureAdapterBinding: adapter handle already valid, skipping rebind");
         return true;
     }
     
     // Try to bind to foreground window if no specific binding
     HWND hwnd = GetForegroundWindow();
+    {
+        std::ostringstream oss;
+        oss << "EnsureAdapterBinding: foreground hwnd=" << hwnd;
+        LogInfo(oss.str().c_str());
+    }
     if (hwnd != nullptr) {
-        return UpdateDisplayBindingFromWindow(hwnd);
+        bool ok = UpdateDisplayBindingFromWindow(hwnd);
+        LogInfo(ok ? "EnsureAdapterBinding: bound using foreground window" : "EnsureAdapterBinding: failed to bind using foreground window");
+        return ok;
     }
     
     // Fallback: try to bind to any available display
@@ -216,11 +250,19 @@ bool VBlankMonitor::EnsureAdapterBinding() {
     if (!timing_info.empty()) {
         // Try to bind to the first available display
         std::wstring display_name = timing_info[0].display_name;
+        {
+            std::ostringstream oss;
+            oss << "EnsureAdapterBinding: fallback display_name='" << WideCharToUTF8(display_name) << "'";
+            LogInfo(oss.str().c_str());
+        }
         if (!display_name.empty()) {
-            return UpdateDisplayBindingFromWindow(nullptr); // This will use the fallback logic
+            bool ok = UpdateDisplayBindingFromWindow(nullptr); // This will use the fallback logic
+            LogInfo(ok ? "EnsureAdapterBinding: bound using fallback display" : "EnsureAdapterBinding: failed to bind using fallback display");
+            return ok;
         }
     }
     
+    LogInfo("EnsureAdapterBinding: no displays available to bind");
     return false;
 }
 
@@ -302,6 +344,17 @@ void VBlankMonitor::MonitoringThread() {
         
         // Ensure we have a valid adapter binding
         if (m_hAdapter == 0 || m_vidpn_source_id == 0) {
+            {
+                std::ostringstream oss;
+                HWND fg = GetForegroundWindow();
+                HWND sc = g_last_swapchain_hwnd.load();
+                oss << "Invalid adapter binding detected: hAdapter=" << m_hAdapter
+                    << ", VidPnSourceId=" << m_vidpn_source_id
+                    << ", bound_display_name=" << WideCharToUTF8(m_bound_display_name)
+                    << ", foreground_hwnd=" << fg
+                    << ", last_swapchain_hwnd=" << sc;
+                LogInfo(oss.str().c_str());
+            }
             LogInfo("Invalid adapter binding detected, attempting to rebind...");
             if (!EnsureAdapterBinding()) {
                 LogInfo("Failed to establish adapter binding, sleeping...");

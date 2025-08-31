@@ -1,4 +1,5 @@
 #include "addon.hpp"
+#include "swapchain_events_power_saving.hpp"
 
 // Include the UI initialization
 #include "ui/ui_main.hpp"
@@ -108,6 +109,16 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
       reshade::register_event<reshade::addon_event::draw_indexed>(OnDrawIndexed);
       reshade::register_event<reshade::addon_event::draw_or_dispatch_indirect>(OnDrawOrDispatchIndirect);
       
+      // Register power saving event handlers for additional GPU operations
+      reshade::register_event<reshade::addon_event::dispatch>(OnDispatch);
+      reshade::register_event<reshade::addon_event::dispatch_mesh>(OnDispatchMesh);
+      reshade::register_event<reshade::addon_event::dispatch_rays>(OnDispatchRays);
+      reshade::register_event<reshade::addon_event::copy_resource>(OnCopyResource);
+      reshade::register_event<reshade::addon_event::update_buffer_region>(OnUpdateBufferRegion);
+      reshade::register_event<reshade::addon_event::update_buffer_region_command>(OnUpdateBufferRegionCommand);
+      // Note: bind_resource, map_resource, unmap_resource events don't exist in ReShade API
+      // These operations are handled differently in ReShade
+      
       // Register additional event handlers for frame timing and composition
       reshade::register_event<reshade::addon_event::init_command_list>(OnInitCommandList);
       reshade::register_event<reshade::addon_event::init_command_queue>(OnInitCommandQueue);
@@ -147,6 +158,15 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
       reshade::unregister_event<reshade::addon_event::draw>(OnDraw);
       reshade::unregister_event<reshade::addon_event::draw_indexed>(OnDrawIndexed);
       reshade::unregister_event<reshade::addon_event::draw_or_dispatch_indirect>(OnDrawOrDispatchIndirect);
+      
+      // Unregister power saving event handlers for additional GPU operations
+      reshade::unregister_event<reshade::addon_event::dispatch>(OnDispatch);
+      reshade::unregister_event<reshade::addon_event::dispatch_mesh>(OnDispatchMesh);
+      reshade::unregister_event<reshade::addon_event::dispatch_rays>(OnDispatchRays);
+      reshade::unregister_event<reshade::addon_event::copy_resource>(OnCopyResource);
+      reshade::unregister_event<reshade::addon_event::update_buffer_region>(OnUpdateBufferRegion);
+      reshade::unregister_event<reshade::addon_event::update_buffer_region_command>(OnUpdateBufferRegionCommand);
+      
       // Unregister additional event handlers for frame timing and composition
       reshade::unregister_event<reshade::addon_event::init_command_list>(OnInitCommandList);
       reshade::unregister_event<reshade::addon_event::init_command_queue>(OnInitCommandQueue);

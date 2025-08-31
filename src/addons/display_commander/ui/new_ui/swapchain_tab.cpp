@@ -2,6 +2,7 @@
 #include "../../addon.hpp"
 #include "../../dxgi/dxgi_device_info.hpp"
 #include "../../utils.hpp"
+#include "../../swapchain_events_power_saving.hpp"
 #include <deps/imgui/imgui.h>
 #include <sstream>
 #include <cstdio>
@@ -348,7 +349,16 @@ void DrawSwapchainEventCounters() {
             true,   // reshade::addon_event::present_flags
             true,   // reshade::addon_event::draw
             true,   // reshade::addon_event::draw_indexed
-            true    // reshade::addon_event::draw_or_dispatch_indirect
+            true,   // reshade::addon_event::draw_or_dispatch_indirect
+            // New power saving events
+            true,   // reshade::addon_event::dispatch
+            true,   // reshade::addon_event::dispatch_mesh
+            true,   // reshade::addon_event::dispatch_rays
+            true,   // reshade::addon_event::copy_resource
+            true,   // reshade::addon_event::update_buffer_region
+            true,   // reshade::addon_event::update_buffer_region_command
+            true,   // reshade::addon_event::bind_resource
+            true    // reshade::addon_event::map_resource
         };
         
         // Display each event counter with color coding
@@ -368,13 +378,22 @@ void DrawSwapchainEventCounters() {
             "reshade::addon_event::present_flags",
             "reshade::addon_event::draw",
             "reshade::addon_event::draw_indexed",
-            "reshade::addon_event::draw_or_dispatch_indirect"
+            "reshade::addon_event::draw_or_dispatch_indirect",
+            // New power saving events
+            "reshade::addon_event::dispatch",
+            "reshade::addon_event::dispatch_mesh",
+            "reshade::addon_event::dispatch_rays",
+            "reshade::addon_event::copy_resource",
+            "reshade::addon_event::update_buffer_region",
+            "reshade::addon_event::update_buffer_region_command",
+            "reshade::addon_event::bind_resource",
+            "reshade::addon_event::map_resource"
         };
         
         uint32_t total_events = 0;
         uint32_t visible_events = 0;
         
-        for (int i = 0; i < 16; i++) {
+        for (int i = 0; i < 24; i++) {
             // Skip events that are set to invisible
             if (!event_visibility[i]) {
                 continue;
@@ -391,13 +410,86 @@ void DrawSwapchainEventCounters() {
         
         ImGui::Separator();
         ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "Total Events (Visible): %u", total_events);
-        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Hidden Events: %u", 16 - visible_events);
+        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Hidden Events: %u", 24 - visible_events);
         
         // Show status message
         if (total_events > 0) {
             ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Status: Swapchain events are working correctly");
         } else {
             ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "Status: No swapchain events detected - check if addon is properly loaded");
+        }
+    }
+    
+    // Power Saving Settings Section
+    if (ImGui::CollapsingHeader("Power Saving Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "GPU Power Saving Controls");
+        ImGui::Separator();
+        
+        // Main power saving toggle
+        static bool main_power_saving = s_no_render_in_background.load();
+        if (ImGui::Checkbox("Enable Power Saving in Background", &main_power_saving)) {
+            s_no_render_in_background.store(main_power_saving);
+        }
+        
+        if (main_power_saving) {
+            ImGui::Indent();
+            
+            // Compute shader suppression
+            static bool suppress_compute = s_suppress_compute_in_background.load();
+            if (ImGui::Checkbox("Suppress Compute Shaders (Dispatch)", &suppress_compute)) {
+                s_suppress_compute_in_background.store(suppress_compute);
+            }
+            ImGui::SameLine();
+            ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "?");
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Skip compute shader dispatches when app is in background");
+            }
+            
+            // Resource copy suppression
+            static bool suppress_copy = s_suppress_copy_in_background.load();
+            if (ImGui::Checkbox("Suppress Resource Copying", &suppress_copy)) {
+                s_suppress_copy_in_background.store(suppress_copy);
+            }
+            ImGui::SameLine();
+            ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "?");
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Skip resource copy operations when app is in background");
+            }
+            
+            // Memory operations suppression
+            static bool suppress_memory = s_suppress_memory_ops_in_background.load();
+            if (ImGui::Checkbox("Suppress Memory Operations", &suppress_memory)) {
+                s_suppress_memory_ops_in_background.store(suppress_memory);
+            }
+            ImGui::SameLine();
+            ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "?");
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Skip resource mapping operations when app is in background");
+            }
+            
+            // Resource binding suppression (more conservative)
+            static bool suppress_binding = s_suppress_binding_in_background.load();
+            if (ImGui::Checkbox("Suppress Resource Binding (Experimental)", &suppress_binding)) {
+                s_suppress_binding_in_background.store(suppress_binding);
+            }
+            ImGui::SameLine();
+            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "⚠");
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Skip resource binding operations (may cause rendering issues)");
+            }
+            
+            ImGui::Unindent();
+        }
+        
+        // Power saving status
+        ImGui::Separator();
+        bool is_background = g_app_in_background.load(std::memory_order_acquire);
+        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Current Status:");
+        ImGui::Text("  App in Background: %s", is_background ? "Yes" : "No");
+        ImGui::Text("  Power Saving Active: %s", (main_power_saving && is_background) ? "Yes" : "No");
+        
+        if (main_power_saving && is_background) {
+            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "  ✓ Power saving is currently active");
         }
     }
 }

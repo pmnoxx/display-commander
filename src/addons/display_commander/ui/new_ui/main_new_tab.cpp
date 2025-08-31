@@ -53,6 +53,7 @@ void InitMainNewTab() {
         s_audio_mute.store(g_main_new_tab_settings.audio_mute.GetValue());
         s_mute_in_background.store(g_main_new_tab_settings.mute_in_background.GetValue());
         s_mute_in_background_if_other_audio.store(g_main_new_tab_settings.mute_in_background_if_other_audio.GetValue());
+        s_no_present_in_background.store(g_main_new_tab_settings.no_present_in_background.GetValue());
         // VSync & Tearing - all automatically synced via BoolSettingRef
         s_block_input_in_background.store(g_main_new_tab_settings.block_input_in_background.GetValue());
         settings_loaded_once = true;
@@ -598,6 +599,18 @@ void DrawDisplaySettings() {
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Skip rendering draw calls when the game window is not in the foreground. This can save GPU power and reduce background processing.");
+        }
+    }
+    
+    // No Present in Background checkbox
+    {
+        bool no_present_in_bg = g_main_new_tab_settings.no_present_in_background.GetValue();
+        if (ImGui::Checkbox("No Present in Background", &no_present_in_bg)) {
+            g_main_new_tab_settings.no_present_in_background.SetValue(no_present_in_bg);
+            // The setting is automatically synced via BoolSettingRef
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Skip ReShade's on_present processing when the game window is not in the foreground. This can save GPU power and reduce background processing.");
         }
     }
     

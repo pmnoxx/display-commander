@@ -38,19 +38,10 @@ void UninstallReflexHooks();
 void SetReflexLatencyMarkers(reshade::api::swapchain* swapchain);
 void SetReflexSleepMode(reshade::api::swapchain* swapchain);
 
-// Frame lifecycle hooks for custom FPS limiter
-void OnBeginRenderPass(reshade::api::command_list* cmd_list, uint32_t count, const reshade::api::render_pass_render_target_desc* rts, const reshade::api::render_pass_depth_stencil_desc* ds);
-void OnEndRenderPass(reshade::api::command_list* cmd_list);
+// Include consolidated swapchain events header
+#include "swapchain_events.hpp"
 
-// Draw event handlers for render timing
-bool OnDraw(reshade::api::command_list* cmd_list, uint32_t vertex_count, uint32_t instance_count, uint32_t first_vertex, uint32_t first_instance);
-bool OnDrawIndexed(reshade::api::command_list* cmd_list, uint32_t index_count, uint32_t instance_count, uint32_t first_index, int32_t vertex_offset, uint32_t first_instance);
-bool OnDrawOrDispatchIndirect(reshade::api::command_list* cmd_list, reshade::api::indirect_command type, reshade::api::resource buffer, uint64_t offset, uint32_t draw_count, uint32_t stride);
-
-// Command list and queue lifecycle hooks
-void OnInitCommandList(reshade::api::command_list* cmd_list);
-void OnInitCommandQueue(reshade::api::command_queue* queue);
-void OnResetCommandList(reshade::api::command_list* cmd_list);
+// Command list and queue lifecycle hooks (declared in swapchain_events.hpp)
 
 // Function declarations
 const char* DxgiBypassModeToString(DxgiBypassMode mode);
@@ -66,23 +57,8 @@ bool NeedsWindowAdjustment(HWND hwnd, int& out_width, int& out_height, int& out_
 
 // CONTINUOUS RENDERING FUNCTIONS REMOVED - Focus spoofing is now handled by Win32 hooks
 
-// Swapchain event handlers
-void OnInitSwapchain(reshade::api::swapchain* swapchain, bool resize);
-void OnPresentUpdateBefore(reshade::api::command_queue *, reshade::api::swapchain* swapchain, const reshade::api::rect* source_rect, const reshade::api::rect* dest_rect, uint32_t dirty_rect_count, const reshade::api::rect* dirty_rects);
-void OnPresentUpdateBefore2(reshade::api::effect_runtime* runtime);
-void OnPresentUpdateAfter(reshade::api::command_queue* /*queue*/, reshade::api::swapchain* swapchain);
-void OnPresentFlags(uint32_t* present_flags);
-
-// Additional event handlers for frame timing and composition
-void OnInitCommandList(reshade::api::command_list* cmd_list);
-void OnExecuteCommandList(reshade::api::command_queue* queue, reshade::api::command_list* cmd_list);
-void OnBindPipeline(reshade::api::command_list* cmd_list, reshade::api::pipeline_stage stages, reshade::api::pipeline pipeline);
+// Swapchain event handlers (declared in swapchain_events.hpp)
 
 // Note: GetIndependentFlipState is implemented in the .cpp file as it's complex
 
-// Swapchain sync interval accessors
-// Returns UINT32_MAX when using application's default, or <0-4> for explicit intervals, or UINT_MAX if unknown
-uint32_t GetSwapchainSyncInterval(reshade::api::swapchain* swapchain);
-
-// Event to capture sync interval from swapchain creation
-bool OnCreateSwapchainCapture(reshade::api::device_api api, reshade::api::swapchain_desc& desc, void* hwnd);
+// Power saving settings and swapchain utilities (declared in swapchain_events.hpp)

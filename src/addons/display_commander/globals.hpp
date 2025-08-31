@@ -126,6 +126,9 @@ extern std::atomic<bool> s_block_input_in_background;
 // Render blocking in background
 extern std::atomic<bool> s_no_render_in_background;
 
+// Present blocking in background
+extern std::atomic<bool> s_no_present_in_background;
+
 // NVAPI Settings
 extern std::atomic<bool> s_nvapi_fullscreen_prevention;
 extern std::atomic<bool> s_nvapi_hdr_logging;
@@ -274,7 +277,7 @@ extern std::atomic<int> s_spoof_fullscreen_state;
 extern std::atomic<int> s_spoof_window_focus;
 
 // Swapchain event counters - reset on each swapchain creation
-extern std::atomic<uint32_t> g_swapchain_event_counters[16]; // Array for all On* events
+extern std::atomic<uint32_t> g_swapchain_event_counters[24]; // Array for all On* events
 extern std::atomic<uint32_t> g_swapchain_event_total_count; // Total events across all types
 
 // Swapchain event counter indices
@@ -294,5 +297,14 @@ enum SwapchainEventIndex {
     SWAPCHAIN_EVENT_PRESENT_FLAGS = 12,
     SWAPCHAIN_EVENT_DRAW = 13,
     SWAPCHAIN_EVENT_DRAW_INDEXED = 14,
-    SWAPCHAIN_EVENT_DRAW_OR_DISPATCH_INDIRECT = 15
+    SWAPCHAIN_EVENT_DRAW_OR_DISPATCH_INDIRECT = 15,
+    // New power saving event counters
+    SWAPCHAIN_EVENT_DISPATCH = 16,
+    SWAPCHAIN_EVENT_DISPATCH_MESH = 17,
+    SWAPCHAIN_EVENT_DISPATCH_RAYS = 18,
+    SWAPCHAIN_EVENT_COPY_RESOURCE = 19,
+    SWAPCHAIN_EVENT_UPDATE_BUFFER_REGION = 20,
+    SWAPCHAIN_EVENT_UPDATE_BUFFER_REGION_COMMAND = 21,
+    SWAPCHAIN_EVENT_BIND_RESOURCE = 22,
+    SWAPCHAIN_EVENT_MAP_RESOURCE = 23
 };

@@ -28,7 +28,8 @@ MainNewTabSettings::MainNewTabSettings()
       mute_in_background_if_other_audio("mute_in_background_if_other_audio", true, "renodx_main_tab"),
       audio_volume_auto_apply("audio_volume_auto_apply", true, "renodx_main_tab"),
       block_input_in_background("block_input_in_background", false, "renodx_main_tab"),
-      no_render_in_background("no_render_in_background", ::s_no_render_in_background, false, "renodx_main_tab") {
+      no_render_in_background("no_render_in_background", ::s_no_render_in_background, false, "renodx_main_tab"),
+      no_present_in_background("no_present_in_background", ::s_no_present_in_background, false, "renodx_main_tab") {
     
     // Initialize the all_settings_ vector
     all_settings_ = {
@@ -54,6 +55,7 @@ MainNewTabSettings::MainNewTabSettings()
         &audio_volume_auto_apply,
         &block_input_in_background,
         &no_render_in_background,
+        &no_present_in_background,
     };
 }
 

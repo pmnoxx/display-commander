@@ -1,0 +1,134 @@
+#include "swapchain_events_power_saving.hpp"
+#include "globals.hpp"
+#include <sstream>
+
+// Power saving settings - these can be controlled via UI
+std::atomic<bool> s_suppress_compute_in_background{true};
+std::atomic<bool> s_suppress_copy_in_background{true};
+std::atomic<bool> s_suppress_binding_in_background{false}; // Keep binding by default to avoid state issues
+std::atomic<bool> s_suppress_memory_ops_in_background{true};
+
+// Helper function to determine if an operation should be suppressed for power saving
+bool ShouldSuppressOperation() {
+    // Check if power saving is enabled and app is in background
+    return s_no_render_in_background.load() && g_app_in_background.load(std::memory_order_acquire);
+}
+
+// Power saving for compute shader dispatches
+bool OnDispatch(reshade::api::command_list* cmd_list, uint32_t group_count_x, uint32_t group_count_y, uint32_t group_count_z) {
+    // Increment event counter
+    g_swapchain_event_counters[SWAPCHAIN_EVENT_DISPATCH].fetch_add(1);
+    g_swapchain_event_total_count.fetch_add(1);
+    
+    // Power saving: skip compute shader dispatches in background
+    if (s_suppress_compute_in_background.load() && ShouldSuppressOperation()) {
+        return true; // Skip the dispatch call
+    }
+    
+    return false; // Don't skip the dispatch call
+}
+
+// Power saving for mesh shader dispatches
+bool OnDispatchMesh(reshade::api::command_list* cmd_list, uint32_t group_count_x, uint32_t group_count_y, uint32_t group_count_z) {
+    // Increment event counter
+    g_swapchain_event_counters[SWAPCHAIN_EVENT_DISPATCH_MESH].fetch_add(1);
+    g_swapchain_event_total_count.fetch_add(1);
+    
+    // Power saving: skip mesh shader dispatches in background
+    if (s_suppress_compute_in_background.load() && ShouldSuppressOperation()) {
+        return true; // Skip the dispatch call
+    }
+    
+    return false; // Don't skip the dispatch call
+}
+
+// Power saving for ray tracing dispatches
+bool OnDispatchRays(reshade::api::command_list* cmd_list, reshade::api::resource raygen, uint64_t raygen_offset, uint64_t raygen_size, reshade::api::resource miss, uint64_t miss_offset, uint64_t miss_size, uint64_t miss_stride, reshade::api::resource hit_group, uint64_t hit_group_offset, uint64_t hit_group_size, uint64_t hit_group_stride, reshade::api::resource callable, uint64_t callable_offset, uint64_t callable_size, uint64_t callable_stride, uint32_t width, uint32_t height, uint32_t depth) {
+    // Increment event counter
+    g_swapchain_event_counters[SWAPCHAIN_EVENT_DISPATCH_RAYS].fetch_add(1);
+    g_swapchain_event_total_count.fetch_add(1);
+    
+    // Power saving: skip ray tracing dispatches in background
+    if (s_suppress_compute_in_background.load() && ShouldSuppressOperation()) {
+        return true; // Skip the dispatch call
+    }
+    
+    return false; // Don't skip the dispatch call
+}
+
+// Power saving for resource copying
+bool OnCopyResource(reshade::api::command_list* cmd_list, reshade::api::resource source, reshade::api::resource dest) {
+    // Increment event counter
+    g_swapchain_event_counters[SWAPCHAIN_EVENT_COPY_RESOURCE].fetch_add(1);
+    g_swapchain_event_total_count.fetch_add(1);
+    
+    // Power saving: skip resource copying in background
+    if (s_suppress_copy_in_background.load() && ShouldSuppressOperation()) {
+        return true; // Skip the copy operation
+    }
+    
+    return false; // Don't skip the copy operation
+}
+
+// Power saving for buffer updates via device
+bool OnUpdateBufferRegion(reshade::api::device* device, const void* data, reshade::api::resource resource, uint64_t offset, uint64_t size) {
+    // Increment event counter
+    g_swapchain_event_counters[SWAPCHAIN_EVENT_UPDATE_BUFFER_REGION].fetch_add(1);
+    g_swapchain_event_total_count.fetch_add(1);
+    
+    // Power saving: skip buffer updates in background
+    if (s_suppress_copy_in_background.load() && ShouldSuppressOperation()) {
+        return true; // Skip the buffer update
+    }
+    
+    return false; // Don't skip the buffer update
+}
+
+// Power saving for command-based buffer updates
+bool OnUpdateBufferRegionCommand(reshade::api::command_list* cmd_list, const void* data, reshade::api::resource dest, uint64_t dest_offset, uint64_t size) {
+    // Increment event counter
+    g_swapchain_event_counters[SWAPCHAIN_EVENT_UPDATE_BUFFER_REGION_COMMAND].fetch_add(1);
+    g_swapchain_event_total_count.fetch_add(1);
+    
+    // Power saving: skip command-based buffer updates in background
+    if (s_suppress_copy_in_background.load() && ShouldSuppressOperation()) {
+        return true; // Skip the buffer update
+    }
+    
+    return false; // Don't skip the buffer update
+}
+
+// Power saving for resource binding
+bool OnBindResource(reshade::api::command_list* cmd_list, reshade::api::shader_stage stages, reshade::api::descriptor_table table, uint32_t binding, reshade::api::resource_view value) {
+    // Increment event counter
+    g_swapchain_event_counters[SWAPCHAIN_EVENT_BIND_RESOURCE].fetch_add(1);
+    g_swapchain_event_total_count.fetch_add(1);
+    
+    // Power saving: skip resource binding in background
+    if (s_suppress_binding_in_background.load() && ShouldSuppressOperation()) {
+        return true; // Skip the resource binding
+    }
+    
+    return false; // Don't skip the resource binding
+}
+
+// Power saving for resource mapping
+bool OnMapResource(reshade::api::device* device, reshade::api::resource resource, uint32_t subresource, reshade::api::map_access access, reshade::api::subresource_data* data) {
+    // Increment event counter
+    g_swapchain_event_counters[SWAPCHAIN_EVENT_MAP_RESOURCE].fetch_add(1);
+    g_swapchain_event_total_count.fetch_add(1);
+    
+    // Power saving: skip resource mapping in background
+    if (s_suppress_memory_ops_in_background.load() && ShouldSuppressOperation()) {
+        return true; // Skip the resource mapping
+    }
+    
+    return false; // Don't skip the resource mapping
+}
+
+// Power saving for resource unmapping
+void OnUnmapResource(reshade::api::device* device, reshade::api::resource resource, uint32_t subresource) {
+    // Note: Unmap operations are typically required for cleanup, so we don't suppress them
+    // This function is provided for consistency but always allows the operation
+    // You could add logic here if needed for specific cases
+}

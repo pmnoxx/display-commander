@@ -52,6 +52,7 @@ public:
     
     // Render Blocking (Background) Settings
     BoolSettingRef no_render_in_background;
+    BoolSettingRef no_present_in_background;
 
 private:
     std::vector<SettingBase*> all_settings_;

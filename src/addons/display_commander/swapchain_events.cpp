@@ -1,6 +1,7 @@
 #include "addon.hpp"
 #include "reflex/reflex_management.hpp"
 #include "audio/audio_management.hpp"
+#include <dxgi.h>
 #include <dxgi1_4.h>
 #include "utils.hpp"
 #include "utils/timing.hpp"
@@ -14,6 +15,7 @@
 #include <utils/swapchain.hpp>
 #include "globals.hpp"
 #include "latent_sync/latent_sync_limiter.hpp"
+#include "swapchain_events_power_saving.hpp"
 
 static std::atomic<LONGLONG> g_present_start_time_qpc{0};
 std::atomic<LONGLONG> g_present_duration_ns{0};
@@ -42,7 +44,7 @@ std::atomic<LONGLONG> g_render_submit_end_time_qpc{0};
 // Render submit duration tracking (nanoseconds)
 std::atomic<LONGLONG> g_render_submit_duration_ns{0};
 
-
+std::atomic<int> l_frame_skipped_counter{0};
 
 void HandleRenderStartAndEndTimes() {
   LONGLONG expected = 0;
@@ -128,7 +130,8 @@ void OnEndRenderPass(reshade::api::command_list* cmd_list) {
 }
 
 
-// Draw event handlers for render timing
+// Draw event handlers for render timing 
+// Adds pwoer saving feature in background
 bool OnDraw(reshade::api::command_list* cmd_list, uint32_t vertex_count, uint32_t instance_count, uint32_t first_vertex, uint32_t first_instance) {
     // Increment event counter
     g_swapchain_event_counters[SWAPCHAIN_EVENT_DRAW].fetch_add(1);
@@ -144,6 +147,7 @@ bool OnDraw(reshade::api::command_list* cmd_list, uint32_t vertex_count, uint32_
     return false; // Don't skip the draw call
 }
 
+// Adds pwoer saving feature in background
 bool OnDrawIndexed(reshade::api::command_list* cmd_list, uint32_t index_count, uint32_t instance_count, uint32_t first_index, int32_t vertex_offset, uint32_t first_instance) {
     // Increment event counter
     g_swapchain_event_counters[SWAPCHAIN_EVENT_DRAW_INDEXED].fetch_add(1);
@@ -159,6 +163,7 @@ bool OnDrawIndexed(reshade::api::command_list* cmd_list, uint32_t index_count, u
     return false; // Don't skip the draw call
 }
 
+// Adds pwoer saving feature in background
 bool OnDrawOrDispatchIndirect(reshade::api::command_list* cmd_list, reshade::api::indirect_command type, reshade::api::resource buffer, uint64_t offset, uint32_t draw_count, uint32_t stride) {
     // Increment event counter
     g_swapchain_event_counters[SWAPCHAIN_EVENT_DRAW_OR_DISPATCH_INDIRECT].fetch_add(1);
@@ -208,7 +213,7 @@ float GetSyncIntervalCoefficient(float sync_interval_value) {
 // Capture sync interval during create_swapchain
 bool OnCreateSwapchainCapture(reshade::api::device_api /*api*/, reshade::api::swapchain_desc& desc, void* hwnd) {
   // Reset all event counters on new swapchain creation
-  for (int i = 0; i < 16; i++) {
+  for (int i = 0; i < 24; i++) {
     g_swapchain_event_counters[i].store(0);
   }
   g_swapchain_event_total_count.store(0);
@@ -627,7 +632,7 @@ void OnExecuteCommandList(reshade::api::command_queue* queue, reshade::api::comm
   LogDebug("Command list executed");
 }
 
-void OnBindPipeline(reshade::api::command_list* cmd_list, reshade::api::pipeline_stage stages, reshade::api::pipeline pipeline) {
+bool OnBindPipeline(reshade::api::command_list* cmd_list, reshade::api::pipeline_stage stages, reshade::api::pipeline pipeline) {
   // Increment event counter
   g_swapchain_event_counters[SWAPCHAIN_EVENT_BIND_PIPELINE].fetch_add(1);
   g_swapchain_event_total_count.fetch_add(1);
@@ -635,10 +640,17 @@ void OnBindPipeline(reshade::api::command_list* cmd_list, reshade::api::pipeline
   // This event tracks shader pipeline changes
   // which is very useful for frame timing analysis
   LogDebug("Pipeline bound");
+  
+  // Power saving: skip pipeline binding in background if enabled
+  if (s_suppress_binding_in_background.load() && ShouldSuppressOperation()) {
+    return true; // Skip the pipeline binding
+  }
+  
+  return false; // Don't skip the pipeline binding
 }
 
 // Present flags callback to strip DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING
-void OnPresentFlags(uint32_t* present_flags) {
+bool OnPresentFlags(uint32_t* present_flags) {
   // Increment event counter
   g_swapchain_event_counters[SWAPCHAIN_EVENT_PRESENT_FLAGS].fetch_add(1);
   g_swapchain_event_total_count.fetch_add(1);
@@ -656,4 +668,12 @@ void OnPresentFlags(uint32_t* present_flags) {
   if (s_fps_limiter_injection.load() == 0) {
     HandleFpsLimiter();
   }
+
+  if (s_no_present_in_background.load() && g_app_in_background.load(std::memory_order_acquire)) {
+    //*present_flags = DXGI_PRESENT_DO_NOT_SEQUENCE;
+    return l_frame_skipped_counter.load() >= 60 && l_frame_skipped_counter.fetch_add(1) % 16 == 0;
+  }
+
+  // Return false by default to continue with normal present flow
+  return false;
 }

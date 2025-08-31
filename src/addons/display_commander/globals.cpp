@@ -62,6 +62,9 @@ std::atomic<bool> s_block_input_in_background{false};
 // Render blocking in background
 std::atomic<bool> s_no_render_in_background{false};
 
+// Present blocking in background
+std::atomic<bool> s_no_present_in_background{false};
+
 // Fix HDR10 color space when backbuffer is RGB10A2
 std::atomic<bool> s_fix_hdr10_colorspace{false};
 
@@ -201,5 +204,6 @@ void UpdateHdr10OverrideTimestamp(const std::string& timestamp) {
 }
 
 // Swapchain event counters - reset on each swapchain creation
-std::atomic<uint32_t> g_swapchain_event_counters[16] = {}; // Array for all On* events
+std::atomic<uint32_t> g_swapchain_event_counters[24] = {}; // Array for all On* events
+
 std::atomic<uint32_t> g_swapchain_event_total_count{0}; // Total events across all types

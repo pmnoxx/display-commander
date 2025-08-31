@@ -22,10 +22,10 @@ while IFS= read -r f; do
     echo "Built artifact: $f"
     FOUND=1
   fi
-done < <(find "$BUILD_DIR" -type f -name "*.addon32" 2>/dev/null || true)
+done < <(find "$BUILD_DIR" -type f -name "zzz_display_commander.addon32" 2>/dev/null || true)
 
 if [ "$FOUND" -eq 0 ]; then
-  echo "No .addon32 artifact found in $BUILD_DIR" >&2
+  echo "No zzz_display_commander.addon32 artifact found in $BUILD_DIR" >&2
   exit 1
 fi
 

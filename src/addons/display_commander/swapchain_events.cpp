@@ -136,7 +136,8 @@ bool OnDraw(reshade::api::command_list* cmd_list, uint32_t vertex_count, uint32_
     
     // Set render start time if it's 0 (first draw call of the frame)
     HandleRenderStartAndEndTimes();
-    if (g_app_in_background.load(std::memory_order_acquire)) {
+
+    if (s_no_render_in_background.load() && g_app_in_background.load(std::memory_order_acquire)) {
       return true; // Skip the draw call
     }
     
@@ -150,7 +151,8 @@ bool OnDrawIndexed(reshade::api::command_list* cmd_list, uint32_t index_count, u
     
     // Set render start time if it's 0 (first draw call of the frame)
     HandleRenderStartAndEndTimes();
-    if (g_app_in_background.load(std::memory_order_acquire)) {
+
+    if (s_no_render_in_background.load() && g_app_in_background.load(std::memory_order_acquire)) {
       return true; // Skip the draw call
     }
     
@@ -164,8 +166,8 @@ bool OnDrawOrDispatchIndirect(reshade::api::command_list* cmd_list, reshade::api
     
     // Set render start time if it's 0 (first draw call of the frame)
     HandleRenderStartAndEndTimes();
-    
-    if (g_app_in_background.load(std::memory_order_acquire)) {
+
+    if (s_no_render_in_background.load() && g_app_in_background.load(std::memory_order_acquire)) {
       return true; // Skip the draw call
     }
 

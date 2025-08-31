@@ -59,6 +59,9 @@ std::atomic<int> s_spoof_window_focus{0}; // 0 = Disabled, 1 = Spoof as Focused,
 // Input blocking in background (0.0f off, 1.0f on)
 std::atomic<bool> s_block_input_in_background{false};
 
+// Render blocking in background
+std::atomic<bool> s_no_render_in_background{false};
+
 // Fix HDR10 color space when backbuffer is RGB10A2
 std::atomic<bool> s_fix_hdr10_colorspace{false};
 

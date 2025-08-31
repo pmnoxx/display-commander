@@ -49,6 +49,9 @@ public:
     
     // Input Blocking (Background) Settings
     BoolSetting block_input_in_background;
+    
+    // Render Blocking (Background) Settings
+    BoolSettingRef no_render_in_background;
 
 private:
     std::vector<SettingBase*> all_settings_;

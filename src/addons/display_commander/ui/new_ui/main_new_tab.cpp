@@ -589,6 +589,18 @@ void DrawDisplaySettings() {
         ImGui::SetTooltip("Set FPS limit for the game (0 = no limit). Now uses the new Custom FPS Limiter system.");
     }
     
+    // No Render in Background checkbox
+    {
+        bool no_render_in_bg = g_main_new_tab_settings.no_render_in_background.GetValue();
+        if (ImGui::Checkbox("No Render in Background", &no_render_in_bg)) {
+            g_main_new_tab_settings.no_render_in_background.SetValue(no_render_in_bg);
+            // The setting is automatically synced via BoolSettingRef
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Skip rendering draw calls when the game window is not in the foreground. This can save GPU power and reduce background processing.");
+        }
+    }
+    
     // VSync & Tearing controls
     {
         DrawQuickResolutionChanger();

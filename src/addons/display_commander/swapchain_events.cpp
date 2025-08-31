@@ -195,6 +195,10 @@ bool OnCreateSwapchainCapture(reshade::api::device_api /*api*/, reshade::api::sw
     desc.sync_interval = 0; // VSYNC off
     modified = true;
   }
+  /*if (s_prevent_tearing.load()) {
+    desc.present_flags &= ~DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
+    modified = true;
+  }*/
   // Log sync interval and present flags with detailed explanation
   {
     std::ostringstream oss;

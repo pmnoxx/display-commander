@@ -21,15 +21,15 @@ if(DISPLAY_COMMANDER_SOURCES STREQUAL "")
   message(FATAL_ERROR "No sources found under src/addons/display_commander")
 endif()
 
-add_library(display_commander MODULE ${DISPLAY_COMMANDER_SOURCES})
+add_library(zzz_display_commander MODULE ${DISPLAY_COMMANDER_SOURCES})
 
 # MSVC-specific flags
 if(MSVC)
-  target_compile_options(display_commander PRIVATE /bigobj)
+  target_compile_options(zzz_display_commander PRIVATE /bigobj)
 endif()
 
 # Include directories
-target_include_directories(display_commander
+target_include_directories(zzz_display_commander
   PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}/src
     ${CMAKE_CURRENT_LIST_DIR}/src/addons/display_commander
@@ -41,19 +41,19 @@ target_include_directories(display_commander
 )
 
 # Link system libs
-target_link_libraries(display_commander PRIVATE dbghelp)
+target_link_libraries(zzz_display_commander PRIVATE dbghelp)
 
 # NVAPI linkage (official NVIDIA NVAPI layout: x86/ and amd64/)
 if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/external/nvapi")
   if(CMAKE_SIZEOF_VOID_P EQUAL 4)
     if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/external/nvapi/x86/nvapi.lib")
-      target_link_libraries(display_commander PRIVATE "${CMAKE_CURRENT_LIST_DIR}/external/nvapi/x86/nvapi.lib")
+      target_link_libraries(zzz_display_commander PRIVATE "${CMAKE_CURRENT_LIST_DIR}/external/nvapi/x86/nvapi.lib")
     else()
       message(WARNING "NVAPI x86 import library not found at ${CMAKE_CURRENT_LIST_DIR}/external/nvapi/x86/nvapi.lib. NVAPI features may fail to link.")
     endif()
   else()
     if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/external/nvapi/amd64/nvapi64.lib")
-      target_link_libraries(display_commander PRIVATE "${CMAKE_CURRENT_LIST_DIR}/external/nvapi/amd64/nvapi64.lib")
+      target_link_libraries(zzz_display_commander PRIVATE "${CMAKE_CURRENT_LIST_DIR}/external/nvapi/amd64/nvapi64.lib")
     else()
       message(WARNING "NVAPI x64 import library not found at ${CMAKE_CURRENT_LIST_DIR}/external/nvapi/amd64/nvapi64.lib. NVAPI features may fail to link.")
     endif()
@@ -69,7 +69,7 @@ else()
   set(TARGET_SUFFIX ".addon64")
 endif()
 
-set_target_properties(display_commander PROPERTIES
+set_target_properties(zzz_display_commander PROPERTIES
   SUFFIX "${TARGET_SUFFIX}"
 )
 

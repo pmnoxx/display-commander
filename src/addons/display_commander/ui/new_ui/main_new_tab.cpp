@@ -139,7 +139,7 @@ void DrawMainNewTab() {
         ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== Input Control (Background) ===");
         bool block_any_in_background =
             g_main_new_tab_settings.block_input_in_background.GetValue();
-        if (ImGui::Checkbox("Block Input in Background (Custom DLL needed)", &block_any_in_background)) {
+        if (ImGui::Checkbox("Block Input in Background", &block_any_in_background)) {
             g_main_new_tab_settings.block_input_in_background.SetValue(block_any_in_background);
             s_block_input_in_background.store(block_any_in_background);
         }
@@ -624,7 +624,7 @@ void DrawDisplaySettings() {
         ImGui::TextColored(ImVec4(0.8f, 0.9f, 1.0f, 1.0f), "=== VSync & Tearing ===");
 
         bool vs_on = g_main_new_tab_settings.force_vsync_on.GetValue();
-        if (ImGui::Checkbox("Force VSync ON (Custom DLL needed)", &vs_on)) {
+        if (ImGui::Checkbox("Force VSync ON", &vs_on)) {
             s_restart_needed_vsync_tearing.store(true);
             // Mutual exclusion
             if (vs_on) {

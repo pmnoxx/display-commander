@@ -934,7 +934,6 @@ void DrawImportantInfo() {
             local_text = *shared_text;
         }
         ImGui::TextUnformatted(local_text.c_str());
-        ImGui::SameLine();
         if (ImGui::Button("Reset Stats")) {
             ::g_perf_reset_requested.store(true, std::memory_order_release);
         }

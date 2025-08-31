@@ -202,7 +202,7 @@ extern std::atomic<LONGLONG> fps_sleep_before_on_present_ns;
 extern std::atomic<LONGLONG> fps_sleep_after_on_present_ns;
 
 // FPS limiter start duration tracking (nanoseconds)
-extern std::atomic<LONGLONG> reshade_overhead_ns;
+extern std::atomic<LONGLONG> g_reshade_overhead_duration_ns;
 
 // Render submit duration tracking (nanoseconds)
 extern std::atomic<LONGLONG> g_render_submit_duration_ns;

@@ -34,7 +34,7 @@ std::atomic<LONGLONG> fps_sleep_before_on_present_ns{0};
 std::atomic<LONGLONG> fps_sleep_after_on_present_ns{0};
 
 // Reshade overhead tracking (nanoseconds)
-std::atomic<LONGLONG> reshade_overhead_ns{0};
+std::atomic<LONGLONG> g_reshade_overhead_duration_ns{0};
 
 // Render submit end time tracking (QPC)
 std::atomic<LONGLONG> g_render_submit_end_time_qpc{0};
@@ -68,6 +68,20 @@ void HandleEndRenderSubmit() {
     g_render_submit_duration_ns.store( (1 * g_render_submit_duration_ns_new + (alpha - 1) * g_render_submit_duration_ns.load()) / alpha);
   }
 }
+
+void HandleOnPresentEnd() {
+  LONGLONG now = get_now_qpc();
+
+  g_present_after_end_time.store(now);
+  g_submit_start_time_qpc.store(0);
+
+  if (g_render_submit_end_time_qpc.load() > 0) {
+    LONGLONG g_reshade_overhead_duration_ns_new = (now - g_render_submit_end_time_qpc.load()) * QPC_TO_NS;
+    int alpha = 64;
+    g_reshade_overhead_duration_ns.store( (1 * g_reshade_overhead_duration_ns_new + (alpha - 1) * g_reshade_overhead_duration_ns.load()) / alpha);
+  }
+}
+
 
 
 // Frame lifecycle hooks for custom FPS limiter
@@ -390,8 +404,7 @@ void OnPresentUpdateAfter(  reshade::api::command_queue* /*queue*/, reshade::api
     g_reflexManager->OnPresentUpdateAfter(/*queue*/nullptr, swapchain);
   }
 
-  g_present_after_end_time.store(get_now_qpc());
-  g_submit_start_time_qpc.store(0);
+  HandleOnPresentEnd();
 }
 
 void flush_command_queue() {

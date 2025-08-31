@@ -955,11 +955,10 @@ void DrawImportantInfo() {
     // Reshade Overhead Display
     oss.str("");
     oss.clear();
-    oss << "Reshade Render Submit Duration: " << std::fixed << std::setprecision(3) << (::reshade_overhead_ns.load() / NS_TO_MS) << " ms";
+    oss << "Reshade Overhead Duration: " << std::fixed << std::setprecision(3) << ((::g_reshade_overhead_duration_ns.load() - ::fps_sleep_before_on_present_ns.load() - ::fps_sleep_after_on_present_ns.load()) / NS_TO_MS) << " ms";
     ImGui::TextUnformatted(oss.str().c_str());
     ImGui::SameLine();
     ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "(smoothed)");
-
 
 
     oss.str("");

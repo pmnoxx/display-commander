@@ -42,9 +42,9 @@ public:
     
     // Audio Settings
     FloatSetting audio_volume_percent;
-    BoolSetting audio_mute;
-    BoolSetting mute_in_background;
-    BoolSetting mute_in_background_if_other_audio;
+    BoolSettingRef audio_mute;
+    BoolSettingRef mute_in_background;
+    BoolSettingRef mute_in_background_if_other_audio;
     BoolSetting audio_volume_auto_apply;
     
     // Input Blocking (Background) Settings

@@ -18,6 +18,30 @@ bool OnBindResource(reshade::api::command_list* cmd_list, reshade::api::shader_s
 bool OnMapResource(reshade::api::device* device, reshade::api::resource resource, uint32_t subresource, reshade::api::map_access access, reshade::api::subresource_data* data);
 void OnUnmapResource(reshade::api::device* device, reshade::api::resource resource, uint32_t subresource);
 
+// New power saving event handlers for frame-specific GPU operations
+bool OnCopyBufferRegion(reshade::api::command_list* cmd_list, reshade::api::resource source, uint64_t source_offset, reshade::api::resource dest, uint64_t dest_offset, uint64_t size);
+bool OnCopyBufferToTexture(reshade::api::command_list* cmd_list, reshade::api::resource source, uint64_t source_offset, uint32_t row_length, uint32_t slice_height, reshade::api::resource dest, uint32_t dest_subresource, const reshade::api::subresource_box* dest_box);
+bool OnCopyTextureToBuffer(reshade::api::command_list* cmd_list, reshade::api::resource source, uint32_t source_subresource, const reshade::api::subresource_box* source_box, reshade::api::resource dest, uint64_t dest_offset, uint32_t row_length, uint32_t slice_height);
+bool OnCopyTextureRegion(reshade::api::command_list* cmd_list, reshade::api::resource source, uint32_t source_subresource, const reshade::api::subresource_box* source_box, reshade::api::resource dest, uint32_t dest_subresource, const reshade::api::subresource_box* dest_box, reshade::api::filter_mode filter);
+bool OnResolveTextureRegion(reshade::api::command_list* cmd_list, reshade::api::resource source, uint32_t source_subresource, const reshade::api::subresource_box* source_box, reshade::api::resource dest, uint32_t dest_subresource, uint32_t dest_x, uint32_t dest_y, uint32_t dest_z, reshade::api::format format);
+
+// Clear operations (frame-specific, safe to suspend)
+bool OnClearRenderTargetView(reshade::api::command_list* cmd_list, reshade::api::resource_view rtv, const float color[4], uint32_t rect_count, const reshade::api::rect* rects);
+bool OnClearDepthStencilView(reshade::api::command_list* cmd_list, reshade::api::resource_view dsv, const float* depth, const uint8_t* stencil, uint32_t rect_count, const reshade::api::rect* rects);
+bool OnClearUnorderedAccessViewUint(reshade::api::command_list* cmd_list, reshade::api::resource_view uav, const uint32_t values[4], uint32_t rect_count, const reshade::api::rect* rects);
+bool OnClearUnorderedAccessViewFloat(reshade::api::command_list* cmd_list, reshade::api::resource_view uav, const float values[4], uint32_t rect_count, const reshade::api::rect* rects);
+
+// Mipmap generation (very GPU intensive, frame-specific)
+bool OnGenerateMipmaps(reshade::api::command_list* cmd_list, reshade::api::resource_view srv);
+
+// Blit operations (frame-specific image processing)
+bool OnBlit(reshade::api::command_list* cmd_list, reshade::api::resource source, uint32_t source_subresource, const reshade::api::subresource_box* source_box, reshade::api::resource dest, uint32_t dest_subresource, const reshade::api::subresource_box* dest_box, reshade::api::filter_mode filter);
+
+// Query operations (frame-specific statistics)
+bool OnBeginQuery(reshade::api::command_list* cmd_list, reshade::api::query_heap heap, reshade::api::query_type type, uint32_t index);
+bool OnEndQuery(reshade::api::command_list* cmd_list, reshade::api::query_heap heap, reshade::api::query_type type, uint32_t index);
+bool OnResolveQueryData(reshade::api::command_list* cmd_list, reshade::api::query_heap heap, reshade::api::query_type type, uint32_t first, uint32_t count, reshade::api::resource dest, uint64_t dest_offset);
+
 // Helper function to determine if an operation should be suppressed for power saving
 bool ShouldSuppressOperation();
 
@@ -31,3 +55,9 @@ extern std::atomic<bool> s_suppress_compute_in_background;
 extern std::atomic<bool> s_suppress_copy_in_background;
 extern std::atomic<bool> s_suppress_binding_in_background;
 extern std::atomic<bool> s_suppress_memory_ops_in_background;
+
+// New power saving settings for frame-specific operations
+extern std::atomic<bool> s_suppress_clear_ops_in_background;
+extern std::atomic<bool> s_suppress_mipmap_gen_in_background;
+extern std::atomic<bool> s_suppress_blit_ops_in_background;
+extern std::atomic<bool> s_suppress_query_ops_in_background;

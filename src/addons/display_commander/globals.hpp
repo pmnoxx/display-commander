@@ -277,7 +277,7 @@ extern std::atomic<int> s_spoof_fullscreen_state;
 extern std::atomic<int> s_spoof_window_focus;
 
 // Swapchain event counters - reset on each swapchain creation
-extern std::atomic<uint32_t> g_swapchain_event_counters[24]; // Array for all On* events
+extern std::atomic<uint32_t> g_swapchain_event_counters[40]; // Array for all On* events
 extern std::atomic<uint32_t> g_swapchain_event_total_count; // Total events across all types
 
 // Swapchain event counter indices
@@ -306,5 +306,20 @@ enum SwapchainEventIndex {
     SWAPCHAIN_EVENT_UPDATE_BUFFER_REGION = 20,
     SWAPCHAIN_EVENT_UPDATE_BUFFER_REGION_COMMAND = 21,
     SWAPCHAIN_EVENT_BIND_RESOURCE = 22,
-    SWAPCHAIN_EVENT_MAP_RESOURCE = 23
+    SWAPCHAIN_EVENT_MAP_RESOURCE = 23,
+    // Additional frame-specific GPU operations for power saving
+    SWAPCHAIN_EVENT_COPY_BUFFER_REGION = 24,
+    SWAPCHAIN_EVENT_COPY_BUFFER_TO_TEXTURE = 25,
+    SWAPCHAIN_EVENT_COPY_TEXTURE_TO_BUFFER = 26,
+    SWAPCHAIN_EVENT_COPY_TEXTURE_REGION = 27,
+    SWAPCHAIN_EVENT_RESOLVE_TEXTURE_REGION = 28,
+    SWAPCHAIN_EVENT_CLEAR_RENDER_TARGET_VIEW = 29,
+    SWAPCHAIN_EVENT_CLEAR_DEPTH_STENCIL_VIEW = 30,
+    SWAPCHAIN_EVENT_CLEAR_UNORDERED_ACCESS_VIEW_UINT = 31,
+    SWAPCHAIN_EVENT_CLEAR_UNORDERED_ACCESS_VIEW_FLOAT = 32,
+    SWAPCHAIN_EVENT_GENERATE_MIPMAPS = 33,
+    SWAPCHAIN_EVENT_BLIT = 34,
+    SWAPCHAIN_EVENT_BEGIN_QUERY = 35,
+    SWAPCHAIN_EVENT_END_QUERY = 36,
+    SWAPCHAIN_EVENT_RESOLVE_QUERY_DATA = 37
 };

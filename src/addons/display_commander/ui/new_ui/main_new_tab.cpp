@@ -760,7 +760,7 @@ void DrawAudioSettings() {
     // Audio Mute checkbox
     bool audio_mute = s_audio_mute.load();
     if (ImGui::Checkbox("Audio Mute", &audio_mute)) {
-        s_audio_mute.store(audio_mute);
+        g_main_new_tab_settings.audio_mute.SetValue(audio_mute);
         
         // Apply mute/unmute immediately
         if (::SetMuteForCurrentProcess(audio_mute)) {
@@ -784,7 +784,8 @@ void DrawAudioSettings() {
         ImGui::BeginDisabled();
     }
     if (ImGui::Checkbox("Mute In Background", &mute_in_bg)) {
-        s_mute_in_background.store(mute_in_bg);
+        g_main_new_tab_settings.mute_in_background.SetValue(mute_in_bg);
+        g_main_new_tab_settings.mute_in_background_if_other_audio.SetValue(false);
         
         // Reset applied flag so the monitor thread reapplies desired state
         ::g_muted_applied.store(false);
@@ -814,8 +815,8 @@ void DrawAudioSettings() {
         ImGui::BeginDisabled();
     }
     if (ImGui::Checkbox("Mute In Background (only if other app has audio)", &mute_in_bg_if_other)) {
-        s_mute_in_background_if_other_audio.store(mute_in_bg_if_other);
         g_main_new_tab_settings.mute_in_background_if_other_audio.SetValue(mute_in_bg_if_other);
+        g_main_new_tab_settings.mute_in_background.SetValue(false);
         ::g_muted_applied.store(false);
         if (!s_audio_mute.load()) {
             HWND hwnd = g_last_swapchain_hwnd.load();

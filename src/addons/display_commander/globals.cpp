@@ -204,6 +204,6 @@ void UpdateHdr10OverrideTimestamp(const std::string& timestamp) {
 }
 
 // Swapchain event counters - reset on each swapchain creation
-std::atomic<uint32_t> g_swapchain_event_counters[24] = {}; // Array for all On* events
+std::atomic<uint32_t> g_swapchain_event_counters[40] = {}; // Array for all On* events
 
 std::atomic<uint32_t> g_swapchain_event_total_count{0}; // Total events across all types

@@ -393,7 +393,7 @@ void DrawSwapchainEventCounters() {
         uint32_t total_events = 0;
         uint32_t visible_events = 0;
         
-        for (int i = 0; i < 24; i++) {
+        for (int i = 0; i < 40; i++) {
             // Skip events that are set to invisible
             if (!event_visibility[i]) {
                 continue;
@@ -410,7 +410,7 @@ void DrawSwapchainEventCounters() {
         
         ImGui::Separator();
         ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "Total Events (Visible): %u", total_events);
-        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Hidden Events: %u", 24 - visible_events);
+        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Hidden Events: %u", 40 - visible_events);
         
         // Show status message
         if (total_events > 0) {

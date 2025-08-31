@@ -190,11 +190,9 @@ bool OnCreateSwapchainCapture(reshade::api::device_api /*api*/, reshade::api::sw
   // Explicit VSYNC overrides take precedence over generic sync-interval dropdown
   if (s_force_vsync_on.load()) {
     desc.sync_interval = 1; // VSYNC on
-    desc.present_flags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
     modified = true;
   } else if (s_force_vsync_off.load()) {
     desc.sync_interval = 0; // VSYNC off
-    desc.present_flags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
     modified = true;
   }
   // Log sync interval and present flags with detailed explanation

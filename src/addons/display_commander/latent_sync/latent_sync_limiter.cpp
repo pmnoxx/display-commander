@@ -84,7 +84,7 @@ bool LatentSyncLimiter::UpdateDisplayBindingFromWindow(HWND hwnd) {
 
     D3DKMT_OPENADAPTERFROMGDIDISPLAYNAME openReq{};
     wcsncpy_s(openReq.DeviceName, name.c_str(), _TRUNCATE);
-    if ( reinterpret_cast<NTSTATUS (WINAPI*)(D3DKMT_OPENADAPTERFROMGDIDISPLAYNAME*)>(m_pfnOpenAdapterFromGdiDisplayName)(&openReq) == STATUS_SUCCESS ) {
+    if (reinterpret_cast<NTSTATUS (WINAPI*)(D3DKMT_OPENADAPTERFROMGDIDISPLAYNAME*)>(m_pfnOpenAdapterFromGdiDisplayName)(&openReq) == STATUS_SUCCESS ) {
         m_hAdapter = openReq.hAdapter;
         m_vidpn_source_id = openReq.VidPnSourceId;
         m_bound_display_name = name;
@@ -100,6 +100,8 @@ bool LatentSyncLimiter::UpdateDisplayBindingFromWindow(HWND hwnd) {
     return false;
 }
 
+long double last_wait_target_ns = 0.0L;
+
 void LatentSyncLimiter::LimitFrameRate() {
     StartVBlankMonitoring();
 
@@ -107,33 +109,47 @@ void LatentSyncLimiter::LimitFrameRate() {
     extern std::atomic<LONGLONG> g_latent_sync_active_height;
     LONGLONG total_height = g_latent_sync_total_height.load();
     LONGLONG active_height = g_latent_sync_active_height.load();
-    LONGLONG mid_vblank_scanline = (active_height + total_height) / 2;
+    double mid_vblank_scanline = (active_height + total_height) / 2.0;
 
-    if (total_height == 0 || active_height == 0 || mid_vblank_scanline == 0 ||  ns_per_refresh.load() == 0) {
+    if (total_height == 0 || active_height == 0 || ns_per_refresh.load() == 0) {
         LogError("LatentSyncLimiter::LimitFrameRate: unitialized values");
         return;
     }
 
     LONGLONG now_ns = utils::get_now_ns();
 
-    extern double expected_current_scanline_ns(LONGLONG now_ns, LONGLONG total_height, bool add_correction);
-    double current_scanline = expected_current_scanline_ns(now_ns, total_height, true);
-    double target_line = mid_vblank_scanline - (total_height * m_on_present_ns.load()) / ns_per_refresh.load() - 60.0 + s_scanline_offset.load();
+    extern long double expected_current_scanline_uncapped_ns(LONGLONG now_ns, LONGLONG total_height, bool add_correction);
+    long double current_scanline_uncapped = expected_current_scanline_uncapped_ns(now_ns, total_height, true);
 
-    double diff_lines = target_line - current_scanline;
-    if (diff_lines < 0) {
-        diff_lines += total_height;
+    long double target_line = mid_vblank_scanline - (m_on_present_ns.load() * total_height / ns_per_refresh.load()) - 60.0 + s_scanline_offset.load();
+    
+    long double next_scanline_uncapped = current_scanline_uncapped - fmod(current_scanline_uncapped, (long double)(total_height)) + target_line;
+
+    long double last_scanline_uncapped =expected_current_scanline_uncapped_ns(last_wait_target_ns, total_height, true);
+    long double expected_next_scanline_uncapped = max(last_scanline_uncapped, current_scanline_uncapped - 2*total_height)  + total_height;
+
+    while (abs(next_scanline_uncapped - expected_next_scanline_uncapped) > abs((next_scanline_uncapped - total_height) - expected_next_scanline_uncapped)) {
+        next_scanline_uncapped -= total_height;
+    }
+    while (abs(next_scanline_uncapped - expected_next_scanline_uncapped) > abs((next_scanline_uncapped + total_height) - expected_next_scanline_uncapped)) {
+        next_scanline_uncapped += total_height;
     }
 
-    double delta_wait_time_ns = 1.0 * diff_lines * ns_per_refresh.load() / total_height;
+    long double diff_lines = next_scanline_uncapped - current_scanline_uncapped;
+
+    long double delta_wait_time_ns = 1.0L * diff_lines * ns_per_refresh.load() / total_height;
 
     LONGLONG wait_target_ns = now_ns + delta_wait_time_ns + ns_per_refresh.load() * (s_vblank_sync_divisor.load() - 1);
 
-    if (delta_wait_time_ns > utils::SEC_TO_NS) {
-        LogError("LatentSyncLimiter::LimitFrameRate: delta_wait_time_ns > utils::SEC_TO_NS");
-        return;
+    if (wait_target_ns >= utils::get_now_ns()) {
+        if (delta_wait_time_ns > utils::SEC_TO_NS) {
+            LogError("LatentSyncLimiter::LimitFrameRate: delta_wait_time_ns > utils::SEC_TO_NS");
+            return;
+        }
+        utils::wait_until_ns(wait_target_ns, m_timer_handle);
     }
-    utils::wait_until_ns(wait_target_ns, m_timer_handle);
+    last_wait_target_ns = utils::get_now_ns();
+    
 }
 
 void LatentSyncLimiter::OnPresentEnd() {

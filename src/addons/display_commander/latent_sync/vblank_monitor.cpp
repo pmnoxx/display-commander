@@ -336,6 +336,14 @@ double expected_current_scanline_ns(LONGLONG now_ns, LONGLONG total_height, bool
     return cur_scanline;
 }
 
+long double expected_current_scanline_uncapped_ns(LONGLONG now_ns, LONGLONG total_height, bool add_correction) {
+    long double cur_scanline = 1.0L *total_height * now_ns / ns_per_refresh.load();
+    if (add_correction) {
+        cur_scanline += correction_lines_delta.load();
+    }
+    return cur_scanline;
+}
+
 void VBlankMonitor::MonitoringThread() {
     ::LogInfo("VBlank monitoring thread: entering main loop");
     ::LogInfo("VBlank monitoring thread: STARTED - monitoring scanlines for frame pacing");
@@ -438,8 +446,8 @@ void VBlankMonitor::MonitoringThread() {
             LONGLONG start_ns = utils::get_now_ns();
             auto nt_status = reinterpret_cast<NTSTATUS (WINAPI*)(D3DKMT_GETSCANLINE*)>(m_pfnGetScanLine)(&scan);
             LONGLONG end_ns = utils::get_now_ns();
-            
-            int expected_scanline_tmp = expected_current_scanline_ns(start_ns, current_display_timing.total_height, true);
+
+            long double expected_scanline_tmp = expected_current_scanline_uncapped_ns(start_ns, current_display_timing.total_height, true);
             if (nt_status == STATUS_SUCCESS) {
                 LONGLONG duration_ns = end_ns - start_ns;
                 LONGLONG mid_point_ns = (start_ns + end_ns) / 2; // TODO: all values could be multipled by 2 for better precision
@@ -449,14 +457,23 @@ void VBlankMonitor::MonitoringThread() {
                     min_scanline_duration_ns = duration_ns;
                 }
                 if (duration_ns < 2 * min_scanline_duration_ns) {
-                    double expected_scanline = expected_current_scanline_ns(mid_point_ns, current_display_timing.total_height, false);
+                    long double expected_scanline = expected_current_scanline_uncapped_ns(mid_point_ns, current_display_timing.total_height, false);
                     {
                         std::ostringstream oss;
-                        oss << "Scanline diff: " << abs(scan.ScanLine - expected_current_scanline_ns(mid_point_ns, current_display_timing.total_height, true)) << " ticks";
+                        oss << "Scanline diff: " << abs(scan.ScanLine - expected_current_scanline_uncapped_ns(mid_point_ns, current_display_timing.total_height, true)) << " ticks";
                         LogInfo(oss.str().c_str());
                     }
-                    double new_correction_lines_delta = scan.ScanLine - expected_scanline; 
-                    correction_lines_delta.store(new_correction_lines_delta);
+                    long double new_correction_lines_delta = fmod(expected_scanline - scan.ScanLine, (long double)(current_display_timing.total_height)); 
+                    new_correction_lines_delta = current_display_timing.total_height - new_correction_lines_delta;
+                    
+                    long dt = new_correction_lines_delta - correction_lines_delta.load();
+                    if (fabs(dt) > fabs(dt - current_display_timing.total_height)) {
+                        dt -= current_display_timing.total_height;
+                    }
+                    if (fabs(dt) > fabs(dt + current_display_timing.total_height)) {
+                        dt += current_display_timing.total_height;
+                    }
+                    correction_lines_delta.store(correction_lines_delta.load() + dt);
                 }
             }
             

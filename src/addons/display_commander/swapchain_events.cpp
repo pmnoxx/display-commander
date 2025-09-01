@@ -362,7 +362,6 @@ void HandleFpsLimiter() {
       if (dxgi::latent_sync::g_latentSyncManager) {
         auto& latent = dxgi::latent_sync::g_latentSyncManager->GetLatentLimiter();
         if (target_fps > 0.0f) {
-          latent.SetTargetFps(target_fps);
           latent.LimitFrameRate();
         }
       }
@@ -374,7 +373,6 @@ void HandleFpsLimiter() {
   LONGLONG handle_fps_limiter_start_end_time_ns = utils::get_now_ns();
   g_present_start_time_ns.store(handle_fps_limiter_start_end_time_ns);
 
-  #define QPC_TO_NS 100
   LONGLONG handle_fps_limiter_start_duration_ns = handle_fps_limiter_start_end_time_ns - handle_fps_limiter_start_time_ns;
   fps_sleep_before_on_present_ns.store((handle_fps_limiter_start_duration_ns + (63) * fps_sleep_before_on_present_ns.load()) / 64);
 }

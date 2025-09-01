@@ -25,8 +25,6 @@ public:
     // Present timing hooks (called around Present)
     void OnPresentEnd();
 
-    void SetTargetFps(float fps) { m_target_fps = fps; }
-    float GetTargetFps() const { return m_target_fps; }
     // VBlank monitoring
     void StartVBlankMonitoring();
     void StopVBlankMonitoring();
@@ -45,7 +43,6 @@ private:
     static std::wstring GetDisplayNameFromWindow(HWND hwnd);
 
 private:
-    float m_target_fps = 0.0f;
 
     // VBlank pacing state
     double m_vblank_accumulator = 0.0;
@@ -66,10 +63,6 @@ private:
     FARPROC m_pfnCloseAdapter = nullptr;                  // "D3DKMTCloseAdapter"
     FARPROC m_pfnWaitForVerticalBlankEvent = nullptr;     // "D3DKMTWaitForVerticalBlankEvent"
     FARPROC m_pfnGetScanLine = nullptr;                   // "D3DKMTGetScanLine"
-
-    // Present timing state
-    double   m_avg_present_ns = 0.0; // exponentially weighted average of Present duration (ticks)
-
 
 };
 

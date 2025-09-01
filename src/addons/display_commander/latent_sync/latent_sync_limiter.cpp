@@ -103,14 +103,6 @@ bool LatentSyncLimiter::UpdateDisplayBindingFromWindow(HWND hwnd) {
 void LatentSyncLimiter::LimitFrameRate() {
     StartVBlankMonitoring();
 
-    // If no target FPS set, simply wait for one vblank to pace to refresh
-    const bool cap_to_fps = (m_target_fps > 0.0f);
-
-    D3DKMT_GETSCANLINE scan{};
-    scan.hAdapter = m_hAdapter;
-    scan.VidPnSourceId = m_vidpn_source_id;
-
-        
     extern std::atomic<LONGLONG> g_latent_sync_total_height;
     extern std::atomic<LONGLONG> g_latent_sync_active_height;
     LONGLONG total_height = g_latent_sync_total_height.load();
@@ -128,37 +120,20 @@ void LatentSyncLimiter::LimitFrameRate() {
         return;
     }
 
-    
     LONGLONG now_ns = utils::get_now_ns();
 
     extern double expected_current_scanline_ns(LONGLONG now_ns, LONGLONG total_height, bool add_correction);
-    double expected_scanline = expected_current_scanline_ns(now_ns, total_height, true);
+    double current_scanline = expected_current_scanline_ns(now_ns, total_height, true);
     double target_line = mid_vblank_scanline - (total_height * m_on_present_ns.load()) / ns_per_refresh.load() - 60.0 + s_scanline_offset.load();
 
-    double diff_lines = target_line - expected_scanline;
+    double diff_lines = target_line - current_scanline;
     if (diff_lines < 0) {
         diff_lines += total_height;
     }
 
-    double delta_wait_time_ns = diff_lines * (1.0 * ns_per_refresh.load() / total_height);
+    double delta_wait_time_ns = 1.0 * diff_lines * ns_per_refresh.load() / total_height;
 
     LONGLONG wait_target_ns = now_ns + delta_wait_time_ns + ns_per_refresh.load() * (s_vblank_sync_divisor.load() - 1);
-
-    {
-        std::ostringstream oss;
-        oss << "XXX LatentSyncLimiter::LimitFrameRate: ";
-        oss << "diff_lines: " << diff_lines;
-        oss << "delta_wait_time_ns: " << delta_wait_time_ns;
-        oss << "wait_target_ns: " << wait_target_ns;
-        oss << "total_height: " << total_height;
-        oss << "m_on_present_ns: " << m_on_present_ns.load();
-        oss << "ns_per_refresh: " << ns_per_refresh.load();
-        oss << "s_vblank_sync_divisor: " << s_vblank_sync_divisor.load();
-        oss << "s_scanline_offset: " << s_scanline_offset.load();
-        oss << "expected_scanline: " << expected_scanline;
-        oss << "target_line: " << target_line;
-        LogInfo(oss.str().c_str());
-    }
 
     if (delta_wait_time_ns > utils::SEC_TO_NS) {
         std::ostringstream oss;
@@ -173,17 +148,13 @@ void LatentSyncLimiter::LimitFrameRate() {
 void LatentSyncLimiter::OnPresentEnd() {
     LONGLONG now_ns = utils::get_now_ns();
     LONGLONG dt_ns = now_ns - g_present_start_time_ns.load();
-    // Exponential moving average of Present duration in ticks
-    const double alpha = 0.10; // smooth but responsive
-    if (m_avg_present_ns <= 0.0)
-        m_avg_present_ns = static_cast<double>(dt_ns);
-    else
-        m_avg_present_ns = alpha * static_cast<double>(dt_ns) + (1.0 - alpha) * m_avg_present_ns;
 
-    std::ostringstream oss;
-    oss << "Present duration: " << m_avg_present_ns / 10000.0 << " ms " << m_avg_present_ns << "ns";
-    LogInfo(oss.str().c_str());
-    m_on_present_ns.store(m_avg_present_ns);   
+    if (m_on_present_ns.load() <= 0.0)
+        m_on_present_ns.store(dt_ns);
+    else {
+        const double alpha = 0.01;
+        m_on_present_ns.store(alpha * static_cast<double>(dt_ns) + (1.0 - alpha) * m_on_present_ns.load());
+    }
 }
 
 void LatentSyncLimiter::StartVBlankMonitoring() {

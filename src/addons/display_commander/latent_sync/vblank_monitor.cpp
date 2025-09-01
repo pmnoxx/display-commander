@@ -467,11 +467,11 @@ void VBlankMonitor::MonitoringThread() {
                     if (new_correction_lines_delta < 0) {
                         new_correction_lines_delta += current_display_timing.total_height;
                     }
-                    long dt = new_correction_lines_delta - correction_lines_delta.load();
-                    if (fabs(dt) > fabs(dt - current_display_timing.total_height)) {
+                    long dt = fmod(new_correction_lines_delta - correction_lines_delta.load(), (long double)(current_display_timing.total_height));
+                    if (dt > current_display_timing.total_height / 2) {
                         dt -= current_display_timing.total_height;
                     }
-                    if (fabs(dt) > fabs(dt + current_display_timing.total_height)) {
+                    if (dt < -current_display_timing.total_height / 2) {
                         dt += current_display_timing.total_height;
                     }
                     correction_lines_delta.store(correction_lines_delta.load() + dt);

@@ -332,3 +332,7 @@ extern std::atomic<LONGLONG> g_present_start_time_ns;
 
 // Present pacing delay as percentage of frame time - 0% to 100%
 extern std::atomic<float> s_present_pacing_delay_percentage;
+
+
+
+extern std::atomic<LONGLONG> late_amount_ns;

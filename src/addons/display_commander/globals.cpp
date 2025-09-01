@@ -208,3 +208,6 @@ std::atomic<uint32_t> g_swapchain_event_total_count{0}; // Total events across a
 // Higher values create more consistent frame timing but may increase latency
 // 0% = no delay, 100% = full frame time delay between simulation start and present
 std::atomic<float> s_present_pacing_delay_percentage{0.0f}; // Default to 0% (no delay)
+
+
+std::atomic<LONGLONG> late_amount_ns{0};

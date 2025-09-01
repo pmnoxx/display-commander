@@ -318,7 +318,10 @@ void TimerPresentPacingDelay() {
         float frame_time_ms = 1000.0f / last_sample.fps;
         float delay_ms = frame_time_ms * (delay_percentage / 100.0f);
         LONGLONG delta_ns = static_cast<LONGLONG>(delay_ms * utils::NS_TO_MS);
-        utils::wait_until_ns(utils::get_now_ns() + delta_ns, g_timer_handle);
+        delta_ns -= late_amount_ns.load();
+        if (delta_ns > 0) {
+          utils::wait_until_ns(utils::get_now_ns() + delta_ns, g_timer_handle);
+        }
       }
     }
   }
@@ -334,6 +337,7 @@ void OnPresentUpdateAfter(reshade::api::command_queue* /*queue*/, reshade::api::
 
   // g_present_duration
   LONGLONG now_ns = utils::get_now_ns();
+
   double g_present_duration_new_ns = (now_ns - g_present_start_time_ns.load()); // Convert QPC ticks to seconds (QPC frequency is typically 10MHz)
   double alpha = 64;
   g_present_duration_ns.store((1 * g_present_duration_new_ns + (alpha - 1) * g_present_duration_ns.load()) / alpha);
@@ -370,6 +374,8 @@ void HandleFpsLimiter() {
   if (target_fps > 0.0f) {
     flush_command_queue();
   }
+
+  late_amount_ns.store(0);
 
   // Call FPS Limiter on EVERY frame (not throttled)
   switch (s_fps_limiter_mode.load()) {

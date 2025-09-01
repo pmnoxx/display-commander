@@ -3,6 +3,8 @@
 #include <wingdi.h>
 #include <dxgi.h>
 #include <iomanip>
+#include <sstream>
+#include <iostream>
 
 // Helper methods for calculated values
 double DisplayTimingInfo::GetPixelClockMHz() const { 
@@ -115,14 +117,43 @@ std::vector<DisplayTimingInfo> QueryDisplayTimingInfo() {
         getTargetName.header.adapterId = path.sourceInfo.adapterId;
         getTargetName.header.id = path.targetInfo.id;
         
+        // Also query the source device name to get the GDI device name that matches GetMonitorInfoW
+        DISPLAYCONFIG_SOURCE_DEVICE_NAME getSourceName = {};
+        getSourceName.header.type = DISPLAYCONFIG_DEVICE_INFO_GET_SOURCE_NAME;
+        getSourceName.header.size = sizeof(DISPLAYCONFIG_SOURCE_DEVICE_NAME);
+        getSourceName.header.adapterId = path.sourceInfo.adapterId;
+        getSourceName.header.id = path.sourceInfo.id;
+        
         if (DisplayConfigGetDeviceInfo(&getTargetName.header) == ERROR_SUCCESS) {
             timing_info.display_name = getTargetName.monitorFriendlyDeviceName;
             timing_info.device_path = getTargetName.monitorDevicePath;
             timing_info.connector_instance = getTargetName.connectorInstance;
+            
+            // Get the GDI device name that matches GetMonitorInfoW format
+            if (DisplayConfigGetDeviceInfo(&getSourceName.header) == ERROR_SUCCESS) {
+                timing_info.gdi_device_name = getSourceName.viewGdiDeviceName;
+            } else {
+                timing_info.gdi_device_name = L"UNKNOWN";
+            }
+            
+            // Log the device information for debugging
+            {
+                std::ostringstream oss;
+                oss << "QueryDisplayTimingInfo: Found display [path_idx=" << path_idx << "]:";
+                oss << "\n    display_name: '" << WideCharToUTF8(timing_info.display_name) << "'";
+                oss << "\n    device_path: '" << WideCharToUTF8(timing_info.device_path) << "'";
+                oss << "\n    gdi_device_name: '" << WideCharToUTF8(timing_info.gdi_device_name) << "'";
+                oss << "\n    adapter_id: " << timing_info.adapter_id;
+                oss << "\n    target_id: " << timing_info.target_id;
+                std::cout << "[QueryDisplay] " << oss.str() << std::endl;
+            }
         } else {
             timing_info.display_name = L"UNKNOWN";
             timing_info.device_path = L"UNKNOWN";
+            timing_info.gdi_device_name = L"UNKNOWN";
             timing_info.connector_instance = UINT32_MAX;
+            
+            std::cout << "[QueryDisplay] QueryDisplayTimingInfo: Failed to get device info for display" << std::endl;
         }
         
         results.push_back(timing_info);

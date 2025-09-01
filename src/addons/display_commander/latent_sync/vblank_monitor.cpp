@@ -67,33 +67,83 @@ DisplayTimingInfo GetDisplayTimingInfoForWindow(HWND hwnd) {
     MONITORINFOEXW mi{};
     mi.cbSize = sizeof(mi);
     if (!GetMonitorInfoW(hmon, &mi)) {
+        LogInfo("GetDisplayTimingInfoForMonitor: GetMonitorInfoW failed");
         // Fallback to first display if monitor info query fails
         auto timing_info = QueryDisplayTimingInfo();
         if (!timing_info.empty()) {
+            LogInfo("GetDisplayTimingInfoForMonitor: Using fallback timing_info[0] due to GetMonitorInfoW failure");
             return timing_info[0];
         }
+        LogInfo("GetDisplayTimingInfoForMonitor: No timing info available, returning empty struct");
         return DisplayTimingInfo{}; // Return empty struct
     }
 
     // Query all display timing info
     auto timing_info = QueryDisplayTimingInfo();
     
+    {
+        std::ostringstream oss;
+        oss << "GetDisplayTimingInfoForMonitor: Monitor device name from GetMonitorInfoW: '" << WideCharToUTF8(mi.szDevice) << "'";
+        LogInfo(oss.str().c_str());
+    }
+    
+    {
+        std::ostringstream oss;
+        oss << "GetDisplayTimingInfoForMonitor: Available timing info entries (" << timing_info.size() << "):";
+        for (size_t i = 0; i < timing_info.size(); ++i) {
+            oss << "\n  [" << i << "] device_path: '" << WideCharToUTF8(timing_info[i].device_path) << "'";
+            oss << "\n      display_name: '" << WideCharToUTF8(timing_info[i].display_name) << "'";
+        }
+        LogInfo(oss.str().c_str());
+    }
+    
     // Find the display that matches our monitor
-    for (const auto& timing : timing_info) {
-        // Try to match by device path first (most reliable)
+    for (size_t i = 0; i < timing_info.size(); ++i) {
+        const auto& timing = timing_info[i];
+        
+        {
+            std::ostringstream oss;
+            oss << "GetDisplayTimingInfoForMonitor: Checking entry [" << i << "]:";
+            oss << "\n    Monitor device: '" << WideCharToUTF8(mi.szDevice) << "'";
+            oss << "\n    Timing device_path: '" << WideCharToUTF8(timing.device_path) << "'";
+            oss << "\n    Timing display_name: '" << WideCharToUTF8(timing.display_name) << "'";
+            oss << "\n    Timing gdi_device_name: '" << WideCharToUTF8(timing.gdi_device_name) << "'";
+            LogInfo(oss.str().c_str());
+        }
+        
+        // Try to match by GDI device name first (most reliable for GetMonitorInfoW)
+        if (!timing.gdi_device_name.empty() && timing.gdi_device_name == mi.szDevice) {
+            std::ostringstream oss;
+            oss << "GetDisplayTimingInfoForMonitor: MATCH FOUND by gdi_device_name at index " << i;
+            LogInfo(oss.str().c_str());
+            return timing;
+        }
+        
+        // Fallback: try to match by device path
         if (!timing.device_path.empty() && timing.device_path == mi.szDevice) {
+            std::ostringstream oss;
+            oss << "GetDisplayTimingInfoForMonitor: MATCH FOUND by device_path at index " << i;
+            LogInfo(oss.str().c_str());
             return timing;
         }
         
         // Fallback: try to match by display name if device path doesn't match
         if (!timing.display_name.empty() && timing.display_name == mi.szDevice) {
+            std::ostringstream oss;
+            oss << "GetDisplayTimingInfoForMonitor: MATCH FOUND by display_name at index " << i;
+            LogInfo(oss.str().c_str());
             return timing;
         }
+        
+        LogInfo("GetDisplayTimingInfoForMonitor: No match for this entry");
     }
+    
+    LogInfo("GetDisplayTimingInfoForMonitor: No exact match found, falling back to first entry");
     if (!timing_info.empty()) {
         return timing_info[0];
     }
     // Return empty struct if nothing is available
+    LogInfo("GetDisplayTimingInfoForMonitor: No timing info available, returning empty struct");
     return DisplayTimingInfo{};
 }
 

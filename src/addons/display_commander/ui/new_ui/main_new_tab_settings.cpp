@@ -14,7 +14,7 @@ MainNewTabSettings::MainNewTabSettings()
       target_monitor_index("target_monitor_index", 0, {"Auto", "Monitor 1", "Monitor 2", "Monitor 3", "Monitor 4", "Monitor 5", "Monitor 6", "Monitor 7", "Monitor 8", "Monitor 9", "Monitor 10"}, "renodx_main_tab"),
       background_feature("background_feature", false, "renodx_main_tab"),
       alignment("alignment", 0, {"None", "Top Left", "Top Right", "Bottom Left", "Bottom Right", "Center"}, "renodx_main_tab"),
-      fps_limiter_mode("fps_limiter_mode", 0, {"Precise Frame Rate Limiter", "VBlank Scanline Sync for VSync-OFF (Allow-tearingg only, current version works only with first display)"}, "renodx_main_tab"),
+      fps_limiter_mode("fps_limiter_mode", 0, {"Precise Frame Rate Limiter", "VBlank Scanline Sync for VSync-OFF"}, "renodx_main_tab"),
       scanline_offset("scanline_offset", 0, -1000, 1000, "renodx_main_tab"),
       vblank_sync_divisor("vblank_sync_divisor", 1, 0, 8, "renodx_main_tab"),
       fps_limiter_injection("fps_limiter_injection", ::s_fps_limiter_injection, 0, 0, 2, "renodx_main_tab"),

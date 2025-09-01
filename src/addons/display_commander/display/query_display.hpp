@@ -20,6 +20,7 @@ struct DisplayTimingInfo {
     uint32_t video_standard;
     std::wstring display_name;  // Monitor friendly device name
     std::wstring device_path;  // Monitor device path
+    std::wstring gdi_device_name;  // GDI device name (matches GetMonitorInfoW format)
     uint32_t connector_instance;  // Connector instance
     
     // Helper methods for calculated values

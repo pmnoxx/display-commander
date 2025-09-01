@@ -322,20 +322,6 @@ bool VBlankMonitor::EnsureAdapterBinding() {
     return false;
 }
 
-double expected_current_scanline_ns(LONGLONG now_ns, LONGLONG total_height, bool add_correction) {
-    double cur_scanline = 1.0 * total_height * (now_ns % ns_per_refresh.load()) / ns_per_refresh.load();
-    if (add_correction) {
-        cur_scanline += correction_lines_delta.load();
-    }
-    if (cur_scanline < 0) {
-        cur_scanline += total_height;
-    }
-    if (cur_scanline > total_height) {
-        cur_scanline -= total_height;
-    }
-    return cur_scanline;
-}
-
 long double expected_current_scanline_uncapped_ns(LONGLONG now_ns, LONGLONG total_height, bool add_correction) {
     long double cur_scanline = 1.0L *total_height * now_ns / ns_per_refresh.load();
     if (add_correction) {

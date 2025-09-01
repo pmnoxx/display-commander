@@ -109,14 +109,8 @@ void LatentSyncLimiter::LimitFrameRate() {
     LONGLONG active_height = g_latent_sync_active_height.load();
     LONGLONG mid_vblank_scanline = (active_height + total_height) / 2;
 
-    if (total_height < 100 || active_height < 100 || mid_vblank_scanline < 100 ||  ns_per_refresh.load() == 0) {
-        // Error
-        std::ostringstream oss;
-        oss << "LatentSyncLimiter::LimitFrameRate: ";
-        oss << "total_height: " << total_height;
-        oss << " active_height: " << active_height;
-        oss << " mid_vblank_scanline: " << mid_vblank_scanline;
-        LogInfo(oss.str().c_str());
+    if (total_height == 0 || active_height == 0 || mid_vblank_scanline == 0 ||  ns_per_refresh.load() == 0) {
+        LogError("LatentSyncLimiter::LimitFrameRate: unitialized values");
         return;
     }
 
@@ -136,10 +130,7 @@ void LatentSyncLimiter::LimitFrameRate() {
     LONGLONG wait_target_ns = now_ns + delta_wait_time_ns + ns_per_refresh.load() * (s_vblank_sync_divisor.load() - 1);
 
     if (delta_wait_time_ns > utils::SEC_TO_NS) {
-        std::ostringstream oss;
-        oss << "LatentSyncLimiter::LimitFrameRate: ";
-        oss << "delta_wait_time_ns: " << delta_wait_time_ns << "ns";
-        LogInfo(oss.str().c_str());
+        LogError("LatentSyncLimiter::LimitFrameRate: delta_wait_time_ns > utils::SEC_TO_NS");
         return;
     }
     utils::wait_until_ns(wait_target_ns, m_timer_handle);

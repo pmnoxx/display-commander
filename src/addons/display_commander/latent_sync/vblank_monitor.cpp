@@ -383,133 +383,88 @@ void VBlankMonitor::MonitoringThread() {
         }    
     }
 
+    // Ensure the function pointer is valid
+    if (m_pfnGetScanLine == nullptr) {
+        LogWarn("GetScanLine function pointer is null, attempting to reload...");
+        if (!LoadProcCached(m_pfnGetScanLine, L"gdi32.dll", "D3DKMTGetScanLine")) {
+            LogError("Failed to load GetScanLine function, sleeping...");
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            return;
+        }
+    }
+
 
     LONGLONG min_scanline_duration_ns = 0;
     LONGLONG correction_ticks_local = 0;
+    LONGLONG last_display_timing_refresh_ns = 0;
 
     int lastScanLine = 0;
     while (!m_should_stop.load()) {
-
-        // Use the current display timing info for calculations
-        ns_per_refresh.store((current_display_timing.vsync_freq_numerator > 0) ?
-            (current_display_timing.vsync_freq_denominator * utils::SEC_TO_NS) /
-            (current_display_timing.vsync_freq_numerator) : 1);
-
-        g_latent_sync_total_height.store(current_display_timing.total_height);
-        g_latent_sync_active_height.store(current_display_timing.active_height);
-        
-        // Ensure we have a valid adapter binding (only treat sentinel as invalid)
-        if (m_hAdapter == 0 || m_vidpn_source_id == VBlankMonitor::kInvalidVidPnSource) {
-            {
-                std::ostringstream oss;
-                HWND fg = GetForegroundWindow();
-                HWND sc = g_last_swapchain_hwnd.load();
-                oss << "Invalid adapter binding detected: hAdapter=" << m_hAdapter
-                    << ", VidPnSourceId=" << m_vidpn_source_id
-                    << ", bound_display_name=" << WideCharToUTF8(m_bound_display_name)
-                    << ", foreground_hwnd=" << fg
-                    << ", last_swapchain_hwnd=" << sc;
-                LogInfo(oss.str().c_str());
-            }
-            LogInfo("Invalid adapter binding detected, attempting to rebind...");
-            if (!EnsureAdapterBinding()) {
-                LogInfo("Failed to establish adapter binding, sleeping...");
-                std::this_thread::sleep_for(std::chrono::milliseconds(100));
-                continue;
-            }
-            LogInfo("Adapter binding established successfully");
-        }
-        
-        D3DKMT_GETSCANLINE scan{};
-        scan.hAdapter = m_hAdapter;
-        scan.VidPnSourceId = m_vidpn_source_id;
-
-        LONGLONG start_ns = utils::get_now_ns();
-
-        int expected_scanline_tmp = expected_current_scanline_ns(start_ns, current_display_timing.total_height, true);
-
-        // don't run during vblank
-        // expected_scanline_tmp >= 50 && expected_scanline_tmp <= current_display_timing.total_height / 2 &&
-        
-        // Ensure the function pointer is valid
-        if (m_pfnGetScanLine == nullptr) {
-            LogInfo("GetScanLine function pointer is null, attempting to reload...");
-            if (!LoadProcCached(m_pfnGetScanLine, L"gdi32.dll", "D3DKMTGetScanLine")) {
-                LogInfo("Failed to load GetScanLine function, sleeping...");
-                std::this_thread::sleep_for(std::chrono::milliseconds(100));
-                continue;
-            }
-        }
-        
-        auto nt_status = reinterpret_cast<NTSTATUS (WINAPI*)(D3DKMT_GETSCANLINE*)>(m_pfnGetScanLine)(&scan);
-        if (nt_status == STATUS_SUCCESS) {
-            {
-                std::ostringstream oss;
-                oss << "Scanline: " << scan.ScanLine << " ticks, expected_scanline: " << expected_scanline_tmp;
-                LogInfo(oss.str().c_str());
-            }
-            LONGLONG end_ns = utils::get_now_ns();
-            LONGLONG duration_ns = end_ns - start_ns;
-
-            LONGLONG mid_point_ns = (start_ns + end_ns) / 2; // TODO: all values could be multipled by 2 for better precision
-
-            // shortest encountered duration
-            if (min_scanline_duration_ns == 0 || duration_ns < min_scanline_duration_ns) {
-                min_scanline_duration_ns = duration_ns;
-            }
-            if (duration_ns < 2 * min_scanline_duration_ns) {
-                double expected_scanline = expected_current_scanline_ns(mid_point_ns, current_display_timing.total_height, false);
-                {
-                    std::ostringstream oss;
-                    oss << "Scanline diff: " << abs(scan.ScanLine - expected_current_scanline_ns(mid_point_ns, current_display_timing.total_height, true)) << " ticks";
-                    LogInfo(oss.str().c_str());
-                }
-                double new_correction_lines_delta = scan.ScanLine - expected_scanline; 
-                correction_lines_delta.store(new_correction_lines_delta);
-            }
-        } else {
-           std::ostringstream oss;
-           oss << "Error getting scanline: " << nt_status;
-           
-           // Provide more specific error information
-           if (nt_status == STATUS_ACCESS_VIOLATION) {
-               oss << " (STATUS_ACCESS_VIOLATION - Invalid adapter handle or VidPn source ID)";
-           } else if (nt_status == STATUS_INVALID_PARAMETER) {
-               oss << " (STATUS_INVALID_PARAMETER - Invalid parameters)";
-           } else if (nt_status == STATUS_OBJECT_NAME_NOT_FOUND) {
-               oss << " (STATUS_OBJECT_NAME_NOT_FOUND - Display object not found)";
-           } else if (nt_status == STATUS_OBJECT_PATH_NOT_FOUND) {
-               oss << " (STATUS_OBJECT_PATH_NOT_FOUND - Display path not found)";
-           }
-           
-           oss << " - Adapter: " << m_hAdapter << ", VidPnSourceId: " << m_vidpn_source_id;
-           LogInfo(oss.str().c_str());
-           
-           // Try to rebind if we get access violation
-           if (nt_status == STATUS_ACCESS_VIOLATION) {
-               LogInfo("Attempting to rebind adapter due to access violation...");
-               if (EnsureAdapterBinding()) {
-                   LogInfo("Successfully rebound adapter");
-               } else {
-                   LogInfo("Failed to rebind adapter");
-               }
-           }
-        }
-        std::this_thread::sleep_for(std::chrono::microseconds(100)); // 0.1ms
-
         // auto switch to the correct monitor
-        if (expected_scanline_tmp < lastScanLine) {
-            hwnd = g_last_swapchain_hwnd.load();
-            current_display_timing = GetDisplayTimingInfoForWindow(hwnd);
-            
-            // Also refresh adapter binding when switching monitors
-            if (hwnd != nullptr) {
-                LogInfo("Switching monitors, refreshing adapter binding...");
-                UpdateDisplayBindingFromWindow(hwnd);
+        {
+            LONGLONG now_ts = utils::get_now_ns();
+            if (last_display_timing_refresh_ns == 0 || last_display_timing_refresh_ns + 5 * utils::SEC_TO_NS < now_ts) {
+                last_display_timing_refresh_ns = now_ts;
+
+                hwnd = g_last_swapchain_hwnd.load();
+                current_display_timing = GetDisplayTimingInfoForWindow(hwnd);
+                
+                // Also refresh adapter binding when switching monitors
+                if (hwnd != nullptr) {
+                    LogInfo("Switching monitors, refreshing adapter binding...");
+                    UpdateDisplayBindingFromWindow(hwnd);
+                }
+                // Use the current display timing info for calculations
+                ns_per_refresh.store((current_display_timing.vsync_freq_numerator > 0) ?
+                    (current_display_timing.vsync_freq_denominator * utils::SEC_TO_NS) /
+                    (current_display_timing.vsync_freq_numerator) : 1);
+        
+                g_latent_sync_total_height.store(current_display_timing.total_height);
+                g_latent_sync_active_height.store(current_display_timing.active_height);
+                if (!EnsureAdapterBinding()) {
+                    LogInfo("Failed to establish adapter binding, sleeping...");
+                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                    continue;
+                }
             }
         }
+        
+        {
+            D3DKMT_GETSCANLINE scan{};
+            scan.hAdapter = m_hAdapter;
+            scan.VidPnSourceId = m_vidpn_source_id;
 
-        lastScanLine = expected_scanline_tmp;
+
+            LONGLONG start_ns = utils::get_now_ns();
+            auto nt_status = reinterpret_cast<NTSTATUS (WINAPI*)(D3DKMT_GETSCANLINE*)>(m_pfnGetScanLine)(&scan);
+            LONGLONG end_ns = utils::get_now_ns();
+            
+            int expected_scanline_tmp = expected_current_scanline_ns(start_ns, current_display_timing.total_height, true);
+            if (nt_status == STATUS_SUCCESS) {
+                LONGLONG duration_ns = end_ns - start_ns;
+                LONGLONG mid_point_ns = (start_ns + end_ns) / 2; // TODO: all values could be multipled by 2 for better precision
+
+                // shortest encountered duration
+                if (min_scanline_duration_ns == 0 || duration_ns < min_scanline_duration_ns) {
+                    min_scanline_duration_ns = duration_ns;
+                }
+                if (duration_ns < 2 * min_scanline_duration_ns) {
+                    double expected_scanline = expected_current_scanline_ns(mid_point_ns, current_display_timing.total_height, false);
+                    {
+                        std::ostringstream oss;
+                        oss << "Scanline diff: " << abs(scan.ScanLine - expected_current_scanline_ns(mid_point_ns, current_display_timing.total_height, true)) << " ticks";
+                        LogInfo(oss.str().c_str());
+                    }
+                    double new_correction_lines_delta = scan.ScanLine - expected_scanline; 
+                    correction_lines_delta.store(new_correction_lines_delta);
+                }
+            }
+            
+            std::this_thread::sleep_for(std::chrono::microseconds(100)); // 0.1ms
+
+
+            lastScanLine = expected_scanline_tmp;
+        }
     }
     
     ::LogInfo("VBlank monitoring thread: exiting main loop");

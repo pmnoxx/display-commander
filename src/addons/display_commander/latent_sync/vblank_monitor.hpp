@@ -55,6 +55,11 @@ struct D3DKMT_GETSCANLINE {
 
 namespace dxgi::fps_limiter {
 
+// Global variables for VBlank monitoring
+extern std::atomic<LONGLONG> ns_per_refresh;
+extern std::atomic<LONGLONG> g_latent_sync_total_height;
+extern std::atomic<LONGLONG> g_latent_sync_active_height;
+
 // Helper function to get the correct DisplayTimingInfo for a specific window
 DisplayTimingInfo GetDisplayTimingInfoForWindow(HWND hwnd);
 
@@ -73,12 +78,9 @@ public:
     double GetVBlankPercentage() const;
     std::chrono::milliseconds GetAverageVBlankDuration() const;
     std::chrono::milliseconds GetAverageActiveDuration() const;
-    uint64_t GetVBlankCount() const { return m_vblank_count.load(); }
-    uint64_t GetStateChangeCount() const { return m_state_change_count.load(); }
     
     // Get detailed timing information
     std::string GetDetailedStatsString() const;
-    std::string GetLastTransitionInfo() const;
 
     // Manual display binding (if needed)
     bool BindToDisplay(HWND hwnd);
@@ -119,27 +121,6 @@ private:
     FARPROC m_pfnOpenAdapterFromGdiDisplayName = nullptr; // "D3DKMTOpenAdapterFromGdiDisplayName"
     FARPROC m_pfnCloseAdapter = nullptr;                  // "D3DKMTCloseAdapter"
     FARPROC m_pfnGetScanLine = nullptr;                   // "D3DKMTGetScanLine"
-
-    // VBlank state tracking
-    std::atomic<bool> m_last_vblank_state{false};
-    std::chrono::steady_clock::time_point m_last_state_change;
-    std::chrono::steady_clock::time_point m_vblank_start_time;
-    std::chrono::steady_clock::time_point m_active_start_time;
-    LONGLONG m_vblank_start_time_ticks = 0;
-    LONGLONG m_active_start_time_ticks = 0;
-
-    // Timing statistics
-    std::chrono::steady_clock::duration m_total_vblank_time{0};
-    std::chrono::steady_clock::duration m_total_active_time{0};
-    std::atomic<uint64_t> m_vblank_count{0};
-    std::atomic<uint64_t> m_state_change_count{0};
-
-    // Last transition info
-    mutable std::mutex m_stats_mutex;
-    std::chrono::steady_clock::time_point m_last_vblank_to_active;
-    std::chrono::steady_clock::time_point m_last_active_to_vblank;
-    std::chrono::steady_clock::duration m_last_vblank_duration{0};
-    std::chrono::steady_clock::duration m_last_active_duration{0};
 };
 
 } // namespace dxgi::fps_limiter

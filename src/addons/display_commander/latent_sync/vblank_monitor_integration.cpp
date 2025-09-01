@@ -30,16 +30,6 @@ void StopVBlankMonitoring() {
         LogInfo("VBlank monitoring stopped via integration");
     }
 }
-
-// Function to get VBlank statistics
-std::string GetVBlankStatistics() {
-    if (!g_vblank_monitor) {
-        return "VBlank monitor not initialized";
-    }
-    
-    return g_vblank_monitor->GetDetailedStatsString();
-}
-
 // Function to bind monitor to a specific window
 bool BindVBlankMonitorToWindow(HWND hwnd) {
     if (!g_vblank_monitor) {
@@ -52,24 +42,6 @@ bool BindVBlankMonitorToWindow(HWND hwnd) {
 // Function to check if monitoring is active
 bool IsVBlankMonitoringActive() {
     return g_vblank_monitor && g_vblank_monitor->IsMonitoring();
-}
-
-// Function to get VBlank percentage
-double GetVBlankPercentage() {
-    if (!g_vblank_monitor) return 0.0;
-    return g_vblank_monitor->GetVBlankPercentage();
-}
-
-// Function to get average VBlank duration in milliseconds
-double GetAverageVBlankDurationMs() {
-    if (!g_vblank_monitor) return 0.0;
-    return static_cast<double>(g_vblank_monitor->GetAverageVBlankDuration().count());
-}
-
-// Function to get average active duration in milliseconds
-double GetAverageActiveDurationMs() {
-    if (!g_vblank_monitor) return 0.0;
-    return static_cast<double>(g_vblank_monitor->GetAverageActiveDuration().count());
 }
 
 } // namespace dxgi::fps_limiter

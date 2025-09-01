@@ -492,19 +492,16 @@ void DrawDisplaySettings() {
                 auto& latent = dxgi::latent_sync::g_latentSyncManager->GetLatentLimiter();
                 if (latent.IsVBlankMonitoringActive()) {
                     ImGui::Spacing();
-                    ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✓ VBlank Monitor: ACTIVE");
+                    ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✓ VBlank Monitor: ACTIVE (currently works based on primary display)");
                     if (ImGui::IsItemHovered()) {
                         ImGui::SetTooltip("VBlank monitoring thread is running and collecting scanline data for frame pacing.");
                     }
                     
-                    // Show VBlank statistics if available
-                    uint64_t vblank_count = latent.GetVBlankCount();
-                    uint64_t state_change_count = latent.GetStateChangeCount();
-                    double vblank_percentage = latent.GetVBlankPercentage();
-                    
-                    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "  VBlank Events: %llu", vblank_count);
-                    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "  State Changes: %llu", state_change_count);
-                    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "  VBlank Time: %.1f%%", vblank_percentage);
+                    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "  refresh time: %.3fms", 1.0 * dxgi::fps_limiter::ns_per_refresh.load() / utils::NS_TO_MS);
+                    ImGui::SameLine();
+                    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "  total_height: %llu", dxgi::fps_limiter::g_latent_sync_total_height.load());
+                    ImGui::SameLine();
+                    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "  active_height: %llu", dxgi::fps_limiter::g_latent_sync_active_height.load());
                 } else {
                     ImGui::Spacing();
                     ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "⚠ VBlank Monitor: STARTING...");

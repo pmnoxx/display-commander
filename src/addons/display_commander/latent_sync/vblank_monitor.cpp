@@ -29,6 +29,18 @@ namespace {
 
 namespace dxgi::fps_limiter {
 
+// Helper function to normalize a value using modulo arithmetic to range [-range/2, range/2]
+long VBlankMonitor::fmod_normalized(long double value, long range) {
+    long result = static_cast<long>(fmod(value, static_cast<long double>(range)));
+    if (result > range / 2) {
+        result -= range;
+    }
+    if (result < -range / 2) {
+        result += range;
+    }
+    return result;
+}
+
 // Helper function to get the correct DisplayTimingInfo for a specific window
 DisplayTimingInfo GetDisplayTimingInfoForWindow(HWND hwnd) {
     if (hwnd == nullptr) {
@@ -453,13 +465,8 @@ void VBlankMonitor::MonitoringThread() {
                     if (new_correction_lines_delta < 0) {
                         new_correction_lines_delta += current_display_timing.total_height;
                     }
-                    long dt = fmod(new_correction_lines_delta - correction_lines_delta.load(), (long double)(current_display_timing.total_height));
-                    if (dt > current_display_timing.total_height / 2) {
-                        dt -= current_display_timing.total_height;
-                    }
-                    if (dt < -current_display_timing.total_height / 2) {
-                        dt += current_display_timing.total_height;
-                    }
+                    long dt = fmod_normalized(new_correction_lines_delta - correction_lines_delta.load(), 
+                    current_display_timing.total_height);
                     correction_lines_delta.store(correction_lines_delta.load() + dt);
                 }
             }

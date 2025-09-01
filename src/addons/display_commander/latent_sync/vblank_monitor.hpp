@@ -98,6 +98,9 @@ private:
         return slot;
     }
 
+    // Helper function to normalize a value using modulo arithmetic to range [-range/2, range/2]
+    static long fmod_normalized(long double value, long range);
+
 private:
     // Sentinel for uninitialized/invalid VidPn source id
     static constexpr D3DDDI_VIDEO_PRESENT_SOURCE_ID kInvalidVidPnSource = static_cast<D3DDDI_VIDEO_PRESENT_SOURCE_ID>(-1);

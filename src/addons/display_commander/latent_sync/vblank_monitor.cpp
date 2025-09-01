@@ -497,11 +497,6 @@ void VBlankMonitor::MonitoringThread() {
                 }
                 if (duration_ns < 2 * min_scanline_duration_ns) {
                     long double expected_scanline = expected_current_scanline_uncapped_ns(mid_point_ns, current_display_timing.total_height, false);
-                    {
-                        std::ostringstream oss;
-                        oss << "Scanline diff: " << abs(scan.ScanLine - expected_current_scanline_uncapped_ns(mid_point_ns, current_display_timing.total_height, true)) << " ticks";
-                        LogInfo(oss.str().c_str());
-                    }
                     long double new_correction_lines_delta = fmod(scan.ScanLine - expected_scanline, (long double)(current_display_timing.total_height)); 
                     if (new_correction_lines_delta < 0) {
                         new_correction_lines_delta += current_display_timing.total_height;

@@ -28,6 +28,10 @@ if(MSVC)
   target_compile_options(zzz_display_commander PRIVATE /bigobj /arch:SSE2)
   # Enable SSE4.1 and SSE4.2 for better performance
   target_compile_options(zzz_display_commander PRIVATE /arch:AVX)
+  # Enable MWAITX for AMD Zen architecture support
+  target_compile_options(zzz_display_commander PRIVATE /arch:AVX2)
+  # Enable MWAITX specifically
+  target_compile_options(zzz_display_commander PRIVATE /D_ENABLE_EXTENDED_ALIGNED_STORAGE)
 endif()
 
 # GCC/Clang-specific flags
@@ -35,6 +39,8 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
   target_compile_options(zzz_display_commander PRIVATE -msse4.1 -msse4.2)
   # Enable AVX for even better performance if available
   target_compile_options(zzz_display_commander PRIVATE -mavx)
+  # Enable MWAITX for AMD Zen architecture
+  target_compile_options(zzz_display_commander PRIVATE -mavx2 -mmwaitx)
 endif()
 
 # Include directories

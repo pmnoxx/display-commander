@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <sstream>
+#include <intrin.h>
 #include "../addons/display_commander/utils.hpp"
 
 // NTSTATUS constants if not already defined
@@ -21,6 +22,51 @@ static LONGLONG timer_res_qpc = 0;
 static ZwQueryTimerResolution_t ZwQueryTimerResolution = nullptr;
 static ZwSetTimerResolution_t ZwSetTimerResolution = nullptr;
 static LONGLONG timer_res_qpc_frequency = 0;
+
+// Cached MWAITX support result
+static bool mwaitx_supported_cached = false;
+static bool mwaitx_support_checked = false;
+
+// Check if MWAITX instruction is supported (cached result)
+bool support_mwaitx()
+{
+    // Return cached result if already checked
+    if (mwaitx_support_checked)
+        return mwaitx_supported_cached;
+
+    mwaitx_support_checked = true;
+    mwaitx_supported_cached = true;
+
+    // Runtime test to verify the instruction actually works
+    // Use vectored exception handler to catch illegal instruction exceptions
+    static __declspec(align(64)) uint64_t monitor = 0ULL;
+    
+
+    {
+        bool instruction_worked = true;
+        
+        try
+        {
+            // Test MWAITX instruction with minimal timeout
+            _mm_monitorx(&monitor, 0, 0);
+            _mm_mwaitx(0x2, 0, 1);
+        }
+        catch(...)
+        {
+            mwaitx_supported_cached = false;
+        }
+        
+    }
+    
+    return mwaitx_supported_cached;
+}
+
+// Reset MWAITX support cache (useful for testing or if CPU capabilities change)
+void reset_mwaitx_cache()
+{
+    mwaitx_support_checked = false;
+    mwaitx_supported_cached = false;
+}
 
 // Setup high-resolution timer by setting kernel timer resolution to maximum
 bool setup_high_resolution_timer()
@@ -80,6 +126,7 @@ LONGLONG get_now_ns() {
 // Uses a combination of kernel waitable timers and busy waiting for precision
 void wait_until_qpc(LONGLONG target_qpc, HANDLE& timer_handle)
 {
+    static __declspec(align(64)) uint64_t monitor = 0ULL;
     LONGLONG current_time_qpc = get_now_qpc();
     
     // If target time has already passed, return immediately
@@ -134,15 +181,26 @@ void wait_until_qpc(LONGLONG target_qpc, HANDLE& timer_handle)
     // Busy wait for the remaining time to achieve precise timing
     // This compensates for OS scheduler inaccuracy
 
-    while (true)
-    {
-        current_time_qpc = get_now_qpc();
-        if (current_time_qpc >= target_qpc)
-            break;
-        
-        // Yield processor to other threads while waiting
-        // Compile with SSE2 enabled
-        YieldProcessor();
+    if (support_mwaitx()) {
+        while (true)
+        {
+            current_time_qpc = get_now_qpc();
+            LONGLONG time_to_wait_qpc = target_qpc - current_time_qpc;
+            if (time_to_wait_qpc <= 0)
+                break;
+
+            _mm_monitorx(&monitor, 0, 0);
+            _mm_mwaitx(0x2, 0, 240 * time_to_wait_qpc); // 2.4 GHz steamdeck
+        }
+    } else {
+        while (true)
+        {
+            current_time_qpc = get_now_qpc();
+            if (current_time_qpc >= target_qpc)
+                break;
+
+            YieldProcessor();
+        }
     }
 }
 // Global timing function

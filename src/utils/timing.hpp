@@ -3,9 +3,9 @@
 #include <Windows.h>
 
 namespace utils {
-    const int SEC_TO_NS = 1000000000;
-    const int QPC_TO_NS = 100;
-    const int QPC_PER_SECOND = 10000000;
+    const LONGLONG SEC_TO_NS = 1000000000;
+    const LONGLONG QPC_TO_NS = 100;
+    const LONGLONG QPC_PER_SECOND = SEC_TO_NS / QPC_TO_NS;
 
     // Setup high-resolution timer by setting kernel timer resolution to maximum
     bool setup_high_resolution_timer();

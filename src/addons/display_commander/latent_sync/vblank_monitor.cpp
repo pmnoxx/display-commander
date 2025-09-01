@@ -16,7 +16,7 @@ namespace dxgi::fps_limiter {
     std::atomic<LONGLONG> g_latent_sync_total_height{0};
     std::atomic<LONGLONG> g_latent_sync_active_height{0};
     
-extern std::atomic<LONGLONG> ticks_per_refresh;
+extern std::atomic<LONGLONG> ns_per_refresh;
 extern std::atomic<double> correction_lines_delta;
 }
 
@@ -322,10 +322,8 @@ bool VBlankMonitor::EnsureAdapterBinding() {
     return false;
 }
 
-
-
-double expected_current_scanline(LONGLONG now_ticks, int total_height, bool add_correction) {
-    double cur_scanline = (now_ticks % ticks_per_refresh.load()) / (1.0 * ticks_per_refresh.load() / total_height);
+double expected_current_scanline_ns(LONGLONG now_ns, LONGLONG total_height, bool add_correction) {
+    double cur_scanline = 1.0 * total_height * (now_ns % ns_per_refresh.load()) / ns_per_refresh.load();
     if (add_correction) {
         cur_scanline += correction_lines_delta.load();
     }
@@ -386,11 +384,12 @@ void VBlankMonitor::MonitoringThread() {
     }
 
     // Use the current display timing info for calculations
-    ticks_per_refresh.store((current_display_timing.vsync_freq_numerator > 0) ?
-        (current_display_timing.vsync_freq_denominator * ticks_per_refresh.load()) /
+    ns_per_refresh.store((current_display_timing.vsync_freq_numerator > 0) ?
+        (current_display_timing.vsync_freq_denominator * utils::SEC_TO_NS) /
         (current_display_timing.vsync_freq_numerator) : 1);
 
-    LONGLONG min_scanline_duration = 0;
+
+    LONGLONG min_scanline_duration_ns = 0;
     LONGLONG correction_ticks_local = 0;
 
     int lastScanLine = 0;
@@ -421,15 +420,13 @@ void VBlankMonitor::MonitoringThread() {
             LogInfo("Adapter binding established successfully");
         }
         
-        LONGLONG ticks_per_refresh_local = ticks_per_refresh.load();
-
         D3DKMT_GETSCANLINE scan{};
         scan.hAdapter = m_hAdapter;
         scan.VidPnSourceId = m_vidpn_source_id;
 
-        LONGLONG start_ticks = utils::get_now_qpc();
+        LONGLONG start_ns = utils::get_now_ns();
 
-        int expected_scanline_tmp = expected_current_scanline(start_ticks, current_display_timing.total_height, true);
+        int expected_scanline_tmp = expected_current_scanline_ns(start_ns, current_display_timing.total_height, true);
 
         // don't run during vblank
         // expected_scanline_tmp >= 50 && expected_scanline_tmp <= current_display_timing.total_height / 2 &&
@@ -451,20 +448,20 @@ void VBlankMonitor::MonitoringThread() {
                 oss << "Scanline: " << scan.ScanLine << " ticks, expected_scanline: " << expected_scanline_tmp;
                 LogInfo(oss.str().c_str());
             }
-            LONGLONG end_ticks = utils::get_now_qpc();
-            LONGLONG duration = end_ticks - start_ticks;
+            LONGLONG end_ns = utils::get_now_ns();
+            LONGLONG duration_ns = end_ns - start_ns;
 
-            LONGLONG mid_point = (start_ticks + end_ticks) / 2; // TODO: all values could be multipled by 2 for better precision
+            LONGLONG mid_point_ns = (start_ns + end_ns) / 2; // TODO: all values could be multipled by 2 for better precision
 
             // shortest encountered duration
-            if (min_scanline_duration == 0 || duration < min_scanline_duration) {
-                min_scanline_duration = duration;
+            if (min_scanline_duration_ns == 0 || duration_ns < min_scanline_duration_ns) {
+                min_scanline_duration_ns = duration_ns;
             }
-            if (duration < 2 * min_scanline_duration) {
-                double expected_scanline = expected_current_scanline(mid_point, current_display_timing.total_height, false);
+            if (duration_ns < 2 * min_scanline_duration_ns) {
+                double expected_scanline = expected_current_scanline_ns(mid_point_ns, current_display_timing.total_height, false);
                 {
                     std::ostringstream oss;
-                    oss << "Scanline diff: " << abs(scan.ScanLine - expected_current_scanline(mid_point, current_display_timing.total_height, true)) << " ticks";
+                    oss << "Scanline diff: " << abs(scan.ScanLine - expected_current_scanline_ns(mid_point_ns, current_display_timing.total_height, true)) << " ticks";
                     LogInfo(oss.str().c_str());
                 }
                 double new_correction_lines_delta = scan.ScanLine - expected_scanline; 

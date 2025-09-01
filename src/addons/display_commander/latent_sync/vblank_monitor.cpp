@@ -90,23 +90,14 @@ DisplayTimingInfo GetDisplayTimingInfoForWindow(HWND hwnd) {
             return timing;
         }
     }
-
-    // If no match found, return the first available timing info
     if (!timing_info.empty()) {
-        
         return timing_info[0];
     }
-
     // Return empty struct if nothing is available
     return DisplayTimingInfo{};
 }
 
-VBlankMonitor::VBlankMonitor() {
-    m_last_state_change = std::chrono::steady_clock::now();
-    m_vblank_start_time = m_last_state_change;
-    m_active_start_time = m_last_state_change;
-
-}
+VBlankMonitor::VBlankMonitor() {}
 
 VBlankMonitor::~VBlankMonitor() {
     StopMonitoring();
@@ -485,64 +476,5 @@ void VBlankMonitor::MonitoringThread() {
     ::LogInfo("VBlank monitoring thread: STOPPED - no longer monitoring scanlines");
 }
 
-double VBlankMonitor::GetVBlankPercentage() const {
-    auto total_time = m_total_vblank_time + m_total_active_time;
-    if (total_time.count() == 0) return 0.0;
-    
-    return (static_cast<double>(m_total_vblank_time.count()) / total_time.count()) * 100.0;
-}
-
-std::chrono::milliseconds VBlankMonitor::GetAverageVBlankDuration() const {
-    if (m_vblank_count.load() == 0) return std::chrono::milliseconds(0);
-    
-    auto avg_ticks = m_total_vblank_time.count() / m_vblank_count.load();
-    return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::duration(avg_ticks));
-}
-
-std::chrono::milliseconds VBlankMonitor::GetAverageActiveDuration() const {
-    auto active_count = m_state_change_count.load() - m_vblank_count.load();
-    if (active_count <= 0) return std::chrono::milliseconds(0);
-    
-    auto avg_ticks = m_total_active_time.count() / active_count;
-    return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::duration(avg_ticks));
-}
-
-std::string VBlankMonitor::GetDetailedStatsString() const {
-    std::ostringstream oss;
-    
-    auto total_time = m_total_vblank_time + m_total_active_time;
-    auto total_ms = std::chrono::duration_cast<std::chrono::milliseconds>(total_time).count();
-    
-    oss << "VBlank Monitor Statistics:\n";
-    oss << "  Total monitoring time: " << total_ms << " ms\n";
-    oss << "  VBlank count: " << m_vblank_count.load() << "\n";
-    oss << "  State changes: " << m_state_change_count.load() << "\n";
-    oss << "  VBlank percentage: " << std::fixed << std::setprecision(2) << GetVBlankPercentage() << "%\n";
-    oss << "  Avg VBlank duration: " << GetAverageVBlankDuration().count() << " ms\n";
-    oss << "  Avg Active duration: " << GetAverageActiveDuration().count() << " ms\n";
-    
-    return oss.str();
-}
-
-std::string VBlankMonitor::GetLastTransitionInfo() const {
-    std::ostringstream oss;
-    
-    {
-        std::lock_guard<std::mutex> lock(m_stats_mutex);
-        
-        if (m_last_vblank_duration.count() > 0) {
-            auto vblank_ms = std::chrono::duration_cast<std::chrono::microseconds>(m_last_vblank_duration).count() / 1000.0;
-            oss << "Last VBlank duration: " << std::fixed << std::setprecision(2) << vblank_ms << " ms";
-        }
-        
-        if (m_last_active_duration.count() > 0) {
-            if (oss.str().length() > 0) oss << " | ";
-            auto active_ms = std::chrono::duration_cast<std::chrono::microseconds>(m_last_active_duration).count() / 1000.0;
-            oss << "Last Active duration: " << std::fixed << std::setprecision(2) << active_ms << " ms";
-        }
-    }
-    
-    return oss.str();
-}
 
 } // namespace dxgi::fps_limiter

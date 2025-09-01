@@ -27,25 +27,37 @@ static LONGLONG timer_res_qpc_frequency = 0;
 static bool mwaitx_supported_cached = false;
 static bool mwaitx_support_checked = false;
 
-// Check if MWAITX instruction is supported (cached result)
-bool support_mwaitx()
+
+bool support_mwaitx (void)
 {
     if (mwaitx_support_checked)
-        return mwaitx_supported_cached;
-
-    try
+      return mwaitx_supported_cached;
+    mwaitx_supported_cached = true;
+    auto handler = AddVectoredExceptionHandler (1, [](_EXCEPTION_POINTERS *ExceptionInfo)->LONG
     {
-        static __declspec(align(64)) uint64_t monitor = 0ULL;
-        // Test MWAITX instruction with minimal timeout
-        _mm_monitorx(&monitor, 0, 0);
-        _mm_mwaitx(0x2, 0, 1);
-        mwaitx_supported_cached = true;
-    }
-    catch(...) {}
-    mwaitx_support_checked = true;
+        if (ExceptionInfo->ExceptionRecord->ExceptionCode == EXCEPTION_ILLEGAL_INSTRUCTION)
+        {
+          mwaitx_supported_cached = false;
+        }
+
+        #ifdef _AMD64_
+        ExceptionInfo->ContextRecord->Rip++;
+        #else
+        ExceptionInfo->ContextRecord->Eip++;
+        #endif
+
+        return EXCEPTION_CONTINUE_EXECUTION;
+    });
+
+    static __declspec(align(64)) uint64_t monitor = 0ULL;
+    _mm_monitorx(&monitor, 0, 0);
+    _mm_mwaitx(0x2,      0, 1);
+
+    RemoveVectoredExceptionHandler (handler);
 
     return mwaitx_supported_cached;
 }
+
 
 // Reset MWAITX support cache (useful for testing or if CPU capabilities change)
 void reset_mwaitx_cache()

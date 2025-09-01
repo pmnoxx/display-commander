@@ -340,3 +340,6 @@ enum SwapchainEventIndex {
 
 // Unsorted TODO: Add in correct order above
 extern std::atomic<LONGLONG> g_present_start_time_qpc;
+
+#define QPC_TO_NS 100
+#define QPC_PER_SECOND 10000000

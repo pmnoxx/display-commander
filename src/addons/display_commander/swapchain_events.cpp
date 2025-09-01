@@ -90,28 +90,12 @@ void OnBeginRenderPass(reshade::api::command_list* cmd_list, uint32_t count, con
     // Increment event counter
     g_swapchain_event_counters[SWAPCHAIN_EVENT_BEGIN_RENDER_PASS].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
-    
-    // Call custom FPS limiter frame begin if enabled
-    if (s_fps_limiter_mode.load() == FPS_LIMITER_MODE_CUSTOM) {
-        if (dxgi::fps_limiter::g_customFpsLimiterManager) {
-            auto& limiter = dxgi::fps_limiter::g_customFpsLimiterManager->GetFpsLimiter();
-            limiter.OnFrameBegin();
-        }
-    }
 }
 
 void OnEndRenderPass(reshade::api::command_list* cmd_list) {
     // Increment event counter
     g_swapchain_event_counters[SWAPCHAIN_EVENT_END_RENDER_PASS].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
-    
-    // Call custom FPS limiter frame end if enabled
-    if (s_fps_limiter_mode.load() == FPS_LIMITER_MODE_CUSTOM) {
-        if (dxgi::fps_limiter::g_customFpsLimiterManager) {
-            auto& limiter = dxgi::fps_limiter::g_customFpsLimiterManager->GetFpsLimiter();
-            limiter.OnFrameEnd();
-        }
-    }
 }
 
 
@@ -369,8 +353,7 @@ void HandleFpsLimiter() {
       if (dxgi::fps_limiter::g_customFpsLimiterManager) {
         auto& limiter = dxgi::fps_limiter::g_customFpsLimiterManager->GetFpsLimiter();
         if (target_fps > 0.0f) {
-          limiter.SetTargetFps(target_fps);
-          limiter.LimitFrameRate();
+          limiter.LimitFrameRate(target_fps);
         }
       }
       break;

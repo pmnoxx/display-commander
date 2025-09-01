@@ -60,7 +60,9 @@ MainNewTabSettings::MainNewTabSettings()
 }
 
 void MainNewTabSettings::LoadSettings() {
-    LoadTabSettings(all_settings_);
+    LogInfo("MainNewTabSettings::LoadSettings() called");
+    LoadTabSettings(all_settings_);;
+    LogInfo("MainNewTabSettings::LoadSettings() completed");
 }
 
 std::vector<SettingBase*> MainNewTabSettings::GetAllSettings() {

@@ -101,6 +101,11 @@ bool LatentSyncLimiter::UpdateDisplayBindingFromWindow(HWND hwnd) {
 void LatentSyncLimiter::LimitFrameRate() {
     if (!m_enabled) return;
 
+    if (true) {
+        // DISABLED
+        return;
+    }
+
     // If no target FPS set, simply wait for one vblank to pace to refresh
     const bool cap_to_fps = (m_target_fps > 0.0f);
 
@@ -117,6 +122,16 @@ void LatentSyncLimiter::LimitFrameRate() {
     LONGLONG total_height = current_display_timing.total_height;
     LONGLONG active_height = current_display_timing.active_height;
     LONGLONG mid_vblank_scanline = (active_height + total_height) / 2;
+
+    if (total_height < 100 || active_height < 100 || mid_vblank_scanline < 100) {
+        // Error
+        std::ostringstream oss;
+        oss << "total_height: " << total_height;
+        oss << " active_height: " << active_height;
+        oss << " mid_vblank_scanline: " << mid_vblank_scanline;
+        LogInfo(oss.str().c_str());
+        return;
+    }
 
     LONGLONG now_ticks = get_now_qpc();
 

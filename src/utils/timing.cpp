@@ -33,20 +33,16 @@ bool support_mwaitx()
     if (mwaitx_support_checked)
         return mwaitx_supported_cached;
 
-    mwaitx_support_checked = true;
-    mwaitx_supported_cached = true;
-    
     try
     {
         static __declspec(align(64)) uint64_t monitor = 0ULL;
         // Test MWAITX instruction with minimal timeout
         _mm_monitorx(&monitor, 0, 0);
         _mm_mwaitx(0x2, 0, 1);
+        mwaitx_supported_cached = true;
     }
-    catch(...)
-    {
-        mwaitx_supported_cached = false;
-    }
+    catch(...) {}
+    mwaitx_support_checked = true;
 
     return mwaitx_supported_cached;
 }

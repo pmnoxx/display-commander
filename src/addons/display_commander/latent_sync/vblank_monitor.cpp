@@ -113,11 +113,13 @@ void VBlankMonitor::StartMonitoring() {
     m_monitoring = true;
     
     LogMessage("VBlank monitoring thread started");
+    LogInfo("VBlank monitoring thread: StartMonitoring() called - thread created and started");
 }
 
 void VBlankMonitor::StopMonitoring() {
     if (!m_monitoring.load()) return;
     
+    LogInfo("VBlank monitoring thread: StopMonitoring() called - stopping thread...");
     m_should_stop = true;
     if (m_monitor_thread.joinable()) {
         m_monitor_thread.join();
@@ -125,6 +127,7 @@ void VBlankMonitor::StopMonitoring() {
     m_monitoring = false;
     
     LogMessage("VBlank monitoring thread stopped");
+    LogInfo("VBlank monitoring thread: StopMonitoring() completed - thread joined and stopped");
 }
 
 bool VBlankMonitor::BindToDisplay(HWND hwnd) {
@@ -333,7 +336,10 @@ double expected_current_scanline(LONGLONG now_ticks, int total_height, bool add_
 
 void VBlankMonitor::MonitoringThread() {
     ::LogInfo("VBlank monitoring thread: entering main loop");
+    ::LogInfo("VBlank monitoring thread: STARTED - monitoring scanlines for frame pacing");
     
+    // Note: This thread is started when VBlank Scanline Sync mode (FPS mode 1) is enabled
+    ::LogInfo("VBlank monitoring thread: This thread runs when VBlank Scanline Sync mode is active");
 
     if (!EnsureAdapterBinding()) {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -508,6 +514,7 @@ void VBlankMonitor::MonitoringThread() {
     }
     
     ::LogInfo("VBlank monitoring thread: exiting main loop");
+    ::LogInfo("VBlank monitoring thread: STOPPED - no longer monitoring scanlines");
 }
 
 double VBlankMonitor::GetVBlankPercentage() const {

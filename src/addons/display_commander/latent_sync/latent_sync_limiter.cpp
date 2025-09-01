@@ -25,9 +25,9 @@ static inline FARPROC LoadProcCached(FARPROC& slot, const wchar_t* mod, const ch
 }
 
 LatentSyncLimiter::LatentSyncLimiter() {
-    // Create and automatically start the VBlank monitor
+    // Create VBlank monitor but don't start it yet - it will be started when SetEnabled(true) is called
     m_vblank_monitor = std::make_unique<VBlankMonitor>();
-    m_vblank_monitor->StartMonitoring();
+    // Don't start monitoring here - it will be started when the limiter is enabled
 }
 
 LatentSyncLimiter::~LatentSyncLimiter() {

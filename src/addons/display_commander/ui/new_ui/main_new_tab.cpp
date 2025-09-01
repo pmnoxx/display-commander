@@ -13,6 +13,7 @@
 #include <cmath>
 #include "../ui_display_tab.hpp"
 #include <deps/imgui/imgui.h>
+#include "../../latent_sync/latent_sync_limiter.hpp"
 
 
 namespace ui::new_ui {
@@ -538,6 +539,33 @@ void DrawDisplaySettings() {
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Scanline offset for latent sync (-1000 to 1000). This defines the offset from the threshold where frame pacing is active.");
+        }
+        
+        // VBlank Monitor Status (only visible if latent sync is enabled and FPS limit > 0)
+        if (dxgi::fps_limiter::g_customFpsLimiterManager) {
+            auto& latent = dxgi::fps_limiter::g_customFpsLimiterManager->GetLatentLimiter();
+            if (latent.IsEnabled() && latent.IsVBlankMonitoringActive()) {
+                ImGui::Spacing();
+                ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✓ VBlank Monitor: ACTIVE");
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip("VBlank monitoring thread is running and collecting scanline data for frame pacing.");
+                }
+                
+                // Show VBlank statistics if available
+                uint64_t vblank_count = latent.GetVBlankCount();
+                uint64_t state_change_count = latent.GetStateChangeCount();
+                double vblank_percentage = latent.GetVBlankPercentage();
+                
+                ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "  VBlank Events: %llu", vblank_count);
+                ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "  State Changes: %llu", state_change_count);
+                ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "  VBlank Time: %.1f%%", vblank_percentage);
+            } else if (latent.IsEnabled()) {
+                ImGui::Spacing();
+                ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "⚠ VBlank Monitor: STARTING...");
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip("VBlank monitoring is enabled but the monitoring thread is still starting up.");
+                }
+            }
         }
     }
 

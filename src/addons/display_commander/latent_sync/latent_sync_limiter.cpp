@@ -10,6 +10,7 @@
 static uint64_t s_last_scan_time = 0;
 
 
+HANDLE m_timer_handle = nullptr;
 
 
 namespace dxgi::fps_limiter {
@@ -141,26 +142,17 @@ void LatentSyncLimiter::LimitFrameRate() {
 
     double delta_wait_time = diff_lines * (1.0 * ticks_per_refresh.load() / total_height);
 
-    LONGLONG wait_target = now_ticks + delta_wait_time;
+    LONGLONG wait_target = now_ticks + delta_wait_time + ticks_per_refresh.load() * (s_vblank_sync_divisor.load() - 1);
 
 
-    if (delta_wait_time > 10000000) {
+    if (delta_wait_time > QPC_PER_SECOND) {
         std::ostringstream oss;
         oss << "LatentSyncLimiter::LimitFrameRate: ";
         oss << "delta_wait_time: " << delta_wait_time;
         LogInfo(oss.str().c_str());
         return;
     }
-
-    delta_wait_time += ticks_per_refresh.load() * (s_vblank_sync_divisor - 1);
-
-    LONGLONG start_ticks = now_ticks;
-    while (true) {
-        now_ticks = get_now_qpc();
-        if (now_ticks - start_ticks > delta_wait_time) {
-            break;
-        }
-    }
+    utils::wait_until_qpc(wait_target, m_timer_handle);
 }
 
 void LatentSyncLimiter::OnPresentEnd() {

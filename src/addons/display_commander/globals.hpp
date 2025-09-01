@@ -268,8 +268,8 @@ extern std::atomic<bool> s_enable_mute_unmute_shortcut;
 // Performance optimization settings
 extern std::atomic<bool> g_flush_before_present;
 
-// Sleep delay after present (milliseconds) - 0ms to 10ms range
-extern std::atomic<float> s_sleep_after_present_ms;
+// Sleep delay after present as percentage of frame time - 0% to 100%
+extern std::atomic<float> s_sleep_after_present_frame_time_percentage;
 
 // Monitoring thread
 extern std::atomic<bool> g_monitoring_thread_running;
@@ -329,3 +329,6 @@ enum SwapchainEventIndex {
 
 // Unsorted TODO: Add in correct order above
 extern std::atomic<LONGLONG> g_present_start_time_ns;
+
+// Present pacing delay as percentage of frame time - 0% to 100%
+extern std::atomic<float> s_present_pacing_delay_percentage;

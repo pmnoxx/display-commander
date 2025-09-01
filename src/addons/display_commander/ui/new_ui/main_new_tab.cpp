@@ -429,14 +429,30 @@ void DrawDisplaySettings() {
         }
     }
 
-    // Sleep After Present slider (persisted)
+    // Present Pacing Delay slider (persisted)
     {
-        float current_sleep = g_main_new_tab_settings.sleep_after_present_ms.GetValue();
-        if (SliderFloatSetting(g_main_new_tab_settings.sleep_after_present_ms, "Sleep After Present", "%.1f ms")) {
+        ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "Present Pacing Delay:");
+        ImGui::SameLine();
+        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Improves frame timing consistency");
+        
+        ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Adds a small delay after present to smooth frame pacing and reduce stuttering");
+        
+        float current_delay = g_main_new_tab_settings.present_pacing_delay_percentage.GetValue();
+        if (SliderFloatSetting(g_main_new_tab_settings.present_pacing_delay_percentage, "Present Pacing Delay", "%.1f%%")) {
             // The setting is automatically synced via FloatSettingRef
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Add a small delay after present to reduce CPU usage. Range: 0ms to 10ms. Default: 0ms (no sleep).");
+            ImGui::SetTooltip(
+                "Present Pacing Delay: Adds a small delay after present to improve frame pacing.\n\n"
+                "How it reduces latency:\n"
+                "• Prevents CPU from immediately starting next frame\n"
+                "• Allows GPU to complete current frame processing\n"
+                "• Creates more consistent frame timing\n"
+                "• Reduces frame time variance (stuttering)\n\n"
+                "Range: 0%% to 100%%. Default: 0%% (no delay).\n"
+                "Higher values = more consistent timing but slightly higher latency.\n"
+                "Scales automatically with frame rate."
+            );
         }
     }
 
@@ -903,6 +919,28 @@ void DrawImportantInfo() {
     ImGui::TextUnformatted(oss.str().c_str());
     ImGui::SameLine();
     ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "(smoothed)");
+
+    // Simulation Start to Present Latency Display
+    oss.str("");
+    oss.clear();
+    // Calculate latency: frame_time - sleep duration after onPresent
+    float current_fps = 0.0f;
+    const uint32_t head = ::g_perf_ring_head.load(std::memory_order_acquire);
+    if (head > 0) {
+        const uint32_t last_idx = (head - 1) & (::kPerfRingCapacity - 1);
+        const ::PerfSample& last_sample = ::g_perf_ring[last_idx];
+        current_fps = last_sample.fps;
+    }
+    
+    if (current_fps > 0.0f) {
+        float frame_time_ms = 1000.0f / current_fps;
+        float sleep_duration_ms = static_cast<float>(::fps_sleep_after_on_present_ns.load()) / utils::NS_TO_MS;
+        float latency_ms = frame_time_ms - sleep_duration_ms;
+        oss << "Sim Start to Present Latency: " << std::fixed << std::setprecision(3) << latency_ms << " ms";
+        ImGui::TextUnformatted(oss.str().c_str());
+        ImGui::SameLine();
+        ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "(frame_time - sleep_duration)");
+    }
 
     // Flip State Display (renamed from DXGI Composition)
     const char* flip_state_str = "Unknown";

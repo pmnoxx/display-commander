@@ -203,5 +203,8 @@ std::atomic<uint32_t> g_swapchain_event_counters[40] = {}; // Array for all On* 
 
 std::atomic<uint32_t> g_swapchain_event_total_count{0}; // Total events across all types
 
-// Sleep delay after present (milliseconds) - 0ms to 10ms range
-std::atomic<float> s_sleep_after_present_ms{0.0f}; // Default to 0ms (no sleep)
+// Present pacing delay as percentage of frame time - 0% to 100%
+// This adds a delay after present to improve frame pacing and reduce CPU usage
+// Higher values create more consistent frame timing but may increase latency
+// 0% = no delay, 100% = full frame time delay between simulation start and present
+std::atomic<float> s_present_pacing_delay_percentage{0.0f}; // Default to 0% (no delay)

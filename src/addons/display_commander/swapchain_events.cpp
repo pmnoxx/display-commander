@@ -16,14 +16,14 @@
 #include "latent_sync/latent_sync_limiter.hpp"
 #include "swapchain_events_power_saving.hpp"
 
-static std::atomic<LONGLONG> g_present_start_time_qpc{0};
+std::atomic<LONGLONG> g_present_start_time_ns{0};
 std::atomic<LONGLONG> g_present_duration_ns{0};
 
 // Render start time tracking
-std::atomic<LONGLONG> g_submit_start_time_qpc{0};
+std::atomic<LONGLONG> g_submit_start_time_ns{0};
 
 // Present after end time tracking
-std::atomic<LONGLONG> g_present_after_end_time{0};
+std::atomic<LONGLONG> g_present_after_end_time_ns{0};
 
 // Simulation duration tracking
 std::atomic<LONGLONG> g_simulation_duration_ns{0};
@@ -38,7 +38,7 @@ std::atomic<LONGLONG> fps_sleep_after_on_present_ns{0};
 std::atomic<LONGLONG> g_reshade_overhead_duration_ns{0};
 
 // Render submit end time tracking (QPC)
-std::atomic<LONGLONG> g_render_submit_end_time_qpc{0};
+std::atomic<LONGLONG> g_render_submit_end_time_ns{0};
 
 // Render submit duration tracking (nanoseconds)
 std::atomic<LONGLONG> g_render_submit_duration_ns{0};
@@ -47,13 +47,12 @@ std::atomic<int> l_frame_count{0};
 
 void HandleRenderStartAndEndTimes() {
   LONGLONG expected = 0;
-  if (g_submit_start_time_qpc.load() == 0) {
-    LONGLONG now = utils::get_now_qpc();
-    LONGLONG present_after_end_time = g_present_after_end_time.load();
-    if (present_after_end_time > 0 && g_submit_start_time_qpc.compare_exchange_strong(expected, now)) {
+  if (g_submit_start_time_ns.load() == 0) {
+    LONGLONG now_ns = utils::get_now_ns();
+    LONGLONG present_after_end_time_ns = g_present_after_end_time_ns.load();
+    if (present_after_end_time_ns > 0 && g_submit_start_time_ns.compare_exchange_strong(expected, now_ns)) {
         // Compare to g_present_after_end_time
-        #define QPC_TO_NS 100
-        LONGLONG g_simulation_duration_ns_new = (now - present_after_end_time) * QPC_TO_NS;
+        LONGLONG g_simulation_duration_ns_new = (now_ns - present_after_end_time_ns);
         int alpha = 64;
         g_simulation_duration_ns.store( (1 * g_simulation_duration_ns_new + (alpha - 1) * g_simulation_duration_ns.load()) / alpha);
     }
@@ -61,23 +60,23 @@ void HandleRenderStartAndEndTimes() {
 }
 
 void HandleEndRenderSubmit() {
-  LONGLONG now = utils::get_now_qpc();
-  g_render_submit_end_time_qpc.store(now);
-  if (g_submit_start_time_qpc.load() > 0) {
-    LONGLONG g_render_submit_duration_ns_new = (now - g_submit_start_time_qpc.load()) * QPC_TO_NS;
+  LONGLONG now_ns = utils::get_now_ns();
+  g_render_submit_end_time_ns.store(now_ns);
+  if (g_submit_start_time_ns.load() > 0) {
+    LONGLONG g_render_submit_duration_ns_new = (now_ns - g_submit_start_time_ns.load());
     int alpha = 64;
     g_render_submit_duration_ns.store( (1 * g_render_submit_duration_ns_new + (alpha - 1) * g_render_submit_duration_ns.load()) / alpha);
   }
 }
 
 void HandleOnPresentEnd() {
-  LONGLONG now = utils::get_now_qpc();
+  LONGLONG now_ns = utils::get_now_ns();
 
-  g_present_after_end_time.store(now);
-  g_submit_start_time_qpc.store(0);
+  g_present_after_end_time_ns.store(now_ns);
+  g_submit_start_time_ns.store(0);
 
-  if (g_render_submit_end_time_qpc.load() > 0) {
-    LONGLONG g_reshade_overhead_duration_ns_new = (now - g_render_submit_end_time_qpc.load()) * QPC_TO_NS;
+  if (g_render_submit_end_time_ns.load() > 0) {
+    LONGLONG g_reshade_overhead_duration_ns_new = (now_ns - g_render_submit_end_time_ns.load());
     int alpha = 64;
     g_reshade_overhead_duration_ns.store( (1 * g_reshade_overhead_duration_ns_new + (alpha - 1) * g_reshade_overhead_duration_ns.load()) / alpha);
   }
@@ -310,10 +309,10 @@ void OnPresentUpdateAfter(  reshade::api::command_queue* /*queue*/, reshade::api
   g_swapchain_event_total_count.fetch_add(1);
 
   // g_present_duration
-  LONGLONG now_ticks = utils::get_now_qpc();
-  double g_present_duration_new = (now_ticks - g_present_start_time_qpc.load()) * QPC_TO_NS; // Convert QPC ticks to seconds (QPC frequency is typically 10MHz)
+  LONGLONG now_ns = utils::get_now_ns();
+  double g_present_duration_new_ns = (now_ns - g_present_start_time_ns.load()); // Convert QPC ticks to seconds (QPC frequency is typically 10MHz)
   double alpha = 64;
-  g_present_duration_ns.store((1 * g_present_duration_new + (alpha - 1) * g_present_duration_ns.load()) / alpha);
+  g_present_duration_ns.store((1 * g_present_duration_new_ns + (alpha - 1) * g_present_duration_ns.load()) / alpha);
   
   // Mark Present end for latent sync limiter timing
   if (dxgi::latent_sync::g_latentSyncManager) {
@@ -332,7 +331,7 @@ void flush_command_queue() {
 
 void HandleFpsLimiter() {
   flush_command_queue(); // todo only if sleep is happening()
-  LONGLONG handle_fps_limiter_start_time_qpc = utils::get_now_qpc();
+  LONGLONG handle_fps_limiter_start_time_ns = utils::get_now_ns();
   // Use background flag computed by monitoring thread; avoid GetForegroundWindow here
   const bool is_background = g_app_in_background.load(std::memory_order_acquire);
   
@@ -372,11 +371,11 @@ void HandleFpsLimiter() {
     }
   }
 
-  LONGLONG handle_fps_limiter_start_end_time_qpc = utils::get_now_qpc();
-  g_present_start_time_qpc.store(handle_fps_limiter_start_end_time_qpc);
+  LONGLONG handle_fps_limiter_start_end_time_ns = utils::get_now_ns();
+  g_present_start_time_ns.store(handle_fps_limiter_start_end_time_ns);
 
   #define QPC_TO_NS 100
-  LONGLONG handle_fps_limiter_start_duration_ns = (handle_fps_limiter_start_end_time_qpc - handle_fps_limiter_start_time_qpc) * QPC_TO_NS;
+  LONGLONG handle_fps_limiter_start_duration_ns = handle_fps_limiter_start_end_time_ns - handle_fps_limiter_start_time_ns;
   fps_sleep_before_on_present_ns.store((handle_fps_limiter_start_duration_ns + (63) * fps_sleep_before_on_present_ns.load()) / 64);
 }
 

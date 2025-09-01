@@ -220,7 +220,7 @@ extern std::atomic<LONGLONG> g_reshade_overhead_duration_ns;
 extern std::atomic<LONGLONG> g_render_submit_duration_ns;
 
 // Render start time tracking
-extern std::atomic<LONGLONG> g_submit_start_time_qpc;
+extern std::atomic<LONGLONG> g_submit_start_time_ns;
 
 // Backbuffer dimensions
 extern std::atomic<int> g_last_backbuffer_width;
@@ -339,4 +339,4 @@ enum SwapchainEventIndex {
 };
 
 // Unsorted TODO: Add in correct order above
-extern std::atomic<LONGLONG> g_present_start_time_qpc;
+extern std::atomic<LONGLONG> g_present_start_time_ns;

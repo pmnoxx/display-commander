@@ -14,9 +14,9 @@ HANDLE m_timer_handle = nullptr;
 
 
 namespace dxgi::fps_limiter {
-    std::atomic<LONGLONG> ticks_per_refresh{0};
+    std::atomic<LONGLONG> ns_per_refresh{0};
     std::atomic<double> correction_lines_delta{0};
-    std::atomic<double> m_on_present_ticks{0.0};
+    std::atomic<double> m_on_present_ns{0.0};
 
 static inline FARPROC LoadProcCached(FARPROC& slot, const wchar_t* mod, const char* name) {
     if (slot != nullptr) return slot;
@@ -117,7 +117,7 @@ void LatentSyncLimiter::LimitFrameRate() {
     LONGLONG active_height = g_latent_sync_active_height.load();
     LONGLONG mid_vblank_scanline = (active_height + total_height) / 2;
 
-    if (total_height < 100 || active_height < 100 || mid_vblank_scanline < 100) {
+    if (total_height < 100 || active_height < 100 || mid_vblank_scanline < 100 ||  ns_per_refresh.load() == 0) {
         // Error
         std::ostringstream oss;
         oss << "LatentSyncLimiter::LimitFrameRate: ";
@@ -129,46 +129,61 @@ void LatentSyncLimiter::LimitFrameRate() {
     }
 
     
-    LONGLONG now_ticks = utils::get_now_qpc();
+    LONGLONG now_ns = utils::get_now_ns();
 
-    extern double expected_current_scanline(LONGLONG now_ticks, int total_height, bool add_correction);
-    double expected_scanline = expected_current_scanline(now_ticks, total_height, true);
-    double target_line = mid_vblank_scanline - (total_height * m_on_present_ticks.load()) / ticks_per_refresh.load() - 80.0 + s_scanline_offset.load();
+    extern double expected_current_scanline_ns(LONGLONG now_ns, LONGLONG total_height, bool add_correction);
+    double expected_scanline = expected_current_scanline_ns(now_ns, total_height, true);
+    double target_line = mid_vblank_scanline - (total_height * m_on_present_ns.load()) / ns_per_refresh.load() - 60.0 + s_scanline_offset.load();
 
     double diff_lines = target_line - expected_scanline;
     if (diff_lines < 0) {
         diff_lines += total_height;
     }
 
-    double delta_wait_time = diff_lines * (1.0 * ticks_per_refresh.load() / total_height);
+    double delta_wait_time_ns = diff_lines * (1.0 * ns_per_refresh.load() / total_height);
 
-    LONGLONG wait_target_qpc = now_ticks + delta_wait_time + ticks_per_refresh.load() * (s_vblank_sync_divisor.load() - 1);
+    LONGLONG wait_target_ns = now_ns + delta_wait_time_ns + ns_per_refresh.load() * (s_vblank_sync_divisor.load() - 1);
 
+    {
+        std::ostringstream oss;
+        oss << "XXX LatentSyncLimiter::LimitFrameRate: ";
+        oss << "diff_lines: " << diff_lines;
+        oss << "delta_wait_time_ns: " << delta_wait_time_ns;
+        oss << "wait_target_ns: " << wait_target_ns;
+        oss << "total_height: " << total_height;
+        oss << "m_on_present_ns: " << m_on_present_ns.load();
+        oss << "ns_per_refresh: " << ns_per_refresh.load();
+        oss << "s_vblank_sync_divisor: " << s_vblank_sync_divisor.load();
+        oss << "s_scanline_offset: " << s_scanline_offset.load();
+        oss << "expected_scanline: " << expected_scanline;
+        oss << "target_line: " << target_line;
+        LogInfo(oss.str().c_str());
+    }
 
-    if (delta_wait_time > utils::QPC_PER_SECOND) {
+    if (delta_wait_time_ns > utils::SEC_TO_NS) {
         std::ostringstream oss;
         oss << "LatentSyncLimiter::LimitFrameRate: ";
-        oss << "delta_wait_time: " << delta_wait_time;
+        oss << "delta_wait_time_ns: " << delta_wait_time_ns << "ns";
         LogInfo(oss.str().c_str());
         return;
     }
-    utils::wait_until_qpc(wait_target_qpc, m_timer_handle);
+    utils::wait_until_ns(wait_target_ns, m_timer_handle);
 }
 
 void LatentSyncLimiter::OnPresentEnd() {
-    LONGLONG now = utils::get_now_qpc();
-    LONGLONG dt = now - g_present_start_time_qpc.load();
+    LONGLONG now_ns = utils::get_now_ns();
+    LONGLONG dt_ns = now_ns - g_present_start_time_ns.load();
     // Exponential moving average of Present duration in ticks
     const double alpha = 0.10; // smooth but responsive
-    if (m_avg_present_ticks <= 0.0)
-        m_avg_present_ticks = static_cast<double>(dt);
+    if (m_avg_present_ns <= 0.0)
+        m_avg_present_ns = static_cast<double>(dt_ns);
     else
-        m_avg_present_ticks = alpha * static_cast<double>(dt) + (1.0 - alpha) * m_avg_present_ticks;
+        m_avg_present_ns = alpha * static_cast<double>(dt_ns) + (1.0 - alpha) * m_avg_present_ns;
 
     std::ostringstream oss;
-    oss << "Present duration: " << m_avg_present_ticks / 10000.0 << " ms " << m_avg_present_ticks << " ticks";
+    oss << "Present duration: " << m_avg_present_ns / 10000.0 << " ms " << m_avg_present_ns << "ns";
     LogInfo(oss.str().c_str());
-    m_on_present_ticks.store(m_avg_present_ticks);   
+    m_on_present_ns.store(m_avg_present_ns);   
 }
 
 void LatentSyncLimiter::StartVBlankMonitoring() {

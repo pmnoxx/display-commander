@@ -68,7 +68,7 @@ private:
     FARPROC m_pfnGetScanLine = nullptr;                   // "D3DKMTGetScanLine"
 
     // Present timing state
-    double   m_avg_present_ticks = 0.0; // exponentially weighted average of Present duration (ticks)
+    double   m_avg_present_ns = 0.0; // exponentially weighted average of Present duration (ticks)
 
 
 };

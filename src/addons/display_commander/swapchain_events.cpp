@@ -1,5 +1,4 @@
 #include "addon.hpp"
-#include "reflex/reflex_management.hpp"
 #include "audio/audio_management.hpp"
 #include <dxgi.h>
 #include <dxgi1_4.h>
@@ -93,18 +92,11 @@ void OnBeginRenderPass(reshade::api::command_list* cmd_list, uint32_t count, con
     g_swapchain_event_total_count.fetch_add(1);
     
     // Call custom FPS limiter frame begin if enabled
-    if (s_custom_fps_limiter_enabled.load()) {
+    if (s_fps_limiter_mode.load() == FPS_LIMITER_MODE_CUSTOM) {
         if (dxgi::fps_limiter::g_customFpsLimiterManager) {
             auto& limiter = dxgi::fps_limiter::g_customFpsLimiterManager->GetFpsLimiter();
-            if (limiter.IsEnabled()) {
-                limiter.OnFrameBegin();
-            }
+            limiter.OnFrameBegin();
         }
-    }
-    
-    // Call Reflex manager callback if enabled
-    if (s_reflex_enabled.load() && g_reflexManager && g_reflexManager->IsAvailable()) {
-        g_reflexManager->OnBeginRenderPass(cmd_list, count, rts, ds);
     }
 }
 
@@ -114,18 +106,11 @@ void OnEndRenderPass(reshade::api::command_list* cmd_list) {
     g_swapchain_event_total_count.fetch_add(1);
     
     // Call custom FPS limiter frame end if enabled
-    if (s_custom_fps_limiter_enabled.load()) {
+    if (s_fps_limiter_mode.load() == FPS_LIMITER_MODE_CUSTOM) {
         if (dxgi::fps_limiter::g_customFpsLimiterManager) {
             auto& limiter = dxgi::fps_limiter::g_customFpsLimiterManager->GetFpsLimiter();
-            if (limiter.IsEnabled()) {
-                limiter.OnFrameEnd();
-            }
+            limiter.OnFrameEnd();
         }
-    }
-    
-    // Call Reflex manager callback if enabled
-    if (s_reflex_enabled.load() && g_reflexManager && g_reflexManager->IsAvailable()) {
-        g_reflexManager->OnEndRenderPass(cmd_list);
     }
 }
 
@@ -333,17 +318,6 @@ void OnInitSwapchain(reshade::api::swapchain* swapchain, bool resize) {
   LogDebug(resize ? "Schedule auto-apply on swapchain init (resize)"
                   : "Schedule auto-apply on swapchain init");
   
-  // Note: Minimize hook removed - use continuous monitoring instead
-
-  // Set Reflex sleep mode and latency markers if enabled
-  if (s_reflex_enabled.load()) {
-    SetReflexSleepMode(swapchain);
-    SetReflexLatencyMarkers(swapchain);
-    // Also call sleep to start the frame properly
-    if (g_reflexManager && g_reflexManager->IsAvailable()) {
-      g_reflexManager->CallSleep(swapchain);
-    }
-  }
 }
 
 void OnPresentUpdateAfter(  reshade::api::command_queue* /*queue*/, reshade::api::swapchain* swapchain) {
@@ -358,22 +332,12 @@ void OnPresentUpdateAfter(  reshade::api::command_queue* /*queue*/, reshade::api
   g_present_duration_ns.store((1 * g_present_duration_new + (alpha - 1) * g_present_duration_ns.load()) / alpha);
   
   // Mark Present end for latent sync limiter timing
-  if (s_custom_fps_limiter_enabled.load()) {
-    if (dxgi::fps_limiter::g_customFpsLimiterManager) {
-      if (s_fps_limiter_mode.load() == 1) {
-        auto& latent = dxgi::fps_limiter::g_customFpsLimiterManager->GetLatentLimiter();
-        if (latent.IsEnabled()) {
-          latent.OnPresentEnd();
-        }
-      }
+  if (s_fps_limiter_mode.load() == FPS_LIMITER_MODE_LATENT_SYNC) {
+    if (dxgi::latent_sync::g_latentSyncManager) {
+      auto& latent = dxgi::latent_sync::g_latentSyncManager->GetLatentLimiter();
+      latent.OnPresentEnd();
     }
   }
-  
-  // Call Reflex manager callback if enabled
-  if (s_reflex_enabled.load() && g_reflexManager && g_reflexManager->IsAvailable()) {
-    g_reflexManager->OnPresentUpdateAfter(/*queue*/nullptr, swapchain);
-  }
-
   HandleOnPresentEnd();
 }
 
@@ -387,55 +351,53 @@ void flush_command_queue() {
 void HandleFpsLimiter() {
   flush_command_queue(); // todo only if sleep is happening()
   LONGLONG handle_fps_limiter_start_time_qpc = get_now_qpc();
+  // Use background flag computed by monitoring thread; avoid GetForegroundWindow here
+  const bool is_background = g_app_in_background.load(std::memory_order_acquire);
+  
+  float target_fps = 0.0f;
+  if (g_app_in_background.load()) {
+    target_fps = s_fps_limit_background.load();
+  } else {
+    target_fps = s_fps_limit.load();
+  }
+  if (target_fps > 0.0f && target_fps < 5.0f) {
+    target_fps = 5.0f;
+  }
 
   // Call FPS Limiter on EVERY frame (not throttled)
-  if (s_custom_fps_limiter_enabled.load()) {
-    // Use background flag computed by monitoring thread; avoid GetForegroundWindow here
-    const bool is_background = g_app_in_background.load(std::memory_order_acquire);
-    
-    // Get the appropriate FPS limit based on focus state
-    float target_fps = 0.0f;
-    if (is_background) {
-      target_fps = s_fps_limit_background.load();  // Use background FPS limit
-    } else {
-      target_fps = s_fps_limit.load();
-    }
-    // Apply FPS limit via selected limiter mode
-    if (dxgi::fps_limiter::g_customFpsLimiterManager) {
-      if (s_fps_limiter_mode.load() == 1) {
-        auto& latent = dxgi::fps_limiter::g_customFpsLimiterManager->GetLatentLimiter();
-        if (target_fps > 0.0f) {
-          latent.SetTargetFps(target_fps);
-          latent.SetEnabled(true);
-          latent.LimitFrameRate();
-        } else {
-          latent.SetEnabled(false);
-        }
-      } else {
+  switch (s_fps_limiter_mode.load()) {
+    case FPS_LIMITER_MODE_CUSTOM: {
+      // Use FPS limiter manager for Custom (Sleep/Spin) mode
+      LogDebug("Applying FPS limit via Custom (Sleep/Spin) mode");
+      if (dxgi::fps_limiter::g_customFpsLimiterManager) {
         auto& limiter = dxgi::fps_limiter::g_customFpsLimiterManager->GetFpsLimiter();
         if (target_fps > 0.0f) {
           limiter.SetTargetFps(target_fps);
-          limiter.SetEnabled(true);
           limiter.LimitFrameRate();
-        } else {
-          limiter.SetEnabled(false);
         }
       }
+      break;
     }
-  }
-  
+    case FPS_LIMITER_MODE_LATENT_SYNC: {
+      // Use latent sync manager for VBlank Scanline Sync mode
+      if (dxgi::latent_sync::g_latentSyncManager) {
+        auto& latent = dxgi::latent_sync::g_latentSyncManager->GetLatentLimiter();
+        if (target_fps > 0.0f) {
+          latent.SetTargetFps(target_fps);
+          latent.LimitFrameRate();
+        }
+      }
 
-  // Mark Present begin for latent sync limiter timing (right before Present executes)
-  if (s_custom_fps_limiter_enabled.load()) {
-    if (dxgi::fps_limiter::g_customFpsLimiterManager) {
-      if (s_fps_limiter_mode.load() == 1) {
-        auto& latent = dxgi::fps_limiter::g_customFpsLimiterManager->GetLatentLimiter();
-        if (latent.IsEnabled()) {
-          latent.OnPresentBegin();
-        }
+      // Mark Present begin for latent sync limiter timing (right before Present executes)
+      if (dxgi::latent_sync::g_latentSyncManager) {
+        auto& latent = dxgi::latent_sync::g_latentSyncManager->GetLatentLimiter();
+        latent.OnPresentBegin();
       }
+      break;
     }
   }
+    
+
   LONGLONG handle_fps_limiter_start_end_time_qpc = get_now_qpc();
   g_present_start_time_qpc.store(handle_fps_limiter_start_end_time_qpc);
 
@@ -476,29 +438,6 @@ void OnPresentUpdateBefore(
       uint32_t idx = g_perf_ring_head.fetch_add(1, std::memory_order_acq_rel);
       g_perf_ring[idx & (kPerfRingCapacity - 1)] = PerfSample{elapsed, fps};
       last_tp = elapsed;
-    }
-  }
-  
-  // Call Reflex functions on EVERY frame (not throttled)
-  if (s_reflex_enabled.load() && s_reflex_use_markers.load()) {
-    
-    if (g_reflexManager && g_reflexManager->IsAvailable()) {
-      // Force sleep mode update if settings have changed (required for NVIDIA overlay detection)
-      if (g_reflex_settings_changed.load()) {
-        SetReflexSleepMode(swapchain);
-        g_reflex_settings_changed.store(false);
-        LogDebug("Sleep mode updated due to settings change");
-      } else if ((c % 60) == 0) { // Added periodic refresh
-        // Refresh sleep mode every 60 frames to maintain Reflex state
-        SetReflexSleepMode(swapchain);
-      }
-      // Call sleep at frame start (this is crucial for Reflex to work)
-      g_reflexManager->CallSleep(swapchain);
-      // Set full latency markers (SIMULATION, RENDERSUBMIT, INPUT) as PCLStats ETW events
-      // PRESENT markers are sent separately to NVAPI only
-      SetReflexLatencyMarkers(swapchain);
-      // Set PRESENT markers to wrap the Present call (NVAPI only, no ETW)
-      SetReflexPresentMarkers(swapchain);
     }
   }
 
@@ -546,10 +485,6 @@ void OnPresentUpdateBefore2(reshade::api::effect_runtime* runtime) {
   // Increment event counter
   g_swapchain_event_counters[SWAPCHAIN_EVENT_PRESENT_UPDATE_BEFORE2].fetch_add(1);
   g_swapchain_event_total_count.fetch_add(1);
-  // Call Reflex manager callback if enabled
-  if (s_reflex_enabled.load() && g_reflexManager && g_reflexManager->IsAvailable()) {
-    g_reflexManager->OnPresentUpdateBefore2(runtime);
-  }
 
   if (s_fps_limiter_injection.load() == 1) {
     HandleFpsLimiter();

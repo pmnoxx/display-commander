@@ -8,6 +8,7 @@
 #include "reshade_events/fullscreen_prevention.hpp"
 
 #include "dxgi/custom_fps_limiter_manager.hpp"
+#include "latent_sync/latent_sync_manager.hpp"
 #include "dxgi/dxgi_device_info.hpp"
 #include "nvapi/nvapi_fullscreen_prevention.hpp"
 #include "nvapi/nvapi_hdr_monitor.hpp"
@@ -237,6 +238,15 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
         LogInfo("Custom FPS Limiter system auto-initialized at startup (FPS limits detected)");
       } else {
         LogWarn("Failed to initialize Custom FPS Limiter system at startup");
+      }
+    }
+
+    // Initialize Latent Sync system if latent sync mode is enabled
+    if (s_fps_limiter_mode.load() == FPS_LIMITER_MODE_LATENT_SYNC) {
+      if (dxgi::latent_sync::g_latentSyncManager && dxgi::latent_sync::g_latentSyncManager->InitializeLatentSyncSystem()) {
+        LogInfo("Latent Sync system auto-initialized at startup (latent sync mode detected)");
+      } else {
+        LogWarn("Failed to initialize Latent Sync system at startup");
       }
     }
 

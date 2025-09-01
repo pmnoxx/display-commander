@@ -29,7 +29,7 @@ public:
     void SetTargetFps(float fps) { m_target_fps = fps; }
     float GetTargetFps() const { return m_target_fps; }
 
-    void SetEnabled(bool enabled) { 
+    /*
         if (m_enabled != enabled) {
             m_enabled = enabled;
             if (enabled) {
@@ -38,8 +38,7 @@ public:
                 StopVBlankMonitoring();
             }
         }
-    }
-    bool IsEnabled() const { return m_enabled; }
+            */
 
     // VBlank monitoring
     void StartVBlankMonitoring();

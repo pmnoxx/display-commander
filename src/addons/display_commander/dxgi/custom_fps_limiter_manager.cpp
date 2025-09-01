@@ -14,8 +14,6 @@ bool CustomFpsLimiterManager::InitializeCustomFpsLimiterSystem()
     
     LogWarn("Custom FPS Limiter Manager initialized successfully");
     LogWarn("RenoDX built-in FPS limiter disabled");
-    // Ensure latent limiter is in a known state
-    m_latentLimiter.SetEnabled(false);
     
     return true;
 }

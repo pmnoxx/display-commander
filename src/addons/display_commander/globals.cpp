@@ -42,8 +42,6 @@ std::atomic<float> s_fps_limit_background{30.f};
 std::atomic<float> s_fps_limit{0.f};
 // Extra wait applied by custom FPS limiter (ms)
 std::atomic<float> s_fps_extra_wait_ms{0.f};
-// Custom FPS Limiter settings
-std::atomic<bool> s_custom_fps_limiter_enabled{true}; // Always enabled
 
 // VSync and tearing controls
 std::atomic<bool> s_force_vsync_on{false};
@@ -130,6 +128,12 @@ BackgroundWindowManager g_backgroundWindowManager;
 namespace dxgi::fps_limiter {
 std::unique_ptr<CustomFpsLimiterManager> g_customFpsLimiterManager = std::make_unique<CustomFpsLimiterManager>();
 }
+
+// Global Latent Sync Manager instance
+namespace dxgi::latent_sync {
+std::unique_ptr<LatentSyncManager> g_latentSyncManager = std::make_unique<LatentSyncManager>();
+}
+
 // Global DXGI Device Info Manager instance
 std::unique_ptr<DXGIDeviceInfoManager> g_dxgiDeviceInfoManager = std::make_unique<DXGIDeviceInfoManager>();
 
@@ -149,10 +153,10 @@ std::atomic<int> g_last_backbuffer_height{0};
 std::atomic<bool> g_app_in_background{false};
 
 // FPS limiter mode: 0 = Custom (Sleep/Spin), 1 = VBlank Scanline Sync (VBlank)
-std::atomic<int> s_fps_limiter_mode{0};
+std::atomic<int> s_fps_limiter_mode{FPS_LIMITER_MODE_CUSTOM};
 
 // FPS limiter injection timing: 0 = OnPresentFlags (recommended), 1 = OnPresentUpdateBefore2, 2 = OnPresentUpdateBefore
-std::atomic<int> s_fps_limiter_injection{0};
+std::atomic<int> s_fps_limiter_injection{FPS_LIMITER_INJECTION_ONPRESENTFLAGS};
 
 // Scanline offset
 std::atomic<int> s_scanline_offset{0};

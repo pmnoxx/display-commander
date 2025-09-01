@@ -21,19 +21,14 @@ public:
     // Basic configuration
     void SetTargetFps(float fps);
     float GetTargetFps() const { return m_target_fps; }
-    
-    // Enable/disable
-    void SetEnabled(bool enabled) { m_enabled = enabled; }
-    bool IsEnabled() const { return m_enabled; }
 
 private:
     // Internal timing functions (cloned from RenoDX)
-    void UpdateTiming();
+    void DoSleepAndSpinLock();
     void ApplySleepAndSpinLock();
     
     // Configuration
     float m_target_fps;
-    bool m_enabled;
     
     // Frame lifecycle timing (NEW - matches RenoDX approach)
     std::chrono::high_resolution_clock::time_point m_frame_start_time;

@@ -1,7 +1,6 @@
 #pragma once
 
 #include "custom_fps_limiter.hpp"
-#include "../latent_sync/latent_sync_limiter.hpp"
 
 namespace dxgi::fps_limiter {
 
@@ -19,12 +18,8 @@ public:
     // Get the FPS limiter instance
     CustomFpsLimiter& GetFpsLimiter() { return m_fpsLimiter; }
 
-    // Get the VBlank Scanline Sync (VBlank) limiter instance
-    LatentSyncLimiter& GetLatentLimiter() { return m_latentLimiter; }
-
 private:
     CustomFpsLimiter m_fpsLimiter;
-    LatentSyncLimiter m_latentLimiter;
 };
 
 } // namespace dxgi::fps_limiter

@@ -6,7 +6,6 @@ namespace dxgi::fps_limiter {
 
 CustomFpsLimiter::CustomFpsLimiter()
     : m_target_fps(0.0f)
-    , m_enabled(false)
     , last_time_point(std::chrono::high_resolution_clock::now())
     , m_frame_start_time(std::chrono::high_resolution_clock::now())
     , m_frame_end_time(std::chrono::high_resolution_clock::now())
@@ -17,7 +16,7 @@ CustomFpsLimiter::CustomFpsLimiter()
 
 void CustomFpsLimiter::LimitFrameRate()
 {
-    if (!m_enabled || m_target_fps <= 0.0f) {
+    if (m_target_fps <= 0.0f) {
         return;
     }
 
@@ -28,8 +27,7 @@ void CustomFpsLimiter::LimitFrameRate()
         last_fps_limit = m_target_fps;
     }
 
-    UpdateTiming();
-    ApplySleepAndSpinLock();
+    DoSleepAndSpinLock();
 }
 
 void CustomFpsLimiter::OnFrameBegin()
@@ -46,7 +44,7 @@ void CustomFpsLimiter::OnFrameEnd()
     m_frame_in_progress = false;
 }
 
-void CustomFpsLimiter::UpdateTiming()
+void CustomFpsLimiter::DoSleepAndSpinLock()
 {
     auto now = std::chrono::high_resolution_clock::now();
     
@@ -144,11 +142,6 @@ void CustomFpsLimiter::UpdateTiming()
     last_time_point = now;
 }
 
-void CustomFpsLimiter::ApplySleepAndSpinLock()
-{
-    // This function is now just a placeholder since UpdateTiming handles everything
-    // It's kept for consistency with the header structure
-}
 
 void CustomFpsLimiter::SetTargetFps(float fps)
 {

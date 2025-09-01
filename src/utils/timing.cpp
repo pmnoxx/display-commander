@@ -141,6 +141,7 @@ void wait_until_qpc(LONGLONG target_qpc, HANDLE& timer_handle)
             break;
         
         // Yield processor to other threads while waiting
+        // Compile with SSE2 enabled
         YieldProcessor();
     }
 }

@@ -5,7 +5,6 @@
 #include "utils.hpp"
 #include "utils/timing.hpp"
 #include <sstream>
-#include <unordered_map>
 #include <mutex>
 #include <minwindef.h>
 #include <atomic>

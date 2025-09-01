@@ -25,7 +25,16 @@ add_library(zzz_display_commander MODULE ${DISPLAY_COMMANDER_SOURCES})
 
 # MSVC-specific flags
 if(MSVC)
-  target_compile_options(zzz_display_commander PRIVATE /bigobj)
+  target_compile_options(zzz_display_commander PRIVATE /bigobj /arch:SSE2)
+  # Enable SSE4.1 and SSE4.2 for better performance
+  target_compile_options(zzz_display_commander PRIVATE /arch:AVX)
+endif()
+
+# GCC/Clang-specific flags
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+  target_compile_options(zzz_display_commander PRIVATE -msse4.1 -msse4.2)
+  # Enable AVX for even better performance if available
+  target_compile_options(zzz_display_commander PRIVATE -mavx)
 endif()
 
 # Include directories

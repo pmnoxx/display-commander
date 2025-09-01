@@ -329,7 +329,6 @@ void flush_command_queue() {
 }
 
 void HandleFpsLimiter() {
-  flush_command_queue(); // todo only if sleep is happening()
   LONGLONG handle_fps_limiter_start_time_ns = utils::get_now_ns();
   // Use background flag computed by monitoring thread; avoid GetForegroundWindow here
   const bool is_background = g_app_in_background.load(std::memory_order_acquire);
@@ -342,6 +341,9 @@ void HandleFpsLimiter() {
   }
   if (target_fps > 0.0f && target_fps < 5.0f) {
     target_fps = 5.0f;
+  }
+  if (target_fps > 0.0f) {
+    flush_command_queue();
   }
 
   // Call FPS Limiter on EVERY frame (not throttled)

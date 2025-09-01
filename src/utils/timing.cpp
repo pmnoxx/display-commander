@@ -28,6 +28,11 @@ bool initialize_qpc_timing_constants()
         // If QueryPerformanceFrequency fails, keep default values
         return false;
     }
+
+    if (frequency.QuadPart > SEC_TO_NS) {
+        LogError("QPC frequency is too high, using default value");
+        return false;
+    }
     
     // Calculate the conversion factor from QPC ticks to nanoseconds
     // QPC_TO_NS = (1 second in ns) / (QPC frequency)

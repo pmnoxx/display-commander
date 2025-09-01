@@ -357,7 +357,6 @@ void flush_command_queue() {
 void HandleFpsLimiter() {
   LONGLONG handle_fps_limiter_start_time_ns = utils::get_now_ns();
   // Use background flag computed by monitoring thread; avoid GetForegroundWindow here
-  const bool is_background = g_app_in_background.load(std::memory_order_acquire);
   
   float target_fps = 0.0f;
   if (g_app_in_background.load()) {

@@ -11,7 +11,11 @@
 // Forward declaration of the global variable
 extern std::atomic<HWND> g_last_swapchain_hwnd;
 
+
 namespace dxgi::fps_limiter {
+    std::atomic<LONGLONG> g_latent_sync_total_height{0};
+    std::atomic<LONGLONG> g_latent_sync_active_height{0};
+    
 extern std::atomic<LONGLONG> ticks_per_refresh;
 extern std::atomic<double> correction_lines_delta;
 }
@@ -396,6 +400,9 @@ void VBlankMonitor::MonitoringThread() {
 
     int lastScanLine = 0;
     while (!m_should_stop.load()) {
+
+        g_latent_sync_total_height.store(current_display_timing.total_height);
+        g_latent_sync_active_height.store(current_display_timing.active_height);
         
         // Ensure we have a valid adapter binding (only treat sentinel as invalid)
         if (m_hAdapter == 0 || m_vidpn_source_id == VBlankMonitor::kInvalidVidPnSource) {

@@ -99,12 +99,7 @@ bool LatentSyncLimiter::UpdateDisplayBindingFromWindow(HWND hwnd) {
 }
 
 void LatentSyncLimiter::LimitFrameRate() {
-    if (!m_enabled) return;
-
-    if (true) {
-        // DISABLED
-        return;
-    }
+    StartVBlankMonitoring();
 
     // If no target FPS set, simply wait for one vblank to pace to refresh
     const bool cap_to_fps = (m_target_fps > 0.0f);
@@ -113,19 +108,17 @@ void LatentSyncLimiter::LimitFrameRate() {
     scan.hAdapter = m_hAdapter;
     scan.VidPnSourceId = m_vidpn_source_id;
 
-    // Compute adjusted scanline window accounting for average Present duration
-    int monitor_height = GetCurrentMonitorHeight();
-  
-    HWND hwnd = g_last_swapchain_hwnd.load();
-    DisplayTimingInfo current_display_timing = GetDisplayTimingInfoForWindow(hwnd);
-    
-    LONGLONG total_height = current_display_timing.total_height;
-    LONGLONG active_height = current_display_timing.active_height;
+        
+    extern std::atomic<LONGLONG> g_latent_sync_total_height;
+    extern std::atomic<LONGLONG> g_latent_sync_active_height;
+    LONGLONG total_height = g_latent_sync_total_height.load();
+    LONGLONG active_height = g_latent_sync_active_height.load();
     LONGLONG mid_vblank_scanline = (active_height + total_height) / 2;
 
     if (total_height < 100 || active_height < 100 || mid_vblank_scanline < 100) {
         // Error
         std::ostringstream oss;
+        oss << "LatentSyncLimiter::LimitFrameRate: ";
         oss << "total_height: " << total_height;
         oss << " active_height: " << active_height;
         oss << " mid_vblank_scanline: " << mid_vblank_scanline;
@@ -133,6 +126,7 @@ void LatentSyncLimiter::LimitFrameRate() {
         return;
     }
 
+    
     LONGLONG now_ticks = get_now_qpc();
 
     extern double expected_current_scanline(LONGLONG now_ticks, int total_height, bool add_correction);
@@ -148,17 +142,16 @@ void LatentSyncLimiter::LimitFrameRate() {
 
     LONGLONG wait_target = now_ticks + delta_wait_time;
 
-    {
+
+    if (delta_wait_time > 10000000) {
         std::ostringstream oss;
-        oss << " mid_vblank_scanline: " << mid_vblank_scanline;
-        oss << " ticks_per_refresh: " << ticks_per_refresh.load();
-        oss << " wait_target: " << wait_target;
-        oss << " now_ticks: " << now_ticks;
-        oss << " correction_ticks_delta: " << correction_lines_delta.load();
-        oss << " m_on_present_ticks: " << m_on_present_ticks;
-        oss << " target_line: " << target_line;
-        LogInfo(oss.str().c_str());   
+        oss << "LatentSyncLimiter::LimitFrameRate: ";
+        oss << "delta_wait_time: " << delta_wait_time;
+        LogInfo(oss.str().c_str());
+        return;
     }
+
+
 
     LONGLONG start_ticks = now_ticks;
     while (true) {
@@ -176,32 +169,9 @@ void LatentSyncLimiter::LimitFrameRate() {
     }
 }
 
-void LatentSyncLimiter::OnPresentBegin() {
-    LARGE_INTEGER t; QueryPerformanceCounter(&t);
-    m_qpc_present_begin = t.QuadPart;
-}
-
 void LatentSyncLimiter::OnPresentEnd() {
-    if (m_qpc_present_begin == 0) {
-        std::ostringstream oss;
-        oss << "Present duration(real): 0 ticks";
-        LogInfo(oss.str().c_str());   
-        return;
-    }
-    LARGE_INTEGER now; QueryPerformanceCounter(&now);
-    LONGLONG dt = now.QuadPart - m_qpc_present_begin;
-    m_qpc_present_begin = 0;
-    {
-        std::vector<DisplayTimingInfo> timing_info = QueryDisplayTimingInfo();
-        LONGLONG total_height = timing_info[0].total_height;
-
-        LONGLONG now_ticks = get_now_qpc();
-        std::ostringstream oss;
-        oss << "OnPresentEnd: ";
-        extern double expected_current_scanline(LONGLONG now_ticks, int total_height, bool add_correction);
-        oss << " predicted scanline: " << int(expected_current_scanline(now_ticks, total_height, true));
-        LogInfo(oss.str().c_str());   
-    }
+    LONGLONG now = get_now_qpc();
+    LONGLONG dt = now - g_present_start_time_qpc.load();
     // Exponential moving average of Present duration in ticks
     const double alpha = 0.10; // smooth but responsive
     if (m_avg_present_ticks <= 0.0)

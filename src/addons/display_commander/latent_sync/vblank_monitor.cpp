@@ -463,9 +463,10 @@ void VBlankMonitor::MonitoringThread() {
                         oss << "Scanline diff: " << abs(scan.ScanLine - expected_current_scanline_uncapped_ns(mid_point_ns, current_display_timing.total_height, true)) << " ticks";
                         LogInfo(oss.str().c_str());
                     }
-                    long double new_correction_lines_delta = fmod(expected_scanline - scan.ScanLine, (long double)(current_display_timing.total_height)); 
-                    new_correction_lines_delta = current_display_timing.total_height - new_correction_lines_delta;
-                    
+                    long double new_correction_lines_delta = fmod(scan.ScanLine - expected_scanline, (long double)(current_display_timing.total_height)); 
+                    if (new_correction_lines_delta < 0) {
+                        new_correction_lines_delta += current_display_timing.total_height;
+                    }
                     long dt = new_correction_lines_delta - correction_lines_delta.load();
                     if (fabs(dt) > fabs(dt - current_display_timing.total_height)) {
                         dt -= current_display_timing.total_height;

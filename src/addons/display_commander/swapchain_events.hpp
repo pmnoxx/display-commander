@@ -90,5 +90,4 @@ namespace dxgi::fps_limiter {
     class CustomFpsLimiterManager;
 }
 
-// Reflex management forward declarations
-class ReflexManager;
+

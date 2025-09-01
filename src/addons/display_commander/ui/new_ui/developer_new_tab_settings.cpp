@@ -14,16 +14,12 @@ extern std::atomic<bool> s_fix_hdr10_colorspace;
 extern std::atomic<bool> s_nvapi_fullscreen_prevention;
 extern std::atomic<bool> s_nvapi_hdr_logging;
 extern std::atomic<float> s_nvapi_hdr_interval_sec;
-extern std::atomic<bool> s_reflex_enabled;
-extern std::atomic<bool> s_reflex_low_latency_mode;
-extern std::atomic<bool> s_reflex_low_latency_boost;
-extern std::atomic<bool> s_reflex_use_markers;
-extern std::atomic<bool> s_reflex_debug_output;
+
 extern std::atomic<bool> s_remove_top_bar;
 extern std::atomic<bool> s_enable_unstable_reshade_features;
 
 extern std::atomic<bool> s_enable_mute_unmute_shortcut;
-extern std::atomic<float> s_fps_extra_wait_ms;
+
 extern std::atomic<bool> g_flush_before_present;
 
 namespace ui::new_ui {
@@ -40,12 +36,7 @@ DeveloperTabSettings::DeveloperTabSettings()
     , nvapi_fullscreen_prevention("NvapiFullscreenPrevention", s_nvapi_fullscreen_prevention, false, "DisplayCommander")
     , nvapi_hdr_logging("NvapiHDRLogging", s_nvapi_hdr_logging, false, "DisplayCommander")
     , nvapi_hdr_interval_sec("NvapiHDRInterval", s_nvapi_hdr_interval_sec, 5.0f, 1.0f, 60.0f, "DisplayCommander")
-    , reflex_enabled("ReflexEnabled", s_reflex_enabled, false, "DisplayCommander")
-    , reflex_low_latency_mode("ReflexLowLatencyMode", s_reflex_low_latency_mode, false, "DisplayCommander")
-    , reflex_low_latency_boost("ReflexLowLatencyBoost", s_reflex_low_latency_boost, false, "DisplayCommander")
-    , reflex_use_markers("ReflexUseMarkers", s_reflex_use_markers, false, "DisplayCommander")
-    , reflex_debug_output("ReflexDebugOutput", s_reflex_debug_output, false, "DisplayCommander")
-    , fps_extra_wait_ms("FpsLimiterExtraWaitMs", s_fps_extra_wait_ms, 0.0f, 0.0f, 10.0f, "DisplayCommander")
+
     , enable_unstable_reshade_features("EnableUnstableReShadeFeatures", s_enable_unstable_reshade_features, false, "DisplayCommander")
 
     , enable_mute_unmute_shortcut("EnableMuteUnmuteShortcut", s_enable_mute_unmute_shortcut, false, "DisplayCommander")
@@ -64,12 +55,7 @@ void DeveloperTabSettings::LoadAll() {
     nvapi_fullscreen_prevention.Load();
     nvapi_hdr_logging.Load();
     nvapi_hdr_interval_sec.Load();
-    reflex_enabled.Load();
-    reflex_low_latency_mode.Load();
-    reflex_low_latency_boost.Load();
-    reflex_use_markers.Load();
-    reflex_debug_output.Load();
-    fps_extra_wait_ms.Load();
+
     enable_unstable_reshade_features.Load();
 
     enable_mute_unmute_shortcut.Load();
@@ -94,12 +80,7 @@ std::vector<ui::new_ui::SettingBase*> DeveloperTabSettings::GetAllSettings() {
         &nvapi_fullscreen_prevention,
         &nvapi_hdr_logging,
         &nvapi_hdr_interval_sec,
-        &reflex_enabled,
-        &reflex_low_latency_mode,
-        &reflex_low_latency_boost,
-        &reflex_use_markers,
-        &reflex_debug_output,
-        &fps_extra_wait_ms,
+
         &enable_unstable_reshade_features,
 
         &enable_mute_unmute_shortcut,

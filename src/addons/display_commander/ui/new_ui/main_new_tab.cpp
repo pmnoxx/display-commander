@@ -193,39 +193,7 @@ void DrawQuickResolutionChanger() {
                     }
                 }
             }
-            // Add Reflex Cap button at the end
-            if (!first) ImGui::SameLine();
-            {
-                // Reflex formula: refresh_hz - (refresh_hz * refresh_hz / 3600)
-                double reflex_target = refresh_hz - (refresh_hz * refresh_hz / 3600.0);
-                float precise_target = static_cast<float>(reflex_target);
-                if (precise_target < 1.0f) precise_target = 1.0f;
-                bool selected = (std::fabs(g_main_new_tab_settings.fps_limit.GetValue() - precise_target) <= selected_epsilon);
-                if (selected) {
-                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.20f, 0.60f, 0.20f, 1.0f));
-                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.20f, 0.70f, 0.20f, 1.0f));
-                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.10f, 0.50f, 0.10f, 1.0f));
-                }
-                if (ImGui::Button("Reflex Cap")) {
-                    double precise_target = reflex_target; // do not round on apply
-                    float target_fps = static_cast<float>(precise_target < 1.0 ? 1.0 : precise_target);
-                    g_main_new_tab_settings.fps_limit.SetValue(target_fps);
-                }
-                if (selected) {
-                    ImGui::PopStyleColor(3);
-                }
-                // Add tooltip explaining the Reflex formula
-                if (ImGui::IsItemHovered()) {
-                    std::ostringstream tooltip_oss;
-                    tooltip_oss.setf(std::ios::fixed);
-                    tooltip_oss << std::setprecision(3);
-                    tooltip_oss << "Reflex Cap: FPS = " << refresh_hz << " - (" << refresh_hz << "² / 3600)\n";
-                    tooltip_oss << "= " << refresh_hz << " - " << (refresh_hz * refresh_hz / 3600.0) << " = " << reflex_target << " FPS\n\n";
-                    tooltip_oss << "Creates a ~0.3ms frame time buffer to optimize latency\n";
-                    tooltip_oss << "and prevent tearing, similar to NVIDIA Reflex Low Latency Mode.";
-                    ImGui::SetTooltip("%s", tooltip_oss.str().c_str());
-                }
-            }
+
         }
     }
 }
@@ -902,20 +870,7 @@ void DrawImportantInfo() {
     ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "(smoothed)");
 
     
-    // Reflex Status Display
-    
-    // Reflex Status Display
-    bool is_active = ::g_reflex_active.load();
-    
-    oss.str("");
-    oss.clear();
-    if (is_active) {
-        oss << "Reflex Status: Active";
-        ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "%s", oss.str().c_str());
-    } else {
-        oss << "Reflex Status: Inactive";
-        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.8f, 1.0f), "%s", oss.str().c_str());
-    }
+
     
     // Flip State Display (renamed from DXGI Composition)
     const char* flip_state_str = "Unknown";

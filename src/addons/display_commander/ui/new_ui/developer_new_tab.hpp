@@ -17,9 +17,6 @@ void DrawHdrColorspaceSettings();
 // Draw NVAPI settings section
 void DrawNvapiSettings();
 
-// Draw Reflex settings section
-void DrawReflexSettings();
-
 // Draw resolution override settings section (Experimental)
 void DrawResolutionOverrideSettings();
 

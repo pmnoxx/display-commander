@@ -33,20 +33,9 @@ public:
     ui::new_ui::BoolSettingRef nvapi_hdr_logging;
     ui::new_ui::FloatSettingRef nvapi_hdr_interval_sec;
     
-    // Reflex Settings
-    ui::new_ui::BoolSettingRef reflex_enabled;
-    ui::new_ui::BoolSettingRef reflex_low_latency_mode;
-    ui::new_ui::BoolSettingRef reflex_low_latency_boost;
-    ui::new_ui::BoolSettingRef reflex_use_markers;
-    ui::new_ui::BoolSettingRef reflex_debug_output;
-    // FPS limiter: extra wait before SIMULATION_START (ms)
-    ui::new_ui::FloatSettingRef fps_extra_wait_ms;
-    
     // Experimental/Unstable features toggle
     ui::new_ui::BoolSettingRef enable_unstable_reshade_features;
-    
 
-    
     // Keyboard Shortcut Settings (Experimental)
     ui::new_ui::BoolSettingRef enable_mute_unmute_shortcut;
     

@@ -32,11 +32,7 @@ std::vector<std::string> MakeMonitorLabels();
 // Forward declarations that depend on enums
 DxgiBypassMode GetIndependentFlipState(reshade::api::swapchain* swapchain);
 
-// Reflex management functions
-bool InstallReflexHooks();
-void UninstallReflexHooks();
-void SetReflexLatencyMarkers(reshade::api::swapchain* swapchain);
-void SetReflexSleepMode(reshade::api::swapchain* swapchain);
+
 
 // Include consolidated swapchain events header
 #include "swapchain_events.hpp"

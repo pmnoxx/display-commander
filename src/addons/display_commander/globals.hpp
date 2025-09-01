@@ -17,7 +17,7 @@
 #define DEBUG_LEVEL_0
 
 // Forward declarations
-class ReflexManager;
+
 class SpinLock;
 class BackgroundWindowManager;
 class CustomFpsLimiterManager;
@@ -97,13 +97,6 @@ extern std::atomic<bool> s_auto_restore_resolution_on_close;
 extern std::atomic<bool> s_auto_apply_resolution_change;
 extern std::atomic<bool> s_auto_apply_refresh_rate_change;
 
-// Reflex settings
-extern std::atomic<bool> s_reflex_enabled;
-extern std::atomic<bool> s_reflex_low_latency_mode;
-extern std::atomic<bool> s_reflex_low_latency_boost;
-extern std::atomic<bool> s_reflex_use_markers;
-extern std::atomic<bool> s_reflex_debug_output;
-
 // Window management
 extern std::atomic<bool> s_prevent_always_on_top;
 extern std::atomic<bool> s_background_feature_enabled;
@@ -145,7 +138,6 @@ extern std::atomic<bool> s_audio_mute;
 // FPS Limiter Settings
 extern std::atomic<float> s_fps_limit_background;
 extern std::atomic<float> s_fps_limit;
-extern std::atomic<float> s_fps_extra_wait_ms;
 
 // VSync and Tearing Controls
 extern std::atomic<bool> s_force_vsync_on;
@@ -171,11 +163,7 @@ extern std::atomic<HWND> g_last_swapchain_hwnd;
 extern std::atomic<bool> g_shutdown;
 extern std::atomic<bool> g_muted_applied;
 
-// Reflex-related atomic variables
-extern std::atomic<bool> g_reflex_settings_changed;
-
 // Global instances
-extern std::unique_ptr<ReflexManager> g_reflexManager;
 extern std::atomic<std::shared_ptr<GlobalWindowState>> g_window_state;
 extern BackgroundWindowManager g_backgroundWindowManager;
 
@@ -199,7 +187,6 @@ extern std::atomic<float> g_average_latency_ms;
 extern std::atomic<float> g_min_latency_ms;
 extern std::atomic<float> g_max_latency_ms;
 extern std::atomic<uint64_t> g_current_frame;
-extern std::atomic<bool> g_reflex_active;
 
 // Present duration tracking
 extern std::atomic<LONGLONG> g_present_duration_ns;

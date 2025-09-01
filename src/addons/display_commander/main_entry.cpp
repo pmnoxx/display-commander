@@ -83,7 +83,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
       reshade::register_event<reshade::addon_event::init_effect_runtime>(OnInitEffectRuntime);
       reshade::register_event<reshade::addon_event::reshade_open_overlay>(OnReShadeOverlayOpen);
       
-      // Defer NVAPI / Reflex init until after settings are loaded below
+      // Defer NVAPI init until after settings are loaded below
       
       // Register our fullscreen prevention event handler
       reshade::register_event<reshade::addon_event::set_fullscreen_state>(
@@ -139,10 +139,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
       
             // Clean up continuous monitoring if it's running
       StopContinuousMonitoring();
-      
-      // Clean up Reflex hooks if they're installed
-      UninstallReflexHooks();
-      
+
       // Clean up DXGI Device Info Manager
       g_dxgiDeviceInfoManager.reset();
       
@@ -215,15 +212,6 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
         }
       } else {
         LogWarn("Failed to initialize NVAPI proactively");
-      }
-    }
-
-    // Initialize Reflex hooks if enabled
-    if (s_reflex_enabled.load()) {
-      if (InstallReflexHooks()) {
-        LogInfo("Reflex hooks initialized proactively");
-      } else {
-        LogWarn("Failed to initialize Reflex hooks proactively");
       }
     }
 

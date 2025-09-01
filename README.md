@@ -1,6 +1,6 @@
 # ReShade Display Commander
 
-ReShade Display Commander is a ReShade addon that provides in-game control over display, windowing, performance, and audio. It adds a simple UI inside the ReShade overlay to adjust borderless/fullscreen behavior, window size and alignment, monitor targeting, FPS limiting (including background caps), NVIDIA Reflex, and per-process audio volume/mute.
+ReShade Display Commander is a ReShade addon that provides in-game control over display, windowing, performance, and audio. It adds a simple UI inside the ReShade overlay to adjust borderless/fullscreen behavior, window size and alignment, monitor targeting, FPS limiting (including background caps), and per-process audio volume/mute.
 
 Note: Applying window operations from the main thread can crash some apps. This addon performs them on a background thread.
 
@@ -26,8 +26,7 @@ Note: Applying window operations from the main thread can crash some apps. This 
 - Auto-apply (continuous monitoring): Keep size/position in sync
 - FPS limiter: Foreground and background caps using a custom limiter
 - Audio controls: Per-process volume, manual mute, mute in background, conditional background mute
-- NVIDIA Reflex: Simple on/off toggle with status
-- Live indicators: PCL AV latency (30-frame average), Reflex status, and flip state
+- Live indicators: PCL AV latency (30-frame average) and flip state
 
 ## Known Issues
 
@@ -61,8 +60,7 @@ Inside the ReShade overlay, Display Commander exposes:
 - Monitor & Display: Dynamic monitor settings and current display info
 - Audio: Volume, manual mute, mute in background, and conditional background mute
 - Window Controls: Minimize, restore, maximize (applied from a background thread)
-- Reflex: Enable/disable NVIDIA Reflex
-- Important Info: PCL AV latency, Reflex status, and flip state
+- Important Info: PCL AV latency and flip state
 
 ## Build from source
 

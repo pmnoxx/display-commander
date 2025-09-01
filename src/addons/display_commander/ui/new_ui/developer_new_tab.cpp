@@ -43,13 +43,7 @@ void DrawDeveloperNewTab() {
     
     ImGui::Spacing();
     ImGui::Separator();
-    
-    // Reflex Settings Section
-    DrawReflexSettings();
-    
-    ImGui::Spacing();
-    ImGui::Separator();
-    
+
     // Resolution Override Settings Section
     DrawResolutionOverrideSettings();
     
@@ -187,31 +181,7 @@ void DrawDeveloperSettings() {
         ImGui::SetTooltip("Remove the window title bar for a borderless appearance.");
     }
 
-    // FPS Limiter Extra Wait (ms)
-    ImGui::Spacing();
-    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "=== FPS Limiter Timing ===");
-    const char* fmt_ms = "%.2f ms";
-    if (SliderFloatSetting(g_developerTabSettings.fps_extra_wait_ms, "Extra wait before SIMULATION_START", fmt_ms)) {
-        ::s_fps_extra_wait_ms.store(g_developerTabSettings.fps_extra_wait_ms.GetValue());
-    }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Delays CPU thread to decrease latency by a fixed amount.\nAdds a fixed delay before SIMULATION_START to pull simulation closer to present. Typical ~half frame time; range 0–10 ms.");
-    }
-    ImGui::SameLine();
-    ImGui::TextDisabled("(?)");
-    if (ImGui::IsItemHovered()) {
-        ImGui::BeginTooltip();
-        ImGui::PushTextWrapPos(ImGui::GetFontSize() * 40.0f);
-        ImGui::TextUnformatted("Delays CPU thread to decrease latency by a fixed amount.");
-        ImGui::Separator();
-        ImGui::BulletText("Shifts SIMULATION_START later so simulation occurs closer to PRESENT.");
-        ImGui::BulletText("Effective when there is spare frame time (CPU/GPU finishes early).");
-        ImGui::BulletText("Recommended: 0.5–3.0 ms. Start small; too high can cause stutter/missed v-blank.");
-        ImGui::BulletText("Does not cap FPS; pair with an FPS limit for stable pacing if needed.");
-        ImGui::BulletText("Only affects CPU timing; has no effect if the game is already CPU-bound.");
-        ImGui::PopTextWrapPos();
-        ImGui::EndTooltip();
-    }
+
 }
 
 void DrawNvapiSettings() {
@@ -343,60 +313,7 @@ void DrawNvapiSettings() {
     }
 }
 
-void DrawReflexSettings() {
-    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 0.8f), "=== Reflex Settings ===");
-    
-    // Enable NVIDIA Reflex
-    if (CheckboxSetting(g_developerTabSettings.reflex_enabled, "Enable NVIDIA Reflex")) {
-        s_reflex_enabled.store(g_developerTabSettings.reflex_enabled.GetValue());
-        
-        if (g_developerTabSettings.reflex_enabled.GetValue()) {
-            extern void InstallReflexHooks();
-            ::InstallReflexHooks();
-        } else {
-            extern void UninstallReflexHooks();
-            ::UninstallReflexHooks();
-        }
-        
-        // Mark that Reflex settings have changed to force sleep mode update
-        ::g_reflex_settings_changed.store(true);
-    }
-    
-    // Low Latency Mode
-    if (CheckboxSetting(g_developerTabSettings.reflex_low_latency_mode, "Low Latency Mode")) {
-        ::s_reflex_low_latency_mode.store(g_developerTabSettings.reflex_low_latency_mode.GetValue());
-        ::g_reflex_settings_changed.store(true);
-    }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Enable NVIDIA Reflex Low Latency Mode for reduced input lag.");
-    }
-    
-    // Low Latency Boost
-    if (CheckboxSetting(g_developerTabSettings.reflex_low_latency_boost, "Low Latency Boost")) {
-        ::s_reflex_low_latency_boost.store(g_developerTabSettings.reflex_low_latency_boost.GetValue());
-        ::g_reflex_settings_changed.store(true);
-    }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Enable NVIDIA Reflex Low Latency Boost for maximum performance.");
-    }
-    
-    // Use Markers
-    if (CheckboxSetting(g_developerTabSettings.reflex_use_markers, "Use Markers")) {
-        ::s_reflex_use_markers.store(g_developerTabSettings.reflex_use_markers.GetValue());
-        ::g_reflex_settings_changed.store(true);
-    }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Use NVIDIA Reflex markers for optimal frame timing optimization.");
-    }
-    
-    // Debug Output
-    if (CheckboxSetting(g_developerTabSettings.reflex_debug_output, "Debug Output")) {
-        ::s_reflex_debug_output.store(g_developerTabSettings.reflex_debug_output.GetValue());
-    }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Enable debug output for NVIDIA Reflex operations.");
-    }
-}
+
 
 void DrawResolutionOverrideSettings() {
     ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "=== Resolution Override ===");
@@ -459,20 +376,7 @@ void DrawLatencyDisplay() {
     ImGui::SameLine();
     ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "(smoothed)");
     
-    // Reflex Status Display
-    extern std::atomic<bool> g_reflex_active;
-    extern std::atomic<uint64_t> g_current_frame;
-    bool is_active = ::g_reflex_active.load();
-    uint64_t frame = ::g_current_frame.load();
-    
-    oss.str("");
-    oss.clear();
-    if (is_active) {
-        oss << "Reflex Status: Active (Frame " << frame << ")";
-    } else {
-        oss << "Reflex Status: Inactive";
-    }
-    ImGui::TextUnformatted(oss.str().c_str());
+
 }
 
 } // namespace ui::new_ui

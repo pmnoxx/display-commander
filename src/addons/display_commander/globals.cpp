@@ -1,5 +1,5 @@
 #include "addon.hpp"
-#include "reflex/reflex_management.hpp"
+
 #include "background_window.hpp" // Added this line
 #include "dxgi/custom_fps_limiter_manager.hpp"
 #include "dxgi/dxgi_device_info.hpp"
@@ -40,8 +40,6 @@ std::atomic<bool> s_audio_mute{false};
 std::atomic<float> s_fps_limit_background{30.f};
 // FPS limit for foreground
 std::atomic<float> s_fps_limit{0.f};
-// Extra wait applied by custom FPS limiter (ms)
-std::atomic<float> s_fps_extra_wait_ms{0.f};
 
 // VSync and tearing controls
 std::atomic<bool> s_force_vsync_on{false};
@@ -91,12 +89,7 @@ std::atomic<bool> s_auto_restore_resolution_on_close{true}; // Enabled by defaul
 std::atomic<bool> s_auto_apply_resolution_change{false}; // Disabled by default
 std::atomic<bool> s_auto_apply_refresh_rate_change{false}; // Disabled by default
 
-// Reflex settings
-std::atomic<bool> s_reflex_enabled{true}; // Enabled by default
-std::atomic<bool> s_reflex_low_latency_mode{false}; // Low latency mode disabled by default
-std::atomic<bool> s_reflex_low_latency_boost{false}; // Boost disabled by default
-std::atomic<bool> s_reflex_use_markers{false}; // Use markers disabled by default
-std::atomic<bool> s_reflex_debug_output{false}; // Debug output disabled by default
+
 
 // Atomic variables
 std::atomic<int> g_comp_query_counter{0};
@@ -107,11 +100,7 @@ std::atomic<HWND> g_last_swapchain_hwnd{nullptr};
 std::atomic<bool> g_shutdown{false};
 std::atomic<bool> g_muted_applied{false};
 
-// Global Reflex manager instance
-std::unique_ptr<ReflexManager> g_reflexManager;
 
-// Global flag for Reflex settings changes
-std::atomic<bool> g_reflex_settings_changed{false};
 
 // Continuous monitoring system
 std::atomic<bool> s_continuous_monitoring_enabled{true}; // Enabled by default
@@ -144,7 +133,7 @@ std::atomic<float> g_average_latency_ms{0.0f};
 std::atomic<float> g_min_latency_ms{0.0f};
 std::atomic<float> g_max_latency_ms{0.0f};
 std::atomic<uint64_t> g_current_frame{0};
-std::atomic<bool> g_reflex_active{false};
+
 
 // Backbuffer dimensions
 std::atomic<int> g_last_backbuffer_width{0};

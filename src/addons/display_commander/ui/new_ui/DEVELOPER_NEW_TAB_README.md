@@ -29,17 +29,9 @@ The DeveloperNew tab is a complete migration of the old developer functionality 
   - Function availability
   - Error information and troubleshooting tips
 
-### 4. Reflex Settings Section
-- **Enable NVIDIA Reflex**: Checkbox to enable/disable NVIDIA Reflex for reduced latency
-- **Reflex Low Latency Mode**: Disabled checkbox (currently not implemented)
-- **Reflex Low Latency Boost**: Disabled checkbox (currently not implemented)
-- **Reflex Use Markers**: Disabled checkbox (currently not implemented)
-- **Reflex Debug Output**: Checkbox to enable/disable Reflex debug messages in logs
-
-### 5. Latency Display Section
+### 4. Latency Display Section
 - **Current Latency**: Real-time display of current frame latency in milliseconds
 - **PCL AV Latency**: Display of PCL Average Latency (30-frame average) - matches NVIDIA overlay
-- **Reflex Status**: Current Reflex activation status and frame count
 - **Debug Button**: Button to log all current latency values for debugging purposes
 
 ## Implementation Details
@@ -53,7 +45,6 @@ The DeveloperNew tab is a complete migration of the old developer functionality 
 - ImGui for UI rendering
 - External variables from `addon.hpp` for settings
 - NVAPI classes for fullscreen prevention functionality
-- Reflex management functions for hook installation/removal
 - Logging functions for debug output
 
 ### Migration Approach
@@ -76,7 +67,6 @@ The DeveloperNew tab is accessible through the new UI system alongside other tab
 2. Modify developer settings using the various controls
 3. View real-time NVAPI status and debug information
 4. Monitor latency performance metrics
-5. Configure Reflex settings for optimal performance
 
 ## Future Considerations
 - The old Developer tab can be removed once this new implementation is verified to work correctly

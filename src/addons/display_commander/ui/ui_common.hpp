@@ -6,7 +6,7 @@
 // External declarations for settings
 
 
-extern std::atomic<bool> s_reflex_debug_output;
+
 
 
 
@@ -20,6 +20,6 @@ namespace ui {
     void AddDxgiDeviceInfoDetailedSettings(std::vector<utils::settings2::Setting*>& settings);
     void AddDxgiCompositionInfoSettings(std::vector<utils::settings2::Setting*>& settings);
     void AddIndependentFlipFailuresSettings(std::vector<utils::settings2::Setting*>& settings);
-    void AddReflexSettings(std::vector<utils::settings2::Setting*>& settings);
+    
     void AddDxgiDeviceInfoSettings(std::vector<utils::settings2::Setting*>& settings);
 }

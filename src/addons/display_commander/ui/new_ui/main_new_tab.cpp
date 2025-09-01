@@ -66,6 +66,8 @@ void InitMainNewTab() {
         s_fps_limiter_injection.store(g_main_new_tab_settings.fps_limiter_injection.GetValue());
         // Scanline offset
         s_scanline_offset.store(g_main_new_tab_settings.scanline_offset.GetValue());
+        // VBlank Sync Divisor
+        s_vblank_sync_divisor.store(g_main_new_tab_settings.vblank_sync_divisor.GetValue());
 
         // If manual Audio Mute is OFF, proactively unmute on startup
         if (!s_audio_mute.load()) {
@@ -449,6 +451,35 @@ void DrawDisplaySettings() {
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Scanline offset for latent sync (-1000 to 1000). This defines the offset from the threshold where frame pacing is active.");
+        }
+        
+        // VBlank Sync Divisor (only visible if latent sync mode is selected)
+        int current_divisor = g_main_new_tab_settings.vblank_sync_divisor.GetValue();
+        int temp_divisor = current_divisor;
+        if (ImGui::SliderInt("VBlank Sync Divisor", &temp_divisor, 1, 8, "%d")) {
+            g_main_new_tab_settings.vblank_sync_divisor.SetValue(temp_divisor);
+            s_vblank_sync_divisor.store(temp_divisor);
+        }
+        if (ImGui::IsItemHovered()) {
+            // Calculate effective refresh rate based on monitor info
+            auto window_state = ::g_window_state.load();
+            double refresh_hz = 60.0; // default fallback
+            if (window_state) {
+                refresh_hz = window_state->current_monitor_refresh_rate.ToHz();
+            }
+            
+            std::ostringstream tooltip_oss;
+            tooltip_oss << "VBlank Sync Divisor (1-8). Controls frame pacing similar to VSync divisors:\n\n";
+            for (int div = 1; div <= 8; ++div) {
+                int effective_fps = static_cast<int>(std::round(refresh_hz / div));
+                tooltip_oss << "  " << div << " -> " << effective_fps << " FPS";
+                if (div == 1) tooltip_oss << " (Full Refresh)";
+                else if (div == 2) tooltip_oss << " (Half Refresh)";
+                else tooltip_oss << " (1/" << div << " Refresh)";
+                tooltip_oss << "\n";
+            }
+            tooltip_oss << "\nHigher values reduce effective frame rate for smoother frame pacing.";
+            ImGui::SetTooltip("%s", tooltip_oss.str().c_str());
         }
         
         // VBlank Monitor Status (only visible if latent sync is enabled and FPS limit > 0)

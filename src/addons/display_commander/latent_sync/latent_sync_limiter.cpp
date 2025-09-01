@@ -1,6 +1,7 @@
 #include "latent_sync_limiter.hpp"
 #include "../addon.hpp"
 #include "../utils.hpp"
+#include "../globals.hpp"
 #include <dxgi1_6.h>
 #include <sstream>
 #include "../display/query_display.hpp"
@@ -151,7 +152,7 @@ void LatentSyncLimiter::LimitFrameRate() {
         return;
     }
 
-
+    delta_wait_time += ticks_per_refresh.load() * (s_vblank_sync_divisor - 1);
 
     LONGLONG start_ticks = now_ticks;
     while (true) {
@@ -159,13 +160,6 @@ void LatentSyncLimiter::LimitFrameRate() {
         if (now_ticks - start_ticks > delta_wait_time) {
             break;
         }
-    }
-    {
-        double expected_scanline = expected_current_scanline(now_ticks, total_height, true);
-        std::ostringstream oss;
-        oss << " fpslimiter expected_current_scanline: " << expected_scanline;
-        oss << " target_line: " << target_line;
-        LogInfo(oss.str().c_str());   
     }
 }
 

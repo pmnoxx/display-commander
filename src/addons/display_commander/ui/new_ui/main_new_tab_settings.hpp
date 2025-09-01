@@ -30,6 +30,7 @@ public:
     // FPS Settings
     ComboSetting fps_limiter_mode;
     IntSetting scanline_offset;
+    IntSetting vblank_sync_divisor;
     IntSettingRef fps_limiter_injection;
     FloatSettingRef fps_limit;
     FloatSettingRef fps_limit_background;

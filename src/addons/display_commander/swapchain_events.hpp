@@ -15,10 +15,10 @@ void OnEndRenderPass(reshade::api::command_list* cmd_list);
 // These are now implemented in swapchain_events_power_saving.cpp
 
 // Command list and queue lifecycle hooks
-void OnInitCommandList(reshade::api::command_list* cmd_list);
-void OnInitCommandQueue(reshade::api::command_queue* queue);
-void OnResetCommandList(reshade::api::command_list* cmd_list);
-void OnExecuteCommandList(reshade::api::command_queue* queue, reshade::api::command_list* cmd_list);
+//void OnInitCommandList(reshade::api::command_list* cmd_list);
+//void OnInitCommandQueue(reshade::api::command_queue* queue);//
+//void OnResetCommandList(reshade::api::command_list* cmd_list);
+//void OnExecuteCommandList(reshade::api::command_queue* queue, reshade::api::command_list* cmd_list);
 
 // Pipeline and resource binding hooks
 bool OnBindPipeline(reshade::api::command_list* cmd_list, reshade::api::pipeline_stage stages, reshade::api::pipeline pipeline);

@@ -462,53 +462,10 @@ void OnPresentUpdateBefore2(reshade::api::effect_runtime* runtime) {
 }
 
 
-// Additional event handlers for frame timing and composition
-
-void OnInitCommandList(reshade::api::command_list* cmd_list) {
-  // Increment event counter
-  g_swapchain_event_counters[SWAPCHAIN_EVENT_INIT_COMMAND_LIST].fetch_add(1);
-  g_swapchain_event_total_count.fetch_add(1);
-  
-  // Log command list creation for debugging
-  LogDebug("Command list initialized");
-}
-
-void OnInitCommandQueue(reshade::api::command_queue* queue) {
-  // Increment event counter
-  g_swapchain_event_counters[SWAPCHAIN_EVENT_INIT_COMMAND_QUEUE].fetch_add(1);
-  g_swapchain_event_total_count.fetch_add(1);
-  
-  // Log command queue creation for debugging
-  LogDebug("Command queue initialized");
-}
-
-void OnResetCommandList(reshade::api::command_list* cmd_list) {
-  // Increment event counter
-  g_swapchain_event_counters[SWAPCHAIN_EVENT_RESET_COMMAND_LIST].fetch_add(1);
-  g_swapchain_event_total_count.fetch_add(1);
-  
-  // Log command list reset for debugging
-  LogDebug("Command list reset");
-}
-
-void OnExecuteCommandList(reshade::api::command_queue* queue, reshade::api::command_list* cmd_list) {
-  // Increment event counter
-  g_swapchain_event_counters[SWAPCHAIN_EVENT_EXECUTE_COMMAND_LIST].fetch_add(1);
-  g_swapchain_event_total_count.fetch_add(1);
-  
-  // This event could be used for frame timing analysis
-  // as it represents when GPU work is actually submitted
-  LogDebug("Command list executed");
-}
-
 bool OnBindPipeline(reshade::api::command_list* cmd_list, reshade::api::pipeline_stage stages, reshade::api::pipeline pipeline) {
   // Increment event counter
   g_swapchain_event_counters[SWAPCHAIN_EVENT_BIND_PIPELINE].fetch_add(1);
   g_swapchain_event_total_count.fetch_add(1);
-  
-  // This event tracks shader pipeline changes
-  // which is very useful for frame timing analysis
-  LogDebug("Pipeline bound");
   
   // Power saving: skip pipeline binding in background if enabled
   if (s_suppress_binding_in_background.load() && ShouldBackgroundSuppressOperation()) {

@@ -121,9 +121,9 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
       // These operations are handled differently in ReShade
       
       // Register additional event handlers for frame timing and composition
-      reshade::register_event<reshade::addon_event::init_command_list>(OnInitCommandList);
-      reshade::register_event<reshade::addon_event::init_command_queue>(OnInitCommandQueue);
-      reshade::register_event<reshade::addon_event::reset_command_list>(OnResetCommandList);
+    //  reshade::register_event<reshade::addon_event::init_command_list>(OnInitCommandList);
+     // reshade::register_event<reshade::addon_event::init_command_queue>(OnInitCommandQueue);
+     // reshade::register_event<reshade::addon_event::reset_command_list>(OnResetCommandList);
    //   reshade::register_event<reshade::addon_event::execute_command_list>(OnExecuteCommandList);
    //   reshade::register_event<reshade::addon_event::bind_pipeline>(OnBindPipeline);
       // Register overlay directly
@@ -166,9 +166,9 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
       reshade::unregister_event<reshade::addon_event::update_buffer_region_command>(OnUpdateBufferRegionCommand);
       
       // Unregister additional event handlers for frame timing and composition
-      reshade::unregister_event<reshade::addon_event::init_command_list>(OnInitCommandList);
-      reshade::unregister_event<reshade::addon_event::init_command_queue>(OnInitCommandQueue);
-      reshade::unregister_event<reshade::addon_event::reset_command_list>(OnResetCommandList);
+      //reshade::unregister_event<reshade::addon_event::init_command_list>(OnInitCommandList);
+     // reshade::unregister_event<reshade::addon_event::init_command_queue>(OnInitCommandQueue);
+      //reshade::unregister_event<reshade::addon_event::reset_command_list>(OnResetCommandList);
    //   reshade::unregister_event<reshade::addon_event::execute_command_list>(OnExecuteCommandList);
   //    reshade::unregister_event<reshade::addon_event::bind_pipeline>(OnBindPipeline);
       // Unregister overlay

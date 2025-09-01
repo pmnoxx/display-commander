@@ -353,10 +353,6 @@ void VBlankMonitor::MonitoringThread() {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 
-    LARGE_INTEGER liQpcFreq = { };
-    QueryPerformanceFrequency(&liQpcFreq);
-    ticks_per_refresh.store(liQpcFreq.QuadPart);
-
     // Get the current window HWND and corresponding display timing info
     HWND hwnd = g_last_swapchain_hwnd.load();
     DisplayTimingInfo current_display_timing = GetDisplayTimingInfoForWindow(hwnd);
@@ -365,7 +361,6 @@ void VBlankMonitor::MonitoringThread() {
     std::vector<DisplayTimingInfo> all_timing_info = QueryDisplayTimingInfo();
     {
         std::ostringstream oss;
-        oss << "ticks_per_refresh: " << ticks_per_refresh.load();
         LogInfo(oss.str().c_str());   
         
         for (const auto& timing : all_timing_info) {

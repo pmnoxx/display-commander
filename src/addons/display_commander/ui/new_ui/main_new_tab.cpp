@@ -459,7 +459,7 @@ void DrawDisplaySettings() {
         // VBlank Sync Divisor (only visible if latent sync mode is selected)
         int current_divisor = g_main_new_tab_settings.vblank_sync_divisor.GetValue();
         int temp_divisor = current_divisor;
-        if (ImGui::SliderInt("VBlank Sync Divisor", &temp_divisor, 1, 8, "%d")) {
+        if (ImGui::SliderInt("VBlank Sync Divisor", &temp_divisor, 0, 8, "%d")) {
             g_main_new_tab_settings.vblank_sync_divisor.SetValue(temp_divisor);
             s_vblank_sync_divisor.store(temp_divisor);
         }
@@ -472,7 +472,8 @@ void DrawDisplaySettings() {
             }
             
             std::ostringstream tooltip_oss;
-            tooltip_oss << "VBlank Sync Divisor (1-8). Controls frame pacing similar to VSync divisors:\n\n";
+            tooltip_oss << "VBlank Sync Divisor (0-8). Controls frame pacing similar to VSync divisors:\n\n";
+            tooltip_oss << "  0 -> No additional wait (Off)\n";
             for (int div = 1; div <= 8; ++div) {
                 int effective_fps = static_cast<int>(std::round(refresh_hz / div));
                 tooltip_oss << "  " << div << " -> " << effective_fps << " FPS";
@@ -481,7 +482,7 @@ void DrawDisplaySettings() {
                 else tooltip_oss << " (1/" << div << " Refresh)";
                 tooltip_oss << "\n";
             }
-            tooltip_oss << "\nHigher values reduce effective frame rate for smoother frame pacing.";
+            tooltip_oss << "\n0 = Disabled, higher values reduce effective frame rate for smoother frame pacing.";
             ImGui::SetTooltip("%s", tooltip_oss.str().c_str());
         }
         

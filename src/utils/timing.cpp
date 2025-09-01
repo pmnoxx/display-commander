@@ -17,7 +17,7 @@ typedef NTSTATUS (NTAPI *ZwQueryTimerResolution_t)(PULONG MinimumResolution, PUL
 typedef NTSTATUS (NTAPI *ZwSetTimerResolution_t)(ULONG DesiredResolution, BOOLEAN SetResolution, PULONG CurrentResolution);
 
 // Global variables for timer resolution
-static double timer_res_ms = 0.0;
+static LONGLONG timer_res_qpc = 0;
 static ZwQueryTimerResolution_t ZwQueryTimerResolution = nullptr;
 static ZwSetTimerResolution_t ZwSetTimerResolution = nullptr;
 static LONGLONG timer_res_qpc_frequency = 0;
@@ -49,12 +49,12 @@ bool setup_high_resolution_timer()
     if (ZwQueryTimerResolution(&min, &max, &cur) == STATUS_SUCCESS)
     {
         // Store current resolution
-        timer_res_ms = static_cast<double>(cur) / 10000.0;
+        timer_res_qpc = cur;
         
         // Set timer resolution to maximum for highest precision
         if (ZwSetTimerResolution(max, TRUE, &cur) == STATUS_SUCCESS)
         {
-            timer_res_ms = static_cast<double>(cur) / 10000.0;
+            timer_res_qpc = cur;
             return true;
         }
     }
@@ -63,9 +63,9 @@ bool setup_high_resolution_timer()
 }
 
 // Get current timer resolution in milliseconds
-double get_timer_resolution_ms()
+LONGLONG get_timer_resolution_qpc()
 {
-    return timer_res_ms;
+    return timer_res_qpc;
 }
 
 
@@ -80,10 +80,10 @@ LONGLONG get_now_ns() {
 // Uses a combination of kernel waitable timers and busy waiting for precision
 void wait_until_qpc(LONGLONG target_qpc, HANDLE& timer_handle)
 {
-    LONGLONG current_time = get_now_qpc();
+    LONGLONG current_time_qpc = get_now_qpc();
     
     // If target time has already passed, return immediately
-    if (target_qpc <= current_time)
+    if (target_qpc <= current_time_qpc)
         return;
     
     // Create timer handle if it doesn't exist or is invalid
@@ -104,20 +104,17 @@ void wait_until_qpc(LONGLONG target_qpc, HANDLE& timer_handle)
         }
     }
     
-    double time_to_wait_seconds = 
-        static_cast<double>(target_qpc - current_time) / 
-        static_cast<double>(timer_res_qpc_frequency);
+    LONGLONG time_to_wait_qpc = target_qpc - current_time_qpc;
     
     // Use kernel waitable timer for longer waits (more than ~2ms)
     // This prevents completely consuming a CPU core during long waits
-    if (timer_handle && (time_to_wait_seconds * 1000.0 >= timer_res_ms * 2.875))
+    if (timer_handle && (time_to_wait_qpc >= 3 * timer_res_qpc))
     {
         // Schedule timer to wake up slightly before target time
         // Leave some time for busy waiting to achieve precise timing
+        LONGLONG delay_qpc = time_to_wait_qpc - 1 * timer_res_qpc;
         LARGE_INTEGER delay{};
-        delay.QuadPart = -static_cast<LONGLONG>(
-            (time_to_wait_seconds - 3 * timer_res_ms / 1000.0) * timer_res_qpc_frequency
-        );
+        delay.QuadPart = -delay_qpc;
         
         if (SetWaitableTimer(timer_handle, &delay, 0, nullptr, nullptr, FALSE))
         {
@@ -136,10 +133,11 @@ void wait_until_qpc(LONGLONG target_qpc, HANDLE& timer_handle)
     
     // Busy wait for the remaining time to achieve precise timing
     // This compensates for OS scheduler inaccuracy
+
     while (true)
     {
-        current_time = get_now_qpc();
-        if (current_time >= target_qpc)
+        current_time_qpc = get_now_qpc();
+        if (current_time_qpc >= target_qpc)
             break;
         
         // Yield processor to other threads while waiting

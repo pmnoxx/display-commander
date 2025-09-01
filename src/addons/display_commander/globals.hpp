@@ -229,7 +229,7 @@ extern std::atomic<int> s_fps_limiter_injection;
 // Scanline offset
 extern std::atomic<int> s_scanline_offset;
 
-// VBlank Sync Divisor (like VSync /2 /3 /4) - 1 to 8
+// VBlank Sync Divisor (like VSync /2 /3 /4) - 0 to 8 (0 = off)
 extern std::atomic<int> s_vblank_sync_divisor;
 
 // Performance stats (FPS/frametime) shared state

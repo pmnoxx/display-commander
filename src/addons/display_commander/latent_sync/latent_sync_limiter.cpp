@@ -103,6 +103,9 @@ bool LatentSyncLimiter::UpdateDisplayBindingFromWindow(HWND hwnd) {
 long double last_wait_target_ns = 0.0L;
 
 void LatentSyncLimiter::LimitFrameRate() {
+    if (s_vblank_sync_divisor.load() == 0) {
+        return;
+    }
     StartVBlankMonitoring();
 
     extern std::atomic<LONGLONG> g_latent_sync_total_height;
@@ -139,7 +142,9 @@ void LatentSyncLimiter::LimitFrameRate() {
 
     long double delta_wait_time_ns = 1.0L * diff_lines * ns_per_refresh.load() / total_height;
 
-    LONGLONG wait_target_ns = now_ns + delta_wait_time_ns + ns_per_refresh.load() * (s_vblank_sync_divisor.load() - 1);
+    // When vblank_sync_divisor is 0 (off), don't add any additional wait time
+    LONGLONG additional_wait_ns = ns_per_refresh.load() * (s_vblank_sync_divisor.load() - 1);
+    LONGLONG wait_target_ns = now_ns + delta_wait_time_ns + additional_wait_ns;
 
     if (wait_target_ns >= utils::get_now_ns()) {
         if (delta_wait_time_ns > utils::SEC_TO_NS) {

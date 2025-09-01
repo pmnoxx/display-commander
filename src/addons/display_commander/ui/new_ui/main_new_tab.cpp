@@ -438,20 +438,18 @@ void DrawDisplaySettings() {
         ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Adds a small delay after present to smooth frame pacing and reduce stuttering");
         
         float current_delay = g_main_new_tab_settings.present_pacing_delay_percentage.GetValue();
-        if (SliderFloatSetting(g_main_new_tab_settings.present_pacing_delay_percentage, "Present Pacing Delay", "%.1f%%")) {
+        if (SliderFloatSetting(g_main_new_tab_settings.present_pacing_delay_percentage, "Present Pacing Delay (manual fine-tuning is needed for now)", "%.1f%%")) {
             // The setting is automatically synced via FloatSettingRef
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip(
-                "Present Pacing Delay: Adds a small delay after present to improve frame pacing.\n\n"
+                "Present Pacing Delay: Adds delay to starting next frame.\n\n"
                 "How it reduces latency:\n"
-                "• Prevents CPU from immediately starting next frame\n"
-                "• Allows GPU to complete current frame processing\n"
-                "• Creates more consistent frame timing\n"
-                "• Reduces frame time variance (stuttering)\n\n"
-                "Range: 0%% to 100%%. Default: 0%% (no delay).\n"
-                "Higher values = more consistent timing but slightly higher latency.\n"
-                "Scales automatically with frame rate."
+                "• Allow for more time for CPU to process input.\n"
+                "• Lower values provide more consistent frame timing.\n"
+                "• Higher values provide lower latency but slightly less consistent timing.\n"
+                "Range: 0%% to 100%%. Default: 0%% (1 frame time delay).\n"
+                "Manual fine-tuning required."
             );
         }
     }
@@ -936,7 +934,10 @@ void DrawImportantInfo() {
         float frame_time_ms = 1000.0f / current_fps;
         float sleep_duration_ms = static_cast<float>(::fps_sleep_after_on_present_ns.load()) / utils::NS_TO_MS;
         float latency_ms = frame_time_ms - sleep_duration_ms;
-        oss << "Sim Start to Present Latency: " << std::fixed << std::setprecision(3) << latency_ms << " ms";
+
+        static double sim_start_to_present_latency_ms = 0.0;
+        sim_start_to_present_latency_ms = (sim_start_to_present_latency_ms * 0.99 + latency_ms * 0.01);
+        oss << "Sim Start to Present Latency: " << std::fixed << std::setprecision(3) << sim_start_to_present_latency_ms << " ms";
         ImGui::TextUnformatted(oss.str().c_str());
         ImGui::SameLine();
         ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "(frame_time - sleep_duration)");

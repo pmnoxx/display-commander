@@ -304,12 +304,23 @@ void OnInitSwapchain(reshade::api::swapchain* swapchain, bool resize) {
 }
 
 HANDLE g_timer_handle = nullptr;
-void TimerSleepAfterOnPresent() {
+void TimerPresentPacingDelay() {
   LONGLONG start_ns = utils::get_now_ns();
-  float sleep_ms = s_sleep_after_present_ms.load();
-  if (sleep_ms > 0.0f) {
-    LONGLONG delta_ns = static_cast<LONGLONG>(sleep_ms * utils::NS_TO_MS);
-    utils::wait_until_ns(utils::get_now_ns() + delta_ns, g_timer_handle);
+  float delay_percentage = s_present_pacing_delay_percentage.load();
+  if (delay_percentage > 0.0f) {
+    // Calculate frame time from the most recent performance sample
+    const uint32_t head = g_perf_ring_head.load(std::memory_order_acquire);
+    if (head > 0) {
+      const uint32_t last_idx = (head - 1) & (kPerfRingCapacity - 1);
+      const PerfSample& last_sample = g_perf_ring[last_idx];
+      if (last_sample.fps > 0.0f) {
+        // Convert FPS to frame time in milliseconds, then to nanoseconds
+        float frame_time_ms = 1000.0f / last_sample.fps;
+        float delay_ms = frame_time_ms * (delay_percentage / 100.0f);
+        LONGLONG delta_ns = static_cast<LONGLONG>(delay_ms * utils::NS_TO_MS);
+        utils::wait_until_ns(utils::get_now_ns() + delta_ns, g_timer_handle);
+      }
+    }
   }
 
   LONGLONG end_ns = utils::get_now_ns();
@@ -332,7 +343,7 @@ void OnPresentUpdateAfter(reshade::api::command_queue* /*queue*/, reshade::api::
     auto& latent = dxgi::latent_sync::g_latentSyncManager->GetLatentLimiter();
     latent.OnPresentEnd();
   }
-  TimerSleepAfterOnPresent();
+  TimerPresentPacingDelay();
   HandleOnPresentEnd();
 }
 

@@ -15,6 +15,7 @@
 #include "../ui_display_tab.hpp"
 #include <deps/imgui/imgui.h>
 #include "../../latent_sync/latent_sync_limiter.hpp"
+#include "../../utils/timing.hpp"
 
 
 namespace ui::new_ui {
@@ -808,22 +809,12 @@ void DrawImportantInfo() {
             ImGui::SetTooltip("Reset FPS/frametime statistics. Metrics are computed since reset.");
         }
     }
-    
-    // PCL AV Latency Display
-    float pcl_latency = ::g_pcl_av_latency_ms.load();
-    
     std::ostringstream oss;
-    oss << "PCL AV Latency: " << std::fixed << std::setprecision(2) << pcl_latency << " ms";
-    ImGui::TextUnformatted(oss.str().c_str());
-    ImGui::SameLine();
-    ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "(30-frame avg)");
     
-    #define NS_TO_MS 1000000.0
     // Present Duration Display
-    
     oss.str("");
     oss.clear();
-    oss << "Present Duration: " << std::fixed << std::setprecision(3) << (::g_present_duration_ns.load() / NS_TO_MS) << " ms";
+    oss << "Present Duration: " << std::fixed << std::setprecision(3) << (::g_present_duration_ns.load() / utils::NS_TO_MS) << " ms";
     ImGui::TextUnformatted(oss.str().c_str());
     ImGui::SameLine();
     ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "(smoothed)");
@@ -831,15 +822,7 @@ void DrawImportantInfo() {
     
     oss.str("");
     oss.clear();
-    oss << "Simulation Duration: " << std::fixed << std::setprecision(3) << (::g_simulation_duration_ns.load() / NS_TO_MS) << " ms";
-    ImGui::TextUnformatted(oss.str().c_str());
-    ImGui::SameLine();
-    ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "(smoothed)");
-    
-    // Reshade Overhead Display
-    oss.str("");
-    oss.clear();
-    oss << "Render Submit Duration: " << std::fixed << std::setprecision(3) << (::g_render_submit_duration_ns.load() / NS_TO_MS) << " ms";
+    oss << "Simulation Duration: " << std::fixed << std::setprecision(3) << (::g_simulation_duration_ns.load() / utils::NS_TO_MS) << " ms";
     ImGui::TextUnformatted(oss.str().c_str());
     ImGui::SameLine();
     ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "(smoothed)");
@@ -847,7 +830,16 @@ void DrawImportantInfo() {
     // Reshade Overhead Display
     oss.str("");
     oss.clear();
-    oss << "Reshade Overhead Duration: " << std::fixed << std::setprecision(3) << ((::g_reshade_overhead_duration_ns.load() - ::fps_sleep_before_on_present_ns.load() - ::fps_sleep_after_on_present_ns.load()) / NS_TO_MS) << " ms";
+    oss << "Render Submit Duration: " << std::fixed << std::setprecision(3) << (::g_render_submit_duration_ns.load() / utils::NS_TO_MS) << " ms";
+    ImGui::TextUnformatted(oss.str().c_str());
+    ImGui::SameLine();
+    ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "(smoothed)");
+    
+    // Reshade Overhead Display
+    oss.str("");
+    oss.clear();
+    oss << "Reshade Overhead Duration: " << std::fixed << std::setprecision(3) 
+    << ((::g_reshade_overhead_duration_ns.load() - ::fps_sleep_before_on_present_ns.load() - ::fps_sleep_after_on_present_ns.load()) / utils::NS_TO_MS) << " ms";
     ImGui::TextUnformatted(oss.str().c_str());
     ImGui::SameLine();
     ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "(smoothed)");
@@ -855,7 +847,7 @@ void DrawImportantInfo() {
 
     oss.str("");
     oss.clear();
-    oss << "FPS Limiter Sleep Duration (before onPresent): " << std::fixed << std::setprecision(3) << (::fps_sleep_before_on_present_ns.load() / NS_TO_MS) << " ms";
+    oss << "FPS Limiter Sleep Duration (before onPresent): " << std::fixed << std::setprecision(3) << (::fps_sleep_before_on_present_ns.load() / utils::NS_TO_MS) << " ms";
     ImGui::TextUnformatted(oss.str().c_str());
     ImGui::SameLine();
     ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "(smoothed)");
@@ -864,14 +856,11 @@ void DrawImportantInfo() {
     // FPS Limiter Start Duration Display
     oss.str("");
     oss.clear();
-    oss << "FPS Limiter Sleep Duration (after onPresent): " << std::fixed << std::setprecision(3) << (::fps_sleep_after_on_present_ns.load() / NS_TO_MS) << " ms";
+    oss << "FPS Limiter Sleep Duration (after onPresent): " << std::fixed << std::setprecision(3) << (::fps_sleep_after_on_present_ns.load() / utils::NS_TO_MS) << " ms";
     ImGui::TextUnformatted(oss.str().c_str());
     ImGui::SameLine();
     ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "(smoothed)");
 
-    
-
-    
     // Flip State Display (renamed from DXGI Composition)
     const char* flip_state_str = "Unknown";
     int flip_state_case = static_cast<int>(::s_dxgi_composition_state);

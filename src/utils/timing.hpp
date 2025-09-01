@@ -4,6 +4,7 @@
 
 namespace utils {
     const LONGLONG SEC_TO_NS = 1000000000;
+    const LONGLONG NS_TO_MS = 1000000;
     const LONGLONG QPC_TO_NS = 100;
     const LONGLONG QPC_PER_SECOND = SEC_TO_NS / QPC_TO_NS;
 

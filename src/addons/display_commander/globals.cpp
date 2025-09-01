@@ -128,7 +128,6 @@ std::unique_ptr<DXGIDeviceInfoManager> g_dxgiDeviceInfoManager = std::make_uniqu
 
 // Direct atomic variables for latency tracking (UI access)
 std::atomic<float> g_current_latency_ms{0.0f};
-std::atomic<float> g_pcl_av_latency_ms{0.0f};
 std::atomic<float> g_average_latency_ms{0.0f};
 std::atomic<float> g_min_latency_ms{0.0f};
 std::atomic<float> g_max_latency_ms{0.0f};

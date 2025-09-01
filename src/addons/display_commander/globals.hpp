@@ -182,7 +182,6 @@ extern std::unique_ptr<DXGIDeviceInfoManager> g_dxgiDeviceInfoManager;
 
 // Direct atomic variables for latency tracking (UI access)
 extern std::atomic<float> g_current_latency_ms;
-extern std::atomic<float> g_pcl_av_latency_ms;
 extern std::atomic<float> g_average_latency_ms;
 extern std::atomic<float> g_min_latency_ms;
 extern std::atomic<float> g_max_latency_ms;

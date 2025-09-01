@@ -26,7 +26,7 @@ Note: Applying window operations from the main thread can crash some apps. This 
 - Auto-apply (continuous monitoring): Keep size/position in sync
 - FPS limiter: Foreground and background caps using a custom limiter
 - Audio controls: Per-process volume, manual mute, mute in background, conditional background mute
-- Live indicators: PCL AV latency (30-frame average) and flip state
+- Live indicators: flip state
 
 ## Known Issues
 
@@ -60,7 +60,7 @@ Inside the ReShade overlay, Display Commander exposes:
 - Monitor & Display: Dynamic monitor settings and current display info
 - Audio: Volume, manual mute, mute in background, and conditional background mute
 - Window Controls: Minimize, restore, maximize (applied from a background thread)
-- Important Info: PCL AV latency and flip state
+- Important Info: flip state
 
 ## Build from source
 

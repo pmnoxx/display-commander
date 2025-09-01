@@ -353,18 +353,7 @@ void DrawLatencyDisplay() {
     std::ostringstream oss;
     oss << "Current Latency: " << std::fixed << std::setprecision(2) << latency << " ms";
     ImGui::TextUnformatted(oss.str().c_str());
-    
-    // PCL AV Latency Display (Most Important)
-    extern std::atomic<float> g_pcl_av_latency_ms;
-    float pcl_latency = ::g_pcl_av_latency_ms.load();
-    
-    oss.str("");
-    oss.clear();
-    oss << "PCL AV Latency: " << std::fixed << std::setprecision(2) << pcl_latency << " ms";
-    ImGui::TextUnformatted(oss.str().c_str());
-    ImGui::SameLine();
-    ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "(30-frame avg)");
-    
+
     // Present Duration Display
     extern std::atomic<double> g_present_duration;
     double present_duration = ::g_present_duration_ns.load();

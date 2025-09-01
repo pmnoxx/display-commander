@@ -24,7 +24,7 @@ void DrawAudioSettings();
 // Draw window controls section
 void DrawWindowControls();
 
-// Draw important information section (PCL AV Latency, Flip State)
+// Draw important information section (Flip State)
 void DrawImportantInfo();
 
 } // namespace ui::new_ui

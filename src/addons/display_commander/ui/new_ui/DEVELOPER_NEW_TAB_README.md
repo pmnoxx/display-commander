@@ -31,7 +31,6 @@ The DeveloperNew tab is a complete migration of the old developer functionality 
 
 ### 4. Latency Display Section
 - **Current Latency**: Real-time display of current frame latency in milliseconds
-- **PCL AV Latency**: Display of PCL Average Latency (30-frame average) - matches NVIDIA overlay
 - **Debug Button**: Button to log all current latency values for debugging purposes
 
 ## Implementation Details

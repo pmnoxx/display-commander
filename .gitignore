@@ -42,3 +42,6 @@ bd.ps1
 
 # tmp
 tmp/
+
+# cache
+.cache/

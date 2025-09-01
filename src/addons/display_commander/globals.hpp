@@ -334,3 +334,6 @@ enum SwapchainEventIndex {
     SWAPCHAIN_EVENT_END_QUERY = 36,
     SWAPCHAIN_EVENT_RESOLVE_QUERY_DATA = 37
 };
+
+// Unsorted TODO: Add in correct order above
+extern std::atomic<LONGLONG> g_present_start_time_qpc;

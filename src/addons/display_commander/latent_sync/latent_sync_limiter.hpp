@@ -23,23 +23,10 @@ public:
     void OnFrameEnd() {}
 
     // Present timing hooks (called around Present)
-    void OnPresentBegin();
     void OnPresentEnd();
 
     void SetTargetFps(float fps) { m_target_fps = fps; }
     float GetTargetFps() const { return m_target_fps; }
-
-    /*
-        if (m_enabled != enabled) {
-            m_enabled = enabled;
-            if (enabled) {
-                StartVBlankMonitoring();
-            } else {
-                StopVBlankMonitoring();
-            }
-        }
-            */
-
     // VBlank monitoring
     void StartVBlankMonitoring();
     void StopVBlankMonitoring();
@@ -59,7 +46,6 @@ private:
 
 private:
     float m_target_fps = 0.0f;
-    bool  m_enabled = false;
 
     // VBlank pacing state
     double m_vblank_accumulator = 0.0;
@@ -82,7 +68,6 @@ private:
     FARPROC m_pfnGetScanLine = nullptr;                   // "D3DKMTGetScanLine"
 
     // Present timing state
-    LONGLONG m_qpc_present_begin = 0;
     double   m_avg_present_ticks = 0.0; // exponentially weighted average of Present duration (ticks)
 
 

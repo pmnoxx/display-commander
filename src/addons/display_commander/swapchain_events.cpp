@@ -332,11 +332,9 @@ void OnPresentUpdateAfter(  reshade::api::command_queue* /*queue*/, reshade::api
   g_present_duration_ns.store((1 * g_present_duration_new + (alpha - 1) * g_present_duration_ns.load()) / alpha);
   
   // Mark Present end for latent sync limiter timing
-  if (s_fps_limiter_mode.load() == FPS_LIMITER_MODE_LATENT_SYNC) {
-    if (dxgi::latent_sync::g_latentSyncManager) {
-      auto& latent = dxgi::latent_sync::g_latentSyncManager->GetLatentLimiter();
-      latent.OnPresentEnd();
-    }
+  if (dxgi::latent_sync::g_latentSyncManager) {
+    auto& latent = dxgi::latent_sync::g_latentSyncManager->GetLatentLimiter();
+    latent.OnPresentEnd();
   }
   HandleOnPresentEnd();
 }
@@ -368,7 +366,6 @@ void HandleFpsLimiter() {
   switch (s_fps_limiter_mode.load()) {
     case FPS_LIMITER_MODE_CUSTOM: {
       // Use FPS limiter manager for Custom (Sleep/Spin) mode
-      LogDebug("Applying FPS limit via Custom (Sleep/Spin) mode");
       if (dxgi::fps_limiter::g_customFpsLimiterManager) {
         auto& limiter = dxgi::fps_limiter::g_customFpsLimiterManager->GetFpsLimiter();
         if (target_fps > 0.0f) {
@@ -388,15 +385,9 @@ void HandleFpsLimiter() {
         }
       }
 
-      // Mark Present begin for latent sync limiter timing (right before Present executes)
-      if (dxgi::latent_sync::g_latentSyncManager) {
-        auto& latent = dxgi::latent_sync::g_latentSyncManager->GetLatentLimiter();
-        latent.OnPresentBegin();
-      }
       break;
     }
   }
-    
 
   LONGLONG handle_fps_limiter_start_end_time_qpc = get_now_qpc();
   g_present_start_time_qpc.store(handle_fps_limiter_start_end_time_qpc);

@@ -34,6 +34,7 @@ public:
     IntSettingRef fps_limiter_injection;
     FloatSettingRef fps_limit;
     FloatSettingRef fps_limit_background;
+    FloatSettingRef sleep_after_present_ms;
     
     // VSync & Tearing
     BoolSettingRef force_vsync_on;

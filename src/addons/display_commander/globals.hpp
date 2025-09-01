@@ -268,6 +268,9 @@ extern std::atomic<bool> s_enable_mute_unmute_shortcut;
 // Performance optimization settings
 extern std::atomic<bool> g_flush_before_present;
 
+// Sleep delay after present (milliseconds) - 0ms to 10ms range
+extern std::atomic<float> s_sleep_after_present_ms;
+
 // Monitoring thread
 extern std::atomic<bool> g_monitoring_thread_running;
 extern std::thread g_monitoring_thread;

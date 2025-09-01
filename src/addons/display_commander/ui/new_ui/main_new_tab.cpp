@@ -429,6 +429,17 @@ void DrawDisplaySettings() {
         }
     }
 
+    // Sleep After Present slider (persisted)
+    {
+        float current_sleep = g_main_new_tab_settings.sleep_after_present_ms.GetValue();
+        if (SliderFloatSetting(g_main_new_tab_settings.sleep_after_present_ms, "Sleep After Present", "%.1f ms")) {
+            // The setting is automatically synced via FloatSettingRef
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Add a small delay after present to reduce CPU usage. Range: 0ms to 10ms. Default: 0ms (no sleep).");
+        }
+    }
+
     // Latent Sync Mode (only visible if Latent Sync limiter is selected)
     if (s_fps_limiter_mode.load() == 1) {
         

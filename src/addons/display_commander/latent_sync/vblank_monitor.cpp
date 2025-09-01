@@ -81,35 +81,9 @@ DisplayTimingInfo GetDisplayTimingInfoForWindow(HWND hwnd) {
     // Query all display timing info
     auto timing_info = QueryDisplayTimingInfo();
     
-    {
-        std::ostringstream oss;
-        oss << "GetDisplayTimingInfoForMonitor: Monitor device name from GetMonitorInfoW: '" << WideCharToUTF8(mi.szDevice) << "'";
-        LogInfo(oss.str().c_str());
-    }
-    
-    {
-        std::ostringstream oss;
-        oss << "GetDisplayTimingInfoForMonitor: Available timing info entries (" << timing_info.size() << "):";
-        for (size_t i = 0; i < timing_info.size(); ++i) {
-            oss << "\n  [" << i << "] device_path: '" << WideCharToUTF8(timing_info[i].device_path) << "'";
-            oss << "\n      display_name: '" << WideCharToUTF8(timing_info[i].display_name) << "'";
-        }
-        LogInfo(oss.str().c_str());
-    }
-    
     // Find the display that matches our monitor
     for (size_t i = 0; i < timing_info.size(); ++i) {
         const auto& timing = timing_info[i];
-        
-        {
-            std::ostringstream oss;
-            oss << "GetDisplayTimingInfoForMonitor: Checking entry [" << i << "]:";
-            oss << "\n    Monitor device: '" << WideCharToUTF8(mi.szDevice) << "'";
-            oss << "\n    Timing device_path: '" << WideCharToUTF8(timing.device_path) << "'";
-            oss << "\n    Timing display_name: '" << WideCharToUTF8(timing.display_name) << "'";
-            oss << "\n    Timing gdi_device_name: '" << WideCharToUTF8(timing.gdi_device_name) << "'";
-            LogInfo(oss.str().c_str());
-        }
         
         // Try to match by GDI device name first (most reliable for GetMonitorInfoW)
         if (!timing.gdi_device_name.empty() && timing.gdi_device_name == mi.szDevice) {

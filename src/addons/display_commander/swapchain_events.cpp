@@ -8,6 +8,7 @@
 #include <mutex>
 #include <minwindef.h>
 #include <atomic>
+#include "utils/timing.hpp"
 
 // Use renodx2 utilities for swapchain color space changes
 #include <utils/swapchain.hpp>
@@ -302,7 +303,20 @@ void OnInitSwapchain(reshade::api::swapchain* swapchain, bool resize) {
   
 }
 
-void OnPresentUpdateAfter(  reshade::api::command_queue* /*queue*/, reshade::api::swapchain* swapchain) {
+HANDLE g_timer_handle = nullptr;
+void TimerSleepAfterOnPresent() {
+  LONGLONG start_ns = utils::get_now_ns();
+  float sleep_ms = s_sleep_after_present_ms.load();
+  if (sleep_ms > 0.0f) {
+    LONGLONG delta_ns = static_cast<LONGLONG>(sleep_ms * utils::NS_TO_MS);
+    utils::wait_until_ns(utils::get_now_ns() + delta_ns, g_timer_handle);
+  }
+
+  LONGLONG end_ns = utils::get_now_ns();
+  fps_sleep_after_on_present_ns.store(end_ns - start_ns);
+}
+
+void OnPresentUpdateAfter(reshade::api::command_queue* /*queue*/, reshade::api::swapchain* swapchain) {
   // Increment event counter
   g_swapchain_event_counters[SWAPCHAIN_EVENT_PRESENT_UPDATE_AFTER].fetch_add(1);
   g_swapchain_event_total_count.fetch_add(1);
@@ -318,6 +332,7 @@ void OnPresentUpdateAfter(  reshade::api::command_queue* /*queue*/, reshade::api
     auto& latent = dxgi::latent_sync::g_latentSyncManager->GetLatentLimiter();
     latent.OnPresentEnd();
   }
+  TimerSleepAfterOnPresent();
   HandleOnPresentEnd();
 }
 

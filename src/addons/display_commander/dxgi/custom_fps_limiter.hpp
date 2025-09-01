@@ -20,7 +20,7 @@ public:
 private:
     
     // QPC for sleep
-    LONGLONG last_time_point_qpc = 0;
+    LONGLONG last_time_point_ns = 0;
 };
 
 } // namespace dxgi::fps_limiter

@@ -7,14 +7,14 @@ namespace dxgi::fps_limiter {
     HANDLE m_timer_handle = nullptr;
 
 CustomFpsLimiter::CustomFpsLimiter()
-    : last_time_point_qpc(0)
+    : last_time_point_ns(0)
 {
 }
 
 void CustomFpsLimiter::LimitFrameRate(double fps)
 {
-    LONGLONG wait_target_qpc = last_time_point_qpc + (QPC_PER_SECOND / fps);
-    utils::wait_until_qpc(wait_target_qpc, m_timer_handle);
-    last_time_point_qpc = get_now_qpc();
+    LONGLONG wait_target_ns = last_time_point_ns + (utils::SEC_TO_NS / fps);
+    utils::wait_until_ns(wait_target_ns, m_timer_handle);
+    last_time_point_ns = utils::get_now_ns();
 }
 } // namespace dxgi::fps_limiter

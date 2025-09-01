@@ -129,7 +129,7 @@ void LatentSyncLimiter::LimitFrameRate() {
     }
 
     
-    LONGLONG now_ticks = get_now_qpc();
+    LONGLONG now_ticks = utils::get_now_qpc();
 
     extern double expected_current_scanline(LONGLONG now_ticks, int total_height, bool add_correction);
     double expected_scanline = expected_current_scanline(now_ticks, total_height, true);
@@ -142,21 +142,21 @@ void LatentSyncLimiter::LimitFrameRate() {
 
     double delta_wait_time = diff_lines * (1.0 * ticks_per_refresh.load() / total_height);
 
-    LONGLONG wait_target = now_ticks + delta_wait_time + ticks_per_refresh.load() * (s_vblank_sync_divisor.load() - 1);
+    LONGLONG wait_target_qpc = now_ticks + delta_wait_time + ticks_per_refresh.load() * (s_vblank_sync_divisor.load() - 1);
 
 
-    if (delta_wait_time > QPC_PER_SECOND) {
+    if (delta_wait_time > utils::QPC_PER_SECOND) {
         std::ostringstream oss;
         oss << "LatentSyncLimiter::LimitFrameRate: ";
         oss << "delta_wait_time: " << delta_wait_time;
         LogInfo(oss.str().c_str());
         return;
     }
-    utils::wait_until_qpc(wait_target, m_timer_handle);
+    utils::wait_until_qpc(wait_target_qpc, m_timer_handle);
 }
 
 void LatentSyncLimiter::OnPresentEnd() {
-    LONGLONG now = get_now_qpc();
+    LONGLONG now = utils::get_now_qpc();
     LONGLONG dt = now - g_present_start_time_qpc.load();
     // Exponential moving average of Present duration in ticks
     const double alpha = 0.10; // smooth but responsive

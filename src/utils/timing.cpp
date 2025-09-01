@@ -69,16 +69,11 @@ double get_timer_resolution_ms()
 }
 
 
-LONGLONG get_now_qpc() {
-    LARGE_INTEGER now_ticks = { };
-    QueryPerformanceCounter(&now_ticks);
-    return now_ticks.QuadPart;
-}
 
 LONGLONG get_now_ns() {
     LARGE_INTEGER now_ticks = { };
     QueryPerformanceCounter(&now_ticks);
-    return now_ticks.QuadPart * (1000000000 / timer_res_qpc_frequency);
+    return now_ticks.QuadPart * utils::QPC_TO_NS;
 }
 
 // Wait until the specified QPC time is reached
@@ -151,9 +146,6 @@ void wait_until_qpc(LONGLONG target_qpc, HANDLE& timer_handle)
         YieldProcessor();
     }
 }
-
-} // namespace utils
-
 // Global timing function
 LONGLONG get_now_qpc() {
     LARGE_INTEGER now_ticks = { };
@@ -161,3 +153,12 @@ LONGLONG get_now_qpc() {
     return now_ticks.QuadPart;
 }
 
+void wait_until_ns(LONGLONG target_ns, HANDLE& timer_handle) {
+    LONGLONG current_time = get_now_ns();
+    if (target_ns <= current_time)
+        return;
+    utils::wait_until_qpc(target_ns / utils::QPC_TO_NS, timer_handle);
+}
+
+
+} // namespace utils

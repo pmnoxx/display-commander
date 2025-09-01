@@ -48,7 +48,7 @@ std::atomic<int> l_frame_count{0};
 void HandleRenderStartAndEndTimes() {
   LONGLONG expected = 0;
   if (g_submit_start_time_qpc.load() == 0) {
-    LONGLONG now = get_now_qpc();
+    LONGLONG now = utils::get_now_qpc();
     LONGLONG present_after_end_time = g_present_after_end_time.load();
     if (present_after_end_time > 0 && g_submit_start_time_qpc.compare_exchange_strong(expected, now)) {
         // Compare to g_present_after_end_time
@@ -61,7 +61,7 @@ void HandleRenderStartAndEndTimes() {
 }
 
 void HandleEndRenderSubmit() {
-  LONGLONG now = get_now_qpc();
+  LONGLONG now = utils::get_now_qpc();
   g_render_submit_end_time_qpc.store(now);
   if (g_submit_start_time_qpc.load() > 0) {
     LONGLONG g_render_submit_duration_ns_new = (now - g_submit_start_time_qpc.load()) * QPC_TO_NS;
@@ -71,7 +71,7 @@ void HandleEndRenderSubmit() {
 }
 
 void HandleOnPresentEnd() {
-  LONGLONG now = get_now_qpc();
+  LONGLONG now = utils::get_now_qpc();
 
   g_present_after_end_time.store(now);
   g_submit_start_time_qpc.store(0);
@@ -310,7 +310,7 @@ void OnPresentUpdateAfter(  reshade::api::command_queue* /*queue*/, reshade::api
   g_swapchain_event_total_count.fetch_add(1);
 
   // g_present_duration
-  LONGLONG now_ticks = get_now_qpc();
+  LONGLONG now_ticks = utils::get_now_qpc();
   double g_present_duration_new = (now_ticks - g_present_start_time_qpc.load()) * QPC_TO_NS; // Convert QPC ticks to seconds (QPC frequency is typically 10MHz)
   double alpha = 64;
   g_present_duration_ns.store((1 * g_present_duration_new + (alpha - 1) * g_present_duration_ns.load()) / alpha);
@@ -332,7 +332,7 @@ void flush_command_queue() {
 
 void HandleFpsLimiter() {
   flush_command_queue(); // todo only if sleep is happening()
-  LONGLONG handle_fps_limiter_start_time_qpc = get_now_qpc();
+  LONGLONG handle_fps_limiter_start_time_qpc = utils::get_now_qpc();
   // Use background flag computed by monitoring thread; avoid GetForegroundWindow here
   const bool is_background = g_app_in_background.load(std::memory_order_acquire);
   
@@ -372,7 +372,7 @@ void HandleFpsLimiter() {
     }
   }
 
-  LONGLONG handle_fps_limiter_start_end_time_qpc = get_now_qpc();
+  LONGLONG handle_fps_limiter_start_end_time_qpc = utils::get_now_qpc();
   g_present_start_time_qpc.store(handle_fps_limiter_start_end_time_qpc);
 
   #define QPC_TO_NS 100

@@ -13,6 +13,34 @@
 
 namespace utils {
 
+// QPC timing constants - initialized at runtime
+LONGLONG QPC_TO_NS = 100;  // Default fallback value
+LONGLONG QPC_PER_SECOND = SEC_TO_NS / QPC_TO_NS;
+LONGLONG QPC_TO_MS = NS_TO_MS / QPC_TO_NS;
+
+// Initialize QPC timing constants based on actual QueryPerformanceCounter frequency
+// This should be called early in program initialization (e.g., DllMain)
+bool initialize_qpc_timing_constants()
+{
+    LARGE_INTEGER frequency;
+    if (!QueryPerformanceFrequency(&frequency))
+    {
+        // If QueryPerformanceFrequency fails, keep default values
+        return false;
+    }
+    
+    // Calculate the conversion factor from QPC ticks to nanoseconds
+    // QPC_TO_NS = (1 second in ns) / (QPC frequency)
+    // This gives us how many nanoseconds each QPC tick represents
+    QPC_TO_NS = SEC_TO_NS / frequency.QuadPart;
+    
+    // Recalculate dependent constants
+    QPC_PER_SECOND = frequency.QuadPart;
+    QPC_TO_MS = NS_TO_MS / QPC_TO_NS;
+    
+    return true;
+}
+
 // Function pointer types for dynamic loading
 typedef NTSTATUS (NTAPI *ZwQueryTimerResolution_t)(PULONG MinimumResolution, PULONG MaximumResolution, PULONG CurrentResolution);
 typedef NTSTATUS (NTAPI *ZwSetTimerResolution_t)(ULONG DesiredResolution, BOOLEAN SetResolution, PULONG CurrentResolution);

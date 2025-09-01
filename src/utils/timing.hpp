@@ -5,10 +5,14 @@
 namespace utils {
     const LONGLONG SEC_TO_NS = 1000000000;
     const LONGLONG NS_TO_MS = 1000000;
-    // TODO: Compute this value on init from QPC frequency
-    const LONGLONG QPC_TO_NS = 100;
-    const LONGLONG QPC_PER_SECOND = SEC_TO_NS / QPC_TO_NS;
-    const LONGLONG QPC_TO_MS = NS_TO_MS / QPC_TO_NS;
+    // QPC timing constants - initialized at runtime based on actual frequency
+    extern LONGLONG QPC_TO_NS;
+    extern LONGLONG QPC_PER_SECOND;
+    extern LONGLONG QPC_TO_MS;
+
+    // Initialize QPC timing constants based on actual QueryPerformanceCounter frequency
+    // This should be called early in program initialization (e.g., DllMain)
+    bool initialize_qpc_timing_constants();
 
     // Setup high-resolution timer by setting kernel timer resolution to maximum
     bool setup_high_resolution_timer();

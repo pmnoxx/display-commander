@@ -1,6 +1,9 @@
 #include "addon.hpp"
 #include "swapchain_events_power_saving.hpp"
 
+// Include timing utilities for QPC initialization
+#include "../../utils/timing.hpp"
+
 // Include the UI initialization
 #include "ui/ui_main.hpp"
 #include "ui/new_ui/new_ui_main.hpp"
@@ -68,6 +71,9 @@ void OnRegisterOverlayDisplayCommander(reshade::api::effect_runtime* runtime) {
 BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
   switch (fdw_reason) {
     case DLL_PROCESS_ATTACH:
+      // Initialize QPC timing constants based on actual frequency
+      utils::initialize_qpc_timing_constants();
+      
       if (!reshade::register_addon(h_module)) return FALSE;
       // Ensure UI system is initialized
       ui::new_ui::InitializeNewUISystem();

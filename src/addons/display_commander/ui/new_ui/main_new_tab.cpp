@@ -81,18 +81,19 @@ void InitMainNewTab() {
             float saved_fps_limit = g_main_new_tab_settings.fps_limit.GetValue();
             if (saved_fps_limit > 0.0f) {
                 limiter.SetTargetFps(saved_fps_limit);
-                limiter.SetEnabled(true);
                 latent.SetTargetFps(saved_fps_limit);
-                latent.SetEnabled(true);
                 std::ostringstream oss;
                 oss.setf(std::ios::fixed);
                 oss << std::setprecision(3);
                 oss << "FPS limit applied from saved settings: " << saved_fps_limit << " FPS";
                 LogInfo(oss.str().c_str());
-            } else {
-                // Ensure disabled if saved value is 0
-                limiter.SetEnabled(false);
+            } 
+            if (s_fps_limiter_mode.load() == 0) {
+                limiter.SetEnabled(true);
                 latent.SetEnabled(false);
+            } else {
+                limiter.SetEnabled(false);
+                latent.SetEnabled(true);
             }
 
             // If currently in background and a background limit is saved, apply it

@@ -467,7 +467,10 @@ void VBlankMonitor::MonitoringThread() {
                     }
                     long dt = fmod_normalized(new_correction_lines_delta - correction_lines_delta.load(), 
                     current_display_timing.total_height);
-                    correction_lines_delta.store(correction_lines_delta.load() + dt);
+
+
+                    double alpha = 0.1;
+                    correction_lines_delta.store(correction_lines_delta.load() + dt * alpha);
                 }
             }
             

@@ -28,7 +28,7 @@ static bool mwaitx_supported_cached = false;
 static bool mwaitx_support_checked = false;
 
 
-bool support_mwaitx (void)
+bool supports_mwaitx (void)
 {
     if (mwaitx_support_checked)
       return mwaitx_supported_cached;
@@ -56,14 +56,6 @@ bool support_mwaitx (void)
     RemoveVectoredExceptionHandler (handler);
 
     return mwaitx_supported_cached;
-}
-
-
-// Reset MWAITX support cache (useful for testing or if CPU capabilities change)
-void reset_mwaitx_cache()
-{
-    mwaitx_support_checked = false;
-    mwaitx_supported_cached = false;
 }
 
 // Setup high-resolution timer by setting kernel timer resolution to maximum
@@ -110,14 +102,6 @@ bool setup_high_resolution_timer()
 LONGLONG get_timer_resolution_qpc()
 {
     return timer_res_qpc;
-}
-
-
-
-LONGLONG get_now_ns() {
-    LARGE_INTEGER now_ticks = { };
-    QueryPerformanceCounter(&now_ticks);
-    return now_ticks.QuadPart * utils::QPC_TO_NS;
 }
 
 // Wait until the specified QPC time is reached
@@ -179,7 +163,7 @@ void wait_until_qpc(LONGLONG target_qpc, HANDLE& timer_handle)
     // Busy wait for the remaining time to achieve precise timing
     // This compensates for OS scheduler inaccuracy
 
-    if (support_mwaitx()) {
+    if (supports_mwaitx()) {
         while (true)
         {
             current_time_qpc = get_now_qpc();
@@ -201,18 +185,25 @@ void wait_until_qpc(LONGLONG target_qpc, HANDLE& timer_handle)
         }
     }
 }
-// Global timing function
-LONGLONG get_now_qpc() {
-    LARGE_INTEGER now_ticks = { };
-    QueryPerformanceCounter(&now_ticks);
-    return now_ticks.QuadPart;
-}
 
 void wait_until_ns(LONGLONG target_ns, HANDLE& timer_handle) {
     LONGLONG current_time = get_now_ns();
     if (target_ns <= current_time)
         return;
     utils::wait_until_qpc(target_ns / utils::QPC_TO_NS, timer_handle);
+}
+
+LONGLONG get_now_qpc() {
+    LARGE_INTEGER now_ticks = {};
+    QueryPerformanceCounter(&now_ticks);
+    return now_ticks.QuadPart;
+}
+
+// Global timing function
+LONGLONG get_now_ns() {
+    LARGE_INTEGER now_ticks = {};
+    QueryPerformanceCounter(&now_ticks);
+    return now_ticks.QuadPart * utils::QPC_TO_NS;
 }
 
 

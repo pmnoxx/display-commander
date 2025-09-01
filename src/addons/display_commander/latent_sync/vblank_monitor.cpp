@@ -383,17 +383,17 @@ void VBlankMonitor::MonitoringThread() {
         }    
     }
 
-    // Use the current display timing info for calculations
-    ns_per_refresh.store((current_display_timing.vsync_freq_numerator > 0) ?
-        (current_display_timing.vsync_freq_denominator * utils::SEC_TO_NS) /
-        (current_display_timing.vsync_freq_numerator) : 1);
-
 
     LONGLONG min_scanline_duration_ns = 0;
     LONGLONG correction_ticks_local = 0;
 
     int lastScanLine = 0;
     while (!m_should_stop.load()) {
+
+        // Use the current display timing info for calculations
+        ns_per_refresh.store((current_display_timing.vsync_freq_numerator > 0) ?
+            (current_display_timing.vsync_freq_denominator * utils::SEC_TO_NS) /
+            (current_display_timing.vsync_freq_numerator) : 1);
 
         g_latent_sync_total_height.store(current_display_timing.total_height);
         g_latent_sync_active_height.store(current_display_timing.active_height);

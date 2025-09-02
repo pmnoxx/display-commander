@@ -29,7 +29,7 @@ public:
     bool SetMarker(NV_LATENCY_MARKER_TYPE marker);
 
     // Optional: driver sleep call (minimal usage)
-    bool SleepOnce();
+    bool Sleep();
 
     bool IsInitialized() const { return initialized_; }
 

@@ -286,6 +286,11 @@ void DrawNvapiSettings() {
         g_developerTabSettings.reflex_enable.SetValue(reflex_enable);
         s_reflex_enable.store(reflex_enable);
     }
+    bool reflex_low_latency = g_developerTabSettings.reflex_low_latency.GetValue();
+    if (ImGui::Checkbox("Low Latency Mode", &reflex_low_latency)) {
+        g_developerTabSettings.reflex_low_latency.SetValue(reflex_low_latency);
+        s_reflex_low_latency.store(reflex_low_latency);
+    }
     bool reflex_boost = g_developerTabSettings.reflex_boost.GetValue();
     if (ImGui::Checkbox("Low Latency Boost", &reflex_boost)) {
         g_developerTabSettings.reflex_boost.SetValue(reflex_boost);

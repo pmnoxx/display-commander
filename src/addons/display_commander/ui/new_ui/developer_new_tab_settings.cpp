@@ -14,6 +14,7 @@ extern std::atomic<bool> s_nvapi_fullscreen_prevention;
 extern std::atomic<bool> s_nvapi_hdr_logging;
 extern std::atomic<float> s_nvapi_hdr_interval_sec;
 extern std::atomic<bool> s_reflex_enable;
+extern std::atomic<bool> s_reflex_low_latency;
 extern std::atomic<bool> s_reflex_boost;
 extern std::atomic<bool> s_reflex_use_markers;
 extern std::atomic<bool> s_enable_reflex_logging;
@@ -42,6 +43,7 @@ DeveloperTabSettings::DeveloperTabSettings()
 
     // Minimal NVIDIA Reflex controls
     , reflex_enable("ReflexEnable", s_reflex_enable, false, "DisplayCommander")
+    , reflex_low_latency("ReflexLowLatency", s_reflex_low_latency, false, "DisplayCommander")
     , reflex_boost("ReflexBoost", s_reflex_boost, false, "DisplayCommander")
     , reflex_use_markers("ReflexUseMarkers", s_reflex_use_markers, true, "DisplayCommander")
     , reflex_logging("ReflexLogging", s_enable_reflex_logging, false, "DisplayCommander")
@@ -67,6 +69,7 @@ void DeveloperTabSettings::LoadAll() {
     enable_mute_unmute_shortcut.Load();
     flush_before_present.Load();
     reflex_enable.Load();
+    reflex_low_latency.Load();
     reflex_boost.Load();
     reflex_use_markers.Load();
     reflex_logging.Load();
@@ -91,6 +94,7 @@ std::vector<ui::new_ui::SettingBase*> DeveloperTabSettings::GetAllSettings() {
         &nvapi_hdr_interval_sec,
 
         &reflex_enable,
+        &reflex_low_latency,
         &reflex_boost,
         &reflex_use_markers,
         &reflex_logging,

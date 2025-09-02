@@ -213,6 +213,7 @@ std::atomic<LONGLONG> late_amount_ns{0};
 
 // NVIDIA Reflex minimal controls (disabled by default)
 std::atomic<bool> s_reflex_enable{false};
+std::atomic<bool> s_reflex_low_latency{false};
 std::atomic<bool> s_reflex_boost{false};
 std::atomic<bool> s_reflex_use_markers{true};
 std::atomic<bool> s_enable_reflex_logging{false}; // Disabled by default

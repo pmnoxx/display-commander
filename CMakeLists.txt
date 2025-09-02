@@ -89,3 +89,27 @@ set_target_properties(zzz_display_commander PROPERTIES
 )
 
 
+# Optional: DXGI debug layer addon (built as separate module)
+file(GLOB_RECURSE DXGI_DEBUG_LAYER_SOURCES
+  CONFIGURE_DEPENDS
+  ${CMAKE_CURRENT_LIST_DIR}/src/addons/dxgi_debug_layer/*.cpp
+)
+
+if(NOT DXGI_DEBUG_LAYER_SOURCES STREQUAL "")
+  add_library(zzz_dxgi_debug_layer MODULE ${DXGI_DEBUG_LAYER_SOURCES})
+
+  target_include_directories(zzz_dxgi_debug_layer
+    PRIVATE
+      ${CMAKE_CURRENT_LIST_DIR}/src
+      ${CMAKE_CURRENT_LIST_DIR}/include
+    SYSTEM PUBLIC
+      ${CMAKE_CURRENT_LIST_DIR}/external/reshade
+  )
+
+  # No static linking to dxgidebug - we load it dynamically at runtime
+
+  set_target_properties(zzz_dxgi_debug_layer PROPERTIES
+    SUFFIX "${TARGET_SUFFIX}"
+  )
+endif()
+

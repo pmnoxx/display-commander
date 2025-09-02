@@ -17,6 +17,9 @@
 #include "swapchain_events_power_saving.hpp"
 #include "nvapi/reflex_manager.hpp"
 
+
+static ReflexManager g_reflex;
+
 std::atomic<LONGLONG> g_present_start_time_ns{0};
 std::atomic<LONGLONG> g_present_duration_ns{0};
 
@@ -56,6 +59,18 @@ void HandleRenderStartAndEndTimes() {
         LONGLONG g_simulation_duration_ns_new = (now_ns - present_after_end_time_ns);
         int alpha = 64;
         g_simulation_duration_ns.store( (1 * g_simulation_duration_ns_new + (alpha - 1) * g_simulation_duration_ns.load()) / alpha);
+
+        
+      reshade::api::swapchain* swapchain = g_last_swapchain_ptr.load(std::memory_order_acquire);
+      if (s_reflex_enable.load()) {
+        auto* device = swapchain ? swapchain->get_device() : nullptr;
+        if (device && g_reflex.Initialize(device)) {
+          if (s_reflex_use_markers.load()) {
+            g_reflex.SetMarker(SIMULATION_END);
+            g_reflex.SetMarker(RENDERSUBMIT_START);
+          }
+        }
+      }
     }
   }
 }
@@ -321,6 +336,14 @@ void OnPresentUpdateAfter(reshade::api::command_queue* /*queue*/, reshade::api::
   // Increment event counter
   g_swapchain_event_counters[SWAPCHAIN_EVENT_PRESENT_UPDATE_AFTER].fetch_add(1);
   g_swapchain_event_total_count.fetch_add(1);
+  if (s_reflex_enable.load()) {
+    auto* device = swapchain ? swapchain->get_device() : nullptr;
+    if (device && g_reflex.Initialize(device)) {
+      if (s_reflex_use_markers.load()) {
+        g_reflex.SetMarker(PRESENT_END);
+      }
+    }
+  }
 
   // g_present_duration
   LONGLONG now_ns = utils::get_now_ns();
@@ -339,14 +362,15 @@ void OnPresentUpdateAfter(reshade::api::command_queue* /*queue*/, reshade::api::
 
   // NVIDIA Reflex: SIMULATION_END marker (minimal) and Sleep
   if (s_reflex_enable.load()) {
-    static ReflexManager g_reflex;
     auto* device = swapchain ? swapchain->get_device() : nullptr;
     if (device && g_reflex.Initialize(device)) {
-      if (s_reflex_use_markers.load()) {
-        g_reflex.SetMarker(SIMULATION_END);
-      }
+      g_reflex.IncreaseFrameId();
       // Apply sleep mode opportunistically each frame to reflect current toggles
-      g_reflex.ApplySleepMode(true, s_reflex_boost.load(), s_reflex_use_markers.load());
+      g_reflex.ApplySleepMode(s_reflex_enable.load(), s_reflex_boost.load(), s_reflex_use_markers.load());
+      g_reflex.SleepOnce();
+      if (s_reflex_use_markers.load()) {
+        g_reflex.SetMarker(SIMULATION_START);
+      }
     }
   }
 }
@@ -417,7 +441,19 @@ void OnPresentUpdateBefore(
     reshade::api::command_queue* /*queue*/, reshade::api::swapchain* swapchain,
     const reshade::api::rect* /*source_rect*/, const reshade::api::rect* /*dest_rect*/,
     uint32_t /*dirty_rect_count*/, const reshade::api::rect* /*dirty_rects*/) {
+
+  HandleRenderStartAndEndTimes(); 
+
   HandleEndRenderSubmit();
+  // NVIDIA Reflex: RENDERSUBMIT_END marker (minimal)
+  if (s_reflex_enable.load()) {
+    auto* device = swapchain ? swapchain->get_device() : nullptr;
+    if (device && g_reflex.Initialize(device)) {
+      if (s_reflex_use_markers.load()) {
+   //     g_reflex.SetMarker(RENDERSUBMIT_END);
+      }
+    }
+  }
   if (g_flush_before_present.load()) {
     flush_command_queue(); // Flush command queue before addons start processing to reduce rendering latency caused by reshade
   }
@@ -486,16 +522,6 @@ void OnPresentUpdateBefore(
     HandleFpsLimiter();
   }
 
-  // NVIDIA Reflex: SIMULATION_START marker (minimal)
-  if (s_reflex_enable.load()) {
-    static ReflexManager g_reflex;
-    auto* device = swapchain ? swapchain->get_device() : nullptr;
-    if (device && g_reflex.Initialize(device)) {
-      if (s_reflex_use_markers.load()) {
-        g_reflex.SetMarker(SIMULATION_START);
-      }
-    }
-  }
 }
 
 void OnPresentUpdateBefore2(reshade::api::effect_runtime* runtime) { 
@@ -542,8 +568,18 @@ void OnPresentFlags(uint32_t* present_flags) {
     HandleFpsLimiter();
   }
 
-  if (l_frame_count.load() % 64 != 0 && s_no_present_in_background.load() && g_app_in_background.load(std::memory_order_acquire)) {
+  if (s_no_present_in_background.load() && g_app_in_background.load(std::memory_order_acquire)) {
     *present_flags = DXGI_PRESENT_DO_NOT_SEQUENCE;
+  }
+  reshade::api::swapchain* swapchain = g_last_swapchain_ptr.load(std::memory_order_acquire);
+  if (s_reflex_enable.load()) {
+    auto* device = swapchain ? swapchain->get_device() : nullptr;
+    if (device && g_reflex.Initialize(device)) {
+      if (s_reflex_use_markers.load()) {
+        g_reflex.SetMarker(RENDERSUBMIT_END);
+        g_reflex.SetMarker(PRESENT_START);
+      }
+    }
   }
   l_frame_count.fetch_add(1);
 

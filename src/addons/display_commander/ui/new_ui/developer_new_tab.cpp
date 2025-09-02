@@ -169,16 +169,6 @@ void DrawDeveloperSettings() {
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Prevents windows from becoming always on top, even if they are moved or resized.");
     }
-    
-    // Remove Top Bar
-    if (CheckboxSetting(g_developerTabSettings.remove_top_bar, "Remove Top Bar")) {
-        s_remove_top_bar.store(g_developerTabSettings.remove_top_bar.GetValue());
-    }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Remove the window title bar for a borderless appearance.");
-    }
-
-
 }
 
 void DrawNvapiSettings() {
@@ -305,6 +295,14 @@ void DrawNvapiSettings() {
     if (ImGui::Checkbox("Use Markers to Optimize", &reflex_markers)) {
         g_developerTabSettings.reflex_use_markers.SetValue(reflex_markers);
         s_reflex_use_markers.store(reflex_markers);
+    }
+    bool reflex_logging = g_developerTabSettings.reflex_logging.GetValue();
+    if (ImGui::Checkbox("Enable Reflex Logging", &reflex_logging)) {
+        g_developerTabSettings.reflex_logging.SetValue(reflex_logging);
+        s_enable_reflex_logging.store(reflex_logging);
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Enable detailed logging of Reflex marker operations for debugging purposes.");
     }
     
     // Additional debug info

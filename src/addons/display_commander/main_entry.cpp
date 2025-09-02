@@ -214,7 +214,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
     }
 
     // Initialize Latent Sync system if latent sync mode is enabled
-    if (s_fps_limiter_mode.load() == FPS_LIMITER_MODE_LATENT_SYNC) {
+    if (s_fps_limiter_mode.load() == FpsLimiterMode::kLatentSync) {
       if (dxgi::latent_sync::g_latentSyncManager && dxgi::latent_sync::g_latentSyncManager->InitializeLatentSyncSystem()) {
         LogInfo("Latent Sync system auto-initialized at startup (latent sync mode detected)");
       } else {

@@ -62,7 +62,7 @@ void InitMainNewTab() {
         settings_loaded_once = true;
 
         // FPS limiter mode
-        s_fps_limiter_mode.store(g_main_new_tab_settings.fps_limiter_mode.GetValue());
+        s_fps_limiter_mode.store(static_cast<FpsLimiterMode>(g_main_new_tab_settings.fps_limiter_mode.GetValue()));
         // FPS limiter injection timing
         s_fps_limiter_injection.store(g_main_new_tab_settings.fps_limiter_injection.GetValue());
         // Scanline offset
@@ -389,24 +389,18 @@ void DrawDisplaySettings() {
     // FPS Limiter Mode
     {
         if (ComboSettingWrapper(g_main_new_tab_settings.fps_limiter_mode, "FPS Limiter Mode")) {
-            s_fps_limiter_mode.store(g_main_new_tab_settings.fps_limiter_mode.GetValue());
-            LogInfo(s_fps_limiter_mode.load() == 0 ? "Custom (Sleep/Spin) for VRR" : "VBlank Scanline Sync for VSYNC-OFF or without VRR");
+            s_fps_limiter_mode.store(static_cast<FpsLimiterMode>(g_main_new_tab_settings.fps_limiter_mode.GetValue()));
+            FpsLimiterMode mode = s_fps_limiter_mode.load();
+            if (mode == FpsLimiterMode::kNone) {
+                LogInfo("FPS Limiter: None (no limiting)");
+            } else if (mode == FpsLimiterMode::kCustom) {
+                LogInfo("FPS Limiter: Custom (Sleep/Spin) for VRR");
+            } else if (mode == FpsLimiterMode::kLatentSync) {
+                LogInfo("FPS Limiter: VBlank Scanline Sync for VSYNC-OFF or without VRR");
+            }
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Choose limiter: Custom sleep/spin or Latent Sync pacing");
-        }
-        
-        // Warning for VBlank Scanline Sync mode when required settings are not enabled
-        if (g_main_new_tab_settings.fps_limiter_mode.GetValue() == 1) {
-            bool force_vsync_off_enabled = g_main_new_tab_settings.force_vsync_off.GetValue();
-            
-            if (!force_vsync_off_enabled) {
-                ImGui::Spacing();
-                ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "WARNING: VBlank Scanline Sync only works with VSYNC-OFF");
-                if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip("VBlank Scanline Sync mode requires VSync to be disabled for optimal frame pacing.");
-                }
-            }
         }
     }
 
@@ -455,7 +449,7 @@ void DrawDisplaySettings() {
     }
 
     // Latent Sync Mode (only visible if Latent Sync limiter is selected)
-    if (s_fps_limiter_mode.load() == 1) {
+    if (s_fps_limiter_mode.load() == FpsLimiterMode::kLatentSync) {
         
         // Get current monitor height for dynamic range
         int monitor_height = current_monitor_height;
@@ -512,7 +506,7 @@ void DrawDisplaySettings() {
         }
         
         // VBlank Monitor Status (only visible if latent sync is enabled and FPS limit > 0)
-        if (s_fps_limiter_mode.load() == FPS_LIMITER_MODE_LATENT_SYNC) {
+        if (s_fps_limiter_mode.load() == FpsLimiterMode::kLatentSync) {
             if (dxgi::latent_sync::g_latentSyncManager) {
                 auto& latent = dxgi::latent_sync::g_latentSyncManager->GetLatentLimiter();
                 if (latent.IsVBlankMonitoringActive()) {

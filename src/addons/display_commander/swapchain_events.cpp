@@ -379,7 +379,11 @@ void HandleFpsLimiter() {
 
   // Call FPS Limiter on EVERY frame (not throttled)
   switch (s_fps_limiter_mode.load()) {
-    case FPS_LIMITER_MODE_CUSTOM: {
+    case FpsLimiterMode::kNone: {
+      // No FPS limiting - do nothing
+      break;
+    }
+    case FpsLimiterMode::kCustom: {
       // Use FPS limiter manager for Custom (Sleep/Spin) mode
       if (dxgi::fps_limiter::g_customFpsLimiterManager) {
         auto& limiter = dxgi::fps_limiter::g_customFpsLimiterManager->GetFpsLimiter();
@@ -389,7 +393,7 @@ void HandleFpsLimiter() {
       }
       break;
     }
-    case FPS_LIMITER_MODE_LATENT_SYNC: {
+    case FpsLimiterMode::kLatentSync: {
       // Use latent sync manager for VBlank Scanline Sync mode
       if (dxgi::latent_sync::g_latentSyncManager) {
         auto& latent = dxgi::latent_sync::g_latentSyncManager->GetLatentLimiter();
@@ -397,7 +401,6 @@ void HandleFpsLimiter() {
           latent.LimitFrameRate();
         }
       }
-
       break;
     }
   }
@@ -539,10 +542,10 @@ void OnPresentFlags(uint32_t* present_flags) {
     HandleFpsLimiter();
   }
 
-  if (s_no_present_in_background.load() && g_app_in_background.load(std::memory_order_acquire)) {
+  if (l_frame_count.load() % 64 != 0 && s_no_present_in_background.load() && g_app_in_background.load(std::memory_order_acquire)) {
     *present_flags = DXGI_PRESENT_DO_NOT_SEQUENCE;
-    l_frame_count.fetch_add(1);
   }
+  l_frame_count.fetch_add(1);
 
   return;
 }

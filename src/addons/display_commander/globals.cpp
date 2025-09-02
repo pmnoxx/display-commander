@@ -211,3 +211,8 @@ std::atomic<float> s_present_pacing_delay_percentage{0.0f}; // Default to 0% (no
 
 
 std::atomic<LONGLONG> late_amount_ns{0};
+
+// NVIDIA Reflex minimal controls (disabled by default)
+std::atomic<bool> s_reflex_enable{false};
+std::atomic<bool> s_reflex_boost{false};
+std::atomic<bool> s_reflex_use_markers{true};

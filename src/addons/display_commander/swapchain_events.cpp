@@ -15,6 +15,7 @@
 #include "globals.hpp"
 #include "latent_sync/latent_sync_limiter.hpp"
 #include "swapchain_events_power_saving.hpp"
+#include "nvapi/reflex_manager.hpp"
 
 std::atomic<LONGLONG> g_present_start_time_ns{0};
 std::atomic<LONGLONG> g_present_duration_ns{0};
@@ -335,6 +336,19 @@ void OnPresentUpdateAfter(reshade::api::command_queue* /*queue*/, reshade::api::
   }
   TimerPresentPacingDelay();
   HandleOnPresentEnd();
+
+  // NVIDIA Reflex: SIMULATION_END marker (minimal) and Sleep
+  if (s_reflex_enable.load()) {
+    static ReflexManager g_reflex;
+    auto* device = swapchain ? swapchain->get_device() : nullptr;
+    if (device && g_reflex.Initialize(device)) {
+      if (s_reflex_use_markers.load()) {
+        g_reflex.SetMarker(SIMULATION_END);
+      }
+      // Apply sleep mode opportunistically each frame to reflect current toggles
+      g_reflex.ApplySleepMode(true, s_reflex_boost.load(), s_reflex_use_markers.load());
+    }
+  }
 }
 
 void flush_command_queue() {
@@ -467,6 +481,17 @@ void OnPresentUpdateBefore(
 
   if (s_fps_limiter_injection.load() == 2) {
     HandleFpsLimiter();
+  }
+
+  // NVIDIA Reflex: SIMULATION_START marker (minimal)
+  if (s_reflex_enable.load()) {
+    static ReflexManager g_reflex;
+    auto* device = swapchain ? swapchain->get_device() : nullptr;
+    if (device && g_reflex.Initialize(device)) {
+      if (s_reflex_use_markers.load()) {
+        g_reflex.SetMarker(SIMULATION_START);
+      }
+    }
   }
 }
 

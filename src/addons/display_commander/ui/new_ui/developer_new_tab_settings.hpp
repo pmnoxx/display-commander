@@ -41,6 +41,11 @@ public:
     
     // Performance optimization settings
     ui::new_ui::BoolSettingRef flush_before_present;
+
+    // Minimal NVIDIA Reflex controls
+    ui::new_ui::BoolSettingRef reflex_enable;
+    ui::new_ui::BoolSettingRef reflex_boost;
+    ui::new_ui::BoolSettingRef reflex_use_markers;
     
     // Get all settings for bulk operations
     std::vector<ui::new_ui::SettingBase*> GetAllSettings();

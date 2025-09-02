@@ -84,20 +84,6 @@ void HandleOnPresentEnd() {
 
 
 
-// Frame lifecycle hooks for custom FPS limiter
-void OnBeginRenderPass(reshade::api::command_list* cmd_list, uint32_t count, const reshade::api::render_pass_render_target_desc* rts, const reshade::api::render_pass_depth_stencil_desc* ds) {
-    // Increment event counter
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_BEGIN_RENDER_PASS].fetch_add(1);
-    g_swapchain_event_total_count.fetch_add(1);
-}
-
-void OnEndRenderPass(reshade::api::command_list* cmd_list) {
-    // Increment event counter
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_END_RENDER_PASS].fetch_add(1);
-    g_swapchain_event_total_count.fetch_add(1);
-}
-
-
 // Draw event handlers for render timing and power saving
 // These are now implemented in swapchain_events_power_saving.cpp
 

@@ -7,9 +7,6 @@
 // SWAPCHAIN EVENT HANDLERS
 // ============================================================================
 
-// Frame lifecycle hooks for custom FPS limiter
-void OnBeginRenderPass(reshade::api::command_list* cmd_list, uint32_t count, const reshade::api::render_pass_render_target_desc* rts, const reshade::api::render_pass_depth_stencil_desc* ds);
-void OnEndRenderPass(reshade::api::command_list* cmd_list);
 
 // Draw event handlers for render timing and power saving
 // These are now implemented in swapchain_events_power_saving.cpp

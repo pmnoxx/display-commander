@@ -1,13 +1,11 @@
 #include "developer_new_tab.hpp"
 #include "developer_new_tab_settings.hpp"
 #include "settings_wrapper.hpp"
-#include "../../addon.hpp"
 #include "../../nvapi/nvapi_fullscreen_prevention.hpp"
 #include "../../nvapi/nvapi_hdr_monitor.hpp"
-#include "../ui_common.hpp"
 #include "../../globals.hpp"
+#include "../../utils.hpp"
 
-#include "../../display_cache.hpp"
 #include <sstream>
 #include <iomanip>
 #include <thread>
@@ -105,7 +103,7 @@ void DrawDeveloperSettings() {
         } else {
             oss << "Spoof as Windowed";
         }
-        ::LogInfo(oss.str().c_str());
+        LogInfo(oss.str().c_str());
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Spoof fullscreen state detection for applications that query fullscreen status. Useful for games that change behavior based on fullscreen state.");
@@ -117,7 +115,7 @@ void DrawDeveloperSettings() {
         if (ImGui::Button("Reset##DevFullscreen")) {
             g_developerTabSettings.spoof_fullscreen_state.SetValue(false);
             s_spoof_fullscreen_state.store(false);
-            ::LogInfo("Fullscreen state spoofing reset to disabled");
+            LogInfo("Fullscreen state spoofing reset to disabled");
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Reset to default (Disabled)");
@@ -141,7 +139,7 @@ void DrawDeveloperSettings() {
         } else {
             oss << "Spoof as Unfocused";
         }
-        ::LogInfo(oss.str().c_str());
+        LogInfo(oss.str().c_str());
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Spoof window focus state for applications that query focus status. Useful for games that change behavior based on focus state.");
@@ -153,8 +151,7 @@ void DrawDeveloperSettings() {
         if (ImGui::Button("Reset##DevFocus")) {
             g_developerTabSettings.spoof_window_focus.SetValue(0);
             s_spoof_window_focus.store(0);
-            extern void LogInfo(const char* message);
-            ::LogInfo("Window focus spoofing reset to disabled");
+            LogInfo("Window focus spoofing reset to disabled");
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Reset to default (Disabled)");
@@ -289,6 +286,25 @@ void DrawNvapiSettings() {
         // Function availability (all unavailable when library not loaded)
         ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "✗ Core Functions: Unavailable");
         ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "✗ DRS Functions: Unavailable");
+    }
+
+    // Minimal NVIDIA Reflex Controls (device runtime dependent)
+    ImGui::Separator();
+    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "=== NVIDIA Reflex (Minimal) ===");
+    bool reflex_enable = g_developerTabSettings.reflex_enable.GetValue();
+    if (ImGui::Checkbox("Enable Reflex", &reflex_enable)) {
+        g_developerTabSettings.reflex_enable.SetValue(reflex_enable);
+        s_reflex_enable.store(reflex_enable);
+    }
+    bool reflex_boost = g_developerTabSettings.reflex_boost.GetValue();
+    if (ImGui::Checkbox("Low Latency Boost", &reflex_boost)) {
+        g_developerTabSettings.reflex_boost.SetValue(reflex_boost);
+        s_reflex_boost.store(reflex_boost);
+    }
+    bool reflex_markers = g_developerTabSettings.reflex_use_markers.GetValue();
+    if (ImGui::Checkbox("Use Markers to Optimize", &reflex_markers)) {
+        g_developerTabSettings.reflex_use_markers.SetValue(reflex_markers);
+        s_reflex_use_markers.store(reflex_markers);
     }
     
     // Additional debug info

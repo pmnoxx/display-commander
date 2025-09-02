@@ -1,5 +1,4 @@
 #include "developer_new_tab_settings.hpp"
-#include "../../renodx/settings.hpp"
 #include <minwindef.h>
 #include <atomic>
 
@@ -14,6 +13,9 @@ extern std::atomic<bool> s_fix_hdr10_colorspace;
 extern std::atomic<bool> s_nvapi_fullscreen_prevention;
 extern std::atomic<bool> s_nvapi_hdr_logging;
 extern std::atomic<float> s_nvapi_hdr_interval_sec;
+extern std::atomic<bool> s_reflex_enable;
+extern std::atomic<bool> s_reflex_boost;
+extern std::atomic<bool> s_reflex_use_markers;
 
 extern std::atomic<bool> s_remove_top_bar;
 extern std::atomic<bool> s_enable_unstable_reshade_features;
@@ -39,6 +41,11 @@ DeveloperTabSettings::DeveloperTabSettings()
 
     , enable_unstable_reshade_features("EnableUnstableReShadeFeatures", s_enable_unstable_reshade_features, false, "DisplayCommander")
 
+    // Minimal NVIDIA Reflex controls
+    , reflex_enable("ReflexEnable", s_reflex_enable, false, "DisplayCommander")
+    , reflex_boost("ReflexBoost", s_reflex_boost, false, "DisplayCommander")
+    , reflex_use_markers("ReflexUseMarkers", s_reflex_use_markers, true, "DisplayCommander")
+
     , enable_mute_unmute_shortcut("EnableMuteUnmuteShortcut", s_enable_mute_unmute_shortcut, false, "DisplayCommander")
     , flush_before_present("FlushBeforePresent", g_flush_before_present, true, "DisplayCommander")
 {
@@ -60,6 +67,9 @@ void DeveloperTabSettings::LoadAll() {
 
     enable_mute_unmute_shortcut.Load();
     flush_before_present.Load();
+    reflex_enable.Load();
+    reflex_boost.Load();
+    reflex_use_markers.Load();
     
     // All Ref classes automatically sync with global variables
 }
@@ -80,6 +90,10 @@ std::vector<ui::new_ui::SettingBase*> DeveloperTabSettings::GetAllSettings() {
         &nvapi_fullscreen_prevention,
         &nvapi_hdr_logging,
         &nvapi_hdr_interval_sec,
+
+        &reflex_enable,
+        &reflex_boost,
+        &reflex_use_markers,
 
         &enable_unstable_reshade_features,
 

@@ -68,10 +68,6 @@ NvU64 ReflexManager::IncreaseFrameId() {
 bool ReflexManager::SetMarker(NV_LATENCY_MARKER_TYPE marker) {
     if (!initialized_.load(std::memory_order_acquire) || d3d_device_ == nullptr) return false;
 
-    {
-        if (!s_reflex_use_markers.load())
-            return false;
-    }
     if (s_enable_reflex_logging.load())
     {
         std::ostringstream oss;

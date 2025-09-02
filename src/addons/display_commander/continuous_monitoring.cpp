@@ -19,7 +19,8 @@ void ContinuousMonitoringThread() {
     while (g_monitoring_thread_running.load()) {
         // Check if monitoring is still enabled
         if (!s_continuous_monitoring_enabled.load()) {
-            break;
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            continue;
         }
         
         // Get the current swapchain window
@@ -237,12 +238,6 @@ void StartContinuousMonitoring() {
         LogDebug("Continuous monitoring already running");
         return;
     }
-    
-    if (!s_continuous_monitoring_enabled.load()) {
-        LogDebug("Continuous monitoring disabled, not starting");
-        return;
-    }
-    
     g_monitoring_thread_running.store(true);
     
     // Start the monitoring thread

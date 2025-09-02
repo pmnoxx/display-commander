@@ -256,11 +256,6 @@ void DrawDisplaySettings() {
     ImGui::SameLine();
     if (CheckboxSetting(g_developerTabSettings.continuous_monitoring, "Auto-apply")) {
         s_continuous_monitoring_enabled.store(g_developerTabSettings.continuous_monitoring.GetValue());
-        if (g_developerTabSettings.continuous_monitoring.GetValue()) {
-            ::StartContinuousMonitoring();
-        } else {
-            ::StopContinuousMonitoring();
-        }
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Auto-apply window mode changes and continuously keep window size/position in sync.");

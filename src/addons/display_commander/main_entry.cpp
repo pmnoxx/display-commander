@@ -179,10 +179,10 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
     // InitializeSwapchain removed from proxy
     
     // Check if continuous monitoring should be enabled
-    if (s_continuous_monitoring_enabled.load()) {
+    //if (s_continuous_monitoring_enabled.load()) {
       StartContinuousMonitoring();
-      LogInfo("Continuous monitoring started proactively");
-    }
+    //  LogInfo("Continuous monitoring started proactively");
+  //  }
 
     
     // Initialize NVAPI fullscreen prevention if enabled and not already initialized

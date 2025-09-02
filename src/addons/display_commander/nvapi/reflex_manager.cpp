@@ -37,7 +37,17 @@ bool ReflexManager::Initialize(reshade::api::device* device) {
 }
 
 void ReflexManager::Shutdown() {
-    initialized_.store(false, std::memory_order_release);
+    if (!initialized_.exchange(false, std::memory_order_release)) return;
+    
+    // Disable sleep mode by setting all parameters to false/disabled
+    NV_SET_SLEEP_MODE_PARAMS params = {};
+    params.version = NV_SET_SLEEP_MODE_PARAMS_VER;
+    params.bLowLatencyMode = NV_FALSE;
+    params.bLowLatencyBoost = NV_FALSE;
+    params.bUseMarkersToOptimize = NV_FALSE;
+    params.minimumIntervalUs = 0; // No frame rate limit
+    
+    NvAPI_D3D_SetSleepMode(d3d_device_, &params);
     d3d_device_ = nullptr;
 }
 
@@ -88,7 +98,7 @@ bool ReflexManager::SetMarker(NV_LATENCY_MARKER_TYPE marker) {
     return true;
 }
 
-bool ReflexManager::SleepOnce() {
+bool ReflexManager::Sleep() {
     if (!initialized_.load(std::memory_order_acquire) || d3d_device_ == nullptr) return false;
     const auto st = NvAPI_D3D_Sleep(d3d_device_);
     return st == NVAPI_OK;

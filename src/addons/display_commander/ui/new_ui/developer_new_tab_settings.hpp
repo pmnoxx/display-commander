@@ -43,6 +43,7 @@ public:
 
     // Minimal NVIDIA Reflex controls
     ui::new_ui::BoolSettingRef reflex_enable;
+    ui::new_ui::BoolSettingRef reflex_low_latency;
     ui::new_ui::BoolSettingRef reflex_boost;
     ui::new_ui::BoolSettingRef reflex_use_markers;
     ui::new_ui::BoolSettingRef reflex_logging;

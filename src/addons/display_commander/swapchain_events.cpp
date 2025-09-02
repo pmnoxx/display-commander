@@ -366,11 +366,15 @@ void OnPresentUpdateAfter(reshade::api::command_queue* /*queue*/, reshade::api::
     if (device && g_reflex.Initialize(device)) {
       g_reflex.IncreaseFrameId();
       // Apply sleep mode opportunistically each frame to reflect current toggles
-      g_reflex.ApplySleepMode(s_reflex_enable.load(), s_reflex_boost.load(), s_reflex_use_markers.load());
-      g_reflex.SleepOnce();
+      g_reflex.ApplySleepMode(s_reflex_low_latency.load(), s_reflex_boost.load(), s_reflex_use_markers.load());
+      g_reflex.Sleep();
       if (s_reflex_use_markers.load()) {
         g_reflex.SetMarker(SIMULATION_START);
       }
+    }
+  } else {
+    if (g_reflex.IsInitialized()) {
+      g_reflex.Shutdown();
     }
   }
 }

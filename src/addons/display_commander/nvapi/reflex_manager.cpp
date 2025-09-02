@@ -1,6 +1,7 @@
 #include "reflex_manager.hpp"
 #include "../globals.hpp"
 #include "../utils.hpp"
+#include "utils/timing.hpp"
 
 // Minimal helper to pull the native D3D device pointer from ReShade device
 static IUnknown* GetNativeD3DDeviceFromReshade(reshade::api::device* device) {
@@ -48,7 +49,9 @@ bool ReflexManager::ApplySleepMode(bool low_latency, bool boost, bool use_marker
     params.bLowLatencyMode = low_latency ? NV_TRUE : NV_FALSE;
     params.bLowLatencyBoost = boost ? NV_TRUE : NV_FALSE;
     params.bUseMarkersToOptimize = use_markers ? NV_TRUE : NV_FALSE;
-    params.minimumIntervalUs = 0; // no explicit limiter in minimal integration
+  //  params.minimumIntervalUs = 0; // no explicit limiter in minimal integration
+    double target_fps_limit = s_fps_limit.load();
+    params.minimumIntervalUs = target_fps_limit > 0.0f ? (UINT)(round(1000000.0 / target_fps_limit)) : 0; // + (__SK_ForceDLSSGPacing ? 6 : 0);
 
     const auto st = NvAPI_D3D_SetSleepMode(d3d_device_, &params);
     if (st != NVAPI_OK) {
@@ -58,13 +61,28 @@ bool ReflexManager::ApplySleepMode(bool low_latency, bool boost, bool use_marker
     return true;
 }
 
+NvU64 ReflexManager::IncreaseFrameId() {
+    return frame_id_.fetch_add(1, std::memory_order_acq_rel);
+}
+
 bool ReflexManager::SetMarker(NV_LATENCY_MARKER_TYPE marker) {
     if (!initialized_.load(std::memory_order_acquire) || d3d_device_ == nullptr) return false;
+
+    {
+        if (!s_reflex_use_markers.load())
+            return false;
+    }
+    if (s_enable_reflex_logging.load())
+    {
+        std::ostringstream oss;
+        oss << utils::get_now_ns() % utils::SEC_TO_NS << " Reflex: SetMarker " << marker << " frame_id " << frame_id_.load(std::memory_order_acquire);
+        LogInfo(oss.str().c_str());
+    }
 
     NV_LATENCY_MARKER_PARAMS mp = {};
     mp.version = NV_LATENCY_MARKER_PARAMS_VER;
     mp.markerType = marker;
-    mp.frameID = frame_id_.fetch_add(1, std::memory_order_acq_rel);
+    mp.frameID = frame_id_.load(std::memory_order_acquire);
 
     const auto st = NvAPI_D3D_SetLatencyMarker(d3d_device_, &mp);
     if (st != NVAPI_OK) {

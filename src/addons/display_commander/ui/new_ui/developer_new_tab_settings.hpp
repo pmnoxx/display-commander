@@ -23,7 +23,6 @@ public:
     ui::new_ui::IntSettingRef spoof_window_focus;
     ui::new_ui::BoolSettingRef continuous_monitoring;
     ui::new_ui::BoolSettingRef prevent_always_on_top;
-    ui::new_ui::BoolSettingRef remove_top_bar;
     
     // HDR and Colorspace Settings
     ui::new_ui::BoolSettingRef fix_hdr10_colorspace;
@@ -46,6 +45,7 @@ public:
     ui::new_ui::BoolSettingRef reflex_enable;
     ui::new_ui::BoolSettingRef reflex_boost;
     ui::new_ui::BoolSettingRef reflex_use_markers;
+    ui::new_ui::BoolSettingRef reflex_logging;
     
     // Get all settings for bulk operations
     std::vector<ui::new_ui::SettingBase*> GetAllSettings();

@@ -113,7 +113,6 @@ extern std::atomic<bool> s_prevent_fullscreen;
 extern std::atomic<bool> s_fix_hdr10_colorspace;
 
 // Window Management Settings
-extern std::atomic<bool> s_remove_top_bar;
 extern std::atomic<int> s_move_to_zero_if_out; // 0 = Disabled, 1 = Move to zero if out, 2 = Move to zero if out and windowed
 extern std::atomic<int> s_target_monitor_index;
 extern std::atomic<int> s_dxgi_composition_state;
@@ -340,3 +339,4 @@ extern std::atomic<LONGLONG> late_amount_ns;
 extern std::atomic<bool> s_reflex_enable;        // Enable NVIDIA Reflex integration
 extern std::atomic<bool> s_reflex_boost;         // Low Latency Boost
 extern std::atomic<bool> s_reflex_use_markers;   // Use markers to optimize
+extern std::atomic<bool> s_enable_reflex_logging; // Enable Reflex logging

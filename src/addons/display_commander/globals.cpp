@@ -12,7 +12,6 @@
 std::atomic<int> s_windowed_width{3440}; // 21:9 ultrawide width
 std::atomic<int> s_windowed_height{1440}; // 21:9 ultrawide height
 std::atomic<int> s_window_mode{0}; // 0 = Borderless Windowed (Aspect Ratio), 1 = Borderless Windowed (Width/Height), 2 = Borderless Fullscreen
-std::atomic<bool> s_remove_top_bar{true}; // Suppress top bar/border messages enabled by default for borderless windows
 
 std::atomic<int> s_aspect_index{4}; // 0 = 16:9, 1 = 16:10, 2 = 4:3, 3 = 3:2, 4 = 1:1, 5 = 1:2, 6 = 2:3, 7 = 3:4, 8 = 9:16, 9 = 10:16
 
@@ -216,3 +215,4 @@ std::atomic<LONGLONG> late_amount_ns{0};
 std::atomic<bool> s_reflex_enable{false};
 std::atomic<bool> s_reflex_boost{false};
 std::atomic<bool> s_reflex_use_markers{true};
+std::atomic<bool> s_enable_reflex_logging{false}; // Disabled by default

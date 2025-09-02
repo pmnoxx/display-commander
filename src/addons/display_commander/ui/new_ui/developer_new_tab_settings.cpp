@@ -16,8 +16,8 @@ extern std::atomic<float> s_nvapi_hdr_interval_sec;
 extern std::atomic<bool> s_reflex_enable;
 extern std::atomic<bool> s_reflex_boost;
 extern std::atomic<bool> s_reflex_use_markers;
+extern std::atomic<bool> s_enable_reflex_logging;
 
-extern std::atomic<bool> s_remove_top_bar;
 extern std::atomic<bool> s_enable_unstable_reshade_features;
 
 extern std::atomic<bool> s_enable_mute_unmute_shortcut;
@@ -28,12 +28,11 @@ namespace ui::new_ui {
 
 // Constructor - initialize all settings with proper keys and default values
 DeveloperTabSettings::DeveloperTabSettings()
-    : prevent_fullscreen("PreventFullscreen", s_prevent_fullscreen, true, "DisplayCommander")
+    : prevent_fullscreen("PreventFullscreen", s_prevent_fullscreen, false, "DisplayCommander")
     , spoof_fullscreen_state("SpoofFullscreenState", s_spoof_fullscreen_state, 0, 0, 2, "DisplayCommander")
     , spoof_window_focus("SpoofWindowFocus", s_spoof_window_focus, 0, 0, 2, "DisplayCommander")
-    , continuous_monitoring("ContinuousMonitoring", s_continuous_monitoring_enabled, true, "DisplayCommander")
-    , prevent_always_on_top("PreventAlwaysOnTop", s_prevent_always_on_top, true, "DisplayCommander")
-    , remove_top_bar("RemoveTopBar", s_remove_top_bar, false, "DisplayCommander")
+    , continuous_monitoring("ContinuousMonitoring", s_continuous_monitoring_enabled, false, "DisplayCommander")
+    , prevent_always_on_top("PreventAlwaysOnTop", s_prevent_always_on_top, false, "DisplayCommander")
     , fix_hdr10_colorspace("FixHDR10Colorspace", s_fix_hdr10_colorspace, false, "DisplayCommander")
     , nvapi_fullscreen_prevention("NvapiFullscreenPrevention", s_nvapi_fullscreen_prevention, false, "DisplayCommander")
     , nvapi_hdr_logging("NvapiHDRLogging", s_nvapi_hdr_logging, false, "DisplayCommander")
@@ -45,6 +44,7 @@ DeveloperTabSettings::DeveloperTabSettings()
     , reflex_enable("ReflexEnable", s_reflex_enable, false, "DisplayCommander")
     , reflex_boost("ReflexBoost", s_reflex_boost, false, "DisplayCommander")
     , reflex_use_markers("ReflexUseMarkers", s_reflex_use_markers, true, "DisplayCommander")
+    , reflex_logging("ReflexLogging", s_enable_reflex_logging, false, "DisplayCommander")
 
     , enable_mute_unmute_shortcut("EnableMuteUnmuteShortcut", s_enable_mute_unmute_shortcut, false, "DisplayCommander")
     , flush_before_present("FlushBeforePresent", g_flush_before_present, true, "DisplayCommander")
@@ -57,7 +57,6 @@ void DeveloperTabSettings::LoadAll() {
     spoof_window_focus.Load();
     continuous_monitoring.Load();
     prevent_always_on_top.Load();
-    remove_top_bar.Load();
     fix_hdr10_colorspace.Load();
     nvapi_fullscreen_prevention.Load();
     nvapi_hdr_logging.Load();
@@ -70,6 +69,7 @@ void DeveloperTabSettings::LoadAll() {
     reflex_enable.Load();
     reflex_boost.Load();
     reflex_use_markers.Load();
+    reflex_logging.Load();
     
     // All Ref classes automatically sync with global variables
 }
@@ -85,7 +85,6 @@ std::vector<ui::new_ui::SettingBase*> DeveloperTabSettings::GetAllSettings() {
         &spoof_window_focus,
         &continuous_monitoring,
         &prevent_always_on_top,
-        &remove_top_bar,
         &fix_hdr10_colorspace,
         &nvapi_fullscreen_prevention,
         &nvapi_hdr_logging,
@@ -94,6 +93,7 @@ std::vector<ui::new_ui::SettingBase*> DeveloperTabSettings::GetAllSettings() {
         &reflex_enable,
         &reflex_boost,
         &reflex_use_markers,
+        &reflex_logging,
 
         &enable_unstable_reshade_features,
 

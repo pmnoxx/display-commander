@@ -16,7 +16,7 @@ This addon automatically detects D3D11 and D3D12 devices and enables debug layer
 
 ## Requirements
 
-- ReShade 5.0 or later
+- ReShade 6.5.1 or later
 - D3D Debug Layer enabled (requires D3D SDK or Visual Studio)
 - Windows 10/11 with D3D11 or D3D12 applications
 

@@ -5,10 +5,6 @@
 #include <string>
 #include <chrono>
 
-// Forward declarations for NGX
-struct NVSDK_NGX_Parameter;
-struct NVSDK_NGX_Context;
-
 // NVAPI DLL-FG (Frame Generation) Statistics Module
 // Provides comprehensive frame generation statistics and monitoring
 class NVAPIDllFgStats {
@@ -21,9 +17,6 @@ public:
     
     // Initialize NVAPI and DLL-FG monitoring
     bool Initialize();
-    
-    // Set NGX context and parameters (called by main application)
-    void SetNGXContext(NVSDK_NGX_Context* context, NVSDK_NGX_Parameter* parameters);
     
     // Cleanup resources
     void Cleanup();
@@ -46,8 +39,7 @@ public:
     enum class DllFgMode {
         Disabled = 0,
         Enabled = 1,
-        Unavailable = 2,
-        Unknown = 3
+        Unknown = 2
     };
     DllFgMode GetDllFgMode() const;
     
@@ -95,27 +87,6 @@ public:
     };
     DllFgConfig GetDllFgConfig() const;
     
-    // Get DLL-FG preset mode information
-    struct DllFgPresetMode {
-        enum class PresetType {
-            Auto = 0,
-            Quality = 1,
-            Performance = 2,
-            Balanced = 3,
-            Custom = 4,
-            Unknown = 5
-        };
-        
-        PresetType current_preset = PresetType::Unknown;
-        std::string preset_name;
-        std::string preset_description;
-        bool is_custom_preset = false;
-        bool preset_override_active = false;
-        std::string override_reason;
-        bool valid = false;
-    };
-    DllFgPresetMode GetDllFgPresetMode() const;
-    
     // Get comprehensive status string
     std::string GetStatusString() const;
     
@@ -143,10 +114,6 @@ private:
     bool failed_to_initialize = false;
     mutable std::string last_error;
     
-    // NGX context and parameters for DLL-FG queries
-    NVSDK_NGX_Context* m_ngx_context = nullptr;
-    NVSDK_NGX_Parameter* m_ngx_parameters = nullptr;
-    
     // Cached statistics (updated periodically)
     mutable Resolution cached_resolution;
     mutable DllFgMode cached_mode = DllFgMode::Unknown;
@@ -154,7 +121,6 @@ private:
     mutable FrameGenStats cached_frame_stats;
     mutable PerformanceMetrics cached_performance;
     mutable DllFgConfig cached_config;
-    mutable DllFgPresetMode cached_preset_mode;
     mutable DriverCompatibility cached_compatibility;
     
     // Update timestamps
@@ -164,7 +130,6 @@ private:
     mutable std::chrono::steady_clock::time_point last_stats_update;
     mutable std::chrono::steady_clock::time_point last_performance_update;
     mutable std::chrono::steady_clock::time_point last_config_update;
-    mutable std::chrono::steady_clock::time_point last_preset_mode_update;
     mutable std::chrono::steady_clock::time_point last_compatibility_update;
     
     // Cache duration (in milliseconds)
@@ -178,7 +143,6 @@ private:
     bool QueryFrameGenStats(FrameGenStats& stats) const;
     bool QueryPerformanceMetrics(PerformanceMetrics& metrics) const;
     bool QueryDllFgConfig(DllFgConfig& config) const;
-    bool QueryDllFgPresetMode(DllFgPresetMode& preset_mode) const;
     bool QueryDriverCompatibility(DriverCompatibility& compatibility) const;
     
     // Disable copy constructor and assignment

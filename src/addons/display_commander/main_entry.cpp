@@ -16,6 +16,7 @@
 #include "nvapi/nvapi_fullscreen_prevention.hpp"
 #include "nvapi/nvapi_hdr_monitor.hpp"
 #include "nvapi/dlssfg_version_detector.hpp"
+#include "nvapi/dlss_preset_detector.hpp"
 // Restore display settings on exit if enabled
 #include "display_restore.hpp"
 #include "process_exit_hooks.hpp"
@@ -249,6 +250,31 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
       LogWarn("Failed to initialize DLSS-FG Version Detector");
       g_dlls_g_loaded.store(false);
       g_dlls_g_version.store(std::make_shared<const std::string>("Detection Failed"));
+    }
+    
+    // Initialize DLSS Preset Detector
+    if (g_dlssPresetDetector.Initialize()) {
+      if (g_dlssPresetDetector.IsAvailable()) {
+        const auto& preset = g_dlssPresetDetector.GetPreset();
+        LogInfo("DLSS Preset detected - Preset: %s, Quality: %s", 
+                preset.getFormattedPreset().c_str(),
+                preset.getFormattedQualityMode().c_str());
+        g_dlss_preset_detected.store(true);
+        
+        // Update global DLSS preset variables
+        g_dlss_preset_name.store(std::make_shared<const std::string>(preset.getFormattedPreset()));
+        g_dlss_quality_mode.store(std::make_shared<const std::string>(preset.getFormattedQualityMode()));
+      } else {
+        LogInfo("DLSS Preset Detector initialized - No DLSS preset detected");
+        g_dlss_preset_detected.store(false);
+        g_dlss_preset_name.store(std::make_shared<const std::string>("Not Found"));
+        g_dlss_quality_mode.store(std::make_shared<const std::string>("Not Found"));
+      }
+    } else {
+      LogWarn("Failed to initialize DLSS Preset Detector");
+      g_dlss_preset_detected.store(false);
+      g_dlss_preset_name.store(std::make_shared<const std::string>("Detection Failed"));
+      g_dlss_quality_mode.store(std::make_shared<const std::string>("Detection Failed"));
     }
     
     // Mark DLL initialization as complete - now DXGI calls are safe

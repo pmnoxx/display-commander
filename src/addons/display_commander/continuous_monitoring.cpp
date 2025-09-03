@@ -2,6 +2,7 @@
 #include "utils.hpp"
 #include "background_window.hpp"
 #include "nvapi/dlssfg_version_detector.hpp"
+#include "nvapi/dlss_preset_detector.hpp"
 #include <thread>
 #include <sstream>
 #include <algorithm>
@@ -241,6 +242,23 @@ void ContinuousMonitoringThread() {
                             // Update global DLLS-G variables
                             g_dlls_g_loaded.store(true);
                             g_dlls_g_version.store(std::make_shared<const std::string>(version.getFormattedVersion()));
+                        }
+                    }
+                    
+                    // DLSS Preset Detection: Check every 5 seconds for runtime-loaded DLSS presets
+                    if (!g_dlss_preset_detected.load()) {
+                        if (g_dlssPresetDetector.RefreshPreset()) {
+                            if (g_dlssPresetDetector.IsAvailable()) {
+                                const auto& preset = g_dlssPresetDetector.GetPreset();
+                                LogInfo("DLSS Preset detected at runtime - Preset: %s, Quality: %s", 
+                                        preset.getFormattedPreset().c_str(),
+                                        preset.getFormattedQualityMode().c_str());
+                                g_dlss_preset_detected.store(true);
+                                
+                                // Update global DLSS preset variables
+                                g_dlss_preset_name.store(std::make_shared<const std::string>(preset.getFormattedPreset()));
+                                g_dlss_quality_mode.store(std::make_shared<const std::string>(preset.getFormattedQualityMode()));
+                            }
                         }
                     }
                 }

@@ -262,3 +262,8 @@ std::atomic<bool> s_enable_reflex_logging{false}; // Disabled by default
 // DLLS-G (DLSS Frame Generation) status
 std::atomic<bool> g_dlls_g_loaded{false};
 std::atomic<std::shared_ptr<const std::string>> g_dlls_g_version{std::make_shared<const std::string>("Unknown")};
+
+// DLSS Preset Detection
+std::atomic<bool> g_dlss_preset_detected{false};
+std::atomic<std::shared_ptr<const std::string>> g_dlss_preset_name{std::make_shared<const std::string>("Unknown")};
+std::atomic<std::shared_ptr<const std::string>> g_dlss_quality_mode{std::make_shared<const std::string>("Unknown")};

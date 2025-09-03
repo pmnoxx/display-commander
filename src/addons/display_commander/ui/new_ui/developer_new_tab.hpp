@@ -1,7 +1,6 @@
 #pragma once
 
 #include <deps/imgui/imgui.h>
-#include <functional>
 
 namespace ui::new_ui {
 
@@ -25,5 +24,8 @@ void DrawKeyboardShortcutsSettings();
 
 // Draw latency display section
 void DrawLatencyDisplay();
+
+// Draw DLL-FG stats section
+void DrawDllFgStats();
 
 } // namespace ui::new_ui

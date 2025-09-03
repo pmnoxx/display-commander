@@ -358,3 +358,8 @@ extern std::atomic<bool> g_dlssfg_detected;
 // DLLS-G (DLSS Frame Generation) status
 extern std::atomic<bool> g_dlls_g_loaded;        // DLLS-G loaded status
 extern std::atomic<std::shared_ptr<const std::string>> g_dlls_g_version; // DLLS-G version string
+
+// DLSS Preset Detection
+extern std::atomic<bool> g_dlss_preset_detected; // DLSS preset detection status
+extern std::atomic<std::shared_ptr<const std::string>> g_dlss_preset_name; // Current DLSS preset name
+extern std::atomic<std::shared_ptr<const std::string>> g_dlss_quality_mode; // Current DLSS quality mode

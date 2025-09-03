@@ -3,6 +3,7 @@
 #include "settings_wrapper.hpp"
 #include "../../nvapi/nvapi_fullscreen_prevention.hpp"
 #include "../../nvapi/nvapi_hdr_monitor.hpp"
+#include "../../nvapi/nvapi_dllfg_stats.hpp"
 #include "../../globals.hpp"
 #include "../../utils.hpp"
 
@@ -56,6 +57,12 @@ void DrawDeveloperNewTab() {
     
     // Latency Display Section
     DrawLatencyDisplay();
+    
+    ImGui::Spacing();
+    ImGui::Separator();
+    
+    // DLL-FG Stats Section
+    DrawDllFgStats();
 }
 
 void DrawDeveloperSettings() {
@@ -383,25 +390,164 @@ void DrawLatencyDisplay() {
     ImGui::TextUnformatted(oss.str().c_str());
     ImGui::SameLine();
     ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "(smoothed)");
-    
-    ImGui::Spacing();
-    ImGui::Separator();
-    
-    // DLLS-G Version Information
-    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "=== DLLS-G Information ===");
-    
-    // DLLS-G Loaded Status
-    bool dlls_g_loaded = ::g_dlls_g_loaded.load();
-    ImGui::Text("DLLS-G Loaded: %s", dlls_g_loaded ? "Yes" : "No");
-    
-    // DLLS-G Version
-    auto version_ptr = ::g_dlls_g_version.load();
-    if (version_ptr) {
-        ImGui::Text("DLLS-G Version: %s", version_ptr->c_str());
-    } else {
-        ImGui::Text("DLLS-G Version: Unknown");
-    }
+}
 
+void DrawDllFgStats() {
+    ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "=== DLL-FG Statistics ===");
+    
+    // Initialize DLL-FG stats if not already done
+    static bool dllfg_initialized = false;
+    if (!dllfg_initialized) {
+        if (::g_nvapiDllFgStats.Initialize()) {
+            dllfg_initialized = true;
+        }
+    }
+    
+    if (!dllfg_initialized) {
+        ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "DLL-FG Stats: Failed to initialize");
+        return;
+    }
+    
+    // Update stats
+    ::g_nvapiDllFgStats.UpdateStats();
+    
+    // Check if DLL-FG is supported
+    if (!::g_nvapiDllFgStats.IsDllFgSupported()) {
+        ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "DLL-FG: Not supported on this hardware");
+        return;
+    }
+    
+    // Internal Resolution
+    auto resolution = ::g_nvapiDllFgStats.GetInternalResolution();
+    if (resolution.valid) {
+        std::ostringstream oss;
+        oss << "Internal Resolution: " << resolution.width << "x" << resolution.height;
+        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✓ %s", oss.str().c_str());
+    } else {
+        ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "⚠ Internal Resolution: Unknown");
+    }
+    
+    // DLL-FG Mode
+    auto mode = ::g_nvapiDllFgStats.GetDllFgMode();
+    switch (mode) {
+        case NVAPIDllFgStats::DllFgMode::Enabled:
+            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✓ DLL-FG Mode: ENABLED");
+            break;
+        case NVAPIDllFgStats::DllFgMode::Disabled:
+            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "⚠ DLL-FG Mode: DISABLED");
+            break;
+        case NVAPIDllFgStats::DllFgMode::Unknown:
+        default:
+            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "⚠ DLL-FG Mode: UNKNOWN");
+            break;
+    }
+    
+    // DLL-FG Version
+    auto version = ::g_nvapiDllFgStats.GetDllFgVersion();
+    if (version.valid) {
+        std::ostringstream oss;
+        oss << "DLL-FG Version: " << version.version_string;
+        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✓ %s", oss.str().c_str());
+    } else {
+        ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "⚠ DLL-FG Version: Unknown");
+    }
+    
+    // Frame Generation Statistics
+    auto stats = ::g_nvapiDllFgStats.GetFrameGenStats();
+    if (stats.valid) {
+        ImGui::Separator();
+        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Frame Generation Stats:");
+        
+        std::ostringstream oss;
+        oss << "Frames Generated: " << stats.total_frames_generated;
+        ImGui::Text("  %s", oss.str().c_str());
+        
+        oss.str("");
+        oss << "Frames Presented: " << stats.total_frames_presented;
+        ImGui::Text("  %s", oss.str().c_str());
+        
+        oss.str("");
+        oss << "Frames Dropped: " << stats.total_frames_dropped;
+        ImGui::Text("  %s", oss.str().c_str());
+        
+        oss.str("");
+        oss << "Generation Ratio: " << std::fixed << std::setprecision(2) << stats.frame_generation_ratio << "%";
+        ImGui::Text("  %s", oss.str().c_str());
+        
+        oss.str("");
+        oss << "Avg Frame Time: " << std::fixed << std::setprecision(2) << stats.average_frame_time_ms << "ms";
+        ImGui::Text("  %s", oss.str().c_str());
+        
+        oss.str("");
+        oss << "GPU Utilization: " << std::fixed << std::setprecision(1) << stats.gpu_utilization_percent << "%";
+        ImGui::Text("  %s", oss.str().c_str());
+    }
+    
+    // Performance Metrics
+    auto performance = ::g_nvapiDllFgStats.GetPerformanceMetrics();
+    if (performance.valid) {
+        ImGui::Separator();
+        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Performance Metrics:");
+        
+        std::ostringstream oss;
+        oss << "Input Lag: " << std::fixed << std::setprecision(2) << performance.input_lag_ms << "ms";
+        ImGui::Text("  %s", oss.str().c_str());
+        
+        oss.str("");
+        oss << "Output Lag: " << std::fixed << std::setprecision(2) << performance.output_lag_ms << "ms";
+        ImGui::Text("  %s", oss.str().c_str());
+        
+        oss.str("");
+        oss << "Total Latency: " << std::fixed << std::setprecision(2) << performance.total_latency_ms << "ms";
+        ImGui::Text("  %s", oss.str().c_str());
+        
+        oss.str("");
+        oss << "Frame Pacing Quality: " << std::fixed << std::setprecision(1) << performance.frame_pacing_quality << "%";
+        ImGui::Text("  %s", oss.str().c_str());
+    }
+    
+    // Driver Compatibility
+    auto compatibility = ::g_nvapiDllFgStats.GetDriverCompatibility();
+    if (compatibility.valid) {
+        ImGui::Separator();
+        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Driver Compatibility:");
+        
+        std::ostringstream oss;
+        oss << "Current Version: " << compatibility.current_version;
+        ImGui::Text("  %s", oss.str().c_str());
+        
+        oss.str("");
+        oss << "Min Required: " << compatibility.min_required_version;
+        ImGui::Text("  %s", oss.str().c_str());
+        
+        if (compatibility.is_supported) {
+            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "  ✓ %s", compatibility.compatibility_status.c_str());
+        } else {
+            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "  ⚠ %s", compatibility.compatibility_status.c_str());
+        }
+    }
+    
+    // Configuration
+    auto config = ::g_nvapiDllFgStats.GetDllFgConfig();
+    if (config.valid) {
+        ImGui::Separator();
+        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Configuration:");
+        
+        ImGui::Text("  Auto Mode: %s", config.auto_mode_enabled ? "Enabled" : "Disabled");
+        ImGui::Text("  Quality Mode: %s", config.quality_mode_enabled ? "Enabled" : "Disabled");
+        ImGui::Text("  Performance Mode: %s", config.performance_mode_enabled ? "Enabled" : "Disabled");
+        ImGui::Text("  Target FPS: %u", config.target_fps);
+        ImGui::Text("  VSync: %s", config.vsync_enabled ? "Enabled" : "Disabled");
+        ImGui::Text("  G-Sync: %s", config.gsync_enabled ? "Enabled" : "Disabled");
+    }
+    
+    // Debug Information (collapsible)
+    if (ImGui::CollapsingHeader("Debug Information")) {
+        std::string debug_info = ::g_nvapiDllFgStats.GetDebugInfo();
+        if (!debug_info.empty()) {
+            ImGui::TextWrapped("%s", debug_info.c_str());
+        }
+    }
 }
 
 } // namespace ui::new_ui

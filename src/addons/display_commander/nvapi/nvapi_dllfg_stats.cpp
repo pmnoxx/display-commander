@@ -3,35 +3,6 @@
 #include <sstream>
 #include <iomanip>
 
-// Forward declare NGX types to avoid include issues
-typedef int NVSDK_NGX_Result;
-constexpr NVSDK_NGX_Result NVSDK_NGX_Result_Success = 0;
-
-// Define NGX Parameter interface (simplified version)
-struct NVSDK_NGX_Parameter {
-    virtual NVSDK_NGX_Result Get(const char* name, unsigned int* value) = 0;
-    virtual NVSDK_NGX_Result Get(const char* name, float* value) = 0;
-    virtual NVSDK_NGX_Result Get(const char* name, double* value) = 0;
-    virtual NVSDK_NGX_Result Get(const char* name, int* value) = 0;
-    virtual NVSDK_NGX_Result Get(const char* name, void** value) = 0;
-};
-
-// NGX parameter constants for DLL-FG queries (from Special-K)
-namespace NGX_DLLFG_Params {
-    constexpr const char* MultiFrameCount = "DLSSG.MultiFrameCount";
-    constexpr const char* MultiFrameCountMax = "DLSSG.MultiFrameCountMax";
-    constexpr const char* VersionMajor = "DLSSG.Version.Major";
-    constexpr const char* VersionMinor = "DLSSG.Version.Minor";
-    constexpr const char* VersionBuild = "DLSSG.Version.Build";
-    constexpr const char* FramesGenerated = "DLSSG.FramesGenerated";
-    constexpr const char* FramesPresented = "DLSSG.FramesPresented";
-    constexpr const char* FramesDropped = "DLSSG.FramesDropped";
-    constexpr const char* AverageFrameTime = "DLSSG.AverageFrameTime";
-    constexpr const char* GPUUtilization = "DLSSG.GPUUtilization";
-    constexpr const char* Status = "DLSSG.Status";
-    constexpr const char* Active = "DLSSG.Active";
-}
-
 NVAPIDllFgStats::NVAPIDllFgStats() {
     // Initialize cache timestamps to ensure first query triggers update
     auto now = std::chrono::steady_clock::now();
@@ -41,7 +12,6 @@ NVAPIDllFgStats::NVAPIDllFgStats() {
     last_stats_update = now - std::chrono::milliseconds(CACHE_DURATION_MS + 1);
     last_performance_update = now - std::chrono::milliseconds(CACHE_DURATION_MS + 1);
     last_config_update = now - std::chrono::milliseconds(CACHE_DURATION_MS + 1);
-    last_preset_mode_update = now - std::chrono::milliseconds(CACHE_DURATION_MS + 1);
     last_compatibility_update = now - std::chrono::milliseconds(CACHE_DURATION_MS + 1);
 }
 
@@ -58,20 +28,9 @@ bool NVAPIDllFgStats::Initialize() {
         return false;
     }
     
-    // Initialize NGX context for DLL-FG queries
-    // This would need to be set up by the main application when NGX is initialized
-    // For now, we'll leave these as nullptr and handle the case in query methods
-    m_ngx_context = nullptr;
-    m_ngx_parameters = nullptr;
-    
     LogInfo("NVAPI DLL-FG Stats initialized successfully");
     initialized = true;
     return true;
-}
-
-void NVAPIDllFgStats::SetNGXContext(NVSDK_NGX_Context* context, NVSDK_NGX_Parameter* parameters) {
-    m_ngx_context = context;
-    m_ngx_parameters = parameters;
 }
 
 void NVAPIDllFgStats::Cleanup() {
@@ -98,7 +57,6 @@ void NVAPIDllFgStats::UpdateStats() {
     last_stats_update = now - std::chrono::milliseconds(CACHE_DURATION_MS + 1);
     last_performance_update = now - std::chrono::milliseconds(CACHE_DURATION_MS + 1);
     last_config_update = now - std::chrono::milliseconds(CACHE_DURATION_MS + 1);
-    last_preset_mode_update = now - std::chrono::milliseconds(CACHE_DURATION_MS + 1);
     last_compatibility_update = now - std::chrono::milliseconds(CACHE_DURATION_MS + 1);
     
     // Trigger cache updates
@@ -108,7 +66,6 @@ void NVAPIDllFgStats::UpdateStats() {
     GetFrameGenStats();
     GetPerformanceMetrics();
     GetDllFgConfig();
-    GetDllFgPresetMode();
     GetDriverCompatibility();
 }
 
@@ -258,23 +215,9 @@ std::string NVAPIDllFgStats::GetStatusString() const {
     // DLL-FG Version
     auto version = GetDllFgVersion();
     if (version.valid) {
-        oss << "DLL-FG Version: " << version.major_version << "." << version.minor_version << "." << version.build_number << "\n";
+        oss << "DLL-FG Version: " << version.version_string << "\n";
     } else {
         oss << "DLL-FG Version: Unknown\n";
-    }
-    
-    // DLL-FG Preset Mode
-    auto preset_mode = GetDllFgPresetMode();
-    if (preset_mode.valid) {
-        oss << "Preset Mode: " << preset_mode.preset_name << "\n";
-        if (!preset_mode.preset_description.empty()) {
-            oss << "Preset Description: " << preset_mode.preset_description << "\n";
-        }
-        if (preset_mode.preset_override_active) {
-            oss << "Override Active: " << preset_mode.override_reason << "\n";
-        }
-    } else {
-        oss << "Preset Mode: Unknown\n";
     }
     
     // Frame Generation Stats
@@ -332,44 +275,6 @@ std::string NVAPIDllFgStats::GetDebugInfo() const {
         oss << "  Target FPS: " << config.target_fps << "\n";
         oss << "  VSync: " << (config.vsync_enabled ? "Enabled" : "Disabled") << "\n";
         oss << "  G-Sync: " << (config.gsync_enabled ? "Enabled" : "Disabled") << "\n";
-    }
-    
-    // Preset Mode
-    auto preset_mode = GetDllFgPresetMode();
-    if (preset_mode.valid) {
-        oss << "Preset Mode:\n";
-        oss << "  Current Preset: " << preset_mode.preset_name << "\n";
-        oss << "  Preset Type: ";
-        switch (preset_mode.current_preset) {
-            case DllFgPresetMode::PresetType::Auto:
-                oss << "Auto";
-                break;
-            case DllFgPresetMode::PresetType::Quality:
-                oss << "Quality";
-                break;
-            case DllFgPresetMode::PresetType::Performance:
-                oss << "Performance";
-                break;
-            case DllFgPresetMode::PresetType::Balanced:
-                oss << "Balanced";
-                break;
-            case DllFgPresetMode::PresetType::Custom:
-                oss << "Custom";
-                break;
-            case DllFgPresetMode::PresetType::Unknown:
-            default:
-                oss << "Unknown";
-                break;
-        }
-        oss << "\n";
-        oss << "  Custom Preset: " << (preset_mode.is_custom_preset ? "Yes" : "No") << "\n";
-        oss << "  Override Active: " << (preset_mode.preset_override_active ? "Yes" : "No") << "\n";
-        if (preset_mode.preset_override_active && !preset_mode.override_reason.empty()) {
-            oss << "  Override Reason: " << preset_mode.override_reason << "\n";
-        }
-        if (!preset_mode.preset_description.empty()) {
-            oss << "  Description: " << preset_mode.preset_description << "\n";
-        }
     }
     
     return oss.str();
@@ -438,26 +343,11 @@ bool NVAPIDllFgStats::QueryInternalResolution(Resolution& resolution) const {
 bool NVAPIDllFgStats::QueryDllFgMode(DllFgMode& mode) const {
     mode = DllFgMode::Unknown;
     
-    // Query DLL-FG mode using NGX parameters like Special-K does
-    // Check if we have NGX context and frame generation feature
-    if (!m_ngx_context || !m_ngx_parameters) {
-        return false;
-    }
+    // This would query the actual DLL-FG mode from the driver
+    // For now, we'll simulate this
     
-    // Try to get the MultiFrameCount parameter - if it exists and > 0, DLL-FG is active
-    unsigned int multiFrameCount = 0;
-    if (m_ngx_parameters->Get(NGX_DLLFG_Params::MultiFrameCount, &multiFrameCount) == NVSDK_NGX_Result_Success) {
-        if (multiFrameCount > 0) {
-            mode = DllFgMode::Enabled;
-        } else {
-            mode = DllFgMode::Disabled;
-        }
-        return true;
-    }
-    
-    // Fallback: check if frame generation feature is available
-    // This is a basic check - the actual implementation would need more sophisticated detection
-    mode = DllFgMode::Unavailable;
+    // Placeholder implementation - would need actual NVAPI calls
+    mode = DllFgMode::Enabled; // Placeholder
     
     return true;
 }
@@ -465,130 +355,35 @@ bool NVAPIDllFgStats::QueryDllFgMode(DllFgMode& mode) const {
 bool NVAPIDllFgStats::QueryDllFgVersion(DllFgVersion& version) const {
     version.valid = false;
     
-    // Query DLL-FG version using NGX context like Special-K does
-    if (!m_ngx_context) {
-        return false;
-    }
+    // This would query the actual DLL-FG version from the driver
+    // For now, we'll simulate this
     
-    // Try to get version information from NGX context
-    // Special-K uses SK_NGX_GetDLSSGVersion() for this
-    // For now, we'll implement a basic version query
-    
-    // Check if we can get version from NGX parameters
-    if (m_ngx_parameters) {
-        // Try to get version-related parameters
-        unsigned int major = 0, minor = 0, build = 0, revision = 0;
-        
-        // These parameters might be available depending on the NGX version
-        if (m_ngx_parameters->Get(NGX_DLLFG_Params::VersionMajor, &major) == NVSDK_NGX_Result_Success &&
-            m_ngx_parameters->Get(NGX_DLLFG_Params::VersionMinor, &minor) == NVSDK_NGX_Result_Success) {
-            
-            version.major_version = major;
-            version.minor_version = minor;
-            version.build_number = build;
-            
-            // Format version string
-            std::ostringstream version_stream;
-            version_stream << major << "." << minor << "." << build;
-            version.version_string = version_stream.str();
-            version.valid = true;
-            
-            return true;
-        }
-    }
-    
-    // Fallback: try to detect version from DLL file like Special-K does
-    // This would require checking the actual DLSS-G DLL version
-    version.version_string = "Unknown";
-    version.major_version = 0;
+    // Placeholder implementation - would need actual NVAPI calls
+    version.version_string = "1.0.0"; // Placeholder
+    version.major_version = 1;
     version.minor_version = 0;
     version.build_number = 0;
-    version.valid = false;
+    version.valid = true;
     
-    return false;
+    return true;
 }
 
 bool NVAPIDllFgStats::QueryFrameGenStats(FrameGenStats& stats) const {
     stats.valid = false;
     
-    // Query frame generation statistics using NGX parameters like Special-K does
-    if (!m_ngx_parameters) {
-        return false;
-    }
+    // This would query actual frame generation statistics
+    // For now, we'll simulate this
     
-    // Get MultiFrameCount - this is the key parameter Special-K uses
-    unsigned int multiFrameCount = 0;
-    if (m_ngx_parameters->Get(NGX_DLLFG_Params::MultiFrameCount, &multiFrameCount) != NVSDK_NGX_Result_Success) {
-        return false;
-    }
+    // Placeholder implementation - would need actual NVAPI calls
+    stats.total_frames_generated = 1000; // Placeholder
+    stats.total_frames_presented = 950;  // Placeholder
+    stats.total_frames_dropped = 50;     // Placeholder
+    stats.frame_generation_ratio = 95.0; // Placeholder
+    stats.average_frame_time_ms = 16.67; // Placeholder (60 FPS)
+    stats.gpu_utilization_percent = 75.0; // Placeholder
+    stats.valid = true;
     
-    // Initialize stats
-    stats.total_frames_generated = 0;
-    stats.total_frames_presented = 0;
-    stats.total_frames_dropped = 0;
-    stats.frame_generation_ratio = 0.0;
-    stats.average_frame_time_ms = 0.0;
-    stats.gpu_utilization_percent = 0.0;
-    
-    // Try to get additional statistics from NGX parameters
-    // These parameters may or may not be available depending on the NGX version
-    unsigned int framesGenerated = 0, framesPresented = 0, framesDropped = 0;
-    float frameTime = 0.0f, gpuUtil = 0.0f;
-    
-    // Query available statistics
-    bool hasGenerated = (m_ngx_parameters->Get(NGX_DLLFG_Params::FramesGenerated, &framesGenerated) == NVSDK_NGX_Result_Success);
-    bool hasPresented = (m_ngx_parameters->Get(NGX_DLLFG_Params::FramesPresented, &framesPresented) == NVSDK_NGX_Result_Success);
-    bool hasDropped = (m_ngx_parameters->Get(NGX_DLLFG_Params::FramesDropped, &framesDropped) == NVSDK_NGX_Result_Success);
-    bool hasFrameTime = (m_ngx_parameters->Get(NGX_DLLFG_Params::AverageFrameTime, &frameTime) == NVSDK_NGX_Result_Success);
-    bool hasGpuUtil = (m_ngx_parameters->Get(NGX_DLLFG_Params::GPUUtilization, &gpuUtil) == NVSDK_NGX_Result_Success);
-    
-    if (hasGenerated) {
-        stats.total_frames_generated = framesGenerated;
-    }
-    if (hasPresented) {
-        stats.total_frames_presented = framesPresented;
-    }
-    if (hasDropped) {
-        stats.total_frames_dropped = framesDropped;
-    }
-    if (hasFrameTime) {
-        stats.average_frame_time_ms = static_cast<double>(frameTime);
-    }
-    if (hasGpuUtil) {
-        stats.gpu_utilization_percent = static_cast<double>(gpuUtil);
-    }
-    
-    // Calculate frame generation ratio if we have the data
-    if (hasGenerated && hasPresented && framesGenerated > 0) {
-        stats.frame_generation_ratio = (static_cast<double>(framesPresented) / static_cast<double>(framesGenerated)) * 100.0;
-    } else if (multiFrameCount > 0) {
-        // Estimate based on MultiFrameCount (e.g., 2x = 100% generation ratio)
-        stats.frame_generation_ratio = 100.0; // Assume perfect generation for active DLL-FG
-    }
-    
-    // If we have at least the MultiFrameCount, we can provide basic stats
-    if (multiFrameCount > 0) {
-        stats.valid = true;
-        
-        // If we don't have specific stats, provide estimated values
-        if (!hasGenerated) {
-            stats.total_frames_generated = 1000; // Placeholder
-        }
-        if (!hasPresented) {
-            stats.total_frames_presented = static_cast<uint64_t>(stats.total_frames_generated * 0.95); // 95% success rate
-        }
-        if (!hasDropped) {
-            stats.total_frames_dropped = stats.total_frames_generated - stats.total_frames_presented;
-        }
-        if (!hasFrameTime) {
-            stats.average_frame_time_ms = 16.67; // 60 FPS equivalent
-        }
-        if (!hasGpuUtil) {
-            stats.gpu_utilization_percent = 75.0; // Estimated
-        }
-    }
-    
-    return stats.valid;
+    return true;
 }
 
 bool NVAPIDllFgStats::QueryPerformanceMetrics(PerformanceMetrics& metrics) const {
@@ -621,40 +416,6 @@ bool NVAPIDllFgStats::QueryDllFgConfig(DllFgConfig& config) const {
     config.vsync_enabled = false;        // Placeholder
     config.gsync_enabled = true;         // Placeholder
     config.valid = true;
-    
-    return true;
-}
-
-NVAPIDllFgStats::DllFgPresetMode NVAPIDllFgStats::GetDllFgPresetMode() const {
-    auto now = std::chrono::steady_clock::now();
-    if (std::chrono::duration_cast<std::chrono::milliseconds>(now - last_preset_mode_update).count() < CACHE_DURATION_MS) {
-        return cached_preset_mode;
-    }
-    
-    if (!initialized) {
-        cached_preset_mode.valid = false;
-        return cached_preset_mode;
-    }
-    
-    QueryDllFgPresetMode(cached_preset_mode);
-    last_preset_mode_update = now;
-    return cached_preset_mode;
-}
-
-bool NVAPIDllFgStats::QueryDllFgPresetMode(DllFgPresetMode& preset_mode) const {
-    preset_mode.valid = false;
-    
-    // This would query the actual DLL-FG preset mode from the driver
-    // For now, we'll simulate this with placeholder data
-    
-    // Placeholder implementation - would need actual NVAPI calls
-    preset_mode.current_preset = DllFgPresetMode::PresetType::Auto;
-    preset_mode.preset_name = "Auto";
-    preset_mode.preset_description = "Automatically adjusts DLL-FG settings based on game performance";
-    preset_mode.is_custom_preset = false;
-    preset_mode.preset_override_active = false;
-    preset_mode.override_reason = "";
-    preset_mode.valid = true;
     
     return true;
 }

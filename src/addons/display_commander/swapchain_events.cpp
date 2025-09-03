@@ -15,10 +15,7 @@
 #include "globals.hpp"
 #include "latent_sync/latent_sync_limiter.hpp"
 #include "swapchain_events_power_saving.hpp"
-#include "nvapi/reflex_manager.hpp"
-
-
-static ReflexManager g_reflex;
+#include "latency/latency_manager.hpp"
 
 std::atomic<LONGLONG> g_present_start_time_ns{0};
 std::atomic<LONGLONG> g_present_duration_ns{0};
@@ -60,14 +57,14 @@ void HandleRenderStartAndEndTimes() {
         int alpha = 64;
         g_simulation_duration_ns.store( (1 * g_simulation_duration_ns_new + (alpha - 1) * g_simulation_duration_ns.load()) / alpha);
 
-        
+
       reshade::api::swapchain* swapchain = g_last_swapchain_ptr.load(std::memory_order_acquire);
       if (s_reflex_enable.load()) {
         auto* device = swapchain ? swapchain->get_device() : nullptr;
-        if (device && g_reflex.Initialize(device)) {
+        if (device && g_latencyManager->Initialize(device)) {
           if (s_reflex_use_markers.load()) {
-            g_reflex.SetMarker(SIMULATION_END);
-            g_reflex.SetMarker(RENDERSUBMIT_START);
+            g_latencyManager->SetMarker(LatencyMarkerType::SIMULATION_END);
+            g_latencyManager->SetMarker(LatencyMarkerType::RENDERSUBMIT_START);
           }
         }
       }
@@ -141,13 +138,13 @@ bool OnCreateSwapchainCapture(reshade::api::device_api /*api*/, reshade::api::sw
     g_swapchain_event_counters[i].store(0);
   }
   g_swapchain_event_total_count.store(0);
-  
+
   // Increment event counter
   g_swapchain_event_counters[SWAPCHAIN_EVENT_CREATE_SWAPCHAIN_CAPTURE].fetch_add(1);
   g_swapchain_event_total_count.fetch_add(1);
-  
+
   if (hwnd == nullptr) return false;
-  
+
   // Apply sync interval setting if enabled
   bool modified = false;
 
@@ -155,8 +152,8 @@ bool OnCreateSwapchainCapture(reshade::api::device_api /*api*/, reshade::api::sw
   uint32_t prev_present_flags = desc.present_flags;
   uint32_t prev_back_buffer_count = desc.back_buffer_count;
   const bool is_flip = (desc.present_mode == DXGI_SWAP_EFFECT_FLIP_DISCARD || desc.present_mode == DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL);
-  
-  
+
+
   // Explicit VSYNC overrides take precedence over generic sync-interval dropdown
   if (s_force_vsync_on.load()) {
     desc.sync_interval = 1; // VSYNC on
@@ -183,9 +180,9 @@ bool OnCreateSwapchainCapture(reshade::api::device_api /*api*/, reshade::api::sw
     oss << " Fullscreen State: " << desc.fullscreen_state;
     // desc.back_buffer.texture.width
     oss << " Sync Interval: " << prev_sync_interval << " -> " << desc.sync_interval;
-    
+
     oss << ", Present Flags: 0x" << std::hex << prev_present_flags << " -> " << std::hex << desc.present_flags;
-    
+
     oss << " BackBufferCount: " << prev_back_buffer_count << " -> " << desc.back_buffer_count;
 
     oss << " BackBuffer: " << desc.back_buffer.texture.width << "x" << desc.back_buffer.texture.height;
@@ -238,12 +235,12 @@ bool OnCreateSwapchainCapture(reshade::api::device_api /*api*/, reshade::api::sw
       }
       if (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_RESTRICTED_TO_ALL_HOLOGRAPHIC_DISPLAYS) {
         oss << " RESTRICTED_TO_ALL_HOLOGRAPHIC_DISPLAYS";
-      } 
+      }
     }
-    
+
     LogInfo(oss.str().c_str());
   }
-  
+
   return modified; // return true if we modified the desc
 }
 
@@ -254,7 +251,7 @@ void OnInitSwapchain(reshade::api::swapchain* swapchain, bool resize) {
   // Increment event counter
   g_swapchain_event_counters[SWAPCHAIN_EVENT_INIT_SWAPCHAIN].fetch_add(1);
   g_swapchain_event_total_count.fetch_add(1);
-  
+
   // Update last known backbuffer size and colorspace
   auto* device = swapchain->get_device();
   if (device != nullptr && swapchain->get_back_buffer_count() > 0) {
@@ -262,10 +259,10 @@ void OnInitSwapchain(reshade::api::swapchain* swapchain, bool resize) {
     auto desc = device->get_resource_desc(bb);
     g_last_backbuffer_width.store(static_cast<int>(desc.texture.width));
     g_last_backbuffer_height.store(static_cast<int>(desc.texture.height));
-    
+
     // Store current colorspace for UI display
     g_current_colorspace = swapchain->get_color_space();
-    
+
     std::ostringstream oss; oss << "OnInitSwapchain(backbuffer=" << desc.texture.width << "x" << desc.texture.height
                                 << ", resize=" << (resize ? "true" : "false") << ", colorspace=" << static_cast<int>(g_current_colorspace) << ")";
     LogDebug(oss.str());
@@ -298,11 +295,11 @@ void OnInitSwapchain(reshade::api::swapchain* swapchain, bool resize) {
          << " (" << static_cast<int>(s_dxgi_composition_state) << ")";
     LogInfo(oss2.str().c_str());
   }
-  
+
   // Log Independent Flip conditions to update failure tracking
   LogDebug(resize ? "Schedule auto-apply on swapchain init (resize)"
                   : "Schedule auto-apply on swapchain init");
-  
+
 }
 
 HANDLE g_timer_handle = nullptr;
@@ -338,9 +335,9 @@ void OnPresentUpdateAfter(reshade::api::command_queue* /*queue*/, reshade::api::
   g_swapchain_event_total_count.fetch_add(1);
   if (s_reflex_enable.load()) {
     auto* device = swapchain ? swapchain->get_device() : nullptr;
-    if (device && g_reflex.Initialize(device)) {
+    if (device && g_latencyManager->Initialize(device)) {
       if (s_reflex_use_markers.load()) {
-        g_reflex.SetMarker(PRESENT_END);
+        g_latencyManager->SetMarker(LatencyMarkerType::PRESENT_END);
       }
     }
   }
@@ -351,7 +348,7 @@ void OnPresentUpdateAfter(reshade::api::command_queue* /*queue*/, reshade::api::
   double g_present_duration_new_ns = (now_ns - g_present_start_time_ns.load()); // Convert QPC ticks to seconds (QPC frequency is typically 10MHz)
   double alpha = 64;
   g_present_duration_ns.store((1 * g_present_duration_new_ns + (alpha - 1) * g_present_duration_ns.load()) / alpha);
-  
+
   // Mark Present end for latent sync limiter timing
   if (dxgi::latent_sync::g_latentSyncManager) {
     auto& latent = dxgi::latent_sync::g_latentSyncManager->GetLatentLimiter();
@@ -363,18 +360,18 @@ void OnPresentUpdateAfter(reshade::api::command_queue* /*queue*/, reshade::api::
   // NVIDIA Reflex: SIMULATION_END marker (minimal) and Sleep
   if (s_reflex_enable.load()) {
     auto* device = swapchain ? swapchain->get_device() : nullptr;
-    if (device && g_reflex.Initialize(device)) {
-      g_reflex.IncreaseFrameId();
+    if (device && g_latencyManager->Initialize(device)) {
+      g_latencyManager->IncreaseFrameId();
       // Apply sleep mode opportunistically each frame to reflect current toggles
-      g_reflex.ApplySleepMode(s_reflex_low_latency.load(), s_reflex_boost.load(), s_reflex_use_markers.load());
-      g_reflex.Sleep();
+      g_latencyManager->ApplySleepMode(s_reflex_low_latency.load(), s_reflex_boost.load(), s_reflex_use_markers.load());
+      g_latencyManager->Sleep();
       if (s_reflex_use_markers.load()) {
-        g_reflex.SetMarker(SIMULATION_START);
+        g_latencyManager->SetMarker(LatencyMarkerType::SIMULATION_START);
       }
     }
   } else {
-    if (g_reflex.IsInitialized()) {
-      g_reflex.Shutdown();
+    if (g_latencyManager->IsInitialized()) {
+      g_latencyManager->Shutdown();
     }
   }
 }
@@ -389,7 +386,7 @@ void flush_command_queue() {
 void HandleFpsLimiter() {
   LONGLONG handle_fps_limiter_start_time_ns = utils::get_now_ns();
   // Use background flag computed by monitoring thread; avoid GetForegroundWindow here
-  
+
   float target_fps = 0.0f;
   if (g_app_in_background.load()) {
     target_fps = s_fps_limit_background.load();
@@ -446,28 +443,28 @@ void OnPresentUpdateBefore(
     const reshade::api::rect* /*source_rect*/, const reshade::api::rect* /*dest_rect*/,
     uint32_t /*dirty_rect_count*/, const reshade::api::rect* /*dirty_rects*/) {
 
-  HandleRenderStartAndEndTimes(); 
+  HandleRenderStartAndEndTimes();
 
   HandleEndRenderSubmit();
   // NVIDIA Reflex: RENDERSUBMIT_END marker (minimal)
   if (s_reflex_enable.load()) {
     auto* device = swapchain ? swapchain->get_device() : nullptr;
-    if (device && g_reflex.Initialize(device)) {
+    if (device && g_latencyManager->Initialize(device)) {
       if (s_reflex_use_markers.load()) {
-   //     g_reflex.SetMarker(RENDERSUBMIT_END);
+        g_latencyManager->SetMarker(LatencyMarkerType::RENDERSUBMIT_END);
       }
     }
   }
   if (g_flush_before_present.load()) {
     flush_command_queue(); // Flush command queue before addons start processing to reduce rendering latency caused by reshade
   }
-  
+
   // Increment event counter
   g_swapchain_event_counters[SWAPCHAIN_EVENT_PRESENT_UPDATE_BEFORE].fetch_add(1);
   g_swapchain_event_total_count.fetch_add(1);
-  
+
   // Avoid querying swapchain/device descriptors every frame. These are updated elsewhere.
-  
+
   // Throttle queries to ~every 30 presents
   int c = ++g_comp_query_counter;
 
@@ -512,7 +509,7 @@ void OnPresentUpdateBefore(
         if (SetMuteForCurrentProcess(new_mute_state)) {
           s_audio_mute.store(new_mute_state);
           g_muted_applied.store(new_mute_state);
-          
+
           // Log the action
           std::ostringstream oss;
           oss << "Audio " << (new_mute_state ? "muted" : "unmuted") << " via Ctrl+M shortcut";
@@ -528,7 +525,7 @@ void OnPresentUpdateBefore(
 
 }
 
-void OnPresentUpdateBefore2(reshade::api::effect_runtime* runtime) { 
+void OnPresentUpdateBefore2(reshade::api::effect_runtime* runtime) {
   // Increment event counter
   g_swapchain_event_counters[SWAPCHAIN_EVENT_PRESENT_UPDATE_BEFORE2].fetch_add(1);
   g_swapchain_event_total_count.fetch_add(1);
@@ -543,12 +540,12 @@ bool OnBindPipeline(reshade::api::command_list* cmd_list, reshade::api::pipeline
   // Increment event counter
   g_swapchain_event_counters[SWAPCHAIN_EVENT_BIND_PIPELINE].fetch_add(1);
   g_swapchain_event_total_count.fetch_add(1);
-  
+
   // Power saving: skip pipeline binding in background if enabled
   if (s_suppress_binding_in_background.load() && ShouldBackgroundSuppressOperation()) {
     return true; // Skip the pipeline binding
   }
-  
+
   return false; // Don't skip the pipeline binding
 }
 
@@ -561,7 +558,7 @@ void OnPresentFlags(uint32_t* present_flags) {
   // Always strip DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING flag
   if (s_prevent_tearing.load() && *present_flags & DXGI_PRESENT_ALLOW_TEARING) {
     *present_flags &= ~DXGI_PRESENT_ALLOW_TEARING;
-    
+
     // Log the flag removal for debugging
     std::ostringstream oss;
     oss << "Present flags callback: Stripped DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING, new flags: 0x" << std::hex << *present_flags;
@@ -578,10 +575,9 @@ void OnPresentFlags(uint32_t* present_flags) {
   reshade::api::swapchain* swapchain = g_last_swapchain_ptr.load(std::memory_order_acquire);
   if (s_reflex_enable.load()) {
     auto* device = swapchain ? swapchain->get_device() : nullptr;
-    if (device && g_reflex.Initialize(device)) {
+    if (device && g_latencyManager->Initialize(device)) {
       if (s_reflex_use_markers.load()) {
-        g_reflex.SetMarker(RENDERSUBMIT_END);
-        g_reflex.SetMarker(PRESENT_START);
+        g_latencyManager->SetMarker(LatencyMarkerType::PRESENT_START);
       }
     }
   }

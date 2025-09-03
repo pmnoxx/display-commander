@@ -3,6 +3,7 @@
 #include "background_window.hpp" // Added this line
 #include "dxgi/custom_fps_limiter_manager.hpp"
 #include "dxgi/dxgi_device_info.hpp"
+#include "latency/latency_manager.hpp"
 #include <atomic>
 
 // Global variables
@@ -132,6 +133,9 @@ std::unique_ptr<LatentSyncManager> g_latentSyncManager = std::make_unique<Latent
 // Global DXGI Device Info Manager instance
 std::unique_ptr<DXGIDeviceInfoManager> g_dxgiDeviceInfoManager = std::make_unique<DXGIDeviceInfoManager>();
 
+// Global Latency Manager instance
+std::unique_ptr<LatencyManager> g_latencyManager = std::make_unique<LatencyManager>();
+
 // Direct atomic variables for latency tracking (UI access)
 std::atomic<float> g_current_latency_ms{0.0f};
 std::atomic<float> g_average_latency_ms{0.0f};
@@ -213,19 +217,19 @@ Microsoft::WRL::ComPtr<IDXGIFactory1> GetSharedDXGIFactory() {
     if (!g_dll_initialization_complete.load()) {
         return nullptr;
     }
-    
+
     // Double-checked locking pattern for thread safety
     if (g_shared_dxgi_factory) {
         return g_shared_dxgi_factory;
     }
-    
+
     std::lock_guard<std::mutex> lock(g_shared_factory_mutex);
-    
+
     // Check again inside the lock (another thread might have created it)
     if (g_shared_dxgi_factory) {
         return g_shared_dxgi_factory;
     }
-    
+
     LogInfo("Creating shared DXGI factory");
     // Create the shared factory
     HRESULT hr = CreateDXGIFactory1(IID_PPV_ARGS(&g_shared_dxgi_factory));
@@ -233,7 +237,7 @@ Microsoft::WRL::ComPtr<IDXGIFactory1> GetSharedDXGIFactory() {
         LogWarn("Failed to create shared DXGI factory");
         return nullptr;
     }
-    
+
     LogInfo("Shared DXGI factory created successfully");
     return g_shared_dxgi_factory;
 }

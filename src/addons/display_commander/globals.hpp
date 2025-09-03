@@ -23,6 +23,7 @@ class BackgroundWindowManager;
 class CustomFpsLimiterManager;
 class LatentSyncManager;
 class DXGIDeviceInfoManager;
+class LatencyManager;
 
 // DLL initialization state
 extern std::atomic<bool> g_dll_initialization_complete;
@@ -55,15 +56,15 @@ struct GlobalWindowState {
   int new_ex_style = 0;
   WindowStyleMode style_mode = WindowStyleMode::BORDERLESS;
   const char* reason = "unknown";
-  
+
   int show_cmd = 0;
   int current_monitor_index = 0;
   display_cache::RationalRefreshRate current_monitor_refresh_rate;
-  
+
   // Current display dimensions
   int display_width = 0;
   int display_height = 0;
-  
+
   void reset() {
     desired_width = 0;
     desired_height = 0;
@@ -189,6 +190,9 @@ namespace dxgi::latent_sync {
 
 // DXGI Device Info Manager
 extern std::unique_ptr<DXGIDeviceInfoManager> g_dxgiDeviceInfoManager;
+
+// Latency Manager
+extern std::unique_ptr<LatencyManager> g_latencyManager;
 
 // Direct atomic variables for latency tracking (UI access)
 extern std::atomic<float> g_current_latency_ms;

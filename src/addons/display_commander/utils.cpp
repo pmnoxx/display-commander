@@ -74,11 +74,21 @@ void LogInfo(const char* msg, ...) {
 }
 
 void LogWarn(const char* msg, ...) { 
-    reshade::log::message(reshade::log::level::warning, msg); 
+    va_list args;
+    va_start(args, msg);
+    char buffer[1024];
+    vsnprintf(buffer, sizeof(buffer), msg, args);
+    va_end(args);
+    reshade::log::message(reshade::log::level::warning, buffer);
 }
 
 void LogError(const char* msg, ...) { 
-    reshade::log::message(reshade::log::level::error, msg); 
+    va_list args;
+    va_start(args, msg);
+    char buffer[1024];
+    vsnprintf(buffer, sizeof(buffer), msg, args);
+    va_end(args);
+    reshade::log::message(reshade::log::level::error, buffer);
 }
 
 void LogDebug(const std::string& s) { 

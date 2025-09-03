@@ -25,7 +25,7 @@ static ComPtr<IDXGIInfoQueue> g_dxgi_info_queue;
 static ComPtr<ID3D11InfoQueue> g_d3d11_info_queue;
 static ComPtr<ID3D12InfoQueue> g_d3d12_info_queue;
 static HMODULE g_dxgi_debug_module = nullptr;
-static std::atomic<bool> g_enabled{false};
+static std::atomic<bool> g_enabled{true};
 static std::atomic<bool> g_break_on_error{true};
 static std::atomic<bool> g_break_on_corruption{true};
 static std::atomic<bool> g_log_all_messages{true};
@@ -310,10 +310,16 @@ static void OnRegisterOverlay(reshade::api::effect_runtime* /*runtime*/)
 		// Settings section
 		if (ImGui::CollapsingHeader("Settings", ImGuiTreeNodeFlags_DefaultOpen))
 		{
+			bool enabled = g_enabled.load();
 			bool break_on_error = g_break_on_error.load();
 			bool break_on_corruption = g_break_on_corruption.load();
 			bool log_all_messages = g_log_all_messages.load();
 
+			if (ImGui::Checkbox("Enable Debug Layer", &enabled))
+			{
+				g_enabled.store(enabled);
+			}
+			ImGui::SameLine();
 			if (ImGui::Checkbox("Break on Error", &break_on_error))
 			{
 				g_break_on_error.store(break_on_error);

@@ -3,15 +3,10 @@
 #include <windows.h>
 #include <vector>
 #include <string>
-#include <map>
-#include <set>
-#include <algorithm>
-#include <sstream>
 
 namespace resolution {
 
-// Helper function to get available resolutions for a monitor
-std::vector<std::string> GetResolutionLabels(int monitor_index);
+
 
 // Helper function to get available refresh rates for a monitor and resolution
 std::vector<std::string> GetRefreshRateLabels(int monitor_index, int width, int height);
@@ -23,7 +18,7 @@ bool GetSelectedResolution(int monitor_index, int resolution_index, int& out_wid
 bool GetSelectedRefreshRate(int monitor_index, int width, int height, int refresh_rate_index, float& out_refresh_rate);
 
 // Helper function to get selected refresh rate as rational values
-bool GetSelectedRefreshRateRational(int monitor_index, int width, int height, int refresh_rate_index, 
+bool GetSelectedRefreshRateRational(int monitor_index, int width, int height, int refresh_rate_index,
                                    UINT32& out_numerator, UINT32& out_denominator);
 
 // Helper function to apply display settings using modern API with rational refresh rates

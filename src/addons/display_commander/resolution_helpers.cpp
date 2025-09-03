@@ -9,77 +9,26 @@
 
 using Microsoft::WRL::ComPtr;
 
+// TODO: Remove this file and use display_cache.hpp instead
+
 namespace resolution {
 
-// Helper function to get available resolutions for a monitor
-std::vector<std::string> GetResolutionLabels(int monitor_index) {
-    std::vector<std::string> labels;
-    
-    // Get monitor handle
-    std::vector<HMONITOR> monitors;
-    EnumDisplayMonitors(nullptr, nullptr, 
-        [](HMONITOR hmon, HDC, LPRECT, LPARAM lparam) -> BOOL {
-            auto* monitors_ptr = reinterpret_cast<std::vector<HMONITOR>*>(lparam);
-            monitors_ptr->push_back(hmon);
-            return TRUE;
-        }, 
-        reinterpret_cast<LPARAM>(&monitors));
-    
-    if (monitor_index >= 0 && monitor_index < static_cast<int>(monitors.size())) {
-        HMONITOR hmon = monitors[monitor_index];
-        
-        MONITORINFOEXW mi;
-        mi.cbSize = sizeof(mi);
-        if (GetMonitorInfoW(hmon, &mi)) {
-            std::wstring device_name = mi.szDevice;
-            
-            // Enumerate all display modes
-            DEVMODEW dm;
-            dm.dmSize = sizeof(dm);
-            
-            std::set<std::pair<int, int>> resolution_set; // Use set to avoid duplicates and maintain order
-            
-            for (int i = 0; EnumDisplaySettingsW(device_name.c_str(), i, &dm); i++) {
-                // Only add valid resolutions (width > 0, height > 0)
-                if (dm.dmPelsWidth > 0 && dm.dmPelsHeight > 0) {
-                    resolution_set.insert({dm.dmPelsWidth, dm.dmPelsHeight});
-                }
-            }
-            
-            // Convert to sorted list
-            for (const auto& pair : resolution_set) {
-                std::ostringstream oss;
-                oss << pair.first << " x " << pair.second;
-                labels.push_back(oss.str());
-            }
-            
-            // Sort by width (ascending - lowest first, regular order)
-            std::sort(labels.begin(), labels.end(), [](const std::string& a, const std::string& b) {
-                int width_a, height_a, width_b, height_b;
-                    sscanf_s(a.c_str(), "%d x %d", &width_a, &height_a);
-    sscanf_s(b.c_str(), "%d x %d", &width_b, &height_b);
-                return width_a < width_b; // Changed back to < for ascending order
-            });
-        }
-    }
-    
-    return labels;
-}
+
 
 // Helper function to get available refresh rates for a monitor and resolution
 std::vector<std::string> GetRefreshRateLabels(int monitor_index, int width, int height) {
     std::vector<std::string> labels;
-    
+
     // Get monitor handle
     std::vector<HMONITOR> monitors;
-    EnumDisplayMonitors(nullptr, nullptr, 
+    EnumDisplayMonitors(nullptr, nullptr,
         [](HMONITOR hmon, HDC, LPRECT, LPARAM lparam) -> BOOL {
             auto* monitors_ptr = reinterpret_cast<std::vector<HMONITOR>*>(lparam);
             monitors_ptr->push_back(hmon);
             return TRUE;
-        }, 
+        },
         reinterpret_cast<LPARAM>(&monitors));
-    
+
     if (monitor_index >= 0 && monitor_index < static_cast<int>(monitors.size())) {
         HMONITOR hmon = monitors[monitor_index];
 
@@ -121,7 +70,7 @@ std::vector<std::string> GetRefreshRateLabels(int monitor_index, int width, int 
                     // Store rational refresh rate data for later use
                     static std::map<std::string, std::pair<UINT32, UINT32>> rational_rates;
                     rational_rates.clear();
-                    
+
                     for (const auto& m : modes) {
                         if (static_cast<int>(m.Width) == width && static_cast<int>(m.Height) == height) {
                             if (m.RefreshRate.Denominator != 0) {
@@ -228,13 +177,13 @@ std::vector<std::string> GetRefreshRateLabels(int monitor_index, int width, int 
             }
         }
     }
-    
+
     return labels;
 }
 
 // Helper function to get selected resolution
 bool GetSelectedResolution(int monitor_index, int resolution_index, int& out_width, int& out_height) {
-    auto labels = GetResolutionLabels(monitor_index);
+    auto labels = display_cache::g_displayCache.GetResolutionLabels(static_cast<size_t>(monitor_index));
     if (resolution_index >= 0 && resolution_index < static_cast<int>(labels.size())) {
         std::string selected_resolution = labels[resolution_index];
         if (sscanf_s(selected_resolution.c_str(), "%d x %d", &out_width, &out_height) == 2) {
@@ -257,18 +206,18 @@ bool GetSelectedRefreshRate(int monitor_index, int width, int height, int refres
 }
 
 // Helper function to get selected refresh rate as rational values
-bool GetSelectedRefreshRateRational(int monitor_index, int width, int height, int refresh_rate_index, 
+bool GetSelectedRefreshRateRational(int monitor_index, int width, int height, int refresh_rate_index,
                                    UINT32& out_numerator, UINT32& out_denominator) {
     // Get monitor handle
     std::vector<HMONITOR> monitors;
-    EnumDisplayMonitors(nullptr, nullptr, 
+    EnumDisplayMonitors(nullptr, nullptr,
         [](HMONITOR hmon, HDC, LPRECT, LPARAM lparam) -> BOOL {
             auto* monitors_ptr = reinterpret_cast<std::vector<HMONITOR>*>(lparam);
             monitors_ptr->push_back(hmon);
             return TRUE;
-        }, 
+        },
         reinterpret_cast<LPARAM>(&monitors));
-    
+
     if (monitor_index >= 0 && monitor_index < static_cast<int>(monitors.size())) {
         HMONITOR hmon = monitors[monitor_index];
 
@@ -307,7 +256,7 @@ bool GetSelectedRefreshRateRational(int monitor_index, int width, int height, in
 
                     std::vector<double> rates;
                     std::vector<std::pair<UINT32, UINT32>> rational_rates;
-                    
+
                     for (const auto& m : modes) {
                         if (static_cast<int>(m.Width) == width && static_cast<int>(m.Height) == height) {
                             if (m.RefreshRate.Denominator != 0) {
@@ -336,7 +285,7 @@ bool GetSelectedRefreshRateRational(int monitor_index, int width, int height, in
             }
         }
     }
-    
+
     return false;
 }
 
@@ -344,14 +293,14 @@ bool GetSelectedRefreshRateRational(int monitor_index, int width, int height, in
 bool ApplyDisplaySettingsModern(int monitor_index, int width, int height, UINT32 refresh_numerator, UINT32 refresh_denominator) {
     // Get monitor handle
     std::vector<HMONITOR> monitors;
-    EnumDisplayMonitors(nullptr, nullptr, 
+    EnumDisplayMonitors(nullptr, nullptr,
         [](HMONITOR hmon, HDC, LPRECT, LPARAM lparam) -> BOOL {
             auto* monitors_ptr = reinterpret_cast<std::vector<HMONITOR>*>(lparam);
             monitors_ptr->push_back(hmon);
             return TRUE;
-        }, 
+        },
         reinterpret_cast<LPARAM>(&monitors));
-    
+
     if (monitor_index < 0 || monitor_index >= static_cast<int>(monitors.size())) {
         // Log error: Invalid monitor index
         std::ostringstream oss;
@@ -359,7 +308,7 @@ bool ApplyDisplaySettingsModern(int monitor_index, int width, int height, UINT32
         // Note: We can't use LogWarn here as it's not available in this file
         return false;
     }
-    
+
     HMONITOR hmon = monitors[monitor_index];
 
     // Get the path info for this monitor
@@ -382,17 +331,17 @@ bool ApplyDisplaySettingsModern(int monitor_index, int width, int height, UINT32
         oss << "ApplyDisplaySettingsModern: GetDisplayConfigBufferSizes failed with error " << result;
         return false;
     }
-    
+
     if (path_elements == 0 || mode_elements == 0) {
         // Log error: No display paths or modes found
         std::ostringstream oss;
         oss << "ApplyDisplaySettingsModern: No display paths (" << path_elements << ") or modes (" << mode_elements << ") found";
         return false;
     }
-    
+
     std::vector<DISPLAYCONFIG_PATH_INFO> paths(path_elements);
     std::vector<DISPLAYCONFIG_MODE_INFO> modes(mode_elements);
-    
+
     result = QueryDisplayConfig(QDC_ONLY_ACTIVE_PATHS, &path_elements, paths.data(), &mode_elements, modes.data(), nullptr);
     if (result != ERROR_SUCCESS) {
         // Log error: Failed to query display config
@@ -400,7 +349,7 @@ bool ApplyDisplaySettingsModern(int monitor_index, int width, int height, UINT32
         oss << "ApplyDisplaySettingsModern: QueryDisplayConfig failed with error " << result;
         return false;
     }
-    
+
     // Find the path for our monitor
     bool found_monitor = false;
     for (UINT32 i = 0; i < path_elements; i++) {
@@ -409,26 +358,26 @@ bool ApplyDisplaySettingsModern(int monitor_index, int width, int height, UINT32
         source_name.header.size = sizeof(source_name);
         source_name.header.adapterId = paths[i].sourceInfo.adapterId;
         source_name.header.id = paths[i].sourceInfo.id;
-        
+
         result = DisplayConfigGetDeviceInfo(&source_name.header);
         if (result == ERROR_SUCCESS) {
             // Convert monitor device name to wide string for comparison
             std::wstring monitor_device(mi.szDevice);
             if (monitor_device == source_name.viewGdiDeviceName) {
                 found_monitor = true;
-                
+
                 // Found our monitor path, now modify the mode
                 if (paths[i].sourceInfo.modeInfoIdx < mode_elements) {
                     auto& source_mode = modes[paths[i].sourceInfo.modeInfoIdx].sourceMode;
                     source_mode.width = width;
                     source_mode.height = height;
-                    
+
                     // Set the rational refresh rate
                     paths[i].targetInfo.refreshRate.Numerator = refresh_numerator;
                     paths[i].targetInfo.refreshRate.Denominator = refresh_denominator;
-                    
+
                     // Apply the changes
-                    result = SetDisplayConfig(path_elements, paths.data(), mode_elements, modes.data(), 
+                    result = SetDisplayConfig(path_elements, paths.data(), mode_elements, modes.data(),
                                            SDC_APPLY | SDC_USE_SUPPLIED_DISPLAY_CONFIG);
                     if (result == ERROR_SUCCESS) {
                         return true;
@@ -441,7 +390,7 @@ bool ApplyDisplaySettingsModern(int monitor_index, int width, int height, UINT32
                 } else {
                     // Log error: Invalid mode index
                     std::ostringstream oss;
-                    oss << "ApplyDisplaySettingsModern: Invalid mode index " << paths[i].sourceInfo.modeInfoIdx 
+                    oss << "ApplyDisplaySettingsModern: Invalid mode index " << paths[i].sourceInfo.modeInfoIdx
                         << " (max: " << (mode_elements - 1) << ")";
                     return false;
                 }
@@ -453,15 +402,15 @@ bool ApplyDisplaySettingsModern(int monitor_index, int width, int height, UINT32
             oss << "ApplyDisplaySettingsModern: DisplayConfigGetDeviceInfo failed for path " << i << " with error " << result;
         }
     }
-    
+
     if (!found_monitor) {
         // Log error: Monitor not found in display config
         std::ostringstream oss;
-        oss << "ApplyDisplaySettingsModern: Monitor device '" << std::string(mi.szDevice, mi.szDevice + wcslen(mi.szDevice)) 
+        oss << "ApplyDisplaySettingsModern: Monitor device '" << std::string(mi.szDevice, mi.szDevice + wcslen(mi.szDevice))
             << "' not found in display config paths";
         return false;
     }
-    
+
     return false;
 }
 
@@ -469,50 +418,50 @@ bool ApplyDisplaySettingsModern(int monitor_index, int width, int height, UINT32
 bool ApplyDisplaySettingsDXGI(int monitor_index, int width, int height, UINT32 refresh_numerator, UINT32 refresh_denominator) {
     // Get monitor handle
     std::vector<HMONITOR> monitors;
-    EnumDisplayMonitors(nullptr, nullptr, 
+    EnumDisplayMonitors(nullptr, nullptr,
         [](HMONITOR hmon, HDC, LPRECT, LPARAM lparam) -> BOOL {
             auto* monitors_ptr = reinterpret_cast<std::vector<HMONITOR>*>(lparam);
             monitors_ptr->push_back(hmon);
             return TRUE;
-        }, 
+        },
         reinterpret_cast<LPARAM>(&monitors));
-    
+
     if (monitor_index < 0 || monitor_index >= static_cast<int>(monitors.size())) {
         return false;
     }
-    
+
     HMONITOR hmon = monitors[monitor_index];
-    
+
     // Create a temporary DXGI factory and device to access the output
     ComPtr<IDXGIFactory1> factory = GetSharedDXGIFactory();
     if (!factory) {
         return false;
     }
-    
+
     // Find the adapter and output for our monitor
     for (UINT a = 0; ; ++a) {
         ComPtr<IDXGIAdapter1> adapter;
         if (factory->EnumAdapters1(a, &adapter) == DXGI_ERROR_NOT_FOUND) break;
-        
+
         for (UINT o = 0; ; ++o) {
             ComPtr<IDXGIOutput> output;
             if (adapter->EnumOutputs(o, &output) == DXGI_ERROR_NOT_FOUND) break;
-            
+
             DXGI_OUTPUT_DESC desc{};
             if (FAILED(output->GetDesc(&desc))) continue;
             if (desc.Monitor != hmon) continue;
-            
+
             // Found our monitor's output! Now try to set the mode
             // We need to create a temporary swap chain to use SetFullscreenState
-            
+
             // Create a temporary D3D11 device and swap chain
             ComPtr<ID3D11Device> device;
             ComPtr<ID3D11DeviceContext> context;
             ComPtr<IDXGISwapChain> swap_chain;
-            
+
             D3D_FEATURE_LEVEL feature_levels[] = { D3D_FEATURE_LEVEL_11_0, D3D_FEATURE_LEVEL_10_0 };
             D3D_FEATURE_LEVEL feature_level;
-            
+
             DXGI_SWAP_CHAIN_DESC swap_chain_desc = {};
             swap_chain_desc.BufferCount = 1;
             swap_chain_desc.BufferDesc.Width = width;
@@ -528,7 +477,7 @@ bool ApplyDisplaySettingsDXGI(int monitor_index, int width, int height, UINT32 r
             swap_chain_desc.OutputWindow = nullptr; // We don't need a window for this
             swap_chain_desc.Windowed = FALSE; // Start in fullscreen
             swap_chain_desc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
-            
+
             HRESULT hr = D3D11CreateDeviceAndSwapChain(
                 adapter.Get(),
                 D3D_DRIVER_TYPE_UNKNOWN,
@@ -543,7 +492,7 @@ bool ApplyDisplaySettingsDXGI(int monitor_index, int width, int height, UINT32 r
                 &feature_level,
                 &context
             );
-            
+
             if (SUCCEEDED(hr) && swap_chain) {
                 // Set the output as the target for fullscreen
                 hr = swap_chain->SetFullscreenState(TRUE, output.Get());
@@ -557,7 +506,7 @@ bool ApplyDisplaySettingsDXGI(int monitor_index, int width, int height, UINT32 r
                     mode_desc.RefreshRate.Denominator = refresh_denominator;
                     mode_desc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
                     mode_desc.Scaling = DXGI_MODE_SCALING_UNSPECIFIED;
-                    
+
                     hr = swap_chain->ResizeTarget(&mode_desc);
                     if (SUCCEEDED(hr)) {
                         // Success! Now exit fullscreen to return to normal desktop
@@ -565,17 +514,17 @@ bool ApplyDisplaySettingsDXGI(int monitor_index, int width, int height, UINT32 r
                         return true;
                     }
                 }
-                
+
                 // Clean up: exit fullscreen if we entered it
                 swap_chain->SetFullscreenState(FALSE, nullptr);
             }
-            
+
             // If we get here, this output didn't work, try the next one
             break;
         }
         break; // Only try the first adapter
     }
-    
+
     return false;
 }
 

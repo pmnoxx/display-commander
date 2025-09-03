@@ -13,40 +13,40 @@
 // Stack trace functionality
 void DXGIDeviceInfoManager::LogStackTrace(const char* context) {
     LogWarn(("Stack trace requested for context: " + std::string(context)).c_str());
-    
+
     // Capture stack trace
     void* stack[64];
     WORD frames = CaptureStackBackTrace(0, 64, stack, nullptr);
-    
+
     if (frames == 0) {
         LogWarn("Failed to capture stack trace");
         return;
     }
-    
+
     LogWarn(("Stack trace captured " + std::to_string(frames) + " frames:").c_str());
-    
+
     // Get symbol information
     HANDLE process = GetCurrentProcess();
     SymInitialize(process, nullptr, TRUE);
-    
+
     SYMBOL_INFO* symbol = (SYMBOL_INFO*)malloc(sizeof(SYMBOL_INFO) + 256 * sizeof(char));
     symbol->MaxNameLen = 255;
     symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
-    
+
     for (WORD i = 0; i < frames; i++) {
         DWORD64 address = (DWORD64)stack[i];
-        
+
         if (SymFromAddr(process, address, nullptr, symbol)) {
-            std::string frame_info = "  [" + std::to_string(i) + "] " + symbol->Name + 
+            std::string frame_info = "  [" + std::to_string(i) + "] " + symbol->Name +
                                    " at 0x" + std::format("{:016X}", address);
             LogWarn(frame_info.c_str());
         } else {
-            std::string frame_info = "  [" + std::to_string(i) + "] Unknown at 0x" + 
+            std::string frame_info = "  [" + std::to_string(i) + "] Unknown at 0x" +
                                    std::format("{:016X}", address);
             LogWarn(frame_info.c_str());
         }
     }
-    
+
     free(symbol);
     SymCleanup(process);
 }
@@ -55,41 +55,41 @@ LONG WINAPI DXGIDeviceInfoManager::UnhandledExceptionFilter(PEXCEPTION_POINTERS 
     LogWarn("=== UNHANDLED EXCEPTION IN DXGI DEVICE INFO MANAGER ===");
     LogWarn(("Exception code: 0x" + std::format("{:08X}", exception_info->ExceptionRecord->ExceptionCode)).c_str());
     LogWarn(("Exception address: 0x" + std::format("{:016X}", (DWORD64)exception_info->ExceptionRecord->ExceptionAddress)).c_str());
-    
+
     // Log stack trace
     void* stack[64];
     WORD frames = CaptureStackBackTrace(0, 64, stack, nullptr);
-    
+
     if (frames > 0) {
         LogWarn("Stack trace at crash:");
-        
+
         HANDLE process = GetCurrentProcess();
         SymInitialize(process, nullptr, TRUE);
-        
+
         SYMBOL_INFO* symbol = (SYMBOL_INFO*)malloc(sizeof(SYMBOL_INFO) + 256 * sizeof(char));
         symbol->MaxNameLen = 255;
         symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
-        
+
         for (WORD i = 0; i < frames; i++) {
             DWORD64 address = (DWORD64)stack[i];
-            
+
             if (SymFromAddr(process, address, nullptr, symbol)) {
-                std::string frame_info = "  [" + std::to_string(i) + "] " + symbol->Name + 
+                std::string frame_info = "  [" + std::to_string(i) + "] " + symbol->Name +
                                        " at 0x" + std::format("{:016X}", address);
                 LogWarn(frame_info.c_str());
             } else {
-                std::string frame_info = " " + std::to_string(i) + "] Unknown at 0x" + 
+                std::string frame_info = " " + std::to_string(i) + "] Unknown at 0x" +
                                        std::format("{:016X}", address);
                 LogWarn(frame_info.c_str());
             }
         }
-        
+
         free(symbol);
         SymCleanup(process);
     }
-    
+
     LogWarn("=== END EXCEPTION REPORT ===");
-    
+
     // Continue execution (don't crash the application)
     return EXCEPTION_CONTINUE_EXECUTION;
 }
@@ -202,7 +202,7 @@ bool DXGIDeviceInfoManager::GetAdapterFromReShadeDevice() {
     DXGI_ADAPTER_DESC desc = {};
     if (SUCCEEDED(adapter->GetDesc(&desc))) {
         DXGIAdapterInfo adapter_info = {};
-        
+
         // Convert wide string to UTF-8
         int size_needed = WideCharToMultiByte(CP_UTF8, 0, desc.Description, -1, nullptr, 0, nullptr, nullptr);
         if (size_needed > 0) {
@@ -210,7 +210,7 @@ bool DXGIDeviceInfoManager::GetAdapterFromReShadeDevice() {
             WideCharToMultiByte(CP_UTF8, 0, desc.Description, -1, &description[0], size_needed, nullptr, nullptr);
             adapter_info.description = description;
         }
-        
+
         adapter_info.name = "Primary Adapter";
         adapter_info.dedicated_video_memory = desc.DedicatedVideoMemory;
         adapter_info.dedicated_system_memory = desc.DedicatedSystemMemory;
@@ -221,7 +221,7 @@ bool DXGIDeviceInfoManager::GetAdapterFromReShadeDevice() {
         // Get additional device properties from ReShade
         uint32_t vendor_id = 0, device_id = 0, api_version = 0, driver_version = 0;
         char description_buffer[256] = {};
-        
+
         if (device->get_property(reshade::api::device_properties::vendor_id, &vendor_id)) {
             // Store vendor ID if needed
         }
@@ -243,7 +243,7 @@ bool DXGIDeviceInfoManager::GetAdapterFromReShadeDevice() {
 
         // Enumerate outputs for this adapter
         EnumerateOutputs(adapter.Get(), adapter_info);
-        
+
         adapters_.push_back(std::move(adapter_info));
     }
 
@@ -266,7 +266,7 @@ bool DXGIDeviceInfoManager::EnumerateOutputs(IDXGIAdapter* adapter, DXGIAdapterI
 
     while (SUCCEEDED(adapter->EnumOutputs(output_idx++, &output))) {
         DXGIOutputInfo output_info = {};
-        
+
         // Get basic output description
         DXGI_OUTPUT_DESC desc = {};
         if (SUCCEEDED(output->GetDesc(&desc))) {
@@ -282,7 +282,7 @@ bool DXGIDeviceInfoManager::EnumerateOutputs(IDXGIAdapter* adapter, DXGIAdapterI
             output_info.desktop_coordinates = desc.DesktopCoordinates;
             output_info.is_attached = desc.AttachedToDesktop;
             output_info.rotation = desc.Rotation;
-            
+
             // Get monitor name if available
             if (desc.Monitor) {
                 MONITORINFOEXW monitor_info = {};
@@ -310,17 +310,17 @@ bool DXGIDeviceInfoManager::EnumerateOutputs(IDXGIAdapter* adapter, DXGIAdapterI
                 // Note: These members don't exist in DXGI_OUTPUT_DESC1, so we'll set them to 0
                 output_info.max_frame_average_light_level = 0.0f;
                 output_info.max_content_light_level = 0.0f;
-                
+
                 // Color space information
                 output_info.color_space = static_cast<DXGI_COLOR_SPACE_TYPE>(desc1.ColorSpace);
                 output_info.supports_wide_color_gamut = (desc1.ColorSpace != DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709);
-                
+
                 // Get refresh rate from supported modes
                 DXGI_MODE_DESC mode_desc = {};
                 mode_desc.Width = desc1.DesktopCoordinates.right - desc1.DesktopCoordinates.left;
                 mode_desc.Height = desc1.DesktopCoordinates.bottom - desc1.DesktopCoordinates.top;
                 mode_desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-                
+
                 DXGI_MODE_DESC closest_mode = {};
                 if (SUCCEEDED(output6->FindClosestMatchingMode(&mode_desc, &closest_mode, nullptr))) {
                     output_info.refresh_rate = closest_mode.RefreshRate;
@@ -376,7 +376,7 @@ bool DXGIDeviceInfoManager::ResetHDRMetadataOnPresent(const std::string& output_
             }
         }
     }
-    
+
     LogWarn("HDR metadata reset: Output not found or doesn't support HDR10");
     return false;
     } catch (...) {
@@ -415,15 +415,15 @@ bool DXGIDeviceInfoManager::ResetHDRMetadataForOutput(const DXGIOutputInfo& outp
 
         // Create HDR metadata
         DXGI_HDR_METADATA_HDR10 metadata = {};
-        
+
         // Use provided max_cll or get from output info
         float max_luminance = (max_cll > 0.0f) ? max_cll : output.max_luminance;
-        
+
         metadata.MinMasteringLuminance = 0;
         metadata.MaxMasteringLuminance = static_cast<UINT>(max_luminance * 10000);
         metadata.MaxFrameAverageLightLevel = static_cast<UINT16>(max_luminance * 10000);
         metadata.MaxContentLightLevel = static_cast<UINT16>(max_luminance * 10000);
-        
+
         // Set color primaries (using standard HDR10 values if not available)
         metadata.WhitePoint[0] = 3127;   // 0.3127 * 10000
         metadata.WhitePoint[1] = 3290;   // 0.3290 * 10000
@@ -433,14 +433,14 @@ bool DXGIDeviceInfoManager::ResetHDRMetadataForOutput(const DXGIOutputInfo& outp
         metadata.GreenPrimary[1] = 6900;  // 0.69 * 10000
         metadata.BluePrimary[0] = 1500;   // 0.15 * 10000
         metadata.BluePrimary[1] = 600;    // 0.06 * 10000
-        
+
         // Set HDR metadata
         hr = swapchain4->SetHDRMetaData(
-            DXGI_HDR_METADATA_TYPE_HDR10, 
-            sizeof(metadata), 
+            DXGI_HDR_METADATA_TYPE_HDR10,
+            sizeof(metadata),
             &metadata
         );
-        
+
         if (SUCCEEDED(hr)) {
             // Present a few frames to ensure metadata is applied
             swapchain4->Present(1, 0);
@@ -448,14 +448,14 @@ bool DXGIDeviceInfoManager::ResetHDRMetadataForOutput(const DXGIOutputInfo& outp
             swapchain4->Present(1, 0);
             Sleep(100);
             swapchain4->Present(1, 0);
-            
+
             LogInfo(("HDR metadata reset successful for output: " + output.device_name).c_str());
             return true;
         } else {
             LogWarn("HDR metadata reset: Failed to set HDR metadata");
             return false;
         }
-        
+
     } catch (...) {
         LogWarn("HDR metadata reset: Exception occurred during reset");
         LogStackTrace("ResetHDRMetadataForOutput");

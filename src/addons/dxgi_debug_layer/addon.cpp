@@ -122,8 +122,8 @@ static void PushCapturedDebugString(const std::string &text)
 		return s.rfind(prefix, 0) == 0;
 	};
 
-	if (!(starts_with(text, "DXGI:") || starts_with(text, "D3D11:") || starts_with(text, "D3D12:")))
-		return;
+//	if (!(starts_with(text, "DXGI:") || starts_with(text, "D3D11:") || starts_with(text, "D3D12:")))
+//		return;
 
 	reshade::log::level level = reshade::log::level::info;
 	if (text.find("ERROR") != std::string::npos)

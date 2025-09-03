@@ -5,6 +5,9 @@ project(reshade_display_commander VERSION 0.2.4 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Enable C for third-party C sources (MinHook)
+enable_language(C)
+
 # Use direct externals (drop RENODX_SUBMODULE_DIR)
 if(NOT EXISTS "${CMAKE_CURRENT_LIST_DIR}/external/reshade")
   message(FATAL_ERROR "Missing submodule: external/reshade. Run: git submodule update --init --recursive")
@@ -104,12 +107,37 @@ if(NOT DXGI_DEBUG_LAYER_SOURCES STREQUAL "")
       ${CMAKE_CURRENT_LIST_DIR}/include
     SYSTEM PUBLIC
       ${CMAKE_CURRENT_LIST_DIR}/external/reshade
+      ${CMAKE_CURRENT_LIST_DIR}/external/reshade/deps/minhook/include
   )
 
   # No static linking to dxgidebug - we load it dynamically at runtime
 
+  # Compile MinHook directly into this module for OutputDebugString hooks
+  set(MINHOOK_SRC_DIR "${CMAKE_CURRENT_LIST_DIR}/external/reshade/deps/minhook/src")
+  if(EXISTS "${MINHOOK_SRC_DIR}/hook.c")
+    set(MINHOOK_SRC_FILES
+      ${MINHOOK_SRC_DIR}/buffer.c
+      ${MINHOOK_SRC_DIR}/hook.c
+      ${MINHOOK_SRC_DIR}/trampoline.c
+      ${MINHOOK_SRC_DIR}/hde/hde64.c
+      ${MINHOOK_SRC_DIR}/hde/hde32.c
+    )
+    target_sources(zzz_dxgi_debug_layer PRIVATE ${MINHOOK_SRC_FILES})
+    # Avoid __declspec(dllimport) from header when statically compiling sources
+    target_compile_definitions(zzz_dxgi_debug_layer PRIVATE MH_STATIC=1)
+    # When using clang-cl, undefine _MSC_VER for MinHook C sources to force memcpy path instead of __movsb
+    if(CMAKE_C_COMPILER_ID STREQUAL "Clang")
+      set_source_files_properties(${MINHOOK_SRC_FILES} PROPERTIES COMPILE_OPTIONS "-U_MSC_VER")
+    endif()
+  else()
+    message(WARNING "MinHook sources not found under ${MINHOOK_SRC_DIR}; OutputDebugString capture may be disabled.")
+  endif()
+
   set_target_properties(zzz_dxgi_debug_layer PROPERTIES
     SUFFIX "${TARGET_SUFFIX}"
   )
+
+  # Link system GUID library for DXGI_DEBUG_* GUIDs
+  target_link_libraries(zzz_dxgi_debug_layer PRIVATE dxguid)
 endif()
 

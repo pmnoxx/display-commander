@@ -84,25 +84,25 @@ void DrawMainNewTab() {
     // Load saved settings once and sync legacy globals
     ImGui::Text("Main Tab - Basic Settings");
     ImGui::Separator();
-    
+
     // Display Settings Section
     DrawDisplaySettings();
-    
+
     ImGui::Spacing();
     ImGui::Separator();
-    
+
     // Monitor/Display Resolution Settings Section
     DrawMonitorDisplaySettings();
-    
+
     ImGui::Spacing();
     ImGui::Separator();
-    
+
     // Audio Settings Section
     DrawAudioSettings();
-    
+
     ImGui::Spacing();
     ImGui::Separator();
-    
+
     // Input Blocking (Background) Section
     {
         ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== Input Control (Background) ===");
@@ -122,10 +122,10 @@ void DrawMainNewTab() {
 
     // Window Controls Section
     DrawWindowControls();
-    
+
     ImGui::Spacing();
     ImGui::Separator();
-    
+
     DrawImportantInfo();
 }
 
@@ -237,17 +237,17 @@ void DrawQuickResolutionChanger() {
 void DrawDisplaySettings() {
     int current_monitor_width = GetCurrentMonitorWidth();
     int current_monitor_height = GetCurrentMonitorHeight();
-    
+
     ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "=== Display Settings ===");
-    
+
     // Window Mode dropdown (with persistent setting)
     if (ComboSettingWrapper(g_main_new_tab_settings.window_mode, "Window Mode")) {
         int old_mode = static_cast<int>(s_window_mode);
         s_window_mode = static_cast<float>(g_main_new_tab_settings.window_mode.GetValue());
-        
+
         // Don't apply changes immediately - let the normal window management system handle it
         // This prevents crashes when changing modes during gameplay
-        
+
         std::ostringstream oss;
         oss << "Window mode changed from " << old_mode << " to " << g_main_new_tab_settings.window_mode.GetValue();
         LogInfo(oss.str().c_str());
@@ -263,7 +263,7 @@ void DrawDisplaySettings() {
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Choose the window mode: Borderless Windowed with aspect ratio, Borderless Windowed with custom width/height, or Borderless Fullscreen.");
     }
-    
+
     // Show mode-specific information
     if (s_window_mode < 0.5f) {
         ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "Mode: Aspect Ratio - Set width below, height calculated automatically");
@@ -272,7 +272,7 @@ void DrawDisplaySettings() {
     } else {
         ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "Mode: Fullscreen - Window will fill entire monitor (no alignment needed)");
     }
-    
+
     // Window Width dropdown (shown in both Aspect Ratio and Width/Height modes)
     if (s_window_mode < 1.5f) {
         if (ComboSettingWrapper(g_main_new_tab_settings.window_width, "Window Width")) {
@@ -292,7 +292,7 @@ void DrawDisplaySettings() {
             }
         }
     }
-    
+
     // Window Height dropdown (only shown in Width/Height mode)
     if (s_window_mode >= 0.5f && s_window_mode < 1.5f) {
         if (ComboSettingWrapper(g_main_new_tab_settings.window_height, "Window Height")) {
@@ -308,7 +308,7 @@ void DrawDisplaySettings() {
             ImGui::SetTooltip("Choose the window height. 'Current Display' uses the current monitor's height.");
         }
     }
-    
+
     // Aspect Ratio dropdown (only shown in Aspect Ratio mode)
     if (s_window_mode < 0.5f) {
         if (ComboSettingWrapper(g_main_new_tab_settings.aspect_index, "Aspect Ratio")) {
@@ -319,7 +319,7 @@ void DrawDisplaySettings() {
             ImGui::SetTooltip("Choose the aspect ratio for window resizing.");
         }
     }
-    
+
     // Target Monitor dropdown
     // Use cached monitor labels updated by continuous monitoring thread
 
@@ -342,7 +342,7 @@ void DrawDisplaySettings() {
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Choose which monitor to apply size/pos to. 'Auto' uses the current window monitor.");
     }
-    
+
     // Background Black Curtain checkbox (only shown in Borderless Windowed modes)
     if (s_window_mode < 1.5f) {
         if (CheckboxSetting(g_main_new_tab_settings.background_feature, "Background Black Curtain")) {
@@ -353,7 +353,7 @@ void DrawDisplaySettings() {
             ImGui::SetTooltip("Creates a black background behind the game window when it doesn't cover the full screen.");
         }
     }
-    
+
     // Window Alignment dropdown (only shown in Borderless Windowed modes)
     if (s_window_mode < 1.5f) {
         if (ComboSettingWrapper(g_main_new_tab_settings.alignment, "Alignment")) {
@@ -364,7 +364,7 @@ void DrawDisplaySettings() {
             ImGui::SetTooltip("Choose how to align the window when repositioning is needed. 1=Top Left, 2=Top Right, 3=Bottom Left, 4=Bottom Right, 5=Center.");
         }
     }
-    
+
     // Apply Changes button
     if (ImGui::Button("Apply Changes")) {
         // Force immediate application of window changes
@@ -378,9 +378,9 @@ void DrawDisplaySettings() {
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Apply the current window size and position settings immediately.");
     }
-    
+
     ImGui::Spacing();
-    
+
     // FPS Limiter Mode
     {
         if (ComboSettingWrapper(g_main_new_tab_settings.fps_limiter_mode, "FPS Limiter Mode")) {
@@ -410,7 +410,7 @@ void DrawDisplaySettings() {
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Choose when to inject FPS limiter: 0=OnPresentFlags (recommended), 1=OnPresentUpdateBefore2, 2=OnPresentUpdateBefore");
         }
-        
+
         // Show current injection timing info
         const char* injection_labels[] = {"OnPresentFlags (Recommended)", "OnPresentUpdateBefore2", "OnPresentUpdateBefore"};
         if (temp_injection >= 0 && temp_injection < 3) {
@@ -423,9 +423,9 @@ void DrawDisplaySettings() {
         ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "Present Pacing Delay:");
         ImGui::SameLine();
         ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Improves frame timing consistency");
-        
+
         ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Adds a small delay after present to smooth frame pacing and reduce stuttering");
-        
+
         float current_delay = g_main_new_tab_settings.present_pacing_delay_percentage.GetValue();
         if (SliderFloatSetting(g_main_new_tab_settings.present_pacing_delay_percentage, "Present Pacing Delay (manual fine-tuning is needed for now)", "%.1f%%")) {
             // The setting is automatically synced via FloatSettingRef
@@ -445,11 +445,11 @@ void DrawDisplaySettings() {
 
     // Latent Sync Mode (only visible if Latent Sync limiter is selected)
     if (s_fps_limiter_mode.load() == FpsLimiterMode::kLatentSync) {
-        
+
         // Get current monitor height for dynamic range
         int monitor_height = current_monitor_height;
         int monitor_width = current_monitor_width;
-        
+
         // Update display dimensions in GlobalWindowState
         auto current_state = g_window_state.load();
         if (current_state) {
@@ -458,7 +458,7 @@ void DrawDisplaySettings() {
             new_state->display_height = monitor_height;
             g_window_state.store(new_state);
         }
-        
+
         // Scanline Offset (only visible if scanline mode is selected)
         int current_offset = g_main_new_tab_settings.scanline_offset.GetValue();
         int temp_offset = current_offset;
@@ -469,7 +469,7 @@ void DrawDisplaySettings() {
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Scanline offset for latent sync (-1000 to 1000). This defines the offset from the threshold where frame pacing is active.");
         }
-        
+
         // VBlank Sync Divisor (only visible if latent sync mode is selected)
         int current_divisor = g_main_new_tab_settings.vblank_sync_divisor.GetValue();
         int temp_divisor = current_divisor;
@@ -484,7 +484,7 @@ void DrawDisplaySettings() {
             if (window_state) {
                 refresh_hz = window_state->current_monitor_refresh_rate.ToHz();
             }
-            
+
             std::ostringstream tooltip_oss;
             tooltip_oss << "VBlank Sync Divisor (0-8). Controls frame pacing similar to VSync divisors:\n\n";
             tooltip_oss << "  0 -> No additional wait (Off)\n";
@@ -499,7 +499,7 @@ void DrawDisplaySettings() {
             tooltip_oss << "\n0 = Disabled, higher values reduce effective frame rate for smoother frame pacing.";
             ImGui::SetTooltip("%s", tooltip_oss.str().c_str());
         }
-        
+
         // VBlank Monitor Status (only visible if latent sync is enabled and FPS limit > 0)
         if (s_fps_limiter_mode.load() == FpsLimiterMode::kLatentSync) {
             if (dxgi::latent_sync::g_latentSyncManager) {
@@ -510,7 +510,7 @@ void DrawDisplaySettings() {
                     if (ImGui::IsItemHovered()) {
                         ImGui::SetTooltip("VBlank monitoring thread is running and collecting scanline data for frame pacing.");
                     }
-                    
+
                     ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "  refresh time: %.3fms", 1.0 * dxgi::fps_limiter::ns_per_refresh.load() / utils::NS_TO_MS);
                     ImGui::SameLine();
                     ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "  total_height: %llu", dxgi::fps_limiter::g_latent_sync_total_height.load());
@@ -539,7 +539,7 @@ void DrawDisplaySettings() {
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Set FPS limit for the game (0 = no limit). Now uses the new Custom FPS Limiter system.");
     }
-    
+
     // No Render in Background checkbox
     {
         bool no_render_in_bg = g_main_new_tab_settings.no_render_in_background.GetValue();
@@ -551,7 +551,7 @@ void DrawDisplaySettings() {
             ImGui::SetTooltip("Skip rendering draw calls when the game window is not in the foreground. This can save GPU power and reduce background processing.");
         }
     }
-    
+
     // No Present in Background checkbox
     {
         bool no_present_in_bg = g_main_new_tab_settings.no_present_in_background.GetValue();
@@ -563,13 +563,13 @@ void DrawDisplaySettings() {
             ImGui::SetTooltip("Skip ReShade's on_present processing when the game window is not in the foreground. This can save GPU power and reduce background processing.");
         }
     }
-    
+
     // VSync & Tearing controls
     {
         DrawQuickResolutionChanger();
 
         ImGui::SameLine();
-        
+
         ImGui::Spacing();
         ImGui::TextColored(ImVec4(0.8f, 0.9f, 1.0f, 1.0f), "=== VSync & Tearing ===");
 
@@ -640,12 +640,12 @@ void DrawDisplaySettings() {
 
 void DrawAudioSettings() {
     ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== Audio Settings ===");
-    
+
     // Audio Volume slider
     float volume = s_audio_volume_percent.load();
     if (ImGui::SliderFloat("Audio Volume (%)", &volume, 0.0f, 100.0f, "%.0f%%")) {
         s_audio_volume_percent.store(volume);
-        
+
         // Apply immediately only if Auto-apply is enabled
         if (g_main_new_tab_settings.audio_volume_auto_apply.GetValue()) {
             if (::SetVolumeForCurrentProcess(volume)) {
@@ -670,12 +670,12 @@ void DrawAudioSettings() {
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Auto-apply volume changes when adjusting the slider.");
     }
-    
+
     // Audio Mute checkbox
     bool audio_mute = s_audio_mute.load();
     if (ImGui::Checkbox("Audio Mute", &audio_mute)) {
         g_main_new_tab_settings.audio_mute.SetValue(audio_mute);
-        
+
         // Apply mute/unmute immediately
         if (::SetMuteForCurrentProcess(audio_mute)) {
             ::g_muted_applied.store(audio_mute);
@@ -691,7 +691,7 @@ void DrawAudioSettings() {
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Manually mute/unmute audio.");
     }
-    
+
     // Mute in Background checkbox (disabled if Mute is ON)
     bool mute_in_bg = s_mute_in_background.load();
     if (s_audio_mute.load()) {
@@ -700,7 +700,7 @@ void DrawAudioSettings() {
     if (ImGui::Checkbox("Mute In Background", &mute_in_bg)) {
         g_main_new_tab_settings.mute_in_background.SetValue(mute_in_bg);
         g_main_new_tab_settings.mute_in_background_if_other_audio.SetValue(false);
-        
+
         // Reset applied flag so the monitor thread reapplies desired state
         ::g_muted_applied.store(false);
         // Also apply the current mute state immediately if manual mute is off
@@ -761,10 +761,10 @@ void DrawWindowControls() {
     }
 
     ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.8f, 1.0f), "=== Window Controls ===");
-    
+
     // Window Control Buttons (Minimize, Restore, and Maximize side by side)
     ImGui::BeginGroup();
-    
+
     // Minimize Window Button
     if (ImGui::Button("Minimize Window")) {
         HWND hwnd = g_last_swapchain_hwnd.load();
@@ -776,9 +776,9 @@ void DrawWindowControls() {
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Minimize the current game window.");
     }
-    
+
     ImGui::SameLine();
-    
+
     // Restore Window Button
     if (ImGui::Button("Restore Window")) {
         std::thread([hwnd](){
@@ -789,45 +789,45 @@ void DrawWindowControls() {
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Restore the minimized game window.");
     }
-    
+
     ImGui::SameLine();
-    
+
     // Maximize Window Button
     if (ImGui::Button("Maximize Window")) {
         std::thread([hwnd, current_monitor_width, current_monitor_height](){
             LogDebug("Maximize Window button pressed (bg thread)");
-            
+
             // Set window dimensions to current monitor size
             s_windowed_width.store(static_cast<float>(current_monitor_width));
             s_windowed_height.store(static_cast<float>(current_monitor_height));
-            
+
             // Update the settings to reflect the change
             g_main_new_tab_settings.window_width.SetValue(0); // 0 = Current Display
             g_main_new_tab_settings.window_height.SetValue(0); // 0 = Current Display
-            
+
             // Apply the window changes using the existing UI system
             ApplyWindowChange(hwnd, "maximize_button");
-            
+
             LogInfo("Window maximized to current monitor size");
         }).detach();
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Maximize the window to fill the current monitor.");
     }
-    
+
     ImGui::EndGroup();
 }
 
 void DrawMonitorDisplaySettings() {
     ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== Monitor & Display Resolution ===");
-    
+
     // Dynamic Monitor Settings
     if (ImGui::CollapsingHeader("Dynamic Monitor Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
         HandleMonitorSettingsUI();
     }
-    
+
     ImGui::Spacing();
-    
+
     // Current Display Info
     ImGui::TextColored(ImVec4(0.9f, 0.9f, 0.9f, 1.0f), "Current Display Info:");
     std::string display_info = GetCurrentDisplayInfo();
@@ -837,9 +837,9 @@ void DrawMonitorDisplaySettings() {
 void DrawImportantInfo() {
     ImGui::Spacing();
     ImGui::Separator();
-    
+
     ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.8f, 1.0f), "=== Important Information ===");
-    
+
     // FPS Counter with 1% Low and 0.1% Low over past 60s (computed in background)
     {
         std::string local_text;
@@ -856,7 +856,7 @@ void DrawImportantInfo() {
         }
     }
     std::ostringstream oss;
-    
+
     // Present Duration Display
     oss.str("");
     oss.clear();
@@ -864,15 +864,15 @@ void DrawImportantInfo() {
     ImGui::TextUnformatted(oss.str().c_str());
     ImGui::SameLine();
     ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "(smoothed)");
-    
-    
+
+
     oss.str("");
     oss.clear();
     oss << "Simulation Duration: " << std::fixed << std::setprecision(3) << (1.0 *::g_simulation_duration_ns.load() / utils::NS_TO_MS) << " ms";
     ImGui::TextUnformatted(oss.str().c_str());
     ImGui::SameLine();
-    ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "(smoothed)");   
-    
+    ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "(smoothed)");
+
     // Reshade Overhead Display
     oss.str("");
     oss.clear();
@@ -880,11 +880,11 @@ void DrawImportantInfo() {
     ImGui::TextUnformatted(oss.str().c_str());
     ImGui::SameLine();
     ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "(smoothed)");
-    
+
     // Reshade Overhead Display
     oss.str("");
     oss.clear();
-    oss << "Reshade Overhead Duration: " << std::fixed << std::setprecision(3) 
+    oss << "Reshade Overhead Duration: " << std::fixed << std::setprecision(3)
     << ((1.0 *::g_reshade_overhead_duration_ns.load() - ::fps_sleep_before_on_present_ns.load() - ::fps_sleep_after_on_present_ns.load()) / utils::NS_TO_MS) << " ms";
     ImGui::TextUnformatted(oss.str().c_str());
     ImGui::SameLine();
@@ -898,7 +898,7 @@ void DrawImportantInfo() {
     ImGui::SameLine();
     ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "(smoothed)");
 
-    
+
     // FPS Limiter Start Duration Display
     oss.str("");
     oss.clear();
@@ -918,7 +918,7 @@ void DrawImportantInfo() {
         const ::PerfSample& last_sample = ::g_perf_ring[last_idx];
         current_fps = last_sample.fps;
     }
-    
+
     if (current_fps > 0.0f) {
         float frame_time_ms = 1000.0f / current_fps;
         float sleep_duration_ms = static_cast<float>(::fps_sleep_after_on_present_ns.load()) / utils::NS_TO_MS;
@@ -941,11 +941,11 @@ void DrawImportantInfo() {
         case 3: flip_state_str = "Legacy Independent Flip"; break;
         default: flip_state_str = "Unknown"; break;
     }
-    
+
     oss.str("");
     oss.clear();
     oss << "Flip State: " << flip_state_str;
-    
+
     // Color code based on flip state
     if (flip_state_case == 1) {
         // Composed Flip - Red

@@ -28,10 +28,10 @@ public:
     // VBlank monitoring
     void StartVBlankMonitoring();
     void StopVBlankMonitoring();
-    
+
     // VBlank monitoring statistics
     bool IsVBlankMonitoringActive() const { return m_vblank_monitor && m_vblank_monitor->IsMonitoring(); }
-    
+
 
 private:
     bool EnsureAdapterBinding();
@@ -42,7 +42,7 @@ private:
 
     // VBlank pacing state
     double m_vblank_accumulator = 0.0;
-    
+
     // VBlank monitor instance
     std::unique_ptr<VBlankMonitor> m_vblank_monitor;
 

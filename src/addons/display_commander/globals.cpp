@@ -223,6 +223,7 @@ Microsoft::WRL::ComPtr<IDXGIFactory1> GetSharedDXGIFactory() {
         return g_shared_dxgi_factory;
     }
     
+    LogInfo("Creating shared DXGI factory");
     // Create the shared factory
     HRESULT hr = CreateDXGIFactory1(IID_PPV_ARGS(&g_shared_dxgi_factory));
     if (FAILED(hr)) {

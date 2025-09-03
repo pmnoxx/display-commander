@@ -113,31 +113,6 @@ void EnumerateDisplayModes(HMONITOR monitor, std::vector<Resolution>& resolution
     }
 }
 
-// Helper function to enumerate resolutions and refresh rates using legacy API
-void EnumerateDisplayModesLegacy(const std::wstring& device_name, std::vector<Resolution>& resolutions) {
-    // Use a set to avoid duplicate resolutions
-    std::set<std::pair<int, int>> resolution_set;
-
-    DEVMODEW dm;
-    dm.dmSize = sizeof(dm);
-
-    for (int i = 0; EnumDisplaySettingsW(device_name.c_str(), i, &dm); i++) {
-        if (dm.dmPelsWidth > 0 && dm.dmPelsHeight > 0) {
-            auto key = std::make_pair(static_cast<int>(dm.dmPelsWidth), static_cast<int>(dm.dmPelsHeight));
-
-            if (resolution_set.insert(key).second) { // Only add if new
-                Resolution res(key.first, key.second);
-
-                // For legacy API, we only have integer refresh rates
-                RationalRefreshRate rate(static_cast<UINT32>(dm.dmDisplayFrequency), 1);
-                res.refresh_rates.push_back(rate);
-
-                resolutions.push_back(std::move(res));
-            }
-        }
-    }
-}
-
 bool DisplayCache::Initialize() {
     return Refresh();
 }
@@ -183,11 +158,6 @@ bool DisplayCache::Refresh() {
 
         // Enumerate resolutions and refresh rates
         EnumerateDisplayModes(monitor, display_info->resolutions);
-
-        // If DXGI enumeration failed, fall back to legacy API
-        if (display_info->resolutions.empty()) {
-            EnumerateDisplayModesLegacy(display_info->device_name, display_info->resolutions);
-        }
 
         // Sort resolutions
         std::sort(display_info->resolutions.begin(), display_info->resolutions.end());

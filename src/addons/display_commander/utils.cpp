@@ -26,14 +26,14 @@ int GetCurrentMonitorWidth() {
         // Fallback to primary monitor
         return GetSystemMetrics(SM_CXSCREEN);
     }
-    
+
     HMONITOR hmon = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
     MONITORINFOEXW mi{};
     mi.cbSize = sizeof(mi);
     if (GetMonitorInfoW(hmon, &mi)) {
         return mi.rcMonitor.right - mi.rcMonitor.left;
     }
-    
+
     // Fallback to primary monitor
     return GetSystemMetrics(SM_CXSCREEN);
 }
@@ -45,14 +45,14 @@ int GetCurrentMonitorHeight() {
         // Fallback to primary monitor
         return GetSystemMetrics(SM_CYSCREEN);
     }
-    
+
     HMONITOR hmon = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
     MONITORINFOEXW mi{};
     mi.cbSize = sizeof(mi);
     if (GetMonitorInfoW(hmon, &mi)) {
         return mi.rcMonitor.bottom - mi.rcMonitor.top;
     }
-    
+
     // Fallback to primary monitor
         return GetSystemMetrics(SM_CYSCREEN);
 }
@@ -64,16 +64,16 @@ RECT RectFromWH(int width, int height) {
 }
 
 // Utility function implementations
-void LogInfo(const char* msg, ...) { 
+void LogInfo(const char* msg, ...) {
     va_list args;
     va_start(args, msg);
     char buffer[1024];
     vsnprintf(buffer, sizeof(buffer), msg, args);
     va_end(args);
-    reshade::log::message(reshade::log::level::info, buffer); 
+    reshade::log::message(reshade::log::level::info, buffer);
 }
 
-void LogWarn(const char* msg, ...) { 
+void LogWarn(const char* msg, ...) {
     va_list args;
     va_start(args, msg);
     char buffer[1024];
@@ -82,7 +82,7 @@ void LogWarn(const char* msg, ...) {
     reshade::log::message(reshade::log::level::warning, buffer);
 }
 
-void LogError(const char* msg, ...) { 
+void LogError(const char* msg, ...) {
     va_list args;
     va_start(args, msg);
     char buffer[1024];
@@ -91,22 +91,22 @@ void LogError(const char* msg, ...) {
     reshade::log::message(reshade::log::level::error, buffer);
 }
 
-void LogDebug(const std::string& s) { 
-    reshade::log::message(reshade::log::level::debug, s.c_str()); 
+void LogDebug(const std::string& s) {
+    reshade::log::message(reshade::log::level::debug, s.c_str());
 }
 
 
 std::string FormatLastError() {
     DWORD error = GetLastError();
     if (error == 0) return "No error";
-    
+
     LPSTR messageBuffer = nullptr;
     size_t size = FormatMessageA(
         FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
         NULL, error, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
-    
+
     if (size == 0) return "Unknown error";
-    
+
     std::string result(messageBuffer, size);
     LocalFree(messageBuffer);
     return result;
@@ -114,40 +114,40 @@ std::string FormatLastError() {
 
 bool IsExclusiveFullscreen(HWND hwnd) {
     if (!hwnd) return false;
-    
+
     LONG_PTR style = GetWindowLongPtr(hwnd, GWL_STYLE);
     if (style & WS_POPUP) return true;
-    
+
     RECT window_rect, client_rect;
     GetWindowRect(hwnd, &window_rect);
     GetClientRect(hwnd, &client_rect);
-    
+
     // Convert client rect to screen coordinates
     POINT client_tl = {client_rect.left, client_rect.top};
     POINT client_br = {client_rect.right, client_rect.bottom};
     ClientToScreen(hwnd, &client_tl);
     ClientToScreen(hwnd, &client_br);
-    
+
     // Check if window rect matches client rect (fullscreen indicator)
-    return (window_rect.left == client_tl.x && 
-            window_rect.top == client_tl.y && 
-            window_rect.right == client_br.x && 
+    return (window_rect.left == client_tl.x &&
+            window_rect.top == client_tl.y &&
+            window_rect.right == client_br.x &&
             window_rect.bottom == client_br.y);
 }
 
 // Spoof fullscreen state detection based on user settings
 bool GetSpoofedFullscreenState(HWND hwnd) {
-    
+
     // If spoofing is disabled, return actual state
     if (s_spoof_fullscreen_state.load() == 0) {
         return IsExclusiveFullscreen(hwnd);
     }
-    
+
     // Spoof as fullscreen (value 1)
     if (s_spoof_fullscreen_state.load() == 1) {
         return true;
     }
-    
+
     // Spoof as windowed (value 2)
     return false;
 }
@@ -158,17 +158,17 @@ int GetFullscreenSpoofingMode() {
 }
 
 // Spoof window focus state detection based on user settings
-bool GetSpoofedWindowFocus(HWND hwnd) {    
+bool GetSpoofedWindowFocus(HWND hwnd) {
     // If spoofing is disabled, return actual state
     if (s_spoof_window_focus.load() == 0) {
         return (GetForegroundWindow() == hwnd);
     }
-    
+
     // Spoof as focused (value 1)
     if (s_spoof_window_focus.load() == 1) {
         return true;
     }
-    
+
     // Spoof as unfocused (value 2)
     return false;
 }
@@ -200,10 +200,10 @@ std::vector<std::string> MakeLabels(const int* values, size_t count) {
 
 int FindClosestIndex(int value, const int* values, size_t count) {
     if (count == 0) return -1;
-    
+
     int closest_index = 0;
     int min_diff = abs(value - values[0]);
-    
+
     for (size_t i = 1; i < count; ++i) {
         int diff = abs(value - values[i]);
         if (diff < min_diff) {
@@ -211,7 +211,7 @@ int FindClosestIndex(int value, const int* values, size_t count) {
             closest_index = static_cast<int>(i);
         }
     }
-    
+
     return closest_index;
 }
 
@@ -243,7 +243,7 @@ void ComputeDesiredSize(int& out_w, int& out_h) {
         out_h = GetCurrentMonitorHeight();
         return;
     }
-    
+
     // Original logic for manual or aspect ratio mode
     const int want_w = static_cast<int>(s_windowed_width);
     if (s_window_mode >= 0.5f && s_window_mode < 1.5f) {
@@ -266,72 +266,13 @@ void ComputeDesiredSize(int& out_w, int& out_h) {
 
 
 
-std::vector<std::string> MakeMonitorLabels() {
-    auto new_monitors = std::make_shared<std::vector<MonitorInfo>>();
-    EnumDisplayMonitors(nullptr, nullptr, MonitorEnumProc, reinterpret_cast<LPARAM>(new_monitors.get()));
-    g_monitors.store(new_monitors);
-    
-    std::vector<std::string> labels;
-    labels.reserve(new_monitors->size() + 1);
-    
-    // Get the device name, resolution, refresh rate, and primary status of the monitor where the game is currently running
-    std::string auto_label = "Auto (Current)";
-    HWND hwnd = g_last_swapchain_hwnd.load();
-    if (hwnd) {
-        HMONITOR current_monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
-        if (current_monitor) {
-            MONITORINFOEXW mi;
-            mi.cbSize = sizeof(mi);
-            if (GetMonitorInfoW(current_monitor, &mi)) {
-                std::string device_name(mi.szDevice, mi.szDevice + wcslen(mi.szDevice));
-                
-                // Get current resolution and refresh rate
-                DEVMODEW dm;
-                dm.dmSize = sizeof(dm);
-                if (EnumDisplaySettingsW(mi.szDevice, ENUM_CURRENT_SETTINGS, &dm)) {
-                    int width = static_cast<int>(dm.dmPelsWidth);
-                    int height = static_cast<int>(dm.dmPelsHeight);
-                    int refresh_rate = static_cast<int>(dm.dmDisplayFrequency);
-                    
-                    // Check if it's primary monitor
-                    bool is_primary = (mi.dwFlags & MONITORINFOF_PRIMARY) != 0;
-                    std::string primary_text = is_primary ? " Primary" : "";
-                    
-                    auto_label = "Auto (Current) [" + device_name + "] " + 
-                                std::to_string(width) + "x" + std::to_string(height) + 
-                                " @ " + std::to_string(refresh_rate) + "Hz" + primary_text;
-                } else {
-                    // Fallback if we can't get display settings
-                    bool is_primary = (mi.dwFlags & MONITORINFOF_PRIMARY) != 0;
-                    std::string primary_text = is_primary ? " Primary" : "";
-                    auto_label = "Auto (Current) [" + device_name + "]" + primary_text;
-                }
-            }
-        }
-    }
-    labels.emplace_back(auto_label);
-    
-    for (size_t i = 0; i < new_monitors->size(); ++i) {
-        const auto& mi = (*new_monitors)[i].info;
-        const RECT& r = mi.rcMonitor;
-        const bool primary = (mi.dwFlags & MONITORINFOF_PRIMARY) != 0;
-        
-        // Convert device name from wide string to regular string
-        std::string device_name(mi.szDevice, mi.szDevice + wcslen(mi.szDevice));
-        
-        std::ostringstream oss;
-        oss << "[" << device_name << "] " << (primary ? "Primary " : "")
-            << (r.right - r.left) << "x" << (r.bottom - r.top);
-        labels.emplace_back(oss.str());
-    }
-    return labels;
-}
+
 
 // Monitor enumeration callback
 BOOL CALLBACK MonitorEnumProc(HMONITOR hmon, HDC hdc, LPRECT rect, LPARAM lparam) {
     MONITORINFOEXW info;
     info.cbSize = sizeof(MONITORINFOEXW);
-    
+
     if (GetMonitorInfoW(hmon, &info)) {
         MonitorInfo monitor_info;
         monitor_info.handle = hmon;
@@ -341,7 +282,7 @@ BOOL CALLBACK MonitorEnumProc(HMONITOR hmon, HDC hdc, LPRECT rect, LPARAM lparam
             monitors->push_back(monitor_info);
         }
     }
-    
+
     return TRUE;
 }
 

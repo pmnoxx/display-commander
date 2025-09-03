@@ -38,7 +38,7 @@ void OnInitEffectRuntime(reshade::api::effect_runtime* runtime) {
     if (runtime != nullptr) {
         g_reshade_runtime.store(runtime);
         LogInfo("ReShade effect runtime initialized - Input blocking now available");
-        
+
         if (s_fix_hdr10_colorspace.load()) {
           runtime->set_color_space(reshade::api::color_space::hdr10_st2084);
         }
@@ -73,24 +73,25 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
     case DLL_PROCESS_ATTACH:
       // Initialize QPC timing constants based on actual frequency
       utils::initialize_qpc_timing_constants();
-      
+
       if (!reshade::register_addon(h_module)) return FALSE;
       // Ensure UI system is initialized
       ui::new_ui::InitializeNewUISystem();
       // Install process-exit safety hooks to restore display on abnormal exits
       process_exit_hooks::Initialize();
-      
+
       // Capture sync interval on swapchain creation for UI
       reshade::register_event<reshade::addon_event::create_swapchain>(OnCreateSwapchainCapture);
 
       reshade::register_event<reshade::addon_event::init_swapchain>(OnInitSwapchain);
-      
+
+
       // Register ReShade effect runtime events for input blocking
       reshade::register_event<reshade::addon_event::init_effect_runtime>(OnInitEffectRuntime);
       reshade::register_event<reshade::addon_event::reshade_open_overlay>(OnReShadeOverlayOpen);
-      
+
       // Defer NVAPI init until after settings are loaded below
-      
+
       // Register our fullscreen prevention event handler
       reshade::register_event<reshade::addon_event::set_fullscreen_state>(
           display_commander::events::OnSetFullscreenState);
@@ -98,7 +99,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
       g_shutdown.store(false);
       std::thread(RunBackgroundAudioMonitor).detach();
       background::StartBackgroundTasks();
-      
+
       // NVAPI HDR monitor will be started after settings load below if enabled
       // Seed default fps limit snapshot
       // GetFpsLimit removed from proxy, use s_fps_limit directly
@@ -106,12 +107,12 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
       reshade::register_event<reshade::addon_event::reshade_present>(OnPresentUpdateBefore2);
       reshade::register_event<reshade::addon_event::finish_present>(OnPresentUpdateAfter);
       reshade::register_event<reshade::addon_event::present_flags>(OnPresentFlags);
-      
+
       // Register draw event handlers for render timing
       reshade::register_event<reshade::addon_event::draw>(OnDraw);
       reshade::register_event<reshade::addon_event::draw_indexed>(OnDrawIndexed);
       reshade::register_event<reshade::addon_event::draw_or_dispatch_indirect>(OnDrawOrDispatchIndirect);
-      
+
       // Register power saving event handlers for additional GPU operations
       reshade::register_event<reshade::addon_event::dispatch>(OnDispatch);
       reshade::register_event<reshade::addon_event::dispatch_mesh>(OnDispatchMesh);
@@ -121,7 +122,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
       reshade::register_event<reshade::addon_event::update_buffer_region_command>(OnUpdateBufferRegionCommand);
       // Note: bind_resource, map_resource, unmap_resource events don't exist in ReShade API
       // These operations are handled differently in ReShade
-      
+
       // Register overlay directly
       reshade::register_overlay("Display Commander", OnRegisterOverlayDisplayCommander);
       // Register device destroy event for restore-on-exit
@@ -132,23 +133,23 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
       display_restore::RestoreAllIfEnabled();
       // Uninstall process-exit hooks
       process_exit_hooks::Shutdown();
-      
+
             // Clean up continuous monitoring if it's running
       StopContinuousMonitoring();
 
       // Clean up DXGI Device Info Manager
       g_dxgiDeviceInfoManager.reset();
-      
+
       reshade::unregister_event<reshade::addon_event::present>(OnPresentUpdateBefore);
       reshade::unregister_event<reshade::addon_event::reshade_present>(OnPresentUpdateBefore2);
       reshade::unregister_event<reshade::addon_event::finish_present>(OnPresentUpdateAfter);
       reshade::unregister_event<reshade::addon_event::present_flags>(OnPresentFlags);
-      
+
       // Unregister draw event handlers for render timing
       reshade::unregister_event<reshade::addon_event::draw>(OnDraw);
       reshade::unregister_event<reshade::addon_event::draw_indexed>(OnDrawIndexed);
       reshade::unregister_event<reshade::addon_event::draw_or_dispatch_indirect>(OnDrawOrDispatchIndirect);
-      
+
       // Unregister power saving event handlers for additional GPU operations
       reshade::unregister_event<reshade::addon_event::dispatch>(OnDispatch);
       reshade::unregister_event<reshade::addon_event::dispatch_mesh>(OnDispatchMesh);
@@ -156,10 +157,10 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
       reshade::unregister_event<reshade::addon_event::copy_resource>(OnCopyResource);
       reshade::unregister_event<reshade::addon_event::update_buffer_region>(OnUpdateBufferRegion);
       reshade::unregister_event<reshade::addon_event::update_buffer_region_command>(OnUpdateBufferRegionCommand);
-      
+
       // Unregister overlay
       reshade::unregister_overlay("###settings", OnRegisterOverlayDisplayCommander);
-      
+
       reshade::unregister_event<reshade::addon_event::set_fullscreen_state>(
           display_commander::events::OnSetFullscreenState);
       reshade::unregister_event<reshade::addon_event::init_swapchain>(OnInitSwapchain);
@@ -178,14 +179,14 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
     // Initialize UI system before first draw
     InitializeUISettings();
     // InitializeSwapchain removed from proxy
-    
+
     // Check if continuous monitoring should be enabled
     //if (s_continuous_monitoring_enabled.load()) {
       StartContinuousMonitoring();
     //  LogInfo("Continuous monitoring started proactively");
   //  }
 
-    
+
     // Initialize NVAPI fullscreen prevention if enabled and not already initialized
             if (s_nvapi_fullscreen_prevention.load() && !::g_nvapiFullscreenPrevention.IsAvailable()) {
       if (::g_nvapiFullscreenPrevention.Initialize()) {
@@ -233,11 +234,11 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
     if (g_dlssfgVersionDetector.Initialize()) {
       if (g_dlssfgVersionDetector.IsAvailable()) {
         const auto& version = g_dlssfgVersionDetector.GetVersion();
-        LogInfo("DLSS-FG detected - Version: %s (DLL: %s)", 
-                version.getFormattedVersion().c_str(), 
+        LogInfo("DLSS-FG detected - Version: %s (DLL: %s)",
+                version.getFormattedVersion().c_str(),
                 version.dll_path.c_str());
         g_dlssfg_detected.store(true);
-        
+
         // Update global DLLS-G variables
         g_dlls_g_loaded.store(true);
         g_dlls_g_version.store(std::make_shared<const std::string>(version.getFormattedVersion()));
@@ -251,16 +252,16 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
       g_dlls_g_loaded.store(false);
       g_dlls_g_version.store(std::make_shared<const std::string>("Detection Failed"));
     }
-    
+
     // Initialize DLSS Preset Detector
     if (g_dlssPresetDetector.Initialize()) {
       if (g_dlssPresetDetector.IsAvailable()) {
         const auto& preset = g_dlssPresetDetector.GetPreset();
-        LogInfo("DLSS Preset detected - Preset: %s, Quality: %s", 
+        LogInfo("DLSS Preset detected - Preset: %s, Quality: %s",
                 preset.getFormattedPreset().c_str(),
                 preset.getFormattedQualityMode().c_str());
         g_dlss_preset_detected.store(true);
-        
+
         // Update global DLSS preset variables
         g_dlss_preset_name.store(std::make_shared<const std::string>(preset.getFormattedPreset()));
         g_dlss_quality_mode.store(std::make_shared<const std::string>(preset.getFormattedQualityMode()));
@@ -276,7 +277,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
       g_dlss_preset_name.store(std::make_shared<const std::string>("Detection Failed"));
       g_dlss_quality_mode.store(std::make_shared<const std::string>("Detection Failed"));
     }
-    
+
     // Mark DLL initialization as complete - now DXGI calls are safe
     g_dll_initialization_complete.store(true);
     LogInfo("DLL initialization complete - DXGI calls now enabled");

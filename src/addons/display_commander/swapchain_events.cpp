@@ -237,46 +237,11 @@ void OnInitSwapchain(reshade::api::swapchain* swapchain, bool resize) {
   g_swapchain_event_counters[SWAPCHAIN_EVENT_INIT_SWAPCHAIN].fetch_add(1);
   g_swapchain_event_total_count.fetch_add(1);
 
-  // Update last known backbuffer size and colorspace
-  auto* device = swapchain->get_device();
-  if (device != nullptr && swapchain->get_back_buffer_count() > 0) {
-    auto bb = swapchain->get_back_buffer(0);
-    auto desc = device->get_resource_desc(bb);
-    g_last_backbuffer_width.store(static_cast<int>(desc.texture.width));
-    g_last_backbuffer_height.store(static_cast<int>(desc.texture.height));
-
-    // Store current colorspace for UI display
-    g_current_colorspace = swapchain->get_color_space();
-
-    std::ostringstream oss; oss << "OnInitSwapchain(backbuffer=" << desc.texture.width << "x" << desc.texture.height
-                                << ", resize=" << (resize ? "true" : "false") << ", colorspace=" << static_cast<int>(g_current_colorspace) << ")";
-    LogDebug(oss.str());
-  }
-
   // Schedule auto-apply even on resizes (generation counter ensures only latest runs)
   HWND hwnd = static_cast<HWND>(swapchain->get_hwnd());
-  g_last_swapchain_hwnd.store(hwnd);
- // g_last_swapchain_ptr.store(swapchain);
-  if (hwnd == nullptr) return;
-  // Update DXGI composition state if possible
-  {
-    DxgiBypassMode mode = GetIndependentFlipState(swapchain);
-    switch (mode) {
-        case DxgiBypassMode::kUnknown: s_dxgi_composition_state.store(0); break;
-        case DxgiBypassMode::kComposed: s_dxgi_composition_state.store(1); break;
-        case DxgiBypassMode::kOverlay: s_dxgi_composition_state.store(2); break;
-        case DxgiBypassMode::kIndependentFlip: s_dxgi_composition_state.store(3); break;
-    }
-    std::ostringstream oss2;
-    oss2 << "DXGI Composition State (onSwapChainInit): " << DxgiBypassModeToString(mode)
-         << " (" << static_cast<int>(s_dxgi_composition_state) << ")";
-    LogInfo(oss2.str().c_str());
+  if (hwnd != nullptr) {
+    g_last_swapchain_hwnd.store(hwnd);
   }
-
-  // Log Independent Flip conditions to update failure tracking
-  LogDebug(resize ? "Schedule auto-apply on swapchain init (resize)"
-                  : "Schedule auto-apply on swapchain init");
-
 }
 
 HANDLE g_timer_handle = nullptr;

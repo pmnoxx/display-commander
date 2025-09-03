@@ -35,40 +35,32 @@ std::vector<std::string> GetMonitorLabelsFromCache() {
     size_t display_count = displays->size();
     labels.reserve(display_count + 1); // +1 for Auto (Current) option
 
-    // Add Auto (Current) as the first option (index 0)
+        // Add Auto (Current) as the first option (index 0)
     std::string auto_label = "Auto (Current)";
     HWND hwnd = g_last_swapchain_hwnd.load();
     if (hwnd) {
         HMONITOR current_monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
         if (current_monitor) {
-            MONITORINFOEXW mi;
-            mi.cbSize = sizeof(mi);
-            if (GetMonitorInfoW(current_monitor, &mi)) {
-                std::string device_name(mi.szDevice, mi.szDevice + wcslen(mi.szDevice));
+            // Get current resolution and refresh rate from display cache
+            const auto* display = display_cache::g_displayCache.GetDisplayByHandle(current_monitor);
+            if (display) {
+                int width = display->width;
+                int height = display->height;
+                double refresh_rate = display->current_refresh_rate.ToHz();
 
-                // Get current resolution and refresh rate from display cache
-                const auto* display = display_cache::g_displayCache.GetDisplayByHandle(current_monitor);
-                if (display) {
-                    int width = display->width;
-                    int height = display->height;
-                    double refresh_rate = display->current_refresh_rate.ToHz();
+                // Use cached primary monitor flag and device name
+                bool is_primary = display->is_primary;
+                std::string primary_text = is_primary ? " Primary" : "";
+                std::string device_name(display->device_name.begin(), display->device_name.end());
 
-                    // Check if it's primary monitor
-                    bool is_primary = (mi.dwFlags & MONITORINFOF_PRIMARY) != 0;
-                    std::string primary_text = is_primary ? " Primary" : "";
+                std::ostringstream rate_oss;
+                rate_oss << std::fixed << std::setprecision(3) << refresh_rate;
 
-                    std::ostringstream rate_oss;
-                    rate_oss << std::fixed << std::setprecision(3) << refresh_rate;
-
-                    auto_label = "Auto (Current) [" + device_name + "] " +
-                                std::to_string(width) + "x" + std::to_string(height) +
-                                " @ " + rate_oss.str() + "Hz" + primary_text;
-                } else {
-                    // Fallback if we can't get display from cache
-                    bool is_primary = (mi.dwFlags & MONITORINFOF_PRIMARY) != 0;
-                    std::string primary_text = is_primary ? " Primary" : "";
-                    auto_label = "Auto (Current) [" + device_name + "]" + primary_text;
-                }
+                auto_label = "Auto (Current) [" + device_name + "] " +
+                            std::to_string(width) + "x" + std::to_string(height) +
+                            " @ " + rate_oss.str() + "Hz" + primary_text;
+            } else {
+                auto_label = "Failed to get display from cache";
             }
         }
     }

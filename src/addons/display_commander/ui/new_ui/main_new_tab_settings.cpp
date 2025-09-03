@@ -32,7 +32,7 @@ MainNewTabSettings::MainNewTabSettings()
       block_input_in_background("block_input_in_background", false, "renodx_main_tab"),
       no_render_in_background("no_render_in_background", ::s_no_render_in_background, false, "renodx_main_tab"),
       no_present_in_background("no_present_in_background", ::s_no_present_in_background, false, "renodx_main_tab") {
-    
+
     // Initialize the all_settings_ vector
     all_settings_ = {
         &window_mode,

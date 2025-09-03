@@ -226,6 +226,10 @@ bool OnCreateSwapchainCapture(reshade::api::device_api /*api*/, reshade::api::sw
 }
 
 void OnInitSwapchain(reshade::api::swapchain* swapchain, bool resize) {
+  if (swapchain == nullptr) {
+    LogDebug("OnInitSwapchain: swapchain is null");
+    return;
+  }
   // Reset frame count on swapchain init
   l_frame_count.store(0);
 

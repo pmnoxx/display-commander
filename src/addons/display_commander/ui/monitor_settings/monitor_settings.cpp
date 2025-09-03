@@ -303,7 +303,7 @@ void HandleDisplayCacheRefresh() {
 void HandleAutoDetection() {
     if (!s_initial_auto_selection_done) {
         s_initial_auto_selection_done = true;
-        
+
         // Get current display info for the selected monitor
         HWND hwnd = g_last_swapchain_hwnd.load();
         if (hwnd) {
@@ -311,7 +311,7 @@ void HandleAutoDetection() {
             if (current_monitor) {
                                 // Get monitor labels to find which monitor index this corresponds to
                 auto monitor_labels = ui::GetMonitorLabelsFromCache();
-                
+
                 // Find which monitor index this corresponds to
                 for (int i = 0; i < static_cast<int>(monitor_labels.size()); i++) {
                     const auto* display = display_cache::g_displayCache.GetDisplay(i);
@@ -355,23 +355,20 @@ void HandleMonitorSelection(const std::vector<std::string>& monitor_labels) {
     if (s_selected_monitor_index >= 0 && s_selected_monitor_index < static_cast<int>(monitor_labels.size())) {
         const auto* display = display_cache::g_displayCache.GetDisplay(static_cast<int>(s_selected_monitor_index));
         if (display && display->monitor_handle) {
-            MONITORINFOEXW mi;
-            mi.cbSize = sizeof(mi);
-            if (GetMonitorInfoW(display->monitor_handle, &mi)) {
-                if (mi.dwFlags & MONITORINFOF_PRIMARY) {
-                    monitor_label = "Monitor (Primary)";
-                }
+            // Use cached primary monitor flag instead of calling GetMonitorInfoW
+            if (display->is_primary) {
+                monitor_label = "Monitor (Primary)";
             }
         }
     }
-    
+
     // Monitor selection
     if (ImGui::BeginCombo(monitor_label.c_str(), monitor_labels[static_cast<int>(s_selected_monitor_index)].c_str())) {
         for (int i = 0; i < static_cast<int>(monitor_labels.size()); i++) {
             const bool is_selected = (i == static_cast<int>(s_selected_monitor_index));
             if (ImGui::Selectable(monitor_labels[i].c_str(), is_selected)) {
                 s_selected_monitor_index.store(i);
-                
+
                 if (i == 0) {
                     // Auto (Current) option selected - find the current monitor where the game is running
                     HWND hwnd = g_last_swapchain_hwnd.load();
@@ -460,7 +457,7 @@ void HandleResolutionSelection(int selected_monitor_index) {
         // Regular monitor selected - adjust index because monitors start at index 1 now
         actual_monitor_index = selected_monitor_index - 1;
     }
-    
+
     // Determine persistence slot (0..3)
     int persist_slot = (actual_monitor_index < 0) ? 0 : ((actual_monitor_index > 3) ? 3 : actual_monitor_index);
     auto &resSetting = GetResSettingForDisplay(persist_slot);
@@ -550,7 +547,7 @@ void HandleRefreshRateSelection(int selected_monitor_index, int selected_resolut
             // Regular monitor selected - adjust index because monitors start at index 1 now
             actual_monitor_index = selected_monitor_index - 1;
         }
-        
+
         // Determine persistence slot (0..3)
         int persist_slot = (actual_monitor_index < 0) ? 0 : ((actual_monitor_index > 3) ? 3 : actual_monitor_index);
         auto &refSetting = GetRefreshSettingForDisplay(persist_slot);
@@ -619,7 +616,7 @@ void HandleAutoRestoreResolutionCheckbox() {
     ImGui::Spacing();
     ImGui::Separator();
     ImGui::Spacing();
-    
+
     bool auto_restore_resolution_on_close = s_auto_restore_resolution_on_close.load();
     if (ImGui::Checkbox("Restore display settings when game closes", &auto_restore_resolution_on_close)) {
         s_auto_restore_resolution_on_close.store(auto_restore_resolution_on_close);
@@ -630,7 +627,7 @@ void HandleAutoRestoreResolutionCheckbox() {
             LogInfo("Restore display settings when game closes: DISABLED");
         }
     }
-    
+
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("When enabled, automatically restores the original monitor resolution and refresh rate when the game closes.\nThis ensures your display settings return to normal after gaming sessions.");
     }
@@ -639,7 +636,7 @@ void HandleAutoRestoreResolutionCheckbox() {
 // Handle auto-apply resolution and refresh rate checkboxes
 void HandleAutoApplyCheckboxes() {
     ImGui::Spacing();
-    
+
     bool auto_apply_resolution_change = s_auto_apply_resolution_change.load();
     if (ImGui::Checkbox("Auto-apply resolution changes (TODO: implement)", &auto_apply_resolution_change)) {
         s_auto_apply_resolution_change.store(auto_apply_resolution_change);
@@ -650,11 +647,11 @@ void HandleAutoApplyCheckboxes() {
             LogInfo("Auto-apply resolution changes: DISABLED");
         }
     }
-    
+
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("When enabled, automatically applies resolution changes immediately when a new resolution is selected.\nThis provides instant feedback without needing to click the apply button.");
     }
-    
+
     bool auto_apply_refresh_rate_change = s_auto_apply_refresh_rate_change.load();
     if (ImGui::Checkbox("Auto-apply refresh rate changes (TODO: implement)", &auto_apply_refresh_rate_change)) {
         s_auto_apply_refresh_rate_change.store(auto_apply_refresh_rate_change);
@@ -665,7 +662,7 @@ void HandleAutoApplyCheckboxes() {
             LogInfo("Auto-apply refresh rate changes: DISABLED");
         }
     }
-    
+
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("When enabled, automatically applies refresh rate changes immediately when a new refresh rate is selected.\nThis provides instant feedback without needing to click the apply button.");
     }
@@ -710,7 +707,7 @@ void HandleDXGIAPIApplyButton() {
                 // Regular monitor selected - adjust index because monitors start at index 1 now
                 actual_monitor_index = static_cast<int>(s_selected_monitor_index) - 1;
             }
-            
+
             // Before applying any change, mark original mode and this device as changed
             display_restore::MarkOriginalForDisplayIndex(actual_monitor_index);
             display_restore::MarkDeviceChangedByDisplayIndex(actual_monitor_index);
@@ -730,31 +727,31 @@ void HandleDXGIAPIApplyButton() {
                         return;
                     }
                 }
-                
+
                 // Get the selected refresh rate from the cache
                 display_cache::RationalRefreshRate refresh_rate;
                 bool has_rational = false;
-                
+
                 // Use selected refresh rate from cache
                 auto refresh_rate_labels = display_cache::g_displayCache.GetRefreshRateLabels(actual_monitor_index, static_cast<int>(s_selected_resolution_index));
                 if (s_selected_refresh_rate_index >= 0 && s_selected_refresh_rate_index < static_cast<int>(refresh_rate_labels.size())) {
                     // Get rational refresh rate values from the cache
                     has_rational = display_cache::g_displayCache.GetRationalRefreshRate(
-                        actual_monitor_index, 
+                        actual_monitor_index,
                         static_cast<int>(s_selected_resolution_index),
-                        static_cast<int>(s_selected_refresh_rate_index), 
+                        static_cast<int>(s_selected_refresh_rate_index),
                         refresh_rate);
                 }
-                
+
                 if (has_rational) {
                     // Log the values we're trying to apply with DXGI API
                     std::ostringstream debug_oss;
-                    debug_oss << "Attempting to apply display changes with DXGI API: Monitor=" << s_selected_monitor_index 
-                              << ", Resolution=" << width << "x" << height 
+                    debug_oss << "Attempting to apply display changes with DXGI API: Monitor=" << s_selected_monitor_index
+                              << ", Resolution=" << width << "x" << height
                               << ", Refresh Rate=" << std::fixed << std::setprecision(10) << refresh_rate.ToHz() << "Hz"
                               << " (Rational: " << refresh_rate.numerator << "/" << refresh_rate.denominator << ")";
                     LogInfo(debug_oss.str().c_str());
-                    
+
                     // Try DXGI API for fractional refresh rates
                     bool dxgi_ok = resolution::ApplyDisplaySettingsDXGI(
                         actual_monitor_index,
@@ -766,14 +763,14 @@ void HandleDXGIAPIApplyButton() {
                         label << width << "x" << height << " @ " << std::fixed << std::setprecision(3) << refresh_rate.ToHz() << "Hz";
                         BeginConfirmationCountdown(actual_monitor_index, label.str(), 15);
                         std::ostringstream oss;
-                        oss << "DXGI API SUCCESS: " << width << "x" << height 
+                        oss << "DXGI API SUCCESS: " << width << "x" << height
                             << " @ " << std::fixed << std::setprecision(10) << refresh_rate.ToHz() << "Hz"
                             << " (Exact fractional refresh rate applied via DXGI)";
                         LogInfo(oss.str().c_str());
                     } else {
                         // DXGI API failed, fall back to legacy API
                         LogWarn("DXGI API failed, falling back to legacy API");
-                        
+
                         // Get the last Windows error for debugging
                         DWORD error = GetLastError();
                         if (error != 0) {
@@ -781,7 +778,7 @@ void HandleDXGIAPIApplyButton() {
                             size_t size = FormatMessageA(
                                 FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
                                 NULL, error, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
-                            
+
                             if (size > 0) {
                                 std::ostringstream error_oss;
                                 error_oss << "DXGI API error details: " << std::string(messageBuffer, size);
@@ -789,36 +786,36 @@ void HandleDXGIAPIApplyButton() {
                                 LocalFree(messageBuffer);
                             }
                         }
-                        
+
                         // Fallback to legacy API
                         const auto* display = display_cache::g_displayCache.GetDisplay(actual_monitor_index);
                         if (display) {
                             HMONITOR hmon = display->monitor_handle;
-                            
+
                             MONITORINFOEXW mi;
                             mi.cbSize = sizeof(mi);
                             if (GetMonitorInfoW(hmon, &mi)) {
                                 std::wstring device_name = mi.szDevice;
-                                
+
                                 // Create DEVMODE structure with selected resolution and refresh rate
                                 DEVMODEW dm;
                                 dm.dmSize = sizeof(dm);
                                 dm.dmFields = DM_PELSWIDTH | DM_PELSHEIGHT | DM_DISPLAYFREQUENCY;
                                 dm.dmPelsWidth = width;
                                 dm.dmPelsHeight = height;
-                                
+
                                 // Round the refresh rate to the nearest integer for DEVMODE fallback
                                 dm.dmDisplayFrequency = static_cast<DWORD>(std::round(refresh_rate.ToHz()));
-                                
+
                                 // Apply the changes using legacy API
                                 LONG result = ChangeDisplaySettingsExW(device_name.c_str(), &dm, nullptr, CDS_UPDATEREGISTRY, nullptr);
-                                
+
                                 if (result == DISP_CHANGE_SUCCESSFUL) {
                                     std::ostringstream label;
                                     label << width << "x" << height << " @ " << std::fixed << std::setprecision(3) << refresh_rate.ToHz() << "Hz";
                                     BeginConfirmationCountdown(actual_monitor_index, label.str(), 15);
                                     std::ostringstream oss;
-                                    oss << "Legacy API fallback SUCCESS: " << width << "x" << height 
+                                    oss << "Legacy API fallback SUCCESS: " << width << "x" << height
                                         << " @ " << std::fixed << std::setprecision(3) << refresh_rate.ToHz() << "Hz"
                                         << " (Note: Refresh rate was rounded for compatibility)";
                                     LogInfo(oss.str().c_str());

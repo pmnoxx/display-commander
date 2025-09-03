@@ -146,6 +146,11 @@ bool DisplayCache::Refresh() {
         display_info->device_name = mi.szDevice;
         display_info->friendly_name = GetMonitorFriendlyName(mi);
 
+        // Store monitor properties from MONITORINFOEXW
+        display_info->is_primary = (mi.dwFlags & MONITORINFOF_PRIMARY) != 0;
+        display_info->monitor_rect = mi.rcMonitor;
+        display_info->work_rect = mi.rcWork;
+
         // Get current settings
         if (!GetCurrentDisplaySettingsQueryConfig(monitor, display_info->width,
                                      display_info->height,

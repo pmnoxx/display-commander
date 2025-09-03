@@ -18,25 +18,25 @@ namespace display_cache {
 struct RationalRefreshRate {
     UINT32 numerator;
     UINT32 denominator;
-    
+
     RationalRefreshRate() : numerator(0), denominator(1) {}
     RationalRefreshRate(UINT32 num, UINT32 den) : numerator(num), denominator(den) {}
-    
+
     // Convert to double for display
     double ToHz() const {
         if (denominator == 0) return 0.0;
         return static_cast<double>(numerator) / static_cast<double>(denominator);
     }
-    
+
     // Convert to string representation
     std::string ToString() const {
         if (denominator == 0) return "0Hz";
-        
+
         double hz = ToHz();
         std::ostringstream oss;
         oss << std::setprecision(10) << hz;
         std::string rate_str = oss.str();
-        
+
         // Remove trailing zeros after decimal point
         size_t decimal_pos = rate_str.find('.');
         if (decimal_pos != std::string::npos) {
@@ -49,15 +49,15 @@ struct RationalRefreshRate {
                 rate_str = rate_str.substr(0, last_nonzero + 1);
             }
         }
-        
+
         return rate_str + "Hz";
     }
-    
+
     // Comparison operators for sorting
     bool operator<(const RationalRefreshRate& other) const {
         return ToHz() < other.ToHz();
     }
-    
+
     bool operator==(const RationalRefreshRate& other) const {
         return numerator == other.numerator && denominator == other.denominator;
     }
@@ -68,15 +68,15 @@ struct Resolution {
     int width;
     int height;
     std::vector<RationalRefreshRate> refresh_rates;
-    
+
     Resolution() : width(0), height(0) {}
     Resolution(int w, int h) : width(w), height(h) {}
-    
+
     // Convert to string representation
     std::string ToString() const {
         std::ostringstream oss;
         oss << width << " x " << height;
-        
+
         // Calculate and add aspect ratio
         if (height > 0) {
             double aspect_ratio = static_cast<double>(width) / static_cast<double>(height);
@@ -88,16 +88,16 @@ struct Resolution {
                 oss << " (" << std::fixed << std::setprecision(2) << ratio_numerator << ":9)";
             }
         }
-        
+
         return oss.str();
     }
-    
+
     // Comparison operators for sorting
     bool operator<(const Resolution& other) const {
         if (width != other.width) return width < other.width;
         return height < other.height;
     }
-    
+
     bool operator==(const Resolution& other) const {
         return width == other.width && height == other.height;
     }
@@ -109,40 +109,48 @@ struct DisplayInfo {
     std::wstring device_name;
     std::wstring friendly_name;
     std::vector<Resolution> resolutions;
-    
+
     // Current settings
     int width;
     int height;
     RationalRefreshRate current_refresh_rate;
     int x;
     int y;
-    
-    DisplayInfo() : monitor_handle(nullptr), width(0), height(0) {}
-    
+
+    // Monitor properties from MONITORINFOEXW
+    bool is_primary;
+    RECT monitor_rect;  // Monitor rectangle in virtual screen coordinates
+    RECT work_rect;     // Working area rectangle (excluding taskbar, etc.)
+
+    DisplayInfo() : monitor_handle(nullptr), width(0), height(0), is_primary(false) {
+        monitor_rect = {0, 0, 0, 0};
+        work_rect = {0, 0, 0, 0};
+    }
+
     // Get current resolution as string
     std::string GetCurrentResolutionString() const {
         std::ostringstream oss;
         oss << width << " x " << height;
         return oss.str();
     }
-    
+
     // Get current refresh rate as string
     std::string GetCurrentRefreshRateString() const {
         return current_refresh_rate.ToString();
     }
-    
+
     // Get comprehensive current display info string
     std::string GetCurrentDisplayInfoString() const {
         std::ostringstream oss;
         oss << "Current: " << GetCurrentResolutionString() << " @ " << GetCurrentRefreshRateString();
-        
+
         // Debug: Show raw refresh rate values
-        oss << " [Raw: " << current_refresh_rate.numerator << "/" << current_refresh_rate.denominator 
+        oss << " [Raw: " << current_refresh_rate.numerator << "/" << current_refresh_rate.denominator
             << " = " << std::setprecision(10) << current_refresh_rate.ToHz() << "Hz]";
-        
+
         return oss.str();
     }
-    
+
     // Find resolution by dimensions
     std::optional<size_t> FindResolutionIndex(int width, int height) const {
         for (size_t i = 0; i < resolutions.size(); ++i) {
@@ -152,11 +160,11 @@ struct DisplayInfo {
         }
         return std::nullopt;
     }
-    
+
     // Find refresh rate index within a resolution
     std::optional<size_t> FindRefreshRateIndex(size_t resolution_index, const RationalRefreshRate& refresh_rate) const {
         if (resolution_index >= resolutions.size()) return std::nullopt;
-        
+
         const auto& res = resolutions[resolution_index];
         for (size_t i = 0; i < res.refresh_rates.size(); ++i) {
             if (res.refresh_rates[i] == refresh_rate) {
@@ -165,23 +173,23 @@ struct DisplayInfo {
         }
         return std::nullopt;
     }
-    
+
     // Find the closest supported resolution to current settings
     std::optional<size_t> FindClosestResolutionIndex() const {
         if (resolutions.empty()) return std::nullopt;
-        
+
         // Find exact match first
         for (size_t i = 0; i < resolutions.size(); ++i) {
             if (resolutions[i].width == width && resolutions[i].height == height) {
                 return i;
             }
         }
-        
+
         // If no exact match, find closest by area
         size_t closest_index = 0;
         int current_area = width * height;
         int min_diff = std::abs(resolutions[0].width * resolutions[0].height - current_area);
-        
+
         for (size_t i = 1; i < resolutions.size(); ++i) {
             int area = resolutions[i].width * resolutions[i].height;
             int diff = std::abs(area - current_area);
@@ -190,29 +198,29 @@ struct DisplayInfo {
                 closest_index = i;
             }
         }
-        
+
         return closest_index;
     }
-    
+
     // Find the closest supported refresh rate within a resolution to current refresh rate
     std::optional<size_t> FindClosestRefreshRateIndex(size_t resolution_index) const {
         if (resolution_index >= resolutions.size()) return std::nullopt;
-        
+
         const auto& res = resolutions[resolution_index];
         if (res.refresh_rates.empty()) return std::nullopt;
-        
+
         // Find exact match first
         for (size_t i = 0; i < res.refresh_rates.size(); ++i) {
             if (res.refresh_rates[i] == current_refresh_rate) {
                 return i;
             }
         }
-        
+
         // If no exact match, find closest by frequency
         size_t closest_index = 0;
         double current_hz = current_refresh_rate.ToHz();
         double min_diff = std::abs(res.refresh_rates[0].ToHz() - current_hz);
-        
+
         for (size_t i = 1; i < res.refresh_rates.size(); ++i) {
             double hz = res.refresh_rates[i].ToHz();
             double diff = std::abs(hz - current_hz);
@@ -221,25 +229,25 @@ struct DisplayInfo {
                 closest_index = i;
             }
         }
-        
+
         return closest_index;
     }
-    
+
     // Get resolution labels for UI
     std::vector<std::string> GetResolutionLabels() const {
         std::vector<std::string> labels;
         labels.reserve(resolutions.size() + 1);
-        
+
         // Option 0: Current Resolution
         labels.push_back(std::string("Current Resolution (") + GetCurrentResolutionString() + ")");
-        
+
         for (const auto& res : resolutions) {
             labels.push_back(res.ToString());
         }
-        
+
         return labels;
     }
-    
+
     // Get refresh rate labels for a specific resolution
     std::vector<std::string> GetRefreshRateLabels(size_t resolution_index) const {
         // Map UI index to underlying resolution index
@@ -253,7 +261,7 @@ struct DisplayInfo {
             if ((resolution_index - 1) >= resolutions.size()) return {};
             effective_index = resolution_index - 1;
         }
-        
+
         const auto& res = resolutions[effective_index];
         std::vector<std::string> labels;
         // +2 for option 0 (Current) and option 1 (Max supported)
@@ -287,56 +295,56 @@ class DisplayCache {
 private:
     std::atomic<std::shared_ptr<std::vector<std::unique_ptr<DisplayInfo>>>> displays;
     std::atomic<bool> is_initialized;
-    
+
 public:
     DisplayCache() : displays(std::make_shared<std::vector<std::unique_ptr<DisplayInfo>>>()), is_initialized(false) {}
-    
+
     // Initialize the cache by enumerating all displays
     bool Initialize();
-    
+
     // Refresh the cache (re-enumerate displays)
     bool Refresh();
-    
+
     // Get number of displays
     size_t GetDisplayCount() const;
 
     // Get all displays
     std::shared_ptr<std::vector<std::unique_ptr<DisplayInfo>>> GetDisplays() const;
-    
+
     // Get display by index
     const DisplayInfo* GetDisplay(size_t index) const;
-    
+
     // Get display by monitor handle
     const DisplayInfo* GetDisplayByHandle(HMONITOR monitor) const;
-    
+
     // Get display by device name
     const DisplayInfo* GetDisplayByDeviceName(const std::wstring& device_name) const;
-    
+
     // Get resolution labels for a specific display
     std::vector<std::string> GetResolutionLabels(size_t display_index) const;
-    
+
     // Get refresh rate labels for a specific display and resolution
     std::vector<std::string> GetRefreshRateLabels(size_t display_index, size_t resolution_index) const;
-    
+
     // Get current resolution for a display
     bool GetCurrentResolution(size_t display_index, int& width, int& height) const;
-    
+
     // Get current refresh rate for a display
     bool GetCurrentRefreshRate(size_t display_index, RationalRefreshRate& refresh_rate) const;
-    
+
     // Get rational refresh rate for a specific display, resolution, and refresh rate index
     bool GetRationalRefreshRate(size_t display_index, size_t resolution_index, size_t refresh_rate_index,
                                RationalRefreshRate& refresh_rate) const;
-    
+
     // Get current display info (current settings, not supported modes)
     bool GetCurrentDisplayInfo(size_t display_index, int& width, int& height, RationalRefreshRate& refresh_rate) const;
-    
+
     // Get supported modes info (what the display can do)
     bool GetSupportedModes(size_t display_index, std::vector<Resolution>& resolutions) const;
-    
+
     // Check if cache is initialized
     bool IsInitialized() const { return is_initialized.load(std::memory_order_acquire); }
-    
+
     // Clear the cache
     void Clear() {
         displays.store(std::make_shared<std::vector<std::unique_ptr<DisplayInfo>>>(), std::memory_order_release);
@@ -344,11 +352,11 @@ public:
     }
 
     // Swap internal data from another cache (used for atomic-like updates)
-    void SwapFrom(DisplayCache&& other); 
+    void SwapFrom(DisplayCache&& other);
 
     // Copy a display snapshot by index; returns false if out of range
     bool CopyDisplay(size_t index, DisplayInfo &out) const;
-    
+
     // Print vSyncFreqDivider information for debugging
     void PrintVSyncFreqDivider() const;
 };

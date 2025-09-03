@@ -135,6 +135,7 @@ static void PushCapturedDebugString(const std::string &text)
 	std::lock_guard<std::mutex> lock(g_messages_mutex);
 	if (g_messages.size() >= MAX_MESSAGES)
 		g_messages.erase(g_messages.begin());
+	reshade::log::message(level, text.c_str());
 	g_messages.push_back({ text, level, static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count()) });
 }
 

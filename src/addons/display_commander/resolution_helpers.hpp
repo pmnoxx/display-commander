@@ -1,15 +1,12 @@
 #pragma once
 
 #include <windows.h>
-#include <vector>
-#include <string>
 
 namespace resolution {
 
 
 
-// Helper function to get available refresh rates for a monitor and resolution
-std::vector<std::string> GetRefreshRateLabels(int monitor_index, int width, int height);
+
 
 // Helper function to get selected resolution
 bool GetSelectedResolution(int monitor_index, int resolution_index, int& out_width, int& out_height);

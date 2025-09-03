@@ -22,13 +22,13 @@ struct DisplayTimingInfo {
     std::wstring device_path;  // Monitor device path
     std::wstring gdi_device_name;  // GDI device name (matches GetMonitorInfoW format)
     uint32_t connector_instance;  // Connector instance
-    
+
     // Helper methods for calculated values
     double GetPixelClockMHz() const;
     double GetHSyncFreqHz() const;
     double GetHSyncFreqKHz() const;
     double GetVSyncFreqHz() const;
-    
+
     // Format timing info similar to Special-K log format
     std::wstring GetFormattedString() const;
 };
@@ -44,3 +44,8 @@ extern void LogAllDisplayTimingInfo();
 
 // Utility function to convert wstring to string (similar to Special-K's SK_WideCharToUTF8)
 std::string WideCharToUTF8(const std::wstring& in);
+
+// Get current display settings using QueryDisplayConfig for precise refresh rate
+bool GetCurrentDisplaySettingsQueryConfig(HMONITOR monitor, int& width, int& height,
+                                         uint32_t& refresh_numerator, uint32_t& refresh_denominator,
+                                         int& x, int& y);

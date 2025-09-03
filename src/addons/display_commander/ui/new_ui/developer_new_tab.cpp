@@ -384,6 +384,23 @@ void DrawLatencyDisplay() {
     ImGui::SameLine();
     ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "(smoothed)");
     
+    ImGui::Spacing();
+    ImGui::Separator();
+    
+    // DLLS-G Version Information
+    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "=== DLLS-G Information ===");
+    
+    // DLLS-G Loaded Status
+    bool dlls_g_loaded = ::g_dlls_g_loaded.load();
+    ImGui::Text("DLLS-G Loaded: %s", dlls_g_loaded ? "Yes" : "No");
+    
+    // DLLS-G Version
+    auto version_ptr = ::g_dlls_g_version.load();
+    if (version_ptr) {
+        ImGui::Text("DLLS-G Version: %s", version_ptr->c_str());
+    } else {
+        ImGui::Text("DLLS-G Version: Unknown");
+    }
 
 }
 

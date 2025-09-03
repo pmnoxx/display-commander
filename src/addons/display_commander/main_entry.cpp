@@ -15,6 +15,7 @@
 #include "dxgi/dxgi_device_info.hpp"
 #include "nvapi/nvapi_fullscreen_prevention.hpp"
 #include "nvapi/nvapi_hdr_monitor.hpp"
+#include "nvapi/dlssfg_version_detector.hpp"
 // Restore display settings on exit if enabled
 #include "display_restore.hpp"
 #include "process_exit_hooks.hpp"
@@ -227,6 +228,27 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
       LogInfo("DXGI Device Info Manager initialized successfully");
     } else {
       LogWarn("Failed to initialize DXGI Device Info Manager");
+    }
+    if (g_dlssfgVersionDetector.Initialize()) {
+      if (g_dlssfgVersionDetector.IsAvailable()) {
+        const auto& version = g_dlssfgVersionDetector.GetVersion();
+        LogInfo("DLSS-FG detected - Version: %s (DLL: %s)", 
+                version.getFormattedVersion().c_str(), 
+                version.dll_path.c_str());
+        g_dlssfg_detected.store(true);
+        
+        // Update global DLLS-G variables
+        g_dlls_g_loaded.store(true);
+        g_dlls_g_version.store(std::make_shared<const std::string>(version.getFormattedVersion()));
+      } else {
+        LogInfo("DLSS-FG Version Detector initialized - No DLSS-FG DLL found");
+        g_dlls_g_loaded.store(false);
+        g_dlls_g_version.store(std::make_shared<const std::string>("Not Found"));
+      }
+    } else {
+      LogWarn("Failed to initialize DLSS-FG Version Detector");
+      g_dlls_g_loaded.store(false);
+      g_dlls_g_version.store(std::make_shared<const std::string>("Detection Failed"));
     }
     
     // Mark DLL initialization as complete - now DXGI calls are safe

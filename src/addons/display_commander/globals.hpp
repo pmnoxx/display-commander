@@ -351,3 +351,10 @@ extern std::atomic<bool> s_reflex_low_latency;   // Low Latency Mode
 extern std::atomic<bool> s_reflex_boost;         // Low Latency Boost
 extern std::atomic<bool> s_reflex_use_markers;   // Use markers to optimize
 extern std::atomic<bool> s_enable_reflex_logging; // Enable Reflex logging
+
+// DLSS-FG Detection state
+extern std::atomic<bool> g_dlssfg_detected;
+
+// DLLS-G (DLSS Frame Generation) status
+extern std::atomic<bool> g_dlls_g_loaded;        // DLLS-G loaded status
+extern std::atomic<std::shared_ptr<const std::string>> g_dlls_g_version; // DLLS-G version string

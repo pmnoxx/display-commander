@@ -139,6 +139,9 @@ std::atomic<float> g_min_latency_ms{0.0f};
 std::atomic<float> g_max_latency_ms{0.0f};
 std::atomic<uint64_t> g_current_frame{0};
 
+// DLSS-FG Detection state
+std::atomic<bool> g_dlssfg_detected{false};
+
 
 // Backbuffer dimensions
 std::atomic<int> g_last_backbuffer_width{0};
@@ -255,3 +258,7 @@ std::atomic<bool> s_reflex_low_latency{false};
 std::atomic<bool> s_reflex_boost{false};
 std::atomic<bool> s_reflex_use_markers{true};
 std::atomic<bool> s_enable_reflex_logging{false}; // Disabled by default
+
+// DLLS-G (DLSS Frame Generation) status
+std::atomic<bool> g_dlls_g_loaded{false};
+std::atomic<std::shared_ptr<const std::string>> g_dlls_g_version{std::make_shared<const std::string>("Unknown")};

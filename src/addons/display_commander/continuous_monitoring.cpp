@@ -1,6 +1,7 @@
 #include "addon.hpp"
 #include "utils.hpp"
 #include "background_window.hpp"
+#include "nvapi/dlssfg_version_detector.hpp"
 #include <thread>
 #include <sstream>
 #include <algorithm>
@@ -221,6 +222,28 @@ void ContinuousMonitoringThread() {
             if (now - last_cache_refresh >= std::chrono::seconds(5)) {
                 display_cache::g_displayCache.Refresh();
                 last_cache_refresh = now;
+            }
+        }
+        
+        // DLSS-FG Detection: Check every 5 seconds for runtime-loaded DLSS-G DLLs
+        {
+            if ((seconds_counter % 5) == 0) {
+                // Only try to detect if we haven't found it yet
+                if (!g_dlssfg_detected.load()) {
+                    if (g_dlssfgVersionDetector.RefreshVersion()) {
+                        if (g_dlssfgVersionDetector.IsAvailable()) {
+                            const auto& version = g_dlssfgVersionDetector.GetVersion();
+                            LogInfo("DLSS-FG detected at runtime - Version: %s (DLL: %s)", 
+                                    version.getFormattedVersion().c_str(), 
+                                    version.dll_path.c_str());
+                            g_dlssfg_detected.store(true);
+                            
+                            // Update global DLLS-G variables
+                            g_dlls_g_loaded.store(true);
+                            g_dlls_g_version.store(std::make_shared<const std::string>(version.getFormattedVersion()));
+                        }
+                    }
+                }
             }
         }
         

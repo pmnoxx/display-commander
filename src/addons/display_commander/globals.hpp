@@ -27,6 +27,13 @@ class DXGIDeviceInfoManager;
 // DLL initialization state
 extern std::atomic<bool> g_dll_initialization_complete;
 
+// Shared DXGI factory to avoid redundant CreateDXGIFactory calls
+extern Microsoft::WRL::ComPtr<IDXGIFactory1> g_shared_dxgi_factory;
+extern std::mutex g_shared_factory_mutex;
+
+// Helper function to get shared DXGI factory (thread-safe)
+Microsoft::WRL::ComPtr<IDXGIFactory1> GetSharedDXGIFactory();
+
 // Enums
 enum class DxgiBypassMode : std::uint8_t { kUnknown, kComposed, kOverlay, kIndependentFlip };
 enum class WindowStyleMode : std::uint8_t { KEEP, BORDERLESS, OVERLAPPED_WINDOW };

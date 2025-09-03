@@ -41,13 +41,8 @@ bool GetCurrentDisplaySettings(HMONITOR monitor, int& width, int& height, Ration
         return false;
     }
     // Fallback: Try to get current settings using DXGI for precise refresh rate
-    // Skip DXGI calls during DLL initialization to avoid loader lock violations
-    if (!g_dll_initialization_complete.load()) {
-        return false;
-    }
-    
-    ComPtr<IDXGIFactory1> factory;
-    if (SUCCEEDED(CreateDXGIFactory1(IID_PPV_ARGS(&factory))) && factory) {
+    ComPtr<IDXGIFactory1> factory = GetSharedDXGIFactory();
+    if (factory) {
         for (UINT a = 0; ; ++a) {
             ComPtr<IDXGIAdapter1> adapter;
             if (factory->EnumAdapters1(a, &adapter) == DXGI_ERROR_NOT_FOUND) break;
@@ -135,13 +130,8 @@ bool GetCurrentDisplaySettings(HMONITOR monitor, int& width, int& height, Ration
 
 // Helper function to enumerate resolutions and refresh rates using DXGI
 void EnumerateDisplayModes(HMONITOR monitor, std::vector<Resolution>& resolutions) {
-    // Skip DXGI calls during DLL initialization to avoid loader lock violations
-    if (!g_dll_initialization_complete.load()) {
-        return;
-    }
-    
-    ComPtr<IDXGIFactory1> factory;
-    if (FAILED(CreateDXGIFactory1(IID_PPV_ARGS(&factory))) || !factory) {
+    ComPtr<IDXGIFactory1> factory = GetSharedDXGIFactory();
+    if (!factory) {
         return;
     }
     

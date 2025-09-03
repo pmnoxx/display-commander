@@ -11,6 +11,10 @@
 // DLL initialization state - prevents DXGI calls during DllMain
 std::atomic<bool> g_dll_initialization_complete{false};
 
+// Shared DXGI factory to avoid redundant CreateDXGIFactory calls
+Microsoft::WRL::ComPtr<IDXGIFactory1> g_shared_dxgi_factory;
+std::mutex g_shared_factory_mutex;
+
 // Window settings
 std::atomic<int> s_windowed_width{3440}; // 21:9 ultrawide width
 std::atomic<int> s_windowed_height{1440}; // 21:9 ultrawide height
@@ -198,6 +202,36 @@ void UpdateHdr10OverrideStatus(const std::string& status) {
 // Helper function for updating HDR10 override timestamp atomically
 void UpdateHdr10OverrideTimestamp(const std::string& timestamp) {
     g_hdr10_override_timestamp.store(std::make_shared<std::string>(timestamp));
+}
+
+// Helper function to get shared DXGI factory (thread-safe)
+Microsoft::WRL::ComPtr<IDXGIFactory1> GetSharedDXGIFactory() {
+    // Skip DXGI calls during DLL initialization to avoid loader lock violations
+    if (!g_dll_initialization_complete.load()) {
+        return nullptr;
+    }
+    
+    // Double-checked locking pattern for thread safety
+    if (g_shared_dxgi_factory) {
+        return g_shared_dxgi_factory;
+    }
+    
+    std::lock_guard<std::mutex> lock(g_shared_factory_mutex);
+    
+    // Check again inside the lock (another thread might have created it)
+    if (g_shared_dxgi_factory) {
+        return g_shared_dxgi_factory;
+    }
+    
+    // Create the shared factory
+    HRESULT hr = CreateDXGIFactory1(IID_PPV_ARGS(&g_shared_dxgi_factory));
+    if (FAILED(hr)) {
+        LogWarn("Failed to create shared DXGI factory");
+        return nullptr;
+    }
+    
+    LogInfo("Shared DXGI factory created successfully");
+    return g_shared_dxgi_factory;
 }
 
 // Swapchain event counters - reset on each swapchain creation

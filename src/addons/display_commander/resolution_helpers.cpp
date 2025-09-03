@@ -3,7 +3,6 @@
 #include <dxgi1_6.h>
 #include <d3d11.h>
 #include <wrl/client.h>
-#include <iomanip>
 #include <cmath>
 #include <cwchar> // for wcslen
 
@@ -15,171 +14,7 @@ namespace resolution {
 
 
 
-// Helper function to get available refresh rates for a monitor and resolution
-std::vector<std::string> GetRefreshRateLabels(int monitor_index, int width, int height) {
-    std::vector<std::string> labels;
 
-    // Get monitor handle
-    std::vector<HMONITOR> monitors;
-    EnumDisplayMonitors(nullptr, nullptr,
-        [](HMONITOR hmon, HDC, LPRECT, LPARAM lparam) -> BOOL {
-            auto* monitors_ptr = reinterpret_cast<std::vector<HMONITOR>*>(lparam);
-            monitors_ptr->push_back(hmon);
-            return TRUE;
-        },
-        reinterpret_cast<LPARAM>(&monitors));
-
-    if (monitor_index >= 0 && monitor_index < static_cast<int>(monitors.size())) {
-        HMONITOR hmon = monitors[monitor_index];
-
-        // Try DXGI first for high precision refresh rates
-        bool used_dxgi = false;
-        ComPtr<IDXGIFactory1> factory = GetSharedDXGIFactory();
-        if (factory) {
-            for (UINT a = 0; ; ++a) {
-                ComPtr<IDXGIAdapter1> adapter;
-                if (factory->EnumAdapters1(a, &adapter) == DXGI_ERROR_NOT_FOUND) break;
-                for (UINT o = 0; ; ++o) {
-                    ComPtr<IDXGIOutput> output;
-                    if (adapter->EnumOutputs(o, &output) == DXGI_ERROR_NOT_FOUND) break;
-                    DXGI_OUTPUT_DESC desc{};
-                    if (FAILED(output->GetDesc(&desc))) continue;
-                    if (desc.Monitor != hmon) continue;
-
-                    ComPtr<IDXGIOutput1> output1;
-                    if (FAILED(output.As(&output1)) || !output1) continue;
-
-                    UINT num_modes = 0;
-                    if (FAILED(output1->GetDisplayModeList1(
-                            DXGI_FORMAT_R8G8B8A8_UNORM,
-                            0,
-                            &num_modes,
-                            nullptr))) {
-                        continue;
-                    }
-                    std::vector<DXGI_MODE_DESC1> modes(num_modes);
-                    if (FAILED(output1->GetDisplayModeList1(
-                            DXGI_FORMAT_R8G8B8A8_UNORM,
-                            0,
-                            &num_modes,
-                            modes.data()))) {
-                        continue;
-                    }
-
-                    std::vector<double> rates;
-                    // Store rational refresh rate data for later use
-                    static std::map<std::string, std::pair<UINT32, UINT32>> rational_rates;
-                    rational_rates.clear();
-
-                    for (const auto& m : modes) {
-                        if (static_cast<int>(m.Width) == width && static_cast<int>(m.Height) == height) {
-                            if (m.RefreshRate.Denominator != 0) {
-                                double hz = static_cast<double>(m.RefreshRate.Numerator) / static_cast<double>(m.RefreshRate.Denominator);
-                                // Deduplicate with epsilon (e.g., 59.94 vs 59.9401)
-                                bool exists = false;
-                                for (double r : rates) {
-                                    if (std::fabs(r - hz) < 0.001) { exists = true; break; }
-                                }
-                                if (!exists) {
-                                    rates.push_back(hz);
-                                    // Store the rational values
-                                    std::ostringstream oss;
-                                    oss << std::setprecision(10) << hz;
-                                    std::string rate_str = oss.str();
-                                    // Remove trailing zeros after decimal point
-                                    size_t decimal_pos = rate_str.find('.');
-                                    if (decimal_pos != std::string::npos) {
-                                        size_t last_nonzero = rate_str.find_last_not_of('0');
-                                        if (last_nonzero == decimal_pos) {
-                                            // All zeros after decimal, remove decimal point too
-                                            rate_str = rate_str.substr(0, decimal_pos);
-                                        } else if (last_nonzero > decimal_pos) {
-                                            // Remove trailing zeros but keep some precision
-                                            rate_str = rate_str.substr(0, last_nonzero + 1);
-                                        }
-                                    }
-                                    std::string key = rate_str + "Hz";
-                                    rational_rates[key] = {m.RefreshRate.Numerator, m.RefreshRate.Denominator};
-                                }
-                            }
-                        }
-                    }
-
-                    std::sort(rates.begin(), rates.end()); // ascending
-                    for (double r : rates) {
-                        std::ostringstream oss;
-                        oss << std::setprecision(10) << r;
-                        std::string rate_str = oss.str();
-                        // Remove trailing zeros after decimal point
-                        size_t decimal_pos = rate_str.find('.');
-                        if (decimal_pos != std::string::npos) {
-                            size_t last_nonzero = rate_str.find_last_not_of('0');
-                            if (last_nonzero == decimal_pos) {
-                                // All zeros after decimal, remove decimal point too
-                                rate_str = rate_str.substr(0, decimal_pos);
-                            } else if (last_nonzero > decimal_pos) {
-                                // Remove trailing zeros but keep some precision
-                                rate_str = rate_str.substr(0, last_nonzero + 1);
-                            }
-                        }
-                        std::string key = rate_str + "Hz";
-                        labels.push_back(key);
-                    }
-
-                    used_dxgi = true;
-                    break; // matched output found
-                }
-                if (used_dxgi) break;
-            }
-        }
-
-        // Fallback to EnumDisplaySettings if DXGI path failed
-        if (!used_dxgi) {
-            MONITORINFOEXW mi;
-            mi.cbSize = sizeof(mi);
-            if (GetMonitorInfoW(hmon, &mi)) {
-                std::wstring device_name = mi.szDevice;
-                DEVMODEW dm;
-                dm.dmSize = sizeof(dm);
-                for (int i = 0; EnumDisplaySettingsW(device_name.c_str(), i, &dm); i++) {
-                    if (dm.dmPelsWidth == width && dm.dmPelsHeight == height) {
-                        std::ostringstream oss;
-                        // Note: dmDisplayFrequency is integer; present it as xx Hz (no trailing zeros)
-                        oss << std::setprecision(10) << static_cast<double>(dm.dmDisplayFrequency);
-                        std::string rate_str = oss.str();
-                        // Remove trailing zeros after decimal point
-                        size_t decimal_pos = rate_str.find('.');
-                        if (decimal_pos != std::string::npos) {
-                            size_t last_nonzero = rate_str.find_last_not_of('0');
-                            if (last_nonzero == decimal_pos) {
-                                // All zeros after decimal, remove decimal point too
-                                rate_str = rate_str.substr(0, decimal_pos);
-                            } else if (last_nonzero > decimal_pos) {
-                                // Remove trailing zeros but keep some precision
-                                rate_str = rate_str.substr(0, last_nonzero + 1);
-                            }
-                        }
-                        std::string refresh_rate = rate_str + "Hz";
-                        bool found = false;
-                        for (const auto& existing : labels) {
-                            if (existing == refresh_rate) { found = true; break; }
-                        }
-                        if (!found) labels.push_back(refresh_rate);
-                    }
-                }
-
-                std::sort(labels.begin(), labels.end(), [](const std::string& a, const std::string& b) {
-                    float freq_a = 0.f, freq_b = 0.f;
-                        sscanf_s(a.c_str(), "%fHz", &freq_a);
-    sscanf_s(b.c_str(), "%fHz", &freq_b);
-                    return freq_a < freq_b;
-                });
-            }
-        }
-    }
-
-    return labels;
-}
 
 // Helper function to get selected resolution
 bool GetSelectedResolution(int monitor_index, int resolution_index, int& out_width, int& out_height) {
@@ -195,7 +30,16 @@ bool GetSelectedResolution(int monitor_index, int resolution_index, int& out_wid
 
 // Helper function to get selected refresh rate
 bool GetSelectedRefreshRate(int monitor_index, int width, int height, int refresh_rate_index, float& out_refresh_rate) {
-    auto labels = GetRefreshRateLabels(monitor_index, width, height);
+    // Get the display from cache
+    const auto* display = display_cache::g_displayCache.GetDisplay(static_cast<size_t>(monitor_index));
+    if (!display) return false;
+
+    // Find the resolution index for the given width/height
+    auto resolution_index = display->FindResolutionIndex(width, height);
+    if (!resolution_index.has_value()) return false;
+
+    // Get refresh rate labels from cache
+    auto labels = display_cache::g_displayCache.GetRefreshRateLabels(static_cast<size_t>(monitor_index), resolution_index.value());
     if (refresh_rate_index >= 0 && refresh_rate_index < static_cast<int>(labels.size())) {
         std::string selected_refresh_rate = labels[refresh_rate_index];
         if (sscanf_s(selected_refresh_rate.c_str(), "%fHz", &out_refresh_rate) == 1) {

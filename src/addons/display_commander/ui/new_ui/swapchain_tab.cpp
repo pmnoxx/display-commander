@@ -15,7 +15,7 @@ namespace ui::new_ui {
 void DrawSwapchainTab() {
     ImGui::Text("Swapchain Tab - DXGI Information");
     ImGui::Separator();
-    
+
     // Draw all swapchain-related sections
     DrawSwapchainEventCounters();
     ImGui::Spacing();
@@ -28,7 +28,7 @@ void DrawSwapchainTab() {
 
 void DrawSwapchainInfo() {
     if (ImGui::CollapsingHeader("Swapchain Information", ImGuiTreeNodeFlags_DefaultOpen)) {
-        
+
         auto* swapchain = ::g_last_swapchain_ptr.load();
         if (swapchain) {
             // Colorspace information
@@ -59,20 +59,20 @@ void DrawSwapchainInfo() {
                     auto desc = device->get_resource_desc(bb);
                     ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "Backbuffer:");
                     ImGui::Text("  Resolution: %dx%d", desc.texture.width, desc.texture.height);
-                    ImGui::Text("  Format: %s", 
+                    ImGui::Text("  Format: %s",
                         desc.texture.format == reshade::api::format::r8g8b8a8_unorm ? "R8G8B8A8_UNORM" :
                         desc.texture.format == reshade::api::format::r10g10b10a2_unorm ? "R10G10B10A2_UNORM" :
                         desc.texture.format == reshade::api::format::r16g16b16a16_float ? "R16G16B16A16_FLOAT" :
                         "Other");
                     ImGui::Text("  Backbuffer Count: %d", swapchain->get_back_buffer_count());
-                    
+
                     // Try to get DXGI swapchain description for swapchain properties
                     auto* dxgi_swapchain = reinterpret_cast<IDXGISwapChain*>(swapchain->get_native());
                     if (dxgi_swapchain != nullptr) {
                         DXGI_SWAP_CHAIN_DESC scd{};
                         if (SUCCEEDED(dxgi_swapchain->GetDesc(&scd))) {
                             ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "DXGI Swapchain Properties:");
-                            
+
                             // Show swap effect
                             const char* swap_effect = "Unknown";
                             switch (scd.SwapEffect) {
@@ -83,11 +83,11 @@ void DrawSwapchainInfo() {
                                 default: swap_effect = "Other"; break;
                             }
                             ImGui::Text("  Swap Effect: %s", swap_effect);
-                            
+
                             // Show buffer count and usage
                             ImGui::Text("  Buffer Count: %u", scd.BufferCount);
                             ImGui::Text("  Buffer Usage: 0x%08X", scd.BufferUsage);
-                            
+
                             // Show format
                             const char* format_str = "Unknown";
                             switch (scd.BufferDesc.Format) {
@@ -101,15 +101,15 @@ void DrawSwapchainInfo() {
                                 default: format_str = "Format_0x%08X"; break;
                             }
                             ImGui::Text("  Buffer Format: %s", format_str);
-                            
+
                             // Show refresh rate if available
                             if (scd.BufferDesc.RefreshRate.Numerator > 0 && scd.BufferDesc.RefreshRate.Denominator > 0) {
-                                float refresh_rate = static_cast<float>(scd.BufferDesc.RefreshRate.Numerator) / 
+                                float refresh_rate = static_cast<float>(scd.BufferDesc.RefreshRate.Numerator) /
                                                    static_cast<float>(scd.BufferDesc.RefreshRate.Denominator);
                                 ImGui::Text("  Refresh Rate: %.3f Hz", refresh_rate);
                             }
                         }
-                        
+
                         // Try to get additional info from IDXGISwapChain1
                         Microsoft::WRL::ComPtr<IDXGISwapChain1> swapchain1;
                         if (SUCCEEDED(dxgi_swapchain->QueryInterface(IID_PPV_ARGS(&swapchain1)))) {
@@ -121,17 +121,6 @@ void DrawSwapchainInfo() {
                                 ImGui::Text("  Sample Count: %u", desc1.SampleDesc.Count);
                                 ImGui::Text("  Sample Quality: %u", desc1.SampleDesc.Quality);
                             }
-                        }
-                    }
-                    
-                    // VSYNC and FPS Limit Information
-                    ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "Synchronization Info:");
-                    {
-                        uint32_t interval = ::GetSwapchainSyncInterval(swapchain);
-                        if (interval == UINT32_MAX) {
-                            ImGui::Text("  Sync Interval: Default (app-controlled)");
-                        } else {
-                            ImGui::Text("  Sync Interval: %u", interval);
                         }
                     }
                 }
@@ -146,17 +135,17 @@ void DrawSwapchainInfo() {
                     ImGui::Text("  Position: (%ld, %ld) to (%ld, %ld)", rect.left, rect.top, rect.right, rect.bottom);
                     ImGui::Text("  Size: %ldx%ld", rect.right - rect.left, rect.bottom - rect.top);
                 }
-                
+
                 // Window state
                 LONG_PTR style = GetWindowLongPtr(hwnd, GWL_STYLE);
                 ImGui::Text("  Fullscreen: %s", (style & WS_POPUP) ? "Yes" : "No");
                 ImGui::Text("  Borderless: %s", (style & WS_POPUP) && !(style & WS_CAPTION) ? "Yes" : "No");
-                
+
                 // Try to detect VSYNC through other means
                 ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "VSYNC Detection:");
                 bool is_fullscreen = (style & WS_POPUP) != 0;
                 ImGui::Text("  Fullscreen Mode: %s", is_fullscreen ? "Yes" : "No");
-                
+
                 if (is_fullscreen) {
                     ImGui::Text("    -> VSYNC likely enabled in fullscreen mode");
                 }
@@ -170,24 +159,24 @@ void DrawSwapchainInfo() {
 void DrawAdapterInfo() {
     if (ImGui::CollapsingHeader("Adapter Information", ImGuiTreeNodeFlags_DefaultOpen)) {
         extern std::unique_ptr<DXGIDeviceInfoManager> g_dxgiDeviceInfoManager;
-        
+
         if (::g_dxgiDeviceInfoManager && ::g_dxgiDeviceInfoManager->IsInitialized()) {
             const auto& adapters = ::g_dxgiDeviceInfoManager->GetAdapters();
-            
+
             for (size_t i = 0; i < adapters.size(); ++i) {
                 const auto& adapter = adapters[i];
-                
+
                 // Adapter header
                 std::string adapter_title = adapter.name + " - " + adapter.description;
                 if (ImGui::TreeNodeEx(adapter_title.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
-                    
+
                     // Adapter details
                     ImGui::Text("Description: %s", adapter.description.c_str());
                     ImGui::Text("Dedicated Video Memory: %.1f GB", adapter.dedicated_video_memory / (1024.0 * 1024.0 * 1024.0));
                     ImGui::Text("Dedicated System Memory: %.1f GB", adapter.dedicated_system_memory / (1024.0 * 1024.0 * 1024.0));
                     ImGui::Text("Shared System Memory: %.1f GB", adapter.shared_system_memory / (1024.0 * 1024.0 * 1024.0));
                     ImGui::Text("Software Adapter: %s", adapter.is_software ? "Yes" : "No");
-                    
+
                     // LUID info
                     std::ostringstream luid_oss;
                     luid_oss << "Adapter LUID: 0x" << std::hex << adapter.adapter_luid.HighPart << "_" << adapter.adapter_luid.LowPart;
@@ -197,46 +186,46 @@ void DrawAdapterInfo() {
                     if (!adapter.outputs.empty()) {
                         ImGui::Separator();
                         ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Outputs (%zu):", adapter.outputs.size());
-                        
+
                         for (size_t j = 0; j < adapter.outputs.size(); ++j) {
                             const auto& output = adapter.outputs[j];
                             std::string output_title = "Output " + std::to_string(j) + " - " + output.device_name;
-                            
+
                             if (ImGui::TreeNodeEx(output_title.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
-                                
+
                                 // Basic output info
                                 ImGui::Text("Device Name: %s", output.device_name.c_str());
                                 ImGui::Text("Monitor Name: %s", output.monitor_name.c_str());
                                 ImGui::Text("Attached: %s", output.is_attached ? "Yes" : "No");
-                                ImGui::Text("Desktop Coordinates: (%ld, %ld) to (%ld, %ld)", 
+                                ImGui::Text("Desktop Coordinates: (%ld, %ld) to (%ld, %ld)",
                                            output.desktop_coordinates.left, output.desktop_coordinates.top,
                                            output.desktop_coordinates.right, output.desktop_coordinates.bottom);
-                                
+
                                 // Resolution info
                                 if (output.supported_modes.size() > 0) {
                                     ImGui::Separator();
                                     ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Supported Resolutions (%zu):", output.supported_modes.size());
-                                    
+
                                     // Group modes by resolution
                                     std::map<std::pair<uint32_t, uint32_t>, std::vector<float>> resolution_groups;
                                     for (const auto& mode : output.supported_modes) {
                                         if (mode.RefreshRate.Denominator > 0) {
-                                            float refresh_rate = static_cast<float>(mode.RefreshRate.Numerator) / 
+                                            float refresh_rate = static_cast<float>(mode.RefreshRate.Numerator) /
                                                                static_cast<float>(mode.RefreshRate.Denominator);
                                             resolution_groups[{mode.Width, mode.Height}].push_back(refresh_rate);
                                         }
                                     }
-                                    
+
                                     // Display grouped resolutions
                                     if (!resolution_groups.empty()) {
                                         for (const auto& group : resolution_groups) {
                                             const auto& resolution = group.first;
                                             const auto& refresh_rates = group.second;
-                                            
+
                                             // Sort refresh rates for better display
                                             std::vector<float> sorted_rates = refresh_rates;
                                             std::sort(sorted_rates.begin(), sorted_rates.end());
-                                            
+
                                             std::string refresh_str;
                                             for (size_t i = 0; i < sorted_rates.size(); ++i) {
                                                 if (i > 0) refresh_str += ", ";
@@ -252,12 +241,12 @@ void DrawAdapterInfo() {
                                         ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "  No valid refresh rate information available");
                                     }
                                 }
-                                
+
                                 ImGui::TreePop();
                             }
                         }
                     }
-                    
+
                     ImGui::TreePop();
                 }
             }
@@ -276,11 +265,11 @@ void DrawDxgiCompositionInfo() {
             case 3: mode_str = "Legacy Independent Flip"; break;
             default: mode_str = "Unknown"; break;
         }
-        
+
         // Check exclusive fullscreen status
         HWND hwnd = g_last_swapchain_hwnd.load();
         const bool is_exclusive_fullscreen = GetSpoofedFullscreenState(hwnd);
-        
+
         // Get backbuffer format
         std::string format_str = "Unknown";
         if (g_last_swapchain_ptr.load() != nullptr) {
@@ -305,7 +294,7 @@ void DrawDxgiCompositionInfo() {
                 }
             }
         }
-        
+
         // Get colorspace string
         std::string colorspace_str = "Unknown";
         switch (g_current_colorspace) {
@@ -316,12 +305,12 @@ void DrawDxgiCompositionInfo() {
             case reshade::api::color_space::hdr10_hlg: colorspace_str = "HDR10 HLG"; break;
             default: colorspace_str = "ColorSpace_" + std::to_string(static_cast<int>(g_current_colorspace)); break;
         }
-        
+
         ImGui::Text("DXGI Composition: %s", mode_str);
         ImGui::Text("Backbuffer: %dx%d", g_last_backbuffer_width.load(), g_last_backbuffer_height.load());
         ImGui::Text("Format: %s", format_str.c_str());
         ImGui::Text("Colorspace: %s", colorspace_str.c_str());
-        
+
         // Display HDR10 override status
         ImGui::Text("HDR10 Colorspace Override: %s (Last: %s)", g_hdr10_override_status.load()->c_str(), g_hdr10_override_timestamp.load()->c_str());
     }
@@ -331,11 +320,11 @@ void DrawSwapchainEventCounters() {
     if (ImGui::CollapsingHeader("Swapchain Event Counters", ImGuiTreeNodeFlags_DefaultOpen)) {
         ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Event Counters (Green = Working, Red = Not Working)");
         ImGui::Separator();
-        
+
         // Event visibility flags - set to false to hide specific events
         static bool event_visibility[] = {
             false,   // reshade::addon_event::begin_render_pass (0 == ok)
-            false,   // reshade::addon_event::end_render_pass (0 == ok) 
+            false,   // reshade::addon_event::end_render_pass (0 == ok)
             true,   // reshade::addon_event::create_swapchain (vsync on/off won't work)
             true,   // reshade::addon_event::init_swapchain
             true,   // reshade::addon_event::finish_present
@@ -360,11 +349,11 @@ void DrawSwapchainEventCounters() {
             true,   // reshade::addon_event::bind_resource
             true    // reshade::addon_event::map_resource
         };
-        
+
         // Display each event counter with color coding
         static const char* event_names[] = {
             "reshade::addon_event::begin_render_pass (0 == ok)",
-            "reshade::addon_event::end_render_pass (0 == ok)", 
+            "reshade::addon_event::end_render_pass (0 == ok)",
             "reshade::addon_event::create_swapchain (vsync on/off won't work)",
             "reshade::addon_event::init_swapchain",
             "reshade::addon_event::finish_present",
@@ -389,29 +378,29 @@ void DrawSwapchainEventCounters() {
             "reshade::addon_event::bind_resource",
             "reshade::addon_event::map_resource"
         };
-        
+
         uint32_t total_events = 0;
         uint32_t visible_events = 0;
-        
+
         for (int i = 0; i < 40; i++) {
             // Skip events that are set to invisible
             if (!event_visibility[i]) {
                 continue;
             }
-            
+
             uint32_t count = g_swapchain_event_counters[i].load();
             total_events += count;
             visible_events++;
-            
+
             // Green if > 0, red if 0
             ImVec4 color = (count > 0) ? ImVec4(0.0f, 1.0f, 0.0f, 1.0f) : ImVec4(1.0f, 0.0f, 0.0f, 1.0f);
             ImGui::TextColored(color, "%s: %u", event_names[i], count);
         }
-        
+
         ImGui::Separator();
         ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "Total Events (Visible): %u", total_events);
         ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Hidden Events: %u", 40 - visible_events);
-        
+
         // Show status message
         if (total_events > 0) {
             ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Status: Swapchain events are working correctly");
@@ -419,21 +408,21 @@ void DrawSwapchainEventCounters() {
             ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "Status: No swapchain events detected - check if addon is properly loaded");
         }
     }
-    
+
     // Power Saving Settings Section
     if (ImGui::CollapsingHeader("Power Saving Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
         ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "GPU Power Saving Controls");
         ImGui::Separator();
-        
+
         // Main power saving toggle
         static bool main_power_saving = s_no_render_in_background.load();
         if (ImGui::Checkbox("Enable Power Saving in Background", &main_power_saving)) {
             s_no_render_in_background.store(main_power_saving);
         }
-        
+
         if (main_power_saving) {
             ImGui::Indent();
-            
+
             // Compute shader suppression
             static bool suppress_compute = s_suppress_compute_in_background.load();
             if (ImGui::Checkbox("Suppress Compute Shaders (Dispatch)", &suppress_compute)) {
@@ -444,7 +433,7 @@ void DrawSwapchainEventCounters() {
             if (ImGui::IsItemHovered()) {
                 ImGui::SetTooltip("Skip compute shader dispatches when app is in background");
             }
-            
+
             // Resource copy suppression
             static bool suppress_copy = s_suppress_copy_in_background.load();
             if (ImGui::Checkbox("Suppress Resource Copying", &suppress_copy)) {
@@ -455,7 +444,7 @@ void DrawSwapchainEventCounters() {
             if (ImGui::IsItemHovered()) {
                 ImGui::SetTooltip("Skip resource copy operations when app is in background");
             }
-            
+
             // Memory operations suppression
             static bool suppress_memory = s_suppress_memory_ops_in_background.load();
             if (ImGui::Checkbox("Suppress Memory Operations", &suppress_memory)) {
@@ -466,7 +455,7 @@ void DrawSwapchainEventCounters() {
             if (ImGui::IsItemHovered()) {
                 ImGui::SetTooltip("Skip resource mapping operations when app is in background");
             }
-            
+
             // Resource binding suppression (more conservative)
             static bool suppress_binding = s_suppress_binding_in_background.load();
             if (ImGui::Checkbox("Suppress Resource Binding (Experimental)", &suppress_binding)) {
@@ -477,17 +466,17 @@ void DrawSwapchainEventCounters() {
             if (ImGui::IsItemHovered()) {
                 ImGui::SetTooltip("Skip resource binding operations (may cause rendering issues)");
             }
-            
+
             ImGui::Unindent();
         }
-        
+
         // Power saving status
         ImGui::Separator();
         bool is_background = g_app_in_background.load(std::memory_order_acquire);
         ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Current Status:");
         ImGui::Text("  App in Background: %s", is_background ? "Yes" : "No");
         ImGui::Text("  Power Saving Active: %s", (main_power_saving && is_background) ? "Yes" : "No");
-        
+
         if (main_power_saving && is_background) {
             ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "  ✓ Power saving is currently active");
         }

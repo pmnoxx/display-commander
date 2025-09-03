@@ -70,8 +70,6 @@ extern std::atomic<bool> s_suppress_memory_ops_in_background;
 // SWAPCHAIN UTILITY FUNCTIONS
 // ============================================================================
 
-// Swapchain sync interval accessors
-uint32_t GetSwapchainSyncInterval(reshade::api::swapchain* swapchain);
 
 // DXGI composition state utilities
 DxgiBypassMode GetIndependentFlipState(reshade::api::swapchain* swapchain);

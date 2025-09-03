@@ -97,25 +97,6 @@ void HandleOnPresentEnd() {
 
 
 
-// Draw event handlers for render timing and power saving
-// These are now implemented in swapchain_events_power_saving.cpp
-
-// Track last requested sync interval per HWND detected at create_swapchain
-namespace {
-static std::mutex g_sync_mutex;
-static std::unordered_map<HWND, uint32_t> g_hwnd_to_syncinterval; // UINT32_MAX = default
-static std::unordered_map<reshade::api::swapchain*, uint32_t> g_swapchain_to_syncinterval;
-}
-
-// Expose for UI
-uint32_t GetSwapchainSyncInterval(reshade::api::swapchain* swapchain) {
-  if (swapchain == nullptr) return UINT32_MAX;
-  std::scoped_lock lk(g_sync_mutex);
-  auto it = g_swapchain_to_syncinterval.find(swapchain);
-  if (it != g_swapchain_to_syncinterval.end()) return it->second;
-  return UINT32_MAX;
-}
-
 // Get the sync interval coefficient for FPS calculation
 float GetSyncIntervalCoefficient(float sync_interval_value) {
   // Map sync interval values to their corresponding coefficients
@@ -273,14 +254,6 @@ void OnInitSwapchain(reshade::api::swapchain* swapchain, bool resize) {
   g_last_swapchain_hwnd.store(hwnd);
   g_last_swapchain_ptr.store(swapchain);
   if (hwnd == nullptr) return;
-  // Bind captured sync interval to swapchain instance
-  {
-    std::scoped_lock lk(g_sync_mutex);
-    auto it = g_hwnd_to_syncinterval.find(hwnd);
-    if (it != g_hwnd_to_syncinterval.end()) {
-      g_swapchain_to_syncinterval[swapchain] = it->second;
-    }
-  }
   // Update DXGI composition state if possible
   {
     DxgiBypassMode mode = GetIndependentFlipState(swapchain);

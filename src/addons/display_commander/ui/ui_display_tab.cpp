@@ -31,10 +31,10 @@ std::vector<std::string> GetMonitorLabelsFromCache() {
     std::vector<std::string> labels;
 
     auto displays = display_cache::g_displayCache.GetDisplays();
-    
+
     size_t display_count = displays->size();
     labels.reserve(display_count + 1); // +1 for Auto (Current) option
-    
+
     // Add Auto (Current) as the first option (index 0)
     std::string auto_label = "Auto (Current)";
     HWND hwnd = g_last_swapchain_hwnd.load();
@@ -45,24 +45,26 @@ std::vector<std::string> GetMonitorLabelsFromCache() {
             mi.cbSize = sizeof(mi);
             if (GetMonitorInfoW(current_monitor, &mi)) {
                 std::string device_name(mi.szDevice, mi.szDevice + wcslen(mi.szDevice));
-                
-                // Get current resolution and refresh rate
-                DEVMODEW dm;
-                dm.dmSize = sizeof(dm);
-                if (EnumDisplaySettingsW(mi.szDevice, ENUM_CURRENT_SETTINGS, &dm)) {
-                    int width = static_cast<int>(dm.dmPelsWidth);
-                    int height = static_cast<int>(dm.dmPelsHeight);
-                    int refresh_rate = static_cast<int>(dm.dmDisplayFrequency);
-                    
+
+                // Get current resolution and refresh rate from display cache
+                const auto* display = display_cache::g_displayCache.GetDisplayByHandle(current_monitor);
+                if (display) {
+                    int width = display->width;
+                    int height = display->height;
+                    double refresh_rate = display->current_refresh_rate.ToHz();
+
                     // Check if it's primary monitor
                     bool is_primary = (mi.dwFlags & MONITORINFOF_PRIMARY) != 0;
                     std::string primary_text = is_primary ? " Primary" : "";
-                    
-                    auto_label = "Auto (Current) [" + device_name + "] " + 
-                                std::to_string(width) + "x" + std::to_string(height) + 
-                                " @ " + std::to_string(refresh_rate) + "Hz" + primary_text;
+
+                    std::ostringstream rate_oss;
+                    rate_oss << std::fixed << std::setprecision(3) << refresh_rate;
+
+                    auto_label = "Auto (Current) [" + device_name + "] " +
+                                std::to_string(width) + "x" + std::to_string(height) +
+                                " @ " + rate_oss.str() + "Hz" + primary_text;
                 } else {
-                    // Fallback if we can't get display settings
+                    // Fallback if we can't get display from cache
                     bool is_primary = (mi.dwFlags & MONITORINFOF_PRIMARY) != 0;
                     std::string primary_text = is_primary ? " Primary" : "";
                     auto_label = "Auto (Current) [" + device_name + "]" + primary_text;
@@ -71,22 +73,22 @@ std::vector<std::string> GetMonitorLabelsFromCache() {
         }
     }
     labels.push_back(auto_label);
-    
+
     // Add the regular monitor options (starting from index 1)
     for (size_t i = 0; i < display_count; ++i) {
             const auto* display = (*displays)[i].get();
             if (display) {
                 std::ostringstream oss;
-                
+
                 // Convert friendly name to string for user-friendly display
                 std::string friendly_name(display->friendly_name.begin(), display->friendly_name.end());
-                
+
                 // Get high-precision refresh rate with full precision
                 double exact_refresh_rate = display->current_refresh_rate.ToHz();
                 std::ostringstream rate_oss;
                 rate_oss << std::setprecision(10) << exact_refresh_rate;
                 std::string rate_str = rate_oss.str();
-                
+
                 // Remove trailing zeros after decimal point but keep meaningful precision
                 size_t decimal_pos = rate_str.find('.');
                 if (decimal_pos != std::string::npos) {
@@ -99,45 +101,45 @@ std::vector<std::string> GetMonitorLabelsFromCache() {
                         rate_str = rate_str.substr(0, last_nonzero + 1);
                     }
                 }
-                
+
                 // Format: [DeviceID] Friendly Name - Resolution @ PreciseRefreshRateHz [Raw: num/den]
                 std::string device_name(display->device_name.begin(), display->device_name.end());
-                oss << "[" << device_name << "] " << friendly_name << " - " << display->GetCurrentResolutionString() 
-                    << " @ " << rate_str << "Hz [Raw: " 
-                    << display->current_refresh_rate.numerator << "/" 
+                oss << "[" << device_name << "] " << friendly_name << " - " << display->GetCurrentResolutionString()
+                    << " @ " << rate_str << "Hz [Raw: "
+                    << display->current_refresh_rate.numerator << "/"
                     << display->current_refresh_rate.denominator << "]";
                 labels.push_back(oss.str());
             }
         }
-    
+
     return labels;
 }
 
 // Helper function to get current display info based on game position using the display cache
 std::string GetCurrentDisplayInfo() {
     HWND hwnd = g_last_swapchain_hwnd.load();
-    
+
     if (!hwnd) {
         return "No game window detected";
     }
-    
+
     // Get window position
     RECT window_rect;
     if (!GetWindowRect(hwnd, &window_rect)) {
         return "Failed to get window position";
     }
-    
+
     // Find which monitor the game is running on
     HMONITOR monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
     if (!monitor) {
         return "Failed to determine monitor";
     }
-    
+
     const auto* display = display_cache::g_displayCache.GetDisplayByHandle(monitor);
     if (!display) {
         return "Failed to get display info from cache";
     }
-    
+
     // Use the new comprehensive display info method that shows current vs supported modes
     std::string friendly_name(display->friendly_name.begin(), display->friendly_name.end());
     std::ostringstream oss;
@@ -154,23 +156,23 @@ std::vector<std::string> GetMonitorLabels() {
 bool HandleMonitorSettingsUI() {
     // Handle display cache refresh logic (every 60 frames)
     ui::monitor_settings::HandleDisplayCacheRefresh();
-    
+
     // Get current monitor labels (now with precise refresh rates and raw rational values)
     auto monitor_labels = GetMonitorLabelsFromCache();
     if (monitor_labels.empty()) {
         ImGui::Text("No monitors detected");
         return false;
     }
-            
+
         // Handle auto-detection of current display settings
     ui::monitor_settings::HandleAutoDetection();
-    
+
         // Handle monitor selection UI
     ui::monitor_settings::HandleMonitorSelection(monitor_labels);
-    
+
     // Handle resolution selection UI
     ui::monitor_settings::HandleResolutionSelection(static_cast<int>(s_selected_monitor_index));
-    
+
     // Handle refresh rate selection UI
     ui::monitor_settings::HandleRefreshRateSelection(static_cast<int>(s_selected_monitor_index), static_cast<int>(s_selected_resolution_index));
 
@@ -181,10 +183,10 @@ bool HandleMonitorSettingsUI() {
 
     // Handle the DXGI API Apply Button
     ui::monitor_settings::HandleDXGIAPIApplyButton();
-    
+
     // While a resolution change is pending confirmation, show confirm/revert UI
     ui::monitor_settings::HandlePendingConfirmationUI();
-    
+
     return false; // No value change
 }
 

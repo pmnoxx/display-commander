@@ -27,8 +27,6 @@ void RunBackgroundAudioMonitor();
 // Forward declarations
 void ComputeDesiredSize(int& out_w, int& out_h);
 
-std::vector<std::string> MakeMonitorLabels();
-
 // Forward declarations that depend on enums
 DxgiBypassMode GetIndependentFlipState(reshade::api::swapchain* swapchain);
 

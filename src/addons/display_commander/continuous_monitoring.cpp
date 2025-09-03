@@ -3,6 +3,7 @@
 #include "background_window.hpp"
 #include "nvapi/dlssfg_version_detector.hpp"
 #include "nvapi/dlss_preset_detector.hpp"
+#include "ui/ui_display_tab.hpp"
 #include <thread>
 #include <sstream>
 #include <algorithm>
@@ -15,7 +16,7 @@ void ComputeDesiredSize(int& out_w, int& out_h);
 // Main monitoring thread function
 void ContinuousMonitoringThread() {
     LogInfo("Continuous monitoring thread started");
-    
+
     static int seconds_counter = 0;
     auto last_cache_refresh = std::chrono::steady_clock::now();
     while (g_monitoring_thread_running.load()) {
@@ -24,45 +25,45 @@ void ContinuousMonitoringThread() {
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
             continue;
         }
-        
+
         // Get the current swapchain window
         HWND hwnd = g_last_swapchain_hwnd.load();
         if (hwnd != nullptr && IsWindow(hwnd)) {
             // BACKGROUND DETECTION: Check if the app is in background
             bool current_background = (GetForegroundWindow() != hwnd);
             bool background_changed = (current_background != g_app_in_background.load());
-            
+
             if (background_changed) {
                 g_app_in_background.store(current_background);
-                
+
                 if (current_background) {
                     LogInfo("Continuous monitoring: App moved to BACKGROUND");
                 } else {
                     LogInfo("Continuous monitoring: App moved to FOREGROUND");
                 }
             }
-            
+
             // Apply window changes - the function will automatically determine what needs to be changed
             ApplyWindowChange(hwnd, "continuous_monitoring_auto_fix");
-            
+
             // BACKGROUND WINDOW MANAGEMENT: Update background window if feature is enabled
             static int background_check_counter = 0;
             if (++background_check_counter % 10 == 0) { // Log every 10 seconds
                 std::ostringstream oss;
-                oss << "Continuous monitoring: Background feature check - s_background_feature_enabled = " << (s_background_feature_enabled.load() ? "true" : "false") 
+                oss << "Continuous monitoring: Background feature check - s_background_feature_enabled = " << (s_background_feature_enabled.load() ? "true" : "false")
                     << ", has_background_window = " << g_backgroundWindowManager.HasBackgroundWindow();
                 LogInfo(oss.str().c_str());
             }
-            
+
             // FOCUS LOSS DETECTION: Close background window when main window loses focus
             HWND foreground_window = GetForegroundWindow();
             if (foreground_window != hwnd && g_backgroundWindowManager.HasBackgroundWindow()) {
                 // Main window lost focus, close background window
                 LogInfo("Continuous monitoring: Main window lost focus - closing background window");
-         
+
          //       g_backgroundWindowManager.DestroyBackgroundWindow();
             }
-            
+
             if (s_background_feature_enabled.load()) {
                 // Only create/update background window if main window has focus
                 if (foreground_window == hwnd) {
@@ -84,7 +85,7 @@ void ContinuousMonitoringThread() {
         {
             // Refresh every 2 seconds to avoid excessive work
             if ((seconds_counter % 2) == 0) {
-                auto labels = MakeMonitorLabels();
+                auto labels = ui::GetMonitorLabelsFromCache();
                 auto next = std::make_shared<const std::vector<std::string>>(std::move(labels));
                 ::g_monitor_labels.store(next, std::memory_order_release);
             }
@@ -216,7 +217,7 @@ void ContinuousMonitoringThread() {
                     << " since reset";
             g_perf_text_shared.store(std::make_shared<const std::string>(fps_oss.str()));
         }
-        
+
         // Periodic display cache refresh off the UI thread
         {
             auto now = std::chrono::steady_clock::now();
@@ -225,7 +226,7 @@ void ContinuousMonitoringThread() {
                 last_cache_refresh = now;
             }
         }
-        
+
         // DLSS-FG Detection: Check every 5 seconds for runtime-loaded DLSS-G DLLs
         {
             if ((seconds_counter % 5) == 0) {
@@ -234,27 +235,27 @@ void ContinuousMonitoringThread() {
                     if (g_dlssfgVersionDetector.RefreshVersion()) {
                         if (g_dlssfgVersionDetector.IsAvailable()) {
                             const auto& version = g_dlssfgVersionDetector.GetVersion();
-                            LogInfo("DLSS-FG detected at runtime - Version: %s (DLL: %s)", 
-                                    version.getFormattedVersion().c_str(), 
+                            LogInfo("DLSS-FG detected at runtime - Version: %s (DLL: %s)",
+                                    version.getFormattedVersion().c_str(),
                                     version.dll_path.c_str());
                             g_dlssfg_detected.store(true);
-                            
+
                             // Update global DLLS-G variables
                             g_dlls_g_loaded.store(true);
                             g_dlls_g_version.store(std::make_shared<const std::string>(version.getFormattedVersion()));
                         }
                     }
-                    
+
                     // DLSS Preset Detection: Check every 5 seconds for runtime-loaded DLSS presets
                     if (!g_dlss_preset_detected.load()) {
                         if (g_dlssPresetDetector.RefreshPreset()) {
                             if (g_dlssPresetDetector.IsAvailable()) {
                                 const auto& preset = g_dlssPresetDetector.GetPreset();
-                                LogInfo("DLSS Preset detected at runtime - Preset: %s, Quality: %s", 
+                                LogInfo("DLSS Preset detected at runtime - Preset: %s, Quality: %s",
                                         preset.getFormattedPreset().c_str(),
                                         preset.getFormattedQualityMode().c_str());
                                 g_dlss_preset_detected.store(true);
-                                
+
                                 // Update global DLSS preset variables
                                 g_dlss_preset_name.store(std::make_shared<const std::string>(preset.getFormattedPreset()));
                                 g_dlss_quality_mode.store(std::make_shared<const std::string>(preset.getFormattedQualityMode()));
@@ -264,12 +265,12 @@ void ContinuousMonitoringThread() {
                 }
             }
         }
-        
+
         // Sleep for 1 second
         std::this_thread::sleep_for(std::chrono::seconds(1));
         ++seconds_counter;
     }
-    
+
     LogInfo("Continuous monitoring thread stopped");
 }
 
@@ -280,14 +281,14 @@ void StartContinuousMonitoring() {
         return;
     }
     g_monitoring_thread_running.store(true);
-    
+
     // Start the monitoring thread
     if (g_monitoring_thread.joinable()) {
         g_monitoring_thread.join();
     }
-    
+
     g_monitoring_thread = std::thread(ContinuousMonitoringThread);
-    
+
     LogInfo("Continuous monitoring started");
 }
 
@@ -297,13 +298,13 @@ void StopContinuousMonitoring() {
         LogDebug("Continuous monitoring not running");
         return;
     }
-    
+
     g_monitoring_thread_running.store(false);
-    
+
     // Wait for thread to finish
     if (g_monitoring_thread.joinable()) {
         g_monitoring_thread.join();
     }
-    
+
     LogInfo("Continuous monitoring stopped");
 }

@@ -17,7 +17,7 @@ namespace dxgi::fps_limiter {
     std::atomic<LONGLONG> ns_per_refresh{0};
     std::atomic<double> correction_lines_delta{0};
     std::atomic<double> m_on_present_ns{0.0};
-    
+
     extern long double expected_current_scanline_uncapped_ns(LONGLONG now_ns, LONGLONG total_height, bool add_correction);
 
 static inline FARPROC LoadProcCached(FARPROC& slot, const wchar_t* mod, const char* name) {
@@ -40,7 +40,7 @@ LatentSyncLimiter::~LatentSyncLimiter() {
         m_vblank_monitor->StopMonitoring();
         m_vblank_monitor.reset();
     }
-    
+
     if (m_hAdapter != 0) {
         if (LoadProcCached(m_pfnCloseAdapter, L"gdi32.dll", "D3DKMTCloseAdapter")) {
             D3DKMT_CLOSEADAPTER closeReq{}; closeReq.hAdapter = m_hAdapter;
@@ -126,7 +126,7 @@ void LatentSyncLimiter::LimitFrameRate() {
     long double current_scanline_uncapped = expected_current_scanline_uncapped_ns(now_ns, total_height, true);
 
     long double target_line = mid_vblank_scanline - (m_on_present_ns.load() * total_height / ns_per_refresh.load()) - 60.0 + s_scanline_offset.load();
-    
+
     long double next_scanline_uncapped = current_scanline_uncapped - fmod(current_scanline_uncapped, (long double)(total_height)) + target_line;
 
     long double last_scanline_uncapped = expected_current_scanline_uncapped_ns(last_wait_target_ns, total_height, true);
@@ -155,7 +155,7 @@ void LatentSyncLimiter::LimitFrameRate() {
         utils::wait_until_ns(wait_target_ns, m_timer_handle);
     }
     last_wait_target_ns = utils::get_now_ns();
-    
+
 }
 
 void LatentSyncLimiter::OnPresentEnd() {

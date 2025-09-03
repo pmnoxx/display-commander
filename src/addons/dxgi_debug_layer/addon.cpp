@@ -20,7 +20,7 @@
 #include <chrono>
 #include <vector>
 #include <string>
-#include <mutex>
+#include <memory>
 
 namespace dxgi_debug_layer {
 
@@ -46,8 +46,11 @@ struct DebugMessage {
 	uint64_t timestamp;
 };
 
-static std::vector<DebugMessage> g_messages;
-static std::mutex g_messages_mutex;
+struct MessagesData {
+    std::vector<DebugMessage> messages;
+};
+
+static std::atomic<std::shared_ptr<const MessagesData>> g_messages_data{std::make_shared<MessagesData>()};
 static constexpr size_t MAX_MESSAGES = 1000;
 
 static void EnableDxgiDebug()
@@ -89,13 +92,13 @@ static void EnableDxgiDebug()
 		// Set break on severity based on settings
 		g_dxgi_info_queue->SetBreakOnSeverity(DXGI_DEBUG_ALL, DXGI_INFO_QUEUE_MESSAGE_SEVERITY_ERROR, g_break_on_error.load());
 		g_dxgi_info_queue->SetBreakOnSeverity(DXGI_DEBUG_ALL, DXGI_INFO_QUEUE_MESSAGE_SEVERITY_CORRUPTION, g_break_on_corruption.load());
-		
+
 		// Enable message storage for all severities
 		g_dxgi_info_queue->SetMessageCountLimit(DXGI_DEBUG_ALL, 1000);
-		
+
 		// Try to enable all debug categories
 		g_dxgi_info_queue->SetMuteDebugOutput(DXGI_DEBUG_ALL, FALSE);
-		
+
 		g_enabled.store(true);
 		reshade::log::message(reshade::log::level::info, "[DXGI Debug] DXGI InfoQueue acquired and configured");
 	}
@@ -132,11 +135,13 @@ static void PushCapturedDebugString(const std::string &text)
 		level = reshade::log::level::warning;
 
 	// Avoid logging via reshade::log here to prevent potential recursion
-	std::lock_guard<std::mutex> lock(g_messages_mutex);
-	if (g_messages.size() >= MAX_MESSAGES)
-		g_messages.erase(g_messages.begin());
+	auto current_data = g_messages_data.load();
+	auto new_data = std::make_shared<MessagesData>(*current_data);
+	if (new_data->messages.size() >= MAX_MESSAGES)
+		new_data->messages.erase(new_data->messages.begin());
 	reshade::log::message(level, text.c_str());
-	g_messages.push_back({ text, level, static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count()) });
+	new_data->messages.push_back({ text, level, static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count()) });
+	g_messages_data.store(new_data);
 }
 
 #if RDC_HAS_MINHOOK
@@ -253,7 +258,7 @@ static void ProcessDebugMessages()
 						std::string message_text(message->pDescription, message->DescriptionByteLength - 1);
 						std::string severity_str;
 						reshade::log::level log_level;
-						
+
 						// Debug: Log the raw severity value to see what we're getting
 						// reshade::log::message(reshade::log::level::info, ("[DXGI Debug] Raw severity: " + std::to_string(message->Severity)).c_str());
 						switch (message->Severity)
@@ -269,10 +274,12 @@ static void ProcessDebugMessages()
 						std::string log_message = "[DXGI Debug] [" + severity_str + "] ID:" + std::to_string(message->ID) + " - " + message_text;
 						reshade::log::message(log_level, log_message.c_str());
 						{
-							std::lock_guard<std::mutex> lock(g_messages_mutex);
-							if (g_messages.size() >= MAX_MESSAGES)
-								g_messages.erase(g_messages.begin());
-							g_messages.push_back({log_message, log_level, static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count())});
+							auto current_data = g_messages_data.load();
+							auto new_data = std::make_shared<MessagesData>(*current_data);
+							if (new_data->messages.size() >= MAX_MESSAGES)
+								new_data->messages.erase(new_data->messages.begin());
+							new_data->messages.push_back({log_message, log_level, static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count())});
+							g_messages_data.store(new_data);
 						}
 					}
 				}
@@ -316,10 +323,12 @@ static void ProcessDebugMessages()
 						std::string log_message = "[D3D11 Debug] [" + severity_str + "] ID:" + std::to_string(message->ID) + " - " + message_text;
 						reshade::log::message(log_level, log_message.c_str());
 						{
-							std::lock_guard<std::mutex> lock(g_messages_mutex);
-							if (g_messages.size() >= MAX_MESSAGES)
-								g_messages.erase(g_messages.begin());
-							g_messages.push_back({log_message, log_level, static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count())});
+							auto current_data = g_messages_data.load();
+							auto new_data = std::make_shared<MessagesData>(*current_data);
+							if (new_data->messages.size() >= MAX_MESSAGES)
+								new_data->messages.erase(new_data->messages.begin());
+							new_data->messages.push_back({log_message, log_level, static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count())});
+							g_messages_data.store(new_data);
 						}
 					}
 				}
@@ -362,10 +371,12 @@ static void ProcessDebugMessages()
 						std::string log_message = "[D3D12 Debug] [" + severity_str + "] ID:" + std::to_string(message->ID) + " - " + message_text;
 						reshade::log::message(log_level, log_message.c_str());
 						{
-							std::lock_guard<std::mutex> lock(g_messages_mutex);
-							if (g_messages.size() >= MAX_MESSAGES)
-								g_messages.erase(g_messages.begin());
-							g_messages.push_back({log_message, log_level, static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count())});
+							auto current_data = g_messages_data.load();
+							auto new_data = std::make_shared<MessagesData>(*current_data);
+							if (new_data->messages.size() >= MAX_MESSAGES)
+								new_data->messages.erase(new_data->messages.begin());
+							new_data->messages.push_back({log_message, log_level, static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count())});
+							g_messages_data.store(new_data);
 						}
 					}
 				}
@@ -389,12 +400,12 @@ static void MessageProcessorThread()
 			}
 			catch (const std::exception& e)
 			{
-				reshade::log::message(reshade::log::level::error, 
+				reshade::log::message(reshade::log::level::error,
 					("[DXGI Debug] Exception in message processor: " + std::string(e.what())).c_str());
 			}
 			catch (...)
 			{
-				reshade::log::message(reshade::log::level::error, 
+				reshade::log::message(reshade::log::level::error,
 					"[DXGI Debug] Unknown exception in message processor");
 			}
 		}
@@ -411,7 +422,7 @@ static void OnRegisterOverlay(reshade::api::effect_runtime* /*runtime*/)
 	// TODO remove unused g_show_ui
 	// Always show the overlay in ReShade's overlay menu
 	g_show_ui.store(true);
-	
+
 	if (!g_show_ui.load())
 		return;
 
@@ -466,21 +477,21 @@ static void OnRegisterOverlay(reshade::api::effect_runtime* /*runtime*/)
 			ImGui::Text("Use the X button to close this window");
 		}
 
-		// Messages section
+				// Messages section
 		if (ImGui::CollapsingHeader("Debug Messages", ImGuiTreeNodeFlags_DefaultOpen))
 		{
-			std::lock_guard<std::mutex> lock(g_messages_mutex);
-			
-			if (g_messages.empty())
+			auto messages_data = g_messages_data.load();
+
+			if (messages_data->messages.empty())
 			{
 				ImGui::Text("No debug messages yet.");
 			}
 			else
 			{
-				ImGui::Text("Messages (%zu):", g_messages.size());
+				ImGui::Text("Messages (%zu):", messages_data->messages.size());
 				ImGui::BeginChild("Messages", ImVec2(0, 400), true);
-				
-				for (const auto& msg : g_messages)
+
+				for (const auto& msg : messages_data->messages)
 				{
 					ImVec4 color = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
 					switch (msg.level)
@@ -497,12 +508,12 @@ static void OnRegisterOverlay(reshade::api::effect_runtime* /*runtime*/)
 						default:
 							break;
 					}
-					
+
 					ImGui::PushStyleColor(ImGuiCol_Text, color);
 					ImGui::TextWrapped("%s", msg.text.c_str());
 					ImGui::PopStyleColor();
 				}
-				
+
 				ImGui::EndChild();
 			}
 		}
@@ -514,7 +525,7 @@ static void OnRegisterOverlay(reshade::api::effect_runtime* /*runtime*/)
 static void OnInitDevice(reshade::api::device *device)
 {
 	EnableDxgiDebug();
-	
+
 	// Acquire D3D11/D3D12 info queues from native device if available
 	if (device != nullptr)
 	{
@@ -587,22 +598,22 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID /*lpv_reserved*
 		reshade::register_event<reshade::addon_event::init_device>(dxgi_debug_layer::OnInitDevice);
 		reshade::register_event<reshade::addon_event::destroy_device>(dxgi_debug_layer::OnDestroyDevice);
 		reshade::register_overlay("DXGI Debug Layer", dxgi_debug_layer::OnRegisterOverlay);
-		
+
 		dxgi_debug_layer::g_shutdown.store(false);
 		dxgi_debug_layer::InitializeOutputDebugStringHooks();
 		break;
 	case DLL_PROCESS_DETACH:
 		reshade::log::message(reshade::log::level::info, "[DXGI Debug] Addon shutting down");
-		
+
 		// Signal shutdown to message processor thread
 		dxgi_debug_layer::g_shutdown.store(true);
-		
+
 		// Wait for message processor thread to finish
 		if (dxgi_debug_layer::g_message_processor_thread.joinable())
 		{
 			dxgi_debug_layer::g_message_processor_thread.join();
 		}
-		
+
 		reshade::unregister_overlay("DXGI Debug Layer", dxgi_debug_layer::OnRegisterOverlay);
 		reshade::unregister_event<reshade::addon_event::init_device>(dxgi_debug_layer::OnInitDevice);
 		reshade::unregister_event<reshade::addon_event::destroy_device>(dxgi_debug_layer::OnDestroyDevice);

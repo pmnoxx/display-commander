@@ -12,8 +12,8 @@
 #include <deque>
 #include <functional>
 #include <ios>
-#include <mutex>
-#include <shared_mutex>
+#include <atomic>
+#include <memory>
 #include <optional>
 #include <unordered_set>
 #include <vector>
@@ -31,11 +31,14 @@ namespace utils::swapchain {
 
 static float fps_limit = 0.f;
 
-struct __declspec(uuid("4721e307-0cf3-4293-b4a5-40d0a4e62544")) DeviceData {
-  std::shared_mutex mutex;
+struct DeviceDataInternal {
   std::unordered_set<reshade::api::effect_runtime*> effect_runtimes;
   reshade::api::resource_desc back_buffer_desc;
   reshade::api::color_space current_color_space = reshade::api::color_space::unknown;
+};
+
+struct __declspec(uuid("4721e307-0cf3-4293-b4a5-40d0a4e62544")) DeviceData {
+  std::atomic<std::shared_ptr<const DeviceDataInternal>> data{std::make_shared<DeviceDataInternal>()};
 };
 
 struct __declspec(uuid("3cf9a628-8518-4509-84c3-9fbe9a295212")) CommandListData {
@@ -58,14 +61,13 @@ static CommandListData* GetCurrentState(reshade::api::command_list* cmd_list) {
 
 static reshade::api::resource_desc GetBackBufferDesc(reshade::api::device* device) {
   reshade::api::resource_desc desc = {};
-  {
-    auto* device_data = utils::data::Get<DeviceData>(device);
-    if (device_data == nullptr) {
-      reshade::log::message(reshade::log::level::error, "GetBackBufferDesc(No device data)");
-      return desc;
-    }
-    desc = device_data->back_buffer_desc;
+  auto* device_data = utils::data::Get<DeviceData>(device);
+  if (device_data == nullptr) {
+    reshade::log::message(reshade::log::level::error, "GetBackBufferDesc(No device data)");
+    return desc;
   }
+  auto data = device_data->data.load();
+  desc = data->back_buffer_desc;
   return desc;
 }
 
@@ -163,16 +165,17 @@ static bool ChangeColorSpace(reshade::api::swapchain* swapchain, reshade::api::c
   }
 
   auto* device = swapchain->get_device();
-  std::unordered_set<reshade::api::effect_runtime*> runtimes;
-  auto* data = utils::data::Get<DeviceData>(device);
-  if (data != nullptr) {
-    std::unique_lock lock(data->mutex);
-    data->current_color_space = color_space;
-    runtimes = data->effect_runtimes;
-  }
-  for (auto* runtime : runtimes) {
-    runtime->set_color_space(color_space);
-    reshade::log::message(reshade::log::level::debug, "utils::swapchain::ChangeColorSpace(Updated runtime)");
+  auto* device_data = utils::data::Get<DeviceData>(device);
+  if (device_data != nullptr) {
+    auto current_data = device_data->data.load();
+    auto new_data = std::make_shared<DeviceDataInternal>(*current_data);
+    new_data->current_color_space = color_space;
+    device_data->data.store(new_data);
+
+    for (auto* runtime : new_data->effect_runtimes) {
+      runtime->set_color_space(color_space);
+      reshade::log::message(reshade::log::level::debug, "utils::swapchain::ChangeColorSpace(Updated runtime)");
+    }
   }
   return true;
 }
@@ -189,33 +192,42 @@ static void OnDestroyDevice(reshade::api::device* device) {
 }
 static void OnInitSwapchain(reshade::api::swapchain* swapchain, bool resize) {
   auto* device = swapchain->get_device();
-  auto* data = utils::data::Get<DeviceData>(device);
-  if (data == nullptr) return;
-  const std::unique_lock lock(data->mutex);
-  data->back_buffer_desc = device->get_resource_desc(swapchain->get_current_back_buffer());
+  auto* device_data = utils::data::Get<DeviceData>(device);
+  if (device_data == nullptr) return;
+  auto current_data = device_data->data.load();
+  auto new_data = std::make_shared<DeviceDataInternal>(*current_data);
+  new_data->back_buffer_desc = device->get_resource_desc(swapchain->get_current_back_buffer());
+  device_data->data.store(new_data);
 }
 static void OnDestroySwapchain(reshade::api::swapchain* swapchain, bool resize) {
   auto* device = swapchain->get_device();
-  auto* data = utils::data::Get<DeviceData>(device);
-  if (data == nullptr) return;
-  data->back_buffer_desc = {};
+  auto* device_data = utils::data::Get<DeviceData>(device);
+  if (device_data == nullptr) return;
+  auto current_data = device_data->data.load();
+  auto new_data = std::make_shared<DeviceDataInternal>(*current_data);
+  new_data->back_buffer_desc = {};
+  device_data->data.store(new_data);
 }
 static void OnInitEffectRuntime(reshade::api::effect_runtime* runtime) {
   auto* device = runtime->get_device();
-  auto* data = utils::data::Get<DeviceData>(device);
-  if (data == nullptr) return;
-  const std::unique_lock lock(data->mutex);
-  data->effect_runtimes.emplace(runtime);
-  if (data->current_color_space != reshade::api::color_space::unknown) {
-    runtime->set_color_space(data->current_color_space);
+  auto* device_data = utils::data::Get<DeviceData>(device);
+  if (device_data == nullptr) return;
+  auto current_data = device_data->data.load();
+  auto new_data = std::make_shared<DeviceDataInternal>(*current_data);
+  new_data->effect_runtimes.emplace(runtime);
+  if (new_data->current_color_space != reshade::api::color_space::unknown) {
+    runtime->set_color_space(new_data->current_color_space);
   }
+  device_data->data.store(new_data);
 }
 static void OnDestroyEffectRuntime(reshade::api::effect_runtime* runtime) {
   auto* device = runtime->get_device();
-  auto* data = utils::data::Get<DeviceData>(device);
-  if (data == nullptr) return;
-  const std::unique_lock lock(data->mutex);
-  data->effect_runtimes.erase(runtime);
+  auto* device_data = utils::data::Get<DeviceData>(device);
+  if (device_data == nullptr) return;
+  auto current_data = device_data->data.load();
+  auto new_data = std::make_shared<DeviceDataInternal>(*current_data);
+  new_data->effect_runtimes.erase(runtime);
+  device_data->data.store(new_data);
 }
 }  // namespace internal
 

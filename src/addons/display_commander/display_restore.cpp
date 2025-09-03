@@ -3,7 +3,8 @@
 #include "globals.hpp"
 #include <map>
 #include <set>
-#include <mutex>
+#include <atomic>
+#include <memory>
 
 namespace display_restore {
 
@@ -16,9 +17,12 @@ struct OriginalMode {
 	UINT32 refresh_den = 1;
 };
 
-std::mutex s_mutex;
-std::map<std::wstring, OriginalMode> s_device_to_original; // device name -> original mode
-std::set<std::wstring> s_devices_changed; // devices we modified
+struct DisplayRestoreData {
+	std::map<std::wstring, OriginalMode> device_to_original; // device name -> original mode
+	std::set<std::wstring> devices_changed; // devices we modified
+};
+
+std::atomic<std::shared_ptr<const DisplayRestoreData>> s_data{std::make_shared<DisplayRestoreData>()};
 
 bool GetCurrentForDevice(const std::wstring &device_name, OriginalMode &out) {
 	// Walk display cache for this device
@@ -75,11 +79,14 @@ void MarkOriginalForMonitor(HMONITOR monitor) {
 }
 
 void MarkOriginalForDeviceName(const std::wstring &device_name) {
-	std::scoped_lock lock(s_mutex);
-	if (s_device_to_original.find(device_name) != s_device_to_original.end()) return;
+	auto current_data = s_data.load();
+	if (current_data->device_to_original.find(device_name) != current_data->device_to_original.end()) return;
+
 	OriginalMode mode{};
 	if (GetCurrentForDevice(device_name, mode)) {
-		s_device_to_original.emplace(device_name, mode);
+		auto new_data = std::make_shared<DisplayRestoreData>(*current_data);
+		new_data->device_to_original.emplace(device_name, mode);
+		s_data.store(new_data);
 	}
 }
 
@@ -98,36 +105,32 @@ void MarkDeviceChangedByDisplayIndex(int display_index) {
 }
 
 void MarkDeviceChangedByDeviceName(const std::wstring &device_name) {
-	std::scoped_lock lock(s_mutex);
+	auto current_data = s_data.load();
+	auto new_data = std::make_shared<DisplayRestoreData>(*current_data);
+
 	// Ensure we have original captured first
-	if (s_device_to_original.find(device_name) == s_device_to_original.end()) {
+	if (new_data->device_to_original.find(device_name) == new_data->device_to_original.end()) {
 		OriginalMode mode{};
 		if (GetCurrentForDevice(device_name, mode)) {
-			s_device_to_original.emplace(device_name, mode);
+			new_data->device_to_original.emplace(device_name, mode);
 		}
 	}
-	s_devices_changed.insert(device_name);
+	new_data->devices_changed.insert(device_name);
+	s_data.store(new_data);
 }
 
 // (ApplyModeForDevice is in anonymous namespace above)
 
 void RestoreAll() {
-	std::set<std::wstring> devices;
-	{
-		std::scoped_lock lock(s_mutex);
-		devices = s_devices_changed; // copy to avoid holding lock during API calls
-	}
+	auto current_data = s_data.load();
+	std::set<std::wstring> devices = current_data->devices_changed; // copy to avoid holding reference during API calls
+
 	if (devices.empty()) return;
 
 	for (const auto &device : devices) {
-		OriginalMode orig{};
-		{
-			std::scoped_lock lock(s_mutex);
-			auto it = s_device_to_original.find(device);
-			if (it == s_device_to_original.end()) continue;
-			orig = it->second;
-		}
-		ApplyModeForDevice(device, orig);
+		auto it = current_data->device_to_original.find(device);
+		if (it == current_data->device_to_original.end()) continue;
+		ApplyModeForDevice(device, it->second);
 	}
 }
 
@@ -137,25 +140,19 @@ void RestoreAllIfEnabled() {
 }
 
 void Clear() {
-	std::scoped_lock lock(s_mutex);
-	s_device_to_original.clear();
-	s_devices_changed.clear();
+	s_data.store(std::make_shared<DisplayRestoreData>());
 }
 
 bool HasAnyChanges() {
-	std::scoped_lock lock(s_mutex);
-	return !s_devices_changed.empty();
+	auto current_data = s_data.load();
+	return !current_data->devices_changed.empty();
 }
 
 bool RestoreDisplayByDeviceName(const std::wstring &device_name) {
-	OriginalMode orig{};
-	{
-		std::scoped_lock lock(s_mutex);
-		auto it = s_device_to_original.find(device_name);
-		if (it == s_device_to_original.end()) return false;
-		orig = it->second;
-	}
-	return ApplyModeForDevice(device_name, orig);
+	auto current_data = s_data.load();
+	auto it = current_data->device_to_original.find(device_name);
+	if (it == current_data->device_to_original.end()) return false;
+	return ApplyModeForDevice(device_name, it->second);
 }
 
 bool RestoreDisplayByIndex(int display_index) {

@@ -13,8 +13,7 @@
 std::atomic<bool> g_dll_initialization_complete{false};
 
 // Shared DXGI factory to avoid redundant CreateDXGIFactory calls
-Microsoft::WRL::ComPtr<IDXGIFactory1> g_shared_dxgi_factory;
-std::mutex g_shared_factory_mutex;
+std::atomic<Microsoft::WRL::ComPtr<IDXGIFactory1>*> g_shared_dxgi_factory{nullptr};
 
 // Window settings
 std::atomic<int> s_windowed_width{3440}; // 21:9 ultrawide width
@@ -218,28 +217,31 @@ Microsoft::WRL::ComPtr<IDXGIFactory1> GetSharedDXGIFactory() {
         return nullptr;
     }
 
-    // Double-checked locking pattern for thread safety
-    if (g_shared_dxgi_factory) {
-        return g_shared_dxgi_factory;
+    // Check if factory already exists
+    auto factory_ptr = g_shared_dxgi_factory.load();
+    if (factory_ptr && *factory_ptr) {
+        return *factory_ptr;
     }
 
-    std::lock_guard<std::mutex> lock(g_shared_factory_mutex);
-
-    // Check again inside the lock (another thread might have created it)
-    if (g_shared_dxgi_factory) {
-        return g_shared_dxgi_factory;
-    }
-
+    // Create new factory
+    auto new_factory_ptr = std::make_unique<Microsoft::WRL::ComPtr<IDXGIFactory1>>();
     LogInfo("Creating shared DXGI factory");
-    // Create the shared factory
-    HRESULT hr = CreateDXGIFactory1(IID_PPV_ARGS(&g_shared_dxgi_factory));
+    HRESULT hr = CreateDXGIFactory1(IID_PPV_ARGS(new_factory_ptr->GetAddressOf()));
     if (FAILED(hr)) {
         LogWarn("Failed to create shared DXGI factory");
         return nullptr;
     }
 
-    LogInfo("Shared DXGI factory created successfully");
-    return g_shared_dxgi_factory;
+    // Try to store the new factory atomically
+    Microsoft::WRL::ComPtr<IDXGIFactory1>* expected = nullptr;
+    if (g_shared_dxgi_factory.compare_exchange_strong(expected, new_factory_ptr.get())) {
+        LogInfo("Shared DXGI factory created successfully");
+        (void)new_factory_ptr.release(); // Don't delete, it's now managed by the atomic
+        return *g_shared_dxgi_factory.load();
+    } else {
+        // Another thread created the factory first, use the existing one
+        return *expected;
+    }
 }
 
 // Swapchain event counters - reset on each swapchain creation

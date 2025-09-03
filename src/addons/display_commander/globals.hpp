@@ -29,8 +29,7 @@ class LatencyManager;
 extern std::atomic<bool> g_dll_initialization_complete;
 
 // Shared DXGI factory to avoid redundant CreateDXGIFactory calls
-extern Microsoft::WRL::ComPtr<IDXGIFactory1> g_shared_dxgi_factory;
-extern std::mutex g_shared_factory_mutex;
+extern std::atomic<Microsoft::WRL::ComPtr<IDXGIFactory1>*> g_shared_dxgi_factory;
 
 // Helper function to get shared DXGI factory (thread-safe)
 Microsoft::WRL::ComPtr<IDXGIFactory1> GetSharedDXGIFactory();

@@ -28,20 +28,26 @@ DebugLayerManager& DebugLayerManager::GetInstance() {
 }
 
 bool DebugLayerManager::InitializeForDevice(void* device, bool is_d3d12) {
-    std::lock_guard<std::mutex> lock(m_mutex);
-    
     if (!device) {
         LogError("Invalid device pointer provided");
         return false;
     }
-    
+
     if (is_d3d12) {
         // Initialize D3D12 debug handler
-        if (!m_d3d12_handler) {
-            m_d3d12_handler = std::make_unique<D3D12DebugHandler>();
+        auto* handler = m_d3d12_handler.load();
+        if (!handler) {
+            auto new_handler = std::make_unique<D3D12DebugHandler>();
+            D3D12DebugHandler* expected = nullptr;
+            if (m_d3d12_handler.compare_exchange_strong(expected, new_handler.get())) {
+                new_handler.release(); // Don't delete, it's now managed by the atomic
+                handler = expected;
+            } else {
+                handler = expected;
+            }
         }
-        
-        if (m_d3d12_handler->Initialize(static_cast<ID3D12Device*>(device))) {
+
+        if (handler && handler->Initialize(static_cast<ID3D12Device*>(device))) {
             LogInfo("D3D12 debug layer initialized successfully");
             m_initialized = true;
             return true;
@@ -51,11 +57,19 @@ bool DebugLayerManager::InitializeForDevice(void* device, bool is_d3d12) {
         }
     } else {
         // Initialize D3D11 debug handler
-        if (!m_d3d11_handler) {
-            m_d3d11_handler = std::make_unique<D3D11DebugHandler>();
+        auto* handler = m_d3d11_handler.load();
+        if (!handler) {
+            auto new_handler = std::make_unique<D3D11DebugHandler>();
+            D3D11DebugHandler* expected = nullptr;
+            if (m_d3d11_handler.compare_exchange_strong(expected, new_handler.get())) {
+                new_handler.release(); // Don't delete, it's now managed by the atomic
+                handler = expected;
+            } else {
+                handler = expected;
+            }
         }
-        
-        if (m_d3d11_handler->Initialize(static_cast<ID3D11Device*>(device))) {
+
+        if (handler && handler->Initialize(static_cast<ID3D11Device*>(device))) {
             LogInfo("D3D11 debug layer initialized successfully");
             m_initialized = true;
             return true;
@@ -67,34 +81,34 @@ bool DebugLayerManager::InitializeForDevice(void* device, bool is_d3d12) {
 }
 
 void DebugLayerManager::CleanupForDevice(void* device) {
-    std::lock_guard<std::mutex> lock(m_mutex);
-    
-    if (m_d3d11_handler && m_d3d11_handler->IsInitialized()) {
-        m_d3d11_handler->Cleanup();
+    auto* d3d11_handler = m_d3d11_handler.load();
+    if (d3d11_handler && d3d11_handler->IsInitialized()) {
+        d3d11_handler->Cleanup();
         LogInfo("D3D11 debug layer cleaned up");
     }
-    
-    if (m_d3d12_handler && m_d3d12_handler->IsInitialized()) {
-        m_d3d12_handler->Cleanup();
+
+    auto* d3d12_handler = m_d3d12_handler.load();
+    if (d3d12_handler && d3d12_handler->IsInitialized()) {
+        d3d12_handler->Cleanup();
         LogInfo("D3D12 debug layer cleaned up");
     }
-    
+
     m_initialized = false;
 }
 
 void DebugLayerManager::ProcessDebugMessages() {
-    if (!m_initialized) {
+    if (!m_initialized.load()) {
         return;
     }
-    
-    std::lock_guard<std::mutex> lock(m_mutex);
-    
-    if (m_d3d11_handler && m_d3d11_handler->IsInitialized()) {
-        m_d3d11_handler->ProcessMessages();
+
+    auto* d3d11_handler = m_d3d11_handler.load();
+    if (d3d11_handler && d3d11_handler->IsInitialized()) {
+        d3d11_handler->ProcessMessages();
     }
-    
-    if (m_d3d12_handler && m_d3d12_handler->IsInitialized()) {
-        m_d3d12_handler->ProcessMessages();
+
+    auto* d3d12_handler = m_d3d12_handler.load();
+    if (d3d12_handler && d3d12_handler->IsInitialized()) {
+        d3d12_handler->ProcessMessages();
     }
 }
 
@@ -108,21 +122,21 @@ bool D3D11DebugHandler::Initialize(ID3D11Device* device) {
         LogError("D3D11: Invalid device pointer");
         return false;
     }
-    
+
     m_device = device;
-    
+
     // Query for ID3D11InfoQueue interface
-    HRESULT hr = device->QueryInterface(IID_ID3D11InfoQueue_Local, 
+    HRESULT hr = device->QueryInterface(IID_ID3D11InfoQueue_Local,
                                        reinterpret_cast<void**>(m_info_queue.GetAddressOf()));
-    
+
     if (FAILED(hr)) {
         LogWarn("D3D11: InfoQueue interface not available (debug layer not enabled)");
         return false;
     }
-    
+
     // Clear any existing messages
     m_info_queue->ClearStoredMessages();
-    
+
     LogInfo("D3D11: InfoQueue interface acquired successfully");
     return true;
 }
@@ -139,47 +153,47 @@ void D3D11DebugHandler::ProcessMessages() {
     if (!m_info_queue) {
         return;
     }
-    
+
     UINT64 message_count = m_info_queue->GetNumStoredMessages();
     if (message_count == 0) {
         return;
     }
-    
+
     // Limit processing to avoid performance issues
     const UINT64 max_messages_per_frame = 50;
     UINT64 messages_to_process = (message_count < max_messages_per_frame) ? message_count : max_messages_per_frame;
-    
+
     for (UINT64 i = 0; i < messages_to_process; ++i) {
         SIZE_T message_size = 0;
         HRESULT hr = m_info_queue->GetMessage(i, nullptr, &message_size);
-        
+
         if (SUCCEEDED(hr) && message_size > 0) {
             auto message_buffer = std::make_unique<char[]>(message_size);
             D3D11_MESSAGE* message = reinterpret_cast<D3D11_MESSAGE*>(message_buffer.get());
-            
+
             hr = m_info_queue->GetMessage(i, message, &message_size);
             if (SUCCEEDED(hr)) {
                 LogMessage(*message);
             }
         }
     }
-    
+
     // Clear processed messages to prevent memory buildup
     m_info_queue->ClearStoredMessages();
-    
+
     if (message_count > max_messages_per_frame) {
-        LogWarn("D3D11: " + std::to_string(message_count - max_messages_per_frame) + 
+        LogWarn("D3D11: " + std::to_string(message_count - max_messages_per_frame) +
                 " additional debug messages skipped to maintain performance");
     }
 }
 
 void D3D11DebugHandler::LogMessage(const D3D11_MESSAGE& message) {
     std::ostringstream oss;
-    oss << "D3D11 [" << GetSeverityString(message.Severity) 
-        << "] [" << GetCategoryString(message.Category) 
-        << "] ID:" << message.ID 
+    oss << "D3D11 [" << GetSeverityString(message.Severity)
+        << "] [" << GetCategoryString(message.Category)
+        << "] ID:" << message.ID
         << " - " << std::string(message.pDescription, message.DescriptionByteLength - 1);
-    
+
     // Log with appropriate severity
     switch (message.Severity) {
         case D3D11_MESSAGE_SEVERITY_CORRUPTION:
@@ -231,21 +245,21 @@ bool D3D12DebugHandler::Initialize(ID3D12Device* device) {
         LogError("D3D12: Invalid device pointer");
         return false;
     }
-    
+
     m_device = device;
-    
+
     // Query for ID3D12InfoQueue interface
-    HRESULT hr = device->QueryInterface(IID_ID3D12InfoQueue_Local, 
+    HRESULT hr = device->QueryInterface(IID_ID3D12InfoQueue_Local,
                                        reinterpret_cast<void**>(m_info_queue.GetAddressOf()));
-    
+
     if (FAILED(hr)) {
         LogWarn("D3D12: InfoQueue interface not available (debug layer not enabled)");
         return false;
     }
-    
+
     // Clear any existing messages
     m_info_queue->ClearStoredMessages();
-    
+
     LogInfo("D3D12: InfoQueue interface acquired successfully");
     return true;
 }
@@ -262,47 +276,47 @@ void D3D12DebugHandler::ProcessMessages() {
     if (!m_info_queue) {
         return;
     }
-    
+
     UINT64 message_count = m_info_queue->GetNumStoredMessages();
     if (message_count == 0) {
         return;
     }
-    
+
     // Limit processing to avoid performance issues
     const UINT64 max_messages_per_frame = 50;
     UINT64 messages_to_process = (message_count < max_messages_per_frame) ? message_count : max_messages_per_frame;
-    
+
     for (UINT64 i = 0; i < messages_to_process; ++i) {
         SIZE_T message_size = 0;
         HRESULT hr = m_info_queue->GetMessage(i, nullptr, &message_size);
-        
+
         if (SUCCEEDED(hr) && message_size > 0) {
             auto message_buffer = std::make_unique<char[]>(message_size);
             D3D12_MESSAGE* message = reinterpret_cast<D3D12_MESSAGE*>(message_buffer.get());
-            
+
             hr = m_info_queue->GetMessage(i, message, &message_size);
             if (SUCCEEDED(hr)) {
                 LogMessage(*message);
             }
         }
     }
-    
+
     // Clear processed messages to prevent memory buildup
     m_info_queue->ClearStoredMessages();
-    
+
     if (message_count > max_messages_per_frame) {
-        LogWarn("D3D12: " + std::to_string(message_count - max_messages_per_frame) + 
+        LogWarn("D3D12: " + std::to_string(message_count - max_messages_per_frame) +
                 " additional debug messages skipped to maintain performance");
     }
 }
 
 void D3D12DebugHandler::LogMessage(const D3D12_MESSAGE& message) {
     std::ostringstream oss;
-    oss << "D3D12 [" << GetSeverityString(message.Severity) 
-        << "] [" << GetCategoryString(message.Category) 
-        << "] ID:" << message.ID 
+    oss << "D3D12 [" << GetSeverityString(message.Severity)
+        << "] [" << GetCategoryString(message.Category)
+        << "] ID:" << message.ID
         << " - " << std::string(message.pDescription, message.DescriptionByteLength - 1);
-    
+
     // Log with appropriate severity
     switch (message.Severity) {
         case D3D12_MESSAGE_SEVERITY_CORRUPTION:

@@ -7,7 +7,6 @@
 #include <wrl/client.h>
 #include <atomic>
 #include <memory>
-#include <mutex>
 
 using Microsoft::WRL::ComPtr;
 
@@ -21,30 +20,29 @@ class D3D12DebugHandler;
 class DebugLayerManager {
 public:
     static DebugLayerManager& GetInstance();
-    
+
     // Initialize debug layer for device
     bool InitializeForDevice(void* device, bool is_d3d12);
-    
+
     // Cleanup debug layer for device
     void CleanupForDevice(void* device);
-    
+
     // Process and log debug messages (called periodically)
     void ProcessDebugMessages();
-    
+
     // Check if debug layer is available
     bool IsDebugLayerAvailable() const;
-    
+
 private:
     DebugLayerManager() = default;
     ~DebugLayerManager() = default;
-    
+
     // Non-copyable
     DebugLayerManager(const DebugLayerManager&) = delete;
     DebugLayerManager& operator=(const DebugLayerManager&) = delete;
-    
-    std::unique_ptr<D3D11DebugHandler> m_d3d11_handler;
-    std::unique_ptr<D3D12DebugHandler> m_d3d12_handler;
-    std::mutex m_mutex;
+
+    std::atomic<D3D11DebugHandler*> m_d3d11_handler{nullptr};
+    std::atomic<D3D12DebugHandler*> m_d3d12_handler{nullptr};
     std::atomic<bool> m_initialized{false};
 };
 
@@ -55,7 +53,7 @@ public:
     void Cleanup();
     void ProcessMessages();
     bool IsInitialized() const { return m_info_queue != nullptr; }
-    
+
 private:
     ComPtr<ID3D11InfoQueue> m_info_queue;
     ComPtr<ID3D11Device> m_device;
@@ -71,7 +69,7 @@ public:
     void Cleanup();
     void ProcessMessages();
     bool IsInitialized() const { return m_info_queue != nullptr; }
-    
+
 private:
     ComPtr<ID3D12InfoQueue> m_info_queue;
     ComPtr<ID3D12Device> m_device;

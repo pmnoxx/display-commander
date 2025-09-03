@@ -1,4 +1,5 @@
 #include "resolution_helpers.hpp"
+#include "globals.hpp"
 #include <dxgi1_6.h>
 #include <d3d11.h>
 #include <wrl/client.h>
@@ -85,7 +86,8 @@ std::vector<std::string> GetRefreshRateLabels(int monitor_index, int width, int 
         // Try DXGI first for high precision refresh rates
         bool used_dxgi = false;
         ComPtr<IDXGIFactory1> factory;
-        if (SUCCEEDED(CreateDXGIFactory1(IID_PPV_ARGS(&factory))) && factory) {
+        // Skip DXGI calls during DLL initialization to avoid loader lock violations
+        if (g_dll_initialization_complete.load() && SUCCEEDED(CreateDXGIFactory1(IID_PPV_ARGS(&factory))) && factory) {
             for (UINT a = 0; ; ++a) {
                 ComPtr<IDXGIAdapter1> adapter;
                 if (factory->EnumAdapters1(a, &adapter) == DXGI_ERROR_NOT_FOUND) break;
@@ -273,7 +275,8 @@ bool GetSelectedRefreshRateRational(int monitor_index, int width, int height, in
 
         // Try DXGI first for high precision refresh rates
         ComPtr<IDXGIFactory1> factory;
-        if (SUCCEEDED(CreateDXGIFactory1(IID_PPV_ARGS(&factory))) && factory) {
+        // Skip DXGI calls during DLL initialization to avoid loader lock violations
+        if (g_dll_initialization_complete.load() && SUCCEEDED(CreateDXGIFactory1(IID_PPV_ARGS(&factory))) && factory) {
             for (UINT a = 0; ; ++a) {
                 ComPtr<IDXGIAdapter1> adapter;
                 if (factory->EnumAdapters1(a, &adapter) == DXGI_ERROR_NOT_FOUND) break;
@@ -483,6 +486,11 @@ bool ApplyDisplaySettingsDXGI(int monitor_index, int width, int height, UINT32 r
     HMONITOR hmon = monitors[monitor_index];
     
     // Create a temporary DXGI factory and device to access the output
+    // Skip DXGI calls during DLL initialization to avoid loader lock violations
+    if (!g_dll_initialization_complete.load()) {
+        return false;
+    }
+    
     ComPtr<IDXGIFactory1> factory;
     if (FAILED(CreateDXGIFactory1(IID_PPV_ARGS(&factory)))) {
         return false;

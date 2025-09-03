@@ -8,6 +8,9 @@
 // Global variables
 // UI mode removed - now using new tab system
 
+// DLL initialization state - prevents DXGI calls during DllMain
+std::atomic<bool> g_dll_initialization_complete{false};
+
 // Window settings
 std::atomic<int> s_windowed_width{3440}; // 21:9 ultrawide width
 std::atomic<int> s_windowed_height{1440}; // 21:9 ultrawide height

@@ -24,6 +24,9 @@ class CustomFpsLimiterManager;
 class LatentSyncManager;
 class DXGIDeviceInfoManager;
 
+// DLL initialization state
+extern std::atomic<bool> g_dll_initialization_complete;
+
 // Enums
 enum class DxgiBypassMode : std::uint8_t { kUnknown, kComposed, kOverlay, kIndependentFlip };
 enum class WindowStyleMode : std::uint8_t { KEEP, BORDERLESS, OVERLAPPED_WINDOW };

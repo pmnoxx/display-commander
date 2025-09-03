@@ -173,7 +173,6 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
   // Initialize hooks if settings are enabled on startup (after settings are loaded)
   if (fdw_reason == DLL_PROCESS_ATTACH) {
 
-
     // Initialize UI system before first draw
     InitializeUISettings();
     // InitializeSwapchain removed from proxy
@@ -229,6 +228,10 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
     } else {
       LogWarn("Failed to initialize DXGI Device Info Manager");
     }
+    
+    // Mark DLL initialization as complete - now DXGI calls are safe
+    g_dll_initialization_complete.store(true);
+    LogInfo("DLL initialization complete - DXGI calls now enabled");
   }
 
   return TRUE;

@@ -123,11 +123,6 @@ void DXGIDeviceInfoManager::RefreshDeviceInfo() {
 
     // Always clear and re-enumerate to get fresh data
     adapters_.clear();
-    if (GetAdapterFromReShadeDevice()) {
-        LogDebug("DXGI device information refreshed successfully");
-    } else {
-        LogDebug("DXGI device information refresh failed");
-    }
 }
 
 void DXGIDeviceInfoManager::EnumerateDevicesOnPresent() {
@@ -138,11 +133,6 @@ void DXGIDeviceInfoManager::EnumerateDevicesOnPresent() {
     // Always try to enumerate if we don't have adapter information
     // This ensures we retry if previous attempts failed
     if (adapters_.empty()) {
-        if (GetAdapterFromReShadeDevice()) {
-            LogDebug("Device information enumerated during present");
-        } else {
-            LogDebug("Device enumeration attempted during present but failed");
-        }
     } else {
         // Even if we have adapters, occasionally refresh to catch any changes
         static int present_counter = 0;
@@ -158,101 +148,6 @@ void DXGIDeviceInfoManager::EnumerateDevicesOnPresent() {
 void DXGIDeviceInfoManager::Cleanup() {
     adapters_.clear();
     initialized_ = false;
-}
-
-bool DXGIDeviceInfoManager::GetAdapterFromReShadeDevice() {
-    try {
-        // Get the current swapchain from ReShade
-        auto* swapchain = g_last_swapchain_ptr.load();
-        if (!swapchain) {
-            LogWarn("No ReShade swapchain available");
-            return false;
-        }
-
-        // Get the device from the swapchain
-        auto* device = swapchain->get_device();
-        if (!device) {
-            LogWarn("No ReShade device available");
-            return false;
-        }
-
-        // Get the native D3D11 device interface
-        ID3D11Device* d3d11_device = reinterpret_cast<ID3D11Device*>(device->get_native());
-        if (!d3d11_device) {
-            LogWarn("Failed to get native D3D11 device");
-            return false;
-        }
-
-        // Get the DXGI adapter using the correct method
-        Microsoft::WRL::ComPtr<IDXGIDevice> dxgi_device;
-        HRESULT hr = d3d11_device->QueryInterface(IID_PPV_ARGS(&dxgi_device));
-        if (FAILED(hr)) {
-            LogWarn("Failed to get DXGI device from D3D11 device");
-            return false;
-        }
-
-        Microsoft::WRL::ComPtr<IDXGIAdapter> adapter;
-        hr = dxgi_device->GetAdapter(&adapter);
-        if (FAILED(hr)) {
-            LogWarn("Failed to get DXGI adapter from DXGI device");
-            return false;
-        }
-
-    // Get adapter description
-    DXGI_ADAPTER_DESC desc = {};
-    if (SUCCEEDED(adapter->GetDesc(&desc))) {
-        DXGIAdapterInfo adapter_info = {};
-
-        // Convert wide string to UTF-8
-        int size_needed = WideCharToMultiByte(CP_UTF8, 0, desc.Description, -1, nullptr, 0, nullptr, nullptr);
-        if (size_needed > 0) {
-            std::string description(size_needed - 1, 0);
-            WideCharToMultiByte(CP_UTF8, 0, desc.Description, -1, &description[0], size_needed, nullptr, nullptr);
-            adapter_info.description = description;
-        }
-
-        adapter_info.name = "Primary Adapter";
-        adapter_info.dedicated_video_memory = desc.DedicatedVideoMemory;
-        adapter_info.dedicated_system_memory = desc.DedicatedSystemMemory;
-        adapter_info.shared_system_memory = desc.SharedSystemMemory;
-        adapter_info.adapter_luid = desc.AdapterLuid;
-        adapter_info.is_software = (desc.DedicatedVideoMemory == 0);
-
-        // Get additional device properties from ReShade
-        uint32_t vendor_id = 0, device_id = 0, api_version = 0, driver_version = 0;
-        char description_buffer[256] = {};
-
-        if (device->get_property(reshade::api::device_properties::vendor_id, &vendor_id)) {
-            // Store vendor ID if needed
-        }
-        if (device->get_property(reshade::api::device_properties::device_id, &device_id)) {
-            // Store device ID if needed
-        }
-        if (device->get_property(reshade::api::device_properties::api_version, &api_version)) {
-            // Store API version if needed
-        }
-        if (device->get_property(reshade::api::device_properties::driver_version, &driver_version)) {
-            // Store driver version if needed
-        }
-        if (device->get_property(reshade::api::device_properties::description, description_buffer)) {
-            // Use ReShade's description if available
-            if (strlen(description_buffer) > 0) {
-                adapter_info.description = description_buffer;
-            }
-        }
-
-        // Enumerate outputs for this adapter
-        EnumerateOutputs(adapter.Get(), adapter_info);
-
-        adapters_.push_back(std::move(adapter_info));
-    }
-
-    return !adapters_.empty();
-    } catch (...) {
-        LogWarn("Exception occurred in GetAdapterFromReShadeDevice");
-        LogStackTrace("GetAdapterFromReShadeDevice");
-        return false;
-    }
 }
 
 bool DXGIDeviceInfoManager::EnumerateOutputs(IDXGIAdapter* adapter, DXGIAdapterInfo& adapter_info) {
@@ -352,7 +247,7 @@ bool DXGIDeviceInfoManager::EnumerateOutputs(IDXGIAdapter* adapter, DXGIAdapterI
 }
 
 bool DXGIDeviceInfoManager::ResetHDRMetadataOnPresent(const std::string& output_device_name, float max_cll) {
-    try {
+   /* try {
         if (!initialized_) {
             return false;
         }
@@ -383,11 +278,13 @@ bool DXGIDeviceInfoManager::ResetHDRMetadataOnPresent(const std::string& output_
         LogWarn("Exception occurred in ResetHDRMetadata");
         LogStackTrace("ResetHDRMetadata");
         return false;
-    }
+    }*/
+    return false;
 }
 
 bool DXGIDeviceInfoManager::ResetHDRMetadataForOutput(const DXGIOutputInfo& output, float max_cll) {
     try {
+        /*
         // Get ReShade's existing swapchain
         auto* swapchain = g_last_swapchain_ptr.load();
         if (!swapchain) {
@@ -455,10 +352,11 @@ bool DXGIDeviceInfoManager::ResetHDRMetadataForOutput(const DXGIOutputInfo& outp
             LogWarn("HDR metadata reset: Failed to set HDR metadata");
             return false;
         }
+            */
 
     } catch (...) {
         LogWarn("HDR metadata reset: Exception occurred during reset");
         LogStackTrace("ResetHDRMetadataForOutput");
-        return false;
     }
+    return false;
 }

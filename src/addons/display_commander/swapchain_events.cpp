@@ -58,15 +58,15 @@ void HandleRenderStartAndEndTimes() {
         g_simulation_duration_ns.store( (1 * g_simulation_duration_ns_new + (alpha - 1) * g_simulation_duration_ns.load()) / alpha);
 
 
-      reshade::api::swapchain* swapchain = g_last_swapchain_ptr.load(std::memory_order_acquire);
+    //  reshade::api::swapchain* swapchain = g_last_swapchain_ptr.load(std::memory_order_acquire);
       if (s_reflex_enable.load()) {
-        auto* device = swapchain ? swapchain->get_device() : nullptr;
-        if (device && g_latencyManager->Initialize(device)) {
+    //    auto* device = swapchain ? swapchain->get_device() : nullptr;
+    //    if (device && g_latencyManager->Initialize(device)) {
           if (s_reflex_use_markers.load()) {
             g_latencyManager->SetMarker(LatencyMarkerType::SIMULATION_END);
             g_latencyManager->SetMarker(LatencyMarkerType::RENDERSUBMIT_START);
           }
-        }
+    //    }
       }
     }
   }
@@ -256,7 +256,7 @@ void OnInitSwapchain(reshade::api::swapchain* swapchain, bool resize) {
   // Schedule auto-apply even on resizes (generation counter ensures only latest runs)
   HWND hwnd = static_cast<HWND>(swapchain->get_hwnd());
   g_last_swapchain_hwnd.store(hwnd);
-  g_last_swapchain_ptr.store(swapchain);
+ // g_last_swapchain_ptr.store(swapchain);
   if (hwnd == nullptr) return;
   // Update DXGI composition state if possible
   {
@@ -333,6 +333,45 @@ void OnPresentUpdateAfter(reshade::api::command_queue* /*queue*/, reshade::api::
   }
   TimerPresentPacingDelay();
   HandleOnPresentEnd();
+
+  // DXGI composition state computation and periodic device/colorspace refresh
+  // (moved from continuous monitoring thread to avoid accessing g_last_swapchain_ptr from background thread)
+  if (swapchain != nullptr) {
+    // Compute DXGI composition state and log on change
+    DxgiBypassMode mode = GetIndependentFlipState(swapchain);
+    int state = 0;
+    switch (mode) {
+        case DxgiBypassMode::kComposed: state = 1; break;
+        case DxgiBypassMode::kOverlay: state = 2; break;
+        case DxgiBypassMode::kIndependentFlip: state = 3; break;
+        case DxgiBypassMode::kUnknown:
+        default: state = 0; break;
+    }
+
+    // Update shared state for fast reads on present
+    s_dxgi_composition_state.store(state);
+
+    int last = g_comp_last_logged.load();
+    if (state != last) {
+        g_comp_last_logged.store(state);
+        std::ostringstream oss;
+        oss << "DXGI Composition State (OnPresentAfter): " << DxgiBypassModeToString(mode) << " (" << state << ")";
+        LogInfo(oss.str().c_str());
+    }
+
+    // Periodically refresh colorspace and enumerate devices (approx every 4 seconds at 60fps = 240 frames)
+    static int present_after_counter = 0;
+    present_after_counter++;
+    if (present_after_counter >= 240) { // Refresh every 240 presents (about 4 seconds at 60fps)
+        present_after_counter = 0;
+        g_current_colorspace = swapchain->get_color_space();
+
+        extern std::unique_ptr<DXGIDeviceInfoManager> g_dxgiDeviceInfoManager;
+        if (g_dxgiDeviceInfoManager && g_dxgiDeviceInfoManager->IsInitialized()) {
+            g_dxgiDeviceInfoManager->EnumerateDevicesOnPresent();
+        }
+    }
+  }
 
   // NVIDIA Reflex: SIMULATION_END marker (minimal) and Sleep
   if (s_reflex_enable.load()) {
@@ -527,7 +566,7 @@ bool OnBindPipeline(reshade::api::command_list* cmd_list, reshade::api::pipeline
 }
 
 // Present flags callback to strip DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING
-void OnPresentFlags(uint32_t* present_flags) {
+void OnPresentFlags(uint32_t* present_flags, reshade::api::swapchain* swapchain) {
   // Increment event counter
   g_swapchain_event_counters[SWAPCHAIN_EVENT_PRESENT_FLAGS].fetch_add(1);
   g_swapchain_event_total_count.fetch_add(1);
@@ -549,7 +588,6 @@ void OnPresentFlags(uint32_t* present_flags) {
   if (s_no_present_in_background.load() && g_app_in_background.load(std::memory_order_acquire)) {
     *present_flags = DXGI_PRESENT_DO_NOT_SEQUENCE;
   }
-  reshade::api::swapchain* swapchain = g_last_swapchain_ptr.load(std::memory_order_acquire);
   if (s_reflex_enable.load()) {
     auto* device = swapchain ? swapchain->get_device() : nullptr;
     if (device && g_latencyManager->Initialize(device)) {

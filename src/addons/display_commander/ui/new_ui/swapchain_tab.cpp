@@ -27,8 +27,8 @@ void DrawSwapchainTab() {
 }
 
 void DrawSwapchainInfo() {
+    /*
     if (ImGui::CollapsingHeader("Swapchain Information", ImGuiTreeNodeFlags_DefaultOpen)) {
-
         auto* swapchain = ::g_last_swapchain_ptr.load();
         if (swapchain) {
             // Colorspace information
@@ -154,6 +154,7 @@ void DrawSwapchainInfo() {
             ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "No active swapchain available");
         }
     }
+        */
 }
 
 void DrawAdapterInfo() {
@@ -272,6 +273,7 @@ void DrawDxgiCompositionInfo() {
 
         // Get backbuffer format
         std::string format_str = "Unknown";
+        /*
         if (g_last_swapchain_ptr.load() != nullptr) {
             auto* device = g_last_swapchain_ptr.load()->get_device();
             if (device != nullptr && g_last_swapchain_ptr.load()->get_back_buffer_count() > 0) {
@@ -293,7 +295,7 @@ void DrawDxgiCompositionInfo() {
                     default: format_str = "Format_" + std::to_string(static_cast<int>(desc.texture.format)); break;
                 }
             }
-        }
+        }*/
 
         // Get colorspace string
         std::string colorspace_str = "Unknown";

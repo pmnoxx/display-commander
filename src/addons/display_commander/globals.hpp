@@ -168,7 +168,7 @@ extern std::atomic<bool> s_continuous_monitoring_enabled;
 // Atomic variables
 extern std::atomic<int> g_comp_query_counter;
 extern std::atomic<int> g_comp_last_logged;
-extern std::atomic<reshade::api::swapchain*> g_last_swapchain_ptr; // Using void* to avoid reshade dependency
+//extern std::atomic<reshade::api::swapchain*> g_last_swapchain_ptr; // Using void* to avoid reshade dependency
 extern std::atomic<uint64_t> g_init_apply_generation;
 extern std::atomic<HWND> g_last_swapchain_hwnd;
 extern std::atomic<bool> g_shutdown;

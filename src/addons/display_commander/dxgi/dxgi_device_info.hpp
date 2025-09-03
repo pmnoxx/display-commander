@@ -28,19 +28,18 @@ public:
     // Device enumeration and refresh (called during present)
     void EnumerateDevicesOnPresent();
     void RefreshDeviceInfo();
-    
+
     // Get device information
     const std::vector<DXGIAdapterInfo>& GetAdapters() const { return adapters_; }
     bool IsInitialized() const { return initialized_; }
-    
+
     // HDR metadata reset functionality (called during present)
     bool ResetHDRMetadataOnPresent(const std::string& output_device_name, float max_cll = 0.0f);
-    
+
 private:
     bool EnumerateOutputs(IDXGIAdapter* adapter, DXGIAdapterInfo& adapter_info);
     bool ResetHDRMetadataForOutput(const DXGIOutputInfo& output, float max_cll);
-    bool GetAdapterFromReShadeDevice();
-    
+
     // Stack trace functionality for crash debugging
     void LogStackTrace(const char* context);
     static LONG WINAPI UnhandledExceptionFilter(PEXCEPTION_POINTERS exception_info);
@@ -69,18 +68,18 @@ struct DXGIOutputInfo {
     bool is_attached;
     DXGI_MODE_ROTATION rotation;
     std::string monitor_name;
-    
+
     // HDR information (if available)
     bool supports_hdr10;
     float max_luminance;
     float min_luminance;
     float max_frame_average_light_level;
     float max_content_light_level;
-    
+
     // Color space information
     DXGI_COLOR_SPACE_TYPE color_space;
     bool supports_wide_color_gamut;
-    
+
     // Refresh rate information
     DXGI_RATIONAL refresh_rate;
     std::vector<DXGI_MODE_DESC> supported_modes;

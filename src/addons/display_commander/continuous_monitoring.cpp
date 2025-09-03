@@ -92,42 +92,8 @@ void ContinuousMonitoringThread() {
         }
 
         // BACKGROUND: Composition state logging and periodic device/colorspace refresh
-        {
-            auto* swapchain = g_last_swapchain_ptr.load();
-            if (swapchain != nullptr) {
-                // Compute DXGI composition state and log on change
-                DxgiBypassMode mode = GetIndependentFlipState(swapchain);
-                int state = 0;
-                switch (mode) {
-                    case DxgiBypassMode::kComposed: state = 1; break;
-                    case DxgiBypassMode::kOverlay: state = 2; break;
-                    case DxgiBypassMode::kIndependentFlip: state = 3; break;
-                    case DxgiBypassMode::kUnknown:
-                    default: state = 0; break;
-                }
-
-                // Update shared state for fast reads on present
-                s_dxgi_composition_state.store(state);
-
-                int last = g_comp_last_logged.load();
-                if (state != last) {
-                    g_comp_last_logged.store(state);
-                    std::ostringstream oss;
-                    oss << "DXGI Composition State (background): " << DxgiBypassModeToString(mode) << " (" << state << ")";
-                    LogInfo(oss.str().c_str());
-                }
-
-                // Periodically refresh colorspace and enumerate devices (approx every 4 seconds)
-                if ((seconds_counter % 4) == 0) {
-                    g_current_colorspace = swapchain->get_color_space();
-
-                    extern std::unique_ptr<DXGIDeviceInfoManager> g_dxgiDeviceInfoManager;
-                    if (g_dxgiDeviceInfoManager && g_dxgiDeviceInfoManager->IsInitialized()) {
-                        g_dxgiDeviceInfoManager->EnumerateDevicesOnPresent();
-                    }
-                }
-            }
-        }
+        // NOTE: This functionality has been moved to OnPresentUpdateAfter to avoid
+        // accessing g_last_swapchain_ptr from the continuous monitoring thread
 
         // Aggregate FPS/frametime metrics and publish shared text once per second
         {

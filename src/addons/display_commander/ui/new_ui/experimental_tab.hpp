@@ -19,6 +19,9 @@ void DrawMouseCoordinatesDisplay();
 // Draw backbuffer format override section
 void DrawBackbufferFormatOverride();
 
+// Draw buffer resolution upgrade section
+void DrawBufferResolutionUpgrade();
+
 // Cleanup function to stop background threads
 void CleanupExperimentalTab();
 

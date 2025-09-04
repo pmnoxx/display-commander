@@ -300,7 +300,12 @@ void DrawExperimentalTab() {
     // Draw backbuffer format override section
     DrawBackbufferFormatOverride();
 
-    #ifdef EXPERIMENTAL_TAB_PRIVATE
+    ImGui::Spacing();
+    ImGui::Separator();
+
+    // Draw buffer resolution upgrade section
+    DrawBufferResolutionUpgrade();
+
     ImGui::Spacing();
     ImGui::Separator();
 
@@ -312,7 +317,6 @@ void DrawExperimentalTab() {
 
     // Draw mouse coordinates display
     DrawMouseCoordinatesDisplay();
-    #endif
 }
 
 void DrawAutoClickFeature() {
@@ -539,6 +543,103 @@ void DrawBackbufferFormatOverride() {
         // Show current format info
         ImGui::Spacing();
         ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Note: Changes require restart to take effect");
+    }
+}
+
+void DrawBufferResolutionUpgrade() {
+    ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== Buffer Resolution Upgrade ===");
+
+    // Warning about experimental nature
+    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "⚠ EXPERIMENTAL FEATURE - May cause performance issues!");
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("This feature upgrades internal buffer resolutions during resource creation.\nUse with caution as it may cause performance issues or rendering artifacts.");
+    }
+
+    ImGui::Spacing();
+
+    // Enable/disable checkbox
+    if (CheckboxSetting(g_experimentalTabSettings.buffer_resolution_upgrade_enabled, "Enable Buffer Resolution Upgrade")) {
+        LogInfo("Buffer resolution upgrade %s",
+                g_experimentalTabSettings.buffer_resolution_upgrade_enabled.GetValue() ? "enabled" : "disabled");
+    }
+
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Upgrade internal buffer resolutions during resource creation.\nRequires restart to take effect.");
+    }
+
+    // Resolution upgrade controls (only enabled when upgrade is enabled)
+    if (g_experimentalTabSettings.buffer_resolution_upgrade_enabled.GetValue()) {
+        ImGui::Spacing();
+
+        // Mode selection
+        if (ComboSettingWrapper(g_experimentalTabSettings.buffer_resolution_upgrade_mode, "Upgrade Mode")) {
+            LogInfo("Buffer resolution upgrade mode changed to: %s",
+                    g_experimentalTabSettings.buffer_resolution_upgrade_mode.GetLabels()[g_experimentalTabSettings.buffer_resolution_upgrade_mode.GetValue()]);
+        }
+
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Select the buffer resolution upgrade mode:\n"
+                            "• Upgrade 1280x720 by Scale Factor: Specifically upgrade 1280x720 buffers by the scale factor\n"
+                            "• Upgrade by Scale Factor: Scale all buffers by the specified factor\n"
+                            "• Upgrade Custom Resolution: Upgrade specific resolution to custom target");
+        }
+
+        // Scale factor control (for both mode 0 and mode 1)
+        if (g_experimentalTabSettings.buffer_resolution_upgrade_mode.GetValue() == 0 ||
+            g_experimentalTabSettings.buffer_resolution_upgrade_mode.GetValue() == 1) {
+            ImGui::Spacing();
+            ImGui::Text("Scale Factor:");
+
+            if (SliderIntSetting(g_experimentalTabSettings.buffer_resolution_upgrade_scale_factor, "Scale Factor")) {
+                LogInfo("Buffer resolution upgrade scale factor changed to: %d",
+                        g_experimentalTabSettings.buffer_resolution_upgrade_scale_factor.GetValue());
+            }
+
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Scale factor to apply to all buffer resolutions (1-4x)");
+            }
+        }
+
+        // Custom resolution controls (for custom mode)
+        if (g_experimentalTabSettings.buffer_resolution_upgrade_mode.GetValue() == 2) { // Custom Resolution
+            ImGui::Spacing();
+            ImGui::Text("Target Resolution:");
+
+            ImGui::SetNextItemWidth(120);
+            if (SliderIntSetting(g_experimentalTabSettings.buffer_resolution_upgrade_width, "Width")) {
+                LogInfo("Buffer resolution upgrade width changed to: %d",
+                        g_experimentalTabSettings.buffer_resolution_upgrade_width.GetValue());
+            }
+
+            ImGui::SameLine();
+            ImGui::SetNextItemWidth(120);
+            if (SliderIntSetting(g_experimentalTabSettings.buffer_resolution_upgrade_height, "Height")) {
+                LogInfo("Buffer resolution upgrade height changed to: %d",
+                        g_experimentalTabSettings.buffer_resolution_upgrade_height.GetValue());
+            }
+
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Target resolution for buffer upgrades.\nWidth: 320-7680, Height: 240-4320");
+            }
+        }
+
+        // Show current settings info
+        ImGui::Spacing();
+        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Note: Changes require restart to take effect");
+
+                // Show what the upgrade will do
+        int mode = g_experimentalTabSettings.buffer_resolution_upgrade_mode.GetValue();
+        int scale = g_experimentalTabSettings.buffer_resolution_upgrade_scale_factor.GetValue();
+        if (mode == 0) {
+            ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "Will upgrade 1280x720 buffers to %dx%d (%dx scale)",
+                    1280 * scale, 720 * scale, scale);
+        } else if (mode == 1) {
+            ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "Will scale all buffers by %dx", scale);
+        } else if (mode == 2) {
+            ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "Will upgrade buffers to: %dx%d",
+                    g_experimentalTabSettings.buffer_resolution_upgrade_width.GetValue(),
+                    g_experimentalTabSettings.buffer_resolution_upgrade_height.GetValue());
+        }
     }
 }
 

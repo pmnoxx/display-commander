@@ -50,6 +50,13 @@ public:
     BoolSetting backbuffer_format_override_enabled;
     ComboSetting backbuffer_format_override;
 
+    // Buffer resolution upgrade settings
+    BoolSetting buffer_resolution_upgrade_enabled;
+    IntSetting buffer_resolution_upgrade_width;
+    IntSetting buffer_resolution_upgrade_height;
+    IntSetting buffer_resolution_upgrade_scale_factor;
+    ComboSetting buffer_resolution_upgrade_mode;
+
 private:
     std::vector<SettingBase*> all_settings_;
 };

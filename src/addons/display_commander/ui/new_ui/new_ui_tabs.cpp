@@ -77,7 +77,7 @@ void InitializeNewUI() {
     g_tab_manager.AddTab("Important Info", "important_info", []() {
         ui::new_ui::DrawImportantInfo();
     });
-#ifdef EXPERIMENTAL_TAB
+#if EXPERIMENTAL_TAB==1 || EXPERIMENTAL_TAB_PRIVATE==1
     g_tab_manager.AddTab("Experimental", "experimental", []() {
         ui::new_ui::DrawExperimentalTab();
     });

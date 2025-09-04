@@ -30,8 +30,11 @@ void OnPresentUpdateBefore2(reshade::api::effect_runtime* runtime);
 void OnPresentUpdateAfter(reshade::api::command_queue* queue, reshade::api::swapchain* swapchain);
 void OnPresentFlags(uint32_t* present_flags, reshade::api::swapchain* swapchain);
 
-// Resource view creation event handler to fix format mismatches
+// Buffer resolution upgrade event handlers
+bool OnCreateResource(reshade::api::device* device, reshade::api::resource_desc& desc, reshade::api::subresource_data* initial_data, reshade::api::resource_usage usage);
 bool OnCreateResourceView(reshade::api::device* device, reshade::api::resource resource, reshade::api::resource_usage usage_type, reshade::api::resource_view_desc& desc);
+void OnSetViewport(reshade::api::command_list* cmd_list, uint32_t first, uint32_t count, const reshade::api::viewport* viewports);
+void OnSetScissorRects(reshade::api::command_list* cmd_list, uint32_t first, uint32_t count, const reshade::api::rect* rects);
 
 // ============================================================================
 // POWER SAVING EVENT HANDLERS

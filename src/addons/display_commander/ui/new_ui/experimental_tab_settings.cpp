@@ -33,6 +33,15 @@ ExperimentalTabSettings::ExperimentalTabSettings()
         "R10G10B10A2_UNORM (10-bit)",
         "R16G16B16A16_FLOAT (16-bit HDR)"
     }, "Experimental")
+    , buffer_resolution_upgrade_enabled("BufferResolutionUpgradeEnabled", false, "Experimental")
+    , buffer_resolution_upgrade_width("BufferResolutionUpgradeWidth", 1280, 320, 7680, "Experimental")
+    , buffer_resolution_upgrade_height("BufferResolutionUpgradeHeight", 720, 240, 4320, "Experimental")
+    , buffer_resolution_upgrade_scale_factor("BufferResolutionUpgradeScaleFactor", 2, 1, 4, "Experimental")
+    , buffer_resolution_upgrade_mode("BufferResolutionUpgradeMode", 0, {
+        "Upgrade 1280x720 by Scale Factor",
+        "Upgrade by Scale Factor",
+        "Upgrade Custom Resolution"
+    }, "Experimental")
 {
     // Initialize the all_settings_ vector
     all_settings_ = {
@@ -42,7 +51,9 @@ ExperimentalTabSettings::ExperimentalTabSettings()
         &sequence_3_enabled, &sequence_3_x, &sequence_3_y, &sequence_3_interval,
         &sequence_4_enabled, &sequence_4_x, &sequence_4_y, &sequence_4_interval,
         &sequence_5_enabled, &sequence_5_x, &sequence_5_y, &sequence_5_interval,
-        &backbuffer_format_override_enabled, &backbuffer_format_override
+        &backbuffer_format_override_enabled, &backbuffer_format_override,
+        &buffer_resolution_upgrade_enabled, &buffer_resolution_upgrade_width, &buffer_resolution_upgrade_height,
+        &buffer_resolution_upgrade_scale_factor, &buffer_resolution_upgrade_mode
     };
 }
 

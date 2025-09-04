@@ -27,6 +27,12 @@ ExperimentalTabSettings::ExperimentalTabSettings()
     , sequence_5_x("Sequence5X", 0, -10000, 10000, "Experimental")
     , sequence_5_y("Sequence5Y", 0, -10000, 10000, "Experimental")
     , sequence_5_interval("Sequence5Interval", 3000, 100, 60000, "Experimental")
+    , backbuffer_format_override_enabled("BackbufferFormatOverrideEnabled", false, "Experimental")
+    , backbuffer_format_override("BackbufferFormatOverride", 0, {
+        "R8G8B8A8_UNORM (8-bit)",
+        "R10G10B10A2_UNORM (10-bit)",
+        "R16G16B16A16_FLOAT (16-bit HDR)"
+    }, "Experimental")
 {
     // Initialize the all_settings_ vector
     all_settings_ = {
@@ -35,7 +41,8 @@ ExperimentalTabSettings::ExperimentalTabSettings()
         &sequence_2_enabled, &sequence_2_x, &sequence_2_y, &sequence_2_interval,
         &sequence_3_enabled, &sequence_3_x, &sequence_3_y, &sequence_3_interval,
         &sequence_4_enabled, &sequence_4_x, &sequence_4_y, &sequence_4_interval,
-        &sequence_5_enabled, &sequence_5_x, &sequence_5_y, &sequence_5_interval
+        &sequence_5_enabled, &sequence_5_x, &sequence_5_y, &sequence_5_interval,
+        &backbuffer_format_override_enabled, &backbuffer_format_override
     };
 }
 

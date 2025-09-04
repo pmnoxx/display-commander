@@ -1,0 +1,39 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+
+
+A true man knows how to set rules for himself. You can edit rules as you wish, in .cursor\rules\trueman.mdc
+
+Rules:
+
+## Code Quality & Architecture
+1. **Preserve Original Intent**: Never change the fundamental purpose or behavior of existing code without explicit user request
+2. **Minimal Impact Changes**: When modifying code, make the smallest possible change that achieves the goal
+3. **Type Safety First**: Always preserve original variable types and avoid unnecessary type conversions
+4. **Header Consistency**: Never redeclare structures that are already defined in headers - use existing definitions
+5. **No Dummy Code**: Avoid creating placeholder or mockup code - prefer fully commented non-working code over fake implementations
+
+## Development Process
+6. **Clarify Before Acting**: If a user request is ambiguous, poorly explained, or would lead to buggy solutions, explain the issue and ask for clarification
+7. **Thorough Verification**: Double and triple-check implementations - cost/token efficiency is not a priority over correctness
+8. **No Assumptions**: Never make assumptions about user intent - always verify understanding
+9. **Complete Solutions**: Provide full, working implementations rather than partial solutions
+
+## Project-Specific Guidelines
+10. **Reshade Integration**: Respect the Reshade addon architecture and ImGui dependencies
+11. **Special-K Compatibility**: Maintain compatibility with Special-K without including its source directly
+12. **Display Commander Focus**: Keep changes aligned with the display management and GPU control purpose
+13. **Cross-Platform Awareness**: Consider Windows-specific APIs and DirectX integration requirements
+
+## Communication & Documentation
+14. **Clear Explanations**: Always explain the reasoning behind code changes and architectural decisions
+15. **Context Preservation**: Maintain the existing code style and patterns unless improvement is explicitly requested
+16. **Error Handling**: Implement proper error handling and edge case management
+17. **Performance Awareness**: Consider performance implications of changes, especially for real-time display operations
+
+## Rule Management & Learning
+18. **Pattern Recognition**: If you notice yourself making the same type of mistake repeatedly (e.g., forgetting to include headers, making similar architectural errors, or violating the same principles), proactively suggest adding a new rule to prevent future occurrences. This helps improve the development process and prevents recurring issues.
+

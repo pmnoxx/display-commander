@@ -4,6 +4,7 @@
 #include "device_info_tab.hpp"
 #include "developer_new_tab.hpp"
 #include "main_new_tab.hpp"
+#include "experimental_tab.hpp"
 #include "../../addon.hpp"
 
 
@@ -24,22 +25,22 @@ void TabManager::Draw() {
     if (tabs_.empty()) {
         return;
     }
-    
+
     // Draw tab bar
     if (ImGui::BeginTabBar("MainTabs", ImGuiTabBarFlags_None)) {
         for (size_t i = 0; i < tabs_.size(); ++i) {
             if (!tabs_[i].is_visible) {
                 continue;
             }
-            
+
             if (ImGui::BeginTabItem(tabs_[i].name.c_str())) {
                 active_tab_ = static_cast<int>(i);
-                
+
                 // Draw tab content
                 if (tabs_[i].on_draw) {
                     tabs_[i].on_draw();
                 }
-                
+
                 ImGui::EndTabItem();
             }
         }
@@ -60,23 +61,28 @@ void InitializeNewUI() {
     g_tab_manager.AddTab("Developer", "developer_new", []() {
         ui::new_ui::DrawDeveloperNewTab();
     });
-    
+
     g_tab_manager.AddTab("Device Info", "device_info", []() {
         ui::new_ui::DrawDeviceInfoTab();
     });
-    
+
     g_tab_manager.AddTab("Window Info", "window_info", []() {
         ui::new_ui::DrawWindowInfoTab();
     });
-    
+
     g_tab_manager.AddTab("Swapchain", "swapchain", []() {
         ui::new_ui::DrawSwapchainTab();
     });
-    
+
     g_tab_manager.AddTab("Important Info", "important_info", []() {
         ui::new_ui::DrawImportantInfo();
     });
-    
+#ifdef EXPERIMENTAL_TAB
+    g_tab_manager.AddTab("Experimental", "experimental", []() {
+        ui::new_ui::DrawExperimentalTab();
+    });
+#endif
+
 }
 
 // Draw the new UI

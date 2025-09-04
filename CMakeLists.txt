@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 3.20)
 
 project(reshade_display_commander VERSION 0.2.4 LANGUAGES CXX)
 
+# Build options
+option(EXPERIMENTAL_TAB "Enable experimental tab functionality" OFF)
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -25,6 +28,11 @@ if(DISPLAY_COMMANDER_SOURCES STREQUAL "")
 endif()
 
 add_library(zzz_display_commander MODULE ${DISPLAY_COMMANDER_SOURCES})
+
+# Compile definitions
+if(EXPERIMENTAL_TAB)
+  target_compile_definitions(zzz_display_commander PRIVATE EXPERIMENTAL_TAB=1)
+endif()
 
 # MSVC-specific flags
 if(MSVC)

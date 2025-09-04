@@ -7,6 +7,7 @@
 // Include the UI initialization
 #include "ui/ui_main.hpp"
 #include "ui/new_ui/new_ui_main.hpp"
+#include "ui/new_ui/experimental_tab.hpp"
 #include "background_tasks/background_task_coordinator.hpp"
 #include "reshade_events/fullscreen_prevention.hpp"
 
@@ -77,6 +78,8 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
       if (!reshade::register_addon(h_module)) return FALSE;
       // Ensure UI system is initialized
       ui::new_ui::InitializeNewUISystem();
+      // Initialize experimental tab
+      ui::new_ui::InitExperimentalTab();
       // Install process-exit safety hooks to restore display on abnormal exits
       process_exit_hooks::Initialize();
 
@@ -136,6 +139,9 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
 
             // Clean up continuous monitoring if it's running
       StopContinuousMonitoring();
+
+      // Clean up experimental tab threads
+      ui::new_ui::CleanupExperimentalTab();
 
       // Clean up DXGI Device Info Manager
       g_dxgiDeviceInfoManager.reset();

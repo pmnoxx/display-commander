@@ -59,7 +59,7 @@ std::atomic<int> s_dxgi_composition_state{0};
 std::atomic<int> s_spoof_window_focus{0}; // 0 = Disabled, 1 = Spoof as Focused, 2 = Spoof as Unfocused
 
 // Input blocking in background (0.0f off, 1.0f on)
-std::atomic<bool> s_block_input_in_background{false};
+std::atomic<bool> s_block_input_in_background{true};
 
 // Render blocking in background
 std::atomic<bool> s_no_render_in_background{false};
@@ -195,7 +195,7 @@ std::atomic<bool> s_enable_unstable_reshade_features = false; // Disabled by def
 
 
 // Keyboard Shortcut Settings
-std::atomic<bool> s_enable_mute_unmute_shortcut = false; // Disabled by default
+std::atomic<bool> s_enable_mute_unmute_shortcut = true; // Disabled by default
 
 // Performance optimization settings
 std::atomic<bool> g_flush_before_present = true; // Flush command queue before present to reduce latency (enabled by default)

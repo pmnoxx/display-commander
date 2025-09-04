@@ -32,7 +32,7 @@ DeveloperTabSettings::DeveloperTabSettings()
     : prevent_fullscreen("PreventFullscreen", s_prevent_fullscreen, true, "DisplayCommander")
     , spoof_fullscreen_state("SpoofFullscreenState", s_spoof_fullscreen_state, 0, 0, 2, "DisplayCommander")
     , spoof_window_focus("SpoofWindowFocus", s_spoof_window_focus, 0, 0, 2, "DisplayCommander")
-    , continuous_monitoring("ContinuousMonitoring", s_continuous_monitoring_enabled, false, "DisplayCommander")
+    , continuous_monitoring("ContinuousMonitoring", s_continuous_monitoring_enabled, true, "DisplayCommander")
     , prevent_always_on_top("PreventAlwaysOnTop", s_prevent_always_on_top, true, "DisplayCommander")
     , fix_hdr10_colorspace("FixHDR10Colorspace", s_fix_hdr10_colorspace, false, "DisplayCommander")
     , nvapi_fullscreen_prevention("NvapiFullscreenPrevention", s_nvapi_fullscreen_prevention, false, "DisplayCommander")
@@ -48,7 +48,7 @@ DeveloperTabSettings::DeveloperTabSettings()
     , reflex_use_markers("ReflexUseMarkers", s_reflex_use_markers, true, "DisplayCommander")
     , reflex_logging("ReflexLogging", s_enable_reflex_logging, false, "DisplayCommander")
 
-    , enable_mute_unmute_shortcut("EnableMuteUnmuteShortcut", s_enable_mute_unmute_shortcut, false, "DisplayCommander")
+    , enable_mute_unmute_shortcut("EnableMuteUnmuteShortcut", s_enable_mute_unmute_shortcut, true, "DisplayCommander")
     , flush_before_present("FlushBeforePresent", g_flush_before_present, true, "DisplayCommander")
 {
 }
@@ -73,7 +73,7 @@ void DeveloperTabSettings::LoadAll() {
     reflex_boost.Load();
     reflex_use_markers.Load();
     reflex_logging.Load();
-    
+
     // All Ref classes automatically sync with global variables
 }
 

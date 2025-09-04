@@ -130,6 +130,9 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
       reshade::register_overlay("Display Commander", OnRegisterOverlayDisplayCommander);
       // Register device destroy event for restore-on-exit
       reshade::register_event<reshade::addon_event::destroy_device>(OnDestroyDevice);
+
+      // Register resource view creation event for backbuffer format override
+      reshade::register_event<reshade::addon_event::create_resource_view>(OnCreateResourceView);
       break;
     case DLL_PROCESS_DETACH:
       // Safety: attempt restore on detach as well (idempotent)

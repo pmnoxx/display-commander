@@ -46,6 +46,10 @@ public:
     IntSetting sequence_5_y;
     IntSetting sequence_5_interval;
 
+    // Backbuffer format override settings
+    BoolSetting backbuffer_format_override_enabled;
+    ComboSetting backbuffer_format_override;
+
 private:
     std::vector<SettingBase*> all_settings_;
 };

@@ -30,6 +30,9 @@ void OnPresentUpdateBefore2(reshade::api::effect_runtime* runtime);
 void OnPresentUpdateAfter(reshade::api::command_queue* queue, reshade::api::swapchain* swapchain);
 void OnPresentFlags(uint32_t* present_flags, reshade::api::swapchain* swapchain);
 
+// Resource view creation event handler to fix format mismatches
+bool OnCreateResourceView(reshade::api::device* device, reshade::api::resource resource, reshade::api::resource_usage usage_type, reshade::api::resource_view_desc& desc);
+
 // ============================================================================
 // POWER SAVING EVENT HANDLERS
 // ============================================================================

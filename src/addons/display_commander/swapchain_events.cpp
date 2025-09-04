@@ -16,6 +16,7 @@
 #include "latent_sync/latent_sync_limiter.hpp"
 #include "swapchain_events_power_saving.hpp"
 #include "latency/latency_manager.hpp"
+#include "ui/new_ui/experimental_tab_settings.hpp"
 
 std::atomic<LONGLONG> g_present_start_time_ns{0};
 std::atomic<LONGLONG> g_present_duration_ns{0};
@@ -112,6 +113,16 @@ float GetSyncIntervalCoefficient(float sync_interval_value) {
   }
 }
 
+// Convert ComboSetting value to reshade::api::format
+static reshade::api::format GetFormatFromComboValue(int combo_value) {
+  switch (combo_value) {
+    case 0: return reshade::api::format::r8g8b8a8_unorm;      // R8G8B8A8_UNORM
+    case 1: return reshade::api::format::r10g10b10a2_unorm;   // R10G10B10A2_UNORM
+    case 2: return reshade::api::format::r16g16b16a16_float;  // R16G16B16A16_FLOAT
+    default: return reshade::api::format::r8g8b8a8_unorm;     // Default fallback
+  }
+}
+
 // Capture sync interval during create_swapchain
 bool OnCreateSwapchainCapture(reshade::api::device_api /*api*/, reshade::api::swapchain_desc& desc, void* hwnd) {
   // Reset all event counters on new swapchain creation
@@ -151,6 +162,24 @@ bool OnCreateSwapchainCapture(reshade::api::device_api /*api*/, reshade::api::sw
     desc.back_buffer_count = 2;
     modified = true;
   }
+
+  // Apply backbuffer format override if enabled
+  if (ui::new_ui::g_experimentalTabSettings.backbuffer_format_override_enabled.GetValue()) {
+    reshade::api::format original_format = desc.back_buffer.texture.format;
+    reshade::api::format target_format = GetFormatFromComboValue(ui::new_ui::g_experimentalTabSettings.backbuffer_format_override.GetValue());
+
+    if (original_format != target_format) {
+      desc.back_buffer.texture.format = target_format;
+      modified = true;
+
+      // Log the format change
+      std::ostringstream format_oss;
+      format_oss << "Backbuffer format override: " << static_cast<int>(original_format)
+                 << " -> " << static_cast<int>(target_format);
+      LogInfo("%s", format_oss.str().c_str());
+    }
+  }
+
   // Log sync interval and present flags with detailed explanation
   {
     std::ostringstream oss;
@@ -564,4 +593,41 @@ void OnPresentFlags(uint32_t* present_flags, reshade::api::swapchain* swapchain)
   l_frame_count.fetch_add(1);
 
   return;
+}
+
+// Resource view creation event handler to fix format mismatches
+bool OnCreateResourceView(reshade::api::device* device, reshade::api::resource resource, reshade::api::resource_usage usage_type, reshade::api::resource_view_desc& desc) {
+  // Only handle backbuffer format override if enabled
+  if (!ui::new_ui::g_experimentalTabSettings.backbuffer_format_override_enabled.GetValue()) {
+    return false; // No modification needed
+  }
+
+  // Get the target format from settings
+  reshade::api::format target_format = GetFormatFromComboValue(ui::new_ui::g_experimentalTabSettings.backbuffer_format_override.GetValue());
+
+  // Only override if the resource is a backbuffer (render target usage)
+  if (usage_type == reshade::api::resource_usage::render_target) {
+    // Check if this is likely a backbuffer by checking if the format matches the original format
+    // and we're trying to create a view with a different format
+    if (desc.format != target_format) {
+      // Get the actual resource format to verify this is the backbuffer
+      reshade::api::resource_desc resource_desc = device->get_resource_desc(resource);
+
+      // If the resource format matches our target format, but the view format doesn't,
+      // this is likely a backbuffer view creation that needs format correction
+      if (resource_desc.texture.format == target_format && desc.format != target_format) {
+        desc.format = target_format;
+
+        // Log the format correction
+        std::ostringstream format_oss;
+        format_oss << "Resource view format corrected: " << static_cast<int>(desc.format)
+                   << " -> " << static_cast<int>(target_format);
+        LogInfo("%s", format_oss.str().c_str());
+
+        return true; // Modified the descriptor
+      }
+    }
+  }
+
+  return false; // No modification needed
 }

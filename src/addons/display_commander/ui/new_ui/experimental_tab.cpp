@@ -297,6 +297,12 @@ void DrawExperimentalTab() {
     ImGui::Spacing();
     ImGui::Separator();
 
+    // Draw backbuffer format override section
+    DrawBackbufferFormatOverride();
+
+    ImGui::Spacing();
+    ImGui::Separator();
+
     // Draw auto-click feature
     DrawAutoClickFeature();
 
@@ -487,6 +493,50 @@ void CleanupExperimentalTab() {
             g_auto_click_thread.join();
         }
         LogInfo("Experimental tab cleanup: Auto-click thread stopped");
+    }
+}
+
+void DrawBackbufferFormatOverride() {
+    ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== Backbuffer Format Override ===");
+
+    // Warning about experimental nature
+    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "⚠ EXPERIMENTAL FEATURE - May cause compatibility issues!");
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("This feature overrides the backbuffer format during swapchain creation.\nUse with caution as it may cause rendering issues or crashes in some games.");
+    }
+
+    ImGui::Spacing();
+
+    // Enable/disable checkbox
+    if (CheckboxSetting(g_experimentalTabSettings.backbuffer_format_override_enabled, "Enable Backbuffer Format Override")) {
+        LogInfo("Backbuffer format override %s",
+                g_experimentalTabSettings.backbuffer_format_override_enabled.GetValue() ? "enabled" : "disabled");
+    }
+
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Override the backbuffer format during swapchain creation.\nRequires restart to take effect.");
+    }
+
+    // Format selection combo (only enabled when override is enabled)
+    if (g_experimentalTabSettings.backbuffer_format_override_enabled.GetValue()) {
+        ImGui::Spacing();
+        ImGui::Text("Target Format:");
+
+        if (ComboSettingWrapper(g_experimentalTabSettings.backbuffer_format_override, "Format")) {
+            LogInfo("Backbuffer format override changed to: %s",
+                    g_experimentalTabSettings.backbuffer_format_override.GetLabels()[g_experimentalTabSettings.backbuffer_format_override.GetValue()]);
+        }
+
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Select the target backbuffer format:\n"
+                            "• R8G8B8A8_UNORM: Standard 8-bit per channel (32-bit total)\n"
+                            "• R10G10B10A2_UNORM: 10-bit RGB + 2-bit alpha (32-bit total)\n"
+                            "• R16G16B16A16_FLOAT: 16-bit HDR floating point (64-bit total)");
+        }
+
+        // Show current format info
+        ImGui::Spacing();
+        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Note: Changes require restart to take effect");
     }
 }
 

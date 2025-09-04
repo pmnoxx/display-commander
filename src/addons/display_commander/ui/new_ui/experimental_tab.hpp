@@ -16,6 +16,9 @@ void DrawAutoClickFeature();
 // Draw mouse coordinates display section
 void DrawMouseCoordinatesDisplay();
 
+// Draw backbuffer format override section
+void DrawBackbufferFormatOverride();
+
 // Cleanup function to stop background threads
 void CleanupExperimentalTab();
 

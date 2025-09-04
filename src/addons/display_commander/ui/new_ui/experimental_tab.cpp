@@ -300,6 +300,7 @@ void DrawExperimentalTab() {
     // Draw backbuffer format override section
     DrawBackbufferFormatOverride();
 
+    #ifdef EXPERIMENTAL_TAB_PRIVATE
     ImGui::Spacing();
     ImGui::Separator();
 
@@ -311,6 +312,7 @@ void DrawExperimentalTab() {
 
     // Draw mouse coordinates display
     DrawMouseCoordinatesDisplay();
+    #endif
 }
 
 void DrawAutoClickFeature() {

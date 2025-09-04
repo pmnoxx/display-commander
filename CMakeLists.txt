@@ -4,6 +4,7 @@ project(reshade_display_commander VERSION 0.2.4 LANGUAGES CXX)
 
 # Build options
 option(EXPERIMENTAL_TAB "Enable experimental tab functionality" OFF)
+option(EXPERIMENTAL_TAB_PRIVATE "Enable experimental tab private functionality (master switch)" OFF)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -30,7 +31,11 @@ endif()
 add_library(zzz_display_commander MODULE ${DISPLAY_COMMANDER_SOURCES})
 
 # Compile definitions
-if(EXPERIMENTAL_TAB)
+# EXPERIMENTAL_TAB_PRIVATE is the master switch - if enabled, it forces EXPERIMENTAL_TAB on
+if(EXPERIMENTAL_TAB_PRIVATE)
+  target_compile_definitions(zzz_display_commander PRIVATE EXPERIMENTAL_TAB_PRIVATE=1)
+  target_compile_definitions(zzz_display_commander PRIVATE EXPERIMENTAL_TAB=1)
+elseif(EXPERIMENTAL_TAB)
   target_compile_definitions(zzz_display_commander PRIVATE EXPERIMENTAL_TAB=1)
 endif()
 

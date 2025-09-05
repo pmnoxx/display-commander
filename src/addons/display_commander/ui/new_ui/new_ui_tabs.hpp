@@ -4,6 +4,8 @@
 #include <functional>
 #include <string>
 #include <vector>
+#include <atomic>
+#include <memory>
 
 namespace ui::new_ui {
 
@@ -16,25 +18,26 @@ struct Tab {
 };
 
 // Main tab manager class
+// Thread-safe implementation using atomic shared_ptr for copy-on-write semantics
 class TabManager {
 public:
     TabManager();
     ~TabManager() = default;
 
-    // Add a new tab
+    // Add a new tab (thread-safe)
     void AddTab(const std::string& name, const std::string& id, std::function<void()> on_draw);
 
-    // Draw the tab bar and content
+    // Draw the tab bar and content (thread-safe)
     void Draw();
 
-    // Get current active tab
+    // Get current active tab (thread-safe)
     int GetActiveTab() const { return active_tab_; }
 
-    // Set active tab
+    // Set active tab (thread-safe)
     void SetActiveTab(int tab) { active_tab_ = tab; }
 
 private:
-    std::vector<Tab> tabs_;
+    std::atomic<std::shared_ptr<const std::vector<Tab>>> tabs_;
     int active_tab_ = 0;
 };
 

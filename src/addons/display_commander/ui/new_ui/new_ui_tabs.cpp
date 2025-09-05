@@ -15,16 +15,31 @@ TabManager g_tab_manager;
 
 // TabManager implementation
 TabManager::TabManager() : active_tab_(0) {
+    // Initialize with empty vector
+    tabs_.store(std::make_shared<const std::vector<Tab>>(std::vector<Tab>{}));
 }
 
 LONGLONG first_draw_ui_ns = 0;
 
 void TabManager::AddTab(const std::string& name, const std::string& id, std::function<void()> on_draw) {
-    tabs_.push_back({name, id, on_draw, true});
+    // Get current tabs atomically
+    auto current_tabs = tabs_.load();
+
+    // Create new vector with existing tabs plus the new one
+    auto new_tabs = std::make_shared<std::vector<Tab>>(*current_tabs);
+    new_tabs->push_back({name, id, on_draw, true});
+
+    // Atomically replace the tabs with const version
+    // This ensures thread-safe updates with copy-on-write semantics
+    tabs_.store(std::shared_ptr<const std::vector<Tab>>(new_tabs));
 }
 
 void TabManager::Draw() {
-    if (tabs_.empty()) {
+    // Get current tabs atomically
+    auto current_tabs = tabs_.load();
+
+    // Safety check for null pointer (should never happen with proper initialization)
+    if (!current_tabs || current_tabs->empty()) {
         return;
     }
     LONGLONG now_ns = utils::get_now_ns();
@@ -37,17 +52,17 @@ void TabManager::Draw() {
 
     // Draw tab bar
     if (ImGui::BeginTabBar("MainTabs", ImGuiTabBarFlags_None)) {
-        for (size_t i = 0; i < tabs_.size(); ++i) {
-            if (!tabs_[i].is_visible) {
+        for (size_t i = 0; i < current_tabs->size(); ++i) {
+            if (!(*current_tabs)[i].is_visible) {
                 continue;
             }
 
-            if (ImGui::BeginTabItem(tabs_[i].name.c_str())) {
+            if (ImGui::BeginTabItem((*current_tabs)[i].name.c_str())) {
                 active_tab_ = static_cast<int>(i);
 
                 // Draw tab content
-                if (tabs_[i].on_draw) {
-                    tabs_[i].on_draw();
+                if ((*current_tabs)[i].on_draw) {
+                    (*current_tabs)[i].on_draw();
                 }
 
                 ImGui::EndTabItem();

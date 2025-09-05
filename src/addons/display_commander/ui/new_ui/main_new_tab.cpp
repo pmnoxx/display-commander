@@ -36,16 +36,16 @@ void InitMainNewTab() {
             idx = (std::max)(idx, 0);
             int max_idx = 7;
             idx = (std::min)(idx, max_idx);
-            s_windowed_width.store((idx == 0) ? GetCurrentMonitorWidth()
-                                          : WIDTH_OPTIONS[idx]);
+        //    s_windowed_width.store((idx == 0) ? GetCurrentMonitorWidth()
+           //                               : WIDTH_OPTIONS[idx]);
         }
         {
             int idx = g_main_new_tab_settings.window_height.GetValue();
             idx = (std::max)(idx, 0);
             int max_idx = 7;
             idx = (std::min)(idx, max_idx);
-            s_windowed_height.store((idx == 0) ? GetCurrentMonitorHeight()
-                                           : HEIGHT_OPTIONS[idx]);
+         //   s_windowed_height.store((idx == 0) ? GetCurrentMonitorHeight()
+           //                                : HEIGHT_OPTIONS[idx]);
         }
         s_aspect_index = g_main_new_tab_settings.aspect_index.GetValue();
         s_target_monitor_index.store(g_main_new_tab_settings.target_monitor_index.GetValue());
@@ -70,13 +70,6 @@ void InitMainNewTab() {
         // VBlank Sync Divisor
         s_vblank_sync_divisor.store(g_main_new_tab_settings.vblank_sync_divisor.GetValue());
 
-        // If manual Audio Mute is OFF, proactively unmute on startup
-        if (!s_audio_mute.load()) {
-            if (::SetMuteForCurrentProcess(false)) {
-                ::g_muted_applied.store(false);
-                LogInfo("Audio unmuted at startup (Audio Mute is OFF)");
-            }
-        }
     }
 }
 

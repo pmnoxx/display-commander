@@ -43,9 +43,6 @@ void TabManager::Draw() {
         return;
     }
     LONGLONG now_ns = utils::get_now_ns();
-    if (first_draw_ui_ns == 0) {
-        first_draw_ui_ns = now_ns + 5 * utils::SEC_TO_NS;
-    }
     if (now_ns < first_draw_ui_ns) {
         return;
     }

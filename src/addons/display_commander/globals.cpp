@@ -273,3 +273,6 @@ std::atomic<std::shared_ptr<const std::string>> g_dlls_g_version{std::make_share
 std::atomic<bool> g_dlss_preset_detected{false};
 std::atomic<std::shared_ptr<const std::string>> g_dlss_preset_name{std::make_shared<const std::string>("Unknown")};
 std::atomic<std::shared_ptr<const std::string>> g_dlss_quality_mode{std::make_shared<const std::string>("Unknown")};
+
+// Unsafe Win32 API calls counter
+std::atomic<uint32_t> g_unsafe_calls_cnt{0};

@@ -17,9 +17,6 @@ void InitializeUISettings(int debug_mode) {
         cache_initialized = true;
     }
 
-    // Initialize the new UI system directly (no settings2 wrapper)
-    ui::new_ui::InitializeNewUISystem( debug_mode );
-
 
     // Mark as initialized
     ui_settings_initialized = true;

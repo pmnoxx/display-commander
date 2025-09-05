@@ -216,6 +216,14 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
     // Mark DLL initialization as complete - now DXGI calls are safe
     g_dll_initialization_complete.store(true);
     LogInfo("DLL initialization complete - DXGI calls now enabled");
+
+    // Check unsafe calls counter and log if any unsafe calls occurred
+    uint32_t unsafe_calls = g_unsafe_calls_cnt.load();
+    if (unsafe_calls > 0) {
+      LogError("ERROR: %u unsafe Win32 API calls occurred during DLL initialization", unsafe_calls);
+    } else {
+      LogInfo("No unsafe Win32 API calls occurred during DLL initialization");
+    }
   } catch (const std::exception& e) {
     LogError("Error initializing DLL: %s", e.what());
   } catch (...) {

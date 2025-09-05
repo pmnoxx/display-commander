@@ -265,17 +265,6 @@ void DrawNvapiSettings() {
         if (!lastError.empty()) {
             ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "Error: %s", lastError.c_str());
         }
-
-        // Common failure reasons
-        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 0.8f), "Common Issues:");
-        ImGui::BulletText("nvapi64.dll not found in system PATH");
-        ImGui::BulletText("No NVIDIA drivers installed");
-        ImGui::BulletText("Running on non-NVIDIA hardware");
-        ImGui::BulletText("Insufficient permissions to load DLL");
-
-        // Function availability (all unavailable when library not loaded)
-        ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "✗ Core Functions: Unavailable");
-        ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "✗ DRS Functions: Unavailable");
     }
 
     // Minimal NVIDIA Reflex Controls (device runtime dependent)
@@ -309,15 +298,6 @@ void DrawNvapiSettings() {
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Enable detailed logging of Reflex marker operations for debugging purposes.");
     }
-
-    // Additional debug info
-    ImGui::Separator();
-    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Technical Details:");
-    ImGui::BulletText("Uses dynamic loading of nvapi64.dll");
-    ImGui::BulletText("Creates NVIDIA driver profiles per application");
-    ImGui::BulletText("Sets OGL_DX_PRESENT_DEBUG_ID (0x20324987)");
-    ImGui::BulletText("Applies DISABLE_FULLSCREEN_OPT (0x00000001)");
-    ImGui::BulletText("Settings persist across application restarts");
 
     // DLL version info
     if (!::g_nvapiFullscreenPrevention.IsAvailable()) {

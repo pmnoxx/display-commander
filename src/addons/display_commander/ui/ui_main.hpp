@@ -1,4 +1,4 @@
 #pragma once
 
 // Initialize all settings sections
-void InitializeUISettings();
+void InitializeUISettings( int debug_mode );

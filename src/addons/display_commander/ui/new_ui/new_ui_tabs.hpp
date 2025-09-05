@@ -20,16 +20,16 @@ class TabManager {
 public:
     TabManager();
     ~TabManager() = default;
-    
+
     // Add a new tab
     void AddTab(const std::string& name, const std::string& id, std::function<void()> on_draw);
-    
+
     // Draw the tab bar and content
     void Draw();
-    
+
     // Get current active tab
     int GetActiveTab() const { return active_tab_; }
-    
+
     // Set active tab
     void SetActiveTab(int tab) { active_tab_ = tab; }
 
@@ -42,7 +42,7 @@ private:
 extern TabManager g_tab_manager;
 
 // Initialize the new UI system
-void InitializeNewUI();
+void InitializeNewUI(int debug_mode);
 
 // Draw the new UI
 void DrawNewUI();

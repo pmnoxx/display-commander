@@ -9,18 +9,18 @@ NewUISystem& NewUISystem::GetInstance() {
     return instance;
 }
 
-void NewUISystem::Initialize() {
+void NewUISystem::Initialize(int debug_mode) {
     if (initialized_) {
         return;
     }
-    
+
     // Initialize the tab system
-    InitializeNewUI();
-    
+    InitializeNewUI(debug_mode);
+
     // Mark as initialized and enabled
     initialized_ = true;
     enabled_ = true;
-    
+
     LogInfo("New UI system initialized successfully");
 }
 
@@ -28,14 +28,14 @@ void NewUISystem::Draw() {
     if (!enabled_ || !initialized_) {
         return;
     }
-    
+
     // Draw the new UI system
     DrawNewUI();
 }
 
 // Convenience functions
-void InitializeNewUISystem() {
-    NewUISystem::GetInstance().Initialize();
+void InitializeNewUISystem(int debug_mode) {
+    NewUISystem::GetInstance().Initialize(debug_mode);
 }
 
 void DrawNewUISystem() {

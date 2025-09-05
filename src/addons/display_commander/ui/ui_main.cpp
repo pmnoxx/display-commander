@@ -5,12 +5,12 @@
 static bool ui_settings_initialized = false;
 
 // Initialize all settings sections
-void InitializeUISettings() {
+void InitializeUISettings(int debug_mode) {
     // Prevent multiple initializations
     if (ui_settings_initialized) {
         return;
     }
-    
+
     static bool cache_initialized = false;
     if (!cache_initialized) {
         ui::InitializeDisplayCache();
@@ -18,9 +18,9 @@ void InitializeUISettings() {
     }
 
     // Initialize the new UI system directly (no settings2 wrapper)
-    ui::new_ui::InitializeNewUISystem();
-    
-    
+    ui::new_ui::InitializeNewUISystem( debug_mode );
+
+
     // Mark as initialized
     ui_settings_initialized = true;
 }

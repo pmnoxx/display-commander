@@ -128,7 +128,6 @@ static std::pair<uint32_t, uint32_t> CalculateBufferUpgradeResolution(uint32_t o
   if (!ui::new_ui::g_experimentalTabSettings.buffer_resolution_upgrade_enabled.GetValue()) {
     return {original_width, original_height}; // No upgrade
   }
-
   int mode = ui::new_ui::g_experimentalTabSettings.buffer_resolution_upgrade_mode.GetValue();
 
   switch (mode) {

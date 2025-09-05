@@ -25,7 +25,4 @@ void DrawKeyboardShortcutsSettings();
 // Draw latency display section
 void DrawLatencyDisplay();
 
-// Draw DLL-FG stats section
-void DrawDllFgStats();
-
 } // namespace ui::new_ui

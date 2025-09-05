@@ -115,7 +115,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
       // Ensure UI system is initialized
       ui::new_ui::InitializeNewUISystem(debug_mode); // uses 4-10
 
-      if (debug_mode != 0 && debug_mode <= 3) { return TRUE; }
+      if (debug_mode != 0 && debug_mode <= 11) { return TRUE; }
       if (debug_mode > 0) { LogInfo("DEBUG MODE 3 before ui::new_ui::InitializeNewUISystem"); }
 
       reshade::register_overlay("Display Commander", OnRegisterOverlayDisplayCommander);

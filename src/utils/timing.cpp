@@ -25,6 +25,7 @@ bool initialize_qpc_timing_constants()
     LARGE_INTEGER frequency;
     if (!QueryPerformanceFrequency(&frequency))
     {
+        LogError("QueryPerformanceFrequency failed, using default values");
         // If QueryPerformanceFrequency fails, keep default values
         return false;
     }
@@ -33,16 +34,16 @@ bool initialize_qpc_timing_constants()
         LogError("QPC frequency is too high, using default value");
         return false;
     }
-    
+
     // Calculate the conversion factor from QPC ticks to nanoseconds
     // QPC_TO_NS = (1 second in ns) / (QPC frequency)
     // This gives us how many nanoseconds each QPC tick represents
     QPC_TO_NS = SEC_TO_NS / frequency.QuadPart;
-    
+
     // Recalculate dependent constants
     QPC_PER_SECOND = frequency.QuadPart;
     QPC_TO_MS = NS_TO_MS / QPC_TO_NS;
-    
+
     return true;
 }
 
@@ -98,28 +99,28 @@ bool setup_high_resolution_timer()
     LARGE_INTEGER frequency;
     QueryPerformanceFrequency(&frequency);
     timer_res_qpc_frequency = frequency.QuadPart;
-    
+
     // Load NTDLL functions dynamically
     HMODULE ntdll = GetModuleHandleA("ntdll.dll");
     if (!ntdll)
         return false;
-    
+
     ZwQueryTimerResolution = reinterpret_cast<ZwQueryTimerResolution_t>(
         GetProcAddress(ntdll, "ZwQueryTimerResolution")
     );
     ZwSetTimerResolution = reinterpret_cast<ZwSetTimerResolution_t>(
         GetProcAddress(ntdll, "ZwSetTimerResolution")
     );
-    
+
     if (ZwQueryTimerResolution == nullptr || ZwSetTimerResolution == nullptr)
         return false;
-    
+
     ULONG min, max, cur;
     if (ZwQueryTimerResolution(&min, &max, &cur) == STATUS_SUCCESS)
     {
         // Store current resolution
         timer_res_qpc = cur;
-        
+
         // Set timer resolution to maximum for highest precision
         if (ZwSetTimerResolution(max, TRUE, &cur) == STATUS_SUCCESS)
         {
@@ -127,7 +128,7 @@ bool setup_high_resolution_timer()
             return true;
         }
     }
-    
+
     return false;
 }
 
@@ -143,31 +144,31 @@ void wait_until_qpc(LONGLONG target_qpc, HANDLE& timer_handle)
 {
     static __declspec(align(64)) uint64_t monitor = 0ULL;
     LONGLONG current_time_qpc = get_now_qpc();
-    
+
     // If target time has already passed, return immediately
     if (target_qpc <= current_time_qpc)
         return;
-    
+
     // Create timer handle if it doesn't exist or is invalid
     if (reinterpret_cast<LONG_PTR>(timer_handle) < 0)
     {
         // Try to create a high-resolution waitable timer if available
         timer_handle = CreateWaitableTimerEx(
-            nullptr, 
             nullptr,
-            CREATE_WAITABLE_TIMER_HIGH_RESOLUTION, 
+            nullptr,
+            CREATE_WAITABLE_TIMER_HIGH_RESOLUTION,
             TIMER_ALL_ACCESS
         );
-        
+
         // Fallback to regular waitable timer if high-resolution not available
         if (!timer_handle)
         {
             timer_handle = CreateWaitableTimer(nullptr, FALSE, nullptr);
         }
     }
-    
+
     LONGLONG time_to_wait_qpc = target_qpc - current_time_qpc;
-    
+
     // Use kernel waitable timer for longer waits (more than ~2ms)
     // This prevents completely consuming a CPU core during long waits
     if (timer_handle && (time_to_wait_qpc >= 3 * timer_res_qpc))
@@ -177,12 +178,12 @@ void wait_until_qpc(LONGLONG target_qpc, HANDLE& timer_handle)
         LONGLONG delay_qpc = time_to_wait_qpc - 1 * timer_res_qpc;
         LARGE_INTEGER delay{};
         delay.QuadPart = -delay_qpc;
-        
+
         if (SetWaitableTimer(timer_handle, &delay, 0, nullptr, nullptr, FALSE))
         {
             // Wait for the timer to signal
             DWORD wait_result = WaitForSingleObject(timer_handle, INFINITE);
-            
+
             // Log any errors (optional)
             if (wait_result != WAIT_OBJECT_0)
             {
@@ -192,7 +193,7 @@ void wait_until_qpc(LONGLONG target_qpc, HANDLE& timer_handle)
             }
         }
     }
-    
+
     // Busy wait for the remaining time to achieve precise timing
     // This compensates for OS scheduler inaccuracy
 

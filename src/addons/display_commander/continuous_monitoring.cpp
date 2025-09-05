@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <cmath>
 #include "globals.hpp"
+#include "utils/timing.hpp"
 
 // Forward declarations
 void ComputeDesiredSize(int& out_w, int& out_h);
@@ -19,7 +20,13 @@ void ContinuousMonitoringThread() {
 
     static int seconds_counter = 0;
     auto last_cache_refresh = std::chrono::steady_clock::now();
+    auto start_time = utils::get_now_ns();
     while (g_monitoring_thread_running.load()) {
+        // Wait for 1 second to start
+        if (utils::get_now_ns() - start_time < 1 * utils::SEC_TO_NS) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            continue;
+        }
         // Check if monitoring is still enabled
         if (!s_continuous_monitoring_enabled.load()) {
             std::this_thread::sleep_for(std::chrono::milliseconds(100));

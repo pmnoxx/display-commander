@@ -5,6 +5,7 @@
 #include "developer_new_tab.hpp"
 #include "main_new_tab.hpp"
 #include "experimental_tab.hpp"
+#include "../../xinput/xinput_tab.hpp"
 #include "../../addon.hpp"
 #include "../../utils/timing.hpp"
 
@@ -143,6 +144,20 @@ void InitializeNewUI(int debug_mode) {
             LogError("Error drawing important info tab: %s", e.what());
         } catch (...) {
             LogError("Unknown error drawing important info tab");
+        }
+    });
+    if (debug_mode > 0 && debug_mode <= 10) { return; }
+
+    // Initialize XInput tab
+    display_commander::xinput::InitXInputTab();
+    g_tab_manager.AddTab(display_commander::xinput::GetXInputTabName().c_str(),
+                        display_commander::xinput::GetXInputTabId().c_str(), []() {
+        try {
+            display_commander::xinput::DrawXInputTab();
+        } catch (const std::exception& e) {
+            LogError("Error drawing XInput tab: %s", e.what());
+        } catch (...) {
+            LogError("Unknown error drawing XInput tab");
         }
     });
     if (debug_mode > 0 && debug_mode <= 10) { return; }

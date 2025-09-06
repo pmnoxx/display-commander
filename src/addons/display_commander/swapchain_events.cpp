@@ -132,9 +132,10 @@ static std::pair<uint32_t, uint32_t> CalculateBufferUpgradeResolution(uint32_t o
 
   switch (mode) {
     case 0: // Upgrade 1280x720 by scale factor
-      if (original_width == 1280 && original_height == 720) {
-        int scale_factor = ui::new_ui::g_experimentalTabSettings.buffer_resolution_upgrade_scale_factor.GetValue();
-        return {original_width * scale_factor, original_height * scale_factor};
+      if (original_width == 1280 && original_height == 720
+      || original_width == 2560 && original_height == 1440) {
+        float scale_factor = 3840.0 / original_width;
+        return {static_cast<uint32_t>(original_width * scale_factor + 0.5f), static_cast<uint32_t>(original_height * scale_factor + 0.5f)};
       }
       break;
 
@@ -167,8 +168,10 @@ static std::pair<float, float> CalculateViewportScaleFactor(uint32_t original_wi
 
   switch (mode) {
     case 0: // Upgrade 1280x720 to 2560x1440 (2x)
-      if (original_width == 1280 && original_height == 720) {
-        return {2.0f, 2.0f}; // 2x scale
+      if (original_width == 1280 && original_height == 720
+      || original_width == 2560 && original_height == 1440) {
+        float scale_new = 3840.0f / original_width;
+        return {scale_new, scale_new}; // 2x scale
       }
       break;
 
@@ -764,7 +767,8 @@ void OnSetViewport(reshade::api::command_list* cmd_list, uint32_t first, uint32_
     for (uint32_t i = 0; i < count; i++) {
       const auto& viewport = viewports[i];
       // Only scale viewports that match the source resolution (1280x720)
-      if (viewport.width == 1280.0f && viewport.height == 720.0f) {
+      if (viewport.width == 1280.0f && viewport.height == 720.0f
+      || viewport.width == 2560.0f && viewport.height == 1440.0f) {
         needs_scaling = true;
         break;
       }
@@ -781,12 +785,14 @@ void OnSetViewport(reshade::api::command_list* cmd_list, uint32_t first, uint32_
       const auto& viewport = viewports[i];
 
       // Only scale viewports that match the source resolution
-      if (viewport.width == 1280.0f && viewport.height == 720.0f) {
+      if (viewport.width == 1280.0f && viewport.height == 720.0f
+      || viewport.width == 2560.0f && viewport.height == 1440.0f) {
+        float scale_new = 3840.0f / viewport.width;
         scaled_viewports[i] = {
-          viewport.x * scale_f,      // x
-          viewport.y * scale_f,      // y
-          viewport.width * scale_f,  // width (1280 -> 1280*scale)
-          viewport.height * scale_f, // height (720 -> 720*scale)
+          viewport.x * scale_new,      // x
+          viewport.y * scale_new,      // y
+          viewport.width * scale_new,  // width (1280 -> 1280*scale)
+          viewport.height * scale_new, // height (720 -> 720*scale)
           viewport.min_depth,        // min_depth
           viewport.max_depth         // max_depth
         };
@@ -825,7 +831,8 @@ void OnSetScissorRects(reshade::api::command_list* cmd_list, uint32_t first, uin
     for (uint32_t i = 0; i < count; i++) {
       const auto& rect = rects[i];
       // Only scale scissor rectangles that match the source resolution (1280x720)
-      if ((rect.right - rect.left) == 1280 && (rect.bottom - rect.top) == 720) {
+      if ((rect.right - rect.left) == 1280 && (rect.bottom - rect.top) == 720
+      || (rect.right - rect.left) == 2560 && (rect.bottom - rect.top) == 1440) {
         needs_scaling = true;
         break;
       }
@@ -841,12 +848,14 @@ void OnSetScissorRects(reshade::api::command_list* cmd_list, uint32_t first, uin
       const auto& rect = rects[i];
 
       // Only scale scissor rectangles that match the source resolution
-      if ((rect.right - rect.left) == 1280 && (rect.bottom - rect.top) == 720) {
+      if ((rect.right - rect.left) == 1280 && (rect.bottom - rect.top) == 720
+      || (rect.right - rect.left) == 2560 && (rect.bottom - rect.top) == 1440) {
+        float scale_new = 3840.0f / (rect.right - rect.left);
         scaled_rects[i] = {
-          rect.left * scale_factor,    // left
-          rect.top * scale_factor,     // top
-          rect.right * scale_factor,   // right
-          rect.bottom * scale_factor   // bottom
+          static_cast<int32_t>(rect.left * scale_new + 0.5),    // left
+          static_cast<int32_t>(rect.top * scale_new + 0.5),     // top
+          static_cast<int32_t>(rect.right * scale_new + 0.5),   // right
+          static_cast<int32_t>(rect.bottom * scale_new + 0.5)   // bottom
         };
 
         // Log the scissor scaling

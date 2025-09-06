@@ -1,5 +1,6 @@
 #include "process_exit_hooks.hpp"
 #include "display_restore.hpp"
+#include "globals.hpp"
 #include <windows.h>
 #include <cstdlib>
 #include <atomic>
@@ -16,6 +17,12 @@ void AtExitHandler() {
 }
 
 LONG WINAPI UnhandledExceptionHandler(EXCEPTION_POINTERS* exception_info) {
+  // Check if shutdown is in progress to avoid crashes during DLL unload
+  if (g_shutdown.load()) {
+    // During shutdown, just return without doing anything to avoid crashes
+    return EXCEPTION_CONTINUE_EXECUTION;
+  }
+
   // Best-effort restore on crash paths
   display_restore::RestoreAllIfEnabled();
   // Chain to previous filter if any

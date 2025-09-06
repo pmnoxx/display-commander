@@ -14,6 +14,7 @@
 #include "dxgi/custom_fps_limiter_manager.hpp"
 #include "latent_sync/latent_sync_manager.hpp"
 #include "dxgi/dxgi_device_info.hpp"
+#include "latency/latency_manager.hpp"
 #include "nvapi/nvapi_fullscreen_prevention.hpp"
 #include "nvapi/nvapi_hdr_monitor.hpp"
 #include "nvapi/dlssfg_version_detector.hpp"
@@ -244,6 +245,15 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
 
       // Clean up DXGI Device Info Manager
       g_dxgiDeviceInfoManager.reset();
+
+      // Clean up NVAPI instances before shutdown
+      if (g_latencyManager) {
+        g_latencyManager->Shutdown();
+      }
+      
+      // Clean up NVAPI fullscreen prevention
+      extern NVAPIFullscreenPrevention g_nvapiFullscreenPrevention;
+      g_nvapiFullscreenPrevention.Cleanup();
 
       reshade::unregister_event<reshade::addon_event::present>(OnPresentUpdateBefore);
       reshade::unregister_event<reshade::addon_event::reshade_present>(OnPresentUpdateBefore2);

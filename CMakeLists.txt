@@ -29,6 +29,8 @@ endif()
 
 add_library(zzz_display_commander MODULE ${DISPLAY_COMMANDER_SOURCES})
 
+# Version header is now stored in the repo
+
 # Compile definitions
 if(EXPERIMENTAL_TAB)
   target_compile_definitions(zzz_display_commander PRIVATE EXPERIMENTAL_TAB=1)

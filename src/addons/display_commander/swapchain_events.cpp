@@ -20,7 +20,7 @@
 
 
 bool is_target_resolution(int width, int height) {
-  return width >= 1280 && width * 9 == height * 16;
+  return width >= 1280 && width <= 3840 && height >= 720 && height <= 2160 && width * 9 == height * 16;
 }
 
 std::atomic<LONGLONG> g_present_start_time_ns{0};

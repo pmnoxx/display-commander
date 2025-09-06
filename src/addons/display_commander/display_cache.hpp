@@ -12,6 +12,10 @@
 #include <cmath> // Added for std::round
 #include <algorithm> // Added for std::max_element
 
+// Windows DPI awareness headers
+#include <shellscalingapi.h>
+#pragma comment(lib, "shcore.lib")
+
 namespace display_cache {
 
 // Rational refresh rate structure
@@ -139,10 +143,55 @@ struct DisplayInfo {
         return current_refresh_rate.ToString();
     }
 
+    // Get DPI scaling factor for this display
+    float GetDpiScaling() const {
+        if (!monitor_handle) {
+            return 0.0f;
+        }
+
+        // Use GetDpiForMonitor API to get effective DPI
+        typedef HRESULT (WINAPI *GetDpiForMonitorFunc)(HMONITOR, int, UINT*, UINT*);
+        static GetDpiForMonitorFunc GetDpiForMonitor = nullptr;
+
+        if (!GetDpiForMonitor) {
+            HMODULE shcore = LoadLibraryA("shcore.dll");
+            if (shcore) {
+                GetDpiForMonitor = (GetDpiForMonitorFunc)GetProcAddress(shcore, "GetDpiForMonitor");
+            }
+        }
+
+        if (GetDpiForMonitor) {
+            UINT dpi_x = 0, dpi_y = 0;
+            HRESULT hr = GetDpiForMonitor(monitor_handle, MDT_EFFECTIVE_DPI, &dpi_x, &dpi_y);
+            if (SUCCEEDED(hr) && dpi_x > 0) {
+                return static_cast<float>(dpi_x) / 96.0f; // 96 is the standard DPI
+            }
+        }
+
+        // Fallback: try to get DPI from device context
+        HDC hdc = GetDC(nullptr);
+        if (hdc) {
+            int dpi_x = GetDeviceCaps(hdc, LOGPIXELSX);
+            int dpi_y = GetDeviceCaps(hdc, LOGPIXELSY);
+            ReleaseDC(nullptr, hdc);
+            if (dpi_x > 0) {
+                return static_cast<float>(dpi_x) / 96.0f;
+            }
+        }
+
+        return 0.0f; // Unknown scaling
+    }
+
     // Get comprehensive current display info string
     std::string GetCurrentDisplayInfoString() const {
         std::ostringstream oss;
         oss << "Current: " << GetCurrentResolutionString() << " @ " << GetCurrentRefreshRateString();
+
+        // Add DPI scaling information
+        float dpi_scale = GetDpiScaling();
+        if (dpi_scale > 0.0f) {
+            oss << " | Scaling: " << std::fixed << std::setprecision(0) << (dpi_scale * 100.0f) << "%";
+        }
 
         // Debug: Show raw refresh rate values
         oss << " [Raw: " << current_refresh_rate.numerator << "/" << current_refresh_rate.denominator

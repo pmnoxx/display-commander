@@ -34,6 +34,7 @@ public:
 
     // Keyboard Shortcut Settings (Experimental)
     ui::new_ui::BoolSettingRef enable_mute_unmute_shortcut;
+    ui::new_ui::BoolSettingRef enable_background_toggle_shortcut;
 
     // Performance optimization settings
     ui::new_ui::BoolSettingRef flush_before_present;

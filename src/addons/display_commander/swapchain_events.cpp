@@ -17,6 +17,7 @@
 #include "swapchain_events_power_saving.hpp"
 #include "latency/latency_manager.hpp"
 #include "ui/new_ui/experimental_tab_settings.hpp"
+#include "ui/new_ui/main_new_tab_settings.hpp"
 
 
 bool is_target_resolution(int width, int height) {
@@ -585,8 +586,11 @@ void OnPresentUpdateBefore(
       }
     }
   }
-  // Handle keyboard shortcuts
-  if (s_enable_mute_unmute_shortcut.load()) {
+  // Handle keyboard shortcuts (only when game is in foreground)
+  HWND game_hwnd = g_last_swapchain_hwnd.load();
+  bool is_game_in_foreground = (game_hwnd != nullptr && GetForegroundWindow() == game_hwnd);
+
+  if (s_enable_mute_unmute_shortcut.load() && is_game_in_foreground) {
     // Get the runtime from the atomic variable
     reshade::api::effect_runtime* runtime = g_reshade_runtime.load();
     if (runtime != nullptr) {
@@ -603,6 +607,33 @@ void OnPresentUpdateBefore(
           oss << "Audio " << (new_mute_state ? "muted" : "unmuted") << " via Ctrl+M shortcut";
           LogInfo(oss.str().c_str());
         }
+      }
+    }
+  }
+
+  // Handle Ctrl+R shortcut for background toggle (only when game is in foreground)
+  if (s_enable_background_toggle_shortcut.load() && is_game_in_foreground) {
+    // Get the runtime from the atomic variable
+    reshade::api::effect_runtime* runtime = g_reshade_runtime.load();
+    if (runtime != nullptr) {
+      // Check for Ctrl+R shortcut
+      if (runtime->is_key_pressed('R') && runtime->is_key_down(VK_CONTROL)) {
+        // Toggle render setting and make present follow the same state
+        bool new_render_state = !s_no_render_in_background.load();
+        bool new_present_state = new_render_state; // Present always follows render state
+
+        s_no_render_in_background.store(new_render_state);
+        s_no_present_in_background.store(new_present_state);
+
+        // Update the settings in the UI as well
+        ui::new_ui::g_main_new_tab_settings.no_render_in_background.SetValue(new_render_state);
+        ui::new_ui::g_main_new_tab_settings.no_present_in_background.SetValue(new_present_state);
+
+        // Log the action
+        std::ostringstream oss;
+        oss << "Background settings toggled via Ctrl+R shortcut - Both Render and Present: "
+            << (new_render_state ? "disabled" : "enabled");
+        LogInfo(oss.str().c_str());
       }
     }
   }

@@ -42,6 +42,10 @@ std::atomic<bool> s_mute_in_background_if_other_audio{false};
 std::atomic<float> s_audio_volume_percent{100.f};
 std::atomic<bool> s_audio_mute{false};
 
+// Keyboard Shortcuts
+std::atomic<bool> s_enable_mute_unmute_shortcut{true};
+std::atomic<bool> s_enable_background_toggle_shortcut{true};
+
 // Performance: background FPS cap
 std::atomic<float> s_fps_limit_background{30.f};
 // FPS limit for foreground
@@ -190,8 +194,7 @@ std::atomic<std::shared_ptr<const std::string>> g_hdr10_override_timestamp{std::
 std::atomic<std::shared_ptr<const std::vector<std::string>>> g_monitor_labels{std::make_shared<const std::vector<std::string>>()} ;
 
 
-// Keyboard Shortcut Settings
-std::atomic<bool> s_enable_mute_unmute_shortcut = true; // Disabled by default
+// Keyboard Shortcut Settings (moved to earlier in file)
 
 // Performance optimization settings
 std::atomic<bool> g_flush_before_present = true; // Flush command queue before present to reduce latency (enabled by default)

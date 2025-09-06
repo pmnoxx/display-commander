@@ -18,6 +18,11 @@
 #include "latency/latency_manager.hpp"
 #include "ui/new_ui/experimental_tab_settings.hpp"
 
+
+bool is_target_resolution(int width, int height) {
+  return width >= 1280 && width * 9 == height * 16;
+}
+
 std::atomic<LONGLONG> g_present_start_time_ns{0};
 std::atomic<LONGLONG> g_present_duration_ns{0};
 
@@ -132,11 +137,9 @@ static std::pair<uint32_t, uint32_t> CalculateBufferUpgradeResolution(uint32_t o
 
   switch (mode) {
     case 0: // Upgrade 1280x720 by scale factor
-      if (original_width == 1280 && original_height == 720
-      || original_width == 2560 && original_height == 1440
-      || original_width == 3840 && original_height == 2160) {
+      if (is_target_resolution(original_width, original_height)) {
         double scale_factor = 3840.0 / original_width;
-        return {static_cast<uint32_t>(round(original_width * scale_factor + 0.001)), static_cast<uint32_t>(round(original_height * scale_factor + 0.001))};
+        return {static_cast<uint32_t>(round(original_width * scale_factor)), static_cast<uint32_t>(round(original_height * scale_factor))};
       }
       break;
 
@@ -169,9 +172,7 @@ static std::pair<float, float> CalculateViewportScaleFactor(uint32_t original_wi
 
   switch (mode) {
     case 0: // Upgrade 1280x720 to 2560x1440 (2x)
-      if (original_width == 1280 && original_height == 720
-      || original_width == 2560 && original_height == 1440
-      || original_width == 3840 && original_height == 2160) {
+      if (is_target_resolution(original_width, original_height)) {
         float scale_new = 3840.0f / original_width;
         return {scale_new, scale_new}; // 2x scale
       }
@@ -731,9 +732,7 @@ bool OnCreateResource(reshade::api::device* device, reshade::api::resource_desc&
     uint32_t height = desc.texture.height;
 
     // Check for common resolutions: 720p (1280x720), 1440p (2560x1440), 4K (3840x2160)
-    if ((width == 1280 && height == 720) ||   // 720p
-        (width == 2560 && height == 1440) ||  // 1440p
-        (width == 3840 && height == 2160)) {  // 4K
+    if (is_target_resolution(width, height)) {
       should_upgrade_resolution = true;
     }
 
@@ -856,9 +855,7 @@ void OnSetViewport(reshade::api::command_list* cmd_list, uint32_t first, uint32_
     for (uint32_t i = 0; i < count; i++) {
       const auto& viewport = viewports[i];
       // Only scale viewports that match the source resolution (1280x720)
-      if (viewport.width == 1280.0f && viewport.height == 720.0f
-      || viewport.width == 2560.0f && viewport.height == 1440.0f
-      || viewport.width == 3840.0f && viewport.height == 2160.0f) {
+      if (is_target_resolution(viewport.width, viewport.height)) {
         needs_scaling = true;
         break;
       }
@@ -875,9 +872,7 @@ void OnSetViewport(reshade::api::command_list* cmd_list, uint32_t first, uint32_
       const auto& viewport = viewports[i];
 
       // Only scale viewports that match the source resolution
-      if (viewport.width == 1280.0f && viewport.height == 720.0f
-      || viewport.width == 2560.0f && viewport.height == 1440.0f
-      || viewport.width == 3840.0f && viewport.height == 2160.0f) {
+      if (is_target_resolution(viewport.width, viewport.height)) {
         double scale_new = 3840.0 / viewport.width;
         scaled_viewports[i] = {
           static_cast<float>(viewport.x * scale_new),      // x
@@ -922,9 +917,7 @@ void OnSetScissorRects(reshade::api::command_list* cmd_list, uint32_t first, uin
     for (uint32_t i = 0; i < count; i++) {
       const auto& rect = rects[i];
       // Only scale scissor rectangles that match the source resolution (1280x720)
-      if ((rect.right - rect.left) == 1280 && (rect.bottom - rect.top) == 720
-      || (rect.right - rect.left) == 2560 && (rect.bottom - rect.top) == 1440
-      || (rect.right - rect.left) == 3840 && (rect.bottom - rect.top) == 2160) {
+      if (is_target_resolution(rect.right - rect.left, rect.bottom - rect.top)) {
         needs_scaling = true;
         break;
       }
@@ -940,15 +933,13 @@ void OnSetScissorRects(reshade::api::command_list* cmd_list, uint32_t first, uin
       const auto& rect = rects[i];
 
       // Only scale scissor rectangles that match the source resolution
-      if ((rect.right - rect.left) == 1280 && (rect.bottom - rect.top) == 720
-      || (rect.right - rect.left) == 2560 && (rect.bottom - rect.top) == 1440
-      || (rect.right - rect.left) == 3840 && (rect.bottom - rect.top) == 2160) {
+      if (is_target_resolution(rect.right - rect.left, rect.bottom - rect.top)) {
         double scale_new = 3840.0 / (rect.right - rect.left);
         scaled_rects[i] = {
-          static_cast<int32_t>(rect.left * scale_new + 0.001),    // left
-          static_cast<int32_t>(rect.top * scale_new + 0.001),     // top
-          static_cast<int32_t>(rect.right * scale_new + 0.001),   // right
-          static_cast<int32_t>(rect.bottom * scale_new + 0.001)   // bottom
+          static_cast<int32_t>(round(rect.left * scale_new)),    // left
+          static_cast<int32_t>(round(rect.top * scale_new)),     // top
+          static_cast<int32_t>(round(rect.right * scale_new)),   // right
+          static_cast<int32_t>(round(rect.bottom * scale_new))   // bottom
         };
 
         // Log the scissor scaling

@@ -250,7 +250,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
       if (g_latencyManager) {
         g_latencyManager->Shutdown();
       }
-      
+
       // Clean up NVAPI fullscreen prevention
       extern NVAPIFullscreenPrevention g_nvapiFullscreenPrevention;
       g_nvapiFullscreenPrevention.Cleanup();

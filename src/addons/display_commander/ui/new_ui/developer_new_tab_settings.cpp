@@ -19,8 +19,6 @@ extern std::atomic<bool> s_reflex_boost;
 extern std::atomic<bool> s_reflex_use_markers;
 extern std::atomic<bool> s_enable_reflex_logging;
 
-extern std::atomic<bool> s_enable_unstable_reshade_features;
-
 extern std::atomic<bool> s_enable_mute_unmute_shortcut;
 
 extern std::atomic<bool> g_flush_before_present;
@@ -38,8 +36,6 @@ DeveloperTabSettings::DeveloperTabSettings()
     , nvapi_fullscreen_prevention("NvapiFullscreenPrevention", s_nvapi_fullscreen_prevention, false, "DisplayCommander")
     , nvapi_hdr_logging("NvapiHDRLogging", s_nvapi_hdr_logging, false, "DisplayCommander")
     , nvapi_hdr_interval_sec("NvapiHDRInterval", s_nvapi_hdr_interval_sec, 5.0f, 1.0f, 60.0f, "DisplayCommander")
-
-    , enable_unstable_reshade_features("EnableUnstableReShadeFeatures", s_enable_unstable_reshade_features, false, "DisplayCommander")
 
     // Minimal NVIDIA Reflex controls
     , reflex_enable("ReflexEnable", s_reflex_enable, false, "DisplayCommander")
@@ -63,8 +59,6 @@ void DeveloperTabSettings::LoadAll() {
     nvapi_fullscreen_prevention.Load();
     nvapi_hdr_logging.Load();
     nvapi_hdr_interval_sec.Load();
-
-    enable_unstable_reshade_features.Load();
 
     enable_mute_unmute_shortcut.Load();
     flush_before_present.Load();
@@ -98,8 +92,6 @@ std::vector<ui::new_ui::SettingBase*> DeveloperTabSettings::GetAllSettings() {
         &reflex_boost,
         &reflex_use_markers,
         &reflex_logging,
-
-        &enable_unstable_reshade_features,
 
         &enable_mute_unmute_shortcut,
         &flush_before_present

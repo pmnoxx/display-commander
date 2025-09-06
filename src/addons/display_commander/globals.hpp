@@ -268,11 +268,6 @@ void UpdateHdr10OverrideStatus(const std::string& status);
 // Helper function for updating HDR10 override timestamp atomically
 void UpdateHdr10OverrideTimestamp(const std::string& timestamp);
 
-// Experimental/Unstable features toggle
-extern std::atomic<bool> s_enable_unstable_reshade_features;
-
-
-
 // Keyboard Shortcut Settings (Experimental)
 extern std::atomic<bool> s_enable_mute_unmute_shortcut;
 

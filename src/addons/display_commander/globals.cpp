@@ -189,10 +189,6 @@ std::atomic<std::shared_ptr<const std::string>> g_hdr10_override_timestamp{std::
 // Monitor labels cache (updated by background thread) - lock-free publication
 std::atomic<std::shared_ptr<const std::vector<std::string>>> g_monitor_labels{std::make_shared<const std::vector<std::string>>()} ;
 
-// Experimental/Unstable features toggle
-std::atomic<bool> s_enable_unstable_reshade_features = false; // Disabled by default
-
-
 
 // Keyboard Shortcut Settings
 std::atomic<bool> s_enable_mute_unmute_shortcut = true; // Disabled by default

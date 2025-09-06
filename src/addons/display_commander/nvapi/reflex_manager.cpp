@@ -38,7 +38,7 @@ bool ReflexManager::Initialize(reshade::api::device* device) {
 
 void ReflexManager::Shutdown() {
     if (!initialized_.exchange(false, std::memory_order_release)) return;
-    
+
     // Check if shutdown is in progress to avoid NVAPI calls during DLL unload
     extern std::atomic<bool> g_shutdown;
     if (g_shutdown.load()) {
@@ -46,7 +46,7 @@ void ReflexManager::Shutdown() {
         d3d_device_ = nullptr;
         return;
     }
-    
+
     // Disable sleep mode by setting all parameters to false/disabled
     NV_SET_SLEEP_MODE_PARAMS params = {};
     params.version = NV_SET_SLEEP_MODE_PARAMS_VER;
@@ -54,14 +54,14 @@ void ReflexManager::Shutdown() {
     params.bLowLatencyBoost = NV_FALSE;
     params.bUseMarkersToOptimize = NV_FALSE;
     params.minimumIntervalUs = 0; // No frame rate limit
-    
+
     NvAPI_D3D_SetSleepMode(d3d_device_, &params);
     d3d_device_ = nullptr;
 }
 
 bool ReflexManager::ApplySleepMode(bool low_latency, bool boost, bool use_markers) {
     if (!initialized_.load(std::memory_order_acquire) || d3d_device_ == nullptr) return false;
-    
+
     // Check if shutdown is in progress to avoid NVAPI calls during DLL unload
     extern std::atomic<bool> g_shutdown;
     if (g_shutdown.load()) return false;
@@ -89,7 +89,7 @@ NvU64 ReflexManager::IncreaseFrameId() {
 
 bool ReflexManager::SetMarker(NV_LATENCY_MARKER_TYPE marker) {
     if (!initialized_.load(std::memory_order_acquire) || d3d_device_ == nullptr) return false;
-    
+
     // Check if shutdown is in progress to avoid NVAPI calls during DLL unload
     extern std::atomic<bool> g_shutdown;
     if (g_shutdown.load()) return false;
@@ -116,11 +116,11 @@ bool ReflexManager::SetMarker(NV_LATENCY_MARKER_TYPE marker) {
 
 bool ReflexManager::Sleep() {
     if (!initialized_.load(std::memory_order_acquire) || d3d_device_ == nullptr) return false;
-    
+
     // Check if shutdown is in progress to avoid NVAPI calls during DLL unload
     extern std::atomic<bool> g_shutdown;
     if (g_shutdown.load()) return false;
-    
+
     const auto st = NvAPI_D3D_Sleep(d3d_device_);
     return st == NVAPI_OK;
 }

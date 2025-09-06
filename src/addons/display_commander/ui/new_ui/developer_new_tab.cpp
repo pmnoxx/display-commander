@@ -61,14 +61,6 @@ void DrawDeveloperNewTab() {
 void DrawDeveloperSettings() {
     ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "=== Developer Settings ===");
 
-    // Enable unstable ReShade features (requires custom dxgi.dll)
-    if (CheckboxSetting(g_developerTabSettings.enable_unstable_reshade_features, "Enable unstable ReShade features (requires custom dxgi.dll)")) {
-        ::s_enable_unstable_reshade_features.store(g_developerTabSettings.enable_unstable_reshade_features.GetValue());
-    }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Enable experimental features that rely on a custom dxgi.dll build. Off by default.");
-    }
-
     // Performance optimization: Flush before present
     if (CheckboxSetting(g_developerTabSettings.flush_before_present, "Flush Command Queue Before Present")) {
         ::g_flush_before_present.store(g_developerTabSettings.flush_before_present.GetValue());

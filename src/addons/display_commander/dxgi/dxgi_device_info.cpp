@@ -12,6 +12,13 @@
 
 // Stack trace functionality
 void DXGIDeviceInfoManager::LogStackTrace(const char* context) {
+    // Check if shutdown is in progress to avoid crashes during DLL unload
+    extern std::atomic<bool> g_shutdown;
+    if (g_shutdown.load()) {
+        LogWarn("Stack trace skipped - shutdown in progress");
+        return;
+    }
+
     LogWarn(("Stack trace requested for context: " + std::string(context)).c_str());
 
     // Capture stack trace
@@ -27,79 +34,41 @@ void DXGIDeviceInfoManager::LogStackTrace(const char* context) {
 
     // Get symbol information
     HANDLE process = GetCurrentProcess();
-    SymInitialize(process, nullptr, TRUE);
-
-    SYMBOL_INFO* symbol = (SYMBOL_INFO*)malloc(sizeof(SYMBOL_INFO) + 256 * sizeof(char));
-    symbol->MaxNameLen = 255;
-    symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
-
-    for (WORD i = 0; i < frames; i++) {
-        DWORD64 address = (DWORD64)stack[i];
-
-        if (SymFromAddr(process, address, nullptr, symbol)) {
-            std::string frame_info = "  [" + std::to_string(i) + "] " + symbol->Name +
-                                   " at 0x" + std::format("{:016X}", address);
-            LogWarn(frame_info.c_str());
-        } else {
-            std::string frame_info = "  [" + std::to_string(i) + "] Unknown at 0x" +
-                                   std::format("{:016X}", address);
-            LogWarn(frame_info.c_str());
-        }
-    }
-
-    free(symbol);
-    SymCleanup(process);
-}
-
-LONG WINAPI DXGIDeviceInfoManager::UnhandledExceptionFilter(PEXCEPTION_POINTERS exception_info) {
-    LogWarn("=== UNHANDLED EXCEPTION IN DXGI DEVICE INFO MANAGER ===");
-    LogWarn(("Exception code: 0x" + std::format("{:08X}", exception_info->ExceptionRecord->ExceptionCode)).c_str());
-    LogWarn(("Exception address: 0x" + std::format("{:016X}", (DWORD64)exception_info->ExceptionRecord->ExceptionAddress)).c_str());
-
-    // Log stack trace
-    void* stack[64];
-    WORD frames = CaptureStackBackTrace(0, 64, stack, nullptr);
-
-    if (frames > 0) {
-        LogWarn("Stack trace at crash:");
-
-        HANDLE process = GetCurrentProcess();
-        SymInitialize(process, nullptr, TRUE);
-
+    if (SymInitialize(process, nullptr, TRUE)) {
         SYMBOL_INFO* symbol = (SYMBOL_INFO*)malloc(sizeof(SYMBOL_INFO) + 256 * sizeof(char));
-        symbol->MaxNameLen = 255;
-        symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
+        if (symbol) {
+            symbol->MaxNameLen = 255;
+            symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
 
-        for (WORD i = 0; i < frames; i++) {
-            DWORD64 address = (DWORD64)stack[i];
+            for (WORD i = 0; i < frames; i++) {
+                DWORD64 address = (DWORD64)stack[i];
 
-            if (SymFromAddr(process, address, nullptr, symbol)) {
-                std::string frame_info = "  [" + std::to_string(i) + "] " + symbol->Name +
-                                       " at 0x" + std::format("{:016X}", address);
-                LogWarn(frame_info.c_str());
-            } else {
-                std::string frame_info = " " + std::to_string(i) + "] Unknown at 0x" +
-                                       std::format("{:016X}", address);
-                LogWarn(frame_info.c_str());
+                if (SymFromAddr(process, address, nullptr, symbol)) {
+                    std::string frame_info = "  [" + std::to_string(i) + "] " + symbol->Name +
+                                           " at 0x" + std::format("{:016X}", address);
+                    LogWarn(frame_info.c_str());
+                } else {
+                    std::string frame_info = "  [" + std::to_string(i) + "] Unknown at 0x" +
+                                           std::format("{:016X}", address);
+                    LogWarn(frame_info.c_str());
+                }
             }
-        }
 
-        free(symbol);
+            free(symbol);
+        }
         SymCleanup(process);
     }
-
-    LogWarn("=== END EXCEPTION REPORT ===");
-
-    // Continue execution (don't crash the application)
-    return EXCEPTION_CONTINUE_EXECUTION;
 }
+
+// Exception handler removed - was causing crashes during shutdown
+// The global exception handler in process_exit_hooks.cpp handles exceptions
 
 // Global instance declaration (defined in globals.cpp)
 extern std::unique_ptr<DXGIDeviceInfoManager> g_dxgiDeviceInfoManager;
 
 DXGIDeviceInfoManager::DXGIDeviceInfoManager() : initialized_(false) {
-    // Install exception handler for crash debugging
-    SetUnhandledExceptionFilter(UnhandledExceptionFilter);
+    // Note: Exception handler installation removed to prevent crashes during shutdown
+    // The global exception handler was interfering with normal shutdown process
 }
 
 DXGIDeviceInfoManager::~DXGIDeviceInfoManager() {

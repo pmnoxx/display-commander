@@ -15,6 +15,13 @@ bool NVAPIFullscreenPrevention::Initialize() {
         return true;
     }
     
+    // Check if shutdown is in progress to avoid NVAPI calls during DLL unload
+    extern std::atomic<bool> g_shutdown;
+    if (g_shutdown.load()) {
+        LogInfo("NVAPI initialization skipped - shutdown in progress");
+        return false;
+    }
+    
     // Initialize NVAPI using static linking (like SpecialK)
     NvAPI_Status status = NvAPI_Initialize();
     if (status != NVAPI_OK) {
@@ -43,6 +50,13 @@ bool NVAPIFullscreenPrevention::Initialize() {
 }
 
 void NVAPIFullscreenPrevention::Cleanup() {
+    // Check if shutdown is in progress to avoid NVAPI calls during DLL unload
+    extern std::atomic<bool> g_shutdown;
+    if (g_shutdown.load()) {
+        LogInfo("NVAPI cleanup skipped - shutdown in progress");
+        return;
+    }
+    
     if (hSession) {
         NvAPI_DRS_DestroySession(hSession);
         hSession = {0};
@@ -55,6 +69,10 @@ void NVAPIFullscreenPrevention::Cleanup() {
 }
 
 bool NVAPIFullscreenPrevention::IsAvailable() const {
+    // Check if shutdown is in progress to avoid NVAPI calls during DLL unload
+    extern std::atomic<bool> g_shutdown;
+    if (g_shutdown.load()) return false;
+    
     return initialized;
 }
 

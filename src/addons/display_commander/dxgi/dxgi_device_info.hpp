@@ -42,7 +42,6 @@ private:
 
     // Stack trace functionality for crash debugging
     void LogStackTrace(const char* context);
-    static LONG WINAPI UnhandledExceptionFilter(PEXCEPTION_POINTERS exception_info);
 
 private:
     std::vector<DXGIAdapterInfo> adapters_;

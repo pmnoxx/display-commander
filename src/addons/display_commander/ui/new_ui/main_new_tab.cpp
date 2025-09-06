@@ -16,6 +16,7 @@
 #include <deps/imgui/imgui.h>
 #include "../../latent_sync/latent_sync_limiter.hpp"
 #include "../../utils/timing.hpp"
+#include "version.hpp"
 
 
 namespace ui::new_ui {
@@ -75,6 +76,13 @@ void InitMainNewTab() {
 
 void DrawMainNewTab() {
     // Load saved settings once and sync legacy globals
+
+    // Version and build information at the top
+    ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "=== Display Commander ===");
+    ImGui::TextColored(ImVec4(0.9f, 0.9f, 0.9f, 1.0f), "Version: %s", DISPLAY_COMMANDER_VERSION_STRING);
+    ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Build: %s %s", DISPLAY_COMMANDER_BUILD_DATE, DISPLAY_COMMANDER_BUILD_TIME);
+    ImGui::Separator();
+
     ImGui::Text("Main Tab - Basic Settings");
     ImGui::Separator();
 

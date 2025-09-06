@@ -145,6 +145,10 @@ extern std::atomic<bool> s_mute_in_background_if_other_audio;
 extern std::atomic<float> s_audio_volume_percent;
 extern std::atomic<bool> s_audio_mute;
 
+// Keyboard Shortcuts
+extern std::atomic<bool> s_enable_mute_unmute_shortcut;
+extern std::atomic<bool> s_enable_background_toggle_shortcut;
+
 // FPS Limiter Settings
 extern std::atomic<float> s_fps_limit_background;
 extern std::atomic<float> s_fps_limit;

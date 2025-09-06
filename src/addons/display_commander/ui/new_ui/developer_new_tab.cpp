@@ -322,14 +322,30 @@ void DrawKeyboardShortcutsSettings() {
         ::s_enable_mute_unmute_shortcut.store(g_developerTabSettings.enable_mute_unmute_shortcut.GetValue());
     }
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Enable keyboard shortcut Ctrl+M to quickly mute/unmute audio.");
+        ImGui::SetTooltip("Enable keyboard shortcut Ctrl+M to quickly mute/unmute audio. Only works when the game is in the foreground.");
     }
 
-    // Info text
+    // Info text for Ctrl+M
     if (g_developerTabSettings.enable_mute_unmute_shortcut.GetValue()) {
         ImGui::Indent();
         ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Press Ctrl+M to toggle audio mute state");
-        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Shortcut works globally when enabled");
+        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Shortcut works when game is in foreground");
+        ImGui::Unindent();
+    }
+
+    // Enable Background Toggle Shortcut (Ctrl+R)
+    if (CheckboxSetting(g_developerTabSettings.enable_background_toggle_shortcut, "Enable Background Toggle Shortcut (Ctrl+R)")) {
+        ::s_enable_background_toggle_shortcut.store(g_developerTabSettings.enable_background_toggle_shortcut.GetValue());
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Enable keyboard shortcut Ctrl+R to quickly toggle both 'No Render in Background' and 'No Present in Background' settings. Only works when the game is in the foreground.");
+    }
+
+    // Info text for Ctrl+R
+    if (g_developerTabSettings.enable_background_toggle_shortcut.GetValue()) {
+        ImGui::Indent();
+        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Press Ctrl+R to toggle background rendering/present settings");
+        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Shortcut works when game is in foreground");
         ImGui::Unindent();
     }
 }

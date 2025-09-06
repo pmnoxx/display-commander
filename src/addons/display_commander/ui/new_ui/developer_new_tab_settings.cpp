@@ -20,6 +20,7 @@ extern std::atomic<bool> s_reflex_use_markers;
 extern std::atomic<bool> s_enable_reflex_logging;
 
 extern std::atomic<bool> s_enable_mute_unmute_shortcut;
+extern std::atomic<bool> s_enable_background_toggle_shortcut;
 
 extern std::atomic<bool> g_flush_before_present;
 
@@ -45,6 +46,7 @@ DeveloperTabSettings::DeveloperTabSettings()
     , reflex_logging("ReflexLogging", s_enable_reflex_logging, false, "DisplayCommander")
 
     , enable_mute_unmute_shortcut("EnableMuteUnmuteShortcut", s_enable_mute_unmute_shortcut, true, "DisplayCommander")
+    , enable_background_toggle_shortcut("EnableBackgroundToggleShortcut", s_enable_background_toggle_shortcut, true, "DisplayCommander")
     , flush_before_present("FlushBeforePresent", g_flush_before_present, true, "DisplayCommander")
 {
 }
@@ -61,6 +63,7 @@ void DeveloperTabSettings::LoadAll() {
     nvapi_hdr_interval_sec.Load();
 
     enable_mute_unmute_shortcut.Load();
+    enable_background_toggle_shortcut.Load();
     flush_before_present.Load();
     reflex_enable.Load();
     reflex_low_latency.Load();
@@ -94,6 +97,7 @@ std::vector<ui::new_ui::SettingBase*> DeveloperTabSettings::GetAllSettings() {
         &reflex_logging,
 
         &enable_mute_unmute_shortcut,
+        &enable_background_toggle_shortcut,
         &flush_before_present
     };
 }

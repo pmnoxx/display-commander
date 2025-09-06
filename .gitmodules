@@ -17,3 +17,6 @@
 [submodule "external/nvapi"]
 	path = external/nvapi
 	url = https://github.com/NVIDIA/nvapi
+[submodule "external/xinp"]
+	path = external/xinp
+	url = https://github.com/BlueSkyDefender/Xinp.git

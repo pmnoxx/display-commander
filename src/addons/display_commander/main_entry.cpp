@@ -19,6 +19,8 @@
 #include "nvapi/nvapi_hdr_monitor.hpp"
 #include "nvapi/dlssfg_version_detector.hpp"
 #include "nvapi/dlss_preset_detector.hpp"
+// XInput integration
+#include "xinput/xinput_controller.hpp"
 // Restore display settings on exit if enabled
 #include "display_restore.hpp"
 #include "process_exit_hooks.hpp"
@@ -214,6 +216,15 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
     // Install process-exit safety hooks to restore display on abnormal exits
     process_exit_hooks::Initialize();
 
+    if (debug_mode > 0) { LogInfo("DEBUG MODE 25 before XInput initialization"); }
+    if (debug_mode != 0 && debug_mode <= 25) { return TRUE; }
+    // Initialize XInput system
+    if (!display_commander::xinput::InitializeXInput()) {
+        LogError("Failed to initialize XInput system");
+    } else {
+        LogInfo("XInput system initialized successfully");
+    }
+
     // Mark DLL initialization as complete - now DXGI calls are safe
     g_dll_initialization_complete.store(true);
     LogInfo("DLL initialization complete - DXGI calls now enabled");
@@ -242,6 +253,9 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
 
       // Clean up experimental tab threads
       ui::new_ui::CleanupExperimentalTab();
+
+      // Clean up XInput system
+      display_commander::xinput::ShutdownXInput();
 
       // Clean up DXGI Device Info Manager
       g_dxgiDeviceInfoManager.reset();

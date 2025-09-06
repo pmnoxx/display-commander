@@ -410,32 +410,32 @@ void OnPresentUpdateAfter(reshade::api::command_queue* /*queue*/, reshade::api::
   // DXGI composition state computation and periodic device/colorspace refresh
   // (moved from continuous monitoring thread to avoid accessing g_last_swapchain_ptr from background thread)
   if (swapchain != nullptr) {
-    // Compute DXGI composition state and log on change
-    DxgiBypassMode mode = GetIndependentFlipState(swapchain);
-    int state = 0;
-    switch (mode) {
-        case DxgiBypassMode::kComposed: state = 1; break;
-        case DxgiBypassMode::kOverlay: state = 2; break;
-        case DxgiBypassMode::kIndependentFlip: state = 3; break;
-        case DxgiBypassMode::kUnknown:
-        default: state = 0; break;
-    }
-
-    // Update shared state for fast reads on present
-    s_dxgi_composition_state.store(state);
-
-    int last = g_comp_last_logged.load();
-    if (state != last) {
-        g_comp_last_logged.store(state);
-        std::ostringstream oss;
-        oss << "DXGI Composition State (OnPresentAfter): " << DxgiBypassModeToString(mode) << " (" << state << ")";
-        LogInfo(oss.str().c_str());
-    }
-
     // Periodically refresh colorspace and enumerate devices (approx every 4 seconds at 60fps = 240 frames)
     static int present_after_counter = 0;
     present_after_counter++;
     if (present_after_counter >= 240) { // Refresh every 240 presents (about 4 seconds at 60fps)
+      // Compute DXGI composition state and log on change
+      DxgiBypassMode mode = GetIndependentFlipState(swapchain);
+      int state = 0;
+      switch (mode) {
+          case DxgiBypassMode::kComposed: state = 1; break;
+          case DxgiBypassMode::kOverlay: state = 2; break;
+          case DxgiBypassMode::kIndependentFlip: state = 3; break;
+          case DxgiBypassMode::kUnknown:
+          default: state = 0; break;
+      }
+
+      // Update shared state for fast reads on present
+      s_dxgi_composition_state.store(state);
+
+      int last = g_comp_last_logged.load();
+      if (state != last) {
+          g_comp_last_logged.store(state);
+          std::ostringstream oss;
+          oss << "DXGI Composition State (OnPresentAfter): " << DxgiBypassModeToString(mode) << " (" << state << ")";
+          LogInfo(oss.str().c_str());
+      }
+
         present_after_counter = 0;
         g_current_colorspace = swapchain->get_color_space();
 

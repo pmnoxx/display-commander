@@ -309,6 +309,12 @@ void DrawExperimentalTab() {
     ImGui::Spacing();
     ImGui::Separator();
 
+    // Draw texture format upgrade section
+    DrawTextureFormatUpgrade();
+
+    ImGui::Spacing();
+    ImGui::Separator();
+
     // Draw auto-click feature
     DrawAutoClickFeature();
 
@@ -640,6 +646,36 @@ void DrawBufferResolutionUpgrade() {
                     g_experimentalTabSettings.buffer_resolution_upgrade_width.GetValue(),
                     g_experimentalTabSettings.buffer_resolution_upgrade_height.GetValue());
         }
+    }
+}
+
+void DrawTextureFormatUpgrade() {
+    ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== Texture Format Upgrade ===");
+
+    // Warning about experimental nature
+    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "⚠ EXPERIMENTAL FEATURE - May cause performance issues!");
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("This feature upgrades texture formats to RGB16A16 during resource creation.\nUse with caution as it may cause performance issues or rendering artifacts.");
+    }
+
+    ImGui::Spacing();
+
+    // Enable/disable checkbox
+    if (CheckboxSetting(g_experimentalTabSettings.texture_format_upgrade_enabled, "Upgrade Textures to RGB16A16")) {
+        LogInfo("Texture format upgrade %s",
+                g_experimentalTabSettings.texture_format_upgrade_enabled.GetValue() ? "enabled" : "disabled");
+    }
+
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Upgrade texture formats to RGB16A16 (16-bit per channel) for textures at 720p, 1440p, and 4K resolutions.\nRequires restart to take effect.");
+    }
+
+    // Show current settings info
+    ImGui::Spacing();
+    ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Note: Changes require restart to take effect");
+
+    if (g_experimentalTabSettings.texture_format_upgrade_enabled.GetValue()) {
+        ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "Will upgrade texture formats to RGB16A16 (16-bit per channel) for 720p, 1440p, and 4K textures");
     }
 }
 

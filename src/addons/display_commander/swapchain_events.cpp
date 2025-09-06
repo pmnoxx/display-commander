@@ -133,9 +133,10 @@ static std::pair<uint32_t, uint32_t> CalculateBufferUpgradeResolution(uint32_t o
   switch (mode) {
     case 0: // Upgrade 1280x720 by scale factor
       if (original_width == 1280 && original_height == 720
-      || original_width == 2560 && original_height == 1440) {
-        float scale_factor = 3840.0 / original_width;
-        return {static_cast<uint32_t>(original_width * scale_factor + 0.5f), static_cast<uint32_t>(original_height * scale_factor + 0.5f)};
+      || original_width == 2560 && original_height == 1440
+      || original_width == 3840 && original_height == 2160) {
+        double scale_factor = 3840.0 / original_width;
+        return {static_cast<uint32_t>(round(original_width * scale_factor + 0.001)), static_cast<uint32_t>(round(original_height * scale_factor + 0.001))};
       }
       break;
 
@@ -169,7 +170,8 @@ static std::pair<float, float> CalculateViewportScaleFactor(uint32_t original_wi
   switch (mode) {
     case 0: // Upgrade 1280x720 to 2560x1440 (2x)
       if (original_width == 1280 && original_height == 720
-      || original_width == 2560 && original_height == 1440) {
+      || original_width == 2560 && original_height == 1440
+      || original_width == 3840 && original_height == 2160) {
         float scale_new = 3840.0f / original_width;
         return {scale_new, scale_new}; // 2x scale
       }
@@ -670,50 +672,90 @@ void OnPresentFlags(uint32_t* present_flags, reshade::api::swapchain* swapchain)
   return;
 }
 
-// Resource creation event handler to upgrade buffer resolutions
+// Resource creation event handler to upgrade buffer resolutions and texture formats
 bool OnCreateResource(reshade::api::device* device, reshade::api::resource_desc& desc, reshade::api::subresource_data* /*initial_data*/, reshade::api::resource_usage /*usage*/) {
-  // Only handle resolution upgrade if enabled
-  if (!ui::new_ui::g_experimentalTabSettings.buffer_resolution_upgrade_enabled.GetValue()) {
-    return false; // No modification needed
-  }
+  bool modified = false;
 
   // Only handle 2D textures
   if (desc.type != reshade::api::resource_type::texture_2d) {
     return false; // No modification needed
   }
 
-  uint32_t original_width = desc.texture.width;
-  uint32_t original_height = desc.texture.height;
+  // Handle buffer resolution upgrade if enabled
+  if (ui::new_ui::g_experimentalTabSettings.buffer_resolution_upgrade_enabled.GetValue()) {
+    uint32_t original_width = desc.texture.width;
+    uint32_t original_height = desc.texture.height;
 
-  auto [target_width, target_height] = CalculateBufferUpgradeResolution(original_width, original_height);
+    auto [target_width, target_height] = CalculateBufferUpgradeResolution(original_width, original_height);
 
-  if (original_width != target_width || original_height != target_height) {
-    desc.texture.width = target_width;
-    desc.texture.height = target_height;
+    if (original_width != target_width || original_height != target_height) {
+      desc.texture.width = target_width;
+      desc.texture.height = target_height;
 
-    // Log the resolution upgrade
-    std::ostringstream res_oss;
-    res_oss << "Buffer resolution upgrade: " << original_width << "x" << original_height
-            << " -> " << target_width << "x" << target_height;
-    LogInfo("%s", res_oss.str().c_str());
+      // Log the resolution upgrade
+      std::ostringstream res_oss;
+      res_oss << "Buffer resolution upgrade: " << original_width << "x" << original_height
+              << " -> " << target_width << "x" << target_height;
+      LogInfo("%s", res_oss.str().c_str());
 
-    return true; // Modified the descriptor
+      modified = true;
+    }
   }
 
-  return false; // No modification needed
+  // Handle texture format upgrade if enabled
+  if (ui::new_ui::g_experimentalTabSettings.texture_format_upgrade_enabled.GetValue()) {
+    reshade::api::format original_format = desc.texture.format;
+    reshade::api::format target_format = reshade::api::format::r16g16b16a16_float; // RGB16A16
+
+    // Only upgrade certain formats to RGB16A16
+    bool should_upgrade_format = false;
+    switch (original_format) {
+      case reshade::api::format::r8g8b8a8_typeless:
+      case reshade::api::format::r8g8b8a8_unorm_srgb:
+      case reshade::api::format::r8g8b8a8_unorm:
+      case reshade::api::format::b8g8r8a8_unorm:
+      case reshade::api::format::r8g8b8a8_snorm:
+      case reshade::api::format::b8g8r8a8_typeless:
+      case reshade::api::format::r8g8b8a8_uint:
+      case reshade::api::format::r8g8b8a8_sint:
+        should_upgrade_format = true;
+        break;
+      default:
+        // Don't upgrade formats that are already high precision or special formats
+        break;
+    }
+
+    // Only upgrade textures at specific resolutions (720p, 1440p, 4K)
+    bool should_upgrade_resolution = false;
+    uint32_t width = desc.texture.width;
+    uint32_t height = desc.texture.height;
+
+    // Check for common resolutions: 720p (1280x720), 1440p (2560x1440), 4K (3840x2160)
+    if ((width == 1280 && height == 720) ||   // 720p
+        (width == 2560 && height == 1440) ||  // 1440p
+        (width == 3840 && height == 2160)) {  // 4K
+      should_upgrade_resolution = true;
+    }
+
+    if (should_upgrade_format && should_upgrade_resolution && original_format != target_format) {
+      desc.texture.format = target_format;
+
+      // Log the format upgrade
+      std::ostringstream format_oss;
+      format_oss << "Texture format upgrade: " << static_cast<int>(original_format)
+                 << " -> " << static_cast<int>(target_format) << " (RGB16A16) at " << width << "x" << height;
+      LogInfo("%s", format_oss.str().c_str());
+
+      modified = true;
+    }
+  }
+
+  return modified;
 }
 
-// Resource view creation event handler to upgrade render target views for buffer resolution upgrade
+// Resource view creation event handler to upgrade render target views for buffer resolution and texture format upgrades
 bool OnCreateResourceView(reshade::api::device* device, reshade::api::resource resource, reshade::api::resource_usage usage_type, reshade::api::resource_view_desc& desc) {
-  // Only handle render target view upgrades if buffer resolution upgrade is enabled
-  if (!ui::new_ui::g_experimentalTabSettings.buffer_resolution_upgrade_enabled.GetValue()) {
-    return false; // No modification needed
-  }
-
-  // Only handle render target views
-  if (usage_type != reshade::api::resource_usage::render_target) {
-    return false; // No modification needed
-  }
+  bool modified = false;
 
   // Get the resource description to check if it was upgraded
   if (!device) return false;
@@ -726,25 +768,72 @@ bool OnCreateResourceView(reshade::api::device* device, reshade::api::resource r
     return false; // No modification needed
   }
 
-  uint32_t original_width = resource_desc.texture.width;
-  uint32_t original_height = resource_desc.texture.height;
+  // Handle buffer resolution upgrade if enabled
+  if (ui::new_ui::g_experimentalTabSettings.buffer_resolution_upgrade_enabled.GetValue()) {
+    // Only handle render target views for resolution upgrade
+    if (usage_type == reshade::api::resource_usage::render_target) {
+      uint32_t original_width = resource_desc.texture.width;
+      uint32_t original_height = resource_desc.texture.height;
 
-  auto [target_width, target_height] = CalculateBufferUpgradeResolution(original_width, original_height);
+      auto [target_width, target_height] = CalculateBufferUpgradeResolution(original_width, original_height);
 
-  // If the resource was upgraded, log the resource view creation
-  if (original_width != target_width || original_height != target_height) {
-    // Log the resource view creation for upgraded resource
-    std::ostringstream view_oss;
-    view_oss << "Resource view created for upgraded render target: " << original_width << "x" << original_height
-             << " -> " << target_width << "x" << target_height;
-    LogInfo("%s", view_oss.str().c_str());
+      // If the resource was upgraded, log the resource view creation
+      if (original_width != target_width || original_height != target_height) {
+        // Log the resource view creation for upgraded resource
+        std::ostringstream view_oss;
+        view_oss << "Resource view created for upgraded render target: " << original_width << "x" << original_height
+                 << " -> " << target_width << "x" << target_height;
+        LogInfo("%s", view_oss.str().c_str());
 
-    // Note: resource_view_desc doesn't have width/height fields
-    // The view is automatically tied to the upgraded resource dimensions
-    return false; // No modification needed to the view descriptor
+        // Note: resource_view_desc doesn't have width/height fields
+        // The view is automatically tied to the upgraded resource dimensions
+        modified = true;
+      }
+    }
   }
 
-  return false; // No modification needed
+  // Handle texture format upgrade if enabled
+  if (ui::new_ui::g_experimentalTabSettings.texture_format_upgrade_enabled.GetValue()) {
+    reshade::api::format resource_format = resource_desc.texture.format;
+    reshade::api::format target_format = reshade::api::format::r16g16b16a16_float; // RGB16A16
+
+    // Check if the resource was upgraded to RGB16A16
+    if (resource_format == target_format) {
+      // If the resource was upgraded to RGB16A16, we need to upgrade the view format too
+      reshade::api::format original_view_format = desc.format;
+
+      // Only upgrade view formats that match the original texture formats we upgrade
+      bool should_upgrade_view = false;
+      switch (original_view_format) {
+        case reshade::api::format::r8g8b8a8_typeless:
+        case reshade::api::format::r8g8b8a8_unorm_srgb:
+        case reshade::api::format::r8g8b8a8_unorm:
+        case reshade::api::format::b8g8r8a8_unorm:
+        case reshade::api::format::r8g8b8a8_snorm:
+        case reshade::api::format::r8g8b8a8_uint:
+        case reshade::api::format::r8g8b8a8_sint:
+          should_upgrade_view = true;
+          break;
+        default:
+          // Don't upgrade view formats that are already high precision or special formats
+          break;
+      }
+
+      if (should_upgrade_view && original_view_format != target_format) {
+        desc.format = target_format;
+
+        // Log the view format upgrade
+        std::ostringstream view_format_oss;
+        view_format_oss << "Resource view format upgrade: " << static_cast<int>(original_view_format)
+                        << " -> " << static_cast<int>(target_format) << " (RGB16A16)";
+        LogInfo("%s", view_format_oss.str().c_str());
+
+        modified = true;
+      }
+    }
+  }
+
+  return modified;
 }
 
 // Viewport event handler to scale viewports for buffer resolution upgrade
@@ -768,7 +857,8 @@ void OnSetViewport(reshade::api::command_list* cmd_list, uint32_t first, uint32_
       const auto& viewport = viewports[i];
       // Only scale viewports that match the source resolution (1280x720)
       if (viewport.width == 1280.0f && viewport.height == 720.0f
-      || viewport.width == 2560.0f && viewport.height == 1440.0f) {
+      || viewport.width == 2560.0f && viewport.height == 1440.0f
+      || viewport.width == 3840.0f && viewport.height == 2160.0f) {
         needs_scaling = true;
         break;
       }
@@ -786,13 +876,14 @@ void OnSetViewport(reshade::api::command_list* cmd_list, uint32_t first, uint32_
 
       // Only scale viewports that match the source resolution
       if (viewport.width == 1280.0f && viewport.height == 720.0f
-      || viewport.width == 2560.0f && viewport.height == 1440.0f) {
-        float scale_new = 3840.0f / viewport.width;
+      || viewport.width == 2560.0f && viewport.height == 1440.0f
+      || viewport.width == 3840.0f && viewport.height == 2160.0f) {
+        double scale_new = 3840.0 / viewport.width;
         scaled_viewports[i] = {
-          viewport.x * scale_new,      // x
-          viewport.y * scale_new,      // y
-          viewport.width * scale_new,  // width (1280 -> 1280*scale)
-          viewport.height * scale_new, // height (720 -> 720*scale)
+          static_cast<float>(viewport.x * scale_new),      // x
+          static_cast<float>(viewport.y * scale_new),      // y
+          static_cast<float>(viewport.width * scale_new),  // width (1280 -> 1280*scale)
+          static_cast<float>(viewport.height * scale_new), // height (720 -> 720*scale)
           viewport.min_depth,        // min_depth
           viewport.max_depth         // max_depth
         };
@@ -832,14 +923,15 @@ void OnSetScissorRects(reshade::api::command_list* cmd_list, uint32_t first, uin
       const auto& rect = rects[i];
       // Only scale scissor rectangles that match the source resolution (1280x720)
       if ((rect.right - rect.left) == 1280 && (rect.bottom - rect.top) == 720
-      || (rect.right - rect.left) == 2560 && (rect.bottom - rect.top) == 1440) {
+      || (rect.right - rect.left) == 2560 && (rect.bottom - rect.top) == 1440
+      || (rect.right - rect.left) == 3840 && (rect.bottom - rect.top) == 2160) {
         needs_scaling = true;
         break;
       }
     }
   }
 
-    if (needs_scaling) {
+  if (needs_scaling) {
     int scale_factor = ui::new_ui::g_experimentalTabSettings.buffer_resolution_upgrade_scale_factor.GetValue();
 
     // Create scaled scissor rectangles only for matching dimensions
@@ -849,13 +941,14 @@ void OnSetScissorRects(reshade::api::command_list* cmd_list, uint32_t first, uin
 
       // Only scale scissor rectangles that match the source resolution
       if ((rect.right - rect.left) == 1280 && (rect.bottom - rect.top) == 720
-      || (rect.right - rect.left) == 2560 && (rect.bottom - rect.top) == 1440) {
-        float scale_new = 3840.0f / (rect.right - rect.left);
+      || (rect.right - rect.left) == 2560 && (rect.bottom - rect.top) == 1440
+      || (rect.right - rect.left) == 3840 && (rect.bottom - rect.top) == 2160) {
+        double scale_new = 3840.0 / (rect.right - rect.left);
         scaled_rects[i] = {
-          static_cast<int32_t>(rect.left * scale_new + 0.5),    // left
-          static_cast<int32_t>(rect.top * scale_new + 0.5),     // top
-          static_cast<int32_t>(rect.right * scale_new + 0.5),   // right
-          static_cast<int32_t>(rect.bottom * scale_new + 0.5)   // bottom
+          static_cast<int32_t>(rect.left * scale_new + 0.001),    // left
+          static_cast<int32_t>(rect.top * scale_new + 0.001),     // top
+          static_cast<int32_t>(rect.right * scale_new + 0.001),   // right
+          static_cast<int32_t>(rect.bottom * scale_new + 0.001)   // bottom
         };
 
         // Log the scissor scaling

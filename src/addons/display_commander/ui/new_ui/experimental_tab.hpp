@@ -22,6 +22,9 @@ void DrawBackbufferFormatOverride();
 // Draw buffer resolution upgrade section
 void DrawBufferResolutionUpgrade();
 
+// Draw texture format upgrade section
+void DrawTextureFormatUpgrade();
+
 // Cleanup function to stop background threads
 void CleanupExperimentalTab();
 

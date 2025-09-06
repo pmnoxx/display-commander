@@ -42,6 +42,7 @@ ExperimentalTabSettings::ExperimentalTabSettings()
         "Upgrade by Scale Factor",
         "Upgrade Custom Resolution"
     }, "Experimental")
+    , texture_format_upgrade_enabled("TextureFormatUpgradeEnabled", false, "Experimental")
 {
     // Initialize the all_settings_ vector
     all_settings_ = {
@@ -53,7 +54,8 @@ ExperimentalTabSettings::ExperimentalTabSettings()
         &sequence_5_enabled, &sequence_5_x, &sequence_5_y, &sequence_5_interval,
         &backbuffer_format_override_enabled, &backbuffer_format_override,
         &buffer_resolution_upgrade_enabled, &buffer_resolution_upgrade_width, &buffer_resolution_upgrade_height,
-        &buffer_resolution_upgrade_scale_factor, &buffer_resolution_upgrade_mode
+        &buffer_resolution_upgrade_scale_factor, &buffer_resolution_upgrade_mode,
+        &texture_format_upgrade_enabled
     };
 }
 

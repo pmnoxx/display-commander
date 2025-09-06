@@ -57,6 +57,9 @@ public:
     IntSetting buffer_resolution_upgrade_scale_factor;
     ComboSetting buffer_resolution_upgrade_mode;
 
+    // Texture format upgrade settings
+    BoolSetting texture_format_upgrade_enabled;
+
 private:
     std::vector<SettingBase*> all_settings_;
 };

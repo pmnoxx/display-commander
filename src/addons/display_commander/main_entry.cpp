@@ -70,12 +70,16 @@ void OnRegisterOverlayDisplayCommander(reshade::api::effect_runtime* runtime) {
 }
 }  // namespace
 
+bool initialized = false;
+
 BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
 
 
   switch (fdw_reason) {
     case DLL_PROCESS_ATTACH:
     try {
+      g_shutdown.store(false);
+
       if (!reshade::register_addon(h_module)) return FALSE;
       {
         LONGLONG now_ns = utils::get_now_ns();
@@ -102,13 +106,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
       // Initialize QPC timing constants based on actual frequency
       utils::initialize_qpc_timing_constants();
 
-      // Register overlay directly
-      // Ensure UI system is initialized
-      ui::new_ui::InitializeNewUISystem();
-
       reshade::register_overlay("Display Commander", OnRegisterOverlayDisplayCommander);
-
-      StartContinuousMonitoring();
 
       // Capture sync interval on swapchain creation for UI
       reshade::register_event<reshade::addon_event::create_swapchain>(OnCreateSwapchainCapture);
@@ -124,10 +122,6 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
       // Register our fullscreen prevention event handler
       reshade::register_event<reshade::addon_event::set_fullscreen_state>(
           display_commander::events::OnSetFullscreenState);
-
-      g_shutdown.store(false);
-      std::thread(RunBackgroundAudioMonitor).detach();
-      background::StartBackgroundTasks();
 
       // NVAPI HDR monitor will be started after settings load below if enabled
       // Seed default fps limit snapshot
@@ -160,38 +154,51 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
       // Register device destroy event for restore-on-exit
       reshade::register_event<reshade::addon_event::destroy_device>(OnDestroyDevice);
 
+      // Install process-exit safety hooks to restore display on abnormal exits
+      process_exit_hooks::Initialize();
 
-    InitializeUISettings();
+      // Mark DLL initialization as complete - now DXGI calls are safe
+      g_dll_initialization_complete.store(true);
+      LogInfo("DLL initialization complete - DXGI calls now enabled");
 
-    // Start NVAPI HDR monitor if enabled
-    if (s_nvapi_hdr_logging.load()) {
-      std::thread(RunBackgroundNvapiHdrMonitor).detach();
+      // Check unsafe calls counter and log if any unsafe calls occurred
+      uint32_t unsafe_calls = g_unsafe_calls_cnt.load();
+      if (unsafe_calls > 0) {
+        LogError("ERROR: %u unsafe Win32 API calls occurred during DLL initialization", unsafe_calls);
+      } else {
+        LogInfo("No unsafe Win32 API calls occurred during DLL initialization");
+      }
+    } catch (const std::exception& e) {
+      LogError("Error initializing DLL: %s", e.what());
+    } catch (...) {
+      LogError("Unknown error initializing DLL");
     }
-
-      // Initialize experimental tab
-    ui::new_ui::InitExperimentalTab();
-    // Install process-exit safety hooks to restore display on abnormal exits
-    process_exit_hooks::Initialize();
-
-
-    // Mark DLL initialization as complete - now DXGI calls are safe
-    g_dll_initialization_complete.store(true);
-    LogInfo("DLL initialization complete - DXGI calls now enabled");
-
-    // Check unsafe calls counter and log if any unsafe calls occurred
-    uint32_t unsafe_calls = g_unsafe_calls_cnt.load();
-    if (unsafe_calls > 0) {
-      LogError("ERROR: %u unsafe Win32 API calls occurred during DLL initialization", unsafe_calls);
-    } else {
-      LogInfo("No unsafe Win32 API calls occurred during DLL initialization");
-    }
-  } catch (const std::exception& e) {
-    LogError("Error initializing DLL: %s", e.what());
-  } catch (...) {
-    LogError("Unknown error initializing DLL");
-  }
     break;
     case DLL_THREAD_ATTACH: {
+      if (!initialized) {
+        initialized = true;
+
+        display_cache::g_displayCache.Initialize();
+
+
+        // Register overlay directly
+        // Ensure UI system is initialized
+        ui::new_ui::InitializeNewUISystem();
+        StartContinuousMonitoring();
+
+        // Initialize experimental tab
+        std::thread(RunBackgroundAudioMonitor).detach();
+        background::StartBackgroundTasks();
+
+        InitializeUISettings();
+
+        // Start NVAPI HDR monitor if enabled
+        if (s_nvapi_hdr_logging.load()) {
+          std::thread(RunBackgroundNvapiHdrMonitor).detach();
+        }
+
+        ui::new_ui::InitExperimentalTab();
+      }
       break;
     }
     case DLL_THREAD_DETACH: {
@@ -200,11 +207,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
 
 
     case DLL_PROCESS_DETACH:
-      reshade::unregister_addon(h_module);
-      // Safety: attempt restore on detach as well (idempotent)
-      display_restore::RestoreAllIfEnabled();
-      // Uninstall process-exit hooks
-      process_exit_hooks::Shutdown();
+      g_shutdown.store(true);
 
       // Clean up continuous monitoring if it's running
       StopContinuousMonitoring();
@@ -212,9 +215,13 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
       // Clean up experimental tab threads
       ui::new_ui::CleanupExperimentalTab();
 
-
       // Clean up DXGI Device Info Manager
       g_dxgiDeviceInfoManager.reset();
+      // Safety: attempt restore on detach as well (idempotent)
+      //display_restore::RestoreAllIfEnabled();
+      // Uninstall process-exit hooks
+      //process_exit_hooks::Shutdown();
+
 
       // Clean up NVAPI instances before shutdown
       if (g_latencyManager) {
@@ -227,8 +234,9 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
 
       // Note: reshade::unregister_addon() will automatically unregister all events and overlays
       // registered by this add-on, so manual unregistration is not needed and can cause issues
-      display_restore::RestoreAllIfEnabled(); // restore display settings on exit
-      g_shutdown.store(true);
+      //display_restore::RestoreAllIfEnabled(); // restore display settings on exit
+
+      reshade::unregister_addon(h_module);
       break;
   }
 

@@ -22,6 +22,17 @@ void ContinuousMonitoringThread() {
     auto last_cache_refresh = std::chrono::steady_clock::now();
     auto start_time = utils::get_now_ns();
     while (g_monitoring_thread_running.load()) {
+        // Periodic display cache refresh off the UI thread
+        {
+            auto now = std::chrono::steady_clock::now();
+            if (now - last_cache_refresh >= std::chrono::seconds(2)) {
+                display_cache::g_displayCache.Refresh();
+                last_cache_refresh = now;
+                auto labels = ui::GetMonitorLabelsFromCache();
+                auto next = std::make_shared<const std::vector<std::string>>(std::move(labels));
+                ::g_monitor_labels.store(next, std::memory_order_release);
+            }
+        }
         // Wait for 1 second to start
         if (utils::get_now_ns() - start_time < 1 * utils::SEC_TO_NS) {
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -88,15 +99,6 @@ void ContinuousMonitoringThread() {
             }
         }
 
-        // Update monitor labels cache periodically off the UI thread
-        {
-            // Refresh every 2 seconds to avoid excessive work
-            if ((seconds_counter % 2) == 0) {
-                auto labels = ui::GetMonitorLabelsFromCache();
-                auto next = std::make_shared<const std::vector<std::string>>(std::move(labels));
-                ::g_monitor_labels.store(next, std::memory_order_release);
-            }
-        }
 
         // BACKGROUND: Composition state logging and periodic device/colorspace refresh
         // NOTE: This functionality has been moved to OnPresentUpdateAfter to avoid
@@ -191,14 +193,6 @@ void ContinuousMonitoringThread() {
             g_perf_text_shared.store(std::make_shared<const std::string>(fps_oss.str()));
         }
 
-        // Periodic display cache refresh off the UI thread
-        {
-            auto now = std::chrono::steady_clock::now();
-            if (now - last_cache_refresh >= std::chrono::seconds(5)) {
-                display_cache::g_displayCache.Refresh();
-                last_cache_refresh = now;
-            }
-        }
 
         // DLSS-FG Detection: Check every 5 seconds for runtime-loaded DLSS-G DLLs
         {

@@ -130,6 +130,10 @@ bool DisplayCache::Refresh() {
             return TRUE;
         },
         reinterpret_cast<LPARAM>(&monitors));
+    if (monitors.empty()) {
+        LogError("DisplayCache: No monitors found");
+        return false;
+    }
 
     // Process each monitor
     for (HMONITOR monitor : monitors) {

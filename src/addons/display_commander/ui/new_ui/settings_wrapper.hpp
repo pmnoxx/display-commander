@@ -16,16 +16,16 @@ class SettingBase {
 public:
     SettingBase(const std::string& key, const std::string& section = DEFAULT_SECTION);
     virtual ~SettingBase() = default;
-    
+
     // Load the setting value from Reshade config
     virtual void Load() = 0;
-    
+
     // Save the setting value to Reshade config
     virtual void Save() = 0;
-    
+
     // Get the setting key
     const std::string& GetKey() const { return key_; }
-    
+
     // Get the setting section
     const std::string& GetSection() const { return section_; }
 
@@ -37,12 +37,12 @@ protected:
 // Float setting wrapper
 class FloatSetting : public SettingBase {
 public:
-    FloatSetting(const std::string& key, float default_value, float min = 0.0f, float max = 100.0f, 
+    FloatSetting(const std::string& key, float default_value, float min = 0.0f, float max = 100.0f,
                  const std::string& section = DEFAULT_SECTION);
-    
+
     void Load() override;
     void Save() override;
-    
+
     float GetValue() const { return value_; }
     void SetValue(float value);
     float GetDefaultValue() const { return default_value_; }
@@ -61,10 +61,10 @@ class IntSetting : public SettingBase {
 public:
     IntSetting(const std::string& key, int default_value, int min = 0, int max = 100,
                const std::string& section = DEFAULT_SECTION);
-    
+
     void Load() override;
     void Save() override;
-    
+
     int GetValue() const { return value_; }
     void SetValue(int value);
     int GetDefaultValue() const { return default_value_; }
@@ -81,16 +81,16 @@ private:
 // Boolean setting wrapper
 class BoolSetting : public SettingBase {
 public:
-    BoolSetting(const std::string& key, bool default_value, 
+    BoolSetting(const std::string& key, bool default_value,
                 const std::string& section = DEFAULT_SECTION);
-    
+
     void Load() override;
     void Save() override;
-    
+
     bool GetValue() const { return value_.load(); }
     void SetValue(bool value);
     bool GetDefaultValue() const { return default_value_; }
-    
+
     // Direct access to the atomic value for performance-critical code
     std::atomic<bool>& GetAtomic() { return value_; }
     const std::atomic<bool>& GetAtomic() const { return value_; }
@@ -103,16 +103,16 @@ private:
 // Boolean setting wrapper that references an external atomic variable
 class BoolSettingRef : public SettingBase {
 public:
-    BoolSettingRef(const std::string& key, std::atomic<bool>& external_ref, bool default_value, 
+    BoolSettingRef(const std::string& key, std::atomic<bool>& external_ref, bool default_value,
                    const std::string& section = DEFAULT_SECTION);
-    
+
     void Load() override;
     void Save() override;
-    
+
     bool GetValue() const { return external_ref_.get().load(); }
     void SetValue(bool value);
     bool GetDefaultValue() const { return default_value_; }
-    
+
     // Direct access to the referenced atomic value for performance-critical code
     std::atomic<bool>& GetAtomic() { return external_ref_.get(); }
     const std::atomic<bool>& GetAtomic() const { return external_ref_.get(); }
@@ -125,19 +125,19 @@ private:
 // Float setting wrapper that references an external atomic variable
 class FloatSettingRef : public SettingBase {
 public:
-    FloatSettingRef(const std::string& key, std::atomic<float>& external_ref, float default_value, 
+    FloatSettingRef(const std::string& key, std::atomic<float>& external_ref, float default_value,
                     float min = 0.0f, float max = 100.0f,
                     const std::string& section = DEFAULT_SECTION);
-    
+
     void Load() override;
     void Save() override;
-    
+
     float GetValue() const { return external_ref_.get().load(); }
     void SetValue(float value);
     float GetDefaultValue() const { return default_value_; }
     float GetMin() const { return min_; }
     float GetMax() const { return max_; }
-    
+
     // Direct access to the referenced atomic value for performance-critical code
     std::atomic<float>& GetAtomic() { return external_ref_.get(); }
     const std::atomic<float>& GetAtomic() const { return external_ref_.get(); }
@@ -152,19 +152,19 @@ private:
 // Integer setting wrapper that references an external atomic variable
 class IntSettingRef : public SettingBase {
 public:
-    IntSettingRef(const std::string& key, std::atomic<int>& external_ref, int default_value, 
+    IntSettingRef(const std::string& key, std::atomic<int>& external_ref, int default_value,
                   int min = 0, int max = 100,
                   const std::string& section = DEFAULT_SECTION);
-    
+
     void Load() override;
     void Save() override;
-    
+
     int GetValue() const { return external_ref_.get().load(); }
     void SetValue(int value);
     int GetDefaultValue() const { return default_value_; }
     int GetMin() const { return min_; }
     int GetMax() const { return max_; }
-    
+
     // Direct access to the referenced atomic value for performance-critical code
     std::atomic<int>& GetAtomic() { return external_ref_.get(); }
     const std::atomic<int>& GetAtomic() const { return external_ref_.get(); }
@@ -179,13 +179,13 @@ private:
 // Combo setting wrapper
 class ComboSetting : public SettingBase {
 public:
-    ComboSetting(const std::string& key, int default_value, 
+    ComboSetting(const std::string& key, int default_value,
                  const std::vector<const char*>& labels,
                  const std::string& section = DEFAULT_SECTION);
-    
+
     void Load() override;
     void Save() override;
-    
+
     int GetValue() const { return value_; }
     void SetValue(int value);
     int GetDefaultValue() const { return default_value_; }
@@ -195,6 +195,57 @@ private:
     int value_;
     int default_value_;
     std::vector<const char*> labels_;
+};
+
+// Resolution pair setting (width, height)
+class ResolutionPairSetting : public SettingBase {
+public:
+    ResolutionPairSetting(const std::string& key, int default_width, int default_height,
+                         const std::string& section = DEFAULT_SECTION);
+
+    void Load() override;
+    void Save() override;
+
+    int GetWidth() const { return width_; }
+    int GetHeight() const { return height_; }
+    void SetResolution(int width, int height);
+    void SetCurrentResolution(); // Sets to current monitor resolution (0,0 means current)
+
+    int GetDefaultWidth() const { return default_width_; }
+    int GetDefaultHeight() const { return default_height_; }
+
+private:
+    int width_;
+    int height_;
+    int default_width_;
+    int default_height_;
+};
+
+// Refresh rate pair setting (numerator, denominator)
+class RefreshRatePairSetting : public SettingBase {
+public:
+    RefreshRatePairSetting(const std::string& key, int default_numerator, int default_denominator,
+                          const std::string& section = DEFAULT_SECTION);
+
+    void Load() override;
+    void Save() override;
+
+    int GetNumerator() const { return numerator_; }
+    int GetDenominator() const { return denominator_; }
+    void SetRefreshRate(int numerator, int denominator);
+    void SetCurrentRefreshRate(); // Sets to current monitor refresh rate (0,0 means current)
+
+    int GetDefaultNumerator() const { return default_numerator_; }
+    int GetDefaultDenominator() const { return default_denominator_; }
+
+    // Helper to get refresh rate as Hz
+    double GetHz() const;
+
+private:
+    int numerator_;
+    int denominator_;
+    int default_numerator_;
+    int default_denominator_;
 };
 
 // Wrapper functions for ImGui controls that automatically handle settings

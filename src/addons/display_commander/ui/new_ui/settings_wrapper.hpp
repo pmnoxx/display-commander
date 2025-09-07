@@ -29,9 +29,19 @@ public:
     // Get the setting section
     const std::string& GetSection() const { return section_; }
 
+    // Dirty state tracking
+    bool IsDirty() const { return is_dirty_; }
+    void MarkClean() { is_dirty_ = false; }
+    void MarkDirty() { is_dirty_ = true; }
+
+    // Get the last known good value (for comparison)
+    virtual std::string GetLastKnownGoodValue() const = 0;
+    virtual std::string GetCurrentValue() const = 0;
+
 protected:
     std::string key_;
     std::string section_;
+    bool is_dirty_ = false;
 };
 
 // Float setting wrapper

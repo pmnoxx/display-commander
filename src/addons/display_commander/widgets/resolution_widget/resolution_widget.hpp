@@ -63,6 +63,7 @@ private:
     // UI state management
     bool is_initialized_ = false;
     bool needs_refresh_ = true;
+    bool settings_applied_to_ui_ = false;
 
     // Confirmation dialog state
     bool show_confirmation_ = false;

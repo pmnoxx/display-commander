@@ -5,6 +5,7 @@
 #include <memory>
 #include <array>
 #include <deps/imgui/imgui.h>
+#include "../../utils.hpp"
 
 namespace display_commander::widgets::resolution_widget {
 
@@ -115,7 +116,7 @@ public:
 
     // Auto-apply setting
     bool GetAutoApply() const { return auto_apply_.load(); }
-    void SetAutoApply(bool enabled) { auto_apply_.store(enabled); }
+    void SetAutoApply(bool enabled);
 
 private:
     std::array<std::unique_ptr<DisplayResolutionSettings>, MAX_DISPLAYS> display_settings_;

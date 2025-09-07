@@ -14,6 +14,9 @@
 // Include input blocking system
 #include "input_blocking/input_blocking.hpp"
 
+// Include window style hooks
+#include "hooks/window_style_hooks.hpp"
+
 #include "dxgi/custom_fps_limiter_manager.hpp"
 #include "latent_sync/latent_sync_manager.hpp"
 #include "dxgi/dxgi_device_info.hpp"
@@ -179,7 +182,12 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
     break;
     case DLL_THREAD_ATTACH: {
       if (!initialized) {
+
         initialized = true;
+
+        // Install window style hooks
+        renodx::hooks::InstallWindowStyleHooks();
+
 
         display_cache::g_displayCache.Initialize();
 
@@ -216,6 +224,9 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
 
       // Clean up input blocking system
       display_commander::input_blocking::cleanup_input_blocking();
+
+      // Clean up window style hooks
+      renodx::hooks::UninstallWindowStyleHooks();
 
       // Clean up continuous monitoring if it's running
       StopContinuousMonitoring();

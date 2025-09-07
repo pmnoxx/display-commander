@@ -243,6 +243,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
   }
     break;
     case DLL_PROCESS_DETACH:
+      reshade::unregister_addon(h_module);
       // Safety: attempt restore on detach as well (idempotent)
       display_restore::RestoreAllIfEnabled();
       // Uninstall process-exit hooks
@@ -269,34 +270,9 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
       extern NVAPIFullscreenPrevention g_nvapiFullscreenPrevention;
       g_nvapiFullscreenPrevention.Cleanup();
 
-      reshade::unregister_event<reshade::addon_event::present>(OnPresentUpdateBefore);
-      reshade::unregister_event<reshade::addon_event::reshade_present>(OnPresentUpdateBefore2);
-      reshade::unregister_event<reshade::addon_event::finish_present>(OnPresentUpdateAfter);
-      reshade::unregister_event<reshade::addon_event::present_flags>(OnPresentFlags);
-
-      // Unregister draw event handlers for render timing
-      reshade::unregister_event<reshade::addon_event::draw>(OnDraw);
-      reshade::unregister_event<reshade::addon_event::draw_indexed>(OnDrawIndexed);
-      reshade::unregister_event<reshade::addon_event::draw_or_dispatch_indirect>(OnDrawOrDispatchIndirect);
-
-      // Unregister power saving event handlers for additional GPU operations
-      reshade::unregister_event<reshade::addon_event::dispatch>(OnDispatch);
-      reshade::unregister_event<reshade::addon_event::dispatch_mesh>(OnDispatchMesh);
-      reshade::unregister_event<reshade::addon_event::dispatch_rays>(OnDispatchRays);
-      reshade::unregister_event<reshade::addon_event::copy_resource>(OnCopyResource);
-      reshade::unregister_event<reshade::addon_event::update_buffer_region>(OnUpdateBufferRegion);
-      reshade::unregister_event<reshade::addon_event::update_buffer_region_command>(OnUpdateBufferRegionCommand);
-
-      // Unregister overlay
-      reshade::unregister_overlay("###settings", OnRegisterOverlayDisplayCommander);
-
-      reshade::unregister_event<reshade::addon_event::set_fullscreen_state>(
-          display_commander::events::OnSetFullscreenState);
-      reshade::unregister_event<reshade::addon_event::init_swapchain>(OnInitSwapchain);
-      reshade::unregister_event<reshade::addon_event::create_swapchain>(OnCreateSwapchainCapture);
+      // Note: reshade::unregister_addon() will automatically unregister all events and overlays
+      // registered by this add-on, so manual unregistration is not needed and can cause issues
       display_restore::RestoreAllIfEnabled(); // restore display settings on exit
-      reshade::unregister_event<reshade::addon_event::destroy_device>(OnDestroyDevice);
-      reshade::unregister_addon(h_module);
       g_shutdown.store(true);
       break;
   }

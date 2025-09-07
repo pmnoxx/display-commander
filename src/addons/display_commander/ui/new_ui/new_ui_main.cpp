@@ -9,13 +9,13 @@ NewUISystem& NewUISystem::GetInstance() {
     return instance;
 }
 
-void NewUISystem::Initialize(int debug_mode) {
+void NewUISystem::Initialize() {
     if (initialized_) {
         return;
     }
 
     // Initialize the tab system
-    InitializeNewUI(debug_mode);
+    InitializeNewUI();
 
     // Mark as initialized and enabled
     initialized_ = true;
@@ -34,8 +34,8 @@ void NewUISystem::Draw() {
 }
 
 // Convenience functions
-void InitializeNewUISystem(int debug_mode) {
-    NewUISystem::GetInstance().Initialize(debug_mode);
+void InitializeNewUISystem() {
+    NewUISystem::GetInstance().Initialize();
 }
 
 void DrawNewUISystem() {

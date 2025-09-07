@@ -10,7 +10,7 @@ public:
     static NewUISystem& GetInstance();
 
     // Initialize the new UI system
-    void Initialize(int debug_mode);
+    void Initialize();
 
     // Draw the new UI
     void Draw();
@@ -32,7 +32,7 @@ private:
 };
 
 // Convenience functions
-void InitializeNewUISystem( int debug_mode );
+void InitializeNewUISystem();
 void DrawNewUISystem();
 bool IsNewUIEnabled();
 

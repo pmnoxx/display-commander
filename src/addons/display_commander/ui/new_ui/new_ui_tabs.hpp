@@ -45,7 +45,7 @@ private:
 extern TabManager g_tab_manager;
 
 // Initialize the new UI system
-void InitializeNewUI(int debug_mode);
+void InitializeNewUI();
 
 // Draw the new UI
 void DrawNewUI();

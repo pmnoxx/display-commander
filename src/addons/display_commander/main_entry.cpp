@@ -19,8 +19,6 @@
 #include "nvapi/nvapi_hdr_monitor.hpp"
 #include "nvapi/dlssfg_version_detector.hpp"
 #include "nvapi/dlss_preset_detector.hpp"
-// XInput integration
-#include "xinput/xinput_controller.hpp"
 // Restore display settings on exit if enabled
 #include "display_restore.hpp"
 #include "process_exit_hooks.hpp"
@@ -73,8 +71,6 @@ void OnRegisterOverlayDisplayCommander(reshade::api::effect_runtime* runtime) {
 }  // namespace
 
 BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
-  // Read debug mode from ReShade config as safety mode
-  int debug_mode = 0;
 
 
   switch (fdw_reason) {
@@ -102,62 +98,37 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
       }
 
 
-      // Get debug mode after registering addon to avoid module handle issues
-      if (!reshade::get_config_value(nullptr, "DisplayCommander", "SafetyMode", debug_mode)) {
-        debug_mode = 0; // Default to 0 (no debug mode) if not found
-      }
 
-      if (debug_mode > 0) { LogInfo("DEBUG MODE 1 before reshade::register_addon"); }
-      if (debug_mode != 0 && debug_mode <= 1) { return TRUE; }
       // Initialize QPC timing constants based on actual frequency
       utils::initialize_qpc_timing_constants();
 
-      if (debug_mode > 0) { LogInfo("DEBUG MODE 2 before reshade::register_overlay"); }
-      if (debug_mode != 0 && debug_mode <= 2) { return TRUE; }
       // Register overlay directly
       // Ensure UI system is initialized
-      ui::new_ui::InitializeNewUISystem(debug_mode); // uses 4-10
-
-      if (debug_mode != 0 && debug_mode <= 11) { return TRUE; }
-      if (debug_mode > 0) { LogInfo("DEBUG MODE 3 before ui::new_ui::InitializeNewUISystem"); }
+      ui::new_ui::InitializeNewUISystem();
 
       reshade::register_overlay("Display Commander", OnRegisterOverlayDisplayCommander);
 
-      if (debug_mode > 0) { LogInfo("DEBUG MODE 11 before StartContinuousMonitoring"); }
-      if (debug_mode != 0 && debug_mode <= 12) { return TRUE; }
       StartContinuousMonitoring();
 
-      if (debug_mode > 0) { LogInfo("DEBUG MODE 12 before create_swapchain event registration"); }
-      if (debug_mode != 0 && debug_mode <= 12) { return TRUE; }
       // Capture sync interval on swapchain creation for UI
       reshade::register_event<reshade::addon_event::create_swapchain>(OnCreateSwapchainCapture);
 
-      if (debug_mode > 0) { LogInfo("DEBUG MODE 13 before init_swapchain event registration"); }
-      if (debug_mode != 0 && debug_mode <= 13) { return TRUE; }
       reshade::register_event<reshade::addon_event::init_swapchain>(OnInitSwapchain);
 
-      if (debug_mode > 0) { LogInfo("DEBUG MODE 14 before effect runtime event registration"); }
-      if (debug_mode != 0 && debug_mode <= 14) { return TRUE; }
       // Register ReShade effect runtime events for input blocking
       reshade::register_event<reshade::addon_event::init_effect_runtime>(OnInitEffectRuntime);
       reshade::register_event<reshade::addon_event::reshade_open_overlay>(OnReShadeOverlayOpen);
 
       // Defer NVAPI init until after settings are loaded below
 
-      if (debug_mode > 0) { LogInfo("DEBUG MODE 15 before fullscreen prevention event registration"); }
-      if (debug_mode != 0 && debug_mode <= 15) { return TRUE; }
       // Register our fullscreen prevention event handler
       reshade::register_event<reshade::addon_event::set_fullscreen_state>(
           display_commander::events::OnSetFullscreenState);
 
-      if (debug_mode > 0) { LogInfo("DEBUG MODE 16 before background tasks start"); }
-      if (debug_mode != 0 && debug_mode <= 16) { return TRUE; }
       g_shutdown.store(false);
       std::thread(RunBackgroundAudioMonitor).detach();
       background::StartBackgroundTasks();
 
-      if (debug_mode > 0) { LogInfo("DEBUG MODE 17 before present event registration"); }
-      if (debug_mode != 0 && debug_mode <= 17) { return TRUE; }
       // NVAPI HDR monitor will be started after settings load below if enabled
       // Seed default fps limit snapshot
       // GetFpsLimit removed from proxy, use s_fps_limit directly
@@ -166,15 +137,11 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
       reshade::register_event<reshade::addon_event::finish_present>(OnPresentUpdateAfter);
       reshade::register_event<reshade::addon_event::present_flags>(OnPresentFlags);
 
-      if (debug_mode > 0) { LogInfo("DEBUG MODE 18 before draw event registration"); }
-      if (debug_mode != 0 && debug_mode <= 18) { return TRUE; }
       // Register draw event handlers for render timing
       reshade::register_event<reshade::addon_event::draw>(OnDraw);
       reshade::register_event<reshade::addon_event::draw_indexed>(OnDrawIndexed);
       reshade::register_event<reshade::addon_event::draw_or_dispatch_indirect>(OnDrawOrDispatchIndirect);
 
-      if (debug_mode > 0) { LogInfo("DEBUG MODE 19 before power saving event registration"); }
-      if (debug_mode != 0 && debug_mode <= 19) { return TRUE; }
       // Register power saving event handlers for additional GPU operations
       reshade::register_event<reshade::addon_event::dispatch>(OnDispatch);
       reshade::register_event<reshade::addon_event::dispatch_mesh>(OnDispatchMesh);
@@ -183,8 +150,6 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
       reshade::register_event<reshade::addon_event::update_buffer_region>(OnUpdateBufferRegion);
       reshade::register_event<reshade::addon_event::update_buffer_region_command>(OnUpdateBufferRegionCommand);
 
-    if (debug_mode > 0) { LogInfo("DEBUG MODE 20 before buffer resolution event registration"); }
-      if (debug_mode != 0 && debug_mode <= 20) { return TRUE; }
       // Register buffer resolution upgrade event handlers
       reshade::register_event<reshade::addon_event::create_resource>(OnCreateResource);
       reshade::register_event<reshade::addon_event::create_resource_view>(OnCreateResourceView);
@@ -196,34 +161,18 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
       reshade::register_event<reshade::addon_event::destroy_device>(OnDestroyDevice);
 
 
-    if (debug_mode > 0) { LogInfo("DEBUG MODE 21 before InitializeUISettings"); }
-    if (debug_mode != 0 && debug_mode <= 21) { return TRUE; }
-    InitializeUISettings( debug_mode );
+    InitializeUISettings();
 
-    if (debug_mode > 0) { LogInfo("DEBUG MODE 22 before NVAPI HDR monitor"); }
-    if (debug_mode != 0 && debug_mode <= 22) { return TRUE; }
     // Start NVAPI HDR monitor if enabled
     if (s_nvapi_hdr_logging.load()) {
       std::thread(RunBackgroundNvapiHdrMonitor).detach();
     }
 
-    if (debug_mode > 0) { LogInfo("DEBUG MODE 23 before InitExperimentalTab"); }
-    if (debug_mode != 0 && debug_mode <= 23) { return TRUE; }
       // Initialize experimental tab
     ui::new_ui::InitExperimentalTab();
-    if (debug_mode > 0) { LogInfo("DEBUG MODE 24 before process_exit_hooks::Initialize"); }
-    if (debug_mode != 0 && debug_mode <= 24) { return TRUE; }
     // Install process-exit safety hooks to restore display on abnormal exits
     process_exit_hooks::Initialize();
 
-    if (debug_mode > 0) { LogInfo("DEBUG MODE 25 before XInput initialization"); }
-    if (debug_mode != 0 && debug_mode <= 25) { return TRUE; }
-    // Initialize XInput system
-    if (!display_commander::xinput::InitializeXInput()) {
-        LogError("Failed to initialize XInput system");
-    } else {
-        LogInfo("XInput system initialized successfully");
-    }
 
     // Mark DLL initialization as complete - now DXGI calls are safe
     g_dll_initialization_complete.store(true);
@@ -242,6 +191,14 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
     LogError("Unknown error initializing DLL");
   }
     break;
+    case DLL_THREAD_ATTACH: {
+      break;
+    }
+    case DLL_THREAD_DETACH: {
+      break;
+    }
+
+
     case DLL_PROCESS_DETACH:
       reshade::unregister_addon(h_module);
       // Safety: attempt restore on detach as well (idempotent)
@@ -249,14 +206,12 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
       // Uninstall process-exit hooks
       process_exit_hooks::Shutdown();
 
-            // Clean up continuous monitoring if it's running
+      // Clean up continuous monitoring if it's running
       StopContinuousMonitoring();
 
       // Clean up experimental tab threads
       ui::new_ui::CleanupExperimentalTab();
 
-      // Clean up XInput system
-      display_commander::xinput::ShutdownXInput();
 
       // Clean up DXGI Device Info Manager
       g_dxgiDeviceInfoManager.reset();

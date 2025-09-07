@@ -5,7 +5,6 @@
 #include "developer_new_tab.hpp"
 #include "main_new_tab.hpp"
 #include "experimental_tab.hpp"
-#include "../../xinput/xinput_tab.hpp"
 #include "../../addon.hpp"
 #include "../../utils/timing.hpp"
 
@@ -66,13 +65,11 @@ void TabManager::Draw() {
 }
 
 // Initialize the new UI system
-void InitializeNewUI(int debug_mode) {
+void InitializeNewUI() {
     LogInfo("XXX Initializing new UI");
-    if (debug_mode > 0 && debug_mode <= 4) { return; }
 
     // Ensure settings for main and developer tabs are loaded at UI init time
     ui::new_ui::InitMainNewTab();
-    if (debug_mode > 0 && debug_mode <= 5) { return; }
 
     g_tab_manager.AddTab("Main", "main_new", []() {
         try {
@@ -83,7 +80,6 @@ void InitializeNewUI(int debug_mode) {
             LogError("Unknown error drawing main new tab");
         }
     });
-    if (debug_mode > 0 && debug_mode <= 5) { return; }
 
 
     ui::new_ui::InitDeveloperNewTab();
@@ -96,7 +92,6 @@ void InitializeNewUI(int debug_mode) {
             LogError("Unknown error drawing developer new tab");
         }
     });
-    if (debug_mode > 0 && debug_mode <= 6) { return; }
 
 
     g_tab_manager.AddTab("Device Info", "device_info", []() {
@@ -108,7 +103,6 @@ void InitializeNewUI(int debug_mode) {
             LogError("Unknown error drawing device info tab");
         }
     });
-    if (debug_mode > 0 && debug_mode <= 7) { return; }
 
     g_tab_manager.AddTab("Window Info", "window_info", []() {
         try {
@@ -119,7 +113,6 @@ void InitializeNewUI(int debug_mode) {
             LogError("Unknown error drawing window info tab");
         }
     });
-    if (debug_mode > 0 && debug_mode <= 8) { return; }
 
     g_tab_manager.AddTab("Swapchain", "swapchain", []() {
         try {
@@ -130,7 +123,6 @@ void InitializeNewUI(int debug_mode) {
             LogError("Unknown error drawing swapchain tab");
         }
     });
-    if (debug_mode > 0 && debug_mode <= 9) { return; }
 
     g_tab_manager.AddTab("Important Info", "important_info", []() {
         try {
@@ -141,21 +133,7 @@ void InitializeNewUI(int debug_mode) {
             LogError("Unknown error drawing important info tab");
         }
     });
-    if (debug_mode > 0 && debug_mode <= 10) { return; }
 
-    // Initialize XInput tab
-    display_commander::xinput::InitXInputTab();
-    g_tab_manager.AddTab(display_commander::xinput::GetXInputTabName().c_str(),
-                        display_commander::xinput::GetXInputTabId().c_str(), []() {
-        try {
-            display_commander::xinput::DrawXInputTab();
-        } catch (const std::exception& e) {
-            LogError("Error drawing XInput tab: %s", e.what());
-        } catch (...) {
-            LogError("Unknown error drawing XInput tab");
-        }
-    });
-    if (debug_mode > 0 && debug_mode <= 10) { return; }
 
 #if EXPERIMENTAL_TAB==1 || EXPERIMENTAL_TAB_PRIVATE==1
     g_tab_manager.AddTab("Experimental", "experimental", []() {

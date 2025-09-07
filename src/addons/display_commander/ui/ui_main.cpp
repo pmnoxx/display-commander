@@ -5,7 +5,7 @@
 static bool ui_settings_initialized = false;
 
 // Initialize all settings sections
-void InitializeUISettings(int debug_mode) {
+void InitializeUISettings() {
     // Prevent multiple initializations
     if (ui_settings_initialized) {
         return;

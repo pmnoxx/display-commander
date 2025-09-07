@@ -11,6 +11,9 @@
 #include "background_tasks/background_task_coordinator.hpp"
 #include "reshade_events/fullscreen_prevention.hpp"
 
+// Include input blocking system
+#include "input_blocking/input_blocking.hpp"
+
 #include "dxgi/custom_fps_limiter_manager.hpp"
 #include "latent_sync/latent_sync_manager.hpp"
 #include "dxgi/dxgi_device_info.hpp"
@@ -39,7 +42,7 @@ void OnDestroyDevice(reshade::api::device* /*device*/) {
 void OnInitEffectRuntime(reshade::api::effect_runtime* runtime) {
     if (runtime != nullptr) {
         g_reshade_runtime.store(runtime);
-        LogInfo("ReShade effect runtime initialized - Input blocking now available");
+        LogInfo("ReShade effect runtime initialized - Input blocking now avai`le");
 
         if (s_fix_hdr10_colorspace.load()) {
           runtime->set_color_space(reshade::api::color_space::hdr10_st2084);
@@ -180,6 +183,8 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
 
         display_cache::g_displayCache.Initialize();
 
+        // Initialize input blocking system
+        display_commander::input_blocking::initialize_input_blocking();
 
         // Register overlay directly
         // Ensure UI system is initialized
@@ -208,6 +213,9 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
 
     case DLL_PROCESS_DETACH:
       g_shutdown.store(true);
+
+      // Clean up input blocking system
+      display_commander::input_blocking::cleanup_input_blocking();
 
       // Clean up continuous monitoring if it's running
       StopContinuousMonitoring();

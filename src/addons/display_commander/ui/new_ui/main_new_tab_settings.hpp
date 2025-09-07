@@ -2,7 +2,6 @@
 
 #include "settings_wrapper.hpp"
 #include <vector>
-#include <atomic>
 
 namespace ui::new_ui {
 
@@ -11,13 +10,13 @@ class MainNewTabSettings {
 public:
     MainNewTabSettings();
     ~MainNewTabSettings() = default;
-    
+
     // Load all settings from Reshade config
     void LoadSettings();
-    
+
     // Get all settings for loading
     std::vector<SettingBase*> GetAllSettings();
-    
+
     // Display Settings
     ComboSetting window_mode;
     ComboSetting window_width;
@@ -26,7 +25,7 @@ public:
     ComboSetting target_monitor_index;
     BoolSetting background_feature;
     ComboSetting alignment;
-    
+
     // FPS Settings
     ComboSetting fps_limiter_mode;
     IntSetting scanline_offset;
@@ -35,23 +34,24 @@ public:
     FloatSettingRef fps_limit;
     FloatSettingRef fps_limit_background;
     FloatSettingRef present_pacing_delay_percentage;
-    
+
     // VSync & Tearing
     BoolSettingRef force_vsync_on;
     BoolSettingRef force_vsync_off;
     BoolSettingRef prevent_tearing;
 
-    
+
     // Audio Settings
     FloatSetting audio_volume_percent;
     BoolSettingRef audio_mute;
     BoolSettingRef mute_in_background;
     BoolSettingRef mute_in_background_if_other_audio;
     BoolSetting audio_volume_auto_apply;
-    
+
     // Input Blocking (Background) Settings
     BoolSetting block_input_in_background;
-    
+    BoolSetting block_input_without_reshade;
+
     // Render Blocking (Background) Settings
     BoolSettingRef no_render_in_background;
     BoolSettingRef no_present_in_background;

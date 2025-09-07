@@ -127,6 +127,7 @@ extern std::atomic<int> s_move_to_zero_if_out; // 0 = Disabled, 1 = Move to zero
 extern std::atomic<int> s_target_monitor_index;
 extern std::atomic<int> s_dxgi_composition_state;
 extern std::atomic<bool> s_block_input_in_background;
+extern std::atomic<bool> s_block_input_without_reshade;
 
 // Render blocking in background
 extern std::atomic<bool> s_no_render_in_background;

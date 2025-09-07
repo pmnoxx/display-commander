@@ -107,6 +107,7 @@ extern std::atomic<bool> s_initial_auto_selection_done;
 extern std::atomic<bool> s_auto_restore_resolution_on_close;
 extern std::atomic<bool> s_auto_apply_resolution_change;
 extern std::atomic<bool> s_auto_apply_refresh_rate_change;
+extern std::atomic<bool> s_apply_display_settings_at_start;
 
 // Window management
 extern std::atomic<bool> s_prevent_always_on_top;

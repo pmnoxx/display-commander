@@ -16,11 +16,11 @@ void HandleResolutionSelection(int selected_monitor_index);
 // Handle refresh rate selection UI
 void HandleRefreshRateSelection(int selected_monitor_index, int selected_resolution_index);
 
+// Handle apply display settings at start checkbox
+void HandleApplyDisplaySettingsAtStartCheckbox();
+
 // Handle auto-restore resolution checkbox
 void HandleAutoRestoreResolutionCheckbox();
-
-// Handle auto-apply resolution and refresh rate checkboxes
-void HandleAutoApplyCheckboxes();
 
 // Handle the "Apply with DXGI API" button
 void HandleDXGIAPIApplyButton();

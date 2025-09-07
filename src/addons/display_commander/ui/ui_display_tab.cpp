@@ -173,10 +173,11 @@ bool HandleMonitorSettingsUI() {
     // Handle refresh rate selection UI
     ui::monitor_settings::HandleRefreshRateSelection(static_cast<int>(s_selected_monitor_index), static_cast<int>(s_selected_resolution_index));
 
+    // Handle apply display settings at start checkbox
+    ui::monitor_settings::HandleApplyDisplaySettingsAtStartCheckbox();
+
     // Handle auto-restore resolution checkbox
     ui::monitor_settings::HandleAutoRestoreResolutionCheckbox();
-
-    // Inline auto-apply checkboxes are now rendered next to their respective combos
 
     // Handle the DXGI API Apply Button
     ui::monitor_settings::HandleDXGIAPIApplyButton();

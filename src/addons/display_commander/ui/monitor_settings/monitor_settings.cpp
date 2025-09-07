@@ -23,6 +23,7 @@ namespace ui::monitor_settings {
 // Persistent settings for monitor settings UI
 static ui::new_ui::BoolSetting g_setting_auto_apply_resolution("AutoApplyResolution", false);
 static ui::new_ui::BoolSetting g_setting_auto_apply_refresh("AutoApplyRefresh", false);
+static ui::new_ui::BoolSetting g_setting_apply_display_settings_at_start("ApplyDisplaySettingsAtStart", false);
 
 // Per-display persisted selections (support displays 0..3) - NEW FORMAT
 static ui::new_ui::ResolutionPairSetting g_setting_selected_resolution_0("SelectedResolutionIndex_0", 0, 0);
@@ -65,8 +66,10 @@ static void EnsurePersistentSettingsLoadedOnce() {
     // Load new format settings
     g_setting_auto_apply_resolution.Load();
     g_setting_auto_apply_refresh.Load();
+    g_setting_apply_display_settings_at_start.Load();
     s_auto_apply_resolution_change = g_setting_auto_apply_resolution.GetValue();
     s_auto_apply_refresh_rate_change = g_setting_auto_apply_refresh.GetValue();
+    s_apply_display_settings_at_start = g_setting_apply_display_settings_at_start.GetValue();
 
     // Load new format resolution and refresh rate settings
     g_setting_selected_resolution_0.Load();
@@ -527,27 +530,6 @@ void HandleResolutionSelection(int selected_monitor_index) {
             ImGui::EndCombo();
         }
         ImGui::PopID();
-        ImGui::SameLine();
-        bool auto_apply_resolution_change = s_auto_apply_resolution_change.load();
-        if (ImGui::Checkbox("Auto-apply##resolution", &auto_apply_resolution_change)) {
-            s_auto_apply_resolution_change.store(auto_apply_resolution_change);
-            g_setting_auto_apply_resolution.SetValue(auto_apply_resolution_change);
-            g_setting_auto_apply_resolution.Save();
-            if (auto_apply_resolution_change) {
-                if (!g_has_pending_confirmation.load()) {
-                    StartResolutionAutoApplyWithBackoff();
-                }
-            } else {
-                g_resolution_apply_task_id.fetch_add(1);
-            }
-        }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Automatically apply when Resolution changes");
-        }
-        if (g_resolution_auto_apply_failed.load()) {
-            ImGui::SameLine();
-            ImGui::TextColored(ImVec4(1.0f, 0.2f, 0.2f, 1.0f), "Auto-apply failed after retries");
-        }
         ImGui::EndGroup();
     }
 }
@@ -648,37 +630,38 @@ void HandleRefreshRateSelection(int selected_monitor_index, int selected_resolut
                     ImGui::EndCombo();
                 }
                 ImGui::PopID();
-                ImGui::SameLine();
-                bool auto_apply_refresh_rate_change = s_auto_apply_refresh_rate_change.load();
-                if (ImGui::Checkbox("Auto-apply##refresh", &auto_apply_refresh_rate_change)) {
-                    s_auto_apply_refresh_rate_change.store(auto_apply_refresh_rate_change);
-                    g_setting_auto_apply_refresh.SetValue(auto_apply_refresh_rate_change);
-                    g_setting_auto_apply_refresh.Save();
-                    if (auto_apply_refresh_rate_change) {
-                        if (!g_has_pending_confirmation.load()) {
-                            StartRefreshAutoApplyWithBackoff();
-                        }
-                    } else {
-                        g_refresh_apply_task_id.fetch_add(1);
-                    }
-                }
-                if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip("Automatically apply when Refresh Rate changes");
-                }
-                if (g_refresh_auto_apply_failed.load()) {
-                    ImGui::SameLine();
-                    ImGui::TextColored(ImVec4(1.0f, 0.2f, 0.2f, 1.0f), "Auto-apply failed after retries");
-                }
                 ImGui::EndGroup();
             }
         }
     }
 }
 
-// Handle auto-restore resolution checkbox
-void HandleAutoRestoreResolutionCheckbox() {
+// Handle apply display settings at start checkbox
+void HandleApplyDisplaySettingsAtStartCheckbox() {
     ImGui::Spacing();
     ImGui::Separator();
+    ImGui::Spacing();
+
+    bool apply_display_settings_at_start = s_apply_display_settings_at_start.load();
+    if (ImGui::Checkbox("Apply display settings at game start", &apply_display_settings_at_start)) {
+        s_apply_display_settings_at_start.store(apply_display_settings_at_start);
+        g_setting_apply_display_settings_at_start.SetValue(apply_display_settings_at_start);
+        g_setting_apply_display_settings_at_start.Save();
+        // Log the setting change
+        if (apply_display_settings_at_start) {
+            LogInfo("Apply display settings at game start: ENABLED");
+        } else {
+            LogInfo("Apply display settings at game start: DISABLED");
+        }
+    }
+
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("When enabled, automatically applies the selected resolution and refresh rate when the game starts.\nThis ensures your preferred display settings are active from the beginning of your gaming session.");
+    }
+}
+
+// Handle auto-restore resolution checkbox
+void HandleAutoRestoreResolutionCheckbox() {
     ImGui::Spacing();
 
     bool auto_restore_resolution_on_close = s_auto_restore_resolution_on_close.load();
@@ -697,40 +680,6 @@ void HandleAutoRestoreResolutionCheckbox() {
     }
 }
 
-// Handle auto-apply resolution and refresh rate checkboxes
-void HandleAutoApplyCheckboxes() {
-    ImGui::Spacing();
-
-    bool auto_apply_resolution_change = s_auto_apply_resolution_change.load();
-    if (ImGui::Checkbox("Auto-apply resolution changes (TODO: implement)", &auto_apply_resolution_change)) {
-        s_auto_apply_resolution_change.store(auto_apply_resolution_change);
-        // Log the setting change
-        if (auto_apply_resolution_change) {
-            LogInfo("Auto-apply resolution changes: ENABLED");
-        } else {
-            LogInfo("Auto-apply resolution changes: DISABLED");
-        }
-    }
-
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("When enabled, automatically applies resolution changes immediately when a new resolution is selected.\nThis provides instant feedback without needing to click the apply button.");
-    }
-
-    bool auto_apply_refresh_rate_change = s_auto_apply_refresh_rate_change.load();
-    if (ImGui::Checkbox("Auto-apply refresh rate changes (TODO: implement)", &auto_apply_refresh_rate_change)) {
-        s_auto_apply_refresh_rate_change.store(auto_apply_refresh_rate_change);
-        // Log the setting change
-        if (auto_apply_refresh_rate_change) {
-            LogInfo("Auto-apply refresh rate changes: ENABLED");
-        } else {
-            LogInfo("Auto-apply refresh rate changes: DISABLED");
-        }
-    }
-
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("When enabled, automatically applies refresh rate changes immediately when a new refresh rate is selected.\nThis provides instant feedback without needing to click the apply button.");
-    }
-}
 
 // Handle the "Apply with DXGI API" button
 void HandleDXGIAPIApplyButton() {

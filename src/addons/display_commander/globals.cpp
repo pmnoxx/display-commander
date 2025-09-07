@@ -100,6 +100,9 @@ std::atomic<bool> s_auto_restore_resolution_on_close{true}; // Enabled by defaul
 std::atomic<bool> s_auto_apply_resolution_change{false}; // Disabled by default
 std::atomic<bool> s_auto_apply_refresh_rate_change{false}; // Disabled by default
 
+// Apply display settings at game start
+std::atomic<bool> s_apply_display_settings_at_start{false}; // Disabled by default
+
 
 
 // Atomic variables

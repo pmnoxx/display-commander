@@ -20,8 +20,6 @@ TabManager::TabManager() : active_tab_(0) {
     tabs_.store(std::make_shared<const std::vector<Tab>>(std::vector<Tab>{}));
 }
 
-LONGLONG first_draw_ui_ns = 0;
-
 void TabManager::AddTab(const std::string& name, const std::string& id, std::function<void()> on_draw) {
     // Get current tabs atomically
     auto current_tabs = tabs_.load();
@@ -41,10 +39,7 @@ void TabManager::Draw() {
 
     // Safety check for null pointer (should never happen with proper initialization)
     if (!current_tabs || current_tabs->empty()) {
-        return;
-    }
-    LONGLONG now_ns = utils::get_now_ns();
-    if (now_ns < first_draw_ui_ns) {
+        LogError("No tabs to draw");
         return;
     }
 

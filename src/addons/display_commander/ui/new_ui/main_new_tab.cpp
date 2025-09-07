@@ -4,6 +4,7 @@
 #include "main_new_tab_settings.hpp"
 #include "developer_new_tab_settings.hpp"
 #include "../../addon.hpp"
+#include "../../input_blocking/input_blocking.hpp"
 #include "../../audio/audio_management.hpp"
 #include <minwindef.h>
 #include <sstream>
@@ -60,6 +61,11 @@ void InitMainNewTab() {
         s_no_present_in_background.store(g_main_new_tab_settings.no_present_in_background.GetValue());
         // VSync & Tearing - all automatically synced via BoolSettingRef
         s_block_input_in_background.store(g_main_new_tab_settings.block_input_in_background.GetValue());
+        s_block_input_without_reshade.store(g_main_new_tab_settings.block_input_without_reshade.GetValue());
+
+        // Update input blocking system with loaded settings
+        display_commander::input_blocking::update_input_blocking_from_settings();
+
         settings_loaded_once = true;
 
         // FPS limiter mode
@@ -115,6 +121,20 @@ void DrawMainNewTab() {
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Blocks mouse, keyboard, and cursor warping while the game window is not focused.");
+        }
+
+        // Experimental input blocking without Reshade
+        bool block_without_reshade =
+            g_main_new_tab_settings.block_input_without_reshade.GetValue();
+        if (ImGui::Checkbox("Block background input without Reshade (Experimental, needed for gamepad remapping future feature)", &block_without_reshade)) {
+            g_main_new_tab_settings.block_input_without_reshade.SetValue(block_without_reshade);
+            s_block_input_without_reshade.store(block_without_reshade);
+
+            // Update the input blocking system
+            display_commander::input_blocking::update_input_blocking_from_settings();
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Uses Windows hooks to block input independently of Reshade's system. Required for future gamepad remapping features.");
         }
     }
 

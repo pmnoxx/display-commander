@@ -242,6 +242,111 @@ void ComboSetting::SetValue(int value) {
     Save(); // Auto-save when value changes
 }
 
+// ResolutionPairSetting implementation
+ResolutionPairSetting::ResolutionPairSetting(const std::string& key, int default_width, int default_height, const std::string& section)
+    : SettingBase(key, section), width_(default_width), height_(default_height),
+      default_width_(default_width), default_height_(default_height) {
+}
+
+void ResolutionPairSetting::Load() {
+    // Load width
+    std::string width_key = key_ + "_width";
+    int loaded_width;
+    if (reshade::get_config_value(nullptr, section_.c_str(), width_key.c_str(), loaded_width)) {
+        width_ = loaded_width;
+    } else {
+        width_ = default_width_;
+    }
+
+    // Load height
+    std::string height_key = key_ + "_height";
+    int loaded_height;
+    if (reshade::get_config_value(nullptr, section_.c_str(), height_key.c_str(), loaded_height)) {
+        height_ = loaded_height;
+    } else {
+        height_ = default_height_;
+    }
+}
+
+void ResolutionPairSetting::Save() {
+    // Save width
+    std::string width_key = key_ + "_width";
+    reshade::set_config_value(nullptr, section_.c_str(), width_key.c_str(), width_);
+
+    // Save height
+    std::string height_key = key_ + "_height";
+    reshade::set_config_value(nullptr, section_.c_str(), height_key.c_str(), height_);
+}
+
+void ResolutionPairSetting::SetResolution(int width, int height) {
+    width_ = width;
+    height_ = height;
+    Save(); // Auto-save when value changes
+}
+
+void ResolutionPairSetting::SetCurrentResolution() {
+    // Set to 0,0 to indicate "current resolution"
+    width_ = 0;
+    height_ = 0;
+    Save();
+}
+
+// RefreshRatePairSetting implementation
+RefreshRatePairSetting::RefreshRatePairSetting(const std::string& key, int default_numerator, int default_denominator, const std::string& section)
+    : SettingBase(key, section), numerator_(default_numerator), denominator_(default_denominator),
+      default_numerator_(default_numerator), default_denominator_(default_denominator) {
+}
+
+void RefreshRatePairSetting::Load() {
+    // Load numerator
+    std::string num_key = key_ + "_num";
+    int loaded_numerator;
+    if (reshade::get_config_value(nullptr, section_.c_str(), num_key.c_str(), loaded_numerator)) {
+        numerator_ = loaded_numerator;
+    } else {
+        numerator_ = default_numerator_;
+    }
+
+    // Load denominator
+    std::string denom_key = key_ + "_denum";
+    int loaded_denominator;
+    if (reshade::get_config_value(nullptr, section_.c_str(), denom_key.c_str(), loaded_denominator)) {
+        denominator_ = loaded_denominator;
+    } else {
+        denominator_ = default_denominator_;
+    }
+}
+
+void RefreshRatePairSetting::Save() {
+    // Save numerator
+    std::string num_key = key_ + "_num";
+    reshade::set_config_value(nullptr, section_.c_str(), num_key.c_str(), numerator_);
+
+    // Save denominator
+    std::string denom_key = key_ + "_denum";
+    reshade::set_config_value(nullptr, section_.c_str(), denom_key.c_str(), denominator_);
+}
+
+void RefreshRatePairSetting::SetRefreshRate(int numerator, int denominator) {
+    numerator_ = numerator;
+    denominator_ = denominator;
+    Save(); // Auto-save when value changes
+}
+
+void RefreshRatePairSetting::SetCurrentRefreshRate() {
+    // Set to 0,0 to indicate "current refresh rate"
+    numerator_ = 0;
+    denominator_ = 0;
+    Save();
+}
+
+double RefreshRatePairSetting::GetHz() const {
+    if (denominator_ == 0) {
+        return 0.0; // Current refresh rate
+    }
+    return static_cast<double>(numerator_) / static_cast<double>(denominator_);
+}
+
 // Wrapper function implementations
 
 bool SliderFloatSetting(FloatSetting& setting, const char* label, const char* format) {

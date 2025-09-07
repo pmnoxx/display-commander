@@ -852,57 +852,6 @@ void DrawMonitorDisplaySettings() {
     if (ImGui::CollapsingHeader("Resolution Control", ImGuiTreeNodeFlags_DefaultOpen)) {
         display_commander::widgets::resolution_widget::DrawResolutionWidget();
     }
-
-    ImGui::Spacing();
-
-    // Dynamic Monitor Settings
-    if (ImGui::CollapsingHeader("Dynamic Monitor Settings(Legacy)", ImGuiTreeNodeFlags_DefaultOpen)) {
-        HandleMonitorSettingsUI();
-    }
-
-    ImGui::Spacing();
-
-    // Current Display Info
-    ImGui::TextColored(ImVec4(0.9f, 0.9f, 0.9f, 1.0f), "Current Display Info:");
-    std::string display_info = GetCurrentDisplayInfo();
-    ImGui::TextWrapped("%s", display_info.c_str());
-
-    // Additional Display Scaling Details
-    ImGui::Spacing();
-    ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "Display Scaling Details:");
-
-    HWND hwnd = g_last_swapchain_hwnd.load();
-    if (hwnd) {
-        // Get the monitor handle for the current window
-        HMONITOR monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
-        if (monitor) {
-            const auto* display = display_cache::g_displayCache.GetDisplayByHandle(monitor);
-            if (display) {
-                float dpi_scale = display->GetDpiScaling();
-                if (dpi_scale > 0.0f) {
-                    ImGui::Text("• DPI Scaling: %.0f%% (%.2fx)", dpi_scale * 100.0f, dpi_scale);
-
-                    // Show what this means for different resolutions
-                    int current_width = display->width;
-                    int current_height = display->height;
-                    if (current_width > 0 && current_height > 0) {
-                        int logical_width = static_cast<int>(current_width / dpi_scale);
-                        int logical_height = static_cast<int>(current_height / dpi_scale);
-                        ImGui::Text("• Logical Resolution: %dx%d (what apps see)", logical_width, logical_height);
-                        ImGui::Text("• Physical Resolution: %dx%d (actual pixels)", current_width, current_height);
-                    }
-                } else {
-                    ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.5f, 1.0f), "• DPI Scaling: Unknown (unable to detect)");
-                }
-            } else {
-                ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.5f, 1.0f), "• Display information not available");
-            }
-        } else {
-            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.5f, 1.0f), "• Monitor information not available");
-        }
-    } else {
-        ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.5f, 1.0f), "• No game window detected");
-    }
 }
 
 void DrawImportantInfo() {

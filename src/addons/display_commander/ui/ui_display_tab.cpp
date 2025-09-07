@@ -1,21 +1,11 @@
 #include "ui_display_tab.hpp"
-#include "ui_common.hpp"
-#include "monitor_settings/monitor_settings.hpp"
-#include "../renodx/settings.hpp"
-#include "../addon.hpp"
 #include "../display_cache.hpp"
+#include "../globals.hpp"
 #include <windows.h>
 #include <vector>
 #include <sstream>
-#include <algorithm>
 #include <iomanip>
-#include <atomic>
 
-// External variables
-extern std::atomic<int> s_selected_monitor_index;
-extern std::atomic<int> s_selected_resolution_index;
-extern std::atomic<int> s_selected_refresh_rate_index;
-extern std::atomic<bool> s_initial_auto_selection_done;
 
 namespace ui {
 
@@ -110,83 +100,8 @@ std::vector<std::string> GetMonitorLabelsFromCache() {
     return labels;
 }
 
-// Helper function to get current display info based on game position using the display cache
-std::string GetCurrentDisplayInfo() {
-    // Initialize display cache if not already initialized
-    InitializeDisplayCache();
-    HWND hwnd = g_last_swapchain_hwnd.load();
 
-    if (!hwnd) {
-        return "No game window detected";
-    }
 
-    // Get window position
-    RECT window_rect;
-    if (!GetWindowRect(hwnd, &window_rect)) {
-        return "Failed to get window position";
-    }
-
-    // Find which monitor the game is running on
-    HMONITOR monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
-    if (!monitor) {
-        return "Failed to determine monitor";
-    }
-
-    const auto* display = display_cache::g_displayCache.GetDisplayByHandle(monitor);
-    if (!display) {
-        return "Failed to get display info from cache";
-    }
-
-    // Use the new comprehensive display info method that shows current vs supported modes
-    std::string friendly_name(display->friendly_name.begin(), display->friendly_name.end());
-    std::ostringstream oss;
-    oss << friendly_name << " - " << display->GetCurrentDisplayInfoString();
-    return oss.str();
-}
-
-// Legacy functions for backward compatibility (can be removed later)
-std::vector<std::string> GetMonitorLabels() {
-    return GetMonitorLabelsFromCache();
-}
-
-// Handle monitor settings UI (extracted from on_draw lambda)
-bool HandleMonitorSettingsUI() {
-    // Initialize display cache if not already initialized
-    InitializeDisplayCache();
-
-    // Get current monitor labels (now with precise refresh rates and raw rational values)
-    auto monitor_labels = GetMonitorLabelsFromCache();
-    if (monitor_labels.empty()) {
-        ImGui::Text("No monitors detected");
-        return false;
-    }
-
-        // Handle auto-detection of current display settings
-    ui::monitor_settings::HandleAutoDetection();
-
-        // Handle monitor selection UI
-    ui::monitor_settings::HandleMonitorSelection(monitor_labels);
-
-    // Handle resolution selection UI
-    ui::monitor_settings::HandleResolutionSelection(static_cast<int>(s_selected_monitor_index));
-
-    // Handle refresh rate selection UI
-    ui::monitor_settings::HandleRefreshRateSelection(static_cast<int>(s_selected_monitor_index), static_cast<int>(s_selected_resolution_index));
-
-    // Handle apply display settings at start checkbox
-    ui::monitor_settings::HandleApplyDisplaySettingsAtStartCheckbox();
-
-    // Handle auto-restore resolution checkbox
-    ui::monitor_settings::HandleAutoRestoreResolutionCheckbox();
-
-    // Handle the DXGI API Apply Button
-    ui::monitor_settings::HandleDXGIAPIApplyButton();
-
-    // While a resolution change is pending confirmation, show confirm/revert UI
-    ui::monitor_settings::HandlePendingConfirmationUI();
-
-    return false; // No value change
-}
 
 
 } // namespace ui

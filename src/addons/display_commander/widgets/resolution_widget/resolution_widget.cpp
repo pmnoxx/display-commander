@@ -2,6 +2,7 @@
 #include "../../display_cache.hpp"
 #include "../../resolution_helpers.hpp"
 #include "../../globals.hpp"
+#include "../../display_restore.hpp"
 #include <deps/imgui/imgui.h>
 #include <include/reshade.hpp>
 #include <algorithm>
@@ -46,6 +47,9 @@ void ResolutionWidget::Initialize() {
     // Set initial display to current monitor
     selected_display_index_ = 0; // Auto (Current)
 
+    // Capture original settings when widget is first initialized
+    CaptureOriginalSettings();
+
     is_initialized_ = true;
     needs_refresh_ = true;
 }
@@ -71,6 +75,11 @@ void ResolutionWidget::OnDraw() {
         return;
     }
 
+    // Try to capture original settings if not captured yet
+    if (!original_settings_.captured) {
+        CaptureOriginalSettings();
+    }
+
     // Refresh data if needed
     if (needs_refresh_) {
         RefreshDisplayData();
@@ -83,6 +92,14 @@ void ResolutionWidget::OnDraw() {
 
     // Auto-apply checkbox
     DrawAutoApplyCheckbox();
+    ImGui::Spacing();
+
+    // Auto-restore checkbox
+    DrawAutoRestoreCheckbox();
+    ImGui::Spacing();
+
+    // Original settings info
+    DrawOriginalSettingsInfo();
     ImGui::Spacing();
 
     // Display selector
@@ -848,6 +865,108 @@ void ResolutionWidget::UpdateSettingsFromCurrentSelection() {
     }
 
     display_settings.SetCurrentState(combined);
+}
+
+void ResolutionWidget::CaptureOriginalSettings() {
+    if (original_settings_.captured) {
+        return; // Already captured
+    }
+
+    // Try to get current monitor from game window first
+    HWND hwnd = g_last_swapchain_hwnd.load();
+    HMONITOR current_monitor = nullptr;
+
+    if (hwnd) {
+        current_monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+    }
+
+    // If no game window available, try to get primary monitor as fallback
+    if (!current_monitor) {
+        current_monitor = MonitorFromWindow(nullptr, MONITOR_DEFAULTTOPRIMARY);
+    }
+
+    if (!current_monitor) {
+        return;
+    }
+
+    // Get display info from cache
+    const auto* display = display_cache::g_displayCache.GetDisplayByHandle(current_monitor);
+    if (!display) {
+        return;
+    }
+
+    // Capture original settings
+    original_settings_.width = display->width;
+    original_settings_.height = display->height;
+    original_settings_.refresh_numerator = static_cast<int>(display->current_refresh_rate.numerator);
+    original_settings_.refresh_denominator = static_cast<int>(display->current_refresh_rate.denominator);
+    original_settings_.device_name = std::string(display->device_name.begin(), display->device_name.end());
+    original_settings_.is_primary = display->is_primary;
+    original_settings_.captured = true;
+
+    // Mark this display for restore tracking
+    display_restore::MarkOriginalForMonitor(current_monitor);
+}
+
+std::string ResolutionWidget::FormatOriginalSettingsString() const {
+    if (!original_settings_.captured) {
+        // Show debug info about why capture failed
+        HWND hwnd = g_last_swapchain_hwnd.load();
+        if (!hwnd) {
+            return "Original settings not captured (no game window)";
+        }
+
+        HMONITOR current_monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+        if (!current_monitor) {
+            return "Original settings not captured (no monitor)";
+        }
+
+        const auto* display = display_cache::g_displayCache.GetDisplayByHandle(current_monitor);
+        if (!display) {
+            return "Original settings not captured (no display cache)";
+        }
+
+        return "Original settings not captured (unknown reason)";
+    }
+
+    // Format refresh rate
+    std::string refresh_str = "";
+    if (original_settings_.refresh_numerator > 0 && original_settings_.refresh_denominator > 0) {
+        double refresh_hz = static_cast<double>(original_settings_.refresh_numerator) /
+                           static_cast<double>(original_settings_.refresh_denominator);
+        std::ostringstream oss;
+        oss << std::fixed << std::setprecision(6) << refresh_hz;
+        refresh_str = oss.str();
+
+        // Remove trailing zeros and decimal point if not needed
+        refresh_str.erase(refresh_str.find_last_not_of('0') + 1, std::string::npos);
+        if (refresh_str.back() == '.') {
+            refresh_str.pop_back();
+        }
+        refresh_str = "@" + refresh_str + "Hz";
+    }
+
+    std::string primary_text = original_settings_.is_primary ? " Primary" : "";
+
+    return "[" + original_settings_.device_name + "] " +
+           std::to_string(original_settings_.width) + "x" + std::to_string(original_settings_.height) +
+           refresh_str + primary_text;
+}
+
+void ResolutionWidget::DrawOriginalSettingsInfo() {
+    ImGui::TextColored(ImVec4(0.7f, 0.9f, 0.7f, 1.0f), "Original Settings:");
+    ImGui::SameLine();
+    ImGui::Text("%s", FormatOriginalSettingsString().c_str());
+}
+
+void ResolutionWidget::DrawAutoRestoreCheckbox() {
+    bool auto_restore = s_auto_restore_resolution_on_close.load();
+    if (ImGui::Checkbox("Auto-restore on exit", &auto_restore)) {
+        s_auto_restore_resolution_on_close.store(auto_restore);
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Automatically restore original display settings when the game closes");
+    }
 }
 
 // Global functions

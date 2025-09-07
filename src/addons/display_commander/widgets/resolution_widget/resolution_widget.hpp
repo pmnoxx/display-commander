@@ -42,6 +42,8 @@ private:
     void DrawRefreshRateSelector();
     void DrawActionButtons();
     void DrawAutoApplyCheckbox();
+    void DrawOriginalSettingsInfo();
+    void DrawAutoRestoreCheckbox();
 
     // Data management
     void RefreshDisplayData();
@@ -75,6 +77,23 @@ private:
     // Confirmation dialog methods
     void DrawConfirmationDialog();
     void RevertResolution();
+
+    // Original settings storage
+    struct OriginalSettings {
+        int width = 0;
+        int height = 0;
+        int refresh_numerator = 0;
+        int refresh_denominator = 0;
+        std::string device_name;
+        bool is_primary = false;
+        bool captured = false;
+    };
+
+    OriginalSettings original_settings_;
+
+    // Original settings management
+    void CaptureOriginalSettings();
+    std::string FormatOriginalSettingsString() const;
 };
 
 // Global widget instance

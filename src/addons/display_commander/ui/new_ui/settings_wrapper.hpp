@@ -34,10 +34,6 @@ public:
     void MarkClean() { is_dirty_ = false; }
     void MarkDirty() { is_dirty_ = true; }
 
-    // Get the last known good value (for comparison)
-    virtual std::string GetLastKnownGoodValue() const = 0;
-    virtual std::string GetCurrentValue() const = 0;
-
 protected:
     std::string key_;
     std::string section_;

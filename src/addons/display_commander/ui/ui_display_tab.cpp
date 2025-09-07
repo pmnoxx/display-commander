@@ -28,6 +28,9 @@ void InitializeDisplayCache() {
 
 // Helper function to get monitor information using the display cache
 std::vector<std::string> GetMonitorLabelsFromCache() {
+    // Initialize display cache if not already initialized
+    InitializeDisplayCache();
+
     std::vector<std::string> labels;
 
     auto displays = display_cache::g_displayCache.GetDisplays();
@@ -109,6 +112,8 @@ std::vector<std::string> GetMonitorLabelsFromCache() {
 
 // Helper function to get current display info based on game position using the display cache
 std::string GetCurrentDisplayInfo() {
+    // Initialize display cache if not already initialized
+    InitializeDisplayCache();
     HWND hwnd = g_last_swapchain_hwnd.load();
 
     if (!hwnd) {
@@ -146,8 +151,8 @@ std::vector<std::string> GetMonitorLabels() {
 
 // Handle monitor settings UI (extracted from on_draw lambda)
 bool HandleMonitorSettingsUI() {
-    // Handle display cache refresh logic (every 60 frames)
-    ui::monitor_settings::HandleDisplayCacheRefresh();
+    // Initialize display cache if not already initialized
+    InitializeDisplayCache();
 
     // Get current monitor labels (now with precise refresh rates and raw rational values)
     auto monitor_labels = GetMonitorLabelsFromCache();

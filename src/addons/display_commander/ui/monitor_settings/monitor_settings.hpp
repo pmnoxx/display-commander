@@ -4,10 +4,6 @@
 #include <string>
 
 namespace ui::monitor_settings {
-
-// Handle display cache refresh logic (every 60 frames)
-void HandleDisplayCacheRefresh();
-
 // Handle auto-detection of current display settings
 void HandleAutoDetection();
 

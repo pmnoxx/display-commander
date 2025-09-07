@@ -294,10 +294,6 @@ void HandlePendingConfirmationUI() {
     }
 }
 
-// Handle display cache refresh logic (throttled by time)
-void HandleDisplayCacheRefresh() {
-    // No-op: refresh is now performed by ContinuousMonitoringThread off the UI thread
-}
 
 // Handle auto-detection of current display settings
 void HandleAutoDetection() {

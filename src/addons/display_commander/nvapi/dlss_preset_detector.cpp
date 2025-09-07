@@ -15,20 +15,20 @@ bool DLSSPresetDetector::Initialize() {
     if (initialized || failed_to_initialize) {
         return initialized;
     }
-    
+
     LogInfo("Initializing DLSS Preset Detector...");
-    
+
     // Try to detect DLSS preset
     if (DetectDLSSPreset()) {
         initialized = true;
-        LogInfo("DLSS Preset Detector initialized successfully - Preset: %s, Quality: %s", 
+        LogInfo("DLSS Preset Detector initialized successfully - Preset: %s, Quality: %s",
                 current_preset.getFormattedPreset().c_str(),
                 current_preset.getFormattedQualityMode().c_str());
     } else {
         LogInfo("DLSS Preset Detector initialized - No DLSS preset detected");
         initialized = false;
     }
-    
+
     return initialized;
 }
 
@@ -51,7 +51,7 @@ bool DLSSPresetDetector::RefreshPreset() {
     if (!initialized) {
         return Initialize();
     }
-    
+
     // Reset current preset and re-detect
     current_preset = PresetInfo();
     return DetectDLSSPreset();
@@ -65,28 +65,28 @@ bool DLSSPresetDetector::DetectDLSSPreset() {
     // For now, we'll implement a basic detection mechanism
     // In a full implementation, this would query the NGX parameters
     // Similar to how Special-K does it with NVSDK_NGX_Parameter_GetUI_Original
-    
+
     // Check if DLSS DLLs are loaded
     HMODULE hDLSS = GetModuleHandleW(L"nvngx_dlss.dll");
     if (!hDLSS) {
         hDLSS = GetModuleHandleW(L"nvngx_dlss.bin");
     }
-    
+
     if (!hDLSS) {
         last_error = "DLSS DLL not found";
         return false;
     }
-    
+
     // For now, we'll set a default preset since we don't have access to NGX parameters
     // In a real implementation, this would query the actual NGX parameters
     current_preset.preset_name = "Default";
     current_preset.quality_mode = "Unknown";
     current_preset.valid = true;
-    
-    LogInfo("DLSS preset detected - Preset: %s, Quality: %s", 
+
+    LogInfo("DLSS preset detected - Preset: %s, Quality: %s",
             current_preset.getFormattedPreset().c_str(),
             current_preset.getFormattedQualityMode().c_str());
-    
+
     return true;
 }
 

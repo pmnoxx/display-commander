@@ -531,7 +531,7 @@ void DrawDisplaySettings() {
                 auto& latent = dxgi::latent_sync::g_latentSyncManager->GetLatentLimiter();
                 if (latent.IsVBlankMonitoringActive()) {
                     ImGui::Spacing();
-                    ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✓ VBlank Monitor: ACTIVE");
+                    ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✁EVBlank Monitor: ACTIVE");
                     if (ImGui::IsItemHovered()) {
                         ImGui::SetTooltip("VBlank monitoring thread is running and collecting scanline data for frame pacing.");
                     }

@@ -11,10 +11,10 @@ public:
 
     // Initialize the custom FPS limiter system
     bool InitializeCustomFpsLimiterSystem();
-    
+
     // Shutdown the custom FPS limiter system
     void ShutdownCustomFpsLimiterSystem();
-    
+
     // Get the FPS limiter instance
     CustomFpsLimiter& GetFpsLimiter() { return m_fpsLimiter; }
 

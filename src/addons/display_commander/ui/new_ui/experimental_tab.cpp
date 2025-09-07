@@ -401,7 +401,7 @@ void DrawAutoClickFeature() {
     // Show current status
     if (g_experimentalTabSettings.auto_click_enabled.GetValue()) {
         if (g_auto_click_thread_running.load()) {
-            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✓ Auto-click sequences are ACTIVE");
+            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✁EAuto-click sequences are ACTIVE");
         } else {
             ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "⚠ Auto-click sequences are STARTING...");
         }
@@ -427,7 +427,7 @@ void DrawAutoClickFeature() {
     ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Active sequences: %d/5", enabled_sequences);
 
     if (enabled_sequences > 0 && g_experimentalTabSettings.auto_click_enabled.GetValue()) {
-        ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "Sequences will execute in order: 1 → 2 → 3 → 4 → 5 → repeat");
+        ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "Sequences will execute in order: 1 ↁE2 ↁE3 ↁE4 ↁE5 ↁErepeat");
     }
 }
 
@@ -466,7 +466,7 @@ void DrawMouseCoordinatesDisplay() {
                                  mouse_pos.y >= window_rect.top && mouse_pos.y <= window_rect.bottom);
 
         if (mouse_over_window) {
-            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✓ Mouse is over game window");
+            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✁EMouse is over game window");
         } else {
             ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "⚠ Mouse is outside game window");
         }

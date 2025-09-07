@@ -20,6 +20,6 @@ namespace ui {
     void AddDxgiDeviceInfoDetailedSettings(std::vector<utils::settings2::Setting*>& settings);
     void AddDxgiCompositionInfoSettings(std::vector<utils::settings2::Setting*>& settings);
     void AddIndependentFlipFailuresSettings(std::vector<utils::settings2::Setting*>& settings);
-    
+
     void AddDxgiDeviceInfoSettings(std::vector<utils::settings2::Setting*>& settings);
 }

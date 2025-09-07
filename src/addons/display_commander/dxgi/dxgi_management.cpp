@@ -1,7 +1,7 @@
 #include "../addon.hpp"
 
 DxgiBypassMode GetIndependentFlipState(reshade::api::swapchain* swapchain) {
-  
+
   if (swapchain == nullptr) {
     LogDebug("DXGI IF state: swapchain is null");
     return DxgiBypassMode::kUnknown;
@@ -69,9 +69,9 @@ DxgiBypassMode GetIndependentFlipState(reshade::api::swapchain* swapchain) {
 
 const char* DxgiBypassModeToString(DxgiBypassMode mode) {
   switch (mode) {
-    case DxgiBypassMode::kComposed: return "Composed";             
-    case DxgiBypassMode::kOverlay: return "Hardware Overlay (MPO)";       
-    case DxgiBypassMode::kIndependentFlip: return "Independent Flip"; 
+    case DxgiBypassMode::kComposed: return "Composed";
+    case DxgiBypassMode::kOverlay: return "Hardware Overlay (MPO)";
+    case DxgiBypassMode::kIndependentFlip: return "Independent Flip";
     case DxgiBypassMode::kUnknown:
     default: return "Unknown";
   }

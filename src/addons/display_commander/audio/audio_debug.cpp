@@ -25,36 +25,36 @@ void DebugAudioSessions() {
       LogWarn("Failed to create MMDeviceEnumerator for audio debugging");
       break;
     }
-    
+
     hr = device_enumerator->GetDefaultAudioEndpoint(eRender, eMultimedia, &device);
     if (FAILED(hr) || device == nullptr) {
       LogWarn("Failed to get default audio endpoint for audio debugging");
       break;
     }
-    
+
     hr = device->Activate(__uuidof(IAudioSessionManager2), CLSCTX_ALL, nullptr, reinterpret_cast<void**>(&session_manager));
     if (FAILED(hr) || session_manager == nullptr) {
       LogWarn("Failed to activate IAudioSessionManager2 for audio debugging");
       break;
     }
-    
+
     hr = session_manager->GetSessionEnumerator(&session_enumerator);
     if (FAILED(hr) || session_enumerator == nullptr) {
       LogWarn("Failed to get session enumerator for audio debugging");
       break;
     }
-    
-    int count = 0; 
+
+    int count = 0;
     session_enumerator->GetCount(&count);
     std::ostringstream oss; oss << "Found " << count << " audio sessions"; LogInfo(oss.str().c_str());
-    
+
     for (int i = 0; i < count; ++i) {
       IAudioSessionControl* session_control = nullptr;
       if (FAILED(session_enumerator->GetSession(i, &session_control)) || session_control == nullptr) {
         std::ostringstream oss; oss << "Failed to get audio session " << i; LogWarn(oss.str().c_str());
         continue;
       }
-      
+
       LogAudioSessionInfo(session_control, i);
       session_control->Release();
     }
@@ -83,27 +83,27 @@ void DebugAudioSessionForProcess(DWORD process_id) {
   do {
     hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL, IID_PPV_ARGS(&device_enumerator));
     if (FAILED(hr) || device_enumerator == nullptr) break;
-    
+
     hr = device_enumerator->GetDefaultAudioEndpoint(eRender, eMultimedia, &device);
     if (FAILED(hr) || device == nullptr) break;
-    
+
     hr = device->Activate(__uuidof(IAudioSessionManager2), CLSCTX_ALL, nullptr, reinterpret_cast<void**>(&session_manager));
     if (FAILED(hr) || session_manager == nullptr) break;
-    
+
     hr = session_manager->GetSessionEnumerator(&session_enumerator);
     if (FAILED(hr) || session_enumerator == nullptr) break;
-    
-    int count = 0; 
+
+    int count = 0;
     session_enumerator->GetCount(&count);
     bool found_process = false;
-    
+
     for (int i = 0; i < count; ++i) {
       IAudioSessionControl* session_control = nullptr;
       if (FAILED(session_enumerator->GetSession(i, &session_control)) || session_control == nullptr) continue;
-      
+
       IAudioSessionControl2* session_control2 = nullptr;
       if (SUCCEEDED(session_control->QueryInterface(&session_control2)) && session_control2 != nullptr) {
-        DWORD pid = 0; 
+        DWORD pid = 0;
         session_control2->GetProcessId(&pid);
         if (pid == process_id) {
           found_process = true;
@@ -114,7 +114,7 @@ void DebugAudioSessionForProcess(DWORD process_id) {
       }
       session_control->Release();
     }
-    
+
     if (!found_process) {
       std::ostringstream oss; oss << "No audio session found for process " << process_id; LogWarn(oss.str().c_str());
     }
@@ -129,7 +129,7 @@ void DebugAudioSessionForProcess(DWORD process_id) {
 
 void LogAudioSessionInfo(IAudioSessionControl* session_control, int session_index) {
   if (session_control == nullptr) return;
-  
+
   // Get session state
   AudioSessionState state;
   HRESULT hr = session_control->GetState(&state);
@@ -143,7 +143,7 @@ void LogAudioSessionInfo(IAudioSessionControl* session_control, int session_inde
     }
     std::ostringstream oss; oss << "  Session " << session_index << ": State = " << state_str; LogInfo(oss.str().c_str());
   }
-  
+
   // Get session display name
   LPWSTR display_name = nullptr;
   hr = session_control->GetDisplayName(&display_name);
@@ -157,7 +157,7 @@ void LogAudioSessionInfo(IAudioSessionControl* session_control, int session_inde
     }
     CoTaskMemFree(display_name);
   }
-  
+
   // Get session icon path
   LPWSTR icon_path = nullptr;
   hr = session_control->GetIconPath(&icon_path);
@@ -170,7 +170,7 @@ void LogAudioSessionInfo(IAudioSessionControl* session_control, int session_inde
     }
     CoTaskMemFree(icon_path);
   }
-  
+
   // Try to get process ID
   IAudioSessionControl2* session_control2 = nullptr;
   if (SUCCEEDED(session_control->QueryInterface(&session_control2)) && session_control2 != nullptr) {
@@ -179,7 +179,7 @@ void LogAudioSessionInfo(IAudioSessionControl* session_control, int session_inde
     if (SUCCEEDED(hr)) {
       std::ostringstream oss; oss << "  Session " << session_index << ": Process ID = " << pid; LogInfo(oss.str().c_str());
     }
-    
+
     // Get session identifier
     LPWSTR session_id = nullptr;
     hr = session_control2->GetSessionIdentifier(&session_id);
@@ -192,10 +192,10 @@ void LogAudioSessionInfo(IAudioSessionControl* session_control, int session_inde
       }
       CoTaskMemFree(session_id);
     }
-    
+
     session_control2->Release();
   }
-  
+
   // Try to get volume information
   ISimpleAudioVolume* simple_volume = nullptr;
   if (SUCCEEDED(session_control->QueryInterface(&simple_volume)) && simple_volume != nullptr) {
@@ -204,13 +204,13 @@ void LogAudioSessionInfo(IAudioSessionControl* session_control, int session_inde
     if (SUCCEEDED(hr)) {
       std::ostringstream oss; oss << "  Session " << session_index << ": Master Volume = " << std::fixed << std::setprecision(2) << volume; LogInfo(oss.str().c_str());
     }
-    
+
     BOOL muted = FALSE;
     hr = simple_volume->GetMute(&muted);
     if (SUCCEEDED(hr)) {
       std::ostringstream oss; oss << "  Session " << session_index << ": Muted = " << (muted ? "Yes" : "No"); LogInfo(oss.str().c_str());
     }
-    
+
     simple_volume->Release();
   }
 }

@@ -15,10 +15,10 @@ public:
     // Main FPS limiting function - call this in OnPresent
     void LimitFrameRate();
     void LimitFrameRate(double fps);
-    
+
 
 private:
-    
+
     // QPC for sleep
     LONGLONG last_time_point_ns = 0;
 };

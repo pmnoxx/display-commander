@@ -16,7 +16,7 @@ void StartVBlankMonitoring() {
     if (!g_vblank_monitor) {
         g_vblank_monitor = std::make_unique<VBlankMonitor>();
     }
-    
+
     if (g_vblank_monitor && !g_vblank_monitor->IsMonitoring()) {
         g_vblank_monitor->StartMonitoring();
         LogInfo("VBlank monitoring started via integration");
@@ -35,7 +35,7 @@ bool BindVBlankMonitorToWindow(HWND hwnd) {
     if (!g_vblank_monitor) {
         g_vblank_monitor = std::make_unique<VBlankMonitor>();
     }
-    
+
     return g_vblank_monitor->BindToDisplay(hwnd);
 }
 

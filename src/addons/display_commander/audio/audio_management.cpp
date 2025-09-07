@@ -189,12 +189,12 @@ void RunBackgroundAudioMonitor() {
   while (!g_shutdown.load() && !g_monitoring_thread_running.load()) {
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
   }
-  
+
   LogInfo("BackgroundAudio: Continuous monitoring ready, starting audio management");
-  
+
   while (!g_shutdown.load()) {
     bool want_mute = false;
-    
+
     // Check if manual mute is enabled - if so, always mute regardless of background state
     if (s_audio_mute.load()) {
       want_mute = true;
@@ -203,7 +203,7 @@ void RunBackgroundAudioMonitor() {
     else if (s_mute_in_background.load() || s_mute_in_background_if_other_audio.load()) {
       // Use centralized background state from continuous monitoring system for consistency
       const bool is_background = g_app_in_background.load();
-      
+
       // Log background muting decision for debugging
       static bool last_logged_background = false;
       if (is_background != last_logged_background) {
@@ -214,7 +214,7 @@ void RunBackgroundAudioMonitor() {
         LogInfo(oss.str().c_str());
         last_logged_background = is_background;
       }
-      
+
       if (is_background) {
         if (s_mute_in_background_if_other_audio.load()) {
           // Only mute if some other app is outputting audio
@@ -230,10 +230,10 @@ void RunBackgroundAudioMonitor() {
     const bool applied = g_muted_applied.load();
     if (want_mute != applied) {
       std::ostringstream oss;
-      oss << "BackgroundAudio: Applying mute change from " << (applied ? "muted" : "unmuted") 
+      oss << "BackgroundAudio: Applying mute change from " << (applied ? "muted" : "unmuted")
           << " to " << (want_mute ? "muted" : "unmuted") << " (background=" << (g_app_in_background.load() ? "true" : "false") << ")";
       LogInfo(oss.str().c_str());
-      
+
       if (SetMuteForCurrentProcess(want_mute)) {
         g_muted_applied.store(want_mute);
       }

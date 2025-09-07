@@ -11,10 +11,10 @@ public:
 
     // Initialize the latent sync system
     bool InitializeLatentSyncSystem();
-    
+
     // Shutdown the latent sync system
     void ShutdownLatentSyncSystem();
-    
+
     // Get the latent sync limiter instance
     dxgi::fps_limiter::LatentSyncLimiter& GetLatentLimiter() { return m_latentLimiter; }
 

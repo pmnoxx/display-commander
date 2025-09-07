@@ -363,10 +363,10 @@ std::string NVAPIFullscreenPrevention::GetFunctionStatus() const {
 
     std::ostringstream oss;
     oss << "Library: Static linking (nvapi64.lib)\n";
-    oss << "Core Functions: ✓ Initialize, ✓ Unload\n";
-    oss << "DRS Functions: ✓ CreateSession, ✓ DestroySession, ✓ LoadSettings, ✓ SaveSettings\n";
-    oss << "Profile Functions: ✓ FindApp, ✓ CreateProfile, ✓ SetSetting\n";
-    oss << "System Functions: ✓ GetDriverVersion, ✓ EnumGPUs";
+    oss << "Core Functions: ✁EInitialize, ✁EUnload\n";
+    oss << "DRS Functions: ✁ECreateSession, ✁EDestroySession, ✁ELoadSettings, ✁ESaveSettings\n";
+    oss << "Profile Functions: ✁EFindApp, ✁ECreateProfile, ✁ESetSetting\n";
+    oss << "System Functions: ✁EGetDriverVersion, ✁EEnumGPUs";
 
     return oss.str();
 }

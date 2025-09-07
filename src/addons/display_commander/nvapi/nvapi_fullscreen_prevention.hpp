@@ -10,34 +10,34 @@ class NVAPIFullscreenPrevention {
 public:
     // Constructor
     NVAPIFullscreenPrevention();
-    
+
     // Destructor
     ~NVAPIFullscreenPrevention();
-    
+
     // Initialize NVAPI library
     bool Initialize();
-    
+
     // Cleanup NVAPI library
     void Cleanup();
-    
+
     // Check if NVAPI is available
     bool IsAvailable() const;
-    
+
     // Enable/disable fullscreen prevention
     bool SetFullscreenPrevention(bool enable);
-    
+
     // Check if fullscreen prevention is enabled
     bool IsFullscreenPreventionEnabled() const;
-    
+
     // Get the last error message
     std::string GetLastError() const;
-    
+
     // Get driver version
     std::string GetDriverVersion() const;
-    
+
     // Check if we have NVIDIA hardware
     bool HasNVIDIAHardware() const;
-    
+
     // Debug information methods
     std::string GetLibraryPath() const;
     std::string GetFunctionStatus() const;
@@ -56,7 +56,7 @@ private:
     std::string last_error;
     NvDRSSessionHandle hSession = {0};
     NvDRSProfileHandle hProfile = {0};
-    
+
     // Disable copy constructor and assignment
     NVAPIFullscreenPrevention(const NVAPIFullscreenPrevention&) = delete;
     NVAPIFullscreenPrevention& operator=(const NVAPIFullscreenPrevention&) = delete;

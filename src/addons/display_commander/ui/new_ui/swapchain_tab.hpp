@@ -11,7 +11,7 @@ void DrawSwapchainTab();
 // Draw swapchain information section
 void DrawSwapchainInfo();
 
-// Draw adapter information section  
+// Draw adapter information section
 void DrawAdapterInfo();
 
 // Draw DXGI composition information

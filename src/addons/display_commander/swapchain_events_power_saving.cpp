@@ -29,12 +29,12 @@ bool OnDispatch(reshade::api::command_list* cmd_list, uint32_t group_count_x, ui
     // Increment event counter
     g_swapchain_event_counters[SWAPCHAIN_EVENT_DISPATCH].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
-    
+
     // Power saving: skip compute shader dispatches in background
     if (s_suppress_compute_in_background.load() && ShouldBackgroundSuppressOperation()) {
         return true; // Skip the dispatch call
     }
-    
+
     return false; // Don't skip the dispatch call
 }
 
@@ -43,12 +43,12 @@ bool OnDispatchMesh(reshade::api::command_list* cmd_list, uint32_t group_count_x
     // Increment event counter
     g_swapchain_event_counters[SWAPCHAIN_EVENT_DISPATCH_MESH].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
-    
+
     // Power saving: skip mesh shader dispatches in background
     if (s_suppress_compute_in_background.load() && ShouldBackgroundSuppressOperation()) {
         return true; // Skip the dispatch call
     }
-    
+
     return false; // Don't skip the dispatch call
 }
 
@@ -57,12 +57,12 @@ bool OnDispatchRays(reshade::api::command_list* cmd_list, reshade::api::resource
     // Increment event counter
     g_swapchain_event_counters[SWAPCHAIN_EVENT_DISPATCH_RAYS].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
-    
+
     // Power saving: skip ray tracing dispatches in background
     if (s_suppress_compute_in_background.load() && ShouldBackgroundSuppressOperation()) {
         return true; // Skip the dispatch call
     }
-    
+
     return false; // Don't skip the dispatch call
 }
 
@@ -71,12 +71,12 @@ bool OnCopyResource(reshade::api::command_list* cmd_list, reshade::api::resource
     // Increment event counter
     g_swapchain_event_counters[SWAPCHAIN_EVENT_COPY_RESOURCE].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
-    
+
     // Power saving: skip resource copying in background
     if (s_suppress_copy_in_background.load() && ShouldBackgroundSuppressOperation()) {
         return true; // Skip the copy operation
     }
-    
+
     return false; // Don't skip the copy operation
 }
 
@@ -85,12 +85,12 @@ bool OnUpdateBufferRegion(reshade::api::device* device, const void* data, reshad
     // Increment event counter
     g_swapchain_event_counters[SWAPCHAIN_EVENT_UPDATE_BUFFER_REGION].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
-    
+
     // Power saving: skip buffer updates in background
     if (s_suppress_copy_in_background.load() && ShouldBackgroundSuppressOperation()) {
         return true; // Skip the buffer update
     }
-    
+
     return false; // Don't skip the buffer update
 }
 
@@ -99,12 +99,12 @@ bool OnUpdateBufferRegionCommand(reshade::api::command_list* cmd_list, const voi
     // Increment event counter
     g_swapchain_event_counters[SWAPCHAIN_EVENT_UPDATE_BUFFER_REGION_COMMAND].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
-    
+
     // Power saving: skip command-based buffer updates in background
     if (s_suppress_copy_in_background.load() && ShouldBackgroundSuppressOperation()) {
         return true; // Skip the buffer update
     }
-    
+
     return false; // Don't skip the buffer update
 }
 
@@ -113,12 +113,12 @@ bool OnBindResource(reshade::api::command_list* cmd_list, reshade::api::shader_s
     // Increment event counter
     g_swapchain_event_counters[SWAPCHAIN_EVENT_BIND_RESOURCE].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
-    
+
     // Power saving: skip resource binding in background
     if (s_suppress_binding_in_background.load() && ShouldBackgroundSuppressOperation()) {
         return true; // Skip the resource binding
     }
-    
+
     return false; // Don't skip the resource binding
 }
 
@@ -127,12 +127,12 @@ bool OnMapResource(reshade::api::device* device, reshade::api::resource resource
     // Increment event counter
     g_swapchain_event_counters[SWAPCHAIN_EVENT_MAP_RESOURCE].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
-    
+
     // Power saving: skip resource mapping in background
     if (s_suppress_memory_ops_in_background.load() && ShouldBackgroundSuppressOperation()) {
         return true; // Skip the resource mapping
     }
-    
+
     return false; // Don't skip the resource mapping
 }
 
@@ -148,12 +148,12 @@ bool OnCopyBufferRegion(reshade::api::command_list* cmd_list, reshade::api::reso
     // Increment event counter
     g_swapchain_event_counters[SWAPCHAIN_EVENT_COPY_BUFFER_REGION].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
-    
+
     // Power saving: skip buffer region copying in background
     if (s_suppress_copy_in_background.load() && ShouldBackgroundSuppressOperation()) {
         return true; // Skip the copy operation
     }
-    
+
     return false; // Don't skip the copy operation
 }
 
@@ -162,12 +162,12 @@ bool OnCopyBufferToTexture(reshade::api::command_list* cmd_list, reshade::api::r
     // Increment event counter
     g_swapchain_event_counters[SWAPCHAIN_EVENT_COPY_BUFFER_TO_TEXTURE].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
-    
+
     // Power saving: skip buffer to texture copying in background
     if (s_suppress_copy_in_background.load() && ShouldBackgroundSuppressOperation()) {
         return true; // Skip the copy operation
     }
-    
+
     return false; // Don't skip the copy operation
 }
 
@@ -176,12 +176,12 @@ bool OnCopyTextureToBuffer(reshade::api::command_list* cmd_list, reshade::api::r
     // Increment event counter
     g_swapchain_event_counters[SWAPCHAIN_EVENT_COPY_TEXTURE_TO_BUFFER].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
-    
+
     // Power saving: skip texture to buffer copying in background
     if (s_suppress_copy_in_background.load() && ShouldBackgroundSuppressOperation()) {
         return true; // Skip the copy operation
     }
-    
+
     return false; // Don't skip the copy operation
 }
 
@@ -190,12 +190,12 @@ bool OnCopyTextureRegion(reshade::api::command_list* cmd_list, reshade::api::res
     // Increment event counter
     g_swapchain_event_counters[SWAPCHAIN_EVENT_COPY_TEXTURE_REGION].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
-    
+
     // Power saving: skip texture region copying in background
     if (s_suppress_copy_in_background.load() && ShouldBackgroundSuppressOperation()) {
         return true; // Skip the copy operation
     }
-    
+
     return false; // Don't skip the copy operation
 }
 
@@ -204,12 +204,12 @@ bool OnResolveTextureRegion(reshade::api::command_list* cmd_list, reshade::api::
     // Increment event counter
     g_swapchain_event_counters[SWAPCHAIN_EVENT_RESOLVE_TEXTURE_REGION].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
-    
+
     // Power saving: skip texture region resolving in background
     if (s_suppress_copy_in_background.load() && ShouldBackgroundSuppressOperation()) {
         return true; // Skip the resolve operation
     }
-    
+
     return false; // Don't skip the resolve operation
 }
 
@@ -218,12 +218,12 @@ bool OnClearRenderTargetView(reshade::api::command_list* cmd_list, reshade::api:
     // Increment event counter
     g_swapchain_event_counters[SWAPCHAIN_EVENT_CLEAR_RENDER_TARGET_VIEW].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
-    
+
     // Power saving: skip render target clearing in background
     if (s_suppress_clear_ops_in_background.load() && ShouldBackgroundSuppressOperation()) {
         return true; // Skip the clear operation
     }
-    
+
     return false; // Don't skip the clear operation
 }
 
@@ -232,12 +232,12 @@ bool OnClearDepthStencilView(reshade::api::command_list* cmd_list, reshade::api:
     // Increment event counter
     g_swapchain_event_counters[SWAPCHAIN_EVENT_CLEAR_DEPTH_STENCIL_VIEW].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
-    
+
     // Power saving: skip depth stencil clearing in background
     if (s_suppress_clear_ops_in_background.load() && ShouldBackgroundSuppressOperation()) {
         return true; // Skip the clear operation
     }
-    
+
     return false; // Don't skip the clear operation
 }
 
@@ -246,12 +246,12 @@ bool OnClearUnorderedAccessViewUint(reshade::api::command_list* cmd_list, reshad
     // Increment event counter
     g_swapchain_event_counters[SWAPCHAIN_EVENT_CLEAR_UNORDERED_ACCESS_VIEW_UINT].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
-    
+
     // Power saving: skip UAV clearing in background
     if (s_suppress_clear_ops_in_background.load() && ShouldBackgroundSuppressOperation()) {
         return true; // Skip the clear operation
     }
-    
+
     return false; // Don't skip the clear operation
 }
 
@@ -260,12 +260,12 @@ bool OnClearUnorderedAccessViewFloat(reshade::api::command_list* cmd_list, resha
     // Increment event counter
     g_swapchain_event_counters[SWAPCHAIN_EVENT_CLEAR_UNORDERED_ACCESS_VIEW_FLOAT].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
-    
+
     // Power saving: skip UAV clearing in background
     if (s_suppress_clear_ops_in_background.load() && ShouldBackgroundSuppressOperation()) {
         return true; // Skip the clear operation
     }
-    
+
     return false; // Don't skip the clear operation
 }
 
@@ -274,12 +274,12 @@ bool OnGenerateMipmaps(reshade::api::command_list* cmd_list, reshade::api::resou
     // Increment event counter
     g_swapchain_event_counters[SWAPCHAIN_EVENT_GENERATE_MIPMAPS].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
-    
+
     // Power saving: skip mipmap generation in background
     if (s_suppress_mipmap_gen_in_background.load() && ShouldBackgroundSuppressOperation()) {
         return true; // Skip the mipmap generation
     }
-    
+
     return false; // Don't skip the mipmap generation
 }
 
@@ -288,12 +288,12 @@ bool OnBlit(reshade::api::command_list* cmd_list, reshade::api::resource source,
     // Increment event counter
     g_swapchain_event_counters[SWAPCHAIN_EVENT_BLIT].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
-    
+
     // Power saving: skip blit operations in background
     if (s_suppress_blit_ops_in_background.load() && ShouldBackgroundSuppressOperation()) {
         return true; // Skip the blit operation
     }
-    
+
     return false; // Don't skip the blit operation
 }
 
@@ -302,12 +302,12 @@ bool OnBeginQuery(reshade::api::command_list* cmd_list, reshade::api::query_heap
     // Increment event counter
     g_swapchain_event_counters[SWAPCHAIN_EVENT_BEGIN_QUERY].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
-    
+
     // Power saving: skip query operations in background
     if (s_suppress_query_ops_in_background.load() && ShouldBackgroundSuppressOperation()) {
         return true; // Skip the query operation
     }
-    
+
     return false; // Don't skip the query operation
 }
 
@@ -316,12 +316,12 @@ bool OnEndQuery(reshade::api::command_list* cmd_list, reshade::api::query_heap h
     // Increment event counter
     g_swapchain_event_counters[SWAPCHAIN_EVENT_END_QUERY].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
-    
+
     // Power saving: skip query operations in background
     if (s_suppress_query_ops_in_background.load() && ShouldBackgroundSuppressOperation()) {
         return true; // Skip the query operation
     }
-    
+
     return false; // Don't skip the query operation
 }
 
@@ -330,12 +330,12 @@ bool OnResolveQueryData(reshade::api::command_list* cmd_list, reshade::api::quer
     // Increment event counter
     g_swapchain_event_counters[SWAPCHAIN_EVENT_RESOLVE_QUERY_DATA].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
-    
+
     // Power saving: skip query data resolution in background
     if (s_suppress_query_ops_in_background.load() && ShouldBackgroundSuppressOperation()) {
         return true; // Skip the query data resolution
     }
-    
+
     return false; // Don't skip the query data resolution
 }
 
@@ -344,14 +344,14 @@ bool OnDraw(reshade::api::command_list* cmd_list, uint32_t vertex_count, uint32_
     // Increment event counter
     g_swapchain_event_counters[SWAPCHAIN_EVENT_DRAW].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
-    
+
     // Set render start time if it's 0 (first draw call of the frame)
     HandleRenderStartAndEndTimes();
 
     if (ShouldBackgroundSuppressOperation()) {
       return true; // Skip the draw call
     }
-    
+
     return false; // Don't skip the draw call
 }
 
@@ -360,14 +360,14 @@ bool OnDrawIndexed(reshade::api::command_list* cmd_list, uint32_t index_count, u
     // Increment event counter
     g_swapchain_event_counters[SWAPCHAIN_EVENT_DRAW_INDEXED].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
-    
+
     // Set render start time if it's 0 (first draw call of the frame)
     HandleRenderStartAndEndTimes();
 
     if (ShouldBackgroundSuppressOperation()) {
       return true; // Skip the draw call
     }
-    
+
     return false; // Don't skip the draw call
 }
 
@@ -376,7 +376,7 @@ bool OnDrawOrDispatchIndirect(reshade::api::command_list* cmd_list, reshade::api
     // Increment event counter
     g_swapchain_event_counters[SWAPCHAIN_EVENT_DRAW_OR_DISPATCH_INDIRECT].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
-    
+
     // Set render start time if it's 0 (first draw call of the frame)
     HandleRenderStartAndEndTimes();
 

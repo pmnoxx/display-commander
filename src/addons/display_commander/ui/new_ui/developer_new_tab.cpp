@@ -220,37 +220,37 @@ void DrawNvapiSettings() {
             extern NVAPIFullscreenPrevention g_nvapiFullscreenPrevention;
 
             // Library loaded successfully
-            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✓ NVAPI Library: Loaded");
+            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✁ENVAPI Library: Loaded");
 
             // Driver version info
             std::string driverVersion = ::g_nvapiFullscreenPrevention.GetDriverVersion();
             if (driverVersion != "Failed to get driver version") {
-                ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✓ Driver Version: %s", driverVersion.c_str());
+                ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✁EDriver Version: %s", driverVersion.c_str());
             } else {
                 ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "⚠ Driver Version: %s", driverVersion.c_str());
             }
 
             // Hardware detection
             if (::g_nvapiFullscreenPrevention.HasNVIDIAHardware()) {
-                ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✓ NVIDIA Hardware: Detected");
+                ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✁ENVIDIA Hardware: Detected");
             } else {
-                ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "✗ NVIDIA Hardware: Not Found");
+                ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "✁ENVIDIA Hardware: Not Found");
             }
 
             // Fullscreen prevention status
             if (::g_nvapiFullscreenPrevention.IsFullscreenPreventionEnabled()) {
-                ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✓ Fullscreen Prevention: ACTIVE");
+                ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✁EFullscreen Prevention: ACTIVE");
             } else {
-                ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "○ Fullscreen Prevention: Inactive");
+                ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "◁EFullscreen Prevention: Inactive");
             }
 
             // Function availability check
-            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✓ Core Functions: Available");
-            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✓ DRS Functions: Available");
+            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✁ECore Functions: Available");
+            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✁EDRS Functions: Available");
         }
     } else {
         // Library not loaded
-        ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "✗ NVAPI Library: Not Loaded");
+        ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "✁ENVAPI Library: Not Loaded");
 
         // Try to get error information
         std::string lastError = ::g_nvapiFullscreenPrevention.GetLastError();

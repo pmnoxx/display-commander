@@ -78,7 +78,7 @@ public:
     double GetVBlankPercentage() const;
     std::chrono::milliseconds GetAverageVBlankDuration() const;
     std::chrono::milliseconds GetAverageActiveDuration() const;
-    
+
     // Get detailed timing information
     std::string GetDetailedStatsString() const;
 
@@ -90,7 +90,7 @@ private:
     bool EnsureAdapterBinding();
     bool UpdateDisplayBindingFromWindow(HWND hwnd);
     static std::wstring GetDisplayNameFromWindow(HWND hwnd);
-    
+
     // Dynamic function loading
     static inline FARPROC LoadProcCached(FARPROC& slot, const wchar_t* mod, const char* name) {
         if (slot != nullptr) return slot;

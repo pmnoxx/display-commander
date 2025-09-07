@@ -9,15 +9,15 @@ std::thread background::g_background_tasks_thread;
 // Main background task coordinator thread function
 void BackgroundTasksThread() {
     LogInfo("Background tasks coordinator thread started");
-    
+
     while (background::g_background_tasks_running.load()) {
         // Audio management is handled by RunBackgroundAudioMonitor in main_entry.cpp
         // No additional audio tasks needed here to avoid conflicts
-        
+
         // Sleep for 300ms between task cycles
         std::this_thread::sleep_for(std::chrono::milliseconds(300));
     }
-    
+
     LogInfo("Background tasks coordinator thread stopped");
 }
 
@@ -26,10 +26,10 @@ void background::StartBackgroundTasks() {
         LogWarn("Background tasks are already running");
         return;
     }
-    
+
     g_background_tasks_running.store(true);
     g_background_tasks_thread = std::thread(BackgroundTasksThread);
-    
+
     LogInfo("Background tasks coordinator started");
 }
 
@@ -38,12 +38,12 @@ void background::StopBackgroundTasks() {
         LogWarn("Background tasks are not running");
         return;
     }
-    
+
     g_background_tasks_running.store(false);
-    
+
     if (g_background_tasks_thread.joinable()) {
         g_background_tasks_thread.join();
     }
-    
+
     LogInfo("Background tasks coordinator stopped");
 }

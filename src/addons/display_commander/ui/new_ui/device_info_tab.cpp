@@ -8,7 +8,7 @@ namespace ui::new_ui {
 void DrawDeviceInfoTab() {
     ImGui::Text("Device Info Tab - Graphics Device and Display Information");
     ImGui::Separator();
-    
+
     // Draw all device info sections
     DrawBasicDeviceInfo();
     ImGui::Spacing();
@@ -32,7 +32,7 @@ void DrawBasicDeviceInfo() {
         reshade::api::color_space colorspace = g_current_colorspace;
         std::string hdr_status = *g_hdr10_override_status.load();
         std::string hdr_timestamp = *g_hdr10_override_timestamp.load();
-        
+
         // Display device information
         ImGui::Text("Current Window: %p", hwnd);
         ImGui::Text("Backbuffer Size: %dx%d", bb_w, bb_h);
@@ -52,8 +52,8 @@ void DrawMonitorInfo() {
             ImGui::Text("Monitors (%zu):", monitors->size());
             for (size_t i = 0; i < monitors->size(); ++i) {
                 const auto& monitor = (*monitors)[i];
-                ImGui::Text("Monitor %zu: %ldx%ld at (%ld,%ld)", 
-                           i + 1, 
+                ImGui::Text("Monitor %zu: %ldx%ld at (%ld,%ld)",
+                           i + 1,
                            monitor.info.rcMonitor.right - monitor.info.rcMonitor.left,
                            monitor.info.rcMonitor.bottom - monitor.info.rcMonitor.top,
                            monitor.info.rcMonitor.left, monitor.info.rcMonitor.top);
@@ -74,7 +74,7 @@ void DrawDeviceRefreshControls() {
         }
         ImGui::SameLine();
         ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "Click to refresh device information");
-        
+
         ImGui::SameLine();
         if (ImGui::Button("Force Re-enumeration")) {
             if (g_dxgiDeviceInfoManager && g_dxgiDeviceInfoManager->IsInitialized()) {
@@ -139,18 +139,18 @@ void DrawDxgiDeviceInfo() {
         // Display adapter information
         for (size_t i = 0; i < adapters.size(); ++i) {
             const auto& adapter = adapters[i];
-            
+
             // Adapter header
             std::string adapter_title = adapter.name + " - " + adapter.description;
             if (ImGui::TreeNodeEx(adapter_title.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
-                
+
                 // Adapter details
                 ImGui::Text("Description: %s", adapter.description.c_str());
                 ImGui::Text("Dedicated Video Memory: %.1f GB", adapter.dedicated_video_memory / (1024.0 * 1024.0 * 1024.0));
                 ImGui::Text("Dedicated System Memory: %.1f GB", adapter.dedicated_system_memory / (1024.0 * 1024.0 * 1024.0));
                 ImGui::Text("Shared System Memory: %.1f GB", adapter.shared_system_memory / (1024.0 * 1024.0 * 1024.0));
                 ImGui::Text("Software Adapter: %s", adapter.is_software ? "Yes" : "No");
-                
+
                 // LUID info
                 std::ostringstream luid_oss;
                 luid_oss << "Adapter LUID: 0x" << std::hex << adapter.adapter_luid.HighPart << "_" << adapter.adapter_luid.LowPart;
@@ -160,26 +160,26 @@ void DrawDxgiDeviceInfo() {
                 if (!adapter.outputs.empty()) {
                     ImGui::Separator();
                     ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Outputs (%zu):", adapter.outputs.size());
-                    
+
                     for (size_t j = 0; j < adapter.outputs.size(); ++j) {
                         const auto& output = adapter.outputs[j];
                         std::string output_title = "Output " + std::to_string(j) + " - " + output.device_name;
-                        
+
                         if (ImGui::TreeNodeEx(output_title.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
-                            
+
                             // Basic output info
                             ImGui::Text("Device Name: %s", output.device_name.c_str());
                             ImGui::Text("Monitor Name: %s", output.monitor_name.c_str());
                             ImGui::Text("Attached: %s", output.is_attached ? "Yes" : "No");
-                            ImGui::Text("Desktop Coordinates: (%ld, %ld) to (%ld, %ld)", 
+                            ImGui::Text("Desktop Coordinates: (%ld, %ld) to (%ld, %ld)",
                                        output.desktop_coordinates.left, output.desktop_coordinates.top,
                                        output.desktop_coordinates.right, output.desktop_coordinates.bottom);
-                            
+
                             // Resolution and refresh rate
                             int width = output.desktop_coordinates.right - output.desktop_coordinates.left;
                             int height = output.desktop_coordinates.bottom - output.desktop_coordinates.top;
                             ImGui::Text("Resolution: %dx%d", width, height);
-                            
+
                             if (output.refresh_rate.Denominator > 0) {
                                 float refresh = static_cast<float>(output.refresh_rate.Numerator) / static_cast<float>(output.refresh_rate.Denominator);
                                 ImGui::Text("Refresh Rate: %.3f Hz", refresh);
@@ -188,18 +188,18 @@ void DrawDxgiDeviceInfo() {
                             // HDR information
                             if (output.supports_hdr10) {
                                 ImGui::Separator();
-                                ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "HDR10 Support: ✓ Enabled");
+                                ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "HDR10 Support: ✁EEnabled");
                                 ImGui::Text("Max Luminance: %.1f nits", output.max_luminance);
                                 ImGui::Text("Min Luminance: %.1f nits", output.min_luminance);
                                 ImGui::Text("Max Frame Average Light Level: %.1f nits", output.max_frame_average_light_level);
                                 ImGui::Text("Max Content Light Level: %.1f nits", output.max_content_light_level);
                             } else {
-                                ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.0f, 1.0f), "HDR10 Support: ✗ Not Supported");
+                                ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.0f, 1.0f), "HDR10 Support: ✁ENot Supported");
                             }
 
                             // Color space information
                             ImGui::Separator();
-                            ImGui::Text("Color Space: %s", 
+                            ImGui::Text("Color Space: %s",
                                        output.color_space == DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020 ? "HDR10" :
                                        output.color_space == DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709 ? "sRGB" :
                                        "Other");
@@ -233,39 +233,39 @@ void DrawDxgiDeviceInfoDetailed() {
             ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "No DXGI adapters found");
             return;
         }
-        
+
         // Display detailed adapter information
         for (size_t i = 0; i < adapters.size(); ++i) {
             const auto& adapter = adapters[i];
-            
+
             if (ImGui::CollapsingHeader(("Adapter " + std::to_string(i) + ": " + adapter.name).c_str())) {
                 ImGui::Text("Description: %s", adapter.description.c_str());
                 ImGui::Text("Dedicated Video Memory: %zu MB", adapter.dedicated_video_memory / (1024 * 1024));
                 ImGui::Text("Dedicated System Memory: %zu MB", adapter.dedicated_system_memory / (1024 * 1024));
                 ImGui::Text("Shared System Memory: %zu MB", adapter.shared_system_memory / (1024 * 1024));
                 ImGui::Text("Software Adapter: %s", adapter.is_software ? "Yes" : "No");
-                
+
                 // Display output information
                 if (ImGui::TreeNode(("Outputs (" + std::to_string(adapter.outputs.size()) + ")").c_str())) {
                     for (size_t j = 0; j < adapter.outputs.size(); ++j) {
                         const auto& output = adapter.outputs[j];
-                        
+
                         if (ImGui::TreeNode(("Output " + std::to_string(j) + ": " + output.device_name).c_str())) {
                             ImGui::Text("Device Name: %s", output.device_name.c_str());
                             ImGui::Text("Monitor Name: %s", output.monitor_name.c_str());
                             ImGui::Text("Attached to Desktop: %s", output.is_attached ? "Yes" : "No");
                             ImGui::Text("Supports HDR10: %s", output.supports_hdr10 ? "Yes" : "No");
-                            
+
                             if (output.is_attached) {
                                 ImGui::Text("Desktop Coordinates: (%ld, %ld) to (%ld, %ld)",
                                            output.desktop_coordinates.left, output.desktop_coordinates.top,
                                            output.desktop_coordinates.right, output.desktop_coordinates.bottom);
-                                
+
                                 // Resolution and refresh rate
                                 int width = output.desktop_coordinates.right - output.desktop_coordinates.left;
                                 int height = output.desktop_coordinates.bottom - output.desktop_coordinates.top;
                                 ImGui::Text("Resolution: %dx%d", width, height);
-                                
+
                                 if (output.refresh_rate.Denominator > 0) {
                                     float refresh = static_cast<float>(output.refresh_rate.Numerator) / static_cast<float>(output.refresh_rate.Denominator);
                                     ImGui::Text("Refresh Rate: %.3f Hz", refresh);
@@ -275,18 +275,18 @@ void DrawDxgiDeviceInfoDetailed() {
                             // HDR information
                             if (output.supports_hdr10) {
                                 ImGui::Separator();
-                                ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "HDR10 Support: ✓ Enabled");
+                                ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "HDR10 Support: ✁EEnabled");
                                 ImGui::Text("Max Luminance: %.1f nits", output.max_luminance);
                                 ImGui::Text("Min Luminance: %.1f nits", output.min_luminance);
                                 ImGui::Text("Max Frame Average Light Level: %.1f nits", output.max_frame_average_light_level);
                                 ImGui::Text("Max Content Light Level: %.1f nits", output.max_content_light_level);
                             } else {
-                                ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.0f, 1.0f), "HDR10 Support: ✗ Not Supported");
+                                ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.0f, 1.0f), "HDR10 Support: ✁ENot Supported");
                             }
 
                             // Color space information
                             ImGui::Separator();
-                            ImGui::Text("Color Space: %s", 
+                            ImGui::Text("Color Space: %s",
                                        output.color_space == DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020 ? "HDR10" :
                                        output.color_space == DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709 ? "sRGB" :
                                        "Other");

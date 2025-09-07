@@ -12,9 +12,9 @@
 #include <vector>
 
 // Structs needed for utility functions
-struct AspectRatio { 
-  int w; 
-  int h; 
+struct AspectRatio {
+  int w;
+  int h;
 };
 
 struct MonitorInfo {

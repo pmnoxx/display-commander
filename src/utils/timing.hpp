@@ -23,7 +23,7 @@ namespace utils {
     // Wait until the specified QPC time is reached
     // Uses a combination of kernel waitable timers and busy waiting for precision
     void wait_until_qpc(LONGLONG target_qpc, HANDLE& timer_handle);
-    LONGLONG get_now_qpc(); 
+    LONGLONG get_now_qpc();
 
     void wait_until_ns(LONGLONG target_ns, HANDLE& timer_handle);
     LONGLONG get_now_ns();

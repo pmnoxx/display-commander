@@ -880,15 +880,6 @@ void DrawMonitorDisplaySettings() {
                         ImGui::Text("• Logical Resolution: %dx%d (what apps see)", logical_width, logical_height);
                         ImGui::Text("• Physical Resolution: %dx%d (actual pixels)", current_width, current_height);
                     }
-
-                    // Show scaling recommendations
-                    if (dpi_scale < 1.25f) {
-                        ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "• Status: Standard scaling (good for gaming)");
-                    } else if (dpi_scale <= 1.5f) {
-                        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.8f, 1.0f), "• Status: Moderate scaling (may affect performance)");
-                    } else {
-                        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.8f, 1.0f), "• Status: High scaling (may impact gaming performance)");
-                    }
                 } else {
                     ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.5f, 1.0f), "• DPI Scaling: Unknown (unable to detect)");
                 }

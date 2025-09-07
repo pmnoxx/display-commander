@@ -18,6 +18,7 @@
 #include "../../latent_sync/latent_sync_limiter.hpp"
 #include "../../utils/timing.hpp"
 #include "version.hpp"
+#include "../../widgets/resolution_widget/resolution_widget.hpp"
 
 
 namespace ui::new_ui {
@@ -76,6 +77,9 @@ void InitMainNewTab() {
         s_scanline_offset.store(g_main_new_tab_settings.scanline_offset.GetValue());
         // VBlank Sync Divisor
         s_vblank_sync_divisor.store(g_main_new_tab_settings.vblank_sync_divisor.GetValue());
+
+        // Initialize resolution widget
+        display_commander::widgets::resolution_widget::InitializeResolutionWidget();
 
     }
 }
@@ -844,8 +848,15 @@ void DrawWindowControls() {
 void DrawMonitorDisplaySettings() {
     ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== Monitor & Display Resolution ===");
 
+    // Resolution Widget
+    if (ImGui::CollapsingHeader("Resolution Control", ImGuiTreeNodeFlags_DefaultOpen)) {
+        display_commander::widgets::resolution_widget::DrawResolutionWidget();
+    }
+
+    ImGui::Spacing();
+
     // Dynamic Monitor Settings
-    if (ImGui::CollapsingHeader("Dynamic Monitor Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
+    if (ImGui::CollapsingHeader("Dynamic Monitor Settings(Legacy)", ImGuiTreeNodeFlags_DefaultOpen)) {
         HandleMonitorSettingsUI();
     }
 

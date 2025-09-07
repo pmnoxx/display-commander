@@ -34,6 +34,7 @@ public:
     void MarkClean() { is_dirty_ = false; }
     void MarkDirty() { is_dirty_ = true; }
 
+
 protected:
     std::string key_;
     std::string section_;

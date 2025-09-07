@@ -1,0 +1,88 @@
+#pragma once
+
+#include "resolution_settings.hpp"
+#include <deps/imgui/imgui.h>
+#include <memory>
+#include <vector>
+#include <string>
+#include <chrono>
+
+namespace display_commander::widgets::resolution_widget {
+
+// Resolution widget class
+class ResolutionWidget {
+public:
+    ResolutionWidget();
+    ~ResolutionWidget() = default;
+
+    // Main draw function - call this from the main tab
+    void OnDraw();
+
+    // Initialize the widget (call once at startup)
+    void Initialize();
+
+    // Cleanup the widget (call at shutdown)
+    void Cleanup();
+
+private:
+    // UI state
+    int selected_display_index_ = 0;
+    int selected_resolution_index_ = 0;
+    int selected_refresh_index_ = 0;
+
+    // Cached resolution data for current display
+    std::vector<std::string> resolution_labels_;
+    std::vector<ResolutionData> resolution_data_;
+    std::vector<std::string> refresh_labels_;
+    std::vector<ResolutionData> refresh_data_;
+
+    // UI helper functions
+    void DrawDisplaySelector();
+    void DrawResolutionSelector();
+    void DrawRefreshRateSelector();
+    void DrawActionButtons();
+    void DrawAutoApplyCheckbox();
+
+    // Data management
+    void RefreshDisplayData();
+    void RefreshResolutionData();
+    void RefreshRefreshRateData();
+
+    // Apply resolution changes
+    bool ApplyCurrentSelection();
+    bool TryApplyResolution(int display_index, const ResolutionData& resolution, const ResolutionData& refresh);
+
+    // Helper functions
+    std::string GetDisplayName(int display_index) const;
+    int GetActualDisplayIndex() const;
+    void UpdateCurrentSelectionFromSettings();
+    void UpdateSettingsFromCurrentSelection();
+
+    // UI state management
+    bool is_initialized_ = false;
+    bool needs_refresh_ = true;
+
+    // Confirmation dialog state
+    bool show_confirmation_ = false;
+    std::chrono::steady_clock::time_point confirmation_start_time_;
+    int confirmation_timer_seconds_ = 30;
+    ResolutionData pending_resolution_;
+    ResolutionData pending_refresh_;
+    ResolutionData previous_resolution_;
+    ResolutionData previous_refresh_;
+    int pending_display_index_ = 0;
+
+    // Confirmation dialog methods
+    void DrawConfirmationDialog();
+    void RevertResolution();
+};
+
+// Global widget instance
+extern std::unique_ptr<ResolutionWidget> g_resolution_widget;
+
+// Global functions for integration
+void InitializeResolutionWidget();
+void CleanupResolutionWidget();
+void DrawResolutionWidget();
+
+} // namespace display_commander::widgets::resolution_widget

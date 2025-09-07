@@ -50,6 +50,7 @@ void FloatSetting::SetValue(float value) {
     Save(); // Auto-save when value changes
 }
 
+
 // IntSetting implementation
 IntSetting::IntSetting(const std::string& key, int default_value, int min, int max, const std::string& section)
     : SettingBase(key, section), value_(default_value), default_value_(default_value), min_(min), max_(max) {
@@ -82,6 +83,7 @@ void IntSetting::SetValue(int value) {
     Save(); // Auto-save when value changes
 }
 
+
 // BoolSetting implementation
 BoolSetting::BoolSetting(const std::string& key, bool default_value, const std::string& section)
     : SettingBase(key, section), value_(default_value), default_value_(default_value) {
@@ -111,6 +113,7 @@ void BoolSetting::SetValue(bool value) {
     value_.store(value);
     Save(); // Auto-save when value changes
 }
+
 
 // BoolSettingRef implementation
 BoolSettingRef::BoolSettingRef(const std::string& key, std::atomic<bool>& external_ref, bool default_value, const std::string& section)

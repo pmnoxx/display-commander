@@ -415,7 +415,7 @@ void OnPresentUpdateAfter(reshade::api::command_queue* /*queue*/, reshade::api::
     reshade::api::effect_runtime* runtime = g_reshade_runtime.load();
     if (runtime != nullptr) {
       const bool is_background = g_app_in_background.load(std::memory_order_acquire);
-      const bool wants_block_input = s_block_input_in_background.load() && is_background;
+      const bool wants_block_input = s_block_input_in_background.load();
       // Call every frame as long as any blocking is desired
       if (is_background && wants_block_input) {
         runtime->block_input_next_frame();
@@ -424,7 +424,7 @@ void OnPresentUpdateAfter(reshade::api::command_queue* /*queue*/, reshade::api::
     } else {
       // Log error when g_reshade_runtime is null and input blocking is desired
       const bool is_background = g_app_in_background.load(std::memory_order_acquire);
-      const bool wants_block_input = s_block_input_in_background.load() && is_background;
+      const bool wants_block_input = s_block_input_in_background.load();
       if (wants_block_input) {
         LogError("Block input in background failed: g_reshade_runtime is null (background=%s, setting=%s)",
                  is_background ? "true" : "false",

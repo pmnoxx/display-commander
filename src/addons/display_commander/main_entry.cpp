@@ -16,6 +16,9 @@
 // Include input blocking system
 #include "input_blocking/input_blocking.hpp"
 
+// Include input remapping system
+#include "input_remapping/input_remapping.hpp"
+
 // Include window procedure hooks
 #include "hooks/window_proc_hooks.hpp"
 #include "hooks/api_hooks.hpp"
@@ -201,7 +204,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
       }
       // Install API hooks for continue rendering
       LogInfo("DLL_THREAD_ATTACH: Installing API hooks...");
-        renodx::hooks::InstallApiHooks();
+      renodx::hooks::InstallApiHooks();
 
       // Note: Window hooks will be installed in DLL_THREAD_ATTACH for better timing
 
@@ -222,6 +225,9 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
 
         // Initialize input blocking system
         display_commander::input_blocking::initialize_input_blocking();
+
+        // Initialize input remapping system
+        display_commander::input_remapping::initialize_input_remapping();
 
         // Register overlay directly
         // Ensure UI system is initialized

@@ -490,6 +490,12 @@ void InitializeXInputWidget() {
     if (!g_xinput_widget) {
         g_xinput_widget = std::make_unique<XInputWidget>();
         g_xinput_widget->Initialize();
+
+        // Initialize UI state - assume closed initially
+        auto shared_state = XInputWidget::GetSharedState();
+        if (shared_state) {
+            shared_state->ui_overlay_open.store(false);
+        }
     }
 }
 
@@ -726,9 +732,38 @@ void XInputWidget::ExecuteChordAction(const XInputSharedState::Chord& chord, DWO
             LogError("XXX ReShade runtime not available for screenshot");
         }
     } else if (chord.action == "Toggle ReShade UI") {
-        // Toggle ReShade UI
+        // Toggle ReShade UI using ReShade's built-in API
         LogInfo("XXX Toggling ReShade UI via chord detection");
-        // TODO: Implement UI toggle functionality
+
+        // Get the ReShade runtime instance
+        reshade::api::effect_runtime* runtime = g_reshade_runtime.load();
+
+        if (runtime != nullptr) {
+            try {
+                // Get current UI state and toggle it
+                bool current_state = g_shared_state->ui_overlay_open.load();
+                bool new_state = !current_state;
+
+                // Use ReShade's open_overlay method to set the new state
+                bool success = runtime->open_overlay(new_state, reshade::api::input_source::gamepad);
+
+                if (success) {
+                    // Update our tracked state
+                    g_shared_state->ui_overlay_open.store(new_state);
+                    LogInfo("XXX ReShade UI toggled via chord detection (%s)",
+                           new_state ? "opened" : "closed");
+                } else {
+                    LogError("XXX Failed to toggle ReShade UI via chord detection");
+                }
+
+            } catch (const std::exception& e) {
+                LogError("XXX Exception toggling ReShade UI: %s", e.what());
+            } catch (...) {
+                LogError("XXX Unknown exception toggling ReShade UI");
+            }
+        } else {
+            LogError("XXX ReShade runtime not available for UI toggle");
+        }
     } else if (chord.action == "Test controller vibration") {
         // Test vibration on the controller that triggered the chord
         XINPUT_VIBRATION vibration = {};
@@ -807,8 +842,38 @@ void ProcessChordDetection(DWORD user_index, WORD button_state) {
                     LogError("XXX ReShade runtime not available for screenshot");
                 }
             } else if (chord.action == "Toggle ReShade UI") {
+                // Toggle ReShade UI using ReShade's built-in API
                 LogInfo("XXX Toggling ReShade UI via chord detection");
-                // TODO: Implement UI toggle functionality
+
+                // Get the ReShade runtime instance
+                reshade::api::effect_runtime* runtime = g_reshade_runtime.load();
+
+                if (runtime != nullptr) {
+                    try {
+                        // Get current UI state and toggle it
+                        bool current_state = shared_state->ui_overlay_open.load();
+                        bool new_state = !current_state;
+
+                        // Use ReShade's open_overlay method to set the new state
+                        bool success = runtime->open_overlay(new_state, reshade::api::input_source::gamepad);
+
+                        if (success) {
+                            // Update our tracked state
+                            shared_state->ui_overlay_open.store(new_state);
+                            LogInfo("XXX ReShade UI toggled via chord detection (%s)",
+                                   new_state ? "opened" : "closed");
+                        } else {
+                            LogError("XXX Failed to toggle ReShade UI via chord detection");
+                        }
+
+                    } catch (const std::exception& e) {
+                        LogError("XXX Exception toggling ReShade UI: %s", e.what());
+                    } catch (...) {
+                        LogError("XXX Unknown exception toggling ReShade UI");
+                    }
+                } else {
+                    LogError("XXX ReShade runtime not available for UI toggle");
+                }
             } else if (chord.action == "Test controller vibration") {
                 XINPUT_VIBRATION vibration = {};
                 vibration.wLeftMotorSpeed = 32767;
@@ -836,72 +901,6 @@ void ProcessChordDetection(DWORD user_index, WORD button_state) {
 
     // Update input suppression state
     shared_state->suppress_input.store(any_chord_pressed);
-}
-
-// Simple BMP file save function
-bool SaveBMP(const char* filename, const uint8_t* pixels, uint32_t width, uint32_t height) {
-    // Input validation
-    if (!filename || !pixels || width == 0 || height == 0) {
-        return false;
-    }
-
-    // Check for reasonable bounds
-    if (width > 8192 || height > 8192) {
-        return false;
-    }
-
-    std::ofstream file(filename, std::ios::binary);
-    if (!file.is_open()) {
-        return false;
-    }
-
-    // BMP header
-    struct BMPHeader {
-        uint16_t signature = 0x4D42; // "BM"
-        uint32_t fileSize;
-        uint16_t reserved1 = 0;
-        uint16_t reserved2 = 0;
-        uint32_t dataOffset = 54;
-    } header;
-
-    struct BMPInfoHeader {
-        uint32_t size = 40;
-        int32_t width;
-        int32_t height;
-        uint16_t planes = 1;
-        uint16_t bitsPerPixel = 32;
-        uint32_t compression = 0;
-        uint32_t imageSize;
-        int32_t xPixelsPerMeter = 0;
-        int32_t yPixelsPerMeter = 0;
-        uint32_t colorsUsed = 0;
-        uint32_t colorsImportant = 0;
-    } infoHeader;
-
-    infoHeader.width = static_cast<int32_t>(width);
-    infoHeader.height = static_cast<int32_t>(height);
-    infoHeader.imageSize = width * height * 4;
-    header.fileSize = sizeof(BMPHeader) + sizeof(BMPInfoHeader) + infoHeader.imageSize;
-
-    // Write headers
-    file.write(reinterpret_cast<const char*>(&header), sizeof(header));
-    file.write(reinterpret_cast<const char*>(&infoHeader), sizeof(infoHeader));
-
-    if (!file.good()) {
-        return false;
-    }
-
-    // Write pixel data (BMP is bottom-up, so we need to flip vertically)
-    for (int32_t y = height - 1; y >= 0; y--) {
-        const uint8_t* row = pixels + (y * width * 4);
-        file.write(reinterpret_cast<const char*>(row), width * 4);
-
-        if (!file.good()) {
-            return false;
-        }
-    }
-
-    return file.good();
 }
 
 void CheckAndHandleScreenshot() {

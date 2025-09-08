@@ -65,6 +65,7 @@ struct XInputSharedState {
     std::atomic<WORD> current_button_state{0};
     std::atomic<bool> suppress_input{false};
     std::atomic<bool> trigger_screenshot{false};
+    std::atomic<bool> ui_overlay_open{false};
 
     // Settings
     std::atomic<bool> swap_a_b_buttons{false};

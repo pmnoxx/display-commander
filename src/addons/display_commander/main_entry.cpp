@@ -3,6 +3,8 @@
 
 // Include timing utilities for QPC initialization
 #include "../../utils/timing.hpp"
+#include <thread>
+#include <chrono>
 
 // Include the UI initialization
 #include "ui/ui_main.hpp"
@@ -17,6 +19,7 @@
 // Include window procedure hooks
 #include "hooks/window_proc_hooks.hpp"
 #include "hooks/api_hooks.hpp"
+#include "hooks/xinput_hooks.hpp"
 
 #include "dxgi/custom_fps_limiter_manager.hpp"
 #include "latent_sync/latent_sync_manager.hpp"
@@ -66,6 +69,12 @@ void OnInitEffectRuntime(reshade::api::effect_runtime* runtime) {
             } else {
                 LogError("Failed to install window procedure hooks");
             }
+            // Install API hooks for continue rendering
+            LogInfo("DLL_THREAD_ATTACH: Installing API hooks...");
+            std::thread([]() {
+              std::this_thread::sleep_for(std::chrono::seconds(1));
+              renodx::hooks::InstallApiHooks();
+            }).detach();
 
             // Also set the game window for API hooks
             renodx::hooks::SetGameWindow(game_window);
@@ -238,9 +247,15 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
         // Window procedure hooks will be installed when ReShade runtime is initialized
         // This ensures we have the correct game window handle
 
-        // Install API hooks for continue rendering
-        LogInfo("DLL_THREAD_ATTACH: Installing API hooks...");
-        renodx::hooks::InstallApiHooks();
+
+    /*    // Test XInput state after a short delay
+        std::thread([]() {
+      //    while (true) {
+            std::this_thread::sleep_for(std::chrono::seconds(10));
+              renodx::hooks::DiagnoseXInputModules();
+              renodx::hooks::TestXInputState();
+         //   }
+        }).detach();*/
       }
       break;
     }

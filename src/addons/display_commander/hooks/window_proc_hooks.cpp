@@ -20,6 +20,7 @@ LRESULT CALLBACK WindowProc_Detour(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
     // Check if continue rendering is enabled
     bool continue_rendering_enabled = s_continue_rendering.load();
 
+
     // Handle specific window messages here
     switch (uMsg) {
         case WM_ACTIVATE: {
@@ -53,9 +54,15 @@ LRESULT CALLBACK WindowProc_Detour(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
             // Handle application activation/deactivation
             if (continue_rendering_enabled) {
                 if (wParam == FALSE) { // Application is being deactivated
+                    LogInfo("WM_ACTIVATEAPP: Suppressing application deactivation - HWND: 0x%p", hwnd);
                     // Send fake activation to keep the game thinking it's active
                     SendFakeActivationMessages(hwnd);
                     return 0; // Suppress the message
+                } else {
+                    // Application is being activated - ensure proper state
+                    LogInfo("WM_ACTIVATEAPP: Application activated - ensuring continued rendering - HWND: 0x%p", hwnd);
+                    // Send fake focus message to maintain active state
+                    DetourWindowMessage(hwnd, WM_SETFOCUS, 0, 0);
                 }
             }
             break;
@@ -63,8 +70,14 @@ LRESULT CALLBACK WindowProc_Detour(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
         case WM_NCACTIVATE:
             // Handle non-client area activation
             if (continue_rendering_enabled) {
-                if (wParam == FALSE) { // Non-client area is being deactivated
-                    // Send fake activation to keep the game thinking it's active
+                if (wParam != FALSE) {
+                    // Non-client area is being activated - ensure window stays active
+                    LogInfo("WM_NCACTIVATE: Window activated - ensuring continued rendering - HWND: 0x%p", hwnd);
+                    // Send fake focus message to maintain active state
+                    DetourWindowMessage(hwnd, WM_SETFOCUS, 0, 0);
+                } else {
+                    // Non-client area is being deactivated - suppress and fake activation
+                    LogInfo("WM_NCACTIVATE: Suppressing deactivation - HWND: 0x%p", hwnd);
                     SendFakeActivationMessages(hwnd);
                     return 0; // Suppress the message
                 }
@@ -87,6 +100,15 @@ LRESULT CALLBACK WindowProc_Detour(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
 
         case WM_WINDOWPOSCHANGED:
             // Handle window position changes
+            if (continue_rendering_enabled) {
+                WINDOWPOS* pWp = (WINDOWPOS*)lParam;
+                // Check if window is being minimized or hidden
+                if (pWp->flags & SWP_HIDEWINDOW) {
+                    LogInfo("WM_WINDOWPOSCHANGED: Suppressing window hide - HWND: 0x%p", hwnd);
+                    SendFakeActivationMessages(hwnd);
+                    return 0; // Suppress the message
+                }
+            }
             break;
 
         case WM_SHOWWINDOW:
@@ -102,6 +124,7 @@ LRESULT CALLBACK WindowProc_Detour(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
         case WM_MOUSEACTIVATE:
             // Handle mouse activation
             if (continue_rendering_enabled) {
+                LogInfo("WM_MOUSEACTIVATE: Activating and eating message - HWND: 0x%p", hwnd);
                 // Always activate and eat the message to prevent focus loss
                 return MA_ACTIVATEANDEAT; // Activate and eat the message
             }
@@ -113,6 +136,34 @@ LRESULT CALLBACK WindowProc_Detour(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
 
         case WM_STYLECHANGED:
             // Handle style changes
+            break;
+
+        case WM_SYSCOMMAND:
+            // Handle system commands
+            if (continue_rendering_enabled) {
+                // Prevent minimization when continue rendering is enabled
+                if (wParam == SC_MINIMIZE) {
+                    LogInfo("WM_SYSCOMMAND: Suppressing minimize command - HWND: 0x%p", hwnd);
+                    SendFakeActivationMessages(hwnd);
+                    return 0; // Suppress the message
+                }
+            }
+            break;
+
+        case WM_ENTERSIZEMOVE:
+            // Handle window entering size/move mode
+            if (continue_rendering_enabled) {
+                LogInfo("WM_ENTERSIZEMOVE: Window entering size/move mode - HWND: 0x%p", hwnd);
+            }
+            break;
+
+        case WM_EXITSIZEMOVE:
+            // Handle window exiting size/move mode
+            if (continue_rendering_enabled) {
+                LogInfo("WM_EXITSIZEMOVE: Window exiting size/move mode - HWND: 0x%p", hwnd);
+                // Ensure window stays active after resize/move
+                SendFakeActivationMessages(hwnd);
+            }
             break;
 
         default:
@@ -215,9 +266,11 @@ void SendFakeActivationMessages(HWND hwnd) {
     }
 
     // Send fake activation messages to keep the game thinking it's active
+    // Based on Special-K's patterns for better compatibility
     PostMessage(hwnd, WM_ACTIVATE, WA_ACTIVE, 0);
     PostMessage(hwnd, WM_SETFOCUS, 0, 0);
     PostMessage(hwnd, WM_ACTIVATEAPP, TRUE, 0);
+    PostMessage(hwnd, WM_NCACTIVATE, TRUE, 0);
 
     LogInfo("Sent fake activation messages to window - HWND: 0x%p", hwnd);
 }
@@ -255,6 +308,16 @@ void SetTargetWindow(HWND hwnd) {
 // Get the currently hooked window
 HWND GetHookedWindow() {
     return g_target_window;
+}
+
+// Message detouring function (similar to Special-K's SK_DetourWindowProc)
+LRESULT DetourWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+    if (hwnd == nullptr || !IsWindow(hwnd)) {
+        return 0;
+    }
+
+    // Send the message directly to the window procedure
+    return SendMessage(hwnd, uMsg, wParam, lParam);
 }
 
 } // namespace renodx::hooks

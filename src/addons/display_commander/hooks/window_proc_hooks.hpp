@@ -29,4 +29,7 @@ void SetTargetWindow(HWND hwnd);
 // Get the currently hooked window
 HWND GetHookedWindow();
 
+// Message detouring function (similar to Special-K's SK_DetourWindowProc)
+LRESULT DetourWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+
 } // namespace renodx::hooks

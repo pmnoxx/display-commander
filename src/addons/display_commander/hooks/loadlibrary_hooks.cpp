@@ -1,4 +1,6 @@
 #include "loadlibrary_hooks.hpp"
+#include "xinput_hooks.hpp"
+#include "windows_gaming_input_hooks.hpp"
 #include "../utils.hpp"
 #include <MinHook.h>
 #include <chrono>
@@ -112,6 +114,9 @@ HMODULE WINAPI LoadLibraryA_Detour(LPCSTR lpLibFileName) {
 
                 LogInfo("Added new module to tracking: %s (0x%p, %u bytes)",
                         dll_name.c_str(), moduleInfo.baseAddress, moduleInfo.sizeOfImage);
+
+                // Call the module loaded callback
+                OnModuleLoaded(moduleInfo.moduleName, result);
             }
         }
     } else {
@@ -162,6 +167,9 @@ HMODULE WINAPI LoadLibraryW_Detour(LPCWSTR lpLibFileName) {
 
                 LogInfo("Added new module to tracking: %s (0x%p, %u bytes)",
                         dll_name.c_str(), moduleInfo.baseAddress, moduleInfo.sizeOfImage);
+
+                // Call the module loaded callback
+                OnModuleLoaded(moduleInfo.moduleName, result);
             }
         }
     } else {
@@ -357,6 +365,9 @@ bool EnumerateLoadedModules() {
         LogInfo("Module %lu: %ws (0x%p, %u bytes)",
                 i, moduleInfo.moduleName.c_str(),
                 moduleInfo.baseAddress, moduleInfo.sizeOfImage);
+
+        // Call the module loaded callback for existing modules
+        OnModuleLoaded(moduleInfo.moduleName, hModules[i]);
     }
 
     return true;
@@ -380,6 +391,97 @@ bool IsModuleLoaded(const std::wstring& moduleName) {
 
 void RefreshModuleList() {
     EnumerateLoadedModules();
+}
+
+void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
+    LogInfo("Module loaded: %ws (0x%p)", moduleName.c_str(), hModule);
+
+    // Convert to lowercase for case-insensitive comparison
+    std::wstring lowerModuleName = moduleName;
+    std::transform(lowerModuleName.begin(), lowerModuleName.end(), lowerModuleName.begin(), ::towlower);
+
+    // XInput hooks
+    if (lowerModuleName.find(L"xinput") != std::wstring::npos) {
+        LogInfo("Installing XInput hooks for module: %ws", moduleName.c_str());
+        if (InstallXInputHooks()) {
+            LogInfo("XInput hooks installed successfully");
+        } else {
+            LogError("Failed to install XInput hooks");
+        }
+    }
+
+    // Windows.Gaming.Input hooks
+    else if (lowerModuleName.find(L"windows.gaming.input") != std::wstring::npos ||
+             lowerModuleName.find(L"gameinput") != std::wstring::npos) {
+        LogInfo("Installing Windows.Gaming.Input hooks for module: %ws", moduleName.c_str());
+        if (InstallWindowsGamingInputHooks()) {
+            LogInfo("Windows.Gaming.Input hooks installed successfully");
+        } else {
+            LogError("Failed to install Windows.Gaming.Input hooks");
+        }
+    }
+
+    // DirectInput hooks (if implemented)
+    else if (lowerModuleName.find(L"dinput") != std::wstring::npos) {
+        LogInfo("DirectInput module detected: %ws", moduleName.c_str());
+        // TODO: Add DirectInput hook installation when implemented
+    }
+
+    // Direct3D hooks
+    else if (lowerModuleName.find(L"d3d") != std::wstring::npos) {
+        LogInfo("Direct3D module detected: %ws", moduleName.c_str());
+        // TODO: Add Direct3D hook installation when implemented
+    }
+
+    // OpenGL hooks
+    else if (lowerModuleName.find(L"opengl") != std::wstring::npos) {
+        LogInfo("OpenGL module detected: %ws", moduleName.c_str());
+        // TODO: Add OpenGL hook installation when implemented
+    }
+
+    // Vulkan hooks
+    else if (lowerModuleName.find(L"vulkan") != std::wstring::npos) {
+        LogInfo("Vulkan module detected: %ws", moduleName.c_str());
+        // TODO: Add Vulkan hook installation when implemented
+    }
+
+    // Steam hooks
+    else if (lowerModuleName.find(L"steam") != std::wstring::npos) {
+        LogInfo("Steam module detected: %ws", moduleName.c_str());
+        // TODO: Add Steam hook installation when implemented
+    }
+
+    // Epic Games hooks
+    else if (lowerModuleName.find(L"eos") != std::wstring::npos ||
+             lowerModuleName.find(L"epic") != std::wstring::npos) {
+        LogInfo("Epic Games module detected: %ws", moduleName.c_str());
+        // TODO: Add Epic Games hook installation when implemented
+    }
+
+    // NVIDIA hooks
+    else if (lowerModuleName.find(L"nv") != std::wstring::npos ||
+             lowerModuleName.find(L"nvidia") != std::wstring::npos) {
+        LogInfo("NVIDIA module detected: %ws", moduleName.c_str());
+        // TODO: Add NVIDIA hook installation when implemented
+    }
+
+    // AMD hooks
+    else if (lowerModuleName.find(L"amd") != std::wstring::npos ||
+             lowerModuleName.find(L"ati") != std::wstring::npos) {
+        LogInfo("AMD module detected: %ws", moduleName.c_str());
+        // TODO: Add AMD hook installation when implemented
+    }
+
+    // Intel hooks
+    else if (lowerModuleName.find(L"intel") != std::wstring::npos) {
+        LogInfo("Intel module detected: %ws", moduleName.c_str());
+        // TODO: Add Intel hook installation when implemented
+    }
+
+    // Generic logging for other modules
+    else {
+        LogInfo("Other module loaded: %ws (0x%p)", moduleName.c_str(), hModule);
+    }
 }
 
 } // namespace renodx::hooks

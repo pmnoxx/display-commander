@@ -52,4 +52,7 @@ std::vector<ModuleInfo> GetLoadedModules();
 bool IsModuleLoaded(const std::wstring& moduleName);
 void RefreshModuleList();
 
+// Module loading callback
+void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule);
+
 } // namespace renodx::hooks

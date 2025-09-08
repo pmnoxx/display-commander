@@ -1,0 +1,15 @@
+# Feature Proposals
+
+This document tracks proposed features and ideas for future development. These are not planned features but rather ideas to keep track of for potential future implementation.
+
+## Proposed Features
+
+• DirectInput support (we have XInput already)
+
+• Secondary monitors display black output similar to ADHD mode on Special-K
+
+• AMD Anti-Lag 2 support
+
+• Intel low lag mode support
+
+• Bluetooth DualSense vibration support

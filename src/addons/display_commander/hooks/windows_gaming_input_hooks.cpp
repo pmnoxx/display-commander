@@ -2,6 +2,7 @@
 #include "../utils.hpp"
 #include <MinHook.h>
 #include <atomic>
+#include <windows.gaming.input.h>
 
 namespace renodx::hooks {
 

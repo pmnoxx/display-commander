@@ -13,3 +13,15 @@ This document tracks proposed features and ideas for future development. These a
 • Intel low lag mode support
 
 • Bluetooth DualSense vibration support
+
+• Gamepad keys remapping
+
+• Gamepad keys to keyboard
+
+• Record video gamepad chord
+
+• DLSS-FG compatible frame limiter
+
+• Low latency custom frame limiter
+
+• VBlank Scanline Sync (partially implemented)

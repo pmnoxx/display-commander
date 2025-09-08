@@ -33,7 +33,8 @@ Note: Applying window operations from the main thread can crash some apps. This 
 **⚠️ Load Order Requirement**: Display Commander must be loaded last by ReShade. This is why we've added the `zzz_` prefix to the filename - it ensures proper load order and prevents conflicts with other addons.
 
 ## Known Bugs
-- ...
+
+For a comprehensive list of known issues and bugs, see [KNOWN_BUGS.md](KNOWN_BUGS.md).
 
 ## Requirements
 

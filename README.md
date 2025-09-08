@@ -15,7 +15,7 @@ Note: Applying window operations from the main thread can crash some apps. This 
 | **x64 (64-bit)** | [zzz_display_commander.addon64](../../releases/latest/download/zzz_display_commander.addon64) |
 | **x86 (32-bit)** | [zzz_display_commander.addon32](../../releases/latest/download/zzz_display_commander.addon32) |
 
-**🔄 Nightly Builds**: For the latest development builds, check [Nightly Releases](../../releases/tag/nightly).    
+**🔄 Nightly Builds**: For the latest development builds, check [Nightly Releases](../../releases/tag/nightly).
 
 ## Features
 
@@ -114,6 +114,10 @@ GitHub Actions builds x64 and x86 on pushes and PRs and uploads the resulting `.
 - "NVAPI libs not found ...": Optional; only NVAPI-based features will be unavailable.
 - "No addon files found" after build: Ensure Release config and correct architecture; check `build/` or `build32/Release/` for the expected output name (should be `zzz_display_commander.addon64` or `zzz_display_commander.addon32`).
 
+## Feature Proposals
+
+Have ideas for new features? Check out our [Feature Proposals](FEATURE_PROPOSALS.md) to see what's being considered for future development.
+
 ## Support
 
 Need help? Check out our [Support Guide](SUPPORT.md) for detailed information on getting assistance.
@@ -144,5 +148,5 @@ See `CHANGELOG.md` for version history.
   </a>
   <br/>
   <a href="https://ko-fi.com/pmnox">ko-fi.com/pmnox</a>
-  
+
 </p>

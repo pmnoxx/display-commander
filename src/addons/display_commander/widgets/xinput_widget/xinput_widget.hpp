@@ -5,6 +5,7 @@
 #include <atomic>
 #include <string>
 #include <array>
+#include <vector>
 #include <windows.h>
 #include <xinput.h>
 
@@ -27,6 +28,43 @@ struct XInputSharedState {
     std::atomic<uint64_t> button_events{0};
     std::atomic<uint64_t> stick_events{0};
     std::atomic<uint64_t> trigger_events{0};
+
+    // Chord detection
+    struct Chord {
+        WORD buttons;
+        std::string name;
+        std::string action;
+        bool enabled{true};
+        std::atomic<bool> is_pressed{false};
+        std::atomic<ULONGLONG> last_press_time{0};
+
+        // Default constructor
+        Chord() = default;
+
+        // Copy constructor
+        Chord(const Chord& other)
+            : buttons(other.buttons), name(other.name), action(other.action),
+              enabled(other.enabled), is_pressed(other.is_pressed.load()),
+              last_press_time(other.last_press_time.load()) {}
+
+        // Assignment operator
+        Chord& operator=(const Chord& other) {
+            if (this != &other) {
+                buttons = other.buttons;
+                name = other.name;
+                action = other.action;
+                enabled = other.enabled;
+                is_pressed.store(other.is_pressed.load());
+                last_press_time.store(other.last_press_time.load());
+            }
+            return *this;
+        }
+    };
+
+    std::vector<Chord> chords;
+    std::atomic<WORD> current_button_state{0};
+    std::atomic<bool> suppress_input{false};
+    std::atomic<bool> trigger_screenshot{false};
 
     // Settings
     std::atomic<bool> swap_a_b_buttons{false};
@@ -87,6 +125,13 @@ private:
     void TestRightMotor();
     void StopVibration();
 
+    // Chord detection functions
+    void DrawChordSettings();
+    void InitializeDefaultChords();
+    void ProcessChordDetection(DWORD user_index, WORD button_state);
+    void ExecuteChordAction(const XInputSharedState::Chord& chord, DWORD user_index);
+    std::string GetChordButtonNames(WORD buttons) const;
+
     // Global shared state
     static std::shared_ptr<XInputSharedState> g_shared_state;
 };
@@ -102,5 +147,7 @@ void DrawXInputWidget();
 // Global functions for hooks to use
 void UpdateXInputState(DWORD user_index, const XINPUT_STATE* state);
 void IncrementEventCounter(const std::string& event_type);
+void ProcessChordDetection(DWORD user_index, WORD button_state);
+void CheckAndHandleScreenshot();
 
 } // namespace display_commander::widgets::xinput_widget

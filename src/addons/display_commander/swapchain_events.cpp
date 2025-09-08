@@ -9,6 +9,7 @@
 #include <atomic>
 #include "utils/timing.hpp"
 #include "hooks/api_hooks.hpp"
+#include "widgets/xinput_widget/xinput_widget.hpp"
 
 // Use renodx2 utilities for swapchain color space changes
 #include <utils/swapchain.hpp>
@@ -650,6 +651,9 @@ void OnPresentUpdateBefore2(reshade::api::effect_runtime* runtime) {
   // Increment event counter
   g_swapchain_event_counters[SWAPCHAIN_EVENT_PRESENT_UPDATE_BEFORE2].fetch_add(1);
   g_swapchain_event_total_count.fetch_add(1);
+
+  // Check for XInput chord screenshot trigger
+  display_commander::widgets::xinput_widget::CheckAndHandleScreenshot();
 
   if (s_fps_limiter_injection.load() == 1) {
     HandleFpsLimiter();

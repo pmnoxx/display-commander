@@ -1,9 +1,15 @@
 #include "xinput_widget.hpp"
 #include "../../utils.hpp"
+#include "../../globals.hpp"
 #include <deps/imgui/imgui.h>
 #include <include/reshade.hpp>
 #include <thread>
 #include <chrono>
+#include <vector>
+#include <sstream>
+#include <iomanip>
+#include <fstream>
+#include <windows.h>
 
 namespace display_commander::widgets::xinput_widget {
 
@@ -73,6 +79,10 @@ void XInputWidget::OnDraw() {
 
     // Draw vibration test
     DrawVibrationTest();
+    ImGui::Spacing();
+
+    // Draw chord settings
+    DrawChordSettings();
     ImGui::Spacing();
 
     // Draw controller selector
@@ -227,7 +237,7 @@ void XInputWidget::DrawControllerState() {
     // Draw controller info
     ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Controller %d - Connected", selected_controller_);
     ImGui::Text("Packet Number: %lu", state.dwPacketNumber);
-    
+
     // Debug: Show raw button state
     ImGui::Text("Raw Button State: 0x%04X", state.Gamepad.wButtons);
     ImGui::Text("Guide Button Constant: 0x%04X", XINPUT_GAMEPAD_GUIDE);
@@ -586,6 +596,370 @@ void XInputWidget::StopVibration() {
         LogInfo("XInputWidget::StopVibration() - Vibration stopped for controller %d", selected_controller_);
     } else {
         LogError("XInputWidget::StopVibration() - Failed to stop vibration for controller %d, error: %lu", selected_controller_, result);
+    }
+}
+
+// Chord detection functions
+void XInputWidget::DrawChordSettings() {
+    if (ImGui::CollapsingHeader("Chord Detection", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::Text("Button combinations that trigger actions:");
+        ImGui::Spacing();
+
+        if (g_shared_state->chords.empty()) {
+            if (ImGui::Button("Initialize Default Chords")) {
+                InitializeDefaultChords();
+            }
+        } else {
+            for (size_t i = 0; i < g_shared_state->chords.size(); ++i) {
+                XInputSharedState::Chord& chord = g_shared_state->chords[i];
+
+                ImGui::PushID(static_cast<int>(i));
+
+                // Enable/disable checkbox
+                ImGui::Checkbox("##enabled", &chord.enabled);
+                ImGui::SameLine();
+
+                // Chord name and buttons
+                std::string button_names = GetChordButtonNames(chord.buttons);
+                ImGui::Text("%s: %s", chord.name.c_str(), button_names.c_str());
+
+                // Show current state
+                if (chord.is_pressed.load()) {
+                    ImGui::SameLine();
+                    ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "PRESSED");
+                }
+
+                // Action description
+                ImGui::SameLine();
+                ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "(%s)", chord.action.c_str());
+
+                ImGui::PopID();
+            }
+
+            ImGui::Spacing();
+            if (ImGui::Button("Reset to Defaults")) {
+                g_shared_state->chords.clear();
+                InitializeDefaultChords();
+            }
+        }
+    }
+}
+
+void XInputWidget::InitializeDefaultChords() {
+    g_shared_state->chords.clear();
+
+    // Guide + Back = Screenshot
+    XInputSharedState::Chord screenshot_chord;
+    screenshot_chord.buttons = XINPUT_GAMEPAD_GUIDE | XINPUT_GAMEPAD_BACK;
+    screenshot_chord.name = "Screenshot";
+    screenshot_chord.action = "Take screenshot";
+    screenshot_chord.enabled = true;
+    g_shared_state->chords.push_back(screenshot_chord);
+
+    // Guide + Start = Toggle UI (placeholder)
+    XInputSharedState::Chord toggle_ui_chord;
+    toggle_ui_chord.buttons = XINPUT_GAMEPAD_GUIDE | XINPUT_GAMEPAD_START;
+    toggle_ui_chord.name = "Toggle UI";
+    toggle_ui_chord.action = "Toggle ReShade UI";
+    toggle_ui_chord.enabled = true;
+    g_shared_state->chords.push_back(toggle_ui_chord);
+
+    // Guide + A = Vibration Test (placeholder)
+    XInputSharedState::Chord vibration_chord;
+    vibration_chord.buttons = XINPUT_GAMEPAD_GUIDE | XINPUT_GAMEPAD_A;
+    vibration_chord.name = "Vibration Test";
+    vibration_chord.action = "Test controller vibration";
+    vibration_chord.enabled = true;
+    g_shared_state->chords.push_back(vibration_chord);
+}
+
+void XInputWidget::ProcessChordDetection(DWORD user_index, WORD button_state) {
+    if (!g_shared_state) return;
+
+    // Update current button state
+    g_shared_state->current_button_state.store(button_state);
+
+    // Check if any chord is currently pressed
+    bool any_chord_pressed = false;
+
+    // Check each chord
+    for (XInputSharedState::Chord& chord : g_shared_state->chords) {
+        if (!chord.enabled) continue;
+
+        bool was_pressed = chord.is_pressed.load();
+        bool is_pressed = (button_state & chord.buttons) == chord.buttons;
+
+        if (is_pressed && !was_pressed) {
+            // Chord just pressed
+            chord.is_pressed.store(true);
+            chord.last_press_time.store(GetTickCount64());
+            ExecuteChordAction(chord, user_index);
+            LogInfo("XXX Chord '%s' pressed on controller %lu", chord.name.c_str(), user_index);
+            any_chord_pressed = true;
+        } else if (!is_pressed && was_pressed) {
+            // Chord just released
+            chord.is_pressed.store(false);
+            LogInfo("XXX Chord '%s' released on controller %lu", chord.name.c_str(), user_index);
+        } else if (is_pressed) {
+            // Chord is still pressed
+            any_chord_pressed = true;
+        }
+    }
+
+    // Update input suppression state
+    g_shared_state->suppress_input.store(any_chord_pressed);
+}
+
+void XInputWidget::ExecuteChordAction(const XInputSharedState::Chord& chord, DWORD user_index) {
+    if (chord.action == "Take screenshot") {
+        // Take screenshot using ReShade API
+        LogInfo("XXX Taking screenshot via chord detection");
+
+        // Get the ReShade runtime instance
+        reshade::api::effect_runtime* runtime = g_reshade_runtime.load();
+
+        if (runtime != nullptr) {
+            // Set the screenshot trigger flag - this will be handled in the present event
+            g_shared_state->trigger_screenshot.store(true);
+            LogInfo("XXX Screenshot triggered via XInput chord detection");
+        } else {
+            LogError("XXX ReShade runtime not available for screenshot");
+        }
+    } else if (chord.action == "Toggle ReShade UI") {
+        // Toggle ReShade UI
+        LogInfo("XXX Toggling ReShade UI via chord detection");
+        // TODO: Implement UI toggle functionality
+    } else if (chord.action == "Test controller vibration") {
+        // Test vibration on the controller that triggered the chord
+        XINPUT_VIBRATION vibration = {};
+        vibration.wLeftMotorSpeed = 32767;  // Medium intensity
+        vibration.wRightMotorSpeed = 32767;
+
+        DWORD result = XInputSetState(user_index, &vibration);
+        if (result == ERROR_SUCCESS) {
+            LogInfo("XXX Vibration test triggered via chord on controller %lu", user_index);
+        } else {
+            LogError("XXX Failed to trigger vibration via chord on controller %lu, error: %lu", user_index, result);
+        }
+    }
+}
+
+std::string XInputWidget::GetChordButtonNames(WORD buttons) const {
+    std::vector<std::string> names;
+
+    if (buttons & XINPUT_GAMEPAD_A) names.push_back("A");
+    if (buttons & XINPUT_GAMEPAD_B) names.push_back("B");
+    if (buttons & XINPUT_GAMEPAD_X) names.push_back("X");
+    if (buttons & XINPUT_GAMEPAD_Y) names.push_back("Y");
+    if (buttons & XINPUT_GAMEPAD_LEFT_SHOULDER) names.push_back("LB");
+    if (buttons & XINPUT_GAMEPAD_RIGHT_SHOULDER) names.push_back("RB");
+    if (buttons & XINPUT_GAMEPAD_BACK) names.push_back("Back");
+    if (buttons & XINPUT_GAMEPAD_START) names.push_back("Start");
+    if (buttons & XINPUT_GAMEPAD_GUIDE) names.push_back("Guide");
+    if (buttons & XINPUT_GAMEPAD_LEFT_THUMB) names.push_back("LS");
+    if (buttons & XINPUT_GAMEPAD_RIGHT_THUMB) names.push_back("RS");
+    if (buttons & XINPUT_GAMEPAD_DPAD_UP) names.push_back("D-Up");
+    if (buttons & XINPUT_GAMEPAD_DPAD_DOWN) names.push_back("D-Down");
+    if (buttons & XINPUT_GAMEPAD_DPAD_LEFT) names.push_back("D-Left");
+    if (buttons & XINPUT_GAMEPAD_DPAD_RIGHT) names.push_back("D-Right");
+
+    std::string result;
+    for (size_t i = 0; i < names.size(); ++i) {
+        if (i > 0) result += " + ";
+        result += names[i];
+    }
+
+    return result;
+}
+
+// Global function for hooks to use
+void ProcessChordDetection(DWORD user_index, WORD button_state) {
+    auto shared_state = XInputWidget::GetSharedState();
+    if (!shared_state) return;
+
+    // Check if any chord is currently pressed
+    bool any_chord_pressed = false;
+
+    // Check each chord
+    for (XInputSharedState::Chord& chord : shared_state->chords) {
+        if (!chord.enabled) continue;
+
+        bool was_pressed = chord.is_pressed.load();
+        bool is_pressed = (button_state & chord.buttons) == chord.buttons;
+
+        if (is_pressed && !was_pressed) {
+            // Chord just pressed
+            chord.is_pressed.store(true);
+            chord.last_press_time.store(GetTickCount64());
+
+            // Execute action
+            if (chord.action == "Take screenshot") {
+                LogInfo("XXX Taking screenshot via chord detection");
+
+                // Get the ReShade runtime instance
+                reshade::api::effect_runtime* runtime = g_reshade_runtime.load();
+
+                if (runtime != nullptr) {
+                    // Set the screenshot trigger flag - this will be handled in the present event
+                    shared_state->trigger_screenshot.store(true);
+                    LogInfo("XXX Screenshot triggered via XInput chord detection");
+                } else {
+                    LogError("XXX ReShade runtime not available for screenshot");
+                }
+            } else if (chord.action == "Toggle ReShade UI") {
+                LogInfo("XXX Toggling ReShade UI via chord detection");
+                // TODO: Implement UI toggle functionality
+            } else if (chord.action == "Test controller vibration") {
+                XINPUT_VIBRATION vibration = {};
+                vibration.wLeftMotorSpeed = 32767;
+                vibration.wRightMotorSpeed = 32767;
+
+                DWORD result = XInputSetState(user_index, &vibration);
+                if (result == ERROR_SUCCESS) {
+                    LogInfo("XXX Vibration test triggered via chord on controller %lu", user_index);
+                } else {
+                    LogError("XXX Failed to trigger vibration via chord on controller %lu, error: %lu", user_index, result);
+                }
+            }
+
+            LogInfo("XXX Chord '%s' pressed on controller %lu", chord.name.c_str(), user_index);
+            any_chord_pressed = true;
+        } else if (!is_pressed && was_pressed) {
+            // Chord just released
+            chord.is_pressed.store(false);
+            LogInfo("XXX Chord '%s' released on controller %lu", chord.name.c_str(), user_index);
+        } else if (is_pressed) {
+            // Chord is still pressed
+            any_chord_pressed = true;
+        }
+    }
+
+    // Update input suppression state
+    shared_state->suppress_input.store(any_chord_pressed);
+}
+
+// Simple BMP file save function
+bool SaveBMP(const char* filename, const uint8_t* pixels, uint32_t width, uint32_t height) {
+    // Input validation
+    if (!filename || !pixels || width == 0 || height == 0) {
+        return false;
+    }
+
+    // Check for reasonable bounds
+    if (width > 8192 || height > 8192) {
+        return false;
+    }
+
+    std::ofstream file(filename, std::ios::binary);
+    if (!file.is_open()) {
+        return false;
+    }
+
+    // BMP header
+    struct BMPHeader {
+        uint16_t signature = 0x4D42; // "BM"
+        uint32_t fileSize;
+        uint16_t reserved1 = 0;
+        uint16_t reserved2 = 0;
+        uint32_t dataOffset = 54;
+    } header;
+
+    struct BMPInfoHeader {
+        uint32_t size = 40;
+        int32_t width;
+        int32_t height;
+        uint16_t planes = 1;
+        uint16_t bitsPerPixel = 32;
+        uint32_t compression = 0;
+        uint32_t imageSize;
+        int32_t xPixelsPerMeter = 0;
+        int32_t yPixelsPerMeter = 0;
+        uint32_t colorsUsed = 0;
+        uint32_t colorsImportant = 0;
+    } infoHeader;
+
+    infoHeader.width = static_cast<int32_t>(width);
+    infoHeader.height = static_cast<int32_t>(height);
+    infoHeader.imageSize = width * height * 4;
+    header.fileSize = sizeof(BMPHeader) + sizeof(BMPInfoHeader) + infoHeader.imageSize;
+
+    // Write headers
+    file.write(reinterpret_cast<const char*>(&header), sizeof(header));
+    file.write(reinterpret_cast<const char*>(&infoHeader), sizeof(infoHeader));
+
+    if (!file.good()) {
+        return false;
+    }
+
+    // Write pixel data (BMP is bottom-up, so we need to flip vertically)
+    for (int32_t y = height - 1; y >= 0; y--) {
+        const uint8_t* row = pixels + (y * width * 4);
+        file.write(reinterpret_cast<const char*>(row), width * 4);
+
+        if (!file.good()) {
+            return false;
+        }
+    }
+
+    return file.good();
+}
+
+void CheckAndHandleScreenshot() {
+    try {
+        auto shared_state = XInputWidget::GetSharedState();
+        if (!shared_state) return;
+
+        // Check if screenshot should be triggered
+        if (shared_state->trigger_screenshot.load()) {
+            // Reset the flag
+            shared_state->trigger_screenshot.store(false);
+
+            // Get the ReShade runtime instance
+            reshade::api::effect_runtime* runtime = g_reshade_runtime.load();
+
+        if (runtime != nullptr) {
+            // Use PrintScreen key simulation to trigger ReShade's built-in screenshot system
+            // This is the safest and most reliable method
+            try {
+                LogInfo("XXX Triggering ReShade screenshot via PrintScreen key simulation");
+
+                // Simulate PrintScreen key press to trigger ReShade's screenshot
+                INPUT input = {};
+                input.type = INPUT_KEYBOARD;
+                input.ki.wVk = VK_SNAPSHOT; // PrintScreen key
+                input.ki.dwFlags = 0; // Key down
+
+                // Send key down
+                UINT result = SendInput(1, &input, sizeof(INPUT));
+                if (result == 0) {
+                    LogError("XXX SendInput failed for key down, error: %lu", GetLastError());
+                }
+
+                // Small delay to ensure the key press is registered
+                Sleep(50);
+
+                // Send key up
+                input.ki.dwFlags = KEYEVENTF_KEYUP;
+                result = SendInput(1, &input, sizeof(INPUT));
+                if (result == 0) {
+                    LogError("XXX SendInput failed for key up, error: %lu", GetLastError());
+                }
+
+                LogInfo("XXX PrintScreen key simulation completed successfully");
+
+            } catch (const std::exception& e) {
+                LogError("XXX Exception in PrintScreen simulation: %s", e.what());
+            } catch (...) {
+                LogError("XXX Unknown exception in PrintScreen simulation");
+            }
+        } else {
+            LogError("XXX ReShade runtime not available for screenshot");
+        }
+        }
+    } catch (const std::exception& e) {
+        LogError("XXX Exception in CheckAndHandleScreenshot: %s", e.what());
+    } catch (...) {
+        LogError("XXX Unknown exception in CheckAndHandleScreenshot");
     }
 }
 

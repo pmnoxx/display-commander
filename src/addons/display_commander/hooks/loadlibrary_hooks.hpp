@@ -1,6 +1,9 @@
 #pragma once
 
 #include <windows.h>
+#include <psapi.h>
+#include <vector>
+#include <mutex>
 
 namespace renodx::hooks {
 
@@ -9,6 +12,22 @@ using LoadLibraryA_pfn = HMODULE(WINAPI*)(LPCSTR);
 using LoadLibraryW_pfn = HMODULE(WINAPI*)(LPCWSTR);
 using LoadLibraryExA_pfn = HMODULE(WINAPI*)(LPCSTR, HANDLE, DWORD);
 using LoadLibraryExW_pfn = HMODULE(WINAPI*)(LPCWSTR, HANDLE, DWORD);
+
+// Module information structure
+struct ModuleInfo {
+    HMODULE hModule;
+    std::wstring moduleName;
+    std::wstring fullPath;
+    LPVOID baseAddress;
+    DWORD sizeOfImage;
+    LPVOID entryPoint;
+    FILETIME loadTime;
+
+    ModuleInfo() : hModule(nullptr), baseAddress(nullptr), sizeOfImage(0), entryPoint(nullptr) {
+        loadTime.dwHighDateTime = 0;
+        loadTime.dwLowDateTime = 0;
+    }
+};
 
 // Original function pointers
 extern LoadLibraryA_pfn LoadLibraryA_Original;
@@ -26,5 +45,11 @@ HMODULE WINAPI LoadLibraryExW_Detour(LPCWSTR lpLibFileName, HANDLE hFile, DWORD 
 bool InstallLoadLibraryHooks();
 void UninstallLoadLibraryHooks();
 bool AreLoadLibraryHooksInstalled();
+
+// Module enumeration and tracking
+bool EnumerateLoadedModules();
+std::vector<ModuleInfo> GetLoadedModules();
+bool IsModuleLoaded(const std::wstring& moduleName);
+void RefreshModuleList();
 
 } // namespace renodx::hooks

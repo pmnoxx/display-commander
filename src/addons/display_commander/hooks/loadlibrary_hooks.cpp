@@ -4,6 +4,8 @@
 #include <chrono>
 #include <iomanip>
 #include <sstream>
+#include <filesystem>
+#include <unordered_set>
 
 namespace renodx::hooks {
 
@@ -15,6 +17,11 @@ LoadLibraryExW_pfn LoadLibraryExW_Original = nullptr;
 
 // Hook state
 static std::atomic<bool> g_loadlibrary_hooks_installed{false};
+
+// Module tracking
+static std::vector<ModuleInfo> g_loaded_modules;
+static std::unordered_set<HMODULE> g_module_handles;
+static std::mutex g_module_mutex;
 
 // Helper function to get current timestamp as string
 std::string GetCurrentTimestamp() {
@@ -44,6 +51,27 @@ std::string WideToNarrow(const std::wstring& wstr) {
     return strTo;
 }
 
+// Helper function to get file time from module
+FILETIME GetModuleFileTime(HMODULE hModule) {
+    FILETIME ft = {0};
+    wchar_t modulePath[MAX_PATH];
+    if (GetModuleFileNameW(hModule, modulePath, MAX_PATH)) {
+        HANDLE hFile = CreateFileW(modulePath, GENERIC_READ, FILE_SHARE_READ,
+                                  nullptr, OPEN_EXISTING, 0, nullptr);
+        if (hFile != INVALID_HANDLE_VALUE) {
+            GetFileTime(hFile, nullptr, nullptr, &ft);
+            CloseHandle(hFile);
+        }
+    }
+    return ft;
+}
+
+// Helper function to extract module name from full path
+std::wstring ExtractModuleName(const std::wstring& fullPath) {
+    std::filesystem::path path(fullPath);
+    return path.filename().wstring();
+}
+
 // Hooked LoadLibraryA function
 HMODULE WINAPI LoadLibraryA_Detour(LPCSTR lpLibFileName) {
     std::string timestamp = GetCurrentTimestamp();
@@ -56,6 +84,36 @@ HMODULE WINAPI LoadLibraryA_Detour(LPCSTR lpLibFileName) {
 
     if (result) {
         LogInfo("[%s] LoadLibraryA success: %s -> HMODULE: 0x%p", timestamp.c_str(), dll_name.c_str(), result);
+
+        // Track the newly loaded module
+        {
+            std::lock_guard<std::mutex> lock(g_module_mutex);
+            if (g_module_handles.find(result) == g_module_handles.end()) {
+                ModuleInfo moduleInfo;
+                moduleInfo.hModule = result;
+                moduleInfo.moduleName = std::wstring(dll_name.begin(), dll_name.end());
+
+                wchar_t modulePath[MAX_PATH];
+                if (GetModuleFileNameW(result, modulePath, MAX_PATH)) {
+                    moduleInfo.fullPath = modulePath;
+                }
+
+                MODULEINFO modInfo;
+                if (GetModuleInformation(GetCurrentProcess(), result, &modInfo, sizeof(modInfo))) {
+                    moduleInfo.baseAddress = modInfo.lpBaseOfDll;
+                    moduleInfo.sizeOfImage = modInfo.SizeOfImage;
+                    moduleInfo.entryPoint = modInfo.EntryPoint;
+                }
+
+                moduleInfo.loadTime = GetModuleFileTime(result);
+
+                g_loaded_modules.push_back(moduleInfo);
+                g_module_handles.insert(result);
+
+                LogInfo("Added new module to tracking: %s (0x%p, %u bytes)",
+                        dll_name.c_str(), moduleInfo.baseAddress, moduleInfo.sizeOfImage);
+            }
+        }
     } else {
         DWORD error = GetLastError();
         LogInfo("[%s] LoadLibraryA failed: %s -> Error: %lu", timestamp.c_str(), dll_name.c_str(), error);
@@ -76,6 +134,36 @@ HMODULE WINAPI LoadLibraryW_Detour(LPCWSTR lpLibFileName) {
 
     if (result) {
         LogInfo("[%s] LoadLibraryW success: %s -> HMODULE: 0x%p", timestamp.c_str(), dll_name.c_str(), result);
+
+        // Track the newly loaded module
+        {
+            std::lock_guard<std::mutex> lock(g_module_mutex);
+            if (g_module_handles.find(result) == g_module_handles.end()) {
+                ModuleInfo moduleInfo;
+                moduleInfo.hModule = result;
+                moduleInfo.moduleName = std::wstring(dll_name.begin(), dll_name.end());
+
+                wchar_t modulePath[MAX_PATH];
+                if (GetModuleFileNameW(result, modulePath, MAX_PATH)) {
+                    moduleInfo.fullPath = modulePath;
+                }
+
+                MODULEINFO modInfo;
+                if (GetModuleInformation(GetCurrentProcess(), result, &modInfo, sizeof(modInfo))) {
+                    moduleInfo.baseAddress = modInfo.lpBaseOfDll;
+                    moduleInfo.sizeOfImage = modInfo.SizeOfImage;
+                    moduleInfo.entryPoint = modInfo.EntryPoint;
+                }
+
+                moduleInfo.loadTime = GetModuleFileTime(result);
+
+                g_loaded_modules.push_back(moduleInfo);
+                g_module_handles.insert(result);
+
+                LogInfo("Added new module to tracking: %s (0x%p, %u bytes)",
+                        dll_name.c_str(), moduleInfo.baseAddress, moduleInfo.sizeOfImage);
+            }
+        }
     } else {
         DWORD error = GetLastError();
         LogInfo("[%s] LoadLibraryW failed: %s -> Error: %lu", timestamp.c_str(), dll_name.c_str(), error);
@@ -134,6 +222,12 @@ bool InstallLoadLibraryHooks() {
     if (g_loadlibrary_hooks_installed.load()) {
         LogInfo("LoadLibrary hooks already installed");
         return true;
+    }
+
+    // First, enumerate all currently loaded modules
+    LogInfo("Enumerating currently loaded modules...");
+    if (!EnumerateLoadedModules()) {
+        LogError("Failed to enumerate loaded modules, but continuing with hook installation");
     }
 
     // Initialize MinHook (only if not already initialized)
@@ -212,6 +306,80 @@ void UninstallLoadLibraryHooks() {
 
 bool AreLoadLibraryHooksInstalled() {
     return g_loadlibrary_hooks_installed.load();
+}
+
+bool EnumerateLoadedModules() {
+    std::lock_guard<std::mutex> lock(g_module_mutex);
+
+    g_loaded_modules.clear();
+    g_module_handles.clear();
+
+    HMODULE hModules[1024];
+    DWORD cbNeeded;
+
+    HANDLE hProcess = GetCurrentProcess();
+    if (!EnumProcessModules(hProcess, hModules, sizeof(hModules), &cbNeeded)) {
+        LogError("Failed to enumerate process modules - Error: %lu", GetLastError());
+        return false;
+    }
+
+    DWORD moduleCount = cbNeeded / sizeof(HMODULE);
+    LogInfo("Found %lu loaded modules", moduleCount);
+
+    for (DWORD i = 0; i < moduleCount; i++) {
+        ModuleInfo moduleInfo;
+        moduleInfo.hModule = hModules[i];
+
+        // Get module file name
+        wchar_t modulePath[MAX_PATH];
+        if (GetModuleFileNameW(hModules[i], modulePath, MAX_PATH)) {
+            moduleInfo.fullPath = modulePath;
+            moduleInfo.moduleName = ExtractModuleName(modulePath);
+        } else {
+            moduleInfo.moduleName = L"Unknown";
+            moduleInfo.fullPath = L"Unknown";
+        }
+
+        // Get module information
+        MODULEINFO modInfo;
+        if (GetModuleInformation(hProcess, hModules[i], &modInfo, sizeof(modInfo))) {
+            moduleInfo.baseAddress = modInfo.lpBaseOfDll;
+            moduleInfo.sizeOfImage = modInfo.SizeOfImage;
+            moduleInfo.entryPoint = modInfo.EntryPoint;
+        }
+
+        // Get file time
+        moduleInfo.loadTime = GetModuleFileTime(hModules[i]);
+
+        g_loaded_modules.push_back(moduleInfo);
+        g_module_handles.insert(hModules[i]);
+
+        LogInfo("Module %lu: %ws (0x%p, %u bytes)",
+                i, moduleInfo.moduleName.c_str(),
+                moduleInfo.baseAddress, moduleInfo.sizeOfImage);
+    }
+
+    return true;
+}
+
+std::vector<ModuleInfo> GetLoadedModules() {
+    std::lock_guard<std::mutex> lock(g_module_mutex);
+    return g_loaded_modules;
+}
+
+bool IsModuleLoaded(const std::wstring& moduleName) {
+    std::lock_guard<std::mutex> lock(g_module_mutex);
+
+    for (const auto& module : g_loaded_modules) {
+        if (_wcsicmp(module.moduleName.c_str(), moduleName.c_str()) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void RefreshModuleList() {
+    EnumerateLoadedModules();
 }
 
 } // namespace renodx::hooks

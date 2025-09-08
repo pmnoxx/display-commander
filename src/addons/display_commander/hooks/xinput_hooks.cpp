@@ -114,7 +114,16 @@ DWORD WINAPI XInputGetState_Detour(DWORD dwUserIndex, XINPUT_STATE* pState) {
     // Apply A/B button swapping if enabled
     if (result == ERROR_SUCCESS) {
         auto shared_state = display_commander::widgets::xinput_widget::XInputWidget::GetSharedState();
-        if (shared_state && shared_state->swap_a_b_buttons.load()) {
+
+        // Process chord detection first to check for input suppression
+        display_commander::widgets::xinput_widget::ProcessChordDetection(dwUserIndex, pState->Gamepad.wButtons);
+
+        // Check if input should be suppressed due to chord being pressed
+        if (shared_state && shared_state->suppress_input.load()) {
+            // Suppress all input by zeroing out the gamepad state
+            ZeroMemory(&pState->Gamepad, sizeof(XINPUT_GAMEPAD));
+            LogInfo("XXX Input suppressed due to chord being pressed (Controller %lu)", dwUserIndex);
+        } else if (shared_state && shared_state->swap_a_b_buttons.load()) {
             // Swap A and B buttons
             WORD original_buttons = pState->Gamepad.wButtons;
             WORD swapped_buttons = original_buttons;
@@ -165,7 +174,16 @@ DWORD WINAPI XInputGetStateEx_Detour(DWORD dwUserIndex, XINPUT_STATE* pState) {
     // Apply A/B button swapping if enabled
     if (result == ERROR_SUCCESS) {
         auto shared_state = display_commander::widgets::xinput_widget::XInputWidget::GetSharedState();
-        if (shared_state && shared_state->swap_a_b_buttons.load()) {
+
+        // Process chord detection first to check for input suppression
+        display_commander::widgets::xinput_widget::ProcessChordDetection(dwUserIndex, pState->Gamepad.wButtons);
+
+        // Check if input should be suppressed due to chord being pressed
+        if (shared_state && shared_state->suppress_input.load()) {
+            // Suppress all input by zeroing out the gamepad state
+            ZeroMemory(&pState->Gamepad, sizeof(XINPUT_GAMEPAD));
+            LogInfo("XXX Input suppressed due to chord being pressed (Controller %lu)", dwUserIndex);
+        } else if (shared_state && shared_state->swap_a_b_buttons.load()) {
             // Swap A and B buttons
             WORD original_buttons = pState->Gamepad.wButtons;
             WORD swapped_buttons = original_buttons;

@@ -60,7 +60,8 @@ std::atomic<bool> s_prevent_tearing{false};
 std::atomic<int> s_target_monitor_index{0};
 std::atomic<int> s_dxgi_composition_state{0};
 
-std::atomic<int> s_spoof_window_focus{0}; // 0 = Disabled, 1 = Spoof as Focused, 2 = Spoof as Unfocused
+// Continue rendering in background (like Special-K's background render feature)
+std::atomic<bool> s_continue_rendering{false}; // Disabled by default
 
 // Input blocking in background (0.0f off, 1.0f on)
 std::atomic<bool> s_block_input_in_background{true};

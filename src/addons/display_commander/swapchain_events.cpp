@@ -5,10 +5,10 @@
 #include "utils.hpp"
 #include "utils/timing.hpp"
 #include <sstream>
-#include <mutex>
 #include <minwindef.h>
 #include <atomic>
 #include "utils/timing.hpp"
+#include "hooks/api_hooks.hpp"
 
 // Use renodx2 utilities for swapchain color space changes
 #include <utils/swapchain.hpp>
@@ -349,6 +349,8 @@ void OnInitSwapchain(reshade::api::swapchain* swapchain, bool resize) {
   HWND hwnd = static_cast<HWND>(swapchain->get_hwnd());
   if (hwnd != nullptr) {
     g_last_swapchain_hwnd.store(hwnd);
+    // Set the game window for API hooks
+    renodx::hooks::SetGameWindow(hwnd);
   }
 }
 
@@ -688,7 +690,8 @@ void OnPresentFlags(uint32_t* present_flags, reshade::api::swapchain* swapchain)
     HandleFpsLimiter();
   }
 
-  if (s_no_present_in_background.load() && g_app_in_background.load(std::memory_order_acquire)) {
+  // Don't block presents if continue rendering is enabled
+  if (s_no_present_in_background.load() && g_app_in_background.load(std::memory_order_acquire) && !s_continue_rendering.load()) {
     *present_flags = DXGI_PRESENT_DO_NOT_SEQUENCE;
   }
   if (s_reflex_enable.load()) {

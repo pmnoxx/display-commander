@@ -20,7 +20,7 @@ public:
     // Developer Settings
     ui::new_ui::BoolSettingRef prevent_fullscreen;
     ui::new_ui::IntSettingRef spoof_fullscreen_state;
-    ui::new_ui::IntSettingRef spoof_window_focus;
+    ui::new_ui::BoolSettingRef continue_rendering;
     ui::new_ui::BoolSettingRef continuous_monitoring;
     ui::new_ui::BoolSettingRef prevent_always_on_top;
 

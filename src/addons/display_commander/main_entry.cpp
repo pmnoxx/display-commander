@@ -16,6 +16,7 @@
 
 // Include window style hooks
 #include "hooks/window_style_hooks.hpp"
+#include "hooks/api_hooks.hpp"
 
 #include "dxgi/custom_fps_limiter_manager.hpp"
 #include "latent_sync/latent_sync_manager.hpp"
@@ -186,7 +187,12 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
         initialized = true;
 
         // Install window style hooks
-        renodx::hooks::InstallWindowStyleHooks();
+        LogInfo("DLL_THREAD_ATTACH: Installing window style hooks...");
+        renodx::hooks::InstallWindowStyleHooks(h_module);
+
+        // Install API hooks for continue rendering
+        LogInfo("DLL_THREAD_ATTACH: Installing API hooks...");
+        renodx::hooks::InstallApiHooks();
 
 
         display_cache::g_displayCache.Initialize();
@@ -227,6 +233,9 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
 
       // Clean up window style hooks
       renodx::hooks::UninstallWindowStyleHooks();
+
+      // Clean up API hooks
+      renodx::hooks::UninstallApiHooks();
 
       // Clean up continuous monitoring if it's running
       StopContinuousMonitoring();

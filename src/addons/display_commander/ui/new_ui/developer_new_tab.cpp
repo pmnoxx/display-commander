@@ -114,40 +114,14 @@ void DrawDeveloperSettings() {
         }
     }
 
-    // Spoof Window Focus
-    const char* spoof_focus_labels[] = {"Disabled", "Spoof as Focused", "Spoof as Unfocused"};
-    int spoof_focus_state = static_cast<int>(g_developerTabSettings.spoof_window_focus.GetValue());
-    if (ImGui::Combo("Spoof Window Focus", &spoof_focus_state, spoof_focus_labels, 3)) {
-        g_developerTabSettings.spoof_window_focus.SetValue(spoof_focus_state);
-        s_spoof_window_focus.store(spoof_focus_state);
 
-        // Log the change
-        std::ostringstream oss;
-        oss << "Window focus spoofing changed to ";
-        if (spoof_focus_state < 0.5f) {
-            oss << "Disabled";
-        } else if (spoof_focus_state < 1.5f) {
-            oss << "Spoof as Focused";
-        } else {
-            oss << "Spoof as Unfocused";
-        }
-        LogInfo(oss.str().c_str());
+    // Continue Rendering (like Special-K's background render feature)
+    if (CheckboxSetting(g_developerTabSettings.continue_rendering, "Continue Rendering in Background")) {
+        s_continue_rendering.store(g_developerTabSettings.continue_rendering.GetValue());
+        LogInfo("Continue rendering in background %s", g_developerTabSettings.continue_rendering.GetValue() ? "enabled" : "disabled");
     }
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Spoof window focus state for applications that query focus status. Useful for games that change behavior based on focus state.");
-    }
-
-    // Reset button for Window Focus (only show if not at default)
-    if (s_spoof_window_focus.load() != false) {
-        ImGui::SameLine();
-        if (ImGui::Button("Reset##DevFocus")) {
-            g_developerTabSettings.spoof_window_focus.SetValue(0);
-            s_spoof_window_focus.store(0);
-            LogInfo("Window focus spoofing reset to disabled");
-        }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Reset to default (Disabled)");
-        }
+        ImGui::SetTooltip("Prevent games from pausing or reducing performance when alt-tabbed. Blocks window focus messages to keep games running in background like Special-K's background render feature.");
     }
 
     ImGui::Spacing();

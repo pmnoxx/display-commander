@@ -289,7 +289,7 @@ extern std::thread g_monitoring_thread;
 
 // Import the global variable
 extern std::atomic<int> s_spoof_fullscreen_state;
-extern std::atomic<int> s_spoof_window_focus;
+extern std::atomic<bool> s_continue_rendering;
 
 // Swapchain event counters - reset on each swapchain creation
 extern std::atomic<uint32_t> g_swapchain_event_counters[40]; // Array for all On* events

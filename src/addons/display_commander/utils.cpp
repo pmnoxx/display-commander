@@ -157,26 +157,6 @@ int GetFullscreenSpoofingMode() {
     return s_spoof_fullscreen_state.load();
 }
 
-// Spoof window focus state detection based on user settings
-bool GetSpoofedWindowFocus(HWND hwnd) {
-    // If spoofing is disabled, return actual state
-    if (s_spoof_window_focus.load() == 0) {
-        return (GetForegroundWindow() == hwnd);
-    }
-
-    // Spoof as focused (value 1)
-    if (s_spoof_window_focus.load() == 1) {
-        return true;
-    }
-
-    // Spoof as unfocused (value 2)
-    return false;
-}
-
-// Get the current focus spoofing setting value (0=disabled, 1=spoof as focused, 2=spoof as unfocused)
-int GetWindowFocusSpoofingMode() {
-    return s_spoof_window_focus.load();
-}
 
 bool IsBorderlessStyleBits(LONG_PTR style) {
     // A window is borderless if it lacks the main window decoration styles

@@ -5,8 +5,8 @@
 #include "developer_new_tab.hpp"
 #include "main_new_tab.hpp"
 #include "experimental_tab.hpp"
+#include "../../widgets/xinput_widget/xinput_widget.hpp"
 #include "../../addon.hpp"
-#include "../../utils/timing.hpp"
 
 namespace ui::new_ui {
 
@@ -71,6 +71,9 @@ void InitializeNewUI() {
     // Ensure settings for main and developer tabs are loaded at UI init time
     ui::new_ui::InitMainNewTab();
 
+    // Initialize XInput widget
+    display_commander::widgets::xinput_widget::InitializeXInputWidget();
+
     g_tab_manager.AddTab("Main", "main_new", []() {
         try {
             ui::new_ui::DrawMainNewTab();
@@ -131,6 +134,16 @@ void InitializeNewUI() {
             LogError("Error drawing important info tab: %s", e.what());
         } catch (...) {
             LogError("Unknown error drawing important info tab");
+        }
+    });
+
+    g_tab_manager.AddTab("XInput", "xinput", []() {
+        try {
+            display_commander::widgets::xinput_widget::DrawXInputWidget();
+        } catch (const std::exception& e) {
+            LogError("Error drawing XInput widget: %s", e.what());
+        } catch (...) {
+            LogError("Unknown error drawing XInput widget");
         }
     });
 

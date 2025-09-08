@@ -1,8 +1,14 @@
 #include "xinput_hooks.hpp"
 #include "../utils.hpp"
+#include "../widgets/xinput_widget/xinput_widget.hpp"
 #include <MinHook.h>
 #include <vector>
 #include <string>
+
+// Guide button constant (not defined in standard XInput headers)
+#ifndef XINPUT_GAMEPAD_GUIDE
+#define XINPUT_GAMEPAD_GUIDE 0x0400
+#endif
 
 namespace renodx::hooks {
 
@@ -40,6 +46,17 @@ void LogXInputChanges(DWORD dwUserIndex, const XINPUT_STATE* pState) {
         if (prev.Gamepad.wButtons != curr.Gamepad.wButtons) {
             LogError("XXX XInput Controller %lu: Button state changed from 0x%04X to 0x%04X",
                      dwUserIndex, prev.Gamepad.wButtons, curr.Gamepad.wButtons);
+
+        // Check for Guide button specifically
+        bool prev_guide = (prev.Gamepad.wButtons & XINPUT_GAMEPAD_GUIDE) != 0;
+        bool curr_guide = (curr.Gamepad.wButtons & XINPUT_GAMEPAD_GUIDE) != 0;
+        if (prev_guide != curr_guide) {
+            LogInfo("XXX XInput Controller %lu: Guide button %s", dwUserIndex, curr_guide ? "PRESSED" : "RELEASED");
+        }
+
+        // Debug: Always log Guide button state for testing
+        LogInfo("XXX XInput Controller %lu: Guide button state = %s (0x%04X)",
+                dwUserIndex, curr_guide ? "PRESSED" : "NOT PRESSED", curr.Gamepad.wButtons);
         }
 
         if (prev.Gamepad.bLeftTrigger != curr.Gamepad.bLeftTrigger) {
@@ -85,56 +102,102 @@ void LogXInputChanges(DWORD dwUserIndex, const XINPUT_STATE* pState) {
 
 // Hooked XInputGetState function
 DWORD WINAPI XInputGetState_Detour(DWORD dwUserIndex, XINPUT_STATE* pState) {
-    LogInfo("XXX XInputGetState_Detour called");
     if (pState == nullptr) {
         return ERROR_INVALID_PARAMETER;
     }
 
-    // Call original function
-    DWORD result = XInputGetState_Original ?
-        XInputGetState_Original(dwUserIndex, pState) :
-        XInputGetState(dwUserIndex, pState);
+    // Call original function - prefer XInputGetStateEx_Original for Guide button support
+    DWORD result = XInputGetStateEx_Original ?
+        XInputGetStateEx_Original(dwUserIndex, pState) :
+        (XInputGetState_Original ? XInputGetState_Original(dwUserIndex, pState) : XInputGetState(dwUserIndex, pState));
 
-    // Log changes if successful
+    // Apply A/B button swapping if enabled
     if (result == ERROR_SUCCESS) {
+        auto shared_state = display_commander::widgets::xinput_widget::XInputWidget::GetSharedState();
+        if (shared_state && shared_state->swap_a_b_buttons.load()) {
+            // Swap A and B buttons
+            WORD original_buttons = pState->Gamepad.wButtons;
+            WORD swapped_buttons = original_buttons;
+
+            // If A is pressed, set B instead
+            if (original_buttons & XINPUT_GAMEPAD_A) {
+                swapped_buttons |= XINPUT_GAMEPAD_B;
+                swapped_buttons &= ~XINPUT_GAMEPAD_A;
+                LogInfo("XXX A/B Swap: A pressed -> B set (Controller %lu)", dwUserIndex);
+            }
+            // If B is pressed, set A instead
+            if (original_buttons & XINPUT_GAMEPAD_B) {
+                swapped_buttons |= XINPUT_GAMEPAD_A;
+                swapped_buttons &= ~XINPUT_GAMEPAD_B;
+                LogInfo("XXX A/B Swap: B pressed -> A set (Controller %lu)", dwUserIndex);
+            }
+
+            pState->Gamepad.wButtons = swapped_buttons;
+        }
+
+        display_commander::widgets::xinput_widget::UpdateXInputState(dwUserIndex, pState);
         LogXInputChanges(dwUserIndex, pState);
     } else {
-        // Log when controller is not connected or other errors
+        // Mark controller as disconnected in shared state
+        if (dwUserIndex < XUSER_MAX_COUNT) {
+            auto shared_state = display_commander::widgets::xinput_widget::XInputWidget::GetSharedState();
+            if (shared_state) {
+                shared_state->controller_connected[dwUserIndex] = false;
+            }
+        }
         LogError("XXX XInput Controller %lu: GetState failed with error %lu", dwUserIndex, result);
     }
-    // todo similate button presses A
-    static int call_id = 0;
-  //  pState->Gamepad.wButtons = (call_id++) % 3 == 0 ? XINPUT_GAMEPAD_B : 0;
- //   pState->Gamepad.sThumbLX = -30000;
-
 
     return result;
 }
 
 // Hooked XInputGetStateEx function
 DWORD WINAPI XInputGetStateEx_Detour(DWORD dwUserIndex, XINPUT_STATE* pState) {
-    LogInfo("XXX XInputGetStateEx_Detour called");
     if (pState == nullptr) {
         return ERROR_INVALID_PARAMETER;
     }
 
-    // Call original function
+    // Call original function - always use XInputGetStateEx_Original if available
     DWORD result = XInputGetStateEx_Original ?
         XInputGetStateEx_Original(dwUserIndex, pState) :
         XInputGetState(dwUserIndex, pState); // Fallback to regular XInputGetState
 
-    // Log changes if successful
+    // Apply A/B button swapping if enabled
     if (result == ERROR_SUCCESS) {
+        auto shared_state = display_commander::widgets::xinput_widget::XInputWidget::GetSharedState();
+        if (shared_state && shared_state->swap_a_b_buttons.load()) {
+            // Swap A and B buttons
+            WORD original_buttons = pState->Gamepad.wButtons;
+            WORD swapped_buttons = original_buttons;
+
+            // If A is pressed, set B instead
+            if (original_buttons & XINPUT_GAMEPAD_A) {
+                swapped_buttons |= XINPUT_GAMEPAD_B;
+                swapped_buttons &= ~XINPUT_GAMEPAD_A;
+                LogInfo("XXX A/B Swap: A pressed -> B set (Controller %lu)", dwUserIndex);
+            }
+            // If B is pressed, set A instead
+            if (original_buttons & XINPUT_GAMEPAD_B) {
+                swapped_buttons |= XINPUT_GAMEPAD_A;
+                swapped_buttons &= ~XINPUT_GAMEPAD_B;
+                LogInfo("XXX A/B Swap: B pressed -> A set (Controller %lu)", dwUserIndex);
+            }
+
+            pState->Gamepad.wButtons = swapped_buttons;
+        }
+
+        display_commander::widgets::xinput_widget::UpdateXInputState(dwUserIndex, pState);
         LogXInputChanges(dwUserIndex, pState);
     } else {
-        // Log when controller is not connected or other errors
+        // Mark controller as disconnected in shared state
+        if (dwUserIndex < XUSER_MAX_COUNT) {
+            auto shared_state = display_commander::widgets::xinput_widget::XInputWidget::GetSharedState();
+            if (shared_state) {
+                shared_state->controller_connected[dwUserIndex] = false;
+            }
+        }
         LogError("XXX XInput Controller %lu: GetStateEx failed with error %lu", dwUserIndex, result);
     }
-
-    // todo similate button presses A
-    static int call_id = 0;
- //   pState->Gamepad.wButtons = (call_id++) % 3 == 0 ? XINPUT_GAMEPAD_B : 0;
- //   pState->Gamepad.sThumbLX = -30000;
 
     return result;
 }

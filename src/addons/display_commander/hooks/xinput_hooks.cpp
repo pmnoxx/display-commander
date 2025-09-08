@@ -1,6 +1,7 @@
 #include "xinput_hooks.hpp"
 #include "../utils.hpp"
 #include "../widgets/xinput_widget/xinput_widget.hpp"
+#include "../input_remapping/input_remapping.hpp"
 #include <MinHook.h>
 #include <vector>
 #include <string>
@@ -144,6 +145,9 @@ DWORD WINAPI XInputGetState_Detour(DWORD dwUserIndex, XINPUT_STATE* pState) {
             pState->Gamepad.wButtons = swapped_buttons;
         }
 
+        // Process input remapping before updating state
+        display_commander::input_remapping::process_gamepad_input_for_remapping(dwUserIndex, pState);
+
         display_commander::widgets::xinput_widget::UpdateXInputState(dwUserIndex, pState);
         LogXInputChanges(dwUserIndex, pState);
     } else {
@@ -203,6 +207,9 @@ DWORD WINAPI XInputGetStateEx_Detour(DWORD dwUserIndex, XINPUT_STATE* pState) {
 
             pState->Gamepad.wButtons = swapped_buttons;
         }
+
+        // Process input remapping before updating state
+        display_commander::input_remapping::process_gamepad_input_for_remapping(dwUserIndex, pState);
 
         display_commander::widgets::xinput_widget::UpdateXInputState(dwUserIndex, pState);
         LogXInputChanges(dwUserIndex, pState);

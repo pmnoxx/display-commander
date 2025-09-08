@@ -52,17 +52,13 @@ void InitMainNewTab() {
         }
         s_aspect_index = g_main_new_tab_settings.aspect_index.GetValue();
         s_target_monitor_index.store(g_main_new_tab_settings.target_monitor_index.GetValue());
-        s_background_feature_enabled.store(g_main_new_tab_settings.background_feature.GetValue());
         s_move_to_zero_if_out = g_main_new_tab_settings.alignment.GetValue();
         // FPS limits are now automatically synced via FloatSettingRef
-        s_audio_volume_percent.store(g_main_new_tab_settings.audio_volume_percent.GetValue());
         s_audio_mute.store(g_main_new_tab_settings.audio_mute.GetValue());
         s_mute_in_background.store(g_main_new_tab_settings.mute_in_background.GetValue());
         s_mute_in_background_if_other_audio.store(g_main_new_tab_settings.mute_in_background_if_other_audio.GetValue());
         s_no_present_in_background.store(g_main_new_tab_settings.no_present_in_background.GetValue());
         // VSync & Tearing - all automatically synced via BoolSettingRef
-        s_block_input_in_background.store(g_main_new_tab_settings.block_input_in_background.GetValue());
-        s_block_input_without_reshade.store(g_main_new_tab_settings.block_input_without_reshade.GetValue());
 
         // Update input blocking system with loaded settings
         display_commander::input_blocking::update_input_blocking_from_settings();
@@ -73,10 +69,7 @@ void InitMainNewTab() {
         s_fps_limiter_mode.store(static_cast<FpsLimiterMode>(g_main_new_tab_settings.fps_limiter_mode.GetValue()));
         // FPS limiter injection timing
         s_fps_limiter_injection.store(g_main_new_tab_settings.fps_limiter_injection.GetValue());
-        // Scanline offset
-        s_scanline_offset.store(g_main_new_tab_settings.scanline_offset.GetValue());
-        // VBlank Sync Divisor
-        s_vblank_sync_divisor.store(g_main_new_tab_settings.vblank_sync_divisor.GetValue());
+        // Scanline offset and VBlank Sync Divisor are now automatically synced via IntSettingRef
 
         // Initialize resolution widget
         display_commander::widgets::resolution_widget::InitializeResolutionWidget();
@@ -121,7 +114,6 @@ void DrawMainNewTab() {
             g_main_new_tab_settings.block_input_in_background.GetValue();
         if (ImGui::Checkbox("Block Input in Background", &block_any_in_background)) {
             g_main_new_tab_settings.block_input_in_background.SetValue(block_any_in_background);
-            s_block_input_in_background.store(block_any_in_background);
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Blocks mouse, keyboard, and cursor warping while the game window is not focused.");
@@ -132,7 +124,6 @@ void DrawMainNewTab() {
             g_main_new_tab_settings.block_input_without_reshade.GetValue();
         if (ImGui::Checkbox("Block background input without Reshade (Experimental, needed for gamepad remapping future feature)", &block_without_reshade)) {
             g_main_new_tab_settings.block_input_without_reshade.SetValue(block_without_reshade);
-            s_block_input_without_reshade.store(block_without_reshade);
 
             // Update the input blocking system
             display_commander::input_blocking::update_input_blocking_from_settings();
@@ -371,7 +362,6 @@ void DrawDisplaySettings() {
     // Background Black Curtain checkbox (only shown in Borderless Windowed modes)
     if (s_window_mode < 1.5f) {
         if (CheckboxSetting(g_main_new_tab_settings.background_feature, "Background Black Curtain")) {
-            s_background_feature_enabled.store(g_main_new_tab_settings.background_feature.GetValue());
             LogInfo("Background black curtain setting changed");
         }
         if (ImGui::IsItemHovered()) {

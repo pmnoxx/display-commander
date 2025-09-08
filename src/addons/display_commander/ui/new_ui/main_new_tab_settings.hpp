@@ -23,13 +23,13 @@ public:
     ComboSetting window_height;
     ComboSetting aspect_index;
     ComboSetting target_monitor_index;
-    BoolSetting background_feature;
+    BoolSettingRef background_feature;
     ComboSetting alignment;
 
     // FPS Settings
     ComboSetting fps_limiter_mode;
-    IntSetting scanline_offset;
-    IntSetting vblank_sync_divisor;
+    IntSettingRef scanline_offset;
+    IntSettingRef vblank_sync_divisor;
     IntSettingRef fps_limiter_injection;
     FloatSettingRef fps_limit;
     FloatSettingRef fps_limit_background;
@@ -42,15 +42,15 @@ public:
 
 
     // Audio Settings
-    FloatSetting audio_volume_percent;
+    FloatSettingRef audio_volume_percent;
     BoolSettingRef audio_mute;
     BoolSettingRef mute_in_background;
     BoolSettingRef mute_in_background_if_other_audio;
     BoolSetting audio_volume_auto_apply;
 
     // Input Blocking (Background) Settings
-    BoolSetting block_input_in_background;
-    BoolSetting block_input_without_reshade;
+    BoolSettingRef block_input_in_background;
+    BoolSettingRef block_input_without_reshade;
 
     // Render Blocking (Background) Settings
     BoolSettingRef no_render_in_background;

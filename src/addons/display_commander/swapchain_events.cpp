@@ -410,6 +410,29 @@ void OnPresentUpdateAfter(reshade::api::command_queue* /*queue*/, reshade::api::
   TimerPresentPacingDelay();
   HandleOnPresentEnd();
 
+  // Apply input blocking based on background/foreground; avoid OS calls and redundant writes
+  {
+    reshade::api::effect_runtime* runtime = g_reshade_runtime.load();
+    if (runtime != nullptr) {
+      const bool is_background = g_app_in_background.load(std::memory_order_acquire);
+      const bool wants_block_input = s_block_input_in_background.load() && is_background;
+      // Call every frame as long as any blocking is desired
+      if (is_background && wants_block_input) {
+        runtime->block_input_next_frame();
+      }
+      LogInfo("Block input in background: %s wants to block: %s", is_background ? "true" : "false", wants_block_input ? "true" : "false");
+    } else {
+      // Log error when g_reshade_runtime is null and input blocking is desired
+      const bool is_background = g_app_in_background.load(std::memory_order_acquire);
+      const bool wants_block_input = s_block_input_in_background.load() && is_background;
+      if (wants_block_input) {
+        LogError("Block input in background failed: g_reshade_runtime is null (background=%s, setting=%s)",
+                 is_background ? "true" : "false",
+                 s_block_input_in_background.load() ? "true" : "false");
+      }
+    }
+  }
+
   // DXGI composition state computation and periodic device/colorspace refresh
   // (moved from continuous monitoring thread to avoid accessing g_last_swapchain_ptr from background thread)
   if (swapchain != nullptr) {
@@ -472,6 +495,8 @@ void flush_command_queue() {
   if (ShouldBackgroundSuppressOperation()) return;
   if (g_reshade_runtime.load() != nullptr) {
     g_reshade_runtime.load()->get_command_queue()->flush_immediate_command_list();
+  } else {
+    LogError("flush_command_queue failed: g_reshade_runtime is null");
   }
 }
 
@@ -577,18 +602,6 @@ void OnPresentUpdateBefore(
   }
 
 
-  // Apply input blocking based on background/foreground; avoid OS calls and redundant writes
-  {
-    reshade::api::effect_runtime* runtime = g_reshade_runtime.load();
-    if (runtime != nullptr) {
-      const bool is_background = g_app_in_background.load(std::memory_order_acquire);
-      const bool wants_block_input = s_block_input_in_background.load() && is_background;
-      // Call every frame as long as any blocking is desired
-      if (is_background && wants_block_input) {
-        runtime->block_input_next_frame();
-      }
-    }
-  }
   // Handle keyboard shortcuts (only when game is in foreground)
   HWND game_hwnd = g_last_swapchain_hwnd.load();
   bool is_game_in_foreground = (game_hwnd != nullptr && GetForegroundWindow() == game_hwnd);
@@ -611,6 +624,8 @@ void OnPresentUpdateBefore(
           LogInfo(oss.str().c_str());
         }
       }
+    } else {
+      LogError("Mute/unmute shortcut failed: g_reshade_runtime is null");
     }
   }
 
@@ -638,6 +653,8 @@ void OnPresentUpdateBefore(
             << (new_render_state ? "disabled" : "enabled");
         LogInfo(oss.str().c_str());
       }
+    } else {
+      LogError("Background toggle shortcut failed: g_reshade_runtime is null");
     }
   }
 

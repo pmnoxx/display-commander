@@ -6,6 +6,7 @@
 #include "main_new_tab.hpp"
 #include "experimental_tab.hpp"
 #include "../../widgets/xinput_widget/xinput_widget.hpp"
+#include "../../widgets/remapping_widget/remapping_widget.hpp"
 #include "../../addon.hpp"
 
 namespace ui::new_ui {
@@ -74,6 +75,9 @@ void InitializeNewUI() {
     // Initialize XInput widget
     display_commander::widgets::xinput_widget::InitializeXInputWidget();
 
+    // Initialize remapping widget
+    display_commander::widgets::remapping_widget::InitializeRemappingWidget();
+
     g_tab_manager.AddTab("Main", "main_new", []() {
         try {
             ui::new_ui::DrawMainNewTab();
@@ -137,13 +141,23 @@ void InitializeNewUI() {
         }
     });
 
-    g_tab_manager.AddTab("XInput", "xinput", []() {
+    g_tab_manager.AddTab("XInput (Experimental)", "xinput", []() {
         try {
             display_commander::widgets::xinput_widget::DrawXInputWidget();
         } catch (const std::exception& e) {
             LogError("Error drawing XInput widget: %s", e.what());
         } catch (...) {
             LogError("Unknown error drawing XInput widget");
+        }
+    });
+
+    g_tab_manager.AddTab("Remapping (Experimental)", "remapping", []() {
+        try {
+            display_commander::widgets::remapping_widget::DrawRemappingWidget();
+        } catch (const std::exception& e) {
+            LogError("Error drawing remapping widget: %s", e.what());
+        } catch (...) {
+            LogError("Unknown error drawing remapping widget");
         }
     });
 

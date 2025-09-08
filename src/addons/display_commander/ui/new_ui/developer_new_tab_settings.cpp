@@ -5,7 +5,7 @@
 // External declarations for the global variables
 extern std::atomic<bool> s_prevent_fullscreen;
 extern std::atomic<int> s_spoof_fullscreen_state;
-extern std::atomic<int> s_spoof_window_focus;
+extern std::atomic<bool> s_continue_rendering;
 extern std::atomic<bool> s_continuous_monitoring_enabled;
 extern std::atomic<bool> s_prevent_always_on_top;
 extern std::atomic<bool> s_background_feature_enabled;
@@ -30,7 +30,7 @@ namespace ui::new_ui {
 DeveloperTabSettings::DeveloperTabSettings()
     : prevent_fullscreen("PreventFullscreen", s_prevent_fullscreen, true, "DisplayCommander")
     , spoof_fullscreen_state("SpoofFullscreenState", s_spoof_fullscreen_state, 0, 0, 2, "DisplayCommander")
-    , spoof_window_focus("SpoofWindowFocus", s_spoof_window_focus, 0, 0, 2, "DisplayCommander")
+    , continue_rendering("ContinueRendering", s_continue_rendering, false, "DisplayCommander")
     , continuous_monitoring("ContinuousMonitoring", s_continuous_monitoring_enabled, true, "DisplayCommander")
     , prevent_always_on_top("PreventAlwaysOnTop", s_prevent_always_on_top, true, "DisplayCommander")
     , fix_hdr10_colorspace("FixHDR10Colorspace", s_fix_hdr10_colorspace, false, "DisplayCommander")
@@ -54,7 +54,6 @@ DeveloperTabSettings::DeveloperTabSettings()
 void DeveloperTabSettings::LoadAll() {
     prevent_fullscreen.Load();
     spoof_fullscreen_state.Load();
-    spoof_window_focus.Load();
     continuous_monitoring.Load();
     prevent_always_on_top.Load();
     fix_hdr10_colorspace.Load();
@@ -82,7 +81,7 @@ std::vector<ui::new_ui::SettingBase*> DeveloperTabSettings::GetAllSettings() {
     return {
         &prevent_fullscreen,
         &spoof_fullscreen_state,
-        &spoof_window_focus,
+        &continue_rendering,
         &continuous_monitoring,
         &prevent_always_on_top,
         &fix_hdr10_colorspace,

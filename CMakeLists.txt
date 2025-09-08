@@ -66,6 +66,7 @@ target_include_directories(zzz_display_commander
     ${CMAKE_CURRENT_LIST_DIR}/external/reshade            # provides include/reshade.hpp and deps/imgui
     ${CMAKE_CURRENT_LIST_DIR}/external/Streamline/include # Streamline headers if referenced
     ${CMAKE_CURRENT_LIST_DIR}/external/nvapi              # official NVIDIA NVAPI headers (nvapi.h, NvApiDriverSettings.h)
+    ${CMAKE_CURRENT_LIST_DIR}/external/minhook/include    # MinHook headers
 )
 
 # Link system libs
@@ -88,6 +89,34 @@ if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/external/nvapi")
   endif()
 else()
   message(WARNING "NVAPI not found at ${CMAKE_CURRENT_LIST_DIR}/external/nvapi. Clone https://github.com/NVIDIA/nvapi into external/nvapi if you need NVAPI features.")
+endif()
+
+# MinHook library
+if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/external/minhook")
+  # MinHook source files
+  set(MINHOOK_SOURCES
+    ${CMAKE_CURRENT_LIST_DIR}/external/minhook/src/buffer.c
+    ${CMAKE_CURRENT_LIST_DIR}/external/minhook/src/hook.c
+    ${CMAKE_CURRENT_LIST_DIR}/external/minhook/src/trampoline.c
+    ${CMAKE_CURRENT_LIST_DIR}/external/minhook/src/hde/hde32.c
+    ${CMAKE_CURRENT_LIST_DIR}/external/minhook/src/hde/hde64.c
+  )
+
+  # Create MinHook static library
+  add_library(minhook STATIC ${MINHOOK_SOURCES})
+
+  # MinHook compile definitions
+  target_compile_definitions(minhook PRIVATE MH_STATIC=1)
+
+  # MinHook include directories
+  target_include_directories(minhook PRIVATE ${CMAKE_CURRENT_LIST_DIR}/external/minhook/include)
+
+  # Link MinHook to display commander
+  target_link_libraries(zzz_display_commander PRIVATE minhook)
+
+  message(STATUS "MinHook library configured successfully")
+else()
+  message(FATAL_ERROR "MinHook not found at ${CMAKE_CURRENT_LIST_DIR}/external/minhook. Run: git submodule update --init --recursive")
 endif()
 
 # Output naming

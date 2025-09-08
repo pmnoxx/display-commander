@@ -38,8 +38,6 @@ std::string FormatLastError();
 bool IsExclusiveFullscreen(HWND hwnd);
 bool GetSpoofedFullscreenState(HWND hwnd);
 int GetFullscreenSpoofingMode();
-bool GetSpoofedWindowFocus(HWND hwnd);
-int GetWindowFocusSpoofingMode();
 UINT ComputeSWPFlags(HWND hwnd, bool style_changed);
 bool IsBorderlessStyleBits(LONG_PTR style);
 bool IsBorderless(HWND hwnd);

@@ -32,59 +32,57 @@ LRESULT CALLBACK WindowHookProc(int nCode, WPARAM wParam, LPARAM lParam) {
     if (nCode >= 0) {
         CWPSTRUCT* pCwp = (CWPSTRUCT*)lParam;
 
-        // Check if focus spoofing is enabled
-        bool focus_spoofing_enabled = (s_spoof_window_focus.load() != 0);
+        // Check if continue rendering is enabled
+        bool continue_rendering_enabled = s_continue_rendering.load();
 
         // Handle specific window messages here
         switch (pCwp->message) {
             case WM_ACTIVATE: {
                 // Handle window activation
-                if (focus_spoofing_enabled) {
-                    // Suppress focus loss messages when spoofing is enabled
+                if (continue_rendering_enabled) {
+                    // Suppress focus loss messages when continue rendering is enabled
                     if (LOWORD(pCwp->wParam) == WA_INACTIVE) {
-                        LogInfo("Suppressed window deactivation message due to focus spoofing - HWND: 0x%p", pCwp->hwnd);
+                        // Send fake activation to keep the game thinking it's active
+                        SendFakeActivationMessages(pCwp->hwnd);
                         return 0; // Suppress the message
                     }
                 }
-                LogInfo("Window activation message received - HWND: 0x%p, wParam: 0x%x",
-                       pCwp->hwnd, pCwp->wParam);
                 break;
             }
 
             case WM_SETFOCUS:
                 // Handle focus changes - always allow focus gained
-                LogInfo("Window focus message received - HWND: 0x%p", pCwp->hwnd);
                 break;
 
             case WM_KILLFOCUS:
-                // Handle focus loss - suppress if spoofing is enabled
-                if (focus_spoofing_enabled) {
-                    LogInfo("Suppressed WM_KILLFOCUS message due to focus spoofing - HWND: 0x%p", pCwp->hwnd);
+                // Handle focus loss - suppress if continue rendering is enabled
+                if (continue_rendering_enabled) {
+                    // Send fake activation to keep the game thinking it's active
+                    SendFakeActivationMessages(pCwp->hwnd);
                     return 0; // Suppress the message
                 }
-                LogInfo("Window focus lost message received - HWND: 0x%p", pCwp->hwnd);
                 break;
 
             case WM_ACTIVATEAPP:
                 // Handle application activation/deactivation
-                if (focus_spoofing_enabled) {
+                if (continue_rendering_enabled) {
                     if (pCwp->wParam == FALSE) { // Application is being deactivated
-                        LogInfo("Suppressed WM_ACTIVATEAPP deactivation message due to focus spoofing - HWND: 0x%p", pCwp->hwnd);
+                        // Send fake activation to keep the game thinking it's active
+                        SendFakeActivationMessages(pCwp->hwnd);
                         return 0; // Suppress the message
                     }
                 }
-                LogInfo("Application activation message received - HWND: 0x%p, wParam: 0x%x", pCwp->hwnd, pCwp->wParam);
                 break;
 
             case WM_NCACTIVATE:
                 // Handle non-client area activation
-                if (focus_spoofing_enabled) {
+                if (continue_rendering_enabled) {
                     if (pCwp->wParam == FALSE) { // Non-client area is being deactivated
-                        LogInfo("Suppressed WM_NCACTIVATE deactivation message due to focus spoofing - HWND: 0x%p", pCwp->hwnd);
+                        // Send fake activation to keep the game thinking it's active
+                        SendFakeActivationMessages(pCwp->hwnd);
                         return 0; // Suppress the message
                     }
                 }
-                LogInfo("Non-client activation message received - HWND: 0x%p, wParam: 0x%x", pCwp->hwnd, pCwp->wParam);
                 break;
 
             case WM_WINDOWPOSCHANGING: {
@@ -92,41 +90,48 @@ LRESULT CALLBACK WindowHookProc(int nCode, WPARAM wParam, LPARAM lParam) {
                 WINDOWPOS* pWp = (WINDOWPOS*)pCwp->lParam;
 
                 // Check if this is a minimize/restore operation that might affect focus
-                if (focus_spoofing_enabled && (pWp->flags & SWP_SHOWWINDOW)) {
+                if (continue_rendering_enabled && (pWp->flags & SWP_SHOWWINDOW)) {
                     // Check if window is being minimized
                     if (IsIconic(pCwp->hwnd)) {
-                        LogInfo("Suppressed window minimize due to focus spoofing - HWND: 0x%p", pCwp->hwnd);
                         pWp->flags &= ~SWP_SHOWWINDOW; // Remove show window flag
                     }
                 }
-
-                LogInfo("Window position changing - HWND: 0x%p, flags: 0x%x",
-                       pCwp->hwnd, pWp->flags);
                 break;
             }
 
 
             case WM_WINDOWPOSCHANGED: {
                 // Handle window position changes
-                WINDOWPOS* pWpChanged = (WINDOWPOS*)pCwp->lParam;
-                LogInfo("Window position changed - HWND: 0x%p, flags: 0x%x",
-                       pCwp->hwnd, pWpChanged->flags);
+                break;
+            }
+
+            case WM_SHOWWINDOW: {
+                // Handle window visibility changes
+                if (continue_rendering_enabled && pCwp->wParam == FALSE) {
+                    // Suppress window hide messages when continue rendering is enabled
+                    // Send fake activation to keep the game thinking it's active
+                    SendFakeActivationMessages(pCwp->hwnd);
+                    return 0; // Suppress the message
+                }
+                break;
+            }
+
+            case WM_MOUSEACTIVATE: {
+                // Handle mouse activation
+                if (continue_rendering_enabled) {
+                    // Always activate and eat the message to prevent focus loss
+                    return MA_ACTIVATEANDEAT; // Activate and eat the message
+                }
                 break;
             }
 
             case WM_STYLECHANGING: {
                 // Handle style changes
-                STYLESTRUCT* pStyle = (STYLESTRUCT*)pCwp->lParam;
-                LogInfo("Window style changing - HWND: 0x%p, style: 0x%x",
-                       pCwp->hwnd, pStyle->styleNew);
                 break;
             }
 
             case WM_STYLECHANGED: {
                 // Handle style changes
-                STYLESTRUCT* pStyleChanged = (STYLESTRUCT*)pCwp->lParam;
-                LogInfo("Window style changed - HWND: 0x%p, style: 0x%x",
-                       pCwp->hwnd, pStyleChanged->styleNew);
                 break;
             }
 
@@ -139,28 +144,63 @@ LRESULT CALLBACK WindowHookProc(int nCode, WPARAM wParam, LPARAM lParam) {
     return CallNextHookEx(g_window_hook, nCode, wParam, lParam);
 }
 
-void InstallWindowStyleHooks() {
+void InstallWindowStyleHooks(HMODULE hModule) {
+    LogInfo("InstallWindowStyleHooks called");
+
     if (g_hooks_installed.load()) {
         LogInfo("Window style hooks already installed");
         return;
     }
 
-    // Install a window message hook
+    // Get module handle
+    LogInfo("Module handle: 0x%p", hModule);
+
+    // Debug: Try to find the game window
+    HWND gameWindow = FindWindow(nullptr, nullptr);
+    if (gameWindow) {
+        DWORD gameThreadId = GetWindowThreadProcessId(gameWindow, nullptr);
+        LogInfo("Found potential game window: 0x%p, Thread ID: %lu", gameWindow, gameThreadId);
+    }
+
+    // Install a window message hook for all threads (0 = all threads)
+    LogInfo("Installing WH_CALLWNDPROC hook for all threads...");
     g_window_hook = SetWindowsHookEx(
         WH_CALLWNDPROC,
         WindowHookProc,
-        GetModuleHandle(nullptr),
-        0
+        hModule,
+        0  // 0 = all threads in the current desktop
     );
 
     if (!g_window_hook) {
         DWORD error = GetLastError();
-        LogError("Failed to install window style hooks. Error: %lu", error);
-        return;
+        LogError("Failed to install window style hooks. Error: %lu (0x%lx)", error, error);
+
+        // Try alternative hook types as fallback
+        LogInfo("Trying alternative hook types...");
+
+        // Try WH_GETMESSAGE hook
+        g_window_hook = SetWindowsHookEx(
+            WH_GETMESSAGE,
+            WindowHookProc,
+            hModule,
+            0
+        );
+
+        if (g_window_hook) {
+            LogInfo("Successfully installed WH_GETMESSAGE hook as fallback");
+        } else {
+            error = GetLastError();
+            LogError("Failed to install WH_GETMESSAGE hook. Error: %lu (0x%lx)", error, error);
+            return;
+        }
     }
 
     g_hooks_installed.store(true);
-    LogInfo("Window style hooks installed successfully");
+    LogInfo("Window style hooks installed successfully - Hook handle: 0x%p", g_window_hook);
+
+    // Debug: Show current continue rendering state
+    bool current_state = s_continue_rendering.load();
+    LogInfo("Window style hooks installed - continue_rendering state: %s", current_state ? "enabled" : "disabled");
 }
 
 void UninstallWindowStyleHooks() {
@@ -190,8 +230,41 @@ bool AreWindowStyleHooksInstalled() {
     return g_hooks_installed.load();
 }
 
-bool IsFocusSpoofingEnabled() {
-    return (s_spoof_window_focus.load() != 0);
+bool IsContinueRenderingEnabled() {
+    return s_continue_rendering.load();
+}
+
+// Fake activation functions
+void SendFakeActivationMessages(HWND hwnd) {
+    if (hwnd == nullptr || !IsWindow(hwnd)) {
+        return;
+    }
+
+    // Send fake activation messages to keep the game thinking it's active
+    PostMessage(hwnd, WM_ACTIVATE, WA_ACTIVE, 0);
+    PostMessage(hwnd, WM_SETFOCUS, 0, 0);
+    PostMessage(hwnd, WM_ACTIVATEAPP, TRUE, 0);
+
+    LogInfo("Sent fake activation messages to window - HWND: 0x%p", hwnd);
+}
+
+void FakeActivateWindow(HWND hwnd) {
+    if (!s_continue_rendering.load()) {
+        return;
+    }
+
+    if (hwnd == nullptr || !IsWindow(hwnd)) {
+        return;
+    }
+
+    // Send fake activation messages
+    SendFakeActivationMessages(hwnd);
+
+    // Also try to bring the window to front (but don't steal focus from other apps)
+    SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+    SetWindowPos(hwnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+
+    LogInfo("Fake activated window - HWND: 0x%p", hwnd);
 }
 
 } // namespace renodx::hooks

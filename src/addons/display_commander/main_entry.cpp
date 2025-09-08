@@ -69,12 +69,6 @@ void OnInitEffectRuntime(reshade::api::effect_runtime* runtime) {
             } else {
                 LogError("Failed to install window procedure hooks");
             }
-            // Install API hooks for continue rendering
-            LogInfo("DLL_THREAD_ATTACH: Installing API hooks...");
-            std::thread([]() {
-              std::this_thread::sleep_for(std::chrono::seconds(3));
-              renodx::hooks::InstallApiHooks();
-            }).detach();
 
             // Also set the game window for API hooks
             renodx::hooks::SetGameWindow(game_window);
@@ -205,6 +199,9 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
       } else {
         LogInfo("No unsafe Win32 API calls occurred during DLL initialization");
       }
+      // Install API hooks for continue rendering
+      LogInfo("DLL_THREAD_ATTACH: Installing API hooks...");
+        renodx::hooks::InstallApiHooks();
 
       // Note: Window hooks will be installed in DLL_THREAD_ATTACH for better timing
 

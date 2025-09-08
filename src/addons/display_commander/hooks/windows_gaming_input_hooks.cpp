@@ -18,24 +18,20 @@ HRESULT WINAPI RoGetActivationFactory_Detour(HSTRING activatableClassId, REFIID 
             iid.Data4[0], iid.Data4[1], iid.Data4[2], iid.Data4[3],
             iid.Data4[4], iid.Data4[5], iid.Data4[6], iid.Data4[7]);
 
-    if (true) { //
-        return E_NOTIMPL;
-    }
-
     // Check if this is a Windows.Gaming.Input interface we want to disable
-    if (iid == IID_IGamepadStatics) { // THIS fails
+    if (iid == ABI::Windows::Gaming::Input::IID_IGamepadStatics) {
         LogInfo("RoGetActivationFactory (IID_IGamepadStatics)");
         LogInfo(" => Disabling Interface for Current Game.");
         return E_NOTIMPL;
     }
 
-    if (iid == IID_IGamepadStatics2) {
+    if (iid == ABI::Windows::Gaming::Input::IID_IGamepadStatics2) {
         LogInfo("RoGetActivationFactory (IID_IGamepadStatics2)");
         LogInfo(" => Disabling Interface for Current Game.");
         return E_NOTIMPL;
     }
 
-    if (iid == IID_IRawGameControllerStatics) {
+    if (iid == ABI::Windows::Gaming::Input::IID_IRawGameControllerStatics) {
         LogInfo("RoGetActivationFactory (IID_IRawGameControllerStatics)");
         LogInfo(" => Disabling Interface for Current Game.");
         return E_NOTIMPL;

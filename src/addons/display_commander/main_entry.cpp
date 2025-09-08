@@ -14,8 +14,8 @@
 // Include input blocking system
 #include "input_blocking/input_blocking.hpp"
 
-// Include window style hooks
-#include "hooks/window_style_hooks.hpp"
+// Include window procedure hooks
+#include "hooks/window_proc_hooks.hpp"
 #include "hooks/api_hooks.hpp"
 
 #include "dxgi/custom_fps_limiter_manager.hpp"
@@ -46,10 +46,31 @@ void OnDestroyDevice(reshade::api::device* /*device*/) {
 void OnInitEffectRuntime(reshade::api::effect_runtime* runtime) {
     if (runtime != nullptr) {
         g_reshade_runtime.store(runtime);
-        LogInfo("ReShade effect runtime initialized - Input blocking now avai`le");
+        LogInfo("ReShade effect runtime initialized - Input blocking now available");
 
         if (s_fix_hdr10_colorspace.load()) {
           runtime->set_color_space(reshade::api::color_space::hdr10_st2084);
+        }
+
+        // Set up window procedure hooks now that we have the runtime
+        HWND game_window = static_cast<HWND>(runtime->get_hwnd());
+        if (game_window != nullptr && IsWindow(game_window)) {
+            LogInfo("Game window detected - HWND: 0x%p", game_window);
+
+            // Set the target window for window procedure hooks
+            renodx::hooks::SetTargetWindow(game_window);
+
+            // Install window procedure hooks
+            if (renodx::hooks::InstallWindowProcHooks(  game_window)) {
+                LogInfo("Window procedure hooks installed successfully");
+            } else {
+                LogError("Failed to install window procedure hooks");
+            }
+
+            // Also set the game window for API hooks
+            renodx::hooks::SetGameWindow(game_window);
+        } else {
+            LogWarn("ReShade runtime window is not valid - HWND: 0x%p", game_window);
         }
     }
 }
@@ -175,6 +196,9 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
       } else {
         LogInfo("No unsafe Win32 API calls occurred during DLL initialization");
       }
+
+      // Note: Window hooks will be installed in DLL_THREAD_ATTACH for better timing
+
     } catch (const std::exception& e) {
       LogError("Error initializing DLL: %s", e.what());
     } catch (...) {
@@ -186,13 +210,6 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
 
         initialized = true;
 
-        // Install window style hooks
-        LogInfo("DLL_THREAD_ATTACH: Installing window style hooks...");
-        renodx::hooks::InstallWindowStyleHooks(h_module);
-
-        // Install API hooks for continue rendering
-        LogInfo("DLL_THREAD_ATTACH: Installing API hooks...");
-        renodx::hooks::InstallApiHooks();
 
 
         display_cache::g_displayCache.Initialize();
@@ -217,6 +234,13 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
         }
 
         ui::new_ui::InitExperimentalTab();
+
+        // Window procedure hooks will be installed when ReShade runtime is initialized
+        // This ensures we have the correct game window handle
+
+        // Install API hooks for continue rendering
+        LogInfo("DLL_THREAD_ATTACH: Installing API hooks...");
+        renodx::hooks::InstallApiHooks();
       }
       break;
     }
@@ -231,8 +255,8 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
       // Clean up input blocking system
       display_commander::input_blocking::cleanup_input_blocking();
 
-      // Clean up window style hooks
-      renodx::hooks::UninstallWindowStyleHooks();
+      // Clean up window procedure hooks
+      renodx::hooks::UninstallWindowProcHooks();
 
       // Clean up API hooks
       renodx::hooks::UninstallApiHooks();

@@ -54,6 +54,7 @@ DeveloperTabSettings::DeveloperTabSettings()
 void DeveloperTabSettings::LoadAll() {
     prevent_fullscreen.Load();
     spoof_fullscreen_state.Load();
+    continue_rendering.Load();  // This was missing!
     continuous_monitoring.Load();
     prevent_always_on_top.Load();
     fix_hdr10_colorspace.Load();

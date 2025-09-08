@@ -1,0 +1,32 @@
+/*
+ * Copyright (C) 2024 Display Commander
+ * Window procedure hooks using MinHook for managing window properties
+ */
+
+#pragma once
+
+#include <windows.h>
+
+namespace renodx::hooks {
+
+// Window procedure hook functions
+bool InstallWindowProcHooks(HWND hwnd);
+void UninstallWindowProcHooks();
+
+// Check if hooks are installed
+bool AreWindowProcHooksInstalled();
+
+// Get continue rendering status for debugging
+bool IsContinueRenderingEnabled();
+
+// Fake activation functions
+void FakeActivateWindow(HWND hwnd);
+void SendFakeActivationMessages(HWND hwnd);
+
+// Set the target window to hook
+void SetTargetWindow(HWND hwnd);
+
+// Get the currently hooked window
+HWND GetHookedWindow();
+
+} // namespace renodx::hooks

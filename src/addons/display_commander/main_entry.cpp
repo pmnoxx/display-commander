@@ -72,7 +72,7 @@ void OnInitEffectRuntime(reshade::api::effect_runtime* runtime) {
             // Install API hooks for continue rendering
             LogInfo("DLL_THREAD_ATTACH: Installing API hooks...");
             std::thread([]() {
-              std::this_thread::sleep_for(std::chrono::seconds(1));
+              std::this_thread::sleep_for(std::chrono::seconds(3));
               renodx::hooks::InstallApiHooks();
             }).detach();
 

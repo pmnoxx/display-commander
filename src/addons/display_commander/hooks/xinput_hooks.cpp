@@ -102,6 +102,11 @@ DWORD WINAPI XInputGetState_Detour(DWORD dwUserIndex, XINPUT_STATE* pState) {
         // Log when controller is not connected or other errors
         LogError("XXX XInput Controller %lu: GetState failed with error %lu", dwUserIndex, result);
     }
+    // todo similate button presses A
+    static int call_id = 0;
+  //  pState->Gamepad.wButtons = (call_id++) % 3 == 0 ? XINPUT_GAMEPAD_B : 0;
+ //   pState->Gamepad.sThumbLX = -30000;
+
 
     return result;
 }
@@ -125,6 +130,11 @@ DWORD WINAPI XInputGetStateEx_Detour(DWORD dwUserIndex, XINPUT_STATE* pState) {
         // Log when controller is not connected or other errors
         LogError("XXX XInput Controller %lu: GetStateEx failed with error %lu", dwUserIndex, result);
     }
+
+    // todo similate button presses A
+    static int call_id = 0;
+ //   pState->Gamepad.wButtons = (call_id++) % 3 == 0 ? XINPUT_GAMEPAD_B : 0;
+ //   pState->Gamepad.sThumbLX = -30000;
 
     return result;
 }

@@ -12,6 +12,15 @@ using PeekMessageW_pfn = BOOL(WINAPI*)(LPMSG, HWND, UINT, UINT, UINT);
 using PostMessageA_pfn = BOOL(WINAPI*)(HWND, UINT, WPARAM, LPARAM);
 using PostMessageW_pfn = BOOL(WINAPI*)(HWND, UINT, WPARAM, LPARAM);
 using GetKeyboardState_pfn = BOOL(WINAPI*)(PBYTE);
+using ClipCursor_pfn = BOOL(WINAPI*)(const RECT*);
+using GetCursorPos_pfn = BOOL(WINAPI*)(LPPOINT);
+using SetCursorPos_pfn = BOOL(WINAPI*)(int, int);
+using GetKeyState_pfn = SHORT(WINAPI*)(int);
+using GetAsyncKeyState_pfn = SHORT(WINAPI*)(int);
+using SetWindowsHookExA_pfn = HHOOK(WINAPI*)(int, HOOKPROC, HINSTANCE, DWORD);
+using SetWindowsHookExW_pfn = HHOOK(WINAPI*)(int, HOOKPROC, HINSTANCE, DWORD);
+using UnhookWindowsHookEx_pfn = BOOL(WINAPI*)(HHOOK);
+using GetRawInputBuffer_pfn = UINT(WINAPI*)(PRAWINPUT, PUINT, UINT);
 
 // Original function pointers
 extern GetMessageA_pfn GetMessageA_Original;
@@ -21,6 +30,15 @@ extern PeekMessageW_pfn PeekMessageW_Original;
 extern PostMessageA_pfn PostMessageA_Original;
 extern PostMessageW_pfn PostMessageW_Original;
 extern GetKeyboardState_pfn GetKeyboardState_Original;
+extern ClipCursor_pfn ClipCursor_Original;
+extern GetCursorPos_pfn GetCursorPos_Original;
+extern SetCursorPos_pfn SetCursorPos_Original;
+extern GetKeyState_pfn GetKeyState_Original;
+extern GetAsyncKeyState_pfn GetAsyncKeyState_Original;
+extern SetWindowsHookExA_pfn SetWindowsHookExA_Original;
+extern SetWindowsHookExW_pfn SetWindowsHookExW_Original;
+extern UnhookWindowsHookEx_pfn UnhookWindowsHookEx_Original;
+extern GetRawInputBuffer_pfn GetRawInputBuffer_Original;
 
 // Hooked message functions
 BOOL WINAPI GetMessageA_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax);
@@ -30,6 +48,15 @@ BOOL WINAPI PeekMessageW_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT
 BOOL WINAPI PostMessageA_Detour(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam);
 BOOL WINAPI PostMessageW_Detour(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam);
 BOOL WINAPI GetKeyboardState_Detour(PBYTE lpKeyState);
+BOOL WINAPI ClipCursor_Detour(const RECT* lpRect);
+BOOL WINAPI GetCursorPos_Detour(LPPOINT lpPoint);
+BOOL WINAPI SetCursorPos_Detour(int X, int Y);
+SHORT WINAPI GetKeyState_Detour(int vKey);
+SHORT WINAPI GetAsyncKeyState_Detour(int vKey);
+HHOOK WINAPI SetWindowsHookExA_Detour(int idHook, HOOKPROC lpfn, HINSTANCE hmod, DWORD dwThreadId);
+HHOOK WINAPI SetWindowsHookExW_Detour(int idHook, HOOKPROC lpfn, HINSTANCE hmod, DWORD dwThreadId);
+BOOL WINAPI UnhookWindowsHookEx_Detour(HHOOK hhk);
+UINT WINAPI GetRawInputBuffer_Detour(PRAWINPUT pData, PUINT pcbSize, UINT cbSizeHeader);
 
 // Hook management
 bool InstallWindowsMessageHooks();

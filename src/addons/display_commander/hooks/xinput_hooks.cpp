@@ -123,40 +123,49 @@ DWORD WINAPI XInputGetState_Detour(DWORD dwUserIndex, XINPUT_STATE* pState) {
         // Process chord detection first to check for input suppression
         display_commander::widgets::xinput_widget::ProcessChordDetection(dwUserIndex, pState->Gamepad.wButtons);
 
+        // Store original state for UI tracking (before any modifications)
+        XINPUT_STATE original_state = *pState;
+
         // Check if input should be suppressed due to chord being pressed
         if (shared_state && shared_state->suppress_input.load()) {
             // Suppress all input by zeroing out the gamepad state
             ZeroMemory(&pState->Gamepad, sizeof(XINPUT_GAMEPAD));
             LogInfo("XXX Input suppressed due to chord being pressed (Controller %lu)", dwUserIndex);
-        } else if (shared_state && shared_state->swap_a_b_buttons.load()) {
-            // Swap A and B buttons
-            WORD original_buttons = pState->Gamepad.wButtons;
-            WORD swapped_buttons = original_buttons;
+            // Don't increment unsuppressed - input was suppressed
+        } else {
+            // Input is not suppressed, process normally
+            if (shared_state && shared_state->swap_a_b_buttons.load()) {
+                // Swap A and B buttons
+                WORD original_buttons = pState->Gamepad.wButtons;
+                WORD swapped_buttons = original_buttons;
 
-            // If A is pressed, set B instead
-            if (original_buttons & XINPUT_GAMEPAD_A) {
-                swapped_buttons |= XINPUT_GAMEPAD_B;
-                swapped_buttons &= ~XINPUT_GAMEPAD_A;
-                LogInfo("XXX A/B Swap: A pressed -> B set (Controller %lu)", dwUserIndex);
-            }
-            // If B is pressed, set A instead
-            if (original_buttons & XINPUT_GAMEPAD_B) {
-                swapped_buttons |= XINPUT_GAMEPAD_A;
-                swapped_buttons &= ~XINPUT_GAMEPAD_B;
-                LogInfo("XXX A/B Swap: B pressed -> A set (Controller %lu)", dwUserIndex);
+                // If A is pressed, set B instead
+                if (original_buttons & XINPUT_GAMEPAD_A) {
+                    swapped_buttons |= XINPUT_GAMEPAD_B;
+                    swapped_buttons &= ~XINPUT_GAMEPAD_A;
+                    LogInfo("XXX A/B Swap: A pressed -> B set (Controller %lu)", dwUserIndex);
+                }
+                // If B is pressed, set A instead
+                if (original_buttons & XINPUT_GAMEPAD_B) {
+                    swapped_buttons |= XINPUT_GAMEPAD_A;
+                    swapped_buttons &= ~XINPUT_GAMEPAD_B;
+                    LogInfo("XXX A/B Swap: B pressed -> A set (Controller %lu)", dwUserIndex);
+                }
+
+                pState->Gamepad.wButtons = swapped_buttons;
             }
 
-            pState->Gamepad.wButtons = swapped_buttons;
+            // Process input remapping before updating state
+            display_commander::input_remapping::process_gamepad_input_for_remapping(dwUserIndex, pState);
+
+            // Track unsuppressed call (input was processed)
+            g_hook_stats[HOOK_XInputGetState].increment_unsuppressed();
         }
 
-        // Process input remapping before updating state
-        display_commander::input_remapping::process_gamepad_input_for_remapping(dwUserIndex, pState);
-
-        display_commander::widgets::xinput_widget::UpdateXInputState(dwUserIndex, pState);
-        LogXInputChanges(dwUserIndex, pState);
-        
-        // Track unsuppressed call (input was processed)
-        g_hook_stats[HOOK_XInputGetState].increment_unsuppressed();
+        // Always update the UI state with the original state (before suppression/modifications)
+        // This ensures the UI shows the actual controller state regardless of suppression
+        display_commander::widgets::xinput_widget::UpdateXInputState(dwUserIndex, &original_state);
+        LogXInputChanges(dwUserIndex, &original_state);
     } else {
         // Mark controller as disconnected in shared state
         if (dwUserIndex < XUSER_MAX_COUNT) {
@@ -192,40 +201,49 @@ DWORD WINAPI XInputGetStateEx_Detour(DWORD dwUserIndex, XINPUT_STATE* pState) {
         // Process chord detection first to check for input suppression
         display_commander::widgets::xinput_widget::ProcessChordDetection(dwUserIndex, pState->Gamepad.wButtons);
 
+        // Store original state for UI tracking (before any modifications)
+        XINPUT_STATE original_state = *pState;
+
         // Check if input should be suppressed due to chord being pressed
         if (shared_state && shared_state->suppress_input.load()) {
             // Suppress all input by zeroing out the gamepad state
             ZeroMemory(&pState->Gamepad, sizeof(XINPUT_GAMEPAD));
             LogInfo("XXX Input suppressed due to chord being pressed (Controller %lu)", dwUserIndex);
-        } else if (shared_state && shared_state->swap_a_b_buttons.load()) {
-            // Swap A and B buttons
-            WORD original_buttons = pState->Gamepad.wButtons;
-            WORD swapped_buttons = original_buttons;
+            // Don't increment unsuppressed - input was suppressed
+        } else {
+            // Input is not suppressed, process normally
+            if (shared_state && shared_state->swap_a_b_buttons.load()) {
+                // Swap A and B buttons
+                WORD original_buttons = pState->Gamepad.wButtons;
+                WORD swapped_buttons = original_buttons;
 
-            // If A is pressed, set B instead
-            if (original_buttons & XINPUT_GAMEPAD_A) {
-                swapped_buttons |= XINPUT_GAMEPAD_B;
-                swapped_buttons &= ~XINPUT_GAMEPAD_A;
-                LogInfo("XXX A/B Swap: A pressed -> B set (Controller %lu)", dwUserIndex);
-            }
-            // If B is pressed, set A instead
-            if (original_buttons & XINPUT_GAMEPAD_B) {
-                swapped_buttons |= XINPUT_GAMEPAD_A;
-                swapped_buttons &= ~XINPUT_GAMEPAD_B;
-                LogInfo("XXX A/B Swap: B pressed -> A set (Controller %lu)", dwUserIndex);
+                // If A is pressed, set B instead
+                if (original_buttons & XINPUT_GAMEPAD_A) {
+                    swapped_buttons |= XINPUT_GAMEPAD_B;
+                    swapped_buttons &= ~XINPUT_GAMEPAD_A;
+                    LogInfo("XXX A/B Swap: A pressed -> B set (Controller %lu)", dwUserIndex);
+                }
+                // If B is pressed, set A instead
+                if (original_buttons & XINPUT_GAMEPAD_B) {
+                    swapped_buttons |= XINPUT_GAMEPAD_A;
+                    swapped_buttons &= ~XINPUT_GAMEPAD_B;
+                    LogInfo("XXX A/B Swap: B pressed -> A set (Controller %lu)", dwUserIndex);
+                }
+
+                pState->Gamepad.wButtons = swapped_buttons;
             }
 
-            pState->Gamepad.wButtons = swapped_buttons;
+            // Process input remapping before updating state
+            display_commander::input_remapping::process_gamepad_input_for_remapping(dwUserIndex, pState);
+
+            // Track unsuppressed call (input was processed)
+            g_hook_stats[HOOK_XInputGetStateEx].increment_unsuppressed();
         }
 
-        // Process input remapping before updating state
-        display_commander::input_remapping::process_gamepad_input_for_remapping(dwUserIndex, pState);
-
-        display_commander::widgets::xinput_widget::UpdateXInputState(dwUserIndex, pState);
-        LogXInputChanges(dwUserIndex, pState);
-        
-        // Track unsuppressed call (input was processed)
-        g_hook_stats[HOOK_XInputGetStateEx].increment_unsuppressed();
+        // Always update the UI state with the original state (before suppression/modifications)
+        // This ensures the UI shows the actual controller state regardless of suppression
+        display_commander::widgets::xinput_widget::UpdateXInputState(dwUserIndex, &original_state);
+        LogXInputChanges(dwUserIndex, &original_state);
     } else {
         // Mark controller as disconnected in shared state
         if (dwUserIndex < XUSER_MAX_COUNT) {

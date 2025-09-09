@@ -361,7 +361,9 @@ void DrawAutoClickFeature() {
                 if (g_auto_click_thread.joinable()) {
                     g_auto_click_thread.join();
                 }
-                LogInfo("Auto-click sequences disabled via Ctrl+A shortcut");
+                // Disable mouse spoofing when auto-click is disabled
+                g_experimentalTabSettings.mouse_spoofing_enabled.SetValue(false);
+                LogInfo("Auto-click sequences disabled via Ctrl+A shortcut - mouse spoofing also disabled");
             }
         }
     }
@@ -383,7 +385,9 @@ void DrawAutoClickFeature() {
                 if (g_auto_click_thread.joinable()) {
                     g_auto_click_thread.join();
                 }
-                LogInfo("Auto-click sequences disabled");
+                // Disable mouse spoofing when auto-click is disabled
+                g_experimentalTabSettings.mouse_spoofing_enabled.SetValue(false);
+                LogInfo("Auto-click sequences disabled - mouse spoofing also disabled");
             }
         }
     }
@@ -408,12 +412,28 @@ void DrawAutoClickFeature() {
     }
 
     // Mouse position spoofing toggle
+    bool auto_click_enabled = g_experimentalTabSettings.auto_click_enabled.GetValue();
+
+    // Disable spoofing checkbox if auto-click is not enabled
+    if (!auto_click_enabled) {
+        ImGui::BeginDisabled();
+    }
+
     if (CheckboxSetting(g_experimentalTabSettings.mouse_spoofing_enabled, "Spoof Mouse Position (Instead of Moving)")) {
         bool spoofing_enabled = g_experimentalTabSettings.mouse_spoofing_enabled.GetValue();
         LogInfo("Mouse position spoofing %s", spoofing_enabled ? "enabled" : "disabled");
     }
+
+    if (!auto_click_enabled) {
+        ImGui::EndDisabled();
+    }
+
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Instead of physically moving the mouse cursor, spoof the mouse position using hooks.\n\nThis prevents the cursor from actually moving on screen while still making the game think the mouse is at the target location.\n\nOnly works when 'Move Mouse Before Clicking' is enabled and auto-click sequences are active.");
+        if (auto_click_enabled) {
+            ImGui::SetTooltip("Instead of physically moving the mouse cursor, spoof the mouse position using hooks.\n\nThis prevents the cursor from actually moving on screen while still making the game think the mouse is at the target location.\n\nOnly works when 'Move Mouse Before Clicking' is enabled and auto-click sequences are active.");
+        } else {
+            ImGui::SetTooltip("Mouse position spoofing is only available when auto-click sequences are enabled.\n\nEnable 'Enable Auto-Click Sequences' above to use this feature.");
+        }
     }
 
     // Show current status

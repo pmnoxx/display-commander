@@ -566,47 +566,69 @@ BOOL WINAPI UnhookWindowsHookEx_Detour(HHOOK hhk) {
 
 // Hooked GetRawInputBuffer function
 UINT WINAPI GetRawInputBuffer_Detour(PRAWINPUT pData, PUINT pcbSize, UINT cbSizeHeader) {
+    // Track total calls
+    g_hook_stats[HOOK_GetRawInputBuffer].increment_total();
+
     // Call original function first
     UINT result = GetRawInputBuffer_Original ?
         GetRawInputBuffer_Original(pData, pcbSize, cbSizeHeader) :
         GetRawInputBuffer(pData, pcbSize, cbSizeHeader);
 
-    // If input blocking is enabled and we got data, filter it
+    // If input blocking is enabled and we got data, replace it
     if (result > 0 && pData != nullptr && pcbSize != nullptr && s_block_input_without_reshade.load()) {
-        // Filter out blocked input data
+        // Replace blocked input data with harmless data
         PRAWINPUT current = pData;
-        UINT filtered_count = 0;
+        UINT processed_count = 0;
 
         for (UINT i = 0; i < result; ++i) {
-            // Check if this input should be blocked
-            bool should_block = false;
+            // Check if this input should be replaced
+            bool should_replace = false;
 
             if (current->header.dwType == RIM_TYPEKEYBOARD) {
-                should_block = true; // Block all keyboard input
+                should_replace = true; // Replace all keyboard input
             } else if (current->header.dwType == RIM_TYPEMOUSE) {
-                should_block = true; // Block all mouse input
+                should_replace = true; // Replace all mouse input
             }
 
-            // If not blocked, keep the data
-            if (!should_block) {
-                if (current != pData + filtered_count) {
-                    memmove(pData + filtered_count, current, current->header.dwSize);
+            // If should be replaced, replace with harmless data
+            if (should_replace) {
+                if (current->header.dwType == RIM_TYPEKEYBOARD) {
+                    // Replace keyboard input with a harmless key event (neutral flags)
+                    current->header.dwType = RIM_TYPEKEYBOARD;
+                    current->header.dwSize = sizeof(RAWINPUT);
+                    current->data.keyboard.MakeCode = 0; // No scan code
+                    current->data.keyboard.Flags = 0; // Neutral flags - no key event
+                    current->data.keyboard.Reserved = 0;
+                    current->data.keyboard.VKey = 0; // No virtual key
+                    current->data.keyboard.Message = 0; // No message
+                    current->data.keyboard.ExtraInformation = 0;
+                } else if (current->header.dwType == RIM_TYPEMOUSE) {
+                    // Replace mouse input with a harmless mouse event
+                    current->header.dwType = RIM_TYPEMOUSE;
+                    current->header.dwSize = sizeof(RAWINPUT);
+                    current->data.mouse.usFlags = 0;
+                    current->data.mouse.usButtonFlags = 0;
+                    current->data.mouse.usButtonData = 0;
+                    current->data.mouse.ulRawButtons = 0;
+                    current->data.mouse.lLastX = 0;
+                    current->data.mouse.lLastY = 0;
+                    current->data.mouse.ulExtraInformation = 0;
                 }
-                filtered_count++;
             }
 
+            // Move to next input
             current = (PRAWINPUT)((PBYTE)current + current->header.dwSize);
+            processed_count++;
         }
 
-        // Update the count
-        *pcbSize = filtered_count * cbSizeHeader;
-        result = filtered_count;
+        // Track unsuppressed calls (data was processed/replaced)
+        g_hook_stats[HOOK_GetRawInputBuffer].increment_unsuppressed();
 
         // Log occasionally for debugging
-        static std::atomic<int> filter_counter{0};
-        int count = filter_counter.fetch_add(1);
+        static std::atomic<int> replace_counter{0};
+        int count = replace_counter.fetch_add(1);
         if (count % 1000 == 0) {
-            LogInfo("Filtered raw input buffer: %u -> %u", result, filtered_count);
+            LogInfo("Replaced raw input buffer: %u events processed", processed_count);
         }
     }
 
@@ -666,6 +688,9 @@ LRESULT WINAPI DispatchMessageW_Detour(const MSG* lpMsg) {
 
 // Hooked GetRawInputData function
 UINT WINAPI GetRawInputData_Detour(HRAWINPUT hRawInput, UINT uiCommand, LPVOID pData, PUINT pcbSize, UINT cbSizeHeader) {
+    // Track total calls
+    g_hook_stats[HOOK_GetRawInputData].increment_total();
+
     // Call original function first
     UINT result = GetRawInputData_Original ?
         GetRawInputData_Original(hRawInput, uiCommand, pData, pcbSize, cbSizeHeader) :
@@ -677,15 +702,34 @@ UINT WINAPI GetRawInputData_Detour(HRAWINPUT hRawInput, UINT uiCommand, LPVOID p
         if (uiCommand == RID_INPUT) {
             RAWINPUT* rawInput = static_cast<RAWINPUT*>(pData);
 
-            // Block keyboard and mouse input
-            if (rawInput->header.dwType == RIM_TYPEKEYBOARD || rawInput->header.dwType == RIM_TYPEMOUSE) {
-                // Return 0 to indicate no data available (effectively blocking the input)
-                *pcbSize = 0;
-                return 0;
+            // Replace keyboard and mouse input with harmless data
+            if (rawInput->header.dwType == RIM_TYPEKEYBOARD) {
+                // Replace keyboard input with a harmless key event (neutral flags)
+                rawInput->header.dwType = RIM_TYPEKEYBOARD;
+                rawInput->header.dwSize = sizeof(RAWINPUT);
+                rawInput->data.keyboard.MakeCode = 0; // No scan code
+                rawInput->data.keyboard.Flags = 0; // Neutral flags - no key event
+                rawInput->data.keyboard.Reserved = 0;
+                rawInput->data.keyboard.VKey = 0; // No virtual key
+                rawInput->data.keyboard.Message = 0; // No message
+                rawInput->data.keyboard.ExtraInformation = 0;
+            } else if (rawInput->header.dwType == RIM_TYPEMOUSE) {
+                // Replace mouse input with a harmless mouse event (no movement, no buttons)
+                rawInput->header.dwType = RIM_TYPEMOUSE;
+                rawInput->header.dwSize = sizeof(RAWINPUT);
+                rawInput->data.mouse.usFlags = 0;
+                rawInput->data.mouse.usButtonFlags = 0;
+                rawInput->data.mouse.usButtonData = 0;
+                rawInput->data.mouse.ulRawButtons = 0;
+                rawInput->data.mouse.lLastX = 0;
+                rawInput->data.mouse.lLastY = 0;
+                rawInput->data.mouse.ulExtraInformation = 0;
             }
+
+            // Track unsuppressed calls (data was processed/replaced)
+            g_hook_stats[HOOK_GetRawInputData].increment_unsuppressed();
         }
     }
-
     return result;
 }
 

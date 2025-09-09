@@ -53,6 +53,10 @@ enum HookIndex {
     HOOK_MapVirtualKeyEx,
     HOOK_XInputGetState,
     HOOK_XInputGetStateEx,
+    HOOK_DirectInputCreateA,
+    HOOK_DirectInputCreateW,
+    HOOK_DirectInputCreateEx,
+    HOOK_DirectInput8Create,
     HOOK_COUNT
 };
 

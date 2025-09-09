@@ -91,7 +91,11 @@ static const char* g_hook_names[HOOK_COUNT] = {
     "MapVirtualKey",
     "MapVirtualKeyEx",
     "XInputGetState",
-    "XInputGetStateEx"
+    "XInputGetStateEx",
+    "DirectInputCreateA",
+    "DirectInputCreateW",
+    "DirectInputCreateEx",
+    "DirectInput8Create"
 };
 
 // Helper function to determine if we should intercept messages

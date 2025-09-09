@@ -14,9 +14,22 @@ PeekMessageW_pfn PeekMessageW_Original = nullptr;
 PostMessageA_pfn PostMessageA_Original = nullptr;
 PostMessageW_pfn PostMessageW_Original = nullptr;
 GetKeyboardState_pfn GetKeyboardState_Original = nullptr;
+ClipCursor_pfn ClipCursor_Original = nullptr;
+GetCursorPos_pfn GetCursorPos_Original = nullptr;
+SetCursorPos_pfn SetCursorPos_Original = nullptr;
+GetKeyState_pfn GetKeyState_Original = nullptr;
+GetAsyncKeyState_pfn GetAsyncKeyState_Original = nullptr;
+SetWindowsHookExA_pfn SetWindowsHookExA_Original = nullptr;
+SetWindowsHookExW_pfn SetWindowsHookExW_Original = nullptr;
+UnhookWindowsHookEx_pfn UnhookWindowsHookEx_Original = nullptr;
+GetRawInputBuffer_pfn GetRawInputBuffer_Original = nullptr;
 
 // Hook state
 static std::atomic<bool> g_message_hooks_installed{false};
+
+// Cursor position tracking (similar to Reshade)
+static POINT s_last_cursor_position = {};
+static RECT s_last_clip_cursor = {};
 
 // Helper function to determine if we should intercept messages
 bool ShouldInterceptMessage(HWND hWnd, UINT uMsg) {
@@ -305,6 +318,209 @@ BOOL WINAPI GetKeyboardState_Detour(PBYTE lpKeyState) {
     return result;
 }
 
+// Hooked ClipCursor function
+BOOL WINAPI ClipCursor_Detour(const RECT* lpRect) {
+    // Store the clip rectangle for reference
+    s_last_clip_cursor = (lpRect != nullptr) ? *lpRect : RECT{};
+
+    // If input blocking is enabled, disable cursor clipping
+    if (s_block_input_without_reshade.load()) {
+        HWND gameWindow = GetGameWindow();
+        if (gameWindow != nullptr) {
+            // Disable cursor clipping when input is blocked
+            lpRect = nullptr;
+        }
+    }
+
+    // Call original function
+    return ClipCursor_Original ?
+        ClipCursor_Original(lpRect) :
+        ClipCursor(lpRect);
+}
+
+// Hooked GetCursorPos function
+BOOL WINAPI GetCursorPos_Detour(LPPOINT lpPoint) {
+    // If input blocking is enabled, return last known cursor position
+    if (s_block_input_without_reshade.load()) {
+        HWND gameWindow = GetGameWindow();
+        if (gameWindow != nullptr && lpPoint != nullptr) {
+            *lpPoint = s_last_cursor_position;
+            return TRUE;
+        }
+    }
+
+    // Call original function
+    BOOL result = GetCursorPos_Original ?
+        GetCursorPos_Original(lpPoint) :
+        GetCursorPos(lpPoint);
+
+    // Update last known cursor position
+    if (result && lpPoint != nullptr) {
+        s_last_cursor_position = *lpPoint;
+    }
+
+    return result;
+}
+
+// Hooked SetCursorPos function
+BOOL WINAPI SetCursorPos_Detour(int X, int Y) {
+    // Update last known cursor position
+    s_last_cursor_position.x = X;
+    s_last_cursor_position.y = Y;
+
+    // If input blocking is enabled, block cursor position changes
+    if (s_block_input_without_reshade.load()) {
+        HWND gameWindow = GetGameWindow();
+        if (gameWindow != nullptr) {
+            return TRUE; // Block the cursor position change
+        }
+    }
+
+    // Call original function
+    return SetCursorPos_Original ?
+        SetCursorPos_Original(X, Y) :
+        SetCursorPos(X, Y);
+}
+
+// Hooked GetKeyState function
+SHORT WINAPI GetKeyState_Detour(int vKey) {
+    // If input blocking is enabled, return 0 for all keys
+    if (s_block_input_without_reshade.load()) {
+        HWND gameWindow = GetGameWindow();
+        if (gameWindow != nullptr) {
+            // Valid keyboard keys are between 8 and 255
+            if ((vKey & 0xF8) != 0) {
+                return 0; // Block keyboard input
+            }
+            // Some games use this API for mouse buttons
+            else if (vKey >= VK_LBUTTON && vKey <= VK_XBUTTON2) {
+                return 0; // Block mouse input
+            }
+        }
+    }
+
+    // Call original function
+    return GetKeyState_Original ?
+        GetKeyState_Original(vKey) :
+        GetKeyState(vKey);
+}
+
+// Hooked GetAsyncKeyState function
+SHORT WINAPI GetAsyncKeyState_Detour(int vKey) {
+    // If input blocking is enabled, return 0 for all keys
+    if (s_block_input_without_reshade.load()) {
+        HWND gameWindow = GetGameWindow();
+        if (gameWindow != nullptr) {
+            // Valid keyboard keys are between 8 and 255
+            if ((vKey & 0xF8) != 0) {
+                return 0; // Block keyboard input
+            }
+            // Some games use this API for mouse buttons
+            else if (vKey >= VK_LBUTTON && vKey <= VK_XBUTTON2) {
+                return 0; // Block mouse input
+            }
+        }
+    }
+
+    // Call original function
+    return GetAsyncKeyState_Original ?
+        GetAsyncKeyState_Original(vKey) :
+        GetAsyncKeyState(vKey);
+}
+
+// Hooked SetWindowsHookExA function
+HHOOK WINAPI SetWindowsHookExA_Detour(int idHook, HOOKPROC lpfn, HINSTANCE hmod, DWORD dwThreadId) {
+    // Call original function first
+    HHOOK result = SetWindowsHookExA_Original ?
+        SetWindowsHookExA_Original(idHook, lpfn, hmod, dwThreadId) :
+        SetWindowsHookExA(idHook, lpfn, hmod, dwThreadId);
+
+    // Log hook installation for debugging
+    if (result != nullptr) {
+        LogInfo("SetWindowsHookExA installed: idHook=%d, hmod=0x%p, dwThreadId=%lu", idHook, hmod, dwThreadId);
+    }
+
+    return result;
+}
+
+// Hooked SetWindowsHookExW function
+HHOOK WINAPI SetWindowsHookExW_Detour(int idHook, HOOKPROC lpfn, HINSTANCE hmod, DWORD dwThreadId) {
+    // Call original function first
+    HHOOK result = SetWindowsHookExW_Original ?
+        SetWindowsHookExW_Original(idHook, lpfn, hmod, dwThreadId) :
+        SetWindowsHookExW(idHook, lpfn, hmod, dwThreadId);
+
+    // Log hook installation for debugging
+    if (result != nullptr) {
+        LogInfo("SetWindowsHookExW installed: idHook=%d, hmod=0x%p, dwThreadId=%lu", idHook, hmod, dwThreadId);
+    }
+
+    return result;
+}
+
+// Hooked UnhookWindowsHookEx function
+BOOL WINAPI UnhookWindowsHookEx_Detour(HHOOK hhk) {
+    // Log hook removal for debugging
+    LogInfo("UnhookWindowsHookEx called: hhk=0x%p", hhk);
+
+    // Call original function
+    return UnhookWindowsHookEx_Original ?
+        UnhookWindowsHookEx_Original(hhk) :
+        UnhookWindowsHookEx(hhk);
+}
+
+// Hooked GetRawInputBuffer function
+UINT WINAPI GetRawInputBuffer_Detour(PRAWINPUT pData, PUINT pcbSize, UINT cbSizeHeader) {
+    // Call original function first
+    UINT result = GetRawInputBuffer_Original ?
+        GetRawInputBuffer_Original(pData, pcbSize, cbSizeHeader) :
+        GetRawInputBuffer(pData, pcbSize, cbSizeHeader);
+
+    // If input blocking is enabled and we got data, filter it
+    if (result > 0 && pData != nullptr && pcbSize != nullptr && s_block_input_without_reshade.load()) {
+        HWND gameWindow = GetGameWindow();
+        if (gameWindow != nullptr) {
+            // Filter out blocked input data
+            PRAWINPUT current = pData;
+            UINT filtered_count = 0;
+
+            for (UINT i = 0; i < result; ++i) {
+                // Check if this input should be blocked
+                bool should_block = false;
+
+                if (current->header.dwType == RIM_TYPEKEYBOARD) {
+                    should_block = true; // Block all keyboard input
+                } else if (current->header.dwType == RIM_TYPEMOUSE) {
+                    should_block = true; // Block all mouse input
+                }
+
+                // If not blocked, keep the data
+                if (!should_block) {
+                    if (current != pData + filtered_count) {
+                        memmove(pData + filtered_count, current, current->header.dwSize);
+                    }
+                    filtered_count++;
+                }
+
+                current = (PRAWINPUT)((PBYTE)current + current->header.dwSize);
+            }
+
+            // Update the count
+            *pcbSize = filtered_count * cbSizeHeader;
+            result = filtered_count;
+
+            // Log occasionally for debugging
+            static std::atomic<int> filter_counter{0};
+            int count = filter_counter.fetch_add(1);
+            if (count % 1000 == 0) {
+                LogInfo("Filtered raw input buffer: %u -> %u", result, filtered_count);
+            }
+        }
+    }
+
+    return result;
+}
+
 // Install Windows message hooks
 bool InstallWindowsMessageHooks() {
     if (g_message_hooks_installed.load()) {
@@ -367,6 +583,60 @@ bool InstallWindowsMessageHooks() {
         return false;
     }
 
+    // Hook ClipCursor
+    if (MH_CreateHook(ClipCursor, ClipCursor_Detour, (LPVOID*)&ClipCursor_Original) != MH_OK) {
+        LogError("Failed to create ClipCursor hook");
+        return false;
+    }
+
+    // Hook GetCursorPos
+    if (MH_CreateHook(GetCursorPos, GetCursorPos_Detour, (LPVOID*)&GetCursorPos_Original) != MH_OK) {
+        LogError("Failed to create GetCursorPos hook");
+        return false;
+    }
+
+    // Hook SetCursorPos
+    if (MH_CreateHook(SetCursorPos, SetCursorPos_Detour, (LPVOID*)&SetCursorPos_Original) != MH_OK) {
+        LogError("Failed to create SetCursorPos hook");
+        return false;
+    }
+
+    // Hook GetKeyState
+    if (MH_CreateHook(GetKeyState, GetKeyState_Detour, (LPVOID*)&GetKeyState_Original) != MH_OK) {
+        LogError("Failed to create GetKeyState hook");
+        return false;
+    }
+
+    // Hook GetAsyncKeyState
+    if (MH_CreateHook(GetAsyncKeyState, GetAsyncKeyState_Detour, (LPVOID*)&GetAsyncKeyState_Original) != MH_OK) {
+        LogError("Failed to create GetAsyncKeyState hook");
+        return false;
+    }
+
+    // Hook SetWindowsHookExA
+    if (MH_CreateHook(SetWindowsHookExA, SetWindowsHookExA_Detour, (LPVOID*)&SetWindowsHookExA_Original) != MH_OK) {
+        LogError("Failed to create SetWindowsHookExA hook");
+        return false;
+    }
+
+    // Hook SetWindowsHookExW
+    if (MH_CreateHook(SetWindowsHookExW, SetWindowsHookExW_Detour, (LPVOID*)&SetWindowsHookExW_Original) != MH_OK) {
+        LogError("Failed to create SetWindowsHookExW hook");
+        return false;
+    }
+
+    // Hook UnhookWindowsHookEx
+    if (MH_CreateHook(UnhookWindowsHookEx, UnhookWindowsHookEx_Detour, (LPVOID*)&UnhookWindowsHookEx_Original) != MH_OK) {
+        LogError("Failed to create UnhookWindowsHookEx hook");
+        return false;
+    }
+
+    // Hook GetRawInputBuffer
+    if (MH_CreateHook(GetRawInputBuffer, GetRawInputBuffer_Detour, (LPVOID*)&GetRawInputBuffer_Original) != MH_OK) {
+        LogError("Failed to create GetRawInputBuffer hook");
+        return false;
+    }
+
     // Enable all hooks
     if (MH_EnableHook(MH_ALL_HOOKS) != MH_OK) {
         LogError("Failed to enable Windows message hooks");
@@ -397,6 +667,15 @@ void UninstallWindowsMessageHooks() {
     MH_RemoveHook(PostMessageA);
     MH_RemoveHook(PostMessageW);
     MH_RemoveHook(GetKeyboardState);
+    MH_RemoveHook(ClipCursor);
+    MH_RemoveHook(GetCursorPos);
+    MH_RemoveHook(SetCursorPos);
+    MH_RemoveHook(GetKeyState);
+    MH_RemoveHook(GetAsyncKeyState);
+    MH_RemoveHook(SetWindowsHookExA);
+    MH_RemoveHook(SetWindowsHookExW);
+    MH_RemoveHook(UnhookWindowsHookEx);
+    MH_RemoveHook(GetRawInputBuffer);
 
     // Clean up
     GetMessageA_Original = nullptr;
@@ -406,6 +685,15 @@ void UninstallWindowsMessageHooks() {
     PostMessageA_Original = nullptr;
     PostMessageW_Original = nullptr;
     GetKeyboardState_Original = nullptr;
+    ClipCursor_Original = nullptr;
+    GetCursorPos_Original = nullptr;
+    SetCursorPos_Original = nullptr;
+    GetKeyState_Original = nullptr;
+    GetAsyncKeyState_Original = nullptr;
+    SetWindowsHookExA_Original = nullptr;
+    SetWindowsHookExW_Original = nullptr;
+    UnhookWindowsHookEx_Original = nullptr;
+    GetRawInputBuffer_Original = nullptr;
 
     g_message_hooks_installed.store(false);
     LogInfo("Windows message hooks uninstalled successfully");

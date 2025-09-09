@@ -822,30 +822,6 @@ bool OnCreateResourceView(reshade::api::device* device, reshade::api::resource r
     return false; // No modification needed
   }
 
-  // Handle buffer resolution upgrade if enabled
-  if (ui::new_ui::g_experimentalTabSettings.buffer_resolution_upgrade_enabled.GetValue()) {
-    // Only handle render target views for resolution upgrade
-    if (usage_type == reshade::api::resource_usage::render_target) {
-      uint32_t original_width = resource_desc.texture.width;
-      uint32_t original_height = resource_desc.texture.height;
-
-      auto [target_width, target_height] = CalculateBufferUpgradeResolution(original_width, original_height);
-
-      // If the resource was upgraded, log the resource view creation
-      if (original_width != target_width || original_height != target_height) {
-        // Log the resource view creation for upgraded resource
-        std::ostringstream view_oss;
-        view_oss << "Resource view created for upgraded render target: " << original_width << "x" << original_height
-                 << " -> " << target_width << "x" << target_height;
-        LogInfo("%s", view_oss.str().c_str());
-
-        // Note: resource_view_desc doesn't have width/height fields
-        // The view is automatically tied to the upgraded resource dimensions
-        modified = true;
-      }
-    }
-  }
-
   // Handle texture format upgrade if enabled
   if (ui::new_ui::g_experimentalTabSettings.texture_format_upgrade_enabled.GetValue()) {
     reshade::api::format resource_format = resource_desc.texture.format;
@@ -917,7 +893,7 @@ void OnSetViewport(reshade::api::command_list* cmd_list, uint32_t first, uint32_
     }
   }
 
-    if (needs_scaling) {
+  if (needs_scaling) {
     int scale_factor = ui::new_ui::g_experimentalTabSettings.buffer_resolution_upgrade_scale_factor.GetValue();
     float scale_f = static_cast<float>(scale_factor);
 
@@ -964,53 +940,36 @@ void OnSetScissorRects(reshade::api::command_list* cmd_list, uint32_t first, uin
   }
 
   int mode = ui::new_ui::g_experimentalTabSettings.buffer_resolution_upgrade_mode.GetValue();
-  bool needs_scaling = false;
+  int scale_factor = ui::new_ui::g_experimentalTabSettings.buffer_resolution_upgrade_scale_factor.GetValue();
 
-  if (mode == 0) { // Upgrade 1280x720 by scale factor
-    int scale_factor = ui::new_ui::g_experimentalTabSettings.buffer_resolution_upgrade_scale_factor.GetValue();
-    // Check if any scissor rectangle matches the source dimensions we want to upgrade
-    for (uint32_t i = 0; i < count; i++) {
-      const auto& rect = rects[i];
-      // Only scale scissor rectangles that match the source resolution (1280x720)
-      if (is_target_resolution(rect.right - rect.left, rect.bottom - rect.top)) {
-        needs_scaling = true;
-        break;
-      }
+  // Create scaled scissor rectangles only for matching dimensions
+  std::vector<reshade::api::rect> scaled_rects(count);
+  for (uint32_t i = 0; i < count; i++) {
+    const auto& rect = rects[i];
+
+    // Only scale scissor rectangles that match the source resolution
+    if (is_target_resolution(rect.right - rect.left, rect.bottom - rect.top)) {
+      double scale_new = 3840.0 / (rect.right - rect.left);
+      scaled_rects[i] = {
+        static_cast<int32_t>(round(rect.left * scale_new)),    // left
+        static_cast<int32_t>(round(rect.top * scale_new)),     // top
+        static_cast<int32_t>(round(rect.right * scale_new)),   // right
+        static_cast<int32_t>(round(rect.bottom * scale_new))   // bottom
+      };
+
+      // Log the scissor scaling
+      std::ostringstream scissor_oss;
+      scissor_oss << "Scissor scaling: " << rect.left << "," << rect.top
+                  << " " << rect.right << "x" << rect.bottom
+                  << " -> " << scaled_rects[i].left << "," << scaled_rects[i].top
+                  << " " << scaled_rects[i].right << "x" << scaled_rects[i].bottom;
+      LogInfo("%s", scissor_oss.str().c_str());
+    } else {
+      // Keep original scissor rectangle for non-matching dimensions
+      scaled_rects[i] = rect;
     }
   }
 
-  if (needs_scaling) {
-    int scale_factor = ui::new_ui::g_experimentalTabSettings.buffer_resolution_upgrade_scale_factor.GetValue();
-
-    // Create scaled scissor rectangles only for matching dimensions
-    std::vector<reshade::api::rect> scaled_rects(count);
-    for (uint32_t i = 0; i < count; i++) {
-      const auto& rect = rects[i];
-
-      // Only scale scissor rectangles that match the source resolution
-      if (is_target_resolution(rect.right - rect.left, rect.bottom - rect.top)) {
-        double scale_new = 3840.0 / (rect.right - rect.left);
-        scaled_rects[i] = {
-          static_cast<int32_t>(round(rect.left * scale_new)),    // left
-          static_cast<int32_t>(round(rect.top * scale_new)),     // top
-          static_cast<int32_t>(round(rect.right * scale_new)),   // right
-          static_cast<int32_t>(round(rect.bottom * scale_new))   // bottom
-        };
-
-        // Log the scissor scaling
-        std::ostringstream scissor_oss;
-        scissor_oss << "Scissor scaling: " << rect.left << "," << rect.top
-                    << " " << rect.right << "x" << rect.bottom
-                    << " -> " << scaled_rects[i].left << "," << scaled_rects[i].top
-                    << " " << scaled_rects[i].right << "x" << scaled_rects[i].bottom;
-        LogInfo("%s", scissor_oss.str().c_str());
-      } else {
-        // Keep original scissor rectangle for non-matching dimensions
-        scaled_rects[i] = rect;
-      }
-    }
-
-    // Set the scaled scissor rectangles
-    cmd_list->bind_scissor_rects(first, count, scaled_rects.data());
-  }
+  // Set the scaled scissor rectangles
+  cmd_list->bind_scissor_rects(first, count, scaled_rects.data());
 }

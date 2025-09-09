@@ -73,7 +73,7 @@ void HandleRenderStartAndEndTimes() {
       if (s_reflex_enable.load()) {
     //    auto* device = swapchain ? swapchain->get_device() : nullptr;
     //    if (device && g_latencyManager->Initialize(device)) {
-          if (s_reflex_use_markers.load()) {
+          if (s_reflex_use_markers.load() && !g_app_in_background.load(std::memory_order_acquire)) {
             g_latencyManager->SetMarker(LatencyMarkerType::SIMULATION_END);
             g_latencyManager->SetMarker(LatencyMarkerType::RENDERSUBMIT_START);
           }
@@ -318,7 +318,7 @@ void OnPresentUpdateAfter(reshade::api::command_queue* /*queue*/, reshade::api::
   if (s_reflex_enable.load()) {
     auto* device = swapchain ? swapchain->get_device() : nullptr;
     if (device && g_latencyManager->Initialize(device)) {
-      if (s_reflex_use_markers.load()) {
+      if (s_reflex_use_markers.load() && !g_app_in_background.load(std::memory_order_acquire)) {
         g_latencyManager->SetMarker(LatencyMarkerType::PRESENT_END);
       }
     }
@@ -409,7 +409,7 @@ void OnPresentUpdateAfter(reshade::api::command_queue* /*queue*/, reshade::api::
       // Apply sleep mode opportunistically each frame to reflect current toggles
       g_latencyManager->ApplySleepMode(s_reflex_low_latency.load(), s_reflex_boost.load(), s_reflex_use_markers.load());
       g_latencyManager->Sleep();
-      if (s_reflex_use_markers.load()) {
+      if (s_reflex_use_markers.load() && !g_app_in_background.load(std::memory_order_acquire)) {
         g_latencyManager->SetMarker(LatencyMarkerType::SIMULATION_START);
       }
     }
@@ -496,7 +496,7 @@ void OnPresentUpdateBefore(
   if (s_reflex_enable.load()) {
     auto* device = swapchain ? swapchain->get_device() : nullptr;
     if (device && g_latencyManager->Initialize(device)) {
-      if (s_reflex_use_markers.load()) {
+      if (s_reflex_use_markers.load() && !g_app_in_background.load(std::memory_order_acquire)) {
         g_latencyManager->SetMarker(LatencyMarkerType::RENDERSUBMIT_END);
       }
     }
@@ -647,7 +647,7 @@ void OnPresentFlags(uint32_t* present_flags, reshade::api::swapchain* swapchain)
   if (s_reflex_enable.load()) {
     auto* device = swapchain ? swapchain->get_device() : nullptr;
     if (device && g_latencyManager->Initialize(device)) {
-      if (s_reflex_use_markers.load()) {
+      if (s_reflex_use_markers.load() && !g_app_in_background.load(std::memory_order_acquire)) {
         g_latencyManager->SetMarker(LatencyMarkerType::PRESENT_START);
       }
     }

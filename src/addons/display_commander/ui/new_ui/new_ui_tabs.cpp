@@ -5,6 +5,7 @@
 #include "developer_new_tab.hpp"
 #include "main_new_tab.hpp"
 #include "experimental_tab.hpp"
+#include "hook_stats_tab.hpp"
 #include "../../widgets/xinput_widget/xinput_widget.hpp"
 #include "../../widgets/remapping_widget/remapping_widget.hpp"
 #include "../../addon.hpp"
@@ -158,6 +159,16 @@ void InitializeNewUI() {
             LogError("Error drawing remapping widget: %s", e.what());
         } catch (...) {
             LogError("Unknown error drawing remapping widget");
+        }
+    });
+
+    g_tab_manager.AddTab("Hook Statistics", "hook_stats", []() {
+        try {
+            ui::new_ui::DrawHookStatsTab();
+        } catch (const std::exception& e) {
+            LogError("Error drawing hook stats tab: %s", e.what());
+        } catch (...) {
+            LogError("Unknown error drawing hook stats tab");
         }
     });
 

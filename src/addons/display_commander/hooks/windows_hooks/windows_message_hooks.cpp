@@ -49,6 +49,86 @@ static std::atomic<bool> g_message_hooks_installed{false};
 static POINT s_last_cursor_position = {};
 static RECT s_last_clip_cursor = {};
 
+// Hook call statistics
+enum HookIndex {
+    HOOK_GetMessageA = 0,
+    HOOK_GetMessageW,
+    HOOK_PeekMessageA,
+    HOOK_PeekMessageW,
+    HOOK_PostMessageA,
+    HOOK_PostMessageW,
+    HOOK_GetKeyboardState,
+    HOOK_ClipCursor,
+    HOOK_GetCursorPos,
+    HOOK_SetCursorPos,
+    HOOK_GetKeyState,
+    HOOK_GetAsyncKeyState,
+    HOOK_SetWindowsHookExA,
+    HOOK_SetWindowsHookExW,
+    HOOK_UnhookWindowsHookEx,
+    HOOK_GetRawInputBuffer,
+    HOOK_TranslateMessage,
+    HOOK_DispatchMessageA,
+    HOOK_DispatchMessageW,
+    HOOK_GetRawInputData,
+    HOOK_RegisterRawInputDevices,
+    HOOK_VkKeyScan,
+    HOOK_VkKeyScanEx,
+    HOOK_ToAscii,
+    HOOK_ToAsciiEx,
+    HOOK_ToUnicode,
+    HOOK_ToUnicodeEx,
+    HOOK_GetKeyNameTextA,
+    HOOK_GetKeyNameTextW,
+    HOOK_SendInput,
+    HOOK_keybd_event,
+    HOOK_mouse_event,
+    HOOK_MapVirtualKey,
+    HOOK_MapVirtualKeyEx,
+    HOOK_COUNT
+};
+
+// Hook statistics array
+HookCallStats g_hook_stats[HOOK_COUNT];
+
+// Hook names for display
+static const char* g_hook_names[HOOK_COUNT] = {
+    "GetMessageA",
+    "GetMessageW",
+    "PeekMessageA",
+    "PeekMessageW",
+    "PostMessageA",
+    "PostMessageW",
+    "GetKeyboardState",
+    "ClipCursor",
+    "GetCursorPos",
+    "SetCursorPos",
+    "GetKeyState",
+    "GetAsyncKeyState",
+    "SetWindowsHookExA",
+    "SetWindowsHookExW",
+    "UnhookWindowsHookEx",
+    "GetRawInputBuffer",
+    "TranslateMessage",
+    "DispatchMessageA",
+    "DispatchMessageW",
+    "GetRawInputData",
+    "RegisterRawInputDevices",
+    "VkKeyScan",
+    "VkKeyScanEx",
+    "ToAscii",
+    "ToAsciiEx",
+    "ToUnicode",
+    "ToUnicodeEx",
+    "GetKeyNameTextA",
+    "GetKeyNameTextW",
+    "SendInput",
+    "keybd_event",
+    "mouse_event",
+    "MapVirtualKey",
+    "MapVirtualKeyEx"
+};
+
 // Helper function to determine if we should intercept messages
 bool ShouldInterceptMessage(HWND hWnd, UINT uMsg) {
     // Only intercept if continue rendering is enabled
@@ -174,6 +254,9 @@ void SuppressMessage(LPMSG lpMsg) {
 
 // Hooked GetMessageA function
 BOOL WINAPI GetMessageA_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax) {
+    // Track total calls
+    g_hook_stats[HOOK_GetMessageA].increment_total();
+
     // Call original function first
     BOOL result = GetMessageA_Original ?
         GetMessageA_Original(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax) :
@@ -188,6 +271,8 @@ BOOL WINAPI GetMessageA_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT 
         // Check if we should intercept it for other purposes
         else if (ShouldInterceptMessage(hWnd, lpMsg->message)) {
             ProcessInterceptedMessage(lpMsg);
+            // Track unsuppressed calls
+            g_hook_stats[HOOK_GetMessageA].increment_unsuppressed();
         }
     }
 
@@ -196,6 +281,9 @@ BOOL WINAPI GetMessageA_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT 
 
 // Hooked GetMessageW function
 BOOL WINAPI GetMessageW_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax) {
+    // Track total calls
+    g_hook_stats[HOOK_GetMessageW].increment_total();
+
     // Call original function first
     BOOL result = GetMessageW_Original ?
         GetMessageW_Original(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax) :
@@ -210,6 +298,8 @@ BOOL WINAPI GetMessageW_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT 
         // Check if we should intercept it for other purposes
         else if (ShouldInterceptMessage(hWnd, lpMsg->message)) {
             ProcessInterceptedMessage(lpMsg);
+            // Track unsuppressed calls
+            g_hook_stats[HOOK_GetMessageW].increment_unsuppressed();
         }
     }
 
@@ -317,19 +407,15 @@ BOOL WINAPI GetKeyboardState_Detour(PBYTE lpKeyState) {
 
     // If input blocking is enabled and we got valid key state data
     if (result && lpKeyState != nullptr && s_block_input_without_reshade.load()) {
-        // Get the game window from API hooks
-        HWND gameWindow = GetGameWindow();
-        if (gameWindow != nullptr) {
-            // Clear all key states to simulate no keys being pressed
-            // This effectively blocks keyboard input at the state level
-            memset(lpKeyState, 0, 256); // 256 bytes for all virtual keys
+        // Clear all key states to simulate no keys being pressed
+        // This effectively blocks keyboard input at the state level
+        memset(lpKeyState, 0, 256); // 256 bytes for all virtual keys
 
-            // Log occasionally for debugging
-            static std::atomic<int> clear_counter{0};
-            int count = clear_counter.fetch_add(1);
-            if (count % 1000 == 0) {
-                LogInfo("Cleared keyboard state for input blocking");
-            }
+        // Log occasionally for debugging
+        static std::atomic<int> clear_counter{0};
+        int count = clear_counter.fetch_add(1);
+        if (count % 1000 == 0) {
+            LogInfo("Cleared keyboard state for input blocking");
         }
     }
 
@@ -343,11 +429,8 @@ BOOL WINAPI ClipCursor_Detour(const RECT* lpRect) {
 
     // If input blocking is enabled, disable cursor clipping
     if (s_block_input_without_reshade.load()) {
-        HWND gameWindow = GetGameWindow();
-        if (gameWindow != nullptr) {
-            // Disable cursor clipping when input is blocked
-            lpRect = nullptr;
-        }
+        // Disable cursor clipping when input is blocked
+        lpRect = nullptr;
     }
 
     // Call original function
@@ -359,12 +442,9 @@ BOOL WINAPI ClipCursor_Detour(const RECT* lpRect) {
 // Hooked GetCursorPos function
 BOOL WINAPI GetCursorPos_Detour(LPPOINT lpPoint) {
     // If input blocking is enabled, return last known cursor position
-    if (s_block_input_without_reshade.load()) {
-        HWND gameWindow = GetGameWindow();
-        if (gameWindow != nullptr && lpPoint != nullptr) {
-            *lpPoint = s_last_cursor_position;
-            return TRUE;
-        }
+    if (s_block_input_without_reshade.load() && lpPoint != nullptr) {
+        *lpPoint = s_last_cursor_position;
+        return TRUE;
     }
 
     // Call original function
@@ -388,10 +468,7 @@ BOOL WINAPI SetCursorPos_Detour(int X, int Y) {
 
     // If input blocking is enabled, block cursor position changes
     if (s_block_input_without_reshade.load()) {
-        HWND gameWindow = GetGameWindow();
-        if (gameWindow != nullptr) {
-            return TRUE; // Block the cursor position change
-        }
+        return TRUE; // Block the cursor position change
     }
 
     // Call original function
@@ -402,17 +479,20 @@ BOOL WINAPI SetCursorPos_Detour(int X, int Y) {
 
 // Hooked GetKeyState function
 SHORT WINAPI GetKeyState_Detour(int vKey) {
+    // Track total calls
+    g_hook_stats[HOOK_GetKeyState].increment_total();
+
     // If input blocking is enabled, return 0 for all keys
     if (s_block_input_without_reshade.load()) {
-        HWND gameWindow = GetGameWindow();
-        if (gameWindow != nullptr) {
-            // Block all keyboard keys (0x08-0xFF) and mouse buttons
-            if ((vKey >= 0x08 && vKey <= 0xFF) ||
-                (vKey >= VK_LBUTTON && vKey <= VK_XBUTTON2)) {
-                return 0; // Block input
-            }
+        // Block all keyboard keys (0x08-0xFF) and mouse buttons
+        if ((vKey >= 0x08 && vKey <= 0xFF) ||
+            (vKey >= VK_LBUTTON && vKey <= VK_XBUTTON2)) {
+            return 0; // Block input
         }
     }
+
+    // Track unsuppressed calls
+    g_hook_stats[HOOK_GetKeyState].increment_unsuppressed();
 
     // Call original function
     return GetKeyState_Original ?
@@ -422,17 +502,20 @@ SHORT WINAPI GetKeyState_Detour(int vKey) {
 
 // Hooked GetAsyncKeyState function
 SHORT WINAPI GetAsyncKeyState_Detour(int vKey) {
+    // Track total calls
+    g_hook_stats[HOOK_GetAsyncKeyState].increment_total();
+
     // If input blocking is enabled, return 0 for all keys
     if (s_block_input_without_reshade.load()) {
-        HWND gameWindow = GetGameWindow();
-        if (gameWindow != nullptr) {
-            // Block all keyboard keys (0x08-0xFF) and mouse buttons
-            if ((vKey >= 0x08 && vKey <= 0xFF) ||
-                (vKey >= VK_LBUTTON && vKey <= VK_XBUTTON2)) {
-                return 0; // Block input
-            }
+        // Block all keyboard keys (0x08-0xFF) and mouse buttons
+        if ((vKey >= 0x08 && vKey <= 0xFF) ||
+            (vKey >= VK_LBUTTON && vKey <= VK_XBUTTON2)) {
+            return 0; // Block input
         }
     }
+
+    // Track unsuppressed calls
+    g_hook_stats[HOOK_GetAsyncKeyState].increment_unsuppressed();
 
     // Call original function
     return GetAsyncKeyState_Original ?
@@ -490,43 +573,40 @@ UINT WINAPI GetRawInputBuffer_Detour(PRAWINPUT pData, PUINT pcbSize, UINT cbSize
 
     // If input blocking is enabled and we got data, filter it
     if (result > 0 && pData != nullptr && pcbSize != nullptr && s_block_input_without_reshade.load()) {
-        HWND gameWindow = GetGameWindow();
-        if (gameWindow != nullptr) {
-            // Filter out blocked input data
-            PRAWINPUT current = pData;
-            UINT filtered_count = 0;
+        // Filter out blocked input data
+        PRAWINPUT current = pData;
+        UINT filtered_count = 0;
 
-            for (UINT i = 0; i < result; ++i) {
-                // Check if this input should be blocked
-                bool should_block = false;
+        for (UINT i = 0; i < result; ++i) {
+            // Check if this input should be blocked
+            bool should_block = false;
 
-                if (current->header.dwType == RIM_TYPEKEYBOARD) {
-                    should_block = true; // Block all keyboard input
-                } else if (current->header.dwType == RIM_TYPEMOUSE) {
-                    should_block = true; // Block all mouse input
-                }
-
-                // If not blocked, keep the data
-                if (!should_block) {
-                    if (current != pData + filtered_count) {
-                        memmove(pData + filtered_count, current, current->header.dwSize);
-                    }
-                    filtered_count++;
-                }
-
-                current = (PRAWINPUT)((PBYTE)current + current->header.dwSize);
+            if (current->header.dwType == RIM_TYPEKEYBOARD) {
+                should_block = true; // Block all keyboard input
+            } else if (current->header.dwType == RIM_TYPEMOUSE) {
+                should_block = true; // Block all mouse input
             }
 
-            // Update the count
-            *pcbSize = filtered_count * cbSizeHeader;
-            result = filtered_count;
-
-            // Log occasionally for debugging
-            static std::atomic<int> filter_counter{0};
-            int count = filter_counter.fetch_add(1);
-            if (count % 1000 == 0) {
-                LogInfo("Filtered raw input buffer: %u -> %u", result, filtered_count);
+            // If not blocked, keep the data
+            if (!should_block) {
+                if (current != pData + filtered_count) {
+                    memmove(pData + filtered_count, current, current->header.dwSize);
+                }
+                filtered_count++;
             }
+
+            current = (PRAWINPUT)((PBYTE)current + current->header.dwSize);
+        }
+
+        // Update the count
+        *pcbSize = filtered_count * cbSizeHeader;
+        result = filtered_count;
+
+        // Log occasionally for debugging
+        static std::atomic<int> filter_counter{0};
+        int count = filter_counter.fetch_add(1);
+        if (count % 1000 == 0) {
+            LogInfo("Filtered raw input buffer: %u -> %u", result, filtered_count);
         }
     }
 
@@ -537,13 +617,10 @@ UINT WINAPI GetRawInputBuffer_Detour(PRAWINPUT pData, PUINT pcbSize, UINT cbSize
 BOOL WINAPI TranslateMessage_Detour(const MSG* lpMsg) {
     // If input blocking is enabled, don't translate messages that should be blocked
     if (s_block_input_without_reshade.load() && lpMsg != nullptr) {
-        HWND gameWindow = GetGameWindow();
-        if (gameWindow != nullptr) {
-            // Check if this message should be suppressed
-            if (ShouldSuppressMessage(lpMsg->hwnd, lpMsg->message)) {
-                // Don't translate blocked messages
-                return FALSE;
-            }
+        // Check if this message should be suppressed
+        if (ShouldSuppressMessage(lpMsg->hwnd, lpMsg->message)) {
+            // Don't translate blocked messages
+            return FALSE;
         }
     }
 
@@ -557,13 +634,10 @@ BOOL WINAPI TranslateMessage_Detour(const MSG* lpMsg) {
 LRESULT WINAPI DispatchMessageA_Detour(const MSG* lpMsg) {
     // If input blocking is enabled, don't dispatch messages that should be blocked
     if (s_block_input_without_reshade.load() && lpMsg != nullptr) {
-        HWND gameWindow = GetGameWindow();
-        if (gameWindow != nullptr) {
-            // Check if this message should be suppressed
-            if (ShouldSuppressMessage(lpMsg->hwnd, lpMsg->message)) {
-                // Return 0 to indicate the message was "processed" (blocked)
-                return 0;
-            }
+        // Check if this message should be suppressed
+        if (ShouldSuppressMessage(lpMsg->hwnd, lpMsg->message)) {
+            // Return 0 to indicate the message was "processed" (blocked)
+            return 0;
         }
     }
 
@@ -577,13 +651,10 @@ LRESULT WINAPI DispatchMessageA_Detour(const MSG* lpMsg) {
 LRESULT WINAPI DispatchMessageW_Detour(const MSG* lpMsg) {
     // If input blocking is enabled, don't dispatch messages that should be blocked
     if (s_block_input_without_reshade.load() && lpMsg != nullptr) {
-        HWND gameWindow = GetGameWindow();
-        if (gameWindow != nullptr) {
-            // Check if this message should be suppressed
-            if (ShouldSuppressMessage(lpMsg->hwnd, lpMsg->message)) {
-                // Return 0 to indicate the message was "processed" (blocked)
-                return 0;
-            }
+        // Check if this message should be suppressed
+        if (ShouldSuppressMessage(lpMsg->hwnd, lpMsg->message)) {
+            // Return 0 to indicate the message was "processed" (blocked)
+            return 0;
         }
     }
 
@@ -602,18 +673,15 @@ UINT WINAPI GetRawInputData_Detour(HRAWINPUT hRawInput, UINT uiCommand, LPVOID p
 
     // If input blocking is enabled and we got data, filter it
     if (result != UINT(-1) && pData != nullptr && pcbSize != nullptr && s_block_input_without_reshade.load()) {
-        HWND gameWindow = GetGameWindow();
-        if (gameWindow != nullptr) {
-            // For raw input data, we need to check if it's keyboard or mouse input
-            if (uiCommand == RID_INPUT) {
-                RAWINPUT* rawInput = static_cast<RAWINPUT*>(pData);
+        // For raw input data, we need to check if it's keyboard or mouse input
+        if (uiCommand == RID_INPUT) {
+            RAWINPUT* rawInput = static_cast<RAWINPUT*>(pData);
 
-                // Block keyboard and mouse input
-                if (rawInput->header.dwType == RIM_TYPEKEYBOARD || rawInput->header.dwType == RIM_TYPEMOUSE) {
-                    // Return 0 to indicate no data available (effectively blocking the input)
-                    *pcbSize = 0;
-                    return 0;
-                }
+            // Block keyboard and mouse input
+            if (rawInput->header.dwType == RIM_TYPEKEYBOARD || rawInput->header.dwType == RIM_TYPEMOUSE) {
+                // Return 0 to indicate no data available (effectively blocking the input)
+                *pcbSize = 0;
+                return 0;
             }
         }
     }
@@ -643,10 +711,7 @@ BOOL WINAPI RegisterRawInputDevices_Detour(PCRAWINPUTDEVICE pRawInputDevices, UI
 SHORT WINAPI VkKeyScan_Detour(CHAR ch) {
     // If input blocking is enabled, return -1 to indicate no virtual key found
     if (s_block_input_without_reshade.load()) {
-        HWND gameWindow = GetGameWindow();
-        if (gameWindow != nullptr) {
-            return -1; // No virtual key found
-        }
+        return -1; // No virtual key found
     }
 
     // Call original function
@@ -659,10 +724,7 @@ SHORT WINAPI VkKeyScan_Detour(CHAR ch) {
 SHORT WINAPI VkKeyScanEx_Detour(CHAR ch, HKL dwhkl) {
     // If input blocking is enabled, return -1 to indicate no virtual key found
     if (s_block_input_without_reshade.load()) {
-        HWND gameWindow = GetGameWindow();
-        if (gameWindow != nullptr) {
-            return -1; // No virtual key found
-        }
+        return -1; // No virtual key found
     }
 
     // Call original function
@@ -675,10 +737,7 @@ SHORT WINAPI VkKeyScanEx_Detour(CHAR ch, HKL dwhkl) {
 int WINAPI ToAscii_Detour(UINT uVirtKey, UINT uScanCode, const BYTE* lpKeyState, LPWORD lpChar, UINT uFlags) {
     // If input blocking is enabled, return 0 to indicate no character generated
     if (s_block_input_without_reshade.load()) {
-        HWND gameWindow = GetGameWindow();
-        if (gameWindow != nullptr) {
-            return 0; // No character generated
-        }
+        return 0; // No character generated
     }
 
     // Call original function
@@ -691,10 +750,7 @@ int WINAPI ToAscii_Detour(UINT uVirtKey, UINT uScanCode, const BYTE* lpKeyState,
 int WINAPI ToAsciiEx_Detour(UINT uVirtKey, UINT uScanCode, const BYTE* lpKeyState, LPWORD lpChar, UINT uFlags, HKL dwhkl) {
     // If input blocking is enabled, return 0 to indicate no character generated
     if (s_block_input_without_reshade.load()) {
-        HWND gameWindow = GetGameWindow();
-        if (gameWindow != nullptr) {
-            return 0; // No character generated
-        }
+        return 0; // No character generated
     }
 
     // Call original function
@@ -707,10 +763,7 @@ int WINAPI ToAsciiEx_Detour(UINT uVirtKey, UINT uScanCode, const BYTE* lpKeyStat
 int WINAPI ToUnicode_Detour(UINT wVirtKey, UINT wScanCode, const BYTE* lpKeyState, LPWSTR pwszBuff, int cchBuff, UINT wFlags) {
     // If input blocking is enabled, return 0 to indicate no character generated
     if (s_block_input_without_reshade.load()) {
-        HWND gameWindow = GetGameWindow();
-        if (gameWindow != nullptr) {
-            return 0; // No character generated
-        }
+        return 0; // No character generated
     }
 
     // Call original function
@@ -723,10 +776,7 @@ int WINAPI ToUnicode_Detour(UINT wVirtKey, UINT wScanCode, const BYTE* lpKeyStat
 int WINAPI ToUnicodeEx_Detour(UINT wVirtKey, UINT wScanCode, const BYTE* lpKeyState, LPWSTR pwszBuff, int cchBuff, UINT wFlags, HKL dwhkl) {
     // If input blocking is enabled, return 0 to indicate no character generated
     if (s_block_input_without_reshade.load()) {
-        HWND gameWindow = GetGameWindow();
-        if (gameWindow != nullptr) {
-            return 0; // No character generated
-        }
+        return 0; // No character generated
     }
 
     // Call original function
@@ -758,13 +808,10 @@ int WINAPI GetKeyNameTextA_Detour(LONG lParam, LPSTR lpString, int cchSize) {
 int WINAPI GetKeyNameTextW_Detour(LONG lParam, LPWSTR lpString, int cchSize) {
     // If input blocking is enabled, return 0 to indicate no key name
     if (s_block_input_without_reshade.load()) {
-        HWND gameWindow = GetGameWindow();
-        if (gameWindow != nullptr) {
-            if (lpString != nullptr && cchSize > 0) {
-                lpString[0] = L'\0'; // Empty string
-            }
-            return 0; // No key name
+        if (lpString != nullptr && cchSize > 0) {
+            lpString[0] = L'\0'; // Empty string
         }
+        return 0; // No key name
     }
 
     // Call original function
@@ -777,16 +824,13 @@ int WINAPI GetKeyNameTextW_Detour(LONG lParam, LPWSTR lpString, int cchSize) {
 UINT WINAPI SendInput_Detour(UINT nInputs, LPINPUT pInputs, int cbSize) {
     // If input blocking is enabled, block all input generation
     if (s_block_input_without_reshade.load()) {
-        HWND gameWindow = GetGameWindow();
-        if (gameWindow != nullptr) {
-            // Log blocked input for debugging
-            static std::atomic<int> block_counter{0};
-            int count = block_counter.fetch_add(1);
-            if (count % 100 == 0) {
-                LogInfo("Blocked SendInput: nInputs=%u", nInputs);
-            }
-            return 0; // Block input generation
+        // Log blocked input for debugging
+        static std::atomic<int> block_counter{0};
+        int count = block_counter.fetch_add(1);
+        if (count % 100 == 0) {
+            LogInfo("Blocked SendInput: nInputs=%u", nInputs);
         }
+        return 0; // Block input generation
     }
 
     // Call original function
@@ -799,16 +843,13 @@ UINT WINAPI SendInput_Detour(UINT nInputs, LPINPUT pInputs, int cbSize) {
 void WINAPI keybd_event_Detour(BYTE bVk, BYTE bScan, DWORD dwFlags, ULONG_PTR dwExtraInfo) {
     // If input blocking is enabled, block keyboard event generation
     if (s_block_input_without_reshade.load()) {
-        HWND gameWindow = GetGameWindow();
-        if (gameWindow != nullptr) {
-            // Log blocked input for debugging
-            static std::atomic<int> block_counter{0};
-            int count = block_counter.fetch_add(1);
-            if (count % 100 == 0) {
-                LogInfo("Blocked keybd_event: bVk=0x%02X, dwFlags=0x%08X", bVk, dwFlags);
-            }
-            return; // Block keyboard event generation
+        // Log blocked input for debugging
+        static std::atomic<int> block_counter{0};
+        int count = block_counter.fetch_add(1);
+        if (count % 100 == 0) {
+            LogInfo("Blocked keybd_event: bVk=0x%02X, dwFlags=0x%08X", bVk, dwFlags);
         }
+        return; // Block keyboard event generation
     }
 
     // Call original function
@@ -823,16 +864,13 @@ void WINAPI keybd_event_Detour(BYTE bVk, BYTE bScan, DWORD dwFlags, ULONG_PTR dw
 void WINAPI mouse_event_Detour(DWORD dwFlags, DWORD dx, DWORD dy, DWORD dwData, ULONG_PTR dwExtraInfo) {
     // If input blocking is enabled, block mouse event generation
     if (s_block_input_without_reshade.load()) {
-        HWND gameWindow = GetGameWindow();
-        if (gameWindow != nullptr) {
-            // Log blocked input for debugging
-            static std::atomic<int> block_counter{0};
-            int count = block_counter.fetch_add(1);
-            if (count % 100 == 0) {
-                LogInfo("Blocked mouse_event: dwFlags=0x%08X, dx=%u, dy=%u", dwFlags, dx, dy);
-            }
-            return; // Block mouse event generation
+        // Log blocked input for debugging
+        static std::atomic<int> block_counter{0};
+        int count = block_counter.fetch_add(1);
+        if (count % 100 == 0) {
+            LogInfo("Blocked mouse_event: dwFlags=0x%08X, dx=%u, dy=%u", dwFlags, dx, dy);
         }
+        return; // Block mouse event generation
     }
 
     // Call original function
@@ -847,10 +885,7 @@ void WINAPI mouse_event_Detour(DWORD dwFlags, DWORD dx, DWORD dy, DWORD dwData, 
 UINT WINAPI MapVirtualKey_Detour(UINT uCode, UINT uMapType) {
     // If input blocking is enabled, return 0 for virtual key mapping
     if (s_block_input_without_reshade.load()) {
-        HWND gameWindow = GetGameWindow();
-        if (gameWindow != nullptr) {
-            return 0; // Block virtual key mapping
-        }
+        return 0; // Block virtual key mapping
     }
 
     // Call original function
@@ -863,10 +898,7 @@ UINT WINAPI MapVirtualKey_Detour(UINT uCode, UINT uMapType) {
 UINT WINAPI MapVirtualKeyEx_Detour(UINT uCode, UINT uMapType, HKL dwhkl) {
     // If input blocking is enabled, return 0 for virtual key mapping
     if (s_block_input_without_reshade.load()) {
-        HWND gameWindow = GetGameWindow();
-        if (gameWindow != nullptr) {
-            return 0; // Block virtual key mapping
-        }
+        return 0; // Block virtual key mapping
     }
 
     // Call original function
@@ -1200,6 +1232,32 @@ void UninstallWindowsMessageHooks() {
 // Check if Windows message hooks are installed
 bool AreWindowsMessageHooksInstalled() {
     return g_message_hooks_installed.load();
+}
+
+// Hook statistics access functions
+const HookCallStats& GetHookStats(int hook_index) {
+    if (hook_index >= 0 && hook_index < HOOK_COUNT) {
+        return g_hook_stats[hook_index];
+    }
+    static HookCallStats empty_stats;
+    return empty_stats;
+}
+
+void ResetAllHookStats() {
+    for (int i = 0; i < HOOK_COUNT; ++i) {
+        g_hook_stats[i].reset();
+    }
+}
+
+int GetHookCount() {
+    return HOOK_COUNT;
+}
+
+const char* GetHookName(int hook_index) {
+    if (hook_index >= 0 && hook_index < HOOK_COUNT) {
+        return g_hook_names[hook_index];
+    }
+    return "Unknown";
 }
 
 } // namespace renodx::hooks

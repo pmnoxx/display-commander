@@ -1,8 +1,19 @@
 #pragma once
 
 #include <windows.h>
+#include <atomic>
 
 namespace renodx::hooks {
+
+// Hook call statistics structure
+struct HookCallStats {
+    std::atomic<uint64_t> total_calls{0};
+    std::atomic<uint64_t> unsuppressed_calls{0};
+
+    void increment_total() { total_calls.fetch_add(1); }
+    void increment_unsuppressed() { unsuppressed_calls.fetch_add(1); }
+    void reset() { total_calls.store(0); unsuppressed_calls.store(0); }
+};
 
 // Function pointer types for Windows message functions
 using GetMessageA_pfn = BOOL(WINAPI*)(LPMSG, HWND, UINT, UINT);
@@ -122,5 +133,14 @@ bool ShouldInterceptMessage(HWND hWnd, UINT uMsg);
 void ProcessInterceptedMessage(LPMSG lpMsg);
 bool ShouldSuppressMessage(HWND hWnd, UINT uMsg);
 void SuppressMessage(LPMSG lpMsg);
+
+// Hook call statistics
+extern HookCallStats g_hook_stats[];
+
+// Hook statistics access functions
+const HookCallStats& GetHookStats(int hook_index);
+void ResetAllHookStats();
+int GetHookCount();
+const char* GetHookName(int hook_index);
 
 } // namespace renodx::hooks

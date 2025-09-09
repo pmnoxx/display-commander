@@ -21,6 +21,11 @@ using SetWindowsHookExA_pfn = HHOOK(WINAPI*)(int, HOOKPROC, HINSTANCE, DWORD);
 using SetWindowsHookExW_pfn = HHOOK(WINAPI*)(int, HOOKPROC, HINSTANCE, DWORD);
 using UnhookWindowsHookEx_pfn = BOOL(WINAPI*)(HHOOK);
 using GetRawInputBuffer_pfn = UINT(WINAPI*)(PRAWINPUT, PUINT, UINT);
+using TranslateMessage_pfn = BOOL(WINAPI*)(const MSG*);
+using DispatchMessageA_pfn = LRESULT(WINAPI*)(const MSG*);
+using DispatchMessageW_pfn = LRESULT(WINAPI*)(const MSG*);
+using GetRawInputData_pfn = UINT(WINAPI*)(HRAWINPUT, UINT, LPVOID, PUINT, UINT);
+using RegisterRawInputDevices_pfn = BOOL(WINAPI*)(PCRAWINPUTDEVICE, UINT, UINT);
 
 // Original function pointers
 extern GetMessageA_pfn GetMessageA_Original;
@@ -39,6 +44,11 @@ extern SetWindowsHookExA_pfn SetWindowsHookExA_Original;
 extern SetWindowsHookExW_pfn SetWindowsHookExW_Original;
 extern UnhookWindowsHookEx_pfn UnhookWindowsHookEx_Original;
 extern GetRawInputBuffer_pfn GetRawInputBuffer_Original;
+extern TranslateMessage_pfn TranslateMessage_Original;
+extern DispatchMessageA_pfn DispatchMessageA_Original;
+extern DispatchMessageW_pfn DispatchMessageW_Original;
+extern GetRawInputData_pfn GetRawInputData_Original;
+extern RegisterRawInputDevices_pfn RegisterRawInputDevices_Original;
 
 // Hooked message functions
 BOOL WINAPI GetMessageA_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax);
@@ -57,6 +67,11 @@ HHOOK WINAPI SetWindowsHookExA_Detour(int idHook, HOOKPROC lpfn, HINSTANCE hmod,
 HHOOK WINAPI SetWindowsHookExW_Detour(int idHook, HOOKPROC lpfn, HINSTANCE hmod, DWORD dwThreadId);
 BOOL WINAPI UnhookWindowsHookEx_Detour(HHOOK hhk);
 UINT WINAPI GetRawInputBuffer_Detour(PRAWINPUT pData, PUINT pcbSize, UINT cbSizeHeader);
+BOOL WINAPI TranslateMessage_Detour(const MSG* lpMsg);
+LRESULT WINAPI DispatchMessageA_Detour(const MSG* lpMsg);
+LRESULT WINAPI DispatchMessageW_Detour(const MSG* lpMsg);
+UINT WINAPI GetRawInputData_Detour(HRAWINPUT hRawInput, UINT uiCommand, LPVOID pData, PUINT pcbSize, UINT cbSizeHeader);
+BOOL WINAPI RegisterRawInputDevices_Detour(PCRAWINPUTDEVICE pRawInputDevices, UINT uiNumDevices, UINT cbSize);
 
 // Hook management
 bool InstallWindowsMessageHooks();

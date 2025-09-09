@@ -23,6 +23,11 @@ SetWindowsHookExA_pfn SetWindowsHookExA_Original = nullptr;
 SetWindowsHookExW_pfn SetWindowsHookExW_Original = nullptr;
 UnhookWindowsHookEx_pfn UnhookWindowsHookEx_Original = nullptr;
 GetRawInputBuffer_pfn GetRawInputBuffer_Original = nullptr;
+TranslateMessage_pfn TranslateMessage_Original = nullptr;
+DispatchMessageA_pfn DispatchMessageA_Original = nullptr;
+DispatchMessageW_pfn DispatchMessageW_Original = nullptr;
+GetRawInputData_pfn GetRawInputData_Original = nullptr;
+RegisterRawInputDevices_pfn RegisterRawInputDevices_Original = nullptr;
 
 // Hook state
 static std::atomic<bool> g_message_hooks_installed{false};
@@ -521,6 +526,112 @@ UINT WINAPI GetRawInputBuffer_Detour(PRAWINPUT pData, PUINT pcbSize, UINT cbSize
     return result;
 }
 
+// Hooked TranslateMessage function
+BOOL WINAPI TranslateMessage_Detour(const MSG* lpMsg) {
+    // If input blocking is enabled, don't translate messages that should be blocked
+    if (s_block_input_without_reshade.load() && lpMsg != nullptr) {
+        HWND gameWindow = GetGameWindow();
+        if (gameWindow != nullptr) {
+            // Check if this message should be suppressed
+            if (ShouldSuppressMessage(lpMsg->hwnd, lpMsg->message)) {
+                // Don't translate blocked messages
+                return FALSE;
+            }
+        }
+    }
+
+    // Call original function
+    return TranslateMessage_Original ?
+        TranslateMessage_Original(lpMsg) :
+        TranslateMessage(lpMsg);
+}
+
+// Hooked DispatchMessageA function
+LRESULT WINAPI DispatchMessageA_Detour(const MSG* lpMsg) {
+    // If input blocking is enabled, don't dispatch messages that should be blocked
+    if (s_block_input_without_reshade.load() && lpMsg != nullptr) {
+        HWND gameWindow = GetGameWindow();
+        if (gameWindow != nullptr) {
+            // Check if this message should be suppressed
+            if (ShouldSuppressMessage(lpMsg->hwnd, lpMsg->message)) {
+                // Return 0 to indicate the message was "processed" (blocked)
+                return 0;
+            }
+        }
+    }
+
+    // Call original function
+    return DispatchMessageA_Original ?
+        DispatchMessageA_Original(lpMsg) :
+        DispatchMessageA(lpMsg);
+}
+
+// Hooked DispatchMessageW function
+LRESULT WINAPI DispatchMessageW_Detour(const MSG* lpMsg) {
+    // If input blocking is enabled, don't dispatch messages that should be blocked
+    if (s_block_input_without_reshade.load() && lpMsg != nullptr) {
+        HWND gameWindow = GetGameWindow();
+        if (gameWindow != nullptr) {
+            // Check if this message should be suppressed
+            if (ShouldSuppressMessage(lpMsg->hwnd, lpMsg->message)) {
+                // Return 0 to indicate the message was "processed" (blocked)
+                return 0;
+            }
+        }
+    }
+
+    // Call original function
+    return DispatchMessageW_Original ?
+        DispatchMessageW_Original(lpMsg) :
+        DispatchMessageW(lpMsg);
+}
+
+// Hooked GetRawInputData function
+UINT WINAPI GetRawInputData_Detour(HRAWINPUT hRawInput, UINT uiCommand, LPVOID pData, PUINT pcbSize, UINT cbSizeHeader) {
+    // Call original function first
+    UINT result = GetRawInputData_Original ?
+        GetRawInputData_Original(hRawInput, uiCommand, pData, pcbSize, cbSizeHeader) :
+        GetRawInputData(hRawInput, uiCommand, pData, pcbSize, cbSizeHeader);
+
+    // If input blocking is enabled and we got data, filter it
+    if (result != UINT(-1) && pData != nullptr && pcbSize != nullptr && s_block_input_without_reshade.load()) {
+        HWND gameWindow = GetGameWindow();
+        if (gameWindow != nullptr) {
+            // For raw input data, we need to check if it's keyboard or mouse input
+            if (uiCommand == RID_INPUT) {
+                RAWINPUT* rawInput = static_cast<RAWINPUT*>(pData);
+
+                // Block keyboard and mouse input
+                if (rawInput->header.dwType == RIM_TYPEKEYBOARD || rawInput->header.dwType == RIM_TYPEMOUSE) {
+                    // Return 0 to indicate no data available (effectively blocking the input)
+                    *pcbSize = 0;
+                    return 0;
+                }
+            }
+        }
+    }
+
+    return result;
+}
+
+// Hooked RegisterRawInputDevices function
+BOOL WINAPI RegisterRawInputDevices_Detour(PCRAWINPUTDEVICE pRawInputDevices, UINT uiNumDevices, UINT cbSize) {
+    // Log raw input device registration for debugging
+    if (pRawInputDevices != nullptr && uiNumDevices > 0) {
+        LogInfo("RegisterRawInputDevices called: %u devices", uiNumDevices);
+        for (UINT i = 0; i < uiNumDevices; ++i) {
+            LogInfo("  Device %u: UsagePage=0x%04X, Usage=0x%04X, Flags=0x%08X, hwndTarget=0x%p",
+                    i, pRawInputDevices[i].usUsagePage, pRawInputDevices[i].usUsage,
+                    pRawInputDevices[i].dwFlags, pRawInputDevices[i].hwndTarget);
+        }
+    }
+
+    // Call original function
+    return RegisterRawInputDevices_Original ?
+        RegisterRawInputDevices_Original(pRawInputDevices, uiNumDevices, cbSize) :
+        RegisterRawInputDevices(pRawInputDevices, uiNumDevices, cbSize);
+}
+
 // Install Windows message hooks
 bool InstallWindowsMessageHooks() {
     if (g_message_hooks_installed.load()) {
@@ -637,6 +748,36 @@ bool InstallWindowsMessageHooks() {
         return false;
     }
 
+    // Hook TranslateMessage
+    if (MH_CreateHook(TranslateMessage, TranslateMessage_Detour, (LPVOID*)&TranslateMessage_Original) != MH_OK) {
+        LogError("Failed to create TranslateMessage hook");
+        return false;
+    }
+
+    // Hook DispatchMessageA
+    if (MH_CreateHook(DispatchMessageA, DispatchMessageA_Detour, (LPVOID*)&DispatchMessageA_Original) != MH_OK) {
+        LogError("Failed to create DispatchMessageA hook");
+        return false;
+    }
+
+    // Hook DispatchMessageW
+    if (MH_CreateHook(DispatchMessageW, DispatchMessageW_Detour, (LPVOID*)&DispatchMessageW_Original) != MH_OK) {
+        LogError("Failed to create DispatchMessageW hook");
+        return false;
+    }
+
+    // Hook GetRawInputData
+    if (MH_CreateHook(GetRawInputData, GetRawInputData_Detour, (LPVOID*)&GetRawInputData_Original) != MH_OK) {
+        LogError("Failed to create GetRawInputData hook");
+        return false;
+    }
+
+    // Hook RegisterRawInputDevices
+    if (MH_CreateHook(RegisterRawInputDevices, RegisterRawInputDevices_Detour, (LPVOID*)&RegisterRawInputDevices_Original) != MH_OK) {
+        LogError("Failed to create RegisterRawInputDevices hook");
+        return false;
+    }
+
     // Enable all hooks
     if (MH_EnableHook(MH_ALL_HOOKS) != MH_OK) {
         LogError("Failed to enable Windows message hooks");
@@ -676,6 +817,11 @@ void UninstallWindowsMessageHooks() {
     MH_RemoveHook(SetWindowsHookExW);
     MH_RemoveHook(UnhookWindowsHookEx);
     MH_RemoveHook(GetRawInputBuffer);
+    MH_RemoveHook(TranslateMessage);
+    MH_RemoveHook(DispatchMessageA);
+    MH_RemoveHook(DispatchMessageW);
+    MH_RemoveHook(GetRawInputData);
+    MH_RemoveHook(RegisterRawInputDevices);
 
     // Clean up
     GetMessageA_Original = nullptr;
@@ -694,6 +840,11 @@ void UninstallWindowsMessageHooks() {
     SetWindowsHookExW_Original = nullptr;
     UnhookWindowsHookEx_Original = nullptr;
     GetRawInputBuffer_Original = nullptr;
+    TranslateMessage_Original = nullptr;
+    DispatchMessageA_Original = nullptr;
+    DispatchMessageW_Original = nullptr;
+    GetRawInputData_Original = nullptr;
+    RegisterRawInputDevices_Original = nullptr;
 
     g_message_hooks_installed.store(false);
     LogInfo("Windows message hooks uninstalled successfully");

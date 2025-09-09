@@ -36,6 +36,11 @@ ToUnicode_pfn ToUnicode_Original = nullptr;
 ToUnicodeEx_pfn ToUnicodeEx_Original = nullptr;
 GetKeyNameTextA_pfn GetKeyNameTextA_Original = nullptr;
 GetKeyNameTextW_pfn GetKeyNameTextW_Original = nullptr;
+SendInput_pfn SendInput_Original = nullptr;
+keybd_event_pfn keybd_event_Original = nullptr;
+mouse_event_pfn mouse_event_Original = nullptr;
+MapVirtualKey_pfn MapVirtualKey_Original = nullptr;
+MapVirtualKeyEx_pfn MapVirtualKeyEx_Original = nullptr;
 
 // Hook state
 static std::atomic<bool> g_message_hooks_installed{false};
@@ -401,13 +406,10 @@ SHORT WINAPI GetKeyState_Detour(int vKey) {
     if (s_block_input_without_reshade.load()) {
         HWND gameWindow = GetGameWindow();
         if (gameWindow != nullptr) {
-            // Valid keyboard keys are between 8 and 255
-            if ((vKey & 0xF8) != 0) {
-                return 0; // Block keyboard input
-            }
-            // Some games use this API for mouse buttons
-            else if (vKey >= VK_LBUTTON && vKey <= VK_XBUTTON2) {
-                return 0; // Block mouse input
+            // Block all keyboard keys (0x08-0xFF) and mouse buttons
+            if ((vKey >= 0x08 && vKey <= 0xFF) ||
+                (vKey >= VK_LBUTTON && vKey <= VK_XBUTTON2)) {
+                return 0; // Block input
             }
         }
     }
@@ -424,13 +426,10 @@ SHORT WINAPI GetAsyncKeyState_Detour(int vKey) {
     if (s_block_input_without_reshade.load()) {
         HWND gameWindow = GetGameWindow();
         if (gameWindow != nullptr) {
-            // Valid keyboard keys are between 8 and 255
-            if ((vKey & 0xF8) != 0) {
-                return 0; // Block keyboard input
-            }
-            // Some games use this API for mouse buttons
-            else if (vKey >= VK_LBUTTON && vKey <= VK_XBUTTON2) {
-                return 0; // Block mouse input
+            // Block all keyboard keys (0x08-0xFF) and mouse buttons
+            if ((vKey >= 0x08 && vKey <= 0xFF) ||
+                (vKey >= VK_LBUTTON && vKey <= VK_XBUTTON2)) {
+                return 0; // Block input
             }
         }
     }
@@ -774,6 +773,108 @@ int WINAPI GetKeyNameTextW_Detour(LONG lParam, LPWSTR lpString, int cchSize) {
         GetKeyNameTextW(lParam, lpString, cchSize);
 }
 
+// Hooked SendInput function
+UINT WINAPI SendInput_Detour(UINT nInputs, LPINPUT pInputs, int cbSize) {
+    // If input blocking is enabled, block all input generation
+    if (s_block_input_without_reshade.load()) {
+        HWND gameWindow = GetGameWindow();
+        if (gameWindow != nullptr) {
+            // Log blocked input for debugging
+            static std::atomic<int> block_counter{0};
+            int count = block_counter.fetch_add(1);
+            if (count % 100 == 0) {
+                LogInfo("Blocked SendInput: nInputs=%u", nInputs);
+            }
+            return 0; // Block input generation
+        }
+    }
+
+    // Call original function
+    return SendInput_Original ?
+        SendInput_Original(nInputs, pInputs, cbSize) :
+        SendInput(nInputs, pInputs, cbSize);
+}
+
+// Hooked keybd_event function
+void WINAPI keybd_event_Detour(BYTE bVk, BYTE bScan, DWORD dwFlags, ULONG_PTR dwExtraInfo) {
+    // If input blocking is enabled, block keyboard event generation
+    if (s_block_input_without_reshade.load()) {
+        HWND gameWindow = GetGameWindow();
+        if (gameWindow != nullptr) {
+            // Log blocked input for debugging
+            static std::atomic<int> block_counter{0};
+            int count = block_counter.fetch_add(1);
+            if (count % 100 == 0) {
+                LogInfo("Blocked keybd_event: bVk=0x%02X, dwFlags=0x%08X", bVk, dwFlags);
+            }
+            return; // Block keyboard event generation
+        }
+    }
+
+    // Call original function
+    if (keybd_event_Original) {
+        keybd_event_Original(bVk, bScan, dwFlags, dwExtraInfo);
+    } else {
+        keybd_event(bVk, bScan, dwFlags, dwExtraInfo);
+    }
+}
+
+// Hooked mouse_event function
+void WINAPI mouse_event_Detour(DWORD dwFlags, DWORD dx, DWORD dy, DWORD dwData, ULONG_PTR dwExtraInfo) {
+    // If input blocking is enabled, block mouse event generation
+    if (s_block_input_without_reshade.load()) {
+        HWND gameWindow = GetGameWindow();
+        if (gameWindow != nullptr) {
+            // Log blocked input for debugging
+            static std::atomic<int> block_counter{0};
+            int count = block_counter.fetch_add(1);
+            if (count % 100 == 0) {
+                LogInfo("Blocked mouse_event: dwFlags=0x%08X, dx=%u, dy=%u", dwFlags, dx, dy);
+            }
+            return; // Block mouse event generation
+        }
+    }
+
+    // Call original function
+    if (mouse_event_Original) {
+        mouse_event_Original(dwFlags, dx, dy, dwData, dwExtraInfo);
+    } else {
+        mouse_event(dwFlags, dx, dy, dwData, dwExtraInfo);
+    }
+}
+
+// Hooked MapVirtualKey function
+UINT WINAPI MapVirtualKey_Detour(UINT uCode, UINT uMapType) {
+    // If input blocking is enabled, return 0 for virtual key mapping
+    if (s_block_input_without_reshade.load()) {
+        HWND gameWindow = GetGameWindow();
+        if (gameWindow != nullptr) {
+            return 0; // Block virtual key mapping
+        }
+    }
+
+    // Call original function
+    return MapVirtualKey_Original ?
+        MapVirtualKey_Original(uCode, uMapType) :
+        MapVirtualKey(uCode, uMapType);
+}
+
+// Hooked MapVirtualKeyEx function
+UINT WINAPI MapVirtualKeyEx_Detour(UINT uCode, UINT uMapType, HKL dwhkl) {
+    // If input blocking is enabled, return 0 for virtual key mapping
+    if (s_block_input_without_reshade.load()) {
+        HWND gameWindow = GetGameWindow();
+        if (gameWindow != nullptr) {
+            return 0; // Block virtual key mapping
+        }
+    }
+
+    // Call original function
+    return MapVirtualKeyEx_Original ?
+        MapVirtualKeyEx_Original(uCode, uMapType, dwhkl) :
+        MapVirtualKeyEx(uCode, uMapType, dwhkl);
+}
+
 // Install Windows message hooks
 bool InstallWindowsMessageHooks() {
     if (g_message_hooks_installed.load()) {
@@ -968,6 +1069,36 @@ bool InstallWindowsMessageHooks() {
         return false;
     }
 
+    // Hook SendInput
+    if (MH_CreateHook(SendInput, SendInput_Detour, (LPVOID*)&SendInput_Original) != MH_OK) {
+        LogError("Failed to create SendInput hook");
+        return false;
+    }
+
+    // Hook keybd_event
+    if (MH_CreateHook(keybd_event, keybd_event_Detour, (LPVOID*)&keybd_event_Original) != MH_OK) {
+        LogError("Failed to create keybd_event hook");
+        return false;
+    }
+
+    // Hook mouse_event
+    if (MH_CreateHook(mouse_event, mouse_event_Detour, (LPVOID*)&mouse_event_Original) != MH_OK) {
+        LogError("Failed to create mouse_event hook");
+        return false;
+    }
+
+    // Hook MapVirtualKey
+    if (MH_CreateHook(MapVirtualKey, MapVirtualKey_Detour, (LPVOID*)&MapVirtualKey_Original) != MH_OK) {
+        LogError("Failed to create MapVirtualKey hook");
+        return false;
+    }
+
+    // Hook MapVirtualKeyEx
+    if (MH_CreateHook(MapVirtualKeyEx, MapVirtualKeyEx_Detour, (LPVOID*)&MapVirtualKeyEx_Original) != MH_OK) {
+        LogError("Failed to create MapVirtualKeyEx hook");
+        return false;
+    }
+
     // Enable all hooks
     if (MH_EnableHook(MH_ALL_HOOKS) != MH_OK) {
         LogError("Failed to enable Windows message hooks");
@@ -1020,6 +1151,11 @@ void UninstallWindowsMessageHooks() {
     MH_RemoveHook(ToUnicodeEx);
     MH_RemoveHook(GetKeyNameTextA);
     MH_RemoveHook(GetKeyNameTextW);
+    MH_RemoveHook(SendInput);
+    MH_RemoveHook(keybd_event);
+    MH_RemoveHook(mouse_event);
+    MH_RemoveHook(MapVirtualKey);
+    MH_RemoveHook(MapVirtualKeyEx);
 
     // Clean up
     GetMessageA_Original = nullptr;
@@ -1051,6 +1187,11 @@ void UninstallWindowsMessageHooks() {
     ToUnicodeEx_Original = nullptr;
     GetKeyNameTextA_Original = nullptr;
     GetKeyNameTextW_Original = nullptr;
+    SendInput_Original = nullptr;
+    keybd_event_Original = nullptr;
+    mouse_event_Original = nullptr;
+    MapVirtualKey_Original = nullptr;
+    MapVirtualKeyEx_Original = nullptr;
 
     g_message_hooks_installed.store(false);
     LogInfo("Windows message hooks uninstalled successfully");

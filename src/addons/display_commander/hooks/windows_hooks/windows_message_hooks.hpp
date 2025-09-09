@@ -34,6 +34,11 @@ using ToUnicode_pfn = int(WINAPI*)(UINT, UINT, const BYTE*, LPWSTR, int, UINT);
 using ToUnicodeEx_pfn = int(WINAPI*)(UINT, UINT, const BYTE*, LPWSTR, int, UINT, HKL);
 using GetKeyNameTextA_pfn = int(WINAPI*)(LONG, LPSTR, int);
 using GetKeyNameTextW_pfn = int(WINAPI*)(LONG, LPWSTR, int);
+using SendInput_pfn = UINT(WINAPI*)(UINT, LPINPUT, int);
+using keybd_event_pfn = void(WINAPI*)(BYTE, BYTE, DWORD, ULONG_PTR);
+using mouse_event_pfn = void(WINAPI*)(DWORD, DWORD, DWORD, DWORD, ULONG_PTR);
+using MapVirtualKey_pfn = UINT(WINAPI*)(UINT, UINT);
+using MapVirtualKeyEx_pfn = UINT(WINAPI*)(UINT, UINT, HKL);
 
 // Original function pointers
 extern GetMessageA_pfn GetMessageA_Original;
@@ -65,6 +70,11 @@ extern ToUnicode_pfn ToUnicode_Original;
 extern ToUnicodeEx_pfn ToUnicodeEx_Original;
 extern GetKeyNameTextA_pfn GetKeyNameTextA_Original;
 extern GetKeyNameTextW_pfn GetKeyNameTextW_Original;
+extern SendInput_pfn SendInput_Original;
+extern keybd_event_pfn keybd_event_Original;
+extern mouse_event_pfn mouse_event_Original;
+extern MapVirtualKey_pfn MapVirtualKey_Original;
+extern MapVirtualKeyEx_pfn MapVirtualKeyEx_Original;
 
 // Hooked message functions
 BOOL WINAPI GetMessageA_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax);
@@ -96,6 +106,11 @@ int WINAPI ToUnicode_Detour(UINT wVirtKey, UINT wScanCode, const BYTE* lpKeyStat
 int WINAPI ToUnicodeEx_Detour(UINT wVirtKey, UINT wScanCode, const BYTE* lpKeyState, LPWSTR pwszBuff, int cchBuff, UINT wFlags, HKL dwhkl);
 int WINAPI GetKeyNameTextA_Detour(LONG lParam, LPSTR lpString, int cchSize);
 int WINAPI GetKeyNameTextW_Detour(LONG lParam, LPWSTR lpString, int cchSize);
+UINT WINAPI SendInput_Detour(UINT nInputs, LPINPUT pInputs, int cbSize);
+void WINAPI keybd_event_Detour(BYTE bVk, BYTE bScan, DWORD dwFlags, ULONG_PTR dwExtraInfo);
+void WINAPI mouse_event_Detour(DWORD dwFlags, DWORD dx, DWORD dy, DWORD dwData, ULONG_PTR dwExtraInfo);
+UINT WINAPI MapVirtualKey_Detour(UINT uCode, UINT uMapType);
+UINT WINAPI MapVirtualKeyEx_Detour(UINT uCode, UINT uMapType, HKL dwhkl);
 
 // Hook management
 bool InstallWindowsMessageHooks();

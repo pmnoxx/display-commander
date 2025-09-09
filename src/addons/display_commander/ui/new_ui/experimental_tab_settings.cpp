@@ -1,4 +1,5 @@
 #include "experimental_tab_settings.hpp"
+#include "../../globals.hpp"
 
 namespace ui::new_ui {
 
@@ -7,6 +8,7 @@ ExperimentalTabSettings g_experimentalTabSettings;
 
 ExperimentalTabSettings::ExperimentalTabSettings()
     : auto_click_enabled("AutoClickEnabled", false, "Experimental")
+    , mouse_spoofing_enabled("MouseSpoofingEnabled", s_spoof_mouse_position, false, "Experimental")
     , sequence_1_enabled("Sequence1Enabled", false, "Experimental")
     , sequence_1_x("Sequence1X", 0, -10000, 10000, "Experimental")
     , sequence_1_y("Sequence1Y", 0, -10000, 10000, "Experimental")
@@ -47,6 +49,7 @@ ExperimentalTabSettings::ExperimentalTabSettings()
     // Initialize the all_settings_ vector
     all_settings_ = {
         &auto_click_enabled,
+        &mouse_spoofing_enabled,
         &sequence_1_enabled, &sequence_1_x, &sequence_1_y, &sequence_1_interval,
         &sequence_2_enabled, &sequence_2_x, &sequence_2_y, &sequence_2_interval,
         &sequence_3_enabled, &sequence_3_x, &sequence_3_y, &sequence_3_interval,

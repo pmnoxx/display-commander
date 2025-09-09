@@ -37,6 +37,12 @@ std::atomic<float> s_nvapi_hdr_interval_sec{5.f};
 
 // Spoof Fullscreen State (for applications that query fullscreen status)
 std::atomic<int> s_spoof_fullscreen_state{0}; // 0 = Disabled, 1 = Spoof as Fullscreen, 2 = Spoof as Windowed
+
+// Mouse position spoofing for auto-click sequences
+std::atomic<bool> s_spoof_mouse_position{false}; // disabled by default
+std::atomic<int> s_spoofed_mouse_x{0};
+std::atomic<int> s_spoofed_mouse_y{0};
+
 std::atomic<bool> s_mute_in_background{false};
 std::atomic<bool> s_mute_in_background_if_other_audio{false};
 std::atomic<float> s_audio_volume_percent{100.f};

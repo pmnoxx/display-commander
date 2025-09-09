@@ -4,6 +4,7 @@
 #include "nvapi/dlssfg_version_detector.hpp"
 #include "nvapi/dlss_preset_detector.hpp"
 #include "ui/ui_display_tab.hpp"
+#include "hooks/api_hooks.hpp"
 #include <thread>
 #include <sstream>
 #include <algorithm>
@@ -47,8 +48,9 @@ void ContinuousMonitoringThread() {
         // Get the current swapchain window
         HWND hwnd = g_last_swapchain_hwnd.load();
         if (hwnd != nullptr && IsWindow(hwnd)) {
-            // BACKGROUND DETECTION: Check if the app is in background
-            bool current_background = (GetForegroundWindow() != hwnd);
+            // BACKGROUND DETECTION: Check if the app is in background using original GetForegroundWindow
+            HWND actual_foreground = renodx::hooks::GetForegroundWindow_Original ? renodx::hooks::GetForegroundWindow_Original() : GetForegroundWindow();
+            bool current_background = (actual_foreground != hwnd);
             bool background_changed = (current_background != g_app_in_background.load());
 
             if (background_changed) {
@@ -74,7 +76,7 @@ void ContinuousMonitoringThread() {
             }
 
             // FOCUS LOSS DETECTION: Close background window when main window loses focus
-            HWND foreground_window = GetForegroundWindow();
+            HWND foreground_window = renodx::hooks::GetForegroundWindow_Original ? renodx::hooks::GetForegroundWindow_Original() : GetForegroundWindow();
             if (foreground_window != hwnd && g_backgroundWindowManager.HasBackgroundWindow()) {
                 // Main window lost focus, close background window
                 LogInfo("Continuous monitoring: Main window lost focus - closing background window");

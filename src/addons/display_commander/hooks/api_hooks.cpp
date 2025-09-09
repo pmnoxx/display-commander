@@ -47,11 +47,6 @@ HWND WINAPI GetFocus_Detour() {
 
 // Hooked GetForegroundWindow function
 HWND WINAPI GetForegroundWindow_Detour() {
-
-    if (true) {
-        return g_game_window;
-    }
-
     if (s_continue_rendering.load() && g_game_window != nullptr && IsWindow(g_game_window)) {
         // Return the game window even when it's not in foreground
     //    LogInfo("GetForegroundWindow_Detour: Returning game window due to continue rendering - HWND: 0x%p", g_game_window);
@@ -64,10 +59,6 @@ HWND WINAPI GetForegroundWindow_Detour() {
 
 // Hooked GetActiveWindow function
 HWND WINAPI GetActiveWindow_Detour() {
-    if (true) {
-        return g_game_window;
-    }
-
     if (s_continue_rendering.load() && g_game_window != nullptr && IsWindow(g_game_window)) {
         // Return the game window even when it's not the active window
         // Check if we're in the same thread as the game window

@@ -13,8 +13,7 @@
 #include "background_tasks/background_task_coordinator.hpp"
 #include "reshade_events/fullscreen_prevention.hpp"
 
-// Include input blocking system
-#include "input_blocking/input_blocking.hpp"
+// Input blocking is now handled by Windows message hooks
 
 // Include input remapping system
 #include "input_remapping/input_remapping.hpp"
@@ -223,8 +222,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
 
         display_cache::g_displayCache.Initialize();
 
-        // Initialize input blocking system
-        display_commander::input_blocking::initialize_input_blocking();
+      // Input blocking is now handled by Windows message hooks
 
         // Initialize input remapping system
         display_commander::input_remapping::initialize_input_remapping();
@@ -271,7 +269,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
       g_shutdown.store(true);
 
       // Clean up input blocking system
-      display_commander::input_blocking::cleanup_input_blocking();
+      // Input blocking cleanup is now handled by Windows message hooks
 
       // Clean up window procedure hooks
       renodx::hooks::UninstallWindowProcHooks();

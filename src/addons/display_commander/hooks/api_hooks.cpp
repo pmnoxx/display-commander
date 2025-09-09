@@ -2,6 +2,7 @@
 #include "xinput_hooks.hpp"
 #include "windows_gaming_input_hooks.hpp"
 #include "loadlibrary_hooks.hpp"
+#include "windows_hooks/windows_message_hooks.hpp"
 #include "globals.hpp"
 #include "../utils.hpp"
 #include <MinHook.h>
@@ -184,6 +185,12 @@ bool InstallApiHooks() {
         return false;
     }
 
+    // Install Windows message hooks
+    if (!InstallWindowsMessageHooks()) {
+        LogError("Failed to install Windows message hooks");
+        return false;
+    }
+
     g_api_hooks_installed.store(true);
     LogInfo("API hooks installed successfully");
 
@@ -208,6 +215,9 @@ void UninstallApiHooks() {
 
     // Uninstall LoadLibrary hooks
     UninstallLoadLibraryHooks();
+
+    // Uninstall Windows message hooks
+    UninstallWindowsMessageHooks();
 
     // Disable all hooks
     MH_DisableHook(MH_ALL_HOOKS);

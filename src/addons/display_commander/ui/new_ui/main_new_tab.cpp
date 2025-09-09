@@ -4,7 +4,7 @@
 #include "main_new_tab_settings.hpp"
 #include "developer_new_tab_settings.hpp"
 #include "../../addon.hpp"
-#include "../../input_blocking/input_blocking.hpp"
+// Input blocking is now handled by Windows message hooks
 #include "../../audio/audio_management.hpp"
 #include <minwindef.h>
 #include <sstream>
@@ -61,7 +61,7 @@ void InitMainNewTab() {
         // VSync & Tearing - all automatically synced via BoolSettingRef
 
         // Update input blocking system with loaded settings
-        display_commander::input_blocking::update_input_blocking_from_settings();
+        // Input blocking is now handled by Windows message hooks
 
         settings_loaded_once = true;
 
@@ -119,17 +119,15 @@ void DrawMainNewTab() {
             ImGui::SetTooltip("Blocks mouse, keyboard, and cursor warping while the game window is not focused.");
         }
 
-        // Experimental input blocking without Reshade
+        // Input blocking without Reshade (now handled by Windows message hooks)
         bool block_without_reshade =
             g_main_new_tab_settings.block_input_without_reshade.GetValue();
-        if (ImGui::Checkbox("Block background input without Reshade (Experimental, needed for gamepad remapping future feature)", &block_without_reshade)) {
+        if (ImGui::Checkbox("Block background input without Reshade (Uses Windows message hooks)", &block_without_reshade)) {
             g_main_new_tab_settings.block_input_without_reshade.SetValue(block_without_reshade);
-
-            // Update the input blocking system
-            display_commander::input_blocking::update_input_blocking_from_settings();
+            // No need to call update function - the message hooks check the setting directly
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Uses Windows hooks to block input independently of Reshade's system. Required for future gamepad remapping features.");
+            ImGui::SetTooltip("Uses Windows message hooks to block input independently of Reshade's system. Required for future gamepad remapping features.");
         }
     }
 

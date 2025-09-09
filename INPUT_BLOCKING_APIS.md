@@ -43,11 +43,15 @@ This document provides a comprehensive checklist of Windows APIs that should be 
 - [ ] `mouse_event` - Legacy mouse event generation
 
 ### Text Processing Functions
-- [ ] `ToAscii` - Virtual key to ASCII conversion
-- [ ] `ToAsciiEx` - Virtual key to ASCII conversion (extended)
-- [ ] `ToUnicode` - Virtual key to Unicode conversion
-- [ ] `ToUnicodeEx` - Virtual key to Unicode conversion (extended)
-- [ ] `MapVirtualKey` - Virtual key mapping
+- [x] `ToAscii` - Virtual key to ASCII conversion (HOOKED)
+- [x] `ToAsciiEx` - Virtual key to ASCII conversion (extended) (HOOKED)
+- [x] `ToUnicode` - Virtual key to Unicode conversion (HOOKED)
+- [x] `ToUnicodeEx` - Virtual key to Unicode conversion (extended) (HOOKED)
+- [x] `VkKeyScan` - Character to virtual key conversion (HOOKED)
+- [x] `VkKeyScanEx` - Character to virtual key conversion (extended) (HOOKED)
+- [x] `GetKeyNameTextA` - Key name retrieval (ANSI) (HOOKED)
+- [x] `GetKeyNameTextW` - Key name retrieval (Unicode) (HOOKED)
+- [ ] `MapVirtualKey` - Virtual key mapping (USED DIRECTLY)
 - [ ] `MapVirtualKeyEx` - Virtual key mapping (extended)
 
 ### Low-Level Input Functions
@@ -106,10 +110,11 @@ Reshade's implementation focuses on the **core message loop and state functions*
 
 - **Core APIs**: ✅ 18/18 implemented
 - **XInput APIs**: ✅ 2/3 implemented (XInputGetState, XInputGetStateEx)
+- **Text Processing APIs**: ✅ 8/10 implemented (NEW - Added ToAscii, ToUnicode, VkKeyScan, GetKeyNameText)
 - **DirectInput APIs**: ❌ 0/6 implemented (CRITICAL MISSING)
 - **Optional APIs**: ❌ 0/15 implemented
-- **Total Coverage**: 20/40 APIs (50%)
-- **Essential Coverage**: 20/25 APIs (80%)
+- **Total Coverage**: 28/50 APIs (56%)
+- **Essential Coverage**: 28/35 APIs (80%)
 
 ## ⚠️ Critical Gap Identified
 

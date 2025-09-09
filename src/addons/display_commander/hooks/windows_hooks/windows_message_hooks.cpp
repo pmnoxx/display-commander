@@ -28,6 +28,14 @@ DispatchMessageA_pfn DispatchMessageA_Original = nullptr;
 DispatchMessageW_pfn DispatchMessageW_Original = nullptr;
 GetRawInputData_pfn GetRawInputData_Original = nullptr;
 RegisterRawInputDevices_pfn RegisterRawInputDevices_Original = nullptr;
+VkKeyScan_pfn VkKeyScan_Original = nullptr;
+VkKeyScanEx_pfn VkKeyScanEx_Original = nullptr;
+ToAscii_pfn ToAscii_Original = nullptr;
+ToAsciiEx_pfn ToAsciiEx_Original = nullptr;
+ToUnicode_pfn ToUnicode_Original = nullptr;
+ToUnicodeEx_pfn ToUnicodeEx_Original = nullptr;
+GetKeyNameTextA_pfn GetKeyNameTextA_Original = nullptr;
+GetKeyNameTextW_pfn GetKeyNameTextW_Original = nullptr;
 
 // Hook state
 static std::atomic<bool> g_message_hooks_installed{false};
@@ -632,6 +640,140 @@ BOOL WINAPI RegisterRawInputDevices_Detour(PCRAWINPUTDEVICE pRawInputDevices, UI
         RegisterRawInputDevices(pRawInputDevices, uiNumDevices, cbSize);
 }
 
+// Hooked VkKeyScan function
+SHORT WINAPI VkKeyScan_Detour(CHAR ch) {
+    // If input blocking is enabled, return -1 to indicate no virtual key found
+    if (s_block_input_without_reshade.load()) {
+        HWND gameWindow = GetGameWindow();
+        if (gameWindow != nullptr) {
+            return -1; // No virtual key found
+        }
+    }
+
+    // Call original function
+    return VkKeyScan_Original ?
+        VkKeyScan_Original(ch) :
+        VkKeyScan(ch);
+}
+
+// Hooked VkKeyScanEx function
+SHORT WINAPI VkKeyScanEx_Detour(CHAR ch, HKL dwhkl) {
+    // If input blocking is enabled, return -1 to indicate no virtual key found
+    if (s_block_input_without_reshade.load()) {
+        HWND gameWindow = GetGameWindow();
+        if (gameWindow != nullptr) {
+            return -1; // No virtual key found
+        }
+    }
+
+    // Call original function
+    return VkKeyScanEx_Original ?
+        VkKeyScanEx_Original(ch, dwhkl) :
+        VkKeyScanEx(ch, dwhkl);
+}
+
+// Hooked ToAscii function
+int WINAPI ToAscii_Detour(UINT uVirtKey, UINT uScanCode, const BYTE* lpKeyState, LPWORD lpChar, UINT uFlags) {
+    // If input blocking is enabled, return 0 to indicate no character generated
+    if (s_block_input_without_reshade.load()) {
+        HWND gameWindow = GetGameWindow();
+        if (gameWindow != nullptr) {
+            return 0; // No character generated
+        }
+    }
+
+    // Call original function
+    return ToAscii_Original ?
+        ToAscii_Original(uVirtKey, uScanCode, lpKeyState, lpChar, uFlags) :
+        ToAscii(uVirtKey, uScanCode, lpKeyState, lpChar, uFlags);
+}
+
+// Hooked ToAsciiEx function
+int WINAPI ToAsciiEx_Detour(UINT uVirtKey, UINT uScanCode, const BYTE* lpKeyState, LPWORD lpChar, UINT uFlags, HKL dwhkl) {
+    // If input blocking is enabled, return 0 to indicate no character generated
+    if (s_block_input_without_reshade.load()) {
+        HWND gameWindow = GetGameWindow();
+        if (gameWindow != nullptr) {
+            return 0; // No character generated
+        }
+    }
+
+    // Call original function
+    return ToAsciiEx_Original ?
+        ToAsciiEx_Original(uVirtKey, uScanCode, lpKeyState, lpChar, uFlags, dwhkl) :
+        ToAsciiEx(uVirtKey, uScanCode, lpKeyState, lpChar, uFlags, dwhkl);
+}
+
+// Hooked ToUnicode function
+int WINAPI ToUnicode_Detour(UINT wVirtKey, UINT wScanCode, const BYTE* lpKeyState, LPWSTR pwszBuff, int cchBuff, UINT wFlags) {
+    // If input blocking is enabled, return 0 to indicate no character generated
+    if (s_block_input_without_reshade.load()) {
+        HWND gameWindow = GetGameWindow();
+        if (gameWindow != nullptr) {
+            return 0; // No character generated
+        }
+    }
+
+    // Call original function
+    return ToUnicode_Original ?
+        ToUnicode_Original(wVirtKey, wScanCode, lpKeyState, pwszBuff, cchBuff, wFlags) :
+        ToUnicode(wVirtKey, wScanCode, lpKeyState, pwszBuff, cchBuff, wFlags);
+}
+
+// Hooked ToUnicodeEx function
+int WINAPI ToUnicodeEx_Detour(UINT wVirtKey, UINT wScanCode, const BYTE* lpKeyState, LPWSTR pwszBuff, int cchBuff, UINT wFlags, HKL dwhkl) {
+    // If input blocking is enabled, return 0 to indicate no character generated
+    if (s_block_input_without_reshade.load()) {
+        HWND gameWindow = GetGameWindow();
+        if (gameWindow != nullptr) {
+            return 0; // No character generated
+        }
+    }
+
+    // Call original function
+    return ToUnicodeEx_Original ?
+        ToUnicodeEx_Original(wVirtKey, wScanCode, lpKeyState, pwszBuff, cchBuff, wFlags, dwhkl) :
+        ToUnicodeEx(wVirtKey, wScanCode, lpKeyState, pwszBuff, cchBuff, wFlags, dwhkl);
+}
+
+// Hooked GetKeyNameTextA function
+int WINAPI GetKeyNameTextA_Detour(LONG lParam, LPSTR lpString, int cchSize) {
+    // If input blocking is enabled, return 0 to indicate no key name
+    if (s_block_input_without_reshade.load()) {
+        HWND gameWindow = GetGameWindow();
+        if (gameWindow != nullptr) {
+            if (lpString != nullptr && cchSize > 0) {
+                lpString[0] = '\0'; // Empty string
+            }
+            return 0; // No key name
+        }
+    }
+
+    // Call original function
+    return GetKeyNameTextA_Original ?
+        GetKeyNameTextA_Original(lParam, lpString, cchSize) :
+        GetKeyNameTextA(lParam, lpString, cchSize);
+}
+
+// Hooked GetKeyNameTextW function
+int WINAPI GetKeyNameTextW_Detour(LONG lParam, LPWSTR lpString, int cchSize) {
+    // If input blocking is enabled, return 0 to indicate no key name
+    if (s_block_input_without_reshade.load()) {
+        HWND gameWindow = GetGameWindow();
+        if (gameWindow != nullptr) {
+            if (lpString != nullptr && cchSize > 0) {
+                lpString[0] = L'\0'; // Empty string
+            }
+            return 0; // No key name
+        }
+    }
+
+    // Call original function
+    return GetKeyNameTextW_Original ?
+        GetKeyNameTextW_Original(lParam, lpString, cchSize) :
+        GetKeyNameTextW(lParam, lpString, cchSize);
+}
+
 // Install Windows message hooks
 bool InstallWindowsMessageHooks() {
     if (g_message_hooks_installed.load()) {
@@ -778,6 +920,54 @@ bool InstallWindowsMessageHooks() {
         return false;
     }
 
+    // Hook VkKeyScan
+    if (MH_CreateHook(VkKeyScan, VkKeyScan_Detour, (LPVOID*)&VkKeyScan_Original) != MH_OK) {
+        LogError("Failed to create VkKeyScan hook");
+        return false;
+    }
+
+    // Hook VkKeyScanEx
+    if (MH_CreateHook(VkKeyScanEx, VkKeyScanEx_Detour, (LPVOID*)&VkKeyScanEx_Original) != MH_OK) {
+        LogError("Failed to create VkKeyScanEx hook");
+        return false;
+    }
+
+    // Hook ToAscii
+    if (MH_CreateHook(ToAscii, ToAscii_Detour, (LPVOID*)&ToAscii_Original) != MH_OK) {
+        LogError("Failed to create ToAscii hook");
+        return false;
+    }
+
+    // Hook ToAsciiEx
+    if (MH_CreateHook(ToAsciiEx, ToAsciiEx_Detour, (LPVOID*)&ToAsciiEx_Original) != MH_OK) {
+        LogError("Failed to create ToAsciiEx hook");
+        return false;
+    }
+
+    // Hook ToUnicode
+    if (MH_CreateHook(ToUnicode, ToUnicode_Detour, (LPVOID*)&ToUnicode_Original) != MH_OK) {
+        LogError("Failed to create ToUnicode hook");
+        return false;
+    }
+
+    // Hook ToUnicodeEx
+    if (MH_CreateHook(ToUnicodeEx, ToUnicodeEx_Detour, (LPVOID*)&ToUnicodeEx_Original) != MH_OK) {
+        LogError("Failed to create ToUnicodeEx hook");
+        return false;
+    }
+
+    // Hook GetKeyNameTextA
+    if (MH_CreateHook(GetKeyNameTextA, GetKeyNameTextA_Detour, (LPVOID*)&GetKeyNameTextA_Original) != MH_OK) {
+        LogError("Failed to create GetKeyNameTextA hook");
+        return false;
+    }
+
+    // Hook GetKeyNameTextW
+    if (MH_CreateHook(GetKeyNameTextW, GetKeyNameTextW_Detour, (LPVOID*)&GetKeyNameTextW_Original) != MH_OK) {
+        LogError("Failed to create GetKeyNameTextW hook");
+        return false;
+    }
+
     // Enable all hooks
     if (MH_EnableHook(MH_ALL_HOOKS) != MH_OK) {
         LogError("Failed to enable Windows message hooks");
@@ -822,6 +1012,14 @@ void UninstallWindowsMessageHooks() {
     MH_RemoveHook(DispatchMessageW);
     MH_RemoveHook(GetRawInputData);
     MH_RemoveHook(RegisterRawInputDevices);
+    MH_RemoveHook(VkKeyScan);
+    MH_RemoveHook(VkKeyScanEx);
+    MH_RemoveHook(ToAscii);
+    MH_RemoveHook(ToAsciiEx);
+    MH_RemoveHook(ToUnicode);
+    MH_RemoveHook(ToUnicodeEx);
+    MH_RemoveHook(GetKeyNameTextA);
+    MH_RemoveHook(GetKeyNameTextW);
 
     // Clean up
     GetMessageA_Original = nullptr;
@@ -845,6 +1043,14 @@ void UninstallWindowsMessageHooks() {
     DispatchMessageW_Original = nullptr;
     GetRawInputData_Original = nullptr;
     RegisterRawInputDevices_Original = nullptr;
+    VkKeyScan_Original = nullptr;
+    VkKeyScanEx_Original = nullptr;
+    ToAscii_Original = nullptr;
+    ToAsciiEx_Original = nullptr;
+    ToUnicode_Original = nullptr;
+    ToUnicodeEx_Original = nullptr;
+    GetKeyNameTextA_Original = nullptr;
+    GetKeyNameTextW_Original = nullptr;
 
     g_message_hooks_installed.store(false);
     LogInfo("Windows message hooks uninstalled successfully");

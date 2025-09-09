@@ -119,10 +119,10 @@ void DrawMainNewTab() {
             ImGui::SetTooltip("Blocks mouse, keyboard, and cursor warping while the game window is not focused.");
         }
 
-        // Input blocking without Reshade (now handled by Windows message hooks)
+        // Input blocking without Reshade (handled by Windows message hooks)
         bool block_without_reshade =
             g_main_new_tab_settings.block_input_without_reshade.GetValue();
-        if (ImGui::Checkbox("Block background input without Reshade (Uses Windows message hooks)", &block_without_reshade)) {
+        if (ImGui::Checkbox("Block input without Reshade (Uses Windows message hooks)", &block_without_reshade)) {
             g_main_new_tab_settings.block_input_without_reshade.SetValue(block_without_reshade);
             // No need to call update function - the message hooks check the setting directly
         }

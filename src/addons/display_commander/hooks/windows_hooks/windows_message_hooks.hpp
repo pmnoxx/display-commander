@@ -26,6 +26,14 @@ using DispatchMessageA_pfn = LRESULT(WINAPI*)(const MSG*);
 using DispatchMessageW_pfn = LRESULT(WINAPI*)(const MSG*);
 using GetRawInputData_pfn = UINT(WINAPI*)(HRAWINPUT, UINT, LPVOID, PUINT, UINT);
 using RegisterRawInputDevices_pfn = BOOL(WINAPI*)(PCRAWINPUTDEVICE, UINT, UINT);
+using VkKeyScan_pfn = SHORT(WINAPI*)(CHAR);
+using VkKeyScanEx_pfn = SHORT(WINAPI*)(CHAR, HKL);
+using ToAscii_pfn = int(WINAPI*)(UINT, UINT, const BYTE*, LPWORD, UINT);
+using ToAsciiEx_pfn = int(WINAPI*)(UINT, UINT, const BYTE*, LPWORD, UINT, HKL);
+using ToUnicode_pfn = int(WINAPI*)(UINT, UINT, const BYTE*, LPWSTR, int, UINT);
+using ToUnicodeEx_pfn = int(WINAPI*)(UINT, UINT, const BYTE*, LPWSTR, int, UINT, HKL);
+using GetKeyNameTextA_pfn = int(WINAPI*)(LONG, LPSTR, int);
+using GetKeyNameTextW_pfn = int(WINAPI*)(LONG, LPWSTR, int);
 
 // Original function pointers
 extern GetMessageA_pfn GetMessageA_Original;
@@ -49,6 +57,14 @@ extern DispatchMessageA_pfn DispatchMessageA_Original;
 extern DispatchMessageW_pfn DispatchMessageW_Original;
 extern GetRawInputData_pfn GetRawInputData_Original;
 extern RegisterRawInputDevices_pfn RegisterRawInputDevices_Original;
+extern VkKeyScan_pfn VkKeyScan_Original;
+extern VkKeyScanEx_pfn VkKeyScanEx_Original;
+extern ToAscii_pfn ToAscii_Original;
+extern ToAsciiEx_pfn ToAsciiEx_Original;
+extern ToUnicode_pfn ToUnicode_Original;
+extern ToUnicodeEx_pfn ToUnicodeEx_Original;
+extern GetKeyNameTextA_pfn GetKeyNameTextA_Original;
+extern GetKeyNameTextW_pfn GetKeyNameTextW_Original;
 
 // Hooked message functions
 BOOL WINAPI GetMessageA_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax);
@@ -72,6 +88,14 @@ LRESULT WINAPI DispatchMessageA_Detour(const MSG* lpMsg);
 LRESULT WINAPI DispatchMessageW_Detour(const MSG* lpMsg);
 UINT WINAPI GetRawInputData_Detour(HRAWINPUT hRawInput, UINT uiCommand, LPVOID pData, PUINT pcbSize, UINT cbSizeHeader);
 BOOL WINAPI RegisterRawInputDevices_Detour(PCRAWINPUTDEVICE pRawInputDevices, UINT uiNumDevices, UINT cbSize);
+SHORT WINAPI VkKeyScan_Detour(CHAR ch);
+SHORT WINAPI VkKeyScanEx_Detour(CHAR ch, HKL dwhkl);
+int WINAPI ToAscii_Detour(UINT uVirtKey, UINT uScanCode, const BYTE* lpKeyState, LPWORD lpChar, UINT uFlags);
+int WINAPI ToAsciiEx_Detour(UINT uVirtKey, UINT uScanCode, const BYTE* lpKeyState, LPWORD lpChar, UINT uFlags, HKL dwhkl);
+int WINAPI ToUnicode_Detour(UINT wVirtKey, UINT wScanCode, const BYTE* lpKeyState, LPWSTR pwszBuff, int cchBuff, UINT wFlags);
+int WINAPI ToUnicodeEx_Detour(UINT wVirtKey, UINT wScanCode, const BYTE* lpKeyState, LPWSTR pwszBuff, int cchBuff, UINT wFlags, HKL dwhkl);
+int WINAPI GetKeyNameTextA_Detour(LONG lParam, LPSTR lpString, int cchSize);
+int WINAPI GetKeyNameTextW_Detour(LONG lParam, LPWSTR lpString, int cchSize);
 
 // Hook management
 bool InstallWindowsMessageHooks();

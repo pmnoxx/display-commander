@@ -210,6 +210,12 @@ std::atomic<std::shared_ptr<const std::vector<std::string>>> g_monitor_labels{st
 // Performance optimization settings
 std::atomic<bool> g_flush_before_present = true; // Flush command queue before present to reduce latency (enabled by default)
 
+// Sleep hook settings
+std::atomic<bool> g_sleep_hook_enabled = false;
+std::atomic<float> g_sleep_multiplier = 1.0f;
+std::atomic<DWORD> g_min_sleep_duration_ms = 0;
+std::atomic<DWORD> g_max_sleep_duration_ms = 0;
+
 // Helper function for updating HDR10 override status atomically
 void UpdateHdr10OverrideStatus(const std::string& status) {
     g_hdr10_override_status.store(std::make_shared<std::string>(status));

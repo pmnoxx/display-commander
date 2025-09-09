@@ -25,6 +25,12 @@ void DrawBufferResolutionUpgrade();
 // Draw texture format upgrade section
 void DrawTextureFormatUpgrade();
 
+// Draw sleep hook controls section
+void DrawSleepHookControls();
+
+// Draw time slowdown controls section
+void DrawTimeSlowdownControls();
+
 // Cleanup function to stop background threads
 void CleanupExperimentalTab();
 

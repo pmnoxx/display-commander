@@ -45,6 +45,12 @@ ExperimentalTabSettings::ExperimentalTabSettings()
         "Upgrade Custom Resolution"
     }, "Experimental")
     , texture_format_upgrade_enabled("TextureFormatUpgradeEnabled", false, "Experimental")
+    , sleep_hook_enabled("SleepHookEnabled", false, "Experimental")
+    , sleep_multiplier("SleepMultiplier", 1.0f, 0.1f, 10.0f, "Experimental")
+    , min_sleep_duration_ms("MinSleepDurationMs", 0, 0, 10000, "Experimental")
+    , max_sleep_duration_ms("MaxSleepDurationMs", 0, 0, 10000, "Experimental")
+    , timeslowdown_enabled("TimeslowdownEnabled", false, "Experimental")
+    , timeslowdown_multiplier("TimeslowdownMultiplier", 1.0f, 0.1f, 10.0f, "Experimental")
 {
     // Initialize the all_settings_ vector
     all_settings_ = {
@@ -58,7 +64,9 @@ ExperimentalTabSettings::ExperimentalTabSettings()
         &backbuffer_format_override_enabled, &backbuffer_format_override,
         &buffer_resolution_upgrade_enabled, &buffer_resolution_upgrade_width, &buffer_resolution_upgrade_height,
         &buffer_resolution_upgrade_scale_factor, &buffer_resolution_upgrade_mode,
-        &texture_format_upgrade_enabled
+        &texture_format_upgrade_enabled,
+        &sleep_hook_enabled, &sleep_multiplier, &min_sleep_duration_ms, &max_sleep_duration_ms,
+        &timeslowdown_enabled, &timeslowdown_multiplier
     };
 }
 

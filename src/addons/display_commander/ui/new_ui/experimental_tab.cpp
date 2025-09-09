@@ -1,13 +1,14 @@
 #include "experimental_tab.hpp"
 #include "experimental_tab_settings.hpp"
-#include "../../addon.hpp"
 #include "../../globals.hpp"
+#include "../../hooks/sleep_hooks.hpp"
+#include "../../hooks/timeslowdown_hooks.hpp"
+#include "../../utils.hpp"
 #include <deps/imgui/imgui.h>
 #include <windows.h>
 #include <thread>
 #include <atomic>
 #include <chrono>
-#include <sstream>
 
 namespace ui::new_ui {
 
@@ -326,6 +327,18 @@ void DrawExperimentalTab() {
 
     // Draw auto-click feature
     DrawAutoClickFeature();
+
+    ImGui::Spacing();
+    ImGui::Separator();
+
+    // Draw sleep hook controls
+    DrawSleepHookControls();
+
+    ImGui::Spacing();
+    ImGui::Separator();
+
+    // Draw time slowdown controls
+    DrawTimeSlowdownControls();
 
     ImGui::Spacing();
     ImGui::Separator();
@@ -714,6 +727,134 @@ void DrawTextureFormatUpgrade() {
 
     if (g_experimentalTabSettings.texture_format_upgrade_enabled.GetValue()) {
         ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "Will upgrade texture formats to RGB16A16 (16-bit per channel) for 720p, 1440p, and 4K textures");
+    }
+}
+
+void DrawSleepHookControls() {
+    ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== Sleep Hook Controls ===");
+    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "⚠ EXPERIMENTAL FEATURE - Hooks game sleep calls for FPS control!");
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("This feature hooks Windows Sleep APIs (Sleep, SleepEx, WaitForSingleObject, WaitForMultipleObjects) to modify sleep durations.\nUseful for games that use sleep-based FPS limiting like Unity games.");
+    }
+
+    ImGui::Spacing();
+
+    // Enable/disable checkbox
+    if (CheckboxSetting(g_experimentalTabSettings.sleep_hook_enabled, "Enable Sleep Hooks")) {
+        g_sleep_hook_enabled.store(g_experimentalTabSettings.sleep_hook_enabled.GetValue());
+        LogInfo("Sleep hooks %s", g_sleep_hook_enabled.load() ? "enabled" : "disabled");
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Enable hooks for Windows Sleep APIs to modify sleep durations for FPS control.");
+    }
+
+    if (g_experimentalTabSettings.sleep_hook_enabled.GetValue()) {
+        ImGui::Spacing();
+
+        // Sleep multiplier slider
+        if (SliderFloatSetting(g_experimentalTabSettings.sleep_multiplier, "Sleep Multiplier", "%.2fx")) {
+            g_sleep_multiplier.store(g_experimentalTabSettings.sleep_multiplier.GetValue());
+            LogInfo("Sleep multiplier set to %.2fx", g_sleep_multiplier.load());
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Multiplier applied to sleep durations. 1.0 = no change, 0.5 = half duration, 2.0 = double duration.");
+        }
+
+        // Min sleep duration slider
+        if (SliderIntSetting(g_experimentalTabSettings.min_sleep_duration_ms, "Min Sleep Duration (ms)", "%d ms")) {
+            g_min_sleep_duration_ms.store(static_cast<DWORD>(g_experimentalTabSettings.min_sleep_duration_ms.GetValue()));
+            LogInfo("Min sleep duration set to %lu ms", g_min_sleep_duration_ms.load());
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Minimum sleep duration in milliseconds. 0 = no minimum limit.");
+        }
+
+        // Max sleep duration slider
+        if (SliderIntSetting(g_experimentalTabSettings.max_sleep_duration_ms, "Max Sleep Duration (ms)", "%d ms")) {
+            g_max_sleep_duration_ms.store(static_cast<DWORD>(g_experimentalTabSettings.max_sleep_duration_ms.GetValue()));
+            LogInfo("Max sleep duration set to %lu ms", g_max_sleep_duration_ms.load());
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Maximum sleep duration in milliseconds. 0 = no maximum limit.");
+        }
+
+        ImGui::Spacing();
+
+        // Show current settings summary
+        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Current Settings:");
+        ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Multiplier: %.2fx", g_sleep_multiplier.load());
+        ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Min Duration: %lu ms", g_min_sleep_duration_ms.load());
+        ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Max Duration: %lu ms", g_max_sleep_duration_ms.load());
+
+        // Show hook statistics if available
+        if (renodx::hooks::g_sleep_hook_stats.total_calls.load() > 0) {
+            ImGui::Spacing();
+            ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "Hook Statistics:");
+            ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Total Calls: %llu", renodx::hooks::g_sleep_hook_stats.total_calls.load());
+            ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Modified Calls: %llu", renodx::hooks::g_sleep_hook_stats.modified_calls.load());
+
+            uint64_t total_original = renodx::hooks::g_sleep_hook_stats.total_original_duration_ms.load();
+            uint64_t total_modified = renodx::hooks::g_sleep_hook_stats.total_modified_duration_ms.load();
+            if (total_original > 0) {
+                ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Total Original Duration: %llu ms", total_original);
+                ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Total Modified Duration: %llu ms", total_modified);
+                ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Time Saved: %lld ms", static_cast<int64_t>(total_original) - static_cast<int64_t>(total_modified));
+            }
+        }
+    }
+}
+
+void DrawTimeSlowdownControls() {
+    ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== Time Slowdown Controls ===");
+    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "⚠ EXPERIMENTAL FEATURE - Manipulates game time via QueryPerformanceCounter!");
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("This feature hooks QueryPerformanceCounter to manipulate game time.\nUseful for slowing down or speeding up games that use high-resolution timers for game logic.");
+    }
+
+    ImGui::Spacing();
+
+    // Enable/disable checkbox
+    if (CheckboxSetting(g_experimentalTabSettings.timeslowdown_enabled, "Enable Time Slowdown")) {
+        renodx::hooks::SetTimeslowdownEnabled(g_experimentalTabSettings.timeslowdown_enabled.GetValue());
+        LogInfo("Time slowdown %s", g_experimentalTabSettings.timeslowdown_enabled.GetValue() ? "enabled" : "disabled");
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Enable time manipulation via QueryPerformanceCounter hooks.");
+    }
+
+    if (g_experimentalTabSettings.timeslowdown_enabled.GetValue()) {
+        ImGui::Spacing();
+
+        // Time multiplier slider
+        if (SliderFloatSetting(g_experimentalTabSettings.timeslowdown_multiplier, "Time Multiplier", "%.2fx")) {
+            renodx::hooks::SetTimeslowdownMultiplier(g_experimentalTabSettings.timeslowdown_multiplier.GetValue());
+            LogInfo("Time multiplier set to %.2fx", g_experimentalTabSettings.timeslowdown_multiplier.GetValue());
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Multiplier for game time. 1.0 = normal speed, 0.5 = half speed, 2.0 = double speed.");
+        }
+
+        ImGui::Spacing();
+
+        // Show current settings summary
+        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Current Settings:");
+        ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Time Multiplier: %.2fx", g_experimentalTabSettings.timeslowdown_multiplier.GetValue());
+
+        // Show hook status
+        bool hooks_installed = renodx::hooks::AreTimeslowdownHooksInstalled();
+        ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Hooks Status: %s", hooks_installed ? "Installed" : "Not Installed");
+
+        // Show current runtime values
+        double current_multiplier = renodx::hooks::GetTimeslowdownMultiplier();
+        bool current_enabled = renodx::hooks::IsTimeslowdownEnabled();
+        ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Runtime Multiplier: %.2fx", current_multiplier);
+        ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Runtime Enabled: %s", current_enabled ? "Yes" : "No");
+
+        ImGui::Spacing();
+        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "⚠ WARNING: This affects all time-based game logic!");
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Time slowdown affects all game systems that use QueryPerformanceCounter for timing.\nThis includes physics, animations, AI, and other time-dependent systems.");
+        }
     }
 }
 

@@ -63,6 +63,16 @@ public:
     // Texture format upgrade settings
     BoolSetting texture_format_upgrade_enabled;
 
+    // Sleep hook settings
+    BoolSetting sleep_hook_enabled;
+    FloatSetting sleep_multiplier;
+    IntSetting min_sleep_duration_ms;
+    IntSetting max_sleep_duration_ms;
+
+    // Time slowdown settings
+    BoolSetting timeslowdown_enabled;
+    FloatSetting timeslowdown_multiplier;
+
 private:
     std::vector<SettingBase*> all_settings_;
 };

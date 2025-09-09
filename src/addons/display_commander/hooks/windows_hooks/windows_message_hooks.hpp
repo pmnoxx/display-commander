@@ -57,6 +57,10 @@ enum HookIndex {
     HOOK_DirectInputCreateW,
     HOOK_DirectInputCreateEx,
     HOOK_DirectInput8Create,
+    HOOK_Sleep,
+    HOOK_SleepEx,
+    HOOK_WaitForSingleObject,
+    HOOK_WaitForMultipleObjects,
     HOOK_COUNT
 };
 

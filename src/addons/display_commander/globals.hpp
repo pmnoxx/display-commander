@@ -288,6 +288,12 @@ extern std::atomic<bool> g_flush_before_present;
 // Sleep delay after present as percentage of frame time - 0% to 100%
 extern std::atomic<float> s_sleep_after_present_frame_time_percentage;
 
+// Sleep hook settings
+extern std::atomic<bool> g_sleep_hook_enabled;
+extern std::atomic<float> g_sleep_multiplier;
+extern std::atomic<DWORD> g_min_sleep_duration_ms;
+extern std::atomic<DWORD> g_max_sleep_duration_ms;
+
 // Monitoring thread
 extern std::atomic<bool> g_monitoring_thread_running;
 extern std::thread g_monitoring_thread;

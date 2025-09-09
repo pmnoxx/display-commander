@@ -4,6 +4,8 @@
 #include "loadlibrary_hooks.hpp"
 #include "directinput_hooks.hpp"
 #include "windows_hooks/windows_message_hooks.hpp"
+#include "sleep_hooks.hpp"
+#include "timeslowdown_hooks.hpp"
 #include "globals.hpp"
 #include "../utils.hpp"
 #include <MinHook.h>
@@ -198,6 +200,18 @@ bool InstallApiHooks() {
         return false;
     }
 
+    // Install sleep hooks
+    if (!InstallSleepHooks()) {
+        LogError("Failed to install sleep hooks");
+        return false;
+    }
+
+    // Install timeslowdown hooks
+    if (!InstallTimeslowdownHooks()) {
+        LogError("Failed to install timeslowdown hooks");
+        return false;
+    }
+
     g_api_hooks_installed.store(true);
     LogInfo("API hooks installed successfully");
 
@@ -228,6 +242,12 @@ void UninstallApiHooks() {
 
     // Uninstall DirectInput hooks
     UninstallDirectInputHooks();
+
+    // Uninstall sleep hooks
+    UninstallSleepHooks();
+
+    // Uninstall timeslowdown hooks
+    UninstallTimeslowdownHooks();
 
     // Disable all hooks
     MH_DisableHook(MH_ALL_HOOKS);

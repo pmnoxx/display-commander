@@ -45,6 +45,8 @@ if(MSVC)
   target_compile_options(zzz_display_commander PRIVATE /arch:AVX2)
   # Enable MWAITX specifically
   target_compile_options(zzz_display_commander PRIVATE /D_ENABLE_EXTENDED_ALIGNED_STORAGE)
+  # Suppress Microsoft extension warnings for function pointer casting (common with MinHook)
+  target_compile_options(zzz_display_commander PRIVATE /wd4191)
 endif()
 
 # GCC/Clang-specific flags
@@ -54,6 +56,8 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
   target_compile_options(zzz_display_commander PRIVATE -mavx)
   # Enable MWAITX for AMD Zen architecture
   target_compile_options(zzz_display_commander PRIVATE -mavx2 -mmwaitx)
+  # Suppress Microsoft extension warnings for function pointer casting (common with MinHook)
+  target_compile_options(zzz_display_commander PRIVATE -Wno-microsoft-cast)
 endif()
 
 # Include directories

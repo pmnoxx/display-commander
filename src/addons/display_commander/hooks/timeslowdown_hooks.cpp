@@ -1,5 +1,5 @@
 #include "timeslowdown_hooks.hpp"
-#include "../addon.hpp"
+#include "../utils.hpp"
 #include <MinHook.h>
 #include <atomic>
 
@@ -15,6 +15,8 @@ static std::atomic<bool> g_timeslowdown_hooks_installed{false};
 // Timeslowdown configuration
 static std::atomic<double> g_timeslowdown_multiplier{1.0};
 static std::atomic<bool> g_timeslowdown_enabled{false};
+
+const bool min_enabled = false;
 
 // Hooked QueryPerformanceCounter function
 BOOL WINAPI QueryPerformanceCounter_Detour(LARGE_INTEGER* lpPerformanceCount) {
@@ -36,17 +38,26 @@ BOOL WINAPI QueryPerformanceCounter_Detour(LARGE_INTEGER* lpPerformanceCount) {
             original_quad_value = lpPerformanceCount->QuadPart;
         }
 
-        if (result && lpPerformanceCount && g_timeslowdown_enabled.load()) {
+        if (result && lpPerformanceCount) {
             LONGLONG now_qpc = lpPerformanceCount->QuadPart;
             long double new_multiplier = g_timeslowdown_enabled.load() ? g_timeslowdown_multiplier.load() : 1.0;
 
             if (multiplier != new_multiplier) {
-                original_quad_value = min(now_qpc, original_quad_value + (now_qpc - original_quad_ts) * multiplier);
+                if (min_enabled) {
+                    original_quad_value = max(now_qpc, original_quad_value + (now_qpc - original_quad_ts) * multiplier);
+                } else {
+                    original_quad_value = original_quad_value + (now_qpc - original_quad_ts) * multiplier;
+                }
                 original_quad_ts = now_qpc;
 
                 multiplier = new_multiplier;
             }
-            lpPerformanceCount->QuadPart = min(now_qpc, original_quad_value + (now_qpc - original_quad_ts) * multiplier);
+
+            if (min_enabled) {
+                lpPerformanceCount->QuadPart = min(now_qpc, original_quad_value + (now_qpc - original_quad_ts) * multiplier);
+            } else {
+                lpPerformanceCount->QuadPart = original_quad_value + (now_qpc - original_quad_ts) * multiplier;
+            }
         }
     }
 

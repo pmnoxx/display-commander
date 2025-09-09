@@ -95,7 +95,11 @@ static const char* g_hook_names[HOOK_COUNT] = {
     "DirectInputCreateA",
     "DirectInputCreateW",
     "DirectInputCreateEx",
-    "DirectInput8Create"
+    "DirectInput8Create",
+    "Sleep",
+    "SleepEx",
+    "WaitForSingleObject",
+    "WaitForMultipleObjects"
 };
 
 // Helper function to determine if we should intercept messages

@@ -1,6 +1,7 @@
 #include "experimental_tab.hpp"
 #include "experimental_tab_settings.hpp"
 #include "../../addon.hpp"
+#include "../../globals.hpp"
 #include <deps/imgui/imgui.h>
 #include <windows.h>
 #include <thread>
@@ -104,9 +105,17 @@ void PerformClick(int x, int y, int sequence_num, bool is_test = false) {
 
     // Move mouse to the target location if enabled
     if (g_move_mouse) {
-       SetCursorPos(screen_pos.x, screen_pos.y);
-      // PostMessage(hwnd, WM_MOUSEMOVE, 0, MAKELPARAM(screen_pos.x, screen_pos.y));
-       std::this_thread::sleep_for(std::chrono::milliseconds(50)); // Small delay for mouse movement
+        // Check if mouse position spoofing is enabled
+        if (g_experimentalTabSettings.mouse_spoofing_enabled.GetValue()) {
+            // Use spoofing instead of actually moving the cursor
+            s_spoofed_mouse_x.store(screen_pos.x);
+            s_spoofed_mouse_y.store(screen_pos.y);
+            LogInfo("Mouse position spoofed to (%d, %d) for sequence %d", screen_pos.x, screen_pos.y, sequence_num);
+        } else {
+            // Actually move the cursor
+            SetCursorPos(screen_pos.x, screen_pos.y);
+            std::this_thread::sleep_for(std::chrono::milliseconds(50)); // Small delay for mouse movement
+        }
     }
 
     // Send click messages
@@ -117,7 +126,7 @@ void PerformClick(int x, int y, int sequence_num, bool is_test = false) {
 
     LogInfo("%s click for sequence %d sent to game window at (%d, %d)%s",
            is_test ? "Test" : "Auto", sequence_num, x, y,
-           g_move_mouse ? " - mouse moved to screen" : " - mouse not moved");
+           g_move_mouse ? (g_experimentalTabSettings.mouse_spoofing_enabled.GetValue() ? " - mouse position spoofed" : " - mouse moved to screen") : " - mouse not moved");
 }
 
 // Helper function to draw a sequence using static arrays
@@ -396,6 +405,15 @@ void DrawAutoClickFeature() {
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Whether to physically move the mouse cursor to the click location before sending click messages.\n\nDisable this if the game detects mouse movement as suspicious behavior.");
+    }
+
+    // Mouse position spoofing toggle
+    if (CheckboxSetting(g_experimentalTabSettings.mouse_spoofing_enabled, "Spoof Mouse Position (Instead of Moving)")) {
+        bool spoofing_enabled = g_experimentalTabSettings.mouse_spoofing_enabled.GetValue();
+        LogInfo("Mouse position spoofing %s", spoofing_enabled ? "enabled" : "disabled");
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Instead of physically moving the mouse cursor, spoof the mouse position using hooks.\n\nThis prevents the cursor from actually moving on screen while still making the game think the mouse is at the target location.\n\nOnly works when 'Move Mouse Before Clicking' is enabled and auto-click sequences are active.");
     }
 
     // Show current status

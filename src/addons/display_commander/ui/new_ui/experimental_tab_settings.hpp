@@ -20,6 +20,9 @@ public:
     // Master auto-click enable
     BoolSetting auto_click_enabled;
 
+    // Mouse position spoofing for auto-click sequences
+    BoolSettingRef mouse_spoofing_enabled;
+
     // Click sequences (up to 5)
     BoolSetting sequence_1_enabled;
     IntSetting sequence_1_x;

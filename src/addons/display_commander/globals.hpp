@@ -130,6 +130,11 @@ extern std::atomic<int> s_dxgi_composition_state;
 extern std::atomic<bool> s_block_input_in_background;
 extern std::atomic<bool> s_block_input_without_reshade;
 
+// Mouse position spoofing for auto-click sequences
+extern std::atomic<bool> s_spoof_mouse_position;
+extern std::atomic<int> s_spoofed_mouse_x;
+extern std::atomic<int> s_spoofed_mouse_y;
+
 // Render blocking in background
 extern std::atomic<bool> s_no_render_in_background;
 
@@ -290,6 +295,12 @@ extern std::thread g_monitoring_thread;
 // Import the global variable
 extern std::atomic<int> s_spoof_fullscreen_state;
 extern std::atomic<bool> s_continue_rendering;
+
+// Forward declaration for experimental tab settings
+namespace ui::new_ui {
+    class ExperimentalTabSettings;
+    extern ExperimentalTabSettings g_experimentalTabSettings;
+}
 
 // Swapchain event counters - reset on each swapchain creation
 extern std::atomic<uint32_t> g_swapchain_event_counters[40]; // Array for all On* events

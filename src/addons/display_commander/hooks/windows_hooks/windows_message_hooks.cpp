@@ -191,31 +191,33 @@ bool ShouldSuppressMessage(HWND hWnd, UINT uMsg) {
     // Check if the message is for the game window or its children
     if (hWnd == nullptr || hWnd == gameWindow || IsChild(gameWindow, hWnd)) {
         // Check if it's an input message that should be blocked
+        // Only block DOWN events, allow UP events to clear stuck keys/buttons
         switch (uMsg) {
-            // Keyboard messages
+            // Keyboard DOWN messages only
             case WM_KEYDOWN:
-            case WM_KEYUP:
             case WM_SYSKEYDOWN:
-            case WM_SYSKEYUP:
             case WM_CHAR:
             case WM_SYSCHAR:
             case WM_DEADCHAR:
             case WM_SYSDEADCHAR:
-            // Mouse messages
+            // Mouse DOWN messages only
             case WM_LBUTTONDOWN:
-            case WM_LBUTTONUP:
             case WM_RBUTTONDOWN:
-            case WM_RBUTTONUP:
             case WM_MBUTTONDOWN:
-            case WM_MBUTTONUP:
             case WM_XBUTTONDOWN:
-            case WM_XBUTTONUP:
             case WM_MOUSEMOVE:
             case WM_MOUSEWHEEL:
             case WM_MOUSEHWHEEL:
             // Cursor messages
             case WM_SETCURSOR:
                 return true;
+            // Allow UP events to pass through to clear stuck keys/buttons
+            case WM_KEYUP:
+            case WM_SYSKEYUP:
+            case WM_LBUTTONUP:
+            case WM_RBUTTONUP:
+            case WM_MBUTTONUP:
+            case WM_XBUTTONUP:
             default:
                 return false;
         }
@@ -251,6 +253,12 @@ void SuppressMessage(LPMSG lpMsg) {
     lpMsg->wParam = 0;
     lpMsg->lParam = 0;
 }
+
+// Suppress Microsoft extension warnings for MinHook function pointer conversions
+#pragma warning(push)
+#pragma warning(disable: 4191) // 'type cast': unsafe conversion from 'function_pointer' to 'data_pointer'
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wmicrosoft-cast"
 
 // Hooked GetMessageA function
 BOOL WINAPI GetMessageA_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax) {
@@ -441,6 +449,13 @@ BOOL WINAPI ClipCursor_Detour(const RECT* lpRect) {
 
 // Hooked GetCursorPos function
 BOOL WINAPI GetCursorPos_Detour(LPPOINT lpPoint) {
+    // If mouse position spoofing is enabled, return spoofed position
+    if (s_spoof_mouse_position.load() && lpPoint != nullptr) {
+        lpPoint->x = s_spoofed_mouse_x.load();
+        lpPoint->y = s_spoofed_mouse_y.load();
+        return TRUE;
+    }
+
     // If input blocking is enabled, return last known cursor position
     if (s_block_input_without_reshade.load() && lpPoint != nullptr) {
         *lpPoint = s_last_cursor_position;
@@ -465,6 +480,13 @@ BOOL WINAPI SetCursorPos_Detour(int X, int Y) {
     // Update last known cursor position
     s_last_cursor_position.x = X;
     s_last_cursor_position.y = Y;
+
+    // If mouse position spoofing is enabled, update spoofed position instead of moving cursor
+    if (s_spoof_mouse_position.load()) {
+        s_spoofed_mouse_x.store(X);
+        s_spoofed_mouse_y.store(Y);
+        return TRUE; // Return success without actually moving the cursor
+    }
 
     // If input blocking is enabled, block cursor position changes
     if (s_block_input_without_reshade.load()) {
@@ -593,26 +615,38 @@ UINT WINAPI GetRawInputBuffer_Detour(PRAWINPUT pData, PUINT pcbSize, UINT cbSize
             // If should be replaced, replace with harmless data
             if (should_replace) {
                 if (current->header.dwType == RIM_TYPEKEYBOARD) {
-                    // Replace keyboard input with a harmless key event (neutral flags)
-                    current->header.dwType = RIM_TYPEKEYBOARD;
-                    current->header.dwSize = sizeof(RAWINPUT);
-                    current->data.keyboard.MakeCode = 0; // No scan code
-                    current->data.keyboard.Flags = 0; // Neutral flags - no key event
-                    current->data.keyboard.Reserved = 0;
-                    current->data.keyboard.VKey = 0; // No virtual key
-                    current->data.keyboard.Message = 0; // No message
-                    current->data.keyboard.ExtraInformation = 0;
+                    // Only block key DOWN events, allow UP events to clear stuck keys
+                    if (current->data.keyboard.Flags & RI_KEY_BREAK) {
+                        // This is a key UP event, don't block it
+                        should_replace = false;
+                    } else {
+                        // This is a key DOWN event, block it by replacing with neutral data
+                        current->header.dwType = RIM_TYPEKEYBOARD;
+                        current->header.dwSize = sizeof(RAWINPUT);
+                        current->data.keyboard.MakeCode = 0; // No scan code
+                        current->data.keyboard.Flags = 0; // Neutral flags - no key event
+                        current->data.keyboard.Reserved = 0;
+                        current->data.keyboard.VKey = 0; // No virtual key
+                        current->data.keyboard.Message = 0; // No message
+                        current->data.keyboard.ExtraInformation = 0;
+                    }
                 } else if (current->header.dwType == RIM_TYPEMOUSE) {
-                    // Replace mouse input with a harmless mouse event
-                    current->header.dwType = RIM_TYPEMOUSE;
-                    current->header.dwSize = sizeof(RAWINPUT);
-                    current->data.mouse.usFlags = 0;
-                    current->data.mouse.usButtonFlags = 0;
-                    current->data.mouse.usButtonData = 0;
-                    current->data.mouse.ulRawButtons = 0;
-                    current->data.mouse.lLastX = 0;
-                    current->data.mouse.lLastY = 0;
-                    current->data.mouse.ulExtraInformation = 0;
+                    // Only block mouse DOWN events, allow UP events to clear stuck buttons
+                    if (current->data.mouse.usButtonFlags & (RI_MOUSE_LEFT_BUTTON_UP | RI_MOUSE_RIGHT_BUTTON_UP | RI_MOUSE_MIDDLE_BUTTON_UP | RI_MOUSE_BUTTON_4_UP | RI_MOUSE_BUTTON_5_UP)) {
+                        // This is a mouse button UP event, don't block it
+                        should_replace = false;
+                    } else {
+                        // This is a mouse DOWN event or movement, block it
+                        current->header.dwType = RIM_TYPEMOUSE;
+                        current->header.dwSize = sizeof(RAWINPUT);
+                        current->data.mouse.usFlags = 0;
+                        current->data.mouse.usButtonFlags = 0;
+                        current->data.mouse.usButtonData = 0;
+                        current->data.mouse.ulRawButtons = 0;
+                        current->data.mouse.lLastX = 0;
+                        current->data.mouse.lLastY = 0;
+                        current->data.mouse.ulExtraInformation = 0;
+                    }
                 }
             }
 
@@ -702,28 +736,38 @@ UINT WINAPI GetRawInputData_Detour(HRAWINPUT hRawInput, UINT uiCommand, LPVOID p
         if (uiCommand == RID_INPUT) {
             RAWINPUT* rawInput = static_cast<RAWINPUT*>(pData);
 
-            // Replace keyboard and mouse input with harmless data
+            // Only block DOWN events, allow UP events to clear stuck keys/buttons
             if (rawInput->header.dwType == RIM_TYPEKEYBOARD) {
-                // Replace keyboard input with a harmless key event (neutral flags)
-                rawInput->header.dwType = RIM_TYPEKEYBOARD;
-                rawInput->header.dwSize = sizeof(RAWINPUT);
-                rawInput->data.keyboard.MakeCode = 0; // No scan code
-                rawInput->data.keyboard.Flags = 0; // Neutral flags - no key event
-                rawInput->data.keyboard.Reserved = 0;
-                rawInput->data.keyboard.VKey = 0; // No virtual key
-                rawInput->data.keyboard.Message = 0; // No message
-                rawInput->data.keyboard.ExtraInformation = 0;
+                // Only block key DOWN events, allow UP events to clear stuck keys
+                if (rawInput->data.keyboard.Flags & RI_KEY_BREAK) {
+                    // This is a key UP event, don't block it - let it pass through
+                } else {
+                    // This is a key DOWN event, block it by replacing with neutral data
+                    rawInput->header.dwType = RIM_TYPEKEYBOARD;
+                    rawInput->header.dwSize = sizeof(RAWINPUT);
+                    rawInput->data.keyboard.MakeCode = 0; // No scan code
+                    rawInput->data.keyboard.Flags = 0; // Neutral flags - no key event
+                    rawInput->data.keyboard.Reserved = 0;
+                    rawInput->data.keyboard.VKey = 0; // No virtual key
+                    rawInput->data.keyboard.Message = 0; // No message
+                    rawInput->data.keyboard.ExtraInformation = 0;
+                }
             } else if (rawInput->header.dwType == RIM_TYPEMOUSE) {
-                // Replace mouse input with a harmless mouse event (no movement, no buttons)
-                rawInput->header.dwType = RIM_TYPEMOUSE;
-                rawInput->header.dwSize = sizeof(RAWINPUT);
-                rawInput->data.mouse.usFlags = 0;
-                rawInput->data.mouse.usButtonFlags = 0;
-                rawInput->data.mouse.usButtonData = 0;
-                rawInput->data.mouse.ulRawButtons = 0;
-                rawInput->data.mouse.lLastX = 0;
-                rawInput->data.mouse.lLastY = 0;
-                rawInput->data.mouse.ulExtraInformation = 0;
+                // Only block mouse DOWN events, allow UP events to clear stuck buttons
+                if (rawInput->data.mouse.usButtonFlags & (RI_MOUSE_LEFT_BUTTON_UP | RI_MOUSE_RIGHT_BUTTON_UP | RI_MOUSE_MIDDLE_BUTTON_UP | RI_MOUSE_BUTTON_4_UP | RI_MOUSE_BUTTON_5_UP)) {
+                    // This is a mouse button UP event, don't block it - let it pass through
+                } else {
+                    // This is a mouse DOWN event or movement, block it
+                    rawInput->header.dwType = RIM_TYPEMOUSE;
+                    rawInput->header.dwSize = sizeof(RAWINPUT);
+                    rawInput->data.mouse.usFlags = 0;
+                    rawInput->data.mouse.usButtonFlags = 0;
+                    rawInput->data.mouse.usButtonData = 0;
+                    rawInput->data.mouse.ulRawButtons = 0;
+                    rawInput->data.mouse.lLastX = 0;
+                    rawInput->data.mouse.lLastY = 0;
+                    rawInput->data.mouse.ulExtraInformation = 0;
+                }
             }
 
             // Track unsuppressed calls (data was processed/replaced)
@@ -866,18 +910,55 @@ int WINAPI GetKeyNameTextW_Detour(LONG lParam, LPWSTR lpString, int cchSize) {
 
 // Hooked SendInput function
 UINT WINAPI SendInput_Detour(UINT nInputs, LPINPUT pInputs, int cbSize) {
-    // If input blocking is enabled, block all input generation
-    if (s_block_input_without_reshade.load()) {
-        // Log blocked input for debugging
-        static std::atomic<int> block_counter{0};
-        int count = block_counter.fetch_add(1);
-        if (count % 100 == 0) {
-            LogInfo("Blocked SendInput: nInputs=%u", nInputs);
+    // If input blocking is enabled, selectively block DOWN events
+    if (s_block_input_without_reshade.load() && pInputs != nullptr) {
+        UINT allowed_inputs = 0;
+
+        // Filter inputs - only allow UP events to pass through
+        for (UINT i = 0; i < nInputs; ++i) {
+            bool should_block = false;
+
+            if (pInputs[i].type == INPUT_KEYBOARD) {
+                // Block key DOWN events, allow UP events
+                if (!(pInputs[i].ki.dwFlags & KEYEVENTF_KEYUP)) {
+                    should_block = true; // This is a key DOWN event
+                }
+            } else if (pInputs[i].type == INPUT_MOUSE) {
+                // Block mouse DOWN events, allow UP events
+                if (pInputs[i].mi.dwFlags & (MOUSEEVENTF_LEFTDOWN | MOUSEEVENTF_RIGHTDOWN | MOUSEEVENTF_MIDDLEDOWN | MOUSEEVENTF_XDOWN)) {
+                    should_block = true; // This is a mouse DOWN event
+                }
+            }
+
+            if (!should_block) {
+                // This is an UP event or non-input type, allow it through
+                if (allowed_inputs != i) {
+                    pInputs[allowed_inputs] = pInputs[i]; // Move to front of array
+                }
+                allowed_inputs++;
+            }
         }
-        return 0; // Block input generation
+
+        if (allowed_inputs == 0) {
+            // All inputs were blocked
+            static std::atomic<int> block_counter{0};
+            int count = block_counter.fetch_add(1);
+            if (count % 100 == 0) {
+                LogInfo("Blocked all SendInput: nInputs=%u", nInputs);
+            }
+            return 0;
+        } else if (allowed_inputs < nInputs) {
+            // Some inputs were blocked, some allowed
+            static std::atomic<int> filter_counter{0};
+            int count = filter_counter.fetch_add(1);
+            if (count % 100 == 0) {
+                LogInfo("Filtered SendInput: %u/%u inputs allowed", allowed_inputs, nInputs);
+            }
+            nInputs = allowed_inputs; // Update count to only process allowed inputs
+        }
     }
 
-    // Call original function
+    // Call original function with potentially filtered inputs
     return SendInput_Original ?
         SendInput_Original(nInputs, pInputs, cbSize) :
         SendInput(nInputs, pInputs, cbSize);
@@ -885,15 +966,19 @@ UINT WINAPI SendInput_Detour(UINT nInputs, LPINPUT pInputs, int cbSize) {
 
 // Hooked keybd_event function
 void WINAPI keybd_event_Detour(BYTE bVk, BYTE bScan, DWORD dwFlags, ULONG_PTR dwExtraInfo) {
-    // If input blocking is enabled, block keyboard event generation
+    // If input blocking is enabled, selectively block DOWN events
     if (s_block_input_without_reshade.load()) {
-        // Log blocked input for debugging
-        static std::atomic<int> block_counter{0};
-        int count = block_counter.fetch_add(1);
-        if (count % 100 == 0) {
-            LogInfo("Blocked keybd_event: bVk=0x%02X, dwFlags=0x%08X", bVk, dwFlags);
+        // Only block key DOWN events, allow UP events to clear stuck keys
+        if (!(dwFlags & KEYEVENTF_KEYUP)) {
+            // This is a key DOWN event, block it
+            static std::atomic<int> block_counter{0};
+            int count = block_counter.fetch_add(1);
+            if (count % 100 == 0) {
+                LogInfo("Blocked keybd_event DOWN: bVk=0x%02X, dwFlags=0x%08X", bVk, dwFlags);
+            }
+            return; // Block keyboard DOWN event generation
         }
-        return; // Block keyboard event generation
+        // This is a key UP event, allow it through to clear stuck keys
     }
 
     // Call original function
@@ -906,15 +991,19 @@ void WINAPI keybd_event_Detour(BYTE bVk, BYTE bScan, DWORD dwFlags, ULONG_PTR dw
 
 // Hooked mouse_event function
 void WINAPI mouse_event_Detour(DWORD dwFlags, DWORD dx, DWORD dy, DWORD dwData, ULONG_PTR dwExtraInfo) {
-    // If input blocking is enabled, block mouse event generation
+    // If input blocking is enabled, selectively block DOWN events
     if (s_block_input_without_reshade.load()) {
-        // Log blocked input for debugging
-        static std::atomic<int> block_counter{0};
-        int count = block_counter.fetch_add(1);
-        if (count % 100 == 0) {
-            LogInfo("Blocked mouse_event: dwFlags=0x%08X, dx=%u, dy=%u", dwFlags, dx, dy);
+        // Only block mouse DOWN events, allow UP events to clear stuck buttons
+        if (dwFlags & (MOUSEEVENTF_LEFTDOWN | MOUSEEVENTF_RIGHTDOWN | MOUSEEVENTF_MIDDLEDOWN | MOUSEEVENTF_XDOWN)) {
+            // This is a mouse DOWN event, block it
+            static std::atomic<int> block_counter{0};
+            int count = block_counter.fetch_add(1);
+            if (count % 100 == 0) {
+                LogInfo("Blocked mouse_event DOWN: dwFlags=0x%08X, dx=%u, dy=%u", dwFlags, dx, dy);
+            }
+            return; // Block mouse DOWN event generation
         }
-        return; // Block mouse event generation
+        // This is a mouse UP event or movement, allow it through to clear stuck buttons
     }
 
     // Call original function
@@ -1305,3 +1394,7 @@ const char* GetHookName(int hook_index) {
 }
 
 } // namespace renodx::hooks
+
+// Restore warning settings
+#pragma clang diagnostic pop
+#pragma warning(pop)

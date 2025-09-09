@@ -45,3 +45,6 @@ tmp/
 
 # cache
 .cache/
+
+# Cursor IDE exceptions
+!.cursor/rules/project_structure.mdc

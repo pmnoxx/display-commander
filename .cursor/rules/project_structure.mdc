@@ -1,0 +1,105 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+
+## Rule: Keep this file updated
+Only add files to this list which you have read wholly. Update descriptions when files change significantly.
+
+### addons/display_commander
+- main_entry.cpp: DLL entry point and ReShade event registration
+- addon.cpp: Addon metadata exports
+- globals.cpp: Global variables and atomic state management
+- utils.cpp: Utility functions and logging helpers
+- background_window.cpp: Background window management for fullscreen games
+- continuous_monitoring.cpp: Background monitoring thread for app state
+- swapchain_events.cpp: ReShade swapchain event handlers and FPS limiting
+- display_restore.cpp: Display settings restoration on exit
+- display_cache.cpp: Display enumeration and resolution management
+- process_exit_hooks.cpp: Process exit safety hooks for cleanup
+- resolution_helpers.cpp: Resolution calculation utilities
+- swapchain_events_power_saving.cpp: Power saving optimizations
+- window_management/window_management.cpp: Window positioning and sizing
+
+### addons/display_commander/audio
+- audio_management.cpp: Audio session control and volume management
+- audio_debug.cpp: Audio session debugging and diagnostics
+
+### addons/display_commander/hooks
+- api_hooks.cpp: Windows API hooks for focus/foreground spoofing
+- xinput_hooks.cpp: XInput controller input hooks and remapping
+- windows_gaming_input_hooks.cpp: Windows.Gaming.Input hooks
+- loadlibrary_hooks.cpp: DLL loading hooks
+- window_proc_hooks.cpp: Window procedure hooks
+- windows_hooks/windows_message_hooks.cpp: Windows message interception hooks
+
+### addons/display_commander/ui
+- ui_main.cpp: Legacy UI initialization
+- ui_display_tab.cpp: Display settings UI tab
+- new_ui/new_ui_main.cpp: New UI system singleton
+- new_ui/new_ui_wrapper.cpp: UI wrapper implementation
+- new_ui/new_ui_tabs.cpp: Tab system implementation
+- new_ui/main_new_tab.cpp: Main settings tab
+- new_ui/main_new_tab_settings.cpp: Main tab settings
+- new_ui/experimental_tab.cpp: Experimental features tab
+- new_ui/experimental_tab_settings.cpp: Experimental settings
+- new_ui/developer_new_tab.cpp: Developer tools tab
+- new_ui/developer_new_tab_settings.cpp: Developer settings
+- new_ui/swapchain_tab.cpp: Swapchain monitoring tab
+- new_ui/window_info_tab.cpp: Window information display
+- new_ui/device_info_tab.cpp: Device information display
+- new_ui/settings_wrapper.cpp: Settings wrapper utilities
+- new_ui/hook_stats_tab.cpp: Hook statistics display
+- monitor_settings/monitor_settings.cpp: Monitor configuration UI
+
+### addons/display_commander/widgets
+- remapping_widget/remapping_widget.cpp: Input remapping widget
+- xinput_widget/xinput_widget.cpp: XInput controller widget
+- resolution_widget/resolution_widget.cpp: Resolution selection widget
+- resolution_widget/resolution_settings.cpp: Resolution settings
+
+### addons/display_commander/input_remapping
+- input_remapping.cpp: Input remapping system
+
+### addons/display_commander/reshade_events
+- fullscreen_prevention.cpp: Fullscreen prevention handlers
+
+### addons/display_commander/nvapi
+- reflex_manager.cpp: NVIDIA Reflex integration
+- nvapi_hdr_monitor.cpp: HDR monitor status tracking
+- nvapi_fullscreen_prevention.cpp: NVAPI fullscreen prevention
+- dlss_preset_detector.cpp: DLSS preset detection
+- dlssfg_version_detector.cpp: DLSS-FG version detection
+
+### addons/display_commander/latent_sync
+- vblank_monitor_integration.cpp: VBlank monitoring integration
+- vblank_monitor.cpp: VBlank timing monitor
+- latent_sync_manager.cpp: Latent sync system manager
+- latent_sync_limiter.cpp: Latent sync FPS limiter
+
+### addons/display_commander/latency
+- reflex_provider.cpp: Reflex provider implementation
+- latency_manager.cpp: Latency measurement and management
+
+### addons/display_commander/dxgi
+- dxgi_management.cpp: DXGI swapchain management
+- dxgi_device_info.cpp: DXGI device information
+- custom_fps_limiter_manager.cpp: Custom FPS limiter manager
+- custom_fps_limiter.cpp: Custom FPS limiter implementation
+
+### addons/display_commander/display
+- query_display.cpp: Display query utilities
+
+### addons/display_commander/background_tasks
+- background_task_coordinator.cpp: Background task coordination
+
+### addons/d3d_debug_layer
+- main_entry.cpp: Debug layer DLL entry point
+- present_handler.cpp: Present event handler
+- message_processor.cpp: Debug message processing
+- device_handler.cpp: Device event handling
+- debug_manager.cpp: Debug system management
+
+### src/utils
+- timing.cpp: High-precision timing utilities

@@ -2,6 +2,7 @@
 #include "../utils.hpp"
 #include "../widgets/xinput_widget/xinput_widget.hpp"
 #include "../input_remapping/input_remapping.hpp"
+#include "windows_hooks/windows_message_hooks.hpp"
 #include <MinHook.h>
 #include <vector>
 #include <string>
@@ -107,6 +108,9 @@ DWORD WINAPI XInputGetState_Detour(DWORD dwUserIndex, XINPUT_STATE* pState) {
         return ERROR_INVALID_PARAMETER;
     }
 
+    // Track hook call statistics
+    g_hook_stats[HOOK_XInputGetState].increment_total();
+
     // Call original function - prefer XInputGetStateEx_Original for Guide button support
     DWORD result = XInputGetStateEx_Original ?
         XInputGetStateEx_Original(dwUserIndex, pState) :
@@ -150,6 +154,9 @@ DWORD WINAPI XInputGetState_Detour(DWORD dwUserIndex, XINPUT_STATE* pState) {
 
         display_commander::widgets::xinput_widget::UpdateXInputState(dwUserIndex, pState);
         LogXInputChanges(dwUserIndex, pState);
+        
+        // Track unsuppressed call (input was processed)
+        g_hook_stats[HOOK_XInputGetState].increment_unsuppressed();
     } else {
         // Mark controller as disconnected in shared state
         if (dwUserIndex < XUSER_MAX_COUNT) {
@@ -169,6 +176,9 @@ DWORD WINAPI XInputGetStateEx_Detour(DWORD dwUserIndex, XINPUT_STATE* pState) {
     if (pState == nullptr) {
         return ERROR_INVALID_PARAMETER;
     }
+
+    // Track hook call statistics
+    g_hook_stats[HOOK_XInputGetStateEx].increment_total();
 
     // Call original function - always use XInputGetStateEx_Original if available
     DWORD result = XInputGetStateEx_Original ?
@@ -213,6 +223,9 @@ DWORD WINAPI XInputGetStateEx_Detour(DWORD dwUserIndex, XINPUT_STATE* pState) {
 
         display_commander::widgets::xinput_widget::UpdateXInputState(dwUserIndex, pState);
         LogXInputChanges(dwUserIndex, pState);
+        
+        // Track unsuppressed call (input was processed)
+        g_hook_stats[HOOK_XInputGetStateEx].increment_unsuppressed();
     } else {
         // Mark controller as disconnected in shared state
         if (dwUserIndex < XUSER_MAX_COUNT) {

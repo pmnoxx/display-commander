@@ -15,6 +15,47 @@ struct HookCallStats {
     void reset() { total_calls.store(0); unsuppressed_calls.store(0); }
 };
 
+// Hook call statistics
+enum HookIndex {
+    HOOK_GetMessageA = 0,
+    HOOK_GetMessageW,
+    HOOK_PeekMessageA,
+    HOOK_PeekMessageW,
+    HOOK_PostMessageA,
+    HOOK_PostMessageW,
+    HOOK_GetKeyboardState,
+    HOOK_ClipCursor,
+    HOOK_GetCursorPos,
+    HOOK_SetCursorPos,
+    HOOK_GetKeyState,
+    HOOK_GetAsyncKeyState,
+    HOOK_SetWindowsHookExA,
+    HOOK_SetWindowsHookExW,
+    HOOK_UnhookWindowsHookEx,
+    HOOK_GetRawInputBuffer,
+    HOOK_TranslateMessage,
+    HOOK_DispatchMessageA,
+    HOOK_DispatchMessageW,
+    HOOK_GetRawInputData,
+    HOOK_RegisterRawInputDevices,
+    HOOK_VkKeyScan,
+    HOOK_VkKeyScanEx,
+    HOOK_ToAscii,
+    HOOK_ToAsciiEx,
+    HOOK_ToUnicode,
+    HOOK_ToUnicodeEx,
+    HOOK_GetKeyNameTextA,
+    HOOK_GetKeyNameTextW,
+    HOOK_SendInput,
+    HOOK_keybd_event,
+    HOOK_mouse_event,
+    HOOK_MapVirtualKey,
+    HOOK_MapVirtualKeyEx,
+    HOOK_XInputGetState,
+    HOOK_XInputGetStateEx,
+    HOOK_COUNT
+};
+
 // Function pointer types for Windows message functions
 using GetMessageA_pfn = BOOL(WINAPI*)(LPMSG, HWND, UINT, UINT);
 using GetMessageW_pfn = BOOL(WINAPI*)(LPMSG, HWND, UINT, UINT);

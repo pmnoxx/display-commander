@@ -50,14 +50,18 @@ public:
     void Load() override;
     void Save() override;
 
-    float GetValue() const { return value_; }
+    float GetValue() const { return value_.load(); }
     void SetValue(float value);
     float GetDefaultValue() const { return default_value_; }
     float GetMin() const { return min_; }
     float GetMax() const { return max_; }
 
+    // Direct access to the atomic value for performance-critical code
+    std::atomic<float>& GetAtomic() { return value_; }
+    const std::atomic<float>& GetAtomic() const { return value_; }
+
 private:
-    float value_;
+    std::atomic<float> value_;
     float default_value_;
     float min_;
     float max_;
@@ -72,14 +76,18 @@ public:
     void Load() override;
     void Save() override;
 
-    int GetValue() const { return value_; }
+    int GetValue() const { return value_.load(); }
     void SetValue(int value);
     int GetDefaultValue() const { return default_value_; }
     int GetMin() const { return min_; }
     int GetMax() const { return max_; }
 
+    // Direct access to the atomic value for performance-critical code
+    std::atomic<int>& GetAtomic() { return value_; }
+    const std::atomic<int>& GetAtomic() const { return value_; }
+
 private:
-    int value_;
+    std::atomic<int> value_;
     int default_value_;
     int min_;
     int max_;

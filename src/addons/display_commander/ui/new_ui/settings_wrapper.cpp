@@ -29,24 +29,25 @@ void FloatSetting::Load() {
         // If loaded value is invalid (NaN/Inf or out of range), fall back to default
         if (!std::isfinite(loaded_value) || loaded_value < min_ || loaded_value > max_) {
             const float safe_default = std::max(min_, std::min(max_, default_value_));
-            value_ = safe_default;
+            value_.store(safe_default);
             Save();
         } else {
-            value_ = loaded_value;
+            value_.store(loaded_value);
         }
     } else {
         // Use default value if not found
         const float safe_default = std::max(min_, std::min(max_, default_value_));
-        value_ = safe_default;
+        value_.store(safe_default);
     }
 }
 
 void FloatSetting::Save() {
-    reshade::set_config_value(nullptr, section_.c_str(), key_.c_str(), value_);
+    reshade::set_config_value(nullptr, section_.c_str(), key_.c_str(), value_.load());
 }
 
 void FloatSetting::SetValue(float value) {
-    value_ = std::max(min_, std::min(max_, value));
+    const float clamped_value = std::max(min_, std::min(max_, value));
+    value_.store(clamped_value);
     Save(); // Auto-save when value changes
 }
 
@@ -62,24 +63,25 @@ void IntSetting::Load() {
         // If loaded value is out of range, fall back to default
         if (loaded_value < min_ || loaded_value > max_) {
             const int safe_default = std::max(min_, std::min(max_, default_value_));
-            value_ = safe_default;
+            value_.store(safe_default);
             Save();
         } else {
-            value_ = loaded_value;
+            value_.store(loaded_value);
         }
     } else {
         // Use default value if not found
         const int safe_default = std::max(min_, std::min(max_, default_value_));
-        value_ = safe_default;
+        value_.store(safe_default);
     }
 }
 
 void IntSetting::Save() {
-    reshade::set_config_value(nullptr, section_.c_str(), key_.c_str(), value_);
+    reshade::set_config_value(nullptr, section_.c_str(), key_.c_str(), value_.load());
 }
 
 void IntSetting::SetValue(int value) {
-    value_ = std::max(min_, std::min(max_, value));
+    const int clamped_value = std::max(min_, std::min(max_, value));
+    value_.store(clamped_value);
     Save(); // Auto-save when value changes
 }
 

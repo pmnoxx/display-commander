@@ -2,6 +2,7 @@
 #include "xinput_hooks.hpp"
 #include "windows_gaming_input_hooks.hpp"
 #include "loadlibrary_hooks.hpp"
+#include "directinput_hooks.hpp"
 #include "windows_hooks/windows_message_hooks.hpp"
 #include "globals.hpp"
 #include "../utils.hpp"
@@ -191,6 +192,12 @@ bool InstallApiHooks() {
         return false;
     }
 
+    // Install DirectInput hooks
+    if (!InstallDirectInputHooks()) {
+        LogError("Failed to install DirectInput hooks");
+        return false;
+    }
+
     g_api_hooks_installed.store(true);
     LogInfo("API hooks installed successfully");
 
@@ -218,6 +225,9 @@ void UninstallApiHooks() {
 
     // Uninstall Windows message hooks
     UninstallWindowsMessageHooks();
+
+    // Uninstall DirectInput hooks
+    UninstallDirectInputHooks();
 
     // Disable all hooks
     MH_DisableHook(MH_ALL_HOOKS);

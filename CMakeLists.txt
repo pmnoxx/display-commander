@@ -70,7 +70,7 @@ target_include_directories(zzz_display_commander
 )
 
 # Link system libs
-target_link_libraries(zzz_display_commander PRIVATE dbghelp shlwapi xinput)
+target_link_libraries(zzz_display_commander PRIVATE dbghelp shlwapi xinput dinput8)
 
 # NVAPI linkage (official NVIDIA NVAPI layout: x86/ and amd64/)
 if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/external/nvapi")

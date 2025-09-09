@@ -107,3 +107,4 @@ Only add files to this list which you have read wholly. Update descriptions when
 
 ### includes
 - use ImGui from reshade <deps/imgui/imgui.h>
+- use MinHook for hooks

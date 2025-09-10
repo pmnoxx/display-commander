@@ -1,5 +1,4 @@
 #include "addon.hpp"
-
 #include "background_window.hpp" // Added this line
 #include "dxgi/custom_fps_limiter_manager.hpp"
 #include "dxgi/dxgi_device_info.hpp"
@@ -16,11 +15,9 @@ std::atomic<bool> g_dll_initialization_complete{false};
 std::atomic<Microsoft::WRL::ComPtr<IDXGIFactory1>*> g_shared_dxgi_factory{nullptr};
 
 // Window settings
-std::atomic<int> s_windowed_width{3840*2}; // 21:9 ultrawide width
-std::atomic<int> s_windowed_height{2160*2}; // 21:9 ultrawide height
-std::atomic<int> s_window_mode{0}; // 0 = Borderless Windowed (Aspect Ratio), 1 = Borderless Windowed (Width/Height), 2 = Borderless Fullscreen
+std::atomic<WindowMode> s_window_mode{WindowMode::kAspectRatio}; // kAspectRatio = Borderless Windowed (Aspect Ratio), kFullscreen = Borderless Fullscreen
 
-std::atomic<int> s_aspect_index{4}; // 0 = 16:9, 1 = 16:10, 2 = 4:3, 3 = 3:2, 4 = 1:1, 5 = 1:2, 6 = 2:3, 7 = 3:4, 8 = 9:16, 9 = 10:16
+std::atomic<AspectRatioType> s_aspect_index{AspectRatioType::k16_9}; // Default to 16:9
 
 // Window alignment when repositioning is needed (0 = None, 1 = Top Left, 2 = Top Right, 3 = Bottom Left, 4 = Bottom Right, 5 = Center)
 std::atomic<int> s_move_to_zero_if_out{2}; // default to top right

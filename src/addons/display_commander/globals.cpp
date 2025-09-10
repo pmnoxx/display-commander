@@ -125,6 +125,9 @@ std::atomic<bool> s_continuous_monitoring_enabled{true}; // Enabled by default
 std::atomic<bool> g_monitoring_thread_running{false};
 std::thread g_monitoring_thread;
 
+// Render thread tracking
+std::atomic<DWORD> g_render_thread_id{0};
+
 // Global window state instance
 std::atomic<std::shared_ptr<GlobalWindowState>> g_window_state = std::make_shared<GlobalWindowState>();
 
@@ -209,6 +212,7 @@ std::atomic<bool> g_flush_before_present = true; // Flush command queue before p
 
 // Sleep hook settings
 std::atomic<bool> g_sleep_hook_enabled = false;
+std::atomic<bool> g_sleep_hook_render_thread_only = true;
 std::atomic<float> g_sleep_multiplier = 1.0f;
 std::atomic<DWORD> g_min_sleep_duration_ms = 0;
 std::atomic<DWORD> g_max_sleep_duration_ms = 0;

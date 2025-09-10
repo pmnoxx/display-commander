@@ -27,6 +27,14 @@ static bool g_ui_initialized = false;
 // Initialize experimental tab
 void InitExperimentalTab() {
     g_experimentalTabSettings.LoadAll();
+
+    // Load sleep hook settings to global variables
+    g_sleep_hook_enabled.store(g_experimentalTabSettings.sleep_hook_enabled.GetValue());
+    g_sleep_hook_render_thread_only.store(g_experimentalTabSettings.sleep_hook_render_thread_only.GetValue());
+    g_sleep_multiplier.store(g_experimentalTabSettings.sleep_multiplier.GetValue());
+    g_min_sleep_duration_ms.store(static_cast<DWORD>(g_experimentalTabSettings.min_sleep_duration_ms.GetValue()));
+    g_max_sleep_duration_ms.store(static_cast<DWORD>(g_experimentalTabSettings.max_sleep_duration_ms.GetValue()));
+
     LogInfo("Experimental tab settings loaded");
 }
 
@@ -746,6 +754,15 @@ void DrawSleepHookControls() {
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Enable hooks for Windows Sleep APIs to modify sleep durations for FPS control.");
+    }
+
+    // Render thread only checkbox
+    if (CheckboxSetting(g_experimentalTabSettings.sleep_hook_render_thread_only, "Render Thread Only")) {
+        g_sleep_hook_render_thread_only.store(g_experimentalTabSettings.sleep_hook_render_thread_only.GetValue());
+        LogInfo("Sleep hooks render thread only %s", g_sleep_hook_render_thread_only.load() ? "enabled" : "disabled");
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Only modify sleep calls on the render thread. If render thread is unknown, sleep calls are not modified.");
     }
 
     if (g_experimentalTabSettings.sleep_hook_enabled.GetValue()) {

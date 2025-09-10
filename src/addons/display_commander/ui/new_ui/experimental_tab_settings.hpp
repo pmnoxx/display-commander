@@ -65,6 +65,7 @@ public:
 
     // Sleep hook settings
     BoolSetting sleep_hook_enabled;
+    BoolSetting sleep_hook_render_thread_only;
     FloatSetting sleep_multiplier;
     IntSetting min_sleep_duration_ms;
     IntSetting max_sleep_duration_ms;

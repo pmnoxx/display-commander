@@ -4,8 +4,21 @@
 #include "../globals.hpp"
 #include <MinHook.h>
 #include <windows.h>
+#include <thread>
+#include <sstream>
 
 namespace renodx::hooks {
+
+// Thread-local storage for thread ID caching
+thread_local DWORD g_cached_thread_id = 0;
+
+// Helper function to get current thread ID with caching
+DWORD GetCurrentThreadIdCached() {
+    if (g_cached_thread_id == 0) {
+        g_cached_thread_id = GetCurrentThreadId();
+    }
+    return g_cached_thread_id;
+}
 
 // Global sleep hook statistics
 SleepHookStats g_sleep_hook_stats;
@@ -24,30 +37,48 @@ void WINAPI Sleep_Detour(DWORD dwMilliseconds) {
     DWORD modified_duration = dwMilliseconds;
 
     if (g_sleep_hook_enabled.load() && dwMilliseconds > 0) {
-        // Apply sleep multiplier
-        float multiplier = g_sleep_multiplier.load();
-        if (multiplier > 0.0f) {
-            modified_duration = static_cast<DWORD>(dwMilliseconds * multiplier);
+        // Check if render thread only is enabled
+        bool should_modify = true;
+        if (g_sleep_hook_render_thread_only.load()) {
+            DWORD render_thread_id = g_render_thread_id.load();
+            if (render_thread_id == 0) {
+                // Render thread unknown, don't modify
+                should_modify = false;
+            } else {
+                // Only modify if current thread is render thread
+                should_modify = (GetCurrentThreadIdCached() == render_thread_id);
+            }
         }
 
-        // Apply min/max constraints
-        DWORD min_duration = g_min_sleep_duration_ms.load();
-        DWORD max_duration = g_max_sleep_duration_ms.load();
+        if (should_modify) {
+            // Apply sleep multiplier
+            float multiplier = g_sleep_multiplier.load();
+            if (multiplier > 0.0f) {
+                modified_duration = static_cast<DWORD>(dwMilliseconds * multiplier);
+            }
 
-        if (min_duration > 0) {
-            modified_duration = (modified_duration > min_duration) ? modified_duration : min_duration;
+            // Apply min/max constraints
+            DWORD min_duration = g_min_sleep_duration_ms.load();
+            DWORD max_duration = g_max_sleep_duration_ms.load();
+
+            if (min_duration > 0) {
+                modified_duration = (modified_duration > min_duration) ? modified_duration : min_duration;
+            }
+            if (max_duration > 0) {
+                modified_duration = (modified_duration < max_duration) ? modified_duration : max_duration;
+            }
+
+            // Track modified calls
+            g_hook_stats[HOOK_Sleep].increment_unsuppressed();
+            g_sleep_hook_stats.increment_modified();
+            g_sleep_hook_stats.add_original_duration(dwMilliseconds);
+            g_sleep_hook_stats.add_modified_duration(modified_duration);
+
+            LogDebug("[TID:" + std::to_string(GetCurrentThreadIdCached()) + "] Sleep hook: " + std::to_string(dwMilliseconds) + " ms -> " + std::to_string(modified_duration) + " ms (multiplier: " + std::to_string(multiplier) + ")");
+        } else {
+            // Track unmodified calls due to render thread restriction
+            g_hook_stats[HOOK_Sleep].increment_unsuppressed();
         }
-        if (max_duration > 0) {
-            modified_duration = (modified_duration < max_duration) ? modified_duration : max_duration;
-        }
-
-        // Track modified calls
-        g_hook_stats[HOOK_Sleep].increment_unsuppressed();
-        g_sleep_hook_stats.increment_modified();
-        g_sleep_hook_stats.add_original_duration(dwMilliseconds);
-        g_sleep_hook_stats.add_modified_duration(modified_duration);
-
-        LogDebug("Sleep hook: " + std::to_string(dwMilliseconds) + " ms -> " + std::to_string(modified_duration) + " ms (multiplier: " + std::to_string(multiplier) + ")");
     } else {
         // Track unmodified calls
         g_hook_stats[HOOK_Sleep].increment_unsuppressed();
@@ -69,30 +100,48 @@ DWORD WINAPI SleepEx_Detour(DWORD dwMilliseconds, BOOL bAlertable) {
     DWORD modified_duration = dwMilliseconds;
 
     if (g_sleep_hook_enabled.load() && dwMilliseconds > 0) {
-        // Apply sleep multiplier
-        float multiplier = g_sleep_multiplier.load();
-        if (multiplier > 0.0f) {
-            modified_duration = static_cast<DWORD>(dwMilliseconds * multiplier);
+        // Check if render thread only is enabled
+        bool should_modify = true;
+        if (g_sleep_hook_render_thread_only.load()) {
+            DWORD render_thread_id = g_render_thread_id.load();
+            if (render_thread_id == 0) {
+                // Render thread unknown, don't modify
+                should_modify = false;
+            } else {
+                // Only modify if current thread is render thread
+                should_modify = (GetCurrentThreadIdCached() == render_thread_id);
+            }
         }
 
-        // Apply min/max constraints
-        DWORD min_duration = g_min_sleep_duration_ms.load();
-        DWORD max_duration = g_max_sleep_duration_ms.load();
+        if (should_modify) {
+            // Apply sleep multiplier
+            float multiplier = g_sleep_multiplier.load();
+            if (multiplier > 0.0f) {
+                modified_duration = static_cast<DWORD>(dwMilliseconds * multiplier);
+            }
 
-        if (min_duration > 0) {
-            modified_duration = (modified_duration > min_duration) ? modified_duration : min_duration;
+            // Apply min/max constraints
+            DWORD min_duration = g_min_sleep_duration_ms.load();
+            DWORD max_duration = g_max_sleep_duration_ms.load();
+
+            if (min_duration > 0) {
+                modified_duration = (modified_duration > min_duration) ? modified_duration : min_duration;
+            }
+            if (max_duration > 0) {
+                modified_duration = (modified_duration < max_duration) ? modified_duration : max_duration;
+            }
+
+            // Track modified calls
+            g_hook_stats[HOOK_SleepEx].increment_unsuppressed();
+            g_sleep_hook_stats.increment_modified();
+            g_sleep_hook_stats.add_original_duration(dwMilliseconds);
+            g_sleep_hook_stats.add_modified_duration(modified_duration);
+
+            LogDebug("[TID:" + std::to_string(GetCurrentThreadIdCached()) + "] SleepEx hook: " + std::to_string(dwMilliseconds) + " ms -> " + std::to_string(modified_duration) + " ms (multiplier: " + std::to_string(multiplier) + ")");
+        } else {
+            // Track unmodified calls due to render thread restriction
+            g_hook_stats[HOOK_SleepEx].increment_unsuppressed();
         }
-        if (max_duration > 0) {
-            modified_duration = (modified_duration < max_duration) ? modified_duration : max_duration;
-        }
-
-        // Track modified calls
-        g_hook_stats[HOOK_SleepEx].increment_unsuppressed();
-        g_sleep_hook_stats.increment_modified();
-        g_sleep_hook_stats.add_original_duration(dwMilliseconds);
-        g_sleep_hook_stats.add_modified_duration(modified_duration);
-
-        LogDebug("SleepEx hook: " + std::to_string(dwMilliseconds) + " ms -> " + std::to_string(modified_duration) + " ms (multiplier: " + std::to_string(multiplier) + ")");
     } else {
         // Track unmodified calls
         g_hook_stats[HOOK_SleepEx].increment_unsuppressed();
@@ -114,30 +163,48 @@ DWORD WINAPI WaitForSingleObject_Detour(HANDLE hHandle, DWORD dwMilliseconds) {
     DWORD modified_duration = dwMilliseconds;
 
     if (g_sleep_hook_enabled.load() && dwMilliseconds > 0 && dwMilliseconds != INFINITE) {
-        // Apply sleep multiplier
-        float multiplier = g_sleep_multiplier.load();
-        if (multiplier > 0.0f) {
-            modified_duration = static_cast<DWORD>(dwMilliseconds * multiplier);
+        // Check if render thread only is enabled
+        bool should_modify = true;
+        if (g_sleep_hook_render_thread_only.load()) {
+            DWORD render_thread_id = g_render_thread_id.load();
+            if (render_thread_id == 0) {
+                // Render thread unknown, don't modify
+                should_modify = false;
+            } else {
+                // Only modify if current thread is render thread
+                should_modify = (GetCurrentThreadIdCached() == render_thread_id);
+            }
         }
 
-        // Apply min/max constraints
-        DWORD min_duration = g_min_sleep_duration_ms.load();
-        DWORD max_duration = g_max_sleep_duration_ms.load();
+        if (should_modify) {
+            // Apply sleep multiplier
+            float multiplier = g_sleep_multiplier.load();
+            if (multiplier > 0.0f) {
+                modified_duration = static_cast<DWORD>(dwMilliseconds * multiplier);
+            }
 
-        if (min_duration > 0) {
-            modified_duration = (modified_duration > min_duration) ? modified_duration : min_duration;
+            // Apply min/max constraints
+            DWORD min_duration = g_min_sleep_duration_ms.load();
+            DWORD max_duration = g_max_sleep_duration_ms.load();
+
+            if (min_duration > 0) {
+                modified_duration = (modified_duration > min_duration) ? modified_duration : min_duration;
+            }
+            if (max_duration > 0) {
+                modified_duration = (modified_duration < max_duration) ? modified_duration : max_duration;
+            }
+
+            // Track modified calls
+            g_hook_stats[HOOK_WaitForSingleObject].increment_unsuppressed();
+            g_sleep_hook_stats.increment_modified();
+            g_sleep_hook_stats.add_original_duration(dwMilliseconds);
+            g_sleep_hook_stats.add_modified_duration(modified_duration);
+
+            LogDebug("[TID:" + std::to_string(GetCurrentThreadIdCached()) + "] WaitForSingleObject hook: " + std::to_string(dwMilliseconds) + " ms -> " + std::to_string(modified_duration) + " ms (multiplier: " + std::to_string(multiplier) + ")");
+        } else {
+            // Track unmodified calls due to render thread restriction
+            g_hook_stats[HOOK_WaitForSingleObject].increment_unsuppressed();
         }
-        if (max_duration > 0) {
-            modified_duration = (modified_duration < max_duration) ? modified_duration : max_duration;
-        }
-
-        // Track modified calls
-        g_hook_stats[HOOK_WaitForSingleObject].increment_unsuppressed();
-        g_sleep_hook_stats.increment_modified();
-        g_sleep_hook_stats.add_original_duration(dwMilliseconds);
-        g_sleep_hook_stats.add_modified_duration(modified_duration);
-
-        LogDebug("WaitForSingleObject hook: " + std::to_string(dwMilliseconds) + " ms -> " + std::to_string(modified_duration) + " ms (multiplier: " + std::to_string(multiplier) + ")");
     } else {
         // Track unmodified calls
         g_hook_stats[HOOK_WaitForSingleObject].increment_unsuppressed();
@@ -159,30 +226,48 @@ DWORD WINAPI WaitForMultipleObjects_Detour(DWORD nCount, const HANDLE* lpHandles
     DWORD modified_duration = dwMilliseconds;
 
     if (g_sleep_hook_enabled.load() && dwMilliseconds > 0 && dwMilliseconds != INFINITE) {
-        // Apply sleep multiplier
-        float multiplier = g_sleep_multiplier.load();
-        if (multiplier > 0.0f) {
-            modified_duration = static_cast<DWORD>(dwMilliseconds * multiplier);
+        // Check if render thread only is enabled
+        bool should_modify = true;
+        if (g_sleep_hook_render_thread_only.load()) {
+            DWORD render_thread_id = g_render_thread_id.load();
+            if (render_thread_id == 0) {
+                // Render thread unknown, don't modify
+                should_modify = false;
+            } else {
+                // Only modify if current thread is render thread
+                should_modify = (GetCurrentThreadIdCached() == render_thread_id);
+            }
         }
 
-        // Apply min/max constraints
-        DWORD min_duration = g_min_sleep_duration_ms.load();
-        DWORD max_duration = g_max_sleep_duration_ms.load();
+        if (should_modify) {
+            // Apply sleep multiplier
+            float multiplier = g_sleep_multiplier.load();
+            if (multiplier > 0.0f) {
+                modified_duration = static_cast<DWORD>(dwMilliseconds * multiplier);
+            }
 
-        if (min_duration > 0) {
-            modified_duration = (modified_duration > min_duration) ? modified_duration : min_duration;
+            // Apply min/max constraints
+            DWORD min_duration = g_min_sleep_duration_ms.load();
+            DWORD max_duration = g_max_sleep_duration_ms.load();
+
+            if (min_duration > 0) {
+                modified_duration = (modified_duration > min_duration) ? modified_duration : min_duration;
+            }
+            if (max_duration > 0) {
+                modified_duration = (modified_duration < max_duration) ? modified_duration : max_duration;
+            }
+
+            // Track modified calls
+            g_hook_stats[HOOK_WaitForMultipleObjects].increment_unsuppressed();
+            g_sleep_hook_stats.increment_modified();
+            g_sleep_hook_stats.add_original_duration(dwMilliseconds);
+            g_sleep_hook_stats.add_modified_duration(modified_duration);
+
+            LogDebug("[TID:" + std::to_string(GetCurrentThreadIdCached()) + "] WaitForMultipleObjects hook: " + std::to_string(dwMilliseconds) + " ms -> " + std::to_string(modified_duration) + " ms (multiplier: " + std::to_string(multiplier) + ")");
+        } else {
+            // Track unmodified calls due to render thread restriction
+            g_hook_stats[HOOK_WaitForMultipleObjects].increment_unsuppressed();
         }
-        if (max_duration > 0) {
-            modified_duration = (modified_duration < max_duration) ? modified_duration : max_duration;
-        }
-
-        // Track modified calls
-        g_hook_stats[HOOK_WaitForMultipleObjects].increment_unsuppressed();
-        g_sleep_hook_stats.increment_modified();
-        g_sleep_hook_stats.add_original_duration(dwMilliseconds);
-        g_sleep_hook_stats.add_modified_duration(modified_duration);
-
-        LogDebug("WaitForMultipleObjects hook: " + std::to_string(dwMilliseconds) + " ms -> " + std::to_string(modified_duration) + " ms (multiplier: " + std::to_string(multiplier) + ")");
     } else {
         // Track unmodified calls
         g_hook_stats[HOOK_WaitForMultipleObjects].increment_unsuppressed();

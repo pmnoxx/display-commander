@@ -19,8 +19,6 @@ public:
 
     // Display Settings
     ComboSetting window_mode;
-    ComboSetting window_width;
-    ComboSetting window_height;
     ComboSetting aspect_index;
     ComboSetting target_monitor_index;
     BoolSettingRef background_feature;

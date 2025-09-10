@@ -38,6 +38,17 @@ Microsoft::WRL::ComPtr<IDXGIFactory1> GetSharedDXGIFactory();
 enum class DxgiBypassMode : std::uint8_t { kUnknown, kComposed, kOverlay, kIndependentFlip };
 enum class WindowStyleMode : std::uint8_t { KEEP, BORDERLESS, OVERLAPPED_WINDOW };
 enum class FpsLimiterMode : std::uint8_t { kNone = 0, kCustom = 1, kLatentSync = 2 };
+enum class WindowMode : std::uint8_t { kAspectRatio = 0, kFullscreen = 1 };
+enum class AspectRatioType : std::uint8_t {
+    k3_2 = 0,      // 3:2
+    k4_3 = 1,      // 4:3
+    k16_10 = 2,    // 16:10
+    k16_9 = 3,     // 16:9
+    k19_9 = 4,     // 19:9
+    k19_5_9 = 5,   // 19.5:9
+    k21_9 = 6,     // 21:9
+    k32_9 = 7      // 32:9
+};
 
 // Structures
 struct GlobalWindowState {
@@ -112,10 +123,8 @@ extern std::atomic<bool> s_apply_display_settings_at_start;
 // Window management
 extern std::atomic<bool> s_prevent_always_on_top;
 extern std::atomic<bool> s_background_feature_enabled;
-extern std::atomic<int> s_window_mode;
-extern std::atomic<int> s_windowed_width;
-extern std::atomic<int> s_windowed_height;
-extern std::atomic<int> s_aspect_index;
+extern std::atomic<WindowMode> s_window_mode;
+extern std::atomic<AspectRatioType> s_aspect_index;
 
 // Prevent Fullscreen
 extern std::atomic<bool> s_prevent_fullscreen;

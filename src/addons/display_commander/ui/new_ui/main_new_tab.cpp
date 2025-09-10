@@ -11,9 +11,7 @@
 #include <thread>
 #include <atomic>
 #include <iomanip>
-#include <algorithm>
 #include <cmath>
-#include "../ui_display_tab.hpp"
 #include <deps/imgui/imgui.h>
 #include "../../latent_sync/latent_sync_limiter.hpp"
 #include "../../utils/timing.hpp"
@@ -33,24 +31,8 @@ void InitMainNewTab() {
         // Ensure developer settings (including continuous monitoring) are loaded so UI reflects saved state
         g_developerTabSettings.LoadAll();
         g_main_new_tab_settings.LoadSettings();
-        s_window_mode = g_main_new_tab_settings.window_mode.GetValue();
-        {
-            int idx = g_main_new_tab_settings.window_width.GetValue();
-            idx = (std::max)(idx, 0);
-            int max_idx = 7;
-            idx = (std::min)(idx, max_idx);
-        //    s_windowed_width.store((idx == 0) ? GetCurrentMonitorWidth()
-           //                               : WIDTH_OPTIONS[idx]);
-        }
-        {
-            int idx = g_main_new_tab_settings.window_height.GetValue();
-            idx = (std::max)(idx, 0);
-            int max_idx = 7;
-            idx = (std::min)(idx, max_idx);
-         //   s_windowed_height.store((idx == 0) ? GetCurrentMonitorHeight()
-           //                                : HEIGHT_OPTIONS[idx]);
-        }
-        s_aspect_index = g_main_new_tab_settings.aspect_index.GetValue();
+        s_window_mode = static_cast<WindowMode>(g_main_new_tab_settings.window_mode.GetValue());
+        s_aspect_index = static_cast<AspectRatioType>(g_main_new_tab_settings.aspect_index.GetValue());
         s_target_monitor_index.store(g_main_new_tab_settings.target_monitor_index.GetValue());
         s_move_to_zero_if_out = g_main_new_tab_settings.alignment.GetValue();
         // FPS limits are now automatically synced via FloatSettingRef
@@ -253,17 +235,42 @@ void DrawDisplaySettings() {
     int current_monitor_height = GetCurrentMonitorHeight();
 
     ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "=== Display Settings ===");
+    {
+        // Target Monitor dropdown
+        // Use cached monitor labels updated by continuous monitoring thread
+
+        std::vector<std::string> monitor_labels_local;
+        std::vector<const char*> monitor_c_labels;
+        {
+            auto ptr = ::g_monitor_labels.load(std::memory_order_acquire);
+            monitor_labels_local = *ptr; // copy to avoid lifetime issues
+            monitor_c_labels.reserve(monitor_labels_local.size());
+            for (const auto& label : monitor_labels_local) {
+                monitor_c_labels.push_back(label.c_str());
+            }
+        }
+
+        int monitor_index = s_target_monitor_index.load();
+        if (ImGui::Combo("Target Monitor", &monitor_index, monitor_c_labels.data(), static_cast<int>(monitor_c_labels.size()))) {
+            s_target_monitor_index.store(monitor_index);
+            g_main_new_tab_settings.target_monitor_index.SetValue(monitor_index);
+            LogInfo("Target monitor changed");
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Choose which monitor to apply size/pos to. 'Auto' uses the current window monitor.");
+        }
+    }
 
     // Window Mode dropdown (with persistent setting)
     if (ComboSettingWrapper(g_main_new_tab_settings.window_mode, "Window Mode")) {
-        int old_mode = static_cast<int>(s_window_mode);
-        s_window_mode = static_cast<float>(g_main_new_tab_settings.window_mode.GetValue());
+        WindowMode old_mode = s_window_mode.load();
+        s_window_mode = static_cast<WindowMode>(g_main_new_tab_settings.window_mode.GetValue());
 
         // Don't apply changes immediately - let the normal window management system handle it
         // This prevents crashes when changing modes during gameplay
 
         std::ostringstream oss;
-        oss << "Window mode changed from " << old_mode << " to " << g_main_new_tab_settings.window_mode.GetValue();
+        oss << "Window mode changed from " << static_cast<int>(old_mode) << " to " << g_main_new_tab_settings.window_mode.GetValue();
         LogInfo(oss.str().c_str());
     }
     // Auto-apply (continuous monitoring) checkbox next to Window Mode
@@ -275,100 +282,21 @@ void DrawDisplaySettings() {
         ImGui::SetTooltip("Auto-apply window mode changes and continuously keep window size/position in sync.");
     }
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Choose the window mode: Borderless Windowed with aspect ratio, Borderless Windowed with custom width/height, or Borderless Fullscreen.");
-    }
-
-    // Show mode-specific information
-    if (s_window_mode < 0.5f) {
-        ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "Mode: Aspect Ratio - Set width below, height calculated automatically");
-    } else if (s_window_mode < 1.5f) {
-        ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "Mode: Width/Height - Set custom window dimensions below");
-    } else {
-        ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "Mode: Fullscreen - Window will fill entire monitor (no alignment needed)");
-    }
-
-    // Window Width dropdown (shown in both Aspect Ratio and Width/Height modes)
-    if (s_window_mode < 1.5f) {
-        if (ComboSettingWrapper(g_main_new_tab_settings.window_width, "Window Width")) {
-            int idx = g_main_new_tab_settings.window_width.GetValue();
-            idx = (std::max)(idx, 0);
-            int max_idx = 7;
-            idx = (std::min)(idx, max_idx);
-            s_windowed_width = (idx == 0) ? static_cast<float>(current_monitor_width)
-                                          : static_cast<float>(WIDTH_OPTIONS[idx]);
-            LogInfo("Window width changed");
-        }
-        if (ImGui::IsItemHovered()) {
-            if (s_window_mode < 0.5f) {
-                ImGui::SetTooltip("Choose the window width. Height will be calculated automatically based on the selected aspect ratio.");
-            } else {
-                ImGui::SetTooltip("Choose the window width. 'Current Display' uses the current monitor's width.");
-            }
-        }
-    }
-
-    // Window Height dropdown (only shown in Width/Height mode)
-    if (s_window_mode >= 0.5f && s_window_mode < 1.5f) {
-        if (ComboSettingWrapper(g_main_new_tab_settings.window_height, "Window Height")) {
-            int idx = g_main_new_tab_settings.window_height.GetValue();
-            idx = (std::max)(idx, 0);
-            int max_idx = 7;
-            idx = (std::min)(idx, max_idx);
-            s_windowed_height = (idx == 0) ? static_cast<float>(current_monitor_height)
-                                           : static_cast<float>(HEIGHT_OPTIONS[idx]);
-            LogInfo("Window height changed");
-        }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Choose the window height. 'Current Display' uses the current monitor's height.");
-        }
+        ImGui::SetTooltip("Choose the window mode: Borderless Windowed with aspect ratio or Borderless Fullscreen.");
     }
 
     // Aspect Ratio dropdown (only shown in Aspect Ratio mode)
-    if (s_window_mode < 0.5f) {
+    if (s_window_mode.load() == WindowMode::kAspectRatio) {
         if (ComboSettingWrapper(g_main_new_tab_settings.aspect_index, "Aspect Ratio")) {
-            s_aspect_index = static_cast<float>(g_main_new_tab_settings.aspect_index.GetValue());
+            s_aspect_index = static_cast<AspectRatioType>(g_main_new_tab_settings.aspect_index.GetValue());
             LogInfo("Aspect ratio changed");
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Choose the aspect ratio for window resizing.");
         }
     }
-
-    // Target Monitor dropdown
-    // Use cached monitor labels updated by continuous monitoring thread
-
-    std::vector<std::string> monitor_labels_local;
-    std::vector<const char*> monitor_c_labels;
-    {
-        auto ptr = ::g_monitor_labels.load(std::memory_order_acquire);
-        monitor_labels_local = *ptr; // copy to avoid lifetime issues
-        monitor_c_labels.reserve(monitor_labels_local.size());
-        for (const auto& label : monitor_labels_local) {
-            monitor_c_labels.push_back(label.c_str());
-        }
-    }
-    int monitor_index = s_target_monitor_index.load();
-    if (ImGui::Combo("Target Monitor", &monitor_index, monitor_c_labels.data(), static_cast<int>(monitor_c_labels.size()))) {
-        s_target_monitor_index.store(monitor_index);
-        g_main_new_tab_settings.target_monitor_index.SetValue(monitor_index);
-        LogInfo("Target monitor changed");
-    }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Choose which monitor to apply size/pos to. 'Auto' uses the current window monitor.");
-    }
-
-    // Background Black Curtain checkbox (only shown in Borderless Windowed modes)
-    if (s_window_mode < 1.5f) {
-        if (CheckboxSetting(g_main_new_tab_settings.background_feature, "Background Black Curtain")) {
-            LogInfo("Background black curtain setting changed");
-        }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Creates a black background behind the game window when it doesn't cover the full screen.");
-        }
-    }
-
-    // Window Alignment dropdown (only shown in Borderless Windowed modes)
-    if (s_window_mode < 1.5f) {
+    // Window Alignment dropdown (only shown in Aspect Ratio mode)
+    if (s_window_mode.load() == WindowMode::kAspectRatio) {
         if (ComboSettingWrapper(g_main_new_tab_settings.alignment, "Alignment")) {
             s_move_to_zero_if_out = static_cast<float>(g_main_new_tab_settings.alignment.GetValue());
             LogInfo("Window alignment changed");
@@ -377,6 +305,17 @@ void DrawDisplaySettings() {
             ImGui::SetTooltip("Choose how to align the window when repositioning is needed. 1=Top Left, 2=Top Right, 3=Bottom Left, 4=Bottom Right, 5=Center.");
         }
     }
+
+    // Background Black Curtain checkbox (only shown in Aspect Ratio mode)
+    if (s_window_mode.load() == WindowMode::kAspectRatio) {
+        if (CheckboxSetting(g_main_new_tab_settings.background_feature, "Background Black Curtain")) {
+            LogInfo("Background black curtain setting changed");
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Creates a black background behind the game window when it doesn't cover the full screen.");
+        }
+    }
+
 
     // Apply Changes button
     if (ImGui::Button("Apply Changes")) {
@@ -458,19 +397,6 @@ void DrawDisplaySettings() {
 
     // Latent Sync Mode (only visible if Latent Sync limiter is selected)
     if (s_fps_limiter_mode.load() == FpsLimiterMode::kLatentSync) {
-
-        // Get current monitor height for dynamic range
-        int monitor_height = current_monitor_height;
-        int monitor_width = current_monitor_width;
-
-        // Update display dimensions in GlobalWindowState
-        auto current_state = g_window_state.load();
-        if (current_state) {
-            auto new_state = std::make_shared<GlobalWindowState>(*current_state);
-            new_state->display_width = monitor_width;
-            new_state->display_height = monitor_height;
-            g_window_state.store(new_state);
-        }
 
         // Scanline Offset (only visible if scanline mode is selected)
         int current_offset = g_main_new_tab_settings.scanline_offset.GetValue();
@@ -812,13 +738,9 @@ void DrawWindowControls() {
         std::thread([hwnd, current_monitor_width, current_monitor_height](){
             LogDebug("Maximize Window button pressed (bg thread)");
 
-            // Set window dimensions to current monitor size
-            s_windowed_width.store(static_cast<float>(current_monitor_width));
-            s_windowed_height.store(static_cast<float>(current_monitor_height));
-
-            // Update the settings to reflect the change
-            g_main_new_tab_settings.window_width.SetValue(0); // 0 = Current Display
-            g_main_new_tab_settings.window_height.SetValue(0); // 0 = Current Display
+            // Switch to fullscreen mode to maximize the window
+            s_window_mode.store(WindowMode::kFullscreen);
+            g_main_new_tab_settings.window_mode.SetValue(static_cast<int>(WindowMode::kFullscreen));
 
             // Apply the window changes using the existing UI system
             ApplyWindowChange(hwnd, "maximize_button");

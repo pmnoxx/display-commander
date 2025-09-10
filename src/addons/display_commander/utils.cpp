@@ -1,6 +1,5 @@
 #include "utils.hpp"
 
-#include <algorithm>
 #include "globals.hpp"
 
 
@@ -17,6 +16,20 @@ const AspectRatio ASPECT_OPTIONS[] = {
   {21, 9},   // 2.333:1
   {32, 9},   // 3.556:1
 };
+
+std::vector<std::string> MakeAspectLabels() {
+    std::vector<std::string> labels;
+    labels.reserve(8);
+    labels.push_back("3:2");
+    labels.push_back("4:3");
+    labels.push_back("16:10");
+    labels.push_back("16:9");
+    labels.push_back("19:9");
+    labels.push_back("19.5:9");
+    labels.push_back("21:9");
+    labels.push_back("32:9");
+    return labels;
+}
 
 // Helper functions to get current monitor dimensions
 int GetCurrentMonitorWidth() {
@@ -195,21 +208,9 @@ int FindClosestIndex(int value, const int* values, size_t count) {
     return closest_index;
 }
 
-std::vector<std::string> MakeAspectLabels() {
-    std::vector<std::string> labels;
-    labels.reserve(8);
-    labels.push_back("3:2");
-    labels.push_back("4:3");
-    labels.push_back("16:10");
-    labels.push_back("16:9");
-    labels.push_back("19:9");
-    labels.push_back("19.5:9");
-    labels.push_back("21:9");
-    labels.push_back("32:9");
-    return labels;
-}
 
-AspectRatio GetAspectByIndex(int index) {
+AspectRatio GetAspectByIndex(AspectRatioType aspect_type) {
+    int index = static_cast<int>(aspect_type);
     if (index >= 0 && index < 8) {
         return ASPECT_OPTIONS[index];
     }
@@ -217,31 +218,28 @@ AspectRatio GetAspectByIndex(int index) {
 }
 
 void ComputeDesiredSize(int& out_w, int& out_h) {
-    if (s_window_mode >= 1.5f) {
-        // Mode 2: Borderless Fullscreen - use current monitor dimensions
+    if (s_window_mode.load() == WindowMode::kFullscreen) {
+        // kFullscreen: Borderless Fullscreen - use current monitor dimensions
         out_w = GetCurrentMonitorWidth();
         out_h = GetCurrentMonitorHeight();
         return;
     }
 
-    // Original logic for manual or aspect ratio mode
-    const int want_w = static_cast<int>(s_windowed_width);
-    if (s_window_mode >= 0.5f && s_window_mode < 1.5f) {
-        // Mode 1: Borderless Windowed (Width/Height) - manual mode
-        out_w = want_w;
-        out_h = static_cast<int>(s_windowed_height);
-        return;
-    }
-    // Mode 0: Borderless Windowed (Aspect Ratio) - aspect mode
-    int index = static_cast<int>(s_aspect_index);
-    AspectRatio ar = GetAspectByIndex(index);
+    // kAspectRatio: Borderless Windowed (Aspect Ratio) - aspect mode
+    // For aspect ratio mode, we need to get the width from the resolution widget
+    // For now, use current monitor width as default
+    const int want_w = GetCurrentMonitorWidth();
+    AspectRatio ar = GetAspectByIndex(s_aspect_index.load());
     // height = round(width * h / w)
     // prevent division by zero
-    if (ar.w <= 0) ar.w = 1;
-    std::int64_t num = static_cast<std::int64_t>(want_w) * static_cast<std::int64_t>(ar.h);
-    int want_h = static_cast<int>((num + (ar.w / 2)) / ar.w);
+    if (ar.w <= 0 || ar.h <= 0) {
+        ar.h = 16;
+        ar.w = 9;
+    }
     out_w = want_w;
-    out_h = (std::max)(want_h, 1);
+    out_h = want_w * ar.h / ar.w;
+
+    LogInfo("ComputeDesiredSize: out_w=%d, out_h=%d", out_w, out_h);
 }
 
 

@@ -5,6 +5,7 @@
 #include <sstream>
 #include <intrin.h>
 #include "../addons/display_commander/utils.hpp"
+#include "../addons/display_commander/hooks/timeslowdown_hooks.hpp"
 
 // NTSTATUS constants if not already defined
 #ifndef STATUS_SUCCESS
@@ -23,7 +24,7 @@ LONGLONG QPC_TO_MS = NS_TO_MS / QPC_TO_NS;
 bool initialize_qpc_timing_constants()
 {
     LARGE_INTEGER frequency;
-    if (!QueryPerformanceFrequency(&frequency))
+    if (!renodx::hooks::QueryPerformanceFrequency_Detour(&frequency))
     {
         LogError("QueryPerformanceFrequency failed, using default values");
         // If QueryPerformanceFrequency fails, keep default values
@@ -97,7 +98,7 @@ bool setup_high_resolution_timer()
 {
     // Get QPC frequency
     LARGE_INTEGER frequency;
-    QueryPerformanceFrequency(&frequency);
+    renodx::hooks::QueryPerformanceFrequency_Detour(&frequency);
     timer_res_qpc_frequency = frequency.QuadPart;
 
     // Load NTDLL functions dynamically
@@ -229,14 +230,14 @@ void wait_until_ns(LONGLONG target_ns, HANDLE& timer_handle) {
 
 LONGLONG get_now_qpc() {
     LARGE_INTEGER now_ticks = {};
-    QueryPerformanceCounter(&now_ticks);
+    renodx::hooks::QueryPerformanceCounter_Detour(&now_ticks);
     return now_ticks.QuadPart;
 }
 
 // Global timing function
 LONGLONG get_now_ns() {
     LARGE_INTEGER now_ticks = {};
-    QueryPerformanceCounter(&now_ticks);
+    renodx::hooks::QueryPerformanceCounter_Detour(&now_ticks);
     return now_ticks.QuadPart * utils::QPC_TO_NS;
 }
 

@@ -11,7 +11,7 @@ MainNewTabSettings::MainNewTabSettings()
       aspect_index("aspect_index", 3, {"3:2", "4:3", "16:10", "16:9", "19:9", "19.5:9", "21:9", "32:9"}, "renodx_main_tab"), // Default to 16:9
       target_monitor_index("target_monitor_index", 0, {"Auto", "Monitor 1", "Monitor 2", "Monitor 3", "Monitor 4", "Monitor 5", "Monitor 6", "Monitor 7", "Monitor 8", "Monitor 9", "Monitor 10"}, "renodx_main_tab"),
       background_feature("background_feature", s_background_feature_enabled, false, "renodx_main_tab"),
-      alignment("alignment", 0, {"None", "Top Left", "Top Right", "Bottom Left", "Bottom Right", "Center"}, "renodx_main_tab"),
+      alignment("alignment", 0, {"Center", "Top Left", "Top Right", "Bottom Left", "Bottom Right"}, "renodx_main_tab"),
       fps_limiter_mode("fps_limiter_mode", 0, {"None", "Precise Frame Rate Limiter", "VBlank Scanline Sync for VSync-OFF"}, "renodx_main_tab"),
       scanline_offset("scanline_offset", s_scanline_offset, 0, -1000, 1000, "renodx_main_tab"),
       vblank_sync_divisor("vblank_sync_divisor", s_vblank_sync_divisor, 1, 0, 8, "renodx_main_tab"),

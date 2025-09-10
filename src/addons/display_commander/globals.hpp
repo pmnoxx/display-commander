@@ -50,6 +50,14 @@ enum class AspectRatioType : std::uint8_t {
     k32_9 = 7      // 32:9
 };
 
+enum class WindowAlignment : std::uint8_t {
+    kCenter = 0,       // Center (default)
+    kTopLeft = 1,      // Top Left
+    kTopRight = 2,     // Top Right
+    kBottomLeft = 3,   // Bottom Left
+    kBottomRight = 4   // Bottom Right
+};
+
 // Structures
 struct GlobalWindowState {
   int desired_width = 0;
@@ -133,7 +141,7 @@ extern std::atomic<bool> s_prevent_fullscreen;
 extern std::atomic<bool> s_fix_hdr10_colorspace;
 
 // Window Management Settings
-extern std::atomic<int> s_move_to_zero_if_out; // 0 = Disabled, 1 = Move to zero if out, 2 = Move to zero if out and windowed
+extern std::atomic<WindowAlignment> s_window_alignment; // Window alignment when repositioning is needed
 extern std::atomic<int> s_target_monitor_index;
 extern std::atomic<int> s_dxgi_composition_state;
 extern std::atomic<bool> s_block_input_in_background;

@@ -19,8 +19,8 @@ std::atomic<WindowMode> s_window_mode{WindowMode::kAspectRatio}; // kAspectRatio
 
 std::atomic<AspectRatioType> s_aspect_index{AspectRatioType::k16_9}; // Default to 16:9
 
-// Window alignment when repositioning is needed (0 = None, 1 = Top Left, 2 = Top Right, 3 = Bottom Left, 4 = Bottom Right, 5 = Center)
-std::atomic<int> s_move_to_zero_if_out{2}; // default to top right
+// Window alignment when repositioning is needed (0 = Center, 1 = Top Left, 2 = Top Right, 3 = Bottom Left, 4 = Bottom Right)
+std::atomic<WindowAlignment> s_window_alignment{WindowAlignment::kCenter}; // default to center (slot 0)
 
 
 // Prevent Fullscreen

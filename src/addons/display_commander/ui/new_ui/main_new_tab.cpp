@@ -34,7 +34,7 @@ void InitMainNewTab() {
         s_window_mode = static_cast<WindowMode>(g_main_new_tab_settings.window_mode.GetValue());
         s_aspect_index = static_cast<AspectRatioType>(g_main_new_tab_settings.aspect_index.GetValue());
         s_target_monitor_index.store(g_main_new_tab_settings.target_monitor_index.GetValue());
-        s_move_to_zero_if_out = g_main_new_tab_settings.alignment.GetValue();
+        s_window_alignment = static_cast<WindowAlignment>(g_main_new_tab_settings.alignment.GetValue());
         // FPS limits are now automatically synced via FloatSettingRef
         s_audio_mute.store(g_main_new_tab_settings.audio_mute.GetValue());
         s_mute_in_background.store(g_main_new_tab_settings.mute_in_background.GetValue());
@@ -298,11 +298,11 @@ void DrawDisplaySettings() {
     // Window Alignment dropdown (only shown in Aspect Ratio mode)
     if (s_window_mode.load() == WindowMode::kAspectRatio) {
         if (ComboSettingWrapper(g_main_new_tab_settings.alignment, "Alignment")) {
-            s_move_to_zero_if_out = static_cast<float>(g_main_new_tab_settings.alignment.GetValue());
+            s_window_alignment = static_cast<WindowAlignment>(g_main_new_tab_settings.alignment.GetValue());
             LogInfo("Window alignment changed");
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Choose how to align the window when repositioning is needed. 1=Top Left, 2=Top Right, 3=Bottom Left, 4=Bottom Right, 5=Center.");
+            ImGui::SetTooltip("Choose how to align the window when repositioning is needed. 0=Center, 1=Top Left, 2=Top Right, 3=Bottom Left, 4=Bottom Right.");
         }
     }
 

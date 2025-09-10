@@ -215,27 +215,27 @@ void  CalculateWindowState(HWND hwnd, const char* reason) {
     const RECT& mr = {disp->x, disp->y, disp->x + disp->width, disp->y + disp->height};
 
     // Apply alignment based on setting
-    switch (static_cast<int>(s_move_to_zero_if_out)) {
+    switch (s_window_alignment.load()) {
       default:
-      case 1: // Top Left
-        local_state.target_x = mr.left;
-        local_state.target_y = mr.top;
-        break;
-      case 2: // Top Right
-        local_state.target_x = max(mr.left, mr.right - local_state.target_w);
-        local_state.target_y = mr.top;
-        break;
-      case 3: // Bottom Left
-        local_state.target_x = mr.left;
-        local_state.target_y = max(mr.top, mr.bottom - local_state.target_h);
-        break;
-      case 4: // Bottom Right
-        local_state.target_x = max(mr.left, mr.right - local_state.target_w);
-        local_state.target_y = max(mr.top, mr.bottom - local_state.target_h);
-        break;
-      case 5: // Center
+      case WindowAlignment::kCenter: // Default to center
         local_state.target_x = max(mr.left, mr.left + (mr.right - mr.left - local_state.target_w) / 2);
         local_state.target_y = max(mr.top, mr.top + (mr.bottom - mr.top - local_state.target_h) / 2);
+        break;
+      case WindowAlignment::kTopLeft:
+        local_state.target_x = mr.left;
+        local_state.target_y = mr.top;
+        break;
+      case WindowAlignment::kTopRight:
+        local_state.target_x = max(mr.left, mr.right - local_state.target_w);
+        local_state.target_y = mr.top;
+        break;
+      case WindowAlignment::kBottomLeft:
+        local_state.target_x = mr.left;
+        local_state.target_y = max(mr.top, mr.bottom - local_state.target_h);
+        break;
+      case WindowAlignment::kBottomRight:
+        local_state.target_x = max(mr.left, mr.right - local_state.target_w);
+        local_state.target_y = max(mr.top, mr.bottom - local_state.target_h);
         break;
     }
     local_state.target_w = min(local_state.target_w, mr.right - mr.left);

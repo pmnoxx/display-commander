@@ -9,6 +9,7 @@
 #include <atomic>
 #include "utils/timing.hpp"
 #include "hooks/api_hooks.hpp"
+#include "hooks/sleep_hooks.hpp"
 #include "widgets/xinput_widget/xinput_widget.hpp"
 
 // Use renodx2 utilities for swapchain color space changes
@@ -312,6 +313,16 @@ void TimerPresentPacingDelay() {
 }
 
 void OnPresentUpdateAfter(reshade::api::command_queue* /*queue*/, reshade::api::swapchain* swapchain) {
+  // Track render thread ID
+  DWORD current_thread_id = renodx::hooks::GetCurrentThreadIdCached();
+  DWORD previous_render_thread_id = g_render_thread_id.load();
+  g_render_thread_id.store(current_thread_id);
+
+  // Log render thread ID changes for debugging
+  if (previous_render_thread_id != current_thread_id && previous_render_thread_id != 0) {
+    LogDebug("[TID:" + std::to_string(current_thread_id) + "] Render thread changed from " + std::to_string(previous_render_thread_id) + " to " + std::to_string(current_thread_id));
+  }
+
   // Increment event counter
   g_swapchain_event_counters[SWAPCHAIN_EVENT_PRESENT_UPDATE_AFTER].fetch_add(1);
   g_swapchain_event_total_count.fetch_add(1);

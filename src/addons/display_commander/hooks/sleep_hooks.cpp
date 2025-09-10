@@ -9,6 +9,9 @@
 
 namespace renodx::hooks {
 
+// Constant to disable sleep hooks
+const bool DISABLE_SLEEP_HOOKS = false;
+
 // Thread-local storage for thread ID caching
 thread_local DWORD g_cached_thread_id = 0;
 
@@ -283,6 +286,11 @@ DWORD WINAPI WaitForMultipleObjects_Detour(DWORD nCount, const HANDLE* lpHandles
 
 // Install sleep hooks
 bool InstallSleepHooks() {
+    if (DISABLE_SLEEP_HOOKS) {
+        LogInfo("Sleep hooks are disabled via DISABLE_SLEEP_HOOKS constant");
+        return true;  // Return success but don't install hooks
+    }
+
     // Initialize MinHook (only if not already initialized)
     MH_STATUS init_status = MH_Initialize();
     if (init_status != MH_OK && init_status != MH_ERROR_ALREADY_INITIALIZED) {
@@ -332,6 +340,11 @@ bool InstallSleepHooks() {
 
 // Uninstall sleep hooks
 void UninstallSleepHooks() {
+    if (DISABLE_SLEEP_HOOKS) {
+        LogInfo("Sleep hooks are disabled via DISABLE_SLEEP_HOOKS constant - nothing to uninstall");
+        return;
+    }
+
     // Disable hooks
     MH_DisableHook(Sleep);
     MH_DisableHook(SleepEx);

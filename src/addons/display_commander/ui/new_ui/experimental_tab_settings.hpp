@@ -74,6 +74,17 @@ public:
     BoolSetting timeslowdown_enabled;
     FloatSetting timeslowdown_multiplier;
 
+    // Individual timer hook settings
+    ComboSetting query_performance_counter_hook;
+    ComboSetting get_tick_count_hook;
+    ComboSetting get_tick_count64_hook;
+    ComboSetting time_get_time_hook;
+    ComboSetting get_system_time_hook;
+    ComboSetting get_system_time_as_file_time_hook;
+    ComboSetting get_system_time_precise_as_file_time_hook;
+    ComboSetting get_local_time_hook;
+    ComboSetting nt_query_system_time_hook;
+
 private:
     std::vector<SettingBase*> all_settings_;
 };

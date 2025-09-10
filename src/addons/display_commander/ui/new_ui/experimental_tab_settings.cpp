@@ -52,6 +52,60 @@ ExperimentalTabSettings::ExperimentalTabSettings()
     , max_sleep_duration_ms("MaxSleepDurationMs", 0, 0, 10000, "Experimental")
     , timeslowdown_enabled("TimeslowdownEnabled", false, "Experimental")
     , timeslowdown_multiplier("TimeslowdownMultiplier", 1.0f, 0.1f, 10.0f, "Experimental")
+    , query_performance_counter_hook("QueryPerformanceCounterHook", 0, {
+        "None",
+        "Enabled",
+        "Render Thread Only",
+        "Everything Except Render Thread"
+    }, "Experimental")
+    , get_tick_count_hook("GetTickCountHook", 0, {
+        "None",
+        "Enabled",
+        "Render Thread Only",
+        "Everything Except Render Thread"
+    }, "Experimental")
+    , get_tick_count64_hook("GetTickCount64Hook", 0, {
+        "None",
+        "Enabled",
+        "Render Thread Only",
+        "Everything Except Render Thread"
+    }, "Experimental")
+    , time_get_time_hook("TimeGetTimeHook", 0, {
+        "None",
+        "Enabled",
+        "Render Thread Only",
+        "Everything Except Render Thread"
+    }, "Experimental")
+    , get_system_time_hook("GetSystemTimeHook", 0, {
+        "None",
+        "Enabled",
+        "Render Thread Only",
+        "Everything Except Render Thread"
+    }, "Experimental")
+    , get_system_time_as_file_time_hook("GetSystemTimeAsFileTimeHook", 0, {
+        "None",
+        "Enabled",
+        "Render Thread Only",
+        "Everything Except Render Thread"
+    }, "Experimental")
+    , get_system_time_precise_as_file_time_hook("GetSystemTimePreciseAsFileTimeHook", 0, {
+        "None",
+        "Enabled",
+        "Render Thread Only",
+        "Everything Except Render Thread"
+    }, "Experimental")
+    , get_local_time_hook("GetLocalTimeHook", 0, {
+        "None",
+        "Enabled",
+        "Render Thread Only",
+        "Everything Except Render Thread"
+    }, "Experimental")
+    , nt_query_system_time_hook("NtQuerySystemTimeHook", 0, {
+        "None",
+        "Enabled",
+        "Render Thread Only",
+        "Everything Except Render Thread"
+    }, "Experimental")
 {
     // Initialize the all_settings_ vector
     all_settings_ = {
@@ -67,7 +121,11 @@ ExperimentalTabSettings::ExperimentalTabSettings()
         &buffer_resolution_upgrade_scale_factor, &buffer_resolution_upgrade_mode,
         &texture_format_upgrade_enabled,
         &sleep_hook_enabled, &sleep_hook_render_thread_only, &sleep_multiplier, &min_sleep_duration_ms, &max_sleep_duration_ms,
-        &timeslowdown_enabled, &timeslowdown_multiplier
+        &timeslowdown_enabled, &timeslowdown_multiplier,
+        &query_performance_counter_hook, &get_tick_count_hook, &get_tick_count64_hook,
+        &time_get_time_hook, &get_system_time_hook,
+        &get_system_time_as_file_time_hook, &get_system_time_precise_as_file_time_hook,
+        &get_local_time_hook, &nt_query_system_time_hook
     };
 }
 

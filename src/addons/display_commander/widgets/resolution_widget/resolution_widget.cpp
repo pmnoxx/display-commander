@@ -1048,7 +1048,7 @@ void ResolutionWidget::DrawOriginalSettingsInfo() {
 
 void ResolutionWidget::DrawAutoRestoreCheckbox() {
     bool auto_restore = s_auto_restore_resolution_on_close.load();
-    if (ImGui::Checkbox("Auto-restore on exit", &auto_restore)) {
+    if (ImGui::Checkbox("Auto-restore on exit (WIP - not working)", &auto_restore)) {
         s_auto_restore_resolution_on_close.store(auto_restore);
     }
     if (ImGui::IsItemHovered()) {

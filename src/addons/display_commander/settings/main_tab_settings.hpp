@@ -75,11 +75,18 @@ public:
     ui::new_ui::BoolSettingRef no_render_in_background;
     ui::new_ui::BoolSettingRef no_present_in_background;
 
+    // Display Information
+    ui::new_ui::StringSetting target_display;
+
 private:
     std::vector<ui::new_ui::SettingBase*> all_settings_;
 };
 
 // Global instance
 extern MainTabSettings g_mainTabSettings;
+
+// Utility functions
+std::string GetDisplayDeviceIdFromWindow(HWND hwnd);
+void UpdateTargetDisplayFromGameWindow();
 
 } // namespace settings

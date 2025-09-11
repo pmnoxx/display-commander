@@ -5,6 +5,10 @@
 
 namespace renodx::hooks {
 
+// Timeslowdown configuration variables
+extern std::atomic<bool> g_timeslowdown_enabled;
+extern std::atomic<float> g_timeslowdown_multiplier;
+
 // Timer hook types enum
 enum class TimerHookType {
     None = 0,
@@ -55,8 +59,8 @@ void UninstallTimeslowdownHooks();
 bool AreTimeslowdownHooksInstalled();
 
 // Timeslowdown configuration
-void SetTimeslowdownMultiplier(double multiplier);
-double GetTimeslowdownMultiplier();
+void SetTimeslowdownMultiplier(float multiplier);
+float GetTimeslowdownMultiplier();
 bool IsTimeslowdownEnabled();
 void SetTimeslowdownEnabled(bool enabled);
 

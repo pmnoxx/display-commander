@@ -832,7 +832,6 @@ void DrawTimeSlowdownControls() {
 
     // Enable/disable checkbox
     if (CheckboxSetting(g_experimentalTabSettings.timeslowdown_enabled, "Enable Time Slowdown")) {
-        renodx::hooks::SetTimeslowdownEnabled(g_experimentalTabSettings.timeslowdown_enabled.GetValue());
         LogInfo("Time slowdown %s", g_experimentalTabSettings.timeslowdown_enabled.GetValue() ? "enabled" : "disabled");
     }
     if (ImGui::IsItemHovered()) {
@@ -844,7 +843,6 @@ void DrawTimeSlowdownControls() {
 
         // Time multiplier slider
         if (SliderFloatSetting(g_experimentalTabSettings.timeslowdown_multiplier, "Time Multiplier", "%.2fx")) {
-            renodx::hooks::SetTimeslowdownMultiplier(g_experimentalTabSettings.timeslowdown_multiplier.GetValue());
             LogInfo("Time multiplier set to %.2fx", g_experimentalTabSettings.timeslowdown_multiplier.GetValue());
         }
         if (ImGui::IsItemHovered()) {

@@ -1,12 +1,29 @@
-#include "main_new_tab_settings.hpp"
-#include "../../addon.hpp"
+#include "main_tab_settings.hpp"
+#include "../addon.hpp"
 
-namespace ui::new_ui {
+// Atomic variables used by main tab settings
+std::atomic<bool> s_background_feature_enabled{false}; // Disabled by default
+std::atomic<int> s_scanline_offset{0};
+std::atomic<int> s_vblank_sync_divisor{1};
+std::atomic<int> s_fps_limiter_injection{0}; // FPS_LIMITER_INJECTION_ONPRESENTFLAGS
+std::atomic<float> s_fps_limit{0.f};
+std::atomic<float> s_fps_limit_background{30.f};
+std::atomic<float> s_present_pacing_delay_percentage{0.0f}; // Default to 0% (no delay)
+std::atomic<bool> s_force_vsync_on{false};
+std::atomic<bool> s_force_vsync_off{false};
+std::atomic<bool> s_prevent_tearing{false};
+std::atomic<float> s_audio_volume_percent{100.f};
+std::atomic<bool> s_audio_mute{false};
+std::atomic<bool> s_mute_in_background{false};
+std::atomic<bool> s_mute_in_background_if_other_audio{false};
+std::atomic<bool> s_block_input_in_background{true};
+std::atomic<bool> s_block_input_without_reshade{false};
+std::atomic<bool> s_no_render_in_background{false};
+std::atomic<bool> s_no_present_in_background{false};
 
-// Global instance
-MainNewTabSettings g_main_new_tab_settings;
+namespace settings {
 
-MainNewTabSettings::MainNewTabSettings()
+MainTabSettings::MainTabSettings()
     : window_mode("window_mode", 0, {"Borderless Windowed (Aspect Ratio)", "Borderless Fullscreen"}, "renodx_main_tab"),
       aspect_index("aspect_index", 3, {"3:2", "4:3", "16:10", "16:9", "19:9", "19.5:9", "21:9", "32:9"}, "renodx_main_tab"), // Default to 16:9
       target_monitor_index("target_monitor_index", 0, {"Auto", "Monitor 1", "Monitor 2", "Monitor 3", "Monitor 4", "Monitor 5", "Monitor 6", "Monitor 7", "Monitor 8", "Monitor 9", "Monitor 10"}, "renodx_main_tab"),
@@ -61,14 +78,14 @@ MainNewTabSettings::MainNewTabSettings()
     };
 }
 
-void MainNewTabSettings::LoadSettings() {
-    LogInfo("MainNewTabSettings::LoadSettings() called");
+void MainTabSettings::LoadSettings() {
+    LogInfo("MainTabSettings::LoadSettings() called");
     LoadTabSettings(all_settings_);;
-    LogInfo("MainNewTabSettings::LoadSettings() completed");
+    LogInfo("MainTabSettings::LoadSettings() completed");
 }
 
-std::vector<SettingBase*> MainNewTabSettings::GetAllSettings() {
+std::vector<ui::new_ui::SettingBase*> MainTabSettings::GetAllSettings() {
     return all_settings_;
 }
 
-} // namespace ui::new_ui
+} // namespace settings

@@ -562,4 +562,90 @@ void LoadTabSettings(const std::vector<SettingBase*>& settings) {
     }
 }
 
+// FixedIntArraySetting implementation
+FixedIntArraySetting::FixedIntArraySetting(const std::string& key, size_t array_size, int default_value,
+                                         int min, int max, const std::string& section)
+    : SettingBase(key, section)
+    , array_size_(array_size)
+    , default_value_(default_value)
+    , min_(min)
+    , max_(max)
+{
+    // Initialize the atomic array with default values
+    values_.resize(array_size_);
+    for (size_t i = 0; i < array_size_; ++i) {
+        values_[i] = new std::atomic<int>(default_value_);
+    }
+}
+
+FixedIntArraySetting::~FixedIntArraySetting() {
+    // Clean up allocated atomic values
+    for (auto* ptr : values_) {
+        delete ptr;
+    }
+}
+
+void FixedIntArraySetting::Load() {
+    // Load each array element from ReShade config
+    for (size_t i = 0; i < array_size_; ++i) {
+        std::string element_key = key_ + "_" + std::to_string(i);
+        int value = default_value_;
+
+        if (reshade::get_config_value(nullptr, section_.c_str(), element_key.c_str(), value)) {
+            // Clamp value to min/max range
+            value = std::max(min_, std::min(max_, value));
+            values_[i]->store(value);
+        } else {
+            values_[i]->store(default_value_);
+        }
+    }
+    is_dirty_ = false;
+}
+
+void FixedIntArraySetting::Save() {
+    if (!is_dirty_) return;
+
+    // Save each array element to ReShade config
+    for (size_t i = 0; i < array_size_; ++i) {
+        std::string element_key = key_ + "_" + std::to_string(i);
+        int value = values_[i]->load();
+        reshade::set_config_value(nullptr, section_.c_str(), element_key.c_str(), value);
+    }
+    is_dirty_ = false;
+}
+
+int FixedIntArraySetting::GetValue(size_t index) const {
+    if (index >= array_size_) {
+        return default_value_;
+    }
+    return values_[index]->load();
+}
+
+void FixedIntArraySetting::SetValue(size_t index, int value) {
+    if (index >= array_size_) return;
+
+    // Clamp value to min/max range
+    value = std::max(min_, std::min(max_, value));
+    values_[index]->store(value);
+    is_dirty_ = true;
+}
+
+std::vector<int> FixedIntArraySetting::GetAllValues() const {
+    std::vector<int> result;
+    result.reserve(array_size_);
+    for (size_t i = 0; i < array_size_; ++i) {
+        result.push_back(values_[i]->load());
+    }
+    return result;
+}
+
+void FixedIntArraySetting::SetAllValues(const std::vector<int>& values) {
+    size_t copy_size = std::min(values.size(), array_size_);
+    for (size_t i = 0; i < copy_size; ++i) {
+        int value = std::max(min_, std::min(max_, values[i]));
+        values_[i]->store(value);
+    }
+    is_dirty_ = true;
+}
+
 } // namespace ui::new_ui

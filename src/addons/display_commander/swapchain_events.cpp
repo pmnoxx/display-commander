@@ -19,7 +19,7 @@
 #include "swapchain_events_power_saving.hpp"
 #include "latency/latency_manager.hpp"
 #include "settings/experimental_tab_settings.hpp"
-#include "ui/new_ui/main_new_tab_settings.hpp"
+#include "settings/main_tab_settings.hpp"
 
 std::atomic<int> target_width = 3840;
 std::atomic<int> target_height = 2160;
@@ -584,8 +584,8 @@ void OnPresentUpdateBefore(
         s_no_present_in_background.store(new_present_state);
 
         // Update the settings in the UI as well
-        ui::new_ui::g_main_new_tab_settings.no_render_in_background.SetValue(new_render_state);
-        ui::new_ui::g_main_new_tab_settings.no_present_in_background.SetValue(new_present_state);
+        settings::g_mainTabSettings.no_render_in_background.SetValue(new_render_state);
+        settings::g_mainTabSettings.no_present_in_background.SetValue(new_present_state);
 
         // Log the action
         std::ostringstream oss;

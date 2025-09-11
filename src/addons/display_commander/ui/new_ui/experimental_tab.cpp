@@ -16,87 +16,17 @@ namespace ui::new_ui {
 static std::atomic<bool> g_auto_click_thread_running{false};
 static std::thread g_auto_click_thread;
 
-// Static arrays for UI state management
-static bool g_sequence_enabled[5] = {false, false, false, false, false};
-static int g_sequence_x[5] = {0, 0, 0, 0, 0};
-static int g_sequence_y[5] = {0, 0, 0, 0, 0};
-static int g_sequence_interval[5] = {3000, 3000, 3000, 3000, 3000};
+// UI state management
 static bool g_move_mouse = true; // Whether to move mouse before clicking
-static bool g_ui_initialized = false;
 
 // Initialize experimental tab
 void InitExperimentalTab() {
     settings::g_experimentalTabSettings.LoadAll();
 
-    // Load sleep hook settings to global variables
-    g_sleep_hook_enabled.store(settings::g_experimentalTabSettings.sleep_hook_enabled.GetValue());
-    g_sleep_hook_render_thread_only.store(settings::g_experimentalTabSettings.sleep_hook_render_thread_only.GetValue());
-    g_sleep_multiplier.store(settings::g_experimentalTabSettings.sleep_multiplier.GetValue());
-    g_min_sleep_duration_ms.store(static_cast<DWORD>(settings::g_experimentalTabSettings.min_sleep_duration_ms.GetValue()));
-    g_max_sleep_duration_ms.store(static_cast<DWORD>(settings::g_experimentalTabSettings.max_sleep_duration_ms.GetValue()));
 
     LogInfo("Experimental tab settings loaded");
 }
 
-// Sync static arrays with settings
-void SyncUIWithSettings() {
-    if (!g_ui_initialized) {
-        // Load from settings to static arrays
-        g_sequence_enabled[0] = settings::g_experimentalTabSettings.sequence_1_enabled.GetValue();
-        g_sequence_enabled[1] = settings::g_experimentalTabSettings.sequence_2_enabled.GetValue();
-        g_sequence_enabled[2] = settings::g_experimentalTabSettings.sequence_3_enabled.GetValue();
-        g_sequence_enabled[3] = settings::g_experimentalTabSettings.sequence_4_enabled.GetValue();
-        g_sequence_enabled[4] = settings::g_experimentalTabSettings.sequence_5_enabled.GetValue();
-
-        g_sequence_x[0] = settings::g_experimentalTabSettings.sequence_1_x.GetValue();
-        g_sequence_x[1] = settings::g_experimentalTabSettings.sequence_2_x.GetValue();
-        g_sequence_x[2] = settings::g_experimentalTabSettings.sequence_3_x.GetValue();
-        g_sequence_x[3] = settings::g_experimentalTabSettings.sequence_4_x.GetValue();
-        g_sequence_x[4] = settings::g_experimentalTabSettings.sequence_5_x.GetValue();
-
-        g_sequence_y[0] = settings::g_experimentalTabSettings.sequence_1_y.GetValue();
-        g_sequence_y[1] = settings::g_experimentalTabSettings.sequence_2_y.GetValue();
-        g_sequence_y[2] = settings::g_experimentalTabSettings.sequence_3_y.GetValue();
-        g_sequence_y[3] = settings::g_experimentalTabSettings.sequence_4_y.GetValue();
-        g_sequence_y[4] = settings::g_experimentalTabSettings.sequence_5_y.GetValue();
-
-        g_sequence_interval[0] = settings::g_experimentalTabSettings.sequence_1_interval.GetValue();
-        g_sequence_interval[1] = settings::g_experimentalTabSettings.sequence_2_interval.GetValue();
-        g_sequence_interval[2] = settings::g_experimentalTabSettings.sequence_3_interval.GetValue();
-        g_sequence_interval[3] = settings::g_experimentalTabSettings.sequence_4_interval.GetValue();
-        g_sequence_interval[4] = settings::g_experimentalTabSettings.sequence_5_interval.GetValue();
-
-        g_ui_initialized = true;
-        LogInfo("UI arrays synchronized with settings");
-    }
-}
-
-// Save static arrays to settings
-void SaveUIToSettings() {
-    settings::g_experimentalTabSettings.sequence_1_enabled.SetValue(g_sequence_enabled[0]);
-    settings::g_experimentalTabSettings.sequence_2_enabled.SetValue(g_sequence_enabled[1]);
-    settings::g_experimentalTabSettings.sequence_3_enabled.SetValue(g_sequence_enabled[2]);
-    settings::g_experimentalTabSettings.sequence_4_enabled.SetValue(g_sequence_enabled[3]);
-    settings::g_experimentalTabSettings.sequence_5_enabled.SetValue(g_sequence_enabled[4]);
-
-    settings::g_experimentalTabSettings.sequence_1_x.SetValue(g_sequence_x[0]);
-    settings::g_experimentalTabSettings.sequence_2_x.SetValue(g_sequence_x[1]);
-    settings::g_experimentalTabSettings.sequence_3_x.SetValue(g_sequence_x[2]);
-    settings::g_experimentalTabSettings.sequence_4_x.SetValue(g_sequence_x[3]);
-    settings::g_experimentalTabSettings.sequence_5_x.SetValue(g_sequence_x[4]);
-
-    settings::g_experimentalTabSettings.sequence_1_y.SetValue(g_sequence_y[0]);
-    settings::g_experimentalTabSettings.sequence_2_y.SetValue(g_sequence_y[1]);
-    settings::g_experimentalTabSettings.sequence_3_y.SetValue(g_sequence_y[2]);
-    settings::g_experimentalTabSettings.sequence_4_y.SetValue(g_sequence_y[3]);
-    settings::g_experimentalTabSettings.sequence_5_y.SetValue(g_sequence_y[4]);
-
-    settings::g_experimentalTabSettings.sequence_1_interval.SetValue(g_sequence_interval[0]);
-    settings::g_experimentalTabSettings.sequence_2_interval.SetValue(g_sequence_interval[1]);
-    settings::g_experimentalTabSettings.sequence_3_interval.SetValue(g_sequence_interval[2]);
-    settings::g_experimentalTabSettings.sequence_4_interval.SetValue(g_sequence_interval[3]);
-    settings::g_experimentalTabSettings.sequence_5_interval.SetValue(g_sequence_interval[4]);
-}
 
 // Helper function to perform a click at the specified coordinates
 void PerformClick(int x, int y, int sequence_num, bool is_test = false) {
@@ -138,27 +68,33 @@ void PerformClick(int x, int y, int sequence_num, bool is_test = false) {
            g_move_mouse ? (settings::g_experimentalTabSettings.mouse_spoofing_enabled.GetValue() ? " - mouse position spoofed" : " - mouse moved to screen") : " - mouse not moved");
 }
 
-// Helper function to draw a sequence using static arrays
+// Helper function to draw a sequence using settings directly
 void DrawSequence(int sequence_num) {
     int idx = sequence_num - 1; // Convert to 0-based index
 
     ImGui::TextColored(ImVec4(0.9f, 0.9f, 0.9f, 1.0f), "Sequence %d:", sequence_num);
 
+    // Get current values from settings
+    bool enabled = settings::g_experimentalTabSettings.sequence_enabled.GetValue(idx) != 0;
+    int x = settings::g_experimentalTabSettings.sequence_x.GetValue(idx);
+    int y = settings::g_experimentalTabSettings.sequence_y.GetValue(idx);
+    int interval = settings::g_experimentalTabSettings.sequence_interval.GetValue(idx);
+
     // Checkbox for enabling this sequence
-    if (ImGui::Checkbox(("Enabled##seq" + std::to_string(sequence_num)).c_str(), &g_sequence_enabled[idx])) {
-        LogInfo("Click sequence %d %s", sequence_num, g_sequence_enabled[idx] ? "enabled" : "disabled");
-        SaveUIToSettings();
+    if (ImGui::Checkbox(("Enabled##seq" + std::to_string(sequence_num)).c_str(), &enabled)) {
+        settings::g_experimentalTabSettings.sequence_enabled.SetValue(idx, enabled ? 1 : 0);
+        LogInfo("Click sequence %d %s", sequence_num, enabled ? "enabled" : "disabled");
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Enable/disable this click sequence.");
     }
 
     // Only show other controls if this sequence is enabled
-    if (g_sequence_enabled[idx]) {
+    if (enabled) {
         ImGui::SameLine();
         ImGui::SetNextItemWidth(120);
-        if (ImGui::InputInt(("X##seq" + std::to_string(sequence_num)).c_str(), &g_sequence_x[idx], 0, 0, ImGuiInputTextFlags_CharsDecimal)) {
-            SaveUIToSettings();
+        if (ImGui::InputInt(("X##seq" + std::to_string(sequence_num)).c_str(), &x, 0, 0, ImGuiInputTextFlags_CharsDecimal)) {
+            settings::g_experimentalTabSettings.sequence_x.SetValue(idx, x);
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("X coordinate for the click (game window client coordinates).");
@@ -166,8 +102,8 @@ void DrawSequence(int sequence_num) {
 
         ImGui::SameLine();
         ImGui::SetNextItemWidth(120);
-        if (ImGui::InputInt(("Y##seq" + std::to_string(sequence_num)).c_str(), &g_sequence_y[idx], 0, 0, ImGuiInputTextFlags_CharsDecimal)) {
-            SaveUIToSettings();
+        if (ImGui::InputInt(("Y##seq" + std::to_string(sequence_num)).c_str(), &y, 0, 0, ImGuiInputTextFlags_CharsDecimal)) {
+            settings::g_experimentalTabSettings.sequence_y.SetValue(idx, y);
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Y coordinate for the click (game window client coordinates).");
@@ -175,10 +111,10 @@ void DrawSequence(int sequence_num) {
 
         ImGui::SameLine();
         ImGui::SetNextItemWidth(150);
-        if (ImGui::InputInt(("Interval (ms)##seq" + std::to_string(sequence_num)).c_str(), &g_sequence_interval[idx], 0, 0, ImGuiInputTextFlags_CharsDecimal)) {
+        if (ImGui::InputInt(("Interval (ms)##seq" + std::to_string(sequence_num)).c_str(), &interval, 0, 0, ImGuiInputTextFlags_CharsDecimal)) {
             // Clamp to reasonable values
-            g_sequence_interval[idx] = (std::max)(100, (std::min)(60000, g_sequence_interval[idx]));
-            SaveUIToSettings();
+            interval = (std::max)(100, (std::min)(60000, interval));
+            settings::g_experimentalTabSettings.sequence_interval.SetValue(idx, interval);
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Time interval between clicks for this sequence (100ms to 60 seconds).");
@@ -187,7 +123,7 @@ void DrawSequence(int sequence_num) {
         // Test button for this sequence
         ImGui::SameLine();
         if (ImGui::Button(("Test##seq" + std::to_string(sequence_num)).c_str())) {
-            PerformClick(g_sequence_x[idx], g_sequence_y[idx], sequence_num, true);
+            PerformClick(x, y, sequence_num, true);
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Send a test click for this sequence.");
@@ -202,10 +138,9 @@ void DrawSequence(int sequence_num) {
             if (hwnd && IsWindow(hwnd)) {
                 POINT client_pos = mouse_pos;
                 ScreenToClient(hwnd, &client_pos);
-                g_sequence_x[idx] = client_pos.x;
-                g_sequence_y[idx] = client_pos.y;
+                settings::g_experimentalTabSettings.sequence_x.SetValue(idx, client_pos.x);
+                settings::g_experimentalTabSettings.sequence_y.SetValue(idx, client_pos.y);
                 LogInfo("Click sequence %d coordinates set to current mouse position (%d, %d)", sequence_num, client_pos.x, client_pos.y);
-                SaveUIToSettings();
             }
         }
         if (ImGui::IsItemHovered()) {
@@ -223,13 +158,16 @@ void AutoClickThread() {
         // Get the current game window handle
         HWND hwnd = g_last_swapchain_hwnd.load();
         if (hwnd && IsWindow(hwnd)) {
-            // Process each enabled click sequence using static arrays
-            for (int i = 0; i < 5; i++) {
-                if (g_sequence_enabled[i]) {
-                    PerformClick(g_sequence_x[i], g_sequence_y[i], i + 1, false);
-                    std::this_thread::sleep_for(std::chrono::milliseconds(g_sequence_interval[i]));
-                }
+        // Process each enabled click sequence using settings directly
+        for (int i = 0; i < 5; i++) {
+            if (settings::g_experimentalTabSettings.sequence_enabled.GetValue(i) != 0) {
+                int x = settings::g_experimentalTabSettings.sequence_x.GetValue(i);
+                int y = settings::g_experimentalTabSettings.sequence_y.GetValue(i);
+                int interval = settings::g_experimentalTabSettings.sequence_interval.GetValue(i);
+                PerformClick(x, y, i + 1, false);
+                std::this_thread::sleep_for(std::chrono::milliseconds(interval));
             }
+        }
         } else {
             LogWarn("Auto-click: No valid game window handle available");
             // Wait a bit before retrying
@@ -241,9 +179,6 @@ void AutoClickThread() {
 }
 
 void DrawExperimentalTab() {
-    // Sync UI with settings on first draw
-    SyncUIWithSettings();
-
     ImGui::Text("Experimental Tab - Advanced Features");
     ImGui::Separator();
 
@@ -478,7 +413,7 @@ void DrawAutoClickFeature() {
             // Summary information
     int enabled_sequences = 0;
     for (int i = 0; i < 5; i++) {
-        if (g_sequence_enabled[i]) {
+        if (settings::g_experimentalTabSettings.sequence_enabled.GetValue(i) != 0) {
             enabled_sequences++;
         }
     }
@@ -749,8 +684,7 @@ void DrawSleepHookControls() {
 
     // Enable/disable checkbox
     if (CheckboxSetting(settings::g_experimentalTabSettings.sleep_hook_enabled, "Enable Sleep Hooks")) {
-        g_sleep_hook_enabled.store(settings::g_experimentalTabSettings.sleep_hook_enabled.GetValue());
-        LogInfo("Sleep hooks %s", g_sleep_hook_enabled.load() ? "enabled" : "disabled");
+        LogInfo("Sleep hooks %s", settings::g_experimentalTabSettings.sleep_hook_enabled.GetValue() ? "enabled" : "disabled");
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Enable hooks for Windows Sleep APIs to modify sleep durations for FPS control.");
@@ -758,8 +692,7 @@ void DrawSleepHookControls() {
 
     // Render thread only checkbox
     if (CheckboxSetting(settings::g_experimentalTabSettings.sleep_hook_render_thread_only, "Render Thread Only")) {
-        g_sleep_hook_render_thread_only.store(settings::g_experimentalTabSettings.sleep_hook_render_thread_only.GetValue());
-        LogInfo("Sleep hooks render thread only %s", g_sleep_hook_render_thread_only.load() ? "enabled" : "disabled");
+        LogInfo("Sleep hooks render thread only %s", settings::g_experimentalTabSettings.sleep_hook_render_thread_only.GetValue() ? "enabled" : "disabled");
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Only modify sleep calls on the render thread. If render thread is unknown, sleep calls are not modified.");
@@ -770,8 +703,7 @@ void DrawSleepHookControls() {
 
         // Sleep multiplier slider
         if (SliderFloatSetting(settings::g_experimentalTabSettings.sleep_multiplier, "Sleep Multiplier", "%.2fx")) {
-            g_sleep_multiplier.store(settings::g_experimentalTabSettings.sleep_multiplier.GetValue());
-            LogInfo("Sleep multiplier set to %.2fx", g_sleep_multiplier.load());
+            LogInfo("Sleep multiplier set to %.2fx", settings::g_experimentalTabSettings.sleep_multiplier.GetValue());
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Multiplier applied to sleep durations. 1.0 = no change, 0.5 = half duration, 2.0 = double duration.");
@@ -779,8 +711,7 @@ void DrawSleepHookControls() {
 
         // Min sleep duration slider
         if (SliderIntSetting(settings::g_experimentalTabSettings.min_sleep_duration_ms, "Min Sleep Duration (ms)", "%d ms")) {
-            g_min_sleep_duration_ms.store(static_cast<DWORD>(settings::g_experimentalTabSettings.min_sleep_duration_ms.GetValue()));
-            LogInfo("Min sleep duration set to %lu ms", g_min_sleep_duration_ms.load());
+            LogInfo("Min sleep duration set to %d ms", settings::g_experimentalTabSettings.min_sleep_duration_ms.GetValue());
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Minimum sleep duration in milliseconds. 0 = no minimum limit.");
@@ -788,8 +719,7 @@ void DrawSleepHookControls() {
 
         // Max sleep duration slider
         if (SliderIntSetting(settings::g_experimentalTabSettings.max_sleep_duration_ms, "Max Sleep Duration (ms)", "%d ms")) {
-            g_max_sleep_duration_ms.store(static_cast<DWORD>(settings::g_experimentalTabSettings.max_sleep_duration_ms.GetValue()));
-            LogInfo("Max sleep duration set to %lu ms", g_max_sleep_duration_ms.load());
+            LogInfo("Max sleep duration set to %d ms", settings::g_experimentalTabSettings.max_sleep_duration_ms.GetValue());
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Maximum sleep duration in milliseconds. 0 = no maximum limit.");
@@ -799,9 +729,9 @@ void DrawSleepHookControls() {
 
         // Show current settings summary
         ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Current Settings:");
-        ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Multiplier: %.2fx", g_sleep_multiplier.load());
-        ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Min Duration: %lu ms", g_min_sleep_duration_ms.load());
-        ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Max Duration: %lu ms", g_max_sleep_duration_ms.load());
+        ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Multiplier: %.2fx", settings::g_experimentalTabSettings.sleep_multiplier.GetValue());
+        ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Min Duration: %d ms", settings::g_experimentalTabSettings.min_sleep_duration_ms.GetValue());
+        ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Max Duration: %d ms", settings::g_experimentalTabSettings.max_sleep_duration_ms.GetValue());
 
         // Show hook statistics if available
         if (renodx::hooks::g_sleep_hook_stats.total_calls.load() > 0) {

@@ -1,5 +1,6 @@
 #include "swapchain_events_power_saving.hpp"
 #include "globals.hpp"
+#include "settings/main_tab_settings.hpp"
 #include "utils/timing.hpp"
 #include <sstream>
 

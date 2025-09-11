@@ -12,6 +12,7 @@ using ui::new_ui::FloatSetting;
 using ui::new_ui::ComboSetting;
 using ui::new_ui::BoolSettingRef;
 using ui::new_ui::FloatSettingRef;
+using ui::new_ui::FixedIntArraySetting;
 using ui::new_ui::SettingBase;
 
 // Settings manager for the experimental tab
@@ -32,31 +33,11 @@ public:
     // Mouse position spoofing for auto-click sequences
     BoolSetting mouse_spoofing_enabled;
 
-    // Click sequences (up to 5)
-    BoolSetting sequence_1_enabled;
-    IntSetting sequence_1_x;
-    IntSetting sequence_1_y;
-    IntSetting sequence_1_interval;
-
-    BoolSetting sequence_2_enabled;
-    IntSetting sequence_2_x;
-    IntSetting sequence_2_y;
-    IntSetting sequence_2_interval;
-
-    BoolSetting sequence_3_enabled;
-    IntSetting sequence_3_x;
-    IntSetting sequence_3_y;
-    IntSetting sequence_3_interval;
-
-    BoolSetting sequence_4_enabled;
-    IntSetting sequence_4_x;
-    IntSetting sequence_4_y;
-    IntSetting sequence_4_interval;
-
-    BoolSetting sequence_5_enabled;
-    IntSetting sequence_5_x;
-    IntSetting sequence_5_y;
-    IntSetting sequence_5_interval;
+    // Click sequences (up to 5) - using arrays for cleaner code
+    FixedIntArraySetting sequence_enabled;  // 0 = disabled, 1 = enabled
+    FixedIntArraySetting sequence_x;        // X coordinates
+    FixedIntArraySetting sequence_y;        // Y coordinates
+    FixedIntArraySetting sequence_interval; // Click intervals in ms
 
     // Backbuffer format override settings
     BoolSetting backbuffer_format_override_enabled;

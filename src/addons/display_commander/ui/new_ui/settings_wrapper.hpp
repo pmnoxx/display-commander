@@ -263,6 +263,49 @@ private:
     int default_denominator_;
 };
 
+// Fixed-size integer array setting with atomic values
+class FixedIntArraySetting : public SettingBase {
+public:
+    FixedIntArraySetting(const std::string& key, size_t array_size, int default_value,
+                        int min = 0, int max = 100, const std::string& section = DEFAULT_SECTION);
+    ~FixedIntArraySetting();
+
+    void Load() override;
+    void Save() override;
+
+    // Get value at index
+    int GetValue(size_t index) const;
+    void SetValue(size_t index, int value);
+
+    // Get all values as a vector
+    std::vector<int> GetAllValues() const;
+    void SetAllValues(const std::vector<int>& values);
+
+    // Array access
+    int operator[](size_t index) const { return GetValue(index); }
+
+    // Get array size
+    size_t GetSize() const { return array_size_; }
+
+    // Get default value
+    int GetDefaultValue() const { return default_value_; }
+
+    // Get min/max values
+    int GetMin() const { return min_; }
+    int GetMax() const { return max_; }
+
+    // Direct access to atomic array for performance-critical code
+    std::atomic<int>& GetAtomic(size_t index) { return *values_[index]; }
+    const std::atomic<int>& GetAtomic(size_t index) const { return *values_[index]; }
+
+private:
+    std::vector<std::atomic<int>*> values_;
+    size_t array_size_;
+    int default_value_;
+    int min_;
+    int max_;
+};
+
 // Wrapper functions for ImGui controls that automatically handle settings
 
 // SliderFloat wrapper

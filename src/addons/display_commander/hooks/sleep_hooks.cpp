@@ -2,6 +2,7 @@
 #include "windows_hooks/windows_message_hooks.hpp"
 #include "../utils.hpp"
 #include "../globals.hpp"
+#include "../settings/experimental_tab_settings.hpp"
 #include <MinHook.h>
 #include <windows.h>
 #include <thread>
@@ -39,10 +40,10 @@ void WINAPI Sleep_Detour(DWORD dwMilliseconds) {
 
     DWORD modified_duration = dwMilliseconds;
 
-    if (g_sleep_hook_enabled.load() && dwMilliseconds > 0) {
+    if (settings::g_experimentalTabSettings.sleep_hook_enabled.GetValue() && dwMilliseconds > 0) {
         // Check if render thread only is enabled
         bool should_modify = true;
-        if (g_sleep_hook_render_thread_only.load()) {
+        if (settings::g_experimentalTabSettings.sleep_hook_render_thread_only.GetValue()) {
             DWORD render_thread_id = g_render_thread_id.load();
             if (render_thread_id == 0) {
                 // Render thread unknown, don't modify
@@ -55,14 +56,14 @@ void WINAPI Sleep_Detour(DWORD dwMilliseconds) {
 
         if (should_modify) {
             // Apply sleep multiplier
-            float multiplier = g_sleep_multiplier.load();
+            float multiplier = settings::g_experimentalTabSettings.sleep_multiplier.GetValue();
             if (multiplier > 0.0f) {
                 modified_duration = static_cast<DWORD>(dwMilliseconds * multiplier);
             }
 
             // Apply min/max constraints
-            DWORD min_duration = g_min_sleep_duration_ms.load();
-            DWORD max_duration = g_max_sleep_duration_ms.load();
+            DWORD min_duration = static_cast<DWORD>(settings::g_experimentalTabSettings.min_sleep_duration_ms.GetValue());
+            DWORD max_duration = static_cast<DWORD>(settings::g_experimentalTabSettings.max_sleep_duration_ms.GetValue());
 
             if (min_duration > 0) {
                 modified_duration = (modified_duration > min_duration) ? modified_duration : min_duration;
@@ -102,10 +103,10 @@ DWORD WINAPI SleepEx_Detour(DWORD dwMilliseconds, BOOL bAlertable) {
 
     DWORD modified_duration = dwMilliseconds;
 
-    if (g_sleep_hook_enabled.load() && dwMilliseconds > 0) {
+    if (settings::g_experimentalTabSettings.sleep_hook_enabled.GetValue() && dwMilliseconds > 0) {
         // Check if render thread only is enabled
         bool should_modify = true;
-        if (g_sleep_hook_render_thread_only.load()) {
+        if (settings::g_experimentalTabSettings.sleep_hook_render_thread_only.GetValue()) {
             DWORD render_thread_id = g_render_thread_id.load();
             if (render_thread_id == 0) {
                 // Render thread unknown, don't modify
@@ -118,14 +119,14 @@ DWORD WINAPI SleepEx_Detour(DWORD dwMilliseconds, BOOL bAlertable) {
 
         if (should_modify) {
             // Apply sleep multiplier
-            float multiplier = g_sleep_multiplier.load();
+            float multiplier = settings::g_experimentalTabSettings.sleep_multiplier.GetValue();
             if (multiplier > 0.0f) {
                 modified_duration = static_cast<DWORD>(dwMilliseconds * multiplier);
             }
 
             // Apply min/max constraints
-            DWORD min_duration = g_min_sleep_duration_ms.load();
-            DWORD max_duration = g_max_sleep_duration_ms.load();
+            DWORD min_duration = static_cast<DWORD>(settings::g_experimentalTabSettings.min_sleep_duration_ms.GetValue());
+            DWORD max_duration = static_cast<DWORD>(settings::g_experimentalTabSettings.max_sleep_duration_ms.GetValue());
 
             if (min_duration > 0) {
                 modified_duration = (modified_duration > min_duration) ? modified_duration : min_duration;
@@ -165,10 +166,10 @@ DWORD WINAPI WaitForSingleObject_Detour(HANDLE hHandle, DWORD dwMilliseconds) {
 
     DWORD modified_duration = dwMilliseconds;
 
-    if (g_sleep_hook_enabled.load() && dwMilliseconds > 0 && dwMilliseconds != INFINITE) {
+    if (settings::g_experimentalTabSettings.sleep_hook_enabled.GetValue() && dwMilliseconds > 0 && dwMilliseconds != INFINITE) {
         // Check if render thread only is enabled
         bool should_modify = true;
-        if (g_sleep_hook_render_thread_only.load()) {
+        if (settings::g_experimentalTabSettings.sleep_hook_render_thread_only.GetValue()) {
             DWORD render_thread_id = g_render_thread_id.load();
             if (render_thread_id == 0) {
                 // Render thread unknown, don't modify
@@ -181,14 +182,14 @@ DWORD WINAPI WaitForSingleObject_Detour(HANDLE hHandle, DWORD dwMilliseconds) {
 
         if (should_modify) {
             // Apply sleep multiplier
-            float multiplier = g_sleep_multiplier.load();
+            float multiplier = settings::g_experimentalTabSettings.sleep_multiplier.GetValue();
             if (multiplier > 0.0f) {
                 modified_duration = static_cast<DWORD>(dwMilliseconds * multiplier);
             }
 
             // Apply min/max constraints
-            DWORD min_duration = g_min_sleep_duration_ms.load();
-            DWORD max_duration = g_max_sleep_duration_ms.load();
+            DWORD min_duration = static_cast<DWORD>(settings::g_experimentalTabSettings.min_sleep_duration_ms.GetValue());
+            DWORD max_duration = static_cast<DWORD>(settings::g_experimentalTabSettings.max_sleep_duration_ms.GetValue());
 
             if (min_duration > 0) {
                 modified_duration = (modified_duration > min_duration) ? modified_duration : min_duration;
@@ -228,10 +229,10 @@ DWORD WINAPI WaitForMultipleObjects_Detour(DWORD nCount, const HANDLE* lpHandles
 
     DWORD modified_duration = dwMilliseconds;
 
-    if (g_sleep_hook_enabled.load() && dwMilliseconds > 0 && dwMilliseconds != INFINITE) {
+    if (settings::g_experimentalTabSettings.sleep_hook_enabled.GetValue() && dwMilliseconds > 0 && dwMilliseconds != INFINITE) {
         // Check if render thread only is enabled
         bool should_modify = true;
-        if (g_sleep_hook_render_thread_only.load()) {
+        if (settings::g_experimentalTabSettings.sleep_hook_render_thread_only.GetValue()) {
             DWORD render_thread_id = g_render_thread_id.load();
             if (render_thread_id == 0) {
                 // Render thread unknown, don't modify
@@ -244,14 +245,14 @@ DWORD WINAPI WaitForMultipleObjects_Detour(DWORD nCount, const HANDLE* lpHandles
 
         if (should_modify) {
             // Apply sleep multiplier
-            float multiplier = g_sleep_multiplier.load();
+            float multiplier = settings::g_experimentalTabSettings.sleep_multiplier.GetValue();
             if (multiplier > 0.0f) {
                 modified_duration = static_cast<DWORD>(dwMilliseconds * multiplier);
             }
 
             // Apply min/max constraints
-            DWORD min_duration = g_min_sleep_duration_ms.load();
-            DWORD max_duration = g_max_sleep_duration_ms.load();
+            DWORD min_duration = static_cast<DWORD>(settings::g_experimentalTabSettings.min_sleep_duration_ms.GetValue());
+            DWORD max_duration = static_cast<DWORD>(settings::g_experimentalTabSettings.max_sleep_duration_ms.GetValue());
 
             if (min_duration > 0) {
                 modified_duration = (modified_duration > min_duration) ? modified_duration : min_duration;

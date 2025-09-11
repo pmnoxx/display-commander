@@ -3,6 +3,7 @@
 #include "../../dxgi/dxgi_device_info.hpp"
 #include "../../utils.hpp"
 #include "../../swapchain_events_power_saving.hpp"
+#include "../../settings/main_tab_settings.hpp"
 #include <deps/imgui/imgui.h>
 #include <sstream>
 #include <cstdio>

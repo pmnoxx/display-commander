@@ -130,7 +130,6 @@ extern std::atomic<bool> s_apply_display_settings_at_start;
 
 // Window management
 extern std::atomic<bool> s_prevent_always_on_top;
-extern std::atomic<bool> s_background_feature_enabled;
 extern std::atomic<WindowMode> s_window_mode;
 extern std::atomic<AspectRatioType> s_aspect_index;
 
@@ -144,8 +143,6 @@ extern std::atomic<bool> s_fix_hdr10_colorspace;
 extern std::atomic<WindowAlignment> s_window_alignment; // Window alignment when repositioning is needed
 extern std::atomic<int> s_target_monitor_index;
 extern std::atomic<int> s_dxgi_composition_state;
-extern std::atomic<bool> s_block_input_in_background;
-extern std::atomic<bool> s_block_input_without_reshade;
 
 // Mouse position spoofing for auto-click sequences
 extern std::atomic<bool> s_spoof_mouse_position;
@@ -153,10 +150,8 @@ extern std::atomic<int> s_spoofed_mouse_x;
 extern std::atomic<int> s_spoofed_mouse_y;
 
 // Render blocking in background
-extern std::atomic<bool> s_no_render_in_background;
 
 // Present blocking in background
-extern std::atomic<bool> s_no_present_in_background;
 
 // NVAPI Settings
 extern std::atomic<bool> s_nvapi_fullscreen_prevention;
@@ -164,23 +159,14 @@ extern std::atomic<bool> s_nvapi_hdr_logging;
 extern std::atomic<float> s_nvapi_hdr_interval_sec;
 
 // Audio Settings
-extern std::atomic<bool> s_mute_in_background;
-extern std::atomic<bool> s_mute_in_background_if_other_audio;
-extern std::atomic<float> s_audio_volume_percent;
-extern std::atomic<bool> s_audio_mute;
 
 // Keyboard Shortcuts
 extern std::atomic<bool> s_enable_mute_unmute_shortcut;
 extern std::atomic<bool> s_enable_background_toggle_shortcut;
 
 // FPS Limiter Settings
-extern std::atomic<float> s_fps_limit_background;
-extern std::atomic<float> s_fps_limit;
 
 // VSync and Tearing Controls
-extern std::atomic<bool> s_force_vsync_on;
-extern std::atomic<bool> s_force_vsync_off;
-extern std::atomic<bool> s_prevent_tearing;
 
 // ReShade Integration
 extern std::atomic<reshade::api::effect_runtime*> g_reshade_runtime;
@@ -263,13 +249,6 @@ extern std::atomic<FpsLimiterMode> s_fps_limiter_mode;
 #define FPS_LIMITER_INJECTION_ONPRESENTFLAGS 0
 #define FPS_LIMITER_INJECTION_ONPRESENTUPDATEBEFORE2 1
 #define FPS_LIMITER_INJECTION_ONPRESENTUPDATEBEFORE 2
-extern std::atomic<int> s_fps_limiter_injection;
-
-// Scanline offset
-extern std::atomic<int> s_scanline_offset;
-
-// VBlank Sync Divisor (like VSync /2 /3 /4) - 0 to 8 (0 = off)
-extern std::atomic<int> s_vblank_sync_divisor;
 
 // Performance stats (FPS/frametime) shared state
 extern std::atomic<uint32_t> g_perf_ring_head;
@@ -305,12 +284,6 @@ extern std::atomic<bool> g_flush_before_present;
 // Sleep delay after present as percentage of frame time - 0% to 100%
 extern std::atomic<float> s_sleep_after_present_frame_time_percentage;
 
-// Sleep hook settings
-extern std::atomic<bool> g_sleep_hook_enabled;
-extern std::atomic<bool> g_sleep_hook_render_thread_only;
-extern std::atomic<float> g_sleep_multiplier;
-extern std::atomic<DWORD> g_min_sleep_duration_ms;
-extern std::atomic<DWORD> g_max_sleep_duration_ms;
 
 // Monitoring thread
 extern std::atomic<bool> g_monitoring_thread_running;
@@ -323,10 +296,14 @@ extern std::atomic<DWORD> g_render_thread_id;
 extern std::atomic<int> s_spoof_fullscreen_state;
 extern std::atomic<bool> s_continue_rendering;
 
-// Forward declaration for experimental tab settings
+// Forward declaration for tab settings
 namespace settings {
     class ExperimentalTabSettings;
+    class DeveloperTabSettings;
+    class MainTabSettings;
     extern ExperimentalTabSettings g_experimentalTabSettings;
+    extern DeveloperTabSettings g_developerTabSettings;
+    extern MainTabSettings g_mainTabSettings;
 }
 
 // Swapchain event counters - reset on each swapchain creation
@@ -381,7 +358,6 @@ enum SwapchainEventIndex {
 extern std::atomic<LONGLONG> g_present_start_time_ns;
 
 // Present pacing delay as percentage of frame time - 0% to 100%
-extern std::atomic<float> s_present_pacing_delay_percentage;
 
 
 

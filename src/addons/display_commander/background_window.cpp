@@ -1,6 +1,7 @@
 #include "background_window.hpp"
 #include "utils.hpp"
 #include "globals.hpp"
+#include "settings/main_tab_settings.hpp"
 #include <sstream>
 #include <algorithm>
 
@@ -11,7 +12,6 @@
 
 // Global instance is defined in globals.cpp
 extern BackgroundWindowManager g_backgroundWindowManager;
-extern std::atomic<bool> s_background_feature_enabled;
 
 BackgroundWindowManager::BackgroundWindowManager()
     : m_background_hwnd(nullptr)

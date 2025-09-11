@@ -2,7 +2,7 @@
 #include "../api_hooks.hpp"  // For GetGameWindow and other functions
 #include "../../globals.hpp"    // For s_continue_rendering
 #include "../../utils.hpp"
-#include "../../ui/new_ui/experimental_tab_settings.hpp"  // For g_experimentalTabSettings
+#include "../../settings/experimental_tab_settings.hpp"  // For g_experimentalTabSettings
 #include <MinHook.h>
 
 namespace renodx::hooks {
@@ -423,10 +423,10 @@ BOOL WINAPI ClipCursor_Detour(const RECT* lpRect) {
 // Hooked GetCursorPos function
 BOOL WINAPI GetCursorPos_Detour(LPPOINT lpPoint) {
     // If mouse position spoofing is enabled AND auto-click is enabled, return spoofed position
-    if (s_spoof_mouse_position.load() && lpPoint != nullptr) {
+    if (settings::g_experimentalTabSettings.mouse_spoofing_enabled.GetValue() && lpPoint != nullptr) {
         // Check if auto-click is enabled by checking if the experimental tab settings are available
         // and auto-click is enabled
-        if (ui::new_ui::g_experimentalTabSettings.auto_click_enabled.GetValue()) {
+        if (settings::g_experimentalTabSettings.auto_click_enabled.GetValue()) {
             lpPoint->x = s_spoofed_mouse_x.load();
             lpPoint->y = s_spoofed_mouse_y.load();
             return TRUE;
@@ -459,10 +459,10 @@ BOOL WINAPI SetCursorPos_Detour(int X, int Y) {
     s_last_cursor_position.y = Y;
 
     // If mouse position spoofing is enabled AND auto-click is enabled, update spoofed position instead of moving cursor
-    if (s_spoof_mouse_position.load()) {
+    if (settings::g_experimentalTabSettings.mouse_spoofing_enabled.GetValue()) {
         // Check if auto-click is enabled by checking if the experimental tab settings are available
         // and auto-click is enabled
-        if (ui::new_ui::g_experimentalTabSettings.auto_click_enabled.GetValue()) {
+        if (settings::g_experimentalTabSettings.auto_click_enabled.GetValue()) {
             s_spoofed_mouse_x.store(X);
             s_spoofed_mouse_y.store(Y);
             return TRUE; // Return success without actually moving the cursor

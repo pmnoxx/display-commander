@@ -3,6 +3,7 @@
 #include "dxgi/custom_fps_limiter_manager.hpp"
 #include "dxgi/dxgi_device_info.hpp"
 #include "latency/latency_manager.hpp"
+#include "settings/experimental_tab_settings.hpp"
 #include <atomic>
 
 // Global variables
@@ -293,3 +294,8 @@ std::atomic<std::shared_ptr<const std::string>> g_dlss_quality_mode{std::make_sh
 
 // Unsafe Win32 API calls counter
 std::atomic<uint32_t> g_unsafe_calls_cnt{0};
+
+// Experimental tab settings global instance
+namespace settings {
+    ExperimentalTabSettings g_experimentalTabSettings;
+}

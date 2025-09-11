@@ -324,7 +324,7 @@ extern std::atomic<int> s_spoof_fullscreen_state;
 extern std::atomic<bool> s_continue_rendering;
 
 // Forward declaration for experimental tab settings
-namespace ui::new_ui {
+namespace settings {
     class ExperimentalTabSettings;
     extern ExperimentalTabSettings g_experimentalTabSettings;
 }

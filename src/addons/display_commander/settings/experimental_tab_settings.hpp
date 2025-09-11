@@ -1,10 +1,18 @@
 #pragma once
 
-#include "settings_wrapper.hpp"
+#include "../ui/new_ui/settings_wrapper.hpp"
 #include <vector>
 
-namespace ui::new_ui {
+namespace settings {
 
+// Bring setting types into scope
+using ui::new_ui::BoolSetting;
+using ui::new_ui::IntSetting;
+using ui::new_ui::FloatSetting;
+using ui::new_ui::ComboSetting;
+using ui::new_ui::BoolSettingRef;
+using ui::new_ui::FloatSettingRef;
+using ui::new_ui::SettingBase;
 
 // Settings manager for the experimental tab
 class ExperimentalTabSettings {
@@ -22,7 +30,7 @@ public:
     BoolSetting auto_click_enabled;
 
     // Mouse position spoofing for auto-click sequences
-    BoolSettingRef mouse_spoofing_enabled;
+    BoolSetting mouse_spoofing_enabled;
 
     // Click sequences (up to 5)
     BoolSetting sequence_1_enabled;
@@ -72,8 +80,8 @@ public:
     IntSetting max_sleep_duration_ms;
 
     // Time slowdown settings
-    BoolSettingRef timeslowdown_enabled;
-    FloatSettingRef timeslowdown_multiplier;
+    BoolSetting timeslowdown_enabled;
+    FloatSetting timeslowdown_multiplier;
 
     // Individual timer hook settings
     ComboSetting query_performance_counter_hook;
@@ -90,7 +98,5 @@ private:
     std::vector<SettingBase*> all_settings_;
 };
 
-// Global instance
-extern ExperimentalTabSettings g_experimentalTabSettings;
 
-} // namespace ui::new_ui
+} // namespace settings

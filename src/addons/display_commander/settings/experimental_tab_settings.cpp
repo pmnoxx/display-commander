@@ -1,16 +1,14 @@
 #include "experimental_tab_settings.hpp"
-#include "../../globals.hpp"
-#include "../../hooks/timeslowdown_hooks.hpp"
+#include "../globals.hpp"
+#include "../hooks/timeslowdown_hooks.hpp"
 
-namespace ui::new_ui {
+namespace settings {
 
 
-// Global instance
-ExperimentalTabSettings g_experimentalTabSettings;
 
 ExperimentalTabSettings::ExperimentalTabSettings()
     : auto_click_enabled("AutoClickEnabled", false, "Experimental")
-    , mouse_spoofing_enabled("MouseSpoofingEnabled", s_spoof_mouse_position, false, "Experimental")
+    , mouse_spoofing_enabled("MouseSpoofingEnabled", false, "Experimental")
     , sequence_1_enabled("Sequence1Enabled", false, "Experimental")
     , sequence_1_x("Sequence1X", 0, -10000, 10000, "Experimental")
     , sequence_1_y("Sequence1Y", 0, -10000, 10000, "Experimental")
@@ -52,8 +50,8 @@ ExperimentalTabSettings::ExperimentalTabSettings()
     , sleep_multiplier("SleepMultiplier", 1.0f, 0.1f, 10.0f, "Experimental")
     , min_sleep_duration_ms("MinSleepDurationMs", 0, 0, 10000, "Experimental")
     , max_sleep_duration_ms("MaxSleepDurationMs", 0, 0, 10000, "Experimental")
-    , timeslowdown_enabled("TimeslowdownEnabled", renodx::hooks::g_timeslowdown_enabled, false, "Experimental")
-    , timeslowdown_multiplier("TimeslowdownMultiplier", renodx::hooks::g_timeslowdown_multiplier, 1.0f, 0.1f, 10.0f, "Experimental")
+    , timeslowdown_enabled("TimeslowdownEnabled", false, "Experimental")
+    , timeslowdown_multiplier("TimeslowdownMultiplier", 1.0f, 0.1f, 10.0f, "Experimental")
     , query_performance_counter_hook("QueryPerformanceCounterHook", 0, {
         "None",
         "Enabled",
@@ -139,4 +137,4 @@ std::vector<SettingBase*> ExperimentalTabSettings::GetAllSettings() {
     return all_settings_;
 }
 
-} // namespace ui::new_ui
+} // namespace settings

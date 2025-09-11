@@ -5,9 +5,7 @@
 
 namespace renodx::hooks {
 
-// Timeslowdown configuration variables
-extern std::atomic<bool> g_timeslowdown_enabled;
-extern std::atomic<float> g_timeslowdown_multiplier;
+// Timeslowdown configuration variables - now using global instance
 
 // Timer hook types enum
 enum class TimerHookType {

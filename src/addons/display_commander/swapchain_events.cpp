@@ -18,7 +18,7 @@
 #include "latent_sync/latent_sync_limiter.hpp"
 #include "swapchain_events_power_saving.hpp"
 #include "latency/latency_manager.hpp"
-#include "ui/new_ui/experimental_tab_settings.hpp"
+#include "settings/experimental_tab_settings.hpp"
 #include "ui/new_ui/main_new_tab_settings.hpp"
 
 std::atomic<int> target_width = 3840;
@@ -174,9 +174,9 @@ bool OnCreateSwapchainCapture(reshade::api::device_api /*api*/, reshade::api::sw
   }
 
   // Apply backbuffer format override if enabled
-  if (ui::new_ui::g_experimentalTabSettings.backbuffer_format_override_enabled.GetValue()) {
+  if (settings::g_experimentalTabSettings.backbuffer_format_override_enabled.GetValue()) {
     reshade::api::format original_format = desc.back_buffer.texture.format;
-    reshade::api::format target_format = GetFormatFromComboValue(ui::new_ui::g_experimentalTabSettings.backbuffer_format_override.GetValue());
+    reshade::api::format target_format = GetFormatFromComboValue(settings::g_experimentalTabSettings.backbuffer_format_override.GetValue());
 
     if (original_format != target_format) {
       desc.back_buffer.texture.format = target_format;
@@ -682,7 +682,7 @@ bool OnCreateResource(reshade::api::device* device, reshade::api::resource_desc&
   }
 
   // Handle buffer resolution upgrade if enabled
-  if (ui::new_ui::g_experimentalTabSettings.buffer_resolution_upgrade_enabled.GetValue()) {
+  if (settings::g_experimentalTabSettings.buffer_resolution_upgrade_enabled.GetValue()) {
     uint32_t original_width = desc.texture.width;
     uint32_t original_height = desc.texture.height;
 
@@ -697,7 +697,7 @@ bool OnCreateResource(reshade::api::device* device, reshade::api::resource_desc&
     }
   }
 
-  if (ui::new_ui::g_experimentalTabSettings.texture_format_upgrade_enabled.GetValue()) {
+  if (settings::g_experimentalTabSettings.texture_format_upgrade_enabled.GetValue()) {
     reshade::api::format original_format = desc.texture.format;
     reshade::api::format target_format = reshade::api::format::r16g16b16a16_float; // RGB16A16
 
@@ -747,7 +747,7 @@ bool OnCreateResourceView(reshade::api::device* device, reshade::api::resource r
     return false; // No modification needed
   }
 
-  if (ui::new_ui::g_experimentalTabSettings.texture_format_upgrade_enabled.GetValue()) {
+  if (settings::g_experimentalTabSettings.texture_format_upgrade_enabled.GetValue()) {
     reshade::api::format resource_format = resource_desc.texture.format;
     reshade::api::format target_format = reshade::api::format::r16g16b16a16_float; // RGB16A16
 
@@ -780,7 +780,7 @@ bool OnCreateResourceView(reshade::api::device* device, reshade::api::resource r
 // Viewport event handler to scale viewports for buffer resolution upgrade
 void OnSetViewport(reshade::api::command_list* cmd_list, uint32_t first, uint32_t count, const reshade::api::viewport* viewports) {
   // Only handle viewport scaling if buffer resolution upgrade is enabled
-  if (!ui::new_ui::g_experimentalTabSettings.buffer_resolution_upgrade_enabled.GetValue()) {
+  if (!settings::g_experimentalTabSettings.buffer_resolution_upgrade_enabled.GetValue()) {
     return; // No modification needed
   }
 
@@ -815,12 +815,12 @@ void OnSetViewport(reshade::api::command_list* cmd_list, uint32_t first, uint32_
 // Scissor rectangle event handler to scale scissor rectangles for buffer resolution upgrade
 void OnSetScissorRects(reshade::api::command_list* cmd_list, uint32_t first, uint32_t count, const reshade::api::rect* rects) {
   // Only handle scissor scaling if buffer resolution upgrade is enabled
-  if (!ui::new_ui::g_experimentalTabSettings.buffer_resolution_upgrade_enabled.GetValue()) {
+  if (!settings::g_experimentalTabSettings.buffer_resolution_upgrade_enabled.GetValue()) {
     return; // No modification needed
   }
 
-  int mode = ui::new_ui::g_experimentalTabSettings.buffer_resolution_upgrade_mode.GetValue();
-  int scale_factor = ui::new_ui::g_experimentalTabSettings.buffer_resolution_upgrade_scale_factor.GetValue();
+  int mode = settings::g_experimentalTabSettings.buffer_resolution_upgrade_mode.GetValue();
+  int scale_factor = settings::g_experimentalTabSettings.buffer_resolution_upgrade_scale_factor.GetValue();
 
   // Create scaled scissor rectangles only for matching dimensions
   std::vector<reshade::api::rect> scaled_rects(rects, rects + count);

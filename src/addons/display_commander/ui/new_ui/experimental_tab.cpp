@@ -1,5 +1,5 @@
 #include "experimental_tab.hpp"
-#include "experimental_tab_settings.hpp"
+#include "../../settings/experimental_tab_settings.hpp"
 #include "../../globals.hpp"
 #include "../../hooks/sleep_hooks.hpp"
 #include "../../hooks/timeslowdown_hooks.hpp"
@@ -26,14 +26,14 @@ static bool g_ui_initialized = false;
 
 // Initialize experimental tab
 void InitExperimentalTab() {
-    g_experimentalTabSettings.LoadAll();
+    settings::g_experimentalTabSettings.LoadAll();
 
     // Load sleep hook settings to global variables
-    g_sleep_hook_enabled.store(g_experimentalTabSettings.sleep_hook_enabled.GetValue());
-    g_sleep_hook_render_thread_only.store(g_experimentalTabSettings.sleep_hook_render_thread_only.GetValue());
-    g_sleep_multiplier.store(g_experimentalTabSettings.sleep_multiplier.GetValue());
-    g_min_sleep_duration_ms.store(static_cast<DWORD>(g_experimentalTabSettings.min_sleep_duration_ms.GetValue()));
-    g_max_sleep_duration_ms.store(static_cast<DWORD>(g_experimentalTabSettings.max_sleep_duration_ms.GetValue()));
+    g_sleep_hook_enabled.store(settings::g_experimentalTabSettings.sleep_hook_enabled.GetValue());
+    g_sleep_hook_render_thread_only.store(settings::g_experimentalTabSettings.sleep_hook_render_thread_only.GetValue());
+    g_sleep_multiplier.store(settings::g_experimentalTabSettings.sleep_multiplier.GetValue());
+    g_min_sleep_duration_ms.store(static_cast<DWORD>(settings::g_experimentalTabSettings.min_sleep_duration_ms.GetValue()));
+    g_max_sleep_duration_ms.store(static_cast<DWORD>(settings::g_experimentalTabSettings.max_sleep_duration_ms.GetValue()));
 
     LogInfo("Experimental tab settings loaded");
 }
@@ -42,29 +42,29 @@ void InitExperimentalTab() {
 void SyncUIWithSettings() {
     if (!g_ui_initialized) {
         // Load from settings to static arrays
-        g_sequence_enabled[0] = g_experimentalTabSettings.sequence_1_enabled.GetValue();
-        g_sequence_enabled[1] = g_experimentalTabSettings.sequence_2_enabled.GetValue();
-        g_sequence_enabled[2] = g_experimentalTabSettings.sequence_3_enabled.GetValue();
-        g_sequence_enabled[3] = g_experimentalTabSettings.sequence_4_enabled.GetValue();
-        g_sequence_enabled[4] = g_experimentalTabSettings.sequence_5_enabled.GetValue();
+        g_sequence_enabled[0] = settings::g_experimentalTabSettings.sequence_1_enabled.GetValue();
+        g_sequence_enabled[1] = settings::g_experimentalTabSettings.sequence_2_enabled.GetValue();
+        g_sequence_enabled[2] = settings::g_experimentalTabSettings.sequence_3_enabled.GetValue();
+        g_sequence_enabled[3] = settings::g_experimentalTabSettings.sequence_4_enabled.GetValue();
+        g_sequence_enabled[4] = settings::g_experimentalTabSettings.sequence_5_enabled.GetValue();
 
-        g_sequence_x[0] = g_experimentalTabSettings.sequence_1_x.GetValue();
-        g_sequence_x[1] = g_experimentalTabSettings.sequence_2_x.GetValue();
-        g_sequence_x[2] = g_experimentalTabSettings.sequence_3_x.GetValue();
-        g_sequence_x[3] = g_experimentalTabSettings.sequence_4_x.GetValue();
-        g_sequence_x[4] = g_experimentalTabSettings.sequence_5_x.GetValue();
+        g_sequence_x[0] = settings::g_experimentalTabSettings.sequence_1_x.GetValue();
+        g_sequence_x[1] = settings::g_experimentalTabSettings.sequence_2_x.GetValue();
+        g_sequence_x[2] = settings::g_experimentalTabSettings.sequence_3_x.GetValue();
+        g_sequence_x[3] = settings::g_experimentalTabSettings.sequence_4_x.GetValue();
+        g_sequence_x[4] = settings::g_experimentalTabSettings.sequence_5_x.GetValue();
 
-        g_sequence_y[0] = g_experimentalTabSettings.sequence_1_y.GetValue();
-        g_sequence_y[1] = g_experimentalTabSettings.sequence_2_y.GetValue();
-        g_sequence_y[2] = g_experimentalTabSettings.sequence_3_y.GetValue();
-        g_sequence_y[3] = g_experimentalTabSettings.sequence_4_y.GetValue();
-        g_sequence_y[4] = g_experimentalTabSettings.sequence_5_y.GetValue();
+        g_sequence_y[0] = settings::g_experimentalTabSettings.sequence_1_y.GetValue();
+        g_sequence_y[1] = settings::g_experimentalTabSettings.sequence_2_y.GetValue();
+        g_sequence_y[2] = settings::g_experimentalTabSettings.sequence_3_y.GetValue();
+        g_sequence_y[3] = settings::g_experimentalTabSettings.sequence_4_y.GetValue();
+        g_sequence_y[4] = settings::g_experimentalTabSettings.sequence_5_y.GetValue();
 
-        g_sequence_interval[0] = g_experimentalTabSettings.sequence_1_interval.GetValue();
-        g_sequence_interval[1] = g_experimentalTabSettings.sequence_2_interval.GetValue();
-        g_sequence_interval[2] = g_experimentalTabSettings.sequence_3_interval.GetValue();
-        g_sequence_interval[3] = g_experimentalTabSettings.sequence_4_interval.GetValue();
-        g_sequence_interval[4] = g_experimentalTabSettings.sequence_5_interval.GetValue();
+        g_sequence_interval[0] = settings::g_experimentalTabSettings.sequence_1_interval.GetValue();
+        g_sequence_interval[1] = settings::g_experimentalTabSettings.sequence_2_interval.GetValue();
+        g_sequence_interval[2] = settings::g_experimentalTabSettings.sequence_3_interval.GetValue();
+        g_sequence_interval[3] = settings::g_experimentalTabSettings.sequence_4_interval.GetValue();
+        g_sequence_interval[4] = settings::g_experimentalTabSettings.sequence_5_interval.GetValue();
 
         g_ui_initialized = true;
         LogInfo("UI arrays synchronized with settings");
@@ -73,29 +73,29 @@ void SyncUIWithSettings() {
 
 // Save static arrays to settings
 void SaveUIToSettings() {
-    g_experimentalTabSettings.sequence_1_enabled.SetValue(g_sequence_enabled[0]);
-    g_experimentalTabSettings.sequence_2_enabled.SetValue(g_sequence_enabled[1]);
-    g_experimentalTabSettings.sequence_3_enabled.SetValue(g_sequence_enabled[2]);
-    g_experimentalTabSettings.sequence_4_enabled.SetValue(g_sequence_enabled[3]);
-    g_experimentalTabSettings.sequence_5_enabled.SetValue(g_sequence_enabled[4]);
+    settings::g_experimentalTabSettings.sequence_1_enabled.SetValue(g_sequence_enabled[0]);
+    settings::g_experimentalTabSettings.sequence_2_enabled.SetValue(g_sequence_enabled[1]);
+    settings::g_experimentalTabSettings.sequence_3_enabled.SetValue(g_sequence_enabled[2]);
+    settings::g_experimentalTabSettings.sequence_4_enabled.SetValue(g_sequence_enabled[3]);
+    settings::g_experimentalTabSettings.sequence_5_enabled.SetValue(g_sequence_enabled[4]);
 
-    g_experimentalTabSettings.sequence_1_x.SetValue(g_sequence_x[0]);
-    g_experimentalTabSettings.sequence_2_x.SetValue(g_sequence_x[1]);
-    g_experimentalTabSettings.sequence_3_x.SetValue(g_sequence_x[2]);
-    g_experimentalTabSettings.sequence_4_x.SetValue(g_sequence_x[3]);
-    g_experimentalTabSettings.sequence_5_x.SetValue(g_sequence_x[4]);
+    settings::g_experimentalTabSettings.sequence_1_x.SetValue(g_sequence_x[0]);
+    settings::g_experimentalTabSettings.sequence_2_x.SetValue(g_sequence_x[1]);
+    settings::g_experimentalTabSettings.sequence_3_x.SetValue(g_sequence_x[2]);
+    settings::g_experimentalTabSettings.sequence_4_x.SetValue(g_sequence_x[3]);
+    settings::g_experimentalTabSettings.sequence_5_x.SetValue(g_sequence_x[4]);
 
-    g_experimentalTabSettings.sequence_1_y.SetValue(g_sequence_y[0]);
-    g_experimentalTabSettings.sequence_2_y.SetValue(g_sequence_y[1]);
-    g_experimentalTabSettings.sequence_3_y.SetValue(g_sequence_y[2]);
-    g_experimentalTabSettings.sequence_4_y.SetValue(g_sequence_y[3]);
-    g_experimentalTabSettings.sequence_5_y.SetValue(g_sequence_y[4]);
+    settings::g_experimentalTabSettings.sequence_1_y.SetValue(g_sequence_y[0]);
+    settings::g_experimentalTabSettings.sequence_2_y.SetValue(g_sequence_y[1]);
+    settings::g_experimentalTabSettings.sequence_3_y.SetValue(g_sequence_y[2]);
+    settings::g_experimentalTabSettings.sequence_4_y.SetValue(g_sequence_y[3]);
+    settings::g_experimentalTabSettings.sequence_5_y.SetValue(g_sequence_y[4]);
 
-    g_experimentalTabSettings.sequence_1_interval.SetValue(g_sequence_interval[0]);
-    g_experimentalTabSettings.sequence_2_interval.SetValue(g_sequence_interval[1]);
-    g_experimentalTabSettings.sequence_3_interval.SetValue(g_sequence_interval[2]);
-    g_experimentalTabSettings.sequence_4_interval.SetValue(g_sequence_interval[3]);
-    g_experimentalTabSettings.sequence_5_interval.SetValue(g_sequence_interval[4]);
+    settings::g_experimentalTabSettings.sequence_1_interval.SetValue(g_sequence_interval[0]);
+    settings::g_experimentalTabSettings.sequence_2_interval.SetValue(g_sequence_interval[1]);
+    settings::g_experimentalTabSettings.sequence_3_interval.SetValue(g_sequence_interval[2]);
+    settings::g_experimentalTabSettings.sequence_4_interval.SetValue(g_sequence_interval[3]);
+    settings::g_experimentalTabSettings.sequence_5_interval.SetValue(g_sequence_interval[4]);
 }
 
 // Helper function to perform a click at the specified coordinates
@@ -115,7 +115,7 @@ void PerformClick(int x, int y, int sequence_num, bool is_test = false) {
     // Move mouse to the target location if enabled
     if (g_move_mouse) {
         // Check if mouse position spoofing is enabled
-        if (g_experimentalTabSettings.mouse_spoofing_enabled.GetValue()) {
+        if (settings::g_experimentalTabSettings.mouse_spoofing_enabled.GetValue()) {
             // Use spoofing instead of actually moving the cursor
             s_spoofed_mouse_x.store(screen_pos.x);
             s_spoofed_mouse_y.store(screen_pos.y);
@@ -135,7 +135,7 @@ void PerformClick(int x, int y, int sequence_num, bool is_test = false) {
 
     LogInfo("%s click for sequence %d sent to game window at (%d, %d)%s",
            is_test ? "Test" : "Auto", sequence_num, x, y,
-           g_move_mouse ? (g_experimentalTabSettings.mouse_spoofing_enabled.GetValue() ? " - mouse position spoofed" : " - mouse moved to screen") : " - mouse not moved");
+           g_move_mouse ? (settings::g_experimentalTabSettings.mouse_spoofing_enabled.GetValue() ? " - mouse position spoofed" : " - mouse moved to screen") : " - mouse not moved");
 }
 
 // Helper function to draw a sequence using static arrays
@@ -219,7 +219,7 @@ void DrawSequence(int sequence_num) {
 void AutoClickThread() {
     g_auto_click_thread_running.store(true);
 
-    while (g_experimentalTabSettings.auto_click_enabled.GetValue()) {
+    while (settings::g_experimentalTabSettings.auto_click_enabled.GetValue()) {
         // Get the current game window handle
         HWND hwnd = g_last_swapchain_hwnd.load();
         if (hwnd && IsWindow(hwnd)) {
@@ -366,8 +366,8 @@ void DrawAutoClickFeature() {
 
         // Check for Ctrl+A keyboard shortcut
     if (ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsKeyPressed(ImGuiKey_A)) {
-        bool current_state = g_experimentalTabSettings.auto_click_enabled.GetValue();
-        g_experimentalTabSettings.auto_click_enabled.SetValue(!current_state);
+        bool current_state = settings::g_experimentalTabSettings.auto_click_enabled.GetValue();
+        settings::g_experimentalTabSettings.auto_click_enabled.SetValue(!current_state);
 
         if (!current_state) {
             // Start auto-click thread
@@ -383,15 +383,15 @@ void DrawAutoClickFeature() {
                     g_auto_click_thread.join();
                 }
                 // Disable mouse spoofing when auto-click is disabled
-                g_experimentalTabSettings.mouse_spoofing_enabled.SetValue(false);
+                settings::g_experimentalTabSettings.mouse_spoofing_enabled.SetValue(false);
                 LogInfo("Auto-click sequences disabled via Ctrl+A shortcut - mouse spoofing also disabled");
             }
         }
     }
 
                 // Master enable/disable checkbox
-    if (CheckboxSetting(g_experimentalTabSettings.auto_click_enabled, "Enable Auto-Click Sequences")) {
-        bool auto_click_enabled = g_experimentalTabSettings.auto_click_enabled.GetValue();
+    if (CheckboxSetting(settings::g_experimentalTabSettings.auto_click_enabled, "Enable Auto-Click Sequences")) {
+        bool auto_click_enabled = settings::g_experimentalTabSettings.auto_click_enabled.GetValue();
 
         if (auto_click_enabled) {
             // Start auto-click thread
@@ -407,7 +407,7 @@ void DrawAutoClickFeature() {
                     g_auto_click_thread.join();
                 }
                 // Disable mouse spoofing when auto-click is disabled
-                g_experimentalTabSettings.mouse_spoofing_enabled.SetValue(false);
+                settings::g_experimentalTabSettings.mouse_spoofing_enabled.SetValue(false);
                 LogInfo("Auto-click sequences disabled - mouse spoofing also disabled");
             }
         }
@@ -433,15 +433,15 @@ void DrawAutoClickFeature() {
     }
 
     // Mouse position spoofing toggle
-    bool auto_click_enabled = g_experimentalTabSettings.auto_click_enabled.GetValue();
+    bool auto_click_enabled = settings::g_experimentalTabSettings.auto_click_enabled.GetValue();
 
     // Disable spoofing checkbox if auto-click is not enabled
     if (!auto_click_enabled) {
         ImGui::BeginDisabled();
     }
 
-    if (CheckboxSetting(g_experimentalTabSettings.mouse_spoofing_enabled, "Spoof Mouse Position (Instead of Moving)")) {
-        bool spoofing_enabled = g_experimentalTabSettings.mouse_spoofing_enabled.GetValue();
+    if (CheckboxSetting(settings::g_experimentalTabSettings.mouse_spoofing_enabled, "Spoof Mouse Position (Instead of Moving)")) {
+        bool spoofing_enabled = settings::g_experimentalTabSettings.mouse_spoofing_enabled.GetValue();
         LogInfo("Mouse position spoofing %s", spoofing_enabled ? "enabled" : "disabled");
     }
 
@@ -458,7 +458,7 @@ void DrawAutoClickFeature() {
     }
 
     // Show current status
-    if (g_experimentalTabSettings.auto_click_enabled.GetValue()) {
+    if (settings::g_experimentalTabSettings.auto_click_enabled.GetValue()) {
         if (g_auto_click_thread_running.load()) {
             ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✁EAuto-click sequences are ACTIVE");
         } else {
@@ -485,7 +485,7 @@ void DrawAutoClickFeature() {
 
     ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Active sequences: %d/5", enabled_sequences);
 
-    if (enabled_sequences > 0 && g_experimentalTabSettings.auto_click_enabled.GetValue()) {
+    if (enabled_sequences > 0 && settings::g_experimentalTabSettings.auto_click_enabled.GetValue()) {
         ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "Sequences will execute in order: 1 ↁE2 ↁE3 ↁE4 ↁE5 ↁErepeat");
     }
 }
@@ -558,8 +558,8 @@ void DrawMouseCoordinatesDisplay() {
 // Cleanup function to stop background threads
 void CleanupExperimentalTab() {
     // Stop auto-click thread
-    if (g_experimentalTabSettings.auto_click_enabled.GetValue()) {
-        g_experimentalTabSettings.auto_click_enabled.SetValue(false);
+    if (settings::g_experimentalTabSettings.auto_click_enabled.GetValue()) {
+        settings::g_experimentalTabSettings.auto_click_enabled.SetValue(false);
         if (g_auto_click_thread_running.load() && g_auto_click_thread.joinable()) {
             g_auto_click_thread.join();
         }
@@ -579,9 +579,9 @@ void DrawBackbufferFormatOverride() {
     ImGui::Spacing();
 
     // Enable/disable checkbox
-    if (CheckboxSetting(g_experimentalTabSettings.backbuffer_format_override_enabled, "Enable Backbuffer Format Override")) {
+    if (CheckboxSetting(settings::g_experimentalTabSettings.backbuffer_format_override_enabled, "Enable Backbuffer Format Override")) {
         LogInfo("Backbuffer format override %s",
-                g_experimentalTabSettings.backbuffer_format_override_enabled.GetValue() ? "enabled" : "disabled");
+                settings::g_experimentalTabSettings.backbuffer_format_override_enabled.GetValue() ? "enabled" : "disabled");
     }
 
     if (ImGui::IsItemHovered()) {
@@ -589,13 +589,13 @@ void DrawBackbufferFormatOverride() {
     }
 
     // Format selection combo (only enabled when override is enabled)
-    if (g_experimentalTabSettings.backbuffer_format_override_enabled.GetValue()) {
+    if (settings::g_experimentalTabSettings.backbuffer_format_override_enabled.GetValue()) {
         ImGui::Spacing();
         ImGui::Text("Target Format:");
 
-        if (ComboSettingWrapper(g_experimentalTabSettings.backbuffer_format_override, "Format")) {
+        if (ComboSettingWrapper(settings::g_experimentalTabSettings.backbuffer_format_override, "Format")) {
             LogInfo("Backbuffer format override changed to: %s",
-                    g_experimentalTabSettings.backbuffer_format_override.GetLabels()[g_experimentalTabSettings.backbuffer_format_override.GetValue()]);
+                    settings::g_experimentalTabSettings.backbuffer_format_override.GetLabels()[settings::g_experimentalTabSettings.backbuffer_format_override.GetValue()]);
         }
 
         if (ImGui::IsItemHovered()) {
@@ -623,9 +623,9 @@ void DrawBufferResolutionUpgrade() {
     ImGui::Spacing();
 
     // Enable/disable checkbox
-    if (CheckboxSetting(g_experimentalTabSettings.buffer_resolution_upgrade_enabled, "Enable Buffer Resolution Upgrade")) {
+    if (CheckboxSetting(settings::g_experimentalTabSettings.buffer_resolution_upgrade_enabled, "Enable Buffer Resolution Upgrade")) {
         LogInfo("Buffer resolution upgrade %s",
-                g_experimentalTabSettings.buffer_resolution_upgrade_enabled.GetValue() ? "enabled" : "disabled");
+                settings::g_experimentalTabSettings.buffer_resolution_upgrade_enabled.GetValue() ? "enabled" : "disabled");
     }
 
     if (ImGui::IsItemHovered()) {
@@ -633,13 +633,13 @@ void DrawBufferResolutionUpgrade() {
     }
 
     // Resolution upgrade controls (only enabled when upgrade is enabled)
-    if (g_experimentalTabSettings.buffer_resolution_upgrade_enabled.GetValue()) {
+    if (settings::g_experimentalTabSettings.buffer_resolution_upgrade_enabled.GetValue()) {
         ImGui::Spacing();
 
         // Mode selection
-        if (ComboSettingWrapper(g_experimentalTabSettings.buffer_resolution_upgrade_mode, "Upgrade Mode")) {
+        if (ComboSettingWrapper(settings::g_experimentalTabSettings.buffer_resolution_upgrade_mode, "Upgrade Mode")) {
             LogInfo("Buffer resolution upgrade mode changed to: %s",
-                    g_experimentalTabSettings.buffer_resolution_upgrade_mode.GetLabels()[g_experimentalTabSettings.buffer_resolution_upgrade_mode.GetValue()]);
+                    settings::g_experimentalTabSettings.buffer_resolution_upgrade_mode.GetLabels()[settings::g_experimentalTabSettings.buffer_resolution_upgrade_mode.GetValue()]);
         }
 
         if (ImGui::IsItemHovered()) {
@@ -650,14 +650,14 @@ void DrawBufferResolutionUpgrade() {
         }
 
         // Scale factor control (for both mode 0 and mode 1)
-        if (g_experimentalTabSettings.buffer_resolution_upgrade_mode.GetValue() == 0 ||
-            g_experimentalTabSettings.buffer_resolution_upgrade_mode.GetValue() == 1) {
+        if (settings::g_experimentalTabSettings.buffer_resolution_upgrade_mode.GetValue() == 0 ||
+            settings::g_experimentalTabSettings.buffer_resolution_upgrade_mode.GetValue() == 1) {
             ImGui::Spacing();
             ImGui::Text("Scale Factor:");
 
-            if (SliderIntSetting(g_experimentalTabSettings.buffer_resolution_upgrade_scale_factor, "Scale Factor")) {
+            if (SliderIntSetting(settings::g_experimentalTabSettings.buffer_resolution_upgrade_scale_factor, "Scale Factor")) {
                 LogInfo("Buffer resolution upgrade scale factor changed to: %d",
-                        g_experimentalTabSettings.buffer_resolution_upgrade_scale_factor.GetValue());
+                        settings::g_experimentalTabSettings.buffer_resolution_upgrade_scale_factor.GetValue());
             }
 
             if (ImGui::IsItemHovered()) {
@@ -666,21 +666,21 @@ void DrawBufferResolutionUpgrade() {
         }
 
         // Custom resolution controls (for custom mode)
-        if (g_experimentalTabSettings.buffer_resolution_upgrade_mode.GetValue() == 2) { // Custom Resolution
+        if (settings::g_experimentalTabSettings.buffer_resolution_upgrade_mode.GetValue() == 2) { // Custom Resolution
             ImGui::Spacing();
             ImGui::Text("Target Resolution:");
 
             ImGui::SetNextItemWidth(120);
-            if (SliderIntSetting(g_experimentalTabSettings.buffer_resolution_upgrade_width, "Width")) {
+            if (SliderIntSetting(settings::g_experimentalTabSettings.buffer_resolution_upgrade_width, "Width")) {
                 LogInfo("Buffer resolution upgrade width changed to: %d",
-                        g_experimentalTabSettings.buffer_resolution_upgrade_width.GetValue());
+                        settings::g_experimentalTabSettings.buffer_resolution_upgrade_width.GetValue());
             }
 
             ImGui::SameLine();
             ImGui::SetNextItemWidth(120);
-            if (SliderIntSetting(g_experimentalTabSettings.buffer_resolution_upgrade_height, "Height")) {
+            if (SliderIntSetting(settings::g_experimentalTabSettings.buffer_resolution_upgrade_height, "Height")) {
                 LogInfo("Buffer resolution upgrade height changed to: %d",
-                        g_experimentalTabSettings.buffer_resolution_upgrade_height.GetValue());
+                        settings::g_experimentalTabSettings.buffer_resolution_upgrade_height.GetValue());
             }
 
             if (ImGui::IsItemHovered()) {
@@ -693,8 +693,8 @@ void DrawBufferResolutionUpgrade() {
         ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Note: Changes require restart to take effect");
 
                 // Show what the upgrade will do
-        int mode = g_experimentalTabSettings.buffer_resolution_upgrade_mode.GetValue();
-        int scale = g_experimentalTabSettings.buffer_resolution_upgrade_scale_factor.GetValue();
+        int mode = settings::g_experimentalTabSettings.buffer_resolution_upgrade_mode.GetValue();
+        int scale = settings::g_experimentalTabSettings.buffer_resolution_upgrade_scale_factor.GetValue();
         if (mode == 0) {
             ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "Will upgrade 1280x720 buffers to %dx%d (%dx scale)",
                     1280 * scale, 720 * scale, scale);
@@ -702,8 +702,8 @@ void DrawBufferResolutionUpgrade() {
             ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "Will scale all buffers by %dx", scale);
         } else if (mode == 2) {
             ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "Will upgrade buffers to: %dx%d",
-                    g_experimentalTabSettings.buffer_resolution_upgrade_width.GetValue(),
-                    g_experimentalTabSettings.buffer_resolution_upgrade_height.GetValue());
+                    settings::g_experimentalTabSettings.buffer_resolution_upgrade_width.GetValue(),
+                    settings::g_experimentalTabSettings.buffer_resolution_upgrade_height.GetValue());
         }
     }
 }
@@ -720,9 +720,9 @@ void DrawTextureFormatUpgrade() {
     ImGui::Spacing();
 
     // Enable/disable checkbox
-    if (CheckboxSetting(g_experimentalTabSettings.texture_format_upgrade_enabled, "Upgrade Textures to RGB16A16")) {
+    if (CheckboxSetting(settings::g_experimentalTabSettings.texture_format_upgrade_enabled, "Upgrade Textures to RGB16A16")) {
         LogInfo("Texture format upgrade %s",
-                g_experimentalTabSettings.texture_format_upgrade_enabled.GetValue() ? "enabled" : "disabled");
+                settings::g_experimentalTabSettings.texture_format_upgrade_enabled.GetValue() ? "enabled" : "disabled");
     }
 
     if (ImGui::IsItemHovered()) {
@@ -733,7 +733,7 @@ void DrawTextureFormatUpgrade() {
     ImGui::Spacing();
     ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Note: Changes require restart to take effect");
 
-    if (g_experimentalTabSettings.texture_format_upgrade_enabled.GetValue()) {
+    if (settings::g_experimentalTabSettings.texture_format_upgrade_enabled.GetValue()) {
         ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "Will upgrade texture formats to RGB16A16 (16-bit per channel) for 720p, 1440p, and 4K textures");
     }
 }
@@ -748,8 +748,8 @@ void DrawSleepHookControls() {
     ImGui::Spacing();
 
     // Enable/disable checkbox
-    if (CheckboxSetting(g_experimentalTabSettings.sleep_hook_enabled, "Enable Sleep Hooks")) {
-        g_sleep_hook_enabled.store(g_experimentalTabSettings.sleep_hook_enabled.GetValue());
+    if (CheckboxSetting(settings::g_experimentalTabSettings.sleep_hook_enabled, "Enable Sleep Hooks")) {
+        g_sleep_hook_enabled.store(settings::g_experimentalTabSettings.sleep_hook_enabled.GetValue());
         LogInfo("Sleep hooks %s", g_sleep_hook_enabled.load() ? "enabled" : "disabled");
     }
     if (ImGui::IsItemHovered()) {
@@ -757,20 +757,20 @@ void DrawSleepHookControls() {
     }
 
     // Render thread only checkbox
-    if (CheckboxSetting(g_experimentalTabSettings.sleep_hook_render_thread_only, "Render Thread Only")) {
-        g_sleep_hook_render_thread_only.store(g_experimentalTabSettings.sleep_hook_render_thread_only.GetValue());
+    if (CheckboxSetting(settings::g_experimentalTabSettings.sleep_hook_render_thread_only, "Render Thread Only")) {
+        g_sleep_hook_render_thread_only.store(settings::g_experimentalTabSettings.sleep_hook_render_thread_only.GetValue());
         LogInfo("Sleep hooks render thread only %s", g_sleep_hook_render_thread_only.load() ? "enabled" : "disabled");
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Only modify sleep calls on the render thread. If render thread is unknown, sleep calls are not modified.");
     }
 
-    if (g_experimentalTabSettings.sleep_hook_enabled.GetValue()) {
+    if (settings::g_experimentalTabSettings.sleep_hook_enabled.GetValue()) {
         ImGui::Spacing();
 
         // Sleep multiplier slider
-        if (SliderFloatSetting(g_experimentalTabSettings.sleep_multiplier, "Sleep Multiplier", "%.2fx")) {
-            g_sleep_multiplier.store(g_experimentalTabSettings.sleep_multiplier.GetValue());
+        if (SliderFloatSetting(settings::g_experimentalTabSettings.sleep_multiplier, "Sleep Multiplier", "%.2fx")) {
+            g_sleep_multiplier.store(settings::g_experimentalTabSettings.sleep_multiplier.GetValue());
             LogInfo("Sleep multiplier set to %.2fx", g_sleep_multiplier.load());
         }
         if (ImGui::IsItemHovered()) {
@@ -778,8 +778,8 @@ void DrawSleepHookControls() {
         }
 
         // Min sleep duration slider
-        if (SliderIntSetting(g_experimentalTabSettings.min_sleep_duration_ms, "Min Sleep Duration (ms)", "%d ms")) {
-            g_min_sleep_duration_ms.store(static_cast<DWORD>(g_experimentalTabSettings.min_sleep_duration_ms.GetValue()));
+        if (SliderIntSetting(settings::g_experimentalTabSettings.min_sleep_duration_ms, "Min Sleep Duration (ms)", "%d ms")) {
+            g_min_sleep_duration_ms.store(static_cast<DWORD>(settings::g_experimentalTabSettings.min_sleep_duration_ms.GetValue()));
             LogInfo("Min sleep duration set to %lu ms", g_min_sleep_duration_ms.load());
         }
         if (ImGui::IsItemHovered()) {
@@ -787,8 +787,8 @@ void DrawSleepHookControls() {
         }
 
         // Max sleep duration slider
-        if (SliderIntSetting(g_experimentalTabSettings.max_sleep_duration_ms, "Max Sleep Duration (ms)", "%d ms")) {
-            g_max_sleep_duration_ms.store(static_cast<DWORD>(g_experimentalTabSettings.max_sleep_duration_ms.GetValue()));
+        if (SliderIntSetting(settings::g_experimentalTabSettings.max_sleep_duration_ms, "Max Sleep Duration (ms)", "%d ms")) {
+            g_max_sleep_duration_ms.store(static_cast<DWORD>(settings::g_experimentalTabSettings.max_sleep_duration_ms.GetValue()));
             LogInfo("Max sleep duration set to %lu ms", g_max_sleep_duration_ms.load());
         }
         if (ImGui::IsItemHovered()) {
@@ -831,19 +831,19 @@ void DrawTimeSlowdownControls() {
     ImGui::Spacing();
 
     // Enable/disable checkbox
-    if (CheckboxSetting(g_experimentalTabSettings.timeslowdown_enabled, "Enable Time Slowdown")) {
-        LogInfo("Time slowdown %s", g_experimentalTabSettings.timeslowdown_enabled.GetValue() ? "enabled" : "disabled");
+    if (CheckboxSetting(settings::g_experimentalTabSettings.timeslowdown_enabled, "Enable Time Slowdown")) {
+        LogInfo("Time slowdown %s", settings::g_experimentalTabSettings.timeslowdown_enabled.GetValue() ? "enabled" : "disabled");
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Enable time manipulation via timer API hooks.");
     }
 
-    if (g_experimentalTabSettings.timeslowdown_enabled.GetValue()) {
+    if (settings::g_experimentalTabSettings.timeslowdown_enabled.GetValue()) {
         ImGui::Spacing();
 
         // Time multiplier slider
-        if (SliderFloatSetting(g_experimentalTabSettings.timeslowdown_multiplier, "Time Multiplier", "%.2fx")) {
-            LogInfo("Time multiplier set to %.2fx", g_experimentalTabSettings.timeslowdown_multiplier.GetValue());
+        if (SliderFloatSetting(settings::g_experimentalTabSettings.timeslowdown_multiplier, "Time Multiplier", "%.2fx")) {
+            LogInfo("Time multiplier set to %.2fx", settings::g_experimentalTabSettings.timeslowdown_multiplier.GetValue());
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Multiplier for game time. 1.0 = normal speed, 0.5 = half speed, 2.0 = double speed.");
@@ -863,8 +863,8 @@ void DrawTimeSlowdownControls() {
         ImGui::Spacing();
 
         // QueryPerformanceCounter hook
-        if (ComboSettingWrapper(g_experimentalTabSettings.query_performance_counter_hook, "QueryPerformanceCounter")) {
-            renodx::hooks::TimerHookType type = static_cast<renodx::hooks::TimerHookType>(g_experimentalTabSettings.query_performance_counter_hook.GetValue());
+        if (ComboSettingWrapper(settings::g_experimentalTabSettings.query_performance_counter_hook, "QueryPerformanceCounter")) {
+            renodx::hooks::TimerHookType type = static_cast<renodx::hooks::TimerHookType>(settings::g_experimentalTabSettings.query_performance_counter_hook.GetValue());
             renodx::hooks::SetTimerHookType(renodx::hooks::HOOK_QUERY_PERFORMANCE_COUNTER, type);
         }
         if (ImGui::IsItemHovered()) {
@@ -872,8 +872,8 @@ void DrawTimeSlowdownControls() {
         }
 
         // GetTickCount hook
-        if (ComboSettingWrapper(g_experimentalTabSettings.get_tick_count_hook, "GetTickCount")) {
-            renodx::hooks::TimerHookType type = static_cast<renodx::hooks::TimerHookType>(g_experimentalTabSettings.get_tick_count_hook.GetValue());
+        if (ComboSettingWrapper(settings::g_experimentalTabSettings.get_tick_count_hook, "GetTickCount")) {
+            renodx::hooks::TimerHookType type = static_cast<renodx::hooks::TimerHookType>(settings::g_experimentalTabSettings.get_tick_count_hook.GetValue());
             renodx::hooks::SetTimerHookType(renodx::hooks::HOOK_GET_TICK_COUNT, type);
         }
         if (ImGui::IsItemHovered()) {
@@ -881,8 +881,8 @@ void DrawTimeSlowdownControls() {
         }
 
         // GetTickCount64 hook
-        if (ComboSettingWrapper(g_experimentalTabSettings.get_tick_count64_hook, "GetTickCount64")) {
-            renodx::hooks::TimerHookType type = static_cast<renodx::hooks::TimerHookType>(g_experimentalTabSettings.get_tick_count64_hook.GetValue());
+        if (ComboSettingWrapper(settings::g_experimentalTabSettings.get_tick_count64_hook, "GetTickCount64")) {
+            renodx::hooks::TimerHookType type = static_cast<renodx::hooks::TimerHookType>(settings::g_experimentalTabSettings.get_tick_count64_hook.GetValue());
             renodx::hooks::SetTimerHookType(renodx::hooks::HOOK_GET_TICK_COUNT64, type);
         }
         if (ImGui::IsItemHovered()) {
@@ -890,8 +890,8 @@ void DrawTimeSlowdownControls() {
         }
 
         // timeGetTime hook
-        if (ComboSettingWrapper(g_experimentalTabSettings.time_get_time_hook, "timeGetTime")) {
-            renodx::hooks::TimerHookType type = static_cast<renodx::hooks::TimerHookType>(g_experimentalTabSettings.time_get_time_hook.GetValue());
+        if (ComboSettingWrapper(settings::g_experimentalTabSettings.time_get_time_hook, "timeGetTime")) {
+            renodx::hooks::TimerHookType type = static_cast<renodx::hooks::TimerHookType>(settings::g_experimentalTabSettings.time_get_time_hook.GetValue());
             renodx::hooks::SetTimerHookType(renodx::hooks::HOOK_TIME_GET_TIME, type);
         }
         if (ImGui::IsItemHovered()) {
@@ -899,8 +899,8 @@ void DrawTimeSlowdownControls() {
         }
 
         // GetSystemTime hook
-        if (ComboSettingWrapper(g_experimentalTabSettings.get_system_time_hook, "GetSystemTime")) {
-            renodx::hooks::TimerHookType type = static_cast<renodx::hooks::TimerHookType>(g_experimentalTabSettings.get_system_time_hook.GetValue());
+        if (ComboSettingWrapper(settings::g_experimentalTabSettings.get_system_time_hook, "GetSystemTime")) {
+            renodx::hooks::TimerHookType type = static_cast<renodx::hooks::TimerHookType>(settings::g_experimentalTabSettings.get_system_time_hook.GetValue());
             renodx::hooks::SetTimerHookType(renodx::hooks::HOOK_GET_SYSTEM_TIME, type);
         }
         if (ImGui::IsItemHovered()) {
@@ -908,8 +908,8 @@ void DrawTimeSlowdownControls() {
         }
 
         // GetSystemTimeAsFileTime hook
-        if (ComboSettingWrapper(g_experimentalTabSettings.get_system_time_as_file_time_hook, "GetSystemTimeAsFileTime")) {
-            renodx::hooks::TimerHookType type = static_cast<renodx::hooks::TimerHookType>(g_experimentalTabSettings.get_system_time_as_file_time_hook.GetValue());
+        if (ComboSettingWrapper(settings::g_experimentalTabSettings.get_system_time_as_file_time_hook, "GetSystemTimeAsFileTime")) {
+            renodx::hooks::TimerHookType type = static_cast<renodx::hooks::TimerHookType>(settings::g_experimentalTabSettings.get_system_time_as_file_time_hook.GetValue());
             renodx::hooks::SetTimerHookType(renodx::hooks::HOOK_GET_SYSTEM_TIME_AS_FILE_TIME, type);
         }
         if (ImGui::IsItemHovered()) {
@@ -918,8 +918,8 @@ void DrawTimeSlowdownControls() {
 
 
         // GetSystemTimePreciseAsFileTime hook
-        if (ComboSettingWrapper(g_experimentalTabSettings.get_system_time_precise_as_file_time_hook, "GetSystemTimePreciseAsFileTime")) {
-            renodx::hooks::TimerHookType type = static_cast<renodx::hooks::TimerHookType>(g_experimentalTabSettings.get_system_time_precise_as_file_time_hook.GetValue());
+        if (ComboSettingWrapper(settings::g_experimentalTabSettings.get_system_time_precise_as_file_time_hook, "GetSystemTimePreciseAsFileTime")) {
+            renodx::hooks::TimerHookType type = static_cast<renodx::hooks::TimerHookType>(settings::g_experimentalTabSettings.get_system_time_precise_as_file_time_hook.GetValue());
             renodx::hooks::SetTimerHookType(renodx::hooks::HOOK_GET_SYSTEM_TIME_PRECISE_AS_FILE_TIME, type);
         }
         if (ImGui::IsItemHovered()) {
@@ -927,8 +927,8 @@ void DrawTimeSlowdownControls() {
         }
 
         // GetLocalTime hook
-        if (ComboSettingWrapper(g_experimentalTabSettings.get_local_time_hook, "GetLocalTime")) {
-            renodx::hooks::TimerHookType type = static_cast<renodx::hooks::TimerHookType>(g_experimentalTabSettings.get_local_time_hook.GetValue());
+        if (ComboSettingWrapper(settings::g_experimentalTabSettings.get_local_time_hook, "GetLocalTime")) {
+            renodx::hooks::TimerHookType type = static_cast<renodx::hooks::TimerHookType>(settings::g_experimentalTabSettings.get_local_time_hook.GetValue());
             renodx::hooks::SetTimerHookType(renodx::hooks::HOOK_GET_LOCAL_TIME, type);
         }
         if (ImGui::IsItemHovered()) {
@@ -936,8 +936,8 @@ void DrawTimeSlowdownControls() {
         }
 
         // NtQuerySystemTime hook
-        if (ComboSettingWrapper(g_experimentalTabSettings.nt_query_system_time_hook, "NtQuerySystemTime")) {
-            renodx::hooks::TimerHookType type = static_cast<renodx::hooks::TimerHookType>(g_experimentalTabSettings.nt_query_system_time_hook.GetValue());
+        if (ComboSettingWrapper(settings::g_experimentalTabSettings.nt_query_system_time_hook, "NtQuerySystemTime")) {
+            renodx::hooks::TimerHookType type = static_cast<renodx::hooks::TimerHookType>(settings::g_experimentalTabSettings.nt_query_system_time_hook.GetValue());
             renodx::hooks::SetTimerHookType(renodx::hooks::HOOK_NT_QUERY_SYSTEM_TIME, type);
         }
         if (ImGui::IsItemHovered()) {
@@ -950,7 +950,7 @@ void DrawTimeSlowdownControls() {
 
         // Show current settings summary
         ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Current Settings:");
-        ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Time Multiplier: %.2fx", g_experimentalTabSettings.timeslowdown_multiplier.GetValue());
+        ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Time Multiplier: %.2fx", settings::g_experimentalTabSettings.timeslowdown_multiplier.GetValue());
 
         // Show hook status
         bool hooks_installed = renodx::hooks::AreTimeslowdownHooksInstalled();

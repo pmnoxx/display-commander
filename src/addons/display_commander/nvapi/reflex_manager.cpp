@@ -1,5 +1,6 @@
 #include "reflex_manager.hpp"
 #include "../globals.hpp"
+#include "../settings/main_tab_settings.hpp"
 #include "../utils.hpp"
 #include "utils/timing.hpp"
 

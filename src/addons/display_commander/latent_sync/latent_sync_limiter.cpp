@@ -2,6 +2,7 @@
 #include "../addon.hpp"
 #include "../utils.hpp"
 #include "../globals.hpp"
+#include "../settings/main_tab_settings.hpp"
 #include <dxgi1_6.h>
 #include <sstream>
 #include "../display/query_display.hpp"

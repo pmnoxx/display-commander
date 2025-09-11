@@ -3,6 +3,7 @@
 #include "../../globals.hpp"    // For s_continue_rendering
 #include "../../utils.hpp"
 #include "../../settings/experimental_tab_settings.hpp"  // For g_experimentalTabSettings
+#include "../../settings/main_tab_settings.hpp"
 #include <MinHook.h>
 
 namespace renodx::hooks {

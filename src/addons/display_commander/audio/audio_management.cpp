@@ -1,5 +1,6 @@
 #include "audio_management.hpp"
 #include "../addon.hpp"
+#include "../settings/main_tab_settings.hpp"
 #include "../utils.hpp"
 #include <sstream>
 #include <thread>

@@ -7,6 +7,7 @@
 #include "../utils.hpp"
 #include "../display/query_display.hpp"
 #include "../globals.hpp"
+#include "../settings/main_tab_settings.hpp"
 #include "../../../utils/timing.hpp"
 
 // Forward declaration of the global variable

@@ -1,4 +1,5 @@
-#include "developer_new_tab_settings.hpp"
+#include "developer_tab_settings.hpp"
+#include "../globals.hpp"
 #include <minwindef.h>
 #include <atomic>
 
@@ -24,7 +25,7 @@ extern std::atomic<bool> s_enable_background_toggle_shortcut;
 
 extern std::atomic<bool> g_flush_before_present;
 
-namespace ui::new_ui {
+namespace settings {
 
 // Constructor - initialize all settings with proper keys and default values
 DeveloperTabSettings::DeveloperTabSettings()
@@ -102,8 +103,7 @@ std::vector<ui::new_ui::SettingBase*> DeveloperTabSettings::GetAllSettings() {
     };
 }
 
-// Global instance
-DeveloperTabSettings g_developerTabSettings;
+// Global instance is now defined in globals.cpp
 
 // Legacy function for backward compatibility - now uses the new settings wrapper
 void AddDeveloperNewTabSettings(std::vector<void*>& settings) {
@@ -112,4 +112,4 @@ void AddDeveloperNewTabSettings(std::vector<void*>& settings) {
     // This function is kept for backward compatibility but doesn't add any new settings
 }
 
-} // namespace ui::new_ui
+} // namespace settings

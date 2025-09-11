@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <cmath>
 #include "globals.hpp"
+#include "settings/main_tab_settings.hpp"
 #include "utils/timing.hpp"
 
 // Forward declarations

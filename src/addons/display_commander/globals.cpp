@@ -4,6 +4,8 @@
 #include "dxgi/dxgi_device_info.hpp"
 #include "latency/latency_manager.hpp"
 #include "settings/experimental_tab_settings.hpp"
+#include "settings/developer_tab_settings.hpp"
+#include "settings/main_tab_settings.hpp"
 #include <atomic>
 
 // Global variables
@@ -41,24 +43,14 @@ std::atomic<bool> s_spoof_mouse_position{false}; // disabled by default
 std::atomic<int> s_spoofed_mouse_x{0};
 std::atomic<int> s_spoofed_mouse_y{0};
 
-std::atomic<bool> s_mute_in_background{false};
-std::atomic<bool> s_mute_in_background_if_other_audio{false};
-std::atomic<float> s_audio_volume_percent{100.f};
-std::atomic<bool> s_audio_mute{false};
 
 // Keyboard Shortcuts
 std::atomic<bool> s_enable_mute_unmute_shortcut{true};
 std::atomic<bool> s_enable_background_toggle_shortcut{true};
 
 // Performance: background FPS cap
-std::atomic<float> s_fps_limit_background{30.f};
-// FPS limit for foreground
-std::atomic<float> s_fps_limit{0.f};
 
 // VSync and tearing controls
-std::atomic<bool> s_force_vsync_on{false};
-std::atomic<bool> s_force_vsync_off{false};
-std::atomic<bool> s_prevent_tearing{false};
 
 // Monitor and display settings
 std::atomic<int> s_target_monitor_index{0};
@@ -68,14 +60,10 @@ std::atomic<int> s_dxgi_composition_state{0};
 std::atomic<bool> s_continue_rendering{false}; // Disabled by default
 
 // Input blocking in background (0.0f off, 1.0f on)
-std::atomic<bool> s_block_input_in_background{true};
-std::atomic<bool> s_block_input_without_reshade{false};
 
 // Render blocking in background
-std::atomic<bool> s_no_render_in_background{false};
 
 // Present blocking in background
-std::atomic<bool> s_no_present_in_background{false};
 
 // Fix HDR10 color space when backbuffer is RGB10A2
 std::atomic<bool> s_fix_hdr10_colorspace{false};
@@ -87,7 +75,6 @@ std::atomic<reshade::api::effect_runtime*> g_reshade_runtime = nullptr;
 std::atomic<bool> s_prevent_always_on_top{true}; // Prevent games from staying on top by default
 
 // Background feature - show black window behind game when not fullscreen
-std::atomic<bool> s_background_feature_enabled{false}; // Disabled by default
 
 // Desktop Resolution Override
 std::atomic<int> s_selected_monitor_index{0}; // Primary monitor by default
@@ -172,13 +159,10 @@ std::atomic<bool> g_app_in_background{false};
 std::atomic<FpsLimiterMode> s_fps_limiter_mode{FpsLimiterMode::kNone};
 
 // FPS limiter injection timing: 0 = OnPresentFlags (recommended), 1 = OnPresentUpdateBefore2, 2 = OnPresentUpdateBefore
-std::atomic<int> s_fps_limiter_injection{FPS_LIMITER_INJECTION_ONPRESENTFLAGS};
 
 // Scanline offset
-std::atomic<int> s_scanline_offset{0};
 
 // VBlank Sync Divisor (like VSync /2 /3 /4) - 0 to 8, default 1 (0 = off)
-std::atomic<int> s_vblank_sync_divisor{1};
 
 // Performance stats (FPS/frametime) shared state
 std::atomic<uint32_t> g_perf_ring_head{0};
@@ -211,12 +195,6 @@ std::atomic<std::shared_ptr<const std::vector<std::string>>> g_monitor_labels{st
 // Performance optimization settings
 std::atomic<bool> g_flush_before_present = true; // Flush command queue before present to reduce latency (enabled by default)
 
-// Sleep hook settings
-std::atomic<bool> g_sleep_hook_enabled = false;
-std::atomic<bool> g_sleep_hook_render_thread_only = true;
-std::atomic<float> g_sleep_multiplier = 1.0f;
-std::atomic<DWORD> g_min_sleep_duration_ms = 0;
-std::atomic<DWORD> g_max_sleep_duration_ms = 0;
 
 // Helper function for updating HDR10 override status atomically
 void UpdateHdr10OverrideStatus(const std::string& status) {
@@ -271,7 +249,6 @@ std::atomic<uint32_t> g_swapchain_event_total_count{0}; // Total events across a
 // This adds a delay after present to improve frame pacing and reduce CPU usage
 // Higher values create more consistent frame timing but may increase latency
 // 0% = no delay, 100% = full frame time delay between simulation start and present
-std::atomic<float> s_present_pacing_delay_percentage{0.0f}; // Default to 0% (no delay)
 
 
 std::atomic<LONGLONG> late_amount_ns{0};
@@ -298,4 +275,6 @@ std::atomic<uint32_t> g_unsafe_calls_cnt{0};
 // Experimental tab settings global instance
 namespace settings {
     ExperimentalTabSettings g_experimentalTabSettings;
+    DeveloperTabSettings g_developerTabSettings;
+    MainTabSettings g_mainTabSettings;
 }

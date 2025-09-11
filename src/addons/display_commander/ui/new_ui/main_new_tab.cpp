@@ -1,8 +1,8 @@
 #include "main_new_tab.hpp"
 #include <atomic>
 #include "globals.hpp"
-#include "main_new_tab_settings.hpp"
-#include "developer_new_tab_settings.hpp"
+#include "../../settings/main_tab_settings.hpp"
+#include "../../settings/developer_tab_settings.hpp"
 #include "../../addon.hpp"
 // Input blocking is now handled by Windows message hooks
 #include "../../audio/audio_management.hpp"
@@ -29,17 +29,17 @@ void InitMainNewTab() {
     static bool settings_loaded_once = false;
     if (!settings_loaded_once) {
         // Ensure developer settings (including continuous monitoring) are loaded so UI reflects saved state
-        g_developerTabSettings.LoadAll();
-        g_main_new_tab_settings.LoadSettings();
-        s_window_mode = static_cast<WindowMode>(g_main_new_tab_settings.window_mode.GetValue());
-        s_aspect_index = static_cast<AspectRatioType>(g_main_new_tab_settings.aspect_index.GetValue());
-        s_target_monitor_index.store(g_main_new_tab_settings.target_monitor_index.GetValue());
-        s_window_alignment = static_cast<WindowAlignment>(g_main_new_tab_settings.alignment.GetValue());
+        settings::g_developerTabSettings.LoadAll();
+        settings::g_mainTabSettings.LoadSettings();
+        s_window_mode = static_cast<WindowMode>(settings::g_mainTabSettings.window_mode.GetValue());
+        s_aspect_index = static_cast<AspectRatioType>(settings::g_mainTabSettings.aspect_index.GetValue());
+        s_target_monitor_index.store(settings::g_mainTabSettings.target_monitor_index.GetValue());
+        s_window_alignment = static_cast<WindowAlignment>(settings::g_mainTabSettings.alignment.GetValue());
         // FPS limits are now automatically synced via FloatSettingRef
-        s_audio_mute.store(g_main_new_tab_settings.audio_mute.GetValue());
-        s_mute_in_background.store(g_main_new_tab_settings.mute_in_background.GetValue());
-        s_mute_in_background_if_other_audio.store(g_main_new_tab_settings.mute_in_background_if_other_audio.GetValue());
-        s_no_present_in_background.store(g_main_new_tab_settings.no_present_in_background.GetValue());
+        s_audio_mute.store(settings::g_mainTabSettings.audio_mute.GetValue());
+        s_mute_in_background.store(settings::g_mainTabSettings.mute_in_background.GetValue());
+        s_mute_in_background_if_other_audio.store(settings::g_mainTabSettings.mute_in_background_if_other_audio.GetValue());
+        s_no_present_in_background.store(settings::g_mainTabSettings.no_present_in_background.GetValue());
         // VSync & Tearing - all automatically synced via BoolSettingRef
 
         // Update input blocking system with loaded settings
@@ -48,9 +48,9 @@ void InitMainNewTab() {
         settings_loaded_once = true;
 
         // FPS limiter mode
-        s_fps_limiter_mode.store(static_cast<FpsLimiterMode>(g_main_new_tab_settings.fps_limiter_mode.GetValue()));
+        s_fps_limiter_mode.store(static_cast<FpsLimiterMode>(settings::g_mainTabSettings.fps_limiter_mode.GetValue()));
         // FPS limiter injection timing
-        s_fps_limiter_injection.store(g_main_new_tab_settings.fps_limiter_injection.GetValue());
+        s_fps_limiter_injection.store(settings::g_mainTabSettings.fps_limiter_injection.GetValue());
         // Scanline offset and VBlank Sync Divisor are now automatically synced via IntSettingRef
 
         // Initialize resolution widget
@@ -93,9 +93,9 @@ void DrawMainNewTab() {
     {
         ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== Input Control (Background) ===");
         bool block_any_in_background =
-            g_main_new_tab_settings.block_input_in_background.GetValue();
+            settings::g_mainTabSettings.block_input_in_background.GetValue();
         if (ImGui::Checkbox("Block Input in Background", &block_any_in_background)) {
-            g_main_new_tab_settings.block_input_in_background.SetValue(block_any_in_background);
+            settings::g_mainTabSettings.block_input_in_background.SetValue(block_any_in_background);
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Blocks mouse, keyboard, and cursor warping while the game window is not focused.");
@@ -103,9 +103,9 @@ void DrawMainNewTab() {
 
         // Input blocking without Reshade (handled by Windows message hooks)
         bool block_without_reshade =
-            g_main_new_tab_settings.block_input_without_reshade.GetValue();
+            settings::g_mainTabSettings.block_input_without_reshade.GetValue();
         if (ImGui::Checkbox("Block input without Reshade (Uses Windows message hooks)", &block_without_reshade)) {
-            g_main_new_tab_settings.block_input_without_reshade.SetValue(block_without_reshade);
+            settings::g_mainTabSettings.block_input_without_reshade.SetValue(block_without_reshade);
             // No need to call update function - the message hooks check the setting directly
         }
         if (ImGui::IsItemHovered()) {
@@ -140,14 +140,14 @@ void DrawQuickResolutionChanger() {
             const float selected_epsilon = 0.0001f;
             // Add No Limit button at the beginning
             {
-                bool selected = (std::fabs(g_main_new_tab_settings.fps_limit.GetValue() - 0.0f) <= selected_epsilon);
+                bool selected = (std::fabs(settings::g_mainTabSettings.fps_limit.GetValue() - 0.0f) <= selected_epsilon);
                 if (selected) {
                     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.20f, 0.60f, 0.20f, 1.0f));
                     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.20f, 0.70f, 0.20f, 1.0f));
                     ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.10f, 0.50f, 0.10f, 1.0f));
                 }
                 if (ImGui::Button("No Limit")) {
-                    g_main_new_tab_settings.fps_limit.SetValue(0.0f);
+                    settings::g_mainTabSettings.fps_limit.SetValue(0.0f);
                 }
                 if (selected) {
                     ImGui::PopStyleColor(3);
@@ -163,7 +163,7 @@ void DrawQuickResolutionChanger() {
                         first = false;
                         std::string label = std::to_string(candidate_rounded);
                         {
-                            bool selected = (std::fabs(g_main_new_tab_settings.fps_limit.GetValue() - candidate_precise) <= selected_epsilon);
+                            bool selected = (std::fabs(settings::g_mainTabSettings.fps_limit.GetValue() - candidate_precise) <= selected_epsilon);
                             if (selected) {
                                 ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.20f, 0.60f, 0.20f, 1.0f));
                                 ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.20f, 0.70f, 0.20f, 1.0f));
@@ -171,7 +171,7 @@ void DrawQuickResolutionChanger() {
                             }
                             if (ImGui::Button(label.c_str())) {
                                 float target_fps = candidate_precise;
-                                g_main_new_tab_settings.fps_limit.SetValue(target_fps);
+                                settings::g_mainTabSettings.fps_limit.SetValue(target_fps);
                             }
                             if (selected) {
                                 ImGui::PopStyleColor(3);
@@ -197,7 +197,7 @@ void DrawQuickResolutionChanger() {
                 double gsync_target = refresh_hz - (refresh_hz * refresh_hz / 3600.0);
                 float precise_target = static_cast<float>(gsync_target);
                 if (precise_target < 1.0f) precise_target = 1.0f;
-                bool selected = (std::fabs(g_main_new_tab_settings.fps_limit.GetValue() - precise_target) <= selected_epsilon);
+                bool selected = (std::fabs(settings::g_mainTabSettings.fps_limit.GetValue() - precise_target) <= selected_epsilon);
 
                 if (selected) {
                     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.20f, 0.60f, 0.20f, 1.0f));
@@ -207,7 +207,7 @@ void DrawQuickResolutionChanger() {
                 if (ImGui::Button("Gsync Cap")) {
                     double precise_target = gsync_target; // do not round on apply
                     float target_fps = static_cast<float>(precise_target < 1.0 ? 1.0 : precise_target);
-                    g_main_new_tab_settings.fps_limit.SetValue(target_fps);
+                    settings::g_mainTabSettings.fps_limit.SetValue(target_fps);
                 }
                 if (selected) {
                     ImGui::PopStyleColor(3);
@@ -253,7 +253,7 @@ void DrawDisplaySettings() {
         int monitor_index = s_target_monitor_index.load();
         if (ImGui::Combo("Target Monitor", &monitor_index, monitor_c_labels.data(), static_cast<int>(monitor_c_labels.size()))) {
             s_target_monitor_index.store(monitor_index);
-            g_main_new_tab_settings.target_monitor_index.SetValue(monitor_index);
+            settings::g_mainTabSettings.target_monitor_index.SetValue(monitor_index);
             LogInfo("Target monitor changed");
         }
         if (ImGui::IsItemHovered()) {
@@ -262,21 +262,21 @@ void DrawDisplaySettings() {
     }
 
     // Window Mode dropdown (with persistent setting)
-    if (ComboSettingWrapper(g_main_new_tab_settings.window_mode, "Window Mode")) {
+    if (ComboSettingWrapper(settings::g_mainTabSettings.window_mode, "Window Mode")) {
         WindowMode old_mode = s_window_mode.load();
-        s_window_mode = static_cast<WindowMode>(g_main_new_tab_settings.window_mode.GetValue());
+        s_window_mode = static_cast<WindowMode>(settings::g_mainTabSettings.window_mode.GetValue());
 
         // Don't apply changes immediately - let the normal window management system handle it
         // This prevents crashes when changing modes during gameplay
 
         std::ostringstream oss;
-        oss << "Window mode changed from " << static_cast<int>(old_mode) << " to " << g_main_new_tab_settings.window_mode.GetValue();
+        oss << "Window mode changed from " << static_cast<int>(old_mode) << " to " << settings::g_mainTabSettings.window_mode.GetValue();
         LogInfo(oss.str().c_str());
     }
     // Auto-apply (continuous monitoring) checkbox next to Window Mode
     ImGui::SameLine();
-    if (CheckboxSetting(g_developerTabSettings.continuous_monitoring, "Auto-apply")) {
-        s_continuous_monitoring_enabled.store(g_developerTabSettings.continuous_monitoring.GetValue());
+    if (CheckboxSetting(settings::g_developerTabSettings.continuous_monitoring, "Auto-apply")) {
+        s_continuous_monitoring_enabled.store(settings::g_developerTabSettings.continuous_monitoring.GetValue());
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Auto-apply window mode changes and continuously keep window size/position in sync.");
@@ -287,8 +287,8 @@ void DrawDisplaySettings() {
 
     // Aspect Ratio dropdown (only shown in Aspect Ratio mode)
     if (s_window_mode.load() == WindowMode::kAspectRatio) {
-        if (ComboSettingWrapper(g_main_new_tab_settings.aspect_index, "Aspect Ratio")) {
-            s_aspect_index = static_cast<AspectRatioType>(g_main_new_tab_settings.aspect_index.GetValue());
+        if (ComboSettingWrapper(settings::g_mainTabSettings.aspect_index, "Aspect Ratio")) {
+            s_aspect_index = static_cast<AspectRatioType>(settings::g_mainTabSettings.aspect_index.GetValue());
             LogInfo("Aspect ratio changed");
         }
         if (ImGui::IsItemHovered()) {
@@ -297,8 +297,8 @@ void DrawDisplaySettings() {
     }
     // Window Alignment dropdown (only shown in Aspect Ratio mode)
     if (s_window_mode.load() == WindowMode::kAspectRatio) {
-        if (ComboSettingWrapper(g_main_new_tab_settings.alignment, "Alignment")) {
-            s_window_alignment = static_cast<WindowAlignment>(g_main_new_tab_settings.alignment.GetValue());
+        if (ComboSettingWrapper(settings::g_mainTabSettings.alignment, "Alignment")) {
+            s_window_alignment = static_cast<WindowAlignment>(settings::g_mainTabSettings.alignment.GetValue());
             LogInfo("Window alignment changed");
         }
         if (ImGui::IsItemHovered()) {
@@ -308,7 +308,7 @@ void DrawDisplaySettings() {
 
     // Background Black Curtain checkbox (only shown in Aspect Ratio mode)
     if (s_window_mode.load() == WindowMode::kAspectRatio) {
-        if (CheckboxSetting(g_main_new_tab_settings.background_feature, "Background Black Curtain")) {
+        if (CheckboxSetting(settings::g_mainTabSettings.background_feature, "Background Black Curtain")) {
             LogInfo("Background black curtain setting changed");
         }
         if (ImGui::IsItemHovered()) {
@@ -335,8 +335,8 @@ void DrawDisplaySettings() {
 
     // FPS Limiter Mode
     {
-        if (ComboSettingWrapper(g_main_new_tab_settings.fps_limiter_mode, "FPS Limiter Mode")) {
-            s_fps_limiter_mode.store(static_cast<FpsLimiterMode>(g_main_new_tab_settings.fps_limiter_mode.GetValue()));
+        if (ComboSettingWrapper(settings::g_mainTabSettings.fps_limiter_mode, "FPS Limiter Mode")) {
+            s_fps_limiter_mode.store(static_cast<FpsLimiterMode>(settings::g_mainTabSettings.fps_limiter_mode.GetValue()));
             FpsLimiterMode mode = s_fps_limiter_mode.load();
             if (mode == FpsLimiterMode::kNone) {
                 LogInfo("FPS Limiter: None (no limiting)");
@@ -353,10 +353,10 @@ void DrawDisplaySettings() {
 
     // FPS Limiter Injection Timing
     {
-        int current_injection = g_main_new_tab_settings.fps_limiter_injection.GetValue();
+        int current_injection = settings::g_mainTabSettings.fps_limiter_injection.GetValue();
         int temp_injection = current_injection;
         if (ImGui::SliderInt("FPS Limiter Injection", &temp_injection, 0, 2, "%d")) {
-            g_main_new_tab_settings.fps_limiter_injection.SetValue(temp_injection);
+            settings::g_mainTabSettings.fps_limiter_injection.SetValue(temp_injection);
             s_fps_limiter_injection.store(temp_injection);
         }
         if (ImGui::IsItemHovered()) {
@@ -378,8 +378,8 @@ void DrawDisplaySettings() {
 
         ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Adds a small delay after present to smooth frame pacing and reduce stuttering");
 
-        float current_delay = g_main_new_tab_settings.present_pacing_delay_percentage.GetValue();
-        if (SliderFloatSetting(g_main_new_tab_settings.present_pacing_delay_percentage, "Present Pacing Delay (manual fine-tuning is needed for now)", "%.1f%%")) {
+        float current_delay = settings::g_mainTabSettings.present_pacing_delay_percentage.GetValue();
+        if (SliderFloatSetting(settings::g_mainTabSettings.present_pacing_delay_percentage, "Present Pacing Delay (manual fine-tuning is needed for now)", "%.1f%%")) {
             // The setting is automatically synced via FloatSettingRef
         }
         if (ImGui::IsItemHovered()) {
@@ -399,10 +399,10 @@ void DrawDisplaySettings() {
     if (s_fps_limiter_mode.load() == FpsLimiterMode::kLatentSync) {
 
         // Scanline Offset (only visible if scanline mode is selected)
-        int current_offset = g_main_new_tab_settings.scanline_offset.GetValue();
+        int current_offset = settings::g_mainTabSettings.scanline_offset.GetValue();
         int temp_offset = current_offset;
         if (ImGui::SliderInt("Scanline Offset", &temp_offset, -1000, 1000, "%d")) {
-            g_main_new_tab_settings.scanline_offset.SetValue(temp_offset);
+            settings::g_mainTabSettings.scanline_offset.SetValue(temp_offset);
             s_scanline_offset.store(temp_offset);
         }
         if (ImGui::IsItemHovered()) {
@@ -410,10 +410,10 @@ void DrawDisplaySettings() {
         }
 
         // VBlank Sync Divisor (only visible if latent sync mode is selected)
-        int current_divisor = g_main_new_tab_settings.vblank_sync_divisor.GetValue();
+        int current_divisor = settings::g_mainTabSettings.vblank_sync_divisor.GetValue();
         int temp_divisor = current_divisor;
         if (ImGui::SliderInt("VBlank Sync Divisor", &temp_divisor, 0, 8, "%d")) {
-            g_main_new_tab_settings.vblank_sync_divisor.SetValue(temp_divisor);
+            settings::g_mainTabSettings.vblank_sync_divisor.SetValue(temp_divisor);
             s_vblank_sync_divisor.store(temp_divisor);
         }
         if (ImGui::IsItemHovered()) {
@@ -470,9 +470,9 @@ void DrawDisplaySettings() {
 
     // FPS Limit slider (persisted)
     {
-        float current_value = g_main_new_tab_settings.fps_limit.GetValue();
+        float current_value = settings::g_mainTabSettings.fps_limit.GetValue();
         const char* fmt = (current_value > 0.0f) ? "%.3f FPS" : "No Limit";
-        if (SliderFloatSetting(g_main_new_tab_settings.fps_limit, "FPS Limit", fmt)) {
+        if (SliderFloatSetting(settings::g_mainTabSettings.fps_limit, "FPS Limit", fmt)) {
         }
     }
     if (ImGui::IsItemHovered()) {
@@ -481,9 +481,9 @@ void DrawDisplaySettings() {
 
     // No Render in Background checkbox
     {
-        bool no_render_in_bg = g_main_new_tab_settings.no_render_in_background.GetValue();
+        bool no_render_in_bg = settings::g_mainTabSettings.no_render_in_background.GetValue();
         if (ImGui::Checkbox("No Render in Background", &no_render_in_bg)) {
-            g_main_new_tab_settings.no_render_in_background.SetValue(no_render_in_bg);
+            settings::g_mainTabSettings.no_render_in_background.SetValue(no_render_in_bg);
             // The setting is automatically synced via BoolSettingRef
         }
         if (ImGui::IsItemHovered()) {
@@ -493,9 +493,9 @@ void DrawDisplaySettings() {
 
     // No Present in Background checkbox
     {
-        bool no_present_in_bg = g_main_new_tab_settings.no_present_in_background.GetValue();
+        bool no_present_in_bg = settings::g_mainTabSettings.no_present_in_background.GetValue();
         if (ImGui::Checkbox("No Present in Background", &no_present_in_bg)) {
-            g_main_new_tab_settings.no_present_in_background.SetValue(no_present_in_bg);
+            settings::g_mainTabSettings.no_present_in_background.SetValue(no_present_in_bg);
             // The setting is automatically synced via BoolSettingRef
         }
         if (ImGui::IsItemHovered()) {
@@ -512,15 +512,15 @@ void DrawDisplaySettings() {
         ImGui::Spacing();
         ImGui::TextColored(ImVec4(0.8f, 0.9f, 1.0f, 1.0f), "=== VSync & Tearing ===");
 
-        bool vs_on = g_main_new_tab_settings.force_vsync_on.GetValue();
+        bool vs_on = settings::g_mainTabSettings.force_vsync_on.GetValue();
         if (ImGui::Checkbox("Force VSync ON", &vs_on)) {
             s_restart_needed_vsync_tearing.store(true);
             // Mutual exclusion
             if (vs_on) {
-                g_main_new_tab_settings.force_vsync_off.SetValue(false);
+                settings::g_mainTabSettings.force_vsync_off.SetValue(false);
                 // s_force_vsync_off is automatically synced via BoolSettingRef
             }
-            g_main_new_tab_settings.force_vsync_on.SetValue(vs_on);
+            settings::g_mainTabSettings.force_vsync_on.SetValue(vs_on);
             // s_force_vsync_on is automatically synced via BoolSettingRef
             LogInfo(vs_on ? "Force VSync ON enabled" : "Force VSync ON disabled");
         }
@@ -530,14 +530,14 @@ void DrawDisplaySettings() {
 
         ImGui::SameLine();
 
-        bool vs_off = g_main_new_tab_settings.force_vsync_off.GetValue();
+        bool vs_off = settings::g_mainTabSettings.force_vsync_off.GetValue();
         if (ImGui::Checkbox("Force VSync OFF", &vs_off)) {
             s_restart_needed_vsync_tearing.store(true);
             // Mutual exclusion
             if (vs_off) {
-                g_main_new_tab_settings.force_vsync_on.SetValue(false);
+                settings::g_mainTabSettings.force_vsync_on.SetValue(false);
             }
-            g_main_new_tab_settings.force_vsync_off.SetValue(vs_off);
+            settings::g_mainTabSettings.force_vsync_off.SetValue(vs_off);
             // s_force_vsync_off is automatically synced via BoolSettingRef
             LogInfo(vs_off ? "Force VSync OFF enabled" : "Force VSync OFF disabled");
         }
@@ -547,9 +547,9 @@ void DrawDisplaySettings() {
 
         ImGui::SameLine();
 
-        bool prevent_t = g_main_new_tab_settings.prevent_tearing.GetValue();
+        bool prevent_t = settings::g_mainTabSettings.prevent_tearing.GetValue();
         if (ImGui::Checkbox("Prevent Tearing", &prevent_t)) {
-            g_main_new_tab_settings.prevent_tearing.SetValue(prevent_t);
+            settings::g_mainTabSettings.prevent_tearing.SetValue(prevent_t);
             // s_prevent_tearing is automatically synced via BoolSettingRef
             LogInfo(prevent_t ? "Prevent Tearing enabled (tearing flags will be cleared)" : "Prevent Tearing disabled");
         }
@@ -566,9 +566,9 @@ void DrawDisplaySettings() {
 
     // Background FPS Limit slider (persisted)
     {
-        float current_bg = g_main_new_tab_settings.fps_limit_background.GetValue();
+        float current_bg = settings::g_mainTabSettings.fps_limit_background.GetValue();
         const char* fmt_bg = (current_bg > 0.0f) ? "%.0f FPS" : "No Limit";
-        if (SliderFloatSetting(g_main_new_tab_settings.fps_limit_background, "Background FPS Limit", fmt_bg)) {
+        if (SliderFloatSetting(settings::g_mainTabSettings.fps_limit_background, "Background FPS Limit", fmt_bg)) {
 
         }
     }
@@ -586,7 +586,7 @@ void DrawAudioSettings() {
         s_audio_volume_percent.store(volume);
 
         // Apply immediately only if Auto-apply is enabled
-        if (g_main_new_tab_settings.audio_volume_auto_apply.GetValue()) {
+        if (settings::g_mainTabSettings.audio_volume_auto_apply.GetValue()) {
             if (::SetVolumeForCurrentProcess(volume)) {
                 std::ostringstream oss;
                 oss << "Audio volume changed to " << static_cast<int>(volume) << "%";
@@ -603,7 +603,7 @@ void DrawAudioSettings() {
     }
     // Auto-apply checkbox next to Audio Volume
     ImGui::SameLine();
-    if (CheckboxSetting(g_main_new_tab_settings.audio_volume_auto_apply, "Auto-apply##audio_volume")) {
+    if (CheckboxSetting(settings::g_mainTabSettings.audio_volume_auto_apply, "Auto-apply##audio_volume")) {
         // No immediate action required; stored for consistency with other UI
     }
     if (ImGui::IsItemHovered()) {
@@ -613,7 +613,7 @@ void DrawAudioSettings() {
     // Audio Mute checkbox
     bool audio_mute = s_audio_mute.load();
     if (ImGui::Checkbox("Audio Mute", &audio_mute)) {
-        g_main_new_tab_settings.audio_mute.SetValue(audio_mute);
+        settings::g_mainTabSettings.audio_mute.SetValue(audio_mute);
 
         // Apply mute/unmute immediately
         if (::SetMuteForCurrentProcess(audio_mute)) {
@@ -637,8 +637,8 @@ void DrawAudioSettings() {
         ImGui::BeginDisabled();
     }
     if (ImGui::Checkbox("Mute In Background", &mute_in_bg)) {
-        g_main_new_tab_settings.mute_in_background.SetValue(mute_in_bg);
-        g_main_new_tab_settings.mute_in_background_if_other_audio.SetValue(false);
+        settings::g_mainTabSettings.mute_in_background.SetValue(mute_in_bg);
+        settings::g_mainTabSettings.mute_in_background_if_other_audio.SetValue(false);
 
         // Reset applied flag so the monitor thread reapplies desired state
         ::g_muted_applied.store(false);
@@ -668,8 +668,8 @@ void DrawAudioSettings() {
         ImGui::BeginDisabled();
     }
     if (ImGui::Checkbox("Mute In Background (only if other app has audio)", &mute_in_bg_if_other)) {
-        g_main_new_tab_settings.mute_in_background_if_other_audio.SetValue(mute_in_bg_if_other);
-        g_main_new_tab_settings.mute_in_background.SetValue(false);
+        settings::g_mainTabSettings.mute_in_background_if_other_audio.SetValue(mute_in_bg_if_other);
+        settings::g_mainTabSettings.mute_in_background.SetValue(false);
         ::g_muted_applied.store(false);
         if (!s_audio_mute.load()) {
             HWND hwnd = g_last_swapchain_hwnd.load();
@@ -740,7 +740,7 @@ void DrawWindowControls() {
 
             // Switch to fullscreen mode to maximize the window
             s_window_mode.store(WindowMode::kFullscreen);
-            g_main_new_tab_settings.window_mode.SetValue(static_cast<int>(WindowMode::kFullscreen));
+            settings::g_mainTabSettings.window_mode.SetValue(static_cast<int>(WindowMode::kFullscreen));
 
             // Apply the window changes using the existing UI system
             ApplyWindowChange(hwnd, "maximize_button");

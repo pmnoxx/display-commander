@@ -1,5 +1,7 @@
 #include "main_tab_settings.hpp"
 #include "../addon.hpp"
+#include "../hooks/api_hooks.hpp"
+#include <windows.h>
 
 // Atomic variables used by main tab settings
 std::atomic<bool> s_background_feature_enabled{false}; // Disabled by default
@@ -47,7 +49,8 @@ MainTabSettings::MainTabSettings()
       block_input_in_background("block_input_in_background", s_block_input_in_background, true, "renodx_main_tab"),
       block_input_without_reshade("block_input_without_reshade", s_block_input_without_reshade, false, "renodx_main_tab"),
       no_render_in_background("no_render_in_background", s_no_render_in_background, false, "renodx_main_tab"),
-      no_present_in_background("no_present_in_background", s_no_present_in_background, false, "renodx_main_tab") {
+      no_present_in_background("no_present_in_background", s_no_present_in_background, false, "renodx_main_tab"),
+      target_display("target_display", "", "renodx_main_tab") {
 
     // Initialize the all_settings_ vector
     all_settings_ = {
@@ -75,6 +78,7 @@ MainTabSettings::MainTabSettings()
         &block_input_without_reshade,
         &no_render_in_background,
         &no_present_in_background,
+        &target_display,
     };
 }
 
@@ -86,6 +90,50 @@ void MainTabSettings::LoadSettings() {
 
 std::vector<ui::new_ui::SettingBase*> MainTabSettings::GetAllSettings() {
     return all_settings_;
+}
+
+// Helper function to convert wstring to string
+std::string WStringToString(const std::wstring& wstr) {
+    if (wstr.empty()) return std::string();
+
+    int size = WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), -1, nullptr, 0, nullptr, nullptr);
+    if (size <= 0) return std::string();
+
+    std::string result(size - 1, '\0');
+    WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), -1, &result[0], size, nullptr, nullptr);
+    return result;
+}
+
+// Function to get display device ID from a window
+std::string GetDisplayDeviceIdFromWindow(HWND hwnd) {
+    if (hwnd == nullptr || !IsWindow(hwnd)) {
+        return "No Window";
+    }
+
+    // Get the monitor that contains the window
+    HMONITOR hmon = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+    if (hmon == nullptr) {
+        return "No Monitor";
+    }
+
+    // Get monitor information
+    MONITORINFOEXW mi{};
+    mi.cbSize = sizeof(mi);
+    if (!GetMonitorInfoW(hmon, &mi)) {
+        return "Monitor Info Failed";
+    }
+
+    // Convert wide string to UTF-8 string
+    return WStringToString(mi.szDevice);
+}
+
+// Function to update the target display setting with current game window
+void UpdateTargetDisplayFromGameWindow() {
+    // Get the game window from the API hooks
+    HWND game_window = renodx::hooks::GetGameWindow();
+
+    std::string display_id = GetDisplayDeviceIdFromWindow(game_window);
+    settings::g_mainTabSettings.target_display.SetValue(display_id);
 }
 
 } // namespace settings

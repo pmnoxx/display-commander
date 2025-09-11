@@ -665,7 +665,7 @@ void HandleAutoRestoreResolutionCheckbox() {
     ImGui::Spacing();
 
     bool auto_restore_resolution_on_close = s_auto_restore_resolution_on_close.load();
-    if (ImGui::Checkbox("Restore display settings when game closes", &auto_restore_resolution_on_close)) {
+    if (ImGui::Checkbox("Restore display settings when game closes (WIP)", &auto_restore_resolution_on_close)) {
         s_auto_restore_resolution_on_close.store(auto_restore_resolution_on_close);
         // Log the setting change
         if (auto_restore_resolution_on_close) {

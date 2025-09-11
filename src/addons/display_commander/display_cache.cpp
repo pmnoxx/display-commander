@@ -11,6 +11,7 @@
 #include "utils.hpp"
 #include "globals.hpp"
 #include "display/query_display.hpp"
+#include "settings/main_tab_settings.hpp"
 
 using Microsoft::WRL::ComPtr;
 
@@ -178,6 +179,14 @@ bool DisplayCache::Refresh() {
     // Atomically swap the new displays data
     displays.store(std::make_shared<std::vector<std::unique_ptr<DisplayInfo>>>(std::move(new_displays)), std::memory_order_release);
     is_initialized.store(true, std::memory_order_release);
+
+    // Update target_display if it's unset or the current display is not found
+    std::string current_target_display = settings::g_mainTabSettings.target_display.GetValue();
+    if (current_target_display.empty() || current_target_display == "No Window" ||
+        current_target_display == "No Monitor" || current_target_display == "Monitor Info Failed") {
+        // Try to get the display device ID from the current game window
+        settings::UpdateTargetDisplayFromGameWindow();
+    }
 
     auto displays_ptr = displays.load(std::memory_order_acquire);
     return displays_ptr && !displays_ptr->empty();

@@ -306,6 +306,24 @@ private:
     int max_;
 };
 
+// String setting wrapper
+class StringSetting : public SettingBase {
+public:
+    StringSetting(const std::string& key, const std::string& default_value,
+                  const std::string& section = DEFAULT_SECTION);
+
+    void Load() override;
+    void Save() override;
+
+    // Get/set values
+    const std::string& GetValue() const { return value_; }
+    void SetValue(const std::string& value);
+
+private:
+    std::string value_;
+    std::string default_value_;
+};
+
 // Wrapper functions for ImGui controls that automatically handle settings
 
 // SliderFloat wrapper

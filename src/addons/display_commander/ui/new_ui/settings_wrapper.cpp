@@ -648,4 +648,36 @@ void FixedIntArraySetting::SetAllValues(const std::vector<int>& values) {
     is_dirty_ = true;
 }
 
+// StringSetting implementation
+StringSetting::StringSetting(const std::string& key, const std::string& default_value,
+                             const std::string& section)
+    : SettingBase(key, section), value_(default_value), default_value_(default_value) {
+}
+
+void StringSetting::Load() {
+    char buffer[256] = {0};
+    size_t buffer_size = sizeof(buffer);
+    if (reshade::get_config_value(nullptr, section_.c_str(), key_.c_str(), buffer, &buffer_size)) {
+        value_ = std::string(buffer);
+    } else {
+        // Use default value
+        value_ = default_value_;
+    }
+    is_dirty_ = false;
+}
+
+void StringSetting::Save() {
+    if (is_dirty_) {
+        reshade::set_config_value(nullptr, section_.c_str(), key_.c_str(), value_.c_str());
+        is_dirty_ = false;
+    }
+}
+
+void StringSetting::SetValue(const std::string& value) {
+    if (value_ != value) {
+        value_ = value;
+        is_dirty_ = true;
+    }
+}
+
 } // namespace ui::new_ui

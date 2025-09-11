@@ -236,6 +236,13 @@ void DrawNvapiSettings() {
     // Minimal NVIDIA Reflex Controls (device runtime dependent)
     ImGui::Separator();
     ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "=== NVIDIA Reflex (Minimal) ===");
+
+    // Warning about enabling Reflex when game already has it
+    ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f), "⚠ Warning: Do not enable Reflex if the game already has built-in Reflex support!");
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Enabling Reflex when the game already has it can cause conflicts, instability, or performance issues. Check the game's graphics settings first.");
+    }
+
     bool reflex_enable = g_developerTabSettings.reflex_enable.GetValue();
     if (ImGui::Checkbox("Enable Reflex", &reflex_enable)) {
         g_developerTabSettings.reflex_enable.SetValue(reflex_enable);

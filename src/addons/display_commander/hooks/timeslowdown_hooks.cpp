@@ -56,8 +56,8 @@ NtQuerySystemTime_pfn NtQuerySystemTime_Original = nullptr;
 static std::atomic<bool> g_timeslowdown_hooks_installed{false};
 
 // Timeslowdown configuration
-static std::atomic<double> g_timeslowdown_multiplier{1.0};
-static std::atomic<bool> g_timeslowdown_enabled{false};
+std::atomic<float> g_timeslowdown_multiplier{1.0f};
+std::atomic<bool> g_timeslowdown_enabled{false};
 
 // Individual hook type configurations
 static std::unordered_map<std::string, TimerHookType> g_hook_types;
@@ -123,7 +123,7 @@ BOOL WINAPI QueryPerformanceCounter_Detour(LARGE_INTEGER* lpPerformanceCount) {
     // if time slow down is enabled, or was enabled before, then apply the time slow down
     if (current_state->original_quad_ts > 0 || g_timeslowdown_enabled.load()) {
         LONGLONG now_qpc = lpPerformanceCount->QuadPart;
-        long double new_multiplier = g_timeslowdown_enabled.load() ? g_timeslowdown_multiplier.load() : 1.0;
+        float new_multiplier = g_timeslowdown_enabled.load() ? g_timeslowdown_multiplier.load() : 1.0f;
 
         // Check if we need to update state
         bool needs_update = (current_state->original_quad_ts == 0) || (current_state->multiplier != new_multiplier);
@@ -191,7 +191,7 @@ DWORD WINAPI GetTickCount_Detour() {
 
     // Apply timeslowdown if enabled
     if (g_timeslowdown_enabled.load()) {
-        double multiplier = g_timeslowdown_multiplier.load();
+        float multiplier = g_timeslowdown_multiplier.load();
         if (multiplier > 0.0) {
             result = static_cast<DWORD>(result * multiplier);
         }
@@ -216,7 +216,7 @@ ULONGLONG WINAPI GetTickCount64_Detour() {
 
     // Apply timeslowdown if enabled
     if (g_timeslowdown_enabled.load()) {
-        double multiplier = g_timeslowdown_multiplier.load();
+        float multiplier = g_timeslowdown_multiplier.load();
         if (multiplier > 0.0) {
             result = static_cast<ULONGLONG>(result * multiplier);
         }
@@ -241,7 +241,7 @@ DWORD WINAPI timeGetTime_Detour() {
 
     // Apply timeslowdown if enabled
     if (g_timeslowdown_enabled.load()) {
-        double multiplier = g_timeslowdown_multiplier.load();
+        float multiplier = g_timeslowdown_multiplier.load();
         if (multiplier > 0.0) {
             result = static_cast<DWORD>(result * multiplier);
         }
@@ -267,7 +267,7 @@ void WINAPI GetSystemTime_Detour(LPSYSTEMTIME lpSystemTime) {
 
     // Apply timeslowdown if enabled
     if (g_timeslowdown_enabled.load() && lpSystemTime != nullptr) {
-        double multiplier = g_timeslowdown_multiplier.load();
+        float multiplier = g_timeslowdown_multiplier.load();
         if (multiplier > 0.0) {
             // Convert SYSTEMTIME to milliseconds since epoch, apply multiplier, then convert back
             FILETIME ft;
@@ -305,7 +305,7 @@ void WINAPI GetSystemTimeAsFileTime_Detour(LPFILETIME lpSystemTimeAsFileTime) {
 
     // Apply timeslowdown if enabled
     if (g_timeslowdown_enabled.load() && lpSystemTimeAsFileTime != nullptr) {
-        double multiplier = g_timeslowdown_multiplier.load();
+        float multiplier = g_timeslowdown_multiplier.load();
         if (multiplier > 0.0) {
             ULARGE_INTEGER uli;
             uli.LowPart = lpSystemTimeAsFileTime->dwLowDateTime;
@@ -338,7 +338,7 @@ void WINAPI GetSystemTimePreciseAsFileTime_Detour(LPFILETIME lpSystemTimeAsFileT
 
     // Apply timeslowdown if enabled
     if (g_timeslowdown_enabled.load() && lpSystemTimeAsFileTime != nullptr) {
-        double multiplier = g_timeslowdown_multiplier.load();
+        float multiplier = g_timeslowdown_multiplier.load();
         if (multiplier > 0.0) {
             ULARGE_INTEGER uli;
             uli.LowPart = lpSystemTimeAsFileTime->dwLowDateTime;
@@ -370,7 +370,7 @@ void WINAPI GetLocalTime_Detour(LPSYSTEMTIME lpSystemTime) {
 
     // Apply timeslowdown if enabled
     if (g_timeslowdown_enabled.load() && lpSystemTime != nullptr) {
-        double multiplier = g_timeslowdown_multiplier.load();
+        float multiplier = g_timeslowdown_multiplier.load();
         if (multiplier > 0.0) {
             // Convert SYSTEMTIME to milliseconds since epoch, apply multiplier, then convert back
             FILETIME ft;
@@ -414,7 +414,7 @@ NTSTATUS WINAPI NtQuerySystemTime_Detour(PLARGE_INTEGER SystemTime) {
 
     // Apply timeslowdown if enabled
     if (g_timeslowdown_enabled.load() && SystemTime != nullptr && NT_SUCCESS(result)) {
-        double multiplier = g_timeslowdown_multiplier.load();
+        float multiplier = g_timeslowdown_multiplier.load();
         if (multiplier > 0.0) {
             // Apply multiplier to system time
             SystemTime->QuadPart = static_cast<LONGLONG>(SystemTime->QuadPart * multiplier);
@@ -611,8 +611,8 @@ bool AreTimeslowdownHooksInstalled() {
     return g_timeslowdown_hooks_installed.load();
 }
 
-void SetTimeslowdownMultiplier(double multiplier) {
-    if (multiplier <= 0.0) {
+void SetTimeslowdownMultiplier(float multiplier) {
+    if (multiplier <= 0.0f) {
         LogError("Invalid timeslowdown multiplier: %f (must be > 0)", multiplier);
         return;
     }
@@ -621,7 +621,7 @@ void SetTimeslowdownMultiplier(double multiplier) {
     LogInfo("Timeslowdown multiplier set to: %f", multiplier);
 }
 
-double GetTimeslowdownMultiplier() {
+float GetTimeslowdownMultiplier() {
     return g_timeslowdown_multiplier.load();
 }
 

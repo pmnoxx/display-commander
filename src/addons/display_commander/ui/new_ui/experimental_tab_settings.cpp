@@ -1,7 +1,9 @@
 #include "experimental_tab_settings.hpp"
 #include "../../globals.hpp"
+#include "../../hooks/timeslowdown_hooks.hpp"
 
 namespace ui::new_ui {
+
 
 // Global instance
 ExperimentalTabSettings g_experimentalTabSettings;
@@ -50,8 +52,8 @@ ExperimentalTabSettings::ExperimentalTabSettings()
     , sleep_multiplier("SleepMultiplier", 1.0f, 0.1f, 10.0f, "Experimental")
     , min_sleep_duration_ms("MinSleepDurationMs", 0, 0, 10000, "Experimental")
     , max_sleep_duration_ms("MaxSleepDurationMs", 0, 0, 10000, "Experimental")
-    , timeslowdown_enabled("TimeslowdownEnabled", false, "Experimental")
-    , timeslowdown_multiplier("TimeslowdownMultiplier", 1.0f, 0.1f, 10.0f, "Experimental")
+    , timeslowdown_enabled("TimeslowdownEnabled", renodx::hooks::g_timeslowdown_enabled, false, "Experimental")
+    , timeslowdown_multiplier("TimeslowdownMultiplier", renodx::hooks::g_timeslowdown_multiplier, 1.0f, 0.1f, 10.0f, "Experimental")
     , query_performance_counter_hook("QueryPerformanceCounterHook", 0, {
         "None",
         "Enabled",

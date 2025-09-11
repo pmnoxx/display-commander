@@ -5,6 +5,7 @@
 
 namespace ui::new_ui {
 
+
 // Settings manager for the experimental tab
 class ExperimentalTabSettings {
 public:
@@ -71,8 +72,8 @@ public:
     IntSetting max_sleep_duration_ms;
 
     // Time slowdown settings
-    BoolSetting timeslowdown_enabled;
-    FloatSetting timeslowdown_multiplier;
+    BoolSettingRef timeslowdown_enabled;
+    FloatSettingRef timeslowdown_multiplier;
 
     // Individual timer hook settings
     ComboSetting query_performance_counter_hook;

@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <cmath>
 #include "../../renodx/settings.hpp"
+#include "../../utils.hpp"
 
 // Windows defines min/max as macros, so we need to undefine them
 #ifdef min
@@ -595,8 +596,10 @@ void FixedIntArraySetting::Load() {
             // Clamp value to min/max range
             value = std::max(min_, std::min(max_, value));
             values_[i]->store(value);
+            LogInfo("FixedIntArraySetting::Load() - Loaded %s[%zu] = %d from config", key_.c_str(), i, value);
         } else {
             values_[i]->store(default_value_);
+            LogInfo("FixedIntArraySetting::Load() - No config found for %s[%zu], using default %d", key_.c_str(), i, default_value_);
         }
     }
     is_dirty_ = false;
@@ -610,6 +613,7 @@ void FixedIntArraySetting::Save() {
         std::string element_key = key_ + "_" + std::to_string(i);
         int value = values_[i]->load();
         reshade::set_config_value(nullptr, section_.c_str(), element_key.c_str(), value);
+        LogInfo("FixedIntArraySetting::Save() - Saved %s[%zu] = %d to config", key_.c_str(), i, value);
     }
     is_dirty_ = false;
 }
@@ -628,6 +632,7 @@ void FixedIntArraySetting::SetValue(size_t index, int value) {
     value = std::max(min_, std::min(max_, value));
     values_[index]->store(value);
     is_dirty_ = true;
+    Save(); // Auto-save when value changes
 }
 
 std::vector<int> FixedIntArraySetting::GetAllValues() const {

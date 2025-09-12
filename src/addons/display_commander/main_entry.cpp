@@ -1,5 +1,6 @@
 #include "addon.hpp"
 #include "swapchain_events_power_saving.hpp"
+#include "exit_handler.hpp"
 
 // Include timing utilities for QPC initialization
 #include "../../utils/timing.hpp"
@@ -134,7 +135,18 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
         LogInfo(oss.str().c_str());
       }
 
+      // Store module handle for pinning
+      g_hmodule = h_module;
 
+      // Pin the module to prevent premature unload
+      HMODULE pinned_module = nullptr;
+      if (GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_PIN,
+                            reinterpret_cast<LPCWSTR>(h_module), &pinned_module)) {
+        LogInfo("Module pinned successfully: 0x%p", pinned_module);
+      } else {
+        DWORD error = GetLastError();
+        LogWarn("Failed to pin module: 0x%p, Error: %lu", h_module, error);
+      }
 
       // Initialize QPC timing constants based on actual frequency
       utils::initialize_qpc_timing_constants();
@@ -261,12 +273,18 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
       break;
     }
     case DLL_THREAD_DETACH: {
+      // Log exit detection
+      //exit_handler::OnHandleExit(exit_handler::ExitSource::DLL_THREAD_DETACH_EVENT, "DLL thread detach");
       break;
     }
 
 
     case DLL_PROCESS_DETACH:
+      LogInfo("DLL_PROCESS_DETACH: DLL process detach");
       g_shutdown.store(true);
+
+      // Log exit detection
+      exit_handler::OnHandleExit(exit_handler::ExitSource::DLL_PROCESS_DETACH_EVENT, "DLL process detach");
 
       // Clean up input blocking system
       // Input blocking cleanup is now handled by Windows message hooks
@@ -303,6 +321,17 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
       // Note: reshade::unregister_addon() will automatically unregister all events and overlays
       // registered by this add-on, so manual unregistration is not needed and can cause issues
       //display_restore::RestoreAllIfEnabled(); // restore display settings on exit
+
+      // Unpin the module before unregistration
+      if (g_hmodule != nullptr) {
+        if (FreeLibrary(g_hmodule)) {
+          LogInfo("Module unpinned successfully: 0x%p", g_hmodule);
+        } else {
+          DWORD error = GetLastError();
+          LogWarn("Failed to unpin module: 0x%p, Error: %lu", g_hmodule, error);
+        }
+        g_hmodule = nullptr;
+      }
 
       reshade::unregister_addon(h_module);
       break;

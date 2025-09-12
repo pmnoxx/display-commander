@@ -257,18 +257,6 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
 
         ui::new_ui::InitExperimentalTab();
 
-        // Window procedure hooks will be installed when ReShade runtime is initialized
-        // This ensures we have the correct game window handle
-
-
-    /*    // Test XInput state after a short delay
-        std::thread([]() {
-      //    while (true) {
-            std::this_thread::sleep_for(std::chrono::seconds(10));
-              renodx::hooks::DiagnoseXInputModules();
-              renodx::hooks::TestXInputState();
-         //   }
-        }).detach();*/
       }
       break;
     }
@@ -334,6 +322,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
       }
 
       reshade::unregister_addon(h_module);
+
       break;
   }
 

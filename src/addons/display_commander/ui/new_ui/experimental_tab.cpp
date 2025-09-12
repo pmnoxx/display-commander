@@ -21,10 +21,9 @@ static bool g_move_mouse = true; // Whether to move mouse before clicking
 
 // Initialize experimental tab
 void InitExperimentalTab() {
+    LogInfo("InitExperimentalTab() - Starting to load experimental tab settings");
     settings::g_experimentalTabSettings.LoadAll();
-
-
-    LogInfo("Experimental tab settings loaded");
+    LogInfo("InitExperimentalTab() - Experimental tab settings loaded");
 }
 
 
@@ -79,6 +78,9 @@ void DrawSequence(int sequence_num) {
     int x = settings::g_experimentalTabSettings.sequence_x.GetValue(idx);
     int y = settings::g_experimentalTabSettings.sequence_y.GetValue(idx);
     int interval = settings::g_experimentalTabSettings.sequence_interval.GetValue(idx);
+
+    // Debug logging for sequence values
+    LogInfo("DrawSequence(%d) - enabled=%s, x=%d, y=%d, interval=%d", sequence_num, enabled ? "true" : "false", x, y, interval);
 
     // Checkbox for enabling this sequence
     if (ImGui::Checkbox(("Enabled##seq" + std::to_string(sequence_num)).c_str(), &enabled)) {

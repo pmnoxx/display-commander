@@ -6,6 +6,7 @@
 #include "windows_hooks/windows_message_hooks.hpp"
 #include "sleep_hooks.hpp"
 #include "timeslowdown_hooks.hpp"
+#include "process_exit_hooks.hpp"
 #include "globals.hpp"
 #include "../utils.hpp"
 #include <MinHook.h>
@@ -212,6 +213,12 @@ bool InstallApiHooks() {
         return false;
     }
 
+    // Install process exit hooks
+    if (!InstallProcessExitHooks()) {
+        LogError("Failed to install process exit hooks");
+        return false;
+    }
+
     g_api_hooks_installed.store(true);
     LogInfo("API hooks installed successfully");
 
@@ -248,6 +255,9 @@ void UninstallApiHooks() {
 
     // Uninstall timeslowdown hooks
     UninstallTimeslowdownHooks();
+
+    // Uninstall process exit hooks
+    UninstallProcessExitHooks();
 
     // Disable all hooks
     MH_DisableHook(MH_ALL_HOOKS);

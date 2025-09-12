@@ -3,7 +3,7 @@
 ## Core Detection Mechanisms
 
 - [ ] DLL_PROCESS_DETACH handler in DllMain
-- [ ] DLL_THREAD_DETACH handler in DllMain
+- [x] DLL_THREAD_DETACH handler in DllMain // it gets called even if app doesn't close (don't use)
 - [ ] std::atexit() handler for normal program termination
 - [ ] SetUnhandledExceptionFilter() for crash detection
 - [ ] SetConsoleCtrlHandler() for console app termination (Ctrl+C, Ctrl+Break)

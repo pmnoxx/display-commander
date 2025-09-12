@@ -1,5 +1,6 @@
 #include "process_exit_hooks.hpp"
 #include "display_restore.hpp"
+#include "exit_handler.hpp"
 #include "globals.hpp"
 #include <windows.h>
 #include <cstdlib>
@@ -12,6 +13,9 @@ std::atomic<bool> g_installed{false};
 LPTOP_LEVEL_EXCEPTION_FILTER g_prev_filter = nullptr;
 
 void AtExitHandler() {
+  // Log exit detection
+  exit_handler::OnHandleExit(exit_handler::ExitSource::ATEXIT, "Normal process exit via atexit");
+
   // Best-effort restore on normal process exit
   display_restore::RestoreAllIfEnabled();
 }
@@ -22,6 +26,9 @@ LONG WINAPI UnhandledExceptionHandler(EXCEPTION_POINTERS* exception_info) {
     // During shutdown, just return without doing anything to avoid crashes
     return EXCEPTION_CONTINUE_EXECUTION;
   }
+
+  // Log exit detection
+  exit_handler::OnHandleExit(exit_handler::ExitSource::UNHANDLED_EXCEPTION, "Unhandled exception detected");
 
   // Best-effort restore on crash paths
   display_restore::RestoreAllIfEnabled();

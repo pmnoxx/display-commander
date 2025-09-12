@@ -6,6 +6,7 @@
 #include "window_proc_hooks.hpp"
 #include "../utils.hpp"
 #include "../globals.hpp"
+#include "../exit_handler.hpp"
 #include <atomic>
 
 namespace renodx::hooks {
@@ -164,6 +165,24 @@ LRESULT CALLBACK WindowProc_Detour(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
                 // Ensure window stays active after resize/move
                 SendFakeActivationMessages(hwnd);
             }
+            break;
+
+        case WM_QUIT:
+            // Handle window quit message
+            LogInfo("WM_QUIT: Window quit message received - HWND: 0x%p", hwnd);
+            exit_handler::OnHandleExit(exit_handler::ExitSource::WINDOW_QUIT, "WM_QUIT message received");
+            break;
+
+        case WM_CLOSE:
+            // Handle window close message
+            LogInfo("WM_CLOSE: Window close message received - HWND: 0x%p", hwnd);
+            exit_handler::OnHandleExit(exit_handler::ExitSource::WINDOW_CLOSE, "WM_CLOSE message received");
+            break;
+
+        case WM_DESTROY:
+            // Handle window destroy message
+            LogInfo("WM_DESTROY: Window destroy message received - HWND: 0x%p", hwnd);
+            exit_handler::OnHandleExit(exit_handler::ExitSource::WINDOW_DESTROY, "WM_DESTROY message received");
             break;
 
         default:

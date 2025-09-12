@@ -28,6 +28,9 @@ class LatencyManager;
 // DLL initialization state
 extern std::atomic<bool> g_dll_initialization_complete;
 
+// Module handle for pinning/unpinning
+extern HMODULE g_hmodule;
+
 // Shared DXGI factory to avoid redundant CreateDXGIFactory calls
 extern std::atomic<Microsoft::WRL::ComPtr<IDXGIFactory1>*> g_shared_dxgi_factory;
 

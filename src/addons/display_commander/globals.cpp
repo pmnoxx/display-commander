@@ -14,6 +14,9 @@
 // DLL initialization state - prevents DXGI calls during DllMain
 std::atomic<bool> g_dll_initialization_complete{false};
 
+// Module handle for pinning/unpinning
+HMODULE g_hmodule = nullptr;
+
 // Shared DXGI factory to avoid redundant CreateDXGIFactory calls
 std::atomic<Microsoft::WRL::ComPtr<IDXGIFactory1>*> g_shared_dxgi_factory{nullptr};
 

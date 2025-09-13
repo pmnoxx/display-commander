@@ -105,14 +105,44 @@ void XInputWidget::DrawSettings() {
             ImGui::SetTooltip("Swap the A and B button mappings");
         }
 
-        // Deadzone setting
-        float deadzone = g_shared_state->deadzone.load();
-        if (ImGui::SliderFloat("Deadzone", &deadzone, 0.0f, 1.0f, "%.3f")) {
-            g_shared_state->deadzone.store(deadzone);
+        // Left stick sensitivity setting
+        float left_sensitivity = g_shared_state->left_stick_sensitivity.load();
+        if (ImGui::SliderFloat("Left Stick Sensitivity", &left_sensitivity, 0.1f, 3.0f, "%.2f")) {
+            g_shared_state->left_stick_sensitivity.store(left_sensitivity);
             SaveSettings();
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Deadzone for analog sticks (0.0 = no deadzone, 1.0 = full deadzone)");
+            ImGui::SetTooltip("Sensitivity multiplier for left analog stick (1.0 = normal, >1.0 = more sensitive, <1.0 = less sensitive)");
+        }
+
+        // Right stick sensitivity setting
+        float right_sensitivity = g_shared_state->right_stick_sensitivity.load();
+        if (ImGui::SliderFloat("Right Stick Sensitivity", &right_sensitivity, 0.1f, 3.0f, "%.2f")) {
+            g_shared_state->right_stick_sensitivity.store(right_sensitivity);
+            SaveSettings();
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Sensitivity multiplier for right analog stick (1.0 = normal, >1.0 = more sensitive, <1.0 = less sensitive)");
+        }
+
+        // Left stick deadzone setting
+        float left_deadzone = g_shared_state->left_stick_deadzone.load();
+        if (ImGui::SliderFloat("Left Stick Deadzone", &left_deadzone, -100.0f, 100.0f, "%.0f%%")) {
+            g_shared_state->left_stick_deadzone.store(left_deadzone);
+            SaveSettings();
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Deadzone for left stick (0%% = no effect, +30%% = deadzone, -30%% = anti-deadzone)");
+        }
+
+        // Right stick deadzone setting
+        float right_deadzone = g_shared_state->right_stick_deadzone.load();
+        if (ImGui::SliderFloat("Right Stick Deadzone", &right_deadzone, -100.0f, 100.0f, "%.0f%%")) {
+            g_shared_state->right_stick_deadzone.store(right_deadzone);
+            SaveSettings();
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Deadzone for right stick (0%% = no effect, +30%% = deadzone, -30%% = anti-deadzone)");
         }
     }
 }
@@ -333,15 +363,26 @@ void XInputWidget::DrawButtonStates(const XINPUT_GAMEPAD& gamepad) {
 
 void XInputWidget::DrawStickStates(const XINPUT_GAMEPAD& gamepad) {
     if (ImGui::CollapsingHeader("Analog Sticks", ImGuiTreeNodeFlags_DefaultOpen)) {
-        float deadzone = g_shared_state->deadzone.load();
+        float left_sensitivity = g_shared_state->left_stick_sensitivity.load();
+        float right_sensitivity = g_shared_state->right_stick_sensitivity.load();
+        float left_deadzone = g_shared_state->left_stick_deadzone.load() / 100.0f; // Convert percentage to decimal
+        float right_deadzone = g_shared_state->right_stick_deadzone.load() / 100.0f; // Convert percentage to decimal
 
         // Left stick
         ImGui::Text("Left Stick:");
-        float lx = ApplyDeadzone(static_cast<float>(gamepad.sThumbLX) / 32767.0f, deadzone);
-        float ly = ApplyDeadzone(static_cast<float>(gamepad.sThumbLY) / 32767.0f, deadzone);
+        float lx = static_cast<float>(gamepad.sThumbLX) / 32767.0f;
+        float ly = static_cast<float>(gamepad.sThumbLY) / 32767.0f;
 
-        ImGui::Text("X: %.3f (Raw: %d)", lx, gamepad.sThumbLX);
-        ImGui::Text("Y: %.3f (Raw: %d)", ly, gamepad.sThumbLY);
+        // Apply deadzone processing
+        float lx_processed = ApplyDeadzone(lx, left_deadzone);
+        float ly_processed = ApplyDeadzone(ly, left_deadzone);
+
+        // Apply sensitivity multiplier
+        float lx_sensitive = lx_processed * left_sensitivity;
+        float ly_sensitive = ly_processed * left_sensitivity;
+
+        ImGui::Text("X: %.3f (Processed: %.3f, Sensitive: %.3f, Raw: %d)", lx, lx_processed, lx_sensitive, gamepad.sThumbLX);
+        ImGui::Text("Y: %.3f (Processed: %.3f, Sensitive: %.3f, Raw: %d)", ly, ly_processed, ly_sensitive, gamepad.sThumbLY);
 
         // Visual representation
         ImGui::Text("Position:");
@@ -357,19 +398,27 @@ void XInputWidget::DrawStickStates(const XINPUT_GAMEPAD& gamepad) {
         draw_list->AddLine(ImVec2(canvas_pos.x, center.y), ImVec2(canvas_pos.x + canvas_size.x, center.y), ImColor(100, 100, 100, 255), 1.0f);
         draw_list->AddLine(ImVec2(center.x, canvas_pos.y), ImVec2(center.x, canvas_pos.y + canvas_size.y), ImColor(100, 100, 100, 255), 1.0f);
 
-        // Draw stick position
-        ImVec2 stick_pos = ImVec2(center.x + lx * canvas_size.x * 0.4f, center.y - ly * canvas_size.y * 0.4f);
+        // Draw stick position (using sensitive values for visual representation)
+        ImVec2 stick_pos = ImVec2(center.x + lx_sensitive * canvas_size.x * 0.4f, center.y - ly_sensitive * canvas_size.y * 0.4f);
         draw_list->AddCircleFilled(stick_pos, 5.0f, ImColor(0, 255, 0, 255));
 
         ImGui::Dummy(canvas_size);
 
         // Right stick
         ImGui::Text("Right Stick:");
-        float rx = ApplyDeadzone(static_cast<float>(gamepad.sThumbRX) / 32767.0f, deadzone);
-        float ry = ApplyDeadzone(static_cast<float>(gamepad.sThumbRY) / 32767.0f, deadzone);
+        float rx = static_cast<float>(gamepad.sThumbRX) / 32767.0f;
+        float ry = static_cast<float>(gamepad.sThumbRY) / 32767.0f;
 
-        ImGui::Text("X: %.3f (Raw: %d)", rx, gamepad.sThumbRX);
-        ImGui::Text("Y: %.3f (Raw: %d)", ry, gamepad.sThumbRY);
+        // Apply deadzone processing
+        float rx_processed = ApplyDeadzone(rx, right_deadzone);
+        float ry_processed = ApplyDeadzone(ry, right_deadzone);
+
+        // Apply sensitivity multiplier
+        float rx_sensitive = rx_processed * right_sensitivity;
+        float ry_sensitive = ry_processed * right_sensitivity;
+
+        ImGui::Text("X: %.3f (Processed: %.3f, Sensitive: %.3f, Raw: %d)", rx, rx_processed, rx_sensitive, gamepad.sThumbRX);
+        ImGui::Text("Y: %.3f (Processed: %.3f, Sensitive: %.3f, Raw: %d)", ry, ry_processed, ry_sensitive, gamepad.sThumbRY);
 
         // Visual representation for right stick
         ImGui::Text("Position:");
@@ -384,8 +433,8 @@ void XInputWidget::DrawStickStates(const XINPUT_GAMEPAD& gamepad) {
         draw_list->AddLine(ImVec2(canvas_pos.x, center.y), ImVec2(canvas_pos.x + canvas_size.x, center.y), ImColor(100, 100, 100, 255), 1.0f);
         draw_list->AddLine(ImVec2(center.x, canvas_pos.y), ImVec2(center.x, canvas_pos.y + canvas_size.y), ImColor(100, 100, 100, 255), 1.0f);
 
-        // Draw stick position
-        stick_pos = ImVec2(center.x + rx * canvas_size.x * 0.4f, center.y - ry * canvas_size.y * 0.4f);
+        // Draw stick position (using sensitive values for visual representation)
+        stick_pos = ImVec2(center.x + rx_sensitive * canvas_size.x * 0.4f, center.y - ry_sensitive * canvas_size.y * 0.4f);
         draw_list->AddCircleFilled(stick_pos, 5.0f, ImColor(0, 255, 0, 255));
 
         ImGui::Dummy(canvas_size);
@@ -444,15 +493,34 @@ std::string XInputWidget::GetControllerStatus(int controller_index) const {
     return connected ? "Connected" : "Disconnected";
 }
 
+
 float XInputWidget::ApplyDeadzone(float value, float deadzone) const {
-    if (std::abs(value) < deadzone) {
-        return 0.0f;
+    if (deadzone == 0.0f) {
+        return value; // No deadzone applied
     }
 
-    // Scale the value to remove the deadzone
+    float abs_value = std::abs(value);
     float sign = (value >= 0.0f) ? 1.0f : -1.0f;
-    float scaled = (std::abs(value) - deadzone) / (1.0f - deadzone);
-    return sign * (scaled < 1.0f ? scaled : 1.0f);
+
+    if (deadzone > 0.0f) {
+        // Positive deadzone: traditional deadzone behavior
+        if (abs_value < deadzone) {
+            return 0.0f;
+        }
+        // Scale the value to remove the deadzone
+        float scaled = (abs_value - deadzone) / (1.0f - deadzone);
+        return sign * scaled;
+    } else {
+        // Negative deadzone: anti-deadzone behavior
+        float anti_deadzone = -deadzone; // Convert to positive value
+        if (abs_value >= anti_deadzone) {
+            float mapped = (abs_value - anti_deadzone) / (1.0f - anti_deadzone);
+            return sign * mapped;
+        } else {
+            // Values below anti_deadzone are scaled down proportionally
+            return sign * (abs_value / anti_deadzone) * anti_deadzone;
+        }
+    }
 }
 
 bool XInputWidget::IsButtonPressed(WORD buttons, WORD button) const {
@@ -466,19 +534,48 @@ void XInputWidget::LoadSettings() {
         g_shared_state->swap_a_b_buttons.store(swap_buttons);
     }
 
-    // Load deadzone setting
-    float deadzone;
-    if (reshade::get_config_value(nullptr, "DisplayCommander.XInputWidget", "Deadzone", deadzone)) {
-        g_shared_state->deadzone.store(deadzone);
+    // Load left stick sensitivity setting
+    float left_sensitivity;
+    if (reshade::get_config_value(nullptr, "DisplayCommander.XInputWidget", "LeftStickSensitivity", left_sensitivity)) {
+        g_shared_state->left_stick_sensitivity.store(left_sensitivity);
     }
+
+    // Load right stick sensitivity setting
+    float right_sensitivity;
+    if (reshade::get_config_value(nullptr, "DisplayCommander.XInputWidget", "RightStickSensitivity", right_sensitivity)) {
+        g_shared_state->right_stick_sensitivity.store(right_sensitivity);
+    }
+
+    // Load left stick deadzone setting
+    float left_deadzone;
+    if (reshade::get_config_value(nullptr, "DisplayCommander.XInputWidget", "LeftStickDeadzone", left_deadzone)) {
+        g_shared_state->left_stick_deadzone.store(left_deadzone);
+    }
+
+    // Load right stick deadzone setting
+    float right_deadzone;
+    if (reshade::get_config_value(nullptr, "DisplayCommander.XInputWidget", "RightStickDeadzone", right_deadzone)) {
+        g_shared_state->right_stick_deadzone.store(right_deadzone);
+    }
+
 }
 
 void XInputWidget::SaveSettings() {
     // Save swap A/B buttons setting
     reshade::set_config_value(nullptr, "DisplayCommander.XInputWidget", "SwapABButtons", g_shared_state->swap_a_b_buttons.load());
 
-    // Save deadzone setting
-    reshade::set_config_value(nullptr, "DisplayCommander.XInputWidget", "Deadzone", g_shared_state->deadzone.load());
+    // Save left stick sensitivity setting
+    reshade::set_config_value(nullptr, "DisplayCommander.XInputWidget", "LeftStickSensitivity", g_shared_state->left_stick_sensitivity.load());
+
+    // Save right stick sensitivity setting
+    reshade::set_config_value(nullptr, "DisplayCommander.XInputWidget", "RightStickSensitivity", g_shared_state->right_stick_sensitivity.load());
+
+    // Save left stick deadzone setting
+    reshade::set_config_value(nullptr, "DisplayCommander.XInputWidget", "LeftStickDeadzone", g_shared_state->left_stick_deadzone.load());
+
+    // Save right stick deadzone setting
+    reshade::set_config_value(nullptr, "DisplayCommander.XInputWidget", "RightStickDeadzone", g_shared_state->right_stick_deadzone.load());
+
 }
 
 std::shared_ptr<XInputSharedState> XInputWidget::GetSharedState() {

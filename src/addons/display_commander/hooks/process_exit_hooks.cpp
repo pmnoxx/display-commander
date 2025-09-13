@@ -1,5 +1,4 @@
 #include "../exit_handler.hpp"
-#include "../display_restore.hpp"
 #include "../utils.hpp"
 #include <MinHook.h>
 
@@ -22,9 +21,6 @@ void WINAPI ExitProcess_Detour(UINT uExitCode) {
     exit_handler::OnHandleExit(exit_handler::ExitSource::PROCESS_EXIT_HOOK,
                               "ExitProcess called with exit code: " + std::to_string(uExitCode));
 
-    // Best-effort restore on process exit
-    display_restore::RestoreAllIfEnabled();
-
     // Call original function
     if (ExitProcess_Original) {
         ExitProcess_Original(uExitCode);
@@ -38,9 +34,6 @@ BOOL WINAPI TerminateProcess_Detour(HANDLE hProcess, UINT uExitCode) {
     // Log exit detection
     exit_handler::OnHandleExit(exit_handler::ExitSource::PROCESS_TERMINATE_HOOK,
                               "TerminateProcess called with exit code: " + std::to_string(uExitCode));
-
-    // Best-effort restore on process termination
-    display_restore::RestoreAllIfEnabled();
 
     // Call original function
     if (TerminateProcess_Original) {

@@ -4,8 +4,6 @@
 #include "../settings/experimental_tab_settings.hpp"
 #include <MinHook.h>
 #include <atomic>
-#include <unordered_map>
-#include <mutex>
 #include <windows.h>
 
 // NTSTATUS constants
@@ -58,24 +56,50 @@ static std::atomic<bool> g_timeslowdown_hooks_installed{false};
 
 // Timeslowdown configuration - now using global instance
 
-// Individual hook type configurations
-static std::unordered_map<std::string, TimerHookType> g_hook_types;
-static std::mutex g_hook_types_mutex;
+// Individual hook type configurations - using atomic variables for DLL safety
+static std::atomic<TimerHookType> g_query_performance_counter_hook_type{TimerHookType::None};
+static std::atomic<TimerHookType> g_get_tick_count_hook_type{TimerHookType::None};
+static std::atomic<TimerHookType> g_get_tick_count64_hook_type{TimerHookType::None};
+static std::atomic<TimerHookType> g_time_get_time_hook_type{TimerHookType::None};
+static std::atomic<TimerHookType> g_get_system_time_hook_type{TimerHookType::None};
+static std::atomic<TimerHookType> g_get_system_time_as_file_time_hook_type{TimerHookType::None};
+static std::atomic<TimerHookType> g_get_system_time_precise_as_file_time_hook_type{TimerHookType::None};
+static std::atomic<TimerHookType> g_get_local_time_hook_type{TimerHookType::None};
+static std::atomic<TimerHookType> g_nt_query_system_time_hook_type{TimerHookType::None};
 
 // Atomic pointer for thread-safe state access
 static std::atomic<TimeslowdownState*> g_timeslowdown_state{new TimeslowdownState()};
 
 const bool min_enabled = false;
 
-// Helper function to check if a hook should be applied
-bool ShouldApplyHook(const char* hook_name) {
-    std::lock_guard<std::mutex> lock(g_hook_types_mutex);
-    auto it = g_hook_types.find(hook_name);
-    if (it == g_hook_types.end()) {
-        return false;
+// Helper function to get hook type by name (DLL-safe)
+TimerHookType GetHookTypeByName(const char* hook_name) {
+    if (strcmp(hook_name, HOOK_QUERY_PERFORMANCE_COUNTER) == 0) {
+        return g_query_performance_counter_hook_type.load();
+    } else if (strcmp(hook_name, HOOK_GET_TICK_COUNT) == 0) {
+        return g_get_tick_count_hook_type.load();
+    } else if (strcmp(hook_name, HOOK_GET_TICK_COUNT64) == 0) {
+        return g_get_tick_count64_hook_type.load();
+    } else if (strcmp(hook_name, HOOK_TIME_GET_TIME) == 0) {
+        return g_time_get_time_hook_type.load();
+    } else if (strcmp(hook_name, HOOK_GET_SYSTEM_TIME) == 0) {
+        return g_get_system_time_hook_type.load();
+    } else if (strcmp(hook_name, HOOK_GET_SYSTEM_TIME_AS_FILE_TIME) == 0) {
+        return g_get_system_time_as_file_time_hook_type.load();
+    } else if (strcmp(hook_name, HOOK_GET_SYSTEM_TIME_PRECISE_AS_FILE_TIME) == 0) {
+        return g_get_system_time_precise_as_file_time_hook_type.load();
+    } else if (strcmp(hook_name, HOOK_GET_LOCAL_TIME) == 0) {
+        return g_get_local_time_hook_type.load();
+    } else if (strcmp(hook_name, HOOK_NT_QUERY_SYSTEM_TIME) == 0) {
+        return g_nt_query_system_time_hook_type.load();
     }
+    return TimerHookType::None;
+}
 
-    TimerHookType type = it->second;
+// Helper function to check if a hook should be applied (DLL-safe)
+bool ShouldApplyHook(const char* hook_name) {
+    TimerHookType type = GetHookTypeByName(hook_name);
+
     if (type == TimerHookType::None) {
         return false;
     }
@@ -442,19 +466,8 @@ bool InstallTimeslowdownHooks() {
         LogInfo("MinHook initialized successfully for timeslowdown hooks");
     }
 
-    // Initialize hook types to None by default
-    {
-        std::lock_guard<std::mutex> lock(g_hook_types_mutex);
-        g_hook_types[HOOK_QUERY_PERFORMANCE_COUNTER] = TimerHookType::None;
-        g_hook_types[HOOK_GET_TICK_COUNT] = TimerHookType::None;
-        g_hook_types[HOOK_GET_TICK_COUNT64] = TimerHookType::None;
-        g_hook_types[HOOK_TIME_GET_TIME] = TimerHookType::None;
-        g_hook_types[HOOK_GET_SYSTEM_TIME] = TimerHookType::None;
-        g_hook_types[HOOK_GET_SYSTEM_TIME_AS_FILE_TIME] = TimerHookType::None;
-        g_hook_types[HOOK_GET_SYSTEM_TIME_PRECISE_AS_FILE_TIME] = TimerHookType::None;
-        g_hook_types[HOOK_GET_LOCAL_TIME] = TimerHookType::None;
-        g_hook_types[HOOK_NT_QUERY_SYSTEM_TIME] = TimerHookType::None;
-    }
+    // Initialize hook types to None by default (atomic variables are already initialized)
+    // No mutex needed - atomic variables are thread-safe
 
     // Hook QueryPerformanceCounter
     if (MH_CreateHook(QueryPerformanceCounter, QueryPerformanceCounter_Detour,
@@ -596,11 +609,16 @@ void UninstallTimeslowdownHooks() {
     TimeslowdownState* state = g_timeslowdown_state.exchange(nullptr);
     delete state;
 
-    // Clean up hook types
-    {
-        std::lock_guard<std::mutex> lock(g_hook_types_mutex);
-        g_hook_types.clear();
-    }
+    // Reset hook types to None (atomic variables don't need explicit cleanup)
+    g_query_performance_counter_hook_type.store(TimerHookType::None);
+    g_get_tick_count_hook_type.store(TimerHookType::None);
+    g_get_tick_count64_hook_type.store(TimerHookType::None);
+    g_time_get_time_hook_type.store(TimerHookType::None);
+    g_get_system_time_hook_type.store(TimerHookType::None);
+    g_get_system_time_as_file_time_hook_type.store(TimerHookType::None);
+    g_get_system_time_precise_as_file_time_hook_type.store(TimerHookType::None);
+    g_get_local_time_hook_type.store(TimerHookType::None);
+    g_nt_query_system_time_hook_type.store(TimerHookType::None);
 
     g_timeslowdown_hooks_installed.store(false);
     LogInfo("Timeslowdown hooks uninstalled successfully");
@@ -633,10 +651,28 @@ void SetTimeslowdownEnabled(bool enabled) {
     LogInfo("Timeslowdown %s", enabled ? "enabled" : "disabled");
 }
 
-// Individual hook type configuration
+// Individual hook type configuration (DLL-safe)
 void SetTimerHookType(const char* hook_name, TimerHookType type) {
-    std::lock_guard<std::mutex> lock(g_hook_types_mutex);
-    g_hook_types[hook_name] = type;
+    if (strcmp(hook_name, HOOK_QUERY_PERFORMANCE_COUNTER) == 0) {
+        g_query_performance_counter_hook_type.store(type);
+    } else if (strcmp(hook_name, HOOK_GET_TICK_COUNT) == 0) {
+        g_get_tick_count_hook_type.store(type);
+    } else if (strcmp(hook_name, HOOK_GET_TICK_COUNT64) == 0) {
+        g_get_tick_count64_hook_type.store(type);
+    } else if (strcmp(hook_name, HOOK_TIME_GET_TIME) == 0) {
+        g_time_get_time_hook_type.store(type);
+    } else if (strcmp(hook_name, HOOK_GET_SYSTEM_TIME) == 0) {
+        g_get_system_time_hook_type.store(type);
+    } else if (strcmp(hook_name, HOOK_GET_SYSTEM_TIME_AS_FILE_TIME) == 0) {
+        g_get_system_time_as_file_time_hook_type.store(type);
+    } else if (strcmp(hook_name, HOOK_GET_SYSTEM_TIME_PRECISE_AS_FILE_TIME) == 0) {
+        g_get_system_time_precise_as_file_time_hook_type.store(type);
+    } else if (strcmp(hook_name, HOOK_GET_LOCAL_TIME) == 0) {
+        g_get_local_time_hook_type.store(type);
+    } else if (strcmp(hook_name, HOOK_NT_QUERY_SYSTEM_TIME) == 0) {
+        g_nt_query_system_time_hook_type.store(type);
+    }
+
     LogInfo("Timer hook %s set to %s", hook_name,
         type == TimerHookType::None ? "None" :
         type == TimerHookType::Enabled ? "Enabled" :
@@ -644,12 +680,7 @@ void SetTimerHookType(const char* hook_name, TimerHookType type) {
 }
 
 TimerHookType GetTimerHookType(const char* hook_name) {
-    std::lock_guard<std::mutex> lock(g_hook_types_mutex);
-    auto it = g_hook_types.find(hook_name);
-    if (it == g_hook_types.end()) {
-        return TimerHookType::None;
-    }
-    return it->second;
+    return GetHookTypeByName(hook_name);
 }
 
 bool IsTimerHookEnabled(const char* hook_name) {

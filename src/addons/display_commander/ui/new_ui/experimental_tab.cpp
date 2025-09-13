@@ -23,7 +23,30 @@ static bool g_move_mouse = true; // Whether to move mouse before clicking
 void InitExperimentalTab() {
     LogInfo("InitExperimentalTab() - Starting to load experimental tab settings");
     settings::g_experimentalTabSettings.LoadAll();
-    LogInfo("InitExperimentalTab() - Experimental tab settings loaded");
+
+    // Apply the loaded settings to the actual hook system
+    // This ensures the hook system matches the UI settings
+    LogInfo("InitExperimentalTab() - Applying loaded timer hook settings to hook system");
+    renodx::hooks::SetTimerHookType(renodx::hooks::HOOK_QUERY_PERFORMANCE_COUNTER,
+        static_cast<renodx::hooks::TimerHookType>(settings::g_experimentalTabSettings.query_performance_counter_hook.GetValue()));
+    renodx::hooks::SetTimerHookType(renodx::hooks::HOOK_GET_TICK_COUNT,
+        static_cast<renodx::hooks::TimerHookType>(settings::g_experimentalTabSettings.get_tick_count_hook.GetValue()));
+    renodx::hooks::SetTimerHookType(renodx::hooks::HOOK_GET_TICK_COUNT64,
+        static_cast<renodx::hooks::TimerHookType>(settings::g_experimentalTabSettings.get_tick_count64_hook.GetValue()));
+    renodx::hooks::SetTimerHookType(renodx::hooks::HOOK_TIME_GET_TIME,
+        static_cast<renodx::hooks::TimerHookType>(settings::g_experimentalTabSettings.time_get_time_hook.GetValue()));
+    renodx::hooks::SetTimerHookType(renodx::hooks::HOOK_GET_SYSTEM_TIME,
+        static_cast<renodx::hooks::TimerHookType>(settings::g_experimentalTabSettings.get_system_time_hook.GetValue()));
+    renodx::hooks::SetTimerHookType(renodx::hooks::HOOK_GET_SYSTEM_TIME_AS_FILE_TIME,
+        static_cast<renodx::hooks::TimerHookType>(settings::g_experimentalTabSettings.get_system_time_as_file_time_hook.GetValue()));
+    renodx::hooks::SetTimerHookType(renodx::hooks::HOOK_GET_SYSTEM_TIME_PRECISE_AS_FILE_TIME,
+        static_cast<renodx::hooks::TimerHookType>(settings::g_experimentalTabSettings.get_system_time_precise_as_file_time_hook.GetValue()));
+    renodx::hooks::SetTimerHookType(renodx::hooks::HOOK_GET_LOCAL_TIME,
+        static_cast<renodx::hooks::TimerHookType>(settings::g_experimentalTabSettings.get_local_time_hook.GetValue()));
+    renodx::hooks::SetTimerHookType(renodx::hooks::HOOK_NT_QUERY_SYSTEM_TIME,
+        static_cast<renodx::hooks::TimerHookType>(settings::g_experimentalTabSettings.nt_query_system_time_hook.GetValue()));
+
+    LogInfo("InitExperimentalTab() - Experimental tab settings loaded and applied to hook system");
 }
 
 

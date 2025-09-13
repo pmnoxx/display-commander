@@ -1,4 +1,5 @@
 #include "exit_handler.hpp"
+#include "display_restore.hpp"
 #include <atomic>
 #include <fstream>
 #include <sstream>
@@ -63,6 +64,8 @@ void OnHandleExit(ExitSource source, const std::string& message) {
         return;
     }
 
+    // Best-effort display restoration on any exit
+    display_restore::RestoreAllIfEnabled();
 }
 
 const char* GetExitSourceString(ExitSource source) {

@@ -527,9 +527,9 @@ void OnPresentUpdateBefore(
 
   // Record per-frame FPS sample for background aggregation (lock-free ring)
   {
-    static auto start_tp = std::chrono::steady_clock::now();
-    auto now_tp = std::chrono::steady_clock::now();
-    const double elapsed = std::chrono::duration<double>(now_tp - start_tp).count();
+    static LONGLONG start_time_ns = utils::get_now_ns();
+    LONGLONG now_ns = utils::get_now_ns();
+    const double elapsed = static_cast<double>(now_ns - start_time_ns) / static_cast<double>(utils::SEC_TO_NS);
     g_perf_time_seconds.store(elapsed, std::memory_order_release);
     static double last_tp = 0.0;
     const double dt = elapsed - last_tp;

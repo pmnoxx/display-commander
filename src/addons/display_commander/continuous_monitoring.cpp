@@ -21,15 +21,15 @@ void ContinuousMonitoringThread() {
     LogInfo("Continuous monitoring thread started");
 
     static int seconds_counter = 0;
-    auto last_cache_refresh = std::chrono::steady_clock::now();
+    LONGLONG last_cache_refresh_ns = utils::get_now_ns();
     auto start_time = utils::get_now_ns();
     while (g_monitoring_thread_running.load()) {
         // Periodic display cache refresh off the UI thread
         {
-            auto now = std::chrono::steady_clock::now();
-            if (now - last_cache_refresh >= std::chrono::seconds(2)) {
+            LONGLONG now_ns = utils::get_now_ns();
+            if (now_ns - last_cache_refresh_ns >= 2 * utils::SEC_TO_NS) {
                 display_cache::g_displayCache.Refresh();
-                last_cache_refresh = now;
+                last_cache_refresh_ns = now_ns;
                 auto labels = ui::GetMonitorLabelsFromCache();
                 auto next = std::make_shared<const std::vector<std::string>>(std::move(labels));
                 ::g_monitor_labels.store(next, std::memory_order_release);

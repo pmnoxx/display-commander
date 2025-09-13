@@ -3,6 +3,7 @@
 #include "../../resolution_helpers.hpp"
 #include "../../globals.hpp"
 #include "../../display_restore.hpp"
+#include "../../utils/timing.hpp"
 #include <deps/imgui/imgui.h>
 #include <include/reshade.hpp>
 #include <algorithm>
@@ -10,7 +11,6 @@
 #include <cmath>
 #include <sstream>
 #include <iomanip>
-#include <chrono>
 
 namespace display_commander::widgets::resolution_widget {
 
@@ -411,7 +411,7 @@ void ResolutionWidget::DrawActionButtons() {
             if (TryApplyResolution(actual_display, pending_resolution_, pending_refresh_)) {
                 // Start confirmation timer
                 show_confirmation_ = true;
-                confirmation_start_time_ = std::chrono::steady_clock::now();
+                confirmation_start_time_ns_ = utils::get_now_ns();
                 confirmation_timer_seconds_ = 30;
             }
         }
@@ -630,10 +630,11 @@ bool ResolutionWidget::TryApplyResolution(int display_index, const ResolutionDat
 }
 
 void ResolutionWidget::DrawConfirmationDialog() {
-    // Calculate remaining time
-    auto now = std::chrono::steady_clock::now();
-    auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - confirmation_start_time_);
-    int remaining_seconds = confirmation_timer_seconds_ - static_cast<int>(elapsed.count());
+    // Calculate remaining time using high-precision timing
+    LONGLONG now_ns = utils::get_now_ns();
+    LONGLONG elapsed_ns = now_ns - confirmation_start_time_ns_;
+    LONGLONG elapsed_seconds = elapsed_ns / utils::SEC_TO_NS;
+    int remaining_seconds = confirmation_timer_seconds_ - static_cast<int>(elapsed_seconds);
 
     if (remaining_seconds <= 0) {
         // Timer expired, revert resolution

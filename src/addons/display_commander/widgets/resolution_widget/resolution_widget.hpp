@@ -5,7 +5,9 @@
 #include <memory>
 #include <vector>
 #include <string>
-#include <chrono>
+
+// Forward declaration for Windows types
+typedef long long LONGLONG;
 
 namespace display_commander::widgets::resolution_widget {
 
@@ -67,7 +69,7 @@ private:
 
     // Confirmation dialog state
     bool show_confirmation_ = false;
-    std::chrono::steady_clock::time_point confirmation_start_time_;
+    LONGLONG confirmation_start_time_ns_ = 0;
     int confirmation_timer_seconds_ = 30;
     ResolutionData pending_resolution_;
     ResolutionData pending_refresh_;

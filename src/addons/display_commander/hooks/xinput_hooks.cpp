@@ -38,72 +38,29 @@ void ApplyThumbstickProcessing(XINPUT_STATE* pState, float left_sensitivity, flo
                               float left_deadzone, float right_deadzone) {
     if (!pState) return;
 
-    // Process left stick
+    // Process left stick using unified function
     float lx = static_cast<float>(pState->Gamepad.sThumbLX) / 32767.0f;
     float ly = static_cast<float>(pState->Gamepad.sThumbLY) / 32767.0f;
 
-    // Apply deadzone processing
-    lx = ApplyDeadzone(lx, left_deadzone);
-    ly = ApplyDeadzone(ly, left_deadzone);
+    lx = ProcessStickInput(lx, left_deadzone, left_sensitivity);
+    ly = ProcessStickInput(ly, left_deadzone, left_sensitivity);
 
-    // Apply sensitivity
-    lx *= left_sensitivity;
-    ly *= left_sensitivity;
-
-    // Clamp to valid range and convert back to SHORT
-    lx = (std::max)(-1.0f, (std::min)(1.0f, lx));
-    ly = (std::max)(-1.0f, (std::min)(1.0f, ly));
+    // Convert back to SHORT
     pState->Gamepad.sThumbLX = static_cast<SHORT>(lx * 32767.0f);
     pState->Gamepad.sThumbLY = static_cast<SHORT>(ly * 32767.0f);
 
-    // Process right stick
+    // Process right stick using unified function
     float rx = static_cast<float>(pState->Gamepad.sThumbRX) / 32767.0f;
     float ry = static_cast<float>(pState->Gamepad.sThumbRY) / 32767.0f;
 
-    // Apply deadzone processing
-    rx = ApplyDeadzone(rx, right_deadzone);
-    ry = ApplyDeadzone(ry, right_deadzone);
+    rx = ProcessStickInput(rx, right_deadzone, right_sensitivity);
+    ry = ProcessStickInput(ry, right_deadzone, right_sensitivity);
 
-    // Apply sensitivity
-    rx *= right_sensitivity;
-    ry *= right_sensitivity;
-
-    // Clamp to valid range and convert back to SHORT
-    rx = (std::max)(-1.0f, (std::min)(1.0f, rx));
-    ry = (std::max)(-1.0f, (std::min)(1.0f, ry));
+    // Convert back to SHORT
     pState->Gamepad.sThumbRX = static_cast<SHORT>(rx * 32767.0f);
     pState->Gamepad.sThumbRY = static_cast<SHORT>(ry * 32767.0f);
 }
 
-// Helper function to apply deadzone processing (supports both deadzone and anti-deadzone)
-float ApplyDeadzone(float value, float deadzone) {
-    if (deadzone == 0.0f) {
-        return value; // No deadzone applied
-    }
-
-    float abs_value = std::abs(value);
-    float sign = (value >= 0.0f) ? 1.0f : -1.0f;
-
-    if (deadzone > 0.0f) {
-        // Positive deadzone: traditional deadzone behavior
-        if (abs_value < deadzone) {
-            return 0.0f;
-        }
-        // Scale the value to remove the deadzone
-        float scaled = (abs_value - deadzone) / (1.0f - deadzone);
-        return sign * scaled;
-    } else {
-        // Negative deadzone: anti-deadzone behavior
-        float anti_deadzone = -deadzone; // Convert to positive value
-        if (abs_value >= anti_deadzone) {
-            float mapped = (abs_value - anti_deadzone) / (1.0f - anti_deadzone);
-            return sign * mapped;
-        } else {
-            // Values below anti_deadzone are scaled down proportionally
-            return sign * (abs_value / anti_deadzone) * anti_deadzone;
-        }
-    }
-}
 
 // Helper function to detect changes in XInput state
 void LogXInputChanges(DWORD dwUserIndex, const XINPUT_STATE* pState) {

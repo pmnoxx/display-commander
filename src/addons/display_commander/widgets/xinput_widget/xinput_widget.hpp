@@ -123,7 +123,6 @@ private:
     // Helper functions
     std::string GetButtonName(WORD button) const;
     std::string GetControllerStatus(int controller_index) const;
-    float ApplyDeadzone(float value, float deadzone) const;
     bool IsButtonPressed(WORD buttons, WORD button) const;
 
     // Settings management

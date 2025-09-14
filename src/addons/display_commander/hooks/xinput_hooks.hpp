@@ -31,6 +31,5 @@ void DiagnoseXInputModules();
 // Helper functions for thumbstick processing
 void ApplyThumbstickProcessing(XINPUT_STATE* pState, float left_sensitivity, float right_sensitivity,
                               float left_deadzone, float right_deadzone);
-float ApplyDeadzone(float value, float deadzone);
 
 } // namespace renodx::hooks

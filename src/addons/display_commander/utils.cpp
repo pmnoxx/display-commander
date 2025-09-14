@@ -1,6 +1,7 @@
 #include "utils.hpp"
 
 #include "globals.hpp"
+#include <algorithm>
 
 
 // Constant definitions
@@ -262,6 +263,42 @@ BOOL CALLBACK MonitorEnumProc(HMONITOR hmon, HDC hdc, LPRECT rect, LPARAM lparam
     }
 
     return TRUE;
+}
+
+// XInput processing functions
+float ApplyDeadzone(float value, float deadzone, float sensitivity) {
+    if (deadzone == 0.0f) {
+        return value; // No deadzone applied
+    }
+
+    float abs_value = std::abs(value);
+    float sign = (value >= 0.0f) ? 1.0f : -1.0f;
+
+    if (deadzone > 0.0f) {
+        // Positive deadzone: traditional deadzone behavior
+        if (abs_value < deadzone) {
+            return 0.0f;
+        }
+        // Scale the value to remove the deadzone
+        float scaled = (abs_value - deadzone) / (1.0f - deadzone);
+        return sign * scaled * sensitivity;
+    } else {
+        // Negative deadzone: anti-deadzone behavior
+        float anti_deadzone = -deadzone; // Convert to positive value
+        // 0 to 1 to (anti_deadzone to 1)
+        float mapped = abs_value / (1.0f - anti_deadzone) * sensitivity + anti_deadzone;
+        return sign * mapped;
+    }
+}
+
+float ProcessStickInput(float value, float deadzone, float sensitivity) {
+    // Step 1: Apply deadzone processing
+    float processed_value = ApplyDeadzone(value, deadzone, sensitivity);
+
+    // Step 3: Clamp to valid range [-1.0, 1.0]
+    float clamped_value = std::clamp(processed_value, -1.0f, 1.0f);
+
+    return clamped_value;
 }
 
 

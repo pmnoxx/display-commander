@@ -382,16 +382,12 @@ void XInputWidget::DrawStickStates(const XINPUT_GAMEPAD& gamepad) {
         float lx = static_cast<float>(gamepad.sThumbLX) / 32767.0f;
         float ly = static_cast<float>(gamepad.sThumbLY) / 32767.0f;
 
-        // Apply deadzone processing
-        float lx_processed = ApplyDeadzone(lx, left_deadzone);
-        float ly_processed = ApplyDeadzone(ly, left_deadzone);
+        // Apply final processing (deadzone + sensitivity + clamp)
+        float lx_final = ProcessStickInput(lx, left_deadzone, left_sensitivity);
+        float ly_final = ProcessStickInput(ly, left_deadzone, left_sensitivity);
 
-        // Apply sensitivity multiplier
-        float lx_sensitive = lx_processed * left_sensitivity;
-        float ly_sensitive = ly_processed * left_sensitivity;
-
-        ImGui::Text("X: %.3f (Processed: %.3f, Sensitive: %.3f, Raw: %d)", lx, lx_processed, lx_sensitive, gamepad.sThumbLX);
-        ImGui::Text("Y: %.3f (Processed: %.3f, Sensitive: %.3f, Raw: %d)", ly, ly_processed, ly_sensitive, gamepad.sThumbLY);
+        ImGui::Text("X: %.3f (Final: %.3f, Raw: %d)", lx, lx_final, gamepad.sThumbLX);
+        ImGui::Text("Y: %.3f (Final: %.3f, Raw: %d)", ly, ly_final, gamepad.sThumbLY);
 
         // Visual representation
         ImGui::Text("Position:");
@@ -407,8 +403,8 @@ void XInputWidget::DrawStickStates(const XINPUT_GAMEPAD& gamepad) {
         draw_list->AddLine(ImVec2(canvas_pos.x, center.y), ImVec2(canvas_pos.x + canvas_size.x, center.y), ImColor(100, 100, 100, 255), 1.0f);
         draw_list->AddLine(ImVec2(center.x, canvas_pos.y), ImVec2(center.x, canvas_pos.y + canvas_size.y), ImColor(100, 100, 100, 255), 1.0f);
 
-        // Draw stick position (using sensitive values for visual representation)
-        ImVec2 stick_pos = ImVec2(center.x + lx_sensitive * canvas_size.x * 0.4f, center.y - ly_sensitive * canvas_size.y * 0.4f);
+        // Draw stick position (using final processed values for visual representation)
+        ImVec2 stick_pos = ImVec2(center.x + lx_final * canvas_size.x * 0.4f, center.y - ly_final * canvas_size.y * 0.4f);
         draw_list->AddCircleFilled(stick_pos, 5.0f, ImColor(0, 255, 0, 255));
 
         ImGui::Dummy(canvas_size);
@@ -418,16 +414,12 @@ void XInputWidget::DrawStickStates(const XINPUT_GAMEPAD& gamepad) {
         float rx = static_cast<float>(gamepad.sThumbRX) / 32767.0f;
         float ry = static_cast<float>(gamepad.sThumbRY) / 32767.0f;
 
-        // Apply deadzone processing
-        float rx_processed = ApplyDeadzone(rx, right_deadzone);
-        float ry_processed = ApplyDeadzone(ry, right_deadzone);
+        // Apply final processing (deadzone + sensitivity + clamp)
+        float rx_final = ProcessStickInput(rx, right_deadzone, right_sensitivity);
+        float ry_final = ProcessStickInput(ry, right_deadzone, right_sensitivity);
 
-        // Apply sensitivity multiplier
-        float rx_sensitive = rx_processed * right_sensitivity;
-        float ry_sensitive = ry_processed * right_sensitivity;
-
-        ImGui::Text("X: %.3f (Processed: %.3f, Sensitive: %.3f, Raw: %d)", rx, rx_processed, rx_sensitive, gamepad.sThumbRX);
-        ImGui::Text("Y: %.3f (Processed: %.3f, Sensitive: %.3f, Raw: %d)", ry, ry_processed, ry_sensitive, gamepad.sThumbRY);
+        ImGui::Text("X: %.3f (Final: %.3f, Raw: %d)", rx, rx_final, gamepad.sThumbRX);
+        ImGui::Text("Y: %.3f (Final: %.3f, Raw: %d)", ry, ry_final, gamepad.sThumbRY);
 
         // Visual representation for right stick
         ImGui::Text("Position:");
@@ -442,8 +434,8 @@ void XInputWidget::DrawStickStates(const XINPUT_GAMEPAD& gamepad) {
         draw_list->AddLine(ImVec2(canvas_pos.x, center.y), ImVec2(canvas_pos.x + canvas_size.x, center.y), ImColor(100, 100, 100, 255), 1.0f);
         draw_list->AddLine(ImVec2(center.x, canvas_pos.y), ImVec2(center.x, canvas_pos.y + canvas_size.y), ImColor(100, 100, 100, 255), 1.0f);
 
-        // Draw stick position (using sensitive values for visual representation)
-        stick_pos = ImVec2(center.x + rx_sensitive * canvas_size.x * 0.4f, center.y - ry_sensitive * canvas_size.y * 0.4f);
+        // Draw stick position (using final processed values for visual representation)
+        stick_pos = ImVec2(center.x + rx_final * canvas_size.x * 0.4f, center.y - ry_final * canvas_size.y * 0.4f);
         draw_list->AddCircleFilled(stick_pos, 5.0f, ImColor(0, 255, 0, 255));
 
         ImGui::Dummy(canvas_size);
@@ -520,9 +512,10 @@ void XInputWidget::DrawBatteryStatus(int controller_index) {
 
         ImGui::TextColored(type_color, "Type: %s", battery_type_str.c_str());
 
-        // Battery level (show for all device types)
+        // Battery level (only show for devices with actual batteries)
         if (battery.BatteryType != BATTERY_TYPE_DISCONNECTED &&
-            battery.BatteryType != BATTERY_TYPE_UNKNOWN) {
+            battery.BatteryType != BATTERY_TYPE_UNKNOWN &&
+            battery.BatteryType != BATTERY_TYPE_WIRED) {
 
             std::string level_str;
             ImVec4 level_color(1.0f, 1.0f, 1.0f, 1.0f);
@@ -556,17 +549,15 @@ void XInputWidget::DrawBatteryStatus(int controller_index) {
                     break;
             }
 
-            // For wired devices, add a note about the level meaning
-            if (battery.BatteryType == BATTERY_TYPE_WIRED) {
-                ImGui::TextColored(level_color, "Level: %s (Wired - No Battery)", level_str.c_str());
-            } else {
-                ImGui::TextColored(level_color, "Level: %s", level_str.c_str());
-            }
+            ImGui::TextColored(level_color, "Level: %s", level_str.c_str());
 
             // Visual battery level bar
             ImGui::PushStyleColor(ImGuiCol_PlotHistogram, level_color);
             ImGui::ProgressBar(level_progress, ImVec2(-1, 0), "");
             ImGui::PopStyleColor();
+        } else if (battery.BatteryType == BATTERY_TYPE_WIRED) {
+            // For wired devices, show a simple message that no battery level is available
+            ImGui::TextColored(ImVec4(0.5f, 0.8f, 1.0f, 1.0f), "No battery level (Wired device)");
         } else {
             ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Battery level not available");
         }
@@ -604,34 +595,6 @@ std::string XInputWidget::GetControllerStatus(int controller_index) const {
 }
 
 
-float XInputWidget::ApplyDeadzone(float value, float deadzone) const {
-    if (deadzone == 0.0f) {
-        return value; // No deadzone applied
-    }
-
-    float abs_value = std::abs(value);
-    float sign = (value >= 0.0f) ? 1.0f : -1.0f;
-
-    if (deadzone > 0.0f) {
-        // Positive deadzone: traditional deadzone behavior
-        if (abs_value < deadzone) {
-            return 0.0f;
-        }
-        // Scale the value to remove the deadzone
-        float scaled = (abs_value - deadzone) / (1.0f - deadzone);
-        return sign * scaled;
-    } else {
-        // Negative deadzone: anti-deadzone behavior
-        float anti_deadzone = -deadzone; // Convert to positive value
-        if (abs_value >= anti_deadzone) {
-            float mapped = (abs_value - anti_deadzone) / (1.0f - anti_deadzone);
-            return sign * mapped;
-        } else {
-            // Values below anti_deadzone are scaled down proportionally
-            return sign * (abs_value / anti_deadzone) * anti_deadzone;
-        }
-    }
-}
 
 bool XInputWidget::IsButtonPressed(WORD buttons, WORD button) const {
     return (buttons & button) != 0;

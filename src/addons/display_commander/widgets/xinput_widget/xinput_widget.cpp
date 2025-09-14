@@ -132,42 +132,46 @@ void XInputWidget::DrawSettings() {
 
         // Left stick sensitivity setting
         float left_max_input = g_shared_state->left_stick_max_input.load();
-        if (ImGui::SliderFloat("Left Stick Sensitivity (Max Input)", &left_max_input, 0.1f, 1.0f, "%.2f")) {
-            g_shared_state->left_stick_max_input.store(left_max_input);
+        float left_max_input_percent = left_max_input * 100.0f;
+        if (ImGui::SliderFloat("Left Stick Sensitivity (Max Input)", &left_max_input_percent, 10.0f, 100.0f, "%.0f%%")) {
+            g_shared_state->left_stick_max_input.store(left_max_input_percent / 100.0f);
             SaveSettings();
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("How much stick movement is needed for full output (0.7 = 70%% stick movement = 100%% output, 1.0 = normal)");
+            ImGui::SetTooltip("How much stick movement is needed for full output (70%% = 70%% stick movement = 100%% output, 100%% = normal)");
         }
 
         // Right stick sensitivity setting
         float right_max_input = g_shared_state->right_stick_max_input.load();
-        if (ImGui::SliderFloat("Right Stick Sensitivity (Max Input)", &right_max_input, 0.1f, 1.0f, "%.2f")) {
-            g_shared_state->right_stick_max_input.store(right_max_input);
+        float right_max_input_percent = right_max_input * 100.0f;
+        if (ImGui::SliderFloat("Right Stick Sensitivity (Max Input)", &right_max_input_percent, 10.0f, 100.0f, "%.0f%%")) {
+            g_shared_state->right_stick_max_input.store(right_max_input_percent / 100.0f);
             SaveSettings();
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("How much stick movement is needed for full output (0.7 = 70%% stick movement = 100%% output, 1.0 = normal)");
+            ImGui::SetTooltip("How much stick movement is needed for full output (70%% = 70%% stick movement = 100%% output, 100%% = normal)");
         }
 
         // Left stick remove game's deadzone setting
         float left_min_output = g_shared_state->left_stick_min_output.load();
-        if (ImGui::SliderFloat("Left Stick Remove Game's Deadzone (Min Output)", &left_min_output, 0.0f, 0.9f, "%.2f")) {
-            g_shared_state->left_stick_min_output.store(left_min_output);
+        float left_min_output_percent = left_min_output * 100.0f;
+        if (ImGui::SliderFloat("Left Stick Remove Game's Deadzone (Min Output)", &left_min_output_percent, 0.0f, 90.0f, "%.0f%%")) {
+            g_shared_state->left_stick_min_output.store(left_min_output_percent / 100.0f);
             SaveSettings();
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Removes game's deadzone by setting minimum output (0.3 = eliminates small movements, 0.0 = normal)");
+            ImGui::SetTooltip("Removes game's deadzone by setting minimum output (30%% = eliminates small movements, 0%% = normal)");
         }
 
         // Right stick remove game's deadzone setting
         float right_min_output = g_shared_state->right_stick_min_output.load();
-        if (ImGui::SliderFloat("Right Stick Remove Game's Deadzone (Min Output)", &right_min_output, 0.0f, 0.9f, "%.2f")) {
-            g_shared_state->right_stick_min_output.store(right_min_output);
+        float right_min_output_percent = right_min_output * 100.0f;
+        if (ImGui::SliderFloat("Right Stick Remove Game's Deadzone (Min Output)", &right_min_output_percent, 0.0f, 90.0f, "%.0f%%")) {
+            g_shared_state->right_stick_min_output.store(right_min_output_percent / 100.0f);
             SaveSettings();
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Removes game's deadzone by setting minimum output (0.3 = eliminates small movements, 0.0 = normal)");
+            ImGui::SetTooltip("Removes game's deadzone by setting minimum output (30%% = eliminates small movements, 0%% = normal)");
         }
     }
 }
@@ -461,6 +465,114 @@ void XInputWidget::DrawStickStates(const XINPUT_GAMEPAD& gamepad) {
         draw_list->AddCircleFilled(stick_pos, 5.0f, ImColor(0, 255, 0, 255));
 
         ImGui::Dummy(canvas_size);
+
+        // Draw extended visualization with input/output curves
+        DrawStickStatesExtended(left_deadzone, left_max_input, left_min_output, right_deadzone, right_max_input, right_min_output);
+    }
+}
+
+void XInputWidget::DrawStickStatesExtended(float left_deadzone, float left_max_input, float left_min_output,
+                                          float right_deadzone, float right_max_input, float right_min_output) {
+    if (ImGui::CollapsingHeader("Input/Output Curves", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Visual representation of how stick input is processed");
+        ImGui::Spacing();
+
+        // Generate curve data for both sticks
+        const int curve_points = 400;
+        std::vector<float> left_curve_x(curve_points);
+        std::vector<float> left_curve_y(curve_points);
+        std::vector<float> right_curve_x(curve_points);
+        std::vector<float> right_curve_y(curve_points);
+        std::vector<float> input_values(curve_points);
+
+        // Generate input values from 0.0 to 1.0 (positive side only for clarity)
+        for (int i = 0; i < curve_points; ++i) {
+            input_values[i] = static_cast<float>(i) / (curve_points - 1);
+
+            // For visualization, we want to show the actual curve behavior
+            // Deadzone region should show 0, not min_output
+            left_curve_y[i] = ProcessStickInput(input_values[i], left_deadzone, left_max_input, left_min_output);
+
+
+            right_curve_y[i] = ProcessStickInput(input_values[i], right_deadzone, right_max_input, right_min_output);
+
+            left_curve_x[i] = static_cast<float>(i);
+            right_curve_x[i] = static_cast<float>(i);
+        }
+
+        // Left stick curve
+        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Left Stick Input/Output Curve");
+        ImGui::Text("Deadzone: %.1f%%, Max Input: %.1f%%, Min Output: %.1f%%",
+                   left_deadzone * 100.0f, left_max_input * 100.0f, left_min_output * 100.0f);
+
+        // Create plot for left stick (0.0 to 1.0 input range)
+        ImGui::PlotLines("##LeftStickCurve", left_curve_y.data(), curve_points, 0,
+                        "Left Stick Output", 0.0f, 1.0f, ImVec2(-1, 150));
+
+        // Add reference lines
+        ImDrawList* draw_list = ImGui::GetWindowDrawList();
+        ImVec2 plot_pos = ImGui::GetItemRectMin();
+        ImVec2 plot_size = ImGui::GetItemRectSize();
+
+        // Draw deadzone reference line (vertical)
+        float deadzone_x = plot_pos.x + left_deadzone * plot_size.x;
+        draw_list->AddLine(ImVec2(deadzone_x, plot_pos.y), ImVec2(deadzone_x, plot_pos.y + plot_size.y),
+                          ImColor(255, 255, 0, 128), 2.0f);
+
+        // Draw max input reference line (vertical)
+        float max_input_x = plot_pos.x + left_max_input * plot_size.x;
+        draw_list->AddLine(ImVec2(max_input_x, plot_pos.y), ImVec2(max_input_x, plot_pos.y + plot_size.y),
+                          ImColor(255, 0, 255, 128), 2.0f);
+
+        // Draw min output reference line (horizontal)
+        float min_output_y = plot_pos.y + plot_size.y - left_min_output * plot_size.y;
+        draw_list->AddLine(ImVec2(plot_pos.x, min_output_y), ImVec2(plot_pos.x + plot_size.x, min_output_y),
+                          ImColor(0, 255, 255, 128), 2.0f);
+
+        ImGui::Spacing();
+
+        // Right stick curve
+        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Right Stick Input/Output Curve");
+        ImGui::Text("Deadzone: %.1f%%, Max Input: %.1f%%, Min Output: %.1f%%",
+                   right_deadzone * 100.0f, right_max_input * 100.0f, right_min_output * 100.0f);
+
+        // Create plot for right stick (0.0 to 1.0 input range)
+        ImGui::PlotLines("##RightStickCurve", right_curve_y.data(), curve_points, 0,
+                        "Right Stick Output", 0.0f, 1.0f, ImVec2(-1, 150));
+
+        // Add reference lines for right stick
+        plot_pos = ImGui::GetItemRectMin();
+        plot_size = ImGui::GetItemRectSize();
+
+        // Draw deadzone reference line (vertical)
+        float right_deadzone_x = plot_pos.x + right_deadzone * plot_size.x;
+        draw_list->AddLine(ImVec2(right_deadzone_x, plot_pos.y), ImVec2(right_deadzone_x, plot_pos.y + plot_size.y),
+                          ImColor(255, 255, 0, 128), 2.0f);
+
+        // Draw max input reference line (vertical)
+        float right_max_input_x = plot_pos.x + right_max_input * plot_size.x;
+        draw_list->AddLine(ImVec2(right_max_input_x, plot_pos.y), ImVec2(right_max_input_x, plot_pos.y + plot_size.y),
+                          ImColor(255, 0, 255, 128), 2.0f);
+
+        // Draw min output reference line (horizontal)
+        float right_min_output_y = plot_pos.y + plot_size.y - right_min_output * plot_size.y;
+        draw_list->AddLine(ImVec2(plot_pos.x, right_min_output_y), ImVec2(plot_pos.x + plot_size.x, right_min_output_y),
+                          ImColor(0, 255, 255, 128), 2.0f);
+
+        ImGui::Spacing();
+
+        // Legend
+        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Legend:");
+        ImGui::SameLine();
+        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Yellow = Deadzone (Vertical)");
+        ImGui::SameLine();
+        ImGui::TextColored(ImVec4(1.0f, 0.0f, 1.0f, 1.0f), "Magenta = Max Input (Vertical)");
+        ImGui::SameLine();
+        ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "Cyan = Min Output (Horizontal)");
+
+        ImGui::Spacing();
+        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "X-axis: Input (0.0 to 1.0) - Positive side only");
+        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Y-axis: Output (-1.0 to 1.0)");
     }
 }
 

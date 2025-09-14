@@ -266,37 +266,43 @@ BOOL CALLBACK MonitorEnumProc(HMONITOR hmon, HDC hdc, LPRECT rect, LPARAM lparam
 }
 
 // XInput processing functions
-float ApplyDeadzone(float value, float deadzone, float sensitivity) {
-    if (deadzone == 0.0f) {
+float ApplyDeadzone(float value, float deadzone) {
+    if (deadzone <= 0.0f) {
         return value; // No deadzone applied
     }
 
     float abs_value = std::abs(value);
     float sign = (value >= 0.0f) ? 1.0f : -1.0f;
 
-    if (deadzone > 0.0f) {
-        // Positive deadzone: traditional deadzone behavior
-        if (abs_value < deadzone) {
-            return 0.0f;
-        }
-        // Scale the value to remove the deadzone
-        float scaled = (abs_value - deadzone) / (1.0f - deadzone);
-        return sign * scaled * sensitivity;
-    } else {
-        // Negative deadzone: anti-deadzone behavior
-        float anti_deadzone = -deadzone; // Convert to positive value
-        // 0 to 1 to (anti_deadzone to 1)
-        float mapped = abs_value / (1.0f - anti_deadzone) * sensitivity + anti_deadzone;
-        return sign * mapped;
+    // Traditional deadzone behavior
+    if (abs_value < deadzone) {
+        return 0.0f;
     }
+    // Scale the value to remove the deadzone
+    float scaled = (abs_value - deadzone) / (1.0f - deadzone);
+    return sign * scaled;
 }
 
-float ProcessStickInput(float value, float deadzone, float sensitivity) {
+float ProcessStickInput(float value, float deadzone, float max_input, float min_output) {
     // Step 1: Apply deadzone processing
-    float processed_value = ApplyDeadzone(value, deadzone, sensitivity);
+    float processed_value = ApplyDeadzone(value, deadzone);
 
-    // Step 3: Clamp to valid range [-1.0, 1.0]
-    float clamped_value = std::clamp(processed_value, -1.0f, 1.0f);
+    // If within deadzone, return 0
+    if (processed_value == 0.0f) {
+        return 0.0f;
+    }
+
+    // Step 2: Apply max_input mapping (e.g., 0.7 max input maps to 1.0 max output)
+    float mapped_value = processed_value / max_input;
+
+    // Step 3: Apply min_output mapping (e.g., 0.3 min output maps 0.0-1.0 to 0.3-1.0)
+    float sign = (mapped_value >= 0.0f) ? 1.0f : -1.0f;
+    float abs_mapped = std::abs(mapped_value);
+    float output_mapped = min_output + (abs_mapped * (1.0f - min_output));
+    float final_value = sign * output_mapped;
+
+    // Step 4: Clamp to valid range [-1.0, 1.0]
+    float clamped_value = std::clamp(final_value, -1.0f, 1.0f);
 
     return clamped_value;
 }

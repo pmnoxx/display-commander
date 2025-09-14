@@ -110,44 +110,64 @@ void XInputWidget::DrawSettings() {
             ImGui::SetTooltip("Swap the A and B button mappings");
         }
 
-        // Left stick sensitivity setting
-        float left_sensitivity = g_shared_state->left_stick_sensitivity.load();
-        if (ImGui::SliderFloat("Left Stick Sensitivity", &left_sensitivity, 0.1f, 3.0f, "%.2f")) {
-            g_shared_state->left_stick_sensitivity.store(left_sensitivity);
-            SaveSettings();
-        }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Sensitivity multiplier for left analog stick (1.0 = normal, >1.0 = more sensitive, <1.0 = less sensitive)");
-        }
-
-        // Right stick sensitivity setting
-        float right_sensitivity = g_shared_state->right_stick_sensitivity.load();
-        if (ImGui::SliderFloat("Right Stick Sensitivity", &right_sensitivity, 0.1f, 3.0f, "%.2f")) {
-            g_shared_state->right_stick_sensitivity.store(right_sensitivity);
-            SaveSettings();
-        }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Sensitivity multiplier for right analog stick (1.0 = normal, >1.0 = more sensitive, <1.0 = less sensitive)");
-        }
-
         // Left stick deadzone setting
         float left_deadzone = g_shared_state->left_stick_deadzone.load();
-        if (ImGui::SliderFloat("Left Stick Deadzone", &left_deadzone, -100.0f, 100.0f, "%.0f%%")) {
+        if (ImGui::SliderFloat("Left Stick Dead Zone (Min Input)", &left_deadzone, 0.0f, 50.0f, "%.0f%%")) {
             g_shared_state->left_stick_deadzone.store(left_deadzone);
             SaveSettings();
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Deadzone for left stick (0%% = no effect, +30%% = deadzone, -30%% = anti-deadzone)");
+            ImGui::SetTooltip("Ignores stick movement below this threshold (0%% = no deadzone, 15%% = ignores small movements)");
         }
 
         // Right stick deadzone setting
         float right_deadzone = g_shared_state->right_stick_deadzone.load();
-        if (ImGui::SliderFloat("Right Stick Deadzone", &right_deadzone, -100.0f, 100.0f, "%.0f%%")) {
+        if (ImGui::SliderFloat("Right Stick Dead Zone (Min Input)", &right_deadzone, 0.0f, 50.0f, "%.0f%%")) {
             g_shared_state->right_stick_deadzone.store(right_deadzone);
             SaveSettings();
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Deadzone for right stick (0%% = no effect, +30%% = deadzone, -30%% = anti-deadzone)");
+            ImGui::SetTooltip("Ignores stick movement below this threshold (0%% = no deadzone, 15%% = ignores small movements)");
+        }
+
+        // Left stick sensitivity setting
+        float left_max_input = g_shared_state->left_stick_max_input.load();
+        if (ImGui::SliderFloat("Left Stick Sensitivity (Max Input)", &left_max_input, 0.1f, 1.0f, "%.2f")) {
+            g_shared_state->left_stick_max_input.store(left_max_input);
+            SaveSettings();
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("How much stick movement is needed for full output (0.7 = 70%% stick movement = 100%% output, 1.0 = normal)");
+        }
+
+        // Right stick sensitivity setting
+        float right_max_input = g_shared_state->right_stick_max_input.load();
+        if (ImGui::SliderFloat("Right Stick Sensitivity (Max Input)", &right_max_input, 0.1f, 1.0f, "%.2f")) {
+            g_shared_state->right_stick_max_input.store(right_max_input);
+            SaveSettings();
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("How much stick movement is needed for full output (0.7 = 70%% stick movement = 100%% output, 1.0 = normal)");
+        }
+
+        // Left stick remove game's deadzone setting
+        float left_min_output = g_shared_state->left_stick_min_output.load();
+        if (ImGui::SliderFloat("Left Stick Remove Game's Deadzone (Min Output)", &left_min_output, 0.0f, 0.9f, "%.2f")) {
+            g_shared_state->left_stick_min_output.store(left_min_output);
+            SaveSettings();
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Removes game's deadzone by setting minimum output (0.3 = eliminates small movements, 0.0 = normal)");
+        }
+
+        // Right stick remove game's deadzone setting
+        float right_min_output = g_shared_state->right_stick_min_output.load();
+        if (ImGui::SliderFloat("Right Stick Remove Game's Deadzone (Min Output)", &right_min_output, 0.0f, 0.9f, "%.2f")) {
+            g_shared_state->right_stick_min_output.store(right_min_output);
+            SaveSettings();
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Removes game's deadzone by setting minimum output (0.3 = eliminates small movements, 0.0 = normal)");
         }
     }
 }
@@ -372,8 +392,10 @@ void XInputWidget::DrawButtonStates(const XINPUT_GAMEPAD& gamepad) {
 
 void XInputWidget::DrawStickStates(const XINPUT_GAMEPAD& gamepad) {
     if (ImGui::CollapsingHeader("Analog Sticks", ImGuiTreeNodeFlags_DefaultOpen)) {
-        float left_sensitivity = g_shared_state->left_stick_sensitivity.load();
-        float right_sensitivity = g_shared_state->right_stick_sensitivity.load();
+        float left_max_input = g_shared_state->left_stick_max_input.load();
+        float right_max_input = g_shared_state->right_stick_max_input.load();
+        float left_min_output = g_shared_state->left_stick_min_output.load();
+        float right_min_output = g_shared_state->right_stick_min_output.load();
         float left_deadzone = g_shared_state->left_stick_deadzone.load() / 100.0f; // Convert percentage to decimal
         float right_deadzone = g_shared_state->right_stick_deadzone.load() / 100.0f; // Convert percentage to decimal
 
@@ -382,9 +404,9 @@ void XInputWidget::DrawStickStates(const XINPUT_GAMEPAD& gamepad) {
         float lx = static_cast<float>(gamepad.sThumbLX) / 32767.0f;
         float ly = static_cast<float>(gamepad.sThumbLY) / 32767.0f;
 
-        // Apply final processing (deadzone + sensitivity + clamp)
-        float lx_final = ProcessStickInput(lx, left_deadzone, left_sensitivity);
-        float ly_final = ProcessStickInput(ly, left_deadzone, left_sensitivity);
+        // Apply final processing (deadzone + max_input mapping + min_output mapping + clamp)
+        float lx_final = ProcessStickInput(lx, left_deadzone, left_max_input, left_min_output);
+        float ly_final = ProcessStickInput(ly, left_deadzone, left_max_input, left_min_output);
 
         ImGui::Text("X: %.3f (Final: %.3f, Raw: %d)", lx, lx_final, gamepad.sThumbLX);
         ImGui::Text("Y: %.3f (Final: %.3f, Raw: %d)", ly, ly_final, gamepad.sThumbLY);
@@ -414,9 +436,9 @@ void XInputWidget::DrawStickStates(const XINPUT_GAMEPAD& gamepad) {
         float rx = static_cast<float>(gamepad.sThumbRX) / 32767.0f;
         float ry = static_cast<float>(gamepad.sThumbRY) / 32767.0f;
 
-        // Apply final processing (deadzone + sensitivity + clamp)
-        float rx_final = ProcessStickInput(rx, right_deadzone, right_sensitivity);
-        float ry_final = ProcessStickInput(ry, right_deadzone, right_sensitivity);
+        // Apply final processing (deadzone + max_input mapping + min_output mapping + clamp)
+        float rx_final = ProcessStickInput(rx, right_deadzone, right_max_input, right_min_output);
+        float ry_final = ProcessStickInput(ry, right_deadzone, right_max_input, right_min_output);
 
         ImGui::Text("X: %.3f (Final: %.3f, Raw: %d)", rx, rx_final, gamepad.sThumbRX);
         ImGui::Text("Y: %.3f (Final: %.3f, Raw: %d)", ry, ry_final, gamepad.sThumbRY);
@@ -608,27 +630,39 @@ void XInputWidget::LoadSettings() {
     }
 
     // Load left stick sensitivity setting
-    float left_sensitivity;
-    if (reshade::get_config_value(nullptr, "DisplayCommander.XInputWidget", "LeftStickSensitivity", left_sensitivity)) {
-        g_shared_state->left_stick_sensitivity.store(left_sensitivity);
+    float left_max_input;
+    if (reshade::get_config_value(nullptr, "DisplayCommander.XInputWidget", "LeftStickSensitivity", left_max_input)) {
+        g_shared_state->left_stick_max_input.store(left_max_input);
     }
 
     // Load right stick sensitivity setting
-    float right_sensitivity;
-    if (reshade::get_config_value(nullptr, "DisplayCommander.XInputWidget", "RightStickSensitivity", right_sensitivity)) {
-        g_shared_state->right_stick_sensitivity.store(right_sensitivity);
+    float right_max_input;
+    if (reshade::get_config_value(nullptr, "DisplayCommander.XInputWidget", "RightStickSensitivity", right_max_input)) {
+        g_shared_state->right_stick_max_input.store(right_max_input);
     }
 
-    // Load left stick deadzone setting
+    // Load left stick min input setting
     float left_deadzone;
-    if (reshade::get_config_value(nullptr, "DisplayCommander.XInputWidget", "LeftStickDeadzone", left_deadzone)) {
+    if (reshade::get_config_value(nullptr, "DisplayCommander.XInputWidget", "LeftStickMinInput", left_deadzone)) {
         g_shared_state->left_stick_deadzone.store(left_deadzone);
     }
 
-    // Load right stick deadzone setting
+    // Load right stick min input setting
     float right_deadzone;
-    if (reshade::get_config_value(nullptr, "DisplayCommander.XInputWidget", "RightStickDeadzone", right_deadzone)) {
+    if (reshade::get_config_value(nullptr, "DisplayCommander.XInputWidget", "RightStickMinInput", right_deadzone)) {
         g_shared_state->right_stick_deadzone.store(right_deadzone);
+    }
+
+    // Load left stick max output setting
+    float left_min_output;
+    if (reshade::get_config_value(nullptr, "DisplayCommander.XInputWidget", "LeftStickMaxOutput", left_min_output)) {
+        g_shared_state->left_stick_min_output.store(left_min_output);
+    }
+
+    // Load right stick max output setting
+    float right_min_output;
+    if (reshade::get_config_value(nullptr, "DisplayCommander.XInputWidget", "RightStickMaxOutput", right_min_output)) {
+        g_shared_state->right_stick_min_output.store(right_min_output);
     }
 
 }
@@ -638,16 +672,22 @@ void XInputWidget::SaveSettings() {
     reshade::set_config_value(nullptr, "DisplayCommander.XInputWidget", "SwapABButtons", g_shared_state->swap_a_b_buttons.load());
 
     // Save left stick sensitivity setting
-    reshade::set_config_value(nullptr, "DisplayCommander.XInputWidget", "LeftStickSensitivity", g_shared_state->left_stick_sensitivity.load());
+    reshade::set_config_value(nullptr, "DisplayCommander.XInputWidget", "LeftStickSensitivity", g_shared_state->left_stick_max_input.load());
 
     // Save right stick sensitivity setting
-    reshade::set_config_value(nullptr, "DisplayCommander.XInputWidget", "RightStickSensitivity", g_shared_state->right_stick_sensitivity.load());
+    reshade::set_config_value(nullptr, "DisplayCommander.XInputWidget", "RightStickSensitivity", g_shared_state->right_stick_max_input.load());
 
-    // Save left stick deadzone setting
-    reshade::set_config_value(nullptr, "DisplayCommander.XInputWidget", "LeftStickDeadzone", g_shared_state->left_stick_deadzone.load());
+    // Save left stick min input setting
+    reshade::set_config_value(nullptr, "DisplayCommander.XInputWidget", "LeftStickMinInput", g_shared_state->left_stick_deadzone.load());
 
-    // Save right stick deadzone setting
-    reshade::set_config_value(nullptr, "DisplayCommander.XInputWidget", "RightStickDeadzone", g_shared_state->right_stick_deadzone.load());
+    // Save right stick min input setting
+    reshade::set_config_value(nullptr, "DisplayCommander.XInputWidget", "RightStickMinInput", g_shared_state->right_stick_deadzone.load());
+
+    // Save left stick max output setting
+    reshade::set_config_value(nullptr, "DisplayCommander.XInputWidget", "LeftStickMaxOutput", g_shared_state->left_stick_min_output.load());
+
+    // Save right stick max output setting
+    reshade::set_config_value(nullptr, "DisplayCommander.XInputWidget", "RightStickMaxOutput", g_shared_state->right_stick_min_output.load());
 
 }
 

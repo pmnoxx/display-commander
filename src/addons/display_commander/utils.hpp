@@ -55,8 +55,8 @@ int GetCurrentMonitorHeight();
 BOOL CALLBACK MonitorEnumProc(HMONITOR hmon, HDC hdc, LPRECT rect, LPARAM lparam);
 
 // XInput processing functions
-float ApplyDeadzone(float value, float deadzone, float sensitivity);
-float ProcessStickInput(float value, float deadzone, float sensitivity);
+float ApplyDeadzone(float value, float deadzone);
+float ProcessStickInput(float value, float deadzone, float max_input, float min_output);
 
 // External declarations needed by utility functions
 extern std::atomic<std::shared_ptr<const std::vector<MonitorInfo>>> g_monitors;

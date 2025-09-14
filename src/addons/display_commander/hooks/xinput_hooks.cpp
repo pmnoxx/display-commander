@@ -33,8 +33,9 @@ struct HookedXInputModule {
 };
 static std::vector<HookedXInputModule> g_hooked_modules;
 
-// Helper function to apply sensitivity and deadzone to thumbstick values
-void ApplyThumbstickProcessing(XINPUT_STATE* pState, float left_sensitivity, float right_sensitivity,
+// Helper function to apply max input, min output, and deadzone to thumbstick values
+void ApplyThumbstickProcessing(XINPUT_STATE* pState, float left_max_input, float right_max_input,
+                              float left_min_output, float right_min_output,
                               float left_deadzone, float right_deadzone) {
     if (!pState) return;
 
@@ -42,8 +43,8 @@ void ApplyThumbstickProcessing(XINPUT_STATE* pState, float left_sensitivity, flo
     float lx = static_cast<float>(pState->Gamepad.sThumbLX) / 32767.0f;
     float ly = static_cast<float>(pState->Gamepad.sThumbLY) / 32767.0f;
 
-    lx = ProcessStickInput(lx, left_deadzone, left_sensitivity);
-    ly = ProcessStickInput(ly, left_deadzone, left_sensitivity);
+    lx = ProcessStickInput(lx, left_deadzone, left_max_input, left_min_output);
+    ly = ProcessStickInput(ly, left_deadzone, left_max_input, left_min_output);
 
     // Convert back to SHORT
     pState->Gamepad.sThumbLX = static_cast<SHORT>(lx * 32767.0f);
@@ -53,8 +54,8 @@ void ApplyThumbstickProcessing(XINPUT_STATE* pState, float left_sensitivity, flo
     float rx = static_cast<float>(pState->Gamepad.sThumbRX) / 32767.0f;
     float ry = static_cast<float>(pState->Gamepad.sThumbRY) / 32767.0f;
 
-    rx = ProcessStickInput(rx, right_deadzone, right_sensitivity);
-    ry = ProcessStickInput(ry, right_deadzone, right_sensitivity);
+    rx = ProcessStickInput(rx, right_deadzone, right_max_input, right_min_output);
+    ry = ProcessStickInput(ry, right_deadzone, right_max_input, right_min_output);
 
     // Convert back to SHORT
     pState->Gamepad.sThumbRX = static_cast<SHORT>(rx * 32767.0f);
@@ -184,14 +185,17 @@ DWORD WINAPI XInputGetState_Detour(DWORD dwUserIndex, XINPUT_STATE* pState) {
                 pState->Gamepad.wButtons = swapped_buttons;
             }
 
-            // Apply sensitivity and deadzone processing
+            // Apply max input, min output, and deadzone processing
             if (shared_state) {
-                float left_sensitivity = shared_state->left_stick_sensitivity.load();
-                float right_sensitivity = shared_state->right_stick_sensitivity.load();
+                float left_max_input = shared_state->left_stick_max_input.load();
+                float right_max_input = shared_state->right_stick_max_input.load();
+                float left_min_output = shared_state->left_stick_min_output.load();
+                float right_min_output = shared_state->right_stick_min_output.load();
                 float left_deadzone = shared_state->left_stick_deadzone.load() / 100.0f; // Convert percentage to decimal
                 float right_deadzone = shared_state->right_stick_deadzone.load() / 100.0f; // Convert percentage to decimal
 
-                ApplyThumbstickProcessing(pState, left_sensitivity, right_sensitivity,
+                ApplyThumbstickProcessing(pState, left_max_input, right_max_input,
+                                        left_min_output, right_min_output,
                                         left_deadzone, right_deadzone);
             }
 
@@ -277,14 +281,17 @@ DWORD WINAPI XInputGetStateEx_Detour(DWORD dwUserIndex, XINPUT_STATE* pState) {
                 pState->Gamepad.wButtons = swapped_buttons;
             }
 
-            // Apply sensitivity and deadzone processing
+            // Apply max input, min output, and deadzone processing
             if (shared_state) {
-                float left_sensitivity = shared_state->left_stick_sensitivity.load();
-                float right_sensitivity = shared_state->right_stick_sensitivity.load();
+                float left_max_input = shared_state->left_stick_max_input.load();
+                float right_max_input = shared_state->right_stick_max_input.load();
+                float left_min_output = shared_state->left_stick_min_output.load();
+                float right_min_output = shared_state->right_stick_min_output.load();
                 float left_deadzone = shared_state->left_stick_deadzone.load() / 100.0f; // Convert percentage to decimal
                 float right_deadzone = shared_state->right_stick_deadzone.load() / 100.0f; // Convert percentage to decimal
 
-                ApplyThumbstickProcessing(pState, left_sensitivity, right_sensitivity,
+                ApplyThumbstickProcessing(pState, left_max_input, right_max_input,
+                                        left_min_output, right_min_output,
                                         left_deadzone, right_deadzone);
             }
 

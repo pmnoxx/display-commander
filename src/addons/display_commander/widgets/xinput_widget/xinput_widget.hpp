@@ -69,10 +69,12 @@ struct XInputSharedState {
 
     // Settings
     std::atomic<bool> swap_a_b_buttons{false};
-    std::atomic<float> left_stick_sensitivity{1.0f}; // Left stick sensitivity multiplier
-    std::atomic<float> right_stick_sensitivity{1.0f}; // Right stick sensitivity multiplier
-    std::atomic<float> left_stick_deadzone{0.0f}; // Left stick deadzone percentage (-100.0 = -100%, 100.0 = 100%)
-    std::atomic<float> right_stick_deadzone{0.0f}; // Right stick deadzone percentage (-100.0 = -100%, 100.0 = 100%)
+    std::atomic<float> left_stick_max_input{1.0f}; // Left stick sensitivity (max input) - 0.7 = 70% stick movement = 100% output
+    std::atomic<float> right_stick_max_input{1.0f}; // Right stick sensitivity (max input) - 0.7 = 70% stick movement = 100% output
+    std::atomic<float> left_stick_min_output{0.0f}; // Left stick remove game's deadzone (min output) - 0.3 = eliminates small movements
+    std::atomic<float> right_stick_min_output{0.0f}; // Right stick remove game's deadzone (min output) - 0.3 = eliminates small movements
+    std::atomic<float> left_stick_deadzone{0.0f}; // Left stick dead zone (min input) - 0.0 = no deadzone, 15.0 = ignores small movements
+    std::atomic<float> right_stick_deadzone{0.0f}; // Right stick dead zone (min input) - 0.0 = no deadzone, 15.0 = ignores small movements
 
     // Last update time for each controller
     std::array<std::atomic<uint64_t>, XUSER_MAX_COUNT> last_update_times;

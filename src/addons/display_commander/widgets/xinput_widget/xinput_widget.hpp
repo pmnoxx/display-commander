@@ -119,6 +119,8 @@ private:
     void DrawVibrationTest();
     void DrawButtonStates(const XINPUT_GAMEPAD& gamepad);
     void DrawStickStates(const XINPUT_GAMEPAD& gamepad);
+    void DrawStickStatesExtended(float left_deadzone, float left_max_input, float left_min_output,
+                                float right_deadzone, float right_max_input, float right_min_output);
     void DrawTriggerStates(const XINPUT_GAMEPAD& gamepad);
     void DrawBatteryStatus(int controller_index);
 

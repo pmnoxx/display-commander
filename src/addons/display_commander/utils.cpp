@@ -266,7 +266,7 @@ BOOL CALLBACK MonitorEnumProc(HMONITOR hmon, HDC hdc, LPRECT rect, LPARAM lparam
 }
 
 // XInput processing functions
-float ApplyDeadzone(float value, float deadzone) {
+float ApplyDeadzone(float value, float deadzone, float max_input) {
     if (deadzone <= 0.0f) {
         return value; // No deadzone applied
     }
@@ -279,21 +279,21 @@ float ApplyDeadzone(float value, float deadzone) {
         return 0.0f;
     }
     // Scale the value to remove the deadzone
-    float scaled = (abs_value - deadzone) / (1.0f - deadzone);
+    float scaled = min(1.0f, (abs_value - deadzone) / (max_input - deadzone));
     return sign * scaled;
 }
 
 float ProcessStickInput(float value, float deadzone, float max_input, float min_output) {
     // Step 1: Apply deadzone processing
-    float processed_value = ApplyDeadzone(value, deadzone);
+    float processed_value = ApplyDeadzone(value, deadzone, max_input);
 
-    // If within deadzone, return 0
+    // If within deadzone, return 0 (deadzone should always be 0)
     if (processed_value == 0.0f) {
         return 0.0f;
     }
 
     // Step 2: Apply max_input mapping (e.g., 0.7 max input maps to 1.0 max output)
-    float mapped_value = processed_value / max_input;
+    float mapped_value = processed_value;
 
     // Step 3: Apply min_output mapping (e.g., 0.3 min output maps 0.0-1.0 to 0.3-1.0)
     float sign = (mapped_value >= 0.0f) ? 1.0f : -1.0f;

@@ -307,4 +307,24 @@ float ProcessStickInput(float value, float deadzone, float max_input, float min_
     return clamped_value;
 }
 
+// XInput thumbstick scaling helpers (handles asymmetric SHORT range: -32768 to 32767)
+float ShortToFloat(SHORT value) {
+    if (value < 0) {
+        return static_cast<float>(value) / 32768.0f;  // Maps -32768 to -1.0
+    } else {
+        return static_cast<float>(value) / 32767.0f;  // Maps 32767 to 1.0
+    }
+}
+
+SHORT FloatToShort(float value) {
+    // Clamp to valid range
+    value = max(-1.0f, min(1.0f, value));
+
+    if (value < 0) {
+        return static_cast<SHORT>(value * 32768.0f);  // Maps -1.0 to -32768
+    } else {
+        return static_cast<SHORT>(value * 32767.0f);  // Maps 1.0 to 32767
+    }
+}
+
 

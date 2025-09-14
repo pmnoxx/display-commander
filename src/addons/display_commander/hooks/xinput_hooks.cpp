@@ -39,32 +39,35 @@ void ApplyThumbstickProcessing(XINPUT_STATE* pState, float left_max_input, float
                               float left_deadzone, float right_deadzone) {
     if (!pState) return;
 
-    // Process left stick using unified function
-    float lx = static_cast<float>(pState->Gamepad.sThumbLX) / 32767.0f;
-    float ly = static_cast<float>(pState->Gamepad.sThumbLY) / 32767.0f;
+    // Process left stick using unified function with correct scaling
+    float lx = ShortToFloat(pState->Gamepad.sThumbLX);
+    float ly = ShortToFloat(pState->Gamepad.sThumbLY);
 
     lx = ProcessStickInput(lx, left_deadzone, left_max_input, left_min_output);
     ly = ProcessStickInput(ly, left_deadzone, left_max_input, left_min_output);
 
-    // Convert back to SHORT
-    pState->Gamepad.sThumbLX = static_cast<SHORT>(lx * 32767.0f);
-    pState->Gamepad.sThumbLY = static_cast<SHORT>(ly * 32767.0f);
+    // Convert back to SHORT with correct scaling
+    pState->Gamepad.sThumbLX = FloatToShort(lx);
+    pState->Gamepad.sThumbLY = FloatToShort(ly);
 
-    // Process right stick using unified function
-    float rx = static_cast<float>(pState->Gamepad.sThumbRX) / 32767.0f;
-    float ry = static_cast<float>(pState->Gamepad.sThumbRY) / 32767.0f;
+    // Process right stick using unified function with correct scaling
+    float rx = ShortToFloat(pState->Gamepad.sThumbRX);
+    float ry = ShortToFloat(pState->Gamepad.sThumbRY);
 
     rx = ProcessStickInput(rx, right_deadzone, right_max_input, right_min_output);
     ry = ProcessStickInput(ry, right_deadzone, right_max_input, right_min_output);
 
-    // Convert back to SHORT
-    pState->Gamepad.sThumbRX = static_cast<SHORT>(rx * 32767.0f);
-    pState->Gamepad.sThumbRY = static_cast<SHORT>(ry * 32767.0f);
+    // Convert back to SHORT with correct scaling
+    pState->Gamepad.sThumbRX = FloatToShort(rx);
+    pState->Gamepad.sThumbRY = FloatToShort(ry);
 }
 
 
 // Helper function to detect changes in XInput state
 void LogXInputChanges(DWORD dwUserIndex, const XINPUT_STATE* pState) {
+    if (true) {
+        return;
+    }
     if (dwUserIndex >= XUSER_MAX_COUNT || pState == nullptr) {
         return;
     }

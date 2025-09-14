@@ -405,8 +405,8 @@ void XInputWidget::DrawStickStates(const XINPUT_GAMEPAD& gamepad) {
 
         // Left stick
         ImGui::Text("Left Stick:");
-        float lx = static_cast<float>(gamepad.sThumbLX) / 32767.0f;
-        float ly = static_cast<float>(gamepad.sThumbLY) / 32767.0f;
+        float lx = ShortToFloat(gamepad.sThumbLX);
+        float ly = ShortToFloat(gamepad.sThumbLY);
 
         // Apply final processing (deadzone + max_input mapping + min_output mapping + clamp)
         float lx_final = ProcessStickInput(lx, left_deadzone, left_max_input, left_min_output);
@@ -437,8 +437,8 @@ void XInputWidget::DrawStickStates(const XINPUT_GAMEPAD& gamepad) {
 
         // Right stick
         ImGui::Text("Right Stick:");
-        float rx = static_cast<float>(gamepad.sThumbRX) / 32767.0f;
-        float ry = static_cast<float>(gamepad.sThumbRY) / 32767.0f;
+        float rx = ShortToFloat(gamepad.sThumbRX);
+        float ry = ShortToFloat(gamepad.sThumbRY);
 
         // Apply final processing (deadzone + max_input mapping + min_output mapping + clamp)
         float rx_final = ProcessStickInput(rx, right_deadzone, right_max_input, right_min_output);
@@ -1089,8 +1089,8 @@ void XInputWidget::ExecuteChordAction(const XInputSharedState::Chord& chord, DWO
     } else if (chord.action == "Test controller vibration") {
         // Test vibration on the controller that triggered the chord
         XINPUT_VIBRATION vibration = {};
-        vibration.wLeftMotorSpeed = 32767;  // Medium intensity
-        vibration.wRightMotorSpeed = 32767;
+        vibration.wLeftMotorSpeed = floatToShort(1.0f);  // Medium intensity
+        vibration.wRightMotorSpeed = floatToShort(1.0f);
 
         DWORD result = XInputSetState(user_index, &vibration);
         if (result == ERROR_SUCCESS) {
@@ -1198,8 +1198,8 @@ void ProcessChordDetection(DWORD user_index, WORD button_state) {
                 }
             } else if (chord.action == "Test controller vibration") {
                 XINPUT_VIBRATION vibration = {};
-                vibration.wLeftMotorSpeed = 32767;
-                vibration.wRightMotorSpeed = 32767;
+                vibration.wLeftMotorSpeed = floatToShort(1.0f);
+                vibration.wRightMotorSpeed = floatToShort(1.0f);
 
                 DWORD result = XInputSetState(user_index, &vibration);
                 if (result == ERROR_SUCCESS) {

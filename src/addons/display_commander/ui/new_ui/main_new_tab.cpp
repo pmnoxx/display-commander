@@ -783,6 +783,20 @@ void DrawImportantInfo() {
 
     ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.8f, 1.0f), "=== Important Information ===");
 
+    // Test Overlay Control
+    {
+        bool show_test_overlay = settings::g_mainTabSettings.show_test_overlay.GetValue();
+        if (ImGui::Checkbox("Show Test Overlay (reshade_overlay demo)", &show_test_overlay)) {
+            settings::g_mainTabSettings.show_test_overlay.SetValue(show_test_overlay);
+            LogInfo("Test overlay %s", show_test_overlay ? "enabled" : "disabled");
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Shows a test widget using the reshade_overlay event to demonstrate the difference between register_overlay and reshade_overlay approaches.");
+        }
+    }
+
+    ImGui::Spacing();
+
     // FPS Counter with 1% Low and 0.1% Low over past 60s (computed in background)
     {
         std::string local_text;

@@ -13,6 +13,7 @@
 #include "ui/new_ui/experimental_tab.hpp"
 #include "background_tasks/background_task_coordinator.hpp"
 #include "reshade_events/fullscreen_prevention.hpp"
+#include "settings/main_tab_settings.hpp"
 
 // Input blocking is now handled by Windows message hooks
 
@@ -102,6 +103,41 @@ void OnRegisterOverlayDisplayCommander(reshade::api::effect_runtime* runtime) {
     // Draw the new UI
     ui::new_ui::NewUISystem::GetInstance().Draw();
 }
+
+// Test callback for reshade_overlay event
+void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
+    // Check the setting from main tab
+    if (!settings::g_mainTabSettings.show_test_overlay.GetValue()) return;
+
+    // Test widget that appears in the main ReShade overlay
+    static bool show_test_widget = true;
+    if (ImGui::Begin("Display Commander Test Widget", &show_test_widget, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::Text("This is a test widget using reshade_overlay event!");
+        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Notice: This appears in the main ReShade overlay, not as a separate tab!");
+        ImGui::Separator();
+
+        static bool test_checkbox = false;
+        ImGui::Checkbox("Test Checkbox", &test_checkbox);
+
+        static float test_slider = 0.5f;
+        ImGui::SliderFloat("Test Slider", &test_slider, 0.0f, 1.0f);
+
+        if (ImGui::Button("Test Button")) {
+            LogInfo("Test button clicked from reshade_overlay event!");
+        }
+
+        ImGui::Separator();
+        ImGui::Text("Performance Info:");
+        ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
+        ImGui::Text("Frame Count: %d", ImGui::GetFrameCount());
+
+        ImGui::Separator();
+        ImGui::Text("This widget demonstrates the difference between:");
+        ImGui::BulletText("register_overlay: Creates separate tabs in ReShade overlay");
+        ImGui::BulletText("reshade_overlay: Draws directly in main overlay (this widget)");
+    }
+    ImGui::End();
+}
 }  // namespace
 
 bool initialized = false;
@@ -152,6 +188,9 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
       utils::initialize_qpc_timing_constants();
 
       reshade::register_overlay("Display Commander", OnRegisterOverlayDisplayCommander);
+
+      // Register reshade_overlay event for test code
+      reshade::register_event<reshade::addon_event::reshade_overlay>(OnReShadeOverlayTest);
 
       // Capture sync interval on swapchain creation for UI
       reshade::register_event<reshade::addon_event::create_swapchain>(OnCreateSwapchainCapture);

@@ -75,6 +75,9 @@ public:
     ui::new_ui::BoolSettingRef no_render_in_background;
     ui::new_ui::BoolSettingRef no_present_in_background;
 
+    // Test Overlay Settings
+    ui::new_ui::BoolSetting show_test_overlay;
+
     // Display Information
     ui::new_ui::StringSetting target_display;
 

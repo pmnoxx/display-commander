@@ -50,6 +50,7 @@ MainTabSettings::MainTabSettings()
       block_input_without_reshade("block_input_without_reshade", s_block_input_without_reshade, false, "renodx_main_tab"),
       no_render_in_background("no_render_in_background", s_no_render_in_background, false, "renodx_main_tab"),
       no_present_in_background("no_present_in_background", s_no_present_in_background, false, "renodx_main_tab"),
+      show_test_overlay("show_test_overlay", false, "renodx_main_tab"),
       target_display("target_display", "", "renodx_main_tab") {
 
     // Initialize the all_settings_ vector
@@ -78,6 +79,7 @@ MainTabSettings::MainTabSettings()
         &block_input_without_reshade,
         &no_render_in_background,
         &no_present_in_background,
+        &show_test_overlay,
         &target_display,
     };
 }

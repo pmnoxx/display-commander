@@ -38,10 +38,6 @@ void InitializeNewUISystem() {
     NewUISystem::GetInstance().Initialize();
 }
 
-void DrawNewUISystem() {
-    NewUISystem::GetInstance().Draw();
-}
-
 bool IsNewUIEnabled() {
     return NewUISystem::GetInstance().IsEnabled();
 }

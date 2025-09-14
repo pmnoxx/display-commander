@@ -100,7 +100,7 @@ bool OnReShadeOverlayOpen(reshade::api::effect_runtime* runtime, bool open, resh
 namespace {
 void OnRegisterOverlayDisplayCommander(reshade::api::effect_runtime* runtime) {
     // Draw the new UI
-    ui::new_ui::DrawNewUISystem();
+    ui::new_ui::NewUISystem::GetInstance().Draw();
 }
 }  // namespace
 

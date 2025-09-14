@@ -33,7 +33,6 @@ private:
 
 // Convenience functions
 void InitializeNewUISystem();
-void DrawNewUISystem();
 bool IsNewUIEnabled();
 
 } // namespace ui::new_ui

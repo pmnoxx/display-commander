@@ -23,3 +23,9 @@
 [submodule "external/minhook"]
 	path = external/minhook
 	url = https://github.com/TsudaKageyu/minhook.git
+[submodule "external/xinput_hid"]
+	path = external/xinput_hid
+	url = https://github.com/SpecialKO/XInput_HID.git
+[submodule "external/XInput_HID"]
+	path = external/XInput_HID
+	url = https://github.com/SpecialKO/XInput_HID.git

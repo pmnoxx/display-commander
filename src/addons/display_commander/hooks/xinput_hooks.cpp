@@ -248,6 +248,10 @@ DWORD WINAPI XInputGetState_Detour(DWORD dwUserIndex, XINPUT_STATE* pState) {
         // Always update the UI state with the original state (before suppression/modifications)
         // This ensures the UI shows the actual controller state regardless of suppression
         display_commander::widgets::xinput_widget::UpdateXInputState(dwUserIndex, &original_state);
+
+        // Update battery status periodically
+        display_commander::widgets::xinput_widget::UpdateBatteryStatus(dwUserIndex);
+
         LogXInputChanges(dwUserIndex, &original_state);
     } else {
         // Mark controller as disconnected in shared state
@@ -337,6 +341,10 @@ DWORD WINAPI XInputGetStateEx_Detour(DWORD dwUserIndex, XINPUT_STATE* pState) {
         // Always update the UI state with the original state (before suppression/modifications)
         // This ensures the UI shows the actual controller state regardless of suppression
         display_commander::widgets::xinput_widget::UpdateXInputState(dwUserIndex, &original_state);
+
+        // Update battery status periodically
+        display_commander::widgets::xinput_widget::UpdateBatteryStatus(dwUserIndex);
+
         LogXInputChanges(dwUserIndex, &original_state);
     } else {
         // Mark controller as disconnected in shared state

@@ -77,6 +77,11 @@ struct XInputSharedState {
     // Last update time for each controller
     std::array<std::atomic<uint64_t>, XUSER_MAX_COUNT> last_update_times;
 
+    // Battery information for each controller
+    std::array<XINPUT_BATTERY_INFORMATION, XUSER_MAX_COUNT> battery_info;
+    std::array<std::atomic<uint64_t>, XUSER_MAX_COUNT> last_battery_update_times;
+    std::array<std::atomic<bool>, XUSER_MAX_COUNT> battery_info_valid;
+
     // Thread safety
     mutable std::atomic<bool> is_updating{false};
 };
@@ -113,6 +118,7 @@ private:
     void DrawButtonStates(const XINPUT_GAMEPAD& gamepad);
     void DrawStickStates(const XINPUT_GAMEPAD& gamepad);
     void DrawTriggerStates(const XINPUT_GAMEPAD& gamepad);
+    void DrawBatteryStatus(int controller_index);
 
     // Helper functions
     std::string GetButtonName(WORD button) const;
@@ -150,6 +156,7 @@ void DrawXInputWidget();
 
 // Global functions for hooks to use
 void UpdateXInputState(DWORD user_index, const XINPUT_STATE* state);
+void UpdateBatteryStatus(DWORD user_index);
 void IncrementEventCounter(const std::string& event_type);
 void ProcessChordDetection(DWORD user_index, WORD button_state);
 void CheckAndHandleScreenshot();

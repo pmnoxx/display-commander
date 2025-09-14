@@ -30,6 +30,11 @@ XInputWidget::XInputWidget() {
             g_shared_state->controller_connected[i] = false;
             g_shared_state->last_packet_numbers[i] = 0;
             g_shared_state->last_update_times[i] = 0;
+
+            // Initialize battery information
+            ZeroMemory(&g_shared_state->battery_info[i], sizeof(XINPUT_BATTERY_INFORMATION));
+            g_shared_state->last_battery_update_times[i] = 0;
+            g_shared_state->battery_info_valid[i] = false;
         }
     }
 }
@@ -293,6 +298,10 @@ void XInputWidget::DrawControllerState() {
 
     // Draw trigger states
     DrawTriggerStates(state.Gamepad);
+    ImGui::Spacing();
+
+    // Draw battery status
+    DrawBatteryStatus(selected_controller_);
 }
 
 void XInputWidget::DrawButtonStates(const XINPUT_GAMEPAD& gamepad) {
@@ -460,6 +469,107 @@ void XInputWidget::DrawTriggerStates(const XINPUT_GAMEPAD& gamepad) {
         // Visual bar for right trigger
         float right_trigger_norm = static_cast<float>(gamepad.bRightTrigger) / 255.0f;
         ImGui::ProgressBar(right_trigger_norm, ImVec2(-1, 0), "");
+    }
+}
+
+void XInputWidget::DrawBatteryStatus(int controller_index) {
+    if (controller_index >= XUSER_MAX_COUNT || !g_shared_state) {
+        return;
+    }
+
+    if (ImGui::CollapsingHeader("Battery Status", ImGuiTreeNodeFlags_DefaultOpen)) {
+        bool battery_valid = g_shared_state->battery_info_valid[controller_index].load();
+
+        if (!battery_valid) {
+            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Battery information not available");
+            return;
+        }
+
+        const XINPUT_BATTERY_INFORMATION& battery = g_shared_state->battery_info[controller_index];
+
+        // Battery type
+        std::string battery_type_str;
+        ImVec4 type_color(1.0f, 1.0f, 1.0f, 1.0f);
+
+        switch (battery.BatteryType) {
+            case BATTERY_TYPE_DISCONNECTED:
+                battery_type_str = "Disconnected";
+                type_color = ImVec4(0.7f, 0.7f, 0.7f, 1.0f);
+                break;
+            case BATTERY_TYPE_WIRED:
+                battery_type_str = "Wired (No Battery)";
+                type_color = ImVec4(0.5f, 0.8f, 1.0f, 1.0f);
+                break;
+            case BATTERY_TYPE_ALKALINE:
+                battery_type_str = "Alkaline Battery";
+                type_color = ImVec4(1.0f, 1.0f, 0.0f, 1.0f);
+                break;
+            case BATTERY_TYPE_NIMH:
+                battery_type_str = "NiMH Battery";
+                type_color = ImVec4(0.0f, 1.0f, 0.0f, 1.0f);
+                break;
+            case BATTERY_TYPE_UNKNOWN:
+                battery_type_str = "Unknown Battery Type";
+                type_color = ImVec4(0.7f, 0.7f, 0.7f, 1.0f);
+                break;
+            default:
+                battery_type_str = "Unknown";
+                type_color = ImVec4(0.7f, 0.7f, 0.7f, 1.0f);
+                break;
+        }
+
+        ImGui::TextColored(type_color, "Type: %s", battery_type_str.c_str());
+
+        // Battery level (show for all device types)
+        if (battery.BatteryType != BATTERY_TYPE_DISCONNECTED &&
+            battery.BatteryType != BATTERY_TYPE_UNKNOWN) {
+
+            std::string level_str;
+            ImVec4 level_color(1.0f, 1.0f, 1.0f, 1.0f);
+            float level_progress = 0.0f;
+
+            switch (battery.BatteryLevel) {
+                case BATTERY_LEVEL_EMPTY:
+                    level_str = "Empty";
+                    level_color = ImVec4(1.0f, 0.0f, 0.0f, 1.0f);
+                    level_progress = 0.0f;
+                    break;
+                case BATTERY_LEVEL_LOW:
+                    level_str = "Low";
+                    level_color = ImVec4(1.0f, 0.5f, 0.0f, 1.0f);
+                    level_progress = 0.25f;
+                    break;
+                case BATTERY_LEVEL_MEDIUM:
+                    level_str = "Medium";
+                    level_color = ImVec4(1.0f, 1.0f, 0.0f, 1.0f);
+                    level_progress = 0.5f;
+                    break;
+                case BATTERY_LEVEL_FULL:
+                    level_str = "Full";
+                    level_color = ImVec4(0.0f, 1.0f, 0.0f, 1.0f);
+                    level_progress = 1.0f;
+                    break;
+                default:
+                    level_str = "Unknown";
+                    level_color = ImVec4(0.7f, 0.7f, 0.7f, 1.0f);
+                    level_progress = 0.0f;
+                    break;
+            }
+
+            // For wired devices, add a note about the level meaning
+            if (battery.BatteryType == BATTERY_TYPE_WIRED) {
+                ImGui::TextColored(level_color, "Level: %s (Wired - No Battery)", level_str.c_str());
+            } else {
+                ImGui::TextColored(level_color, "Level: %s", level_str.c_str());
+            }
+
+            // Visual battery level bar
+            ImGui::PushStyleColor(ImGuiCol_PlotHistogram, level_color);
+            ImGui::ProgressBar(level_progress, ImVec2(-1, 0), "");
+            ImGui::PopStyleColor();
+        } else {
+            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Battery level not available");
+        }
     }
 }
 
@@ -1056,6 +1166,43 @@ void CheckAndHandleScreenshot() {
         LogError("XXX Exception in CheckAndHandleScreenshot: %s", e.what());
     } catch (...) {
         LogError("XXX Unknown exception in CheckAndHandleScreenshot");
+    }
+}
+
+// Global function to update battery status for a controller
+void UpdateBatteryStatus(DWORD user_index) {
+    if (user_index >= XUSER_MAX_COUNT) {
+        return;
+    }
+
+    auto shared_state = XInputWidget::GetSharedState();
+    if (!shared_state) {
+        return;
+    }
+
+    // Check if we need to update battery status (update every 5 seconds)
+    auto current_time = GetTickCount64();
+    auto last_update = shared_state->last_battery_update_times[user_index].load();
+
+    if (current_time - last_update < 5000) { // 5 seconds
+        return;
+    }
+
+    // Update battery information for gamepad
+    XINPUT_BATTERY_INFORMATION battery_info = {};
+    DWORD result = XInputGetBatteryInformation(user_index, BATTERY_DEVTYPE_GAMEPAD, &battery_info);
+
+    if (result == ERROR_SUCCESS) {
+        shared_state->battery_info[user_index] = battery_info;
+        shared_state->battery_info_valid[user_index] = true;
+        shared_state->last_battery_update_times[user_index] = current_time;
+
+        LogInfo("XXX Controller %lu battery: Type=%d, Level=%d",
+                user_index, battery_info.BatteryType, battery_info.BatteryLevel);
+    } else {
+        // Mark battery info as invalid if we can't get it
+        shared_state->battery_info_valid[user_index] = false;
+        LogWarn("XXX Failed to get battery info for controller %lu: %lu", user_index, result);
     }
 }
 

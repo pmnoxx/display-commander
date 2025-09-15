@@ -1,4 +1,5 @@
 #include "addon.hpp"
+#include "swapchain_events.hpp"
 #include "swapchain_events_power_saving.hpp"
 #include "exit_handler.hpp"
 
@@ -61,36 +62,6 @@ void OnInitEffectRuntime(reshade::api::effect_runtime* runtime) {
     if (runtime == nullptr)
       return;
 
-    static bool initialized = false;
-    if (!initialized) {
-      initialized = true;
-
-      display_cache::g_displayCache.Initialize();
-
-    // Input blocking is now handled by Windows message hooks
-
-      // Initialize input remapping system
-      display_commander::input_remapping::initialize_input_remapping();
-
-      // Register overlay directly
-      // Ensure UI system is initialized
-      ui::new_ui::InitializeNewUISystem();
-      StartContinuousMonitoring();
-
-      // Initialize experimental tab
-      std::thread(RunBackgroundAudioMonitor).detach();
-      background::StartBackgroundTasks();
-
-      InitializeUISettings();
-
-      // Start NVAPI HDR monitor if enabled
-      if (s_nvapi_hdr_logging.load()) {
-        std::thread(RunBackgroundNvapiHdrMonitor).detach();
-      }
-
-      ui::new_ui::InitExperimentalTab();
-
-    }
     g_reshade_runtime.store(runtime);
     LogInfo("ReShade effect runtime initialized - Input blocking now available");
 
@@ -103,25 +74,8 @@ void OnInitEffectRuntime(reshade::api::effect_runtime* runtime) {
     if (game_window != nullptr && IsWindow(game_window)) {
         LogInfo("Game window detected - HWND: 0x%p", game_window);
 
-        // Set the target window for window procedure hooks
-        renodx::hooks::SetTargetWindow(game_window);
-
-        // Install window procedure hooks
-        if (renodx::hooks::InstallWindowProcHooks(  game_window)) {
-            LogInfo("Window procedure hooks installed successfully");
-        } else {
-            LogError("Failed to install window procedure hooks");
-        }
-
-        // Also set the game window for API hooks
-        renodx::hooks::SetGameWindow(game_window);
-
-        // Initialize ADHD Multi-Monitor Mode
-        if (adhd_multi_monitor::api::Initialize()) {
-            LogInfo("ADHD Multi-Monitor Mode initialized successfully");
-        } else {
-            LogWarn("Failed to initialize ADHD Multi-Monitor Mode");
-        }
+        // Initialize if not already done
+        DoInitializationWithHwnd(game_window);
     } else {
         LogWarn("ReShade runtime window is not valid - HWND: 0x%p", game_window);
     }
@@ -184,6 +138,87 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
 
 bool initialized = false;
 
+
+
+void DoInitializationWithoutHwnd(HMODULE h_module, DWORD fdw_reason) {
+
+  // Initialize QPC timing constants based on actual frequency
+  utils::initialize_qpc_timing_constants();
+
+  LogInfo("DLLMain (DisplayCommander) %lld %d h_module: 0x%p", utils::get_now_ns(), fdw_reason, reinterpret_cast<uintptr_t>(h_module));
+
+  // Pin the module to prevent premature unload
+  HMODULE pinned_module = nullptr;
+  if (GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_PIN,
+                        reinterpret_cast<LPCWSTR>(h_module), &pinned_module)) {
+    LogInfo("Module pinned successfully: 0x%p", pinned_module);
+  } else {
+    DWORD error = GetLastError();
+    LogWarn("Failed to pin module: 0x%p, Error: %lu", h_module, error);
+  }
+
+  // Register reshade_overlay event for test code
+  reshade::register_event<reshade::addon_event::reshade_overlay>(OnReShadeOverlayTest);
+
+  // Capture sync interval on swapchain creation for UI
+  reshade::register_event<reshade::addon_event::create_swapchain>(OnCreateSwapchainCapture);
+
+  reshade::register_event<reshade::addon_event::init_swapchain>(OnInitSwapchain);
+
+  // Register ReShade effect runtime events for input blocking
+  reshade::register_event<reshade::addon_event::init_effect_runtime>(OnInitEffectRuntime);
+  reshade::register_event<reshade::addon_event::reshade_open_overlay>(OnReShadeOverlayOpen);
+
+  // Defer NVAPI init until after settings are loaded below
+
+  // Register our fullscreen prevention event handler
+  reshade::register_event<reshade::addon_event::set_fullscreen_state>(
+      display_commander::events::OnSetFullscreenState);
+
+  // NVAPI HDR monitor will be started after settings load below if enabled
+  // Seed default fps limit snapshot
+  // GetFpsLimit removed from proxy, use s_fps_limit directly
+  reshade::register_event<reshade::addon_event::present>(OnPresentUpdateBefore);
+  reshade::register_event<reshade::addon_event::reshade_present>(OnPresentUpdateBefore2);
+  reshade::register_event<reshade::addon_event::finish_present>(OnPresentUpdateAfter);
+  reshade::register_event<reshade::addon_event::present_flags>(OnPresentFlags);
+
+  // Register draw event handlers for render timing
+  reshade::register_event<reshade::addon_event::draw>(OnDraw);
+  reshade::register_event<reshade::addon_event::draw_indexed>(OnDrawIndexed);
+  reshade::register_event<reshade::addon_event::draw_or_dispatch_indirect>(OnDrawOrDispatchIndirect);
+
+  // Register power saving event handlers for additional GPU operations
+  reshade::register_event<reshade::addon_event::dispatch>(OnDispatch);
+  reshade::register_event<reshade::addon_event::dispatch_mesh>(OnDispatchMesh);
+  reshade::register_event<reshade::addon_event::dispatch_rays>(OnDispatchRays);
+  reshade::register_event<reshade::addon_event::copy_resource>(OnCopyResource);
+  reshade::register_event<reshade::addon_event::update_buffer_region>(OnUpdateBufferRegion);
+  reshade::register_event<reshade::addon_event::update_buffer_region_command>(OnUpdateBufferRegionCommand);
+
+  // Register buffer resolution upgrade event handlers
+  reshade::register_event<reshade::addon_event::create_resource>(OnCreateResource);
+  reshade::register_event<reshade::addon_event::create_resource_view>(OnCreateResourceView);
+  reshade::register_event<reshade::addon_event::bind_viewports>(OnSetViewport);
+  reshade::register_event<reshade::addon_event::bind_scissor_rects>(OnSetScissorRects);
+  // Note: bind_resource, map_resource, unmap_resource events don't exist in ReShade API
+  // These operations are handled differently in ReShade
+  // Register device destroy event for restore-on-exit
+  reshade::register_event<reshade::addon_event::destroy_device>(OnDestroyDevice);
+
+  // Install process-exit safety hooks to restore display on abnormal exits
+  process_exit_hooks::Initialize();
+
+  LogInfo("DLL initialization complete - DXGI calls now enabled");
+
+  // Install API hooks for continue rendering
+  LogInfo("DLL_THREAD_ATTACH: Installing API hooks...");
+  renodx::hooks::InstallApiHooks();
+
+  g_dll_initialization_complete.store(true);
+}
+
+
 BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
 
 
@@ -201,80 +236,8 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
       // Store module handle for pinning
       g_hmodule = h_module;
 
-      // Initialize QPC timing constants based on actual frequency
-      utils::initialize_qpc_timing_constants();
+      DoInitializationWithoutHwnd(h_module, fdw_reason);
 
-      LogInfo("DLLMain (DisplayCommander) %lld %d h_module: 0x%p", utils::get_now_ns(), fdw_reason, reinterpret_cast<uintptr_t>(h_module));
-
-      // Pin the module to prevent premature unload
-      HMODULE pinned_module = nullptr;
-      if (GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_PIN,
-                            reinterpret_cast<LPCWSTR>(h_module), &pinned_module)) {
-        LogInfo("Module pinned successfully: 0x%p", pinned_module);
-      } else {
-        DWORD error = GetLastError();
-        LogWarn("Failed to pin module: 0x%p, Error: %lu", h_module, error);
-      }
-
-      // Register reshade_overlay event for test code
-      reshade::register_event<reshade::addon_event::reshade_overlay>(OnReShadeOverlayTest);
-
-      // Capture sync interval on swapchain creation for UI
-      reshade::register_event<reshade::addon_event::create_swapchain>(OnCreateSwapchainCapture);
-
-      reshade::register_event<reshade::addon_event::init_swapchain>(OnInitSwapchain);
-
-      // Register ReShade effect runtime events for input blocking
-      reshade::register_event<reshade::addon_event::init_effect_runtime>(OnInitEffectRuntime);
-      reshade::register_event<reshade::addon_event::reshade_open_overlay>(OnReShadeOverlayOpen);
-
-      // Defer NVAPI init until after settings are loaded below
-
-      // Register our fullscreen prevention event handler
-      reshade::register_event<reshade::addon_event::set_fullscreen_state>(
-          display_commander::events::OnSetFullscreenState);
-
-      // NVAPI HDR monitor will be started after settings load below if enabled
-      // Seed default fps limit snapshot
-      // GetFpsLimit removed from proxy, use s_fps_limit directly
-      reshade::register_event<reshade::addon_event::present>(OnPresentUpdateBefore);
-      reshade::register_event<reshade::addon_event::reshade_present>(OnPresentUpdateBefore2);
-      reshade::register_event<reshade::addon_event::finish_present>(OnPresentUpdateAfter);
-      reshade::register_event<reshade::addon_event::present_flags>(OnPresentFlags);
-
-      // Register draw event handlers for render timing
-      reshade::register_event<reshade::addon_event::draw>(OnDraw);
-      reshade::register_event<reshade::addon_event::draw_indexed>(OnDrawIndexed);
-      reshade::register_event<reshade::addon_event::draw_or_dispatch_indirect>(OnDrawOrDispatchIndirect);
-
-      // Register power saving event handlers for additional GPU operations
-      reshade::register_event<reshade::addon_event::dispatch>(OnDispatch);
-      reshade::register_event<reshade::addon_event::dispatch_mesh>(OnDispatchMesh);
-      reshade::register_event<reshade::addon_event::dispatch_rays>(OnDispatchRays);
-      reshade::register_event<reshade::addon_event::copy_resource>(OnCopyResource);
-      reshade::register_event<reshade::addon_event::update_buffer_region>(OnUpdateBufferRegion);
-      reshade::register_event<reshade::addon_event::update_buffer_region_command>(OnUpdateBufferRegionCommand);
-
-      // Register buffer resolution upgrade event handlers
-      reshade::register_event<reshade::addon_event::create_resource>(OnCreateResource);
-      reshade::register_event<reshade::addon_event::create_resource_view>(OnCreateResourceView);
-      reshade::register_event<reshade::addon_event::bind_viewports>(OnSetViewport);
-      reshade::register_event<reshade::addon_event::bind_scissor_rects>(OnSetScissorRects);
-      // Note: bind_resource, map_resource, unmap_resource events don't exist in ReShade API
-      // These operations are handled differently in ReShade
-      // Register device destroy event for restore-on-exit
-      reshade::register_event<reshade::addon_event::destroy_device>(OnDestroyDevice);
-
-      // Install process-exit safety hooks to restore display on abnormal exits
-      process_exit_hooks::Initialize();
-
-      // Mark DLL initialization as complete - now DXGI calls are safe
-      g_dll_initialization_complete.store(true);
-      LogInfo("DLL initialization complete - DXGI calls now enabled");
-
-      // Install API hooks for continue rendering
-      LogInfo("DLL_THREAD_ATTACH: Installing API hooks...");
-      renodx::hooks::InstallApiHooks();
       break;
     }
     case DLL_THREAD_ATTACH: {

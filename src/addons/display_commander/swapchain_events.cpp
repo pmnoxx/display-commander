@@ -10,6 +10,7 @@
 #include "utils/timing.hpp"
 #include "hooks/api_hooks.hpp"
 #include "hooks/sleep_hooks.hpp"
+#include "hooks/window_proc_hooks.hpp"
 #include "widgets/xinput_widget/xinput_widget.hpp"
 
 // Use renodx2 utilities for swapchain color space changes
@@ -22,12 +23,79 @@
 #include "settings/experimental_tab_settings.hpp"
 #include "settings/main_tab_settings.hpp"
 
+// Additional includes for DoInitialization
+#include "input_remapping/input_remapping.hpp"
+#include "ui/new_ui/new_ui_main.hpp"
+#include "ui/new_ui/experimental_tab.hpp"
+#include "ui/ui_main.hpp"
+#include "background_tasks/background_task_coordinator.hpp"
+#include "nvapi/nvapi_hdr_monitor.hpp"
+
 std::atomic<int> target_width = 3840;
 std::atomic<int> target_height = 2160;
 
 
 bool is_target_resolution(int width, int height) {
   return width >= 1280 && width <= target_width.load() && height >= 720 && height <= target_height.load() && width * 9 == height * 16;
+}
+// Centralized initialization method
+void DoInitializationWithHwnd(HWND hwnd) {
+  bool expected = false;
+  static std::atomic<bool> g_initialized{false};
+  if (!g_initialized.compare_exchange_strong(expected, true)) {
+    return; // Already initialized
+  }
+
+  LogInfo("DoInitialization: Starting initialization with HWND: 0x%p", hwnd);
+
+  // Initialize display cache
+  display_cache::g_displayCache.Initialize();
+
+  // Initialize input remapping system
+  display_commander::input_remapping::initialize_input_remapping();
+
+  // Initialize UI system
+  ui::new_ui::InitializeNewUISystem();
+  StartContinuousMonitoring();
+
+  // Initialize experimental tab
+  std::thread(RunBackgroundAudioMonitor).detach();
+  background::StartBackgroundTasks();
+
+  InitializeUISettings();
+
+  // Start NVAPI HDR monitor if enabled
+  if (s_nvapi_hdr_logging.load()) {
+    std::thread(RunBackgroundNvapiHdrMonitor).detach();
+  }
+
+  ui::new_ui::InitExperimentalTab();
+
+  // Set up window hooks if we have a valid HWND
+  if (hwnd != nullptr && IsWindow(hwnd)) {
+    LogInfo("DoInitialization: Setting up window hooks for HWND: 0x%p", hwnd);
+
+    // Set the game window for API hooks
+    renodx::hooks::SetGameWindow(hwnd);
+  }
+
+  LogInfo("DoInitialization: Initialization completed");
+  // Set the game window for API hooks
+  renodx::hooks::SetGameWindow(hwnd);
+
+  // Install window procedure hooks
+  if (renodx::hooks::InstallWindowProcHooks(hwnd)) {
+      LogInfo("Window procedure hooks installed successfully");
+  } else {
+      LogError("Failed to install window procedure hooks");
+  }
+
+  // Initialize ADHD Multi-Monitor Mode
+  if (adhd_multi_monitor::api::Initialize()) {
+      LogInfo("ADHD Multi-Monitor Mode initialized successfully");
+  } else {
+      LogWarn("Failed to initialize ADHD Multi-Monitor Mode");
+  }
 }
 
 std::atomic<LONGLONG> g_present_start_time_ns{0};
@@ -147,6 +215,9 @@ bool OnCreateSwapchainCapture(reshade::api::device_api /*api*/, reshade::api::sw
   g_swapchain_event_total_count.fetch_add(1);
 
   if (hwnd == nullptr) return false;
+
+  // Initialize if not already done
+  DoInitializationWithHwnd(static_cast<HWND>(hwnd));
 
   // Apply sync interval setting if enabled
   bool modified = false;
@@ -281,8 +352,9 @@ void OnInitSwapchain(reshade::api::swapchain* swapchain, bool resize) {
   HWND hwnd = static_cast<HWND>(swapchain->get_hwnd());
   if (hwnd != nullptr) {
     g_last_swapchain_hwnd.store(hwnd);
-    // Set the game window for API hooks
-    renodx::hooks::SetGameWindow(hwnd);
+
+    // Initialize if not already done
+    DoInitializationWithHwnd(hwnd);
   }
 }
 

@@ -24,6 +24,9 @@ bool OnBindPipeline(reshade::api::command_list* cmd_list, reshade::api::pipeline
 void OnInitSwapchain(reshade::api::swapchain* swapchain, bool resize);
 bool OnCreateSwapchainCapture(reshade::api::device_api api, reshade::api::swapchain_desc& desc, void* hwnd);
 
+// Centralized initialization method
+void DoInitializationWithHwnd(HWND hwnd);
+
 // Present event handlers
 void OnPresentUpdateBefore(reshade::api::command_queue* queue, reshade::api::swapchain* swapchain, const reshade::api::rect* source_rect, const reshade::api::rect* dest_rect, uint32_t dirty_rect_count, const reshade::api::rect* dirty_rects);
 void OnPresentUpdateBefore2(reshade::api::effect_runtime* runtime);

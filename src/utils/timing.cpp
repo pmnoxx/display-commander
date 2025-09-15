@@ -18,11 +18,14 @@ namespace utils {
 LONGLONG QPC_TO_NS = 100;  // Default fallback value
 LONGLONG QPC_PER_SECOND = SEC_TO_NS / QPC_TO_NS;
 LONGLONG QPC_TO_MS = NS_TO_MS / QPC_TO_NS;
+bool initialized = false;
 
 // Initialize QPC timing constants based on actual QueryPerformanceCounter frequency
 // This should be called early in program initialization (e.g., DllMain)
 bool initialize_qpc_timing_constants()
 {
+    if (initialized)
+        return true;
     LARGE_INTEGER frequency;
     if (!renodx::hooks::QueryPerformanceFrequency_Detour(&frequency))
     {
@@ -44,6 +47,7 @@ bool initialize_qpc_timing_constants()
     // Recalculate dependent constants
     QPC_PER_SECOND = frequency.QuadPart;
     QPC_TO_MS = NS_TO_MS / QPC_TO_NS;
+    initialized = true;
 
     return true;
 }

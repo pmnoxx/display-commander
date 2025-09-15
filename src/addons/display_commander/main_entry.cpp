@@ -43,52 +43,89 @@
 void OnInitEffectRuntime(reshade::api::effect_runtime* runtime);
 bool OnReShadeOverlayOpen(reshade::api::effect_runtime* runtime, bool open, reshade::api::input_source source);
 namespace {
-// Destroy device handler to restore display if needed
-void OnDestroyDevice(reshade::api::device* /*device*/) {
-  LogInfo("ReShade device destroyed - Attempting to restore display settings");
-    display_restore::RestoreAllIfEnabled();
-}
+  // Destroy device handler to restore display if needed
+  void OnDestroyDevice(reshade::api::device* /*device*/) {
+    LogInfo("ReShade device destroyed - Attempting to restore display settings");
+      display_restore::RestoreAllIfEnabled();
+  }
+
+  void OnRegisterOverlayDisplayCommander(reshade::api::effect_runtime* runtime) {
+    // Draw the new UI
+    ui::new_ui::NewUISystem::GetInstance().Draw();
+  }
 } // namespace
 
 
 // ReShade effect runtime event handler for input blocking
 void OnInitEffectRuntime(reshade::api::effect_runtime* runtime) {
-    if (runtime != nullptr) {
-        g_reshade_runtime.store(runtime);
-        LogInfo("ReShade effect runtime initialized - Input blocking now available");
+    if (runtime == nullptr)
+      return;
 
-        if (s_fix_hdr10_colorspace.load()) {
-          runtime->set_color_space(reshade::api::color_space::hdr10_st2084);
-        }
+    static bool initialized = false;
+    if (!initialized) {
+      initialized = true;
 
-        // Set up window procedure hooks now that we have the runtime
-        HWND game_window = static_cast<HWND>(runtime->get_hwnd());
-        if (game_window != nullptr && IsWindow(game_window)) {
-            LogInfo("Game window detected - HWND: 0x%p", game_window);
+      display_cache::g_displayCache.Initialize();
 
-            // Set the target window for window procedure hooks
-            renodx::hooks::SetTargetWindow(game_window);
+    // Input blocking is now handled by Windows message hooks
 
-            // Install window procedure hooks
-            if (renodx::hooks::InstallWindowProcHooks(  game_window)) {
-                LogInfo("Window procedure hooks installed successfully");
-            } else {
-                LogError("Failed to install window procedure hooks");
-            }
+      // Initialize input remapping system
+      display_commander::input_remapping::initialize_input_remapping();
 
-            // Also set the game window for API hooks
-            renodx::hooks::SetGameWindow(game_window);
+      // Register overlay directly
+      // Ensure UI system is initialized
+      ui::new_ui::InitializeNewUISystem();
+      StartContinuousMonitoring();
 
-            // Initialize ADHD Multi-Monitor Mode
-            if (adhd_multi_monitor::api::Initialize()) {
-                LogInfo("ADHD Multi-Monitor Mode initialized successfully");
-            } else {
-                LogWarn("Failed to initialize ADHD Multi-Monitor Mode");
-            }
-        } else {
-            LogWarn("ReShade runtime window is not valid - HWND: 0x%p", game_window);
-        }
+      // Initialize experimental tab
+      std::thread(RunBackgroundAudioMonitor).detach();
+      background::StartBackgroundTasks();
+
+      InitializeUISettings();
+
+      // Start NVAPI HDR monitor if enabled
+      if (s_nvapi_hdr_logging.load()) {
+        std::thread(RunBackgroundNvapiHdrMonitor).detach();
+      }
+
+      ui::new_ui::InitExperimentalTab();
+
     }
+    g_reshade_runtime.store(runtime);
+    LogInfo("ReShade effect runtime initialized - Input blocking now available");
+
+    if (s_fix_hdr10_colorspace.load()) {
+      runtime->set_color_space(reshade::api::color_space::hdr10_st2084);
+    }
+
+    // Set up window procedure hooks now that we have the runtime
+    HWND game_window = static_cast<HWND>(runtime->get_hwnd());
+    if (game_window != nullptr && IsWindow(game_window)) {
+        LogInfo("Game window detected - HWND: 0x%p", game_window);
+
+        // Set the target window for window procedure hooks
+        renodx::hooks::SetTargetWindow(game_window);
+
+        // Install window procedure hooks
+        if (renodx::hooks::InstallWindowProcHooks(  game_window)) {
+            LogInfo("Window procedure hooks installed successfully");
+        } else {
+            LogError("Failed to install window procedure hooks");
+        }
+
+        // Also set the game window for API hooks
+        renodx::hooks::SetGameWindow(game_window);
+
+        // Initialize ADHD Multi-Monitor Mode
+        if (adhd_multi_monitor::api::Initialize()) {
+            LogInfo("ADHD Multi-Monitor Mode initialized successfully");
+        } else {
+            LogWarn("Failed to initialize ADHD Multi-Monitor Mode");
+        }
+    } else {
+        LogWarn("ReShade runtime window is not valid - HWND: 0x%p", game_window);
+    }
+    reshade::register_overlay("Display Commander", OnRegisterOverlayDisplayCommander);
 }
 
 // ReShade overlay event handler for input blocking
@@ -108,10 +145,6 @@ bool OnReShadeOverlayOpen(reshade::api::effect_runtime* runtime, bool open, resh
 
 // Direct overlay draw callback (no settings2 indirection)
 namespace {
-void OnRegisterOverlayDisplayCommander(reshade::api::effect_runtime* runtime) {
-    // Draw the new UI
-    ui::new_ui::NewUISystem::GetInstance().Draw();
-}
 
 // Test callback for reshade_overlay event
 void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
@@ -155,25 +188,23 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
 
 
   switch (fdw_reason) {
-    case DLL_PROCESS_ATTACH:
-    try {
+    case DLL_PROCESS_ATTACH: {
       g_shutdown.store(false);
-
-      if (!reshade::register_addon(h_module))
-        return FALSE;
-
-      LogInfo("DLLMain(DisplayCommander) %lld %d", utils::get_now_ns(), fdw_reason);
 
       if (g_dll_initialization_complete.load()) {
         LogError("DLLMain(DisplayCommander) already initialized");
         return FALSE;
       }
-      g_shutdown.store(false);
 
-      LogInfo("DLLMain h_module: 0x%p", reinterpret_cast<uintptr_t>(h_module));
-
+      if (!reshade::register_addon(h_module))
+        return FALSE;
       // Store module handle for pinning
       g_hmodule = h_module;
+
+      // Initialize QPC timing constants based on actual frequency
+      utils::initialize_qpc_timing_constants();
+
+      LogInfo("DLLMain (DisplayCommander) %lld %d h_module: 0x%p", utils::get_now_ns(), fdw_reason, reinterpret_cast<uintptr_t>(h_module));
 
       // Pin the module to prevent premature unload
       HMODULE pinned_module = nullptr;
@@ -184,11 +215,6 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
         DWORD error = GetLastError();
         LogWarn("Failed to pin module: 0x%p, Error: %lu", h_module, error);
       }
-
-      // Initialize QPC timing constants based on actual frequency
-      utils::initialize_qpc_timing_constants();
-
-      reshade::register_overlay("Display Commander", OnRegisterOverlayDisplayCommander);
 
       // Register reshade_overlay event for test code
       reshade::register_event<reshade::addon_event::reshade_overlay>(OnReShadeOverlayTest);
@@ -249,45 +275,9 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
       // Install API hooks for continue rendering
       LogInfo("DLL_THREAD_ATTACH: Installing API hooks...");
       renodx::hooks::InstallApiHooks();
-
-      // Note: Window hooks will be installed in DLL_THREAD_ATTACH for better timing
-
-    } catch (const std::exception& e) {
-      LogError("Error initializing DLL: %s", e.what());
-    } catch (...) {
-      LogError("Unknown error initializing DLL");
+      break;
     }
-    break;
     case DLL_THREAD_ATTACH: {
-      if (!initialized) {
-        initialized = true;
-
-        display_cache::g_displayCache.Initialize();
-
-      // Input blocking is now handled by Windows message hooks
-
-        // Initialize input remapping system
-        display_commander::input_remapping::initialize_input_remapping();
-
-        // Register overlay directly
-        // Ensure UI system is initialized
-        ui::new_ui::InitializeNewUISystem();
-        StartContinuousMonitoring();
-
-        // Initialize experimental tab
-        std::thread(RunBackgroundAudioMonitor).detach();
-        background::StartBackgroundTasks();
-
-        InitializeUISettings();
-
-        // Start NVAPI HDR monitor if enabled
-        if (s_nvapi_hdr_logging.load()) {
-          std::thread(RunBackgroundNvapiHdrMonitor).detach();
-        }
-
-        ui::new_ui::InitExperimentalTab();
-
-      }
       break;
     }
     case DLL_THREAD_DETACH: {

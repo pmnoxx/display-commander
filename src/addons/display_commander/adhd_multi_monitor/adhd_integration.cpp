@@ -1,4 +1,5 @@
 #include "adhd_integration.hpp"
+#include "../globals.hpp"
 #include "../utils.hpp"
 
 namespace adhd_multi_monitor {
@@ -77,6 +78,13 @@ void AdhdIntegration::Update()
     if (!initialized_)
         return;
 
+    // Update the game window handle from the global swapchain HWND
+    HWND current_hwnd = g_last_swapchain_hwnd.load();
+    if (current_hwnd && current_hwnd != game_window_)
+    {
+        SetGameWindow(current_hwnd);
+    }
+
     // Update the manager
     manager_->UpdateBackgroundWindow();
 }
@@ -84,6 +92,11 @@ void AdhdIntegration::Update()
 void AdhdIntegration::SetGameWindow(HWND hwnd)
 {
     game_window_ = hwnd;
+
+    if (manager_)
+    {
+        manager_->SetGameWindow(hwnd);
+    }
 
     if (focus_detector_)
     {

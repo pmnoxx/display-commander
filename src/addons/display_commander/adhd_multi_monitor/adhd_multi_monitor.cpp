@@ -39,9 +39,9 @@ bool AdhdMultiMonitorManager::Initialize()
     if (initialized_)
         return true;
 
-    // Get the game window handle
-    game_hwnd_ = FindWindow(nullptr, nullptr); // This will be set properly by the main system
-    if (!game_hwnd_)
+    // Get the game window handle from the global swapchain HWND
+    game_hwnd_ = g_last_swapchain_hwnd.load();
+    if (!game_hwnd_ || !IsWindow(game_hwnd_))
         return false;
 
     // Enumerate available monitors
@@ -150,6 +150,16 @@ HMONITOR AdhdMultiMonitorManager::GetGameMonitor() const
         return nullptr;
 
     return MonitorFromWindow(game_hwnd_, MONITOR_DEFAULTTONEAREST);
+}
+
+void AdhdMultiMonitorManager::SetGameWindow(HWND hwnd)
+{
+    if (hwnd && IsWindow(hwnd))
+    {
+        game_hwnd_ = hwnd;
+        // Update monitor info when window changes
+        UpdateMonitorInfo();
+    }
 }
 
 bool AdhdMultiMonitorManager::CreateBackgroundWindow()

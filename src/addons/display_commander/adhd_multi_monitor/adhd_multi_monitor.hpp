@@ -47,6 +47,9 @@ public:
     // Get the monitor where the game window is located
     HMONITOR GetGameMonitor() const;
 
+    // Update the game window handle
+    void SetGameWindow(HWND hwnd);
+
 private:
     // Background window management
     bool CreateBackgroundWindow();

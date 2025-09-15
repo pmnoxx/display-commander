@@ -53,12 +53,6 @@ void every1s_checks() {
 
         // FOCUS LOSS DETECTION: Close background window when main window loses focus
         HWND foreground_window = renodx::hooks::GetForegroundWindow_Original ? renodx::hooks::GetForegroundWindow_Original() : GetForegroundWindow();
-        if (foreground_window != hwnd && g_backgroundWindowManager.HasBackgroundWindow()) {
-            // Main window lost focus, close background window
-            LogInfo("Continuous monitoring: Main window lost focus - closing background window");
-
-        //       g_backgroundWindowManager.DestroyBackgroundWindow();
-        }
 
         if (s_background_feature_enabled.load()) {
             // Only create/update background window if main window has focus
@@ -250,6 +244,8 @@ void ContinuousMonitoringThread() {
         LONGLONG now_ns = utils::get_now_ns();
         if (now_ns - last_60fps_update_ns >= FPS_60_INTERVAL_NS) {
             last_60fps_update_ns = now_ns;
+            adhd_multi_monitor::api::Initialize();
+            adhd_multi_monitor::api::SetEnabled(settings::g_mainTabSettings.adhd_multi_monitor_enabled.GetValue());
 
             // Update ADHD Multi-Monitor Mode at 60 FPS
             adhd_multi_monitor::api::Update();

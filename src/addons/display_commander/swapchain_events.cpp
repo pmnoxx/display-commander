@@ -522,9 +522,6 @@ void OnPresentUpdateBefore(
   g_swapchain_event_counters[SWAPCHAIN_EVENT_PRESENT_UPDATE_BEFORE].fetch_add(1);
   g_swapchain_event_total_count.fetch_add(1);
 
-
-  // Avoid querying swapchain/device descriptors every frame. These are updated elsewhere.
-
   // Throttle queries to ~every 30 presents
   int c = ++g_comp_query_counter;
 

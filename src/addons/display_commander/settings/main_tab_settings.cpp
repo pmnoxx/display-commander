@@ -1,6 +1,7 @@
 #include "main_tab_settings.hpp"
 #include "../addon.hpp"
 #include "../hooks/api_hooks.hpp"
+#include "../adhd_multi_monitor/adhd_simple_api.hpp"
 #include <windows.h>
 
 // Atomic variables used by main tab settings
@@ -86,9 +87,14 @@ MainTabSettings::MainTabSettings()
     };
 }
 
+// TODO add initialization of other settings
 void MainTabSettings::LoadSettings() {
     LogInfo("MainTabSettings::LoadSettings() called");
-    LoadTabSettings(all_settings_);;
+    LoadTabSettings(all_settings_);
+
+    // Apply ADHD Multi-Monitor Mode settings after loading
+    adhd_multi_monitor::api::SetEnabled(adhd_multi_monitor_enabled.GetValue());
+
     LogInfo("MainTabSettings::LoadSettings() completed");
 }
 

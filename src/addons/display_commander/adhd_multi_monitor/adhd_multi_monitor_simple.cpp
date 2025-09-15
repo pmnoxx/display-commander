@@ -89,6 +89,9 @@ void AdhdMultiMonitorManager::Update()
 
     // Update game window handle if it changed
     HWND current_hwnd = g_last_swapchain_hwnd.load();
+    if (!current_hwnd) {
+        return;
+    }
     if (current_hwnd && current_hwnd != game_hwnd_)
     {
         game_hwnd_ = current_hwnd;
@@ -124,6 +127,9 @@ void AdhdMultiMonitorManager::Update()
 
 void AdhdMultiMonitorManager::SetEnabled(bool enabled)
 {
+    if (!game_hwnd_) {
+        return;
+    }
     if (enabled_ == enabled)
         return;
 

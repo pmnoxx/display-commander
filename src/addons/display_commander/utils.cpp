@@ -309,22 +309,20 @@ float ProcessStickInput(float value, float deadzone, float max_input, float min_
 
 // XInput thumbstick scaling helpers (handles asymmetric SHORT range: -32768 to 32767)
 float ShortToFloat(SHORT value) {
-    if (value < 0) {
-        return static_cast<float>(value) / 32768.0f;  // Maps -32768 to -1.0
-    } else {
-        return static_cast<float>(value) / 32767.0f;  // Maps 32767 to 1.0
-    }
+    // Proper linear mapping from [-32768, 32767] to [-1.0f, 1.0f]
+    // Using the full range: 32767 - (-32768) = 65535
+    // Center point: (32767 + (-32768)) / 2 = -0.5
+    // So we map: (value - (-32768)) / 65535 * 2.0f - 1.0f
+    return (static_cast<float>(value) - (-32768.0f)) / 65535.0f * 2.0f - 1.0f;
 }
 
 SHORT FloatToShort(float value) {
     // Clamp to valid range
     value = max(-1.0f, min(1.0f, value));
 
-    if (value < 0) {
-        return static_cast<SHORT>(value * 32768.0f);  // Maps -1.0 to -32768
-    } else {
-        return static_cast<SHORT>(value * 32767.0f);  // Maps 1.0 to 32767
-    }
+    // Inverse mapping from [-1.0f, 1.0f] to [-32768, 32767]
+    // (value + 1.0f) / 2.0f * 65535.0f + (-32768.0f)
+    return static_cast<SHORT>((value + 1.0f) / 2.0f * 65535.0f + (-32768.0f));
 }
 
 

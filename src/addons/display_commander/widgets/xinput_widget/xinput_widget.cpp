@@ -1089,8 +1089,8 @@ void XInputWidget::ExecuteChordAction(const XInputSharedState::Chord& chord, DWO
     } else if (chord.action == "Test controller vibration") {
         // Test vibration on the controller that triggered the chord
         XINPUT_VIBRATION vibration = {};
-        vibration.wLeftMotorSpeed = floatToShort(1.0f);  // Medium intensity
-        vibration.wRightMotorSpeed = floatToShort(1.0f);
+        vibration.wLeftMotorSpeed = FloatToShort(1.0f);  // Medium intensity
+        vibration.wRightMotorSpeed = FloatToShort(1.0f);
 
         DWORD result = XInputSetState(user_index, &vibration);
         if (result == ERROR_SUCCESS) {
@@ -1198,8 +1198,8 @@ void ProcessChordDetection(DWORD user_index, WORD button_state) {
                 }
             } else if (chord.action == "Test controller vibration") {
                 XINPUT_VIBRATION vibration = {};
-                vibration.wLeftMotorSpeed = floatToShort(1.0f);
-                vibration.wRightMotorSpeed = floatToShort(1.0f);
+                vibration.wLeftMotorSpeed = FloatToShort(1.0f);
+                vibration.wRightMotorSpeed = FloatToShort(1.0f);
 
                 DWORD result = XInputSetState(user_index, &vibration);
                 if (result == ERROR_SUCCESS) {

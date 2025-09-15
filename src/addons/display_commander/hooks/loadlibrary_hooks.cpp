@@ -2,6 +2,7 @@
 #include "xinput_hooks.hpp"
 #include "windows_gaming_input_hooks.hpp"
 #include "../utils.hpp"
+#include "../utils/srwlock_wrapper.hpp"
 #include <MinHook.h>
 #include <chrono>
 #include <iomanip>
@@ -23,7 +24,7 @@ static std::atomic<bool> g_loadlibrary_hooks_installed{false};
 // Module tracking
 static std::vector<ModuleInfo> g_loaded_modules;
 static std::unordered_set<HMODULE> g_module_handles;
-static std::mutex g_module_mutex;
+static SRWLOCK g_module_srwlock = SRWLOCK_INIT;
 
 // Helper function to get current timestamp as string
 std::string GetCurrentTimestamp() {
@@ -89,7 +90,7 @@ HMODULE WINAPI LoadLibraryA_Detour(LPCSTR lpLibFileName) {
 
         // Track the newly loaded module
         {
-            std::lock_guard<std::mutex> lock(g_module_mutex);
+            utils::SRWLockExclusive lock(g_module_srwlock);
             if (g_module_handles.find(result) == g_module_handles.end()) {
                 ModuleInfo moduleInfo;
                 moduleInfo.hModule = result;
@@ -142,7 +143,7 @@ HMODULE WINAPI LoadLibraryW_Detour(LPCWSTR lpLibFileName) {
 
         // Track the newly loaded module
         {
-            std::lock_guard<std::mutex> lock(g_module_mutex);
+            utils::SRWLockExclusive lock(g_module_srwlock);
             if (g_module_handles.find(result) == g_module_handles.end()) {
                 ModuleInfo moduleInfo;
                 moduleInfo.hModule = result;
@@ -317,7 +318,7 @@ bool AreLoadLibraryHooksInstalled() {
 }
 
 bool EnumerateLoadedModules() {
-    std::lock_guard<std::mutex> lock(g_module_mutex);
+    utils::SRWLockExclusive lock(g_module_srwlock);
 
     g_loaded_modules.clear();
     g_module_handles.clear();
@@ -374,12 +375,12 @@ bool EnumerateLoadedModules() {
 }
 
 std::vector<ModuleInfo> GetLoadedModules() {
-    std::lock_guard<std::mutex> lock(g_module_mutex);
+    utils::SRWLockShared lock(g_module_srwlock);
     return g_loaded_modules;
 }
 
 bool IsModuleLoaded(const std::wstring& moduleName) {
-    std::lock_guard<std::mutex> lock(g_module_mutex);
+    utils::SRWLockShared lock(g_module_srwlock);
 
     for (const auto& module : g_loaded_modules) {
         if (_wcsicmp(module.moduleName.c_str(), moduleName.c_str()) == 0) {

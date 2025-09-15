@@ -53,7 +53,6 @@ private:
     std::atomic<bool> enabled_;
 
     HWND background_hwnd_;
-    HWND game_hwnd_;
     HWND last_foreground_window_;
 
     std::vector<RECT> monitor_rects_;

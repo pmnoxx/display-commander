@@ -7,6 +7,7 @@
 #include "../../../external/reshade/include/reshade.hpp"
 #include "../globals.hpp"
 #include "../utils.hpp"
+#include "../utils/srwlock_wrapper.hpp"
 #include <algorithm>
 #include <sstream>
 
@@ -20,7 +21,7 @@ namespace display_commander::input_remapping
 
     InputRemapper::InputRemapper()
     {
-        InitializeCriticalSection(&_cs);
+        // SRWLOCK is statically initialized, no explicit initialization needed
 
         // Initialize button state tracking
         for (int i = 0; i < XUSER_MAX_COUNT; ++i) {
@@ -32,7 +33,7 @@ namespace display_commander::input_remapping
     InputRemapper::~InputRemapper()
     {
         cleanup();
-        DeleteCriticalSection(&_cs);
+        // SRWLOCK doesn't need explicit cleanup
     }
 
     bool InputRemapper::initialize()
@@ -94,7 +95,7 @@ namespace display_commander::input_remapping
 
     void InputRemapper::add_button_remap(const ButtonRemap& remap)
     {
-        EnterCriticalSection(&_cs);
+        utils::SRWLockExclusive lock(_srwlock);
 
         // Check if remap already exists for this button
         auto it = _button_to_remap_index.find(remap.gamepad_button);
@@ -107,8 +108,6 @@ namespace display_commander::input_remapping
             _button_to_remap_index[remap.gamepad_button] = _remappings.size() - 1;
         }
 
-        LeaveCriticalSection(&_cs);
-
         // Auto-save settings when remappings change
         save_settings();
 
@@ -118,7 +117,7 @@ namespace display_commander::input_remapping
 
     void InputRemapper::remove_button_remap(WORD gamepad_button)
     {
-        EnterCriticalSection(&_cs);
+        utils::SRWLockExclusive lock(_srwlock);
 
         auto it = _button_to_remap_index.find(gamepad_button);
         if (it != _button_to_remap_index.end()) {
@@ -134,8 +133,6 @@ namespace display_commander::input_remapping
             }
         }
 
-        LeaveCriticalSection(&_cs);
-
         // Auto-save settings when remappings change
         save_settings();
 
@@ -144,10 +141,9 @@ namespace display_commander::input_remapping
 
     void InputRemapper::clear_all_remaps()
     {
-        EnterCriticalSection(&_cs);
+        utils::SRWLockExclusive lock(_srwlock);
         _remappings.clear();
         _button_to_remap_index.clear();
-        LeaveCriticalSection(&_cs);
 
         // Auto-save settings when remappings change
         save_settings();
@@ -170,11 +166,9 @@ namespace display_commander::input_remapping
 
     const ButtonRemap* InputRemapper::get_button_remap(WORD gamepad_button) const
     {
-        EnterCriticalSection(&_cs);
+        utils::SRWLockShared lock(_srwlock);
         auto it = _button_to_remap_index.find(gamepad_button);
-        const ButtonRemap* result = (it != _button_to_remap_index.end()) ? &_remappings[it->second] : nullptr;
-        LeaveCriticalSection(&_cs);
-        return result;
+        return (it != _button_to_remap_index.end()) ? &_remappings[it->second] : nullptr;
     }
 
     void InputRemapper::update_remap(WORD gamepad_button, int keyboard_vk, const std::string& keyboard_name,

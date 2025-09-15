@@ -21,7 +21,6 @@ AdhdMultiMonitorManager g_adhdManager;
 AdhdMultiMonitorManager::AdhdMultiMonitorManager()
     : enabled_(false)
     , background_hwnd_(nullptr)
-    , game_hwnd_(nullptr)
     , last_foreground_window_(nullptr)
     , initialized_(false)
     , background_window_created_(false)
@@ -39,9 +38,9 @@ bool AdhdMultiMonitorManager::Initialize()
     if (initialized_)
         return true;
 
-    // Get the game window handle from the global swapchain HWND
-    game_hwnd_ = g_last_swapchain_hwnd.load();
-    if (!game_hwnd_ || !IsWindow(game_hwnd_))
+    // Check if we have a valid game window handle
+    HWND game_hwnd = g_last_swapchain_hwnd.load();
+    if (!game_hwnd || !IsWindow(game_hwnd))
         return false;
 
     // Enumerate available monitors
@@ -87,14 +86,15 @@ void AdhdMultiMonitorManager::Update()
     if (!enabled_ || !initialized_)
         return;
 
-    // Update game window handle if it changed
+    // Update monitor info if game window changed
     HWND current_hwnd = g_last_swapchain_hwnd.load();
     if (!current_hwnd) {
         return;
     }
-    if (current_hwnd && current_hwnd != game_hwnd_)
+    static HWND last_hwnd = nullptr;
+    if (current_hwnd && current_hwnd != last_hwnd)
     {
-        game_hwnd_ = current_hwnd;
+        last_hwnd = current_hwnd;
         UpdateMonitorInfo();
     }
 
@@ -108,7 +108,8 @@ void AdhdMultiMonitorManager::Update()
         bool shouldShow = true;
 
         // Always disengage on focus loss (focus disengagement is always enabled)
-        if (game_hwnd_ && current_foreground != game_hwnd_)
+        HWND game_hwnd = g_last_swapchain_hwnd.load();
+        if (game_hwnd && current_foreground != game_hwnd)
         {
             shouldShow = false;
         }
@@ -127,7 +128,8 @@ void AdhdMultiMonitorManager::Update()
 
 void AdhdMultiMonitorManager::SetEnabled(bool enabled)
 {
-    if (!game_hwnd_) {
+    HWND game_hwnd = g_last_swapchain_hwnd.load();
+    if (!game_hwnd) {
         return;
     }
     if (enabled_ == enabled)
@@ -162,7 +164,8 @@ bool AdhdMultiMonitorManager::CreateBackgroundWindow()
     if (background_window_created_)
         return true;
 
-    if (!game_hwnd_)
+    HWND game_hwnd = g_last_swapchain_hwnd.load();
+    if (!game_hwnd)
         return false;
 
     // Create the background window
@@ -211,7 +214,10 @@ void AdhdMultiMonitorManager::PositionBackgroundWindow()
         return;
 
     // Get the game monitor
-    HMONITOR gameMonitor = MonitorFromWindow(game_hwnd_, MONITOR_DEFAULTTONEAREST);
+    HWND game_hwnd = g_last_swapchain_hwnd.load();
+    if (!game_hwnd)
+        return;
+    HMONITOR gameMonitor = MonitorFromWindow(game_hwnd, MONITOR_DEFAULTTONEAREST);
     if (!gameMonitor)
         return;
 
@@ -285,17 +291,19 @@ void AdhdMultiMonitorManager::UpdateMonitorInfo()
     EnumerateMonitors();
 
     // Update game monitor info
-    if (game_hwnd_)
+    HWND game_hwnd = g_last_swapchain_hwnd.load();
+    if (!game_hwnd)
     {
-        HMONITOR gameMonitor = MonitorFromWindow(game_hwnd_, MONITOR_DEFAULTTONEAREST);
-        if (gameMonitor)
+        return;
+    }
+    HMONITOR gameMonitor = MonitorFromWindow(game_hwnd, MONITOR_DEFAULTTONEAREST);
+    if (gameMonitor)
+    {
+        MONITORINFO mi = {};
+        mi.cbSize = sizeof(mi);
+        if (GetMonitorInfoW(gameMonitor, &mi))
         {
-            MONITORINFO mi = {};
-            mi.cbSize = sizeof(mi);
-            if (GetMonitorInfoW(gameMonitor, &mi))
-            {
-                game_monitor_rect_ = mi.rcMonitor;
-            }
+            game_monitor_rect_ = mi.rcMonitor;
         }
     }
 }

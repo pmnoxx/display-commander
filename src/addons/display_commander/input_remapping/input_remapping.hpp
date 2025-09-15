@@ -157,7 +157,7 @@ namespace display_commander::input_remapping
         std::array<std::atomic<WORD>, XUSER_MAX_COUNT> _current_button_states;
 
         // Thread safety
-        mutable CRITICAL_SECTION _cs;
+        mutable SRWLOCK _srwlock = SRWLOCK_INIT;
     };
 
     // Global functions for integration

@@ -3,7 +3,7 @@
 #include <windows.h>
 #include <psapi.h>
 #include <vector>
-#include <mutex>
+#include <string>
 
 namespace renodx::hooks {
 

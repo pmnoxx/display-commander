@@ -5,7 +5,6 @@
 #include <string>
 #include <thread>
 #include <atomic>
-#include <mutex>
 
 // Forward declaration
 struct DisplayTimingInfo;

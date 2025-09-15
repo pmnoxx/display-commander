@@ -271,7 +271,6 @@ void ApplyWindowChange(HWND hwnd, const char* reason, bool force_apply) {
     auto s = *window_state;
 
     if (s.show_cmd == SW_SHOWMAXIMIZED) {
-      g_unsafe_calls_cnt.fetch_add(1);
       ShowWindow(hwnd, SW_RESTORE);
       return;
     }
@@ -286,12 +285,10 @@ void ApplyWindowChange(HWND hwnd, const char* reason, bool force_apply) {
       }
       if (s.style_changed) {
         LogDebug("ApplyWindowChange: Setting new style and ex style");
-        g_unsafe_calls_cnt.fetch_add(1);
         SetWindowLongPtrW(hwnd, GWL_STYLE, s.new_style);
       }
       if (s.style_changed_ex) {
         LogDebug("ApplyWindowChange: Setting new ex style");
-        g_unsafe_calls_cnt.fetch_add(1);
         SetWindowLongPtrW(hwnd, GWL_EXSTYLE, s.new_ex_style);
       }
 
@@ -302,7 +299,6 @@ void ApplyWindowChange(HWND hwnd, const char* reason, bool force_apply) {
       if (!s.needs_move) flags |= SWP_NOMOVE;
       if (s.style_changed || s.style_changed_ex) flags |= SWP_FRAMECHANGED;
 
-      g_unsafe_calls_cnt.fetch_add(1);
       SetWindowPos(hwnd, nullptr, s.target_x, s.target_y, s.target_w, s.target_h, flags);
     }
   }

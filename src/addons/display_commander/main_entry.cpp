@@ -159,13 +159,10 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
     try {
       g_shutdown.store(false);
 
-      if (!reshade::register_addon(h_module)) return FALSE;
-      {
-        LONGLONG now_ns = utils::get_now_ns();
-        std::ostringstream oss;
-        oss << "DLLMain(DisplayCommander) " << now_ns << " " << fdw_reason;
-        LogInfo(oss.str().c_str());
-      }
+      if (!reshade::register_addon(h_module))
+        return FALSE;
+
+      LogInfo("DLLMain(DisplayCommander) %lld %d", utils::get_now_ns(), fdw_reason);
 
       if (g_dll_initialization_complete.load()) {
         LogError("DLLMain(DisplayCommander) already initialized");
@@ -173,12 +170,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
       }
       g_shutdown.store(false);
 
-      // Debug: Log the module handle value
-      {
-        std::ostringstream oss;
-        oss << "DLLMain h_module: 0x" << std::hex << reinterpret_cast<uintptr_t>(h_module);
-        LogInfo(oss.str().c_str());
-      }
+      LogInfo("DLLMain h_module: 0x%p", reinterpret_cast<uintptr_t>(h_module));
 
       // Store module handle for pinning
       g_hmodule = h_module;
@@ -254,13 +246,6 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
       g_dll_initialization_complete.store(true);
       LogInfo("DLL initialization complete - DXGI calls now enabled");
 
-      // Check unsafe calls counter and log if any unsafe calls occurred
-      uint32_t unsafe_calls = g_unsafe_calls_cnt.load();
-      if (unsafe_calls > 0) {
-        LogError("ERROR: %u unsafe Win32 API calls occurred during DLL initialization", unsafe_calls);
-      } else {
-        LogInfo("No unsafe Win32 API calls occurred during DLL initialization");
-      }
       // Install API hooks for continue rendering
       LogInfo("DLL_THREAD_ATTACH: Installing API hooks...");
       renodx::hooks::InstallApiHooks();
@@ -275,10 +260,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
     break;
     case DLL_THREAD_ATTACH: {
       if (!initialized) {
-
         initialized = true;
-
-
 
         display_cache::g_displayCache.Initialize();
 

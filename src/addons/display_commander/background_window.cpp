@@ -122,7 +122,6 @@ bool BackgroundWindowManager::CreateBackgroundWindowInThread(HWND game_hwnd) {
     SetLayeredWindowAttributes(m_background_hwnd, RGB(255, 0, 255), 255, LWA_COLORKEY | LWA_ALPHA);
 
     // Ensure the background window cannot receive focus or input
-    g_unsafe_calls_cnt.fetch_add(1);
     SetWindowLongPtr(m_background_hwnd, GWL_EXSTYLE,
                      GetWindowLongPtr(m_background_hwnd, GWL_EXSTYLE) | WS_EX_NOACTIVATE);
 
@@ -274,7 +273,6 @@ void BackgroundWindowManager::UpdateBackgroundWindowPosition(HWND game_hwnd) {
     }
 
     // Update background window to cover entire monitor, but ensure it stays behind the game window
-    g_unsafe_calls_cnt.fetch_add(1);
     SetWindowPos(m_background_hwnd,
                  game_hwnd, // Place behind the game window specifically
                  monitor_info.rcMonitor.left,

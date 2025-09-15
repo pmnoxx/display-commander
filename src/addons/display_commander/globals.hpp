@@ -384,6 +384,3 @@ extern std::atomic<std::shared_ptr<const std::string>> g_dlls_g_version; // DLLS
 extern std::atomic<bool> g_dlss_preset_detected; // DLSS preset detection status
 extern std::atomic<std::shared_ptr<const std::string>> g_dlss_preset_name; // Current DLSS preset name
 extern std::atomic<std::shared_ptr<const std::string>> g_dlss_quality_mode; // Current DLSS quality mode
-
-// Unsafe Win32 API calls counter
-extern std::atomic<uint32_t> g_unsafe_calls_cnt;

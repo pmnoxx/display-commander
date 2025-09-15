@@ -729,7 +729,6 @@ void DrawWindowControls() {
         HWND hwnd = g_last_swapchain_hwnd.load();
         std::thread([hwnd](){
             LogDebug("Minimize Window button pressed (bg thread)");
-            g_unsafe_calls_cnt.fetch_add(1);
             ShowWindow(hwnd, SW_MINIMIZE);
         }).detach();
     }
@@ -743,7 +742,6 @@ void DrawWindowControls() {
     if (ImGui::Button("Restore Window")) {
         std::thread([hwnd](){
             LogDebug("Restore Window button pressed (bg thread)");
-            g_unsafe_calls_cnt.fetch_add(1);
             ShowWindow(hwnd, SW_RESTORE);
         }).detach();
     }

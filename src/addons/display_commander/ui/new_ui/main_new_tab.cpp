@@ -17,6 +17,7 @@
 #include "../../utils/timing.hpp"
 #include "version.hpp"
 #include "../../widgets/resolution_widget/resolution_widget.hpp"
+#include "../../adhd_multi_monitor/adhd_multi_monitor_module.hpp"
 
 
 namespace ui::new_ui {
@@ -44,6 +45,10 @@ void InitMainNewTab() {
 
         // Update input blocking system with loaded settings
         // Input blocking is now handled by Windows message hooks
+
+        // Apply ADHD Multi-Monitor Mode settings
+        adhd_multi_monitor::api::SetEnabled(settings::g_mainTabSettings.adhd_multi_monitor_enabled.GetValue());
+        adhd_multi_monitor::api::SetFocusDisengage(settings::g_mainTabSettings.adhd_multi_monitor_focus_disengage.GetValue());
 
         settings_loaded_once = true;
 
@@ -328,6 +333,9 @@ void DrawDisplaySettings() {
             ImGui::SetTooltip("Creates a black background behind the game window when it doesn't cover the full screen.");
         }
     }
+
+    // ADHD Multi-Monitor Mode controls
+    DrawAdhdMultiMonitorControls();
 
 
     // Apply Changes button
@@ -913,6 +921,75 @@ void DrawImportantInfo() {
     } else {
         // Unknown - Yellow
         ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.8f, 1.0f), "%s", oss.str().c_str());
+    }
+}
+
+void DrawAdhdMultiMonitorControls() {
+    ImGui::Spacing();
+    ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== ADHD Multi-Monitor Mode ===");
+
+    // Check if multiple monitors are available
+    bool hasMultipleMonitors = adhd_multi_monitor::api::HasMultipleMonitors();
+
+    if (!hasMultipleMonitors) {
+        ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f), "⚠ Multiple monitors not detected - ADHD mode unavailable");
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("ADHD Multi-Monitor Mode requires multiple monitors to function.\nConnect additional monitors to use this feature.");
+        }
+        return;
+    }
+
+    // Main ADHD mode checkbox
+    bool adhdEnabled = settings::g_mainTabSettings.adhd_multi_monitor_enabled.GetValue();
+    if (ImGui::Checkbox("ADHD Multi-Monitor Mode", &adhdEnabled)) {
+        settings::g_mainTabSettings.adhd_multi_monitor_enabled.SetValue(adhdEnabled);
+        adhd_multi_monitor::api::SetEnabled(adhdEnabled);
+        LogInfo("ADHD Multi-Monitor Mode %s", adhdEnabled ? "enabled" : "disabled");
+    }
+
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Covers secondary monitors with a black window to reduce distractions while playing this game.");
+    }
+
+    // Focus disengagement checkbox (only enabled when ADHD mode is on)
+    if (!adhdEnabled) {
+        ImGui::BeginDisabled();
+    }
+
+    bool focusDisengage = settings::g_mainTabSettings.adhd_multi_monitor_focus_disengage.GetValue();
+    if (ImGui::Checkbox("Disengage on Alt-Tab (WIP)", &focusDisengage)) {
+        settings::g_mainTabSettings.adhd_multi_monitor_focus_disengage.SetValue(focusDisengage);
+        adhd_multi_monitor::api::SetFocusDisengage(focusDisengage);
+        LogInfo("ADHD focus disengagement %s", focusDisengage ? "enabled" : "disabled");
+    }
+
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("ADHD mode will disengage whenever you Alt-Tab, regardless of which monitor the new application is on.");
+    }
+
+    if (!adhdEnabled) {
+        ImGui::EndDisabled();
+    }
+
+    // Status information
+    ImGui::Spacing();
+    ImGui::TextColored(ImVec4(0.6f, 1.0f, 0.6f, 1.0f), "Status:");
+    ImGui::SameLine();
+    if (adhdEnabled) {
+        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Active");
+        if (focusDisengage) {
+            ImGui::SameLine();
+            ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "(Disengages on Alt-Tab)");
+        }
+    } else {
+        ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Inactive");
+    }
+
+    // Additional information
+    ImGui::Spacing();
+    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "This feature helps reduce distractions by covering secondary monitors with a black background.");
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Similar to Special-K's ADHD Multi-Monitor Mode.\nThe black background window will automatically position itself to cover all monitors except the one where your game is running.");
     }
 }
 

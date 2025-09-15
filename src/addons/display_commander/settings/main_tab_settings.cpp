@@ -51,7 +51,9 @@ MainTabSettings::MainTabSettings()
       no_render_in_background("no_render_in_background", s_no_render_in_background, false, "renodx_main_tab"),
       no_present_in_background("no_present_in_background", s_no_present_in_background, false, "renodx_main_tab"),
       show_test_overlay("show_test_overlay", false, "renodx_main_tab"),
-      target_display("target_display", "", "renodx_main_tab") {
+      target_display("target_display", "", "renodx_main_tab"),
+      adhd_multi_monitor_enabled("adhd_multi_monitor_enabled", false, "renodx_main_tab"),
+      adhd_multi_monitor_focus_disengage("adhd_multi_monitor_focus_disengage", true, "renodx_main_tab") {
 
     // Initialize the all_settings_ vector
     all_settings_ = {
@@ -81,6 +83,8 @@ MainTabSettings::MainTabSettings()
         &no_present_in_background,
         &show_test_overlay,
         &target_display,
+        &adhd_multi_monitor_enabled,
+        &adhd_multi_monitor_focus_disengage,
     };
 }
 

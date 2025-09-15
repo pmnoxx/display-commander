@@ -1,15 +1,13 @@
 #pragma once
 
-// Main header file for the ADHD Multi-Monitor module
-// This provides a single include point for all ADHD functionality
+// Simple API for ADHD Multi-Monitor Mode
+// This replaces the complex integration system with a single class approach
 
-#include "adhd_multi_monitor.hpp"
-#include "focus_detector.hpp"
-#include "adhd_integration.hpp"
+#include "adhd_multi_monitor_simple.hpp"
 
 namespace adhd_multi_monitor {
 
-// Convenience functions for easy integration
+// Simple API functions
 namespace api {
 
 // Initialize the ADHD multi-monitor system
@@ -21,14 +19,10 @@ void Shutdown();
 // Update the system (call from main loop)
 void Update();
 
-// Set the game window handle
-void SetGameWindow(HWND hwnd);
-
 // Enable/disable ADHD mode
 void SetEnabled(bool enabled);
 
-// Set focus disengagement mode
-void SetFocusDisengage(bool disengage);
+// Focus disengagement is always enabled (no API needed)
 
 // Check if ADHD mode is enabled
 bool IsEnabled();

@@ -3,7 +3,6 @@
 #include "../../globals.hpp"
 #include "../../hooks/sleep_hooks.hpp"
 #include "../../hooks/timeslowdown_hooks.hpp"
-#include "../../adhd_multi_monitor/adhd_multi_monitor_module.hpp"
 #include "../../utils.hpp"
 #include <deps/imgui/imgui.h>
 #include <windows.h>

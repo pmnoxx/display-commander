@@ -47,7 +47,6 @@ public:
 
     // ADHD Multi-Monitor Mode Settings
     ui::new_ui::BoolSetting adhd_multi_monitor_enabled;
-    ui::new_ui::BoolSetting adhd_multi_monitor_focus_disengage;
 
     // FPS Settings
     ui::new_ui::ComboSetting fps_limiter_mode;

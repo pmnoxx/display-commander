@@ -1,4 +1,4 @@
-#include "adhd_multi_monitor.hpp"
+#include "adhd_multi_monitor_simple.hpp"
 #include "../globals.hpp"
 #include "../utils.hpp"
 #include <dwmapi.h>
@@ -20,13 +20,13 @@ AdhdMultiMonitorManager g_adhdManager;
 
 AdhdMultiMonitorManager::AdhdMultiMonitorManager()
     : enabled_(false)
-    , focus_disengage_(true)
-    , game_has_focus_(true)
     , background_hwnd_(nullptr)
     , game_hwnd_(nullptr)
+    , last_foreground_window_(nullptr)
     , initialized_(false)
     , background_window_created_(false)
 {
+    game_monitor_rect_ = { 0, 0, 0, 0 };
 }
 
 AdhdMultiMonitorManager::~AdhdMultiMonitorManager()
@@ -47,7 +47,7 @@ bool AdhdMultiMonitorManager::Initialize()
     // Enumerate available monitors
     EnumerateMonitors();
 
-    if (monitors_.size() <= 1)
+    if (monitor_rects_.size() <= 1)
         return false; // No need for ADHD mode with single monitor
 
     // Register the background window class
@@ -82,6 +82,46 @@ void AdhdMultiMonitorManager::Shutdown()
     initialized_ = false;
 }
 
+void AdhdMultiMonitorManager::Update()
+{
+    if (!enabled_ || !initialized_)
+        return;
+
+    // Update game window handle if it changed
+    HWND current_hwnd = g_last_swapchain_hwnd.load();
+    if (current_hwnd && current_hwnd != game_hwnd_)
+    {
+        game_hwnd_ = current_hwnd;
+        UpdateMonitorInfo();
+    }
+
+    // Check focus changes using original GetForegroundWindow
+    HWND current_foreground = GetOriginalForegroundWindow();
+    if (current_foreground != last_foreground_window_)
+    {
+        last_foreground_window_ = current_foreground;
+
+        // Check if we should show the background window
+        bool shouldShow = true;
+
+        // Always disengage on focus loss (focus disengagement is always enabled)
+        if (game_hwnd_ && current_foreground != game_hwnd_)
+        {
+            shouldShow = false;
+        }
+
+        if (background_window_created_)
+        {
+            ShowBackgroundWindow(shouldShow);
+
+            if (shouldShow)
+            {
+                PositionBackgroundWindow();
+            }
+        }
+    }
+}
+
 void AdhdMultiMonitorManager::SetEnabled(bool enabled)
 {
     if (enabled_ == enabled)
@@ -95,7 +135,9 @@ void AdhdMultiMonitorManager::SetEnabled(bool enabled)
         {
             CreateBackgroundWindow();
         }
-        UpdateBackgroundWindow();
+        UpdateMonitorInfo();
+        PositionBackgroundWindow();
+        ShowBackgroundWindow(true);
     }
     else
     {
@@ -103,63 +145,10 @@ void AdhdMultiMonitorManager::SetEnabled(bool enabled)
     }
 }
 
-void AdhdMultiMonitorManager::SetFocusDisengage(bool disengage)
-{
-    focus_disengage_ = disengage;
-    UpdateBackgroundWindow();
-}
-
-void AdhdMultiMonitorManager::UpdateBackgroundWindow()
-{
-    if (!enabled_ || !background_window_created_)
-        return;
-
-    // Check if we should show the background window
-    bool shouldShow = true;
-
-    if (focus_disengage_ && !game_has_focus_)
-    {
-        shouldShow = false;
-    }
-
-    ShowBackgroundWindow(shouldShow);
-
-    if (shouldShow)
-    {
-        PositionBackgroundWindow();
-    }
-}
-
-void AdhdMultiMonitorManager::OnWindowFocusChanged(bool hasFocus)
-{
-    if (game_has_focus_ == hasFocus)
-        return;
-
-    game_has_focus_ = hasFocus;
-    UpdateBackgroundWindow();
-}
 
 bool AdhdMultiMonitorManager::HasMultipleMonitors() const
 {
-    return monitors_.size() > 1;
-}
-
-HMONITOR AdhdMultiMonitorManager::GetGameMonitor() const
-{
-    if (!game_hwnd_)
-        return nullptr;
-
-    return MonitorFromWindow(game_hwnd_, MONITOR_DEFAULTTONEAREST);
-}
-
-void AdhdMultiMonitorManager::SetGameWindow(HWND hwnd)
-{
-    if (hwnd && IsWindow(hwnd))
-    {
-        game_hwnd_ = hwnd;
-        // Update monitor info when window changes
-        UpdateMonitorInfo();
-    }
+    return monitor_rects_.size() > 1;
 }
 
 bool AdhdMultiMonitorManager::CreateBackgroundWindow()
@@ -216,38 +205,33 @@ void AdhdMultiMonitorManager::PositionBackgroundWindow()
         return;
 
     // Get the game monitor
-    HMONITOR gameMonitor = GetGameMonitor();
+    HMONITOR gameMonitor = MonitorFromWindow(game_hwnd_, MONITOR_DEFAULTTONEAREST);
     if (!gameMonitor)
         return;
 
-    // Find the game monitor in our list
-    MonitorInfo* gameMonitorInfo = nullptr;
-    for (auto& monitor : monitors_)
-    {
-        if (monitor.hMonitor == gameMonitor)
-        {
-            gameMonitorInfo = &monitor;
-            break;
-        }
-    }
-
-    if (!gameMonitorInfo)
+    // Find the game monitor rect
+    MONITORINFO mi = {};
+    mi.cbSize = sizeof(mi);
+    if (!GetMonitorInfoW(gameMonitor, &mi))
         return;
+
+    game_monitor_rect_ = mi.rcMonitor;
 
     // Calculate the bounding rectangle of all monitors except the game monitor
     RECT boundingRect = { LONG_MAX, LONG_MAX, LONG_MIN, LONG_MIN };
     bool hasOtherMonitors = false;
 
-    for (const auto& monitor : monitors_)
+    for (const auto& monitorRect : monitor_rects_)
     {
-        if (monitor.hMonitor == gameMonitor)
+        // Skip the game monitor
+        if (EqualRect(&monitorRect, &game_monitor_rect_))
             continue;
 
         hasOtherMonitors = true;
-        boundingRect.left = std::min(boundingRect.left, monitor.rect.left);
-        boundingRect.top = std::min(boundingRect.top, monitor.rect.top);
-        boundingRect.right = std::max(boundingRect.right, monitor.rect.right);
-        boundingRect.bottom = std::max(boundingRect.bottom, monitor.rect.bottom);
+        boundingRect.left = std::min(boundingRect.left, monitorRect.left);
+        boundingRect.top = std::min(boundingRect.top, monitorRect.top);
+        boundingRect.right = std::max(boundingRect.right, monitorRect.right);
+        boundingRect.bottom = std::max(boundingRect.bottom, monitorRect.bottom);
     }
 
     if (!hasOtherMonitors)
@@ -281,32 +265,11 @@ void AdhdMultiMonitorManager::ShowBackgroundWindow(bool show)
 
 void AdhdMultiMonitorManager::EnumerateMonitors()
 {
-    monitors_.clear();
+    monitor_rects_.clear();
 
     EnumDisplayMonitors(nullptr, nullptr, [](HMONITOR hMonitor, HDC hdc, LPRECT lprcMonitor, LPARAM lParam) -> BOOL {
         auto* manager = reinterpret_cast<AdhdMultiMonitorManager*>(lParam);
-
-        MonitorInfo info = {};
-        info.hMonitor = hMonitor;
-        info.rect = *lprcMonitor;
-
-        // Check if this is the primary monitor
-        MONITORINFO mi = {};
-        mi.cbSize = sizeof(mi);
-        if (GetMonitorInfoW(hMonitor, &mi))
-        {
-            info.isPrimary = (mi.dwFlags & MONITORINFOF_PRIMARY) != 0;
-        }
-
-        // Get device name
-        DISPLAY_DEVICEW dd = {};
-        dd.cb = sizeof(dd);
-        if (EnumDisplayDevicesW(nullptr, 0, &dd, EDD_GET_DEVICE_INTERFACE_NAME))
-        {
-            info.deviceName = dd.DeviceString;
-        }
-
-        manager->monitors_.push_back(info);
+        manager->monitor_rects_.push_back(*lprcMonitor);
         return TRUE;
     }, reinterpret_cast<LPARAM>(this));
 }
@@ -316,18 +279,33 @@ void AdhdMultiMonitorManager::UpdateMonitorInfo()
     EnumerateMonitors();
 
     // Update game monitor info
-    HMONITOR gameMonitor = GetGameMonitor();
-    if (gameMonitor)
+    if (game_hwnd_)
     {
-        for (const auto& monitor : monitors_)
+        HMONITOR gameMonitor = MonitorFromWindow(game_hwnd_, MONITOR_DEFAULTTONEAREST);
+        if (gameMonitor)
         {
-            if (monitor.hMonitor == gameMonitor)
+            MONITORINFO mi = {};
+            mi.cbSize = sizeof(mi);
+            if (GetMonitorInfoW(gameMonitor, &mi))
             {
-                game_monitor_ = monitor;
-                break;
+                game_monitor_rect_ = mi.rcMonitor;
             }
         }
     }
+}
+
+HWND AdhdMultiMonitorManager::GetOriginalForegroundWindow()
+{
+    // Get the original GetForegroundWindow function
+    static HMODULE user32 = GetModuleHandleW(L"user32.dll");
+    if (!user32)
+        return nullptr;
+
+    static auto originalGetForegroundWindow = (HWND(WINAPI*)(void))GetProcAddress(user32, "GetForegroundWindow");
+    if (!originalGetForegroundWindow)
+        return nullptr;
+
+    return originalGetForegroundWindow();
 }
 
 LRESULT CALLBACK AdhdMultiMonitorManager::BackgroundWindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)

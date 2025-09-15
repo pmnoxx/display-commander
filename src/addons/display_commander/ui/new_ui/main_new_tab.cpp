@@ -17,7 +17,7 @@
 #include "../../utils/timing.hpp"
 #include "version.hpp"
 #include "../../widgets/resolution_widget/resolution_widget.hpp"
-#include "../../adhd_multi_monitor/adhd_multi_monitor_module.hpp"
+#include "../../adhd_multi_monitor/adhd_simple_api.hpp"
 
 
 namespace ui::new_ui {
@@ -48,7 +48,6 @@ void InitMainNewTab() {
 
         // Apply ADHD Multi-Monitor Mode settings
         adhd_multi_monitor::api::SetEnabled(settings::g_mainTabSettings.adhd_multi_monitor_enabled.GetValue());
-        adhd_multi_monitor::api::SetFocusDisengage(settings::g_mainTabSettings.adhd_multi_monitor_focus_disengage.GetValue());
 
         settings_loaded_once = true;
 
@@ -925,19 +924,13 @@ void DrawImportantInfo() {
 }
 
 void DrawAdhdMultiMonitorControls() {
-    ImGui::Spacing();
-    ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== ADHD Multi-Monitor Mode ===");
-
     // Check if multiple monitors are available
     bool hasMultipleMonitors = adhd_multi_monitor::api::HasMultipleMonitors();
 
     if (!hasMultipleMonitors) {
-        ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f), "⚠ Multiple monitors not detected - ADHD mode unavailable");
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("ADHD Multi-Monitor Mode requires multiple monitors to function.\nConnect additional monitors to use this feature.");
-        }
         return;
     }
+    ImGui::SameLine();
 
     // Main ADHD mode checkbox
     bool adhdEnabled = settings::g_mainTabSettings.adhd_multi_monitor_enabled.GetValue();
@@ -951,38 +944,10 @@ void DrawAdhdMultiMonitorControls() {
         ImGui::SetTooltip("Covers secondary monitors with a black window to reduce distractions while playing this game.");
     }
 
-    // Focus disengagement checkbox (only enabled when ADHD mode is on)
-    if (!adhdEnabled) {
-        ImGui::BeginDisabled();
-    }
-
-    bool focusDisengage = settings::g_mainTabSettings.adhd_multi_monitor_focus_disengage.GetValue();
-    if (ImGui::Checkbox("Disengage on Alt-Tab (WIP)", &focusDisengage)) {
-        settings::g_mainTabSettings.adhd_multi_monitor_focus_disengage.SetValue(focusDisengage);
-        adhd_multi_monitor::api::SetFocusDisengage(focusDisengage);
-        LogInfo("ADHD focus disengagement %s", focusDisengage ? "enabled" : "disabled");
-    }
-
+    // Focus disengagement is always enabled (no UI control needed)
+    ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "• Automatically disengages on Alt-Tab");
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("ADHD mode will disengage whenever you Alt-Tab, regardless of which monitor the new application is on.");
-    }
-
-    if (!adhdEnabled) {
-        ImGui::EndDisabled();
-    }
-
-    // Status information
-    ImGui::Spacing();
-    ImGui::TextColored(ImVec4(0.6f, 1.0f, 0.6f, 1.0f), "Status:");
-    ImGui::SameLine();
-    if (adhdEnabled) {
-        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Active");
-        if (focusDisengage) {
-            ImGui::SameLine();
-            ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "(Disengages on Alt-Tab)");
-        }
-    } else {
-        ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Inactive");
+        ImGui::SetTooltip("ADHD mode will automatically disengage whenever you Alt-Tab, regardless of which monitor the new application is on.");
     }
 
     // Additional information

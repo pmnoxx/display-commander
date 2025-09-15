@@ -7,15 +7,7 @@
 
 namespace adhd_multi_monitor {
 
-// Monitor information structure
-struct MonitorInfo {
-    HMONITOR hMonitor;
-    RECT rect;
-    bool isPrimary;
-    std::wstring deviceName;
-};
-
-// ADHD Multi-Monitor Manager class
+// Simple ADHD Multi-Monitor Manager - single class implementation
 class AdhdMultiMonitorManager {
 public:
     AdhdMultiMonitorManager();
@@ -27,28 +19,18 @@ public:
     // Cleanup resources
     void Shutdown();
 
+    // Update the system (call from main loop)
+    void Update();
+
     // Enable/disable ADHD mode
     void SetEnabled(bool enabled);
     bool IsEnabled() const { return enabled_.load(); }
 
-    // Set focus disengagement mode
-    void SetFocusDisengage(bool disengage);
-    bool IsFocusDisengage() const { return focus_disengage_.load(); }
-
-    // Update the background window based on current settings
-    void UpdateBackgroundWindow();
-
-    // Handle window focus changes
-    void OnWindowFocusChanged(bool hasFocus);
+    // Focus disengagement is always enabled (no UI control needed)
+    bool IsFocusDisengage() const { return true; }
 
     // Check if multiple monitors are available
     bool HasMultipleMonitors() const;
-
-    // Get the monitor where the game window is located
-    HMONITOR GetGameMonitor() const;
-
-    // Update the game window handle
-    void SetGameWindow(HWND hwnd);
 
 private:
     // Background window management
@@ -64,16 +46,18 @@ private:
     // Window procedure for the background window
     static LRESULT CALLBACK BackgroundWindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
+    // Get the original GetForegroundWindow function
+    static HWND GetOriginalForegroundWindow();
+
     // Member variables
     std::atomic<bool> enabled_;
-    std::atomic<bool> focus_disengage_;
-    std::atomic<bool> game_has_focus_;
 
     HWND background_hwnd_;
     HWND game_hwnd_;
+    HWND last_foreground_window_;
 
-    std::vector<MonitorInfo> monitors_;
-    MonitorInfo game_monitor_;
+    std::vector<RECT> monitor_rects_;
+    RECT game_monitor_rect_;
 
     bool initialized_;
     bool background_window_created_;

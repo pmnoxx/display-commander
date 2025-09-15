@@ -18,7 +18,7 @@
 #include "latent_sync/latent_sync_limiter.hpp"
 #include "swapchain_events_power_saving.hpp"
 #include "latency/latency_manager.hpp"
-#include "adhd_multi_monitor/adhd_multi_monitor_module.hpp"
+#include "adhd_multi_monitor/adhd_simple_api.hpp"
 #include "settings/experimental_tab_settings.hpp"
 #include "settings/main_tab_settings.hpp"
 
@@ -351,6 +351,7 @@ void OnPresentUpdateAfter(reshade::api::command_queue* /*queue*/, reshade::api::
   TimerPresentPacingDelay();
   HandleOnPresentEnd();
 
+
   // Apply input blocking based on background/foreground; avoid OS calls and redundant writes
   {
     reshade::api::effect_runtime* runtime = g_reshade_runtime.load();
@@ -521,8 +522,6 @@ void OnPresentUpdateBefore(
   g_swapchain_event_counters[SWAPCHAIN_EVENT_PRESENT_UPDATE_BEFORE].fetch_add(1);
   g_swapchain_event_total_count.fetch_add(1);
 
-  // Update ADHD Multi-Monitor Mode
-  adhd_multi_monitor::api::Update();
 
   // Avoid querying swapchain/device descriptors every frame. These are updated elsewhere.
 

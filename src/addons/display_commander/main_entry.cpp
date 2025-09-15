@@ -33,6 +33,8 @@
 #include "nvapi/nvapi_hdr_monitor.hpp"
 #include "nvapi/dlssfg_version_detector.hpp"
 #include "nvapi/dlss_preset_detector.hpp"
+// ADHD Multi-Monitor Mode
+#include "adhd_multi_monitor/adhd_multi_monitor_module.hpp"
 // Restore display settings on exit if enabled
 #include "display_restore.hpp"
 #include "process_exit_hooks.hpp"
@@ -76,6 +78,14 @@ void OnInitEffectRuntime(reshade::api::effect_runtime* runtime) {
 
             // Also set the game window for API hooks
             renodx::hooks::SetGameWindow(game_window);
+
+            // Initialize ADHD Multi-Monitor Mode
+            if (adhd_multi_monitor::api::Initialize()) {
+                LogInfo("ADHD Multi-Monitor Mode initialized successfully");
+                adhd_multi_monitor::api::SetGameWindow(game_window);
+            } else {
+                LogWarn("Failed to initialize ADHD Multi-Monitor Mode");
+            }
         } else {
             LogWarn("ReShade runtime window is not valid - HWND: 0x%p", game_window);
         }

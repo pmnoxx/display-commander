@@ -51,8 +51,24 @@ namespace {
   }
 
   void OnRegisterOverlayDisplayCommander(reshade::api::effect_runtime* runtime) {
-    // Draw the new UI
-    ui::new_ui::NewUISystem::GetInstance().Draw();
+    // Prevent multiple UI renders per frame (multiple effect runtimes may call this)
+    static bool rendered_this_frame = false;
+    static std::chrono::steady_clock::time_point last_render_time;
+
+    auto now = std::chrono::steady_clock::now();
+    auto time_since_last = std::chrono::duration_cast<std::chrono::milliseconds>(now - last_render_time).count();
+
+    // Reset the flag if enough time has passed (new frame)
+    if (time_since_last > 1) { // 1ms threshold for new frame
+      rendered_this_frame = false;
+    }
+
+    if (!rendered_this_frame) {
+      rendered_this_frame = true;
+      last_render_time = now;
+      // Draw the new UI only once per frame
+      ui::new_ui::NewUISystem::GetInstance().Draw();
+    }
   }
 } // namespace
 

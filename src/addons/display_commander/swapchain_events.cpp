@@ -22,6 +22,7 @@
 #include "adhd_multi_monitor/adhd_simple_api.hpp"
 #include "settings/experimental_tab_settings.hpp"
 #include "settings/main_tab_settings.hpp"
+#include "hooks/dxgi/dxgi_present_hooks.hpp"
 
 // Additional includes for DoInitialization
 #include "input_remapping/input_remapping.hpp"
@@ -341,7 +342,7 @@ void OnInitSwapchain(reshade::api::swapchain* swapchain, bool resize) {
     LogDebug("OnInitSwapchain: swapchain is null");
     return;
   }
-  // Reset frame count on swapchain init
+  // Reset frame count on swapconhain init
   l_frame_count.store(0);
 
   // Increment event counter
@@ -355,6 +356,18 @@ void OnInitSwapchain(reshade::api::swapchain* swapchain, bool resize) {
 
     // Initialize if not already done
     DoInitializationWithHwnd(hwnd);
+
+    // Hook DXGI Present calls for this swapchain
+    // Get the underlying DXGI swapchain from the ReShade swapchain
+    if (auto* dxgi_swapchain = reinterpret_cast<IDXGISwapChain*>(swapchain->get_native())) {
+      if (renodx::hooks::dxgi::HookSwapchain(dxgi_swapchain)) {
+        LogInfo("Successfully hooked DXGI Present calls for swapchain: 0x%p", dxgi_swapchain);
+      } else {
+        LogWarn("Failed to hook DXGI Present calls for swapchain: 0x%p", dxgi_swapchain);
+      }
+    } else {
+      LogWarn("Could not get DXGI swapchain from ReShade swapchain for Present hooking");
+    }
   }
 }
 
@@ -703,6 +716,45 @@ bool OnBindPipeline(reshade::api::command_list* cmd_list, reshade::api::pipeline
   return false; // Don't skip the pipeline binding
 }
 
+
+// Present flags callback to strip DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING
+void OnPresentFlags2(uint32_t* present_flags) {
+  // Increment event counter
+  g_swapchain_event_counters[SWAPCHAIN_EVENT_PRESENT_FLAGS].fetch_add(1);
+  g_swapchain_event_total_count.fetch_add(1);
+
+  // Always strip DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING flag
+  if (s_prevent_tearing.load() && *present_flags & DXGI_PRESENT_ALLOW_TEARING) {
+    *present_flags &= ~DXGI_PRESENT_ALLOW_TEARING;
+
+    // Log the flag removal for debugging
+    std::ostringstream oss;
+    oss << "Present flags callback: Stripped DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING, new flags: 0x" << std::hex << *present_flags;
+    LogInfo(oss.str().c_str());
+  }
+
+  if (s_fps_limiter_injection.load() == 0) {
+    HandleFpsLimiter();
+  }
+
+  // Don't block presents if continue rendering is enabled
+  if (s_no_present_in_background.load() && g_app_in_background.load(std::memory_order_acquire) && !s_continue_rendering.load()) {
+    *present_flags = DXGI_PRESENT_DO_NOT_SEQUENCE;
+  }
+  if (s_reflex_enable.load()) {
+   // auto* device = swapchain ? swapchain->get_device() : nullptr;
+   // if (device && g_latencyManager->Initialize(device)) {
+      if (s_reflex_use_markers.load() && !g_app_in_background.load(std::memory_order_acquire)) {
+        g_latencyManager->SetMarker(LatencyMarkerType::PRESENT_START);
+      }
+  // }
+  }
+  l_frame_count.fetch_add(1);
+
+  return;
+}
+
+
 // Present flags callback to strip DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING
 void OnPresentFlags(uint32_t* present_flags, reshade::api::swapchain* swapchain) {
   // Increment event counter
@@ -916,3 +968,4 @@ void OnSetScissorRects(reshade::api::command_list* cmd_list, uint32_t first, uin
   // Set the scaled scissor rectangles
   cmd_list->bind_scissor_rects(first, count, scaled_rects.data());
 }
+

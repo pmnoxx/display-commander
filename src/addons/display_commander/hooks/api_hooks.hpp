@@ -1,6 +1,14 @@
 #pragma once
 
 #include <windows.h>
+#include <dxgi.h>
+
+// Forward declarations for DXGI hooks
+namespace renodx::hooks::dxgi {
+    bool InstallDxgiPresentHooks();
+    void UninstallDxgiPresentHooks();
+    bool HookSwapchain(IDXGISwapChain* swapchain);
+}
 
 namespace renodx::hooks {
 

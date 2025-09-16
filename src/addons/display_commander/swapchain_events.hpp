@@ -32,6 +32,7 @@ void OnPresentUpdateBefore(reshade::api::command_queue* queue, reshade::api::swa
 void OnPresentUpdateBefore2(reshade::api::effect_runtime* runtime);
 void OnPresentUpdateAfter(reshade::api::command_queue* queue, reshade::api::swapchain* swapchain);
 void OnPresentFlags(uint32_t* present_flags, reshade::api::swapchain* swapchain);
+void OnPresentFlags2(uint32_t* present_flags);
 
 // Buffer resolution upgrade event handlers
 bool OnCreateResource(reshade::api::device* device, reshade::api::resource_desc& desc, reshade::api::subresource_data* initial_data, reshade::api::resource_usage usage);

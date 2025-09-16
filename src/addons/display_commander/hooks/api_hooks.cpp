@@ -7,6 +7,7 @@
 #include "sleep_hooks.hpp"
 #include "timeslowdown_hooks.hpp"
 #include "process_exit_hooks.hpp"
+#include "dxgi/dxgi_present_hooks.hpp"
 #include "globals.hpp"
 #include "../utils.hpp"
 #include <MinHook.h>
@@ -219,6 +220,12 @@ bool InstallApiHooks() {
         return false;
     }
 
+    // Install DXGI Present hooks
+    if (!renodx::hooks::dxgi::InstallDxgiPresentHooks()) {
+        LogError("Failed to install DXGI Present hooks");
+        return false;
+    }
+
     g_api_hooks_installed.store(true);
     LogInfo("API hooks installed successfully");
 
@@ -258,6 +265,9 @@ void UninstallApiHooks() {
 
     // Uninstall process exit hooks
     UninstallProcessExitHooks();
+
+    // Uninstall DXGI Present hooks
+    renodx::hooks::dxgi::UninstallDxgiPresentHooks();
 
     // Disable all hooks
     MH_DisableHook(MH_ALL_HOOKS);

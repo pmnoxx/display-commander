@@ -5,7 +5,7 @@
 #include "../../display_restore.hpp"
 #include "../../utils/timing.hpp"
 #include <deps/imgui/imgui.h>
-#include <include/reshade.hpp>
+#include <reshade.hpp>
 #include <algorithm>
 #include <string>
 #include <cmath>

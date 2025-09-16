@@ -2,7 +2,7 @@
 
 #include <atomic>
 #include <memory>
-#include <include/reshade.hpp>
+#include <reshade.hpp>
 
 // Forward declarations
 class ReflexManager;

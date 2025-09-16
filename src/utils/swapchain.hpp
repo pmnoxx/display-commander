@@ -19,7 +19,7 @@
 #include <vector>
 
 
-#include <include/reshade.hpp>
+#include <reshade.hpp>
 
 #include "./data.hpp"
 #include "./device.hpp"

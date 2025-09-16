@@ -1,6 +1,6 @@
 #include "debug_layer.hpp"
 #include "event_handlers.hpp"
-#include <include/reshade.hpp>
+#include <reshade.hpp>
 
 namespace d3d_debug_layer {
 

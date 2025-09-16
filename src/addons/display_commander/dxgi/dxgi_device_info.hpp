@@ -9,7 +9,7 @@
 #include <memory>
 #include <sstream>
 #include <iomanip>
-#include <include/reshade.hpp>
+#include <reshade.hpp>
 
 // Forward declarations
 struct DXGIAdapterInfo;

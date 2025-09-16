@@ -2,7 +2,7 @@
 #include "../../utils.hpp"
 #include "../../globals.hpp"
 #include <deps/imgui/imgui.h>
-#include <include/reshade.hpp>
+#include <reshade.hpp>
 #include <thread>
 #include <chrono>
 #include <vector>

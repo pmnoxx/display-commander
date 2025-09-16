@@ -1,7 +1,7 @@
 #pragma once
 
 #include <deps/imgui/imgui.h>
-#include <include/reshade.hpp>
+#include <reshade.hpp>
 #include <string>
 #include <functional>
 #include <atomic> // Added for std::atomic

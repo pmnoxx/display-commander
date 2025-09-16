@@ -1,6 +1,6 @@
 #include "event_handlers.hpp"
 #include "debug_layer.hpp"
-#include <include/reshade.hpp>
+#include <reshade.hpp>
 #include <thread>
 #include <atomic>
 

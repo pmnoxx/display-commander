@@ -2,7 +2,7 @@
 #pragma once
 
 #include <cstdint>
-#include <include/reshade.hpp>
+#include <reshade.hpp>
 
 namespace utils::data {
 

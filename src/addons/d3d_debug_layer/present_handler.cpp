@@ -1,5 +1,5 @@
 #include "event_handlers.hpp"
-#include <include/reshade.hpp>
+#include <reshade.hpp>
 #include <atomic>
 
 namespace d3d_debug_layer {

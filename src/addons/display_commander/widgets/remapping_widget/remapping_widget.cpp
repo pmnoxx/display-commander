@@ -7,7 +7,7 @@
 #include "../../utils.hpp"
 #include "../../globals.hpp"
 #include <deps/imgui/imgui.h>
-#include <include/reshade.hpp>
+#include <reshade.hpp>
 #include <algorithm>
 
 // Guide button constant (not defined in standard XInput headers)

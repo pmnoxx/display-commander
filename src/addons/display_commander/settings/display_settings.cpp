@@ -1,5 +1,5 @@
 #include "display_settings.hpp"
-#include <include/reshade.hpp>
+#include <reshade.hpp>
 #include <sstream>
 #include <windows.h>
 #include "../utils.hpp"

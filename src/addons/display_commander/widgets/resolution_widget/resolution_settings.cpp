@@ -1,6 +1,6 @@
 #include "resolution_settings.hpp"
 #include <deps/imgui/imgui.h>
-#include <include/reshade.hpp>
+#include <reshade.hpp>
 
 namespace display_commander::widgets::resolution_widget {
 

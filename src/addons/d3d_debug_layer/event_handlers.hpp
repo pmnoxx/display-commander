@@ -1,6 +1,6 @@
 #pragma once
 
-#include <include/reshade.hpp>
+#include <reshade.hpp>
 #include <thread>
 #include <atomic>
 

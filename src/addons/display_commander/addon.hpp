@@ -7,7 +7,7 @@
 #include <dxgi1_6.h>
 #include <wrl/client.h>
 #include <deps/imgui/imgui.h>
-#include <include/reshade.hpp>
+#include <reshade.hpp>
 
 #include <cstdint>
 #include <vector>

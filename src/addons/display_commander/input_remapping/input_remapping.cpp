@@ -4,7 +4,7 @@
  */
 
 #include "input_remapping.hpp"
-#include "../../../external/reshade/include/reshade.hpp"
+#include <reshade.hpp>
 #include "../globals.hpp"
 #include "../utils.hpp"
 #include "../utils/srwlock_wrapper.hpp"

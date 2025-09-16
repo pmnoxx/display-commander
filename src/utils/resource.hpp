@@ -1,7 +1,7 @@
 /* Minimal subset to provide utils::resource::Use() and GetResourceInfo() stubs */
 #pragma once
 
-#include <include/reshade.hpp>
+#include <reshade.hpp>
 
 namespace utils::resource {
 

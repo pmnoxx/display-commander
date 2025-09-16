@@ -1,6 +1,6 @@
 #include "debug_layer.hpp"
 #include "event_handlers.hpp"
-#include <include/reshade.hpp>
+#include <reshade.hpp>
 #include <thread>
 #include <chrono>
 

@@ -1,5 +1,5 @@
 #include "debug_layer.hpp"
-#include <include/reshade.hpp>
+#include <reshade.hpp>
 #include <sstream>
 
 // Define IID constants manually to avoid linking issues

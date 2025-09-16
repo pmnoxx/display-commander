@@ -8,7 +8,7 @@
 #include <vector>
 
 #include <deps/imgui/imgui.h>
-#include <include/reshade.hpp>
+#include <reshade.hpp>
 
 // #include "./mutex.hpp"
 

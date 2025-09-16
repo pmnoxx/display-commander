@@ -5,7 +5,7 @@
 #include <d3d11.h>
 #include <d3d12.h>
 #include <nvapi.h>
-#include <include/reshade.hpp>
+#include <reshade.hpp>
 
 // Minimal NVIDIA Reflex manager (D3D11/D3D12 only) using NVAPI.
 // Avoids re-declaring any NVAPI structs; uses official headers.

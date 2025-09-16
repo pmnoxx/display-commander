@@ -67,7 +67,8 @@ target_include_directories(zzz_display_commander
     ${CMAKE_CURRENT_LIST_DIR}/src/addons/display_commander
     ${CMAKE_CURRENT_LIST_DIR}/include
   SYSTEM PUBLIC
-    ${CMAKE_CURRENT_LIST_DIR}/external/reshade            # provides include/reshade.hpp and deps/imgui
+    ${CMAKE_CURRENT_LIST_DIR}/external/reshade/include  # provides ReShade/reshade.hpp
+    ${CMAKE_CURRENT_LIST_DIR}/external/reshade          # provides deps/imgui/imgui.h
     ${CMAKE_CURRENT_LIST_DIR}/external/Streamline/include # Streamline headers if referenced
     ${CMAKE_CURRENT_LIST_DIR}/external/nvapi              # official NVIDIA NVAPI headers (nvapi.h, NvApiDriverSettings.h)
     ${CMAKE_CURRENT_LIST_DIR}/external/minhook/include    # MinHook headers

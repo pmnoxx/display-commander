@@ -93,11 +93,11 @@ void ResolutionWidget::OnDraw() {
 
     // Apply loaded settings to UI selection (only once)
     if (!settings_applied_to_ui_) {
-        LogInfo("ResolutionWidget::OnDraw() - First draw, applying loaded settings to UI");
+      //  LogInfo("ResolutionWidget::OnDraw() - First draw, applying loaded settings to UI");
         UpdateCurrentSelectionFromSettings();
         settings_applied_to_ui_ = true;
-        LogInfo("ResolutionWidget::OnDraw() - Applied settings to UI indices: display=%d, resolution=%d, refresh=%d",
-                selected_display_index_, selected_resolution_index_, selected_refresh_index_);
+   //     LogInfo("ResolutionWidget::OnDraw() - Applied settings to UI indices: display=%d, resolution=%d, refresh=%d",
+   //             selected_display_index_, selected_resolution_index_, selected_refresh_index_);
     }
 
     // Draw the resolution widget UI
@@ -106,7 +106,7 @@ void ResolutionWidget::OnDraw() {
 
     // Log auto-apply state on every draw
     bool auto_apply_state = g_resolution_settings->GetAutoApply();
-    LogInfo("ResolutionWidget::OnDraw() - Auto-apply changes is: %s", auto_apply_state ? "ON" : "OFF");
+  //  LogInfo("ResolutionWidget::OnDraw() - Auto-apply changes is: %s", auto_apply_state ? "ON" : "OFF");
 
     // Auto-apply checkbox
     DrawAutoApplyCheckbox();

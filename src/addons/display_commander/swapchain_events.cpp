@@ -434,7 +434,7 @@ void OnPresentUpdateAfter(reshade::api::command_queue* /*queue*/, reshade::api::
       if (is_background && wants_block_input) {
         runtime->block_input_next_frame();
       }
-      LogInfo("Block input in background: %s wants to block: %s", is_background ? "true" : "false", wants_block_input ? "true" : "false");
+   //   LogInfo("Block input in background: %s wants to block: %s", is_background ? "true" : "false", wants_block_input ? "true" : "false");
     } else {
       // Log error when g_reshade_runtime is null and input blocking is desired
       const bool is_background = g_app_in_background.load(std::memory_order_acquire);

@@ -1,0 +1,332 @@
+{
+    "folders": [
+        {
+            "name": "ReShade Display Commander",
+            "path": "."
+        },
+        {
+            "name": "External Dependencies",
+            "path": "./external"
+        },
+        {
+            "name": "Source Code",
+            "path": "./src"
+        },
+        {
+            "name": "Build Output",
+            "path": "./build"
+        }
+    ],
+    "settings": {
+        "files.associations": {
+            "*.hpp": "cpp",
+            "*.cpp": "cpp",
+            "*.h": "c",
+            "*.c": "c",
+            "*.rc": "xml",
+            "*.def": "def",
+            "*.inl": "cpp"
+        },
+        "files.exclude": {
+            "**/build/**": true,
+            "**/external/minhook/build/**": true,
+            "**/external/reshade/deps/**": true,
+            "**/external/reshade/source/**": true,
+            "**/external/reshade/examples/**": true,
+            "**/external/reshade/tools/**": true,
+            "**/external/reshade/setup/**": true,
+            "**/external/reshade/res/**": true,
+            "**/external/reshade/*.vcxproj*": true,
+            "**/external/reshade/*.sln": true,
+            "**/external/reshade/*.props": true,
+            "**/external/reshade/Doxyfile": true,
+            "**/external/reshade/LICENSE.md": true,
+            "**/external/reshade/README.md": true,
+            "**/external/reshade/REFERENCE.md": true,
+            "**/external/reshade/FUNDING.yml": true,
+            "**/external/nvapi/docs/**": true,
+            "**/external/nvapi/Sample_Code/**": true,
+            "**/external/nvapi/*.txt": true,
+            "**/external/nvapi/*.pdf": true,
+            "**/external/nvapi/*.chm": true,
+            "**/external/nvapi/*.h": true,
+            "**/external/nvapi/*.c": true,
+            "**/external/minhook/**": true,
+            "**/tmp/**": true,
+            "**/.git/**": true,
+            "**/node_modules/**": true
+        },
+        "search.exclude": {
+            "**/build/**": true,
+            "**/external/**": true,
+            "**/tmp/**": true,
+            "**/.git/**": true
+        },
+        "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
+        "C_Cpp.default.intelliSenseMode": "windows-msvc-x64",
+        "C_Cpp.default.compilerPath": "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/*/bin/Hostx64/x64/cl.exe",
+        "C_Cpp.default.includePath": [
+            "${workspaceFolder}/src",
+            "${workspaceFolder}/include",
+            "${workspaceFolder}/external/reshade/include",
+            "${workspaceFolder}/external/minhook/include",
+            "${workspaceFolder}/external/nvapi",
+            "${workspaceFolder}/build"
+        ],
+        "C_Cpp.default.defines": [
+            "WIN32",
+            "_WIN32",
+            "_WINDOWS",
+            "UNICODE",
+            "_UNICODE",
+            "NDEBUG",
+            "_CRT_SECURE_NO_WARNINGS",
+            "RESHADE_ADDON",
+            "RESHADE_ADDON_EXPORTS"
+        ],
+        "C_Cpp.default.cStandard": "c17",
+        "C_Cpp.default.cppStandard": "c++17",
+        "C_Cpp.default.browse": {
+            "path": [
+                "${workspaceFolder}/src",
+                "${workspaceFolder}/include",
+                "${workspaceFolder}/external/reshade/include",
+                "${workspaceFolder}/external/minhook/include",
+                "${workspaceFolder}/external/nvapi"
+            ]
+        },
+        "cmake.buildDirectory": "${workspaceFolder}/build",
+        "cmake.configureOnOpen": true,
+        "cmake.generator": "Ninja",
+        "cmake.preferredGenerators": [
+            "Ninja",
+            "Visual Studio 17 2022",
+            "Visual Studio 16 2019"
+        ],
+        "cmake.configureArgs": [
+            "-DCMAKE_BUILD_TYPE=Release",
+            "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
+        ],
+        "editor.formatOnSave": true,
+        "editor.formatOnPaste": true,
+        "editor.insertSpaces": true,
+        "editor.tabSize": 4,
+        "editor.detectIndentation": false,
+        "editor.rulers": [
+            80,
+            120
+        ],
+        "editor.wordWrap": "bounded",
+        "editor.wordWrapColumn": 120,
+        "files.trimTrailingWhitespace": true,
+        "files.insertFinalNewline": true,
+        "files.trimFinalNewlines": true,
+        "files.encoding": "utf8",
+        "files.eol": "\r\n",
+        "terminal.integrated.defaultProfile.windows": "Git Bash",
+        "terminal.integrated.profiles.windows": {
+            "Git Bash": {
+                "path": "C:\\Program Files\\Git\\bin\\bash.exe",
+                "args": [
+                    "--login"
+                ]
+            },
+            "PowerShell": {
+                "path": "powershell.exe",
+                "args": [
+                    "-NoExit",
+                    "-Command",
+                    "cd '${workspaceFolder}'"
+                ]
+            },
+            "Command Prompt": {
+                "path": "cmd.exe",
+                "args": [
+                    "/k",
+                    "cd /d ${workspaceFolder}"
+                ]
+            }
+        },
+        "git.ignoreLimitWarning": true,
+        "git.enableSmartCommit": true,
+        "git.autofetch": true,
+        "extensions.recommendations": [
+            "ms-vscode.cpptools",
+            "ms-vscode.cpptools-extension-pack",
+            "ms-vscode.cmake-tools",
+            "ms-vscode.makefile-tools",
+            "twxs.cmake",
+            "ms-vscode.hexeditor",
+            "ms-vscode.vscode-json",
+            "redhat.vscode-yaml",
+            "ms-vscode.powershell",
+            "eamodio.gitlens",
+            "ms-vscode.vscode-typescript-next",
+            "ms-vscode.vscode-json"
+        ],
+        "workbench.colorCustomizations": {
+            "editorRuler.foreground": "#444444"
+        },
+        "editor.semanticHighlighting.enabled": true,
+        "C_Cpp.intelliSenseEngine": "default",
+        "C_Cpp.errorSquiggles": "enabled",
+        "C_Cpp.autocomplete": "default",
+        "C_Cpp.suggestSnippets": true,
+        "C_Cpp.enhancedColorization": "enabled",
+        "C_Cpp.vcpkg.enabled": false,
+        "C_Cpp.workspaceSymbols": "all",
+        "C_Cpp.default.browse.limitSymbolsToIncludedHeaders": false,
+        "C_Cpp.loggingLevel": "Information"
+    },
+    "extensions": {
+        "recommendations": [
+            "ms-vscode.cpptools",
+            "ms-vscode.cpptools-extension-pack",
+            "ms-vscode.cmake-tools",
+            "ms-vscode.makefile-tools",
+            "twxs.cmake",
+            "ms-vscode.hexeditor",
+            "ms-vscode.vscode-json",
+            "redhat.vscode-yaml",
+            "ms-vscode.powershell",
+            "eamodio.gitlens"
+        ]
+    },
+    "tasks": {
+        "version": "2.0.0",
+        "tasks": [
+            {
+                "label": "Build (Release)",
+                "type": "shell",
+                "command": "cmake",
+                "args": [
+                    "--build",
+                    "build",
+                    "--config",
+                    "Release"
+                ],
+                "group": {
+                    "kind": "build",
+                    "isDefault": true
+                },
+                "presentation": {
+                    "echo": true,
+                    "reveal": "always",
+                    "focus": false,
+                    "panel": "shared",
+                    "showReuseMessage": true,
+                    "clear": false
+                },
+                "problemMatcher": "$msCompile"
+            },
+            {
+                "label": "Build (Debug)",
+                "type": "shell",
+                "command": "cmake",
+                "args": [
+                    "--build",
+                    "build",
+                    "--config",
+                    "Debug"
+                ],
+                "group": "build",
+                "presentation": {
+                    "echo": true,
+                    "reveal": "always",
+                    "focus": false,
+                    "panel": "shared",
+                    "showReuseMessage": true,
+                    "clear": false
+                },
+                "problemMatcher": "$msCompile"
+            },
+            {
+                "label": "Configure CMake",
+                "type": "shell",
+                "command": "cmake",
+                "args": [
+                    "-B",
+                    "build",
+                    "-G",
+                    "Ninja",
+                    "-DCMAKE_BUILD_TYPE=Release",
+                    "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
+                ],
+                "group": "build",
+                "presentation": {
+                    "echo": true,
+                    "reveal": "always",
+                    "focus": false,
+                    "panel": "shared",
+                    "showReuseMessage": true,
+                    "clear": false
+                }
+            },
+            {
+                "label": "Clean Build",
+                "type": "shell",
+                "command": "cmake",
+                "args": [
+                    "--build",
+                    "build",
+                    "--target",
+                    "clean"
+                ],
+                "group": "build",
+                "presentation": {
+                    "echo": true,
+                    "reveal": "always",
+                    "focus": false,
+                    "panel": "shared",
+                    "showReuseMessage": true,
+                    "clear": false
+                }
+            },
+            {
+                "label": "Run Build Script (32-bit)",
+                "type": "shell",
+                "command": "./build32.sh",
+                "group": "build",
+                "presentation": {
+                    "echo": true,
+                    "reveal": "always",
+                    "focus": false,
+                    "panel": "shared",
+                    "showReuseMessage": true,
+                    "clear": false
+                }
+            },
+            {
+                "label": "Run Build Script (64-bit)",
+                "type": "shell",
+                "command": "./build.sh",
+                "group": "build",
+                "presentation": {
+                    "echo": true,
+                    "reveal": "always",
+                    "focus": false,
+                    "panel": "shared",
+                    "showReuseMessage": true,
+                    "clear": false
+                }
+            }
+        ]
+    },
+    "launch": {
+        "version": "0.2.0",
+        "configurations": [
+            {
+                "name": "Debug Display Commander",
+                "type": "cppvsdbg",
+                "request": "launch",
+                "program": "${workspaceFolder}/build/zzz_display_commander.addon64",
+                "args": [],
+                "stopAtEntry": false,
+                "cwd": "${workspaceFolder}",
+                "environment": [],
+                "console": "externalTerminal",
+                "preLaunchTask": "Build (Debug)"
+            }
+        ]
+    }
+}

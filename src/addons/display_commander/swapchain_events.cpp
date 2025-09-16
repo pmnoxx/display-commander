@@ -39,10 +39,10 @@ std::atomic<int> target_height = 2160;
 bool is_target_resolution(int width, int height) {
   return width >= 1280 && width <= target_width.load() && height >= 720 && height <= target_height.load() && width * 9 == height * 16;
 }
+std::atomic<bool> g_initialized{false};
 // Centralized initialization method
 void DoInitializationWithHwnd(HWND hwnd) {
   bool expected = false;
-  static std::atomic<bool> g_initialized{false};
   if (!g_initialized.compare_exchange_strong(expected, true)) {
     return; // Already initialized
   }

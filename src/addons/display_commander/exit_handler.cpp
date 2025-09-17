@@ -5,6 +5,7 @@
 #include <sstream>
 #include <iomanip>
 #include <windows.h>
+#include "utils.hpp"
 
 namespace exit_handler {
 
@@ -63,6 +64,7 @@ void OnHandleExit(ExitSource source, const std::string& message) {
         // Another thread already handled the exit
         return;
     }
+    LogInfo("%s", exit_message.str().c_str());
 
     // Best-effort display restoration on any exit
     display_restore::RestoreAllIfEnabled();

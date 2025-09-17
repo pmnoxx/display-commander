@@ -87,11 +87,12 @@ std::string DecodePresent1Flags(UINT flags) {
 // Hooked IDXGISwapChain::Present function
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain* This, UINT SyncInterval, UINT Flags) {
     // Log the Present call with all arguments
-    std::ostringstream oss;
+  /*  std::ostringstream oss;
     oss << "DXGI Present called - SwapChain: 0x" << std::hex << This
         << ", SyncInterval: " << std::dec << SyncInterval
         << ", Flags: " << DecodePresentFlags(Flags);
     LogInfo("%s", oss.str().c_str());
+*/
 
     ::OnPresentFlags2(&Flags);
 
@@ -107,7 +108,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain* This, UI
 // Hooked IDXGISwapChain1::Present1 function
 HRESULT STDMETHODCALLTYPE IDXGISwapChain1_Present1_Detour(IDXGISwapChain1* This, UINT SyncInterval, UINT PresentFlags, const DXGI_PRESENT_PARAMETERS* pPresentParameters) {
     // Log the Present1 call with all arguments
-    std::ostringstream oss;
+  /*  std::ostringstream oss;
     oss << "DXGI Present1 called - SwapChain1: 0x" << std::hex << This
         << ", SyncInterval: " << std::dec << SyncInterval
         << ", PresentFlags: " << DecodePresent1Flags(PresentFlags);
@@ -119,7 +120,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain1_Present1_Detour(IDXGISwapChain1* This,
     }
 
     LogInfo("%s", oss.str().c_str());
-
+*/
     // Call original function
     if (IDXGISwapChain1_Present1_Original) {
         return IDXGISwapChain1_Present1_Original(This, SyncInterval, PresentFlags, pPresentParameters);

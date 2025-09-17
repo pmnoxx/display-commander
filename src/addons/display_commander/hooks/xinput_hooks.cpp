@@ -225,7 +225,9 @@ DWORD WINAPI XInputGetState_Detour(DWORD dwUserIndex, XINPUT_STATE* pState) {
                 shared_state->controller_connected[dwUserIndex] = false;
             }
         }
-        LogError("XXX XInput Controller %lu: GetState failed with error %lu", dwUserIndex, result);
+        if (dwUserIndex == 0) {
+            LogError("XXX XInput Controller %lu: GetState failed with error %lu", dwUserIndex, result);
+        }
     }
 
     return result;

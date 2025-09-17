@@ -2,6 +2,14 @@
 
 This document tracks proposed features and ideas for future development. These are not planned features but rather ideas to keep track of for potential future implementation.
 
+## Accepted Proposals
+
+• ADHD Mult-screen mode
+
+• XInput support
+
+• Reflex with low-latency mode + boost
+
 ## Proposed Features
 
 • Add crashes interception, so we can print to logs when crash occurs.
@@ -27,3 +35,7 @@ This document tracks proposed features and ideas for future development. These a
 • Low latency custom frame limiter
 
 • VBlank Scanline Sync (partially implemented)
+
+• DX9/OPENGL/VULKAN -> DX11 proxy
+
+• Swap Chain upgrades to Flip State Swap chain

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <deps/imgui/imgui.h>
+#include <imgui.h>
 
 namespace ui::new_ui {
 

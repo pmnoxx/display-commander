@@ -7,7 +7,7 @@
 #include <string>
 #include <vector>
 
-#include <deps/imgui/imgui.h>
+#include <imgui.h>
 #include <reshade.hpp>
 
 // #include "./mutex.hpp"

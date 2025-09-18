@@ -4,7 +4,7 @@
 #include <atomic>
 #include <memory>
 #include <array>
-#include <deps/imgui/imgui.h>
+#include <imgui.h>
 #include "../../utils.hpp"
 
 namespace display_commander::widgets::resolution_widget {

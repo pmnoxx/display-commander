@@ -1,7 +1,7 @@
 #include "device_info_tab.hpp"
 #include "../../addon.hpp"
 #include "../../dxgi/dxgi_device_info.hpp"
-#include <deps/imgui/imgui.h>
+#include <imgui.h>
 #include <sstream>
 namespace ui::new_ui {
 

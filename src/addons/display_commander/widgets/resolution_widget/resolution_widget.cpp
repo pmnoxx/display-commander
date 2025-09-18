@@ -4,7 +4,7 @@
 #include "../../globals.hpp"
 #include "../../display_restore.hpp"
 #include "../../utils/timing.hpp"
-#include <deps/imgui/imgui.h>
+#include <imgui.h>
 #include <reshade.hpp>
 #include <algorithm>
 #include <string>

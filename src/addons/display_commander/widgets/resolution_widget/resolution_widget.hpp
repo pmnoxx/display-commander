@@ -1,7 +1,7 @@
 #pragma once
 
 #include "resolution_settings.hpp"
-#include <deps/imgui/imgui.h>
+#include <imgui.h>
 #include <memory>
 #include <vector>
 #include <string>

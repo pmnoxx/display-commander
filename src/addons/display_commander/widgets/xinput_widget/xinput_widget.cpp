@@ -1,7 +1,7 @@
 #include "xinput_widget.hpp"
 #include "../../utils.hpp"
 #include "../../globals.hpp"
-#include <deps/imgui/imgui.h>
+#include <imgui.h>
 #include <reshade.hpp>
 #include <thread>
 #include <chrono>

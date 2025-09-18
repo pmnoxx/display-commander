@@ -4,7 +4,7 @@
 #include "../../hooks/sleep_hooks.hpp"
 #include "../../hooks/timeslowdown_hooks.hpp"
 #include "../../utils.hpp"
-#include <deps/imgui/imgui.h>
+#include <imgui.h>
 #include <windows.h>
 #include <thread>
 #include <atomic>

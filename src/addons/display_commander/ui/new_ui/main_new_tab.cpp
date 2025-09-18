@@ -12,7 +12,7 @@
 #include <atomic>
 #include <iomanip>
 #include <cmath>
-#include <deps/imgui/imgui.h>
+#include <imgui.h>
 #include "../../latent_sync/latent_sync_limiter.hpp"
 #include "../../utils/timing.hpp"
 #include "version.hpp"

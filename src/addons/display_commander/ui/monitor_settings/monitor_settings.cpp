@@ -9,7 +9,7 @@
 #include <atomic>
 #include <chrono>
 #include <algorithm>
-#include <deps/imgui/imgui.h>
+#include <imgui.h>
 // Track and restore original display settings
 #include "../../display_restore.hpp"
 #include "../new_ui/settings_wrapper.hpp"

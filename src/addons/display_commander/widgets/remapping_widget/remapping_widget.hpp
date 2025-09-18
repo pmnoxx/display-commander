@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include <deps/imgui/imgui.h>
+#include <imgui.h>
 #include <memory>
 #include <atomic>
 #include <string>

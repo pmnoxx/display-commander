@@ -116,6 +116,11 @@ if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/external/minhook")
   # MinHook include directories
   target_include_directories(minhook PRIVATE ${CMAKE_CURRENT_LIST_DIR}/external/minhook/include)
 
+  # When using clang-cl, undefine _MSC_VER for MinHook C sources to force memcpy path instead of __movsb
+  if(CMAKE_C_COMPILER_ID STREQUAL "Clang")
+    set_source_files_properties(${MINHOOK_SOURCES} PROPERTIES COMPILE_OPTIONS "-U_MSC_VER")
+  endif()
+
   # Link MinHook to display commander
   target_link_libraries(zzz_display_commander PRIVATE minhook)
 

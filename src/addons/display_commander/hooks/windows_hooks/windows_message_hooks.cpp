@@ -131,8 +131,8 @@ void ProcessInterceptedMessage(LPMSG lpMsg) {
     }
 
     // Log message details for debugging
-    LogInfo("Intercepted message: HWND=0x%p, Msg=0x%04X, WParam=0x%08X, LParam=0x%08X",
-            lpMsg->hwnd, lpMsg->message, lpMsg->wParam, lpMsg->lParam);
+    //LogInfo("Intercepted message: HWND=0x%p, Msg=0x%04X, WParam=0x%08X, LParam=0x%08X",
+    //        lpMsg->hwnd, lpMsg->message, lpMsg->wParam, lpMsg->lParam);
 
     // Handle specific messages if needed
     switch (lpMsg->message) {

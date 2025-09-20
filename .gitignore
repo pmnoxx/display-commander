@@ -43,6 +43,9 @@ bd.ps1
 # tmp
 tmp/
 
+# external source code for viewing only
+external-src/
+
 # cache
 .cache/
 

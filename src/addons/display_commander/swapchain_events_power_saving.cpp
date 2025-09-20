@@ -8,10 +8,10 @@
 void HandleRenderStartAndEndTimes();
 
 // Power saving settings - these can be controlled via UI
-std::atomic<bool> s_suppress_compute_in_background{true};
-std::atomic<bool> s_suppress_copy_in_background{true};
+std::atomic<bool> s_suppress_compute_in_background{false};
+std::atomic<bool> s_suppress_copy_in_background{false};
 std::atomic<bool> s_suppress_binding_in_background{false}; // Keep binding by default to avoid state issues
-std::atomic<bool> s_suppress_memory_ops_in_background{true};
+std::atomic<bool> s_suppress_memory_ops_in_background{false};
 
 // New power saving settings for frame-specific operations
 std::atomic<bool> s_suppress_clear_ops_in_background{true};

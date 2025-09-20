@@ -409,21 +409,57 @@ void SK_ImGui_KillScreensaver(void) {
 
 This sophisticated approach allows Special-K to provide reliable screensaver management that works across different games and scenarios.
 
-## Simplified Implementation Proposal
+## Current Implementation
 
-Based on the analysis of Special-K's approach, a much simpler implementation may be sufficient for most use cases:
+The screensaver disabling functionality has been implemented using a more sophisticated approach than the originally proposed minimal implementation:
 
-### Minimal Viable Implementation
+### Current Implementation Approach
 
-The simplest approach would be to periodically check for the presence of `scrnsave.scr` (the Windows screensaver process) and immediately terminate it if found. This can be done by:
+The current implementation uses a combination of Windows API hooks and continuous monitoring to provide flexible screensaver management:
 
-1. **Process Enumeration**: Use `CreateToolhelp32Snapshot` to enumerate running processes every 16ms (60 FPS equivalent)
-2. **Process Detection**: Search for `scrnsave.scr` in the process list
-3. **Immediate Termination**: Use `OpenProcess` + `TerminateProcess` to kill the screensaver process as soon as it's detected
-4. **Continuous Monitoring**: Run this check in background thread
+#### 1. **SetThreadExecutionState Hook**
+- Hooks the `SetThreadExecutionState` API to intercept and control execution state requests
+- Captures the original execution state on first call to preserve game's intended behavior
+- Provides three modes of operation:
+  - **No Change**: Preserves original game behavior
+  - **Disable in Foreground**: Only disables screensaver when game window is focused
+  - **Always Disable**: Always disables screensaver while game is running
 
-**How It Works:**
-- Runs a simple process enumeration every 16ms
-- Looks specifically for `scrnsave.scr` (Windows screensaver process)
-- Immediately terminates it if found
-- No need to prevent activation - just kill it when it appears
+#### 2. **Window State Monitoring**
+- Continuously monitors the game window's foreground state
+- Uses `GetForegroundWindow` to determine if the game window is currently active
+- Updates screensaver state based on window focus and selected mode
+
+#### 3. **Execution State Management**
+- Uses `ES_CONTINUOUS | ES_DISPLAY_REQUIRED` to prevent screensaver activation
+- Restores original execution state when screensaver should be allowed
+- Maintains state tracking to avoid unnecessary API calls
+
+#### 4. **User Interface Integration**
+- Provides a dropdown menu in the main settings tab with three options:
+  - "No Change" - Don't modify screensaver behavior
+  - "Disable in Foreground" - Disable when game window is focused
+  - "Always Disable" - Always disable while game is running
+- Includes helpful tooltips explaining each mode
+- Settings are persisted and loaded from ReShade configuration
+
+### Key Benefits of Current Approach
+
+1. **Non-Intrusive**: Uses Windows APIs as intended rather than process termination
+2. **Flexible**: Provides multiple modes to suit different use cases
+3. **Efficient**: Only updates state when necessary, avoiding constant polling
+4. **Compatible**: Works with games that manage their own execution state
+5. **User-Friendly**: Simple UI with clear explanations
+
+### Implementation Details
+
+**Core Components:**
+- `SetThreadExecutionState_Detour()` in `api_hooks.cpp` - Main hook function
+- `UpdateScreensaverState()` in `continuous_monitoring.cpp` - State management
+- `ScreensaverMode` enum in `main_tab_settings.hpp` - Configuration options
+- UI controls in `main_new_tab.cpp` - User interface
+
+**State Management:**
+- Tracks last screensaver state and window foreground state
+- Only calls `SetThreadExecutionState` when state changes
+- Preserves original game execution state for restoration

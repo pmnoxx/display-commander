@@ -39,3 +39,5 @@ This document tracks proposed features and ideas for future development. These a
 • DX9/OPENGL/VULKAN -> DX11 proxy
 
 • Swap Chain upgrades to Flip State Swap chain
+
+• Screensaver control options: "default behavior / Disable screensaver while game is in foreground / disable screensaver while game is running"

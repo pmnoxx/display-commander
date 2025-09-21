@@ -61,6 +61,12 @@ enum class WindowAlignment : std::uint8_t {
     kBottomRight = 4   // Bottom Right
 };
 
+enum class ScreensaverMode : std::uint8_t {
+    kDefault = 0,           // Default (no change)
+    kDisableInBackground = 1, // Disable in background
+    kDisable = 2            // Disable
+};
+
 // Structures
 struct GlobalWindowState {
     int desired_width = 0;

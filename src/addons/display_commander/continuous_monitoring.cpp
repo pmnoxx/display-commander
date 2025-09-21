@@ -13,6 +13,10 @@
 #include "globals.hpp"
 #include "settings/main_tab_settings.hpp"
 #include "utils/timing.hpp"
+#include "hooks/api_hooks.hpp"
+
+// External reference to screensaver mode setting
+extern std::atomic<ScreensaverMode> s_screensaver_mode;
 
 // Forward declarations
 void ComputeDesiredSize(int& out_w, int& out_h);
@@ -71,6 +75,39 @@ void every1s_checks() {
         }
     }
 
+    // SCREENSAVER MANAGEMENT: Update execution state based on screensaver mode and background status
+    {
+        static EXECUTION_STATE last_execution_state = 0;
+        ScreensaverMode screensaver_mode = s_screensaver_mode.load();
+        bool is_background = g_app_in_background.load();
+
+        EXECUTION_STATE desired_state = 0;
+
+        if (screensaver_mode == ScreensaverMode::kDisableInBackground) {
+            if (is_background) {
+                // In background: disable screensaver
+                desired_state = ES_CONTINUOUS | ES_DISPLAY_REQUIRED;
+            } else {
+                // In foreground: allow screensaver (no flags)
+                desired_state = ES_CONTINUOUS;
+            }
+        } else if (screensaver_mode == ScreensaverMode::kDisable) {
+            // Always disable screensaver
+            desired_state = ES_CONTINUOUS | ES_DISPLAY_REQUIRED;
+        } else { // ScreensaverMode::kDefault
+            desired_state = ES_CONTINUOUS;
+        }
+
+        // Only call SetThreadExecutionState if the desired state is different from the last state
+        if (desired_state != last_execution_state) {
+            if (renodx::hooks::SetThreadExecutionState_Original) {
+                EXECUTION_STATE result = renodx::hooks::SetThreadExecutionState_Original(desired_state);
+                if (result != 0) {
+                    LogDebug("Screensaver management: SetThreadExecutionState(0x%x) = 0x%x", desired_state, result);
+                }
+            }
+        }
+    }
 
     // BACKGROUND: Composition state logging and periodic device/colorspace refresh
     // NOTE: This functionality has been moved to OnPresentUpdateAfter to avoid

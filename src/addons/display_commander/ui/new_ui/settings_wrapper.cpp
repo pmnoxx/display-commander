@@ -3,6 +3,7 @@
 #include <cmath>
 #include "../../renodx/settings.hpp"
 #include "../../utils.hpp"
+#include "../../globals.hpp"
 
 // Windows defines min/max as macros, so we need to undefine them
 #ifdef min
@@ -245,6 +246,82 @@ void ComboSetting::Save() {
 
 void ComboSetting::SetValue(int value) {
     value_ = std::max(0, std::min(static_cast<int>(labels_.size()) - 1, value));
+    Save(); // Auto-save when value changes
+}
+
+// ComboSettingRef implementation
+ComboSettingRef::ComboSettingRef(const std::string& key, std::atomic<int>& external_ref, int default_value,
+    const std::vector<const char*>& labels, const std::string& section)
+    : SettingBase(key, section), external_ref_(external_ref), default_value_(default_value), labels_(labels) {
+}
+
+void ComboSettingRef::Load() {
+    int loaded_value;
+    if (reshade::get_config_value(nullptr, section_.c_str(), key_.c_str(), loaded_value)) {
+        // If loaded index is out of range (e.g., labels changed), fall back to default
+        const int max_index = static_cast<int>(labels_.size()) - 1;
+        if (loaded_value < 0 || loaded_value > max_index) {
+            int safe_default = default_value_;
+            if (safe_default < 0) safe_default = 0;
+            if (safe_default > max_index) safe_default = std::max(0, max_index);
+            external_ref_.get().store(safe_default);
+            Save();
+        } else {
+            external_ref_.get().store(loaded_value);
+        }
+    } else {
+        // Use default value if not found
+        external_ref_.get().store(default_value_);
+    }
+}
+
+void ComboSettingRef::Save() {
+    reshade::set_config_value(nullptr, section_.c_str(), key_.c_str(), external_ref_.get().load());
+}
+
+void ComboSettingRef::SetValue(int value) {
+    int clamped_value = std::max(0, std::min(static_cast<int>(labels_.size()) - 1, value));
+    external_ref_.get().store(clamped_value);
+    Save(); // Auto-save when value changes
+}
+
+// ComboSettingEnumRef implementation
+template<typename EnumType>
+ComboSettingEnumRef<EnumType>::ComboSettingEnumRef(const std::string& key, std::atomic<EnumType>& external_ref, int default_value,
+    const std::vector<const char*>& labels, const std::string& section)
+    : SettingBase(key, section), external_ref_(external_ref), default_value_(default_value), labels_(labels) {
+}
+
+template<typename EnumType>
+void ComboSettingEnumRef<EnumType>::Load() {
+    int loaded_value;
+    if (reshade::get_config_value(nullptr, section_.c_str(), key_.c_str(), loaded_value)) {
+        // If loaded index is out of range (e.g., labels changed), fall back to default
+        const int max_index = static_cast<int>(labels_.size()) - 1;
+        if (loaded_value < 0 || loaded_value > max_index) {
+            int safe_default = default_value_;
+            if (safe_default < 0) safe_default = 0;
+            if (safe_default > max_index) safe_default = std::max(0, max_index);
+            external_ref_.get().store(static_cast<EnumType>(safe_default));
+            Save();
+        } else {
+            external_ref_.get().store(static_cast<EnumType>(loaded_value));
+        }
+    } else {
+        // Use default value if not found
+        external_ref_.get().store(static_cast<EnumType>(default_value_));
+    }
+}
+
+template<typename EnumType>
+void ComboSettingEnumRef<EnumType>::Save() {
+    reshade::set_config_value(nullptr, section_.c_str(), key_.c_str(), static_cast<int>(external_ref_.get().load()));
+}
+
+template<typename EnumType>
+void ComboSettingEnumRef<EnumType>::SetValue(int value) {
+    int clamped_value = std::max(0, std::min(static_cast<int>(labels_.size()) - 1, value));
+    external_ref_.get().store(static_cast<EnumType>(clamped_value));
     Save(); // Auto-save when value changes
 }
 
@@ -539,6 +616,63 @@ bool ComboSettingWrapper(ComboSetting& setting, const char* label) {
     return changed;
 }
 
+bool ComboSettingRefWrapper(ComboSettingRef& setting, const char* label) {
+    int value = setting.GetValue();
+    bool changed = ImGui::Combo(label, &value, setting.GetLabels().data(), static_cast<int>(setting.GetLabels().size()));
+    if (changed) {
+        setting.SetValue(value);
+    }
+    // Show reset-to-default button if value differs from default
+    {
+        int current = setting.GetValue();
+        int def = setting.GetDefaultValue();
+        if (current != def) {
+            ImGui::SameLine();
+            ImGui::PushID(&setting);
+            if (ImGui::SmallButton(reinterpret_cast<const char*>(ICON_FK_UNDO))) {
+                setting.SetValue(def);
+                changed = true;
+            }
+            if (ImGui::IsItemHovered()) {
+                const auto &labels = setting.GetLabels();
+                const char* def_label = (def >= 0 && def < static_cast<int>(labels.size())) ? labels[def] : "Default";
+                ImGui::SetTooltip("Reset to default (%s)", def_label);
+            }
+            ImGui::PopID();
+        }
+    }
+    return changed;
+}
+
+template<typename EnumType>
+bool ComboSettingEnumRefWrapper(ComboSettingEnumRef<EnumType>& setting, const char* label) {
+    int value = setting.GetValue();
+    bool changed = ImGui::Combo(label, &value, setting.GetLabels().data(), static_cast<int>(setting.GetLabels().size()));
+    if (changed) {
+        setting.SetValue(value);
+    }
+    // Show reset-to-default button if value differs from default
+    {
+        int current = setting.GetValue();
+        int def = setting.GetDefaultValue();
+        if (current != def) {
+            ImGui::SameLine();
+            ImGui::PushID(&setting);
+            if (ImGui::SmallButton(reinterpret_cast<const char*>(ICON_FK_UNDO))) {
+                setting.SetValue(def);
+                changed = true;
+            }
+            if (ImGui::IsItemHovered()) {
+                const auto &labels = setting.GetLabels();
+                const char* def_label = (def >= 0 && def < static_cast<int>(labels.size())) ? labels[def] : "Default";
+                ImGui::SetTooltip("Reset to default (%s)", def_label);
+            }
+            ImGui::PopID();
+        }
+    }
+    return changed;
+}
+
 bool ButtonSetting(const char* label, const ImVec2& size) {
     return ImGui::Button(label, size);
 }
@@ -546,6 +680,10 @@ bool ButtonSetting(const char* label, const ImVec2& size) {
 void TextSetting(const char* text) {
     ImGui::Text("%s", text);
 }
+
+// Explicit template instantiations for ScreensaverMode
+template class ComboSettingEnumRef<ScreensaverMode>;
+template bool ComboSettingEnumRefWrapper<ScreensaverMode>(ComboSettingEnumRef<ScreensaverMode>& setting, const char* label);
 
 void SeparatorSetting() {
     ImGui::Separator();

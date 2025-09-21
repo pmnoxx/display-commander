@@ -57,7 +57,7 @@ MainTabSettings::MainTabSettings()
     target_display("target_display", "", "renodx_main_tab"),
     game_window_display_device_id("game_window_display_device_id", "", "renodx_main_tab"),
     adhd_multi_monitor_enabled("adhd_multi_monitor_enabled", false, "renodx_main_tab"),
-    screensaver_mode("screensaver_mode", s_screensaver_mode, static_cast<int>(ScreensaverMode::kDefault), {"Default (no change)", "Disable in Background", "Disable"}, "renodx_main_tab") {
+    screensaver_mode("screensaver_mode", s_screensaver_mode, static_cast<int>(ScreensaverMode::kDefault), {"Default (no change)", "Disable when Focused", "Disable"}, "renodx_main_tab") {
 
     // Initialize the all_settings_ vector
     all_settings_ = {

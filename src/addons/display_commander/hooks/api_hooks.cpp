@@ -132,8 +132,8 @@ EXECUTION_STATE WINAPI SetThreadExecutionState_Detour(EXECUTION_STATE esFlags) {
     // Check screensaver mode setting
     ScreensaverMode screensaver_mode = s_screensaver_mode.load();
 
-    // If screensaver mode is DisableInBackground or Disable, ignore all calls
-    if (screensaver_mode == ScreensaverMode::kDisableInBackground || screensaver_mode == ScreensaverMode::kDisable) {
+    // If screensaver mode is DisableWhenFocused or Disable, ignore all calls
+    if (screensaver_mode == ScreensaverMode::kDisableWhenFocused || screensaver_mode == ScreensaverMode::kDisable) {
         return 0x0; // Block game's attempt to control execution state
     }
 

@@ -83,7 +83,7 @@ void every1s_checks() {
 
         EXECUTION_STATE desired_state = 0;
 
-        if (screensaver_mode == ScreensaverMode::kDisableInBackground) {
+        if (screensaver_mode == ScreensaverMode::kDisableWhenFocused) {
             if (is_background) {
                 // In background: disable screensaver
                 desired_state = ES_CONTINUOUS | ES_DISPLAY_REQUIRED;

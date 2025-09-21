@@ -130,7 +130,7 @@ void DrawMainNewTab() {
             ImGui::SetTooltip(
                 "Controls screensaver behavior while the game is running:\n\n"
                 "• Default (no change): Preserves original game behavior\n"
-                "• Disable in Background: Only disables screensaver when game window is focused\n"
+                "• Disable when Focused: Disables screensaver when game window is focused\n"
                 "• Disable: Always disables screensaver while game is running\n\n"
                 "Note: This feature requires the screensaver implementation to be active."
             );

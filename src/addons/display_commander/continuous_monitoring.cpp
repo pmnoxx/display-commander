@@ -77,28 +77,28 @@ void every1s_checks() {
 
     // SCREENSAVER MANAGEMENT: Update execution state based on screensaver mode and background status
     {
-        static EXECUTION_STATE last_execution_state = 0;
         ScreensaverMode screensaver_mode = s_screensaver_mode.load();
         bool is_background = g_app_in_background.load();
-
         EXECUTION_STATE desired_state = 0;
 
-        if (screensaver_mode == ScreensaverMode::kDisableWhenFocused) {
-            if (is_background) {
-                // In background: disable screensaver
+        switch (screensaver_mode) {
+            case ScreensaverMode::kDisableWhenFocused:
+                if (is_background) { // enabled when background
+                    desired_state = ES_CONTINUOUS;
+                } else { // disabled when focused
+                    desired_state = ES_CONTINUOUS | ES_DISPLAY_REQUIRED;
+                }
+                break;
+            case ScreensaverMode::kDisable: // always disable screensaver
                 desired_state = ES_CONTINUOUS | ES_DISPLAY_REQUIRED;
-            } else {
-                // In foreground: allow screensaver (no flags)
+                break;
+            case ScreensaverMode::kDefault: // default behavior
                 desired_state = ES_CONTINUOUS;
-            }
-        } else if (screensaver_mode == ScreensaverMode::kDisable) {
-            // Always disable screensaver
-            desired_state = ES_CONTINUOUS | ES_DISPLAY_REQUIRED;
-        } else { // ScreensaverMode::kDefault
-            desired_state = ES_CONTINUOUS;
+                break;
         }
 
         // Only call SetThreadExecutionState if the desired state is different from the last state
+        static EXECUTION_STATE last_execution_state = 0;
         if (desired_state != last_execution_state) {
             last_execution_state = desired_state;
             if (renodx::hooks::SetThreadExecutionState_Original) {

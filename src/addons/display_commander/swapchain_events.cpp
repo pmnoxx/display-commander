@@ -84,6 +84,9 @@ void DoInitializationWithHwnd(HWND hwnd) {
 
     // Set the game window for API hooks
     renodx::hooks::SetGameWindow(hwnd);
+
+    // Save the display device ID for the game window
+    settings::SaveGameWindowDisplayDeviceId(hwnd);
     }
 
     LogInfo("DoInitialization: Initialization completed");

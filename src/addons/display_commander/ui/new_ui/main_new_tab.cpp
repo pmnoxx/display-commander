@@ -281,7 +281,13 @@ void DrawDisplaySettings() {
             LogInfo("Target monitor changed");
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Choose which monitor to apply size/pos to. 'Auto' uses the current window monitor.");
+            // Get the saved game window display device ID for tooltip
+            std::string saved_device_id = settings::g_mainTabSettings.game_window_display_device_id.GetValue();
+            std::string tooltip_text = "Choose which monitor to apply size/pos to. The monitor corresponding to the game window is automatically selected.";
+            if (!saved_device_id.empty() && saved_device_id != "No Window" && saved_device_id != "No Monitor" && saved_device_id != "Monitor Info Failed") {
+                tooltip_text += "\n\nGame window is on: " + saved_device_id;
+            }
+            ImGui::SetTooltip("%s", tooltip_text.c_str());
         }
 
         // Target Display (read-only display of current display device ID)

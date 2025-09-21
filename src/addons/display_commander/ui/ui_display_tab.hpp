@@ -12,4 +12,10 @@ namespace ui {
     // Get monitor labels using the display cache
     std::vector<std::string> GetMonitorLabelsFromCache();
 
+    // Find monitor index by device ID
+    int FindMonitorIndexByDeviceId(const std::string& device_id);
+
+    // Get the correct monitor index for target monitor selection
+    int GetTargetMonitorIndex();
+
 }

@@ -13,9 +13,9 @@ void ComputeDesiredSize(int& out_w, int& out_h);
 int FindTargetMonitor(HWND hwnd, const RECT& wr_current, float target_monitor_index, MONITORINFO& mi, display_cache::RationalRefreshRate& out_refresh) {
     int monitor_index = 0;
 
-    if (target_monitor_index > 0.5f) {
-    // Use the legacy target monitor setting
-    int index = static_cast<int>(target_monitor_index) - 1;
+    if (target_monitor_index >= 0.0f) {
+    // Use the target monitor setting (0-based indexing)
+    int index = static_cast<int>(target_monitor_index);
 
     auto new_monitors = std::make_shared<std::vector<MonitorInfo>>();
     new_monitors->clear();
@@ -29,7 +29,7 @@ int FindTargetMonitor(HWND hwnd, const RECT& wr_current, float target_monitor_in
     monitor_index = index;
     mi = (*new_monitors)[index].info;
     } else {
-    // When target monitor is 0, find the monitor where the game is currently on
+    // When target monitor is -1 or invalid, find the monitor where the game is currently on
     // by comparing window position against each monitor's dimensions
 
     auto new_monitors = std::make_shared<std::vector<MonitorInfo>>();
@@ -149,16 +149,16 @@ void  CalculateWindowState(HWND hwnd, const char* reason) {
     auto displays = display_cache::g_displayCache.GetDisplays();
     size_t display_count = displays ? displays->size() : 0;
 
-    int requested_monitor = static_cast<int>(s_target_monitor_index.load()); // 0 = Auto (Current), 1..N = explicit
-    if (requested_monitor > 0 && display_count > 0) {
-    // Clamp to available displays; display indices are 0..display_count-1 in cache, but setting uses 1..N
-    target_monitor_index = (std::max)(0, (std::min)(requested_monitor - 1, static_cast<int>(display_count) - 1));
+    int requested_monitor = static_cast<int>(s_target_monitor_index.load()); // 0-based indexing: 0 = Monitor 1, 1 = Monitor 2, etc.
+    if (requested_monitor >= 0 && display_count > 0) {
+    // Clamp to available displays; display indices are 0..display_count-1 in cache
+    target_monitor_index = (std::max)(0, (std::min)(requested_monitor, static_cast<int>(display_count) - 1));
     if (target_monitor_index < static_cast<int>(display_count) && (*displays)[target_monitor_index]) {
     const auto *disp = (*displays)[target_monitor_index].get();
     target_monitor_handle = disp->monitor_handle;
     }
     } else {
-    // Auto: use the monitor where the window currently resides
+    // Fallback: use the monitor where the window currently resides
     target_monitor_handle = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
     // Find the corresponding display index in the cache
     for (size_t i = 0; i < display_count; ++i) {

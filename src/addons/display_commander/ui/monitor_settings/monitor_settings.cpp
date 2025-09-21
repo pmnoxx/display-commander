@@ -16,6 +16,7 @@
 
 // Include the centralized globals header
 #include "../../globals.hpp"
+#include "../../settings/main_tab_settings.hpp"
 
 
 namespace ui::monitor_settings {
@@ -310,39 +311,77 @@ void HandleAutoDetection() {
         // Get current display info for the selected monitor
         HWND hwnd = g_last_swapchain_hwnd.load();
         if (hwnd) {
-            HMONITOR current_monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
-            if (current_monitor) {
-                                // Get monitor labels to find which monitor index this corresponds to
-                auto monitor_labels = ui::GetMonitorLabelsFromCache();
+            // First try to use the saved device ID for more reliable matching
+            std::string saved_device_id = settings::g_mainTabSettings.game_window_display_device_id.GetValue();
+            int monitor_index = ui::FindMonitorIndexByDeviceId(saved_device_id);
 
-                // Find which monitor index this corresponds to
-                for (int i = 0; i < static_cast<int>(monitor_labels.size()); i++) {
-                    const auto* display = display_cache::g_displayCache.GetDisplay(i);
-                    if (display && display->monitor_handle == current_monitor) {
-                        // Set to Auto (Current) since that's where this monitor will be
-                        s_selected_monitor_index.store(0.0f);
-                        // Prefer saved indices for this display (0..3). If out of range, fallback to closest
-                        if (i >= 0 && i <= 3) {
-                            auto &resSetting = GetResSettingForDisplay(i);
-                            auto &refSetting = GetRefreshSettingForDisplay(i);
-                            // For new format, we need to find the matching index
-                            // For now, default to current resolution/refresh rate
-                            s_selected_resolution_index.store(0);
+            if (monitor_index >= 0) {
+                // Found matching monitor by device ID
+                s_selected_monitor_index.store(static_cast<float>(monitor_index)); // Set to direct monitor index
+                LogInfo("Auto-detection: Found monitor by device ID: %s (index %d)", saved_device_id.c_str(), monitor_index);
+
+                // Prefer saved indices for this display (0..3). If out of range, fallback to closest
+                if (monitor_index >= 0 && monitor_index <= 3) {
+                    auto &resSetting = GetResSettingForDisplay(monitor_index);
+                    auto &refSetting = GetRefreshSettingForDisplay(monitor_index);
+                    // For new format, we need to find the matching index
+                    // For now, default to current resolution/refresh rate
+                    s_selected_resolution_index.store(0);
+                    s_selected_refresh_rate_index.store(0);
+                } else {
+                    // Use the new methods to find closest supported modes to current settings
+                    const auto* display = display_cache::g_displayCache.GetDisplay(monitor_index);
+                    if (display) {
+                        auto closest_resolution_index = display->FindClosestResolutionIndex();
+                        if (closest_resolution_index.has_value()) {
+                            s_selected_resolution_index.store(closest_resolution_index.value());
+                            // Default to Current Refresh Rate (index 0 in UI)
                             s_selected_refresh_rate_index.store(0);
                         } else {
-                            // Use the new methods to find closest supported modes to current settings
-                            auto closest_resolution_index = display->FindClosestResolutionIndex();
-                            if (closest_resolution_index.has_value()) {
-                                s_selected_resolution_index.store(closest_resolution_index.value());
-                                // Default to Current Refresh Rate (index 0 in UI)
-                                s_selected_refresh_rate_index.store(0);
-                            } else {
-                                // Fallback to first resolution if no match found
+                            // Fallback to first resolution if no match found
+                            s_selected_resolution_index.store(0);
+                            s_selected_refresh_rate_index.store(0);
+                        }
+                    }
+                }
+            } else {
+                // Fallback to monitor handle matching
+                HMONITOR current_monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+                if (current_monitor) {
+                    // Get monitor labels to find which monitor index this corresponds to
+                    auto monitor_labels = ui::GetMonitorLabelsFromCache();
+
+                    // Find which monitor index this corresponds to
+                    for (int i = 0; i < static_cast<int>(monitor_labels.size()); i++) {
+                        const auto* display = display_cache::g_displayCache.GetDisplay(i);
+                        if (display && display->monitor_handle == current_monitor) {
+                            // Set to direct monitor index
+                            s_selected_monitor_index.store(static_cast<float>(i));
+                            LogInfo("Auto-detection: Found monitor by handle (fallback) at index %d", i);
+
+                            // Prefer saved indices for this display (0..3). If out of range, fallback to closest
+                            if (i >= 0 && i <= 3) {
+                                auto &resSetting = GetResSettingForDisplay(i);
+                                auto &refSetting = GetRefreshSettingForDisplay(i);
+                                // For new format, we need to find the matching index
+                                // For now, default to current resolution/refresh rate
                                 s_selected_resolution_index.store(0);
                                 s_selected_refresh_rate_index.store(0);
+                            } else {
+                                // Use the new methods to find closest supported modes to current settings
+                                auto closest_resolution_index = display->FindClosestResolutionIndex();
+                                if (closest_resolution_index.has_value()) {
+                                    s_selected_resolution_index.store(closest_resolution_index.value());
+                                    // Default to Current Refresh Rate (index 0 in UI)
+                                    s_selected_refresh_rate_index.store(0);
+                                } else {
+                                    // Fallback to first resolution if no match found
+                                    s_selected_resolution_index.store(0);
+                                    s_selected_refresh_rate_index.store(0);
+                                }
                             }
+                            break;
                         }
-                        break;
                     }
                 }
             }

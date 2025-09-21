@@ -109,6 +109,14 @@ void LogDebug(const std::string& s) {
     reshade::log::message(reshade::log::level::debug, s.c_str());
 }
 
+void LogDebug(const char* msg, ...) {
+    va_list args;
+    va_start(args, msg);
+    char buffer[1024];
+    vsnprintf(buffer, sizeof(buffer), msg, args);
+    va_end(args);
+    reshade::log::message(reshade::log::level::debug, buffer);
+}
 
 std::string FormatLastError() {
     DWORD error = GetLastError();

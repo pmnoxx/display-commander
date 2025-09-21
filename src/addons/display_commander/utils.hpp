@@ -33,6 +33,7 @@ void LogInfo(const char* msg, ...);
 void LogWarn(const char* msg, ...);
 void LogError(const char* msg, ...);
 void LogDebug(const std::string& s);
+void LogDebug(const char* msg, ...);
 std::string FormatLastError();
 // Window state detection
 bool IsExclusiveFullscreen(HWND hwnd);

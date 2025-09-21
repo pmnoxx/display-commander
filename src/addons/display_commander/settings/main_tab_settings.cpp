@@ -23,6 +23,7 @@ std::atomic<bool> s_block_input_in_background{true};
 std::atomic<bool> s_block_input_without_reshade{false};
 std::atomic<bool> s_no_render_in_background{false};
 std::atomic<bool> s_no_present_in_background{false};
+std::atomic<ScreensaverMode> s_screensaver_mode{ScreensaverMode::kDefault};
 
 namespace settings {
 
@@ -53,7 +54,8 @@ MainTabSettings::MainTabSettings()
     no_present_in_background("no_present_in_background", s_no_present_in_background, false, "renodx_main_tab"),
     show_test_overlay("show_test_overlay", false, "renodx_main_tab"),
     target_display("target_display", "", "renodx_main_tab"),
-    adhd_multi_monitor_enabled("adhd_multi_monitor_enabled", false, "renodx_main_tab") {
+    adhd_multi_monitor_enabled("adhd_multi_monitor_enabled", false, "renodx_main_tab"),
+    screensaver_mode("screensaver_mode", s_screensaver_mode, static_cast<int>(ScreensaverMode::kDefault), {"Default (no change)", "Disable in Background", "Disable"}, "renodx_main_tab") {
 
     // Initialize the all_settings_ vector
     all_settings_ = {
@@ -84,6 +86,7 @@ MainTabSettings::MainTabSettings()
         &show_test_overlay,
         &target_display,
         &adhd_multi_monitor_enabled,
+        &screensaver_mode,
     };
 }
 

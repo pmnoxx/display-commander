@@ -268,7 +268,6 @@ Based on analysis of the Special-K source code, here's how each API is actually 
 EXECUTION_STATE WINAPI SetThreadExecutionState_Detour(EXECUTION_STATE esFlags) {
     // Reset any continuous state so we can micromanage screensaver activation
     if (config.window.manage_screensaver) {
-        SetThreadExecutionState_Original(ES_CONTINUOUS);
         return 0x0; // Block game's attempt to control execution state
     }
     return SetThreadExecutionState_Original(esFlags);

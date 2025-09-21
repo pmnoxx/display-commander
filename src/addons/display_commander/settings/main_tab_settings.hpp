@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../ui/new_ui/settings_wrapper.hpp"
+#include "globals.hpp"
 #include <vector>
 #include <atomic>
 
@@ -83,6 +84,9 @@ public:
 
     // Display Information
     ui::new_ui::StringSetting target_display;
+
+    // Screensaver Control
+    ui::new_ui::ComboSettingEnumRef<ScreensaverMode> screensaver_mode;
 
 private:
     std::vector<ui::new_ui::SettingBase*> all_settings_;

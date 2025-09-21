@@ -212,6 +212,57 @@ private:
     std::vector<const char*> labels_;
 };
 
+// Combo setting wrapper that references an external atomic variable
+class ComboSettingRef : public SettingBase {
+public:
+    ComboSettingRef(const std::string& key, std::atomic<int>& external_ref, int default_value,
+        const std::vector<const char*>& labels,
+        const std::string& section = DEFAULT_SECTION);
+
+    void Load() override;
+    void Save() override;
+
+    int GetValue() const { return external_ref_.get().load(); }
+    void SetValue(int value);
+    int GetDefaultValue() const { return default_value_; }
+    const std::vector<const char*>& GetLabels() const { return labels_; }
+
+    // Direct access to the referenced atomic value for performance-critical code
+    std::atomic<int>& GetAtomic() { return external_ref_.get(); }
+    const std::atomic<int>& GetAtomic() const { return external_ref_.get(); }
+
+private:
+    std::reference_wrapper<std::atomic<int>> external_ref_;
+    int default_value_;
+    std::vector<const char*> labels_;
+};
+
+// Combo setting wrapper that references an external atomic enum variable
+template<typename EnumType>
+class ComboSettingEnumRef : public SettingBase {
+public:
+    ComboSettingEnumRef(const std::string& key, std::atomic<EnumType>& external_ref, int default_value,
+        const std::vector<const char*>& labels,
+        const std::string& section = DEFAULT_SECTION);
+
+    void Load() override;
+    void Save() override;
+
+    int GetValue() const { return static_cast<int>(external_ref_.get().load()); }
+    void SetValue(int value);
+    int GetDefaultValue() const { return default_value_; }
+    const std::vector<const char*>& GetLabels() const { return labels_; }
+
+    // Direct access to the referenced atomic value for performance-critical code
+    std::atomic<EnumType>& GetAtomic() { return external_ref_.get(); }
+    const std::atomic<EnumType>& GetAtomic() const { return external_ref_.get(); }
+
+private:
+    std::reference_wrapper<std::atomic<EnumType>> external_ref_;
+    int default_value_;
+    std::vector<const char*> labels_;
+};
+
 // Resolution pair setting (width, height)
 class ResolutionPairSetting : public SettingBase {
 public:
@@ -346,6 +397,9 @@ bool CheckboxSetting(BoolSettingRef& setting, const char* label);
 
 // Combo wrapper
 bool ComboSettingWrapper(ComboSetting& setting, const char* label);
+bool ComboSettingRefWrapper(ComboSettingRef& setting, const char* label);
+template<typename EnumType>
+bool ComboSettingEnumRefWrapper(ComboSettingEnumRef<EnumType>& setting, const char* label);
 
 // Button wrapper (for settings that don't store values)
 bool ButtonSetting(const char* label, const ImVec2& size = ImVec2(0, 0));

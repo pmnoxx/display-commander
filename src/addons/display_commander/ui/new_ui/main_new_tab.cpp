@@ -120,6 +120,26 @@ void DrawMainNewTab() {
     ImGui::Spacing();
     ImGui::Separator();
 
+    // Screensaver Control Section
+    {
+        ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== Screensaver Control ===");
+        if (ComboSettingEnumRefWrapper(settings::g_mainTabSettings.screensaver_mode, "Screensaver Mode")) {
+            LogInfo("Screensaver mode changed to %d", settings::g_mainTabSettings.screensaver_mode.GetValue());
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip(
+                "Controls screensaver behavior while the game is running:\n\n"
+                "• Default (no change): Preserves original game behavior\n"
+                "• Disable in Background: Only disables screensaver when game window is focused\n"
+                "• Disable: Always disables screensaver while game is running\n\n"
+                "Note: This feature requires the screensaver implementation to be active."
+            );
+        }
+    }
+
+    ImGui::Spacing();
+    ImGui::Separator();
+
     // Window Controls Section
     DrawWindowControls();
 

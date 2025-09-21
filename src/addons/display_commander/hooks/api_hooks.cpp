@@ -12,6 +12,9 @@
 #include "../utils.hpp"
 #include <MinHook.h>
 
+// External reference to screensaver mode setting
+extern std::atomic<ScreensaverMode> s_screensaver_mode;
+
 namespace renodx::hooks {
 
 // Original function pointers
@@ -19,6 +22,7 @@ GetFocus_pfn GetFocus_Original = nullptr;
 GetForegroundWindow_pfn GetForegroundWindow_Original = nullptr;
 GetActiveWindow_pfn GetActiveWindow_Original = nullptr;
 GetGUIThreadInfo_pfn GetGUIThreadInfo_Original = nullptr;
+SetThreadExecutionState_pfn SetThreadExecutionState_Original = nullptr;
 
 // Hook state
 static std::atomic<bool> g_api_hooks_installed{false};
@@ -123,6 +127,22 @@ BOOL WINAPI GetGUIThreadInfo_Detour(DWORD idThread, PGUITHREADINFO pgui) {
         GetGUIThreadInfo(idThread, pgui);
 }
 
+// Hooked SetThreadExecutionState function
+EXECUTION_STATE WINAPI SetThreadExecutionState_Detour(EXECUTION_STATE esFlags) {
+    // Check screensaver mode setting
+    ScreensaverMode screensaver_mode = s_screensaver_mode.load();
+
+    // If screensaver mode is DisableInBackground or Disable, ignore all calls
+    if (screensaver_mode == ScreensaverMode::kDisableInBackground || screensaver_mode == ScreensaverMode::kDisable) {
+        return 0x0; // Block game's attempt to control execution state
+    }
+
+    // Call original function for kDefault mode
+    return SetThreadExecutionState_Original ?
+        SetThreadExecutionState_Original(esFlags) :
+        SetThreadExecutionState(esFlags);
+}
+
 bool InstallApiHooks() {
     if (g_api_hooks_installed.load()) {
         LogInfo("API hooks already installed");
@@ -163,6 +183,12 @@ bool InstallApiHooks() {
     // Hook GetGUIThreadInfo
     if (MH_CreateHook(GetGUIThreadInfo, GetGUIThreadInfo_Detour, (LPVOID*)&GetGUIThreadInfo_Original) != MH_OK) {
         LogError("Failed to create GetGUIThreadInfo hook");
+        return false;
+    }
+
+    // Hook SetThreadExecutionState
+    if (MH_CreateHook(SetThreadExecutionState, SetThreadExecutionState_Detour, (LPVOID*)&SetThreadExecutionState_Original) != MH_OK) {
+        LogError("Failed to create SetThreadExecutionState hook");
         return false;
     }
 
@@ -277,12 +303,14 @@ void UninstallApiHooks() {
     MH_RemoveHook(GetForegroundWindow);
     MH_RemoveHook(GetActiveWindow);
     MH_RemoveHook(GetGUIThreadInfo);
+    MH_RemoveHook(SetThreadExecutionState);
 
     // Clean up
     GetFocus_Original = nullptr;
     GetForegroundWindow_Original = nullptr;
     GetActiveWindow_Original = nullptr;
     GetGUIThreadInfo_Original = nullptr;
+    SetThreadExecutionState_Original = nullptr;
 
     g_api_hooks_installed.store(false);
     LogInfo("API hooks uninstalled successfully");

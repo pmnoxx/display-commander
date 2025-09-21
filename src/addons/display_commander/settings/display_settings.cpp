@@ -310,7 +310,7 @@ void DisplaySettings::SetToCurrentRefreshRate() {
                 *last_refresh_numerator_ = display->current_refresh_rate.numerator;
                 *last_refresh_denominator_ = display->current_refresh_rate.denominator;
                 LogInfo("DisplaySettings::SetToCurrentRefreshRate() - Set to current refresh rate: %u/%u",
-                       display->current_refresh_rate.numerator, display->current_refresh_rate.denominator);
+        display->current_refresh_rate.numerator, display->current_refresh_rate.denominator);
                 return;
             }
         }

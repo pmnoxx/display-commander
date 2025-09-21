@@ -76,7 +76,7 @@ bool ReflexManager::ApplySleepMode(bool low_latency, bool boost, bool use_marker
     params.bLowLatencyMode = low_latency ? NV_TRUE : NV_FALSE;
     params.bLowLatencyBoost = boost ? NV_TRUE : NV_FALSE;
     params.bUseMarkersToOptimize = use_markers ? NV_TRUE : NV_FALSE;
-  //  params.minimumIntervalUs = 0; // no explicit limiter in minimal integration
+    //  params.minimumIntervalUs = 0; // no explicit limiter in minimal integration
     double target_fps_limit = s_fps_limit.load();
     params.minimumIntervalUs = target_fps_limit > 0.0f ? (UINT)(round(1000000.0 / target_fps_limit)) : 0; // + (__SK_ForceDLSSGPacing ? 6 : 0);
 

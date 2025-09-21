@@ -699,7 +699,7 @@ void HandleDXGIAPIApplyButton() {
         }
         // Apply the changes using the DXGI API for fractional refresh rates
         std::thread([](){
-                          // If Auto (Current) is selected, find the current monitor where the game is running
+                        // If Auto (Current) is selected, find the current monitor where the game is running
             int actual_monitor_index = s_selected_monitor_index.load();
             if (s_selected_monitor_index.load() == 0) {
                 HWND hwnd = g_last_swapchain_hwnd.load();
@@ -760,9 +760,9 @@ void HandleDXGIAPIApplyButton() {
                     // Log the values we're trying to apply with DXGI API
                     std::ostringstream debug_oss;
                     debug_oss << "Attempting to apply display changes with DXGI API: Monitor=" << s_selected_monitor_index
-                              << ", Resolution=" << width << "x" << height
-                              << ", Refresh Rate=" << std::fixed << std::setprecision(10) << refresh_rate.ToHz() << "Hz"
-                              << " (Rational: " << refresh_rate.numerator << "/" << refresh_rate.denominator << ")";
+                            << ", Resolution=" << width << "x" << height
+                            << ", Refresh Rate=" << std::fixed << std::setprecision(10) << refresh_rate.ToHz() << "Hz"
+                            << " (Rational: " << refresh_rate.numerator << "/" << refresh_rate.denominator << ")";
                     LogInfo(debug_oss.str().c_str());
 
                     // Try DXGI API for fractional refresh rates

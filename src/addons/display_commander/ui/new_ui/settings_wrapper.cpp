@@ -251,7 +251,7 @@ void ComboSetting::SetValue(int value) {
 // ResolutionPairSetting implementation
 ResolutionPairSetting::ResolutionPairSetting(const std::string& key, int default_width, int default_height, const std::string& section)
     : SettingBase(key, section), width_(default_width), height_(default_height),
-      default_width_(default_width), default_height_(default_height) {
+    default_width_(default_width), default_height_(default_height) {
 }
 
 void ResolutionPairSetting::Load() {
@@ -300,7 +300,7 @@ void ResolutionPairSetting::SetCurrentResolution() {
 // RefreshRatePairSetting implementation
 RefreshRatePairSetting::RefreshRatePairSetting(const std::string& key, int default_numerator, int default_denominator, const std::string& section)
     : SettingBase(key, section), numerator_(default_numerator), denominator_(default_denominator),
-      default_numerator_(default_numerator), default_denominator_(default_denominator) {
+    default_numerator_(default_numerator), default_denominator_(default_denominator) {
 }
 
 void RefreshRatePairSetting::Load() {
@@ -565,7 +565,7 @@ void LoadTabSettings(const std::vector<SettingBase*>& settings) {
 
 // FixedIntArraySetting implementation
 FixedIntArraySetting::FixedIntArraySetting(const std::string& key, size_t array_size, int default_value,
-                                         int min, int max, const std::string& section)
+                    int min, int max, const std::string& section)
     : SettingBase(key, section)
     , array_size_(array_size)
     , default_value_(default_value)
@@ -655,7 +655,7 @@ void FixedIntArraySetting::SetAllValues(const std::vector<int>& values) {
 
 // StringSetting implementation
 StringSetting::StringSetting(const std::string& key, const std::string& default_value,
-                             const std::string& section)
+            const std::string& section)
     : SettingBase(key, section), value_(default_value), default_value_(default_value) {
 }
 

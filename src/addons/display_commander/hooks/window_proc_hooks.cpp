@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2024 Display Commander
- * Window procedure hooks implementation using SetWindowLongPtr
- */
+    * Copyright (C) 2024 Display Commander
+    * Window procedure hooks implementation using SetWindowLongPtr
+    */
 
 #include "window_proc_hooks.hpp"
 #include "../utils.hpp"

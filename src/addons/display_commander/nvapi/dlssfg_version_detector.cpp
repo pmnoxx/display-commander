@@ -324,7 +324,7 @@ std::wstring DLSSFGVersionDetector::GetDLLVersionShort(const wchar_t* wszName) c
 bool DLSSFGVersionDetector::IsDLSSGDLL(const std::wstring& version_string) const {
     // Check for DLSS-G specific strings (same as Special-K)
     return version_string.find(L"NVIDIA DLSS-G -") != std::wstring::npos ||
-           version_string.find(L"NVIDIA DLSS-G MFGLW -") != std::wstring::npos;
+    version_string.find(L"NVIDIA DLSS-G MFGLW -") != std::wstring::npos;
 }
 
 bool DLSSFGVersionDetector::ParseVersionNumbers(const std::wstring& version_short, VersionInfo& version) const {

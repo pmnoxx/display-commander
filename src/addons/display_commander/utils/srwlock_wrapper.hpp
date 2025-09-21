@@ -5,9 +5,9 @@
 namespace utils {
 
 /**
- * RAII wrapper for SRWLOCK exclusive (write) locking
- * Automatically acquires the lock on construction and releases on destruction
- */
+    * RAII wrapper for SRWLOCK exclusive (write) locking
+    * Automatically acquires the lock on construction and releases on destruction
+    */
 class SRWLockExclusive {
 public:
     explicit SRWLockExclusive(SRWLOCK& lock) : lock_(lock) {
@@ -29,9 +29,9 @@ private:
 };
 
 /**
- * RAII wrapper for SRWLOCK shared (read) locking
- * Automatically acquires the lock on construction and releases on destruction
- */
+    * RAII wrapper for SRWLOCK shared (read) locking
+    * Automatically acquires the lock on construction and releases on destruction
+    */
 class SRWLockShared {
 public:
     explicit SRWLockShared(SRWLOCK& lock) : lock_(lock) {

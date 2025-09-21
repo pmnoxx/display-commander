@@ -63,30 +63,30 @@ enum class WindowAlignment : std::uint8_t {
 
 // Structures
 struct GlobalWindowState {
-  int desired_width = 0;
-  int desired_height = 0;
-  int target_x = 0;
-  int target_y = 0;
-  int target_w = 0;
-  int target_h = 0;
-  bool needs_resize = false;
-  bool needs_move = false;
-  bool style_changed = false;
-  bool style_changed_ex = false;
-  int new_style = 0;
-  int new_ex_style = 0;
-  WindowStyleMode style_mode = WindowStyleMode::BORDERLESS;
-  const char* reason = "unknown";
+    int desired_width = 0;
+    int desired_height = 0;
+    int target_x = 0;
+    int target_y = 0;
+    int target_w = 0;
+    int target_h = 0;
+    bool needs_resize = false;
+    bool needs_move = false;
+    bool style_changed = false;
+    bool style_changed_ex = false;
+    int new_style = 0;
+    int new_ex_style = 0;
+    WindowStyleMode style_mode = WindowStyleMode::BORDERLESS;
+    const char* reason = "unknown";
 
-  int show_cmd = 0;
-  int current_monitor_index = 0;
-  display_cache::RationalRefreshRate current_monitor_refresh_rate;
+    int show_cmd = 0;
+    int current_monitor_index = 0;
+    display_cache::RationalRefreshRate current_monitor_refresh_rate;
 
-  // Current display dimensions
-  int display_width = 0;
-  int display_height = 0;
+    // Current display dimensions
+    int display_width = 0;
+    int display_height = 0;
 
-  void reset() {
+    void reset() {
     desired_width = 0;
     desired_height = 0;
     target_x = 0;
@@ -103,7 +103,7 @@ struct GlobalWindowState {
     current_monitor_refresh_rate = display_cache::RationalRefreshRate();
     display_width = 0;
     display_height = 0;
-  }
+    }
 };
 
 // Performance stats structure

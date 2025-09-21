@@ -13,13 +13,13 @@
 
 // Structs needed for utility functions
 struct AspectRatio {
-  int w;
-  int h;
+    int w;
+    int h;
 };
 
 struct MonitorInfo {
-  HMONITOR handle;
-  MONITORINFOEXW info;
+    HMONITOR handle;
+    MONITORINFOEXW info;
 };
 
 // Constants

@@ -53,10 +53,10 @@ void DrawMonitorInfo() {
             for (size_t i = 0; i < monitors->size(); ++i) {
                 const auto& monitor = (*monitors)[i];
                 ImGui::Text("Monitor %zu: %ldx%ld at (%ld,%ld)",
-                           i + 1,
-                           monitor.info.rcMonitor.right - monitor.info.rcMonitor.left,
-                           monitor.info.rcMonitor.bottom - monitor.info.rcMonitor.top,
-                           monitor.info.rcMonitor.left, monitor.info.rcMonitor.top);
+            i + 1,
+            monitor.info.rcMonitor.right - monitor.info.rcMonitor.left,
+            monitor.info.rcMonitor.bottom - monitor.info.rcMonitor.top,
+            monitor.info.rcMonitor.left, monitor.info.rcMonitor.top);
             }
         } else {
             ImGui::Text("No monitor information available");
@@ -172,8 +172,8 @@ void DrawDxgiDeviceInfo() {
                             ImGui::Text("Monitor Name: %s", output.monitor_name.c_str());
                             ImGui::Text("Attached: %s", output.is_attached ? "Yes" : "No");
                             ImGui::Text("Desktop Coordinates: (%ld, %ld) to (%ld, %ld)",
-                                       output.desktop_coordinates.left, output.desktop_coordinates.top,
-                                       output.desktop_coordinates.right, output.desktop_coordinates.bottom);
+                output.desktop_coordinates.left, output.desktop_coordinates.top,
+                output.desktop_coordinates.right, output.desktop_coordinates.bottom);
 
                             // Resolution and refresh rate
                             int width = output.desktop_coordinates.right - output.desktop_coordinates.left;
@@ -200,9 +200,9 @@ void DrawDxgiDeviceInfo() {
                             // Color space information
                             ImGui::Separator();
                             ImGui::Text("Color Space: %s",
-                                       output.color_space == DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020 ? "HDR10" :
-                                       output.color_space == DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709 ? "sRGB" :
-                                       "Other");
+                output.color_space == DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020 ? "HDR10" :
+                output.color_space == DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709 ? "sRGB" :
+                "Other");
                             ImGui::Text("Wide Color Gamut: %s", output.supports_wide_color_gamut ? "Yes" : "No");
 
                             // Supported modes count
@@ -258,8 +258,8 @@ void DrawDxgiDeviceInfoDetailed() {
 
                             if (output.is_attached) {
                                 ImGui::Text("Desktop Coordinates: (%ld, %ld) to (%ld, %ld)",
-                                           output.desktop_coordinates.left, output.desktop_coordinates.top,
-                                           output.desktop_coordinates.right, output.desktop_coordinates.bottom);
+                    output.desktop_coordinates.left, output.desktop_coordinates.top,
+                    output.desktop_coordinates.right, output.desktop_coordinates.bottom);
 
                                 // Resolution and refresh rate
                                 int width = output.desktop_coordinates.right - output.desktop_coordinates.left;
@@ -287,9 +287,9 @@ void DrawDxgiDeviceInfoDetailed() {
                             // Color space information
                             ImGui::Separator();
                             ImGui::Text("Color Space: %s",
-                                       output.color_space == DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020 ? "HDR10" :
-                                       output.color_space == DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709 ? "sRGB" :
-                                       "Other");
+                output.color_space == DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020 ? "HDR10" :
+                output.color_space == DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709 ? "sRGB" :
+                "Other");
                             ImGui::Text("Wide Color Gamut: %s", output.supports_wide_color_gamut ? "Yes" : "No");
 
                             // Supported modes count

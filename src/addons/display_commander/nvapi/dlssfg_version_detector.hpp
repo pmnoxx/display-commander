@@ -37,9 +37,9 @@ public:
         // Check if this version is older than another
         bool isOlderThan(const VersionInfo& other) const {
             return other.major > major ||
-                   (other.major == major && other.minor > minor) ||
-                   (other.major == major && other.minor == minor && other.build > build) ||
-                   (other.major == major && other.minor == minor && other.build == build && other.revision > revision);
+        (other.major == major && other.minor > minor) ||
+        (other.major == major && other.minor == minor && other.build > build) ||
+        (other.major == major && other.minor == minor && other.build == build && other.revision > revision);
         }
 
         // Get formatted version string

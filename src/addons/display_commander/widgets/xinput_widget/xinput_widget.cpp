@@ -472,7 +472,7 @@ void XInputWidget::DrawStickStates(const XINPUT_GAMEPAD& gamepad) {
 }
 
 void XInputWidget::DrawStickStatesExtended(float left_deadzone, float left_max_input, float left_min_output,
-                                          float right_deadzone, float right_max_input, float right_min_output) {
+                                        float right_deadzone, float right_max_input, float right_min_output) {
     if (ImGui::CollapsingHeader("Input/Output Curves", ImGuiTreeNodeFlags_DefaultOpen)) {
         ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Visual representation of how stick input is processed");
         ImGui::Spacing();
@@ -503,7 +503,7 @@ void XInputWidget::DrawStickStatesExtended(float left_deadzone, float left_max_i
         // Left stick curve
         ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Left Stick Input/Output Curve");
         ImGui::Text("Deadzone: %.1f%%, Max Input: %.1f%%, Min Output: %.1f%%",
-                   left_deadzone * 100.0f, left_max_input * 100.0f, left_min_output * 100.0f);
+        left_deadzone * 100.0f, left_max_input * 100.0f, left_min_output * 100.0f);
 
         // Create plot for left stick (0.0 to 1.0 input range)
         ImGui::PlotLines("##LeftStickCurve", left_curve_y.data(), curve_points, 0,
@@ -517,24 +517,24 @@ void XInputWidget::DrawStickStatesExtended(float left_deadzone, float left_max_i
         // Draw deadzone reference line (vertical)
         float deadzone_x = plot_pos.x + left_deadzone * plot_size.x;
         draw_list->AddLine(ImVec2(deadzone_x, plot_pos.y), ImVec2(deadzone_x, plot_pos.y + plot_size.y),
-                          ImColor(255, 255, 0, 128), 2.0f);
+                        ImColor(255, 255, 0, 128), 2.0f);
 
         // Draw max input reference line (vertical)
         float max_input_x = plot_pos.x + left_max_input * plot_size.x;
         draw_list->AddLine(ImVec2(max_input_x, plot_pos.y), ImVec2(max_input_x, plot_pos.y + plot_size.y),
-                          ImColor(255, 0, 255, 128), 2.0f);
+                        ImColor(255, 0, 255, 128), 2.0f);
 
         // Draw min output reference line (horizontal)
         float min_output_y = plot_pos.y + plot_size.y - left_min_output * plot_size.y;
         draw_list->AddLine(ImVec2(plot_pos.x, min_output_y), ImVec2(plot_pos.x + plot_size.x, min_output_y),
-                          ImColor(0, 255, 255, 128), 2.0f);
+                        ImColor(0, 255, 255, 128), 2.0f);
 
         ImGui::Spacing();
 
         // Right stick curve
         ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Right Stick Input/Output Curve");
         ImGui::Text("Deadzone: %.1f%%, Max Input: %.1f%%, Min Output: %.1f%%",
-                   right_deadzone * 100.0f, right_max_input * 100.0f, right_min_output * 100.0f);
+        right_deadzone * 100.0f, right_max_input * 100.0f, right_min_output * 100.0f);
 
         // Create plot for right stick (0.0 to 1.0 input range)
         ImGui::PlotLines("##RightStickCurve", right_curve_y.data(), curve_points, 0,
@@ -547,17 +547,17 @@ void XInputWidget::DrawStickStatesExtended(float left_deadzone, float left_max_i
         // Draw deadzone reference line (vertical)
         float right_deadzone_x = plot_pos.x + right_deadzone * plot_size.x;
         draw_list->AddLine(ImVec2(right_deadzone_x, plot_pos.y), ImVec2(right_deadzone_x, plot_pos.y + plot_size.y),
-                          ImColor(255, 255, 0, 128), 2.0f);
+                        ImColor(255, 255, 0, 128), 2.0f);
 
         // Draw max input reference line (vertical)
         float right_max_input_x = plot_pos.x + right_max_input * plot_size.x;
         draw_list->AddLine(ImVec2(right_max_input_x, plot_pos.y), ImVec2(right_max_input_x, plot_pos.y + plot_size.y),
-                          ImColor(255, 0, 255, 128), 2.0f);
+                        ImColor(255, 0, 255, 128), 2.0f);
 
         // Draw min output reference line (horizontal)
         float right_min_output_y = plot_pos.y + plot_size.y - right_min_output * plot_size.y;
         draw_list->AddLine(ImVec2(plot_pos.x, right_min_output_y), ImVec2(plot_pos.x + plot_size.x, right_min_output_y),
-                          ImColor(0, 255, 255, 128), 2.0f);
+                        ImColor(0, 255, 255, 128), 2.0f);
 
         ImGui::Spacing();
 
@@ -580,8 +580,8 @@ void XInputWidget::DrawTriggerStates(const XINPUT_GAMEPAD& gamepad) {
     if (ImGui::CollapsingHeader("Triggers", ImGuiTreeNodeFlags_DefaultOpen)) {
         // Left trigger
         ImGui::Text("Left Trigger: %u/255 (%.1f%%)",
-                   gamepad.bLeftTrigger,
-                   (static_cast<float>(gamepad.bLeftTrigger) / 255.0f) * 100.0f);
+        gamepad.bLeftTrigger,
+        (static_cast<float>(gamepad.bLeftTrigger) / 255.0f) * 100.0f);
 
         // Visual bar for left trigger
         float left_trigger_norm = static_cast<float>(gamepad.bLeftTrigger) / 255.0f;
@@ -589,8 +589,8 @@ void XInputWidget::DrawTriggerStates(const XINPUT_GAMEPAD& gamepad) {
 
         // Right trigger
         ImGui::Text("Right Trigger: %u/255 (%.1f%%)",
-                   gamepad.bRightTrigger,
-                   (static_cast<float>(gamepad.bRightTrigger) / 255.0f) * 100.0f);
+        gamepad.bRightTrigger,
+        (static_cast<float>(gamepad.bRightTrigger) / 255.0f) * 100.0f);
 
         // Visual bar for right trigger
         float right_trigger_norm = static_cast<float>(gamepad.bRightTrigger) / 255.0f;
@@ -1073,7 +1073,7 @@ void XInputWidget::ExecuteChordAction(const XInputSharedState::Chord& chord, DWO
                     // Update our tracked state
                     g_shared_state->ui_overlay_open.store(new_state);
                     LogInfo("XXX ReShade UI toggled via chord detection (%s)",
-                           new_state ? "opened" : "closed");
+            new_state ? "opened" : "closed");
                 } else {
                     LogError("XXX Failed to toggle ReShade UI via chord detection");
                 }
@@ -1183,7 +1183,7 @@ void ProcessChordDetection(DWORD user_index, WORD button_state) {
                             // Update our tracked state
                             shared_state->ui_overlay_open.store(new_state);
                             LogInfo("XXX ReShade UI toggled via chord detection (%s)",
-                                   new_state ? "opened" : "closed");
+                new_state ? "opened" : "closed");
                         } else {
                             LogError("XXX Failed to toggle ReShade UI via chord detection");
                         }

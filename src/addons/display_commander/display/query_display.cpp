@@ -26,15 +26,15 @@ double DisplayTimingInfo::GetVSyncFreqHz() const {
 std::wstring DisplayTimingInfo::GetFormattedString() const {
     wchar_t buffer[512];
     swprintf_s(buffer, L"Display:%s :: Adapter:%u::Target:%u :: PixelClock=%.1f MHz, vSyncFreq=%.3f Hz, hSyncFreq=%.3f kHz, activeSize=(%ux%u), totalSize=(%ux%u), Standard=%u",
-               display_name.empty() ? L"UNKNOWN" : display_name.c_str(),
-               adapter_id,
-               target_id,
-               GetPixelClockMHz(),
-               GetVSyncFreqHz(),
-               GetHSyncFreqKHz(),
-               active_width, active_height,
-               total_width, total_height,
-               video_standard);
+    display_name.empty() ? L"UNKNOWN" : display_name.c_str(),
+    adapter_id,
+    target_id,
+    GetPixelClockMHz(),
+    GetVSyncFreqHz(),
+    GetHSyncFreqKHz(),
+    active_width, active_height,
+    total_width, total_height,
+    video_standard);
     return buffer;
 }
 
@@ -73,7 +73,7 @@ std::vector<DisplayTimingInfo> QueryDisplayTimingInfo() {
 
         // Get target mode info
         int mode_idx = (path.flags & DISPLAYCONFIG_PATH_SUPPORT_VIRTUAL_MODE) ?
-                       path.targetInfo.targetModeInfoIdx : path.targetInfo.modeInfoIdx;
+        path.targetInfo.targetModeInfoIdx : path.targetInfo.modeInfoIdx;
 
         if (mode_idx < 0 || static_cast<UINT32>(mode_idx) >= mode_count) {
             continue;
@@ -236,8 +236,8 @@ std::string WideCharToUTF8(const std::wstring& in) {
 
 // Get current display settings using QueryDisplayConfig for precise refresh rate
 bool GetCurrentDisplaySettingsQueryConfig(HMONITOR monitor, int& width, int& height,
-                                         uint32_t& refresh_numerator, uint32_t& refresh_denominator,
-                                         int& x, int& y) {
+                    uint32_t& refresh_numerator, uint32_t& refresh_denominator,
+                    int& x, int& y) {
     UINT32 path_count = 0, mode_count = 0;
 
     // Get required buffer sizes
@@ -292,7 +292,7 @@ bool GetCurrentDisplaySettingsQueryConfig(HMONITOR monitor, int& width, int& hei
 
         // Found matching monitor, get the current mode info
         int mode_idx = (path.flags & DISPLAYCONFIG_PATH_SUPPORT_VIRTUAL_MODE) ?
-                       path.targetInfo.targetModeInfoIdx : path.targetInfo.modeInfoIdx;
+        path.targetInfo.targetModeInfoIdx : path.targetInfo.modeInfoIdx;
 
         if (mode_idx < 0 || static_cast<UINT32>(mode_idx) >= mode_count) {
             continue;

@@ -44,13 +44,13 @@
 void OnInitEffectRuntime(reshade::api::effect_runtime* runtime);
 bool OnReShadeOverlayOpen(reshade::api::effect_runtime* runtime, bool open, reshade::api::input_source source);
 namespace {
-  // Destroy device handler to restore display if needed
-  void OnDestroyDevice(reshade::api::device* /*device*/) {
+    // Destroy device handler to restore display if needed
+    void OnDestroyDevice(reshade::api::device* /*device*/) {
     LogInfo("ReShade device destroyed - Attempting to restore display settings");
-      display_restore::RestoreAllIfEnabled();
-  }
+    display_restore::RestoreAllIfEnabled();
+    }
 
-  void OnRegisterOverlayDisplayCommander(reshade::api::effect_runtime* runtime) {
+    void OnRegisterOverlayDisplayCommander(reshade::api::effect_runtime* runtime) {
     // Prevent multiple UI renders per frame (multiple effect runtimes may call this)
     static bool rendered_this_frame = false;
     static std::chrono::steady_clock::time_point last_render_time;
@@ -60,29 +60,29 @@ namespace {
 
     // Reset the flag if enough time has passed (new frame)
     if (time_since_last > 1) { // 1ms threshold for new frame
-      rendered_this_frame = false;
+    rendered_this_frame = false;
     }
 
     if (!rendered_this_frame) {
-      rendered_this_frame = true;
-      last_render_time = now;
-      // Draw the new UI only once per frame
-      ui::new_ui::NewUISystem::GetInstance().Draw();
+    rendered_this_frame = true;
+    last_render_time = now;
+    // Draw the new UI only once per frame
+    ui::new_ui::NewUISystem::GetInstance().Draw();
     }
-  }
+    }
 } // namespace
 
 
 // ReShade effect runtime event handler for input blocking
 void OnInitEffectRuntime(reshade::api::effect_runtime* runtime) {
     if (runtime == nullptr)
-      return;
+    return;
 
     g_reshade_runtime.store(runtime);
     LogInfo("ReShade effect runtime initialized - Input blocking now available");
 
     if (s_fix_hdr10_colorspace.load()) {
-      runtime->set_color_space(reshade::api::color_space::hdr10_st2084);
+    runtime->set_color_space(reshade::api::color_space::hdr10_st2084);
     }
 
     // Set up window procedure hooks now that we have the runtime
@@ -158,174 +158,174 @@ bool initialized = false;
 
 void DoInitializationWithoutHwnd(HMODULE h_module, DWORD fdw_reason) {
 
-  // Initialize QPC timing constants based on actual frequency
-  utils::initialize_qpc_timing_constants();
+    // Initialize QPC timing constants based on actual frequency
+    utils::initialize_qpc_timing_constants();
 
-  LogInfo("DLLMain (DisplayCommander) %lld %d h_module: 0x%p", utils::get_now_ns(), fdw_reason, reinterpret_cast<uintptr_t>(h_module));
+    LogInfo("DLLMain (DisplayCommander) %lld %d h_module: 0x%p", utils::get_now_ns(), fdw_reason, reinterpret_cast<uintptr_t>(h_module));
 
-  // Pin the module to prevent premature unload
-  HMODULE pinned_module = nullptr;
-  if (GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_PIN,
+    // Pin the module to prevent premature unload
+    HMODULE pinned_module = nullptr;
+    if (GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_PIN,
                         reinterpret_cast<LPCWSTR>(h_module), &pinned_module)) {
     LogInfo("Module pinned successfully: 0x%p", pinned_module);
-  } else {
+    } else {
     DWORD error = GetLastError();
     LogWarn("Failed to pin module: 0x%p, Error: %lu", h_module, error);
-  }
+    }
 
-  // Register reshade_overlay event for test code
-  reshade::register_event<reshade::addon_event::reshade_overlay>(OnReShadeOverlayTest);
+    // Register reshade_overlay event for test code
+    reshade::register_event<reshade::addon_event::reshade_overlay>(OnReShadeOverlayTest);
 
-  // Capture sync interval on swapchain creation for UI
-  reshade::register_event<reshade::addon_event::create_swapchain>(OnCreateSwapchainCapture);
+    // Capture sync interval on swapchain creation for UI
+    reshade::register_event<reshade::addon_event::create_swapchain>(OnCreateSwapchainCapture);
 
-  reshade::register_event<reshade::addon_event::init_swapchain>(OnInitSwapchain);
+    reshade::register_event<reshade::addon_event::init_swapchain>(OnInitSwapchain);
 
-  // Register ReShade effect runtime events for input blocking
-  reshade::register_event<reshade::addon_event::init_effect_runtime>(OnInitEffectRuntime);
-  reshade::register_event<reshade::addon_event::reshade_open_overlay>(OnReShadeOverlayOpen);
+    // Register ReShade effect runtime events for input blocking
+    reshade::register_event<reshade::addon_event::init_effect_runtime>(OnInitEffectRuntime);
+    reshade::register_event<reshade::addon_event::reshade_open_overlay>(OnReShadeOverlayOpen);
 
-  // Defer NVAPI init until after settings are loaded below
+    // Defer NVAPI init until after settings are loaded below
 
-  // Register our fullscreen prevention event handler
-  reshade::register_event<reshade::addon_event::set_fullscreen_state>(
-      display_commander::events::OnSetFullscreenState);
+    // Register our fullscreen prevention event handler
+    reshade::register_event<reshade::addon_event::set_fullscreen_state>(
+    display_commander::events::OnSetFullscreenState);
 
-  // NVAPI HDR monitor will be started after settings load below if enabled
-  // Seed default fps limit snapshot
-  // GetFpsLimit removed from proxy, use s_fps_limit directly
-  reshade::register_event<reshade::addon_event::present>(OnPresentUpdateBefore);
-  reshade::register_event<reshade::addon_event::reshade_present>(OnPresentUpdateBefore2);
-  reshade::register_event<reshade::addon_event::finish_present>(OnPresentUpdateAfter);
-  // reshade::register_event<reshade::addon_event::present_flags>(OnPresentFlags); // Not available in current ReShade API
+    // NVAPI HDR monitor will be started after settings load below if enabled
+    // Seed default fps limit snapshot
+    // GetFpsLimit removed from proxy, use s_fps_limit directly
+    reshade::register_event<reshade::addon_event::present>(OnPresentUpdateBefore);
+    reshade::register_event<reshade::addon_event::reshade_present>(OnPresentUpdateBefore2);
+    reshade::register_event<reshade::addon_event::finish_present>(OnPresentUpdateAfter);
+    // reshade::register_event<reshade::addon_event::present_flags>(OnPresentFlags); // Not available in current ReShade API
 
-  // Register draw event handlers for render timing
-  reshade::register_event<reshade::addon_event::draw>(OnDraw);
-  reshade::register_event<reshade::addon_event::draw_indexed>(OnDrawIndexed);
-  reshade::register_event<reshade::addon_event::draw_or_dispatch_indirect>(OnDrawOrDispatchIndirect);
+    // Register draw event handlers for render timing
+    reshade::register_event<reshade::addon_event::draw>(OnDraw);
+    reshade::register_event<reshade::addon_event::draw_indexed>(OnDrawIndexed);
+    reshade::register_event<reshade::addon_event::draw_or_dispatch_indirect>(OnDrawOrDispatchIndirect);
 
-  // Register power saving event handlers for additional GPU operations
-  reshade::register_event<reshade::addon_event::dispatch>(OnDispatch);
-  reshade::register_event<reshade::addon_event::dispatch_mesh>(OnDispatchMesh);
-  reshade::register_event<reshade::addon_event::dispatch_rays>(OnDispatchRays);
-  reshade::register_event<reshade::addon_event::copy_resource>(OnCopyResource);
-  reshade::register_event<reshade::addon_event::update_buffer_region>(OnUpdateBufferRegion);
-  reshade::register_event<reshade::addon_event::update_buffer_region_command>(OnUpdateBufferRegionCommand);
+    // Register power saving event handlers for additional GPU operations
+    reshade::register_event<reshade::addon_event::dispatch>(OnDispatch);
+    reshade::register_event<reshade::addon_event::dispatch_mesh>(OnDispatchMesh);
+    reshade::register_event<reshade::addon_event::dispatch_rays>(OnDispatchRays);
+    reshade::register_event<reshade::addon_event::copy_resource>(OnCopyResource);
+    reshade::register_event<reshade::addon_event::update_buffer_region>(OnUpdateBufferRegion);
+    reshade::register_event<reshade::addon_event::update_buffer_region_command>(OnUpdateBufferRegionCommand);
 
-  // Register buffer resolution upgrade event handlers
-  reshade::register_event<reshade::addon_event::create_resource>(OnCreateResource);
-  reshade::register_event<reshade::addon_event::create_resource_view>(OnCreateResourceView);
-  reshade::register_event<reshade::addon_event::bind_viewports>(OnSetViewport);
-  reshade::register_event<reshade::addon_event::bind_scissor_rects>(OnSetScissorRects);
-  // Note: bind_resource, map_resource, unmap_resource events don't exist in ReShade API
-  // These operations are handled differently in ReShade
-  // Register device destroy event for restore-on-exit
-  reshade::register_event<reshade::addon_event::destroy_device>(OnDestroyDevice);
+    // Register buffer resolution upgrade event handlers
+    reshade::register_event<reshade::addon_event::create_resource>(OnCreateResource);
+    reshade::register_event<reshade::addon_event::create_resource_view>(OnCreateResourceView);
+    reshade::register_event<reshade::addon_event::bind_viewports>(OnSetViewport);
+    reshade::register_event<reshade::addon_event::bind_scissor_rects>(OnSetScissorRects);
+    // Note: bind_resource, map_resource, unmap_resource events don't exist in ReShade API
+    // These operations are handled differently in ReShade
+    // Register device destroy event for restore-on-exit
+    reshade::register_event<reshade::addon_event::destroy_device>(OnDestroyDevice);
 
-  // Install process-exit safety hooks to restore display on abnormal exits
-  process_exit_hooks::Initialize();
+    // Install process-exit safety hooks to restore display on abnormal exits
+    process_exit_hooks::Initialize();
 
-  LogInfo("DLL initialization complete - DXGI calls now enabled");
+    LogInfo("DLL initialization complete - DXGI calls now enabled");
 
-  // Install API hooks for continue rendering
-  LogInfo("DLL_THREAD_ATTACH: Installing API hooks...");
-  renodx::hooks::InstallApiHooks();
+    // Install API hooks for continue rendering
+    LogInfo("DLL_THREAD_ATTACH: Installing API hooks...");
+    renodx::hooks::InstallApiHooks();
 
-  g_dll_initialization_complete.store(true);
+    g_dll_initialization_complete.store(true);
 }
 
 
 BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
 
 
-  switch (fdw_reason) {
+    switch (fdw_reason) {
     case DLL_PROCESS_ATTACH: {
-      g_shutdown.store(false);
+    g_shutdown.store(false);
 
-      if (g_dll_initialization_complete.load()) {
+    if (g_dll_initialization_complete.load()) {
         LogError("DLLMain(DisplayCommander) already initialized");
         return FALSE;
-      }
+    }
 
-      if (!reshade::register_addon(h_module))
+    if (!reshade::register_addon(h_module))
         return FALSE;
-      // Store module handle for pinning
-      g_hmodule = h_module;
+    // Store module handle for pinning
+    g_hmodule = h_module;
 
-      DoInitializationWithoutHwnd(h_module, fdw_reason);
+    DoInitializationWithoutHwnd(h_module, fdw_reason);
 
-      break;
+    break;
     }
     case DLL_THREAD_ATTACH: {
-      break;
+    break;
     }
     case DLL_THREAD_DETACH: {
-      // Log exit detection
-      //exit_handler::OnHandleExit(exit_handler::ExitSource::DLL_THREAD_DETACH_EVENT, "DLL thread detach");
-      break;
+    // Log exit detection
+    //exit_handler::OnHandleExit(exit_handler::ExitSource::DLL_THREAD_DETACH_EVENT, "DLL thread detach");
+    break;
     }
 
 
     case DLL_PROCESS_DETACH:
-      LogInfo("DLL_PROCESS_DETACH: DLL process detach");
-      g_shutdown.store(true);
+    LogInfo("DLL_PROCESS_DETACH: DLL process detach");
+    g_shutdown.store(true);
 
-      // Log exit detection
-      exit_handler::OnHandleExit(exit_handler::ExitSource::DLL_PROCESS_DETACH_EVENT, "DLL process detach");
+    // Log exit detection
+    exit_handler::OnHandleExit(exit_handler::ExitSource::DLL_PROCESS_DETACH_EVENT, "DLL process detach");
 
-      // Clean up input blocking system
-      // Input blocking cleanup is now handled by Windows message hooks
+    // Clean up input blocking system
+    // Input blocking cleanup is now handled by Windows message hooks
 
-      // Clean up window procedure hooks
-      renodx::hooks::UninstallWindowProcHooks();
+    // Clean up window procedure hooks
+    renodx::hooks::UninstallWindowProcHooks();
 
-      // Clean up API hooks
-      renodx::hooks::UninstallApiHooks();
+    // Clean up API hooks
+    renodx::hooks::UninstallApiHooks();
 
-      // Clean up continuous monitoring if it's running
-      StopContinuousMonitoring();
+    // Clean up continuous monitoring if it's running
+    StopContinuousMonitoring();
 
-      // Clean up experimental tab threads
-      ui::new_ui::CleanupExperimentalTab();
+    // Clean up experimental tab threads
+    ui::new_ui::CleanupExperimentalTab();
 
-      // Clean up DXGI Device Info Manager
-      g_dxgiDeviceInfoManager.reset();
-      // Safety: attempt restore on detach as well (idempotent)
-      //display_restore::RestoreAllIfEnabled();
-      // Uninstall process-exit hooks
-      //process_exit_hooks::Shutdown();
+    // Clean up DXGI Device Info Manager
+    g_dxgiDeviceInfoManager.reset();
+    // Safety: attempt restore on detach as well (idempotent)
+    //display_restore::RestoreAllIfEnabled();
+    // Uninstall process-exit hooks
+    //process_exit_hooks::Shutdown();
 
 
-      // Clean up NVAPI instances before shutdown
-      if (g_latencyManager) {
+    // Clean up NVAPI instances before shutdown
+    if (g_latencyManager) {
         g_latencyManager->Shutdown();
-      }
+    }
 
-      // Clean up NVAPI fullscreen prevention
-      extern NVAPIFullscreenPrevention g_nvapiFullscreenPrevention;
-      g_nvapiFullscreenPrevention.Cleanup();
+    // Clean up NVAPI fullscreen prevention
+    extern NVAPIFullscreenPrevention g_nvapiFullscreenPrevention;
+    g_nvapiFullscreenPrevention.Cleanup();
 
-      // Note: reshade::unregister_addon() will automatically unregister all events and overlays
-      // registered by this add-on, so manual unregistration is not needed and can cause issues
-      //display_restore::RestoreAllIfEnabled(); // restore display settings on exit
+    // Note: reshade::unregister_addon() will automatically unregister all events and overlays
+    // registered by this add-on, so manual unregistration is not needed and can cause issues
+    //display_restore::RestoreAllIfEnabled(); // restore display settings on exit
 
-      // Unpin the module before unregistration
-      if (g_hmodule != nullptr) {
+    // Unpin the module before unregistration
+    if (g_hmodule != nullptr) {
         if (FreeLibrary(g_hmodule)) {
-          LogInfo("Module unpinned successfully: 0x%p", g_hmodule);
+        LogInfo("Module unpinned successfully: 0x%p", g_hmodule);
         } else {
-          DWORD error = GetLastError();
-          LogWarn("Failed to unpin module: 0x%p, Error: %lu", g_hmodule, error);
+        DWORD error = GetLastError();
+        LogWarn("Failed to unpin module: 0x%p, Error: %lu", g_hmodule, error);
         }
         g_hmodule = nullptr;
-      }
+    }
 
-      reshade::unregister_addon(h_module);
+    reshade::unregister_addon(h_module);
 
-      break;
-  }
+    break;
+    }
 
-  return TRUE;
+    return TRUE;
 }
 
 // CONTINUOUS RENDERING FUNCTIONS REMOVED - Focus spoofing is now handled by Win32 hooks

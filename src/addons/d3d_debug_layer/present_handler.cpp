@@ -6,8 +6,8 @@ namespace d3d_debug_layer {
 
 // ReShade event handler: Present (used for periodic message processing)
 void OnPresent(reshade::api::command_queue* queue, reshade::api::swapchain* swapchain,
-               const reshade::api::rect* source_rect, const reshade::api::rect* dest_rect,
-               uint32_t dirty_rect_count, const reshade::api::rect* dirty_rects) {
+    const reshade::api::rect* source_rect, const reshade::api::rect* dest_rect,
+    uint32_t dirty_rect_count, const reshade::api::rect* dirty_rects) {
     // This event handler is lightweight and just ensures we're processing messages
     // The actual processing happens in the dedicated thread
     static std::atomic<uint64_t> frame_count{0};

@@ -45,7 +45,7 @@ protected:
 class FloatSetting : public SettingBase {
 public:
     FloatSetting(const std::string& key, float default_value, float min = 0.0f, float max = 100.0f,
-                 const std::string& section = DEFAULT_SECTION);
+        const std::string& section = DEFAULT_SECTION);
 
     void Load() override;
     void Save() override;
@@ -71,7 +71,7 @@ private:
 class IntSetting : public SettingBase {
 public:
     IntSetting(const std::string& key, int default_value, int min = 0, int max = 100,
-               const std::string& section = DEFAULT_SECTION);
+    const std::string& section = DEFAULT_SECTION);
 
     void Load() override;
     void Save() override;
@@ -119,7 +119,7 @@ private:
 class BoolSettingRef : public SettingBase {
 public:
     BoolSettingRef(const std::string& key, std::atomic<bool>& external_ref, bool default_value,
-                   const std::string& section = DEFAULT_SECTION);
+        const std::string& section = DEFAULT_SECTION);
 
     void Load() override;
     void Save() override;
@@ -168,8 +168,8 @@ private:
 class IntSettingRef : public SettingBase {
 public:
     IntSettingRef(const std::string& key, std::atomic<int>& external_ref, int default_value,
-                  int min = 0, int max = 100,
-                  const std::string& section = DEFAULT_SECTION);
+                int min = 0, int max = 100,
+                const std::string& section = DEFAULT_SECTION);
 
     void Load() override;
     void Save() override;
@@ -195,8 +195,8 @@ private:
 class ComboSetting : public SettingBase {
 public:
     ComboSetting(const std::string& key, int default_value,
-                 const std::vector<const char*>& labels,
-                 const std::string& section = DEFAULT_SECTION);
+        const std::vector<const char*>& labels,
+        const std::string& section = DEFAULT_SECTION);
 
     void Load() override;
     void Save() override;
@@ -216,7 +216,7 @@ private:
 class ResolutionPairSetting : public SettingBase {
 public:
     ResolutionPairSetting(const std::string& key, int default_width, int default_height,
-                         const std::string& section = DEFAULT_SECTION);
+            const std::string& section = DEFAULT_SECTION);
 
     void Load() override;
     void Save() override;
@@ -240,7 +240,7 @@ private:
 class RefreshRatePairSetting : public SettingBase {
 public:
     RefreshRatePairSetting(const std::string& key, int default_numerator, int default_denominator,
-                          const std::string& section = DEFAULT_SECTION);
+                        const std::string& section = DEFAULT_SECTION);
 
     void Load() override;
     void Save() override;
@@ -310,7 +310,7 @@ private:
 class StringSetting : public SettingBase {
 public:
     StringSetting(const std::string& key, const std::string& default_value,
-                  const std::string& section = DEFAULT_SECTION);
+                const std::string& section = DEFAULT_SECTION);
 
     void Load() override;
     void Save() override;

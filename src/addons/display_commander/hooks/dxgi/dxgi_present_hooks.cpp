@@ -87,7 +87,7 @@ std::string DecodePresent1Flags(UINT flags) {
 // Hooked IDXGISwapChain::Present function
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain* This, UINT SyncInterval, UINT Flags) {
     // Log the Present call with all arguments
-  /*  std::ostringstream oss;
+    /*  std::ostringstream oss;
     oss << "DXGI Present called - SwapChain: 0x" << std::hex << This
         << ", SyncInterval: " << std::dec << SyncInterval
         << ", Flags: " << DecodePresentFlags(Flags);
@@ -108,7 +108,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain* This, UI
 // Hooked IDXGISwapChain1::Present1 function
 HRESULT STDMETHODCALLTYPE IDXGISwapChain1_Present1_Detour(IDXGISwapChain1* This, UINT SyncInterval, UINT PresentFlags, const DXGI_PRESENT_PARAMETERS* pPresentParameters) {
     // Log the Present1 call with all arguments
-  /*  std::ostringstream oss;
+    /*  std::ostringstream oss;
     oss << "DXGI Present1 called - SwapChain1: 0x" << std::hex << This
         << ", SyncInterval: " << std::dec << SyncInterval
         << ", PresentFlags: " << DecodePresent1Flags(PresentFlags);
@@ -176,7 +176,7 @@ bool HookSwapchainVTable(IDXGISwapChain* swapchain) {
 
     // Hook Present (index 8 in IDXGISwapChain vtable)
     if (MH_CreateHook(vtable[8], IDXGISwapChain_Present_Detour,
-                      (LPVOID*)&IDXGISwapChain_Present_Original) != MH_OK) {
+                    (LPVOID*)&IDXGISwapChain_Present_Original) != MH_OK) {
         LogError("Failed to create IDXGISwapChain::Present hook");
         return false;
     }
@@ -205,7 +205,7 @@ bool HookSwapchain1VTable(IDXGISwapChain1* swapchain1) {
 
     // Hook Present1 (index 22 in IDXGISwapChain1 vtable)
     if (MH_CreateHook(vtable[22], IDXGISwapChain1_Present1_Detour,
-                      (LPVOID*)&IDXGISwapChain1_Present1_Original) != MH_OK) {
+                    (LPVOID*)&IDXGISwapChain1_Present1_Original) != MH_OK) {
         LogError("Failed to create IDXGISwapChain1::Present1 hook");
         return false;
     }

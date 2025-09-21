@@ -17,8 +17,8 @@ BackgroundWindowManager::BackgroundWindowManager()
     : m_background_hwnd(nullptr)
     , m_has_background_window(false)
     , m_frame_counter(0)
-   // , m_ignore_focus_events(true) { // Start with focus events ignored
-   {
+    // , m_ignore_focus_events(true) { // Start with focus events ignored
+    {
 }
 
 BackgroundWindowManager::~BackgroundWindowManager() {
@@ -63,7 +63,7 @@ bool BackgroundWindowManager::CreateBackgroundWindow(HWND game_hwnd) {
     StartBackgroundThread(game_hwnd);
 
     // Enable focus events after thread is started
-  //  m_ignore_focus_events.store(false);
+    //  m_ignore_focus_events.store(false);
 
     m_has_background_window.store(true);
     LogInfo("Background window thread started successfully");
@@ -123,7 +123,7 @@ bool BackgroundWindowManager::CreateBackgroundWindowInThread(HWND game_hwnd) {
 
     // Ensure the background window cannot receive focus or input
     SetWindowLongPtr(m_background_hwnd, GWL_EXSTYLE,
-                     GetWindowLongPtr(m_background_hwnd, GWL_EXSTYLE) | WS_EX_NOACTIVATE);
+        GetWindowLongPtr(m_background_hwnd, GWL_EXSTYLE) | WS_EX_NOACTIVATE);
 
     // Switch focus back to the game window after creating background window
     SetForegroundWindow(game_hwnd);
@@ -274,12 +274,12 @@ void BackgroundWindowManager::UpdateBackgroundWindowPosition(HWND game_hwnd) {
 
     // Update background window to cover entire monitor, but ensure it stays behind the game window
     SetWindowPos(m_background_hwnd,
-                 game_hwnd, // Place behind the game window specifically
-                 monitor_info.rcMonitor.left,
-                 monitor_info.rcMonitor.top,
-                 monitor_info.rcMonitor.right - monitor_info.rcMonitor.left,
-                 monitor_info.rcMonitor.bottom - monitor_info.rcMonitor.top,
-                 SWP_NOACTIVATE);
+        game_hwnd, // Place behind the game window specifically
+        monitor_info.rcMonitor.left,
+        monitor_info.rcMonitor.top,
+        monitor_info.rcMonitor.right - monitor_info.rcMonitor.left,
+        monitor_info.rcMonitor.bottom - monitor_info.rcMonitor.top,
+        SWP_NOACTIVATE);
 }
 
 void BackgroundWindowManager::UpdateBackgroundWindow(HWND game_hwnd) {
@@ -308,7 +308,7 @@ void BackgroundWindowManager::UpdateBackgroundWindow(HWND game_hwnd) {
 }
 
 void BackgroundWindowManager::DestroyBackgroundWindow() {
- /*  if (m_background_hwnd != nullptr) {
+    /*  if (m_background_hwnd != nullptr) {
         // Stop the background thread
         m_has_background_window.store(false);
 

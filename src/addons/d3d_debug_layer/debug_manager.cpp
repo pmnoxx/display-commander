@@ -127,7 +127,7 @@ bool D3D11DebugHandler::Initialize(ID3D11Device* device) {
 
     // Query for ID3D11InfoQueue interface
     HRESULT hr = device->QueryInterface(IID_ID3D11InfoQueue_Local,
-                                       reinterpret_cast<void**>(m_info_queue.GetAddressOf()));
+                reinterpret_cast<void**>(m_info_queue.GetAddressOf()));
 
     if (FAILED(hr)) {
         LogWarn("D3D11: InfoQueue interface not available (debug layer not enabled)");
@@ -250,7 +250,7 @@ bool D3D12DebugHandler::Initialize(ID3D12Device* device) {
 
     // Query for ID3D12InfoQueue interface
     HRESULT hr = device->QueryInterface(IID_ID3D12InfoQueue_Local,
-                                       reinterpret_cast<void**>(m_info_queue.GetAddressOf()));
+                reinterpret_cast<void**>(m_info_queue.GetAddressOf()));
 
     if (FAILED(hr)) {
         LogWarn("D3D12: InfoQueue interface not available (debug layer not enabled)");

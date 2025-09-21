@@ -70,18 +70,22 @@ void OnInitEffectRuntime(reshade::api::effect_runtime* runtime) {
     if (s_fix_hdr10_colorspace.load()) {
     runtime->set_color_space(reshade::api::color_space::hdr10_st2084);
     }
+    static bool registered_overlay = false;
+    if (!registered_overlay) {
 
-    // Set up window procedure hooks now that we have the runtime
-    HWND game_window = static_cast<HWND>(runtime->get_hwnd());
-    if (game_window != nullptr && IsWindow(game_window)) {
-        LogInfo("Game window detected - HWND: 0x%p", game_window);
+        // Set up window procedure hooks now that we have the runtime
+        HWND game_window = static_cast<HWND>(runtime->get_hwnd());
+        if (game_window != nullptr && IsWindow(game_window)) {
+            LogInfo("Game window detected - HWND: 0x%p", game_window);
 
-        // Initialize if not already done
-        DoInitializationWithHwnd(game_window);
-    } else {
-        LogWarn("ReShade runtime window is not valid - HWND: 0x%p", game_window);
+            // Initialize if not already done
+            DoInitializationWithHwnd(game_window);
+        } else {
+            LogWarn("ReShade runtime window is not valid - HWND: 0x%p", game_window);
+        }
+        registered_overlay = true;
+        reshade::register_overlay("Display Commander", OnRegisterOverlayDisplayCommander);
     }
-    reshade::register_overlay("Display Commander", OnRegisterOverlayDisplayCommander);
 }
 
 // ReShade overlay event handler for input blocking

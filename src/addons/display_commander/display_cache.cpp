@@ -216,6 +216,22 @@ const DisplayInfo* DisplayCache::GetDisplayByDeviceName(const std::wstring& devi
     return nullptr;
 }
 
+int DisplayCache::GetDisplayIndexByDeviceName(const std::string& device_name) const {
+    auto displays_ptr = displays.load(std::memory_order_acquire);
+    if (!displays_ptr) return -1;
+
+    // Convert string to wstring for comparison
+    std::wstring wdevice_name(device_name.begin(), device_name.end());
+
+    for (size_t i = 0; i < displays_ptr->size(); ++i) {
+        const auto& display = (*displays_ptr)[i];
+        if (display && display->device_name == wdevice_name) {
+            return static_cast<int>(i);
+        }
+    }
+    return -1;
+}
+
 std::vector<std::string> DisplayCache::GetResolutionLabels(size_t display_index) const {
     auto displays_ptr = displays.load(std::memory_order_acquire);
     if (!displays_ptr || display_index >= displays_ptr->size()) return {};

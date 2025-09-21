@@ -369,6 +369,9 @@ public:
     // Get display by device name
     const DisplayInfo* GetDisplayByDeviceName(const std::wstring& device_name) const;
 
+    // Get display index by device name (returns -1 if not found)
+    int GetDisplayIndexByDeviceName(const std::string& device_name) const;
+
     // Get resolution labels for a specific display
     std::vector<std::string> GetResolutionLabels(size_t display_index) const;
 

@@ -30,7 +30,7 @@ namespace settings {
 MainTabSettings::MainTabSettings()
     : window_mode("window_mode", 0, {"Borderless Windowed (Aspect Ratio)", "Borderless Fullscreen"}, "renodx_main_tab"),
     aspect_index("aspect_index", 3, {"3:2", "4:3", "16:10", "16:9", "19:9", "19.5:9", "21:9", "32:9"}, "renodx_main_tab"), // Default to 16:9
-    target_monitor_index("target_monitor_index", 0, {"Auto", "Monitor 1", "Monitor 2", "Monitor 3", "Monitor 4", "Monitor 5", "Monitor 6", "Monitor 7", "Monitor 8", "Monitor 9", "Monitor 10"}, "renodx_main_tab"),
+    target_monitor_index("target_monitor_index", 0, {"Monitor 1", "Monitor 2", "Monitor 3", "Monitor 4", "Monitor 5", "Monitor 6", "Monitor 7", "Monitor 8", "Monitor 9", "Monitor 10"}, "renodx_main_tab"),
     background_feature("background_feature", s_background_feature_enabled, false, "renodx_main_tab"),
     alignment("alignment", 0, {"Center", "Top Left", "Top Right", "Bottom Left", "Bottom Right"}, "renodx_main_tab"),
     fps_limiter_mode("fps_limiter_mode", 0, {"None", "Precise Frame Rate Limiter", "VBlank Scanline Sync for VSync-OFF"}, "renodx_main_tab"),
@@ -54,6 +54,7 @@ MainTabSettings::MainTabSettings()
     no_present_in_background("no_present_in_background", s_no_present_in_background, false, "renodx_main_tab"),
     show_test_overlay("show_test_overlay", false, "renodx_main_tab"),
     target_display("target_display", "", "renodx_main_tab"),
+    game_window_display_device_id("game_window_display_device_id", "", "renodx_main_tab"),
     adhd_multi_monitor_enabled("adhd_multi_monitor_enabled", false, "renodx_main_tab"),
     screensaver_mode("screensaver_mode", s_screensaver_mode, static_cast<int>(ScreensaverMode::kDefault), {"Default (no change)", "Disable in Background", "Disable"}, "renodx_main_tab") {
 
@@ -85,6 +86,7 @@ MainTabSettings::MainTabSettings()
         &no_present_in_background,
         &show_test_overlay,
         &target_display,
+        &game_window_display_device_id,
         &adhd_multi_monitor_enabled,
         &screensaver_mode,
     };
@@ -136,8 +138,45 @@ std::string GetDisplayDeviceIdFromWindow(HWND hwnd) {
         return "Monitor Info Failed";
     }
 
-    // Convert wide string to UTF-8 string
+    // Get the full device ID using EnumDisplayDevices with EDD_GET_DEVICE_INTERFACE_NAME
+    DISPLAY_DEVICEW displayDevice;
+    ZeroMemory(&displayDevice, sizeof(displayDevice));
+    displayDevice.cb = sizeof(displayDevice);
+
+    DWORD deviceIndex = 0;
+    while (EnumDisplayDevicesW(NULL, deviceIndex, &displayDevice, 0)) {
+        // Check if this is the device we're looking for
+        if (wcscmp(displayDevice.DeviceName, mi.szDevice) == 0) {
+            // Found the matching device, now get the full device ID
+            DISPLAY_DEVICEW monitorDevice;
+            ZeroMemory(&monitorDevice, sizeof(monitorDevice));
+            monitorDevice.cb = sizeof(monitorDevice);
+
+            DWORD monitorIndex = 0;
+            while (EnumDisplayDevicesW(displayDevice.DeviceName, monitorIndex, &monitorDevice, EDD_GET_DEVICE_INTERFACE_NAME)) {
+                // Return the full device ID (DeviceID contains the full path like DISPLAY\AUS32B4\5&24D3239D&1&UID4353)
+                if (wcslen(monitorDevice.DeviceID) > 0) {
+                    return WStringToString(monitorDevice.DeviceID);
+                }
+                monitorIndex++;
+            }
+            break;
+        }
+        deviceIndex++;
+    }
+
+    // Fallback to simple device name if full device ID not found
     return WStringToString(mi.szDevice);
+}
+
+// Function to save the display device ID for the game window
+void SaveGameWindowDisplayDeviceId(HWND hwnd) {
+    std::string device_id = GetDisplayDeviceIdFromWindow(hwnd);
+    settings::g_mainTabSettings.game_window_display_device_id.SetValue(device_id);
+
+    std::ostringstream oss;
+    oss << "Saved game window display device ID: " << device_id;
+    LogInfo(oss.str().c_str());
 }
 
 // Function to update the target display setting with current game window

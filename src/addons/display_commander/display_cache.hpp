@@ -394,6 +394,9 @@ public:
     // Get supported modes info (what the display can do)
     bool GetSupportedModes(size_t display_index, std::vector<Resolution>& resolutions) const;
 
+    // Get maximum refresh rate across all monitors
+    double GetMaxRefreshRateAcrossAllMonitors() const;
+
     // Check if cache is initialized
     bool IsInitialized() const { return is_initialized.load(std::memory_order_acquire); }
 

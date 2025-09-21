@@ -100,5 +100,6 @@ extern MainTabSettings g_mainTabSettings;
 std::string GetDisplayDeviceIdFromWindow(HWND hwnd);
 void SaveGameWindowDisplayDeviceId(HWND hwnd);
 void UpdateTargetDisplayFromGameWindow();
+void UpdateFpsLimitMaximums();
 
 } // namespace settings

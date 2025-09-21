@@ -1,7 +1,6 @@
 #include "display_cache.hpp"
 #include <dxgi1_6.h>
 #include <wrl/client.h>
-#include <cmath>
 #include <algorithm>
 #include <set>
 #include <windows.h>
@@ -187,6 +186,9 @@ bool DisplayCache::Refresh() {
         // Try to get the display device ID from the current game window
         settings::UpdateTargetDisplayFromGameWindow();
     }
+
+    // Update FPS limit maximums based on monitor refresh rates
+    settings::UpdateFpsLimitMaximums();
 
     auto displays_ptr = displays.load(std::memory_order_acquire);
     return displays_ptr && !displays_ptr->empty();
@@ -389,9 +391,37 @@ void DisplayCache::PrintVSyncFreqDivider() const {
     }
 }
 
+double DisplayCache::GetMaxRefreshRateAcrossAllMonitors() const {
+    auto displays_ptr = displays.load(std::memory_order_acquire);
+    if (!displays_ptr || displays_ptr->empty()) {
+        return 60.0; // Default fallback
+    }
 
+    // Ensure we have a reasonable minimum
+    double max_refresh_rate = 60.0;
 
+    for (const auto& display : *displays_ptr) {
+        if (!display) continue;
 
+        // Check current refresh rate
+        double current_rate = display->current_refresh_rate.ToHz();
+        if (current_rate > max_refresh_rate) {
+            max_refresh_rate = current_rate;
+        }
+
+        // Check all supported refresh rates for all resolutions
+        for (const auto& resolution : display->resolutions) {
+            for (const auto& refresh_rate : resolution.refresh_rates) {
+                double rate_hz = refresh_rate.ToHz();
+                if (rate_hz > max_refresh_rate) {
+                    max_refresh_rate = rate_hz;
+                }
+            }
+        }
+    }
+
+    return max_refresh_rate;
+}
 
 } // namespace display_cache
 

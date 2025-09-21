@@ -3,6 +3,7 @@
 #include "../hooks/api_hooks.hpp"
 #include "../adhd_multi_monitor/adhd_simple_api.hpp"
 #include <windows.h>
+#include <algorithm>
 
 // Atomic variables used by main tab settings
 std::atomic<bool> s_background_feature_enabled{false}; // Disabled by default
@@ -186,6 +187,31 @@ void UpdateTargetDisplayFromGameWindow() {
 
     std::string display_id = GetDisplayDeviceIdFromWindow(game_window);
     settings::g_mainTabSettings.target_display.SetValue(display_id);
+}
+
+void UpdateFpsLimitMaximums() {
+    // Only update if display cache is initialized
+    if (!display_cache::g_displayCache.IsInitialized()) {
+        return;
+    }
+
+    // Get the maximum refresh rate across all monitors
+    double max_refresh_rate = display_cache::g_displayCache.GetMaxRefreshRateAcrossAllMonitors();
+
+    // Update the maximum values for FPS limit settings
+    // Add some buffer (e.g., 10%) to allow for slightly higher FPS than max refresh rate
+    float max_fps = static_cast<float>(max_refresh_rate * 1.1f);
+
+    // Ensure minimum of 60 FPS and maximum of 1000 FPS for safety
+    if (max_fps < 60.0f) max_fps = 60.0f;
+    if (max_fps > 1000.0f) max_fps = 1000.0f;
+
+    // Update the maximum values
+    g_mainTabSettings.fps_limit.SetMax(max_fps);
+    g_mainTabSettings.fps_limit_background.SetMax(max_fps);
+
+    LogInfo("Updated FPS limit maximum to %.1f FPS (based on max monitor refresh rate of %.1f Hz)",
+            max_fps, max_refresh_rate);
 }
 
 } // namespace settings

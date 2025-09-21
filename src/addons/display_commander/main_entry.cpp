@@ -43,6 +43,9 @@
 // Forward declarations for ReShade event handlers
 void OnInitEffectRuntime(reshade::api::effect_runtime* runtime);
 bool OnReShadeOverlayOpen(reshade::api::effect_runtime* runtime, bool open, reshade::api::input_source source);
+
+// Forward declaration for ReShade settings override
+void OverrideReShadeSettings();
 namespace {
     // Destroy device handler to restore display if needed
     void OnDestroyDevice(reshade::api::device* /*device*/) {
@@ -76,7 +79,7 @@ namespace {
 // ReShade effect runtime event handler for input blocking
 void OnInitEffectRuntime(reshade::api::effect_runtime* runtime) {
     if (runtime == nullptr)
-    return;
+        return;
 
     g_reshade_runtime.store(runtime);
     LogInfo("ReShade effect runtime initialized - Input blocking now available");
@@ -154,12 +157,28 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
 
 bool initialized = false;
 
+// Override ReShade settings to set tutorial as viewed and disable auto updates
+void OverrideReShadeSettings() {
+    LogInfo("Overriding ReShade settings - Setting tutorial as viewed and disabling auto updates");
 
+    // Set tutorial progress to 4 (fully viewed)
+    reshade::set_config_value(nullptr, "GENERAL", "TutorialProgress", 4);
+    LogInfo("ReShade settings override - TutorialProgress set to 4 (viewed)");
+
+    // Disable auto updates
+    reshade::set_config_value(nullptr, "GENERAL", "CheckForUpdates", 0);
+    LogInfo("ReShade settings override - CheckForUpdates set to 0 (disabled)");
+
+    LogInfo("ReShade settings override completed successfully");
+}
 
 void DoInitializationWithoutHwnd(HMODULE h_module, DWORD fdw_reason) {
 
     // Initialize QPC timing constants based on actual frequency
     utils::initialize_qpc_timing_constants();
+
+    // Override ReShade settings early to set tutorial as viewed and disable auto updates
+    OverrideReShadeSettings();
 
     LogInfo("DLLMain (DisplayCommander) %lld %d h_module: 0x%p", utils::get_now_ns(), fdw_reason, reinterpret_cast<uintptr_t>(h_module));
 

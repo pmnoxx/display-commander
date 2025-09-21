@@ -100,6 +100,7 @@ void every1s_checks() {
 
         // Only call SetThreadExecutionState if the desired state is different from the last state
         if (desired_state != last_execution_state) {
+            last_execution_state = desired_state;
             if (renodx::hooks::SetThreadExecutionState_Original) {
                 EXECUTION_STATE result = renodx::hooks::SetThreadExecutionState_Original(desired_state);
                 if (result != 0) {

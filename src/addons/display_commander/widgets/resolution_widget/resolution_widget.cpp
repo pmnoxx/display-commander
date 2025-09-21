@@ -93,11 +93,11 @@ void ResolutionWidget::OnDraw() {
 
     // Apply loaded settings to UI selection (only once)
     if (!settings_applied_to_ui_) {
-      //  LogInfo("ResolutionWidget::OnDraw() - First draw, applying loaded settings to UI");
+    //  LogInfo("ResolutionWidget::OnDraw() - First draw, applying loaded settings to UI");
         UpdateCurrentSelectionFromSettings();
         settings_applied_to_ui_ = true;
-   //     LogInfo("ResolutionWidget::OnDraw() - Applied settings to UI indices: display=%d, resolution=%d, refresh=%d",
-   //             selected_display_index_, selected_resolution_index_, selected_refresh_index_);
+    //     LogInfo("ResolutionWidget::OnDraw() - Applied settings to UI indices: display=%d, resolution=%d, refresh=%d",
+    //             selected_display_index_, selected_resolution_index_, selected_refresh_index_);
     }
 
     // Draw the resolution widget UI
@@ -106,7 +106,7 @@ void ResolutionWidget::OnDraw() {
 
     // Log auto-apply state on every draw
     bool auto_apply_state = g_resolution_settings->GetAutoApply();
-  //  LogInfo("ResolutionWidget::OnDraw() - Auto-apply changes is: %s", auto_apply_state ? "ON" : "OFF");
+    //  LogInfo("ResolutionWidget::OnDraw() - Auto-apply changes is: %s", auto_apply_state ? "ON" : "OFF");
 
     // Auto-apply checkbox
     DrawAutoApplyCheckbox();
@@ -219,8 +219,8 @@ void ResolutionWidget::DrawDisplaySelector() {
                 std::string device_name(display->device_name.begin(), display->device_name.end());
 
                 std::string name = "[" + device_name + "] " +
-                                 std::to_string(width) + "x" + std::to_string(height) +
-                                 "@" + rate_str + "Hz" + primary_text;
+                std::to_string(width) + "x" + std::to_string(height) +
+                "@" + rate_str + "Hz" + primary_text;
 
                 display_names.push_back(name);
             }
@@ -651,7 +651,7 @@ void ResolutionWidget::DrawConfirmationDialog() {
     // Create modal dialog
     ImGui::SetNextWindowSize(ImVec2(400, 200), ImGuiCond_FirstUseEver);
     if (ImGui::Begin("Resolution Change Confirmation", &show_confirmation_,
-                     ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse)) {
+        ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse)) {
 
         // Format the resolution change
         auto formatResolution = [this](const ResolutionData& data) -> std::string {
@@ -828,8 +828,8 @@ std::string ResolutionWidget::GetDisplayName(int display_index) const {
             std::string device_name(display->device_name.begin(), display->device_name.end());
 
             std::string name = "[" + device_name + "] " +
-                             std::to_string(width) + "x" + std::to_string(height) +
-                             "@" + rate_str + "Hz" + primary_text;
+            std::to_string(width) + "x" + std::to_string(height) +
+            "@" + rate_str + "Hz" + primary_text;
 
             return name;
         }
@@ -1021,7 +1021,7 @@ std::string ResolutionWidget::FormatOriginalSettingsString() const {
     std::string refresh_str = "";
     if (original_settings_.refresh_numerator > 0 && original_settings_.refresh_denominator > 0) {
         double refresh_hz = static_cast<double>(original_settings_.refresh_numerator) /
-                           static_cast<double>(original_settings_.refresh_denominator);
+            static_cast<double>(original_settings_.refresh_denominator);
         std::ostringstream oss;
         oss << std::fixed << std::setprecision(6) << refresh_hz;
         refresh_str = oss.str();
@@ -1037,8 +1037,8 @@ std::string ResolutionWidget::FormatOriginalSettingsString() const {
     std::string primary_text = original_settings_.is_primary ? " Primary" : "";
 
     return "[" + original_settings_.device_name + "] " +
-           std::to_string(original_settings_.width) + "x" + std::to_string(original_settings_.height) +
-           refresh_str + primary_text;
+    std::to_string(original_settings_.width) + "x" + std::to_string(original_settings_.height) +
+    refresh_str + primary_text;
 }
 
 void ResolutionWidget::DrawOriginalSettingsInfo() {

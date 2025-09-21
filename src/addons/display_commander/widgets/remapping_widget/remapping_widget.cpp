@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2024 Display Commander
- * Input remapping widget implementation
- */
+    * Copyright (C) 2024 Display Commander
+    * Input remapping widget implementation
+    */
 
 #include "remapping_widget.hpp"
 #include "../../utils.hpp"
@@ -235,7 +235,7 @@ namespace display_commander::widgets::remapping_widget
             // Update enabled state
             auto& remapper = input_remapping::InputRemapper::get_instance();
             remapper.update_remap(remap.gamepad_button, remap.keyboard_vk, remap.keyboard_name,
-                                 remap.input_method, remap.hold_mode);
+                remap.input_method, remap.hold_mode);
             LogInfo("RemappingWidget::DrawRemapEntry() - Toggled remap %d enabled state", index);
         }
 
@@ -320,7 +320,7 @@ namespace display_commander::widgets::remapping_widget
                 auto input_method = static_cast<input_remapping::KeyboardInputMethod>(dialog_state_.selected_input_method);
 
                 input_remapping::ButtonRemap remap(gamepad_button, keyboard_vk, keyboard_name,
-                                                  dialog_state_.enabled, input_method, dialog_state_.hold_mode);
+                                                dialog_state_.enabled, input_method, dialog_state_.hold_mode);
 
                 auto& remapper = input_remapping::InputRemapper::get_instance();
                 remapper.add_button_remap(remap);

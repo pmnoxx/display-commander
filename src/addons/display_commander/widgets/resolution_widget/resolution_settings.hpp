@@ -23,9 +23,9 @@ struct ResolutionData {
 
     bool operator==(const ResolutionData& other) const {
         return width == other.width && height == other.height &&
-               refresh_numerator == other.refresh_numerator &&
-               refresh_denominator == other.refresh_denominator &&
-               is_current == other.is_current;
+    refresh_numerator == other.refresh_numerator &&
+    refresh_denominator == other.refresh_denominator &&
+    is_current == other.is_current;
     }
 
     bool operator!=(const ResolutionData& other) const {

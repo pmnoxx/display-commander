@@ -10,7 +10,7 @@ CustomFpsLimiterManager::CustomFpsLimiterManager()
 bool CustomFpsLimiterManager::InitializeCustomFpsLimiterSystem()
 {
     // Disable RenoDX's built-in FPS limiter
-  //  utils::swapchain::fps_limit = 0.0f;
+    //  utils::swapchain::fps_limit = 0.0f;
 
     LogWarn("Custom FPS Limiter Manager initialized successfully");
     LogWarn("RenoDX built-in FPS limiter disabled");
@@ -21,7 +21,7 @@ bool CustomFpsLimiterManager::InitializeCustomFpsLimiterSystem()
 void CustomFpsLimiterManager::ShutdownCustomFpsLimiterSystem()
 {
     // Re-enable RenoDX's built-in FPS limiter
-   // utils::swapchain::fps_limit = 60.0f;
+    // utils::swapchain::fps_limit = 60.0f;
 
     LogWarn("Custom FPS Limiter Manager shutdown");
     LogWarn("RenoDX built-in FPS limiter re-enabled");

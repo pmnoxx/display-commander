@@ -8,39 +8,39 @@ namespace display_initial_state {
 InitialDisplayStateManager g_initialDisplayState;
 
 bool InitialDisplayStateManager::CaptureInitialState() {
-  if (is_captured_.load(std::memory_order_acquire)) {
+    if (is_captured_.load(std::memory_order_acquire)) {
     LogInfo("Initial display state already captured, skipping...");
     return true;
-  }
-
-  LogInfo("=== CAPTURING INITIAL DISPLAY STATE ===");
-
-  // Ensure display cache is initialized
-  if (!display_cache::g_displayCache.IsInitialized()) {
-    if (!display_cache::g_displayCache.Initialize()) {
-      LogError("Failed to initialize display cache for initial state capture");
-      return false;
     }
-  }
 
-  // Create new state vector
-  auto new_states = std::make_shared<std::vector<InitialDisplayState>>();
+    LogInfo("=== CAPTURING INITIAL DISPLAY STATE ===");
 
-  // Get display count
-  size_t display_count = display_cache::g_displayCache.GetDisplayCount();
-  if (display_count == 0) {
+    // Ensure display cache is initialized
+    if (!display_cache::g_displayCache.IsInitialized()) {
+    if (!display_cache::g_displayCache.Initialize()) {
+    LogError("Failed to initialize display cache for initial state capture");
+    return false;
+    }
+    }
+
+    // Create new state vector
+    auto new_states = std::make_shared<std::vector<InitialDisplayState>>();
+
+    // Get display count
+    size_t display_count = display_cache::g_displayCache.GetDisplayCount();
+    if (display_count == 0) {
     LogError("No displays found during initial state capture");
     return false;
-  }
+    }
 
-  LogInfo("Found %zu displays, capturing initial state...", display_count);
+    LogInfo("Found %zu displays, capturing initial state...", display_count);
 
-  // Capture state for each display
-  for (size_t i = 0; i < display_count; ++i) {
+    // Capture state for each display
+    for (size_t i = 0; i < display_count; ++i) {
     const auto *display = display_cache::g_displayCache.GetDisplay(i);
     if (!display) {
-      LogWarn("Display %zu is null, skipping", i);
-      continue;
+    LogWarn("Display %zu is null, skipping", i);
+    continue;
     }
 
     InitialDisplayState state;
@@ -61,61 +61,61 @@ bool InitialDisplayStateManager::CaptureInitialState() {
             state.device_name.c_str(), state.friendly_name.c_str(), state.width,
             state.height, state.refresh_numerator, state.refresh_denominator,
             state.GetRefreshRateHz(), state.is_primary ? "[PRIMARY]" : "");
-  }
+    }
 
-  // Atomically store the new states
-  initial_states_.store(new_states, std::memory_order_release);
-  is_captured_.store(true, std::memory_order_release);
+    // Atomically store the new states
+    initial_states_.store(new_states, std::memory_order_release);
+    is_captured_.store(true, std::memory_order_release);
 
-  LogInfo("=== INITIAL DISPLAY STATE CAPTURED ===");
-  LogInfo("Total displays captured: %zu", new_states->size());
+    LogInfo("=== INITIAL DISPLAY STATE CAPTURED ===");
+    LogInfo("Total displays captured: %zu", new_states->size());
 
-  // Print summary
-  PrintInitialStates();
+    // Print summary
+    PrintInitialStates();
 
-  return true;
+    return true;
 }
 
 const InitialDisplayState *InitialDisplayStateManager::GetInitialStateForDevice(
     const std::wstring &device_name) const {
-  auto states = initial_states_.load(std::memory_order_acquire);
-  if (!states)
+    auto states = initial_states_.load(std::memory_order_acquire);
+    if (!states)
     return nullptr;
 
-  for (const auto &state : *states) {
+    for (const auto &state : *states) {
     if (state.device_name == device_name) {
-      return &state;
+    return &state;
     }
-  }
-  return nullptr;
+    }
+    return nullptr;
 }
 
 const InitialDisplayState *
 InitialDisplayStateManager::GetInitialStateForDisplayId(int display_id) const {
-  auto states = initial_states_.load(std::memory_order_acquire);
-  if (!states)
+    auto states = initial_states_.load(std::memory_order_acquire);
+    if (!states)
     return nullptr;
 
-  for (const auto &state : *states) {
+    for (const auto &state : *states) {
     if (state.display_id == display_id) {
-      return &state;
+    return &state;
     }
-  }
-  return nullptr;
+    }
+    return nullptr;
 }
 
 void InitialDisplayStateManager::PrintInitialStates() const {
-  auto states = initial_states_.load(std::memory_order_acquire);
-  if (!states || states->empty()) {
+    auto states = initial_states_.load(std::memory_order_acquire);
+    if (!states || states->empty()) {
     LogInfo("No initial display states captured");
     return;
-  }
+    }
 
-  LogInfo("=== INITIAL DISPLAY STATES SUMMARY ===");
-  for (const auto &state : *states) {
+    LogInfo("=== INITIAL DISPLAY STATES SUMMARY ===");
+    for (const auto &state : *states) {
     LogInfo("%s", state.GetFormattedString().c_str());
-  }
-  LogInfo("=== END DISPLAY STATES SUMMARY ===");
+    }
+    LogInfo("=== END DISPLAY STATES SUMMARY ===");
 }
 
 } // namespace display_initial_state

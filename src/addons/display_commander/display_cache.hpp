@@ -383,7 +383,7 @@ public:
 
     // Get rational refresh rate for a specific display, resolution, and refresh rate index
     bool GetRationalRefreshRate(size_t display_index, size_t resolution_index, size_t refresh_rate_index,
-                               RationalRefreshRate& refresh_rate) const;
+            RationalRefreshRate& refresh_rate) const;
 
     // Get current display info (current settings, not supported modes)
     bool GetCurrentDisplayInfo(size_t display_index, int& width, int& height, RationalRefreshRate& refresh_rate) const;

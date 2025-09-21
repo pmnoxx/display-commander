@@ -44,8 +44,8 @@ struct XInputSharedState {
         // Copy constructor
         Chord(const Chord& other)
             : buttons(other.buttons), name(other.name), action(other.action),
-              enabled(other.enabled), is_pressed(other.is_pressed.load()),
-              last_press_time(other.last_press_time.load()) {}
+            enabled(other.enabled), is_pressed(other.is_pressed.load()),
+            last_press_time(other.last_press_time.load()) {}
 
         // Assignment operator
         Chord& operator=(const Chord& other) {

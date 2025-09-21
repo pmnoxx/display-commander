@@ -35,8 +35,8 @@ static std::vector<HookedXInputModule> g_hooked_modules;
 
 // Helper function to apply max input, min output, and deadzone to thumbstick values
 void ApplyThumbstickProcessing(XINPUT_STATE* pState, float left_max_input, float right_max_input,
-                              float left_min_output, float right_min_output,
-                              float left_deadzone, float right_deadzone) {
+                            float left_min_output, float right_min_output,
+                            float left_deadzone, float right_deadzone) {
     if (!pState) return;
 
     // Process left stick using unified function with correct scaling
@@ -80,7 +80,7 @@ void LogXInputChanges(DWORD dwUserIndex, const XINPUT_STATE* pState) {
         // Check for changes in gamepad data
         if (prev.Gamepad.wButtons != curr.Gamepad.wButtons) {
             LogError("XXX XInput Controller %lu: Button state changed from 0x%04X to 0x%04X",
-                     dwUserIndex, prev.Gamepad.wButtons, curr.Gamepad.wButtons);
+        dwUserIndex, prev.Gamepad.wButtons, curr.Gamepad.wButtons);
 
         // Check for Guide button specifically
         bool prev_guide = (prev.Gamepad.wButtons & XINPUT_GAMEPAD_GUIDE) != 0;
@@ -96,37 +96,37 @@ void LogXInputChanges(DWORD dwUserIndex, const XINPUT_STATE* pState) {
 
         if (prev.Gamepad.bLeftTrigger != curr.Gamepad.bLeftTrigger) {
             LogError("XXX XInput Controller %lu: Left trigger changed from %u to %u",
-                     dwUserIndex, prev.Gamepad.bLeftTrigger, curr.Gamepad.bLeftTrigger);
+        dwUserIndex, prev.Gamepad.bLeftTrigger, curr.Gamepad.bLeftTrigger);
         }
 
         if (prev.Gamepad.bRightTrigger != curr.Gamepad.bRightTrigger) {
             LogError("XXX XInput Controller %lu: Right trigger changed from %u to %u",
-                     dwUserIndex, prev.Gamepad.bRightTrigger, curr.Gamepad.bRightTrigger);
+        dwUserIndex, prev.Gamepad.bRightTrigger, curr.Gamepad.bRightTrigger);
         }
 
         if (prev.Gamepad.sThumbLX != curr.Gamepad.sThumbLX) {
             LogError("XXX XInput Controller %lu: Left stick X changed from %d to %d",
-                     dwUserIndex, prev.Gamepad.sThumbLX, curr.Gamepad.sThumbLX);
+        dwUserIndex, prev.Gamepad.sThumbLX, curr.Gamepad.sThumbLX);
         }
 
         if (prev.Gamepad.sThumbLY != curr.Gamepad.sThumbLY) {
             LogError("XXX XInput Controller %lu: Left stick Y changed from %d to %d",
-                     dwUserIndex, prev.Gamepad.sThumbLY, curr.Gamepad.sThumbLY);
+        dwUserIndex, prev.Gamepad.sThumbLY, curr.Gamepad.sThumbLY);
         }
 
         if (prev.Gamepad.sThumbRX != curr.Gamepad.sThumbRX) {
             LogError("XXX XInput Controller %lu: Right stick X changed from %d to %d",
-                     dwUserIndex, prev.Gamepad.sThumbRX, curr.Gamepad.sThumbRX);
+        dwUserIndex, prev.Gamepad.sThumbRX, curr.Gamepad.sThumbRX);
         }
 
         if (prev.Gamepad.sThumbRY != curr.Gamepad.sThumbRY) {
             LogError("XXX XInput Controller %lu: Right stick Y changed from %d to %d",
-                     dwUserIndex, prev.Gamepad.sThumbRY, curr.Gamepad.sThumbRY);
+        dwUserIndex, prev.Gamepad.sThumbRY, curr.Gamepad.sThumbRY);
         }
 
         if (prev.dwPacketNumber != curr.dwPacketNumber) {
             LogError("XXX XInput Controller %lu: Packet number changed from %lu to %lu",
-                     dwUserIndex, prev.dwPacketNumber, curr.dwPacketNumber);
+        dwUserIndex, prev.dwPacketNumber, curr.dwPacketNumber);
         }
     }
 

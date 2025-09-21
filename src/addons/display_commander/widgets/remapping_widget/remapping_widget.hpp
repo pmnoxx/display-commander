@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2024 Display Commander
- * Input remapping widget for configuring gamepad to keyboard mappings
- */
+    * Copyright (C) 2024 Display Commander
+    * Input remapping widget for configuring gamepad to keyboard mappings
+    */
 
 #pragma once
 

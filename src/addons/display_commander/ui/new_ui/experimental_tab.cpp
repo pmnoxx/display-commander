@@ -55,7 +55,7 @@ void PerformClick(int x, int y, int sequence_num, bool is_test = false) {
     HWND hwnd = g_last_swapchain_hwnd.load();
     if (!hwnd || !IsWindow(hwnd)) {
         LogWarn("%s click for sequence %d: No valid game window handle available",
-               is_test ? "Test" : "Auto", sequence_num);
+    is_test ? "Test" : "Auto", sequence_num);
         return;
     }
 
@@ -86,8 +86,8 @@ void PerformClick(int x, int y, int sequence_num, bool is_test = false) {
     PostMessage(hwnd, WM_LBUTTONUP, MK_LBUTTON, lParam);
 
     LogInfo("%s click for sequence %d sent to game window at (%d, %d)%s",
-           is_test ? "Test" : "Auto", sequence_num, x, y,
-           g_move_mouse ? (settings::g_experimentalTabSettings.mouse_spoofing_enabled.GetValue() ? " - mouse position spoofed" : " - mouse moved to screen") : " - mouse not moved");
+    is_test ? "Test" : "Auto", sequence_num, x, y,
+    g_move_mouse ? (settings::g_experimentalTabSettings.mouse_spoofing_enabled.GetValue() ? " - mouse position spoofed" : " - mouse moved to screen") : " - mouse not moved");
 }
 
 // Helper function to draw a sequence using settings directly
@@ -475,14 +475,14 @@ void DrawMouseCoordinatesDisplay() {
         RECT window_rect;
         if (GetWindowRect(hwnd, &window_rect)) {
             ImGui::Text("Game Window Screen Position: (%ld, %ld) to (%ld, %ld)",
-                       window_rect.left, window_rect.top, window_rect.right, window_rect.bottom);
+        window_rect.left, window_rect.top, window_rect.right, window_rect.bottom);
             ImGui::Text("Game Window Size: %ld x %ld",
-                       window_rect.right - window_rect.left, window_rect.bottom - window_rect.top);
+        window_rect.right - window_rect.left, window_rect.bottom - window_rect.top);
         }
 
         // Check if mouse is over the game window
         bool mouse_over_window = (mouse_pos.x >= window_rect.left && mouse_pos.x <= window_rect.right &&
-                                 mouse_pos.y >= window_rect.top && mouse_pos.y <= window_rect.bottom);
+                mouse_pos.y >= window_rect.top && mouse_pos.y <= window_rect.bottom);
 
         if (mouse_over_window) {
             ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✁EMouse is over game window");

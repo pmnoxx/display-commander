@@ -45,11 +45,11 @@ void DXGIDeviceInfoManager::LogStackTrace(const char* context) {
 
                 if (SymFromAddr(process, address, nullptr, symbol)) {
                     std::string frame_info = "  [" + std::to_string(i) + "] " + symbol->Name +
-                                           " at 0x" + std::format("{:016X}", address);
+                    " at 0x" + std::format("{:016X}", address);
                     LogWarn(frame_info.c_str());
                 } else {
                     std::string frame_info = "  [" + std::to_string(i) + "] Unknown at 0x" +
-                                           std::format("{:016X}", address);
+                    std::format("{:016X}", address);
                     LogWarn(frame_info.c_str());
                 }
             }
@@ -216,7 +216,7 @@ bool DXGIDeviceInfoManager::EnumerateOutputs(IDXGIAdapter* adapter, DXGIAdapterI
 }
 
 bool DXGIDeviceInfoManager::ResetHDRMetadataOnPresent(const std::string& output_device_name, float max_cll) {
-   /* try {
+    /* try {
         if (!initialized_) {
             return false;
         }

@@ -47,5 +47,5 @@ std::string WideCharToUTF8(const std::wstring& in);
 
 // Get current display settings using QueryDisplayConfig for precise refresh rate
 bool GetCurrentDisplaySettingsQueryConfig(HMONITOR monitor, int& width, int& height,
-                                         uint32_t& refresh_numerator, uint32_t& refresh_denominator,
-                                         int& x, int& y);
+                    uint32_t& refresh_numerator, uint32_t& refresh_denominator,
+                    int& x, int& y);

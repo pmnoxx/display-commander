@@ -350,7 +350,7 @@ bool OnDraw(reshade::api::command_list* cmd_list, uint32_t vertex_count, uint32_
     HandleRenderStartAndEndTimes();
 
     if (ShouldBackgroundSuppressOperation()) {
-      return true; // Skip the draw call
+    return true; // Skip the draw call
     }
 
     return false; // Don't skip the draw call
@@ -366,7 +366,7 @@ bool OnDrawIndexed(reshade::api::command_list* cmd_list, uint32_t index_count, u
     HandleRenderStartAndEndTimes();
 
     if (ShouldBackgroundSuppressOperation()) {
-      return true; // Skip the draw call
+    return true; // Skip the draw call
     }
 
     return false; // Don't skip the draw call
@@ -382,7 +382,7 @@ bool OnDrawOrDispatchIndirect(reshade::api::command_list* cmd_list, reshade::api
     HandleRenderStartAndEndTimes();
 
     if (ShouldBackgroundSuppressOperation()) {
-      return true; // Skip the draw call
+    return true; // Skip the draw call
     }
 
     return false; // Don't skip the draw call

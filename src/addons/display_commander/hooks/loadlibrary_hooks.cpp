@@ -60,7 +60,7 @@ FILETIME GetModuleFileTime(HMODULE hModule) {
     wchar_t modulePath[MAX_PATH];
     if (GetModuleFileNameW(hModule, modulePath, MAX_PATH)) {
         HANDLE hFile = CreateFileW(modulePath, GENERIC_READ, FILE_SHARE_READ,
-                                  nullptr, OPEN_EXISTING, 0, nullptr);
+                                nullptr, OPEN_EXISTING, 0, nullptr);
         if (hFile != INVALID_HANDLE_VALUE) {
             GetFileTime(hFile, nullptr, nullptr, &ft);
             CloseHandle(hFile);
@@ -413,7 +413,7 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
 
     // Windows.Gaming.Input hooks
     else if (lowerModuleName.find(L"windows.gaming.input") != std::wstring::npos ||
-             lowerModuleName.find(L"gameinput") != std::wstring::npos) {
+    lowerModuleName.find(L"gameinput") != std::wstring::npos) {
         LogInfo("Installing Windows.Gaming.Input hooks for module: %ws", moduleName.c_str());
         if (InstallWindowsGamingInputHooks()) {
             LogInfo("Windows.Gaming.Input hooks installed successfully");
@@ -454,21 +454,21 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
 
     // Epic Games hooks
     else if (lowerModuleName.find(L"eos") != std::wstring::npos ||
-             lowerModuleName.find(L"epic") != std::wstring::npos) {
+    lowerModuleName.find(L"epic") != std::wstring::npos) {
         LogInfo("Epic Games module detected: %ws", moduleName.c_str());
         // TODO: Add Epic Games hook installation when implemented
     }
 
     // NVIDIA hooks
     else if (lowerModuleName.find(L"nv") != std::wstring::npos ||
-             lowerModuleName.find(L"nvidia") != std::wstring::npos) {
+    lowerModuleName.find(L"nvidia") != std::wstring::npos) {
         LogInfo("NVIDIA module detected: %ws", moduleName.c_str());
         // TODO: Add NVIDIA hook installation when implemented
     }
 
     // AMD hooks
     else if (lowerModuleName.find(L"amd") != std::wstring::npos ||
-             lowerModuleName.find(L"ati") != std::wstring::npos) {
+    lowerModuleName.find(L"ati") != std::wstring::npos) {
         LogInfo("AMD module detected: %ws", moduleName.c_str());
         // TODO: Add AMD hook installation when implemented
     }

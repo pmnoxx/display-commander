@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2024 Display Commander
- * Gamepad to keyboard input remapping system implementation
- */
+    * Copyright (C) 2024 Display Commander
+    * Gamepad to keyboard input remapping system implementation
+    */
 
 #include "input_remapping.hpp"
 #include <reshade.hpp>
@@ -406,7 +406,7 @@ namespace display_commander::input_remapping
                     get_button_name(gamepad_button).c_str(), remap->keyboard_name.c_str(), user_index);
         } else {
             LogError("InputRemapper::handle_button_press() - Failed to send keyboard input for %s",
-                     remap->keyboard_name.c_str());
+        remap->keyboard_name.c_str());
         }
     }
 

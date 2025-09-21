@@ -158,11 +158,11 @@ bool DisplayCache::Refresh() {
 
         // Get current settings
         if (!GetCurrentDisplaySettingsQueryConfig(monitor, display_info->width,
-                                     display_info->height,
-                                     display_info->current_refresh_rate.numerator,
-                                     display_info->current_refresh_rate.denominator,
-                                     display_info->x,
-                                     display_info->y)) {
+                display_info->height,
+                display_info->current_refresh_rate.numerator,
+                display_info->current_refresh_rate.denominator,
+                display_info->x,
+                display_info->y)) {
             continue;
         }
 
@@ -252,7 +252,7 @@ bool DisplayCache::GetCurrentRefreshRate(size_t display_index, RationalRefreshRa
 }
 
 bool DisplayCache::GetRationalRefreshRate(size_t display_index, size_t resolution_index, size_t refresh_rate_index,
-                                         RationalRefreshRate& refresh_rate) const {
+                    RationalRefreshRate& refresh_rate) const {
     auto displays_ptr = displays.load(std::memory_order_acquire);
     if (!displays_ptr || display_index >= displays_ptr->size()) return false;
     const auto* display = (*displays_ptr)[display_index].get();

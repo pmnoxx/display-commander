@@ -67,8 +67,8 @@ void DrawAdapterInfo() {
                                 ImGui::Text("Monitor Name: %s", output.monitor_name.c_str());
                                 ImGui::Text("Attached: %s", output.is_attached ? "Yes" : "No");
                                 ImGui::Text("Desktop Coordinates: (%ld, %ld) to (%ld, %ld)",
-                                           output.desktop_coordinates.left, output.desktop_coordinates.top,
-                                           output.desktop_coordinates.right, output.desktop_coordinates.bottom);
+                    output.desktop_coordinates.left, output.desktop_coordinates.top,
+                    output.desktop_coordinates.right, output.desktop_coordinates.bottom);
 
                                 // Resolution info
                                 if (output.supported_modes.size() > 0) {
@@ -80,7 +80,7 @@ void DrawAdapterInfo() {
                                     for (const auto& mode : output.supported_modes) {
                                         if (mode.RefreshRate.Denominator > 0) {
                                             float refresh_rate = static_cast<float>(mode.RefreshRate.Numerator) /
-                                                               static_cast<float>(mode.RefreshRate.Denominator);
+                            static_cast<float>(mode.RefreshRate.Denominator);
                                             resolution_groups[{mode.Width, mode.Height}].push_back(refresh_rate);
                                         }
                                     }

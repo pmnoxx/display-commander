@@ -471,49 +471,49 @@ bool InstallTimeslowdownHooks() {
 
     // Hook QueryPerformanceCounter
     if (MH_CreateHook(QueryPerformanceCounter, QueryPerformanceCounter_Detour,
-                      (LPVOID*)&QueryPerformanceCounter_Original) != MH_OK) {
+                    (LPVOID*)&QueryPerformanceCounter_Original) != MH_OK) {
         LogError("Failed to create QueryPerformanceCounter hook");
         return false;
     }
 
     // Hook QueryPerformanceFrequency
     if (MH_CreateHook(QueryPerformanceFrequency, QueryPerformanceFrequency_Detour,
-                      (LPVOID*)&QueryPerformanceFrequency_Original) != MH_OK) {
+                    (LPVOID*)&QueryPerformanceFrequency_Original) != MH_OK) {
         LogError("Failed to create QueryPerformanceFrequency hook");
         return false;
     }
 
     // Hook GetTickCount
     if (MH_CreateHook(GetTickCount, GetTickCount_Detour,
-                      (LPVOID*)&GetTickCount_Original) != MH_OK) {
+                    (LPVOID*)&GetTickCount_Original) != MH_OK) {
         LogError("Failed to create GetTickCount hook");
         return false;
     }
 
     // Hook GetTickCount64
     if (MH_CreateHook(GetTickCount64, GetTickCount64_Detour,
-                      (LPVOID*)&GetTickCount64_Original) != MH_OK) {
+                    (LPVOID*)&GetTickCount64_Original) != MH_OK) {
         LogError("Failed to create GetTickCount64 hook");
         return false;
     }
 
     // Hook timeGetTime
     if (MH_CreateHook(timeGetTime, timeGetTime_Detour,
-                      (LPVOID*)&timeGetTime_Original) != MH_OK) {
+                    (LPVOID*)&timeGetTime_Original) != MH_OK) {
         LogError("Failed to create timeGetTime hook");
         return false;
     }
 
     // Hook GetSystemTime
     if (MH_CreateHook(GetSystemTime, GetSystemTime_Detour,
-                      (LPVOID*)&GetSystemTime_Original) != MH_OK) {
+                    (LPVOID*)&GetSystemTime_Original) != MH_OK) {
         LogError("Failed to create GetSystemTime hook");
         return false;
     }
 
     // Hook GetSystemTimeAsFileTime
     if (MH_CreateHook(GetSystemTimeAsFileTime, GetSystemTimeAsFileTime_Detour,
-                      (LPVOID*)&GetSystemTimeAsFileTime_Original) != MH_OK) {
+                    (LPVOID*)&GetSystemTimeAsFileTime_Original) != MH_OK) {
         LogError("Failed to create GetSystemTimeAsFileTime hook");
         return false;
     }
@@ -521,14 +521,14 @@ bool InstallTimeslowdownHooks() {
 
     // Hook GetSystemTimePreciseAsFileTime
     if (MH_CreateHook(GetSystemTimePreciseAsFileTime, GetSystemTimePreciseAsFileTime_Detour,
-                      (LPVOID*)&GetSystemTimePreciseAsFileTime_Original) != MH_OK) {
+                    (LPVOID*)&GetSystemTimePreciseAsFileTime_Original) != MH_OK) {
         LogError("Failed to create GetSystemTimePreciseAsFileTime hook");
         return false;
     }
 
     // Hook GetLocalTime
     if (MH_CreateHook(GetLocalTime, GetLocalTime_Detour,
-                      (LPVOID*)&GetLocalTime_Original) != MH_OK) {
+                    (LPVOID*)&GetLocalTime_Original) != MH_OK) {
         LogError("Failed to create GetLocalTime hook");
         return false;
     }
@@ -539,7 +539,7 @@ bool InstallTimeslowdownHooks() {
         LPVOID ntQuerySystemTime = GetProcAddress(ntdll, "NtQuerySystemTime");
         if (ntQuerySystemTime) {
             if (MH_CreateHook(ntQuerySystemTime, NtQuerySystemTime_Detour,
-                              (LPVOID*)&NtQuerySystemTime_Original) != MH_OK) {
+                            (LPVOID*)&NtQuerySystemTime_Original) != MH_OK) {
                 LogError("Failed to create NtQuerySystemTime hook");
                 return false;
             }

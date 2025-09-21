@@ -13,9 +13,9 @@ RoGetActivationFactory_pfn RoGetActivationFactory_Original = nullptr;
 std::string IIDToGUIDString(const IID& iid) {
     char guid_str[64];
     sprintf_s(guid_str, sizeof(guid_str), "{%08lX-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X}",
-              iid.Data1, iid.Data2, iid.Data3,
-              iid.Data4[0], iid.Data4[1], iid.Data4[2], iid.Data4[3],
-              iid.Data4[4], iid.Data4[5], iid.Data4[6], iid.Data4[7]);
+            iid.Data1, iid.Data2, iid.Data3,
+            iid.Data4[0], iid.Data4[1], iid.Data4[2], iid.Data4[3],
+            iid.Data4[4], iid.Data4[5], iid.Data4[6], iid.Data4[7]);
     return std::string(guid_str);
 }
 
@@ -144,8 +144,8 @@ HRESULT WINAPI RoGetActivationFactory_Detour(HSTRING activatableClassId, REFIID 
     // Handle unknown IID that appears frequently: (242708616, 30204, 18607, 135, 88, 6, 82, 246, 240, 124, 89)
     // GUID: {0E6A0E38-761F-4A57-5888-06-52F6F07C59}
     else if (iid.Data1 == 242708616 && iid.Data2 == 30204 && iid.Data3 == 18607 &&
-             iid.Data4[0] == 135 && iid.Data4[1] == 88 && iid.Data4[2] == 6 && iid.Data4[3] == 82 &&
-             iid.Data4[4] == 246 && iid.Data4[5] == 240 && iid.Data4[6] == 124 && iid.Data4[7] == 89) {
+    iid.Data4[0] == 135 && iid.Data4[1] == 88 && iid.Data4[2] == 6 && iid.Data4[3] == 82 &&
+    iid.Data4[4] == 246 && iid.Data4[5] == 240 && iid.Data4[6] == 124 && iid.Data4[7] == 89) {
         LogInfo("RoGetActivationFactory (Unknown Interface) - UNHANDLED");
         LogInfo(" => GUID: {0E6A0E38-761F-4A57-5888-06-52F6F07C59} - Need to identify this interface");
         LogInfo(" => This appears to be a non-standard Windows Gaming Input interface");

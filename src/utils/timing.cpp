@@ -70,13 +70,13 @@ static bool mwaitx_support_checked = false;
 bool supports_mwaitx (void)
 {
     if (mwaitx_support_checked)
-      return mwaitx_supported_cached;
+    return mwaitx_supported_cached;
     mwaitx_supported_cached = true;
     auto handler = AddVectoredExceptionHandler (1, [](_EXCEPTION_POINTERS *ExceptionInfo)->LONG
     {
         if (ExceptionInfo->ExceptionRecord->ExceptionCode == EXCEPTION_ILLEGAL_INSTRUCTION)
         {
-          mwaitx_supported_cached = false;
+        mwaitx_supported_cached = false;
         }
 
         #ifdef _AMD64_

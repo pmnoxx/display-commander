@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2024 Display Commander
- * Gamepad to keyboard input remapping system
- */
+    * Copyright (C) 2024 Display Commander
+    * Gamepad to keyboard input remapping system
+    */
 
 #pragma once
 
@@ -46,17 +46,17 @@ namespace display_commander::input_remapping
 
         ButtonRemap() = default;
         ButtonRemap(WORD btn, int vk, const std::string& name, bool en = true,
-                   KeyboardInputMethod method = KeyboardInputMethod::SendInput, bool hold = true)
+        KeyboardInputMethod method = KeyboardInputMethod::SendInput, bool hold = true)
             : gamepad_button(btn), keyboard_vk(vk), keyboard_name(name),
-              enabled(en), input_method(method), hold_mode(hold) {}
+            enabled(en), input_method(method), hold_mode(hold) {}
 
         // Copy constructor
         ButtonRemap(const ButtonRemap& other)
             : gamepad_button(other.gamepad_button), keyboard_vk(other.keyboard_vk),
-              keyboard_name(other.keyboard_name), enabled(other.enabled),
-              input_method(other.input_method), hold_mode(other.hold_mode),
-              is_pressed(other.is_pressed.load()), last_press_time(other.last_press_time.load()),
-              trigger_count(other.trigger_count.load()) {}
+            keyboard_name(other.keyboard_name), enabled(other.enabled),
+            input_method(other.input_method), hold_mode(other.hold_mode),
+            is_pressed(other.is_pressed.load()), last_press_time(other.last_press_time.load()),
+            trigger_count(other.trigger_count.load()) {}
 
         // Assignment operator
         ButtonRemap& operator=(const ButtonRemap& other) {
@@ -112,7 +112,7 @@ namespace display_commander::input_remapping
 
         // Update remapping settings
         void update_remap(WORD gamepad_button, int keyboard_vk, const std::string& keyboard_name,
-                         KeyboardInputMethod method, bool hold_mode);
+            KeyboardInputMethod method, bool hold_mode);
 
         // Settings management
         void load_settings();

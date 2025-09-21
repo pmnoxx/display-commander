@@ -22,16 +22,16 @@ void WriteToDebugLog(const std::string& message) {
         // Format timestamp
         std::ostringstream timestamp;
         timestamp << std::setfill('0')
-                  << std::setw(2) << time.wHour << ":"
-                  << std::setw(2) << time.wMinute << ":"
-                  << std::setw(2) << time.wSecond << ":"
-                  << std::setw(3) << time.wMilliseconds;
+                << std::setw(2) << time.wHour << ":"
+                << std::setw(2) << time.wMinute << ":"
+                << std::setw(2) << time.wSecond << ":"
+                << std::setw(3) << time.wMilliseconds;
 
         // Format the complete log line
         std::ostringstream log_line;
         log_line << timestamp.str()
-                 << " [" << std::setw(5) << GetCurrentThreadId() << "] | INFO  | "
-                 << message << "\r\n";
+        << " [" << std::setw(5) << GetCurrentThreadId() << "] | INFO  | "
+        << message << "\r\n";
 
         // Write directly to debug.log file
         std::ofstream log_file("debug.log", std::ios::app);
@@ -54,8 +54,8 @@ void OnHandleExit(ExitSource source, const std::string& message) {
     // Format the exit message
     std::ostringstream exit_message;
     exit_message << "[Exit Handler] Detected exit from "
-                 << GetExitSourceString(source)
-                 << ": " << message;
+        << GetExitSourceString(source)
+        << ": " << message;
 
     // Write directly to debug.log and flush
     WriteToDebugLog(exit_message.str());

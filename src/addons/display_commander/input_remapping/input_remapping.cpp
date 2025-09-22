@@ -7,7 +7,7 @@
 #include <reshade.hpp>
 #include "../globals.hpp"
 #include "../utils.hpp"
-#include "../utils/srwlock_wrapper.hpp"
+#include "utils/srwlock_wrapper.hpp"
 #include <algorithm>
 #include <sstream>
 

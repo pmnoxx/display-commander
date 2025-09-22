@@ -6,7 +6,7 @@
 #include <dxgi1_6.h>
 #include <sstream>
 #include "../display/query_display.hpp"
-#include "../../../utils/timing.hpp"
+#include "utils/timing.hpp"
 
 static uint64_t s_last_scan_time = 0;
 

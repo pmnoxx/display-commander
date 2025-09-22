@@ -14,7 +14,7 @@
 #include <cmath>
 #include <imgui.h>
 #include "../../latent_sync/latent_sync_limiter.hpp"
-#include "../../utils/timing.hpp"
+#include "utils/timing.hpp"
 #include "version.hpp"
 #include "../../widgets/resolution_widget/resolution_widget.hpp"
 #include "../../adhd_multi_monitor/adhd_simple_api.hpp"

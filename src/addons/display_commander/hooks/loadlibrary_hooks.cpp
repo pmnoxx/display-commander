@@ -2,7 +2,7 @@
 #include "xinput_hooks.hpp"
 #include "windows_gaming_input_hooks.hpp"
 #include "../utils.hpp"
-#include "../utils/srwlock_wrapper.hpp"
+#include "utils/srwlock_wrapper.hpp"
 #include <MinHook.h>
 #include <chrono>
 #include <iomanip>

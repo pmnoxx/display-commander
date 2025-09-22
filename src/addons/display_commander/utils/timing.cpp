@@ -4,8 +4,8 @@
 #include <cmath>
 #include <sstream>
 #include <intrin.h>
-#include "../addons/display_commander/utils.hpp"
-#include "../addons/display_commander/hooks/timeslowdown_hooks.hpp"
+#include "../utils.hpp"
+#include "../hooks/timeslowdown_hooks.hpp"
 
 // NTSTATUS constants if not already defined
 #ifndef STATUS_SUCCESS

@@ -23,7 +23,7 @@
 #include "settings/experimental_tab_settings.hpp"
 #include "settings/main_tab_settings.hpp"
 #include "swapchain_events_power_saving.hpp"
-#include <utils/swapchain.hpp>
+#include "utils/swapchain.hpp"
 
 
 // Additional includes for DoInitialization

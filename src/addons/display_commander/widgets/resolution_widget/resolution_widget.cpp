@@ -3,7 +3,7 @@
 #include "../../resolution_helpers.hpp"
 #include "../../globals.hpp"
 #include "../../display_restore.hpp"
-#include "../../utils/timing.hpp"
+#include "utils/timing.hpp"
 #include <imgui.h>
 #include <reshade.hpp>
 #include <algorithm>

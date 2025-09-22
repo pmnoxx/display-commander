@@ -12,8 +12,8 @@ Note: Applying window operations from the main thread can crash some apps. This 
 
 | Architecture | Download |
 |-------------|----------|
-| **x64 (64-bit)** (OUTDATED, use nightly instead)| [zzz_display_commander.addon64](../../releases/latest/download/zzz_display_commander.addon64) |
-| **x86 (32-bit)** (OUTDATED, use nightly instead)| [zzz_display_commander.addon32](../../releases/latest/download/zzz_display_commander.addon32) |
+| **x64 (64-bit)** (OUTDATED, use nightly instead, new version will be realeased after reshade 6.5.2+)| [zzz_display_commander.addon64](../../releases/latest/download/zzz_display_commander.addon64) |
+| **x86 (32-bit)** (OUTDATED, use nightly instead, new version will be realeased after reshade 6.5.2+)| [zzz_display_commander.addon32](../../releases/latest/download/zzz_display_commander.addon32) |
 
 **🔄 Nightly Builds**: For the latest development builds, check [Nightly Releases](../../releases/tag/nightly).
 

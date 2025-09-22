@@ -28,6 +28,15 @@ if ($LASTEXITCODE -eq 0) {
     } else {
         Write-Warning "D3D Debug Layer addon not found at: $d3dDebugFile"
     }
+
+    # Check Hide HDR addon
+    $hideHdrFile = "build\src\addons\hide_hdr\zzz_hide_hdr.addon64"
+    if (Test-Path $hideHdrFile) {
+        $fileSize = (Get-Item $hideHdrFile).Length
+        Write-Host "Hide HDR: $hideHdrFile ($([math]::Round($fileSize / 1KB, 2)) KB)" -ForegroundColor Cyan
+    } else {
+        Write-Warning "Hide HDR addon not found at: $hideHdrFile"
+    }
 } else {
     Write-Error "Build failed with exit code: $LASTEXITCODE"
     exit 1

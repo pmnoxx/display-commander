@@ -4,7 +4,7 @@
 #include "exit_handler.hpp"
 
 // Include timing utilities for QPC initialization
-#include "../../utils/timing.hpp"
+#include "utils/timing.hpp"
 #include <thread>
 #include <chrono>
 

@@ -1,7 +1,7 @@
 #include "custom_fps_limiter.hpp"
 #include "../addon.hpp"
 #include <algorithm>
-#include "../../utils/timing.hpp"
+#include "utils/timing.hpp"
 
 namespace dxgi::fps_limiter {
     HANDLE m_timer_handle = nullptr;

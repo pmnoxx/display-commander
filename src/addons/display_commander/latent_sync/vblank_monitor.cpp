@@ -8,7 +8,7 @@
 #include "../display/query_display.hpp"
 #include "../globals.hpp"
 #include "../settings/main_tab_settings.hpp"
-#include "../../../utils/timing.hpp"
+#include "utils/timing.hpp"
 
 // Forward declaration of the global variable
 extern std::atomic<HWND> g_last_swapchain_hwnd;

@@ -6,14 +6,14 @@ Note: Applying window operations from the main thread can crash some apps. This 
 
 **⚠️ Version Requirement**: This addon requires ReShade 6.5.1+ (nightly builds) and depends on features coming in ReShade 6.5.2+. Stable ReShade releases are not yet compatible.
 
-**Latest compatible build**: [ReShade 6.5.1+ nightly build](https://github.com/crosire/reshade/actions/runs/17221413324)
+**Latest compatible build**: [ReShade 6.5.1+ nightly build](https://github.com/crosire/reshade/actions/runs/17901851907)
 
 ## 📥 Latest Builds
 
 | Architecture | Download |
 |-------------|----------|
-| **x64 (64-bit)** | [zzz_display_commander.addon64](../../releases/latest/download/zzz_display_commander.addon64) |
-| **x86 (32-bit)** | [zzz_display_commander.addon32](../../releases/latest/download/zzz_display_commander.addon32) |
+| **x64 (64-bit)** (OUTDATED, use nightly instead)| [zzz_display_commander.addon64](../../releases/latest/download/zzz_display_commander.addon64) |
+| **x86 (32-bit)** (OUTDATED, use nightly instead)| [zzz_display_commander.addon32](../../releases/latest/download/zzz_display_commander.addon32) |
 
 **🔄 Nightly Builds**: For the latest development builds, check [Nightly Releases](../../releases/tag/nightly).
 

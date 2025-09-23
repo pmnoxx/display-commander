@@ -18,9 +18,6 @@
 // External reference to screensaver mode setting
 extern std::atomic<ScreensaverMode> s_screensaver_mode;
 
-// Forward declarations
-void ComputeDesiredSize(int& out_w, int& out_h);
-
 
 void every1s_checks() {
     static int seconds_counter = 0;

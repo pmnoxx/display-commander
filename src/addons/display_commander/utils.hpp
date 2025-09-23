@@ -34,23 +34,10 @@ void LogWarn(const char* msg, ...);
 void LogError(const char* msg, ...);
 void LogDebug(const std::string& s);
 void LogDebug(const char* msg, ...);
-std::string FormatLastError();
 // Window state detection
-bool IsExclusiveFullscreen(HWND hwnd);
-bool GetSpoofedFullscreenState(HWND hwnd);
-int GetFullscreenSpoofingMode();
-UINT ComputeSWPFlags(HWND hwnd, bool style_changed);
-bool IsBorderlessStyleBits(LONG_PTR style);
-bool IsBorderless(HWND hwnd);
-void RemoveWindowBorderLocal(HWND window);
-void ForceWindowToMonitorOrigin(HWND hwnd);
-void ForceWindowToMonitorOriginThreaded(HWND hwnd);
-std::vector<std::string> MakeLabels(const int* values, size_t count);
-int FindClosestIndex(int value, const int* values, size_t count);
-std::vector<std::string> MakeAspectLabels();
 AspectRatio GetAspectByIndex(int index);
-int GetCurrentMonitorWidth();
-int GetCurrentMonitorHeight();
+int GetCurrentMonitorWidth(); // todo remove this
+int GetCurrentMonitorHeight(); // todo remove this
 
 // Monitor enumeration callback
 BOOL CALLBACK MonitorEnumProc(HMONITOR hmon, HDC hdc, LPRECT rect, LPARAM lparam);

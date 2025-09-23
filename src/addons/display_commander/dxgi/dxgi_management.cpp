@@ -14,46 +14,40 @@ DxgiBypassMode GetIndependentFlipState(reshade::api::swapchain* swapchain) {
 
     const auto api = device->get_api();
     if (api != reshade::api::device_api::d3d10 &&
-    api != reshade::api::device_api::d3d11 &&
-    api != reshade::api::device_api::d3d12) {
-    std::ostringstream oss; oss << "DXGI IF state: non-DXGI device api=" << static_cast<int>(api);
-    LogDebug(oss.str());
-    return DxgiBypassMode::kUnknown; // Not DXGI-backed
+        api != reshade::api::device_api::d3d11 &&
+        api != reshade::api::device_api::d3d12) {
+        LogDebug("DXGI IF state: non-DXGI device api=%d", static_cast<int>(api));
+        return DxgiBypassMode::kUnknown; // Not DXGI-backed
     }
 
     auto* dxgi_swapchain = reinterpret_cast<IDXGISwapChain*>(swapchain->get_native());
     if (dxgi_swapchain == nullptr) {
-    LogDebug("DXGI IF state: native swapchain is null");
-    return DxgiBypassMode::kUnknown;
+        LogDebug("DXGI IF state: native swapchain is null");
+        return DxgiBypassMode::kUnknown;
     }
 
     Microsoft::WRL::ComPtr<IDXGISwapChainMedia> media;
     {
     HRESULT hr = dxgi_swapchain->QueryInterface(IID_PPV_ARGS(&media));
     if (FAILED(hr)) {
-    std::ostringstream oss; oss << "DXGI IF state: QI IDXGISwapChainMedia failed hr=0x" << std::hex << hr;
-    LogDebug(oss.str());
-    // Log swap effect for diagnostics
-    DXGI_SWAP_CHAIN_DESC scd{};
-    if (SUCCEEDED(dxgi_swapchain->GetDesc(&scd))) {
-        std::ostringstream oss2; oss2 << "DXGI IF state: SwapEffect=" << static_cast<int>(scd.SwapEffect);
-        LogDebug(oss2.str());
-    }
-    return DxgiBypassMode::kUnknown;
-    }
+        LogDebug("DXGI IF state: QI IDXGISwapChainMedia failed hr=0x%x", hr);
+        // Log swap effect for diagnostics
+        DXGI_SWAP_CHAIN_DESC scd{};
+        if (SUCCEEDED(dxgi_swapchain->GetDesc(&scd))) {
+            LogDebug("DXGI IF state: SwapEffect=%d", static_cast<int>(scd.SwapEffect));
+        }
+        return DxgiBypassMode::kUnknown;
+        }
     }
 
     DXGI_FRAME_STATISTICS_MEDIA stats = {};
     {
     HRESULT hr = media->GetFrameStatisticsMedia(&stats);
     if (FAILED(hr)) {
-    std::ostringstream oss; oss << "DXGI IF state: GetFrameStatisticsMedia failed hr=0x" << std::hex << hr
-                                << " (call after at least one Present)";
-    LogDebug(oss.str());
+    LogDebug("DXGI IF state: GetFrameStatisticsMedia failed hr=0x%x (call after at least one Present)", hr);
     DXGI_SWAP_CHAIN_DESC scd{};
     if (SUCCEEDED(dxgi_swapchain->GetDesc(&scd))) {
-        std::ostringstream oss2; oss2 << "DXGI IF state: SwapEffect=" << static_cast<int>(scd.SwapEffect);
-        LogDebug(oss2.str());
+        LogDebug("DXGI IF state: SwapEffect=%d", static_cast<int>(scd.SwapEffect));
     }
     return DxgiBypassMode::kUnknown; // Call after at least one Present
     }
@@ -154,8 +148,7 @@ bool SetIndependentFlipState(reshade::api::swapchain* swapchain) {
         desc1.Format,
         desc1.Flags);
     if (FAILED(hr)) {
-    std::ostringstream oss; oss << "SetIndependentFlipState: ResizeBuffers failed hr=0x" << std::hex << hr;
-    LogWarn(oss.str().c_str());
+    LogWarn("SetIndependentFlipState: ResizeBuffers failed hr=0x%x", hr);
     return false;
     }
     changed = true;

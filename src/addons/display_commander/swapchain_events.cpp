@@ -458,12 +458,8 @@ void OnPresentUpdateAfter(reshade::api::command_queue * /*queue*/,
     g_render_thread_id.store(current_thread_id);
 
     // Log render thread ID changes for debugging
-    if (previous_render_thread_id != current_thread_id &&
-    previous_render_thread_id != 0) {
-    LogDebug("[TID:" + std::to_string(current_thread_id) +
-    "] Render thread changed from " +
-    std::to_string(previous_render_thread_id) + " to " +
-    std::to_string(current_thread_id));
+    if (previous_render_thread_id != current_thread_id && previous_render_thread_id != 0) {
+        LogDebug("[TID:%d] Render thread changed from %d to %d", current_thread_id, previous_render_thread_id, current_thread_id);
     }
 
     // Increment event counter

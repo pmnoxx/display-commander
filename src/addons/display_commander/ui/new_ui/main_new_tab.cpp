@@ -253,11 +253,7 @@ void DrawQuickResolutionChanger() {
     }
 }
 
-
 void DrawDisplaySettings() {
-    int current_monitor_width = GetCurrentMonitorWidth();
-    int current_monitor_height = GetCurrentMonitorHeight();
-
     ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "=== Display Settings ===");
     {
         // Target Monitor dropdown

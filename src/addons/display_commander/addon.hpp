@@ -24,9 +24,6 @@ bool SetMuteForCurrentProcess(bool mute);
 bool SetVolumeForCurrentProcess(float volume_0_100);
 void RunBackgroundAudioMonitor();
 
-// Forward declarations
-void ComputeDesiredSize(int& out_w, int& out_h);
-
 // Forward declarations that depend on enums
 DxgiBypassMode GetIndependentFlipState(reshade::api::swapchain* swapchain);
 

@@ -78,7 +78,7 @@ void WINAPI Sleep_Detour(DWORD dwMilliseconds) {
             g_sleep_hook_stats.add_original_duration(dwMilliseconds);
             g_sleep_hook_stats.add_modified_duration(modified_duration);
 
-            LogDebug("[TID:" + std::to_string(GetCurrentThreadIdCached()) + "] Sleep hook: " + std::to_string(dwMilliseconds) + " ms -> " + std::to_string(modified_duration) + " ms (multiplier: " + std::to_string(multiplier) + ")");
+            LogDebug("[TID:%d] Sleep hook: %d ms -> %d ms (multiplier: %f)", GetCurrentThreadIdCached(), dwMilliseconds, modified_duration, multiplier);
         } else {
             // Track unmodified calls due to render thread restriction
             g_hook_stats[HOOK_Sleep].increment_unsuppressed();
@@ -141,7 +141,7 @@ DWORD WINAPI SleepEx_Detour(DWORD dwMilliseconds, BOOL bAlertable) {
             g_sleep_hook_stats.add_original_duration(dwMilliseconds);
             g_sleep_hook_stats.add_modified_duration(modified_duration);
 
-            LogDebug("[TID:" + std::to_string(GetCurrentThreadIdCached()) + "] SleepEx hook: " + std::to_string(dwMilliseconds) + " ms -> " + std::to_string(modified_duration) + " ms (multiplier: " + std::to_string(multiplier) + ")");
+            LogDebug("[TID:%d] SleepEx hook: %d ms -> %d ms (multiplier: %f)", GetCurrentThreadIdCached(), dwMilliseconds, modified_duration, multiplier);
         } else {
             // Track unmodified calls due to render thread restriction
             g_hook_stats[HOOK_SleepEx].increment_unsuppressed();
@@ -204,7 +204,7 @@ DWORD WINAPI WaitForSingleObject_Detour(HANDLE hHandle, DWORD dwMilliseconds) {
             g_sleep_hook_stats.add_original_duration(dwMilliseconds);
             g_sleep_hook_stats.add_modified_duration(modified_duration);
 
-            LogDebug("[TID:" + std::to_string(GetCurrentThreadIdCached()) + "] WaitForSingleObject hook: " + std::to_string(dwMilliseconds) + " ms -> " + std::to_string(modified_duration) + " ms (multiplier: " + std::to_string(multiplier) + ")");
+            LogDebug("[TID:%d] WaitForSingleObject hook: %d ms -> %d ms (multiplier: %f)", GetCurrentThreadIdCached(), dwMilliseconds, modified_duration, multiplier);
         } else {
             // Track unmodified calls due to render thread restriction
             g_hook_stats[HOOK_WaitForSingleObject].increment_unsuppressed();
@@ -267,7 +267,7 @@ DWORD WINAPI WaitForMultipleObjects_Detour(DWORD nCount, const HANDLE* lpHandles
             g_sleep_hook_stats.add_original_duration(dwMilliseconds);
             g_sleep_hook_stats.add_modified_duration(modified_duration);
 
-            LogDebug("[TID:" + std::to_string(GetCurrentThreadIdCached()) + "] WaitForMultipleObjects hook: " + std::to_string(dwMilliseconds) + " ms -> " + std::to_string(modified_duration) + " ms (multiplier: " + std::to_string(multiplier) + ")");
+            LogDebug("[TID:%d] WaitForMultipleObjects hook: %d ms -> %d ms (multiplier: %f)", GetCurrentThreadIdCached(), dwMilliseconds, modified_duration, multiplier);
         } else {
             // Track unmodified calls due to render thread restriction
             g_hook_stats[HOOK_WaitForMultipleObjects].increment_unsuppressed();

@@ -1,7 +1,6 @@
 #include "new_ui_tabs.hpp"
 #include "swapchain_tab.hpp"
 #include "window_info_tab.hpp"
-#include "device_info_tab.hpp"
 #include "developer_new_tab.hpp"
 #include "main_new_tab.hpp"
 #include "experimental_tab.hpp"
@@ -98,17 +97,6 @@ void InitializeNewUI() {
             LogError("Error drawing developer new tab: %s", e.what());
         } catch (...) {
             LogError("Unknown error drawing developer new tab");
-        }
-    });
-
-
-    g_tab_manager.AddTab("Device Info", "device_info", []() {
-        try {
-            ui::new_ui::DrawDeviceInfoTab();
-        } catch (const std::exception& e) {
-            LogError("Error drawing device info tab: %s", e.what());
-        } catch (...) {
-            LogError("Unknown error drawing device info tab");
         }
     });
 

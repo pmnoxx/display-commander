@@ -294,13 +294,6 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
     // Clean up experimental tab threads
     ui::new_ui::CleanupExperimentalTab();
 
-    // Clean up DXGI Device Info Manager
-    g_dxgiDeviceInfoManager.reset();
-    // Safety: attempt restore on detach as well (idempotent)
-    //display_restore::RestoreAllIfEnabled();
-    // Uninstall process-exit hooks
-    //process_exit_hooks::Shutdown();
-
 
     // Clean up NVAPI instances before shutdown
     if (g_latencyManager) {

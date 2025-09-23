@@ -22,7 +22,6 @@ class SpinLock;
 class BackgroundWindowManager;
 class CustomFpsLimiterManager;
 class LatentSyncManager;
-class DXGIDeviceInfoManager;
 class LatencyManager;
 
 // DLL initialization state
@@ -209,9 +208,6 @@ namespace dxgi::fps_limiter {
 namespace dxgi::latent_sync {
     extern std::unique_ptr<LatentSyncManager> g_latentSyncManager;
 }
-
-// DXGI Device Info Manager
-extern std::unique_ptr<DXGIDeviceInfoManager> g_dxgiDeviceInfoManager;
 
 // Latency Manager
 extern std::unique_ptr<LatencyManager> g_latencyManager;

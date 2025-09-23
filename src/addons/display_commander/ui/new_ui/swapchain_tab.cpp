@@ -1,12 +1,7 @@
 #include "swapchain_tab.hpp"
-#include "../../addon.hpp"
-#include "../../dxgi/dxgi_device_info.hpp"
-#include "../../utils.hpp"
 #include "../../swapchain_events_power_saving.hpp"
 #include "../../settings/main_tab_settings.hpp"
 #include <imgui.h>
-#include <sstream>
-#include <cstdio>
 #include <dxgi1_6.h>
 #include <wrl/client.h>
 #include "../../globals.hpp"
@@ -20,109 +15,7 @@ void DrawSwapchainTab() {
     // Draw all swapchain-related sections
     DrawSwapchainEventCounters();
     ImGui::Spacing();
-    DrawAdapterInfo();
-    ImGui::Spacing();
     DrawDxgiCompositionInfo();
-}
-
-void DrawAdapterInfo() {
-    if (ImGui::CollapsingHeader("Adapter Information", ImGuiTreeNodeFlags_DefaultOpen)) {
-        extern std::unique_ptr<DXGIDeviceInfoManager> g_dxgiDeviceInfoManager;
-
-        if (::g_dxgiDeviceInfoManager && ::g_dxgiDeviceInfoManager->IsInitialized()) {
-            const auto& adapters = ::g_dxgiDeviceInfoManager->GetAdapters();
-
-            for (size_t i = 0; i < adapters.size(); ++i) {
-                const auto& adapter = adapters[i];
-
-                // Adapter header
-                std::string adapter_title = adapter.name + " - " + adapter.description;
-                if (ImGui::TreeNodeEx(adapter_title.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
-
-                    // Adapter details
-                    ImGui::Text("Description: %s", adapter.description.c_str());
-                    ImGui::Text("Dedicated Video Memory: %.1f GB", adapter.dedicated_video_memory / (1024.0 * 1024.0 * 1024.0));
-                    ImGui::Text("Dedicated System Memory: %.1f GB", adapter.dedicated_system_memory / (1024.0 * 1024.0 * 1024.0));
-                    ImGui::Text("Shared System Memory: %.1f GB", adapter.shared_system_memory / (1024.0 * 1024.0 * 1024.0));
-                    ImGui::Text("Software Adapter: %s", adapter.is_software ? "Yes" : "No");
-
-                    // LUID info
-                    std::ostringstream luid_oss;
-                    luid_oss << "Adapter LUID: 0x" << std::hex << adapter.adapter_luid.HighPart << "_" << adapter.adapter_luid.LowPart;
-                    ImGui::Text("%s", luid_oss.str().c_str());
-
-                    // Outputs
-                    if (!adapter.outputs.empty()) {
-                        ImGui::Separator();
-                        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Outputs (%zu):", adapter.outputs.size());
-
-                        for (size_t j = 0; j < adapter.outputs.size(); ++j) {
-                            const auto& output = adapter.outputs[j];
-                            std::string output_title = "Output " + std::to_string(j) + " - " + output.device_name;
-
-                            if (ImGui::TreeNodeEx(output_title.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
-
-                                // Basic output info
-                                ImGui::Text("Device Name: %s", output.device_name.c_str());
-                                ImGui::Text("Monitor Name: %s", output.monitor_name.c_str());
-                                ImGui::Text("Attached: %s", output.is_attached ? "Yes" : "No");
-                                ImGui::Text("Desktop Coordinates: (%ld, %ld) to (%ld, %ld)",
-                    output.desktop_coordinates.left, output.desktop_coordinates.top,
-                    output.desktop_coordinates.right, output.desktop_coordinates.bottom);
-
-                                // Resolution info
-                                if (output.supported_modes.size() > 0) {
-                                    ImGui::Separator();
-                                    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Supported Resolutions (%zu):", output.supported_modes.size());
-
-                                    // Group modes by resolution
-                                    std::map<std::pair<uint32_t, uint32_t>, std::vector<float>> resolution_groups;
-                                    for (const auto& mode : output.supported_modes) {
-                                        if (mode.RefreshRate.Denominator > 0) {
-                                            float refresh_rate = static_cast<float>(mode.RefreshRate.Numerator) /
-                            static_cast<float>(mode.RefreshRate.Denominator);
-                                            resolution_groups[{mode.Width, mode.Height}].push_back(refresh_rate);
-                                        }
-                                    }
-
-                                    // Display grouped resolutions
-                                    if (!resolution_groups.empty()) {
-                                        for (const auto& group : resolution_groups) {
-                                            const auto& resolution = group.first;
-                                            const auto& refresh_rates = group.second;
-
-                                            // Sort refresh rates for better display
-                                            std::vector<float> sorted_rates = refresh_rates;
-                                            std::sort(sorted_rates.begin(), sorted_rates.end());
-
-                                            std::string refresh_str;
-                                            for (size_t i = 0; i < sorted_rates.size(); ++i) {
-                                                if (i > 0) refresh_str += ", ";
-                                                // Format to 3 decimal places for cleaner display
-                                                char rate_buf[32];
-                                                snprintf(rate_buf, sizeof(rate_buf), "%.3f", sorted_rates[i]);
-                                                refresh_str += rate_buf;
-                                                refresh_str += "hz";
-                                            }
-                                            ImGui::Text("  %ux%u -> %s", resolution.first, resolution.second, refresh_str.c_str());
-                                        }
-                                    } else {
-                                        ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "  No valid refresh rate information available");
-                                    }
-                                }
-
-                                ImGui::TreePop();
-                            }
-                        }
-                    }
-
-                    ImGui::TreePop();
-                }
-            }
-        } else {
-            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "DXGI Device Info Manager not initialized");
-        }
-    }
 }
 
 void DrawDxgiCompositionInfo() {
@@ -135,36 +28,8 @@ void DrawDxgiCompositionInfo() {
             default: mode_str = "Unknown"; break;
         }
 
-        // Check exclusive fullscreen status
-        HWND hwnd = g_last_swapchain_hwnd.load();
-        const bool is_exclusive_fullscreen = GetSpoofedFullscreenState(hwnd);
-
         // Get backbuffer format
         std::string format_str = "Unknown";
-        /*
-        if (g_last_swapchain_ptr.load() != nullptr) {
-            auto* device = g_last_swapchain_ptr.load()->get_device();
-            if (device != nullptr && g_last_swapchain_ptr.load()->get_back_buffer_count() > 0) {
-                auto bb = g_last_swapchain_ptr.load()->get_back_buffer(0);
-                auto desc = device->get_resource_desc(bb);
-                switch (desc.texture.format) {
-                    case reshade::api::format::r8g8b8a8_unorm: format_str = "R8G8B8A8_UNORM"; break;
-                    case reshade::api::format::r8g8b8a8_unorm_srgb: format_str = "R8G8B8A8_UNORM_SRGB"; break;
-                    case reshade::api::format::r10g10b10a2_unorm: format_str = "R10G10B10A2_UNORM"; break;
-                    case reshade::api::format::r16g16b16a16_float: format_str = "R16G16B16A16_FLOAT"; break;
-                    case reshade::api::format::r11g11b10_float: format_str = "R11G11B10_FLOAT"; break;
-                    case reshade::api::format::b8g8r8a8_unorm: format_str = "B8G8R8A8_UNORM"; break;
-                    case reshade::api::format::b8g8r8a8_unorm_srgb: format_str = "B8G8R8A8_UNORM_SRGB"; break;
-                    case reshade::api::format::r8g8b8_unorm: format_str = "R8G8B8_UNORM"; break;
-                    case reshade::api::format::r8g8b8_unorm_srgb: format_str = "R8G8B8_UNORM_SRGB"; break;
-                    case reshade::api::format::b5g6r5_unorm: format_str = "B5G6R5_UNORM"; break;
-                    case reshade::api::format::b5g5r5a1_unorm: format_str = "B5G5R5A1_UNORM"; break;
-                    case reshade::api::format::b4g4r4a4_unorm: format_str = "B4G4R4A4_UNORM"; break;
-                    default: format_str = "Format_" + std::to_string(static_cast<int>(desc.texture.format)); break;
-                }
-            }
-        }*/
-
         // Get colorspace string
         std::string colorspace_str = "Unknown";
         switch (g_current_colorspace) {

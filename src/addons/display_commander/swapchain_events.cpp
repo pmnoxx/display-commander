@@ -572,10 +572,6 @@ void OnPresentUpdateAfter(reshade::api::command_queue * /*queue*/,
     present_after_counter = 0;
     g_current_colorspace = swapchain->get_color_space();
 
-    extern std::unique_ptr<DXGIDeviceInfoManager> g_dxgiDeviceInfoManager;
-    if (g_dxgiDeviceInfoManager && g_dxgiDeviceInfoManager->IsInitialized()) {
-        g_dxgiDeviceInfoManager->EnumerateDevicesOnPresent();
-    }
     }
     }
 

@@ -136,7 +136,7 @@ std::unique_ptr<LatentSyncManager> g_latentSyncManager = std::make_unique<Latent
 }
 
 // Global DXGI Device Info Manager instance
-std::unique_ptr<DXGIDeviceInfoManager> g_dxgiDeviceInfoManager = std::make_unique<DXGIDeviceInfoManager>();
+//std::unique_ptr<DXGIDeviceInfoManager> g_dxgiDeviceInfoManager = std::make_unique<DXGIDeviceInfoManager>();
 
 // Global Latency Manager instance
 std::unique_ptr<LatencyManager> g_latencyManager = std::make_unique<LatencyManager>();

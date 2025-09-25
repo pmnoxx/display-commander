@@ -2,6 +2,7 @@
 
 #include "globals.hpp"
 #include <algorithm>
+#include <utility>
 
 // Constant definitions
 const int WIDTH_OPTIONS[] = {0, 1280, 1366, 1600, 1920, 2560, 3440, 3840}; // 0 = current monitor width
@@ -17,43 +18,25 @@ const AspectRatio ASPECT_OPTIONS[] = {
     {32, 9},   // 3.556:1
 };
 
-// Helper functions to get current monitor dimensions
-int GetCurrentMonitorWidth() {
-    // Get the current monitor where the game window is located
+// Returns the width and height of the current monitor as a pair
+std::pair<int, int> GetCurrentMonitorSize() {
     HWND hwnd = g_last_swapchain_hwnd.load();
     if (hwnd == nullptr) {
         // Fallback to primary monitor
-        return GetSystemMetrics(SM_CXSCREEN);
+        return { GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN) };
     }
 
     HMONITOR hmon = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
     MONITORINFOEXW mi{};
     mi.cbSize = sizeof(mi);
     if (GetMonitorInfoW(hmon, &mi)) {
-        return mi.rcMonitor.right - mi.rcMonitor.left;
+        int width = mi.rcMonitor.right - mi.rcMonitor.left;
+        int height = mi.rcMonitor.bottom - mi.rcMonitor.top;
+        return { width, height };
     }
 
     // Fallback to primary monitor
-    return GetSystemMetrics(SM_CXSCREEN);
-}
-
-int GetCurrentMonitorHeight() {
-    // Get the current monitor where the game window is located
-    HWND hwnd = g_last_swapchain_hwnd.load();
-    if (hwnd == nullptr) {
-        // Fallback to primary monitor
-        return GetSystemMetrics(SM_CYSCREEN);
-    }
-
-    HMONITOR hmon = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
-    MONITORINFOEXW mi{};
-    mi.cbSize = sizeof(mi);
-    if (GetMonitorInfoW(hmon, &mi)) {
-        return mi.rcMonitor.bottom - mi.rcMonitor.top;
-    }
-
-    // Fallback to primary monitor
-    return GetSystemMetrics(SM_CYSCREEN);
+    return { GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN) };
 }
 
 // Helper function implementations
@@ -109,15 +92,15 @@ AspectRatio GetAspectByIndex(AspectRatioType aspect_type) {
 void ComputeDesiredSize(int &out_w, int &out_h) {
     if (s_window_mode.load() == WindowMode::kFullscreen) {
         // kFullscreen: Borderless Fullscreen - use current monitor dimensions
-        out_w = GetCurrentMonitorWidth();
-        out_h = GetCurrentMonitorHeight();
+        out_w = GetCurrentMonitorSize().first;
+        out_h = GetCurrentMonitorSize().second;
         return;
     }
 
     // kAspectRatio: Borderless Windowed (Aspect Ratio) - aspect mode
     // For aspect ratio mode, we need to get the width from the resolution widget
     // For now, use current monitor width as default
-    const int want_w = GetCurrentMonitorWidth();
+    const int want_w = GetCurrentMonitorSize().first;
     AspectRatio ar = GetAspectByIndex(s_aspect_index.load());
     // height = round(width * h / w)
     // prevent division by zero

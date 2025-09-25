@@ -757,8 +757,6 @@ void DrawAudioSettings() {
 }
 
 void DrawWindowControls() {
-    int current_monitor_width = GetCurrentMonitorWidth();
-    int current_monitor_height = GetCurrentMonitorHeight();
     HWND hwnd = g_last_swapchain_hwnd.load();
     if (hwnd == nullptr) {
         LogWarn("Maximize Window: no window handle available");
@@ -799,7 +797,7 @@ void DrawWindowControls() {
 
     // Maximize Window Button
     if (ImGui::Button("Maximize Window")) {
-        std::thread([hwnd, current_monitor_width, current_monitor_height]() {
+        std::thread([hwnd]() {
             LogDebug("Maximize Window button pressed (bg thread)");
 
             // Switch to fullscreen mode to maximize the window

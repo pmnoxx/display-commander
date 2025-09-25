@@ -7,9 +7,10 @@
 #include <windows.h>
 #include <windef.h>
 
-#include <sstream>
 #include <atomic>
 #include <vector>
+#include <utility>
+#include <memory>
 
 // Structs needed for utility functions
 struct AspectRatio {
@@ -35,8 +36,9 @@ void LogError(const char* msg, ...);
 void LogDebug(const char* msg, ...);
 // Window state detection
 AspectRatio GetAspectByIndex(int index);
-int GetCurrentMonitorWidth(); // todo remove this
-int GetCurrentMonitorHeight(); // todo remove this
+// Returns the width and height of the current monitor as a pair
+std::pair<int, int> GetCurrentMonitorSize();
+// TODO: Remove these legacy functions after refactor
 
 // Monitor enumeration callback
 BOOL CALLBACK MonitorEnumProc(HMONITOR hmon, HDC hdc, LPRECT rect, LPARAM lparam);

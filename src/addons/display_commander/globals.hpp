@@ -44,7 +44,7 @@ Microsoft::WRL::ComPtr<IDXGIFactory1> GetSharedDXGIFactory();
 enum class DxgiBypassMode : std::uint8_t { kUnknown, kComposed, kOverlay, kIndependentFlip };
 enum class WindowStyleMode : std::uint8_t { KEEP, BORDERLESS, OVERLAPPED_WINDOW };
 enum class FpsLimiterMode : std::uint8_t { kNone = 0, kCustom = 1, kLatentSync = 2 };
-enum class WindowMode : std::uint8_t { kAspectRatio = 0, kFullscreen = 1 };
+enum class WindowMode : std::uint8_t { kFullscreen = 0, kAspectRatio = 1 };
 enum class AspectRatioType : std::uint8_t {
     k3_2 = 0,      // 3:2
     k4_3 = 1,      // 4:3

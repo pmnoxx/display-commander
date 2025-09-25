@@ -1,9 +1,9 @@
 #include "main_tab_settings.hpp"
-#include "../addon.hpp"
-#include "../hooks/api_hooks.hpp"
 #include "../adhd_multi_monitor/adhd_simple_api.hpp"
+#include "../hooks/api_hooks.hpp"
+#include "../utils.hpp"
+
 #include <windows.h>
-#include <algorithm>
 
 // Atomic variables used by main tab settings
 std::atomic<bool> s_background_feature_enabled{false}; // Disabled by default
@@ -29,35 +29,44 @@ std::atomic<ScreensaverMode> s_screensaver_mode{ScreensaverMode::kDefault};
 namespace settings {
 
 MainTabSettings::MainTabSettings()
-    : window_mode("window_mode", 0, {"Borderless Windowed (Aspect Ratio)", "Borderless Fullscreen"}, "renodx_main_tab"),
-    aspect_index("aspect_index", 3, {"3:2", "4:3", "16:10", "16:9", "19:9", "19.5:9", "21:9", "32:9"}, "renodx_main_tab"), // Default to 16:9
-    target_monitor_index("target_monitor_index", 0, {"Monitor 1", "Monitor 2", "Monitor 3", "Monitor 4", "Monitor 5", "Monitor 6", "Monitor 7", "Monitor 8", "Monitor 9", "Monitor 10"}, "renodx_main_tab"),
-    background_feature("background_feature", s_background_feature_enabled, false, "renodx_main_tab"),
-    alignment("alignment", 0, {"Center", "Top Left", "Top Right", "Bottom Left", "Bottom Right"}, "renodx_main_tab"),
-    fps_limiter_mode("fps_limiter_mode", 0, {"None", "Precise Frame Rate Limiter", "VBlank Scanline Sync for VSync-OFF"}, "renodx_main_tab"),
-    scanline_offset("scanline_offset", s_scanline_offset, 0, -1000, 1000, "renodx_main_tab"),
-    vblank_sync_divisor("vblank_sync_divisor", s_vblank_sync_divisor, 1, 0, 8, "renodx_main_tab"),
-    fps_limiter_injection("fps_limiter_injection", s_fps_limiter_injection, 0, 0, 2, "renodx_main_tab"),
-    fps_limit("fps_limit", s_fps_limit, 0.0f, 0.0f, 240.0f, "renodx_main_tab"),
-    fps_limit_background("fps_limit_background", s_fps_limit_background, 30.0f, 0.0f, 240.0f, "renodx_main_tab"),
-    present_pacing_delay_percentage("present_pacing_delay_percentage", s_present_pacing_delay_percentage, 0.0f, 0.0f, 100.0f, "renodx_main_tab"),
-    force_vsync_on("force_vsync_on", s_force_vsync_on, false, "renodx_main_tab"),
-    force_vsync_off("force_vsync_off", s_force_vsync_off, false, "renodx_main_tab"),
-    prevent_tearing("prevent_tearing", s_prevent_tearing, false, "renodx_main_tab"),
-    audio_volume_percent("audio_volume_percent", s_audio_volume_percent, 100.0f, 0.0f, 100.0f, "renodx_main_tab"),
-    audio_mute("audio_mute", s_audio_mute, false, "renodx_main_tab"),
-    mute_in_background("mute_in_background", s_mute_in_background, false, "renodx_main_tab"),
-    mute_in_background_if_other_audio("mute_in_background_if_other_audio", s_mute_in_background_if_other_audio, false, "renodx_main_tab"),
-    audio_volume_auto_apply("audio_volume_auto_apply", false, "renodx_main_tab"),
-    block_input_in_background("block_input_in_background", s_block_input_in_background, true, "renodx_main_tab"),
-    block_input_without_reshade("block_input_without_reshade", s_block_input_without_reshade, false, "renodx_main_tab"),
-    no_render_in_background("no_render_in_background", s_no_render_in_background, false, "renodx_main_tab"),
-    no_present_in_background("no_present_in_background", s_no_present_in_background, false, "renodx_main_tab"),
-    show_test_overlay("show_test_overlay", false, "renodx_main_tab"),
-    target_display("target_display", "", "renodx_main_tab"),
-    game_window_display_device_id("game_window_display_device_id", "", "renodx_main_tab"),
-    adhd_multi_monitor_enabled("adhd_multi_monitor_enabled", false, "renodx_main_tab"),
-    screensaver_mode("screensaver_mode", s_screensaver_mode, static_cast<int>(ScreensaverMode::kDefault), {"Default (no change)", "Disable when Focused", "Disable"}, "renodx_main_tab") {
+    : window_mode("window_mode", 0, {"Borderless Fullscreen", "Borderless Windowed (Aspect Ratio)"}, "renodx_main_tab"),
+      aspect_index("aspect_index", 3, {"3:2", "4:3", "16:10", "16:9", "19:9", "19.5:9", "21:9", "32:9"},
+                   "renodx_main_tab"), // Default to 16:9
+      target_monitor_index("target_monitor_index", 0,
+                           {"Monitor 1", "Monitor 2", "Monitor 3", "Monitor 4", "Monitor 5", "Monitor 6", "Monitor 7",
+                            "Monitor 8", "Monitor 9", "Monitor 10"},
+                           "renodx_main_tab"),
+      background_feature("background_feature", s_background_feature_enabled, false, "renodx_main_tab"),
+      alignment("alignment", 0, {"Center", "Top Left", "Top Right", "Bottom Left", "Bottom Right"}, "renodx_main_tab"),
+      fps_limiter_mode("fps_limiter_mode", 0,
+                       {"None", "Precise Frame Rate Limiter", "VBlank Scanline Sync for VSync-OFF"}, "renodx_main_tab"),
+      scanline_offset("scanline_offset", s_scanline_offset, 0, -1000, 1000, "renodx_main_tab"),
+      vblank_sync_divisor("vblank_sync_divisor", s_vblank_sync_divisor, 1, 0, 8, "renodx_main_tab"),
+      fps_limiter_injection("fps_limiter_injection", s_fps_limiter_injection, 0, 0, 2, "renodx_main_tab"),
+      fps_limit("fps_limit", s_fps_limit, 0.0f, 0.0f, 240.0f, "renodx_main_tab"),
+      fps_limit_background("fps_limit_background", s_fps_limit_background, 30.0f, 0.0f, 240.0f, "renodx_main_tab"),
+      present_pacing_delay_percentage("present_pacing_delay_percentage", s_present_pacing_delay_percentage, 0.0f, 0.0f,
+                                      100.0f, "renodx_main_tab"),
+      force_vsync_on("force_vsync_on", s_force_vsync_on, false, "renodx_main_tab"),
+      force_vsync_off("force_vsync_off", s_force_vsync_off, false, "renodx_main_tab"),
+      prevent_tearing("prevent_tearing", s_prevent_tearing, false, "renodx_main_tab"),
+      audio_volume_percent("audio_volume_percent", s_audio_volume_percent, 100.0f, 0.0f, 100.0f, "renodx_main_tab"),
+      audio_mute("audio_mute", s_audio_mute, false, "renodx_main_tab"),
+      mute_in_background("mute_in_background", s_mute_in_background, false, "renodx_main_tab"),
+      mute_in_background_if_other_audio("mute_in_background_if_other_audio", s_mute_in_background_if_other_audio, false,
+                                        "renodx_main_tab"),
+      audio_volume_auto_apply("audio_volume_auto_apply", false, "renodx_main_tab"),
+      block_input_in_background("block_input_in_background", s_block_input_in_background, true, "renodx_main_tab"),
+      block_input_without_reshade("block_input_without_reshade", s_block_input_without_reshade, false,
+                                  "renodx_main_tab"),
+      no_render_in_background("no_render_in_background", s_no_render_in_background, false, "renodx_main_tab"),
+      no_present_in_background("no_present_in_background", s_no_present_in_background, false, "renodx_main_tab"),
+      show_test_overlay("show_test_overlay", false, "renodx_main_tab"),
+      target_display("target_display", "", "renodx_main_tab"),
+      game_window_display_device_id("game_window_display_device_id", "", "renodx_main_tab"),
+      adhd_multi_monitor_enabled("adhd_multi_monitor_enabled", false, "renodx_main_tab"),
+      screensaver_mode("screensaver_mode", s_screensaver_mode, static_cast<int>(ScreensaverMode::kDefault),
+                       {"Default (no change)", "Disable when Focused", "Disable"}, "renodx_main_tab") {
 
     // Initialize the all_settings_ vector
     all_settings_ = {
@@ -104,16 +113,16 @@ void MainTabSettings::LoadSettings() {
     LogInfo("MainTabSettings::LoadSettings() completed");
 }
 
-std::vector<ui::new_ui::SettingBase*> MainTabSettings::GetAllSettings() {
-    return all_settings_;
-}
+std::vector<ui::new_ui::SettingBase *> MainTabSettings::GetAllSettings() { return all_settings_; }
 
 // Helper function to convert wstring to string
-std::string WStringToString(const std::wstring& wstr) {
-    if (wstr.empty()) return std::string();
+std::string WStringToString(const std::wstring &wstr) {
+    if (wstr.empty())
+        return std::string();
 
     int size = WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), -1, nullptr, 0, nullptr, nullptr);
-    if (size <= 0) return std::string();
+    if (size <= 0)
+        return std::string();
 
     std::string result(size - 1, '\0');
     WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), -1, &result[0], size, nullptr, nullptr);
@@ -154,7 +163,8 @@ std::string GetDisplayDeviceIdFromWindow(HWND hwnd) {
             monitorDevice.cb = sizeof(monitorDevice);
 
             DWORD monitorIndex = 0;
-            while (EnumDisplayDevicesW(displayDevice.DeviceName, monitorIndex, &monitorDevice, EDD_GET_DEVICE_INTERFACE_NAME)) {
+            while (EnumDisplayDevicesW(displayDevice.DeviceName, monitorIndex, &monitorDevice,
+                                       EDD_GET_DEVICE_INTERFACE_NAME)) {
                 // Return the full device ID (DeviceID contains the full path like DISPLAY\AUS32B4\5&24D3239D&1&UID4353)
                 if (wcslen(monitorDevice.DeviceID) > 0) {
                     return WStringToString(monitorDevice.DeviceID);
@@ -203,15 +213,17 @@ void UpdateFpsLimitMaximums() {
     float max_fps = static_cast<float>(max_refresh_rate * 1.1f);
 
     // Ensure minimum of 60 FPS and maximum of 1000 FPS for safety
-    if (max_fps < 60.0f) max_fps = 60.0f;
-    if (max_fps > 1000.0f) max_fps = 1000.0f;
+    if (max_fps < 60.0f)
+        max_fps = 60.0f;
+    if (max_fps > 1000.0f)
+        max_fps = 1000.0f;
 
     // Update the maximum values
     g_mainTabSettings.fps_limit.SetMax(max_fps);
     g_mainTabSettings.fps_limit_background.SetMax(max_fps);
 
-    LogInfo("Updated FPS limit maximum to %.1f FPS (based on max monitor refresh rate of %.1f Hz)",
-            max_fps, max_refresh_rate);
+    LogInfo("Updated FPS limit maximum to %.1f FPS (based on max monitor refresh rate of %.1f Hz)", max_fps,
+            max_refresh_rate);
 }
 
 } // namespace settings

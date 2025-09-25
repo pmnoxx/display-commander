@@ -14,10 +14,11 @@
 #include "ui/new_ui/experimental_tab.hpp"
 #include "ui/new_ui/new_ui_main.hpp"
 #include "utils/timing.hpp"
-#include <d3d11.h>
+
 #include <reshade.hpp>
 #include <wrl/client.h>
 
+#include <d3d11.h>
 
 // Forward declarations for ReShade event handlers
 void OnInitEffectRuntime(reshade::api::effect_runtime *runtime);

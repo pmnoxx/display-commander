@@ -6,10 +6,12 @@
 #include "settings/experimental_tab_settings.hpp"
 #include "settings/main_tab_settings.hpp"
 #include "utils.hpp"
-#include <atomic>
+
 #include <d3d11.h>
 #include <reshade.hpp>
 #include <wrl/client.h>
+
+#include <atomic>
 
 // Global variables
 // UI mode removed - now using new tab system
@@ -25,7 +27,7 @@ std::atomic<Microsoft::WRL::ComPtr<IDXGIFactory1> *> g_shared_dxgi_factory{nullp
 
 // Window settings
 std::atomic<WindowMode> s_window_mode{
-    WindowMode::kAspectRatio}; // kAspectRatio = Borderless Windowed (Aspect Ratio), kFullscreen = Borderless Fullscreen
+    WindowMode::kFullscreen}; // kFullscreen = Borderless Fullscreen (default), kAspectRatio = Borderless Windowed (Aspect Ratio)
 
 std::atomic<AspectRatioType> s_aspect_index{AspectRatioType::k16_9}; // Default to 16:9
 

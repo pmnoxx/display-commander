@@ -1,6 +1,8 @@
 #include "developer_tab_settings.hpp"
 #include "../globals.hpp"
+
 #include <minwindef.h>
+
 #include <atomic>
 
 // External declarations for the global variables
@@ -29,33 +31,35 @@ namespace settings {
 
 // Constructor - initialize all settings with proper keys and default values
 DeveloperTabSettings::DeveloperTabSettings()
-    : prevent_fullscreen("PreventFullscreen", s_prevent_fullscreen, true, "DisplayCommander")
-    , spoof_fullscreen_state("SpoofFullscreenState", s_spoof_fullscreen_state, 0, 0, 2, "DisplayCommander")
-    , continue_rendering("ContinueRendering", s_continue_rendering, false, "DisplayCommander")
-    , continuous_monitoring("ContinuousMonitoring", s_continuous_monitoring_enabled, true, "DisplayCommander")
-    , prevent_always_on_top("PreventAlwaysOnTop", s_prevent_always_on_top, true, "DisplayCommander")
-    , fix_hdr10_colorspace("FixHDR10Colorspace", s_fix_hdr10_colorspace, false, "DisplayCommander")
-    , nvapi_fullscreen_prevention("NvapiFullscreenPrevention", s_nvapi_fullscreen_prevention, false, "DisplayCommander")
-    , nvapi_hdr_logging("NvapiHDRLogging", s_nvapi_hdr_logging, false, "DisplayCommander")
-    , nvapi_hdr_interval_sec("NvapiHDRInterval", s_nvapi_hdr_interval_sec, 5.0f, 1.0f, 60.0f, "DisplayCommander")
+    : prevent_fullscreen("PreventFullscreen", s_prevent_fullscreen, true, "DisplayCommander"),
+      spoof_fullscreen_state("SpoofFullscreenState", s_spoof_fullscreen_state, 0, 0, 2, "DisplayCommander"),
+      continue_rendering("ContinueRendering", s_continue_rendering, false, "DisplayCommander"),
+      continuous_monitoring("ContinuousMonitoring", s_continuous_monitoring_enabled, true, "DisplayCommander"),
+      prevent_always_on_top("PreventAlwaysOnTop", s_prevent_always_on_top, true, "DisplayCommander"),
+      fix_hdr10_colorspace("FixHDR10Colorspace", s_fix_hdr10_colorspace, false, "DisplayCommander"),
+      nvapi_fullscreen_prevention("NvapiFullscreenPrevention", s_nvapi_fullscreen_prevention, false,
+                                  "DisplayCommander"),
+      nvapi_hdr_logging("NvapiHDRLogging", s_nvapi_hdr_logging, false, "DisplayCommander"),
+      nvapi_hdr_interval_sec("NvapiHDRInterval", s_nvapi_hdr_interval_sec, 5.0f, 1.0f, 60.0f, "DisplayCommander")
 
-    // Minimal NVIDIA Reflex controls
-    , reflex_enable("ReflexEnable", s_reflex_enable, false, "DisplayCommander")
-    , reflex_low_latency("ReflexLowLatency", s_reflex_low_latency, false, "DisplayCommander")
-    , reflex_boost("ReflexBoost", s_reflex_boost, false, "DisplayCommander")
-    , reflex_use_markers("ReflexUseMarkers", s_reflex_use_markers, true, "DisplayCommander")
-    , reflex_logging("ReflexLogging", s_enable_reflex_logging, false, "DisplayCommander")
+      // Minimal NVIDIA Reflex controls
+      ,
+      reflex_enable("ReflexEnable", s_reflex_enable, false, "DisplayCommander"),
+      reflex_low_latency("ReflexLowLatency", s_reflex_low_latency, false, "DisplayCommander"),
+      reflex_boost("ReflexBoost", s_reflex_boost, false, "DisplayCommander"),
+      reflex_use_markers("ReflexUseMarkers", s_reflex_use_markers, true, "DisplayCommander"),
+      reflex_logging("ReflexLogging", s_enable_reflex_logging, false, "DisplayCommander")
 
-    , enable_mute_unmute_shortcut("EnableMuteUnmuteShortcut", s_enable_mute_unmute_shortcut, true, "DisplayCommander")
-    , enable_background_toggle_shortcut("EnableBackgroundToggleShortcut", s_enable_background_toggle_shortcut, true, "DisplayCommander")
-    , flush_before_present("FlushBeforePresent", g_flush_before_present, true, "DisplayCommander")
-{
-}
+      ,
+      enable_mute_unmute_shortcut("EnableMuteUnmuteShortcut", s_enable_mute_unmute_shortcut, true, "DisplayCommander"),
+      enable_background_toggle_shortcut("EnableBackgroundToggleShortcut", s_enable_background_toggle_shortcut, true,
+                                        "DisplayCommander"),
+      flush_before_present("FlushBeforePresent", g_flush_before_present, true, "DisplayCommander") {}
 
 void DeveloperTabSettings::LoadAll() {
     prevent_fullscreen.Load();
     spoof_fullscreen_state.Load();
-    continue_rendering.Load();  // This was missing!
+    continue_rendering.Load(); // This was missing!
     continuous_monitoring.Load();
     prevent_always_on_top.Load();
     fix_hdr10_colorspace.Load();
@@ -79,34 +83,32 @@ void DeveloperTabSettings::SaveAll() {
     // All Ref classes automatically save when values change
 }
 
-std::vector<ui::new_ui::SettingBase*> DeveloperTabSettings::GetAllSettings() {
-    return {
-        &prevent_fullscreen,
-        &spoof_fullscreen_state,
-        &continue_rendering,
-        &continuous_monitoring,
-        &prevent_always_on_top,
-        &fix_hdr10_colorspace,
-        &nvapi_fullscreen_prevention,
-        &nvapi_hdr_logging,
-        &nvapi_hdr_interval_sec,
+std::vector<ui::new_ui::SettingBase *> DeveloperTabSettings::GetAllSettings() {
+    return {&prevent_fullscreen,
+            &spoof_fullscreen_state,
+            &continue_rendering,
+            &continuous_monitoring,
+            &prevent_always_on_top,
+            &fix_hdr10_colorspace,
+            &nvapi_fullscreen_prevention,
+            &nvapi_hdr_logging,
+            &nvapi_hdr_interval_sec,
 
-        &reflex_enable,
-        &reflex_low_latency,
-        &reflex_boost,
-        &reflex_use_markers,
-        &reflex_logging,
+            &reflex_enable,
+            &reflex_low_latency,
+            &reflex_boost,
+            &reflex_use_markers,
+            &reflex_logging,
 
-        &enable_mute_unmute_shortcut,
-        &enable_background_toggle_shortcut,
-        &flush_before_present
-    };
+            &enable_mute_unmute_shortcut,
+            &enable_background_toggle_shortcut,
+            &flush_before_present};
 }
 
 // Global instance is now defined in globals.cpp
 
 // Legacy function for backward compatibility - now uses the new settings wrapper
-void AddDeveloperNewTabSettings(std::vector<void*>& settings) {
+void AddDeveloperNewTabSettings(std::vector<void *> &settings) {
     // This function is now deprecated in favor of the settings wrapper system
     // The settings are now managed by DeveloperTabSettings class
     // This function is kept for backward compatibility but doesn't add any new settings

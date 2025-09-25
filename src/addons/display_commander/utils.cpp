@@ -18,27 +18,6 @@ const AspectRatio ASPECT_OPTIONS[] = {
     {32, 9},   // 3.556:1
 };
 
-// Returns the width and height of the current monitor as a pair
-std::pair<int, int> GetCurrentMonitorSize() {
-    HWND hwnd = g_last_swapchain_hwnd.load();
-    if (hwnd == nullptr) {
-        // Fallback to primary monitor
-        return { GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN) };
-    }
-
-    HMONITOR hmon = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
-    MONITORINFOEXW mi{};
-    mi.cbSize = sizeof(mi);
-    if (GetMonitorInfoW(hmon, &mi)) {
-        int width = mi.rcMonitor.right - mi.rcMonitor.left;
-        int height = mi.rcMonitor.bottom - mi.rcMonitor.top;
-        return { width, height };
-    }
-
-    // Fallback to primary monitor
-    return { GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN) };
-}
-
 // Helper function implementations
 RECT RectFromWH(int width, int height) {
     RECT rect = {0, 0, width, height};
@@ -89,18 +68,18 @@ AspectRatio GetAspectByIndex(AspectRatioType aspect_type) {
     return {16, 9}; // Default to 16:9
 }
 
-void ComputeDesiredSize(int &out_w, int &out_h) {
+void ComputeDesiredSize(int display_width, int display_height, int &out_w, int &out_h) {
     if (s_window_mode.load() == WindowMode::kFullscreen) {
         // kFullscreen: Borderless Fullscreen - use current monitor dimensions
-        out_w = GetCurrentMonitorSize().first;
-        out_h = GetCurrentMonitorSize().second;
+        out_w = display_width;
+        out_h = display_height;
         return;
     }
 
     // kAspectRatio: Borderless Windowed (Aspect Ratio) - aspect mode
     // For aspect ratio mode, we need to get the width from the resolution widget
     // For now, use current monitor width as default
-    const int want_w = GetCurrentMonitorSize().first;
+    const int want_w = display_width;
     AspectRatio ar = GetAspectByIndex(s_aspect_index.load());
     // height = round(width * h / w)
     // prevent division by zero

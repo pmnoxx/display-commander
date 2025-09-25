@@ -6,7 +6,7 @@
 #include <sstream>
 
 // Forward declaration
-void ComputeDesiredSize(int &out_w, int &out_h);
+void ComputeDesiredSize(int display_width, int display_height, int &out_w, int &out_h);
 
 // First function: Calculate and update global window state
 void CalculateWindowState(HWND hwnd, const char *reason) {
@@ -100,26 +100,26 @@ void CalculateWindowState(HWND hwnd, const char *reason) {
         local_state.current_monitor_index = target_monitor_index;
         local_state.current_monitor_refresh_rate = tmp_refresh;
 
-        const int monitor_width = disp->width;
-        const int monitor_height = disp->height;
+        const int display_width = disp->width;
+        const int display_height = disp->height;
 
-        if (local_state.desired_width > monitor_width) {
+        if (local_state.desired_width > display_width) {
             std::ostringstream oss;
             oss << "CalculateWindowState: Desired width " << local_state.desired_width << " exceeds monitor width "
-                << monitor_width << ", clamping";
+                << display_width << ", clamping";
             LogInfo(oss.str().c_str());
-            local_state.desired_width = monitor_width;
+            local_state.desired_width = display_width;
         }
         // Get desired dimensions and position from global settings
         // Use manual or aspect ratio mode
-        ComputeDesiredSize(local_state.desired_width, local_state.desired_height);
+        ComputeDesiredSize(display_width, display_height, local_state.desired_width, local_state.desired_height);
 
-        if (local_state.desired_height > monitor_height) {
+        if (local_state.desired_height > display_height) {
             std::ostringstream oss;
             oss << "CalculateWindowState: Desired height " << local_state.desired_height << " exceeds monitor height "
-                << monitor_height << ", clamping";
+                << display_height << ", clamping";
             LogInfo(oss.str().c_str());
-            local_state.desired_height = monitor_height;
+            local_state.desired_height = display_height;
         }
 
         // Calculate target dimensions
@@ -171,8 +171,8 @@ void CalculateWindowState(HWND hwnd, const char *reason) {
         local_state.needs_move = (local_state.target_x != wr_current.left) || (local_state.target_y != wr_current.top);
 
         // Store current monitor dimensions
-        local_state.display_width = monitor_width;
-        local_state.display_height = monitor_height;
+        local_state.display_width = display_width;
+        local_state.display_height = display_height;
 
         LogDebug("CalculateWindowState: target_w=%d, target_h=%d", local_state.target_w, local_state.target_h);
 

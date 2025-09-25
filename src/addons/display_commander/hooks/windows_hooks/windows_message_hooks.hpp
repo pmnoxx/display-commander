@@ -4,7 +4,7 @@
 #include <windows.h>
 
 
-namespace renodx::hooks {
+namespace display_commanderhooks {
 
 // Hook call statistics structure
 struct HookCallStats {
@@ -199,4 +199,4 @@ void ResetAllHookStats();
 int GetHookCount();
 const char *GetHookName(int hook_index);
 
-} // namespace renodx::hooks
+} // namespace display_commanderhooks

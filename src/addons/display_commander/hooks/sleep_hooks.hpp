@@ -4,7 +4,7 @@
 #include <windows.h>
 
 
-namespace renodx::hooks {
+namespace display_commanderhooks {
 
 // Sleep hook statistics structure
 struct SleepHookStats {
@@ -52,4 +52,4 @@ DWORD WINAPI WaitForMultipleObjects_Detour(DWORD nCount, const HANDLE *lpHandles
 bool InstallSleepHooks();
 void UninstallSleepHooks();
 
-} // namespace renodx::hooks
+} // namespace display_commanderhooks

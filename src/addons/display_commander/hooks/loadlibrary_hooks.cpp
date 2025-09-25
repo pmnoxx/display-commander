@@ -10,7 +10,7 @@
 #include <filesystem>
 #include <unordered_set>
 
-namespace renodx::hooks {
+namespace display_commanderhooks {
 
 // Original function pointers
 LoadLibraryA_pfn LoadLibraryA_Original = nullptr;
@@ -485,4 +485,4 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
     }
 }
 
-} // namespace renodx::hooks
+} // namespace display_commanderhooks

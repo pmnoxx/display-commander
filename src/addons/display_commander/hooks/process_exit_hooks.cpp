@@ -2,7 +2,7 @@
 #include "../utils.hpp"
 #include <MinHook.h>
 
-namespace renodx::hooks {
+namespace display_commanderhooks {
 
 // Function pointer types for process exit functions
 using ExitProcess_pfn = void(WINAPI *)(UINT uExitCode);
@@ -109,4 +109,4 @@ void UninstallProcessExitHooks() {
 
 bool AreProcessExitHooksInstalled() { return g_process_exit_hooks_installed.load(); }
 
-} // namespace renodx::hooks
+} // namespace display_commanderhooks

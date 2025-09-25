@@ -7,7 +7,7 @@
 #include <vector>
 
 
-namespace renodx::hooks {
+namespace display_commanderhooks {
 
 // Function pointer types for LoadLibrary functions
 using LoadLibraryA_pfn = HMODULE(WINAPI *)(LPCSTR);
@@ -57,4 +57,4 @@ void RefreshModuleList();
 // Module loading callback
 void OnModuleLoaded(const std::wstring &moduleName, HMODULE hModule);
 
-} // namespace renodx::hooks
+} // namespace display_commanderhooks

@@ -10,7 +10,6 @@ class CustomFpsLimiter {
     ~CustomFpsLimiter() = default;
 
     // Main FPS limiting function - call this in OnPresent
-    void LimitFrameRate();
     void LimitFrameRate(double fps);
 
   private:

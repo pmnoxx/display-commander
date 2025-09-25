@@ -8,7 +8,7 @@
 #include <wrl.h>
 
 
-namespace renodx::hooks::wgi {
+namespace display_commanderhooks::wgi {
 
 // CoreWindowProxy - A proxy wrapper for ICoreWindow that logs all method calls
 class CoreWindowProxy : public ABI::Windows::UI::Core::ICoreWindow {
@@ -175,4 +175,4 @@ class CoreWindowProxy : public ABI::Windows::UI::Core::ICoreWindow {
     STDMETHOD(remove_TouchHitTesting)(EventRegistrationToken token) override;
 };
 
-} // namespace renodx::hooks::wgi
+} // namespace display_commanderhooks::wgi

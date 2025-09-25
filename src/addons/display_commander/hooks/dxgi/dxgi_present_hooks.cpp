@@ -6,7 +6,7 @@
 
 #include <string>
 
-namespace renodx::hooks::dxgi {
+namespace display_commanderhooks::dxgi {
 
 // Original function pointers
 IDXGISwapChain_Present_pfn IDXGISwapChain_Present_Original = nullptr;
@@ -124,4 +124,4 @@ void UninstallDxgiPresentHooks() {
 // Check if DXGI Present hooks are installed
 bool AreDxgiPresentHooksInstalled() { return g_dxgi_present_hooks_installed.load(); }
 
-} // namespace renodx::hooks::dxgi
+} // namespace display_commanderhooks::dxgi

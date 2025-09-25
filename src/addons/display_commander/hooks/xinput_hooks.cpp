@@ -8,7 +8,7 @@
 #include <vector>
 
 
-namespace renodx::hooks {
+namespace display_commanderhooks {
 
 // Original function pointers
 XInputGetState_pfn XInputGetState_Original = nullptr;
@@ -524,4 +524,4 @@ void DiagnoseXInputModules() {
     }
 }
 
-} // namespace renodx::hooks
+} // namespace display_commanderhooks

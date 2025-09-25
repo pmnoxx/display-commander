@@ -193,7 +193,7 @@ void SaveGameWindowDisplayDeviceId(HWND hwnd) {
 // Function to update the target display setting with current game window
 void UpdateTargetDisplayFromGameWindow() {
     // Get the game window from the API hooks
-    HWND game_window = renodx::hooks::GetGameWindow();
+    HWND game_window = display_commanderhooks::GetGameWindow();
 
     std::string display_id = GetDisplayDeviceIdFromWindow(game_window);
     settings::g_mainTabSettings.target_display.SetValue(display_id);

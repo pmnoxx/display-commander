@@ -71,7 +71,7 @@ void DoInitializationWithHwnd(HWND hwnd) {
         LogInfo("DoInitialization: Setting up window hooks for HWND: 0x%p", hwnd);
 
         // Set the game window for API hooks
-        renodx::hooks::SetGameWindow(hwnd);
+        display_commanderhooks::SetGameWindow(hwnd);
 
         // Save the display device ID for the game window
         settings::SaveGameWindowDisplayDeviceId(hwnd);
@@ -79,10 +79,10 @@ void DoInitializationWithHwnd(HWND hwnd) {
 
     LogInfo("DoInitialization: Initialization completed");
     // Set the game window for API hooks
-    renodx::hooks::SetGameWindow(hwnd);
+    display_commanderhooks::SetGameWindow(hwnd);
 
     // Install window procedure hooks
-    if (renodx::hooks::InstallWindowProcHooks(hwnd)) {
+    if (display_commanderhooks::InstallWindowProcHooks(hwnd)) {
         LogInfo("Window procedure hooks installed successfully");
     } else {
         LogError("Failed to install window procedure hooks");
@@ -372,7 +372,7 @@ void OnInitSwapchain(reshade::api::swapchain *swapchain, bool resize) {
         // Hook DXGI Present calls for this swapchain
         // Get the underlying DXGI swapchain from the ReShade swapchain
         if (auto *dxgi_swapchain = reinterpret_cast<IDXGISwapChain *>(swapchain->get_native())) {
-            if (renodx::hooks::dxgi::HookSwapchain(dxgi_swapchain)) {
+            if (display_commanderhooks::dxgi::HookSwapchain(dxgi_swapchain)) {
                 LogInfo("Successfully hooked DXGI Present calls for swapchain: 0x%p", dxgi_swapchain);
             } else {
                 LogWarn("Failed to hook DXGI Present calls for swapchain: 0x%p", dxgi_swapchain);
@@ -581,10 +581,10 @@ void HandleFpsLimiter() {
     }
     case FpsLimiterMode::kCustom: {
         // Use FPS limiter manager for Custom (Sleep/Spin) mode
-        if (dxgi::fps_limiter::g_customFpsLimiterManager) {
-            auto &limiter = dxgi::fps_limiter::g_customFpsLimiterManager->GetFpsLimiter();
+        if (dxgi::fps_limiter::g_customFpsLimiter) {
+            auto &limiter = dxgi::fps_limiter::g_customFpsLimiter;
             if (target_fps > 0.0f) {
-                limiter.LimitFrameRate(target_fps);
+                limiter->LimitFrameRate(target_fps);
             }
         }
         break;

@@ -5,13 +5,13 @@
 #include <dxgi.h>
 
 // Forward declarations for DXGI hooks
-namespace renodx::hooks::dxgi {
+namespace display_commanderhooks::dxgi {
 bool InstallDxgiPresentHooks();
 void UninstallDxgiPresentHooks();
 bool HookSwapchain(IDXGISwapChain *swapchain);
-} // namespace renodx::hooks::dxgi
+} // namespace display_commanderhooks::dxgi
 
-namespace renodx::hooks {
+namespace display_commanderhooks {
 
 // Function pointer types
 using GetFocus_pfn = HWND(WINAPI *)();
@@ -44,4 +44,4 @@ HWND GetGameWindow();
 bool IsGameWindow(HWND hwnd);
 void SetGameWindow(HWND hwnd);
 
-} // namespace renodx::hooks
+} // namespace display_commanderhooks

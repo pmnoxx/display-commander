@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include <windows.h>
 
-namespace renodx::hooks {
+namespace display_commanderhooks {
 
 // Timeslowdown configuration variables - now using global instance
 
@@ -77,4 +77,4 @@ extern const char *HOOK_GET_SYSTEM_TIME_PRECISE_AS_FILE_TIME;
 extern const char *HOOK_GET_LOCAL_TIME;
 extern const char *HOOK_NT_QUERY_SYSTEM_TIME;
 
-} // namespace renodx::hooks
+} // namespace display_commanderhooks

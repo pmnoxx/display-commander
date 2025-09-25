@@ -1,7 +1,7 @@
 #include "corewindow_proxy.hpp"
 #include "../../utils.hpp"
 
-namespace renodx::hooks::wgi {
+namespace display_commanderhooks::wgi {
 
 // CoreWindowProxy Implementation
 CoreWindowProxy::CoreWindowProxy(Microsoft::WRL::ComPtr<ABI::Windows::UI::Core::ICoreWindow> originalCoreWindow)
@@ -363,4 +363,4 @@ STDMETHODIMP CoreWindowProxy::remove_TouchHitTesting(EventRegistrationToken toke
     return m_originalCoreWindow->remove_TouchHitTesting(token);
 }
 
-} // namespace renodx::hooks::wgi
+} // namespace display_commanderhooks::wgi

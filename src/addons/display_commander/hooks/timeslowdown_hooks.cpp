@@ -17,7 +17,7 @@
 #define NT_SUCCESS(Status) (((NTSTATUS)(Status)) >= 0)
 #endif
 
-namespace renodx::hooks {
+namespace display_commanderhooks {
 
 // Hook type constants
 const char *HOOK_QUERY_PERFORMANCE_COUNTER = "QueryPerformanceCounter";
@@ -711,4 +711,4 @@ uint64_t GetTimerHookCallCount(const char *hook_name) {
     return 0;
 }
 
-} // namespace renodx::hooks
+} // namespace display_commanderhooks

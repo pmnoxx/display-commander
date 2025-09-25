@@ -10,7 +10,7 @@
 #include <atomic>
 
 
-namespace renodx::hooks {
+namespace display_commanderhooks {
 
 // Global variables for hook state
 static std::atomic<bool> g_hooks_installed{false};
@@ -334,4 +334,4 @@ LRESULT DetourWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
     return SendMessage(hwnd, uMsg, wParam, lParam);
 }
 
-} // namespace renodx::hooks
+} // namespace display_commanderhooks

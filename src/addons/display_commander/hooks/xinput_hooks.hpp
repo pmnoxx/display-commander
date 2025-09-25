@@ -4,7 +4,7 @@
 
 #include <XInput.h>
 
-namespace renodx::hooks {
+namespace display_commanderhooks {
 
 // Function pointer types
 using XInputGetState_pfn = DWORD(WINAPI *)(DWORD, XINPUT_STATE *);
@@ -33,4 +33,4 @@ void DiagnoseXInputModules();
 void ApplyThumbstickProcessing(XINPUT_STATE *pState, float left_max_input, float right_max_input, float left_min_output,
                                float right_min_output, float left_deadzone, float right_deadzone);
 
-} // namespace renodx::hooks
+} // namespace display_commanderhooks

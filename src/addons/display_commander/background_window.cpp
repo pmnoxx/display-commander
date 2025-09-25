@@ -96,7 +96,7 @@ bool BackgroundWindowManager::CreateBackgroundWindowInThread(HWND game_hwnd) {
     // Create background window covering the entire monitor
     m_background_hwnd = CreateWindowExA(WS_EX_LAYERED | WS_EX_TOOLWINDOW,                           // Extended styles
                                         window_class_to_use,                                        // Window class
-                                        "RENODX BACKGROUND WINDOW",                                 // Window title
+                                        "DISPLAY COMMANDER BACKGROUND WINDOW",                                 // Window title
                                         WS_POPUP | WS_VISIBLE,                                      // Window style
                                         monitor_info.rcMonitor.left,                                // X position
                                         monitor_info.rcMonitor.top,                                 // Y position

@@ -8,7 +8,7 @@
 
 // Removed unused headers
 
-namespace renodx::hooks {
+namespace display_commanderhooks {
 
 // Constant to disable sleep hooks
 const bool DISABLE_SLEEP_HOOKS = false;
@@ -310,4 +310,4 @@ void UninstallSleepHooks() {
     LogInfo("Sleep hooks uninstalled");
 }
 
-} // namespace renodx::hooks
+} // namespace display_commanderhooks

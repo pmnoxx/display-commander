@@ -2,8 +2,10 @@
 
 #include "../ui/new_ui/settings_wrapper.hpp"
 #include "globals.hpp"
-#include <vector>
+
 #include <atomic>
+#include <vector>
+
 
 // Forward declarations for atomic variables used by main tab settings
 extern std::atomic<bool> s_background_feature_enabled;
@@ -29,7 +31,7 @@ namespace settings {
 
 // Settings manager for the main tab
 class MainTabSettings {
-public:
+  public:
     MainTabSettings();
     ~MainTabSettings() = default;
 
@@ -37,7 +39,7 @@ public:
     void LoadSettings();
 
     // Get all settings for loading
-    std::vector<ui::new_ui::SettingBase*> GetAllSettings();
+    std::vector<ui::new_ui::SettingBase *> GetAllSettings();
 
     // Display Settings
     ui::new_ui::ComboSetting window_mode;
@@ -62,7 +64,6 @@ public:
     ui::new_ui::BoolSettingRef force_vsync_on;
     ui::new_ui::BoolSettingRef force_vsync_off;
     ui::new_ui::BoolSettingRef prevent_tearing;
-
 
     // Audio Settings
     ui::new_ui::FloatSettingRef audio_volume_percent;
@@ -89,8 +90,8 @@ public:
     // Screensaver Control
     ui::new_ui::ComboSettingEnumRef<ScreensaverMode> screensaver_mode;
 
-private:
-    std::vector<ui::new_ui::SettingBase*> all_settings_;
+  private:
+    std::vector<ui::new_ui::SettingBase *> all_settings_;
 };
 
 // Global instance

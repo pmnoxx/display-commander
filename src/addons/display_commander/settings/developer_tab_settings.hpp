@@ -1,19 +1,20 @@
 #pragma once
 
 #include "../ui/new_ui/settings_wrapper.hpp"
+
 #include <vector>
 
 namespace settings {
 
 // Bring setting types into scope
 using ui::new_ui::BoolSettingRef;
-using ui::new_ui::IntSettingRef;
 using ui::new_ui::FloatSettingRef;
+using ui::new_ui::IntSettingRef;
 using ui::new_ui::SettingBase;
 
 // Developer tab settings manager
 class DeveloperTabSettings {
-public:
+  public:
     DeveloperTabSettings();
     ~DeveloperTabSettings() = default;
 
@@ -53,7 +54,7 @@ public:
     BoolSettingRef reflex_logging;
 
     // Get all settings for bulk operations
-    std::vector<SettingBase*> GetAllSettings();
+    std::vector<SettingBase *> GetAllSettings();
 };
 
 // Global instance

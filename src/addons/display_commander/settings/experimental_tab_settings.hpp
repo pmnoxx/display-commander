@@ -1,23 +1,24 @@
 #pragma once
 
 #include "../ui/new_ui/settings_wrapper.hpp"
+
 #include <vector>
 
 namespace settings {
 
 // Bring setting types into scope
 using ui::new_ui::BoolSetting;
-using ui::new_ui::IntSetting;
-using ui::new_ui::FloatSetting;
-using ui::new_ui::ComboSetting;
 using ui::new_ui::BoolSettingRef;
-using ui::new_ui::FloatSettingRef;
+using ui::new_ui::ComboSetting;
 using ui::new_ui::FixedIntArraySetting;
+using ui::new_ui::FloatSetting;
+using ui::new_ui::FloatSettingRef;
+using ui::new_ui::IntSetting;
 using ui::new_ui::SettingBase;
 
 // Settings manager for the experimental tab
 class ExperimentalTabSettings {
-public:
+  public:
     ExperimentalTabSettings();
     ~ExperimentalTabSettings() = default;
 
@@ -25,7 +26,7 @@ public:
     void LoadAll();
 
     // Get all settings for loading
-    std::vector<SettingBase*> GetAllSettings();
+    std::vector<SettingBase *> GetAllSettings();
 
     // Master auto-click enable
     BoolSetting auto_click_enabled;
@@ -76,9 +77,8 @@ public:
     ComboSetting get_local_time_hook;
     ComboSetting nt_query_system_time_hook;
 
-private:
-    std::vector<SettingBase*> all_settings_;
+  private:
+    std::vector<SettingBase *> all_settings_;
 };
-
 
 } // namespace settings

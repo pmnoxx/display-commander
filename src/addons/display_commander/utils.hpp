@@ -5,12 +5,12 @@
 #define WIN32_LEAN_AND_MEAN
 
 #include <windows.h>
+
 #include <windef.h>
 
 #include <atomic>
-#include <vector>
-#include <utility>
 #include <memory>
+#include <vector>
 
 // Structs needed for utility functions
 struct AspectRatio {
@@ -30,15 +30,12 @@ extern const AspectRatio ASPECT_OPTIONS[];
 
 // Forward declarations for utility functions
 RECT RectFromWH(int width, int height);
-void LogInfo(const char* msg, ...);
-void LogWarn(const char* msg, ...);
-void LogError(const char* msg, ...);
-void LogDebug(const char* msg, ...);
+void LogInfo(const char *msg, ...);
+void LogWarn(const char *msg, ...);
+void LogError(const char *msg, ...);
+void LogDebug(const char *msg, ...);
 // Window state detection
 AspectRatio GetAspectByIndex(int index);
-// Returns the width and height of the current monitor as a pair
-std::pair<int, int> GetCurrentMonitorSize();
-// TODO: Remove these legacy functions after refactor
 
 // Monitor enumeration callback
 BOOL CALLBACK MonitorEnumProc(HMONITOR hmon, HDC hdc, LPRECT rect, LPARAM lparam);

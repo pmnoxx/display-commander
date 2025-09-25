@@ -201,9 +201,6 @@ void wait_until_qpc(LONGLONG target_qpc, HANDLE &timer_handle) {
 }
 
 void wait_until_ns(LONGLONG target_ns, HANDLE &timer_handle) {
-    LONGLONG current_time = get_now_ns();
-    if (target_ns <= current_time)
-        return;
     utils::wait_until_qpc(target_ns / utils::QPC_TO_NS, timer_handle);
 }
 

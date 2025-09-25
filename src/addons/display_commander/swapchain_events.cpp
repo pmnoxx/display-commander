@@ -1,7 +1,6 @@
 #include "addon.hpp"
 #include "adhd_multi_monitor/adhd_simple_api.hpp"
 #include "audio/audio_management.hpp"
-#include "background_tasks/background_task_coordinator.hpp"
 #include "display_initial_state.hpp"
 #include "globals.hpp"
 #include "hooks/api_hooks.hpp"
@@ -16,14 +15,15 @@
 #include "swapchain_events_power_saving.hpp"
 #include "ui/new_ui/experimental_tab.hpp"
 #include "ui/new_ui/new_ui_main.hpp"
-#include "ui/ui_main.hpp"
 #include "utils.hpp"
 #include "utils/timing.hpp"
 #include "widgets/xinput_widget/xinput_widget.hpp"
-#include <atomic>
+
 #include <dxgi.h>
 #include <dxgi1_4.h>
 #include <minwindef.h>
+
+#include <atomic>
 #include <sstream>
 
 std::atomic<int> target_width = 3840;
@@ -58,9 +58,6 @@ void DoInitializationWithHwnd(HWND hwnd) {
 
     // Initialize experimental tab
     std::thread(RunBackgroundAudioMonitor).detach();
-    background::StartBackgroundTasks();
-
-    InitializeUISettings();
 
     // Start NVAPI HDR monitor if enabled
     if (s_nvapi_hdr_logging.load()) {
@@ -1018,4 +1015,8 @@ void OnSetScissorRects(reshade::api::command_list *cmd_list, uint32_t first, uin
 
     // Set the scaled scissor rectangles
     cmd_list->bind_scissor_rects(first, count, scaled_rects.data());
+}
+
+bool OnSetFullscreenState(reshade::api::swapchain *swapchain, bool fullscreen, void *hmonitor) {
+    return fullscreen && s_prevent_fullscreen.load();
 }

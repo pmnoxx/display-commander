@@ -7,7 +7,6 @@
 #include "nvapi/nvapi_fullscreen_prevention.hpp"
 #include "nvapi/nvapi_hdr_monitor.hpp"
 #include "process_exit_hooks.hpp"
-#include "reshade_events/fullscreen_prevention.hpp"
 #include "settings/main_tab_settings.hpp"
 #include "swapchain_events.hpp"
 #include "swapchain_events_power_saving.hpp"
@@ -17,7 +16,6 @@
 
 #include <reshade.hpp>
 #include <wrl/client.h>
-
 #include <d3d11.h>
 
 // Forward declarations for ReShade event handlers
@@ -175,8 +173,7 @@ void DoInitializationWithoutHwnd(HMODULE h_module, DWORD fdw_reason) {
     // Defer NVAPI init until after settings are loaded below
 
     // Register our fullscreen prevention event handler
-    reshade::register_event<reshade::addon_event::set_fullscreen_state>(
-        display_commander::events::OnSetFullscreenState);
+    reshade::register_event<reshade::addon_event::set_fullscreen_state>(OnSetFullscreenState);
 
     // NVAPI HDR monitor will be started after settings load below if enabled
     // Seed default fps limit snapshot

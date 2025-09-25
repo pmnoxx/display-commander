@@ -1,22 +1,14 @@
 #pragma once
 
 #include "globals.hpp"
-#include <atomic>
+
 #include <reshade.hpp>
 
+#include <atomic>
 
 // ============================================================================
 // SWAPCHAIN EVENT HANDLERS
 // ============================================================================
-
-// Draw event handlers for render timing and power saving
-// These are now implemented in swapchain_events_power_saving.cpp
-
-// Command list and queue lifecycle hooks
-// void OnInitCommandList(reshade::api::command_list* cmd_list);
-// void OnInitCommandQueue(reshade::api::command_queue* queue);//
-// void OnResetCommandList(reshade::api::command_list* cmd_list);
-// void OnExecuteCommandList(reshade::api::command_queue* queue, reshade::api::command_list* cmd_list);
 
 // Pipeline and resource binding hooks
 bool OnBindPipeline(reshade::api::command_list *cmd_list, reshade::api::pipeline_stage stages,
@@ -112,3 +104,5 @@ const char *DxgiBypassModeToString(DxgiBypassMode mode);
 namespace dxgi::fps_limiter {
 class CustomFpsLimiterManager;
 }
+
+bool OnSetFullscreenState(reshade::api::swapchain *swapchain, bool fullscreen, void *hmonitor);

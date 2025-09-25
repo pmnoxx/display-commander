@@ -5,6 +5,9 @@
 #include <algorithm>
 #include <cmath>
 
+#define ICON_FK_UNDO u8"\uf0e2"
+
+
 // Windows defines min/max as macros, so we need to undefine them
 #ifdef min
 #undef min

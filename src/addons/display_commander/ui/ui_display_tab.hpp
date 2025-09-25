@@ -2,9 +2,9 @@
 
 #include "../renodx/settings.hpp"
 #include <vector>
+#include <string>
 
 namespace ui {
-void AddDisplayTabSettings(std::vector<utils::settings2::Setting *> &settings);
 
 // Initialize the display cache for the UI
 void InitializeDisplayCache();

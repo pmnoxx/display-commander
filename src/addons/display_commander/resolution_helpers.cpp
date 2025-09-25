@@ -1,14 +1,15 @@
 #include "resolution_helpers.hpp"
 #include "globals.hpp"
-#include <dxgi1_6.h>
-#include <d3d11.h>
-#include <wrl/client.h>
 #include <cmath>
 #include <cwchar> // for wcslen
+#include <d3d11.h>
+#include <dxgi1_6.h>
+#include <wrl/client.h>
 
-#pragma comment (lib, "dxgi.lib")
-#pragma comment (lib, "d3d11.lib")
-#pragma comment (lib, "dbghelp.lib")
+
+#pragma comment(lib, "dxgi.lib")
+#pragma comment(lib, "d3d11.lib")
+#pragma comment(lib, "dbghelp.lib")
 
 using Microsoft::WRL::ComPtr;
 
@@ -16,15 +17,15 @@ using Microsoft::WRL::ComPtr;
 
 namespace resolution {
 
-
-
 // Helper function to apply display settings using DXGI API with fractional refresh rates
-bool ApplyDisplaySettingsDXGI(int monitor_index, int width, int height, UINT32 refresh_numerator, UINT32 refresh_denominator) {
+bool ApplyDisplaySettingsDXGI(int monitor_index, int width, int height, UINT32 refresh_numerator,
+                              UINT32 refresh_denominator) {
     // Get monitor handle
     std::vector<HMONITOR> monitors;
-    EnumDisplayMonitors(nullptr, nullptr,
+    EnumDisplayMonitors(
+        nullptr, nullptr,
         [](HMONITOR hmon, HDC, LPRECT, LPARAM lparam) -> BOOL {
-            auto* monitors_ptr = reinterpret_cast<std::vector<HMONITOR>*>(lparam);
+            auto *monitors_ptr = reinterpret_cast<std::vector<HMONITOR> *>(lparam);
             monitors_ptr->push_back(hmon);
             return TRUE;
         },
@@ -43,17 +44,21 @@ bool ApplyDisplaySettingsDXGI(int monitor_index, int width, int height, UINT32 r
     }
 
     // Find the adapter and output for our monitor
-    for (UINT a = 0; ; ++a) {
+    for (UINT a = 0;; ++a) {
         ComPtr<IDXGIAdapter1> adapter;
-        if (factory->EnumAdapters1(a, &adapter) == DXGI_ERROR_NOT_FOUND) break;
+        if (factory->EnumAdapters1(a, &adapter) == DXGI_ERROR_NOT_FOUND)
+            break;
 
-        for (UINT o = 0; ; ++o) {
+        for (UINT o = 0;; ++o) {
             ComPtr<IDXGIOutput> output;
-            if (adapter->EnumOutputs(o, &output) == DXGI_ERROR_NOT_FOUND) break;
+            if (adapter->EnumOutputs(o, &output) == DXGI_ERROR_NOT_FOUND)
+                break;
 
             DXGI_OUTPUT_DESC desc{};
-            if (FAILED(output->GetDesc(&desc))) continue;
-            if (desc.Monitor != hmon) continue;
+            if (FAILED(output->GetDesc(&desc)))
+                continue;
+            if (desc.Monitor != hmon)
+                continue;
 
             // Found our monitor's output! Now try to set the mode
             // We need to create a temporary swap chain to use SetFullscreenState
@@ -63,7 +68,7 @@ bool ApplyDisplaySettingsDXGI(int monitor_index, int width, int height, UINT32 r
             ComPtr<ID3D11DeviceContext> context;
             ComPtr<IDXGISwapChain> swap_chain;
 
-            D3D_FEATURE_LEVEL feature_levels[] = { D3D_FEATURE_LEVEL_11_0, D3D_FEATURE_LEVEL_10_0 };
+            D3D_FEATURE_LEVEL feature_levels[] = {D3D_FEATURE_LEVEL_11_0, D3D_FEATURE_LEVEL_10_0};
             D3D_FEATURE_LEVEL feature_level;
 
             DXGI_SWAP_CHAIN_DESC swap_chain_desc = {};
@@ -79,23 +84,12 @@ bool ApplyDisplaySettingsDXGI(int monitor_index, int width, int height, UINT32 r
             swap_chain_desc.SampleDesc.Quality = 0;
             swap_chain_desc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
             swap_chain_desc.OutputWindow = nullptr; // We don't need a window for this
-            swap_chain_desc.Windowed = FALSE; // Start in fullscreen
+            swap_chain_desc.Windowed = FALSE;       // Start in fullscreen
             swap_chain_desc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
 
             HRESULT hr = D3D11CreateDeviceAndSwapChain(
-                adapter.Get(),
-                D3D_DRIVER_TYPE_UNKNOWN,
-                nullptr,
-                0,
-                feature_levels,
-                ARRAYSIZE(feature_levels),
-                D3D11_SDK_VERSION,
-                &swap_chain_desc,
-                &swap_chain,
-                &device,
-                &feature_level,
-                &context
-            );
+                adapter.Get(), D3D_DRIVER_TYPE_UNKNOWN, nullptr, 0, feature_levels, ARRAYSIZE(feature_levels),
+                D3D11_SDK_VERSION, &swap_chain_desc, &swap_chain, &device, &feature_level, &context);
 
             if (SUCCEEDED(hr) && swap_chain) {
                 // Set the output as the target for fullscreen

@@ -1,7 +1,8 @@
 #pragma once
 
-#include <windows.h>
 #include <string>
+#include <windows.h>
+
 
 namespace display_restore {
 
@@ -37,5 +38,3 @@ bool RestoreDisplayByIndex(int display_index);
 bool RestoreDisplayByDeviceName(const std::wstring &device_name);
 
 } // namespace display_restore
-
-

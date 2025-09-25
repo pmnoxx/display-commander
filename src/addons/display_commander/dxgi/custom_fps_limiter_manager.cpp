@@ -3,12 +3,9 @@
 
 namespace dxgi::fps_limiter {
 
-CustomFpsLimiterManager::CustomFpsLimiterManager()
-{
-}
+CustomFpsLimiterManager::CustomFpsLimiterManager() {}
 
-bool CustomFpsLimiterManager::InitializeCustomFpsLimiterSystem()
-{
+bool CustomFpsLimiterManager::InitializeCustomFpsLimiterSystem() {
     // Disable RenoDX's built-in FPS limiter
     //  utils::swapchain::fps_limit = 0.0f;
 
@@ -18,8 +15,7 @@ bool CustomFpsLimiterManager::InitializeCustomFpsLimiterSystem()
     return true;
 }
 
-void CustomFpsLimiterManager::ShutdownCustomFpsLimiterSystem()
-{
+void CustomFpsLimiterManager::ShutdownCustomFpsLimiterSystem() {
     // Re-enable RenoDX's built-in FPS limiter
     // utils::swapchain::fps_limit = 60.0f;
 

@@ -8,7 +8,7 @@
 namespace dxgi::fps_limiter {
 
 class CustomFpsLimiter {
-public:
+  public:
     CustomFpsLimiter();
     ~CustomFpsLimiter() = default;
 
@@ -16,9 +16,7 @@ public:
     void LimitFrameRate();
     void LimitFrameRate(double fps);
 
-
-private:
-
+  private:
     // QPC for sleep
     LONGLONG last_time_point_ns = 0;
 };

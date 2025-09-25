@@ -10,7 +10,11 @@
 #include "dxgi/custom_fps_limiter_manager.hpp"
 #include "latent_sync/latent_sync_manager.hpp"
 #include "display_cache.hpp"
-#include "dxgi/dxgi_device_info.hpp"
+#include <d3d11.h>
+#include <reshade.hpp>
+#include <wrl/client.h>
+
+
 
 // Constants
 #define ImTextureID ImU64

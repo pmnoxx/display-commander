@@ -1,9 +1,10 @@
 #include "background_window.hpp"
-#include "utils.hpp"
 #include "globals.hpp"
 #include "settings/main_tab_settings.hpp"
-#include <sstream>
+#include "utils.hpp"
 #include <algorithm>
+#include <sstream>
+
 
 // IMPORTANT ARCHITECTURAL PRINCIPLE:
 // Windows must be created in the same thread that processes their messages.
@@ -14,16 +15,11 @@
 extern BackgroundWindowManager g_backgroundWindowManager;
 
 BackgroundWindowManager::BackgroundWindowManager()
-    : m_background_hwnd(nullptr)
-    , m_has_background_window(false)
-    , m_frame_counter(0)
-    // , m_ignore_focus_events(true) { // Start with focus events ignored
-    {
-}
+    : m_background_hwnd(nullptr), m_has_background_window(false), m_frame_counter(0)
+// , m_ignore_focus_events(true) { // Start with focus events ignored
+{}
 
-BackgroundWindowManager::~BackgroundWindowManager() {
-    DestroyBackgroundWindow();
-}
+BackgroundWindowManager::~BackgroundWindowManager() { DestroyBackgroundWindow(); }
 
 bool BackgroundWindowManager::RegisterWindowClass() {
     WNDCLASSEXA wc = {};
@@ -78,7 +74,7 @@ bool BackgroundWindowManager::CreateBackgroundWindowInThread(HWND game_hwnd) {
 
     // Try custom class first, fallback to existing Windows class
     bool custom_class_registered = RegisterWindowClass();
-    const char* window_class_to_use;
+    const char *window_class_to_use;
 
     if (custom_class_registered) {
         window_class_to_use = BACKGROUND_WINDOW_CLASS;
@@ -91,26 +87,25 @@ bool BackgroundWindowManager::CreateBackgroundWindowInThread(HWND game_hwnd) {
 
     // Get monitor info for the game window
     HMONITOR monitor = MonitorFromWindow(game_hwnd, MONITOR_DEFAULTTONEAREST);
-    MONITORINFO monitor_info = { sizeof(MONITORINFO) };
+    MONITORINFO monitor_info = {sizeof(MONITORINFO)};
     if (!GetMonitorInfo(monitor, &monitor_info)) {
         LogInfo("Failed to get monitor info for background window");
         return false;
     }
 
     // Create background window covering the entire monitor
-    m_background_hwnd = CreateWindowExA(
-        WS_EX_LAYERED | WS_EX_TOOLWINDOW, // Extended styles
-        window_class_to_use,               // Window class
-        "RENODX BACKGROUND WINDOW",       // Window title
-        WS_POPUP | WS_VISIBLE,            // Window style
-        monitor_info.rcMonitor.left,      // X position
-        monitor_info.rcMonitor.top,       // Y position
-        monitor_info.rcMonitor.right - monitor_info.rcMonitor.left,  // Width
-        monitor_info.rcMonitor.bottom - monitor_info.rcMonitor.top, // Height
-        nullptr,                          // Parent window
-        nullptr,                          // Menu
-        GetModuleHandle(nullptr),         // Instance
-        nullptr                           // Additional data
+    m_background_hwnd = CreateWindowExA(WS_EX_LAYERED | WS_EX_TOOLWINDOW,                           // Extended styles
+                                        window_class_to_use,                                        // Window class
+                                        "RENODX BACKGROUND WINDOW",                                 // Window title
+                                        WS_POPUP | WS_VISIBLE,                                      // Window style
+                                        monitor_info.rcMonitor.left,                                // X position
+                                        monitor_info.rcMonitor.top,                                 // Y position
+                                        monitor_info.rcMonitor.right - monitor_info.rcMonitor.left, // Width
+                                        monitor_info.rcMonitor.bottom - monitor_info.rcMonitor.top, // Height
+                                        nullptr,                                                    // Parent window
+                                        nullptr,                                                    // Menu
+                                        GetModuleHandle(nullptr),                                   // Instance
+                                        nullptr                                                     // Additional data
     );
 
     if (m_background_hwnd == nullptr) {
@@ -123,7 +118,7 @@ bool BackgroundWindowManager::CreateBackgroundWindowInThread(HWND game_hwnd) {
 
     // Ensure the background window cannot receive focus or input
     SetWindowLongPtr(m_background_hwnd, GWL_EXSTYLE,
-        GetWindowLongPtr(m_background_hwnd, GWL_EXSTYLE) | WS_EX_NOACTIVATE);
+                     GetWindowLongPtr(m_background_hwnd, GWL_EXSTYLE) | WS_EX_NOACTIVATE);
 
     // Switch focus back to the game window after creating background window
     SetForegroundWindow(game_hwnd);
@@ -160,92 +155,92 @@ void BackgroundWindowManager::StartBackgroundThread(HWND game_hwnd) {
             if (GetMessage(&msg, nullptr, 0, 0)) {
                 // Handle specific messages
                 switch (msg.message) {
-                    case WM_PAINT: {
-                        // Handle painting with different colors inside/outside game rectangle
-                        PAINTSTRUCT ps;
-                        HDC hdc = BeginPaint(m_background_hwnd, &ps);
+                case WM_PAINT: {
+                    // Handle painting with different colors inside/outside game rectangle
+                    PAINTSTRUCT ps;
+                    HDC hdc = BeginPaint(m_background_hwnd, &ps);
 
-                        if (hdc) {
-                            // Get game window rectangle
-                            RECT game_rect;
-                            if (GetWindowRect(game_hwnd, &game_rect)) {
-                                // Fill outside game rectangle with black
-                                RECT outside_rects[4];
+                    if (hdc) {
+                        // Get game window rectangle
+                        RECT game_rect;
+                        if (GetWindowRect(game_hwnd, &game_rect)) {
+                            // Fill outside game rectangle with black
+                            RECT outside_rects[4];
 
-                                // Top rectangle (above game)
-                                outside_rects[0] = {ps.rcPaint.left, ps.rcPaint.top, ps.rcPaint.right, game_rect.top};
+                            // Top rectangle (above game)
+                            outside_rects[0] = {ps.rcPaint.left, ps.rcPaint.top, ps.rcPaint.right, game_rect.top};
 
-                                // Bottom rectangle (below game)
-                                outside_rects[1] = {ps.rcPaint.left, game_rect.bottom, ps.rcPaint.right, ps.rcPaint.bottom};
+                            // Bottom rectangle (below game)
+                            outside_rects[1] = {ps.rcPaint.left, game_rect.bottom, ps.rcPaint.right, ps.rcPaint.bottom};
 
-                                // Left rectangle (left of game)
-                                outside_rects[2] = {ps.rcPaint.left, ps.rcPaint.top, game_rect.left, ps.rcPaint.bottom};
+                            // Left rectangle (left of game)
+                            outside_rects[2] = {ps.rcPaint.left, ps.rcPaint.top, game_rect.left, ps.rcPaint.bottom};
 
-                                // Right rectangle (right of game)
-                                outside_rects[3] = {game_rect.right, ps.rcPaint.top, ps.rcPaint.right, ps.rcPaint.bottom};
+                            // Right rectangle (right of game)
+                            outside_rects[3] = {game_rect.right, ps.rcPaint.top, ps.rcPaint.right, ps.rcPaint.bottom};
 
-                                // Paint outside areas with black
-                                HBRUSH black_brush = CreateSolidBrush(COLORS[0]); // Black
-                                if (black_brush) {
-                                    for (int i = 0; i < 4; i++) {
-                                        if (outside_rects[i].right > outside_rects[i].left &&
-                                            outside_rects[i].bottom > outside_rects[i].top) {
-                                            FillRect(hdc, &outside_rects[i], black_brush);
-                                        }
-                                    }
-                                    DeleteObject(black_brush);
-                                }
-
-                                // Fill inside game rectangle with transparent color (magenta)
-                                RECT inside_rect;
-                                inside_rect.left = (std::max)(ps.rcPaint.left, game_rect.left);
-                                inside_rect.top = (std::max)(ps.rcPaint.top, game_rect.top);
-                                inside_rect.right = (std::min)(ps.rcPaint.right, game_rect.right);
-                                inside_rect.bottom = (std::min)(ps.rcPaint.bottom, game_rect.bottom);
-
-                                if (inside_rect.right > inside_rect.left && inside_rect.bottom > inside_rect.top) {
-                                    HBRUSH magenta_brush = CreateSolidBrush(COLORS[1]); // Magenta (transparent)
-                                    if (magenta_brush) {
-                                        FillRect(hdc, &inside_rect, magenta_brush);
-                                        DeleteObject(magenta_brush);
+                            // Paint outside areas with black
+                            HBRUSH black_brush = CreateSolidBrush(COLORS[0]); // Black
+                            if (black_brush) {
+                                for (int i = 0; i < 4; i++) {
+                                    if (outside_rects[i].right > outside_rects[i].left &&
+                                        outside_rects[i].bottom > outside_rects[i].top) {
+                                        FillRect(hdc, &outside_rects[i], black_brush);
                                     }
                                 }
-                            } else {
-                                // Fallback: fill entire area with black if we can't get game rect
-                                HBRUSH black_brush = CreateSolidBrush(COLORS[0]);
-                                if (black_brush) {
-                                    FillRect(hdc, &ps.rcPaint, black_brush);
-                                    DeleteObject(black_brush);
+                                DeleteObject(black_brush);
+                            }
+
+                            // Fill inside game rectangle with transparent color (magenta)
+                            RECT inside_rect;
+                            inside_rect.left = (std::max)(ps.rcPaint.left, game_rect.left);
+                            inside_rect.top = (std::max)(ps.rcPaint.top, game_rect.top);
+                            inside_rect.right = (std::min)(ps.rcPaint.right, game_rect.right);
+                            inside_rect.bottom = (std::min)(ps.rcPaint.bottom, game_rect.bottom);
+
+                            if (inside_rect.right > inside_rect.left && inside_rect.bottom > inside_rect.top) {
+                                HBRUSH magenta_brush = CreateSolidBrush(COLORS[1]); // Magenta (transparent)
+                                if (magenta_brush) {
+                                    FillRect(hdc, &inside_rect, magenta_brush);
+                                    DeleteObject(magenta_brush);
                                 }
                             }
+                        } else {
+                            // Fallback: fill entire area with black if we can't get game rect
+                            HBRUSH black_brush = CreateSolidBrush(COLORS[0]);
+                            if (black_brush) {
+                                FillRect(hdc, &ps.rcPaint, black_brush);
+                                DeleteObject(black_brush);
+                            }
                         }
-
-                        EndPaint(m_background_hwnd, &ps);
-                        break;
                     }
 
-                    case WM_TIMER: {
-                        // Handle timer for repainting (no color cycling needed)
-                        if (msg.wParam == 1) { // Our timer
-                            // Just trigger a repaint to keep window responsive
-                            InvalidateRect(m_background_hwnd, nullptr, FALSE);
-                            UpdateWindow(m_background_hwnd);
-                        }
-                        break;
-                    }
+                    EndPaint(m_background_hwnd, &ps);
+                    break;
+                }
 
-                    case WM_SETCURSOR: {
-                        // Show "not allowed" cursor
-                        SetCursor(LoadCursor(nullptr, IDC_NO));
-                        break;
+                case WM_TIMER: {
+                    // Handle timer for repainting (no color cycling needed)
+                    if (msg.wParam == 1) { // Our timer
+                        // Just trigger a repaint to keep window responsive
+                        InvalidateRect(m_background_hwnd, nullptr, FALSE);
+                        UpdateWindow(m_background_hwnd);
                     }
+                    break;
+                }
+
+                case WM_SETCURSOR: {
+                    // Show "not allowed" cursor
+                    SetCursor(LoadCursor(nullptr, IDC_NO));
+                    break;
+                }
 
                     // Removed click and focus handlers - window should keep running
 
-                    default:
-                        // Let Windows handle other messages
-                        DefWindowProc(m_background_hwnd, msg.message, msg.wParam, msg.lParam);
-                        break;
+                default:
+                    // Let Windows handle other messages
+                    DefWindowProc(m_background_hwnd, msg.message, msg.wParam, msg.lParam);
+                    break;
                 }
             } else {
                 // WM_QUIT received, exit the loop
@@ -267,19 +262,17 @@ void BackgroundWindowManager::UpdateBackgroundWindowPosition(HWND game_hwnd) {
 
     // Get monitor info for the game window
     HMONITOR monitor = MonitorFromWindow(game_hwnd, MONITOR_DEFAULTTONEAREST);
-    MONITORINFO monitor_info = { sizeof(MONITORINFO) };
+    MONITORINFO monitor_info = {sizeof(MONITORINFO)};
     if (!GetMonitorInfo(monitor, &monitor_info)) {
         return;
     }
 
     // Update background window to cover entire monitor, but ensure it stays behind the game window
     SetWindowPos(m_background_hwnd,
-        game_hwnd, // Place behind the game window specifically
-        monitor_info.rcMonitor.left,
-        monitor_info.rcMonitor.top,
-        monitor_info.rcMonitor.right - monitor_info.rcMonitor.left,
-        monitor_info.rcMonitor.bottom - monitor_info.rcMonitor.top,
-        SWP_NOACTIVATE);
+                 game_hwnd, // Place behind the game window specifically
+                 monitor_info.rcMonitor.left, monitor_info.rcMonitor.top,
+                 monitor_info.rcMonitor.right - monitor_info.rcMonitor.left,
+                 monitor_info.rcMonitor.bottom - monitor_info.rcMonitor.top, SWP_NOACTIVATE);
 }
 
 void BackgroundWindowManager::UpdateBackgroundWindow(HWND game_hwnd) {
@@ -292,7 +285,7 @@ void BackgroundWindowManager::UpdateBackgroundWindow(HWND game_hwnd) {
         // Feature disabled, destroy background window if it exists
         if (m_has_background_window.load()) {
 
-        //    DestroyBackgroundWindow();
+            //    DestroyBackgroundWindow();
         }
         return;
     }
@@ -324,10 +317,6 @@ void BackgroundWindowManager::DestroyBackgroundWindow() {
     }*/
 }
 
-bool BackgroundWindowManager::HasBackgroundWindow() const {
-    return m_has_background_window.load();
-}
+bool BackgroundWindowManager::HasBackgroundWindow() const { return m_has_background_window.load(); }
 
-HWND BackgroundWindowManager::GetBackgroundWindow() const {
-    return m_background_hwnd;
-}
+HWND BackgroundWindowManager::GetBackgroundWindow() const { return m_background_hwnd; }

@@ -3,10 +3,9 @@
 #include "globals.hpp"
 #include <algorithm>
 
-
 // Constant definitions
 const int WIDTH_OPTIONS[] = {0, 1280, 1366, 1600, 1920, 2560, 3440, 3840}; // 0 = current monitor width
-const int HEIGHT_OPTIONS[] = {0, 720, 900, 1080, 1200, 1440, 1600, 2160}; // 0 = current monitor height
+const int HEIGHT_OPTIONS[] = {0, 720, 900, 1080, 1200, 1440, 1600, 2160};  // 0 = current monitor height
 const AspectRatio ASPECT_OPTIONS[] = {
     {3, 2},    // 1.5:1
     {4, 3},    // 1.333:1
@@ -54,7 +53,7 @@ int GetCurrentMonitorHeight() {
     }
 
     // Fallback to primary monitor
-        return GetSystemMetrics(SM_CYSCREEN);
+    return GetSystemMetrics(SM_CYSCREEN);
 }
 
 // Helper function implementations
@@ -64,7 +63,7 @@ RECT RectFromWH(int width, int height) {
 }
 
 // Utility function implementations
-void LogInfo(const char* msg, ...) {
+void LogInfo(const char *msg, ...) {
     va_list args;
     va_start(args, msg);
     char buffer[1024];
@@ -73,7 +72,7 @@ void LogInfo(const char* msg, ...) {
     reshade::log::message(reshade::log::level::info, buffer);
 }
 
-void LogWarn(const char* msg, ...) {
+void LogWarn(const char *msg, ...) {
     va_list args;
     va_start(args, msg);
     char buffer[1024];
@@ -82,7 +81,7 @@ void LogWarn(const char* msg, ...) {
     reshade::log::message(reshade::log::level::warning, buffer);
 }
 
-void LogError(const char* msg, ...) {
+void LogError(const char *msg, ...) {
     va_list args;
     va_start(args, msg);
     char buffer[1024];
@@ -90,7 +89,7 @@ void LogError(const char* msg, ...) {
     va_end(args);
     reshade::log::message(reshade::log::level::error, buffer);
 }
-void LogDebug(const char* msg, ...) {
+void LogDebug(const char *msg, ...) {
     va_list args;
     va_start(args, msg);
     char buffer[1024];
@@ -107,7 +106,7 @@ AspectRatio GetAspectByIndex(AspectRatioType aspect_type) {
     return {16, 9}; // Default to 16:9
 }
 
-void ComputeDesiredSize(int& out_w, int& out_h) {
+void ComputeDesiredSize(int &out_w, int &out_h) {
     if (s_window_mode.load() == WindowMode::kFullscreen) {
         // kFullscreen: Borderless Fullscreen - use current monitor dimensions
         out_w = GetCurrentMonitorWidth();
@@ -141,7 +140,7 @@ BOOL CALLBACK MonitorEnumProc(HMONITOR hmon, HDC hdc, LPRECT rect, LPARAM lparam
         MonitorInfo monitor_info;
         monitor_info.handle = hmon;
         monitor_info.info = info;
-        auto* monitors = reinterpret_cast<std::vector<MonitorInfo>*>(lparam);
+        auto *monitors = reinterpret_cast<std::vector<MonitorInfo> *>(lparam);
         if (monitors) {
             monitors->push_back(monitor_info);
         }
@@ -209,5 +208,3 @@ SHORT FloatToShort(float value) {
     // (value + 1.0f) / 2.0f * 65535.0f + (-32768.0f)
     return static_cast<SHORT>((value + 1.0f) / 2.0f * 65535.0f + (-32768.0f));
 }
-
-

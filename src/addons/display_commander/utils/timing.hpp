@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Windows.h>
+#include <windows.h>
 
 namespace utils {
 const LONGLONG SEC_TO_NS = 1000000000;

@@ -1,12 +1,14 @@
 #pragma once
 
 #include "../../input_remapping/input_remapping.hpp"
-#include <imgui.h>
-#include <memory>
-#include <string>
+
 #include <windows.h>
+
+#include <imgui.h>
 #include <xinput.h>
 
+#include <memory>
+#include <string>
 
 namespace display_commander::widgets::remapping_widget {
 // Remapping widget class

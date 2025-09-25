@@ -1,8 +1,8 @@
 #pragma once
 
-#include <dxgi.h>
 #include <windows.h>
 
+#include <dxgi.h>
 
 // Forward declarations for DXGI hooks
 namespace renodx::hooks::dxgi {

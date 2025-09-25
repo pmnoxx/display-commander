@@ -1,10 +1,12 @@
 #include "timing.hpp"
 #include "../hooks/timeslowdown_hooks.hpp"
 #include "../utils.hpp"
-#include <Windows.h>
-#include <intrin.h>
-#include <sstream>
 
+#include <windows.h>
+
+#include <intrin.h>
+
+#include <sstream>
 
 // NTSTATUS constants if not already defined
 #ifndef STATUS_SUCCESS

@@ -7,7 +7,7 @@
 
 #include <windows.h>
 
-namespace renodx::hooks {
+namespace display_commanderhooks {
 
 // Window procedure hook functions
 bool InstallWindowProcHooks(HWND hwnd);
@@ -32,4 +32,4 @@ HWND GetHookedWindow();
 // Message detouring function (similar to Special-K's SK_DetourWindowProc)
 LRESULT DetourWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
-} // namespace renodx::hooks
+} // namespace display_commanderhooks

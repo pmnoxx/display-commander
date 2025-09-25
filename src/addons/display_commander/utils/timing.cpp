@@ -27,7 +27,7 @@ bool initialize_qpc_timing_constants() {
     if (initialized)
         return true;
     LARGE_INTEGER frequency;
-    if (!renodx::hooks::QueryPerformanceFrequency_Detour(&frequency)) {
+    if (!display_commanderhooks::QueryPerformanceFrequency_Detour(&frequency)) {
         LogError("QueryPerformanceFrequency failed, using default values");
         // If QueryPerformanceFrequency fails, keep default values
         return false;
@@ -98,7 +98,7 @@ bool supports_mwaitx(void) {
 bool setup_high_resolution_timer() {
     // Get QPC frequency
     LARGE_INTEGER frequency;
-    renodx::hooks::QueryPerformanceFrequency_Detour(&frequency);
+    display_commanderhooks::QueryPerformanceFrequency_Detour(&frequency);
     timer_res_qpc_frequency = frequency.QuadPart;
 
     // Load NTDLL functions dynamically
@@ -209,14 +209,14 @@ void wait_until_ns(LONGLONG target_ns, HANDLE &timer_handle) {
 
 LONGLONG get_now_qpc() {
     LARGE_INTEGER now_ticks = {};
-    renodx::hooks::QueryPerformanceCounter_Detour(&now_ticks);
+    display_commanderhooks::QueryPerformanceCounter_Detour(&now_ticks);
     return now_ticks.QuadPart;
 }
 
 // Global timing function
 LONGLONG get_now_ns() {
     LARGE_INTEGER now_ticks = {};
-    renodx::hooks::QueryPerformanceCounter_Detour(&now_ticks);
+    display_commanderhooks::QueryPerformanceCounter_Detour(&now_ticks);
     return now_ticks.QuadPart * utils::QPC_TO_NS;
 }
 

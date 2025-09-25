@@ -7,7 +7,7 @@
 #include <vector>
 
 
-namespace renodx::hooks {
+namespace display_commanderhooks {
 
 // Original function pointers
 DirectInputCreateA_pfn DirectInputCreateA_Original = nullptr;
@@ -304,4 +304,4 @@ void UninstallDirectInputHooks() {
 
 bool AreDirectInputHooksInstalled() { return g_directinput_hooks_installed.load(); }
 
-} // namespace renodx::hooks
+} // namespace display_commanderhooks

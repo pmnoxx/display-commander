@@ -15,7 +15,7 @@
 // External reference to screensaver mode setting
 extern std::atomic<ScreensaverMode> s_screensaver_mode;
 
-namespace renodx::hooks {
+namespace display_commanderhooks {
 
 // Original function pointers
 GetFocus_pfn GetFocus_Original = nullptr;
@@ -247,7 +247,7 @@ bool InstallApiHooks() {
     }
 
     // Install DXGI Present hooks
-    if (!renodx::hooks::dxgi::InstallDxgiPresentHooks()) {
+    if (!display_commanderhooks::dxgi::InstallDxgiPresentHooks()) {
         LogError("Failed to install DXGI Present hooks");
         return false;
     }
@@ -293,7 +293,7 @@ void UninstallApiHooks() {
     UninstallProcessExitHooks();
 
     // Uninstall DXGI Present hooks
-    renodx::hooks::dxgi::UninstallDxgiPresentHooks();
+    display_commanderhooks::dxgi::UninstallDxgiPresentHooks();
 
     // Disable all hooks
     MH_DisableHook(MH_ALL_HOOKS);
@@ -324,4 +324,4 @@ void SetGameWindow(HWND hwnd) {
     LogInfo("Game window set for API hooks - HWND: 0x%p", hwnd);
 }
 
-} // namespace renodx::hooks
+} // namespace display_commanderhooks

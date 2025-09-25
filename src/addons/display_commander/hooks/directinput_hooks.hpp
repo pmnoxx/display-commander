@@ -12,7 +12,7 @@ HRESULT WINAPI DirectInputCreateEx(HINSTANCE, DWORD, REFIID, LPVOID *, LPUNKNOWN
 HRESULT WINAPI DirectInput8Create(HINSTANCE, DWORD, REFIID, LPVOID *, LPUNKNOWN);
 }
 
-namespace renodx::hooks {
+namespace display_commanderhooks {
 
 // Function pointer types for DirectInput creation functions
 using DirectInputCreateA_pfn = HRESULT(WINAPI *)(HINSTANCE, DWORD, LPDIRECTINPUTA *, LPUNKNOWN);
@@ -48,4 +48,4 @@ bool AreDirectInputHooksInstalled();
 bool ShouldBlockDirectInputDevice(IDirectInputDevice *device);
 bool ShouldBlockDirectInputData(const DIDEVICEOBJECTDATA *data, DWORD count);
 
-} // namespace renodx::hooks
+} // namespace display_commanderhooks

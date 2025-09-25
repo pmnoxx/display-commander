@@ -100,9 +100,5 @@ const char *DxgiBypassModeToString(DxgiBypassMode mode);
 // FORWARD DECLARATIONS
 // ============================================================================
 
-// Forward declarations for types used in this header
-namespace dxgi::fps_limiter {
-class CustomFpsLimiterManager;
-}
 
 bool OnSetFullscreenState(reshade::api::swapchain *swapchain, bool fullscreen, void *hmonitor);

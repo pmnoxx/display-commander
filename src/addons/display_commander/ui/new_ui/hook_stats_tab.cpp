@@ -12,7 +12,7 @@ void DrawHookStatsTab() {
 
     // Reset button
     if (ImGui::Button("Reset All Statistics")) {
-        renodx::hooks::ResetAllHookStats();
+        display_commanderhooks::ResetAllHookStats();
     }
     ImGui::SameLine();
     ImGui::Text("Click to reset all counters to zero");
@@ -31,10 +31,10 @@ void DrawHookStatsTab() {
         ImGui::TableHeadersRow();
 
         // Display statistics for each hook
-        int hook_count = renodx::hooks::GetHookCount();
+        int hook_count = display_commanderhooks::GetHookCount();
         for (int i = 0; i < hook_count; ++i) {
-            const auto &stats = renodx::hooks::GetHookStats(i);
-            const char *hook_name = renodx::hooks::GetHookName(i);
+            const auto &stats = display_commanderhooks::GetHookStats(i);
+            const char *hook_name = display_commanderhooks::GetHookName(i);
 
             uint64_t total_calls = stats.total_calls.load();
             uint64_t unsuppressed_calls = stats.unsuppressed_calls.load();
@@ -74,10 +74,10 @@ void DrawHookStatsTab() {
 
     uint64_t total_all_calls = 0;
     uint64_t total_unsuppressed_calls = 0;
-    int hook_count = renodx::hooks::GetHookCount();
+    int hook_count = display_commanderhooks::GetHookCount();
 
     for (int i = 0; i < hook_count; ++i) {
-        const auto &stats = renodx::hooks::GetHookStats(i);
+        const auto &stats = display_commanderhooks::GetHookStats(i);
         total_all_calls += stats.total_calls.load();
         total_unsuppressed_calls += stats.unsuppressed_calls.load();
     }

@@ -1,6 +1,6 @@
 #include "globals.hpp"
-#include "background_window.hpp" // Added this line
-#include "dxgi/custom_fps_limiter_manager.hpp"
+#include "background_window.hpp"
+#include "dxgi/custom_fps_limiter.hpp"
 #include "latency/latency_manager.hpp"
 #include "settings/developer_tab_settings.hpp"
 #include "settings/experimental_tab_settings.hpp"
@@ -26,8 +26,8 @@ HMODULE g_hmodule = nullptr;
 std::atomic<Microsoft::WRL::ComPtr<IDXGIFactory1> *> g_shared_dxgi_factory{nullptr};
 
 // Window settings
-std::atomic<WindowMode> s_window_mode{
-    WindowMode::kFullscreen}; // kFullscreen = Borderless Fullscreen (default), kAspectRatio = Borderless Windowed (Aspect Ratio)
+std::atomic<WindowMode> s_window_mode{WindowMode::kFullscreen}; // kFullscreen = Borderless Fullscreen (default),
+                                                                // kAspectRatio = Borderless Windowed (Aspect Ratio)
 
 std::atomic<AspectRatioType> s_aspect_index{AspectRatioType::k16_9}; // Default to 16:9
 
@@ -128,7 +128,7 @@ BackgroundWindowManager g_backgroundWindowManager;
 
 // Global Custom FPS Limiter Manager instance
 namespace dxgi::fps_limiter {
-std::unique_ptr<CustomFpsLimiterManager> g_customFpsLimiterManager = std::make_unique<CustomFpsLimiterManager>();
+std::unique_ptr<CustomFpsLimiter> g_customFpsLimiter = std::make_unique<CustomFpsLimiter>();
 }
 
 // Global Latent Sync Manager instance

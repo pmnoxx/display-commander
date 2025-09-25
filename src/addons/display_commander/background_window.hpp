@@ -58,7 +58,7 @@ class BackgroundWindowManager {
     };
 
     // Window class name for background window
-    static constexpr const char *BACKGROUND_WINDOW_CLASS = "RenodxBackgroundWindow";
+    static constexpr const char *BACKGROUND_WINDOW_CLASS = "DisplayCommanderBackgroundWindow";
 
     // Register window class
     static bool RegisterWindowClass();

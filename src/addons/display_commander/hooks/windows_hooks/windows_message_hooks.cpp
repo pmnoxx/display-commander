@@ -7,7 +7,7 @@
 #include <MinHook.h>
 
 
-namespace renodx::hooks {
+namespace display_commanderhooks {
 
 // Original function pointers
 GetMessageA_pfn GetMessageA_Original = nullptr;
@@ -1334,7 +1334,7 @@ const char *GetHookName(int hook_index) {
     return "Unknown";
 }
 
-} // namespace renodx::hooks
+} // namespace display_commanderhooks
 
 // Restore warning settings
 #pragma clang diagnostic pop

@@ -27,34 +27,34 @@ void InitExperimentalTab() {
     // Apply the loaded settings to the actual hook system
     // This ensures the hook system matches the UI settings
     LogInfo("InitExperimentalTab() - Applying loaded timer hook settings to hook system");
-    renodx::hooks::SetTimerHookType(renodx::hooks::HOOK_QUERY_PERFORMANCE_COUNTER,
-                                    static_cast<renodx::hooks::TimerHookType>(
+    display_commanderhooks::SetTimerHookType(display_commanderhooks::HOOK_QUERY_PERFORMANCE_COUNTER,
+                                    static_cast<display_commanderhooks::TimerHookType>(
                                         settings::g_experimentalTabSettings.query_performance_counter_hook.GetValue()));
-    renodx::hooks::SetTimerHookType(
-        renodx::hooks::HOOK_GET_TICK_COUNT,
-        static_cast<renodx::hooks::TimerHookType>(settings::g_experimentalTabSettings.get_tick_count_hook.GetValue()));
-    renodx::hooks::SetTimerHookType(renodx::hooks::HOOK_GET_TICK_COUNT64,
-                                    static_cast<renodx::hooks::TimerHookType>(
+    display_commanderhooks::SetTimerHookType(
+        display_commanderhooks::HOOK_GET_TICK_COUNT,
+        static_cast<display_commanderhooks::TimerHookType>(settings::g_experimentalTabSettings.get_tick_count_hook.GetValue()));
+    display_commanderhooks::SetTimerHookType(display_commanderhooks::HOOK_GET_TICK_COUNT64,
+                                    static_cast<display_commanderhooks::TimerHookType>(
                                         settings::g_experimentalTabSettings.get_tick_count64_hook.GetValue()));
-    renodx::hooks::SetTimerHookType(
-        renodx::hooks::HOOK_TIME_GET_TIME,
-        static_cast<renodx::hooks::TimerHookType>(settings::g_experimentalTabSettings.time_get_time_hook.GetValue()));
-    renodx::hooks::SetTimerHookType(
-        renodx::hooks::HOOK_GET_SYSTEM_TIME,
-        static_cast<renodx::hooks::TimerHookType>(settings::g_experimentalTabSettings.get_system_time_hook.GetValue()));
-    renodx::hooks::SetTimerHookType(
-        renodx::hooks::HOOK_GET_SYSTEM_TIME_AS_FILE_TIME,
-        static_cast<renodx::hooks::TimerHookType>(
+    display_commanderhooks::SetTimerHookType(
+        display_commanderhooks::HOOK_TIME_GET_TIME,
+        static_cast<display_commanderhooks::TimerHookType>(settings::g_experimentalTabSettings.time_get_time_hook.GetValue()));
+    display_commanderhooks::SetTimerHookType(
+        display_commanderhooks::HOOK_GET_SYSTEM_TIME,
+        static_cast<display_commanderhooks::TimerHookType>(settings::g_experimentalTabSettings.get_system_time_hook.GetValue()));
+    display_commanderhooks::SetTimerHookType(
+        display_commanderhooks::HOOK_GET_SYSTEM_TIME_AS_FILE_TIME,
+        static_cast<display_commanderhooks::TimerHookType>(
             settings::g_experimentalTabSettings.get_system_time_as_file_time_hook.GetValue()));
-    renodx::hooks::SetTimerHookType(
-        renodx::hooks::HOOK_GET_SYSTEM_TIME_PRECISE_AS_FILE_TIME,
-        static_cast<renodx::hooks::TimerHookType>(
+    display_commanderhooks::SetTimerHookType(
+        display_commanderhooks::HOOK_GET_SYSTEM_TIME_PRECISE_AS_FILE_TIME,
+        static_cast<display_commanderhooks::TimerHookType>(
             settings::g_experimentalTabSettings.get_system_time_precise_as_file_time_hook.GetValue()));
-    renodx::hooks::SetTimerHookType(
-        renodx::hooks::HOOK_GET_LOCAL_TIME,
-        static_cast<renodx::hooks::TimerHookType>(settings::g_experimentalTabSettings.get_local_time_hook.GetValue()));
-    renodx::hooks::SetTimerHookType(renodx::hooks::HOOK_NT_QUERY_SYSTEM_TIME,
-                                    static_cast<renodx::hooks::TimerHookType>(
+    display_commanderhooks::SetTimerHookType(
+        display_commanderhooks::HOOK_GET_LOCAL_TIME,
+        static_cast<display_commanderhooks::TimerHookType>(settings::g_experimentalTabSettings.get_local_time_hook.GetValue()));
+    display_commanderhooks::SetTimerHookType(display_commanderhooks::HOOK_NT_QUERY_SYSTEM_TIME,
+                                    static_cast<display_commanderhooks::TimerHookType>(
                                         settings::g_experimentalTabSettings.nt_query_system_time_hook.GetValue()));
 
     LogInfo("InitExperimentalTab() - Experimental tab settings loaded and applied to hook system");
@@ -809,16 +809,16 @@ void DrawSleepHookControls() {
                            settings::g_experimentalTabSettings.max_sleep_duration_ms.GetValue());
 
         // Show hook statistics if available
-        if (renodx::hooks::g_sleep_hook_stats.total_calls.load() > 0) {
+        if (display_commanderhooks::g_sleep_hook_stats.total_calls.load() > 0) {
             ImGui::Spacing();
             ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "Hook Statistics:");
             ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Total Calls: %llu",
-                               renodx::hooks::g_sleep_hook_stats.total_calls.load());
+                               display_commanderhooks::g_sleep_hook_stats.total_calls.load());
             ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Modified Calls: %llu",
-                               renodx::hooks::g_sleep_hook_stats.modified_calls.load());
+                               display_commanderhooks::g_sleep_hook_stats.modified_calls.load());
 
-            uint64_t total_original = renodx::hooks::g_sleep_hook_stats.total_original_duration_ms.load();
-            uint64_t total_modified = renodx::hooks::g_sleep_hook_stats.total_modified_duration_ms.load();
+            uint64_t total_original = display_commanderhooks::g_sleep_hook_stats.total_original_duration_ms.load();
+            uint64_t total_modified = display_commanderhooks::g_sleep_hook_stats.total_modified_duration_ms.load();
             if (total_original > 0) {
                 ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Total Original Duration: %llu ms",
                                    total_original);
@@ -897,12 +897,12 @@ void DrawTimeSlowdownControls() {
         ImGui::Spacing();
 
         // QueryPerformanceCounter hook
-        uint64_t qpc_calls = renodx::hooks::GetTimerHookCallCount(renodx::hooks::HOOK_QUERY_PERFORMANCE_COUNTER);
+        uint64_t qpc_calls = display_commanderhooks::GetTimerHookCallCount(display_commanderhooks::HOOK_QUERY_PERFORMANCE_COUNTER);
         if (ComboSettingWrapper(settings::g_experimentalTabSettings.query_performance_counter_hook,
                                 "QueryPerformanceCounter")) {
-            renodx::hooks::TimerHookType type = static_cast<renodx::hooks::TimerHookType>(
+            display_commanderhooks::TimerHookType type = static_cast<display_commanderhooks::TimerHookType>(
                 settings::g_experimentalTabSettings.query_performance_counter_hook.GetValue());
-            renodx::hooks::SetTimerHookType(renodx::hooks::HOOK_QUERY_PERFORMANCE_COUNTER, type);
+            display_commanderhooks::SetTimerHookType(display_commanderhooks::HOOK_QUERY_PERFORMANCE_COUNTER, type);
         }
         ImGui::SameLine();
         ImGui::Text("[%llu calls]", qpc_calls);
@@ -911,11 +911,11 @@ void DrawTimeSlowdownControls() {
         }
 
         // GetTickCount hook
-        uint64_t gtc_calls = renodx::hooks::GetTimerHookCallCount(renodx::hooks::HOOK_GET_TICK_COUNT);
+        uint64_t gtc_calls = display_commanderhooks::GetTimerHookCallCount(display_commanderhooks::HOOK_GET_TICK_COUNT);
         if (ComboSettingWrapper(settings::g_experimentalTabSettings.get_tick_count_hook, "GetTickCount")) {
-            renodx::hooks::TimerHookType type = static_cast<renodx::hooks::TimerHookType>(
+            display_commanderhooks::TimerHookType type = static_cast<display_commanderhooks::TimerHookType>(
                 settings::g_experimentalTabSettings.get_tick_count_hook.GetValue());
-            renodx::hooks::SetTimerHookType(renodx::hooks::HOOK_GET_TICK_COUNT, type);
+            display_commanderhooks::SetTimerHookType(display_commanderhooks::HOOK_GET_TICK_COUNT, type);
         }
         ImGui::SameLine();
         ImGui::Text("[%llu calls]", gtc_calls);
@@ -924,11 +924,11 @@ void DrawTimeSlowdownControls() {
         }
 
         // GetTickCount64 hook
-        uint64_t gtc64_calls = renodx::hooks::GetTimerHookCallCount(renodx::hooks::HOOK_GET_TICK_COUNT64);
+        uint64_t gtc64_calls = display_commanderhooks::GetTimerHookCallCount(display_commanderhooks::HOOK_GET_TICK_COUNT64);
         if (ComboSettingWrapper(settings::g_experimentalTabSettings.get_tick_count64_hook, "GetTickCount64")) {
-            renodx::hooks::TimerHookType type = static_cast<renodx::hooks::TimerHookType>(
+            display_commanderhooks::TimerHookType type = static_cast<display_commanderhooks::TimerHookType>(
                 settings::g_experimentalTabSettings.get_tick_count64_hook.GetValue());
-            renodx::hooks::SetTimerHookType(renodx::hooks::HOOK_GET_TICK_COUNT64, type);
+            display_commanderhooks::SetTimerHookType(display_commanderhooks::HOOK_GET_TICK_COUNT64, type);
         }
         ImGui::SameLine();
         ImGui::Text("[%llu calls]", gtc64_calls);
@@ -937,11 +937,11 @@ void DrawTimeSlowdownControls() {
         }
 
         // timeGetTime hook
-        uint64_t tgt_calls = renodx::hooks::GetTimerHookCallCount(renodx::hooks::HOOK_TIME_GET_TIME);
+        uint64_t tgt_calls = display_commanderhooks::GetTimerHookCallCount(display_commanderhooks::HOOK_TIME_GET_TIME);
         if (ComboSettingWrapper(settings::g_experimentalTabSettings.time_get_time_hook, "timeGetTime")) {
-            renodx::hooks::TimerHookType type = static_cast<renodx::hooks::TimerHookType>(
+            display_commanderhooks::TimerHookType type = static_cast<display_commanderhooks::TimerHookType>(
                 settings::g_experimentalTabSettings.time_get_time_hook.GetValue());
-            renodx::hooks::SetTimerHookType(renodx::hooks::HOOK_TIME_GET_TIME, type);
+            display_commanderhooks::SetTimerHookType(display_commanderhooks::HOOK_TIME_GET_TIME, type);
         }
         ImGui::SameLine();
         ImGui::Text("[%llu calls]", tgt_calls);
@@ -950,11 +950,11 @@ void DrawTimeSlowdownControls() {
         }
 
         // GetSystemTime hook
-        uint64_t gst_calls = renodx::hooks::GetTimerHookCallCount(renodx::hooks::HOOK_GET_SYSTEM_TIME);
+        uint64_t gst_calls = display_commanderhooks::GetTimerHookCallCount(display_commanderhooks::HOOK_GET_SYSTEM_TIME);
         if (ComboSettingWrapper(settings::g_experimentalTabSettings.get_system_time_hook, "GetSystemTime")) {
-            renodx::hooks::TimerHookType type = static_cast<renodx::hooks::TimerHookType>(
+            display_commanderhooks::TimerHookType type = static_cast<display_commanderhooks::TimerHookType>(
                 settings::g_experimentalTabSettings.get_system_time_hook.GetValue());
-            renodx::hooks::SetTimerHookType(renodx::hooks::HOOK_GET_SYSTEM_TIME, type);
+            display_commanderhooks::SetTimerHookType(display_commanderhooks::HOOK_GET_SYSTEM_TIME, type);
         }
         ImGui::SameLine();
         ImGui::Text("[%llu calls]", gst_calls);
@@ -963,12 +963,12 @@ void DrawTimeSlowdownControls() {
         }
 
         // GetSystemTimeAsFileTime hook
-        uint64_t gst_aft_calls = renodx::hooks::GetTimerHookCallCount(renodx::hooks::HOOK_GET_SYSTEM_TIME_AS_FILE_TIME);
+        uint64_t gst_aft_calls = display_commanderhooks::GetTimerHookCallCount(display_commanderhooks::HOOK_GET_SYSTEM_TIME_AS_FILE_TIME);
         if (ComboSettingWrapper(settings::g_experimentalTabSettings.get_system_time_as_file_time_hook,
                                 "GetSystemTimeAsFileTime")) {
-            renodx::hooks::TimerHookType type = static_cast<renodx::hooks::TimerHookType>(
+            display_commanderhooks::TimerHookType type = static_cast<display_commanderhooks::TimerHookType>(
                 settings::g_experimentalTabSettings.get_system_time_as_file_time_hook.GetValue());
-            renodx::hooks::SetTimerHookType(renodx::hooks::HOOK_GET_SYSTEM_TIME_AS_FILE_TIME, type);
+            display_commanderhooks::SetTimerHookType(display_commanderhooks::HOOK_GET_SYSTEM_TIME_AS_FILE_TIME, type);
         }
         ImGui::SameLine();
         ImGui::Text("[%llu calls]", gst_aft_calls);
@@ -978,12 +978,12 @@ void DrawTimeSlowdownControls() {
 
         // GetSystemTimePreciseAsFileTime hook
         uint64_t gstp_aft_calls =
-            renodx::hooks::GetTimerHookCallCount(renodx::hooks::HOOK_GET_SYSTEM_TIME_PRECISE_AS_FILE_TIME);
+            display_commanderhooks::GetTimerHookCallCount(display_commanderhooks::HOOK_GET_SYSTEM_TIME_PRECISE_AS_FILE_TIME);
         if (ComboSettingWrapper(settings::g_experimentalTabSettings.get_system_time_precise_as_file_time_hook,
                                 "GetSystemTimePreciseAsFileTime")) {
-            renodx::hooks::TimerHookType type = static_cast<renodx::hooks::TimerHookType>(
+            display_commanderhooks::TimerHookType type = static_cast<display_commanderhooks::TimerHookType>(
                 settings::g_experimentalTabSettings.get_system_time_precise_as_file_time_hook.GetValue());
-            renodx::hooks::SetTimerHookType(renodx::hooks::HOOK_GET_SYSTEM_TIME_PRECISE_AS_FILE_TIME, type);
+            display_commanderhooks::SetTimerHookType(display_commanderhooks::HOOK_GET_SYSTEM_TIME_PRECISE_AS_FILE_TIME, type);
         }
         ImGui::SameLine();
         ImGui::Text("[%llu calls]", gstp_aft_calls);
@@ -992,11 +992,11 @@ void DrawTimeSlowdownControls() {
         }
 
         // GetLocalTime hook
-        uint64_t glt_calls = renodx::hooks::GetTimerHookCallCount(renodx::hooks::HOOK_GET_LOCAL_TIME);
+        uint64_t glt_calls = display_commanderhooks::GetTimerHookCallCount(display_commanderhooks::HOOK_GET_LOCAL_TIME);
         if (ComboSettingWrapper(settings::g_experimentalTabSettings.get_local_time_hook, "GetLocalTime")) {
-            renodx::hooks::TimerHookType type = static_cast<renodx::hooks::TimerHookType>(
+            display_commanderhooks::TimerHookType type = static_cast<display_commanderhooks::TimerHookType>(
                 settings::g_experimentalTabSettings.get_local_time_hook.GetValue());
-            renodx::hooks::SetTimerHookType(renodx::hooks::HOOK_GET_LOCAL_TIME, type);
+            display_commanderhooks::SetTimerHookType(display_commanderhooks::HOOK_GET_LOCAL_TIME, type);
         }
         ImGui::SameLine();
         ImGui::Text("[%llu calls]", glt_calls);
@@ -1005,11 +1005,11 @@ void DrawTimeSlowdownControls() {
         }
 
         // NtQuerySystemTime hook
-        uint64_t ntqst_calls = renodx::hooks::GetTimerHookCallCount(renodx::hooks::HOOK_NT_QUERY_SYSTEM_TIME);
+        uint64_t ntqst_calls = display_commanderhooks::GetTimerHookCallCount(display_commanderhooks::HOOK_NT_QUERY_SYSTEM_TIME);
         if (ComboSettingWrapper(settings::g_experimentalTabSettings.nt_query_system_time_hook, "NtQuerySystemTime")) {
-            renodx::hooks::TimerHookType type = static_cast<renodx::hooks::TimerHookType>(
+            display_commanderhooks::TimerHookType type = static_cast<display_commanderhooks::TimerHookType>(
                 settings::g_experimentalTabSettings.nt_query_system_time_hook.GetValue());
-            renodx::hooks::SetTimerHookType(renodx::hooks::HOOK_NT_QUERY_SYSTEM_TIME, type);
+            display_commanderhooks::SetTimerHookType(display_commanderhooks::HOOK_NT_QUERY_SYSTEM_TIME, type);
         }
         ImGui::SameLine();
         ImGui::Text("[%llu calls]", ntqst_calls);
@@ -1029,13 +1029,13 @@ void DrawTimeSlowdownControls() {
                            settings::g_experimentalTabSettings.timeslowdown_max_multiplier.GetValue());
 
         // Show hook status
-        bool hooks_installed = renodx::hooks::AreTimeslowdownHooksInstalled();
+        bool hooks_installed = display_commanderhooks::AreTimeslowdownHooksInstalled();
         ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Hooks Status: %s",
                            hooks_installed ? "Installed" : "Not Installed");
 
         // Show current runtime values
-        double current_multiplier = renodx::hooks::GetTimeslowdownMultiplier();
-        bool current_enabled = renodx::hooks::IsTimeslowdownEnabled();
+        double current_multiplier = display_commanderhooks::GetTimeslowdownMultiplier();
+        bool current_enabled = display_commanderhooks::IsTimeslowdownEnabled();
         ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Runtime Multiplier: %.2fx", current_multiplier);
         ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Runtime Enabled: %s", current_enabled ? "Yes" : "No");
 
@@ -1050,18 +1050,18 @@ void DrawTimeSlowdownControls() {
                                     "GetSystemTimePreciseAsFileTime",
                                     "GetLocalTime",
                                     "NtQuerySystemTime"};
-        const char *hook_constants[] = {renodx::hooks::HOOK_QUERY_PERFORMANCE_COUNTER,
-                                        renodx::hooks::HOOK_GET_TICK_COUNT,
-                                        renodx::hooks::HOOK_GET_TICK_COUNT64,
-                                        renodx::hooks::HOOK_TIME_GET_TIME,
-                                        renodx::hooks::HOOK_GET_SYSTEM_TIME,
-                                        renodx::hooks::HOOK_GET_SYSTEM_TIME_AS_FILE_TIME,
-                                        renodx::hooks::HOOK_GET_SYSTEM_TIME_PRECISE_AS_FILE_TIME,
-                                        renodx::hooks::HOOK_GET_LOCAL_TIME,
-                                        renodx::hooks::HOOK_NT_QUERY_SYSTEM_TIME};
+        const char *hook_constants[] = {display_commanderhooks::HOOK_QUERY_PERFORMANCE_COUNTER,
+                                        display_commanderhooks::HOOK_GET_TICK_COUNT,
+                                        display_commanderhooks::HOOK_GET_TICK_COUNT64,
+                                        display_commanderhooks::HOOK_TIME_GET_TIME,
+                                        display_commanderhooks::HOOK_GET_SYSTEM_TIME,
+                                        display_commanderhooks::HOOK_GET_SYSTEM_TIME_AS_FILE_TIME,
+                                        display_commanderhooks::HOOK_GET_SYSTEM_TIME_PRECISE_AS_FILE_TIME,
+                                        display_commanderhooks::HOOK_GET_LOCAL_TIME,
+                                        display_commanderhooks::HOOK_NT_QUERY_SYSTEM_TIME};
 
         for (int i = 0; i < 9; i++) {
-            if (renodx::hooks::IsTimerHookEnabled(hook_constants[i])) {
+            if (display_commanderhooks::IsTimerHookEnabled(hook_constants[i])) {
                 ImGui::TextColored(ImVec4(0.6f, 1.0f, 0.6f, 1.0f), "    %s", hook_names[i]);
             }
         }

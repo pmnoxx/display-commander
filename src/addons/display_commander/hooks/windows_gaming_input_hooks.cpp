@@ -6,7 +6,7 @@
 #include <windows.gaming.input.h>
 
 
-namespace renodx::hooks {
+namespace display_commanderhooks {
 
 // Original function pointer
 RoGetActivationFactory_pfn RoGetActivationFactory_Original = nullptr;
@@ -211,4 +211,4 @@ void UninstallWindowsGamingInputHooks() {
 
 bool AreWindowsGamingInputHooksInstalled() { return g_wgi_hooks_installed.load(); }
 
-} // namespace renodx::hooks
+} // namespace display_commanderhooks

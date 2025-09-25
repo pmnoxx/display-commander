@@ -25,8 +25,8 @@ void every1s_checks() {
     HWND hwnd = g_last_swapchain_hwnd.load();
     if (hwnd != nullptr && IsWindow(hwnd)) {
         // BACKGROUND DETECTION: Check if the app is in background using original GetForegroundWindow
-        HWND actual_foreground = renodx::hooks::GetForegroundWindow_Original
-                                     ? renodx::hooks::GetForegroundWindow_Original()
+        HWND actual_foreground = display_commanderhooks::GetForegroundWindow_Original
+                                     ? display_commanderhooks::GetForegroundWindow_Original()
                                      : GetForegroundWindow();
         bool current_background = (actual_foreground != hwnd);
         bool background_changed = (current_background != g_app_in_background.load());
@@ -55,8 +55,8 @@ void every1s_checks() {
         }
 
         // FOCUS LOSS DETECTION: Close background window when main window loses focus
-        HWND foreground_window = renodx::hooks::GetForegroundWindow_Original
-                                     ? renodx::hooks::GetForegroundWindow_Original()
+        HWND foreground_window = display_commanderhooks::GetForegroundWindow_Original
+                                     ? display_commanderhooks::GetForegroundWindow_Original()
                                      : GetForegroundWindow();
 
         if (s_background_feature_enabled.load()) {
@@ -102,8 +102,8 @@ void every1s_checks() {
         static EXECUTION_STATE last_execution_state = 0;
         if (desired_state != last_execution_state) {
             last_execution_state = desired_state;
-            if (renodx::hooks::SetThreadExecutionState_Original) {
-                EXECUTION_STATE result = renodx::hooks::SetThreadExecutionState_Original(desired_state);
+            if (display_commanderhooks::SetThreadExecutionState_Original) {
+                EXECUTION_STATE result = display_commanderhooks::SetThreadExecutionState_Original(desired_state);
                 if (result != 0) {
                     LogDebug("Screensaver management: SetThreadExecutionState(0x%x) = 0x%x", desired_state, result);
                 }

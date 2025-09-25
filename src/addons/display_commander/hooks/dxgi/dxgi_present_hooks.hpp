@@ -6,7 +6,7 @@
 #include <dxgi1_2.h>
 #include <dxgi1_4.h>
 
-namespace renodx::hooks::dxgi {
+namespace display_commanderhooks::dxgi {
 
 // Function pointer types for DXGI Present functions
 using IDXGISwapChain_Present_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGISwapChain *This, UINT SyncInterval, UINT Flags);
@@ -25,4 +25,4 @@ bool AreDxgiPresentHooksInstalled();
 // Hook a specific swapchain when it's created
 bool HookSwapchain(IDXGISwapChain *swapchain);
 
-} // namespace renodx::hooks::dxgi
+} // namespace display_commanderhooks::dxgi

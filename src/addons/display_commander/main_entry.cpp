@@ -214,7 +214,7 @@ void DoInitializationWithoutHwnd(HMODULE h_module, DWORD fdw_reason) {
 
     // Install API hooks for continue rendering
     LogInfo("DLL_THREAD_ATTACH: Installing API hooks...");
-    renodx::hooks::InstallApiHooks();
+    display_commanderhooks::InstallApiHooks();
 
     g_dll_initialization_complete.store(true);
 }
@@ -259,10 +259,10 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
         // Input blocking cleanup is now handled by Windows message hooks
 
         // Clean up window procedure hooks
-        renodx::hooks::UninstallWindowProcHooks();
+        display_commanderhooks::UninstallWindowProcHooks();
 
         // Clean up API hooks
-        renodx::hooks::UninstallApiHooks();
+        display_commanderhooks::UninstallApiHooks();
 
         // Clean up continuous monitoring if it's running
         StopContinuousMonitoring();

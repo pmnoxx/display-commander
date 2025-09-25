@@ -6,7 +6,7 @@
 #include <windows.h>
 #include <wrl.h>
 
-namespace renodx::hooks {
+namespace display_commanderhooks {
 
 // Function pointer type for RoGetActivationFactory
 using RoGetActivationFactory_pfn = HRESULT(WINAPI *)(HSTRING activatableClassId, REFIID iid, void **factory);
@@ -25,4 +25,4 @@ bool InstallWindowsGamingInputHooks();
 void UninstallWindowsGamingInputHooks();
 bool AreWindowsGamingInputHooksInstalled();
 
-} // namespace renodx::hooks
+} // namespace display_commanderhooks

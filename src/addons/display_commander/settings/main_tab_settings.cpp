@@ -29,7 +29,7 @@ std::atomic<ScreensaverMode> s_screensaver_mode{ScreensaverMode::kDefault};
 namespace settings {
 
 MainTabSettings::MainTabSettings()
-    : window_mode("window_mode", 0, {"Borderless Fullscreen", "Borderless Windowed (Aspect Ratio)"}, "renodx_main_tab"),
+    : window_mode("window_mode", s_window_mode, static_cast<int>(WindowMode::kFullscreen), {"Borderless Fullscreen", "Borderless Windowed (Aspect Ratio)"}, "renodx_main_tab"),
       aspect_index("aspect_index", 3, {"3:2", "4:3", "16:10", "16:9", "19:9", "19.5:9", "21:9", "32:9"},
                    "renodx_main_tab"), // Default to 16:9
       target_monitor_index("target_monitor_index", 0,

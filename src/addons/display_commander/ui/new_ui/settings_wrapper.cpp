@@ -678,6 +678,10 @@ template class ComboSettingEnumRef<ScreensaverMode>;
 template bool ComboSettingEnumRefWrapper<ScreensaverMode>(ComboSettingEnumRef<ScreensaverMode> &setting,
                                                           const char *label);
 
+// Explicit template instantiations for ComboSettingEnumRef
+template class ComboSettingEnumRef<WindowMode>;
+template bool ComboSettingEnumRefWrapper<WindowMode>(ComboSettingEnumRef<WindowMode> &setting, const char *label);
+
 void SeparatorSetting() { ImGui::Separator(); }
 
 void SpacingSetting() { ImGui::Spacing(); }

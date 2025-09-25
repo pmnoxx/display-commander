@@ -308,7 +308,7 @@ void DrawDisplaySettings() {
     }
 
     // Window Mode dropdown (with persistent setting)
-    if (ComboSettingWrapper(settings::g_mainTabSettings.window_mode, "Window Mode")) {
+    if (ComboSettingEnumRefWrapper(settings::g_mainTabSettings.window_mode, "Window Mode")) {
         WindowMode old_mode = s_window_mode.load();
         s_window_mode = static_cast<WindowMode>(settings::g_mainTabSettings.window_mode.GetValue());
 

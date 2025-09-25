@@ -366,7 +366,7 @@ void DrawDisplaySettings() {
     }
 
     // ADHD Multi-Monitor Mode controls
-    DrawAdhdMultiMonitorControls();
+    DrawAdhdMultiMonitorControls(s_window_mode.load() == WindowMode::kAspectRatio);
 
     // Apply Changes button
     if (ImGui::Button("Apply Changes")) {
@@ -980,14 +980,15 @@ void DrawImportantInfo() {
     }
 }
 
-void DrawAdhdMultiMonitorControls() {
+void DrawAdhdMultiMonitorControls(bool hasBlackCurtainSetting) {
     // Check if multiple monitors are available
     bool hasMultipleMonitors = adhd_multi_monitor::api::HasMultipleMonitors();
 
     if (!hasMultipleMonitors) {
         return;
     }
-    ImGui::SameLine();
+    if (hasBlackCurtainSetting)
+        ImGui::SameLine();
 
     // Main ADHD mode checkbox
     bool adhdEnabled = settings::g_mainTabSettings.adhd_multi_monitor_enabled.GetValue();

@@ -3,7 +3,6 @@
 #include <string>
 #include <windows.h>
 
-
 namespace display_restore {
 
 // Capture the original mode for a monitor if not already captured

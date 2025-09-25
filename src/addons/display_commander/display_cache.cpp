@@ -3,15 +3,18 @@
 #include "globals.hpp"
 #include "settings/main_tab_settings.hpp"
 #include "utils.hpp"
-#include <algorithm>
+
+#include <windows.h>
+
 #include <dxgi1_6.h>
 #include <immintrin.h>
-#include <iomanip>
-#include <set>
-#include <sstream>
-#include <windows.h>
 #include <wrl/client.h>
 
+#include <algorithm>
+#include <iomanip>
+#include <map>
+#include <set>
+#include <sstream>
 
 using Microsoft::WRL::ComPtr;
 

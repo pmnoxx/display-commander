@@ -1,8 +1,10 @@
 #pragma once
 
-#include "../renodx/settings.hpp"
-#include <vector>
+#include <imgui.h>
+#include <reshade.hpp>
 #include <string>
+#include <vector>
+
 
 namespace ui {
 

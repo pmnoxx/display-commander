@@ -1,6 +1,9 @@
 #include "settings_wrapper.hpp"
 #include "../../globals.hpp"
-#include "../../renodx/settings.hpp"
+
+#include <imgui.h>
+#include <reshade.hpp>
+
 #include "../../utils.hpp"
 #include <algorithm>
 #include <cmath>

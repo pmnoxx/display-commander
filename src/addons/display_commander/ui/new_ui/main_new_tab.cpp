@@ -1,23 +1,21 @@
 #include "main_new_tab.hpp"
-#include <atomic>
-#include "globals.hpp"
-#include "../../settings/main_tab_settings.hpp"
-#include "../../settings/developer_tab_settings.hpp"
 #include "../../addon.hpp"
-// Input blocking is now handled by Windows message hooks
+#include "../../adhd_multi_monitor/adhd_simple_api.hpp"
 #include "../../audio/audio_management.hpp"
+#include "../../latent_sync/latent_sync_limiter.hpp"
+#include "../../settings/developer_tab_settings.hpp"
+#include "../../settings/main_tab_settings.hpp"
+#include "../../widgets/resolution_widget/resolution_widget.hpp"
+#include "globals.hpp"
+#include "utils/timing.hpp"
+#include "version.hpp"
+#include <atomic>
+#include <cmath>
+#include <imgui.h>
+#include <iomanip>
 #include <minwindef.h>
 #include <sstream>
 #include <thread>
-#include <atomic>
-#include <iomanip>
-#include <cmath>
-#include <imgui.h>
-#include "../../latent_sync/latent_sync_limiter.hpp"
-#include "utils/timing.hpp"
-#include "version.hpp"
-#include "../../widgets/resolution_widget/resolution_widget.hpp"
-#include "../../adhd_multi_monitor/adhd_simple_api.hpp"
 
 
 namespace ui::new_ui {
@@ -39,7 +37,8 @@ void InitMainNewTab() {
         // FPS limits are now automatically synced via FloatSettingRef
         s_audio_mute.store(settings::g_mainTabSettings.audio_mute.GetValue());
         s_mute_in_background.store(settings::g_mainTabSettings.mute_in_background.GetValue());
-        s_mute_in_background_if_other_audio.store(settings::g_mainTabSettings.mute_in_background_if_other_audio.GetValue());
+        s_mute_in_background_if_other_audio.store(
+            settings::g_mainTabSettings.mute_in_background_if_other_audio.GetValue());
         s_no_present_in_background.store(settings::g_mainTabSettings.no_present_in_background.GetValue());
         // VSync & Tearing - all automatically synced via BoolSettingRef
 
@@ -59,7 +58,6 @@ void InitMainNewTab() {
 
         // Initialize resolution widget
         display_commander::widgets::resolution_widget::InitializeResolutionWidget();
-
     }
 }
 
@@ -69,7 +67,8 @@ void DrawMainNewTab() {
     // Version and build information at the top
     ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "=== Display Commander ===");
     ImGui::TextColored(ImVec4(0.9f, 0.9f, 0.9f, 1.0f), "Version: %s", DISPLAY_COMMANDER_VERSION_STRING);
-    ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Build: %s %s", DISPLAY_COMMANDER_BUILD_DATE, DISPLAY_COMMANDER_BUILD_TIME);
+    ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Build: %s %s", DISPLAY_COMMANDER_BUILD_DATE,
+                       DISPLAY_COMMANDER_BUILD_TIME);
     ImGui::Separator();
 
     ImGui::Text("Main Tab - Basic Settings");
@@ -96,8 +95,7 @@ void DrawMainNewTab() {
     // Input Blocking (Background) Section
     {
         ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== Input Control (Background) ===");
-        bool block_any_in_background =
-            settings::g_mainTabSettings.block_input_in_background.GetValue();
+        bool block_any_in_background = settings::g_mainTabSettings.block_input_in_background.GetValue();
         if (ImGui::Checkbox("Block Input in Background", &block_any_in_background)) {
             settings::g_mainTabSettings.block_input_in_background.SetValue(block_any_in_background);
         }
@@ -106,14 +104,14 @@ void DrawMainNewTab() {
         }
 
         // Input blocking without Reshade (handled by Windows message hooks)
-        bool block_without_reshade =
-            settings::g_mainTabSettings.block_input_without_reshade.GetValue();
+        bool block_without_reshade = settings::g_mainTabSettings.block_input_without_reshade.GetValue();
         if (ImGui::Checkbox("Block input without Reshade (Uses Windows message hooks)", &block_without_reshade)) {
             settings::g_mainTabSettings.block_input_without_reshade.SetValue(block_without_reshade);
             // No need to call update function - the message hooks check the setting directly
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Uses Windows message hooks to block input independently of Reshade's system. Required for future gamepad remapping features.");
+            ImGui::SetTooltip("Uses Windows message hooks to block input independently of Reshade's system. Required "
+                              "for future gamepad remapping features.");
         }
     }
 
@@ -127,13 +125,11 @@ void DrawMainNewTab() {
             LogInfo("Screensaver mode changed to %d", settings::g_mainTabSettings.screensaver_mode.GetValue());
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
-                "Controls screensaver behavior while the game is running:\n\n"
-                "• Default (no change): Preserves original game behavior\n"
-                "• Disable when Focused: Disables screensaver when game window is focused\n"
-                "• Disable: Always disables screensaver while game is running\n\n"
-                "Note: This feature requires the screensaver implementation to be active."
-            );
+            ImGui::SetTooltip("Controls screensaver behavior while the game is running:\n\n"
+                              "• Default (no change): Preserves original game behavior\n"
+                              "• Disable when Focused: Disables screensaver when game window is focused\n"
+                              "• Disable: Always disables screensaver while game is running\n\n"
+                              "Note: This feature requires the screensaver implementation to be active.");
         }
     }
 
@@ -164,7 +160,8 @@ void DrawQuickResolutionChanger() {
             const float selected_epsilon = 0.0001f;
             // Add No Limit button at the beginning
             {
-                bool selected = (std::fabs(settings::g_mainTabSettings.fps_limit.GetValue() - 0.0f) <= selected_epsilon);
+                bool selected =
+                    (std::fabs(settings::g_mainTabSettings.fps_limit.GetValue() - 0.0f) <= selected_epsilon);
                 if (selected) {
                     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.20f, 0.60f, 0.20f, 1.0f));
                     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.20f, 0.70f, 0.20f, 1.0f));
@@ -183,11 +180,13 @@ void DrawQuickResolutionChanger() {
                     int candidate_rounded = y / x;
                     float candidate_precise = refresh_hz / x;
                     if (candidate_rounded >= 30) {
-                        if (!first) ImGui::SameLine();
+                        if (!first)
+                            ImGui::SameLine();
                         first = false;
                         std::string label = std::to_string(candidate_rounded);
                         {
-                            bool selected = (std::fabs(settings::g_mainTabSettings.fps_limit.GetValue() - candidate_precise) <= selected_epsilon);
+                            bool selected = (std::fabs(settings::g_mainTabSettings.fps_limit.GetValue() -
+                                                       candidate_precise) <= selected_epsilon);
                             if (selected) {
                                 ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.20f, 0.60f, 0.20f, 1.0f));
                                 ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.20f, 0.70f, 0.20f, 1.0f));
@@ -205,7 +204,8 @@ void DrawQuickResolutionChanger() {
                                 std::ostringstream tooltip_oss;
                                 tooltip_oss.setf(std::ios::fixed);
                                 tooltip_oss << std::setprecision(3);
-                                tooltip_oss << "FPS = " << refresh_hz << " ÷ " << x << " = " << candidate_precise << " FPS\n\n";
+                                tooltip_oss << "FPS = " << refresh_hz << " ÷ " << x << " = " << candidate_precise
+                                            << " FPS\n\n";
                                 tooltip_oss << "Creates a smooth frame rate that divides evenly\n";
                                 tooltip_oss << "into the monitor's refresh rate.";
                                 ImGui::SetTooltip("%s", tooltip_oss.str().c_str());
@@ -215,13 +215,16 @@ void DrawQuickResolutionChanger() {
                 }
             }
             // Add Gsync Cap button at the end
-            if (!first) ImGui::SameLine();
+            if (!first)
+                ImGui::SameLine();
             {
                 // Gsync formula: refresh_hz - (refresh_hz * refresh_hz / 3600)
                 double gsync_target = refresh_hz - (refresh_hz * refresh_hz / 3600.0);
                 float precise_target = static_cast<float>(gsync_target);
-                if (precise_target < 1.0f) precise_target = 1.0f;
-                bool selected = (std::fabs(settings::g_mainTabSettings.fps_limit.GetValue() - precise_target) <= selected_epsilon);
+                if (precise_target < 1.0f)
+                    precise_target = 1.0f;
+                bool selected =
+                    (std::fabs(settings::g_mainTabSettings.fps_limit.GetValue() - precise_target) <= selected_epsilon);
 
                 if (selected) {
                     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.20f, 0.60f, 0.20f, 1.0f));
@@ -242,13 +245,13 @@ void DrawQuickResolutionChanger() {
                     tooltip_oss.setf(std::ios::fixed);
                     tooltip_oss << std::setprecision(3);
                     tooltip_oss << "Gsync Cap: FPS = " << refresh_hz << " - (" << refresh_hz << "² / 3600)\n";
-                    tooltip_oss << "= " << refresh_hz << " - " << (refresh_hz * refresh_hz / 3600.0) << " = " << gsync_target << " FPS\n\n";
+                    tooltip_oss << "= " << refresh_hz << " - " << (refresh_hz * refresh_hz / 3600.0) << " = "
+                                << gsync_target << " FPS\n\n";
                     tooltip_oss << "Creates a ~0.3ms frame time buffer to optimize latency\n";
                     tooltip_oss << "and prevent tearing, similar to NVIDIA Reflex Low Latency Mode.";
                     ImGui::SetTooltip("%s", tooltip_oss.str().c_str());
                 }
             }
-
         }
     }
 }
@@ -260,18 +263,19 @@ void DrawDisplaySettings() {
         // Use cached monitor labels updated by continuous monitoring thread
 
         std::vector<std::string> monitor_labels_local;
-        std::vector<const char*> monitor_c_labels;
+        std::vector<const char *> monitor_c_labels;
         {
             auto ptr = ::g_monitor_labels.load(std::memory_order_acquire);
             monitor_labels_local = *ptr; // copy to avoid lifetime issues
             monitor_c_labels.reserve(monitor_labels_local.size());
-            for (const auto& label : monitor_labels_local) {
+            for (const auto &label : monitor_labels_local) {
                 monitor_c_labels.push_back(label.c_str());
             }
         }
 
         int monitor_index = s_target_monitor_index.load();
-        if (ImGui::Combo("Target Monitor", &monitor_index, monitor_c_labels.data(), static_cast<int>(monitor_c_labels.size()))) {
+        if (ImGui::Combo("Target Monitor", &monitor_index, monitor_c_labels.data(),
+                         static_cast<int>(monitor_c_labels.size()))) {
             s_target_monitor_index.store(monitor_index);
             settings::g_mainTabSettings.target_monitor_index.SetValue(monitor_index);
             LogInfo("Target monitor changed");
@@ -279,8 +283,10 @@ void DrawDisplaySettings() {
         if (ImGui::IsItemHovered()) {
             // Get the saved game window display device ID for tooltip
             std::string saved_device_id = settings::g_mainTabSettings.game_window_display_device_id.GetValue();
-            std::string tooltip_text = "Choose which monitor to apply size/pos to. The monitor corresponding to the game window is automatically selected.";
-            if (!saved_device_id.empty() && saved_device_id != "No Window" && saved_device_id != "No Monitor" && saved_device_id != "Monitor Info Failed") {
+            std::string tooltip_text = "Choose which monitor to apply size/pos to. The monitor corresponding to the "
+                                       "game window is automatically selected.";
+            if (!saved_device_id.empty() && saved_device_id != "No Window" && saved_device_id != "No Monitor" &&
+                saved_device_id != "Monitor Info Failed") {
                 tooltip_text += "\n\nGame window is on: " + saved_device_id;
             }
             ImGui::SetTooltip("%s", tooltip_text.c_str());
@@ -296,7 +302,8 @@ void DrawDisplaySettings() {
             ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "%s", current_display.c_str());
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Current display device ID for the game window. Updated automatically from display cache.");
+            ImGui::SetTooltip(
+                "Current display device ID for the game window. Updated automatically from display cache.");
         }
     }
 
@@ -309,7 +316,8 @@ void DrawDisplaySettings() {
         // This prevents crashes when changing modes during gameplay
 
         std::ostringstream oss;
-        oss << "Window mode changed from " << static_cast<int>(old_mode) << " to " << settings::g_mainTabSettings.window_mode.GetValue();
+        oss << "Window mode changed from " << static_cast<int>(old_mode) << " to "
+            << settings::g_mainTabSettings.window_mode.GetValue();
         LogInfo(oss.str().c_str());
     }
     // Auto-apply (continuous monitoring) checkbox next to Window Mode
@@ -341,7 +349,8 @@ void DrawDisplaySettings() {
             LogInfo("Window alignment changed");
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Choose how to align the window when repositioning is needed. 0=Center, 1=Top Left, 2=Top Right, 3=Bottom Left, 4=Bottom Right.");
+            ImGui::SetTooltip("Choose how to align the window when repositioning is needed. 0=Center, 1=Top Left, "
+                              "2=Top Right, 3=Bottom Left, 4=Bottom Right.");
         }
     }
 
@@ -351,13 +360,13 @@ void DrawDisplaySettings() {
             LogInfo("Background black curtain setting changed");
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Creates a black background behind the game window when it doesn't cover the full screen.");
+            ImGui::SetTooltip(
+                "Creates a black background behind the game window when it doesn't cover the full screen.");
         }
     }
 
     // ADHD Multi-Monitor Mode controls
     DrawAdhdMultiMonitorControls();
-
 
     // Apply Changes button
     if (ImGui::Button("Apply Changes")) {
@@ -378,7 +387,8 @@ void DrawDisplaySettings() {
     // FPS Limiter Mode
     {
         if (ComboSettingWrapper(settings::g_mainTabSettings.fps_limiter_mode, "FPS Limiter Mode")) {
-            s_fps_limiter_mode.store(static_cast<FpsLimiterMode>(settings::g_mainTabSettings.fps_limiter_mode.GetValue()));
+            s_fps_limiter_mode.store(
+                static_cast<FpsLimiterMode>(settings::g_mainTabSettings.fps_limiter_mode.GetValue()));
             FpsLimiterMode mode = s_fps_limiter_mode.load();
             if (mode == FpsLimiterMode::kNone) {
                 LogInfo("FPS Limiter: None (no limiting)");
@@ -402,11 +412,13 @@ void DrawDisplaySettings() {
             s_fps_limiter_injection.store(temp_injection);
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Choose when to inject FPS limiter: 0=OnPresentFlags (recommended), 1=OnPresentUpdateBefore2, 2=OnPresentUpdateBefore");
+            ImGui::SetTooltip("Choose when to inject FPS limiter: 0=OnPresentFlags (recommended), "
+                              "1=OnPresentUpdateBefore2, 2=OnPresentUpdateBefore");
         }
 
         // Show current injection timing info
-        const char* injection_labels[] = {"OnPresentFlags (Recommended)", "OnPresentUpdateBefore2", "OnPresentUpdateBefore"};
+        const char *injection_labels[] = {"OnPresentFlags (Recommended)", "OnPresentUpdateBefore2",
+                                          "OnPresentUpdateBefore"};
         if (temp_injection >= 0 && temp_injection < 3) {
             ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "Current: %s", injection_labels[temp_injection]);
         }
@@ -418,22 +430,22 @@ void DrawDisplaySettings() {
         ImGui::SameLine();
         ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Improves frame timing consistency");
 
-        ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Adds a small delay after present to smooth frame pacing and reduce stuttering");
+        ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f),
+                           "Adds a small delay after present to smooth frame pacing and reduce stuttering");
 
         float current_delay = settings::g_mainTabSettings.present_pacing_delay_percentage.GetValue();
-        if (SliderFloatSetting(settings::g_mainTabSettings.present_pacing_delay_percentage, "Present Pacing Delay (manual fine-tuning is needed for now)", "%.1f%%")) {
+        if (SliderFloatSetting(settings::g_mainTabSettings.present_pacing_delay_percentage,
+                               "Present Pacing Delay (manual fine-tuning is needed for now)", "%.1f%%")) {
             // The setting is automatically synced via FloatSettingRef
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
-                "Present Pacing Delay: Adds delay to starting next frame.\n\n"
-                "How it reduces latency:\n"
-                "• Allow for more time for CPU to process input.\n"
-                "• Lower values provide more consistent frame timing.\n"
-                "• Higher values provide lower latency but slightly less consistent timing.\n"
-                "Range: 0%% to 100%%. Default: 0%% (1 frame time delay).\n"
-                "Manual fine-tuning required."
-            );
+            ImGui::SetTooltip("Present Pacing Delay: Adds delay to starting next frame.\n\n"
+                              "How it reduces latency:\n"
+                              "• Allow for more time for CPU to process input.\n"
+                              "• Lower values provide more consistent frame timing.\n"
+                              "• Higher values provide lower latency but slightly less consistent timing.\n"
+                              "Range: 0%% to 100%%. Default: 0%% (1 frame time delay).\n"
+                              "Manual fine-tuning required.");
         }
     }
 
@@ -448,7 +460,8 @@ void DrawDisplaySettings() {
             s_scanline_offset.store(temp_offset);
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Scanline offset for latent sync (-1000 to 1000). This defines the offset from the threshold where frame pacing is active.");
+            ImGui::SetTooltip("Scanline offset for latent sync (-1000 to 1000). This defines the offset from the "
+                              "threshold where frame pacing is active.");
         }
 
         // VBlank Sync Divisor (only visible if latent sync mode is selected)
@@ -472,9 +485,12 @@ void DrawDisplaySettings() {
             for (int div = 1; div <= 8; ++div) {
                 int effective_fps = static_cast<int>(std::round(refresh_hz / div));
                 tooltip_oss << "  " << div << " -> " << effective_fps << " FPS";
-                if (div == 1) tooltip_oss << " (Full Refresh)";
-                else if (div == 2) tooltip_oss << " (Half Refresh)";
-                else tooltip_oss << " (1/" << div << " Refresh)";
+                if (div == 1)
+                    tooltip_oss << " (Full Refresh)";
+                else if (div == 2)
+                    tooltip_oss << " (Half Refresh)";
+                else
+                    tooltip_oss << " (1/" << div << " Refresh)";
                 tooltip_oss << "\n";
             }
             tooltip_oss << "\n0 = Disabled, higher values reduce effective frame rate for smoother frame pacing.";
@@ -484,24 +500,29 @@ void DrawDisplaySettings() {
         // VBlank Monitor Status (only visible if latent sync is enabled and FPS limit > 0)
         if (s_fps_limiter_mode.load() == FpsLimiterMode::kLatentSync) {
             if (dxgi::latent_sync::g_latentSyncManager) {
-                auto& latent = dxgi::latent_sync::g_latentSyncManager->GetLatentLimiter();
+                auto &latent = dxgi::latent_sync::g_latentSyncManager->GetLatentLimiter();
                 if (latent.IsVBlankMonitoringActive()) {
                     ImGui::Spacing();
                     ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✁EVBlank Monitor: ACTIVE");
                     if (ImGui::IsItemHovered()) {
-                        ImGui::SetTooltip("VBlank monitoring thread is running and collecting scanline data for frame pacing.");
+                        ImGui::SetTooltip(
+                            "VBlank monitoring thread is running and collecting scanline data for frame pacing.");
                     }
 
-                    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "  refresh time: %.3fms", 1.0 * dxgi::fps_limiter::ns_per_refresh.load() / utils::NS_TO_MS);
+                    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "  refresh time: %.3fms",
+                                       1.0 * dxgi::fps_limiter::ns_per_refresh.load() / utils::NS_TO_MS);
                     ImGui::SameLine();
-                    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "  total_height: %llu", dxgi::fps_limiter::g_latent_sync_total_height.load());
+                    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "  total_height: %llu",
+                                       dxgi::fps_limiter::g_latent_sync_total_height.load());
                     ImGui::SameLine();
-                    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "  active_height: %llu", dxgi::fps_limiter::g_latent_sync_active_height.load());
+                    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "  active_height: %llu",
+                                       dxgi::fps_limiter::g_latent_sync_active_height.load());
                 } else {
                     ImGui::Spacing();
                     ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "⚠ VBlank Monitor: STARTING...");
                     if (ImGui::IsItemHovered()) {
-                        ImGui::SetTooltip("VBlank monitoring is enabled but the monitoring thread is still starting up.");
+                        ImGui::SetTooltip(
+                            "VBlank monitoring is enabled but the monitoring thread is still starting up.");
                     }
                 }
             }
@@ -513,7 +534,7 @@ void DrawDisplaySettings() {
     // FPS Limit slider (persisted)
     {
         float current_value = settings::g_mainTabSettings.fps_limit.GetValue();
-        const char* fmt = (current_value > 0.0f) ? "%.3f FPS" : "No Limit";
+        const char *fmt = (current_value > 0.0f) ? "%.3f FPS" : "No Limit";
         if (SliderFloatSetting(settings::g_mainTabSettings.fps_limit, "FPS Limit", fmt)) {
         }
     }
@@ -529,7 +550,8 @@ void DrawDisplaySettings() {
             // The setting is automatically synced via BoolSettingRef
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Skip rendering draw calls when the game window is not in the foreground. This can save GPU power and reduce background processing.");
+            ImGui::SetTooltip("Skip rendering draw calls when the game window is not in the foreground. This can save "
+                              "GPU power and reduce background processing.");
         }
     }
 
@@ -541,7 +563,8 @@ void DrawDisplaySettings() {
             // The setting is automatically synced via BoolSettingRef
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Skip ReShade's on_present processing when the game window is not in the foreground. This can save GPU power and reduce background processing.");
+            ImGui::SetTooltip("Skip ReShade's on_present processing when the game window is not in the foreground. "
+                              "This can save GPU power and reduce background processing.");
         }
     }
 
@@ -609,13 +632,13 @@ void DrawDisplaySettings() {
     // Background FPS Limit slider (persisted)
     {
         float current_bg = settings::g_mainTabSettings.fps_limit_background.GetValue();
-        const char* fmt_bg = (current_bg > 0.0f) ? "%.0f FPS" : "No Limit";
+        const char *fmt_bg = (current_bg > 0.0f) ? "%.0f FPS" : "No Limit";
         if (SliderFloatSetting(settings::g_mainTabSettings.fps_limit_background, "Background FPS Limit", fmt_bg)) {
-
         }
     }
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("FPS cap when the game window is not in the foreground. Now uses the new Custom FPS Limiter system.");
+        ImGui::SetTooltip(
+            "FPS cap when the game window is not in the foreground. Now uses the new Custom FPS Limiter system.");
     }
 }
 
@@ -719,7 +742,8 @@ void DrawAudioSettings() {
             bool want_mute = (mute_in_bg_if_other && is_background && ::IsOtherAppPlayingAudio());
             if (::SetMuteForCurrentProcess(want_mute)) {
                 ::g_muted_applied.store(want_mute);
-                std::ostringstream oss; oss << "Background mute (if other audio) " << (mute_in_bg_if_other ? "enabled" : "disabled");
+                std::ostringstream oss;
+                oss << "Background mute (if other audio) " << (mute_in_bg_if_other ? "enabled" : "disabled");
                 LogInfo(oss.str().c_str());
             }
         }
@@ -749,7 +773,7 @@ void DrawWindowControls() {
     // Minimize Window Button
     if (ImGui::Button("Minimize Window")) {
         HWND hwnd = g_last_swapchain_hwnd.load();
-        std::thread([hwnd](){
+        std::thread([hwnd]() {
             LogDebug("Minimize Window button pressed (bg thread)");
             ShowWindow(hwnd, SW_MINIMIZE);
         }).detach();
@@ -762,7 +786,7 @@ void DrawWindowControls() {
 
     // Restore Window Button
     if (ImGui::Button("Restore Window")) {
-        std::thread([hwnd](){
+        std::thread([hwnd]() {
             LogDebug("Restore Window button pressed (bg thread)");
             ShowWindow(hwnd, SW_RESTORE);
         }).detach();
@@ -775,7 +799,7 @@ void DrawWindowControls() {
 
     // Maximize Window Button
     if (ImGui::Button("Maximize Window")) {
-        std::thread([hwnd, current_monitor_width, current_monitor_height](){
+        std::thread([hwnd, current_monitor_width, current_monitor_height]() {
             LogDebug("Maximize Window button pressed (bg thread)");
 
             // Switch to fullscreen mode to maximize the window
@@ -818,7 +842,8 @@ void DrawImportantInfo() {
             LogInfo("Test overlay %s", show_test_overlay ? "enabled" : "disabled");
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Shows a test widget using the reshade_overlay event to demonstrate the difference between register_overlay and reshade_overlay approaches.");
+            ImGui::SetTooltip("Shows a test widget using the reshade_overlay event to demonstrate the difference "
+                              "between register_overlay and reshade_overlay approaches.");
         }
     }
 
@@ -844,15 +869,16 @@ void DrawImportantInfo() {
     // Present Duration Display
     oss.str("");
     oss.clear();
-    oss << "Present Duration: " << std::fixed << std::setprecision(3) << (1.0 *::g_present_duration_ns.load() / utils::NS_TO_MS) << " ms";
+    oss << "Present Duration: " << std::fixed << std::setprecision(3)
+        << (1.0 * ::g_present_duration_ns.load() / utils::NS_TO_MS) << " ms";
     ImGui::TextUnformatted(oss.str().c_str());
     ImGui::SameLine();
     ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "(smoothed)");
 
-
     oss.str("");
     oss.clear();
-    oss << "Simulation Duration: " << std::fixed << std::setprecision(3) << (1.0 *::g_simulation_duration_ns.load() / utils::NS_TO_MS) << " ms";
+    oss << "Simulation Duration: " << std::fixed << std::setprecision(3)
+        << (1.0 * ::g_simulation_duration_ns.load() / utils::NS_TO_MS) << " ms";
     ImGui::TextUnformatted(oss.str().c_str());
     ImGui::SameLine();
     ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "(smoothed)");
@@ -860,7 +886,8 @@ void DrawImportantInfo() {
     // Reshade Overhead Display
     oss.str("");
     oss.clear();
-    oss << "Render Submit Duration: " << std::fixed << std::setprecision(3) << (1.0 *::g_render_submit_duration_ns.load() / utils::NS_TO_MS) << " ms";
+    oss << "Render Submit Duration: " << std::fixed << std::setprecision(3)
+        << (1.0 * ::g_render_submit_duration_ns.load() / utils::NS_TO_MS) << " ms";
     ImGui::TextUnformatted(oss.str().c_str());
     ImGui::SameLine();
     ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "(smoothed)");
@@ -869,24 +896,27 @@ void DrawImportantInfo() {
     oss.str("");
     oss.clear();
     oss << "Reshade Overhead Duration: " << std::fixed << std::setprecision(3)
-    << ((1.0 *::g_reshade_overhead_duration_ns.load() - ::fps_sleep_before_on_present_ns.load() - ::fps_sleep_after_on_present_ns.load()) / utils::NS_TO_MS) << " ms";
+        << ((1.0 * ::g_reshade_overhead_duration_ns.load() - ::fps_sleep_before_on_present_ns.load() -
+             ::fps_sleep_after_on_present_ns.load()) /
+            utils::NS_TO_MS)
+        << " ms";
     ImGui::TextUnformatted(oss.str().c_str());
     ImGui::SameLine();
     ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "(smoothed)");
-
 
     oss.str("");
     oss.clear();
-    oss << "FPS Limiter Sleep Duration (before onPresent): " << std::fixed << std::setprecision(3) << (1.0 *::fps_sleep_before_on_present_ns.load() / utils::NS_TO_MS) << " ms";
+    oss << "FPS Limiter Sleep Duration (before onPresent): " << std::fixed << std::setprecision(3)
+        << (1.0 * ::fps_sleep_before_on_present_ns.load() / utils::NS_TO_MS) << " ms";
     ImGui::TextUnformatted(oss.str().c_str());
     ImGui::SameLine();
     ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "(smoothed)");
-
 
     // FPS Limiter Start Duration Display
     oss.str("");
     oss.clear();
-    oss << "FPS Limiter Sleep Duration (after onPresent): " << std::fixed << std::setprecision(3) << (1.0 *::fps_sleep_after_on_present_ns.load() / utils::NS_TO_MS) << " ms";
+    oss << "FPS Limiter Sleep Duration (after onPresent): " << std::fixed << std::setprecision(3)
+        << (1.0 * ::fps_sleep_after_on_present_ns.load() / utils::NS_TO_MS) << " ms";
     ImGui::TextUnformatted(oss.str().c_str());
     ImGui::SameLine();
     ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "(smoothed)");
@@ -899,7 +929,7 @@ void DrawImportantInfo() {
     const uint32_t head = ::g_perf_ring_head.load(std::memory_order_acquire);
     if (head > 0) {
         const uint32_t last_idx = (head - 1) & (::kPerfRingCapacity - 1);
-        const ::PerfSample& last_sample = ::g_perf_ring[last_idx];
+        const ::PerfSample &last_sample = ::g_perf_ring[last_idx];
         current_fps = last_sample.fps;
     }
 
@@ -910,20 +940,29 @@ void DrawImportantInfo() {
 
         static double sim_start_to_present_latency_ms = 0.0;
         sim_start_to_present_latency_ms = (sim_start_to_present_latency_ms * 0.99 + latency_ms * 0.01);
-        oss << "Sim Start to Present Latency: " << std::fixed << std::setprecision(3) << sim_start_to_present_latency_ms << " ms";
+        oss << "Sim Start to Present Latency: " << std::fixed << std::setprecision(3) << sim_start_to_present_latency_ms
+            << " ms";
         ImGui::TextUnformatted(oss.str().c_str());
         ImGui::SameLine();
         ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "(frame_time - sleep_duration)");
     }
 
     // Flip State Display (renamed from DXGI Composition)
-    const char* flip_state_str = "Unknown";
+    const char *flip_state_str = "Unknown";
     int flip_state_case = static_cast<int>(::s_dxgi_composition_state);
     switch (flip_state_case) {
-        case 1: flip_state_str = "Composed Flip"; break;
-        case 2: flip_state_str = "MPO Independent Flip"; break;
-        case 3: flip_state_str = "Legacy Independent Flip"; break;
-        default: flip_state_str = "Unknown"; break;
+    case 1:
+        flip_state_str = "Composed Flip";
+        break;
+    case 2:
+        flip_state_str = "MPO Independent Flip";
+        break;
+    case 3:
+        flip_state_str = "Legacy Independent Flip";
+        break;
+    default:
+        flip_state_str = "Unknown";
+        break;
     }
 
     oss.str("");
@@ -961,20 +1000,26 @@ void DrawAdhdMultiMonitorControls() {
     }
 
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Covers secondary monitors with a black window to reduce distractions while playing this game.");
+        ImGui::SetTooltip(
+            "Covers secondary monitors with a black window to reduce distractions while playing this game.");
     }
 
     // Focus disengagement is always enabled (no UI control needed)
     ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "• Automatically disengages on Alt-Tab");
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("ADHD mode will automatically disengage whenever you Alt-Tab, regardless of which monitor the new application is on.");
+        ImGui::SetTooltip("ADHD mode will automatically disengage whenever you Alt-Tab, regardless of which monitor "
+                          "the new application is on.");
     }
 
     // Additional information
     ImGui::Spacing();
-    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "This feature helps reduce distractions by covering secondary monitors with a black background.");
+    ImGui::TextColored(
+        ImVec4(0.8f, 0.8f, 0.8f, 1.0f),
+        "This feature helps reduce distractions by covering secondary monitors with a black background.");
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Similar to Special-K's ADHD Multi-Monitor Mode.\nThe black background window will automatically position itself to cover all monitors except the one where your game is running.");
+        ImGui::SetTooltip(
+            "Similar to Special-K's ADHD Multi-Monitor Mode.\nThe black background window will automatically position "
+            "itself to cover all monitors except the one where your game is running.");
     }
 }
 

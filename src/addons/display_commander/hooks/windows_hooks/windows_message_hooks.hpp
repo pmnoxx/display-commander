@@ -1,7 +1,8 @@
 #pragma once
 
-#include <windows.h>
 #include <atomic>
+#include <windows.h>
+
 
 namespace renodx::hooks {
 
@@ -12,7 +13,10 @@ struct HookCallStats {
 
     void increment_total() { total_calls.fetch_add(1); }
     void increment_unsuppressed() { unsuppressed_calls.fetch_add(1); }
-    void reset() { total_calls.store(0); unsuppressed_calls.store(0); }
+    void reset() {
+        total_calls.store(0);
+        unsuppressed_calls.store(0);
+    }
 };
 
 // Hook call statistics
@@ -65,40 +69,40 @@ enum HookIndex {
 };
 
 // Function pointer types for Windows message functions
-using GetMessageA_pfn = BOOL(WINAPI*)(LPMSG, HWND, UINT, UINT);
-using GetMessageW_pfn = BOOL(WINAPI*)(LPMSG, HWND, UINT, UINT);
-using PeekMessageA_pfn = BOOL(WINAPI*)(LPMSG, HWND, UINT, UINT, UINT);
-using PeekMessageW_pfn = BOOL(WINAPI*)(LPMSG, HWND, UINT, UINT, UINT);
-using PostMessageA_pfn = BOOL(WINAPI*)(HWND, UINT, WPARAM, LPARAM);
-using PostMessageW_pfn = BOOL(WINAPI*)(HWND, UINT, WPARAM, LPARAM);
-using GetKeyboardState_pfn = BOOL(WINAPI*)(PBYTE);
-using ClipCursor_pfn = BOOL(WINAPI*)(const RECT*);
-using GetCursorPos_pfn = BOOL(WINAPI*)(LPPOINT);
-using SetCursorPos_pfn = BOOL(WINAPI*)(int, int);
-using GetKeyState_pfn = SHORT(WINAPI*)(int);
-using GetAsyncKeyState_pfn = SHORT(WINAPI*)(int);
-using SetWindowsHookExA_pfn = HHOOK(WINAPI*)(int, HOOKPROC, HINSTANCE, DWORD);
-using SetWindowsHookExW_pfn = HHOOK(WINAPI*)(int, HOOKPROC, HINSTANCE, DWORD);
-using UnhookWindowsHookEx_pfn = BOOL(WINAPI*)(HHOOK);
-using GetRawInputBuffer_pfn = UINT(WINAPI*)(PRAWINPUT, PUINT, UINT);
-using TranslateMessage_pfn = BOOL(WINAPI*)(const MSG*);
-using DispatchMessageA_pfn = LRESULT(WINAPI*)(const MSG*);
-using DispatchMessageW_pfn = LRESULT(WINAPI*)(const MSG*);
-using GetRawInputData_pfn = UINT(WINAPI*)(HRAWINPUT, UINT, LPVOID, PUINT, UINT);
-using RegisterRawInputDevices_pfn = BOOL(WINAPI*)(PCRAWINPUTDEVICE, UINT, UINT);
-using VkKeyScan_pfn = SHORT(WINAPI*)(CHAR);
-using VkKeyScanEx_pfn = SHORT(WINAPI*)(CHAR, HKL);
-using ToAscii_pfn = int(WINAPI*)(UINT, UINT, const BYTE*, LPWORD, UINT);
-using ToAsciiEx_pfn = int(WINAPI*)(UINT, UINT, const BYTE*, LPWORD, UINT, HKL);
-using ToUnicode_pfn = int(WINAPI*)(UINT, UINT, const BYTE*, LPWSTR, int, UINT);
-using ToUnicodeEx_pfn = int(WINAPI*)(UINT, UINT, const BYTE*, LPWSTR, int, UINT, HKL);
-using GetKeyNameTextA_pfn = int(WINAPI*)(LONG, LPSTR, int);
-using GetKeyNameTextW_pfn = int(WINAPI*)(LONG, LPWSTR, int);
-using SendInput_pfn = UINT(WINAPI*)(UINT, LPINPUT, int);
-using keybd_event_pfn = void(WINAPI*)(BYTE, BYTE, DWORD, ULONG_PTR);
-using mouse_event_pfn = void(WINAPI*)(DWORD, DWORD, DWORD, DWORD, ULONG_PTR);
-using MapVirtualKey_pfn = UINT(WINAPI*)(UINT, UINT);
-using MapVirtualKeyEx_pfn = UINT(WINAPI*)(UINT, UINT, HKL);
+using GetMessageA_pfn = BOOL(WINAPI *)(LPMSG, HWND, UINT, UINT);
+using GetMessageW_pfn = BOOL(WINAPI *)(LPMSG, HWND, UINT, UINT);
+using PeekMessageA_pfn = BOOL(WINAPI *)(LPMSG, HWND, UINT, UINT, UINT);
+using PeekMessageW_pfn = BOOL(WINAPI *)(LPMSG, HWND, UINT, UINT, UINT);
+using PostMessageA_pfn = BOOL(WINAPI *)(HWND, UINT, WPARAM, LPARAM);
+using PostMessageW_pfn = BOOL(WINAPI *)(HWND, UINT, WPARAM, LPARAM);
+using GetKeyboardState_pfn = BOOL(WINAPI *)(PBYTE);
+using ClipCursor_pfn = BOOL(WINAPI *)(const RECT *);
+using GetCursorPos_pfn = BOOL(WINAPI *)(LPPOINT);
+using SetCursorPos_pfn = BOOL(WINAPI *)(int, int);
+using GetKeyState_pfn = SHORT(WINAPI *)(int);
+using GetAsyncKeyState_pfn = SHORT(WINAPI *)(int);
+using SetWindowsHookExA_pfn = HHOOK(WINAPI *)(int, HOOKPROC, HINSTANCE, DWORD);
+using SetWindowsHookExW_pfn = HHOOK(WINAPI *)(int, HOOKPROC, HINSTANCE, DWORD);
+using UnhookWindowsHookEx_pfn = BOOL(WINAPI *)(HHOOK);
+using GetRawInputBuffer_pfn = UINT(WINAPI *)(PRAWINPUT, PUINT, UINT);
+using TranslateMessage_pfn = BOOL(WINAPI *)(const MSG *);
+using DispatchMessageA_pfn = LRESULT(WINAPI *)(const MSG *);
+using DispatchMessageW_pfn = LRESULT(WINAPI *)(const MSG *);
+using GetRawInputData_pfn = UINT(WINAPI *)(HRAWINPUT, UINT, LPVOID, PUINT, UINT);
+using RegisterRawInputDevices_pfn = BOOL(WINAPI *)(PCRAWINPUTDEVICE, UINT, UINT);
+using VkKeyScan_pfn = SHORT(WINAPI *)(CHAR);
+using VkKeyScanEx_pfn = SHORT(WINAPI *)(CHAR, HKL);
+using ToAscii_pfn = int(WINAPI *)(UINT, UINT, const BYTE *, LPWORD, UINT);
+using ToAsciiEx_pfn = int(WINAPI *)(UINT, UINT, const BYTE *, LPWORD, UINT, HKL);
+using ToUnicode_pfn = int(WINAPI *)(UINT, UINT, const BYTE *, LPWSTR, int, UINT);
+using ToUnicodeEx_pfn = int(WINAPI *)(UINT, UINT, const BYTE *, LPWSTR, int, UINT, HKL);
+using GetKeyNameTextA_pfn = int(WINAPI *)(LONG, LPSTR, int);
+using GetKeyNameTextW_pfn = int(WINAPI *)(LONG, LPWSTR, int);
+using SendInput_pfn = UINT(WINAPI *)(UINT, LPINPUT, int);
+using keybd_event_pfn = void(WINAPI *)(BYTE, BYTE, DWORD, ULONG_PTR);
+using mouse_event_pfn = void(WINAPI *)(DWORD, DWORD, DWORD, DWORD, ULONG_PTR);
+using MapVirtualKey_pfn = UINT(WINAPI *)(UINT, UINT);
+using MapVirtualKeyEx_pfn = UINT(WINAPI *)(UINT, UINT, HKL);
 
 // Original function pointers
 extern GetMessageA_pfn GetMessageA_Original;
@@ -144,7 +148,7 @@ BOOL WINAPI PeekMessageW_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT
 BOOL WINAPI PostMessageA_Detour(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam);
 BOOL WINAPI PostMessageW_Detour(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam);
 BOOL WINAPI GetKeyboardState_Detour(PBYTE lpKeyState);
-BOOL WINAPI ClipCursor_Detour(const RECT* lpRect);
+BOOL WINAPI ClipCursor_Detour(const RECT *lpRect);
 BOOL WINAPI GetCursorPos_Detour(LPPOINT lpPoint);
 BOOL WINAPI SetCursorPos_Detour(int X, int Y);
 SHORT WINAPI GetKeyState_Detour(int vKey);
@@ -153,17 +157,20 @@ HHOOK WINAPI SetWindowsHookExA_Detour(int idHook, HOOKPROC lpfn, HINSTANCE hmod,
 HHOOK WINAPI SetWindowsHookExW_Detour(int idHook, HOOKPROC lpfn, HINSTANCE hmod, DWORD dwThreadId);
 BOOL WINAPI UnhookWindowsHookEx_Detour(HHOOK hhk);
 UINT WINAPI GetRawInputBuffer_Detour(PRAWINPUT pData, PUINT pcbSize, UINT cbSizeHeader);
-BOOL WINAPI TranslateMessage_Detour(const MSG* lpMsg);
-LRESULT WINAPI DispatchMessageA_Detour(const MSG* lpMsg);
-LRESULT WINAPI DispatchMessageW_Detour(const MSG* lpMsg);
+BOOL WINAPI TranslateMessage_Detour(const MSG *lpMsg);
+LRESULT WINAPI DispatchMessageA_Detour(const MSG *lpMsg);
+LRESULT WINAPI DispatchMessageW_Detour(const MSG *lpMsg);
 UINT WINAPI GetRawInputData_Detour(HRAWINPUT hRawInput, UINT uiCommand, LPVOID pData, PUINT pcbSize, UINT cbSizeHeader);
 BOOL WINAPI RegisterRawInputDevices_Detour(PCRAWINPUTDEVICE pRawInputDevices, UINT uiNumDevices, UINT cbSize);
 SHORT WINAPI VkKeyScan_Detour(CHAR ch);
 SHORT WINAPI VkKeyScanEx_Detour(CHAR ch, HKL dwhkl);
-int WINAPI ToAscii_Detour(UINT uVirtKey, UINT uScanCode, const BYTE* lpKeyState, LPWORD lpChar, UINT uFlags);
-int WINAPI ToAsciiEx_Detour(UINT uVirtKey, UINT uScanCode, const BYTE* lpKeyState, LPWORD lpChar, UINT uFlags, HKL dwhkl);
-int WINAPI ToUnicode_Detour(UINT wVirtKey, UINT wScanCode, const BYTE* lpKeyState, LPWSTR pwszBuff, int cchBuff, UINT wFlags);
-int WINAPI ToUnicodeEx_Detour(UINT wVirtKey, UINT wScanCode, const BYTE* lpKeyState, LPWSTR pwszBuff, int cchBuff, UINT wFlags, HKL dwhkl);
+int WINAPI ToAscii_Detour(UINT uVirtKey, UINT uScanCode, const BYTE *lpKeyState, LPWORD lpChar, UINT uFlags);
+int WINAPI ToAsciiEx_Detour(UINT uVirtKey, UINT uScanCode, const BYTE *lpKeyState, LPWORD lpChar, UINT uFlags,
+                            HKL dwhkl);
+int WINAPI ToUnicode_Detour(UINT wVirtKey, UINT wScanCode, const BYTE *lpKeyState, LPWSTR pwszBuff, int cchBuff,
+                            UINT wFlags);
+int WINAPI ToUnicodeEx_Detour(UINT wVirtKey, UINT wScanCode, const BYTE *lpKeyState, LPWSTR pwszBuff, int cchBuff,
+                              UINT wFlags, HKL dwhkl);
 int WINAPI GetKeyNameTextA_Detour(LONG lParam, LPSTR lpString, int cchSize);
 int WINAPI GetKeyNameTextW_Detour(LONG lParam, LPWSTR lpString, int cchSize);
 UINT WINAPI SendInput_Detour(UINT nInputs, LPINPUT pInputs, int cbSize);
@@ -187,9 +194,9 @@ void SuppressMessage(LPMSG lpMsg);
 extern HookCallStats g_hook_stats[];
 
 // Hook statistics access functions
-const HookCallStats& GetHookStats(int hook_index);
+const HookCallStats &GetHookStats(int hook_index);
 void ResetAllHookStats();
 int GetHookCount();
-const char* GetHookName(int hook_index);
+const char *GetHookName(int hook_index);
 
 } // namespace renodx::hooks

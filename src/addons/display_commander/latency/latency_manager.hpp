@@ -19,12 +19,7 @@ enum class LatencyMarkerType {
 };
 
 // Latency technology types
-enum class LatencyTechnology {
-    None,
-    NVIDIA_Reflex,
-    AMD_AntiLag2,
-    Intel_XeSS
-};
+enum class LatencyTechnology { None, NVIDIA_Reflex, AMD_AntiLag2, Intel_XeSS };
 
 // Configuration for latency technologies
 struct LatencyConfig {
@@ -38,11 +33,11 @@ struct LatencyConfig {
 
 // Abstract base class for latency management
 class ILatencyProvider {
-public:
+  public:
     virtual ~ILatencyProvider() = default;
 
     // Core lifecycle
-    virtual bool Initialize(reshade::api::device* device) = 0;
+    virtual bool Initialize(reshade::api::device *device) = 0;
     virtual void Shutdown() = 0;
     virtual bool IsInitialized() const = 0;
 
@@ -58,17 +53,17 @@ public:
 
     // Technology-specific info
     virtual LatencyTechnology GetTechnology() const = 0;
-    virtual const char* GetTechnologyName() const = 0;
+    virtual const char *GetTechnologyName() const = 0;
 };
 
 // Main latency manager that abstracts different technologies
 class LatencyManager {
-public:
+  public:
     LatencyManager();
     ~LatencyManager();
 
     // Initialize with a specific technology
-    bool Initialize(reshade::api::device* device, LatencyTechnology technology = LatencyTechnology::NVIDIA_Reflex);
+    bool Initialize(reshade::api::device *device, LatencyTechnology technology = LatencyTechnology::NVIDIA_Reflex);
 
     // Shutdown current provider
     void Shutdown();
@@ -87,17 +82,17 @@ public:
     bool Sleep();
 
     // Configuration
-    void SetConfig(const LatencyConfig& config);
+    void SetConfig(const LatencyConfig &config);
     LatencyConfig GetConfig() const;
 
     // Technology info
     LatencyTechnology GetCurrentTechnology() const;
-    const char* GetCurrentTechnologyName() const;
+    const char *GetCurrentTechnologyName() const;
 
     // Switch between technologies at runtime
-    bool SwitchTechnology(LatencyTechnology technology, reshade::api::device* device);
+    bool SwitchTechnology(LatencyTechnology technology, reshade::api::device *device);
 
-private:
+  private:
     std::unique_ptr<ILatencyProvider> provider_;
     LatencyConfig config_;
     std::atomic<bool> initialized_{false};

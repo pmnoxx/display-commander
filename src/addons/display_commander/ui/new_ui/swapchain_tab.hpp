@@ -1,7 +1,7 @@
 #pragma once
 
 #include <imgui.h>
-#include <functional>
+
 
 namespace ui::new_ui {
 

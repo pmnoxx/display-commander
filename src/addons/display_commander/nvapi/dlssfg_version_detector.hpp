@@ -1,13 +1,14 @@
 #pragma once
 
-#include <windows.h>
-#include <string>
 #include <sstream>
+#include <string>
+#include <windows.h>
+
 
 // DLSS-FG Version Detection Module
 // Based on Special-K's implementation for detecting DLSS Frame Generation version
 class DLSSFGVersionDetector {
-public:
+  public:
     // Constructor
     DLSSFGVersionDetector();
 
@@ -35,16 +36,16 @@ public:
         bool valid = false;
 
         // Check if this version is older than another
-        bool isOlderThan(const VersionInfo& other) const {
-            return other.major > major ||
-        (other.major == major && other.minor > minor) ||
-        (other.major == major && other.minor == minor && other.build > build) ||
-        (other.major == major && other.minor == minor && other.build == build && other.revision > revision);
+        bool isOlderThan(const VersionInfo &other) const {
+            return other.major > major || (other.major == major && other.minor > minor) ||
+                   (other.major == major && other.minor == minor && other.build > build) ||
+                   (other.major == major && other.minor == minor && other.build == build && other.revision > revision);
         }
 
         // Get formatted version string
         std::string getFormattedVersion() const {
-            if (!valid) return "Unknown";
+            if (!valid)
+                return "Unknown";
             std::ostringstream oss;
             oss << major << "." << minor << "." << build << "." << revision;
             if (driver_override) {
@@ -55,15 +56,15 @@ public:
     };
 
     // Get current DLSS-FG version
-    const VersionInfo& GetVersion() const;
+    const VersionInfo &GetVersion() const;
 
     // Force re-detection of DLSS-FG version
     bool RefreshVersion();
 
     // Get last error message
-    const std::string& GetLastError() const;
+    const std::string &GetLastError() const;
 
-private:
+  private:
     // Internal state
     bool initialized = false;
     bool failed_to_initialize = false;
@@ -71,19 +72,19 @@ private:
     std::string last_error;
 
     // DLL version detection functions (based on Special-K's approach)
-    std::wstring GetDLLVersionStr(const wchar_t* wszName) const;
-    std::wstring GetDLLVersionShort(const wchar_t* wszName) const;
+    std::wstring GetDLLVersionStr(const wchar_t *wszName) const;
+    std::wstring GetDLLVersionShort(const wchar_t *wszName) const;
 
     // Check if a DLL is actually a DLSS-G DLL
-    bool IsDLSSGDLL(const std::wstring& version_string) const;
+    bool IsDLSSGDLL(const std::wstring &version_string) const;
 
     // Parse version numbers from version string
-    bool ParseVersionNumbers(const std::wstring& version_short, VersionInfo& version) const;
+    bool ParseVersionNumbers(const std::wstring &version_short, VersionInfo &version) const;
 
     // Common DLSS-G DLL names to check
-    static constexpr const wchar_t* DLSSG_DLL_NAMES[] = {
+    static constexpr const wchar_t *DLSSG_DLL_NAMES[] = {
         L"nvngx_dlssg.dll",
-        L"nvngx_dlssg.bin"  // Driver override
+        L"nvngx_dlssg.bin" // Driver override
     };
     static constexpr size_t DLSSG_DLL_COUNT = 2;
 };

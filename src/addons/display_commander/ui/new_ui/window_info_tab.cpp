@@ -1,8 +1,8 @@
 #include "window_info_tab.hpp"
+#include "../../globals.hpp"
 #include "../../window_management/window_management.hpp"
 #include <imgui.h>
-#include "../../globals.hpp"
-#include <sstream>
+
 
 namespace ui::new_ui {
 
@@ -41,18 +41,14 @@ void DrawBasicWindowInfo() {
 
             // Display window information
             ImGui::Text("Window Handle: %p", hwnd);
-            ImGui::Text("Window Rect: (%ld,%ld) to (%ld,%ld)",
-        window_rect.left, window_rect.top,
-        window_rect.right, window_rect.bottom);
-            ImGui::Text("Client Rect: (%ld,%ld) to (%ld,%ld)",
-        client_rect.left, client_rect.top,
-        client_rect.right, client_rect.bottom);
-            ImGui::Text("Window Size: %ldx%ld",
-        window_rect.right - window_rect.left,
-        window_rect.bottom - window_rect.top);
-            ImGui::Text("Client Size: %ldx%ld",
-        client_rect.right - client_rect.left,
-        client_rect.bottom - client_rect.top);
+            ImGui::Text("Window Rect: (%ld,%ld) to (%ld,%ld)", window_rect.left, window_rect.top, window_rect.right,
+                        window_rect.bottom);
+            ImGui::Text("Client Rect: (%ld,%ld) to (%ld,%ld)", client_rect.left, client_rect.top, client_rect.right,
+                        client_rect.bottom);
+            ImGui::Text("Window Size: %ldx%ld", window_rect.right - window_rect.left,
+                        window_rect.bottom - window_rect.top);
+            ImGui::Text("Client Size: %ldx%ld", client_rect.right - client_rect.left,
+                        client_rect.bottom - client_rect.top);
 
             ImGui::Separator();
             ImGui::Text("Backbuffer Size: %dx%d", bb_w, bb_h);
@@ -184,13 +180,13 @@ void DrawCursorInfo() {
             POINT cursor_pos;
             GetCursorPos(&cursor_pos);
             bool cursor_in_window = (cursor_pos.x >= window_rect.left && cursor_pos.x <= window_rect.right &&
-                cursor_pos.y >= window_rect.top && cursor_pos.y <= window_rect.bottom);
+                                     cursor_pos.y >= window_rect.top && cursor_pos.y <= window_rect.bottom);
 
             ImGui::Text("Cursor Information:");
             ImGui::Text("  Cursor Pos: (%ld, %ld)", cursor_pos.x, cursor_pos.y);
             ImGui::Text("  Cursor In Window: %s", cursor_in_window ? "YES" : "No");
-            ImGui::Text("  Window Bounds: (%ld,%ld) to (%ld,%ld)",
-        window_rect.left, window_rect.top, window_rect.right, window_rect.bottom);
+            ImGui::Text("  Window Bounds: (%ld,%ld) to (%ld,%ld)", window_rect.left, window_rect.top, window_rect.right,
+                        window_rect.bottom);
         }
     }
 }
@@ -212,10 +208,9 @@ void DrawTargetState() {
                 ImGui::Text("  Needs Move: %s", s2.needs_move ? "YES" : "No");
                 ImGui::Text("  Style Changed: %s", s2.style_changed ? "YES" : "No");
 
-                ImGui::Text("Style Mode: %s",
-                    s2.style_mode == WindowStyleMode::BORDERLESS ? "BORDERLESS" :
-                    s2.style_mode == WindowStyleMode::OVERLAPPED_WINDOW ? "WINDOWED" :
-                    "KEEP");
+                ImGui::Text("Style Mode: %s", s2.style_mode == WindowStyleMode::BORDERLESS          ? "BORDERLESS"
+                                              : s2.style_mode == WindowStyleMode::OVERLAPPED_WINDOW ? "WINDOWED"
+                                                                                                    : "KEEP");
 
                 ImGui::Text("Last Reason: %s", s2.reason ? s2.reason : "unknown");
             }

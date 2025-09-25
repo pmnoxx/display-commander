@@ -1,16 +1,17 @@
 #include "resolution_widget.hpp"
 #include "../../display_cache.hpp"
-#include "../../resolution_helpers.hpp"
-#include "../../globals.hpp"
 #include "../../display_restore.hpp"
+#include "../../globals.hpp"
+#include "../../resolution_helpers.hpp"
+#include "../../utils.hpp"
 #include "utils/timing.hpp"
-#include <imgui.h>
-#include <reshade.hpp>
 #include <algorithm>
-#include <string>
 #include <cmath>
-#include <sstream>
+#include <imgui.h>
 #include <iomanip>
+#include <reshade.hpp>
+#include <sstream>
+#include <string>
 
 namespace display_commander::widgets::resolution_widget {
 
@@ -39,7 +40,8 @@ std::unique_ptr<ResolutionWidget> g_resolution_widget = nullptr;
 ResolutionWidget::ResolutionWidget() = default;
 
 void ResolutionWidget::Initialize() {
-    if (is_initialized_) return;
+    if (is_initialized_)
+        return;
 
     LogInfo("ResolutionWidget::Initialize() - Starting resolution widget initialization");
 
@@ -48,7 +50,8 @@ void ResolutionWidget::Initialize() {
 
     // Set initial display to current monitor
     selected_display_index_ = 0; // Auto (Current)
-    LogInfo("ResolutionWidget::Initialize() - Set selected_display_index_ = %d (Auto/Current)", selected_display_index_);
+    LogInfo("ResolutionWidget::Initialize() - Set selected_display_index_ = %d (Auto/Current)",
+            selected_display_index_);
 
     // Capture original settings when widget is first initialized
     CaptureOriginalSettings();
@@ -60,7 +63,8 @@ void ResolutionWidget::Initialize() {
 }
 
 void ResolutionWidget::Cleanup() {
-    if (!is_initialized_) return;
+    if (!is_initialized_)
+        return;
 
     // Save any pending changes
     if (g_resolution_settings && g_resolution_settings->HasAnyDirty()) {
@@ -93,11 +97,12 @@ void ResolutionWidget::OnDraw() {
 
     // Apply loaded settings to UI selection (only once)
     if (!settings_applied_to_ui_) {
-    //  LogInfo("ResolutionWidget::OnDraw() - First draw, applying loaded settings to UI");
+        //  LogInfo("ResolutionWidget::OnDraw() - First draw, applying loaded settings to UI");
         UpdateCurrentSelectionFromSettings();
         settings_applied_to_ui_ = true;
-    //     LogInfo("ResolutionWidget::OnDraw() - Applied settings to UI indices: display=%d, resolution=%d, refresh=%d",
-    //             selected_display_index_, selected_resolution_index_, selected_refresh_index_);
+        //     LogInfo("ResolutionWidget::OnDraw() - Applied settings to UI indices: display=%d, resolution=%d,
+        //     refresh=%d",
+        //             selected_display_index_, selected_resolution_index_, selected_refresh_index_);
     }
 
     // Draw the resolution widget UI
@@ -145,7 +150,8 @@ void ResolutionWidget::DrawAutoApplyCheckbox() {
     bool auto_apply = g_resolution_settings->GetAutoApply();
     if (ImGui::Checkbox("Auto-apply changes", &auto_apply)) {
         g_resolution_settings->SetAutoApply(auto_apply);
-        LogInfo("ResolutionWidget::DrawAutoApplyCheckbox() - Auto-apply changes set to: %s", auto_apply ? "true" : "false");
+        LogInfo("ResolutionWidget::DrawAutoApplyCheckbox() - Auto-apply changes set to: %s",
+                auto_apply ? "true" : "false");
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Automatically apply resolution changes when selections are made");
@@ -162,7 +168,7 @@ void ResolutionWidget::DrawDisplaySelector() {
     if (hwnd) {
         HMONITOR current_monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
         if (current_monitor) {
-            const auto* display = display_cache::g_displayCache.GetDisplayByHandle(current_monitor);
+            const auto *display = display_cache::g_displayCache.GetDisplayByHandle(current_monitor);
             if (display) {
                 int width = display->width;
                 int height = display->height;
@@ -184,9 +190,8 @@ void ResolutionWidget::DrawDisplaySelector() {
                 std::string primary_text = is_primary ? " Primary" : "";
                 std::string device_name(display->device_name.begin(), display->device_name.end());
 
-                auto_label = "Auto (Current) [" + device_name + "] " +
-                            std::to_string(width) + "x" + std::to_string(height) +
-                            "@" + rate_str + "Hz" + primary_text;
+                auto_label = "Auto (Current) [" + device_name + "] " + std::to_string(width) + "x" +
+                             std::to_string(height) + "@" + rate_str + "Hz" + primary_text;
             }
         }
     }
@@ -195,7 +200,7 @@ void ResolutionWidget::DrawDisplaySelector() {
     auto displays = display_cache::g_displayCache.GetDisplays();
     if (displays) {
         for (size_t i = 0; i < (std::min)(displays->size(), static_cast<size_t>(4)); ++i) {
-            const auto* display = (*displays)[i].get();
+            const auto *display = (*displays)[i].get();
             if (display) {
                 // Format with resolution, refresh rate, and primary status like Auto Current
                 int width = display->width;
@@ -218,9 +223,8 @@ void ResolutionWidget::DrawDisplaySelector() {
                 std::string primary_text = is_primary ? " Primary" : "";
                 std::string device_name(display->device_name.begin(), display->device_name.end());
 
-                std::string name = "[" + device_name + "] " +
-                std::to_string(width) + "x" + std::to_string(height) +
-                "@" + rate_str + "Hz" + primary_text;
+                std::string name = "[" + device_name + "] " + std::to_string(width) + "x" + std::to_string(height) +
+                                   "@" + rate_str + "Hz" + primary_text;
 
                 display_names.push_back(name);
             }
@@ -245,7 +249,6 @@ void ResolutionWidget::DrawDisplaySelector() {
     ImGui::PopID();
     ImGui::SameLine();
     ImGui::Text("Display");
-
 }
 
 void ResolutionWidget::DrawResolutionSelector() {
@@ -277,7 +280,6 @@ void ResolutionWidget::DrawResolutionSelector() {
     ImGui::PopID();
     ImGui::SameLine();
     ImGui::Text("Resolution");
-
 }
 
 void ResolutionWidget::DrawRefreshRateSelector() {
@@ -313,15 +315,15 @@ void ResolutionWidget::DrawRefreshRateSelector() {
 
 void ResolutionWidget::DrawActionButtons() {
     int actual_display = GetActualDisplayIndex();
-    auto& display_settings = g_resolution_settings->GetDisplaySettings(actual_display);
+    auto &display_settings = g_resolution_settings->GetDisplaySettings(actual_display);
 
     // Show dirty state indicator
     if (display_settings.IsDirty()) {
-        const ResolutionData& current = display_settings.GetCurrentState();
-        const ResolutionData& last_saved = display_settings.GetLastSavedState();
+        const ResolutionData &current = display_settings.GetCurrentState();
+        const ResolutionData &last_saved = display_settings.GetLastSavedState();
 
         // Format resolution and refresh rate as "widthxheight@refreshHz"
-        auto formatResolution = [this, actual_display](const ResolutionData& data) -> std::string {
+        auto formatResolution = [this, actual_display](const ResolutionData &data) -> std::string {
             if (data.is_current) {
                 // Get actual current resolution and refresh rate
                 int current_width, current_height;
@@ -457,7 +459,8 @@ void ResolutionWidget::DrawActionButtons() {
 
 void ResolutionWidget::RefreshDisplayData() {
     int actual_display = GetActualDisplayIndex();
-    LogInfo("ResolutionWidget::RefreshDisplayData() - actual_display=%d, selected_resolution_index_=%d", actual_display, selected_resolution_index_);
+    LogInfo("ResolutionWidget::RefreshDisplayData() - actual_display=%d, selected_resolution_index_=%d", actual_display,
+            selected_resolution_index_);
 
     // Get resolution labels
     resolution_labels_ = display_cache::g_displayCache.GetResolutionLabels(actual_display);
@@ -473,13 +476,14 @@ void ResolutionWidget::RefreshDisplayData() {
             LogInfo("ResolutionWidget::RefreshDisplayData() - Resolution[%zu]: Current Resolution", i);
         } else {
             // Parse resolution from label
-            const std::string& label = resolution_labels_[i];
+            const std::string &label = resolution_labels_[i];
             size_t x_pos = label.find(" x ");
             if (x_pos != std::string::npos) {
                 try {
                     data.width = std::stoi(label.substr(0, x_pos));
                     data.height = std::stoi(label.substr(x_pos + 3));
-                    LogInfo("ResolutionWidget::RefreshDisplayData() - Resolution[%zu]: %dx%d", i, data.width, data.height);
+                    LogInfo("ResolutionWidget::RefreshDisplayData() - Resolution[%zu]: %dx%d", i, data.width,
+                            data.height);
                 } catch (...) {
                     // Parse failed, use current resolution
                     data.is_current = true;
@@ -496,7 +500,8 @@ void ResolutionWidget::RefreshDisplayData() {
     // Get refresh rate labels
     refresh_labels_ = display_cache::g_displayCache.GetRefreshRateLabels(actual_display, selected_resolution_index_);
     refresh_data_.clear();
-    LogInfo("ResolutionWidget::RefreshDisplayData() - Found %zu refresh rate options for resolution index %d", refresh_labels_.size(), selected_resolution_index_);
+    LogInfo("ResolutionWidget::RefreshDisplayData() - Found %zu refresh rate options for resolution index %d",
+            refresh_labels_.size(), selected_resolution_index_);
 
     // Build refresh rate data
     for (size_t i = 0; i < refresh_labels_.size(); ++i) {
@@ -507,7 +512,7 @@ void ResolutionWidget::RefreshDisplayData() {
             LogInfo("ResolutionWidget::RefreshDisplayData() - Refresh[%zu]: Current Refresh Rate", i);
         } else {
             // Parse refresh rate from label
-            const std::string& label = refresh_labels_[i];
+            const std::string &label = refresh_labels_[i];
             size_t hz_pos = label.find("Hz");
             if (hz_pos != std::string::npos) {
                 try {
@@ -515,7 +520,8 @@ void ResolutionWidget::RefreshDisplayData() {
                     // Convert to rational (approximate)
                     data.refresh_numerator = static_cast<int>(hz * 1000);
                     data.refresh_denominator = 1000;
-                    LogInfo("ResolutionWidget::RefreshDisplayData() - Refresh[%zu]: %.3f Hz (%d/%d)", i, hz, data.refresh_numerator, data.refresh_denominator);
+                    LogInfo("ResolutionWidget::RefreshDisplayData() - Refresh[%zu]: %.3f Hz (%d/%d)", i, hz,
+                            data.refresh_numerator, data.refresh_denominator);
                 } catch (...) {
                     data.is_current = true;
                     LogInfo("ResolutionWidget::RefreshDisplayData() - Refresh[%zu]: Parse failed, using current", i);
@@ -547,7 +553,7 @@ void ResolutionWidget::RefreshRefreshRateData() {
         if (i == 0) {
             data.is_current = true;
         } else {
-            const std::string& label = refresh_labels_[i];
+            const std::string &label = refresh_labels_[i];
             size_t hz_pos = label.find("Hz");
             if (hz_pos != std::string::npos) {
                 try {
@@ -571,13 +577,14 @@ bool ResolutionWidget::ApplyCurrentSelection() {
     }
 
     int actual_display = GetActualDisplayIndex();
-    const ResolutionData& resolution = resolution_data_[selected_resolution_index_];
-    const ResolutionData& refresh = refresh_data_[selected_refresh_index_];
+    const ResolutionData &resolution = resolution_data_[selected_resolution_index_];
+    const ResolutionData &refresh = refresh_data_[selected_refresh_index_];
 
     return TryApplyResolution(actual_display, resolution, refresh);
 }
 
-bool ResolutionWidget::TryApplyResolution(int display_index, const ResolutionData& resolution, const ResolutionData& refresh) {
+bool ResolutionWidget::TryApplyResolution(int display_index, const ResolutionData &resolution,
+                                          const ResolutionData &refresh) {
     if (resolution.is_current && refresh.is_current) {
         // Both are current, nothing to apply
         return true;
@@ -610,12 +617,14 @@ bool ResolutionWidget::TryApplyResolution(int display_index, const ResolutionDat
     }
 
     // Fallback: legacy ChangeDisplaySettingsExW
-    const auto* display = display_cache::g_displayCache.GetDisplay(display_index);
-    if (!display) return false;
+    const auto *display = display_cache::g_displayCache.GetDisplay(display_index);
+    if (!display)
+        return false;
     HMONITOR hmon = display->monitor_handle;
     MONITORINFOEXW mi;
     mi.cbSize = sizeof(mi);
-    if (!GetMonitorInfoW(hmon, &mi)) return false;
+    if (!GetMonitorInfoW(hmon, &mi))
+        return false;
 
     DEVMODEW dm;
     ZeroMemory(&dm, sizeof(dm));
@@ -623,7 +632,8 @@ bool ResolutionWidget::TryApplyResolution(int display_index, const ResolutionDat
     dm.dmFields = DM_PELSWIDTH | DM_PELSHEIGHT | DM_DISPLAYFREQUENCY;
     dm.dmPelsWidth = width;
     dm.dmPelsHeight = height;
-    dm.dmDisplayFrequency = static_cast<DWORD>(std::lround(static_cast<double>(refresh_num) / static_cast<double>(refresh_denom)));
+    dm.dmDisplayFrequency =
+        static_cast<DWORD>(std::lround(static_cast<double>(refresh_num) / static_cast<double>(refresh_denom)));
 
     LONG result = ChangeDisplaySettingsExW(mi.szDevice, &dm, nullptr, CDS_UPDATEREGISTRY, nullptr);
     return result == DISP_CHANGE_SUCCESSFUL;
@@ -644,23 +654,24 @@ void ResolutionWidget::DrawConfirmationDialog() {
     }
 
     // Center the dialog
-    ImGuiIO& io = ImGui::GetIO();
+    ImGuiIO &io = ImGui::GetIO();
     ImVec2 center = ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f);
     ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
 
     // Create modal dialog
     ImGui::SetNextWindowSize(ImVec2(400, 200), ImGuiCond_FirstUseEver);
     if (ImGui::Begin("Resolution Change Confirmation", &show_confirmation_,
-        ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse)) {
+                     ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse)) {
 
         // Format the resolution change
-        auto formatResolution = [this](const ResolutionData& data) -> std::string {
+        auto formatResolution = [this](const ResolutionData &data) -> std::string {
             if (data.is_current) {
                 // Get actual current resolution and refresh rate
                 int current_width, current_height;
                 display_cache::RationalRefreshRate current_refresh;
 
-                if (display_cache::g_displayCache.GetCurrentResolution(pending_display_index_, current_width, current_height) &&
+                if (display_cache::g_displayCache.GetCurrentResolution(pending_display_index_, current_width,
+                                                                       current_height) &&
                     display_cache::g_displayCache.GetCurrentRefreshRate(pending_display_index_, current_refresh)) {
 
                     std::string resolution = std::to_string(current_width) + "x" + std::to_string(current_height);
@@ -717,7 +728,7 @@ void ResolutionWidget::DrawConfirmationDialog() {
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.0f, 1.0f, 0.0f, 1.0f));
         if (ImGui::Button("Confirm", ImVec2(100, 30))) {
             // User confirmed, save the settings
-            auto& display_settings = g_resolution_settings->GetDisplaySettings(pending_display_index_);
+            auto &display_settings = g_resolution_settings->GetDisplaySettings(pending_display_index_);
             display_settings.SetCurrentState(pending_resolution_);
             display_settings.SaveCurrentState();
             display_settings.Save();
@@ -771,7 +782,7 @@ std::string ResolutionWidget::GetDisplayName(int display_index) const {
         if (hwnd) {
             HMONITOR current_monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
             if (current_monitor) {
-                const auto* display = display_cache::g_displayCache.GetDisplayByHandle(current_monitor);
+                const auto *display = display_cache::g_displayCache.GetDisplayByHandle(current_monitor);
                 if (display) {
                     int width = display->width;
                     int height = display->height;
@@ -793,9 +804,8 @@ std::string ResolutionWidget::GetDisplayName(int display_index) const {
                     std::string primary_text = is_primary ? " Primary" : "";
                     std::string device_name(display->device_name.begin(), display->device_name.end());
 
-                    auto_label = "Auto (Current) [" + device_name + "] " +
-                                std::to_string(width) + "x" + std::to_string(height) +
-                                "@" + rate_str + "Hz" + primary_text;
+                    auto_label = "Auto (Current) [" + device_name + "] " + std::to_string(width) + "x" +
+                                 std::to_string(height) + "@" + rate_str + "Hz" + primary_text;
                 }
             }
         }
@@ -804,7 +814,7 @@ std::string ResolutionWidget::GetDisplayName(int display_index) const {
 
     auto displays = display_cache::g_displayCache.GetDisplays();
     if (displays && display_index <= static_cast<int>(displays->size())) {
-        const auto* display = (*displays)[display_index - 1].get();
+        const auto *display = (*displays)[display_index - 1].get();
         if (display) {
             // Format with resolution, refresh rate, and primary status like Auto Current
             int width = display->width;
@@ -827,9 +837,8 @@ std::string ResolutionWidget::GetDisplayName(int display_index) const {
             std::string primary_text = is_primary ? " Primary" : "";
             std::string device_name(display->device_name.begin(), display->device_name.end());
 
-            std::string name = "[" + device_name + "] " +
-            std::to_string(width) + "x" + std::to_string(height) +
-            "@" + rate_str + "Hz" + primary_text;
+            std::string name = "[" + device_name + "] " + std::to_string(width) + "x" + std::to_string(height) + "@" +
+                               rate_str + "Hz" + primary_text;
 
             return name;
         }
@@ -848,7 +857,7 @@ int ResolutionWidget::GetActualDisplayIndex() const {
                 auto displays = display_cache::g_displayCache.GetDisplays();
                 if (displays) {
                     for (size_t i = 0; i < displays->size(); ++i) {
-                        const auto* display = (*displays)[i].get();
+                        const auto *display = (*displays)[i].get();
                         if (display && display->monitor_handle == current_monitor) {
                             return static_cast<int>(i);
                         }
@@ -864,23 +873,24 @@ int ResolutionWidget::GetActualDisplayIndex() const {
 
 void ResolutionWidget::UpdateCurrentSelectionFromSettings() {
     int actual_display = GetActualDisplayIndex();
-    auto& display_settings = g_resolution_settings->GetDisplaySettings(actual_display);
-    const ResolutionData& current_state = display_settings.GetCurrentState();
+    auto &display_settings = g_resolution_settings->GetDisplaySettings(actual_display);
+    const ResolutionData &current_state = display_settings.GetCurrentState();
 
-    LogInfo("ResolutionWidget::UpdateCurrentSelectionFromSettings() - actual_display=%d, current_state: %dx%d @ %d/%d, is_current=%s",
-            actual_display, current_state.width, current_state.height,
-            current_state.refresh_numerator, current_state.refresh_denominator,
-            current_state.is_current ? "true" : "false");
+    LogInfo("ResolutionWidget::UpdateCurrentSelectionFromSettings() - actual_display=%d, current_state: %dx%d @ %d/%d, "
+            "is_current=%s",
+            actual_display, current_state.width, current_state.height, current_state.refresh_numerator,
+            current_state.refresh_denominator, current_state.is_current ? "true" : "false");
 
     // Find matching resolution index
     selected_resolution_index_ = 0;
     if (!current_state.is_current && current_state.width > 0 && current_state.height > 0) {
         // Look for exact width/height match
         for (size_t i = 0; i < resolution_data_.size(); ++i) {
-            const auto& res = resolution_data_[i];
+            const auto &res = resolution_data_[i];
             if (!res.is_current && res.width == current_state.width && res.height == current_state.height) {
                 selected_resolution_index_ = static_cast<int>(i);
-                LogInfo("ResolutionWidget::UpdateCurrentSelectionFromSettings() - Found exact resolution match at index %d: %dx%d",
+                LogInfo("ResolutionWidget::UpdateCurrentSelectionFromSettings() - Found exact resolution match at "
+                        "index %d: %dx%d",
                         selected_resolution_index_, res.width, res.height);
                 break;
             }
@@ -894,25 +904,28 @@ void ResolutionWidget::UpdateCurrentSelectionFromSettings() {
         RefreshDisplayData();
 
         for (size_t i = 0; i < refresh_data_.size(); ++i) {
-            const auto& refresh = refresh_data_[i];
-            if (!refresh.is_current &&
-                refresh.refresh_numerator == current_state.refresh_numerator &&
+            const auto &refresh = refresh_data_[i];
+            if (!refresh.is_current && refresh.refresh_numerator == current_state.refresh_numerator &&
                 refresh.refresh_denominator == current_state.refresh_denominator) {
                 selected_refresh_index_ = static_cast<int>(i);
-                LogInfo("ResolutionWidget::UpdateCurrentSelectionFromSettings() - Found exact refresh rate match at index %d: %d/%d",
+                LogInfo("ResolutionWidget::UpdateCurrentSelectionFromSettings() - Found exact refresh rate match at "
+                        "index %d: %d/%d",
                         selected_refresh_index_, refresh.refresh_numerator, refresh.refresh_denominator);
                 break;
             }
         }
     }
 
-    LogInfo("ResolutionWidget::UpdateCurrentSelectionFromSettings() - Set UI indices: display=%d, resolution=%d, refresh=%d",
+    LogInfo("ResolutionWidget::UpdateCurrentSelectionFromSettings() - Set UI indices: display=%d, resolution=%d, "
+            "refresh=%d",
             selected_display_index_, selected_resolution_index_, selected_refresh_index_);
 
     // Apply the loaded settings if they are not "current" (i.e., they are specific resolution/refresh rate settings)
     if (!current_state.is_current && current_state.width > 0 && current_state.height > 0) {
-        LogInfo("ResolutionWidget::UpdateCurrentSelectionFromSettings() - Applying loaded resolution settings: %dx%d @ %d/%d",
-                current_state.width, current_state.height, current_state.refresh_numerator, current_state.refresh_denominator);
+        LogInfo("ResolutionWidget::UpdateCurrentSelectionFromSettings() - Applying loaded resolution settings: %dx%d @ "
+                "%d/%d",
+                current_state.width, current_state.height, current_state.refresh_numerator,
+                current_state.refresh_denominator);
 
         // Create resolution and refresh data from loaded settings
         ResolutionData resolution_data;
@@ -927,12 +940,15 @@ void ResolutionWidget::UpdateCurrentSelectionFromSettings() {
 
         // Apply the settings
         if (TryApplyResolution(actual_display, resolution_data, refresh_data)) {
-            LogInfo("ResolutionWidget::UpdateCurrentSelectionFromSettings() - Successfully applied loaded resolution settings");
+            LogInfo("ResolutionWidget::UpdateCurrentSelectionFromSettings() - Successfully applied loaded resolution "
+                    "settings");
         } else {
-            LogError("ResolutionWidget::UpdateCurrentSelectionFromSettings() - Failed to apply loaded resolution settings");
+            LogError(
+                "ResolutionWidget::UpdateCurrentSelectionFromSettings() - Failed to apply loaded resolution settings");
         }
     } else {
-        LogInfo("ResolutionWidget::UpdateCurrentSelectionFromSettings() - Skipping resolution application (is_current=%s, width=%d, height=%d)",
+        LogInfo("ResolutionWidget::UpdateCurrentSelectionFromSettings() - Skipping resolution application "
+                "(is_current=%s, width=%d, height=%d)",
                 current_state.is_current ? "true" : "false", current_state.width, current_state.height);
     }
 }
@@ -943,7 +959,7 @@ void ResolutionWidget::UpdateSettingsFromCurrentSelection() {
     }
 
     int actual_display = GetActualDisplayIndex();
-    auto& display_settings = g_resolution_settings->GetDisplaySettings(actual_display);
+    auto &display_settings = g_resolution_settings->GetDisplaySettings(actual_display);
 
     // Create combined resolution data
     ResolutionData combined = resolution_data_[selected_resolution_index_];
@@ -978,7 +994,7 @@ void ResolutionWidget::CaptureOriginalSettings() {
     }
 
     // Get display info from cache
-    const auto* display = display_cache::g_displayCache.GetDisplayByHandle(current_monitor);
+    const auto *display = display_cache::g_displayCache.GetDisplayByHandle(current_monitor);
     if (!display) {
         return;
     }
@@ -1009,7 +1025,7 @@ std::string ResolutionWidget::FormatOriginalSettingsString() const {
             return "Original settings not captured (no monitor)";
         }
 
-        const auto* display = display_cache::g_displayCache.GetDisplayByHandle(current_monitor);
+        const auto *display = display_cache::g_displayCache.GetDisplayByHandle(current_monitor);
         if (!display) {
             return "Original settings not captured (no display cache)";
         }
@@ -1021,7 +1037,7 @@ std::string ResolutionWidget::FormatOriginalSettingsString() const {
     std::string refresh_str = "";
     if (original_settings_.refresh_numerator > 0 && original_settings_.refresh_denominator > 0) {
         double refresh_hz = static_cast<double>(original_settings_.refresh_numerator) /
-            static_cast<double>(original_settings_.refresh_denominator);
+                            static_cast<double>(original_settings_.refresh_denominator);
         std::ostringstream oss;
         oss << std::fixed << std::setprecision(6) << refresh_hz;
         refresh_str = oss.str();
@@ -1036,9 +1052,8 @@ std::string ResolutionWidget::FormatOriginalSettingsString() const {
 
     std::string primary_text = original_settings_.is_primary ? " Primary" : "";
 
-    return "[" + original_settings_.device_name + "] " +
-    std::to_string(original_settings_.width) + "x" + std::to_string(original_settings_.height) +
-    refresh_str + primary_text;
+    return "[" + original_settings_.device_name + "] " + std::to_string(original_settings_.width) + "x" +
+           std::to_string(original_settings_.height) + refresh_str + primary_text;
 }
 
 void ResolutionWidget::DrawOriginalSettingsInfo() {

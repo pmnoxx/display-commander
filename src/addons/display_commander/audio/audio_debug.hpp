@@ -4,7 +4,6 @@
 #include <mmdeviceapi.h>
 #include <windows.h>
 
-
 // Audio debugging functions
 void DebugAudioSessions();
 void DebugAudioSessionForProcess(DWORD process_id);

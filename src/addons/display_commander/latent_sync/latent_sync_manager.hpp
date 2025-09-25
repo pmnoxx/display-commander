@@ -5,7 +5,7 @@
 namespace dxgi::latent_sync {
 
 class LatentSyncManager {
-public:
+  public:
     LatentSyncManager();
     ~LatentSyncManager() = default;
 
@@ -16,9 +16,9 @@ public:
     void ShutdownLatentSyncSystem();
 
     // Get the latent sync limiter instance
-    dxgi::fps_limiter::LatentSyncLimiter& GetLatentLimiter() { return m_latentLimiter; }
+    dxgi::fps_limiter::LatentSyncLimiter &GetLatentLimiter() { return m_latentLimiter; }
 
-private:
+  private:
     dxgi::fps_limiter::LatentSyncLimiter m_latentLimiter;
 };
 

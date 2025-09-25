@@ -8,12 +8,9 @@
 // Global instance
 DLSSFGVersionDetector g_dlssfgVersionDetector;
 
-DLSSFGVersionDetector::DLSSFGVersionDetector() {
-}
+DLSSFGVersionDetector::DLSSFGVersionDetector() {}
 
-DLSSFGVersionDetector::~DLSSFGVersionDetector() {
-    Cleanup();
-}
+DLSSFGVersionDetector::~DLSSFGVersionDetector() { Cleanup(); }
 
 bool DLSSFGVersionDetector::Initialize() {
     if (initialized || failed_to_initialize) {
@@ -26,7 +23,7 @@ bool DLSSFGVersionDetector::Initialize() {
     bool version_found = false;
 
     for (size_t i = 0; i < DLSSG_DLL_COUNT; ++i) {
-        const wchar_t* dll_name = DLSSG_DLL_NAMES[i];
+        const wchar_t *dll_name = DLSSG_DLL_NAMES[i];
 
         // Check if the DLL is loaded
         HMODULE hModule = GetModuleHandleW(dll_name);
@@ -62,7 +59,8 @@ bool DLSSFGVersionDetector::Initialize() {
             int size_needed = WideCharToMultiByte(CP_UTF8, 0, version_str.c_str(), -1, nullptr, 0, nullptr, nullptr);
             if (size_needed > 0) {
                 version.version_string.resize(size_needed - 1);
-                WideCharToMultiByte(CP_UTF8, 0, version_str.c_str(), -1, &version.version_string[0], size_needed, nullptr, nullptr);
+                WideCharToMultiByte(CP_UTF8, 0, version_str.c_str(), -1, &version.version_string[0], size_needed,
+                                    nullptr, nullptr);
             }
 
             version.valid = true;
@@ -97,13 +95,9 @@ void DLSSFGVersionDetector::Cleanup() {
     last_error.clear();
 }
 
-bool DLSSFGVersionDetector::IsAvailable() const {
-    return initialized && current_version.valid;
-}
+bool DLSSFGVersionDetector::IsAvailable() const { return initialized && current_version.valid; }
 
-const DLSSFGVersionDetector::VersionInfo& DLSSFGVersionDetector::GetVersion() const {
-    return current_version;
-}
+const DLSSFGVersionDetector::VersionInfo &DLSSFGVersionDetector::GetVersion() const { return current_version; }
 
 bool DLSSFGVersionDetector::RefreshVersion() {
     if (!initialized) {
@@ -115,11 +109,9 @@ bool DLSSFGVersionDetector::RefreshVersion() {
     return Initialize();
 }
 
-const std::string& DLSSFGVersionDetector::GetLastError() const {
-    return last_error;
-}
+const std::string &DLSSFGVersionDetector::GetLastError() const { return last_error; }
 
-std::wstring DLSSFGVersionDetector::GetDLLVersionStr(const wchar_t* wszName) const {
+std::wstring DLSSFGVersionDetector::GetDLLVersionStr(const wchar_t *wszName) const {
     UINT cbTranslatedBytes = 0;
     UINT cbProductBytes = 0;
     UINT cbVersionBytes = 0;
@@ -127,88 +119,48 @@ std::wstring DLSSFGVersionDetector::GetDLLVersionStr(const wchar_t* wszName) con
     uint8_t cbData[4097] = {};
     size_t dwSize = 4096;
 
-    char* wszFileDescrip = nullptr;
-    char* wszFileVersion = nullptr;
+    char *wszFileDescrip = nullptr;
+    char *wszFileVersion = nullptr;
 
     struct LANGANDCODEPAGE {
         WORD wLanguage;
         WORD wCodePage;
     } *lpTranslate = nullptr;
 
-    BOOL bRet = GetFileVersionInfoExW(
-        FILE_VER_GET_NEUTRAL | FILE_VER_GET_PREFETCHED,
-        wszName,
-        0x00,
-        static_cast<DWORD>(dwSize),
-        cbData
-    );
+    BOOL bRet = GetFileVersionInfoExW(FILE_VER_GET_NEUTRAL | FILE_VER_GET_PREFETCHED, wszName, 0x00,
+                                      static_cast<DWORD>(dwSize), cbData);
 
     if (!bRet) {
         return L"N/A";
     }
 
-    if (VerQueryValueA(
-        cbData,
-        "\\VarFileInfo\\Translation",
-        reinterpret_cast<LPVOID*>(&lpTranslate),
-        &cbTranslatedBytes
-    ) && cbTranslatedBytes && lpTranslate) {
+    if (VerQueryValueA(cbData, "\\VarFileInfo\\Translation", reinterpret_cast<LPVOID *>(&lpTranslate),
+                       &cbTranslatedBytes) &&
+        cbTranslatedBytes && lpTranslate) {
 
         char wszPropName[64] = {};
-        _snprintf_s(wszPropName, 63,
-            "\\StringFileInfo\\%04x%04x\\FileDescription",
-            lpTranslate[0].wLanguage,
-            lpTranslate[0].wCodePage
-        );
+        _snprintf_s(wszPropName, 63, "\\StringFileInfo\\%04x%04x\\FileDescription", lpTranslate[0].wLanguage,
+                    lpTranslate[0].wCodePage);
 
-        VerQueryValueA(
-            cbData,
-            wszPropName,
-            reinterpret_cast<LPVOID*>(&wszFileDescrip),
-            &cbProductBytes
-        );
+        VerQueryValueA(cbData, wszPropName, reinterpret_cast<LPVOID *>(&wszFileDescrip), &cbProductBytes);
 
         if (cbProductBytes == 0) {
-            _snprintf_s(wszPropName, 63,
-                "\\StringFileInfo\\%04x%04x\\ProductName",
-                lpTranslate[0].wLanguage,
-                lpTranslate[0].wCodePage
-            );
+            _snprintf_s(wszPropName, 63, "\\StringFileInfo\\%04x%04x\\ProductName", lpTranslate[0].wLanguage,
+                        lpTranslate[0].wCodePage);
 
-            VerQueryValueA(
-                cbData,
-                wszPropName,
-                reinterpret_cast<LPVOID*>(&wszFileDescrip),
-                &cbProductBytes
-            );
+            VerQueryValueA(cbData, wszPropName, reinterpret_cast<LPVOID *>(&wszFileDescrip), &cbProductBytes);
         }
 
-        _snprintf_s(wszPropName, 63,
-            "\\StringFileInfo\\%04x%04x\\FileVersion",
-            lpTranslate[0].wLanguage,
-            lpTranslate[0].wCodePage
-        );
+        _snprintf_s(wszPropName, 63, "\\StringFileInfo\\%04x%04x\\FileVersion", lpTranslate[0].wLanguage,
+                    lpTranslate[0].wCodePage);
 
-        VerQueryValueA(
-            cbData,
-            wszPropName,
-            reinterpret_cast<LPVOID*>(&wszFileVersion),
-            &cbVersionBytes
-        );
+        VerQueryValueA(cbData, wszPropName, reinterpret_cast<LPVOID *>(&wszFileVersion), &cbVersionBytes);
 
         if (cbVersionBytes == 0) {
-            _snprintf_s(wszPropName, 63,
-                "\\StringFileInfo\\%04x%04x\\ProductVersion",
-                lpTranslate[0].wLanguage,
-                lpTranslate[0].wCodePage
-            );
+            _snprintf_s(wszPropName, 63, "\\StringFileInfo\\%04x%04x\\ProductVersion", lpTranslate[0].wLanguage,
+                        lpTranslate[0].wCodePage);
 
-            VerQueryValueA(
-                cbData,
-                wszPropName,
-                reinterpret_cast<LPVOID*>(&wszFileVersion),
-                &cbVersionBytes
-            );
+            VerQueryValueA(cbData, wszPropName, reinterpret_cast<LPVOID *>(&wszFileVersion), &cbVersionBytes);
         }
     }
 
@@ -242,7 +194,7 @@ std::wstring DLSSFGVersionDetector::GetDLLVersionStr(const wchar_t* wszName) con
     return ret;
 }
 
-std::wstring DLSSFGVersionDetector::GetDLLVersionShort(const wchar_t* wszName) const {
+std::wstring DLSSFGVersionDetector::GetDLLVersionShort(const wchar_t *wszName) const {
     UINT cbTranslatedBytes = 0;
     UINT cbProductBytes = 0;
     UINT cbVersionBytes = 0;
@@ -250,60 +202,36 @@ std::wstring DLSSFGVersionDetector::GetDLLVersionShort(const wchar_t* wszName) c
     uint8_t cbData[4097] = {};
     size_t dwSize = 4096;
 
-    char* wszFileDescrip = nullptr;
-    char* wszFileVersion = nullptr;
+    char *wszFileDescrip = nullptr;
+    char *wszFileVersion = nullptr;
 
     struct LANGANDCODEPAGE {
         WORD wLanguage;
         WORD wCodePage;
     } *lpTranslate = nullptr;
 
-    BOOL bRet = GetFileVersionInfoExW(
-        FILE_VER_GET_NEUTRAL | FILE_VER_GET_PREFETCHED,
-        wszName,
-        0x00,
-        static_cast<DWORD>(dwSize),
-        cbData
-    );
+    BOOL bRet = GetFileVersionInfoExW(FILE_VER_GET_NEUTRAL | FILE_VER_GET_PREFETCHED, wszName, 0x00,
+                                      static_cast<DWORD>(dwSize), cbData);
 
     if (!bRet) {
         return L"N/A";
     }
 
-    if (VerQueryValueA(
-        cbData,
-        "\\VarFileInfo\\Translation",
-        reinterpret_cast<LPVOID*>(&lpTranslate),
-        &cbTranslatedBytes
-    ) && cbTranslatedBytes && lpTranslate) {
+    if (VerQueryValueA(cbData, "\\VarFileInfo\\Translation", reinterpret_cast<LPVOID *>(&lpTranslate),
+                       &cbTranslatedBytes) &&
+        cbTranslatedBytes && lpTranslate) {
 
         char wszPropName[64] = {};
-        _snprintf_s(wszPropName, 63,
-            "\\StringFileInfo\\%04x%04x\\FileVersion",
-            lpTranslate[0].wLanguage,
-            lpTranslate[0].wCodePage
-        );
+        _snprintf_s(wszPropName, 63, "\\StringFileInfo\\%04x%04x\\FileVersion", lpTranslate[0].wLanguage,
+                    lpTranslate[0].wCodePage);
 
-        VerQueryValueA(
-            cbData,
-            wszPropName,
-            reinterpret_cast<LPVOID*>(&wszFileVersion),
-            &cbVersionBytes
-        );
+        VerQueryValueA(cbData, wszPropName, reinterpret_cast<LPVOID *>(&wszFileVersion), &cbVersionBytes);
 
         if (cbVersionBytes == 0) {
-            _snprintf_s(wszPropName, 63,
-                "\\StringFileInfo\\%04x%04x\\ProductVersion",
-                lpTranslate[0].wLanguage,
-                lpTranslate[0].wCodePage
-            );
+            _snprintf_s(wszPropName, 63, "\\StringFileInfo\\%04x%04x\\ProductVersion", lpTranslate[0].wLanguage,
+                        lpTranslate[0].wCodePage);
 
-            VerQueryValueA(
-                cbData,
-                wszPropName,
-                reinterpret_cast<LPVOID*>(&wszFileVersion),
-                &cbVersionBytes
-            );
+            VerQueryValueA(cbData, wszPropName, reinterpret_cast<LPVOID *>(&wszFileVersion), &cbVersionBytes);
         }
     }
 
@@ -321,26 +249,20 @@ std::wstring DLSSFGVersionDetector::GetDLLVersionShort(const wchar_t* wszName) c
     return L"N/A";
 }
 
-bool DLSSFGVersionDetector::IsDLSSGDLL(const std::wstring& version_string) const {
+bool DLSSFGVersionDetector::IsDLSSGDLL(const std::wstring &version_string) const {
     // Check for DLSS-G specific strings (same as Special-K)
     return version_string.find(L"NVIDIA DLSS-G -") != std::wstring::npos ||
-    version_string.find(L"NVIDIA DLSS-G MFGLW -") != std::wstring::npos;
+           version_string.find(L"NVIDIA DLSS-G MFGLW -") != std::wstring::npos;
 }
 
-bool DLSSFGVersionDetector::ParseVersionNumbers(const std::wstring& version_short, VersionInfo& version) const {
+bool DLSSFGVersionDetector::ParseVersionNumbers(const std::wstring &version_short, VersionInfo &version) const {
     if (version_short.empty() || version_short == L"N/A") {
         return false;
     }
 
     // Parse version numbers using swscanf (same as Special-K)
-    int result = swscanf_s(
-        version_short.c_str(),
-        L"%d,%d,%d,%d",
-        &version.major,
-        &version.minor,
-        &version.build,
-        &version.revision
-    );
+    int result = swscanf_s(version_short.c_str(), L"%d,%d,%d,%d", &version.major, &version.minor, &version.build,
+                           &version.revision);
 
     return result == 4;
 }

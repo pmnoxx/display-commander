@@ -1,22 +1,19 @@
 #include "query_display.hpp"
+#include <dxgi.h>
+#include <iostream>
+#include <sstream>
 #include <windows.h>
 #include <wingdi.h>
-#include <dxgi.h>
-#include <sstream>
-#include <iostream>
+
 
 // Helper methods for calculated values
-double DisplayTimingInfo::GetPixelClockMHz() const {
-    return static_cast<double>(pixel_clock_hz) / 1000000.0;
-}
+double DisplayTimingInfo::GetPixelClockMHz() const { return static_cast<double>(pixel_clock_hz) / 1000000.0; }
 
 double DisplayTimingInfo::GetHSyncFreqHz() const {
     return static_cast<double>(hsync_freq_numerator) / static_cast<double>(hsync_freq_denominator);
 }
 
-double DisplayTimingInfo::GetHSyncFreqKHz() const {
-    return GetHSyncFreqHz() / 1000.0;
-}
+double DisplayTimingInfo::GetHSyncFreqKHz() const { return GetHSyncFreqHz() / 1000.0; }
 
 double DisplayTimingInfo::GetVSyncFreqHz() const {
     return static_cast<double>(vsync_freq_numerator) / static_cast<double>(vsync_freq_denominator);
@@ -25,16 +22,12 @@ double DisplayTimingInfo::GetVSyncFreqHz() const {
 // Format timing info similar to Special-K log format
 std::wstring DisplayTimingInfo::GetFormattedString() const {
     wchar_t buffer[512];
-    swprintf_s(buffer, L"Display:%s :: Adapter:%u::Target:%u :: PixelClock=%.1f MHz, vSyncFreq=%.3f Hz, hSyncFreq=%.3f kHz, activeSize=(%ux%u), totalSize=(%ux%u), Standard=%u",
-    display_name.empty() ? L"UNKNOWN" : display_name.c_str(),
-    adapter_id,
-    target_id,
-    GetPixelClockMHz(),
-    GetVSyncFreqHz(),
-    GetHSyncFreqKHz(),
-    active_width, active_height,
-    total_width, total_height,
-    video_standard);
+    swprintf_s(buffer,
+               L"Display:%s :: Adapter:%u::Target:%u :: PixelClock=%.1f MHz, vSyncFreq=%.3f Hz, hSyncFreq=%.3f kHz, "
+               L"activeSize=(%ux%u), totalSize=(%ux%u), Standard=%u",
+               display_name.empty() ? L"UNKNOWN" : display_name.c_str(), adapter_id, target_id, GetPixelClockMHz(),
+               GetVSyncFreqHz(), GetHSyncFreqKHz(), active_width, active_height, total_width, total_height,
+               video_standard);
     return buffer;
 }
 
@@ -57,29 +50,29 @@ std::vector<DisplayTimingInfo> QueryDisplayTimingInfo() {
     std::vector<DISPLAYCONFIG_MODE_INFO> modes(mode_count);
 
     // Query display configuration
-    if (QueryDisplayConfig(QDC_ONLY_ACTIVE_PATHS, &path_count, paths.data(), &mode_count, modes.data(), nullptr) != ERROR_SUCCESS) {
+    if (QueryDisplayConfig(QDC_ONLY_ACTIVE_PATHS, &path_count, paths.data(), &mode_count, modes.data(), nullptr) !=
+        ERROR_SUCCESS) {
         return results;
     }
 
     // Process each active path
     for (UINT32 path_idx = 0; path_idx < path_count; ++path_idx) {
-        const auto& path = paths[path_idx];
+        const auto &path = paths[path_idx];
 
         // Only process active paths
-        if (!(path.flags & DISPLAYCONFIG_PATH_ACTIVE) ||
-            !(path.sourceInfo.statusFlags & DISPLAYCONFIG_SOURCE_IN_USE)) {
+        if (!(path.flags & DISPLAYCONFIG_PATH_ACTIVE) || !(path.sourceInfo.statusFlags & DISPLAYCONFIG_SOURCE_IN_USE)) {
             continue;
         }
 
         // Get target mode info
-        int mode_idx = (path.flags & DISPLAYCONFIG_PATH_SUPPORT_VIRTUAL_MODE) ?
-        path.targetInfo.targetModeInfoIdx : path.targetInfo.modeInfoIdx;
+        int mode_idx = (path.flags & DISPLAYCONFIG_PATH_SUPPORT_VIRTUAL_MODE) ? path.targetInfo.targetModeInfoIdx
+                                                                              : path.targetInfo.modeInfoIdx;
 
         if (mode_idx < 0 || static_cast<UINT32>(mode_idx) >= mode_count) {
             continue;
         }
 
-        const auto& mode_info = modes[mode_idx];
+        const auto &mode_info = modes[mode_idx];
 
         // Only process target mode info
         if (mode_info.infoType != DISPLAYCONFIG_MODE_INFO_TYPE_TARGET) {
@@ -95,7 +88,7 @@ std::vector<DisplayTimingInfo> QueryDisplayTimingInfo() {
         timing_info.target_id = path.targetInfo.id;
 
         // Extract timing information
-        const auto& video_signal = mode_info.targetMode.targetVideoSignalInfo;
+        const auto &video_signal = mode_info.targetMode.targetVideoSignalInfo;
         timing_info.pixel_clock_hz = video_signal.pixelRate;
         timing_info.hsync_freq_numerator = video_signal.hSyncFreq.Numerator;
         timing_info.hsync_freq_denominator = video_signal.hSyncFreq.Denominator;
@@ -162,7 +155,7 @@ std::vector<DisplayTimingInfo> QueryDisplayTimingInfo() {
 }
 
 // Utility function to convert wstring to string (similar to Special-K's SK_WideCharToUTF8)
-std::string WideCharToUTF8(const std::wstring& in) {
+std::string WideCharToUTF8(const std::wstring &in) {
     if (in.empty()) {
         return "";
     }
@@ -170,9 +163,8 @@ std::string WideCharToUTF8(const std::wstring& in) {
     constexpr UINT wcFlags = WC_COMPOSITECHECK | WC_NO_BEST_FIT_CHARS;
 
     // Get the required buffer size for the conversion
-    int len = ::WideCharToMultiByte(CP_UTF8, wcFlags, in.c_str(),
-                                    static_cast<int>(in.length()),
-                                    nullptr, 0, nullptr, FALSE);
+    int len =
+        ::WideCharToMultiByte(CP_UTF8, wcFlags, in.c_str(), static_cast<int>(in.length()), nullptr, 0, nullptr, FALSE);
 
     if (len == 0) {
         return "";
@@ -181,15 +173,13 @@ std::string WideCharToUTF8(const std::wstring& in) {
     std::string out(len, '\0');
 
     // Perform the actual conversion
-    if (::WideCharToMultiByte(CP_UTF8, wcFlags, in.c_str(),
-                            static_cast<int>(in.length()),
-                            const_cast<char*>(out.data()), len,
-                            nullptr, FALSE) == 0) {
+    if (::WideCharToMultiByte(CP_UTF8, wcFlags, in.c_str(), static_cast<int>(in.length()),
+                              const_cast<char *>(out.data()), len, nullptr, FALSE) == 0) {
         return "";
     }
 
     // Replace any null characters with spaces to prevent truncation issues
-    for (char& c : out) {
+    for (char &c : out) {
         if (c == '\0') {
             c = ' ';
         }
@@ -199,9 +189,8 @@ std::string WideCharToUTF8(const std::wstring& in) {
 }
 
 // Get current display settings using QueryDisplayConfig for precise refresh rate
-bool GetCurrentDisplaySettingsQueryConfig(HMONITOR monitor, int& width, int& height,
-                    uint32_t& refresh_numerator, uint32_t& refresh_denominator,
-                    int& x, int& y) {
+bool GetCurrentDisplaySettingsQueryConfig(HMONITOR monitor, int &width, int &height, uint32_t &refresh_numerator,
+                                          uint32_t &refresh_denominator, int &x, int &y) {
     UINT32 path_count = 0, mode_count = 0;
 
     // Get required buffer sizes
@@ -217,17 +206,17 @@ bool GetCurrentDisplaySettingsQueryConfig(HMONITOR monitor, int& width, int& hei
     std::vector<DISPLAYCONFIG_MODE_INFO> modes(mode_count);
 
     // Query display configuration
-    if (QueryDisplayConfig(QDC_ONLY_ACTIVE_PATHS, &path_count, paths.data(), &mode_count, modes.data(), nullptr) != ERROR_SUCCESS) {
+    if (QueryDisplayConfig(QDC_ONLY_ACTIVE_PATHS, &path_count, paths.data(), &mode_count, modes.data(), nullptr) !=
+        ERROR_SUCCESS) {
         return false;
     }
 
     // Find the path that matches our monitor
     for (UINT32 path_idx = 0; path_idx < path_count; ++path_idx) {
-        const auto& path = paths[path_idx];
+        const auto &path = paths[path_idx];
 
         // Only process active paths
-        if (!(path.flags & DISPLAYCONFIG_PATH_ACTIVE) ||
-            !(path.sourceInfo.statusFlags & DISPLAYCONFIG_SOURCE_IN_USE)) {
+        if (!(path.flags & DISPLAYCONFIG_PATH_ACTIVE) || !(path.sourceInfo.statusFlags & DISPLAYCONFIG_SOURCE_IN_USE)) {
             continue;
         }
 
@@ -255,14 +244,14 @@ bool GetCurrentDisplaySettingsQueryConfig(HMONITOR monitor, int& width, int& hei
         }
 
         // Found matching monitor, get the current mode info
-        int mode_idx = (path.flags & DISPLAYCONFIG_PATH_SUPPORT_VIRTUAL_MODE) ?
-        path.targetInfo.targetModeInfoIdx : path.targetInfo.modeInfoIdx;
+        int mode_idx = (path.flags & DISPLAYCONFIG_PATH_SUPPORT_VIRTUAL_MODE) ? path.targetInfo.targetModeInfoIdx
+                                                                              : path.targetInfo.modeInfoIdx;
 
         if (mode_idx < 0 || static_cast<UINT32>(mode_idx) >= mode_count) {
             continue;
         }
 
-        const auto& mode_info = modes[mode_idx];
+        const auto &mode_info = modes[mode_idx];
 
         // Only process target mode info
         if (mode_info.infoType != DISPLAYCONFIG_MODE_INFO_TYPE_TARGET) {
@@ -270,7 +259,7 @@ bool GetCurrentDisplaySettingsQueryConfig(HMONITOR monitor, int& width, int& hei
         }
 
         // Extract current display settings
-        const auto& video_signal = mode_info.targetMode.targetVideoSignalInfo;
+        const auto &video_signal = mode_info.targetMode.targetVideoSignalInfo;
 
         width = static_cast<int>(video_signal.activeSize.cx);
         height = static_cast<int>(video_signal.activeSize.cy);
@@ -280,7 +269,7 @@ bool GetCurrentDisplaySettingsQueryConfig(HMONITOR monitor, int& width, int& hei
         // Get position from source mode info
         int source_mode_idx = path.sourceInfo.modeInfoIdx;
         if (source_mode_idx >= 0 && static_cast<UINT32>(source_mode_idx) < mode_count) {
-            const auto& source_mode = modes[source_mode_idx];
+            const auto &source_mode = modes[source_mode_idx];
             if (source_mode.infoType == DISPLAYCONFIG_MODE_INFO_TYPE_SOURCE) {
                 x = static_cast<int>(source_mode.sourceMode.position.x);
                 y = static_cast<int>(source_mode.sourceMode.position.y);

@@ -1,10 +1,11 @@
 #include "dxgi_present_hooks.hpp"
-#include "../../utils.hpp"
 #include "../../swapchain_events.hpp"
+#include "../../utils.hpp"
 #include <MinHook.h>
-#include <sstream>
 #include <iomanip>
+#include <sstream>
 #include <string>
+
 
 namespace renodx::hooks::dxgi {
 
@@ -27,47 +28,56 @@ std::string DecodePresentFlags(UINT flags) {
         bool first = true;
 
         if (flags & DXGI_PRESENT_TEST) {
-            if (!first) oss << " | ";
+            if (!first)
+                oss << " | ";
             oss << "TEST";
             first = false;
         }
         if (flags & DXGI_PRESENT_DO_NOT_SEQUENCE) {
-            if (!first) oss << " | ";
+            if (!first)
+                oss << " | ";
             oss << "DO_NOT_SEQUENCE";
             first = false;
         }
         if (flags & DXGI_PRESENT_RESTART) {
-            if (!first) oss << " | ";
+            if (!first)
+                oss << " | ";
             oss << "RESTART";
             first = false;
         }
         if (flags & DXGI_PRESENT_DO_NOT_WAIT) {
-            if (!first) oss << " | ";
+            if (!first)
+                oss << " | ";
             oss << "DO_NOT_WAIT";
             first = false;
         }
         if (flags & DXGI_PRESENT_STEREO_PREFER_RIGHT) {
-            if (!first) oss << " | ";
+            if (!first)
+                oss << " | ";
             oss << "STEREO_PREFER_RIGHT";
             first = false;
         }
         if (flags & DXGI_PRESENT_STEREO_TEMPORARY_MONO) {
-            if (!first) oss << " | ";
+            if (!first)
+                oss << " | ";
             oss << "STEREO_TEMPORARY_MONO";
             first = false;
         }
         if (flags & DXGI_PRESENT_RESTRICT_TO_OUTPUT) {
-            if (!first) oss << " | ";
+            if (!first)
+                oss << " | ";
             oss << "RESTRICT_TO_OUTPUT";
             first = false;
         }
         if (flags & DXGI_PRESENT_USE_DURATION) {
-            if (!first) oss << " | ";
+            if (!first)
+                oss << " | ";
             oss << "USE_DURATION";
             first = false;
         }
         if (flags & DXGI_PRESENT_ALLOW_TEARING) {
-            if (!first) oss << " | ";
+            if (!first)
+                oss << " | ";
             oss << "ALLOW_TEARING";
             first = false;
         }
@@ -83,9 +93,8 @@ std::string DecodePresent1Flags(UINT flags) {
     return DecodePresentFlags(flags); // Same flags as Present
 }
 
-
 // Hooked IDXGISwapChain::Present function
-HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain* This, UINT SyncInterval, UINT Flags) {
+HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain *This, UINT SyncInterval, UINT Flags) {
     // Log the Present call with all arguments
     /*  std::ostringstream oss;
     oss << "DXGI Present called - SwapChain: 0x" << std::hex << This
@@ -106,7 +115,8 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain* This, UI
 }
 
 // Hooked IDXGISwapChain1::Present1 function
-HRESULT STDMETHODCALLTYPE IDXGISwapChain1_Present1_Detour(IDXGISwapChain1* This, UINT SyncInterval, UINT PresentFlags, const DXGI_PRESENT_PARAMETERS* pPresentParameters) {
+HRESULT STDMETHODCALLTYPE IDXGISwapChain1_Present1_Detour(IDXGISwapChain1 *This, UINT SyncInterval, UINT PresentFlags,
+                                                          const DXGI_PRESENT_PARAMETERS *pPresentParameters) {
     // Log the Present1 call with all arguments
     /*  std::ostringstream oss;
     oss << "DXGI Present1 called - SwapChain1: 0x" << std::hex << This
@@ -132,12 +142,12 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain1_Present1_Detour(IDXGISwapChain1* This,
 
 // Global variables to track hooked swapchains
 static std::atomic<bool> g_swapchain_hooked{false};
-static IDXGISwapChain* g_hooked_swapchain = nullptr;
-static IDXGISwapChain1* g_hooked_swapchain1 = nullptr;
+static IDXGISwapChain *g_hooked_swapchain = nullptr;
+static IDXGISwapChain1 *g_hooked_swapchain1 = nullptr;
 
 // VTable hooking functions
-bool HookSwapchainVTable(IDXGISwapChain* swapchain);
-bool HookSwapchain1VTable(IDXGISwapChain1* swapchain1);
+bool HookSwapchainVTable(IDXGISwapChain *swapchain);
+bool HookSwapchain1VTable(IDXGISwapChain1 *swapchain1);
 
 // Install DXGI Present hooks
 bool InstallDxgiPresentHooks() {
@@ -166,17 +176,16 @@ bool InstallDxgiPresentHooks() {
 }
 
 // Hook a specific swapchain's vtable
-bool HookSwapchainVTable(IDXGISwapChain* swapchain) {
+bool HookSwapchainVTable(IDXGISwapChain *swapchain) {
     if (!swapchain || g_swapchain_hooked.load()) {
         return false;
     }
 
     // Get the vtable
-    void** vtable = *(void***)swapchain;
+    void **vtable = *(void ***)swapchain;
 
     // Hook Present (index 8 in IDXGISwapChain vtable)
-    if (MH_CreateHook(vtable[8], IDXGISwapChain_Present_Detour,
-                    (LPVOID*)&IDXGISwapChain_Present_Original) != MH_OK) {
+    if (MH_CreateHook(vtable[8], IDXGISwapChain_Present_Detour, (LPVOID *)&IDXGISwapChain_Present_Original) != MH_OK) {
         LogError("Failed to create IDXGISwapChain::Present hook");
         return false;
     }
@@ -195,17 +204,17 @@ bool HookSwapchainVTable(IDXGISwapChain* swapchain) {
 }
 
 // Hook a specific swapchain1's vtable
-bool HookSwapchain1VTable(IDXGISwapChain1* swapchain1) {
+bool HookSwapchain1VTable(IDXGISwapChain1 *swapchain1) {
     if (!swapchain1) {
         return false;
     }
 
     // Get the vtable
-    void** vtable = *(void***)swapchain1;
+    void **vtable = *(void ***)swapchain1;
 
     // Hook Present1 (index 22 in IDXGISwapChain1 vtable)
-    if (MH_CreateHook(vtable[22], IDXGISwapChain1_Present1_Detour,
-                    (LPVOID*)&IDXGISwapChain1_Present1_Original) != MH_OK) {
+    if (MH_CreateHook(vtable[22], IDXGISwapChain1_Present1_Detour, (LPVOID *)&IDXGISwapChain1_Present1_Original) !=
+        MH_OK) {
         LogError("Failed to create IDXGISwapChain1::Present1 hook");
         return false;
     }
@@ -223,7 +232,7 @@ bool HookSwapchain1VTable(IDXGISwapChain1* swapchain1) {
 }
 
 // Public function to hook a swapchain when it's created
-bool HookSwapchain(IDXGISwapChain* swapchain) {
+bool HookSwapchain(IDXGISwapChain *swapchain) {
     if (!g_dxgi_present_hooks_installed.load()) {
         LogError("DXGI Present hooks not installed, cannot hook swapchain");
         return false;
@@ -237,7 +246,7 @@ bool HookSwapchain(IDXGISwapChain* swapchain) {
     }
 
     // Try to hook as IDXGISwapChain1
-    IDXGISwapChain1* swapchain1 = nullptr;
+    IDXGISwapChain1 *swapchain1 = nullptr;
     if (SUCCEEDED(swapchain->QueryInterface(IID_PPV_ARGS(&swapchain1)))) {
         if (HookSwapchain1VTable(swapchain1)) {
             success = true;
@@ -265,8 +274,6 @@ void UninstallDxgiPresentHooks() {
 }
 
 // Check if DXGI Present hooks are installed
-bool AreDxgiPresentHooksInstalled() {
-    return g_dxgi_present_hooks_installed.load();
-}
+bool AreDxgiPresentHooksInstalled() { return g_dxgi_present_hooks_installed.load(); }
 
 } // namespace renodx::hooks::dxgi

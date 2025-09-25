@@ -5,8 +5,8 @@
 namespace renodx::hooks {
 
 // Function pointer types for process exit functions
-using ExitProcess_pfn = void(WINAPI*)(UINT uExitCode);
-using TerminateProcess_pfn = BOOL(WINAPI*)(HANDLE hProcess, UINT uExitCode);
+using ExitProcess_pfn = void(WINAPI *)(UINT uExitCode);
+using TerminateProcess_pfn = BOOL(WINAPI *)(HANDLE hProcess, UINT uExitCode);
 
 // Process exit hook function pointers
 extern ExitProcess_pfn ExitProcess_Original;

@@ -1,7 +1,7 @@
 /*
-    * Copyright (C) 2024 Display Commander
-    * Window procedure hooks using MinHook for managing window properties
-    */
+ * Copyright (C) 2024 Display Commander
+ * Window procedure hooks using MinHook for managing window properties
+ */
 
 #pragma once
 

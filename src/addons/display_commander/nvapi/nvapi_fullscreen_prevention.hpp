@@ -1,13 +1,14 @@
 #pragma once
 
 #include <windows.h>
+
 #include <nvapi.h>
 #include <string>
 
 // NVAPI Fullscreen Prevention Module
 // Based on SpecialK's implementation using static linking
 class NVAPIFullscreenPrevention {
-public:
+  public:
     // Constructor
     NVAPIFullscreenPrevention();
 
@@ -45,11 +46,11 @@ public:
     std::string GetDllVersionInfo() const;
 
     // HDR related helpers
-    bool QueryHdrStatus(bool& out_hdr_enabled, std::string& out_colorspace, std::string& out_output_name) const;
-    bool QueryHdrDetails(std::string& out_details) const;
+    bool QueryHdrStatus(bool &out_hdr_enabled, std::string &out_colorspace, std::string &out_output_name) const;
+    bool QueryHdrDetails(std::string &out_details) const;
     bool SetHdr10OnAll(bool enable);
 
-private:
+  private:
     bool initialized = false;
     bool failed_to_initialize = false;
     bool fullscreen_prevention_enabled = false;
@@ -58,8 +59,8 @@ private:
     NvDRSProfileHandle hProfile = {0};
 
     // Disable copy constructor and assignment
-    NVAPIFullscreenPrevention(const NVAPIFullscreenPrevention&) = delete;
-    NVAPIFullscreenPrevention& operator=(const NVAPIFullscreenPrevention&) = delete;
+    NVAPIFullscreenPrevention(const NVAPIFullscreenPrevention &) = delete;
+    NVAPIFullscreenPrevention &operator=(const NVAPIFullscreenPrevention &) = delete;
 };
 
 // Global instance

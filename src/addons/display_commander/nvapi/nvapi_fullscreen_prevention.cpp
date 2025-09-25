@@ -3,12 +3,9 @@
 #include <NvApiDriverSettings.h>
 #include <sstream>
 
-NVAPIFullscreenPrevention::NVAPIFullscreenPrevention() {
-}
+NVAPIFullscreenPrevention::NVAPIFullscreenPrevention() {}
 
-NVAPIFullscreenPrevention::~NVAPIFullscreenPrevention() {
-    Cleanup();
-}
+NVAPIFullscreenPrevention::~NVAPIFullscreenPrevention() { Cleanup(); }
 
 bool NVAPIFullscreenPrevention::Initialize() {
     if (initialized || failed_to_initialize) {
@@ -71,7 +68,8 @@ void NVAPIFullscreenPrevention::Cleanup() {
 bool NVAPIFullscreenPrevention::IsAvailable() const {
     // Check if shutdown is in progress to avoid NVAPI calls during DLL unload
     extern std::atomic<bool> g_shutdown;
-    if (g_shutdown.load()) return false;
+    if (g_shutdown.load())
+        return false;
     return initialized;
 }
 
@@ -113,9 +111,11 @@ bool NVAPIFullscreenPrevention::SetFullscreenPrevention(bool enable) {
     // Get current executable name
     char exePath[MAX_PATH];
     GetModuleFileNameA(nullptr, exePath, MAX_PATH);
-    char* exeName = strrchr(exePath, '\\');
-    if (exeName) exeName++;
-    else exeName = exePath;
+    char *exeName = strrchr(exePath, '\\');
+    if (exeName)
+        exeName++;
+    else
+        exeName = exePath;
 
     std::ostringstream oss_exe;
     oss_exe << "Target executable: " << exeName;
@@ -124,10 +124,10 @@ bool NVAPIFullscreenPrevention::SetFullscreenPrevention(bool enable) {
     // Find or create application profile
     NVDRS_APPLICATION app = {0};
     app.version = NVDRS_APPLICATION_VER;
-    strcpy_s((char*)app.appName, sizeof(app.appName), exeName);
+    strcpy_s((char *)app.appName, sizeof(app.appName), exeName);
 
     LogInfo("Searching for existing application profile...");
-    status = NvAPI_DRS_FindApplicationByName(hSession, (NvU16*)exeName, &hProfile, &app);
+    status = NvAPI_DRS_FindApplicationByName(hSession, (NvU16 *)exeName, &hProfile, &app);
 
     if (status == NVAPI_EXECUTABLE_NOT_FOUND) {
         LogInfo("Application profile not found, creating new one...");
@@ -135,7 +135,7 @@ bool NVAPIFullscreenPrevention::SetFullscreenPrevention(bool enable) {
         NVDRS_PROFILE profile = {0};
         profile.version = NVDRS_PROFILE_VER;
         profile.isPredefined = FALSE;
-        strcpy_s((char*)profile.profileName, sizeof(profile.profileName), "Fullscreen Prevention Profile");
+        strcpy_s((char *)profile.profileName, sizeof(profile.profileName), "Fullscreen Prevention Profile");
 
         status = NvAPI_DRS_CreateProfile(hSession, &profile, &hProfile);
         if (status != NVAPI_OK) {
@@ -151,8 +151,8 @@ bool NVAPIFullscreenPrevention::SetFullscreenPrevention(bool enable) {
         app.version = NVDRS_APPLICATION_VER;
         app.isPredefined = FALSE;
         app.isMetro = FALSE;
-        strcpy_s((char*)app.appName, sizeof(app.appName), exeName);
-        strcpy_s((char*)app.userFriendlyName, sizeof(app.userFriendlyName), exeName);
+        strcpy_s((char *)app.appName, sizeof(app.appName), exeName);
+        strcpy_s((char *)app.userFriendlyName, sizeof(app.userFriendlyName), exeName);
 
         LogInfo("Adding application to profile...");
         status = NvAPI_DRS_CreateApplication(hSession, hProfile, &app);
@@ -200,7 +200,8 @@ bool NVAPIFullscreenPrevention::SetFullscreenPrevention(bool enable) {
     if (enable) {
         // Use the same flags as SpecialK for optimal interop
         setting.u32CurrentValue = 0x00000001 | 0x00000004 | 0x00000020 | 0x00000080 | 0x00000200 | 0x00080000;
-        // This includes: DISABLE_FULLSCREEN_OPT | ENABLE_DFLIP_ALWAYS | SIGNAL_PRESENT_END_FROM_CPU | ENABLE_DX_SYNC_INTERVAL | FORCE_INTEROP_GPU_SYNC | ENABLE_DXVK
+        // This includes: DISABLE_FULLSCREEN_OPT | ENABLE_DFLIP_ALWAYS | SIGNAL_PRESENT_END_FROM_CPU |
+        // ENABLE_DX_SYNC_INTERVAL | FORCE_INTEROP_GPU_SYNC | ENABLE_DXVK
         std::ostringstream oss_flags;
         oss_flags << "Setting fullscreen prevention flags: 0x" << std::hex << setting.u32CurrentValue << std::dec;
         LogInfo(oss_flags.str().c_str());
@@ -267,16 +268,18 @@ bool NVAPIFullscreenPrevention::IsFullscreenPreventionEnabled() const {
     // Get current executable name
     char exePath[MAX_PATH];
     GetModuleFileNameA(nullptr, exePath, MAX_PATH);
-    char* exeName = strrchr(exePath, '\\');
-    if (exeName) exeName++;
-    else exeName = exePath;
+    char *exeName = strrchr(exePath, '\\');
+    if (exeName)
+        exeName++;
+    else
+        exeName = exePath;
 
     // Find application profile
     NVDRS_APPLICATION app = {0};
     app.version = NVDRS_APPLICATION_VER;
-    strcpy_s((char*)app.appName, sizeof(app.appName), exeName);
+    strcpy_s((char *)app.appName, sizeof(app.appName), exeName);
 
-    status = NvAPI_DRS_FindApplicationByName(hSession, (NvU16*)exeName, &hProfile, &app);
+    status = NvAPI_DRS_FindApplicationByName(hSession, (NvU16 *)exeName, &hProfile, &app);
     if (status != NVAPI_OK) {
         LogDebug("IsFullscreenPreventionEnabled: Application profile not found");
         NvAPI_DRS_DestroySession(hSession);
@@ -302,15 +305,14 @@ bool NVAPIFullscreenPrevention::IsFullscreenPreventionEnabled() const {
     bool is_enabled = (setting.u32CurrentValue & 0x00000001) != 0; // DISABLE_FULLSCREEN_OPT flag
 
     std::ostringstream oss;
-    oss << "IsFullscreenPreventionEnabled: Query result - setting value: 0x" << std::hex << setting.u32CurrentValue << ", fullscreen prevention: " << (is_enabled ? "ENABLED" : "DISABLED");
+    oss << "IsFullscreenPreventionEnabled: Query result - setting value: 0x" << std::hex << setting.u32CurrentValue
+        << ", fullscreen prevention: " << (is_enabled ? "ENABLED" : "DISABLED");
     LogDebug(oss.str().c_str());
 
     return is_enabled;
 }
 
-std::string NVAPIFullscreenPrevention::GetLastError() const {
-    return last_error;
-}
+std::string NVAPIFullscreenPrevention::GetLastError() const { return last_error; }
 
 std::string NVAPIFullscreenPrevention::GetDriverVersion() const {
     if (!initialized) {
@@ -352,9 +354,7 @@ bool NVAPIFullscreenPrevention::HasNVIDIAHardware() const {
     return hasHardware;
 }
 
-std::string NVAPIFullscreenPrevention::GetLibraryPath() const {
-    return "Static linking - no DLL path";
-}
+std::string NVAPIFullscreenPrevention::GetLibraryPath() const { return "Static linking - no DLL path"; }
 
 std::string NVAPIFullscreenPrevention::GetFunctionStatus() const {
     if (!initialized) {
@@ -415,7 +415,8 @@ std::string NVAPIFullscreenPrevention::GetDllVersionInfo() const {
 // Global instance
 NVAPIFullscreenPrevention g_nvapiFullscreenPrevention;
 
-bool NVAPIFullscreenPrevention::QueryHdrStatus(bool& out_hdr_enabled, std::string& out_colorspace, std::string& out_output_name) const {
+bool NVAPIFullscreenPrevention::QueryHdrStatus(bool &out_hdr_enabled, std::string &out_colorspace,
+                                               std::string &out_output_name) const {
     out_hdr_enabled = false;
     out_colorspace.clear();
     out_output_name.clear();
@@ -438,15 +439,17 @@ bool NVAPIFullscreenPrevention::QueryHdrStatus(bool& out_hdr_enabled, std::strin
             continue;
         }
         std::vector<NV_GPU_DISPLAYIDS> displayIds(count);
-        for (NvU32 i = 0; i < count; ++i) displayIds[i].version = NV_GPU_DISPLAYIDS_VER;
+        for (NvU32 i = 0; i < count; ++i)
+            displayIds[i].version = NV_GPU_DISPLAYIDS_VER;
         status = NvAPI_GPU_GetAllDisplayIds(gpus[g], displayIds.data(), &count);
         if (status != NVAPI_OK || count == 0) {
             continue;
         }
 
         for (NvU32 i = 0; i < count; ++i) {
-            const NV_GPU_DISPLAYIDS& did = displayIds[i];
-            if (did.isConnected == 0) continue;
+            const NV_GPU_DISPLAYIDS &did = displayIds[i];
+            if (did.isConnected == 0)
+                continue;
 
             // Read current HDR mode
             NV_HDR_COLOR_DATA color = {};
@@ -463,11 +466,16 @@ bool NVAPIFullscreenPrevention::QueryHdrStatus(bool& out_hdr_enabled, std::strin
             NV_HDR_CAPABILITIES caps = {};
             caps.version = NV_HDR_CAPABILITIES_VER;
             if (NvAPI_Disp_GetHdrCapabilities(did.displayId, &caps) == NVAPI_OK) {
-                if (caps.isST2084EotfSupported) out_colorspace = "HDR10 ST2084";
-                else if (caps.isTraditionalHdrGammaSupported) out_colorspace = "HDR (Traditional)";
-                else if (caps.isHdr10PlusSupported) out_colorspace = "HDR10+";
-                else if (caps.isHdr10PlusGamingSupported) out_colorspace = "HDR10+ Gaming";
-                else out_colorspace = "SDR/sRGB";
+                if (caps.isST2084EotfSupported)
+                    out_colorspace = "HDR10 ST2084";
+                else if (caps.isTraditionalHdrGammaSupported)
+                    out_colorspace = "HDR (Traditional)";
+                else if (caps.isHdr10PlusSupported)
+                    out_colorspace = "HDR10+";
+                else if (caps.isHdr10PlusGamingSupported)
+                    out_colorspace = "HDR10+ Gaming";
+                else
+                    out_colorspace = "SDR/sRGB";
             } else {
                 out_colorspace = hdr_enabled ? "HDR" : "SDR";
             }
@@ -481,9 +489,10 @@ bool NVAPIFullscreenPrevention::QueryHdrStatus(bool& out_hdr_enabled, std::strin
     return false;
 }
 
-bool NVAPIFullscreenPrevention::QueryHdrDetails(std::string& out_details) const {
+bool NVAPIFullscreenPrevention::QueryHdrDetails(std::string &out_details) const {
     out_details.clear();
-    if (!initialized) return false;
+    if (!initialized)
+        return false;
 
     NvU32 gpuCount = 0;
     NvPhysicalGpuHandle gpus[64] = {0};
@@ -496,14 +505,18 @@ bool NVAPIFullscreenPrevention::QueryHdrDetails(std::string& out_details) const 
 
     for (NvU32 g = 0; g < gpuCount; ++g) {
         NvU32 count = 0;
-        if (NvAPI_GPU_GetAllDisplayIds(gpus[g], nullptr, &count) != NVAPI_OK || count == 0) continue;
+        if (NvAPI_GPU_GetAllDisplayIds(gpus[g], nullptr, &count) != NVAPI_OK || count == 0)
+            continue;
         std::vector<NV_GPU_DISPLAYIDS> displayIds(count);
-        for (NvU32 i = 0; i < count; ++i) displayIds[i].version = NV_GPU_DISPLAYIDS_VER;
-        if (NvAPI_GPU_GetAllDisplayIds(gpus[g], displayIds.data(), &count) != NVAPI_OK || count == 0) continue;
+        for (NvU32 i = 0; i < count; ++i)
+            displayIds[i].version = NV_GPU_DISPLAYIDS_VER;
+        if (NvAPI_GPU_GetAllDisplayIds(gpus[g], displayIds.data(), &count) != NVAPI_OK || count == 0)
+            continue;
 
         for (NvU32 i = 0; i < count; ++i) {
-            const auto& did = displayIds[i];
-            if (did.isConnected == 0) continue;
+            const auto &did = displayIds[i];
+            if (did.isConnected == 0)
+                continue;
 
             NV_HDR_COLOR_DATA color = {};
             color.version = NV_HDR_COLOR_DATA_VER;
@@ -518,15 +531,15 @@ bool NVAPIFullscreenPrevention::QueryHdrDetails(std::string& out_details) const 
             if (sc == NVAPI_OK) {
                 oss << "  HdrMode=" << (int)color.hdrMode << " (0=OFF,2=UHDA)\n";
                 oss << "  StaticMetadataId=" << (int)color.static_metadata_descriptor_id << "\n";
-                const auto& md = color.mastering_display_data;
-                oss << "  MasteringPrimaries: R(" << md.displayPrimary_x0 << "," << md.displayPrimary_y0
-                    << ") G(" << md.displayPrimary_x1 << "," << md.displayPrimary_y1
-                    << ") B(" << md.displayPrimary_x2 << "," << md.displayPrimary_y2 << ")\n";
+                const auto &md = color.mastering_display_data;
+                oss << "  MasteringPrimaries: R(" << md.displayPrimary_x0 << "," << md.displayPrimary_y0 << ") G("
+                    << md.displayPrimary_x1 << "," << md.displayPrimary_y1 << ") B(" << md.displayPrimary_x2 << ","
+                    << md.displayPrimary_y2 << ")\n";
                 oss << "  MasteringWhite: (" << md.displayWhitePoint_x << "," << md.displayWhitePoint_y << ")\n";
                 oss << "  MaxMasteringLuminance=" << md.max_display_mastering_luminance
                     << "  MinMasteringLuminance=" << md.min_display_mastering_luminance << "\n";
-                oss << "  MaxCLL=" << md.max_content_light_level
-                    << "  MaxFALL=" << md.max_frame_average_light_level << "\n";
+                oss << "  MaxCLL=" << md.max_content_light_level << "  MaxFALL=" << md.max_frame_average_light_level
+                    << "\n";
             } else {
                 oss << "  HdrColorControl: FAILED (" << sc << ")\n";
             }
@@ -538,10 +551,10 @@ bool NVAPIFullscreenPrevention::QueryHdrDetails(std::string& out_details) const 
                     << " DolbyVision=" << (caps.isDolbyVisionSupported ? 1 : 0)
                     << " HDR10+=" << (caps.isHdr10PlusSupported ? 1 : 0)
                     << " HDR10+Gaming=" << (caps.isHdr10PlusGamingSupported ? 1 : 0) << "\n";
-                const auto& sd = caps.display_data;
-                oss << "  StaticMetadata(ST2086): R(" << sd.displayPrimary_x0 << "," << sd.displayPrimary_y0
-                    << ") G(" << sd.displayPrimary_x1 << "," << sd.displayPrimary_y1
-                    << ") B(" << sd.displayPrimary_x2 << "," << sd.displayPrimary_y2 << ")\n";
+                const auto &sd = caps.display_data;
+                oss << "  StaticMetadata(ST2086): R(" << sd.displayPrimary_x0 << "," << sd.displayPrimary_y0 << ") G("
+                    << sd.displayPrimary_x1 << "," << sd.displayPrimary_y1 << ") B(" << sd.displayPrimary_x2 << ","
+                    << sd.displayPrimary_y2 << ")\n";
                 oss << "  WhitePoint(" << sd.displayWhitePoint_x << "," << sd.displayWhitePoint_y << ")\n";
                 oss << "  DesiredContent: MaxLum=" << sd.desired_content_max_luminance
                     << " MinLum=" << sd.desired_content_min_luminance
@@ -558,7 +571,8 @@ bool NVAPIFullscreenPrevention::QueryHdrDetails(std::string& out_details) const 
 
 // Enable/disable HDR10 (UHDA) on all connected displays for this GPU set
 bool NVAPIFullscreenPrevention::SetHdr10OnAll(bool enable) {
-    if (!initialized) return false;
+    if (!initialized)
+        return false;
 
     NvU32 gpuCount = 0;
     NvPhysicalGpuHandle gpus[64] = {0};
@@ -569,14 +583,18 @@ bool NVAPIFullscreenPrevention::SetHdr10OnAll(bool enable) {
     bool any_ok = false;
     for (NvU32 g = 0; g < gpuCount; ++g) {
         NvU32 count = 0;
-        if (NvAPI_GPU_GetAllDisplayIds(gpus[g], nullptr, &count) != NVAPI_OK || count == 0) continue;
+        if (NvAPI_GPU_GetAllDisplayIds(gpus[g], nullptr, &count) != NVAPI_OK || count == 0)
+            continue;
         std::vector<NV_GPU_DISPLAYIDS> displayIds(count);
-        for (NvU32 i = 0; i < count; ++i) displayIds[i].version = NV_GPU_DISPLAYIDS_VER;
-        if (NvAPI_GPU_GetAllDisplayIds(gpus[g], displayIds.data(), &count) != NVAPI_OK || count == 0) continue;
+        for (NvU32 i = 0; i < count; ++i)
+            displayIds[i].version = NV_GPU_DISPLAYIDS_VER;
+        if (NvAPI_GPU_GetAllDisplayIds(gpus[g], displayIds.data(), &count) != NVAPI_OK || count == 0)
+            continue;
 
         for (NvU32 i = 0; i < count; ++i) {
-            const auto& did = displayIds[i];
-            if (did.isConnected == 0) continue;
+            const auto &did = displayIds[i];
+            if (did.isConnected == 0)
+                continue;
 
             NV_HDR_COLOR_DATA color = {};
             color.version = NV_HDR_COLOR_DATA_VER;
@@ -585,19 +603,25 @@ bool NVAPIFullscreenPrevention::SetHdr10OnAll(bool enable) {
 
             // Fill minimal valid static metadata. Using conservative BT.2020 primaries and sane luminance if needed.
             color.static_metadata_descriptor_id = NV_STATIC_METADATA_TYPE_1;
-            auto& md = color.mastering_display_data;
+            auto &md = color.mastering_display_data;
             // Defaults based on typical HDR10 metadata (values in NVAPI units)
-            md.displayPrimary_x0 = 34000; md.displayPrimary_y0 = 16000; // R
-            md.displayPrimary_x1 = 13250; md.displayPrimary_y1 = 34500; // G
-            md.displayPrimary_x2 = 7500;  md.displayPrimary_y2 = 3000;  // B
-            md.displayWhitePoint_x = 15635; md.displayWhitePoint_y = 16450; // D65 approx
+            md.displayPrimary_x0 = 34000;
+            md.displayPrimary_y0 = 16000; // R
+            md.displayPrimary_x1 = 13250;
+            md.displayPrimary_y1 = 34500; // G
+            md.displayPrimary_x2 = 7500;
+            md.displayPrimary_y2 = 3000; // B
+            md.displayWhitePoint_x = 15635;
+            md.displayWhitePoint_y = 16450;            // D65 approx
             md.max_display_mastering_luminance = 1000; // nits
-            md.min_display_mastering_luminance = 1;    // 0.0001 cd/m^2 in units? NVAPI uses direct integers; device will clamp
-            md.max_content_light_level = 1000;         // MaxCLL
-            md.max_frame_average_light_level = 400;    // MaxFALL
+            md.min_display_mastering_luminance =
+                1;                             // 0.0001 cd/m^2 in units? NVAPI uses direct integers; device will clamp
+            md.max_content_light_level = 1000; // MaxCLL
+            md.max_frame_average_light_level = 400; // MaxFALL
 
             NvAPI_Status sc = NvAPI_Disp_HdrColorControl(did.displayId, &color);
-            if (sc == NVAPI_OK) any_ok = true;
+            if (sc == NVAPI_OK)
+                any_ok = true;
         }
     }
 

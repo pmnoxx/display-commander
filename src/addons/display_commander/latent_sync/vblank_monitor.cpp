@@ -1,33 +1,28 @@
 #include "vblank_monitor.hpp"
-#include <dxgi1_6.h>
-#include <sstream>
-#include <iomanip>
-#include <iostream>
-#include <winnt.h>
-#include "../utils.hpp"
 #include "../display/query_display.hpp"
 #include "../globals.hpp"
-#include "../settings/main_tab_settings.hpp"
+#include "../utils.hpp"
 #include "utils/timing.hpp"
+#include <dxgi1_6.h>
+#include <iostream>
+#include <sstream>
+#include <winnt.h>
 
 // Forward declaration of the global variable
 extern std::atomic<HWND> g_last_swapchain_hwnd;
 
-
 namespace dxgi::fps_limiter {
-    std::atomic<LONGLONG> g_latent_sync_total_height{0};
-    std::atomic<LONGLONG> g_latent_sync_active_height{0};
+std::atomic<LONGLONG> g_latent_sync_total_height{0};
+std::atomic<LONGLONG> g_latent_sync_active_height{0};
 
 extern std::atomic<LONGLONG> ns_per_refresh;
 extern std::atomic<double> correction_lines_delta;
-}
+} // namespace dxgi::fps_limiter
 
 // Simple logging wrapper to avoid dependency issues
 namespace {
-    void LogMessage(const std::string& msg) {
-        std::cout << "[VBlankMonitor] " << msg << std::endl;
-    }
-}
+void LogMessage(const std::string &msg) { std::cout << "[VBlankMonitor] " << msg << std::endl; }
+} // namespace
 
 namespace dxgi::fps_limiter {
 
@@ -85,7 +80,7 @@ DisplayTimingInfo GetDisplayTimingInfoForWindow(HWND hwnd) {
 
     // Find the display that matches our monitor
     for (size_t i = 0; i < timing_info.size(); ++i) {
-        const auto& timing = timing_info[i];
+        const auto &timing = timing_info[i];
 
         // Try to match by GDI device name first (most reliable for GetMonitorInfoW)
         if (!timing.gdi_device_name.empty() && timing.gdi_device_name == mi.szDevice) {
@@ -132,14 +127,15 @@ VBlankMonitor::~VBlankMonitor() {
         if (LoadProcCached(m_pfnCloseAdapter, L"gdi32.dll", "D3DKMTCloseAdapter")) {
             D3DKMT_CLOSEADAPTER closeReq{};
             closeReq.hAdapter = m_hAdapter;
-            reinterpret_cast<NTSTATUS (WINAPI*)(const D3DKMT_CLOSEADAPTER*)>(m_pfnCloseAdapter)(&closeReq);
+            reinterpret_cast<NTSTATUS(WINAPI *)(const D3DKMT_CLOSEADAPTER *)>(m_pfnCloseAdapter)(&closeReq);
         }
         m_hAdapter = 0;
     }
 }
 
 void VBlankMonitor::StartMonitoring() {
-    if (m_monitoring.load()) return;
+    if (m_monitoring.load())
+        return;
 
     m_should_stop = false;
     m_monitor_thread = std::thread(&VBlankMonitor::MonitoringThread, this);
@@ -150,7 +146,8 @@ void VBlankMonitor::StartMonitoring() {
 }
 
 void VBlankMonitor::StopMonitoring() {
-    if (!m_monitoring.load()) return;
+    if (!m_monitoring.load())
+        return;
 
     LogInfo("VBlank monitoring thread: StopMonitoring() called - stopping thread...");
     m_should_stop = true;
@@ -163,13 +160,12 @@ void VBlankMonitor::StopMonitoring() {
     LogInfo("VBlank monitoring thread: StopMonitoring() completed - thread joined and stopped");
 }
 
-bool VBlankMonitor::BindToDisplay(HWND hwnd) {
-    return UpdateDisplayBindingFromWindow(hwnd);
-}
+bool VBlankMonitor::BindToDisplay(HWND hwnd) { return UpdateDisplayBindingFromWindow(hwnd); }
 
 std::wstring VBlankMonitor::GetDisplayNameFromWindow(HWND hwnd) {
     std::wstring result;
-    if (hwnd == nullptr) return result;
+    if (hwnd == nullptr)
+        return result;
 
     HMONITOR hmon = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
     MONITORINFOEXW mi{};
@@ -227,8 +223,7 @@ bool VBlankMonitor::UpdateDisplayBindingFromWindow(HWND hwnd) {
 
     if (name == m_bound_display_name && m_hAdapter != 0) {
         std::ostringstream oss;
-        oss << "Already bound to display: " << WideCharToUTF8(name)
-            << ", hAdapter=" << m_hAdapter
+        oss << "Already bound to display: " << WideCharToUTF8(name) << ", hAdapter=" << m_hAdapter
             << ", VidPnSourceId=" << m_vidpn_source_id;
         LogInfo(oss.str().c_str());
         return true;
@@ -244,7 +239,7 @@ bool VBlankMonitor::UpdateDisplayBindingFromWindow(HWND hwnd) {
         if (LoadProcCached(m_pfnCloseAdapter, L"gdi32.dll", "D3DKMTCloseAdapter")) {
             D3DKMT_CLOSEADAPTER closeReq{};
             closeReq.hAdapter = m_hAdapter;
-            reinterpret_cast<NTSTATUS (WINAPI*)(const D3DKMT_CLOSEADAPTER*)>(m_pfnCloseAdapter)(&closeReq);
+            reinterpret_cast<NTSTATUS(WINAPI *)(const D3DKMT_CLOSEADAPTER *)>(m_pfnCloseAdapter)(&closeReq);
         }
         m_hAdapter = 0;
     }
@@ -263,7 +258,8 @@ bool VBlankMonitor::UpdateDisplayBindingFromWindow(HWND hwnd) {
         LogInfo(oss.str().c_str());
     }
 
-    auto open_status = reinterpret_cast<NTSTATUS (WINAPI*)(D3DKMT_OPENADAPTERFROMGDIDISPLAYNAME*)>(m_pfnOpenAdapterFromGdiDisplayName)(&openReq);
+    auto open_status = reinterpret_cast<NTSTATUS(WINAPI *)(D3DKMT_OPENADAPTERFROMGDIDISPLAYNAME *)>(
+        m_pfnOpenAdapterFromGdiDisplayName)(&openReq);
     if (open_status == STATUS_SUCCESS) {
         {
             std::ostringstream oss;
@@ -276,7 +272,8 @@ bool VBlankMonitor::UpdateDisplayBindingFromWindow(HWND hwnd) {
         m_bound_display_name = name;
 
         std::ostringstream oss;
-        oss << "VBlank monitor successfully bound to display: " << WideCharToUTF8(name) << " (Adapter: " << m_hAdapter << ", VidPnSourceId: " << m_vidpn_source_id << ")";
+        oss << "VBlank monitor successfully bound to display: " << WideCharToUTF8(name) << " (Adapter: " << m_hAdapter
+            << ", VidPnSourceId: " << m_vidpn_source_id << ")";
         LogInfo(oss.str().c_str());
 
         // VidPnSourceId of 0 is valid; no special handling required
@@ -307,8 +304,7 @@ bool VBlankMonitor::UpdateDisplayBindingFromWindow(HWND hwnd) {
 bool VBlankMonitor::EnsureAdapterBinding() {
     {
         std::ostringstream oss;
-        oss << "EnsureAdapterBinding: hAdapter=" << m_hAdapter
-            << ", VidPnSourceId=" << m_vidpn_source_id
+        oss << "EnsureAdapterBinding: hAdapter=" << m_hAdapter << ", VidPnSourceId=" << m_vidpn_source_id
             << ", bound_display_name=" << WideCharToUTF8(m_bound_display_name);
         LogInfo(oss.str().c_str());
     }
@@ -326,7 +322,8 @@ bool VBlankMonitor::EnsureAdapterBinding() {
     }
     if (hwnd != nullptr) {
         bool ok = UpdateDisplayBindingFromWindow(hwnd);
-        LogInfo(ok ? "EnsureAdapterBinding: bound using foreground window" : "EnsureAdapterBinding: failed to bind using foreground window");
+        LogInfo(ok ? "EnsureAdapterBinding: bound using foreground window"
+                   : "EnsureAdapterBinding: failed to bind using foreground window");
         return ok;
     }
 
@@ -342,7 +339,8 @@ bool VBlankMonitor::EnsureAdapterBinding() {
         }
         if (!display_name.empty()) {
             bool ok = UpdateDisplayBindingFromWindow(nullptr); // This will use the fallback logic
-            LogInfo(ok ? "EnsureAdapterBinding: bound using fallback display" : "EnsureAdapterBinding: failed to bind using fallback display");
+            LogInfo(ok ? "EnsureAdapterBinding: bound using fallback display"
+                       : "EnsureAdapterBinding: failed to bind using fallback display");
             return ok;
         }
     }
@@ -352,7 +350,7 @@ bool VBlankMonitor::EnsureAdapterBinding() {
 }
 
 long double expected_current_scanline_uncapped_ns(LONGLONG now_ns, LONGLONG total_height, bool add_correction) {
-    long double cur_scanline = 1.0L *total_height * now_ns / ns_per_refresh.load();
+    long double cur_scanline = 1.0L * total_height * now_ns / ns_per_refresh.load();
     if (add_correction) {
         cur_scanline += correction_lines_delta.load();
     }
@@ -370,8 +368,6 @@ void VBlankMonitor::MonitoringThread() {
 
     // Note: This thread is started when VBlank Scanline Sync mode (FPS mode 1) is enabled
     ::LogInfo("VBlank monitoring thread: This thread runs when VBlank Scanline Sync mode is active");
-
-
 
     if (!EnsureAdapterBinding()) {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -391,7 +387,7 @@ void VBlankMonitor::MonitoringThread() {
         std::ostringstream oss;
         LogInfo(oss.str().c_str());
 
-        for (const auto& timing : all_timing_info) {
+        for (const auto &timing : all_timing_info) {
             std::ostringstream oss2;
             oss2 << " display_name: " << WideCharToUTF8(timing.display_name) << "\n";
             oss2 << " device_path: " << WideCharToUTF8(timing.device_path) << "\n";
@@ -423,7 +419,6 @@ void VBlankMonitor::MonitoringThread() {
         }
     }
 
-
     LONGLONG min_scanline_duration_ns = 0;
     LONGLONG correction_ticks_local = 0;
     LONGLONG last_display_timing_refresh_ns = 0;
@@ -445,9 +440,10 @@ void VBlankMonitor::MonitoringThread() {
                     UpdateDisplayBindingFromWindow(hwnd);
                 }
                 // Use the current display timing info for calculations
-                ns_per_refresh.store((current_display_timing.vsync_freq_numerator > 0) ?
-                    (current_display_timing.vsync_freq_denominator * utils::SEC_TO_NS) /
-                    (current_display_timing.vsync_freq_numerator) : 1);
+                ns_per_refresh.store((current_display_timing.vsync_freq_numerator > 0)
+                                         ? (current_display_timing.vsync_freq_denominator * utils::SEC_TO_NS) /
+                                               (current_display_timing.vsync_freq_numerator)
+                                         : 1);
 
                 g_latent_sync_total_height.store(current_display_timing.total_height);
                 g_latent_sync_active_height.store(current_display_timing.active_height);
@@ -464,29 +460,31 @@ void VBlankMonitor::MonitoringThread() {
             scan.hAdapter = m_hAdapter;
             scan.VidPnSourceId = m_vidpn_source_id;
 
-
             LONGLONG start_ns = utils::get_now_ns();
-            auto nt_status = reinterpret_cast<NTSTATUS (WINAPI*)(D3DKMT_GETSCANLINE*)>(m_pfnGetScanLine)(&scan);
+            auto nt_status = reinterpret_cast<NTSTATUS(WINAPI *)(D3DKMT_GETSCANLINE *)>(m_pfnGetScanLine)(&scan);
             LONGLONG end_ns = utils::get_now_ns();
 
-            long double expected_scanline_tmp = expected_current_scanline_uncapped_ns(start_ns, current_display_timing.total_height, true);
+            long double expected_scanline_tmp =
+                expected_current_scanline_uncapped_ns(start_ns, current_display_timing.total_height, true);
             if (nt_status == STATUS_SUCCESS) {
                 LONGLONG duration_ns = end_ns - start_ns;
-                LONGLONG mid_point_ns = (start_ns + end_ns) / 2; // TODO: all values could be multipled by 2 for better precision
+                LONGLONG mid_point_ns =
+                    (start_ns + end_ns) / 2; // TODO: all values could be multipled by 2 for better precision
 
                 // shortest encountered duration
                 if (min_scanline_duration_ns == 0 || duration_ns < min_scanline_duration_ns) {
                     min_scanline_duration_ns = duration_ns;
                 }
                 if (duration_ns < 2 * min_scanline_duration_ns) {
-                    long double expected_scanline = expected_current_scanline_uncapped_ns(mid_point_ns, current_display_timing.total_height, false);
-                    long double new_correction_lines_delta = fmod(scan.ScanLine - expected_scanline, (long double)(current_display_timing.total_height));
+                    long double expected_scanline =
+                        expected_current_scanline_uncapped_ns(mid_point_ns, current_display_timing.total_height, false);
+                    long double new_correction_lines_delta =
+                        fmod(scan.ScanLine - expected_scanline, (long double)(current_display_timing.total_height));
                     if (new_correction_lines_delta < 0) {
                         new_correction_lines_delta += current_display_timing.total_height;
                     }
                     long dt = fmod_normalized(new_correction_lines_delta - correction_lines_delta.load(),
-                    current_display_timing.total_height);
-
+                                              current_display_timing.total_height);
 
                     double alpha = 0.1;
                     correction_lines_delta.store(correction_lines_delta.load() + dt * alpha);
@@ -495,7 +493,6 @@ void VBlankMonitor::MonitoringThread() {
 
             std::this_thread::sleep_for(std::chrono::microseconds(100)); // 0.1ms
 
-
             lastScanLine = expected_scanline_tmp;
         }
     }
@@ -503,6 +500,5 @@ void VBlankMonitor::MonitoringThread() {
     ::LogInfo("VBlank monitoring thread: exiting main loop");
     ::LogInfo("VBlank monitoring thread: STOPPED - no longer monitoring scanlines");
 }
-
 
 } // namespace dxgi::fps_limiter

@@ -1,13 +1,15 @@
 #include "new_ui_tabs.hpp"
-#include "swapchain_tab.hpp"
-#include "window_info_tab.hpp"
+#include "../../utils.hpp"
+#include "../../widgets/remapping_widget/remapping_widget.hpp"
+#include "../../widgets/xinput_widget/xinput_widget.hpp"
 #include "developer_new_tab.hpp"
-#include "main_new_tab.hpp"
 #include "experimental_tab.hpp"
 #include "hook_stats_tab.hpp"
-#include "../../widgets/xinput_widget/xinput_widget.hpp"
-#include "../../widgets/remapping_widget/remapping_widget.hpp"
-#include "../../addon.hpp"
+#include "main_new_tab.hpp"
+#include "swapchain_tab.hpp"
+#include "window_info_tab.hpp"
+#include <imgui.h>
+#include <reshade.hpp>
 
 namespace ui::new_ui {
 
@@ -20,7 +22,7 @@ TabManager::TabManager() : active_tab_(0) {
     tabs_.store(std::make_shared<const std::vector<Tab>>(std::vector<Tab>{}));
 }
 
-void TabManager::AddTab(const std::string& name, const std::string& id, std::function<void()> on_draw) {
+void TabManager::AddTab(const std::string &name, const std::string &id, std::function<void()> on_draw) {
     // Get current tabs atomically
     auto current_tabs = tabs_.load();
 
@@ -81,19 +83,18 @@ void InitializeNewUI() {
     g_tab_manager.AddTab("Main", "main_new", []() {
         try {
             ui::new_ui::DrawMainNewTab();
-        } catch (const std::exception& e) {
+        } catch (const std::exception &e) {
             LogError("Error drawing main new tab: %s", e.what());
         } catch (...) {
             LogError("Unknown error drawing main new tab");
         }
     });
 
-
     ui::new_ui::InitDeveloperNewTab();
     g_tab_manager.AddTab("Developer", "developer_new", []() {
         try {
             ui::new_ui::DrawDeveloperNewTab();
-        } catch (const std::exception& e) {
+        } catch (const std::exception &e) {
             LogError("Error drawing developer new tab: %s", e.what());
         } catch (...) {
             LogError("Unknown error drawing developer new tab");
@@ -103,7 +104,7 @@ void InitializeNewUI() {
     g_tab_manager.AddTab("Window Info", "window_info", []() {
         try {
             ui::new_ui::DrawWindowInfoTab();
-        } catch (const std::exception& e) {
+        } catch (const std::exception &e) {
             LogError("Error drawing window info tab: %s", e.what());
         } catch (...) {
             LogError("Unknown error drawing window info tab");
@@ -113,7 +114,7 @@ void InitializeNewUI() {
     g_tab_manager.AddTab("Swapchain", "swapchain", []() {
         try {
             ui::new_ui::DrawSwapchainTab();
-        } catch (const std::exception& e) {
+        } catch (const std::exception &e) {
             LogError("Error drawing swapchain tab: %s", e.what());
         } catch (...) {
             LogError("Unknown error drawing swapchain tab");
@@ -123,7 +124,7 @@ void InitializeNewUI() {
     g_tab_manager.AddTab("Important Info", "important_info", []() {
         try {
             ui::new_ui::DrawImportantInfo();
-        } catch (const std::exception& e) {
+        } catch (const std::exception &e) {
             LogError("Error drawing important info tab: %s", e.what());
         } catch (...) {
             LogError("Unknown error drawing important info tab");
@@ -133,7 +134,7 @@ void InitializeNewUI() {
     g_tab_manager.AddTab("XInput (Experimental)", "xinput", []() {
         try {
             display_commander::widgets::xinput_widget::DrawXInputWidget();
-        } catch (const std::exception& e) {
+        } catch (const std::exception &e) {
             LogError("Error drawing XInput widget: %s", e.what());
         } catch (...) {
             LogError("Unknown error drawing XInput widget");
@@ -143,7 +144,7 @@ void InitializeNewUI() {
     g_tab_manager.AddTab("Remapping (Experimental)", "remapping", []() {
         try {
             display_commander::widgets::remapping_widget::DrawRemappingWidget();
-        } catch (const std::exception& e) {
+        } catch (const std::exception &e) {
             LogError("Error drawing remapping widget: %s", e.what());
         } catch (...) {
             LogError("Unknown error drawing remapping widget");
@@ -153,31 +154,27 @@ void InitializeNewUI() {
     g_tab_manager.AddTab("Hook Statistics", "hook_stats", []() {
         try {
             ui::new_ui::DrawHookStatsTab();
-        } catch (const std::exception& e) {
+        } catch (const std::exception &e) {
             LogError("Error drawing hook stats tab: %s", e.what());
         } catch (...) {
             LogError("Unknown error drawing hook stats tab");
         }
     });
 
-
-#if EXPERIMENTAL_TAB==1 || EXPERIMENTAL_TAB_PRIVATE==1
+#if EXPERIMENTAL_TAB == 1 || EXPERIMENTAL_TAB_PRIVATE == 1
     g_tab_manager.AddTab("Experimental", "experimental", []() {
         try {
             ui::new_ui::DrawExperimentalTab();
-        } catch (const std::exception& e) {
+        } catch (const std::exception &e) {
             LogError("Error drawing experimental tab: %s", e.what());
         } catch (...) {
             LogError("Unknown error drawing experimental tab");
         }
     });
 #endif
-
 }
 
 // Draw the new UI
-void DrawNewUI() {
-    g_tab_manager.Draw();
-}
+void DrawNewUI() { g_tab_manager.Draw(); }
 
 } // namespace ui::new_ui

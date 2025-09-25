@@ -1,15 +1,15 @@
 #include "api_hooks.hpp"
-#include "xinput_hooks.hpp"
-#include "windows_gaming_input_hooks.hpp"
-#include "loadlibrary_hooks.hpp"
+#include "../utils.hpp"
 #include "directinput_hooks.hpp"
-#include "windows_hooks/windows_message_hooks.hpp"
-#include "sleep_hooks.hpp"
-#include "timeslowdown_hooks.hpp"
-#include "process_exit_hooks.hpp"
 #include "dxgi/dxgi_present_hooks.hpp"
 #include "globals.hpp"
-#include "../utils.hpp"
+#include "loadlibrary_hooks.hpp"
+#include "process_exit_hooks.hpp"
+#include "sleep_hooks.hpp"
+#include "timeslowdown_hooks.hpp"
+#include "windows_gaming_input_hooks.hpp"
+#include "windows_hooks/windows_message_hooks.hpp"
+#include "xinput_hooks.hpp"
 #include <MinHook.h>
 
 // External reference to screensaver mode setting
@@ -30,12 +30,11 @@ static std::atomic<bool> g_api_hooks_installed{false};
 // Get the game window handle (we'll need to track this)
 static HWND g_game_window = nullptr;
 
-HWND GetGameWindow() {
-    return g_game_window;
-}
+HWND GetGameWindow() { return g_game_window; }
 
 bool IsGameWindow(HWND hwnd) {
-    if (hwnd == nullptr) return false;
+    if (hwnd == nullptr)
+        return false;
     return hwnd == g_game_window || IsChild(g_game_window, hwnd) || IsChild(hwnd, g_game_window);
 }
 
@@ -47,7 +46,7 @@ HWND WINAPI GetFocus_Detour() {
 
     if (s_continue_rendering.load() && g_game_window != nullptr && IsWindow(g_game_window)) {
         // Return the game window even when it doesn't have focus
-    //   LogInfo("GetFocus_Detour: Returning game window due to continue rendering - HWND: 0x%p", g_game_window);
+        //   LogInfo("GetFocus_Detour: Returning game window due to continue rendering - HWND: 0x%p", g_game_window);
         return g_game_window;
     }
 
@@ -59,7 +58,8 @@ HWND WINAPI GetFocus_Detour() {
 HWND WINAPI GetForegroundWindow_Detour() {
     if (s_continue_rendering.load() && g_game_window != nullptr && IsWindow(g_game_window)) {
         // Return the game window even when it's not in foreground
-    //    LogInfo("GetForegroundWindow_Detour: Returning game window due to continue rendering - HWND: 0x%p", g_game_window);
+        //    LogInfo("GetForegroundWindow_Detour: Returning game window due to continue rendering - HWND: 0x%p",
+        //    g_game_window);
         return g_game_window;
     }
 
@@ -95,9 +95,8 @@ HWND WINAPI GetActiveWindow_Detour() {
 BOOL WINAPI GetGUIThreadInfo_Detour(DWORD idThread, PGUITHREADINFO pgui) {
     if (s_continue_rendering.load() && g_game_window != nullptr && IsWindow(g_game_window)) {
         // Call original function first
-        BOOL result = GetGUIThreadInfo_Original ?
-            GetGUIThreadInfo_Original(idThread, pgui) :
-            GetGUIThreadInfo(idThread, pgui);
+        BOOL result =
+            GetGUIThreadInfo_Original ? GetGUIThreadInfo_Original(idThread, pgui) : GetGUIThreadInfo(idThread, pgui);
 
         if (result && pgui) {
             // Modify the thread info to show game window as active
@@ -108,13 +107,15 @@ BOOL WINAPI GetGUIThreadInfo_Detour(DWORD idThread, PGUITHREADINFO pgui) {
                 // Set the game window as active and focused
                 pgui->hwndActive = g_game_window;
                 pgui->hwndFocus = g_game_window;
-                pgui->hwndCapture = nullptr; // Clear capture to prevent issues
+                pgui->hwndCapture = nullptr;     // Clear capture to prevent issues
                 pgui->hwndCaret = g_game_window; // Set caret to game window
 
                 // Set appropriate flags (using standard Windows constants)
                 pgui->flags = 0x00000001 | 0x00000002; // GTI_CARETBLINKING | GTI_CARETSHOWN
 
-                LogInfo("GetGUIThreadInfo_Detour: Modified thread info to show game window as active - HWND: 0x%p, Thread: %lu", g_game_window, idThread);
+                LogInfo("GetGUIThreadInfo_Detour: Modified thread info to show game window as active - HWND: 0x%p, "
+                        "Thread: %lu",
+                        g_game_window, idThread);
             }
         }
 
@@ -122,9 +123,7 @@ BOOL WINAPI GetGUIThreadInfo_Detour(DWORD idThread, PGUITHREADINFO pgui) {
     }
 
     // Call original function
-    return GetGUIThreadInfo_Original ?
-        GetGUIThreadInfo_Original(idThread, pgui) :
-        GetGUIThreadInfo(idThread, pgui);
+    return GetGUIThreadInfo_Original ? GetGUIThreadInfo_Original(idThread, pgui) : GetGUIThreadInfo(idThread, pgui);
 }
 
 // Hooked SetThreadExecutionState function
@@ -138,9 +137,8 @@ EXECUTION_STATE WINAPI SetThreadExecutionState_Detour(EXECUTION_STATE esFlags) {
     }
 
     // Call original function for kDefault mode
-    return SetThreadExecutionState_Original ?
-        SetThreadExecutionState_Original(esFlags) :
-        SetThreadExecutionState(esFlags);
+    return SetThreadExecutionState_Original ? SetThreadExecutionState_Original(esFlags)
+                                            : SetThreadExecutionState(esFlags);
 }
 
 bool InstallApiHooks() {
@@ -163,31 +161,33 @@ bool InstallApiHooks() {
     }
 
     // Hook GetFocus
-    if (MH_CreateHook(GetFocus, GetFocus_Detour, (LPVOID*)&GetFocus_Original) != MH_OK) {
+    if (MH_CreateHook(GetFocus, GetFocus_Detour, (LPVOID *)&GetFocus_Original) != MH_OK) {
         LogError("Failed to create GetFocus hook");
         return false;
     }
 
     // Hook GetForegroundWindow
-    if (MH_CreateHook(GetForegroundWindow, GetForegroundWindow_Detour, (LPVOID*)&GetForegroundWindow_Original) != MH_OK) {
+    if (MH_CreateHook(GetForegroundWindow, GetForegroundWindow_Detour, (LPVOID *)&GetForegroundWindow_Original) !=
+        MH_OK) {
         LogError("Failed to create GetForegroundWindow hook");
         return false;
     }
 
     // Hook GetActiveWindow
-    if (MH_CreateHook(GetActiveWindow, GetActiveWindow_Detour, (LPVOID*)&GetActiveWindow_Original) != MH_OK) {
+    if (MH_CreateHook(GetActiveWindow, GetActiveWindow_Detour, (LPVOID *)&GetActiveWindow_Original) != MH_OK) {
         LogError("Failed to create GetActiveWindow hook");
         return false;
     }
 
     // Hook GetGUIThreadInfo
-    if (MH_CreateHook(GetGUIThreadInfo, GetGUIThreadInfo_Detour, (LPVOID*)&GetGUIThreadInfo_Original) != MH_OK) {
+    if (MH_CreateHook(GetGUIThreadInfo, GetGUIThreadInfo_Detour, (LPVOID *)&GetGUIThreadInfo_Original) != MH_OK) {
         LogError("Failed to create GetGUIThreadInfo hook");
         return false;
     }
 
     // Hook SetThreadExecutionState
-    if (MH_CreateHook(SetThreadExecutionState, SetThreadExecutionState_Detour, (LPVOID*)&SetThreadExecutionState_Original) != MH_OK) {
+    if (MH_CreateHook(SetThreadExecutionState, SetThreadExecutionState_Detour,
+                      (LPVOID *)&SetThreadExecutionState_Original) != MH_OK) {
         LogError("Failed to create SetThreadExecutionState hook");
         return false;
     }
@@ -316,9 +316,7 @@ void UninstallApiHooks() {
     LogInfo("API hooks uninstalled successfully");
 }
 
-bool AreApiHooksInstalled() {
-    return g_api_hooks_installed.load();
-}
+bool AreApiHooksInstalled() { return g_api_hooks_installed.load(); }
 
 // Function to set the game window (should be called when we detect the game window)
 void SetGameWindow(HWND hwnd) {

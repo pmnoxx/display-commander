@@ -1,10 +1,11 @@
 #include "sleep_hooks.hpp"
-#include "windows_hooks/windows_message_hooks.hpp"
-#include "../utils.hpp"
 #include "../globals.hpp"
 #include "../settings/experimental_tab_settings.hpp"
+#include "../utils.hpp"
+#include "windows_hooks/windows_message_hooks.hpp"
 #include <MinHook.h>
 #include <windows.h>
+
 // Removed unused headers
 
 namespace renodx::hooks {
@@ -39,8 +40,10 @@ void WINAPI Sleep_Detour(DWORD dwMilliseconds) {
             }
 
             // Apply min/max constraints
-            DWORD min_duration = static_cast<DWORD>(settings::g_experimentalTabSettings.min_sleep_duration_ms.GetValue());
-            DWORD max_duration = static_cast<DWORD>(settings::g_experimentalTabSettings.max_sleep_duration_ms.GetValue());
+            DWORD min_duration =
+                static_cast<DWORD>(settings::g_experimentalTabSettings.min_sleep_duration_ms.GetValue());
+            DWORD max_duration =
+                static_cast<DWORD>(settings::g_experimentalTabSettings.max_sleep_duration_ms.GetValue());
 
             if (min_duration > 0) {
                 modified_duration = (modified_duration > min_duration) ? modified_duration : min_duration;
@@ -55,7 +58,8 @@ void WINAPI Sleep_Detour(DWORD dwMilliseconds) {
             g_sleep_hook_stats.add_original_duration(dwMilliseconds);
             g_sleep_hook_stats.add_modified_duration(modified_duration);
 
-            LogDebug("[TID:%d] Sleep hook: %d ms -> %d ms (multiplier: %f)", GetCurrentThreadId(), dwMilliseconds, modified_duration, multiplier);
+            LogDebug("[TID:%d] Sleep hook: %d ms -> %d ms (multiplier: %f)", GetCurrentThreadId(), dwMilliseconds,
+                     modified_duration, multiplier);
         }
     } else {
         // Track unmodified calls
@@ -86,8 +90,10 @@ DWORD WINAPI SleepEx_Detour(DWORD dwMilliseconds, BOOL bAlertable) {
             }
 
             // Apply min/max constraints
-            DWORD min_duration = static_cast<DWORD>(settings::g_experimentalTabSettings.min_sleep_duration_ms.GetValue());
-            DWORD max_duration = static_cast<DWORD>(settings::g_experimentalTabSettings.max_sleep_duration_ms.GetValue());
+            DWORD min_duration =
+                static_cast<DWORD>(settings::g_experimentalTabSettings.min_sleep_duration_ms.GetValue());
+            DWORD max_duration =
+                static_cast<DWORD>(settings::g_experimentalTabSettings.max_sleep_duration_ms.GetValue());
 
             if (min_duration > 0) {
                 modified_duration = (modified_duration > min_duration) ? modified_duration : min_duration;
@@ -102,7 +108,8 @@ DWORD WINAPI SleepEx_Detour(DWORD dwMilliseconds, BOOL bAlertable) {
             g_sleep_hook_stats.add_original_duration(dwMilliseconds);
             g_sleep_hook_stats.add_modified_duration(modified_duration);
 
-            LogDebug("[TID:%d] SleepEx hook: %d ms -> %d ms (multiplier: %f)", GetCurrentThreadId(), dwMilliseconds, modified_duration, multiplier);
+            LogDebug("[TID:%d] SleepEx hook: %d ms -> %d ms (multiplier: %f)", GetCurrentThreadId(), dwMilliseconds,
+                     modified_duration, multiplier);
         }
     } else {
         // Track unmodified calls
@@ -124,7 +131,8 @@ DWORD WINAPI WaitForSingleObject_Detour(HANDLE hHandle, DWORD dwMilliseconds) {
 
     DWORD modified_duration = dwMilliseconds;
 
-    if (settings::g_experimentalTabSettings.sleep_hook_enabled.GetValue() && dwMilliseconds > 0 && dwMilliseconds != INFINITE) {
+    if (settings::g_experimentalTabSettings.sleep_hook_enabled.GetValue() && dwMilliseconds > 0 &&
+        dwMilliseconds != INFINITE) {
         {
             // Apply sleep multiplier
             float multiplier = settings::g_experimentalTabSettings.sleep_multiplier.GetValue();
@@ -133,8 +141,10 @@ DWORD WINAPI WaitForSingleObject_Detour(HANDLE hHandle, DWORD dwMilliseconds) {
             }
 
             // Apply min/max constraints
-            DWORD min_duration = static_cast<DWORD>(settings::g_experimentalTabSettings.min_sleep_duration_ms.GetValue());
-            DWORD max_duration = static_cast<DWORD>(settings::g_experimentalTabSettings.max_sleep_duration_ms.GetValue());
+            DWORD min_duration =
+                static_cast<DWORD>(settings::g_experimentalTabSettings.min_sleep_duration_ms.GetValue());
+            DWORD max_duration =
+                static_cast<DWORD>(settings::g_experimentalTabSettings.max_sleep_duration_ms.GetValue());
 
             if (min_duration > 0) {
                 modified_duration = (modified_duration > min_duration) ? modified_duration : min_duration;
@@ -149,7 +159,8 @@ DWORD WINAPI WaitForSingleObject_Detour(HANDLE hHandle, DWORD dwMilliseconds) {
             g_sleep_hook_stats.add_original_duration(dwMilliseconds);
             g_sleep_hook_stats.add_modified_duration(modified_duration);
 
-            LogDebug("[TID:%d] WaitForSingleObject hook: %d ms -> %d ms (multiplier: %f)", GetCurrentThreadId(), dwMilliseconds, modified_duration, multiplier);
+            LogDebug("[TID:%d] WaitForSingleObject hook: %d ms -> %d ms (multiplier: %f)", GetCurrentThreadId(),
+                     dwMilliseconds, modified_duration, multiplier);
         }
     } else {
         // Track unmodified calls
@@ -165,13 +176,14 @@ DWORD WINAPI WaitForSingleObject_Detour(HANDLE hHandle, DWORD dwMilliseconds) {
 }
 
 // Hooked WaitForMultipleObjects function
-DWORD WINAPI WaitForMultipleObjects_Detour(DWORD nCount, const HANDLE* lpHandles, BOOL bWaitAll, DWORD dwMilliseconds) {
+DWORD WINAPI WaitForMultipleObjects_Detour(DWORD nCount, const HANDLE *lpHandles, BOOL bWaitAll, DWORD dwMilliseconds) {
     // Track total calls
     g_hook_stats[HOOK_WaitForMultipleObjects].increment_total();
 
     DWORD modified_duration = dwMilliseconds;
 
-    if (settings::g_experimentalTabSettings.sleep_hook_enabled.GetValue() && dwMilliseconds > 0 && dwMilliseconds != INFINITE) {
+    if (settings::g_experimentalTabSettings.sleep_hook_enabled.GetValue() && dwMilliseconds > 0 &&
+        dwMilliseconds != INFINITE) {
         {
             // Apply sleep multiplier
             float multiplier = settings::g_experimentalTabSettings.sleep_multiplier.GetValue();
@@ -180,8 +192,10 @@ DWORD WINAPI WaitForMultipleObjects_Detour(DWORD nCount, const HANDLE* lpHandles
             }
 
             // Apply min/max constraints
-            DWORD min_duration = static_cast<DWORD>(settings::g_experimentalTabSettings.min_sleep_duration_ms.GetValue());
-            DWORD max_duration = static_cast<DWORD>(settings::g_experimentalTabSettings.max_sleep_duration_ms.GetValue());
+            DWORD min_duration =
+                static_cast<DWORD>(settings::g_experimentalTabSettings.min_sleep_duration_ms.GetValue());
+            DWORD max_duration =
+                static_cast<DWORD>(settings::g_experimentalTabSettings.max_sleep_duration_ms.GetValue());
 
             if (min_duration > 0) {
                 modified_duration = (modified_duration > min_duration) ? modified_duration : min_duration;
@@ -196,7 +210,8 @@ DWORD WINAPI WaitForMultipleObjects_Detour(DWORD nCount, const HANDLE* lpHandles
             g_sleep_hook_stats.add_original_duration(dwMilliseconds);
             g_sleep_hook_stats.add_modified_duration(modified_duration);
 
-            LogDebug("[TID:%d] WaitForMultipleObjects hook: %d ms -> %d ms (multiplier: %f)", GetCurrentThreadId(), dwMilliseconds, modified_duration, multiplier);
+            LogDebug("[TID:%d] WaitForMultipleObjects hook: %d ms -> %d ms (multiplier: %f)", GetCurrentThreadId(),
+                     dwMilliseconds, modified_duration, multiplier);
         }
     } else {
         // Track unmodified calls
@@ -215,7 +230,7 @@ DWORD WINAPI WaitForMultipleObjects_Detour(DWORD nCount, const HANDLE* lpHandles
 bool InstallSleepHooks() {
     if (DISABLE_SLEEP_HOOKS) {
         LogInfo("Sleep hooks are disabled via DISABLE_SLEEP_HOOKS constant");
-        return true;  // Return success but don't install hooks
+        return true; // Return success but don't install hooks
     }
 
     // Initialize MinHook (only if not already initialized)
@@ -232,25 +247,27 @@ bool InstallSleepHooks() {
     }
 
     // Hook Sleep
-    if (MH_CreateHook(Sleep, Sleep_Detour, (LPVOID*)&Sleep_Original) != MH_OK) {
+    if (MH_CreateHook(Sleep, Sleep_Detour, (LPVOID *)&Sleep_Original) != MH_OK) {
         LogError("Failed to create Sleep hook");
         return false;
     }
 
     // Hook SleepEx
-    if (MH_CreateHook(SleepEx, SleepEx_Detour, (LPVOID*)&SleepEx_Original) != MH_OK) {
+    if (MH_CreateHook(SleepEx, SleepEx_Detour, (LPVOID *)&SleepEx_Original) != MH_OK) {
         LogError("Failed to create SleepEx hook");
         return false;
     }
 
     // Hook WaitForSingleObject
-    if (MH_CreateHook(WaitForSingleObject, WaitForSingleObject_Detour, (LPVOID*)&WaitForSingleObject_Original) != MH_OK) {
+    if (MH_CreateHook(WaitForSingleObject, WaitForSingleObject_Detour, (LPVOID *)&WaitForSingleObject_Original) !=
+        MH_OK) {
         LogError("Failed to create WaitForSingleObject hook");
         return false;
     }
 
     // Hook WaitForMultipleObjects
-    if (MH_CreateHook(WaitForMultipleObjects, WaitForMultipleObjects_Detour, (LPVOID*)&WaitForMultipleObjects_Original) != MH_OK) {
+    if (MH_CreateHook(WaitForMultipleObjects, WaitForMultipleObjects_Detour,
+                      (LPVOID *)&WaitForMultipleObjects_Original) != MH_OK) {
         LogError("Failed to create WaitForMultipleObjects hook");
         return false;
     }

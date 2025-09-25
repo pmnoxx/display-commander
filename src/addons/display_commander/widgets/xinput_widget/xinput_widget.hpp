@@ -1,13 +1,14 @@
 #pragma once
 
+#include <array>
+#include <atomic>
 #include <imgui.h>
 #include <memory>
-#include <atomic>
 #include <string>
-#include <array>
 #include <vector>
 #include <windows.h>
 #include <xinput.h>
+
 
 // Guide button constant (not defined in standard XInput headers)
 #ifndef XINPUT_GAMEPAD_GUIDE
@@ -42,13 +43,12 @@ struct XInputSharedState {
         Chord() = default;
 
         // Copy constructor
-        Chord(const Chord& other)
-            : buttons(other.buttons), name(other.name), action(other.action),
-            enabled(other.enabled), is_pressed(other.is_pressed.load()),
-            last_press_time(other.last_press_time.load()) {}
+        Chord(const Chord &other)
+            : buttons(other.buttons), name(other.name), action(other.action), enabled(other.enabled),
+              is_pressed(other.is_pressed.load()), last_press_time(other.last_press_time.load()) {}
 
         // Assignment operator
-        Chord& operator=(const Chord& other) {
+        Chord &operator=(const Chord &other) {
             if (this != &other) {
                 buttons = other.buttons;
                 name = other.name;
@@ -69,12 +69,18 @@ struct XInputSharedState {
 
     // Settings
     std::atomic<bool> swap_a_b_buttons{false};
-    std::atomic<float> left_stick_max_input{1.0f}; // Left stick sensitivity (max input) - 0.7 = 70% stick movement = 100% output
-    std::atomic<float> right_stick_max_input{1.0f}; // Right stick sensitivity (max input) - 0.7 = 70% stick movement = 100% output
-    std::atomic<float> left_stick_min_output{0.0f}; // Left stick remove game's deadzone (min output) - 0.3 = eliminates small movements
-    std::atomic<float> right_stick_min_output{0.0f}; // Right stick remove game's deadzone (min output) - 0.3 = eliminates small movements
-    std::atomic<float> left_stick_deadzone{0.0f}; // Left stick dead zone (min input) - 0.0 = no deadzone, 15.0 = ignores small movements
-    std::atomic<float> right_stick_deadzone{0.0f}; // Right stick dead zone (min input) - 0.0 = no deadzone, 15.0 = ignores small movements
+    std::atomic<float> left_stick_max_input{
+        1.0f}; // Left stick sensitivity (max input) - 0.7 = 70% stick movement = 100% output
+    std::atomic<float> right_stick_max_input{
+        1.0f}; // Right stick sensitivity (max input) - 0.7 = 70% stick movement = 100% output
+    std::atomic<float> left_stick_min_output{
+        0.0f}; // Left stick remove game's deadzone (min output) - 0.3 = eliminates small movements
+    std::atomic<float> right_stick_min_output{
+        0.0f}; // Right stick remove game's deadzone (min output) - 0.3 = eliminates small movements
+    std::atomic<float> left_stick_deadzone{
+        0.0f}; // Left stick dead zone (min input) - 0.0 = no deadzone, 15.0 = ignores small movements
+    std::atomic<float> right_stick_deadzone{
+        0.0f}; // Right stick dead zone (min input) - 0.0 = no deadzone, 15.0 = ignores small movements
 
     // Last update time for each controller
     std::array<std::atomic<uint64_t>, XUSER_MAX_COUNT> last_update_times;
@@ -90,7 +96,7 @@ struct XInputSharedState {
 
 // XInput widget class
 class XInputWidget {
-public:
+  public:
     XInputWidget();
     ~XInputWidget() = default;
 
@@ -106,7 +112,7 @@ public:
     // Get the shared state (thread-safe)
     static std::shared_ptr<XInputSharedState> GetSharedState();
 
-private:
+  private:
     // UI state
     bool is_initialized_ = false;
     int selected_controller_ = 0;
@@ -117,11 +123,11 @@ private:
     void DrawSettings();
     void DrawEventCounters();
     void DrawVibrationTest();
-    void DrawButtonStates(const XINPUT_GAMEPAD& gamepad);
-    void DrawStickStates(const XINPUT_GAMEPAD& gamepad);
-    void DrawStickStatesExtended(float left_deadzone, float left_max_input, float left_min_output,
-                                float right_deadzone, float right_max_input, float right_min_output);
-    void DrawTriggerStates(const XINPUT_GAMEPAD& gamepad);
+    void DrawButtonStates(const XINPUT_GAMEPAD &gamepad);
+    void DrawStickStates(const XINPUT_GAMEPAD &gamepad);
+    void DrawStickStatesExtended(float left_deadzone, float left_max_input, float left_min_output, float right_deadzone,
+                                 float right_max_input, float right_min_output);
+    void DrawTriggerStates(const XINPUT_GAMEPAD &gamepad);
     void DrawBatteryStatus(int controller_index);
 
     // Helper functions
@@ -142,7 +148,7 @@ private:
     void DrawChordSettings();
     void InitializeDefaultChords();
     void ProcessChordDetection(DWORD user_index, WORD button_state);
-    void ExecuteChordAction(const XInputSharedState::Chord& chord, DWORD user_index);
+    void ExecuteChordAction(const XInputSharedState::Chord &chord, DWORD user_index);
     std::string GetChordButtonNames(WORD buttons) const;
 
     // Global shared state
@@ -158,9 +164,9 @@ void CleanupXInputWidget();
 void DrawXInputWidget();
 
 // Global functions for hooks to use
-void UpdateXInputState(DWORD user_index, const XINPUT_STATE* state);
+void UpdateXInputState(DWORD user_index, const XINPUT_STATE *state);
 void UpdateBatteryStatus(DWORD user_index);
-void IncrementEventCounter(const std::string& event_type);
+void IncrementEventCounter(const std::string &event_type);
 void ProcessChordDetection(DWORD user_index, WORD button_state);
 void CheckAndHandleScreenshot();
 

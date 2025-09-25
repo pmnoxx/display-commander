@@ -1,11 +1,11 @@
 #pragma once
 
-#include <imgui.h>
+#include <atomic>
 #include <functional>
+#include <imgui.h>
+#include <memory>
 #include <string>
 #include <vector>
-#include <atomic>
-#include <memory>
 
 namespace ui::new_ui {
 
@@ -20,12 +20,12 @@ struct Tab {
 // Main tab manager class
 // Thread-safe implementation using atomic shared_ptr for copy-on-write semantics
 class TabManager {
-public:
+  public:
     TabManager();
     ~TabManager() = default;
 
     // Add a new tab (thread-safe)
-    void AddTab(const std::string& name, const std::string& id, std::function<void()> on_draw);
+    void AddTab(const std::string &name, const std::string &id, std::function<void()> on_draw);
 
     // Draw the tab bar and content (thread-safe)
     void Draw();
@@ -36,7 +36,7 @@ public:
     // Set active tab (thread-safe)
     void SetActiveTab(int tab) { active_tab_ = tab; }
 
-private:
+  private:
     std::atomic<std::shared_ptr<const std::vector<Tab>>> tabs_;
     int active_tab_ = 0;
 };

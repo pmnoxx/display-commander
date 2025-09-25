@@ -1,15 +1,13 @@
 #include "xinput_widget.hpp"
-#include "../../utils.hpp"
 #include "../../globals.hpp"
+#include "../../utils.hpp"
+#include <chrono>
 #include <imgui.h>
 #include <reshade.hpp>
 #include <thread>
-#include <chrono>
 #include <vector>
-#include <sstream>
-#include <iomanip>
-#include <fstream>
 #include <windows.h>
+
 
 namespace display_commander::widgets::xinput_widget {
 
@@ -40,7 +38,8 @@ XInputWidget::XInputWidget() {
 }
 
 void XInputWidget::Initialize() {
-    if (is_initialized_) return;
+    if (is_initialized_)
+        return;
 
     LogInfo("XInputWidget::Initialize() - Starting XInput widget initialization");
 
@@ -52,7 +51,8 @@ void XInputWidget::Initialize() {
 }
 
 void XInputWidget::Cleanup() {
-    if (!is_initialized_) return;
+    if (!is_initialized_)
+        return;
 
     // Save settings
     SaveSettings();
@@ -117,7 +117,8 @@ void XInputWidget::DrawSettings() {
             SaveSettings();
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Ignores stick movement below this threshold (0%% = no deadzone, 15%% = ignores small movements)");
+            ImGui::SetTooltip(
+                "Ignores stick movement below this threshold (0%% = no deadzone, 15%% = ignores small movements)");
         }
 
         // Right stick deadzone setting
@@ -127,51 +128,60 @@ void XInputWidget::DrawSettings() {
             SaveSettings();
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Ignores stick movement below this threshold (0%% = no deadzone, 15%% = ignores small movements)");
+            ImGui::SetTooltip(
+                "Ignores stick movement below this threshold (0%% = no deadzone, 15%% = ignores small movements)");
         }
 
         // Left stick sensitivity setting
         float left_max_input = g_shared_state->left_stick_max_input.load();
         float left_max_input_percent = left_max_input * 100.0f;
-        if (ImGui::SliderFloat("Left Stick Sensitivity (Max Input)", &left_max_input_percent, 10.0f, 100.0f, "%.0f%%")) {
+        if (ImGui::SliderFloat("Left Stick Sensitivity (Max Input)", &left_max_input_percent, 10.0f, 100.0f,
+                               "%.0f%%")) {
             g_shared_state->left_stick_max_input.store(left_max_input_percent / 100.0f);
             SaveSettings();
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("How much stick movement is needed for full output (70%% = 70%% stick movement = 100%% output, 100%% = normal)");
+            ImGui::SetTooltip("How much stick movement is needed for full output (70%% = 70%% stick movement = 100%% "
+                              "output, 100%% = normal)");
         }
 
         // Right stick sensitivity setting
         float right_max_input = g_shared_state->right_stick_max_input.load();
         float right_max_input_percent = right_max_input * 100.0f;
-        if (ImGui::SliderFloat("Right Stick Sensitivity (Max Input)", &right_max_input_percent, 10.0f, 100.0f, "%.0f%%")) {
+        if (ImGui::SliderFloat("Right Stick Sensitivity (Max Input)", &right_max_input_percent, 10.0f, 100.0f,
+                               "%.0f%%")) {
             g_shared_state->right_stick_max_input.store(right_max_input_percent / 100.0f);
             SaveSettings();
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("How much stick movement is needed for full output (70%% = 70%% stick movement = 100%% output, 100%% = normal)");
+            ImGui::SetTooltip("How much stick movement is needed for full output (70%% = 70%% stick movement = 100%% "
+                              "output, 100%% = normal)");
         }
 
         // Left stick remove game's deadzone setting
         float left_min_output = g_shared_state->left_stick_min_output.load();
         float left_min_output_percent = left_min_output * 100.0f;
-        if (ImGui::SliderFloat("Left Stick Remove Game's Deadzone (Min Output)", &left_min_output_percent, 0.0f, 90.0f, "%.0f%%")) {
+        if (ImGui::SliderFloat("Left Stick Remove Game's Deadzone (Min Output)", &left_min_output_percent, 0.0f, 90.0f,
+                               "%.0f%%")) {
             g_shared_state->left_stick_min_output.store(left_min_output_percent / 100.0f);
             SaveSettings();
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Removes game's deadzone by setting minimum output (30%% = eliminates small movements, 0%% = normal)");
+            ImGui::SetTooltip(
+                "Removes game's deadzone by setting minimum output (30%% = eliminates small movements, 0%% = normal)");
         }
 
         // Right stick remove game's deadzone setting
         float right_min_output = g_shared_state->right_stick_min_output.load();
         float right_min_output_percent = right_min_output * 100.0f;
-        if (ImGui::SliderFloat("Right Stick Remove Game's Deadzone (Min Output)", &right_min_output_percent, 0.0f, 90.0f, "%.0f%%")) {
+        if (ImGui::SliderFloat("Right Stick Remove Game's Deadzone (Min Output)", &right_min_output_percent, 0.0f,
+                               90.0f, "%.0f%%")) {
             g_shared_state->right_stick_min_output.store(right_min_output_percent / 100.0f);
             SaveSettings();
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Removes game's deadzone by setting minimum output (30%% = eliminates small movements, 0%% = normal)");
+            ImGui::SetTooltip(
+                "Removes game's deadzone by setting minimum output (30%% = eliminates small movements, 0%% = normal)");
         }
     }
 }
@@ -247,7 +257,8 @@ void XInputWidget::DrawVibrationTest() {
         }
 
         ImGui::Spacing();
-        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Note: Vibration will continue until stopped or controller disconnects");
+        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f),
+                           "Note: Vibration will continue until stopped or controller disconnects");
     }
 }
 
@@ -285,7 +296,7 @@ void XInputWidget::DrawControllerState() {
     }
 
     // Get controller state
-    const XINPUT_STATE& state = g_shared_state->controller_states[selected_controller_];
+    const XINPUT_STATE &state = g_shared_state->controller_states[selected_controller_];
     bool connected = g_shared_state->controller_connected[selected_controller_];
 
     if (!connected) {
@@ -328,12 +339,12 @@ void XInputWidget::DrawControllerState() {
     DrawBatteryStatus(selected_controller_);
 }
 
-void XInputWidget::DrawButtonStates(const XINPUT_GAMEPAD& gamepad) {
+void XInputWidget::DrawButtonStates(const XINPUT_GAMEPAD &gamepad) {
     if (ImGui::CollapsingHeader("Buttons", ImGuiTreeNodeFlags_DefaultOpen)) {
         // Create a grid of buttons
         const struct {
             WORD mask;
-            const char* name;
+            const char *name;
         } buttons[] = {
             {XINPUT_GAMEPAD_A, "A"},
             {XINPUT_GAMEPAD_B, "B"},
@@ -360,9 +371,11 @@ void XInputWidget::DrawButtonStates(const XINPUT_GAMEPAD& gamepad) {
 
                 // Special styling for Guide button
                 if (buttons[i].mask == XINPUT_GAMEPAD_GUIDE) {
-                    ImGui::PushStyleColor(ImGuiCol_Button, pressed1 ? ImVec4(1.0f, 0.8f, 0.0f, 1.0f) : ImVec4(0.5f, 0.4f, 0.0f, 1.0f));
+                    ImGui::PushStyleColor(ImGuiCol_Button,
+                                          pressed1 ? ImVec4(1.0f, 0.8f, 0.0f, 1.0f) : ImVec4(0.5f, 0.4f, 0.0f, 1.0f));
                 } else {
-                    ImGui::PushStyleColor(ImGuiCol_Button, pressed1 ? ImVec4(0.0f, 1.0f, 0.0f, 1.0f) : ImVec4(0.3f, 0.3f, 0.3f, 1.0f));
+                    ImGui::PushStyleColor(ImGuiCol_Button,
+                                          pressed1 ? ImVec4(0.0f, 1.0f, 0.0f, 1.0f) : ImVec4(0.3f, 0.3f, 0.3f, 1.0f));
                 }
                 ImGui::Button(buttons[i].name, ImVec2(60, 30));
                 ImGui::PopStyleColor();
@@ -371,9 +384,11 @@ void XInputWidget::DrawButtonStates(const XINPUT_GAMEPAD& gamepad) {
 
                 // Special styling for Guide button
                 if (buttons[i + 1].mask == XINPUT_GAMEPAD_GUIDE) {
-                    ImGui::PushStyleColor(ImGuiCol_Button, pressed2 ? ImVec4(1.0f, 0.8f, 0.0f, 1.0f) : ImVec4(0.5f, 0.4f, 0.0f, 1.0f));
+                    ImGui::PushStyleColor(ImGuiCol_Button,
+                                          pressed2 ? ImVec4(1.0f, 0.8f, 0.0f, 1.0f) : ImVec4(0.5f, 0.4f, 0.0f, 1.0f));
                 } else {
-                    ImGui::PushStyleColor(ImGuiCol_Button, pressed2 ? ImVec4(0.0f, 1.0f, 0.0f, 1.0f) : ImVec4(0.3f, 0.3f, 0.3f, 1.0f));
+                    ImGui::PushStyleColor(ImGuiCol_Button,
+                                          pressed2 ? ImVec4(0.0f, 1.0f, 0.0f, 1.0f) : ImVec4(0.3f, 0.3f, 0.3f, 1.0f));
                 }
                 ImGui::Button(buttons[i + 1].name, ImVec2(60, 30));
                 ImGui::PopStyleColor();
@@ -383,9 +398,11 @@ void XInputWidget::DrawButtonStates(const XINPUT_GAMEPAD& gamepad) {
 
                 // Special styling for Guide button
                 if (buttons[i].mask == XINPUT_GAMEPAD_GUIDE) {
-                    ImGui::PushStyleColor(ImGuiCol_Button, pressed ? ImVec4(1.0f, 0.8f, 0.0f, 1.0f) : ImVec4(0.5f, 0.4f, 0.0f, 1.0f));
+                    ImGui::PushStyleColor(ImGuiCol_Button,
+                                          pressed ? ImVec4(1.0f, 0.8f, 0.0f, 1.0f) : ImVec4(0.5f, 0.4f, 0.0f, 1.0f));
                 } else {
-                    ImGui::PushStyleColor(ImGuiCol_Button, pressed ? ImVec4(0.0f, 1.0f, 0.0f, 1.0f) : ImVec4(0.3f, 0.3f, 0.3f, 1.0f));
+                    ImGui::PushStyleColor(ImGuiCol_Button,
+                                          pressed ? ImVec4(0.0f, 1.0f, 0.0f, 1.0f) : ImVec4(0.3f, 0.3f, 0.3f, 1.0f));
                 }
                 ImGui::Button(buttons[i].name, ImVec2(60, 30));
                 ImGui::PopStyleColor();
@@ -394,13 +411,13 @@ void XInputWidget::DrawButtonStates(const XINPUT_GAMEPAD& gamepad) {
     }
 }
 
-void XInputWidget::DrawStickStates(const XINPUT_GAMEPAD& gamepad) {
+void XInputWidget::DrawStickStates(const XINPUT_GAMEPAD &gamepad) {
     if (ImGui::CollapsingHeader("Analog Sticks", ImGuiTreeNodeFlags_DefaultOpen)) {
         float left_max_input = g_shared_state->left_stick_max_input.load();
         float right_max_input = g_shared_state->right_stick_max_input.load();
         float left_min_output = g_shared_state->left_stick_min_output.load();
         float right_min_output = g_shared_state->right_stick_min_output.load();
-        float left_deadzone = g_shared_state->left_stick_deadzone.load() / 100.0f; // Convert percentage to decimal
+        float left_deadzone = g_shared_state->left_stick_deadzone.load() / 100.0f;   // Convert percentage to decimal
         float right_deadzone = g_shared_state->right_stick_deadzone.load() / 100.0f; // Convert percentage to decimal
 
         // Left stick
@@ -419,18 +436,21 @@ void XInputWidget::DrawStickStates(const XINPUT_GAMEPAD& gamepad) {
         ImGui::Text("Position:");
         ImVec2 canvas_pos = ImGui::GetCursorScreenPos();
         ImVec2 canvas_size = ImVec2(100, 100);
-        ImDrawList* draw_list = ImGui::GetWindowDrawList();
+        ImDrawList *draw_list = ImGui::GetWindowDrawList();
 
         // Draw circle
         ImVec2 center = ImVec2(canvas_pos.x + canvas_size.x * 0.5f, canvas_pos.y + canvas_size.y * 0.5f);
         draw_list->AddCircle(center, canvas_size.x * 0.4f, ImColor(100, 100, 100, 255), 32, 2.0f);
 
         // Draw crosshairs
-        draw_list->AddLine(ImVec2(canvas_pos.x, center.y), ImVec2(canvas_pos.x + canvas_size.x, center.y), ImColor(100, 100, 100, 255), 1.0f);
-        draw_list->AddLine(ImVec2(center.x, canvas_pos.y), ImVec2(center.x, canvas_pos.y + canvas_size.y), ImColor(100, 100, 100, 255), 1.0f);
+        draw_list->AddLine(ImVec2(canvas_pos.x, center.y), ImVec2(canvas_pos.x + canvas_size.x, center.y),
+                           ImColor(100, 100, 100, 255), 1.0f);
+        draw_list->AddLine(ImVec2(center.x, canvas_pos.y), ImVec2(center.x, canvas_pos.y + canvas_size.y),
+                           ImColor(100, 100, 100, 255), 1.0f);
 
         // Draw stick position (using final processed values for visual representation)
-        ImVec2 stick_pos = ImVec2(center.x + lx_final * canvas_size.x * 0.4f, center.y - ly_final * canvas_size.y * 0.4f);
+        ImVec2 stick_pos =
+            ImVec2(center.x + lx_final * canvas_size.x * 0.4f, center.y - ly_final * canvas_size.y * 0.4f);
         draw_list->AddCircleFilled(stick_pos, 5.0f, ImColor(0, 255, 0, 255));
 
         ImGui::Dummy(canvas_size);
@@ -457,8 +477,10 @@ void XInputWidget::DrawStickStates(const XINPUT_GAMEPAD& gamepad) {
         draw_list->AddCircle(center, canvas_size.x * 0.4f, ImColor(100, 100, 100, 255), 32, 2.0f);
 
         // Draw crosshairs
-        draw_list->AddLine(ImVec2(canvas_pos.x, center.y), ImVec2(canvas_pos.x + canvas_size.x, center.y), ImColor(100, 100, 100, 255), 1.0f);
-        draw_list->AddLine(ImVec2(center.x, canvas_pos.y), ImVec2(center.x, canvas_pos.y + canvas_size.y), ImColor(100, 100, 100, 255), 1.0f);
+        draw_list->AddLine(ImVec2(canvas_pos.x, center.y), ImVec2(canvas_pos.x + canvas_size.x, center.y),
+                           ImColor(100, 100, 100, 255), 1.0f);
+        draw_list->AddLine(ImVec2(center.x, canvas_pos.y), ImVec2(center.x, canvas_pos.y + canvas_size.y),
+                           ImColor(100, 100, 100, 255), 1.0f);
 
         // Draw stick position (using final processed values for visual representation)
         stick_pos = ImVec2(center.x + rx_final * canvas_size.x * 0.4f, center.y - ry_final * canvas_size.y * 0.4f);
@@ -467,12 +489,13 @@ void XInputWidget::DrawStickStates(const XINPUT_GAMEPAD& gamepad) {
         ImGui::Dummy(canvas_size);
 
         // Draw extended visualization with input/output curves
-        DrawStickStatesExtended(left_deadzone, left_max_input, left_min_output, right_deadzone, right_max_input, right_min_output);
+        DrawStickStatesExtended(left_deadzone, left_max_input, left_min_output, right_deadzone, right_max_input,
+                                right_min_output);
     }
 }
 
 void XInputWidget::DrawStickStatesExtended(float left_deadzone, float left_max_input, float left_min_output,
-                                        float right_deadzone, float right_max_input, float right_min_output) {
+                                           float right_deadzone, float right_max_input, float right_min_output) {
     if (ImGui::CollapsingHeader("Input/Output Curves", ImGuiTreeNodeFlags_DefaultOpen)) {
         ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Visual representation of how stick input is processed");
         ImGui::Spacing();
@@ -493,7 +516,6 @@ void XInputWidget::DrawStickStatesExtended(float left_deadzone, float left_max_i
             // Deadzone region should show 0, not min_output
             left_curve_y[i] = ProcessStickInput(input_values[i], left_deadzone, left_max_input, left_min_output);
 
-
             right_curve_y[i] = ProcessStickInput(input_values[i], right_deadzone, right_max_input, right_min_output);
 
             left_curve_x[i] = static_cast<float>(i);
@@ -502,43 +524,43 @@ void XInputWidget::DrawStickStatesExtended(float left_deadzone, float left_max_i
 
         // Left stick curve
         ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Left Stick Input/Output Curve");
-        ImGui::Text("Deadzone: %.1f%%, Max Input: %.1f%%, Min Output: %.1f%%",
-        left_deadzone * 100.0f, left_max_input * 100.0f, left_min_output * 100.0f);
+        ImGui::Text("Deadzone: %.1f%%, Max Input: %.1f%%, Min Output: %.1f%%", left_deadzone * 100.0f,
+                    left_max_input * 100.0f, left_min_output * 100.0f);
 
         // Create plot for left stick (0.0 to 1.0 input range)
-        ImGui::PlotLines("##LeftStickCurve", left_curve_y.data(), curve_points, 0,
-                        "Left Stick Output", 0.0f, 1.0f, ImVec2(-1, 150));
+        ImGui::PlotLines("##LeftStickCurve", left_curve_y.data(), curve_points, 0, "Left Stick Output", 0.0f, 1.0f,
+                         ImVec2(-1, 150));
 
         // Add reference lines
-        ImDrawList* draw_list = ImGui::GetWindowDrawList();
+        ImDrawList *draw_list = ImGui::GetWindowDrawList();
         ImVec2 plot_pos = ImGui::GetItemRectMin();
         ImVec2 plot_size = ImGui::GetItemRectSize();
 
         // Draw deadzone reference line (vertical)
         float deadzone_x = plot_pos.x + left_deadzone * plot_size.x;
         draw_list->AddLine(ImVec2(deadzone_x, plot_pos.y), ImVec2(deadzone_x, plot_pos.y + plot_size.y),
-                        ImColor(255, 255, 0, 128), 2.0f);
+                           ImColor(255, 255, 0, 128), 2.0f);
 
         // Draw max input reference line (vertical)
         float max_input_x = plot_pos.x + left_max_input * plot_size.x;
         draw_list->AddLine(ImVec2(max_input_x, plot_pos.y), ImVec2(max_input_x, plot_pos.y + plot_size.y),
-                        ImColor(255, 0, 255, 128), 2.0f);
+                           ImColor(255, 0, 255, 128), 2.0f);
 
         // Draw min output reference line (horizontal)
         float min_output_y = plot_pos.y + plot_size.y - left_min_output * plot_size.y;
         draw_list->AddLine(ImVec2(plot_pos.x, min_output_y), ImVec2(plot_pos.x + plot_size.x, min_output_y),
-                        ImColor(0, 255, 255, 128), 2.0f);
+                           ImColor(0, 255, 255, 128), 2.0f);
 
         ImGui::Spacing();
 
         // Right stick curve
         ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Right Stick Input/Output Curve");
-        ImGui::Text("Deadzone: %.1f%%, Max Input: %.1f%%, Min Output: %.1f%%",
-        right_deadzone * 100.0f, right_max_input * 100.0f, right_min_output * 100.0f);
+        ImGui::Text("Deadzone: %.1f%%, Max Input: %.1f%%, Min Output: %.1f%%", right_deadzone * 100.0f,
+                    right_max_input * 100.0f, right_min_output * 100.0f);
 
         // Create plot for right stick (0.0 to 1.0 input range)
-        ImGui::PlotLines("##RightStickCurve", right_curve_y.data(), curve_points, 0,
-                        "Right Stick Output", 0.0f, 1.0f, ImVec2(-1, 150));
+        ImGui::PlotLines("##RightStickCurve", right_curve_y.data(), curve_points, 0, "Right Stick Output", 0.0f, 1.0f,
+                         ImVec2(-1, 150));
 
         // Add reference lines for right stick
         plot_pos = ImGui::GetItemRectMin();
@@ -547,17 +569,17 @@ void XInputWidget::DrawStickStatesExtended(float left_deadzone, float left_max_i
         // Draw deadzone reference line (vertical)
         float right_deadzone_x = plot_pos.x + right_deadzone * plot_size.x;
         draw_list->AddLine(ImVec2(right_deadzone_x, plot_pos.y), ImVec2(right_deadzone_x, plot_pos.y + plot_size.y),
-                        ImColor(255, 255, 0, 128), 2.0f);
+                           ImColor(255, 255, 0, 128), 2.0f);
 
         // Draw max input reference line (vertical)
         float right_max_input_x = plot_pos.x + right_max_input * plot_size.x;
         draw_list->AddLine(ImVec2(right_max_input_x, plot_pos.y), ImVec2(right_max_input_x, plot_pos.y + plot_size.y),
-                        ImColor(255, 0, 255, 128), 2.0f);
+                           ImColor(255, 0, 255, 128), 2.0f);
 
         // Draw min output reference line (horizontal)
         float right_min_output_y = plot_pos.y + plot_size.y - right_min_output * plot_size.y;
         draw_list->AddLine(ImVec2(plot_pos.x, right_min_output_y), ImVec2(plot_pos.x + plot_size.x, right_min_output_y),
-                        ImColor(0, 255, 255, 128), 2.0f);
+                           ImColor(0, 255, 255, 128), 2.0f);
 
         ImGui::Spacing();
 
@@ -576,21 +598,19 @@ void XInputWidget::DrawStickStatesExtended(float left_deadzone, float left_max_i
     }
 }
 
-void XInputWidget::DrawTriggerStates(const XINPUT_GAMEPAD& gamepad) {
+void XInputWidget::DrawTriggerStates(const XINPUT_GAMEPAD &gamepad) {
     if (ImGui::CollapsingHeader("Triggers", ImGuiTreeNodeFlags_DefaultOpen)) {
         // Left trigger
-        ImGui::Text("Left Trigger: %u/255 (%.1f%%)",
-        gamepad.bLeftTrigger,
-        (static_cast<float>(gamepad.bLeftTrigger) / 255.0f) * 100.0f);
+        ImGui::Text("Left Trigger: %u/255 (%.1f%%)", gamepad.bLeftTrigger,
+                    (static_cast<float>(gamepad.bLeftTrigger) / 255.0f) * 100.0f);
 
         // Visual bar for left trigger
         float left_trigger_norm = static_cast<float>(gamepad.bLeftTrigger) / 255.0f;
         ImGui::ProgressBar(left_trigger_norm, ImVec2(-1, 0), "");
 
         // Right trigger
-        ImGui::Text("Right Trigger: %u/255 (%.1f%%)",
-        gamepad.bRightTrigger,
-        (static_cast<float>(gamepad.bRightTrigger) / 255.0f) * 100.0f);
+        ImGui::Text("Right Trigger: %u/255 (%.1f%%)", gamepad.bRightTrigger,
+                    (static_cast<float>(gamepad.bRightTrigger) / 255.0f) * 100.0f);
 
         // Visual bar for right trigger
         float right_trigger_norm = static_cast<float>(gamepad.bRightTrigger) / 255.0f;
@@ -611,44 +631,43 @@ void XInputWidget::DrawBatteryStatus(int controller_index) {
             return;
         }
 
-        const XINPUT_BATTERY_INFORMATION& battery = g_shared_state->battery_info[controller_index];
+        const XINPUT_BATTERY_INFORMATION &battery = g_shared_state->battery_info[controller_index];
 
         // Battery type
         std::string battery_type_str;
         ImVec4 type_color(1.0f, 1.0f, 1.0f, 1.0f);
 
         switch (battery.BatteryType) {
-            case BATTERY_TYPE_DISCONNECTED:
-                battery_type_str = "Disconnected";
-                type_color = ImVec4(0.7f, 0.7f, 0.7f, 1.0f);
-                break;
-            case BATTERY_TYPE_WIRED:
-                battery_type_str = "Wired (No Battery)";
-                type_color = ImVec4(0.5f, 0.8f, 1.0f, 1.0f);
-                break;
-            case BATTERY_TYPE_ALKALINE:
-                battery_type_str = "Alkaline Battery";
-                type_color = ImVec4(1.0f, 1.0f, 0.0f, 1.0f);
-                break;
-            case BATTERY_TYPE_NIMH:
-                battery_type_str = "NiMH Battery";
-                type_color = ImVec4(0.0f, 1.0f, 0.0f, 1.0f);
-                break;
-            case BATTERY_TYPE_UNKNOWN:
-                battery_type_str = "Unknown Battery Type";
-                type_color = ImVec4(0.7f, 0.7f, 0.7f, 1.0f);
-                break;
-            default:
-                battery_type_str = "Unknown";
-                type_color = ImVec4(0.7f, 0.7f, 0.7f, 1.0f);
-                break;
+        case BATTERY_TYPE_DISCONNECTED:
+            battery_type_str = "Disconnected";
+            type_color = ImVec4(0.7f, 0.7f, 0.7f, 1.0f);
+            break;
+        case BATTERY_TYPE_WIRED:
+            battery_type_str = "Wired (No Battery)";
+            type_color = ImVec4(0.5f, 0.8f, 1.0f, 1.0f);
+            break;
+        case BATTERY_TYPE_ALKALINE:
+            battery_type_str = "Alkaline Battery";
+            type_color = ImVec4(1.0f, 1.0f, 0.0f, 1.0f);
+            break;
+        case BATTERY_TYPE_NIMH:
+            battery_type_str = "NiMH Battery";
+            type_color = ImVec4(0.0f, 1.0f, 0.0f, 1.0f);
+            break;
+        case BATTERY_TYPE_UNKNOWN:
+            battery_type_str = "Unknown Battery Type";
+            type_color = ImVec4(0.7f, 0.7f, 0.7f, 1.0f);
+            break;
+        default:
+            battery_type_str = "Unknown";
+            type_color = ImVec4(0.7f, 0.7f, 0.7f, 1.0f);
+            break;
         }
 
         ImGui::TextColored(type_color, "Type: %s", battery_type_str.c_str());
 
         // Battery level (only show for devices with actual batteries)
-        if (battery.BatteryType != BATTERY_TYPE_DISCONNECTED &&
-            battery.BatteryType != BATTERY_TYPE_UNKNOWN &&
+        if (battery.BatteryType != BATTERY_TYPE_DISCONNECTED && battery.BatteryType != BATTERY_TYPE_UNKNOWN &&
             battery.BatteryType != BATTERY_TYPE_WIRED) {
 
             std::string level_str;
@@ -656,31 +675,31 @@ void XInputWidget::DrawBatteryStatus(int controller_index) {
             float level_progress = 0.0f;
 
             switch (battery.BatteryLevel) {
-                case BATTERY_LEVEL_EMPTY:
-                    level_str = "Empty";
-                    level_color = ImVec4(1.0f, 0.0f, 0.0f, 1.0f);
-                    level_progress = 0.0f;
-                    break;
-                case BATTERY_LEVEL_LOW:
-                    level_str = "Low";
-                    level_color = ImVec4(1.0f, 0.5f, 0.0f, 1.0f);
-                    level_progress = 0.25f;
-                    break;
-                case BATTERY_LEVEL_MEDIUM:
-                    level_str = "Medium";
-                    level_color = ImVec4(1.0f, 1.0f, 0.0f, 1.0f);
-                    level_progress = 0.5f;
-                    break;
-                case BATTERY_LEVEL_FULL:
-                    level_str = "Full";
-                    level_color = ImVec4(0.0f, 1.0f, 0.0f, 1.0f);
-                    level_progress = 1.0f;
-                    break;
-                default:
-                    level_str = "Unknown";
-                    level_color = ImVec4(0.7f, 0.7f, 0.7f, 1.0f);
-                    level_progress = 0.0f;
-                    break;
+            case BATTERY_LEVEL_EMPTY:
+                level_str = "Empty";
+                level_color = ImVec4(1.0f, 0.0f, 0.0f, 1.0f);
+                level_progress = 0.0f;
+                break;
+            case BATTERY_LEVEL_LOW:
+                level_str = "Low";
+                level_color = ImVec4(1.0f, 0.5f, 0.0f, 1.0f);
+                level_progress = 0.25f;
+                break;
+            case BATTERY_LEVEL_MEDIUM:
+                level_str = "Medium";
+                level_color = ImVec4(1.0f, 1.0f, 0.0f, 1.0f);
+                level_progress = 0.5f;
+                break;
+            case BATTERY_LEVEL_FULL:
+                level_str = "Full";
+                level_color = ImVec4(0.0f, 1.0f, 0.0f, 1.0f);
+                level_progress = 1.0f;
+                break;
+            default:
+                level_str = "Unknown";
+                level_color = ImVec4(0.7f, 0.7f, 0.7f, 1.0f);
+                level_progress = 0.0f;
+                break;
             }
 
             ImGui::TextColored(level_color, "Level: %s", level_str.c_str());
@@ -700,22 +719,38 @@ void XInputWidget::DrawBatteryStatus(int controller_index) {
 
 std::string XInputWidget::GetButtonName(WORD button) const {
     switch (button) {
-        case XINPUT_GAMEPAD_A: return "A";
-        case XINPUT_GAMEPAD_B: return "B";
-        case XINPUT_GAMEPAD_X: return "X";
-        case XINPUT_GAMEPAD_Y: return "Y";
-        case XINPUT_GAMEPAD_LEFT_SHOULDER: return "LB";
-        case XINPUT_GAMEPAD_RIGHT_SHOULDER: return "RB";
-        case XINPUT_GAMEPAD_BACK: return "Back";
-        case XINPUT_GAMEPAD_START: return "Start";
-        case XINPUT_GAMEPAD_GUIDE: return "Guide";
-        case XINPUT_GAMEPAD_LEFT_THUMB: return "LS";
-        case XINPUT_GAMEPAD_RIGHT_THUMB: return "RS";
-        case XINPUT_GAMEPAD_DPAD_UP: return "D-Up";
-        case XINPUT_GAMEPAD_DPAD_DOWN: return "D-Down";
-        case XINPUT_GAMEPAD_DPAD_LEFT: return "D-Left";
-        case XINPUT_GAMEPAD_DPAD_RIGHT: return "D-Right";
-        default: return "Unknown";
+    case XINPUT_GAMEPAD_A:
+        return "A";
+    case XINPUT_GAMEPAD_B:
+        return "B";
+    case XINPUT_GAMEPAD_X:
+        return "X";
+    case XINPUT_GAMEPAD_Y:
+        return "Y";
+    case XINPUT_GAMEPAD_LEFT_SHOULDER:
+        return "LB";
+    case XINPUT_GAMEPAD_RIGHT_SHOULDER:
+        return "RB";
+    case XINPUT_GAMEPAD_BACK:
+        return "Back";
+    case XINPUT_GAMEPAD_START:
+        return "Start";
+    case XINPUT_GAMEPAD_GUIDE:
+        return "Guide";
+    case XINPUT_GAMEPAD_LEFT_THUMB:
+        return "LS";
+    case XINPUT_GAMEPAD_RIGHT_THUMB:
+        return "RS";
+    case XINPUT_GAMEPAD_DPAD_UP:
+        return "D-Up";
+    case XINPUT_GAMEPAD_DPAD_DOWN:
+        return "D-Down";
+    case XINPUT_GAMEPAD_DPAD_LEFT:
+        return "D-Left";
+    case XINPUT_GAMEPAD_DPAD_RIGHT:
+        return "D-Right";
+    default:
+        return "Unknown";
     }
 }
 
@@ -728,11 +763,7 @@ std::string XInputWidget::GetControllerStatus(int controller_index) const {
     return connected ? "Connected" : "Disconnected";
 }
 
-
-
-bool XInputWidget::IsButtonPressed(WORD buttons, WORD button) const {
-    return (buttons & button) != 0;
-}
+bool XInputWidget::IsButtonPressed(WORD buttons, WORD button) const { return (buttons & button) != 0; }
 
 void XInputWidget::LoadSettings() {
     // Load swap A/B buttons setting
@@ -776,36 +807,39 @@ void XInputWidget::LoadSettings() {
     if (reshade::get_config_value(nullptr, "DisplayCommander.XInputWidget", "RightStickMaxOutput", right_min_output)) {
         g_shared_state->right_stick_min_output.store(right_min_output);
     }
-
 }
 
 void XInputWidget::SaveSettings() {
     // Save swap A/B buttons setting
-    reshade::set_config_value(nullptr, "DisplayCommander.XInputWidget", "SwapABButtons", g_shared_state->swap_a_b_buttons.load());
+    reshade::set_config_value(nullptr, "DisplayCommander.XInputWidget", "SwapABButtons",
+                              g_shared_state->swap_a_b_buttons.load());
 
     // Save left stick sensitivity setting
-    reshade::set_config_value(nullptr, "DisplayCommander.XInputWidget", "LeftStickSensitivity", g_shared_state->left_stick_max_input.load());
+    reshade::set_config_value(nullptr, "DisplayCommander.XInputWidget", "LeftStickSensitivity",
+                              g_shared_state->left_stick_max_input.load());
 
     // Save right stick sensitivity setting
-    reshade::set_config_value(nullptr, "DisplayCommander.XInputWidget", "RightStickSensitivity", g_shared_state->right_stick_max_input.load());
+    reshade::set_config_value(nullptr, "DisplayCommander.XInputWidget", "RightStickSensitivity",
+                              g_shared_state->right_stick_max_input.load());
 
     // Save left stick min input setting
-    reshade::set_config_value(nullptr, "DisplayCommander.XInputWidget", "LeftStickMinInput", g_shared_state->left_stick_deadzone.load());
+    reshade::set_config_value(nullptr, "DisplayCommander.XInputWidget", "LeftStickMinInput",
+                              g_shared_state->left_stick_deadzone.load());
 
     // Save right stick min input setting
-    reshade::set_config_value(nullptr, "DisplayCommander.XInputWidget", "RightStickMinInput", g_shared_state->right_stick_deadzone.load());
+    reshade::set_config_value(nullptr, "DisplayCommander.XInputWidget", "RightStickMinInput",
+                              g_shared_state->right_stick_deadzone.load());
 
     // Save left stick max output setting
-    reshade::set_config_value(nullptr, "DisplayCommander.XInputWidget", "LeftStickMaxOutput", g_shared_state->left_stick_min_output.load());
+    reshade::set_config_value(nullptr, "DisplayCommander.XInputWidget", "LeftStickMaxOutput",
+                              g_shared_state->left_stick_min_output.load());
 
     // Save right stick max output setting
-    reshade::set_config_value(nullptr, "DisplayCommander.XInputWidget", "RightStickMaxOutput", g_shared_state->right_stick_min_output.load());
-
+    reshade::set_config_value(nullptr, "DisplayCommander.XInputWidget", "RightStickMaxOutput",
+                              g_shared_state->right_stick_min_output.load());
 }
 
-std::shared_ptr<XInputSharedState> XInputWidget::GetSharedState() {
-    return g_shared_state;
-}
+std::shared_ptr<XInputSharedState> XInputWidget::GetSharedState() { return g_shared_state; }
 
 // Global functions for integration
 void InitializeXInputWidget() {
@@ -835,7 +869,7 @@ void DrawXInputWidget() {
 }
 
 // Global functions for hooks to use
-void UpdateXInputState(DWORD user_index, const XINPUT_STATE* state) {
+void UpdateXInputState(DWORD user_index, const XINPUT_STATE *state) {
     auto shared_state = XInputWidget::GetSharedState();
     if (!shared_state || user_index >= XUSER_MAX_COUNT || !state) {
         return;
@@ -859,9 +893,10 @@ void UpdateXInputState(DWORD user_index, const XINPUT_STATE* state) {
     shared_state->is_updating.store(false);
 }
 
-void IncrementEventCounter(const std::string& event_type) {
+void IncrementEventCounter(const std::string &event_type) {
     auto shared_state = XInputWidget::GetSharedState();
-    if (!shared_state) return;
+    if (!shared_state)
+        return;
 
     if (event_type == "button") {
         shared_state->button_events.fetch_add(1);
@@ -880,14 +915,15 @@ void XInputWidget::TestLeftMotor() {
     }
 
     XINPUT_VIBRATION vibration = {};
-    vibration.wLeftMotorSpeed = 65535;  // Maximum intensity
-    vibration.wRightMotorSpeed = 0;     // Right motor off
+    vibration.wLeftMotorSpeed = 65535; // Maximum intensity
+    vibration.wRightMotorSpeed = 0;    // Right motor off
 
     DWORD result = XInputSetState(selected_controller_, &vibration);
     if (result == ERROR_SUCCESS) {
         LogInfo("XInputWidget::TestLeftMotor() - Left motor test started for controller %d", selected_controller_);
     } else {
-        LogError("XInputWidget::TestLeftMotor() - Failed to set vibration for controller %d, error: %lu", selected_controller_, result);
+        LogError("XInputWidget::TestLeftMotor() - Failed to set vibration for controller %d, error: %lu",
+                 selected_controller_, result);
     }
 }
 
@@ -905,7 +941,8 @@ void XInputWidget::TestRightMotor() {
     if (result == ERROR_SUCCESS) {
         LogInfo("XInputWidget::TestRightMotor() - Right motor test started for controller %d", selected_controller_);
     } else {
-        LogError("XInputWidget::TestRightMotor() - Failed to set vibration for controller %d, error: %lu", selected_controller_, result);
+        LogError("XInputWidget::TestRightMotor() - Failed to set vibration for controller %d, error: %lu",
+                 selected_controller_, result);
     }
 }
 
@@ -916,14 +953,15 @@ void XInputWidget::StopVibration() {
     }
 
     XINPUT_VIBRATION vibration = {};
-    vibration.wLeftMotorSpeed = 0;  // Both motors off
+    vibration.wLeftMotorSpeed = 0; // Both motors off
     vibration.wRightMotorSpeed = 0;
 
     DWORD result = XInputSetState(selected_controller_, &vibration);
     if (result == ERROR_SUCCESS) {
         LogInfo("XInputWidget::StopVibration() - Vibration stopped for controller %d", selected_controller_);
     } else {
-        LogError("XInputWidget::StopVibration() - Failed to stop vibration for controller %d, error: %lu", selected_controller_, result);
+        LogError("XInputWidget::StopVibration() - Failed to stop vibration for controller %d, error: %lu",
+                 selected_controller_, result);
     }
 }
 
@@ -939,7 +977,7 @@ void XInputWidget::DrawChordSettings() {
             }
         } else {
             for (size_t i = 0; i < g_shared_state->chords.size(); ++i) {
-                XInputSharedState::Chord& chord = g_shared_state->chords[i];
+                XInputSharedState::Chord &chord = g_shared_state->chords[i];
 
                 ImGui::PushID(static_cast<int>(i));
 
@@ -1002,7 +1040,8 @@ void XInputWidget::InitializeDefaultChords() {
 }
 
 void XInputWidget::ProcessChordDetection(DWORD user_index, WORD button_state) {
-    if (!g_shared_state) return;
+    if (!g_shared_state)
+        return;
 
     // Update current button state
     g_shared_state->current_button_state.store(button_state);
@@ -1011,8 +1050,9 @@ void XInputWidget::ProcessChordDetection(DWORD user_index, WORD button_state) {
     bool any_chord_pressed = false;
 
     // Check each chord
-    for (XInputSharedState::Chord& chord : g_shared_state->chords) {
-        if (!chord.enabled) continue;
+    for (XInputSharedState::Chord &chord : g_shared_state->chords) {
+        if (!chord.enabled)
+            continue;
 
         bool was_pressed = chord.is_pressed.load();
         bool is_pressed = (button_state & chord.buttons) == chord.buttons;
@@ -1038,13 +1078,13 @@ void XInputWidget::ProcessChordDetection(DWORD user_index, WORD button_state) {
     g_shared_state->suppress_input.store(any_chord_pressed);
 }
 
-void XInputWidget::ExecuteChordAction(const XInputSharedState::Chord& chord, DWORD user_index) {
+void XInputWidget::ExecuteChordAction(const XInputSharedState::Chord &chord, DWORD user_index) {
     if (chord.action == "Take screenshot") {
         // Take screenshot using ReShade API
         LogInfo("XXX Taking screenshot via chord detection");
 
         // Get the ReShade runtime instance
-        reshade::api::effect_runtime* runtime = g_reshade_runtime.load();
+        reshade::api::effect_runtime *runtime = g_reshade_runtime.load();
 
         if (runtime != nullptr) {
             // Set the screenshot trigger flag - this will be handled in the present event
@@ -1058,7 +1098,7 @@ void XInputWidget::ExecuteChordAction(const XInputSharedState::Chord& chord, DWO
         LogInfo("XXX Toggling ReShade UI via chord detection");
 
         // Get the ReShade runtime instance
-        reshade::api::effect_runtime* runtime = g_reshade_runtime.load();
+        reshade::api::effect_runtime *runtime = g_reshade_runtime.load();
 
         if (runtime != nullptr) {
             try {
@@ -1072,13 +1112,12 @@ void XInputWidget::ExecuteChordAction(const XInputSharedState::Chord& chord, DWO
                 if (success) {
                     // Update our tracked state
                     g_shared_state->ui_overlay_open.store(new_state);
-                    LogInfo("XXX ReShade UI toggled via chord detection (%s)",
-            new_state ? "opened" : "closed");
+                    LogInfo("XXX ReShade UI toggled via chord detection (%s)", new_state ? "opened" : "closed");
                 } else {
                     LogError("XXX Failed to toggle ReShade UI via chord detection");
                 }
 
-            } catch (const std::exception& e) {
+            } catch (const std::exception &e) {
                 LogError("XXX Exception toggling ReShade UI: %s", e.what());
             } catch (...) {
                 LogError("XXX Unknown exception toggling ReShade UI");
@@ -1089,7 +1128,7 @@ void XInputWidget::ExecuteChordAction(const XInputSharedState::Chord& chord, DWO
     } else if (chord.action == "Test controller vibration") {
         // Test vibration on the controller that triggered the chord
         XINPUT_VIBRATION vibration = {};
-        vibration.wLeftMotorSpeed = FloatToShort(1.0f);  // Medium intensity
+        vibration.wLeftMotorSpeed = FloatToShort(1.0f); // Medium intensity
         vibration.wRightMotorSpeed = FloatToShort(1.0f);
 
         DWORD result = XInputSetState(user_index, &vibration);
@@ -1104,25 +1143,41 @@ void XInputWidget::ExecuteChordAction(const XInputSharedState::Chord& chord, DWO
 std::string XInputWidget::GetChordButtonNames(WORD buttons) const {
     std::vector<std::string> names;
 
-    if (buttons & XINPUT_GAMEPAD_A) names.push_back("A");
-    if (buttons & XINPUT_GAMEPAD_B) names.push_back("B");
-    if (buttons & XINPUT_GAMEPAD_X) names.push_back("X");
-    if (buttons & XINPUT_GAMEPAD_Y) names.push_back("Y");
-    if (buttons & XINPUT_GAMEPAD_LEFT_SHOULDER) names.push_back("LB");
-    if (buttons & XINPUT_GAMEPAD_RIGHT_SHOULDER) names.push_back("RB");
-    if (buttons & XINPUT_GAMEPAD_BACK) names.push_back("Back");
-    if (buttons & XINPUT_GAMEPAD_START) names.push_back("Start");
-    if (buttons & XINPUT_GAMEPAD_GUIDE) names.push_back("Guide");
-    if (buttons & XINPUT_GAMEPAD_LEFT_THUMB) names.push_back("LS");
-    if (buttons & XINPUT_GAMEPAD_RIGHT_THUMB) names.push_back("RS");
-    if (buttons & XINPUT_GAMEPAD_DPAD_UP) names.push_back("D-Up");
-    if (buttons & XINPUT_GAMEPAD_DPAD_DOWN) names.push_back("D-Down");
-    if (buttons & XINPUT_GAMEPAD_DPAD_LEFT) names.push_back("D-Left");
-    if (buttons & XINPUT_GAMEPAD_DPAD_RIGHT) names.push_back("D-Right");
+    if (buttons & XINPUT_GAMEPAD_A)
+        names.push_back("A");
+    if (buttons & XINPUT_GAMEPAD_B)
+        names.push_back("B");
+    if (buttons & XINPUT_GAMEPAD_X)
+        names.push_back("X");
+    if (buttons & XINPUT_GAMEPAD_Y)
+        names.push_back("Y");
+    if (buttons & XINPUT_GAMEPAD_LEFT_SHOULDER)
+        names.push_back("LB");
+    if (buttons & XINPUT_GAMEPAD_RIGHT_SHOULDER)
+        names.push_back("RB");
+    if (buttons & XINPUT_GAMEPAD_BACK)
+        names.push_back("Back");
+    if (buttons & XINPUT_GAMEPAD_START)
+        names.push_back("Start");
+    if (buttons & XINPUT_GAMEPAD_GUIDE)
+        names.push_back("Guide");
+    if (buttons & XINPUT_GAMEPAD_LEFT_THUMB)
+        names.push_back("LS");
+    if (buttons & XINPUT_GAMEPAD_RIGHT_THUMB)
+        names.push_back("RS");
+    if (buttons & XINPUT_GAMEPAD_DPAD_UP)
+        names.push_back("D-Up");
+    if (buttons & XINPUT_GAMEPAD_DPAD_DOWN)
+        names.push_back("D-Down");
+    if (buttons & XINPUT_GAMEPAD_DPAD_LEFT)
+        names.push_back("D-Left");
+    if (buttons & XINPUT_GAMEPAD_DPAD_RIGHT)
+        names.push_back("D-Right");
 
     std::string result;
     for (size_t i = 0; i < names.size(); ++i) {
-        if (i > 0) result += " + ";
+        if (i > 0)
+            result += " + ";
         result += names[i];
     }
 
@@ -1132,14 +1187,16 @@ std::string XInputWidget::GetChordButtonNames(WORD buttons) const {
 // Global function for hooks to use
 void ProcessChordDetection(DWORD user_index, WORD button_state) {
     auto shared_state = XInputWidget::GetSharedState();
-    if (!shared_state) return;
+    if (!shared_state)
+        return;
 
     // Check if any chord is currently pressed
     bool any_chord_pressed = false;
 
     // Check each chord
-    for (XInputSharedState::Chord& chord : shared_state->chords) {
-        if (!chord.enabled) continue;
+    for (XInputSharedState::Chord &chord : shared_state->chords) {
+        if (!chord.enabled)
+            continue;
 
         bool was_pressed = chord.is_pressed.load();
         bool is_pressed = (button_state & chord.buttons) == chord.buttons;
@@ -1154,7 +1211,7 @@ void ProcessChordDetection(DWORD user_index, WORD button_state) {
                 LogInfo("XXX Taking screenshot via chord detection");
 
                 // Get the ReShade runtime instance
-                reshade::api::effect_runtime* runtime = g_reshade_runtime.load();
+                reshade::api::effect_runtime *runtime = g_reshade_runtime.load();
 
                 if (runtime != nullptr) {
                     // Set the screenshot trigger flag - this will be handled in the present event
@@ -1168,7 +1225,7 @@ void ProcessChordDetection(DWORD user_index, WORD button_state) {
                 LogInfo("XXX Toggling ReShade UI via chord detection");
 
                 // Get the ReShade runtime instance
-                reshade::api::effect_runtime* runtime = g_reshade_runtime.load();
+                reshade::api::effect_runtime *runtime = g_reshade_runtime.load();
 
                 if (runtime != nullptr) {
                     try {
@@ -1182,13 +1239,12 @@ void ProcessChordDetection(DWORD user_index, WORD button_state) {
                         if (success) {
                             // Update our tracked state
                             shared_state->ui_overlay_open.store(new_state);
-                            LogInfo("XXX ReShade UI toggled via chord detection (%s)",
-                new_state ? "opened" : "closed");
+                            LogInfo("XXX ReShade UI toggled via chord detection (%s)", new_state ? "opened" : "closed");
                         } else {
                             LogError("XXX Failed to toggle ReShade UI via chord detection");
                         }
 
-                    } catch (const std::exception& e) {
+                    } catch (const std::exception &e) {
                         LogError("XXX Exception toggling ReShade UI: %s", e.what());
                     } catch (...) {
                         LogError("XXX Unknown exception toggling ReShade UI");
@@ -1205,7 +1261,8 @@ void ProcessChordDetection(DWORD user_index, WORD button_state) {
                 if (result == ERROR_SUCCESS) {
                     LogInfo("XXX Vibration test triggered via chord on controller %lu", user_index);
                 } else {
-                    LogError("XXX Failed to trigger vibration via chord on controller %lu, error: %lu", user_index, result);
+                    LogError("XXX Failed to trigger vibration via chord on controller %lu, error: %lu", user_index,
+                             result);
                 }
             }
 
@@ -1228,7 +1285,8 @@ void ProcessChordDetection(DWORD user_index, WORD button_state) {
 void CheckAndHandleScreenshot() {
     try {
         auto shared_state = XInputWidget::GetSharedState();
-        if (!shared_state) return;
+        if (!shared_state)
+            return;
 
         // Check if screenshot should be triggered
         if (shared_state->trigger_screenshot.load()) {
@@ -1236,48 +1294,48 @@ void CheckAndHandleScreenshot() {
             shared_state->trigger_screenshot.store(false);
 
             // Get the ReShade runtime instance
-            reshade::api::effect_runtime* runtime = g_reshade_runtime.load();
+            reshade::api::effect_runtime *runtime = g_reshade_runtime.load();
 
-        if (runtime != nullptr) {
-            // Use PrintScreen key simulation to trigger ReShade's built-in screenshot system
-            // This is the safest and most reliable method
-            try {
-                LogInfo("XXX Triggering ReShade screenshot via PrintScreen key simulation");
+            if (runtime != nullptr) {
+                // Use PrintScreen key simulation to trigger ReShade's built-in screenshot system
+                // This is the safest and most reliable method
+                try {
+                    LogInfo("XXX Triggering ReShade screenshot via PrintScreen key simulation");
 
-                // Simulate PrintScreen key press to trigger ReShade's screenshot
-                INPUT input = {};
-                input.type = INPUT_KEYBOARD;
-                input.ki.wVk = VK_SNAPSHOT; // PrintScreen key
-                input.ki.dwFlags = 0; // Key down
+                    // Simulate PrintScreen key press to trigger ReShade's screenshot
+                    INPUT input = {};
+                    input.type = INPUT_KEYBOARD;
+                    input.ki.wVk = VK_SNAPSHOT; // PrintScreen key
+                    input.ki.dwFlags = 0;       // Key down
 
-                // Send key down
-                UINT result = SendInput(1, &input, sizeof(INPUT));
-                if (result == 0) {
-                    LogError("XXX SendInput failed for key down, error: %lu", GetLastError());
+                    // Send key down
+                    UINT result = SendInput(1, &input, sizeof(INPUT));
+                    if (result == 0) {
+                        LogError("XXX SendInput failed for key down, error: %lu", GetLastError());
+                    }
+
+                    // Small delay to ensure the key press is registered
+                    Sleep(50);
+
+                    // Send key up
+                    input.ki.dwFlags = KEYEVENTF_KEYUP;
+                    result = SendInput(1, &input, sizeof(INPUT));
+                    if (result == 0) {
+                        LogError("XXX SendInput failed for key up, error: %lu", GetLastError());
+                    }
+
+                    LogInfo("XXX PrintScreen key simulation completed successfully");
+
+                } catch (const std::exception &e) {
+                    LogError("XXX Exception in PrintScreen simulation: %s", e.what());
+                } catch (...) {
+                    LogError("XXX Unknown exception in PrintScreen simulation");
                 }
-
-                // Small delay to ensure the key press is registered
-                Sleep(50);
-
-                // Send key up
-                input.ki.dwFlags = KEYEVENTF_KEYUP;
-                result = SendInput(1, &input, sizeof(INPUT));
-                if (result == 0) {
-                    LogError("XXX SendInput failed for key up, error: %lu", GetLastError());
-                }
-
-                LogInfo("XXX PrintScreen key simulation completed successfully");
-
-            } catch (const std::exception& e) {
-                LogError("XXX Exception in PrintScreen simulation: %s", e.what());
-            } catch (...) {
-                LogError("XXX Unknown exception in PrintScreen simulation");
+            } else {
+                LogError("XXX ReShade runtime not available for screenshot");
             }
-        } else {
-            LogError("XXX ReShade runtime not available for screenshot");
         }
-        }
-    } catch (const std::exception& e) {
+    } catch (const std::exception &e) {
         LogError("XXX Exception in CheckAndHandleScreenshot: %s", e.what());
     } catch (...) {
         LogError("XXX Unknown exception in CheckAndHandleScreenshot");
@@ -1312,8 +1370,8 @@ void UpdateBatteryStatus(DWORD user_index) {
         shared_state->battery_info_valid[user_index] = true;
         shared_state->last_battery_update_times[user_index] = current_time;
 
-        LogInfo("XXX Controller %lu battery: Type=%d, Level=%d",
-                user_index, battery_info.BatteryType, battery_info.BatteryLevel);
+        LogInfo("XXX Controller %lu battery: Type=%d, Level=%d", user_index, battery_info.BatteryType,
+                battery_info.BatteryLevel);
     } else {
         // Mark battery info as invalid if we can't get it
         shared_state->battery_info_valid[user_index] = false;

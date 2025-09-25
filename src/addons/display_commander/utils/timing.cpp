@@ -1,11 +1,10 @@
 #include "timing.hpp"
-#include <Windows.h>
-#include <algorithm>
-#include <cmath>
-#include <sstream>
-#include <intrin.h>
-#include "../utils.hpp"
 #include "../hooks/timeslowdown_hooks.hpp"
+#include "../utils.hpp"
+#include <Windows.h>
+#include <intrin.h>
+#include <sstream>
+
 
 // NTSTATUS constants if not already defined
 #ifndef STATUS_SUCCESS
@@ -15,20 +14,18 @@
 namespace utils {
 
 // QPC timing constants - initialized at runtime
-LONGLONG QPC_TO_NS = 100;  // Default fallback value
+LONGLONG QPC_TO_NS = 100; // Default fallback value
 LONGLONG QPC_PER_SECOND = SEC_TO_NS / QPC_TO_NS;
 LONGLONG QPC_TO_MS = NS_TO_MS / QPC_TO_NS;
 bool initialized = false;
 
 // Initialize QPC timing constants based on actual QueryPerformanceCounter frequency
 // This should be called early in program initialization (e.g., DllMain)
-bool initialize_qpc_timing_constants()
-{
+bool initialize_qpc_timing_constants() {
     if (initialized)
         return true;
     LARGE_INTEGER frequency;
-    if (!renodx::hooks::QueryPerformanceFrequency_Detour(&frequency))
-    {
+    if (!renodx::hooks::QueryPerformanceFrequency_Detour(&frequency)) {
         LogError("QueryPerformanceFrequency failed, using default values");
         // If QueryPerformanceFrequency fails, keep default values
         return false;
@@ -53,8 +50,10 @@ bool initialize_qpc_timing_constants()
 }
 
 // Function pointer types for dynamic loading
-typedef NTSTATUS (NTAPI *ZwQueryTimerResolution_t)(PULONG MinimumResolution, PULONG MaximumResolution, PULONG CurrentResolution);
-typedef NTSTATUS (NTAPI *ZwSetTimerResolution_t)(ULONG DesiredResolution, BOOLEAN SetResolution, PULONG CurrentResolution);
+typedef NTSTATUS(NTAPI *ZwQueryTimerResolution_t)(PULONG MinimumResolution, PULONG MaximumResolution,
+                                                  PULONG CurrentResolution);
+typedef NTSTATUS(NTAPI *ZwSetTimerResolution_t)(ULONG DesiredResolution, BOOLEAN SetResolution,
+                                                PULONG CurrentResolution);
 
 // Global variables for timer resolution
 static LONGLONG timer_res_qpc = 0;
@@ -66,40 +65,35 @@ static LONGLONG timer_res_qpc_frequency = 0;
 static bool mwaitx_supported_cached = false;
 static bool mwaitx_support_checked = false;
 
-
-bool supports_mwaitx (void)
-{
+bool supports_mwaitx(void) {
     if (mwaitx_support_checked)
-    return mwaitx_supported_cached;
+        return mwaitx_supported_cached;
     mwaitx_supported_cached = true;
-    auto handler = AddVectoredExceptionHandler (1, [](_EXCEPTION_POINTERS *ExceptionInfo)->LONG
-    {
-        if (ExceptionInfo->ExceptionRecord->ExceptionCode == EXCEPTION_ILLEGAL_INSTRUCTION)
-        {
-        mwaitx_supported_cached = false;
+    auto handler = AddVectoredExceptionHandler(1, [](_EXCEPTION_POINTERS *ExceptionInfo) -> LONG {
+        if (ExceptionInfo->ExceptionRecord->ExceptionCode == EXCEPTION_ILLEGAL_INSTRUCTION) {
+            mwaitx_supported_cached = false;
         }
 
-        #ifdef _AMD64_
+#ifdef _AMD64_
         ExceptionInfo->ContextRecord->Rip++;
-        #else
+#else
         ExceptionInfo->ContextRecord->Eip++;
-        #endif
+#endif
 
         return EXCEPTION_CONTINUE_EXECUTION;
     });
 
     static __declspec(align(64)) uint64_t monitor = 0ULL;
     _mm_monitorx(&monitor, 0, 0);
-    _mm_mwaitx(0x2,      0, 1);
+    _mm_mwaitx(0x2, 0, 1);
 
-    RemoveVectoredExceptionHandler (handler);
+    RemoveVectoredExceptionHandler(handler);
 
     return mwaitx_supported_cached;
 }
 
 // Setup high-resolution timer by setting kernel timer resolution to maximum
-bool setup_high_resolution_timer()
-{
+bool setup_high_resolution_timer() {
     // Get QPC frequency
     LARGE_INTEGER frequency;
     renodx::hooks::QueryPerformanceFrequency_Detour(&frequency);
@@ -110,25 +104,20 @@ bool setup_high_resolution_timer()
     if (!ntdll)
         return false;
 
-    ZwQueryTimerResolution = reinterpret_cast<ZwQueryTimerResolution_t>(
-        GetProcAddress(ntdll, "ZwQueryTimerResolution")
-    );
-    ZwSetTimerResolution = reinterpret_cast<ZwSetTimerResolution_t>(
-        GetProcAddress(ntdll, "ZwSetTimerResolution")
-    );
+    ZwQueryTimerResolution =
+        reinterpret_cast<ZwQueryTimerResolution_t>(GetProcAddress(ntdll, "ZwQueryTimerResolution"));
+    ZwSetTimerResolution = reinterpret_cast<ZwSetTimerResolution_t>(GetProcAddress(ntdll, "ZwSetTimerResolution"));
 
     if (ZwQueryTimerResolution == nullptr || ZwSetTimerResolution == nullptr)
         return false;
 
     ULONG min, max, cur;
-    if (ZwQueryTimerResolution(&min, &max, &cur) == STATUS_SUCCESS)
-    {
+    if (ZwQueryTimerResolution(&min, &max, &cur) == STATUS_SUCCESS) {
         // Store current resolution
         timer_res_qpc = cur;
 
         // Set timer resolution to maximum for highest precision
-        if (ZwSetTimerResolution(max, TRUE, &cur) == STATUS_SUCCESS)
-        {
+        if (ZwSetTimerResolution(max, TRUE, &cur) == STATUS_SUCCESS) {
             timer_res_qpc = cur;
             return true;
         }
@@ -138,15 +127,11 @@ bool setup_high_resolution_timer()
 }
 
 // Get current timer resolution in milliseconds
-LONGLONG get_timer_resolution_qpc()
-{
-    return timer_res_qpc;
-}
+LONGLONG get_timer_resolution_qpc() { return timer_res_qpc; }
 
 // Wait until the specified QPC time is reached
 // Uses a combination of kernel waitable timers and busy waiting for precision
-void wait_until_qpc(LONGLONG target_qpc, HANDLE& timer_handle)
-{
+void wait_until_qpc(LONGLONG target_qpc, HANDLE &timer_handle) {
     static __declspec(align(64)) uint64_t monitor = 0ULL;
     LONGLONG current_time_qpc = get_now_qpc();
 
@@ -155,19 +140,12 @@ void wait_until_qpc(LONGLONG target_qpc, HANDLE& timer_handle)
         return;
 
     // Create timer handle if it doesn't exist or is invalid
-    if (reinterpret_cast<LONG_PTR>(timer_handle) < 0)
-    {
+    if (reinterpret_cast<LONG_PTR>(timer_handle) < 0) {
         // Try to create a high-resolution waitable timer if available
-        timer_handle = CreateWaitableTimerEx(
-            nullptr,
-            nullptr,
-            CREATE_WAITABLE_TIMER_HIGH_RESOLUTION,
-            TIMER_ALL_ACCESS
-        );
+        timer_handle = CreateWaitableTimerEx(nullptr, nullptr, CREATE_WAITABLE_TIMER_HIGH_RESOLUTION, TIMER_ALL_ACCESS);
 
         // Fallback to regular waitable timer if high-resolution not available
-        if (!timer_handle)
-        {
+        if (!timer_handle) {
             timer_handle = CreateWaitableTimer(nullptr, FALSE, nullptr);
         }
     }
@@ -176,22 +154,19 @@ void wait_until_qpc(LONGLONG target_qpc, HANDLE& timer_handle)
 
     // Use kernel waitable timer for longer waits (more than ~2ms)
     // This prevents completely consuming a CPU core during long waits
-    if (timer_handle && (time_to_wait_qpc >= 3 * timer_res_qpc))
-    {
+    if (timer_handle && (time_to_wait_qpc >= 3 * timer_res_qpc)) {
         // Schedule timer to wake up slightly before target time
         // Leave some time for busy waiting to achieve precise timing
         LONGLONG delay_qpc = time_to_wait_qpc - 1 * timer_res_qpc;
         LARGE_INTEGER delay{};
         delay.QuadPart = -delay_qpc;
 
-        if (SetWaitableTimer(timer_handle, &delay, 0, nullptr, nullptr, FALSE))
-        {
+        if (SetWaitableTimer(timer_handle, &delay, 0, nullptr, nullptr, FALSE)) {
             // Wait for the timer to signal
             DWORD wait_result = WaitForSingleObject(timer_handle, INFINITE);
 
             // Log any errors (optional)
-            if (wait_result != WAIT_OBJECT_0)
-            {
+            if (wait_result != WAIT_OBJECT_0) {
                 std::ostringstream oss;
                 oss << "Timer wait failed: " << wait_result;
                 LogError(oss.str().c_str());
@@ -203,8 +178,7 @@ void wait_until_qpc(LONGLONG target_qpc, HANDLE& timer_handle)
     // This compensates for OS scheduler inaccuracy
 
     if (supports_mwaitx()) {
-        while (true)
-        {
+        while (true) {
             current_time_qpc = get_now_qpc();
             LONGLONG time_to_wait_qpc = target_qpc - current_time_qpc;
             if (time_to_wait_qpc <= 0)
@@ -214,8 +188,7 @@ void wait_until_qpc(LONGLONG target_qpc, HANDLE& timer_handle)
             _mm_mwaitx(0x2, 0, 240 * time_to_wait_qpc); // 2.4 GHz steamdeck
         }
     } else {
-        while (true)
-        {
+        while (true) {
             current_time_qpc = get_now_qpc();
             if (current_time_qpc >= target_qpc)
                 break;
@@ -225,7 +198,7 @@ void wait_until_qpc(LONGLONG target_qpc, HANDLE& timer_handle)
     }
 }
 
-void wait_until_ns(LONGLONG target_ns, HANDLE& timer_handle) {
+void wait_until_ns(LONGLONG target_ns, HANDLE &timer_handle) {
     LONGLONG current_time = get_now_ns();
     if (target_ns <= current_time)
         return;
@@ -244,6 +217,5 @@ LONGLONG get_now_ns() {
     renodx::hooks::QueryPerformanceCounter_Detour(&now_ticks);
     return now_ticks.QuadPart * utils::QPC_TO_NS;
 }
-
 
 } // namespace utils

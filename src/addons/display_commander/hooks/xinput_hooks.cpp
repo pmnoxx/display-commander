@@ -1,16 +1,12 @@
 #include "xinput_hooks.hpp"
+#include "../input_remapping/input_remapping.hpp"
 #include "../utils.hpp"
 #include "../widgets/xinput_widget/xinput_widget.hpp"
-#include "../input_remapping/input_remapping.hpp"
 #include "windows_hooks/windows_message_hooks.hpp"
 #include <MinHook.h>
-#include <vector>
 #include <string>
+#include <vector>
 
-// Guide button constant (not defined in standard XInput headers)
-#ifndef XINPUT_GAMEPAD_GUIDE
-#define XINPUT_GAMEPAD_GUIDE 0x0400
-#endif
 
 namespace renodx::hooks {
 
@@ -34,10 +30,10 @@ struct HookedXInputModule {
 static std::vector<HookedXInputModule> g_hooked_modules;
 
 // Helper function to apply max input, min output, and deadzone to thumbstick values
-void ApplyThumbstickProcessing(XINPUT_STATE* pState, float left_max_input, float right_max_input,
-                            float left_min_output, float right_min_output,
-                            float left_deadzone, float right_deadzone) {
-    if (!pState) return;
+void ApplyThumbstickProcessing(XINPUT_STATE *pState, float left_max_input, float right_max_input, float left_min_output,
+                               float right_min_output, float left_deadzone, float right_deadzone) {
+    if (!pState)
+        return;
 
     // Process left stick using unified function with correct scaling
     float lx = ShortToFloat(pState->Gamepad.sThumbLX);
@@ -62,9 +58,8 @@ void ApplyThumbstickProcessing(XINPUT_STATE* pState, float left_max_input, float
     pState->Gamepad.sThumbRY = FloatToShort(ry);
 }
 
-
 // Helper function to detect changes in XInput state
-void LogXInputChanges(DWORD dwUserIndex, const XINPUT_STATE* pState) {
+void LogXInputChanges(DWORD dwUserIndex, const XINPUT_STATE *pState) {
     if (true) {
         return;
     }
@@ -74,59 +69,59 @@ void LogXInputChanges(DWORD dwUserIndex, const XINPUT_STATE* pState) {
 
     // Check if we have a previous state to compare against
     if (g_previous_states_valid[dwUserIndex]) {
-        const XINPUT_STATE& prev = g_previous_states[dwUserIndex];
-        const XINPUT_STATE& curr = *pState;
+        const XINPUT_STATE &prev = g_previous_states[dwUserIndex];
+        const XINPUT_STATE &curr = *pState;
 
         // Check for changes in gamepad data
         if (prev.Gamepad.wButtons != curr.Gamepad.wButtons) {
-            LogError("XXX XInput Controller %lu: Button state changed from 0x%04X to 0x%04X",
-        dwUserIndex, prev.Gamepad.wButtons, curr.Gamepad.wButtons);
+            LogError("XXX XInput Controller %lu: Button state changed from 0x%04X to 0x%04X", dwUserIndex,
+                     prev.Gamepad.wButtons, curr.Gamepad.wButtons);
 
-        // Check for Guide button specifically
-        bool prev_guide = (prev.Gamepad.wButtons & XINPUT_GAMEPAD_GUIDE) != 0;
-        bool curr_guide = (curr.Gamepad.wButtons & XINPUT_GAMEPAD_GUIDE) != 0;
-        if (prev_guide != curr_guide) {
-            LogInfo("XXX XInput Controller %lu: Guide button %s", dwUserIndex, curr_guide ? "PRESSED" : "RELEASED");
-        }
+            // Check for Guide button specifically
+            bool prev_guide = (prev.Gamepad.wButtons & XINPUT_GAMEPAD_GUIDE) != 0;
+            bool curr_guide = (curr.Gamepad.wButtons & XINPUT_GAMEPAD_GUIDE) != 0;
+            if (prev_guide != curr_guide) {
+                LogInfo("XXX XInput Controller %lu: Guide button %s", dwUserIndex, curr_guide ? "PRESSED" : "RELEASED");
+            }
 
-        // Debug: Always log Guide button state for testing
-        LogInfo("XXX XInput Controller %lu: Guide button state = %s (0x%04X)",
-                dwUserIndex, curr_guide ? "PRESSED" : "NOT PRESSED", curr.Gamepad.wButtons);
+            // Debug: Always log Guide button state for testing
+            LogInfo("XXX XInput Controller %lu: Guide button state = %s (0x%04X)", dwUserIndex,
+                    curr_guide ? "PRESSED" : "NOT PRESSED", curr.Gamepad.wButtons);
         }
 
         if (prev.Gamepad.bLeftTrigger != curr.Gamepad.bLeftTrigger) {
-            LogError("XXX XInput Controller %lu: Left trigger changed from %u to %u",
-        dwUserIndex, prev.Gamepad.bLeftTrigger, curr.Gamepad.bLeftTrigger);
+            LogError("XXX XInput Controller %lu: Left trigger changed from %u to %u", dwUserIndex,
+                     prev.Gamepad.bLeftTrigger, curr.Gamepad.bLeftTrigger);
         }
 
         if (prev.Gamepad.bRightTrigger != curr.Gamepad.bRightTrigger) {
-            LogError("XXX XInput Controller %lu: Right trigger changed from %u to %u",
-        dwUserIndex, prev.Gamepad.bRightTrigger, curr.Gamepad.bRightTrigger);
+            LogError("XXX XInput Controller %lu: Right trigger changed from %u to %u", dwUserIndex,
+                     prev.Gamepad.bRightTrigger, curr.Gamepad.bRightTrigger);
         }
 
         if (prev.Gamepad.sThumbLX != curr.Gamepad.sThumbLX) {
-            LogError("XXX XInput Controller %lu: Left stick X changed from %d to %d",
-        dwUserIndex, prev.Gamepad.sThumbLX, curr.Gamepad.sThumbLX);
+            LogError("XXX XInput Controller %lu: Left stick X changed from %d to %d", dwUserIndex,
+                     prev.Gamepad.sThumbLX, curr.Gamepad.sThumbLX);
         }
 
         if (prev.Gamepad.sThumbLY != curr.Gamepad.sThumbLY) {
-            LogError("XXX XInput Controller %lu: Left stick Y changed from %d to %d",
-        dwUserIndex, prev.Gamepad.sThumbLY, curr.Gamepad.sThumbLY);
+            LogError("XXX XInput Controller %lu: Left stick Y changed from %d to %d", dwUserIndex,
+                     prev.Gamepad.sThumbLY, curr.Gamepad.sThumbLY);
         }
 
         if (prev.Gamepad.sThumbRX != curr.Gamepad.sThumbRX) {
-            LogError("XXX XInput Controller %lu: Right stick X changed from %d to %d",
-        dwUserIndex, prev.Gamepad.sThumbRX, curr.Gamepad.sThumbRX);
+            LogError("XXX XInput Controller %lu: Right stick X changed from %d to %d", dwUserIndex,
+                     prev.Gamepad.sThumbRX, curr.Gamepad.sThumbRX);
         }
 
         if (prev.Gamepad.sThumbRY != curr.Gamepad.sThumbRY) {
-            LogError("XXX XInput Controller %lu: Right stick Y changed from %d to %d",
-        dwUserIndex, prev.Gamepad.sThumbRY, curr.Gamepad.sThumbRY);
+            LogError("XXX XInput Controller %lu: Right stick Y changed from %d to %d", dwUserIndex,
+                     prev.Gamepad.sThumbRY, curr.Gamepad.sThumbRY);
         }
 
         if (prev.dwPacketNumber != curr.dwPacketNumber) {
-            LogError("XXX XInput Controller %lu: Packet number changed from %lu to %lu",
-        dwUserIndex, prev.dwPacketNumber, curr.dwPacketNumber);
+            LogError("XXX XInput Controller %lu: Packet number changed from %lu to %lu", dwUserIndex,
+                     prev.dwPacketNumber, curr.dwPacketNumber);
         }
     }
 
@@ -136,7 +131,7 @@ void LogXInputChanges(DWORD dwUserIndex, const XINPUT_STATE* pState) {
 }
 
 // Hooked XInputGetState function
-DWORD WINAPI XInputGetState_Detour(DWORD dwUserIndex, XINPUT_STATE* pState) {
+DWORD WINAPI XInputGetState_Detour(DWORD dwUserIndex, XINPUT_STATE *pState) {
     if (pState == nullptr) {
         return ERROR_INVALID_PARAMETER;
     }
@@ -145,9 +140,9 @@ DWORD WINAPI XInputGetState_Detour(DWORD dwUserIndex, XINPUT_STATE* pState) {
     g_hook_stats[HOOK_XInputGetState].increment_total();
 
     // Call original function - prefer XInputGetStateEx_Original for Guide button support
-    DWORD result = XInputGetStateEx_Original ?
-        XInputGetStateEx_Original(dwUserIndex, pState) :
-        (XInputGetState_Original ? XInputGetState_Original(dwUserIndex, pState) : XInputGetState(dwUserIndex, pState));
+    DWORD result = XInputGetStateEx_Original ? XInputGetStateEx_Original(dwUserIndex, pState)
+                                             : (XInputGetState_Original ? XInputGetState_Original(dwUserIndex, pState)
+                                                                        : XInputGetState(dwUserIndex, pState));
 
     // Apply A/B button swapping if enabled
     if (result == ERROR_SUCCESS) {
@@ -194,12 +189,13 @@ DWORD WINAPI XInputGetState_Detour(DWORD dwUserIndex, XINPUT_STATE* pState) {
                 float right_max_input = shared_state->right_stick_max_input.load();
                 float left_min_output = shared_state->left_stick_min_output.load();
                 float right_min_output = shared_state->right_stick_min_output.load();
-                float left_deadzone = shared_state->left_stick_deadzone.load() / 100.0f; // Convert percentage to decimal
-                float right_deadzone = shared_state->right_stick_deadzone.load() / 100.0f; // Convert percentage to decimal
+                float left_deadzone =
+                    shared_state->left_stick_deadzone.load() / 100.0f; // Convert percentage to decimal
+                float right_deadzone =
+                    shared_state->right_stick_deadzone.load() / 100.0f; // Convert percentage to decimal
 
-                ApplyThumbstickProcessing(pState, left_max_input, right_max_input,
-                                        left_min_output, right_min_output,
-                                        left_deadzone, right_deadzone);
+                ApplyThumbstickProcessing(pState, left_max_input, right_max_input, left_min_output, right_min_output,
+                                          left_deadzone, right_deadzone);
             }
 
             // Process input remapping before updating state
@@ -234,7 +230,7 @@ DWORD WINAPI XInputGetState_Detour(DWORD dwUserIndex, XINPUT_STATE* pState) {
 }
 
 // Hooked XInputGetStateEx function
-DWORD WINAPI XInputGetStateEx_Detour(DWORD dwUserIndex, XINPUT_STATE* pState) {
+DWORD WINAPI XInputGetStateEx_Detour(DWORD dwUserIndex, XINPUT_STATE *pState) {
     if (pState == nullptr) {
         return ERROR_INVALID_PARAMETER;
     }
@@ -243,9 +239,9 @@ DWORD WINAPI XInputGetStateEx_Detour(DWORD dwUserIndex, XINPUT_STATE* pState) {
     g_hook_stats[HOOK_XInputGetStateEx].increment_total();
 
     // Call original function - always use XInputGetStateEx_Original if available
-    DWORD result = XInputGetStateEx_Original ?
-        XInputGetStateEx_Original(dwUserIndex, pState) :
-        XInputGetState(dwUserIndex, pState); // Fallback to regular XInputGetState
+    DWORD result = XInputGetStateEx_Original
+                       ? XInputGetStateEx_Original(dwUserIndex, pState)
+                       : XInputGetState(dwUserIndex, pState); // Fallback to regular XInputGetState
 
     // Apply A/B button swapping if enabled
     if (result == ERROR_SUCCESS) {
@@ -292,12 +288,13 @@ DWORD WINAPI XInputGetStateEx_Detour(DWORD dwUserIndex, XINPUT_STATE* pState) {
                 float right_max_input = shared_state->right_stick_max_input.load();
                 float left_min_output = shared_state->left_stick_min_output.load();
                 float right_min_output = shared_state->right_stick_min_output.load();
-                float left_deadzone = shared_state->left_stick_deadzone.load() / 100.0f; // Convert percentage to decimal
-                float right_deadzone = shared_state->right_stick_deadzone.load() / 100.0f; // Convert percentage to decimal
+                float left_deadzone =
+                    shared_state->left_stick_deadzone.load() / 100.0f; // Convert percentage to decimal
+                float right_deadzone =
+                    shared_state->right_stick_deadzone.load() / 100.0f; // Convert percentage to decimal
 
-                ApplyThumbstickProcessing(pState, left_max_input, right_max_input,
-                                        left_min_output, right_min_output,
-                                        left_deadzone, right_deadzone);
+                ApplyThumbstickProcessing(pState, left_max_input, right_max_input, left_min_output, right_min_output,
+                                          left_deadzone, right_deadzone);
             }
 
             // Process input remapping before updating state
@@ -338,19 +335,15 @@ bool InstallXInputHooks() {
     // MinHook is already initialized by API hooks, so we don't need to initialize it again
 
     // List of all possible XInput module names to check
-    const char* xinput_modules[] = {
-        "xinput9_1_0.dll",
-        "xinput1_4.dll",
-        "xinput1_3.dll",
-        "xinput1_2.dll",
-        "xinput1_1.dll",
+    const char *xinput_modules[] = {
+        "xinput9_1_0.dll", "xinput1_4.dll", "xinput1_3.dll", "xinput1_2.dll", "xinput1_1.dll",
     };
 
     int hooked_count = 0;
     bool any_success = false;
 
     // Try to hook ALL loaded XInput modules
-    for (const char* module_name : xinput_modules) {
+    for (const char *module_name : xinput_modules) {
         HMODULE xinput_module = GetModuleHandleA(module_name);
         if (xinput_module) {
             LogInfo("XXX Found XInput module: %s at 0x%p", module_name, xinput_module);
@@ -363,7 +356,8 @@ bool InstallXInputHooks() {
             if (xinput_get_state_proc) {
                 LogInfo("XXX Found XInputGetState in %s at: 0x%p", module_name, xinput_get_state_proc);
 
-                if (MH_CreateHook(xinput_get_state_proc, XInputGetState_Detour, (LPVOID*)&XInputGetState_Original) == MH_OK) {
+                if (MH_CreateHook(xinput_get_state_proc, XInputGetState_Detour, (LPVOID *)&XInputGetState_Original) ==
+                    MH_OK) {
                     if (MH_EnableHook(xinput_get_state_proc) == MH_OK) {
                         LogInfo("XXX Successfully hooked XInputGetState in %s", module_name);
                         module_hooked = true;
@@ -391,9 +385,11 @@ bool InstallXInputHooks() {
             // Hook XInputGetStateEx (ordinal 100) - this is what many games actually use
             FARPROC xinput_get_state_ex_proc = GetProcAddress(xinput_module, (LPCSTR)100); // Ordinal 100
             if (xinput_get_state_ex_proc) {
-                LogInfo("XXX Found XInputGetStateEx (ordinal 100) in %s at: 0x%p", module_name, xinput_get_state_ex_proc);
+                LogInfo("XXX Found XInputGetStateEx (ordinal 100) in %s at: 0x%p", module_name,
+                        xinput_get_state_ex_proc);
 
-                if (MH_CreateHook(xinput_get_state_ex_proc, XInputGetStateEx_Detour, (LPVOID*)&XInputGetStateEx_Original) == MH_OK) {
+                if (MH_CreateHook(xinput_get_state_ex_proc, XInputGetStateEx_Detour,
+                                  (LPVOID *)&XInputGetStateEx_Original) == MH_OK) {
                     if (MH_EnableHook(xinput_get_state_ex_proc) == MH_OK) {
                         LogInfo("XXX Successfully hooked XInputGetStateEx in %s", module_name);
                         module_hooked = true;
@@ -427,7 +423,7 @@ bool InstallXInputHooks() {
         LogWarn("XXX No XInput modules found - attempting to hook global XInput functions as fallback");
 
         // Try global XInputGetState
-        if (MH_CreateHook(XInputGetState, XInputGetState_Detour, (LPVOID*)&XInputGetState_Original) == MH_OK) {
+        if (MH_CreateHook(XInputGetState, XInputGetState_Detour, (LPVOID *)&XInputGetState_Original) == MH_OK) {
             if (MH_EnableHook(XInputGetState) == MH_OK) {
                 LogInfo("XXX Successfully hooked global XInputGetState");
                 any_success = true;
@@ -461,7 +457,7 @@ void UninstallXInputHooks() {
     }
 
     // Unhook all tracked modules
-    for (const auto& hooked_module : g_hooked_modules) {
+    for (const auto &hooked_module : g_hooked_modules) {
         LogInfo("XXX Unhooking XInputGetState from %s", hooked_module.module_name.c_str());
         MH_DisableHook(hooked_module.function);
         MH_RemoveHook(hooked_module.function);
@@ -486,9 +482,7 @@ void UninstallXInputHooks() {
     LogInfo("XXX XInput hooks uninstalled successfully - unhooked %zu modules", g_hooked_modules.size());
 }
 
-bool AreXInputHooksInstalled() {
-    return g_xinput_hooks_installed.load();
-}
+bool AreXInputHooksInstalled() { return g_xinput_hooks_installed.load(); }
 
 // Test function to manually check XInput state
 void TestXInputState() {
@@ -496,12 +490,10 @@ void TestXInputState() {
     DWORD result = XInputGetState(0, &state);
 
     if (result == ERROR_SUCCESS) {
-        LogInfo("XXX TestXInputState: Controller 0 connected - Buttons: 0x%04X, LStick: (%d,%d), RStick: (%d,%d), LTrigger: %u, RTrigger: %u, Packet: %lu",
-                state.Gamepad.wButtons,
-                state.Gamepad.sThumbLX, state.Gamepad.sThumbLY,
-                state.Gamepad.sThumbRX, state.Gamepad.sThumbRY,
-                state.Gamepad.bLeftTrigger, state.Gamepad.bRightTrigger,
-                state.dwPacketNumber);
+        LogInfo("XXX TestXInputState: Controller 0 connected - Buttons: 0x%04X, LStick: (%d,%d), RStick: (%d,%d), "
+                "LTrigger: %u, RTrigger: %u, Packet: %lu",
+                state.Gamepad.wButtons, state.Gamepad.sThumbLX, state.Gamepad.sThumbLY, state.Gamepad.sThumbRX,
+                state.Gamepad.sThumbRY, state.Gamepad.bLeftTrigger, state.Gamepad.bRightTrigger, state.dwPacketNumber);
     } else {
         LogInfo("XXX TestXInputState: Controller 0 not connected or error: %lu", result);
     }
@@ -511,15 +503,10 @@ void TestXInputState() {
 void DiagnoseXInputModules() {
     LogInfo("XXX Diagnosing XInput modules...");
 
-    const char* xinput_modules[] = {
-        "xinput1_4.dll",
-        "xinput1_3.dll",
-        "xinput1_2.dll",
-        "xinput1_1.dll",
-        "xinput9_1_0.dll"
-    };
+    const char *xinput_modules[] = {"xinput1_4.dll", "xinput1_3.dll", "xinput1_2.dll", "xinput1_1.dll",
+                                    "xinput9_1_0.dll"};
 
-    for (const char* module_name : xinput_modules) {
+    for (const char *module_name : xinput_modules) {
         HMODULE module = GetModuleHandleA(module_name);
         if (module) {
             LogInfo("XXX Found XInput module: %s at 0x%p", module_name, module);

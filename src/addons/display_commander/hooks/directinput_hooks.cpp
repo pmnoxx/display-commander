@@ -1,10 +1,11 @@
 #include "directinput_hooks.hpp"
-#include "../utils.hpp"
 #include "../globals.hpp"
+#include "../utils.hpp"
 #include "windows_hooks/windows_message_hooks.hpp"
 #include <MinHook.h>
-#include <vector>
 #include <memory>
+#include <vector>
+
 
 namespace renodx::hooks {
 
@@ -19,16 +20,17 @@ static std::atomic<bool> g_directinput_hooks_installed{false};
 
 // Track hooked DirectInput instances and their devices
 struct DirectInputInstance {
-    IUnknown* instance;
-    std::vector<IDirectInputDevice*> devices;
+    IUnknown *instance;
+    std::vector<IDirectInputDevice *> devices;
     bool is_directinput8;
 };
 
 static std::vector<std::unique_ptr<DirectInputInstance>> g_directinput_instances;
 
 // Helper function to check if input should be blocked
-bool ShouldBlockDirectInputDevice(IDirectInputDevice* device) {
-    if (!device) return false;
+bool ShouldBlockDirectInputDevice(IDirectInputDevice *device) {
+    if (!device)
+        return false;
 
     // Check if continue rendering is enabled
     if (s_continue_rendering.load()) {
@@ -40,8 +42,9 @@ bool ShouldBlockDirectInputDevice(IDirectInputDevice* device) {
     return false;
 }
 
-bool ShouldBlockDirectInputData(const DIDEVICEOBJECTDATA* data, DWORD count) {
-    if (!data || count == 0) return false;
+bool ShouldBlockDirectInputData(const DIDEVICEOBJECTDATA *data, DWORD count) {
+    if (!data || count == 0)
+        return false;
 
     // Check if continue rendering is enabled
     if (s_continue_rendering.load()) {
@@ -54,16 +57,15 @@ bool ShouldBlockDirectInputData(const DIDEVICEOBJECTDATA* data, DWORD count) {
 }
 
 // Hooked DirectInputCreateA function
-HRESULT WINAPI DirectInputCreateA_Detour(HINSTANCE hinst, DWORD dwVersion, LPDIRECTINPUTA* ppDI, LPUNKNOWN punkOuter) {
+HRESULT WINAPI DirectInputCreateA_Detour(HINSTANCE hinst, DWORD dwVersion, LPDIRECTINPUTA *ppDI, LPUNKNOWN punkOuter) {
     // Track hook call statistics
     g_hook_stats[HOOK_DirectInputCreateA].increment_total();
 
     LogInfo("DirectInputCreateA_Detour called - Version: 0x%08X", dwVersion);
 
     // Call original function
-    HRESULT result = DirectInputCreateA_Original ?
-        DirectInputCreateA_Original(hinst, dwVersion, ppDI, punkOuter) :
-        ERROR_CALL_NOT_IMPLEMENTED; // Function not available
+    HRESULT result = DirectInputCreateA_Original ? DirectInputCreateA_Original(hinst, dwVersion, ppDI, punkOuter)
+                                                 : ERROR_CALL_NOT_IMPLEMENTED; // Function not available
 
     if (SUCCEEDED(result) && ppDI && *ppDI) {
         LogInfo("DirectInputCreateA_Detour: Created DirectInput instance successfully");
@@ -84,16 +86,15 @@ HRESULT WINAPI DirectInputCreateA_Detour(HINSTANCE hinst, DWORD dwVersion, LPDIR
 }
 
 // Hooked DirectInputCreateW function
-HRESULT WINAPI DirectInputCreateW_Detour(HINSTANCE hinst, DWORD dwVersion, LPDIRECTINPUTW* ppDI, LPUNKNOWN punkOuter) {
+HRESULT WINAPI DirectInputCreateW_Detour(HINSTANCE hinst, DWORD dwVersion, LPDIRECTINPUTW *ppDI, LPUNKNOWN punkOuter) {
     // Track hook call statistics
     g_hook_stats[HOOK_DirectInputCreateW].increment_total();
 
     LogInfo("DirectInputCreateW_Detour called - Version: 0x%08X", dwVersion);
 
     // Call original function
-    HRESULT result = DirectInputCreateW_Original ?
-        DirectInputCreateW_Original(hinst, dwVersion, ppDI, punkOuter) :
-        ERROR_CALL_NOT_IMPLEMENTED; // Function not available
+    HRESULT result = DirectInputCreateW_Original ? DirectInputCreateW_Original(hinst, dwVersion, ppDI, punkOuter)
+                                                 : ERROR_CALL_NOT_IMPLEMENTED; // Function not available
 
     if (SUCCEEDED(result) && ppDI && *ppDI) {
         LogInfo("DirectInputCreateW_Detour: Created DirectInput instance successfully");
@@ -114,16 +115,16 @@ HRESULT WINAPI DirectInputCreateW_Detour(HINSTANCE hinst, DWORD dwVersion, LPDIR
 }
 
 // Hooked DirectInputCreateEx function
-HRESULT WINAPI DirectInputCreateEx_Detour(HINSTANCE hinst, DWORD dwVersion, REFIID riid, LPVOID* ppv, LPUNKNOWN punkOuter) {
+HRESULT WINAPI DirectInputCreateEx_Detour(HINSTANCE hinst, DWORD dwVersion, REFIID riid, LPVOID *ppv,
+                                          LPUNKNOWN punkOuter) {
     // Track hook call statistics
     g_hook_stats[HOOK_DirectInputCreateEx].increment_total();
 
     LogInfo("DirectInputCreateEx_Detour called - Version: 0x%08X", dwVersion);
 
     // Call original function
-    HRESULT result = DirectInputCreateEx_Original ?
-        DirectInputCreateEx_Original(hinst, dwVersion, riid, ppv, punkOuter) :
-        ERROR_CALL_NOT_IMPLEMENTED; // Function not available
+    HRESULT result = DirectInputCreateEx_Original ? DirectInputCreateEx_Original(hinst, dwVersion, riid, ppv, punkOuter)
+                                                  : ERROR_CALL_NOT_IMPLEMENTED; // Function not available
 
     if (SUCCEEDED(result) && ppv && *ppv) {
         LogInfo("DirectInputCreateEx_Detour: Created DirectInput instance successfully");
@@ -133,7 +134,7 @@ HRESULT WINAPI DirectInputCreateEx_Detour(HINSTANCE hinst, DWORD dwVersion, REFI
 
         // Store the instance for tracking
         auto instance = std::make_unique<DirectInputInstance>();
-        instance->instance = static_cast<IUnknown*>(*ppv);
+        instance->instance = static_cast<IUnknown *>(*ppv);
         instance->is_directinput8 = false;
         g_directinput_instances.push_back(std::move(instance));
     } else {
@@ -144,16 +145,16 @@ HRESULT WINAPI DirectInputCreateEx_Detour(HINSTANCE hinst, DWORD dwVersion, REFI
 }
 
 // Hooked DirectInput8Create function
-HRESULT WINAPI DirectInput8Create_Detour(HINSTANCE hinst, DWORD dwVersion, REFIID riid, LPVOID* ppv, LPUNKNOWN punkOuter) {
+HRESULT WINAPI DirectInput8Create_Detour(HINSTANCE hinst, DWORD dwVersion, REFIID riid, LPVOID *ppv,
+                                         LPUNKNOWN punkOuter) {
     // Track hook call statistics
     g_hook_stats[HOOK_DirectInput8Create].increment_total();
 
     LogInfo("DirectInput8Create_Detour called - Version: 0x%08X", dwVersion);
 
     // Call original function
-    HRESULT result = DirectInput8Create_Original ?
-        DirectInput8Create_Original(hinst, dwVersion, riid, ppv, punkOuter) :
-        ERROR_CALL_NOT_IMPLEMENTED; // Function not available
+    HRESULT result = DirectInput8Create_Original ? DirectInput8Create_Original(hinst, dwVersion, riid, ppv, punkOuter)
+                                                 : ERROR_CALL_NOT_IMPLEMENTED; // Function not available
 
     if (SUCCEEDED(result) && ppv && *ppv) {
         LogInfo("DirectInput8Create_Detour: Created DirectInput8 instance successfully");
@@ -163,7 +164,7 @@ HRESULT WINAPI DirectInput8Create_Detour(HINSTANCE hinst, DWORD dwVersion, REFII
 
         // Store the instance for tracking
         auto instance = std::make_unique<DirectInputInstance>();
-        instance->instance = static_cast<IUnknown*>(*ppv);
+        instance->instance = static_cast<IUnknown *>(*ppv);
         instance->is_directinput8 = true;
         g_directinput_instances.push_back(std::move(instance));
     } else {
@@ -207,7 +208,8 @@ bool InstallDirectInputHooks() {
 
     // Hook DirectInputCreateA if available
     if (directinput_create_a) {
-        if (MH_CreateHook(directinput_create_a, DirectInputCreateA_Detour, (LPVOID*)&DirectInputCreateA_Original) != MH_OK) {
+        if (MH_CreateHook(directinput_create_a, DirectInputCreateA_Detour, (LPVOID *)&DirectInputCreateA_Original) !=
+            MH_OK) {
             LogError("Failed to create DirectInputCreateA hook");
         }
     } else {
@@ -216,7 +218,8 @@ bool InstallDirectInputHooks() {
 
     // Hook DirectInputCreateW if available
     if (directinput_create_w) {
-        if (MH_CreateHook(directinput_create_w, DirectInputCreateW_Detour, (LPVOID*)&DirectInputCreateW_Original) != MH_OK) {
+        if (MH_CreateHook(directinput_create_w, DirectInputCreateW_Detour, (LPVOID *)&DirectInputCreateW_Original) !=
+            MH_OK) {
             LogError("Failed to create DirectInputCreateW hook");
         }
     } else {
@@ -225,7 +228,8 @@ bool InstallDirectInputHooks() {
 
     // Hook DirectInputCreateEx if available
     if (directinput_create_ex) {
-        if (MH_CreateHook(directinput_create_ex, DirectInputCreateEx_Detour, (LPVOID*)&DirectInputCreateEx_Original) != MH_OK) {
+        if (MH_CreateHook(directinput_create_ex, DirectInputCreateEx_Detour, (LPVOID *)&DirectInputCreateEx_Original) !=
+            MH_OK) {
             LogError("Failed to create DirectInputCreateEx hook");
         }
     } else {
@@ -234,7 +238,8 @@ bool InstallDirectInputHooks() {
 
     // Hook DirectInput8Create if available
     if (directinput8_create) {
-        if (MH_CreateHook(directinput8_create, DirectInput8Create_Detour, (LPVOID*)&DirectInput8Create_Original) != MH_OK) {
+        if (MH_CreateHook(directinput8_create, DirectInput8Create_Detour, (LPVOID *)&DirectInput8Create_Original) !=
+            MH_OK) {
             LogError("Failed to create DirectInput8Create hook");
         }
     } else {
@@ -272,10 +277,14 @@ void UninstallDirectInputHooks() {
         FARPROC directinput8_create = GetProcAddress(dinput_module, "DirectInput8Create");
 
         // Remove hooks if they were created
-        if (directinput_create_a) MH_RemoveHook(directinput_create_a);
-        if (directinput_create_w) MH_RemoveHook(directinput_create_w);
-        if (directinput_create_ex) MH_RemoveHook(directinput_create_ex);
-        if (directinput8_create) MH_RemoveHook(directinput8_create);
+        if (directinput_create_a)
+            MH_RemoveHook(directinput_create_a);
+        if (directinput_create_w)
+            MH_RemoveHook(directinput_create_w);
+        if (directinput_create_ex)
+            MH_RemoveHook(directinput_create_ex);
+        if (directinput8_create)
+            MH_RemoveHook(directinput8_create);
 
         FreeLibrary(dinput_module);
     }
@@ -293,8 +302,6 @@ void UninstallDirectInputHooks() {
     LogInfo("DirectInput hooks uninstalled successfully");
 }
 
-bool AreDirectInputHooksInstalled() {
-    return g_directinput_hooks_installed.load();
-}
+bool AreDirectInputHooksInstalled() { return g_directinput_hooks_installed.load(); }
 
 } // namespace renodx::hooks

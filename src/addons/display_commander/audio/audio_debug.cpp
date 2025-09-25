@@ -1,10 +1,9 @@
 #include "audio_debug.hpp"
 #include "../utils.hpp"
-#include <iomanip> // Required for std::fixed and std::setprecision
+#include <iomanip>
 #include <sstream>
 #include <string>
 #include <vector>
-
 
 void DebugAudioSessions() {
     HRESULT hr = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);

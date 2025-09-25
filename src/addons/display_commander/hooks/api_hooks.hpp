@@ -1,23 +1,24 @@
 #pragma once
 
-#include <windows.h>
 #include <dxgi.h>
+#include <windows.h>
+
 
 // Forward declarations for DXGI hooks
 namespace renodx::hooks::dxgi {
-    bool InstallDxgiPresentHooks();
-    void UninstallDxgiPresentHooks();
-    bool HookSwapchain(IDXGISwapChain* swapchain);
-}
+bool InstallDxgiPresentHooks();
+void UninstallDxgiPresentHooks();
+bool HookSwapchain(IDXGISwapChain *swapchain);
+} // namespace renodx::hooks::dxgi
 
 namespace renodx::hooks {
 
 // Function pointer types
-using GetFocus_pfn = HWND(WINAPI*)();
-using GetForegroundWindow_pfn = HWND(WINAPI*)();
-using GetActiveWindow_pfn = HWND(WINAPI*)();
-using GetGUIThreadInfo_pfn = BOOL(WINAPI*)(DWORD, PGUITHREADINFO);
-using SetThreadExecutionState_pfn = EXECUTION_STATE(WINAPI*)(EXECUTION_STATE);
+using GetFocus_pfn = HWND(WINAPI *)();
+using GetForegroundWindow_pfn = HWND(WINAPI *)();
+using GetActiveWindow_pfn = HWND(WINAPI *)();
+using GetGUIThreadInfo_pfn = BOOL(WINAPI *)(DWORD, PGUITHREADINFO);
+using SetThreadExecutionState_pfn = EXECUTION_STATE(WINAPI *)(EXECUTION_STATE);
 
 // API hook function pointers
 extern GetFocus_pfn GetFocus_Original;

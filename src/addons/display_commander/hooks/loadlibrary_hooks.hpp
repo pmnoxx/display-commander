@@ -1,17 +1,19 @@
 #pragma once
 
 #include <windows.h>
+
 #include <psapi.h>
-#include <vector>
 #include <string>
+#include <vector>
+
 
 namespace renodx::hooks {
 
 // Function pointer types for LoadLibrary functions
-using LoadLibraryA_pfn = HMODULE(WINAPI*)(LPCSTR);
-using LoadLibraryW_pfn = HMODULE(WINAPI*)(LPCWSTR);
-using LoadLibraryExA_pfn = HMODULE(WINAPI*)(LPCSTR, HANDLE, DWORD);
-using LoadLibraryExW_pfn = HMODULE(WINAPI*)(LPCWSTR, HANDLE, DWORD);
+using LoadLibraryA_pfn = HMODULE(WINAPI *)(LPCSTR);
+using LoadLibraryW_pfn = HMODULE(WINAPI *)(LPCWSTR);
+using LoadLibraryExA_pfn = HMODULE(WINAPI *)(LPCSTR, HANDLE, DWORD);
+using LoadLibraryExW_pfn = HMODULE(WINAPI *)(LPCWSTR, HANDLE, DWORD);
 
 // Module information structure
 struct ModuleInfo {
@@ -49,10 +51,10 @@ bool AreLoadLibraryHooksInstalled();
 // Module enumeration and tracking
 bool EnumerateLoadedModules();
 std::vector<ModuleInfo> GetLoadedModules();
-bool IsModuleLoaded(const std::wstring& moduleName);
+bool IsModuleLoaded(const std::wstring &moduleName);
 void RefreshModuleList();
 
 // Module loading callback
-void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule);
+void OnModuleLoaded(const std::wstring &moduleName, HMODULE hModule);
 
 } // namespace renodx::hooks

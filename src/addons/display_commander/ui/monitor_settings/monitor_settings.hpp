@@ -1,14 +1,14 @@
 #pragma once
 
-#include <vector>
 #include <string>
+#include <vector>
 
 namespace ui::monitor_settings {
 // Handle auto-detection of current display settings
 void HandleAutoDetection();
 
 // Handle monitor selection UI
-void HandleMonitorSelection(const std::vector<std::string>& monitor_labels);
+void HandleMonitorSelection(const std::vector<std::string> &monitor_labels);
 
 // Handle resolution selection UI
 void HandleResolutionSelection(int selected_monitor_index);

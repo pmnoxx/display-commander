@@ -12,12 +12,12 @@
 // Initialized lazily on first use when enabled.
 
 class ReflexManager {
-public:
+  public:
     ReflexManager() = default;
     ~ReflexManager() = default;
 
     // Initialize with a ReShade device to obtain underlying D3D device pointer.
-    bool Initialize(reshade::api::device* device);
+    bool Initialize(reshade::api::device *device);
     void Shutdown();
 
     // Configure Reflex sleep mode (Low Latency + Boost + markers optimization).
@@ -33,13 +33,11 @@ public:
 
     bool IsInitialized() const { return initialized_; }
 
-private:
+  private:
     bool EnsureNvApi();
 
-private:
+  private:
     std::atomic<bool> initialized_{false};
-    IUnknown* d3d_device_ = nullptr; // not owned
+    IUnknown *d3d_device_ = nullptr; // not owned
     std::atomic<NvU64> frame_id_{0};
 };
-
-

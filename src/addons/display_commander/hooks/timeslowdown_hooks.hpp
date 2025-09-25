@@ -1,29 +1,26 @@
 #pragma once
 
-#include <windows.h>
 #include <stdint.h>
+#include <windows.h>
 
 namespace renodx::hooks {
 
 // Timeslowdown configuration variables - now using global instance
 
 // Timer hook types enum
-enum class TimerHookType {
-    None = 0,
-    Enabled = 1
-};
+enum class TimerHookType { None = 0, Enabled = 1 };
 
 // Function pointer types for timeslowdown hooks
-using QueryPerformanceCounter_pfn = BOOL(WINAPI*)(LARGE_INTEGER* lpPerformanceCount);
-using QueryPerformanceFrequency_pfn = BOOL(WINAPI*)(LARGE_INTEGER* lpFrequency);
-using GetTickCount_pfn = DWORD(WINAPI*)();
-using GetTickCount64_pfn = ULONGLONG(WINAPI*)();
-using timeGetTime_pfn = DWORD(WINAPI*)();
-using GetSystemTime_pfn = void(WINAPI*)(LPSYSTEMTIME);
-using GetSystemTimeAsFileTime_pfn = void(WINAPI*)(LPFILETIME);
-using GetSystemTimePreciseAsFileTime_pfn = void(WINAPI*)(LPFILETIME);
-using GetLocalTime_pfn = void(WINAPI*)(LPSYSTEMTIME);
-using NtQuerySystemTime_pfn = NTSTATUS(WINAPI*)(PLARGE_INTEGER);
+using QueryPerformanceCounter_pfn = BOOL(WINAPI *)(LARGE_INTEGER *lpPerformanceCount);
+using QueryPerformanceFrequency_pfn = BOOL(WINAPI *)(LARGE_INTEGER *lpFrequency);
+using GetTickCount_pfn = DWORD(WINAPI *)();
+using GetTickCount64_pfn = ULONGLONG(WINAPI *)();
+using timeGetTime_pfn = DWORD(WINAPI *)();
+using GetSystemTime_pfn = void(WINAPI *)(LPSYSTEMTIME);
+using GetSystemTimeAsFileTime_pfn = void(WINAPI *)(LPFILETIME);
+using GetSystemTimePreciseAsFileTime_pfn = void(WINAPI *)(LPFILETIME);
+using GetLocalTime_pfn = void(WINAPI *)(LPSYSTEMTIME);
+using NtQuerySystemTime_pfn = NTSTATUS(WINAPI *)(PLARGE_INTEGER);
 
 // Timeslowdown hook function pointers
 extern QueryPerformanceCounter_pfn QueryPerformanceCounter_Original;
@@ -38,8 +35,8 @@ extern GetLocalTime_pfn GetLocalTime_Original;
 extern NtQuerySystemTime_pfn NtQuerySystemTime_Original;
 
 // Hooked API functions
-BOOL WINAPI QueryPerformanceCounter_Detour(LARGE_INTEGER* lpPerformanceCount);
-BOOL WINAPI QueryPerformanceFrequency_Detour(LARGE_INTEGER* lpFrequency);
+BOOL WINAPI QueryPerformanceCounter_Detour(LARGE_INTEGER *lpPerformanceCount);
+BOOL WINAPI QueryPerformanceFrequency_Detour(LARGE_INTEGER *lpFrequency);
 DWORD WINAPI GetTickCount_Detour();
 ULONGLONG WINAPI GetTickCount64_Detour();
 DWORD WINAPI timeGetTime_Detour();
@@ -61,23 +58,23 @@ bool IsTimeslowdownEnabled();
 void SetTimeslowdownEnabled(bool enabled);
 
 // Individual hook type configuration
-void SetTimerHookType(const char* hook_name, TimerHookType type);
-TimerHookType GetTimerHookType(const char* hook_name);
-bool IsTimerHookEnabled(const char* hook_name);
+void SetTimerHookType(const char *hook_name, TimerHookType type);
+TimerHookType GetTimerHookType(const char *hook_name);
+bool IsTimerHookEnabled(const char *hook_name);
 // Thread-specific modes removed
 
 // Statistics
-uint64_t GetTimerHookCallCount(const char* hook_name);
+uint64_t GetTimerHookCallCount(const char *hook_name);
 
 // Hook type constants
-extern const char* HOOK_QUERY_PERFORMANCE_COUNTER;
-extern const char* HOOK_GET_TICK_COUNT;
-extern const char* HOOK_GET_TICK_COUNT64;
-extern const char* HOOK_TIME_GET_TIME;
-extern const char* HOOK_GET_SYSTEM_TIME;
-extern const char* HOOK_GET_SYSTEM_TIME_AS_FILE_TIME;
-extern const char* HOOK_GET_SYSTEM_TIME_PRECISE_AS_FILE_TIME;
-extern const char* HOOK_GET_LOCAL_TIME;
-extern const char* HOOK_NT_QUERY_SYSTEM_TIME;
+extern const char *HOOK_QUERY_PERFORMANCE_COUNTER;
+extern const char *HOOK_GET_TICK_COUNT;
+extern const char *HOOK_GET_TICK_COUNT64;
+extern const char *HOOK_TIME_GET_TIME;
+extern const char *HOOK_GET_SYSTEM_TIME;
+extern const char *HOOK_GET_SYSTEM_TIME_AS_FILE_TIME;
+extern const char *HOOK_GET_SYSTEM_TIME_PRECISE_AS_FILE_TIME;
+extern const char *HOOK_GET_LOCAL_TIME;
+extern const char *HOOK_NT_QUERY_SYSTEM_TIME;
 
 } // namespace renodx::hooks

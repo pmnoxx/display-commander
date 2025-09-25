@@ -1,8 +1,5 @@
 #pragma once
 
-#include <chrono>
-#include <deque>
-#include <thread>
 #include <windows.h>
 
 namespace dxgi::fps_limiter {

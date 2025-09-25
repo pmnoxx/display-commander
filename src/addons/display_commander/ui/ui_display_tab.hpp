@@ -1,21 +1,21 @@
 #pragma once
 
-#include <vector>
 #include "../renodx/settings.hpp"
+#include <vector>
 
 namespace ui {
-    void AddDisplayTabSettings(std::vector<utils::settings2::Setting*>& settings);
+void AddDisplayTabSettings(std::vector<utils::settings2::Setting *> &settings);
 
-    // Initialize the display cache for the UI
-    void InitializeDisplayCache();
+// Initialize the display cache for the UI
+void InitializeDisplayCache();
 
-    // Get monitor labels using the display cache
-    std::vector<std::string> GetMonitorLabelsFromCache();
+// Get monitor labels using the display cache
+std::vector<std::string> GetMonitorLabelsFromCache();
 
-    // Find monitor index by device ID
-    int FindMonitorIndexByDeviceId(const std::string& device_id);
+// Find monitor index by device ID
+int FindMonitorIndexByDeviceId(const std::string &device_id);
 
-    // Get the correct monitor index for target monitor selection
-    int GetTargetMonitorIndex();
+// Get the correct monitor index for target monitor selection
+int GetTargetMonitorIndex();
 
-}
+} // namespace ui

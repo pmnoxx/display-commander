@@ -1,16 +1,15 @@
 #pragma once
 
-#include <windows.h>
+#include <atomic>
 #include <chrono>
 #include <string>
 #include <thread>
-#include <atomic>
+#include <windows.h>
 
 // Forward declaration
 struct DisplayTimingInfo;
 
 // External timing function
-
 
 // Minimal D3DKMT interop (definitions adapted from d3dkmthk.h)
 typedef UINT D3DDDI_VIDEO_PRESENT_SOURCE_ID;
@@ -49,7 +48,7 @@ struct D3DKMT_GETSCANLINE {
     D3DKMT_HANDLE hAdapter;
     D3DDDI_VIDEO_PRESENT_SOURCE_ID VidPnSourceId;
     BOOLEAN InVerticalBlank;
-    UINT    ScanLine;
+    UINT ScanLine;
 };
 
 namespace dxgi::fps_limiter {
@@ -62,9 +61,8 @@ extern std::atomic<LONGLONG> g_latent_sync_active_height;
 // Helper function to get the correct DisplayTimingInfo for a specific window
 DisplayTimingInfo GetDisplayTimingInfoForWindow(HWND hwnd);
 
-
 class VBlankMonitor {
-public:
+  public:
     VBlankMonitor();
     ~VBlankMonitor();
 
@@ -84,27 +82,31 @@ public:
     // Manual display binding (if needed)
     bool BindToDisplay(HWND hwnd);
 
-private:
+  private:
     void MonitoringThread();
     bool EnsureAdapterBinding();
     bool UpdateDisplayBindingFromWindow(HWND hwnd);
     static std::wstring GetDisplayNameFromWindow(HWND hwnd);
 
     // Dynamic function loading
-    static inline FARPROC LoadProcCached(FARPROC& slot, const wchar_t* mod, const char* name) {
-        if (slot != nullptr) return slot;
+    static inline FARPROC LoadProcCached(FARPROC &slot, const wchar_t *mod, const char *name) {
+        if (slot != nullptr)
+            return slot;
         HMODULE h = GetModuleHandleW(mod);
-        if (h == nullptr) h = LoadLibraryW(mod);
-        if (h != nullptr) slot = GetProcAddress(h, name);
+        if (h == nullptr)
+            h = LoadLibraryW(mod);
+        if (h != nullptr)
+            slot = GetProcAddress(h, name);
         return slot;
     }
 
     // Helper function to normalize a value using modulo arithmetic to range [-range/2, range/2]
     static long fmod_normalized(long double value, long range);
 
-private:
+  private:
     // Sentinel for uninitialized/invalid VidPn source id
-    static constexpr D3DDDI_VIDEO_PRESENT_SOURCE_ID kInvalidVidPnSource = static_cast<D3DDDI_VIDEO_PRESENT_SOURCE_ID>(-1);
+    static constexpr D3DDDI_VIDEO_PRESENT_SOURCE_ID kInvalidVidPnSource =
+        static_cast<D3DDDI_VIDEO_PRESENT_SOURCE_ID>(-1);
 
     // Monitoring state
     std::thread m_monitor_thread;

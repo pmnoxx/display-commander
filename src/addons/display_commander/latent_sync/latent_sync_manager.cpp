@@ -3,19 +3,13 @@
 
 namespace dxgi::latent_sync {
 
-LatentSyncManager::LatentSyncManager()
-{
-}
+LatentSyncManager::LatentSyncManager() {}
 
-bool LatentSyncManager::InitializeLatentSyncSystem()
-{
+bool LatentSyncManager::InitializeLatentSyncSystem() {
     LogWarn("Latent Sync Manager initialized successfully");
     return true;
 }
 
-void LatentSyncManager::ShutdownLatentSyncSystem()
-{
-    LogWarn("Latent Sync Manager shutdown");
-}
+void LatentSyncManager::ShutdownLatentSyncSystem() { LogWarn("Latent Sync Manager shutdown"); }
 
 } // namespace dxgi::latent_sync

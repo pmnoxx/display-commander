@@ -1,11 +1,10 @@
 #pragma once
 
-#include <string>
-#include <atomic>
-#include <memory>
 #include <array>
+#include <atomic>
 #include <imgui.h>
-#include "../../utils.hpp"
+#include <memory>
+#include <string>
 
 namespace display_commander::widgets::resolution_widget {
 
@@ -21,16 +20,12 @@ struct ResolutionData {
     ResolutionData(int w, int h, int num = 0, int denom = 0, bool current = false)
         : width(w), height(h), refresh_numerator(num), refresh_denominator(denom), is_current(current) {}
 
-    bool operator==(const ResolutionData& other) const {
-        return width == other.width && height == other.height &&
-    refresh_numerator == other.refresh_numerator &&
-    refresh_denominator == other.refresh_denominator &&
-    is_current == other.is_current;
+    bool operator==(const ResolutionData &other) const {
+        return width == other.width && height == other.height && refresh_numerator == other.refresh_numerator &&
+               refresh_denominator == other.refresh_denominator && is_current == other.is_current;
     }
 
-    bool operator!=(const ResolutionData& other) const {
-        return !(*this == other);
-    }
+    bool operator!=(const ResolutionData &other) const { return !(*this == other); }
 
     std::string ToString() const {
         if (is_current) {
@@ -42,8 +37,8 @@ struct ResolutionData {
 
 // Settings for a single display
 class DisplayResolutionSettings {
-public:
-    DisplayResolutionSettings(const std::string& display_key, int display_index);
+  public:
+    DisplayResolutionSettings(const std::string &display_key, int display_index);
 
     // Load settings from reshade config
     void Load();
@@ -55,13 +50,13 @@ public:
     bool IsDirty() const { return is_dirty_.load(); }
 
     // Get last saved good state
-    const ResolutionData& GetLastSavedState() const { return last_saved_state_; }
+    const ResolutionData &GetLastSavedState() const { return last_saved_state_; }
 
     // Get current UI state (may be dirty)
-    const ResolutionData& GetCurrentState() const { return current_state_; }
+    const ResolutionData &GetCurrentState() const { return current_state_; }
 
     // Set current UI state (marks as dirty)
-    void SetCurrentState(const ResolutionData& data);
+    void SetCurrentState(const ResolutionData &data);
 
     // Save current state as good state (clears dirty flag)
     void SaveCurrentState();
@@ -75,7 +70,7 @@ public:
     // Check if current state represents current resolution
     bool IsCurrentResolution() const { return current_state_.is_current; }
 
-private:
+  private:
     std::string display_key_;
     int display_index_;
 
@@ -89,7 +84,7 @@ private:
 
 // Main resolution settings manager for all displays
 class ResolutionSettingsManager {
-public:
+  public:
     static constexpr int MAX_DISPLAYS = 4;
 
     ResolutionSettingsManager();
@@ -102,8 +97,8 @@ public:
     void SaveAll();
 
     // Get settings for specific display (0-3)
-    DisplayResolutionSettings& GetDisplaySettings(int display_index);
-    const DisplayResolutionSettings& GetDisplaySettings(int display_index) const;
+    DisplayResolutionSettings &GetDisplaySettings(int display_index);
+    const DisplayResolutionSettings &GetDisplaySettings(int display_index) const;
 
     // Check if any display has dirty state
     bool HasAnyDirty() const;
@@ -118,7 +113,7 @@ public:
     bool GetAutoApply() const { return auto_apply_.load(); }
     void SetAutoApply(bool enabled);
 
-private:
+  private:
     std::array<std::unique_ptr<DisplayResolutionSettings>, MAX_DISPLAYS> display_settings_;
     std::atomic<bool> auto_apply_{false};
 

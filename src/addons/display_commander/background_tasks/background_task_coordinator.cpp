@@ -1,5 +1,5 @@
 #include "background_task_coordinator.hpp"
-#include "../addon.hpp"
+#include "../utils.hpp"
 #include <chrono>
 
 // Global state

@@ -1,10 +1,10 @@
 #include "new_ui_main.hpp"
-#include "../../addon.hpp"
+#include "../../utils.hpp"
 
 namespace ui::new_ui {
 
 // Singleton instance
-NewUISystem& NewUISystem::GetInstance() {
+NewUISystem &NewUISystem::GetInstance() {
     static NewUISystem instance;
     return instance;
 }
@@ -34,12 +34,8 @@ void NewUISystem::Draw() {
 }
 
 // Convenience functions
-void InitializeNewUISystem() {
-    NewUISystem::GetInstance().Initialize();
-}
+void InitializeNewUISystem() { NewUISystem::GetInstance().Initialize(); }
 
-bool IsNewUIEnabled() {
-    return NewUISystem::GetInstance().IsEnabled();
-}
+bool IsNewUIEnabled() { return NewUISystem::GetInstance().IsEnabled(); }
 
 } // namespace ui::new_ui

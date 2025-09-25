@@ -1,16 +1,14 @@
 #include "developer_new_tab.hpp"
-#include "../../settings/developer_tab_settings.hpp"
-#include "settings_wrapper.hpp"
+#include "../../globals.hpp"
 #include "../../nvapi/nvapi_fullscreen_prevention.hpp"
 #include "../../nvapi/nvapi_hdr_monitor.hpp"
-#include "../../globals.hpp"
+#include "../../settings/developer_tab_settings.hpp"
 #include "../../utils.hpp"
-
-#include <sstream>
-#include <iomanip>
-#include <thread>
+#include "settings_wrapper.hpp"
 #include <atomic>
-
+#include <iomanip>
+#include <sstream>
+#include <thread>
 
 static std::atomic<bool> s_restart_needed_nvapi(false);
 
@@ -23,7 +21,6 @@ void InitDeveloperNewTab() {
         settings::g_developerTabSettings.LoadAll();
         settings_loaded = true;
     }
-
 }
 
 void DrawDeveloperNewTab() {
@@ -66,7 +63,8 @@ void DrawDeveloperSettings() {
         ::g_flush_before_present.store(settings::g_developerTabSettings.flush_before_present.GetValue());
     }
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Flush command queue before ReShade shaders process. Reduces latency and increases FPS by ensuring GPU commands are processed before shader execution.");
+        ImGui::SetTooltip("Flush command queue before ReShade shaders process. Reduces latency and increases FPS by "
+                          "ensuring GPU commands are processed before shader execution.");
     }
 
     // Prevent Fullscreen (global)
@@ -79,7 +77,7 @@ void DrawDeveloperSettings() {
     }
 
     // Spoof Fullscreen State
-    const char* spoof_fullscreen_labels[] = {"Disabled", "Spoof as Fullscreen", "Spoof as Windowed"};
+    const char *spoof_fullscreen_labels[] = {"Disabled", "Spoof as Fullscreen", "Spoof as Windowed"};
     int spoof_fullscreen_state = static_cast<int>(settings::g_developerTabSettings.spoof_fullscreen_state.GetValue());
     if (ImGui::Combo("Spoof Fullscreen State", &spoof_fullscreen_state, spoof_fullscreen_labels, 3)) {
         settings::g_developerTabSettings.spoof_fullscreen_state.SetValue(spoof_fullscreen_state != 0);
@@ -98,7 +96,8 @@ void DrawDeveloperSettings() {
         LogInfo(oss.str().c_str());
     }
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Spoof fullscreen state detection for applications that query fullscreen status. Useful for games that change behavior based on fullscreen state.");
+        ImGui::SetTooltip("Spoof fullscreen state detection for applications that query fullscreen status. Useful for "
+                          "games that change behavior based on fullscreen state.");
     }
 
     // Reset button for Fullscreen State (only show if not at default)
@@ -114,14 +113,15 @@ void DrawDeveloperSettings() {
         }
     }
 
-
     // Continue Rendering (like Special-K's background render feature)
     if (CheckboxSetting(settings::g_developerTabSettings.continue_rendering, "Continue Rendering in Background")) {
         s_continue_rendering.store(settings::g_developerTabSettings.continue_rendering.GetValue());
-        LogInfo("Continue rendering in background %s", settings::g_developerTabSettings.continue_rendering.GetValue() ? "enabled" : "disabled");
+        LogInfo("Continue rendering in background %s",
+                settings::g_developerTabSettings.continue_rendering.GetValue() ? "enabled" : "disabled");
     }
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Prevent games from pausing or reducing performance when alt-tabbed. Blocks window focus messages to keep games running in background like Special-K's background render feature.");
+        ImGui::SetTooltip("Prevent games from pausing or reducing performance when alt-tabbed. Blocks window focus "
+                          "messages to keep games running in background like Special-K's background render feature.");
     }
 
     ImGui::Spacing();
@@ -141,12 +141,14 @@ void DrawNvapiSettings() {
     ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "=== NVAPI Settings ===");
 
     // HDR10 Colorspace Fix
-    if (CheckboxSetting(settings::g_developerTabSettings.fix_hdr10_colorspace, "Set ReShade Effects Processing to HDR10 Colorspace")) {
+    if (CheckboxSetting(settings::g_developerTabSettings.fix_hdr10_colorspace,
+                        "Set ReShade Effects Processing to HDR10 Colorspace")) {
         s_fix_hdr10_colorspace.store(settings::g_developerTabSettings.fix_hdr10_colorspace.GetValue());
         s_restart_needed_nvapi.store(true);
     }
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Automatically fix HDR10 colorspace when swapchain format is RGB10A2 and colorspace is currently sRGB. Only works when the game is using sRGB colorspace.");
+        ImGui::SetTooltip("Automatically fix HDR10 colorspace when swapchain format is RGB10A2 and colorspace is "
+                          "currently sRGB. Only works when the game is using sRGB colorspace.");
     }
 
     // NVAPI Fullscreen Prevention
@@ -178,7 +180,8 @@ void DrawNvapiSettings() {
         }
 
         // NVAPI HDR Interval
-        if (SliderFloatSetting(settings::g_developerTabSettings.nvapi_hdr_interval_sec, "HDR Logging Interval (seconds)", "%.1f")) {
+        if (SliderFloatSetting(settings::g_developerTabSettings.nvapi_hdr_interval_sec,
+                               "HDR Logging Interval (seconds)", "%.1f")) {
             s_nvapi_hdr_interval_sec.store(settings::g_developerTabSettings.nvapi_hdr_interval_sec.GetValue());
         }
         if (ImGui::IsItemHovered()) {
@@ -238,9 +241,11 @@ void DrawNvapiSettings() {
     ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "=== NVIDIA Reflex (Minimal) ===");
 
     // Warning about enabling Reflex when game already has it
-    ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f), "⚠ Warning: Do not enable Reflex if the game already has built-in Reflex support!");
+    ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f),
+                       "⚠ Warning: Do not enable Reflex if the game already has built-in Reflex support!");
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Enabling Reflex when the game already has it can cause conflicts, instability, or performance issues. Check the game's graphics settings first.");
+        ImGui::SetTooltip("Enabling Reflex when the game already has it can cause conflicts, instability, or "
+                          "performance issues. Check the game's graphics settings first.");
     }
 
     bool reflex_enable = settings::g_developerTabSettings.reflex_enable.GetValue();
@@ -285,13 +290,12 @@ void DrawNvapiSettings() {
     }
 }
 
-
-
 void DrawResolutionOverrideSettings() {
     ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "=== Resolution Override ===");
 
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Override the backbuffer resolution during swapchain creation. Same as ReShade ForceResolution.");
+        ImGui::SetTooltip(
+            "Override the backbuffer resolution during swapchain creation. Same as ReShade ForceResolution.");
     }
 }
 
@@ -299,11 +303,13 @@ void DrawKeyboardShortcutsSettings() {
     ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "=== Keyboard Shortcuts ===");
 
     // Enable Mute/Unmute Shortcut (Ctrl+M)
-    if (CheckboxSetting(settings::g_developerTabSettings.enable_mute_unmute_shortcut, "Enable Mute/Unmute Shortcut (Ctrl+M)")) {
+    if (CheckboxSetting(settings::g_developerTabSettings.enable_mute_unmute_shortcut,
+                        "Enable Mute/Unmute Shortcut (Ctrl+M)")) {
         ::s_enable_mute_unmute_shortcut.store(settings::g_developerTabSettings.enable_mute_unmute_shortcut.GetValue());
     }
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Enable keyboard shortcut Ctrl+M to quickly mute/unmute audio. Only works when the game is in the foreground.");
+        ImGui::SetTooltip("Enable keyboard shortcut Ctrl+M to quickly mute/unmute audio. Only works when the game is "
+                          "in the foreground.");
     }
 
     // Info text for Ctrl+M
@@ -315,17 +321,21 @@ void DrawKeyboardShortcutsSettings() {
     }
 
     // Enable Background Toggle Shortcut (Ctrl+R)
-    if (CheckboxSetting(settings::g_developerTabSettings.enable_background_toggle_shortcut, "Enable Background Toggle Shortcut (Ctrl+R)")) {
-        ::s_enable_background_toggle_shortcut.store(settings::g_developerTabSettings.enable_background_toggle_shortcut.GetValue());
+    if (CheckboxSetting(settings::g_developerTabSettings.enable_background_toggle_shortcut,
+                        "Enable Background Toggle Shortcut (Ctrl+R)")) {
+        ::s_enable_background_toggle_shortcut.store(
+            settings::g_developerTabSettings.enable_background_toggle_shortcut.GetValue());
     }
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Enable keyboard shortcut Ctrl+R to quickly toggle both 'No Render in Background' and 'No Present in Background' settings. Only works when the game is in the foreground.");
+        ImGui::SetTooltip("Enable keyboard shortcut Ctrl+R to quickly toggle both 'No Render in Background' and 'No "
+                          "Present in Background' settings. Only works when the game is in the foreground.");
     }
 
     // Info text for Ctrl+R
     if (settings::g_developerTabSettings.enable_background_toggle_shortcut.GetValue()) {
         ImGui::Indent();
-        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Press Ctrl+R to toggle background rendering/present settings");
+        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f),
+                           "Press Ctrl+R to toggle background rendering/present settings");
         ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Shortcut works when game is in foreground");
         ImGui::Unindent();
     }
@@ -353,6 +363,5 @@ void DrawLatencyDisplay() {
     ImGui::SameLine();
     ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "(smoothed)");
 }
-
 
 } // namespace ui::new_ui

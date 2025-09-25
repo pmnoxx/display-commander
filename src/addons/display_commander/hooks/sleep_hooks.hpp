@@ -1,7 +1,8 @@
 #pragma once
 
-#include <windows.h>
 #include <atomic>
+#include <windows.h>
+
 
 namespace renodx::hooks {
 
@@ -28,10 +29,10 @@ struct SleepHookStats {
 extern SleepHookStats g_sleep_hook_stats;
 
 // Function pointer types for sleep functions
-using Sleep_pfn = void(WINAPI*)(DWORD);
-using SleepEx_pfn = DWORD(WINAPI*)(DWORD, BOOL);
-using WaitForSingleObject_pfn = DWORD(WINAPI*)(HANDLE, DWORD);
-using WaitForMultipleObjects_pfn = DWORD(WINAPI*)(DWORD, const HANDLE*, BOOL, DWORD);
+using Sleep_pfn = void(WINAPI *)(DWORD);
+using SleepEx_pfn = DWORD(WINAPI *)(DWORD, BOOL);
+using WaitForSingleObject_pfn = DWORD(WINAPI *)(HANDLE, DWORD);
+using WaitForMultipleObjects_pfn = DWORD(WINAPI *)(DWORD, const HANDLE *, BOOL, DWORD);
 
 // Original function pointers
 extern Sleep_pfn Sleep_Original;
@@ -43,7 +44,7 @@ extern WaitForMultipleObjects_pfn WaitForMultipleObjects_Original;
 void WINAPI Sleep_Detour(DWORD dwMilliseconds);
 DWORD WINAPI SleepEx_Detour(DWORD dwMilliseconds, BOOL bAlertable);
 DWORD WINAPI WaitForSingleObject_Detour(HANDLE hHandle, DWORD dwMilliseconds);
-DWORD WINAPI WaitForMultipleObjects_Detour(DWORD nCount, const HANDLE* lpHandles, BOOL bWaitAll, DWORD dwMilliseconds);
+DWORD WINAPI WaitForMultipleObjects_Detour(DWORD nCount, const HANDLE *lpHandles, BOOL bWaitAll, DWORD dwMilliseconds);
 
 // Thread ID helper removed
 

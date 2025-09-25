@@ -5,8 +5,8 @@
 namespace renodx::hooks {
 
 // Function pointer types for process exit functions
-using ExitProcess_pfn = void(WINAPI*)(UINT uExitCode);
-using TerminateProcess_pfn = BOOL(WINAPI*)(HANDLE hProcess, UINT uExitCode);
+using ExitProcess_pfn = void(WINAPI *)(UINT uExitCode);
+using TerminateProcess_pfn = BOOL(WINAPI *)(HANDLE hProcess, UINT uExitCode);
 
 // Original function pointers
 ExitProcess_pfn ExitProcess_Original = nullptr;
@@ -19,7 +19,7 @@ static std::atomic<bool> g_process_exit_hooks_installed{false};
 void WINAPI ExitProcess_Detour(UINT uExitCode) {
     // Log exit detection
     exit_handler::OnHandleExit(exit_handler::ExitSource::PROCESS_EXIT_HOOK,
-                            "ExitProcess called with exit code: " + std::to_string(uExitCode));
+                               "ExitProcess called with exit code: " + std::to_string(uExitCode));
 
     // Call original function
     if (ExitProcess_Original) {
@@ -33,7 +33,7 @@ void WINAPI ExitProcess_Detour(UINT uExitCode) {
 BOOL WINAPI TerminateProcess_Detour(HANDLE hProcess, UINT uExitCode) {
     // Log exit detection
     exit_handler::OnHandleExit(exit_handler::ExitSource::PROCESS_TERMINATE_HOOK,
-                            "TerminateProcess called with exit code: " + std::to_string(uExitCode));
+                               "TerminateProcess called with exit code: " + std::to_string(uExitCode));
 
     // Call original function
     if (TerminateProcess_Original) {
@@ -63,13 +63,13 @@ bool InstallProcessExitHooks() {
     }
 
     // Hook ExitProcess
-    if (MH_CreateHook(ExitProcess, ExitProcess_Detour, (LPVOID*)&ExitProcess_Original) != MH_OK) {
+    if (MH_CreateHook(ExitProcess, ExitProcess_Detour, (LPVOID *)&ExitProcess_Original) != MH_OK) {
         LogError("Failed to create ExitProcess hook");
         return false;
     }
 
     // Hook TerminateProcess
-    if (MH_CreateHook(TerminateProcess, TerminateProcess_Detour, (LPVOID*)&TerminateProcess_Original) != MH_OK) {
+    if (MH_CreateHook(TerminateProcess, TerminateProcess_Detour, (LPVOID *)&TerminateProcess_Original) != MH_OK) {
         LogError("Failed to create TerminateProcess hook");
         return false;
     }
@@ -107,8 +107,6 @@ void UninstallProcessExitHooks() {
     LogInfo("Process exit hooks uninstalled successfully");
 }
 
-bool AreProcessExitHooksInstalled() {
-    return g_process_exit_hooks_installed.load();
-}
+bool AreProcessExitHooksInstalled() { return g_process_exit_hooks_installed.load(); }
 
 } // namespace renodx::hooks

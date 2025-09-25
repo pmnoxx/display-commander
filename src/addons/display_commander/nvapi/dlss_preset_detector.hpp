@@ -1,12 +1,13 @@
 #pragma once
 
-#include <windows.h>
 #include <string>
+#include <windows.h>
+
 
 // DLSS Preset Detection Module
 // Based on Special-K's implementation for detecting DLSS preset information
 class DLSSPresetDetector {
-public:
+  public:
     // Constructor
     DLSSPresetDetector();
 
@@ -24,33 +25,35 @@ public:
 
     // Get current DLSS preset information
     struct PresetInfo {
-        std::string preset_name;      // A, B, C, D, E, F, G, J, K, Default
-        std::string quality_mode;     // Performance, Balanced, Quality, UltraPerformance, UltraQuality, DLAA
+        std::string preset_name;  // A, B, C, D, E, F, G, J, K, Default
+        std::string quality_mode; // Performance, Balanced, Quality, UltraPerformance, UltraQuality, DLAA
         bool valid = false;
 
         // Get formatted preset string
         std::string getFormattedPreset() const {
-            if (!valid) return "Unknown";
+            if (!valid)
+                return "Unknown";
             return preset_name;
         }
 
         // Get formatted quality mode string
         std::string getFormattedQualityMode() const {
-            if (!valid) return "Unknown";
+            if (!valid)
+                return "Unknown";
             return quality_mode;
         }
     };
 
     // Get current DLSS preset
-    const PresetInfo& GetPreset() const;
+    const PresetInfo &GetPreset() const;
 
     // Force re-detection of DLSS preset
     bool RefreshPreset();
 
     // Get last error message
-    const std::string& GetLastError() const;
+    const std::string &GetLastError() const;
 
-private:
+  private:
     // Internal state
     bool initialized = false;
     bool failed_to_initialize = false;
@@ -63,13 +66,18 @@ private:
     std::string GetQualityModeFromValue(unsigned int quality_value) const;
 
     // NGX parameter names (based on Special-K's implementation)
-    static constexpr const char* NVSDK_NGX_Parameter_PerfQualityValue = "PerfQualityValue";
-    static constexpr const char* NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_DLAA = "DLSS.Hint.Render.Preset.DLAA";
-    static constexpr const char* NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Quality = "DLSS.Hint.Render.Preset.Quality";
-    static constexpr const char* NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Balanced = "DLSS.Hint.Render.Preset.Balanced";
-    static constexpr const char* NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Performance = "DLSS.Hint.Render.Preset.Performance";
-    static constexpr const char* NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_UltraPerformance = "DLSS.Hint.Render.Preset.UltraPerformance";
-    static constexpr const char* NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_UltraQuality = "DLSS.Hint.Render.Preset.UltraQuality";
+    static constexpr const char *NVSDK_NGX_Parameter_PerfQualityValue = "PerfQualityValue";
+    static constexpr const char *NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_DLAA = "DLSS.Hint.Render.Preset.DLAA";
+    static constexpr const char *NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Quality =
+        "DLSS.Hint.Render.Preset.Quality";
+    static constexpr const char *NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Balanced =
+        "DLSS.Hint.Render.Preset.Balanced";
+    static constexpr const char *NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Performance =
+        "DLSS.Hint.Render.Preset.Performance";
+    static constexpr const char *NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_UltraPerformance =
+        "DLSS.Hint.Render.Preset.UltraPerformance";
+    static constexpr const char *NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_UltraQuality =
+        "DLSS.Hint.Render.Preset.UltraQuality";
 
     // DLSS preset values (based on Special-K's implementation)
     static constexpr unsigned int NVSDK_NGX_DLSS_Hint_Render_Preset_Default = 0;

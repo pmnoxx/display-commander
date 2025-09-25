@@ -1,6 +1,8 @@
 #include "display_settings_debug_tab.hpp"
-#include "../../addon.hpp"
 #include "../../settings/display_settings.hpp"
+#include "../../utils.hpp"
+#include <imgui.h>
+#include <reshade.hpp>
 
 namespace ui::new_ui {
 
@@ -14,7 +16,7 @@ void DrawDisplaySettingsDebugTab() {
         return;
     }
 
-    auto& settings = *display_commander::settings::g_display_settings;
+    auto &settings = *display_commander::settings::g_display_settings;
 
     // Display current settings
     ImGui::Text("Current Settings:");

@@ -1,10 +1,10 @@
 #include "swapchain_tab.hpp"
-#include "../../swapchain_events_power_saving.hpp"
-#include "../../settings/main_tab_settings.hpp"
-#include <imgui.h>
-#include <dxgi1_6.h>
-#include <wrl/client.h>
 #include "../../globals.hpp"
+#include "../../settings/main_tab_settings.hpp"
+#include "../../swapchain_events_power_saving.hpp"
+#include <dxgi1_6.h>
+#include <imgui.h>
+#include <wrl/client.h>
 
 namespace ui::new_ui {
 
@@ -20,12 +20,20 @@ void DrawSwapchainTab() {
 
 void DrawDxgiCompositionInfo() {
     if (ImGui::CollapsingHeader("DXGI Composition Information", ImGuiTreeNodeFlags_DefaultOpen)) {
-        const char* mode_str = "Unknown";
+        const char *mode_str = "Unknown";
         switch (static_cast<int>(s_dxgi_composition_state)) {
-            case 1: mode_str = "Composed Flip"; break;
-            case 2: mode_str = "Modern Independent Flip"; break;
-            case 3: mode_str = "Legacy Independent Flip"; break;
-            default: mode_str = "Unknown"; break;
+        case 1:
+            mode_str = "Composed Flip";
+            break;
+        case 2:
+            mode_str = "Modern Independent Flip";
+            break;
+        case 3:
+            mode_str = "Legacy Independent Flip";
+            break;
+        default:
+            mode_str = "Unknown";
+            break;
         }
 
         // Get backbuffer format
@@ -33,12 +41,24 @@ void DrawDxgiCompositionInfo() {
         // Get colorspace string
         std::string colorspace_str = "Unknown";
         switch (g_current_colorspace) {
-            case reshade::api::color_space::unknown: colorspace_str = "Unknown"; break;
-            case reshade::api::color_space::srgb_nonlinear: colorspace_str = "sRGB"; break;
-            case reshade::api::color_space::extended_srgb_linear: colorspace_str = "Extended sRGB Linear"; break;
-            case reshade::api::color_space::hdr10_st2084: colorspace_str = "HDR10 ST2084"; break;
-            case reshade::api::color_space::hdr10_hlg: colorspace_str = "HDR10 HLG"; break;
-            default: colorspace_str = "ColorSpace_" + std::to_string(static_cast<int>(g_current_colorspace)); break;
+        case reshade::api::color_space::unknown:
+            colorspace_str = "Unknown";
+            break;
+        case reshade::api::color_space::srgb_nonlinear:
+            colorspace_str = "sRGB";
+            break;
+        case reshade::api::color_space::extended_srgb_linear:
+            colorspace_str = "Extended sRGB Linear";
+            break;
+        case reshade::api::color_space::hdr10_st2084:
+            colorspace_str = "HDR10 ST2084";
+            break;
+        case reshade::api::color_space::hdr10_hlg:
+            colorspace_str = "HDR10 HLG";
+            break;
+        default:
+            colorspace_str = "ColorSpace_" + std::to_string(static_cast<int>(g_current_colorspace));
+            break;
         }
 
         ImGui::Text("DXGI Composition: %s", mode_str);
@@ -47,7 +67,8 @@ void DrawDxgiCompositionInfo() {
         ImGui::Text("Colorspace: %s", colorspace_str.c_str());
 
         // Display HDR10 override status
-        ImGui::Text("HDR10 Colorspace Override: %s (Last: %s)", g_hdr10_override_status.load()->c_str(), g_hdr10_override_timestamp.load()->c_str());
+        ImGui::Text("HDR10 Colorspace Override: %s (Last: %s)", g_hdr10_override_status.load()->c_str(),
+                    g_hdr10_override_timestamp.load()->c_str());
     }
 }
 
@@ -58,61 +79,48 @@ void DrawSwapchainEventCounters() {
 
         // Event visibility flags - set to false to hide specific events
         static bool event_visibility[] = {
-            false,   // reshade::addon_event::begin_render_pass (0 == ok)
-            false,   // reshade::addon_event::end_render_pass (0 == ok)
-            true,   // reshade::addon_event::create_swapchain (vsync on/off won't work)
-            true,   // reshade::addon_event::init_swapchain
-            true,   // reshade::addon_event::finish_present
-            true,   // reshade::addon_event::present
-            true,   // reshade::addon_event::reshade_present
-            true,   // reshade::addon_event::init_command_list
-            false,   // reshade::addon_event::execute_command_list
-            false,   // reshade::addon_event::bind_pipeline (suppressed by default)
-            true,   // reshade::addon_event::init_command_queue
-            true,   // reshade::addon_event::reset_command_list
-            true,   // reshade::addon_event::present_flags
-            true,   // reshade::addon_event::draw
-            true,   // reshade::addon_event::draw_indexed
-            true,   // reshade::addon_event::draw_or_dispatch_indirect
+            false, // reshade::addon_event::begin_render_pass (0 == ok)
+            false, // reshade::addon_event::end_render_pass (0 == ok)
+            true,  // reshade::addon_event::create_swapchain (vsync on/off won't work)
+            true,  // reshade::addon_event::init_swapchain
+            true,  // reshade::addon_event::finish_present
+            true,  // reshade::addon_event::present
+            true,  // reshade::addon_event::reshade_present
+            true,  // reshade::addon_event::init_command_list
+            false, // reshade::addon_event::execute_command_list
+            false, // reshade::addon_event::bind_pipeline (suppressed by default)
+            true,  // reshade::addon_event::init_command_queue
+            true,  // reshade::addon_event::reset_command_list
+            true,  // reshade::addon_event::present_flags
+            true,  // reshade::addon_event::draw
+            true,  // reshade::addon_event::draw_indexed
+            true,  // reshade::addon_event::draw_or_dispatch_indirect
             // New power saving events
-            true,   // reshade::addon_event::dispatch
-            true,   // reshade::addon_event::dispatch_mesh
-            true,   // reshade::addon_event::dispatch_rays
-            true,   // reshade::addon_event::copy_resource
-            true,   // reshade::addon_event::update_buffer_region
-            true,   // reshade::addon_event::update_buffer_region_command
-            true,   // reshade::addon_event::bind_resource
-            true    // reshade::addon_event::map_resource
+            true, // reshade::addon_event::dispatch
+            true, // reshade::addon_event::dispatch_mesh
+            true, // reshade::addon_event::dispatch_rays
+            true, // reshade::addon_event::copy_resource
+            true, // reshade::addon_event::update_buffer_region
+            true, // reshade::addon_event::update_buffer_region_command
+            true, // reshade::addon_event::bind_resource
+            true  // reshade::addon_event::map_resource
         };
 
         // Display each event counter with color coding
-        static const char* event_names[] = {
-            "reshade::addon_event::begin_render_pass (0 == ok)",
-            "reshade::addon_event::end_render_pass (0 == ok)",
-            "reshade::addon_event::create_swapchain (vsync on/off won't work)",
-            "reshade::addon_event::init_swapchain",
-            "reshade::addon_event::finish_present",
-            "reshade::addon_event::present",
-            "reshade::addon_event::reshade_present",
-            "reshade::addon_event::init_command_list",
-            "reshade::addon_event::execute_command_list",
-            "reshade::addon_event::bind_pipeline",
-            "reshade::addon_event::init_command_queue",
-            "reshade::addon_event::reset_command_list",
-            "reshade::addon_event::present_flags",
-            "reshade::addon_event::draw",
-            "reshade::addon_event::draw_indexed",
+        static const char *event_names[] = {
+            "reshade::addon_event::begin_render_pass (0 == ok)", "reshade::addon_event::end_render_pass (0 == ok)",
+            "reshade::addon_event::create_swapchain (vsync on/off won't work)", "reshade::addon_event::init_swapchain",
+            "reshade::addon_event::finish_present", "reshade::addon_event::present",
+            "reshade::addon_event::reshade_present", "reshade::addon_event::init_command_list",
+            "reshade::addon_event::execute_command_list", "reshade::addon_event::bind_pipeline",
+            "reshade::addon_event::init_command_queue", "reshade::addon_event::reset_command_list",
+            "reshade::addon_event::present_flags", "reshade::addon_event::draw", "reshade::addon_event::draw_indexed",
             "reshade::addon_event::draw_or_dispatch_indirect",
             // New power saving events
-            "reshade::addon_event::dispatch",
-            "reshade::addon_event::dispatch_mesh",
-            "reshade::addon_event::dispatch_rays",
-            "reshade::addon_event::copy_resource",
-            "reshade::addon_event::update_buffer_region",
-            "reshade::addon_event::update_buffer_region_command",
-            "reshade::addon_event::bind_resource",
-            "reshade::addon_event::map_resource"
-        };
+            "reshade::addon_event::dispatch", "reshade::addon_event::dispatch_mesh",
+            "reshade::addon_event::dispatch_rays", "reshade::addon_event::copy_resource",
+            "reshade::addon_event::update_buffer_region", "reshade::addon_event::update_buffer_region_command",
+            "reshade::addon_event::bind_resource", "reshade::addon_event::map_resource"};
 
         uint32_t total_events = 0;
         uint32_t visible_events = 0;
@@ -140,7 +148,8 @@ void DrawSwapchainEventCounters() {
         if (total_events > 0) {
             ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Status: Swapchain events are working correctly");
         } else {
-            ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "Status: No swapchain events detected - check if addon is properly loaded");
+            ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f),
+                               "Status: No swapchain events detected - check if addon is properly loaded");
         }
     }
 

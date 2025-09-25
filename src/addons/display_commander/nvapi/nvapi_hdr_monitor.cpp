@@ -1,15 +1,17 @@
 #include "nvapi_hdr_monitor.hpp"
-#include "nvapi_fullscreen_prevention.hpp"
 #include "../utils.hpp"
+#include "nvapi_fullscreen_prevention.hpp"
+#include <algorithm>
+#include <chrono>
 #include <sstream>
 #include <thread>
-#include <chrono>
-#include <algorithm>
+
 
 // Background NVAPI HDR monitor thread
 void RunBackgroundNvapiHdrMonitor() {
     // Ensure NVAPI is initialized if we plan to log
-    if (!s_nvapi_hdr_logging.load()) return;
+    if (!s_nvapi_hdr_logging.load())
+        return;
     if (!g_nvapiFullscreenPrevention.IsAvailable()) {
         if (!g_nvapiFullscreenPrevention.Initialize()) {
             LogWarn("NVAPI HDR monitor: failed to initialize NVAPI");
@@ -21,7 +23,9 @@ void RunBackgroundNvapiHdrMonitor() {
 
     while (!g_shutdown.load()) {
         if (s_nvapi_hdr_logging.load()) {
-            bool hdr = false; std::string cs; std::string name;
+            bool hdr = false;
+            std::string cs;
+            std::string name;
             if (g_nvapiFullscreenPrevention.QueryHdrStatus(hdr, cs, name)) {
                 std::ostringstream oss;
                 oss << "NVAPI HDR: enabled=" << (hdr ? "true" : "false")
@@ -54,12 +58,13 @@ void LogNvapiHdrOnce() {
             return;
         }
     }
-    bool hdr = false; std::string cs; std::string name;
+    bool hdr = false;
+    std::string cs;
+    std::string name;
     if (g_nvapiFullscreenPrevention.QueryHdrStatus(hdr, cs, name)) {
         std::ostringstream oss;
         oss << "NVAPI HDR (single): enabled=" << (hdr ? "true" : "false")
-            << ", colorspace=" << (cs.empty() ? "Unknown" : cs)
-            << ", output=" << (name.empty() ? "Unknown" : name);
+            << ", colorspace=" << (cs.empty() ? "Unknown" : cs) << ", output=" << (name.empty() ? "Unknown" : name);
         LogInfo(oss.str().c_str());
     } else {
         LogInfo("NVAPI HDR (single): query failed or HDR not available");

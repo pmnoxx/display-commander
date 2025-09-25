@@ -1,9 +1,8 @@
+#include "../utils.hpp"
 #include "vblank_monitor.hpp"
 #include <memory>
 #include <string>
 #include <windows.h>
-#include "../utils.hpp"
-
 
 // Example of how to integrate VBlankMonitor with existing code
 namespace dxgi::fps_limiter {
@@ -40,8 +39,6 @@ bool BindVBlankMonitorToWindow(HWND hwnd) {
 }
 
 // Function to check if monitoring is active
-bool IsVBlankMonitoringActive() {
-    return g_vblank_monitor && g_vblank_monitor->IsMonitoring();
-}
+bool IsVBlankMonitoringActive() { return g_vblank_monitor && g_vblank_monitor->IsMonitoring(); }
 
 } // namespace dxgi::fps_limiter

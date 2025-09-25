@@ -3,8 +3,8 @@
 #include "resolution_settings.hpp"
 #include <imgui.h>
 #include <memory>
-#include <vector>
 #include <string>
+#include <vector>
 
 // Forward declaration for Windows types
 typedef long long LONGLONG;
@@ -13,7 +13,7 @@ namespace display_commander::widgets::resolution_widget {
 
 // Resolution widget class
 class ResolutionWidget {
-public:
+  public:
     ResolutionWidget();
     ~ResolutionWidget() = default;
 
@@ -26,7 +26,7 @@ public:
     // Cleanup the widget (call at shutdown)
     void Cleanup();
 
-private:
+  private:
     // UI state
     int selected_display_index_ = 0;
     int selected_resolution_index_ = 0;
@@ -54,7 +54,7 @@ private:
 
     // Apply resolution changes
     bool ApplyCurrentSelection();
-    bool TryApplyResolution(int display_index, const ResolutionData& resolution, const ResolutionData& refresh);
+    bool TryApplyResolution(int display_index, const ResolutionData &resolution, const ResolutionData &refresh);
 
     // Helper functions
     std::string GetDisplayName(int display_index) const;

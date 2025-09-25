@@ -1,10 +1,11 @@
 #pragma once
 
+#include <atomic>
+#include <functional>
 #include <imgui.h>
 #include <reshade.hpp>
 #include <string>
-#include <functional>
-#include <atomic> // Added for std::atomic
+
 
 namespace ui::new_ui {
 
@@ -13,8 +14,8 @@ static constexpr auto DEFAULT_SECTION = "DisplayCommander";
 
 // Base class for settings that automatically handle loading/saving
 class SettingBase {
-public:
-    SettingBase(const std::string& key, const std::string& section = DEFAULT_SECTION);
+  public:
+    SettingBase(const std::string &key, const std::string &section = DEFAULT_SECTION);
     virtual ~SettingBase() = default;
 
     // Load the setting value from Reshade config
@@ -24,18 +25,17 @@ public:
     virtual void Save() = 0;
 
     // Get the setting key
-    const std::string& GetKey() const { return key_; }
+    const std::string &GetKey() const { return key_; }
 
     // Get the setting section
-    const std::string& GetSection() const { return section_; }
+    const std::string &GetSection() const { return section_; }
 
     // Dirty state tracking
     bool IsDirty() const { return is_dirty_; }
     void MarkClean() { is_dirty_ = false; }
     void MarkDirty() { is_dirty_ = true; }
 
-
-protected:
+  protected:
     std::string key_;
     std::string section_;
     bool is_dirty_ = false;
@@ -43,9 +43,9 @@ protected:
 
 // Float setting wrapper
 class FloatSetting : public SettingBase {
-public:
-    FloatSetting(const std::string& key, float default_value, float min = 0.0f, float max = 100.0f,
-        const std::string& section = DEFAULT_SECTION);
+  public:
+    FloatSetting(const std::string &key, float default_value, float min = 0.0f, float max = 100.0f,
+                 const std::string &section = DEFAULT_SECTION);
 
     void Load() override;
     void Save() override;
@@ -58,10 +58,10 @@ public:
     void SetMax(float new_max) { max_ = new_max; }
 
     // Direct access to the atomic value for performance-critical code
-    std::atomic<float>& GetAtomic() { return value_; }
-    const std::atomic<float>& GetAtomic() const { return value_; }
+    std::atomic<float> &GetAtomic() { return value_; }
+    const std::atomic<float> &GetAtomic() const { return value_; }
 
-private:
+  private:
     std::atomic<float> value_;
     float default_value_;
     float min_;
@@ -70,9 +70,9 @@ private:
 
 // Integer setting wrapper
 class IntSetting : public SettingBase {
-public:
-    IntSetting(const std::string& key, int default_value, int min = 0, int max = 100,
-    const std::string& section = DEFAULT_SECTION);
+  public:
+    IntSetting(const std::string &key, int default_value, int min = 0, int max = 100,
+               const std::string &section = DEFAULT_SECTION);
 
     void Load() override;
     void Save() override;
@@ -84,10 +84,10 @@ public:
     int GetMax() const { return max_; }
 
     // Direct access to the atomic value for performance-critical code
-    std::atomic<int>& GetAtomic() { return value_; }
-    const std::atomic<int>& GetAtomic() const { return value_; }
+    std::atomic<int> &GetAtomic() { return value_; }
+    const std::atomic<int> &GetAtomic() const { return value_; }
 
-private:
+  private:
     std::atomic<int> value_;
     int default_value_;
     int min_;
@@ -96,9 +96,8 @@ private:
 
 // Boolean setting wrapper
 class BoolSetting : public SettingBase {
-public:
-    BoolSetting(const std::string& key, bool default_value,
-                const std::string& section = DEFAULT_SECTION);
+  public:
+    BoolSetting(const std::string &key, bool default_value, const std::string &section = DEFAULT_SECTION);
 
     void Load() override;
     void Save() override;
@@ -108,19 +107,19 @@ public:
     bool GetDefaultValue() const { return default_value_; }
 
     // Direct access to the atomic value for performance-critical code
-    std::atomic<bool>& GetAtomic() { return value_; }
-    const std::atomic<bool>& GetAtomic() const { return value_; }
+    std::atomic<bool> &GetAtomic() { return value_; }
+    const std::atomic<bool> &GetAtomic() const { return value_; }
 
-private:
+  private:
     std::atomic<bool> value_;
     bool default_value_;
 };
 
 // Boolean setting wrapper that references an external atomic variable
 class BoolSettingRef : public SettingBase {
-public:
-    BoolSettingRef(const std::string& key, std::atomic<bool>& external_ref, bool default_value,
-        const std::string& section = DEFAULT_SECTION);
+  public:
+    BoolSettingRef(const std::string &key, std::atomic<bool> &external_ref, bool default_value,
+                   const std::string &section = DEFAULT_SECTION);
 
     void Load() override;
     void Save() override;
@@ -130,20 +129,19 @@ public:
     bool GetDefaultValue() const { return default_value_; }
 
     // Direct access to the referenced atomic value for performance-critical code
-    std::atomic<bool>& GetAtomic() { return external_ref_.get(); }
-    const std::atomic<bool>& GetAtomic() const { return external_ref_.get(); }
+    std::atomic<bool> &GetAtomic() { return external_ref_.get(); }
+    const std::atomic<bool> &GetAtomic() const { return external_ref_.get(); }
 
-private:
+  private:
     std::reference_wrapper<std::atomic<bool>> external_ref_;
     bool default_value_;
 };
 
 // Float setting wrapper that references an external atomic variable
 class FloatSettingRef : public SettingBase {
-public:
-    FloatSettingRef(const std::string& key, std::atomic<float>& external_ref, float default_value,
-                    float min = 0.0f, float max = 100.0f,
-                    const std::string& section = DEFAULT_SECTION);
+  public:
+    FloatSettingRef(const std::string &key, std::atomic<float> &external_ref, float default_value, float min = 0.0f,
+                    float max = 100.0f, const std::string &section = DEFAULT_SECTION);
 
     void Load() override;
     void Save() override;
@@ -156,10 +154,10 @@ public:
     void SetMax(float new_max) { max_ = new_max; }
 
     // Direct access to the referenced atomic value for performance-critical code
-    std::atomic<float>& GetAtomic() { return external_ref_.get(); }
-    const std::atomic<float>& GetAtomic() const { return external_ref_.get(); }
+    std::atomic<float> &GetAtomic() { return external_ref_.get(); }
+    const std::atomic<float> &GetAtomic() const { return external_ref_.get(); }
 
-private:
+  private:
     std::reference_wrapper<std::atomic<float>> external_ref_;
     float default_value_;
     float min_;
@@ -168,10 +166,9 @@ private:
 
 // Integer setting wrapper that references an external atomic variable
 class IntSettingRef : public SettingBase {
-public:
-    IntSettingRef(const std::string& key, std::atomic<int>& external_ref, int default_value,
-                int min = 0, int max = 100,
-                const std::string& section = DEFAULT_SECTION);
+  public:
+    IntSettingRef(const std::string &key, std::atomic<int> &external_ref, int default_value, int min = 0, int max = 100,
+                  const std::string &section = DEFAULT_SECTION);
 
     void Load() override;
     void Save() override;
@@ -183,10 +180,10 @@ public:
     int GetMax() const { return max_; }
 
     // Direct access to the referenced atomic value for performance-critical code
-    std::atomic<int>& GetAtomic() { return external_ref_.get(); }
-    const std::atomic<int>& GetAtomic() const { return external_ref_.get(); }
+    std::atomic<int> &GetAtomic() { return external_ref_.get(); }
+    const std::atomic<int> &GetAtomic() const { return external_ref_.get(); }
 
-private:
+  private:
     std::reference_wrapper<std::atomic<int>> external_ref_;
     int default_value_;
     int min_;
@@ -195,10 +192,9 @@ private:
 
 // Combo setting wrapper
 class ComboSetting : public SettingBase {
-public:
-    ComboSetting(const std::string& key, int default_value,
-        const std::vector<const char*>& labels,
-        const std::string& section = DEFAULT_SECTION);
+  public:
+    ComboSetting(const std::string &key, int default_value, const std::vector<const char *> &labels,
+                 const std::string &section = DEFAULT_SECTION);
 
     void Load() override;
     void Save() override;
@@ -206,20 +202,19 @@ public:
     int GetValue() const { return value_; }
     void SetValue(int value);
     int GetDefaultValue() const { return default_value_; }
-    const std::vector<const char*>& GetLabels() const { return labels_; }
+    const std::vector<const char *> &GetLabels() const { return labels_; }
 
-private:
+  private:
     int value_;
     int default_value_;
-    std::vector<const char*> labels_;
+    std::vector<const char *> labels_;
 };
 
 // Combo setting wrapper that references an external atomic variable
 class ComboSettingRef : public SettingBase {
-public:
-    ComboSettingRef(const std::string& key, std::atomic<int>& external_ref, int default_value,
-        const std::vector<const char*>& labels,
-        const std::string& section = DEFAULT_SECTION);
+  public:
+    ComboSettingRef(const std::string &key, std::atomic<int> &external_ref, int default_value,
+                    const std::vector<const char *> &labels, const std::string &section = DEFAULT_SECTION);
 
     void Load() override;
     void Save() override;
@@ -227,25 +222,23 @@ public:
     int GetValue() const { return external_ref_.get().load(); }
     void SetValue(int value);
     int GetDefaultValue() const { return default_value_; }
-    const std::vector<const char*>& GetLabels() const { return labels_; }
+    const std::vector<const char *> &GetLabels() const { return labels_; }
 
     // Direct access to the referenced atomic value for performance-critical code
-    std::atomic<int>& GetAtomic() { return external_ref_.get(); }
-    const std::atomic<int>& GetAtomic() const { return external_ref_.get(); }
+    std::atomic<int> &GetAtomic() { return external_ref_.get(); }
+    const std::atomic<int> &GetAtomic() const { return external_ref_.get(); }
 
-private:
+  private:
     std::reference_wrapper<std::atomic<int>> external_ref_;
     int default_value_;
-    std::vector<const char*> labels_;
+    std::vector<const char *> labels_;
 };
 
 // Combo setting wrapper that references an external atomic enum variable
-template<typename EnumType>
-class ComboSettingEnumRef : public SettingBase {
-public:
-    ComboSettingEnumRef(const std::string& key, std::atomic<EnumType>& external_ref, int default_value,
-        const std::vector<const char*>& labels,
-        const std::string& section = DEFAULT_SECTION);
+template <typename EnumType> class ComboSettingEnumRef : public SettingBase {
+  public:
+    ComboSettingEnumRef(const std::string &key, std::atomic<EnumType> &external_ref, int default_value,
+                        const std::vector<const char *> &labels, const std::string &section = DEFAULT_SECTION);
 
     void Load() override;
     void Save() override;
@@ -253,23 +246,23 @@ public:
     int GetValue() const { return static_cast<int>(external_ref_.get().load()); }
     void SetValue(int value);
     int GetDefaultValue() const { return default_value_; }
-    const std::vector<const char*>& GetLabels() const { return labels_; }
+    const std::vector<const char *> &GetLabels() const { return labels_; }
 
     // Direct access to the referenced atomic value for performance-critical code
-    std::atomic<EnumType>& GetAtomic() { return external_ref_.get(); }
-    const std::atomic<EnumType>& GetAtomic() const { return external_ref_.get(); }
+    std::atomic<EnumType> &GetAtomic() { return external_ref_.get(); }
+    const std::atomic<EnumType> &GetAtomic() const { return external_ref_.get(); }
 
-private:
+  private:
     std::reference_wrapper<std::atomic<EnumType>> external_ref_;
     int default_value_;
-    std::vector<const char*> labels_;
+    std::vector<const char *> labels_;
 };
 
 // Resolution pair setting (width, height)
 class ResolutionPairSetting : public SettingBase {
-public:
-    ResolutionPairSetting(const std::string& key, int default_width, int default_height,
-            const std::string& section = DEFAULT_SECTION);
+  public:
+    ResolutionPairSetting(const std::string &key, int default_width, int default_height,
+                          const std::string &section = DEFAULT_SECTION);
 
     void Load() override;
     void Save() override;
@@ -282,7 +275,7 @@ public:
     int GetDefaultWidth() const { return default_width_; }
     int GetDefaultHeight() const { return default_height_; }
 
-private:
+  private:
     int width_;
     int height_;
     int default_width_;
@@ -291,9 +284,9 @@ private:
 
 // Refresh rate pair setting (numerator, denominator)
 class RefreshRatePairSetting : public SettingBase {
-public:
-    RefreshRatePairSetting(const std::string& key, int default_numerator, int default_denominator,
-                        const std::string& section = DEFAULT_SECTION);
+  public:
+    RefreshRatePairSetting(const std::string &key, int default_numerator, int default_denominator,
+                           const std::string &section = DEFAULT_SECTION);
 
     void Load() override;
     void Save() override;
@@ -309,7 +302,7 @@ public:
     // Helper to get refresh rate as Hz
     double GetHz() const;
 
-private:
+  private:
     int numerator_;
     int denominator_;
     int default_numerator_;
@@ -318,9 +311,9 @@ private:
 
 // Fixed-size integer array setting with atomic values
 class FixedIntArraySetting : public SettingBase {
-public:
-    FixedIntArraySetting(const std::string& key, size_t array_size, int default_value,
-                        int min = 0, int max = 100, const std::string& section = DEFAULT_SECTION);
+  public:
+    FixedIntArraySetting(const std::string &key, size_t array_size, int default_value, int min = 0, int max = 100,
+                         const std::string &section = DEFAULT_SECTION);
     ~FixedIntArraySetting();
 
     void Load() override;
@@ -332,7 +325,7 @@ public:
 
     // Get all values as a vector
     std::vector<int> GetAllValues() const;
-    void SetAllValues(const std::vector<int>& values);
+    void SetAllValues(const std::vector<int> &values);
 
     // Array access
     int operator[](size_t index) const { return GetValue(index); }
@@ -348,11 +341,11 @@ public:
     int GetMax() const { return max_; }
 
     // Direct access to atomic array for performance-critical code
-    std::atomic<int>& GetAtomic(size_t index) { return *values_[index]; }
-    const std::atomic<int>& GetAtomic(size_t index) const { return *values_[index]; }
+    std::atomic<int> &GetAtomic(size_t index) { return *values_[index]; }
+    const std::atomic<int> &GetAtomic(size_t index) const { return *values_[index]; }
 
-private:
-    std::vector<std::atomic<int>*> values_;
+  private:
+    std::vector<std::atomic<int> *> values_;
     size_t array_size_;
     int default_value_;
     int min_;
@@ -361,18 +354,18 @@ private:
 
 // String setting wrapper
 class StringSetting : public SettingBase {
-public:
-    StringSetting(const std::string& key, const std::string& default_value,
-                const std::string& section = DEFAULT_SECTION);
+  public:
+    StringSetting(const std::string &key, const std::string &default_value,
+                  const std::string &section = DEFAULT_SECTION);
 
     void Load() override;
     void Save() override;
 
     // Get/set values
-    const std::string& GetValue() const { return value_; }
-    void SetValue(const std::string& value);
+    const std::string &GetValue() const { return value_; }
+    void SetValue(const std::string &value);
 
-private:
+  private:
     std::string value_;
     std::string default_value_;
 };
@@ -380,34 +373,33 @@ private:
 // Wrapper functions for ImGui controls that automatically handle settings
 
 // SliderFloat wrapper
-bool SliderFloatSetting(FloatSetting& setting, const char* label, const char* format = "%.3f");
+bool SliderFloatSetting(FloatSetting &setting, const char *label, const char *format = "%.3f");
 
 // SliderFloat wrapper for FloatSettingRef
-bool SliderFloatSetting(FloatSettingRef& setting, const char* label, const char* format = "%.3f");
+bool SliderFloatSetting(FloatSettingRef &setting, const char *label, const char *format = "%.3f");
 
 // SliderInt wrapper
-bool SliderIntSetting(IntSetting& setting, const char* label, const char* format = "%d");
+bool SliderIntSetting(IntSetting &setting, const char *label, const char *format = "%d");
 
 // SliderInt wrapper for IntSettingRef
-bool SliderIntSetting(IntSettingRef& setting, const char* label, const char* format = "%d");
+bool SliderIntSetting(IntSettingRef &setting, const char *label, const char *format = "%d");
 
 // Checkbox wrapper
-bool CheckboxSetting(BoolSetting& setting, const char* label);
+bool CheckboxSetting(BoolSetting &setting, const char *label);
 
 // Checkbox wrapper for BoolSettingRef
-bool CheckboxSetting(BoolSettingRef& setting, const char* label);
+bool CheckboxSetting(BoolSettingRef &setting, const char *label);
 
 // Combo wrapper
-bool ComboSettingWrapper(ComboSetting& setting, const char* label);
-bool ComboSettingRefWrapper(ComboSettingRef& setting, const char* label);
-template<typename EnumType>
-bool ComboSettingEnumRefWrapper(ComboSettingEnumRef<EnumType>& setting, const char* label);
+bool ComboSettingWrapper(ComboSetting &setting, const char *label);
+bool ComboSettingRefWrapper(ComboSettingRef &setting, const char *label);
+template <typename EnumType> bool ComboSettingEnumRefWrapper(ComboSettingEnumRef<EnumType> &setting, const char *label);
 
 // Button wrapper (for settings that don't store values)
-bool ButtonSetting(const char* label, const ImVec2& size = ImVec2(0, 0));
+bool ButtonSetting(const char *label, const ImVec2 &size = ImVec2(0, 0));
 
 // Text wrapper
-void TextSetting(const char* text);
+void TextSetting(const char *text);
 
 // Separator wrapper
 void SeparatorSetting();
@@ -416,6 +408,6 @@ void SeparatorSetting();
 void SpacingSetting();
 
 // Utility function to load all settings for a tab
-void LoadTabSettings(const std::vector<SettingBase*>& settings);
+void LoadTabSettings(const std::vector<SettingBase *> &settings);
 
 } // namespace ui::new_ui

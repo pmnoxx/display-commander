@@ -1,4 +1,5 @@
 #include "adhd_simple_api.hpp"
+#include "adhd_multi_monitor.hpp"
 
 namespace adhd_multi_monitor {
 

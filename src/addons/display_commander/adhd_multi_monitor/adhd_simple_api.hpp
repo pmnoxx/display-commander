@@ -3,8 +3,6 @@
 // Simple API for ADHD Multi-Monitor Mode
 // This replaces the complex integration system with a single class approach
 
-#include "adhd_multi_monitor_simple.hpp"
-
 namespace adhd_multi_monitor {
 
 // Simple API functions

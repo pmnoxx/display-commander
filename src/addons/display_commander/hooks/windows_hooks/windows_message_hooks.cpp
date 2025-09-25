@@ -1,10 +1,11 @@
 #include "windows_message_hooks.hpp"
-#include "../api_hooks.hpp"  // For GetGameWindow and other functions
-#include "../../globals.hpp"    // For s_continue_rendering
-#include "../../utils.hpp"
-#include "../../settings/experimental_tab_settings.hpp"  // For g_experimentalTabSettings
+#include "../../globals.hpp"                            // For s_continue_rendering
+#include "../../settings/experimental_tab_settings.hpp" // For g_experimentalTabSettings
 #include "../../settings/main_tab_settings.hpp"
+#include "../../utils.hpp"
+#include "../api_hooks.hpp" // For GetGameWindow and other functions
 #include <MinHook.h>
+
 
 namespace renodx::hooks {
 
@@ -51,57 +52,54 @@ static std::atomic<bool> g_message_hooks_installed{false};
 static POINT s_last_cursor_position = {};
 static RECT s_last_clip_cursor = {};
 
-
 // Hook statistics array
 HookCallStats g_hook_stats[HOOK_COUNT];
 
 // Hook names for display
-static const char* g_hook_names[HOOK_COUNT] = {
-    "GetMessageA",
-    "GetMessageW",
-    "PeekMessageA",
-    "PeekMessageW",
-    "PostMessageA",
-    "PostMessageW",
-    "GetKeyboardState",
-    "ClipCursor",
-    "GetCursorPos",
-    "SetCursorPos",
-    "GetKeyState",
-    "GetAsyncKeyState",
-    "SetWindowsHookExA",
-    "SetWindowsHookExW",
-    "UnhookWindowsHookEx",
-    "GetRawInputBuffer",
-    "TranslateMessage",
-    "DispatchMessageA",
-    "DispatchMessageW",
-    "GetRawInputData",
-    "RegisterRawInputDevices",
-    "VkKeyScan",
-    "VkKeyScanEx",
-    "ToAscii",
-    "ToAsciiEx",
-    "ToUnicode",
-    "ToUnicodeEx",
-    "GetKeyNameTextA",
-    "GetKeyNameTextW",
-    "SendInput",
-    "keybd_event",
-    "mouse_event",
-    "MapVirtualKey",
-    "MapVirtualKeyEx",
-    "XInputGetState",
-    "XInputGetStateEx",
-    "DirectInputCreateA",
-    "DirectInputCreateW",
-    "DirectInputCreateEx",
-    "DirectInput8Create",
-    "Sleep",
-    "SleepEx",
-    "WaitForSingleObject",
-    "WaitForMultipleObjects"
-};
+static const char *g_hook_names[HOOK_COUNT] = {"GetMessageA",
+                                               "GetMessageW",
+                                               "PeekMessageA",
+                                               "PeekMessageW",
+                                               "PostMessageA",
+                                               "PostMessageW",
+                                               "GetKeyboardState",
+                                               "ClipCursor",
+                                               "GetCursorPos",
+                                               "SetCursorPos",
+                                               "GetKeyState",
+                                               "GetAsyncKeyState",
+                                               "SetWindowsHookExA",
+                                               "SetWindowsHookExW",
+                                               "UnhookWindowsHookEx",
+                                               "GetRawInputBuffer",
+                                               "TranslateMessage",
+                                               "DispatchMessageA",
+                                               "DispatchMessageW",
+                                               "GetRawInputData",
+                                               "RegisterRawInputDevices",
+                                               "VkKeyScan",
+                                               "VkKeyScanEx",
+                                               "ToAscii",
+                                               "ToAsciiEx",
+                                               "ToUnicode",
+                                               "ToUnicodeEx",
+                                               "GetKeyNameTextA",
+                                               "GetKeyNameTextW",
+                                               "SendInput",
+                                               "keybd_event",
+                                               "mouse_event",
+                                               "MapVirtualKey",
+                                               "MapVirtualKeyEx",
+                                               "XInputGetState",
+                                               "XInputGetStateEx",
+                                               "DirectInputCreateA",
+                                               "DirectInputCreateW",
+                                               "DirectInputCreateEx",
+                                               "DirectInput8Create",
+                                               "Sleep",
+                                               "SleepEx",
+                                               "WaitForSingleObject",
+                                               "WaitForMultipleObjects"};
 
 // Helper function to determine if we should intercept messages
 bool ShouldInterceptMessage(HWND hWnd, UINT uMsg) {
@@ -131,21 +129,21 @@ void ProcessInterceptedMessage(LPMSG lpMsg) {
     }
 
     // Log message details for debugging
-    //LogInfo("Intercepted message: HWND=0x%p, Msg=0x%04X, WParam=0x%08X, LParam=0x%08X",
+    // LogInfo("Intercepted message: HWND=0x%p, Msg=0x%04X, WParam=0x%08X, LParam=0x%08X",
     //        lpMsg->hwnd, lpMsg->message, lpMsg->wParam, lpMsg->lParam);
 
     // Handle specific messages if needed
     switch (lpMsg->message) {
-        case WM_ACTIVATE:
-        case WM_ACTIVATEAPP:
-        case WM_SETFOCUS:
-        case WM_KILLFOCUS:
-            // These messages might affect rendering, so we intercept them
-            LogInfo("Intercepted focus/activation message: 0x%04X", lpMsg->message);
-            break;
-        default:
-            // For other messages, we just log them
-            break;
+    case WM_ACTIVATE:
+    case WM_ACTIVATEAPP:
+    case WM_SETFOCUS:
+    case WM_KILLFOCUS:
+        // These messages might affect rendering, so we intercept them
+        LogInfo("Intercepted focus/activation message: 0x%04X", lpMsg->message);
+        break;
+    default:
+        // For other messages, we just log them
+        break;
     }
 }
 
@@ -167,33 +165,33 @@ bool ShouldSuppressMessage(HWND hWnd, UINT uMsg) {
         // Check if it's an input message that should be blocked
         // Only block DOWN events, allow UP events to clear stuck keys/buttons
         switch (uMsg) {
-            // Keyboard DOWN messages only
-            case WM_KEYDOWN:
-            case WM_SYSKEYDOWN:
-            case WM_CHAR:
-            case WM_SYSCHAR:
-            case WM_DEADCHAR:
-            case WM_SYSDEADCHAR:
-            // Mouse DOWN messages only
-            case WM_LBUTTONDOWN:
-            case WM_RBUTTONDOWN:
-            case WM_MBUTTONDOWN:
-            case WM_XBUTTONDOWN:
-            case WM_MOUSEMOVE:
-            case WM_MOUSEWHEEL:
-            case WM_MOUSEHWHEEL:
-            // Cursor messages
-            case WM_SETCURSOR:
-                return true;
-            // Allow UP events to pass through to clear stuck keys/buttons
-            case WM_KEYUP:
-            case WM_SYSKEYUP:
-            case WM_LBUTTONUP:
-            case WM_RBUTTONUP:
-            case WM_MBUTTONUP:
-            case WM_XBUTTONUP:
-            default:
-                return false;
+        // Keyboard DOWN messages only
+        case WM_KEYDOWN:
+        case WM_SYSKEYDOWN:
+        case WM_CHAR:
+        case WM_SYSCHAR:
+        case WM_DEADCHAR:
+        case WM_SYSDEADCHAR:
+        // Mouse DOWN messages only
+        case WM_LBUTTONDOWN:
+        case WM_RBUTTONDOWN:
+        case WM_MBUTTONDOWN:
+        case WM_XBUTTONDOWN:
+        case WM_MOUSEMOVE:
+        case WM_MOUSEWHEEL:
+        case WM_MOUSEHWHEEL:
+        // Cursor messages
+        case WM_SETCURSOR:
+            return true;
+        // Allow UP events to pass through to clear stuck keys/buttons
+        case WM_KEYUP:
+        case WM_SYSKEYUP:
+        case WM_LBUTTONUP:
+        case WM_RBUTTONUP:
+        case WM_MBUTTONUP:
+        case WM_XBUTTONUP:
+        default:
+            return false;
         }
     }
 
@@ -212,8 +210,8 @@ void SuppressMessage(LPMSG lpMsg) {
 
     // Only log every 100th suppressed message to avoid spam
     if (count % 100 == 0) {
-        LogInfo("Suppressed input message: HWND=0x%p, Msg=0x%04X, WParam=0x%08X, LParam=0x%08X",
-                lpMsg->hwnd, lpMsg->message, lpMsg->wParam, lpMsg->lParam);
+        LogInfo("Suppressed input message: HWND=0x%p, Msg=0x%04X, WParam=0x%08X, LParam=0x%08X", lpMsg->hwnd,
+                lpMsg->message, lpMsg->wParam, lpMsg->lParam);
     }
 
     // For input messages, we can either:
@@ -230,7 +228,7 @@ void SuppressMessage(LPMSG lpMsg) {
 
 // Suppress Microsoft extension warnings for MinHook function pointer conversions
 #pragma warning(push)
-#pragma warning(disable: 4191) // 'type cast': unsafe conversion from 'function_pointer' to 'data_pointer'
+#pragma warning(disable : 4191) // 'type cast': unsafe conversion from 'function_pointer' to 'data_pointer'
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wmicrosoft-cast"
 
@@ -240,9 +238,8 @@ BOOL WINAPI GetMessageA_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT 
     g_hook_stats[HOOK_GetMessageA].increment_total();
 
     // Call original function first
-    BOOL result = GetMessageA_Original ?
-        GetMessageA_Original(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax) :
-        GetMessageA(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax);
+    BOOL result = GetMessageA_Original ? GetMessageA_Original(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax)
+                                       : GetMessageA(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax);
 
     // If we got a message
     if (result > 0 && lpMsg != nullptr) {
@@ -267,9 +264,8 @@ BOOL WINAPI GetMessageW_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT 
     g_hook_stats[HOOK_GetMessageW].increment_total();
 
     // Call original function first
-    BOOL result = GetMessageW_Original ?
-        GetMessageW_Original(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax) :
-        GetMessageW(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax);
+    BOOL result = GetMessageW_Original ? GetMessageW_Original(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax)
+                                       : GetMessageW(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax);
 
     // If we got a message
     if (result > 0 && lpMsg != nullptr) {
@@ -291,9 +287,8 @@ BOOL WINAPI GetMessageW_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT 
 // Hooked PeekMessageA function
 BOOL WINAPI PeekMessageA_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax, UINT wRemoveMsg) {
     // Call original function first
-    BOOL result = PeekMessageA_Original ?
-        PeekMessageA_Original(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax, wRemoveMsg) :
-        PeekMessageA(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax, wRemoveMsg);
+    BOOL result = PeekMessageA_Original ? PeekMessageA_Original(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax, wRemoveMsg)
+                                        : PeekMessageA(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax, wRemoveMsg);
 
     // If we got a message
     if (result && lpMsg != nullptr) {
@@ -313,9 +308,8 @@ BOOL WINAPI PeekMessageA_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT
 // Hooked PeekMessageW function
 BOOL WINAPI PeekMessageW_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax, UINT wRemoveMsg) {
     // Call original function first
-    BOOL result = PeekMessageW_Original ?
-        PeekMessageW_Original(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax, wRemoveMsg) :
-        PeekMessageW(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax, wRemoveMsg);
+    BOOL result = PeekMessageW_Original ? PeekMessageW_Original(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax, wRemoveMsg)
+                                        : PeekMessageW(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax, wRemoveMsg);
 
     // If we got a message
     if (result && lpMsg != nullptr) {
@@ -342,8 +336,8 @@ BOOL WINAPI PostMessageA_Detour(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lPara
 
         // Only log every 100th suppressed message to avoid spam
         if (count % 100 == 0) {
-            LogInfo("Suppressed PostMessageA: HWND=0x%p, Msg=0x%04X, WParam=0x%08X, LParam=0x%08X",
-                    hWnd, Msg, wParam, lParam);
+            LogInfo("Suppressed PostMessageA: HWND=0x%p, Msg=0x%04X, WParam=0x%08X, LParam=0x%08X", hWnd, Msg, wParam,
+                    lParam);
         }
 
         // Return TRUE to indicate the message was "processed" (blocked)
@@ -351,9 +345,8 @@ BOOL WINAPI PostMessageA_Detour(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lPara
     }
 
     // Call original function
-    return PostMessageA_Original ?
-        PostMessageA_Original(hWnd, Msg, wParam, lParam) :
-        PostMessageA(hWnd, Msg, wParam, lParam);
+    return PostMessageA_Original ? PostMessageA_Original(hWnd, Msg, wParam, lParam)
+                                 : PostMessageA(hWnd, Msg, wParam, lParam);
 }
 
 // Hooked PostMessageW function
@@ -366,8 +359,8 @@ BOOL WINAPI PostMessageW_Detour(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lPara
 
         // Only log every 100th suppressed message to avoid spam
         if (count % 100 == 0) {
-            LogInfo("Suppressed PostMessageW: HWND=0x%p, Msg=0x%04X, WParam=0x%08X, LParam=0x%08X",
-                    hWnd, Msg, wParam, lParam);
+            LogInfo("Suppressed PostMessageW: HWND=0x%p, Msg=0x%04X, WParam=0x%08X, LParam=0x%08X", hWnd, Msg, wParam,
+                    lParam);
         }
 
         // Return TRUE to indicate the message was "processed" (blocked)
@@ -375,17 +368,14 @@ BOOL WINAPI PostMessageW_Detour(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lPara
     }
 
     // Call original function
-    return PostMessageW_Original ?
-        PostMessageW_Original(hWnd, Msg, wParam, lParam) :
-        PostMessageW(hWnd, Msg, wParam, lParam);
+    return PostMessageW_Original ? PostMessageW_Original(hWnd, Msg, wParam, lParam)
+                                 : PostMessageW(hWnd, Msg, wParam, lParam);
 }
 
 // Hooked GetKeyboardState function
 BOOL WINAPI GetKeyboardState_Detour(PBYTE lpKeyState) {
     // Call original function first
-    BOOL result = GetKeyboardState_Original ?
-        GetKeyboardState_Original(lpKeyState) :
-        GetKeyboardState(lpKeyState);
+    BOOL result = GetKeyboardState_Original ? GetKeyboardState_Original(lpKeyState) : GetKeyboardState(lpKeyState);
 
     // If input blocking is enabled and we got valid key state data
     if (result && lpKeyState != nullptr && s_block_input_without_reshade.load()) {
@@ -405,7 +395,7 @@ BOOL WINAPI GetKeyboardState_Detour(PBYTE lpKeyState) {
 }
 
 // Hooked ClipCursor function
-BOOL WINAPI ClipCursor_Detour(const RECT* lpRect) {
+BOOL WINAPI ClipCursor_Detour(const RECT *lpRect) {
     // Store the clip rectangle for reference
     s_last_clip_cursor = (lpRect != nullptr) ? *lpRect : RECT{};
 
@@ -416,9 +406,7 @@ BOOL WINAPI ClipCursor_Detour(const RECT* lpRect) {
     }
 
     // Call original function
-    return ClipCursor_Original ?
-        ClipCursor_Original(lpRect) :
-        ClipCursor(lpRect);
+    return ClipCursor_Original ? ClipCursor_Original(lpRect) : ClipCursor(lpRect);
 }
 
 // Hooked GetCursorPos function
@@ -441,9 +429,7 @@ BOOL WINAPI GetCursorPos_Detour(LPPOINT lpPoint) {
     }
 
     // Call original function
-    BOOL result = GetCursorPos_Original ?
-        GetCursorPos_Original(lpPoint) :
-        GetCursorPos(lpPoint);
+    BOOL result = GetCursorPos_Original ? GetCursorPos_Original(lpPoint) : GetCursorPos(lpPoint);
 
     // Update last known cursor position
     if (result && lpPoint != nullptr) {
@@ -476,9 +462,7 @@ BOOL WINAPI SetCursorPos_Detour(int X, int Y) {
     }
 
     // Call original function
-    return SetCursorPos_Original ?
-        SetCursorPos_Original(X, Y) :
-        SetCursorPos(X, Y);
+    return SetCursorPos_Original ? SetCursorPos_Original(X, Y) : SetCursorPos(X, Y);
 }
 
 // Hooked GetKeyState function
@@ -489,8 +473,7 @@ SHORT WINAPI GetKeyState_Detour(int vKey) {
     // If input blocking is enabled, return 0 for all keys
     if (s_block_input_without_reshade.load()) {
         // Block all keyboard keys (0x08-0xFF) and mouse buttons
-        if ((vKey >= 0x08 && vKey <= 0xFF) ||
-            (vKey >= VK_LBUTTON && vKey <= VK_XBUTTON2)) {
+        if ((vKey >= 0x08 && vKey <= 0xFF) || (vKey >= VK_LBUTTON && vKey <= VK_XBUTTON2)) {
             return 0; // Block input
         }
     }
@@ -499,9 +482,7 @@ SHORT WINAPI GetKeyState_Detour(int vKey) {
     g_hook_stats[HOOK_GetKeyState].increment_unsuppressed();
 
     // Call original function
-    return GetKeyState_Original ?
-        GetKeyState_Original(vKey) :
-        GetKeyState(vKey);
+    return GetKeyState_Original ? GetKeyState_Original(vKey) : GetKeyState(vKey);
 }
 
 // Hooked GetAsyncKeyState function
@@ -512,8 +493,7 @@ SHORT WINAPI GetAsyncKeyState_Detour(int vKey) {
     // If input blocking is enabled, return 0 for all keys
     if (s_block_input_without_reshade.load()) {
         // Block all keyboard keys (0x08-0xFF) and mouse buttons
-        if ((vKey >= 0x08 && vKey <= 0xFF) ||
-            (vKey >= VK_LBUTTON && vKey <= VK_XBUTTON2)) {
+        if ((vKey >= 0x08 && vKey <= 0xFF) || (vKey >= VK_LBUTTON && vKey <= VK_XBUTTON2)) {
             return 0; // Block input
         }
     }
@@ -522,17 +502,14 @@ SHORT WINAPI GetAsyncKeyState_Detour(int vKey) {
     g_hook_stats[HOOK_GetAsyncKeyState].increment_unsuppressed();
 
     // Call original function
-    return GetAsyncKeyState_Original ?
-        GetAsyncKeyState_Original(vKey) :
-        GetAsyncKeyState(vKey);
+    return GetAsyncKeyState_Original ? GetAsyncKeyState_Original(vKey) : GetAsyncKeyState(vKey);
 }
 
 // Hooked SetWindowsHookExA function
 HHOOK WINAPI SetWindowsHookExA_Detour(int idHook, HOOKPROC lpfn, HINSTANCE hmod, DWORD dwThreadId) {
     // Call original function first
-    HHOOK result = SetWindowsHookExA_Original ?
-        SetWindowsHookExA_Original(idHook, lpfn, hmod, dwThreadId) :
-        SetWindowsHookExA(idHook, lpfn, hmod, dwThreadId);
+    HHOOK result = SetWindowsHookExA_Original ? SetWindowsHookExA_Original(idHook, lpfn, hmod, dwThreadId)
+                                              : SetWindowsHookExA(idHook, lpfn, hmod, dwThreadId);
 
     // Log hook installation for debugging
     if (result != nullptr) {
@@ -545,9 +522,8 @@ HHOOK WINAPI SetWindowsHookExA_Detour(int idHook, HOOKPROC lpfn, HINSTANCE hmod,
 // Hooked SetWindowsHookExW function
 HHOOK WINAPI SetWindowsHookExW_Detour(int idHook, HOOKPROC lpfn, HINSTANCE hmod, DWORD dwThreadId) {
     // Call original function first
-    HHOOK result = SetWindowsHookExW_Original ?
-        SetWindowsHookExW_Original(idHook, lpfn, hmod, dwThreadId) :
-        SetWindowsHookExW(idHook, lpfn, hmod, dwThreadId);
+    HHOOK result = SetWindowsHookExW_Original ? SetWindowsHookExW_Original(idHook, lpfn, hmod, dwThreadId)
+                                              : SetWindowsHookExW(idHook, lpfn, hmod, dwThreadId);
 
     // Log hook installation for debugging
     if (result != nullptr) {
@@ -563,9 +539,7 @@ BOOL WINAPI UnhookWindowsHookEx_Detour(HHOOK hhk) {
     LogInfo("UnhookWindowsHookEx called: hhk=0x%p", hhk);
 
     // Call original function
-    return UnhookWindowsHookEx_Original ?
-        UnhookWindowsHookEx_Original(hhk) :
-        UnhookWindowsHookEx(hhk);
+    return UnhookWindowsHookEx_Original ? UnhookWindowsHookEx_Original(hhk) : UnhookWindowsHookEx(hhk);
 }
 
 // Hooked GetRawInputBuffer function
@@ -574,9 +548,8 @@ UINT WINAPI GetRawInputBuffer_Detour(PRAWINPUT pData, PUINT pcbSize, UINT cbSize
     g_hook_stats[HOOK_GetRawInputBuffer].increment_total();
 
     // Call original function first
-    UINT result = GetRawInputBuffer_Original ?
-        GetRawInputBuffer_Original(pData, pcbSize, cbSizeHeader) :
-        GetRawInputBuffer(pData, pcbSize, cbSizeHeader);
+    UINT result = GetRawInputBuffer_Original ? GetRawInputBuffer_Original(pData, pcbSize, cbSizeHeader)
+                                             : GetRawInputBuffer(pData, pcbSize, cbSizeHeader);
 
     // If input blocking is enabled and we got data, replace it
     if (result > 0 && pData != nullptr && pcbSize != nullptr && s_block_input_without_reshade.load()) {
@@ -606,15 +579,17 @@ UINT WINAPI GetRawInputBuffer_Detour(PRAWINPUT pData, PUINT pcbSize, UINT cbSize
                         current->header.dwType = RIM_TYPEKEYBOARD;
                         current->header.dwSize = sizeof(RAWINPUT);
                         current->data.keyboard.MakeCode = 0; // No scan code
-                        current->data.keyboard.Flags = 0; // Neutral flags - no key event
+                        current->data.keyboard.Flags = 0;    // Neutral flags - no key event
                         current->data.keyboard.Reserved = 0;
-                        current->data.keyboard.VKey = 0; // No virtual key
+                        current->data.keyboard.VKey = 0;    // No virtual key
                         current->data.keyboard.Message = 0; // No message
                         current->data.keyboard.ExtraInformation = 0;
                     }
                 } else if (current->header.dwType == RIM_TYPEMOUSE) {
                     // Only block mouse DOWN events, allow UP events to clear stuck buttons
-                    if (current->data.mouse.usButtonFlags & (RI_MOUSE_LEFT_BUTTON_UP | RI_MOUSE_RIGHT_BUTTON_UP | RI_MOUSE_MIDDLE_BUTTON_UP | RI_MOUSE_BUTTON_4_UP | RI_MOUSE_BUTTON_5_UP)) {
+                    if (current->data.mouse.usButtonFlags &
+                        (RI_MOUSE_LEFT_BUTTON_UP | RI_MOUSE_RIGHT_BUTTON_UP | RI_MOUSE_MIDDLE_BUTTON_UP |
+                         RI_MOUSE_BUTTON_4_UP | RI_MOUSE_BUTTON_5_UP)) {
                         // This is a mouse button UP event, don't block it
                         should_replace = false;
                     } else {
@@ -652,7 +627,7 @@ UINT WINAPI GetRawInputBuffer_Detour(PRAWINPUT pData, PUINT pcbSize, UINT cbSize
 }
 
 // Hooked TranslateMessage function
-BOOL WINAPI TranslateMessage_Detour(const MSG* lpMsg) {
+BOOL WINAPI TranslateMessage_Detour(const MSG *lpMsg) {
     // If input blocking is enabled, don't translate messages that should be blocked
     if (s_block_input_without_reshade.load() && lpMsg != nullptr) {
         // Check if this message should be suppressed
@@ -663,13 +638,11 @@ BOOL WINAPI TranslateMessage_Detour(const MSG* lpMsg) {
     }
 
     // Call original function
-    return TranslateMessage_Original ?
-        TranslateMessage_Original(lpMsg) :
-        TranslateMessage(lpMsg);
+    return TranslateMessage_Original ? TranslateMessage_Original(lpMsg) : TranslateMessage(lpMsg);
 }
 
 // Hooked DispatchMessageA function
-LRESULT WINAPI DispatchMessageA_Detour(const MSG* lpMsg) {
+LRESULT WINAPI DispatchMessageA_Detour(const MSG *lpMsg) {
     // If input blocking is enabled, don't dispatch messages that should be blocked
     if (s_block_input_without_reshade.load() && lpMsg != nullptr) {
         // Check if this message should be suppressed
@@ -680,13 +653,11 @@ LRESULT WINAPI DispatchMessageA_Detour(const MSG* lpMsg) {
     }
 
     // Call original function
-    return DispatchMessageA_Original ?
-        DispatchMessageA_Original(lpMsg) :
-        DispatchMessageA(lpMsg);
+    return DispatchMessageA_Original ? DispatchMessageA_Original(lpMsg) : DispatchMessageA(lpMsg);
 }
 
 // Hooked DispatchMessageW function
-LRESULT WINAPI DispatchMessageW_Detour(const MSG* lpMsg) {
+LRESULT WINAPI DispatchMessageW_Detour(const MSG *lpMsg) {
     // If input blocking is enabled, don't dispatch messages that should be blocked
     if (s_block_input_without_reshade.load() && lpMsg != nullptr) {
         // Check if this message should be suppressed
@@ -697,26 +668,25 @@ LRESULT WINAPI DispatchMessageW_Detour(const MSG* lpMsg) {
     }
 
     // Call original function
-    return DispatchMessageW_Original ?
-        DispatchMessageW_Original(lpMsg) :
-        DispatchMessageW(lpMsg);
+    return DispatchMessageW_Original ? DispatchMessageW_Original(lpMsg) : DispatchMessageW(lpMsg);
 }
 
 // Hooked GetRawInputData function
-UINT WINAPI GetRawInputData_Detour(HRAWINPUT hRawInput, UINT uiCommand, LPVOID pData, PUINT pcbSize, UINT cbSizeHeader) {
+UINT WINAPI GetRawInputData_Detour(HRAWINPUT hRawInput, UINT uiCommand, LPVOID pData, PUINT pcbSize,
+                                   UINT cbSizeHeader) {
     // Track total calls
     g_hook_stats[HOOK_GetRawInputData].increment_total();
 
     // Call original function first
-    UINT result = GetRawInputData_Original ?
-        GetRawInputData_Original(hRawInput, uiCommand, pData, pcbSize, cbSizeHeader) :
-        GetRawInputData(hRawInput, uiCommand, pData, pcbSize, cbSizeHeader);
+    UINT result = GetRawInputData_Original
+                      ? GetRawInputData_Original(hRawInput, uiCommand, pData, pcbSize, cbSizeHeader)
+                      : GetRawInputData(hRawInput, uiCommand, pData, pcbSize, cbSizeHeader);
 
     // If input blocking is enabled and we got data, filter it
     if (result != UINT(-1) && pData != nullptr && pcbSize != nullptr && s_block_input_without_reshade.load()) {
         // For raw input data, we need to check if it's keyboard or mouse input
         if (uiCommand == RID_INPUT) {
-            RAWINPUT* rawInput = static_cast<RAWINPUT*>(pData);
+            RAWINPUT *rawInput = static_cast<RAWINPUT *>(pData);
 
             // Only block DOWN events, allow UP events to clear stuck keys/buttons
             if (rawInput->header.dwType == RIM_TYPEKEYBOARD) {
@@ -728,15 +698,17 @@ UINT WINAPI GetRawInputData_Detour(HRAWINPUT hRawInput, UINT uiCommand, LPVOID p
                     rawInput->header.dwType = RIM_TYPEKEYBOARD;
                     rawInput->header.dwSize = sizeof(RAWINPUT);
                     rawInput->data.keyboard.MakeCode = 0; // No scan code
-                    rawInput->data.keyboard.Flags = 0; // Neutral flags - no key event
+                    rawInput->data.keyboard.Flags = 0;    // Neutral flags - no key event
                     rawInput->data.keyboard.Reserved = 0;
-                    rawInput->data.keyboard.VKey = 0; // No virtual key
+                    rawInput->data.keyboard.VKey = 0;    // No virtual key
                     rawInput->data.keyboard.Message = 0; // No message
                     rawInput->data.keyboard.ExtraInformation = 0;
                 }
             } else if (rawInput->header.dwType == RIM_TYPEMOUSE) {
                 // Only block mouse DOWN events, allow UP events to clear stuck buttons
-                if (rawInput->data.mouse.usButtonFlags & (RI_MOUSE_LEFT_BUTTON_UP | RI_MOUSE_RIGHT_BUTTON_UP | RI_MOUSE_MIDDLE_BUTTON_UP | RI_MOUSE_BUTTON_4_UP | RI_MOUSE_BUTTON_5_UP)) {
+                if (rawInput->data.mouse.usButtonFlags &
+                    (RI_MOUSE_LEFT_BUTTON_UP | RI_MOUSE_RIGHT_BUTTON_UP | RI_MOUSE_MIDDLE_BUTTON_UP |
+                     RI_MOUSE_BUTTON_4_UP | RI_MOUSE_BUTTON_5_UP)) {
                     // This is a mouse button UP event, don't block it - let it pass through
                 } else {
                     // This is a mouse DOWN event or movement, block it
@@ -765,16 +737,15 @@ BOOL WINAPI RegisterRawInputDevices_Detour(PCRAWINPUTDEVICE pRawInputDevices, UI
     if (pRawInputDevices != nullptr && uiNumDevices > 0) {
         LogInfo("RegisterRawInputDevices called: %u devices", uiNumDevices);
         for (UINT i = 0; i < uiNumDevices; ++i) {
-            LogInfo("  Device %u: UsagePage=0x%04X, Usage=0x%04X, Flags=0x%08X, hwndTarget=0x%p",
-                    i, pRawInputDevices[i].usUsagePage, pRawInputDevices[i].usUsage,
-                    pRawInputDevices[i].dwFlags, pRawInputDevices[i].hwndTarget);
+            LogInfo("  Device %u: UsagePage=0x%04X, Usage=0x%04X, Flags=0x%08X, hwndTarget=0x%p", i,
+                    pRawInputDevices[i].usUsagePage, pRawInputDevices[i].usUsage, pRawInputDevices[i].dwFlags,
+                    pRawInputDevices[i].hwndTarget);
         }
     }
 
     // Call original function
-    return RegisterRawInputDevices_Original ?
-        RegisterRawInputDevices_Original(pRawInputDevices, uiNumDevices, cbSize) :
-        RegisterRawInputDevices(pRawInputDevices, uiNumDevices, cbSize);
+    return RegisterRawInputDevices_Original ? RegisterRawInputDevices_Original(pRawInputDevices, uiNumDevices, cbSize)
+                                            : RegisterRawInputDevices(pRawInputDevices, uiNumDevices, cbSize);
 }
 
 // Hooked VkKeyScan function
@@ -785,9 +756,7 @@ SHORT WINAPI VkKeyScan_Detour(CHAR ch) {
     }
 
     // Call original function
-    return VkKeyScan_Original ?
-        VkKeyScan_Original(ch) :
-        VkKeyScan(ch);
+    return VkKeyScan_Original ? VkKeyScan_Original(ch) : VkKeyScan(ch);
 }
 
 // Hooked VkKeyScanEx function
@@ -798,61 +767,59 @@ SHORT WINAPI VkKeyScanEx_Detour(CHAR ch, HKL dwhkl) {
     }
 
     // Call original function
-    return VkKeyScanEx_Original ?
-        VkKeyScanEx_Original(ch, dwhkl) :
-        VkKeyScanEx(ch, dwhkl);
+    return VkKeyScanEx_Original ? VkKeyScanEx_Original(ch, dwhkl) : VkKeyScanEx(ch, dwhkl);
 }
 
 // Hooked ToAscii function
-int WINAPI ToAscii_Detour(UINT uVirtKey, UINT uScanCode, const BYTE* lpKeyState, LPWORD lpChar, UINT uFlags) {
+int WINAPI ToAscii_Detour(UINT uVirtKey, UINT uScanCode, const BYTE *lpKeyState, LPWORD lpChar, UINT uFlags) {
     // If input blocking is enabled, return 0 to indicate no character generated
     if (s_block_input_without_reshade.load()) {
         return 0; // No character generated
     }
 
     // Call original function
-    return ToAscii_Original ?
-        ToAscii_Original(uVirtKey, uScanCode, lpKeyState, lpChar, uFlags) :
-        ToAscii(uVirtKey, uScanCode, lpKeyState, lpChar, uFlags);
+    return ToAscii_Original ? ToAscii_Original(uVirtKey, uScanCode, lpKeyState, lpChar, uFlags)
+                            : ToAscii(uVirtKey, uScanCode, lpKeyState, lpChar, uFlags);
 }
 
 // Hooked ToAsciiEx function
-int WINAPI ToAsciiEx_Detour(UINT uVirtKey, UINT uScanCode, const BYTE* lpKeyState, LPWORD lpChar, UINT uFlags, HKL dwhkl) {
+int WINAPI ToAsciiEx_Detour(UINT uVirtKey, UINT uScanCode, const BYTE *lpKeyState, LPWORD lpChar, UINT uFlags,
+                            HKL dwhkl) {
     // If input blocking is enabled, return 0 to indicate no character generated
     if (s_block_input_without_reshade.load()) {
         return 0; // No character generated
     }
 
     // Call original function
-    return ToAsciiEx_Original ?
-        ToAsciiEx_Original(uVirtKey, uScanCode, lpKeyState, lpChar, uFlags, dwhkl) :
-        ToAsciiEx(uVirtKey, uScanCode, lpKeyState, lpChar, uFlags, dwhkl);
+    return ToAsciiEx_Original ? ToAsciiEx_Original(uVirtKey, uScanCode, lpKeyState, lpChar, uFlags, dwhkl)
+                              : ToAsciiEx(uVirtKey, uScanCode, lpKeyState, lpChar, uFlags, dwhkl);
 }
 
 // Hooked ToUnicode function
-int WINAPI ToUnicode_Detour(UINT wVirtKey, UINT wScanCode, const BYTE* lpKeyState, LPWSTR pwszBuff, int cchBuff, UINT wFlags) {
+int WINAPI ToUnicode_Detour(UINT wVirtKey, UINT wScanCode, const BYTE *lpKeyState, LPWSTR pwszBuff, int cchBuff,
+                            UINT wFlags) {
     // If input blocking is enabled, return 0 to indicate no character generated
     if (s_block_input_without_reshade.load()) {
         return 0; // No character generated
     }
 
     // Call original function
-    return ToUnicode_Original ?
-        ToUnicode_Original(wVirtKey, wScanCode, lpKeyState, pwszBuff, cchBuff, wFlags) :
-        ToUnicode(wVirtKey, wScanCode, lpKeyState, pwszBuff, cchBuff, wFlags);
+    return ToUnicode_Original ? ToUnicode_Original(wVirtKey, wScanCode, lpKeyState, pwszBuff, cchBuff, wFlags)
+                              : ToUnicode(wVirtKey, wScanCode, lpKeyState, pwszBuff, cchBuff, wFlags);
 }
 
 // Hooked ToUnicodeEx function
-int WINAPI ToUnicodeEx_Detour(UINT wVirtKey, UINT wScanCode, const BYTE* lpKeyState, LPWSTR pwszBuff, int cchBuff, UINT wFlags, HKL dwhkl) {
+int WINAPI ToUnicodeEx_Detour(UINT wVirtKey, UINT wScanCode, const BYTE *lpKeyState, LPWSTR pwszBuff, int cchBuff,
+                              UINT wFlags, HKL dwhkl) {
     // If input blocking is enabled, return 0 to indicate no character generated
     if (s_block_input_without_reshade.load()) {
         return 0; // No character generated
     }
 
     // Call original function
-    return ToUnicodeEx_Original ?
-        ToUnicodeEx_Original(wVirtKey, wScanCode, lpKeyState, pwszBuff, cchBuff, wFlags, dwhkl) :
-        ToUnicodeEx(wVirtKey, wScanCode, lpKeyState, pwszBuff, cchBuff, wFlags, dwhkl);
+    return ToUnicodeEx_Original
+               ? ToUnicodeEx_Original(wVirtKey, wScanCode, lpKeyState, pwszBuff, cchBuff, wFlags, dwhkl)
+               : ToUnicodeEx(wVirtKey, wScanCode, lpKeyState, pwszBuff, cchBuff, wFlags, dwhkl);
 }
 
 // Hooked GetKeyNameTextA function
@@ -869,9 +836,8 @@ int WINAPI GetKeyNameTextA_Detour(LONG lParam, LPSTR lpString, int cchSize) {
     }
 
     // Call original function
-    return GetKeyNameTextA_Original ?
-        GetKeyNameTextA_Original(lParam, lpString, cchSize) :
-        GetKeyNameTextA(lParam, lpString, cchSize);
+    return GetKeyNameTextA_Original ? GetKeyNameTextA_Original(lParam, lpString, cchSize)
+                                    : GetKeyNameTextA(lParam, lpString, cchSize);
 }
 
 // Hooked GetKeyNameTextW function
@@ -885,9 +851,8 @@ int WINAPI GetKeyNameTextW_Detour(LONG lParam, LPWSTR lpString, int cchSize) {
     }
 
     // Call original function
-    return GetKeyNameTextW_Original ?
-        GetKeyNameTextW_Original(lParam, lpString, cchSize) :
-        GetKeyNameTextW(lParam, lpString, cchSize);
+    return GetKeyNameTextW_Original ? GetKeyNameTextW_Original(lParam, lpString, cchSize)
+                                    : GetKeyNameTextW(lParam, lpString, cchSize);
 }
 
 // Hooked SendInput function
@@ -907,7 +872,8 @@ UINT WINAPI SendInput_Detour(UINT nInputs, LPINPUT pInputs, int cbSize) {
                 }
             } else if (pInputs[i].type == INPUT_MOUSE) {
                 // Block mouse DOWN events, allow UP events
-                if (pInputs[i].mi.dwFlags & (MOUSEEVENTF_LEFTDOWN | MOUSEEVENTF_RIGHTDOWN | MOUSEEVENTF_MIDDLEDOWN | MOUSEEVENTF_XDOWN)) {
+                if (pInputs[i].mi.dwFlags &
+                    (MOUSEEVENTF_LEFTDOWN | MOUSEEVENTF_RIGHTDOWN | MOUSEEVENTF_MIDDLEDOWN | MOUSEEVENTF_XDOWN)) {
                     should_block = true; // This is a mouse DOWN event
                 }
             }
@@ -941,9 +907,7 @@ UINT WINAPI SendInput_Detour(UINT nInputs, LPINPUT pInputs, int cbSize) {
     }
 
     // Call original function with potentially filtered inputs
-    return SendInput_Original ?
-        SendInput_Original(nInputs, pInputs, cbSize) :
-        SendInput(nInputs, pInputs, cbSize);
+    return SendInput_Original ? SendInput_Original(nInputs, pInputs, cbSize) : SendInput(nInputs, pInputs, cbSize);
 }
 
 // Hooked keybd_event function
@@ -1004,9 +968,7 @@ UINT WINAPI MapVirtualKey_Detour(UINT uCode, UINT uMapType) {
     }
 
     // Call original function
-    return MapVirtualKey_Original ?
-        MapVirtualKey_Original(uCode, uMapType) :
-        MapVirtualKey(uCode, uMapType);
+    return MapVirtualKey_Original ? MapVirtualKey_Original(uCode, uMapType) : MapVirtualKey(uCode, uMapType);
 }
 
 // Hooked MapVirtualKeyEx function
@@ -1017,9 +979,8 @@ UINT WINAPI MapVirtualKeyEx_Detour(UINT uCode, UINT uMapType, HKL dwhkl) {
     }
 
     // Call original function
-    return MapVirtualKeyEx_Original ?
-        MapVirtualKeyEx_Original(uCode, uMapType, dwhkl) :
-        MapVirtualKeyEx(uCode, uMapType, dwhkl);
+    return MapVirtualKeyEx_Original ? MapVirtualKeyEx_Original(uCode, uMapType, dwhkl)
+                                    : MapVirtualKeyEx(uCode, uMapType, dwhkl);
 }
 
 // Install Windows message hooks
@@ -1043,205 +1004,207 @@ bool InstallWindowsMessageHooks() {
     }
 
     // Hook GetMessageA
-    if (MH_CreateHook(GetMessageA, GetMessageA_Detour, (LPVOID*)&GetMessageA_Original) != MH_OK) {
+    if (MH_CreateHook(GetMessageA, GetMessageA_Detour, (LPVOID *)&GetMessageA_Original) != MH_OK) {
         LogError("Failed to create GetMessageA hook");
         return false;
     }
 
     // Hook GetMessageW
-    if (MH_CreateHook(GetMessageW, GetMessageW_Detour, (LPVOID*)&GetMessageW_Original) != MH_OK) {
+    if (MH_CreateHook(GetMessageW, GetMessageW_Detour, (LPVOID *)&GetMessageW_Original) != MH_OK) {
         LogError("Failed to create GetMessageW hook");
         return false;
     }
 
     // Hook PeekMessageA
-    if (MH_CreateHook(PeekMessageA, PeekMessageA_Detour, (LPVOID*)&PeekMessageA_Original) != MH_OK) {
+    if (MH_CreateHook(PeekMessageA, PeekMessageA_Detour, (LPVOID *)&PeekMessageA_Original) != MH_OK) {
         LogError("Failed to create PeekMessageA hook");
         return false;
     }
 
     // Hook PeekMessageW
-    if (MH_CreateHook(PeekMessageW, PeekMessageW_Detour, (LPVOID*)&PeekMessageW_Original) != MH_OK) {
+    if (MH_CreateHook(PeekMessageW, PeekMessageW_Detour, (LPVOID *)&PeekMessageW_Original) != MH_OK) {
         LogError("Failed to create PeekMessageW hook");
         return false;
     }
 
     // Hook PostMessageA
-    if (MH_CreateHook(PostMessageA, PostMessageA_Detour, (LPVOID*)&PostMessageA_Original) != MH_OK) {
+    if (MH_CreateHook(PostMessageA, PostMessageA_Detour, (LPVOID *)&PostMessageA_Original) != MH_OK) {
         LogError("Failed to create PostMessageA hook");
         return false;
     }
 
     // Hook PostMessageW
-    if (MH_CreateHook(PostMessageW, PostMessageW_Detour, (LPVOID*)&PostMessageW_Original) != MH_OK) {
+    if (MH_CreateHook(PostMessageW, PostMessageW_Detour, (LPVOID *)&PostMessageW_Original) != MH_OK) {
         LogError("Failed to create PostMessageW hook");
         return false;
     }
 
     // Hook GetKeyboardState
-    if (MH_CreateHook(GetKeyboardState, GetKeyboardState_Detour, (LPVOID*)&GetKeyboardState_Original) != MH_OK) {
+    if (MH_CreateHook(GetKeyboardState, GetKeyboardState_Detour, (LPVOID *)&GetKeyboardState_Original) != MH_OK) {
         LogError("Failed to create GetKeyboardState hook");
         return false;
     }
 
     // Hook ClipCursor
-    if (MH_CreateHook(ClipCursor, ClipCursor_Detour, (LPVOID*)&ClipCursor_Original) != MH_OK) {
+    if (MH_CreateHook(ClipCursor, ClipCursor_Detour, (LPVOID *)&ClipCursor_Original) != MH_OK) {
         LogError("Failed to create ClipCursor hook");
         return false;
     }
 
     // Hook GetCursorPos
-    if (MH_CreateHook(GetCursorPos, GetCursorPos_Detour, (LPVOID*)&GetCursorPos_Original) != MH_OK) {
+    if (MH_CreateHook(GetCursorPos, GetCursorPos_Detour, (LPVOID *)&GetCursorPos_Original) != MH_OK) {
         LogError("Failed to create GetCursorPos hook");
         return false;
     }
 
     // Hook SetCursorPos
-    if (MH_CreateHook(SetCursorPos, SetCursorPos_Detour, (LPVOID*)&SetCursorPos_Original) != MH_OK) {
+    if (MH_CreateHook(SetCursorPos, SetCursorPos_Detour, (LPVOID *)&SetCursorPos_Original) != MH_OK) {
         LogError("Failed to create SetCursorPos hook");
         return false;
     }
 
     // Hook GetKeyState
-    if (MH_CreateHook(GetKeyState, GetKeyState_Detour, (LPVOID*)&GetKeyState_Original) != MH_OK) {
+    if (MH_CreateHook(GetKeyState, GetKeyState_Detour, (LPVOID *)&GetKeyState_Original) != MH_OK) {
         LogError("Failed to create GetKeyState hook");
         return false;
     }
 
     // Hook GetAsyncKeyState
-    if (MH_CreateHook(GetAsyncKeyState, GetAsyncKeyState_Detour, (LPVOID*)&GetAsyncKeyState_Original) != MH_OK) {
+    if (MH_CreateHook(GetAsyncKeyState, GetAsyncKeyState_Detour, (LPVOID *)&GetAsyncKeyState_Original) != MH_OK) {
         LogError("Failed to create GetAsyncKeyState hook");
         return false;
     }
 
     // Hook SetWindowsHookExA
-    if (MH_CreateHook(SetWindowsHookExA, SetWindowsHookExA_Detour, (LPVOID*)&SetWindowsHookExA_Original) != MH_OK) {
+    if (MH_CreateHook(SetWindowsHookExA, SetWindowsHookExA_Detour, (LPVOID *)&SetWindowsHookExA_Original) != MH_OK) {
         LogError("Failed to create SetWindowsHookExA hook");
         return false;
     }
 
     // Hook SetWindowsHookExW
-    if (MH_CreateHook(SetWindowsHookExW, SetWindowsHookExW_Detour, (LPVOID*)&SetWindowsHookExW_Original) != MH_OK) {
+    if (MH_CreateHook(SetWindowsHookExW, SetWindowsHookExW_Detour, (LPVOID *)&SetWindowsHookExW_Original) != MH_OK) {
         LogError("Failed to create SetWindowsHookExW hook");
         return false;
     }
 
     // Hook UnhookWindowsHookEx
-    if (MH_CreateHook(UnhookWindowsHookEx, UnhookWindowsHookEx_Detour, (LPVOID*)&UnhookWindowsHookEx_Original) != MH_OK) {
+    if (MH_CreateHook(UnhookWindowsHookEx, UnhookWindowsHookEx_Detour, (LPVOID *)&UnhookWindowsHookEx_Original) !=
+        MH_OK) {
         LogError("Failed to create UnhookWindowsHookEx hook");
         return false;
     }
 
     // Hook GetRawInputBuffer
-    if (MH_CreateHook(GetRawInputBuffer, GetRawInputBuffer_Detour, (LPVOID*)&GetRawInputBuffer_Original) != MH_OK) {
+    if (MH_CreateHook(GetRawInputBuffer, GetRawInputBuffer_Detour, (LPVOID *)&GetRawInputBuffer_Original) != MH_OK) {
         LogError("Failed to create GetRawInputBuffer hook");
         return false;
     }
 
     // Hook TranslateMessage
-    if (MH_CreateHook(TranslateMessage, TranslateMessage_Detour, (LPVOID*)&TranslateMessage_Original) != MH_OK) {
+    if (MH_CreateHook(TranslateMessage, TranslateMessage_Detour, (LPVOID *)&TranslateMessage_Original) != MH_OK) {
         LogError("Failed to create TranslateMessage hook");
         return false;
     }
 
     // Hook DispatchMessageA
-    if (MH_CreateHook(DispatchMessageA, DispatchMessageA_Detour, (LPVOID*)&DispatchMessageA_Original) != MH_OK) {
+    if (MH_CreateHook(DispatchMessageA, DispatchMessageA_Detour, (LPVOID *)&DispatchMessageA_Original) != MH_OK) {
         LogError("Failed to create DispatchMessageA hook");
         return false;
     }
 
     // Hook DispatchMessageW
-    if (MH_CreateHook(DispatchMessageW, DispatchMessageW_Detour, (LPVOID*)&DispatchMessageW_Original) != MH_OK) {
+    if (MH_CreateHook(DispatchMessageW, DispatchMessageW_Detour, (LPVOID *)&DispatchMessageW_Original) != MH_OK) {
         LogError("Failed to create DispatchMessageW hook");
         return false;
     }
 
     // Hook GetRawInputData
-    if (MH_CreateHook(GetRawInputData, GetRawInputData_Detour, (LPVOID*)&GetRawInputData_Original) != MH_OK) {
+    if (MH_CreateHook(GetRawInputData, GetRawInputData_Detour, (LPVOID *)&GetRawInputData_Original) != MH_OK) {
         LogError("Failed to create GetRawInputData hook");
         return false;
     }
 
     // Hook RegisterRawInputDevices
-    if (MH_CreateHook(RegisterRawInputDevices, RegisterRawInputDevices_Detour, (LPVOID*)&RegisterRawInputDevices_Original) != MH_OK) {
+    if (MH_CreateHook(RegisterRawInputDevices, RegisterRawInputDevices_Detour,
+                      (LPVOID *)&RegisterRawInputDevices_Original) != MH_OK) {
         LogError("Failed to create RegisterRawInputDevices hook");
         return false;
     }
 
     // Hook VkKeyScan
-    if (MH_CreateHook(VkKeyScan, VkKeyScan_Detour, (LPVOID*)&VkKeyScan_Original) != MH_OK) {
+    if (MH_CreateHook(VkKeyScan, VkKeyScan_Detour, (LPVOID *)&VkKeyScan_Original) != MH_OK) {
         LogError("Failed to create VkKeyScan hook");
         return false;
     }
 
     // Hook VkKeyScanEx
-    if (MH_CreateHook(VkKeyScanEx, VkKeyScanEx_Detour, (LPVOID*)&VkKeyScanEx_Original) != MH_OK) {
+    if (MH_CreateHook(VkKeyScanEx, VkKeyScanEx_Detour, (LPVOID *)&VkKeyScanEx_Original) != MH_OK) {
         LogError("Failed to create VkKeyScanEx hook");
         return false;
     }
 
     // Hook ToAscii
-    if (MH_CreateHook(ToAscii, ToAscii_Detour, (LPVOID*)&ToAscii_Original) != MH_OK) {
+    if (MH_CreateHook(ToAscii, ToAscii_Detour, (LPVOID *)&ToAscii_Original) != MH_OK) {
         LogError("Failed to create ToAscii hook");
         return false;
     }
 
     // Hook ToAsciiEx
-    if (MH_CreateHook(ToAsciiEx, ToAsciiEx_Detour, (LPVOID*)&ToAsciiEx_Original) != MH_OK) {
+    if (MH_CreateHook(ToAsciiEx, ToAsciiEx_Detour, (LPVOID *)&ToAsciiEx_Original) != MH_OK) {
         LogError("Failed to create ToAsciiEx hook");
         return false;
     }
 
     // Hook ToUnicode
-    if (MH_CreateHook(ToUnicode, ToUnicode_Detour, (LPVOID*)&ToUnicode_Original) != MH_OK) {
+    if (MH_CreateHook(ToUnicode, ToUnicode_Detour, (LPVOID *)&ToUnicode_Original) != MH_OK) {
         LogError("Failed to create ToUnicode hook");
         return false;
     }
 
     // Hook ToUnicodeEx
-    if (MH_CreateHook(ToUnicodeEx, ToUnicodeEx_Detour, (LPVOID*)&ToUnicodeEx_Original) != MH_OK) {
+    if (MH_CreateHook(ToUnicodeEx, ToUnicodeEx_Detour, (LPVOID *)&ToUnicodeEx_Original) != MH_OK) {
         LogError("Failed to create ToUnicodeEx hook");
         return false;
     }
 
     // Hook GetKeyNameTextA
-    if (MH_CreateHook(GetKeyNameTextA, GetKeyNameTextA_Detour, (LPVOID*)&GetKeyNameTextA_Original) != MH_OK) {
+    if (MH_CreateHook(GetKeyNameTextA, GetKeyNameTextA_Detour, (LPVOID *)&GetKeyNameTextA_Original) != MH_OK) {
         LogError("Failed to create GetKeyNameTextA hook");
         return false;
     }
 
     // Hook GetKeyNameTextW
-    if (MH_CreateHook(GetKeyNameTextW, GetKeyNameTextW_Detour, (LPVOID*)&GetKeyNameTextW_Original) != MH_OK) {
+    if (MH_CreateHook(GetKeyNameTextW, GetKeyNameTextW_Detour, (LPVOID *)&GetKeyNameTextW_Original) != MH_OK) {
         LogError("Failed to create GetKeyNameTextW hook");
         return false;
     }
 
     // Hook SendInput
-    if (MH_CreateHook(SendInput, SendInput_Detour, (LPVOID*)&SendInput_Original) != MH_OK) {
+    if (MH_CreateHook(SendInput, SendInput_Detour, (LPVOID *)&SendInput_Original) != MH_OK) {
         LogError("Failed to create SendInput hook");
         return false;
     }
 
     // Hook keybd_event
-    if (MH_CreateHook(keybd_event, keybd_event_Detour, (LPVOID*)&keybd_event_Original) != MH_OK) {
+    if (MH_CreateHook(keybd_event, keybd_event_Detour, (LPVOID *)&keybd_event_Original) != MH_OK) {
         LogError("Failed to create keybd_event hook");
         return false;
     }
 
     // Hook mouse_event
-    if (MH_CreateHook(mouse_event, mouse_event_Detour, (LPVOID*)&mouse_event_Original) != MH_OK) {
+    if (MH_CreateHook(mouse_event, mouse_event_Detour, (LPVOID *)&mouse_event_Original) != MH_OK) {
         LogError("Failed to create mouse_event hook");
         return false;
     }
 
     // Hook MapVirtualKey
-    if (MH_CreateHook(MapVirtualKey, MapVirtualKey_Detour, (LPVOID*)&MapVirtualKey_Original) != MH_OK) {
+    if (MH_CreateHook(MapVirtualKey, MapVirtualKey_Detour, (LPVOID *)&MapVirtualKey_Original) != MH_OK) {
         LogError("Failed to create MapVirtualKey hook");
         return false;
     }
 
     // Hook MapVirtualKeyEx
-    if (MH_CreateHook(MapVirtualKeyEx, MapVirtualKeyEx_Detour, (LPVOID*)&MapVirtualKeyEx_Original) != MH_OK) {
+    if (MH_CreateHook(MapVirtualKeyEx, MapVirtualKeyEx_Detour, (LPVOID *)&MapVirtualKeyEx_Original) != MH_OK) {
         LogError("Failed to create MapVirtualKeyEx hook");
         return false;
     }
@@ -1345,12 +1308,10 @@ void UninstallWindowsMessageHooks() {
 }
 
 // Check if Windows message hooks are installed
-bool AreWindowsMessageHooksInstalled() {
-    return g_message_hooks_installed.load();
-}
+bool AreWindowsMessageHooksInstalled() { return g_message_hooks_installed.load(); }
 
 // Hook statistics access functions
-const HookCallStats& GetHookStats(int hook_index) {
+const HookCallStats &GetHookStats(int hook_index) {
     if (hook_index >= 0 && hook_index < HOOK_COUNT) {
         return g_hook_stats[hook_index];
     }
@@ -1364,11 +1325,9 @@ void ResetAllHookStats() {
     }
 }
 
-int GetHookCount() {
-    return HOOK_COUNT;
-}
+int GetHookCount() { return HOOK_COUNT; }
 
-const char* GetHookName(int hook_index) {
+const char *GetHookName(int hook_index) {
     if (hook_index >= 0 && hook_index < HOOK_COUNT) {
         return g_hook_names[hook_index];
     }

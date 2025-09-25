@@ -1,6 +1,7 @@
 #include "hook_stats_tab.hpp"
 #include "../../hooks/windows_hooks/windows_message_hooks.hpp"
-#include "../../addon.hpp"
+#include <imgui.h>
+#include <reshade.hpp>
 
 namespace ui::new_ui {
 
@@ -20,7 +21,8 @@ void DrawHookStatsTab() {
     ImGui::Separator();
 
     // Create a table to display hook statistics
-    if (ImGui::BeginTable("HookStats", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable)) {
+    if (ImGui::BeginTable("HookStats", 4,
+                          ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable)) {
         // Table headers
         ImGui::TableSetupColumn("Hook Name", ImGuiTableColumnFlags_WidthFixed, 200.0f);
         ImGui::TableSetupColumn("Total Calls", ImGuiTableColumnFlags_WidthFixed, 120.0f);
@@ -31,8 +33,8 @@ void DrawHookStatsTab() {
         // Display statistics for each hook
         int hook_count = renodx::hooks::GetHookCount();
         for (int i = 0; i < hook_count; ++i) {
-            const auto& stats = renodx::hooks::GetHookStats(i);
-            const char* hook_name = renodx::hooks::GetHookName(i);
+            const auto &stats = renodx::hooks::GetHookStats(i);
+            const char *hook_name = renodx::hooks::GetHookName(i);
 
             uint64_t total_calls = stats.total_calls.load();
             uint64_t unsuppressed_calls = stats.unsuppressed_calls.load();
@@ -75,7 +77,7 @@ void DrawHookStatsTab() {
     int hook_count = renodx::hooks::GetHookCount();
 
     for (int i = 0; i < hook_count; ++i) {
-        const auto& stats = renodx::hooks::GetHookStats(i);
+        const auto &stats = renodx::hooks::GetHookStats(i);
         total_all_calls += stats.total_calls.load();
         total_unsuppressed_calls += stats.unsuppressed_calls.load();
     }

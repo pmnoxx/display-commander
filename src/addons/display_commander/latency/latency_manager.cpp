@@ -1,15 +1,14 @@
 #include "latency_manager.hpp"
-#include "reflex_provider.hpp"
 #include "../globals.hpp"
 #include "../utils.hpp"
+#include "reflex_provider.hpp"
+
 
 LatencyManager::LatencyManager() = default;
 
-LatencyManager::~LatencyManager() {
-    Shutdown();
-}
+LatencyManager::~LatencyManager() { Shutdown(); }
 
-bool LatencyManager::Initialize(reshade::api::device* device, LatencyTechnology technology) {
+bool LatencyManager::Initialize(reshade::api::device *device, LatencyTechnology technology) {
     if (initialized_.load(std::memory_order_acquire)) {
         // Already initialized, check if we need to switch technology
         if (config_.technology != technology) {
@@ -61,26 +60,30 @@ bool LatencyManager::IsInitialized() const {
 }
 
 uint64_t LatencyManager::IncreaseFrameId() {
-    if (!IsInitialized()) return 0;
+    if (!IsInitialized())
+        return 0;
     return provider_->IncreaseFrameId();
 }
 
 bool LatencyManager::SetMarker(LatencyMarkerType marker) {
-    if (!IsInitialized()) return false;
+    if (!IsInitialized())
+        return false;
     return provider_->SetMarker(marker);
 }
 
 bool LatencyManager::ApplySleepMode(bool low_latency, bool boost, bool use_markers) {
-    if (!IsInitialized()) return false;
+    if (!IsInitialized())
+        return false;
     return provider_->ApplySleepMode(low_latency, boost, use_markers);
 }
 
 bool LatencyManager::Sleep() {
-    if (!IsInitialized()) return false;
+    if (!IsInitialized())
+        return false;
     return provider_->Sleep();
 }
 
-void LatencyManager::SetConfig(const LatencyConfig& config) {
+void LatencyManager::SetConfig(const LatencyConfig &config) {
     config_ = config;
 
     // Apply configuration if initialized
@@ -89,21 +92,21 @@ void LatencyManager::SetConfig(const LatencyConfig& config) {
     }
 }
 
-LatencyConfig LatencyManager::GetConfig() const {
-    return config_;
-}
+LatencyConfig LatencyManager::GetConfig() const { return config_; }
 
 LatencyTechnology LatencyManager::GetCurrentTechnology() const {
-    if (!IsInitialized()) return LatencyTechnology::None;
+    if (!IsInitialized())
+        return LatencyTechnology::None;
     return provider_->GetTechnology();
 }
 
-const char* LatencyManager::GetCurrentTechnologyName() const {
-    if (!IsInitialized()) return "None";
+const char *LatencyManager::GetCurrentTechnologyName() const {
+    if (!IsInitialized())
+        return "None";
     return provider_->GetTechnologyName();
 }
 
-bool LatencyManager::SwitchTechnology(LatencyTechnology technology, reshade::api::device* device) {
+bool LatencyManager::SwitchTechnology(LatencyTechnology technology, reshade::api::device *device) {
     if (technology == config_.technology && IsInitialized()) {
         return true; // Already using this technology
     }
@@ -139,22 +142,22 @@ bool LatencyManager::SwitchTechnology(LatencyTechnology technology, reshade::api
 
 std::unique_ptr<ILatencyProvider> LatencyManager::CreateProvider(LatencyTechnology technology) {
     switch (technology) {
-        case LatencyTechnology::NVIDIA_Reflex:
-            return std::make_unique<ReflexProvider>();
+    case LatencyTechnology::NVIDIA_Reflex:
+        return std::make_unique<ReflexProvider>();
 
-        case LatencyTechnology::AMD_AntiLag2:
-            // TODO: Implement AMD Anti-Lag 2 provider
-            LogWarn("LatencyManager: AMD Anti-Lag 2 not yet implemented");
-            return nullptr;
+    case LatencyTechnology::AMD_AntiLag2:
+        // TODO: Implement AMD Anti-Lag 2 provider
+        LogWarn("LatencyManager: AMD Anti-Lag 2 not yet implemented");
+        return nullptr;
 
-        case LatencyTechnology::Intel_XeSS:
-            // TODO: Implement Intel XeSS provider
-            LogWarn("LatencyManager: Intel XeSS not yet implemented");
-            return nullptr;
+    case LatencyTechnology::Intel_XeSS:
+        // TODO: Implement Intel XeSS provider
+        LogWarn("LatencyManager: Intel XeSS not yet implemented");
+        return nullptr;
 
-        case LatencyTechnology::None:
-        default:
-            LogWarn("LatencyManager: No latency technology specified");
-            return nullptr;
+    case LatencyTechnology::None:
+    default:
+        LogWarn("LatencyManager: No latency technology specified");
+        return nullptr;
     }
 }

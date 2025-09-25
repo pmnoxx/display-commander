@@ -1,9 +1,9 @@
 #include "settings_wrapper.hpp"
-#include <algorithm>
-#include <cmath>
+#include "../../globals.hpp"
 #include "../../renodx/settings.hpp"
 #include "../../utils.hpp"
-#include "../../globals.hpp"
+#include <algorithm>
+#include <cmath>
 
 // Windows defines min/max as macros, so we need to undefine them
 #ifdef min
@@ -16,14 +16,12 @@
 namespace ui::new_ui {
 
 // SettingBase implementation
-SettingBase::SettingBase(const std::string& key, const std::string& section)
-    : key_(key), section_(section) {
-}
+SettingBase::SettingBase(const std::string &key, const std::string &section) : key_(key), section_(section) {}
 
 // FloatSetting implementation
-FloatSetting::FloatSetting(const std::string& key, float default_value, float min, float max, const std::string& section)
-    : SettingBase(key, section), value_(default_value), default_value_(default_value), min_(min), max_(max) {
-}
+FloatSetting::FloatSetting(const std::string &key, float default_value, float min, float max,
+                           const std::string &section)
+    : SettingBase(key, section), value_(default_value), default_value_(default_value), min_(min), max_(max) {}
 
 void FloatSetting::Load() {
     float loaded_value;
@@ -43,9 +41,7 @@ void FloatSetting::Load() {
     }
 }
 
-void FloatSetting::Save() {
-    reshade::set_config_value(nullptr, section_.c_str(), key_.c_str(), value_.load());
-}
+void FloatSetting::Save() { reshade::set_config_value(nullptr, section_.c_str(), key_.c_str(), value_.load()); }
 
 void FloatSetting::SetValue(float value) {
     const float clamped_value = std::max(min_, std::min(max_, value));
@@ -53,11 +49,9 @@ void FloatSetting::SetValue(float value) {
     Save(); // Auto-save when value changes
 }
 
-
 // IntSetting implementation
-IntSetting::IntSetting(const std::string& key, int default_value, int min, int max, const std::string& section)
-    : SettingBase(key, section), value_(default_value), default_value_(default_value), min_(min), max_(max) {
-}
+IntSetting::IntSetting(const std::string &key, int default_value, int min, int max, const std::string &section)
+    : SettingBase(key, section), value_(default_value), default_value_(default_value), min_(min), max_(max) {}
 
 void IntSetting::Load() {
     int loaded_value;
@@ -77,9 +71,7 @@ void IntSetting::Load() {
     }
 }
 
-void IntSetting::Save() {
-    reshade::set_config_value(nullptr, section_.c_str(), key_.c_str(), value_.load());
-}
+void IntSetting::Save() { reshade::set_config_value(nullptr, section_.c_str(), key_.c_str(), value_.load()); }
 
 void IntSetting::SetValue(int value) {
     const int clamped_value = std::max(min_, std::min(max_, value));
@@ -87,11 +79,9 @@ void IntSetting::SetValue(int value) {
     Save(); // Auto-save when value changes
 }
 
-
 // BoolSetting implementation
-BoolSetting::BoolSetting(const std::string& key, bool default_value, const std::string& section)
-    : SettingBase(key, section), value_(default_value), default_value_(default_value) {
-}
+BoolSetting::BoolSetting(const std::string &key, bool default_value, const std::string &section)
+    : SettingBase(key, section), value_(default_value), default_value_(default_value) {}
 
 void BoolSetting::Load() {
     int loaded_value;
@@ -109,20 +99,17 @@ void BoolSetting::Load() {
     }
 }
 
-void BoolSetting::Save() {
-    reshade::set_config_value(nullptr, section_.c_str(), key_.c_str(), value_.load() ? 1 : 0);
-}
+void BoolSetting::Save() { reshade::set_config_value(nullptr, section_.c_str(), key_.c_str(), value_.load() ? 1 : 0); }
 
 void BoolSetting::SetValue(bool value) {
     value_.store(value);
     Save(); // Auto-save when value changes
 }
 
-
 // BoolSettingRef implementation
-BoolSettingRef::BoolSettingRef(const std::string& key, std::atomic<bool>& external_ref, bool default_value, const std::string& section)
-    : SettingBase(key, section), external_ref_(external_ref), default_value_(default_value) {
-}
+BoolSettingRef::BoolSettingRef(const std::string &key, std::atomic<bool> &external_ref, bool default_value,
+                               const std::string &section)
+    : SettingBase(key, section), external_ref_(external_ref), default_value_(default_value) {}
 
 void BoolSettingRef::Load() {
     int loaded_value;
@@ -150,9 +137,9 @@ void BoolSettingRef::SetValue(bool value) {
 }
 
 // FloatSettingRef implementation
-FloatSettingRef::FloatSettingRef(const std::string& key, std::atomic<float>& external_ref, float default_value, float min, float max, const std::string& section)
-    : SettingBase(key, section), external_ref_(external_ref), default_value_(default_value), min_(min), max_(max) {
-}
+FloatSettingRef::FloatSettingRef(const std::string &key, std::atomic<float> &external_ref, float default_value,
+                                 float min, float max, const std::string &section)
+    : SettingBase(key, section), external_ref_(external_ref), default_value_(default_value), min_(min), max_(max) {}
 
 void FloatSettingRef::Load() {
     float loaded_value;
@@ -183,9 +170,9 @@ void FloatSettingRef::SetValue(float value) {
 }
 
 // IntSettingRef implementation
-IntSettingRef::IntSettingRef(const std::string& key, std::atomic<int>& external_ref, int default_value, int min, int max, const std::string& section)
-    : SettingBase(key, section), external_ref_(external_ref), default_value_(default_value), min_(min), max_(max) {
-}
+IntSettingRef::IntSettingRef(const std::string &key, std::atomic<int> &external_ref, int default_value, int min,
+                             int max, const std::string &section)
+    : SettingBase(key, section), external_ref_(external_ref), default_value_(default_value), min_(min), max_(max) {}
 
 void IntSettingRef::Load() {
     int loaded_value;
@@ -216,9 +203,9 @@ void IntSettingRef::SetValue(int value) {
 }
 
 // ComboSetting implementation
-ComboSetting::ComboSetting(const std::string& key, int default_value, const std::vector<const char*>& labels, const std::string& section)
-    : SettingBase(key, section), value_(default_value), default_value_(default_value), labels_(labels) {
-}
+ComboSetting::ComboSetting(const std::string &key, int default_value, const std::vector<const char *> &labels,
+                           const std::string &section)
+    : SettingBase(key, section), value_(default_value), default_value_(default_value), labels_(labels) {}
 
 void ComboSetting::Load() {
     int loaded_value;
@@ -227,8 +214,10 @@ void ComboSetting::Load() {
         const int max_index = static_cast<int>(labels_.size()) - 1;
         if (loaded_value < 0 || loaded_value > max_index) {
             int safe_default = default_value_;
-            if (safe_default < 0) safe_default = 0;
-            if (safe_default > max_index) safe_default = std::max(0, max_index);
+            if (safe_default < 0)
+                safe_default = 0;
+            if (safe_default > max_index)
+                safe_default = std::max(0, max_index);
             value_ = safe_default;
             Save();
         } else {
@@ -240,9 +229,7 @@ void ComboSetting::Load() {
     }
 }
 
-void ComboSetting::Save() {
-    reshade::set_config_value(nullptr, section_.c_str(), key_.c_str(), value_);
-}
+void ComboSetting::Save() { reshade::set_config_value(nullptr, section_.c_str(), key_.c_str(), value_); }
 
 void ComboSetting::SetValue(int value) {
     value_ = std::max(0, std::min(static_cast<int>(labels_.size()) - 1, value));
@@ -250,10 +237,9 @@ void ComboSetting::SetValue(int value) {
 }
 
 // ComboSettingRef implementation
-ComboSettingRef::ComboSettingRef(const std::string& key, std::atomic<int>& external_ref, int default_value,
-    const std::vector<const char*>& labels, const std::string& section)
-    : SettingBase(key, section), external_ref_(external_ref), default_value_(default_value), labels_(labels) {
-}
+ComboSettingRef::ComboSettingRef(const std::string &key, std::atomic<int> &external_ref, int default_value,
+                                 const std::vector<const char *> &labels, const std::string &section)
+    : SettingBase(key, section), external_ref_(external_ref), default_value_(default_value), labels_(labels) {}
 
 void ComboSettingRef::Load() {
     int loaded_value;
@@ -262,8 +248,10 @@ void ComboSettingRef::Load() {
         const int max_index = static_cast<int>(labels_.size()) - 1;
         if (loaded_value < 0 || loaded_value > max_index) {
             int safe_default = default_value_;
-            if (safe_default < 0) safe_default = 0;
-            if (safe_default > max_index) safe_default = std::max(0, max_index);
+            if (safe_default < 0)
+                safe_default = 0;
+            if (safe_default > max_index)
+                safe_default = std::max(0, max_index);
             external_ref_.get().store(safe_default);
             Save();
         } else {
@@ -286,22 +274,23 @@ void ComboSettingRef::SetValue(int value) {
 }
 
 // ComboSettingEnumRef implementation
-template<typename EnumType>
-ComboSettingEnumRef<EnumType>::ComboSettingEnumRef(const std::string& key, std::atomic<EnumType>& external_ref, int default_value,
-    const std::vector<const char*>& labels, const std::string& section)
-    : SettingBase(key, section), external_ref_(external_ref), default_value_(default_value), labels_(labels) {
-}
+template <typename EnumType>
+ComboSettingEnumRef<EnumType>::ComboSettingEnumRef(const std::string &key, std::atomic<EnumType> &external_ref,
+                                                   int default_value, const std::vector<const char *> &labels,
+                                                   const std::string &section)
+    : SettingBase(key, section), external_ref_(external_ref), default_value_(default_value), labels_(labels) {}
 
-template<typename EnumType>
-void ComboSettingEnumRef<EnumType>::Load() {
+template <typename EnumType> void ComboSettingEnumRef<EnumType>::Load() {
     int loaded_value;
     if (reshade::get_config_value(nullptr, section_.c_str(), key_.c_str(), loaded_value)) {
         // If loaded index is out of range (e.g., labels changed), fall back to default
         const int max_index = static_cast<int>(labels_.size()) - 1;
         if (loaded_value < 0 || loaded_value > max_index) {
             int safe_default = default_value_;
-            if (safe_default < 0) safe_default = 0;
-            if (safe_default > max_index) safe_default = std::max(0, max_index);
+            if (safe_default < 0)
+                safe_default = 0;
+            if (safe_default > max_index)
+                safe_default = std::max(0, max_index);
             external_ref_.get().store(static_cast<EnumType>(safe_default));
             Save();
         } else {
@@ -313,23 +302,21 @@ void ComboSettingEnumRef<EnumType>::Load() {
     }
 }
 
-template<typename EnumType>
-void ComboSettingEnumRef<EnumType>::Save() {
+template <typename EnumType> void ComboSettingEnumRef<EnumType>::Save() {
     reshade::set_config_value(nullptr, section_.c_str(), key_.c_str(), static_cast<int>(external_ref_.get().load()));
 }
 
-template<typename EnumType>
-void ComboSettingEnumRef<EnumType>::SetValue(int value) {
+template <typename EnumType> void ComboSettingEnumRef<EnumType>::SetValue(int value) {
     int clamped_value = std::max(0, std::min(static_cast<int>(labels_.size()) - 1, value));
     external_ref_.get().store(static_cast<EnumType>(clamped_value));
     Save(); // Auto-save when value changes
 }
 
 // ResolutionPairSetting implementation
-ResolutionPairSetting::ResolutionPairSetting(const std::string& key, int default_width, int default_height, const std::string& section)
-    : SettingBase(key, section), width_(default_width), height_(default_height),
-    default_width_(default_width), default_height_(default_height) {
-}
+ResolutionPairSetting::ResolutionPairSetting(const std::string &key, int default_width, int default_height,
+                                             const std::string &section)
+    : SettingBase(key, section), width_(default_width), height_(default_height), default_width_(default_width),
+      default_height_(default_height) {}
 
 void ResolutionPairSetting::Load() {
     // Load width
@@ -375,10 +362,10 @@ void ResolutionPairSetting::SetCurrentResolution() {
 }
 
 // RefreshRatePairSetting implementation
-RefreshRatePairSetting::RefreshRatePairSetting(const std::string& key, int default_numerator, int default_denominator, const std::string& section)
+RefreshRatePairSetting::RefreshRatePairSetting(const std::string &key, int default_numerator, int default_denominator,
+                                               const std::string &section)
     : SettingBase(key, section), numerator_(default_numerator), denominator_(default_denominator),
-    default_numerator_(default_numerator), default_denominator_(default_denominator) {
-}
+      default_numerator_(default_numerator), default_denominator_(default_denominator) {}
 
 void RefreshRatePairSetting::Load() {
     // Load numerator
@@ -432,7 +419,7 @@ double RefreshRatePairSetting::GetHz() const {
 
 // Wrapper function implementations
 
-bool SliderFloatSetting(FloatSetting& setting, const char* label, const char* format) {
+bool SliderFloatSetting(FloatSetting &setting, const char *label, const char *format) {
     float value = setting.GetValue();
     bool changed = ImGui::SliderFloat(label, &value, setting.GetMin(), setting.GetMax(), format);
     if (changed) {
@@ -445,7 +432,7 @@ bool SliderFloatSetting(FloatSetting& setting, const char* label, const char* fo
         if (fabsf(current - def) > 1e-6f) {
             ImGui::SameLine();
             ImGui::PushID(&setting);
-            if (ImGui::SmallButton(reinterpret_cast<const char*>(ICON_FK_UNDO))) {
+            if (ImGui::SmallButton(reinterpret_cast<const char *>(ICON_FK_UNDO))) {
                 setting.SetValue(def);
                 changed = true;
             }
@@ -458,7 +445,7 @@ bool SliderFloatSetting(FloatSetting& setting, const char* label, const char* fo
     return changed;
 }
 
-bool SliderFloatSetting(FloatSettingRef& setting, const char* label, const char* format) {
+bool SliderFloatSetting(FloatSettingRef &setting, const char *label, const char *format) {
     float value = setting.GetValue();
     bool changed = ImGui::SliderFloat(label, &value, setting.GetMin(), setting.GetMax(), format);
     if (changed) {
@@ -471,7 +458,7 @@ bool SliderFloatSetting(FloatSettingRef& setting, const char* label, const char*
         if (fabsf(current - def) > 1e-6f) {
             ImGui::SameLine();
             ImGui::PushID(&setting);
-            if (ImGui::SmallButton(reinterpret_cast<const char*>(ICON_FK_UNDO))) {
+            if (ImGui::SmallButton(reinterpret_cast<const char *>(ICON_FK_UNDO))) {
                 setting.SetValue(def);
                 changed = true;
             }
@@ -484,7 +471,7 @@ bool SliderFloatSetting(FloatSettingRef& setting, const char* label, const char*
     return changed;
 }
 
-bool SliderIntSetting(IntSetting& setting, const char* label, const char* format) {
+bool SliderIntSetting(IntSetting &setting, const char *label, const char *format) {
     int value = setting.GetValue();
     bool changed = ImGui::SliderInt(label, &value, setting.GetMin(), setting.GetMax(), format);
     if (changed) {
@@ -497,7 +484,7 @@ bool SliderIntSetting(IntSetting& setting, const char* label, const char* format
         if (current != def) {
             ImGui::SameLine();
             ImGui::PushID(&setting);
-            if (ImGui::SmallButton(reinterpret_cast<const char*>(ICON_FK_UNDO))) {
+            if (ImGui::SmallButton(reinterpret_cast<const char *>(ICON_FK_UNDO))) {
                 setting.SetValue(def);
                 changed = true;
             }
@@ -510,7 +497,7 @@ bool SliderIntSetting(IntSetting& setting, const char* label, const char* format
     return changed;
 }
 
-bool SliderIntSetting(IntSettingRef& setting, const char* label, const char* format) {
+bool SliderIntSetting(IntSettingRef &setting, const char *label, const char *format) {
     int value = setting.GetValue();
     bool changed = ImGui::SliderInt(label, &value, setting.GetMin(), setting.GetMax(), format);
     if (changed) {
@@ -523,7 +510,7 @@ bool SliderIntSetting(IntSettingRef& setting, const char* label, const char* for
         if (current != def) {
             ImGui::SameLine();
             ImGui::PushID(&setting);
-            if (ImGui::SmallButton(reinterpret_cast<const char*>(ICON_FK_UNDO))) {
+            if (ImGui::SmallButton(reinterpret_cast<const char *>(ICON_FK_UNDO))) {
                 setting.SetValue(def);
                 changed = true;
             }
@@ -536,7 +523,7 @@ bool SliderIntSetting(IntSettingRef& setting, const char* label, const char* for
     return changed;
 }
 
-bool CheckboxSetting(BoolSetting& setting, const char* label) {
+bool CheckboxSetting(BoolSetting &setting, const char *label) {
     bool value = setting.GetValue();
     bool changed = ImGui::Checkbox(label, &value);
     if (changed) {
@@ -549,7 +536,7 @@ bool CheckboxSetting(BoolSetting& setting, const char* label) {
         if (current != def) {
             ImGui::SameLine();
             ImGui::PushID(&setting);
-            if (ImGui::SmallButton(reinterpret_cast<const char*>(ICON_FK_UNDO))) {
+            if (ImGui::SmallButton(reinterpret_cast<const char *>(ICON_FK_UNDO))) {
                 setting.SetValue(def);
                 changed = true;
             }
@@ -562,7 +549,7 @@ bool CheckboxSetting(BoolSetting& setting, const char* label) {
     return changed;
 }
 
-bool CheckboxSetting(BoolSettingRef& setting, const char* label) {
+bool CheckboxSetting(BoolSettingRef &setting, const char *label) {
     bool value = setting.GetValue();
     bool changed = ImGui::Checkbox(label, &value);
     if (changed) {
@@ -575,7 +562,7 @@ bool CheckboxSetting(BoolSettingRef& setting, const char* label) {
         if (current != def) {
             ImGui::SameLine();
             ImGui::PushID(&setting);
-            if (ImGui::SmallButton(reinterpret_cast<const char*>(ICON_FK_UNDO))) {
+            if (ImGui::SmallButton(reinterpret_cast<const char *>(ICON_FK_UNDO))) {
                 setting.SetValue(def);
                 changed = true;
             }
@@ -588,9 +575,10 @@ bool CheckboxSetting(BoolSettingRef& setting, const char* label) {
     return changed;
 }
 
-bool ComboSettingWrapper(ComboSetting& setting, const char* label) {
+bool ComboSettingWrapper(ComboSetting &setting, const char *label) {
     int value = setting.GetValue();
-    bool changed = ImGui::Combo(label, &value, setting.GetLabels().data(), static_cast<int>(setting.GetLabels().size()));
+    bool changed =
+        ImGui::Combo(label, &value, setting.GetLabels().data(), static_cast<int>(setting.GetLabels().size()));
     if (changed) {
         setting.SetValue(value);
     }
@@ -601,13 +589,13 @@ bool ComboSettingWrapper(ComboSetting& setting, const char* label) {
         if (current != def) {
             ImGui::SameLine();
             ImGui::PushID(&setting);
-            if (ImGui::SmallButton(reinterpret_cast<const char*>(ICON_FK_UNDO))) {
+            if (ImGui::SmallButton(reinterpret_cast<const char *>(ICON_FK_UNDO))) {
                 setting.SetValue(def);
                 changed = true;
             }
             if (ImGui::IsItemHovered()) {
                 const auto &labels = setting.GetLabels();
-                const char* def_label = (def >= 0 && def < static_cast<int>(labels.size())) ? labels[def] : "Default";
+                const char *def_label = (def >= 0 && def < static_cast<int>(labels.size())) ? labels[def] : "Default";
                 ImGui::SetTooltip("Reset to default (%s)", def_label);
             }
             ImGui::PopID();
@@ -616,9 +604,10 @@ bool ComboSettingWrapper(ComboSetting& setting, const char* label) {
     return changed;
 }
 
-bool ComboSettingRefWrapper(ComboSettingRef& setting, const char* label) {
+bool ComboSettingRefWrapper(ComboSettingRef &setting, const char *label) {
     int value = setting.GetValue();
-    bool changed = ImGui::Combo(label, &value, setting.GetLabels().data(), static_cast<int>(setting.GetLabels().size()));
+    bool changed =
+        ImGui::Combo(label, &value, setting.GetLabels().data(), static_cast<int>(setting.GetLabels().size()));
     if (changed) {
         setting.SetValue(value);
     }
@@ -629,13 +618,13 @@ bool ComboSettingRefWrapper(ComboSettingRef& setting, const char* label) {
         if (current != def) {
             ImGui::SameLine();
             ImGui::PushID(&setting);
-            if (ImGui::SmallButton(reinterpret_cast<const char*>(ICON_FK_UNDO))) {
+            if (ImGui::SmallButton(reinterpret_cast<const char *>(ICON_FK_UNDO))) {
                 setting.SetValue(def);
                 changed = true;
             }
             if (ImGui::IsItemHovered()) {
                 const auto &labels = setting.GetLabels();
-                const char* def_label = (def >= 0 && def < static_cast<int>(labels.size())) ? labels[def] : "Default";
+                const char *def_label = (def >= 0 && def < static_cast<int>(labels.size())) ? labels[def] : "Default";
                 ImGui::SetTooltip("Reset to default (%s)", def_label);
             }
             ImGui::PopID();
@@ -644,10 +633,11 @@ bool ComboSettingRefWrapper(ComboSettingRef& setting, const char* label) {
     return changed;
 }
 
-template<typename EnumType>
-bool ComboSettingEnumRefWrapper(ComboSettingEnumRef<EnumType>& setting, const char* label) {
+template <typename EnumType>
+bool ComboSettingEnumRefWrapper(ComboSettingEnumRef<EnumType> &setting, const char *label) {
     int value = setting.GetValue();
-    bool changed = ImGui::Combo(label, &value, setting.GetLabels().data(), static_cast<int>(setting.GetLabels().size()));
+    bool changed =
+        ImGui::Combo(label, &value, setting.GetLabels().data(), static_cast<int>(setting.GetLabels().size()));
     if (changed) {
         setting.SetValue(value);
     }
@@ -658,13 +648,13 @@ bool ComboSettingEnumRefWrapper(ComboSettingEnumRef<EnumType>& setting, const ch
         if (current != def) {
             ImGui::SameLine();
             ImGui::PushID(&setting);
-            if (ImGui::SmallButton(reinterpret_cast<const char*>(ICON_FK_UNDO))) {
+            if (ImGui::SmallButton(reinterpret_cast<const char *>(ICON_FK_UNDO))) {
                 setting.SetValue(def);
                 changed = true;
             }
             if (ImGui::IsItemHovered()) {
                 const auto &labels = setting.GetLabels();
-                const char* def_label = (def >= 0 && def < static_cast<int>(labels.size())) ? labels[def] : "Default";
+                const char *def_label = (def >= 0 && def < static_cast<int>(labels.size())) ? labels[def] : "Default";
                 ImGui::SetTooltip("Reset to default (%s)", def_label);
             }
             ImGui::PopID();
@@ -673,28 +663,21 @@ bool ComboSettingEnumRefWrapper(ComboSettingEnumRef<EnumType>& setting, const ch
     return changed;
 }
 
-bool ButtonSetting(const char* label, const ImVec2& size) {
-    return ImGui::Button(label, size);
-}
+bool ButtonSetting(const char *label, const ImVec2 &size) { return ImGui::Button(label, size); }
 
-void TextSetting(const char* text) {
-    ImGui::Text("%s", text);
-}
+void TextSetting(const char *text) { ImGui::Text("%s", text); }
 
 // Explicit template instantiations for ScreensaverMode
 template class ComboSettingEnumRef<ScreensaverMode>;
-template bool ComboSettingEnumRefWrapper<ScreensaverMode>(ComboSettingEnumRef<ScreensaverMode>& setting, const char* label);
+template bool ComboSettingEnumRefWrapper<ScreensaverMode>(ComboSettingEnumRef<ScreensaverMode> &setting,
+                                                          const char *label);
 
-void SeparatorSetting() {
-    ImGui::Separator();
-}
+void SeparatorSetting() { ImGui::Separator(); }
 
-void SpacingSetting() {
-    ImGui::Spacing();
-}
+void SpacingSetting() { ImGui::Spacing(); }
 
-void LoadTabSettings(const std::vector<SettingBase*>& settings) {
-    for (auto* setting : settings) {
+void LoadTabSettings(const std::vector<SettingBase *> &settings) {
+    for (auto *setting : settings) {
         if (setting != nullptr) {
             setting->Load();
         }
@@ -702,14 +685,9 @@ void LoadTabSettings(const std::vector<SettingBase*>& settings) {
 }
 
 // FixedIntArraySetting implementation
-FixedIntArraySetting::FixedIntArraySetting(const std::string& key, size_t array_size, int default_value,
-                    int min, int max, const std::string& section)
-    : SettingBase(key, section)
-    , array_size_(array_size)
-    , default_value_(default_value)
-    , min_(min)
-    , max_(max)
-{
+FixedIntArraySetting::FixedIntArraySetting(const std::string &key, size_t array_size, int default_value, int min,
+                                           int max, const std::string &section)
+    : SettingBase(key, section), array_size_(array_size), default_value_(default_value), min_(min), max_(max) {
     // Initialize the atomic array with default values
     values_.resize(array_size_);
     for (size_t i = 0; i < array_size_; ++i) {
@@ -719,7 +697,7 @@ FixedIntArraySetting::FixedIntArraySetting(const std::string& key, size_t array_
 
 FixedIntArraySetting::~FixedIntArraySetting() {
     // Clean up allocated atomic values
-    for (auto* ptr : values_) {
+    for (auto *ptr : values_) {
         delete ptr;
     }
 }
@@ -737,14 +715,16 @@ void FixedIntArraySetting::Load() {
             LogInfo("FixedIntArraySetting::Load() - Loaded %s[%zu] = %d from config", key_.c_str(), i, value);
         } else {
             values_[i]->store(default_value_);
-            LogInfo("FixedIntArraySetting::Load() - No config found for %s[%zu], using default %d", key_.c_str(), i, default_value_);
+            LogInfo("FixedIntArraySetting::Load() - No config found for %s[%zu], using default %d", key_.c_str(), i,
+                    default_value_);
         }
     }
     is_dirty_ = false;
 }
 
 void FixedIntArraySetting::Save() {
-    if (!is_dirty_) return;
+    if (!is_dirty_)
+        return;
 
     // Save each array element to ReShade config
     for (size_t i = 0; i < array_size_; ++i) {
@@ -764,7 +744,8 @@ int FixedIntArraySetting::GetValue(size_t index) const {
 }
 
 void FixedIntArraySetting::SetValue(size_t index, int value) {
-    if (index >= array_size_) return;
+    if (index >= array_size_)
+        return;
 
     // Clamp value to min/max range
     value = std::max(min_, std::min(max_, value));
@@ -782,7 +763,7 @@ std::vector<int> FixedIntArraySetting::GetAllValues() const {
     return result;
 }
 
-void FixedIntArraySetting::SetAllValues(const std::vector<int>& values) {
+void FixedIntArraySetting::SetAllValues(const std::vector<int> &values) {
     size_t copy_size = std::min(values.size(), array_size_);
     for (size_t i = 0; i < copy_size; ++i) {
         int value = std::max(min_, std::min(max_, values[i]));
@@ -792,10 +773,8 @@ void FixedIntArraySetting::SetAllValues(const std::vector<int>& values) {
 }
 
 // StringSetting implementation
-StringSetting::StringSetting(const std::string& key, const std::string& default_value,
-            const std::string& section)
-    : SettingBase(key, section), value_(default_value), default_value_(default_value) {
-}
+StringSetting::StringSetting(const std::string &key, const std::string &default_value, const std::string &section)
+    : SettingBase(key, section), value_(default_value), default_value_(default_value) {}
 
 void StringSetting::Load() {
     char buffer[256] = {0};
@@ -816,7 +795,7 @@ void StringSetting::Save() {
     }
 }
 
-void StringSetting::SetValue(const std::string& value) {
+void StringSetting::SetValue(const std::string &value) {
     if (value_ != value) {
         value_ = value;
         is_dirty_ = true;

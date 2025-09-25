@@ -1,6 +1,8 @@
 #include "resolution_settings.hpp"
+#include "../../utils.hpp"
 #include <imgui.h>
 #include <reshade.hpp>
+
 
 namespace display_commander::widgets::resolution_widget {
 
@@ -8,7 +10,7 @@ namespace display_commander::widgets::resolution_widget {
 std::unique_ptr<ResolutionSettingsManager> g_resolution_settings = nullptr;
 
 // DisplayResolutionSettings implementation
-DisplayResolutionSettings::DisplayResolutionSettings(const std::string& display_key, int display_index)
+DisplayResolutionSettings::DisplayResolutionSettings(const std::string &display_key, int display_index)
     : display_key_(display_key), display_index_(display_index) {
     // Initialize with current resolution as default
     current_state_.is_current = true;
@@ -16,7 +18,8 @@ DisplayResolutionSettings::DisplayResolutionSettings(const std::string& display_
 }
 
 void DisplayResolutionSettings::Load() {
-    LogInfo("DisplayResolutionSettings::Load() - Loading settings for %s (display %d)", display_key_.c_str(), display_index_);
+    LogInfo("DisplayResolutionSettings::Load() - Loading settings for %s (display %d)", display_key_.c_str(),
+            display_index_);
 
     // Load width
     std::string width_key = display_key_ + "_width";
@@ -41,7 +44,8 @@ void DisplayResolutionSettings::Load() {
     // Load refresh numerator
     std::string refresh_num_key = display_key_ + "_refresh_num";
     int loaded_refresh_num;
-    if (reshade::get_config_value(nullptr, "DisplayCommander.ResolutionWidget", refresh_num_key.c_str(), loaded_refresh_num)) {
+    if (reshade::get_config_value(nullptr, "DisplayCommander.ResolutionWidget", refresh_num_key.c_str(),
+                                  loaded_refresh_num)) {
         last_saved_state_.refresh_numerator = loaded_refresh_num;
         LogInfo("DisplayResolutionSettings::Load() - Loaded %s: %d", refresh_num_key.c_str(), loaded_refresh_num);
     } else {
@@ -51,7 +55,8 @@ void DisplayResolutionSettings::Load() {
     // Load refresh denominator
     std::string refresh_denom_key = display_key_ + "_refresh_denom";
     int loaded_refresh_denom;
-    if (reshade::get_config_value(nullptr, "DisplayCommander.ResolutionWidget", refresh_denom_key.c_str(), loaded_refresh_denom)) {
+    if (reshade::get_config_value(nullptr, "DisplayCommander.ResolutionWidget", refresh_denom_key.c_str(),
+                                  loaded_refresh_denom)) {
         last_saved_state_.refresh_denominator = loaded_refresh_denom;
         LogInfo("DisplayResolutionSettings::Load() - Loaded %s: %d", refresh_denom_key.c_str(), loaded_refresh_denom);
     } else {
@@ -61,9 +66,11 @@ void DisplayResolutionSettings::Load() {
     // Load is_current flag
     std::string current_key = display_key_ + "_is_current";
     bool loaded_is_current;
-    if (reshade::get_config_value(nullptr, "DisplayCommander.ResolutionWidget", current_key.c_str(), loaded_is_current)) {
+    if (reshade::get_config_value(nullptr, "DisplayCommander.ResolutionWidget", current_key.c_str(),
+                                  loaded_is_current)) {
         last_saved_state_.is_current = loaded_is_current;
-        LogInfo("DisplayResolutionSettings::Load() - Loaded %s: %s", current_key.c_str(), loaded_is_current ? "true" : "false");
+        LogInfo("DisplayResolutionSettings::Load() - Loaded %s: %s", current_key.c_str(),
+                loaded_is_current ? "true" : "false");
     } else {
         LogInfo("DisplayResolutionSettings::Load() - %s not found, using default: true", current_key.c_str());
     }
@@ -73,9 +80,8 @@ void DisplayResolutionSettings::Load() {
     ClearDirty();
 
     LogInfo("DisplayResolutionSettings::Load() - Final loaded state: %dx%d @ %d/%d, is_current=%s",
-            last_saved_state_.width, last_saved_state_.height,
-            last_saved_state_.refresh_numerator, last_saved_state_.refresh_denominator,
-            last_saved_state_.is_current ? "true" : "false");
+            last_saved_state_.width, last_saved_state_.height, last_saved_state_.refresh_numerator,
+            last_saved_state_.refresh_denominator, last_saved_state_.is_current ? "true" : "false");
 }
 
 void DisplayResolutionSettings::Save() {
@@ -85,22 +91,26 @@ void DisplayResolutionSettings::Save() {
 
     // Save height
     std::string height_key = display_key_ + "_height";
-    reshade::set_config_value(nullptr, "DisplayCommander.ResolutionWidget", height_key.c_str(), last_saved_state_.height);
+    reshade::set_config_value(nullptr, "DisplayCommander.ResolutionWidget", height_key.c_str(),
+                              last_saved_state_.height);
 
     // Save refresh numerator
     std::string refresh_num_key = display_key_ + "_refresh_num";
-    reshade::set_config_value(nullptr, "DisplayCommander.ResolutionWidget", refresh_num_key.c_str(), last_saved_state_.refresh_numerator);
+    reshade::set_config_value(nullptr, "DisplayCommander.ResolutionWidget", refresh_num_key.c_str(),
+                              last_saved_state_.refresh_numerator);
 
     // Save refresh denominator
     std::string refresh_denom_key = display_key_ + "_refresh_denom";
-    reshade::set_config_value(nullptr, "DisplayCommander.ResolutionWidget", refresh_denom_key.c_str(), last_saved_state_.refresh_denominator);
+    reshade::set_config_value(nullptr, "DisplayCommander.ResolutionWidget", refresh_denom_key.c_str(),
+                              last_saved_state_.refresh_denominator);
 
     // Save is_current flag
     std::string current_key = display_key_ + "_is_current";
-    reshade::set_config_value(nullptr, "DisplayCommander.ResolutionWidget", current_key.c_str(), last_saved_state_.is_current);
+    reshade::set_config_value(nullptr, "DisplayCommander.ResolutionWidget", current_key.c_str(),
+                              last_saved_state_.is_current);
 }
 
-void DisplayResolutionSettings::SetCurrentState(const ResolutionData& data) {
+void DisplayResolutionSettings::SetCurrentState(const ResolutionData &data) {
     if (current_state_ != data) {
         current_state_ = data;
         MarkDirty();
@@ -124,9 +134,7 @@ void DisplayResolutionSettings::SetToCurrentResolution() {
 }
 
 // ResolutionSettingsManager implementation
-ResolutionSettingsManager::ResolutionSettingsManager() {
-    InitializeDisplaySettings();
-}
+ResolutionSettingsManager::ResolutionSettingsManager() { InitializeDisplaySettings(); }
 
 void ResolutionSettingsManager::InitializeDisplaySettings() {
     for (int i = 0; i < MAX_DISPLAYS; ++i) {
@@ -142,7 +150,8 @@ void ResolutionSettingsManager::LoadAll() {
     bool loaded_auto_apply;
     if (reshade::get_config_value(nullptr, "DisplayCommander", "AutoApplyResolution", loaded_auto_apply)) {
         auto_apply_.store(loaded_auto_apply);
-        LogInfo("ResolutionSettingsManager::LoadAll() - Loaded AutoApplyResolution: %s", loaded_auto_apply ? "true" : "false");
+        LogInfo("ResolutionSettingsManager::LoadAll() - Loaded AutoApplyResolution: %s",
+                loaded_auto_apply ? "true" : "false");
     } else {
         LogInfo("ResolutionSettingsManager::LoadAll() - AutoApplyResolution not found, using default: false");
     }
@@ -165,7 +174,7 @@ void ResolutionSettingsManager::SaveAll() {
     reshade::set_config_value(nullptr, "DisplayCommander", "AutoApplyResolution", auto_apply_.load());
 
     // Save all display settings
-    for (auto& settings : display_settings_) {
+    for (auto &settings : display_settings_) {
         if (settings) {
             settings->Save();
         } else {
@@ -174,14 +183,14 @@ void ResolutionSettingsManager::SaveAll() {
     }
 }
 
-DisplayResolutionSettings& ResolutionSettingsManager::GetDisplaySettings(int display_index) {
+DisplayResolutionSettings &ResolutionSettingsManager::GetDisplaySettings(int display_index) {
     if (display_index < 0 || display_index >= MAX_DISPLAYS) {
         display_index = 0;
     }
     return *display_settings_[display_index];
 }
 
-const DisplayResolutionSettings& ResolutionSettingsManager::GetDisplaySettings(int display_index) const {
+const DisplayResolutionSettings &ResolutionSettingsManager::GetDisplaySettings(int display_index) const {
     if (display_index < 0 || display_index >= MAX_DISPLAYS) {
         display_index = 0;
     }
@@ -189,7 +198,7 @@ const DisplayResolutionSettings& ResolutionSettingsManager::GetDisplaySettings(i
 }
 
 bool ResolutionSettingsManager::HasAnyDirty() const {
-    for (const auto& settings : display_settings_) {
+    for (const auto &settings : display_settings_) {
         if (settings && settings->IsDirty()) {
             return true;
         }
@@ -198,7 +207,7 @@ bool ResolutionSettingsManager::HasAnyDirty() const {
 }
 
 void ResolutionSettingsManager::SaveAllDirty() {
-    for (auto& settings : display_settings_) {
+    for (auto &settings : display_settings_) {
         if (settings && settings->IsDirty()) {
             settings->SaveCurrentState();
             settings->Save();
@@ -207,7 +216,7 @@ void ResolutionSettingsManager::SaveAllDirty() {
 }
 
 void ResolutionSettingsManager::ResetAllDirty() {
-    for (auto& settings : display_settings_) {
+    for (auto &settings : display_settings_) {
         if (settings && settings->IsDirty()) {
             settings->ResetToLastSaved();
         }
@@ -218,7 +227,8 @@ void ResolutionSettingsManager::SetAutoApply(bool enabled) {
     auto_apply_.store(enabled);
     // Save to Reshade settings immediately
     reshade::set_config_value(nullptr, "DisplayCommander", "AutoApplyResolution", enabled);
-    LogInfo("ResolutionSettingsManager::SetAutoApply() - Saved AutoApplyResolution=%s to Reshade settings", enabled ? "true" : "false");
+    LogInfo("ResolutionSettingsManager::SetAutoApply() - Saved AutoApplyResolution=%s to Reshade settings",
+            enabled ? "true" : "false");
 }
 
 // Global functions

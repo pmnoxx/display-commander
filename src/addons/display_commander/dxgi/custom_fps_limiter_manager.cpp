@@ -1,5 +1,5 @@
 #include "custom_fps_limiter_manager.hpp"
-#include "../addon.hpp"
+#include "../utils.hpp"
 
 namespace dxgi::fps_limiter {
 

@@ -1,19 +1,17 @@
 #pragma once
 
-#include <windows.h>
-#include <chrono>
-#include <string>
-#include <thread>
-#include <atomic>
-#include <memory>
 #include "vblank_monitor.hpp"
+#include <memory>
+#include <string>
+#include <windows.h>
+
 
 // D3DKMT definitions are now provided by vblank_monitor.hpp
 
 namespace dxgi::fps_limiter {
 
 class LatentSyncLimiter {
-public:
+  public:
     LatentSyncLimiter();
     ~LatentSyncLimiter();
 
@@ -32,14 +30,12 @@ public:
     // VBlank monitoring statistics
     bool IsVBlankMonitoringActive() const { return m_vblank_monitor && m_vblank_monitor->IsMonitoring(); }
 
-
-private:
+  private:
     bool EnsureAdapterBinding();
     bool UpdateDisplayBindingFromWindow(HWND hwnd);
     static std::wstring GetDisplayNameFromWindow(HWND hwnd);
 
-private:
-
+  private:
     // VBlank pacing state
     double m_vblank_accumulator = 0.0;
 
@@ -59,9 +55,6 @@ private:
     FARPROC m_pfnCloseAdapter = nullptr;                  // "D3DKMTCloseAdapter"
     FARPROC m_pfnWaitForVerticalBlankEvent = nullptr;     // "D3DKMTWaitForVerticalBlankEvent"
     FARPROC m_pfnGetScanLine = nullptr;                   // "D3DKMTGetScanLine"
-
 };
 
 } // namespace dxgi::fps_limiter
-
-

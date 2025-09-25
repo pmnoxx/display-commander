@@ -67,6 +67,18 @@ static std::atomic<TimerHookType> g_get_system_time_precise_as_file_time_hook_ty
 static std::atomic<TimerHookType> g_get_local_time_hook_type{TimerHookType::None};
 static std::atomic<TimerHookType> g_nt_query_system_time_hook_type{TimerHookType::None};
 
+// Per-hook call counters
+static std::atomic<uint64_t> g_qpc_call_count{0};
+static std::atomic<uint64_t> g_qpf_call_count{0};
+static std::atomic<uint64_t> g_get_tick_count_call_count{0};
+static std::atomic<uint64_t> g_get_tick_count64_call_count{0};
+static std::atomic<uint64_t> g_time_get_time_call_count{0};
+static std::atomic<uint64_t> g_get_system_time_call_count{0};
+static std::atomic<uint64_t> g_get_system_time_as_file_time_call_count{0};
+static std::atomic<uint64_t> g_get_system_time_precise_as_file_time_call_count{0};
+static std::atomic<uint64_t> g_get_local_time_call_count{0};
+static std::atomic<uint64_t> g_nt_query_system_time_call_count{0};
+
 // Atomic pointer for thread-safe state access
 static std::atomic<TimeslowdownState*> g_timeslowdown_state{new TimeslowdownState()};
 
@@ -104,27 +116,12 @@ bool ShouldApplyHook(const char* hook_name) {
         return false;
     }
 
-    if (type == TimerHookType::RenderThreadOnly) {
-        DWORD render_thread_id = g_render_thread_id.load();
-        if (render_thread_id == 0) {
-            return false; // Render thread unknown
-        }
-        return (GetCurrentThreadId() == render_thread_id);
-    }
-
-    if (type == TimerHookType::EverythingExceptRenderThread) {
-        DWORD render_thread_id = g_render_thread_id.load();
-        if (render_thread_id == 0) {
-            return true; // Render thread unknown, apply to all threads
-        }
-        return (GetCurrentThreadId() != render_thread_id);
-    }
-
     return true; // TimerHookType::Enabled
 }
 
 // Hooked QueryPerformanceCounter function
 BOOL WINAPI QueryPerformanceCounter_Detour(LARGE_INTEGER* lpPerformanceCount) {
+    g_qpc_call_count.fetch_add(1, std::memory_order_relaxed);
     if (!QueryPerformanceCounter_Original) {
         return QueryPerformanceCounter(lpPerformanceCount);
     }
@@ -188,6 +185,7 @@ BOOL WINAPI QueryPerformanceCounter_Detour(LARGE_INTEGER* lpPerformanceCount) {
 
 // Hooked QueryPerformanceFrequency function
 BOOL WINAPI QueryPerformanceFrequency_Detour(LARGE_INTEGER* lpFrequency) {
+    g_qpf_call_count.fetch_add(1, std::memory_order_relaxed);
     if (!QueryPerformanceFrequency_Original) {
         return QueryPerformanceFrequency(lpFrequency);
     }
@@ -200,6 +198,7 @@ BOOL WINAPI QueryPerformanceFrequency_Detour(LARGE_INTEGER* lpFrequency) {
 
 // Hooked GetTickCount function
 DWORD WINAPI GetTickCount_Detour() {
+    g_get_tick_count_call_count.fetch_add(1, std::memory_order_relaxed);
     if (!GetTickCount_Original) {
         return GetTickCount();
     }
@@ -225,6 +224,7 @@ DWORD WINAPI GetTickCount_Detour() {
 
 // Hooked GetTickCount64 function
 ULONGLONG WINAPI GetTickCount64_Detour() {
+    g_get_tick_count64_call_count.fetch_add(1, std::memory_order_relaxed);
     if (!GetTickCount64_Original) {
         return GetTickCount64();
     }
@@ -250,6 +250,7 @@ ULONGLONG WINAPI GetTickCount64_Detour() {
 
 // Hooked timeGetTime function
 DWORD WINAPI timeGetTime_Detour() {
+    g_time_get_time_call_count.fetch_add(1, std::memory_order_relaxed);
     if (!timeGetTime_Original) {
         return timeGetTime();
     }
@@ -275,6 +276,7 @@ DWORD WINAPI timeGetTime_Detour() {
 
 // Hooked GetSystemTime function
 void WINAPI GetSystemTime_Detour(LPSYSTEMTIME lpSystemTime) {
+    g_get_system_time_call_count.fetch_add(1, std::memory_order_relaxed);
     if (!GetSystemTime_Original) {
         GetSystemTime(lpSystemTime);
         return;
@@ -313,6 +315,7 @@ void WINAPI GetSystemTime_Detour(LPSYSTEMTIME lpSystemTime) {
 
 // Hooked GetSystemTimeAsFileTime function
 void WINAPI GetSystemTimeAsFileTime_Detour(LPFILETIME lpSystemTimeAsFileTime) {
+    g_get_system_time_as_file_time_call_count.fetch_add(1, std::memory_order_relaxed);
     if (!GetSystemTimeAsFileTime_Original) {
         GetSystemTimeAsFileTime(lpSystemTimeAsFileTime);
         return;
@@ -346,6 +349,7 @@ void WINAPI GetSystemTimeAsFileTime_Detour(LPFILETIME lpSystemTimeAsFileTime) {
 
 // Hooked GetSystemTimePreciseAsFileTime function
 void WINAPI GetSystemTimePreciseAsFileTime_Detour(LPFILETIME lpSystemTimeAsFileTime) {
+    g_get_system_time_precise_as_file_time_call_count.fetch_add(1, std::memory_order_relaxed);
     if (!GetSystemTimePreciseAsFileTime_Original) {
         GetSystemTimePreciseAsFileTime(lpSystemTimeAsFileTime);
         return;
@@ -378,6 +382,7 @@ void WINAPI GetSystemTimePreciseAsFileTime_Detour(LPFILETIME lpSystemTimeAsFileT
 
 // Hooked GetLocalTime function
 void WINAPI GetLocalTime_Detour(LPSYSTEMTIME lpSystemTime) {
+    g_get_local_time_call_count.fetch_add(1, std::memory_order_relaxed);
     if (!GetLocalTime_Original) {
         GetLocalTime(lpSystemTime);
         return;
@@ -416,6 +421,7 @@ void WINAPI GetLocalTime_Detour(LPSYSTEMTIME lpSystemTime) {
 
 // Hooked NtQuerySystemTime function
 NTSTATUS WINAPI NtQuerySystemTime_Detour(PLARGE_INTEGER SystemTime) {
+    g_nt_query_system_time_call_count.fetch_add(1, std::memory_order_relaxed);
     if (!NtQuerySystemTime_Original) {
         // Load ntdll.dll and get the function
         HMODULE ntdll = GetModuleHandleA("ntdll.dll");
@@ -675,8 +681,7 @@ void SetTimerHookType(const char* hook_name, TimerHookType type) {
 
     LogInfo("Timer hook %s set to %s", hook_name,
         type == TimerHookType::None ? "None" :
-        type == TimerHookType::Enabled ? "Enabled" :
-        type == TimerHookType::RenderThreadOnly ? "RenderThreadOnly" : "EverythingExceptRenderThread");
+        "Enabled");
 }
 
 TimerHookType GetTimerHookType(const char* hook_name) {
@@ -685,15 +690,32 @@ TimerHookType GetTimerHookType(const char* hook_name) {
 
 bool IsTimerHookEnabled(const char* hook_name) {
     TimerHookType type = GetTimerHookType(hook_name);
-    return type == TimerHookType::Enabled || type == TimerHookType::RenderThreadOnly || type == TimerHookType::EverythingExceptRenderThread;
+    return type == TimerHookType::Enabled;
 }
 
-bool IsTimerHookRenderThreadOnly(const char* hook_name) {
-    return GetTimerHookType(hook_name) == TimerHookType::RenderThreadOnly;
-}
-
-bool IsTimerHookEverythingExceptRenderThread(const char* hook_name) {
-    return GetTimerHookType(hook_name) == TimerHookType::EverythingExceptRenderThread;
+uint64_t GetTimerHookCallCount(const char* hook_name) {
+    if (strcmp(hook_name, HOOK_QUERY_PERFORMANCE_COUNTER) == 0) {
+        return g_qpc_call_count.load(std::memory_order_relaxed);
+    } else if (strcmp(hook_name, HOOK_GET_TICK_COUNT) == 0) {
+        return g_get_tick_count_call_count.load(std::memory_order_relaxed);
+    } else if (strcmp(hook_name, HOOK_GET_TICK_COUNT64) == 0) {
+        return g_get_tick_count64_call_count.load(std::memory_order_relaxed);
+    } else if (strcmp(hook_name, HOOK_TIME_GET_TIME) == 0) {
+        return g_time_get_time_call_count.load(std::memory_order_relaxed);
+    } else if (strcmp(hook_name, HOOK_GET_SYSTEM_TIME) == 0) {
+        return g_get_system_time_call_count.load(std::memory_order_relaxed);
+    } else if (strcmp(hook_name, HOOK_GET_SYSTEM_TIME_AS_FILE_TIME) == 0) {
+        return g_get_system_time_as_file_time_call_count.load(std::memory_order_relaxed);
+    } else if (strcmp(hook_name, HOOK_GET_SYSTEM_TIME_PRECISE_AS_FILE_TIME) == 0) {
+        return g_get_system_time_precise_as_file_time_call_count.load(std::memory_order_relaxed);
+    } else if (strcmp(hook_name, HOOK_GET_LOCAL_TIME) == 0) {
+        return g_get_local_time_call_count.load(std::memory_order_relaxed);
+    } else if (strcmp(hook_name, HOOK_NT_QUERY_SYSTEM_TIME) == 0) {
+        return g_nt_query_system_time_call_count.load(std::memory_order_relaxed);
+    } else if (strcmp(hook_name, HOOK_QUERY_PERFORMANCE_COUNTER) == 0) {
+        return g_qpc_call_count.load(std::memory_order_relaxed);
+    }
+    return 0;
 }
 
 } // namespace renodx::hooks

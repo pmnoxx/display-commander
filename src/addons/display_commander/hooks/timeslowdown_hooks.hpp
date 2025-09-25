@@ -1,7 +1,7 @@
 #pragma once
 
 #include <windows.h>
-#include <atomic>
+#include <stdint.h>
 
 namespace renodx::hooks {
 
@@ -10,9 +10,7 @@ namespace renodx::hooks {
 // Timer hook types enum
 enum class TimerHookType {
     None = 0,
-    Enabled = 1,
-    RenderThreadOnly = 2,
-    EverythingExceptRenderThread = 3
+    Enabled = 1
 };
 
 // Function pointer types for timeslowdown hooks
@@ -66,8 +64,10 @@ void SetTimeslowdownEnabled(bool enabled);
 void SetTimerHookType(const char* hook_name, TimerHookType type);
 TimerHookType GetTimerHookType(const char* hook_name);
 bool IsTimerHookEnabled(const char* hook_name);
-bool IsTimerHookRenderThreadOnly(const char* hook_name);
-bool IsTimerHookEverythingExceptRenderThread(const char* hook_name);
+// Thread-specific modes removed
+
+// Statistics
+uint64_t GetTimerHookCallCount(const char* hook_name);
 
 // Hook type constants
 extern const char* HOOK_QUERY_PERFORMANCE_COUNTER;

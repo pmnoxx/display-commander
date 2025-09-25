@@ -453,7 +453,7 @@ void TimerPresentPacingDelay() {
 void OnPresentUpdateAfter(reshade::api::command_queue * /*queue*/,
                         reshade::api::swapchain *swapchain) {
     // Track render thread ID
-    DWORD current_thread_id = renodx::hooks::GetCurrentThreadIdCached();
+    DWORD current_thread_id = GetCurrentThreadId();
     DWORD previous_render_thread_id = g_render_thread_id.load();
     g_render_thread_id.store(current_thread_id);
 

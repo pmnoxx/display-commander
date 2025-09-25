@@ -5,24 +5,14 @@
 #include "../settings/experimental_tab_settings.hpp"
 #include <MinHook.h>
 #include <windows.h>
-#include <thread>
-#include <sstream>
+// Removed unused headers
 
 namespace renodx::hooks {
 
 // Constant to disable sleep hooks
 const bool DISABLE_SLEEP_HOOKS = false;
 
-// Thread-local storage for thread ID caching
-thread_local DWORD g_cached_thread_id = 0;
-
-// Helper function to get current thread ID with caching
-DWORD GetCurrentThreadIdCached() {
-    if (g_cached_thread_id == 0) {
-        g_cached_thread_id = GetCurrentThreadId();
-    }
-    return g_cached_thread_id;
-}
+// Thread ID caching removed
 
 // Global sleep hook statistics
 SleepHookStats g_sleep_hook_stats;
@@ -41,20 +31,7 @@ void WINAPI Sleep_Detour(DWORD dwMilliseconds) {
     DWORD modified_duration = dwMilliseconds;
 
     if (settings::g_experimentalTabSettings.sleep_hook_enabled.GetValue() && dwMilliseconds > 0) {
-        // Check if render thread only is enabled
-        bool should_modify = true;
-        if (settings::g_experimentalTabSettings.sleep_hook_render_thread_only.GetValue()) {
-            DWORD render_thread_id = g_render_thread_id.load();
-            if (render_thread_id == 0) {
-                // Render thread unknown, don't modify
-                should_modify = false;
-            } else {
-                // Only modify if current thread is render thread
-                should_modify = (GetCurrentThreadIdCached() == render_thread_id);
-            }
-        }
-
-        if (should_modify) {
+        {
             // Apply sleep multiplier
             float multiplier = settings::g_experimentalTabSettings.sleep_multiplier.GetValue();
             if (multiplier > 0.0f) {
@@ -78,10 +55,7 @@ void WINAPI Sleep_Detour(DWORD dwMilliseconds) {
             g_sleep_hook_stats.add_original_duration(dwMilliseconds);
             g_sleep_hook_stats.add_modified_duration(modified_duration);
 
-            LogDebug("[TID:%d] Sleep hook: %d ms -> %d ms (multiplier: %f)", GetCurrentThreadIdCached(), dwMilliseconds, modified_duration, multiplier);
-        } else {
-            // Track unmodified calls due to render thread restriction
-            g_hook_stats[HOOK_Sleep].increment_unsuppressed();
+            LogDebug("[TID:%d] Sleep hook: %d ms -> %d ms (multiplier: %f)", GetCurrentThreadId(), dwMilliseconds, modified_duration, multiplier);
         }
     } else {
         // Track unmodified calls
@@ -104,20 +78,7 @@ DWORD WINAPI SleepEx_Detour(DWORD dwMilliseconds, BOOL bAlertable) {
     DWORD modified_duration = dwMilliseconds;
 
     if (settings::g_experimentalTabSettings.sleep_hook_enabled.GetValue() && dwMilliseconds > 0) {
-        // Check if render thread only is enabled
-        bool should_modify = true;
-        if (settings::g_experimentalTabSettings.sleep_hook_render_thread_only.GetValue()) {
-            DWORD render_thread_id = g_render_thread_id.load();
-            if (render_thread_id == 0) {
-                // Render thread unknown, don't modify
-                should_modify = false;
-            } else {
-                // Only modify if current thread is render thread
-                should_modify = (GetCurrentThreadIdCached() == render_thread_id);
-            }
-        }
-
-        if (should_modify) {
+        {
             // Apply sleep multiplier
             float multiplier = settings::g_experimentalTabSettings.sleep_multiplier.GetValue();
             if (multiplier > 0.0f) {
@@ -141,10 +102,7 @@ DWORD WINAPI SleepEx_Detour(DWORD dwMilliseconds, BOOL bAlertable) {
             g_sleep_hook_stats.add_original_duration(dwMilliseconds);
             g_sleep_hook_stats.add_modified_duration(modified_duration);
 
-            LogDebug("[TID:%d] SleepEx hook: %d ms -> %d ms (multiplier: %f)", GetCurrentThreadIdCached(), dwMilliseconds, modified_duration, multiplier);
-        } else {
-            // Track unmodified calls due to render thread restriction
-            g_hook_stats[HOOK_SleepEx].increment_unsuppressed();
+            LogDebug("[TID:%d] SleepEx hook: %d ms -> %d ms (multiplier: %f)", GetCurrentThreadId(), dwMilliseconds, modified_duration, multiplier);
         }
     } else {
         // Track unmodified calls
@@ -167,20 +125,7 @@ DWORD WINAPI WaitForSingleObject_Detour(HANDLE hHandle, DWORD dwMilliseconds) {
     DWORD modified_duration = dwMilliseconds;
 
     if (settings::g_experimentalTabSettings.sleep_hook_enabled.GetValue() && dwMilliseconds > 0 && dwMilliseconds != INFINITE) {
-        // Check if render thread only is enabled
-        bool should_modify = true;
-        if (settings::g_experimentalTabSettings.sleep_hook_render_thread_only.GetValue()) {
-            DWORD render_thread_id = g_render_thread_id.load();
-            if (render_thread_id == 0) {
-                // Render thread unknown, don't modify
-                should_modify = false;
-            } else {
-                // Only modify if current thread is render thread
-                should_modify = (GetCurrentThreadIdCached() == render_thread_id);
-            }
-        }
-
-        if (should_modify) {
+        {
             // Apply sleep multiplier
             float multiplier = settings::g_experimentalTabSettings.sleep_multiplier.GetValue();
             if (multiplier > 0.0f) {
@@ -204,10 +149,7 @@ DWORD WINAPI WaitForSingleObject_Detour(HANDLE hHandle, DWORD dwMilliseconds) {
             g_sleep_hook_stats.add_original_duration(dwMilliseconds);
             g_sleep_hook_stats.add_modified_duration(modified_duration);
 
-            LogDebug("[TID:%d] WaitForSingleObject hook: %d ms -> %d ms (multiplier: %f)", GetCurrentThreadIdCached(), dwMilliseconds, modified_duration, multiplier);
-        } else {
-            // Track unmodified calls due to render thread restriction
-            g_hook_stats[HOOK_WaitForSingleObject].increment_unsuppressed();
+            LogDebug("[TID:%d] WaitForSingleObject hook: %d ms -> %d ms (multiplier: %f)", GetCurrentThreadId(), dwMilliseconds, modified_duration, multiplier);
         }
     } else {
         // Track unmodified calls
@@ -230,20 +172,7 @@ DWORD WINAPI WaitForMultipleObjects_Detour(DWORD nCount, const HANDLE* lpHandles
     DWORD modified_duration = dwMilliseconds;
 
     if (settings::g_experimentalTabSettings.sleep_hook_enabled.GetValue() && dwMilliseconds > 0 && dwMilliseconds != INFINITE) {
-        // Check if render thread only is enabled
-        bool should_modify = true;
-        if (settings::g_experimentalTabSettings.sleep_hook_render_thread_only.GetValue()) {
-            DWORD render_thread_id = g_render_thread_id.load();
-            if (render_thread_id == 0) {
-                // Render thread unknown, don't modify
-                should_modify = false;
-            } else {
-                // Only modify if current thread is render thread
-                should_modify = (GetCurrentThreadIdCached() == render_thread_id);
-            }
-        }
-
-        if (should_modify) {
+        {
             // Apply sleep multiplier
             float multiplier = settings::g_experimentalTabSettings.sleep_multiplier.GetValue();
             if (multiplier > 0.0f) {
@@ -267,10 +196,7 @@ DWORD WINAPI WaitForMultipleObjects_Detour(DWORD nCount, const HANDLE* lpHandles
             g_sleep_hook_stats.add_original_duration(dwMilliseconds);
             g_sleep_hook_stats.add_modified_duration(modified_duration);
 
-            LogDebug("[TID:%d] WaitForMultipleObjects hook: %d ms -> %d ms (multiplier: %f)", GetCurrentThreadIdCached(), dwMilliseconds, modified_duration, multiplier);
-        } else {
-            // Track unmodified calls due to render thread restriction
-            g_hook_stats[HOOK_WaitForMultipleObjects].increment_unsuppressed();
+            LogDebug("[TID:%d] WaitForMultipleObjects hook: %d ms -> %d ms (multiplier: %f)", GetCurrentThreadId(), dwMilliseconds, modified_duration, multiplier);
         }
     } else {
         // Track unmodified calls

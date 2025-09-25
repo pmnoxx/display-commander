@@ -55,7 +55,7 @@ public:
 
     // Sleep hook settings
     BoolSetting sleep_hook_enabled;
-    BoolSetting sleep_hook_render_thread_only;
+    // Render-thread-only option removed
     FloatSetting sleep_multiplier;
     IntSetting min_sleep_duration_ms;
     IntSetting max_sleep_duration_ms;
@@ -63,6 +63,7 @@ public:
     // Time slowdown settings
     BoolSetting timeslowdown_enabled;
     FloatSetting timeslowdown_multiplier;
+    FloatSetting timeslowdown_max_multiplier;
 
     // Individual timer hook settings
     ComboSetting query_performance_counter_hook;

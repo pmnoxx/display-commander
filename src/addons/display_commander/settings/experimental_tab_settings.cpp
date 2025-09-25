@@ -29,65 +29,47 @@ ExperimentalTabSettings::ExperimentalTabSettings()
     }, "Experimental")
     , texture_format_upgrade_enabled("TextureFormatUpgradeEnabled", false, "Experimental")
     , sleep_hook_enabled("SleepHookEnabled", false, "Experimental")
-    , sleep_hook_render_thread_only("SleepHookRenderThreadOnly", true, "Experimental")
     , sleep_multiplier("SleepMultiplier", 1.0f, 0.1f, 10.0f, "Experimental")
     , min_sleep_duration_ms("MinSleepDurationMs", 0, 0, 10000, "Experimental")
     , max_sleep_duration_ms("MaxSleepDurationMs", 0, 0, 10000, "Experimental")
     , timeslowdown_enabled("TimeslowdownEnabled", false, "Experimental")
     , timeslowdown_multiplier("TimeslowdownMultiplier", 1.0f, 0.1f, 10.0f, "Experimental")
+    , timeslowdown_max_multiplier("TimeslowdownMaxMultiplier", 10.0f, 1.0f, 1000.0f, "Experimental")
     , query_performance_counter_hook("QueryPerformanceCounterHook", 0, {
         "None",
-        "Enabled",
-        "Render Thread Only",
-        "Everything Except Render Thread"
+        "Enabled"
     }, "Experimental")
     , get_tick_count_hook("GetTickCountHook", 0, {
         "None",
-        "Enabled",
-        "Render Thread Only",
-        "Everything Except Render Thread"
+        "Enabled"
     }, "Experimental")
     , get_tick_count64_hook("GetTickCount64Hook", 0, {
         "None",
-        "Enabled",
-        "Render Thread Only",
-        "Everything Except Render Thread"
+        "Enabled"
     }, "Experimental")
     , time_get_time_hook("TimeGetTimeHook", 0, {
         "None",
-        "Enabled",
-        "Render Thread Only",
-        "Everything Except Render Thread"
+        "Enabled"
     }, "Experimental")
     , get_system_time_hook("GetSystemTimeHook", 0, {
         "None",
-        "Enabled",
-        "Render Thread Only",
-        "Everything Except Render Thread"
+        "Enabled"
     }, "Experimental")
     , get_system_time_as_file_time_hook("GetSystemTimeAsFileTimeHook", 0, {
         "None",
-        "Enabled",
-        "Render Thread Only",
-        "Everything Except Render Thread"
+        "Enabled"
     }, "Experimental")
     , get_system_time_precise_as_file_time_hook("GetSystemTimePreciseAsFileTimeHook", 0, {
         "None",
-        "Enabled",
-        "Render Thread Only",
-        "Everything Except Render Thread"
+        "Enabled"
     }, "Experimental")
     , get_local_time_hook("GetLocalTimeHook", 0, {
         "None",
-        "Enabled",
-        "Render Thread Only",
-        "Everything Except Render Thread"
+        "Enabled"
     }, "Experimental")
     , nt_query_system_time_hook("NtQuerySystemTimeHook", 0, {
         "None",
-        "Enabled",
-        "Render Thread Only",
-        "Everything Except Render Thread"
+        "Enabled"
     }, "Experimental")
 {
     // Initialize the all_settings_ vector
@@ -99,8 +81,8 @@ ExperimentalTabSettings::ExperimentalTabSettings()
         &buffer_resolution_upgrade_enabled, &buffer_resolution_upgrade_width, &buffer_resolution_upgrade_height,
         &buffer_resolution_upgrade_scale_factor, &buffer_resolution_upgrade_mode,
         &texture_format_upgrade_enabled,
-        &sleep_hook_enabled, &sleep_hook_render_thread_only, &sleep_multiplier, &min_sleep_duration_ms, &max_sleep_duration_ms,
-        &timeslowdown_enabled, &timeslowdown_multiplier,
+        &sleep_hook_enabled, &sleep_multiplier, &min_sleep_duration_ms, &max_sleep_duration_ms,
+        &timeslowdown_enabled, &timeslowdown_multiplier, &timeslowdown_max_multiplier,
         &query_performance_counter_hook, &get_tick_count_hook, &get_tick_count64_hook,
         &time_get_time_hook, &get_system_time_hook,
         &get_system_time_as_file_time_hook, &get_system_time_precise_as_file_time_hook,

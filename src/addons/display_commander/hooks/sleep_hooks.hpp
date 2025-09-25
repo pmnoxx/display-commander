@@ -45,8 +45,7 @@ DWORD WINAPI SleepEx_Detour(DWORD dwMilliseconds, BOOL bAlertable);
 DWORD WINAPI WaitForSingleObject_Detour(HANDLE hHandle, DWORD dwMilliseconds);
 DWORD WINAPI WaitForMultipleObjects_Detour(DWORD nCount, const HANDLE* lpHandles, BOOL bWaitAll, DWORD dwMilliseconds);
 
-// Thread ID helper function
-DWORD GetCurrentThreadIdCached();
+// Thread ID helper removed
 
 // Installation and cleanup functions
 bool InstallSleepHooks();

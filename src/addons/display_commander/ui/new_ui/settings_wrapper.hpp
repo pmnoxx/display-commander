@@ -55,6 +55,7 @@ public:
     float GetDefaultValue() const { return default_value_; }
     float GetMin() const { return min_; }
     float GetMax() const { return max_; }
+    void SetMax(float new_max) { max_ = new_max; }
 
     // Direct access to the atomic value for performance-critical code
     std::atomic<float>& GetAtomic() { return value_; }

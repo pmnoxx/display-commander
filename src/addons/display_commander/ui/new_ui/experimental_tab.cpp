@@ -715,13 +715,7 @@ void DrawSleepHookControls() {
         ImGui::SetTooltip("Enable hooks for Windows Sleep APIs to modify sleep durations for FPS control.");
     }
 
-    // Render thread only checkbox
-    if (CheckboxSetting(settings::g_experimentalTabSettings.sleep_hook_render_thread_only, "Render Thread Only")) {
-        LogInfo("Sleep hooks render thread only %s", settings::g_experimentalTabSettings.sleep_hook_render_thread_only.GetValue() ? "enabled" : "disabled");
-    }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Only modify sleep calls on the render thread. If render thread is unknown, sleep calls are not modified.");
-    }
+    // Render thread only option removed
 
     if (settings::g_experimentalTabSettings.sleep_hook_enabled.GetValue()) {
         ImGui::Spacing();
@@ -796,6 +790,24 @@ void DrawTimeSlowdownControls() {
     if (settings::g_experimentalTabSettings.timeslowdown_enabled.GetValue()) {
         ImGui::Spacing();
 
+        // Max time multiplier slider (controls upper bound of Time Multiplier)
+        if (SliderFloatSetting(settings::g_experimentalTabSettings.timeslowdown_max_multiplier, "Max Time Multiplier", "%.0fx")) {
+            float new_max = settings::g_experimentalTabSettings.timeslowdown_max_multiplier.GetValue();
+            settings::g_experimentalTabSettings.timeslowdown_multiplier.SetMax(new_max);
+            float cur = settings::g_experimentalTabSettings.timeslowdown_multiplier.GetValue();
+            if (cur > new_max) {
+                settings::g_experimentalTabSettings.timeslowdown_multiplier.SetValue(new_max);
+            }
+            LogInfo("Max time multiplier set to %.0fx", new_max);
+        } else {
+            // Ensure the slider respects the current max even if unchanged this frame
+            settings::g_experimentalTabSettings.timeslowdown_multiplier.SetMax(
+                settings::g_experimentalTabSettings.timeslowdown_max_multiplier.GetValue());
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Sets the maximum allowed value for Time Multiplier (1–1000x).");
+        }
+
         // Time multiplier slider
         if (SliderFloatSetting(settings::g_experimentalTabSettings.timeslowdown_multiplier, "Time Multiplier", "%.2fx")) {
             LogInfo("Time multiplier set to %.2fx", settings::g_experimentalTabSettings.timeslowdown_multiplier.GetValue());
@@ -810,91 +822,118 @@ void DrawTimeSlowdownControls() {
 
         // Timer Hook Selection
         ImGui::TextColored(ImVec4(0.9f, 0.9f, 1.0f, 1.0f), "Timer Hook Selection:");
-        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Choose which timer APIs to hook (None/Enabled/Render Thread Only/Everything Except Render Thread)");
+        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Choose which timer APIs to hook (None/Enabled)");
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Select which timer APIs to hook for time manipulation.\nOnly one hook type can be active at a time per API.\nRender Thread Only applies the hook only to the rendering thread.\nEverything Except Render Thread applies to all threads except the rendering thread.");
+            ImGui::SetTooltip("Select which timer APIs to hook for time manipulation.");
         }
 
         ImGui::Spacing();
 
         // QueryPerformanceCounter hook
+        uint64_t qpc_calls = renodx::hooks::GetTimerHookCallCount(renodx::hooks::HOOK_QUERY_PERFORMANCE_COUNTER);
         if (ComboSettingWrapper(settings::g_experimentalTabSettings.query_performance_counter_hook, "QueryPerformanceCounter")) {
             renodx::hooks::TimerHookType type = static_cast<renodx::hooks::TimerHookType>(settings::g_experimentalTabSettings.query_performance_counter_hook.GetValue());
             renodx::hooks::SetTimerHookType(renodx::hooks::HOOK_QUERY_PERFORMANCE_COUNTER, type);
         }
+        ImGui::SameLine();
+        ImGui::Text("[%llu calls]", qpc_calls);
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("High-resolution timer used by most modern games for precise timing.");
         }
 
         // GetTickCount hook
+        uint64_t gtc_calls = renodx::hooks::GetTimerHookCallCount(renodx::hooks::HOOK_GET_TICK_COUNT);
         if (ComboSettingWrapper(settings::g_experimentalTabSettings.get_tick_count_hook, "GetTickCount")) {
             renodx::hooks::TimerHookType type = static_cast<renodx::hooks::TimerHookType>(settings::g_experimentalTabSettings.get_tick_count_hook.GetValue());
             renodx::hooks::SetTimerHookType(renodx::hooks::HOOK_GET_TICK_COUNT, type);
         }
+        ImGui::SameLine();
+        ImGui::Text("[%llu calls]", gtc_calls);
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("32-bit millisecond timer, commonly used by older games.");
         }
 
         // GetTickCount64 hook
+        uint64_t gtc64_calls = renodx::hooks::GetTimerHookCallCount(renodx::hooks::HOOK_GET_TICK_COUNT64);
         if (ComboSettingWrapper(settings::g_experimentalTabSettings.get_tick_count64_hook, "GetTickCount64")) {
             renodx::hooks::TimerHookType type = static_cast<renodx::hooks::TimerHookType>(settings::g_experimentalTabSettings.get_tick_count64_hook.GetValue());
             renodx::hooks::SetTimerHookType(renodx::hooks::HOOK_GET_TICK_COUNT64, type);
         }
+        ImGui::SameLine();
+        ImGui::Text("[%llu calls]", gtc64_calls);
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("64-bit millisecond timer, used by some modern games.");
         }
 
         // timeGetTime hook
+        uint64_t tgt_calls = renodx::hooks::GetTimerHookCallCount(renodx::hooks::HOOK_TIME_GET_TIME);
         if (ComboSettingWrapper(settings::g_experimentalTabSettings.time_get_time_hook, "timeGetTime")) {
             renodx::hooks::TimerHookType type = static_cast<renodx::hooks::TimerHookType>(settings::g_experimentalTabSettings.time_get_time_hook.GetValue());
             renodx::hooks::SetTimerHookType(renodx::hooks::HOOK_TIME_GET_TIME, type);
         }
+        ImGui::SameLine();
+        ImGui::Text("[%llu calls]", tgt_calls);
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Multimedia timer, often used for audio/video timing.");
         }
 
         // GetSystemTime hook
+        uint64_t gst_calls = renodx::hooks::GetTimerHookCallCount(renodx::hooks::HOOK_GET_SYSTEM_TIME);
         if (ComboSettingWrapper(settings::g_experimentalTabSettings.get_system_time_hook, "GetSystemTime")) {
             renodx::hooks::TimerHookType type = static_cast<renodx::hooks::TimerHookType>(settings::g_experimentalTabSettings.get_system_time_hook.GetValue());
             renodx::hooks::SetTimerHookType(renodx::hooks::HOOK_GET_SYSTEM_TIME, type);
         }
+        ImGui::SameLine();
+        ImGui::Text("[%llu calls]", gst_calls);
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("System time in SYSTEMTIME format, used by some games for timestamps.");
         }
 
         // GetSystemTimeAsFileTime hook
+        uint64_t gst_aft_calls = renodx::hooks::GetTimerHookCallCount(renodx::hooks::HOOK_GET_SYSTEM_TIME_AS_FILE_TIME);
         if (ComboSettingWrapper(settings::g_experimentalTabSettings.get_system_time_as_file_time_hook, "GetSystemTimeAsFileTime")) {
             renodx::hooks::TimerHookType type = static_cast<renodx::hooks::TimerHookType>(settings::g_experimentalTabSettings.get_system_time_as_file_time_hook.GetValue());
             renodx::hooks::SetTimerHookType(renodx::hooks::HOOK_GET_SYSTEM_TIME_AS_FILE_TIME, type);
         }
+        ImGui::SameLine();
+        ImGui::Text("[%llu calls]", gst_aft_calls);
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("System time in FILETIME format, used by some games for high-precision timestamps.");
         }
 
 
         // GetSystemTimePreciseAsFileTime hook
+        uint64_t gstp_aft_calls = renodx::hooks::GetTimerHookCallCount(renodx::hooks::HOOK_GET_SYSTEM_TIME_PRECISE_AS_FILE_TIME);
         if (ComboSettingWrapper(settings::g_experimentalTabSettings.get_system_time_precise_as_file_time_hook, "GetSystemTimePreciseAsFileTime")) {
             renodx::hooks::TimerHookType type = static_cast<renodx::hooks::TimerHookType>(settings::g_experimentalTabSettings.get_system_time_precise_as_file_time_hook.GetValue());
             renodx::hooks::SetTimerHookType(renodx::hooks::HOOK_GET_SYSTEM_TIME_PRECISE_AS_FILE_TIME, type);
         }
+        ImGui::SameLine();
+        ImGui::Text("[%llu calls]", gstp_aft_calls);
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("High-precision system time (Windows 8+), used by modern games for precise timing.");
         }
 
         // GetLocalTime hook
+        uint64_t glt_calls = renodx::hooks::GetTimerHookCallCount(renodx::hooks::HOOK_GET_LOCAL_TIME);
         if (ComboSettingWrapper(settings::g_experimentalTabSettings.get_local_time_hook, "GetLocalTime")) {
             renodx::hooks::TimerHookType type = static_cast<renodx::hooks::TimerHookType>(settings::g_experimentalTabSettings.get_local_time_hook.GetValue());
             renodx::hooks::SetTimerHookType(renodx::hooks::HOOK_GET_LOCAL_TIME, type);
         }
+        ImGui::SameLine();
+        ImGui::Text("[%llu calls]", glt_calls);
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Local system time (vs UTC), used by some games for timezone-aware timing.");
         }
 
         // NtQuerySystemTime hook
+        uint64_t ntqst_calls = renodx::hooks::GetTimerHookCallCount(renodx::hooks::HOOK_NT_QUERY_SYSTEM_TIME);
         if (ComboSettingWrapper(settings::g_experimentalTabSettings.nt_query_system_time_hook, "NtQuerySystemTime")) {
             renodx::hooks::TimerHookType type = static_cast<renodx::hooks::TimerHookType>(settings::g_experimentalTabSettings.nt_query_system_time_hook.GetValue());
             renodx::hooks::SetTimerHookType(renodx::hooks::HOOK_NT_QUERY_SYSTEM_TIME, type);
         }
+        ImGui::SameLine();
+        ImGui::Text("[%llu calls]", ntqst_calls);
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Native API system time, used by some games for low-level timing access.");
         }
@@ -906,6 +945,7 @@ void DrawTimeSlowdownControls() {
         // Show current settings summary
         ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Current Settings:");
         ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Time Multiplier: %.2fx", settings::g_experimentalTabSettings.timeslowdown_multiplier.GetValue());
+        ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Max Time Multiplier: %.0fx", settings::g_experimentalTabSettings.timeslowdown_max_multiplier.GetValue());
 
         // Show hook status
         bool hooks_installed = renodx::hooks::AreTimeslowdownHooksInstalled();
@@ -938,22 +978,14 @@ void DrawTimeSlowdownControls() {
 
         for (int i = 0; i < 9; i++) {
             if (renodx::hooks::IsTimerHookEnabled(hook_constants[i])) {
-                const char* mode;
-                if (renodx::hooks::IsTimerHookRenderThreadOnly(hook_constants[i])) {
-                    mode = " (Render Thread)";
-                } else if (renodx::hooks::IsTimerHookEverythingExceptRenderThread(hook_constants[i])) {
-                    mode = " (Everything Except Render Thread)";
-                } else {
-                    mode = " (All Threads)";
-                }
-                ImGui::TextColored(ImVec4(0.6f, 1.0f, 0.6f, 1.0f), "    %s%s", hook_names[i], mode);
+                ImGui::TextColored(ImVec4(0.6f, 1.0f, 0.6f, 1.0f), "    %s", hook_names[i]);
             }
         }
 
         ImGui::Spacing();
         ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "⚠ WARNING: This affects all time-based game logic!");
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Time slowdown affects all game systems that use the selected timer APIs for timing.\nThis includes physics, animations, AI, and other time-dependent systems.\nUse 'Render Thread Only' to minimize impact on non-rendering systems.\nUse 'Everything Except Render Thread' to target non-rendering systems while leaving rendering unaffected.");
+            ImGui::SetTooltip("Time slowdown affects all game systems that use the selected timer APIs for timing.");
         }
     }
 }

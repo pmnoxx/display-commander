@@ -7,7 +7,6 @@
 #include <sstream>
 #include <windows.h>
 
-
 namespace exit_handler {
 
 // Atomic flag to prevent multiple exit calls

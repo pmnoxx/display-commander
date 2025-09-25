@@ -161,42 +161,6 @@ std::vector<DisplayTimingInfo> QueryDisplayTimingInfo() {
     return results;
 }
 
-// Query display timing info for a specific monitor
-std::vector<DisplayTimingInfo> QueryDisplayTimingInfoForMonitor(HMONITOR monitor) {
-    auto all_timing = QueryDisplayTimingInfo();
-
-    // Note: This function would need to be enhanced to properly match
-    // DISPLAYCONFIG data with specific monitors. For now, return first result.
-    std::vector<DisplayTimingInfo> result;
-    if (!all_timing.empty()) {
-        result.push_back(all_timing[0]);
-    }
-
-    return result;
-}
-
-// Demonstration function: Log all display timing information (similar to Special-K)
-void LogAllDisplayTimingInfo() {
-    auto timing_info = QueryDisplayTimingInfo();
-
-    if (timing_info.empty()) {
-        // Note: We can't use LogInfo here since it's not included, but this shows the intent
-        return;
-    }
-
-    for (const auto& timing : timing_info) {
-        // Convert wide string to narrow string for logging using our utility function
-        std::wstring formatted = timing.GetFormattedString();
-        std::string narrow_formatted = WideCharToUTF8(formatted);
-
-        // This would be the equivalent of Special-K's logging:
-        // LogInfo(narrow_formatted.c_str());
-
-        // For now, we'll just return the formatted string
-        // The caller can decide how to log it
-    }
-}
-
 // Utility function to convert wstring to string (similar to Special-K's SK_WideCharToUTF8)
 std::string WideCharToUTF8(const std::wstring& in) {
     if (in.empty()) {

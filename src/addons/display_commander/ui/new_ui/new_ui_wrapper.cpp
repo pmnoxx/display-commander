@@ -1,6 +1,6 @@
 #include "new_ui_wrapper.hpp"
-#include "new_ui_main.hpp"
 #include "../../addon.hpp"
+#include "new_ui_main.hpp"
 
 namespace ui::new_ui {
 

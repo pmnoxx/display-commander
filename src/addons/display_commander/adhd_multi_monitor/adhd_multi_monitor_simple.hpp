@@ -1,15 +1,14 @@
 #pragma once
 
-#include <windows.h>
-#include <vector>
 #include <atomic>
-#include <string>
+#include <vector>
+#include <windows.h>
 
 namespace adhd_multi_monitor {
 
 // Simple ADHD Multi-Monitor Manager - single class implementation
 class AdhdMultiMonitorManager {
-public:
+  public:
     AdhdMultiMonitorManager();
     ~AdhdMultiMonitorManager();
 
@@ -32,7 +31,7 @@ public:
     // Check if multiple monitors are available
     bool HasMultipleMonitors() const;
 
-private:
+  private:
     // Background window management
     bool CreateBackgroundWindow();
     void DestroyBackgroundWindow();
@@ -62,8 +61,8 @@ private:
     bool background_window_created_;
 
     // Window class name for the background window
-    static constexpr const wchar_t* BACKGROUND_WINDOW_CLASS = L"AdhdMultiMonitorBackground";
-    static constexpr const wchar_t* BACKGROUND_WINDOW_TITLE = L"ADHD Multi-Monitor Background";
+    static constexpr const wchar_t *BACKGROUND_WINDOW_CLASS = L"AdhdMultiMonitorBackground";
+    static constexpr const wchar_t *BACKGROUND_WINDOW_TITLE = L"ADHD Multi-Monitor Background";
 };
 
 // Global instance

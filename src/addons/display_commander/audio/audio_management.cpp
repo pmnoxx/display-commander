@@ -10,53 +10,67 @@ bool SetMuteForCurrentProcess(bool mute) {
     HRESULT hr = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
     const bool did_init = SUCCEEDED(hr);
     if (!did_init && hr != RPC_E_CHANGED_MODE) {
-    LogWarn("CoInitializeEx failed for audio mute control");
-    return false;
+        LogWarn("CoInitializeEx failed for audio mute control");
+        return false;
     }
 
     bool success = false;
-    IMMDeviceEnumerator* device_enumerator = nullptr;
-    IMMDevice* device = nullptr;
-    IAudioSessionManager2* session_manager = nullptr;
-    IAudioSessionEnumerator* session_enumerator = nullptr;
+    IMMDeviceEnumerator *device_enumerator = nullptr;
+    IMMDevice *device = nullptr;
+    IAudioSessionManager2 *session_manager = nullptr;
+    IAudioSessionEnumerator *session_enumerator = nullptr;
 
     do {
-    hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL, IID_PPV_ARGS(&device_enumerator));
-    if (FAILED(hr) || device_enumerator == nullptr) break;
-    hr = device_enumerator->GetDefaultAudioEndpoint(eRender, eMultimedia, &device);
-    if (FAILED(hr) || device == nullptr) break;
-    hr = device->Activate(__uuidof(IAudioSessionManager2), CLSCTX_ALL, nullptr, reinterpret_cast<void**>(&session_manager));
-    if (FAILED(hr) || session_manager == nullptr) break;
-    hr = session_manager->GetSessionEnumerator(&session_enumerator);
-    if (FAILED(hr) || session_enumerator == nullptr) break;
-    int count = 0; session_enumerator->GetCount(&count);
-    for (int i = 0; i < count; ++i) {
-    IAudioSessionControl* session_control = nullptr;
-    if (FAILED(session_enumerator->GetSession(i, &session_control)) || session_control == nullptr) continue;
-    IAudioSessionControl2* session_control2 = nullptr;
-    if (SUCCEEDED(session_control->QueryInterface(&session_control2)) && session_control2 != nullptr) {
-        DWORD pid = 0; session_control2->GetProcessId(&pid);
-        if (pid == target_pid) {
-        ISimpleAudioVolume* simple_volume = nullptr;
-        if (SUCCEEDED(session_control->QueryInterface(&simple_volume)) && simple_volume != nullptr) {
-            simple_volume->SetMute(mute ? TRUE : FALSE, nullptr);
-            simple_volume->Release();
-            success = true;
+        hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL, IID_PPV_ARGS(&device_enumerator));
+        if (FAILED(hr) || device_enumerator == nullptr)
+            break;
+        hr = device_enumerator->GetDefaultAudioEndpoint(eRender, eMultimedia, &device);
+        if (FAILED(hr) || device == nullptr)
+            break;
+        hr = device->Activate(__uuidof(IAudioSessionManager2), CLSCTX_ALL, nullptr,
+                              reinterpret_cast<void **>(&session_manager));
+        if (FAILED(hr) || session_manager == nullptr)
+            break;
+        hr = session_manager->GetSessionEnumerator(&session_enumerator);
+        if (FAILED(hr) || session_enumerator == nullptr)
+            break;
+        int count = 0;
+        session_enumerator->GetCount(&count);
+        for (int i = 0; i < count; ++i) {
+            IAudioSessionControl *session_control = nullptr;
+            if (FAILED(session_enumerator->GetSession(i, &session_control)) || session_control == nullptr)
+                continue;
+            IAudioSessionControl2 *session_control2 = nullptr;
+            if (SUCCEEDED(session_control->QueryInterface(&session_control2)) && session_control2 != nullptr) {
+                DWORD pid = 0;
+                session_control2->GetProcessId(&pid);
+                if (pid == target_pid) {
+                    ISimpleAudioVolume *simple_volume = nullptr;
+                    if (SUCCEEDED(session_control->QueryInterface(&simple_volume)) && simple_volume != nullptr) {
+                        simple_volume->SetMute(mute ? TRUE : FALSE, nullptr);
+                        simple_volume->Release();
+                        success = true;
+                    }
+                }
+                session_control2->Release();
+            }
+            session_control->Release();
         }
-        }
-        session_control2->Release();
-    }
-    session_control->Release();
-    }
-    } while(false);
+    } while (false);
 
-    if (session_enumerator != nullptr) session_enumerator->Release();
-    if (session_manager != nullptr) session_manager->Release();
-    if (device != nullptr) device->Release();
-    if (device_enumerator != nullptr) device_enumerator->Release();
-    if (did_init && hr != RPC_E_CHANGED_MODE) CoUninitialize();
+    if (session_enumerator != nullptr)
+        session_enumerator->Release();
+    if (session_manager != nullptr)
+        session_manager->Release();
+    if (device != nullptr)
+        device->Release();
+    if (device_enumerator != nullptr)
+        device_enumerator->Release();
+    if (did_init && hr != RPC_E_CHANGED_MODE)
+        CoUninitialize();
 
-    std::ostringstream oss; oss << "BackgroundMute apply mute=" << (mute ? "1" : "0") << " success=" << (success ? "1" : "0");
+    std::ostringstream oss;
+    oss << "BackgroundMute apply mute=" << (mute ? "1" : "0") << " success=" << (success ? "1" : "0");
     LogInfo(oss.str().c_str());
     return success;
 }
@@ -66,63 +80,78 @@ bool IsOtherAppPlayingAudio() {
     HRESULT hr = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
     const bool did_init = SUCCEEDED(hr);
     if (!did_init && hr != RPC_E_CHANGED_MODE) {
-    LogWarn("CoInitializeEx failed for audio session query");
-    return false;
+        LogWarn("CoInitializeEx failed for audio session query");
+        return false;
     }
 
     bool other_active = false;
-    IMMDeviceEnumerator* device_enumerator = nullptr;
-    IMMDevice* device = nullptr;
-    IAudioSessionManager2* session_manager = nullptr;
-    IAudioSessionEnumerator* session_enumerator = nullptr;
+    IMMDeviceEnumerator *device_enumerator = nullptr;
+    IMMDevice *device = nullptr;
+    IAudioSessionManager2 *session_manager = nullptr;
+    IAudioSessionEnumerator *session_enumerator = nullptr;
 
     do {
-    hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL, IID_PPV_ARGS(&device_enumerator));
-    if (FAILED(hr) || device_enumerator == nullptr) break;
-    hr = device_enumerator->GetDefaultAudioEndpoint(eRender, eMultimedia, &device);
-    if (FAILED(hr) || device == nullptr) break;
-    hr = device->Activate(__uuidof(IAudioSessionManager2), CLSCTX_ALL, nullptr, reinterpret_cast<void**>(&session_manager));
-    if (FAILED(hr) || session_manager == nullptr) break;
-    hr = session_manager->GetSessionEnumerator(&session_enumerator);
-    if (FAILED(hr) || session_enumerator == nullptr) break;
-    int count = 0; session_enumerator->GetCount(&count);
-    for (int i = 0; i < count; ++i) {
-    IAudioSessionControl* session_control = nullptr;
-    if (FAILED(session_enumerator->GetSession(i, &session_control)) || session_control == nullptr) continue;
-    IAudioSessionControl2* session_control2 = nullptr;
-    if (SUCCEEDED(session_control->QueryInterface(&session_control2)) && session_control2 != nullptr) {
-        DWORD pid = 0; session_control2->GetProcessId(&pid);
-        if (pid != 0 && pid != target_pid) {
-        // Check state and volume/mute
-        AudioSessionState state{};
-        if (SUCCEEDED(session_control->GetState(&state)) && state == AudioSessionStateActive) {
-            ISimpleAudioVolume* simple_volume = nullptr;
-            if (SUCCEEDED(session_control->QueryInterface(&simple_volume)) && simple_volume != nullptr) {
-            float vol = 0.0f; BOOL muted = FALSE;
-            if (SUCCEEDED(simple_volume->GetMasterVolume(&vol)) && SUCCEEDED(simple_volume->GetMute(&muted))) {
-                if (muted == FALSE && vol > 0.001f) {
-                other_active = true;
-                simple_volume->Release();
-                session_control2->Release();
-                session_control->Release();
-                break;
+        hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL, IID_PPV_ARGS(&device_enumerator));
+        if (FAILED(hr) || device_enumerator == nullptr)
+            break;
+        hr = device_enumerator->GetDefaultAudioEndpoint(eRender, eMultimedia, &device);
+        if (FAILED(hr) || device == nullptr)
+            break;
+        hr = device->Activate(__uuidof(IAudioSessionManager2), CLSCTX_ALL, nullptr,
+                              reinterpret_cast<void **>(&session_manager));
+        if (FAILED(hr) || session_manager == nullptr)
+            break;
+        hr = session_manager->GetSessionEnumerator(&session_enumerator);
+        if (FAILED(hr) || session_enumerator == nullptr)
+            break;
+        int count = 0;
+        session_enumerator->GetCount(&count);
+        for (int i = 0; i < count; ++i) {
+            IAudioSessionControl *session_control = nullptr;
+            if (FAILED(session_enumerator->GetSession(i, &session_control)) || session_control == nullptr)
+                continue;
+            IAudioSessionControl2 *session_control2 = nullptr;
+            if (SUCCEEDED(session_control->QueryInterface(&session_control2)) && session_control2 != nullptr) {
+                DWORD pid = 0;
+                session_control2->GetProcessId(&pid);
+                if (pid != 0 && pid != target_pid) {
+                    // Check state and volume/mute
+                    AudioSessionState state{};
+                    if (SUCCEEDED(session_control->GetState(&state)) && state == AudioSessionStateActive) {
+                        ISimpleAudioVolume *simple_volume = nullptr;
+                        if (SUCCEEDED(session_control->QueryInterface(&simple_volume)) && simple_volume != nullptr) {
+                            float vol = 0.0f;
+                            BOOL muted = FALSE;
+                            if (SUCCEEDED(simple_volume->GetMasterVolume(&vol)) &&
+                                SUCCEEDED(simple_volume->GetMute(&muted))) {
+                                if (muted == FALSE && vol > 0.001f) {
+                                    other_active = true;
+                                    simple_volume->Release();
+                                    session_control2->Release();
+                                    session_control->Release();
+                                    break;
+                                }
+                            }
+                            simple_volume->Release();
+                        }
+                    }
                 }
+                session_control2->Release();
             }
-            simple_volume->Release();
-            }
+            session_control->Release();
         }
-        }
-        session_control2->Release();
-    }
-    session_control->Release();
-    }
-    } while(false);
+    } while (false);
 
-    if (session_enumerator != nullptr) session_enumerator->Release();
-    if (session_manager != nullptr) session_manager->Release();
-    if (device != nullptr) device->Release();
-    if (device_enumerator != nullptr) device_enumerator->Release();
-    if (did_init && hr != RPC_E_CHANGED_MODE) CoUninitialize();
+    if (session_enumerator != nullptr)
+        session_enumerator->Release();
+    if (session_manager != nullptr)
+        session_manager->Release();
+    if (device != nullptr)
+        device->Release();
+    if (device_enumerator != nullptr)
+        device_enumerator->Release();
+    if (did_init && hr != RPC_E_CHANGED_MODE)
+        CoUninitialize();
 
     return other_active;
 }
@@ -134,53 +163,67 @@ bool SetVolumeForCurrentProcess(float volume_0_100) {
     HRESULT hr = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
     const bool did_init = SUCCEEDED(hr);
     if (!did_init && hr != RPC_E_CHANGED_MODE) {
-    LogWarn("CoInitializeEx failed for audio volume control");
-    return false;
+        LogWarn("CoInitializeEx failed for audio volume control");
+        return false;
     }
 
     bool success = false;
-    IMMDeviceEnumerator* device_enumerator = nullptr;
-    IMMDevice* device = nullptr;
-    IAudioSessionManager2* session_manager = nullptr;
-    IAudioSessionEnumerator* session_enumerator = nullptr;
+    IMMDeviceEnumerator *device_enumerator = nullptr;
+    IMMDevice *device = nullptr;
+    IAudioSessionManager2 *session_manager = nullptr;
+    IAudioSessionEnumerator *session_enumerator = nullptr;
 
     do {
-    hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL, IID_PPV_ARGS(&device_enumerator));
-    if (FAILED(hr) || device_enumerator == nullptr) break;
-    hr = device_enumerator->GetDefaultAudioEndpoint(eRender, eMultimedia, &device);
-    if (FAILED(hr) || device == nullptr) break;
-    hr = device->Activate(__uuidof(IAudioSessionManager2), CLSCTX_ALL, nullptr, reinterpret_cast<void**>(&session_manager));
-    if (FAILED(hr) || session_manager == nullptr) break;
-    hr = session_manager->GetSessionEnumerator(&session_enumerator);
-    if (FAILED(hr) || session_enumerator == nullptr) break;
-    int count = 0; session_enumerator->GetCount(&count);
-    for (int i = 0; i < count; ++i) {
-    IAudioSessionControl* session_control = nullptr;
-    if (FAILED(session_enumerator->GetSession(i, &session_control)) || session_control == nullptr) continue;
-    IAudioSessionControl2* session_control2 = nullptr;
-    if (SUCCEEDED(session_control->QueryInterface(&session_control2)) && session_control2 != nullptr) {
-        DWORD pid = 0; session_control2->GetProcessId(&pid);
-        if (pid == target_pid) {
-        ISimpleAudioVolume* simple_volume = nullptr;
-        if (SUCCEEDED(session_control->QueryInterface(&simple_volume)) && simple_volume != nullptr) {
-            simple_volume->SetMasterVolume(scalar, nullptr);
-            simple_volume->Release();
-            success = true;
+        hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL, IID_PPV_ARGS(&device_enumerator));
+        if (FAILED(hr) || device_enumerator == nullptr)
+            break;
+        hr = device_enumerator->GetDefaultAudioEndpoint(eRender, eMultimedia, &device);
+        if (FAILED(hr) || device == nullptr)
+            break;
+        hr = device->Activate(__uuidof(IAudioSessionManager2), CLSCTX_ALL, nullptr,
+                              reinterpret_cast<void **>(&session_manager));
+        if (FAILED(hr) || session_manager == nullptr)
+            break;
+        hr = session_manager->GetSessionEnumerator(&session_enumerator);
+        if (FAILED(hr) || session_enumerator == nullptr)
+            break;
+        int count = 0;
+        session_enumerator->GetCount(&count);
+        for (int i = 0; i < count; ++i) {
+            IAudioSessionControl *session_control = nullptr;
+            if (FAILED(session_enumerator->GetSession(i, &session_control)) || session_control == nullptr)
+                continue;
+            IAudioSessionControl2 *session_control2 = nullptr;
+            if (SUCCEEDED(session_control->QueryInterface(&session_control2)) && session_control2 != nullptr) {
+                DWORD pid = 0;
+                session_control2->GetProcessId(&pid);
+                if (pid == target_pid) {
+                    ISimpleAudioVolume *simple_volume = nullptr;
+                    if (SUCCEEDED(session_control->QueryInterface(&simple_volume)) && simple_volume != nullptr) {
+                        simple_volume->SetMasterVolume(scalar, nullptr);
+                        simple_volume->Release();
+                        success = true;
+                    }
+                }
+                session_control2->Release();
+            }
+            session_control->Release();
         }
-        }
-        session_control2->Release();
-    }
-    session_control->Release();
-    }
-    } while(false);
+    } while (false);
 
-    if (session_enumerator != nullptr) session_enumerator->Release();
-    if (session_manager != nullptr) session_manager->Release();
-    if (device != nullptr) device->Release();
-    if (device_enumerator != nullptr) device_enumerator->Release();
-    if (did_init && hr != RPC_E_CHANGED_MODE) CoUninitialize();
+    if (session_enumerator != nullptr)
+        session_enumerator->Release();
+    if (session_manager != nullptr)
+        session_manager->Release();
+    if (device != nullptr)
+        device->Release();
+    if (device_enumerator != nullptr)
+        device_enumerator->Release();
+    if (did_init && hr != RPC_E_CHANGED_MODE)
+        CoUninitialize();
 
-    std::ostringstream oss; oss << "BackgroundVolume set percent=" << clamped << " success=" << (success ? "1" : "0");
+    std::ostringstream oss;
+    oss << "BackgroundVolume set percent=" << clamped << " success=" << (success ? "1" : "0");
     LogInfo(oss.str().c_str());
     return success;
 }
@@ -188,59 +231,62 @@ bool SetVolumeForCurrentProcess(float volume_0_100) {
 void RunBackgroundAudioMonitor() {
     // Wait for continuous monitoring to be ready before starting audio management
     while (!g_shutdown.load() && !g_monitoring_thread_running.load()) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 
     LogInfo("BackgroundAudio: Continuous monitoring ready, starting audio management");
 
     while (!g_shutdown.load()) {
-    bool want_mute = false;
+        bool want_mute = false;
 
-    // Check if manual mute is enabled - if so, always mute regardless of background state
-    if (s_audio_mute.load()) {
-    want_mute = true;
-    }
-    // Only apply background mute logic if manual mute is OFF
-    else if (s_mute_in_background.load() || s_mute_in_background_if_other_audio.load()) {
-    // Use centralized background state from continuous monitoring system for consistency
-    const bool is_background = g_app_in_background.load();
-
-    // Log background muting decision for debugging
-    static bool last_logged_background = false;
-    if (is_background != last_logged_background) {
-        std::ostringstream oss;
-        oss << "BackgroundAudio: App background state changed to " << (is_background ? "BACKGROUND" : "FOREGROUND")
-            << ", mute_in_background=" << (s_mute_in_background.load() ? "true" : "false")
-            << ", mute_in_background_if_other_audio=" << (s_mute_in_background_if_other_audio.load() ? "true" : "false");
-        LogInfo(oss.str().c_str());
-        last_logged_background = is_background;
-    }
-
-    if (is_background) {
-        if (s_mute_in_background_if_other_audio.load()) {
-        // Only mute if some other app is outputting audio
-        want_mute = IsOtherAppPlayingAudio();
-        } else {
-        want_mute = true;
+        // Check if manual mute is enabled - if so, always mute regardless of background state
+        if (s_audio_mute.load()) {
+            want_mute = true;
         }
-    } else {
-        want_mute = false;
-    }
-    }
+        // Only apply background mute logic if manual mute is OFF
+        else if (s_mute_in_background.load() || s_mute_in_background_if_other_audio.load()) {
+            // Use centralized background state from continuous monitoring system for consistency
+            const bool is_background = g_app_in_background.load();
 
-    const bool applied = g_muted_applied.load();
-    if (want_mute != applied) {
-    std::ostringstream oss;
-    oss << "BackgroundAudio: Applying mute change from " << (applied ? "muted" : "unmuted")
-        << " to " << (want_mute ? "muted" : "unmuted") << " (background=" << (g_app_in_background.load() ? "true" : "false") << ")";
-    LogInfo(oss.str().c_str());
+            // Log background muting decision for debugging
+            static bool last_logged_background = false;
+            if (is_background != last_logged_background) {
+                std::ostringstream oss;
+                oss << "BackgroundAudio: App background state changed to "
+                    << (is_background ? "BACKGROUND" : "FOREGROUND")
+                    << ", mute_in_background=" << (s_mute_in_background.load() ? "true" : "false")
+                    << ", mute_in_background_if_other_audio="
+                    << (s_mute_in_background_if_other_audio.load() ? "true" : "false");
+                LogInfo(oss.str().c_str());
+                last_logged_background = is_background;
+            }
 
-    if (SetMuteForCurrentProcess(want_mute)) {
-        g_muted_applied.store(want_mute);
-    }
-    }
+            if (is_background) {
+                if (s_mute_in_background_if_other_audio.load()) {
+                    // Only mute if some other app is outputting audio
+                    want_mute = IsOtherAppPlayingAudio();
+                } else {
+                    want_mute = true;
+                }
+            } else {
+                want_mute = false;
+            }
+        }
 
-    // Background FPS limit handling moved to fps_limiter module
-    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+        const bool applied = g_muted_applied.load();
+        if (want_mute != applied) {
+            std::ostringstream oss;
+            oss << "BackgroundAudio: Applying mute change from " << (applied ? "muted" : "unmuted") << " to "
+                << (want_mute ? "muted" : "unmuted")
+                << " (background=" << (g_app_in_background.load() ? "true" : "false") << ")";
+            LogInfo(oss.str().c_str());
+
+            if (SetMuteForCurrentProcess(want_mute)) {
+                g_muted_applied.store(want_mute);
+            }
+        }
+
+        // Background FPS limit handling moved to fps_limiter module
+        std::this_thread::sleep_for(std::chrono::milliseconds(300));
     }
 }

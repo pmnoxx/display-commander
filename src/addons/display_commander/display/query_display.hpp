@@ -36,12 +36,6 @@ struct DisplayTimingInfo {
 // Query display timing information for all active displays
 extern std::vector<DisplayTimingInfo> QueryDisplayTimingInfo();
 
-// Query display timing info for a specific monitor
-extern std::vector<DisplayTimingInfo> QueryDisplayTimingInfoForMonitor(HMONITOR monitor);
-
-// Demonstration function: Log all display timing information (similar to Special-K)
-extern void LogAllDisplayTimingInfo();
-
 // Utility function to convert wstring to string (similar to Special-K's SK_WideCharToUTF8)
 std::string WideCharToUTF8(const std::wstring& in);
 

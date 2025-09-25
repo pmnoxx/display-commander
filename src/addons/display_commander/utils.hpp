@@ -32,7 +32,6 @@ RECT RectFromWH(int width, int height);
 void LogInfo(const char* msg, ...);
 void LogWarn(const char* msg, ...);
 void LogError(const char* msg, ...);
-void LogDebug(const std::string& s);
 void LogDebug(const char* msg, ...);
 // Window state detection
 AspectRatio GetAspectByIndex(int index);

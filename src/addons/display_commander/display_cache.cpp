@@ -1,16 +1,17 @@
 #include "display_cache.hpp"
-#include <dxgi1_6.h>
-#include <wrl/client.h>
-#include <algorithm>
-#include <set>
-#include <windows.h>
-#include <immintrin.h>
-#include <sstream>
-#include <iomanip>
-#include "utils.hpp"
-#include "globals.hpp"
 #include "display/query_display.hpp"
+#include "globals.hpp"
 #include "settings/main_tab_settings.hpp"
+#include "utils.hpp"
+#include <algorithm>
+#include <dxgi1_6.h>
+#include <immintrin.h>
+#include <iomanip>
+#include <set>
+#include <sstream>
+#include <windows.h>
+#include <wrl/client.h>
+
 
 using Microsoft::WRL::ComPtr;
 
@@ -35,7 +36,7 @@ std::wstring GetMonitorFriendlyName(MONITORINFOEXW &mi) {
 }
 
 // Helper function to enumerate resolutions and refresh rates using DXGI
-void EnumerateDisplayModes(HMONITOR monitor, std::vector<Resolution>& resolutions) {
+void EnumerateDisplayModes(HMONITOR monitor, std::vector<Resolution> &resolutions) {
     ComPtr<IDXGIFactory1> factory = GetSharedDXGIFactory();
     if (!factory) {
         return;
@@ -44,43 +45,40 @@ void EnumerateDisplayModes(HMONITOR monitor, std::vector<Resolution>& resolution
     // Use a set to avoid duplicate resolutions
     std::set<std::pair<int, int>> resolution_set;
 
-    for (UINT a = 0; ; ++a) {
+    for (UINT a = 0;; ++a) {
         ComPtr<IDXGIAdapter1> adapter;
-        if (factory->EnumAdapters1(a, &adapter) == DXGI_ERROR_NOT_FOUND) break;
+        if (factory->EnumAdapters1(a, &adapter) == DXGI_ERROR_NOT_FOUND)
+            break;
 
-        for (UINT o = 0; ; ++o) {
+        for (UINT o = 0;; ++o) {
             ComPtr<IDXGIOutput> output;
-            if (adapter->EnumOutputs(o, &output) == DXGI_ERROR_NOT_FOUND) break;
+            if (adapter->EnumOutputs(o, &output) == DXGI_ERROR_NOT_FOUND)
+                break;
 
             DXGI_OUTPUT_DESC desc{};
-            if (FAILED(output->GetDesc(&desc))) continue;
-            if (desc.Monitor != monitor) continue;
+            if (FAILED(output->GetDesc(&desc)))
+                continue;
+            if (desc.Monitor != monitor)
+                continue;
 
             ComPtr<IDXGIOutput1> output1;
-            if (FAILED(output.As(&output1)) || !output1) continue;
+            if (FAILED(output.As(&output1)) || !output1)
+                continue;
 
             UINT num_modes = 0;
-            if (FAILED(output1->GetDisplayModeList1(
-                    DXGI_FORMAT_R8G8B8A8_UNORM,
-                    0,
-                    &num_modes,
-                    nullptr))) {
+            if (FAILED(output1->GetDisplayModeList1(DXGI_FORMAT_R8G8B8A8_UNORM, 0, &num_modes, nullptr))) {
                 continue;
             }
 
             std::vector<DXGI_MODE_DESC1> modes(num_modes);
-            if (FAILED(output1->GetDisplayModeList1(
-                    DXGI_FORMAT_R8G8B8A8_UNORM,
-                    0,
-                    &num_modes,
-                    modes.data()))) {
+            if (FAILED(output1->GetDisplayModeList1(DXGI_FORMAT_R8G8B8A8_UNORM, 0, &num_modes, modes.data()))) {
                 continue;
             }
 
             // Group modes by resolution
             std::map<std::pair<int, int>, std::vector<DXGI_RATIONAL>> resolution_modes;
 
-            for (const auto& mode : modes) {
+            for (const auto &mode : modes) {
                 if (mode.Width > 0 && mode.Height > 0 && mode.RefreshRate.Denominator > 0) {
                     auto key = std::make_pair(static_cast<int>(mode.Width), static_cast<int>(mode.Height));
                     resolution_modes[key].push_back(mode.RefreshRate);
@@ -88,13 +86,13 @@ void EnumerateDisplayModes(HMONITOR monitor, std::vector<Resolution>& resolution
             }
 
             // Convert to our Resolution structures
-            for (const auto& [res_pair, refresh_rates] : resolution_modes) {
+            for (const auto &[res_pair, refresh_rates] : resolution_modes) {
                 if (resolution_set.insert(res_pair).second) { // Only add if new
                     Resolution res(res_pair.first, res_pair.second);
 
                     // Convert refresh rates and deduplicate
                     std::set<RationalRefreshRate> unique_rates;
-                    for (const auto& rate : refresh_rates) {
+                    for (const auto &rate : refresh_rates) {
                         RationalRefreshRate rational_rate(rate.Numerator, rate.Denominator);
                         unique_rates.insert(rational_rate);
                     }
@@ -113,9 +111,7 @@ void EnumerateDisplayModes(HMONITOR monitor, std::vector<Resolution>& resolution
     }
 }
 
-bool DisplayCache::Initialize() {
-    return Refresh();
-}
+bool DisplayCache::Initialize() { return Refresh(); }
 
 bool DisplayCache::Refresh() {
     // Build a fresh cache snapshot locally (no locking, allows system calls)
@@ -123,9 +119,10 @@ bool DisplayCache::Refresh() {
 
     // Enumerate all monitors
     std::vector<HMONITOR> monitors;
-    EnumDisplayMonitors(nullptr, nullptr,
+    EnumDisplayMonitors(
+        nullptr, nullptr,
         [](HMONITOR hmon, HDC, LPRECT, LPARAM lparam) -> BOOL {
-            auto* monitors_ptr = reinterpret_cast<std::vector<HMONITOR>*>(lparam);
+            auto *monitors_ptr = reinterpret_cast<std::vector<HMONITOR> *>(lparam);
             monitors_ptr->push_back(hmon);
             return TRUE;
         },
@@ -156,12 +153,9 @@ bool DisplayCache::Refresh() {
         display_info->work_rect = mi.rcWork;
 
         // Get current settings
-        if (!GetCurrentDisplaySettingsQueryConfig(monitor, display_info->width,
-                display_info->height,
-                display_info->current_refresh_rate.numerator,
-                display_info->current_refresh_rate.denominator,
-                display_info->x,
-                display_info->y)) {
+        if (!GetCurrentDisplaySettingsQueryConfig(
+                monitor, display_info->width, display_info->height, display_info->current_refresh_rate.numerator,
+                display_info->current_refresh_rate.denominator, display_info->x, display_info->y)) {
             continue;
         }
 
@@ -176,7 +170,8 @@ bool DisplayCache::Refresh() {
     }
 
     // Atomically swap the new displays data
-    displays.store(std::make_shared<std::vector<std::unique_ptr<DisplayInfo>>>(std::move(new_displays)), std::memory_order_release);
+    displays.store(std::make_shared<std::vector<std::unique_ptr<DisplayInfo>>>(std::move(new_displays)),
+                   std::memory_order_release);
     is_initialized.store(true, std::memory_order_release);
 
     // Update target_display if it's unset or the current display is not found
@@ -194,11 +189,12 @@ bool DisplayCache::Refresh() {
     return displays_ptr && !displays_ptr->empty();
 }
 
-const DisplayInfo* DisplayCache::GetDisplayByHandle(HMONITOR monitor) const {
+const DisplayInfo *DisplayCache::GetDisplayByHandle(HMONITOR monitor) const {
     auto displays_ptr = displays.load(std::memory_order_acquire);
-    if (!displays_ptr) return nullptr;
+    if (!displays_ptr)
+        return nullptr;
 
-    for (const auto& display : *displays_ptr) {
+    for (const auto &display : *displays_ptr) {
         if (display->monitor_handle == monitor) {
             return display.get();
         }
@@ -206,11 +202,12 @@ const DisplayInfo* DisplayCache::GetDisplayByHandle(HMONITOR monitor) const {
     return nullptr;
 }
 
-const DisplayInfo* DisplayCache::GetDisplayByDeviceName(const std::wstring& device_name) const {
+const DisplayInfo *DisplayCache::GetDisplayByDeviceName(const std::wstring &device_name) const {
     auto displays_ptr = displays.load(std::memory_order_acquire);
-    if (!displays_ptr) return nullptr;
+    if (!displays_ptr)
+        return nullptr;
 
-    for (const auto& display : *displays_ptr) {
+    for (const auto &display : *displays_ptr) {
         if (display->device_name == device_name) {
             return display.get();
         }
@@ -218,15 +215,16 @@ const DisplayInfo* DisplayCache::GetDisplayByDeviceName(const std::wstring& devi
     return nullptr;
 }
 
-int DisplayCache::GetDisplayIndexByDeviceName(const std::string& device_name) const {
+int DisplayCache::GetDisplayIndexByDeviceName(const std::string &device_name) const {
     auto displays_ptr = displays.load(std::memory_order_acquire);
-    if (!displays_ptr) return -1;
+    if (!displays_ptr)
+        return -1;
 
     // Convert string to wstring for comparison
     std::wstring wdevice_name(device_name.begin(), device_name.end());
 
     for (size_t i = 0; i < displays_ptr->size(); ++i) {
-        const auto& display = (*displays_ptr)[i];
+        const auto &display = (*displays_ptr)[i];
         if (display && display->device_name == wdevice_name) {
             return static_cast<int>(i);
         }
@@ -236,56 +234,68 @@ int DisplayCache::GetDisplayIndexByDeviceName(const std::string& device_name) co
 
 std::vector<std::string> DisplayCache::GetResolutionLabels(size_t display_index) const {
     auto displays_ptr = displays.load(std::memory_order_acquire);
-    if (!displays_ptr || display_index >= displays_ptr->size()) return {};
-    const auto* display = (*displays_ptr)[display_index].get();
-    if (!display) return {};
+    if (!displays_ptr || display_index >= displays_ptr->size())
+        return {};
+    const auto *display = (*displays_ptr)[display_index].get();
+    if (!display)
+        return {};
     return display->GetResolutionLabels();
 }
 
 std::vector<std::string> DisplayCache::GetRefreshRateLabels(size_t display_index, size_t resolution_index) const {
     auto displays_ptr = displays.load(std::memory_order_acquire);
-    if (!displays_ptr || display_index >= displays_ptr->size()) return {};
-    const auto* display = (*displays_ptr)[display_index].get();
-    if (!display) return {};
+    if (!displays_ptr || display_index >= displays_ptr->size())
+        return {};
+    const auto *display = (*displays_ptr)[display_index].get();
+    if (!display)
+        return {};
     return display->GetRefreshRateLabels(resolution_index);
 }
 
-bool DisplayCache::GetCurrentResolution(size_t display_index, int& width, int& height) const {
+bool DisplayCache::GetCurrentResolution(size_t display_index, int &width, int &height) const {
     auto displays_ptr = displays.load(std::memory_order_acquire);
-    if (!displays_ptr || display_index >= displays_ptr->size()) return false;
-    const auto* display = (*displays_ptr)[display_index].get();
-    if (!display) return false;
+    if (!displays_ptr || display_index >= displays_ptr->size())
+        return false;
+    const auto *display = (*displays_ptr)[display_index].get();
+    if (!display)
+        return false;
     width = display->width;
     height = display->height;
     return true;
 }
 
-bool DisplayCache::GetCurrentRefreshRate(size_t display_index, RationalRefreshRate& refresh_rate) const {
+bool DisplayCache::GetCurrentRefreshRate(size_t display_index, RationalRefreshRate &refresh_rate) const {
     auto displays_ptr = displays.load(std::memory_order_acquire);
-    if (!displays_ptr || display_index >= displays_ptr->size()) return false;
-    const auto* display = (*displays_ptr)[display_index].get();
-    if (!display) return false;
+    if (!displays_ptr || display_index >= displays_ptr->size())
+        return false;
+    const auto *display = (*displays_ptr)[display_index].get();
+    if (!display)
+        return false;
     refresh_rate = display->current_refresh_rate;
     return true;
 }
 
 bool DisplayCache::GetRationalRefreshRate(size_t display_index, size_t resolution_index, size_t refresh_rate_index,
-                    RationalRefreshRate& refresh_rate) const {
+                                          RationalRefreshRate &refresh_rate) const {
     auto displays_ptr = displays.load(std::memory_order_acquire);
-    if (!displays_ptr || display_index >= displays_ptr->size()) return false;
-    const auto* display = (*displays_ptr)[display_index].get();
-    if (!display) return false;
+    if (!displays_ptr || display_index >= displays_ptr->size())
+        return false;
+    const auto *display = (*displays_ptr)[display_index].get();
+    if (!display)
+        return false;
     // Map UI resolution index: 0 = Current Resolution, otherwise shift by one
     size_t effective_index = resolution_index;
     if (resolution_index == 0) {
         auto idx = display->FindResolutionIndex(display->width, display->height);
-        if (!idx.has_value()) return false;
+        if (!idx.has_value())
+            return false;
         effective_index = idx.value();
     } else {
-        if ((resolution_index - 1) >= display->resolutions.size()) return false;
+        if ((resolution_index - 1) >= display->resolutions.size())
+            return false;
         effective_index = resolution_index - 1;
     }
-    const auto& res = display->resolutions[effective_index];
+    const auto &res = display->resolutions[effective_index];
     if (refresh_rate_index == 0) {
         refresh_rate = display->current_refresh_rate;
         return true;
@@ -304,22 +314,27 @@ bool DisplayCache::GetRationalRefreshRate(size_t display_index, size_t resolutio
     return false;
 }
 
-bool DisplayCache::GetCurrentDisplayInfo(size_t display_index, int& width, int& height, RationalRefreshRate& refresh_rate) const {
+bool DisplayCache::GetCurrentDisplayInfo(size_t display_index, int &width, int &height,
+                                         RationalRefreshRate &refresh_rate) const {
     auto displays_ptr = displays.load(std::memory_order_acquire);
-    if (!displays_ptr || display_index >= displays_ptr->size()) return false;
-    const auto* display = (*displays_ptr)[display_index].get();
-    if (!display) return false;
+    if (!displays_ptr || display_index >= displays_ptr->size())
+        return false;
+    const auto *display = (*displays_ptr)[display_index].get();
+    if (!display)
+        return false;
     width = display->width;
     height = display->height;
     refresh_rate = display->current_refresh_rate;
     return true;
 }
 
-bool DisplayCache::GetSupportedModes(size_t display_index, std::vector<Resolution>& resolutions) const {
+bool DisplayCache::GetSupportedModes(size_t display_index, std::vector<Resolution> &resolutions) const {
     auto displays_ptr = displays.load(std::memory_order_acquire);
-    if (!displays_ptr || display_index >= displays_ptr->size()) return false;
-    const auto* display = (*displays_ptr)[display_index].get();
-    if (!display) return false;
+    if (!displays_ptr || display_index >= displays_ptr->size())
+        return false;
+    const auto *display = (*displays_ptr)[display_index].get();
+    if (!display)
+        return false;
     resolutions = display->resolutions;
     return true;
 }
@@ -333,14 +348,16 @@ size_t DisplayCache::GetDisplayCount() const {
     return displays_ptr ? displays_ptr->size() : 0;
 }
 
-const DisplayInfo* DisplayCache::GetDisplay(size_t index) const {
+const DisplayInfo *DisplayCache::GetDisplay(size_t index) const {
     auto displays_ptr = displays.load(std::memory_order_acquire);
-    if (!displays_ptr || index >= displays_ptr->size()) return nullptr;
+    if (!displays_ptr || index >= displays_ptr->size())
+        return nullptr;
     return (*displays_ptr)[index].get();
 }
 
-void DisplayCache::SwapFrom(DisplayCache&& other) {
-    if (&other == this) return;
+void DisplayCache::SwapFrom(DisplayCache &&other) {
+    if (&other == this)
+        return;
     // Atomically swap the displays data
     auto other_displays = other.displays.load(std::memory_order_acquire);
     displays.store(other_displays, std::memory_order_release);
@@ -349,7 +366,8 @@ void DisplayCache::SwapFrom(DisplayCache&& other) {
 
 bool DisplayCache::CopyDisplay(size_t index, DisplayInfo &out) const {
     auto displays_ptr = displays.load(std::memory_order_acquire);
-    if (!displays_ptr || index >= displays_ptr->size() || !(*displays_ptr)[index]) return false;
+    if (!displays_ptr || index >= displays_ptr->size() || !(*displays_ptr)[index])
+        return false;
     out = *(*displays_ptr)[index];
     return true;
 }
@@ -363,8 +381,9 @@ void DisplayCache::PrintVSyncFreqDivider() const {
     }
 
     for (size_t i = 0; i < displays_ptr->size(); ++i) {
-        const auto& display = (*displays_ptr)[i];
-        if (!display) continue;
+        const auto &display = (*displays_ptr)[i];
+        if (!display)
+            continue;
 
         std::ostringstream oss;
         oss << "Display " << i << " (";
@@ -372,7 +391,8 @@ void DisplayCache::PrintVSyncFreqDivider() const {
         std::string friendly_name_str(display->friendly_name.begin(), display->friendly_name.end());
         oss << friendly_name_str << "): ";
         oss << "Current refresh rate: " << display->current_refresh_rate.ToString();
-        oss << " [Raw: " << display->current_refresh_rate.numerator << "/" << display->current_refresh_rate.denominator << "]";
+        oss << " [Raw: " << display->current_refresh_rate.numerator << "/" << display->current_refresh_rate.denominator
+            << "]";
 
         // Calculate vSyncFreqDivider equivalent (this is a conceptual representation)
         // In SpecialK, vSyncFreqDivider is used to divide the vsync frequency
@@ -383,7 +403,8 @@ void DisplayCache::PrintVSyncFreqDivider() const {
             for (int divider = 1; divider <= 6; ++divider) {
                 double divided_hz = current_hz / divider;
                 oss << divider << ":" << std::fixed << std::setprecision(2) << divided_hz << "Hz";
-                if (divider < 6) oss << ", ";
+                if (divider < 6)
+                    oss << ", ";
             }
         }
 
@@ -400,8 +421,9 @@ double DisplayCache::GetMaxRefreshRateAcrossAllMonitors() const {
     // Ensure we have a reasonable minimum
     double max_refresh_rate = 60.0;
 
-    for (const auto& display : *displays_ptr) {
-        if (!display) continue;
+    for (const auto &display : *displays_ptr) {
+        if (!display)
+            continue;
 
         // Check current refresh rate
         double current_rate = display->current_refresh_rate.ToHz();
@@ -410,8 +432,8 @@ double DisplayCache::GetMaxRefreshRateAcrossAllMonitors() const {
         }
 
         // Check all supported refresh rates for all resolutions
-        for (const auto& resolution : display->resolutions) {
-            for (const auto& refresh_rate : resolution.refresh_rates) {
+        for (const auto &resolution : display->resolutions) {
+            for (const auto &refresh_rate : resolution.refresh_rates) {
                 double rate_hz = refresh_rate.ToHz();
                 if (rate_hz > max_refresh_rate) {
                     max_refresh_rate = rate_hz;
@@ -424,6 +446,3 @@ double DisplayCache::GetMaxRefreshRateAcrossAllMonitors() const {
 }
 
 } // namespace display_cache
-
-
-

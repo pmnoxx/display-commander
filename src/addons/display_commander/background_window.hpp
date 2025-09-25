@@ -1,8 +1,9 @@
 #pragma once
 
-#include <windows.h>
 #include <atomic>
 #include <thread>
+#include <windows.h>
+
 
 // Background window management using dedicated message processing thread
 //
@@ -10,7 +11,7 @@
 // This prevents cross-thread ownership issues and ensures proper message routing.
 // The background window is created inside m_background_thread, not in the main thread.
 class BackgroundWindowManager {
-public:
+  public:
     BackgroundWindowManager();
     ~BackgroundWindowManager();
 
@@ -26,7 +27,7 @@ public:
     // Get background window handle
     HWND GetBackgroundWindow() const;
 
-private:
+  private:
     // Create the background window in the background thread
     bool CreateBackgroundWindow(HWND game_hwnd);
 
@@ -52,12 +53,12 @@ private:
     std::atomic<int> m_frame_counter;
     static constexpr int COLOR_COUNT = 2;
     static constexpr COLORREF COLORS[COLOR_COUNT] = {
-        RGB(0, 0, 0),         // Black (visible)
-        RGB(255, 0, 255)      // Magenta (transparent)
+        RGB(0, 0, 0),    // Black (visible)
+        RGB(255, 0, 255) // Magenta (transparent)
     };
 
     // Window class name for background window
-    static constexpr const char* BACKGROUND_WINDOW_CLASS = "RenodxBackgroundWindow";
+    static constexpr const char *BACKGROUND_WINDOW_CLASS = "RenodxBackgroundWindow";
 
     // Register window class
     static bool RegisterWindowClass();

@@ -5,7 +5,7 @@
 namespace dxgi::fps_limiter {
 
 class CustomFpsLimiterManager {
-public:
+  public:
     CustomFpsLimiterManager();
     ~CustomFpsLimiterManager() = default;
 
@@ -16,9 +16,9 @@ public:
     void ShutdownCustomFpsLimiterSystem();
 
     // Get the FPS limiter instance
-    CustomFpsLimiter& GetFpsLimiter() { return m_fpsLimiter; }
+    CustomFpsLimiter &GetFpsLimiter() { return m_fpsLimiter; }
 
-private:
+  private:
     CustomFpsLimiter m_fpsLimiter;
 };
 

@@ -1,6 +1,5 @@
 #pragma once
 
-
 // Simple process-exit safety hooks to ensure display restore runs on normal
 // exits and most unhandled crashes. This cannot handle hard kills
 // (e.g. external TerminateProcess), but improves coverage when
@@ -14,5 +13,3 @@ void Initialize();
 void Shutdown();
 
 } // namespace process_exit_hooks
-
-

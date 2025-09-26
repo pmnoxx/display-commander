@@ -9,14 +9,25 @@
 #include "ui/ui_display_tab.hpp"
 #include "utils.hpp"
 #include "utils/timing.hpp"
+
 #include <algorithm>
 #include <cmath>
 #include <sstream>
 #include <thread>
 
-
 // External reference to screensaver mode setting
 extern std::atomic<ScreensaverMode> s_screensaver_mode;
+
+HWND GetCurrentForeGroundWindow() {
+    HWND foreground_window = display_commanderhooks::GetForegroundWindow_Original != nullptr
+                                 ? display_commanderhooks::GetForegroundWindow_Original()
+                                 : GetForegroundWindow();
+
+    DWORD window_pid = 0;
+    DWORD thread_id = GetWindowThreadProcessId(foreground_window, &window_pid);
+
+    return window_pid == GetCurrentProcessId() ? foreground_window : nullptr;
+}
 
 void every1s_checks() {
     static int seconds_counter = 0;
@@ -25,16 +36,13 @@ void every1s_checks() {
     HWND hwnd = g_last_swapchain_hwnd.load();
     if (hwnd != nullptr && IsWindow(hwnd)) {
         // BACKGROUND DETECTION: Check if the app is in background using original GetForegroundWindow
-        HWND actual_foreground = display_commanderhooks::GetForegroundWindow_Original
-                                     ? display_commanderhooks::GetForegroundWindow_Original()
-                                     : GetForegroundWindow();
-        bool current_background = (actual_foreground != hwnd);
-        bool background_changed = (current_background != g_app_in_background.load());
+        HWND current_foreground_hwnd = GetCurrentForeGroundWindow();
+        bool app_in_background = current_foreground_hwnd == nullptr;
 
-        if (background_changed) {
-            g_app_in_background.store(current_background);
+        if (app_in_background != g_app_in_background.load()) {
+            g_app_in_background.store(app_in_background);
 
-            if (current_background) {
+            if (app_in_background) {
                 LogInfo("Continuous monitoring: App moved to BACKGROUND");
             } else {
                 LogInfo("Continuous monitoring: App moved to FOREGROUND");
@@ -46,7 +54,7 @@ void every1s_checks() {
 
         // BACKGROUND WINDOW MANAGEMENT: Update background window if feature is enabled
         static int background_check_counter = 0;
-        if (++background_check_counter % 10 == 0) { // Log every 10 seconds
+        if (++background_check_counter % 10 == 0) {  // Log every 10 seconds
             std::ostringstream oss;
             oss << "Continuous monitoring: Background feature check - s_background_feature_enabled = "
                 << (s_background_feature_enabled.load() ? "true" : "false")
@@ -54,23 +62,20 @@ void every1s_checks() {
             LogInfo(oss.str().c_str());
         }
 
-        // FOCUS LOSS DETECTION: Close background window when main window loses focus
-        HWND foreground_window = display_commanderhooks::GetForegroundWindow_Original
-                                     ? display_commanderhooks::GetForegroundWindow_Original()
-                                     : GetForegroundWindow();
+        HWND current_app_foreground_window = GetCurrentForeGroundWindow();
 
         if (s_background_feature_enabled.load()) {
             // Only create/update background window if main window has focus
-            if (foreground_window == hwnd) {
+            if (current_app_foreground_window != nullptr) {  //            if (foreground_window == hwnd) {
                 LogInfo("Continuous monitoring: Calling UpdateBackgroundWindow for background window management");
-                g_backgroundWindowManager.UpdateBackgroundWindow(hwnd);
+                g_backgroundWindowManager.UpdateBackgroundWindow(current_app_foreground_window);
             } else {
-                if (background_check_counter % 10 == 0) { // Log occasionally
+                if (background_check_counter % 10 == 0) {  // Log occasionally
                     LogInfo("Continuous monitoring: Skipping background window update - main window not focused");
                 }
             }
         } else {
-            if (background_check_counter % 10 == 0) { // Log occasionally
+            if (background_check_counter % 10 == 0) {  // Log occasionally
                 LogInfo("Continuous monitoring: Background feature disabled (s_background_feature_enabled = false)");
             }
         }
@@ -83,19 +88,19 @@ void every1s_checks() {
         EXECUTION_STATE desired_state = 0;
 
         switch (screensaver_mode) {
-        case ScreensaverMode::kDisableWhenFocused:
-            if (is_background) { // enabled when background
-                desired_state = ES_CONTINUOUS;
-            } else { // disabled when focused
+            case ScreensaverMode::kDisableWhenFocused:
+                if (is_background) {  // enabled when background
+                    desired_state = ES_CONTINUOUS;
+                } else {  // disabled when focused
+                    desired_state = ES_CONTINUOUS | ES_DISPLAY_REQUIRED;
+                }
+                break;
+            case ScreensaverMode::kDisable:  // always disable screensaver
                 desired_state = ES_CONTINUOUS | ES_DISPLAY_REQUIRED;
-            }
-            break;
-        case ScreensaverMode::kDisable: // always disable screensaver
-            desired_state = ES_CONTINUOUS | ES_DISPLAY_REQUIRED;
-            break;
-        case ScreensaverMode::kDefault: // default behavior
-            desired_state = ES_CONTINUOUS;
-            break;
+                break;
+            case ScreensaverMode::kDefault:  // default behavior
+                desired_state = ES_CONTINUOUS;
+                break;
         }
 
         // Only call SetThreadExecutionState if the desired state is different from the last state
@@ -140,7 +145,7 @@ void every1s_checks() {
             (head > static_cast<uint32_t>(kPerfRingCapacity)) ? static_cast<uint32_t>(kPerfRingCapacity) : head;
         const uint32_t start = head - count;
         for (uint32_t i = start; i < head; ++i) {
-            const PerfSample &s = g_perf_ring[i & (kPerfRingCapacity - 1)];
+            const PerfSample& s = g_perf_ring[i & (kPerfRingCapacity - 1)];
             if (s.fps > 0.0f) {
                 fps_values.push_back(s.fps);
                 frame_times_ms.push_back(1000.0f / s.fps);
@@ -151,8 +156,8 @@ void every1s_checks() {
         float frame_time_ms = 0.0f;
         float one_percent_low = 0.0f;
         float point_one_percent_low = 0.0f;
-        float p99_frame_time_ms = 0.0f;  // Top 1% (99th percentile) frame time
-        float p999_frame_time_ms = 0.0f; // Top 0.1% (99.9th percentile) frame time
+        float p99_frame_time_ms = 0.0f;   // Top 1% (99th percentile) frame time
+        float p999_frame_time_ms = 0.0f;  // Top 0.1% (99.9th percentile) frame time
 
         if (!fps_values.empty()) {
             // Average FPS over entire interval since reset = frames / total_time
@@ -160,8 +165,7 @@ void every1s_checks() {
             std::sort(fps_sorted.begin(), fps_sorted.end());
             const size_t n = fps_sorted.size();
             double total_frame_time_ms = 0.0;
-            for (float ft : frame_times_ms)
-                total_frame_time_ms += static_cast<double>(ft);
+            for (float ft : frame_times_ms) total_frame_time_ms += static_cast<double>(ft);
             const double total_seconds = total_frame_time_ms / 1000.0;
             fps_display = (total_seconds > 0.0) ? static_cast<float>(static_cast<double>(n) / total_seconds) : 0.0f;
             // Median frame time for display in ms
@@ -172,21 +176,19 @@ void every1s_checks() {
 
             // Compute lows and top frame times using frame time distribution (more robust)
             std::vector<float> ft_sorted = frame_times_ms;
-            std::sort(ft_sorted.begin(), ft_sorted.end()); // ascending: fast -> slow
+            std::sort(ft_sorted.begin(), ft_sorted.end());  // ascending: fast -> slow
             const size_t m = ft_sorted.size();
             const size_t count_1 = (std::max<size_t>)(static_cast<size_t>(static_cast<double>(m) * 0.01), size_t(1));
             const size_t count_01 = (std::max<size_t>)(static_cast<size_t>(static_cast<double>(m) * 0.001), size_t(1));
 
             // Average of slowest 1% and 0.1% frametimes, then convert to FPS
             double sum_ft_1 = 0.0;
-            for (size_t i = m - count_1; i < m; ++i)
-                sum_ft_1 += static_cast<double>(ft_sorted[i]);
+            for (size_t i = m - count_1; i < m; ++i) sum_ft_1 += static_cast<double>(ft_sorted[i]);
             const double avg_ft_1 = sum_ft_1 / static_cast<double>(count_1);
             one_percent_low = (avg_ft_1 > 0.0) ? static_cast<float>(1000.0 / avg_ft_1) : 0.0f;
 
             double sum_ft_01 = 0.0;
-            for (size_t i = m - count_01; i < m; ++i)
-                sum_ft_01 += static_cast<double>(ft_sorted[i]);
+            for (size_t i = m - count_01; i < m; ++i) sum_ft_01 += static_cast<double>(ft_sorted[i]);
             const double avg_ft_01 = sum_ft_01 / static_cast<double>(count_01);
             point_one_percent_low = (avg_ft_01 > 0.0) ? static_cast<float>(1000.0 / avg_ft_01) : 0.0f;
 
@@ -220,7 +222,7 @@ void every1s_checks() {
             if (!g_dlssfg_detected.load()) {
                 if (g_dlssfgVersionDetector.RefreshVersion()) {
                     if (g_dlssfgVersionDetector.IsAvailable()) {
-                        const auto &version = g_dlssfgVersionDetector.GetVersion();
+                        const auto& version = g_dlssfgVersionDetector.GetVersion();
                         LogInfo("DLSS-FG detected at runtime - Version: %s (DLL: %s)",
                                 version.getFormattedVersion().c_str(), version.dll_path.c_str());
                         g_dlssfg_detected.store(true);
@@ -235,7 +237,7 @@ void every1s_checks() {
                 if (!g_dlss_preset_detected.load()) {
                     if (g_dlssPresetDetector.RefreshPreset()) {
                         if (g_dlssPresetDetector.IsAvailable()) {
-                            const auto &preset = g_dlssPresetDetector.GetPreset();
+                            const auto& preset = g_dlssPresetDetector.GetPreset();
                             LogInfo("DLSS Preset detected at runtime - Preset: %s, Quality: %s",
                                     preset.getFormattedPreset().c_str(), preset.getFormattedQualityMode().c_str());
                             g_dlss_preset_detected.store(true);
@@ -261,7 +263,7 @@ void ContinuousMonitoringThread() {
     LONGLONG last_cache_refresh_ns = start_time;
     LONGLONG last_60fps_update_ns = start_time;
     LONGLONG last_1s_update_ns = start_time;
-    const LONGLONG FPS_60_INTERVAL_NS = utils::SEC_TO_NS / 60; // ~16.67ms for 60 FPS
+    const LONGLONG FPS_60_INTERVAL_NS = utils::SEC_TO_NS / 60;  // ~16.67ms for 60 FPS
 
     while (g_monitoring_thread_running.load()) {
         // Periodic display cache refresh off the UI thread

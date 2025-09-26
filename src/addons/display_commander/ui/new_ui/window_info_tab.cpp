@@ -1,7 +1,10 @@
 #include "window_info_tab.hpp"
 #include "../../globals.hpp"
 #include "../../window_management/window_management.hpp"
+
 #include <imgui.h>
+
+extern HWND GetCurrentForeGroundWindow();
 
 
 namespace ui::new_ui {
@@ -160,11 +163,13 @@ void DrawFocusAndInputState() {
             bool is_foreground = (GetForegroundWindow() == hwnd);
             bool is_active = (GetActiveWindow() == hwnd);
             bool is_focused = (GetFocus() == hwnd);
+            bool is_any_game_window_active = GetCurrentForeGroundWindow() != nullptr;
 
             ImGui::Text("Focus & Input State:");
             ImGui::Text("  Is Foreground: %s", is_foreground ? "YES" : "No");
             ImGui::Text("  Is Active: %s", is_active ? "YES" : "No");
             ImGui::Text("  Is Focused: %s", is_focused ? "YES" : "No");
+            ImGui::Text("  Is Any Game Window Active: %s", is_any_game_window_active ? "YES" : "No");
         }
     }
 }

@@ -1,5 +1,35 @@
-BasedOnStyle: LLVM
+# Google C/C++ Code Style settings
+# https://clang.llvm.org/docs/ClangFormatStyleOptions.html
+
 IndentWidth: 4
 TabWidth: 4
 UseTab: Never
 ColumnLimit: 120
+
+BasedOnStyle: Google
+
+AlignConsecutiveMacros: Consecutive
+AlignConsecutiveShortCaseStatements: # Custom
+  Enabled: true
+AllowShortCaseLabelsOnASingleLine: true
+
+BreakBeforeBinaryOperators: NonAssignment # Optional
+
+# ColumnLimit: 0 # Forcefully compresses valid spacing
+
+DerivePointerAlignment: false # Optional
+
+IncludeBlocks: Preserve
+
+MaxEmptyLinesToKeep: 1 # Custom
+
+QualifierAlignment: Custom
+QualifierOrder: [inline, static, volatile, const, type]
+
+SortIncludes: CaseInsensitive
+
+
+# Needed for HLSL
+
+NamespaceIndentation: None
+AllowShortIfStatementsOnASingleLine: WithoutElse

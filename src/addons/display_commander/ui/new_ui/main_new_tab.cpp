@@ -9,22 +9,24 @@
 #include "globals.hpp"
 #include "utils/timing.hpp"
 #include "version.hpp"
+
+#include <imgui.h>
+#include <minwindef.h>
+
 #include <atomic>
 #include <cmath>
-#include <imgui.h>
 #include <iomanip>
-#include <minwindef.h>
 #include <sstream>
 #include <thread>
 
-
 namespace ui::new_ui {
 
+namespace {
 // Flag to indicate a restart is required after changing VSync/tearing options
-static std::atomic<bool> s_restart_needed_vsync_tearing{false};
+std::atomic<bool> s_restart_needed_vsync_tearing{false};
+}  // anonymous namespace
 
 void InitMainNewTab() {
-
     static bool settings_loaded_once = false;
     if (!settings_loaded_once) {
         // Ensure developer settings (including continuous monitoring) are loaded so UI reflects saved state
@@ -110,8 +112,9 @@ void DrawMainNewTab() {
             // No need to call update function - the message hooks check the setting directly
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Uses Windows message hooks to block input independently of Reshade's system. Required "
-                              "for future gamepad remapping features.");
+            ImGui::SetTooltip(
+                "Uses Windows message hooks to block input independently of Reshade's system. Required "
+                "for future gamepad remapping features.");
         }
     }
 
@@ -125,11 +128,12 @@ void DrawMainNewTab() {
             LogInfo("Screensaver mode changed to %d", settings::g_mainTabSettings.screensaver_mode.GetValue());
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Controls screensaver behavior while the game is running:\n\n"
-                              "• Default (no change): Preserves original game behavior\n"
-                              "• Disable when Focused: Disables screensaver when game window is focused\n"
-                              "• Disable: Always disables screensaver while game is running\n\n"
-                              "Note: This feature requires the screensaver implementation to be active.");
+            ImGui::SetTooltip(
+                "Controls screensaver behavior while the game is running:\n\n"
+                "• Default (no change): Preserves original game behavior\n"
+                "• Disable when Focused: Disables screensaver when game window is focused\n"
+                "• Disable: Always disables screensaver while game is running\n\n"
+                "Note: This feature requires the screensaver implementation to be active.");
         }
     }
 
@@ -146,7 +150,6 @@ void DrawMainNewTab() {
 }
 
 void DrawQuickResolutionChanger() {
-
     // Quick-set buttons based on current monitor refresh rate
     {
         double refresh_hz;
@@ -180,13 +183,13 @@ void DrawQuickResolutionChanger() {
                     int candidate_rounded = y / x;
                     float candidate_precise = refresh_hz / x;
                     if (candidate_rounded >= 30) {
-                        if (!first)
-                            ImGui::SameLine();
+                        if (!first) ImGui::SameLine();
                         first = false;
                         std::string label = std::to_string(candidate_rounded);
                         {
-                            bool selected = (std::fabs(settings::g_mainTabSettings.fps_limit.GetValue() -
-                                                       candidate_precise) <= selected_epsilon);
+                            bool selected =
+                                (std::fabs(settings::g_mainTabSettings.fps_limit.GetValue() - candidate_precise)
+                                 <= selected_epsilon);
                             if (selected) {
                                 ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.20f, 0.60f, 0.20f, 1.0f));
                                 ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.20f, 0.70f, 0.20f, 1.0f));
@@ -215,14 +218,15 @@ void DrawQuickResolutionChanger() {
                 }
             }
             // Add Gsync Cap button at the end
-            if (!first)
+            if (!first) {
                 ImGui::SameLine();
+            }
+
             {
                 // Gsync formula: refresh_hz - (refresh_hz * refresh_hz / 3600)
                 double gsync_target = refresh_hz - (refresh_hz * refresh_hz / 3600.0);
                 float precise_target = static_cast<float>(gsync_target);
-                if (precise_target < 1.0f)
-                    precise_target = 1.0f;
+                if (precise_target < 1.0f) precise_target = 1.0f;
                 bool selected =
                     (std::fabs(settings::g_mainTabSettings.fps_limit.GetValue() - precise_target) <= selected_epsilon);
 
@@ -232,7 +236,7 @@ void DrawQuickResolutionChanger() {
                     ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.10f, 0.50f, 0.10f, 1.0f));
                 }
                 if (ImGui::Button("Gsync Cap")) {
-                    double precise_target = gsync_target; // do not round on apply
+                    double precise_target = gsync_target;  // do not round on apply
                     float target_fps = static_cast<float>(precise_target < 1.0 ? 1.0 : precise_target);
                     settings::g_mainTabSettings.fps_limit.SetValue(target_fps);
                 }
@@ -263,12 +267,12 @@ void DrawDisplaySettings() {
         // Use cached monitor labels updated by continuous monitoring thread
 
         std::vector<std::string> monitor_labels_local;
-        std::vector<const char *> monitor_c_labels;
+        std::vector<const char*> monitor_c_labels;
         {
             auto ptr = ::g_monitor_labels.load(std::memory_order_acquire);
-            monitor_labels_local = *ptr; // copy to avoid lifetime issues
+            monitor_labels_local = *ptr;  // copy to avoid lifetime issues
             monitor_c_labels.reserve(monitor_labels_local.size());
-            for (const auto &label : monitor_labels_local) {
+            for (const auto& label : monitor_labels_local) {
                 monitor_c_labels.push_back(label.c_str());
             }
         }
@@ -283,10 +287,11 @@ void DrawDisplaySettings() {
         if (ImGui::IsItemHovered()) {
             // Get the saved game window display device ID for tooltip
             std::string saved_device_id = settings::g_mainTabSettings.game_window_display_device_id.GetValue();
-            std::string tooltip_text = "Choose which monitor to apply size/pos to. The monitor corresponding to the "
-                                       "game window is automatically selected.";
-            if (!saved_device_id.empty() && saved_device_id != "No Window" && saved_device_id != "No Monitor" &&
-                saved_device_id != "Monitor Info Failed") {
+            std::string tooltip_text =
+                "Choose which monitor to apply size/pos to. The monitor corresponding to the "
+                "game window is automatically selected.";
+            if (!saved_device_id.empty() && saved_device_id != "No Window" && saved_device_id != "No Monitor"
+                && saved_device_id != "Monitor Info Failed") {
                 tooltip_text += "\n\nGame window is on: " + saved_device_id;
             }
             ImGui::SetTooltip("%s", tooltip_text.c_str());
@@ -349,7 +354,8 @@ void DrawDisplaySettings() {
             LogInfo("Window width for aspect mode setting changed to: %d", s_aspect_width.load());
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Choose the width for the aspect ratio window. 'Display Width' uses the current monitor width.");
+            ImGui::SetTooltip(
+                "Choose the width for the aspect ratio window. 'Display Width' uses the current monitor width.");
         }
     }
 
@@ -360,8 +366,9 @@ void DrawDisplaySettings() {
             LogInfo("Window alignment changed");
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Choose how to align the window when repositioning is needed. 0=Center, 1=Top Left, "
-                              "2=Top Right, 3=Bottom Left, 4=Bottom Right.");
+            ImGui::SetTooltip(
+                "Choose how to align the window when repositioning is needed. 0=Center, 1=Top Left, "
+                "2=Top Right, 3=Bottom Left, 4=Bottom Right.");
         }
     }
     // Background Black Curtain checkbox (only shown in Aspect Ratio mode)
@@ -422,12 +429,13 @@ void DrawDisplaySettings() {
             s_fps_limiter_injection.store(temp_injection);
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Choose when to inject FPS limiter: 0=OnPresentFlags (recommended), "
-                              "1=OnPresentUpdateBefore2, 2=OnPresentUpdateBefore");
+            ImGui::SetTooltip(
+                "Choose when to inject FPS limiter: 0=OnPresentFlags (recommended), "
+                "1=OnPresentUpdateBefore2, 2=OnPresentUpdateBefore");
         }
 
         // Show current injection timing info
-        const char *injection_labels[] = {"OnPresentFlags (Recommended)", "OnPresentUpdateBefore2",
+        const char* injection_labels[] = {"OnPresentFlags (Recommended)", "OnPresentUpdateBefore2",
                                           "OnPresentUpdateBefore"};
         if (temp_injection >= 0 && temp_injection < 3) {
             ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "Current: %s", injection_labels[temp_injection]);
@@ -449,19 +457,19 @@ void DrawDisplaySettings() {
             // The setting is automatically synced via FloatSettingRef
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Present Pacing Delay: Adds delay to starting next frame.\n\n"
-                              "How it reduces latency:\n"
-                              "• Allow for more time for CPU to process input.\n"
-                              "• Lower values provide more consistent frame timing.\n"
-                              "• Higher values provide lower latency but slightly less consistent timing.\n"
-                              "Range: 0%% to 100%%. Default: 0%% (1 frame time delay).\n"
-                              "Manual fine-tuning required.");
+            ImGui::SetTooltip(
+                "Present Pacing Delay: Adds delay to starting next frame.\n\n"
+                "How it reduces latency:\n"
+                "• Allow for more time for CPU to process input.\n"
+                "• Lower values provide more consistent frame timing.\n"
+                "• Higher values provide lower latency but slightly less consistent timing.\n"
+                "Range: 0%% to 100%%. Default: 0%% (1 frame time delay).\n"
+                "Manual fine-tuning required.");
         }
     }
 
     // Latent Sync Mode (only visible if Latent Sync limiter is selected)
     if (s_fps_limiter_mode.load() == FpsLimiterMode::kLatentSync) {
-
         // Scanline Offset (only visible if scanline mode is selected)
         int current_offset = settings::g_mainTabSettings.scanline_offset.GetValue();
         int temp_offset = current_offset;
@@ -470,8 +478,9 @@ void DrawDisplaySettings() {
             s_scanline_offset.store(temp_offset);
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Scanline offset for latent sync (-1000 to 1000). This defines the offset from the "
-                              "threshold where frame pacing is active.");
+            ImGui::SetTooltip(
+                "Scanline offset for latent sync (-1000 to 1000). This defines the offset from the "
+                "threshold where frame pacing is active.");
         }
 
         // VBlank Sync Divisor (only visible if latent sync mode is selected)
@@ -484,7 +493,7 @@ void DrawDisplaySettings() {
         if (ImGui::IsItemHovered()) {
             // Calculate effective refresh rate based on monitor info
             auto window_state = ::g_window_state.load();
-            double refresh_hz = 60.0; // default fallback
+            double refresh_hz = 60.0;  // default fallback
             if (window_state) {
                 refresh_hz = window_state->current_monitor_refresh_rate.ToHz();
             }
@@ -510,7 +519,7 @@ void DrawDisplaySettings() {
         // VBlank Monitor Status (only visible if latent sync is enabled and FPS limit > 0)
         if (s_fps_limiter_mode.load() == FpsLimiterMode::kLatentSync) {
             if (dxgi::latent_sync::g_latentSyncManager) {
-                auto &latent = dxgi::latent_sync::g_latentSyncManager->GetLatentLimiter();
+                auto& latent = dxgi::latent_sync::g_latentSyncManager->GetLatentLimiter();
                 if (latent.IsVBlankMonitoringActive()) {
                     ImGui::Spacing();
                     ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✁EVBlank Monitor: ACTIVE");
@@ -544,7 +553,7 @@ void DrawDisplaySettings() {
     // FPS Limit slider (persisted)
     {
         float current_value = settings::g_mainTabSettings.fps_limit.GetValue();
-        const char *fmt = (current_value > 0.0f) ? "%.3f FPS" : "No Limit";
+        const char* fmt = (current_value > 0.0f) ? "%.3f FPS" : "No Limit";
         if (SliderFloatSetting(settings::g_mainTabSettings.fps_limit, "FPS Limit", fmt)) {
         }
     }
@@ -560,8 +569,9 @@ void DrawDisplaySettings() {
             // The setting is automatically synced via BoolSettingRef
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Skip rendering draw calls when the game window is not in the foreground. This can save "
-                              "GPU power and reduce background processing.");
+            ImGui::SetTooltip(
+                "Skip rendering draw calls when the game window is not in the foreground. This can save "
+                "GPU power and reduce background processing.");
         }
     }
 
@@ -573,8 +583,9 @@ void DrawDisplaySettings() {
             // The setting is automatically synced via BoolSettingRef
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Skip ReShade's on_present processing when the game window is not in the foreground. "
-                              "This can save GPU power and reduce background processing.");
+            ImGui::SetTooltip(
+                "Skip ReShade's on_present processing when the game window is not in the foreground. "
+                "This can save GPU power and reduce background processing.");
         }
     }
 
@@ -642,7 +653,7 @@ void DrawDisplaySettings() {
     // Background FPS Limit slider (persisted)
     {
         float current_bg = settings::g_mainTabSettings.fps_limit_background.GetValue();
-        const char *fmt_bg = (current_bg > 0.0f) ? "%.0f FPS" : "No Limit";
+        const char* fmt_bg = (current_bg > 0.0f) ? "%.0f FPS" : "No Limit";
         if (SliderFloatSetting(settings::g_mainTabSettings.fps_limit_background, "Background FPS Limit", fmt_bg)) {
         }
     }
@@ -850,8 +861,9 @@ void DrawImportantInfo() {
             LogInfo("Test overlay %s", show_test_overlay ? "enabled" : "disabled");
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Shows a test widget using the reshade_overlay event to demonstrate the difference "
-                              "between register_overlay and reshade_overlay approaches.");
+            ImGui::SetTooltip(
+                "Shows a test widget using the reshade_overlay event to demonstrate the difference "
+                "between register_overlay and reshade_overlay approaches.");
         }
     }
 
@@ -904,9 +916,9 @@ void DrawImportantInfo() {
     oss.str("");
     oss.clear();
     oss << "Reshade Overhead Duration: " << std::fixed << std::setprecision(3)
-        << ((1.0 * ::g_reshade_overhead_duration_ns.load() - ::fps_sleep_before_on_present_ns.load() -
-             ::fps_sleep_after_on_present_ns.load()) /
-            utils::NS_TO_MS)
+        << ((1.0 * ::g_reshade_overhead_duration_ns.load() - ::fps_sleep_before_on_present_ns.load()
+             - ::fps_sleep_after_on_present_ns.load())
+            / utils::NS_TO_MS)
         << " ms";
     ImGui::TextUnformatted(oss.str().c_str());
     ImGui::SameLine();
@@ -937,7 +949,7 @@ void DrawImportantInfo() {
     const uint32_t head = ::g_perf_ring_head.load(std::memory_order_acquire);
     if (head > 0) {
         const uint32_t last_idx = (head - 1) & (::kPerfRingCapacity - 1);
-        const ::PerfSample &last_sample = ::g_perf_ring[last_idx];
+        const ::PerfSample& last_sample = ::g_perf_ring[last_idx];
         current_fps = last_sample.fps;
     }
 
@@ -956,21 +968,13 @@ void DrawImportantInfo() {
     }
 
     // Flip State Display (renamed from DXGI Composition)
-    const char *flip_state_str = "Unknown";
+    const char* flip_state_str = "Unknown";
     int flip_state_case = static_cast<int>(::s_dxgi_composition_state);
     switch (flip_state_case) {
-    case 1:
-        flip_state_str = "Composed Flip";
-        break;
-    case 2:
-        flip_state_str = "MPO Independent Flip";
-        break;
-    case 3:
-        flip_state_str = "Legacy Independent Flip";
-        break;
-    default:
-        flip_state_str = "Unknown";
-        break;
+        case 1:  flip_state_str = "Composed Flip"; break;
+        case 2:  flip_state_str = "MPO Independent Flip"; break;
+        case 3:  flip_state_str = "Legacy Independent Flip"; break;
+        default: flip_state_str = "Unknown"; break;
     }
 
     oss.str("");
@@ -997,8 +1001,7 @@ void DrawAdhdMultiMonitorControls(bool hasBlackCurtainSetting) {
     if (!hasMultipleMonitors) {
         return;
     }
-    if (hasBlackCurtainSetting)
-        ImGui::SameLine();
+    if (hasBlackCurtainSetting) ImGui::SameLine();
 
     // Main ADHD mode checkbox
     bool adhdEnabled = settings::g_mainTabSettings.adhd_multi_monitor_enabled.GetValue();
@@ -1016,8 +1019,9 @@ void DrawAdhdMultiMonitorControls(bool hasBlackCurtainSetting) {
     // Focus disengagement is always enabled (no UI control needed)
     ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "• Automatically disengages on Alt-Tab");
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("ADHD mode will automatically disengage whenever you Alt-Tab, regardless of which monitor "
-                          "the new application is on.");
+        ImGui::SetTooltip(
+            "ADHD mode will automatically disengage whenever you Alt-Tab, regardless of which monitor "
+            "the new application is on.");
     }
 
     // Additional information
@@ -1032,4 +1036,4 @@ void DrawAdhdMultiMonitorControls(bool hasBlackCurtainSetting) {
     }
 }
 
-} // namespace ui::new_ui
+}  // namespace ui::new_ui

@@ -11,9 +11,6 @@ namespace ui {
 // Initialize the display cache for the UI
 void InitializeDisplayCache();
 
-// Get monitor labels using the display cache
-std::vector<std::string> GetMonitorLabelsFromCache();
-
 // Find monitor index by device ID
 int FindMonitorIndexByDeviceId(const std::string &device_id);
 

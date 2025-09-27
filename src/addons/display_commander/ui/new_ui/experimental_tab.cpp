@@ -4,11 +4,12 @@
 #include "../../hooks/timeslowdown_hooks.hpp"
 #include "../../settings/experimental_tab_settings.hpp"
 #include "../../utils.hpp"
+
+#include <windows.h>
+
 #include <atomic>
 #include <chrono>
-#include <imgui.h>
 #include <thread>
-#include <windows.h>
 
 namespace ui::new_ui {
 

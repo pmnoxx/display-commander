@@ -5,6 +5,7 @@
 #include "../../settings/developer_tab_settings.hpp"
 #include "../../utils.hpp"
 #include "settings_wrapper.hpp"
+
 #include <atomic>
 #include <iomanip>
 #include <sstream>
@@ -63,8 +64,9 @@ void DrawDeveloperSettings() {
         ::g_flush_before_present.store(settings::g_developerTabSettings.flush_before_present.GetValue());
     }
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Flush command queue before ReShade shaders process. Reduces latency and increases FPS by "
-                          "ensuring GPU commands are processed before shader execution.");
+        ImGui::SetTooltip(
+            "Flush command queue before ReShade shaders process. Reduces latency and increases FPS by "
+            "ensuring GPU commands are processed before shader execution.");
     }
 
     // Prevent Fullscreen (global)
@@ -77,7 +79,7 @@ void DrawDeveloperSettings() {
     }
 
     // Spoof Fullscreen State
-    const char *spoof_fullscreen_labels[] = {"Disabled", "Spoof as Fullscreen", "Spoof as Windowed"};
+    const char* spoof_fullscreen_labels[] = {"Disabled", "Spoof as Fullscreen", "Spoof as Windowed"};
     int spoof_fullscreen_state = static_cast<int>(settings::g_developerTabSettings.spoof_fullscreen_state.GetValue());
     if (ImGui::Combo("Spoof Fullscreen State", &spoof_fullscreen_state, spoof_fullscreen_labels, 3)) {
         settings::g_developerTabSettings.spoof_fullscreen_state.SetValue(spoof_fullscreen_state != 0);
@@ -96,8 +98,9 @@ void DrawDeveloperSettings() {
         LogInfo(oss.str().c_str());
     }
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Spoof fullscreen state detection for applications that query fullscreen status. Useful for "
-                          "games that change behavior based on fullscreen state.");
+        ImGui::SetTooltip(
+            "Spoof fullscreen state detection for applications that query fullscreen status. Useful for "
+            "games that change behavior based on fullscreen state.");
     }
 
     // Reset button for Fullscreen State (only show if not at default)
@@ -120,8 +123,9 @@ void DrawDeveloperSettings() {
                 settings::g_developerTabSettings.continue_rendering.GetValue() ? "enabled" : "disabled");
     }
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Prevent games from pausing or reducing performance when alt-tabbed. Blocks window focus "
-                          "messages to keep games running in background like Special-K's background render feature.");
+        ImGui::SetTooltip(
+            "Prevent games from pausing or reducing performance when alt-tabbed. Blocks window focus "
+            "messages to keep games running in background like Special-K's background render feature.");
     }
 
     ImGui::Spacing();
@@ -147,8 +151,9 @@ void DrawNvapiSettings() {
         s_restart_needed_nvapi.store(true);
     }
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Automatically fix HDR10 colorspace when swapchain format is RGB10A2 and colorspace is "
-                          "currently sRGB. Only works when the game is using sRGB colorspace.");
+        ImGui::SetTooltip(
+            "Automatically fix HDR10 colorspace when swapchain format is RGB10A2 and colorspace is "
+            "currently sRGB. Only works when the game is using sRGB colorspace.");
     }
 
     // NVAPI Fullscreen Prevention
@@ -165,7 +170,6 @@ void DrawNvapiSettings() {
         ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "Game restart required to apply NVAPI changes.");
     }
     if (s_nvapi_fullscreen_prevention.load() && ::g_nvapiFullscreenPrevention.IsAvailable()) {
-
         // NVAPI HDR Logging
         if (CheckboxSetting(settings::g_developerTabSettings.nvapi_hdr_logging, "NVAPI HDR Logging")) {
             s_nvapi_hdr_logging.store(settings::g_developerTabSettings.nvapi_hdr_logging.GetValue());
@@ -189,7 +193,6 @@ void DrawNvapiSettings() {
         }
 
         if (settings::g_developerTabSettings.nvapi_hdr_logging.GetValue()) {
-
             // NVAPI Debug Information Display
             ImGui::Separator();
             ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "NVAPI Debug Information:");
@@ -244,8 +247,9 @@ void DrawNvapiSettings() {
     ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f),
                        "⚠ Warning: Do not enable Reflex if the game already has built-in Reflex support!");
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Enabling Reflex when the game already has it can cause conflicts, instability, or "
-                          "performance issues. Check the game's graphics settings first.");
+        ImGui::SetTooltip(
+            "Enabling Reflex when the game already has it can cause conflicts, instability, or "
+            "performance issues. Check the game's graphics settings first.");
     }
 
     bool reflex_enable = settings::g_developerTabSettings.reflex_enable.GetValue();
@@ -308,8 +312,9 @@ void DrawKeyboardShortcutsSettings() {
         ::s_enable_mute_unmute_shortcut.store(settings::g_developerTabSettings.enable_mute_unmute_shortcut.GetValue());
     }
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Enable keyboard shortcut Ctrl+M to quickly mute/unmute audio. Only works when the game is "
-                          "in the foreground.");
+        ImGui::SetTooltip(
+            "Enable keyboard shortcut Ctrl+M to quickly mute/unmute audio. Only works when the game is "
+            "in the foreground.");
     }
 
     // Info text for Ctrl+M
@@ -327,8 +332,9 @@ void DrawKeyboardShortcutsSettings() {
             settings::g_developerTabSettings.enable_background_toggle_shortcut.GetValue());
     }
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Enable keyboard shortcut Ctrl+R to quickly toggle both 'No Render in Background' and 'No "
-                          "Present in Background' settings. Only works when the game is in the foreground.");
+        ImGui::SetTooltip(
+            "Enable keyboard shortcut Ctrl+R to quickly toggle both 'No Render in Background' and 'No "
+            "Present in Background' settings. Only works when the game is in the foreground.");
     }
 
     // Info text for Ctrl+R
@@ -364,4 +370,4 @@ void DrawLatencyDisplay() {
     ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "(smoothed)");
 }
 
-} // namespace ui::new_ui
+}  // namespace ui::new_ui

@@ -1,7 +1,5 @@
 #pragma once
 
-#include <imgui.h>
-
 namespace ui::new_ui {
 
 // Initialize experimental tab

@@ -87,6 +87,7 @@ class MainTabSettings {
     // Display Information
     ui::new_ui::StringSetting target_display;
     ui::new_ui::StringSetting game_window_display_device_id;
+    ui::new_ui::StringSetting selected_display_device_id;
 
     // Screensaver Control
     ui::new_ui::ComboSettingEnumRef<ScreensaverMode> screensaver_mode;
@@ -103,5 +104,6 @@ std::string GetDisplayDeviceIdFromWindow(HWND hwnd);
 void SaveGameWindowDisplayDeviceId(HWND hwnd);
 void UpdateTargetDisplayFromGameWindow();
 void UpdateFpsLimitMaximums();
+void InitializeSelectedDisplayDeviceId();
 
 } // namespace settings

@@ -65,6 +65,7 @@ MainTabSettings::MainTabSettings()
       show_test_overlay("show_test_overlay", false, "DisplayCommander"),
       target_display("target_display", "", "DisplayCommander"),
       game_window_display_device_id("game_window_display_device_id", "", "DisplayCommander"),
+      selected_display_device_id("selected_display_device_id", "", "DisplayCommander"),
       adhd_multi_monitor_enabled("adhd_multi_monitor_enabled", false, "DisplayCommander"),
       screensaver_mode("screensaver_mode", s_screensaver_mode, static_cast<int>(ScreensaverMode::kDefault),
                        {"Default (no change)", "Disable when Focused", "Disable"}, "DisplayCommander") {
@@ -99,6 +100,7 @@ MainTabSettings::MainTabSettings()
         &show_test_overlay,
         &target_display,
         &game_window_display_device_id,
+        &selected_display_device_id,
         &adhd_multi_monitor_enabled,
         &screensaver_mode,
     };
@@ -111,6 +113,9 @@ void MainTabSettings::LoadSettings() {
 
     // Apply ADHD Multi-Monitor Mode settings after loading
     adhd_multi_monitor::api::SetEnabled(adhd_multi_monitor_enabled.GetValue());
+
+    // Initialize selected_display_device_id from target_display_index if not already set
+    InitializeSelectedDisplayDeviceId();
 
     LogInfo("MainTabSettings::LoadSettings() completed");
 }
@@ -190,6 +195,32 @@ void SaveGameWindowDisplayDeviceId(HWND hwnd) {
     std::ostringstream oss;
     oss << "Saved game window display device ID: " << device_id;
     LogInfo(oss.str().c_str());
+}
+
+// Function to initialize selected_display_device_id from target_display_index
+void InitializeSelectedDisplayDeviceId() {
+    // Only initialize if selected_display_device_id is empty
+    if (!g_mainTabSettings.selected_display_device_id.GetValue().empty()) {
+        return;
+    }
+
+    // Get the current target display index
+    int target_index = g_mainTabSettings.target_display_index.GetValue();
+
+    // Get display info and find the device ID for the target index
+    auto display_info = display_cache::g_displayCache.GetDisplayInfoForUI();
+    if (target_index >= 0 && target_index < static_cast<int>(display_info.size())) {
+        std::string device_id = display_info[target_index].device_id;
+        g_mainTabSettings.selected_display_device_id.SetValue(device_id);
+        LogInfo("Initialized selected_display_device_id to: %s", device_id.c_str());
+    } else {
+        // Default to first display if index is invalid
+        if (!display_info.empty()) {
+            std::string device_id = display_info[0].device_id;
+            g_mainTabSettings.selected_display_device_id.SetValue(device_id);
+            LogInfo("Initialized selected_display_device_id to first display: %s", device_id.c_str());
+        }
+    }
 }
 
 // Function to update the target display setting with current game window

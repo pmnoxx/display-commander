@@ -187,7 +187,7 @@ extern std::atomic<reshade::api::effect_runtime*> g_reshade_runtime;
 extern void (*g_custom_fps_limiter_callback)();
 
 // Monitor Management
-extern std::atomic<std::shared_ptr<const std::vector<std::string>>> g_monitor_labels;
+// g_monitor_labels removed - UI now uses GetDisplayInfoForUI() directly for better reliability
 
 // Continuous monitoring and rendering
 extern std::atomic<bool> s_continuous_monitoring_enabled;

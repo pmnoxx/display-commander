@@ -271,9 +271,7 @@ void ContinuousMonitoringThread() {
             if (now_ns - last_cache_refresh_ns >= 2 * utils::SEC_TO_NS) {
                 display_cache::g_displayCache.Refresh();
                 last_cache_refresh_ns = now_ns;
-                auto labels = display_cache::g_displayCache.GetMonitorLabels();
-                auto next = std::make_shared<const std::vector<std::string>>(std::move(labels));
-                ::g_monitor_labels.store(next, std::memory_order_release);
+                // No longer need to cache monitor labels - UI calls GetDisplayInfoForUI() directly
             }
         }
         // Wait for 1 second to start

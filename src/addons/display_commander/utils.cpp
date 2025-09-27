@@ -68,6 +68,25 @@ AspectRatio GetAspectByIndex(AspectRatioType aspect_type) {
     return {16, 9}; // Default to 16:9
 }
 
+// Helper function to get the actual width value based on the dropdown selection
+int GetAspectWidthValue(int display_width) {
+    const int width_index = s_aspect_width.load();
+
+    // Width options: 0=Display Width, 1=3840, 2=2560, 3=1920, 4=1600, 5=1280, 6=1080, 7=900, 8=720
+    switch (width_index) {
+        case 0: return display_width;  // Display Width
+        case 1: return 3840;
+        case 2: return 2560;
+        case 3: return 1920;
+        case 4: return 1600;
+        case 5: return 1280;
+        case 6: return 1080;
+        case 7: return 900;
+        case 8: return 720;
+        default: return display_width; // Fallback to display width
+    }
+}
+
 void ComputeDesiredSize(int display_width, int display_height, int &out_w, int &out_h) {
     if (s_window_mode.load() == WindowMode::kFullscreen) {
         // kFullscreen: Borderless Fullscreen - use current monitor dimensions
@@ -77,9 +96,8 @@ void ComputeDesiredSize(int display_width, int display_height, int &out_w, int &
     }
 
     // kAspectRatio: Borderless Windowed (Aspect Ratio) - aspect mode
-    // For aspect ratio mode, we need to get the width from the resolution widget
-    // For now, use current monitor width as default
-    const int want_w = display_width;
+    // Get the selected width from the dropdown
+    const int want_w = GetAspectWidthValue(display_width);
     AspectRatio ar = GetAspectByIndex(s_aspect_index.load());
     // height = round(width * h / w)
     // prevent division by zero
@@ -90,7 +108,7 @@ void ComputeDesiredSize(int display_width, int display_height, int &out_w, int &
     out_w = want_w;
     out_h = want_w * ar.h / ar.w;
 
-    LogInfo("ComputeDesiredSize: out_w=%d, out_h=%d", out_w, out_h);
+    LogInfo("ComputeDesiredSize: out_w=%d, out_h=%d (width_index=%d)", out_w, out_h, s_aspect_width.load());
 }
 
 // Monitor enumeration callback

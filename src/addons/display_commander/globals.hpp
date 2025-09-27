@@ -143,6 +143,7 @@ extern std::atomic<bool> s_apply_display_settings_at_start;
 extern std::atomic<bool> s_prevent_always_on_top;
 extern std::atomic<WindowMode> s_window_mode;
 extern std::atomic<AspectRatioType> s_aspect_index;
+extern std::atomic<int> s_aspect_width;
 
 // Prevent Fullscreen
 extern std::atomic<bool> s_prevent_fullscreen;
@@ -152,7 +153,7 @@ extern std::atomic<bool> s_fix_hdr10_colorspace;
 
 // Window Management Settings
 extern std::atomic<WindowAlignment> s_window_alignment; // Window alignment when repositioning is needed
-extern std::atomic<int> s_target_monitor_index;
+extern std::atomic<int> s_target_display_index;
 extern std::atomic<int> s_dxgi_composition_state;
 
 // Mouse position spoofing for auto-click sequences

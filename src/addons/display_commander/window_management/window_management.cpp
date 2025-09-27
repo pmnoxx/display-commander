@@ -66,18 +66,18 @@ void CalculateWindowState(HWND hwnd, const char *reason) {
     local_state.style_mode = WindowStyleMode::BORDERLESS;
 
     HMONITOR target_monitor_handle = nullptr;
-    int target_monitor_index = 0;
+    int target_display_index = 0;
     auto displays = display_cache::g_displayCache.GetDisplays();
     size_t display_count = displays ? displays->size() : 0;
 
     int requested_monitor =
-        static_cast<int>(s_target_monitor_index.load()); // 0-based indexing: 0 = Monitor 1, 1 = Monitor 2, etc.
+        static_cast<int>(s_target_display_index.load()); // 0-based indexing: 0 = Monitor 1, 1 = Monitor 2, etc.
     if (requested_monitor >= 0 && display_count > 0) {
         // Clamp to available displays; display indices are 0..display_count-1
         // in cache
-        target_monitor_index = (std::max)(0, (std::min)(requested_monitor, static_cast<int>(display_count) - 1));
-        if (target_monitor_index < static_cast<int>(display_count) && (*displays)[target_monitor_index]) {
-            const auto *disp = (*displays)[target_monitor_index].get();
+        target_display_index = (std::max)(0, (std::min)(requested_monitor, static_cast<int>(display_count) - 1));
+        if (target_display_index < static_cast<int>(display_count) && (*displays)[target_display_index]) {
+            const auto *disp = (*displays)[target_display_index].get();
             target_monitor_handle = disp->monitor_handle;
         }
     } else {
@@ -86,7 +86,7 @@ void CalculateWindowState(HWND hwnd, const char *reason) {
         // Find the corresponding display index in the cache
         for (size_t i = 0; i < display_count; ++i) {
             if ((*displays)[i] && (*displays)[i]->monitor_handle == target_monitor_handle) {
-                target_monitor_index = static_cast<int>(i);
+                target_display_index = static_cast<int>(i);
                 break;
             }
         }
@@ -94,10 +94,10 @@ void CalculateWindowState(HWND hwnd, const char *reason) {
 
     // Get current refresh rate from cache
     display_cache::RationalRefreshRate tmp_refresh;
-    if (target_monitor_index < static_cast<int>(display_count) && (*displays)[target_monitor_index]) {
-        const auto *disp = (*displays)[target_monitor_index].get();
+    if (target_display_index < static_cast<int>(display_count) && (*displays)[target_display_index]) {
+        const auto *disp = (*displays)[target_display_index].get();
         tmp_refresh = disp->current_refresh_rate;
-        local_state.current_monitor_index = target_monitor_index;
+        local_state.current_monitor_index = target_display_index;
         local_state.current_monitor_refresh_rate = tmp_refresh;
 
         const int display_width = disp->width;

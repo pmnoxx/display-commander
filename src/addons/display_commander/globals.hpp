@@ -155,7 +155,6 @@ extern std::atomic<bool> s_fix_hdr10_colorspace;
 
 // Window Management Settings
 extern std::atomic<WindowAlignment> s_window_alignment;  // Window alignment when repositioning is needed
-extern std::atomic<int> s_target_display_index;
 extern std::atomic<int> s_dxgi_composition_state;
 
 // Mouse position spoofing for auto-click sequences

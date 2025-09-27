@@ -34,7 +34,6 @@ void InitMainNewTab() {
         settings::g_mainTabSettings.LoadSettings();
         s_window_mode = static_cast<WindowMode>(settings::g_mainTabSettings.window_mode.GetValue());
         s_aspect_index = static_cast<AspectRatioType>(settings::g_mainTabSettings.aspect_index.GetValue());
-        s_target_display_index.store(settings::g_mainTabSettings.target_display_index.GetValue());
         s_window_alignment = static_cast<WindowAlignment>(settings::g_mainTabSettings.alignment.GetValue());
         // FPS limits are now automatically synced via FloatSettingRef
         s_audio_mute.store(settings::g_mainTabSettings.audio_mute.GetValue());
@@ -286,13 +285,9 @@ void DrawDisplaySettings() {
         if (ImGui::Combo("Target Display", &selected_index, monitor_c_labels.data(),
                          static_cast<int>(monitor_c_labels.size()))) {
             if (selected_index >= 0 && selected_index < static_cast<int>(display_info.size())) {
-                // Store the device ID instead of index
+                // Store the device ID
                 std::string new_device_id = display_info[selected_index].extended_device_id;
                 settings::g_mainTabSettings.selected_extended_display_device_id.SetValue(new_device_id);
-
-                // Also update the legacy index for backward compatibility
-                s_target_display_index.store(display_info[selected_index].display_index);
-                settings::g_mainTabSettings.target_display_index.SetValue(display_info[selected_index].display_index);
 
                 LogInfo("Target monitor changed to device ID: %s", new_device_id.c_str());
             }

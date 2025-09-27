@@ -62,7 +62,6 @@ std::atomic<bool> s_enable_background_toggle_shortcut{true};
 // VSync and tearing controls
 
 // Monitor and display settings
-std::atomic<int> s_target_display_index{0};
 std::atomic<int> s_dxgi_composition_state{0};
 
 // Continue rendering in background (like Special-K's background render feature)

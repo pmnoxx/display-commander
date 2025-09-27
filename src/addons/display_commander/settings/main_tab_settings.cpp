@@ -32,10 +32,11 @@ MainTabSettings::MainTabSettings()
     : window_mode("window_mode", s_window_mode, static_cast<int>(WindowMode::kFullscreen), {"Borderless Fullscreen", "Borderless Windowed (Aspect Ratio)"}, "DisplayCommander"),
       aspect_index("aspect_index", 3, {"3:2", "4:3", "16:10", "16:9", "19:9", "19.5:9", "21:9", "32:9"},
                    "DisplayCommander"), // Default to 16:9
-      target_monitor_index("target_monitor_index", 0,
+      target_display_index("target_display_index", 0,
                            {"Monitor 1", "Monitor 2", "Monitor 3", "Monitor 4", "Monitor 5", "Monitor 6", "Monitor 7",
                             "Monitor 8", "Monitor 9", "Monitor 10"},
                            "DisplayCommander"),
+      window_aspect_width("aspect_width", s_aspect_width, 0, {"Display Width", "3840", "2560", "1920", "1600", "1280", "1080", "900", "720"}, "DisplayCommander"),
       background_feature("background_feature", s_background_feature_enabled, false, "DisplayCommander"),
       alignment("alignment", 0, {"Center", "Top Left", "Top Right", "Bottom Left", "Bottom Right"}, "DisplayCommander"),
       fps_limiter_mode("fps_limiter_mode", 0,
@@ -72,7 +73,8 @@ MainTabSettings::MainTabSettings()
     all_settings_ = {
         &window_mode,
         &aspect_index,
-        &target_monitor_index,
+        &target_display_index,
+        &window_aspect_width,
         &background_feature,
         &alignment,
         &fps_limiter_mode,

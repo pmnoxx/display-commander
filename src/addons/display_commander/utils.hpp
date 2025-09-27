@@ -36,6 +36,7 @@ void LogError(const char *msg, ...);
 void LogDebug(const char *msg, ...);
 // Window state detection
 AspectRatio GetAspectByIndex(int index);
+int GetAspectWidthValue(int display_width);
 
 // Monitor enumeration callback
 BOOL CALLBACK MonitorEnumProc(HMONITOR hmon, HDC hdc, LPRECT rect, LPARAM lparam);

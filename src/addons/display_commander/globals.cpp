@@ -30,6 +30,7 @@ std::atomic<WindowMode> s_window_mode{WindowMode::kFullscreen}; // kFullscreen =
                                                                 // kAspectRatio = Borderless Windowed (Aspect Ratio)
 
 std::atomic<AspectRatioType> s_aspect_index{AspectRatioType::k16_9}; // Default to 16:9
+std::atomic<int> s_aspect_width{0}; // 0 = Display Width, 1 = 3840, 2 = 2560, etc.
 
 // Window alignment when repositioning is needed (0 = Center, 1 = Top Left, 2 = Top Right, 3 = Bottom Left, 4 = Bottom
 // Right)
@@ -61,7 +62,7 @@ std::atomic<bool> s_enable_background_toggle_shortcut{true};
 // VSync and tearing controls
 
 // Monitor and display settings
-std::atomic<int> s_target_monitor_index{0};
+std::atomic<int> s_target_display_index{0};
 std::atomic<int> s_dxgi_composition_state{0};
 
 // Continue rendering in background (like Special-K's background render feature)

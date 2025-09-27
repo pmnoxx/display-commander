@@ -32,7 +32,7 @@ void InitMainNewTab() {
         settings::g_mainTabSettings.LoadSettings();
         s_window_mode = static_cast<WindowMode>(settings::g_mainTabSettings.window_mode.GetValue());
         s_aspect_index = static_cast<AspectRatioType>(settings::g_mainTabSettings.aspect_index.GetValue());
-        s_target_monitor_index.store(settings::g_mainTabSettings.target_monitor_index.GetValue());
+        s_target_display_index.store(settings::g_mainTabSettings.target_display_index.GetValue());
         s_window_alignment = static_cast<WindowAlignment>(settings::g_mainTabSettings.alignment.GetValue());
         // FPS limits are now automatically synced via FloatSettingRef
         s_audio_mute.store(settings::g_mainTabSettings.audio_mute.GetValue());
@@ -259,7 +259,7 @@ void DrawQuickResolutionChanger() {
 void DrawDisplaySettings() {
     ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "=== Display Settings ===");
     {
-        // Target Monitor dropdown
+        // Target Display dropdown
         // Use cached monitor labels updated by continuous monitoring thread
 
         std::vector<std::string> monitor_labels_local;
@@ -273,11 +273,11 @@ void DrawDisplaySettings() {
             }
         }
 
-        int monitor_index = s_target_monitor_index.load();
-        if (ImGui::Combo("Target Monitor", &monitor_index, monitor_c_labels.data(),
+        int monitor_index = s_target_display_index.load();
+        if (ImGui::Combo("Target Display", &monitor_index, monitor_c_labels.data(),
                          static_cast<int>(monitor_c_labels.size()))) {
-            s_target_monitor_index.store(monitor_index);
-            settings::g_mainTabSettings.target_monitor_index.SetValue(monitor_index);
+            s_target_display_index.store(monitor_index);
+            settings::g_mainTabSettings.target_display_index.SetValue(monitor_index);
             LogInfo("Target monitor changed");
         }
         if (ImGui::IsItemHovered()) {
@@ -342,6 +342,17 @@ void DrawDisplaySettings() {
             ImGui::SetTooltip("Choose the aspect ratio for window resizing.");
         }
     }
+    if (s_window_mode.load() == WindowMode::kAspectRatio) {
+        // Width dropdown for aspect ratio mode
+        if (ComboSettingRefWrapper(settings::g_mainTabSettings.window_aspect_width, "Window Width")) {
+            s_aspect_width.store(settings::g_mainTabSettings.window_aspect_width.GetValue());
+            LogInfo("Window width for aspect mode setting changed to: %d", s_aspect_width.load());
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Choose the width for the aspect ratio window. 'Display Width' uses the current monitor width.");
+        }
+    }
+
     // Window Alignment dropdown (only shown in Aspect Ratio mode)
     if (s_window_mode.load() == WindowMode::kAspectRatio) {
         if (ComboSettingWrapper(settings::g_mainTabSettings.alignment, "Alignment")) {
@@ -353,7 +364,6 @@ void DrawDisplaySettings() {
                               "2=Top Right, 3=Bottom Left, 4=Bottom Right.");
         }
     }
-
     // Background Black Curtain checkbox (only shown in Aspect Ratio mode)
     if (s_window_mode.load() == WindowMode::kAspectRatio) {
         if (CheckboxSetting(settings::g_mainTabSettings.background_feature, "Background Black Curtain")) {

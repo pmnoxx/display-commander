@@ -73,18 +73,22 @@ int GetAspectWidthValue(int display_width) {
     const int width_index = s_aspect_width.load();
 
     // Width options: 0=Display Width, 1=3840, 2=2560, 3=1920, 4=1600, 5=1280, 6=1080, 7=900, 8=720
+    int selected_width;
     switch (width_index) {
-        case 0: return display_width;  // Display Width
-        case 1: return 3840;
-        case 2: return 2560;
-        case 3: return 1920;
-        case 4: return 1600;
-        case 5: return 1280;
-        case 6: return 1080;
-        case 7: return 900;
-        case 8: return 720;
-        default: return display_width; // Fallback to display width
+        case 0: selected_width = display_width; break;  // Display Width
+        case 1: selected_width = 3840; break;
+        case 2: selected_width = 2560; break;
+        case 3: selected_width = 1920; break;
+        case 4: selected_width = 1600; break;
+        case 5: selected_width = 1280; break;
+        case 6: selected_width = 1080; break;
+        case 7: selected_width = 900; break;
+        case 8: selected_width = 720; break;
+        default: selected_width = display_width; break; // Fallback to display width
     }
+
+    // Ensure the selected width doesn't exceed the display width
+    return min(selected_width, display_width);
 }
 
 void ComputeDesiredSize(int display_width, int display_height, int &out_w, int &out_h) {

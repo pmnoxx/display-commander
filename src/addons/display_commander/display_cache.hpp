@@ -342,6 +342,20 @@ struct DisplayInfo {
     }
 };
 
+// Display information structure for UI consumption
+struct DisplayInfoForUI {
+    std::string device_id;           // Unique device identifier (e.g., "\\.\DISPLAY1")
+    std::string friendly_name;       // Human-readable name
+    std::string current_resolution;  // Current resolution string
+    std::string current_refresh_rate; // Current refresh rate string
+    std::string display_label;       // Formatted label for UI display
+    bool is_primary;                 // Whether this is the primary display
+    HMONITOR monitor_handle;         // For matching with current window
+    int display_index;               // Current index in the display array (for backward compatibility)
+
+    DisplayInfoForUI() : is_primary(false), monitor_handle(nullptr), display_index(-1) {}
+};
+
 // Main display cache class
 class DisplayCache {
   private:
@@ -383,6 +397,12 @@ class DisplayCache {
 
     // Get monitor labels for all displays (formatted for UI display)
     std::vector<std::string> GetMonitorLabels() const;
+
+    // Get display information for UI consumption (device ID based)
+    std::vector<DisplayInfoForUI> GetDisplayInfoForUI() const;
+
+    // Get display info by device ID (returns nullptr if not found)
+    const DisplayInfoForUI* GetDisplayInfoByDeviceId(const std::string& device_id) const;
 
     // Get current resolution for a display
     bool GetCurrentResolution(size_t display_index, int &width, int &height) const;

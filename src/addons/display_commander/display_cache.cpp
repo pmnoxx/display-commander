@@ -305,6 +305,83 @@ std::vector<std::string> DisplayCache::GetMonitorLabels() const {
     return labels;
 }
 
+std::vector<DisplayInfoForUI> DisplayCache::GetDisplayInfoForUI() const {
+    auto displays_ptr = displays.load(std::memory_order_acquire);
+    if (!displays_ptr) {
+        return {};
+    }
+
+    std::vector<DisplayInfoForUI> ui_info;
+    size_t display_count = displays_ptr->size();
+    ui_info.reserve(display_count);
+
+    for (size_t i = 0; i < display_count; ++i) {
+        const auto *display = (*displays_ptr)[i].get();
+        if (!display) {
+            continue;
+        }
+
+        DisplayInfoForUI info;
+
+        // Convert device name to string for device_id
+        info.device_id = std::string(display->device_name.begin(), display->device_name.end());
+
+        // Convert friendly name to string
+        info.friendly_name = std::string(display->friendly_name.begin(), display->friendly_name.end());
+
+        // Get current resolution and refresh rate strings
+        info.current_resolution = display->GetCurrentResolutionString();
+        info.current_refresh_rate = display->GetCurrentRefreshRateString();
+
+        // Set other properties
+        info.is_primary = display->is_primary;
+        info.monitor_handle = display->monitor_handle;
+        info.display_index = static_cast<int>(i);
+
+        // Generate the display label (same format as GetMonitorLabels)
+        std::ostringstream oss;
+
+        // Get high-precision refresh rate with full precision
+        double exact_refresh_rate = display->current_refresh_rate.ToHz();
+        std::ostringstream rate_oss;
+        rate_oss << std::setprecision(10) << exact_refresh_rate;
+        std::string rate_str = rate_oss.str();
+
+        // Remove trailing zeros after decimal point but keep meaningful precision
+        size_t decimal_pos = rate_str.find('.');
+        if (decimal_pos != std::string::npos) {
+            size_t last_nonzero = rate_str.find_last_not_of('0');
+            if (last_nonzero == decimal_pos) {
+                // All zeros after decimal, remove decimal point too
+                rate_str = rate_str.substr(0, decimal_pos);
+            } else if (last_nonzero > decimal_pos) {
+                // Remove trailing zeros but keep some precision
+                rate_str = rate_str.substr(0, last_nonzero + 1);
+            }
+        }
+
+        // Format: [DeviceID] Friendly Name - Resolution @ PreciseRefreshRateHz [Raw: num/den]
+        oss << "[" << info.device_id << "] " << info.friendly_name << " - " << info.current_resolution
+            << " @ " << rate_str << "Hz [Raw: " << display->current_refresh_rate.numerator << "/"
+            << display->current_refresh_rate.denominator << "]";
+        info.display_label = oss.str();
+
+        ui_info.push_back(std::move(info));
+    }
+
+    return ui_info;
+}
+
+const DisplayInfoForUI* DisplayCache::GetDisplayInfoByDeviceId(const std::string& device_id) const {
+    auto display_info = GetDisplayInfoForUI();
+    for (const auto& info : display_info) {
+        if (info.device_id == device_id) {
+            return &info;
+        }
+    }
+    return nullptr;
+}
+
 bool DisplayCache::GetCurrentResolution(size_t display_index, int &width, int &height) const {
     auto displays_ptr = displays.load(std::memory_order_acquire);
     if (!displays_ptr || display_index >= displays_ptr->size())

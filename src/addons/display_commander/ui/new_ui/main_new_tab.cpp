@@ -264,25 +264,38 @@ void DrawDisplaySettings() {
     ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "=== Display Settings ===");
     {
         // Target Display dropdown
-        // Use cached monitor labels updated by continuous monitoring thread
+        // Use device ID-based approach for better reliability
 
-        std::vector<std::string> monitor_labels_local;
+        auto display_info = display_cache::g_displayCache.GetDisplayInfoForUI();
         std::vector<const char*> monitor_c_labels;
-        {
-            auto ptr = ::g_monitor_labels.load(std::memory_order_acquire);
-            monitor_labels_local = *ptr;  // copy to avoid lifetime issues
-            monitor_c_labels.reserve(monitor_labels_local.size());
-            for (const auto& label : monitor_labels_local) {
-                monitor_c_labels.push_back(label.c_str());
+        monitor_c_labels.reserve(display_info.size());
+        for (const auto& info : display_info) {
+            monitor_c_labels.push_back(info.display_label.c_str());
+        }
+
+        // Find current selection by device ID
+        std::string current_device_id = settings::g_mainTabSettings.selected_display_device_id.GetValue();
+        int selected_index = 0; // Default to first display
+        for (size_t i = 0; i < display_info.size(); ++i) {
+            if (display_info[i].device_id == current_device_id) {
+                selected_index = static_cast<int>(i);
+                break;
             }
         }
 
-        int monitor_index = s_target_display_index.load();
-        if (ImGui::Combo("Target Display", &monitor_index, monitor_c_labels.data(),
+        if (ImGui::Combo("Target Display", &selected_index, monitor_c_labels.data(),
                          static_cast<int>(monitor_c_labels.size()))) {
-            s_target_display_index.store(monitor_index);
-            settings::g_mainTabSettings.target_display_index.SetValue(monitor_index);
-            LogInfo("Target monitor changed");
+            if (selected_index >= 0 && selected_index < static_cast<int>(display_info.size())) {
+                // Store the device ID instead of index
+                std::string new_device_id = display_info[selected_index].device_id;
+                settings::g_mainTabSettings.selected_display_device_id.SetValue(new_device_id);
+
+                // Also update the legacy index for backward compatibility
+                s_target_display_index.store(display_info[selected_index].display_index);
+                settings::g_mainTabSettings.target_display_index.SetValue(display_info[selected_index].display_index);
+
+                LogInfo("Target monitor changed to device ID: %s", new_device_id.c_str());
+            }
         }
         if (ImGui::IsItemHovered()) {
             // Get the saved game window display device ID for tooltip

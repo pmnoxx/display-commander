@@ -6,7 +6,6 @@
 #include "nvapi/dlss_preset_detector.hpp"
 #include "nvapi/dlssfg_version_detector.hpp"
 #include "settings/main_tab_settings.hpp"
-#include "ui/ui_display_tab.hpp"
 #include "utils.hpp"
 #include "utils/timing.hpp"
 
@@ -272,7 +271,7 @@ void ContinuousMonitoringThread() {
             if (now_ns - last_cache_refresh_ns >= 2 * utils::SEC_TO_NS) {
                 display_cache::g_displayCache.Refresh();
                 last_cache_refresh_ns = now_ns;
-                auto labels = ui::GetMonitorLabelsFromCache();
+                auto labels = display_cache::g_displayCache.GetMonitorLabels();
                 auto next = std::make_shared<const std::vector<std::string>>(std::move(labels));
                 ::g_monitor_labels.store(next, std::memory_order_release);
             }

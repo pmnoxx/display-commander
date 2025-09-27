@@ -7,8 +7,10 @@
 #include <windows.h>
 
 #include <d3d11.h>
-#include <reshade.hpp>
+#include <imgui.h>
 #include <wrl/client.h>
+#include <reshade.hpp>
+
 
 #include <atomic>
 #include <memory>
@@ -34,7 +36,7 @@ extern std::atomic<bool> g_dll_initialization_complete;
 extern HMODULE g_hmodule;
 
 // Shared DXGI factory to avoid redundant CreateDXGIFactory calls
-extern std::atomic<Microsoft::WRL::ComPtr<IDXGIFactory1> *> g_shared_dxgi_factory;
+extern std::atomic<Microsoft::WRL::ComPtr<IDXGIFactory1>*> g_shared_dxgi_factory;
 
 // Helper function to get shared DXGI factory (thread-safe)
 Microsoft::WRL::ComPtr<IDXGIFactory1> GetSharedDXGIFactory();
@@ -45,28 +47,28 @@ enum class WindowStyleMode : std::uint8_t { KEEP, BORDERLESS, OVERLAPPED_WINDOW 
 enum class FpsLimiterMode : std::uint8_t { kNone = 0, kCustom = 1, kLatentSync = 2 };
 enum class WindowMode : std::uint8_t { kFullscreen = 0, kAspectRatio = 1 };
 enum class AspectRatioType : std::uint8_t {
-    k3_2 = 0,    // 3:2
-    k4_3 = 1,    // 4:3
-    k16_10 = 2,  // 16:10
-    k16_9 = 3,   // 16:9
-    k19_9 = 4,   // 19:9
-    k19_5_9 = 5, // 19.5:9
-    k21_9 = 6,   // 21:9
-    k32_9 = 7    // 32:9
+    k3_2 = 0,     // 3:2
+    k4_3 = 1,     // 4:3
+    k16_10 = 2,   // 16:10
+    k16_9 = 3,    // 16:9
+    k19_9 = 4,    // 19:9
+    k19_5_9 = 5,  // 19.5:9
+    k21_9 = 6,    // 21:9
+    k32_9 = 7     // 32:9
 };
 
 enum class WindowAlignment : std::uint8_t {
-    kCenter = 0,     // Center (default)
-    kTopLeft = 1,    // Top Left
-    kTopRight = 2,   // Top Right
-    kBottomLeft = 3, // Bottom Left
-    kBottomRight = 4 // Bottom Right
+    kCenter = 0,      // Center (default)
+    kTopLeft = 1,     // Top Left
+    kTopRight = 2,    // Top Right
+    kBottomLeft = 3,  // Bottom Left
+    kBottomRight = 4  // Bottom Right
 };
 
 enum class ScreensaverMode : std::uint8_t {
-    kDefault = 0,            // Default (no change)
-    kDisableWhenFocused = 1, // Disable when focused
-    kDisable = 2             // Disable
+    kDefault = 0,             // Default (no change)
+    kDisableWhenFocused = 1,  // Disable when focused
+    kDisable = 2              // Disable
 };
 
 // Structures
@@ -84,7 +86,7 @@ struct GlobalWindowState {
     int new_style = 0;
     int new_ex_style = 0;
     WindowStyleMode style_mode = WindowStyleMode::BORDERLESS;
-    const char *reason = "unknown";
+    const char* reason = "unknown";
 
     int show_cmd = 0;
     int current_monitor_index = 0;
@@ -152,7 +154,7 @@ extern std::atomic<bool> s_prevent_fullscreen;
 extern std::atomic<bool> s_fix_hdr10_colorspace;
 
 // Window Management Settings
-extern std::atomic<WindowAlignment> s_window_alignment; // Window alignment when repositioning is needed
+extern std::atomic<WindowAlignment> s_window_alignment;  // Window alignment when repositioning is needed
 extern std::atomic<int> s_target_display_index;
 extern std::atomic<int> s_dxgi_composition_state;
 
@@ -181,7 +183,7 @@ extern std::atomic<bool> s_enable_background_toggle_shortcut;
 // VSync and Tearing Controls
 
 // ReShade Integration
-extern std::atomic<reshade::api::effect_runtime *> g_reshade_runtime;
+extern std::atomic<reshade::api::effect_runtime*> g_reshade_runtime;
 extern void (*g_custom_fps_limiter_callback)();
 
 // Monitor Management
@@ -255,9 +257,9 @@ extern std::atomic<bool> g_app_in_background;
 extern std::atomic<FpsLimiterMode> s_fps_limiter_mode;
 
 // FPS limiter injection timing: 0 = OnPresentFlags (recommended), 1 = OnPresentUpdateBefore2, 2 = OnPresentUpdateBefore
-#define FPS_LIMITER_INJECTION_ONPRESENTFLAGS 0
+#define FPS_LIMITER_INJECTION_ONPRESENTFLAGS         0
 #define FPS_LIMITER_INJECTION_ONPRESENTUPDATEBEFORE2 1
-#define FPS_LIMITER_INJECTION_ONPRESENTUPDATEBEFORE 2
+#define FPS_LIMITER_INJECTION_ONPRESENTUPDATEBEFORE  2
 
 // Performance stats (FPS/frametime) shared state
 extern std::atomic<uint32_t> g_perf_ring_head;
@@ -278,10 +280,10 @@ extern std::atomic<std::shared_ptr<const std::string>> g_hdr10_override_status;
 extern std::atomic<std::shared_ptr<const std::string>> g_hdr10_override_timestamp;
 
 // Helper function for updating HDR10 override status atomically
-void UpdateHdr10OverrideStatus(const std::string &status);
+void UpdateHdr10OverrideStatus(const std::string& status);
 
 // Helper function for updating HDR10 override timestamp atomically
-void UpdateHdr10OverrideTimestamp(const std::string &timestamp);
+void UpdateHdr10OverrideTimestamp(const std::string& timestamp);
 
 // Keyboard Shortcut Settings (Experimental)
 extern std::atomic<bool> s_enable_mute_unmute_shortcut;
@@ -311,11 +313,11 @@ class MainTabSettings;
 extern ExperimentalTabSettings g_experimentalTabSettings;
 extern DeveloperTabSettings g_developerTabSettings;
 extern MainTabSettings g_mainTabSettings;
-} // namespace settings
+}  // namespace settings
 
 // Swapchain event counters - reset on each swapchain creation
-extern std::atomic<uint32_t> g_swapchain_event_counters[40]; // Array for all On* events
-extern std::atomic<uint32_t> g_swapchain_event_total_count;  // Total events across all types
+extern std::atomic<uint32_t> g_swapchain_event_counters[40];  // Array for all On* events
+extern std::atomic<uint32_t> g_swapchain_event_total_count;   // Total events across all types
 
 // Swapchain event counter indices
 enum SwapchainEventIndex {
@@ -369,20 +371,20 @@ extern std::atomic<LONGLONG> g_present_start_time_ns;
 extern std::atomic<LONGLONG> late_amount_ns;
 
 // NVIDIA Reflex minimal controls
-extern std::atomic<bool> s_reflex_enable;         // Enable NVIDIA Reflex integration
-extern std::atomic<bool> s_reflex_low_latency;    // Low Latency Mode
-extern std::atomic<bool> s_reflex_boost;          // Low Latency Boost
-extern std::atomic<bool> s_reflex_use_markers;    // Use markers to optimize
-extern std::atomic<bool> s_enable_reflex_logging; // Enable Reflex logging
+extern std::atomic<bool> s_reflex_enable;          // Enable NVIDIA Reflex integration
+extern std::atomic<bool> s_reflex_low_latency;     // Low Latency Mode
+extern std::atomic<bool> s_reflex_boost;           // Low Latency Boost
+extern std::atomic<bool> s_reflex_use_markers;     // Use markers to optimize
+extern std::atomic<bool> s_enable_reflex_logging;  // Enable Reflex logging
 
 // DLSS-FG Detection state
 extern std::atomic<bool> g_dlssfg_detected;
 
 // DLLS-G (DLSS Frame Generation) status
-extern std::atomic<bool> g_dlls_g_loaded;                                // DLLS-G loaded status
-extern std::atomic<std::shared_ptr<const std::string>> g_dlls_g_version; // DLLS-G version string
+extern std::atomic<bool> g_dlls_g_loaded;                                 // DLLS-G loaded status
+extern std::atomic<std::shared_ptr<const std::string>> g_dlls_g_version;  // DLLS-G version string
 
 // DLSS Preset Detection
-extern std::atomic<bool> g_dlss_preset_detected;                            // DLSS preset detection status
-extern std::atomic<std::shared_ptr<const std::string>> g_dlss_preset_name;  // Current DLSS preset name
-extern std::atomic<std::shared_ptr<const std::string>> g_dlss_quality_mode; // Current DLSS quality mode
+extern std::atomic<bool> g_dlss_preset_detected;                             // DLSS preset detection status
+extern std::atomic<std::shared_ptr<const std::string>> g_dlss_preset_name;   // Current DLSS preset name
+extern std::atomic<std::shared_ptr<const std::string>> g_dlss_quality_mode;  // Current DLSS quality mode

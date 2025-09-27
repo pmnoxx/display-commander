@@ -370,7 +370,7 @@ void HandleAutoDetection() {
                 HMONITOR current_monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
                 if (current_monitor) {
                     // Get monitor labels to find which monitor index this corresponds to
-                    auto monitor_labels = ui::GetMonitorLabelsFromCache();
+                    auto monitor_labels = display_cache::g_displayCache.GetMonitorLabels();
 
                     // Find which monitor index this corresponds to
                     for (int i = 0; i < static_cast<int>(monitor_labels.size()); i++) {

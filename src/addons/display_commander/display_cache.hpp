@@ -381,6 +381,9 @@ class DisplayCache {
     // Get refresh rate labels for a specific display and resolution
     std::vector<std::string> GetRefreshRateLabels(size_t display_index, size_t resolution_index) const;
 
+    // Get monitor labels for all displays (formatted for UI display)
+    std::vector<std::string> GetMonitorLabels() const;
+
     // Get current resolution for a display
     bool GetCurrentResolution(size_t display_index, int &width, int &height) const;
 

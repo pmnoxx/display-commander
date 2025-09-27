@@ -1,7 +1,5 @@
 #pragma once
 
-#include <imgui.h>
-
 namespace ui::new_ui {
 
 void InitMainNewTab();
@@ -29,4 +27,4 @@ void DrawAdhdMultiMonitorControls(bool hasBlackCurtainSetting);
 // Draw important information section (Flip State)
 void DrawImportantInfo();
 
-} // namespace ui::new_ui
+}  // namespace ui::new_ui

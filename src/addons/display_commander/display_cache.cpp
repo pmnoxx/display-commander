@@ -323,8 +323,8 @@ std::vector<DisplayInfoForUI> DisplayCache::GetDisplayInfoForUI() const {
 
         DisplayInfoForUI info;
 
-        // Convert device name to string for device_id
-        info.device_id = std::string(display->device_name.begin(), display->device_name.end());
+        // Get extended device ID using the full device path
+        info.extended_device_id = GetExtendedDeviceIdFromMonitor(display->monitor_handle);
 
         // Convert friendly name to string
         info.friendly_name = std::string(display->friendly_name.begin(), display->friendly_name.end());
@@ -360,8 +360,8 @@ std::vector<DisplayInfoForUI> DisplayCache::GetDisplayInfoForUI() const {
             }
         }
 
-        // Format: [DeviceID] Friendly Name - Resolution @ PreciseRefreshRateHz [Raw: num/den]
-        oss << "[" << info.device_id << "] " << info.friendly_name << " - " << info.current_resolution
+        // Format: [ExtendedDeviceID] Friendly Name - Resolution @ PreciseRefreshRateHz [Raw: num/den]
+        oss << "[" << info.extended_device_id << "] " << info.friendly_name << " - " << info.current_resolution
             << " @ " << rate_str << "Hz [Raw: " << display->current_refresh_rate.numerator << "/"
             << display->current_refresh_rate.denominator << "]";
         info.display_label = oss.str();
@@ -375,7 +375,7 @@ std::vector<DisplayInfoForUI> DisplayCache::GetDisplayInfoForUI() const {
 const DisplayInfoForUI* DisplayCache::GetDisplayInfoByDeviceId(const std::string& device_id) const {
     auto display_info = GetDisplayInfoForUI();
     for (const auto& info : display_info) {
-        if (info.device_id == device_id) {
+        if (info.extended_device_id == device_id) {
             return &info;
         }
     }
@@ -573,6 +573,64 @@ double DisplayCache::GetMaxRefreshRateAcrossAllMonitors() const {
     }
 
     return max_refresh_rate;
+}
+
+std::string DisplayCache::GetExtendedDeviceIdFromMonitor(HMONITOR monitor) const {
+    if (monitor == nullptr) {
+        return "No Monitor";
+    }
+
+    // Get monitor information
+    MONITORINFOEXW mi{};
+    mi.cbSize = sizeof(mi);
+    if (!GetMonitorInfoW(monitor, &mi)) {
+        return "Monitor Info Failed";
+    }
+
+    // Get the full device ID using EnumDisplayDevices with EDD_GET_DEVICE_INTERFACE_NAME
+    DISPLAY_DEVICEW displayDevice;
+    ZeroMemory(&displayDevice, sizeof(displayDevice));
+    displayDevice.cb = sizeof(displayDevice);
+
+    DWORD deviceIndex = 0;
+    while (EnumDisplayDevicesW(NULL, deviceIndex, &displayDevice, 0)) {
+        // Check if this is the device we're looking for
+        if (wcscmp(displayDevice.DeviceName, mi.szDevice) == 0) {
+            // Found the matching device, now get the full device ID
+            DISPLAY_DEVICEW monitorDevice;
+            ZeroMemory(&monitorDevice, sizeof(monitorDevice));
+            monitorDevice.cb = sizeof(monitorDevice);
+
+            DWORD monitorIndex = 0;
+            while (EnumDisplayDevicesW(displayDevice.DeviceName, monitorIndex, &monitorDevice,
+                                       EDD_GET_DEVICE_INTERFACE_NAME)) {
+                // Return the full device ID (DeviceID contains the full path like DISPLAY\AUS32B4\5&24D3239D&1&UID4353)
+                if (wcslen(monitorDevice.DeviceID) > 0) {
+                    // Convert wide string to UTF-8 string
+                    int size =
+                        WideCharToMultiByte(CP_UTF8, 0, monitorDevice.DeviceID, -1, nullptr, 0, nullptr, nullptr);
+                    if (size > 0) {
+                        std::string result(size - 1, '\0');
+                        WideCharToMultiByte(CP_UTF8, 0, monitorDevice.DeviceID, -1, &result[0], size, nullptr, nullptr);
+                        return result;
+                    }
+                }
+                monitorIndex++;
+            }
+            break;
+        }
+        deviceIndex++;
+    }
+
+    // Fallback to simple device name if full device ID not found
+    int size = WideCharToMultiByte(CP_UTF8, 0, mi.szDevice, -1, nullptr, 0, nullptr, nullptr);
+    if (size > 0) {
+        std::string result(size - 1, '\0');
+        WideCharToMultiByte(CP_UTF8, 0, mi.szDevice, -1, &result[0], size, nullptr, nullptr);
+        return result;
+    }
+
+    return "Conversion Failed";
 }
 
 } // namespace display_cache

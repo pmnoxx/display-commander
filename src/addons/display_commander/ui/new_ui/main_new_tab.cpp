@@ -274,10 +274,10 @@ void DrawDisplaySettings() {
         }
 
         // Find current selection by device ID
-        std::string current_device_id = settings::g_mainTabSettings.selected_display_device_id.GetValue();
+        std::string current_device_id = settings::g_mainTabSettings.selected_extended_display_device_id.GetValue();
         int selected_index = 0; // Default to first display
         for (size_t i = 0; i < display_info.size(); ++i) {
-            if (display_info[i].device_id == current_device_id) {
+            if (display_info[i].extended_device_id == current_device_id) {
                 selected_index = static_cast<int>(i);
                 break;
             }
@@ -287,8 +287,8 @@ void DrawDisplaySettings() {
                          static_cast<int>(monitor_c_labels.size()))) {
             if (selected_index >= 0 && selected_index < static_cast<int>(display_info.size())) {
                 // Store the device ID instead of index
-                std::string new_device_id = display_info[selected_index].device_id;
-                settings::g_mainTabSettings.selected_display_device_id.SetValue(new_device_id);
+                std::string new_device_id = display_info[selected_index].extended_device_id;
+                settings::g_mainTabSettings.selected_extended_display_device_id.SetValue(new_device_id);
 
                 // Also update the legacy index for backward compatibility
                 s_target_display_index.store(display_info[selected_index].display_index);

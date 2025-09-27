@@ -16,64 +16,6 @@ void InitializeDisplayCache() {
     }
 }
 
-// Helper function to get full device ID from monitor handle
-std::string GetFullDeviceIdFromMonitor(HMONITOR monitor) {
-    if (monitor == nullptr) {
-        return "No Monitor";
-    }
-
-    // Get monitor information
-    MONITORINFOEXW mi{};
-    mi.cbSize = sizeof(mi);
-    if (!GetMonitorInfoW(monitor, &mi)) {
-        return "Monitor Info Failed";
-    }
-
-    // Get the full device ID using EnumDisplayDevices with EDD_GET_DEVICE_INTERFACE_NAME
-    DISPLAY_DEVICEW displayDevice;
-    ZeroMemory(&displayDevice, sizeof(displayDevice));
-    displayDevice.cb = sizeof(displayDevice);
-
-    DWORD deviceIndex = 0;
-    while (EnumDisplayDevicesW(NULL, deviceIndex, &displayDevice, 0)) {
-        // Check if this is the device we're looking for
-        if (wcscmp(displayDevice.DeviceName, mi.szDevice) == 0) {
-            // Found the matching device, now get the full device ID
-            DISPLAY_DEVICEW monitorDevice;
-            ZeroMemory(&monitorDevice, sizeof(monitorDevice));
-            monitorDevice.cb = sizeof(monitorDevice);
-
-            DWORD monitorIndex = 0;
-            while (EnumDisplayDevicesW(displayDevice.DeviceName, monitorIndex, &monitorDevice,
-                                       EDD_GET_DEVICE_INTERFACE_NAME)) {
-                // Return the full device ID (DeviceID contains the full path like DISPLAY\AUS32B4\5&24D3239D&1&UID4353)
-                if (wcslen(monitorDevice.DeviceID) > 0) {
-                    // Convert wide string to UTF-8 string
-                    int size =
-                        WideCharToMultiByte(CP_UTF8, 0, monitorDevice.DeviceID, -1, nullptr, 0, nullptr, nullptr);
-                    if (size > 0) {
-                        std::string result(size - 1, '\0');
-                        WideCharToMultiByte(CP_UTF8, 0, monitorDevice.DeviceID, -1, &result[0], size, nullptr, nullptr);
-                        return result;
-                    }
-                }
-                monitorIndex++;
-            }
-            break;
-        }
-        deviceIndex++;
-    }
-
-    // Fallback to simple device name if full device ID not found
-    int size = WideCharToMultiByte(CP_UTF8, 0, mi.szDevice, -1, nullptr, 0, nullptr, nullptr);
-    if (size > 0) {
-        std::string result(size - 1, '\0');
-        WideCharToMultiByte(CP_UTF8, 0, mi.szDevice, -1, &result[0], size, nullptr, nullptr);
-        return result;
-    }
-
-    return "Conversion Failed";
-}
 
 // Function to find monitor index by device ID
 int FindMonitorIndexByDeviceId(const std::string &device_id) {
@@ -104,8 +46,8 @@ int FindMonitorIndexByDeviceId(const std::string &device_id) {
         if (!display)
             continue;
 
-        // Get the full device ID for this display
-        std::string full_device_id = GetFullDeviceIdFromMonitor(display->monitor_handle);
+        // Get the extended device ID for this display
+        std::string full_device_id = display_cache::g_displayCache.GetExtendedDeviceIdFromMonitor(display->monitor_handle);
         if (full_device_id == device_id) {
             return static_cast<int>(i);
         }

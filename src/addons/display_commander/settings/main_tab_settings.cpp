@@ -65,7 +65,7 @@ MainTabSettings::MainTabSettings()
       show_test_overlay("show_test_overlay", false, "DisplayCommander"),
       target_display("target_display", "", "DisplayCommander"),
       game_window_display_device_id("game_window_display_device_id", "", "DisplayCommander"),
-      selected_display_device_id("selected_display_device_id", "", "DisplayCommander"),
+      selected_extended_display_device_id("selected_extended_display_device_id", "", "DisplayCommander"),
       adhd_multi_monitor_enabled("adhd_multi_monitor_enabled", false, "DisplayCommander"),
       screensaver_mode("screensaver_mode", s_screensaver_mode, static_cast<int>(ScreensaverMode::kDefault),
                        {"Default (no change)", "Disable when Focused", "Disable"}, "DisplayCommander") {
@@ -100,7 +100,7 @@ MainTabSettings::MainTabSettings()
         &show_test_overlay,
         &target_display,
         &game_window_display_device_id,
-        &selected_display_device_id,
+        &selected_extended_display_device_id,
         &adhd_multi_monitor_enabled,
         &screensaver_mode,
     };
@@ -114,8 +114,8 @@ void MainTabSettings::LoadSettings() {
     // Apply ADHD Multi-Monitor Mode settings after loading
     adhd_multi_monitor::api::SetEnabled(adhd_multi_monitor_enabled.GetValue());
 
-    // Initialize selected_display_device_id from target_display_index if not already set
-    InitializeSelectedDisplayDeviceId();
+    // Initialize selected_extended_display_device_id from target_display_index if not already set
+    InitializeSelectedExtendedDisplayDeviceId();
 
     LogInfo("MainTabSettings::LoadSettings() completed");
 }
@@ -148,43 +148,8 @@ std::string GetDisplayDeviceIdFromWindow(HWND hwnd) {
         return "No Monitor";
     }
 
-    // Get monitor information
-    MONITORINFOEXW mi{};
-    mi.cbSize = sizeof(mi);
-    if (!GetMonitorInfoW(hmon, &mi)) {
-        return "Monitor Info Failed";
-    }
-
-    // Get the full device ID using EnumDisplayDevices with EDD_GET_DEVICE_INTERFACE_NAME
-    DISPLAY_DEVICEW displayDevice;
-    ZeroMemory(&displayDevice, sizeof(displayDevice));
-    displayDevice.cb = sizeof(displayDevice);
-
-    DWORD deviceIndex = 0;
-    while (EnumDisplayDevicesW(NULL, deviceIndex, &displayDevice, 0)) {
-        // Check if this is the device we're looking for
-        if (wcscmp(displayDevice.DeviceName, mi.szDevice) == 0) {
-            // Found the matching device, now get the full device ID
-            DISPLAY_DEVICEW monitorDevice;
-            ZeroMemory(&monitorDevice, sizeof(monitorDevice));
-            monitorDevice.cb = sizeof(monitorDevice);
-
-            DWORD monitorIndex = 0;
-            while (EnumDisplayDevicesW(displayDevice.DeviceName, monitorIndex, &monitorDevice,
-                                       EDD_GET_DEVICE_INTERFACE_NAME)) {
-                // Return the full device ID (DeviceID contains the full path like DISPLAY\AUS32B4\5&24D3239D&1&UID4353)
-                if (wcslen(monitorDevice.DeviceID) > 0) {
-                    return WStringToString(monitorDevice.DeviceID);
-                }
-                monitorIndex++;
-            }
-            break;
-        }
-        deviceIndex++;
-    }
-
-    // Fallback to simple device name if full device ID not found
-    return WStringToString(mi.szDevice);
+    // Use the display cache function to get the extended device ID
+    return display_cache::g_displayCache.GetExtendedDeviceIdFromMonitor(hmon);
 }
 
 // Function to save the display device ID for the game window
@@ -197,10 +162,10 @@ void SaveGameWindowDisplayDeviceId(HWND hwnd) {
     LogInfo(oss.str().c_str());
 }
 
-// Function to initialize selected_display_device_id from target_display_index
-void InitializeSelectedDisplayDeviceId() {
-    // Only initialize if selected_display_device_id is empty
-    if (!g_mainTabSettings.selected_display_device_id.GetValue().empty()) {
+// Function to initialize selected_extended_display_device_id from target_display_index
+void InitializeSelectedExtendedDisplayDeviceId() {
+    // Only initialize if selected_extended_display_device_id is empty
+    if (!g_mainTabSettings.selected_extended_display_device_id.GetValue().empty()) {
         return;
     }
 
@@ -210,15 +175,15 @@ void InitializeSelectedDisplayDeviceId() {
     // Get display info and find the device ID for the target index
     auto display_info = display_cache::g_displayCache.GetDisplayInfoForUI();
     if (target_index >= 0 && target_index < static_cast<int>(display_info.size())) {
-        std::string device_id = display_info[target_index].device_id;
-        g_mainTabSettings.selected_display_device_id.SetValue(device_id);
-        LogInfo("Initialized selected_display_device_id to: %s", device_id.c_str());
+        std::string device_id = display_info[target_index].extended_device_id;
+        g_mainTabSettings.selected_extended_display_device_id.SetValue(device_id);
+        LogInfo("Initialized selected_extended_display_device_id to: %s", device_id.c_str());
     } else {
         // Default to first display if index is invalid
         if (!display_info.empty()) {
-            std::string device_id = display_info[0].device_id;
-            g_mainTabSettings.selected_display_device_id.SetValue(device_id);
-            LogInfo("Initialized selected_display_device_id to first display: %s", device_id.c_str());
+            std::string device_id = display_info[0].extended_device_id;
+            g_mainTabSettings.selected_extended_display_device_id.SetValue(device_id);
+            LogInfo("Initialized selected_extended_display_device_id to first display: %s", device_id.c_str());
         }
     }
 }

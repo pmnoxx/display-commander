@@ -344,7 +344,7 @@ struct DisplayInfo {
 
 // Display information structure for UI consumption
 struct DisplayInfoForUI {
-    std::string device_id;           // Unique device identifier (e.g., "\\.\DISPLAY1")
+    std::string extended_device_id;  // Unique device identifier (e.g., "\\?\DISPLAY#AUS32B4#5&24d3239d&1&UID4353#{e6f07b5f-ee97-4a90-b076-33f57bf4eaa7}")
     std::string friendly_name;       // Human-readable name
     std::string current_resolution;  // Current resolution string
     std::string current_refresh_rate; // Current refresh rate string
@@ -388,6 +388,9 @@ class DisplayCache {
 
     // Get display index by device name (returns -1 if not found)
     int GetDisplayIndexByDeviceName(const std::string &device_name) const;
+
+    // Get extended device ID from monitor handle
+    std::string GetExtendedDeviceIdFromMonitor(HMONITOR monitor) const;
 
     // Get resolution labels for a specific display
     std::vector<std::string> GetResolutionLabels(size_t display_index) const;

@@ -780,6 +780,7 @@ void FixedIntArraySetting::SetAllValues(const std::vector<int> &values) {
         values_[i]->store(value);
     }
     is_dirty_ = true;
+    Save(); // Auto-save when value changes, consistent with other setting types
 }
 
 // StringSetting implementation
@@ -809,6 +810,7 @@ void StringSetting::SetValue(const std::string &value) {
     if (value_ != value) {
         value_ = value;
         is_dirty_ = true;
+        Save(); // Auto-save when value changes, consistent with other setting types
     }
 }
 

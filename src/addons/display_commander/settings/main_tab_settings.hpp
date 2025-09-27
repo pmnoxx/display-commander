@@ -44,7 +44,6 @@ class MainTabSettings {
     // Display Settings
     ui::new_ui::ComboSettingEnumRef<WindowMode> window_mode;
     ui::new_ui::ComboSetting aspect_index;
-    ui::new_ui::ComboSetting target_display_index;
     ui::new_ui::ComboSettingRef window_aspect_width;
     ui::new_ui::BoolSettingRef background_feature;
     ui::new_ui::ComboSetting alignment;
@@ -104,6 +103,5 @@ std::string GetDisplayDeviceIdFromWindow(HWND hwnd);
 void SaveGameWindowDisplayDeviceId(HWND hwnd);
 void UpdateTargetDisplayFromGameWindow();
 void UpdateFpsLimitMaximums();
-void InitializeSelectedExtendedDisplayDeviceId();
 
 } // namespace settings

@@ -32,10 +32,6 @@ MainTabSettings::MainTabSettings()
     : window_mode("window_mode", s_window_mode, static_cast<int>(WindowMode::kFullscreen), {"Borderless Fullscreen", "Borderless Windowed (Aspect Ratio)"}, "DisplayCommander"),
       aspect_index("aspect_index", 3, {"3:2", "4:3", "16:10", "16:9", "19:9", "19.5:9", "21:9", "32:9"},
                    "DisplayCommander"), // Default to 16:9
-      target_display_index("target_display_index", 0,
-                           {"Monitor 1", "Monitor 2", "Monitor 3", "Monitor 4", "Monitor 5", "Monitor 6", "Monitor 7",
-                            "Monitor 8", "Monitor 9", "Monitor 10"},
-                           "DisplayCommander"),
       window_aspect_width("aspect_width", s_aspect_width, 0, {"Display Width", "3840", "2560", "1920", "1600", "1280", "1080", "900", "720"}, "DisplayCommander"),
       background_feature("background_feature", s_background_feature_enabled, false, "DisplayCommander"),
       alignment("alignment", 0, {"Center", "Top Left", "Top Right", "Bottom Left", "Bottom Right"}, "DisplayCommander"),
@@ -74,7 +70,6 @@ MainTabSettings::MainTabSettings()
     all_settings_ = {
         &window_mode,
         &aspect_index,
-        &target_display_index,
         &window_aspect_width,
         &background_feature,
         &alignment,
@@ -114,8 +109,6 @@ void MainTabSettings::LoadSettings() {
     // Apply ADHD Multi-Monitor Mode settings after loading
     adhd_multi_monitor::api::SetEnabled(adhd_multi_monitor_enabled.GetValue());
 
-    // Initialize selected_extended_display_device_id from target_display_index if not already set
-    InitializeSelectedExtendedDisplayDeviceId();
 
     LogInfo("MainTabSettings::LoadSettings() completed");
 }
@@ -162,31 +155,6 @@ void SaveGameWindowDisplayDeviceId(HWND hwnd) {
     LogInfo(oss.str().c_str());
 }
 
-// Function to initialize selected_extended_display_device_id from target_display_index
-void InitializeSelectedExtendedDisplayDeviceId() {
-    // Only initialize if selected_extended_display_device_id is empty
-    if (!g_mainTabSettings.selected_extended_display_device_id.GetValue().empty()) {
-        return;
-    }
-
-    // Get the current target display index
-    int target_index = g_mainTabSettings.target_display_index.GetValue();
-
-    // Get display info and find the device ID for the target index
-    auto display_info = display_cache::g_displayCache.GetDisplayInfoForUI();
-    if (target_index >= 0 && target_index < static_cast<int>(display_info.size())) {
-        std::string device_id = display_info[target_index].extended_device_id;
-        g_mainTabSettings.selected_extended_display_device_id.SetValue(device_id);
-        LogInfo("Initialized selected_extended_display_device_id to: %s", device_id.c_str());
-    } else {
-        // Default to first display if index is invalid
-        if (!display_info.empty()) {
-            std::string device_id = display_info[0].extended_device_id;
-            g_mainTabSettings.selected_extended_display_device_id.SetValue(device_id);
-            LogInfo("Initialized selected_extended_display_device_id to first display: %s", device_id.c_str());
-        }
-    }
-}
 
 // Function to update the target display setting with current game window
 void UpdateTargetDisplayFromGameWindow() {

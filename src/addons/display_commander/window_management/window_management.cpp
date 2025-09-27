@@ -1,17 +1,18 @@
 #include "window_management.hpp"
 #include "../addon.hpp"
 #include "../display_cache.hpp"
+#include "../settings/main_tab_settings.hpp"
+#include "../ui/ui_display_tab.hpp"
 #include "../utils.hpp"
-#include <algorithm>
+
 #include <sstream>
 
 // Forward declaration
-void ComputeDesiredSize(int display_width, int display_height, int &out_w, int &out_h);
+void ComputeDesiredSize(int display_width, int display_height, int& out_w, int& out_h);
 
 // First function: Calculate and update global window state
-void CalculateWindowState(HWND hwnd, const char *reason) {
-    if (hwnd == nullptr)
-        return;
+void CalculateWindowState(HWND hwnd, const char* reason) {
+    if (hwnd == nullptr) return;
 
     // First, determine the target monitor using display cache (no
     // FindTargetMonitor / MONITORINFOEXW)
@@ -70,15 +71,26 @@ void CalculateWindowState(HWND hwnd, const char *reason) {
     auto displays = display_cache::g_displayCache.GetDisplays();
     size_t display_count = displays ? displays->size() : 0;
 
-    int requested_monitor =
-        static_cast<int>(s_target_display_index.load()); // 0-based indexing: 0 = Monitor 1, 1 = Monitor 2, etc.
-    if (requested_monitor >= 0 && display_count > 0) {
-        // Clamp to available displays; display indices are 0..display_count-1
-        // in cache
-        target_display_index = (std::max)(0, (std::min)(requested_monitor, static_cast<int>(display_count) - 1));
-        if (target_display_index < static_cast<int>(display_count) && (*displays)[target_display_index]) {
-            const auto *disp = (*displays)[target_display_index].get();
+    // Use device ID-based approach for better reliability
+    std::string selected_device_id = settings::g_mainTabSettings.selected_extended_display_device_id.GetValue();
+    if (!selected_device_id.empty() && selected_device_id != "No Window" && selected_device_id != "No Monitor"
+        && selected_device_id != "Monitor Info Failed") {
+        // Find monitor by device ID
+        target_display_index = ui::FindMonitorIndexByDeviceId(selected_device_id);
+        if (target_display_index >= 0 && target_display_index < static_cast<int>(display_count)
+            && (*displays)[target_display_index]) {
+            const auto* disp = (*displays)[target_display_index].get();
             target_monitor_handle = disp->monitor_handle;
+        } else {
+            // Device ID not found, fall back to current window monitor
+            target_monitor_handle = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+            // Find the corresponding display index in the cache
+            for (size_t i = 0; i < display_count; ++i) {
+                if ((*displays)[i] && (*displays)[i]->monitor_handle == target_monitor_handle) {
+                    target_display_index = static_cast<int>(i);
+                    break;
+                }
+            }
         }
     } else {
         // Fallback: use the monitor where the window currently resides
@@ -95,7 +107,7 @@ void CalculateWindowState(HWND hwnd, const char *reason) {
     // Get current refresh rate from cache
     display_cache::RationalRefreshRate tmp_refresh;
     if (target_display_index < static_cast<int>(display_count) && (*displays)[target_display_index]) {
-        const auto *disp = (*displays)[target_display_index].get();
+        const auto* disp = (*displays)[target_display_index].get();
         tmp_refresh = disp->current_refresh_rate;
         local_state.current_monitor_index = target_display_index;
         local_state.current_monitor_refresh_rate = tmp_refresh;
@@ -125,7 +137,8 @@ void CalculateWindowState(HWND hwnd, const char *reason) {
         // Calculate target dimensions
         RECT client_rect = RectFromWH(local_state.desired_width, local_state.desired_height);
         if (AdjustWindowRectEx(&client_rect, static_cast<DWORD>(local_state.new_style), FALSE,
-                               static_cast<DWORD>(local_state.new_ex_style)) == FALSE) {
+                               static_cast<DWORD>(local_state.new_ex_style))
+            == FALSE) {
             LogWarn("AdjustWindowRectEx failed for CalculateWindowState.");
             return;
         }
@@ -136,38 +149,38 @@ void CalculateWindowState(HWND hwnd, const char *reason) {
         local_state.target_x = disp->x;
         local_state.target_y = disp->y;
 
-        const RECT &mr = {disp->x, disp->y, disp->x + disp->width, disp->y + disp->height};
+        const RECT& mr = {disp->x, disp->y, disp->x + disp->width, disp->y + disp->height};
 
         // Apply alignment based on setting
         switch (s_window_alignment.load()) {
-        default:
-        case WindowAlignment::kCenter: // Default to center
-            local_state.target_x = max(mr.left, mr.left + (mr.right - mr.left - local_state.target_w) / 2);
-            local_state.target_y = max(mr.top, mr.top + (mr.bottom - mr.top - local_state.target_h) / 2);
-            break;
-        case WindowAlignment::kTopLeft:
-            local_state.target_x = mr.left;
-            local_state.target_y = mr.top;
-            break;
-        case WindowAlignment::kTopRight:
-            local_state.target_x = max(mr.left, mr.right - local_state.target_w);
-            local_state.target_y = mr.top;
-            break;
-        case WindowAlignment::kBottomLeft:
-            local_state.target_x = mr.left;
-            local_state.target_y = max(mr.top, mr.bottom - local_state.target_h);
-            break;
-        case WindowAlignment::kBottomRight:
-            local_state.target_x = max(mr.left, mr.right - local_state.target_w);
-            local_state.target_y = max(mr.top, mr.bottom - local_state.target_h);
-            break;
+            default:
+            case WindowAlignment::kCenter:  // Default to center
+                local_state.target_x = max(mr.left, mr.left + (mr.right - mr.left - local_state.target_w) / 2);
+                local_state.target_y = max(mr.top, mr.top + (mr.bottom - mr.top - local_state.target_h) / 2);
+                break;
+            case WindowAlignment::kTopLeft:
+                local_state.target_x = mr.left;
+                local_state.target_y = mr.top;
+                break;
+            case WindowAlignment::kTopRight:
+                local_state.target_x = max(mr.left, mr.right - local_state.target_w);
+                local_state.target_y = mr.top;
+                break;
+            case WindowAlignment::kBottomLeft:
+                local_state.target_x = mr.left;
+                local_state.target_y = max(mr.top, mr.bottom - local_state.target_h);
+                break;
+            case WindowAlignment::kBottomRight:
+                local_state.target_x = max(mr.left, mr.right - local_state.target_w);
+                local_state.target_y = max(mr.top, mr.bottom - local_state.target_h);
+                break;
         }
         local_state.target_w = min(local_state.target_w, mr.right - mr.left);
         local_state.target_h = min(local_state.target_h, mr.bottom - mr.top);
 
         // Check if any changes are actually needed
-        local_state.needs_resize = (local_state.target_w != (wr_current.right - wr_current.left)) ||
-                                   (local_state.target_h != (wr_current.bottom - wr_current.top));
+        local_state.needs_resize = (local_state.target_w != (wr_current.right - wr_current.left))
+                                   || (local_state.target_h != (wr_current.bottom - wr_current.top));
         local_state.needs_move = (local_state.target_x != wr_current.left) || (local_state.target_y != wr_current.top);
 
         // Store current monitor dimensions
@@ -182,9 +195,8 @@ void CalculateWindowState(HWND hwnd, const char *reason) {
 }
 
 // Second function: Apply the calculated window changes
-void ApplyWindowChange(HWND hwnd, const char *reason, bool force_apply) {
-    if (hwnd == nullptr)
-        return;
+void ApplyWindowChange(HWND hwnd, const char* reason, bool force_apply) {
+    if (hwnd == nullptr) return;
 
     // First calculate the desired window state
     CalculateWindowState(hwnd, reason);
@@ -219,12 +231,9 @@ void ApplyWindowChange(HWND hwnd, const char *reason, bool force_apply) {
             UINT flags = SWP_NOZORDER | SWP_NOOWNERZORDER;
 
             // Apply all changes in a single SetWindowPos call
-            if (!s.needs_resize)
-                flags |= SWP_NOSIZE;
-            if (!s.needs_move)
-                flags |= SWP_NOMOVE;
-            if (s.style_changed || s.style_changed_ex)
-                flags |= SWP_FRAMECHANGED;
+            if (!s.needs_resize) flags |= SWP_NOSIZE;
+            if (!s.needs_move) flags |= SWP_NOMOVE;
+            if (s.style_changed || s.style_changed_ex) flags |= SWP_FRAMECHANGED;
 
             SetWindowPos(hwnd, nullptr, s.target_x, s.target_y, s.target_w, s.target_h, flags);
         }

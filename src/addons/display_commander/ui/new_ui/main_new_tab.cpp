@@ -304,20 +304,6 @@ void DrawDisplaySettings() {
             }
             ImGui::SetTooltip("%s", tooltip_text.c_str());
         }
-
-        // Target Display (read-only display of current display device ID)
-        ImGui::Text("Target Display:");
-        ImGui::SameLine();
-        std::string current_display = settings::g_mainTabSettings.target_display.GetValue();
-        if (current_display.empty()) {
-            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Not detected");
-        } else {
-            ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "%s", current_display.c_str());
-        }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
-                "Current display device ID for the game window. Updated automatically from display cache.");
-        }
     }
 
     // Window Mode dropdown (with persistent setting)

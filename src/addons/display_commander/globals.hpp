@@ -371,6 +371,7 @@ extern std::atomic<LONGLONG> late_amount_ns;
 
 // NVIDIA Reflex minimal controls
 extern std::atomic<bool> s_reflex_enable;          // Enable NVIDIA Reflex integration
+extern std::atomic<bool> s_reflex_enable_current_frame;          // Enable NVIDIA Reflex integration for current frame
 extern std::atomic<bool> s_reflex_low_latency;     // Low Latency Mode
 extern std::atomic<bool> s_reflex_boost;           // Low Latency Boost
 extern std::atomic<bool> s_reflex_use_markers;     // Use markers to optimize

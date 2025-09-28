@@ -55,18 +55,16 @@ jobs:
         shell: bash
         run: |
           mkdir -p artifacts
-          files=$(find build -type f -name "*.${{ matrix.artifact_suffix }}" || true)
-          if [ -z "$files" ]; then
-            echo "No addon files found; listing build dir for debugging:" >&2
+          # Look specifically for display_commander addon files
+          display_commander_file=$(find build -type f -name "zzz_display_commander.${{ matrix.artifact_suffix }}" | head -1)
+          if [ -z "$display_commander_file" ]; then
+            echo "Display Commander addon file not found; listing build dir for debugging:" >&2
+            find build -type f -name "*.${{ matrix.artifact_suffix }}" || true
             ls -la build || true
             exit 1
           fi
-          while IFS= read -r f; do
-            base=$(basename "$f")
-            # Rename to the new naming convention
-            new_name="${{ matrix.artifact_name }}"
-            cp "$f" "artifacts/$new_name"
-          done <<< "$files"
+          # Copy the display_commander addon with the correct name
+          cp "$display_commander_file" "artifacts/${{ matrix.artifact_name }}"
           echo "artifact_dir=artifacts" >> $GITHUB_OUTPUT
 
       - name: Upload artifact
@@ -104,13 +102,13 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           body: |
             ## Nightly Build
-            
+
             This is an automated nightly build of Display Commander.
-            
+
             **Build Date**: ${{ github.event.schedule || 'Manual Trigger' }}
-            
+
             **Files**:
             - `zzz_display_commander.addon64` - 64-bit version
             - `zzz_display_commander.addon32` - 32-bit version
-            
+
             **Note**: These are development builds. For stable releases, use the main releases.

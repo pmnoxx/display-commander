@@ -109,7 +109,7 @@ struct Resolution {
 // Display information structure
 struct DisplayInfo {
     HMONITOR monitor_handle;
-    std::wstring device_name;
+    std::wstring extended_device_id;
     std::wstring friendly_name;
     std::vector<Resolution> resolutions;
 
@@ -133,7 +133,7 @@ struct DisplayInfo {
     // Get current resolution as string
     std::string GetCurrentResolutionString() const {
         std::ostringstream oss;
-        oss << width << " x " << height;
+        oss << width << "x" << height;
         return oss.str();
     }
 

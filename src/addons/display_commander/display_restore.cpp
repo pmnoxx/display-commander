@@ -26,14 +26,14 @@ struct DisplayRestoreData {
 
 std::atomic<std::shared_ptr<const DisplayRestoreData>> s_data{std::make_shared<DisplayRestoreData>()};
 
-bool GetCurrentForDevice(const std::wstring &device_name, OriginalMode &out) {
+bool GetCurrentForDevice(const std::wstring &extended_device_id, OriginalMode &out) {
     // Walk display cache for this device
     const auto &cache = display_cache::g_displayCache;
     for (size_t i = 0; i < cache.GetDisplayCount(); ++i) {
         const auto *disp = cache.GetDisplay(i);
         if (disp == nullptr)
             continue;
-        if (disp->device_name == device_name) {
+        if (disp->extended_device_id == extended_device_id) {
             out.width = disp->width;
             out.height = disp->height;
             out.refresh_num = disp->current_refresh_rate.numerator;
@@ -53,7 +53,7 @@ bool GetDeviceNameForMonitor(HMONITOR monitor, std::wstring &out_name) {
     return true;
 }
 
-bool ApplyModeForDevice(const std::wstring &device_name, const OriginalMode &mode) {
+bool ApplyModeForDevice(const std::wstring &extended_device_id, const OriginalMode &mode) {
     DEVMODEW dm{};
     dm.dmSize = sizeof(dm);
     dm.dmFields = DM_PELSWIDTH | DM_PELSHEIGHT | DM_DISPLAYFREQUENCY;
@@ -68,11 +68,11 @@ bool ApplyModeForDevice(const std::wstring &device_name, const OriginalMode &mod
     } else {
         dm.dmDisplayFrequency = static_cast<DWORD>(hz + 0.5);
     }
-    LONG res = ChangeDisplaySettingsExW(device_name.c_str(), &dm, nullptr, 0, nullptr);
+    LONG res = ChangeDisplaySettingsExW(extended_device_id.c_str(), &dm, nullptr, 0, nullptr);
     if (res == DISP_CHANGE_SUCCESSFUL)
         return true;
     // Try with CDS_UPDATEREGISTRY as fallback
-    res = ChangeDisplaySettingsExW(device_name.c_str(), &dm, nullptr, CDS_UPDATEREGISTRY, nullptr);
+    res = ChangeDisplaySettingsExW(extended_device_id.c_str(), &dm, nullptr, CDS_UPDATEREGISTRY, nullptr);
     return res == DISP_CHANGE_SUCCESSFUL;
 }
 
@@ -107,7 +107,7 @@ void MarkOriginalForDisplayIndex(int display_index) {
     const auto *disp = display_cache::g_displayCache.GetDisplay(static_cast<size_t>(display_index));
     if (disp == nullptr)
         return;
-    MarkOriginalForDeviceName(disp->device_name);
+    MarkOriginalForDeviceName(disp->extended_device_id);
 }
 
 void MarkDeviceChangedByDisplayIndex(int display_index) {
@@ -116,7 +116,7 @@ void MarkDeviceChangedByDisplayIndex(int display_index) {
     const auto *disp = display_cache::g_displayCache.GetDisplay(static_cast<size_t>(display_index));
     if (disp == nullptr)
         return;
-    MarkDeviceChangedByDeviceName(disp->device_name);
+    MarkDeviceChangedByDeviceName(disp->extended_device_id);
 }
 
 void MarkDeviceChangedByDeviceName(const std::wstring &device_name) {
@@ -219,7 +219,7 @@ bool RestoreDisplayByIndex(int display_index) {
     const auto *disp = display_cache::g_displayCache.GetDisplay(static_cast<size_t>(display_index));
     if (disp == nullptr)
         return false;
-    return RestoreDisplayByDeviceName(disp->device_name);
+    return RestoreDisplayByDeviceName(disp->extended_device_id);
 }
 
 } // namespace display_restore

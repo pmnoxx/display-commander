@@ -159,7 +159,7 @@ bool DisplayCache::Refresh() {
             continue;
         }
 
-        display_info->device_name = mi.szDevice;
+        display_info->extended_device_id = mi.szDevice;
         display_info->friendly_name = GetMonitorFriendlyName(mi);
 
         // Store monitor properties from MONITORINFOEXW
@@ -223,7 +223,7 @@ const DisplayInfo *DisplayCache::GetDisplayByDeviceName(const std::wstring &devi
         return nullptr;
 
     for (const auto &display : *displays_ptr) {
-        if (display->device_name == device_name) {
+        if (display->extended_device_id == device_name) {
             return display.get();
         }
     }
@@ -240,7 +240,7 @@ int DisplayCache::GetDisplayIndexByDeviceName(const std::string &device_name) co
 
     for (size_t i = 0; i < displays_ptr->size(); ++i) {
         const auto &display = (*displays_ptr)[i];
-        if (display && display->device_name == wdevice_name) {
+        if (display && display->extended_device_id == wdevice_name) {
             return static_cast<int>(i);
         }
     }
@@ -306,10 +306,9 @@ std::vector<std::string> DisplayCache::GetMonitorLabels() const {
             }
 
             // Format: [DeviceID] Friendly Name - Resolution @ PreciseRefreshRateHz [Raw: num/den]
-            std::string device_name(display->device_name.begin(), display->device_name.end());
-            oss << "[" << device_name << "] " << friendly_name << " - " << display->GetCurrentResolutionString()
-                << " @ " << rate_str << "Hz [Raw: " << display->current_refresh_rate.numerator << "/"
-                << display->current_refresh_rate.denominator << "]";
+            std::string extended_device_id(display->extended_device_id.begin(), display->extended_device_id.end());
+            oss << "[" << extended_device_id<< "] " << friendly_name << " - " << display->GetCurrentResolutionString()
+                << " @ " << rate_str << "Hz";
             labels.push_back(oss.str());
         }
     }
@@ -374,8 +373,7 @@ std::vector<DisplayInfoForUI> DisplayCache::GetDisplayInfoForUI() const {
 
         // Format: [ExtendedDeviceID] Friendly Name - Resolution @ PreciseRefreshRateHz [Raw: num/den]
         oss << "[" << info.extended_device_id << "] " << info.friendly_name << " - " << info.current_resolution
-            << " @ " << rate_str << "Hz [Raw: " << display->current_refresh_rate.numerator << "/"
-            << display->current_refresh_rate.denominator << "]";
+            << "@" << rate_str << "Hz";
         info.display_label = oss.str();
 
         ui_info.push_back(std::move(info));

@@ -87,7 +87,7 @@ class ResolutionWidget {
         int height = 0;
         int refresh_numerator = 0;
         int refresh_denominator = 0;
-        std::string device_name;
+        std::string extended_device_id;
         bool is_primary = false;
         bool captured = false;
     };

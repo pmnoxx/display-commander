@@ -314,10 +314,6 @@ extern DeveloperTabSettings g_developerTabSettings;
 extern MainTabSettings g_mainTabSettings;
 }  // namespace settings
 
-// Swapchain event counters - reset on each swapchain creation
-extern std::atomic<uint32_t> g_swapchain_event_counters[40];  // Array for all On* events
-extern std::atomic<uint32_t> g_swapchain_event_total_count;   // Total events across all types
-
 // Swapchain event counter indices
 enum SwapchainEventIndex {
     SWAPCHAIN_EVENT_BEGIN_RENDER_PASS = 0,
@@ -359,8 +355,13 @@ enum SwapchainEventIndex {
     SWAPCHAIN_EVENT_BLIT = 34,
     SWAPCHAIN_EVENT_BEGIN_QUERY = 35,
     SWAPCHAIN_EVENT_END_QUERY = 36,
-    SWAPCHAIN_EVENT_RESOLVE_QUERY_DATA = 37
+    SWAPCHAIN_EVENT_RESOLVE_QUERY_DATA = 37,
+    NUM_EVENTS = 38
 };
+
+// Swapchain event counters - reset on each swapchain creation
+extern std::atomic<uint32_t> g_swapchain_event_counters[NUM_EVENTS];  // Array for all On* events
+extern std::atomic<uint32_t> g_swapchain_event_total_count;   // Total events across all types
 
 // Unsorted TODO: Add in correct order above
 extern std::atomic<LONGLONG> g_present_start_time_ns;

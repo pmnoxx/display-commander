@@ -215,7 +215,7 @@ static reshade::api::format GetFormatFromComboValue(int combo_value) {
 // Capture sync interval during create_swapchain
 bool OnCreateSwapchainCapture(reshade::api::device_api /*api*/, reshade::api::swapchain_desc &desc, void *hwnd) {
     // Reset all event counters on new swapchain creation
-    for (int i = 0; i < 40; i++) {
+    for (int i = 0; i < NUM_EVENTS; i++) {
         g_swapchain_event_counters[i].store(0);
     }
     g_swapchain_event_total_count.store(0);

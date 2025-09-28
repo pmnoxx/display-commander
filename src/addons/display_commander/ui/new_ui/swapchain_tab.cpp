@@ -2,6 +2,7 @@
 #include "../../globals.hpp"
 #include "../../settings/main_tab_settings.hpp"
 #include "../../swapchain_events_power_saving.hpp"
+
 #include <dxgi1_6.h>
 #include <imgui.h>
 #include <wrl/client.h>
@@ -18,60 +19,6 @@ void DrawSwapchainTab() {
     DrawDxgiCompositionInfo();
 }
 
-void DrawDxgiCompositionInfo() {
-    if (ImGui::CollapsingHeader("DXGI Composition Information", ImGuiTreeNodeFlags_DefaultOpen)) {
-        const char *mode_str = "Unknown";
-        switch (static_cast<int>(s_dxgi_composition_state)) {
-        case 1:
-            mode_str = "Composed Flip";
-            break;
-        case 2:
-            mode_str = "Modern Independent Flip";
-            break;
-        case 3:
-            mode_str = "Legacy Independent Flip";
-            break;
-        default:
-            mode_str = "Unknown";
-            break;
-        }
-
-        // Get backbuffer format
-        std::string format_str = "Unknown";
-        // Get colorspace string
-        std::string colorspace_str = "Unknown";
-        switch (g_current_colorspace) {
-        case reshade::api::color_space::unknown:
-            colorspace_str = "Unknown";
-            break;
-        case reshade::api::color_space::srgb_nonlinear:
-            colorspace_str = "sRGB";
-            break;
-        case reshade::api::color_space::extended_srgb_linear:
-            colorspace_str = "Extended sRGB Linear";
-            break;
-        case reshade::api::color_space::hdr10_st2084:
-            colorspace_str = "HDR10 ST2084";
-            break;
-        case reshade::api::color_space::hdr10_hlg:
-            colorspace_str = "HDR10 HLG";
-            break;
-        default:
-            colorspace_str = "ColorSpace_" + std::to_string(static_cast<int>(g_current_colorspace));
-            break;
-        }
-
-        ImGui::Text("DXGI Composition: %s", mode_str);
-        ImGui::Text("Backbuffer: %dx%d", g_last_backbuffer_width.load(), g_last_backbuffer_height.load());
-        ImGui::Text("Format: %s", format_str.c_str());
-        ImGui::Text("Colorspace: %s", colorspace_str.c_str());
-
-        // Display HDR10 override status
-        ImGui::Text("HDR10 Colorspace Override: %s (Last: %s)", g_hdr10_override_status.load()->c_str(),
-                    g_hdr10_override_timestamp.load()->c_str());
-    }
-}
-
 void DrawSwapchainEventCounters() {
     if (ImGui::CollapsingHeader("Swapchain Event Counters", ImGuiTreeNodeFlags_DefaultOpen)) {
         ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Event Counters (Green = Working, Red = Not Working)");
@@ -79,35 +26,50 @@ void DrawSwapchainEventCounters() {
 
         // Event visibility flags - set to false to hide specific events
         static bool event_visibility[] = {
-            false, // reshade::addon_event::begin_render_pass (0 == ok)
-            false, // reshade::addon_event::end_render_pass (0 == ok)
-            true,  // reshade::addon_event::create_swapchain (vsync on/off won't work)
-            true,  // reshade::addon_event::init_swapchain
-            true,  // reshade::addon_event::finish_present
-            true,  // reshade::addon_event::present
-            true,  // reshade::addon_event::reshade_present
-            true,  // reshade::addon_event::init_command_list
-            false, // reshade::addon_event::execute_command_list
-            false, // reshade::addon_event::bind_pipeline (suppressed by default)
-            true,  // reshade::addon_event::init_command_queue
-            true,  // reshade::addon_event::reset_command_list
-            true,  // reshade::addon_event::present_flags
-            true,  // reshade::addon_event::draw
-            true,  // reshade::addon_event::draw_indexed
-            true,  // reshade::addon_event::draw_or_dispatch_indirect
+            false,  // reshade::addon_event::begin_render_pass (0 == ok)
+            false,  // reshade::addon_event::end_render_pass (0 == ok)
+            true,   // reshade::addon_event::create_swapchain (vsync on/off won't work)
+            true,   // reshade::addon_event::init_swapchain
+            true,   // reshade::addon_event::finish_present
+            true,   // reshade::addon_event::present
+            true,   // reshade::addon_event::reshade_present
+            true,   // reshade::addon_event::init_command_list
+            false,  // reshade::addon_event::execute_command_list
+            false,  // reshade::addon_event::bind_pipeline (suppressed by default)
+            true,   // reshade::addon_event::init_command_queue
+            true,   // reshade::addon_event::reset_command_list
+            true,   // reshade::addon_event::present_flags
+            true,   // reshade::addon_event::draw
+            true,   // reshade::addon_event::draw_indexed
+            true,   // reshade::addon_event::draw_or_dispatch_indirect
             // New power saving events
-            true, // reshade::addon_event::dispatch
-            true, // reshade::addon_event::dispatch_mesh
-            true, // reshade::addon_event::dispatch_rays
-            true, // reshade::addon_event::copy_resource
-            true, // reshade::addon_event::update_buffer_region
-            true, // reshade::addon_event::update_buffer_region_command
-            true, // reshade::addon_event::bind_resource
-            true  // reshade::addon_event::map_resource
+            true,  // reshade::addon_event::dispatch
+            true,  // reshade::addon_event::dispatch_mesh
+            true,  // reshade::addon_event::dispatch_rays
+            true,  // reshade::addon_event::copy_resource
+            true,  // reshade::addon_event::update_buffer_region
+            true,  // reshade::addon_event::update_buffer_region_command
+            true,  // reshade::addon_event::bind_resource
+            true,  // reshade::addon_event::map_resource
+            // Additional frame-specific GPU operations for power saving
+            true,  // reshade::addon_event::copy_buffer_region
+            true,  // reshade::addon_event::copy_buffer_to_texture
+            true,  // reshade::addon_event::copy_texture_to_buffer
+            true,  // reshade::addon_event::copy_texture_region
+            true,  // reshade::addon_event::resolve_texture_region
+            true,  // reshade::addon_event::clear_render_target_view
+            true,  // reshade::addon_event::clear_depth_stencil_view
+            true,  // reshade::addon_event::clear_unordered_access_view_uint
+            true,  // reshade::addon_event::clear_unordered_access_view_float
+            true,  // reshade::addon_event::generate_mipmaps
+            true,  // reshade::addon_event::blit
+            true,  // reshade::addon_event::begin_query
+            true,  // reshade::addon_event::end_query
+            true   // reshade::addon_event::resolve_query_data
         };
 
         // Display each event counter with color coding
-        static const char *event_names[] = {
+        static const char* event_names[] = {
             "reshade::addon_event::begin_render_pass (0 == ok)", "reshade::addon_event::end_render_pass (0 == ok)",
             "reshade::addon_event::create_swapchain (vsync on/off won't work)", "reshade::addon_event::init_swapchain",
             "reshade::addon_event::finish_present", "reshade::addon_event::present",
@@ -120,12 +82,20 @@ void DrawSwapchainEventCounters() {
             "reshade::addon_event::dispatch", "reshade::addon_event::dispatch_mesh",
             "reshade::addon_event::dispatch_rays", "reshade::addon_event::copy_resource",
             "reshade::addon_event::update_buffer_region", "reshade::addon_event::update_buffer_region_command",
-            "reshade::addon_event::bind_resource", "reshade::addon_event::map_resource"};
+            "reshade::addon_event::bind_resource", "reshade::addon_event::map_resource",
+            // Additional frame-specific GPU operations for power saving
+            "reshade::addon_event::copy_buffer_region", "reshade::addon_event::copy_buffer_to_texture",
+            "reshade::addon_event::copy_texture_to_buffer", "reshade::addon_event::copy_texture_region",
+            "reshade::addon_event::resolve_texture_region", "reshade::addon_event::clear_render_target_view",
+            "reshade::addon_event::clear_depth_stencil_view", "reshade::addon_event::clear_unordered_access_view_uint",
+            "reshade::addon_event::clear_unordered_access_view_float", "reshade::addon_event::generate_mipmaps",
+            "reshade::addon_event::blit", "reshade::addon_event::begin_query",
+            "reshade::addon_event::end_query", "reshade::addon_event::resolve_query_data"};
 
         uint32_t total_events = 0;
         uint32_t visible_events = 0;
 
-        for (int i = 0; i < 40; i++) {
+        for (int i = 0; i < NUM_EVENTS; i++) {
             // Skip events that are set to invisible
             if (!event_visibility[i]) {
                 continue;
@@ -142,7 +112,7 @@ void DrawSwapchainEventCounters() {
 
         ImGui::Separator();
         ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "Total Events (Visible): %u", total_events);
-        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Hidden Events: %u", 40 - visible_events);
+        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Hidden Events: %u", NUM_EVENTS - visible_events);
 
         // Show status message
         if (total_events > 0) {
@@ -227,4 +197,39 @@ void DrawSwapchainEventCounters() {
     }
 }
 
-} // namespace ui::new_ui
+
+void DrawDxgiCompositionInfo() {
+    if (ImGui::CollapsingHeader("DXGI Composition Information", ImGuiTreeNodeFlags_DefaultOpen)) {
+        const char* mode_str = "Unknown";
+        switch (static_cast<int>(s_dxgi_composition_state)) {
+            case 1:  mode_str = "Composed Flip"; break;
+            case 2:  mode_str = "Modern Independent Flip"; break;
+            case 3:  mode_str = "Legacy Independent Flip"; break;
+            default: mode_str = "Unknown"; break;
+        }
+
+        // Get backbuffer format
+        std::string format_str = "Unknown";
+        // Get colorspace string
+        std::string colorspace_str = "Unknown";
+        switch (g_current_colorspace) {
+            case reshade::api::color_space::unknown:              colorspace_str = "Unknown"; break;
+            case reshade::api::color_space::srgb_nonlinear:       colorspace_str = "sRGB"; break;
+            case reshade::api::color_space::extended_srgb_linear: colorspace_str = "Extended sRGB Linear"; break;
+            case reshade::api::color_space::hdr10_st2084:         colorspace_str = "HDR10 ST2084"; break;
+            case reshade::api::color_space::hdr10_hlg:            colorspace_str = "HDR10 HLG"; break;
+            default:                                              colorspace_str = "ColorSpace_" + std::to_string(static_cast<int>(g_current_colorspace)); break;
+        }
+
+        ImGui::Text("DXGI Composition: %s", mode_str);
+        ImGui::Text("Backbuffer: %dx%d", g_last_backbuffer_width.load(), g_last_backbuffer_height.load());
+        ImGui::Text("Format: %s", format_str.c_str());
+        ImGui::Text("Colorspace: %s", colorspace_str.c_str());
+
+        // Display HDR10 override status
+        ImGui::Text("HDR10 Colorspace Override: %s (Last: %s)", g_hdr10_override_status.load()->c_str(),
+                    g_hdr10_override_timestamp.load()->c_str());
+    }
+}
+
+}  // namespace ui::new_ui

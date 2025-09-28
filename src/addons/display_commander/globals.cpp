@@ -241,7 +241,7 @@ Microsoft::WRL::ComPtr<IDXGIFactory1> GetSharedDXGIFactory() {
 }
 
 // Swapchain event counters - reset on each swapchain creation
-std::atomic<uint32_t> g_swapchain_event_counters[40] = {}; // Array for all On* events
+std::atomic<uint32_t> g_swapchain_event_counters[NUM_EVENTS] = {}; // Array for all On* events
 
 std::atomic<uint32_t> g_swapchain_event_total_count{0}; // Total events across all types
 

@@ -169,8 +169,8 @@ bool DisplaySettings::ValidateAndFixSettings() {
             for (const auto &display : *displays) {
                 if (display) {
                     // Convert wstring to string for comparison
-                    std::string display_device_name = WStringToString(display->device_name);
-                    if (display_device_name == current_device_id) {
+                    std::string extended_device_id = WStringToString(display->extended_device_id);
+                    if (extended_device_id == current_device_id) {
                         device_found = true;
                         break;
                     }
@@ -234,9 +234,9 @@ void DisplaySettings::SetToPrimaryDisplay() {
     for (const auto &display : *displays) {
         if (display && display->is_primary) {
             // Convert wstring to string
-            std::string device_id = WStringToString(display->device_name);
-            *last_device_id_ = device_id;
-            LogInfo("DisplaySettings::SetToPrimaryDisplay() - Set to primary display: %s", device_id.c_str());
+            std::string extended_device_id = WStringToString(display->extended_device_id);
+            *last_device_id_ = extended_device_id;
+            LogInfo("DisplaySettings::SetToPrimaryDisplay() - Set to primary display: %s", extended_device_id.c_str());
             return;
         }
     }
@@ -244,10 +244,10 @@ void DisplaySettings::SetToPrimaryDisplay() {
     // If no primary display found, use the first display
     if (!displays->empty() && displays->at(0)) {
         // Convert wstring to string
-        std::string device_id = WStringToString(displays->at(0)->device_name);
-        *last_device_id_ = device_id;
+        std::string extended_device_id = WStringToString(displays->at(0)->extended_device_id);
+        *last_device_id_ = extended_device_id;
         LogInfo("DisplaySettings::SetToPrimaryDisplay() - No primary display found, using first display: %s",
-                device_id.c_str());
+                extended_device_id.c_str());
     } else {
         LogError("DisplaySettings::SetToPrimaryDisplay() - No displays available");
     }
@@ -275,8 +275,8 @@ void DisplaySettings::SetToCurrentResolution() {
     for (const auto &display : *displays) {
         if (display) {
             // Convert wstring to string for comparison
-            std::string display_device_name = WStringToString(display->device_name);
-            if (display_device_name == current_device_id) {
+            std::string extended_device_id = WStringToString(display->extended_device_id);
+            if (extended_device_id == current_device_id) {
                 *last_width_ = display->width;
                 *last_height_ = display->height;
                 LogInfo("DisplaySettings::SetToCurrentResolution() - Set to current resolution: %dx%d", display->width,
@@ -311,8 +311,8 @@ void DisplaySettings::SetToCurrentRefreshRate() {
     for (const auto &display : *displays) {
         if (display) {
             // Convert wstring to string for comparison
-            std::string display_device_name = WStringToString(display->device_name);
-            if (display_device_name == current_device_id) {
+            std::string extended_device_id = WStringToString(display->extended_device_id);
+            if (extended_device_id == current_device_id) {
                 *last_refresh_numerator_ = display->current_refresh_rate.numerator;
                 *last_refresh_denominator_ = display->current_refresh_rate.denominator;
                 LogInfo("DisplaySettings::SetToCurrentRefreshRate() - Set to current refresh rate: %u/%u",

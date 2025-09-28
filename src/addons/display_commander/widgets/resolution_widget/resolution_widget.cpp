@@ -188,9 +188,9 @@ void ResolutionWidget::DrawDisplaySelector() {
                 // Use cached primary monitor flag and device name
                 bool is_primary = display->is_primary;
                 std::string primary_text = is_primary ? " Primary" : "";
-                std::string device_name(display->device_name.begin(), display->device_name.end());
+                std::string extended_device_id(display->extended_device_id.begin(), display->extended_device_id.end());
 
-                auto_label = "Auto (Current) [" + device_name + "] " + std::to_string(width) + "x" +
+                auto_label = "Auto (Current) [" + extended_device_id + "] " + std::to_string(width) + "x" +
                              std::to_string(height) + "@" + rate_str + "Hz" + primary_text;
             }
         }
@@ -221,9 +221,9 @@ void ResolutionWidget::DrawDisplaySelector() {
                 // Use cached primary monitor flag and device name
                 bool is_primary = display->is_primary;
                 std::string primary_text = is_primary ? " Primary" : "";
-                std::string device_name(display->device_name.begin(), display->device_name.end());
+                std::string extended_device_id(display->extended_device_id.begin(), display->extended_device_id.end());
 
-                std::string name = "[" + device_name + "] " + std::to_string(width) + "x" + std::to_string(height) +
+                std::string name = "[" + extended_device_id + "] " + std::to_string(width) + "x" + std::to_string(height) +
                                    "@" + rate_str + "Hz" + primary_text;
 
                 display_names.push_back(name);
@@ -802,9 +802,9 @@ std::string ResolutionWidget::GetDisplayName(int display_index) const {
                     // Use cached primary monitor flag and device name
                     bool is_primary = display->is_primary;
                     std::string primary_text = is_primary ? " Primary" : "";
-                    std::string device_name(display->device_name.begin(), display->device_name.end());
+                    std::string extended_device_id(display->extended_device_id.begin(), display->extended_device_id.end());
 
-                    auto_label = "Auto (Current) [" + device_name + "] " + std::to_string(width) + "x" +
+                    auto_label = "Auto (Current) [" + extended_device_id + "] " + std::to_string(width) + "x" +
                                  std::to_string(height) + "@" + rate_str + "Hz" + primary_text;
                 }
             }
@@ -835,9 +835,9 @@ std::string ResolutionWidget::GetDisplayName(int display_index) const {
             // Use cached primary monitor flag and device name
             bool is_primary = display->is_primary;
             std::string primary_text = is_primary ? " Primary" : "";
-            std::string device_name(display->device_name.begin(), display->device_name.end());
+            std::string extended_device_id(display->extended_device_id.begin(), display->extended_device_id.end());
 
-            std::string name = "[" + device_name + "] " + std::to_string(width) + "x" + std::to_string(height) + "@" +
+            std::string name = "[" + extended_device_id + "] " + std::to_string(width) + "x" + std::to_string(height) + "@" +
                                rate_str + "Hz" + primary_text;
 
             return name;
@@ -1004,7 +1004,7 @@ void ResolutionWidget::CaptureOriginalSettings() {
     original_settings_.height = display->height;
     original_settings_.refresh_numerator = static_cast<int>(display->current_refresh_rate.numerator);
     original_settings_.refresh_denominator = static_cast<int>(display->current_refresh_rate.denominator);
-    original_settings_.device_name = std::string(display->device_name.begin(), display->device_name.end());
+    original_settings_.extended_device_id = std::string(display->extended_device_id.begin(), display->extended_device_id.end());
     original_settings_.is_primary = display->is_primary;
     original_settings_.captured = true;
 
@@ -1052,7 +1052,7 @@ std::string ResolutionWidget::FormatOriginalSettingsString() const {
 
     std::string primary_text = original_settings_.is_primary ? " Primary" : "";
 
-    return "[" + original_settings_.device_name + "] " + std::to_string(original_settings_.width) + "x" +
+    return "[" + original_settings_.extended_device_id + "] " + std::to_string(original_settings_.width) + "x" +
            std::to_string(original_settings_.height) + refresh_str + primary_text;
 }
 

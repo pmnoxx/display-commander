@@ -44,7 +44,7 @@ bool InitialDisplayStateManager::CaptureInitialState() {
         }
 
         InitialDisplayState state;
-        state.device_name = display->extended_device_id;
+        state.device_name = display->simple_device_id;
         state.friendly_name = display->friendly_name;
         state.display_id = static_cast<int>(i + 1); // 1-based display ID
         state.width = display->width;

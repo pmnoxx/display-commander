@@ -188,7 +188,7 @@ void ResolutionWidget::DrawDisplaySelector() {
                 // Use cached primary monitor flag and device name
                 bool is_primary = display->is_primary;
                 std::string primary_text = is_primary ? " Primary" : "";
-                std::string extended_device_id(display->extended_device_id.begin(), display->extended_device_id.end());
+                std::string extended_device_id(display->simple_device_id.begin(), display->simple_device_id.end());
 
                 auto_label = "Auto (Current) [" + extended_device_id + "] " + std::to_string(width) + "x" +
                              std::to_string(height) + "@" + rate_str + "Hz" + primary_text;
@@ -221,7 +221,7 @@ void ResolutionWidget::DrawDisplaySelector() {
                 // Use cached primary monitor flag and device name
                 bool is_primary = display->is_primary;
                 std::string primary_text = is_primary ? " Primary" : "";
-                std::string extended_device_id(display->extended_device_id.begin(), display->extended_device_id.end());
+                std::string extended_device_id(display->simple_device_id.begin(), display->simple_device_id.end());
 
                 std::string name = "[" + extended_device_id + "] " + std::to_string(width) + "x" + std::to_string(height) +
                                    "@" + rate_str + "Hz" + primary_text;
@@ -802,7 +802,7 @@ std::string ResolutionWidget::GetDisplayName(int display_index) const {
                     // Use cached primary monitor flag and device name
                     bool is_primary = display->is_primary;
                     std::string primary_text = is_primary ? " Primary" : "";
-                    std::string extended_device_id(display->extended_device_id.begin(), display->extended_device_id.end());
+                    std::string extended_device_id(display->simple_device_id.begin(), display->simple_device_id.end());
 
                     auto_label = "Auto (Current) [" + extended_device_id + "] " + std::to_string(width) + "x" +
                                  std::to_string(height) + "@" + rate_str + "Hz" + primary_text;
@@ -835,7 +835,7 @@ std::string ResolutionWidget::GetDisplayName(int display_index) const {
             // Use cached primary monitor flag and device name
             bool is_primary = display->is_primary;
             std::string primary_text = is_primary ? " Primary" : "";
-            std::string extended_device_id(display->extended_device_id.begin(), display->extended_device_id.end());
+            std::string extended_device_id(display->simple_device_id.begin(), display->simple_device_id.end());
 
             std::string name = "[" + extended_device_id + "] " + std::to_string(width) + "x" + std::to_string(height) + "@" +
                                rate_str + "Hz" + primary_text;
@@ -1004,7 +1004,7 @@ void ResolutionWidget::CaptureOriginalSettings() {
     original_settings_.height = display->height;
     original_settings_.refresh_numerator = static_cast<int>(display->current_refresh_rate.numerator);
     original_settings_.refresh_denominator = static_cast<int>(display->current_refresh_rate.denominator);
-    original_settings_.extended_device_id = std::string(display->extended_device_id.begin(), display->extended_device_id.end());
+    original_settings_.extended_device_id = std::string(display->simple_device_id.begin(), display->simple_device_id.end());
     original_settings_.is_primary = display->is_primary;
     original_settings_.captured = true;
 

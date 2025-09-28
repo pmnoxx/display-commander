@@ -33,7 +33,7 @@ bool GetCurrentForDevice(const std::wstring &extended_device_id, OriginalMode &o
         const auto *disp = cache.GetDisplay(i);
         if (disp == nullptr)
             continue;
-        if (disp->extended_device_id == extended_device_id) {
+        if (disp->simple_device_id == extended_device_id) {
             out.width = disp->width;
             out.height = disp->height;
             out.refresh_num = disp->current_refresh_rate.numerator;
@@ -107,7 +107,7 @@ void MarkOriginalForDisplayIndex(int display_index) {
     const auto *disp = display_cache::g_displayCache.GetDisplay(static_cast<size_t>(display_index));
     if (disp == nullptr)
         return;
-    MarkOriginalForDeviceName(disp->extended_device_id);
+    MarkOriginalForDeviceName(disp->simple_device_id);
 }
 
 void MarkDeviceChangedByDisplayIndex(int display_index) {
@@ -116,7 +116,7 @@ void MarkDeviceChangedByDisplayIndex(int display_index) {
     const auto *disp = display_cache::g_displayCache.GetDisplay(static_cast<size_t>(display_index));
     if (disp == nullptr)
         return;
-    MarkDeviceChangedByDeviceName(disp->extended_device_id);
+    MarkDeviceChangedByDeviceName(disp->simple_device_id);
 }
 
 void MarkDeviceChangedByDeviceName(const std::wstring &device_name) {
@@ -219,7 +219,7 @@ bool RestoreDisplayByIndex(int display_index) {
     const auto *disp = display_cache::g_displayCache.GetDisplay(static_cast<size_t>(display_index));
     if (disp == nullptr)
         return false;
-    return RestoreDisplayByDeviceName(disp->extended_device_id);
+    return RestoreDisplayByDeviceName(disp->simple_device_id);
 }
 
 } // namespace display_restore

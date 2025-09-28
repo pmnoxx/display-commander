@@ -109,7 +109,8 @@ struct Resolution {
 // Display information structure
 struct DisplayInfo {
     HMONITOR monitor_handle;
-    std::wstring extended_device_id;
+    std::wstring simple_device_id;
+    // TODO add extended_device_id        info.extended_device_id = GetExtendedDeviceIdFromMonitor(display->monitor_handle);
     std::wstring friendly_name;
     std::vector<Resolution> resolutions;
 

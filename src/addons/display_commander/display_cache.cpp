@@ -159,7 +159,7 @@ bool DisplayCache::Refresh() {
             continue;
         }
 
-        display_info->extended_device_id = mi.szDevice;
+        display_info->simple_device_id = mi.szDevice;
         display_info->friendly_name = GetMonitorFriendlyName(mi);
 
         // Store monitor properties from MONITORINFOEXW
@@ -223,7 +223,7 @@ const DisplayInfo *DisplayCache::GetDisplayByDeviceName(const std::wstring &devi
         return nullptr;
 
     for (const auto &display : *displays_ptr) {
-        if (display->extended_device_id == device_name) {
+        if (display->simple_device_id == device_name) {
             return display.get();
         }
     }
@@ -240,7 +240,7 @@ int DisplayCache::GetDisplayIndexByDeviceName(const std::string &device_name) co
 
     for (size_t i = 0; i < displays_ptr->size(); ++i) {
         const auto &display = (*displays_ptr)[i];
-        if (display && display->extended_device_id == wdevice_name) {
+        if (display && display->simple_device_id == wdevice_name) {
             return static_cast<int>(i);
         }
     }
@@ -306,8 +306,7 @@ std::vector<std::string> DisplayCache::GetMonitorLabels() const {
             }
 
             // Format: [DeviceID] Friendly Name - Resolution @ PreciseRefreshRateHz [Raw: num/den]
-            // std::string extended_device_id(display->extended_device_id.begin(), display->extended_device_id.end());
-            std::string simple_device_id = "DISPLAY" + std::to_string(i + 1);
+            std::string simple_device_id(display->simple_device_id.begin(), display->simple_device_id.end());
             oss << "[" << simple_device_id << "] " << friendly_name << " - " << display->GetCurrentResolutionString()
                 << "@" << rate_str << "Hz";
             labels.push_back(oss.str());
@@ -376,7 +375,8 @@ std::vector<DisplayInfoForUI> DisplayCache::GetDisplayInfoForUI() const {
         }
 
         // Format: [ExtendedDeviceID] Friendly Name - Resolution @ PreciseRefreshRateHz [Raw: num/den]
-        oss << "[" << info.simple_device_id << "] " << info.friendly_name << " - " << info.current_resolution
+        std::string simple_device_id(display->simple_device_id.begin(), display->simple_device_id.end());
+        oss << "[" << simple_device_id << "] " << info.friendly_name << " - " << info.current_resolution
             << "@" << rate_str << "Hz";
         info.display_label = oss.str();
 

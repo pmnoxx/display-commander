@@ -56,10 +56,17 @@ bool InitialDisplayStateManager::CaptureInitialState() {
 
         new_states->push_back(state);
 
-        // Print individual display info
+        // Get extended device ID for better identification
+        std::string extended_device_id = display_cache::g_displayCache.GetExtendedDeviceIdFromMonitor(display->monitor_handle);
+
+        // Print individual display info with enhanced details
         LogInfo("Display %d: %S (%S) - %dx%d @ %u/%u (%.6fHz) %s", state.display_id, state.device_name.c_str(),
                 state.friendly_name.c_str(), state.width, state.height, state.refresh_numerator,
                 state.refresh_denominator, state.GetRefreshRateHz(), state.is_primary ? "[PRIMARY]" : "");
+
+        // Print additional debug information
+        LogInfo("  Extended Device ID: %s", extended_device_id.c_str());
+        LogInfo("  Monitor Handle: 0x%p", display->monitor_handle);
     }
 
     // Atomically store the new states
@@ -110,7 +117,18 @@ void InitialDisplayStateManager::PrintInitialStates() const {
 
     LogInfo("=== INITIAL DISPLAY STATES SUMMARY ===");
     for (const auto &state : *states) {
-        LogInfo("%s", state.GetFormattedString().c_str());
+        // Get extended device ID for this display
+        std::string extended_device_id = display_cache::g_displayCache.GetExtendedDeviceIdFromMonitor(state.monitor_handle);
+
+        // Convert friendly name to string for logging
+        std::string friendly_name_str(state.friendly_name.begin(), state.friendly_name.end());
+        std::string device_name_str(state.device_name.begin(), state.device_name.end());
+
+        LogInfo("Display %d: %s (%s) - %dx%d @ %u/%u (%.6fHz) %s",
+                state.display_id, device_name_str.c_str(), friendly_name_str.c_str(),
+                state.width, state.height, state.refresh_numerator, state.refresh_denominator,
+                state.GetRefreshRateHz(), state.is_primary ? "[PRIMARY]" : "");
+        LogInfo("  Extended Device ID: %s", extended_device_id.c_str());
     }
     LogInfo("=== END DISPLAY STATES SUMMARY ===");
 }

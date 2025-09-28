@@ -23,9 +23,21 @@ namespace display_cache {
 // Global instance
 DisplayCache g_displayCache;
 
-// Helper function to get monitor friendly name
+// Helper function to get monitor friendly name using multiple methods
 std::wstring GetMonitorFriendlyName(MONITORINFOEXW &mi) {
-    // Try to get the monitor name from registry
+    // Method 1: Try to get the monitor name using QueryDisplayConfig (most reliable)
+    // This should give us the actual monitor model name like "PG32UQX"
+    auto timing_info_list = QueryDisplayTimingInfo();
+    for (const auto& timing_info : timing_info_list) {
+        // Match by GDI device name (this should match mi.szDevice)
+        if (timing_info.gdi_device_name == mi.szDevice) {
+            if (!timing_info.display_name.empty() && timing_info.display_name != L"UNKNOWN") {
+                return timing_info.display_name;
+            }
+        }
+    }
+
+    // Method 2: Try to get the monitor name from registry using EnumDisplayDevices
     DISPLAY_DEVICEW dd;
     dd.cb = sizeof(dd);
     if (EnumDisplayDevicesW(mi.szDevice, 0, &dd, 0)) {
@@ -34,7 +46,7 @@ std::wstring GetMonitorFriendlyName(MONITORINFOEXW &mi) {
         }
     }
 
-    // Fallback to device name
+    // Method 3: Fallback to device name
     return std::wstring(mi.szDevice);
 }
 

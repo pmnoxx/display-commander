@@ -306,9 +306,10 @@ std::vector<std::string> DisplayCache::GetMonitorLabels() const {
             }
 
             // Format: [DeviceID] Friendly Name - Resolution @ PreciseRefreshRateHz [Raw: num/den]
-            std::string extended_device_id(display->extended_device_id.begin(), display->extended_device_id.end());
-            oss << "[" << extended_device_id<< "] " << friendly_name << " - " << display->GetCurrentResolutionString()
-                << " @ " << rate_str << "Hz";
+            // std::string extended_device_id(display->extended_device_id.begin(), display->extended_device_id.end());
+            std::string simple_device_id = "DISPLAY" + std::to_string(i + 1);
+            oss << "[" << simple_device_id << "] " << friendly_name << " - " << display->GetCurrentResolutionString()
+                << "@" << rate_str << "Hz";
             labels.push_back(oss.str());
         }
     }
@@ -336,6 +337,9 @@ std::vector<DisplayInfoForUI> DisplayCache::GetDisplayInfoForUI() const {
 
         // Get extended device ID using the full device path
         info.extended_device_id = GetExtendedDeviceIdFromMonitor(display->monitor_handle);
+
+        // Generate simple device ID (e.g., "DISPLAY1", "DISPLAY2")
+        info.simple_device_id = "DISPLAY" + std::to_string(i + 1);
 
         // Convert friendly name to string
         info.friendly_name = std::string(display->friendly_name.begin(), display->friendly_name.end());
@@ -372,7 +376,7 @@ std::vector<DisplayInfoForUI> DisplayCache::GetDisplayInfoForUI() const {
         }
 
         // Format: [ExtendedDeviceID] Friendly Name - Resolution @ PreciseRefreshRateHz [Raw: num/den]
-        oss << "[" << info.extended_device_id << "] " << info.friendly_name << " - " << info.current_resolution
+        oss << "[" << info.simple_device_id << "] " << info.friendly_name << " - " << info.current_resolution
             << "@" << rate_str << "Hz";
         info.display_label = oss.str();
 

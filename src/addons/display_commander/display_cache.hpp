@@ -108,25 +108,25 @@ struct Resolution {
 
 // Display information structure
 struct DisplayInfo {
-    HMONITOR monitor_handle;
+    HMONITOR monitor_handle = nullptr;
     std::wstring simple_device_id;
     // TODO add extended_device_id        info.extended_device_id = GetExtendedDeviceIdFromMonitor(display->monitor_handle);
     std::wstring friendly_name;
     std::vector<Resolution> resolutions;
 
     // Current settings
-    int width;
-    int height;
+    int width = 0;
+    int height = 0;
     RationalRefreshRate current_refresh_rate;
-    int x;
-    int y;
+    int x = 0;
+    int y = 0;
 
     // Monitor properties from MONITORINFOEXW
-    bool is_primary;
+    bool is_primary = false;
     RECT monitor_rect; // Monitor rectangle in virtual screen coordinates
     RECT work_rect;    // Working area rectangle (excluding taskbar, etc.)
 
-    DisplayInfo() : monitor_handle(nullptr), width(0), height(0), is_primary(false) {
+    DisplayInfo() {
         monitor_rect = {0, 0, 0, 0};
         work_rect = {0, 0, 0, 0};
     }

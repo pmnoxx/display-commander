@@ -265,15 +265,23 @@ bool GetCurrentDisplaySettingsQueryConfig(HMONITOR monitor, int& width, int& hei
         // Extract current display settings
         const auto& video_signal = mode_info.targetMode.targetVideoSignalInfo;
 
-        width = static_cast<int>(video_signal.activeSize.cx);
-        height = static_cast<int>(video_signal.activeSize.cy);
+        int desktop_width = static_cast<int>(video_signal.activeSize.cx);
+        int desktop_height = static_cast<int>(video_signal.activeSize.cy);
+        width = desktop_width;
+        height = desktop_height;
+        refresh_numerator = video_signal.vSyncFreq.Numerator;
+        refresh_denominator = video_signal.vSyncFreq.Denominator;
+
+        width = desktop_width;
+        height = desktop_height;
         refresh_numerator = video_signal.vSyncFreq.Numerator;
         refresh_denominator = video_signal.vSyncFreq.Denominator;
 
         // Get position from source mode info
         int source_mode_idx = path.sourceInfo.modeInfoIdx;
+        DISPLAYCONFIG_MODE_INFO source_mode = {};
         if (source_mode_idx >= 0 && static_cast<UINT32>(source_mode_idx) < mode_count) {
-            const auto& source_mode = modes[source_mode_idx];
+            source_mode = modes[source_mode_idx];
             if (source_mode.infoType == DISPLAYCONFIG_MODE_INFO_TYPE_SOURCE) {
                 x = static_cast<int>(source_mode.sourceMode.position.x);
                 y = static_cast<int>(source_mode.sourceMode.position.y);
@@ -287,12 +295,12 @@ bool GetCurrentDisplaySettingsQueryConfig(HMONITOR monitor, int& width, int& hei
         }
 
         if (first_time_log) {
-            std::wstring device_name = mi.szDevice;
-            std::string device_name_str = WideCharToUTF8(device_name);
+            std::string device_name_str = WideCharToUTF8(mi.szDevice);
             LogInfo(
-                "[GetCurrentDisplaySettingsQueryConfig] monitor: %s, width: %d, height: %d, refresh_numerator: %d, "
-                "refresh_denominator: %d",
-                device_name_str.c_str(), width, height, refresh_numerator, refresh_denominator);
+                "[GetCurrentDisplaySettingsQueryConfig] monitor: %s, adapter_id: %d/%d, display_res: %dx%d, desktop_res: %dx%d, refresh: %d/%d, "
+                "refresh_denominator: %d source_mode.infoType: %d",
+                device_name_str.c_str(), path.sourceInfo.adapterId.LowPart, path.sourceInfo.adapterId.HighPart, desktop_width, desktop_height,  width, height, refresh_numerator, refresh_denominator, source_mode.infoType
+            );
         }
 
         return true;

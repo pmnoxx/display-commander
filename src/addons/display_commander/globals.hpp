@@ -176,6 +176,7 @@ extern std::atomic<float> s_nvapi_hdr_interval_sec;
 // Keyboard Shortcuts
 extern std::atomic<bool> s_enable_mute_unmute_shortcut;
 extern std::atomic<bool> s_enable_background_toggle_shortcut;
+extern std::atomic<bool> s_enable_timeslowdown_shortcut;
 
 // FPS Limiter Settings
 

@@ -42,6 +42,7 @@ class DeveloperTabSettings {
     // Keyboard Shortcut Settings (Experimental)
     BoolSettingRef enable_mute_unmute_shortcut;
     BoolSettingRef enable_background_toggle_shortcut;
+    BoolSettingRef enable_timeslowdown_shortcut;
 
     // Performance optimization settings
     BoolSettingRef flush_before_present;

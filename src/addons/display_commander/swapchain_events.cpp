@@ -715,6 +715,29 @@ void OnPresentUpdateBefore(reshade::api::command_queue * /*queue*/, reshade::api
         }
     }
 
+    // Handle Ctrl+T shortcut for time slowdown toggle (only when game is in foreground)
+    if (s_enable_timeslowdown_shortcut.load() && is_game_in_foreground) {
+        // Get the runtime from the atomic variable
+        reshade::api::effect_runtime *runtime = g_reshade_runtime.load();
+        if (runtime != nullptr) {
+            // Check for Ctrl+T shortcut
+            if (runtime->is_key_pressed('T') && runtime->is_key_down(VK_CONTROL)) {
+                // Toggle time slowdown state
+                bool current_state = settings::g_experimentalTabSettings.timeslowdown_enabled.GetValue();
+                bool new_state = !current_state;
+
+                settings::g_experimentalTabSettings.timeslowdown_enabled.SetValue(new_state);
+
+                // Log the action
+                std::ostringstream oss;
+                oss << "Time Slowdown " << (new_state ? "enabled" : "disabled") << " via Ctrl+T shortcut";
+                LogInfo(oss.str().c_str());
+            }
+        } else {
+            LogError("Time slowdown shortcut failed: g_reshade_runtime is null");
+        }
+    }
+
     if (s_fps_limiter_injection.load() == 2) {
         HandleFpsLimiter();
     }

@@ -345,6 +345,25 @@ void DrawKeyboardShortcutsSettings() {
         ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Shortcut works when game is in foreground");
         ImGui::Unindent();
     }
+
+    // Enable Time Slowdown Shortcut (Ctrl+T)
+    if (CheckboxSetting(settings::g_developerTabSettings.enable_timeslowdown_shortcut,
+                        "Enable Time Slowdown Shortcut (Ctrl+T)")) {
+        ::s_enable_timeslowdown_shortcut.store(settings::g_developerTabSettings.enable_timeslowdown_shortcut.GetValue());
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip(
+            "Enable keyboard shortcut Ctrl+T to quickly toggle Time Slowdown. Only works when the game is "
+            "in the foreground.");
+    }
+
+    // Info text for Ctrl+T
+    if (settings::g_developerTabSettings.enable_timeslowdown_shortcut.GetValue()) {
+        ImGui::Indent();
+        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Press Ctrl+T to toggle Time Slowdown");
+        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Shortcut works when game is in foreground");
+        ImGui::Unindent();
+    }
 }
 
 void DrawLatencyDisplay() {

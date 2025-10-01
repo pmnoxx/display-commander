@@ -189,6 +189,12 @@ void ToggleAutoClickEnabled() {
         if (!g_auto_click_thread_running.load()) {
             g_auto_click_thread = std::thread(AutoClickThread);
             LogInfo("Auto-click sequences enabled via shortcut");
+
+            // Auto-enable mouse spoofing if it's not explicitly disabled and mouse movement is enabled
+            if (g_move_mouse && !settings::g_experimentalTabSettings.mouse_spoofing_enabled.GetValue()) {
+                settings::g_experimentalTabSettings.mouse_spoofing_enabled.SetValue(true);
+                LogInfo("Auto-enabled mouse position spoofing for better stealth");
+            }
         }
     } else {
         // Stop auto-click thread
@@ -250,6 +256,12 @@ void DrawAutoClickFeature() {
             if (!g_auto_click_thread_running.load()) {
                 g_auto_click_thread = std::thread(AutoClickThread);
                 LogInfo("Auto-click sequences enabled");
+
+                // Auto-enable mouse spoofing if it's not explicitly disabled and mouse movement is enabled
+                if (g_move_mouse && !settings::g_experimentalTabSettings.mouse_spoofing_enabled.GetValue()) {
+                    settings::g_experimentalTabSettings.mouse_spoofing_enabled.SetValue(true);
+                    LogInfo("Auto-enabled mouse position spoofing for better stealth");
+                }
             }
         } else {
             // Stop auto-click thread
@@ -266,7 +278,7 @@ void DrawAutoClickFeature() {
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Enable/disable all auto-click sequences. Each sequence can be individually configured "
-                          "below.\n\nShortcut: Ctrl+A");
+                          "below.\n\nShortcut: Ctrl+A\n\nNote: Mouse position spoofing will be auto-enabled for better stealth when mouse movement is enabled.");
     }
 
     // Mouse movement toggle

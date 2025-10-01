@@ -147,6 +147,7 @@ bool DisplayCache::Refresh() {
         return false;
     }
 
+    static bool first_time_log = true;
     // Process each monitor
     for (HMONITOR monitor : monitors) {
         auto display_info = std::make_unique<DisplayInfo>();
@@ -170,7 +171,7 @@ bool DisplayCache::Refresh() {
         // Get current settings
         if (!GetCurrentDisplaySettingsQueryConfig(
                 monitor, display_info->width, display_info->height, display_info->current_refresh_rate.numerator,
-                display_info->current_refresh_rate.denominator, display_info->x, display_info->y)) {
+                display_info->current_refresh_rate.denominator, display_info->x, display_info->y, first_time_log)) {
             continue;
         }
 
@@ -183,6 +184,7 @@ bool DisplayCache::Refresh() {
         // Add to snapshot
         new_displays.push_back(std::move(display_info));
     }
+    first_time_log = false;
 
     // Atomically swap the new displays data
     displays.store(std::make_shared<std::vector<std::unique_ptr<DisplayInfo>>>(std::move(new_displays)),

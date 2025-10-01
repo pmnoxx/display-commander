@@ -1,10 +1,13 @@
 #include "query_display.hpp"
-#include <dxgi.h>
-#include <iostream>
-#include <sstream>
+#include "utils.hpp"
+
 #include <windows.h>
+
+#include <dxgi.h>
 #include <wingdi.h>
 
+#include <iostream>
+#include <sstream>
 
 // Helper methods for calculated values
 double DisplayTimingInfo::GetPixelClockMHz() const { return static_cast<double>(pixel_clock_hz) / 1000000.0; }
@@ -50,14 +53,14 @@ std::vector<DisplayTimingInfo> QueryDisplayTimingInfo() {
     std::vector<DISPLAYCONFIG_MODE_INFO> modes(mode_count);
 
     // Query display configuration
-    if (QueryDisplayConfig(QDC_ONLY_ACTIVE_PATHS, &path_count, paths.data(), &mode_count, modes.data(), nullptr) !=
-        ERROR_SUCCESS) {
+    if (QueryDisplayConfig(QDC_ONLY_ACTIVE_PATHS, &path_count, paths.data(), &mode_count, modes.data(), nullptr)
+        != ERROR_SUCCESS) {
         return results;
     }
 
     // Process each active path
     for (UINT32 path_idx = 0; path_idx < path_count; ++path_idx) {
-        const auto &path = paths[path_idx];
+        const auto& path = paths[path_idx];
 
         // Only process active paths
         if (!(path.flags & DISPLAYCONFIG_PATH_ACTIVE) || !(path.sourceInfo.statusFlags & DISPLAYCONFIG_SOURCE_IN_USE)) {
@@ -72,7 +75,7 @@ std::vector<DisplayTimingInfo> QueryDisplayTimingInfo() {
             continue;
         }
 
-        const auto &mode_info = modes[mode_idx];
+        const auto& mode_info = modes[mode_idx];
 
         // Only process target mode info
         if (mode_info.infoType != DISPLAYCONFIG_MODE_INFO_TYPE_TARGET) {
@@ -88,7 +91,7 @@ std::vector<DisplayTimingInfo> QueryDisplayTimingInfo() {
         timing_info.target_id = path.targetInfo.id;
 
         // Extract timing information
-        const auto &video_signal = mode_info.targetMode.targetVideoSignalInfo;
+        const auto& video_signal = mode_info.targetMode.targetVideoSignalInfo;
         timing_info.pixel_clock_hz = video_signal.pixelRate;
         timing_info.hsync_freq_numerator = video_signal.hSyncFreq.Numerator;
         timing_info.hsync_freq_denominator = video_signal.hSyncFreq.Denominator;
@@ -155,7 +158,7 @@ std::vector<DisplayTimingInfo> QueryDisplayTimingInfo() {
 }
 
 // Utility function to convert wstring to string (similar to Special-K's SK_WideCharToUTF8)
-std::string WideCharToUTF8(const std::wstring &in) {
+std::string WideCharToUTF8(const std::wstring& in) {
     if (in.empty()) {
         return "";
     }
@@ -174,12 +177,13 @@ std::string WideCharToUTF8(const std::wstring &in) {
 
     // Perform the actual conversion
     if (::WideCharToMultiByte(CP_UTF8, wcFlags, in.c_str(), static_cast<int>(in.length()),
-                              const_cast<char *>(out.data()), len, nullptr, FALSE) == 0) {
+                              const_cast<char*>(out.data()), len, nullptr, FALSE)
+        == 0) {
         return "";
     }
 
     // Replace any null characters with spaces to prevent truncation issues
-    for (char &c : out) {
+    for (char& c : out) {
         if (c == '\0') {
             c = ' ';
         }
@@ -189,8 +193,8 @@ std::string WideCharToUTF8(const std::wstring &in) {
 }
 
 // Get current display settings using QueryDisplayConfig for precise refresh rate
-bool GetCurrentDisplaySettingsQueryConfig(HMONITOR monitor, int &width, int &height, uint32_t &refresh_numerator,
-                                          uint32_t &refresh_denominator, int &x, int &y) {
+bool GetCurrentDisplaySettingsQueryConfig(HMONITOR monitor, int& width, int& height, uint32_t& refresh_numerator,
+                                          uint32_t& refresh_denominator, int& x, int& y, bool first_time_log) {
     UINT32 path_count = 0, mode_count = 0;
 
     // Get required buffer sizes
@@ -206,14 +210,14 @@ bool GetCurrentDisplaySettingsQueryConfig(HMONITOR monitor, int &width, int &hei
     std::vector<DISPLAYCONFIG_MODE_INFO> modes(mode_count);
 
     // Query display configuration
-    if (QueryDisplayConfig(QDC_ONLY_ACTIVE_PATHS, &path_count, paths.data(), &mode_count, modes.data(), nullptr) !=
-        ERROR_SUCCESS) {
+    if (QueryDisplayConfig(QDC_ONLY_ACTIVE_PATHS, &path_count, paths.data(), &mode_count, modes.data(), nullptr)
+        != ERROR_SUCCESS) {
         return false;
     }
 
     // Find the path that matches our monitor
     for (UINT32 path_idx = 0; path_idx < path_count; ++path_idx) {
-        const auto &path = paths[path_idx];
+        const auto& path = paths[path_idx];
 
         // Only process active paths
         if (!(path.flags & DISPLAYCONFIG_PATH_ACTIVE) || !(path.sourceInfo.statusFlags & DISPLAYCONFIG_SOURCE_IN_USE)) {
@@ -251,7 +255,7 @@ bool GetCurrentDisplaySettingsQueryConfig(HMONITOR monitor, int &width, int &hei
             continue;
         }
 
-        const auto &mode_info = modes[mode_idx];
+        const auto& mode_info = modes[mode_idx];
 
         // Only process target mode info
         if (mode_info.infoType != DISPLAYCONFIG_MODE_INFO_TYPE_TARGET) {
@@ -259,7 +263,7 @@ bool GetCurrentDisplaySettingsQueryConfig(HMONITOR monitor, int &width, int &hei
         }
 
         // Extract current display settings
-        const auto &video_signal = mode_info.targetMode.targetVideoSignalInfo;
+        const auto& video_signal = mode_info.targetMode.targetVideoSignalInfo;
 
         width = static_cast<int>(video_signal.activeSize.cx);
         height = static_cast<int>(video_signal.activeSize.cy);
@@ -269,15 +273,26 @@ bool GetCurrentDisplaySettingsQueryConfig(HMONITOR monitor, int &width, int &hei
         // Get position from source mode info
         int source_mode_idx = path.sourceInfo.modeInfoIdx;
         if (source_mode_idx >= 0 && static_cast<UINT32>(source_mode_idx) < mode_count) {
-            const auto &source_mode = modes[source_mode_idx];
+            const auto& source_mode = modes[source_mode_idx];
             if (source_mode.infoType == DISPLAYCONFIG_MODE_INFO_TYPE_SOURCE) {
                 x = static_cast<int>(source_mode.sourceMode.position.x);
                 y = static_cast<int>(source_mode.sourceMode.position.y);
+                width = static_cast<int>(source_mode.sourceMode.width);
+                height = static_cast<int>(source_mode.sourceMode.height);
             } else {
-                x = y = 0; // Default position if source mode not found
+                x = y = 0;  // Default position if source mode not found
             }
         } else {
-            x = y = 0; // Default position if source mode index invalid
+            x = y = 0;  // Default position if source mode index invalid
+        }
+
+        if (first_time_log) {
+            std::wstring device_name = mi.szDevice;
+            std::string device_name_str = WideCharToUTF8(device_name);
+            LogInfo(
+                "[GetCurrentDisplaySettingsQueryConfig] monitor: %s, width: %d, height: %d, refresh_numerator: %d, "
+                "refresh_denominator: %d",
+                device_name_str.c_str(), width, height, refresh_numerator, refresh_denominator);
         }
 
         return true;

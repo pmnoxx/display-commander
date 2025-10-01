@@ -91,7 +91,20 @@ ExperimentalTabSettings::ExperimentalTabSettings()
 }
 
 void ExperimentalTabSettings::LoadAll() {
-    LoadTabSettings(all_settings_);
+    // Load max multiplier first to ensure proper range validation for the multiplier
+    timeslowdown_max_multiplier.Load();
+
+    // Set the max range for the multiplier before loading it
+    timeslowdown_multiplier.SetMax(timeslowdown_max_multiplier.GetValue());
+
+    // Load all other settings (excluding max multiplier since we already loaded it)
+    std::vector<SettingBase *> settings_to_load;
+    for (auto *setting : all_settings_) {
+        if (setting != &timeslowdown_max_multiplier) {
+            settings_to_load.push_back(setting);
+        }
+    }
+    LoadTabSettings(settings_to_load);
 }
 
 std::vector<SettingBase*> ExperimentalTabSettings::GetAllSettings() {

@@ -673,6 +673,9 @@ void OnPresentUpdateBefore(reshade::api::command_queue * /*queue*/, reshade::api
                     s_audio_mute.store(new_mute_state);
                     g_muted_applied.store(new_mute_state);
 
+                    // Update the settings system to keep UI in sync
+                    settings::g_mainTabSettings.audio_mute.SetValue(new_mute_state);
+
                     // Log the action
                     std::ostringstream oss;
                     oss << "Audio " << (new_mute_state ? "muted" : "unmuted") << " via Ctrl+M shortcut";

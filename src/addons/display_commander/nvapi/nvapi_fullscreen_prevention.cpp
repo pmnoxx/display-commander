@@ -613,10 +613,10 @@ bool NVAPIFullscreenPrevention::SetHdr10OnAll(bool enable) {
             md.displayPrimary_y2 = 3000; // B
             md.displayWhitePoint_x = 15635;
             md.displayWhitePoint_y = 16450;            // D65 approx
-            md.max_display_mastering_luminance = 1000; // nits
+            md.max_display_mastering_luminance = 10000; // nits
             md.min_display_mastering_luminance =
                 1;                             // 0.0001 cd/m^2 in units? NVAPI uses direct integers; device will clamp
-            md.max_content_light_level = 1000; // MaxCLL
+            md.max_content_light_level = 10000; // MaxCLL
             md.max_frame_average_light_level = 400; // MaxFALL
 
             NvAPI_Status sc = NvAPI_Disp_HdrColorControl(did.displayId, &color);

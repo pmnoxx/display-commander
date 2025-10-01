@@ -417,19 +417,10 @@ void DrawAutoClickFeature() {
     // Mouse position spoofing toggle
     bool auto_click_enabled = settings::g_experimentalTabSettings.auto_click_enabled.GetValue();
 
-    // Disable spoofing checkbox if auto-click is not enabled
-    if (!auto_click_enabled) {
-        ImGui::BeginDisabled();
-    }
-
     if (CheckboxSetting(settings::g_experimentalTabSettings.mouse_spoofing_enabled,
                         "Spoof Mouse Position (Instead of Moving)")) {
         bool spoofing_enabled = settings::g_experimentalTabSettings.mouse_spoofing_enabled.GetValue();
         LogInfo("Mouse position spoofing %s", spoofing_enabled ? "enabled" : "disabled");
-    }
-
-    if (!auto_click_enabled) {
-        ImGui::EndDisabled();
     }
 
     if (ImGui::IsItemHovered()) {
@@ -439,8 +430,17 @@ void DrawAutoClickFeature() {
                               "the game think the mouse is at the target location.\n\nOnly works when 'Move Mouse "
                               "Before Clicking' is enabled and auto-click sequences are active.");
         } else {
-            ImGui::SetTooltip("Mouse position spoofing is only available when auto-click sequences are "
-                              "enabled.\n\nEnable 'Enable Auto-Click Sequences' above to use this feature.");
+            ImGui::SetTooltip("Instead of physically moving the mouse cursor, spoof the mouse position using "
+                              "hooks.\n\nThis setting is saved but will not take effect until 'Enable Auto-Click "
+                              "Sequences' is enabled above.");
+        }
+    }
+
+    // Show warning when spoofing is enabled but auto-click is disabled
+    if (settings::g_experimentalTabSettings.mouse_spoofing_enabled.GetValue() && !auto_click_enabled) {
+        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "⚠ Mouse spoofing enabled but auto-click sequences are disabled");
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Mouse position spoofing is configured but will not work until auto-click sequences are enabled.");
         }
     }
 

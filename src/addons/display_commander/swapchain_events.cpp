@@ -1,6 +1,7 @@
 #include "addon.hpp"
 #include "adhd_multi_monitor/adhd_simple_api.hpp"
 #include "audio/audio_management.hpp"
+#include "autoclick/autoclick_manager.hpp"
 #include "display_initial_state.hpp"
 #include "globals.hpp"
 #include "hooks/api_hooks.hpp"
@@ -681,6 +682,21 @@ void OnPresentUpdateBefore(reshade::api::command_queue * /*queue*/, reshade::api
             }
         } else {
             LogError("Mute/unmute shortcut failed: g_reshade_runtime is null");
+        }
+    }
+
+    // Handle Ctrl+A shortcut for auto-click toggle (only when game is in foreground)
+    if (is_game_in_foreground) {
+        // Get the runtime from the atomic variable
+        reshade::api::effect_runtime *runtime = g_reshade_runtime.load();
+        if (runtime != nullptr) {
+            // Check for Ctrl+A shortcut
+            if (runtime->is_key_pressed('A') && runtime->is_key_down(VK_CONTROL)) {
+                // Toggle auto-click sequences
+                autoclick::ToggleAutoClickEnabled();
+            }
+        } else {
+            LogError("Auto-click shortcut failed: g_reshade_runtime is null");
         }
     }
 

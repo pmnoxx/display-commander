@@ -26,71 +26,91 @@ void DrawSwapchainEventCounters() {
 
         // Event visibility flags - set to false to hide specific events
         static bool event_visibility[] = {
-            false,  // reshade::addon_event::begin_render_pass (0 == ok)
-            false,  // reshade::addon_event::end_render_pass (0 == ok)
-            true,   // reshade::addon_event::create_swapchain (vsync on/off won't work)
-            true,   // reshade::addon_event::init_swapchain
-            true,   // reshade::addon_event::finish_present
-            true,   // reshade::addon_event::present
-            true,   // reshade::addon_event::reshade_present
-            true,   // reshade::addon_event::init_command_list
-            false,  // reshade::addon_event::execute_command_list
-            false,  // reshade::addon_event::bind_pipeline (suppressed by default)
-            true,   // reshade::addon_event::init_command_queue
-            true,   // reshade::addon_event::reset_command_list
-            true,   // reshade::addon_event::present_flags
-            true,   // reshade::addon_event::draw
-            true,   // reshade::addon_event::draw_indexed
-            true,   // reshade::addon_event::draw_or_dispatch_indirect
+            true,   // SWAPCHAIN_EVENT_BEGIN_RENDER_PASS (0)
+            true,   // SWAPCHAIN_EVENT_END_RENDER_PASS (1)
+            true,   // SWAPCHAIN_EVENT_CREATE_SWAPCHAIN_CAPTURE (2)
+            true,   // SWAPCHAIN_EVENT_INIT_SWAPCHAIN (3)
+            true,   // SWAPCHAIN_EVENT_PRESENT_UPDATE_AFTER (4)
+            true,   // SWAPCHAIN_EVENT_PRESENT_UPDATE_BEFORE (5)
+            true,   // SWAPCHAIN_EVENT_PRESENT_UPDATE_BEFORE2 (6)
+            true,   // SWAPCHAIN_EVENT_INIT_COMMAND_LIST (7)
+            true,   // SWAPCHAIN_EVENT_EXECUTE_COMMAND_LIST (8)
+            true,   // SWAPCHAIN_EVENT_BIND_PIPELINE (9)
+            true,   // SWAPCHAIN_EVENT_INIT_COMMAND_QUEUE (10)
+            true,   // SWAPCHAIN_EVENT_RESET_COMMAND_LIST (11)
+            true,   // SWAPCHAIN_EVENT_PRESENT_FLAGS (12)
+            true,   // SWAPCHAIN_EVENT_DRAW (13)
+            true,   // SWAPCHAIN_EVENT_DRAW_INDEXED (14)
+            true,   // SWAPCHAIN_EVENT_DRAW_OR_DISPATCH_INDIRECT (15)
             // New power saving events
-            true,  // reshade::addon_event::dispatch
-            true,  // reshade::addon_event::dispatch_mesh
-            true,  // reshade::addon_event::dispatch_rays
-            true,  // reshade::addon_event::copy_resource
-            true,  // reshade::addon_event::update_buffer_region
-            true,  // reshade::addon_event::update_buffer_region_command
-            true,  // reshade::addon_event::bind_resource
-            true,  // reshade::addon_event::map_resource
+            true,   // SWAPCHAIN_EVENT_DISPATCH (16)
+            true,   // SWAPCHAIN_EVENT_DISPATCH_MESH (17)
+            true,   // SWAPCHAIN_EVENT_DISPATCH_RAYS (18)
+            true,   // SWAPCHAIN_EVENT_COPY_RESOURCE (19)
+            true,   // SWAPCHAIN_EVENT_UPDATE_BUFFER_REGION (20)
+            true,   // SWAPCHAIN_EVENT_UPDATE_BUFFER_REGION_COMMAND (21)
+            true,   // SWAPCHAIN_EVENT_BIND_RESOURCE (22)
+            true,   // SWAPCHAIN_EVENT_MAP_RESOURCE (23)
             // Additional frame-specific GPU operations for power saving
-            true,  // reshade::addon_event::copy_buffer_region
-            true,  // reshade::addon_event::copy_buffer_to_texture
-            true,  // reshade::addon_event::copy_texture_to_buffer
-            true,  // reshade::addon_event::copy_texture_region
-            true,  // reshade::addon_event::resolve_texture_region
-            true,  // reshade::addon_event::clear_render_target_view
-            true,  // reshade::addon_event::clear_depth_stencil_view
-            true,  // reshade::addon_event::clear_unordered_access_view_uint
-            true,  // reshade::addon_event::clear_unordered_access_view_float
-            true,  // reshade::addon_event::generate_mipmaps
-            true,  // reshade::addon_event::blit
-            true,  // reshade::addon_event::begin_query
-            true,  // reshade::addon_event::end_query
-            true   // reshade::addon_event::resolve_query_data
+            true,   // SWAPCHAIN_EVENT_COPY_BUFFER_REGION (24)
+            true,   // SWAPCHAIN_EVENT_COPY_BUFFER_TO_TEXTURE (25)
+            true,   // SWAPCHAIN_EVENT_COPY_TEXTURE_TO_BUFFER (26)
+            true,   // SWAPCHAIN_EVENT_COPY_TEXTURE_REGION (27)
+            true,   // SWAPCHAIN_EVENT_RESOLVE_TEXTURE_REGION (28)
+            true,   // SWAPCHAIN_EVENT_CLEAR_RENDER_TARGET_VIEW (29)
+            true,   // SWAPCHAIN_EVENT_CLEAR_DEPTH_STENCIL_VIEW (30)
+            true,   // SWAPCHAIN_EVENT_CLEAR_UNORDERED_ACCESS_VIEW_UINT (31)
+            true,   // SWAPCHAIN_EVENT_CLEAR_UNORDERED_ACCESS_VIEW_FLOAT (32)
+            true,   // SWAPCHAIN_EVENT_GENERATE_MIPMAPS (33)
+            true,   // SWAPCHAIN_EVENT_BLIT (34)
+            true,   // SWAPCHAIN_EVENT_BEGIN_QUERY (35)
+            true,   // SWAPCHAIN_EVENT_END_QUERY (36)
+            true    // SWAPCHAIN_EVENT_RESOLVE_QUERY_DATA (37)
         };
 
         // Display each event counter with color coding
         static const char* event_names[] = {
-            "reshade::addon_event::begin_render_pass (0 == ok)", "reshade::addon_event::end_render_pass (0 == ok)",
-            "reshade::addon_event::create_swapchain (vsync on/off won't work)", "reshade::addon_event::init_swapchain",
-            "reshade::addon_event::finish_present", "reshade::addon_event::present",
-            "reshade::addon_event::reshade_present", "reshade::addon_event::init_command_list",
-            "reshade::addon_event::execute_command_list", "reshade::addon_event::bind_pipeline",
-            "reshade::addon_event::init_command_queue", "reshade::addon_event::reset_command_list",
-            "reshade::addon_event::present_flags", "reshade::addon_event::draw", "reshade::addon_event::draw_indexed",
-            "reshade::addon_event::draw_or_dispatch_indirect",
+            "SWAPCHAIN_EVENT_BEGIN_RENDER_PASS (0)",
+            "SWAPCHAIN_EVENT_END_RENDER_PASS (1)",
+            "SWAPCHAIN_EVENT_CREATE_SWAPCHAIN_CAPTURE (2)",
+            "SWAPCHAIN_EVENT_INIT_SWAPCHAIN (3)",
+            "SWAPCHAIN_EVENT_PRESENT_UPDATE_AFTER (4)",
+            "SWAPCHAIN_EVENT_PRESENT_UPDATE_BEFORE (5)",
+            "SWAPCHAIN_EVENT_PRESENT_UPDATE_BEFORE2 (6)",
+            "SWAPCHAIN_EVENT_INIT_COMMAND_LIST (7)",
+            "SWAPCHAIN_EVENT_EXECUTE_COMMAND_LIST (8)",
+            "SWAPCHAIN_EVENT_BIND_PIPELINE (9)",
+            "SWAPCHAIN_EVENT_INIT_COMMAND_QUEUE (10)",
+            "SWAPCHAIN_EVENT_RESET_COMMAND_LIST (11)",
+            "SWAPCHAIN_EVENT_PRESENT_FLAGS (12)",
+            "SWAPCHAIN_EVENT_DRAW (13)",
+            "SWAPCHAIN_EVENT_DRAW_INDEXED (14)",
+            "SWAPCHAIN_EVENT_DRAW_OR_DISPATCH_INDIRECT (15)",
             // New power saving events
-            "reshade::addon_event::dispatch", "reshade::addon_event::dispatch_mesh",
-            "reshade::addon_event::dispatch_rays", "reshade::addon_event::copy_resource",
-            "reshade::addon_event::update_buffer_region", "reshade::addon_event::update_buffer_region_command",
-            "reshade::addon_event::bind_resource", "reshade::addon_event::map_resource",
+            "SWAPCHAIN_EVENT_DISPATCH (16)",
+            "SWAPCHAIN_EVENT_DISPATCH_MESH (17)",
+            "SWAPCHAIN_EVENT_DISPATCH_RAYS (18)",
+            "SWAPCHAIN_EVENT_COPY_RESOURCE (19)",
+            "SWAPCHAIN_EVENT_UPDATE_BUFFER_REGION (20)",
+            "SWAPCHAIN_EVENT_UPDATE_BUFFER_REGION_COMMAND (21)",
+            "SWAPCHAIN_EVENT_BIND_RESOURCE (22)",
+            "SWAPCHAIN_EVENT_MAP_RESOURCE (23)",
             // Additional frame-specific GPU operations for power saving
-            "reshade::addon_event::copy_buffer_region", "reshade::addon_event::copy_buffer_to_texture",
-            "reshade::addon_event::copy_texture_to_buffer", "reshade::addon_event::copy_texture_region",
-            "reshade::addon_event::resolve_texture_region", "reshade::addon_event::clear_render_target_view",
-            "reshade::addon_event::clear_depth_stencil_view", "reshade::addon_event::clear_unordered_access_view_uint",
-            "reshade::addon_event::clear_unordered_access_view_float", "reshade::addon_event::generate_mipmaps",
-            "reshade::addon_event::blit", "reshade::addon_event::begin_query",
-            "reshade::addon_event::end_query", "reshade::addon_event::resolve_query_data"};
+            "SWAPCHAIN_EVENT_COPY_BUFFER_REGION (24)",
+            "SWAPCHAIN_EVENT_COPY_BUFFER_TO_TEXTURE (25)",
+            "SWAPCHAIN_EVENT_COPY_TEXTURE_TO_BUFFER (26)",
+            "SWAPCHAIN_EVENT_COPY_TEXTURE_REGION (27)",
+            "SWAPCHAIN_EVENT_RESOLVE_TEXTURE_REGION (28)",
+            "SWAPCHAIN_EVENT_CLEAR_RENDER_TARGET_VIEW (29)",
+            "SWAPCHAIN_EVENT_CLEAR_DEPTH_STENCIL_VIEW (30)",
+            "SWAPCHAIN_EVENT_CLEAR_UNORDERED_ACCESS_VIEW_UINT (31)",
+            "SWAPCHAIN_EVENT_CLEAR_UNORDERED_ACCESS_VIEW_FLOAT (32)",
+            "SWAPCHAIN_EVENT_GENERATE_MIPMAPS (33)",
+            "SWAPCHAIN_EVENT_BLIT (34)",
+            "SWAPCHAIN_EVENT_BEGIN_QUERY (35)",
+            "SWAPCHAIN_EVENT_END_QUERY (36)",
+            "SWAPCHAIN_EVENT_RESOLVE_QUERY_DATA (37)"
+        };
 
         uint32_t total_events = 0;
         uint32_t visible_events = 0;

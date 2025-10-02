@@ -583,6 +583,44 @@ void DrawDisplaySettings() {
         ImGui::SetTooltip("Set FPS limit for the game (0 = no limit). Now uses the new Custom FPS Limiter system.");
     }
 
+    // FPS Limiter Warning - Check if the appropriate events are working based on injection mode
+    if (fps_limit_enabled) {
+        int injection_mode = settings::g_mainTabSettings.fps_limiter_injection.GetValue();
+        uint32_t event_count = 0;
+        const char* event_name = "";
+        bool show_warning = false;
+
+        switch (injection_mode) {
+            case 0: // OnPresentFlags
+                event_count = g_swapchain_event_counters[SWAPCHAIN_EVENT_PRESENT_FLAGS].load();
+                event_name = "SWAPCHAIN_EVENT_PRESENT_FLAGS";
+                show_warning = (event_count == 0);
+                break;
+            case 1: // OnPresentUpdateBefore2
+                event_count = g_swapchain_event_counters[SWAPCHAIN_EVENT_PRESENT_UPDATE_BEFORE2].load();
+                event_name = "SWAPCHAIN_EVENT_PRESENT_UPDATE_BEFORE2";
+                show_warning = (event_count == 0);
+                break;
+            case 2: // OnPresentUpdateBefore
+                event_count = g_swapchain_event_counters[SWAPCHAIN_EVENT_PRESENT_UPDATE_BEFORE].load();
+                event_name = "SWAPCHAIN_EVENT_PRESENT_UPDATE_BEFORE";
+                show_warning = (event_count == 0);
+                break;
+        }
+
+        if (show_warning) {
+            ImGui::Spacing();
+            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f),
+                "⚠ Warning: FPS limiting is enabled but %s events are 0. "
+                "FPS limiting may not work properly.", event_name);
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("%s events are required for FPS limiting when using injection mode %d. "
+                                "Try changing the FPS Limiter Injection setting to a different mode.",
+                                event_name, injection_mode);
+            }
+        }
+    }
+
     // No Render in Background checkbox
     {
         bool no_render_in_bg = settings::g_mainTabSettings.no_render_in_background.GetValue();

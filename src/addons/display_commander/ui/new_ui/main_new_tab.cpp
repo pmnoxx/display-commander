@@ -596,7 +596,14 @@ void DrawDisplaySettings() {
 
     // VSync & Tearing controls
     {
+        if (!fps_limit_enabled) {
+            ImGui::BeginDisabled();
+        }
         DrawQuickResolutionChanger();
+
+        if (!fps_limit_enabled) {
+            ImGui::EndDisabled();
+        }
 
         ImGui::SameLine();
 

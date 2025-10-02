@@ -25,7 +25,7 @@ void DrawSwapchainEventCounters() {
         ImGui::Separator();
 
         // Event visibility flags - set to false to hide specific events
-        static bool event_visibility[] = {
+        static bool event_visibility[NUM_EVENTS] = {
             true,   // SWAPCHAIN_EVENT_BEGIN_RENDER_PASS (0)
             true,   // SWAPCHAIN_EVENT_END_RENDER_PASS (1)
             true,   // SWAPCHAIN_EVENT_CREATE_SWAPCHAIN_CAPTURE (2)
@@ -69,7 +69,7 @@ void DrawSwapchainEventCounters() {
         };
 
         // Display each event counter with color coding
-        static const char* event_names[] = {
+        static const char* event_names[NUM_EVENTS] = {
             "SWAPCHAIN_EVENT_BEGIN_RENDER_PASS (0)",
             "SWAPCHAIN_EVENT_END_RENDER_PASS (1)",
             "SWAPCHAIN_EVENT_CREATE_SWAPCHAIN_CAPTURE (2)",

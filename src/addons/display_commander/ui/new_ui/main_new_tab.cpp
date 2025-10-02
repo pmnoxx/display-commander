@@ -657,9 +657,16 @@ void DrawDisplaySettings() {
 
     // Background FPS Limit slider (persisted)
     {
+        if (!fps_limit_enabled) {
+            ImGui::BeginDisabled();
+        }
+
         float current_bg = settings::g_mainTabSettings.fps_limit_background.GetValue();
         const char* fmt_bg = (current_bg > 0.0f) ? "%.0f FPS" : "No Limit";
-        if (SliderFloatSetting(settings::g_mainTabSettings.fps_limit_background, "Background FPS Limit", fmt_bg)) {
+        if (SliderFloatSetting(settings::g_mainTabSettings.fps_limit_background, "Background FPS Limit", fmt_bg)) {}
+
+        if (!fps_limit_enabled) {
+            ImGui::EndDisabled();
         }
     }
     if (ImGui::IsItemHovered()) {

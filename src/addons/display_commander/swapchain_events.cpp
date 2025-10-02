@@ -578,18 +578,23 @@ void HandleFpsLimiter() {
 
     // Call FPS Limiter on EVERY frame (not throttled)
     switch (s_fps_limiter_mode.load()) {
-    case FpsLimiterMode::kNone: {
+    case FpsLimiterMode::kDisabled: {
         // No FPS limiting - do nothing
         break;
     }
-    case FpsLimiterMode::kCustom: {
-        // Use FPS limiter manager for Custom (Sleep/Spin) mode
+    case FpsLimiterMode::kOnPresentSync: {
+        // Use FPS limiter manager for OnPresent Frame Synchronizer mode
         if (dxgi::fps_limiter::g_customFpsLimiter) {
             auto &limiter = dxgi::fps_limiter::g_customFpsLimiter;
             if (target_fps > 0.0f) {
                 limiter->LimitFrameRate(target_fps);
             }
         }
+        break;
+    }
+    case FpsLimiterMode::kOnPresentSyncLowLatency: {
+        // Low latency mode not implemented yet - treat as disabled
+        LogInfo("FPS Limiter: OnPresent Frame Synchronizer (Low Latency Mode) - Not implemented yet");
         break;
     }
     case FpsLimiterMode::kLatentSync: {

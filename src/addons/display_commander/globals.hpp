@@ -44,7 +44,7 @@ Microsoft::WRL::ComPtr<IDXGIFactory1> GetSharedDXGIFactory();
 // Enums
 enum class DxgiBypassMode : std::uint8_t { kUnknown, kComposed, kOverlay, kIndependentFlip };
 enum class WindowStyleMode : std::uint8_t { KEEP, BORDERLESS, OVERLAPPED_WINDOW };
-enum class FpsLimiterMode : std::uint8_t { kNone = 0, kCustom = 1, kLatentSync = 2 };
+enum class FpsLimiterMode : std::uint8_t { kDisabled = 0, kOnPresentSync = 1, kOnPresentSyncLowLatency = 2, kLatentSync = 3 };
 enum class WindowMode : std::uint8_t { kFullscreen = 0, kAspectRatio = 1 };
 enum class AspectRatioType : std::uint8_t {
     k3_2 = 0,     // 3:2
@@ -253,7 +253,7 @@ extern std::atomic<int> g_last_backbuffer_height;
 // Background/foreground state
 extern std::atomic<bool> g_app_in_background;
 
-// FPS limiter mode: 0 = None, 1 = Custom (Sleep/Spin), 2 = VBlank Scanline Sync (VBlank)
+// FPS limiter mode: 0 = Disabled, 1 = OnPresentSync, 2 = OnPresentSyncLowLatency, 3 = VBlank Scanline Sync (VBlank)
 extern std::atomic<FpsLimiterMode> s_fps_limiter_mode;
 
 // FPS limiter injection timing: 0 = OnPresentFlags (recommended), 1 = OnPresentUpdateBefore2, 2 = OnPresentUpdateBefore

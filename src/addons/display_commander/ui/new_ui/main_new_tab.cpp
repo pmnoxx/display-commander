@@ -397,20 +397,37 @@ void DrawDisplaySettings() {
 
     // FPS Limiter Mode
     {
-        if (ComboSettingWrapper(settings::g_mainTabSettings.fps_limiter_mode, "FPS Limiter Mode")) {
-            s_fps_limiter_mode.store(
-                static_cast<FpsLimiterMode>(settings::g_mainTabSettings.fps_limiter_mode.GetValue()));
+        const char* items[] = {
+            "Disabled",
+            "OnPresent Frame Synchronizer",
+            "OnPresent Frame Synchronizer (Low Latency Mode) (not implemented yet)",
+            "VBlank Scanline Sync for VSync-OFF"
+        };
+
+        int current_item = settings::g_mainTabSettings.fps_limiter_mode.GetValue();
+        if (ImGui::Combo("FPS Limiter Mode", &current_item, items, 4)) {
+            settings::g_mainTabSettings.fps_limiter_mode.SetValue(current_item);
+            s_fps_limiter_mode.store(static_cast<FpsLimiterMode>(current_item));
             FpsLimiterMode mode = s_fps_limiter_mode.load();
-            if (mode == FpsLimiterMode::kNone) {
-                LogInfo("FPS Limiter: None (no limiting)");
-            } else if (mode == FpsLimiterMode::kCustom) {
-                LogInfo("FPS Limiter: Custom (Sleep/Spin) for VRR");
+            if (mode == FpsLimiterMode::kDisabled) {
+                LogInfo("FPS Limiter: Disabled (no limiting)");
+            } else if (mode == FpsLimiterMode::kOnPresentSync) {
+                LogInfo("FPS Limiter: OnPresent Frame Synchronizer");
+            } else if (mode == FpsLimiterMode::kOnPresentSyncLowLatency) {
+                LogInfo("FPS Limiter: OnPresent Frame Synchronizer (Low Latency Mode) - Not implemented yet");
             } else if (mode == FpsLimiterMode::kLatentSync) {
                 LogInfo("FPS Limiter: VBlank Scanline Sync for VSYNC-OFF or without VRR");
             }
         }
+
+        // Custom rendering for grayed out option
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Choose limiter: Custom sleep/spin or Latent Sync pacing");
+            ImGui::SetTooltip("Choose limiter: OnPresent Frame Synchronizer (synchronized frame display timing) or VBlank Scanline Sync\n\nOnPresent Frame Synchronizer adds latency as it delays frame display time to be more consistent - it prioritizes starting frame processing at the same time.\n\nOnPresent Frame Synchronizer Low Latency mode (not implemented): delays processing frame to lower latency, at cost of frame pacing.\n\nVBlank Scanline Sync synchronizes frame presentation with monitor refresh cycles for smooth frame pacing without VSync.");
+        }
+
+        // Show warning for low latency mode
+        if (current_item == 2) { // kOnPresentSyncLowLatency
+            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "⚠ Low Latency Mode not implemented yet");
         }
     }
 
@@ -546,7 +563,7 @@ void DrawDisplaySettings() {
 
     // FPS Limit slider (persisted)
 
-    bool fps_limit_enabled = s_fps_limiter_mode.load() != FpsLimiterMode::kNone || s_reflex_enable.load();
+    bool fps_limit_enabled = s_fps_limiter_mode.load() != FpsLimiterMode::kDisabled || s_reflex_enable.load();
 
 
     {

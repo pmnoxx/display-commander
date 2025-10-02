@@ -36,7 +36,7 @@ MainTabSettings::MainTabSettings()
       background_feature("background_feature", s_background_feature_enabled, false, "DisplayCommander"),
       alignment("alignment", 0, {"Center", "Top Left", "Top Right", "Bottom Left", "Bottom Right"}, "DisplayCommander"),
       fps_limiter_mode("fps_limiter_mode", 0,
-                       {"None", "Precise Frame Rate Limiter", "VBlank Scanline Sync for VSync-OFF"}, "DisplayCommander"),
+                       {"Disabled", "OnPresent Frame Synchronizer", "OnPresent Frame Synchronizer (Low Latency Mode)", "VBlank Scanline Sync for VSync-OFF"}, "DisplayCommander"),
       scanline_offset("scanline_offset", s_scanline_offset, 0, -1000, 1000, "DisplayCommander"),
       vblank_sync_divisor("vblank_sync_divisor", s_vblank_sync_divisor, 1, 0, 8, "DisplayCommander"),
       fps_limiter_injection("fps_limiter_injection", s_fps_limiter_injection, 0, 0, 2, "DisplayCommander"),

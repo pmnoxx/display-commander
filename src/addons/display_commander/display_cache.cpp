@@ -5,6 +5,7 @@
 #include "utils.hpp"
 
 #include <windows.h>
+#include <wingdi.h>
 
 #include <dxgi1_6.h>
 #include <immintrin.h>
@@ -132,6 +133,26 @@ bool DisplayCache::Refresh() {
     // Build a fresh cache snapshot locally (no locking, allows system calls)
     std::vector<std::unique_ptr<DisplayInfo>> new_displays;
 
+    // Query display configuration once for all monitors to avoid duplication
+    UINT32 path_count = 0, mode_count = 0;
+    if (GetDisplayConfigBufferSizes(QDC_ONLY_ACTIVE_PATHS, &path_count, &mode_count) != ERROR_SUCCESS) {
+        LogError("DisplayCache: Failed to get display config buffer sizes");
+        return false;
+    }
+
+    if (path_count == 0 || mode_count == 0) {
+        LogError("DisplayCache: No active display paths or modes found");
+        return false;
+    }
+
+    std::vector<DISPLAYCONFIG_PATH_INFO> paths(path_count);
+    std::vector<DISPLAYCONFIG_MODE_INFO> modes(mode_count);
+
+    if (QueryDisplayConfig(QDC_ONLY_ACTIVE_PATHS, &path_count, paths.data(), &mode_count, modes.data(), nullptr) != ERROR_SUCCESS) {
+        LogError("DisplayCache: Failed to query display configuration");
+        return false;
+    }
+
     // Enumerate all monitors
     std::vector<HMONITOR> monitors;
     EnumDisplayMonitors(
@@ -171,7 +192,8 @@ bool DisplayCache::Refresh() {
         // Get current settings
         if (!GetCurrentDisplaySettingsQueryConfig(
                 monitor, display_info->width, display_info->height, display_info->current_refresh_rate.numerator,
-                display_info->current_refresh_rate.denominator, display_info->x, display_info->y, first_time_log)) {
+                display_info->current_refresh_rate.denominator, display_info->x, display_info->y, first_time_log,
+                paths, modes)) {
             continue;
         }
 

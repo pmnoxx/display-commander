@@ -194,26 +194,15 @@ std::string WideCharToUTF8(const std::wstring& in) {
 
 // Get current display settings using QueryDisplayConfig for precise refresh rate
 bool GetCurrentDisplaySettingsQueryConfig(HMONITOR monitor, int& width, int& height, uint32_t& refresh_numerator,
-                                          uint32_t& refresh_denominator, int& x, int& y, bool first_time_log) {
-    UINT32 path_count = 0, mode_count = 0;
-
-    // Get required buffer sizes
-    if (GetDisplayConfigBufferSizes(QDC_ONLY_ACTIVE_PATHS, &path_count, &mode_count) != ERROR_SUCCESS) {
+                                          uint32_t& refresh_denominator, int& x, int& y, bool first_time_log,
+                                          const std::vector<DISPLAYCONFIG_PATH_INFO>& paths,
+                                          const std::vector<DISPLAYCONFIG_MODE_INFO>& modes) {
+    if (paths.empty() || modes.empty()) {
         return false;
     }
 
-    if (path_count == 0 || mode_count == 0) {
-        return false;
-    }
-
-    std::vector<DISPLAYCONFIG_PATH_INFO> paths(path_count);
-    std::vector<DISPLAYCONFIG_MODE_INFO> modes(mode_count);
-
-    // Query display configuration
-    if (QueryDisplayConfig(QDC_ONLY_ACTIVE_PATHS, &path_count, paths.data(), &mode_count, modes.data(), nullptr)
-        != ERROR_SUCCESS) {
-        return false;
-    }
+    UINT32 path_count = static_cast<UINT32>(paths.size());
+    UINT32 mode_count = static_cast<UINT32>(modes.size());
 
     // Find the path that matches our monitor
     for (UINT32 path_idx = 0; path_idx < path_count; ++path_idx) {

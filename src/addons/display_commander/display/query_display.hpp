@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <windows.h>
+#include <wingdi.h>
 
 
 // Structure to hold display timing information
@@ -42,4 +43,6 @@ std::string WideCharToUTF8(const std::wstring &in);
 
 // Get current display settings using QueryDisplayConfig for precise refresh rate
 bool GetCurrentDisplaySettingsQueryConfig(HMONITOR monitor, int &width, int &height, uint32_t &refresh_numerator,
-                                          uint32_t &refresh_denominator, int &x, int &y, bool first_time_log);
+                                          uint32_t &refresh_denominator, int &x, int &y, bool first_time_log,
+                                          const std::vector<DISPLAYCONFIG_PATH_INFO> &paths,
+                                          const std::vector<DISPLAYCONFIG_MODE_INFO> &modes);

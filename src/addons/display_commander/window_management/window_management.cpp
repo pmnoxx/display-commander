@@ -1,6 +1,7 @@
 #include "window_management.hpp"
 #include "../addon.hpp"
 #include "../display_cache.hpp"
+#include "../globals.hpp"
 #include "../settings/main_tab_settings.hpp"
 #include "../ui/ui_display_tab.hpp"
 #include "../utils.hpp"
@@ -235,7 +236,62 @@ void ApplyWindowChange(HWND hwnd, const char* reason, bool force_apply) {
             if (!s.needs_move) flags |= SWP_NOMOVE;
             if (s.style_changed || s.style_changed_ex) flags |= SWP_FRAMECHANGED;
 
-            SetWindowPos(hwnd, nullptr, s.target_x, s.target_y, s.target_w, s.target_h, flags);
+            float scaling_percentage_width = 1.0f;
+            float scaling_percentage_height = 1.0f;
+            {
+                const auto* disp = display_cache::g_displayCache.GetDisplay(s.current_monitor_index);
+                if (disp != nullptr) {
+                    float dpi = disp->GetDpiScaling();
+                    LogInfo("ApplyWindowChange: Setting window position and size, target_x: %d, target_y: %d, target_w: %d, target_h: %d, dpi: %f", s.target_x, s.target_y, s.target_w, s.target_h,
+                        dpi);
+                }
+
+                // Print DPI using GetDpiForWindow with g_last_swapchain_hwnd
+                HWND swapchain_hwnd = g_last_swapchain_hwnd.load();
+                if (swapchain_hwnd != nullptr) {
+                    UINT dpi = GetDpiForWindow(swapchain_hwnd);
+                    LogInfo("ApplyWindowChange: Window DPI from GetDpiForWindow: %u", dpi);
+                } else {
+                    LogInfo("ApplyWindowChange: g_last_swapchain_hwnd is null, cannot get DPI");
+                }
+                // Method 2: Modern system DPI (Windows 10+)
+                UINT modern_system_dpi = GetDpiForSystem();
+                if (modern_system_dpi > 0) {
+                    float modern_scaling = (static_cast<float>(modern_system_dpi) / 96.0f) * 100.0f;
+                    LogInfo("ApplyWindowChange: Modern System DPI - DPI: %u, Scaling: %.0f%%",
+                           modern_system_dpi, modern_scaling);
+                }
+                // Query Windows display scaling settings
+                // Method 1: System DPI using GetDeviceCaps (works on all Windows versions)
+                HDC hdc = GetDC(swapchain_hwnd);
+                if (hdc != nullptr) {
+                    int system_dpi_x = GetDeviceCaps(hdc, LOGPIXELSX);
+                    int system_dpi_y = GetDeviceCaps(hdc, LOGPIXELSY);
+
+                    // Get virtual resolution (logical resolution before DPI scaling)
+                    int virtual_width = GetDeviceCaps(hdc, HORZRES);
+                    int virtual_height = GetDeviceCaps(hdc, VERTRES);
+
+                    // Get physical resolution (actual pixel resolution)
+                    int physical_width = GetDeviceCaps(hdc, DESKTOPHORZRES);
+                    int physical_height = GetDeviceCaps(hdc, DESKTOPVERTRES);
+
+                    ReleaseDC(nullptr, hdc);
+
+                    scaling_percentage_width = static_cast<float>(virtual_width) / static_cast<float>(physical_width);
+                    scaling_percentage_height = static_cast<float>(virtual_height) / static_cast<float>(physical_height);
+                    LogInfo("ApplyWindowChange: Windows Display Scaling - Width: %.0f%%, Height: %.0f%%",
+                           scaling_percentage_width, scaling_percentage_height);
+                    float scaling_percentage = (static_cast<float>(system_dpi_x) / 96.0f) * 100.0f;
+                    LogInfo("ApplyWindowChange: Windows Display Scaling - DPI: %d, Scaling: %.0f%%",
+                           system_dpi_x, scaling_percentage);
+                    LogInfo("ApplyWindowChange: Virtual Resolution: %dx%d, Physical Resolution: %dx%d",
+                           virtual_width, virtual_height, physical_width, physical_height);
+
+                }
+            }
+
+            SetWindowPos(hwnd, nullptr, s.target_x, s.target_y, round(s.target_w * scaling_percentage_width), round(s.target_h * scaling_percentage_height),     flags);
         }
     }
 }

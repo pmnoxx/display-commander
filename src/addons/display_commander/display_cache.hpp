@@ -166,6 +166,7 @@ struct DisplayInfo {
             }
         }
 
+        /*
         // Fallback: try to get DPI from device context
         HDC hdc = GetDC(nullptr);
         if (hdc) {
@@ -175,7 +176,7 @@ struct DisplayInfo {
             if (dpi_x > 0) {
                 return static_cast<float>(dpi_x) / 96.0f;
             }
-        }
+        }*/
 
         return 0.0f; // Unknown scaling
     }

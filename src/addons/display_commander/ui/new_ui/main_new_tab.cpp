@@ -545,10 +545,21 @@ void DrawDisplaySettings() {
     ImGui::Spacing();
 
     // FPS Limit slider (persisted)
+
+    bool fps_limit_enabled = s_fps_limiter_mode.load() != FpsLimiterMode::kNone || s_reflex_enable.load();
+
+
     {
+        if (!fps_limit_enabled) {
+            ImGui::BeginDisabled();
+        }
+
         float current_value = settings::g_mainTabSettings.fps_limit.GetValue();
         const char* fmt = (current_value > 0.0f) ? "%.3f FPS" : "No Limit";
-        if (SliderFloatSetting(settings::g_mainTabSettings.fps_limit, "FPS Limit", fmt)) {
+        if (SliderFloatSetting(settings::g_mainTabSettings.fps_limit, "FPS Limit", fmt)) {}
+
+        if (!fps_limit_enabled) {
+            ImGui::EndDisabled();
         }
     }
     if (ImGui::IsItemHovered()) {

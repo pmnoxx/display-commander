@@ -67,7 +67,8 @@ void DrawSwapchainEventCounters() {
             true,   // SWAPCHAIN_EVENT_END_QUERY (36)
             true,   // SWAPCHAIN_EVENT_RESOLVE_QUERY_DATA (37)
             true,   // SWAPCHAIN_EVENT_DXGI_PRESENT (38)
-            true    // SWAPCHAIN_EVENT_DXGI_GETDESC (39)
+            true,   // SWAPCHAIN_EVENT_DXGI_PRESENT1 (39)
+            true    // SWAPCHAIN_EVENT_DXGI_GETDESC (40)
         };
 
         // Display each event counter with color coding
@@ -113,7 +114,8 @@ void DrawSwapchainEventCounters() {
             "SWAPCHAIN_EVENT_END_QUERY (36)",
             "SWAPCHAIN_EVENT_RESOLVE_QUERY_DATA (37)",
             "SWAPCHAIN_EVENT_DXGI_PRESENT (38)",
-            "SWAPCHAIN_EVENT_DXGI_GETDESC (39)"
+            "SWAPCHAIN_EVENT_DXGI_PRESENT1 (39)",
+            "SWAPCHAIN_EVENT_DXGI_GETDESC (40)"
         };
 
         uint32_t total_events = 0;

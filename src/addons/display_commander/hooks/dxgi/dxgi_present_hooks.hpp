@@ -29,15 +29,22 @@ namespace display_commanderhooks::dxgi {
 // Function pointer types for DXGI Present functions
 using IDXGISwapChain_Present_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGISwapChain *This, UINT SyncInterval, UINT Flags);
 
+// Function pointer types for DXGI Present1 functions (IDXGISwapChain1)
+using IDXGISwapChain_Present1_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGISwapChain1 *This, UINT SyncInterval, UINT PresentFlags, const DXGI_PRESENT_PARAMETERS *pPresentParameters);
+
 // Function pointer types for DXGI GetDesc functions
 using IDXGISwapChain_GetDesc_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGISwapChain *This, DXGI_SWAP_CHAIN_DESC *pDesc);
 
 // Original function pointers
 extern IDXGISwapChain_Present_pfn IDXGISwapChain_Present_Original;
+extern IDXGISwapChain_Present1_pfn IDXGISwapChain_Present1_Original;
 extern IDXGISwapChain_GetDesc_pfn IDXGISwapChain_GetDesc_Original;
 
 // Hooked DXGI Present functions
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain *This, UINT SyncInterval, UINT Flags);
+
+// Hooked DXGI Present1 functions (IDXGISwapChain1)
+HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1 *This, UINT SyncInterval, UINT PresentFlags, const DXGI_PRESENT_PARAMETERS *pPresentParameters);
 
 // Hooked DXGI GetDesc functions
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetDesc_Detour(IDXGISwapChain *This, DXGI_SWAP_CHAIN_DESC *pDesc);

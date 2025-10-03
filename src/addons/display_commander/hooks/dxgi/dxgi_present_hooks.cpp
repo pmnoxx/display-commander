@@ -28,6 +28,7 @@ namespace display_commanderhooks::dxgi {
 
 // Original function pointers
 IDXGISwapChain_Present_pfn IDXGISwapChain_Present_Original = nullptr;
+IDXGISwapChain_Present1_pfn IDXGISwapChain_Present1_Original = nullptr;
 IDXGISwapChain_GetDesc_pfn IDXGISwapChain_GetDesc_Original = nullptr;
 
 // Hook state
@@ -42,12 +43,29 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain *This, UI
     ::OnPresentFlags2(&Flags);
 
     // Call original function
-    if (IDXGISwapChain_Present_Original) {
+    if (IDXGISwapChain_Present_Original != nullptr) {
         return IDXGISwapChain_Present_Original(This, SyncInterval, Flags);
     }
 
     // Fallback to direct call if hook failed
     return This->Present(SyncInterval, Flags);
+}
+
+// Hooked IDXGISwapChain1::Present1 function
+HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1 *This, UINT SyncInterval, UINT PresentFlags, const DXGI_PRESENT_PARAMETERS *pPresentParameters) {
+    // Increment DXGI Present1 counter
+    g_swapchain_event_counters[SWAPCHAIN_EVENT_DXGI_PRESENT1].fetch_add(1);
+    g_swapchain_event_total_count.fetch_add(1);
+
+    ::OnPresentFlags2(&PresentFlags);
+
+    // Call original function
+    if (IDXGISwapChain_Present1_Original != nullptr) {
+        return IDXGISwapChain_Present1_Original(This, SyncInterval, PresentFlags, pPresentParameters);
+    }
+
+    // Fallback to direct call if hook failed
+    return This->Present1(SyncInterval, PresentFlags, pPresentParameters);
 }
 
 // Hooked IDXGISwapChain::GetDesc function
@@ -57,11 +75,11 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetDesc_Detour(IDXGISwapChain *This, DX
     g_swapchain_event_total_count.fetch_add(1);
 
     // Call original function
-    if (IDXGISwapChain_GetDesc_Original) {
+    if (IDXGISwapChain_GetDesc_Original != nullptr) {
         HRESULT hr = IDXGISwapChain_GetDesc_Original(This, pDesc);
 
         // Log the description if successful (only on first few calls to avoid spam)
-        if (SUCCEEDED(hr) && pDesc) {
+        if (SUCCEEDED(hr) && pDesc != nullptr) {
             static int getdesc_log_count = 0;
             if (getdesc_log_count < 3) {
                 LogInfo("SwapChain Desc - Width: %u, Height: %u, Format: %u, RefreshRate: %u/%u, BufferCount: %u",
@@ -140,7 +158,7 @@ bool HookSwapchainVTable(IDXGISwapChain *swapchain) {
     // [15] IDXGISwapChain::GetContainingOutput
     // [16] IDXGISwapChain::GetFrameStatistics
     // [17] IDXGISwapChain::GetLastPresentCount
-    // [18] IDXGISwapChain::GetDesc1 (IDXGISwapChain1+)
+    // [18] IDXGISwapChain1::Present1                  ← Hooked (if IDXGISwapChain1+)
 
     // Hook Present (index 8 in IDXGISwapChain vtable)
     if (MH_CreateHook(vtable[8], IDXGISwapChain_Present_Detour, (LPVOID *)&IDXGISwapChain_Present_Original) != MH_OK) {
@@ -152,6 +170,15 @@ bool HookSwapchainVTable(IDXGISwapChain *swapchain) {
     if (MH_CreateHook(vtable[12], IDXGISwapChain_GetDesc_Detour, (LPVOID *)&IDXGISwapChain_GetDesc_Original) != MH_OK) {
         LogError("Failed to create IDXGISwapChain::GetDesc hook");
         return false;
+    }
+
+    // Hook Present1 (index 18 in IDXGISwapChain1+ vtable) - only if the swapchain supports it
+    // Check if this is IDXGISwapChain1 or higher by checking if the method exists
+    if (vtable[18] != nullptr) {
+        if (MH_CreateHook(vtable[18], IDXGISwapChain_Present1_Detour, (LPVOID *)&IDXGISwapChain_Present1_Original) != MH_OK) {
+            LogError("Failed to create IDXGISwapChain1::Present1 hook");
+            return false;
+        }
     }
 
     // Enable the Present hook
@@ -166,9 +193,22 @@ bool HookSwapchainVTable(IDXGISwapChain *swapchain) {
         return false;
     }
 
+    // Enable the Present1 hook (if it was created)
+    if (vtable[18] != nullptr) {
+        if (MH_EnableHook(vtable[18]) != MH_OK) {
+            LogError("Failed to enable IDXGISwapChain1::Present1 hook");
+            return false;
+        }
+    }
+
     g_hooked_swapchain = swapchain;
     g_swapchain_hooked.store(swapchain);
-    LogInfo("Successfully hooked IDXGISwapChain::Present and GetDesc vtable entries for swapchain: 0x%p", swapchain);
+
+    if (vtable[18] != nullptr) {
+        LogInfo("Successfully hooked IDXGISwapChain::Present, GetDesc, and Present1 vtable entries for swapchain: 0x%p", swapchain);
+    } else {
+        LogInfo("Successfully hooked IDXGISwapChain::Present and GetDesc vtable entries for swapchain: 0x%p", swapchain);
+    }
 
     return true;
 }

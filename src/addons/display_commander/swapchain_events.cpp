@@ -35,6 +35,40 @@ bool is_target_resolution(int width, int height) {
            width * 9 == height * 16;
 }
 std::atomic<bool> g_initialized{false};
+
+
+void hookToSwapChain(reshade::api::swapchain *swapchain) {
+    static bool initialized = false;
+    if (initialized || swapchain == nullptr || swapchain->get_hwnd() == nullptr) {
+        return;
+    }
+    initialized = true;
+    LogInfo("onInitSwapChain: swapchain: 0x%p", swapchain);
+
+    // Schedule auto-apply even on resizes (generation counter ensures only latest
+    // runs)
+    HWND hwnd = static_cast<HWND>(swapchain->get_hwnd());
+    if (hwnd != nullptr) {
+        g_last_swapchain_hwnd.store(hwnd);
+
+        // Initialize if not already done
+        DoInitializationWithHwnd(hwnd);
+
+        // Hook DXGI Present calls for this swapchain
+        // Get the underlying DXGI swapchain from the ReShade swapchain
+        if (auto *dxgi_swapchain = reinterpret_cast<IDXGISwapChain *>(swapchain->get_native())) {
+            if (display_commanderhooks::dxgi::HookSwapchain(dxgi_swapchain)) {
+                LogInfo("Successfully hooked DXGI Present calls for swapchain: 0x%p", dxgi_swapchain);
+            } else {
+                LogWarn("Failed to hook DXGI Present calls for swapchain: 0x%p", dxgi_swapchain);
+            }
+        } else {
+            LogWarn("Could not get DXGI swapchain from ReShade swapchain for Present "
+                    "hooking");
+        }
+    }
+}
+
 // Centralized initialization method
 void DoInitializationWithHwnd(HWND hwnd) {
     bool expected = false;
@@ -360,29 +394,7 @@ void OnInitSwapchain(reshade::api::swapchain *swapchain, bool resize) {
     // Increment event counter
     g_swapchain_event_counters[SWAPCHAIN_EVENT_INIT_SWAPCHAIN].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
-
-    // Schedule auto-apply even on resizes (generation counter ensures only latest
-    // runs)
-    HWND hwnd = static_cast<HWND>(swapchain->get_hwnd());
-    if (hwnd != nullptr) {
-        g_last_swapchain_hwnd.store(hwnd);
-
-        // Initialize if not already done
-        DoInitializationWithHwnd(hwnd);
-
-        // Hook DXGI Present calls for this swapchain
-        // Get the underlying DXGI swapchain from the ReShade swapchain
-        if (auto *dxgi_swapchain = reinterpret_cast<IDXGISwapChain *>(swapchain->get_native())) {
-            if (display_commanderhooks::dxgi::HookSwapchain(dxgi_swapchain)) {
-                LogInfo("Successfully hooked DXGI Present calls for swapchain: 0x%p", dxgi_swapchain);
-            } else {
-                LogWarn("Failed to hook DXGI Present calls for swapchain: 0x%p", dxgi_swapchain);
-            }
-        } else {
-            LogWarn("Could not get DXGI swapchain from ReShade swapchain for Present "
-                    "hooking");
-        }
-    }
+    hookToSwapChain(swapchain);
 }
 
 HANDLE g_timer_handle = nullptr;
@@ -622,6 +634,7 @@ void HandleFpsLimiter() {
 void OnPresentUpdateBefore(reshade::api::command_queue * /*queue*/, reshade::api::swapchain *swapchain,
                            const reshade::api::rect * /*source_rect*/, const reshade::api::rect * /*dest_rect*/,
                            uint32_t /*dirty_rect_count*/, const reshade::api::rect * /*dirty_rects*/) {
+    hookToSwapChain(swapchain);
 
     HandleRenderStartAndEndTimes();
 

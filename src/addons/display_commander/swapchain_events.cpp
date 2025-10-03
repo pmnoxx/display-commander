@@ -38,11 +38,17 @@ std::atomic<bool> g_initialized{false};
 
 
 void hookToSwapChain(reshade::api::swapchain *swapchain) {
-    static bool initialized = false;
-    if (initialized || swapchain == nullptr || swapchain->get_hwnd() == nullptr) {
+
+    static reshade::api::swapchain *last_swapchain = nullptr;
+    if (last_swapchain == swapchain || swapchain == nullptr || swapchain->get_hwnd() == nullptr) {
         return;
     }
-    initialized = true;
+    last_swapchain = swapchain;
+
+    //..static bool initialized = false;
+    //if (initialized || swapchain == nullptr || swapchain->get_hwnd() == nullptr) {
+    //    return;
+    //
     LogInfo("onInitSwapChain: swapchain: 0x%p", swapchain);
 
     // Schedule auto-apply even on resizes (generation counter ensures only latest

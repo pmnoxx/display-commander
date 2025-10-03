@@ -134,6 +134,13 @@ void OverrideReShadeSettings() {
     reshade::set_config_value(nullptr, "GENERAL", "CheckForUpdates", 0);
     LogInfo("ReShade settings override - CheckForUpdates set to 0 (disabled)");
 
+    // Set LoadFromDllMain to 1 and log previous value
+    int32_t load_from_dll_main = 0;
+    reshade::get_config_value(nullptr, "ADDON", "LoadFromDllMain", load_from_dll_main);
+    LogInfo("ReShade settings override - LoadFromDllMain previous value: %d", load_from_dll_main);
+    reshade::set_config_value(nullptr, "ADDON", "LoadFromDllMain", 1);
+    LogInfo("ReShade settings override - LoadFromDllMain set to 1");
+
     LogInfo("ReShade settings override completed successfully");
 }
 

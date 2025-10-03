@@ -109,6 +109,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1 *This, 
 
 // Hooked IDXGISwapChain::GetDesc function
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetDesc_Detour(IDXGISwapChain *This, DXGI_SWAP_CHAIN_DESC *pDesc) {
+
     // Increment DXGI GetDesc counter
     g_swapchain_event_counters[SWAPCHAIN_EVENT_DXGI_GETDESC].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
@@ -116,7 +117,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetDesc_Detour(IDXGISwapChain *This, DX
     // Call original function
     if (IDXGISwapChain_GetDesc_Original != nullptr) {
         HRESULT hr = IDXGISwapChain_GetDesc_Original(This, pDesc);
-
+/*
         // Hide HDR capabilities if enabled
         if (SUCCEEDED(hr) && pDesc != nullptr && s_hide_hdr_capabilities.load()) {
             // Check if the format is HDR-capable and hide it
@@ -166,7 +167,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetDesc_Detour(IDXGISwapChain *This, DX
                 getdesc_log_count++;
             }
         }
-
+*/
         return hr;
     }
 
@@ -183,7 +184,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetDesc1_Detour(IDXGISwapChain1 *This, 
     // Call original function
     if (IDXGISwapChain_GetDesc1_Original != nullptr) {
         HRESULT hr = IDXGISwapChain_GetDesc1_Original(This, pDesc);
-
+/*
         // Hide HDR capabilities if enabled
         if (SUCCEEDED(hr) && pDesc != nullptr && s_hide_hdr_capabilities.load()) {
             // Check if the format is HDR-capable and hide it
@@ -232,7 +233,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetDesc1_Detour(IDXGISwapChain1 *This, 
                 getdesc1_log_count++;
             }
         }
-
+*/
         return hr;
     }
 
@@ -594,38 +595,20 @@ bool HookSwapchainVTable(IDXGISwapChain *swapchain) {
     }
 
     // Hook GetDesc (index 12 in IDXGISwapChain vtable)
-    if (MH_CreateHook(vtable[12], IDXGISwapChain_GetDesc_Detour, (LPVOID *)&IDXGISwapChain_GetDesc_Original) != MH_OK) {
-        LogError("Failed to create IDXGISwapChain::GetDesc hook");
-        return false;
-    }
+
     // Hook GetDesc1 (index 18 in IDXGISwapChain1+ vtable) - only if the swapchain supports it
     // Check if this is IDXGISwapChain1 or higher by checking if the method exists
-    if (vtable[18] != nullptr) {
-        if (MH_CreateHook(vtable[18], IDXGISwapChain_GetDesc1_Detour, (LPVOID *)&IDXGISwapChain_GetDesc1_Original) != MH_OK) {
-            LogError("Failed to create IDXGISwapChain1::GetDesc1 hook");
-            return false;
-        }
-    }
+
     // Hook Present1 (index 22 in IDXGISwapChain1+ vtable) - only if the swapchain supports it
     // Check if this is IDXGISwapChain1 or higher by checking if the method exists
-    if (vtable[22] != nullptr) {
-        if (MH_CreateHook(vtable[22], IDXGISwapChain_Present1_Detour, (LPVOID *)&IDXGISwapChain_Present1_Original) != MH_OK) {
-            LogError("Failed to create IDXGISwapChain1::Present1 hook");
-            return false;
-        }
-    }
+
 
 
     // Hook CheckColorSpaceSupport (index 37 in IDXGISwapChain3+ vtable) - only if the swapchain supports it
     // Check if this is IDXGISwapChain3 or higher by checking if the method exists
     // Reference: Windows SDK dxgi1_4.h - IDXGISwapChain3 interface definition
     // Documentation: docs/DXGI_VTABLE_INDICES.md - Complete vtable index reference
-    if (vtable[37] != nullptr) {
-        if (MH_CreateHook(vtable[37], IDXGISwapChain_CheckColorSpaceSupport_Detour, (LPVOID *)&IDXGISwapChain_CheckColorSpaceSupport_Original) != MH_OK) {
-            LogError("Failed to create IDXGISwapChain3::CheckColorSpaceSupport hook");
-            return false;
-        }
-    }
+
 
     // Hook all additional DXGI methods (indices 9-17, 19-21, 23-39)
     // IDXGISwapChain methods (9-17)
@@ -643,6 +626,10 @@ bool HookSwapchainVTable(IDXGISwapChain *swapchain) {
         if (MH_CreateHook(vtable[11], IDXGISwapChain_GetFullscreenState_Detour, (LPVOID *)&IDXGISwapChain_GetFullscreenState_Original) != MH_OK) {
             LogError("Failed to create IDXGISwapChain::GetFullscreenState hook");
         }
+    }
+    if (MH_CreateHook(vtable[12], IDXGISwapChain_GetDesc_Detour, (LPVOID *)&IDXGISwapChain_GetDesc_Original) != MH_OK) {
+        LogError("Failed to create IDXGISwapChain::GetDesc hook");
+       // return false;
     }
     if (vtable[13] != nullptr) {
         if (MH_CreateHook(vtable[13], IDXGISwapChain_ResizeBuffers_Detour, (LPVOID *)&IDXGISwapChain_ResizeBuffers_Original) != MH_OK) {
@@ -669,7 +656,12 @@ bool HookSwapchainVTable(IDXGISwapChain *swapchain) {
             LogError("Failed to create IDXGISwapChain::GetLastPresentCount hook");
         }
     }
-
+    if (vtable[18] != nullptr) {
+        if (MH_CreateHook(vtable[18], IDXGISwapChain_GetDesc1_Detour, (LPVOID *)&IDXGISwapChain_GetDesc1_Original) != MH_OK) {
+            LogError("Failed to create IDXGISwapChain1::GetDesc1 hook");
+            return false;
+        }
+    }
     // IDXGISwapChain1 methods (19-21, 23-28)
     if (vtable[19] != nullptr) {
         if (MH_CreateHook(vtable[19], IDXGISwapChain_GetFullscreenDesc_Detour, (LPVOID *)&IDXGISwapChain_GetFullscreenDesc_Original) != MH_OK) {
@@ -684,6 +676,12 @@ bool HookSwapchainVTable(IDXGISwapChain *swapchain) {
     if (vtable[21] != nullptr) {
         if (MH_CreateHook(vtable[21], IDXGISwapChain_GetCoreWindow_Detour, (LPVOID *)&IDXGISwapChain_GetCoreWindow_Original) != MH_OK) {
             LogError("Failed to create IDXGISwapChain1::GetCoreWindow hook");
+        }
+    }
+    if (vtable[22] != nullptr) {
+        if (MH_CreateHook(vtable[22], IDXGISwapChain_Present1_Detour, (LPVOID *)&IDXGISwapChain_Present1_Original) != MH_OK) {
+            LogError("Failed to create IDXGISwapChain1::Present1 hook");
+            return false;
         }
     }
     if (vtable[23] != nullptr) {
@@ -760,6 +758,12 @@ bool HookSwapchainVTable(IDXGISwapChain *swapchain) {
             LogError("Failed to create IDXGISwapChain3::GetCurrentBackBufferIndex hook");
         }
     }
+    if (vtable[37] != nullptr) {
+        if (MH_CreateHook(vtable[37], IDXGISwapChain_CheckColorSpaceSupport_Detour, (LPVOID *)&IDXGISwapChain_CheckColorSpaceSupport_Original) != MH_OK) {
+            LogError("Failed to create IDXGISwapChain3::CheckColorSpaceSupport hook");
+            //return false;
+        }
+    }
     if (vtable[38] != nullptr) {
         if (MH_CreateHook(vtable[38], IDXGISwapChain_SetColorSpace1_Detour, (LPVOID *)&IDXGISwapChain_SetColorSpace1_Original) != MH_OK) {
             LogError("Failed to create IDXGISwapChain3::SetColorSpace1 hook");
@@ -777,51 +781,25 @@ bool HookSwapchainVTable(IDXGISwapChain *swapchain) {
       //  return false;
     }
 
-    // Enable the GetDesc hook
-    if (MH_EnableHook(vtable[12]) != MH_OK) {
-        LogError("Failed to enable IDXGISwapChain::GetDesc hook");
-      //  return false;
-    }
-
-    // Enable the GetDesc1 hook (if it was created)
-    if (vtable[18] != nullptr) {
-        if (MH_EnableHook(vtable[18]) != MH_OK) {
-            LogError("Failed to enable IDXGISwapChain1::GetDesc1 hook");
-       //     return false;
-        }
-    }
-
-
-    // Enable the Present1 hook (if it was created)
-    if (vtable[22] != nullptr) {
-        if (MH_EnableHook(vtable[22]) != MH_OK) {
-            LogError("Failed to enable IDXGISwapChain1::Present1 hook");
-        //    return false;
-        }
-    }
-    // Enable the CheckColorSpaceSupport hook (if it was created)
-    if (vtable[37] != nullptr) {
-        if (MH_EnableHook(vtable[37]) != MH_OK) {
-           LogError("Failed to enable IDXGISwapChain3::CheckColorSpaceSupport hook");
-          //  return false;
-        }
-    }
 
     // Enable all additional DXGI hooks
     // IDXGISwapChain methods (9-17)
     if (vtable[9] != nullptr) MH_EnableHook(vtable[9]);
     if (vtable[10] != nullptr) MH_EnableHook(vtable[10]);
     if (vtable[11] != nullptr) MH_EnableHook(vtable[11]);
+    if (vtable[12] != nullptr) MH_EnableHook(vtable[12]);
     if (vtable[13] != nullptr) MH_EnableHook(vtable[13]);
     if (vtable[14] != nullptr) MH_EnableHook(vtable[14]);
     if (vtable[15] != nullptr) MH_EnableHook(vtable[15]);
     if (vtable[16] != nullptr) MH_EnableHook(vtable[16]);
     if (vtable[17] != nullptr) MH_EnableHook(vtable[17]);
 
-    // IDXGISwapChain1 methods (19-21, 23-28)
+    // IDXGISwapChain1 methods (18-28)
+    if (vtable[18] != nullptr) MH_EnableHook(vtable[18]);
     if (vtable[19] != nullptr) MH_EnableHook(vtable[19]);
     if (vtable[20] != nullptr) MH_EnableHook(vtable[20]);
     if (vtable[21] != nullptr) MH_EnableHook(vtable[21]);
+    if (vtable[22] != nullptr) MH_EnableHook(vtable[22]);
     if (vtable[23] != nullptr) MH_EnableHook(vtable[23]);
     if (vtable[24] != nullptr) MH_EnableHook(vtable[24]);
     if (vtable[25] != nullptr) MH_EnableHook(vtable[25]);
@@ -840,6 +818,7 @@ bool HookSwapchainVTable(IDXGISwapChain *swapchain) {
 
     // IDXGISwapChain3 methods (36, 38-39)
     if (vtable[36] != nullptr) MH_EnableHook(vtable[36]);
+    if (vtable[37] != nullptr) MH_EnableHook(vtable[37]);
     if (vtable[38] != nullptr) MH_EnableHook(vtable[38]);
     if (vtable[39] != nullptr) MH_EnableHook(vtable[39]);
 

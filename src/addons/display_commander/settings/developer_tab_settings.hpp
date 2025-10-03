@@ -33,6 +33,7 @@ class DeveloperTabSettings {
 
     // HDR and Colorspace Settings
     BoolSettingRef fix_hdr10_colorspace;
+    BoolSettingRef hide_hdr_capabilities;
 
     // NVAPI Settings
     BoolSettingRef nvapi_fullscreen_prevention;

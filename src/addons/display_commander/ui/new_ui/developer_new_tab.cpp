@@ -34,7 +34,13 @@ void DrawDeveloperNewTab() {
     ImGui::Spacing();
     ImGui::Separator();
 
-    // NVAPI Settings Section (merged with HDR and Colorspace Settings)
+    // HDR and Display Settings Section
+    DrawHdrDisplaySettings();
+
+    ImGui::Spacing();
+    ImGui::Separator();
+
+    // NVAPI Settings Section
     DrawNvapiSettings();
 
     ImGui::Spacing();
@@ -141,6 +147,22 @@ void DrawDeveloperSettings() {
     }
 }
 
+void DrawHdrDisplaySettings() {
+    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "=== HDR and Display Settings ===");
+
+    // Hide HDR Capabilities
+    if (CheckboxSetting(settings::g_developerTabSettings.hide_hdr_capabilities,
+                        "Hide HDR Capabilities from Applications")) {
+        s_hide_hdr_capabilities.store(settings::g_developerTabSettings.hide_hdr_capabilities.GetValue());
+        LogInfo("HDR hiding setting changed to: %s",
+                settings::g_developerTabSettings.hide_hdr_capabilities.GetValue() ? "true" : "false");
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Hides HDR capabilities from applications by intercepting CheckColorSpaceSupport and GetDesc calls.\n"
+                         "This can prevent games from detecting HDR support and force them to use SDR mode.");
+    }
+}
+
 void DrawNvapiSettings() {
     ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "=== NVAPI Settings ===");
 
@@ -149,11 +171,6 @@ void DrawNvapiSettings() {
                         "Set ReShade Effects Processing to HDR10 Colorspace")) {
         s_fix_hdr10_colorspace.store(settings::g_developerTabSettings.fix_hdr10_colorspace.GetValue());
         s_restart_needed_nvapi.store(true);
-    }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip(
-            "Automatically fix HDR10 colorspace when swapchain format is RGB10A2 and colorspace is "
-            "currently sRGB. Only works when the game is using sRGB colorspace.");
     }
 
     // NVAPI Fullscreen Prevention

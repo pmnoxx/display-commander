@@ -153,6 +153,9 @@ extern std::atomic<bool> s_prevent_fullscreen;
 // Fix HDR10 color space when backbuffer is RGB10A2
 extern std::atomic<bool> s_fix_hdr10_colorspace;
 
+// Hide HDR capabilities from applications
+extern std::atomic<bool> s_hide_hdr_capabilities;
+
 // Window Management Settings
 extern std::atomic<WindowAlignment> s_window_alignment;  // Window alignment when repositioning is needed
 extern std::atomic<int> s_dxgi_composition_state;
@@ -361,7 +364,9 @@ enum SwapchainEventIndex {
     SWAPCHAIN_EVENT_DXGI_PRESENT = 38,
     SWAPCHAIN_EVENT_DXGI_PRESENT1 = 39,
     SWAPCHAIN_EVENT_DXGI_GETDESC = 40,
-    NUM_EVENTS = 41
+    SWAPCHAIN_EVENT_DXGI_GETDESC1 = 41,
+    SWAPCHAIN_EVENT_DXGI_CHECKCOLORSPACESUPPORT = 42,
+    NUM_EVENTS = 43
 };
 
 // Swapchain event counters - reset on each swapchain creation

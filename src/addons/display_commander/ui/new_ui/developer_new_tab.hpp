@@ -8,6 +8,9 @@ void DrawDeveloperNewTab();
 // Draw developer settings section
 void DrawDeveloperSettings();
 
+// Draw HDR and display settings section
+void DrawHdrDisplaySettings();
+
 // Draw HDR and colorspace settings section
 void DrawHdrColorspaceSettings();
 

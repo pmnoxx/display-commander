@@ -359,8 +359,9 @@ enum SwapchainEventIndex {
     SWAPCHAIN_EVENT_RESOLVE_QUERY_DATA = 37,
     // DXGI Present hooks
     SWAPCHAIN_EVENT_DXGI_PRESENT = 38,
-    SWAPCHAIN_EVENT_DXGI_GETDESC = 39,
-    NUM_EVENTS = 40
+    SWAPCHAIN_EVENT_DXGI_PRESENT1 = 39,
+    SWAPCHAIN_EVENT_DXGI_GETDESC = 40,
+    NUM_EVENTS = 41
 };
 
 // Swapchain event counters - reset on each swapchain creation

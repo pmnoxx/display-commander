@@ -71,6 +71,7 @@ IDXGISwapChain_ResizeBuffers1_pfn IDXGISwapChain_ResizeBuffers1_Original = nullp
 
 // Hook state
 static std::atomic<bool> g_dxgi_present_hooks_installed{false};
+static std::atomic<bool> g_createswapchain_vtable_hooked{false};
 
 // Hooked IDXGISwapChain::Present function
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain *This, UINT SyncInterval, UINT Flags) {
@@ -887,6 +888,12 @@ bool HookFactoryVTable(IDXGIFactory *factory) {
         return false;
     }
 
+    // Check if we've already hooked the CreateSwapChain vtable
+    if (g_createswapchain_vtable_hooked.load()) {
+        LogInfo("IDXGIFactory::CreateSwapChain vtable already hooked, skipping");
+        return true;
+    }
+
     // Get the vtable
     void **vtable = *(void ***)factory;
 
@@ -908,8 +915,23 @@ bool HookFactoryVTable(IDXGIFactory *factory) {
 
     // Hook CreateSwapChain (index 10 in IDXGIFactory vtable)
     if (vtable[10] != nullptr) {
-        if (MH_CreateHook(vtable[10], IDXGIFactory_CreateSwapChain_Detour, (LPVOID *)&IDXGIFactory_CreateSwapChain_Original) != MH_OK) {
-            LogError("Failed to create IDXGIFactory::CreateSwapChain hook");
+        LogInfo("Attempting to hook IDXGIFactory::CreateSwapChain at vtable[10] = 0x%p", vtable[10]);
+
+        // Check if we've already set the original function pointer (indicates already hooked)
+        if (IDXGIFactory_CreateSwapChain_Original != nullptr) {
+            LogWarn("IDXGIFactory::CreateSwapChain already hooked, skipping");
+            g_createswapchain_vtable_hooked.store(true);
+            return true; // Consider this success since it's already hooked
+        }
+
+        MH_STATUS hook_status = MH_CreateHook(vtable[10], IDXGIFactory_CreateSwapChain_Detour, (LPVOID *)&IDXGIFactory_CreateSwapChain_Original);
+        if (hook_status != MH_OK) {
+            LogError("Failed to create IDXGIFactory::CreateSwapChain hook - Status: %d (0x%x)", hook_status, hook_status);
+
+            // Check if MinHook is initialized
+            MH_STATUS init_status = MH_Initialize();
+            LogInfo("MinHook initialization status: %d (0x%x)", init_status, init_status);
+
             return false;
         }
 
@@ -920,6 +942,7 @@ bool HookFactoryVTable(IDXGIFactory *factory) {
         }
 
         LogInfo("Successfully hooked IDXGIFactory::CreateSwapChain for factory: 0x%p", factory);
+        g_createswapchain_vtable_hooked.store(true);
         return true;
     }
 

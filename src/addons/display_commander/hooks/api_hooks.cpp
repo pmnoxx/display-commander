@@ -23,6 +23,8 @@ GetForegroundWindow_pfn GetForegroundWindow_Original = nullptr;
 GetActiveWindow_pfn GetActiveWindow_Original = nullptr;
 GetGUIThreadInfo_pfn GetGUIThreadInfo_Original = nullptr;
 SetThreadExecutionState_pfn SetThreadExecutionState_Original = nullptr;
+CreateDXGIFactory_pfn CreateDXGIFactory_Original = nullptr;
+CreateDXGIFactory1_pfn CreateDXGIFactory1_Original = nullptr;
 
 // Hook state
 static std::atomic<bool> g_api_hooks_installed{false};
@@ -141,6 +143,46 @@ EXECUTION_STATE WINAPI SetThreadExecutionState_Detour(EXECUTION_STATE esFlags) {
                                             : SetThreadExecutionState(esFlags);
 }
 
+// Hooked CreateDXGIFactory function
+HRESULT WINAPI CreateDXGIFactory_Detour(REFIID riid, void **ppFactory) {
+    // Increment counter
+    g_swapchain_event_counters[SWAPCHAIN_EVENT_DXGI_CREATEFACTORY].fetch_add(1);
+    g_swapchain_event_total_count.fetch_add(1);
+
+    // Call original function
+    HRESULT hr = CreateDXGIFactory_Original ? CreateDXGIFactory_Original(riid, ppFactory)
+                                            : CreateDXGIFactory(riid, ppFactory);
+
+    // If successful and we got a factory, hook it
+    if (SUCCEEDED(hr) && ppFactory != nullptr && *ppFactory != nullptr) {
+        IDXGIFactory *factory = static_cast<IDXGIFactory *>(*ppFactory);
+        LogInfo("CreateDXGIFactory succeeded, hooking factory: 0x%p", factory);
+        display_commanderhooks::dxgi::HookFactory(factory);
+    }
+
+    return hr;
+}
+
+// Hooked CreateDXGIFactory1 function
+HRESULT WINAPI CreateDXGIFactory1_Detour(REFIID riid, void **ppFactory) {
+    // Increment counter
+    g_swapchain_event_counters[SWAPCHAIN_EVENT_DXGI_CREATEFACTORY1].fetch_add(1);
+    g_swapchain_event_total_count.fetch_add(1);
+
+    // Call original function
+    HRESULT hr = CreateDXGIFactory1_Original ? CreateDXGIFactory1_Original(riid, ppFactory)
+                                             : CreateDXGIFactory1(riid, ppFactory);
+
+    // If successful and we got a factory, hook it
+    if (SUCCEEDED(hr) && ppFactory != nullptr && *ppFactory != nullptr) {
+        IDXGIFactory *factory = static_cast<IDXGIFactory *>(*ppFactory);
+        LogInfo("CreateDXGIFactory1 succeeded, hooking factory: 0x%p", factory);
+        display_commanderhooks::dxgi::HookFactory(factory);
+    }
+
+    return hr;
+}
+
 bool InstallApiHooks() {
     if (g_api_hooks_installed.load()) {
         LogInfo("API hooks already installed");
@@ -190,6 +232,38 @@ bool InstallApiHooks() {
                       (LPVOID *)&SetThreadExecutionState_Original) != MH_OK) {
         LogError("Failed to create SetThreadExecutionState hook");
         return false;
+    }
+
+    // Hook CreateDXGIFactory - try both system and ReShade versions
+    HMODULE dxgi_module = GetModuleHandleW(L"dxgi.dll");
+    if (dxgi_module) {
+        auto CreateDXGIFactory_sys = reinterpret_cast<decltype(&CreateDXGIFactory)>(GetProcAddress(dxgi_module, "CreateDXGIFactory"));
+        if (CreateDXGIFactory_sys && MH_CreateHook(CreateDXGIFactory_sys, CreateDXGIFactory_Detour, (LPVOID *)&CreateDXGIFactory_Original) == MH_OK) {
+            LogInfo("CreateDXGIFactory system hook created successfully");
+        } else {
+            LogWarn("Failed to create CreateDXGIFactory system hook, trying ReShade version");
+            if (MH_CreateHook(CreateDXGIFactory, CreateDXGIFactory_Detour, (LPVOID *)&CreateDXGIFactory_Original) != MH_OK) {
+                LogError("Failed to create CreateDXGIFactory hook");
+                return false;
+            }
+            LogInfo("CreateDXGIFactory ReShade hook created successfully");
+        }
+    } else {
+        LogError("Failed to get dxgi.dll module handle");
+        return false;
+    }
+
+    // Hook CreateDXGIFactory1 - try both system and ReShade versions
+    auto CreateDXGIFactory1_sys = reinterpret_cast<decltype(&CreateDXGIFactory1)>(GetProcAddress(dxgi_module, "CreateDXGIFactory1"));
+    if (CreateDXGIFactory1_sys && MH_CreateHook(CreateDXGIFactory1_sys, CreateDXGIFactory1_Detour, (LPVOID *)&CreateDXGIFactory1_Original) == MH_OK) {
+        LogInfo("CreateDXGIFactory1 system hook created successfully");
+    } else {
+        LogWarn("Failed to create CreateDXGIFactory1 system hook, trying ReShade version");
+        if (MH_CreateHook(CreateDXGIFactory1, CreateDXGIFactory1_Detour, (LPVOID *)&CreateDXGIFactory1_Original) != MH_OK) {
+            LogError("Failed to create CreateDXGIFactory1 hook");
+            return false;
+        }
+        LogInfo("CreateDXGIFactory1 ReShade hook created successfully");
     }
 
     // Enable all hooks
@@ -304,6 +378,8 @@ void UninstallApiHooks() {
     MH_RemoveHook(GetActiveWindow);
     MH_RemoveHook(GetGUIThreadInfo);
     MH_RemoveHook(SetThreadExecutionState);
+    MH_RemoveHook(CreateDXGIFactory);
+    MH_RemoveHook(CreateDXGIFactory1);
 
     // Clean up
     GetFocus_Original = nullptr;
@@ -311,6 +387,8 @@ void UninstallApiHooks() {
     GetActiveWindow_Original = nullptr;
     GetGUIThreadInfo_Original = nullptr;
     SetThreadExecutionState_Original = nullptr;
+    CreateDXGIFactory_Original = nullptr;
+    CreateDXGIFactory1_Original = nullptr;
 
     g_api_hooks_installed.store(false);
     LogInfo("API hooks uninstalled successfully");

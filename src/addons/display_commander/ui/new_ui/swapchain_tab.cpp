@@ -24,54 +24,6 @@ void DrawSwapchainEventCounters() {
         ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Event Counters (Green = Working, Red = Not Working)");
         ImGui::Separator();
 
-        // Event visibility flags - set to false to hide specific events
-        static bool event_visibility[NUM_EVENTS] = {
-            true,   // SWAPCHAIN_EVENT_BEGIN_RENDER_PASS (0)
-            true,   // SWAPCHAIN_EVENT_END_RENDER_PASS (1)
-            true,   // SWAPCHAIN_EVENT_CREATE_SWAPCHAIN_CAPTURE (2)
-            true,   // SWAPCHAIN_EVENT_INIT_SWAPCHAIN (3)
-            true,   // SWAPCHAIN_EVENT_PRESENT_UPDATE_AFTER (4)
-            true,   // SWAPCHAIN_EVENT_PRESENT_UPDATE_BEFORE (5)
-            true,   // SWAPCHAIN_EVENT_PRESENT_UPDATE_BEFORE2 (6)
-            true,   // SWAPCHAIN_EVENT_INIT_COMMAND_LIST (7)
-            true,   // SWAPCHAIN_EVENT_EXECUTE_COMMAND_LIST (8)
-            true,   // SWAPCHAIN_EVENT_BIND_PIPELINE (9)
-            true,   // SWAPCHAIN_EVENT_INIT_COMMAND_QUEUE (10)
-            true,   // SWAPCHAIN_EVENT_RESET_COMMAND_LIST (11)
-            true,   // SWAPCHAIN_EVENT_PRESENT_FLAGS (12)
-            true,   // SWAPCHAIN_EVENT_DRAW (13)
-            true,   // SWAPCHAIN_EVENT_DRAW_INDEXED (14)
-            true,   // SWAPCHAIN_EVENT_DRAW_OR_DISPATCH_INDIRECT (15)
-            // New power saving events
-            true,   // SWAPCHAIN_EVENT_DISPATCH (16)
-            true,   // SWAPCHAIN_EVENT_DISPATCH_MESH (17)
-            true,   // SWAPCHAIN_EVENT_DISPATCH_RAYS (18)
-            true,   // SWAPCHAIN_EVENT_COPY_RESOURCE (19)
-            true,   // SWAPCHAIN_EVENT_UPDATE_BUFFER_REGION (20)
-            true,   // SWAPCHAIN_EVENT_UPDATE_BUFFER_REGION_COMMAND (21)
-            true,   // SWAPCHAIN_EVENT_BIND_RESOURCE (22)
-            true,   // SWAPCHAIN_EVENT_MAP_RESOURCE (23)
-            // Additional frame-specific GPU operations for power saving
-            true,   // SWAPCHAIN_EVENT_COPY_BUFFER_REGION (24)
-            true,   // SWAPCHAIN_EVENT_COPY_BUFFER_TO_TEXTURE (25)
-            true,   // SWAPCHAIN_EVENT_COPY_TEXTURE_TO_BUFFER (26)
-            true,   // SWAPCHAIN_EVENT_COPY_TEXTURE_REGION (27)
-            true,   // SWAPCHAIN_EVENT_RESOLVE_TEXTURE_REGION (28)
-            true,   // SWAPCHAIN_EVENT_CLEAR_RENDER_TARGET_VIEW (29)
-            true,   // SWAPCHAIN_EVENT_CLEAR_DEPTH_STENCIL_VIEW (30)
-            true,   // SWAPCHAIN_EVENT_CLEAR_UNORDERED_ACCESS_VIEW_UINT (31)
-            true,   // SWAPCHAIN_EVENT_CLEAR_UNORDERED_ACCESS_VIEW_FLOAT (32)
-            true,   // SWAPCHAIN_EVENT_GENERATE_MIPMAPS (33)
-            true,   // SWAPCHAIN_EVENT_BLIT (34)
-            true,   // SWAPCHAIN_EVENT_BEGIN_QUERY (35)
-            true,   // SWAPCHAIN_EVENT_END_QUERY (36)
-            true,   // SWAPCHAIN_EVENT_RESOLVE_QUERY_DATA (37)
-    true,   // SWAPCHAIN_EVENT_DXGI_PRESENT (38)
-    true,   // SWAPCHAIN_EVENT_DXGI_PRESENT1 (39)
-    true,   // SWAPCHAIN_EVENT_DXGI_GETDESC (40)
-    true,   // SWAPCHAIN_EVENT_DXGI_GETDESC1 (41)
-    true    // SWAPCHAIN_EVENT_DXGI_CHECKCOLORSPACESUPPORT (42)
-        };
 
         // Display each event counter with color coding
         static const char* event_names[NUM_EVENTS] = {
@@ -115,34 +67,102 @@ void DrawSwapchainEventCounters() {
             "SWAPCHAIN_EVENT_BEGIN_QUERY (35)",
             "SWAPCHAIN_EVENT_END_QUERY (36)",
             "SWAPCHAIN_EVENT_RESOLVE_QUERY_DATA (37)",
+            // DXGI Present hooks
             "SWAPCHAIN_EVENT_DXGI_PRESENT (38)",
-            "SWAPCHAIN_EVENT_DXGI_PRESENT1 (39)",
-            "SWAPCHAIN_EVENT_DXGI_GETDESC (40)",
-            "SWAPCHAIN_EVENT_DXGI_GETDESC1 (41)",
-            "SWAPCHAIN_EVENT_DXGI_CHECKCOLORSPACESUPPORT (42)"
+            "SWAPCHAIN_EVENT_DXGI_GETBUFFER (39)",
+            "SWAPCHAIN_EVENT_DXGI_SETFULLSCREENSTATE (40)",
+            "SWAPCHAIN_EVENT_DXGI_GETFULLSCREENSTATE (41)",
+            "SWAPCHAIN_EVENT_DXGI_GETDESC (42)",
+            "SWAPCHAIN_EVENT_DXGI_RESIZEBUFFERS (43)",
+            "SWAPCHAIN_EVENT_DXGI_RESIZETARGET (44)",
+            "SWAPCHAIN_EVENT_DXGI_GETCONTAININGOUTPUT (45)",
+            "SWAPCHAIN_EVENT_DXGI_GETFRAMESTATISTICS (46)",
+            "SWAPCHAIN_EVENT_DXGI_GETLASTPRESENTCOUNT (47)",
+            "SWAPCHAIN_EVENT_DXGI_GETDESC1 (48)",
+            "SWAPCHAIN_EVENT_DXGI_GETFULLSCREENDESC (49)",
+            "SWAPCHAIN_EVENT_DXGI_GETHWND (50)",
+            "SWAPCHAIN_EVENT_DXGI_GETCOREWINDOW (51)",
+            "SWAPCHAIN_EVENT_DXGI_PRESENT1 (52)",
+            "SWAPCHAIN_EVENT_DXGI_ISTEMPORARYMONOSUPPORTED (53)",
+            "SWAPCHAIN_EVENT_DXGI_GETRESTRICTTOOUTPUT (54)",
+            "SWAPCHAIN_EVENT_DXGI_SETBACKGROUNDCOLOR (55)",
+            "SWAPCHAIN_EVENT_DXGI_GETBACKGROUNDCOLOR (56)",
+            "SWAPCHAIN_EVENT_DXGI_SETROTATION (57)",
+            "SWAPCHAIN_EVENT_DXGI_GETROTATION (58)",
+            "SWAPCHAIN_EVENT_DXGI_SETSOURCESIZE (59)",
+            "SWAPCHAIN_EVENT_DXGI_GETSOURCESIZE (60)",
+            "SWAPCHAIN_EVENT_DXGI_SETMAXIMUMFRAMELATENCY (61)",
+            "SWAPCHAIN_EVENT_DXGI_GETMAXIMUMFRAMELATENCY (62)",
+            "SWAPCHAIN_EVENT_DXGI_GETFRAMELATENCYWAIABLEOBJECT (63)",
+            "SWAPCHAIN_EVENT_DXGI_SETMATRIXTRANSFORM (64)",
+            "SWAPCHAIN_EVENT_DXGI_GETMATRIXTRANSFORM (65)",
+            "SWAPCHAIN_EVENT_DXGI_GETCURRENTBACKBUFFERINDEX (66)",
+            "SWAPCHAIN_EVENT_DXGI_CHECKCOLORSPACESUPPORT (67)",
+            "SWAPCHAIN_EVENT_DXGI_SETCOLORSPACE1 (68)",
+            "SWAPCHAIN_EVENT_DXGI_RESIZEBUFFERS1 (69)",
+            "SWAPCHAIN_EVENT_DXGI_FACTORY_CREATESWAPCHAIN (70)",
+            "SWAPCHAIN_EVENT_DXGI_CREATEFACTORY (71)",
+            "SWAPCHAIN_EVENT_DXGI_CREATEFACTORY1 (72)"
         };
 
         uint32_t total_events = 0;
-        uint32_t visible_events = 0;
 
-        for (int i = 0; i < NUM_EVENTS; i++) {
-            // Skip events that are set to invisible
-            if (!event_visibility[i]) {
-                continue;
+        // Group events by category for better organization
+        struct EventGroup {
+            const char* name;
+            int start_idx;
+            int end_idx;
+            ImVec4 color;
+        };
+
+        static EventGroup event_groups[] = {
+            {"ReShade Events (0-37)", 0, 37, ImVec4(0.8f, 0.8f, 1.0f, 1.0f)},
+            {"DXGI Core Methods (38-47)", 38, 47, ImVec4(0.8f, 1.0f, 0.8f, 1.0f)},
+            {"DXGI SwapChain1 Methods (48-58)", 48, 58, ImVec4(1.0f, 0.8f, 0.8f, 1.0f)},
+            {"DXGI SwapChain2 Methods (59-65)", 59, 65, ImVec4(1.0f, 1.0f, 0.8f, 1.0f)},
+            {"DXGI SwapChain3 Methods (66-69)", 66, 69, ImVec4(0.8f, 1.0f, 1.0f, 1.0f)},
+            {"DXGI Factory Methods (70-72)", 70, 72, ImVec4(1.0f, 0.8f, 1.0f, 1.0f)}
+        };
+
+        for (const auto& group : event_groups) {
+            if (ImGui::CollapsingHeader(group.name, ImGuiTreeNodeFlags_DefaultOpen)) {
+                ImGui::Indent();
+
+                for (int i = group.start_idx; i <= group.end_idx && i < NUM_EVENTS; i++) {
+                    uint32_t count = g_swapchain_event_counters[i].load();
+                    total_events += count;
+
+                    // Green if > 0, red if 0
+                    ImVec4 color = (count > 0) ? ImVec4(0.0f, 1.0f, 0.0f, 1.0f) : ImVec4(1.0f, 0.0f, 0.0f, 1.0f);
+                    ImGui::TextColored(color, "%s: %u", event_names[i], count);
+                }
+
+                ImGui::Unindent();
             }
-
-            uint32_t count = g_swapchain_event_counters[i].load();
-            total_events += count;
-            visible_events++;
-
-            // Green if > 0, red if 0
-            ImVec4 color = (count > 0) ? ImVec4(0.0f, 1.0f, 0.0f, 1.0f) : ImVec4(1.0f, 0.0f, 0.0f, 1.0f);
-            ImGui::TextColored(color, "%s: %u", event_names[i], count);
         }
 
         ImGui::Separator();
-        ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "Total Events (Visible): %u", total_events);
-        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Hidden Events: %u", NUM_EVENTS - visible_events);
+        ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "Total Events: %u", total_events);
+
+        // DXGI-specific summary
+        uint32_t dxgi_events = 0;
+        uint32_t dxgi_active = 0;
+        for (int i = 38; i < NUM_EVENTS; i++) {
+            uint32_t count = g_swapchain_event_counters[i].load();
+            dxgi_events += count;
+            if (count > 0) dxgi_active++;
+        }
+
+        ImGui::Spacing();
+        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "DXGI Hooks Summary:");
+        ImGui::Text("  Total DXGI Calls: %u", dxgi_events);
+        ImGui::Text("  Active DXGI Methods: %u/33", dxgi_active);
+
+        if (dxgi_active > 0) {
+            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "  ✓ DXGI hooks are working correctly");
+        } else {
+            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "  ⚠ No DXGI method calls detected");
+        }
 
         // Show status message
         if (total_events > 0) {

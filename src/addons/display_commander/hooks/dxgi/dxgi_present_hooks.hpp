@@ -41,12 +41,86 @@ using IDXGISwapChain_GetDesc1_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGISwapChain1
 // Function pointer types for DXGI CheckColorSpaceSupport functions (IDXGISwapChain3)
 using IDXGISwapChain_CheckColorSpaceSupport_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGISwapChain3 *This, DXGI_COLOR_SPACE_TYPE ColorSpace, UINT *pColorSpaceSupport);
 
+// Function pointer types for DXGI Factory CreateSwapChain functions
+using IDXGIFactory_CreateSwapChain_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGIFactory *This, IUnknown *pDevice, DXGI_SWAP_CHAIN_DESC *pDesc, IDXGISwapChain **ppSwapChain);
+
+// Additional function pointer types for DXGI methods
+using IDXGISwapChain_GetBuffer_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGISwapChain *This, UINT Buffer, REFIID riid, void **ppSurface);
+using IDXGISwapChain_SetFullscreenState_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGISwapChain *This, BOOL Fullscreen, IDXGIOutput *pTarget);
+using IDXGISwapChain_GetFullscreenState_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGISwapChain *This, BOOL *pFullscreen, IDXGIOutput **ppTarget);
+using IDXGISwapChain_ResizeBuffers_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGISwapChain *This, UINT BufferCount, UINT Width, UINT Height, DXGI_FORMAT NewFormat, UINT SwapChainFlags);
+using IDXGISwapChain_ResizeTarget_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGISwapChain *This, const DXGI_MODE_DESC *pNewTargetParameters);
+using IDXGISwapChain_GetContainingOutput_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGISwapChain *This, IDXGIOutput **ppOutput);
+using IDXGISwapChain_GetFrameStatistics_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGISwapChain *This, DXGI_FRAME_STATISTICS *pStats);
+using IDXGISwapChain_GetLastPresentCount_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGISwapChain *This, UINT *pLastPresentCount);
+
+// IDXGISwapChain1 function pointer types
+using IDXGISwapChain_GetFullscreenDesc_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGISwapChain1 *This, DXGI_SWAP_CHAIN_FULLSCREEN_DESC *pDesc);
+using IDXGISwapChain_GetHwnd_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGISwapChain1 *This, HWND *pHwnd);
+using IDXGISwapChain_GetCoreWindow_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGISwapChain1 *This, REFIID refiid, void **ppUnk);
+using IDXGISwapChain_IsTemporaryMonoSupported_pfn = BOOL(STDMETHODCALLTYPE *)(IDXGISwapChain1 *This);
+using IDXGISwapChain_GetRestrictToOutput_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGISwapChain1 *This, IDXGIOutput **ppRestrictToOutput);
+using IDXGISwapChain_SetBackgroundColor_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGISwapChain1 *This, const DXGI_RGBA *pColor);
+using IDXGISwapChain_GetBackgroundColor_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGISwapChain1 *This, DXGI_RGBA *pColor);
+using IDXGISwapChain_SetRotation_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGISwapChain1 *This, DXGI_MODE_ROTATION Rotation);
+using IDXGISwapChain_GetRotation_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGISwapChain1 *This, DXGI_MODE_ROTATION *pRotation);
+
+// IDXGISwapChain2 function pointer types
+using IDXGISwapChain_SetSourceSize_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGISwapChain2 *This, UINT Width, UINT Height);
+using IDXGISwapChain_GetSourceSize_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGISwapChain2 *This, UINT *pWidth, UINT *pHeight);
+using IDXGISwapChain_SetMaximumFrameLatency_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGISwapChain2 *This, UINT MaxLatency);
+using IDXGISwapChain_GetMaximumFrameLatency_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGISwapChain2 *This, UINT *pMaxLatency);
+using IDXGISwapChain_GetFrameLatencyWaitableObject_pfn = HANDLE(STDMETHODCALLTYPE *)(IDXGISwapChain2 *This);
+using IDXGISwapChain_SetMatrixTransform_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGISwapChain2 *This, const DXGI_MATRIX_3X2_F *pMatrix);
+using IDXGISwapChain_GetMatrixTransform_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGISwapChain2 *This, DXGI_MATRIX_3X2_F *pMatrix);
+
+// IDXGISwapChain3 function pointer types
+using IDXGISwapChain_GetCurrentBackBufferIndex_pfn = UINT(STDMETHODCALLTYPE *)(IDXGISwapChain3 *This);
+using IDXGISwapChain_SetColorSpace1_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGISwapChain3 *This, DXGI_COLOR_SPACE_TYPE ColorSpace);
+using IDXGISwapChain_ResizeBuffers1_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGISwapChain3 *This, UINT BufferCount, UINT Width, UINT Height, DXGI_FORMAT Format, UINT SwapChainFlags, const UINT *pCreationNodeMask, IUnknown *const *ppPresentQueue);
+
 // Original function pointers
 extern IDXGISwapChain_Present_pfn IDXGISwapChain_Present_Original;
 extern IDXGISwapChain_Present1_pfn IDXGISwapChain_Present1_Original;
 extern IDXGISwapChain_GetDesc_pfn IDXGISwapChain_GetDesc_Original;
 extern IDXGISwapChain_GetDesc1_pfn IDXGISwapChain_GetDesc1_Original;
 extern IDXGISwapChain_CheckColorSpaceSupport_pfn IDXGISwapChain_CheckColorSpaceSupport_Original;
+extern IDXGIFactory_CreateSwapChain_pfn IDXGIFactory_CreateSwapChain_Original;
+
+// Additional original function pointers
+extern IDXGISwapChain_GetBuffer_pfn IDXGISwapChain_GetBuffer_Original;
+extern IDXGISwapChain_SetFullscreenState_pfn IDXGISwapChain_SetFullscreenState_Original;
+extern IDXGISwapChain_GetFullscreenState_pfn IDXGISwapChain_GetFullscreenState_Original;
+extern IDXGISwapChain_ResizeBuffers_pfn IDXGISwapChain_ResizeBuffers_Original;
+extern IDXGISwapChain_ResizeTarget_pfn IDXGISwapChain_ResizeTarget_Original;
+extern IDXGISwapChain_GetContainingOutput_pfn IDXGISwapChain_GetContainingOutput_Original;
+extern IDXGISwapChain_GetFrameStatistics_pfn IDXGISwapChain_GetFrameStatistics_Original;
+extern IDXGISwapChain_GetLastPresentCount_pfn IDXGISwapChain_GetLastPresentCount_Original;
+
+// IDXGISwapChain1 original function pointers
+extern IDXGISwapChain_GetFullscreenDesc_pfn IDXGISwapChain_GetFullscreenDesc_Original;
+extern IDXGISwapChain_GetHwnd_pfn IDXGISwapChain_GetHwnd_Original;
+extern IDXGISwapChain_GetCoreWindow_pfn IDXGISwapChain_GetCoreWindow_Original;
+extern IDXGISwapChain_IsTemporaryMonoSupported_pfn IDXGISwapChain_IsTemporaryMonoSupported_Original;
+extern IDXGISwapChain_GetRestrictToOutput_pfn IDXGISwapChain_GetRestrictToOutput_Original;
+extern IDXGISwapChain_SetBackgroundColor_pfn IDXGISwapChain_SetBackgroundColor_Original;
+extern IDXGISwapChain_GetBackgroundColor_pfn IDXGISwapChain_GetBackgroundColor_Original;
+extern IDXGISwapChain_SetRotation_pfn IDXGISwapChain_SetRotation_Original;
+extern IDXGISwapChain_GetRotation_pfn IDXGISwapChain_GetRotation_Original;
+
+// IDXGISwapChain2 original function pointers
+extern IDXGISwapChain_SetSourceSize_pfn IDXGISwapChain_SetSourceSize_Original;
+extern IDXGISwapChain_GetSourceSize_pfn IDXGISwapChain_GetSourceSize_Original;
+extern IDXGISwapChain_SetMaximumFrameLatency_pfn IDXGISwapChain_SetMaximumFrameLatency_Original;
+extern IDXGISwapChain_GetMaximumFrameLatency_pfn IDXGISwapChain_GetMaximumFrameLatency_Original;
+extern IDXGISwapChain_GetFrameLatencyWaitableObject_pfn IDXGISwapChain_GetFrameLatencyWaitableObject_Original;
+extern IDXGISwapChain_SetMatrixTransform_pfn IDXGISwapChain_SetMatrixTransform_Original;
+extern IDXGISwapChain_GetMatrixTransform_pfn IDXGISwapChain_GetMatrixTransform_Original;
+
+// IDXGISwapChain3 original function pointers
+extern IDXGISwapChain_GetCurrentBackBufferIndex_pfn IDXGISwapChain_GetCurrentBackBufferIndex_Original;
+extern IDXGISwapChain_SetColorSpace1_pfn IDXGISwapChain_SetColorSpace1_Original;
+extern IDXGISwapChain_ResizeBuffers1_pfn IDXGISwapChain_ResizeBuffers1_Original;
 
 // Hooked DXGI Present functions
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain *This, UINT SyncInterval, UINT Flags);
@@ -63,6 +137,9 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetDesc1_Detour(IDXGISwapChain1 *This, 
 // Hooked DXGI CheckColorSpaceSupport functions (IDXGISwapChain3)
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_CheckColorSpaceSupport_Detour(IDXGISwapChain3 *This, DXGI_COLOR_SPACE_TYPE ColorSpace, UINT *pColorSpaceSupport);
 
+// Hooked DXGI Factory CreateSwapChain functions
+HRESULT STDMETHODCALLTYPE IDXGIFactory_CreateSwapChain_Detour(IDXGIFactory *This, IUnknown *pDevice, DXGI_SWAP_CHAIN_DESC *pDesc, IDXGISwapChain **ppSwapChain);
+
 // Hook management
 bool InstallDxgiPresentHooks();
 void UninstallDxgiPresentHooks();
@@ -70,5 +147,8 @@ bool AreDxgiPresentHooksInstalled();
 
 // Hook a specific swapchain when it's created
 bool HookSwapchain(IDXGISwapChain *swapchain);
+
+// Hook a specific factory when it's created
+bool HookFactory(IDXGIFactory *factory);
 
 } // namespace display_commanderhooks::dxgi

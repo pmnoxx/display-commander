@@ -21,6 +21,7 @@ struct HookCallStats {
 
 // Hook call statistics
 enum HookIndex {
+    // user32.dll hooks (0-34)
     HOOK_GetMessageA = 0,
     HOOK_GetMessageW,
     HOOK_PeekMessageA,
@@ -55,16 +56,24 @@ enum HookIndex {
     HOOK_mouse_event,
     HOOK_MapVirtualKey,
     HOOK_MapVirtualKeyEx,
+    HOOK_DisplayConfigGetDeviceInfo,
+
+    // xinput1_4.dll hooks (35-36)
     HOOK_XInputGetState,
     HOOK_XInputGetStateEx,
+
+    // dinput8.dll hooks (37-40)
     HOOK_DirectInputCreateA,
     HOOK_DirectInputCreateW,
     HOOK_DirectInputCreateEx,
     HOOK_DirectInput8Create,
+
+    // kernel32.dll hooks (41-44)
     HOOK_Sleep,
     HOOK_SleepEx,
     HOOK_WaitForSingleObject,
     HOOK_WaitForMultipleObjects,
+
     HOOK_COUNT
 };
 
@@ -103,6 +112,7 @@ using keybd_event_pfn = void(WINAPI *)(BYTE, BYTE, DWORD, ULONG_PTR);
 using mouse_event_pfn = void(WINAPI *)(DWORD, DWORD, DWORD, DWORD, ULONG_PTR);
 using MapVirtualKey_pfn = UINT(WINAPI *)(UINT, UINT);
 using MapVirtualKeyEx_pfn = UINT(WINAPI *)(UINT, UINT, HKL);
+using DisplayConfigGetDeviceInfo_pfn = LONG(WINAPI *)(DISPLAYCONFIG_DEVICE_INFO_HEADER *);
 
 // Original function pointers
 extern GetMessageA_pfn GetMessageA_Original;
@@ -139,6 +149,7 @@ extern keybd_event_pfn keybd_event_Original;
 extern mouse_event_pfn mouse_event_Original;
 extern MapVirtualKey_pfn MapVirtualKey_Original;
 extern MapVirtualKeyEx_pfn MapVirtualKeyEx_Original;
+extern DisplayConfigGetDeviceInfo_pfn DisplayConfigGetDeviceInfo_Original;
 
 // Hooked message functions
 BOOL WINAPI GetMessageA_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax);
@@ -178,6 +189,7 @@ void WINAPI keybd_event_Detour(BYTE bVk, BYTE bScan, DWORD dwFlags, ULONG_PTR dw
 void WINAPI mouse_event_Detour(DWORD dwFlags, DWORD dx, DWORD dy, DWORD dwData, ULONG_PTR dwExtraInfo);
 UINT WINAPI MapVirtualKey_Detour(UINT uCode, UINT uMapType);
 UINT WINAPI MapVirtualKeyEx_Detour(UINT uCode, UINT uMapType, HKL dwhkl);
+LONG WINAPI DisplayConfigGetDeviceInfo_Detour(DISPLAYCONFIG_DEVICE_INFO_HEADER *requestPacket);
 
 // Hook management
 bool InstallWindowsMessageHooks();

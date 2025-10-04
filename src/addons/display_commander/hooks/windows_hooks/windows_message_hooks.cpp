@@ -44,6 +44,7 @@ keybd_event_pfn keybd_event_Original = nullptr;
 mouse_event_pfn mouse_event_Original = nullptr;
 MapVirtualKey_pfn MapVirtualKey_Original = nullptr;
 MapVirtualKeyEx_pfn MapVirtualKeyEx_Original = nullptr;
+DisplayConfigGetDeviceInfo_pfn DisplayConfigGetDeviceInfo_Original = nullptr;
 
 // Hook state
 static std::atomic<bool> g_message_hooks_installed{false};
@@ -90,6 +91,7 @@ static const char *g_hook_names[HOOK_COUNT] = {"GetMessageA",
                                                "mouse_event",
                                                "MapVirtualKey",
                                                "MapVirtualKeyEx",
+                                               "DisplayConfigGetDeviceInfo",
                                                "XInputGetState",
                                                "XInputGetStateEx",
                                                "DirectInputCreateA",
@@ -983,6 +985,21 @@ UINT WINAPI MapVirtualKeyEx_Detour(UINT uCode, UINT uMapType, HKL dwhkl) {
                                     : MapVirtualKeyEx(uCode, uMapType, dwhkl);
 }
 
+// Hooked DisplayConfigGetDeviceInfo function
+LONG WINAPI DisplayConfigGetDeviceInfo_Detour(DISPLAYCONFIG_DEVICE_INFO_HEADER *requestPacket) {
+    // Track total calls
+    g_hook_stats[HOOK_DisplayConfigGetDeviceInfo].increment_total();
+
+    // Call original function
+    LONG result = DisplayConfigGetDeviceInfo_Original ? DisplayConfigGetDeviceInfo_Original(requestPacket)
+                                                     : DisplayConfigGetDeviceInfo(requestPacket);
+
+    // Track unsuppressed calls
+    g_hook_stats[HOOK_DisplayConfigGetDeviceInfo].increment_unsuppressed();
+
+    return result;
+}
+
 // Install Windows message hooks
 bool InstallWindowsMessageHooks() {
     if (g_message_hooks_installed.load()) {
@@ -1209,6 +1226,12 @@ bool InstallWindowsMessageHooks() {
         return false;
     }
 
+    // Hook DisplayConfigGetDeviceInfo
+    if (MH_CreateHook(DisplayConfigGetDeviceInfo, DisplayConfigGetDeviceInfo_Detour, (LPVOID *)&DisplayConfigGetDeviceInfo_Original) != MH_OK) {
+        LogError("Failed to create DisplayConfigGetDeviceInfo hook");
+        return false;
+    }
+
     // Enable all hooks
     if (MH_EnableHook(MH_ALL_HOOKS) != MH_OK) {
         LogError("Failed to enable Windows message hooks");
@@ -1302,6 +1325,7 @@ void UninstallWindowsMessageHooks() {
     mouse_event_Original = nullptr;
     MapVirtualKey_Original = nullptr;
     MapVirtualKeyEx_Original = nullptr;
+    DisplayConfigGetDeviceInfo_Original = nullptr;
 
     g_message_hooks_installed.store(false);
     LogInfo("Windows message hooks uninstalled successfully");

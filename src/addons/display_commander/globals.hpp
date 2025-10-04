@@ -151,7 +151,7 @@ extern std::atomic<int> s_aspect_width;
 extern std::atomic<bool> s_prevent_fullscreen;
 
 // Fix HDR10 color space when backbuffer is RGB10A2
-extern std::atomic<bool> s_fix_hdr10_colorspace;
+extern std::atomic<bool> s_nvapi_fix_hdr10_colorspace;
 
 // Hide HDR capabilities from applications
 extern std::atomic<bool> s_hide_hdr_capabilities;
@@ -171,6 +171,7 @@ extern std::atomic<int> s_spoofed_mouse_y;
 
 // NVAPI Settings
 extern std::atomic<bool> s_nvapi_fullscreen_prevention;
+extern std::atomic<bool> s_nvapi_auto_enable;
 extern std::atomic<bool> s_nvapi_hdr_logging;
 extern std::atomic<float> s_nvapi_hdr_interval_sec;
 

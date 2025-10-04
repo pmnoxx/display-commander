@@ -2,6 +2,8 @@
 #include "../utils.hpp"
 #include <NvApiDriverSettings.h>
 #include <sstream>
+#include <algorithm>
+#include <vector>
 
 NVAPIFullscreenPrevention::NVAPIFullscreenPrevention() {}
 
@@ -626,4 +628,85 @@ bool NVAPIFullscreenPrevention::SetHdr10OnAll(bool enable) {
     }
 
     return any_ok;
+}
+
+// Game list for auto-enable functionality (sorted alphabetically)
+static const std::vector<std::string> g_nvapi_auto_enable_games = {
+    "armoredcore6.exe",
+    "devilmaycry5.exe",
+    "eldenring.exe",
+    "hitman.exe",
+    "re2.exe",
+    "re3.exe",
+    "re7.exe",
+    "re8.exe",
+    "sekiro.exe"
+};
+
+bool NVAPIFullscreenPrevention::IsGameInAutoEnableList(const std::string& processName) {
+    // Convert to lowercase for case-insensitive comparison
+    std::string lowerProcessName = processName;
+    std::transform(lowerProcessName.begin(), lowerProcessName.end(), lowerProcessName.begin(), ::tolower);
+
+    // Check if the process name is in our auto-enable list
+    return std::find(g_nvapi_auto_enable_games.begin(), g_nvapi_auto_enable_games.end(), lowerProcessName) != g_nvapi_auto_enable_games.end();
+}
+
+void NVAPIFullscreenPrevention::CheckAndAutoEnable() {
+    // Check if auto-enable is enabled
+    extern std::atomic<bool> s_nvapi_auto_enable;
+    if (!s_nvapi_auto_enable.load()) {
+        return;
+    }
+
+    // Get current process name
+    char exePath[MAX_PATH];
+    if (GetModuleFileNameA(nullptr, exePath, MAX_PATH) == 0) {
+        return;
+    }
+
+    char* exeName = strrchr(exePath, '\\');
+    if (exeName) {
+        exeName++; // Skip the backslash
+    } else {
+        exeName = exePath;
+    }
+
+    std::string processName(exeName);
+
+    // Check if this game should auto-enable NVAPI features
+    if (IsGameInAutoEnableList(processName)) {
+        LogInfo("NVAPI Auto-enable: Detected game '%s' in auto-enable list", processName.c_str());
+
+        // Auto-enable NVAPI fullscreen prevention
+        extern std::atomic<bool> s_nvapi_fullscreen_prevention;
+        if (!s_nvapi_fullscreen_prevention.load()) {
+            s_nvapi_fullscreen_prevention.store(true);
+            LogInfo("NVAPI Auto-enable: Enabled fullscreen prevention for '%s'", processName.c_str());
+        }
+
+        // Auto-enable HDR10 colorspace fix
+        extern std::atomic<bool> s_nvapi_fix_hdr10_colorspace;
+        if (!s_nvapi_fix_hdr10_colorspace.load()) {
+            s_nvapi_fix_hdr10_colorspace.store(true);
+            LogInfo("NVAPI Auto-enable: Enabled HDR10 colorspace fix for '%s'", processName.c_str());
+        }
+
+        // Initialize and enable the NVAPI fullscreen prevention
+        if (!g_nvapiFullscreenPrevention.IsAvailable()) {
+            if (g_nvapiFullscreenPrevention.Initialize()) {
+                LogInfo("NVAPI Auto-enable: Initialized NVAPI for '%s'", processName.c_str());
+            } else {
+                LogWarn("NVAPI Auto-enable: Failed to initialize NVAPI for '%s'", processName.c_str());
+                return;
+            }
+        }
+
+        // Enable fullscreen prevention
+        if (g_nvapiFullscreenPrevention.SetFullscreenPrevention(true)) {
+            LogInfo("NVAPI Auto-enable: Successfully enabled fullscreen prevention for '%s'", processName.c_str());
+        } else {
+            LogWarn("NVAPI Auto-enable: Failed to enable fullscreen prevention for '%s'", processName.c_str());
+        }
+    }
 }

@@ -11,6 +11,7 @@
 #include "latency/latency_manager.hpp"
 #include "latent_sync/latent_sync_limiter.hpp"
 #include "nvapi/nvapi_hdr_monitor.hpp"
+#include "nvapi/nvapi_fullscreen_prevention.hpp"
 #include "settings/experimental_tab_settings.hpp"
 #include "settings/main_tab_settings.hpp"
 #include "swapchain_events_power_saving.hpp"
@@ -104,6 +105,10 @@ void DoInitializationWithHwnd(HWND hwnd) {
     if (s_nvapi_hdr_logging.load()) {
         std::thread(RunBackgroundNvapiHdrMonitor).detach();
     }
+
+    // Check for auto-enable NVAPI features for specific games
+    extern NVAPIFullscreenPrevention g_nvapiFullscreenPrevention;
+    g_nvapiFullscreenPrevention.CheckAndAutoEnable();
 
     ui::new_ui::InitExperimentalTab();
 

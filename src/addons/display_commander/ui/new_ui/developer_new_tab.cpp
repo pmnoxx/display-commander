@@ -167,9 +167,9 @@ void DrawNvapiSettings() {
     ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "=== NVAPI Settings ===");
 
     // HDR10 Colorspace Fix
-    if (CheckboxSetting(settings::g_developerTabSettings.fix_hdr10_colorspace,
+    if (CheckboxSetting(settings::g_developerTabSettings.nvapi_fix_hdr10_colorspace,
                         "Set ReShade Effects Processing to HDR10 Colorspace")) {
-        s_fix_hdr10_colorspace.store(settings::g_developerTabSettings.fix_hdr10_colorspace.GetValue());
+        s_nvapi_fix_hdr10_colorspace.store(settings::g_developerTabSettings.nvapi_fix_hdr10_colorspace.GetValue());
         s_restart_needed_nvapi.store(true);
     }
 
@@ -180,6 +180,26 @@ void DrawNvapiSettings() {
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Use NVAPI to prevent fullscreen mode at the driver level.");
+    }
+
+    // NVAPI Auto-enable for specific games
+    if (CheckboxSetting(settings::g_developerTabSettings.nvapi_auto_enable, "NVAPI Auto-enable for Games")) {
+        s_nvapi_auto_enable.store(settings::g_developerTabSettings.nvapi_auto_enable.GetValue());
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Automatically enable NVAPI features for specific games:\n"
+                         "• NVAPI Fullscreen Prevention\n"
+                         "• HDR10 Colorspace Fix\n\n"
+                         "Supported games:\n"
+                         "• Armored Core 6\n"
+                         "• Devil May Cry 5\n"
+                         "• Elden Ring\n"
+                         "• Hitman\n"
+                         "• Resident Evil 2\n"
+                         "• Resident Evil 3\n"
+                         "• Resident Evil 7\n"
+                         "• Resident Evil 8\n"
+                         "• Sekiro: Shadows Die Twice");
     }
     // Display restart-required notice if flagged
     if (s_restart_needed_nvapi.load()) {

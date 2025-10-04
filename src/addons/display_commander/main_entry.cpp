@@ -13,6 +13,7 @@
 #include "ui/new_ui/experimental_tab.hpp"
 #include "ui/new_ui/new_ui_main.hpp"
 #include "utils/timing.hpp"
+#include "version.hpp"
 
 #include <reshade.hpp>
 #include <wrl/client.h>
@@ -24,6 +25,9 @@ bool OnReShadeOverlayOpen(reshade::api::effect_runtime *runtime, bool open, resh
 
 // Forward declaration for ReShade settings override
 void OverrideReShadeSettings();
+
+// Forward declaration for version check
+bool CheckReShadeVersionCompatibility();
 namespace {
 // Destroy device handler to restore display if needed
 void OnDestroyDevice(reshade::api::device * /*device*/) {
@@ -44,7 +48,7 @@ void OnInitEffectRuntime(reshade::api::effect_runtime *runtime) {
     g_reshade_runtime.store(runtime);
     LogInfo("ReShade effect runtime initialized - Input blocking now available");
 
-    if (s_fix_hdr10_colorspace.load()) {
+    if (s_nvapi_fix_hdr10_colorspace.load()) {
         runtime->set_color_space(reshade::api::color_space::hdr10_st2084);
     }
     static bool registered_overlay = false;
@@ -144,6 +148,30 @@ void OverrideReShadeSettings() {
     LogInfo("ReShade settings override completed successfully");
 }
 
+// Version compatibility check function
+bool CheckReShadeVersionCompatibility() {
+    // This function will be called after registration fails
+    // We'll display a helpful error message to the user
+    LogError("ReShade addon registration failed - API version not supported");
+
+    // Display detailed error message to user
+    MessageBoxA(nullptr,
+        "Display Commander requires ReShade 6.6.0 or newer.\n\n"
+        "ERROR DETAILS:\n"
+        "• Required API Version: 18 (ReShade 6.6.0+)\n"
+        "• Your ReShade Version: 17 or older\n"
+        "• Status: Incompatible\n\n"
+        "SOLUTION:\n"
+        "1. Download the latest ReShade from: https://reshade.me/\n"
+        "2. Install ReShade 6.6.0 or newer\n"
+        "3. Restart your game to load the updated ReShade\n\n"
+        "This addon uses advanced features that require the newer ReShade API.",
+        "ReShade Version Incompatible - Update Required",
+        MB_OK | MB_ICONERROR | MB_TOPMOST);
+
+    return false;
+}
+
 void DoInitializationWithoutHwnd(HMODULE h_module, DWORD fdw_reason) {
 
     // Initialize QPC timing constants based on actual frequency
@@ -237,8 +265,17 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             return FALSE;
         }
 
-        if (!reshade::register_addon(h_module))
+        if (!reshade::register_addon(h_module)) {
+            // Registration failed - likely due to API version mismatch
+            LogError("ReShade addon registration failed - this usually indicates an API version mismatch");
+            LogError("Display Commander requires ReShade 6.6.0+ (API version 18) but detected older version");
+            CheckReShadeVersionCompatibility();
             return FALSE;
+        }
+
+        // Registration successful - log version compatibility
+        LogInfo("Display Commander v%s - ReShade addon registration successful (API version 18 supported)", DISPLAY_COMMANDER_VERSION_STRING);
+
         // Store module handle for pinning
         g_hmodule = h_module;
 

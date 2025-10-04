@@ -50,6 +50,10 @@ class NVAPIFullscreenPrevention {
     bool QueryHdrDetails(std::string &out_details) const;
     bool SetHdr10OnAll(bool enable);
 
+    // Auto-enable functionality
+    static bool IsGameInAutoEnableList(const std::string& processName);
+    static void CheckAndAutoEnable();
+
   private:
     bool initialized = false;
     bool failed_to_initialize = false;

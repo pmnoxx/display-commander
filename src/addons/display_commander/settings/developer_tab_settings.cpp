@@ -12,9 +12,10 @@ extern std::atomic<bool> s_continue_rendering;
 extern std::atomic<bool> s_continuous_monitoring_enabled;
 extern std::atomic<bool> s_prevent_always_on_top;
 extern std::atomic<bool> s_background_feature_enabled;
-extern std::atomic<bool> s_fix_hdr10_colorspace;
+extern std::atomic<bool> s_nvapi_fix_hdr10_colorspace;
 extern std::atomic<bool> s_hide_hdr_capabilities;
 extern std::atomic<bool> s_nvapi_fullscreen_prevention;
+extern std::atomic<bool> s_nvapi_auto_enable;
 extern std::atomic<bool> s_nvapi_hdr_logging;
 extern std::atomic<float> s_nvapi_hdr_interval_sec;
 extern std::atomic<bool> s_reflex_enable;
@@ -38,10 +39,11 @@ DeveloperTabSettings::DeveloperTabSettings()
       continue_rendering("ContinueRendering", s_continue_rendering, false, "DisplayCommander"),
       continuous_monitoring("ContinuousMonitoring", s_continuous_monitoring_enabled, true, "DisplayCommander"),
       prevent_always_on_top("PreventAlwaysOnTop", s_prevent_always_on_top, true, "DisplayCommander"),
-      fix_hdr10_colorspace("FixHDR10Colorspace", s_fix_hdr10_colorspace, false, "DisplayCommander"),
+      nvapi_fix_hdr10_colorspace("NvapiFixHDR10Colorspace", s_nvapi_fix_hdr10_colorspace, false, "DisplayCommander"),
       hide_hdr_capabilities("HideHDRCapabilities", s_hide_hdr_capabilities, false, "DisplayCommander"),
       nvapi_fullscreen_prevention("NvapiFullscreenPrevention", s_nvapi_fullscreen_prevention, false,
                                   "DisplayCommander"),
+      nvapi_auto_enable("NvapiAutoEnable", s_nvapi_auto_enable, true, "DisplayCommander"),
       nvapi_hdr_logging("NvapiHDRLogging", s_nvapi_hdr_logging, false, "DisplayCommander"),
       nvapi_hdr_interval_sec("NvapiHDRInterval", s_nvapi_hdr_interval_sec, 5.0f, 1.0f, 60.0f, "DisplayCommander")
 
@@ -66,9 +68,10 @@ void DeveloperTabSettings::LoadAll() {
     continue_rendering.Load(); // This was missing!
     continuous_monitoring.Load();
     prevent_always_on_top.Load();
-    fix_hdr10_colorspace.Load();
+    nvapi_fix_hdr10_colorspace.Load();
     hide_hdr_capabilities.Load();
     nvapi_fullscreen_prevention.Load();
+    nvapi_auto_enable.Load();
     nvapi_hdr_logging.Load();
     nvapi_hdr_interval_sec.Load();
 
@@ -95,9 +98,10 @@ std::vector<ui::new_ui::SettingBase *> DeveloperTabSettings::GetAllSettings() {
             &continue_rendering,
             &continuous_monitoring,
             &prevent_always_on_top,
-            &fix_hdr10_colorspace,
+            &nvapi_fix_hdr10_colorspace,
             &hide_hdr_capabilities,
             &nvapi_fullscreen_prevention,
+            &nvapi_auto_enable,
             &nvapi_hdr_logging,
             &nvapi_hdr_interval_sec,
 

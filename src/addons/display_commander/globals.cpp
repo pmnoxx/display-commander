@@ -41,6 +41,8 @@ std::atomic<bool> s_prevent_fullscreen{false};
 
 // NVAPI Fullscreen Prevention
 std::atomic<bool> s_nvapi_fullscreen_prevention{false}; // disabled by default
+// NVAPI Auto-enable for specific games
+std::atomic<bool> s_nvapi_auto_enable{true}; // enabled by default
 // NVAPI HDR logging
 std::atomic<bool> s_nvapi_hdr_logging{false};
 std::atomic<float> s_nvapi_hdr_interval_sec{5.f};
@@ -75,7 +77,7 @@ std::atomic<bool> s_continue_rendering{false}; // Disabled by default
 // Present blocking in background
 
 // Fix HDR10 color space when backbuffer is RGB10A2
-std::atomic<bool> s_fix_hdr10_colorspace{false};
+std::atomic<bool> s_nvapi_fix_hdr10_colorspace{false};
 
 // Hide HDR capabilities from applications
 std::atomic<bool> s_hide_hdr_capabilities{false};

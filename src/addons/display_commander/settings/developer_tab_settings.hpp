@@ -32,11 +32,12 @@ class DeveloperTabSettings {
     BoolSettingRef prevent_always_on_top;
 
     // HDR and Colorspace Settings
-    BoolSettingRef fix_hdr10_colorspace;
+    BoolSettingRef nvapi_fix_hdr10_colorspace;
     BoolSettingRef hide_hdr_capabilities;
 
     // NVAPI Settings
     BoolSettingRef nvapi_fullscreen_prevention;
+    BoolSettingRef nvapi_auto_enable;
     BoolSettingRef nvapi_hdr_logging;
     FloatSettingRef nvapi_hdr_interval_sec;
 

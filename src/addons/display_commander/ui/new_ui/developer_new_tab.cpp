@@ -88,8 +88,8 @@ void DrawDeveloperSettings() {
     const char* spoof_fullscreen_labels[] = {"Disabled", "Spoof as Fullscreen", "Spoof as Windowed"};
     int spoof_fullscreen_state = static_cast<int>(settings::g_developerTabSettings.spoof_fullscreen_state.GetValue());
     if (ImGui::Combo("Spoof Fullscreen State", &spoof_fullscreen_state, spoof_fullscreen_labels, 3)) {
-        settings::g_developerTabSettings.spoof_fullscreen_state.SetValue(spoof_fullscreen_state != 0);
-        s_spoof_fullscreen_state.store(spoof_fullscreen_state != 0);
+        settings::g_developerTabSettings.spoof_fullscreen_state.SetValue(spoof_fullscreen_state);
+        s_spoof_fullscreen_state.store(static_cast<SpoofFullscreenState>(spoof_fullscreen_state));
 
         // Log the change
         std::ostringstream oss;
@@ -110,11 +110,11 @@ void DrawDeveloperSettings() {
     }
 
     // Reset button for Fullscreen State (only show if not at default)
-    if (s_spoof_fullscreen_state.load() != false) {
+    if (s_spoof_fullscreen_state.load() != SpoofFullscreenState::Disabled) {
         ImGui::SameLine();
         if (ImGui::Button("Reset##DevFullscreen")) {
-            settings::g_developerTabSettings.spoof_fullscreen_state.SetValue(false);
-            s_spoof_fullscreen_state.store(false);
+            settings::g_developerTabSettings.spoof_fullscreen_state.SetValue(0);
+            s_spoof_fullscreen_state.store(SpoofFullscreenState::Disabled);
             LogInfo("Fullscreen state spoofing reset to disabled");
         }
         if (ImGui::IsItemHovered()) {

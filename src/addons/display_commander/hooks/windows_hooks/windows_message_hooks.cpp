@@ -994,6 +994,25 @@ LONG WINAPI DisplayConfigGetDeviceInfo_Detour(DISPLAYCONFIG_DEVICE_INFO_HEADER *
     LONG result = DisplayConfigGetDeviceInfo_Original ? DisplayConfigGetDeviceInfo_Original(requestPacket)
                                                      : DisplayConfigGetDeviceInfo(requestPacket);
 
+    // Hide HDR capabilities if enabled and this is an advanced color info request
+    if (SUCCEEDED(result) && requestPacket != nullptr && s_hide_hdr_capabilities.load()) {
+        if (requestPacket->type == DISPLAYCONFIG_DEVICE_INFO_GET_ADVANCED_COLOR_INFO) {
+            auto* colorInfo = reinterpret_cast<DISPLAYCONFIG_GET_ADVANCED_COLOR_INFO*>(requestPacket);
+
+            // Hide HDR support
+            colorInfo->advancedColorSupported = 0;
+            colorInfo->advancedColorEnabled = 0;
+            colorInfo->wideColorEnforced = 0;
+            colorInfo->advancedColorForceDisabled = 1;
+
+            static int hdr_hidden_log_count = 0;
+            if (hdr_hidden_log_count < 3) {
+                LogInfo("HDR hiding: DisplayConfigGetDeviceInfo - hiding advanced color support");
+                hdr_hidden_log_count++;
+            }
+        }
+    }
+
     // Track unsuppressed calls
     g_hook_stats[HOOK_DisplayConfigGetDeviceInfo].increment_unsuppressed();
 

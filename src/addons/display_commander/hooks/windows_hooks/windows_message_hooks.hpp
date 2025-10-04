@@ -2,6 +2,7 @@
 
 #include <atomic>
 #include <windows.h>
+#include <wingdi.h>  // For DISPLAYCONFIG_* structures
 
 
 namespace display_commanderhooks {

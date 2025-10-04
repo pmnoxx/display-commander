@@ -6,36 +6,14 @@
 #include <atomic>
 
 // External declarations for the global variables
-extern std::atomic<bool> s_prevent_fullscreen;
-extern std::atomic<int> s_spoof_fullscreen_state;
-extern std::atomic<bool> s_continue_rendering;
-extern std::atomic<bool> s_continuous_monitoring_enabled;
-extern std::atomic<bool> s_prevent_always_on_top;
 extern std::atomic<bool> s_background_feature_enabled;
-extern std::atomic<bool> s_nvapi_fix_hdr10_colorspace;
-extern std::atomic<bool> s_hide_hdr_capabilities;
-extern std::atomic<bool> s_nvapi_fullscreen_prevention;
-extern std::atomic<bool> s_nvapi_auto_enable;
-extern std::atomic<bool> s_nvapi_hdr_logging;
-extern std::atomic<float> s_nvapi_hdr_interval_sec;
-extern std::atomic<bool> s_reflex_enable;
-extern std::atomic<bool> s_reflex_low_latency;
-extern std::atomic<bool> s_reflex_boost;
-extern std::atomic<bool> s_reflex_use_markers;
-extern std::atomic<bool> s_enable_reflex_logging;
-
-extern std::atomic<bool> s_enable_mute_unmute_shortcut;
-extern std::atomic<bool> s_enable_background_toggle_shortcut;
-extern std::atomic<bool> s_enable_timeslowdown_shortcut;
-
-extern std::atomic<bool> g_flush_before_present;
 
 namespace settings {
 
 // Constructor - initialize all settings with proper keys and default values
 DeveloperTabSettings::DeveloperTabSettings()
     : prevent_fullscreen("PreventFullscreen", s_prevent_fullscreen, true, "DisplayCommander"),
-      spoof_fullscreen_state("SpoofFullscreenState", s_spoof_fullscreen_state, 0, 0, 2, "DisplayCommander"),
+      spoof_fullscreen_state("SpoofFullscreenState", reinterpret_cast<std::atomic<int>&>(s_spoof_fullscreen_state), static_cast<int>(SpoofFullscreenState::Disabled), 0, 2, "DisplayCommander"),
       continue_rendering("ContinueRendering", s_continue_rendering, false, "DisplayCommander"),
       continuous_monitoring("ContinuousMonitoring", s_continuous_monitoring_enabled, true, "DisplayCommander"),
       prevent_always_on_top("PreventAlwaysOnTop", s_prevent_always_on_top, true, "DisplayCommander"),

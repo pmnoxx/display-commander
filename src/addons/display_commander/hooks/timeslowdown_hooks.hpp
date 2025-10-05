@@ -28,6 +28,7 @@ extern QueryPerformanceFrequency_pfn QueryPerformanceFrequency_Original;
 extern GetTickCount_pfn GetTickCount_Original;
 extern GetTickCount64_pfn GetTickCount64_Original;
 extern timeGetTime_pfn timeGetTime_Original;
+extern timeGetTime_pfn timeGetTime_Direct;
 extern GetSystemTime_pfn GetSystemTime_Original;
 extern GetSystemTimeAsFileTime_pfn GetSystemTimeAsFileTime_Original;
 extern GetSystemTimePreciseAsFileTime_pfn GetSystemTimePreciseAsFileTime_Original;

@@ -45,6 +45,7 @@ QueryPerformanceFrequency_pfn QueryPerformanceFrequency_Original = nullptr;
 GetTickCount_pfn GetTickCount_Original = nullptr;
 GetTickCount64_pfn GetTickCount64_Original = nullptr;
 timeGetTime_pfn timeGetTime_Original = nullptr;
+timeGetTime_pfn timeGetTime_Direct = nullptr;
 GetSystemTime_pfn GetSystemTime_Original = nullptr;
 GetSystemTimeAsFileTime_pfn GetSystemTimeAsFileTime_Original = nullptr;
 GetSystemTimePreciseAsFileTime_pfn GetSystemTimePreciseAsFileTime_Original = nullptr;
@@ -257,11 +258,30 @@ ULONGLONG WINAPI GetTickCount64_Detour() {
     return result;
 }
 
+// Initialize timeGetTime direct function pointer
+static void InitializeTimeGetTimeDirect() {
+    if (timeGetTime_Direct) {
+        return; // Already initialized
+    }
+
+    HMODULE winmm_module = LoadLibraryA("winmm.dll");
+    if (winmm_module) {
+        timeGetTime_Direct = (timeGetTime_pfn)GetProcAddress(winmm_module, "timeGetTime");
+        if (timeGetTime_Direct) {
+            LogInfo("timeGetTime direct function initialized successfully");
+        } else {
+            LogWarn("timeGetTime not found in winmm.dll");
+        }
+    } else {
+        LogInfo("winmm.dll not found - timeGetTime will be unavailable");
+    }
+}
+
 // Hooked timeGetTime function
 DWORD WINAPI timeGetTime_Detour() {
     g_time_get_time_call_count.fetch_add(1, std::memory_order_relaxed);
     if (!timeGetTime_Original) {
-        return timeGetTime();
+        return timeGetTime_Direct ? timeGetTime_Direct() : 0;
     }
 
     // Call original function first
@@ -510,10 +530,17 @@ bool InstallTimeslowdownHooks() {
         return false;
     }
 
-    // Hook timeGetTime
-    if (MH_CreateHook(timeGetTime, timeGetTime_Detour, (LPVOID *)&timeGetTime_Original) != MH_OK) {
-        LogError("Failed to create timeGetTime hook");
-        return false;
+    // Initialize timeGetTime direct function first
+    InitializeTimeGetTimeDirect();
+
+    // Hook timeGetTime (only if we have the direct function)
+    if (timeGetTime_Direct) {
+        if (MH_CreateHook(timeGetTime_Direct, timeGetTime_Detour, (LPVOID *)&timeGetTime_Original) != MH_OK) {
+            LogError("Failed to create timeGetTime hook");
+            return false;
+        }
+    } else {
+        LogInfo("timeGetTime not available - skipping hook installation");
     }
 
     // Hook GetSystemTime
@@ -585,7 +612,9 @@ void UninstallTimeslowdownHooks() {
     MH_RemoveHook(QueryPerformanceFrequency);
     MH_RemoveHook(GetTickCount);
     MH_RemoveHook(GetTickCount64);
-    MH_RemoveHook(timeGetTime);
+    if (timeGetTime_Direct) {
+        MH_RemoveHook(timeGetTime_Direct);
+    }
     MH_RemoveHook(GetSystemTime);
     MH_RemoveHook(GetSystemTimeAsFileTime);
     MH_RemoveHook(GetSystemTimePreciseAsFileTime);
@@ -608,6 +637,7 @@ void UninstallTimeslowdownHooks() {
     GetTickCount_Original = nullptr;
     GetTickCount64_Original = nullptr;
     timeGetTime_Original = nullptr;
+    timeGetTime_Direct = nullptr;
     GetSystemTime_Original = nullptr;
     GetSystemTimeAsFileTime_Original = nullptr;
     GetSystemTimePreciseAsFileTime_Original = nullptr;

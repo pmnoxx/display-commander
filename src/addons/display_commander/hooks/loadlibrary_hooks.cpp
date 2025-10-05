@@ -1,6 +1,7 @@
 #include "loadlibrary_hooks.hpp"
 #include "xinput_hooks.hpp"
 #include "windows_gaming_input_hooks.hpp"
+#include "nvapi_hooks.hpp"
 #include "../utils.hpp"
 #include "utils/srwlock_wrapper.hpp"
 #include <MinHook.h>
@@ -196,6 +197,50 @@ HMODULE WINAPI LoadLibraryExA_Detour(LPCSTR lpLibFileName, HANDLE hFile, DWORD d
 
     if (result) {
         LogInfo("[%s] LoadLibraryExA success: %s -> HMODULE: 0x%p", timestamp.c_str(), dll_name.c_str(), result);
+
+        // Track the module if it's not already tracked
+        {
+            utils::SRWLockExclusive lock(g_module_srwlock);
+            if (g_module_handles.find(result) == g_module_handles.end()) {
+                ModuleInfo moduleInfo;
+                moduleInfo.hModule = result;
+
+                // Convert narrow string to wide string for module name
+                std::wstring wideModuleName;
+                if (lpLibFileName) {
+                    int wideLen = MultiByteToWideChar(CP_ACP, 0, lpLibFileName, -1, nullptr, 0);
+                    if (wideLen > 0) {
+                        wideModuleName.resize(wideLen - 1);
+                        MultiByteToWideChar(CP_ACP, 0, lpLibFileName, -1, &wideModuleName[0], wideLen);
+                    }
+                }
+                moduleInfo.moduleName = wideModuleName.empty() ? L"Unknown" : wideModuleName;
+
+                // Get full path
+                wchar_t modulePath[MAX_PATH];
+                if (GetModuleFileNameW(result, modulePath, MAX_PATH)) {
+                    moduleInfo.fullPath = modulePath;
+                }
+
+                MODULEINFO modInfo;
+                if (GetModuleInformation(GetCurrentProcess(), result, &modInfo, sizeof(modInfo))) {
+                    moduleInfo.baseAddress = modInfo.lpBaseOfDll;
+                    moduleInfo.sizeOfImage = modInfo.SizeOfImage;
+                    moduleInfo.entryPoint = modInfo.EntryPoint;
+                }
+
+                moduleInfo.loadTime = GetModuleFileTime(result);
+
+                g_loaded_modules.push_back(moduleInfo);
+                g_module_handles.insert(result);
+
+                LogInfo("Added new module to tracking: %s (0x%p, %u bytes)",
+                        dll_name.c_str(), moduleInfo.baseAddress, moduleInfo.sizeOfImage);
+
+                // Call the module loaded callback
+                OnModuleLoaded(moduleInfo.moduleName, result);
+            }
+        }
     } else {
         DWORD error = GetLastError();
         LogInfo("[%s] LoadLibraryExA failed: %s -> Error: %lu", timestamp.c_str(), dll_name.c_str(), error);
@@ -219,6 +264,40 @@ HMODULE WINAPI LoadLibraryExW_Detour(LPCWSTR lpLibFileName, HANDLE hFile, DWORD 
 
     if (result) {
         LogInfo("[%s] LoadLibraryExW success: %s -> HMODULE: 0x%p", timestamp.c_str(), dll_name.c_str(), result);
+
+        // Track the module if it's not already tracked
+        {
+            utils::SRWLockExclusive lock(g_module_srwlock);
+            if (g_module_handles.find(result) == g_module_handles.end()) {
+                ModuleInfo moduleInfo;
+                moduleInfo.hModule = result;
+                moduleInfo.moduleName = lpLibFileName ? lpLibFileName : L"Unknown";
+
+                // Get full path
+                wchar_t modulePath[MAX_PATH];
+                if (GetModuleFileNameW(result, modulePath, MAX_PATH)) {
+                    moduleInfo.fullPath = modulePath;
+                }
+
+                MODULEINFO modInfo;
+                if (GetModuleInformation(GetCurrentProcess(), result, &modInfo, sizeof(modInfo))) {
+                    moduleInfo.baseAddress = modInfo.lpBaseOfDll;
+                    moduleInfo.sizeOfImage = modInfo.SizeOfImage;
+                    moduleInfo.entryPoint = modInfo.EntryPoint;
+                }
+
+                moduleInfo.loadTime = GetModuleFileTime(result);
+
+                g_loaded_modules.push_back(moduleInfo);
+                g_module_handles.insert(result);
+
+                LogInfo("Added new module to tracking: %s (0x%p, %u bytes)",
+                        dll_name.c_str(), moduleInfo.baseAddress, moduleInfo.sizeOfImage);
+
+                // Call the module loaded callback
+                OnModuleLoaded(moduleInfo.moduleName, result);
+            }
+        }
     } else {
         DWORD error = GetLastError();
         LogInfo("[%s] LoadLibraryExW failed: %s -> Error: %lu", timestamp.c_str(), dll_name.c_str(), error);
@@ -302,6 +381,9 @@ void UninstallLoadLibraryHooks() {
     MH_RemoveHook(LoadLibraryW);
     MH_RemoveHook(LoadLibraryExA);
     MH_RemoveHook(LoadLibraryExW);
+
+    // Uninstall library-specific hooks
+    UninstallNVAPIHooks();
 
     // Clean up
     LoadLibraryA_Original = nullptr;
@@ -444,6 +526,16 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
     else if (lowerModuleName.find(L"vulkan") != std::wstring::npos) {
         LogInfo("Vulkan module detected: %ws", moduleName.c_str());
         // TODO: Add Vulkan hook installation when implemented
+    }
+
+    // NVAPI hooks
+    else if (lowerModuleName.find(L"nvapi64.dll") != std::wstring::npos) {
+        LogInfo("Installing NVAPI hooks for module: %ws", moduleName.c_str());
+        if (InstallNVAPIHooks()) {
+            LogInfo("NVAPI hooks installed successfully");
+        } else {
+            LogError("Failed to install NVAPI hooks");
+        }
     }
 
     // Steam hooks

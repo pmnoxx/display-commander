@@ -152,7 +152,7 @@ void DrawHdrDisplaySettings() {
 
     // Hide HDR Capabilities
     if (CheckboxSetting(settings::g_developerTabSettings.hide_hdr_capabilities,
-                        "Hide game's native HDR (WIP)")) {
+                        "Hide game's native HDR")) {
         s_hide_hdr_capabilities.store(settings::g_developerTabSettings.hide_hdr_capabilities.GetValue());
         LogInfo("HDR hiding setting changed to: %s",
                 settings::g_developerTabSettings.hide_hdr_capabilities.GetValue() ? "true" : "false");

@@ -10,6 +10,7 @@
 #include "windows_gaming_input_hooks.hpp"
 #include "windows_hooks/windows_message_hooks.hpp"
 #include "xinput_hooks.hpp"
+#include "nvapi_hooks.hpp"
 #include <MinHook.h>
 
 // External reference to screensaver mode setting
@@ -326,6 +327,8 @@ bool InstallApiHooks() {
         return false;
     }
 
+    // NVAPI hooks will be installed when nvapi64.dll is loaded via LoadLibraryExW hook
+
     g_api_hooks_installed.store(true);
     LogInfo("API hooks installed successfully");
 
@@ -368,6 +371,8 @@ void UninstallApiHooks() {
 
     // Uninstall DXGI Present hooks
     display_commanderhooks::dxgi::UninstallDxgiPresentHooks();
+
+    // NVAPI hooks are uninstalled via LoadLibrary hooks cleanup
 
     // Disable all hooks
     MH_DisableHook(MH_ALL_HOOKS);

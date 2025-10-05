@@ -646,12 +646,6 @@ bool HookSwapchainVTable(IDXGISwapChain *swapchain) {
         return false;
     }
 
-    // Hook GetDesc (index 12) - Always present in base interface
-    if (MH_CreateHook(vtable[12], IDXGISwapChain_GetDesc_Detour, (LPVOID *)&IDXGISwapChain_GetDesc_Original) != MH_OK) {
-        LogError("Failed to create IDXGISwapChain::GetDesc hook");
-        // Don't return false, this is not critical
-    }
-
     // Hook other IDXGISwapChain methods (9-11, 13-17) with safe vtable access
     if (IsVTableEntryValid(vtable, 9)) {
         if (MH_CreateHook(vtable[9], IDXGISwapChain_GetBuffer_Detour, (LPVOID *)&IDXGISwapChain_GetBuffer_Original) != MH_OK) {
@@ -667,6 +661,11 @@ bool HookSwapchainVTable(IDXGISwapChain *swapchain) {
         if (MH_CreateHook(vtable[11], IDXGISwapChain_GetFullscreenState_Detour, (LPVOID *)&IDXGISwapChain_GetFullscreenState_Original) != MH_OK) {
             LogError("Failed to create IDXGISwapChain::GetFullscreenState hook");
         }
+    }
+    // Hook GetDesc (index 12) - Always present in base interface
+    if (MH_CreateHook(vtable[12], IDXGISwapChain_GetDesc_Detour, (LPVOID *)&IDXGISwapChain_GetDesc_Original) != MH_OK) {
+        LogError("Failed to create IDXGISwapChain::GetDesc hook");
+        // Don't return false, this is not critical
     }
     if (IsVTableEntryValid(vtable, 13)) {
         if (MH_CreateHook(vtable[13], IDXGISwapChain_ResizeBuffers_Detour, (LPVOID *)&IDXGISwapChain_ResizeBuffers_Original) != MH_OK) {

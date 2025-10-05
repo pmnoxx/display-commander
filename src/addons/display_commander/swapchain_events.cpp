@@ -123,7 +123,6 @@ void DoInitializationWithHwnd(HWND hwnd) {
     std::thread(RunBackgroundAudioMonitor).detach();
 
     // Check for auto-enable NVAPI features for specific games
-    extern NVAPIFullscreenPrevention g_nvapiFullscreenPrevention;
     g_nvapiFullscreenPrevention.CheckAndAutoEnable();
 
     ui::new_ui::InitExperimentalTab();

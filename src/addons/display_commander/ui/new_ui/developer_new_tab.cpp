@@ -120,7 +120,7 @@ void DrawDeveloperSettings() {
         }
     }
 
-    // Continue Rendering (like Special-K's background render feature)
+    // Continue Rendering
     if (CheckboxSetting(settings::g_developerTabSettings.continue_rendering, "Continue Rendering in Background")) {
         s_continue_rendering.store(settings::g_developerTabSettings.continue_rendering.GetValue());
         LogInfo("Continue rendering in background %s",
@@ -129,7 +129,7 @@ void DrawDeveloperSettings() {
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip(
             "Prevent games from pausing or reducing performance when alt-tabbed. Blocks window focus "
-            "messages to keep games running in background like Special-K's background render feature.");
+            "messages to keep games running in background.");
     }
 
     ImGui::Spacing();

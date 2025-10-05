@@ -66,7 +66,7 @@ std::atomic<bool> s_enable_timeslowdown_shortcut{true};
 // Monitor and display settings
 std::atomic<int> s_dxgi_composition_state{0};
 
-// Continue rendering in background (like Special-K's background render feature)
+// Continue rendering in background
 std::atomic<bool> s_continue_rendering{false}; // Disabled by default
 
 // Input blocking in background (0.0f off, 1.0f on)

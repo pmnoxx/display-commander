@@ -1,5 +1,7 @@
 #include "nvapi_fullscreen_prevention.hpp"
 #include "../utils.hpp"
+#include "globals.hpp"
+#include "../settings/developer_tab_settings.hpp"
 #include <NvApiDriverSettings.h>
 #include <sstream>
 #include <algorithm>
@@ -21,7 +23,7 @@ bool NVAPIFullscreenPrevention::Initialize() {
         return false;
     }
 
-    // Initialize NVAPI using static linking (like SpecialK)
+    // Initialize NVAPI using static linking
     NvAPI_Status status = NvAPI_Initialize();
     if (status != NVAPI_OK) {
         std::ostringstream oss;
@@ -636,6 +638,8 @@ static const std::vector<std::string> g_nvapi_auto_enable_games = {
     "devilmaycry5.exe",
     "eldenring.exe",
     "hitman.exe",
+    "hitman2.exe",
+    "hitman3.exe",
     "re2.exe",
     "re3.exe",
     "re7.exe",
@@ -655,9 +659,6 @@ bool NVAPIFullscreenPrevention::IsGameInAutoEnableList(const std::string& proces
 void NVAPIFullscreenPrevention::CheckAndAutoEnable() {
     // Check if auto-enable is enabled
     extern std::atomic<bool> s_nvapi_auto_enable;
-    if (!s_nvapi_auto_enable.load()) {
-        return;
-    }
 
     // Get current process name
     char exePath[MAX_PATH];
@@ -675,7 +676,12 @@ void NVAPIFullscreenPrevention::CheckAndAutoEnable() {
     std::string processName(exeName);
 
     // Check if this game should auto-enable NVAPI features
+    LogInfo("NVAPI Auto-enable: Checking if game '%s' is in auto-enable list", processName.c_str());
     if (IsGameInAutoEnableList(processName)) {
+        s_nvapi_auto_enable.store(true);
+        settings::g_developerTabSettings.spoof_fullscreen_state.SetValue(static_cast<int>(SpoofFullscreenState::SpoofAsFullscreen));
+        s_spoof_fullscreen_state.store(SpoofFullscreenState::SpoofAsFullscreen);
+
         LogInfo("NVAPI Auto-enable: Detected game '%s' in auto-enable list", processName.c_str());
 
         // Auto-enable NVAPI fullscreen prevention

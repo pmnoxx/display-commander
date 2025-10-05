@@ -46,17 +46,6 @@ static void InitializeXInputDirectFunctions() {
     }
 }
 
-// Previous state for change detection
-static XINPUT_STATE g_previous_states[XUSER_MAX_COUNT] = {};
-static bool g_previous_states_valid[XUSER_MAX_COUNT] = {};
-
-// Track hooked modules and their function addresses
-struct HookedXInputModule {
-    HMODULE module;
-    FARPROC function;
-    std::string module_name;
-};
-
 // Helper function to apply max input, min output, and deadzone to thumbstick values
 void ApplyThumbstickProcessing(XINPUT_STATE *pState, float left_max_input, float right_max_input, float left_min_output,
                                float right_min_output, float left_deadzone, float right_deadzone) {
@@ -84,78 +73,6 @@ void ApplyThumbstickProcessing(XINPUT_STATE *pState, float left_max_input, float
     // Convert back to SHORT with correct scaling
     pState->Gamepad.sThumbRX = FloatToShort(rx);
     pState->Gamepad.sThumbRY = FloatToShort(ry);
-}
-
-// Helper function to detect changes in XInput state
-void LogXInputChanges(DWORD dwUserIndex, const XINPUT_STATE *pState) {
-    if (true) {
-        return;
-    }
-    if (dwUserIndex >= XUSER_MAX_COUNT || pState == nullptr) {
-        return;
-    }
-
-    // Check if we have a previous state to compare against
-    if (g_previous_states_valid[dwUserIndex]) {
-        const XINPUT_STATE &prev = g_previous_states[dwUserIndex];
-        const XINPUT_STATE &curr = *pState;
-
-        // Check for changes in gamepad data
-        if (prev.Gamepad.wButtons != curr.Gamepad.wButtons) {
-            LogError("XXX XInput Controller %lu: Button state changed from 0x%04X to 0x%04X", dwUserIndex,
-                     prev.Gamepad.wButtons, curr.Gamepad.wButtons);
-
-            // Check for Guide button specifically
-            bool prev_guide = (prev.Gamepad.wButtons & XINPUT_GAMEPAD_GUIDE) != 0;
-            bool curr_guide = (curr.Gamepad.wButtons & XINPUT_GAMEPAD_GUIDE) != 0;
-            if (prev_guide != curr_guide) {
-                LogInfo("XXX XInput Controller %lu: Guide button %s", dwUserIndex, curr_guide ? "PRESSED" : "RELEASED");
-            }
-
-            // Debug: Always log Guide button state for testing
-            LogInfo("XXX XInput Controller %lu: Guide button state = %s (0x%04X)", dwUserIndex,
-                    curr_guide ? "PRESSED" : "NOT PRESSED", curr.Gamepad.wButtons);
-        }
-
-        if (prev.Gamepad.bLeftTrigger != curr.Gamepad.bLeftTrigger) {
-            LogError("XXX XInput Controller %lu: Left trigger changed from %u to %u", dwUserIndex,
-                     prev.Gamepad.bLeftTrigger, curr.Gamepad.bLeftTrigger);
-        }
-
-        if (prev.Gamepad.bRightTrigger != curr.Gamepad.bRightTrigger) {
-            LogError("XXX XInput Controller %lu: Right trigger changed from %u to %u", dwUserIndex,
-                     prev.Gamepad.bRightTrigger, curr.Gamepad.bRightTrigger);
-        }
-
-        if (prev.Gamepad.sThumbLX != curr.Gamepad.sThumbLX) {
-            LogError("XXX XInput Controller %lu: Left stick X changed from %d to %d", dwUserIndex,
-                     prev.Gamepad.sThumbLX, curr.Gamepad.sThumbLX);
-        }
-
-        if (prev.Gamepad.sThumbLY != curr.Gamepad.sThumbLY) {
-            LogError("XXX XInput Controller %lu: Left stick Y changed from %d to %d", dwUserIndex,
-                     prev.Gamepad.sThumbLY, curr.Gamepad.sThumbLY);
-        }
-
-        if (prev.Gamepad.sThumbRX != curr.Gamepad.sThumbRX) {
-            LogError("XXX XInput Controller %lu: Right stick X changed from %d to %d", dwUserIndex,
-                     prev.Gamepad.sThumbRX, curr.Gamepad.sThumbRX);
-        }
-
-        if (prev.Gamepad.sThumbRY != curr.Gamepad.sThumbRY) {
-            LogError("XXX XInput Controller %lu: Right stick Y changed from %d to %d", dwUserIndex,
-                     prev.Gamepad.sThumbRY, curr.Gamepad.sThumbRY);
-        }
-
-        if (prev.dwPacketNumber != curr.dwPacketNumber) {
-            LogError("XXX XInput Controller %lu: Packet number changed from %lu to %lu", dwUserIndex,
-                     prev.dwPacketNumber, curr.dwPacketNumber);
-        }
-    }
-
-    // Store current state for next comparison
-    g_previous_states[dwUserIndex] = *pState;
-    g_previous_states_valid[dwUserIndex] = true;
 }
 
 // Hooked XInputGetState function
@@ -238,8 +155,6 @@ DWORD WINAPI XInputGetState_Detour(DWORD dwUserIndex, XINPUT_STATE *pState) {
 
         // Update battery status periodically
         display_commander::widgets::xinput_widget::UpdateBatteryStatus(dwUserIndex);
-
-        LogXInputChanges(dwUserIndex, &original_state);
     } else {
         // Mark controller as disconnected in shared state
         if (dwUserIndex < XUSER_MAX_COUNT) {
@@ -336,8 +251,6 @@ DWORD WINAPI XInputGetStateEx_Detour(DWORD dwUserIndex, XINPUT_STATE *pState) {
 
         // Update battery status periodically
         display_commander::widgets::xinput_widget::UpdateBatteryStatus(dwUserIndex);
-
-        LogXInputChanges(dwUserIndex, &original_state);
     } else {
         // Mark controller as disconnected in shared state
         if (dwUserIndex < XUSER_MAX_COUNT) {

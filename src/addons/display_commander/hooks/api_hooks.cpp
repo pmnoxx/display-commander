@@ -340,9 +340,6 @@ void UninstallApiHooks() {
         return;
     }
 
-    // Uninstall XInput hooks first
-    UninstallXInputHooks();
-
     // Uninstall Windows.Gaming.Input hooks
     UninstallWindowsGamingInputHooks();
 

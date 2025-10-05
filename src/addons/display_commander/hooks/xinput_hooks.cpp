@@ -4,6 +4,7 @@
 #include "../widgets/xinput_widget/xinput_widget.hpp"
 #include "windows_hooks/windows_message_hooks.hpp"
 #include <MinHook.h>
+#include <array>
 #include <string>
 #include <vector>
 
@@ -15,13 +16,14 @@ namespace display_commanderhooks {
 XInputGetStateEx_pfn XInputGetStateEx_Direct = nullptr;
 XInputSetState_pfn XInputSetState_Direct = nullptr;
 XInputGetBatteryInformation_pfn XInputGetBatteryInformation_Direct = nullptr;
-std::vector<LPVOID> installed_hooks;
 
 // Hook state
 static std::atomic<bool> g_xinput_hooks_installed{false};
 
+// Track which modules have been hooked
+std::array<bool, 5> hooked_modules = {};
 const char *xinput_modules[] = {
-    "xinput1_4.dll", "xinput1_3.dll", "xinput1_2.dll", "xinput1_1.dll","xinput9_1_0.dll",
+    "xinput1_4.dll", "xinput1_3.dll", "xinput1_2.dll", "xinput1_1.dll", "xinput9_1_0.dll",
 };
 
 
@@ -31,13 +33,15 @@ static void InitializeXInputDirectFunctions() {
         return; // Already initialized
     }
     for (const char *module_name : xinput_modules) {
-        HMODULE xinput_module = GetModuleHandleA(module_name);
+        HMODULE xinput_module = LoadLibraryA(module_name);
         if (xinput_module != nullptr) {
             LogInfo("Found XInput module: %s at 0x%p", module_name, xinput_module);
-            XInputGetStateEx_Direct = (XInputGetStateEx_pfn)GetProcAddress(xinput_module, (LPCSTR)100);
+            //XInputGetStateEx_Direct = (XInputGetStateEx_pfn)GetProcAddress(xinput_module, (LPCSTR)100);
             XInputSetState_Direct = (XInputSetState_pfn)GetProcAddress(xinput_module, "XInputSetState");
             XInputGetBatteryInformation_Direct = (XInputGetBatteryInformation_pfn)GetProcAddress(xinput_module, "XInputGetBatteryInformation");
             break;
+        } else {
+            LogInfo("XInput module: %s not found", module_name);
         }
     }
 }
@@ -159,6 +163,7 @@ DWORD WINAPI XInputGetState_Detour(DWORD dwUserIndex, XINPUT_STATE *pState) {
     if (pState == nullptr) {
         return ERROR_INVALID_PARAMETER;
     }
+    LogInfo("XXX XInputGetState called for controller %lu", dwUserIndex);
 
     // Track hook call statistics
     g_hook_stats[HOOK_XInputGetState].increment_total();
@@ -256,6 +261,7 @@ DWORD WINAPI XInputGetStateEx_Detour(DWORD dwUserIndex, XINPUT_STATE *pState) {
     if (pState == nullptr) {
         return ERROR_INVALID_PARAMETER;
     }
+    LogInfo("XXX XInputGetStateEx called for controller %lu", dwUserIndex);
 
     // Track hook call statistics
     g_hook_stats[HOOK_XInputGetStateEx].increment_total();
@@ -347,27 +353,31 @@ DWORD WINAPI XInputGetStateEx_Detour(DWORD dwUserIndex, XINPUT_STATE *pState) {
 }
 
 bool InstallXInputHooks() {
-    if (g_xinput_hooks_installed.load()) {
-        LogInfo("XInput hooks already installed");
-        return true;
-    }
-
     // Initialize direct function pointers first
     InitializeXInputDirectFunctions();
 
     bool any_success = false;
 
     // Try to hook ALL loaded XInput modules
-    for (const char *module_name : xinput_modules) {
+    for (size_t idx = 0; idx < std::size(xinput_modules); ++idx) {
+        const char *module_name = xinput_modules[idx];
         HMODULE xinput_module = GetModuleHandleA(module_name);
         if (xinput_module == nullptr) {
+            LogInfo("XInput module %s not found", module_name);
             continue;
         }
+        if (hooked_modules[idx]) {
+            LogInfo("XInput module %s already hooked", module_name);
+            any_success = true;
+            continue;
+        }
+        LogInfo("XInput module %s found", module_name);
+        hooked_modules[idx] = true;
 
         // Hook XInputGetState
         FARPROC xinput_get_state_proc = GetProcAddress(xinput_module, "XInputGetState");
         if (xinput_get_state_proc != nullptr) {
-            LogInfo("XXX Found XInputGetState in %s at: 0x%p", module_name, xinput_get_state_proc);
+            LogInfo("Found XInputGetState in %s at: 0x%p", module_name, xinput_get_state_proc);
 
             LPVOID *original_fn_ptr = nullptr;
             if (MH_CreateHook(xinput_get_state_proc, XInputGetState_Detour, (LPVOID *)&original_fn_ptr) ==
@@ -390,22 +400,22 @@ bool InstallXInputHooks() {
             if (MH_CreateHook(xinput_get_state_ex_proc, XInputGetStateEx_Detour,
                                 (LPVOID *)&original_xinput_get_state_ex_proc) == MH_OK) {
                 if (MH_EnableHook(xinput_get_state_ex_proc) == MH_OK) {
+                    if (XInputGetStateEx_Direct == nullptr) {
+                        XInputGetStateEx_Direct = (XInputGetStateEx_pfn)original_xinput_get_state_ex_proc;
+                    }
                     LogInfo("Successfully hooked XInputGetStateEx (ordinal 100) in %s", module_name);
                 } else {
                     MH_RemoveHook(xinput_get_state_ex_proc);
                 }
             }
         }
+        any_success = true;
+    }
+    if (any_success) {
+        g_xinput_hooks_installed.store(true);
     }
 
     return any_success;
-}
-
-void UninstallXInputHooks() {
-    if (!g_xinput_hooks_installed.load()) {
-        LogInfo("XInput hooks not installed");
-        return;
-    }
 }
 
 bool AreXInputHooksInstalled() { return g_xinput_hooks_installed.load(); }

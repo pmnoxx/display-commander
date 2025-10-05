@@ -24,7 +24,6 @@ DWORD WINAPI XInputGetStateEx_Detour(DWORD dwUserIndex, XINPUT_STATE *pState);
 
 // Hook management
 bool InstallXInputHooks();
-void UninstallXInputHooks();
 bool AreXInputHooksInstalled();
 
 // Helper functions for thumbstick processing

@@ -83,6 +83,8 @@ struct GlobalWindowState {
     bool needs_move = false;
     bool style_changed = false;
     bool style_changed_ex = false;
+    int current_style = 0;
+    int current_ex_style = 0;
     int new_style = 0;
     int new_ex_style = 0;
     WindowStyleMode style_mode = WindowStyleMode::BORDERLESS;
@@ -427,14 +429,8 @@ extern std::atomic<bool> s_reflex_boost;           // Low Latency Boost
 extern std::atomic<bool> s_reflex_use_markers;     // Use markers to optimize
 extern std::atomic<bool> s_enable_reflex_logging;  // Enable Reflex logging
 
-// DLSS-FG Detection state
-extern std::atomic<bool> g_dlssfg_detected;
 
 // DLLS-G (DLSS Frame Generation) status
 extern std::atomic<bool> g_dlls_g_loaded;                                 // DLLS-G loaded status
 extern std::atomic<std::shared_ptr<const std::string>> g_dlls_g_version;  // DLLS-G version string
 
-// DLSS Preset Detection
-extern std::atomic<bool> g_dlss_preset_detected;                             // DLSS preset detection status
-extern std::atomic<std::shared_ptr<const std::string>> g_dlss_preset_name;   // Current DLSS preset name
-extern std::atomic<std::shared_ptr<const std::string>> g_dlss_quality_mode;  // Current DLSS quality mode

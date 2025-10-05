@@ -3,8 +3,6 @@
 #include "background_window.hpp"
 #include "globals.hpp"
 #include "hooks/api_hooks.hpp"
-#include "nvapi/dlss_preset_detector.hpp"
-#include "nvapi/dlssfg_version_detector.hpp"
 #include "settings/main_tab_settings.hpp"
 #include "utils.hpp"
 #include "utils/timing.hpp"
@@ -51,31 +49,11 @@ void every1s_checks() {
         // Apply window changes - the function will automatically determine what needs to be changed
         ApplyWindowChange(hwnd, "continuous_monitoring_auto_fix");
 
-        // BACKGROUND WINDOW MANAGEMENT: Update background window if feature is enabled
-        static int background_check_counter = 0;
-        if (++background_check_counter % 10 == 0) {  // Log every 10 seconds
-            std::ostringstream oss;
-            oss << "Continuous monitoring: Background feature check - s_background_feature_enabled = "
-                << (s_background_feature_enabled.load() ? "true" : "false")
-                << ", has_background_window = " << g_backgroundWindowManager.HasBackgroundWindow();
-            LogInfo(oss.str().c_str());
-        }
-
-        HWND current_app_foreground_window = GetCurrentForeGroundWindow();
-
         if (s_background_feature_enabled.load()) {
             // Only create/update background window if main window has focus
-            if (current_app_foreground_window != nullptr) {  //            if (foreground_window == hwnd) {
+            if (current_foreground_hwnd != nullptr) {  //            if (foreground_window == hwnd) {
                 LogInfo("Continuous monitoring: Calling UpdateBackgroundWindow for background window management");
-                g_backgroundWindowManager.UpdateBackgroundWindow(current_app_foreground_window);
-            } else {
-                if (background_check_counter % 10 == 0) {  // Log occasionally
-                    LogInfo("Continuous monitoring: Skipping background window update - main window not focused");
-                }
-            }
-        } else {
-            if (background_check_counter % 10 == 0) {  // Log occasionally
-                LogInfo("Continuous monitoring: Background feature disabled (s_background_feature_enabled = false)");
+                g_backgroundWindowManager.UpdateBackgroundWindow(current_foreground_hwnd);
             }
         }
     }
@@ -214,43 +192,6 @@ void every1s_checks() {
         g_perf_text_shared.store(std::make_shared<const std::string>(fps_oss.str()));
     }
 
-    // DLSS-FG Detection: Check every 5 seconds for runtime-loaded DLSS-G DLLs
-    {
-        if ((seconds_counter % 5) == 0) {
-            // Only try to detect if we haven't found it yet
-            if (!g_dlssfg_detected.load()) {
-                if (g_dlssfgVersionDetector.RefreshVersion()) {
-                    if (g_dlssfgVersionDetector.IsAvailable()) {
-                        const auto& version = g_dlssfgVersionDetector.GetVersion();
-                        LogInfo("DLSS-FG detected at runtime - Version: %s (DLL: %s)",
-                                version.getFormattedVersion().c_str(), version.dll_path.c_str());
-                        g_dlssfg_detected.store(true);
-
-                        // Update global DLLS-G variables
-                        g_dlls_g_loaded.store(true);
-                        g_dlls_g_version.store(std::make_shared<const std::string>(version.getFormattedVersion()));
-                    }
-                }
-
-                // DLSS Preset Detection: Check every 5 seconds for runtime-loaded DLSS presets
-                if (!g_dlss_preset_detected.load()) {
-                    if (g_dlssPresetDetector.RefreshPreset()) {
-                        if (g_dlssPresetDetector.IsAvailable()) {
-                            const auto& preset = g_dlssPresetDetector.GetPreset();
-                            LogInfo("DLSS Preset detected at runtime - Preset: %s, Quality: %s",
-                                    preset.getFormattedPreset().c_str(), preset.getFormattedQualityMode().c_str());
-                            g_dlss_preset_detected.store(true);
-
-                            // Update global DLSS preset variables
-                            g_dlss_preset_name.store(std::make_shared<const std::string>(preset.getFormattedPreset()));
-                            g_dlss_quality_mode.store(
-                                std::make_shared<const std::string>(preset.getFormattedQualityMode()));
-                        }
-                    }
-                }
-            }
-        }
-    }
     ++seconds_counter;
 }
 

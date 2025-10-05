@@ -38,7 +38,6 @@ class DeveloperTabSettings {
     // NVAPI Settings
     BoolSettingRef nvapi_fullscreen_prevention;
     BoolSettingRef nvapi_auto_enable;
-    BoolSettingRef nvapi_hdr_logging;
     FloatSettingRef nvapi_hdr_interval_sec;
 
     // Keyboard Shortcut Settings (Experimental)

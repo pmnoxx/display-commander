@@ -44,7 +44,6 @@ std::atomic<bool> s_nvapi_fullscreen_prevention{false}; // disabled by default
 // NVAPI Auto-enable for specific games
 std::atomic<bool> s_nvapi_auto_enable{true}; // enabled by default
 // NVAPI HDR logging
-std::atomic<bool> s_nvapi_hdr_logging{false};
 std::atomic<float> s_nvapi_hdr_interval_sec{5.f};
 
 // Spoof Fullscreen State (for applications that query fullscreen status)

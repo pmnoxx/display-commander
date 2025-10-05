@@ -5,7 +5,6 @@
 #include "hooks/window_proc_hooks.hpp"
 #include "latency/latency_manager.hpp"
 #include "nvapi/nvapi_fullscreen_prevention.hpp"
-#include "nvapi/nvapi_hdr_monitor.hpp"
 #include "process_exit_hooks.hpp"
 #include "settings/main_tab_settings.hpp"
 #include "swapchain_events.hpp"

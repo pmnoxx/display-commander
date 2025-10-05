@@ -1,7 +1,6 @@
 #include "developer_new_tab.hpp"
 #include "../../globals.hpp"
 #include "../../nvapi/nvapi_fullscreen_prevention.hpp"
-#include "../../nvapi/nvapi_hdr_monitor.hpp"
 #include "../../settings/developer_tab_settings.hpp"
 #include "../../utils.hpp"
 #include "settings_wrapper.hpp"
@@ -9,7 +8,6 @@
 #include <atomic>
 #include <iomanip>
 #include <sstream>
-#include <thread>
 
 static std::atomic<bool> s_restart_needed_nvapi(false);
 
@@ -207,18 +205,6 @@ void DrawNvapiSettings() {
         ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "Game restart required to apply NVAPI changes.");
     }
     if (s_nvapi_fullscreen_prevention.load() && ::g_nvapiFullscreenPrevention.IsAvailable()) {
-        // NVAPI HDR Logging
-        if (CheckboxSetting(settings::g_developerTabSettings.nvapi_hdr_logging, "NVAPI HDR Logging")) {
-            s_nvapi_hdr_logging.store(settings::g_developerTabSettings.nvapi_hdr_logging.GetValue());
-
-            if (settings::g_developerTabSettings.nvapi_hdr_logging.GetValue()) {
-                std::thread(::RunBackgroundNvapiHdrMonitor).detach();
-            }
-        }
-
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Enable HDR monitor information logging via NVAPI.");
-        }
 
         // NVAPI HDR Interval
         if (SliderFloatSetting(settings::g_developerTabSettings.nvapi_hdr_interval_sec,
@@ -229,42 +215,41 @@ void DrawNvapiSettings() {
             ImGui::SetTooltip("Interval between HDR monitor information logging.");
         }
 
-        if (settings::g_developerTabSettings.nvapi_hdr_logging.GetValue()) {
-            // NVAPI Debug Information Display
-            ImGui::Separator();
-            ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "NVAPI Debug Information:");
+        // NVAPI Debug Information Display
+        ImGui::Separator();
+        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "NVAPI Debug Information:");
 
-            extern NVAPIFullscreenPrevention g_nvapiFullscreenPrevention;
+        extern NVAPIFullscreenPrevention g_nvapiFullscreenPrevention;
 
-            // Library loaded successfully
-            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✁ENVAPI Library: Loaded");
+        // Library loaded successfully
+        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✁ENVAPI Library: Loaded");
 
-            // Driver version info
-            std::string driverVersion = ::g_nvapiFullscreenPrevention.GetDriverVersion();
-            if (driverVersion != "Failed to get driver version") {
-                ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✁EDriver Version: %s", driverVersion.c_str());
-            } else {
-                ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "⚠ Driver Version: %s", driverVersion.c_str());
-            }
-
-            // Hardware detection
-            if (::g_nvapiFullscreenPrevention.HasNVIDIAHardware()) {
-                ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✁ENVIDIA Hardware: Detected");
-            } else {
-                ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "✁ENVIDIA Hardware: Not Found");
-            }
-
-            // Fullscreen prevention status
-            if (::g_nvapiFullscreenPrevention.IsFullscreenPreventionEnabled()) {
-                ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✁EFullscreen Prevention: ACTIVE");
-            } else {
-                ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "◁EFullscreen Prevention: Inactive");
-            }
-
-            // Function availability check
-            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✁ECore Functions: Available");
-            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✁EDRS Functions: Available");
+        // Driver version info
+        std::string driverVersion = ::g_nvapiFullscreenPrevention.GetDriverVersion();
+        if (driverVersion != "Failed to get driver version") {
+            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✁EDriver Version: %s", driverVersion.c_str());
+        } else {
+            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "⚠ Driver Version: %s", driverVersion.c_str());
         }
+
+        // Hardware detection
+        if (::g_nvapiFullscreenPrevention.HasNVIDIAHardware()) {
+            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✁ENVIDIA Hardware: Detected");
+        } else {
+            ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "✁ENVIDIA Hardware: Not Found");
+        }
+
+        // Fullscreen prevention status
+        if (::g_nvapiFullscreenPrevention.IsFullscreenPreventionEnabled()) {
+            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✁EFullscreen Prevention: ACTIVE");
+        } else {
+            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "◁EFullscreen Prevention: Inactive");
+        }
+
+        // Function availability check
+        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✁ECore Functions: Available");
+        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✁EDRS Functions: Available");
+
     } else {
         // Library not loaded
         ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "✁ENVAPI Library: Not Loaded");

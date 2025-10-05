@@ -172,7 +172,6 @@ extern std::atomic<int> s_spoofed_mouse_y;
 // NVAPI Settings
 extern std::atomic<bool> s_nvapi_fullscreen_prevention;
 extern std::atomic<bool> s_nvapi_auto_enable;
-extern std::atomic<bool> s_nvapi_hdr_logging;
 extern std::atomic<float> s_nvapi_hdr_interval_sec;
 
 // Audio Settings

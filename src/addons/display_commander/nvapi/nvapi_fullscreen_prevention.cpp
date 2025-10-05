@@ -679,8 +679,8 @@ void NVAPIFullscreenPrevention::CheckAndAutoEnable() {
     LogInfo("NVAPI Auto-enable: Checking if game '%s' is in auto-enable list", processName.c_str());
     if (IsGameInAutoEnableList(processName)) {
         s_nvapi_auto_enable.store(true);
-        settings::g_developerTabSettings.spoof_fullscreen_state.SetValue(static_cast<int>(SpoofFullscreenState::SpoofAsFullscreen));
-        s_spoof_fullscreen_state.store(SpoofFullscreenState::SpoofAsFullscreen);
+       // settings::g_developerTabSettings.spoof_fullscreen_state.SetValue(static_cast<int>(SpoofFullscreenState::SpoofAsFullscreen));
+      //  s_spoof_fullscreen_state.store(SpoofFullscreenState::SpoofAsFullscreen);
 
         LogInfo("NVAPI Auto-enable: Detected game '%s' in auto-enable list", processName.c_str());
 
@@ -714,5 +714,7 @@ void NVAPIFullscreenPrevention::CheckAndAutoEnable() {
         } else {
             LogWarn("NVAPI Auto-enable: Failed to enable fullscreen prevention for '%s'", processName.c_str());
         }
+
+        g_nvapiFullscreenPrevention.SetHdr10OnAll(true);
     }
 }

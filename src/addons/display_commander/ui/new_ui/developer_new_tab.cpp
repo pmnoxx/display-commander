@@ -206,14 +206,6 @@ void DrawNvapiSettings() {
     }
     if (s_nvapi_fullscreen_prevention.load() && ::g_nvapiFullscreenPrevention.IsAvailable()) {
 
-        // NVAPI HDR Interval
-        if (SliderFloatSetting(settings::g_developerTabSettings.nvapi_hdr_interval_sec,
-                               "HDR Logging Interval (seconds)", "%.1f")) {
-            s_nvapi_hdr_interval_sec.store(settings::g_developerTabSettings.nvapi_hdr_interval_sec.GetValue());
-        }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Interval between HDR monitor information logging.");
-        }
 
         // NVAPI Debug Information Display
         ImGui::Separator();

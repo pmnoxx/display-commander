@@ -1,7 +1,7 @@
 #include "stack_trace.hpp"
 #include "exit_handler.hpp"
 #include "utils.hpp"
-#include <dbghelp.h>
+#include "dbghelp_loader.hpp"
 #include <sstream>
 #include <iomanip>
 #include <atomic>
@@ -25,20 +25,27 @@ bool Initialize() {
         // Initialize critical section for thread safety
         InitializeCriticalSection(&g_critical_section);
 
+        // Load dbghelp dynamically
+        if (!dbghelp_loader::LoadDbgHelp()) {
+            LogInfo("[Stack Trace] DbgHelp not available - stack trace functionality disabled");
+            g_available.store(false);
+            return false;
+        }
+
         // Get current process handle
         g_process_handle = GetCurrentProcess();
 
         // Initialize symbol handler
-        DWORD options = SymGetOptions();
+        DWORD options = dbghelp_loader::SymGetOptions_Original();
         options |= SYMOPT_UNDNAME;           // Undecorate names
         options |= SYMOPT_DEFERRED_LOADS;    // Defer symbol loading
         options |= SYMOPT_LOAD_LINES;        // Load line information
         options |= SYMOPT_INCLUDE_32BIT_MODULES; // Include 32-bit modules
         options |= SYMOPT_AUTO_PUBLICS;      // Auto-load public symbols
-        SymSetOptions(options);
+        dbghelp_loader::SymSetOptions_Original(options);
 
         // Initialize symbol handler for current process
-        if (SymInitialize(g_process_handle, nullptr, TRUE) != FALSE) {
+        if (dbghelp_loader::SymInitialize_Original(g_process_handle, nullptr, TRUE) != FALSE) {
             g_available.store(true);
             LogInfo("[Stack Trace] Initialized successfully");
         } else {
@@ -63,11 +70,14 @@ void Shutdown() {
     try {
         EnterCriticalSection(&g_critical_section);
 
-        if (g_available.load()) {
-            SymCleanup(g_process_handle);
+        if (g_available.load() && dbghelp_loader::IsDbgHelpAvailable()) {
+            dbghelp_loader::SymCleanup_Original(g_process_handle);
             g_available.store(false);
             LogInfo("[Stack Trace] Shutdown completed");
         }
+
+        // Unload dbghelp
+        dbghelp_loader::UnloadDbgHelp();
 
         g_process_handle = INVALID_HANDLE_VALUE;
         LeaveCriticalSection(&g_critical_section);
@@ -115,9 +125,9 @@ std::vector<StackFrame> CaptureStackTrace(DWORD max_frames, CONTEXT* context) {
 
         // Walk the stack
         for (DWORD i = 0; i < max_frames; i++) {
-            if (StackWalk64(machine_type, g_process_handle, GetCurrentThread(),
-                           &stack_frame, context, nullptr, SymFunctionTableAccess64,
-                           SymGetModuleBase64, nullptr) == FALSE) {
+            if (dbghelp_loader::StackWalk64_Original(machine_type, g_process_handle, GetCurrentThread(),
+                           &stack_frame, context, nullptr, dbghelp_loader::SymFunctionTableAccess64_Original,
+                           dbghelp_loader::SymGetModuleBase64_Original, nullptr) == FALSE) {
                 break;
             }
 
@@ -206,7 +216,7 @@ StackFrame GetSymbolInfo(DWORD64 address) {
 
         // Get symbol information
         DWORD64 displacement = 0;
-        if (SymFromAddr(g_process_handle, address, &displacement, symbol_info) != FALSE) {
+        if (dbghelp_loader::SymFromAddr_Original(g_process_handle, address, &displacement, symbol_info) != FALSE) {
             frame.function_name = symbol_info->Name;
             frame.offset = displacement;
         }
@@ -215,7 +225,7 @@ StackFrame GetSymbolInfo(DWORD64 address) {
         IMAGEHLP_LINE64 line_info = {};
         line_info.SizeOfStruct = sizeof(IMAGEHLP_LINE64);
         DWORD line_displacement = 0;
-        if (SymGetLineFromAddr64(g_process_handle, address, &line_displacement, &line_info) != FALSE) {
+        if (dbghelp_loader::SymGetLineFromAddr64_Original(g_process_handle, address, &line_displacement, &line_info) != FALSE) {
             frame.file_name = line_info.FileName;
             frame.line_number = line_info.LineNumber;
         }
@@ -223,7 +233,7 @@ StackFrame GetSymbolInfo(DWORD64 address) {
         // Get module information
         IMAGEHLP_MODULE64 module_info = {};
         module_info.SizeOfStruct = sizeof(IMAGEHLP_MODULE64);
-        if (SymGetModuleInfo64(g_process_handle, address, &module_info) != FALSE) {
+        if (dbghelp_loader::SymGetModuleInfo64_Original(g_process_handle, address, &module_info) != FALSE) {
             frame.module_name = module_info.ModuleName;
         }
     } catch (...) {
@@ -234,7 +244,7 @@ StackFrame GetSymbolInfo(DWORD64 address) {
 }
 
 bool IsAvailable() {
-    return g_available.load();
+    return g_available.load() && dbghelp_loader::IsDbgHelpAvailable();
 }
 
 void TestStackTrace() {

@@ -95,9 +95,8 @@ Reshade's implementation focuses on the **core message loop and state functions*
 3. **Would add complexity** without significant benefit
 
 **Priority for future enhancement** (if needed):
-1. **DirectInput APIs** - Critical for game compatibility
-2. `SendInput` - Most likely to be used by games for programmatic input
-3. `XInputSetState` - For vibration control (currently used directly)
+1. `SendInput` - Most likely to be used by games for programmatic input
+2. `XInputSetState` - For vibration control (currently used directly)
 
 ## 📊 Implementation Status
 

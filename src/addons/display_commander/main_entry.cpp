@@ -254,7 +254,6 @@ void DoInitializationWithoutHwnd(HMODULE h_module, DWORD fdw_reason) {
 }
 
 BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
-
     switch (fdw_reason) {
     case DLL_PROCESS_ATTACH: {
         g_shutdown.store(false);

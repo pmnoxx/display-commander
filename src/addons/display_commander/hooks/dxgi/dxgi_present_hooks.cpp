@@ -26,6 +26,47 @@
 
 namespace display_commanderhooks::dxgi {
 
+// Helper function to detect swapchain interface version
+int GetSwapchainInterfaceVersion(IDXGISwapChain* swapchain) {
+    // Try IDXGISwapChain3 first (highest version)
+    IDXGISwapChain3* swapchain3 = nullptr;
+    if (SUCCEEDED(swapchain->QueryInterface(IID_PPV_ARGS(&swapchain3)))) {
+        swapchain3->Release();
+        return 3;
+    }
+
+    // Try IDXGISwapChain2
+    IDXGISwapChain2* swapchain2 = nullptr;
+    if (SUCCEEDED(swapchain->QueryInterface(IID_PPV_ARGS(&swapchain2)))) {
+        swapchain2->Release();
+        return 2;
+    }
+
+    // Try IDXGISwapChain1
+    IDXGISwapChain1* swapchain1 = nullptr;
+    if (SUCCEEDED(swapchain->QueryInterface(IID_PPV_ARGS(&swapchain1)))) {
+        swapchain1->Release();
+        return 1;
+    }
+
+    // Base IDXGISwapChain
+    return 0;
+}
+
+// Helper function to safely check if vtable entry exists
+bool IsVTableEntryValid(void** vtable, int index) {
+    if (!vtable) return false;
+
+    // Basic bounds check - most swapchains should have at least 18 entries (IDXGISwapChain1)
+    // but we'll be conservative and check for null
+    __try {
+        return vtable[index] != nullptr;
+    }
+    __except(EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+
 // Original function pointers
 IDXGISwapChain_Present_pfn IDXGISwapChain_Present_Original = nullptr;
 IDXGISwapChain_Present1_pfn IDXGISwapChain_Present1_Original = nullptr;
@@ -326,7 +367,8 @@ HRESULT STDMETHODCALLTYPE IDXGIFactory_CreateSwapChain_Detour(IDXGIFactory *This
         // If successful, hook the newly created swapchain
         if (SUCCEEDED(hr) && ppSwapChain != nullptr && *ppSwapChain != nullptr) {
             LogInfo("IDXGIFactory::CreateSwapChain succeeded, hooking new swapchain: 0x%p", *ppSwapChain);
-            HookSwapchain(*ppSwapChain);
+            // causes sekiro to crash
+         //   HookSwapchain(*ppSwapChain);
         }
 
         return hr;
@@ -541,6 +583,7 @@ bool HookSwapchainVTable(IDXGISwapChain *swapchain) {
     if (g_swapchain_hooked.load() == swapchain) {
         return false;
     }
+    LogInfo("Hooking swapchain: 0x%p", swapchain);
 
     g_hooked_swapchain = swapchain;
     g_swapchain_hooked.store(swapchain);
@@ -588,274 +631,328 @@ bool HookSwapchainVTable(IDXGISwapChain *swapchain) {
 | **39** | **IDXGISwapChain3** | **ResizeBuffers1** | **Resize buffers with parameters** |
 */
 
-    // Hook Present (index 8 in IDXGISwapChain vtable)
+    // Detect swapchain interface version for safe vtable access
+    int interfaceVersion = GetSwapchainInterfaceVersion(swapchain);
+    LogInfo("Detected swapchain interface version: %d", interfaceVersion);
+
+    // ============================================================================
+    // GROUP 0: IDXGISwapChain (Base Interface) - Indices 8-17
+    // ============================================================================
+    LogInfo("Hooking IDXGISwapChain methods (indices 8-17)");
+
+    // Hook Present (index 8) - Critical method, always present
     if (MH_CreateHook(vtable[8], IDXGISwapChain_Present_Detour, (LPVOID *)&IDXGISwapChain_Present_Original) != MH_OK) {
         LogError("Failed to create IDXGISwapChain::Present hook");
         return false;
     }
 
-    // Hook GetDesc (index 12 in IDXGISwapChain vtable)
+    // Hook GetDesc (index 12) - Always present in base interface
+    if (MH_CreateHook(vtable[12], IDXGISwapChain_GetDesc_Detour, (LPVOID *)&IDXGISwapChain_GetDesc_Original) != MH_OK) {
+        LogError("Failed to create IDXGISwapChain::GetDesc hook");
+        // Don't return false, this is not critical
+    }
 
-    // Hook GetDesc1 (index 18 in IDXGISwapChain1+ vtable) - only if the swapchain supports it
-    // Check if this is IDXGISwapChain1 or higher by checking if the method exists
-
-    // Hook Present1 (index 22 in IDXGISwapChain1+ vtable) - only if the swapchain supports it
-    // Check if this is IDXGISwapChain1 or higher by checking if the method exists
-
-
-
-    // Hook CheckColorSpaceSupport (index 37 in IDXGISwapChain3+ vtable) - only if the swapchain supports it
-    // Check if this is IDXGISwapChain3 or higher by checking if the method exists
-    // Reference: Windows SDK dxgi1_4.h - IDXGISwapChain3 interface definition
-    // Documentation: docs/DXGI_VTABLE_INDICES.md - Complete vtable index reference
-
-
-    // Hook all additional DXGI methods (indices 9-17, 19-21, 23-39)
-    // IDXGISwapChain methods (9-17)
-    if (vtable[9] != nullptr) {
+    // Hook other IDXGISwapChain methods (9-11, 13-17) with safe vtable access
+    if (IsVTableEntryValid(vtable, 9)) {
         if (MH_CreateHook(vtable[9], IDXGISwapChain_GetBuffer_Detour, (LPVOID *)&IDXGISwapChain_GetBuffer_Original) != MH_OK) {
             LogError("Failed to create IDXGISwapChain::GetBuffer hook");
         }
     }
-    if (vtable[10] != nullptr) {
+    if (IsVTableEntryValid(vtable, 10)) {
         if (MH_CreateHook(vtable[10], IDXGISwapChain_SetFullscreenState_Detour, (LPVOID *)&IDXGISwapChain_SetFullscreenState_Original) != MH_OK) {
             LogError("Failed to create IDXGISwapChain::SetFullscreenState hook");
         }
     }
-    if (vtable[11] != nullptr) {
+    if (IsVTableEntryValid(vtable, 11)) {
         if (MH_CreateHook(vtable[11], IDXGISwapChain_GetFullscreenState_Detour, (LPVOID *)&IDXGISwapChain_GetFullscreenState_Original) != MH_OK) {
             LogError("Failed to create IDXGISwapChain::GetFullscreenState hook");
         }
     }
-    if (MH_CreateHook(vtable[12], IDXGISwapChain_GetDesc_Detour, (LPVOID *)&IDXGISwapChain_GetDesc_Original) != MH_OK) {
-        LogError("Failed to create IDXGISwapChain::GetDesc hook");
-       // return false;
-    }
-    if (vtable[13] != nullptr) {
+    if (IsVTableEntryValid(vtable, 13)) {
         if (MH_CreateHook(vtable[13], IDXGISwapChain_ResizeBuffers_Detour, (LPVOID *)&IDXGISwapChain_ResizeBuffers_Original) != MH_OK) {
             LogError("Failed to create IDXGISwapChain::ResizeBuffers hook");
         }
     }
-    if (vtable[14] != nullptr) {
+    if (IsVTableEntryValid(vtable, 14)) {
         if (MH_CreateHook(vtable[14], IDXGISwapChain_ResizeTarget_Detour, (LPVOID *)&IDXGISwapChain_ResizeTarget_Original) != MH_OK) {
             LogError("Failed to create IDXGISwapChain::ResizeTarget hook");
         }
     }
-    if (vtable[15] != nullptr) {
+    if (IsVTableEntryValid(vtable, 15)) {
         if (MH_CreateHook(vtable[15], IDXGISwapChain_GetContainingOutput_Detour, (LPVOID *)&IDXGISwapChain_GetContainingOutput_Original) != MH_OK) {
             LogError("Failed to create IDXGISwapChain::GetContainingOutput hook");
         }
     }
-    if (vtable[16] != nullptr) {
+    if (IsVTableEntryValid(vtable, 16)) {
         if (MH_CreateHook(vtable[16], IDXGISwapChain_GetFrameStatistics_Detour, (LPVOID *)&IDXGISwapChain_GetFrameStatistics_Original) != MH_OK) {
             LogError("Failed to create IDXGISwapChain::GetFrameStatistics hook");
         }
     }
-    if (vtable[17] != nullptr) {
+    if (IsVTableEntryValid(vtable, 17)) {
         if (MH_CreateHook(vtable[17], IDXGISwapChain_GetLastPresentCount_Detour, (LPVOID *)&IDXGISwapChain_GetLastPresentCount_Original) != MH_OK) {
             LogError("Failed to create IDXGISwapChain::GetLastPresentCount hook");
         }
     }
-    if (vtable[18] != nullptr) {
-        if (MH_CreateHook(vtable[18], IDXGISwapChain_GetDesc1_Detour, (LPVOID *)&IDXGISwapChain_GetDesc1_Original) != MH_OK) {
-            LogError("Failed to create IDXGISwapChain1::GetDesc1 hook");
-            return false;
+
+    // ============================================================================
+    // GROUP 1: IDXGISwapChain1 (Extended Interface) - Indices 18-28
+    // ============================================================================
+    if (interfaceVersion >= 1) {
+        LogInfo("Hooking IDXGISwapChain1 methods (indices 18-28)");
+
+        // Hook GetDesc1 (index 18) - Critical for IDXGISwapChain1
+        if (IsVTableEntryValid(vtable, 18)) {
+            if (MH_CreateHook(vtable[18], IDXGISwapChain_GetDesc1_Detour, (LPVOID *)&IDXGISwapChain_GetDesc1_Original) != MH_OK) {
+                LogError("Failed to create IDXGISwapChain1::GetDesc1 hook");
+                return false;
+            }
         }
-    }
-    // IDXGISwapChain1 methods (19-21, 23-28)
-    if (vtable[19] != nullptr) {
-        if (MH_CreateHook(vtable[19], IDXGISwapChain_GetFullscreenDesc_Detour, (LPVOID *)&IDXGISwapChain_GetFullscreenDesc_Original) != MH_OK) {
-            LogError("Failed to create IDXGISwapChain1::GetFullscreenDesc hook");
+
+        // Hook Present1 (index 22) - Critical for IDXGISwapChain1
+        if (IsVTableEntryValid(vtable, 22)) {
+            if (MH_CreateHook(vtable[22], IDXGISwapChain_Present1_Detour, (LPVOID *)&IDXGISwapChain_Present1_Original) != MH_OK) {
+                LogError("Failed to create IDXGISwapChain1::Present1 hook");
+                return false;
+            }
         }
-    }
-    if (vtable[20] != nullptr) {
-        if (MH_CreateHook(vtable[20], IDXGISwapChain_GetHwnd_Detour, (LPVOID *)&IDXGISwapChain_GetHwnd_Original) != MH_OK) {
-            LogError("Failed to create IDXGISwapChain1::GetHwnd hook");
+
+        // Hook other IDXGISwapChain1 methods (19-21, 23-28)
+        if (IsVTableEntryValid(vtable, 19)) {
+            if (MH_CreateHook(vtable[19], IDXGISwapChain_GetFullscreenDesc_Detour, (LPVOID *)&IDXGISwapChain_GetFullscreenDesc_Original) != MH_OK) {
+                LogError("Failed to create IDXGISwapChain1::GetFullscreenDesc hook");
+            }
         }
-    }
-    if (vtable[21] != nullptr) {
-        if (MH_CreateHook(vtable[21], IDXGISwapChain_GetCoreWindow_Detour, (LPVOID *)&IDXGISwapChain_GetCoreWindow_Original) != MH_OK) {
-            LogError("Failed to create IDXGISwapChain1::GetCoreWindow hook");
+        if (IsVTableEntryValid(vtable, 20)) {
+            if (MH_CreateHook(vtable[20], IDXGISwapChain_GetHwnd_Detour, (LPVOID *)&IDXGISwapChain_GetHwnd_Original) != MH_OK) {
+                LogError("Failed to create IDXGISwapChain1::GetHwnd hook");
+            }
         }
-    }
-    if (vtable[22] != nullptr) {
-        if (MH_CreateHook(vtable[22], IDXGISwapChain_Present1_Detour, (LPVOID *)&IDXGISwapChain_Present1_Original) != MH_OK) {
-            LogError("Failed to create IDXGISwapChain1::Present1 hook");
-            return false;
+        if (IsVTableEntryValid(vtable, 21)) {
+            if (MH_CreateHook(vtable[21], IDXGISwapChain_GetCoreWindow_Detour, (LPVOID *)&IDXGISwapChain_GetCoreWindow_Original) != MH_OK) {
+                LogError("Failed to create IDXGISwapChain1::GetCoreWindow hook");
+            }
         }
-    }
-    if (vtable[23] != nullptr) {
-        if (MH_CreateHook(vtable[23], IDXGISwapChain_IsTemporaryMonoSupported_Detour, (LPVOID *)&IDXGISwapChain_IsTemporaryMonoSupported_Original) != MH_OK) {
-            LogError("Failed to create IDXGISwapChain1::IsTemporaryMonoSupported hook");
+        if (IsVTableEntryValid(vtable, 23)) {
+            if (MH_CreateHook(vtable[23], IDXGISwapChain_IsTemporaryMonoSupported_Detour, (LPVOID *)&IDXGISwapChain_IsTemporaryMonoSupported_Original) != MH_OK) {
+                LogError("Failed to create IDXGISwapChain1::IsTemporaryMonoSupported hook");
+            }
         }
-    }
-    if (vtable[24] != nullptr) {
-        if (MH_CreateHook(vtable[24], IDXGISwapChain_GetRestrictToOutput_Detour, (LPVOID *)&IDXGISwapChain_GetRestrictToOutput_Original) != MH_OK) {
-            LogError("Failed to create IDXGISwapChain1::GetRestrictToOutput hook");
+        if (IsVTableEntryValid(vtable, 24)) {
+            if (MH_CreateHook(vtable[24], IDXGISwapChain_GetRestrictToOutput_Detour, (LPVOID *)&IDXGISwapChain_GetRestrictToOutput_Original) != MH_OK) {
+                LogError("Failed to create IDXGISwapChain1::GetRestrictToOutput hook");
+            }
         }
-    }
-    if (vtable[25] != nullptr) {
-        if (MH_CreateHook(vtable[25], IDXGISwapChain_SetBackgroundColor_Detour, (LPVOID *)&IDXGISwapChain_SetBackgroundColor_Original) != MH_OK) {
-            LogError("Failed to create IDXGISwapChain1::SetBackgroundColor hook");
+        if (IsVTableEntryValid(vtable, 25)) {
+            if (MH_CreateHook(vtable[25], IDXGISwapChain_SetBackgroundColor_Detour, (LPVOID *)&IDXGISwapChain_SetBackgroundColor_Original) != MH_OK) {
+                LogError("Failed to create IDXGISwapChain1::SetBackgroundColor hook");
+            }
         }
-    }
-    if (vtable[26] != nullptr) {
-        if (MH_CreateHook(vtable[26], IDXGISwapChain_GetBackgroundColor_Detour, (LPVOID *)&IDXGISwapChain_GetBackgroundColor_Original) != MH_OK) {
-            LogError("Failed to create IDXGISwapChain1::GetBackgroundColor hook");
+        if (IsVTableEntryValid(vtable, 26)) {
+            if (MH_CreateHook(vtable[26], IDXGISwapChain_GetBackgroundColor_Detour, (LPVOID *)&IDXGISwapChain_GetBackgroundColor_Original) != MH_OK) {
+                LogError("Failed to create IDXGISwapChain1::GetBackgroundColor hook");
+            }
         }
-    }
-    if (vtable[27] != nullptr) {
-        if (MH_CreateHook(vtable[27], IDXGISwapChain_SetRotation_Detour, (LPVOID *)&IDXGISwapChain_SetRotation_Original) != MH_OK) {
-            LogError("Failed to create IDXGISwapChain1::SetRotation hook");
+        if (IsVTableEntryValid(vtable, 27)) {
+            if (MH_CreateHook(vtable[27], IDXGISwapChain_SetRotation_Detour, (LPVOID *)&IDXGISwapChain_SetRotation_Original) != MH_OK) {
+                LogError("Failed to create IDXGISwapChain1::SetRotation hook");
+            }
         }
-    }
-    if (vtable[28] != nullptr) {
-        if (MH_CreateHook(vtable[28], IDXGISwapChain_GetRotation_Detour, (LPVOID *)&IDXGISwapChain_GetRotation_Original) != MH_OK) {
-            LogError("Failed to create IDXGISwapChain1::GetRotation hook");
+        if (IsVTableEntryValid(vtable, 28)) {
+            if (MH_CreateHook(vtable[28], IDXGISwapChain_GetRotation_Detour, (LPVOID *)&IDXGISwapChain_GetRotation_Original) != MH_OK) {
+                LogError("Failed to create IDXGISwapChain1::GetRotation hook");
+            }
         }
+    } else {
+        LogInfo("Skipping IDXGISwapChain1 methods - interface not supported");
     }
 
-    // IDXGISwapChain2 methods (29-35)
-    if (vtable[29] != nullptr) {
-        if (MH_CreateHook(vtable[29], IDXGISwapChain_SetSourceSize_Detour, (LPVOID *)&IDXGISwapChain_SetSourceSize_Original) != MH_OK) {
-            LogError("Failed to create IDXGISwapChain2::SetSourceSize hook");
+    // ============================================================================
+    // GROUP 2: IDXGISwapChain2 (Extended Interface) - Indices 29-35
+    // ============================================================================
+    if (interfaceVersion >= 2) {
+        LogInfo("Hooking IDXGISwapChain2 methods (indices 29-35)");
+
+        // Hook IDXGISwapChain2 methods (29-35)
+        if (IsVTableEntryValid(vtable, 29)) {
+            if (MH_CreateHook(vtable[29], IDXGISwapChain_SetSourceSize_Detour, (LPVOID *)&IDXGISwapChain_SetSourceSize_Original) != MH_OK) {
+                LogError("Failed to create IDXGISwapChain2::SetSourceSize hook");
+            }
         }
-    }
-    if (vtable[30] != nullptr) {
-        if (MH_CreateHook(vtable[30], IDXGISwapChain_GetSourceSize_Detour, (LPVOID *)&IDXGISwapChain_GetSourceSize_Original) != MH_OK) {
-            LogError("Failed to create IDXGISwapChain2::GetSourceSize hook");
+        if (IsVTableEntryValid(vtable, 30)) {
+            if (MH_CreateHook(vtable[30], IDXGISwapChain_GetSourceSize_Detour, (LPVOID *)&IDXGISwapChain_GetSourceSize_Original) != MH_OK) {
+                LogError("Failed to create IDXGISwapChain2::GetSourceSize hook");
+            }
         }
-    }
-    if (vtable[31] != nullptr) {
-        if (MH_CreateHook(vtable[31], IDXGISwapChain_SetMaximumFrameLatency_Detour, (LPVOID *)&IDXGISwapChain_SetMaximumFrameLatency_Original) != MH_OK) {
-            LogError("Failed to create IDXGISwapChain2::SetMaximumFrameLatency hook");
+        if (IsVTableEntryValid(vtable, 31)) {
+            if (MH_CreateHook(vtable[31], IDXGISwapChain_SetMaximumFrameLatency_Detour, (LPVOID *)&IDXGISwapChain_SetMaximumFrameLatency_Original) != MH_OK) {
+                LogError("Failed to create IDXGISwapChain2::SetMaximumFrameLatency hook");
+            }
         }
-    }
-    if (vtable[32] != nullptr) {
-        if (MH_CreateHook(vtable[32], IDXGISwapChain_GetMaximumFrameLatency_Detour, (LPVOID *)&IDXGISwapChain_GetMaximumFrameLatency_Original) != MH_OK) {
-            LogError("Failed to create IDXGISwapChain2::GetMaximumFrameLatency hook");
+        if (IsVTableEntryValid(vtable, 32)) {
+            if (MH_CreateHook(vtable[32], IDXGISwapChain_GetMaximumFrameLatency_Detour, (LPVOID *)&IDXGISwapChain_GetMaximumFrameLatency_Original) != MH_OK) {
+                LogError("Failed to create IDXGISwapChain2::GetMaximumFrameLatency hook");
+            }
         }
-    }
-    if (vtable[33] != nullptr) {
-        if (MH_CreateHook(vtable[33], IDXGISwapChain_GetFrameLatencyWaitableObject_Detour, (LPVOID *)&IDXGISwapChain_GetFrameLatencyWaitableObject_Original) != MH_OK) {
-            LogError("Failed to create IDXGISwapChain2::GetFrameLatencyWaitableObject hook");
+        if (IsVTableEntryValid(vtable, 33)) {
+            if (MH_CreateHook(vtable[33], IDXGISwapChain_GetFrameLatencyWaitableObject_Detour, (LPVOID *)&IDXGISwapChain_GetFrameLatencyWaitableObject_Original) != MH_OK) {
+                LogError("Failed to create IDXGISwapChain2::GetFrameLatencyWaitableObject hook");
+            }
         }
-    }
-    if (vtable[34] != nullptr) {
-        if (MH_CreateHook(vtable[34], IDXGISwapChain_SetMatrixTransform_Detour, (LPVOID *)&IDXGISwapChain_SetMatrixTransform_Original) != MH_OK) {
-            LogError("Failed to create IDXGISwapChain2::SetMatrixTransform hook");
+        if (IsVTableEntryValid(vtable, 34)) {
+            if (MH_CreateHook(vtable[34], IDXGISwapChain_SetMatrixTransform_Detour, (LPVOID *)&IDXGISwapChain_SetMatrixTransform_Original) != MH_OK) {
+                LogError("Failed to create IDXGISwapChain2::SetMatrixTransform hook");
+            }
         }
-    }
-    if (vtable[35] != nullptr) {
-        if (MH_CreateHook(vtable[35], IDXGISwapChain_GetMatrixTransform_Detour, (LPVOID *)&IDXGISwapChain_GetMatrixTransform_Original) != MH_OK) {
-            LogError("Failed to create IDXGISwapChain2::GetMatrixTransform hook");
+        if (IsVTableEntryValid(vtable, 35)) {
+            if (MH_CreateHook(vtable[35], IDXGISwapChain_GetMatrixTransform_Detour, (LPVOID *)&IDXGISwapChain_GetMatrixTransform_Original) != MH_OK) {
+                LogError("Failed to create IDXGISwapChain2::GetMatrixTransform hook");
+            }
         }
+    } else {
+        LogInfo("Skipping IDXGISwapChain2 methods - interface not supported");
     }
 
-    // IDXGISwapChain3 methods (36, 38-39)
-    if (vtable[36] != nullptr) {
-        if (MH_CreateHook(vtable[36], IDXGISwapChain_GetCurrentBackBufferIndex_Detour, (LPVOID *)&IDXGISwapChain_GetCurrentBackBufferIndex_Original) != MH_OK) {
-            LogError("Failed to create IDXGISwapChain3::GetCurrentBackBufferIndex hook");
+    // ============================================================================
+    // GROUP 3: IDXGISwapChain3 (Extended Interface) - Indices 36-39
+    // ============================================================================
+    if (interfaceVersion >= 3) {
+        LogInfo("Hooking IDXGISwapChain3 methods (indices 36-39)");
+
+        // Hook IDXGISwapChain3 methods (36-39) with extra safety for high indices
+        if (IsVTableEntryValid(vtable, 36)) {
+            if (MH_CreateHook(vtable[36], IDXGISwapChain_GetCurrentBackBufferIndex_Detour, (LPVOID *)&IDXGISwapChain_GetCurrentBackBufferIndex_Original) != MH_OK) {
+                LogError("Failed to create IDXGISwapChain3::GetCurrentBackBufferIndex hook");
+            }
         }
-    }
-    if (vtable[37] != nullptr) {
-        if (MH_CreateHook(vtable[37], IDXGISwapChain_CheckColorSpaceSupport_Detour, (LPVOID *)&IDXGISwapChain_CheckColorSpaceSupport_Original) != MH_OK) {
-            LogError("Failed to create IDXGISwapChain3::CheckColorSpaceSupport hook");
-            //return false;
+
+        // Hook CheckColorSpaceSupport (index 37) - The method you were concerned about
+        if (IsVTableEntryValid(vtable, 37)) {
+            if (MH_CreateHook(vtable[37], IDXGISwapChain_CheckColorSpaceSupport_Detour, (LPVOID *)&IDXGISwapChain_CheckColorSpaceSupport_Original) != MH_OK) {
+                LogError("Failed to create IDXGISwapChain3::CheckColorSpaceSupport hook");
+                // Don't return false, this is not critical for basic functionality
+            }
         }
-    }
-    if (vtable[38] != nullptr) {
-        if (MH_CreateHook(vtable[38], IDXGISwapChain_SetColorSpace1_Detour, (LPVOID *)&IDXGISwapChain_SetColorSpace1_Original) != MH_OK) {
-            LogError("Failed to create IDXGISwapChain3::SetColorSpace1 hook");
+
+        if (IsVTableEntryValid(vtable, 38)) {
+            if (MH_CreateHook(vtable[38], IDXGISwapChain_SetColorSpace1_Detour, (LPVOID *)&IDXGISwapChain_SetColorSpace1_Original) != MH_OK) {
+                LogError("Failed to create IDXGISwapChain3::SetColorSpace1 hook");
+            }
         }
-    }
-    if (vtable[39] != nullptr) {
-        if (MH_CreateHook(vtable[39], IDXGISwapChain_ResizeBuffers1_Detour, (LPVOID *)&IDXGISwapChain_ResizeBuffers1_Original) != MH_OK) {
-            LogError("Failed to create IDXGISwapChain3::ResizeBuffers1 hook");
+        if (IsVTableEntryValid(vtable, 39)) {
+            if (MH_CreateHook(vtable[39], IDXGISwapChain_ResizeBuffers1_Detour, (LPVOID *)&IDXGISwapChain_ResizeBuffers1_Original) != MH_OK) {
+                LogError("Failed to create IDXGISwapChain3::ResizeBuffers1 hook");
+            }
         }
+    } else {
+        LogInfo("Skipping IDXGISwapChain3 methods - interface not supported");
     }
 
-    // Enable the Present hook
-    if (MH_EnableHook(vtable[8]) != MH_OK) {
+    // ============================================================================
+    // ENABLE ALL HOOKS - Organized by Interface Version
+    // ============================================================================
+    LogInfo("Enabling all created hooks...");
+
+    // Enable GROUP 0: IDXGISwapChain hooks (always enabled)
+    if (IsVTableEntryValid(vtable, 8) && MH_EnableHook(vtable[8]) != MH_OK) {
         LogError("Failed to enable IDXGISwapChain::Present hook");
-      //  return false;
     }
 
+    if (IsVTableEntryValid(vtable, 9)) MH_EnableHook(vtable[9]);
+    if (IsVTableEntryValid(vtable, 10)) MH_EnableHook(vtable[10]);
+    if (IsVTableEntryValid(vtable, 11)) MH_EnableHook(vtable[11]);
+    if (IsVTableEntryValid(vtable, 12)) MH_EnableHook(vtable[12]);
+    if (IsVTableEntryValid(vtable, 13)) MH_EnableHook(vtable[13]);
+    if (IsVTableEntryValid(vtable, 14)) MH_EnableHook(vtable[14]);
+    if (IsVTableEntryValid(vtable, 15)) MH_EnableHook(vtable[15]);
+    if (IsVTableEntryValid(vtable, 16)) MH_EnableHook(vtable[16]);
+    if (IsVTableEntryValid(vtable, 17)) MH_EnableHook(vtable[17]);
 
-    // Enable all additional DXGI hooks
-    // IDXGISwapChain methods (9-17)
-    if (vtable[9] != nullptr) MH_EnableHook(vtable[9]);
-    if (vtable[10] != nullptr) MH_EnableHook(vtable[10]);
-    if (vtable[11] != nullptr) MH_EnableHook(vtable[11]);
-    if (vtable[12] != nullptr) MH_EnableHook(vtable[12]);
-    if (vtable[13] != nullptr) MH_EnableHook(vtable[13]);
-    if (vtable[14] != nullptr) MH_EnableHook(vtable[14]);
-    if (vtable[15] != nullptr) MH_EnableHook(vtable[15]);
-    if (vtable[16] != nullptr) MH_EnableHook(vtable[16]);
-    if (vtable[17] != nullptr) MH_EnableHook(vtable[17]);
 
-    // IDXGISwapChain1 methods (18-28)
-    if (vtable[18] != nullptr) MH_EnableHook(vtable[18]);
-    if (vtable[19] != nullptr) MH_EnableHook(vtable[19]);
-    if (vtable[20] != nullptr) MH_EnableHook(vtable[20]);
-    if (vtable[21] != nullptr) MH_EnableHook(vtable[21]);
-    if (vtable[22] != nullptr) MH_EnableHook(vtable[22]);
-    if (vtable[23] != nullptr) MH_EnableHook(vtable[23]);
-    if (vtable[24] != nullptr) MH_EnableHook(vtable[24]);
-    if (vtable[25] != nullptr) MH_EnableHook(vtable[25]);
-    if (vtable[26] != nullptr) MH_EnableHook(vtable[26]);
-    if (vtable[27] != nullptr) MH_EnableHook(vtable[27]);
-    if (vtable[28] != nullptr) MH_EnableHook(vtable[28]);
+    // Enable GROUP 1: IDXGISwapChain1 hooks (if supported)
+    if (interfaceVersion >= 1) {
+        if (IsVTableEntryValid(vtable, 18)) MH_EnableHook(vtable[18]);
+        if (IsVTableEntryValid(vtable, 19)) MH_EnableHook(vtable[19]);
+        if (IsVTableEntryValid(vtable, 20)) MH_EnableHook(vtable[20]);
+        if (IsVTableEntryValid(vtable, 21)) MH_EnableHook(vtable[21]);
+        if (IsVTableEntryValid(vtable, 22)) MH_EnableHook(vtable[22]);
+        if (IsVTableEntryValid(vtable, 23)) MH_EnableHook(vtable[23]);
+        if (IsVTableEntryValid(vtable, 24)) MH_EnableHook(vtable[24]);
+        if (IsVTableEntryValid(vtable, 25)) MH_EnableHook(vtable[25]);
+        if (IsVTableEntryValid(vtable, 26)) MH_EnableHook(vtable[26]);
+        if (IsVTableEntryValid(vtable, 27)) MH_EnableHook(vtable[27]);
+        if (IsVTableEntryValid(vtable, 28)) MH_EnableHook(vtable[28]);
+    }
 
-    // IDXGISwapChain2 methods (29-35)
-    if (vtable[29] != nullptr) MH_EnableHook(vtable[29]);
-    if (vtable[30] != nullptr) MH_EnableHook(vtable[30]);
-    if (vtable[31] != nullptr) MH_EnableHook(vtable[31]);
-    if (vtable[32] != nullptr) MH_EnableHook(vtable[32]);
-    if (vtable[33] != nullptr) MH_EnableHook(vtable[33]);
-    if (vtable[34] != nullptr) MH_EnableHook(vtable[34]);
-    if (vtable[35] != nullptr) MH_EnableHook(vtable[35]);
+    // Enable GROUP 2: IDXGISwapChain2 hooks (if supported)
+    if (interfaceVersion >= 2) {
+        if (IsVTableEntryValid(vtable, 29)) MH_EnableHook(vtable[29]);
+        if (IsVTableEntryValid(vtable, 30)) MH_EnableHook(vtable[30]);
+        if (IsVTableEntryValid(vtable, 31)) MH_EnableHook(vtable[31]);
+        if (IsVTableEntryValid(vtable, 32)) MH_EnableHook(vtable[32]);
+        if (IsVTableEntryValid(vtable, 33)) MH_EnableHook(vtable[33]);
+        if (IsVTableEntryValid(vtable, 34)) MH_EnableHook(vtable[34]);
+        if (IsVTableEntryValid(vtable, 35)) MH_EnableHook(vtable[35]);
+    }
 
-    // IDXGISwapChain3 methods (36, 38-39)
-    if (vtable[36] != nullptr) MH_EnableHook(vtable[36]);
-    if (vtable[37] != nullptr) MH_EnableHook(vtable[37]);
-    if (vtable[38] != nullptr) MH_EnableHook(vtable[38]);
-    if (vtable[39] != nullptr) MH_EnableHook(vtable[39]);
+    // Enable GROUP 3: IDXGISwapChain3 hooks (if supported)
+    if (interfaceVersion >= 3) {
+        if (IsVTableEntryValid(vtable, 36)) MH_EnableHook(vtable[36]);
+        if (IsVTableEntryValid(vtable, 37)) MH_EnableHook(vtable[37]);
+        if (IsVTableEntryValid(vtable, 38)) MH_EnableHook(vtable[38]);
+        if (IsVTableEntryValid(vtable, 39)) MH_EnableHook(vtable[39]);
+    }
 
-    // Build success message based on which hooks were installed
-    std::string hook_message = "Successfully hooked DXGI methods: Present, GetDesc";
-    if (vtable[9] != nullptr) hook_message += ", GetBuffer";
-    if (vtable[10] != nullptr) hook_message += ", SetFullscreenState";
-    if (vtable[11] != nullptr) hook_message += ", GetFullscreenState";
-    if (vtable[13] != nullptr) hook_message += ", ResizeBuffers";
-    if (vtable[14] != nullptr) hook_message += ", ResizeTarget";
-    if (vtable[15] != nullptr) hook_message += ", GetContainingOutput";
-    if (vtable[16] != nullptr) hook_message += ", GetFrameStatistics";
-    if (vtable[17] != nullptr) hook_message += ", GetLastPresentCount";
-    if (vtable[18] != nullptr) hook_message += ", GetDesc1";
-    if (vtable[19] != nullptr) hook_message += ", GetFullscreenDesc";
-    if (vtable[20] != nullptr) hook_message += ", GetHwnd";
-    if (vtable[21] != nullptr) hook_message += ", GetCoreWindow";
-    if (vtable[22] != nullptr) hook_message += ", Present1";
-    if (vtable[23] != nullptr) hook_message += ", IsTemporaryMonoSupported";
-    if (vtable[24] != nullptr) hook_message += ", GetRestrictToOutput";
-    if (vtable[25] != nullptr) hook_message += ", SetBackgroundColor";
-    if (vtable[26] != nullptr) hook_message += ", GetBackgroundColor";
-    if (vtable[27] != nullptr) hook_message += ", SetRotation";
-    if (vtable[28] != nullptr) hook_message += ", GetRotation";
-    if (vtable[29] != nullptr) hook_message += ", SetSourceSize";
-    if (vtable[30] != nullptr) hook_message += ", GetSourceSize";
-    if (vtable[31] != nullptr) hook_message += ", SetMaximumFrameLatency";
-    if (vtable[32] != nullptr) hook_message += ", GetMaximumFrameLatency";
-    if (vtable[33] != nullptr) hook_message += ", GetFrameLatencyWaitableObject";
-    if (vtable[34] != nullptr) hook_message += ", SetMatrixTransform";
-    if (vtable[35] != nullptr) hook_message += ", GetMatrixTransform";
-    if (vtable[36] != nullptr) hook_message += ", GetCurrentBackBufferIndex";
-    if (vtable[37] != nullptr) hook_message += ", CheckColorSpaceSupport";
-    if (vtable[38] != nullptr) hook_message += ", SetColorSpace1";
-    if (vtable[39] != nullptr) hook_message += ", ResizeBuffers1";
+    // ============================================================================
+    // BUILD SUCCESS MESSAGE - Organized by Interface Version
+    // ============================================================================
+    std::string hook_message = "Successfully hooked DXGI methods for interface version " + std::to_string(interfaceVersion) + ": ";
+
+    // GROUP 0: IDXGISwapChain methods
+    hook_message += "Present, GetDesc";
+    if (IsVTableEntryValid(vtable, 9)) hook_message += ", GetBuffer";
+    if (IsVTableEntryValid(vtable, 10)) hook_message += ", SetFullscreenState";
+    if (IsVTableEntryValid(vtable, 11)) hook_message += ", GetFullscreenState";
+    if (IsVTableEntryValid(vtable, 13)) hook_message += ", ResizeBuffers";
+    if (IsVTableEntryValid(vtable, 14)) hook_message += ", ResizeTarget";
+    if (IsVTableEntryValid(vtable, 15)) hook_message += ", GetContainingOutput";
+    if (IsVTableEntryValid(vtable, 16)) hook_message += ", GetFrameStatistics";
+    if (IsVTableEntryValid(vtable, 17)) hook_message += ", GetLastPresentCount";
+
+    // GROUP 1: IDXGISwapChain1 methods
+    if (interfaceVersion >= 1) {
+        if (IsVTableEntryValid(vtable, 18)) hook_message += ", GetDesc1";
+        if (IsVTableEntryValid(vtable, 19)) hook_message += ", GetFullscreenDesc";
+        if (IsVTableEntryValid(vtable, 20)) hook_message += ", GetHwnd";
+        if (IsVTableEntryValid(vtable, 21)) hook_message += ", GetCoreWindow";
+        if (IsVTableEntryValid(vtable, 22)) hook_message += ", Present1";
+        if (IsVTableEntryValid(vtable, 23)) hook_message += ", IsTemporaryMonoSupported";
+        if (IsVTableEntryValid(vtable, 24)) hook_message += ", GetRestrictToOutput";
+        if (IsVTableEntryValid(vtable, 25)) hook_message += ", SetBackgroundColor";
+        if (IsVTableEntryValid(vtable, 26)) hook_message += ", GetBackgroundColor";
+        if (IsVTableEntryValid(vtable, 27)) hook_message += ", SetRotation";
+        if (IsVTableEntryValid(vtable, 28)) hook_message += ", GetRotation";
+    }
+
+    // GROUP 2: IDXGISwapChain2 methods
+    if (interfaceVersion >= 2) {
+        if (IsVTableEntryValid(vtable, 29)) hook_message += ", SetSourceSize";
+        if (IsVTableEntryValid(vtable, 30)) hook_message += ", GetSourceSize";
+        if (IsVTableEntryValid(vtable, 31)) hook_message += ", SetMaximumFrameLatency";
+        if (IsVTableEntryValid(vtable, 32)) hook_message += ", GetMaximumFrameLatency";
+        if (IsVTableEntryValid(vtable, 33)) hook_message += ", GetFrameLatencyWaitableObject";
+        if (IsVTableEntryValid(vtable, 34)) hook_message += ", SetMatrixTransform";
+        if (IsVTableEntryValid(vtable, 35)) hook_message += ", GetMatrixTransform";
+    }
+
+    // GROUP 3: IDXGISwapChain3 methods
+    if (interfaceVersion >= 3) {
+        if (IsVTableEntryValid(vtable, 36)) hook_message += ", GetCurrentBackBufferIndex";
+        if (IsVTableEntryValid(vtable, 37)) hook_message += ", CheckColorSpaceSupport";
+        if (IsVTableEntryValid(vtable, 38)) hook_message += ", SetColorSpace1";
+        if (IsVTableEntryValid(vtable, 39)) hook_message += ", ResizeBuffers1";
+    }
+
     hook_message += " for swapchain: 0x%p";
-
     LogInfo(hook_message.c_str(), swapchain);
 
     return true;

@@ -38,13 +38,19 @@ bool is_target_resolution(int width, int height) {
 }
 std::atomic<bool> g_initialized{false};
 
+#include <set>
 
 void hookToSwapChain(reshade::api::swapchain *swapchain) {
+    static std::set<reshade::api::swapchain *> hooked_swapchains;
 
     static reshade::api::swapchain *last_swapchain = nullptr;
     if (last_swapchain == swapchain || swapchain == nullptr || swapchain->get_hwnd() == nullptr) {
         return;
     }
+    if (hooked_swapchains.find(swapchain) != hooked_swapchains.end()) {
+        return;
+    }
+    hooked_swapchains.insert(swapchain);
     last_swapchain = swapchain;
 
     //..static bool initialized = false;
@@ -74,7 +80,7 @@ void hookToSwapChain(reshade::api::swapchain *swapchain) {
             LogWarn("Could not get DXGI swapchain from ReShade swapchain for Present "
                     "hooking");
         }
-
+/*
         // Try to hook DX9 Present calls if this is a DX9 device
         // Get the underlying DX9 device from the ReShade device
         if (auto *device = swapchain->get_device()) {
@@ -87,7 +93,7 @@ void hookToSwapChain(reshade::api::swapchain *swapchain) {
             } else {
                 LogInfo("Could not get DX9 device from ReShade device for Present hooking");
             }
-        }
+        }*/
     }
 }
 

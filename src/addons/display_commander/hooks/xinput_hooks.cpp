@@ -14,8 +14,43 @@ namespace display_commanderhooks {
 XInputGetState_pfn XInputGetState_Original = nullptr;
 XInputGetStateEx_pfn XInputGetStateEx_Original = nullptr;
 
+// XInput function pointers for direct calls
+XInputGetState_pfn XInputGetState_Direct = nullptr;
+XInputSetState_pfn XInputSetState_Direct = nullptr;
+XInputGetBatteryInformation_pfn XInputGetBatteryInformation_Direct = nullptr;
+
 // Hook state
 static std::atomic<bool> g_xinput_hooks_installed{false};
+
+// Initialize XInput function pointers for direct calls
+static void InitializeXInputDirectFunctions() {
+    if (XInputGetState_Direct && XInputSetState_Direct && XInputGetBatteryInformation_Direct) {
+        return; // Already initialized
+    }
+
+    // Try to load XInput DLL and get function addresses
+    HMODULE xinput_module = LoadLibraryA("xinput1_4.dll");
+    if (!xinput_module) {
+        xinput_module = LoadLibraryA("xinput1_3.dll");
+    }
+    if (!xinput_module) {
+        xinput_module = LoadLibraryA("xinput9_1_0.dll");
+    }
+
+    if (xinput_module) {
+        XInputGetState_Direct = (XInputGetState_pfn)GetProcAddress(xinput_module, "XInputGetState");
+        XInputSetState_Direct = (XInputSetState_pfn)GetProcAddress(xinput_module, "XInputSetState");
+        XInputGetBatteryInformation_Direct = (XInputGetBatteryInformation_pfn)GetProcAddress(xinput_module, "XInputGetBatteryInformation");
+
+        if (XInputGetState_Direct && XInputSetState_Direct && XInputGetBatteryInformation_Direct) {
+            LogInfo("XXX XInput direct functions initialized successfully");
+        } else {
+            LogWarn("XXX Some XInput direct functions not available");
+        }
+    } else {
+        LogInfo("XXX XInput DLL not found - direct functions will be unavailable");
+    }
+}
 
 // Previous state for change detection
 static XINPUT_STATE g_previous_states[XUSER_MAX_COUNT] = {};
@@ -142,7 +177,7 @@ DWORD WINAPI XInputGetState_Detour(DWORD dwUserIndex, XINPUT_STATE *pState) {
     // Call original function - prefer XInputGetStateEx_Original for Guide button support
     DWORD result = XInputGetStateEx_Original ? XInputGetStateEx_Original(dwUserIndex, pState)
                                              : (XInputGetState_Original ? XInputGetState_Original(dwUserIndex, pState)
-                                                                        : XInputGetState(dwUserIndex, pState));
+                                                                        : (XInputGetState_Direct ? XInputGetState_Direct(dwUserIndex, pState) : ERROR_DEVICE_NOT_CONNECTED));
 
     // Apply A/B button swapping if enabled
     if (result == ERROR_SUCCESS) {
@@ -241,7 +276,7 @@ DWORD WINAPI XInputGetStateEx_Detour(DWORD dwUserIndex, XINPUT_STATE *pState) {
     // Call original function - always use XInputGetStateEx_Original if available
     DWORD result = XInputGetStateEx_Original
                        ? XInputGetStateEx_Original(dwUserIndex, pState)
-                       : XInputGetState(dwUserIndex, pState); // Fallback to regular XInputGetState
+                       : (XInputGetState_Direct ? XInputGetState_Direct(dwUserIndex, pState) : ERROR_DEVICE_NOT_CONNECTED); // Fallback to direct function
 
     // Apply A/B button swapping if enabled
     if (result == ERROR_SUCCESS) {
@@ -331,6 +366,9 @@ bool InstallXInputHooks() {
         LogInfo("XInput hooks already installed");
         return true;
     }
+
+    // Initialize direct function pointers first
+    InitializeXInputDirectFunctions();
 
     // MinHook is already initialized by API hooks, so we don't need to initialize it again
 
@@ -422,22 +460,35 @@ bool InstallXInputHooks() {
     if (!any_success) {
         LogWarn("XXX No XInput modules found - attempting to hook global XInput functions as fallback");
 
-        // Try global XInputGetState
-        if (MH_CreateHook(XInputGetState, XInputGetState_Detour, (LPVOID *)&XInputGetState_Original) == MH_OK) {
-            if (MH_EnableHook(XInputGetState) == MH_OK) {
-                LogInfo("XXX Successfully hooked global XInputGetState");
-                any_success = true;
-                hooked_count++;
-            } else {
-                LogError("XXX Failed to enable global XInputGetState hook");
-                MH_RemoveHook(XInputGetState);
-            }
-        } else {
-            LogError("XXX Failed to create global XInputGetState hook");
+        // Try to load XInput DLL dynamically first
+        HMODULE xinput_module = LoadLibraryA("xinput1_4.dll");
+        if (!xinput_module) {
+            xinput_module = LoadLibraryA("xinput1_3.dll");
+        }
+        if (!xinput_module) {
+            xinput_module = LoadLibraryA("xinput9_1_0.dll");
         }
 
-        // Note: We can't easily hook global XInputGetStateEx since it's an ordinal
-        // The module-based approach above should catch it
+        if (xinput_module) {
+            // Get function addresses from the loaded module
+            FARPROC xinput_get_state = GetProcAddress(xinput_module, "XInputGetState");
+            if (xinput_get_state) {
+                if (MH_CreateHook(xinput_get_state, XInputGetState_Detour, (LPVOID *)&XInputGetState_Original) == MH_OK) {
+                    if (MH_EnableHook(xinput_get_state) == MH_OK) {
+                        LogInfo("XXX Successfully hooked global XInputGetState from loaded module");
+                        any_success = true;
+                        hooked_count++;
+                    } else {
+                        LogError("XXX Failed to enable global XInputGetState hook");
+                        MH_RemoveHook(xinput_get_state);
+                    }
+                } else {
+                    LogError("XXX Failed to create global XInputGetState hook");
+                }
+            }
+        } else {
+            LogInfo("XXX No XInput DLL found - XInput functionality will be unavailable");
+        }
     }
 
     if (any_success) {
@@ -463,9 +514,11 @@ void UninstallXInputHooks() {
         MH_RemoveHook(hooked_module.function);
     }
 
-    // Also try to unhook global XInputGetState as fallback
-    MH_DisableHook(XInputGetState);
-    MH_RemoveHook(XInputGetState);
+    // Also try to unhook global XInputGetState as fallback (only if we have the direct function)
+    if (XInputGetState_Direct) {
+        MH_DisableHook(XInputGetState_Direct);
+        MH_RemoveHook(XInputGetState_Direct);
+    }
 
     // Clean up
     XInputGetState_Original = nullptr;
@@ -487,7 +540,7 @@ bool AreXInputHooksInstalled() { return g_xinput_hooks_installed.load(); }
 // Test function to manually check XInput state
 void TestXInputState() {
     XINPUT_STATE state = {};
-    DWORD result = XInputGetState(0, &state);
+    DWORD result = XInputGetState_Direct ? XInputGetState_Direct(0, &state) : ERROR_DEVICE_NOT_CONNECTED;
 
     if (result == ERROR_SUCCESS) {
         LogInfo("XXX TestXInputState: Controller 0 connected - Buttons: 0x%04X, LStick: (%d,%d), RStick: (%d,%d), "

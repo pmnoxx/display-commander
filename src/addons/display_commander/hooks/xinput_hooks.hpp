@@ -9,10 +9,17 @@ namespace display_commanderhooks {
 // Function pointer types
 using XInputGetState_pfn = DWORD(WINAPI *)(DWORD, XINPUT_STATE *);
 using XInputGetStateEx_pfn = DWORD(WINAPI *)(DWORD, XINPUT_STATE *);
+using XInputSetState_pfn = DWORD(WINAPI *)(DWORD, XINPUT_VIBRATION *);
+using XInputGetBatteryInformation_pfn = DWORD(WINAPI *)(DWORD, BYTE, XINPUT_BATTERY_INFORMATION *);
 
 // XInput hook function pointers
 extern XInputGetState_pfn XInputGetState_Original;
 extern XInputGetStateEx_pfn XInputGetStateEx_Original;
+
+// XInput function pointers for direct calls
+extern XInputGetState_pfn XInputGetState_Direct;
+extern XInputSetState_pfn XInputSetState_Direct;
+extern XInputGetBatteryInformation_pfn XInputGetBatteryInformation_Direct;
 
 // Hooked XInput functions
 DWORD WINAPI XInputGetState_Detour(DWORD dwUserIndex, XINPUT_STATE *pState);

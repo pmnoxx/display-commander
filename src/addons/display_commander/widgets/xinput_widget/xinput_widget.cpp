@@ -1,6 +1,7 @@
 #include "xinput_widget.hpp"
 #include "../../globals.hpp"
 #include "../../utils.hpp"
+#include "../../hooks/xinput_hooks.hpp"
 #include <chrono>
 #include <imgui.h>
 #include <reshade.hpp>
@@ -918,7 +919,7 @@ void XInputWidget::TestLeftMotor() {
     vibration.wLeftMotorSpeed = 65535; // Maximum intensity
     vibration.wRightMotorSpeed = 0;    // Right motor off
 
-    DWORD result = XInputSetState(selected_controller_, &vibration);
+    DWORD result = display_commanderhooks::XInputSetState_Direct ? display_commanderhooks::XInputSetState_Direct(selected_controller_, &vibration) : ERROR_DEVICE_NOT_CONNECTED;
     if (result == ERROR_SUCCESS) {
         LogInfo("XInputWidget::TestLeftMotor() - Left motor test started for controller %d", selected_controller_);
     } else {
@@ -937,7 +938,7 @@ void XInputWidget::TestRightMotor() {
     vibration.wLeftMotorSpeed = 0;      // Left motor off
     vibration.wRightMotorSpeed = 65535; // Maximum intensity
 
-    DWORD result = XInputSetState(selected_controller_, &vibration);
+    DWORD result = display_commanderhooks::XInputSetState_Direct ? display_commanderhooks::XInputSetState_Direct(selected_controller_, &vibration) : ERROR_DEVICE_NOT_CONNECTED;
     if (result == ERROR_SUCCESS) {
         LogInfo("XInputWidget::TestRightMotor() - Right motor test started for controller %d", selected_controller_);
     } else {
@@ -956,7 +957,7 @@ void XInputWidget::StopVibration() {
     vibration.wLeftMotorSpeed = 0; // Both motors off
     vibration.wRightMotorSpeed = 0;
 
-    DWORD result = XInputSetState(selected_controller_, &vibration);
+    DWORD result = display_commanderhooks::XInputSetState_Direct ? display_commanderhooks::XInputSetState_Direct(selected_controller_, &vibration) : ERROR_DEVICE_NOT_CONNECTED;
     if (result == ERROR_SUCCESS) {
         LogInfo("XInputWidget::StopVibration() - Vibration stopped for controller %d", selected_controller_);
     } else {
@@ -1131,7 +1132,7 @@ void XInputWidget::ExecuteChordAction(const XInputSharedState::Chord &chord, DWO
         vibration.wLeftMotorSpeed = FloatToShort(1.0f); // Medium intensity
         vibration.wRightMotorSpeed = FloatToShort(1.0f);
 
-        DWORD result = XInputSetState(user_index, &vibration);
+        DWORD result = display_commanderhooks::XInputSetState_Direct ? display_commanderhooks::XInputSetState_Direct(user_index, &vibration) : ERROR_DEVICE_NOT_CONNECTED;
         if (result == ERROR_SUCCESS) {
             LogInfo("XXX Vibration test triggered via chord on controller %lu", user_index);
         } else {
@@ -1257,7 +1258,7 @@ void ProcessChordDetection(DWORD user_index, WORD button_state) {
                 vibration.wLeftMotorSpeed = FloatToShort(1.0f);
                 vibration.wRightMotorSpeed = FloatToShort(1.0f);
 
-                DWORD result = XInputSetState(user_index, &vibration);
+                DWORD result = display_commanderhooks::XInputSetState_Direct ? display_commanderhooks::XInputSetState_Direct(user_index, &vibration) : ERROR_DEVICE_NOT_CONNECTED;
                 if (result == ERROR_SUCCESS) {
                     LogInfo("XXX Vibration test triggered via chord on controller %lu", user_index);
                 } else {
@@ -1363,7 +1364,7 @@ void UpdateBatteryStatus(DWORD user_index) {
 
     // Update battery information for gamepad
     XINPUT_BATTERY_INFORMATION battery_info = {};
-    DWORD result = XInputGetBatteryInformation(user_index, BATTERY_DEVTYPE_GAMEPAD, &battery_info);
+    DWORD result = display_commanderhooks::XInputGetBatteryInformation_Direct ? display_commanderhooks::XInputGetBatteryInformation_Direct(user_index, BATTERY_DEVTYPE_GAMEPAD, &battery_info) : ERROR_DEVICE_NOT_CONNECTED;
 
     if (result == ERROR_SUCCESS) {
         shared_state->battery_info[user_index] = battery_info;

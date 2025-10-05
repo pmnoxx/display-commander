@@ -56,22 +56,25 @@ target_include_directories(zzz_display_commander
     ${CMAKE_CURRENT_LIST_DIR}/../../../external/minhook/include    # MinHook headers
 )
 
-# Link system libs
-target_link_libraries(zzz_display_commander PRIVATE dbghelp shlwapi xinput dinput8 winmm)
+# Link system libs (removed xinput and dinput8 to avoid DLL dependency issues - they are loaded dynamically)
+target_link_libraries(zzz_display_commander PRIVATE dbghelp shlwapi winmm)
 
-# NVAPI linkage (official NVIDIA NVAPI layout: x86/ and amd64/)
+# NVAPI static linking (official NVIDIA NVAPI layout: x86/ and amd64/)
+# NVIDIA recommends static linking - these are static libraries that act as shims
 if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/../../../external/nvapi")
   if(CMAKE_SIZEOF_VOID_P EQUAL 4)
     if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/../../../external/nvapi/x86/nvapi.lib")
       target_link_libraries(zzz_display_commander PRIVATE "${CMAKE_CURRENT_LIST_DIR}/../../../external/nvapi/x86/nvapi.lib")
+      message(STATUS "NVAPI x86 static library linked successfully")
     else()
-      message(WARNING "NVAPI x86 import library not found at ${CMAKE_CURRENT_LIST_DIR}/../../../external/nvapi/x86/nvapi.lib. NVAPI features may fail to link.")
+      message(WARNING "NVAPI x86 static library not found at ${CMAKE_CURRENT_LIST_DIR}/../../../external/nvapi/x86/nvapi.lib. NVAPI features may fail to link.")
     endif()
   else()
     if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/../../../external/nvapi/amd64/nvapi64.lib")
       target_link_libraries(zzz_display_commander PRIVATE "${CMAKE_CURRENT_LIST_DIR}/../../../external/nvapi/amd64/nvapi64.lib")
+      message(STATUS "NVAPI x64 static library linked successfully")
     else()
-      message(WARNING "NVAPI x64 import library not found at ${CMAKE_CURRENT_LIST_DIR}/../../../external/nvapi/amd64/nvapi64.lib. NVAPI features may fail to link.")
+      message(WARNING "NVAPI x64 static library not found at ${CMAKE_CURRENT_LIST_DIR}/../../../external/nvapi/amd64/nvapi64.lib. NVAPI features may fail to link.")
     endif()
   endif()
 else()

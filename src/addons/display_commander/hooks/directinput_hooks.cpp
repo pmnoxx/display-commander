@@ -196,7 +196,7 @@ bool InstallDirectInputHooks() {
     // Load DirectInput DLL dynamically
     HMODULE dinput_module = LoadLibraryA("dinput8.dll");
     if (!dinput_module) {
-        LogError("Failed to load dinput8.dll");
+        LogInfo("DirectInput not available - dinput8.dll not found (this is normal on some systems)");
         return false;
     }
 

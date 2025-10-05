@@ -28,7 +28,14 @@ namespace display_commanderhooks::dxgi {
 
 // Helper function to detect swapchain interface version
 int GetSwapchainInterfaceVersion(IDXGISwapChain* swapchain) {
-    // Try IDXGISwapChain3 first (highest version)
+    // Try IDXGISwapChain4 first (highest version)
+    IDXGISwapChain4* swapchain4 = nullptr;
+    if (SUCCEEDED(swapchain->QueryInterface(IID_PPV_ARGS(&swapchain4)))) {
+        swapchain4->Release();
+        return 4;
+    }
+
+    // Try IDXGISwapChain3
     IDXGISwapChain3* swapchain3 = nullptr;
     if (SUCCEEDED(swapchain->QueryInterface(IID_PPV_ARGS(&swapchain3)))) {
         swapchain3->Release();
@@ -109,6 +116,9 @@ IDXGISwapChain_GetMatrixTransform_pfn IDXGISwapChain_GetMatrixTransform_Original
 IDXGISwapChain_GetCurrentBackBufferIndex_pfn IDXGISwapChain_GetCurrentBackBufferIndex_Original = nullptr;
 IDXGISwapChain_SetColorSpace1_pfn IDXGISwapChain_SetColorSpace1_Original = nullptr;
 IDXGISwapChain_ResizeBuffers1_pfn IDXGISwapChain_ResizeBuffers1_Original = nullptr;
+
+// IDXGISwapChain4 original function pointers
+IDXGISwapChain_SetHDRMetaData_pfn IDXGISwapChain_SetHDRMetaData_Original = nullptr;
 
 // Hook state
 static std::atomic<bool> g_dxgi_present_hooks_installed{false};
@@ -544,6 +554,28 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_ResizeBuffers1_Detour(IDXGISwapChain3 *
     return IDXGISwapChain_ResizeBuffers1_Original(This, BufferCount, Width, Height, Format, SwapChainFlags, pCreationNodeMask, ppPresentQueue);
 }
 
+// IDXGISwapChain4 detour functions
+HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetHDRMetaData_Detour(IDXGISwapChain4 *This, DXGI_HDR_METADATA_TYPE Type, UINT Size, void *pMetaData) {
+    // Increment DXGI SetHDRMetaData counter
+    g_swapchain_event_counters[SWAPCHAIN_EVENT_DXGI_SETHDRMETADATA].fetch_add(1);
+    g_swapchain_event_total_count.fetch_add(1);
+
+    // Log the HDR metadata call (only on first few calls to avoid spam)
+    static int sethdrmetadata_log_count = 0;
+    if (sethdrmetadata_log_count < 3) {
+        LogInfo("SetHDRMetaData called - Type: %d, Size: %u", static_cast<int>(Type), Size);
+        sethdrmetadata_log_count++;
+    }
+
+    // Call original function
+    if (IDXGISwapChain_SetHDRMetaData_Original != nullptr) {
+        return IDXGISwapChain_SetHDRMetaData_Original(This, Type, Size, pMetaData);
+    }
+
+    // Fallback to direct call if hook failed
+    return This->SetHDRMetaData(Type, Size, pMetaData);
+}
+
 // Global variables to track hooked swapchains
 static std::atomic<IDXGISwapChain *> g_swapchain_hooked{nullptr};
 static IDXGISwapChain *g_hooked_swapchain = nullptr;
@@ -847,6 +879,23 @@ bool HookSwapchainVTable(IDXGISwapChain *swapchain) {
     }
 
     // ============================================================================
+    // GROUP 4: IDXGISwapChain4 (Extended Interface) - Indices 40+
+    // ============================================================================
+    if (interfaceVersion >= 4) {
+        LogInfo("Hooking IDXGISwapChain4 methods (indices 40+)");
+
+        // Hook SetHDRMetaData (index 40) - HDR metadata setting
+        if (IsVTableEntryValid(vtable, 40)) {
+            if (MH_CreateHook(vtable[40], IDXGISwapChain_SetHDRMetaData_Detour, (LPVOID *)&IDXGISwapChain_SetHDRMetaData_Original) != MH_OK) {
+                LogError("Failed to create IDXGISwapChain4::SetHDRMetaData hook");
+                // Don't return false, this is not critical for basic functionality
+            }
+        }
+    } else {
+        LogInfo("Skipping IDXGISwapChain4 methods - interface not supported");
+    }
+
+    // ============================================================================
     // ENABLE ALL HOOKS - Organized by Interface Version
     // ============================================================================
     LogInfo("Enabling all created hooks...");
@@ -901,6 +950,11 @@ bool HookSwapchainVTable(IDXGISwapChain *swapchain) {
         if (IsVTableEntryValid(vtable, 39)) MH_EnableHook(vtable[39]);
     }
 
+    // Enable GROUP 4: IDXGISwapChain4 hooks (if supported)
+    if (interfaceVersion >= 4) {
+        if (IsVTableEntryValid(vtable, 40)) MH_EnableHook(vtable[40]);
+    }
+
     // ============================================================================
     // BUILD SUCCESS MESSAGE - Organized by Interface Version
     // ============================================================================
@@ -949,6 +1003,11 @@ bool HookSwapchainVTable(IDXGISwapChain *swapchain) {
         if (IsVTableEntryValid(vtable, 37)) hook_message += ", CheckColorSpaceSupport";
         if (IsVTableEntryValid(vtable, 38)) hook_message += ", SetColorSpace1";
         if (IsVTableEntryValid(vtable, 39)) hook_message += ", ResizeBuffers1";
+    }
+
+    // GROUP 4: IDXGISwapChain4 methods
+    if (interfaceVersion >= 4) {
+        if (IsVTableEntryValid(vtable, 40)) hook_message += ", SetHDRMetaData";
     }
 
     hook_message += " for swapchain: 0x%p";

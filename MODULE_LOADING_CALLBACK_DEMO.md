@@ -13,7 +13,6 @@ The function uses case-insensitive string matching to detect different types of 
 
 - **XInput**: `xinput*.dll` → Installs XInput hooks
 - **Windows.Gaming.Input**: `gameinput*.dll` → Installs Windows.Gaming.Input hooks
-- **DirectInput**: `dinput*.dll` → Logs detection (hooks not yet implemented)
 - **Direct3D**: `d3d*.dll` → Logs detection (hooks not yet implemented)
 - **OpenGL**: `opengl*.dll` → Logs detection (hooks not yet implemented)
 - **Vulkan**: `vulkan*.dll` → Logs detection (hooks not yet implemented)
@@ -92,7 +91,6 @@ else if (lowerModuleName.find(L"mymodule") != std::wstring::npos) {
 - Module detection and logging for other types
 
 🔄 **Ready for Implementation**:
-- DirectInput hooks
 - Direct3D hooks
 - OpenGL hooks
 - Vulkan hooks

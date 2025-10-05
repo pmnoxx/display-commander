@@ -100,7 +100,7 @@ Notes:
 - This project requires the Ninja generator. If another generator is used, configuration will fail.
 - Initialize submodules before building: `git submodule update --init --recursive`.
 - NVAPI features are statically linked if NVIDIA's NVAPI is present under `external/nvapi` (headers at `external/nvapi`, static libs at `external/nvapi/{x86,amd64}`). Missing NVAPI libs will only disable those features. Static linking is used by default to avoid DLL dependency issues.
-- XInput, DirectInput, and Windows Multimedia (winmm) libraries are loaded dynamically to avoid error code 126 (module not found) on systems where these libraries are not available.
+- XInput and Windows Multimedia (winmm) libraries are loaded dynamically to avoid error code 126 (module not found) on systems where these libraries are not available.
 
 ## Continuous Integration
 

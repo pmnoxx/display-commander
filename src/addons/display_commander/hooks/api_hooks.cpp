@@ -1,6 +1,5 @@
 #include "api_hooks.hpp"
 #include "../utils.hpp"
-#include "directinput_hooks.hpp"
 #include "dxgi/dxgi_present_hooks.hpp"
 #include "globals.hpp"
 #include "loadlibrary_hooks.hpp"
@@ -298,11 +297,6 @@ bool InstallApiHooks() {
         return false;
     }
 
-    // Install DirectInput hooks
-    if (!InstallDirectInputHooks()) {
-        LogError("Failed to install DirectInput hooks");
-        return false;
-    }
 
     // Install sleep hooks
     if (!InstallSleepHooks()) {
@@ -358,8 +352,6 @@ void UninstallApiHooks() {
     // Uninstall Windows message hooks
     UninstallWindowsMessageHooks();
 
-    // Uninstall DirectInput hooks
-    UninstallDirectInputHooks();
 
     // Uninstall sleep hooks
     UninstallSleepHooks();

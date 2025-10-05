@@ -624,6 +624,7 @@ bool NVAPIFullscreenPrevention::SetHdr10OnAll(bool enable) {
             md.max_frame_average_light_level = 400; // MaxFALL
 
             NvAPI_Status sc = NvAPI_Disp_HdrColorControl(did.displayId, &color);
+            LogInfo("SetHdr10OnAll: DisplayId=%d, Status=%d", did.displayId, sc);
             if (sc == NVAPI_OK)
                 any_ok = true;
         }

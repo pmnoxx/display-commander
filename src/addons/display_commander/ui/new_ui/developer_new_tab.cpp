@@ -193,7 +193,7 @@ void DrawNvapiSettings() {
                          "• Armored Core 6\n"
                          "• Devil May Cry 5\n"
                          "• Elden Ring\n"
-                         "• Hitman 1/2/3\n"
+                         "• Hitman\n"
                          "• Resident Evil 2\n"
                          "• Resident Evil 3\n"
                          "• Resident Evil 7\n"

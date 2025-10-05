@@ -600,6 +600,7 @@ bool NVAPIFullscreenPrevention::SetHdr10OnAll(bool enable) {
             if (did.isConnected == 0)
                 continue;
 
+            // todo migrate to IDXGISwapChain4::SetHDRMetaData https://github.com/EndlesslyFlowering/ReShade-HDR-Metadata/releases/tag/2025.08.18
             NV_HDR_COLOR_DATA color = {};
             color.version = NV_HDR_COLOR_DATA_VER;
             color.cmd = NV_HDR_CMD_SET;

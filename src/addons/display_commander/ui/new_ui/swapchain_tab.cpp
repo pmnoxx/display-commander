@@ -103,8 +103,9 @@ void DrawSwapchainEventCounters() {
             "SWAPCHAIN_EVENT_DXGI_FACTORY_CREATESWAPCHAIN (70)",
             "SWAPCHAIN_EVENT_DXGI_CREATEFACTORY (71)",
             "SWAPCHAIN_EVENT_DXGI_CREATEFACTORY1 (72)",
-            "SWAPCHAIN_EVENT_DX9_PRESENT (73)",
-            "SWAPCHAIN_EVENT_NVAPI_GET_HDR_CAPABILITIES (74)"
+            "SWAPCHAIN_EVENT_DXGI_SETHDRMETADATA (73)",
+            "SWAPCHAIN_EVENT_DX9_PRESENT (74)",
+            "SWAPCHAIN_EVENT_NVAPI_GET_HDR_CAPABILITIES (75)"
         };
 
         uint32_t total_events = 0;
@@ -124,8 +125,9 @@ void DrawSwapchainEventCounters() {
             {"DXGI SwapChain2 Methods (59-65)", 59, 65, ImVec4(1.0f, 1.0f, 0.8f, 1.0f)},
             {"DXGI SwapChain3 Methods (66-69)", 66, 69, ImVec4(0.8f, 1.0f, 1.0f, 1.0f)},
             {"DXGI Factory Methods (70-72)", 70, 72, ImVec4(1.0f, 0.8f, 1.0f, 1.0f)},
-            {"DirectX 9 Methods (73)", 73, 73, ImVec4(1.0f, 0.6f, 0.6f, 1.0f)},
-            {"NVAPI Methods (74)", 74, 74, ImVec4(0.6f, 1.0f, 0.6f, 1.0f)}
+            {"DXGI SwapChain4 Methods (73)", 73, 73, ImVec4(0.8f, 0.8f, 0.8f, 1.0f)},
+            {"DirectX 9 Methods (74)", 74, 74, ImVec4(1.0f, 0.6f, 0.6f, 1.0f)},
+            {"NVAPI Methods (75)", 75, 75, ImVec4(0.6f, 1.0f, 0.6f, 1.0f)}
         };
 
         for (const auto& group : event_groups) {
@@ -160,7 +162,7 @@ void DrawSwapchainEventCounters() {
         ImGui::Spacing();
         ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "DXGI Hooks Summary:");
         ImGui::Text("  Total DXGI Calls: %u", dxgi_events);
-        ImGui::Text("  Active DXGI Methods: %u/33", dxgi_active);
+        ImGui::Text("  Active DXGI Methods: %u/34", dxgi_active);
 
         if (dxgi_active > 0) {
             ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "  ✓ DXGI hooks are working correctly");

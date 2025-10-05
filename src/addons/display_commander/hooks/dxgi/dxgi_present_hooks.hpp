@@ -5,6 +5,7 @@
 #include <dxgi.h>
 #include <dxgi1_2.h>
 #include <dxgi1_4.h>
+#include <dxgi1_5.h>
 
 /*
  * IDXGISwapChain VTable Layout Reference
@@ -79,6 +80,9 @@ using IDXGISwapChain_GetCurrentBackBufferIndex_pfn = UINT(STDMETHODCALLTYPE *)(I
 using IDXGISwapChain_SetColorSpace1_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGISwapChain3 *This, DXGI_COLOR_SPACE_TYPE ColorSpace);
 using IDXGISwapChain_ResizeBuffers1_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGISwapChain3 *This, UINT BufferCount, UINT Width, UINT Height, DXGI_FORMAT Format, UINT SwapChainFlags, const UINT *pCreationNodeMask, IUnknown *const *ppPresentQueue);
 
+// IDXGISwapChain4 function pointer types
+using IDXGISwapChain_SetHDRMetaData_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGISwapChain4 *This, DXGI_HDR_METADATA_TYPE Type, UINT Size, void *pMetaData);
+
 // Original function pointers
 extern IDXGISwapChain_Present_pfn IDXGISwapChain_Present_Original;
 extern IDXGISwapChain_Present1_pfn IDXGISwapChain_Present1_Original;
@@ -122,6 +126,9 @@ extern IDXGISwapChain_GetCurrentBackBufferIndex_pfn IDXGISwapChain_GetCurrentBac
 extern IDXGISwapChain_SetColorSpace1_pfn IDXGISwapChain_SetColorSpace1_Original;
 extern IDXGISwapChain_ResizeBuffers1_pfn IDXGISwapChain_ResizeBuffers1_Original;
 
+// IDXGISwapChain4 original function pointers
+extern IDXGISwapChain_SetHDRMetaData_pfn IDXGISwapChain_SetHDRMetaData_Original;
+
 // Hooked DXGI Present functions
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain *This, UINT SyncInterval, UINT Flags);
 
@@ -136,6 +143,9 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetDesc1_Detour(IDXGISwapChain1 *This, 
 
 // Hooked DXGI CheckColorSpaceSupport functions (IDXGISwapChain3)
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_CheckColorSpaceSupport_Detour(IDXGISwapChain3 *This, DXGI_COLOR_SPACE_TYPE ColorSpace, UINT *pColorSpaceSupport);
+
+// Hooked DXGI SetHDRMetaData functions (IDXGISwapChain4)
+HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetHDRMetaData_Detour(IDXGISwapChain4 *This, DXGI_HDR_METADATA_TYPE Type, UINT Size, void *pMetaData);
 
 // Hooked DXGI Factory CreateSwapChain functions
 HRESULT STDMETHODCALLTYPE IDXGIFactory_CreateSwapChain_Detour(IDXGIFactory *This, IUnknown *pDevice, DXGI_SWAP_CHAIN_DESC *pDesc, IDXGISwapChain **ppSwapChain);

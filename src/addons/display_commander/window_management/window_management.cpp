@@ -230,8 +230,9 @@ void ApplyWindowChange(HWND hwnd, const char* reason, bool force_apply) {
             SetWindowLongPtrW(hwnd, GWL_EXSTYLE, s.new_ex_style);
         }
 
-        // Check if any changes are needed
-        if (s.needs_resize || s.needs_move) {
+        if ((s.style_changed || s.style_changed_ex) && !s.needs_resize && !s.needs_move) {
+            SetWindowPos(hwnd, nullptr, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_FRAMECHANGED);
+        } else if (s.needs_resize || s.needs_move) {
             if (s.target_w <= 16 || s.target_h <= 16) {
                 std::ostringstream oss;
                 oss << "ApplyWindowChange: Invalid target size " << s.target_w << "x" << s.target_h << ", skipping";

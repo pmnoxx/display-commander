@@ -12,12 +12,9 @@ using XInputGetStateEx_pfn = DWORD(WINAPI *)(DWORD, XINPUT_STATE *);
 using XInputSetState_pfn = DWORD(WINAPI *)(DWORD, XINPUT_VIBRATION *);
 using XInputGetBatteryInformation_pfn = DWORD(WINAPI *)(DWORD, BYTE, XINPUT_BATTERY_INFORMATION *);
 
-// XInput hook function pointers
-extern XInputGetState_pfn XInputGetState_Original;
-extern XInputGetStateEx_pfn XInputGetStateEx_Original;
 
 // XInput function pointers for direct calls
-extern XInputGetState_pfn XInputGetState_Direct;
+extern XInputGetStateEx_pfn XInputGetStateEx_Direct;
 extern XInputSetState_pfn XInputSetState_Direct;
 extern XInputGetBatteryInformation_pfn XInputGetBatteryInformation_Direct;
 
@@ -29,12 +26,6 @@ DWORD WINAPI XInputGetStateEx_Detour(DWORD dwUserIndex, XINPUT_STATE *pState);
 bool InstallXInputHooks();
 void UninstallXInputHooks();
 bool AreXInputHooksInstalled();
-
-// Test function
-void TestXInputState();
-
-// Diagnostic function
-void DiagnoseXInputModules();
 
 // Helper functions for thumbstick processing
 void ApplyThumbstickProcessing(XINPUT_STATE *pState, float left_max_input, float right_max_input, float left_min_output,

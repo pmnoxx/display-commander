@@ -1,11 +1,15 @@
 # Build script for Display Commander addon only
 # This script builds only the zzz_display_commander.addon64 file
 
-Write-Host "Building Display Commander addon..." -ForegroundColor Green
+param(
+    [string]$BuildType = "RelWithDebInfo"
+)
+
+Write-Host "Building Display Commander addon with configuration: $BuildType..." -ForegroundColor Green
 
 # Configure and build only the display commander addon
-cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DEXPERIMENTAL_TAB=ON
-cmake --build build --config RelWithDebInfo --target zzz_display_commander
+cmake -S . -B build -G Ninja "-DCMAKE_BUILD_TYPE=$BuildType" -DEXPERIMENTAL_TAB=ON
+cmake --build build --config "$BuildType" --target zzz_display_commander
 
 # Check if build was successful
 if ($LASTEXITCODE -eq 0) {

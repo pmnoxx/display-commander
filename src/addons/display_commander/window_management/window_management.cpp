@@ -221,21 +221,22 @@ void ApplyWindowChange(HWND hwnd, const char* reason, bool force_apply) {
             return;
         }
 
+        if (s.style_changed) {
+            LogDebug("ApplyWindowChange: Setting new style %d -> %d", s.current_style, s.new_style);
+            SetWindowLongPtrW(hwnd, GWL_STYLE, s.new_style);
+        }
+        if (s.style_changed_ex) {
+            LogDebug("ApplyWindowChange: Setting new ex style %d -> %d", s.current_ex_style, s.new_ex_style);
+            SetWindowLongPtrW(hwnd, GWL_EXSTYLE, s.new_ex_style);
+        }
+
         // Check if any changes are needed
-        if (s.needs_resize || s.needs_move || s.style_changed || s.style_changed_ex) {
+        if (s.needs_resize || s.needs_move) {
             if (s.target_w <= 16 || s.target_h <= 16) {
                 std::ostringstream oss;
                 oss << "ApplyWindowChange: Invalid target size " << s.target_w << "x" << s.target_h << ", skipping";
                 LogWarn(oss.str().c_str());
                 return;
-            }
-            if (s.style_changed) {
-                LogDebug("ApplyWindowChange: Setting new style %d -> %d", s.current_style, s.new_style);
-                SetWindowLongPtrW(hwnd, GWL_STYLE, s.new_style);
-            }
-            if (s.style_changed_ex) {
-                LogDebug("ApplyWindowChange: Setting new ex style %d -> %d", s.current_ex_style, s.new_ex_style);
-                SetWindowLongPtrW(hwnd, GWL_EXSTYLE, s.new_ex_style);
             }
 
             UINT flags = SWP_NOZORDER | SWP_NOOWNERZORDER;

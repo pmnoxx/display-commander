@@ -22,7 +22,6 @@ DeveloperTabSettings::DeveloperTabSettings()
       nvapi_fullscreen_prevention("NvapiFullscreenPrevention", s_nvapi_fullscreen_prevention, false,
                                   "DisplayCommander"),
       nvapi_auto_enable("NvapiAutoEnable", s_nvapi_auto_enable, true, "DisplayCommander"),
-      nvapi_hdr_interval_sec("NvapiHDRInterval", s_nvapi_hdr_interval_sec, 5.0f, 1.0f, 60.0f, "DisplayCommander"),
 
       // Minimal NVIDIA Reflex controls
       reflex_enable("ReflexEnable", s_reflex_enable, false, "DisplayCommander"),
@@ -48,7 +47,6 @@ void DeveloperTabSettings::LoadAll() {
     hide_hdr_capabilities.Load();
     nvapi_fullscreen_prevention.Load();
     nvapi_auto_enable.Load();
-    nvapi_hdr_interval_sec.Load();
 
     enable_mute_unmute_shortcut.Load();
     enable_background_toggle_shortcut.Load();
@@ -77,7 +75,6 @@ std::vector<ui::new_ui::SettingBase *> DeveloperTabSettings::GetAllSettings() {
             &hide_hdr_capabilities,
             &nvapi_fullscreen_prevention,
             &nvapi_auto_enable,
-            &nvapi_hdr_interval_sec,
 
             &reflex_enable,
             &reflex_low_latency,

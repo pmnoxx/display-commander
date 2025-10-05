@@ -404,7 +404,8 @@ enum SwapchainEventIndex {
     SWAPCHAIN_EVENT_DXGI_FACTORY_CREATESWAPCHAIN = 70,
     SWAPCHAIN_EVENT_DXGI_CREATEFACTORY = 71,
     SWAPCHAIN_EVENT_DXGI_CREATEFACTORY1 = 72,
-    NUM_EVENTS = 73
+    SWAPCHAIN_EVENT_DX9_PRESENT = 73,
+    NUM_EVENTS = 74
 };
 
 // Swapchain event counters - reset on each swapchain creation

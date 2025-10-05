@@ -102,7 +102,8 @@ void DrawSwapchainEventCounters() {
             "SWAPCHAIN_EVENT_DXGI_RESIZEBUFFERS1 (69)",
             "SWAPCHAIN_EVENT_DXGI_FACTORY_CREATESWAPCHAIN (70)",
             "SWAPCHAIN_EVENT_DXGI_CREATEFACTORY (71)",
-            "SWAPCHAIN_EVENT_DXGI_CREATEFACTORY1 (72)"
+            "SWAPCHAIN_EVENT_DXGI_CREATEFACTORY1 (72)",
+            "SWAPCHAIN_EVENT_DX9_PRESENT (73)"
         };
 
         uint32_t total_events = 0;
@@ -121,7 +122,8 @@ void DrawSwapchainEventCounters() {
             {"DXGI SwapChain1 Methods (48-58)", 48, 58, ImVec4(1.0f, 0.8f, 0.8f, 1.0f)},
             {"DXGI SwapChain2 Methods (59-65)", 59, 65, ImVec4(1.0f, 1.0f, 0.8f, 1.0f)},
             {"DXGI SwapChain3 Methods (66-69)", 66, 69, ImVec4(0.8f, 1.0f, 1.0f, 1.0f)},
-            {"DXGI Factory Methods (70-72)", 70, 72, ImVec4(1.0f, 0.8f, 1.0f, 1.0f)}
+            {"DXGI Factory Methods (70-72)", 70, 72, ImVec4(1.0f, 0.8f, 1.0f, 1.0f)},
+            {"DirectX 9 Methods (73)", 73, 73, ImVec4(1.0f, 0.6f, 0.6f, 1.0f)}
         };
 
         for (const auto& group : event_groups) {

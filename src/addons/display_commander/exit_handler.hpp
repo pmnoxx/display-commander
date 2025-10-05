@@ -1,11 +1,12 @@
 #pragma once
 
 #include <string>
+#include <cstdint>
 
 namespace exit_handler {
 
 // Enum indicating where the exit was detected
-enum class ExitSource {
+enum class ExitSource : std::uint8_t {
     DLL_PROCESS_DETACH_EVENT, // DLL_PROCESS_DETACH in DllMain
     ATEXIT,                   // std::atexit() handler
     UNHANDLED_EXCEPTION,      // SetUnhandledExceptionFilter() handler
@@ -25,5 +26,8 @@ void OnHandleExit(ExitSource source, const std::string &message);
 
 // Helper function to get string representation of exit source
 const char *GetExitSourceString(ExitSource source);
+
+// Helper function to write directly to debug.log (for use by other modules)
+void WriteToDebugLog(const std::string &message);
 
 } // namespace exit_handler

@@ -19,7 +19,6 @@ echo - "XXX XInputGetState_Detour called" (when controller is used)
 echo - "XXX XInputGetStateEx_Detour called" (when controller is used - more common)
 echo.
 echo If you don't see XInput calls, the game might be using:
-echo - DirectInput instead of XInput
 echo - A different input system
 echo - XInput through a wrapper (like Steam Input)
 echo.

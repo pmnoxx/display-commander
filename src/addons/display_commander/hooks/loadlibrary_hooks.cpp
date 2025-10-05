@@ -504,11 +504,6 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
         }
     }
 
-    // DirectInput hooks (if implemented)
-    else if (lowerModuleName.find(L"dinput") != std::wstring::npos) {
-        LogInfo("DirectInput module detected: %ws", moduleName.c_str());
-        // TODO: Add DirectInput hook installation when implemented
-    }
 
     // Direct3D hooks
     else if (lowerModuleName.find(L"d3d") != std::wstring::npos) {

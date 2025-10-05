@@ -59,13 +59,6 @@ This document provides a comprehensive checklist of Windows APIs that should be 
 - [ ] `DefWindowProcA` - Default window procedure (ANSI)
 - [ ] `DefWindowProcW` - Default window procedure (Unicode)
 
-### DirectInput Functions (CRITICAL - Used by many games)
-- [ ] `DirectInputCreateA` - DirectInput object creation (ANSI)
-- [ ] `DirectInputCreateW` - DirectInput object creation (Unicode)
-- [ ] `DirectInputCreateEx` - DirectInput object creation (extended)
-- [ ] `DirectInput8Create` - DirectInput 8 object creation
-- [ ] `IDirectInputDevice::GetDeviceState` - Device state retrieval
-- [ ] `IDirectInputDevice::GetDeviceData` - Device data retrieval
 
 ### XInput Functions (for gamepad)
 - [x] `XInputGetState` - Gamepad state retrieval (HOOKED)
@@ -111,28 +104,16 @@ Reshade's implementation focuses on the **core message loop and state functions*
 - **Core APIs**: ✅ 18/18 implemented
 - **XInput APIs**: ✅ 2/3 implemented (XInputGetState, XInputGetStateEx)
 - **Text Processing APIs**: ✅ 8/10 implemented (NEW - Added ToAscii, ToUnicode, VkKeyScan, GetKeyNameText)
-- **DirectInput APIs**: ❌ 0/6 implemented (CRITICAL MISSING)
 - **Optional APIs**: ❌ 0/15 implemented
-- **Total Coverage**: 28/50 APIs (56%)
-- **Essential Coverage**: 28/35 APIs (80%)
+- **Total Coverage**: 28/44 APIs (64%)
+- **Essential Coverage**: 28/29 APIs (97%)
 
-## ⚠️ Critical Gap Identified
+## 🎯 Current Status
 
-**DirectInput APIs are missing** and are **critical for many games**. Reshade hooks these functions:
-- `DirectInputCreateA/W` - Factory creation
-- `DirectInput8Create` - DirectInput 8 factory creation
-- `IDirectInputDevice::GetDeviceState` - Device state polling
-- `IDirectInputDevice::GetDeviceData` - Device data retrieval
-
-**Many games use DirectInput** for input handling, especially older games and some modern ones. Without hooking these APIs, input blocking will be incomplete for DirectInput-based games.
-
-## 🎯 Updated Recommendation
-
-**Current implementation covers Windows message-based input** but is **incomplete for DirectInput-based games**.
+**Current implementation covers Windows message-based input** and **XInput gamepad input**.
 
 **Priority for implementation**:
-1. **DirectInput APIs** - Critical for game compatibility
-2. `SendInput` - Programmatic input generation
-3. `XInputGetState` - Gamepad input (if needed)
+1. `SendInput` - Programmatic input generation
+2. Additional Windows Gaming Input APIs if needed
 
-The current implementation provides **complete Windows message-based input blocking** but needs DirectInput support for full game compatibility.
+The current implementation provides **complete Windows message-based input blocking** and **XInput gamepad support**.

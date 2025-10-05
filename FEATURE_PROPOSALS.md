@@ -14,7 +14,6 @@ This document tracks proposed features and ideas for future development. These a
 
 • Add crashes interception, so we can print to logs when crash occurs.
 
-• DirectInput support (we have XInput already)
 
 • Secondary monitors display black output similar to ADHD mode on Special-K
 

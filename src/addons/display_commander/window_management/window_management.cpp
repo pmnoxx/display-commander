@@ -26,32 +26,32 @@ void CalculateWindowState(HWND hwnd, const char* reason) {
     local_state.reason = reason;
 
     // Get current styles
-    LONG_PTR current_style = GetWindowLongPtrW(hwnd, GWL_STYLE);
-    LONG_PTR current_ex_style = GetWindowLongPtrW(hwnd, GWL_EXSTYLE);
+    local_state.current_style = GetWindowLongPtrW(hwnd, GWL_STYLE);
+    local_state.current_ex_style = GetWindowLongPtrW(hwnd, GWL_EXSTYLE);
 
     // Calculate new borderless styles
     local_state.new_style =
-        current_style & ~(WS_CAPTION | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU);
+        local_state.current_style & ~(WS_CAPTION | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU);
     local_state.new_ex_style =
-        current_ex_style & ~(WS_EX_DLGMODALFRAME | WS_EX_WINDOWEDGE | WS_EX_CLIENTEDGE | WS_EX_STATICEDGE);
+        local_state.current_ex_style & ~(WS_EX_DLGMODALFRAME | WS_EX_WINDOWEDGE | WS_EX_CLIENTEDGE | WS_EX_STATICEDGE);
 
     // PREVENT ALWAYS ON TOP: Remove WS_EX_TOPMOST and WS_EX_TOOLWINDOW styles
     if (s_prevent_always_on_top.load() && (local_state.new_ex_style & (WS_EX_TOPMOST | WS_EX_TOOLWINDOW))) {
         local_state.new_ex_style &= ~(WS_EX_TOPMOST | WS_EX_TOOLWINDOW);
 
         // Log if we're removing always on top styles
-        if ((current_ex_style & (WS_EX_TOPMOST | WS_EX_TOOLWINDOW)) != 0) {
+        if ((local_state.current_ex_style & (WS_EX_TOPMOST | WS_EX_TOOLWINDOW)) != 0) {
             std::ostringstream oss;
             oss << "ApplyWindowChange: PREVENTING ALWAYS ON TOP - Removing "
                    "extended styles 0x"
-                << std::hex << (current_ex_style & (WS_EX_TOPMOST | WS_EX_TOOLWINDOW));
+                << std::hex << (local_state.current_ex_style & (WS_EX_TOPMOST | WS_EX_TOOLWINDOW));
             LogInfo(oss.str().c_str());
         }
     }
-    if (current_style != local_state.new_style) {
+    if (local_state.current_style != local_state.new_style) {
         local_state.style_changed = true;
     }
-    if (current_ex_style != local_state.new_ex_style) {
+    if (local_state.current_ex_style != local_state.new_ex_style) {
         local_state.style_changed_ex = true;
     }
 
@@ -61,7 +61,7 @@ void CalculateWindowState(HWND hwnd, const char* reason) {
 
     // Detect window state (maximized, minimized, restored)
     WINDOWPLACEMENT wp = {sizeof(WINDOWPLACEMENT)};
-    if (GetWindowPlacement(hwnd, &wp)) {
+    if (GetWindowPlacement(hwnd, &wp) != FALSE) {
         local_state.show_cmd = wp.showCmd;
     }
 
@@ -197,7 +197,16 @@ void CalculateWindowState(HWND hwnd, const char* reason) {
 
 // Second function: Apply the calculated window changes
 void ApplyWindowChange(HWND hwnd, const char* reason, bool force_apply) {
-    if (hwnd == nullptr) return;
+    if (hwnd == nullptr) {
+        LogWarn("ApplyWindowChange: Null window handle provided");
+        return;
+    }
+
+    // Validate window handle
+    if (IsWindow(hwnd) == FALSE) {
+        LogWarn("ApplyWindowChange: Invalid window handle 0x%p", hwnd);
+        return;
+    }
 
     // First calculate the desired window state
     CalculateWindowState(hwnd, reason);
@@ -221,11 +230,11 @@ void ApplyWindowChange(HWND hwnd, const char* reason, bool force_apply) {
                 return;
             }
             if (s.style_changed) {
-                LogDebug("ApplyWindowChange: Setting new style and ex style");
+                LogDebug("ApplyWindowChange: Setting new style %d -> %d", s.current_style, s.new_style);
                 SetWindowLongPtrW(hwnd, GWL_STYLE, s.new_style);
             }
             if (s.style_changed_ex) {
-                LogDebug("ApplyWindowChange: Setting new ex style");
+                LogDebug("ApplyWindowChange: Setting new ex style %d -> %d", s.current_ex_style, s.new_ex_style);
                 SetWindowLongPtrW(hwnd, GWL_EXSTYLE, s.new_ex_style);
             }
 
@@ -278,8 +287,15 @@ void ApplyWindowChange(HWND hwnd, const char* reason, bool force_apply) {
 
                     ReleaseDC(nullptr, hdc);
 
-                    scaling_percentage_width = static_cast<float>(virtual_width) / static_cast<float>(physical_width);
-                    scaling_percentage_height = static_cast<float>(virtual_height) / static_cast<float>(physical_height);
+                    // Prevent division by zero
+                    if (physical_width > 0 && physical_height > 0) {
+                        scaling_percentage_width = static_cast<float>(virtual_width) / static_cast<float>(physical_width);
+                        scaling_percentage_height = static_cast<float>(virtual_height) / static_cast<float>(physical_height);
+                    } else {
+                        LogWarn("ApplyWindowChange: Invalid physical resolution %dx%d, using default scaling", physical_width, physical_height);
+                        scaling_percentage_width = 1.0f;
+                        scaling_percentage_height = 1.0f;
+                    }
                     LogInfo("ApplyWindowChange: Windows Display Scaling - Width: %.0f%%, Height: %.0f%%",
                            scaling_percentage_width, scaling_percentage_height);
                     float scaling_percentage = (static_cast<float>(system_dpi_x) / 96.0f) * 100.0f;
@@ -291,7 +307,37 @@ void ApplyWindowChange(HWND hwnd, const char* reason, bool force_apply) {
                 }
             }
 
-            SetWindowPos(hwnd, nullptr, s.target_x, s.target_y, round(s.target_w * scaling_percentage_width), round(s.target_h * scaling_percentage_height),     flags);
+            // Calculate final dimensions with scaling
+            int final_width = static_cast<int>(round(s.target_w * scaling_percentage_width));
+            int final_height = static_cast<int>(round(s.target_h * scaling_percentage_height));
+
+            // Validate parameters before SetWindowPos call
+            if (final_width <= 0 || final_height <= 0) {
+                LogWarn("ApplyWindowChange: Invalid calculated dimensions %dx%d, skipping SetWindowPos", final_width, final_height);
+                return;
+            }
+
+            if (s.target_x < -32768 || s.target_x > 32767 || s.target_y < -32768 || s.target_y > 32767) {
+                LogWarn("ApplyWindowChange: Invalid coordinates (%d, %d), skipping SetWindowPos", s.target_x, s.target_y);
+                return;
+            }
+
+            // Validate window handle
+            if (IsWindow(hwnd) == FALSE) {
+                LogWarn("ApplyWindowChange: Invalid window handle 0x%p, skipping SetWindowPos", hwnd);
+                return;
+            }
+
+            LogDebug("ApplyWindowChange: Calling SetWindowPos with x=%d, y=%d, w=%d, h=%d, flags=0x%x",
+                     s.target_x, s.target_y, final_width, final_height, flags);
+
+            BOOL result = SetWindowPos(hwnd, nullptr, s.target_x, s.target_y, final_width, final_height, flags);
+            if (result == FALSE) {
+                DWORD error = GetLastError();
+                LogError("ApplyWindowChange: SetWindowPos failed with error %lu (0x%lx)", error, error);
+            } else {
+                LogDebug("ApplyWindowChange: SetWindowPos succeeded");
+            }
         }
     }
 }

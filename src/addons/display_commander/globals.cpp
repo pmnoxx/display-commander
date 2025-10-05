@@ -154,8 +154,6 @@ std::atomic<float> g_min_latency_ms{0.0f};
 std::atomic<float> g_max_latency_ms{0.0f};
 std::atomic<uint64_t> g_current_frame{0};
 
-// DLSS-FG Detection state
-std::atomic<bool> g_dlssfg_detected{false};
 
 // Backbuffer dimensions
 std::atomic<int> g_last_backbuffer_width{0};
@@ -269,10 +267,6 @@ std::atomic<bool> s_enable_reflex_logging{false}; // Disabled by default
 std::atomic<bool> g_dlls_g_loaded{false};
 std::atomic<std::shared_ptr<const std::string>> g_dlls_g_version{std::make_shared<const std::string>("Unknown")};
 
-// DLSS Preset Detection
-std::atomic<bool> g_dlss_preset_detected{false};
-std::atomic<std::shared_ptr<const std::string>> g_dlss_preset_name{std::make_shared<const std::string>("Unknown")};
-std::atomic<std::shared_ptr<const std::string>> g_dlss_quality_mode{std::make_shared<const std::string>("Unknown")};
 
 // Experimental tab settings global instance
 namespace settings {

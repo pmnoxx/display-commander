@@ -235,6 +235,7 @@ bool InstallApiHooks() {
         return false;
     }
 
+    /*
     // Hook CreateDXGIFactory - try both system and ReShade versions
     HMODULE dxgi_module = GetModuleHandleW(L"dxgi.dll");
     if (dxgi_module) {
@@ -265,7 +266,7 @@ bool InstallApiHooks() {
             return false;
         }
         LogInfo("CreateDXGIFactory1 ReShade hook created successfully");
-    }
+    }*/
 
     // Enable all hooks
     if (MH_EnableHook(MH_ALL_HOOKS) != MH_OK) {

@@ -5,6 +5,7 @@
 #include "display_initial_state.hpp"
 #include "globals.hpp"
 #include "hooks/api_hooks.hpp"
+#include "hooks/d3d9/d3d9_present_hooks.hpp"
 #include "hooks/dxgi/dxgi_present_hooks.hpp"
 #include "hooks/window_proc_hooks.hpp"
 #include "input_remapping/input_remapping.hpp"
@@ -21,6 +22,7 @@
 #include "utils/timing.hpp"
 #include "widgets/xinput_widget/xinput_widget.hpp"
 
+#include <d3d9.h>
 #include <dxgi.h>
 #include <dxgi1_4.h>
 #include <minwindef.h>
@@ -72,6 +74,20 @@ void hookToSwapChain(reshade::api::swapchain *swapchain) {
         } else {
             LogWarn("Could not get DXGI swapchain from ReShade swapchain for Present "
                     "hooking");
+        }
+
+        // Try to hook DX9 Present calls if this is a DX9 device
+        // Get the underlying DX9 device from the ReShade device
+        if (auto *device = swapchain->get_device()) {
+            if (auto *d3d9_device = reinterpret_cast<IDirect3DDevice9 *>(device->get_native())) {
+                if (display_commanderhooks::d3d9::HookD3D9Present(d3d9_device)) {
+                    LogInfo("Successfully hooked DX9 Present calls for device: 0x%p", d3d9_device);
+                } else {
+                    LogInfo("DX9 Present hooking not available for device: 0x%p (may not be DX9)", d3d9_device);
+                }
+            } else {
+                LogInfo("Could not get DX9 device from ReShade device for Present hooking");
+            }
         }
     }
 }

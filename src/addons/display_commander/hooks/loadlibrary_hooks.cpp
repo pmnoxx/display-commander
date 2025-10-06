@@ -2,6 +2,7 @@
 #include "xinput_hooks.hpp"
 #include "windows_gaming_input_hooks.hpp"
 #include "nvapi_hooks.hpp"
+#include "streamline_hooks.hpp"
 #include "../utils.hpp"
 #include "utils/srwlock_wrapper.hpp"
 #include <MinHook.h>
@@ -482,6 +483,16 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
     // Convert to lowercase for case-insensitive comparison
     std::wstring lowerModuleName = moduleName;
     std::transform(lowerModuleName.begin(), lowerModuleName.end(), lowerModuleName.begin(), ::towlower);
+
+
+    if (lowerModuleName.find(L"sl.interposer.dll") != std::wstring::npos) {
+        LogInfo("Installing Streamline hooks for module: %ws", moduleName.c_str());
+        if (InstallStreamlineHooks()) {
+            LogInfo("Streamline hooks installed successfully");
+        } else {
+            LogError("Failed to install Streamline hooks");
+        }
+    }
 
     // XInput hooks
     if (lowerModuleName.find(L"xinput") != std::wstring::npos) {

@@ -88,6 +88,13 @@ bool InstallStreamlineHooks() {
         return false;
     }
 
+    static bool g_streamline_hooks_installed = false;
+    if (g_streamline_hooks_installed) {
+        LogInfo("Streamline hooks already installed");
+        return true;
+    }
+    g_streamline_hooks_installed = true;
+
     LogInfo("Installing Streamline hooks...");
 
     // Hook slInit

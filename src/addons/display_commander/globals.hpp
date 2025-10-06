@@ -206,21 +206,9 @@ extern std::atomic<HWND> g_last_swapchain_hwnd;
 extern std::atomic<bool> g_shutdown;
 extern std::atomic<bool> g_muted_applied;
 
-// NVAPI UI Cache structure
-struct NVAPIUICache {
-    std::string driver_version;
-    bool has_nvidia_hardware = false;
-    std::string last_error;
-    std::chrono::steady_clock::time_point last_update;
-    bool is_valid = false;
-
-    NVAPIUICache() : last_update(std::chrono::steady_clock::now()) {}
-};
-
 // Global instances
 extern std::atomic<std::shared_ptr<GlobalWindowState>> g_window_state;
 extern BackgroundWindowManager g_backgroundWindowManager;
-extern NVAPIUICache g_nvapi_ui_cache;
 
 // Custom FPS Limiter Manager
 namespace dxgi::fps_limiter {

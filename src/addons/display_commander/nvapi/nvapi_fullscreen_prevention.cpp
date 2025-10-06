@@ -316,8 +316,6 @@ void NVAPIFullscreenPrevention::CheckAndAutoEnable() {
     // Check if this game should auto-enable NVAPI features
     LogInfo("NVAPI Auto-enable: Checking if game '%s' is in auto-enable list", processName.c_str());
     if (IsGameInAutoEnableList(processName)) {
-        s_nvapi_auto_enable.store(true);
-
         if (!s_nvapi_fullscreen_prevention.load()) {
             s_nvapi_fullscreen_prevention.store(true);
             LogInfo("NVAPI Auto-enable: Enabled fullscreen prevention for '%s'", processName.c_str());
@@ -345,21 +343,4 @@ void NVAPIFullscreenPrevention::CheckAndAutoEnable() {
             LogWarn("NVAPI Auto-enable: Failed to enable fullscreen prevention for '%s'", processName.c_str());
         }
     }
-}
-
-void NVAPIFullscreenPrevention::UpdateUICache() {
-    // Update cache with current values
-    g_nvapi_ui_cache.driver_version = g_nvapiFullscreenPrevention.GetDriverVersion();
-    g_nvapi_ui_cache.has_nvidia_hardware = g_nvapiFullscreenPrevention.HasNVIDIAHardware();
-    g_nvapi_ui_cache.last_error = g_nvapiFullscreenPrevention.GetLastError();
-    g_nvapi_ui_cache.last_update = std::chrono::steady_clock::now();
-    g_nvapi_ui_cache.is_valid = true;
-}
-
-bool NVAPIFullscreenPrevention::ShouldUpdateCache() {
-    // Update cache every 2 seconds
-    const auto now = std::chrono::steady_clock::now();
-    const auto time_since_update = std::chrono::duration_cast<std::chrono::milliseconds>(now - g_nvapi_ui_cache.last_update);
-
-    return !g_nvapi_ui_cache.is_valid || time_since_update.count() > 2000;
 }

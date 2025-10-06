@@ -37,7 +37,6 @@ class DeveloperTabSettings {
 
     // NVAPI Settings
     BoolSettingRef nvapi_fullscreen_prevention;
-    BoolSettingRef nvapi_auto_enable;
 
     // Keyboard Shortcut Settings (Experimental)
     BoolSettingRef enable_mute_unmute_shortcut;

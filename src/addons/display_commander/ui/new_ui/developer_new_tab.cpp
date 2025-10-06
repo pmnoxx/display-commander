@@ -187,10 +187,7 @@ void DrawNvapiSettings() {
         ImGui::SetTooltip("Use NVAPI to prevent fullscreen mode at the driver level.");
     }
 
-    // NVAPI Auto-enable for specific games
-    if (CheckboxSetting(settings::g_developerTabSettings.nvapi_auto_enable, "NVAPI Auto-enable for Games")) {
-        s_nvapi_auto_enable.store(settings::g_developerTabSettings.nvapi_auto_enable.GetValue());
-    }
+    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "NVAPI Auto-enable for Games");
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Automatically enable NVAPI features for specific games:\n"
                          "• NVAPI Fullscreen Prevention\n"
@@ -213,48 +210,11 @@ void DrawNvapiSettings() {
         ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "Game restart required to apply NVAPI changes.");
     }
     if (::g_nvapiFullscreenPrevention.IsAvailable()) {
-        // Update cache if needed (only every 2 seconds)
-        if (::NVAPIFullscreenPrevention::ShouldUpdateCache()) {
-            ::NVAPIFullscreenPrevention::UpdateUICache();
-        }
-
-        // NVAPI Debug Information Display
-        ImGui::Separator();
-        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "NVAPI Debug Information:");
-
-        // Manual refresh button
-        ImGui::SameLine();
-        if (ImGui::Button("Refresh##NVAPI")) {
-            ::NVAPIFullscreenPrevention::UpdateUICache();
-        }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Force refresh NVAPI information (updates every 2 seconds automatically)");
-        }
-
         // Library loaded successfully
         ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✁ENVAPI Library: Loaded");
-
-        // Driver version info (from cache)
-        if (::g_nvapi_ui_cache.driver_version != "Failed to get driver version") {
-            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✁EDriver Version: %s", ::g_nvapi_ui_cache.driver_version.c_str());
-        } else {
-            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "⚠ Driver Version: %s", ::g_nvapi_ui_cache.driver_version.c_str());
-        }
-
-        // Hardware detection (from cache)
-        if (::g_nvapi_ui_cache.has_nvidia_hardware) {
-            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✁ENVIDIA Hardware: Detected");
-        } else {
-            ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "✁ENVIDIA Hardware: Not Found");
-        }
     } else {
         // Library not loaded
         ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "✁ENVAPI Library: Not Loaded");
-
-        // Try to get error information (from cache)
-        if (!::g_nvapi_ui_cache.last_error.empty()) {
-            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "Error: %s", ::g_nvapi_ui_cache.last_error.c_str());
-        }
     }
 
     // Minimal NVIDIA Reflex Controls (device runtime dependent)

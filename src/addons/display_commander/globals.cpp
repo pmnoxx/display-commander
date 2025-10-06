@@ -41,8 +41,6 @@ std::atomic<bool> s_prevent_fullscreen{false};
 
 // NVAPI Fullscreen Prevention
 std::atomic<bool> s_nvapi_fullscreen_prevention{false}; // disabled by default
-// NVAPI Auto-enable for specific games
-std::atomic<bool> s_nvapi_auto_enable{true}; // enabled by default
 
 // Spoof Fullscreen State (for applications that query fullscreen status)
 std::atomic<SpoofFullscreenState> s_spoof_fullscreen_state{SpoofFullscreenState::Disabled};
@@ -265,9 +263,6 @@ std::atomic<bool> s_enable_reflex_logging{false}; // Disabled by default
 std::atomic<bool> g_dlls_g_loaded{false};
 std::atomic<std::shared_ptr<const std::string>> g_dlls_g_version{std::make_shared<const std::string>("Unknown")};
 
-
-// NVAPI UI Cache global instance
-NVAPIUICache g_nvapi_ui_cache;
 
 // Experimental tab settings global instance
 namespace settings {

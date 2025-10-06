@@ -27,9 +27,6 @@ class NVAPIFullscreenPrevention {
     // Enable/disable fullscreen prevention
     bool SetFullscreenPrevention(bool enable);
 
-    // Check if fullscreen prevention is enabled
-    bool IsFullscreenPreventionEnabled() const;
-
     // Get the last error message
     std::string GetLastError() const;
 
@@ -39,21 +36,11 @@ class NVAPIFullscreenPrevention {
     // Check if we have NVIDIA hardware
     bool HasNVIDIAHardware() const;
 
-    // Debug information methods
-    std::string GetLibraryPath() const;
-    std::string GetFunctionStatus() const;
-    std::string GetDetailedStatus() const;
-    std::string GetDllVersionInfo() const;
-
-    // HDR related helpers
-    bool QueryHdrStatus(bool &out_hdr_enabled, std::string &out_colorspace, std::string &out_output_name) const;
-    bool QueryHdrDetails(std::string &out_details) const;
-    bool SetHdr10OnAll(bool enable);
 
     // Auto-enable functionality
     static bool IsGameInAutoEnableList(const std::string& processName);
     static void CheckAndAutoEnable();
-    
+
     // UI Cache management
     static void UpdateUICache();
     static bool ShouldUpdateCache();
@@ -61,10 +48,7 @@ class NVAPIFullscreenPrevention {
   private:
     bool initialized = false;
     bool failed_to_initialize = false;
-    bool fullscreen_prevention_enabled = false;
     std::string last_error;
-    NvDRSSessionHandle hSession = {0};
-    NvDRSProfileHandle hProfile = {0};
 
     // Disable copy constructor and assignment
     NVAPIFullscreenPrevention(const NVAPIFullscreenPrevention &) = delete;

@@ -109,7 +109,7 @@ std::atomic<bool> s_apply_display_settings_at_start{false}; // Disabled by defau
 // Atomic variables
 std::atomic<int> g_comp_query_counter{0};
 std::atomic<int> g_comp_last_logged{0};
-// std::atomic<reshade::api::swapchain*> g_last_swapchain_ptr{nullptr};
+std::atomic<void*> g_last_swapchain_ptr{nullptr};
 std::atomic<uint64_t> g_init_apply_generation{0};
 std::atomic<HWND> g_last_swapchain_hwnd{nullptr};
 std::atomic<bool> g_shutdown{false};

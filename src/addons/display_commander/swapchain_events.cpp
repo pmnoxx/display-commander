@@ -59,6 +59,9 @@ void hookToSwapChain(reshade::api::swapchain *swapchain) {
     //
     LogInfo("onInitSwapChain: swapchain: 0x%p", swapchain);
 
+    // Store the current swapchain for UI access
+    g_last_swapchain_ptr.store(static_cast<void*>(swapchain));
+
     // Schedule auto-apply even on resizes (generation counter ensures only latest
     // runs)
     HWND hwnd = static_cast<HWND>(swapchain->get_hwnd());

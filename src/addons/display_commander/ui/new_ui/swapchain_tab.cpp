@@ -6,6 +6,7 @@
 #include <dxgi1_6.h>
 #include <imgui.h>
 #include <wrl/client.h>
+#include <reshade.hpp>
 
 namespace ui::new_ui {
 
@@ -15,6 +16,8 @@ void DrawSwapchainTab() {
 
     // Draw all swapchain-related sections
     DrawSwapchainEventCounters();
+    ImGui::Spacing();
+    DrawSwapchainInfo();
     ImGui::Spacing();
     DrawDxgiCompositionInfo();
 }
@@ -285,6 +288,182 @@ void DrawDxgiCompositionInfo() {
         // Display HDR10 override status
         ImGui::Text("HDR10 Colorspace Override: %s (Last: %s)", g_hdr10_override_status.load()->c_str(),
                     g_hdr10_override_timestamp.load()->c_str());
+    }
+}
+
+void DrawSwapchainInfo() {
+    if (ImGui::CollapsingHeader("Swapchain Information", ImGuiTreeNodeFlags_DefaultOpen)) {
+        // Get the current swapchain from global variable
+        void* swapchain_ptr = g_last_swapchain_ptr.load();
+        if (swapchain_ptr == nullptr) {
+            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "No active swapchain detected");
+            return;
+        }
+
+        auto* swapchain = static_cast<reshade::api::swapchain*>(swapchain_ptr);
+        if (swapchain == nullptr) {
+            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "No swapchain available");
+            return;
+        }
+
+        // Try to get DXGI swapchain interface
+        Microsoft::WRL::ComPtr<IDXGISwapChain1> dxgi_swapchain;
+        auto* native_swapchain = reinterpret_cast<IDXGISwapChain*>(swapchain->get_native());
+        if (FAILED(native_swapchain->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain)))) {
+            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "Failed to get DXGI swapchain interface");
+            return;
+        }
+
+        // Get swapchain description
+        DXGI_SWAP_CHAIN_DESC1 desc1 = {};
+        HRESULT hr = dxgi_swapchain->GetDesc1(&desc1);
+        if (FAILED(hr)) {
+            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "Failed to get swapchain description: 0x%08lX", static_cast<unsigned long>(hr));
+            return;
+        }
+
+        // Display basic swapchain information
+        ImGui::Text("Swapchain Description:");
+        ImGui::Text("  Width: %u", desc1.Width);
+        ImGui::Text("  Height: %u", desc1.Height);
+        ImGui::Text("  Format: %s", GetDXGIFormatString(desc1.Format));
+        ImGui::Text("  Stereo: %s", (desc1.Stereo != FALSE) ? "Yes" : "No");
+        ImGui::Text("  Sample Count: %u", desc1.SampleDesc.Count);
+        ImGui::Text("  Sample Quality: %u", desc1.SampleDesc.Quality);
+        ImGui::Text("  Buffer Usage: 0x%08X", desc1.BufferUsage);
+        ImGui::Text("  Buffer Count: %u", desc1.BufferCount);
+        ImGui::Text("  Scaling: %s", GetDXGIScalingString(desc1.Scaling));
+        ImGui::Text("  Swap Effect: %s", GetDXGISwapEffectString(desc1.SwapEffect));
+        ImGui::Text("  Alpha Mode: %s", GetDXGIAlphaModeString(desc1.AlphaMode));
+        ImGui::Text("  Flags: 0x%08X", desc1.Flags);
+
+        ImGui::Spacing();
+
+        // Try to get output information for HDR details
+        Microsoft::WRL::ComPtr<IDXGIOutput> output;
+        if (SUCCEEDED(dxgi_swapchain->GetContainingOutput(&output)) && output != nullptr) {
+            Microsoft::WRL::ComPtr<IDXGIOutput6> output6;
+            if (SUCCEEDED(output->QueryInterface(IID_PPV_ARGS(&output6)))) {
+                DXGI_OUTPUT_DESC1 output_desc = {};
+                if (SUCCEEDED(output6->GetDesc1(&output_desc))) {
+                    ImGui::Text("Output HDR Information:");
+                    ImGui::Text("  Device Name: %S", output_desc.DeviceName);
+                    ImGui::Text("  Color Space: %s", GetDXGIColorSpaceString(output_desc.ColorSpace));
+                    ImGui::Text("  Bits Per Color: %u", output_desc.BitsPerColor);
+                    ImGui::Text("  Min Luminance: %.2f nits", output_desc.MinLuminance);
+                    ImGui::Text("  Max Luminance: %.2f nits", output_desc.MaxLuminance);
+                    ImGui::Text("  Max Full Frame Luminance: %.2f nits", output_desc.MaxFullFrameLuminance);
+
+                    // Color primaries
+                    ImGui::Text("  Red Primary: (%.3f, %.3f)", output_desc.RedPrimary[0], output_desc.RedPrimary[1]);
+                    ImGui::Text("  Green Primary: (%.3f, %.3f)", output_desc.GreenPrimary[0], output_desc.GreenPrimary[1]);
+                    ImGui::Text("  Blue Primary: (%.3f, %.3f)", output_desc.BluePrimary[0], output_desc.BluePrimary[1]);
+                    ImGui::Text("  White Point: (%.3f, %.3f)", output_desc.WhitePoint[0], output_desc.WhitePoint[1]);
+
+                    // HDR support detection
+                    bool supports_hdr = (output_desc.ColorSpace == DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020 ||
+                                       output_desc.ColorSpace == DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709);
+                    ImGui::Text("  HDR Support: %s", supports_hdr ? "Yes" : "No");
+
+                    if (supports_hdr) {
+                        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "  ✓ HDR-capable display detected");
+                    } else {
+                        ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "  ⚠ Display does not support HDR");
+                    }
+                } else {
+                    ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "Failed to get output description");
+                }
+            } else {
+                ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "IDXGIOutput6 not available");
+            }
+        } else {
+            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "Failed to get containing output");
+        }
+
+        ImGui::Spacing();
+
+        // Try to get HDR metadata information from swapchain
+        Microsoft::WRL::ComPtr<IDXGISwapChain4> swapchain4;
+        if (SUCCEEDED(dxgi_swapchain->QueryInterface(IID_PPV_ARGS(&swapchain4)))) {
+            ImGui::Text("HDR Metadata Support:");
+            ImGui::Text("  IDXGISwapChain4: Available");
+            ImGui::Text("  SetHDRMetaData: Supported");
+        } else {
+            ImGui::Text("HDR Metadata Support:");
+            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "  IDXGISwapChain4: Not available");
+            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "  SetHDRMetaData: Not supported");
+        }
+    }
+}
+
+// Helper functions for string conversion
+const char* GetDXGIFormatString(DXGI_FORMAT format) {
+    switch (format) {
+        case DXGI_FORMAT_R8G8B8A8_UNORM: return "R8G8B8A8_UNORM";
+        case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB: return "R8G8B8A8_UNORM_SRGB";
+        case DXGI_FORMAT_B8G8R8A8_UNORM: return "B8G8R8A8_UNORM";
+        case DXGI_FORMAT_B8G8R8A8_UNORM_SRGB: return "B8G8R8A8_UNORM_SRGB";
+        case DXGI_FORMAT_R10G10B10A2_UNORM: return "R10G10B10A2_UNORM";
+        case DXGI_FORMAT_R16G16B16A16_FLOAT: return "R16G16B16A16_FLOAT";
+        case DXGI_FORMAT_R32G32B32A32_FLOAT: return "R32G32B32A32_FLOAT";
+        default: return "Unknown Format";
+    }
+}
+
+const char* GetDXGIScalingString(DXGI_SCALING scaling) {
+    switch (scaling) {
+        case DXGI_SCALING_STRETCH: return "Stretch";
+        case DXGI_SCALING_NONE: return "None";
+        case DXGI_SCALING_ASPECT_RATIO_STRETCH: return "Aspect Ratio Stretch";
+        default: return "Unknown";
+    }
+}
+
+const char* GetDXGISwapEffectString(DXGI_SWAP_EFFECT effect) {
+    switch (effect) {
+        case DXGI_SWAP_EFFECT_DISCARD: return "Discard";
+        case DXGI_SWAP_EFFECT_SEQUENTIAL: return "Sequential";
+        case DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL: return "Flip Sequential";
+        case DXGI_SWAP_EFFECT_FLIP_DISCARD: return "Flip Discard";
+        default: return "Unknown";
+    }
+}
+
+const char* GetDXGIAlphaModeString(DXGI_ALPHA_MODE mode) {
+    switch (mode) {
+        case DXGI_ALPHA_MODE_UNSPECIFIED: return "Unspecified";
+        case DXGI_ALPHA_MODE_PREMULTIPLIED: return "Premultiplied";
+        case DXGI_ALPHA_MODE_STRAIGHT: return "Straight";
+        case DXGI_ALPHA_MODE_IGNORE: return "Ignore";
+        default: return "Unknown";
+    }
+}
+
+const char* GetDXGIColorSpaceString(DXGI_COLOR_SPACE_TYPE color_space) {
+    switch (color_space) {
+        case DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709: return "RGB Full G22 None P709";
+        case DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709: return "RGB Full G10 None P709";
+        case DXGI_COLOR_SPACE_RGB_STUDIO_G22_NONE_P709: return "RGB Studio G22 None P709";
+        case DXGI_COLOR_SPACE_RGB_STUDIO_G22_NONE_P2020: return "RGB Studio G22 None P2020";
+        case DXGI_COLOR_SPACE_RESERVED: return "Reserved";
+        case DXGI_COLOR_SPACE_YCBCR_FULL_G22_NONE_P709_X601: return "YCbCr Full G22 None P709 X601";
+        case DXGI_COLOR_SPACE_YCBCR_STUDIO_G22_LEFT_P601: return "YCbCr Studio G22 Left P601";
+        case DXGI_COLOR_SPACE_YCBCR_FULL_G22_LEFT_P601: return "YCbCr Full G22 Left P601";
+        case DXGI_COLOR_SPACE_YCBCR_STUDIO_G22_LEFT_P709: return "YCbCr Studio G22 Left P709";
+        case DXGI_COLOR_SPACE_YCBCR_FULL_G22_LEFT_P709: return "YCbCr Full G22 Left P709";
+        case DXGI_COLOR_SPACE_YCBCR_STUDIO_G22_LEFT_P2020: return "YCbCr Studio G22 Left P2020";
+        case DXGI_COLOR_SPACE_YCBCR_FULL_G22_LEFT_P2020: return "YCbCr Full G22 Left P2020";
+        case DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020: return "RGB Full G2084 None P2020 (HDR10)";
+        case DXGI_COLOR_SPACE_YCBCR_STUDIO_G2084_LEFT_P2020: return "YCbCr Studio G2084 Left P2020";
+        case DXGI_COLOR_SPACE_RGB_STUDIO_G2084_NONE_P2020: return "RGB Studio G2084 None P2020";
+        case DXGI_COLOR_SPACE_YCBCR_STUDIO_G22_TOPLEFT_P2020: return "YCbCr Studio G22 TopLeft P2020";
+        case DXGI_COLOR_SPACE_YCBCR_STUDIO_G2084_TOPLEFT_P2020: return "YCbCr Studio G2084 TopLeft P2020";
+        case DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P2020: return "RGB Full G22 None P2020";
+        case DXGI_COLOR_SPACE_YCBCR_STUDIO_G24_LEFT_P709: return "YCbCr Studio G24 Left P709";
+        case DXGI_COLOR_SPACE_YCBCR_STUDIO_G24_LEFT_P2020: return "YCbCr Studio G24 Left P2020";
+        case DXGI_COLOR_SPACE_YCBCR_STUDIO_G24_TOPLEFT_P2020: return "YCbCr Studio G24 TopLeft P2020";
+        case DXGI_COLOR_SPACE_CUSTOM: return "Custom";
+        default: return "Unknown";
     }
 }
 

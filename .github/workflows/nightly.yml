@@ -26,10 +26,54 @@ jobs:
             artifact_suffix: addon32
             artifact_name: zzz_display_commander.addon32
 
+  nightly-build-driver-restart:
+    name: Nightly Build Driver Restart Tool
+    runs-on: windows-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          submodules: recursive
+
+      - name: Setup Ninja
+        uses: seanmiddleditch/gha-setup-ninja@v5
+
+      - name: Setup MSVC (x64)
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Configure
+        shell: bash
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build Driver Restart Tool
+        shell: bash
+        run: |
+          cmake --build build --config Release --target driver_restart --parallel
+
+      - name: Collect Driver Restart Artifact
+        shell: bash
+        run: |
+          mkdir -p artifacts
+          if [ -f "build/tools/driver_restart.exe" ]; then
+            echo "Found driver_restart.exe: build/tools/driver_restart.exe"
+            cp "build/tools/driver_restart.exe" "artifacts/driver_restart.exe"
+          else
+            echo "Error: driver_restart.exe not found in build/tools/" >&2
+            find build -type f -name "*.exe" || true
+            exit 1
+          fi
+
+      - name: Upload Driver Restart Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-driver-restart-tool
+          path: artifacts/driver_restart.exe
+          if-no-files-found: error
+          retention-days: 30
           submodules: recursive
 
       - name: Setup Ninja
@@ -66,15 +110,6 @@ jobs:
           # Copy the display_commander addon with the correct name
           cp "$display_commander_file" "artifacts/${{ matrix.artifact_name }}"
 
-          # Look for driver_restart.exe in tools directory
-          if [ -f "build/tools/driver_restart.exe" ]; then
-            echo "Found driver_restart.exe: build/tools/driver_restart.exe"
-            cp "build/tools/driver_restart.exe" "artifacts/driver_restart.exe"
-          else
-            echo "Warning: driver_restart.exe not found in build/tools/; listing build dir for debugging:" >&2
-            find build -type f -name "*.exe" || true
-          fi
-
           echo "artifact_dir=artifacts" >> $GITHUB_OUTPUT
 
       - name: Upload artifact
@@ -87,7 +122,7 @@ jobs:
 
   nightly-release:
     name: Nightly Release
-    needs: [ nightly-build ]
+    needs: [ nightly-build, nightly-build-driver-restart ]
     runs-on: windows-latest
     steps:
       - name: Download build artifacts (x64)
@@ -100,6 +135,12 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: nightly-zzz-display-commander-addon32
+          path: artifacts
+
+      - name: Download driver restart tool
+        uses: actions/download-artifact@v4
+        with:
+          name: nightly-driver-restart-tool
           path: artifacts
 
       - name: Create/Update Nightly Release

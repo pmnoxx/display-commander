@@ -5,6 +5,7 @@
 #include "../../utils.hpp"
 #include "../api_hooks.hpp" // For GetGameWindow and other functions
 #include <MinHook.h>
+#include <array>
 
 
 namespace display_commanderhooks {
@@ -54,10 +55,10 @@ static POINT s_last_cursor_position = {};
 static RECT s_last_clip_cursor = {};
 
 // Hook statistics array
-HookCallStats g_hook_stats[HOOK_COUNT];
+std::array<HookCallStats, HOOK_COUNT> g_hook_stats;
 
 // Hook names for display
-static const char *g_hook_names[HOOK_COUNT] = {"GetMessageA",
+static const std::array<const char*, HOOK_COUNT> g_hook_names = {"GetMessageA",
                                                "GetMessageW",
                                                "PeekMessageA",
                                                "PeekMessageW",

@@ -8,6 +8,7 @@
 #include "hooks/d3d9/d3d9_present_hooks.hpp"
 #include "hooks/dxgi/dxgi_present_hooks.hpp"
 #include "hooks/window_proc_hooks.hpp"
+#include "hooks/streamline_hooks.hpp"
 #include "input_remapping/input_remapping.hpp"
 #include "latency/latency_manager.hpp"
 #include "latent_sync/latent_sync_limiter.hpp"
@@ -83,7 +84,7 @@ void hookToSwapChain(reshade::api::swapchain *swapchain) {
             LogWarn("Could not get DXGI swapchain from ReShade swapchain for Present "
                     "hooking");
         }
-/*
+
         // Try to hook DX9 Present calls if this is a DX9 device
         // Get the underlying DX9 device from the ReShade device
         if (auto *device = swapchain->get_device()) {
@@ -96,7 +97,7 @@ void hookToSwapChain(reshade::api::swapchain *swapchain) {
             } else {
                 LogInfo("Could not get DX9 device from ReShade device for Present hooking");
             }
-        }*/
+        }
     }
 }
 
@@ -150,6 +151,13 @@ void DoInitializationWithHwnd(HWND hwnd) {
         LogInfo("Window procedure hooks installed successfully");
     } else {
         LogError("Failed to install window procedure hooks");
+    }
+
+    // Install Streamline hooks
+    if (InstallStreamlineHooks()) {
+        LogInfo("Streamline hooks installed successfully");
+    } else {
+        LogInfo("Streamline hooks not installed (Streamline not detected)");
     }
 
     // Initialize ADHD Multi-Monitor Mode

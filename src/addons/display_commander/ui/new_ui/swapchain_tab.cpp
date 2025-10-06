@@ -27,94 +27,54 @@ void DrawSwapchainEventCounters() {
         ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Event Counters (Green = Working, Red = Not Working)");
         ImGui::Separator();
 
-
         // Display each event counter with color coding
         static const char* event_names[NUM_EVENTS] = {
-            "SWAPCHAIN_EVENT_BEGIN_RENDER_PASS (0)",
-            "SWAPCHAIN_EVENT_END_RENDER_PASS (1)",
-            "SWAPCHAIN_EVENT_CREATE_SWAPCHAIN_CAPTURE (2)",
-            "SWAPCHAIN_EVENT_INIT_SWAPCHAIN (3)",
-            "SWAPCHAIN_EVENT_PRESENT_UPDATE_AFTER (4)",
-            "SWAPCHAIN_EVENT_PRESENT_UPDATE_BEFORE (5)",
-            "SWAPCHAIN_EVENT_PRESENT_UPDATE_BEFORE2 (6)",
-            "SWAPCHAIN_EVENT_INIT_COMMAND_LIST (7)",
-            "SWAPCHAIN_EVENT_EXECUTE_COMMAND_LIST (8)",
-            "SWAPCHAIN_EVENT_BIND_PIPELINE (9)",
-            "SWAPCHAIN_EVENT_INIT_COMMAND_QUEUE (10)",
-            "SWAPCHAIN_EVENT_RESET_COMMAND_LIST (11)",
-            "SWAPCHAIN_EVENT_PRESENT_FLAGS (12)",
-            "SWAPCHAIN_EVENT_DRAW (13)",
-            "SWAPCHAIN_EVENT_DRAW_INDEXED (14)",
+            "SWAPCHAIN_EVENT_BEGIN_RENDER_PASS (0)", "SWAPCHAIN_EVENT_END_RENDER_PASS (1)",
+            "SWAPCHAIN_EVENT_CREATE_SWAPCHAIN_CAPTURE (2)", "SWAPCHAIN_EVENT_INIT_SWAPCHAIN (3)",
+            "SWAPCHAIN_EVENT_PRESENT_UPDATE_AFTER (4)", "SWAPCHAIN_EVENT_PRESENT_UPDATE_BEFORE (5)",
+            "SWAPCHAIN_EVENT_PRESENT_UPDATE_BEFORE2 (6)", "SWAPCHAIN_EVENT_INIT_COMMAND_LIST (7)",
+            "SWAPCHAIN_EVENT_EXECUTE_COMMAND_LIST (8)", "SWAPCHAIN_EVENT_BIND_PIPELINE (9)",
+            "SWAPCHAIN_EVENT_INIT_COMMAND_QUEUE (10)", "SWAPCHAIN_EVENT_RESET_COMMAND_LIST (11)",
+            "SWAPCHAIN_EVENT_PRESENT_FLAGS (12)", "SWAPCHAIN_EVENT_DRAW (13)", "SWAPCHAIN_EVENT_DRAW_INDEXED (14)",
             "SWAPCHAIN_EVENT_DRAW_OR_DISPATCH_INDIRECT (15)",
             // New power saving events
-            "SWAPCHAIN_EVENT_DISPATCH (16)",
-            "SWAPCHAIN_EVENT_DISPATCH_MESH (17)",
-            "SWAPCHAIN_EVENT_DISPATCH_RAYS (18)",
-            "SWAPCHAIN_EVENT_COPY_RESOURCE (19)",
-            "SWAPCHAIN_EVENT_UPDATE_BUFFER_REGION (20)",
-            "SWAPCHAIN_EVENT_UPDATE_BUFFER_REGION_COMMAND (21)",
-            "SWAPCHAIN_EVENT_BIND_RESOURCE (22)",
+            "SWAPCHAIN_EVENT_DISPATCH (16)", "SWAPCHAIN_EVENT_DISPATCH_MESH (17)", "SWAPCHAIN_EVENT_DISPATCH_RAYS (18)",
+            "SWAPCHAIN_EVENT_COPY_RESOURCE (19)", "SWAPCHAIN_EVENT_UPDATE_BUFFER_REGION (20)",
+            "SWAPCHAIN_EVENT_UPDATE_BUFFER_REGION_COMMAND (21)", "SWAPCHAIN_EVENT_BIND_RESOURCE (22)",
             "SWAPCHAIN_EVENT_MAP_RESOURCE (23)",
             // Additional frame-specific GPU operations for power saving
-            "SWAPCHAIN_EVENT_COPY_BUFFER_REGION (24)",
-            "SWAPCHAIN_EVENT_COPY_BUFFER_TO_TEXTURE (25)",
-            "SWAPCHAIN_EVENT_COPY_TEXTURE_TO_BUFFER (26)",
-            "SWAPCHAIN_EVENT_COPY_TEXTURE_REGION (27)",
-            "SWAPCHAIN_EVENT_RESOLVE_TEXTURE_REGION (28)",
-            "SWAPCHAIN_EVENT_CLEAR_RENDER_TARGET_VIEW (29)",
-            "SWAPCHAIN_EVENT_CLEAR_DEPTH_STENCIL_VIEW (30)",
-            "SWAPCHAIN_EVENT_CLEAR_UNORDERED_ACCESS_VIEW_UINT (31)",
-            "SWAPCHAIN_EVENT_CLEAR_UNORDERED_ACCESS_VIEW_FLOAT (32)",
-            "SWAPCHAIN_EVENT_GENERATE_MIPMAPS (33)",
-            "SWAPCHAIN_EVENT_BLIT (34)",
-            "SWAPCHAIN_EVENT_BEGIN_QUERY (35)",
-            "SWAPCHAIN_EVENT_END_QUERY (36)",
+            "SWAPCHAIN_EVENT_COPY_BUFFER_REGION (24)", "SWAPCHAIN_EVENT_COPY_BUFFER_TO_TEXTURE (25)",
+            "SWAPCHAIN_EVENT_COPY_TEXTURE_TO_BUFFER (26)", "SWAPCHAIN_EVENT_COPY_TEXTURE_REGION (27)",
+            "SWAPCHAIN_EVENT_RESOLVE_TEXTURE_REGION (28)", "SWAPCHAIN_EVENT_CLEAR_RENDER_TARGET_VIEW (29)",
+            "SWAPCHAIN_EVENT_CLEAR_DEPTH_STENCIL_VIEW (30)", "SWAPCHAIN_EVENT_CLEAR_UNORDERED_ACCESS_VIEW_UINT (31)",
+            "SWAPCHAIN_EVENT_CLEAR_UNORDERED_ACCESS_VIEW_FLOAT (32)", "SWAPCHAIN_EVENT_GENERATE_MIPMAPS (33)",
+            "SWAPCHAIN_EVENT_BLIT (34)", "SWAPCHAIN_EVENT_BEGIN_QUERY (35)", "SWAPCHAIN_EVENT_END_QUERY (36)",
             "SWAPCHAIN_EVENT_RESOLVE_QUERY_DATA (37)",
             // DXGI Present hooks
-            "SWAPCHAIN_EVENT_DXGI_PRESENT (38)",
-            "SWAPCHAIN_EVENT_DXGI_GETBUFFER (39)",
-            "SWAPCHAIN_EVENT_DXGI_SETFULLSCREENSTATE (40)",
-            "SWAPCHAIN_EVENT_DXGI_GETFULLSCREENSTATE (41)",
-            "SWAPCHAIN_EVENT_DXGI_GETDESC (42)",
-            "SWAPCHAIN_EVENT_DXGI_RESIZEBUFFERS (43)",
-            "SWAPCHAIN_EVENT_DXGI_RESIZETARGET (44)",
-            "SWAPCHAIN_EVENT_DXGI_GETCONTAININGOUTPUT (45)",
-            "SWAPCHAIN_EVENT_DXGI_GETFRAMESTATISTICS (46)",
-            "SWAPCHAIN_EVENT_DXGI_GETLASTPRESENTCOUNT (47)",
-            "SWAPCHAIN_EVENT_DXGI_GETDESC1 (48)",
-            "SWAPCHAIN_EVENT_DXGI_GETFULLSCREENDESC (49)",
-            "SWAPCHAIN_EVENT_DXGI_GETHWND (50)",
-            "SWAPCHAIN_EVENT_DXGI_GETCOREWINDOW (51)",
-            "SWAPCHAIN_EVENT_DXGI_PRESENT1 (52)",
-            "SWAPCHAIN_EVENT_DXGI_ISTEMPORARYMONOSUPPORTED (53)",
-            "SWAPCHAIN_EVENT_DXGI_GETRESTRICTTOOUTPUT (54)",
-            "SWAPCHAIN_EVENT_DXGI_SETBACKGROUNDCOLOR (55)",
-            "SWAPCHAIN_EVENT_DXGI_GETBACKGROUNDCOLOR (56)",
-            "SWAPCHAIN_EVENT_DXGI_SETROTATION (57)",
-            "SWAPCHAIN_EVENT_DXGI_GETROTATION (58)",
-            "SWAPCHAIN_EVENT_DXGI_SETSOURCESIZE (59)",
-            "SWAPCHAIN_EVENT_DXGI_GETSOURCESIZE (60)",
-            "SWAPCHAIN_EVENT_DXGI_SETMAXIMUMFRAMELATENCY (61)",
+            "SWAPCHAIN_EVENT_DXGI_PRESENT (38)", "SWAPCHAIN_EVENT_DXGI_GETBUFFER (39)",
+            "SWAPCHAIN_EVENT_DXGI_SETFULLSCREENSTATE (40)", "SWAPCHAIN_EVENT_DXGI_GETFULLSCREENSTATE (41)",
+            "SWAPCHAIN_EVENT_DXGI_GETDESC (42)", "SWAPCHAIN_EVENT_DXGI_RESIZEBUFFERS (43)",
+            "SWAPCHAIN_EVENT_DXGI_RESIZETARGET (44)", "SWAPCHAIN_EVENT_DXGI_GETCONTAININGOUTPUT (45)",
+            "SWAPCHAIN_EVENT_DXGI_GETFRAMESTATISTICS (46)", "SWAPCHAIN_EVENT_DXGI_GETLASTPRESENTCOUNT (47)",
+            "SWAPCHAIN_EVENT_DXGI_GETDESC1 (48)", "SWAPCHAIN_EVENT_DXGI_GETFULLSCREENDESC (49)",
+            "SWAPCHAIN_EVENT_DXGI_GETHWND (50)", "SWAPCHAIN_EVENT_DXGI_GETCOREWINDOW (51)",
+            "SWAPCHAIN_EVENT_DXGI_PRESENT1 (52)", "SWAPCHAIN_EVENT_DXGI_ISTEMPORARYMONOSUPPORTED (53)",
+            "SWAPCHAIN_EVENT_DXGI_GETRESTRICTTOOUTPUT (54)", "SWAPCHAIN_EVENT_DXGI_SETBACKGROUNDCOLOR (55)",
+            "SWAPCHAIN_EVENT_DXGI_GETBACKGROUNDCOLOR (56)", "SWAPCHAIN_EVENT_DXGI_SETROTATION (57)",
+            "SWAPCHAIN_EVENT_DXGI_GETROTATION (58)", "SWAPCHAIN_EVENT_DXGI_SETSOURCESIZE (59)",
+            "SWAPCHAIN_EVENT_DXGI_GETSOURCESIZE (60)", "SWAPCHAIN_EVENT_DXGI_SETMAXIMUMFRAMELATENCY (61)",
             "SWAPCHAIN_EVENT_DXGI_GETMAXIMUMFRAMELATENCY (62)",
-            "SWAPCHAIN_EVENT_DXGI_GETFRAMELATENCYWAIABLEOBJECT (63)",
-            "SWAPCHAIN_EVENT_DXGI_SETMATRIXTRANSFORM (64)",
-            "SWAPCHAIN_EVENT_DXGI_GETMATRIXTRANSFORM (65)",
-            "SWAPCHAIN_EVENT_DXGI_GETCURRENTBACKBUFFERINDEX (66)",
-            "SWAPCHAIN_EVENT_DXGI_CHECKCOLORSPACESUPPORT (67)",
-            "SWAPCHAIN_EVENT_DXGI_SETCOLORSPACE1 (68)",
-            "SWAPCHAIN_EVENT_DXGI_RESIZEBUFFERS1 (69)",
-            "SWAPCHAIN_EVENT_DXGI_FACTORY_CREATESWAPCHAIN (70)",
-            "SWAPCHAIN_EVENT_DXGI_CREATEFACTORY (71)",
-            "SWAPCHAIN_EVENT_DXGI_CREATEFACTORY1 (72)",
-            "SWAPCHAIN_EVENT_DXGI_SETHDRMETADATA (73)",
-            "SWAPCHAIN_EVENT_DX9_PRESENT (74)",
+            "SWAPCHAIN_EVENT_DXGI_GETFRAMELATENCYWAIABLEOBJECT (63)", "SWAPCHAIN_EVENT_DXGI_SETMATRIXTRANSFORM (64)",
+            "SWAPCHAIN_EVENT_DXGI_GETMATRIXTRANSFORM (65)", "SWAPCHAIN_EVENT_DXGI_GETCURRENTBACKBUFFERINDEX (66)",
+            "SWAPCHAIN_EVENT_DXGI_CHECKCOLORSPACESUPPORT (67)", "SWAPCHAIN_EVENT_DXGI_SETCOLORSPACE1 (68)",
+            "SWAPCHAIN_EVENT_DXGI_RESIZEBUFFERS1 (69)", "SWAPCHAIN_EVENT_DXGI_FACTORY_CREATESWAPCHAIN (70)",
+            "SWAPCHAIN_EVENT_DXGI_CREATEFACTORY (71)", "SWAPCHAIN_EVENT_DXGI_CREATEFACTORY1 (72)",
+            "SWAPCHAIN_EVENT_DXGI_SETHDRMETADATA (73)", "SWAPCHAIN_EVENT_DX9_PRESENT (74)",
             "SWAPCHAIN_EVENT_NVAPI_GET_HDR_CAPABILITIES (75)",
             // Streamline hooks
-            "SWAPCHAIN_EVENT_STREAMLINE_SL_INIT (76)",
-            "SWAPCHAIN_EVENT_STREAMLINE_SL_IS_FEATURE_SUPPORTED (77)",
+            "SWAPCHAIN_EVENT_STREAMLINE_SL_INIT (76)", "SWAPCHAIN_EVENT_STREAMLINE_SL_IS_FEATURE_SUPPORTED (77)",
             "SWAPCHAIN_EVENT_STREAMLINE_SL_GET_NATIVE_INTERFACE (78)",
-            "SWAPCHAIN_EVENT_STREAMLINE_SL_UPGRADE_INTERFACE (79)"
-        };
+            "SWAPCHAIN_EVENT_STREAMLINE_SL_UPGRADE_INTERFACE (79)"};
 
         uint32_t total_events = 0;
 
@@ -126,18 +86,16 @@ void DrawSwapchainEventCounters() {
             ImVec4 color;
         };
 
-        static EventGroup event_groups[] = {
-            {"ReShade Events (0-37)", 0, 37, ImVec4(0.8f, 0.8f, 1.0f, 1.0f)},
-            {"DXGI Core Methods (38-47)", 38, 47, ImVec4(0.8f, 1.0f, 0.8f, 1.0f)},
-            {"DXGI SwapChain1 Methods (48-58)", 48, 58, ImVec4(1.0f, 0.8f, 0.8f, 1.0f)},
-            {"DXGI SwapChain2 Methods (59-65)", 59, 65, ImVec4(1.0f, 1.0f, 0.8f, 1.0f)},
-            {"DXGI SwapChain3 Methods (66-69)", 66, 69, ImVec4(0.8f, 1.0f, 1.0f, 1.0f)},
-            {"DXGI Factory Methods (70-72)", 70, 72, ImVec4(1.0f, 0.8f, 1.0f, 1.0f)},
-            {"DXGI SwapChain4 Methods (73)", 73, 73, ImVec4(0.8f, 0.8f, 0.8f, 1.0f)},
-            {"DirectX 9 Methods (74)", 74, 74, ImVec4(1.0f, 0.6f, 0.6f, 1.0f)},
-            {"NVAPI Methods (75)", 75, 75, ImVec4(0.6f, 1.0f, 0.6f, 1.0f)},
-            {"Streamline Methods (76-79)", 76, 79, ImVec4(0.6f, 0.8f, 1.0f, 1.0f)}
-        };
+        static EventGroup event_groups[] = {{"ReShade Events (0-37)", 0, 37, ImVec4(0.8f, 0.8f, 1.0f, 1.0f)},
+                                            {"DXGI Core Methods (38-47)", 38, 47, ImVec4(0.8f, 1.0f, 0.8f, 1.0f)},
+                                            {"DXGI SwapChain1 Methods (48-58)", 48, 58, ImVec4(1.0f, 0.8f, 0.8f, 1.0f)},
+                                            {"DXGI SwapChain2 Methods (59-65)", 59, 65, ImVec4(1.0f, 1.0f, 0.8f, 1.0f)},
+                                            {"DXGI SwapChain3 Methods (66-69)", 66, 69, ImVec4(0.8f, 1.0f, 1.0f, 1.0f)},
+                                            {"DXGI Factory Methods (70-72)", 70, 72, ImVec4(1.0f, 0.8f, 1.0f, 1.0f)},
+                                            {"DXGI SwapChain4 Methods (73)", 73, 73, ImVec4(0.8f, 0.8f, 0.8f, 1.0f)},
+                                            {"DirectX 9 Methods (74)", 74, 74, ImVec4(1.0f, 0.6f, 0.6f, 1.0f)},
+                                            {"NVAPI Methods (75)", 75, 75, ImVec4(0.6f, 1.0f, 0.6f, 1.0f)},
+                                            {"Streamline Methods (76-79)", 76, 79, ImVec4(0.6f, 0.8f, 1.0f, 1.0f)}};
 
         for (const auto& group : event_groups) {
             if (ImGui::CollapsingHeader(group.name, ImGuiTreeNodeFlags_DefaultOpen)) {
@@ -262,7 +220,6 @@ void DrawSwapchainEventCounters() {
     }
 }
 
-
 void DrawDxgiCompositionInfo() {
     if (ImGui::CollapsingHeader("DXGI Composition Information", ImGuiTreeNodeFlags_DefaultOpen)) {
         const char* mode_str = "Unknown";
@@ -324,7 +281,8 @@ void DrawSwapchainInfo() {
         DXGI_SWAP_CHAIN_DESC1 desc1 = {};
         HRESULT hr = dxgi_swapchain->GetDesc1(&desc1);
         if (FAILED(hr)) {
-            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "Failed to get swapchain description: 0x%08lX", static_cast<unsigned long>(hr));
+            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "Failed to get swapchain description: 0x%08lX",
+                               static_cast<unsigned long>(hr));
             return;
         }
 
@@ -362,13 +320,14 @@ void DrawSwapchainInfo() {
 
                     // Color primaries
                     ImGui::Text("  Red Primary: (%.3f, %.3f)", output_desc.RedPrimary[0], output_desc.RedPrimary[1]);
-                    ImGui::Text("  Green Primary: (%.3f, %.3f)", output_desc.GreenPrimary[0], output_desc.GreenPrimary[1]);
+                    ImGui::Text("  Green Primary: (%.3f, %.3f)", output_desc.GreenPrimary[0],
+                                output_desc.GreenPrimary[1]);
                     ImGui::Text("  Blue Primary: (%.3f, %.3f)", output_desc.BluePrimary[0], output_desc.BluePrimary[1]);
                     ImGui::Text("  White Point: (%.3f, %.3f)", output_desc.WhitePoint[0], output_desc.WhitePoint[1]);
 
                     // HDR support detection
-                    bool supports_hdr = (output_desc.ColorSpace == DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020 ||
-                                       output_desc.ColorSpace == DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709);
+                    bool supports_hdr = (output_desc.ColorSpace == DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020
+                                         || output_desc.ColorSpace == DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709);
                     ImGui::Text("  HDR Support: %s", supports_hdr ? "Yes" : "No");
 
                     if (supports_hdr) {
@@ -391,7 +350,7 @@ void DrawSwapchainInfo() {
         // Static variables to track last set HDR metadata values
         static DXGI_HDR_METADATA_HDR10 last_hdr_metadata = {
             .RedPrimary = {32768, 21634},
-            .GreenPrimary= {19661, 39321},
+            .GreenPrimary = {19661, 39321},
             .BluePrimary = {9830, 3932},
             .WhitePoint = {20493, 21564},
             .MaxMasteringLuminance = 1000,
@@ -403,7 +362,6 @@ void DrawSwapchainInfo() {
 
         static bool has_last_metadata = false;
         static std::string last_metadata_source = "None";
-
 
         // Try to get HDR metadata information from swapchain
         Microsoft::WRL::ComPtr<IDXGISwapChain4> swapchain4;
@@ -417,33 +375,34 @@ void DrawSwapchainInfo() {
             ImGui::Separator();
 
             // Clear HDR metadata button
-            if (ImGui::Button("Clear HDR Metadata")) {
+            if (ImGui::Button("Set to Rec. 709 defaults")) {
                 // Clear HDR10 metadata by setting it to default values
                 DXGI_HDR_METADATA_HDR10 hdr10_metadata = {};
-                hdr10_metadata.RedPrimary[0] = 32768;   // 0.5 * 65535 (Rec. 709 red x)
-                hdr10_metadata.RedPrimary[1] = 21634;   // 0.33 * 65535 (Rec. 709 red y)
-                hdr10_metadata.GreenPrimary[0] = 19661; // 0.3 * 65535 (Rec. 709 green x)
-                hdr10_metadata.GreenPrimary[1] = 39321; // 0.6 * 65535 (Rec. 709 green y)
-                hdr10_metadata.BluePrimary[0] = 9830;   // 0.15 * 65535 (Rec. 709 blue x)
-                hdr10_metadata.BluePrimary[1] = 3932;   // 0.06 * 65535 (Rec. 709 blue y)
-                hdr10_metadata.WhitePoint[0] = 20493;   // 0.3127 * 65535 (D65 white x)
-                hdr10_metadata.WhitePoint[1] = 21564;   // 0.3290 * 65535 (D65 white y)
-                 hdr10_metadata.MaxMasteringLuminance = 1000; // 1000 nits
-                 hdr10_metadata.MinMasteringLuminance = 0;    // 0 nits
-                 hdr10_metadata.MaxContentLightLevel = 1000;  // 1000 nits
-                 hdr10_metadata.MaxFrameAverageLightLevel = 400; // 400 nits
+                hdr10_metadata.RedPrimary[0] = 32768;            // 0.5 * 65535 (Rec. 709 red x)
+                hdr10_metadata.RedPrimary[1] = 21634;            // 0.33 * 65535 (Rec. 709 red y)
+                hdr10_metadata.GreenPrimary[0] = 19661;          // 0.3 * 65535 (Rec. 709 green x)
+                hdr10_metadata.GreenPrimary[1] = 39321;          // 0.6 * 65535 (Rec. 709 green y)
+                hdr10_metadata.BluePrimary[0] = 9830;            // 0.15 * 65535 (Rec. 709 blue x)
+                hdr10_metadata.BluePrimary[1] = 3932;            // 0.06 * 65535 (Rec. 709 blue y)
+                hdr10_metadata.WhitePoint[0] = 20493;            // 0.3127 * 65535 (D65 white x)
+                hdr10_metadata.WhitePoint[1] = 21564;            // 0.3290 * 65535 (D65 white y)
+                hdr10_metadata.MaxMasteringLuminance = 1000;     // 1000 nits
+                hdr10_metadata.MinMasteringLuminance = 0;        // 0 nits
+                hdr10_metadata.MaxContentLightLevel = 1000;      // 1000 nits
+                hdr10_metadata.MaxFrameAverageLightLevel = 400;  // 400 nits
 
-
-                 HRESULT hr = swapchain4->SetHDRMetaData(DXGI_HDR_METADATA_TYPE_HDR10, sizeof(hdr10_metadata), &hdr10_metadata);
-                 if (SUCCEEDED(hr)) {
-                     // Store the metadata for display
-                     last_hdr_metadata = hdr10_metadata;
-                     dirty_last_metadata = hdr10_metadata;
-                     has_last_metadata = true;
-                     last_metadata_source = "Clear HDR Metadata (Rec. 709 defaults)";
-                     ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✓ HDR metadata cleared successfully");
+                HRESULT hr =
+                    swapchain4->SetHDRMetaData(DXGI_HDR_METADATA_TYPE_HDR10, sizeof(hdr10_metadata), &hdr10_metadata);
+                if (SUCCEEDED(hr)) {
+                    // Store the metadata for display
+                    last_hdr_metadata = hdr10_metadata;
+                    dirty_last_metadata = hdr10_metadata;
+                    has_last_metadata = true;
+                    last_metadata_source = "Clear HDR Metadata (Rec. 709 defaults)";
+                    ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✓ HDR metadata cleared successfully");
                 } else {
-                    ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "✗ Failed to clear HDR metadata: 0x%08lX", static_cast<unsigned long>(hr));
+                    ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "✗ Failed to clear HDR metadata: 0x%08lX",
+                                       static_cast<unsigned long>(hr));
                 }
             }
             ImGui::SameLine();
@@ -467,32 +426,39 @@ void DrawSwapchainInfo() {
                             // Use monitor's color primaries if available (convert float to UINT16)
                             hdr10_metadata.RedPrimary[0] = static_cast<UINT16>(output_desc.RedPrimary[0] * 65535.0f);
                             hdr10_metadata.RedPrimary[1] = static_cast<UINT16>(output_desc.RedPrimary[1] * 65535.0f);
-                            hdr10_metadata.GreenPrimary[0] = static_cast<UINT16>(output_desc.GreenPrimary[0] * 65535.0f);
-                            hdr10_metadata.GreenPrimary[1] = static_cast<UINT16>(output_desc.GreenPrimary[1] * 65535.0f);
+                            hdr10_metadata.GreenPrimary[0] =
+                                static_cast<UINT16>(output_desc.GreenPrimary[0] * 65535.0f);
+                            hdr10_metadata.GreenPrimary[1] =
+                                static_cast<UINT16>(output_desc.GreenPrimary[1] * 65535.0f);
                             hdr10_metadata.BluePrimary[0] = static_cast<UINT16>(output_desc.BluePrimary[0] * 65535.0f);
                             hdr10_metadata.BluePrimary[1] = static_cast<UINT16>(output_desc.BluePrimary[1] * 65535.0f);
                             hdr10_metadata.WhitePoint[0] = static_cast<UINT16>(output_desc.WhitePoint[0] * 65535.0f);
                             hdr10_metadata.WhitePoint[1] = static_cast<UINT16>(output_desc.WhitePoint[1] * 65535.0f);
 
-                             // Use monitor's luminance range
-                             hdr10_metadata.MaxMasteringLuminance = static_cast<UINT>(output_desc.MaxLuminance);
-                             hdr10_metadata.MinMasteringLuminance = static_cast<UINT>(output_desc.MinLuminance);
+                            // Use monitor's luminance range
+                            hdr10_metadata.MaxMasteringLuminance = static_cast<UINT>(output_desc.MaxLuminance);
+                            hdr10_metadata.MinMasteringLuminance = static_cast<UINT>(output_desc.MinLuminance);
 
-                             // Set content light levels to reasonable values
-                             hdr10_metadata.MaxContentLightLevel = static_cast<UINT>(output_desc.MaxLuminance * 0.8f); // 80% of max
-                             hdr10_metadata.MaxFrameAverageLightLevel = static_cast<UINT>(output_desc.MaxLuminance * 0.4f); // 40% of max
+                            // Set content light levels to reasonable values
+                            hdr10_metadata.MaxContentLightLevel =
+                                static_cast<UINT>(output_desc.MaxLuminance * 0.8f);  // 80% of max
+                            hdr10_metadata.MaxFrameAverageLightLevel =
+                                static_cast<UINT>(output_desc.MaxLuminance * 0.4f);  // 40% of max
 
-
-                             HRESULT hr = swapchain4->SetHDRMetaData(DXGI_HDR_METADATA_TYPE_HDR10, sizeof(hdr10_metadata), &hdr10_metadata);
-                             if (SUCCEEDED(hr)) {
-                                 // Store the metadata for display
-                                 last_hdr_metadata = hdr10_metadata;
-                                 dirty_last_metadata = hdr10_metadata;
-                                 has_last_metadata = true;
-                                 last_metadata_source = "Reset to Monitor Capabilities";
-                                 ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✓ HDR metadata reset to monitor capabilities");
+                            HRESULT hr = swapchain4->SetHDRMetaData(DXGI_HDR_METADATA_TYPE_HDR10,
+                                                                    sizeof(hdr10_metadata), &hdr10_metadata);
+                            if (SUCCEEDED(hr)) {
+                                // Store the metadata for display
+                                last_hdr_metadata = hdr10_metadata;
+                                dirty_last_metadata = hdr10_metadata;
+                                has_last_metadata = true;
+                                last_metadata_source = "Reset to Monitor Capabilities";
+                                ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f),
+                                                   "✓ HDR metadata reset to monitor capabilities");
                             } else {
-                                ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "✗ Failed to reset HDR metadata: 0x%08lX", static_cast<unsigned long>(hr));
+                                ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f),
+                                                   "✗ Failed to reset HDR metadata: 0x%08lX",
+                                                   static_cast<unsigned long>(hr));
                             }
                         } else {
                             ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "✗ Failed to get monitor capabilities");
@@ -520,7 +486,8 @@ void DrawSwapchainInfo() {
                     last_metadata_source = "Disabled";
                     ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✓ HDR metadata disabled");
                 } else {
-                    ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "✗ Failed to disable HDR metadata: 0x%08lX", static_cast<unsigned long>(hr));
+                    ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "✗ Failed to disable HDR metadata: 0x%08lX",
+                                       static_cast<unsigned long>(hr));
                 }
             }
             ImGui::SameLine();
@@ -535,9 +502,8 @@ void DrawSwapchainInfo() {
             ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "HDR Metadata Controls:");
             ImGui::Separator();
 
-
             int max_mdl_value = dirty_last_metadata.MaxMasteringLuminance;
-            if (ImGui::InputInt("MaxMDL (nits)", &max_mdl_value, 0, 0, ImGuiInputTextFlags_EnterReturnsTrue)) {
+            if (ImGui::InputInt("MaxMDL (nits)", &max_mdl_value, 0, 0, ImGuiInputTextFlags_CharsDecimal)) {
                 dirty_last_metadata.MaxMasteringLuminance = static_cast<UINT>(max_mdl_value);
             }
 
@@ -546,41 +512,48 @@ void DrawSwapchainInfo() {
             ImGui::SameLine();
             ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "?");
             if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("Maximum Mastering Display Luminance in nits.\nThis controls the peak brightness of the mastering display.");
+                ImGui::SetTooltip(
+                    "Maximum Mastering Display Luminance in nits.\nThis controls the peak brightness of the mastering "
+                    "display.");
             }
 
-
             int min_mdl_value = dirty_last_metadata.MinMasteringLuminance;
-            if (ImGui::InputInt("MinMDL (nits)", &min_mdl_value, 0, 0, ImGuiInputTextFlags_EnterReturnsTrue)) {
+            if (ImGui::InputInt("MinMDL (nits)", &min_mdl_value, 0, 0, ImGuiInputTextFlags_CharsDecimal)) {
                 dirty_last_metadata.MinMasteringLuminance = static_cast<UINT>(min_mdl_value);
                 // Allow any value, no clamping
             }
             ImGui::SameLine();
             ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "?");
             if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("Minimum Mastering Display Luminance in nits.\nThis controls the minimum brightness of the mastering display.");
+                ImGui::SetTooltip(
+                    "Minimum Mastering Display Luminance in nits.\nThis controls the minimum brightness of the "
+                    "mastering display.");
             }
 
             int max_content_light_level = dirty_last_metadata.MaxContentLightLevel;
-            if (ImGui::InputInt("Max Content Light Level (nits)", &max_content_light_level, 0, 0, ImGuiInputTextFlags_EnterReturnsTrue)) {
+            if (ImGui::InputInt("Max Content Light Level (nits)", &max_content_light_level, 0, 0,
+                                ImGuiInputTextFlags_CharsDecimal)) {
                 dirty_last_metadata.MaxContentLightLevel = static_cast<UINT>(max_content_light_level);
                 // Allow any value, no clamping
             }
             ImGui::SameLine();
             ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "?");
             if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("Maximum Content Light Level in nits.\nThis controls the peak brightness of the content.");
+                ImGui::SetTooltip(
+                    "Maximum Content Light Level in nits.\nThis controls the peak brightness of the content.");
             }
 
             int max_frame_avg_light_level = dirty_last_metadata.MaxFrameAverageLightLevel;
-            if (ImGui::InputInt("Max Frame Avg Light Level (nits)", &max_frame_avg_light_level, 0, 0, ImGuiInputTextFlags_EnterReturnsTrue)) {
+            if (ImGui::InputInt("Max Frame Avg Light Level (nits)", &max_frame_avg_light_level, 0, 0,
+                                ImGuiInputTextFlags_CharsDecimal)) {
                 dirty_last_metadata.MaxFrameAverageLightLevel = static_cast<UINT>(max_frame_avg_light_level);
                 // Allow any value, no clamping
             }
             ImGui::SameLine();
             ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "?");
             if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("Maximum Frame Average Light Level in nits.\nThis controls the average brightness of the content.");
+                ImGui::SetTooltip(
+                    "Maximum Frame Average Light Level in nits.\nThis controls the average brightness of the content.");
             }
 
             if (ImGui::Button("Apply All HDR Values")) {
@@ -593,14 +566,14 @@ void DrawSwapchainInfo() {
                     hdr10_metadata = last_hdr_metadata;
                 } else {
                     // Default Rec. 709 values
-                    hdr10_metadata.RedPrimary[0] = 32768;   // 0.5 * 65535
-                    hdr10_metadata.RedPrimary[1] = 21634;   // 0.33 * 65535
-                    hdr10_metadata.GreenPrimary[0] = 19661; // 0.3 * 65535
-                    hdr10_metadata.GreenPrimary[1] = 39321; // 0.6 * 65535
-                    hdr10_metadata.BluePrimary[0] = 9830;   // 0.15 * 65535
-                    hdr10_metadata.BluePrimary[1] = 3932;   // 0.06 * 65535
-                    hdr10_metadata.WhitePoint[0] = 20493;   // 0.3127 * 65535
-                    hdr10_metadata.WhitePoint[1] = 21564;   // 0.3290 * 65535
+                    hdr10_metadata.RedPrimary[0] = 32768;    // 0.5 * 65535
+                    hdr10_metadata.RedPrimary[1] = 21634;    // 0.33 * 65535
+                    hdr10_metadata.GreenPrimary[0] = 19661;  // 0.3 * 65535
+                    hdr10_metadata.GreenPrimary[1] = 39321;  // 0.6 * 65535
+                    hdr10_metadata.BluePrimary[0] = 9830;    // 0.15 * 65535
+                    hdr10_metadata.BluePrimary[1] = 3932;    // 0.06 * 65535
+                    hdr10_metadata.WhitePoint[0] = 20493;    // 0.3127 * 65535
+                    hdr10_metadata.WhitePoint[1] = 21564;    // 0.3290 * 65535
                 }
 
                 // Set all the custom values
@@ -609,7 +582,8 @@ void DrawSwapchainInfo() {
                 hdr10_metadata.MaxContentLightLevel = static_cast<UINT>(max_content_light_level);
                 hdr10_metadata.MaxFrameAverageLightLevel = static_cast<UINT>(max_frame_avg_light_level);
 
-                HRESULT hr = swapchain4->SetHDRMetaData(DXGI_HDR_METADATA_TYPE_HDR10, sizeof(hdr10_metadata), &hdr10_metadata);
+                HRESULT hr =
+                    swapchain4->SetHDRMetaData(DXGI_HDR_METADATA_TYPE_HDR10, sizeof(hdr10_metadata), &hdr10_metadata);
                 if (SUCCEEDED(hr)) {
                     // Store the metadata for display
                     last_hdr_metadata = hdr10_metadata;
@@ -617,7 +591,8 @@ void DrawSwapchainInfo() {
                     last_metadata_source = "Custom HDR Values";
                     ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✓ All HDR values applied successfully");
                 } else {
-                    ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "✗ Failed to apply HDR values: 0x%08lX", static_cast<unsigned long>(hr));
+                    ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "✗ Failed to apply HDR values: 0x%08lX",
+                                       static_cast<unsigned long>(hr));
                 }
             }
 
@@ -628,8 +603,10 @@ void DrawSwapchainInfo() {
             }
 
             ImGui::Spacing();
-            ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Note: These controls directly call SetHDRMetaData on the current swapchain.");
-            ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Changes will be visible in the next frame and may affect HDR rendering.");
+            ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f),
+                               "Note: These controls directly call SetHDRMetaData on the current swapchain.");
+            ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f),
+                               "Changes will be visible in the next frame and may affect HDR rendering.");
 
             // Display last set HDR metadata values
             ImGui::Spacing();
@@ -644,18 +621,14 @@ void DrawSwapchainInfo() {
 
                 // Color primaries
                 ImGui::Text("Color Primaries:");
-                ImGui::Text("  Red:   (%.4f, %.4f)",
-                           last_hdr_metadata.RedPrimary[0] / 65535.0f,
-                           last_hdr_metadata.RedPrimary[1] / 65535.0f);
-                ImGui::Text("  Green: (%.4f, %.4f)",
-                           last_hdr_metadata.GreenPrimary[0] / 65535.0f,
-                           last_hdr_metadata.GreenPrimary[1] / 65535.0f);
-                ImGui::Text("  Blue:  (%.4f, %.4f)",
-                           last_hdr_metadata.BluePrimary[0] / 65535.0f,
-                           last_hdr_metadata.BluePrimary[1] / 65535.0f);
-                ImGui::Text("  White: (%.4f, %.4f)",
-                           last_hdr_metadata.WhitePoint[0] / 65535.0f,
-                           last_hdr_metadata.WhitePoint[1] / 65535.0f);
+                ImGui::Text("  Red:   (%.4f, %.4f)", last_hdr_metadata.RedPrimary[0] / 65535.0f,
+                            last_hdr_metadata.RedPrimary[1] / 65535.0f);
+                ImGui::Text("  Green: (%.4f, %.4f)", last_hdr_metadata.GreenPrimary[0] / 65535.0f,
+                            last_hdr_metadata.GreenPrimary[1] / 65535.0f);
+                ImGui::Text("  Blue:  (%.4f, %.4f)", last_hdr_metadata.BluePrimary[0] / 65535.0f,
+                            last_hdr_metadata.BluePrimary[1] / 65535.0f);
+                ImGui::Text("  White: (%.4f, %.4f)", last_hdr_metadata.WhitePoint[0] / 65535.0f,
+                            last_hdr_metadata.WhitePoint[1] / 65535.0f);
 
                 ImGui::Spacing();
 
@@ -677,13 +650,13 @@ void DrawSwapchainInfo() {
                 float blue_y = last_hdr_metadata.BluePrimary[1] / 65535.0f;
 
                 // Check if it matches common color spaces
-                bool is_rec709 = (abs(red_x - 0.64f) < 0.01f && abs(red_y - 0.33f) < 0.01f &&
-                                 abs(green_x - 0.30f) < 0.01f && abs(green_y - 0.60f) < 0.01f &&
-                                 abs(blue_x - 0.15f) < 0.01f && abs(blue_y - 0.06f) < 0.01f);
+                bool is_rec709 =
+                    (abs(red_x - 0.64f) < 0.01f && abs(red_y - 0.33f) < 0.01f && abs(green_x - 0.30f) < 0.01f
+                     && abs(green_y - 0.60f) < 0.01f && abs(blue_x - 0.15f) < 0.01f && abs(blue_y - 0.06f) < 0.01f);
 
-                bool is_rec2020 = (abs(red_x - 0.708f) < 0.01f && abs(red_y - 0.292f) < 0.01f &&
-                                  abs(green_x - 0.170f) < 0.01f && abs(green_y - 0.797f) < 0.01f &&
-                                  abs(blue_x - 0.131f) < 0.01f && abs(blue_y - 0.046f) < 0.01f);
+                bool is_rec2020 =
+                    (abs(red_x - 0.708f) < 0.01f && abs(red_y - 0.292f) < 0.01f && abs(green_x - 0.170f) < 0.01f
+                     && abs(green_y - 0.797f) < 0.01f && abs(blue_x - 0.131f) < 0.01f && abs(blue_y - 0.046f) < 0.01f);
 
                 if (is_rec709) {
                     ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "  ✓ Matches Rec. 709 color space");
@@ -708,71 +681,71 @@ void DrawSwapchainInfo() {
 // Helper functions for string conversion
 const char* GetDXGIFormatString(DXGI_FORMAT format) {
     switch (format) {
-        case DXGI_FORMAT_R8G8B8A8_UNORM: return "R8G8B8A8_UNORM";
+        case DXGI_FORMAT_R8G8B8A8_UNORM:      return "R8G8B8A8_UNORM";
         case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB: return "R8G8B8A8_UNORM_SRGB";
-        case DXGI_FORMAT_B8G8R8A8_UNORM: return "B8G8R8A8_UNORM";
+        case DXGI_FORMAT_B8G8R8A8_UNORM:      return "B8G8R8A8_UNORM";
         case DXGI_FORMAT_B8G8R8A8_UNORM_SRGB: return "B8G8R8A8_UNORM_SRGB";
-        case DXGI_FORMAT_R10G10B10A2_UNORM: return "R10G10B10A2_UNORM";
-        case DXGI_FORMAT_R16G16B16A16_FLOAT: return "R16G16B16A16_FLOAT";
-        case DXGI_FORMAT_R32G32B32A32_FLOAT: return "R32G32B32A32_FLOAT";
-        default: return "Unknown Format";
+        case DXGI_FORMAT_R10G10B10A2_UNORM:   return "R10G10B10A2_UNORM";
+        case DXGI_FORMAT_R16G16B16A16_FLOAT:  return "R16G16B16A16_FLOAT";
+        case DXGI_FORMAT_R32G32B32A32_FLOAT:  return "R32G32B32A32_FLOAT";
+        default:                              return "Unknown Format";
     }
 }
 
 const char* GetDXGIScalingString(DXGI_SCALING scaling) {
     switch (scaling) {
-        case DXGI_SCALING_STRETCH: return "Stretch";
-        case DXGI_SCALING_NONE: return "None";
+        case DXGI_SCALING_STRETCH:              return "Stretch";
+        case DXGI_SCALING_NONE:                 return "None";
         case DXGI_SCALING_ASPECT_RATIO_STRETCH: return "Aspect Ratio Stretch";
-        default: return "Unknown";
+        default:                                return "Unknown";
     }
 }
 
 const char* GetDXGISwapEffectString(DXGI_SWAP_EFFECT effect) {
     switch (effect) {
-        case DXGI_SWAP_EFFECT_DISCARD: return "Discard";
-        case DXGI_SWAP_EFFECT_SEQUENTIAL: return "Sequential";
+        case DXGI_SWAP_EFFECT_DISCARD:         return "Discard";
+        case DXGI_SWAP_EFFECT_SEQUENTIAL:      return "Sequential";
         case DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL: return "Flip Sequential";
-        case DXGI_SWAP_EFFECT_FLIP_DISCARD: return "Flip Discard";
-        default: return "Unknown";
+        case DXGI_SWAP_EFFECT_FLIP_DISCARD:    return "Flip Discard";
+        default:                               return "Unknown";
     }
 }
 
 const char* GetDXGIAlphaModeString(DXGI_ALPHA_MODE mode) {
     switch (mode) {
-        case DXGI_ALPHA_MODE_UNSPECIFIED: return "Unspecified";
+        case DXGI_ALPHA_MODE_UNSPECIFIED:   return "Unspecified";
         case DXGI_ALPHA_MODE_PREMULTIPLIED: return "Premultiplied";
-        case DXGI_ALPHA_MODE_STRAIGHT: return "Straight";
-        case DXGI_ALPHA_MODE_IGNORE: return "Ignore";
-        default: return "Unknown";
+        case DXGI_ALPHA_MODE_STRAIGHT:      return "Straight";
+        case DXGI_ALPHA_MODE_IGNORE:        return "Ignore";
+        default:                            return "Unknown";
     }
 }
 
 const char* GetDXGIColorSpaceString(DXGI_COLOR_SPACE_TYPE color_space) {
     switch (color_space) {
-        case DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709: return "RGB Full G22 None P709";
-        case DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709: return "RGB Full G10 None P709";
-        case DXGI_COLOR_SPACE_RGB_STUDIO_G22_NONE_P709: return "RGB Studio G22 None P709";
-        case DXGI_COLOR_SPACE_RGB_STUDIO_G22_NONE_P2020: return "RGB Studio G22 None P2020";
-        case DXGI_COLOR_SPACE_RESERVED: return "Reserved";
-        case DXGI_COLOR_SPACE_YCBCR_FULL_G22_NONE_P709_X601: return "YCbCr Full G22 None P709 X601";
-        case DXGI_COLOR_SPACE_YCBCR_STUDIO_G22_LEFT_P601: return "YCbCr Studio G22 Left P601";
-        case DXGI_COLOR_SPACE_YCBCR_FULL_G22_LEFT_P601: return "YCbCr Full G22 Left P601";
-        case DXGI_COLOR_SPACE_YCBCR_STUDIO_G22_LEFT_P709: return "YCbCr Studio G22 Left P709";
-        case DXGI_COLOR_SPACE_YCBCR_FULL_G22_LEFT_P709: return "YCbCr Full G22 Left P709";
-        case DXGI_COLOR_SPACE_YCBCR_STUDIO_G22_LEFT_P2020: return "YCbCr Studio G22 Left P2020";
-        case DXGI_COLOR_SPACE_YCBCR_FULL_G22_LEFT_P2020: return "YCbCr Full G22 Left P2020";
-        case DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020: return "RGB Full G2084 None P2020 (HDR10)";
-        case DXGI_COLOR_SPACE_YCBCR_STUDIO_G2084_LEFT_P2020: return "YCbCr Studio G2084 Left P2020";
-        case DXGI_COLOR_SPACE_RGB_STUDIO_G2084_NONE_P2020: return "RGB Studio G2084 None P2020";
-        case DXGI_COLOR_SPACE_YCBCR_STUDIO_G22_TOPLEFT_P2020: return "YCbCr Studio G22 TopLeft P2020";
+        case DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709:           return "RGB Full G22 None P709";
+        case DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709:           return "RGB Full G10 None P709";
+        case DXGI_COLOR_SPACE_RGB_STUDIO_G22_NONE_P709:         return "RGB Studio G22 None P709";
+        case DXGI_COLOR_SPACE_RGB_STUDIO_G22_NONE_P2020:        return "RGB Studio G22 None P2020";
+        case DXGI_COLOR_SPACE_RESERVED:                         return "Reserved";
+        case DXGI_COLOR_SPACE_YCBCR_FULL_G22_NONE_P709_X601:    return "YCbCr Full G22 None P709 X601";
+        case DXGI_COLOR_SPACE_YCBCR_STUDIO_G22_LEFT_P601:       return "YCbCr Studio G22 Left P601";
+        case DXGI_COLOR_SPACE_YCBCR_FULL_G22_LEFT_P601:         return "YCbCr Full G22 Left P601";
+        case DXGI_COLOR_SPACE_YCBCR_STUDIO_G22_LEFT_P709:       return "YCbCr Studio G22 Left P709";
+        case DXGI_COLOR_SPACE_YCBCR_FULL_G22_LEFT_P709:         return "YCbCr Full G22 Left P709";
+        case DXGI_COLOR_SPACE_YCBCR_STUDIO_G22_LEFT_P2020:      return "YCbCr Studio G22 Left P2020";
+        case DXGI_COLOR_SPACE_YCBCR_FULL_G22_LEFT_P2020:        return "YCbCr Full G22 Left P2020";
+        case DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020:        return "RGB Full G2084 None P2020 (HDR10)";
+        case DXGI_COLOR_SPACE_YCBCR_STUDIO_G2084_LEFT_P2020:    return "YCbCr Studio G2084 Left P2020";
+        case DXGI_COLOR_SPACE_RGB_STUDIO_G2084_NONE_P2020:      return "RGB Studio G2084 None P2020";
+        case DXGI_COLOR_SPACE_YCBCR_STUDIO_G22_TOPLEFT_P2020:   return "YCbCr Studio G22 TopLeft P2020";
         case DXGI_COLOR_SPACE_YCBCR_STUDIO_G2084_TOPLEFT_P2020: return "YCbCr Studio G2084 TopLeft P2020";
-        case DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P2020: return "RGB Full G22 None P2020";
-        case DXGI_COLOR_SPACE_YCBCR_STUDIO_G24_LEFT_P709: return "YCbCr Studio G24 Left P709";
-        case DXGI_COLOR_SPACE_YCBCR_STUDIO_G24_LEFT_P2020: return "YCbCr Studio G24 Left P2020";
-        case DXGI_COLOR_SPACE_YCBCR_STUDIO_G24_TOPLEFT_P2020: return "YCbCr Studio G24 TopLeft P2020";
-        case DXGI_COLOR_SPACE_CUSTOM: return "Custom";
-        default: return "Unknown";
+        case DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P2020:          return "RGB Full G22 None P2020";
+        case DXGI_COLOR_SPACE_YCBCR_STUDIO_G24_LEFT_P709:       return "YCbCr Studio G24 Left P709";
+        case DXGI_COLOR_SPACE_YCBCR_STUDIO_G24_LEFT_P2020:      return "YCbCr Studio G24 Left P2020";
+        case DXGI_COLOR_SPACE_YCBCR_STUDIO_G24_TOPLEFT_P2020:   return "YCbCr Studio G24 TopLeft P2020";
+        case DXGI_COLOR_SPACE_CUSTOM:                           return "Custom";
+        default:                                                return "Unknown";
     }
 }
 

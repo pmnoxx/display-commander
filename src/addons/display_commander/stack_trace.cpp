@@ -247,31 +247,5 @@ bool IsAvailable() {
     return g_available.load() && dbghelp_loader::IsDbgHelpAvailable();
 }
 
-void TestStackTrace() {
-    if (!g_available.load()) {
-        LogWarn("[Stack Trace] Test failed - stack trace not available");
-        return;
-    }
-
-    try {
-        LogInfo("[Stack Trace] Testing stack trace capture...");
-
-        // Capture current stack trace
-        auto frames = CaptureStackTrace(10, nullptr);
-        std::string stack_trace = FormatStackTrace(frames, true);
-
-        LogInfo("[Stack Trace] Test stack trace captured:");
-        LogInfo("%s", stack_trace.c_str());
-
-        // Also write to debug.log for verification
-        exit_handler::WriteToDebugLog("=== TEST STACK TRACE ===");
-        exit_handler::WriteToDebugLog(stack_trace);
-        exit_handler::WriteToDebugLog("=== END TEST STACK TRACE ===");
-
-        LogInfo("[Stack Trace] Test completed successfully");
-    } catch (...) {
-        LogError("[Stack Trace] Test failed with exception");
-    }
-}
 
 } // namespace stack_trace

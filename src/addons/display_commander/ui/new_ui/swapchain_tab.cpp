@@ -108,7 +108,12 @@ void DrawSwapchainEventCounters() {
             "SWAPCHAIN_EVENT_DXGI_CREATEFACTORY1 (72)",
             "SWAPCHAIN_EVENT_DXGI_SETHDRMETADATA (73)",
             "SWAPCHAIN_EVENT_DX9_PRESENT (74)",
-            "SWAPCHAIN_EVENT_NVAPI_GET_HDR_CAPABILITIES (75)"
+            "SWAPCHAIN_EVENT_NVAPI_GET_HDR_CAPABILITIES (75)",
+            // Streamline hooks
+            "SWAPCHAIN_EVENT_STREAMLINE_SL_INIT (76)",
+            "SWAPCHAIN_EVENT_STREAMLINE_SL_IS_FEATURE_SUPPORTED (77)",
+            "SWAPCHAIN_EVENT_STREAMLINE_SL_GET_NATIVE_INTERFACE (78)",
+            "SWAPCHAIN_EVENT_STREAMLINE_SL_UPGRADE_INTERFACE (79)"
         };
 
         uint32_t total_events = 0;
@@ -130,7 +135,8 @@ void DrawSwapchainEventCounters() {
             {"DXGI Factory Methods (70-72)", 70, 72, ImVec4(1.0f, 0.8f, 1.0f, 1.0f)},
             {"DXGI SwapChain4 Methods (73)", 73, 73, ImVec4(0.8f, 0.8f, 0.8f, 1.0f)},
             {"DirectX 9 Methods (74)", 74, 74, ImVec4(1.0f, 0.6f, 0.6f, 1.0f)},
-            {"NVAPI Methods (75)", 75, 75, ImVec4(0.6f, 1.0f, 0.6f, 1.0f)}
+            {"NVAPI Methods (75)", 75, 75, ImVec4(0.6f, 1.0f, 0.6f, 1.0f)},
+            {"Streamline Methods (76-79)", 76, 79, ImVec4(0.6f, 0.8f, 1.0f, 1.0f)}
         };
 
         for (const auto& group : event_groups) {

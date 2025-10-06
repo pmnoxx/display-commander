@@ -1,0 +1,161 @@
+#include "streamline_hooks.hpp"
+#include "../globals.hpp"
+#include "../utils.hpp"
+
+#include <MinHook.h>
+
+// Streamline function pointers
+using slInit_pfn = int (*)(void* pref, uint64_t sdkVersion);
+using slIsFeatureSupported_pfn = int (*)(int feature, const void* adapterInfo);
+using slGetNativeInterface_pfn = int (*)(void* proxyInterface, void** baseInterface);
+using slUpgradeInterface_pfn = int (*)(void** baseInterface);
+
+static slInit_pfn slInit_Original = nullptr;
+static slIsFeatureSupported_pfn slIsFeatureSupported_Original = nullptr;
+static slGetNativeInterface_pfn slGetNativeInterface_Original = nullptr;
+static slUpgradeInterface_pfn slUpgradeInterface_Original = nullptr;
+
+// Hook functions
+int slInit_Detour(void* pref, uint64_t sdkVersion) {
+    // Increment counter
+    g_swapchain_event_counters[SWAPCHAIN_EVENT_STREAMLINE_SL_INIT].fetch_add(1);
+    g_swapchain_event_total_count.fetch_add(1);
+
+    // Log the call
+    LogInfo("slInit called (SDK Version: %llu)", sdkVersion);
+
+    // Call original function
+    if (slInit_Original != nullptr) {
+        return slInit_Original(pref, sdkVersion);
+    }
+
+    return -1; // Error if original not available
+}
+
+int slIsFeatureSupported_Detour(int feature, const void* adapterInfo) {
+    // Increment counter
+    g_swapchain_event_counters[SWAPCHAIN_EVENT_STREAMLINE_SL_IS_FEATURE_SUPPORTED].fetch_add(1);
+    g_swapchain_event_total_count.fetch_add(1);
+
+    // Log the call
+    LogInfo("slIsFeatureSupported called (Feature: %d)", feature);
+
+    // Call original function
+    if (slIsFeatureSupported_Original != nullptr) {
+        return slIsFeatureSupported_Original(feature, adapterInfo);
+    }
+
+    return -1; // Error if original not available
+}
+
+int slGetNativeInterface_Detour(void* proxyInterface, void** baseInterface) {
+    // Increment counter
+    g_swapchain_event_counters[SWAPCHAIN_EVENT_STREAMLINE_SL_GET_NATIVE_INTERFACE].fetch_add(1);
+    g_swapchain_event_total_count.fetch_add(1);
+
+    // Log the call
+    LogInfo("slGetNativeInterface called");
+
+    // Call original function
+    if (slGetNativeInterface_Original != nullptr) {
+        return slGetNativeInterface_Original(proxyInterface, baseInterface);
+    }
+
+    return -1; // Error if original not available
+}
+
+int slUpgradeInterface_Detour(void** baseInterface) {
+    // Increment counter
+    g_swapchain_event_counters[SWAPCHAIN_EVENT_STREAMLINE_SL_UPGRADE_INTERFACE].fetch_add(1);
+    g_swapchain_event_total_count.fetch_add(1);
+
+    // Log the call
+    LogInfo("slUpgradeInterface called");
+
+    // Call original function
+    if (slUpgradeInterface_Original != nullptr) {
+        return slUpgradeInterface_Original(baseInterface);
+    }
+
+    return -1; // Error if original not available
+}
+
+bool InstallStreamlineHooks() {
+    // Check if Streamline DLLs are loaded
+    HMODULE sl_interposer = GetModuleHandleW(L"sl.interposer.dll");
+    if (sl_interposer == nullptr) {
+        LogInfo("Streamline not detected - sl.interposer.dll not loaded");
+        return false;
+    }
+
+    LogInfo("Installing Streamline hooks...");
+
+    // Hook slInit
+    if (MH_CreateHook(GetProcAddress(sl_interposer, "slInit"),
+                      reinterpret_cast<LPVOID>(slInit_Detour),
+                      reinterpret_cast<LPVOID*>(&slInit_Original)) != MH_OK) {
+        LogError("Failed to hook slInit");
+        return false;
+    }
+
+    // Hook slIsFeatureSupported
+    if (MH_CreateHook(GetProcAddress(sl_interposer, "slIsFeatureSupported"),
+                      reinterpret_cast<LPVOID>(slIsFeatureSupported_Detour),
+                      reinterpret_cast<LPVOID*>(&slIsFeatureSupported_Original)) != MH_OK) {
+        LogError("Failed to hook slIsFeatureSupported");
+        return false;
+    }
+
+    // Hook slGetNativeInterface
+    if (MH_CreateHook(GetProcAddress(sl_interposer, "slGetNativeInterface"),
+                      reinterpret_cast<LPVOID>(slGetNativeInterface_Detour),
+                      reinterpret_cast<LPVOID*>(&slGetNativeInterface_Original)) != MH_OK) {
+        LogError("Failed to hook slGetNativeInterface");
+        return false;
+    }
+
+    // Hook slUpgradeInterface
+    if (MH_CreateHook(GetProcAddress(sl_interposer, "slUpgradeInterface"),
+                      reinterpret_cast<LPVOID>(slUpgradeInterface_Detour),
+                      reinterpret_cast<LPVOID*>(&slUpgradeInterface_Original)) != MH_OK) {
+        LogError("Failed to hook slUpgradeInterface");
+        return false;
+    }
+
+    // Enable hooks
+    if (MH_EnableHook(MH_ALL_HOOKS) != MH_OK) {
+        LogError("Failed to enable Streamline hooks");
+        return false;
+    }
+
+    LogInfo("Streamline hooks installed successfully");
+    return true;
+}
+
+void UninstallStreamlineHooks() {
+    // Disable hooks
+    MH_DisableHook(MH_ALL_HOOKS);
+
+    // Remove hooks
+    if (slInit_Original != nullptr) {
+        MH_RemoveHook(GetProcAddress(GetModuleHandleW(L"sl.interposer.dll"), "slInit"));
+        slInit_Original = nullptr;
+    }
+
+    if (slIsFeatureSupported_Original != nullptr) {
+        MH_RemoveHook(GetProcAddress(GetModuleHandleW(L"sl.interposer.dll"), "slIsFeatureSupported"));
+        slIsFeatureSupported_Original = nullptr;
+    }
+
+    if (slGetNativeInterface_Original != nullptr) {
+        MH_RemoveHook(GetProcAddress(GetModuleHandleW(L"sl.interposer.dll"), "slGetNativeInterface"));
+        slGetNativeInterface_Original = nullptr;
+    }
+
+    if (slUpgradeInterface_Original != nullptr) {
+        MH_RemoveHook(GetProcAddress(GetModuleHandleW(L"sl.interposer.dll"), "slUpgradeInterface"));
+        slUpgradeInterface_Original = nullptr;
+    }
+
+    LogInfo("Streamline hooks uninstalled");
+}

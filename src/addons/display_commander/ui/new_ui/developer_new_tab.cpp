@@ -213,34 +213,43 @@ void DrawNvapiSettings() {
         ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "Game restart required to apply NVAPI changes.");
     }
     if (s_nvapi_fullscreen_prevention.load() && ::g_nvapiFullscreenPrevention.IsAvailable()) {
-
+        // Update cache if needed (only every 2 seconds)
+        if (::NVAPIFullscreenPrevention::ShouldUpdateCache()) {
+            ::NVAPIFullscreenPrevention::UpdateUICache();
+        }
 
         // NVAPI Debug Information Display
         ImGui::Separator();
         ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "NVAPI Debug Information:");
 
-        extern NVAPIFullscreenPrevention g_nvapiFullscreenPrevention;
+        // Manual refresh button
+        ImGui::SameLine();
+        if (ImGui::Button("Refresh##NVAPI")) {
+            ::NVAPIFullscreenPrevention::UpdateUICache();
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Force refresh NVAPI information (updates every 2 seconds automatically)");
+        }
 
         // Library loaded successfully
         ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✁ENVAPI Library: Loaded");
 
-        // Driver version info
-        std::string driverVersion = ::g_nvapiFullscreenPrevention.GetDriverVersion();
-        if (driverVersion != "Failed to get driver version") {
-            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✁EDriver Version: %s", driverVersion.c_str());
+        // Driver version info (from cache)
+        if (::g_nvapi_ui_cache.driver_version != "Failed to get driver version") {
+            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✁EDriver Version: %s", ::g_nvapi_ui_cache.driver_version.c_str());
         } else {
-            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "⚠ Driver Version: %s", driverVersion.c_str());
+            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "⚠ Driver Version: %s", ::g_nvapi_ui_cache.driver_version.c_str());
         }
 
-        // Hardware detection
-        if (::g_nvapiFullscreenPrevention.HasNVIDIAHardware()) {
+        // Hardware detection (from cache)
+        if (::g_nvapi_ui_cache.has_nvidia_hardware) {
             ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✁ENVIDIA Hardware: Detected");
         } else {
             ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "✁ENVIDIA Hardware: Not Found");
         }
 
-        // Fullscreen prevention status
-        if (::g_nvapiFullscreenPrevention.IsFullscreenPreventionEnabled()) {
+        // Fullscreen prevention status (from cache)
+        if (::g_nvapi_ui_cache.fullscreen_prevention_enabled) {
             ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✁EFullscreen Prevention: ACTIVE");
         } else {
             ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "◁EFullscreen Prevention: Inactive");
@@ -254,10 +263,9 @@ void DrawNvapiSettings() {
         // Library not loaded
         ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "✁ENVAPI Library: Not Loaded");
 
-        // Try to get error information
-        std::string lastError = ::g_nvapiFullscreenPrevention.GetLastError();
-        if (!lastError.empty()) {
-            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "Error: %s", lastError.c_str());
+        // Try to get error information (from cache)
+        if (!::g_nvapi_ui_cache.last_error.empty()) {
+            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "Error: %s", ::g_nvapi_ui_cache.last_error.c_str());
         }
     }
 
@@ -307,9 +315,8 @@ void DrawNvapiSettings() {
     if (!::g_nvapiFullscreenPrevention.IsAvailable()) {
         ImGui::Separator();
         ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "DLL Information:");
-        std::string dllInfo = ::g_nvapiFullscreenPrevention.GetDllVersionInfo();
-        if (dllInfo != "No library loaded") {
-            ImGui::TextWrapped("%s", dllInfo.c_str());
+        if (::g_nvapi_ui_cache.dll_info != "No library loaded") {
+            ImGui::TextWrapped("%s", ::g_nvapi_ui_cache.dll_info.c_str());
         } else {
             ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "DLL not loaded - cannot get version info");
         }

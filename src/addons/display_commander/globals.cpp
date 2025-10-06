@@ -266,6 +266,9 @@ std::atomic<bool> g_dlls_g_loaded{false};
 std::atomic<std::shared_ptr<const std::string>> g_dlls_g_version{std::make_shared<const std::string>("Unknown")};
 
 
+// NVAPI UI Cache global instance
+NVAPIUICache g_nvapi_ui_cache;
+
 // Experimental tab settings global instance
 namespace settings {
 ExperimentalTabSettings g_experimentalTabSettings;

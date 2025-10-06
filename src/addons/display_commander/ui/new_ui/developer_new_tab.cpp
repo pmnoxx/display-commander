@@ -212,7 +212,7 @@ void DrawNvapiSettings() {
         ImGui::Spacing();
         ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "Game restart required to apply NVAPI changes.");
     }
-    if (s_nvapi_fullscreen_prevention.load() && ::g_nvapiFullscreenPrevention.IsAvailable()) {
+    if (::g_nvapiFullscreenPrevention.IsAvailable()) {
         // Update cache if needed (only every 2 seconds)
         if (::NVAPIFullscreenPrevention::ShouldUpdateCache()) {
             ::NVAPIFullscreenPrevention::UpdateUICache();
@@ -247,18 +247,6 @@ void DrawNvapiSettings() {
         } else {
             ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "✁ENVIDIA Hardware: Not Found");
         }
-
-        // Fullscreen prevention status (from cache)
-        if (::g_nvapi_ui_cache.fullscreen_prevention_enabled) {
-            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✁EFullscreen Prevention: ACTIVE");
-        } else {
-            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "◁EFullscreen Prevention: Inactive");
-        }
-
-        // Function availability check
-        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✁ECore Functions: Available");
-        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✁EDRS Functions: Available");
-
     } else {
         // Library not loaded
         ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "✁ENVAPI Library: Not Loaded");
@@ -309,17 +297,6 @@ void DrawNvapiSettings() {
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Enable detailed logging of Reflex marker operations for debugging purposes.");
-    }
-
-    // DLL version info
-    if (!::g_nvapiFullscreenPrevention.IsAvailable()) {
-        ImGui::Separator();
-        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "DLL Information:");
-        if (::g_nvapi_ui_cache.dll_info != "No library loaded") {
-            ImGui::TextWrapped("%s", ::g_nvapi_ui_cache.dll_info.c_str());
-        } else {
-            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "DLL not loaded - cannot get version info");
-        }
     }
 }
 

@@ -389,9 +389,21 @@ void DrawSwapchainInfo() {
         ImGui::Spacing();
 
         // Static variables to track last set HDR metadata values
-        static DXGI_HDR_METADATA_HDR10 last_hdr_metadata = {};
+        static DXGI_HDR_METADATA_HDR10 last_hdr_metadata = {
+            .RedPrimary = {32768, 21634},
+            .GreenPrimary= {19661, 39321},
+            .BluePrimary = {9830, 3932},
+            .WhitePoint = {20493, 21564},
+            .MaxMasteringLuminance = 1000,
+            .MinMasteringLuminance = 0,
+            .MaxContentLightLevel = 1000,
+            .MaxFrameAverageLightLevel = 400,
+        };
+        static DXGI_HDR_METADATA_HDR10 dirty_last_metadata = last_hdr_metadata;
+
         static bool has_last_metadata = false;
         static std::string last_metadata_source = "None";
+
 
         // Try to get HDR metadata information from swapchain
         Microsoft::WRL::ComPtr<IDXGISwapChain4> swapchain4;
@@ -416,18 +428,20 @@ void DrawSwapchainInfo() {
                 hdr10_metadata.BluePrimary[1] = 3932;   // 0.06 * 65535 (Rec. 709 blue y)
                 hdr10_metadata.WhitePoint[0] = 20493;   // 0.3127 * 65535 (D65 white x)
                 hdr10_metadata.WhitePoint[1] = 21564;   // 0.3290 * 65535 (D65 white y)
-                hdr10_metadata.MaxMasteringLuminance = 1000; // 1000 nits
-                hdr10_metadata.MinMasteringLuminance = 0;    // 0 nits
-                hdr10_metadata.MaxContentLightLevel = 1000;  // 1000 nits
-                hdr10_metadata.MaxFrameAverageLightLevel = 400; // 400 nits
+                 hdr10_metadata.MaxMasteringLuminance = 1000; // 1000 nits
+                 hdr10_metadata.MinMasteringLuminance = 0;    // 0 nits
+                 hdr10_metadata.MaxContentLightLevel = 1000;  // 1000 nits
+                 hdr10_metadata.MaxFrameAverageLightLevel = 400; // 400 nits
 
-                HRESULT hr = swapchain4->SetHDRMetaData(DXGI_HDR_METADATA_TYPE_HDR10, sizeof(hdr10_metadata), &hdr10_metadata);
-                if (SUCCEEDED(hr)) {
-                    // Store the metadata for display
-                    last_hdr_metadata = hdr10_metadata;
-                    has_last_metadata = true;
-                    last_metadata_source = "Clear HDR Metadata (Rec. 709 defaults)";
-                    ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✓ HDR metadata cleared successfully");
+
+                 HRESULT hr = swapchain4->SetHDRMetaData(DXGI_HDR_METADATA_TYPE_HDR10, sizeof(hdr10_metadata), &hdr10_metadata);
+                 if (SUCCEEDED(hr)) {
+                     // Store the metadata for display
+                     last_hdr_metadata = hdr10_metadata;
+                     dirty_last_metadata = hdr10_metadata;
+                     has_last_metadata = true;
+                     last_metadata_source = "Clear HDR Metadata (Rec. 709 defaults)";
+                     ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✓ HDR metadata cleared successfully");
                 } else {
                     ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "✗ Failed to clear HDR metadata: 0x%08lX", static_cast<unsigned long>(hr));
                 }
@@ -460,21 +474,23 @@ void DrawSwapchainInfo() {
                             hdr10_metadata.WhitePoint[0] = static_cast<UINT16>(output_desc.WhitePoint[0] * 65535.0f);
                             hdr10_metadata.WhitePoint[1] = static_cast<UINT16>(output_desc.WhitePoint[1] * 65535.0f);
 
-                            // Use monitor's luminance range
-                            hdr10_metadata.MaxMasteringLuminance = static_cast<UINT>(output_desc.MaxLuminance);
-                            hdr10_metadata.MinMasteringLuminance = static_cast<UINT>(output_desc.MinLuminance);
+                             // Use monitor's luminance range
+                             hdr10_metadata.MaxMasteringLuminance = static_cast<UINT>(output_desc.MaxLuminance);
+                             hdr10_metadata.MinMasteringLuminance = static_cast<UINT>(output_desc.MinLuminance);
 
-                            // Set content light levels to reasonable values
-                            hdr10_metadata.MaxContentLightLevel = static_cast<UINT>(output_desc.MaxLuminance * 0.8f); // 80% of max
-                            hdr10_metadata.MaxFrameAverageLightLevel = static_cast<UINT>(output_desc.MaxLuminance * 0.4f); // 40% of max
+                             // Set content light levels to reasonable values
+                             hdr10_metadata.MaxContentLightLevel = static_cast<UINT>(output_desc.MaxLuminance * 0.8f); // 80% of max
+                             hdr10_metadata.MaxFrameAverageLightLevel = static_cast<UINT>(output_desc.MaxLuminance * 0.4f); // 40% of max
 
-                            HRESULT hr = swapchain4->SetHDRMetaData(DXGI_HDR_METADATA_TYPE_HDR10, sizeof(hdr10_metadata), &hdr10_metadata);
-                            if (SUCCEEDED(hr)) {
-                                // Store the metadata for display
-                                last_hdr_metadata = hdr10_metadata;
-                                has_last_metadata = true;
-                                last_metadata_source = "Reset to Monitor Capabilities";
-                                ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✓ HDR metadata reset to monitor capabilities");
+
+                             HRESULT hr = swapchain4->SetHDRMetaData(DXGI_HDR_METADATA_TYPE_HDR10, sizeof(hdr10_metadata), &hdr10_metadata);
+                             if (SUCCEEDED(hr)) {
+                                 // Store the metadata for display
+                                 last_hdr_metadata = hdr10_metadata;
+                                 dirty_last_metadata = hdr10_metadata;
+                                 has_last_metadata = true;
+                                 last_metadata_source = "Reset to Monitor Capabilities";
+                                 ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✓ HDR metadata reset to monitor capabilities");
                             } else {
                                 ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "✗ Failed to reset HDR metadata: 0x%08lX", static_cast<unsigned long>(hr));
                             }
@@ -511,6 +527,104 @@ void DrawSwapchainInfo() {
             ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "?");
             if (ImGui::IsItemHovered()) {
                 ImGui::SetTooltip("Disable HDR metadata completely (set to DXGI_HDR_METADATA_TYPE_NONE)");
+            }
+
+            ImGui::Spacing();
+
+            // MaxMDL (Maximum Mastering Display Luminance) control
+            ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "HDR Metadata Controls:");
+            ImGui::Separator();
+
+
+            int max_mdl_value = dirty_last_metadata.MaxMasteringLuminance;
+            if (ImGui::InputInt("MaxMDL (nits)", &max_mdl_value, 0, 0, ImGuiInputTextFlags_EnterReturnsTrue)) {
+                dirty_last_metadata.MaxMasteringLuminance = static_cast<UINT>(max_mdl_value);
+            }
+
+            // Allow any value, no clamping
+
+            ImGui::SameLine();
+            ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "?");
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Maximum Mastering Display Luminance in nits.\nThis controls the peak brightness of the mastering display.");
+            }
+
+
+            int min_mdl_value = dirty_last_metadata.MinMasteringLuminance;
+            if (ImGui::InputInt("MinMDL (nits)", &min_mdl_value, 0, 0, ImGuiInputTextFlags_EnterReturnsTrue)) {
+                dirty_last_metadata.MinMasteringLuminance = static_cast<UINT>(min_mdl_value);
+                // Allow any value, no clamping
+            }
+            ImGui::SameLine();
+            ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "?");
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Minimum Mastering Display Luminance in nits.\nThis controls the minimum brightness of the mastering display.");
+            }
+
+            int max_content_light_level = dirty_last_metadata.MaxContentLightLevel;
+            if (ImGui::InputInt("Max Content Light Level (nits)", &max_content_light_level, 0, 0, ImGuiInputTextFlags_EnterReturnsTrue)) {
+                dirty_last_metadata.MaxContentLightLevel = static_cast<UINT>(max_content_light_level);
+                // Allow any value, no clamping
+            }
+            ImGui::SameLine();
+            ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "?");
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Maximum Content Light Level in nits.\nThis controls the peak brightness of the content.");
+            }
+
+            int max_frame_avg_light_level = dirty_last_metadata.MaxFrameAverageLightLevel;
+            if (ImGui::InputInt("Max Frame Avg Light Level (nits)", &max_frame_avg_light_level, 0, 0, ImGuiInputTextFlags_EnterReturnsTrue)) {
+                dirty_last_metadata.MaxFrameAverageLightLevel = static_cast<UINT>(max_frame_avg_light_level);
+                // Allow any value, no clamping
+            }
+            ImGui::SameLine();
+            ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "?");
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Maximum Frame Average Light Level in nits.\nThis controls the average brightness of the content.");
+            }
+
+            if (ImGui::Button("Apply All HDR Values")) {
+                // Create HDR10 metadata with all custom values
+                DXGI_HDR_METADATA_HDR10 hdr10_metadata = {};
+
+                // Use current metadata values if available, otherwise use defaults
+                if (has_last_metadata) {
+                    last_hdr_metadata = dirty_last_metadata;
+                    hdr10_metadata = last_hdr_metadata;
+                } else {
+                    // Default Rec. 709 values
+                    hdr10_metadata.RedPrimary[0] = 32768;   // 0.5 * 65535
+                    hdr10_metadata.RedPrimary[1] = 21634;   // 0.33 * 65535
+                    hdr10_metadata.GreenPrimary[0] = 19661; // 0.3 * 65535
+                    hdr10_metadata.GreenPrimary[1] = 39321; // 0.6 * 65535
+                    hdr10_metadata.BluePrimary[0] = 9830;   // 0.15 * 65535
+                    hdr10_metadata.BluePrimary[1] = 3932;   // 0.06 * 65535
+                    hdr10_metadata.WhitePoint[0] = 20493;   // 0.3127 * 65535
+                    hdr10_metadata.WhitePoint[1] = 21564;   // 0.3290 * 65535
+                }
+
+                // Set all the custom values
+                hdr10_metadata.MaxMasteringLuminance = static_cast<UINT>(max_mdl_value);
+                hdr10_metadata.MinMasteringLuminance = static_cast<UINT>(min_mdl_value);
+                hdr10_metadata.MaxContentLightLevel = static_cast<UINT>(max_content_light_level);
+                hdr10_metadata.MaxFrameAverageLightLevel = static_cast<UINT>(max_frame_avg_light_level);
+
+                HRESULT hr = swapchain4->SetHDRMetaData(DXGI_HDR_METADATA_TYPE_HDR10, sizeof(hdr10_metadata), &hdr10_metadata);
+                if (SUCCEEDED(hr)) {
+                    // Store the metadata for display
+                    last_hdr_metadata = hdr10_metadata;
+                    has_last_metadata = true;
+                    last_metadata_source = "Custom HDR Values";
+                    ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✓ All HDR values applied successfully");
+                } else {
+                    ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "✗ Failed to apply HDR values: 0x%08lX", static_cast<unsigned long>(hr));
+                }
+            }
+
+            ImGui::SameLine();
+            ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "?");
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Apply all the HDR metadata values above to the swapchain.");
             }
 
             ImGui::Spacing();

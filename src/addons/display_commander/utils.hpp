@@ -10,6 +10,7 @@
 
 #include <atomic>
 #include <memory>
+#include <string>
 #include <vector>
 
 // Structs needed for utility functions
@@ -48,6 +49,9 @@ float ProcessStickInput(float value, float deadzone, float max_input, float min_
 // XInput thumbstick scaling helpers (handles asymmetric SHORT range: -32768 to 32767)
 float ShortToFloat(SHORT value);
 SHORT FloatToShort(float value);
+
+// DLL version information
+std::string GetDLLVersionString(const std::wstring& dllPath);
 
 // External declarations needed by utility functions
 extern std::atomic<std::shared_ptr<const std::vector<MonitorInfo>>> g_monitors;

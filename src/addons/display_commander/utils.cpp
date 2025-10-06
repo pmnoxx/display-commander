@@ -3,6 +3,9 @@
 #include "globals.hpp"
 #include <algorithm>
 #include <utility>
+#include <vector>
+#include <cstdio>
+#include <string>
 
 // Constant definitions
 const int WIDTH_OPTIONS[] = {0, 1280, 1366, 1600, 1920, 2560, 3440, 3840}; // 0 = current monitor width
@@ -191,4 +194,40 @@ SHORT FloatToShort(float value) {
     // Inverse mapping from [-1.0f, 1.0f] to [-32768, 32767]
     // (value + 1.0f) / 2.0f * 65535.0f + (-32768.0f)
     return static_cast<SHORT>((value + 1.0f) / 2.0f * 65535.0f + (-32768.0f));
+}
+
+// Get DLL version string (e.g., "570.6.2")
+std::string GetDLLVersionString(const std::wstring& dllPath) {
+    DWORD versionInfoSize = GetFileVersionInfoSizeW(dllPath.c_str(), nullptr);
+    if (versionInfoSize == 0) {
+        return "Unknown";
+    }
+
+    std::vector<BYTE> versionInfo(versionInfoSize);
+    if (!GetFileVersionInfoW(dllPath.c_str(), 0, versionInfoSize, versionInfo.data())) {
+        return "Unknown";
+    }
+
+    VS_FIXEDFILEINFO* fileInfo = nullptr;
+    UINT fileInfoSize = 0;
+
+    if (!VerQueryValueW(versionInfo.data(), L"\\", reinterpret_cast<LPVOID*>(&fileInfo), &fileInfoSize)) {
+        return "Unknown";
+    }
+
+    if (fileInfo == nullptr || fileInfoSize == 0) {
+        return "Unknown";
+    }
+
+    // Extract version numbers
+    DWORD major = HIWORD(fileInfo->dwFileVersionMS);
+    DWORD minor = LOWORD(fileInfo->dwFileVersionMS);
+    DWORD build = HIWORD(fileInfo->dwFileVersionLS);
+    DWORD revision = LOWORD(fileInfo->dwFileVersionLS);
+
+    // Format as "major.minor.build.revision" (similar to Special-K)
+    char versionStr[64];
+    snprintf(versionStr, sizeof(versionStr), "%lu.%lu.%lu.%lu", major, minor, build, revision);
+
+    return std::string(versionStr);
 }

@@ -6,6 +6,7 @@
 #include "experimental_tab.hpp"
 #include "hook_stats_tab.hpp"
 #include "main_new_tab.hpp"
+#include "streamline_tab.hpp"
 #include "swapchain_tab.hpp"
 #include "window_info_tab.hpp"
 #include <imgui.h>
@@ -158,6 +159,16 @@ void InitializeNewUI() {
             LogError("Error drawing hook stats tab: %s", e.what());
         } catch (...) {
             LogError("Unknown error drawing hook stats tab");
+        }
+    });
+
+    g_tab_manager.AddTab("Streamline", "streamline", []() {
+        try {
+            ui::new_ui::DrawStreamlineTab();
+        } catch (const std::exception &e) {
+            LogError("Error drawing streamline tab: %s", e.what());
+        } catch (...) {
+            LogError("Unknown error drawing streamline tab");
         }
     });
 

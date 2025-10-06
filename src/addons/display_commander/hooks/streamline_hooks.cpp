@@ -3,6 +3,7 @@
 #include "../utils.hpp"
 
 #include <MinHook.h>
+#include <cstdint>
 
 // Streamline function pointers
 using slInit_pfn = int (*)(void* pref, uint64_t sdkVersion);
@@ -15,11 +16,17 @@ static slIsFeatureSupported_pfn slIsFeatureSupported_Original = nullptr;
 static slGetNativeInterface_pfn slGetNativeInterface_Original = nullptr;
 static slUpgradeInterface_pfn slUpgradeInterface_Original = nullptr;
 
+// Track SDK version from slInit calls
+static std::atomic<uint64_t> g_last_sdk_version{0};
+
 // Hook functions
 int slInit_Detour(void* pref, uint64_t sdkVersion) {
     // Increment counter
     g_swapchain_event_counters[SWAPCHAIN_EVENT_STREAMLINE_SL_INIT].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
+
+    // Store the SDK version
+    g_last_sdk_version.store(sdkVersion);
 
     // Log the call
     LogInfo("slInit called (SDK Version: %llu)", sdkVersion);
@@ -165,4 +172,9 @@ void UninstallStreamlineHooks() {
     }
 
     LogInfo("Streamline hooks uninstalled");
+}
+
+// Get last SDK version from slInit calls
+uint64_t GetLastStreamlineSDKVersion() {
+    return g_last_sdk_version.load();
 }

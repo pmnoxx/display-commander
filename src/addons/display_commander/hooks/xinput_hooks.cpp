@@ -22,7 +22,7 @@ static std::atomic<bool> g_xinput_hooks_installed{false};
 
 // Track which modules have been hooked
 std::array<bool, 5> hooked_modules = {};
-const char *xinput_modules[] = {
+const std::array<const char*, 5> xinput_modules = {
     "xinput1_4.dll", "xinput1_3.dll", "xinput1_2.dll", "xinput1_1.dll", "xinput9_1_0.dll",
 };
 

@@ -3,6 +3,7 @@
 #include "../../settings/main_tab_settings.hpp"
 #include "../../swapchain_events_power_saving.hpp"
 
+#include <array>
 #include <dxgi1_6.h>
 #include <imgui.h>
 #include <wrl/client.h>
@@ -28,7 +29,7 @@ void DrawSwapchainEventCounters() {
         ImGui::Separator();
 
         // Display each event counter with color coding
-        static const char* event_names[NUM_EVENTS] = {
+        static const std::array<const char*, NUM_EVENTS> event_names = {
             "SWAPCHAIN_EVENT_BEGIN_RENDER_PASS (0)", "SWAPCHAIN_EVENT_END_RENDER_PASS (1)",
             "SWAPCHAIN_EVENT_CREATE_SWAPCHAIN_CAPTURE (2)", "SWAPCHAIN_EVENT_INIT_SWAPCHAIN (3)",
             "SWAPCHAIN_EVENT_PRESENT_UPDATE_AFTER (4)", "SWAPCHAIN_EVENT_PRESENT_UPDATE_BEFORE (5)",
@@ -86,16 +87,16 @@ void DrawSwapchainEventCounters() {
             ImVec4 color;
         };
 
-        static EventGroup event_groups[] = {{"ReShade Events (0-37)", 0, 37, ImVec4(0.8f, 0.8f, 1.0f, 1.0f)},
-                                            {"DXGI Core Methods (38-47)", 38, 47, ImVec4(0.8f, 1.0f, 0.8f, 1.0f)},
-                                            {"DXGI SwapChain1 Methods (48-58)", 48, 58, ImVec4(1.0f, 0.8f, 0.8f, 1.0f)},
-                                            {"DXGI SwapChain2 Methods (59-65)", 59, 65, ImVec4(1.0f, 1.0f, 0.8f, 1.0f)},
-                                            {"DXGI SwapChain3 Methods (66-69)", 66, 69, ImVec4(0.8f, 1.0f, 1.0f, 1.0f)},
-                                            {"DXGI Factory Methods (70-72)", 70, 72, ImVec4(1.0f, 0.8f, 1.0f, 1.0f)},
-                                            {"DXGI SwapChain4 Methods (73)", 73, 73, ImVec4(0.8f, 0.8f, 0.8f, 1.0f)},
-                                            {"DirectX 9 Methods (74)", 74, 74, ImVec4(1.0f, 0.6f, 0.6f, 1.0f)},
-                                            {"NVAPI Methods (75)", 75, 75, ImVec4(0.6f, 1.0f, 0.6f, 1.0f)},
-                                            {"Streamline Methods (76-79)", 76, 79, ImVec4(0.6f, 0.8f, 1.0f, 1.0f)}};
+        static const std::array<EventGroup, 10> event_groups = {{{   .name="ReShade Events (0-37)", .start_idx=0, .end_idx=37, .color=ImVec4(0.8f, 0.8f, 1.0f, 1.0f)},
+                                            {   .name="DXGI Core Methods (38-47)", .start_idx=38, .end_idx=47, .color=ImVec4(0.8f, 1.0f, 0.8f, 1.0f)},
+                                            {   .name="DXGI SwapChain1 Methods (48-58)", .start_idx=48, .end_idx=58, .color=ImVec4(1.0f, 0.8f, 0.8f, 1.0f)},
+                                            {   .name="DXGI SwapChain2 Methods (59-65)", .start_idx=59, .end_idx=65, .color=ImVec4(1.0f, 1.0f, 0.8f, 1.0f)},
+                                            {   .name="DXGI SwapChain3 Methods (66-69)", .start_idx=66, .end_idx=69, .color=ImVec4(0.8f, 1.0f, 1.0f, 1.0f)},
+                                            {   .name="DXGI Factory Methods (70-72)", .start_idx=70, .end_idx=72, .color=ImVec4(1.0f, 0.8f, 1.0f, 1.0f)},
+                                            {   .name="DXGI SwapChain4 Methods (73)", .start_idx=73, .end_idx=73, .color=ImVec4(0.8f, 0.8f, 0.8f, 1.0f)},
+                                            {   .name="DirectX 9 Methods (74)", .start_idx=74, .end_idx=74, .color=ImVec4(1.0f, 0.6f, 0.6f, 1.0f)},
+                                            {   .name="NVAPI Methods (75)", .start_idx=75, .end_idx=75, .color=ImVec4(0.6f, 1.0f, 0.6f, 1.0f)},
+                                            {   .name="Streamline Methods (76-79)", .start_idx=76, .end_idx=79, .color=ImVec4(0.6f, 0.8f, 1.0f, 1.0f)}}};
 
         for (const auto& group : event_groups) {
             if (ImGui::CollapsingHeader(group.name, ImGuiTreeNodeFlags_DefaultOpen)) {

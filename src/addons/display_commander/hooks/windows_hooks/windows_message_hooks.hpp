@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <atomic>
 #include <windows.h>
 #include <wingdi.h>  // For DISPLAYCONFIG_* structures
@@ -198,7 +199,7 @@ bool ShouldSuppressMessage(HWND hWnd, UINT uMsg);
 void SuppressMessage(LPMSG lpMsg);
 
 // Hook call statistics
-extern HookCallStats g_hook_stats[];
+extern std::array<HookCallStats, HOOK_COUNT> g_hook_stats;
 
 // Hook statistics access functions
 const HookCallStats &GetHookStats(int hook_index);

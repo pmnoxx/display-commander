@@ -37,7 +37,4 @@ StackFrame GetSymbolInfo(DWORD64 address);
 // Check if stack trace functionality is available
 bool IsAvailable();
 
-// Test function to demonstrate stack trace functionality (for debugging)
-void TestStackTrace();
-
 } // namespace stack_trace

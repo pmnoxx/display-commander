@@ -356,12 +356,6 @@ void DrawLatencyDisplay() {
 }
 
 void RenderStackTraceSection() {
-    ImGui::Separator();
-    ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "Stack Trace Testing");
-
-    if (ImGui::Button("Test Stack Trace")) {
-        stack_trace::TestStackTrace();
-    }
     ImGui::SameLine();
     ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Capture and log current stack trace");
 

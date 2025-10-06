@@ -3,8 +3,9 @@
 #include "globals.hpp"
 #include "../settings/developer_tab_settings.hpp"
 #include <NvApiDriverSettings.h>
-#include <sstream>
 #include <algorithm>
+#include <chrono>
+#include <sstream>
 #include <vector>
 
 NVAPIFullscreenPrevention::NVAPIFullscreenPrevention() {}
@@ -719,4 +720,27 @@ void NVAPIFullscreenPrevention::CheckAndAutoEnable() {
 
         g_nvapiFullscreenPrevention.SetHdr10OnAll(true);
     }
+}
+
+void NVAPIFullscreenPrevention::UpdateUICache() {
+    extern NVAPIUICache g_nvapi_ui_cache;
+    
+    // Update cache with current values
+    g_nvapi_ui_cache.driver_version = g_nvapiFullscreenPrevention.GetDriverVersion();
+    g_nvapi_ui_cache.has_nvidia_hardware = g_nvapiFullscreenPrevention.HasNVIDIAHardware();
+    g_nvapi_ui_cache.fullscreen_prevention_enabled = g_nvapiFullscreenPrevention.IsFullscreenPreventionEnabled();
+    g_nvapi_ui_cache.last_error = g_nvapiFullscreenPrevention.GetLastError();
+    g_nvapi_ui_cache.dll_info = g_nvapiFullscreenPrevention.GetDllVersionInfo();
+    g_nvapi_ui_cache.last_update = std::chrono::steady_clock::now();
+    g_nvapi_ui_cache.is_valid = true;
+}
+
+bool NVAPIFullscreenPrevention::ShouldUpdateCache() {
+    extern NVAPIUICache g_nvapi_ui_cache;
+    
+    // Update cache every 2 seconds
+    const auto now = std::chrono::steady_clock::now();
+    const auto time_since_update = std::chrono::duration_cast<std::chrono::milliseconds>(now - g_nvapi_ui_cache.last_update);
+    
+    return !g_nvapi_ui_cache.is_valid || time_since_update.count() > 2000;
 }

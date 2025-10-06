@@ -53,6 +53,10 @@ class NVAPIFullscreenPrevention {
     // Auto-enable functionality
     static bool IsGameInAutoEnableList(const std::string& processName);
     static void CheckAndAutoEnable();
+    
+    // UI Cache management
+    static void UpdateUICache();
+    static bool ShouldUpdateCache();
 
   private:
     bool initialized = false;

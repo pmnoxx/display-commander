@@ -26,7 +26,4 @@ void DrawKeyboardShortcutsSettings();
 // Draw latency display section
 void DrawLatencyDisplay();
 
-// Draw stack trace testing section
-void RenderStackTraceSection();
-
 } // namespace ui::new_ui

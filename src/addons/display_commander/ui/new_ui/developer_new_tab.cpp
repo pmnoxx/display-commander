@@ -2,7 +2,6 @@
 #include "../../globals.hpp"
 #include "../../nvapi/nvapi_fullscreen_prevention.hpp"
 #include "../../settings/developer_tab_settings.hpp"
-#include "../../stack_trace.hpp"
 #include "../../utils.hpp"
 #include "settings_wrapper.hpp"
 
@@ -62,9 +61,6 @@ void DrawDeveloperNewTab() {
 
     ImGui::Spacing();
     ImGui::Separator();
-
-    // Stack Trace Testing Section
-    RenderStackTraceSection();
 }
 
 void DrawDeveloperSettings() {
@@ -353,46 +349,6 @@ void DrawLatencyDisplay() {
     ImGui::TextUnformatted(oss.str().c_str());
     ImGui::SameLine();
     ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "(smoothed)");
-}
-
-void RenderStackTraceSection() {
-    ImGui::SameLine();
-    ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Capture and log current stack trace");
-
-    if (ImGui::Button("Test Crash Handler")) {
-        // This will trigger the unhandled exception handler
-        // WARNING: This will cause the application to crash!
-        ImGui::OpenPopup("Crash Warning");
-    }
-    ImGui::SameLine();
-    ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "Test crash handler (WARNING: Will crash!)");
-
-    // Crash warning popup
-    if (ImGui::BeginPopupModal("Crash Warning", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-        ImGui::Text("WARNING: This will cause the application to crash!");
-        ImGui::Text("The crash handler will capture a stack trace and log it to debug.log");
-        ImGui::Text("Only use this for testing purposes!");
-        ImGui::Separator();
-
-        if (ImGui::Button("Cancel", ImVec2(120, 0))) {
-            ImGui::CloseCurrentPopup();
-        }
-        ImGui::SameLine();
-        if (ImGui::Button("Crash Anyway", ImVec2(120, 0))) {
-            ImGui::CloseCurrentPopup();
-            // Trigger a crash by accessing null pointer
-            volatile int* null_ptr = nullptr;
-            *null_ptr = 42; // This will cause an access violation
-        }
-        ImGui::EndPopup();
-    }
-
-    // Show stack trace availability status
-    if (stack_trace::IsAvailable()) {
-        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Stack trace functionality: Available");
-    } else {
-        ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "Stack trace functionality: Not available");
-    }
 }
 
 }  // namespace ui::new_ui

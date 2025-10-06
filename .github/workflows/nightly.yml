@@ -65,6 +65,16 @@ jobs:
           fi
           # Copy the display_commander addon with the correct name
           cp "$display_commander_file" "artifacts/${{ matrix.artifact_name }}"
+
+          # Look for driver_restart.exe in tools directory
+          if [ -f "build/tools/driver_restart.exe" ]; then
+            echo "Found driver_restart.exe: build/tools/driver_restart.exe"
+            cp "build/tools/driver_restart.exe" "artifacts/driver_restart.exe"
+          else
+            echo "Warning: driver_restart.exe not found in build/tools/; listing build dir for debugging:" >&2
+            find build -type f -name "*.exe" || true
+          fi
+
           echo "artifact_dir=artifacts" >> $GITHUB_OUTPUT
 
       - name: Upload artifact
@@ -110,5 +120,6 @@ jobs:
             **Files**:
             - `zzz_display_commander.addon64` - 64-bit version
             - `zzz_display_commander.addon32` - 32-bit version
+            - `driver_restart.exe` - Graphics driver restart utility
 
             **Note**: These are development builds. For stable releases, use the main releases.

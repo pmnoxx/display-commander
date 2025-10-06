@@ -176,13 +176,7 @@ void UpdateFpsLimitMaximums() {
 
     // Update the maximum values for FPS limit settings
     // Add some buffer (e.g., 10%) to allow for slightly higher FPS than max refresh rate
-    float max_fps = static_cast<float>(max_refresh_rate * 1.1f);
-
-    // Ensure minimum of 60 FPS and maximum of 1000 FPS for safety
-    if (max_fps < 60.0f)
-        max_fps = 60.0f;
-    if (max_fps > 1000.0f)
-        max_fps = 1000.0f;
+    float max_fps = max(60.f, static_cast<float>(max_refresh_rate));
 
     // Update the maximum values
     g_mainTabSettings.fps_limit.SetMax(max_fps);

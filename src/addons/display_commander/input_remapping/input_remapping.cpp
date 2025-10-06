@@ -59,8 +59,9 @@ void InputRemapper::cleanup() {
 }
 
 void InputRemapper::process_gamepad_input(DWORD user_index, const XINPUT_STATE *state) {
-    if (!_remapping_enabled.load() || !state || user_index >= XUSER_MAX_COUNT)
+    if (!_remapping_enabled.load() || state == nullptr || user_index >= XUSER_MAX_COUNT) {
         return;
+    }
 
     // Update button states
     update_button_states(user_index, state->Gamepad.wButtons);
@@ -73,8 +74,8 @@ void InputRemapper::process_gamepad_input(DWORD user_index, const XINPUT_STATE *
     // Check each button for changes
     for (int i = 0; i < 16; ++i) {
         WORD button_mask = 1 << i;
-        if (changed & button_mask) {
-            if (current & button_mask) {
+        if ((changed & button_mask) != 0) {
+            if ((current & button_mask) != 0) {
                 handle_button_press(button_mask, user_index);
             } else {
                 handle_button_release(button_mask, user_index);
@@ -269,8 +270,9 @@ bool InputRemapper::send_keyboard_input_keybdevent(int vk_code, bool key_down) {
 
 bool InputRemapper::send_keyboard_input_sendmessage(int vk_code, bool key_down) {
     HWND hwnd = get_active_window();
-    if (!hwnd)
+    if (hwnd == nullptr) {
         return false;
+    }
 
     UINT message = key_down ? WM_KEYDOWN : WM_KEYUP;
     WPARAM wParam = vk_code;
@@ -282,8 +284,9 @@ bool InputRemapper::send_keyboard_input_sendmessage(int vk_code, bool key_down) 
 
 bool InputRemapper::send_keyboard_input_postmessage(int vk_code, bool key_down) {
     HWND hwnd = get_active_window();
-    if (!hwnd)
+    if (hwnd == nullptr) {
         return false;
+    }
 
     UINT message = key_down ? WM_KEYDOWN : WM_KEYUP;
     WPARAM wParam = vk_code;

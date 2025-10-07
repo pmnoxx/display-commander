@@ -6,6 +6,12 @@
 
 namespace ui::new_ui {
 
+// Initialize swapchain tab
+void InitSwapchainTab();
+
+// Auto-apply HDR metadata trigger (called from continuous monitoring)
+void AutoApplyTrigger();
+
 // Draw the swapchain tab content
 void DrawSwapchainTab();
 

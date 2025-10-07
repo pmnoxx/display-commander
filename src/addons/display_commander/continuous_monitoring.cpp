@@ -4,6 +4,7 @@
 #include "globals.hpp"
 #include "hooks/api_hooks.hpp"
 #include "settings/main_tab_settings.hpp"
+#include "ui/new_ui/swapchain_tab.hpp"
 #include "utils.hpp"
 #include "utils/timing.hpp"
 
@@ -240,6 +241,9 @@ void ContinuousMonitoringThread() {
         if (now_ns - last_1s_update_ns >= 1 * utils::SEC_TO_NS) {
             last_1s_update_ns = now_ns;
             every1s_checks();
+
+            // Call auto-apply HDR metadata trigger
+            ui::new_ui::AutoApplyTrigger();
         }
 
         // Sleep for 1 second

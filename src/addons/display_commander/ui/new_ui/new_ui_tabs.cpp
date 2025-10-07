@@ -74,6 +74,8 @@ void InitializeNewUI() {
 
     // Ensure settings for main and developer tabs are loaded at UI init time
     ui::new_ui::InitMainNewTab();
+    ui::new_ui::InitDeveloperNewTab();
+    ui::new_ui::InitSwapchainTab();
 
     // Initialize XInput widget
     display_commander::widgets::xinput_widget::InitializeXInputWidget();
@@ -91,7 +93,6 @@ void InitializeNewUI() {
         }
     });
 
-    ui::new_ui::InitDeveloperNewTab();
     g_tab_manager.AddTab("Developer", "developer_new", []() {
         try {
             ui::new_ui::DrawDeveloperNewTab();

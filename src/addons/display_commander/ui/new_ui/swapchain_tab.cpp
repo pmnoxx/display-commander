@@ -2,6 +2,7 @@
 #include "../../globals.hpp"
 #include "../../settings/main_tab_settings.hpp"
 #include "../../swapchain_events_power_saving.hpp"
+#include "../../utils.hpp"
 
 #include <array>
 #include <dxgi1_6.h>
@@ -10,6 +11,130 @@
 #include <reshade.hpp>
 
 namespace ui::new_ui {
+     bool has_last_metadata = false;
+     bool auto_apply_hdr_metadata = false;
+
+
+     // Static variables to track last set HDR metadata values
+     DXGI_HDR_METADATA_HDR10 last_hdr_metadata = {
+         .RedPrimary = {32768, 21634},
+         .GreenPrimary = {19661, 39321},
+         .BluePrimary = {9830, 3932},
+         .WhitePoint = {20493, 21564},
+         .MaxMasteringLuminance = 1000,
+         .MinMasteringLuminance = 0,
+         .MaxContentLightLevel = 1000,
+         .MaxFrameAverageLightLevel = 400,
+     };
+     DXGI_HDR_METADATA_HDR10 dirty_last_metadata = last_hdr_metadata;
+
+     std::string last_metadata_source = "None";
+
+// Initialize swapchain tab
+void InitSwapchainTab() {
+    // Default Rec. 2020 values
+    double prim_red_x = 0.708;
+    double prim_red_y = 0.292;
+    double prim_green_x = 0.170;
+    double prim_green_y = 0.797;
+    double prim_blue_x = 0.131;
+    double prim_blue_y = 0.046;
+    double white_point_x = 0.3127;
+    double white_point_y = 0.3290;
+    int32_t max_mdl = 1000;
+    float min_mdl = 0.0f;
+    int32_t max_cll = 1000;
+    int32_t max_fall = 100;
+
+    // Read HDR metadata settings from ReShade config
+    reshade::get_config_value(nullptr, "ReShade_HDR_Metadata", "prim_red_x", prim_red_x);
+    reshade::get_config_value(nullptr, "ReShade_HDR_Metadata", "prim_red_y", prim_red_y);
+    reshade::get_config_value(nullptr, "ReShade_HDR_Metadata", "prim_green_x", prim_green_x);
+    reshade::get_config_value(nullptr, "ReShade_HDR_Metadata", "prim_green_y", prim_green_y);
+    reshade::get_config_value(nullptr, "ReShade_HDR_Metadata", "prim_blue_x", prim_blue_x);
+    reshade::get_config_value(nullptr, "ReShade_HDR_Metadata", "prim_blue_y", prim_blue_y);
+    reshade::get_config_value(nullptr, "ReShade_HDR_Metadata", "white_point_x", white_point_x);
+    reshade::get_config_value(nullptr, "ReShade_HDR_Metadata", "white_point_y", white_point_y);
+    reshade::get_config_value(nullptr, "ReShade_HDR_Metadata", "max_mdl", max_mdl);
+    reshade::get_config_value(nullptr, "ReShade_HDR_Metadata", "min_mdl", min_mdl);
+    reshade::get_config_value(nullptr, "ReShade_HDR_Metadata", "max_cll", max_cll);
+    reshade::get_config_value(nullptr, "ReShade_HDR_Metadata", "max_fall", max_fall);
+
+    // Read has_last_metadata flag from config
+    reshade::get_config_value(nullptr, "ReShade_HDR_Metadata", "has_last_metadata", has_last_metadata);
+    reshade::get_config_value(nullptr, "ReShade_HDR_Metadata", "auto_apply_hdr_metadata", auto_apply_hdr_metadata);
+
+    // Initialize HDR metadata with loaded values
+    last_hdr_metadata.RedPrimary[0] = static_cast<UINT16>(prim_red_x * 65535);
+    last_hdr_metadata.RedPrimary[1] = static_cast<UINT16>(prim_red_y * 65535);
+    last_hdr_metadata.GreenPrimary[0] = static_cast<UINT16>(prim_green_x * 65535);
+    last_hdr_metadata.GreenPrimary[1] = static_cast<UINT16>(prim_green_y * 65535);
+    last_hdr_metadata.BluePrimary[0] = static_cast<UINT16>(prim_blue_x * 65535);
+    last_hdr_metadata.BluePrimary[1] = static_cast<UINT16>(prim_blue_y * 65535);
+    last_hdr_metadata.WhitePoint[0] = static_cast<UINT16>(white_point_x * 65535);
+    last_hdr_metadata.WhitePoint[1] = static_cast<UINT16>(white_point_y * 65535);
+    last_hdr_metadata.MaxMasteringLuminance = static_cast<UINT>(max_mdl);
+    last_hdr_metadata.MinMasteringLuminance = static_cast<UINT>(min_mdl * 10000.0f);
+    last_hdr_metadata.MaxContentLightLevel = static_cast<UINT16>(max_cll);
+    last_hdr_metadata.MaxFrameAverageLightLevel = static_cast<UINT16>(max_fall);
+
+    // Initialize dirty metadata to match
+    dirty_last_metadata = last_hdr_metadata;
+
+    // Set metadata source and flag from config
+    last_metadata_source = "Loaded from ReShade config";
+}
+
+void AutoApplyTrigger() {
+    if (!auto_apply_hdr_metadata) {
+        return;
+    }
+
+    static bool first_apply = true;
+
+    // Get the current swapchain
+    HWND hwnd = g_last_swapchain_hwnd.load();
+    if (hwnd == nullptr || !IsWindow(hwnd)) {
+        return; // No valid swapchain window
+    }
+
+    // Get the DXGI swapchain from the window
+    Microsoft::WRL::ComPtr<IDXGISwapChain> dxgi_swapchain;
+    Microsoft::WRL::ComPtr<IDXGISwapChain4> swapchain4;
+
+    // Try to get the swapchain from the window (this is a simplified approach)
+    // In a real implementation, you'd need to get the actual swapchain from ReShade
+    // For now, we'll assume we can get it somehow
+
+    if (has_last_metadata) {
+        // Auto-apply using last_hdr_metadata
+        DXGI_HDR_METADATA_HDR10 hdr10_metadata = last_hdr_metadata;
+
+        // Apply the stored metadata
+        // Note: This is a placeholder - in real implementation you'd need access to the actual swapchain
+        HRESULT hr = swapchain4->SetHDRMetaData(DXGI_HDR_METADATA_TYPE_HDR10, sizeof(hdr10_metadata), &hdr10_metadata);
+
+        LogDebug("AutoApplyTrigger: Applied stored HDR metadata");
+        if (SUCCEEDED(hr)) {
+            if (first_apply) {
+                LogDebug("AutoApplyTrigger: First time applying stored HDR metadata");
+                first_apply = false;
+            }
+        } else {
+            LogDebug("AutoApplyTrigger: Failed to apply stored HDR metadata");
+        }
+    } else {
+        HRESULT hr = swapchain4->SetHDRMetaData(DXGI_HDR_METADATA_TYPE_NONE, 0, nullptr);
+        if (SUCCEEDED(hr)) {
+            if (first_apply) {
+                LogDebug("AutoApplyTrigger: Disabled HDR metadata");
+                first_apply = false;
+            }
+        } else {
+            LogDebug("AutoApplyTrigger: Failed to disable HDR metadata");
+        }
+    }
+}
 
 void DrawSwapchainTab() {
     ImGui::Text("Swapchain Tab - DXGI Information");
@@ -345,25 +470,8 @@ void DrawSwapchainInfo() {
         } else {
             ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "Failed to get containing output");
         }
-        /*
 
         ImGui::Spacing();
-
-        // Static variables to track last set HDR metadata values
-        static DXGI_HDR_METADATA_HDR10 last_hdr_metadata = {
-            .RedPrimary = {32768, 21634},
-            .GreenPrimary = {19661, 39321},
-            .BluePrimary = {9830, 3932},
-            .WhitePoint = {20493, 21564},
-            .MaxMasteringLuminance = 1000,
-            .MinMasteringLuminance = 0,
-            .MaxContentLightLevel = 1000,
-            .MaxFrameAverageLightLevel = 400,
-        };
-        static DXGI_HDR_METADATA_HDR10 dirty_last_metadata = last_hdr_metadata;
-
-        static bool has_last_metadata = false;
-        static std::string last_metadata_source = "None";
 
         // Try to get HDR metadata information from swapchain
         Microsoft::WRL::ComPtr<IDXGISwapChain4> swapchain4;
@@ -376,22 +484,33 @@ void DrawSwapchainInfo() {
             ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "HDR Metadata Controls:");
             ImGui::Separator();
 
-            // Clear HDR metadata button
-            if (ImGui::Button("Set to Rec. 709 defaults")) {
-                // Clear HDR10 metadata by setting it to default values
+            // Auto-apply HDR metadata checkbox
+            if (ImGui::Checkbox("Auto-apply HDR metadata", &auto_apply_hdr_metadata)) {
+                // Save the setting to config when changed
+                reshade::set_config_value(nullptr, "ReShade_HDR_Metadata", "auto_apply_hdr_metadata", auto_apply_hdr_metadata);
+            }
+            ImGui::SameLine();
+            ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "?");
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Automatically apply HDR metadata when swapchain is created (not implemented yet)");
+            }
+
+            // Set to Rec. 2020 defaults button
+            if (ImGui::Button("Set to Rec. 2020 defaults")) {
+                // Set HDR10 metadata to Rec. 2020 default values
                 DXGI_HDR_METADATA_HDR10 hdr10_metadata = {};
-                hdr10_metadata.RedPrimary[0] = 32768;            // 0.5 * 65535 (Rec. 709 red x)
-                hdr10_metadata.RedPrimary[1] = 21634;            // 0.33 * 65535 (Rec. 709 red y)
-                hdr10_metadata.GreenPrimary[0] = 19661;          // 0.3 * 65535 (Rec. 709 green x)
-                hdr10_metadata.GreenPrimary[1] = 39321;          // 0.6 * 65535 (Rec. 709 green y)
-                hdr10_metadata.BluePrimary[0] = 9830;            // 0.15 * 65535 (Rec. 709 blue x)
-                hdr10_metadata.BluePrimary[1] = 3932;            // 0.06 * 65535 (Rec. 709 blue y)
-                hdr10_metadata.WhitePoint[0] = 20493;            // 0.3127 * 65535 (D65 white x)
-                hdr10_metadata.WhitePoint[1] = 21564;            // 0.3290 * 65535 (D65 white y)
+                hdr10_metadata.RedPrimary[0] = 0.708 * 65535; //(Rec. 2020 red x)
+                hdr10_metadata.RedPrimary[1] = 0.292 * 65535; //(Rec. 2020 red y)
+                hdr10_metadata.GreenPrimary[0] = 0.170 * 65535;  //(Rec. 2020 green x)
+                hdr10_metadata.GreenPrimary[1] = 0.797 * 65535; //(Rec. 2020 green y)
+                hdr10_metadata.BluePrimary[0] = 0.131 * 65535; //(Rec. 2020 blue x)
+                hdr10_metadata.BluePrimary[1] = 0.046 * 65535; //(Rec. 2020 blue y)
+                hdr10_metadata.WhitePoint[0] = 0.3127 * 65535; //(D65 white x)
+                hdr10_metadata.WhitePoint[1] = 0.3290 * 65535; //(D65 white y)
                 hdr10_metadata.MaxMasteringLuminance = 1000;     // 1000 nits
                 hdr10_metadata.MinMasteringLuminance = 0;        // 0 nits
                 hdr10_metadata.MaxContentLightLevel = 1000;      // 1000 nits
-                hdr10_metadata.MaxFrameAverageLightLevel = 400;  // 400 nits
+                hdr10_metadata.MaxFrameAverageLightLevel = 100;  // 100 nits
 
                 HRESULT hr =
                     swapchain4->SetHDRMetaData(DXGI_HDR_METADATA_TYPE_HDR10, sizeof(hdr10_metadata), &hdr10_metadata);
@@ -400,8 +519,24 @@ void DrawSwapchainInfo() {
                     last_hdr_metadata = hdr10_metadata;
                     dirty_last_metadata = hdr10_metadata;
                     has_last_metadata = true;
-                    last_metadata_source = "Clear HDR Metadata (Rec. 709 defaults)";
-                    ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✓ HDR metadata cleared successfully");
+                    last_metadata_source = "Set HDR Metadata (Rec. 2020 defaults)";
+
+                    // Save HDR metadata to ReShade config
+                    reshade::set_config_value(nullptr, "ReShade_HDR_Metadata", "prim_red_x", 0.708);
+                    reshade::set_config_value(nullptr, "ReShade_HDR_Metadata", "prim_red_y", 0.292);
+                    reshade::set_config_value(nullptr, "ReShade_HDR_Metadata", "prim_green_x", 0.170);
+                    reshade::set_config_value(nullptr, "ReShade_HDR_Metadata", "prim_green_y", 0.797);
+                    reshade::set_config_value(nullptr, "ReShade_HDR_Metadata", "prim_blue_x", 0.131);
+                    reshade::set_config_value(nullptr, "ReShade_HDR_Metadata", "prim_blue_y", 0.046);
+                    reshade::set_config_value(nullptr, "ReShade_HDR_Metadata", "white_point_x", 0.3127);
+                    reshade::set_config_value(nullptr, "ReShade_HDR_Metadata", "white_point_y", 0.3290);
+                    reshade::set_config_value(nullptr, "ReShade_HDR_Metadata", "max_mdl", 1000);
+                    reshade::set_config_value(nullptr, "ReShade_HDR_Metadata", "min_mdl", 0.0f);
+                    reshade::set_config_value(nullptr, "ReShade_HDR_Metadata", "max_cll", 1000);
+                    reshade::set_config_value(nullptr, "ReShade_HDR_Metadata", "max_fall", 100);
+                    reshade::set_config_value(nullptr, "ReShade_HDR_Metadata", "has_last_metadata", true);
+
+                    ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✓ HDR metadata set to Rec. 2020 defaults and saved to config");
                 } else {
                     ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "✗ Failed to clear HDR metadata: 0x%08lX",
                                        static_cast<unsigned long>(hr));
@@ -410,67 +545,7 @@ void DrawSwapchainInfo() {
             ImGui::SameLine();
             ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "?");
             if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("Clear HDR metadata by setting it to default Rec. 709 values");
-            }
-
-            // Reset to monitor capabilities button
-            if (ImGui::Button("Reset to Monitor Capabilities")) {
-                // Get monitor capabilities and set HDR metadata accordingly
-                Microsoft::WRL::ComPtr<IDXGIOutput> output;
-                if (SUCCEEDED(dxgi_swapchain->GetContainingOutput(&output)) && output != nullptr) {
-                    Microsoft::WRL::ComPtr<IDXGIOutput6> output6;
-                    if (SUCCEEDED(output->QueryInterface(IID_PPV_ARGS(&output6)))) {
-                        DXGI_OUTPUT_DESC1 output_desc = {};
-                        if (SUCCEEDED(output6->GetDesc1(&output_desc))) {
-                            // Create HDR10 metadata based on monitor capabilities
-                            DXGI_HDR_METADATA_HDR10 hdr10_metadata = {};
-
-                            // Use monitor's color primaries if available (convert float to UINT16)
-                            hdr10_metadata.RedPrimary[0] = static_cast<UINT16>(output_desc.RedPrimary[0] * 65535.0f);
-                            hdr10_metadata.RedPrimary[1] = static_cast<UINT16>(output_desc.RedPrimary[1] * 65535.0f);
-                            hdr10_metadata.GreenPrimary[0] =
-                                static_cast<UINT16>(output_desc.GreenPrimary[0] * 65535.0f);
-                            hdr10_metadata.GreenPrimary[1] =
-                                static_cast<UINT16>(output_desc.GreenPrimary[1] * 65535.0f);
-                            hdr10_metadata.BluePrimary[0] = static_cast<UINT16>(output_desc.BluePrimary[0] * 65535.0f);
-                            hdr10_metadata.BluePrimary[1] = static_cast<UINT16>(output_desc.BluePrimary[1] * 65535.0f);
-                            hdr10_metadata.WhitePoint[0] = static_cast<UINT16>(output_desc.WhitePoint[0] * 65535.0f);
-                            hdr10_metadata.WhitePoint[1] = static_cast<UINT16>(output_desc.WhitePoint[1] * 65535.0f);
-
-                            // Use monitor's luminance range
-                            hdr10_metadata.MaxMasteringLuminance = static_cast<UINT>(output_desc.MaxLuminance);
-                            hdr10_metadata.MinMasteringLuminance = static_cast<UINT>(output_desc.MinLuminance);
-
-                            // Set content light levels to reasonable values
-                            hdr10_metadata.MaxContentLightLevel =
-                                static_cast<UINT>(output_desc.MaxLuminance * 0.8f);  // 80% of max
-                            hdr10_metadata.MaxFrameAverageLightLevel =
-                                static_cast<UINT>(output_desc.MaxLuminance * 0.4f);  // 40% of max
-
-                            HRESULT hr = swapchain4->SetHDRMetaData(DXGI_HDR_METADATA_TYPE_HDR10,
-                                                                    sizeof(hdr10_metadata), &hdr10_metadata);
-                            if (SUCCEEDED(hr)) {
-                                // Store the metadata for display
-                                last_hdr_metadata = hdr10_metadata;
-                                dirty_last_metadata = hdr10_metadata;
-                                has_last_metadata = true;
-                                last_metadata_source = "Reset to Monitor Capabilities";
-                                ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f),
-                                                   "✓ HDR metadata reset to monitor capabilities");
-                            } else {
-                                ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f),
-                                                   "✗ Failed to reset HDR metadata: 0x%08lX",
-                                                   static_cast<unsigned long>(hr));
-                            }
-                        } else {
-                            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "✗ Failed to get monitor capabilities");
-                        }
-                    } else {
-                        ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "✗ IDXGIOutput6 not available");
-                    }
-                } else {
-                    ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "✗ Failed to get containing output");
-                }
+                ImGui::SetTooltip("Set HDR metadata to Rec. 2020 color primaries with standard luminance values");
             }
             ImGui::SameLine();
             ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "?");
@@ -479,12 +554,13 @@ void DrawSwapchainInfo() {
             }
 
             // Disable HDR metadata button
-            if (ImGui::Button("Disable HDR Metadata")) {
+            if (ImGui::Button("Clear HDR Metadata")) {
                 // Disable HDR metadata by setting it to NULL
                 HRESULT hr = swapchain4->SetHDRMetaData(DXGI_HDR_METADATA_TYPE_NONE, 0, nullptr);
                 if (SUCCEEDED(hr)) {
                     // Clear the stored metadata since it's disabled
                     has_last_metadata = false;
+                    reshade::set_config_value(nullptr, "ReShade_HDR_Metadata", "has_last_metadata", false);
                     last_metadata_source = "Disabled";
                     ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✓ HDR metadata disabled");
                 } else {
@@ -591,7 +667,23 @@ void DrawSwapchainInfo() {
                     last_hdr_metadata = hdr10_metadata;
                     has_last_metadata = true;
                     last_metadata_source = "Custom HDR Values";
-                    ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✓ All HDR values applied successfully");
+
+                    // Save HDR metadata to ReShade config
+                    reshade::set_config_value(nullptr, "ReShade_HDR_Metadata", "prim_red_x", hdr10_metadata.RedPrimary[0] / 65535.0);
+                    reshade::set_config_value(nullptr, "ReShade_HDR_Metadata", "prim_red_y", hdr10_metadata.RedPrimary[1] / 65535.0);
+                    reshade::set_config_value(nullptr, "ReShade_HDR_Metadata", "prim_green_x", hdr10_metadata.GreenPrimary[0] / 65535.0);
+                    reshade::set_config_value(nullptr, "ReShade_HDR_Metadata", "prim_green_y", hdr10_metadata.GreenPrimary[1] / 65535.0);
+                    reshade::set_config_value(nullptr, "ReShade_HDR_Metadata", "prim_blue_x", hdr10_metadata.BluePrimary[0] / 65535.0);
+                    reshade::set_config_value(nullptr, "ReShade_HDR_Metadata", "prim_blue_y", hdr10_metadata.BluePrimary[1] / 65535.0);
+                    reshade::set_config_value(nullptr, "ReShade_HDR_Metadata", "white_point_x", hdr10_metadata.WhitePoint[0] / 65535.0);
+                    reshade::set_config_value(nullptr, "ReShade_HDR_Metadata", "white_point_y", hdr10_metadata.WhitePoint[1] / 65535.0);
+                    reshade::set_config_value(nullptr, "ReShade_HDR_Metadata", "max_mdl", static_cast<int32_t>(hdr10_metadata.MaxMasteringLuminance));
+                    reshade::set_config_value(nullptr, "ReShade_HDR_Metadata", "min_mdl", hdr10_metadata.MinMasteringLuminance / 10000.0f);
+                    reshade::set_config_value(nullptr, "ReShade_HDR_Metadata", "max_cll", static_cast<int32_t>(hdr10_metadata.MaxContentLightLevel));
+                    reshade::set_config_value(nullptr, "ReShade_HDR_Metadata", "max_fall", static_cast<int32_t>(hdr10_metadata.MaxFrameAverageLightLevel));
+                    reshade::set_config_value(nullptr, "ReShade_HDR_Metadata", "has_last_metadata", true);
+
+                    ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✓ All HDR values applied and saved to config");
                 } else {
                     ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "✗ Failed to apply HDR values: 0x%08lX",
                                        static_cast<unsigned long>(hr));
@@ -676,7 +768,7 @@ void DrawSwapchainInfo() {
             ImGui::Text("HDR Metadata Support:");
             ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "  IDXGISwapChain4: Not available");
             ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "  SetHDRMetaData: Not supported");
-        }*/
+        }
     }
 }
 

@@ -205,33 +205,28 @@ bool InstallApiHooks() {
     // Hook GetFocus
     if (MH_CreateHook(GetFocus, GetFocus_Detour, (LPVOID *)&GetFocus_Original) != MH_OK) {
         LogError("Failed to create GetFocus hook");
-        return false;
     }
 
     // Hook GetForegroundWindow
     if (MH_CreateHook(GetForegroundWindow, GetForegroundWindow_Detour, (LPVOID *)&GetForegroundWindow_Original) !=
         MH_OK) {
         LogError("Failed to create GetForegroundWindow hook");
-        return false;
     }
 
     // Hook GetActiveWindow
     if (MH_CreateHook(GetActiveWindow, GetActiveWindow_Detour, (LPVOID *)&GetActiveWindow_Original) != MH_OK) {
         LogError("Failed to create GetActiveWindow hook");
-        return false;
     }
 
     // Hook GetGUIThreadInfo
     if (MH_CreateHook(GetGUIThreadInfo, GetGUIThreadInfo_Detour, (LPVOID *)&GetGUIThreadInfo_Original) != MH_OK) {
         LogError("Failed to create GetGUIThreadInfo hook");
-        return false;
     }
 
     // Hook SetThreadExecutionState
     if (MH_CreateHook(SetThreadExecutionState, SetThreadExecutionState_Detour,
                       (LPVOID *)&SetThreadExecutionState_Original) != MH_OK) {
         LogError("Failed to create SetThreadExecutionState hook");
-        return false;
     }
 
     /*
@@ -270,56 +265,46 @@ bool InstallApiHooks() {
     // Enable all hooks
     if (MH_EnableHook(MH_ALL_HOOKS) != MH_OK) {
         LogError("Failed to enable API hooks");
-        return false;
     }
 
     // Install XInput hooks
     if (!InstallXInputHooks()) {
         LogError("Failed to install XInput hooks");
-        return false;
     }
 
     // Install Windows.Gaming.Input hooks
     if (!InstallWindowsGamingInputHooks()) {
         LogError("Failed to install Windows.Gaming.Input hooks");
-        return false;
     }
 
     // Install LoadLibrary hooks
     if (!InstallLoadLibraryHooks()) {
         LogError("Failed to install LoadLibrary hooks");
-        return false;
     }
 
     // Install Windows message hooks
     if (!InstallWindowsMessageHooks()) {
         LogError("Failed to install Windows message hooks");
-        return false;
     }
-
 
     // Install sleep hooks
     if (!InstallSleepHooks()) {
         LogError("Failed to install sleep hooks");
-        return false;
     }
 
     // Install timeslowdown hooks
     if (!InstallTimeslowdownHooks()) {
         LogError("Failed to install timeslowdown hooks");
-        return false;
     }
 
     // Install process exit hooks
     if (!InstallProcessExitHooks()) {
         LogError("Failed to install process exit hooks");
-        return false;
     }
 
     // Install DXGI Present hooks
     if (!display_commanderhooks::dxgi::InstallDxgiPresentHooks()) {
         LogError("Failed to install DXGI Present hooks");
-        return false;
     }
 
     // NVAPI hooks will be installed when nvapi64.dll is loaded via LoadLibraryExW hook

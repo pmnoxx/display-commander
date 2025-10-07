@@ -13,7 +13,7 @@
 namespace display_commander::widgets::xinput_widget {
 
 // Global shared state
-std::shared_ptr<XInputSharedState> XInputWidget::g_shared_state = nullptr;
+std::shared_ptr<XInputSharedState> XInputWidget::g_shared_state = std::make_shared<XInputSharedState>();
 
 // Global widget instance
 std::unique_ptr<XInputWidget> g_xinput_widget = nullptr;
@@ -101,6 +101,20 @@ void XInputWidget::OnDraw() {
 
 void XInputWidget::DrawSettings() {
     if (ImGui::CollapsingHeader("Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
+        // Enable XInput hooks
+        bool enable_hooks = g_shared_state->enable_xinput_hooks.load();
+        if (ImGui::Checkbox("Enable XInput Hooks", &enable_hooks)) {
+            g_shared_state->enable_xinput_hooks.store(enable_hooks);
+            display_commanderhooks::InstallXInputHooks();
+            SaveSettings();
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Enable XInput API hooks for input processing and remapping");
+        }
+
+        ImGui::Spacing();
+
+
         // Swap A/B buttons
         bool swap_buttons = g_shared_state->swap_a_b_buttons.load();
         if (ImGui::Checkbox("Swap A/B Buttons", &swap_buttons)) {
@@ -767,6 +781,12 @@ std::string XInputWidget::GetControllerStatus(int controller_index) const {
 bool XInputWidget::IsButtonPressed(WORD buttons, WORD button) const { return (buttons & button) != 0; }
 
 void XInputWidget::LoadSettings() {
+    // Load enable XInput hooks setting
+    bool enable_hooks;
+    if (reshade::get_config_value(nullptr, "DisplayCommander.XInputWidget", "EnableXInputHooks", enable_hooks)) {
+        g_shared_state->enable_xinput_hooks.store(enable_hooks);
+    }
+
     // Load swap A/B buttons setting
     bool swap_buttons;
     if (reshade::get_config_value(nullptr, "DisplayCommander.XInputWidget", "SwapABButtons", swap_buttons)) {
@@ -811,6 +831,10 @@ void XInputWidget::LoadSettings() {
 }
 
 void XInputWidget::SaveSettings() {
+    // Save enable XInput hooks setting
+    reshade::set_config_value(nullptr, "DisplayCommander.XInputWidget", "EnableXInputHooks",
+                              g_shared_state->enable_xinput_hooks.load());
+
     // Save swap A/B buttons setting
     reshade::set_config_value(nullptr, "DisplayCommander.XInputWidget", "SwapABButtons",
                               g_shared_state->swap_a_b_buttons.load());

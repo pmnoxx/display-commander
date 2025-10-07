@@ -266,6 +266,13 @@ DWORD WINAPI XInputGetStateEx_Detour(DWORD dwUserIndex, XINPUT_STATE *pState) {
 }
 
 bool InstallXInputHooks() {
+    // Check if XInput hooks are enabled
+    auto shared_state = display_commander::widgets::xinput_widget::XInputWidget::GetSharedState();
+    if (shared_state && !shared_state->enable_xinput_hooks.load()) {
+        LogInfo("XInput hooks are disabled, skipping installation");
+        return true;
+    }
+
     // Initialize direct function pointers first
     InitializeXInputDirectFunctions();
 

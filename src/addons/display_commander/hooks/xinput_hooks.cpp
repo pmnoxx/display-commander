@@ -13,6 +13,7 @@ namespace display_commanderhooks {
 
 
 // XInput function pointers for direct calls
+XInputGetState_pfn XInputGetState_Direct = nullptr;
 XInputGetStateEx_pfn XInputGetStateEx_Direct = nullptr;
 XInputSetState_pfn XInputSetState_Direct = nullptr;
 XInputGetBatteryInformation_pfn XInputGetBatteryInformation_Direct = nullptr;
@@ -26,6 +27,9 @@ const std::array<const char*, 5> xinput_modules = {
     "xinput1_4.dll", "xinput1_3.dll", "xinput1_2.dll", "xinput1_1.dll", "xinput9_1_0.dll",
 };
 
+
+std::array<XInputGetStateEx_pfn, 5> original_xinput_get_state_ex_procs = {};
+std::array<XInputGetState_pfn, 5> original_xinput_get_state_procs = {};
 
 // Initialize XInput function pointers for direct calls
 static void InitializeXInputDirectFunctions() {
@@ -80,16 +84,26 @@ DWORD WINAPI XInputGetState_Detour(DWORD dwUserIndex, XINPUT_STATE *pState) {
     if (pState == nullptr) {
         return ERROR_INVALID_PARAMETER;
     }
+    if (XInputGetStateEx_Direct == nullptr || XInputGetState_Direct == nullptr) {
+        return ERROR_DEVICE_NOT_CONNECTED;
+    }
     LogInfo("XXX XInputGetState called for controller %lu", dwUserIndex);
 
     // Track hook call statistics
     g_hook_stats[HOOK_XInputGetState].increment_total();
+    static bool tried_get_state_ex = false;
+    static bool use_get_state_ex = false;
 
     // Call original function - prefer XInputGetStateEx_Original for Guide button support
-    DWORD result = XInputGetStateEx_Direct != nullptr ? XInputGetStateEx_Direct(dwUserIndex, pState) : ERROR_DEVICE_NOT_CONNECTED;
+    DWORD result = use_get_state_ex ? XInputGetStateEx_Direct(dwUserIndex, pState) : XInputGetState_Direct(dwUserIndex, pState);
 
     // Apply A/B button swapping if enabled
     if (result == ERROR_SUCCESS) {
+        if (!tried_get_state_ex) {
+            tried_get_state_ex = true;
+            use_get_state_ex = XInputGetStateEx_Direct(dwUserIndex, pState) == ERROR_SUCCESS;
+        }
+
         auto shared_state = display_commander::widgets::xinput_widget::XInputWidget::GetSharedState();
 
         // Process chord detection first to check for input suppression
@@ -299,9 +313,11 @@ bool InstallXInputHooks() {
         if (xinput_get_state_proc != nullptr) {
             LogInfo("Found XInputGetState in %s at: 0x%p", module_name, xinput_get_state_proc);
 
-            LPVOID *original_fn_ptr = nullptr;
-            if (MH_CreateHook(xinput_get_state_proc, XInputGetState_Detour, (LPVOID *)&original_fn_ptr) ==
-                MH_OK) {
+            if (MH_CreateHook(xinput_get_state_proc, XInputGetState_Detour, reinterpret_cast<LPVOID *>(&original_xinput_get_state_procs[idx])) ==
+            MH_OK) {
+                if (XInputGetState_Direct == nullptr) {
+                    XInputGetState_Direct = original_xinput_get_state_procs[idx];
+                }
                 if (MH_EnableHook(xinput_get_state_proc) == MH_OK) {
                     LogInfo("Successfully hooked XInputGetState in %s", module_name);
                 } else {
@@ -316,12 +332,11 @@ bool InstallXInputHooks() {
             LogInfo("Found XInputGetStateEx (ordinal 100) in %s at: 0x%p", module_name,
                     xinput_get_state_ex_proc);
 
-            LPVOID *original_xinput_get_state_ex_proc = nullptr;
             if (MH_CreateHook(xinput_get_state_ex_proc, XInputGetStateEx_Detour,
-                                (LPVOID *)&original_xinput_get_state_ex_proc) == MH_OK) {
+                                reinterpret_cast<LPVOID *>(&original_xinput_get_state_ex_procs[idx])) == MH_OK) {
                 if (MH_EnableHook(xinput_get_state_ex_proc) == MH_OK) {
                     if (XInputGetStateEx_Direct == nullptr) {
-                        XInputGetStateEx_Direct = (XInputGetStateEx_pfn)original_xinput_get_state_ex_proc;
+                        XInputGetStateEx_Direct = original_xinput_get_state_ex_procs[idx];
                     }
                     LogInfo("Successfully hooked XInputGetStateEx (ordinal 100) in %s", module_name);
                 } else {

@@ -345,7 +345,7 @@ void DrawSwapchainInfo() {
         } else {
             ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "Failed to get containing output");
         }
-/*
+
         ImGui::Spacing();
 
         // Static variables to track last set HDR metadata values
@@ -676,7 +676,7 @@ void DrawSwapchainInfo() {
             ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "  IDXGISwapChain4: Not available");
             ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "  SetHDRMetaData: Not supported");
         }
-    }*/
+    }
 }
 
 // Helper functions for string conversion

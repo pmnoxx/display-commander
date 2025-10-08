@@ -1,4 +1,5 @@
 #include "reflex_provider.hpp"
+#include "../utils.hpp"
 
 ReflexProvider::ReflexProvider() = default;
 ReflexProvider::~ReflexProvider() = default;
@@ -14,6 +15,11 @@ uint64_t ReflexProvider::IncreaseFrameId() { return reflex_manager_.IncreaseFram
 bool ReflexProvider::SetMarker(LatencyMarkerType marker) {
     if (!IsInitialized())
         return false;
+    static bool first_call = true;
+    if (first_call) {
+        first_call = false;
+        LogInfo("ReflexProvider::SetMarker: First call");
+    }
 
     NV_LATENCY_MARKER_TYPE nv_marker = ConvertMarkerType(marker);
     return reflex_manager_.SetMarker(nv_marker);

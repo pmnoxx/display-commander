@@ -197,10 +197,13 @@ void DrawSwapchainEventCounters() {
             "SWAPCHAIN_EVENT_DXGI_CREATEFACTORY (71)", "SWAPCHAIN_EVENT_DXGI_CREATEFACTORY1 (72)",
             "SWAPCHAIN_EVENT_DXGI_SETHDRMETADATA (73)", "SWAPCHAIN_EVENT_DX9_PRESENT (74)",
             "SWAPCHAIN_EVENT_NVAPI_GET_HDR_CAPABILITIES (75)",
+            // NVAPI Reflex hooks
+            "SWAPCHAIN_EVENT_NVAPI_D3D_SET_LATENCY_MARKER (76)", "SWAPCHAIN_EVENT_NVAPI_D3D_SET_SLEEP_MODE (77)",
+            "SWAPCHAIN_EVENT_NVAPI_D3D_SLEEP (78)", "SWAPCHAIN_EVENT_NVAPI_D3D_GET_LATENCY (79)",
             // Streamline hooks
-            "SWAPCHAIN_EVENT_STREAMLINE_SL_INIT (76)", "SWAPCHAIN_EVENT_STREAMLINE_SL_IS_FEATURE_SUPPORTED (77)",
-            "SWAPCHAIN_EVENT_STREAMLINE_SL_GET_NATIVE_INTERFACE (78)",
-            "SWAPCHAIN_EVENT_STREAMLINE_SL_UPGRADE_INTERFACE (79)"};
+            "SWAPCHAIN_EVENT_STREAMLINE_SL_INIT (80)", "SWAPCHAIN_EVENT_STREAMLINE_SL_IS_FEATURE_SUPPORTED (81)",
+            "SWAPCHAIN_EVENT_STREAMLINE_SL_GET_NATIVE_INTERFACE (82)",
+            "SWAPCHAIN_EVENT_STREAMLINE_SL_UPGRADE_INTERFACE (83)"};
 
         uint32_t total_events = 0;
 
@@ -212,7 +215,7 @@ void DrawSwapchainEventCounters() {
             ImVec4 color;
         };
 
-        static const std::array<EventGroup, 10> event_groups = {{{   .name="ReShade Events (0-37)", .start_idx=0, .end_idx=37, .color=ImVec4(0.8f, 0.8f, 1.0f, 1.0f)},
+        static const std::array<EventGroup, 11> event_groups = {{{   .name="ReShade Events (0-37)", .start_idx=0, .end_idx=37, .color=ImVec4(0.8f, 0.8f, 1.0f, 1.0f)},
                                             {   .name="DXGI Core Methods (38-47)", .start_idx=38, .end_idx=47, .color=ImVec4(0.8f, 1.0f, 0.8f, 1.0f)},
                                             {   .name="DXGI SwapChain1 Methods (48-58)", .start_idx=48, .end_idx=58, .color=ImVec4(1.0f, 0.8f, 0.8f, 1.0f)},
                                             {   .name="DXGI SwapChain2 Methods (59-65)", .start_idx=59, .end_idx=65, .color=ImVec4(1.0f, 1.0f, 0.8f, 1.0f)},
@@ -220,8 +223,9 @@ void DrawSwapchainEventCounters() {
                                             {   .name="DXGI Factory Methods (70-72)", .start_idx=70, .end_idx=72, .color=ImVec4(1.0f, 0.8f, 1.0f, 1.0f)},
                                             {   .name="DXGI SwapChain4 Methods (73)", .start_idx=73, .end_idx=73, .color=ImVec4(0.8f, 0.8f, 0.8f, 1.0f)},
                                             {   .name="DirectX 9 Methods (74)", .start_idx=74, .end_idx=74, .color=ImVec4(1.0f, 0.6f, 0.6f, 1.0f)},
-                                            {   .name="NVAPI Methods (75)", .start_idx=75, .end_idx=75, .color=ImVec4(0.6f, 1.0f, 0.6f, 1.0f)},
-                                            {   .name="Streamline Methods (76-79)", .start_idx=76, .end_idx=79, .color=ImVec4(0.6f, 0.8f, 1.0f, 1.0f)}}};
+                                            {   .name="NVAPI HDR Methods (75)", .start_idx=75, .end_idx=75, .color=ImVec4(0.6f, 1.0f, 0.6f, 1.0f)},
+                                            {   .name="NVAPI Reflex Methods (76-79)", .start_idx=76, .end_idx=79, .color=ImVec4(0.6f, 1.0f, 0.8f, 1.0f)},
+                                            {   .name="Streamline Methods (80-83)", .start_idx=80, .end_idx=83, .color=ImVec4(0.6f, 0.8f, 1.0f, 1.0f)}}};
 
         for (const auto& group : event_groups) {
             if (ImGui::CollapsingHeader(group.name, ImGuiTreeNodeFlags_DefaultOpen)) {

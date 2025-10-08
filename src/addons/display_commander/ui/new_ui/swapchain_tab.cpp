@@ -146,6 +146,8 @@ void DrawSwapchainTab() {
     // Draw all swapchain-related sections
     DrawSwapchainEventCounters();
     ImGui::Spacing();
+    DrawDLSSGSummary();
+    ImGui::Spacing();
     DrawNGXParameters();
     ImGui::Spacing();
     DrawSwapchainInfo();
@@ -563,6 +565,125 @@ void DrawNGXParameters() {
 
         if (!all_params.empty()) {
             ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✓ NGX parameter hooks are working correctly");
+        }
+    }
+}
+
+void DrawDLSSGSummary() {
+    if (ImGui::CollapsingHeader("DLSS/DLSS-G Summary", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "DLSS/DLSS-G Status Overview");
+        ImGui::Separator();
+
+        DLSSGSummary summary = GetDLSSGSummary();
+
+        // Create a two-column layout for the summary
+        ImGui::Columns(2, "DLSSGSummaryColumns", false);
+        ImGui::SetColumnWidth(0, 200); // Label column
+        ImGui::SetColumnWidth(1, 300); // Value column
+
+        // Status indicators
+        ImGui::Text("DLSS Active:");
+        ImGui::NextColumn();
+        ImGui::TextColored(summary.dlss_active ? ImVec4(0.0f, 1.0f, 0.0f, 1.0f) : ImVec4(1.0f, 0.0f, 0.0f, 1.0f),
+                          "%s", summary.dlss_active ? "Yes" : "No");
+        ImGui::NextColumn();
+
+        ImGui::Text("DLSS-G Active:");
+        ImGui::NextColumn();
+        ImGui::TextColored(summary.dlss_g_active ? ImVec4(0.0f, 1.0f, 0.0f, 1.0f) : ImVec4(1.0f, 0.0f, 0.0f, 1.0f),
+                          "%s", summary.dlss_g_active ? "Yes" : "No");
+        ImGui::NextColumn();
+
+        ImGui::Separator();
+
+        // Resolution information
+        ImGui::Text("Internal Resolution:");
+        ImGui::NextColumn();
+        ImGui::Text("%s", summary.internal_resolution.c_str());
+        ImGui::NextColumn();
+
+        ImGui::Text("Output Resolution:");
+        ImGui::NextColumn();
+        ImGui::Text("%s", summary.output_resolution.c_str());
+        ImGui::NextColumn();
+
+        ImGui::Text("Scaling Ratio:");
+        ImGui::NextColumn();
+        ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "%s", summary.scaling_ratio.c_str());
+        ImGui::NextColumn();
+
+        ImGui::Text("Quality Preset:");
+        ImGui::NextColumn();
+        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "%s", summary.quality_preset.c_str());
+        ImGui::NextColumn();
+
+        ImGui::Separator();
+
+        // Camera and rendering settings
+        ImGui::Text("Aspect Ratio:");
+        ImGui::NextColumn();
+        ImGui::Text("%s", summary.aspect_ratio.c_str());
+        ImGui::NextColumn();
+
+        ImGui::Text("FOV:");
+        ImGui::NextColumn();
+        ImGui::Text("%s", summary.fov.c_str());
+        ImGui::NextColumn();
+
+        ImGui::Text("Jitter Offset:");
+        ImGui::NextColumn();
+        ImGui::Text("%s", summary.jitter_offset.c_str());
+        ImGui::NextColumn();
+
+        ImGui::Text("Exposure:");
+        ImGui::NextColumn();
+        ImGui::Text("%s", summary.exposure.c_str());
+        ImGui::NextColumn();
+
+        ImGui::Text("Sharpness:");
+        ImGui::NextColumn();
+        ImGui::Text("%s", summary.sharpness.c_str());
+        ImGui::NextColumn();
+
+        ImGui::Separator();
+
+        // Technical settings
+        ImGui::Text("Depth Inverted:");
+        ImGui::NextColumn();
+        ImGui::TextColored(summary.depth_inverted == "Yes" ? ImVec4(1.0f, 0.5f, 0.0f, 1.0f) : ImVec4(0.5f, 1.0f, 0.5f, 1.0f),
+                          "%s", summary.depth_inverted.c_str());
+        ImGui::NextColumn();
+
+        ImGui::Text("HDR Enabled:");
+        ImGui::NextColumn();
+        ImGui::TextColored(summary.hdr_enabled == "Yes" ? ImVec4(0.0f, 1.0f, 0.0f, 1.0f) : ImVec4(0.8f, 0.8f, 0.8f, 1.0f),
+                          "%s", summary.hdr_enabled.c_str());
+        ImGui::NextColumn();
+
+        ImGui::Text("Motion Vectors:");
+        ImGui::NextColumn();
+        ImGui::TextColored(summary.motion_vectors_included == "Yes" ? ImVec4(0.0f, 1.0f, 0.0f, 1.0f) : ImVec4(1.0f, 0.0f, 0.0f, 1.0f),
+                          "%s", summary.motion_vectors_included.c_str());
+        ImGui::NextColumn();
+
+        ImGui::Text("Frame Time Delta:");
+        ImGui::NextColumn();
+        ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "%s", summary.frame_time_delta.c_str());
+        ImGui::NextColumn();
+
+        ImGui::Text("Tonemapper Type:");
+        ImGui::NextColumn();
+        ImGui::Text("%s", summary.tonemapper_type.c_str());
+        ImGui::NextColumn();
+
+        ImGui::Columns(1); // Reset columns
+
+        // Add some helpful information
+        ImGui::Spacing();
+        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Note: Values update in real-time as the game calls NGX functions");
+
+        if (summary.dlss_g_active) {
+            ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "DLSS Frame Generation is currently active!");
         }
     }
 }

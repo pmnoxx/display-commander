@@ -30,6 +30,9 @@ void DrawSwapchainEventCounters();
 // Draw NGX parameters section
 void DrawNGXParameters();
 
+// Draw DLSS/DLSS-G summary section
+void DrawDLSSGSummary();
+
 // Helper functions for DXGI string conversion
 const char* GetDXGIFormatString(DXGI_FORMAT format);
 const char* GetDXGIScalingString(DXGI_SCALING scaling);

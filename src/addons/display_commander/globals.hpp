@@ -518,6 +518,29 @@ extern AtomicParameterMap<int> g_ngx_int_parameters;          // NGX int paramet
 extern AtomicParameterMap<unsigned int> g_ngx_uint_parameters; // NGX unsigned int parameters
 extern AtomicParameterMap<unsigned long long> g_ngx_ull_parameters; // NGX unsigned long long parameters
 
+// DLSS/DLSS-G Summary structure
+struct DLSSGSummary {
+    bool dlss_active = false;
+    bool dlss_g_active = false;
+    std::string internal_resolution = "N/A";
+    std::string output_resolution = "N/A";
+    std::string scaling_ratio = "N/A";
+    std::string quality_preset = "N/A";
+    std::string aspect_ratio = "N/A";
+    std::string fov = "N/A";
+    std::string jitter_offset = "N/A";
+    std::string exposure = "N/A";
+    std::string depth_inverted = "N/A";
+    std::string hdr_enabled = "N/A";
+    std::string motion_vectors_included = "N/A";
+    std::string frame_time_delta = "N/A";
+    std::string sharpness = "N/A";
+    std::string tonemapper_type = "N/A";
+};
+
+// Function to get DLSS/DLSS-G summary from NGX parameters
+DLSSGSummary GetDLSSGSummary();
+
 // NVAPI SetSleepMode tracking
 extern std::atomic<std::shared_ptr<NV_SET_SLEEP_MODE_PARAMS>> g_last_nvapi_sleep_mode_params;  // Last SetSleepMode parameters
 

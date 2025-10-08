@@ -92,7 +92,9 @@ void AutoApplyTrigger() {
     if (!auto_apply_hdr_metadata) {
         return;
     }
-
+    if (g_last_swapchain_api.load() != static_cast<int>(reshade::api::device_api::d3d12) && g_last_swapchain_api.load() != static_cast<int>(reshade::api::device_api::d3d11) && g_last_swapchain_api.load() != static_cast<int>(reshade::api::device_api::d3d10)) {
+        return;
+    }
     static bool first_apply = true;
 
     // Get the current swapchain
@@ -747,6 +749,7 @@ void DrawDxgiCompositionInfo() {
 }
 
 void DrawSwapchainInfo() {
+
     if (ImGui::CollapsingHeader("Swapchain Information", ImGuiTreeNodeFlags_DefaultOpen)) {
         // Get the current swapchain from global variable
         void* swapchain_ptr = g_last_swapchain_ptr.load();

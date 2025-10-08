@@ -6,6 +6,7 @@
 #include "settings/experimental_tab_settings.hpp"
 #include "settings/main_tab_settings.hpp"
 #include "utils.hpp"
+#include "../../../external/nvapi/nvapi.h"
 
 #include <d3d11.h>
 #include <reshade.hpp>
@@ -262,6 +263,9 @@ std::atomic<bool> s_enable_reflex_logging{false}; // Disabled by default
 // DLLS-G (DLSS Frame Generation) status
 std::atomic<bool> g_dlls_g_loaded{false};
 std::atomic<std::shared_ptr<const std::string>> g_dlls_g_version{std::make_shared<const std::string>("Unknown")};
+
+// NVAPI SetSleepMode tracking
+std::atomic<std::shared_ptr<NV_SET_SLEEP_MODE_PARAMS>> g_last_nvapi_sleep_mode_params{nullptr};
 
 
 // Experimental tab settings global instance

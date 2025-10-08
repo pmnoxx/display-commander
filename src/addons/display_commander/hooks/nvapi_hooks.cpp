@@ -121,6 +121,12 @@ NvAPI_Status __cdecl NvAPI_D3D_SetSleepMode_Detour(IUnknown *pDev, NV_SET_SLEEP_
     g_swapchain_event_counters[SWAPCHAIN_EVENT_NVAPI_D3D_SET_SLEEP_MODE].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
+    // Store the parameters for UI display
+    if (pSetSleepModeParams != nullptr) {
+        auto params = std::make_shared<NV_SET_SLEEP_MODE_PARAMS>(*pSetSleepModeParams);
+        g_last_nvapi_sleep_mode_params.store(params);
+    }
+
     // Log the call (first few times only)
     static int log_count = 0;
     if (log_count < 3) {

@@ -19,6 +19,9 @@
 #include <thread>
 #include <vector>
 
+// NVAPI types
+#include "../../../external/nvapi/nvapi.h"
+
 // Constants
 #define ImTextureID ImU64
 #define DEBUG_LEVEL_0
@@ -444,4 +447,7 @@ extern std::atomic<bool> s_enable_reflex_logging;  // Enable Reflex logging
 // DLLS-G (DLSS Frame Generation) status
 extern std::atomic<bool> g_dlls_g_loaded;                                 // DLLS-G loaded status
 extern std::atomic<std::shared_ptr<const std::string>> g_dlls_g_version;  // DLLS-G version string
+
+// NVAPI SetSleepMode tracking
+extern std::atomic<std::shared_ptr<NV_SET_SLEEP_MODE_PARAMS>> g_last_nvapi_sleep_mode_params;  // Last SetSleepMode parameters
 

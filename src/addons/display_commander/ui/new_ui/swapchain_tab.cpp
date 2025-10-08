@@ -276,6 +276,30 @@ void DrawSwapchainEventCounters() {
         }
     }
 
+    // NVAPI SetSleepMode Values Section
+    if (ImGui::CollapsingHeader("NVAPI SetSleepMode Values", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Last NVAPI SetSleepMode Parameters");
+        ImGui::Separator();
+
+        auto params = g_last_nvapi_sleep_mode_params.load();
+        if (params) {
+            ImGui::Text("Low Latency Mode: %s", params->bLowLatencyMode ? "Enabled" : "Disabled");
+            ImGui::Text("Low Latency Boost: %s", params->bLowLatencyBoost ? "Enabled" : "Disabled");
+            ImGui::Text("Use Markers to Optimize: %s", params->bUseMarkersToOptimize ? "Enabled" : "Disabled");
+            ImGui::Text("Minimum Interval: %u μs", params->minimumIntervalUs);
+
+            // Calculate FPS from interval
+            if (params->minimumIntervalUs > 0) {
+                float fps = 1000000.0f / params->minimumIntervalUs;
+                ImGui::Text("Target FPS: %.1f", fps);
+            } else {
+                ImGui::Text("Target FPS: Unlimited");
+            }
+        } else {
+            ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "No NVAPI SetSleepMode calls detected yet");
+        }
+    }
+
     // Power Saving Settings Section
     if (ImGui::CollapsingHeader("Power Saving Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
         ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "GPU Power Saving Controls");

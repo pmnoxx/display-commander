@@ -149,6 +149,11 @@ void OverrideReShadeSettings() {
 
 // Version compatibility check function
 bool CheckReShadeVersionCompatibility() {
+    static bool first_time = true;
+    if (!first_time) {
+        return false;
+    }
+    first_time = false;
     // This function will be called after registration fails
     // We'll display a helpful error message to the user
     LogError("ReShade addon registration failed - API version not supported");

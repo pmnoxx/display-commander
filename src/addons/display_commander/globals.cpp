@@ -275,36 +275,30 @@ DeveloperTabSettings g_developerTabSettings;
 MainTabSettings g_mainTabSettings;
 } // namespace settings
 
-// NGX Parameter Storage global instances
-AtomicParameterMap<float> g_ngx_float_parameters;
-AtomicParameterMap<double> g_ngx_double_parameters;
-AtomicParameterMap<int> g_ngx_int_parameters;
-AtomicParameterMap<unsigned int> g_ngx_uint_parameters;
-AtomicParameterMap<unsigned long long> g_ngx_ull_parameters;
+// NGX Parameter Storage global instance
+UnifiedParameterMap g_ngx_parameters;
 
 // Get DLSS/DLSS-G summary from NGX parameters
 DLSSGSummary GetDLSSGSummary() {
     DLSSGSummary summary;
 
     // Check if any NGX parameters exist (indicates DLSS is active)
-    if (g_ngx_float_parameters.size() > 0 || g_ngx_double_parameters.size() > 0 ||
-        g_ngx_int_parameters.size() > 0 || g_ngx_uint_parameters.size() > 0 ||
-        g_ngx_ull_parameters.size() > 0) {
+    if (g_ngx_parameters.size() > 0) {
         summary.dlss_active = true;
     }
 
     // Check DLSS-G activity
     unsigned int is_recording;
-    if (g_ngx_uint_parameters.get("DLSSG.IsRecording", is_recording)) {
+    if (g_ngx_parameters.get_as_uint("DLSSG.IsRecording", is_recording)) {
         summary.dlss_g_active = (is_recording == 1);
     }
 
     // Get resolutions - using correct parameter names
     unsigned int internal_width, internal_height, output_width, output_height;
-    bool has_internal_width = g_ngx_uint_parameters.get("DLSS.Render.Subrect.Dimensions.Width", internal_width);
-    bool has_internal_height = g_ngx_uint_parameters.get("DLSS.Render.Subrect.Dimensions.Height", internal_height);
-    bool has_output_width = g_ngx_uint_parameters.get("OutWidth", output_width);
-    bool has_output_height = g_ngx_uint_parameters.get("OutHeight", output_height);
+    bool has_internal_width = g_ngx_parameters.get_as_uint("DLSS.Render.Subrect.Dimensions.Width", internal_width);
+    bool has_internal_height = g_ngx_parameters.get_as_uint("DLSS.Render.Subrect.Dimensions.Height", internal_height);
+    bool has_output_width = g_ngx_parameters.get_as_uint("OutWidth", output_width);
+    bool has_output_height = g_ngx_parameters.get_as_uint("OutHeight", output_height);
 
     if (has_internal_width && has_internal_height) {
         summary.internal_resolution = std::to_string(internal_width) + "x" + std::to_string(internal_height);
@@ -324,30 +318,30 @@ DLSSGSummary GetDLSSGSummary() {
 
     // Get quality preset (try to infer from available presets)
     unsigned int dummy_uint;
-    if (g_ngx_uint_parameters.get("DLSS.Hint.Render.Preset.Quality", dummy_uint)) {
+    if (g_ngx_parameters.get_as_uint("DLSS.Hint.Render.Preset.Quality", dummy_uint)) {
         summary.quality_preset = "Quality";
-    } else if (g_ngx_uint_parameters.get("DLSS.Hint.Render.Preset.Balanced", dummy_uint)) {
+    } else if (g_ngx_parameters.get_as_uint("DLSS.Hint.Render.Preset.Balanced", dummy_uint)) {
         summary.quality_preset = "Balanced";
-    } else if (g_ngx_uint_parameters.get("DLSS.Hint.Render.Preset.Performance", dummy_uint)) {
+    } else if (g_ngx_parameters.get_as_uint("DLSS.Hint.Render.Preset.Performance", dummy_uint)) {
         summary.quality_preset = "Performance";
-    } else if (g_ngx_uint_parameters.get("DLSS.Hint.Render.Preset.UltraPerformance", dummy_uint)) {
+    } else if (g_ngx_parameters.get_as_uint("DLSS.Hint.Render.Preset.UltraPerformance", dummy_uint)) {
         summary.quality_preset = "Ultra Performance";
-    } else if (g_ngx_uint_parameters.get("DLSS.Hint.Render.Preset.UltraQuality", dummy_uint)) {
+    } else if (g_ngx_parameters.get_as_uint("DLSS.Hint.Render.Preset.UltraQuality", dummy_uint)) {
         summary.quality_preset = "Ultra Quality";
-    } else if (g_ngx_uint_parameters.get("DLSS.Hint.Render.Preset.DLAA", dummy_uint)) {
+    } else if (g_ngx_parameters.get_as_uint("DLSS.Hint.Render.Preset.DLAA", dummy_uint)) {
         summary.quality_preset = "DLAA";
     }
 
     // Get camera information
     float aspect_ratio;
-    if (g_ngx_float_parameters.get("DLSSG.CameraAspectRatio", aspect_ratio)) {
+    if (g_ngx_parameters.get_as_float("DLSSG.CameraAspectRatio", aspect_ratio)) {
         char buffer[32];
         snprintf(buffer, sizeof(buffer), "%.4f", aspect_ratio);
         summary.aspect_ratio = std::string(buffer);
     }
 
     float fov;
-    if (g_ngx_float_parameters.get("DLSSG.CameraFOV", fov)) {
+    if (g_ngx_parameters.get_as_float("DLSSG.CameraFOV", fov)) {
         char buffer[32];
         snprintf(buffer, sizeof(buffer), "%.4f", fov);
         summary.fov = std::string(buffer);
@@ -355,13 +349,13 @@ DLSSGSummary GetDLSSGSummary() {
 
     // Get jitter offset
     float jitter_x, jitter_y;
-    bool has_jitter_x = g_ngx_float_parameters.get("DLSSG.JitterOffsetX", jitter_x);
-    bool has_jitter_y = g_ngx_float_parameters.get("DLSSG.JitterOffsetY", jitter_y);
+    bool has_jitter_x = g_ngx_parameters.get_as_float("DLSSG.JitterOffsetX", jitter_x);
+    bool has_jitter_y = g_ngx_parameters.get_as_float("DLSSG.JitterOffsetY", jitter_y);
     if (!has_jitter_x) {
-        has_jitter_x = g_ngx_float_parameters.get("Jitter.Offset.X", jitter_x);
+        has_jitter_x = g_ngx_parameters.get_as_float("Jitter.Offset.X", jitter_x);
     }
     if (!has_jitter_y) {
-        has_jitter_y = g_ngx_float_parameters.get("Jitter.Offset.Y", jitter_y);
+        has_jitter_y = g_ngx_parameters.get_as_float("Jitter.Offset.Y", jitter_y);
     }
     if (has_jitter_x && has_jitter_y) {
         char buffer[64];
@@ -371,8 +365,8 @@ DLSSGSummary GetDLSSGSummary() {
 
     // Get exposure information
     float pre_exposure, exposure_scale;
-    bool has_pre_exposure = g_ngx_float_parameters.get("DLSS.Pre.Exposure", pre_exposure);
-    bool has_exposure_scale = g_ngx_float_parameters.get("DLSS.Exposure.Scale", exposure_scale);
+    bool has_pre_exposure = g_ngx_parameters.get_as_float("DLSS.Pre.Exposure", pre_exposure);
+    bool has_exposure_scale = g_ngx_parameters.get_as_float("DLSS.Exposure.Scale", exposure_scale);
     if (has_pre_exposure && has_exposure_scale) {
         char buffer[64];
         snprintf(buffer, sizeof(buffer), "Pre: %.2f, Scale: %.2f", pre_exposure, exposure_scale);
@@ -381,25 +375,25 @@ DLSSGSummary GetDLSSGSummary() {
 
     // Get depth inversion status
     int depth_inverted;
-    if (g_ngx_int_parameters.get("DLSSG.DepthInverted", depth_inverted)) {
+    if (g_ngx_parameters.get_as_int("DLSSG.DepthInverted", depth_inverted)) {
         summary.depth_inverted = (depth_inverted == 1) ? "Yes" : "No";
     }
 
     // Get HDR status
     int hdr_enabled;
-    if (g_ngx_int_parameters.get("DLSSG.ColorBuffersHDR", hdr_enabled)) {
+    if (g_ngx_parameters.get_as_int("DLSSG.ColorBuffersHDR", hdr_enabled)) {
         summary.hdr_enabled = (hdr_enabled == 1) ? "Yes" : "No";
     }
 
     // Get motion vectors status
     int motion_included;
-    if (g_ngx_int_parameters.get("DLSSG.CameraMotionIncluded", motion_included)) {
+    if (g_ngx_parameters.get_as_int("DLSSG.CameraMotionIncluded", motion_included)) {
         summary.motion_vectors_included = (motion_included == 1) ? "Yes" : "No";
     }
 
     // Get frame time delta
     float frame_time;
-    if (g_ngx_float_parameters.get("FrameTimeDeltaInMsec", frame_time)) {
+    if (g_ngx_parameters.get_as_float("FrameTimeDeltaInMsec", frame_time)) {
         char buffer[32];
         snprintf(buffer, sizeof(buffer), "%.2f ms", frame_time);
         summary.frame_time_delta = std::string(buffer);
@@ -407,7 +401,7 @@ DLSSGSummary GetDLSSGSummary() {
 
     // Get sharpness
     float sharpness;
-    if (g_ngx_float_parameters.get("Sharpness", sharpness)) {
+    if (g_ngx_parameters.get_as_float("Sharpness", sharpness)) {
         char buffer[32];
         snprintf(buffer, sizeof(buffer), "%.3f", sharpness);
         summary.sharpness = std::string(buffer);
@@ -415,17 +409,17 @@ DLSSGSummary GetDLSSGSummary() {
 
     // Get tonemapper type
     unsigned int tonemapper;
-    if (g_ngx_uint_parameters.get("TonemapperType", tonemapper)) {
+    if (g_ngx_parameters.get_as_uint("TonemapperType", tonemapper)) {
         summary.tonemapper_type = std::to_string(tonemapper);
     }
 
     // Get DLSS-G frame generation mode
     int enable_interp;
-    if (g_ngx_int_parameters.get("DLSSG.EnableInterp", enable_interp)) {
+    if (g_ngx_parameters.get_as_int("DLSSG.EnableInterp", enable_interp)) {
         if (enable_interp == 1) {
             // DLSS-G is enabled, check MultiFrameCount for mode
             unsigned int multi_frame_count;
-            if (g_ngx_uint_parameters.get("DLSSG.MultiFrameCount", multi_frame_count)) {
+            if (g_ngx_parameters.get_as_uint("DLSSG.MultiFrameCount", multi_frame_count)) {
                 if (multi_frame_count == 1) {
                     summary.fg_mode = "2x";
                 } else if (multi_frame_count == 2) {

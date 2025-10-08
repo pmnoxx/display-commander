@@ -401,71 +401,61 @@ void DrawNGXParameters() {
 
         std::vector<ParameterEntry> all_params;
 
-        // Add float parameters
-        auto float_params = g_ngx_float_parameters.get_all();
-        if (float_params) {
-            for (const auto& [key, value] : *float_params) {
-                char buffer[32];
-                snprintf(buffer, sizeof(buffer), "%.6f", value);
-                all_params.push_back({
-                    key,
-                    std::string(buffer),
-                    "float",
-                    ImVec4(0.0f, 1.0f, 1.0f, 1.0f) // Cyan
-                });
-            }
-        }
+        // Add all parameters from unified storage
+        auto all_params_map = g_ngx_parameters.get_all();
+        if (all_params_map) {
+            for (const auto& [key, value] : *all_params_map) {
+                std::string value_str;
+                std::string type_str;
+                ImVec4 color;
 
-        // Add double parameters
-        auto double_params = g_ngx_double_parameters.get_all();
-        if (double_params) {
-            for (const auto& [key, value] : *double_params) {
-                char buffer[32];
-                snprintf(buffer, sizeof(buffer), "%.6f", value);
-                all_params.push_back({
-                    key,
-                    std::string(buffer),
-                    "double",
-                    ImVec4(0.0f, 1.0f, 0.8f, 1.0f) // Light cyan
-                });
-            }
-        }
+                switch (value.type) {
+                    case ParameterValue::FLOAT: {
+                        char buffer[32];
+                        snprintf(buffer, sizeof(buffer), "%.6f", value.get_as_float());
+                        value_str = std::string(buffer);
+                        type_str = "float";
+                        color = ImVec4(0.0f, 1.0f, 1.0f, 1.0f); // Cyan
+                        break;
+                    }
+                    case ParameterValue::DOUBLE: {
+                        char buffer[32];
+                        snprintf(buffer, sizeof(buffer), "%.6f", value.get_as_double());
+                        value_str = std::string(buffer);
+                        type_str = "double";
+                        color = ImVec4(0.0f, 1.0f, 0.8f, 1.0f); // Light cyan
+                        break;
+                    }
+                    case ParameterValue::INT: {
+                        value_str = std::to_string(value.get_as_int());
+                        type_str = "int";
+                        color = ImVec4(1.0f, 1.0f, 0.0f, 1.0f); // Yellow
+                        break;
+                    }
+                    case ParameterValue::UINT: {
+                        value_str = std::to_string(value.get_as_uint());
+                        type_str = "uint";
+                        color = ImVec4(1.0f, 0.8f, 0.0f, 1.0f); // Orange
+                        break;
+                    }
+                    case ParameterValue::ULL: {
+                        value_str = std::to_string(value.get_as_ull());
+                        type_str = "ull";
+                        color = ImVec4(1.0f, 0.6f, 0.0f, 1.0f); // Dark orange
+                        break;
+                    }
+                    default:
+                        value_str = "unknown";
+                        type_str = "unknown";
+                        color = ImVec4(0.5f, 0.5f, 0.5f, 1.0f); // Gray
+                        break;
+                }
 
-        // Add int parameters
-        auto int_params = g_ngx_int_parameters.get_all();
-        if (int_params) {
-            for (const auto& [key, value] : *int_params) {
                 all_params.push_back({
                     key,
-                    std::to_string(value),
-                    "int",
-                    ImVec4(1.0f, 1.0f, 0.0f, 1.0f) // Yellow
-                });
-            }
-        }
-
-        // Add unsigned int parameters
-        auto uint_params = g_ngx_uint_parameters.get_all();
-        if (uint_params) {
-            for (const auto& [key, value] : *uint_params) {
-                all_params.push_back({
-                    key,
-                    std::to_string(value),
-                    "uint",
-                    ImVec4(1.0f, 0.8f, 0.0f, 1.0f) // Orange
-                });
-            }
-        }
-
-        // Add unsigned long long parameters
-        auto ull_params = g_ngx_ull_parameters.get_all();
-        if (ull_params) {
-            for (const auto& [key, value] : *ull_params) {
-                all_params.push_back({
-                    key,
-                    std::to_string(value),
-                    "ull",
-                    ImVec4(1.0f, 0.6f, 0.0f, 1.0f) // Dark orange
+                    value_str,
+                    type_str,
+                    color
                 });
             }
         }
@@ -578,8 +568,8 @@ void DrawDLSSGSummary() {
 
         // Create a two-column layout for the summary
         ImGui::Columns(2, "DLSSGSummaryColumns", false);
-        ImGui::SetColumnWidth(0, 200); // Label column
-        ImGui::SetColumnWidth(1, 300); // Value column
+        ImGui::SetColumnWidth(0, 300); // Label column
+        ImGui::SetColumnWidth(1, 350); // Value column
 
         // Status indicators
         ImGui::Text("DLSS Active:");

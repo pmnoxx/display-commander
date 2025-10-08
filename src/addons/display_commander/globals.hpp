@@ -35,17 +35,92 @@ class BackgroundWindowManager;
 class LatentSyncManager;
 class LatencyManager;
 
-// Template-based atomic parameter storage system
-template<typename T>
-class AtomicParameterMap {
+// Unified parameter value that can hold multiple types
+struct ParameterValue {
+    enum Type { INT, UINT, FLOAT, DOUBLE, ULL };
+    Type type;
+    union {
+        int int_val;
+        unsigned int uint_val;
+        float float_val;
+        double double_val;
+        unsigned long long ull_val;
+    };
+
+    ParameterValue() : type(INT), int_val(0) {}
+    ParameterValue(int val) : type(INT), int_val(val) {}
+    ParameterValue(unsigned int val) : type(UINT), uint_val(val) {}
+    ParameterValue(float val) : type(FLOAT), float_val(val) {}
+    ParameterValue(double val) : type(DOUBLE), double_val(val) {}
+    ParameterValue(unsigned long long val) : type(ULL), ull_val(val) {}
+
+    // Type conversion methods
+    int get_as_int() const {
+        switch (type) {
+            case INT: return int_val;
+            case UINT: return static_cast<int>(uint_val);
+            case FLOAT: return static_cast<int>(float_val);
+            case DOUBLE: return static_cast<int>(double_val);
+            case ULL: return static_cast<int>(ull_val);
+            default: return 0;
+        }
+    }
+
+    unsigned int get_as_uint() const {
+        switch (type) {
+            case INT: return static_cast<unsigned int>(int_val);
+            case UINT: return uint_val;
+            case FLOAT: return static_cast<unsigned int>(float_val);
+            case DOUBLE: return static_cast<unsigned int>(double_val);
+            case ULL: return static_cast<unsigned int>(ull_val);
+            default: return 0;
+        }
+    }
+
+    float get_as_float() const {
+        switch (type) {
+            case INT: return static_cast<float>(int_val);
+            case UINT: return static_cast<float>(uint_val);
+            case FLOAT: return float_val;
+            case DOUBLE: return static_cast<float>(double_val);
+            case ULL: return static_cast<float>(ull_val);
+            default: return 0.0f;
+        }
+    }
+
+    double get_as_double() const {
+        switch (type) {
+            case INT: return static_cast<double>(int_val);
+            case UINT: return static_cast<double>(uint_val);
+            case FLOAT: return static_cast<double>(float_val);
+            case DOUBLE: return double_val;
+            case ULL: return static_cast<double>(ull_val);
+            default: return 0.0;
+        }
+    }
+
+    unsigned long long get_as_ull() const {
+        switch (type) {
+            case INT: return static_cast<unsigned long long>(int_val);
+            case UINT: return static_cast<unsigned long long>(uint_val);
+            case FLOAT: return static_cast<unsigned long long>(float_val);
+            case DOUBLE: return static_cast<unsigned long long>(double_val);
+            case ULL: return ull_val;
+            default: return 0;
+        }
+    }
+};
+
+// Unified atomic parameter storage system
+class UnifiedParameterMap {
 private:
-    std::atomic<std::shared_ptr<std::unordered_map<std::string, T>>> data_ = std::make_shared<std::unordered_map<std::string, T>>();
+    std::atomic<std::shared_ptr<std::unordered_map<std::string, ParameterValue>>> data_ = std::make_shared<std::unordered_map<std::string, ParameterValue>>();
 
 public:
-    AtomicParameterMap() {}
+    UnifiedParameterMap() {}
 
     // Update parameter value (thread-safe)
-    void update(const std::string& key, const T& value) {
+    void update(const std::string& key, const ParameterValue& value) {
         // First, try to update existing data without copying
         {
             auto current_data = data_.load();
@@ -58,13 +133,20 @@ public:
 
         // Key doesn't exist, need to copy and update
         auto current_data = data_.load();
-        auto new_data = std::make_shared<std::unordered_map<std::string, T>>(*current_data);
+        auto new_data = std::make_shared<std::unordered_map<std::string, ParameterValue>>(*current_data);
         (*new_data)[key] = value;
         data_.store(new_data);
     }
 
+    // Convenience update methods
+    void update_int(const std::string& key, int value) { update(key, ParameterValue(value)); }
+    void update_uint(const std::string& key, unsigned int value) { update(key, ParameterValue(value)); }
+    void update_float(const std::string& key, float value) { update(key, ParameterValue(value)); }
+    void update_double(const std::string& key, double value) { update(key, ParameterValue(value)); }
+    void update_ull(const std::string& key, unsigned long long value) { update(key, ParameterValue(value)); }
+
     // Get parameter value (thread-safe)
-    bool get(const std::string& key, T& value) const {
+    bool get(const std::string& key, ParameterValue& value) const {
         auto current_data = data_.load();
         auto it = current_data->find(key);
         if (it != current_data->end()) {
@@ -74,8 +156,54 @@ public:
         return false;
     }
 
+    // Type-specific get methods with conversion
+    bool get_as_int(const std::string& key, int& value) const {
+        ParameterValue param;
+        if (get(key, param)) {
+            value = param.get_as_int();
+            return true;
+        }
+        return false;
+    }
+
+    bool get_as_uint(const std::string& key, unsigned int& value) const {
+        ParameterValue param;
+        if (get(key, param)) {
+            value = param.get_as_uint();
+            return true;
+        }
+        return false;
+    }
+
+    bool get_as_float(const std::string& key, float& value) const {
+        ParameterValue param;
+        if (get(key, param)) {
+            value = param.get_as_float();
+            return true;
+        }
+        return false;
+    }
+
+    bool get_as_double(const std::string& key, double& value) const {
+        ParameterValue param;
+        if (get(key, param)) {
+            value = param.get_as_double();
+            return true;
+        }
+        return false;
+    }
+
+    bool get_as_ull(const std::string& key, unsigned long long& value) const {
+        ParameterValue param;
+        if (get(key, param)) {
+            value = param.get_as_ull();
+            return true;
+        }
+        return false;
+    }
+
     // Get all parameters (thread-safe)
-    std::shared_ptr<std::unordered_map<std::string, T>> get_all() const {
+    std::shared_ptr<std::unordered_map<std::string, ParameterValue>> get_all() const {
         return data_.load();
     }
 
@@ -86,7 +214,7 @@ public:
 
     // Clear all parameters (thread-safe)
     void clear() {
-        data_.store(std::make_shared<std::unordered_map<std::string, T>>());
+        data_.store(std::make_shared<std::unordered_map<std::string, ParameterValue>>());
     }
 };
 
@@ -511,12 +639,8 @@ extern std::atomic<bool> s_enable_reflex_logging;  // Enable Reflex logging
 extern std::atomic<bool> g_dlls_g_loaded;                                 // DLLS-G loaded status
 extern std::atomic<std::shared_ptr<const std::string>> g_dlls_g_version;  // DLLS-G version string
 
-// NGX Parameter Storage (thread-safe atomic shared_ptr hashmaps)
-extern AtomicParameterMap<float> g_ngx_float_parameters;      // NGX float parameters
-extern AtomicParameterMap<double> g_ngx_double_parameters;    // NGX double parameters
-extern AtomicParameterMap<int> g_ngx_int_parameters;          // NGX int parameters
-extern AtomicParameterMap<unsigned int> g_ngx_uint_parameters; // NGX unsigned int parameters
-extern AtomicParameterMap<unsigned long long> g_ngx_ull_parameters; // NGX unsigned long long parameters
+// NGX Parameter Storage (unified thread-safe atomic shared_ptr hashmap)
+extern UnifiedParameterMap g_ngx_parameters; // Unified NGX parameters supporting all types
 
 // DLSS/DLSS-G Summary structure
 struct DLSSGSummary {

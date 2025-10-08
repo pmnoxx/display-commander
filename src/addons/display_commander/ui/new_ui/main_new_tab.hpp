@@ -27,4 +27,7 @@ void DrawAdhdMultiMonitorControls(bool hasBlackCurtainSetting);
 // Draw important information section (Flip State)
 void DrawImportantInfo();
 
+// Draw frame time graph section
+void DrawFrameTimeGraph();
+
 }  // namespace ui::new_ui

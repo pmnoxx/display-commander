@@ -13,6 +13,7 @@
 #include <imgui.h>
 #include <minwindef.h>
 
+#include <algorithm>
 #include <atomic>
 #include <cmath>
 #include <iomanip>
@@ -25,6 +26,74 @@ namespace {
 // Flag to indicate a restart is required after changing VSync/tearing options
 std::atomic<bool> s_restart_needed_vsync_tearing{false};
 }  // anonymous namespace
+
+void DrawFrameTimeGraph() {
+    ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== Frame Time Graph ===");
+
+    // Get frame time data from the performance ring buffer
+    const uint32_t head = ::g_perf_ring_head.load(std::memory_order_acquire);
+    const uint32_t count = (head > static_cast<uint32_t>(::kPerfRingCapacity)) ? static_cast<uint32_t>(::kPerfRingCapacity) : head;
+
+    if (count == 0) {
+        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "No frame time data available yet...");
+        return;
+    }
+
+    // Collect frame times for the graph (last 300 samples for smooth display)
+    static std::vector<float> frame_times;
+    frame_times.clear();
+    frame_times.reserve(min(count, 300u));
+
+    const uint32_t start = head - min(count, 300u);
+    for (uint32_t i = start; i < head; ++i) {
+        const ::PerfSample& sample = ::g_perf_ring[i & (::kPerfRingCapacity - 1)];
+        if (sample.fps > 0.0f) {
+            frame_times.push_back(1000.0f / sample.fps); // Convert FPS to frame time in ms
+        }
+    }
+
+    if (frame_times.empty()) {
+        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "No valid frame time data available...");
+        return;
+    }
+
+    // Calculate statistics for the graph
+    float min_frame_time = *std::min_element(frame_times.begin(), frame_times.end());
+    float max_frame_time = *std::max_element(frame_times.begin(), frame_times.end());
+    float avg_frame_time = 0.0f;
+    for (float ft : frame_times) {
+        avg_frame_time += ft;
+    }
+    avg_frame_time /= static_cast<float>(frame_times.size());
+
+    // Display statistics
+    ImGui::Text("Samples: %zu | Min: %.2f ms | Max: %.2f ms | Avg: %.2f ms",
+                frame_times.size(), min_frame_time, max_frame_time, avg_frame_time);
+
+    // Create overlay text with current frame time
+    std::string overlay_text = "Current: " + std::to_string(frame_times.back()).substr(0, 6) + " ms";
+
+    // Set graph size and scale
+    ImVec2 graph_size = ImVec2(-1.0f, 200.0f); // Full width, 200px height
+    float scale_min = 0.0f; // Always start from 0ms
+    float scale_max = max_frame_time + 2.0f; // Add some padding
+
+    // Draw the frame time graph
+    ImGui::PlotLines("Frame Time (ms)",
+                     frame_times.data(),
+                     static_cast<int>(frame_times.size()),
+                     0, // values_offset
+                     overlay_text.c_str(),
+                     scale_min,
+                     scale_max,
+                     graph_size);
+
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Frame time graph showing recent frame times in milliseconds.\n"
+                         "Lower values = higher FPS, smoother gameplay.\n"
+                         "Spikes indicate frame drops or stuttering.");
+    }
+}
 
 void InitMainNewTab() {
     static bool settings_loaded_once = false;
@@ -958,6 +1027,13 @@ void DrawImportantInfo() {
             ImGui::SetTooltip("Reset FPS/frametime statistics. Metrics are computed since reset.");
         }
     }
+
+    ImGui::Spacing();
+    ImGui::Separator();
+
+    // Frame Time Graph Section
+    DrawFrameTimeGraph();
+
     std::ostringstream oss;
 
     // Present Duration Display

@@ -686,6 +686,12 @@ void DrawDLSSGSummary() {
         ImGui::Text("%s", summary.tonemapper_type.c_str());
         ImGui::NextColumn();
 
+        ImGui::Text("Optical Flow Accelerator:");
+        ImGui::NextColumn();
+        ImGui::TextColored(summary.ofa_enabled == "Yes" ? ImVec4(0.0f, 1.0f, 0.0f, 1.0f) : ImVec4(1.0f, 0.0f, 0.0f, 1.0f),
+                          "%s", summary.ofa_enabled.c_str());
+        ImGui::NextColumn();
+
         ImGui::Columns(1); // Reset columns
 
         // Add some helpful information
@@ -694,6 +700,10 @@ void DrawDLSSGSummary() {
 
         if (summary.dlss_g_active) {
             ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "DLSS Frame Generation is currently active!");
+        }
+
+        if (summary.ofa_enabled == "Yes") {
+            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "NVIDIA Optical Flow Accelerator (OFA) is enabled!");
         }
     }
 }

@@ -441,5 +441,11 @@ DLSSGSummary GetDLSSGSummary() {
         summary.fg_mode = "Unknown";
     }
 
+    // Get NVIDIA Optical Flow Accelerator (OFA) status
+    int ofa_enabled;
+    if (g_ngx_parameters.get_as_int("Enable.OFA", ofa_enabled)) {
+        summary.ofa_enabled = (ofa_enabled == 1) ? "Yes" : "No";
+    }
+
     return summary;
 }

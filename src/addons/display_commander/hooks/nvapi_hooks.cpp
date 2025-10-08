@@ -4,8 +4,18 @@
 #include <MinHook.h>
 #include "../../../external/nvapi/nvapi_interface.h"
 
+// Function pointer type definitions (following Special-K's approach)
+using NvAPI_D3D_SetLatencyMarker_pfn = NvAPI_Status (__cdecl *)(__in IUnknown *pDev, __in NV_LATENCY_MARKER_PARAMS *pSetLatencyMarkerParams);
+using NvAPI_D3D_SetSleepMode_pfn = NvAPI_Status (__cdecl *)(__in IUnknown *pDev, __in NV_SET_SLEEP_MODE_PARAMS *pSetSleepModeParams);
+using NvAPI_D3D_Sleep_pfn = NvAPI_Status (__cdecl *)(__in IUnknown *pDev);
+using NvAPI_D3D_GetLatency_pfn = NvAPI_Status (__cdecl *)(__in IUnknown *pDev, __in NV_LATENCY_RESULT_PARAMS *pGetLatencyParams);
+
 // Original function pointers
 NvAPI_Disp_GetHdrCapabilities_pfn NvAPI_Disp_GetHdrCapabilities_Original = nullptr;
+NvAPI_D3D_SetLatencyMarker_pfn NvAPI_D3D_SetLatencyMarker_Original = nullptr;
+NvAPI_D3D_SetSleepMode_pfn NvAPI_D3D_SetSleepMode_Original = nullptr;
+NvAPI_D3D_Sleep_pfn NvAPI_D3D_Sleep_Original = nullptr;
+NvAPI_D3D_GetLatency_pfn NvAPI_D3D_GetLatency_Original = nullptr;
 
 // Function to look up NVAPI function ID from interface table
 namespace {
@@ -83,6 +93,94 @@ NvAPI_Status __cdecl NvAPI_Disp_GetHdrCapabilities_Detour(NvU32 displayId, NV_HD
     return NVAPI_NO_IMPLEMENTATION;
 }
 
+// Hooked NvAPI_D3D_SetLatencyMarker function
+NvAPI_Status __cdecl NvAPI_D3D_SetLatencyMarker_Detour(IUnknown *pDev, NV_LATENCY_MARKER_PARAMS *pSetLatencyMarkerParams) {
+    // Increment counter
+    g_swapchain_event_counters[SWAPCHAIN_EVENT_NVAPI_D3D_SET_LATENCY_MARKER].fetch_add(1);
+    g_swapchain_event_total_count.fetch_add(1);
+
+    // Log the call (first few times only)
+    static int log_count = 0;
+    if (log_count < 3) {
+        LogInfo("NVAPI SetLatencyMarker called - MarkerType: %d",
+                pSetLatencyMarkerParams ? pSetLatencyMarkerParams->markerType : -1);
+        log_count++;
+    }
+
+    // Call original function
+    if (NvAPI_D3D_SetLatencyMarker_Original != nullptr) {
+        return NvAPI_D3D_SetLatencyMarker_Original(pDev, pSetLatencyMarkerParams);
+    }
+
+    return NVAPI_NO_IMPLEMENTATION;
+}
+
+// Hooked NvAPI_D3D_SetSleepMode function
+NvAPI_Status __cdecl NvAPI_D3D_SetSleepMode_Detour(IUnknown *pDev, NV_SET_SLEEP_MODE_PARAMS *pSetSleepModeParams) {
+    // Increment counter
+    g_swapchain_event_counters[SWAPCHAIN_EVENT_NVAPI_D3D_SET_SLEEP_MODE].fetch_add(1);
+    g_swapchain_event_total_count.fetch_add(1);
+
+    // Log the call (first few times only)
+    static int log_count = 0;
+    if (log_count < 3) {
+        LogInfo("NVAPI SetSleepMode called - LowLatency: %d, Boost: %d, UseMarkers: %d",
+                pSetSleepModeParams ? pSetSleepModeParams->bLowLatencyMode : -1,
+                pSetSleepModeParams ? pSetSleepModeParams->bLowLatencyBoost : -1,
+                pSetSleepModeParams ? pSetSleepModeParams->bUseMarkersToOptimize : -1);
+        log_count++;
+    }
+
+    // Call original function
+    if (NvAPI_D3D_SetSleepMode_Original != nullptr) {
+        return NvAPI_D3D_SetSleepMode_Original(pDev, pSetSleepModeParams);
+    }
+
+    return NVAPI_NO_IMPLEMENTATION;
+}
+
+// Hooked NvAPI_D3D_Sleep function
+NvAPI_Status __cdecl NvAPI_D3D_Sleep_Detour(IUnknown *pDev) {
+    // Increment counter
+    g_swapchain_event_counters[SWAPCHAIN_EVENT_NVAPI_D3D_SLEEP].fetch_add(1);
+    g_swapchain_event_total_count.fetch_add(1);
+
+    // Log the call (first few times only)
+    static int log_count = 0;
+    if (log_count < 3) {
+        LogInfo("NVAPI Sleep called");
+        log_count++;
+    }
+
+    // Call original function
+    if (NvAPI_D3D_Sleep_Original != nullptr) {
+        return NvAPI_D3D_Sleep_Original(pDev);
+    }
+
+    return NVAPI_NO_IMPLEMENTATION;
+}
+
+// Hooked NvAPI_D3D_GetLatency function
+NvAPI_Status __cdecl NvAPI_D3D_GetLatency_Detour(IUnknown *pDev, NV_LATENCY_RESULT_PARAMS *pGetLatencyParams) {
+    // Increment counter
+    g_swapchain_event_counters[SWAPCHAIN_EVENT_NVAPI_D3D_GET_LATENCY].fetch_add(1);
+    g_swapchain_event_total_count.fetch_add(1);
+
+    // Log the call (first few times only)
+    static int log_count = 0;
+    if (log_count < 3) {
+        LogInfo("NVAPI GetLatency called");
+        log_count++;
+    }
+
+    // Call original function
+    if (NvAPI_D3D_GetLatency_Original != nullptr) {
+        return NvAPI_D3D_GetLatency_Original(pDev, pGetLatencyParams);
+    }
+
+    return NVAPI_NO_IMPLEMENTATION;
+}
+
 // Install NVAPI hooks
 bool InstallNVAPIHooks() {
     // Follow Special-K's approach: get NvAPI_QueryInterface first, then use it to get other functions
@@ -137,6 +235,55 @@ bool InstallNVAPIHooks() {
     }
 
     LogInfo("NVAPI hooks: Successfully installed NvAPI_Disp_GetHdrCapabilities hook");
+
+    // Install Reflex hooks
+    const char* reflex_functions[] = {
+        "NvAPI_D3D_SetLatencyMarker",
+        "NvAPI_D3D_SetSleepMode",
+        "NvAPI_D3D_Sleep",
+        "NvAPI_D3D_GetLatency"
+    };
+
+    NvAPI_Status (*detour_functions[])(IUnknown*, void*) = {
+        (NvAPI_Status(*)(IUnknown*, void*))NvAPI_D3D_SetLatencyMarker_Detour,
+        (NvAPI_Status(*)(IUnknown*, void*))NvAPI_D3D_SetSleepMode_Detour,
+        (NvAPI_Status(*)(IUnknown*, void*))NvAPI_D3D_Sleep_Detour,
+        (NvAPI_Status(*)(IUnknown*, void*))NvAPI_D3D_GetLatency_Detour
+    };
+
+    void** original_functions[] = {
+        (void**)&NvAPI_D3D_SetLatencyMarker_Original,
+        (void**)&NvAPI_D3D_SetSleepMode_Original,
+        (void**)&NvAPI_D3D_Sleep_Original,
+        (void**)&NvAPI_D3D_GetLatency_Original
+    };
+
+    for (int i = 0; i < 4; i++) {
+        NvU32 functionId = GetNvAPIFunctionId(reflex_functions[i]);
+        if (functionId == 0) {
+            LogInfo("NVAPI hooks: Failed to get %s function ID", reflex_functions[i]);
+            continue;
+        }
+
+        void* original_func = queryInterface(functionId);
+        if (!original_func) {
+            LogInfo("NVAPI hooks: Failed to get %s via QueryInterface", reflex_functions[i]);
+            continue;
+        }
+
+        if (MH_CreateHook(original_func, detour_functions[i], original_functions[i]) != MH_OK) {
+            LogInfo("NVAPI hooks: Failed to create %s hook", reflex_functions[i]);
+            continue;
+        }
+
+        if (MH_EnableHook(original_func) != MH_OK) {
+            LogInfo("NVAPI hooks: Failed to enable %s hook", reflex_functions[i]);
+            continue;
+        }
+
+        LogInfo("NVAPI hooks: Successfully installed %s hook", reflex_functions[i]);
+    }
+
     return true;
 }
 
@@ -146,5 +293,29 @@ void UninstallNVAPIHooks() {
         MH_DisableHook(NvAPI_Disp_GetHdrCapabilities_Original);
         MH_RemoveHook(NvAPI_Disp_GetHdrCapabilities_Original);
         NvAPI_Disp_GetHdrCapabilities_Original = nullptr;
+    }
+
+    if (NvAPI_D3D_SetLatencyMarker_Original) {
+        MH_DisableHook(NvAPI_D3D_SetLatencyMarker_Original);
+        MH_RemoveHook(NvAPI_D3D_SetLatencyMarker_Original);
+        NvAPI_D3D_SetLatencyMarker_Original = nullptr;
+    }
+
+    if (NvAPI_D3D_SetSleepMode_Original) {
+        MH_DisableHook(NvAPI_D3D_SetSleepMode_Original);
+        MH_RemoveHook(NvAPI_D3D_SetSleepMode_Original);
+        NvAPI_D3D_SetSleepMode_Original = nullptr;
+    }
+
+    if (NvAPI_D3D_Sleep_Original) {
+        MH_DisableHook(NvAPI_D3D_Sleep_Original);
+        MH_RemoveHook(NvAPI_D3D_Sleep_Original);
+        NvAPI_D3D_Sleep_Original = nullptr;
+    }
+
+    if (NvAPI_D3D_GetLatency_Original) {
+        MH_DisableHook(NvAPI_D3D_GetLatency_Original);
+        MH_RemoveHook(NvAPI_D3D_GetLatency_Original);
+        NvAPI_D3D_GetLatency_Original = nullptr;
     }
 }

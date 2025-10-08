@@ -61,6 +61,7 @@ void hookToSwapChain(reshade::api::swapchain *swapchain) {
     LogInfo("onInitSwapChain: swapchain: 0x%p", swapchain);
 
     // Store the current swapchain for UI access
+    g_last_swapchain_api.store(static_cast<int>(swapchain->get_device()->get_api()));
     g_last_swapchain_ptr.store(static_cast<void*>(swapchain));
 
     // Schedule auto-apply even on resizes (generation counter ensures only latest
@@ -74,19 +75,23 @@ void hookToSwapChain(reshade::api::swapchain *swapchain) {
 
         // Hook DXGI Present calls for this swapchain
         // Get the underlying DXGI swapchain from the ReShade swapchain
-        if (auto *dxgi_swapchain = reinterpret_cast<IDXGISwapChain *>(swapchain->get_native())) {
-            if (display_commanderhooks::dxgi::HookSwapchain(dxgi_swapchain)) {
-                LogInfo("Successfully hooked DXGI Present calls for swapchain: 0x%p", dxgi_swapchain);
+        if (swapchain->get_device()->get_api() == reshade::api::device_api::d3d12 || swapchain->get_device()->get_api() == reshade::api::device_api::d3d11 || swapchain->get_device()->get_api() == reshade::api::device_api::d3d10) {
+            if (auto *dxgi_swapchain = reinterpret_cast<IDXGISwapChain *>(swapchain->get_native())) {
+                if (display_commanderhooks::dxgi::HookSwapchain(dxgi_swapchain)) {
+                    LogInfo("Successfully hooked DXGI Present calls for swapchain: 0x%p", dxgi_swapchain);
+                } else {
+                    LogWarn("Failed to hook DXGI Present calls for swapchain: 0x%p", dxgi_swapchain);
+                }
             } else {
-                LogWarn("Failed to hook DXGI Present calls for swapchain: 0x%p", dxgi_swapchain);
+                LogWarn("Could not get DXGI swapchain from ReShade swapchain for Present "
+                        "hooking");
             }
-        } else {
-            LogWarn("Could not get DXGI swapchain from ReShade swapchain for Present "
-                    "hooking");
         }
 
+        /**/
         // Try to hook DX9 Present calls if this is a DX9 device
         // Get the underlying DX9 device from the ReShade device
+        /*
         if (swapchain->get_device()->get_api() == reshade::api::device_api::d3d9) {
             if (auto *device = swapchain->get_device()) {
                 if (auto *d3d9_device = reinterpret_cast<IDirect3DDevice9 *>(device->get_native())) {
@@ -99,7 +104,7 @@ void hookToSwapChain(reshade::api::swapchain *swapchain) {
                     LogInfo("Could not get DX9 device from ReShade device for Present hooking");
                 }
             }
-        }
+        }*/
     }
 }
 

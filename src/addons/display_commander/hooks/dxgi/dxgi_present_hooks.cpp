@@ -581,7 +581,6 @@ static std::atomic<IDXGISwapChain *> g_swapchain_hooked{nullptr};
 static IDXGISwapChain *g_hooked_swapchain = nullptr;
 
 // VTable hooking functions
-bool HookSwapchainVTable(IDXGISwapChain *swapchain);
 bool HookFactoryVTable(IDXGIFactory *factory);
 
 // Install DXGI Present hooks
@@ -611,7 +610,7 @@ bool InstallDxgiPresentHooks() {
 }
 
 // Hook a specific swapchain's vtable
-bool HookSwapchainVTable(IDXGISwapChain *swapchain) {
+bool HookSwapchain(IDXGISwapChain *swapchain) {
     if (g_swapchain_hooked.load() == swapchain) {
         return false;
     }
@@ -1082,11 +1081,6 @@ bool HookFactoryVTable(IDXGIFactory *factory) {
 
     LogError("IDXGIFactory::CreateSwapChain method not found in vtable");
     return false;
-}
-
-// Public function to hook a swapchain when it's created
-bool HookSwapchain(IDXGISwapChain *swapchain) {
-    return HookSwapchainVTable(swapchain);
 }
 
 // Public function to hook a factory when it's created

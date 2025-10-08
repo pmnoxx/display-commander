@@ -39,6 +39,11 @@ void NVSDK_CONV NVSDK_NGX_Parameter_SetF_Detour(NVSDK_NGX_Parameter* InParameter
     g_swapchain_event_counters[SWAPCHAIN_EVENT_NGX_PARAMETER_SETF].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
+    // Store parameter in thread-safe storage
+    if (InName != nullptr) {
+        g_ngx_float_parameters.update(std::string(InName), InValue);
+    }
+
     // Log the call (first few times only)
     static int log_count = 0;
     if (log_count < 60) {
@@ -57,6 +62,11 @@ void NVSDK_CONV NVSDK_NGX_Parameter_SetD_Detour(NVSDK_NGX_Parameter* InParameter
     // Increment counter
     g_swapchain_event_counters[SWAPCHAIN_EVENT_NGX_PARAMETER_SETD].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
+
+    // Store parameter in thread-safe storage
+    if (InName != nullptr) {
+        g_ngx_double_parameters.update(std::string(InName), InValue);
+    }
 
     // Log the call (first few times only)
     static int log_count = 0;
@@ -77,6 +87,11 @@ void NVSDK_CONV NVSDK_NGX_Parameter_SetI_Detour(NVSDK_NGX_Parameter* InParameter
     g_swapchain_event_counters[SWAPCHAIN_EVENT_NGX_PARAMETER_SETI].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
+    // Store parameter in thread-safe storage
+    if (InName != nullptr) {
+        g_ngx_int_parameters.update(std::string(InName), InValue);
+    }
+
     // Log the call (first few times only)
     static int log_count = 0;
     if (log_count < 60) {
@@ -96,6 +111,11 @@ void NVSDK_CONV NVSDK_NGX_Parameter_SetUI_Detour(NVSDK_NGX_Parameter* InParamete
     g_swapchain_event_counters[SWAPCHAIN_EVENT_NGX_PARAMETER_SETUI].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
+    // Store parameter in thread-safe storage
+    if (InName != nullptr) {
+        g_ngx_uint_parameters.update(std::string(InName), InValue);
+    }
+
     // Log the call (first few times only)
     static int log_count = 0;
     if (log_count < 60) {
@@ -114,6 +134,11 @@ void NVSDK_CONV NVSDK_NGX_Parameter_SetULL_Detour(NVSDK_NGX_Parameter* InParamet
     // Increment counter
     g_swapchain_event_counters[SWAPCHAIN_EVENT_NGX_PARAMETER_SETULL].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
+
+    // Store parameter in thread-safe storage
+    if (InName != nullptr) {
+        g_ngx_ull_parameters.update(std::string(InName), InValue);
+    }
 
     // Log the call (first few times only)
     static int log_count = 0;

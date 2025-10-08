@@ -125,6 +125,7 @@ NvAPI_Status __cdecl NvAPI_D3D_SetSleepMode_Detour(IUnknown *pDev, NV_SET_SLEEP_
     if (pSetSleepModeParams != nullptr) {
         auto params = std::make_shared<NV_SET_SLEEP_MODE_PARAMS>(*pSetSleepModeParams);
         g_last_nvapi_sleep_mode_params.store(params);
+        g_last_nvapi_sleep_mode_dev_ptr.store(pDev);
     }
 
     // Log the call (first few times only)

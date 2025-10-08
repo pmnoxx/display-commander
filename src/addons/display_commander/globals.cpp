@@ -266,6 +266,7 @@ std::atomic<std::shared_ptr<const std::string>> g_dlls_g_version{std::make_share
 
 // NVAPI SetSleepMode tracking
 std::atomic<std::shared_ptr<NV_SET_SLEEP_MODE_PARAMS>> g_last_nvapi_sleep_mode_params{nullptr};
+std::atomic<IUnknown*> g_last_nvapi_sleep_mode_dev_ptr{nullptr};
 
 
 // Experimental tab settings global instance

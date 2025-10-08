@@ -450,10 +450,10 @@ extern std::atomic<bool> g_app_in_background;
 // FPS limiter mode: 0 = Disabled, 1 = OnPresentSync, 2 = OnPresentSyncLowLatency, 3 = VBlank Scanline Sync (VBlank)
 extern std::atomic<FpsLimiterMode> s_fps_limiter_mode;
 
-// FPS limiter injection timing: 0 = OnPresentFlags (recommended), 1 = OnPresentUpdateBefore2, 2 = OnPresentUpdateBefore
-#define FPS_LIMITER_INJECTION_ONPRESENTFLAGS         0
-#define FPS_LIMITER_INJECTION_ONPRESENTUPDATEBEFORE2 1
-#define FPS_LIMITER_INJECTION_ONPRESENTUPDATEBEFORE  2
+// FPS limiter injection timing: 0 = Default (Direct DX9/10/11/12), 1 = Fallback(1) (Through ReShade), 2 = Fallback(2) (Through ReShade)
+#define FPS_LIMITER_INJECTION_DEFAULT                0
+#define FPS_LIMITER_INJECTION_FALLBACK1              1
+#define FPS_LIMITER_INJECTION_FALLBACK2              2
 
 // Performance stats (FPS/frametime) shared state
 extern std::atomic<uint32_t> g_perf_ring_head;

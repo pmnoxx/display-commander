@@ -9,7 +9,7 @@
 std::atomic<bool> s_background_feature_enabled{false}; // Disabled by default
 std::atomic<int> s_scanline_offset{0};
 std::atomic<int> s_vblank_sync_divisor{1};
-std::atomic<int> s_fps_limiter_injection{0}; // FPS_LIMITER_INJECTION_ONPRESENTFLAGS
+std::atomic<int> s_fps_limiter_injection{0}; // FPS_LIMITER_INJECTION_DEFAULT
 std::atomic<float> s_fps_limit{0.f};
 std::atomic<float> s_fps_limit_background{30.f};
 std::atomic<float> s_present_pacing_delay_percentage{0.0f}; // Default to 0% (no delay)

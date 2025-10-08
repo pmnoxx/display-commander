@@ -357,7 +357,7 @@ bool DriverManager::RefreshNotifyIcons() {
 
     parent = FindWindowW(L"NotifyIconOverflowWindow", nullptr);
     if (parent != nullptr) {
-        window = FindWindowExW(parent, nullptr, L"ToolbarWindow32", L"Overflow Notification Area");
+        window = FindWindowExW(parent, nullptr, L"ToolbarWindow32", L"Overflow Notification Area");;/
         if (window != nullptr) {
             RefreshNotifyWindow(window);
         }

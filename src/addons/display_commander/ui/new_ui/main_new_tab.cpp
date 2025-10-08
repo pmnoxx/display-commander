@@ -502,23 +502,23 @@ void DrawDisplaySettings() {
 
     // FPS Limiter Injection Timing
     {
+        const char* injection_items[] = {
+            "Default (Direct DX9/10/11/12)",
+            "Fallback(1) (Through ReShade - Slower)",
+            "Fallback(2) (Through ReShade - Slower)"
+        };
+
         int current_injection = settings::g_mainTabSettings.fps_limiter_injection.GetValue();
-        int temp_injection = current_injection;
-        if (ImGui::SliderInt("FPS Limiter Injection", &temp_injection, 0, 2, "%d")) {
-            settings::g_mainTabSettings.fps_limiter_injection.SetValue(temp_injection);
-            s_fps_limiter_injection.store(temp_injection);
+        if (ImGui::Combo("FPS Limiter Injection", &current_injection, injection_items, 3)) {
+            settings::g_mainTabSettings.fps_limiter_injection.SetValue(current_injection);
+            s_fps_limiter_injection.store(current_injection);
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip(
-                "Choose when to inject FPS limiter: 0=OnPresentFlags (recommended), "
-                "1=OnPresentUpdateBefore2, 2=OnPresentUpdateBefore");
-        }
-
-        // Show current injection timing info
-        const char* injection_labels[] = {"OnPresentFlags (Recommended)", "OnPresentUpdateBefore2",
-                                          "OnPresentUpdateBefore"};
-        if (temp_injection >= 0 && temp_injection < 3) {
-            ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "Current: %s", injection_labels[temp_injection]);
+                "Choose injection method:\n"
+                "• Default: Injects directly into DX9/10/11/12 (fastest)\n"
+                "• Fallback(1): Injects through ReShade OnPresentUpdateBefore2 (slower)\n"
+                "• Fallback(2): Injects through ReShade OnPresentUpdateBefore (slower)");
         }
     }
 
@@ -679,13 +679,16 @@ void DrawDisplaySettings() {
 
         if (show_warning) {
             ImGui::Spacing();
+            const char* injection_mode_names[] = {"Default", "Fallback(1)", "Fallback(2)"};
+            const char* mode_name = (injection_mode >= 0 && injection_mode < 3) ? injection_mode_names[injection_mode] : "Unknown";
+
             ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f),
                 "⚠ Warning: FPS limiting is enabled but %s events are 0. "
                 "FPS limiting may not work properly.", event_name);
             if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("%s events are required for FPS limiting when using injection mode %d. "
+                ImGui::SetTooltip("%s events are required for FPS limiting when using %s injection mode. "
                                 "Try changing the FPS Limiter Injection setting to a different mode.",
-                                event_name, injection_mode);
+                                event_name, mode_name);
             }
         }
     }

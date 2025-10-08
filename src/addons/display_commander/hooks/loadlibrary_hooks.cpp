@@ -2,6 +2,7 @@
 #include "xinput_hooks.hpp"
 #include "windows_gaming_input_hooks.hpp"
 #include "nvapi_hooks.hpp"
+#include "ngx_hooks.hpp"
 #include "streamline_hooks.hpp"
 #include "../utils.hpp"
 #include "utils/srwlock_wrapper.hpp"
@@ -541,6 +542,15 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
             LogInfo("NVAPI hooks installed successfully");
         } else {
             LogError("Failed to install NVAPI hooks");
+        }
+    }
+    // NGX hooks
+    else if (lowerModuleName.find(L"_nvngx.dll") != std::wstring::npos) {
+        LogInfo("Installing NGX hooks for module: %ws", moduleName.c_str());
+        if (InstallNGXHooks()) {
+            LogInfo("NGX hooks installed successfully");
+        } else {
+            LogError("Failed to install NGX hooks");
         }
     }
 

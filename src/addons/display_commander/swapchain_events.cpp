@@ -87,11 +87,8 @@ void hookToSwapChain(reshade::api::swapchain *swapchain) {
                         "hooking");
             }
         }
-
-        /**/
         // Try to hook DX9 Present calls if this is a DX9 device
         // Get the underlying DX9 device from the ReShade device
-        /*
         if (swapchain->get_device()->get_api() == reshade::api::device_api::d3d9) {
             if (auto *device = swapchain->get_device()) {
                 if (auto *d3d9_device = reinterpret_cast<IDirect3DDevice9 *>(device->get_native())) {
@@ -104,7 +101,7 @@ void hookToSwapChain(reshade::api::swapchain *swapchain) {
                     LogInfo("Could not get DX9 device from ReShade device for Present hooking");
                 }
             }
-        }*/
+        }
     }
 }
 

@@ -246,6 +246,14 @@ void DrawNvapiSettings() {
         settings::g_developerTabSettings.reflex_use_markers.SetValue(reflex_markers);
         s_reflex_use_markers.store(reflex_markers);
     }
+    bool reflex_enable_sleep = settings::g_developerTabSettings.reflex_enable_sleep.GetValue();
+    if (ImGui::Checkbox("Enable Reflex Sleep Mode", &reflex_enable_sleep)) {
+        settings::g_developerTabSettings.reflex_enable_sleep.SetValue(reflex_enable_sleep);
+        s_reflex_enable_sleep.store(reflex_enable_sleep);
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Enable Reflex sleep mode calls (disabled by default for safety).");
+    }
     bool reflex_logging = settings::g_developerTabSettings.reflex_logging.GetValue();
     if (ImGui::Checkbox("Enable Reflex Logging", &reflex_logging)) {
         settings::g_developerTabSettings.reflex_logging.SetValue(reflex_logging);

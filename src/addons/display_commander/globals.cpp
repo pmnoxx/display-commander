@@ -258,6 +258,7 @@ std::atomic<bool> s_reflex_enable_current_frame{false};
 std::atomic<bool> s_reflex_low_latency{false};
 std::atomic<bool> s_reflex_boost{false};
 std::atomic<bool> s_reflex_use_markers{true};
+std::atomic<bool> s_reflex_enable_sleep{false}; // Disabled by default
 std::atomic<bool> s_enable_reflex_logging{false}; // Disabled by default
 
 // DLLS-G (DLSS Frame Generation) status

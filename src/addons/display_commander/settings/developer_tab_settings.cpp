@@ -27,9 +27,9 @@ DeveloperTabSettings::DeveloperTabSettings()
       reflex_low_latency("ReflexLowLatency", s_reflex_low_latency, false, "DisplayCommander"),
       reflex_boost("ReflexBoost", s_reflex_boost, false, "DisplayCommander"),
       reflex_use_markers("ReflexUseMarkers", s_reflex_use_markers, true, "DisplayCommander"),
-      reflex_logging("ReflexLogging", s_enable_reflex_logging, false, "DisplayCommander")
+      reflex_enable_sleep("ReflexEnableSleep", s_reflex_enable_sleep, false, "DisplayCommander"),
+      reflex_logging("ReflexLogging", s_enable_reflex_logging, false, "DisplayCommander"),
 
-      ,
       enable_mute_unmute_shortcut("EnableMuteUnmuteShortcut", s_enable_mute_unmute_shortcut, true, "DisplayCommander"),
       enable_background_toggle_shortcut("EnableBackgroundToggleShortcut", s_enable_background_toggle_shortcut, true,
                                         "DisplayCommander"),
@@ -54,6 +54,7 @@ void DeveloperTabSettings::LoadAll() {
     reflex_low_latency.Load();
     reflex_boost.Load();
     reflex_use_markers.Load();
+    reflex_enable_sleep.Load();
     reflex_logging.Load();
 
     // All Ref classes automatically sync with global variables
@@ -77,6 +78,7 @@ std::vector<ui::new_ui::SettingBase *> DeveloperTabSettings::GetAllSettings() {
             &reflex_low_latency,
             &reflex_boost,
             &reflex_use_markers,
+            &reflex_enable_sleep,
             &reflex_logging,
 
             &enable_mute_unmute_shortcut,

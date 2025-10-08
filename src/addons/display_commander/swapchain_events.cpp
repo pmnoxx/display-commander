@@ -580,7 +580,9 @@ void OnPresentUpdateAfter(reshade::api::command_queue * /*queue*/, reshade::api:
             // toggles
             g_latencyManager->ApplySleepMode(s_reflex_low_latency.load(), s_reflex_boost.load(),
                                              s_reflex_use_markers.load());
-            g_latencyManager->Sleep();
+            if (s_reflex_enable_sleep.load()) {
+                g_latencyManager->Sleep();
+            }
             if (s_reflex_use_markers.load() && !g_app_in_background.load(std::memory_order_acquire)) {
                 g_latencyManager->SetMarker(LatencyMarkerType::SIMULATION_START);
             }

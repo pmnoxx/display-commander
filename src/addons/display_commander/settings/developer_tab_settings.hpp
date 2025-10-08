@@ -51,6 +51,7 @@ class DeveloperTabSettings {
     BoolSettingRef reflex_low_latency;
     BoolSettingRef reflex_boost;
     BoolSettingRef reflex_use_markers;
+    BoolSettingRef reflex_enable_sleep;
     BoolSettingRef reflex_logging;
 
     // Get all settings for bulk operations

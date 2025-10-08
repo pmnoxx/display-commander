@@ -536,6 +536,7 @@ struct DLSSGSummary {
     std::string frame_time_delta = "N/A";
     std::string sharpness = "N/A";
     std::string tonemapper_type = "N/A";
+    std::string fg_mode = "N/A";
 };
 
 // Function to get DLSS/DLSS-G summary from NGX parameters

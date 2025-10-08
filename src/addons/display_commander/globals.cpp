@@ -299,26 +299,12 @@ DLSSGSummary GetDLSSGSummary() {
         summary.dlss_g_active = (is_recording == 1);
     }
 
-    // Get resolutions
+    // Get resolutions - using correct parameter names
     unsigned int internal_width, internal_height, output_width, output_height;
-    bool has_internal_width = g_ngx_uint_parameters.get("DLSSG.BackbufferSubrectWidth", internal_width);
-    bool has_internal_height = g_ngx_uint_parameters.get("DLSSG.BackbufferSubrectHeight", internal_height);
-    bool has_output_width = g_ngx_uint_parameters.get("DLSSG.Width", output_width);
-    bool has_output_height = g_ngx_uint_parameters.get("DLSSG.Height", output_height);
-
-    // Fallback to DLSS render dimensions if DLSS-G dimensions not available
-    if (!has_internal_width) {
-        has_internal_width = g_ngx_uint_parameters.get("DLSS.Render.Subrect.Dimensions.Width", internal_width);
-    }
-    if (!has_internal_height) {
-        has_internal_height = g_ngx_uint_parameters.get("DLSS.Render.Subrect.Dimensions.Height", internal_height);
-    }
-    if (!has_output_width) {
-        has_output_width = g_ngx_uint_parameters.get("Width", output_width);
-    }
-    if (!has_output_height) {
-        has_output_height = g_ngx_uint_parameters.get("Height", output_height);
-    }
+    bool has_internal_width = g_ngx_uint_parameters.get("DLSS.Render.Subrect.Dimensions.Width", internal_width);
+    bool has_internal_height = g_ngx_uint_parameters.get("DLSS.Render.Subrect.Dimensions.Height", internal_height);
+    bool has_output_width = g_ngx_uint_parameters.get("OutWidth", output_width);
+    bool has_output_height = g_ngx_uint_parameters.get("OutHeight", output_height);
 
     if (has_internal_width && has_internal_height) {
         summary.internal_resolution = std::to_string(internal_width) + "x" + std::to_string(internal_height);
@@ -431,6 +417,34 @@ DLSSGSummary GetDLSSGSummary() {
     unsigned int tonemapper;
     if (g_ngx_uint_parameters.get("TonemapperType", tonemapper)) {
         summary.tonemapper_type = std::to_string(tonemapper);
+    }
+
+    // Get DLSS-G frame generation mode
+    int enable_interp;
+    if (g_ngx_int_parameters.get("DLSSG.EnableInterp", enable_interp)) {
+        if (enable_interp == 1) {
+            // DLSS-G is enabled, check MultiFrameCount for mode
+            unsigned int multi_frame_count;
+            if (g_ngx_uint_parameters.get("DLSSG.MultiFrameCount", multi_frame_count)) {
+                if (multi_frame_count == 1) {
+                    summary.fg_mode = "2x";
+                } else if (multi_frame_count == 2) {
+                    summary.fg_mode = "3x";
+                } else if (multi_frame_count == 3) {
+                    summary.fg_mode = "4x";
+                } else {
+                    char buffer[16];
+                    snprintf(buffer, sizeof(buffer), "%dx", multi_frame_count + 1);
+                    summary.fg_mode = std::string(buffer);
+                }
+            } else {
+                summary.fg_mode = "Active (mode unknown)";
+            }
+        } else {
+            summary.fg_mode = "Disabled";
+        }
+    } else {
+        summary.fg_mode = "Unknown";
     }
 
     return summary;

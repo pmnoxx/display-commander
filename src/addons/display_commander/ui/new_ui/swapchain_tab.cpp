@@ -594,6 +594,26 @@ void DrawDLSSGSummary() {
                           "%s", summary.dlss_g_active ? "Yes" : "No");
         ImGui::NextColumn();
 
+        ImGui::Text("FG Mode:");
+        ImGui::NextColumn();
+        // Color code based on FG mode
+        ImVec4 fg_color = ImVec4(0.8f, 0.8f, 0.8f, 1.0f); // Default gray
+        if (summary.fg_mode == "2x") {
+            fg_color = ImVec4(0.0f, 1.0f, 0.0f, 1.0f); // Green for 2x
+        } else if (summary.fg_mode == "3x") {
+            fg_color = ImVec4(1.0f, 1.0f, 0.0f, 1.0f); // Yellow for 3x
+        } else if (summary.fg_mode == "4x") {
+            fg_color = ImVec4(1.0f, 0.5f, 0.0f, 1.0f); // Orange for 4x
+        } else if (summary.fg_mode.find("x") != std::string::npos) {
+            fg_color = ImVec4(1.0f, 0.0f, 1.0f, 1.0f); // Magenta for higher modes
+        } else if (summary.fg_mode == "Disabled") {
+            fg_color = ImVec4(1.0f, 0.0f, 0.0f, 1.0f); // Red for disabled
+        } else if (summary.fg_mode == "Unknown") {
+            fg_color = ImVec4(0.5f, 0.5f, 0.5f, 1.0f); // Gray for unknown
+        }
+        ImGui::TextColored(fg_color, "%s", summary.fg_mode.c_str());
+        ImGui::NextColumn();
+
         ImGui::Separator();
 
         // Resolution information

@@ -292,7 +292,7 @@ static reshade::api::format GetFormatFromComboValue(int combo_value) {
     }
 }
 // Capture sync interval during create_swapchain
-bool OnCreateSwapchainCapture(reshade::api::device_api /*api*/, reshade::api::swapchain_desc &desc, void *hwnd) {
+bool OnCreateSwapchainCapture(reshade::api::device_api api, reshade::api::swapchain_desc &desc, void *hwnd) {
     // Don't reset counters on swapchain creation - let them accumulate throughout the session
 
     // Increment event counter
@@ -304,6 +304,12 @@ bool OnCreateSwapchainCapture(reshade::api::device_api /*api*/, reshade::api::sw
 
     // Initialize if not already done
     DoInitializationWithHwnd(static_cast<HWND>(hwnd));
+    if (api != reshade::api::device_api::d3d12 && api != reshade::api::device_api::d3d11 && api != reshade::api::device_api::d3d10) {
+        LogWarn("OnCreateSwapchainCapture: Not a D3D12, D3D11, or D3D10 device");
+        return false;
+    }
+
+
 
     // Apply sync interval setting if enabled
     bool modified = false;

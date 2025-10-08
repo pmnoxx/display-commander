@@ -11,6 +11,12 @@ using NVSDK_NGX_Parameter_SetI_pfn = void (NVSDK_CONV *)(NVSDK_NGX_Parameter* In
 using NVSDK_NGX_Parameter_SetUI_pfn = void (NVSDK_CONV *)(NVSDK_NGX_Parameter* InParameter, const char* InName, unsigned int InValue);
 using NVSDK_NGX_Parameter_SetULL_pfn = void (NVSDK_CONV *)(NVSDK_NGX_Parameter* InParameter, const char* InName, unsigned long long InValue);
 
+// NGX parameter getter function pointer types
+using NVSDK_NGX_Parameter_GetI_pfn = NVSDK_NGX_Result (NVSDK_CONV *)(NVSDK_NGX_Parameter* InParameter, const char* InName, int* OutValue);
+using NVSDK_NGX_Parameter_GetUI_pfn = NVSDK_NGX_Result (NVSDK_CONV *)(NVSDK_NGX_Parameter* InParameter, const char* InName, unsigned int* OutValue);
+using NVSDK_NGX_Parameter_GetULL_pfn = NVSDK_NGX_Result (NVSDK_CONV *)(NVSDK_NGX_Parameter* InParameter, const char* InName, unsigned long long* OutValue);
+using NVSDK_NGX_Parameter_GetVoidPointer_pfn = NVSDK_NGX_Result (NVSDK_CONV *)(NVSDK_NGX_Parameter* InParameter, const char* InName, void** OutValue);
+
 // NGX initialization function pointer types
 using NVSDK_NGX_D3D12_GetParameters_pfn = NVSDK_NGX_Result (NVSDK_CONV *)(NVSDK_NGX_Parameter** OutParameters);
 using NVSDK_NGX_D3D12_AllocateParameters_pfn = NVSDK_NGX_Result (NVSDK_CONV *)(NVSDK_NGX_Parameter** OutParameters);
@@ -22,6 +28,13 @@ NVSDK_NGX_Parameter_SetF_pfn NVSDK_NGX_Parameter_SetF_Original = nullptr;
 NVSDK_NGX_Parameter_SetD_pfn NVSDK_NGX_Parameter_SetD_Original = nullptr;
 NVSDK_NGX_Parameter_SetI_pfn NVSDK_NGX_Parameter_SetI_Original = nullptr;
 NVSDK_NGX_Parameter_SetUI_pfn NVSDK_NGX_Parameter_SetUI_Original = nullptr;
+NVSDK_NGX_Parameter_SetULL_pfn NVSDK_NGX_Parameter_SetULL_Original = nullptr;
+
+// NGX parameter getter original function pointers
+NVSDK_NGX_Parameter_GetI_pfn NVSDK_NGX_Parameter_GetI_Original = nullptr;
+NVSDK_NGX_Parameter_GetUI_pfn NVSDK_NGX_Parameter_GetUI_Original = nullptr;
+NVSDK_NGX_Parameter_GetULL_pfn NVSDK_NGX_Parameter_GetULL_Original = nullptr;
+NVSDK_NGX_Parameter_GetVoidPointer_pfn NVSDK_NGX_Parameter_GetVoidPointer_Original = nullptr;
 
 // NGX initialization function originals
 NVSDK_NGX_D3D12_GetParameters_pfn NVSDK_NGX_D3D12_GetParameters_Original = nullptr;
@@ -31,7 +44,6 @@ NVSDK_NGX_D3D11_AllocateParameters_pfn NVSDK_NGX_D3D11_AllocateParameters_Origin
 
 // Global flag to track if vtable hooks are installed
 static bool g_ngx_vtable_hooks_installed = false;
-NVSDK_NGX_Parameter_SetULL_pfn NVSDK_NGX_Parameter_SetULL_Original = nullptr;
 
 // Hooked NVSDK_NGX_Parameter_SetF function
 void NVSDK_CONV NVSDK_NGX_Parameter_SetF_Detour(NVSDK_NGX_Parameter* InParameter, const char* InName, float InValue) {
@@ -153,6 +165,108 @@ void NVSDK_CONV NVSDK_NGX_Parameter_SetULL_Detour(NVSDK_NGX_Parameter* InParamet
     }
 }
 
+// Hooked NVSDK_NGX_Parameter_GetI function
+NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_Parameter_GetI_Detour(NVSDK_NGX_Parameter* InParameter, const char* InName, int* OutValue) {
+    // Increment counter
+    g_swapchain_event_counters[SWAPCHAIN_EVENT_NGX_PARAMETER_GETI].fetch_add(1);
+    g_swapchain_event_total_count.fetch_add(1);
+
+    // Log the call (first few times only)
+    static int log_count = 0;
+    if (log_count < 60) {
+        LogInfo("NGX Parameter GetI called - Name: %s", InName ? InName : "null");
+        log_count++;
+    }
+
+    // Call original function
+    if (NVSDK_NGX_Parameter_GetI_Original != nullptr) {
+        auto res = NVSDK_NGX_Parameter_GetI_Original(InParameter, InName, OutValue);
+
+        if (res == NVSDK_NGX_Result_Success && OutValue != nullptr) {
+            g_ngx_parameters.update_int(std::string(InName), *OutValue);
+        }
+
+        return res;
+    }
+
+    return NVSDK_NGX_Result_Fail;
+}
+
+// Hooked NVSDK_NGX_Parameter_GetUI function
+NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_Parameter_GetUI_Detour(NVSDK_NGX_Parameter* InParameter, const char* InName, unsigned int* OutValue) {
+    // Increment counter
+    g_swapchain_event_counters[SWAPCHAIN_EVENT_NGX_PARAMETER_GETUI].fetch_add(1);
+    g_swapchain_event_total_count.fetch_add(1);
+
+    // Log the call (first few times only)
+    static int log_count = 0;
+    if (log_count < 60) {
+        LogInfo("NGX Parameter GetUI called - Name: %s", InName ? InName : "null");
+        log_count++;
+    }
+
+    // Call original function
+    if (NVSDK_NGX_Parameter_GetUI_Original != nullptr) {
+        auto res = NVSDK_NGX_Parameter_GetUI_Original(InParameter, InName, OutValue);
+
+        if (res == NVSDK_NGX_Result_Success && OutValue != nullptr) {
+            g_ngx_parameters.update_uint(std::string(InName), *OutValue);
+        }
+
+        return res;
+    }
+
+    return NVSDK_NGX_Result_Fail;
+}
+
+// Hooked NVSDK_NGX_Parameter_GetULL function
+NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_Parameter_GetULL_Detour(NVSDK_NGX_Parameter* InParameter, const char* InName, unsigned long long* OutValue) {
+    // Increment counter
+    g_swapchain_event_counters[SWAPCHAIN_EVENT_NGX_PARAMETER_GETULL].fetch_add(1);
+    g_swapchain_event_total_count.fetch_add(1);
+
+    // Log the call (first few times only)
+    static int log_count = 0;
+    if (log_count < 60) {
+        LogInfo("NGX Parameter GetULL called - Name: %s", InName ? InName : "null");
+        log_count++;
+    }
+
+    // Call original function
+    if (NVSDK_NGX_Parameter_GetULL_Original != nullptr) {
+        auto res = NVSDK_NGX_Parameter_GetULL_Original(InParameter, InName, OutValue);
+
+        if (res == NVSDK_NGX_Result_Success && OutValue != nullptr) {
+            g_ngx_parameters.update_ull(std::string(InName), *OutValue);
+        }
+
+        return res;
+    }
+
+    return NVSDK_NGX_Result_Fail;
+}
+
+// Hooked NVSDK_NGX_Parameter_GetVoidPointer function
+NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_Parameter_GetVoidPointer_Detour(NVSDK_NGX_Parameter* InParameter, const char* InName, void** OutValue) {
+    // Increment counter
+    g_swapchain_event_counters[SWAPCHAIN_EVENT_NGX_PARAMETER_GETVOIDPOINTER].fetch_add(1);
+    g_swapchain_event_total_count.fetch_add(1);
+
+    // Log the call (first few times only)
+    static int log_count = 0;
+    if (log_count < 60) {
+        LogInfo("NGX Parameter GetVoidPointer called - Name: %s", InName ? InName : "null");
+        log_count++;
+    }
+
+    // Call original function
+    if (NVSDK_NGX_Parameter_GetVoidPointer_Original != nullptr) {
+        return NVSDK_NGX_Parameter_GetVoidPointer_Original(InParameter, InName, OutValue);
+    }
+
+    return NVSDK_NGX_Result_Fail;
+}
+
 // Function to hook NGX Parameter vtable (following Special-K's approach)
 bool HookNGXParameterVTable(NVSDK_NGX_Parameter* Params) {
     if (Params == nullptr) {
@@ -215,6 +329,30 @@ bool HookNGXParameterVTable(NVSDK_NGX_Parameter* Params) {
     if (MH_CreateHook(vftable[7], reinterpret_cast<LPVOID>(NVSDK_NGX_Parameter_SetULL_Detour),
                       reinterpret_cast<LPVOID*>(&NVSDK_NGX_Parameter_SetULL_Original)) != MH_OK) {
         LogInfo("NGX hooks: Failed to hook NVSDK_NGX_Parameter_SetULL vtable");
+    }
+
+    // Hook GetVoidPointer (vtable index 8) - Special-K uses index 8
+    if (MH_CreateHook(vftable[8], reinterpret_cast<LPVOID>(NVSDK_NGX_Parameter_GetVoidPointer_Detour),
+                      reinterpret_cast<LPVOID*>(&NVSDK_NGX_Parameter_GetVoidPointer_Original)) != MH_OK) {
+        LogInfo("NGX hooks: Failed to hook NVSDK_NGX_Parameter_GetVoidPointer vtable");
+    }
+
+    // Hook GetI (vtable index 11) - Special-K uses index 11
+    if (MH_CreateHook(vftable[11], reinterpret_cast<LPVOID>(NVSDK_NGX_Parameter_GetI_Detour),
+                      reinterpret_cast<LPVOID*>(&NVSDK_NGX_Parameter_GetI_Original)) != MH_OK) {
+        LogInfo("NGX hooks: Failed to hook NVSDK_NGX_Parameter_GetI vtable");
+    }
+
+    // Hook GetUI (vtable index 12) - Special-K uses index 12
+    if (MH_CreateHook(vftable[12], reinterpret_cast<LPVOID>(NVSDK_NGX_Parameter_GetUI_Detour),
+                      reinterpret_cast<LPVOID*>(&NVSDK_NGX_Parameter_GetUI_Original)) != MH_OK) {
+        LogInfo("NGX hooks: Failed to hook NVSDK_NGX_Parameter_GetUI vtable");
+    }
+
+    // Hook GetULL (vtable index 15) - Special-K uses index 15
+    if (MH_CreateHook(vftable[15], reinterpret_cast<LPVOID>(NVSDK_NGX_Parameter_GetULL_Detour),
+                      reinterpret_cast<LPVOID*>(&NVSDK_NGX_Parameter_GetULL_Original)) != MH_OK) {
+        LogInfo("NGX hooks: Failed to hook NVSDK_NGX_Parameter_GetULL vtable");
     }
 
     // Enable hooks
@@ -378,6 +516,26 @@ void UninstallNGXHooks() {
     if (NVSDK_NGX_Parameter_SetULL_Original != nullptr) {
         MH_RemoveHook(GetProcAddress(GetModuleHandleA("_nvngx.dll"), "NVSDK_NGX_Parameter_SetULL"));
         NVSDK_NGX_Parameter_SetULL_Original = nullptr;
+    }
+
+    if (NVSDK_NGX_Parameter_GetI_Original != nullptr) {
+        MH_RemoveHook(GetProcAddress(GetModuleHandleA("_nvngx.dll"), "NVSDK_NGX_Parameter_GetI"));
+        NVSDK_NGX_Parameter_GetI_Original = nullptr;
+    }
+
+    if (NVSDK_NGX_Parameter_GetUI_Original != nullptr) {
+        MH_RemoveHook(GetProcAddress(GetModuleHandleA("_nvngx.dll"), "NVSDK_NGX_Parameter_GetUI"));
+        NVSDK_NGX_Parameter_GetUI_Original = nullptr;
+    }
+
+    if (NVSDK_NGX_Parameter_GetULL_Original != nullptr) {
+        MH_RemoveHook(GetProcAddress(GetModuleHandleA("_nvngx.dll"), "NVSDK_NGX_Parameter_GetULL"));
+        NVSDK_NGX_Parameter_GetULL_Original = nullptr;
+    }
+
+    if (NVSDK_NGX_Parameter_GetVoidPointer_Original != nullptr) {
+        MH_RemoveHook(GetProcAddress(GetModuleHandleA("_nvngx.dll"), "NVSDK_NGX_Parameter_GetVoidPointer"));
+        NVSDK_NGX_Parameter_GetVoidPointer_Original = nullptr;
     }
 
     LogInfo("NGX hooks uninstalled");

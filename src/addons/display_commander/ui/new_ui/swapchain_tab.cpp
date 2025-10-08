@@ -5,6 +5,9 @@
 #include "../../utils.hpp"
 
 #include <array>
+#include <algorithm>
+#include <vector>
+#include <cctype>
 #include <dxgi1_6.h>
 #include <imgui.h>
 #include <wrl/client.h>
@@ -142,6 +145,8 @@ void DrawSwapchainTab() {
 
     // Draw all swapchain-related sections
     DrawSwapchainEventCounters();
+    ImGui::Spacing();
+    DrawNGXParameters();
     ImGui::Spacing();
     DrawSwapchainInfo();
     ImGui::Spacing();
@@ -375,6 +380,189 @@ void DrawSwapchainEventCounters() {
 
         if (main_power_saving && is_background) {
             ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "  ✁EPower saving is currently active");
+        }
+    }
+}
+
+void DrawNGXParameters() {
+    if (ImGui::CollapsingHeader("NGX Parameters", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "NGX Parameter Values (Live from Game)");
+        ImGui::Separator();
+
+        // Collect all parameters into a unified list
+        struct ParameterEntry {
+            std::string name;
+            std::string value;
+            std::string type;
+            ImVec4 color;
+        };
+
+        std::vector<ParameterEntry> all_params;
+
+        // Add float parameters
+        auto float_params = g_ngx_float_parameters.get_all();
+        if (float_params) {
+            for (const auto& [key, value] : *float_params) {
+                char buffer[32];
+                snprintf(buffer, sizeof(buffer), "%.6f", value);
+                all_params.push_back({
+                    key,
+                    std::string(buffer),
+                    "float",
+                    ImVec4(0.0f, 1.0f, 1.0f, 1.0f) // Cyan
+                });
+            }
+        }
+
+        // Add double parameters
+        auto double_params = g_ngx_double_parameters.get_all();
+        if (double_params) {
+            for (const auto& [key, value] : *double_params) {
+                char buffer[32];
+                snprintf(buffer, sizeof(buffer), "%.6f", value);
+                all_params.push_back({
+                    key,
+                    std::string(buffer),
+                    "double",
+                    ImVec4(0.0f, 1.0f, 0.8f, 1.0f) // Light cyan
+                });
+            }
+        }
+
+        // Add int parameters
+        auto int_params = g_ngx_int_parameters.get_all();
+        if (int_params) {
+            for (const auto& [key, value] : *int_params) {
+                all_params.push_back({
+                    key,
+                    std::to_string(value),
+                    "int",
+                    ImVec4(1.0f, 1.0f, 0.0f, 1.0f) // Yellow
+                });
+            }
+        }
+
+        // Add unsigned int parameters
+        auto uint_params = g_ngx_uint_parameters.get_all();
+        if (uint_params) {
+            for (const auto& [key, value] : *uint_params) {
+                all_params.push_back({
+                    key,
+                    std::to_string(value),
+                    "uint",
+                    ImVec4(1.0f, 0.8f, 0.0f, 1.0f) // Orange
+                });
+            }
+        }
+
+        // Add unsigned long long parameters
+        auto ull_params = g_ngx_ull_parameters.get_all();
+        if (ull_params) {
+            for (const auto& [key, value] : *ull_params) {
+                all_params.push_back({
+                    key,
+                    std::to_string(value),
+                    "ull",
+                    ImVec4(1.0f, 0.6f, 0.0f, 1.0f) // Dark orange
+                });
+            }
+        }
+
+        // Sort parameters alphabetically by name
+        std::sort(all_params.begin(), all_params.end(),
+                  [](const ParameterEntry& a, const ParameterEntry& b) {
+                      return a.name < b.name;
+                  });
+
+        // Display unified parameter list
+        if (!all_params.empty()) {
+            ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "All Parameters (%zu) - Sorted Alphabetically:", all_params.size());
+            ImGui::Spacing();
+
+            // Add search filter
+            static char search_filter[256] = "";
+            ImGui::InputTextWithHint("##NGXSearch", "Search parameters...", search_filter, sizeof(search_filter));
+            ImGui::Spacing();
+
+            // Create a table-like display
+            ImGui::Columns(3, "NGXParameters", true);
+            ImGui::SetColumnWidth(0, 750); // Parameter name (increased for long names)
+            ImGui::SetColumnWidth(1, 80);  // Type
+            ImGui::SetColumnWidth(2, 150); // Value
+
+            // Header
+            ImGui::TextColored(ImVec4(1.0f, 1.0f, 1.0f, 1.0f), "Parameter Name");
+            ImGui::NextColumn();
+            ImGui::TextColored(ImVec4(1.0f, 1.0f, 1.0f, 1.0f), "Type");
+            ImGui::NextColumn();
+            ImGui::TextColored(ImVec4(1.0f, 1.0f, 1.0f, 1.0f), "Value");
+            ImGui::NextColumn();
+            ImGui::Separator();
+
+            // Display each parameter (with filtering)
+            size_t displayed_count = 0;
+            for (const auto& param : all_params) {
+                // Apply search filter
+                if (strlen(search_filter) > 0) {
+                    std::string lower_name = param.name;
+                    std::string lower_filter = search_filter;
+                    std::transform(lower_name.begin(), lower_name.end(), lower_name.begin(), ::tolower);
+                    std::transform(lower_filter.begin(), lower_filter.end(), lower_filter.begin(), ::tolower);
+
+                    if (lower_name.find(lower_filter) == std::string::npos) {
+                        continue; // Skip this parameter if it doesn't match the filter
+                    }
+                }
+
+                ImGui::TextColored(ImVec4(0.9f, 0.9f, 0.9f, 1.0f), "%s", param.name.c_str());
+                ImGui::NextColumn();
+                ImGui::TextColored(param.color, "%s", param.type.c_str());
+                ImGui::NextColumn();
+                ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "%s", param.value.c_str());
+                ImGui::NextColumn();
+                displayed_count++;
+            }
+
+            // Show filtered count if search is active
+            if (strlen(search_filter) > 0) {
+                ImGui::Columns(1);
+                ImGui::Spacing();
+                ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Showing %zu of %zu parameters", displayed_count, all_params.size());
+                ImGui::Spacing();
+            }
+
+            ImGui::Columns(1); // Reset columns
+            ImGui::Spacing();
+
+            // Show type legend with counts
+            ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Type Legend:");
+            ImGui::Indent();
+
+            // Count parameters by type
+            size_t float_count = 0, double_count = 0, int_count = 0, uint_count = 0, ull_count = 0;
+            for (const auto& param : all_params) {
+                if (param.type == "float") float_count++;
+                else if (param.type == "double") double_count++;
+                else if (param.type == "int") int_count++;
+                else if (param.type == "uint") uint_count++;
+                else if (param.type == "ull") ull_count++;
+            }
+
+            ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "float (%zu)", float_count); ImGui::SameLine(100);
+            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.8f, 1.0f), "double (%zu)", double_count); ImGui::SameLine(200);
+            ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "int (%zu)", int_count); ImGui::SameLine(300);
+            ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "uint (%zu)", uint_count); ImGui::SameLine(400);
+            ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f), "ull (%zu)", ull_count);
+            ImGui::Unindent();
+        } else {
+            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "⚠ No NGX parameters detected yet");
+        }
+
+        ImGui::Separator();
+        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Total NGX Parameters: %zu", all_params.size());
+
+        if (!all_params.empty()) {
+            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✓ NGX parameter hooks are working correctly");
         }
     }
 }

@@ -274,3 +274,10 @@ ExperimentalTabSettings g_experimentalTabSettings;
 DeveloperTabSettings g_developerTabSettings;
 MainTabSettings g_mainTabSettings;
 } // namespace settings
+
+// NGX Parameter Storage global instances
+AtomicParameterMap<float> g_ngx_float_parameters;
+AtomicParameterMap<double> g_ngx_double_parameters;
+AtomicParameterMap<int> g_ngx_int_parameters;
+AtomicParameterMap<unsigned int> g_ngx_uint_parameters;
+AtomicParameterMap<unsigned long long> g_ngx_ull_parameters;

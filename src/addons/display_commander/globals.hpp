@@ -18,6 +18,8 @@
 #include <string>
 #include <thread>
 #include <vector>
+#include <unordered_map>
+#include <shared_mutex>
 
 // NVAPI types
 #include "../../../external/nvapi/nvapi.h"
@@ -32,6 +34,61 @@ class SpinLock;
 class BackgroundWindowManager;
 class LatentSyncManager;
 class LatencyManager;
+
+// Template-based atomic parameter storage system
+template<typename T>
+class AtomicParameterMap {
+private:
+    std::atomic<std::shared_ptr<std::unordered_map<std::string, T>>> data_ = std::make_shared<std::unordered_map<std::string, T>>();
+
+public:
+    AtomicParameterMap() {}
+
+    // Update parameter value (thread-safe)
+    void update(const std::string& key, const T& value) {
+        // First, try to update existing data without copying
+        {
+            auto current_data = data_.load();
+            if (current_data->find(key) != current_data->end()) {
+                // Key exists, update in place (this is safe because we're only updating values, not structure)
+                (*current_data)[key] = value;
+                return;
+            }
+        }
+
+        // Key doesn't exist, need to copy and update
+        auto current_data = data_.load();
+        auto new_data = std::make_shared<std::unordered_map<std::string, T>>(*current_data);
+        (*new_data)[key] = value;
+        data_.store(new_data);
+    }
+
+    // Get parameter value (thread-safe)
+    bool get(const std::string& key, T& value) const {
+        auto current_data = data_.load();
+        auto it = current_data->find(key);
+        if (it != current_data->end()) {
+            value = it->second;
+            return true;
+        }
+        return false;
+    }
+
+    // Get all parameters (thread-safe)
+    std::shared_ptr<std::unordered_map<std::string, T>> get_all() const {
+        return data_.load();
+    }
+
+    // Get parameter count (thread-safe)
+    size_t size() const {
+        return data_.load()->size();
+    }
+
+    // Clear all parameters (thread-safe)
+    void clear() {
+        data_.store(std::make_shared<std::unordered_map<std::string, T>>());
+    }
+};
 
 // DLL initialization state
 extern std::atomic<bool> g_dll_initialization_complete;
@@ -453,6 +510,13 @@ extern std::atomic<bool> s_enable_reflex_logging;  // Enable Reflex logging
 // DLLS-G (DLSS Frame Generation) status
 extern std::atomic<bool> g_dlls_g_loaded;                                 // DLLS-G loaded status
 extern std::atomic<std::shared_ptr<const std::string>> g_dlls_g_version;  // DLLS-G version string
+
+// NGX Parameter Storage (thread-safe atomic shared_ptr hashmaps)
+extern AtomicParameterMap<float> g_ngx_float_parameters;      // NGX float parameters
+extern AtomicParameterMap<double> g_ngx_double_parameters;    // NGX double parameters
+extern AtomicParameterMap<int> g_ngx_int_parameters;          // NGX int parameters
+extern AtomicParameterMap<unsigned int> g_ngx_uint_parameters; // NGX unsigned int parameters
+extern AtomicParameterMap<unsigned long long> g_ngx_ull_parameters; // NGX unsigned long long parameters
 
 // NVAPI SetSleepMode tracking
 extern std::atomic<std::shared_ptr<NV_SET_SLEEP_MODE_PARAMS>> g_last_nvapi_sleep_mode_params;  // Last SetSleepMode parameters

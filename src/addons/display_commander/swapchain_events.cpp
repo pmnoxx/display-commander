@@ -485,7 +485,7 @@ void OnInitSwapchain(reshade::api::swapchain *swapchain, bool resize) {
 }
 
 HANDLE g_timer_handle = nullptr;
-void TimerPresentPacingDelay() {
+LONGLONG TimerPresentPacingDelayStart() {
     LONGLONG start_ns = utils::get_now_ns();
     float delay_percentage = s_present_pacing_delay_percentage.load();
     if (delay_percentage > 0.0f) {
@@ -506,9 +506,13 @@ void TimerPresentPacingDelay() {
             }
         }
     }
+    return start_ns;
+}
 
+LONGLONG TimerPresentPacingDelayEnd(LONGLONG start_ns) {
     LONGLONG end_ns = utils::get_now_ns();
     fps_sleep_after_on_present_ns.store(end_ns - start_ns);
+    return end_ns;
 }
 
 void OnPresentUpdateAfter2() {
@@ -540,13 +544,31 @@ void OnPresentUpdateAfter2() {
     double alpha = 64;
     g_present_duration_ns.store((1 * g_present_duration_new_ns + (alpha - 1) * g_present_duration_ns.load()) / alpha);
 
+    // GPU completion measurement (non-blocking check)
+    if (g_gpu_measurement_enabled.load()) {
+        HANDLE event = g_gpu_completion_event.load();
+        if (event != nullptr) {
+            // Non-blocking wait (0 timeout) - just check if GPU is done
+            DWORD result = WaitForSingleObject(event, 0);
+            if (result == WAIT_OBJECT_0) {
+                // GPU work completed
+                LONGLONG gpu_completion_time = utils::get_now_ns();
+                LONGLONG gpu_duration_new_ns = gpu_completion_time - g_present_start_time_ns.load();
+
+                // Smooth the GPU duration with exponential moving average
+                double gpu_alpha = 64;
+                g_gpu_duration_ns.store((1 * gpu_duration_new_ns + (gpu_alpha - 1) * g_gpu_duration_ns.load()) / gpu_alpha);
+                g_gpu_completion_time_ns.store(gpu_completion_time);
+            }
+        }
+    }
+
     // Mark Present end for latent sync limiter timing
     if (dxgi::latent_sync::g_latentSyncManager) {
         auto &latent = dxgi::latent_sync::g_latentSyncManager->GetLatentLimiter();
         latent.OnPresentEnd();
     }
-    TimerPresentPacingDelay();
-    HandleOnPresentEnd();
+    auto start_ns = TimerPresentPacingDelayStart();
 
     // Input blocking in background is now handled by Windows message hooks
     // instead of ReShade's block_input_next_frame() for better compatibility
@@ -577,6 +599,8 @@ void OnPresentUpdateAfter2() {
             g_latencyManager->Shutdown();
         }
     }
+    auto end_ns = TimerPresentPacingDelayEnd(start_ns);
+    HandleOnPresentEnd();
 
     RecordFrameTime(FrameTimeMode::FrameBegin);
 }

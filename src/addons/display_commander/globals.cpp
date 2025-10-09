@@ -254,6 +254,12 @@ std::atomic<uint32_t> g_swapchain_event_total_count{0}; // Total events across a
 
 std::atomic<LONGLONG> late_amount_ns{0};
 
+// GPU completion measurement using EnqueueSetEvent
+std::atomic<HANDLE> g_gpu_completion_event{nullptr};  // Event handle for GPU completion measurement
+std::atomic<LONGLONG> g_gpu_completion_time_ns{0};  // Last measured GPU completion time
+std::atomic<LONGLONG> g_gpu_duration_ns{0};  // Last measured GPU duration (smoothed)
+std::atomic<bool> g_gpu_measurement_enabled{false};  // Whether GPU measurement is enabled
+
 // NVIDIA Reflex minimal controls (disabled by default)
 std::atomic<bool> s_reflex_enable{false};
 std::atomic<bool> s_reflex_enable_current_frame{false};

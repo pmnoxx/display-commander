@@ -6,6 +6,9 @@
 
 #include <MinHook.h>
 
+#include <d3d11_4.h>
+#include <d3d12.h>
+#include <wrl/client.h>
 #include <string>
 
 /*
@@ -24,6 +27,154 @@
  * Note: Index 18 (GetDesc1) is only available in IDXGISwapChain1 and later versions.
  * The base IDXGISwapChain interface only goes up to index 17.
  */
+
+// GPU completion measurement state
+namespace {
+    struct GPUMeasurementState {
+        Microsoft::WRL::ComPtr<ID3D11Fence> d3d11_fence;
+        Microsoft::WRL::ComPtr<ID3D12Fence> d3d12_fence;
+        HANDLE event_handle = nullptr;
+        std::atomic<uint64_t> fence_value{0};
+        std::atomic<bool> initialized{false};
+        std::atomic<bool> is_d3d12{false};
+
+        ~GPUMeasurementState() {
+            if (event_handle != nullptr) {
+                CloseHandle(event_handle);
+                event_handle = nullptr;
+            }
+        }
+    };
+
+    GPUMeasurementState g_gpu_state;
+
+    // Helper function to enqueue GPU completion measurement for D3D11
+    void EnqueueGPUCompletionD3D11(IDXGISwapChain* swapchain) {
+        if (!g_gpu_measurement_enabled.load()) {
+            return;
+        }
+
+        Microsoft::WRL::ComPtr<ID3D11Device> device;
+        if (FAILED(swapchain->GetDevice(IID_PPV_ARGS(&device)))) {
+            return;
+        }
+
+        // Try to get ID3D11Device5 for fence support
+        Microsoft::WRL::ComPtr<ID3D11Device5> device5;
+        if (FAILED(device.As(&device5))) {
+            return; // Fences require D3D11.3+ (Windows 10+)
+        }
+
+        // Initialize fence on first use
+        if (!g_gpu_state.initialized.load()) {
+            if (FAILED(device5->CreateFence(0, D3D11_FENCE_FLAG_NONE, IID_PPV_ARGS(&g_gpu_state.d3d11_fence)))) {
+                return;
+            }
+
+            g_gpu_state.event_handle = CreateEventW(nullptr, FALSE, FALSE, nullptr);
+            if (g_gpu_state.event_handle == nullptr) {
+                g_gpu_state.d3d11_fence.Reset();
+                return;
+            }
+
+            g_gpu_state.is_d3d12.store(false);
+            g_gpu_state.initialized.store(true);
+        }
+
+        if (!static_cast<bool>(g_gpu_state.d3d11_fence)) {
+            return;
+        }
+
+        // Get immediate context and signal fence
+        Microsoft::WRL::ComPtr<ID3D11DeviceContext> context;
+        device->GetImmediateContext(&context);
+
+        Microsoft::WRL::ComPtr<ID3D11DeviceContext4> context4;
+        if (FAILED(context.As(&context4))) {
+            return;
+        }
+
+        uint64_t signal_value = g_gpu_state.fence_value.fetch_add(1) + 1;
+
+        // Signal the fence from GPU
+        if (SUCCEEDED(context4->Signal(g_gpu_state.d3d11_fence.Get(), signal_value))) {
+            // Set event to trigger when fence reaches this value
+            if (SUCCEEDED(g_gpu_state.d3d11_fence->SetEventOnCompletion(signal_value, g_gpu_state.event_handle))) {
+                // Store the event handle for external threads to wait on
+                g_gpu_completion_event.store(g_gpu_state.event_handle);
+            }
+        }
+    }
+
+    // Helper function to enqueue GPU completion measurement for D3D12
+    void EnqueueGPUCompletionD3D12(IDXGISwapChain* swapchain) {
+        if (!g_gpu_measurement_enabled.load()) {
+            return;
+        }
+
+        Microsoft::WRL::ComPtr<ID3D12Device> device;
+        if (FAILED(swapchain->GetDevice(IID_PPV_ARGS(&device)))) {
+            return;
+        }
+
+        // Initialize fence on first use
+        if (!g_gpu_state.initialized.load()) {
+            if (FAILED(device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&g_gpu_state.d3d12_fence)))) {
+                return;
+            }
+
+            g_gpu_state.event_handle = CreateEventW(nullptr, FALSE, FALSE, nullptr);
+            if (g_gpu_state.event_handle == nullptr) {
+                g_gpu_state.d3d12_fence.Reset();
+                return;
+            }
+
+            g_gpu_state.is_d3d12.store(true);
+            g_gpu_state.initialized.store(true);
+        }
+
+        if (!static_cast<bool>(g_gpu_state.d3d12_fence)) {
+            return;
+        }
+
+        // Need to get the command queue - we'll try to get it from the swapchain's present queue
+        // For D3D12, this is more complex as we need the actual command queue
+        // We can't easily get it here without storing it during swapchain creation
+        // For now, we'll store the fence value and let external code signal it
+        uint64_t signal_value = g_gpu_state.fence_value.fetch_add(1) + 1;
+
+        // Set event to trigger when fence reaches this value
+        if (SUCCEEDED(g_gpu_state.d3d12_fence->SetEventOnCompletion(signal_value, g_gpu_state.event_handle))) {
+            // Store the event handle for external threads to wait on
+            g_gpu_completion_event.store(g_gpu_state.event_handle);
+
+            // Note: For D3D12, the command queue signal needs to be called from the present queue
+            // This would require hooking the command queue or getting it during swapchain init
+            // For now, this sets up the infrastructure but won't signal without command queue access
+        }
+    }
+
+    // Helper function to enqueue GPU completion measurement (auto-detects API)
+    void EnqueueGPUCompletion(IDXGISwapChain* swapchain) {
+        if (swapchain == nullptr) {
+            return;
+        }
+
+        // Try D3D12 first
+        Microsoft::WRL::ComPtr<ID3D12Device> d3d12_device;
+        if (SUCCEEDED(swapchain->GetDevice(IID_PPV_ARGS(&d3d12_device)))) {
+            EnqueueGPUCompletionD3D12(swapchain);
+            return;
+        }
+
+        // Try D3D11
+        Microsoft::WRL::ComPtr<ID3D11Device> d3d11_device;
+        if (SUCCEEDED(swapchain->GetDevice(IID_PPV_ARGS(&d3d11_device)))) {
+            EnqueueGPUCompletionD3D11(swapchain);
+            return;
+        }
+    }
+} // namespace
 
 namespace display_commanderhooks::dxgi {
 
@@ -142,12 +293,20 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain *This, UI
     // Call original function
     if (IDXGISwapChain_Present_Original != nullptr) {
         auto res= IDXGISwapChain_Present_Original(This, SyncInterval, Flags);
+
+        // Enqueue GPU completion measurement (can be waited on from another thread)
+        ::EnqueueGPUCompletion(This);
+
         ::OnPresentUpdateAfter2();
         return res;
     }
 
     // Fallback to direct call if hook failed
     auto res= This->Present(SyncInterval, Flags);
+
+    // Enqueue GPU completion measurement (can be waited on from another thread)
+    ::EnqueueGPUCompletion(This);
+
     ::OnPresentUpdateAfter2();
     return res;
 }
@@ -169,12 +328,20 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1 *This, 
     // Call original function
     if (IDXGISwapChain_Present1_Original != nullptr) {
         auto res= IDXGISwapChain_Present1_Original(This, SyncInterval, PresentFlags, pPresentParameters);
+
+        // Enqueue GPU completion measurement (can be waited on from another thread)
+        ::EnqueueGPUCompletion(This);
+
         ::OnPresentUpdateAfter2();
         return res;
     }
 
     // Fallback to direct call if hook failed
     auto res= This->Present1(SyncInterval, PresentFlags, pPresentParameters);
+
+    // Enqueue GPU completion measurement (can be waited on from another thread)
+    ::EnqueueGPUCompletion(This);
+
     ::OnPresentUpdateAfter2();
     return res;
 }

@@ -77,6 +77,9 @@ class ExperimentalTabSettings {
     ComboSetting get_local_time_hook;
     ComboSetting nt_query_system_time_hook;
 
+    // DLSS indicator settings
+    BoolSetting dlss_indicator_enabled;
+
   private:
     std::vector<SettingBase *> all_settings_;
 };

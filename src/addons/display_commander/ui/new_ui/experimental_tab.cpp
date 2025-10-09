@@ -1,5 +1,6 @@
 #include "experimental_tab.hpp"
 #include "../../autoclick/autoclick_manager.hpp"
+#include "../../dlss/dlss_indicator_manager.hpp"
 #include "../../globals.hpp"
 #include "../../hooks/sleep_hooks.hpp"
 #include "../../hooks/timeslowdown_hooks.hpp"
@@ -9,7 +10,6 @@
 #include <windows.h>
 
 #include <atomic>
-#include <chrono>
 #include <thread>
 
 namespace ui::new_ui {
@@ -83,13 +83,13 @@ void DrawExperimentalTab() {
         std::string coords = std::to_string(mouse_pos.x) + ", " + std::to_string(mouse_pos.y);
         if (OpenClipboard(nullptr)) {
             EmptyClipboard();
-            HGLOBAL hClipboardData = GlobalAlloc(GMEM_DDESHARE, coords.length() + 1);
-            if (hClipboardData) {
-                char *pchData = (char *)GlobalLock(hClipboardData);
-                if (pchData) {
-                    strcpy_s(pchData, coords.length() + 1, coords.c_str());
-                    GlobalUnlock(hClipboardData);
-                    SetClipboardData(CF_TEXT, hClipboardData);
+            HGLOBAL h_clipboard_data = GlobalAlloc(GMEM_DDESHARE, coords.length() + 1);
+            if (h_clipboard_data) {
+                char *pch_data = static_cast<char*>(GlobalLock(h_clipboard_data));
+                if (pch_data) {
+                    strcpy_s(pch_data, coords.length() + 1, coords.c_str());
+                    GlobalUnlock(h_clipboard_data);
+                    SetClipboardData(CF_TEXT, h_clipboard_data);
                 }
             }
             CloseClipboard();
@@ -108,13 +108,13 @@ void DrawExperimentalTab() {
             std::string coords = std::to_string(client_pos.x) + ", " + std::to_string(client_pos.y);
             if (OpenClipboard(nullptr)) {
                 EmptyClipboard();
-                HGLOBAL hClipboardData = GlobalAlloc(GMEM_DDESHARE, coords.length() + 1);
-                if (hClipboardData) {
-                    char *pchData = (char *)GlobalLock(hClipboardData);
-                    if (pchData) {
-                        strcpy_s(pchData, coords.length() + 1, coords.c_str());
-                        GlobalUnlock(hClipboardData);
-                        SetClipboardData(CF_TEXT, hClipboardData);
+                HGLOBAL h_clipboard_data = GlobalAlloc(GMEM_DDESHARE, coords.length() + 1);
+                if (h_clipboard_data) {
+                    char *pch_data = static_cast<char*>(GlobalLock(h_clipboard_data));
+                    if (pch_data) {
+                        strcpy_s(pch_data, coords.length() + 1, coords.c_str());
+                        GlobalUnlock(h_clipboard_data);
+                        SetClipboardData(CF_TEXT, h_clipboard_data);
                     }
                 }
                 CloseClipboard();
@@ -764,6 +764,142 @@ void DrawTimeSlowdownControls() {
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Time slowdown affects all game systems that use the selected timer APIs for timing.");
         }
+    }
+    if (ImGui::CollapsingHeader("DLSS Indicator Controls", ImGuiTreeNodeFlags_None)) {
+        DrawDlssIndicatorControls();
+    }
+}
+
+void DrawDlssIndicatorControls() {
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::Spacing();
+
+    ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== DLSS Indicator Controls ===");
+    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f),
+                       "⚠ EXPERIMENTAL FEATURE - Modifies NVIDIA registry settings!");
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("This feature modifies the NVIDIA registry to enable/disable the DLSS indicator.\n"
+                         "The indicator appears in the bottom left corner when enabled.\n"
+                         "Requires administrator privileges to modify registry.");
+    }
+
+    ImGui::Spacing();
+
+    // Current status display
+    bool current_status = dlss::DlssIndicatorManager::IsDlssIndicatorEnabled();
+    DWORD current_value = dlss::DlssIndicatorManager::GetDlssIndicatorValue();
+
+    ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Current Status:");
+    ImGui::TextColored(current_status ? ImVec4(0.0f, 1.0f, 0.0f, 1.0f) : ImVec4(1.0f, 0.5f, 0.5f, 1.0f),
+                       "  DLSS Indicator: %s", current_status ? "ENABLED" : "DISABLED");
+    ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Registry Value: %lu (0x%lX)", current_value, current_value);
+    ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Registry Path: HKEY_LOCAL_MACHINE\\%s",
+                       dlss::DlssIndicatorManager::GetRegistryKeyPath().c_str());
+    ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Value Name: %s",
+                       dlss::DlssIndicatorManager::GetRegistryValueName().c_str());
+
+    ImGui::Spacing();
+
+    // Enable/disable checkbox
+    if (CheckboxSetting(settings::g_experimentalTabSettings.dlss_indicator_enabled, "Enable DLSS Indicator")) {
+        LogInfo("DLSS Indicator setting %s",
+                settings::g_experimentalTabSettings.dlss_indicator_enabled.GetValue() ? "enabled" : "disabled");
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Enable DLSS indicator in games. This modifies the NVIDIA registry.");
+    }
+
+    ImGui::Spacing();
+
+    // Action buttons
+    ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Registry Actions:");
+
+    // Generate Enable .reg file button
+    if (ImGui::Button("Generate Enable .reg File")) {
+        std::string reg_content = dlss::DlssIndicatorManager::GenerateEnableRegFile();
+        std::string filename = "dlss_indicator_enable.reg";
+
+        if (dlss::DlssIndicatorManager::WriteRegFile(reg_content, filename)) {
+            LogInfo("DLSS Indicator: Enable .reg file generated: %s", filename.c_str());
+        } else {
+            LogError("DLSS Indicator: Failed to generate enable .reg file");
+        }
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Generate a .reg file to enable DLSS indicator.\n"
+                         "The file will be created in the current directory.");
+    }
+
+    ImGui::SameLine();
+
+    // Generate Disable .reg file button
+    if (ImGui::Button("Generate Disable .reg File")) {
+        std::string reg_content = dlss::DlssIndicatorManager::GenerateDisableRegFile();
+        std::string filename = "dlss_indicator_disable.reg";
+
+        if (dlss::DlssIndicatorManager::WriteRegFile(reg_content, filename)) {
+            LogInfo("DLSS Indicator: Disable .reg file generated: %s", filename.c_str());
+        } else {
+            LogError("DLSS Indicator: Failed to generate disable .reg file");
+        }
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Generate a .reg file to disable DLSS indicator.\n"
+                         "The file will be created in the current directory.");
+    }
+
+    ImGui::Spacing();
+
+    // Execute .reg file buttons
+    ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Execute Registry Changes:");
+
+    // Execute Enable .reg file button
+    if (ImGui::Button("Execute Enable .reg File")) {
+        std::string filename = "dlss_indicator_enable.reg";
+
+        if (dlss::DlssIndicatorManager::ExecuteRegFile(filename)) {
+            LogInfo("DLSS Indicator: Enable .reg file executed successfully");
+        } else {
+            LogError("DLSS Indicator: Failed to execute enable .reg file");
+        }
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Execute the enable .reg file with administrator privileges.\n"
+                         "This will request UAC elevation and modify the registry.");
+    }
+
+    ImGui::SameLine();
+
+    // Execute Disable .reg file button
+    if (ImGui::Button("Execute Disable .reg File")) {
+        std::string filename = "dlss_indicator_disable.reg";
+
+        if (dlss::DlssIndicatorManager::ExecuteRegFile(filename)) {
+            LogInfo("DLSS Indicator: Disable .reg file executed successfully");
+        } else {
+            LogError("DLSS Indicator: Failed to execute disable .reg file");
+        }
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Execute the disable .reg file with administrator privileges.\n"
+                         "This will request UAC elevation and modify the registry.");
+    }
+
+    ImGui::Spacing();
+
+    // Instructions
+    ImGui::TextColored(ImVec4(0.6f, 0.8f, 1.0f, 1.0f), "Instructions:");
+    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "1. Generate the appropriate .reg file using the buttons above");
+    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "2. Execute the .reg file to apply changes (requires admin privileges)");
+    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "3. Restart your game to see the DLSS indicator");
+    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "4. The indicator appears in the bottom left corner when enabled");
+
+    ImGui::Spacing();
+    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "⚠ WARNING: Registry modifications require administrator privileges!");
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("The registry modification requires administrator privileges.\n"
+                         "Windows will prompt for elevation when executing .reg files.");
     }
 }
 

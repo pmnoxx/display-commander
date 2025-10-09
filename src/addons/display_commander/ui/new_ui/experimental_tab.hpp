@@ -29,6 +29,9 @@ void DrawSleepHookControls();
 // Draw time slowdown controls section
 void DrawTimeSlowdownControls();
 
+// Draw DLSS indicator controls section
+void DrawDlssIndicatorControls();
+
 // Cleanup function to stop background threads
 void CleanupExperimentalTab();
 

@@ -36,6 +36,7 @@ void OnPresentUpdateBefore(reshade::api::command_queue *queue, reshade::api::swa
                            const reshade::api::rect *source_rect, const reshade::api::rect *dest_rect,
                            uint32_t dirty_rect_count, const reshade::api::rect *dirty_rects);
 void OnPresentUpdateAfter(reshade::api::command_queue *queue, reshade::api::swapchain *swapchain);
+void OnPresentUpdateAfter2();
 void OnPresentFlags2(uint32_t *present_flags, PresentApiType api_type);
 
 // Buffer resolution upgrade event handlers

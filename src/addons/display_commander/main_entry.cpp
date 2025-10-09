@@ -197,7 +197,7 @@ void DoInitializationWithoutHwnd(HMODULE h_module, DWORD fdw_reason) {
     // Seed default fps limit snapshot
     // GetFpsLimit removed from proxy, use s_fps_limit directly
     reshade::register_event<reshade::addon_event::present>(OnPresentUpdateBefore);
-    reshade::register_event<reshade::addon_event::finish_present>(OnPresentUpdateAfter);
+    //reshade::register_event<reshade::addon_event::finish_present>(OnPresentUpdateAfter);
 
     // Register draw event handlers for render timing
     reshade::register_event<reshade::addon_event::draw>(OnDraw);
@@ -210,7 +210,7 @@ void DoInitializationWithoutHwnd(HMODULE h_module, DWORD fdw_reason) {
     reshade::register_event<reshade::addon_event::dispatch_rays>(OnDispatchRays);
     reshade::register_event<reshade::addon_event::copy_resource>(OnCopyResource);
     reshade::register_event<reshade::addon_event::update_buffer_region>(OnUpdateBufferRegion);
-    reshade::register_event<reshade::addon_event::update_buffer_region_command>(OnUpdateBufferRegionCommand);
+   // reshade::register_event<reshade::addon_event::update_buffer_region_command>(OnUpdateBufferRegionCommand);
 
     // Register buffer resolution upgrade event handlers
     reshade::register_event<reshade::addon_event::create_resource>(OnCreateResource);

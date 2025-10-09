@@ -43,11 +43,15 @@ HRESULT STDMETHODCALLTYPE IDirect3DDevice9_Present_Detour(
 
     // Call original function
     if (IDirect3DDevice9_Present_Original != nullptr) {
-        return IDirect3DDevice9_Present_Original(This, pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion);
+        auto res= IDirect3DDevice9_Present_Original(This, pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion);
+        ::OnPresentUpdateAfter2();
+        return res;
     }
 
     // Fallback to direct call if hook failed
-    return This->Present(pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion);
+    auto res= This->Present(pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion);
+    ::OnPresentUpdateAfter2();
+    return res;
 }
 
 // Hooked IDirect3DDevice9::PresentEx function
@@ -72,14 +76,19 @@ HRESULT STDMETHODCALLTYPE IDirect3DDevice9_PresentEx_Detour(
 
     // Call original function
     if (IDirect3DDevice9_PresentEx_Original != nullptr) {
-        return IDirect3DDevice9_PresentEx_Original(This, pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion, dwFlags);
+        auto res= IDirect3DDevice9_PresentEx_Original(This, pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion, dwFlags);
+        ::OnPresentUpdateAfter2();
+        return res;
     }
 
     // Fallback to direct call if hook failed
     // Note: PresentEx is only available on IDirect3DDevice9Ex, so we need to cast
     if (auto *deviceEx = static_cast<IDirect3DDevice9Ex *>(This)) {
-        return deviceEx->PresentEx(pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion, dwFlags);
+        auto res= deviceEx->PresentEx(pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion, dwFlags);
+        ::OnPresentUpdateAfter2();
+        return res;
     }
+    ::OnPresentUpdateAfter2();
     return D3DERR_INVALIDCALL;
 }
 

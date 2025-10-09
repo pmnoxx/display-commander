@@ -138,11 +138,15 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain *This, UI
 
     // Call original function
     if (IDXGISwapChain_Present_Original != nullptr) {
-        return IDXGISwapChain_Present_Original(This, SyncInterval, Flags);
+        auto res= IDXGISwapChain_Present_Original(This, SyncInterval, Flags);
+        ::OnPresentUpdateAfter2();
+        return res;
     }
 
     // Fallback to direct call if hook failed
-    return This->Present(SyncInterval, Flags);
+    auto res= This->Present(SyncInterval, Flags);
+    ::OnPresentUpdateAfter2();
+    return res;
 }
 
 // Hooked IDXGISwapChain1::Present1 function
@@ -158,11 +162,15 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1 *This, 
 
     // Call original function
     if (IDXGISwapChain_Present1_Original != nullptr) {
-        return IDXGISwapChain_Present1_Original(This, SyncInterval, PresentFlags, pPresentParameters);
+        auto res= IDXGISwapChain_Present1_Original(This, SyncInterval, PresentFlags, pPresentParameters);
+        ::OnPresentUpdateAfter2();
+        return res;
     }
 
     // Fallback to direct call if hook failed
-    return This->Present1(SyncInterval, PresentFlags, pPresentParameters);
+    auto res= This->Present1(SyncInterval, PresentFlags, pPresentParameters);
+    ::OnPresentUpdateAfter2();
+    return res;
 }
 
 // Hooked IDXGISwapChain::GetDesc function

@@ -849,41 +849,27 @@ void DrawDlssIndicatorControls() {
                          "The file will be created in the current directory.");
     }
 
-    ImGui::Spacing();
-
-    // Execute .reg file buttons
-    ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Execute Registry Changes:");
-
-    // Execute Enable .reg file button
-    if (ImGui::Button("Execute Enable .reg File")) {
-        std::string filename = "dlss_indicator_enable.reg";
-
-        if (dlss::DlssIndicatorManager::ExecuteRegFile(filename)) {
-            LogInfo("DLSS Indicator: Enable .reg file executed successfully");
-        } else {
-            LogError("DLSS Indicator: Failed to execute enable .reg file");
-        }
-    }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Execute the enable .reg file with administrator privileges.\n"
-                         "This will request UAC elevation and modify the registry.");
-    }
-
     ImGui::SameLine();
 
-    // Execute Disable .reg file button
-    if (ImGui::Button("Execute Disable .reg File")) {
-        std::string filename = "dlss_indicator_disable.reg";
-
-        if (dlss::DlssIndicatorManager::ExecuteRegFile(filename)) {
-            LogInfo("DLSS Indicator: Disable .reg file executed successfully");
+    // Open folder button
+    if (ImGui::Button("Open .reg Files Folder")) {
+        // Get current working directory
+        char current_dir[MAX_PATH];
+        if (GetCurrentDirectoryA(MAX_PATH, current_dir) != 0) {
+            // Use ShellExecute to open the folder in Windows Explorer
+            HINSTANCE result = ShellExecuteA(nullptr, "open", current_dir, nullptr, nullptr, SW_SHOWNORMAL);
+            if (reinterpret_cast<INT_PTR>(result) <= 32) {
+                LogError("DLSS Indicator: Failed to open folder, error: %ld",
+                        reinterpret_cast<INT_PTR>(result));
+            } else {
+                LogInfo("DLSS Indicator: Opened folder: %s", current_dir);
+            }
         } else {
-            LogError("DLSS Indicator: Failed to execute disable .reg file");
+            LogError("DLSS Indicator: Failed to get current directory");
         }
     }
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Execute the disable .reg file with administrator privileges.\n"
-                         "This will request UAC elevation and modify the registry.");
+        ImGui::SetTooltip("Open the folder containing the generated .reg files in Windows Explorer.");
     }
 
     ImGui::Spacing();
@@ -891,9 +877,10 @@ void DrawDlssIndicatorControls() {
     // Instructions
     ImGui::TextColored(ImVec4(0.6f, 0.8f, 1.0f, 1.0f), "Instructions:");
     ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "1. Generate the appropriate .reg file using the buttons above");
-    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "2. Execute the .reg file to apply changes (requires admin privileges)");
-    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "3. Restart your game to see the DLSS indicator");
-    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "4. The indicator appears in the bottom left corner when enabled");
+    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "2. Open the folder and double-click the .reg file to apply changes");
+    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "3. Windows will prompt for administrator privileges when executing");
+    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "4. Restart your game to see the DLSS indicator");
+    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "5. The indicator appears in the bottom left corner when enabled");
 
     ImGui::Spacing();
     ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "⚠ WARNING: Registry modifications require administrator privileges!");

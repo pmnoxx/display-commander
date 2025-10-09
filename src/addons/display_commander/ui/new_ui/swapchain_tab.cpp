@@ -315,26 +315,6 @@ void DrawSwapchainEventCounters() {
         ImGui::Separator();
         ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "Total Events: %u", total_events);
 
-        // DXGI-specific summary
-        uint32_t dxgi_events = 0;
-        uint32_t dxgi_active = 0;
-        for (int i = 38; i < NUM_EVENTS; i++) {
-            uint32_t count = g_swapchain_event_counters[i].load();
-            dxgi_events += count;
-            if (count > 0) dxgi_active++;
-        }
-
-        ImGui::Spacing();
-        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "DXGI Hooks Summary:");
-        ImGui::Text("  Total DXGI Calls: %u", dxgi_events);
-        ImGui::Text("  Active DXGI Methods: %u/34", dxgi_active);
-
-        if (dxgi_active > 0) {
-            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "  ✓ DXGI hooks are working correctly");
-        } else {
-            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "  ⚠ No DXGI method calls detected");
-        }
-
         // Show status message
         if (total_events > 0) {
             ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Status: Swapchain events are working correctly");

@@ -428,6 +428,48 @@ void DrawDisplaySettings() {
             << settings::g_mainTabSettings.window_mode.GetValue();
         LogInfo(oss.str().c_str());
     }
+
+    // Display Flip State with color coding next to Window Mode
+    ImGui::SameLine();
+    const char* flip_state_str = "Unknown";
+    auto flip_state = ::s_dxgi_composition_state.load();
+    switch (flip_state) {
+        case DxgiBypassMode::kComposed:      flip_state_str = "Composed"; break;
+        case DxgiBypassMode::kOverlay:       flip_state_str = "MPO iFlip"; break;
+        case DxgiBypassMode::kIndependentFlip: flip_state_str = "iFlip"; break;
+        case DxgiBypassMode::kUnknown:
+        default:                             flip_state_str = "Unknown"; break;
+    }
+
+    ImVec4 flip_color;
+    if (flip_state == DxgiBypassMode::kComposed) {
+        flip_color = ui::colors::FLIP_COMPOSED; // Red - bad
+    } else if (flip_state == DxgiBypassMode::kOverlay || flip_state == DxgiBypassMode::kIndependentFlip) {
+        flip_color = ui::colors::FLIP_INDEPENDENT; // Green - good
+    } else {
+        flip_color = ui::colors::FLIP_UNKNOWN; // Yellow - unknown
+    }
+
+    ImGui::TextColored(flip_color, "| %s", flip_state_str);
+    if (ImGui::IsItemHovered()) {
+        std::string tooltip = "Flip State: ";
+        tooltip += flip_state_str;
+        tooltip += "\n\n";
+        if (flip_state == DxgiBypassMode::kComposed) {
+            tooltip += "Composed Flip (Red): Desktop Window Manager composition mode.\n";
+            tooltip += "Higher latency, not ideal for gaming.";
+        } else if (flip_state == DxgiBypassMode::kOverlay) {
+            tooltip += "MPO Independent Flip (Green): Modern hardware overlay plane.\n";
+            tooltip += "Best performance and lowest latency.";
+        } else if (flip_state == DxgiBypassMode::kIndependentFlip) {
+            tooltip += "Independent Flip (Green): Legacy direct flip mode.\n";
+            tooltip += "Good performance and low latency.";
+        } else {
+            tooltip += "Flip state not yet determined.\n";
+            tooltip += "Wait for a few frames to render.";
+        }
+        ImGui::SetTooltip("%s", tooltip.c_str());
+    }
     // Aspect Ratio dropdown (only shown in Aspect Ratio mode)
     if (s_window_mode.load() == WindowMode::kAspectRatio) {
         if (ComboSettingWrapper(settings::g_mainTabSettings.aspect_index, "Aspect Ratio")) {

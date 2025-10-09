@@ -23,49 +23,45 @@ void InitDeveloperNewTab() {
 }
 
 void DrawDeveloperNewTab() {
-    ImGui::Text("Developer Tab - Advanced Features");
-    ImGui::Separator();
-
     // Developer Settings Section
-    DrawDeveloperSettings();
+    if (ImGui::CollapsingHeader("Developer Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
+        DrawDeveloperSettings();
+    }
 
     ImGui::Spacing();
-    ImGui::Separator();
 
     // HDR and Display Settings Section
-    DrawHdrDisplaySettings();
+    if (ImGui::CollapsingHeader("HDR and Display Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
+        DrawHdrDisplaySettings();
+    }
 
     ImGui::Spacing();
-    ImGui::Separator();
 
     // NVAPI Settings Section
-    DrawNvapiSettings();
+    if (ImGui::CollapsingHeader("NVAPI Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
+        DrawNvapiSettings();
+    }
 
     ImGui::Spacing();
-    ImGui::Separator();
-
-    // Resolution Override Settings Section
-    DrawResolutionOverrideSettings();
-
-    ImGui::Spacing();
-    ImGui::Separator();
 
     // Keyboard Shortcuts Section
-    DrawKeyboardShortcutsSettings();
+
+    if (ImGui::CollapsingHeader("Keyboard Shortcuts", ImGuiTreeNodeFlags_DefaultOpen)) {
+        DrawKeyboardShortcutsSettings();
+    }
 
     ImGui::Spacing();
-    ImGui::Separator();
 
     // Latency Display Section
-    DrawLatencyDisplay();
+    if (ImGui::CollapsingHeader("Latency Display", ImGuiTreeNodeFlags_DefaultOpen)) {
+        DrawLatencyDisplay();
+    }
 
     ImGui::Spacing();
     ImGui::Separator();
 }
 
 void DrawDeveloperSettings() {
-    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "=== Developer Settings ===");
-
     // Performance optimization: Flush before present
     if (CheckboxSetting(settings::g_developerTabSettings.flush_before_present, "Flush Command Queue Before Present")) {
         ::g_flush_before_present.store(settings::g_developerTabSettings.flush_before_present.GetValue());
@@ -149,8 +145,6 @@ void DrawDeveloperSettings() {
 }
 
 void DrawHdrDisplaySettings() {
-    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "=== HDR and Display Settings ===");
-
     // Hide HDR Capabilities
     if (CheckboxSetting(settings::g_developerTabSettings.hide_hdr_capabilities,
                         "Hide game's native HDR")) {
@@ -165,8 +159,6 @@ void DrawHdrDisplaySettings() {
 }
 
 void DrawNvapiSettings() {
-    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "=== NVAPI Settings ===");
-
     // HDR10 Colorspace Fix
     if (CheckboxSetting(settings::g_developerTabSettings.nvapi_fix_hdr10_colorspace,
                         "Set ReShade Effects Processing to HDR10 Colorspace")) {
@@ -214,68 +206,57 @@ void DrawNvapiSettings() {
     }
 
     // Minimal NVIDIA Reflex Controls (device runtime dependent)
-    ImGui::Separator();
-    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "=== NVIDIA Reflex (Minimal) ===");
+    if (ImGui::CollapsingHeader("NVIDIA Reflex (Minimal)", ImGuiTreeNodeFlags_DefaultOpen)) {
 
-    // Warning about enabling Reflex when game already has it
-    ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f),
-                       "⚠ Warning: Do not enable Reflex if the game already has built-in Reflex support!");
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip(
-            "Enabling Reflex when the game already has it can cause conflicts, instability, or "
-            "performance issues. Check the game's graphics settings first.");
-    }
+        // Warning about enabling Reflex when game already has it
+        ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f),
+                        "⚠ Warning: Do not enable Reflex if the game already has built-in Reflex support!");
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip(
+                "Enabling Reflex when the game already has it can cause conflicts, instability, or "
+                "performance issues. Check the game's graphics settings first.");
+        }
 
-    bool reflex_enable = settings::g_developerTabSettings.reflex_enable.GetValue();
-    if (ImGui::Checkbox("Enable Reflex", &reflex_enable)) {
-        settings::g_developerTabSettings.reflex_enable.SetValue(reflex_enable);
-        s_reflex_enable.store(reflex_enable);
-    }
-    bool reflex_low_latency = settings::g_developerTabSettings.reflex_low_latency.GetValue();
-    if (ImGui::Checkbox("Low Latency Mode", &reflex_low_latency)) {
-        settings::g_developerTabSettings.reflex_low_latency.SetValue(reflex_low_latency);
-        s_reflex_low_latency.store(reflex_low_latency);
-    }
-    bool reflex_boost = settings::g_developerTabSettings.reflex_boost.GetValue();
-    if (ImGui::Checkbox("Low Latency Boost", &reflex_boost)) {
-        settings::g_developerTabSettings.reflex_boost.SetValue(reflex_boost);
-        s_reflex_boost.store(reflex_boost);
-    }
-    bool reflex_markers = settings::g_developerTabSettings.reflex_use_markers.GetValue();
-    if (ImGui::Checkbox("Use Markers to Optimize", &reflex_markers)) {
-        settings::g_developerTabSettings.reflex_use_markers.SetValue(reflex_markers);
-        s_reflex_use_markers.store(reflex_markers);
-    }
-    bool reflex_enable_sleep = settings::g_developerTabSettings.reflex_enable_sleep.GetValue();
-    if (ImGui::Checkbox("Enable Reflex Sleep Mode", &reflex_enable_sleep)) {
-        settings::g_developerTabSettings.reflex_enable_sleep.SetValue(reflex_enable_sleep);
-        s_reflex_enable_sleep.store(reflex_enable_sleep);
-    }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Enable Reflex sleep mode calls (disabled by default for safety).");
-    }
-    bool reflex_logging = settings::g_developerTabSettings.reflex_logging.GetValue();
-    if (ImGui::Checkbox("Enable Reflex Logging", &reflex_logging)) {
-        settings::g_developerTabSettings.reflex_logging.SetValue(reflex_logging);
-        s_enable_reflex_logging.store(reflex_logging);
-    }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Enable detailed logging of Reflex marker operations for debugging purposes.");
-    }
-}
-
-void DrawResolutionOverrideSettings() {
-    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "=== Resolution Override ===");
-
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip(
-            "Override the backbuffer resolution during swapchain creation. Same as ReShade ForceResolution.");
+        bool reflex_enable = settings::g_developerTabSettings.reflex_enable.GetValue();
+        if (ImGui::Checkbox("Enable Reflex", &reflex_enable)) {
+            settings::g_developerTabSettings.reflex_enable.SetValue(reflex_enable);
+            s_reflex_enable.store(reflex_enable);
+        }
+        bool reflex_low_latency = settings::g_developerTabSettings.reflex_low_latency.GetValue();
+        if (ImGui::Checkbox("Low Latency Mode", &reflex_low_latency)) {
+            settings::g_developerTabSettings.reflex_low_latency.SetValue(reflex_low_latency);
+            s_reflex_low_latency.store(reflex_low_latency);
+        }
+        bool reflex_boost = settings::g_developerTabSettings.reflex_boost.GetValue();
+        if (ImGui::Checkbox("Low Latency Boost", &reflex_boost)) {
+            settings::g_developerTabSettings.reflex_boost.SetValue(reflex_boost);
+            s_reflex_boost.store(reflex_boost);
+        }
+        bool reflex_markers = settings::g_developerTabSettings.reflex_use_markers.GetValue();
+        if (ImGui::Checkbox("Use Markers to Optimize", &reflex_markers)) {
+            settings::g_developerTabSettings.reflex_use_markers.SetValue(reflex_markers);
+            s_reflex_use_markers.store(reflex_markers);
+        }
+        bool reflex_enable_sleep = settings::g_developerTabSettings.reflex_enable_sleep.GetValue();
+        if (ImGui::Checkbox("Enable Reflex Sleep Mode", &reflex_enable_sleep)) {
+            settings::g_developerTabSettings.reflex_enable_sleep.SetValue(reflex_enable_sleep);
+            s_reflex_enable_sleep.store(reflex_enable_sleep);
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Enable Reflex sleep mode calls (disabled by default for safety).");
+        }
+        bool reflex_logging = settings::g_developerTabSettings.reflex_logging.GetValue();
+        if (ImGui::Checkbox("Enable Reflex Logging", &reflex_logging)) {
+            settings::g_developerTabSettings.reflex_logging.SetValue(reflex_logging);
+            s_enable_reflex_logging.store(reflex_logging);
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Enable detailed logging of Reflex marker operations for debugging purposes.");
+        }
     }
 }
 
 void DrawKeyboardShortcutsSettings() {
-    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "=== Keyboard Shortcuts ===");
-
     // Enable Mute/Unmute Shortcut (Ctrl+M)
     if (CheckboxSetting(settings::g_developerTabSettings.enable_mute_unmute_shortcut,
                         "Enable Mute/Unmute Shortcut (Ctrl+M)")) {
@@ -334,11 +315,28 @@ void DrawKeyboardShortcutsSettings() {
         ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Shortcut works when game is in foreground");
         ImGui::Unindent();
     }
+
+    // Enable ADHD Toggle Shortcut (Ctrl+D)
+    if (CheckboxSetting(settings::g_developerTabSettings.enable_adhd_toggle_shortcut,
+                        "Enable ADHD Toggle Shortcut (Ctrl+D)")) {
+        ::s_enable_adhd_toggle_shortcut.store(settings::g_developerTabSettings.enable_adhd_toggle_shortcut.GetValue());
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip(
+            "Enable keyboard shortcut Ctrl+D to quickly toggle ADHD Multi-Monitor Mode. Only works when the game is "
+            "in the foreground.");
+    }
+
+    // Info text for Ctrl+D
+    if (settings::g_developerTabSettings.enable_adhd_toggle_shortcut.GetValue()) {
+        ImGui::Indent();
+        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Press Ctrl+D to toggle ADHD Multi-Monitor Mode");
+        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Shortcut works when game is in foreground");
+        ImGui::Unindent();
+    }
 }
 
 void DrawLatencyDisplay() {
-    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "=== Latency Information ===");
-
     // Current Latency Display
     extern std::atomic<float> g_current_latency_ms;
     float latency = ::g_current_latency_ms.load();

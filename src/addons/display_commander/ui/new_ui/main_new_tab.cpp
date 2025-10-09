@@ -6,7 +6,8 @@
 #include "../../settings/developer_tab_settings.hpp"
 #include "../../settings/main_tab_settings.hpp"
 #include "../../widgets/resolution_widget/resolution_widget.hpp"
-#include "../forkawesome.h"
+#include "../../res/forkawesome.h"
+#include "../../res/ui_colors.hpp"
 #include "globals.hpp"
 #include "utils/timing.hpp"
 #include "version.hpp"
@@ -35,7 +36,7 @@ void DrawFrameTimeGraph() {
     const uint32_t count = (head > static_cast<uint32_t>(::kPerfRingCapacity)) ? static_cast<uint32_t>(::kPerfRingCapacity) : head;
 
     if (count == 0) {
-        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "No frame time data available yet...");
+        ImGui::TextColored(ui::colors::TEXT_DIMMED, "No frame time data available yet...");
         return;
     }
 
@@ -53,7 +54,7 @@ void DrawFrameTimeGraph() {
     }
 
     if (frame_times.empty()) {
-        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "No valid frame time data available...");
+        ImGui::TextColored(ui::colors::TEXT_DIMMED, "No valid frame time data available...");
         return;
     }
 
@@ -136,14 +137,16 @@ void DrawMainNewTab() {
 
     // Version and build information at the top
    // if (ImGui::CollapsingHeader("Display Commander", ImGuiTreeNodeFlags_DefaultOpen)) {
-        ImGui::TextColored(ImVec4(0.9f, 0.9f, 0.9f, 1.0f), "Version: %s | Build: %s %s", DISPLAY_COMMANDER_VERSION_STRING, DISPLAY_COMMANDER_BUILD_DATE, DISPLAY_COMMANDER_BUILD_TIME);
+        ImGui::TextColored(ui::colors::TEXT_DEFAULT, "Version: %s | Build: %s %s", DISPLAY_COMMANDER_VERSION_STRING, DISPLAY_COMMANDER_BUILD_DATE, DISPLAY_COMMANDER_BUILD_TIME);
 
         // Ko-fi support button
         ImGui::Spacing();
-        ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "Support the project:");
+        ImGui::TextColored(ui::colors::TEXT_LABEL, "Support the project:");
+        ui::colors::PushIconColor(ui::colors::ICON_SPECIAL);
         if (ImGui::Button(ICON_FK_PLUS " Buy me a coffee on Ko-fi")) {
             ShellExecuteA(nullptr, "open", "https://ko-fi.com/pmnox", nullptr, nullptr, SW_SHOW);
         }
+        ui::colors::PopIconColor();
         ImGui::SameLine();
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Support Display Commander development with a coffee!");
@@ -240,15 +243,13 @@ void DrawQuickResolutionChanger() {
                 bool selected =
                     (std::fabs(settings::g_mainTabSettings.fps_limit.GetValue() - 0.0f) <= selected_epsilon);
                 if (selected) {
-                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.20f, 0.60f, 0.20f, 1.0f));
-                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.20f, 0.70f, 0.20f, 1.0f));
-                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.10f, 0.50f, 0.10f, 1.0f));
+                    ui::colors::PushSelectedButtonColors();
                 }
                 if (ImGui::Button("No Limit")) {
                     settings::g_mainTabSettings.fps_limit.SetValue(0.0f);
                 }
                 if (selected) {
-                    ImGui::PopStyleColor(3);
+                    ui::colors::PopSelectedButtonColors();
                 }
             }
             first = false;
@@ -265,16 +266,14 @@ void DrawQuickResolutionChanger() {
                                 (std::fabs(settings::g_mainTabSettings.fps_limit.GetValue() - candidate_precise)
                                  <= selected_epsilon);
                             if (selected) {
-                                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.20f, 0.60f, 0.20f, 1.0f));
-                                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.20f, 0.70f, 0.20f, 1.0f));
-                                ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.10f, 0.50f, 0.10f, 1.0f));
+                                ui::colors::PushSelectedButtonColors();
                             }
                             if (ImGui::Button(label.c_str())) {
                                 float target_fps = candidate_precise;
                                 settings::g_mainTabSettings.fps_limit.SetValue(target_fps);
                             }
                             if (selected) {
-                                ImGui::PopStyleColor(3);
+                                ui::colors::PopSelectedButtonColors();
                             }
                             // Add tooltip showing the precise calculation
                             if (ImGui::IsItemHovered()) {
@@ -305,9 +304,7 @@ void DrawQuickResolutionChanger() {
                     (std::fabs(settings::g_mainTabSettings.fps_limit.GetValue() - precise_target) <= selected_epsilon);
 
                 if (selected) {
-                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.20f, 0.60f, 0.20f, 1.0f));
-                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.20f, 0.70f, 0.20f, 1.0f));
-                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.10f, 0.50f, 0.10f, 1.0f));
+                    ui::colors::PushSelectedButtonColors();
                 }
                 if (ImGui::Button("Gsync Cap")) {
                     double precise_target = gsync_target;  // do not round on apply
@@ -315,7 +312,7 @@ void DrawQuickResolutionChanger() {
                     settings::g_mainTabSettings.fps_limit.SetValue(target_fps);
                 }
                 if (selected) {
-                    ImGui::PopStyleColor(3);
+                    ui::colors::PopSelectedButtonColors();
                 }
                 // Add tooltip explaining the Gsync formula
                 if (ImGui::IsItemHovered()) {
@@ -451,6 +448,7 @@ void DrawDisplaySettings() {
     DrawAdhdMultiMonitorControls(s_window_mode.load() == WindowMode::kAspectRatio);
 
     // Apply Changes button
+    ui::colors::PushIconColor(ui::colors::ICON_SUCCESS);
     if (ImGui::Button(ICON_FK_OK " Apply Changes")) {
         // Force immediate application of window changes
         ::g_init_apply_generation.fetch_add(1);
@@ -460,6 +458,7 @@ void DrawDisplaySettings() {
         oss << "Apply Changes button clicked - forcing immediate window update";
         LogInfo(oss.str().c_str());
     }
+    ui::colors::PopIconColor();
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Apply the current window size and position settings immediately.");
     }
@@ -498,7 +497,7 @@ void DrawDisplaySettings() {
 
         // Show warning for low latency mode
         if (current_item == 2) { // kOnPresentSyncLowLatency
-            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "⚠ Low Latency Mode not implemented yet");
+            ImGui::TextColored(ui::colors::TEXT_WARNING, "⚠ Low Latency Mode not implemented yet");
         }
     }
 
@@ -526,11 +525,11 @@ void DrawDisplaySettings() {
 
     // Present Pacing Delay slider (persisted)
     {
-        ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "Present Pacing Delay:");
+        ImGui::TextColored(ui::colors::TEXT_HIGHLIGHT, "Present Pacing Delay:");
         ImGui::SameLine();
-        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Improves frame timing consistency");
+        ImGui::TextColored(ui::colors::TEXT_DIMMED, "Improves frame timing consistency");
 
-        ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f),
+        ImGui::TextColored(ui::colors::TEXT_SUBTLE,
                            "Adds a small delay after present to smooth frame pacing and reduce stuttering");
 
         float current_delay = settings::g_mainTabSettings.present_pacing_delay_percentage.GetValue();
@@ -551,7 +550,7 @@ void DrawDisplaySettings() {
 
         // Add question mark with tooltip for manual fine-tuning note
         ImGui::SameLine();
-        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), ICON_FK_WARNING);
+        ImGui::TextColored(ui::colors::ICON_WARNING, ICON_FK_WARNING);
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Manual fine-tuning is needed for now");
         }
@@ -611,23 +610,23 @@ void DrawDisplaySettings() {
                 auto& latent = dxgi::latent_sync::g_latentSyncManager->GetLatentLimiter();
                 if (latent.IsVBlankMonitoringActive()) {
                     ImGui::Spacing();
-                    ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✁EVBlank Monitor: ACTIVE");
+                    ImGui::TextColored(ui::colors::STATUS_ACTIVE, "✁EVBlank Monitor: ACTIVE");
                     if (ImGui::IsItemHovered()) {
                         ImGui::SetTooltip(
                             "VBlank monitoring thread is running and collecting scanline data for frame pacing.");
                     }
 
-                    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "  refresh time: %.3fms",
+                    ImGui::TextColored(ui::colors::STATUS_INACTIVE, "  refresh time: %.3fms",
                                        1.0 * dxgi::fps_limiter::ns_per_refresh.load() / utils::NS_TO_MS);
                     ImGui::SameLine();
-                    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "  total_height: %llu",
+                    ImGui::TextColored(ui::colors::STATUS_INACTIVE, "  total_height: %llu",
                                        dxgi::fps_limiter::g_latent_sync_total_height.load());
                     ImGui::SameLine();
-                    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "  active_height: %llu",
+                    ImGui::TextColored(ui::colors::STATUS_INACTIVE, "  active_height: %llu",
                                        dxgi::fps_limiter::g_latent_sync_active_height.load());
                 } else {
                     ImGui::Spacing();
-                    ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "⚠ VBlank Monitor: STARTING...");
+                    ImGui::TextColored(ui::colors::STATUS_STARTING, "⚠ VBlank Monitor: STARTING...");
                     if (ImGui::IsItemHovered()) {
                         ImGui::SetTooltip(
                             "VBlank monitoring is enabled but the monitoring thread is still starting up.");
@@ -691,7 +690,7 @@ void DrawDisplaySettings() {
             const char* injection_mode_names[] = {"Default", "Fallback(1)", "Fallback(2)"};
             const char* mode_name = (injection_mode >= 0 && injection_mode < 3) ? injection_mode_names[injection_mode] : "Unknown";
 
-            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f),
+            ImGui::TextColored(ui::colors::TEXT_WARNING,
                 "⚠ Warning: FPS limiting is enabled but %s events are 0. "
                 "FPS limiting may not work properly.", event_name);
             if (ImGui::IsItemHovered()) {
@@ -811,7 +810,7 @@ void DrawDisplaySettings() {
             // Display restart-required notice if flagged
             if (s_restart_needed_vsync_tearing.load()) {
                 ImGui::Spacing();
-                ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "Game restart required to apply VSync/tearing changes.");
+                ImGui::TextColored(ui::colors::TEXT_ERROR, "Game restart required to apply VSync/tearing changes.");
             }
         }
     }
@@ -940,6 +939,7 @@ void DrawWindowControls() {
     ImGui::BeginGroup();
 
     // Minimize Window Button
+    ui::colors::PushIconColor(ui::colors::ICON_ACTION);
     if (ImGui::Button(ICON_FK_MINUS " Minimize Window")) {
         HWND hwnd = g_last_swapchain_hwnd.load();
         std::thread([hwnd]() {
@@ -947,6 +947,7 @@ void DrawWindowControls() {
             ShowWindow(hwnd, SW_MINIMIZE);
         }).detach();
     }
+    ui::colors::PopIconColor();
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Minimize the current game window.");
     }
@@ -954,12 +955,14 @@ void DrawWindowControls() {
     ImGui::SameLine();
 
     // Restore Window Button
+    ui::colors::PushIconColor(ui::colors::ICON_ACTION);
     if (ImGui::Button(ICON_FK_UNDO " Restore Window")) {
         std::thread([hwnd]() {
             LogDebug("Restore Window button pressed (bg thread)");
             ShowWindow(hwnd, SW_RESTORE);
         }).detach();
     }
+    ui::colors::PopIconColor();
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Restore the minimized game window.");
     }
@@ -967,6 +970,7 @@ void DrawWindowControls() {
     ImGui::SameLine();
 
     // Maximize Window Button
+    ui::colors::PushIconColor(ui::colors::ICON_POSITIVE);
     if (ImGui::Button(ICON_FK_PLUS " Maximize Window")) {
         std::thread([hwnd]() {
             LogDebug("Maximize Window button pressed (bg thread)");
@@ -981,6 +985,7 @@ void DrawWindowControls() {
             LogInfo("Window maximized to current monitor size");
         }).detach();
     }
+    ui::colors::PopIconColor();
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Maximize the window to fill the current monitor.");
     }
@@ -1013,9 +1018,11 @@ void DrawImportantInfo() {
             local_text = *shared_text;
         }
         ImGui::TextUnformatted(local_text.c_str());
+        ui::colors::PushIconColor(ui::colors::ICON_ACTION);
         if (ImGui::Button(ICON_FK_REFRESH " Reset Stats")) {
             ::g_perf_reset_requested.store(true, std::memory_order_release);
         }
+        ui::colors::PopIconColor();
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Reset FPS/frametime statistics. Metrics are computed since reset.");
         }
@@ -1036,7 +1043,7 @@ void DrawImportantInfo() {
             << (1.0 * ::g_present_duration_ns.load() / utils::NS_TO_MS) << " ms";
         ImGui::TextUnformatted(oss.str().c_str());
         ImGui::SameLine();
-        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "(smoothed)");
+        ImGui::TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
 
         oss.str("");
         oss.clear();
@@ -1044,7 +1051,7 @@ void DrawImportantInfo() {
             << (1.0 * ::g_simulation_duration_ns.load() / utils::NS_TO_MS) << " ms";
         ImGui::TextUnformatted(oss.str().c_str());
         ImGui::SameLine();
-        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "(smoothed)");
+        ImGui::TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
 
         // Reshade Overhead Display
         oss.str("");
@@ -1053,7 +1060,7 @@ void DrawImportantInfo() {
             << (1.0 * ::g_render_submit_duration_ns.load() / utils::NS_TO_MS) << " ms";
         ImGui::TextUnformatted(oss.str().c_str());
         ImGui::SameLine();
-        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "(smoothed)");
+        ImGui::TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
 
         // Reshade Overhead Display
         oss.str("");
@@ -1065,7 +1072,7 @@ void DrawImportantInfo() {
             << " ms";
         ImGui::TextUnformatted(oss.str().c_str());
         ImGui::SameLine();
-        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "(smoothed)");
+        ImGui::TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
 
         oss.str("");
         oss.clear();
@@ -1073,7 +1080,7 @@ void DrawImportantInfo() {
             << (1.0 * ::fps_sleep_before_on_present_ns.load() / utils::NS_TO_MS) << " ms";
         ImGui::TextUnformatted(oss.str().c_str());
         ImGui::SameLine();
-        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "(smoothed)");
+        ImGui::TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
 
         // FPS Limiter Start Duration Display
         oss.str("");
@@ -1082,7 +1089,7 @@ void DrawImportantInfo() {
             << (1.0 * ::fps_sleep_after_on_present_ns.load() / utils::NS_TO_MS) << " ms";
         ImGui::TextUnformatted(oss.str().c_str());
         ImGui::SameLine();
-        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "(smoothed)");
+        ImGui::TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
 
         // Simulation Start to Present Latency Display
         oss.str("");
@@ -1107,7 +1114,7 @@ void DrawImportantInfo() {
                 << " ms";
             ImGui::TextUnformatted(oss.str().c_str());
             ImGui::SameLine();
-            ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "(frame_time - sleep_duration)");
+            ImGui::TextColored(ui::colors::TEXT_HIGHLIGHT, "(frame_time - sleep_duration)");
         }
 
         // Flip State Display (renamed from DXGI Composition)
@@ -1127,13 +1134,13 @@ void DrawImportantInfo() {
         // Color code based on flip state
         if (flip_state_case == 1) {
             // Composed Flip - Red
-            ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.8f, 1.0f), "%s", oss.str().c_str());
+            ImGui::TextColored(ui::colors::FLIP_COMPOSED, "%s", oss.str().c_str());
         } else if (flip_state_case == 2 || flip_state_case == 3) {
             // Independent Flip modes - Green
-            ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "%s", oss.str().c_str());
+            ImGui::TextColored(ui::colors::FLIP_INDEPENDENT, "%s", oss.str().c_str());
         } else {
             // Unknown - Yellow
-            ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.8f, 1.0f), "%s", oss.str().c_str());
+            ImGui::TextColored(ui::colors::FLIP_UNKNOWN, "%s", oss.str().c_str());
         }
     }
 }

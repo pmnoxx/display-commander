@@ -3,7 +3,7 @@
 
 #include <imgui.h>
 #include <reshade.hpp>
-#include "../forkawesome.h"
+#include "../../res/forkawesome.h"
 
 #include "../../utils.hpp"
 #include <algorithm>

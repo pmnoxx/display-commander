@@ -109,8 +109,8 @@ void OverrideReShadeSettings() {
     LogInfo("Overriding ReShade settings - Setting tutorial as viewed and disabling auto updates");
 
     // Set tutorial progress to 4 (fully viewed)
-    reshade::set_config_value(nullptr, "GENERAL", "TutorialProgress", 4);
-    LogInfo("ReShade settings override - TutorialProgress set to 4 (viewed)");
+    reshade::set_config_value(nullptr, "OVERLAY", "TutorialProgress", 4);
+    //LogInfo("ReShade settings override - TutorialProgress set to 4 (viewed)");
 
     // Disable auto updates
     reshade::set_config_value(nullptr, "GENERAL", "CheckForUpdates", 0);

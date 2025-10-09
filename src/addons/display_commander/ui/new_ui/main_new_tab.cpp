@@ -396,6 +396,57 @@ void DrawDisplaySettings() {
             }
             ImGui::SetTooltip("%s", tooltip_text.c_str());
         }
+
+        // Display VRR status for selected monitor
+        if (selected_index >= 0 && selected_index < static_cast<int>(display_info.size())) {
+            // Try to get VRR information for the selected display
+            HMONITOR selected_monitor = display_info[selected_index].monitor_handle;
+            if (selected_monitor != nullptr) {
+                // Get VRR status using DXGI
+                Microsoft::WRL::ComPtr<IDXGIFactory1> factory;
+                if (SUCCEEDED(CreateDXGIFactory1(IID_PPV_ARGS(&factory)))) {
+                    for (UINT a = 0;; ++a) {
+                        Microsoft::WRL::ComPtr<IDXGIAdapter1> adapter;
+                        if (factory->EnumAdapters1(a, &adapter) == DXGI_ERROR_NOT_FOUND) break;
+
+                        for (UINT o = 0;; ++o) {
+                            Microsoft::WRL::ComPtr<IDXGIOutput> output;
+                            if (adapter->EnumOutputs(o, &output) == DXGI_ERROR_NOT_FOUND) break;
+
+                            DXGI_OUTPUT_DESC desc{};
+                            if (FAILED(output->GetDesc(&desc))) continue;
+                            if (desc.Monitor != selected_monitor) continue;
+
+                            // Found the monitor, check for VRR support
+                            Microsoft::WRL::ComPtr<IDXGIOutput6> output6;
+                            if (SUCCEEDED(output->QueryInterface(IID_PPV_ARGS(&output6)))) {
+                                UINT support_flags = 0;
+                                bool supports_vrr = false;
+                                if (SUCCEEDED(output6->CheckHardwareCompositionSupport(&support_flags))) {
+                                    // Check for VRR support flag (0x1 = DXGI_HARDWARE_COMPOSITION_SUPPORT_FLAG_VARIABLE_REFRESH_RATE)
+                                    supports_vrr = (support_flags & 0x1) != 0;
+                                }
+
+                                ImGui::SameLine();
+                                if (supports_vrr) {
+                                    ImGui::TextColored(ui::colors::STATUS_ACTIVE, ICON_FK_OK " VRR");
+                                    if (ImGui::IsItemHovered()) {
+                                        ImGui::SetTooltip("Variable Refresh Rate (VRR) is supported on this display");
+                                    }
+                                } else {
+                                    ImGui::TextColored(ui::colors::TEXT_DIMMED, ICON_FK_CANCEL " No VRR");
+                                    if (ImGui::IsItemHovered()) {
+                                        ImGui::SetTooltip("Variable Refresh Rate (VRR) is not supported on this display");
+                                    }
+                                }
+                                break;
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+        }
     }
 
     // Window Mode dropdown (with persistent setting)

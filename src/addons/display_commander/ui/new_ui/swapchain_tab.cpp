@@ -860,6 +860,21 @@ void DrawSwapchainInfo() {
                     } else {
                         ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "  ⚠ Display does not support HDR");
                     }
+
+                    // VRR support detection using CheckHardwareCompositionSupport
+                    UINT support_flags = 0;
+                    bool supports_vrr = false;
+                    if (SUCCEEDED(output6->CheckHardwareCompositionSupport(&support_flags))) {
+                        // Check for VRR support flag (0x1 = DXGI_HARDWARE_COMPOSITION_SUPPORT_FLAG_VARIABLE_REFRESH_RATE)
+                        supports_vrr = (support_flags & 0x1) != 0;
+                    }
+                    ImGui::Text("  VRR Support: %s", supports_vrr ? "Yes" : "No");
+
+                    if (supports_vrr) {
+                        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "  ✓ Variable Refresh Rate (VRR) supported");
+                    } else {
+                        ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "  ⚠ Display does not support VRR");
+                    }
                 } else {
                     ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "Failed to get output description");
                 }

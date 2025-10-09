@@ -1,6 +1,7 @@
 #include "addon.hpp"
 #include "display_restore.hpp"
 #include "exit_handler.hpp"
+#include "globals.hpp"
 #include "hooks/api_hooks.hpp"
 #include "hooks/window_proc_hooks.hpp"
 #include "latency/latency_manager.hpp"
@@ -10,6 +11,7 @@
 #include "swapchain_events.hpp"
 #include "swapchain_events_power_saving.hpp"
 #include "ui/new_ui/experimental_tab.hpp"
+#include "ui/new_ui/main_new_tab.hpp"
 #include "ui/new_ui/new_ui_main.hpp"
 #include "utils/timing.hpp"
 #include "version.hpp"
@@ -93,32 +95,9 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime *runtime) {
 
     // Test widget that appears in the main ReShade overlay
     static bool show_test_widget = true;
-    if (ImGui::Begin("Display Commander Test Widget", &show_test_widget, ImGuiWindowFlags_AlwaysAutoResize)) {
-        ImGui::Text("This is a test widget using reshade_overlay event!");
-        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f),
-                           "Notice: This appears in the main ReShade overlay, not as a separate tab!");
-        ImGui::Separator();
-
-        static bool test_checkbox = false;
-        ImGui::Checkbox("Test Checkbox", &test_checkbox);
-
-        static float test_slider = 0.5f;
-        ImGui::SliderFloat("Test Slider", &test_slider, 0.0f, 1.0f);
-
-        if (ImGui::Button("Test Button")) {
-            LogInfo("Test button clicked from reshade_overlay event!");
-        }
-
-        ImGui::Separator();
-        ImGui::Text("Performance Info:");
-        ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
-        ImGui::Text("Frame Count: %d", ImGui::GetFrameCount());
-
-        ImGui::Separator();
-        ImGui::Text("This widget demonstrates the difference between:");
-        ImGui::BulletText("register_overlay: Creates separate tabs in ReShade overlay");
-        ImGui::BulletText("reshade_overlay: Draws directly in main overlay (this widget)");
-    }
+   // if (ImGui::Begin("Display Commander Performance Overlay", &show_test_widget, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ui::new_ui::DrawFrameTimeGraph();
+  //  }
     ImGui::End();
 }
 } // namespace

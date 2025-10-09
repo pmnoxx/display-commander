@@ -66,8 +66,8 @@ void DrawFrameTimeGraph() {
     avg_frame_time /= static_cast<float>(frame_times.size());
 
     // Display statistics
-    ImGui::Text("Samples: %zu | Min: %.2f ms | Max: %.2f ms | Avg: %.2f ms",
-                frame_times.size(), min_frame_time, max_frame_time, avg_frame_time);
+    ImGui::Text("Min: %.2f ms | Max: %.2f ms | Avg: %.2f ms",
+                min_frame_time, max_frame_time, avg_frame_time);
 
     // Create overlay text with current frame time
     std::string overlay_text = "Current: " + std::to_string(frame_times.back()).substr(0, 6) + " ms";
@@ -149,7 +149,7 @@ void DrawMainNewTab() {
             ImGui::SetTooltip("Support Display Commander development with a coffee! ☕");
         }
  //   }
-    ImGui::Separator();
+    ImGui::Spacing();
     // Display Settings Section
     if (ImGui::CollapsingHeader("Display Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
         DrawDisplaySettings();
@@ -985,14 +985,14 @@ void DrawImportantInfo() {
     // Test Overlay Control
     {
         bool show_test_overlay = settings::g_mainTabSettings.show_test_overlay.GetValue();
-        if (ImGui::Checkbox("Show Test Overlay (reshade_overlay demo)", &show_test_overlay)) {
+        if (ImGui::Checkbox("Show Performance Overlay", &show_test_overlay)) {
             settings::g_mainTabSettings.show_test_overlay.SetValue(show_test_overlay);
-            LogInfo("Test overlay %s", show_test_overlay ? "enabled" : "disabled");
+            LogInfo("Performance overlay %s", show_test_overlay ? "enabled" : "disabled");
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip(
-                "Shows a test widget using the reshade_overlay event to demonstrate the difference "
-                "between register_overlay and reshade_overlay approaches.");
+                "Shows a performance monitoring widget in the main ReShade overlay with frame time graph, "
+                "FPS counter, and other performance metrics. Demonstrates reshade_overlay event usage.");
         }
     }
 

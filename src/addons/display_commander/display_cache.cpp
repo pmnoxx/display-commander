@@ -376,6 +376,40 @@ std::vector<DisplayInfoForUI> DisplayCache::GetDisplayInfoForUI() const {
         info.monitor_handle = display->monitor_handle;
         info.display_index = static_cast<int>(i);
 
+        // Detect VRR support for this display
+        info.supports_vrr = false;
+        if (display->monitor_handle != nullptr) {
+            // Get VRR status using DXGI
+            ComPtr<IDXGIFactory1> factory;
+            if (SUCCEEDED(CreateDXGIFactory1(IID_PPV_ARGS(&factory)))) {
+                for (UINT a = 0;; ++a) {
+                    ComPtr<IDXGIAdapter1> adapter;
+                    if (factory->EnumAdapters1(a, &adapter) == DXGI_ERROR_NOT_FOUND) break;
+
+                    for (UINT o = 0;; ++o) {
+                        ComPtr<IDXGIOutput> output;
+                        if (adapter->EnumOutputs(o, &output) == DXGI_ERROR_NOT_FOUND) break;
+
+                        DXGI_OUTPUT_DESC desc{};
+                        if (FAILED(output->GetDesc(&desc))) continue;
+                        if (desc.Monitor != display->monitor_handle) continue;
+
+                        // Found the monitor, check for VRR support
+                        ComPtr<IDXGIOutput6> output6;
+                        if (SUCCEEDED(output->QueryInterface(IID_PPV_ARGS(&output6)))) {
+                            UINT support_flags = 0;
+                            if (SUCCEEDED(output6->CheckHardwareCompositionSupport(&support_flags))) {
+                                // Check for VRR support flag (0x1 = DXGI_HARDWARE_COMPOSITION_SUPPORT_FLAG_VARIABLE_REFRESH_RATE)
+                                info.supports_vrr = (support_flags & 0x1) != 0;
+                            }
+                        }
+                        break;
+                    }
+                    break;
+                }
+            }
+        }
+
         // Generate the display label (same format as GetMonitorLabels)
         std::ostringstream oss;
 

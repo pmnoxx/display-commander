@@ -698,6 +698,104 @@ void HandleFpsLimiter() {
         (handle_fps_limiter_start_duration_ns + (63) * fps_sleep_before_on_present_ns.load()) / 64);
 }
 
+void HandleKeyboardShortcuts() {
+      // Handle keyboard shortcuts (only when game is in foreground)
+      HWND game_hwnd = g_last_swapchain_hwnd.load();
+      bool is_game_in_foreground = (game_hwnd != nullptr && GetForegroundWindow() == game_hwnd);
+
+      if (s_enable_mute_unmute_shortcut.load() && is_game_in_foreground) {
+          // Get the runtime from the atomic variable
+          reshade::api::effect_runtime *runtime = g_reshade_runtime.load();
+          if (runtime != nullptr) {
+              // Check for Ctrl+M shortcut
+              if (runtime->is_key_pressed('M') && runtime->is_key_down(VK_CONTROL)) {
+                  // Toggle mute state
+                  bool new_mute_state = !s_audio_mute.load();
+                  if (SetMuteForCurrentProcess(new_mute_state)) {
+                      s_audio_mute.store(new_mute_state);
+                      g_muted_applied.store(new_mute_state);
+
+                      // Log the action
+                      std::ostringstream oss;
+                      oss << "Audio " << (new_mute_state ? "muted" : "unmuted") << " via Ctrl+M shortcut";
+                      LogInfo(oss.str().c_str());
+                  }
+              }
+          } else {
+              LogError("Mute/unmute shortcut failed: g_reshade_runtime is null");
+          }
+      }
+
+      // Handle Ctrl+A shortcut for auto-click toggle (only when game is in foreground)
+      if (is_game_in_foreground) {
+          // Get the runtime from the atomic variable
+          reshade::api::effect_runtime *runtime = g_reshade_runtime.load();
+          if (runtime != nullptr) {
+              // Check for Ctrl+A shortcut
+              if (runtime->is_key_pressed('A') && runtime->is_key_down(VK_CONTROL)) {
+                  // Toggle auto-click sequences
+                  autoclick::ToggleAutoClickEnabled();
+              }
+          } else {
+              LogError("Auto-click shortcut failed: g_reshade_runtime is null");
+          }
+      }
+
+      // Handle Ctrl+R shortcut for background toggle (only when game is in
+      // foreground)
+      if (s_enable_background_toggle_shortcut.load() && is_game_in_foreground) {
+          // Get the runtime from the atomic variable
+          reshade::api::effect_runtime *runtime = g_reshade_runtime.load();
+          if (runtime != nullptr) {
+              // Check for Ctrl+R shortcut
+              if (runtime->is_key_pressed('R') && runtime->is_key_down(VK_CONTROL)) {
+                  // Toggle render setting and make present follow the same state
+                  bool new_render_state = !s_no_render_in_background.load();
+                  bool new_present_state = new_render_state; // Present always follows render state
+
+                  s_no_render_in_background.store(new_render_state);
+                  s_no_present_in_background.store(new_present_state);
+
+                  // Update the settings in the UI as well
+                  settings::g_mainTabSettings.no_render_in_background.SetValue(new_render_state);
+                  settings::g_mainTabSettings.no_present_in_background.SetValue(new_present_state);
+
+                  // Log the action
+                  std::ostringstream oss;
+                  oss << "Background settings toggled via Ctrl+R shortcut - Both Render "
+                         "and Present: "
+                      << (new_render_state ? "disabled" : "enabled");
+                  LogInfo(oss.str().c_str());
+              }
+          } else {
+              LogError("Background toggle shortcut failed: g_reshade_runtime is null");
+          }
+      }
+
+      // Handle Ctrl+T shortcut for time slowdown toggle (only when game is in foreground)
+      if (s_enable_timeslowdown_shortcut.load() && is_game_in_foreground) {
+          // Get the runtime from the atomic variable
+          reshade::api::effect_runtime *runtime = g_reshade_runtime.load();
+          if (runtime != nullptr) {
+              // Check for Ctrl+T shortcut
+              if (runtime->is_key_pressed('T') && runtime->is_key_down(VK_CONTROL)) {
+                  // Toggle time slowdown state
+                  bool current_state = settings::g_experimentalTabSettings.timeslowdown_enabled.GetValue();
+                  bool new_state = !current_state;
+
+                  settings::g_experimentalTabSettings.timeslowdown_enabled.SetValue(new_state);
+
+                  // Log the action
+                  std::ostringstream oss;
+                  oss << "Time Slowdown " << (new_state ? "enabled" : "disabled") << " via Ctrl+T shortcut";
+                  LogInfo(oss.str().c_str());
+              }
+          } else {
+              LogError("Time slowdown shortcut failed: g_reshade_runtime is null");
+          }
+      }
+}
+
 // Update composition state after presents (required for valid stats)
 void OnPresentUpdateBefore(reshade::api::command_queue * /*queue*/, reshade::api::swapchain *swapchain,
                            const reshade::api::rect * /*source_rect*/, const reshade::api::rect * /*dest_rect*/,
@@ -725,101 +823,7 @@ void OnPresentUpdateBefore(reshade::api::command_queue * /*queue*/, reshade::api
     g_swapchain_event_counters[SWAPCHAIN_EVENT_PRESENT_UPDATE_BEFORE].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
-    // Handle keyboard shortcuts (only when game is in foreground)
-    HWND game_hwnd = g_last_swapchain_hwnd.load();
-    bool is_game_in_foreground = (game_hwnd != nullptr && GetForegroundWindow() == game_hwnd);
-
-    if (s_enable_mute_unmute_shortcut.load() && is_game_in_foreground) {
-        // Get the runtime from the atomic variable
-        reshade::api::effect_runtime *runtime = g_reshade_runtime.load();
-        if (runtime != nullptr) {
-            // Check for Ctrl+M shortcut
-            if (runtime->is_key_pressed('M') && runtime->is_key_down(VK_CONTROL)) {
-                // Toggle mute state
-                bool new_mute_state = !s_audio_mute.load();
-                if (SetMuteForCurrentProcess(new_mute_state)) {
-                    s_audio_mute.store(new_mute_state);
-                    g_muted_applied.store(new_mute_state);
-
-                    // Log the action
-                    std::ostringstream oss;
-                    oss << "Audio " << (new_mute_state ? "muted" : "unmuted") << " via Ctrl+M shortcut";
-                    LogInfo(oss.str().c_str());
-                }
-            }
-        } else {
-            LogError("Mute/unmute shortcut failed: g_reshade_runtime is null");
-        }
-    }
-
-    // Handle Ctrl+A shortcut for auto-click toggle (only when game is in foreground)
-    if (is_game_in_foreground) {
-        // Get the runtime from the atomic variable
-        reshade::api::effect_runtime *runtime = g_reshade_runtime.load();
-        if (runtime != nullptr) {
-            // Check for Ctrl+A shortcut
-            if (runtime->is_key_pressed('A') && runtime->is_key_down(VK_CONTROL)) {
-                // Toggle auto-click sequences
-                autoclick::ToggleAutoClickEnabled();
-            }
-        } else {
-            LogError("Auto-click shortcut failed: g_reshade_runtime is null");
-        }
-    }
-
-    // Handle Ctrl+R shortcut for background toggle (only when game is in
-    // foreground)
-    if (s_enable_background_toggle_shortcut.load() && is_game_in_foreground) {
-        // Get the runtime from the atomic variable
-        reshade::api::effect_runtime *runtime = g_reshade_runtime.load();
-        if (runtime != nullptr) {
-            // Check for Ctrl+R shortcut
-            if (runtime->is_key_pressed('R') && runtime->is_key_down(VK_CONTROL)) {
-                // Toggle render setting and make present follow the same state
-                bool new_render_state = !s_no_render_in_background.load();
-                bool new_present_state = new_render_state; // Present always follows render state
-
-                s_no_render_in_background.store(new_render_state);
-                s_no_present_in_background.store(new_present_state);
-
-                // Update the settings in the UI as well
-                settings::g_mainTabSettings.no_render_in_background.SetValue(new_render_state);
-                settings::g_mainTabSettings.no_present_in_background.SetValue(new_present_state);
-
-                // Log the action
-                std::ostringstream oss;
-                oss << "Background settings toggled via Ctrl+R shortcut - Both Render "
-                       "and Present: "
-                    << (new_render_state ? "disabled" : "enabled");
-                LogInfo(oss.str().c_str());
-            }
-        } else {
-            LogError("Background toggle shortcut failed: g_reshade_runtime is null");
-        }
-    }
-
-    // Handle Ctrl+T shortcut for time slowdown toggle (only when game is in foreground)
-    if (s_enable_timeslowdown_shortcut.load() && is_game_in_foreground) {
-        // Get the runtime from the atomic variable
-        reshade::api::effect_runtime *runtime = g_reshade_runtime.load();
-        if (runtime != nullptr) {
-            // Check for Ctrl+T shortcut
-            if (runtime->is_key_pressed('T') && runtime->is_key_down(VK_CONTROL)) {
-                // Toggle time slowdown state
-                bool current_state = settings::g_experimentalTabSettings.timeslowdown_enabled.GetValue();
-                bool new_state = !current_state;
-
-                settings::g_experimentalTabSettings.timeslowdown_enabled.SetValue(new_state);
-
-                // Log the action
-                std::ostringstream oss;
-                oss << "Time Slowdown " << (new_state ? "enabled" : "disabled") << " via Ctrl+T shortcut";
-                LogInfo(oss.str().c_str());
-            }
-        } else {
-            LogError("Time slowdown shortcut failed: g_reshade_runtime is null");
-        }
-    }
+    HandleKeyboardShortcuts();
 
     // Check for XInput chord screenshot trigger
     display_commander::widgets::xinput_widget::CheckAndHandleScreenshot();

@@ -3,7 +3,6 @@
 
 #include <fstream>
 #include <sstream>
-#include <shellapi.h>
 
 namespace dlss {
 
@@ -72,21 +71,6 @@ bool DlssIndicatorManager::WriteRegFile(const std::string& content, const std::s
     }
 }
 
-bool DlssIndicatorManager::ExecuteRegFile(const std::string& filepath) {
-    // Use ShellExecute with "runas" to request admin privileges
-    HINSTANCE result = ShellExecuteA(nullptr, "runas", "regedit.exe",
-                                   ("/s \"" + filepath + "\"").c_str(),
-                                   nullptr, SW_HIDE);
-
-    if (reinterpret_cast<INT_PTR>(result) <= 32) {
-        LogError("DLSS Indicator: Failed to execute .reg file, error: %ld",
-                reinterpret_cast<INT_PTR>(result));
-        return false;
-    }
-
-    LogInfo("DLSS Indicator: .reg file executed successfully: %s", filepath.c_str());
-    return true;
-}
 
 std::string DlssIndicatorManager::GetRegistryKeyPath() {
     return REGISTRY_KEY_PATH;

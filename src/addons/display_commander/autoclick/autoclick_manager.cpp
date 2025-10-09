@@ -325,12 +325,6 @@ void DrawAutoClickFeature() {
 
     ImGui::Spacing();
 
-    // Display click sequences (up to 5)
-    DrawSequence(1);
-    DrawSequence(2);
-    DrawSequence(3);
-    DrawSequence(4);
-    DrawSequence(5);
 
     // Summary information
     int enabled_sequences = 0;

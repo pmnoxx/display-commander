@@ -23,9 +23,6 @@ public:
     // Write .reg file to disk
     static bool WriteRegFile(const std::string& content, const std::string& filename);
 
-    // Execute .reg file with admin privileges
-    static bool ExecuteRegFile(const std::string& filepath);
-
     // Get the registry key path for DLSS indicator
     static std::string GetRegistryKeyPath();
 

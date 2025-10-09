@@ -3,12 +3,11 @@
 
 #include <imgui.h>
 #include <reshade.hpp>
+#include "../forkawesome.h"
 
 #include "../../utils.hpp"
 #include <algorithm>
 #include <cmath>
-
-#define ICON_FK_UNDO u8"\uf0e2"
 
 
 // Windows defines min/max as macros, so we need to undefine them

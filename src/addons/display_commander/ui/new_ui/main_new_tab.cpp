@@ -6,6 +6,7 @@
 #include "../../settings/developer_tab_settings.hpp"
 #include "../../settings/main_tab_settings.hpp"
 #include "../../widgets/resolution_widget/resolution_widget.hpp"
+#include "../forkawesome.h"
 #include "globals.hpp"
 #include "utils/timing.hpp"
 #include "version.hpp"
@@ -140,12 +141,12 @@ void DrawMainNewTab() {
         // Ko-fi support button
         ImGui::Spacing();
         ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "Support the project:");
-        if (ImGui::Button("☕ Buy me a coffee on Ko-fi")) {
+        if (ImGui::Button(ICON_FK_PLUS " Buy me a coffee on Ko-fi")) {
             ShellExecuteA(nullptr, "open", "https://ko-fi.com/pmnox", nullptr, nullptr, SW_SHOW);
         }
         ImGui::SameLine();
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Support Display Commander development with a coffee! ☕");
+            ImGui::SetTooltip("Support Display Commander development with a coffee!");
         }
  //   }
     ImGui::Spacing();
@@ -450,7 +451,7 @@ void DrawDisplaySettings() {
     DrawAdhdMultiMonitorControls(s_window_mode.load() == WindowMode::kAspectRatio);
 
     // Apply Changes button
-    if (ImGui::Button("Apply Changes")) {
+    if (ImGui::Button(ICON_FK_OK " Apply Changes")) {
         // Force immediate application of window changes
         ::g_init_apply_generation.fetch_add(1);
         LogInfo("Apply Changes button clicked - forcing immediate window update");
@@ -550,7 +551,7 @@ void DrawDisplaySettings() {
 
         // Add question mark with tooltip for manual fine-tuning note
         ImGui::SameLine();
-        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "?");
+        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), ICON_FK_WARNING);
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Manual fine-tuning is needed for now");
         }
@@ -939,7 +940,7 @@ void DrawWindowControls() {
     ImGui::BeginGroup();
 
     // Minimize Window Button
-    if (ImGui::Button("Minimize Window")) {
+    if (ImGui::Button(ICON_FK_MINUS " Minimize Window")) {
         HWND hwnd = g_last_swapchain_hwnd.load();
         std::thread([hwnd]() {
             LogDebug("Minimize Window button pressed (bg thread)");
@@ -953,7 +954,7 @@ void DrawWindowControls() {
     ImGui::SameLine();
 
     // Restore Window Button
-    if (ImGui::Button("Restore Window")) {
+    if (ImGui::Button(ICON_FK_UNDO " Restore Window")) {
         std::thread([hwnd]() {
             LogDebug("Restore Window button pressed (bg thread)");
             ShowWindow(hwnd, SW_RESTORE);
@@ -966,7 +967,7 @@ void DrawWindowControls() {
     ImGui::SameLine();
 
     // Maximize Window Button
-    if (ImGui::Button("Maximize Window")) {
+    if (ImGui::Button(ICON_FK_PLUS " Maximize Window")) {
         std::thread([hwnd]() {
             LogDebug("Maximize Window button pressed (bg thread)");
 
@@ -991,7 +992,7 @@ void DrawImportantInfo() {
     // Test Overlay Control
     {
         bool show_test_overlay = settings::g_mainTabSettings.show_test_overlay.GetValue();
-        if (ImGui::Checkbox("Show Performance Overlay", &show_test_overlay)) {
+        if (ImGui::Checkbox(ICON_FK_SEARCH " Show Performance Overlay", &show_test_overlay)) {
             settings::g_mainTabSettings.show_test_overlay.SetValue(show_test_overlay);
             LogInfo("Performance overlay %s", show_test_overlay ? "enabled" : "disabled");
         }
@@ -1012,7 +1013,7 @@ void DrawImportantInfo() {
             local_text = *shared_text;
         }
         ImGui::TextUnformatted(local_text.c_str());
-        if (ImGui::Button("Reset Stats")) {
+        if (ImGui::Button(ICON_FK_REFRESH " Reset Stats")) {
             ::g_perf_reset_requested.store(true, std::memory_order_release);
         }
         if (ImGui::IsItemHovered()) {

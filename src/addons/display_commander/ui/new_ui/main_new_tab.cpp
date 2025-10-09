@@ -135,36 +135,39 @@ void DrawMainNewTab() {
     // Load saved settings once and sync legacy globals
 
     // Version and build information at the top
-    ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "=== Display Commander ===");
-    ImGui::TextColored(ImVec4(0.9f, 0.9f, 0.9f, 1.0f), "Version: %s", DISPLAY_COMMANDER_VERSION_STRING);
-    ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Build: %s %s", DISPLAY_COMMANDER_BUILD_DATE,
-                       DISPLAY_COMMANDER_BUILD_TIME);
+    if (ImGui::CollapsingHeader("Display Commander", ImGuiTreeNodeFlags_None)) {
+        ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "=== Display Commander ===");
+        ImGui::TextColored(ImVec4(0.9f, 0.9f, 0.9f, 1.0f), "Version: %s", DISPLAY_COMMANDER_VERSION_STRING);
+        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Build: %s %s", DISPLAY_COMMANDER_BUILD_DATE,
+                        DISPLAY_COMMANDER_BUILD_TIME);
+    }
     ImGui::Separator();
-
-    ImGui::Text("Main Tab - Basic Settings");
-    ImGui::Separator();
-
     // Display Settings Section
-    DrawDisplaySettings();
+    if (ImGui::CollapsingHeader("Display Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
+        DrawDisplaySettings();
+    }
 
     ImGui::Spacing();
     ImGui::Separator();
 
     // Monitor/Display Resolution Settings Section
-    DrawMonitorDisplaySettings();
+    if (ImGui::CollapsingHeader("Resolution Control", ImGuiTreeNodeFlags_None)) {
+        display_commander::widgets::resolution_widget::DrawResolutionWidget();
+    }
 
     ImGui::Spacing();
     ImGui::Separator();
 
     // Audio Settings Section
-    DrawAudioSettings();
+    if (ImGui::CollapsingHeader("Audio Control", ImGuiTreeNodeFlags_None)) {
+        DrawAudioSettings();
+    }
 
     ImGui::Spacing();
     ImGui::Separator();
 
     // Input Blocking (Background) Section
-    {
-        ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== Input Control (Background) ===");
+    if (ImGui::CollapsingHeader("Input Control (Background)", ImGuiTreeNodeFlags_None)) {
         bool block_any_in_background = settings::g_mainTabSettings.block_input_in_background.GetValue();
         if (ImGui::Checkbox("Block Input in Background", &block_any_in_background)) {
             settings::g_mainTabSettings.block_input_in_background.SetValue(block_any_in_background);
@@ -190,8 +193,7 @@ void DrawMainNewTab() {
     ImGui::Separator();
 
     // Screensaver Control Section
-    {
-        ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== Screensaver Control ===");
+    if (ImGui::CollapsingHeader("Screensaver Control", ImGuiTreeNodeFlags_None)) {
         if (ComboSettingEnumRefWrapper(settings::g_mainTabSettings.screensaver_mode, "Screensaver Mode")) {
             LogInfo("Screensaver mode changed to %d", settings::g_mainTabSettings.screensaver_mode.GetValue());
         }
@@ -214,7 +216,9 @@ void DrawMainNewTab() {
     ImGui::Spacing();
     ImGui::Separator();
 
-    DrawImportantInfo();
+    if (ImGui::CollapsingHeader("Important Info", ImGuiTreeNodeFlags_DefaultOpen)) {
+        DrawImportantInfo();
+    }
 }
 
 void DrawQuickResolutionChanger() {
@@ -329,7 +333,6 @@ void DrawQuickResolutionChanger() {
 }
 
 void DrawDisplaySettings() {
-    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "=== Display Settings ===");
     {
         // Target Display dropdown
         // Use device ID-based approach for better reliability
@@ -705,10 +708,7 @@ void DrawDisplaySettings() {
                 "Skip rendering draw calls when the game window is not in the foreground. This can save "
                 "GPU power and reduce background processing.");
         }
-    }
-
-    // No Present in Background checkbox
-    {
+        ImGui::SameLine();
         bool no_present_in_bg = settings::g_mainTabSettings.no_present_in_background.GetValue();
         if (ImGui::Checkbox("No Present in Background", &no_present_in_bg)) {
             settings::g_mainTabSettings.no_present_in_background.SetValue(no_present_in_bg);
@@ -810,8 +810,6 @@ void DrawDisplaySettings() {
 }
 
 void DrawAudioSettings() {
-    ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== Audio Settings ===");
-
     // Audio Volume slider
     float volume = s_audio_volume_percent.load();
     if (ImGui::SliderFloat("Audio Volume (%)", &volume, 0.0f, 100.0f, "%.0f%%")) {
@@ -929,9 +927,6 @@ void DrawWindowControls() {
         LogWarn("Maximize Window: no window handle available");
         return;
     }
-
-    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.8f, 1.0f), "=== Window Controls ===");
-
     // Window Control Buttons (Minimize, Restore, and Maximize side by side)
     ImGui::BeginGroup();
 
@@ -983,21 +978,7 @@ void DrawWindowControls() {
 
     ImGui::EndGroup();
 }
-
-void DrawMonitorDisplaySettings() {
-    ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== Monitor & Display Resolution ===");
-
-    // Resolution Widget
-    if (ImGui::CollapsingHeader("Resolution Control", ImGuiTreeNodeFlags_DefaultOpen)) {
-        display_commander::widgets::resolution_widget::DrawResolutionWidget();
-    }
-}
-
 void DrawImportantInfo() {
-    ImGui::Spacing();
-    ImGui::Separator();
-
-    ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.8f, 1.0f), "=== Important Information ===");
 
     // Test Overlay Control
     {
@@ -1168,20 +1149,6 @@ void DrawAdhdMultiMonitorControls(bool hasBlackCurtainSetting) {
         ImGui::SetTooltip(
             "Covers secondary monitors with a black window to reduce distractions while playing this game.");
     }
-
-    // Focus disengagement is always enabled (no UI control needed)
-    ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "• Automatically disengages on Alt-Tab");
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip(
-            "ADHD mode will automatically disengage whenever you Alt-Tab, regardless of which monitor "
-            "the new application is on.");
-    }
-
-    // Additional information
-    ImGui::Spacing();
-    ImGui::TextColored(
-        ImVec4(0.8f, 0.8f, 0.8f, 1.0f),
-        "This feature helps reduce distractions by covering secondary monitors with a black background.");
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip(
             "Similar to Special-K's ADHD Multi-Monitor Mode.\nThe black background window will automatically position "

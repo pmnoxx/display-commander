@@ -12,9 +12,6 @@ void DrawMainNewTab();
 // Draw display settings section
 void DrawDisplaySettings();
 
-// Draw monitor/display resolution settings section
-void DrawMonitorDisplaySettings();
-
 // Draw audio settings section
 void DrawAudioSettings();
 

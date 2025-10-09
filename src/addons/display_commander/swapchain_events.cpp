@@ -885,49 +885,8 @@ void OnPresentFlags2(uint32_t *present_flags) {
         // }
     }
     l_frame_count.fetch_add(1);
-
-    return;
 }
 
-// Present flags callback to strip DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING
-void OnPresentFlags(uint32_t *present_flags, reshade::api::swapchain *swapchain) {
-    // Increment event counter
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_PRESENT_FLAGS].fetch_add(1);
-    g_swapchain_event_total_count.fetch_add(1);
-
-    // Always strip DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING flag
-    if (s_prevent_tearing.load() && *present_flags & DXGI_PRESENT_ALLOW_TEARING) {
-        *present_flags &= ~DXGI_PRESENT_ALLOW_TEARING;
-
-        // Log the flag removal for debugging
-        std::ostringstream oss;
-        oss << "Present flags callback: Stripped "
-               "DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING, new flags: 0x"
-            << std::hex << *present_flags;
-        LogInfo(oss.str().c_str());
-    }
-
-    if (s_fps_limiter_injection.load() == 0) {
-        HandleFpsLimiter();
-    }
-
-    // Don't block presents if continue rendering is enabled
-    if (s_no_present_in_background.load() && g_app_in_background.load(std::memory_order_acquire) &&
-        !s_continue_rendering.load()) {
-        *present_flags = DXGI_PRESENT_DO_NOT_SEQUENCE;
-    }
-    if (s_reflex_enable_current_frame.load()) {
-        auto *device = swapchain ? swapchain->get_device() : nullptr;
-        if (device && g_latencyManager->Initialize(device)) {
-            if (s_reflex_use_markers.load() && !g_app_in_background.load(std::memory_order_acquire)) {
-                g_latencyManager->SetMarker(LatencyMarkerType::PRESENT_START);
-            }
-        }
-    }
-    l_frame_count.fetch_add(1);
-
-    return;
-}
 
 // Resource creation event handler to upgrade buffer resolutions and texture
 // formats

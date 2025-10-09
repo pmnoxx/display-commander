@@ -67,9 +67,12 @@ void DrawFrameTimeGraph() {
     }
     avg_frame_time /= static_cast<float>(frame_times.size());
 
+    // Calculate average FPS from average frame time
+    float avg_fps = (avg_frame_time > 0.0f) ? (1000.0f / avg_frame_time) : 0.0f;
+
     // Display statistics
-    ImGui::Text("Min: %.2f ms | Max: %.2f ms | Avg: %.2f ms",
-                min_frame_time, max_frame_time, avg_frame_time);
+    ImGui::Text("Min: %.2f ms | Max: %.2f ms | Avg: %.2f ms | FPS(avg): %.1f",
+                min_frame_time, max_frame_time, avg_frame_time, avg_fps);
 
     // Create overlay text with current frame time
     std::string overlay_text = "Current: " + std::to_string(frame_times.back()).substr(0, 6) + " ms";
@@ -505,8 +508,8 @@ void DrawDisplaySettings() {
     {
         const char* injection_items[] = {
             "Default (Direct DX9/10/11/12)",
-            "Fallback(1) (Through ReShade - Slower)",
-            "Fallback(2) (Through ReShade - Slower)"
+            "Fallback(1) (OpenGL/Vulkan via ReShade)",
+            "Fallback(2) (Alternative ReShade injection)"
         };
 
         int current_injection = settings::g_mainTabSettings.fps_limiter_injection.GetValue();
@@ -518,8 +521,8 @@ void DrawDisplaySettings() {
             ImGui::SetTooltip(
                 "Choose injection method:\n"
                 "• Default: Injects directly into DX9/10/11/12 (fastest)\n"
-                "• Fallback(1): Injects through ReShade OnPresentUpdateBefore2 (slower)\n"
-                "• Fallback(2): Injects through ReShade OnPresentUpdateBefore (slower)");
+                "• Fallback(1): For OpenGL/Vulkan through ReShade (direct hooking not implemented)\n"
+                "• Fallback(2): Alternative ReShade injection point (slower)");
         }
     }
 

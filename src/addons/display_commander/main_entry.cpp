@@ -199,8 +199,6 @@ void DoInitializationWithoutHwnd(HMODULE h_module, DWORD fdw_reason) {
     reshade::register_event<reshade::addon_event::present>(OnPresentUpdateBefore);
     reshade::register_event<reshade::addon_event::reshade_present>(OnPresentUpdateBefore2);
     reshade::register_event<reshade::addon_event::finish_present>(OnPresentUpdateAfter);
-    // reshade::register_event<reshade::addon_event::present_flags>(OnPresentFlags); // Not available in current ReShade
-    // API
 
     // Register draw event handlers for render timing
     reshade::register_event<reshade::addon_event::draw>(OnDraw);

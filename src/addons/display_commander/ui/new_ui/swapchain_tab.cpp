@@ -159,7 +159,7 @@ void DrawSwapchainTab() {
 }
 
 void DrawSwapchainEventCounters() {
-    if (ImGui::CollapsingHeader("Swapchain Event Counters", ImGuiTreeNodeFlags_DefaultOpen)) {
+    if (ImGui::CollapsingHeader("Swapchain Event Counters", ImGuiTreeNodeFlags_None)) {
         ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Event Counters (Green = Working, Red = Not Working)");
         ImGui::Separator();
 
@@ -325,7 +325,7 @@ void DrawSwapchainEventCounters() {
     }
 
     // NVAPI SetSleepMode Values Section
-    if (ImGui::CollapsingHeader("NVAPI SetSleepMode Values", ImGuiTreeNodeFlags_DefaultOpen)) {
+    if (ImGui::CollapsingHeader("NVAPI SetSleepMode Values", ImGuiTreeNodeFlags_None)) {
         ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Last NVAPI SetSleepMode Parameters");
         ImGui::Separator();
 
@@ -349,7 +349,7 @@ void DrawSwapchainEventCounters() {
     }
 
     // Power Saving Settings Section
-    if (ImGui::CollapsingHeader("Power Saving Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
+    if (ImGui::CollapsingHeader("Power Saving Settings", ImGuiTreeNodeFlags_None)) {
         ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "GPU Power Saving Controls");
         ImGui::Separator();
 
@@ -423,7 +423,7 @@ void DrawSwapchainEventCounters() {
 }
 
 void DrawNGXParameters() {
-    if (ImGui::CollapsingHeader("NGX Parameters", ImGuiTreeNodeFlags_DefaultOpen)) {
+    if (ImGui::CollapsingHeader("NGX Parameters", ImGuiTreeNodeFlags_None)) {
         ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "NGX Parameter Values (Live from Game)");
         ImGui::Separator();
 

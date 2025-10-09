@@ -3,6 +3,7 @@
 #include "../../adhd_multi_monitor/adhd_simple_api.hpp"
 #include "../../audio/audio_management.hpp"
 #include "../../latent_sync/latent_sync_limiter.hpp"
+#include "../../performance_types.hpp"
 #include "../../settings/developer_tab_settings.hpp"
 #include "../../settings/main_tab_settings.hpp"
 #include "../../widgets/resolution_widget/resolution_widget.hpp"
@@ -96,6 +97,25 @@ void DrawFrameTimeGraph() {
         ImGui::SetTooltip("Frame time graph showing recent frame times in milliseconds.\n"
                          "Lower values = higher FPS, smoother gameplay.\n"
                          "Spikes indicate frame drops or stuttering.");
+    }
+
+    // Frame Time Mode Selector
+    ImGui::Spacing();
+    ImGui::Text("Frame Time Mode:");
+    ImGui::SameLine();
+
+    int current_mode = static_cast<int>(settings::g_mainTabSettings.frame_time_mode.GetValue());
+    const char* mode_items[] = {"Present-to-Present", "Frame Begin-to-Frame Begin"};
+
+    if (ImGui::Combo("##frame_time_mode", &current_mode, mode_items, 2)) {
+        settings::g_mainTabSettings.frame_time_mode.SetValue(current_mode);
+        LogInfo("Frame time mode changed to: %s", mode_items[current_mode]);
+    }
+
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Select which timing events to record for the frame time graph:\n"
+                         "• Present-to-Present: Records time between Present calls\n"
+                         "• Frame Begin-to-Frame Begin: Records time between frame begin events");
     }
 }
 

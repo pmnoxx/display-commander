@@ -1,5 +1,6 @@
 #include "settings_wrapper.hpp"
 #include "../../globals.hpp"
+#include "../../performance_types.hpp"
 
 #include <imgui.h>
 #include <reshade.hpp>
@@ -676,6 +677,11 @@ void TextSetting(const char *text) { ImGui::Text("%s", text); }
 template class ComboSettingEnumRef<ScreensaverMode>;
 template bool ComboSettingEnumRefWrapper<ScreensaverMode>(ComboSettingEnumRef<ScreensaverMode> &setting,
                                                           const char *label);
+
+// Explicit template instantiations for FrameTimeMode
+template class ComboSettingEnumRef<FrameTimeMode>;
+template bool ComboSettingEnumRefWrapper<FrameTimeMode>(ComboSettingEnumRef<FrameTimeMode> &setting,
+                                                        const char *label);
 
 // Explicit template instantiations for ComboSettingEnumRef
 template class ComboSettingEnumRef<WindowMode>;

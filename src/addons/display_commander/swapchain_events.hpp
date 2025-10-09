@@ -1,6 +1,7 @@
 #pragma once
 
 #include "globals.hpp"
+#include "performance_types.hpp"
 
 #include <reshade.hpp>
 
@@ -102,6 +103,13 @@ extern std::atomic<bool> s_suppress_memory_ops_in_background;
 DxgiBypassMode GetIndependentFlipState(reshade::api::swapchain *swapchain);
 bool SetIndependentFlipState(reshade::api::swapchain *swapchain);
 const char *DxgiBypassModeToString(DxgiBypassMode mode);
+
+// ============================================================================
+// PERFORMANCE MONITORING FUNCTIONS
+// ============================================================================
+
+// Record per-frame FPS sample for background aggregation
+void RecordFrameTime(FrameTimeMode reason = FrameTimeMode::Present);
 
 // ============================================================================
 // FORWARD DECLARATIONS

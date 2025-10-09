@@ -464,7 +464,7 @@ extern std::atomic<bool> g_perf_reset_requested;
 extern std::atomic<std::shared_ptr<const std::string>> g_perf_text_shared;
 
 // Lock-free ring buffer for recent FPS samples (60s window at ~240 Hz -> 14400 max)
-constexpr size_t kPerfRingCapacity = 16384;
+constexpr size_t kPerfRingCapacity = 65536;
 
 // Vector variables
 extern std::atomic<std::shared_ptr<const std::vector<MonitorInfo>>> g_monitors;

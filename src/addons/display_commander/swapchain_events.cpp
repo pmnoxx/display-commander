@@ -13,8 +13,10 @@
 #include "latency/latency_manager.hpp"
 #include "latent_sync/latent_sync_limiter.hpp"
 #include "nvapi/nvapi_fullscreen_prevention.hpp"
+#include "performance_types.hpp"
 #include "settings/experimental_tab_settings.hpp"
 #include "settings/main_tab_settings.hpp"
+#include "swapchain_events.hpp"
 #include "swapchain_events_power_saving.hpp"
 #include "ui/new_ui/experimental_tab.hpp"
 #include "ui/new_ui/new_ui_main.hpp"
@@ -248,6 +250,29 @@ void HandleOnPresentEnd() {
         int alpha = 64;
         g_reshade_overhead_duration_ns.store(
             (1 * g_reshade_overhead_duration_ns_new + (alpha - 1) * g_reshade_overhead_duration_ns.load()) / alpha);
+    }
+}
+
+void RecordFrameTime(FrameTimeMode reason) {
+    // Filter calls based on the selected frame time mode
+    FrameTimeMode frame_time_mode = static_cast<FrameTimeMode>(settings::g_mainTabSettings.frame_time_mode.GetValue());
+
+    // Only record if the call reason matches the selected mode
+    if (reason != frame_time_mode) {
+        return; // Skip recording for this call reason
+    }
+
+    static LONGLONG start_time_ns = utils::get_now_ns();
+    LONGLONG now_ns = utils::get_now_ns();
+    const double elapsed = static_cast<double>(now_ns - start_time_ns) / static_cast<double>(utils::SEC_TO_NS);
+    g_perf_time_seconds.store(elapsed, std::memory_order_release);
+    static double last_tp = 0.0;
+    const double dt = elapsed - last_tp;
+    if (dt > 0.0) {
+        const float fps = static_cast<float>(1.0 / dt);
+        uint32_t idx = g_perf_ring_head.fetch_add(1, std::memory_order_acq_rel);
+        g_perf_ring[idx & (kPerfRingCapacity - 1)] = PerfSample{elapsed, fps};
+        last_tp = elapsed;
     }
 }
 
@@ -597,6 +622,8 @@ void OnPresentUpdateAfter(reshade::api::command_queue * /*queue*/, reshade::api:
             g_latencyManager->Shutdown();
         }
     }
+
+    RecordFrameTime(FrameTimeMode::FrameBegin);
 }
 
 void flush_command_queue() {
@@ -850,22 +877,6 @@ void OnPresentFlags2(uint32_t *present_flags, PresentApiType api_type) {
     }
     // Throttle queries to ~every 30 presents
     int c = ++g_comp_query_counter;
-
-    // Record per-frame FPS sample for background aggregation (lock-free ring)
-    {
-        static LONGLONG start_time_ns = utils::get_now_ns();
-        LONGLONG now_ns = utils::get_now_ns();
-        const double elapsed = static_cast<double>(now_ns - start_time_ns) / static_cast<double>(utils::SEC_TO_NS);
-        g_perf_time_seconds.store(elapsed, std::memory_order_release);
-        static double last_tp = 0.0;
-        const double dt = elapsed - last_tp;
-        if (dt > 0.0) {
-            const float fps = static_cast<float>(1.0 / dt);
-            uint32_t idx = g_perf_ring_head.fetch_add(1, std::memory_order_acq_rel);
-            g_perf_ring[idx & (kPerfRingCapacity - 1)] = PerfSample{elapsed, fps};
-            last_tp = elapsed;
-        }
-    }
 }
 
 

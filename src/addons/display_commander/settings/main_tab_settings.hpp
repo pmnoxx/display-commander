@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../ui/new_ui/settings_wrapper.hpp"
+#include "../performance_types.hpp"
 #include "globals.hpp"
 
 #include <atomic>
@@ -80,6 +81,9 @@ class MainTabSettings {
 
     // Test Overlay Settings
     ui::new_ui::BoolSetting show_test_overlay;
+
+    // Frame Time Graph Settings
+    ui::new_ui::ComboSettingEnumRef<FrameTimeMode> frame_time_mode;
 
     // Display Information
     ui::new_ui::StringSetting target_display;

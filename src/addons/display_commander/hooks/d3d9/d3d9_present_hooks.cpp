@@ -1,5 +1,7 @@
 #include "d3d9_present_hooks.hpp"
 #include "../../globals.hpp"
+#include "../../performance_types.hpp"
+#include "../../swapchain_events.hpp"
 
 #include <d3d9.h>
 #include <MinHook.h>
@@ -7,10 +9,6 @@
 #include <array>
 
 // Forward declarations to avoid including headers that cause redefinition
-enum class PresentApiType {
-    DX9,
-    DXGI
-};
 extern void OnPresentFlags2(uint32_t *present_flags, PresentApiType api_type);
 extern void LogInfo(const char *format, ...);
 extern void LogWarn(const char *format, ...);
@@ -40,6 +38,9 @@ HRESULT STDMETHODCALLTYPE IDirect3DDevice9_Present_Detour(
     uint32_t present_flags = 0;
     OnPresentFlags2(&present_flags, PresentApiType::DX9);
 
+    // Record per-frame FPS sample for background aggregation
+    RecordFrameTime(FrameTimeMode::Present);
+
     // Call original function
     if (IDirect3DDevice9_Present_Original != nullptr) {
         return IDirect3DDevice9_Present_Original(This, pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion);
@@ -65,6 +66,9 @@ HRESULT STDMETHODCALLTYPE IDirect3DDevice9_PresentEx_Detour(
     // Call OnPresentFlags with the actual flags
     uint32_t present_flags = static_cast<uint32_t>(dwFlags);
     OnPresentFlags2(&present_flags, PresentApiType::DX9);
+
+    // Record per-frame FPS sample for background aggregation
+    RecordFrameTime(FrameTimeMode::Present);
 
     // Call original function
     if (IDirect3DDevice9_PresentEx_Original != nullptr) {

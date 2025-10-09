@@ -726,13 +726,13 @@ void HandleKeyboardShortcuts() {
           }
       }
 
-      // Handle Ctrl+A shortcut for auto-click toggle (only when game is in foreground)
+      // Handle Ctrl+P shortcut for auto-click toggle (only when game is in foreground)
       if (is_game_in_foreground) {
           // Get the runtime from the atomic variable
           reshade::api::effect_runtime *runtime = g_reshade_runtime.load();
           if (runtime != nullptr) {
-              // Check for Ctrl+A shortcut
-              if (runtime->is_key_pressed('A') && runtime->is_key_down(VK_CONTROL)) {
+              // Check for Ctrl+P shortcut
+              if (runtime->is_key_pressed('P') && runtime->is_key_down(VK_CONTROL)) {
                   // Toggle auto-click sequences
                   autoclick::ToggleAutoClickEnabled();
               }

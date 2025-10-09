@@ -278,7 +278,7 @@ void DrawAutoClickFeature() {
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Enable/disable all auto-click sequences. Each sequence can be individually configured "
-                          "below.\n\nShortcut: Ctrl+A\n\nNote: Mouse position spoofing will be auto-enabled for better stealth when mouse movement is enabled.");
+                          "below.\n\nShortcut: Ctrl+P\n\nNote: Mouse position spoofing will be auto-enabled for better stealth when mouse movement is enabled.");
     }
 
     // Mouse movement toggle

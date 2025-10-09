@@ -278,6 +278,24 @@ void HandleKeyboardShortcuts() {
           }
       }
 
+      // Handle Ctrl+O shortcut for performance overlay toggle (only when game is in foreground)
+      if (is_game_in_foreground) {
+          // Use our keyboard tracker instead of ReShade runtime
+          if (display_commanderhooks::keyboard_tracker::IsKeyPressed('O') &&
+              display_commanderhooks::keyboard_tracker::IsKeyDown(VK_CONTROL)) {
+              // Toggle performance overlay state
+              bool current_state = settings::g_mainTabSettings.show_test_overlay.GetValue();
+              bool new_state = !current_state;
+
+              settings::g_mainTabSettings.show_test_overlay.SetValue(new_state);
+
+              // Log the action
+              std::ostringstream oss;
+              oss << "Performance overlay " << (new_state ? "enabled" : "disabled") << " via Ctrl+O shortcut";
+              LogInfo(oss.str().c_str());
+          }
+      }
+
       // Handle Ctrl+D shortcut for ADHD toggle (only when game is in foreground)
       if (s_enable_adhd_toggle_shortcut.load() && is_game_in_foreground) {
           // Use our keyboard tracker instead of ReShade runtime

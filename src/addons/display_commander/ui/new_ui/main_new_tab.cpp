@@ -1038,7 +1038,8 @@ void DrawImportantInfo() {
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip(
                 "Shows a performance monitoring widget in the main ReShade overlay with frame time graph, "
-                "FPS counter, and other performance metrics. Demonstrates reshade_overlay event usage.");
+                "FPS counter, and other performance metrics. Demonstrates reshade_overlay event usage.\n"
+                "Shortcut: Ctrl+O");
         }
     }
 
@@ -1066,6 +1067,20 @@ void DrawImportantInfo() {
 
     // Frame Time Graph Section
     if (ImGui::CollapsingHeader("Frame Time Graph", ImGuiTreeNodeFlags_DefaultOpen)) {
+        // GPU Measurement Enable/Disable Control
+        bool gpu_measurement = ::g_gpu_measurement_enabled.load();
+        if (ImGui::Checkbox("Enable GPU Completion Measurement", &gpu_measurement)) {
+            ::g_gpu_measurement_enabled.store(gpu_measurement);
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip(
+                "Measures time from Present call to GPU completion using fences.\n"
+                "Requires D3D11 with Windows 10+ or D3D12.\n"
+                "Shows as 'GPU Duration' in the timing metrics below.");
+        }
+
+        ImGui::Spacing();
+
         DrawFrameTimeGraph();
 
         std::ostringstream oss;
@@ -1078,6 +1093,20 @@ void DrawImportantInfo() {
         ImGui::TextUnformatted(oss.str().c_str());
         ImGui::SameLine();
         ImGui::TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
+
+        // GPU Duration Display (only show if measurement is enabled and has data)
+        if (::g_gpu_measurement_enabled.load() && ::g_gpu_duration_ns.load() > 0) {
+            oss.str("");
+            oss.clear();
+            oss << "GPU Duration: " << std::fixed << std::setprecision(3)
+                << (1.0 * ::g_gpu_duration_ns.load() / utils::NS_TO_MS) << " ms";
+            ImGui::TextUnformatted(oss.str().c_str());
+            ImGui::SameLine();
+            ImGui::TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Time from Present call to GPU completion (D3D11 only, requires Windows 10+)");
+            }
+        }
 
         oss.str("");
         oss.clear();

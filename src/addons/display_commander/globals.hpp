@@ -633,6 +633,12 @@ extern std::atomic<LONGLONG> g_present_start_time_ns;
 
 extern std::atomic<LONGLONG> late_amount_ns;
 
+// GPU completion measurement using EnqueueSetEvent
+extern std::atomic<HANDLE> g_gpu_completion_event;  // Event handle for GPU completion measurement
+extern std::atomic<LONGLONG> g_gpu_completion_time_ns;  // Last measured GPU completion time
+extern std::atomic<LONGLONG> g_gpu_duration_ns;  // Last measured GPU duration (smoothed)
+extern std::atomic<bool> g_gpu_measurement_enabled;  // Whether GPU measurement is enabled
+
 // NVIDIA Reflex minimal controls
 extern std::atomic<bool> s_reflex_enable;          // Enable NVIDIA Reflex integration
 extern std::atomic<bool> s_reflex_enable_current_frame;          // Enable NVIDIA Reflex integration for current frame

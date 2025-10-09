@@ -1,8 +1,12 @@
 #include "addon.hpp"
 #include "adhd_multi_monitor/adhd_simple_api.hpp"
+#include "audio/audio_management.hpp"
+#include "autoclick/autoclick_manager.hpp"
 #include "background_window.hpp"
 #include "globals.hpp"
 #include "hooks/api_hooks.hpp"
+#include "hooks/windows_hooks/windows_message_hooks.hpp"
+#include "settings/experimental_tab_settings.hpp"
 #include "settings/main_tab_settings.hpp"
 #include "ui/new_ui/swapchain_tab.hpp"
 #include "utils.hpp"
@@ -197,6 +201,103 @@ void every1s_checks() {
     ++seconds_counter;
 }
 
+void HandleKeyboardShortcuts() {
+      // Handle keyboard shortcuts (only when game is in foreground)
+      HWND game_hwnd = g_last_swapchain_hwnd.load();
+      bool is_game_in_foreground = (game_hwnd != nullptr && GetForegroundWindow() == game_hwnd);
+
+      if (s_enable_mute_unmute_shortcut.load() && is_game_in_foreground) {
+          // Use our keyboard tracker instead of ReShade runtime
+          if (display_commanderhooks::keyboard_tracker::IsKeyPressed('M') &&
+              display_commanderhooks::keyboard_tracker::IsKeyDown(VK_CONTROL)) {
+              // Toggle mute state
+              bool new_mute_state = !s_audio_mute.load();
+              if (SetMuteForCurrentProcess(new_mute_state)) {
+                  s_audio_mute.store(new_mute_state);
+                  g_muted_applied.store(new_mute_state);
+
+                  // Log the action
+                  std::ostringstream oss;
+                  oss << "Audio " << (new_mute_state ? "muted" : "unmuted") << " via Ctrl+M shortcut";
+                  LogInfo(oss.str().c_str());
+              }
+          }
+      }
+
+      // Handle Ctrl+P shortcut for auto-click toggle (only when game is in foreground)
+      if (is_game_in_foreground) {
+          // Use our keyboard tracker instead of ReShade runtime
+          if (display_commanderhooks::keyboard_tracker::IsKeyPressed('P') &&
+              display_commanderhooks::keyboard_tracker::IsKeyDown(VK_CONTROL)) {
+              // Toggle auto-click sequences
+              autoclick::ToggleAutoClickEnabled();
+          }
+      }
+
+      // Handle Ctrl+R shortcut for background toggle (only when game is in
+      // foreground)
+      if (s_enable_background_toggle_shortcut.load() && is_game_in_foreground) {
+          // Use our keyboard tracker instead of ReShade runtime
+          if (display_commanderhooks::keyboard_tracker::IsKeyPressed('R') &&
+              display_commanderhooks::keyboard_tracker::IsKeyDown(VK_CONTROL)) {
+              // Toggle render setting and make present follow the same state
+              bool new_render_state = !s_no_render_in_background.load();
+              bool new_present_state = new_render_state; // Present always follows render state
+
+              s_no_render_in_background.store(new_render_state);
+              s_no_present_in_background.store(new_present_state);
+
+              // Update the settings in the UI as well
+              settings::g_mainTabSettings.no_render_in_background.SetValue(new_render_state);
+              settings::g_mainTabSettings.no_present_in_background.SetValue(new_present_state);
+
+              // Log the action
+              std::ostringstream oss;
+              oss << "Background settings toggled via Ctrl+R shortcut - Both Render "
+                     "and Present: "
+                  << (new_render_state ? "disabled" : "enabled");
+              LogInfo(oss.str().c_str());
+          }
+      }
+
+      // Handle Ctrl+T shortcut for time slowdown toggle (only when game is in foreground)
+      if (s_enable_timeslowdown_shortcut.load() && is_game_in_foreground) {
+          // Use our keyboard tracker instead of ReShade runtime
+          if (display_commanderhooks::keyboard_tracker::IsKeyPressed('T') &&
+              display_commanderhooks::keyboard_tracker::IsKeyDown(VK_CONTROL)) {
+              // Toggle time slowdown state
+              bool current_state = settings::g_experimentalTabSettings.timeslowdown_enabled.GetValue();
+              bool new_state = !current_state;
+
+              settings::g_experimentalTabSettings.timeslowdown_enabled.SetValue(new_state);
+
+              // Log the action
+              std::ostringstream oss;
+              oss << "Time Slowdown " << (new_state ? "enabled" : "disabled") << " via Ctrl+T shortcut";
+              LogInfo(oss.str().c_str());
+          }
+      }
+
+      // Handle Ctrl+D shortcut for ADHD toggle (only when game is in foreground)
+      if (s_enable_adhd_toggle_shortcut.load() && is_game_in_foreground) {
+          // Use our keyboard tracker instead of ReShade runtime
+          if (display_commanderhooks::keyboard_tracker::IsKeyPressed('D') &&
+              display_commanderhooks::keyboard_tracker::IsKeyDown(VK_CONTROL)) {
+              // Toggle ADHD Multi-Monitor Mode state
+              bool current_state = settings::g_mainTabSettings.adhd_multi_monitor_enabled.GetValue();
+              bool new_state = !current_state;
+
+              settings::g_mainTabSettings.adhd_multi_monitor_enabled.SetValue(new_state);
+              adhd_multi_monitor::api::SetEnabled(new_state);
+
+              // Log the action
+              std::ostringstream oss;
+              oss << "ADHD Multi-Monitor Mode " << (new_state ? "enabled" : "disabled") << " via Ctrl+D shortcut";
+              LogInfo(oss.str().c_str());
+          }
+      }
+}
+
 // Main monitoring thread function
 void ContinuousMonitoringThread() {
     LogInfo("Continuous monitoring thread started");
@@ -236,6 +337,15 @@ void ContinuousMonitoringThread() {
 
             // Update ADHD Multi-Monitor Mode at 60 FPS
             adhd_multi_monitor::api::Update();
+
+            // Update keyboard tracking system
+            display_commanderhooks::keyboard_tracker::Update();
+
+            // Handle keyboard shortcuts
+            HandleKeyboardShortcuts();
+
+            // Reset keyboard frame states for next frame
+            display_commanderhooks::keyboard_tracker::ResetFrame();
         }
 
         if (now_ns - last_1s_update_ns >= 1 * utils::SEC_TO_NS) {

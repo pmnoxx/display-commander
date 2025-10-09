@@ -207,4 +207,24 @@ void ResetAllHookStats();
 int GetHookCount();
 const char *GetHookName(int hook_index);
 
+// Keyboard state tracking
+namespace keyboard_tracker {
+
+// Initialize keyboard tracking
+void Initialize();
+
+// Update keyboard state (call each frame)
+void Update();
+
+// Reset frame states (call after processing shortcuts)
+void ResetFrame();
+
+// Check if a key is currently down
+bool IsKeyDown(int vKey);
+
+// Check if a key was just pressed this frame
+bool IsKeyPressed(int vKey);
+
+} // namespace keyboard_tracker
+
 } // namespace display_commanderhooks

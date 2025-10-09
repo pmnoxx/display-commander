@@ -371,6 +371,7 @@ extern std::atomic<bool> s_nvapi_auto_enable;
 extern std::atomic<bool> s_enable_mute_unmute_shortcut;
 extern std::atomic<bool> s_enable_background_toggle_shortcut;
 extern std::atomic<bool> s_enable_timeslowdown_shortcut;
+extern std::atomic<bool> s_enable_adhd_toggle_shortcut;
 
 // FPS Limiter Settings
 

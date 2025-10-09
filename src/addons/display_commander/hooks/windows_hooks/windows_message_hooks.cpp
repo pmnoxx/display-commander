@@ -1383,6 +1383,65 @@ const char *GetHookName(int hook_index) {
     return "Unknown";
 }
 
+// Keyboard state tracking implementation
+namespace keyboard_tracker {
+
+// Keyboard state arrays (256 keys)
+static std::array<std::atomic<bool>, 256> s_key_down{};
+static std::array<std::atomic<bool>, 256> s_key_pressed{};
+static std::array<bool, 256> s_prev_key_state{};
+
+void Initialize() {
+    // Initialize all states to false
+    for (int i = 0; i < 256; ++i) {
+        s_key_down[i].store(false);
+        s_key_pressed[i].store(false);
+        s_prev_key_state[i] = false;
+    }
+}
+
+void Update() {
+    // Update keyboard state using GetAsyncKeyState
+    for (int vKey = 0; vKey < 256; ++vKey) {
+        // Use the original GetAsyncKeyState to get real keyboard state
+        SHORT state = GetAsyncKeyState_Original ? GetAsyncKeyState_Original(vKey) : GetAsyncKeyState(vKey);
+
+        // Check if key is currently down (high-order bit)
+        bool is_down = (state & 0x8000) != 0;
+
+        // Update current state
+        s_key_down[vKey].store(is_down);
+
+        // Check if this is a new press (was up, now down)
+        bool was_down = s_prev_key_state[vKey];
+        if (is_down && !was_down) {
+            s_key_pressed[vKey].store(true);
+        }
+
+        // Store current state for next frame
+        s_prev_key_state[vKey] = is_down;
+    }
+}
+
+void ResetFrame() {
+    // Reset all pressed states for next frame
+    for (int i = 0; i < 256; ++i) {
+        s_key_pressed[i].store(false);
+    }
+}
+
+bool IsKeyDown(int vKey) {
+    if (vKey < 0 || vKey >= 256) return false;
+    return s_key_down[vKey].load();
+}
+
+bool IsKeyPressed(int vKey) {
+    if (vKey < 0 || vKey >= 256) return false;
+    return s_key_pressed[vKey].load();
+}
+
+} // namespace keyboard_tracker
+
 } // namespace display_commanderhooks
 
 // Restore warning settings

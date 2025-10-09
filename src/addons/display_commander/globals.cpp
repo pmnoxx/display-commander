@@ -56,6 +56,7 @@ std::atomic<int> s_spoofed_mouse_y{0};
 std::atomic<bool> s_enable_mute_unmute_shortcut{true};
 std::atomic<bool> s_enable_background_toggle_shortcut{true};
 std::atomic<bool> s_enable_timeslowdown_shortcut{true};
+std::atomic<bool> s_enable_adhd_toggle_shortcut{true};
 
 // Performance: background FPS cap
 

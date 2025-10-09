@@ -11,7 +11,6 @@
 extern std::atomic<bool> s_background_feature_enabled;
 extern std::atomic<int> s_scanline_offset;
 extern std::atomic<int> s_vblank_sync_divisor;
-extern std::atomic<int> s_fps_limiter_injection;
 extern std::atomic<float> s_fps_limit;
 extern std::atomic<float> s_fps_limit_background;
 extern std::atomic<float> s_present_pacing_delay_percentage;
@@ -55,7 +54,6 @@ class MainTabSettings {
     ui::new_ui::ComboSetting fps_limiter_mode;
     ui::new_ui::IntSettingRef scanline_offset;
     ui::new_ui::IntSettingRef vblank_sync_divisor;
-    ui::new_ui::IntSettingRef fps_limiter_injection;
     ui::new_ui::FloatSettingRef fps_limit;
     ui::new_ui::FloatSettingRef fps_limit_background;
     ui::new_ui::FloatSettingRef present_pacing_delay_percentage;

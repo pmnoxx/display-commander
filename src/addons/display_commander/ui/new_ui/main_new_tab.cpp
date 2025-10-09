@@ -126,8 +126,6 @@ void InitMainNewTab() {
 
         // FPS limiter mode
         s_fps_limiter_mode.store(static_cast<FpsLimiterMode>(settings::g_mainTabSettings.fps_limiter_mode.GetValue()));
-        // FPS limiter injection timing
-        s_fps_limiter_injection.store(settings::g_mainTabSettings.fps_limiter_injection.GetValue());
         // Scanline offset and VBlank Sync Divisor are now automatically synced via IntSettingRef
 
         // Initialize resolution widget
@@ -504,27 +502,6 @@ void DrawDisplaySettings() {
         }
     }
 
-    // FPS Limiter Injection Timing
-    {
-        const char* injection_items[] = {
-            "Default (Direct DX9/10/11/12)",
-            "Fallback(1) (OpenGL/Vulkan via ReShade)",
-            "Fallback(2) (Alternative ReShade injection)"
-        };
-
-        int current_injection = settings::g_mainTabSettings.fps_limiter_injection.GetValue();
-        if (ImGui::Combo("FPS Limiter Injection", &current_injection, injection_items, 3)) {
-            settings::g_mainTabSettings.fps_limiter_injection.SetValue(current_injection);
-            s_fps_limiter_injection.store(current_injection);
-        }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
-                "Choose injection method:\n"
-                "• Default: Injects directly into DX9/10/11/12 (fastest)\n"
-                "• Fallback(1): For OpenGL/Vulkan through ReShade (direct hooking not implemented)\n"
-                "• Fallback(2): Alternative ReShade injection point (slower)");
-        }
-    }
 
     // Present Pacing Delay slider (persisted)
     {
@@ -663,43 +640,18 @@ void DrawDisplaySettings() {
         ImGui::SetTooltip("Set FPS limit for the game (0 = no limit). Now uses the new Custom FPS Limiter system.");
     }
 
-    // FPS Limiter Warning - Check if the appropriate events are working based on injection mode
+    // FPS Limiter Warning - Check if OnPresentFlags events are working
     if (fps_limit_enabled) {
-        int injection_mode = settings::g_mainTabSettings.fps_limiter_injection.GetValue();
-        uint32_t event_count = 0;
-        const char* event_name = "";
-        bool show_warning = false;
-
-        switch (injection_mode) {
-            case 0: // OnPresentFlags
-                event_count = g_swapchain_event_counters[SWAPCHAIN_EVENT_PRESENT_FLAGS].load();
-                event_name = "SWAPCHAIN_EVENT_PRESENT_FLAGS";
-                show_warning = (event_count == 0);
-                break;
-            case 1: // OnPresentUpdateBefore2
-                event_count = g_swapchain_event_counters[SWAPCHAIN_EVENT_PRESENT_UPDATE_BEFORE2].load();
-                event_name = "SWAPCHAIN_EVENT_PRESENT_UPDATE_BEFORE2";
-                show_warning = (event_count == 0);
-                break;
-            case 2: // OnPresentUpdateBefore
-                event_count = g_swapchain_event_counters[SWAPCHAIN_EVENT_PRESENT_UPDATE_BEFORE].load();
-                event_name = "SWAPCHAIN_EVENT_PRESENT_UPDATE_BEFORE";
-                show_warning = (event_count == 0);
-                break;
-        }
+        uint32_t event_count = g_swapchain_event_counters[SWAPCHAIN_EVENT_PRESENT_FLAGS].load();
+        bool show_warning = (event_count == 0);
 
         if (show_warning) {
             ImGui::Spacing();
-            const char* injection_mode_names[] = {"Default", "Fallback(1)", "Fallback(2)"};
-            const char* mode_name = (injection_mode >= 0 && injection_mode < 3) ? injection_mode_names[injection_mode] : "Unknown";
-
             ImGui::TextColored(ui::colors::TEXT_WARNING,
-                "⚠ Warning: FPS limiting is enabled but %s events are 0. "
-                "FPS limiting may not work properly.", event_name);
+                "⚠ Warning: FPS limiting is enabled but SWAPCHAIN_EVENT_PRESENT_FLAGS events are 0. "
+                "FPS limiting may not work properly.");
             if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("%s events are required for FPS limiting when using %s injection mode. "
-                                "Try changing the FPS Limiter Injection setting to a different mode.",
-                                event_name, mode_name);
+                ImGui::SetTooltip("SWAPCHAIN_EVENT_PRESENT_FLAGS events are required for FPS limiting.");
             }
         }
     }

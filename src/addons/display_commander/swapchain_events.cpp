@@ -817,9 +817,6 @@ void OnPresentUpdateBefore(reshade::api::command_queue * /*queue*/, reshade::api
         }
     }
 
-    if (s_fps_limiter_injection.load() == 2) {
-        HandleFpsLimiter();
-    }
 }
 
 void OnPresentUpdateBefore2(reshade::api::effect_runtime *runtime) {
@@ -830,9 +827,6 @@ void OnPresentUpdateBefore2(reshade::api::effect_runtime *runtime) {
     // Check for XInput chord screenshot trigger
     display_commander::widgets::xinput_widget::CheckAndHandleScreenshot();
 
-    if (s_fps_limiter_injection.load() == 1) {
-        HandleFpsLimiter();
-    }
 }
 
 bool OnBindPipeline(reshade::api::command_list *cmd_list, reshade::api::pipeline_stage stages,
@@ -867,9 +861,7 @@ void OnPresentFlags2(uint32_t *present_flags) {
         LogInfo(oss.str().c_str());
     }
 
-    if (s_fps_limiter_injection.load() == 0) {
-        HandleFpsLimiter();
-    }
+    HandleFpsLimiter();
 
     // Don't block presents if continue rendering is enabled
     if (s_no_present_in_background.load() && g_app_in_background.load(std::memory_order_acquire) &&

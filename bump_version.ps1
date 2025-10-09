@@ -1,9 +1,9 @@
 # Display Commander Version Bumping Script
-# Usage: .\bump_version.ps1 [major|minor|patch|build] [--build] [--commit] [--tag]
+# Usage: .\bump_version.ps1 [major|minor|patch] [--build] [--commit] [--tag]
 
 param(
     [Parameter(Mandatory=$true)]
-    [ValidateSet("major", "minor", "patch", "build")]
+    [ValidateSet("major", "minor", "patch")]
     [string]$Type,
 
     [switch]$Build,
@@ -65,7 +65,7 @@ function Update-VersionFile {
     $content = $content -replace '#define DISPLAY_COMMANDER_VERSION_BUILD \d+', "#define DISPLAY_COMMANDER_VERSION_BUILD $($Version.Build)"
 
     # Update version string
-    $versionString = "$($Version.Major).$($Version.Minor).$($Version.Patch).$($Version.Build)"
+    $versionString = "$($Version.Major).$($Version.Minor).$($Version.Patch)"
     $content = $content -replace '#define DISPLAY_COMMANDER_VERSION_STRING "[^"]*"', "#define DISPLAY_COMMANDER_VERSION_STRING `"$versionString`""
 
     # Update build date and time
@@ -108,7 +108,7 @@ function Commit-Changes {
     param([hashtable]$Version, [string]$Message)
 
     if ([string]::IsNullOrEmpty($Message)) {
-        $Message = "Bump version to $($Version.Major).$($Version.Minor).$($Version.Patch).$($Version.Build)"
+        $Message = "Bump version to $($Version.Major).$($Version.Minor).$($Version.Patch)"
     }
 
     Write-ColorOutput "`nCommitting changes..." $Blue
@@ -127,7 +127,7 @@ function Commit-Changes {
 function Create-Tag {
     param([hashtable]$Version)
 
-    $tagName = "v$($Version.Major).$($Version.Minor).$($Version.Patch).$($Version.Build)"
+    $tagName = "v$($Version.Major).$($Version.Minor).$($Version.Patch)"
 
     Write-ColorOutput "`nCreating tag: $tagName" $Blue
 
@@ -147,7 +147,7 @@ Write-ColorOutput "================================" $Blue
 
 # Get current version
 $currentVersion = Get-CurrentVersion
-Write-ColorOutput "Current version: $($currentVersion.Major).$($currentVersion.Minor).$($currentVersion.Patch).$($currentVersion.Build)" $Yellow
+Write-ColorOutput "Current version: $($currentVersion.Major).$($currentVersion.Minor).$($currentVersion.Patch)" $Yellow
 
 # Calculate new version
 $newVersion = $currentVersion.Clone()
@@ -156,23 +156,17 @@ switch ($Type) {
         $newVersion.Major++
         $newVersion.Minor = 0
         $newVersion.Patch = 0
-        $newVersion.Build = 0
     }
     "minor" {
         $newVersion.Minor++
         $newVersion.Patch = 0
-        $newVersion.Build = 0
     }
     "patch" {
         $newVersion.Patch++
-        $newVersion.Build = 0
-    }
-    "build" {
-        $newVersion.Build++
     }
 }
 
-Write-ColorOutput "New version: $($newVersion.Major).$($newVersion.Minor).$($newVersion.Patch).$($newVersion.Build)" $Green
+Write-ColorOutput "New version: $($newVersion.Major).$($newVersion.Minor).$($newVersion.Patch)" $Green
 
 # Confirm before proceeding
 $confirm = Read-Host "`nProceed with version bump? (y/N)"
@@ -200,11 +194,10 @@ if ($Tag) {
 }
 
 Write-ColorOutput "`nVersion bump completed successfully!" $Green
-Write-ColorOutput "New version: $($newVersion.Major).$($newVersion.Minor).$($newVersion.Patch).$($newVersion.Build)" $Green
+Write-ColorOutput "New version: $($newVersion.Major).$($newVersion.Minor).$($newVersion.Patch)" $Green
 
 # Show usage examples
 Write-ColorOutput "`nUsage examples:" $Blue
 Write-ColorOutput "  .\bump_version.ps1 patch --build --commit" $Yellow
 Write-ColorOutput "  .\bump_version.ps1 minor --build --commit --tag" $Yellow
-Write-ColorOutput "  .\bump_version.ps1 build --build" $Yellow
 Write-ColorOutput "  .\bump_version.ps1 major --build --commit --tag --message 'Major release with new features'" $Yellow

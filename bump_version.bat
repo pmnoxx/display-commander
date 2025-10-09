@@ -3,7 +3,7 @@ REM Display Commander Version Bumper - Batch Wrapper
 REM This is a simple wrapper for the PowerShell script
 
 if "%1"=="" (
-    echo Usage: bump_version.bat [major^|minor^|patch^|build] [options]
+    echo Usage: bump_version.bat [major^|minor^|patch] [options]
     echo.
     echo Options:
     echo   --build    Build the project after version bump
@@ -14,7 +14,7 @@ if "%1"=="" (
     echo Examples:
     echo   bump_version.bat patch --build --commit
     echo   bump_version.bat minor --build --commit --tag
-    echo   bump_version.bat build --build
+    echo   bump_version.bat major --build --commit --tag
     echo.
     pause
     exit /b 1

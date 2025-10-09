@@ -207,7 +207,7 @@ void DrawMainNewTab() {
 
         // Input blocking without Reshade (handled by Windows message hooks)
         bool block_without_reshade = settings::g_mainTabSettings.block_input_without_reshade.GetValue();
-        if (ImGui::Checkbox("Block input without Reshade (Uses Windows message hooks)", &block_without_reshade)) {
+        if (ImGui::Checkbox("Block input", &block_without_reshade)) {
             settings::g_mainTabSettings.block_input_without_reshade.SetValue(block_without_reshade);
             // No need to call update function - the message hooks check the setting directly
         }

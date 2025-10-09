@@ -70,7 +70,7 @@ void TabManager::Draw() {
 
 // Initialize the new UI system
 void InitializeNewUI() {
-    LogInfo("XXX Initializing new UI");
+    LogInfo("Initializing new UI");
 
     // Ensure settings for main and developer tabs are loaded at UI init time
     ui::new_ui::InitMainNewTab();

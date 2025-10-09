@@ -199,8 +199,6 @@ std::atomic<LONGLONG> g_render_submit_end_time_ns{0};
 // Render submit duration tracking (nanoseconds)
 std::atomic<LONGLONG> g_render_submit_duration_ns{0};
 
-std::atomic<int> l_frame_count{0};
-
 void HandleRenderStartAndEndTimes() {
     LONGLONG expected = 0;
     if (g_submit_start_time_ns.load() == 0) {
@@ -431,8 +429,6 @@ void OnInitSwapchain(reshade::api::swapchain *swapchain, bool resize) {
         LogDebug("OnInitSwapchain: swapchain is null");
         return;
     }
-    // Reset frame count on swapconhain init
-    l_frame_count.store(0);
 
     // Increment event counter
     g_swapchain_event_counters[SWAPCHAIN_EVENT_INIT_SWAPCHAIN].fetch_add(1);
@@ -702,25 +698,6 @@ void OnPresentUpdateBefore(reshade::api::command_queue * /*queue*/, reshade::api
     g_swapchain_event_counters[SWAPCHAIN_EVENT_PRESENT_UPDATE_BEFORE].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
-    // Throttle queries to ~every 30 presents
-    int c = ++g_comp_query_counter;
-
-    // Record per-frame FPS sample for background aggregation (lock-free ring)
-    {
-        static LONGLONG start_time_ns = utils::get_now_ns();
-        LONGLONG now_ns = utils::get_now_ns();
-        const double elapsed = static_cast<double>(now_ns - start_time_ns) / static_cast<double>(utils::SEC_TO_NS);
-        g_perf_time_seconds.store(elapsed, std::memory_order_release);
-        static double last_tp = 0.0;
-        const double dt = elapsed - last_tp;
-        if (dt > 0.0) {
-            const float fps = static_cast<float>(1.0 / dt);
-            uint32_t idx = g_perf_ring_head.fetch_add(1, std::memory_order_acq_rel);
-            g_perf_ring[idx & (kPerfRingCapacity - 1)] = PerfSample{elapsed, fps};
-            last_tp = elapsed;
-        }
-    }
-
     // Handle keyboard shortcuts (only when game is in foreground)
     HWND game_hwnd = g_last_swapchain_hwnd.load();
     bool is_game_in_foreground = (game_hwnd != nullptr && GetForegroundWindow() == game_hwnd);
@@ -817,16 +794,8 @@ void OnPresentUpdateBefore(reshade::api::command_queue * /*queue*/, reshade::api
         }
     }
 
-}
-
-void OnPresentUpdateBefore2(reshade::api::effect_runtime *runtime) {
-    // Increment event counter
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_PRESENT_UPDATE_BEFORE2].fetch_add(1);
-    g_swapchain_event_total_count.fetch_add(1);
-
     // Check for XInput chord screenshot trigger
     display_commander::widgets::xinput_widget::CheckAndHandleScreenshot();
-
 }
 
 bool OnBindPipeline(reshade::api::command_list *cmd_list, reshade::api::pipeline_stage stages,
@@ -844,30 +813,33 @@ bool OnBindPipeline(reshade::api::command_list *cmd_list, reshade::api::pipeline
 }
 
 // Present flags callback to strip DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING
-void OnPresentFlags2(uint32_t *present_flags) {
+void OnPresentFlags2(uint32_t *present_flags, PresentApiType api_type) {
     // Increment event counter
     g_swapchain_event_counters[SWAPCHAIN_EVENT_PRESENT_FLAGS].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
-    // Always strip DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING flag
-    if (s_prevent_tearing.load() && *present_flags & DXGI_PRESENT_ALLOW_TEARING) {
-        *present_flags &= ~DXGI_PRESENT_ALLOW_TEARING;
+    if (api_type == PresentApiType::DXGI)
+    {
+        // Always strip DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING flag
+        if (s_prevent_tearing.load() && *present_flags & DXGI_PRESENT_ALLOW_TEARING) {
+            *present_flags &= ~DXGI_PRESENT_ALLOW_TEARING;
 
-        // Log the flag removal for debugging
-        std::ostringstream oss;
-        oss << "Present flags callback: Stripped "
-               "DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING, new flags: 0x"
-            << std::hex << *present_flags;
-        LogInfo(oss.str().c_str());
+            // Log the flag removal for debugging
+            std::ostringstream oss;
+            oss << "Present flags callback: Stripped "
+                "DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING, new flags: 0x"
+                << std::hex << *present_flags;
+            LogInfo(oss.str().c_str());
+        }
+        // Don't block presents if continue rendering is enabled
+        if (s_no_present_in_background.load() && g_app_in_background.load(std::memory_order_acquire) &&
+            !s_continue_rendering.load()) {
+            *present_flags = DXGI_PRESENT_DO_NOT_SEQUENCE;
+        }
     }
 
     HandleFpsLimiter();
 
-    // Don't block presents if continue rendering is enabled
-    if (s_no_present_in_background.load() && g_app_in_background.load(std::memory_order_acquire) &&
-        !s_continue_rendering.load()) {
-        *present_flags = DXGI_PRESENT_DO_NOT_SEQUENCE;
-    }
     if (s_reflex_enable_current_frame.load()) {
         // auto* device = swapchain ? swapchain->get_device() : nullptr;
         // if (device && g_latencyManager->Initialize(device)) {
@@ -876,7 +848,24 @@ void OnPresentFlags2(uint32_t *present_flags) {
         }
         // }
     }
-    l_frame_count.fetch_add(1);
+    // Throttle queries to ~every 30 presents
+    int c = ++g_comp_query_counter;
+
+    // Record per-frame FPS sample for background aggregation (lock-free ring)
+    {
+        static LONGLONG start_time_ns = utils::get_now_ns();
+        LONGLONG now_ns = utils::get_now_ns();
+        const double elapsed = static_cast<double>(now_ns - start_time_ns) / static_cast<double>(utils::SEC_TO_NS);
+        g_perf_time_seconds.store(elapsed, std::memory_order_release);
+        static double last_tp = 0.0;
+        const double dt = elapsed - last_tp;
+        if (dt > 0.0) {
+            const float fps = static_cast<float>(1.0 / dt);
+            uint32_t idx = g_perf_ring_head.fetch_add(1, std::memory_order_acq_rel);
+            g_perf_ring[idx & (kPerfRingCapacity - 1)] = PerfSample{elapsed, fps};
+            last_tp = elapsed;
+        }
+    }
 }
 
 

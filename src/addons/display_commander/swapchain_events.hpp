@@ -7,6 +7,15 @@
 #include <atomic>
 
 // ============================================================================
+// API TYPE ENUM
+// ============================================================================
+
+enum class PresentApiType {
+    DX9,
+    DXGI
+};
+
+// ============================================================================
 // SWAPCHAIN EVENT HANDLERS
 // ============================================================================
 
@@ -25,10 +34,8 @@ void DoInitializationWithHwnd(HWND hwnd);
 void OnPresentUpdateBefore(reshade::api::command_queue *queue, reshade::api::swapchain *swapchain,
                            const reshade::api::rect *source_rect, const reshade::api::rect *dest_rect,
                            uint32_t dirty_rect_count, const reshade::api::rect *dirty_rects);
-void OnPresentUpdateBefore2(reshade::api::effect_runtime *runtime);
 void OnPresentUpdateAfter(reshade::api::command_queue *queue, reshade::api::swapchain *swapchain);
-void OnPresentFlags(uint32_t *present_flags, reshade::api::swapchain *swapchain);
-void OnPresentFlags2(uint32_t *present_flags);
+void OnPresentFlags2(uint32_t *present_flags, PresentApiType api_type);
 
 // Buffer resolution upgrade event handlers
 bool OnCreateResource(reshade::api::device *device, reshade::api::resource_desc &desc,

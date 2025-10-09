@@ -5,7 +5,11 @@
 #include <atomic>
 
 // Forward declarations to avoid including headers that cause redefinition
-extern void OnPresentFlags2(uint32_t *present_flags);
+enum class PresentApiType {
+    DX9,
+    DXGI
+};
+extern void OnPresentFlags2(uint32_t *present_flags, PresentApiType api_type);
 extern std::atomic<uint32_t> g_swapchain_event_counters[];
 extern std::atomic<uint32_t> g_swapchain_event_total_count;
 extern void LogInfo(const char *format, ...);
@@ -35,9 +39,9 @@ HRESULT STDMETHODCALLTYPE IDirect3DDevice9_Present_Detour(
     g_swapchain_event_counters[SWAPCHAIN_EVENT_DX9_PRESENT].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
-    // Call OnPresentFlags with flags = 0 (no flags for regular Present)
+    // Call OnPresentFlags2 with flags = 0 (no flags for regular Present)
     uint32_t present_flags = 0;
-    OnPresentFlags2(&present_flags);
+    OnPresentFlags2(&present_flags, PresentApiType::DX9);
 
     // Call original function
     if (IDirect3DDevice9_Present_Original != nullptr) {
@@ -63,7 +67,7 @@ HRESULT STDMETHODCALLTYPE IDirect3DDevice9_PresentEx_Detour(
 
     // Call OnPresentFlags with the actual flags
     uint32_t present_flags = static_cast<uint32_t>(dwFlags);
-    OnPresentFlags2(&present_flags);
+    OnPresentFlags2(&present_flags, PresentApiType::DX9);
 
     // Call original function
     if (IDirect3DDevice9_PresentEx_Original != nullptr) {

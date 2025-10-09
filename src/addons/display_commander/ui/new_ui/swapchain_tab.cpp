@@ -747,24 +747,30 @@ void DrawDLSSGSummary() {
 void DrawDxgiCompositionInfo() {
     if (ImGui::CollapsingHeader("DXGI Composition Information", ImGuiTreeNodeFlags_DefaultOpen)) {
         const char* mode_str = "Unknown";
-        switch (static_cast<int>(s_dxgi_composition_state)) {
-            case 1:  mode_str = "Composed Flip"; break;
-            case 2:  mode_str = "Modern Independent Flip"; break;
-            case 3:  mode_str = "Legacy Independent Flip"; break;
-            default: mode_str = "Unknown"; break;
+        switch (s_dxgi_composition_state.load()) {
+            case DxgiBypassMode::kComposed:      mode_str = "Composed Flip"; break;
+            case DxgiBypassMode::kOverlay:       mode_str = "Modern Independent Flip"; break;
+            case DxgiBypassMode::kIndependentFlip: mode_str = "Legacy Independent Flip"; break;
+            case DxgiBypassMode::kUnknown:
+            default:                             mode_str = "Unknown"; break;
         }
 
         // Get backbuffer format
         std::string format_str = "Unknown";
-        // Get colorspace string
+
+        // Get colorspace string directly from swapchain
         std::string colorspace_str = "Unknown";
-        switch (g_current_colorspace) {
-            case reshade::api::color_space::unknown:              colorspace_str = "Unknown"; break;
-            case reshade::api::color_space::srgb_nonlinear:       colorspace_str = "sRGB"; break;
-            case reshade::api::color_space::extended_srgb_linear: colorspace_str = "Extended sRGB Linear"; break;
-            case reshade::api::color_space::hdr10_st2084:         colorspace_str = "HDR10 ST2084"; break;
-            case reshade::api::color_space::hdr10_hlg:            colorspace_str = "HDR10 HLG"; break;
-            default:                                              colorspace_str = "ColorSpace_" + std::to_string(static_cast<int>(g_current_colorspace)); break;
+        if (auto *swapchain_ptr = g_last_swapchain_ptr.load()) {
+            auto *swapchain = static_cast<reshade::api::swapchain*>(swapchain_ptr);
+            auto colorspace = swapchain->get_color_space();
+            switch (colorspace) {
+                case reshade::api::color_space::unknown:              colorspace_str = "Unknown"; break;
+                case reshade::api::color_space::srgb_nonlinear:       colorspace_str = "sRGB"; break;
+                case reshade::api::color_space::extended_srgb_linear: colorspace_str = "Extended sRGB Linear"; break;
+                case reshade::api::color_space::hdr10_st2084:         colorspace_str = "HDR10 ST2084"; break;
+                case reshade::api::color_space::hdr10_hlg:            colorspace_str = "HDR10 HLG"; break;
+                default:                                              colorspace_str = "ColorSpace_" + std::to_string(static_cast<int>(colorspace)); break;
+            }
         }
 
         ImGui::Text("DXGI Composition: %s", mode_str);

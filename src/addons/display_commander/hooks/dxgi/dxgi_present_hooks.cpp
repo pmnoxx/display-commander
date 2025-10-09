@@ -131,13 +131,13 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain *This, UI
     g_swapchain_event_counters[SWAPCHAIN_EVENT_DXGI_PRESENT].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
+    // Query DXGI composition state (moved from ReShade present events)
+    ::QueryDxgiCompositionState(This);
+
     ::OnPresentFlags2(&Flags, PresentApiType::DXGI);
 
     // Record per-frame FPS sample for background aggregation
     RecordFrameTime(FrameTimeMode::Present);
-
-    // Query DXGI composition state (moved from ReShade present events)
-    ::QueryDxgiCompositionState(This);
 
     // Call original function
     if (IDXGISwapChain_Present_Original != nullptr) {
@@ -158,13 +158,13 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1 *This, 
     g_swapchain_event_counters[SWAPCHAIN_EVENT_DXGI_PRESENT1].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
+    // Query DXGI composition state (moved from ReShade present events)
+    ::QueryDxgiCompositionState(This);
+
     ::OnPresentFlags2(&PresentFlags, PresentApiType::DXGI);
 
     // Record per-frame FPS sample for background aggregation
     RecordFrameTime(FrameTimeMode::Present);
-
-    // Query DXGI composition state (moved from ReShade present events)
-    ::QueryDxgiCompositionState(This);
 
     // Call original function
     if (IDXGISwapChain_Present1_Original != nullptr) {

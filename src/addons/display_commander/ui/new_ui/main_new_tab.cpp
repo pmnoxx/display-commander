@@ -12,6 +12,7 @@
 
 #include <imgui.h>
 #include <minwindef.h>
+#include <shellapi.h>
 
 #include <algorithm>
 #include <atomic>
@@ -28,8 +29,6 @@ std::atomic<bool> s_restart_needed_vsync_tearing{false};
 }  // anonymous namespace
 
 void DrawFrameTimeGraph() {
-    ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== Frame Time Graph ===");
-
     // Get frame time data from the performance ring buffer
     const uint32_t head = ::g_perf_ring_head.load(std::memory_order_acquire);
     const uint32_t count = (head > static_cast<uint32_t>(::kPerfRingCapacity)) ? static_cast<uint32_t>(::kPerfRingCapacity) : head;
@@ -135,12 +134,21 @@ void DrawMainNewTab() {
     // Load saved settings once and sync legacy globals
 
     // Version and build information at the top
-    if (ImGui::CollapsingHeader("Display Commander", ImGuiTreeNodeFlags_None)) {
-        ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "=== Display Commander ===");
+   // if (ImGui::CollapsingHeader("Display Commander", ImGuiTreeNodeFlags_DefaultOpen)) {
         ImGui::TextColored(ImVec4(0.9f, 0.9f, 0.9f, 1.0f), "Version: %s", DISPLAY_COMMANDER_VERSION_STRING);
         ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Build: %s %s", DISPLAY_COMMANDER_BUILD_DATE,
                         DISPLAY_COMMANDER_BUILD_TIME);
-    }
+
+        // Ko-fi support button
+        ImGui::Spacing();
+        ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "Support the project:");
+        if (ImGui::Button("☕ Buy me a coffee on Ko-fi")) {
+            ShellExecuteA(nullptr, "open", "https://ko-fi.com/pmnox", nullptr, nullptr, SW_SHOW);
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Support Display Commander development with a coffee! ☕");
+        }
+ //   }
     ImGui::Separator();
     // Display Settings Section
     if (ImGui::CollapsingHeader("Display Settings", ImGuiTreeNodeFlags_DefaultOpen)) {

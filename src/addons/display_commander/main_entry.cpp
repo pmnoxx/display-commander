@@ -139,14 +139,14 @@ bool CheckReShadeVersionCompatibility() {
 
     // Display detailed error message to user
     MessageBoxA(nullptr,
-        "Display Commander requires ReShade 6.6.0 or newer.\n\n"
+        "Display Commander requires ReShade 6.5.1 or newer.\n\n"
         "ERROR DETAILS:\n"
-        "• Required API Version: 18 (ReShade 6.6.0+)\n"
-        "• Your ReShade Version: 17 or older\n"
+        "• Required API Version: 17 (ReShade 6.5.1+)\n"
+        "• Your ReShade Version: 16 or older\n"
         "• Status: Incompatible\n\n"
         "SOLUTION:\n"
         "1. Download the latest ReShade from: https://reshade.me/\n"
-        "2. Install ReShade 6.6.0 or newer\n"
+        "2. Install ReShade 6.5.1 or newer\n"
         "3. Restart your game to load the updated ReShade\n\n"
         "This addon uses advanced features that require the newer ReShade API.",
         "ReShade Version Incompatible - Update Required",
@@ -247,13 +247,13 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
         if (!reshade::register_addon(h_module)) {
             // Registration failed - likely due to API version mismatch
             LogError("ReShade addon registration failed - this usually indicates an API version mismatch");
-            LogError("Display Commander requires ReShade 6.6.0+ (API version 18) but detected older version");
+            LogError("Display Commander requires ReShade 6.5.1+ (API version 17) but detected older version");
             CheckReShadeVersionCompatibility();
             return FALSE;
         }
 
         // Registration successful - log version compatibility
-        LogInfo("Display Commander v%s - ReShade addon registration successful (API version 18 supported)", DISPLAY_COMMANDER_VERSION_STRING);
+        LogInfo("Display Commander v%s - ReShade addon registration successful (API version 17 supported)", DISPLAY_COMMANDER_VERSION_STRING);
 
         // Store module handle for pinning
         g_hmodule = h_module;

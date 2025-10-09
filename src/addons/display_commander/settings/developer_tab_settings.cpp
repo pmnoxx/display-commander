@@ -35,6 +35,7 @@ DeveloperTabSettings::DeveloperTabSettings()
                                         "DisplayCommander"),
       enable_timeslowdown_shortcut("EnableTimeslowdownShortcut", s_enable_timeslowdown_shortcut, true, "DisplayCommander"),
       enable_adhd_toggle_shortcut("EnableAdhdToggleShortcut", s_enable_adhd_toggle_shortcut, true, "DisplayCommander"),
+      enable_autoclick_shortcut("EnableAutoclickShortcut", s_enable_autoclick_shortcut, false, "DisplayCommander"),
       flush_before_present("FlushBeforePresent", g_flush_before_present, true, "DisplayCommander") {}
 
 void DeveloperTabSettings::LoadAll() {
@@ -51,6 +52,7 @@ void DeveloperTabSettings::LoadAll() {
     enable_background_toggle_shortcut.Load();
     enable_timeslowdown_shortcut.Load();
     enable_adhd_toggle_shortcut.Load();
+    enable_autoclick_shortcut.Load();
     flush_before_present.Load();
     reflex_enable.Load();
     reflex_low_latency.Load();
@@ -87,6 +89,7 @@ std::vector<ui::new_ui::SettingBase *> DeveloperTabSettings::GetAllSettings() {
             &enable_background_toggle_shortcut,
             &enable_timeslowdown_shortcut,
             &enable_adhd_toggle_shortcut,
+            &enable_autoclick_shortcut,
             &flush_before_present};
 }
 

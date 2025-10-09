@@ -155,7 +155,7 @@ namespace {
     }
 
     // Helper function to enqueue GPU completion measurement (auto-detects API)
-    void EnqueueGPUCompletion(IDXGISwapChain* swapchain) {
+    void EnqueueGPUCompletionInternal(IDXGISwapChain* swapchain) {
         if (swapchain == nullptr) {
             return;
         }
@@ -175,6 +175,22 @@ namespace {
         }
     }
 } // namespace
+
+// Public API wrapper that works with ReShade swapchain
+void EnqueueGPUCompletion(reshade::api::swapchain* swapchain) {
+    if (swapchain == nullptr) {
+        return;
+    }
+
+    // Get native DXGI swapchain handle from ReShade swapchain
+    IDXGISwapChain* dxgi_swapchain = reinterpret_cast<IDXGISwapChain*>(swapchain->get_native());
+    if (dxgi_swapchain == nullptr) {
+        return;
+    }
+
+    // Call the internal enqueue function
+    ::EnqueueGPUCompletionInternal(dxgi_swapchain);
+}
 
 namespace display_commanderhooks::dxgi {
 
@@ -294,8 +310,8 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain *This, UI
     if (IDXGISwapChain_Present_Original != nullptr) {
         auto res= IDXGISwapChain_Present_Original(This, SyncInterval, Flags);
 
-        // Enqueue GPU completion measurement (can be waited on from another thread)
-        ::EnqueueGPUCompletion(This);
+        // Note: GPU completion measurement is now enqueued earlier in OnPresentUpdateBefore
+        // (before flush_command_queue) for more accurate timing
 
         ::OnPresentUpdateAfter2();
         return res;
@@ -304,8 +320,8 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain *This, UI
     // Fallback to direct call if hook failed
     auto res= This->Present(SyncInterval, Flags);
 
-    // Enqueue GPU completion measurement (can be waited on from another thread)
-    ::EnqueueGPUCompletion(This);
+    // Note: GPU completion measurement is now enqueued earlier in OnPresentUpdateBefore
+    // (before flush_command_queue) for more accurate timing
 
     ::OnPresentUpdateAfter2();
     return res;
@@ -329,8 +345,8 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1 *This, 
     if (IDXGISwapChain_Present1_Original != nullptr) {
         auto res= IDXGISwapChain_Present1_Original(This, SyncInterval, PresentFlags, pPresentParameters);
 
-        // Enqueue GPU completion measurement (can be waited on from another thread)
-        ::EnqueueGPUCompletion(This);
+        // Note: GPU completion measurement is now enqueued earlier in OnPresentUpdateBefore
+        // (before flush_command_queue) for more accurate timing
 
         ::OnPresentUpdateAfter2();
         return res;
@@ -339,8 +355,8 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1 *This, 
     // Fallback to direct call if hook failed
     auto res= This->Present1(SyncInterval, PresentFlags, pPresentParameters);
 
-    // Enqueue GPU completion measurement (can be waited on from another thread)
-    ::EnqueueGPUCompletion(This);
+    // Note: GPU completion measurement is now enqueued earlier in OnPresentUpdateBefore
+    // (before flush_command_queue) for more accurate timing
 
     ::OnPresentUpdateAfter2();
     return res;

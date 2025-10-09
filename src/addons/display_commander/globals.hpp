@@ -372,6 +372,7 @@ extern std::atomic<bool> s_enable_mute_unmute_shortcut;
 extern std::atomic<bool> s_enable_background_toggle_shortcut;
 extern std::atomic<bool> s_enable_timeslowdown_shortcut;
 extern std::atomic<bool> s_enable_adhd_toggle_shortcut;
+extern std::atomic<bool> s_enable_autoclick_shortcut;
 
 // FPS Limiter Settings
 
@@ -485,6 +486,7 @@ extern std::atomic<bool> s_enable_mute_unmute_shortcut;
 
 // Performance optimization settings
 extern std::atomic<bool> g_flush_before_present;
+extern std::atomic<LONGLONG> g_flush_before_present_time_ns;
 
 // Sleep delay after present as percentage of frame time - 0% to 100%
 extern std::atomic<float> s_sleep_after_present_frame_time_percentage;

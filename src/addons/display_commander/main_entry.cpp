@@ -2,6 +2,7 @@
 #include "display_restore.hpp"
 #include "exit_handler.hpp"
 #include "globals.hpp"
+#include "gpu_completion_monitoring.hpp"
 #include "hooks/api_hooks.hpp"
 #include "hooks/window_proc_hooks.hpp"
 #include "latency/latency_manager.hpp"
@@ -289,6 +290,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
 
         // Clean up continuous monitoring if it's running
         StopContinuousMonitoring();
+        StopGPUCompletionMonitoring();
 
         // Clean up experimental tab threads
         ui::new_ui::CleanupExperimentalTab();

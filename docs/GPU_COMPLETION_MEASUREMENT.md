@@ -17,6 +17,26 @@ GPU completion measurement has been added to the DXGI Present hooks to allow mea
 - Sets a Windows event to be triggered when the fence completes
 - **Note**: Currently only sets up infrastructure; full implementation requires command queue access during swapchain initialization
 
+## Implementation
+
+### Dedicated Monitoring Thread
+
+The GPU completion measurement now uses a dedicated background thread (`gpu_completion_monitoring.cpp`) that:
+- Waits on the GPU completion event in a blocking manner (100ms timeout per iteration)
+- Captures the exact moment the GPU completes its work
+- Calculates and smooths the GPU duration using exponential moving average (alpha = 64 frames)
+- Automatically starts/stops with the addon lifecycle
+
+This provides **accurate GPU completion timestamps** without the polling delay that would occur if checking during the next frame's Present call.
+
+### Thread Management
+
+The monitoring thread:
+- Starts automatically when the addon initializes (via `StartGPUCompletionMonitoring()`)
+- Stops automatically when the addon unloads (via `StopGPUCompletionMonitoring()`)
+- Only actively waits when `g_gpu_measurement_enabled` is true
+- Uses a 100ms timeout on `WaitForSingleObject` to allow responsive shutdown
+
 ## Usage
 
 ### Enable Measurement
@@ -34,47 +54,35 @@ GPU completion measurement has been added to the DXGI Present hooks to allow mea
 g_gpu_measurement_enabled.store(true);
 ```
 
-### Wait for GPU Completion (From Another Thread)
+### Access GPU Completion Data (Thread-Safe)
 ```cpp
-// Get the event handle (thread-safe)
-HANDLE event = g_gpu_completion_event.load();
+// Get the last measured GPU completion time
+LONGLONG completion_time_ns = g_gpu_completion_time_ns.load();
 
-if (event != nullptr) {
-    // Wait for GPU to complete work (timeout in milliseconds)
-    DWORD result = WaitForSingleObject(event, 1000);
+// Get the smoothed GPU duration
+LONGLONG gpu_duration_ns = g_gpu_duration_ns.load();
 
-    if (result == WAIT_OBJECT_0) {
-        // GPU work completed
-        LONGLONG completion_time = utils::get_now_ns();
-
-        // Store completion time for UI/monitoring
-        g_gpu_completion_time_ns.store(completion_time);
-
-        LogInfo("GPU completed at: %lld ns", completion_time);
-    } else if (result == WAIT_TIMEOUT) {
-        LogWarn("GPU completion wait timed out");
-    } else {
-        LogError("GPU completion wait failed");
-    }
+// Check if measurement is enabled
+if (g_gpu_measurement_enabled.load()) {
+    LogInfo("GPU measurement is active");
 }
 ```
 
-### Calculate GPU Time
+### GPU Duration Calculation
+
+The dedicated monitoring thread automatically calculates GPU duration:
 ```cpp
-// Measure GPU execution time
-LONGLONG present_start = utils::get_now_ns();
+// The monitoring thread handles this automatically:
+// 1. Waits for g_gpu_completion_event to be signaled
+// 2. Captures completion time with utils::get_now_ns()
+// 3. Calculates duration: completion_time - g_present_start_time_ns
+// 4. Smooths with exponential moving average (alpha = 64)
+// 5. Stores result in g_gpu_duration_ns
 
-// ... Present happens in render thread ...
-
-// In monitoring thread:
-HANDLE event = g_gpu_completion_event.load();
-if (event != nullptr && WaitForSingleObject(event, 1000) == WAIT_OBJECT_0) {
-    LONGLONG present_end = utils::get_now_ns();
-    LONGLONG gpu_time_ns = present_end - present_start;
-
-    float gpu_time_ms = gpu_time_ns / 1000000.0f;
-    LogInfo("GPU time: %.2f ms", gpu_time_ms);
-}
+// To access the smoothed GPU duration from any thread:
+LONGLONG gpu_duration_ns = g_gpu_duration_ns.load();
+float gpu_time_ms = gpu_duration_ns / 1000000.0f;
+LogInfo("GPU time: %.2f ms", gpu_time_ms);
 ```
 
 ## Global Variables
@@ -92,12 +100,13 @@ The GPU completion measurement is automatically enqueued after each Present call
 - `IDXGISwapChain::Present` (Direct3D 9, 10, 11, 12)
 - `IDXGISwapChain1::Present1` (Direct3D 10.1+, 11, 12)
 
-GPU duration is automatically calculated in `OnPresentUpdateAfter2()`:
-- Uses non-blocking wait (0 timeout) to check if GPU is done
+GPU duration is automatically calculated by the dedicated monitoring thread (`gpu_completion_monitoring.cpp`):
+- Uses blocking wait with 100ms timeout on the GPU completion event
+- Captures the **exact moment** the GPU finishes work (no polling delay)
 - Calculates duration from Present start to GPU completion
 - Smooths the value using exponential moving average (alpha=64)
 - Updates `g_gpu_duration_ns` for UI display
-- No performance impact when GPU hasn't completed yet
+- Minimal performance impact - thread sleeps when measurement is disabled
 
 ## Requirements
 

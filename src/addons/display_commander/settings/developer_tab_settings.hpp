@@ -43,6 +43,7 @@ class DeveloperTabSettings {
     BoolSettingRef enable_background_toggle_shortcut;
     BoolSettingRef enable_timeslowdown_shortcut;
     BoolSettingRef enable_adhd_toggle_shortcut;
+    BoolSettingRef enable_autoclick_shortcut;
 
     // Performance optimization settings
     BoolSettingRef flush_before_present;

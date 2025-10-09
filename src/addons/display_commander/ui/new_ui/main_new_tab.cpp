@@ -59,8 +59,8 @@ void DrawFrameTimeGraph() {
     }
 
     // Calculate statistics for the graph
-    float min_frame_time = *std::min_element(frame_times.begin(), frame_times.end());
-    float max_frame_time = *std::max_element(frame_times.begin(), frame_times.end());
+    float min_frame_time = *std::ranges::min_element(frame_times);
+    float max_frame_time = *std::ranges::max_element(frame_times);
     float avg_frame_time = 0.0f;
     for (float ft : frame_times) {
         avg_frame_time += ft;

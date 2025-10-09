@@ -2,6 +2,7 @@
 #include "../../globals.hpp"
 #include "../../utils.hpp"
 #include "../../hooks/xinput_hooks.hpp"
+#include "../../hooks/timeslowdown_hooks.hpp"
 #include <chrono>
 #include <imgui.h>
 #include <reshade.hpp>
@@ -11,6 +12,15 @@
 
 
 namespace display_commander::widgets::xinput_widget {
+
+// Helper function to get original GetTickCount64 value (unhooked)
+static ULONGLONG GetOriginalTickCount64() {
+    if (display_commanderhooks::GetTickCount64_Original) {
+        return display_commanderhooks::GetTickCount64_Original();
+    } else {
+        return GetTickCount64();
+    }
+}
 
 // Global shared state
 std::shared_ptr<XInputSharedState> XInputWidget::g_shared_state = std::make_shared<XInputSharedState>();
@@ -331,7 +341,7 @@ void XInputWidget::DrawControllerState() {
     uint64_t last_update = g_shared_state->last_update_times[selected_controller_].load();
     if (last_update > 0) {
         // Convert to milliseconds for display
-        uint64_t now = GetTickCount64();
+        uint64_t now = GetOriginalTickCount64();
         uint64_t age_ms = now - last_update;
         ImGui::Text("Last Update: %llu ms ago", age_ms);
     }
@@ -910,7 +920,7 @@ void UpdateXInputState(DWORD user_index, const XINPUT_STATE *state) {
     shared_state->controller_states[user_index] = *state;
     shared_state->controller_connected[user_index] = true;
     shared_state->last_packet_numbers[user_index] = state->dwPacketNumber;
-    shared_state->last_update_times[user_index] = GetTickCount64();
+    shared_state->last_update_times[user_index] = GetOriginalTickCount64();
 
     // Increment event counters
     shared_state->total_events.fetch_add(1);
@@ -1085,7 +1095,7 @@ void XInputWidget::ProcessChordDetection(DWORD user_index, WORD button_state) {
         if (is_pressed && !was_pressed) {
             // Chord just pressed
             chord.is_pressed.store(true);
-            chord.last_press_time.store(GetTickCount64());
+            chord.last_press_time.store(GetOriginalTickCount64());
             ExecuteChordAction(chord, user_index);
             LogInfo("XXX Chord '%s' pressed on controller %lu", chord.name.c_str(), user_index);
             any_chord_pressed = true;
@@ -1229,7 +1239,7 @@ void ProcessChordDetection(DWORD user_index, WORD button_state) {
         if (is_pressed && !was_pressed) {
             // Chord just pressed
             chord.is_pressed.store(true);
-            chord.last_press_time.store(GetTickCount64());
+            chord.last_press_time.store(GetOriginalTickCount64());
 
             // Execute action
             if (chord.action == "Take screenshot") {
@@ -1379,7 +1389,7 @@ void UpdateBatteryStatus(DWORD user_index) {
     }
 
     // Check if we need to update battery status (update every 5 seconds)
-    auto current_time = GetTickCount64();
+    auto current_time = GetOriginalTickCount64();
     auto last_update = shared_state->last_battery_update_times[user_index].load();
 
     if (current_time - last_update < 5000) { // 5 seconds

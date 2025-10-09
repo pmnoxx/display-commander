@@ -27,10 +27,17 @@ bool initialize_qpc_timing_constants() {
     if (initialized)
         return true;
     LARGE_INTEGER frequency;
-    if (!display_commanderhooks::QueryPerformanceFrequency_Detour(&frequency)) {
-        LogError("QueryPerformanceFrequency failed, using default values");
-        // If QueryPerformanceFrequency fails, keep default values
-        return false;
+    if (display_commanderhooks::QueryPerformanceFrequency_Original) {
+        if (!display_commanderhooks::QueryPerformanceFrequency_Original(&frequency)) {
+            LogError("QueryPerformanceFrequency failed, using default values");
+            return false;
+        }
+    } else {
+        if (!QueryPerformanceFrequency(&frequency)) {
+            LogError("QueryPerformanceFrequency failed, using default values");
+            // If QueryPerformanceFrequency fails, keep default values
+            return false;
+        }
     }
 
     if (frequency.QuadPart > SEC_TO_NS) {
@@ -98,7 +105,11 @@ bool supports_mwaitx(void) {
 bool setup_high_resolution_timer() {
     // Get QPC frequency
     LARGE_INTEGER frequency;
-    display_commanderhooks::QueryPerformanceFrequency_Detour(&frequency);
+    if (display_commanderhooks::QueryPerformanceFrequency_Original) {
+        display_commanderhooks::QueryPerformanceFrequency_Original(&frequency);
+    } else {
+        QueryPerformanceFrequency(&frequency);
+    }
     timer_res_qpc_frequency = frequency.QuadPart;
 
     // Load NTDLL functions dynamically
@@ -206,14 +217,22 @@ void wait_until_ns(LONGLONG target_ns, HANDLE &timer_handle) {
 
 LONGLONG get_now_qpc() {
     LARGE_INTEGER now_ticks = {};
-    display_commanderhooks::QueryPerformanceCounter_Detour(&now_ticks);
+    if (display_commanderhooks::QueryPerformanceCounter_Original) {
+        display_commanderhooks::QueryPerformanceCounter_Original(&now_ticks);
+    } else {
+        QueryPerformanceCounter(&now_ticks);
+    }
     return now_ticks.QuadPart;
 }
 
 // Global timing function
 LONGLONG get_now_ns() {
     LARGE_INTEGER now_ticks = {};
-    display_commanderhooks::QueryPerformanceCounter_Detour(&now_ticks);
+    if (display_commanderhooks::QueryPerformanceCounter_Original) {
+        display_commanderhooks::QueryPerformanceCounter_Original(&now_ticks);
+    } else {
+        QueryPerformanceCounter(&now_ticks);
+    }
     return now_ticks.QuadPart * utils::QPC_TO_NS;
 }
 

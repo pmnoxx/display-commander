@@ -6,9 +6,20 @@
 #include "input_remapping.hpp"
 #include "../utils.hpp"
 #include "utils/srwlock_wrapper.hpp"
+#include "../hooks/timeslowdown_hooks.hpp"
 #include <reshade.hpp>
 
 namespace display_commander::input_remapping {
+
+// Helper function to get original GetTickCount64 value (unhooked)
+static ULONGLONG GetOriginalTickCount64() {
+    if (display_commanderhooks::GetTickCount64_Original) {
+        return display_commanderhooks::GetTickCount64_Original();
+    } else {
+        return GetTickCount64();
+    }
+}
+
 InputRemapper &InputRemapper::get_instance() {
     static InputRemapper instance;
     return instance;
@@ -401,7 +412,7 @@ void InputRemapper::handle_button_press(WORD gamepad_button, DWORD user_index) {
         return;
 
     remap->is_pressed.store(true);
-    remap->last_press_time.store(GetTickCount64());
+    remap->last_press_time.store(GetOriginalTickCount64());
 
     // Send keyboard input
     bool success = false;

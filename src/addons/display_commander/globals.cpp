@@ -57,6 +57,7 @@ std::atomic<bool> s_enable_mute_unmute_shortcut{true};
 std::atomic<bool> s_enable_background_toggle_shortcut{true};
 std::atomic<bool> s_enable_timeslowdown_shortcut{true};
 std::atomic<bool> s_enable_adhd_toggle_shortcut{true};
+std::atomic<bool> s_enable_autoclick_shortcut{false};
 
 // Performance: background FPS cap
 
@@ -197,6 +198,7 @@ std::atomic<std::shared_ptr<const std::string>> g_hdr10_override_timestamp{std::
 // Performance optimization settings
 std::atomic<bool> g_flush_before_present =
     true; // Flush command queue before present to reduce latency (enabled by default)
+std::atomic<LONGLONG> g_flush_before_present_time_ns{0};
 
 // Helper function for updating HDR10 override status atomically
 void UpdateHdr10OverrideStatus(const std::string &status) {

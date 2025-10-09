@@ -70,8 +70,8 @@ void DrawSequence(int sequence_num) {
     int interval = settings::g_experimentalTabSettings.sequence_interval.GetValue(idx);
 
     // Debug logging for sequence values
-    LogInfo("DrawSequence(%d) - enabled=%s, x=%d, y=%d, interval=%d", sequence_num, enabled ? "true" : "false", x, y,
-            interval);
+   // LogInfo("DrawSequence(%d) - enabled=%s, x=%d, y=%d, interval=%d", sequence_num, enabled ? "true" : "false", x, y,
+   //         interval);
 
     // Checkbox for enabling this sequence
     if (ImGui::Checkbox(("Enabled##seq" + std::to_string(sequence_num)).c_str(), &enabled)) {
@@ -278,7 +278,7 @@ void DrawAutoClickFeature() {
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Enable/disable all auto-click sequences. Each sequence can be individually configured "
-                          "below.\n\nShortcut: Ctrl+P\n\nNote: Mouse position spoofing will be auto-enabled for better stealth when mouse movement is enabled.");
+                          "below.\n\nShortcut: Ctrl+P (can be enabled in Developer tab)\n\nNote: Mouse position spoofing will be auto-enabled for better stealth when mouse movement is enabled.");
     }
 
     // Mouse movement toggle
@@ -324,6 +324,12 @@ void DrawAutoClickFeature() {
     }
 
     ImGui::Spacing();
+
+    DrawSequence(1);
+    DrawSequence(2);
+    DrawSequence(3);
+    DrawSequence(4);
+    DrawSequence(5);
 
 
     // Summary information

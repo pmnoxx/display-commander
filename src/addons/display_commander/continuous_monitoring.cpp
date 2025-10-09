@@ -225,7 +225,7 @@ void HandleKeyboardShortcuts() {
       }
 
       // Handle Ctrl+P shortcut for auto-click toggle (only when game is in foreground)
-      if (is_game_in_foreground) {
+      if (s_enable_autoclick_shortcut.load() && is_game_in_foreground) {
           // Use our keyboard tracker instead of ReShade runtime
           if (display_commanderhooks::keyboard_tracker::IsKeyPressed('P') &&
               display_commanderhooks::keyboard_tracker::IsKeyDown(VK_CONTROL)) {

@@ -53,5 +53,13 @@ SHORT FloatToShort(float value);
 // DLL version information
 std::string GetDLLVersionString(const std::wstring& dllPath);
 
+// Rolling average (exponential moving average) calculation
+// Formula: (new_value + (alpha - 1) * old_value) / alpha
+// Default alpha=64 provides good smoothing for frame timing metrics
+template<typename T>
+inline T UpdateRollingAverage(T new_value, T old_value, int alpha = 64) {
+    return (new_value + (alpha - 1) * old_value) / alpha;
+}
+
 // External declarations needed by utility functions
 extern std::atomic<std::shared_ptr<const std::vector<MonitorInfo>>> g_monitors;

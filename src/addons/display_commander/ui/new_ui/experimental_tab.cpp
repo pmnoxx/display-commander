@@ -60,52 +60,46 @@ void DrawExperimentalTab() {
     ImGui::Text("Experimental Tab - Advanced Features");
     ImGui::Separator();
 
-    // Display current cursor position prominently at the top
-    POINT mouse_pos;
-    GetCursorPos(&mouse_pos);
 
+    if (ImGui::CollapsingHeader("Backbuffer Format Override", ImGuiTreeNodeFlags_None)) {
+        // Draw backbuffer format override section
+        DrawBackbufferFormatOverride();
+
+        ImGui::Spacing();
+
+        // Draw buffer resolution upgrade section
+        DrawBufferResolutionUpgrade();
+
+        ImGui::Spacing();
+
+        // Draw texture format upgrade section
+        DrawTextureFormatUpgrade();
+    }
     ImGui::Spacing();
-    ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "=== LIVE CURSOR POSITION ===");
-    ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "X: %ld  |  Y: %ld", mouse_pos.x, mouse_pos.y);
 
-    // Show game window coordinates if available
-    HWND hwnd = g_last_swapchain_hwnd.load();
-    if (hwnd && IsWindow(hwnd)) {
-        POINT client_pos = mouse_pos;
-        ScreenToClient(hwnd, &client_pos);
-        ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "Game Window: X: %ld  |  Y: %ld", client_pos.x,
-                           client_pos.y);
-    }
+    if (ImGui::CollapsingHeader("Auto-Click Sequences", ImGuiTreeNodeFlags_None)) {
 
-    // Copy coordinates buttons
-    ImGui::Spacing();
-    if (ImGui::Button("Copy Screen Coords")) {
-        std::string coords = std::to_string(mouse_pos.x) + ", " + std::to_string(mouse_pos.y);
-        if (OpenClipboard(nullptr)) {
-            EmptyClipboard();
-            HGLOBAL h_clipboard_data = GlobalAlloc(GMEM_DDESHARE, coords.length() + 1);
-            if (h_clipboard_data) {
-                char *pch_data = static_cast<char*>(GlobalLock(h_clipboard_data));
-                if (pch_data) {
-                    strcpy_s(pch_data, coords.length() + 1, coords.c_str());
-                    GlobalUnlock(h_clipboard_data);
-                    SetClipboardData(CF_TEXT, h_clipboard_data);
-                }
-            }
-            CloseClipboard();
-            LogInfo("Screen coordinates copied to clipboard: %s", coords.c_str());
-        }
-    }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Copy current screen coordinates to clipboard.");
-    }
+        // Display current cursor position prominently at the top
+        POINT mouse_pos;
+        GetCursorPos(&mouse_pos);
 
-    if (hwnd && IsWindow(hwnd)) {
-        ImGui::SameLine();
-        if (ImGui::Button("Copy Game Window Coords")) {
+        ImGui::Spacing();
+        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "=== LIVE CURSOR POSITION ===");
+        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "X: %ld  |  Y: %ld", mouse_pos.x, mouse_pos.y);
+
+        // Show game window coordinates if available
+        HWND hwnd = g_last_swapchain_hwnd.load();
+        if (hwnd && IsWindow(hwnd)) {
             POINT client_pos = mouse_pos;
             ScreenToClient(hwnd, &client_pos);
-            std::string coords = std::to_string(client_pos.x) + ", " + std::to_string(client_pos.y);
+            ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "Game Window: X: %ld  |  Y: %ld", client_pos.x,
+                            client_pos.y);
+        }
+
+        // Copy coordinates buttons
+        ImGui::Spacing();
+        if (ImGui::Button("Copy Screen Coords")) {
+            std::string coords = std::to_string(mouse_pos.x) + ", " + std::to_string(mouse_pos.y);
             if (OpenClipboard(nullptr)) {
                 EmptyClipboard();
                 HGLOBAL h_clipboard_data = GlobalAlloc(GMEM_DDESHARE, coords.length() + 1);
@@ -118,55 +112,60 @@ void DrawExperimentalTab() {
                     }
                 }
                 CloseClipboard();
-                LogInfo("Game window coordinates copied to clipboard: %s", coords.c_str());
+                LogInfo("Screen coordinates copied to clipboard: %s", coords.c_str());
             }
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Copy current game window coordinates to clipboard.");
+            ImGui::SetTooltip("Copy current screen coordinates to clipboard.");
         }
+
+        if (hwnd && IsWindow(hwnd)) {
+            ImGui::SameLine();
+            if (ImGui::Button("Copy Game Window Coords")) {
+                POINT client_pos = mouse_pos;
+                ScreenToClient(hwnd, &client_pos);
+                std::string coords = std::to_string(client_pos.x) + ", " + std::to_string(client_pos.y);
+                if (OpenClipboard(nullptr)) {
+                    EmptyClipboard();
+                    HGLOBAL h_clipboard_data = GlobalAlloc(GMEM_DDESHARE, coords.length() + 1);
+                    if (h_clipboard_data) {
+                        char *pch_data = static_cast<char*>(GlobalLock(h_clipboard_data));
+                        if (pch_data) {
+                            strcpy_s(pch_data, coords.length() + 1, coords.c_str());
+                            GlobalUnlock(h_clipboard_data);
+                            SetClipboardData(CF_TEXT, h_clipboard_data);
+                        }
+                    }
+                    CloseClipboard();
+                    LogInfo("Game window coordinates copied to clipboard: %s", coords.c_str());
+                }
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Copy current game window coordinates to clipboard.");
+            }
+        }
+
+        // Draw auto-click feature
+        autoclick::DrawAutoClickFeature();
+
+        ImGui::Separator();
+
+        // Draw mouse coordinates display
+        DrawMouseCoordinatesDisplay();
     }
-
     ImGui::Spacing();
-    ImGui::Separator();
-
-    // Draw backbuffer format override section
-    DrawBackbufferFormatOverride();
-
-    ImGui::Spacing();
-    ImGui::Separator();
-
-    // Draw buffer resolution upgrade section
-    DrawBufferResolutionUpgrade();
-
-    ImGui::Spacing();
-    ImGui::Separator();
-
-    // Draw texture format upgrade section
-    DrawTextureFormatUpgrade();
-
-    ImGui::Spacing();
-    ImGui::Separator();
-
-    // Draw auto-click feature
-    autoclick::DrawAutoClickFeature();
-
-    ImGui::Spacing();
-    ImGui::Separator();
 
     // Draw sleep hook controls
-    DrawSleepHookControls();
-
+    if (ImGui::CollapsingHeader("Sleep Hook Controls", ImGuiTreeNodeFlags_None)) {
+        DrawSleepHookControls();
+    }
     ImGui::Spacing();
-    ImGui::Separator();
 
     // Draw time slowdown controls
-    DrawTimeSlowdownControls();
+    if (ImGui::CollapsingHeader("Time Slowdown Controls", ImGuiTreeNodeFlags_None)) {
+        DrawTimeSlowdownControls();
+    }
 
-    ImGui::Spacing();
-    ImGui::Separator();
-
-    // Draw mouse coordinates display
-    DrawMouseCoordinatesDisplay();
 }
 
 

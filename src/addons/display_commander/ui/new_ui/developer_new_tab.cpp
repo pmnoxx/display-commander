@@ -334,6 +334,25 @@ void DrawKeyboardShortcutsSettings() {
         ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Shortcut works when game is in foreground");
         ImGui::Unindent();
     }
+
+    // Enable Auto-Click Shortcut (Ctrl+P)
+    if (CheckboxSetting(settings::g_developerTabSettings.enable_autoclick_shortcut,
+                        "Enable Auto-Click Shortcut (Ctrl+P)")) {
+        ::s_enable_autoclick_shortcut.store(settings::g_developerTabSettings.enable_autoclick_shortcut.GetValue());
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip(
+            "Enable keyboard shortcut Ctrl+P to quickly toggle Auto-Click sequences. Only works when the game is "
+            "in the foreground.");
+    }
+
+    // Info text for Ctrl+P
+    if (settings::g_developerTabSettings.enable_autoclick_shortcut.GetValue()) {
+        ImGui::Indent();
+        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Press Ctrl+P to toggle Auto-Click sequences");
+        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Shortcut works when game is in foreground");
+        ImGui::Unindent();
+    }
 }
 
 void DrawLatencyDisplay() {

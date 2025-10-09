@@ -3,9 +3,11 @@
 #include "audio/audio_management.hpp"
 #include "display_initial_state.hpp"
 #include "globals.hpp"
+#include "gpu_completion_monitoring.hpp"
 #include "hooks/api_hooks.hpp"
 #include "hooks/d3d9/d3d9_present_hooks.hpp"
 #include "hooks/dxgi/dxgi_present_hooks.hpp"
+#include "hooks/dxgi/dxgi_gpu_completion.hpp"
 #include "hooks/window_proc_hooks.hpp"
 #include "hooks/streamline_hooks.hpp"
 #include "hooks/windows_hooks/windows_message_hooks.hpp"
@@ -128,6 +130,7 @@ void DoInitializationWithHwnd(HWND hwnd) {
     // Initialize UI system
     ui::new_ui::InitializeNewUISystem();
     StartContinuousMonitoring();
+    StartGPUCompletionMonitoring();
 
     // Initialize experimental tab
     std::thread(RunBackgroundAudioMonitor).detach();
@@ -185,7 +188,7 @@ std::atomic<LONGLONG> g_present_duration_ns{0};
 std::atomic<LONGLONG> g_submit_start_time_ns{0};
 
 // Present after end time tracking
-std::atomic<LONGLONG> g_present_after_end_time_ns{0};
+std::atomic<LONGLONG> g_sim_start_ns{0};
 
 // Simulation duration tracking
 std::atomic<LONGLONG> g_simulation_duration_ns{0};
@@ -209,13 +212,12 @@ void HandleRenderStartAndEndTimes() {
     LONGLONG expected = 0;
     if (g_submit_start_time_ns.load() == 0) {
         LONGLONG now_ns = utils::get_now_ns();
-        LONGLONG present_after_end_time_ns = g_present_after_end_time_ns.load();
+        LONGLONG present_after_end_time_ns = g_sim_start_ns.load();
         if (present_after_end_time_ns > 0 && g_submit_start_time_ns.compare_exchange_strong(expected, now_ns)) {
             // Compare to g_present_after_end_time
             LONGLONG g_simulation_duration_ns_new = (now_ns - present_after_end_time_ns);
-            int alpha = 64;
             g_simulation_duration_ns.store(
-                (1 * g_simulation_duration_ns_new + (alpha - 1) * g_simulation_duration_ns.load()) / alpha);
+                UpdateRollingAverage(g_simulation_duration_ns_new, g_simulation_duration_ns.load()));
 
             //  reshade::api::swapchain* swapchain =
             //  g_last_swapchain_ptr.load(std::memory_order_acquire);
@@ -237,23 +239,21 @@ void HandleEndRenderSubmit() {
     g_render_submit_end_time_ns.store(now_ns);
     if (g_submit_start_time_ns.load() > 0) {
         LONGLONG g_render_submit_duration_ns_new = (now_ns - g_submit_start_time_ns.load());
-        int alpha = 64;
         g_render_submit_duration_ns.store(
-            (1 * g_render_submit_duration_ns_new + (alpha - 1) * g_render_submit_duration_ns.load()) / alpha);
+            UpdateRollingAverage(g_render_submit_duration_ns_new, g_render_submit_duration_ns.load()));
     }
 }
 
 void HandleOnPresentEnd() {
     LONGLONG now_ns = utils::get_now_ns();
 
-    g_present_after_end_time_ns.store(now_ns);
+    g_sim_start_ns.store(now_ns);
     g_submit_start_time_ns.store(0);
 
     if (g_render_submit_end_time_ns.load() > 0) {
         LONGLONG g_reshade_overhead_duration_ns_new = (now_ns - g_render_submit_end_time_ns.load());
-        int alpha = 64;
         g_reshade_overhead_duration_ns.store(
-            (1 * g_reshade_overhead_duration_ns_new + (alpha - 1) * g_reshade_overhead_duration_ns.load()) / alpha);
+            UpdateRollingAverage(g_reshade_overhead_duration_ns_new, g_reshade_overhead_duration_ns.load()));
     }
 }
 
@@ -539,29 +539,13 @@ void OnPresentUpdateAfter2() {
     // g_present_duration
     LONGLONG now_ns = utils::get_now_ns();
 
-    double g_present_duration_new_ns = (now_ns - g_present_start_time_ns.load()); // Convert QPC ticks to seconds (QPC
-                                                                                  // frequency is typically 10MHz)
-    double alpha = 64;
-    g_present_duration_ns.store((1 * g_present_duration_new_ns + (alpha - 1) * g_present_duration_ns.load()) / alpha);
+    LONGLONG g_present_duration_new_ns = (now_ns - g_present_start_time_ns.load()); // Convert QPC ticks to seconds (QPC
+                                                                                     // frequency is typically 10MHz)
+    g_present_duration_ns.store(UpdateRollingAverage(g_present_duration_new_ns, g_present_duration_ns.load()));
 
     // GPU completion measurement (non-blocking check)
-    if (g_gpu_measurement_enabled.load()) {
-        HANDLE event = g_gpu_completion_event.load();
-        if (event != nullptr) {
-            // Non-blocking wait (0 timeout) - just check if GPU is done
-            DWORD result = WaitForSingleObject(event, 0);
-            if (result == WAIT_OBJECT_0) {
-                // GPU work completed
-                LONGLONG gpu_completion_time = utils::get_now_ns();
-                LONGLONG gpu_duration_new_ns = gpu_completion_time - g_present_start_time_ns.load();
-
-                // Smooth the GPU duration with exponential moving average
-                double gpu_alpha = 64;
-                g_gpu_duration_ns.store((1 * gpu_duration_new_ns + (gpu_alpha - 1) * g_gpu_duration_ns.load()) / gpu_alpha);
-                g_gpu_completion_time_ns.store(gpu_completion_time);
-            }
-        }
-    }
+    // GPU completion measurement is now handled by dedicated thread in gpu_completion_monitoring.cpp
+    // This provides accurate completion time by waiting on the event in a blocking manner
 
     // Mark Present end for latent sync limiter timing
     if (dxgi::latent_sync::g_latentSyncManager) {
@@ -674,7 +658,7 @@ void HandleFpsLimiter() {
     LONGLONG handle_fps_limiter_start_duration_ns =
         handle_fps_limiter_start_end_time_ns - handle_fps_limiter_start_time_ns;
     fps_sleep_before_on_present_ns.store(
-        (handle_fps_limiter_start_duration_ns + (63) * fps_sleep_before_on_present_ns.load()) / 64);
+        UpdateRollingAverage(handle_fps_limiter_start_duration_ns, fps_sleep_before_on_present_ns.load()));
 }
 
 // Update composition state after presents (required for valid stats)
@@ -696,6 +680,15 @@ void OnPresentUpdateBefore(reshade::api::command_queue * /*queue*/, reshade::api
         }
     }
     if (g_flush_before_present.load()) {
+        g_flush_before_present_time_ns.store(utils::get_now_ns());
+
+        // Enqueue GPU completion measurement BEFORE flush for accurate timing
+        // This captures the full GPU workload including the flush operation
+        if (swapchain->get_device()->get_api() == reshade::api::device_api::d3d11 ||
+            swapchain->get_device()->get_api() == reshade::api::device_api::d3d12) {
+            EnqueueGPUCompletion(swapchain);
+        }
+
         flush_command_queue(); // Flush command queue before addons start processing
                                // to reduce rendering latency caused by reshade
     }

@@ -123,6 +123,7 @@ struct DisplayInfo {
 
     // Monitor properties from MONITORINFOEXW
     bool is_primary = false;
+    bool supports_vrr = false; // Whether this display supports Variable Refresh Rate (cached)
     RECT monitor_rect; // Monitor rectangle in virtual screen coordinates
     RECT work_rect;    // Working area rectangle (excluding taskbar, etc.)
 

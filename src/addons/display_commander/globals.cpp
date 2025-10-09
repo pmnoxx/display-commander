@@ -63,7 +63,7 @@ std::atomic<bool> s_enable_adhd_toggle_shortcut{true};
 // VSync and tearing controls
 
 // Monitor and display settings
-std::atomic<int> s_dxgi_composition_state{0};
+std::atomic<DxgiBypassMode> s_dxgi_composition_state{DxgiBypassMode::kUnknown};
 
 // Continue rendering in background
 std::atomic<bool> s_continue_rendering{false}; // Disabled by default
@@ -180,8 +180,7 @@ std::atomic<std::shared_ptr<const std::string>> g_perf_text_shared{std::make_sha
 // Vector variables
 std::atomic<std::shared_ptr<const std::vector<MonitorInfo>>> g_monitors{std::make_shared<std::vector<MonitorInfo>>()};
 
-// Colorspace variables
-reshade::api::color_space g_current_colorspace = reshade::api::color_space::unknown;
+// Colorspace variables - removed, now queried directly in UI
 
 // HDR10 override status (thread-safe, updated by background thread, read by UI thread)
 // Use UpdateHdr10OverrideStatus() to update, or g_hdr10_override_status.load()->c_str() to read

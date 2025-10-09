@@ -1145,12 +1145,12 @@ void DrawImportantInfo() {
 
         // Flip State Display (renamed from DXGI Composition)
         const char* flip_state_str = "Unknown";
-        int flip_state_case = static_cast<int>(::s_dxgi_composition_state);
-        switch (flip_state_case) {
-            case 1:  flip_state_str = "Composed Flip"; break;
-            case 2:  flip_state_str = "MPO Independent Flip"; break;
-            case 3:  flip_state_str = "Legacy Independent Flip"; break;
-            default: flip_state_str = "Unknown"; break;
+        switch (::s_dxgi_composition_state.load()) {
+            case DxgiBypassMode::kComposed:      flip_state_str = "Composed Flip"; break;
+            case DxgiBypassMode::kOverlay:       flip_state_str = "MPO Independent Flip"; break;
+            case DxgiBypassMode::kIndependentFlip: flip_state_str = "Legacy Independent Flip"; break;
+            case DxgiBypassMode::kUnknown:
+            default:                             flip_state_str = "Unknown"; break;
         }
 
         oss.str("");
@@ -1158,10 +1158,11 @@ void DrawImportantInfo() {
         oss << "Flip State: " << flip_state_str;
 
         // Color code based on flip state
-        if (flip_state_case == 1) {
+        auto flip_state = ::s_dxgi_composition_state.load();
+        if (flip_state == DxgiBypassMode::kComposed) {
             // Composed Flip - Red
             ImGui::TextColored(ui::colors::FLIP_COMPOSED, "%s", oss.str().c_str());
-        } else if (flip_state_case == 2 || flip_state_case == 3) {
+        } else if (flip_state == DxgiBypassMode::kOverlay || flip_state == DxgiBypassMode::kIndependentFlip) {
             // Independent Flip modes - Green
             ImGui::TextColored(ui::colors::FLIP_INDEPENDENT, "%s", oss.str().c_str());
         } else {

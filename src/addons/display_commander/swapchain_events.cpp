@@ -266,47 +266,14 @@ void QueryDxgiCompositionState(IDXGISwapChain *dxgi_swapchain) {
     // Periodically refresh colorspace and enumerate devices (approx every 4
     // seconds at 60fps = 240 frames)
     static int present_after_counter = 0;
-    present_after_counter++;
-    if (present_after_counter >= 240) { // Refresh every 240 presents (about 4 seconds at 60fps)
+    if (present_after_counter % 256 == 0) {
         // Compute DXGI composition state and log on change
         DxgiBypassMode mode = GetIndependentFlipState(dxgi_swapchain);
-        int state = 0;
-        switch (mode) {
-        case DxgiBypassMode::kComposed:
-            state = 1;
-            break;
-        case DxgiBypassMode::kOverlay:
-            state = 2;
-            break;
-        case DxgiBypassMode::kIndependentFlip:
-            state = 3;
-            break;
-        case DxgiBypassMode::kUnknown:
-        default:
-            state = 0;
-            break;
-        }
 
         // Update shared state for fast reads on present
-        s_dxgi_composition_state.store(state);
-
-        int last = g_comp_last_logged.load();
-        if (state != last) {
-            g_comp_last_logged.store(state);
-            std::ostringstream oss;
-            oss << "DXGI Composition State (DXGI Present): " << DxgiBypassModeToString(mode) << " (" << state
-                << ")";
-            LogInfo(oss.str().c_str());
-        }
-
-        present_after_counter = 0;
-
-        // Get colorspace from the ReShade swapchain if available
-        if (auto *swapchain_ptr = g_last_swapchain_ptr.load()) {
-            auto *reshade_swapchain = static_cast<reshade::api::swapchain*>(swapchain_ptr);
-            g_current_colorspace = reshade_swapchain->get_color_space();
-        }
+        s_dxgi_composition_state.store(mode);
     }
+    present_after_counter++;
 }
 
 void RecordFrameTime(FrameTimeMode reason) {

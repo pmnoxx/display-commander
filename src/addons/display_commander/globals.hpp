@@ -350,7 +350,7 @@ extern std::atomic<bool> s_hide_hdr_capabilities;
 
 // Window Management Settings
 extern std::atomic<WindowAlignment> s_window_alignment;  // Window alignment when repositioning is needed
-extern std::atomic<int> s_dxgi_composition_state;
+extern std::atomic<DxgiBypassMode> s_dxgi_composition_state;
 
 // Mouse position spoofing for auto-click sequences
 extern std::atomic<bool> s_spoof_mouse_position;
@@ -470,8 +470,7 @@ constexpr size_t kPerfRingCapacity = 65536;
 // Vector variables
 extern std::atomic<std::shared_ptr<const std::vector<MonitorInfo>>> g_monitors;
 
-// Colorspace variables (using int to avoid reshade dependency)
-extern reshade::api::color_space g_current_colorspace;
+// Colorspace variables - removed, now queried directly in UI
 extern std::atomic<std::shared_ptr<const std::string>> g_hdr10_override_status;
 extern std::atomic<std::shared_ptr<const std::string>> g_hdr10_override_timestamp;
 

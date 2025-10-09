@@ -135,9 +135,7 @@ void DrawMainNewTab() {
 
     // Version and build information at the top
    // if (ImGui::CollapsingHeader("Display Commander", ImGuiTreeNodeFlags_DefaultOpen)) {
-        ImGui::TextColored(ImVec4(0.9f, 0.9f, 0.9f, 1.0f), "Version: %s", DISPLAY_COMMANDER_VERSION_STRING);
-        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Build: %s %s", DISPLAY_COMMANDER_BUILD_DATE,
-                        DISPLAY_COMMANDER_BUILD_TIME);
+        ImGui::TextColored(ImVec4(0.9f, 0.9f, 0.9f, 1.0f), "Version: %s | Build: %s %s", DISPLAY_COMMANDER_VERSION_STRING, DISPLAY_COMMANDER_BUILD_DATE, DISPLAY_COMMANDER_BUILD_TIME);
 
         // Ko-fi support button
         ImGui::Spacing();
@@ -145,6 +143,7 @@ void DrawMainNewTab() {
         if (ImGui::Button("☕ Buy me a coffee on Ko-fi")) {
             ShellExecuteA(nullptr, "open", "https://ko-fi.com/pmnox", nullptr, nullptr, SW_SHOW);
         }
+        ImGui::SameLine();
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Support Display Commander development with a coffee! ☕");
         }
@@ -535,7 +534,7 @@ void DrawDisplaySettings() {
 
         float current_delay = settings::g_mainTabSettings.present_pacing_delay_percentage.GetValue();
         if (SliderFloatSetting(settings::g_mainTabSettings.present_pacing_delay_percentage,
-                               "Present Pacing Delay (manual fine-tuning is needed for now)", "%.1f%%")) {
+                               "Present Pacing Delay", "%.1f%%")) {
             // The setting is automatically synced via FloatSettingRef
         }
         if (ImGui::IsItemHovered()) {
@@ -547,6 +546,13 @@ void DrawDisplaySettings() {
                 "• Higher values provide lower latency but slightly less consistent timing.\n"
                 "Range: 0%% to 100%%. Default: 0%% (1 frame time delay).\n"
                 "Manual fine-tuning required.");
+        }
+
+        // Add question mark with tooltip for manual fine-tuning note
+        ImGui::SameLine();
+        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "?");
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Manual fine-tuning is needed for now");
         }
     }
 

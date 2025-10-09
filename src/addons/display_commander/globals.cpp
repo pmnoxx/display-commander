@@ -13,6 +13,7 @@
 #include <wrl/client.h>
 
 #include <atomic>
+#include <array>
 
 // Global variables
 // UI mode removed - now using new tab system
@@ -242,7 +243,7 @@ Microsoft::WRL::ComPtr<IDXGIFactory1> GetSharedDXGIFactory() {
 }
 
 // Swapchain event counters - reset on each swapchain creation
-std::atomic<uint32_t> g_swapchain_event_counters[NUM_EVENTS] = {}; // Array for all On* events
+std::array<std::atomic<uint32_t>, NUM_EVENTS> g_swapchain_event_counters = {}; // Array for all On* events
 
 std::atomic<uint32_t> g_swapchain_event_total_count{0}; // Total events across all types
 

@@ -1,8 +1,10 @@
 #include "d3d9_present_hooks.hpp"
+#include "../../globals.hpp"
 
 #include <d3d9.h>
 #include <MinHook.h>
 #include <atomic>
+#include <array>
 
 // Forward declarations to avoid including headers that cause redefinition
 enum class PresentApiType {
@@ -10,13 +12,8 @@ enum class PresentApiType {
     DXGI
 };
 extern void OnPresentFlags2(uint32_t *present_flags, PresentApiType api_type);
-extern std::atomic<uint32_t> g_swapchain_event_counters[];
-extern std::atomic<uint32_t> g_swapchain_event_total_count;
 extern void LogInfo(const char *format, ...);
 extern void LogWarn(const char *format, ...);
-
-// Event counter index
-constexpr int SWAPCHAIN_EVENT_DX9_PRESENT = 73;
 
 namespace display_commanderhooks::d3d9 {
 

@@ -148,7 +148,6 @@ void DrawMainNewTab() {
     }
 
     ImGui::Spacing();
-    ImGui::Separator();
 
     // Monitor/Display Resolution Settings Section
     if (ImGui::CollapsingHeader("Resolution Control", ImGuiTreeNodeFlags_None)) {
@@ -156,7 +155,6 @@ void DrawMainNewTab() {
     }
 
     ImGui::Spacing();
-    ImGui::Separator();
 
     // Audio Settings Section
     if (ImGui::CollapsingHeader("Audio Control", ImGuiTreeNodeFlags_None)) {
@@ -164,7 +162,6 @@ void DrawMainNewTab() {
     }
 
     ImGui::Spacing();
-    ImGui::Separator();
 
     // Input Blocking (Background) Section
     if (ImGui::CollapsingHeader("Input Control (Background)", ImGuiTreeNodeFlags_None)) {
@@ -190,7 +187,6 @@ void DrawMainNewTab() {
     }
 
     ImGui::Spacing();
-    ImGui::Separator();
 
     // Screensaver Control Section
     if (ImGui::CollapsingHeader("Screensaver Control", ImGuiTreeNodeFlags_None)) {
@@ -208,13 +204,11 @@ void DrawMainNewTab() {
     }
 
     ImGui::Spacing();
-    ImGui::Separator();
 
     // Window Controls Section
     DrawWindowControls();
 
     ImGui::Spacing();
-    ImGui::Separator();
 
     if (ImGui::CollapsingHeader("Important Info", ImGuiTreeNodeFlags_DefaultOpen)) {
         DrawImportantInfo();
@@ -391,18 +385,6 @@ void DrawDisplaySettings() {
             << settings::g_mainTabSettings.window_mode.GetValue();
         LogInfo(oss.str().c_str());
     }
-    // Auto-apply (continuous monitoring) checkbox next to Window Mode
-    ImGui::SameLine();
-    if (CheckboxSetting(settings::g_developerTabSettings.continuous_monitoring, "Auto-apply")) {
-        s_continuous_monitoring_enabled.store(settings::g_developerTabSettings.continuous_monitoring.GetValue());
-    }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Auto-apply window mode changes and continuously keep window size/position in sync.");
-    }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Choose the window mode: Borderless Windowed with aspect ratio or Borderless Fullscreen.");
-    }
-
     // Aspect Ratio dropdown (only shown in Aspect Ratio mode)
     if (s_window_mode.load() == WindowMode::kAspectRatio) {
         if (ComboSettingWrapper(settings::g_mainTabSettings.aspect_index, "Aspect Ratio")) {
@@ -437,8 +419,16 @@ void DrawDisplaySettings() {
                 "2=Top Right, 3=Bottom Left, 4=Bottom Right.");
         }
     }
+    // Auto-apply (continuous monitoring) checkbox next to Window Mode
+    if (CheckboxSetting(settings::g_developerTabSettings.continuous_monitoring, "Auto-apply")) {
+        s_continuous_monitoring_enabled.store(settings::g_developerTabSettings.continuous_monitoring.GetValue());
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Auto-apply window mode changes and continuously keep window size/position in sync.");
+    }
     // Background Black Curtain checkbox (only shown in Aspect Ratio mode)
     if (s_window_mode.load() == WindowMode::kAspectRatio) {
+        ImGui::SameLine();
         if (CheckboxSetting(settings::g_mainTabSettings.background_feature, "Background Black Curtain")) {
             LogInfo("Background black curtain setting changed");
         }
@@ -449,6 +439,7 @@ void DrawDisplaySettings() {
     }
 
     // ADHD Multi-Monitor Mode controls
+    ImGui::SameLine();
     DrawAdhdMultiMonitorControls(s_window_mode.load() == WindowMode::kAspectRatio);
 
     // Apply Changes button
@@ -723,90 +714,93 @@ void DrawDisplaySettings() {
 
     // VSync & Tearing controls
     {
-        if (!fps_limit_enabled) {
-            ImGui::BeginDisabled();
-        }
-        DrawQuickResolutionChanger();
+        // Main FPS Limit slider (persisted)
+        {
+            if (!fps_limit_enabled) {
+                ImGui::BeginDisabled();
+            }
+            DrawQuickResolutionChanger();
 
-        if (!fps_limit_enabled) {
-            ImGui::EndDisabled();
+            if (!fps_limit_enabled) {
+                ImGui::EndDisabled();
+            }
         }
-
-        ImGui::SameLine();
 
         ImGui::Spacing();
-        ImGui::TextColored(ImVec4(0.8f, 0.9f, 1.0f, 1.0f), "=== VSync & Tearing ===");
 
-        bool vs_on = settings::g_mainTabSettings.force_vsync_on.GetValue();
-        if (ImGui::Checkbox("Force VSync ON", &vs_on)) {
-            s_restart_needed_vsync_tearing.store(true);
-            // Mutual exclusion
-            if (vs_on) {
-                settings::g_mainTabSettings.force_vsync_off.SetValue(false);
+
+        // Background FPS Limit slider (persisted)
+        {
+            if (!fps_limit_enabled) {
+                ImGui::BeginDisabled();
+            }
+
+            float current_bg = settings::g_mainTabSettings.fps_limit_background.GetValue();
+            const char* fmt_bg = (current_bg > 0.0f) ? "%.0f FPS" : "No Limit";
+            if (SliderFloatSetting(settings::g_mainTabSettings.fps_limit_background, "Background FPS Limit", fmt_bg)) {}
+
+            if (!fps_limit_enabled) {
+                ImGui::EndDisabled();
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip(
+                    "FPS cap when the game window is not in the foreground. Now uses the new Custom FPS Limiter system.");
+            }
+        }
+        if (ImGui::CollapsingHeader("VSync & Tearing", ImGuiTreeNodeFlags_DefaultOpen)) {
+            bool vs_on = settings::g_mainTabSettings.force_vsync_on.GetValue();
+            if (ImGui::Checkbox("Force VSync ON", &vs_on)) {
+                s_restart_needed_vsync_tearing.store(true);
+                // Mutual exclusion
+                if (vs_on) {
+                    settings::g_mainTabSettings.force_vsync_off.SetValue(false);
+                    // s_force_vsync_off is automatically synced via BoolSettingRef
+                }
+                settings::g_mainTabSettings.force_vsync_on.SetValue(vs_on);
+                // s_force_vsync_on is automatically synced via BoolSettingRef
+                LogInfo(vs_on ? "Force VSync ON enabled" : "Force VSync ON disabled");
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Forces sync interval = 1 (requires restart).");
+            }
+
+            ImGui::SameLine();
+
+            bool vs_off = settings::g_mainTabSettings.force_vsync_off.GetValue();
+            if (ImGui::Checkbox("Force VSync OFF", &vs_off)) {
+                s_restart_needed_vsync_tearing.store(true);
+                // Mutual exclusion
+                if (vs_off) {
+                    settings::g_mainTabSettings.force_vsync_on.SetValue(false);
+                }
+                settings::g_mainTabSettings.force_vsync_off.SetValue(vs_off);
                 // s_force_vsync_off is automatically synced via BoolSettingRef
+                LogInfo(vs_off ? "Force VSync OFF enabled" : "Force VSync OFF disabled");
             }
-            settings::g_mainTabSettings.force_vsync_on.SetValue(vs_on);
-            // s_force_vsync_on is automatically synced via BoolSettingRef
-            LogInfo(vs_on ? "Force VSync ON enabled" : "Force VSync ON disabled");
-        }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Forces sync interval = 1 (requires restart).");
-        }
-
-        ImGui::SameLine();
-
-        bool vs_off = settings::g_mainTabSettings.force_vsync_off.GetValue();
-        if (ImGui::Checkbox("Force VSync OFF", &vs_off)) {
-            s_restart_needed_vsync_tearing.store(true);
-            // Mutual exclusion
-            if (vs_off) {
-                settings::g_mainTabSettings.force_vsync_on.SetValue(false);
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Forces sync interval = 0 (requires restart).");
             }
-            settings::g_mainTabSettings.force_vsync_off.SetValue(vs_off);
-            // s_force_vsync_off is automatically synced via BoolSettingRef
-            LogInfo(vs_off ? "Force VSync OFF enabled" : "Force VSync OFF disabled");
-        }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Forces sync interval = 0 (requires restart).");
-        }
 
-        ImGui::SameLine();
+            ImGui::SameLine();
 
-        bool prevent_t = settings::g_mainTabSettings.prevent_tearing.GetValue();
-        if (ImGui::Checkbox("Prevent Tearing", &prevent_t)) {
-            settings::g_mainTabSettings.prevent_tearing.SetValue(prevent_t);
-            // s_prevent_tearing is automatically synced via BoolSettingRef
-            LogInfo(prevent_t ? "Prevent Tearing enabled (tearing flags will be cleared)" : "Prevent Tearing disabled");
-        }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Prevents tearing by clearing DXGI tearing flags and preferring sync.");
-        }
+            bool prevent_t = settings::g_mainTabSettings.prevent_tearing.GetValue();
+            if (ImGui::Checkbox("Prevent Tearing", &prevent_t)) {
+                settings::g_mainTabSettings.prevent_tearing.SetValue(prevent_t);
+                // s_prevent_tearing is automatically synced via BoolSettingRef
+                LogInfo(prevent_t ? "Prevent Tearing enabled (tearing flags will be cleared)" : "Prevent Tearing disabled");
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Prevents tearing by clearing DXGI tearing flags and preferring sync.");
+            }
 
-        // Display restart-required notice if flagged
-        if (s_restart_needed_vsync_tearing.load()) {
-            ImGui::Spacing();
-            ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "Game restart required to apply VSync/tearing changes.");
+            // Display restart-required notice if flagged
+            if (s_restart_needed_vsync_tearing.load()) {
+                ImGui::Spacing();
+                ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "Game restart required to apply VSync/tearing changes.");
+            }
         }
     }
 
-    // Background FPS Limit slider (persisted)
-    {
-        if (!fps_limit_enabled) {
-            ImGui::BeginDisabled();
-        }
-
-        float current_bg = settings::g_mainTabSettings.fps_limit_background.GetValue();
-        const char* fmt_bg = (current_bg > 0.0f) ? "%.0f FPS" : "No Limit";
-        if (SliderFloatSetting(settings::g_mainTabSettings.fps_limit_background, "Background FPS Limit", fmt_bg)) {}
-
-        if (!fps_limit_enabled) {
-            ImGui::EndDisabled();
-        }
-    }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip(
-            "FPS cap when the game window is not in the foreground. Now uses the new Custom FPS Limiter system.");
-    }
 }
 
 void DrawAudioSettings() {
@@ -1013,118 +1007,119 @@ void DrawImportantInfo() {
     }
 
     ImGui::Spacing();
-    ImGui::Separator();
 
     // Frame Time Graph Section
-    DrawFrameTimeGraph();
+    if (ImGui::CollapsingHeader("Frame Time Graph", ImGuiTreeNodeFlags_DefaultOpen)) {
+        DrawFrameTimeGraph();
 
-    std::ostringstream oss;
+        std::ostringstream oss;
 
-    // Present Duration Display
-    oss.str("");
-    oss.clear();
-    oss << "Present Duration: " << std::fixed << std::setprecision(3)
-        << (1.0 * ::g_present_duration_ns.load() / utils::NS_TO_MS) << " ms";
-    ImGui::TextUnformatted(oss.str().c_str());
-    ImGui::SameLine();
-    ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "(smoothed)");
+        // Present Duration Display
+        oss.str("");
+        oss.clear();
+        oss << "Present Duration: " << std::fixed << std::setprecision(3)
+            << (1.0 * ::g_present_duration_ns.load() / utils::NS_TO_MS) << " ms";
+        ImGui::TextUnformatted(oss.str().c_str());
+        ImGui::SameLine();
+        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "(smoothed)");
 
-    oss.str("");
-    oss.clear();
-    oss << "Simulation Duration: " << std::fixed << std::setprecision(3)
-        << (1.0 * ::g_simulation_duration_ns.load() / utils::NS_TO_MS) << " ms";
-    ImGui::TextUnformatted(oss.str().c_str());
-    ImGui::SameLine();
-    ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "(smoothed)");
+        oss.str("");
+        oss.clear();
+        oss << "Simulation Duration: " << std::fixed << std::setprecision(3)
+            << (1.0 * ::g_simulation_duration_ns.load() / utils::NS_TO_MS) << " ms";
+        ImGui::TextUnformatted(oss.str().c_str());
+        ImGui::SameLine();
+        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "(smoothed)");
 
-    // Reshade Overhead Display
-    oss.str("");
-    oss.clear();
-    oss << "Render Submit Duration: " << std::fixed << std::setprecision(3)
-        << (1.0 * ::g_render_submit_duration_ns.load() / utils::NS_TO_MS) << " ms";
-    ImGui::TextUnformatted(oss.str().c_str());
-    ImGui::SameLine();
-    ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "(smoothed)");
+        // Reshade Overhead Display
+        oss.str("");
+        oss.clear();
+        oss << "Render Submit Duration: " << std::fixed << std::setprecision(3)
+            << (1.0 * ::g_render_submit_duration_ns.load() / utils::NS_TO_MS) << " ms";
+        ImGui::TextUnformatted(oss.str().c_str());
+        ImGui::SameLine();
+        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "(smoothed)");
 
-    // Reshade Overhead Display
-    oss.str("");
-    oss.clear();
-    oss << "Reshade Overhead Duration: " << std::fixed << std::setprecision(3)
-        << ((1.0 * ::g_reshade_overhead_duration_ns.load() - ::fps_sleep_before_on_present_ns.load()
-             - ::fps_sleep_after_on_present_ns.load())
-            / utils::NS_TO_MS)
-        << " ms";
-    ImGui::TextUnformatted(oss.str().c_str());
-    ImGui::SameLine();
-    ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "(smoothed)");
-
-    oss.str("");
-    oss.clear();
-    oss << "FPS Limiter Sleep Duration (before onPresent): " << std::fixed << std::setprecision(3)
-        << (1.0 * ::fps_sleep_before_on_present_ns.load() / utils::NS_TO_MS) << " ms";
-    ImGui::TextUnformatted(oss.str().c_str());
-    ImGui::SameLine();
-    ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "(smoothed)");
-
-    // FPS Limiter Start Duration Display
-    oss.str("");
-    oss.clear();
-    oss << "FPS Limiter Sleep Duration (after onPresent): " << std::fixed << std::setprecision(3)
-        << (1.0 * ::fps_sleep_after_on_present_ns.load() / utils::NS_TO_MS) << " ms";
-    ImGui::TextUnformatted(oss.str().c_str());
-    ImGui::SameLine();
-    ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "(smoothed)");
-
-    // Simulation Start to Present Latency Display
-    oss.str("");
-    oss.clear();
-    // Calculate latency: frame_time - sleep duration after onPresent
-    float current_fps = 0.0f;
-    const uint32_t head = ::g_perf_ring_head.load(std::memory_order_acquire);
-    if (head > 0) {
-        const uint32_t last_idx = (head - 1) & (::kPerfRingCapacity - 1);
-        const ::PerfSample& last_sample = ::g_perf_ring[last_idx];
-        current_fps = last_sample.fps;
-    }
-
-    if (current_fps > 0.0f) {
-        float frame_time_ms = 1000.0f / current_fps;
-        float sleep_duration_ms = static_cast<float>(::fps_sleep_after_on_present_ns.load()) / utils::NS_TO_MS;
-        float latency_ms = frame_time_ms - sleep_duration_ms;
-
-        static double sim_start_to_present_latency_ms = 0.0;
-        sim_start_to_present_latency_ms = (sim_start_to_present_latency_ms * 0.99 + latency_ms * 0.01);
-        oss << "Sim Start to Present Latency: " << std::fixed << std::setprecision(3) << sim_start_to_present_latency_ms
+        // Reshade Overhead Display
+        oss.str("");
+        oss.clear();
+        oss << "Reshade Overhead Duration: " << std::fixed << std::setprecision(3)
+            << ((1.0 * ::g_reshade_overhead_duration_ns.load() - ::fps_sleep_before_on_present_ns.load()
+                - ::fps_sleep_after_on_present_ns.load())
+                / utils::NS_TO_MS)
             << " ms";
         ImGui::TextUnformatted(oss.str().c_str());
         ImGui::SameLine();
-        ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "(frame_time - sleep_duration)");
-    }
+        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "(smoothed)");
 
-    // Flip State Display (renamed from DXGI Composition)
-    const char* flip_state_str = "Unknown";
-    int flip_state_case = static_cast<int>(::s_dxgi_composition_state);
-    switch (flip_state_case) {
-        case 1:  flip_state_str = "Composed Flip"; break;
-        case 2:  flip_state_str = "MPO Independent Flip"; break;
-        case 3:  flip_state_str = "Legacy Independent Flip"; break;
-        default: flip_state_str = "Unknown"; break;
-    }
+        oss.str("");
+        oss.clear();
+        oss << "FPS Limiter Sleep Duration (before onPresent): " << std::fixed << std::setprecision(3)
+            << (1.0 * ::fps_sleep_before_on_present_ns.load() / utils::NS_TO_MS) << " ms";
+        ImGui::TextUnformatted(oss.str().c_str());
+        ImGui::SameLine();
+        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "(smoothed)");
 
-    oss.str("");
-    oss.clear();
-    oss << "Flip State: " << flip_state_str;
+        // FPS Limiter Start Duration Display
+        oss.str("");
+        oss.clear();
+        oss << "FPS Limiter Sleep Duration (after onPresent): " << std::fixed << std::setprecision(3)
+            << (1.0 * ::fps_sleep_after_on_present_ns.load() / utils::NS_TO_MS) << " ms";
+        ImGui::TextUnformatted(oss.str().c_str());
+        ImGui::SameLine();
+        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "(smoothed)");
 
-    // Color code based on flip state
-    if (flip_state_case == 1) {
-        // Composed Flip - Red
-        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.8f, 1.0f), "%s", oss.str().c_str());
-    } else if (flip_state_case == 2 || flip_state_case == 3) {
-        // Independent Flip modes - Green
-        ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "%s", oss.str().c_str());
-    } else {
-        // Unknown - Yellow
-        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.8f, 1.0f), "%s", oss.str().c_str());
+        // Simulation Start to Present Latency Display
+        oss.str("");
+        oss.clear();
+        // Calculate latency: frame_time - sleep duration after onPresent
+        float current_fps = 0.0f;
+        const uint32_t head = ::g_perf_ring_head.load(std::memory_order_acquire);
+        if (head > 0) {
+            const uint32_t last_idx = (head - 1) & (::kPerfRingCapacity - 1);
+            const ::PerfSample& last_sample = ::g_perf_ring[last_idx];
+            current_fps = last_sample.fps;
+        }
+
+        if (current_fps > 0.0f) {
+            float frame_time_ms = 1000.0f / current_fps;
+            float sleep_duration_ms = static_cast<float>(::fps_sleep_after_on_present_ns.load()) / utils::NS_TO_MS;
+            float latency_ms = frame_time_ms - sleep_duration_ms;
+
+            static double sim_start_to_present_latency_ms = 0.0;
+            sim_start_to_present_latency_ms = (sim_start_to_present_latency_ms * 0.99 + latency_ms * 0.01);
+            oss << "Sim Start to Present Latency: " << std::fixed << std::setprecision(3) << sim_start_to_present_latency_ms
+                << " ms";
+            ImGui::TextUnformatted(oss.str().c_str());
+            ImGui::SameLine();
+            ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "(frame_time - sleep_duration)");
+        }
+
+        // Flip State Display (renamed from DXGI Composition)
+        const char* flip_state_str = "Unknown";
+        int flip_state_case = static_cast<int>(::s_dxgi_composition_state);
+        switch (flip_state_case) {
+            case 1:  flip_state_str = "Composed Flip"; break;
+            case 2:  flip_state_str = "MPO Independent Flip"; break;
+            case 3:  flip_state_str = "Legacy Independent Flip"; break;
+            default: flip_state_str = "Unknown"; break;
+        }
+
+        oss.str("");
+        oss.clear();
+        oss << "Flip State: " << flip_state_str;
+
+        // Color code based on flip state
+        if (flip_state_case == 1) {
+            // Composed Flip - Red
+            ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.8f, 1.0f), "%s", oss.str().c_str());
+        } else if (flip_state_case == 2 || flip_state_case == 3) {
+            // Independent Flip modes - Green
+            ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "%s", oss.str().c_str());
+        } else {
+            // Unknown - Yellow
+            ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.8f, 1.0f), "%s", oss.str().c_str());
+        }
     }
 }
 

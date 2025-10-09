@@ -9,6 +9,7 @@
 #include "utils/timing.hpp"
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <sstream>
 #include <thread>
@@ -204,9 +205,10 @@ void ContinuousMonitoringThread() {
     LONGLONG last_cache_refresh_ns = start_time;
     LONGLONG last_60fps_update_ns = start_time;
     LONGLONG last_1s_update_ns = start_time;
-    const LONGLONG FPS_60_INTERVAL_NS = utils::SEC_TO_NS / 60;  // ~16.67ms for 60 FPS
+    const LONGLONG FPS_60_INTERVAL_NS = utils::SEC_TO_NS / 120;
 
     while (g_monitoring_thread_running.load()) {
+        std::this_thread::sleep_for(std::chrono::nanoseconds(FPS_60_INTERVAL_NS));
         // Periodic display cache refresh off the UI thread
         {
             LONGLONG now_ns = utils::get_now_ns();
@@ -218,12 +220,10 @@ void ContinuousMonitoringThread() {
         }
         // Wait for 1 second to start
         if (utils::get_now_ns() - start_time < 1 * utils::SEC_TO_NS) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
             continue;
         }
         // Check if monitoring is still enabled
         if (!s_continuous_monitoring_enabled.load()) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
             continue;
         }
 
@@ -245,10 +245,6 @@ void ContinuousMonitoringThread() {
             // Call auto-apply HDR metadata trigger
             ui::new_ui::AutoApplyTrigger();
         }
-
-        // Sleep for 1 second
-        // Sleep for 60 FPS timing (~16.67ms)
-        std::this_thread::sleep_for(std::chrono::milliseconds(16));
     }
 
     LogInfo("Continuous monitoring thread stopped");

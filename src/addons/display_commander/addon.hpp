@@ -25,7 +25,7 @@ bool SetVolumeForCurrentProcess(float volume_0_100);
 void RunBackgroundAudioMonitor();
 
 // Forward declarations that depend on enums
-DxgiBypassMode GetIndependentFlipState(reshade::api::swapchain* swapchain);
+DxgiBypassMode GetIndependentFlipState(IDXGISwapChain* dxgi_swapchain);
 
 
 

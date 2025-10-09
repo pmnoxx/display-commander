@@ -3,6 +3,7 @@
 #include "../../utils.hpp"
 #include "../../hooks/xinput_hooks.hpp"
 #include "../../hooks/timeslowdown_hooks.hpp"
+#include "../../res/ui_colors.hpp"
 #include <chrono>
 #include <imgui.h>
 #include <reshade.hpp>
@@ -77,12 +78,12 @@ void XInputWidget::OnDraw() {
     }
 
     if (!g_shared_state) {
-        ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "XInput shared state not initialized");
+        ImGui::TextColored(ui::colors::ICON_CRITICAL, "XInput shared state not initialized");
         return;
     }
 
     // Draw the XInput widget UI
-    ImGui::TextColored(ImVec4(0.9f, 0.9f, 0.9f, 1.0f), "=== XInput Controller Monitor ===");
+    ImGui::TextColored(ui::colors::TEXT_DEFAULT, "=== XInput Controller Monitor ===");
     ImGui::Spacing();
 
     // Draw settings
@@ -282,7 +283,7 @@ void XInputWidget::DrawVibrationTest() {
         }
 
         ImGui::Spacing();
-        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f),
+        ImGui::TextColored(ui::colors::TEXT_DIMMED,
                            "Note: Vibration will continue until stopped or controller disconnects");
     }
 }
@@ -316,7 +317,7 @@ void XInputWidget::DrawControllerSelector() {
 
 void XInputWidget::DrawControllerState() {
     if (selected_controller_ < 0 || selected_controller_ >= XUSER_MAX_COUNT) {
-        ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "Invalid controller selected");
+        ImGui::TextColored(ui::colors::ICON_CRITICAL, "Invalid controller selected");
         return;
     }
 
@@ -325,12 +326,12 @@ void XInputWidget::DrawControllerState() {
     bool connected = g_shared_state->controller_connected[selected_controller_];
 
     if (!connected) {
-        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Controller %d not connected", selected_controller_);
+        ImGui::TextColored(ui::colors::TEXT_DIMMED, "Controller %d not connected", selected_controller_);
         return;
     }
 
     // Draw controller info
-    ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Controller %d - Connected", selected_controller_);
+    ImGui::TextColored(ui::colors::STATUS_ACTIVE, "Controller %d - Connected", selected_controller_);
     ImGui::Text("Packet Number: %lu", state.dwPacketNumber);
 
     // Debug: Show raw button state
@@ -397,10 +398,10 @@ void XInputWidget::DrawButtonStates(const XINPUT_GAMEPAD &gamepad) {
                 // Special styling for Guide button
                 if (buttons[i].mask == XINPUT_GAMEPAD_GUIDE) {
                     ImGui::PushStyleColor(ImGuiCol_Button,
-                                          pressed1 ? ImVec4(1.0f, 0.8f, 0.0f, 1.0f) : ImVec4(0.5f, 0.4f, 0.0f, 1.0f));
+                                          pressed1 ? ui::colors::ICON_WARNING : ui::colors::ICON_DARK_ORANGE);
                 } else {
                     ImGui::PushStyleColor(ImGuiCol_Button,
-                                          pressed1 ? ImVec4(0.0f, 1.0f, 0.0f, 1.0f) : ImVec4(0.3f, 0.3f, 0.3f, 1.0f));
+                                          pressed1 ? ui::colors::STATUS_ACTIVE : ui::colors::ICON_DARK_GRAY);
                 }
                 ImGui::Button(buttons[i].name, ImVec2(60, 30));
                 ImGui::PopStyleColor();
@@ -410,10 +411,10 @@ void XInputWidget::DrawButtonStates(const XINPUT_GAMEPAD &gamepad) {
                 // Special styling for Guide button
                 if (buttons[i + 1].mask == XINPUT_GAMEPAD_GUIDE) {
                     ImGui::PushStyleColor(ImGuiCol_Button,
-                                          pressed2 ? ImVec4(1.0f, 0.8f, 0.0f, 1.0f) : ImVec4(0.5f, 0.4f, 0.0f, 1.0f));
+                                          pressed2 ? ui::colors::ICON_WARNING : ui::colors::ICON_DARK_ORANGE);
                 } else {
                     ImGui::PushStyleColor(ImGuiCol_Button,
-                                          pressed2 ? ImVec4(0.0f, 1.0f, 0.0f, 1.0f) : ImVec4(0.3f, 0.3f, 0.3f, 1.0f));
+                                          pressed2 ? ui::colors::STATUS_ACTIVE : ui::colors::ICON_DARK_GRAY);
                 }
                 ImGui::Button(buttons[i + 1].name, ImVec2(60, 30));
                 ImGui::PopStyleColor();
@@ -424,10 +425,10 @@ void XInputWidget::DrawButtonStates(const XINPUT_GAMEPAD &gamepad) {
                 // Special styling for Guide button
                 if (buttons[i].mask == XINPUT_GAMEPAD_GUIDE) {
                     ImGui::PushStyleColor(ImGuiCol_Button,
-                                          pressed ? ImVec4(1.0f, 0.8f, 0.0f, 1.0f) : ImVec4(0.5f, 0.4f, 0.0f, 1.0f));
+                                          pressed ? ui::colors::ICON_WARNING : ui::colors::ICON_DARK_ORANGE);
                 } else {
                     ImGui::PushStyleColor(ImGuiCol_Button,
-                                          pressed ? ImVec4(0.0f, 1.0f, 0.0f, 1.0f) : ImVec4(0.3f, 0.3f, 0.3f, 1.0f));
+                                          pressed ? ui::colors::STATUS_ACTIVE : ui::colors::ICON_DARK_GRAY);
                 }
                 ImGui::Button(buttons[i].name, ImVec2(60, 30));
                 ImGui::PopStyleColor();
@@ -522,7 +523,7 @@ void XInputWidget::DrawStickStates(const XINPUT_GAMEPAD &gamepad) {
 void XInputWidget::DrawStickStatesExtended(float left_deadzone, float left_max_input, float left_min_output,
                                            float right_deadzone, float right_max_input, float right_min_output) {
     if (ImGui::CollapsingHeader("Input/Output Curves", ImGuiTreeNodeFlags_DefaultOpen)) {
-        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Visual representation of how stick input is processed");
+        ImGui::TextColored(ui::colors::TEXT_DEFAULT, "Visual representation of how stick input is processed");
         ImGui::Spacing();
 
         // Generate curve data for both sticks
@@ -548,7 +549,7 @@ void XInputWidget::DrawStickStatesExtended(float left_deadzone, float left_max_i
         }
 
         // Left stick curve
-        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Left Stick Input/Output Curve");
+        ImGui::TextColored(ui::colors::STATUS_ACTIVE, "Left Stick Input/Output Curve");
         ImGui::Text("Deadzone: %.1f%%, Max Input: %.1f%%, Min Output: %.1f%%", left_deadzone * 100.0f,
                     left_max_input * 100.0f, left_min_output * 100.0f);
 
@@ -579,7 +580,7 @@ void XInputWidget::DrawStickStatesExtended(float left_deadzone, float left_max_i
         ImGui::Spacing();
 
         // Right stick curve
-        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Right Stick Input/Output Curve");
+        ImGui::TextColored(ui::colors::STATUS_ACTIVE, "Right Stick Input/Output Curve");
         ImGui::Text("Deadzone: %.1f%%, Max Input: %.1f%%, Min Output: %.1f%%", right_deadzone * 100.0f,
                     right_max_input * 100.0f, right_min_output * 100.0f);
 
@@ -609,17 +610,17 @@ void XInputWidget::DrawStickStatesExtended(float left_deadzone, float left_max_i
         ImGui::Spacing();
 
         // Legend
-        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Legend:");
+        ImGui::TextColored(ui::colors::TEXT_VALUE, "Legend:");
         ImGui::SameLine();
-        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Yellow = Deadzone (Vertical)");
+        ImGui::TextColored(ui::colors::TEXT_VALUE, "Yellow = Deadzone (Vertical)");
         ImGui::SameLine();
-        ImGui::TextColored(ImVec4(1.0f, 0.0f, 1.0f, 1.0f), "Magenta = Max Input (Vertical)");
+        ImGui::TextColored(ui::colors::ICON_SPECIAL, "Magenta = Max Input (Vertical)");
         ImGui::SameLine();
-        ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "Cyan = Min Output (Horizontal)");
+        ImGui::TextColored(ui::colors::ICON_ANALYSIS, "Cyan = Min Output (Horizontal)");
 
         ImGui::Spacing();
-        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "X-axis: Input (0.0 to 1.0) - Positive side only");
-        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Y-axis: Output (-1.0 to 1.0)");
+        ImGui::TextColored(ui::colors::TEXT_DIMMED, "X-axis: Input (0.0 to 1.0) - Positive side only");
+        ImGui::TextColored(ui::colors::TEXT_DIMMED, "Y-axis: Output (-1.0 to 1.0)");
     }
 }
 
@@ -652,7 +653,7 @@ void XInputWidget::DrawBatteryStatus(int controller_index) {
         bool battery_valid = g_shared_state->battery_info_valid[controller_index].load();
 
         if (!battery_valid) {
-            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Battery information not available");
+            ImGui::TextColored(ui::colors::TEXT_DIMMED, "Battery information not available");
             return;
         }
 
@@ -665,27 +666,27 @@ void XInputWidget::DrawBatteryStatus(int controller_index) {
         switch (battery.BatteryType) {
         case BATTERY_TYPE_DISCONNECTED:
             battery_type_str = "Disconnected";
-            type_color = ImVec4(0.7f, 0.7f, 0.7f, 1.0f);
+            type_color = ui::colors::TEXT_DIMMED;
             break;
         case BATTERY_TYPE_WIRED:
             battery_type_str = "Wired (No Battery)";
-            type_color = ImVec4(0.5f, 0.8f, 1.0f, 1.0f);
+            type_color = ui::colors::TEXT_INFO;
             break;
         case BATTERY_TYPE_ALKALINE:
             battery_type_str = "Alkaline Battery";
-            type_color = ImVec4(1.0f, 1.0f, 0.0f, 1.0f);
+            type_color = ui::colors::TEXT_VALUE;
             break;
         case BATTERY_TYPE_NIMH:
             battery_type_str = "NiMH Battery";
-            type_color = ImVec4(0.0f, 1.0f, 0.0f, 1.0f);
+            type_color = ui::colors::STATUS_ACTIVE;
             break;
         case BATTERY_TYPE_UNKNOWN:
             battery_type_str = "Unknown Battery Type";
-            type_color = ImVec4(0.7f, 0.7f, 0.7f, 1.0f);
+            type_color = ui::colors::TEXT_DIMMED;
             break;
         default:
             battery_type_str = "Unknown";
-            type_color = ImVec4(0.7f, 0.7f, 0.7f, 1.0f);
+            type_color = ui::colors::TEXT_DIMMED;
             break;
         }
 
@@ -702,27 +703,27 @@ void XInputWidget::DrawBatteryStatus(int controller_index) {
             switch (battery.BatteryLevel) {
             case BATTERY_LEVEL_EMPTY:
                 level_str = "Empty";
-                level_color = ImVec4(1.0f, 0.0f, 0.0f, 1.0f);
+                level_color = ui::colors::ICON_CRITICAL;
                 level_progress = 0.0f;
                 break;
             case BATTERY_LEVEL_LOW:
                 level_str = "Low";
-                level_color = ImVec4(1.0f, 0.5f, 0.0f, 1.0f);
+                level_color = ui::colors::ICON_ORANGE;
                 level_progress = 0.25f;
                 break;
             case BATTERY_LEVEL_MEDIUM:
                 level_str = "Medium";
-                level_color = ImVec4(1.0f, 1.0f, 0.0f, 1.0f);
+                level_color = ui::colors::TEXT_VALUE;
                 level_progress = 0.5f;
                 break;
             case BATTERY_LEVEL_FULL:
                 level_str = "Full";
-                level_color = ImVec4(0.0f, 1.0f, 0.0f, 1.0f);
+                level_color = ui::colors::STATUS_ACTIVE;
                 level_progress = 1.0f;
                 break;
             default:
                 level_str = "Unknown";
-                level_color = ImVec4(0.7f, 0.7f, 0.7f, 1.0f);
+                level_color = ui::colors::TEXT_DIMMED;
                 level_progress = 0.0f;
                 break;
             }
@@ -735,9 +736,9 @@ void XInputWidget::DrawBatteryStatus(int controller_index) {
             ImGui::PopStyleColor();
         } else if (battery.BatteryType == BATTERY_TYPE_WIRED) {
             // For wired devices, show a simple message that no battery level is available
-            ImGui::TextColored(ImVec4(0.5f, 0.8f, 1.0f, 1.0f), "No battery level (Wired device)");
+            ImGui::TextColored(ui::colors::TEXT_INFO, "No battery level (Wired device)");
         } else {
-            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Battery level not available");
+            ImGui::TextColored(ui::colors::TEXT_DIMMED, "Battery level not available");
         }
     }
 }
@@ -1027,12 +1028,12 @@ void XInputWidget::DrawChordSettings() {
                 // Show current state
                 if (chord.is_pressed.load()) {
                     ImGui::SameLine();
-                    ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "PRESSED");
+                    ImGui::TextColored(ui::colors::STATUS_ACTIVE, "PRESSED");
                 }
 
                 // Action description
                 ImGui::SameLine();
-                ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "(%s)", chord.action.c_str());
+                ImGui::TextColored(ui::colors::TEXT_DIMMED, "(%s)", chord.action.c_str());
 
                 ImGui::PopID();
             }

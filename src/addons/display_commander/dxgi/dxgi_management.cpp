@@ -1,27 +1,8 @@
 #include "../addon.hpp"
 
-DxgiBypassMode GetIndependentFlipState(reshade::api::swapchain *swapchain) {
-
-    if (swapchain == nullptr) {
-        LogDebug("DXGI IF state: swapchain is null");
-        return DxgiBypassMode::kUnknown;
-    }
-    auto *device = swapchain->get_device();
-    if (device == nullptr) {
-        LogDebug("DXGI IF state: device is null");
-        return DxgiBypassMode::kUnknown;
-    }
-
-    const auto api = device->get_api();
-    if (api != reshade::api::device_api::d3d10 && api != reshade::api::device_api::d3d11 &&
-        api != reshade::api::device_api::d3d12) {
-        LogDebug("DXGI IF state: non-DXGI device api=%d", static_cast<int>(api));
-        return DxgiBypassMode::kUnknown; // Not DXGI-backed
-    }
-
-    auto *dxgi_swapchain = reinterpret_cast<IDXGISwapChain *>(swapchain->get_native());
+DxgiBypassMode GetIndependentFlipState(IDXGISwapChain *dxgi_swapchain) {
     if (dxgi_swapchain == nullptr) {
-        LogDebug("DXGI IF state: native swapchain is null");
+        LogDebug("DXGI IF state: swapchain is null");
         return DxgiBypassMode::kUnknown;
     }
 

@@ -136,6 +136,9 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain *This, UI
     // Record per-frame FPS sample for background aggregation
     RecordFrameTime(FrameTimeMode::Present);
 
+    // Query DXGI composition state (moved from ReShade present events)
+    ::QueryDxgiCompositionState(This);
+
     // Call original function
     if (IDXGISwapChain_Present_Original != nullptr) {
         auto res= IDXGISwapChain_Present_Original(This, SyncInterval, Flags);
@@ -159,6 +162,9 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1 *This, 
 
     // Record per-frame FPS sample for background aggregation
     RecordFrameTime(FrameTimeMode::Present);
+
+    // Query DXGI composition state (moved from ReShade present events)
+    ::QueryDxgiCompositionState(This);
 
     // Call original function
     if (IDXGISwapChain_Present1_Original != nullptr) {

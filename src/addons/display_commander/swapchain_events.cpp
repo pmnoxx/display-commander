@@ -720,7 +720,7 @@ void OnPresentUpdateBefore(reshade::api::command_queue * command_queue, reshade:
     // This captures the full GPU workload including the flush operation
     if (swapchain->get_device()->get_api() == reshade::api::device_api::d3d11 ||
         swapchain->get_device()->get_api() == reshade::api::device_api::d3d12) {
-        EnqueueGPUCompletion(swapchain);
+        EnqueueGPUCompletion(swapchain, command_queue);
     } else {
         g_gpu_fence_failure_reason.store("Failed to get device from swapchain");
     }

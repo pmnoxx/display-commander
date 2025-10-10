@@ -135,7 +135,7 @@ namespace {
     }
 
     // Helper function to enqueue GPU completion measurement for D3D12
-    void EnqueueGPUCompletionD3D12(IDXGISwapChain* swapchain) {
+    void EnqueueGPUCompletionD3D12(IDXGISwapChain* swapchain, ID3D12CommandQueue* command_queue) {
         if (settings::g_mainTabSettings.gpu_measurement_enabled.GetValue() == 0) {
             return;
         }
@@ -173,10 +173,13 @@ namespace {
             return;
         }
 
-        // Need to get the command queue - we'll try to get it from the swapchain's present queue
-        // For D3D12, this is more complex as we need the actual command queue
-        // We can't easily get it here without storing it during swapchain creation
-        // For now, we'll store the fence value and let external code signal it
+        // Check if command queue is available
+        if (command_queue == nullptr) {
+            g_gpu_fence_failure_reason.store("D3D12: Command queue not provided (cannot signal fence)");
+            return;
+        }
+
+        // Increment fence value and signal it on the command queue
         uint64_t signal_value = g_gpu_state.fence_value.fetch_add(1) + 1;
 
         // Set event to trigger when fence reaches this value
@@ -186,16 +189,21 @@ namespace {
             return;
         }
 
+        // Signal the fence on the command queue
+        // This will be signaled when the GPU completes all work up to this point
+        hr = command_queue->Signal(g_gpu_state.d3d12_fence.Get(), signal_value);
+        if (FAILED(hr)) {
+            g_gpu_fence_failure_reason.store("D3D12: Failed to signal fence on command queue");
+            return;
+        }
+
         // Store the event handle for external threads to wait on
         g_gpu_completion_event.store(g_gpu_state.event_handle);
-
-        // Note: For D3D12, the command queue signal needs to be called from the present queue
-        // This would require hooking the command queue or getting it during swapchain init
-        g_gpu_fence_failure_reason.store("D3D12: Command queue access not implemented (cannot signal fence)");
+        g_gpu_fence_failure_reason.store(nullptr); // Clear failure reason on success
     }
 
     // Helper function to enqueue GPU completion measurement (auto-detects API)
-    void EnqueueGPUCompletionInternal(IDXGISwapChain* swapchain) {
+    void EnqueueGPUCompletionInternal(IDXGISwapChain* swapchain, ID3D12CommandQueue* command_queue) {
         if (swapchain == nullptr) {
             g_gpu_fence_failure_reason.store("Failed to get device from swapchain");
             return;
@@ -212,7 +220,7 @@ namespace {
         Microsoft::WRL::ComPtr<ID3D11Device> d3d11_device;
         Microsoft::WRL::ComPtr<ID3D12Device> d3d12_device;
         if (SUCCEEDED(swapchain->GetDevice(IID_PPV_ARGS(&d3d12_device)))) {
-            EnqueueGPUCompletionD3D12(swapchain);
+            EnqueueGPUCompletionD3D12(swapchain, command_queue);
             return;
         } else if (SUCCEEDED(swapchain->GetDevice(IID_PPV_ARGS(&d3d11_device)))) {
             EnqueueGPUCompletionD3D11(swapchain);
@@ -224,7 +232,7 @@ namespace {
 } // namespace
 
 // Public API wrapper that works with ReShade swapchain
-void EnqueueGPUCompletion(reshade::api::swapchain* swapchain) {
+void EnqueueGPUCompletion(reshade::api::swapchain* swapchain, reshade::api::command_queue* command_queue) {
     if (swapchain == nullptr) {
         g_gpu_fence_failure_reason.store("Failed to get swapchain from swapchain, swapchain is nullptr");
         return;
@@ -239,8 +247,14 @@ void EnqueueGPUCompletion(reshade::api::swapchain* swapchain) {
         return;
     }
 
+    // Get native D3D12 command queue if provided (for D3D12 fence signaling)
+    ID3D12CommandQueue* d3d12_command_queue = nullptr;
+    if (command_queue != nullptr && swapchain->get_device()->get_api() == reshade::api::device_api::d3d12) {
+        d3d12_command_queue = reinterpret_cast<ID3D12CommandQueue*>(command_queue->get_native());
+    }
+
     // Call the internal enqueue function
-    ::EnqueueGPUCompletionInternal(dxgi_swapchain);
+    ::EnqueueGPUCompletionInternal(dxgi_swapchain, d3d12_command_queue);
 }
 
 namespace display_commanderhooks::dxgi {

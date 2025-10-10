@@ -11,6 +11,9 @@
 #include <wrl/client.h>
 #include <string>
 
+// Forward declaration for g_sim_start_ns from swapchain_events.cpp
+extern std::atomic<LONGLONG> g_sim_start_ns;
+
 /*
  * IDXGISwapChain VTable Layout Documentation
  * ==========================================
@@ -159,6 +162,12 @@ namespace {
         if (swapchain == nullptr) {
             return;
         }
+
+        // Capture g_sim_start_ns for sim-to-display latency measurement
+        // Reset tracking flags for this frame
+        g_sim_start_ns_for_measurement.store(g_sim_start_ns.load());
+        g_present_update_after2_called.store(false);
+        g_gpu_completion_callback_finished.store(false);
 
         // Try D3D12 first
         Microsoft::WRL::ComPtr<ID3D12Device> d3d12_device;

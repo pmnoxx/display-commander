@@ -260,7 +260,18 @@ std::atomic<LONGLONG> late_amount_ns{0};
 std::atomic<HANDLE> g_gpu_completion_event{nullptr};  // Event handle for GPU completion measurement
 std::atomic<LONGLONG> g_gpu_completion_time_ns{0};  // Last measured GPU completion time
 std::atomic<LONGLONG> g_gpu_duration_ns{0};  // Last measured GPU duration (smoothed)
-std::atomic<bool> g_gpu_measurement_enabled{false};  // Whether GPU measurement is enabled
+std::atomic<bool> g_gpu_measurement_enabled{true};  // Whether GPU measurement is enabled (enabled by default)
+
+// Sim-start-to-display latency measurement
+std::atomic<LONGLONG> g_sim_start_ns_for_measurement{0};  // g_sim_start_ns captured when EnqueueGPUCompletion is called
+std::atomic<bool> g_present_update_after2_called{false};  // Tracks if OnPresentUpdateAfter2 was called
+std::atomic<bool> g_gpu_completion_callback_finished{false};  // Tracks if GPU completion callback finished
+std::atomic<LONGLONG> g_sim_to_display_latency_ns{0};  // Measured sim-start-to-display latency (smoothed)
+
+// GPU late time measurement (how much later GPU finishes compared to OnPresentUpdateAfter2)
+std::atomic<LONGLONG> g_present_update_after2_time_ns{0};  // Time when OnPresentUpdateAfter2 was called
+std::atomic<LONGLONG> g_gpu_completion_callback_time_ns{0};  // Time when GPU completion callback finished
+std::atomic<LONGLONG> g_gpu_late_time_ns{0};  // GPU late time (0 if GPU finished first, otherwise difference)
 
 // NVIDIA Reflex minimal controls (disabled by default)
 std::atomic<bool> s_reflex_enable{false};

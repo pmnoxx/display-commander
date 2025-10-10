@@ -76,7 +76,17 @@ void DrawFrameTimeGraph() {
                 min_frame_time, max_frame_time, avg_frame_time, avg_fps);
 
     // Create overlay text with current frame time
-    std::string overlay_text = "Current: " + std::to_string(frame_times.back()).substr(0, 6) + " ms";
+    std::string overlay_text = "Frame Time: " + std::to_string(frame_times.back()).substr(0, 6) + " ms";
+
+    // Add sim-to-display latency if GPU measurement is enabled and we have valid data
+    if (::g_gpu_measurement_enabled.load() && ::g_sim_to_display_latency_ns.load() > 0) {
+        double sim_to_display_ms = (1.0 * ::g_sim_to_display_latency_ns.load() / utils::NS_TO_MS);
+        overlay_text += " | Sim-to-Display Lat: " + std::to_string(sim_to_display_ms).substr(0, 6) + " ms";
+
+        // Add GPU late time (how much later GPU finishes compared to Present)
+        double gpu_late_ms = (1.0 * ::g_gpu_late_time_ns.load() / utils::NS_TO_MS);
+        overlay_text += " | GPU Late: " + std::to_string(gpu_late_ms).substr(0, 6) + " ms";
+    }
 
     // Set graph size and scale
     ImVec2 graph_size = ImVec2(-1.0f, 200.0f); // Full width, 200px height
@@ -1105,6 +1115,32 @@ void DrawImportantInfo() {
             ImGui::TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
             if (ImGui::IsItemHovered()) {
                 ImGui::SetTooltip("Time from Present call to GPU completion (D3D11 only, requires Windows 10+)");
+            }
+
+            // Sim-to-Display Latency (only show if we have valid measurement)
+            if (::g_sim_to_display_latency_ns.load() > 0) {
+                oss.str("");
+                oss.clear();
+                oss << "Sim-to-Display Latency: " << std::fixed << std::setprecision(3)
+                    << (1.0 * ::g_sim_to_display_latency_ns.load() / utils::NS_TO_MS) << " ms";
+                ImGui::TextUnformatted(oss.str().c_str());
+                ImGui::SameLine();
+                ImGui::TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip("Time from simulation start to frame displayed (includes GPU work and present)");
+                }
+
+                // GPU Late Time (how much later GPU finishes compared to Present)
+                oss.str("");
+                oss.clear();
+                oss << "GPU Late Time: " << std::fixed << std::setprecision(3)
+                    << (1.0 * ::g_gpu_late_time_ns.load() / utils::NS_TO_MS) << " ms";
+                ImGui::TextUnformatted(oss.str().c_str());
+                ImGui::SameLine();
+                ImGui::TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip("How much later GPU completion finishes compared to Present\n0 ms = GPU finished before Present\n>0 ms = GPU finished after Present (GPU is late)");
+                }
             }
         }
 

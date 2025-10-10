@@ -24,6 +24,7 @@ DeveloperTabSettings::DeveloperTabSettings()
                                   "DisplayCommander"),
 
       // Minimal NVIDIA Reflex controls
+      reflex_auto_configure("ReflexAutoConfigure", s_reflex_auto_configure, false, "DisplayCommander"),
       reflex_enable("ReflexEnable", s_reflex_enable, false, "DisplayCommander"),
       reflex_low_latency("ReflexLowLatency", s_reflex_low_latency, false, "DisplayCommander"),
       reflex_boost("ReflexBoost", s_reflex_boost, false, "DisplayCommander"),
@@ -54,6 +55,7 @@ void DeveloperTabSettings::LoadAll() {
     enable_timeslowdown_shortcut.Load();
     enable_adhd_toggle_shortcut.Load();
     enable_autoclick_shortcut.Load();
+    reflex_auto_configure.Load();
     reflex_enable.Load();
     reflex_low_latency.Load();
     reflex_boost.Load();
@@ -79,6 +81,7 @@ std::vector<ui::new_ui::SettingBase *> DeveloperTabSettings::GetAllSettings() {
             &enable_d3d9_upgrade,
             &nvapi_fullscreen_prevention,
 
+            &reflex_auto_configure,
             &reflex_enable,
             &reflex_low_latency,
             &reflex_boost,

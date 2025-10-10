@@ -294,6 +294,7 @@ std::atomic<LONGLONG> g_gpu_completion_callback_time_ns{0};  // Time when GPU co
 std::atomic<LONGLONG> g_gpu_late_time_ns{0};  // GPU late time (0 if GPU finished first, otherwise difference)
 
 // NVIDIA Reflex minimal controls (disabled by default)
+std::atomic<bool> s_reflex_auto_configure{false}; // Disabled by default
 std::atomic<bool> s_reflex_enable{false};
 std::atomic<bool> s_reflex_enable_current_frame{false};
 std::atomic<bool> s_reflex_low_latency{false};

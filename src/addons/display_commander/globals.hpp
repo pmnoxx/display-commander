@@ -641,6 +641,9 @@ extern std::atomic<HANDLE> g_gpu_completion_event;  // Event handle for GPU comp
 extern std::atomic<LONGLONG> g_gpu_completion_time_ns;  // Last measured GPU completion time
 extern std::atomic<LONGLONG> g_gpu_duration_ns;  // Last measured GPU duration (smoothed)
 
+// GPU completion failure tracking
+extern std::atomic<const char*> g_gpu_fence_failure_reason;  // Reason why GPU fence creation/usage failed (nullptr if no failure)
+
 // Sim-start-to-display latency measurement
 extern std::atomic<LONGLONG> g_sim_start_ns_for_measurement;  // g_sim_start_ns captured when EnqueueGPUCompletion is called
 extern std::atomic<bool> g_present_update_after2_called;  // Tracks if OnPresentUpdateAfter2 was called

@@ -41,6 +41,7 @@ namespace {
         std::atomic<uint64_t> fence_value{0};
         std::atomic<bool> initialized{false};
         std::atomic<bool> is_d3d12{false};
+        std::atomic<bool> initialization_attempted{false};
 
         ~GPUMeasurementState() {
             if (event_handle != nullptr) {
@@ -55,37 +56,49 @@ namespace {
     // Helper function to enqueue GPU completion measurement for D3D11
     void EnqueueGPUCompletionD3D11(IDXGISwapChain* swapchain) {
         if (settings::g_mainTabSettings.gpu_measurement_enabled.GetValue() == 0) {
+            g_gpu_fence_failure_reason.store("GPU measurement disabled");
             return;
         }
 
         Microsoft::WRL::ComPtr<ID3D11Device> device;
-        if (FAILED(swapchain->GetDevice(IID_PPV_ARGS(&device)))) {
+        HRESULT hr = swapchain->GetDevice(IID_PPV_ARGS(&device));
+        if (FAILED(hr)) {
+            g_gpu_fence_failure_reason.store("D3D11: Failed to get device from swapchain");
             return;
         }
 
         // Try to get ID3D11Device5 for fence support
         Microsoft::WRL::ComPtr<ID3D11Device5> device5;
-        if (FAILED(device.As(&device5))) {
+        hr = device.As(&device5);
+        if (FAILED(hr)) {
+            g_gpu_fence_failure_reason.store("D3D11: ID3D11Device5 not supported (requires D3D11.3+ / Windows 10+)");
             return; // Fences require D3D11.3+ (Windows 10+)
         }
 
         // Initialize fence on first use
-        if (!g_gpu_state.initialized.load()) {
-            if (FAILED(device5->CreateFence(0, D3D11_FENCE_FLAG_NONE, IID_PPV_ARGS(&g_gpu_state.d3d11_fence)))) {
+        if (!g_gpu_state.initialized.load() && !g_gpu_state.initialization_attempted.load()) {
+            g_gpu_state.initialization_attempted.store(true);
+
+            hr = device5->CreateFence(0, D3D11_FENCE_FLAG_NONE, IID_PPV_ARGS(&g_gpu_state.d3d11_fence));
+            if (FAILED(hr)) {
+                g_gpu_fence_failure_reason.store("D3D11: CreateFence failed (driver may not support fences)");
                 return;
             }
 
             g_gpu_state.event_handle = CreateEventW(nullptr, FALSE, FALSE, nullptr);
             if (g_gpu_state.event_handle == nullptr) {
                 g_gpu_state.d3d11_fence.Reset();
+                g_gpu_fence_failure_reason.store("D3D11: Failed to create event handle");
                 return;
             }
 
             g_gpu_state.is_d3d12.store(false);
             g_gpu_state.initialized.store(true);
+          //  g_gpu_fence_failure_reason.store("success!!!"); // Clear failure reason on success
         }
 
         if (!static_cast<bool>(g_gpu_state.d3d11_fence)) {
+            g_gpu_fence_failure_reason.store("D3D11: Fence not initialized");
             return;
         }
 
@@ -94,20 +107,31 @@ namespace {
         device->GetImmediateContext(&context);
 
         Microsoft::WRL::ComPtr<ID3D11DeviceContext4> context4;
-        if (FAILED(context.As(&context4))) {
+        hr = context.As(&context4);
+        if (FAILED(hr)) {
+            g_gpu_fence_failure_reason.store("D3D11: ID3D11DeviceContext4 not supported (requires D3D11.3+)");
             return;
         }
 
         uint64_t signal_value = g_gpu_state.fence_value.fetch_add(1) + 1;
 
         // Signal the fence from GPU
-        if (SUCCEEDED(context4->Signal(g_gpu_state.d3d11_fence.Get(), signal_value))) {
-            // Set event to trigger when fence reaches this value
-            if (SUCCEEDED(g_gpu_state.d3d11_fence->SetEventOnCompletion(signal_value, g_gpu_state.event_handle))) {
-                // Store the event handle for external threads to wait on
-                g_gpu_completion_event.store(g_gpu_state.event_handle);
-            }
+        hr = context4->Signal(g_gpu_state.d3d11_fence.Get(), signal_value);
+        if (FAILED(hr)) {
+            g_gpu_fence_failure_reason.store("D3D11: Failed to signal fence");
+            return;
         }
+
+        // Set event to trigger when fence reaches this value
+        hr = g_gpu_state.d3d11_fence->SetEventOnCompletion(signal_value, g_gpu_state.event_handle);
+        if (FAILED(hr)) {
+            g_gpu_fence_failure_reason.store("D3D11: SetEventOnCompletion failed");
+            return;
+        }
+
+        // Store the event handle for external threads to wait on
+        g_gpu_completion_event.store(g_gpu_state.event_handle);
+        g_gpu_fence_failure_reason.store(nullptr); // Clear failure reason on success
     }
 
     // Helper function to enqueue GPU completion measurement for D3D12
@@ -117,19 +141,26 @@ namespace {
         }
 
         Microsoft::WRL::ComPtr<ID3D12Device> device;
-        if (FAILED(swapchain->GetDevice(IID_PPV_ARGS(&device)))) {
+        HRESULT hr = swapchain->GetDevice(IID_PPV_ARGS(&device));
+        if (FAILED(hr)) {
+            g_gpu_fence_failure_reason.store("D3D12: Failed to get device from swapchain");
             return;
         }
 
         // Initialize fence on first use
-        if (!g_gpu_state.initialized.load()) {
-            if (FAILED(device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&g_gpu_state.d3d12_fence)))) {
+        if (!g_gpu_state.initialized.load() && !g_gpu_state.initialization_attempted.load()) {
+            g_gpu_state.initialization_attempted.store(true);
+
+            hr = device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&g_gpu_state.d3d12_fence));
+            if (FAILED(hr)) {
+                g_gpu_fence_failure_reason.store("D3D12: CreateFence failed");
                 return;
             }
 
             g_gpu_state.event_handle = CreateEventW(nullptr, FALSE, FALSE, nullptr);
             if (g_gpu_state.event_handle == nullptr) {
                 g_gpu_state.d3d12_fence.Reset();
+                g_gpu_fence_failure_reason.store("D3D12: Failed to create event handle");
                 return;
             }
 
@@ -138,6 +169,7 @@ namespace {
         }
 
         if (!static_cast<bool>(g_gpu_state.d3d12_fence)) {
+            g_gpu_fence_failure_reason.store("D3D12: Fence not initialized");
             return;
         }
 
@@ -148,22 +180,26 @@ namespace {
         uint64_t signal_value = g_gpu_state.fence_value.fetch_add(1) + 1;
 
         // Set event to trigger when fence reaches this value
-        if (SUCCEEDED(g_gpu_state.d3d12_fence->SetEventOnCompletion(signal_value, g_gpu_state.event_handle))) {
-            // Store the event handle for external threads to wait on
-            g_gpu_completion_event.store(g_gpu_state.event_handle);
-
-            // Note: For D3D12, the command queue signal needs to be called from the present queue
-            // This would require hooking the command queue or getting it during swapchain init
-            // For now, this sets up the infrastructure but won't signal without command queue access
+        hr = g_gpu_state.d3d12_fence->SetEventOnCompletion(signal_value, g_gpu_state.event_handle);
+        if (FAILED(hr)) {
+            g_gpu_fence_failure_reason.store("D3D12: SetEventOnCompletion failed");
+            return;
         }
+
+        // Store the event handle for external threads to wait on
+        g_gpu_completion_event.store(g_gpu_state.event_handle);
+
+        // Note: For D3D12, the command queue signal needs to be called from the present queue
+        // This would require hooking the command queue or getting it during swapchain init
+        g_gpu_fence_failure_reason.store("D3D12: Command queue access not implemented (cannot signal fence)");
     }
 
     // Helper function to enqueue GPU completion measurement (auto-detects API)
     void EnqueueGPUCompletionInternal(IDXGISwapChain* swapchain) {
         if (swapchain == nullptr) {
+            g_gpu_fence_failure_reason.store("Failed to get device from swapchain");
             return;
         }
-
         // Capture g_sim_start_ns for sim-to-display latency measurement
         // Reset tracking flags for this frame
         g_sim_start_ns_for_measurement.store(g_sim_start_ns.load());
@@ -171,17 +207,18 @@ namespace {
         g_gpu_completion_callback_finished.store(false);
 
         // Try D3D12 first
+
+        // Try D3D11
+        Microsoft::WRL::ComPtr<ID3D11Device> d3d11_device;
         Microsoft::WRL::ComPtr<ID3D12Device> d3d12_device;
         if (SUCCEEDED(swapchain->GetDevice(IID_PPV_ARGS(&d3d12_device)))) {
             EnqueueGPUCompletionD3D12(swapchain);
             return;
-        }
-
-        // Try D3D11
-        Microsoft::WRL::ComPtr<ID3D11Device> d3d11_device;
-        if (SUCCEEDED(swapchain->GetDevice(IID_PPV_ARGS(&d3d11_device)))) {
+        } else if (SUCCEEDED(swapchain->GetDevice(IID_PPV_ARGS(&d3d11_device)))) {
             EnqueueGPUCompletionD3D11(swapchain);
             return;
+        } else {
+            g_gpu_fence_failure_reason.store("Failed to get device from swapchain");
         }
     }
 } // namespace
@@ -189,12 +226,16 @@ namespace {
 // Public API wrapper that works with ReShade swapchain
 void EnqueueGPUCompletion(reshade::api::swapchain* swapchain) {
     if (swapchain == nullptr) {
+        g_gpu_fence_failure_reason.store("Failed to get swapchain from swapchain, swapchain is nullptr");
         return;
     }
 
     // Get native DXGI swapchain handle from ReShade swapchain
     IDXGISwapChain* dxgi_swapchain = reinterpret_cast<IDXGISwapChain*>(swapchain->get_native());
     if (dxgi_swapchain == nullptr) {
+
+        g_gpu_fence_failure_reason.store("Failed to get IDXGISwapChain device from swapchain");
+
         return;
     }
 

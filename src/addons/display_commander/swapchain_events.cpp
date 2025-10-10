@@ -381,8 +381,61 @@ bool OnCreateSwapchainCapture(reshade::api::device_api api, reshade::api::swapch
 
     // Initialize if not already done
     DoInitializationWithHwnd(static_cast<HWND>(hwnd));
-    if (api != reshade::api::device_api::d3d12 && api != reshade::api::device_api::d3d11 && api != reshade::api::device_api::d3d10) {
-        LogWarn("OnCreateSwapchainCapture: Not a D3D12, D3D11, or D3D10 device");
+
+    // Check if this is a supported API (D3D9, D3D10, D3D11, D3D12)
+    const bool is_d3d9 = (api == reshade::api::device_api::d3d9);
+    const bool is_dxgi = (api == reshade::api::device_api::d3d12 || api == reshade::api::device_api::d3d11 || api == reshade::api::device_api::d3d10);
+
+    // D3D9 FLIPEX upgrade logic (only for D3D9)
+    if (is_d3d9) {
+        if (!settings::g_experimentalTabSettings.d3d9_flipex_enabled.GetValue()) {
+            return false;
+        }
+        // D3DSWAPEFFECT_FLIPEX = 5
+        constexpr uint32_t d3dswapeffect_flipex = 5;
+
+        // Check if we should apply FLIPEX
+        bool can_apply_flipex = true;
+        bool modified = false;
+        desc.fullscreen_state = false;
+
+        // FLIPEX requires full-screen mode
+        if (!desc.fullscreen_state) {
+            static int flipex_windowed_warning_count = 0;
+            if (flipex_windowed_warning_count < 3) {
+                LogWarn("D3D9 FLIPEX: Cannot apply FLIPEX - game is in windowed mode (requires full-screen)");
+                flipex_windowed_warning_count++;
+            }
+            can_apply_flipex = false;
+        }
+
+        // FLIPEX requires at least 2 back buffers
+        if (desc.back_buffer_count < 2) {
+            LogInfo("D3D9 FLIPEX: Increasing back buffer count from %u to 2 (required for FLIPEX)",
+                   desc.back_buffer_count);
+            desc.back_buffer_count = 2;
+            modified = true;
+        }
+
+        // Apply FLIPEX if all requirements are met
+        if (can_apply_flipex && desc.present_mode != d3dswapeffect_flipex) {
+            LogInfo("D3D9 FLIPEX: Upgrading swap effect from %u to FLIPEX (5)", desc.present_mode);
+            LogInfo("D3D9 FLIPEX: Full-screen: %s, Back buffers: %u",
+                   desc.fullscreen_state ? "YES" : "NO", desc.back_buffer_count);
+
+            desc.present_mode = d3dswapeffect_flipex;
+            modified = true;
+
+            static std::atomic<int> flipex_upgrade_count{0};
+            flipex_upgrade_count.fetch_add(1);
+            LogInfo("D3D9 FLIPEX: Successfully applied FLIPEX swap effect (upgrade count: %d)",
+                   flipex_upgrade_count.load());
+        }
+        return modified;
+    }
+
+    if (!is_dxgi) {
+        LogWarn("OnCreateSwapchainCapture: Not a supported device API");
         return false;
     }
 
@@ -394,11 +447,13 @@ bool OnCreateSwapchainCapture(reshade::api::device_api api, reshade::api::swapch
     uint32_t prev_sync_interval = UINT32_MAX;
     uint32_t prev_present_flags = desc.present_flags;
     uint32_t prev_back_buffer_count = desc.back_buffer_count;
+    uint32_t prev_present_mode = desc.present_mode;
     const bool is_flip =
         (desc.present_mode == DXGI_SWAP_EFFECT_FLIP_DISCARD || desc.present_mode == DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL);
 
+
     // Explicit VSYNC overrides take precedence over generic sync-interval
-    // dropdown
+    // dropdown (applies to all APIs)
     if (s_force_vsync_on.load()) {
         desc.sync_interval = 1; // VSYNC on
         modified = true;
@@ -406,16 +461,20 @@ bool OnCreateSwapchainCapture(reshade::api::device_api api, reshade::api::swapch
         desc.sync_interval = 0; // VSYNC off
         modified = true;
     }
-    if (s_prevent_tearing.load() && (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING) != 0) {
-        desc.present_flags &= ~DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
-        modified = true;
-    }
-    if (desc.back_buffer_count < 2) {
-        desc.back_buffer_count = 2;
-        modified = true;
+
+    // DXGI-specific settings (only for D3D10/11/12)
+    if (is_dxgi) {
+        if (s_prevent_tearing.load() && (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING) != 0) {
+            desc.present_flags &= ~DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
+            modified = true;
+        }
+        if (desc.back_buffer_count < 2) {
+            desc.back_buffer_count = 2;
+            modified = true;
+        }
     }
 
-    // Apply backbuffer format override if enabled
+    // Apply backbuffer format override if enabled (all APIs)
     if (settings::g_experimentalTabSettings.backbuffer_format_override_enabled.GetValue()) {
         reshade::api::format original_format = desc.back_buffer.texture.format;
         reshade::api::format target_format =
@@ -436,15 +495,16 @@ bool OnCreateSwapchainCapture(reshade::api::device_api api, reshade::api::swapch
     // Log sync interval and present flags with detailed explanation
     {
         std::ostringstream oss;
-        oss << " Swapchain Creation - Sync Interval: " << desc.sync_interval;
-        // desc.present_mode
-        oss << " Present Mode: " << desc.present_mode;
-        // desc.present_flags
-        oss << " Fullscreen State: " << desc.fullscreen_state;
-        // desc.back_buffer.texture.width
-        oss << " Sync Interval: " << prev_sync_interval << " -> " << desc.sync_interval;
+        oss << "Swapchain Creation - ";
+        oss << "API: " << (is_d3d9 ? "D3D9" : "DXGI") << ", ";
+        oss << "Sync Interval: " << desc.sync_interval << ", ";
+        oss << "Present Mode: " << prev_present_mode << " -> " << desc.present_mode << ", ";
+        oss << "Fullscreen: " << (desc.fullscreen_state ? "YES" : "NO") << ", ";
+        oss << "Back Buffers: " << prev_back_buffer_count << " -> " << desc.back_buffer_count;
 
-        oss << ", Present Flags: 0x" << std::hex << prev_present_flags << " -> " << std::hex << desc.present_flags;
+        if (is_dxgi) {
+            oss << ", Present Flags: 0x" << std::hex << prev_present_flags << " -> 0x" << desc.present_flags;
+        }
 
         oss << " BackBufferCount: " << prev_back_buffer_count << " -> " << desc.back_buffer_count;
 

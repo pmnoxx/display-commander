@@ -72,6 +72,7 @@ ExperimentalTabSettings::ExperimentalTabSettings()
         "Enabled"
     }, "Experimental")
     , dlss_indicator_enabled("DlssIndicatorEnabled", false, "Experimental")
+    , d3d9_flipex_enabled("D3D9FlipExEnabled", false, "Experimental")
 {
     // Initialize the all_settings_ vector
     all_settings_ = {
@@ -88,7 +89,8 @@ ExperimentalTabSettings::ExperimentalTabSettings()
         &time_get_time_hook, &get_system_time_hook,
         &get_system_time_as_file_time_hook, &get_system_time_precise_as_file_time_hook,
         &get_local_time_hook, &nt_query_system_time_hook,
-        &dlss_indicator_enabled
+        &dlss_indicator_enabled,
+        &d3d9_flipex_enabled
     };
 }
 

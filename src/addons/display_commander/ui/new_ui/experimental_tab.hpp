@@ -32,6 +32,9 @@ void DrawTimeSlowdownControls();
 // Draw DLSS indicator controls section
 void DrawDlssIndicatorControls();
 
+// Draw D3D9 FLIPEX controls section
+void DrawD3D9FlipExControls();
+
 // Cleanup function to stop background threads
 void CleanupExperimentalTab();
 

@@ -80,6 +80,9 @@ class ExperimentalTabSettings {
     // DLSS indicator settings
     BoolSetting dlss_indicator_enabled;
 
+    // D3D9 FLIPEX upgrade settings
+    BoolSetting d3d9_flipex_enabled;
+
   private:
     std::vector<SettingBase *> all_settings_;
 };

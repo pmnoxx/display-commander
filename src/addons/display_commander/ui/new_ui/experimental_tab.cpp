@@ -60,6 +60,10 @@ void DrawExperimentalTab() {
     ImGui::Text("Experimental Tab - Advanced Features");
     ImGui::Separator();
 
+    if (ImGui::CollapsingHeader("Direct3D 9 FLIPEX Upgrade", ImGuiTreeNodeFlags_None)) {
+        DrawD3D9FlipExControls();
+    }
+    ImGui::Spacing();
 
     if (ImGui::CollapsingHeader("Backbuffer Format Override", ImGuiTreeNodeFlags_None)) {
         // Draw backbuffer format override section
@@ -766,6 +770,83 @@ void DrawTimeSlowdownControls() {
     }
     if (ImGui::CollapsingHeader("DLSS Indicator Controls", ImGuiTreeNodeFlags_None)) {
         DrawDlssIndicatorControls();
+    }
+}
+
+void DrawD3D9FlipExControls() {
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::Spacing();
+
+    ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== Direct3D 9 FLIPEX Upgrade ===");
+    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f),
+                       "⚠ EXPERIMENTAL FEATURE - Upgrades D3D9 games to use FLIPEX swap effect!");
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("This feature upgrades Direct3D 9 games to use the D3DSWAPEFFECT_FLIPEX swap effect.\n"
+                         "FLIPEX leverages the Desktop Window Manager (DWM) for better performance on Windows Vista+.\n"
+                         "Requirements:\n"
+                         "  - Direct3D 9Ex support (Windows Vista or later)\n"
+                         "  - Full-screen mode (not windowed)\n"
+                         "  - At least 2 back buffers\n"
+                         "  - Driver support for FLIPEX\n"
+                         "\n"
+                         "Benefits:\n"
+                         "  - Reduced input latency\n"
+                         "  - Better frame pacing\n"
+                         "  - Improved performance in full-screen mode\n"
+                         "\n"
+                         "Note: Not all games and drivers support FLIPEX. If device creation fails,\n"
+                         "disable this feature.");
+    }
+
+    ImGui::Spacing();
+
+    // Enable/disable checkbox
+    if (CheckboxSetting(settings::g_experimentalTabSettings.d3d9_flipex_enabled, "Enable D3D9 FLIPEX Upgrade")) {
+        LogInfo("D3D9 FLIPEX upgrade %s",
+                settings::g_experimentalTabSettings.d3d9_flipex_enabled.GetValue() ? "enabled" : "disabled");
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Enable automatic upgrade of D3D9 games to use FLIPEX swap effect for better performance.\n"
+                         "This feature requires the game to run in full-screen mode and support D3D9Ex.");
+    }
+
+    ImGui::Spacing();
+
+    // Display current D3D9 state if applicable
+    int current_api = g_last_swapchain_api.load();
+    uint32_t api_version = g_last_api_version.load();
+
+    if (current_api == static_cast<int>(reshade::api::device_api::d3d9)) {
+        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Current Game API:");
+        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "  Direct3D 9");
+
+        if (api_version == 0x9100) {
+            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "  API Version: Direct3D 9Ex (FLIPEX compatible)");
+        } else if (api_version == 0x9000) {
+            ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "  API Version: Direct3D 9 (Needs D3D9Ex upgrade)");
+        } else {
+            ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  API Version: 0x%x", api_version);
+        }
+    } else {
+        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Current game is not using Direct3D 9");
+    }
+
+    ImGui::Spacing();
+
+    // Information
+    ImGui::TextColored(ImVec4(0.6f, 0.8f, 1.0f, 1.0f), "How it works:");
+    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "1. Enable the feature above");
+    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "2. Restart the game");
+    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "3. The addon will upgrade D3D9 to D3D9Ex if needed");
+    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "4. The addon will modify swap effect to FLIPEX");
+    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "5. Check the log file for upgrade status");
+
+    ImGui::Spacing();
+    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "⚠ WARNING: If the game fails to start, disable this feature!");
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Some games and drivers don't support FLIPEX.\n"
+                         "If you experience crashes or black screens, disable this feature.");
     }
 }
 

@@ -112,7 +112,7 @@ void QueryDxgiCompositionState(IDXGISwapChain *dxgi_swapchain);
 // ============================================================================
 
 // Record per-frame FPS sample for background aggregation
-void RecordFrameTime(FrameTimeMode reason = FrameTimeMode::Present);
+void RecordFrameTime(FrameTimeMode reason = FrameTimeMode::kPresent);
 
 // ============================================================================
 // TIMING VARIABLES

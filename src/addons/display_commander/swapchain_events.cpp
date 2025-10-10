@@ -558,6 +558,9 @@ void OnPresentUpdateAfter2() {
 
             g_sim_to_display_latency_ns.store(smoothed_latency);
 
+            // Record frame time for Display Timing mode (Present finished second, this is actual display time)
+            RecordFrameTime(FrameTimeMode::kDisplayTiming);
+
             // Calculate GPU late time - in this case, GPU finished first, so late time is 0
             g_gpu_late_time_ns.store(0);
         }
@@ -610,7 +613,7 @@ void OnPresentUpdateAfter2() {
     auto end_ns = TimerPresentPacingDelayEnd(start_ns);
     HandleOnPresentEnd();
 
-    RecordFrameTime(FrameTimeMode::FrameBegin);
+    RecordFrameTime(FrameTimeMode::kFrameBegin);
 }
 
 void flush_command_queue() {

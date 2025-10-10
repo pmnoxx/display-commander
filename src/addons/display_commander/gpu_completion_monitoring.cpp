@@ -2,6 +2,7 @@
 #include "globals.hpp"
 #include "utils.hpp"
 #include "utils/timing.hpp"
+#include "swapchain_events.hpp"
 
 #include <atomic>
 #include <chrono>
@@ -72,6 +73,9 @@ void GPUCompletionMonitoringThread() {
                     LONGLONG smoothed_latency = UpdateRollingAverage(latency_new_ns, old_latency);
 
                     g_sim_to_display_latency_ns.store(smoothed_latency);
+
+                    // Record frame time for Display Timing mode (GPU finished second, this is actual display time)
+                    RecordFrameTime(FrameTimeMode::kDisplayTiming);
 
                     // Calculate GPU late time (GPU finished after Present)
                     LONGLONG present_time = g_present_update_after2_time_ns.load();

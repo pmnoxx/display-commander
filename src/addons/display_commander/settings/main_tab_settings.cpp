@@ -24,7 +24,7 @@ std::atomic<bool> s_block_input_without_reshade{false};
 std::atomic<bool> s_no_render_in_background{false};
 std::atomic<bool> s_no_present_in_background{false};
 std::atomic<ScreensaverMode> s_screensaver_mode{ScreensaverMode::kDefault};
-std::atomic<FrameTimeMode> s_frame_time_mode{FrameTimeMode::Present};
+std::atomic<FrameTimeMode> s_frame_time_mode{FrameTimeMode::kPresent};
 
 namespace settings {
 
@@ -64,8 +64,8 @@ MainTabSettings::MainTabSettings()
       adhd_multi_monitor_enabled("adhd_multi_monitor_enabled", false, "DisplayCommander"),
       screensaver_mode("screensaver_mode", s_screensaver_mode, static_cast<int>(ScreensaverMode::kDefault),
                        {"Default (no change)", "Disable when Focused", "Disable"}, "DisplayCommander"),
-      frame_time_mode("frame_time_mode", s_frame_time_mode, static_cast<int>(FrameTimeMode::Present),
-                      {"Present-Present", "Frame Begin-Frame Begin"}, "DisplayCommander") {
+      frame_time_mode("frame_time_mode", s_frame_time_mode, static_cast<int>(FrameTimeMode::kPresent),
+                      {"Frame Present Time", "Frame Start Time (input)", "Frame Display Time later (Present or GPU Completion whichever comes later)"}, "DisplayCommander") {
 
     // Initialize the all_settings_ vector
     all_settings_ = {

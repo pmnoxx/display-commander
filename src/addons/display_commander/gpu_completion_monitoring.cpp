@@ -37,6 +37,12 @@ void GPUCompletionMonitoringThread() {
         // Use 100ms timeout to allow responsive shutdown when thread is stopped
         DWORD result = WaitForSingleObject(event, 100);
 
+        static int count = 0;
+        count++;
+        if (count < 3) {
+            LogDebug("[GPU Completion Monitoring] GPU completion monitoring thread: %d", count);
+        }
+
         if (result == WAIT_OBJECT_0) {
             // GPU work completed - capture the exact completion time
             LONGLONG gpu_completion_time = utils::get_now_ns();

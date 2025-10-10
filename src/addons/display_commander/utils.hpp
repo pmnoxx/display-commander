@@ -53,6 +53,12 @@ SHORT FloatToShort(float value);
 // DLL version information
 std::string GetDLLVersionString(const std::wstring& dllPath);
 
+// Forward declaration for ReShade API types
+namespace reshade { namespace api { enum class device_api; } }
+
+// Graphics API version string conversion
+const char* GetDeviceApiString(reshade::api::device_api api);
+
 // Rolling average (exponential moving average) calculation
 // Formula: (new_value + (alpha - 1) * old_value) / alpha
 // Default alpha=64 provides good smoothing for frame timing metrics

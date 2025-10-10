@@ -9,6 +9,7 @@
 #include "../../widgets/resolution_widget/resolution_widget.hpp"
 #include "../../res/forkawesome.h"
 #include "../../res/ui_colors.hpp"
+#include "../../utils.hpp"
 #include "globals.hpp"
 #include "utils/timing.hpp"
 #include "version.hpp"
@@ -16,6 +17,7 @@
 #include <imgui.h>
 #include <minwindef.h>
 #include <shellapi.h>
+#include <reshade.hpp>
 
 #include <algorithm>
 #include <atomic>
@@ -172,6 +174,14 @@ void DrawMainNewTab() {
    // if (ImGui::CollapsingHeader("Display Commander", ImGuiTreeNodeFlags_DefaultOpen))
    {
         ImGui::TextColored(ui::colors::TEXT_DEFAULT, "Version: %s | Build: %s %s", DISPLAY_COMMANDER_VERSION_STRING, DISPLAY_COMMANDER_BUILD_DATE, DISPLAY_COMMANDER_BUILD_TIME);
+
+        // Display current graphics API
+        int api_value = g_last_swapchain_api.load();
+        if (api_value != 0) {
+            reshade::api::device_api api = static_cast<reshade::api::device_api>(api_value);
+            ImGui::SameLine();
+            ImGui::TextColored(ui::colors::TEXT_LABEL, "| Graphics API: %s", GetDeviceApiString(api));
+        }
 
         // Ko-fi support button
         ImGui::Spacing();

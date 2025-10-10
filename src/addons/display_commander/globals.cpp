@@ -260,7 +260,7 @@ std::atomic<LONGLONG> late_amount_ns{0};
 std::atomic<HANDLE> g_gpu_completion_event{nullptr};  // Event handle for GPU completion measurement
 std::atomic<LONGLONG> g_gpu_completion_time_ns{0};  // Last measured GPU completion time
 std::atomic<LONGLONG> g_gpu_duration_ns{0};  // Last measured GPU duration (smoothed)
-std::atomic<bool> g_gpu_measurement_enabled{true};  // Whether GPU measurement is enabled (enabled by default)
+std::atomic<bool> g_gpu_measurement_enabled{false};  // Whether GPU measurement is enabled (enabled by default)
 
 // Sim-start-to-display latency measurement
 std::atomic<LONGLONG> g_sim_start_ns_for_measurement{0};  // g_sim_start_ns captured when EnqueueGPUCompletion is called

@@ -6,6 +6,7 @@
 #include <vector>
 #include <cstdio>
 #include <string>
+#include <reshade.hpp>
 
 // Constant definitions
 const int WIDTH_OPTIONS[] = {0, 1280, 1366, 1600, 1920, 2560, 3440, 3840}; // 0 = current monitor width
@@ -230,4 +231,24 @@ std::string GetDLLVersionString(const std::wstring& dllPath) {
     snprintf(versionStr, sizeof(versionStr), "%lu.%lu.%lu.%lu", major, minor, build, revision);
 
     return std::string(versionStr);
+}
+
+// Convert device API enum to readable string
+const char* GetDeviceApiString(reshade::api::device_api api) {
+    switch (api) {
+        case reshade::api::device_api::d3d9:
+            return "Direct3D 9";
+        case reshade::api::device_api::d3d10:
+            return "Direct3D 10";
+        case reshade::api::device_api::d3d11:
+            return "Direct3D 11";
+        case reshade::api::device_api::d3d12:
+            return "Direct3D 12";
+        case reshade::api::device_api::opengl:
+            return "OpenGL";
+        case reshade::api::device_api::vulkan:
+            return "Vulkan";
+        default:
+            return "Unknown";
+    }
 }

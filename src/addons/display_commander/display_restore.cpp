@@ -172,6 +172,11 @@ void RestoreAll() {
 void RestoreAllIfEnabled() {
     if (!::s_auto_restore_resolution_on_close)
         return;
+    // Only restore if resolution was successfully applied at least once
+    if (!::s_resolution_applied_at_least_once.load()) {
+        LogInfo("RestoreAllIfEnabled: Skipping restore because resolution was never applied");
+        return;
+    }
     RestoreAll();
 }
 

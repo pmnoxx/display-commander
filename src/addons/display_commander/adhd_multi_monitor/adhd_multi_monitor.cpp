@@ -1,6 +1,7 @@
 #include "adhd_multi_monitor.hpp"
 #include "../globals.hpp"
 #include "../utils.hpp"
+#include "../hooks/api_hooks.hpp"
 #include <algorithm>
 #include <dwmapi.h>
 
@@ -258,16 +259,15 @@ void AdhdMultiMonitorManager::UpdateMonitorInfo() {
 }
 
 HWND AdhdMultiMonitorManager::GetOriginalForegroundWindow() {
-    // Get the original GetForegroundWindow function
-    static HMODULE user32 = GetModuleHandleW(L"user32.dll");
-    if (!user32)
-        return nullptr;
+    // Use the original function pointer from MinHook if available
+    // This is the correct way to bypass our hook - GetProcAddress won't work because
+    // MinHook has already modified the function entry point
+    if (display_commanderhooks::GetForegroundWindow_Original) {
+        return display_commanderhooks::GetForegroundWindow_Original();
+    }
 
-    static auto originalGetForegroundWindow = (HWND(WINAPI *)(void))GetProcAddress(user32, "GetForegroundWindow");
-    if (!originalGetForegroundWindow)
-        return nullptr;
-
-    return originalGetForegroundWindow();
+    // Fallback to the regular function if hook isn't installed
+    return ::GetForegroundWindow();
 }
 
 LRESULT CALLBACK AdhdMultiMonitorManager::BackgroundWindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {

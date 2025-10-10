@@ -6,7 +6,6 @@
 #include "../../utils.hpp"
 #include "../../utils/reshade_global_config.hpp"
 #include "settings_wrapper.hpp"
-#include "../../display_cache.hpp"
 
 #include <atomic>
 #include <iomanip>
@@ -14,20 +13,6 @@
 #include <sstream>
 
 static std::atomic<bool> s_restart_needed_nvapi(false);
-
-// Helper function to check if VRR is supported on the current display
-bool CheckVRRSupport() {
-    auto displays = display_cache::g_displayCache.GetDisplays();
-    if (!displays) return false;
-
-    for (const auto& display : *displays) {
-        if (display->is_primary) {
-            return display->supports_vrr;
-        }
-    }
-    return false;
-}
-
 
 namespace ui::new_ui {
 
@@ -292,21 +277,6 @@ void DrawNvapiSettings() {
             s_reflex_enable.store(reflex_enable);
         }
 
-        // VRR warning for Reflex
-        if (reflex_enable) {
-            bool vrr_supported = CheckVRRSupport();
-
-            if (!vrr_supported) {
-                ImGui::SameLine();
-                ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f), ICON_FK_WARNING " VRR not supported");
-                if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip(
-                        "Variable Refresh Rate (VRR) is not supported on your display. "
-                        "Reflex works best with VRR-enabled displays for optimal latency reduction. "
-                        "Consider using a VRR-capable monitor (G-SYNC, FreeSync, etc.).");
-                }
-            }
-        }
         bool reflex_low_latency = settings::g_developerTabSettings.reflex_low_latency.GetValue();
         if (ImGui::Checkbox("Low Latency Mode", &reflex_low_latency)) {
             settings::g_developerTabSettings.reflex_low_latency.SetValue(reflex_low_latency);

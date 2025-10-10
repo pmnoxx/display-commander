@@ -35,6 +35,9 @@ class DeveloperTabSettings {
     BoolSettingRef nvapi_fix_hdr10_colorspace;
     BoolSettingRef hide_hdr_capabilities;
 
+    // D3D9 to D3D9Ex Upgrade
+    BoolSettingRef enable_d3d9_upgrade;
+
     // NVAPI Settings
     BoolSettingRef nvapi_fullscreen_prevention;
 

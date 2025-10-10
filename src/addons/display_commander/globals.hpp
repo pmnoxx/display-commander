@@ -348,6 +348,10 @@ extern std::atomic<bool> s_nvapi_fix_hdr10_colorspace;
 // Hide HDR capabilities from applications
 extern std::atomic<bool> s_hide_hdr_capabilities;
 
+// D3D9 to D3D9Ex upgrade
+extern std::atomic<bool> s_enable_d3d9_upgrade;
+extern std::atomic<bool> s_d3d9_upgrade_successful;
+
 // Window Management Settings
 extern std::atomic<WindowAlignment> s_window_alignment;  // Window alignment when repositioning is needed
 extern std::atomic<DxgiBypassMode> s_dxgi_composition_state;

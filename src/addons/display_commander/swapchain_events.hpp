@@ -24,6 +24,9 @@ enum class PresentApiType {
 bool OnBindPipeline(reshade::api::command_list *cmd_list, reshade::api::pipeline_stage stages,
                     reshade::api::pipeline pipeline);
 
+// Device lifecycle hooks
+bool OnCreateDevice(reshade::api::device_api api, uint32_t& api_version);
+
 // Swapchain lifecycle hooks
 void OnInitSwapchain(reshade::api::swapchain *swapchain, bool resize);
 bool OnCreateSwapchainCapture(reshade::api::device_api api, reshade::api::swapchain_desc &desc, void *hwnd);

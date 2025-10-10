@@ -81,6 +81,10 @@ std::atomic<bool> s_nvapi_fix_hdr10_colorspace{false};
 // Hide HDR capabilities from applications
 std::atomic<bool> s_hide_hdr_capabilities{false};
 
+// D3D9 to D3D9Ex upgrade
+std::atomic<bool> s_enable_d3d9_upgrade{true}; // Enabled by default
+std::atomic<bool> s_d3d9_upgrade_successful{false}; // Track if upgrade was successful
+
 // ReShade runtime for input blocking
 std::atomic<reshade::api::effect_runtime *> g_reshade_runtime = nullptr;
 

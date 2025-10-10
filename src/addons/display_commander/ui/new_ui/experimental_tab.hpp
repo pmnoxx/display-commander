@@ -35,6 +35,9 @@ void DrawDlssIndicatorControls();
 // Draw D3D9 FLIPEX controls section
 void DrawD3D9FlipExControls();
 
+// Draw developer tools section
+void DrawDeveloperTools();
+
 // Cleanup function to stop background threads
 void CleanupExperimentalTab();
 

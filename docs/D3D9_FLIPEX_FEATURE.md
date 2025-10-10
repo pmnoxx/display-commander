@@ -27,7 +27,7 @@ This feature enables automatic upgrade of Direct3D 9 games to use the `D3DSWAPEF
 
 #### 1. Settings (`src/addons/display_commander/settings/`)
 - **experimental_tab_settings.hpp**: Added `d3d9_flipex_enabled` BoolSetting
-- **experimental_tab_settings.cpp**: Initialized the new setting with default value `false`
+- **experimental_tab_settings.cpp**: Initialized the new setting with default value `true`
 
 #### 2. UI (`src/addons/display_commander/ui/new_ui/`)
 - **experimental_tab.hpp**: Added `DrawD3D9FlipExControls()` function declaration

@@ -351,6 +351,7 @@ extern std::atomic<bool> s_hide_hdr_capabilities;
 // D3D9 to D3D9Ex upgrade
 extern std::atomic<bool> s_enable_d3d9_upgrade;
 extern std::atomic<bool> s_d3d9_upgrade_successful;
+extern std::atomic<bool> g_used_flipex;
 
 // Window Management Settings
 extern std::atomic<WindowAlignment> s_window_alignment;  // Window alignment when repositioning is needed
@@ -485,6 +486,9 @@ void UpdateHdr10OverrideStatus(const std::string& status);
 
 // Helper function for updating HDR10 override timestamp atomically
 void UpdateHdr10OverrideTimestamp(const std::string& timestamp);
+
+// Helper function to get flip state based on API type
+DxgiBypassMode GetFlipStateForAPI(int api);
 
 // Keyboard Shortcut Settings (Experimental)
 extern std::atomic<bool> s_enable_mute_unmute_shortcut;

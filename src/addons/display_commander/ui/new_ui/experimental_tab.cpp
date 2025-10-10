@@ -169,6 +169,12 @@ void DrawExperimentalTab() {
     if (ImGui::CollapsingHeader("Time Slowdown Controls", ImGuiTreeNodeFlags_None)) {
         DrawTimeSlowdownControls();
     }
+    ImGui::Spacing();
+
+    // Draw developer tools
+    if (ImGui::CollapsingHeader("Developer Tools", ImGuiTreeNodeFlags_None)) {
+        DrawDeveloperTools();
+    }
 
 }
 
@@ -828,6 +834,14 @@ void DrawD3D9FlipExControls() {
         } else {
             ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  API Version: 0x%x", api_version);
         }
+
+        // Display current FlipEx state
+        bool using_flipex = g_used_flipex.load();
+        if (using_flipex) {
+            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "  Swap Effect: FLIPEX (Fast Flip)");
+        } else {
+            ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "  Swap Effect: Composite (Standard)");
+        }
     } else {
         ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Current game is not using Direct3D 9");
     }
@@ -968,6 +982,29 @@ void DrawDlssIndicatorControls() {
         ImGui::SetTooltip("The registry modification requires administrator privileges.\n"
                          "Windows will prompt for elevation when executing .reg files.");
     }
+}
+
+void DrawDeveloperTools() {
+    ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== Developer Tools ===");
+    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "⚠ EXPERIMENTAL FEATURE - For debugging purposes only!");
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("These tools are for developers and debugging purposes.\nUse with caution as they can cause crashes or unexpected behavior.");
+    }
+
+    ImGui::Spacing();
+
+    // Debugger Trigger Button
+    if (ImGui::Button("Trigger Debugger Break")) {
+        LogInfo("Debugger break triggered by user");
+        __debugbreak();
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Triggers a debugger breakpoint. Useful for attaching a debugger at a specific moment.\nWARNING: Will crash if no debugger is attached!");
+    }
+
+    ImGui::Spacing();
+    ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Note: This button will trigger a debugger breakpoint when clicked.");
+    ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Make sure you have a debugger attached before using this feature.");
 }
 
 } // namespace ui::new_ui

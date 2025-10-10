@@ -747,7 +747,10 @@ void DrawDLSSGSummary() {
 void DrawDxgiCompositionInfo() {
     if (ImGui::CollapsingHeader("DXGI Composition Information", ImGuiTreeNodeFlags_DefaultOpen)) {
         const char* mode_str = "Unknown";
-        switch (s_dxgi_composition_state.load()) {
+        int current_api = g_last_swapchain_api.load();
+        DxgiBypassMode flip_state = GetFlipStateForAPI(current_api);
+
+        switch (flip_state) {
             case DxgiBypassMode::kComposed:      mode_str = "Composed Flip"; break;
             case DxgiBypassMode::kOverlay:       mode_str = "Modern Independent Flip"; break;
             case DxgiBypassMode::kIndependentFlip: mode_str = "Legacy Independent Flip"; break;

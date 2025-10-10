@@ -146,6 +146,44 @@ void DrawHdrDisplaySettings() {
         ImGui::SetTooltip("Hides HDR capabilities from applications by intercepting CheckColorSpaceSupport and GetDesc calls.\n"
                          "This can prevent games from detecting HDR support and force them to use SDR mode.");
     }
+
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::Spacing();
+
+    // D3D9 to D3D9Ex Upgrade
+    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Direct3D 9 Settings");
+
+    if (CheckboxSetting(settings::g_developerTabSettings.enable_d3d9_upgrade,
+                        "Enable D3D9 to D3D9Ex Upgrade")) {
+        s_enable_d3d9_upgrade.store(settings::g_developerTabSettings.enable_d3d9_upgrade.GetValue());
+        LogInfo("D3D9 to D3D9Ex upgrade setting changed to: %s",
+                settings::g_developerTabSettings.enable_d3d9_upgrade.GetValue() ? "enabled" : "disabled");
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Automatically upgrades Direct3D 9 to Direct3D 9Ex for improved performance and features.\n"
+                         "D3D9Ex provides better memory management, flip model presentation, and reduced latency.\n"
+                         "This feature is enabled by default and works transparently with D3D9 games.");
+    }
+
+    // Show upgrade status
+    if (s_d3d9_upgrade_successful.load()) {
+        ImGui::Indent();
+        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✓ D3D9 upgraded to D3D9Ex successfully");
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Direct3D 9 was successfully upgraded to Direct3D 9Ex.\n"
+                             "Your game is now using the enhanced D3D9Ex API.");
+        }
+        ImGui::Unindent();
+    } else if (settings::g_developerTabSettings.enable_d3d9_upgrade.GetValue()) {
+        ImGui::Indent();
+        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Waiting for D3D9 device creation...");
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("The upgrade will occur when the game creates a Direct3D 9 device.\n"
+                             "If the game is not using D3D9, this setting has no effect.");
+        }
+        ImGui::Unindent();
+    }
 }
 
 void DrawNvapiSettings() {

@@ -179,7 +179,7 @@ void DrawHdrDisplaySettings() {
     // Show upgrade status
     if (s_d3d9_upgrade_successful.load()) {
         ImGui::Indent();
-        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✓ D3D9 upgraded to D3D9Ex successfully");
+        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), ICON_FK_OK " D3D9 upgraded to D3D9Ex successfully");
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Direct3D 9 was successfully upgraded to Direct3D 9Ex.\n"
                              "Your game is now using the enhanced D3D9Ex API.");
@@ -249,14 +249,14 @@ void DrawNvapiSettings() {
         // Native Reflex Status Indicator
         bool is_native_reflex_active = g_swapchain_event_counters[SWAPCHAIN_EVENT_NVAPI_D3D_SET_SLEEP_MODE].load() > 0;
         if (is_native_reflex_active) {
-            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✓ Native Reflex: ACTIVE");
+            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), ICON_FK_OK " Native Reflex: ACTIVE");
             if (ImGui::IsItemHovered()) {
                 ImGui::SetTooltip(
                     "The game has native Reflex support and is actively using it. "
                     "Do not enable addon Reflex features to avoid conflicts.");
             }
         } else {
-            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "○ Native Reflex: INACTIVE");
+            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), ICON_FK_MINUS " Native Reflex: INACTIVE");
             if (ImGui::IsItemHovered()) {
                 ImGui::SetTooltip(
                     "No native Reflex activity detected. "
@@ -483,11 +483,11 @@ void DrawReShadeGlobalConfigSettings() {
 
     if (ImGui::Button("Reload Current Settings")) {
         if (utils::ReadCurrentReShadeSettings(currentSettings)) {
-            statusMessage = "✓ Reloaded current game settings";
+            statusMessage = ICON_FK_OK " Reloaded current game settings";
             statusColor = ImVec4(0.4f, 1.0f, 0.4f, 1.0f);
             LogInfo("Reloaded current ReShade settings");
         } else {
-            statusMessage = "✗ Failed to reload current settings";
+            statusMessage = ICON_FK_CANCEL " Failed to reload current settings";
             statusColor = ImVec4(1.0f, 0.4f, 0.4f, 1.0f);
             LogInfo("Failed to reload current settings");
         }
@@ -500,11 +500,11 @@ void DrawReShadeGlobalConfigSettings() {
 
     if (ImGui::Button("Reload Global Settings")) {
         if (utils::LoadGlobalSettings(globalSettings)) {
-            statusMessage = "✓ Reloaded global profile";
+            statusMessage = ICON_FK_OK " Reloaded global profile";
             statusColor = ImVec4(0.4f, 1.0f, 0.4f, 1.0f);
             LogInfo("Reloaded global settings from DisplayCommander.ini");
         } else {
-            statusMessage = "✗ Failed to reload global profile (file may not exist)";
+            statusMessage = ICON_FK_CANCEL " Failed to reload global profile (file may not exist)";
             statusColor = ImVec4(1.0f, 0.7f, 0.0f, 1.0f);
             LogInfo("Failed to reload global settings");
         }
@@ -699,14 +699,14 @@ void DrawReShadeGlobalConfigSettings() {
         utils::ReadCurrentReShadeSettings(currentSettings);
 
         if (utils::SaveGlobalSettings(currentSettings)) {
-            statusMessage = "✓ Copied current settings to global profile";
+            statusMessage = ICON_FK_OK " Copied current settings to global profile";
             statusColor = ImVec4(0.4f, 1.0f, 0.4f, 1.0f);
             LogInfo("Saved current settings to global profile");
 
             // Reload global settings to reflect changes
             utils::LoadGlobalSettings(globalSettings);
         } else {
-            statusMessage = "✗ Failed to save to global profile";
+            statusMessage = ICON_FK_CANCEL " Failed to save to global profile";
             statusColor = ImVec4(1.0f, 0.4f, 0.4f, 1.0f);
             LogInfo("Failed to save to global profile");
         }
@@ -722,19 +722,19 @@ void DrawReShadeGlobalConfigSettings() {
         // Refresh global settings before applying
         if (utils::LoadGlobalSettings(globalSettings)) {
             if (utils::WriteCurrentReShadeSettings(globalSettings)) {
-                statusMessage = "✓ Applied global profile to current game";
+                statusMessage = ICON_FK_OK " Applied global profile to current game";
                 statusColor = ImVec4(0.4f, 1.0f, 0.4f, 1.0f);
                 LogInfo("Applied global settings to current ReShade.ini");
 
                 // Reload current settings to reflect changes
                 utils::ReadCurrentReShadeSettings(currentSettings);
             } else {
-                statusMessage = "✗ Failed to apply global settings";
+                statusMessage = ICON_FK_CANCEL " Failed to apply global settings";
                 statusColor = ImVec4(1.0f, 0.4f, 0.4f, 1.0f);
                 LogInfo("Failed to apply global settings");
             }
         } else {
-            statusMessage = "✗ No global profile found (create one first)";
+            statusMessage = ICON_FK_CANCEL " No global profile found (create one first)";
             statusColor = ImVec4(1.0f, 0.7f, 0.0f, 1.0f);
             LogInfo("No global settings file found");
         }

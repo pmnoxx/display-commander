@@ -807,6 +807,14 @@ void OnPresentUpdateBefore(reshade::api::command_queue * command_queue, reshade:
         }
     }
 
+    // Record the native D3D9 device for Present detour filtering
+    if (swapchain != nullptr && swapchain->get_device()->get_api() == reshade::api::device_api::d3d9) {
+        IDirect3DDevice9* d3d9_device = reinterpret_cast<IDirect3DDevice9*>(swapchain->get_device()->get_native());
+        if (d3d9_device != nullptr) {
+            display_commanderhooks::d3d9::RecordPresentUpdateDevice(d3d9_device);
+        }
+    }
+
     HandleRenderStartAndEndTimes();
 
     HandleEndRenderSubmit();

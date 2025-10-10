@@ -19,7 +19,14 @@ namespace display_commanderhooks::d3d9 {
 IDirect3DDevice9_Present_pfn IDirect3DDevice9_Present_Original = nullptr;
 IDirect3DDevice9_PresentEx_pfn IDirect3DDevice9_PresentEx_Original = nullptr;
 
-// Hook state
+// Hook state and device tracking
+namespace {
+    std::atomic<bool> g_d3d9_present_hooks_installed_internal{false};
+
+    // Track the last D3D9 device used in OnPresentUpdateBefore
+    std::atomic<IDirect3DDevice9*> g_last_present_update_device{nullptr};
+} // namespace
+
 std::atomic<bool> g_d3d9_present_hooks_installed{false};
 
 // Hooked IDirect3DDevice9::Present function
@@ -30,6 +37,12 @@ HRESULT STDMETHODCALLTYPE IDirect3DDevice9_Present_Detour(
     HWND hDestWindowOverride,
     const RGNDATA *pDirtyRegion)
 {
+    // Skip if this is not the device used by OnPresentUpdateBefore
+    IDirect3DDevice9* expected_device = g_last_present_update_device.load();
+    if (expected_device != nullptr && This != expected_device) {
+        return IDirect3DDevice9_Present_Original(This, pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion);
+    }
+
     // Increment DX9 Present counter
     g_swapchain_event_counters[SWAPCHAIN_EVENT_DX9_PRESENT].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
@@ -63,6 +76,18 @@ HRESULT STDMETHODCALLTYPE IDirect3DDevice9_PresentEx_Detour(
     const RGNDATA *pDirtyRegion,
     DWORD dwFlags)
 {
+    // Skip if this is not the device used by OnPresentUpdateBefore
+    IDirect3DDevice9* expected_device = g_last_present_update_device.load();
+    if (expected_device != nullptr && This != expected_device) {
+        if (IDirect3DDevice9_PresentEx_Original != nullptr) {
+            return IDirect3DDevice9_PresentEx_Original(This, pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion, dwFlags);
+        }
+        if (auto *deviceEx = static_cast<IDirect3DDevice9Ex *>(This)) {
+            return deviceEx->PresentEx(pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion, dwFlags);
+        }
+        return D3DERR_INVALIDCALL;
+    }
+
     // Increment DX9 Present counter
     g_swapchain_event_counters[SWAPCHAIN_EVENT_DX9_PRESENT].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
@@ -156,6 +181,11 @@ void UnhookD3D9Present() {
 
     g_d3d9_present_hooks_installed.store(false);
     LogInfo("UnhookD3D9Present: hooks removed");
+}
+
+// Record the D3D9 device used in OnPresentUpdateBefore
+void RecordPresentUpdateDevice(IDirect3DDevice9 *device) {
+    g_last_present_update_device.store(device);
 }
 
 } // namespace display_commanderhooks::d3d9

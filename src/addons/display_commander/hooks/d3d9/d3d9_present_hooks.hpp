@@ -45,6 +45,9 @@ HRESULT STDMETHODCALLTYPE IDirect3DDevice9_PresentEx_Detour(
 bool HookD3D9Present(IDirect3DDevice9 *device);
 void UnhookD3D9Present();
 
+// Record the D3D9 device used in OnPresentUpdateBefore
+void RecordPresentUpdateDevice(IDirect3DDevice9 *device);
+
 // Hook state
 extern std::atomic<bool> g_d3d9_present_hooks_installed;
 

@@ -263,7 +263,12 @@ std::string GetDeviceApiVersionString(reshade::api::device_api api, uint32_t api
 
     switch (api) {
         case reshade::api::device_api::d3d9:
-            snprintf(buffer, sizeof(buffer), "Direct3D 9");
+            // Check if D3D9 was upgraded to D3D9Ex
+            if (s_d3d9_upgrade_successful.load()) {
+                snprintf(buffer, sizeof(buffer), "Direct3D 9Ex");
+            } else {
+                snprintf(buffer, sizeof(buffer), "Direct3D 9");
+            }
             break;
         case reshade::api::device_api::d3d10:
         case reshade::api::device_api::d3d11:

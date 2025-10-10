@@ -351,6 +351,7 @@ extern std::atomic<bool> s_hide_hdr_capabilities;
 // D3D9 to D3D9Ex upgrade
 extern std::atomic<bool> s_enable_d3d9_upgrade;
 extern std::atomic<bool> s_d3d9_upgrade_successful;
+extern std::atomic<bool> s_d3d9_upgrade_executed; // Track when upgrade was actually executed (api_version = 0x9100)
 extern std::atomic<bool> g_used_flipex;
 
 // Window Management Settings

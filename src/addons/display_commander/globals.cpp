@@ -84,6 +84,7 @@ std::atomic<bool> s_hide_hdr_capabilities{false};
 // D3D9 to D3D9Ex upgrade
 std::atomic<bool> s_enable_d3d9_upgrade{true}; // Enabled by default
 std::atomic<bool> s_d3d9_upgrade_successful{false}; // Track if upgrade was successful
+std::atomic<bool> s_d3d9_upgrade_executed{false}; // Track when upgrade was actually executed (api_version = 0x9100)
 std::atomic<bool> g_used_flipex{false}; // Track if FLIPEX is currently being used
 
 // ReShade runtime for input blocking

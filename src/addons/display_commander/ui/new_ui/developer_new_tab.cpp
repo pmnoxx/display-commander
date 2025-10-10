@@ -416,13 +416,24 @@ void DrawLatencyDisplay() {
 void DrawReShadeGlobalConfigSettings() {
     static utils::ReShadeGlobalSettings currentSettings;
     static utils::ReShadeGlobalSettings globalSettings;
-    static bool settingsLoaded = false;
-    static bool globalSettingsLoaded = false;
+    static bool initialLoadDone = false;
     static std::string statusMessage;
     static ImVec4 statusColor = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
 
-    ImGui::TextWrapped("Manage global ReShade settings (EffectSearchPaths and TextureSearchPaths).");
-    ImGui::TextWrapped("Save/load settings to/from DisplayCommander.ini in your user folder.");
+    // Auto-load settings on first run
+    if (!initialLoadDone) {
+        // Always load current settings
+        utils::ReadCurrentReShadeSettings(currentSettings);
+
+        // Try to load global settings (may not exist, which is fine)
+        utils::LoadGlobalSettings(globalSettings);
+
+        initialLoadDone = true;
+        LogInfo("Auto-loaded ReShade settings for comparison");
+    }
+
+    ImGui::TextWrapped("Manage global ReShade settings (EffectSearchPaths, TextureSearchPaths, keyboard shortcuts, etc.).");
+    ImGui::TextWrapped("Copy settings between current game and global profile.");
 
     ImGui::Spacing();
     ImGui::Separator();
@@ -431,114 +442,276 @@ void DrawReShadeGlobalConfigSettings() {
     // Display current ReShade.ini path info
     std::filesystem::path dcConfigPath = utils::GetDisplayCommanderConfigPath();
     std::string dcConfigPathStr = dcConfigPath.string();
-    ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "DisplayCommander.ini path:");
+    ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Global profile location:");
     ImGui::Indent();
     ImGui::TextWrapped("%s", dcConfigPathStr.c_str());
     ImGui::Unindent();
 
     ImGui::Spacing();
 
-    // Button row
-    if (ImGui::Button("Load Current Settings")) {
-        if (utils::ReadCurrentReShadeSettings(currentSettings)) {
-            settingsLoaded = true;
-            statusMessage = "Loaded current ReShade settings";
-            statusColor = ImVec4(0.4f, 1.0f, 0.4f, 1.0f); // Success green
+    // Reload buttons
+    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Refresh settings:");
 
-            size_t total_settings = 0;
-            for (const auto& [section, keys_values] : currentSettings.additional_settings) {
-                total_settings += keys_values.size();
-            }
-            LogInfo("Loaded current ReShade settings: %zu settings across %zu sections",
-                    total_settings, currentSettings.additional_settings.size());
+    if (ImGui::Button("Reload Current Settings")) {
+        if (utils::ReadCurrentReShadeSettings(currentSettings)) {
+            statusMessage = "✓ Reloaded current game settings";
+            statusColor = ImVec4(0.4f, 1.0f, 0.4f, 1.0f);
+            LogInfo("Reloaded current ReShade settings");
         } else {
-            statusMessage = "Failed to load current ReShade settings";
-            statusColor = ImVec4(1.0f, 0.4f, 0.4f, 1.0f); // Error red
-            LogInfo("Failed to load current ReShade settings");
+            statusMessage = "✗ Failed to reload current settings";
+            statusColor = ImVec4(1.0f, 0.4f, 0.4f, 1.0f);
+            LogInfo("Failed to reload current settings");
         }
     }
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Load the current settings from ReShade.ini");
+        ImGui::SetTooltip("Reload current game's settings from ReShade.ini\n(Useful if you edited ReShade.ini manually)");
     }
 
     ImGui::SameLine();
 
-    if (ImGui::Button("Load Global Settings")) {
+    if (ImGui::Button("Reload Global Settings")) {
         if (utils::LoadGlobalSettings(globalSettings)) {
-            globalSettingsLoaded = true;
-            statusMessage = "Loaded global settings from DisplayCommander.ini";
-            statusColor = ImVec4(0.4f, 1.0f, 0.4f, 1.0f); // Success green
-
-            size_t total_settings = 0;
-            for (const auto& [section, keys_values] : globalSettings.additional_settings) {
-                total_settings += keys_values.size();
-            }
-            LogInfo("Loaded global settings: %zu settings across %zu sections",
-                    total_settings, globalSettings.additional_settings.size());
+            statusMessage = "✓ Reloaded global profile";
+            statusColor = ImVec4(0.4f, 1.0f, 0.4f, 1.0f);
+            LogInfo("Reloaded global settings from DisplayCommander.ini");
         } else {
-            statusMessage = "Failed to load global settings (file may not exist)";
-            statusColor = ImVec4(1.0f, 0.7f, 0.0f, 1.0f); // Warning orange
-            LogInfo("Failed to load global settings from DisplayCommander.ini");
+            statusMessage = "✗ Failed to reload global profile (file may not exist)";
+            statusColor = ImVec4(1.0f, 0.7f, 0.0f, 1.0f);
+            LogInfo("Failed to reload global settings");
         }
     }
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Load the global settings from DisplayCommander.ini in your user folder");
+        ImGui::SetTooltip("Reload global profile from DisplayCommander.ini\n(Useful if you edited DisplayCommander.ini manually)");
+    }
+
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::Spacing();
+
+    // Preview current -> global
+    if (ImGui::CollapsingHeader("Preview: Current → Global", ImGuiTreeNodeFlags_None)) {
+        ImGui::TextWrapped("Shows what would change in the global profile if you copy current settings:");
+        ImGui::Spacing();
+
+        bool anyChanges = false;
+
+        // Go through all sections in both settings
+        std::set<std::string> allSections;
+        for (const auto& [section, _] : currentSettings.additional_settings) {
+            allSections.insert(section);
+        }
+        for (const auto& [section, _] : globalSettings.additional_settings) {
+            allSections.insert(section);
+        }
+
+        for (const auto& section : allSections) {
+            ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "[%s]", section.c_str());
+            ImGui::Indent();
+
+            auto currentSectionIt = currentSettings.additional_settings.find(section);
+            auto globalSectionIt = globalSettings.additional_settings.find(section);
+
+            // Get all keys in this section
+            std::set<std::string> allKeys;
+            if (currentSectionIt != currentSettings.additional_settings.end()) {
+                for (const auto& [key, _] : currentSectionIt->second) {
+                    allKeys.insert(key);
+                }
+            }
+            if (globalSectionIt != globalSettings.additional_settings.end()) {
+                for (const auto& [key, _] : globalSectionIt->second) {
+                    allKeys.insert(key);
+                }
+            }
+
+            bool sectionHasChanges = false;
+            for (const auto& key : allKeys) {
+                std::string currentValue;
+                std::string globalValue;
+
+                if (currentSectionIt != currentSettings.additional_settings.end()) {
+                    auto keyIt = currentSectionIt->second.find(key);
+                    if (keyIt != currentSectionIt->second.end()) {
+                        currentValue = keyIt->second;
+                    }
+                }
+
+                if (globalSectionIt != globalSettings.additional_settings.end()) {
+                    auto keyIt = globalSectionIt->second.find(key);
+                    if (keyIt != globalSectionIt->second.end()) {
+                        globalValue = keyIt->second;
+                    }
+                }
+
+                if (currentValue != globalValue) {
+                    sectionHasChanges = true;
+                    anyChanges = true;
+                    ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "%s:", key.c_str());
+                    ImGui::Indent();
+                    if (!globalValue.empty()) {
+                        ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "- %s", globalValue.c_str());
+                    }
+                    if (!currentValue.empty()) {
+                        ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "+ %s", currentValue.c_str());
+                    }
+                    ImGui::Unindent();
+                }
+            }
+
+            if (!sectionHasChanges) {
+                ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "No changes");
+            }
+
+            ImGui::Unindent();
+            ImGui::Spacing();
+        }
+
+        if (!anyChanges) {
+            ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "All settings are identical!");
+        }
     }
 
     ImGui::Spacing();
 
-    // Save buttons
-    if (ImGui::Button("Save to Global Profile")) {
-        if (!settingsLoaded) {
-            // Auto-load current settings if not loaded
-            utils::ReadCurrentReShadeSettings(currentSettings);
-            settingsLoaded = true;
+    // Preview global -> current
+    if (ImGui::CollapsingHeader("Preview: Global → Current", ImGuiTreeNodeFlags_None)) {
+        ImGui::TextWrapped("Shows what would change in current game settings if you apply global profile:");
+        ImGui::Spacing();
+
+        bool anyChanges = false;
+
+        // Go through all sections in both settings
+        std::set<std::string> allSections;
+        for (const auto& [section, _] : currentSettings.additional_settings) {
+            allSections.insert(section);
+        }
+        for (const auto& [section, _] : globalSettings.additional_settings) {
+            allSections.insert(section);
         }
 
+        for (const auto& section : allSections) {
+            ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "[%s]", section.c_str());
+            ImGui::Indent();
+
+            auto currentSectionIt = currentSettings.additional_settings.find(section);
+            auto globalSectionIt = globalSettings.additional_settings.find(section);
+
+            // Get all keys in this section
+            std::set<std::string> allKeys;
+            if (currentSectionIt != currentSettings.additional_settings.end()) {
+                for (const auto& [key, _] : currentSectionIt->second) {
+                    allKeys.insert(key);
+                }
+            }
+            if (globalSectionIt != globalSettings.additional_settings.end()) {
+                for (const auto& [key, _] : globalSectionIt->second) {
+                    allKeys.insert(key);
+                }
+            }
+
+            bool sectionHasChanges = false;
+            for (const auto& key : allKeys) {
+                std::string currentValue;
+                std::string globalValue;
+
+                if (currentSectionIt != currentSettings.additional_settings.end()) {
+                    auto keyIt = currentSectionIt->second.find(key);
+                    if (keyIt != currentSectionIt->second.end()) {
+                        currentValue = keyIt->second;
+                    }
+                }
+
+                if (globalSectionIt != globalSettings.additional_settings.end()) {
+                    auto keyIt = globalSectionIt->second.find(key);
+                    if (keyIt != globalSectionIt->second.end()) {
+                        globalValue = keyIt->second;
+                    }
+                }
+
+                if (currentValue != globalValue) {
+                    sectionHasChanges = true;
+                    anyChanges = true;
+                    ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "%s:", key.c_str());
+                    ImGui::Indent();
+                    if (!currentValue.empty()) {
+                        ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "- %s", currentValue.c_str());
+                    }
+                    if (!globalValue.empty()) {
+                        ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "+ %s", globalValue.c_str());
+                    }
+                    ImGui::Unindent();
+                }
+            }
+
+            if (!sectionHasChanges) {
+                ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "No changes");
+            }
+
+            ImGui::Unindent();
+            ImGui::Spacing();
+        }
+
+        if (!anyChanges) {
+            ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "All settings are identical!");
+        }
+    }
+
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::Spacing();
+
+    // Action buttons
+    ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.6f, 1.0f), "Actions:");
+    ImGui::Spacing();
+
+    // Apply current -> global
+    if (ImGui::Button("Apply: Current → Global")) {
+        // Refresh current settings before saving
+        utils::ReadCurrentReShadeSettings(currentSettings);
+
         if (utils::SaveGlobalSettings(currentSettings)) {
-            statusMessage = "Saved current settings to DisplayCommander.ini";
-            statusColor = ImVec4(0.4f, 1.0f, 0.4f, 1.0f); // Success green
-            LogInfo("Saved global settings to DisplayCommander.ini");
+            statusMessage = "✓ Copied current settings to global profile";
+            statusColor = ImVec4(0.4f, 1.0f, 0.4f, 1.0f);
+            LogInfo("Saved current settings to global profile");
+
+            // Reload global settings to reflect changes
+            utils::LoadGlobalSettings(globalSettings);
         } else {
-            statusMessage = "Failed to save global settings";
-            statusColor = ImVec4(1.0f, 0.4f, 0.4f, 1.0f); // Error red
-            LogInfo("Failed to save global settings to DisplayCommander.ini");
+            statusMessage = "✗ Failed to save to global profile";
+            statusColor = ImVec4(1.0f, 0.4f, 0.4f, 1.0f);
+            LogInfo("Failed to save to global profile");
         }
     }
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Save current ReShade settings to DisplayCommander.ini as global profile");
+        ImGui::SetTooltip("Copy current game's ReShade settings to global profile\n(Overwrites DisplayCommander.ini)");
     }
 
     ImGui::SameLine();
 
-    if (ImGui::Button("Apply Global Settings")) {
-        if (!globalSettingsLoaded) {
-            // Auto-load global settings if not loaded
-            if (utils::LoadGlobalSettings(globalSettings)) {
-                globalSettingsLoaded = true;
+    // Apply global -> current
+    if (ImGui::Button("Apply: Global → Current")) {
+        // Refresh global settings before applying
+        if (utils::LoadGlobalSettings(globalSettings)) {
+            if (utils::WriteCurrentReShadeSettings(globalSettings)) {
+                statusMessage = "✓ Applied global profile to current game";
+                statusColor = ImVec4(0.4f, 1.0f, 0.4f, 1.0f);
+                LogInfo("Applied global settings to current ReShade.ini");
+
+                // Reload current settings to reflect changes
+                utils::ReadCurrentReShadeSettings(currentSettings);
             } else {
-                statusMessage = "No global settings file found. Save settings first.";
-                statusColor = ImVec4(1.0f, 0.7f, 0.0f, 1.0f); // Warning orange
-                return;
+                statusMessage = "✗ Failed to apply global settings";
+                statusColor = ImVec4(1.0f, 0.4f, 0.4f, 1.0f);
+                LogInfo("Failed to apply global settings");
             }
-        }
-
-        if (utils::WriteCurrentReShadeSettings(globalSettings)) {
-            statusMessage = "Applied global settings to current ReShade.ini";
-            statusColor = ImVec4(0.4f, 1.0f, 0.4f, 1.0f); // Success green
-            LogInfo("Applied global settings to current ReShade.ini");
-
-            // Reload current settings to reflect changes
-            utils::ReadCurrentReShadeSettings(currentSettings);
-            settingsLoaded = true;
         } else {
-            statusMessage = "Failed to apply global settings";
-            statusColor = ImVec4(1.0f, 0.4f, 0.4f, 1.0f); // Error red
-            LogInfo("Failed to apply global settings to current ReShade.ini");
+            statusMessage = "✗ No global profile found (create one first)";
+            statusColor = ImVec4(1.0f, 0.7f, 0.0f, 1.0f);
+            LogInfo("No global settings file found");
         }
     }
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Apply global settings from DisplayCommander.ini to current ReShade.ini");
+        ImGui::SetTooltip("Apply global profile to current game's ReShade settings\n(Overwrites current game's ReShade.ini)");
     }
 
     // Status message
@@ -551,39 +724,39 @@ void DrawReShadeGlobalConfigSettings() {
     ImGui::Separator();
     ImGui::Spacing();
 
-    // Display current settings
-    if (settingsLoaded) {
-        if (ImGui::TreeNode("Current ReShade Settings")) {
-            for (const auto& [section, keys_values] : currentSettings.additional_settings) {
-                ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "[%s]", section.c_str());
-                if (keys_values.empty()) {
+    // View current settings
+    if (ImGui::TreeNode("View Current Game Settings")) {
+        for (const auto& [section, keys_values] : currentSettings.additional_settings) {
+            ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "[%s]", section.c_str());
+            if (keys_values.empty()) {
+                ImGui::Indent();
+                ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "(empty)");
+                ImGui::Unindent();
+            } else {
+                for (const auto& [key, value] : keys_values) {
                     ImGui::Indent();
-                    ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "(none)");
+                    ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "%s:", key.c_str());
+                    ImGui::SameLine();
+                    ImGui::TextWrapped("%s", value.c_str());
                     ImGui::Unindent();
-                } else {
-                    for (const auto& [key, value] : keys_values) {
-                        ImGui::Indent();
-                        ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "%s:", key.c_str());
-                        ImGui::SameLine();
-                        ImGui::TextWrapped("%s", value.c_str());
-                        ImGui::Unindent();
-                    }
                 }
-                ImGui::Spacing();
             }
-
-            ImGui::TreePop();
+            ImGui::Spacing();
         }
+
+        ImGui::TreePop();
     }
 
-    // Display global settings
-    if (globalSettingsLoaded) {
-        if (ImGui::TreeNode("Global Settings (from DisplayCommander.ini)")) {
+    // View global settings
+    if (ImGui::TreeNode("View Global Profile")) {
+        if (globalSettings.additional_settings.empty()) {
+            ImGui::TextColored(ImVec4(1.0f, 0.7f, 0.0f, 1.0f), "No global profile found. Create one using 'Apply: Current → Global'.");
+        } else {
             for (const auto& [section, keys_values] : globalSettings.additional_settings) {
                 ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "[%s]", section.c_str());
                 if (keys_values.empty()) {
                     ImGui::Indent();
-                    ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "(none)");
+                    ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "(empty)");
                     ImGui::Unindent();
                 } else {
                     for (const auto& [key, value] : keys_values) {
@@ -596,97 +769,9 @@ void DrawReShadeGlobalConfigSettings() {
                 }
                 ImGui::Spacing();
             }
-
-            ImGui::TreePop();
         }
-    }
 
-    // Show what would change if global settings were applied
-    if (settingsLoaded && globalSettingsLoaded) {
-        ImGui::Spacing();
-        if (ImGui::TreeNode("Preview Changes")) {
-            ImGui::TextWrapped("Shows what would change if you apply global settings:");
-            ImGui::Spacing();
-
-            bool anyChanges = false;
-
-            // Go through all sections in both settings
-            std::set<std::string> allSections;
-            for (const auto& [section, _] : currentSettings.additional_settings) {
-                allSections.insert(section);
-            }
-            for (const auto& [section, _] : globalSettings.additional_settings) {
-                allSections.insert(section);
-            }
-
-            for (const auto& section : allSections) {
-                ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "[%s]", section.c_str());
-                ImGui::Indent();
-
-                auto currentSectionIt = currentSettings.additional_settings.find(section);
-                auto globalSectionIt = globalSettings.additional_settings.find(section);
-
-                // Get all keys in this section
-                std::set<std::string> allKeys;
-                if (currentSectionIt != currentSettings.additional_settings.end()) {
-                    for (const auto& [key, _] : currentSectionIt->second) {
-                        allKeys.insert(key);
-                    }
-                }
-                if (globalSectionIt != globalSettings.additional_settings.end()) {
-                    for (const auto& [key, _] : globalSectionIt->second) {
-                        allKeys.insert(key);
-                    }
-                }
-
-                bool sectionHasChanges = false;
-                for (const auto& key : allKeys) {
-                    std::string currentValue;
-                    std::string globalValue;
-
-                    if (currentSectionIt != currentSettings.additional_settings.end()) {
-                        auto keyIt = currentSectionIt->second.find(key);
-                        if (keyIt != currentSectionIt->second.end()) {
-                            currentValue = keyIt->second;
-                        }
-                    }
-
-                    if (globalSectionIt != globalSettings.additional_settings.end()) {
-                        auto keyIt = globalSectionIt->second.find(key);
-                        if (keyIt != globalSectionIt->second.end()) {
-                            globalValue = keyIt->second;
-                        }
-                    }
-
-                    if (currentValue != globalValue) {
-                        sectionHasChanges = true;
-                        anyChanges = true;
-                        ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "%s:", key.c_str());
-                        ImGui::Indent();
-                        if (!currentValue.empty()) {
-                            ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "- %s", currentValue.c_str());
-                        }
-                        if (!globalValue.empty()) {
-                            ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "+ %s", globalValue.c_str());
-                        }
-                        ImGui::Unindent();
-                    }
-                }
-
-                if (!sectionHasChanges) {
-                    ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "No changes");
-                }
-
-                ImGui::Unindent();
-                ImGui::Spacing();
-            }
-
-            if (!anyChanges) {
-                ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "All settings are identical!");
-            }
-
-            ImGui::TreePop();
-        }
+        ImGui::TreePop();
     }
 }
 

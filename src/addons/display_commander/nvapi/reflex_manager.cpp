@@ -73,11 +73,6 @@ bool ReflexManager::ApplySleepMode(bool low_latency, bool boost, bool use_marker
     if (g_shutdown.load())
         return false;
 
-    // Check if shutdown is in progress to avoid NVAPI calls during DLL unload
-    extern std::atomic<bool> g_shutdown;
-    if (g_shutdown.load())
-        return false;
-
     NV_SET_SLEEP_MODE_PARAMS params = {};
     params.version = NV_SET_SLEEP_MODE_PARAMS_VER;
     params.bLowLatencyMode = low_latency ? NV_TRUE : NV_FALSE;
@@ -100,11 +95,6 @@ NvU64 ReflexManager::IncreaseFrameId() { return frame_id_.fetch_add(1, std::memo
 
 bool ReflexManager::SetMarker(NV_LATENCY_MARKER_TYPE marker) {
     if (!initialized_.load(std::memory_order_acquire) || d3d_device_ == nullptr)
-        return false;
-
-    // Check if shutdown is in progress to avoid NVAPI calls during DLL unload
-    extern std::atomic<bool> g_shutdown;
-    if (g_shutdown.load())
         return false;
 
     // Check if shutdown is in progress to avoid NVAPI calls during DLL unload

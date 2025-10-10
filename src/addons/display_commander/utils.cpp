@@ -8,6 +8,54 @@
 #include <string>
 #include <reshade.hpp>
 
+// Version.dll dynamic loading
+namespace {
+    HMODULE s_version_dll = nullptr;
+
+    // Function pointers for version.dll functions
+    typedef DWORD (WINAPI *PFN_GetFileVersionInfoSizeW)(LPCWSTR lptstrFilename, LPDWORD lpdwHandle);
+    typedef BOOL (WINAPI *PFN_GetFileVersionInfoW)(LPCWSTR lptstrFilename, DWORD dwHandle, DWORD dwLen, LPVOID lpData);
+    typedef BOOL (WINAPI *PFN_VerQueryValueW)(LPCVOID pBlock, LPCWSTR lpSubBlock, LPVOID *lplpBuffer, PUINT puLen);
+
+    PFN_GetFileVersionInfoSizeW s_GetFileVersionInfoSizeW = nullptr;
+    PFN_GetFileVersionInfoW s_GetFileVersionInfoW = nullptr;
+    PFN_VerQueryValueW s_VerQueryValueW = nullptr;
+
+    // Load version.dll and get function pointers
+    bool LoadVersionDLL() {
+        if (s_version_dll != nullptr) {
+            return true;  // Already loaded
+        }
+
+        s_version_dll = LoadLibraryW(L"version.dll");
+        if (s_version_dll == nullptr) {
+            return false;
+        }
+
+        // Get function pointers
+        s_GetFileVersionInfoSizeW = reinterpret_cast<PFN_GetFileVersionInfoSizeW>(
+            GetProcAddress(s_version_dll, "GetFileVersionInfoSizeW"));
+        s_GetFileVersionInfoW = reinterpret_cast<PFN_GetFileVersionInfoW>(
+            GetProcAddress(s_version_dll, "GetFileVersionInfoW"));
+        s_VerQueryValueW = reinterpret_cast<PFN_VerQueryValueW>(
+            GetProcAddress(s_version_dll, "VerQueryValueW"));
+
+        // Check if all functions were loaded successfully
+        if (s_GetFileVersionInfoSizeW == nullptr ||
+            s_GetFileVersionInfoW == nullptr ||
+            s_VerQueryValueW == nullptr) {
+            FreeLibrary(s_version_dll);
+            s_version_dll = nullptr;
+            s_GetFileVersionInfoSizeW = nullptr;
+            s_GetFileVersionInfoW = nullptr;
+            s_VerQueryValueW = nullptr;
+            return false;
+        }
+
+        return true;
+    }
+}  // anonymous namespace
+
 // Constant definitions
 const int WIDTH_OPTIONS[] = {0, 1280, 1366, 1600, 1920, 2560, 3440, 3840}; // 0 = current monitor width
 const int HEIGHT_OPTIONS[] = {0, 720, 900, 1080, 1200, 1440, 1600, 2160};  // 0 = current monitor height
@@ -236,20 +284,26 @@ SHORT FloatToShort(float value) {
 
 // Get DLL version string (e.g., "570.6.2")
 std::string GetDLLVersionString(const std::wstring& dllPath) {
-    DWORD versionInfoSize = GetFileVersionInfoSizeW(dllPath.c_str(), nullptr);
+    // Load version.dll dynamically if not already loaded
+    if (!LoadVersionDLL()) {
+        LogWarn("GetDLLVersionString: Failed to load version.dll");
+        return "Unknown";
+    }
+
+    DWORD versionInfoSize = s_GetFileVersionInfoSizeW(dllPath.c_str(), nullptr);
     if (versionInfoSize == 0) {
         return "Unknown";
     }
 
     std::vector<BYTE> versionInfo(versionInfoSize);
-    if (!GetFileVersionInfoW(dllPath.c_str(), 0, versionInfoSize, versionInfo.data())) {
+    if (!s_GetFileVersionInfoW(dllPath.c_str(), 0, versionInfoSize, versionInfo.data())) {
         return "Unknown";
     }
 
     VS_FIXEDFILEINFO* fileInfo = nullptr;
     UINT fileInfoSize = 0;
 
-    if (!VerQueryValueW(versionInfo.data(), L"\\", reinterpret_cast<LPVOID*>(&fileInfo), &fileInfoSize)) {
+    if (!s_VerQueryValueW(versionInfo.data(), L"\\", reinterpret_cast<LPVOID*>(&fileInfo), &fileInfoSize)) {
         return "Unknown";
     }
 

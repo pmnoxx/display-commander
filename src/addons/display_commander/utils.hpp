@@ -58,6 +58,7 @@ namespace reshade { namespace api { enum class device_api; } }
 
 // Graphics API version string conversion
 const char* GetDeviceApiString(reshade::api::device_api api);
+std::string GetDeviceApiVersionString(reshade::api::device_api api, uint32_t api_version);
 
 // Rolling average (exponential moving average) calculation
 // Formula: (new_value + (alpha - 1) * old_value) / alpha

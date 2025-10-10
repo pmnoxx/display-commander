@@ -175,12 +175,20 @@ void DrawMainNewTab() {
    {
         ImGui::TextColored(ui::colors::TEXT_DEFAULT, "Version: %s | Build: %s %s", DISPLAY_COMMANDER_VERSION_STRING, DISPLAY_COMMANDER_BUILD_DATE, DISPLAY_COMMANDER_BUILD_TIME);
 
-        // Display current graphics API
+        // Display current graphics API with feature level/version
         int api_value = g_last_swapchain_api.load();
         if (api_value != 0) {
             reshade::api::device_api api = static_cast<reshade::api::device_api>(api_value);
+            uint32_t api_version = g_last_api_version.load();
             ImGui::SameLine();
-            ImGui::TextColored(ui::colors::TEXT_LABEL, "| Graphics API: %s", GetDeviceApiString(api));
+
+            // Display API with version/feature level if available
+            if (api_version != 0) {
+                std::string api_string = GetDeviceApiVersionString(api, api_version);
+                ImGui::TextColored(ui::colors::TEXT_LABEL, "| Graphics API: %s", api_string.c_str());
+            } else {
+                ImGui::TextColored(ui::colors::TEXT_LABEL, "| Graphics API: %s", GetDeviceApiString(api));
+            }
         }
 
         // Ko-fi support button

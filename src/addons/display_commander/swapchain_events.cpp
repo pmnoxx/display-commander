@@ -68,6 +68,13 @@ void hookToSwapChain(reshade::api::swapchain *swapchain) {
     g_last_swapchain_api.store(static_cast<int>(swapchain->get_device()->get_api()));
     g_last_swapchain_ptr.store(static_cast<void*>(swapchain));
 
+    // Query and store API version/feature level
+    uint32_t api_version = 0;
+    if (swapchain->get_device()->get_property(reshade::api::device_properties::api_version, &api_version)) {
+        g_last_api_version.store(api_version);
+        LogInfo("Device API version/feature level: 0x%x", api_version);
+    }
+
     // Schedule auto-apply even on resizes (generation counter ensures only latest
     // runs)
     HWND hwnd = static_cast<HWND>(swapchain->get_hwnd());

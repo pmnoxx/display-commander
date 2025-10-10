@@ -113,6 +113,7 @@ std::atomic<int> g_comp_query_counter{0};
 std::atomic<int> g_comp_last_logged{0};
 std::atomic<void*> g_last_swapchain_ptr{nullptr};
 std::atomic<int> g_last_swapchain_api{0};
+std::atomic<uint32_t> g_last_api_version{0};
 std::atomic<uint64_t> g_init_apply_generation{0};
 std::atomic<HWND> g_last_swapchain_hwnd{nullptr};
 std::atomic<bool> g_shutdown{false};

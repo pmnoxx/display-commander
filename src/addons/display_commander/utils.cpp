@@ -252,3 +252,60 @@ const char* GetDeviceApiString(reshade::api::device_api api) {
             return "Unknown";
     }
 }
+
+// Convert device API version to readable string with feature level
+std::string GetDeviceApiVersionString(reshade::api::device_api api, uint32_t api_version) {
+    if (api_version == 0) {
+        return GetDeviceApiString(api);
+    }
+
+    char buffer[128];
+
+    switch (api) {
+        case reshade::api::device_api::d3d9:
+            snprintf(buffer, sizeof(buffer), "Direct3D 9");
+            break;
+        case reshade::api::device_api::d3d10:
+        case reshade::api::device_api::d3d11:
+        case reshade::api::device_api::d3d12: {
+            // D3D feature levels are encoded as hex values
+            // D3D_FEATURE_LEVEL_10_0 = 0xa000 (10.0)
+            // D3D_FEATURE_LEVEL_10_1 = 0xa100 (10.1)
+            // D3D_FEATURE_LEVEL_11_0 = 0xb000 (11.0)
+            // D3D_FEATURE_LEVEL_11_1 = 0xb100 (11.1)
+            // D3D_FEATURE_LEVEL_12_0 = 0xc000 (12.0)
+            // D3D_FEATURE_LEVEL_12_1 = 0xc100 (12.1)
+            // D3D_FEATURE_LEVEL_12_2 = 0xc200 (12.2)
+            int major = (api_version >> 12) & 0xF;
+            int minor = (api_version >> 8) & 0xF;
+
+            if (api == reshade::api::device_api::d3d10) {
+                snprintf(buffer, sizeof(buffer), "Direct3D 10.%d", minor);
+            } else if (api == reshade::api::device_api::d3d11) {
+                snprintf(buffer, sizeof(buffer), "Direct3D 11.%d", minor);
+            } else {
+                snprintf(buffer, sizeof(buffer), "Direct3D 12.%d", minor);
+            }
+            break;
+        }
+        case reshade::api::device_api::opengl: {
+            // OpenGL version is encoded as major << 12 | minor << 8
+            int major = (api_version >> 12) & 0xF;
+            int minor = (api_version >> 8) & 0xF;
+            snprintf(buffer, sizeof(buffer), "OpenGL %d.%d", major, minor);
+            break;
+        }
+        case reshade::api::device_api::vulkan: {
+            // Vulkan version is encoded as major << 12 | minor << 8
+            int major = (api_version >> 12) & 0xF;
+            int minor = (api_version >> 8) & 0xF;
+            snprintf(buffer, sizeof(buffer), "Vulkan %d.%d", major, minor);
+            break;
+        }
+        default:
+            snprintf(buffer, sizeof(buffer), "Unknown");
+            break;
+    }
+
+    return std::string(buffer);
+}

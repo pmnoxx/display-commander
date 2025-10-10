@@ -1,6 +1,7 @@
 #include "developer_new_tab.hpp"
 #include "../../globals.hpp"
 #include "../../nvapi/nvapi_fullscreen_prevention.hpp"
+#include "../../res/forkawesome.h"
 #include "../../settings/developer_tab_settings.hpp"
 #include "../../utils.hpp"
 #include "../../utils/reshade_global_config.hpp"
@@ -264,9 +265,6 @@ void DrawNvapiSettings() {
         }
         ImGui::Spacing();
 
-        // Warning about enabling Reflex when game already has it
-        ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f),
-                        "⚠ Warning: Do not enable Reflex if the game already has built-in Reflex support!");
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip(
                 "Enabling Reflex when the game already has it can cause conflicts, instability, or "
@@ -293,10 +291,22 @@ void DrawNvapiSettings() {
             settings::g_developerTabSettings.reflex_use_markers.SetValue(reflex_markers);
             s_reflex_use_markers.store(reflex_markers);
         }
+        // Warning about enabling Reflex when game already has it
+        if (is_native_reflex_active && settings::g_developerTabSettings.reflex_use_markers.GetValue()) {
+            ImGui::SameLine();
+            ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f),
+                            ICON_FK_WARNING " Warning: Do not enable 'Use Markers to Optimize' if the game already has built-in Reflex support!");
+        }
+
         bool reflex_enable_sleep = settings::g_developerTabSettings.reflex_enable_sleep.GetValue();
         if (ImGui::Checkbox("Enable Reflex Sleep Mode", &reflex_enable_sleep)) {
             settings::g_developerTabSettings.reflex_enable_sleep.SetValue(reflex_enable_sleep);
             s_reflex_enable_sleep.store(reflex_enable_sleep);
+        }
+        if (is_native_reflex_active && settings::g_developerTabSettings.reflex_enable_sleep.GetValue()) {
+            ImGui::SameLine();
+            ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f),
+                            ICON_FK_WARNING " Warning: Do not enable 'Enable Reflex Sleep Mode' if the game already has built-in Reflex support!");
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Enable Reflex sleep mode calls (disabled by default for safety).");

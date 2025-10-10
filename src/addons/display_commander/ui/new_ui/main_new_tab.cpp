@@ -431,23 +431,15 @@ void DrawDisplaySettings() {
         // Display VRR status for selected monitor
         if (selected_index >= 0 && selected_index < static_cast<int>(display_info.size())) {
             ImGui::SameLine();
-            // There are cases where supports_vrr is incorrect. I.e. the monitor is actually VRR capable but supports_vrr is false, but vrr_enabled is true.
-            if (display_info[selected_index].vrr_enabled) {
-                ImGui::TextColored(ui::colors::STATUS_ACTIVE, ICON_FK_OK " VRR Enabled");
+            if (display_info[selected_index].supports_vrr) {
+                ImGui::TextColored(ui::colors::STATUS_ACTIVE, ICON_FK_OK " VRR Supported");
                 if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip("Variable Refresh Rate (VRR) is supported and currently enabled on this display");
+                    ImGui::SetTooltip("Variable Refresh Rate (VRR) is supported on this display");
                 }
             } else {
-                if (display_info[selected_index].supports_vrr) {
-                    ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f), ICON_FK_OK " VRR (Disabled)");
-                    if (ImGui::IsItemHovered()) {
-                        ImGui::SetTooltip("Variable Refresh Rate (VRR) is supported but not currently enabled on this display");
-                    }
-                } else {
-                    ImGui::TextColored(ui::colors::TEXT_DIMMED, ICON_FK_CANCEL " No VRR");
-                    if (ImGui::IsItemHovered()) {
-                        ImGui::SetTooltip("Variable Refresh Rate (VRR) is not supported on this display");
-                    }
+                ImGui::TextColored(ui::colors::TEXT_DIMMED, ICON_FK_CANCEL " No VRR");
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip("Variable Refresh Rate (VRR) is not supported on this display");
                 }
             }
         }

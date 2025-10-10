@@ -95,11 +95,7 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime *runtime) {
         return;
 
     // Test widget that appears in the main ReShade overlay
-    static bool show_test_widget = true;
-   // if (ImGui::Begin("Display Commander Performance Overlay", &show_test_widget, ImGuiWindowFlags_AlwaysAutoResize)) {
-        ui::new_ui::DrawFrameTimeGraph();
-  //  }
-    ImGui::End();
+    ui::new_ui::DrawFrameTimeGraph();
 }
 } // namespace
 

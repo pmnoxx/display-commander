@@ -256,16 +256,13 @@ void HandleRenderStartAndEndTimes() {
             g_simulation_duration_ns.store(
                 UpdateRollingAverage(g_simulation_duration_ns_new, g_simulation_duration_ns.load()));
 
-            //  reshade::api::swapchain* swapchain =
-            //  g_last_swapchain_ptr.load(std::memory_order_acquire);
             if (s_reflex_enable_current_frame.load()) {
-                //    auto* device = swapchain ? swapchain->get_device() : nullptr;
-                //    if (device && g_latencyManager->Initialize(device)) {
                 if (s_reflex_use_markers.load() && !g_app_in_background.load(std::memory_order_acquire)) {
-                    g_latencyManager->SetMarker(LatencyMarkerType::SIMULATION_END);
-                    g_latencyManager->SetMarker(LatencyMarkerType::RENDERSUBMIT_START);
+                    if (g_latencyManager->IsInitialized()) {
+                        g_latencyManager->SetMarker(LatencyMarkerType::SIMULATION_END);
+                        g_latencyManager->SetMarker(LatencyMarkerType::RENDERSUBMIT_START);
+                    }
                 }
-                //    }
             }
         }
     }
@@ -570,7 +567,9 @@ void OnPresentUpdateAfter2() {
 
     if (s_reflex_enable_current_frame.load()) {
         if (s_reflex_use_markers.load() && !g_app_in_background.load(std::memory_order_acquire)) {
-            g_latencyManager->SetMarker(LatencyMarkerType::PRESENT_END);
+            if (g_latencyManager->IsInitialized()) {
+                g_latencyManager->SetMarker(LatencyMarkerType::PRESENT_END);
+            }
         }
     }
 
@@ -627,8 +626,9 @@ void OnPresentUpdateAfter2() {
     // NVIDIA Reflex: SIMULATION_END marker (minimal) and Sleep
     if (s_reflex_enable.load()) {
         s_reflex_enable_current_frame.store(true);
-    //    auto *device = swapchain ? swapchain->get_device() : nullptr;
-     //   if (device && g_latencyManager->Initialize(device)) {
+        auto *swapchain = static_cast<reshade::api::swapchain*>(g_last_swapchain_ptr.load(std::memory_order_acquire));
+        auto *device = swapchain ? swapchain->get_device() : nullptr;
+        if (device && g_latencyManager->Initialize(device)) {
             g_latencyManager->IncreaseFrameId();
             // Apply sleep mode opportunistically each frame to reflect current
             // toggles
@@ -640,7 +640,7 @@ void OnPresentUpdateAfter2() {
             if (s_reflex_use_markers.load() && !g_app_in_background.load(std::memory_order_acquire)) {
                 g_latencyManager->SetMarker(LatencyMarkerType::SIMULATION_START);
             }
-    //    }
+        }
     } else {
         s_reflex_enable_current_frame.store(false);
         if (g_latencyManager->IsInitialized()) {
@@ -814,12 +814,11 @@ void OnPresentFlags2(uint32_t *present_flags, PresentApiType api_type) {
     HandleFpsLimiter();
 
     if (s_reflex_enable_current_frame.load()) {
-        // auto* device = swapchain ? swapchain->get_device() : nullptr;
-        // if (device && g_latencyManager->Initialize(device)) {
         if (s_reflex_use_markers.load() && !g_app_in_background.load(std::memory_order_acquire)) {
-            g_latencyManager->SetMarker(LatencyMarkerType::PRESENT_START);
+            if (g_latencyManager->IsInitialized()) {
+                g_latencyManager->SetMarker(LatencyMarkerType::PRESENT_START);
+            }
         }
-        // }
     }
     // Throttle queries to ~every 30 presents
     int c = ++g_comp_query_counter;

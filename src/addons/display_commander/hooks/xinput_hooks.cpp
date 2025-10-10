@@ -58,23 +58,21 @@ void ApplyThumbstickProcessing(XINPUT_STATE *pState, float left_max_input, float
     if (!pState)
         return;
 
-    // Process left stick using unified function with correct scaling
+    // Process left stick using radial deadzone (preserves direction)
     float lx = ShortToFloat(pState->Gamepad.sThumbLX);
     float ly = ShortToFloat(pState->Gamepad.sThumbLY);
 
-    lx = ProcessStickInput(lx, left_deadzone, left_max_input, left_min_output);
-    ly = ProcessStickInput(ly, left_deadzone, left_max_input, left_min_output);
+    ProcessStickInputRadial(lx, ly, left_deadzone, left_max_input, left_min_output);
 
     // Convert back to SHORT with correct scaling
     pState->Gamepad.sThumbLX = FloatToShort(lx);
     pState->Gamepad.sThumbLY = FloatToShort(ly);
 
-    // Process right stick using unified function with correct scaling
+    // Process right stick using radial deadzone (preserves direction)
     float rx = ShortToFloat(pState->Gamepad.sThumbRX);
     float ry = ShortToFloat(pState->Gamepad.sThumbRY);
 
-    rx = ProcessStickInput(rx, right_deadzone, right_max_input, right_min_output);
-    ry = ProcessStickInput(ry, right_deadzone, right_max_input, right_min_output);
+    ProcessStickInputRadial(rx, ry, right_deadzone, right_max_input, right_min_output);
 
     // Convert back to SHORT with correct scaling
     pState->Gamepad.sThumbRX = FloatToShort(rx);

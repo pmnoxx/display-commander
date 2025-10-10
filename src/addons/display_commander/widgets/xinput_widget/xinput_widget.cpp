@@ -451,9 +451,10 @@ void XInputWidget::DrawStickStates(const XINPUT_GAMEPAD &gamepad) {
         float lx = ShortToFloat(gamepad.sThumbLX);
         float ly = ShortToFloat(gamepad.sThumbLY);
 
-        // Apply final processing (deadzone + max_input mapping + min_output mapping + clamp)
-        float lx_final = ProcessStickInput(lx, left_deadzone, left_max_input, left_min_output);
-        float ly_final = ProcessStickInput(ly, left_deadzone, left_max_input, left_min_output);
+        // Apply final processing (radial deadzone preserves direction)
+        float lx_final = lx;
+        float ly_final = ly;
+        ProcessStickInputRadial(lx_final, ly_final, left_deadzone, left_max_input, left_min_output);
 
         ImGui::Text("X: %.3f (Final: %.3f, Raw: %d)", lx, lx_final, gamepad.sThumbLX);
         ImGui::Text("Y: %.3f (Final: %.3f, Raw: %d)", ly, ly_final, gamepad.sThumbLY);
@@ -486,9 +487,10 @@ void XInputWidget::DrawStickStates(const XINPUT_GAMEPAD &gamepad) {
         float rx = ShortToFloat(gamepad.sThumbRX);
         float ry = ShortToFloat(gamepad.sThumbRY);
 
-        // Apply final processing (deadzone + max_input mapping + min_output mapping + clamp)
-        float rx_final = ProcessStickInput(rx, right_deadzone, right_max_input, right_min_output);
-        float ry_final = ProcessStickInput(ry, right_deadzone, right_max_input, right_min_output);
+        // Apply final processing (radial deadzone preserves direction)
+        float rx_final = rx;
+        float ry_final = ry;
+        ProcessStickInputRadial(rx_final, ry_final, right_deadzone, right_max_input, right_min_output);
 
         ImGui::Text("X: %.3f (Final: %.3f, Raw: %d)", rx, rx_final, gamepad.sThumbRX);
         ImGui::Text("Y: %.3f (Final: %.3f, Raw: %d)", ry, ry_final, gamepad.sThumbRY);
@@ -538,11 +540,22 @@ void XInputWidget::DrawStickStatesExtended(float left_deadzone, float left_max_i
         for (int i = 0; i < curve_points; ++i) {
             input_values[i] = static_cast<float>(i) / (curve_points - 1);
 
-            // For visualization, we want to show the actual curve behavior
-            // Deadzone region should show 0, not min_output
-            left_curve_y[i] = ProcessStickInput(input_values[i], left_deadzone, left_max_input, left_min_output);
+            // For radial deadzone visualization, simulate moving stick from center to edge
+            // This shows the magnitude transformation (radial deadzone preserves direction)
+            float x = input_values[i];
+            float y = 0.0f; // Move along X axis for simplicity
 
-            right_curve_y[i] = ProcessStickInput(input_values[i], right_deadzone, right_max_input, right_min_output);
+            // Left stick - apply radial processing
+            float lx_test = x;
+            float ly_test = y;
+            ProcessStickInputRadial(lx_test, ly_test, left_deadzone, left_max_input, left_min_output);
+            left_curve_y[i] = std::sqrt(lx_test * lx_test + ly_test * ly_test); // Show output magnitude
+
+            // Right stick - apply radial processing
+            float rx_test = x;
+            float ry_test = y;
+            ProcessStickInputRadial(rx_test, ry_test, right_deadzone, right_max_input, right_min_output);
+            right_curve_y[i] = std::sqrt(rx_test * rx_test + ry_test * ry_test); // Show output magnitude
 
             left_curve_x[i] = static_cast<float>(i);
             right_curve_x[i] = static_cast<float>(i);
@@ -612,12 +625,13 @@ void XInputWidget::DrawStickStatesExtended(float left_deadzone, float left_max_i
         // Legend
         ImGui::TextColored(ui::colors::TEXT_VALUE, "Legend:");
         ImGui::SameLine();
-        ImGui::TextColored(ui::colors::TEXT_VALUE, "Yellow = Deadzone (Vertical)");
+        ImGui::TextColored(ui::colors::TEXT_VALUE, "Yellow = Radial Deadzone (Vertical)");
         ImGui::SameLine();
         ImGui::TextColored(ui::colors::ICON_SPECIAL, "Magenta = Max Input (Vertical)");
         ImGui::SameLine();
         ImGui::TextColored(ui::colors::ICON_ANALYSIS, "Cyan = Min Output (Horizontal)");
-
+        ImGui::Spacing();
+        ImGui::TextColored(ui::colors::TEXT_DIMMED, "Note: Radial deadzone preserves stick direction (circular deadzone)");
         ImGui::Spacing();
         ImGui::TextColored(ui::colors::TEXT_DIMMED, "X-axis: Input (0.0 to 1.0) - Positive side only");
         ImGui::TextColored(ui::colors::TEXT_DIMMED, "Y-axis: Output (-1.0 to 1.0)");

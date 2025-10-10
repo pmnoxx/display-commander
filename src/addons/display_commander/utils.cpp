@@ -138,6 +138,46 @@ BOOL CALLBACK MonitorEnumProc(HMONITOR hmon, HDC hdc, LPRECT rect, LPARAM lparam
 }
 
 // XInput processing functions
+// Process stick input with radial deadzone (preserves direction)
+void ProcessStickInputRadial(float &x, float &y, float deadzone, float max_input, float min_output) {
+    // Calculate magnitude (distance from center)
+    float magnitude = std::sqrt(x * x + y * y);
+
+    // If magnitude is zero, nothing to process
+    if (magnitude < 0.0001f) {
+        x = 0.0f;
+        y = 0.0f;
+        return;
+    }
+
+    // Calculate normalized direction
+    float dir_x = x / magnitude;
+    float dir_y = y / magnitude;
+
+    // Step 1: Apply radial deadzone
+    if (magnitude < deadzone) {
+        // Within deadzone - zero out
+        x = 0.0f;
+        y = 0.0f;
+        return;
+    }
+
+    // Step 2: Apply max_input scaling (e.g., 0.7 max input maps to 1.0 max output)
+    // Scale magnitude from [deadzone, max_input] to [0, 1]
+    float scaled_magnitude = (std::min)(1.0f, (magnitude - deadzone) / (max_input - deadzone));
+
+    // Step 3: Apply min_output mapping (e.g., 0.3 min output maps 0.0-1.0 to 0.3-1.0)
+    float output_magnitude = min_output + (scaled_magnitude * (1.0f - min_output));
+
+    // Step 4: Clamp to valid range [0.0, 1.0]
+    output_magnitude = std::clamp(output_magnitude, 0.0f, 1.0f);
+
+    // Reconstruct x and y with original direction but new magnitude
+    x = dir_x * output_magnitude;
+    y = dir_y * output_magnitude;
+}
+
+// Legacy per-axis function (deprecated - kept for compatibility)
 float ApplyDeadzone(float value, float deadzone, float max_input) {
     if (deadzone <= 0.0f) {
         return value; // No deadzone applied

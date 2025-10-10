@@ -93,7 +93,7 @@ void DrawFrameTimeGraph() {
     // Set graph size and scale
     ImVec2 graph_size = ImVec2(-1.0f, 200.0f); // Full width, 200px height
     float scale_min = 0.0f; // Always start from 0ms
-    float scale_max = max(avg_frame_time * 4.f, max_frame_time + 2.0f); // Add some padding
+    float scale_max = max(avg_frame_time * 10.f, max_frame_time + 2.0f); // Add some padding
 
     // Draw the frame time graph
     ImGui::PlotLines("Frame Time (ms)",

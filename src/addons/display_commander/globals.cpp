@@ -171,7 +171,7 @@ std::atomic<int> g_last_backbuffer_height{0};
 // Background/foreground state (updated by monitoring thread)
 std::atomic<bool> g_app_in_background{false};
 
-// FPS limiter mode: 0 = Disabled, 1 = OnPresentSync, 2 = OnPresentSyncLowLatency, 3 = VBlank Scanline Sync (VBlank)
+// FPS limiter mode: 0 = Disabled, 1 = Reflex, 2 = OnPresentSync, 3 = OnPresentSyncLowLatency, 4 = VBlank Scanline Sync (VBlank)
 std::atomic<FpsLimiterMode> s_fps_limiter_mode{FpsLimiterMode::kDisabled};
 
 // FPS limiter injection timing: 0 = Default (Direct DX9/10/11/12), 1 = Fallback(1) (Through ReShade), 2 = Fallback(2) (Through ReShade)

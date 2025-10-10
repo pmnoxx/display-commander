@@ -566,18 +566,23 @@ void DrawDisplaySettings() {
     {
         const char* items[] = {
             "Disabled",
+            "Reflex",
             "OnPresent Frame Synchronizer",
             "OnPresent Frame Synchronizer (Low Latency Mode) (not implemented yet)",
             "VBlank Scanline Sync for VSync-OFF"
         };
 
         int current_item = settings::g_mainTabSettings.fps_limiter_mode.GetValue();
-        if (ImGui::Combo("FPS Limiter Mode", &current_item, items, 4)) {
+        if (ImGui::Combo("FPS Limiter Mode", &current_item, items, 5)) {
             settings::g_mainTabSettings.fps_limiter_mode.SetValue(current_item);
             s_fps_limiter_mode.store(static_cast<FpsLimiterMode>(current_item));
             FpsLimiterMode mode = s_fps_limiter_mode.load();
             if (mode == FpsLimiterMode::kDisabled) {
                 LogInfo("FPS Limiter: Disabled (no limiting)");
+            } else if (mode == FpsLimiterMode::kReflex) {
+                LogInfo("FPS Limiter: Reflex");
+                s_reflex_auto_configure.store(true);
+                settings::g_developerTabSettings.reflex_auto_configure.SetValue(true);
             } else if (mode == FpsLimiterMode::kOnPresentSync) {
                 LogInfo("FPS Limiter: OnPresent Frame Synchronizer");
             } else if (mode == FpsLimiterMode::kOnPresentSyncLowLatency) {

@@ -313,7 +313,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain *This, UI
     ::OnPresentFlags2(&Flags, PresentApiType::DXGI);
 
     // Record per-frame FPS sample for background aggregation
-    RecordFrameTime(FrameTimeMode::Present);
+    RecordFrameTime(FrameTimeMode::kPresent);
 
     // Call original function
     if (IDXGISwapChain_Present_Original != nullptr) {
@@ -348,7 +348,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1 *This, 
     ::OnPresentFlags2(&PresentFlags, PresentApiType::DXGI);
 
     // Record per-frame FPS sample for background aggregation
-    RecordFrameTime(FrameTimeMode::Present);
+    RecordFrameTime(FrameTimeMode::kPresent);
 
     // Call original function
     if (IDXGISwapChain_Present1_Original != nullptr) {

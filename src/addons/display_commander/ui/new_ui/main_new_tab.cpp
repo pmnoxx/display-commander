@@ -91,7 +91,7 @@ void DrawFrameTimeGraph() {
     // Set graph size and scale
     ImVec2 graph_size = ImVec2(-1.0f, 200.0f); // Full width, 200px height
     float scale_min = 0.0f; // Always start from 0ms
-    float scale_max = avg_frame_time * 4.f;//, max_frame_time + 2.0f); // Add some padding
+    float scale_max = max(avg_frame_time * 4.f, max_frame_time + 2.0f); // Add some padding
 
     // Draw the frame time graph
     ImGui::PlotLines("Frame Time (ms)",
@@ -115,9 +115,9 @@ void DrawFrameTimeGraph() {
     ImGui::SameLine();
 
     int current_mode = static_cast<int>(settings::g_mainTabSettings.frame_time_mode.GetValue());
-    const char* mode_items[] = {"Present-to-Present", "Frame Begin-to-Frame Begin"};
+    const char* mode_items[] = {"Present-to-Present", "Frame Begin-to-Frame Begin", "Display Timing (GPU Completion)"};
 
-    if (ImGui::Combo("##frame_time_mode", &current_mode, mode_items, 2)) {
+    if (ImGui::Combo("##frame_time_mode", &current_mode, mode_items, 3)) {
         settings::g_mainTabSettings.frame_time_mode.SetValue(current_mode);
         LogInfo("Frame time mode changed to: %s", mode_items[current_mode]);
     }
@@ -125,7 +125,9 @@ void DrawFrameTimeGraph() {
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Select which timing events to record for the frame time graph:\n"
                          "• Present-to-Present: Records time between Present calls\n"
-                         "• Frame Begin-to-Frame Begin: Records time between frame begin events");
+                         "• Frame Begin-to-Frame Begin: Records time between frame begin events\n"
+                         "• Display Timing: Records when frames are actually displayed (based on GPU completion)\n"
+                         "  Note: Display Timing requires GPU measurement to be enabled");
     }
 }
 

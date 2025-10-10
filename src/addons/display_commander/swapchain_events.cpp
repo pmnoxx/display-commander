@@ -399,6 +399,7 @@ bool OnCreateSwapchainCapture(reshade::api::device_api api, reshade::api::swapch
         bool can_apply_flipex = true;
         bool modified = false;
 
+        /*
         // FLIPEX requires full-screen mode
         if (!desc.fullscreen_state) {
             static int flipex_windowed_warning_count = 0;
@@ -407,7 +408,7 @@ bool OnCreateSwapchainCapture(reshade::api::device_api api, reshade::api::swapch
                 flipex_windowed_warning_count++;
             }
             can_apply_flipex = false;
-        }
+        }*/
 
         // FLIPEX requires at least 2 back buffers
         if (desc.back_buffer_count < 2) {
@@ -432,6 +433,7 @@ bool OnCreateSwapchainCapture(reshade::api::device_api api, reshade::api::swapch
             LogInfo("D3D9 FLIPEX: Successfully applied FLIPEX swap effect (upgrade count: %d)",
                    flipex_upgrade_count.load());
         } else {
+            LogInfo("D3D9 FLIPEX: FLIPEX cannot be applied. Present mode is %u", desc.present_mode);
             // FLIPEX cannot be applied, set to false
             g_used_flipex.store(false);
         }

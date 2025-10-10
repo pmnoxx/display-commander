@@ -115,6 +115,13 @@ void QueryDxgiCompositionState(IDXGISwapChain *dxgi_swapchain);
 void RecordFrameTime(FrameTimeMode reason = FrameTimeMode::Present);
 
 // ============================================================================
+// TIMING VARIABLES
+// ============================================================================
+
+// Present after end time tracking (simulation start time)
+extern std::atomic<LONGLONG> g_sim_start_ns;
+
+// ============================================================================
 // FORWARD DECLARATIONS
 // ============================================================================
 

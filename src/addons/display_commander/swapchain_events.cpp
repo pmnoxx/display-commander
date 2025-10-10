@@ -530,6 +530,7 @@ void OnPresentUpdateAfter2() {
     // Increment event counter
     g_swapchain_event_counters[SWAPCHAIN_EVENT_PRESENT_UPDATE_AFTER].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
+
     if (s_reflex_enable_current_frame.load()) {
         if (s_reflex_use_markers.load() && !g_app_in_background.load(std::memory_order_acquire)) {
             g_latencyManager->SetMarker(LatencyMarkerType::PRESENT_END);
@@ -538,6 +539,29 @@ void OnPresentUpdateAfter2() {
 
     // g_present_duration
     LONGLONG now_ns = utils::get_now_ns();
+
+    // Sim-to-display latency measurement
+    // Track that OnPresentUpdateAfter2 was called
+    LONGLONG sim_start_for_measurement = g_sim_start_ns_for_measurement.load();
+    if (sim_start_for_measurement > 0) {
+        g_present_update_after2_called.store(true);
+        g_present_update_after2_time_ns.store(now_ns);
+
+        // If GPU completion callback was already finished, we're finishing second
+        if (g_gpu_completion_callback_finished.load()) {
+            // Calculate sim-to-display latency
+            LONGLONG latency_new_ns = now_ns - sim_start_for_measurement;
+
+            // Smooth the latency with exponential moving average
+            LONGLONG old_latency = g_sim_to_display_latency_ns.load();
+            LONGLONG smoothed_latency = UpdateRollingAverage(latency_new_ns, old_latency);
+
+            g_sim_to_display_latency_ns.store(smoothed_latency);
+
+            // Calculate GPU late time - in this case, GPU finished first, so late time is 0
+            g_gpu_late_time_ns.store(0);
+        }
+    }
 
     LONGLONG g_present_duration_new_ns = (now_ns - g_present_start_time_ns.load()); // Convert QPC ticks to seconds (QPC
                                                                                      // frequency is typically 10MHz)

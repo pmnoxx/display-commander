@@ -641,6 +641,17 @@ extern std::atomic<LONGLONG> g_gpu_completion_time_ns;  // Last measured GPU com
 extern std::atomic<LONGLONG> g_gpu_duration_ns;  // Last measured GPU duration (smoothed)
 extern std::atomic<bool> g_gpu_measurement_enabled;  // Whether GPU measurement is enabled
 
+// Sim-start-to-display latency measurement
+extern std::atomic<LONGLONG> g_sim_start_ns_for_measurement;  // g_sim_start_ns captured when EnqueueGPUCompletion is called
+extern std::atomic<bool> g_present_update_after2_called;  // Tracks if OnPresentUpdateAfter2 was called
+extern std::atomic<bool> g_gpu_completion_callback_finished;  // Tracks if GPU completion callback finished
+extern std::atomic<LONGLONG> g_sim_to_display_latency_ns;  // Measured sim-start-to-display latency (smoothed)
+
+// GPU late time measurement (how much later GPU finishes compared to OnPresentUpdateAfter2)
+extern std::atomic<LONGLONG> g_present_update_after2_time_ns;  // Time when OnPresentUpdateAfter2 was called
+extern std::atomic<LONGLONG> g_gpu_completion_callback_time_ns;  // Time when GPU completion callback finished
+extern std::atomic<LONGLONG> g_gpu_late_time_ns;  // GPU late time (0 if GPU finished first, otherwise difference)
+
 // NVIDIA Reflex minimal controls
 extern std::atomic<bool> s_reflex_enable;          // Enable NVIDIA Reflex integration
 extern std::atomic<bool> s_reflex_enable_current_frame;          // Enable NVIDIA Reflex integration for current frame

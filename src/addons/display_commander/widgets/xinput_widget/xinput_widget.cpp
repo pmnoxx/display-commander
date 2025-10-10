@@ -1111,7 +1111,7 @@ void XInputWidget::ProcessChordDetection(DWORD user_index, WORD button_state) {
     }
 
     // Update input suppression state
-    g_shared_state->suppress_input.store(any_chord_pressed);
+ //   g_shared_state->suppress_input.store(any_chord_pressed);
 }
 
 void XInputWidget::ExecuteChordAction(const XInputSharedState::Chord &chord, DWORD user_index) {
@@ -1315,7 +1315,7 @@ void ProcessChordDetection(DWORD user_index, WORD button_state) {
     }
 
     // Update input suppression state
-    shared_state->suppress_input.store(any_chord_pressed);
+   // shared_state->suppress_input.store(any_chord_pressed);
 }
 
 void CheckAndHandleScreenshot() {

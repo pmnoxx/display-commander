@@ -31,8 +31,10 @@ const std::array<const char*, 5> xinput_modules = {
 std::array<XInputGetStateEx_pfn, 5> original_xinput_get_state_ex_procs = {};
 std::array<XInputGetState_pfn, 5> original_xinput_get_state_procs = {};
 
+/*
 // Initialize XInput function pointers for direct calls
 static void InitializeXInputDirectFunctions() {
+    if (true) return;
     if (XInputGetStateEx_Direct != nullptr && XInputSetState_Direct != nullptr && XInputGetBatteryInformation_Direct != nullptr) {
         return; // Already initialized
     }
@@ -48,7 +50,7 @@ static void InitializeXInputDirectFunctions() {
             LogInfo("XInput module: %s not found", module_name);
         }
     }
-}
+}*/
 
 // Helper function to apply max input, min output, and deadzone to thumbstick values
 void ApplyThumbstickProcessing(XINPUT_STATE *pState, float left_max_input, float right_max_input, float left_min_output,
@@ -288,7 +290,7 @@ bool InstallXInputHooks() {
     }
 
     // Initialize direct function pointers first
-    InitializeXInputDirectFunctions();
+   // InitializeXInputDirectFunctions();
 
     bool any_success = false;
 
@@ -344,6 +346,19 @@ bool InstallXInputHooks() {
                 }
             }
         }
+
+        // Hook XInputSetState
+        FARPROC xinput_set_state_proc = GetProcAddress(xinput_module, "XInputSetState");
+        if (xinput_set_state_proc != nullptr) {
+            LogInfo("Found XInputSetState in %s at: 0x%p", module_name, xinput_set_state_proc);
+        }
+
+        // Hook XInputGetBatteryInformation
+        FARPROC xinput_get_battery_information_proc = GetProcAddress(xinput_module, "XInputGetBatteryInformation");
+        if (xinput_get_battery_information_proc != nullptr) {
+            LogInfo("Found XInputGetBatteryInformation in %s at: 0x%p", module_name, xinput_get_battery_information_proc);
+        }
+
         any_success = true;
     }
     if (any_success) {

@@ -68,7 +68,7 @@ struct XInputSharedState {
     std::atomic<bool> ui_overlay_open{false};
 
     // Settings
-    std::atomic<bool> enable_xinput_hooks{false}; // Enable XInput hooks (off by default)
+    std::atomic<bool> enable_xinput_hooks{true}; // Enable XInput hooks (off by default)
     std::atomic<bool> swap_a_b_buttons{false};
     std::atomic<float> left_stick_max_input{
         1.0f}; // Left stick sensitivity (max input) - 0.7 = 70% stick movement = 100% output

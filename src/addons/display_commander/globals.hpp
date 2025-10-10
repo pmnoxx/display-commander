@@ -639,7 +639,6 @@ extern std::atomic<LONGLONG> late_amount_ns;
 extern std::atomic<HANDLE> g_gpu_completion_event;  // Event handle for GPU completion measurement
 extern std::atomic<LONGLONG> g_gpu_completion_time_ns;  // Last measured GPU completion time
 extern std::atomic<LONGLONG> g_gpu_duration_ns;  // Last measured GPU duration (smoothed)
-extern std::atomic<bool> g_gpu_measurement_enabled;  // Whether GPU measurement is enabled
 
 // Sim-start-to-display latency measurement
 extern std::atomic<LONGLONG> g_sim_start_ns_for_measurement;  // g_sim_start_ns captured when EnqueueGPUCompletion is called

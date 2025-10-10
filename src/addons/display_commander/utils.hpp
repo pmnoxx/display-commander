@@ -43,7 +43,8 @@ int GetAspectWidthValue(int display_width);
 BOOL CALLBACK MonitorEnumProc(HMONITOR hmon, HDC hdc, LPRECT rect, LPARAM lparam);
 
 // XInput processing functions
-float ApplyDeadzone(float value, float deadzone);
+void ProcessStickInputRadial(float &x, float &y, float deadzone, float max_input, float min_output);
+float ApplyDeadzone(float value, float deadzone, float max_input);
 float ProcessStickInput(float value, float deadzone, float max_input, float min_output);
 
 // XInput thumbstick scaling helpers (handles asymmetric SHORT range: -32768 to 32767)

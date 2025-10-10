@@ -123,7 +123,6 @@ struct DisplayInfo {
 
     // Monitor properties from MONITORINFOEXW
     bool is_primary = false;
-    bool supports_vrr = false; // Whether this display supports Variable Refresh Rate (cached)
     RECT monitor_rect; // Monitor rectangle in virtual screen coordinates
     RECT work_rect;    // Working area rectangle (excluding taskbar, etc.)
 
@@ -354,11 +353,10 @@ struct DisplayInfoForUI {
     std::string current_refresh_rate; // Current refresh rate string
     std::string display_label;       // Formatted label for UI display
     bool is_primary;                 // Whether this is the primary display
-    bool supports_vrr;               // Whether this display supports Variable Refresh Rate
     HMONITOR monitor_handle;         // For matching with current window
     int display_index;               // Current index in the display array (for backward compatibility)
 
-    DisplayInfoForUI() : is_primary(false), supports_vrr(false), monitor_handle(nullptr), display_index(-1) {}
+    DisplayInfoForUI() : is_primary(false), monitor_handle(nullptr), display_index(-1) {}
 };
 
 // Main display cache class

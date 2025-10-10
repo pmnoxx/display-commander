@@ -84,6 +84,7 @@ std::atomic<bool> s_hide_hdr_capabilities{false};
 // D3D9 to D3D9Ex upgrade
 std::atomic<bool> s_enable_d3d9_upgrade{true}; // Enabled by default
 std::atomic<bool> s_d3d9_upgrade_successful{false}; // Track if upgrade was successful
+std::atomic<bool> g_used_flipex{false}; // Track if FLIPEX is currently being used
 
 // ReShade runtime for input blocking
 std::atomic<reshade::api::effect_runtime *> g_reshade_runtime = nullptr;
@@ -244,6 +245,17 @@ Microsoft::WRL::ComPtr<IDXGIFactory1> GetSharedDXGIFactory() {
     } else {
         // Another thread created the factory first, use the existing one
         return *expected;
+    }
+}
+
+// Helper function to get flip state based on API type
+DxgiBypassMode GetFlipStateForAPI(int api) {
+    // For D3D9, use FlipEx state instead of DXGI composition state
+    if (api == static_cast<int>(reshade::api::device_api::d3d9)) {
+        bool using_flipex = g_used_flipex.load();
+        return using_flipex ? DxgiBypassMode::kIndependentFlip : DxgiBypassMode::kComposed;
+    } else {
+        return s_dxgi_composition_state.load();
     }
 }
 

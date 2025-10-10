@@ -72,7 +72,7 @@ ExperimentalTabSettings::ExperimentalTabSettings()
         "Enabled"
     }, "Experimental")
     , dlss_indicator_enabled("DlssIndicatorEnabled", false, "Experimental")
-    , d3d9_flipex_enabled("D3D9FlipExEnabled", false, "Experimental")
+    , d3d9_flipex_enabled("D3D9FlipExEnabled", true, "Experimental")
 {
     // Initialize the all_settings_ vector
     all_settings_ = {

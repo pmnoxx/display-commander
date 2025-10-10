@@ -389,6 +389,7 @@ bool OnCreateSwapchainCapture(reshade::api::device_api api, reshade::api::swapch
     // D3D9 FLIPEX upgrade logic (only for D3D9)
     if (is_d3d9) {
         if (!settings::g_experimentalTabSettings.d3d9_flipex_enabled.GetValue()) {
+            g_used_flipex.store(false);
             return false;
         }
         // D3DSWAPEFFECT_FLIPEX = 5
@@ -397,7 +398,6 @@ bool OnCreateSwapchainCapture(reshade::api::device_api api, reshade::api::swapch
         // Check if we should apply FLIPEX
         bool can_apply_flipex = true;
         bool modified = false;
-        desc.fullscreen_state = false;
 
         // FLIPEX requires full-screen mode
         if (!desc.fullscreen_state) {
@@ -424,12 +424,16 @@ bool OnCreateSwapchainCapture(reshade::api::device_api api, reshade::api::swapch
                    desc.fullscreen_state ? "YES" : "NO", desc.back_buffer_count);
 
             desc.present_mode = d3dswapeffect_flipex;
+            g_used_flipex.store(true);
             modified = true;
 
             static std::atomic<int> flipex_upgrade_count{0};
             flipex_upgrade_count.fetch_add(1);
             LogInfo("D3D9 FLIPEX: Successfully applied FLIPEX swap effect (upgrade count: %d)",
                    flipex_upgrade_count.load());
+        } else {
+            // FLIPEX cannot be applied, set to false
+            g_used_flipex.store(false);
         }
         return modified;
     }

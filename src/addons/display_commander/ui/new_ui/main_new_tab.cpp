@@ -462,7 +462,9 @@ void DrawDisplaySettings() {
     // Display Flip State with color coding next to Window Mode
     ImGui::SameLine();
     const char* flip_state_str = "Unknown";
-    auto flip_state = ::s_dxgi_composition_state.load();
+    int current_api = g_last_swapchain_api.load();
+    DxgiBypassMode flip_state = GetFlipStateForAPI(current_api);
+
     switch (flip_state) {
         case DxgiBypassMode::kComposed:      flip_state_str = "Composed"; break;
         case DxgiBypassMode::kOverlay:       flip_state_str = "MPO iFlip"; break;
@@ -1260,7 +1262,10 @@ void DrawImportantInfo() {
 
         // Flip State Display (renamed from DXGI Composition)
         const char* flip_state_str = "Unknown";
-        switch (::s_dxgi_composition_state.load()) {
+        int current_api = g_last_swapchain_api.load();
+        DxgiBypassMode flip_state = GetFlipStateForAPI(current_api);
+
+        switch (flip_state) {
             case DxgiBypassMode::kComposed:      flip_state_str = "Composed Flip"; break;
             case DxgiBypassMode::kOverlay:       flip_state_str = "MPO Independent Flip"; break;
             case DxgiBypassMode::kIndependentFlip: flip_state_str = "Legacy Independent Flip"; break;
@@ -1273,7 +1278,6 @@ void DrawImportantInfo() {
         oss << "Flip State: " << flip_state_str;
 
         // Color code based on flip state
-        auto flip_state = ::s_dxgi_composition_state.load();
         if (flip_state == DxgiBypassMode::kComposed) {
             // Composed Flip - Red
             ImGui::TextColored(ui::colors::FLIP_COMPOSED, "%s", oss.str().c_str());

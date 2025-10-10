@@ -26,4 +26,10 @@ void DrawKeyboardShortcutsSettings();
 // Draw latency display section
 void DrawLatencyDisplay();
 
+// Draw ReShade global config settings section
+void DrawReShadeGlobalConfigSettings();
+
+// Initialize developer tab
+void InitDeveloperNewTab();
+
 } // namespace ui::new_ui

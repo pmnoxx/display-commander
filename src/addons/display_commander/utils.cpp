@@ -151,9 +151,6 @@ void ProcessStickInputRadial(float &x, float &y, float deadzone, float max_input
     }
 
     // Calculate normalized direction
-    float dir_x = x / magnitude;
-    float dir_y = y / magnitude;
-
     // Step 1: Apply radial deadzone
     if (magnitude < deadzone) {
         // Within deadzone - zero out
@@ -164,7 +161,7 @@ void ProcessStickInputRadial(float &x, float &y, float deadzone, float max_input
 
     // Step 2: Apply max_input scaling (e.g., 0.7 max input maps to 1.0 max output)
     // Scale magnitude from [deadzone, max_input] to [0, 1]
-    float scaled_magnitude = (std::min)(1.0f, (magnitude - deadzone) / (max_input - deadzone));
+    float scaled_magnitude = (std::min)(1.0f, max(0.0f, magnitude - deadzone) / (max_input - deadzone));
 
     // Step 3: Apply min_output mapping (e.g., 0.3 min output maps 0.0-1.0 to 0.3-1.0)
     float output_magnitude = min_output + (scaled_magnitude * (1.0f - min_output));
@@ -173,8 +170,8 @@ void ProcessStickInputRadial(float &x, float &y, float deadzone, float max_input
     output_magnitude = std::clamp(output_magnitude, 0.0f, 1.0f);
 
     // Reconstruct x and y with original direction but new magnitude
-    x = dir_x * output_magnitude;
-    y = dir_y * output_magnitude;
+    x = x * output_magnitude / magnitude;
+    y = y * output_magnitude / magnitude;
 }
 
 // Legacy per-axis function (deprecated - kept for compatibility)

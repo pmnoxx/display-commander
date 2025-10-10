@@ -755,6 +755,14 @@ void HandleFpsLimiter() {
         // No FPS limiting - do nothing
         break;
     }
+    case FpsLimiterMode::kReflex: {
+        if (!s_reflex_auto_configure.load()) {
+            s_reflex_auto_configure.store(true);
+        }
+        // Reflex mode - auto-configuration is handled when mode is selected
+        // Reflex manages frame rate limiting internally
+        break;
+    }
     case FpsLimiterMode::kOnPresentSync: {
         // Use FPS limiter manager for OnPresent Frame Synchronizer mode
         if (dxgi::fps_limiter::g_customFpsLimiter) {

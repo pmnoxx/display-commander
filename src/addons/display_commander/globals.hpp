@@ -332,6 +332,7 @@ extern std::atomic<bool> s_auto_restore_resolution_on_close;
 extern std::atomic<bool> s_auto_apply_resolution_change;
 extern std::atomic<bool> s_auto_apply_refresh_rate_change;
 extern std::atomic<bool> s_apply_display_settings_at_start;
+extern std::atomic<bool> s_resolution_applied_at_least_once;
 
 // Window management
 extern std::atomic<bool> s_prevent_always_on_top;
@@ -351,7 +352,6 @@ extern std::atomic<bool> s_hide_hdr_capabilities;
 // D3D9 to D3D9Ex upgrade
 extern std::atomic<bool> s_enable_d3d9_upgrade;
 extern std::atomic<bool> s_d3d9_upgrade_successful;
-extern std::atomic<bool> s_d3d9_upgrade_executed; // Track when upgrade was actually executed (api_version = 0x9100)
 extern std::atomic<bool> g_used_flipex;
 
 // Window Management Settings

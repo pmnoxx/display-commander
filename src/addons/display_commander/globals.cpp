@@ -84,7 +84,6 @@ std::atomic<bool> s_hide_hdr_capabilities{false};
 // D3D9 to D3D9Ex upgrade
 std::atomic<bool> s_enable_d3d9_upgrade{true}; // Enabled by default
 std::atomic<bool> s_d3d9_upgrade_successful{false}; // Track if upgrade was successful
-std::atomic<bool> s_d3d9_upgrade_executed{false}; // Track when upgrade was actually executed (api_version = 0x9100)
 std::atomic<bool> g_used_flipex{false}; // Track if FLIPEX is currently being used
 
 // ReShade runtime for input blocking
@@ -113,6 +112,9 @@ std::atomic<bool> s_auto_apply_refresh_rate_change{false}; // Disabled by defaul
 
 // Apply display settings at game start
 std::atomic<bool> s_apply_display_settings_at_start{false}; // Disabled by default
+
+// Track if resolution was successfully applied at least once
+std::atomic<bool> s_resolution_applied_at_least_once{false}; // Disabled by default
 
 // Atomic variables
 std::atomic<int> g_comp_query_counter{0};

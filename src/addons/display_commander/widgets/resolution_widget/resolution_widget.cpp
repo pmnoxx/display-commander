@@ -109,10 +109,6 @@ void ResolutionWidget::OnDraw() {
     ImGui::TextColored(ImVec4(0.9f, 0.9f, 0.9f, 1.0f), "=== Resolution Control ===");
     ImGui::Spacing();
 
-    // Log auto-apply state on every draw
-    bool auto_apply_state = g_resolution_settings->GetAutoApply();
-    //  LogInfo("ResolutionWidget::OnDraw() - Auto-apply changes is: %s", auto_apply_state ? "ON" : "OFF");
-
     // Auto-apply checkbox
     DrawAutoApplyCheckbox();
     ImGui::Spacing();
@@ -613,6 +609,7 @@ bool ResolutionWidget::TryApplyResolution(int display_index, const ResolutionDat
 
     // Apply using DXGI first, then fallback to legacy
     if (resolution::ApplyDisplaySettingsDXGI(display_index, width, height, refresh_num, refresh_denom)) {
+        s_resolution_applied_at_least_once.store(true);
         return true;
     }
 
@@ -636,6 +633,9 @@ bool ResolutionWidget::TryApplyResolution(int display_index, const ResolutionDat
         static_cast<DWORD>(std::lround(static_cast<double>(refresh_num) / static_cast<double>(refresh_denom)));
 
     LONG result = ChangeDisplaySettingsExW(mi.szDevice, &dm, nullptr, CDS_UPDATEREGISTRY, nullptr);
+    if (result == DISP_CHANGE_SUCCESSFUL) {
+        s_resolution_applied_at_least_once.store(true);
+    }
     return result == DISP_CHANGE_SUCCESSFUL;
 }
 

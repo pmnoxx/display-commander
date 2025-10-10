@@ -156,6 +156,7 @@ static bool TryApplyCurrentSelectionOnce(int &out_monitor_index, int &out_width,
     // Try DXGI first
     if (resolution::ApplyDisplaySettingsDXGI(actual_monitor_index, width, height, refresh_rate.numerator,
                                              refresh_rate.denominator)) {
+        s_resolution_applied_at_least_once.store(true);
         out_monitor_index = actual_monitor_index;
         out_width = width;
         out_height = height;
@@ -183,6 +184,7 @@ static bool TryApplyCurrentSelectionOnce(int &out_monitor_index, int &out_width,
 
     LONG result = ChangeDisplaySettingsExW(mi.szDevice, &dm, nullptr, CDS_UPDATEREGISTRY, nullptr);
     if (result == DISP_CHANGE_SUCCESSFUL) {
+        s_resolution_applied_at_least_once.store(true);
         out_monitor_index = actual_monitor_index;
         out_width = width;
         out_height = height;

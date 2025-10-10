@@ -245,6 +245,25 @@ void DrawNvapiSettings() {
     // Minimal NVIDIA Reflex Controls (device runtime dependent)
     if (ImGui::CollapsingHeader("NVIDIA Reflex (Minimal)", ImGuiTreeNodeFlags_DefaultOpen)) {
 
+        // Native Reflex Status Indicator
+        bool is_native_reflex_active = g_swapchain_event_counters[SWAPCHAIN_EVENT_NVAPI_D3D_SET_SLEEP_MODE].load() > 0;
+        if (is_native_reflex_active) {
+            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✓ Native Reflex: ACTIVE");
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip(
+                    "The game has native Reflex support and is actively using it. "
+                    "Do not enable addon Reflex features to avoid conflicts.");
+            }
+        } else {
+            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "○ Native Reflex: INACTIVE");
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip(
+                    "No native Reflex activity detected. "
+                    "The game may not have Reflex support or it is disabled.");
+            }
+        }
+        ImGui::Spacing();
+
         // Warning about enabling Reflex when game already has it
         ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f),
                         "⚠ Warning: Do not enable Reflex if the game already has built-in Reflex support!");

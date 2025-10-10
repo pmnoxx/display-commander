@@ -3,6 +3,7 @@
 #include "../settings/main_tab_settings.hpp"
 #include "../utils.hpp"
 #include "utils/timing.hpp"
+#include "../hooks/nvapi_hooks.hpp"
 
 // Minimal helper to pull the native D3D device pointer from ReShade device
 static IUnknown *GetNativeD3DDeviceFromReshade(reshade::api::device *device) {
@@ -60,7 +61,7 @@ void ReflexManager::Shutdown() {
     params.bUseMarkersToOptimize = NV_FALSE;
     params.minimumIntervalUs = 0; // No frame rate limit
 
-    NvAPI_D3D_SetSleepMode(d3d_device_, &params);
+    NvAPI_D3D_SetSleepMode_Direct(d3d_device_, &params);
     d3d_device_ = nullptr;
 }
 
@@ -83,9 +84,9 @@ bool ReflexManager::ApplySleepMode(bool low_latency, bool boost, bool use_marker
     params.minimumIntervalUs =
         target_fps_limit > 0.0f ? (UINT)(round(1000000.0 / target_fps_limit)) : 0; // + (__SK_ForceDLSSGPacing ? 6 : 0);
 
-    const auto st = NvAPI_D3D_SetSleepMode(d3d_device_, &params);
+    const auto st = NvAPI_D3D_SetSleepMode_Direct(d3d_device_, &params);
     if (st != NVAPI_OK) {
-        LogWarn("Reflex: NvAPI_D3D_SetSleepMode failed (%d)", (int)st);
+        LogWarn("Reflex: NvAPI_D3D_SetSleepMode_Direct failed (%d)", (int)st);
         return false;
     }
     return true;
@@ -114,7 +115,7 @@ bool ReflexManager::SetMarker(NV_LATENCY_MARKER_TYPE marker) {
     mp.markerType = marker;
     mp.frameID = frame_id_.load(std::memory_order_acquire);
 
-    const auto st = NvAPI_D3D_SetLatencyMarker(d3d_device_, &mp);
+    const auto st = NvAPI_D3D_SetLatencyMarker_Direct(d3d_device_, &mp);
     if (st != NVAPI_OK) {
         // Don't spam logs each frame; minimal warning level
         return false;
@@ -131,6 +132,6 @@ bool ReflexManager::Sleep() {
     if (g_shutdown.load())
         return false;
 
-    const auto st = NvAPI_D3D_Sleep(d3d_device_);
+    const auto st = NvAPI_D3D_Sleep_Direct(d3d_device_);
     return st == NVAPI_OK;
 }

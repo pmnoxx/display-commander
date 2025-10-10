@@ -146,6 +146,42 @@ NvAPI_Status __cdecl NvAPI_D3D_SetSleepMode_Detour(IUnknown *pDev, NV_SET_SLEEP_
     return NVAPI_NO_IMPLEMENTATION;
 }
 
+// Direct call to NvAPI_D3D_SetSleepMode without stats tracking
+// For internal use to avoid inflating statistics
+NvAPI_Status NvAPI_D3D_SetSleepMode_Direct(IUnknown *pDev, NV_SET_SLEEP_MODE_PARAMS *pSetSleepModeParams) {
+    if (NvAPI_D3D_SetSleepMode_Original != nullptr) {
+        return NvAPI_D3D_SetSleepMode_Original(pDev, pSetSleepModeParams);
+    }
+    return NVAPI_NO_IMPLEMENTATION;
+}
+
+// Direct call to NvAPI_D3D_Sleep without stats tracking
+// For internal use to avoid inflating statistics
+NvAPI_Status NvAPI_D3D_Sleep_Direct(IUnknown *pDev) {
+    if (NvAPI_D3D_Sleep_Original != nullptr) {
+        return NvAPI_D3D_Sleep_Original(pDev);
+    }
+    return NVAPI_NO_IMPLEMENTATION;
+}
+
+// Direct call to NvAPI_D3D_SetLatencyMarker without stats tracking
+// For internal use to avoid inflating statistics
+NvAPI_Status NvAPI_D3D_SetLatencyMarker_Direct(IUnknown *pDev, NV_LATENCY_MARKER_PARAMS *pSetLatencyMarkerParams) {
+    if (NvAPI_D3D_SetLatencyMarker_Original != nullptr) {
+        return NvAPI_D3D_SetLatencyMarker_Original(pDev, pSetLatencyMarkerParams);
+    }
+    return NVAPI_NO_IMPLEMENTATION;
+}
+
+// Direct call to NvAPI_D3D_GetLatency without stats tracking
+// For internal use to avoid inflating statistics
+NvAPI_Status NvAPI_D3D_GetLatency_Direct(IUnknown *pDev, NV_LATENCY_RESULT_PARAMS *pGetLatencyParams) {
+    if (NvAPI_D3D_GetLatency_Original != nullptr) {
+        return NvAPI_D3D_GetLatency_Original(pDev, pGetLatencyParams);
+    }
+    return NVAPI_NO_IMPLEMENTATION;
+}
+
 // Hooked NvAPI_D3D_Sleep function
 NvAPI_Status __cdecl NvAPI_D3D_Sleep_Detour(IUnknown *pDev) {
     // Increment counter

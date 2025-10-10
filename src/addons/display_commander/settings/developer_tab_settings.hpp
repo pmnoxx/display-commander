@@ -49,6 +49,7 @@ class DeveloperTabSettings {
     BoolSettingRef enable_autoclick_shortcut;
 
     // Minimal NVIDIA Reflex controls
+    BoolSettingRef reflex_auto_configure;
     BoolSettingRef reflex_enable;
     BoolSettingRef reflex_low_latency;
     BoolSettingRef reflex_boost;

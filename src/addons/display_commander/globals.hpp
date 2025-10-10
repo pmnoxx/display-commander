@@ -664,6 +664,7 @@ extern std::atomic<LONGLONG> g_gpu_completion_callback_time_ns;  // Time when GP
 extern std::atomic<LONGLONG> g_gpu_late_time_ns;  // GPU late time (0 if GPU finished first, otherwise difference)
 
 // NVIDIA Reflex minimal controls
+extern std::atomic<bool> s_reflex_auto_configure;  // Auto-configure Reflex on startup
 extern std::atomic<bool> s_reflex_enable;          // Enable NVIDIA Reflex integration
 extern std::atomic<bool> s_reflex_enable_current_frame;          // Enable NVIDIA Reflex integration for current frame
 extern std::atomic<bool> s_reflex_low_latency;     // Low Latency Mode
@@ -708,4 +709,9 @@ DLSSGSummary GetDLSSGSummary();
 // NVAPI SetSleepMode tracking
 extern std::atomic<std::shared_ptr<NV_SET_SLEEP_MODE_PARAMS>> g_last_nvapi_sleep_mode_params;  // Last SetSleepMode parameters
 extern std::atomic<IUnknown*> g_last_nvapi_sleep_mode_dev_ptr;  // Last device pointer for SetSleepMode
+
+// Continuous monitoring functions
+void StartContinuousMonitoring();
+void StopContinuousMonitoring();
+void HandleReflexAutoConfigure();
 

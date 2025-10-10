@@ -8,6 +8,7 @@
 #include "hooks/windows_hooks/windows_message_hooks.hpp"
 #include "settings/experimental_tab_settings.hpp"
 #include "settings/main_tab_settings.hpp"
+#include "settings/developer_tab_settings.hpp"
 #include "ui/new_ui/swapchain_tab.hpp"
 #include "utils.hpp"
 #include "utils/timing.hpp"
@@ -30,6 +31,49 @@ HWND GetCurrentForeGroundWindow() {
     DWORD thread_id = GetWindowThreadProcessId(foreground_window, &window_pid);
 
     return window_pid == GetCurrentProcessId() ? foreground_window : nullptr;
+}
+
+void HandleReflexAutoConfigure() {
+    // Only run if auto-configure is enabled
+    if (!settings::g_developerTabSettings.reflex_auto_configure.GetValue()) {
+        return;
+    }
+
+    // Check if native Reflex is active
+    bool is_native_reflex_active = g_swapchain_event_counters[SWAPCHAIN_EVENT_NVAPI_D3D_SET_SLEEP_MODE].load() > 0;
+
+    // Get current settings
+    bool reflex_enable = settings::g_developerTabSettings.reflex_enable.GetValue();
+    bool reflex_low_latency = settings::g_developerTabSettings.reflex_low_latency.GetValue();
+    bool reflex_boost = settings::g_developerTabSettings.reflex_boost.GetValue();
+    bool reflex_markers = settings::g_developerTabSettings.reflex_use_markers.GetValue();
+    bool reflex_enable_sleep = settings::g_developerTabSettings.reflex_enable_sleep.GetValue();
+
+    // Auto-configure Reflex settings
+    if (!reflex_enable) {
+        settings::g_developerTabSettings.reflex_enable.SetValue(true);
+        s_reflex_enable.store(true);
+    }
+
+    if (!reflex_low_latency) {
+        settings::g_developerTabSettings.reflex_low_latency.SetValue(true);
+        s_reflex_low_latency.store(true);
+    }
+
+    if (!reflex_boost) {
+        settings::g_developerTabSettings.reflex_boost.SetValue(true);
+        s_reflex_boost.store(true);
+    }
+
+    if (reflex_markers == is_native_reflex_active) {
+        settings::g_developerTabSettings.reflex_use_markers.SetValue(!is_native_reflex_active);
+        s_reflex_use_markers.store(!is_native_reflex_active);
+    }
+
+    if (reflex_enable_sleep == is_native_reflex_active) {
+        settings::g_developerTabSettings.reflex_enable_sleep.SetValue(!is_native_reflex_active);
+        s_reflex_enable_sleep.store(!is_native_reflex_active);
+    }
 }
 
 void every1s_checks() {
@@ -369,6 +413,9 @@ void ContinuousMonitoringThread() {
         if (now_ns - last_1s_update_ns >= 1 * utils::SEC_TO_NS) {
             last_1s_update_ns = now_ns;
             every1s_checks();
+
+            // Handle Reflex auto-configure
+            HandleReflexAutoConfigure();
 
             // Call auto-apply HDR metadata trigger
             ui::new_ui::AutoApplyTrigger();

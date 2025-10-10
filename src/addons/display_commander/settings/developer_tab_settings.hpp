@@ -45,9 +45,6 @@ class DeveloperTabSettings {
     BoolSettingRef enable_adhd_toggle_shortcut;
     BoolSettingRef enable_autoclick_shortcut;
 
-    // Performance optimization settings
-    BoolSettingRef flush_before_present;
-
     // Minimal NVIDIA Reflex controls
     BoolSettingRef reflex_enable;
     BoolSettingRef reflex_low_latency;

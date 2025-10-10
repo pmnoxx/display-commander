@@ -713,21 +713,20 @@ void OnPresentUpdateBefore(reshade::api::command_queue * command_queue, reshade:
             }
         }
     }
-    if (g_flush_before_present.load()) {
-        g_flush_before_present_time_ns.store(utils::get_now_ns());
+    // Always flush command queue before present to reduce latency
+    g_flush_before_present_time_ns.store(utils::get_now_ns());
 
-        // Enqueue GPU completion measurement BEFORE flush for accurate timing
-        // This captures the full GPU workload including the flush operation
-        if (swapchain->get_device()->get_api() == reshade::api::device_api::d3d11 ||
-            swapchain->get_device()->get_api() == reshade::api::device_api::d3d12) {
-            EnqueueGPUCompletion(swapchain);
-        } else {
-            g_gpu_fence_failure_reason.store("Failed to get device from swapchain");
-        }
-
-        flush_command_queue(); // Flush command queue before addons start processing
-                               // to reduce rendering latency caused by reshade
+    // Enqueue GPU completion measurement BEFORE flush for accurate timing
+    // This captures the full GPU workload including the flush operation
+    if (swapchain->get_device()->get_api() == reshade::api::device_api::d3d11 ||
+        swapchain->get_device()->get_api() == reshade::api::device_api::d3d12) {
+        EnqueueGPUCompletion(swapchain);
+    } else {
+        g_gpu_fence_failure_reason.store("Failed to get device from swapchain");
     }
+
+    flush_command_queue(); // Flush command queue before addons start processing
+                           // to reduce rendering latency caused by reshade
 
     // Increment event counter
     g_swapchain_event_counters[SWAPCHAIN_EVENT_PRESENT_UPDATE_BEFORE].fetch_add(1);

@@ -62,16 +62,6 @@ void DrawDeveloperNewTab() {
 }
 
 void DrawDeveloperSettings() {
-    // Performance optimization: Flush before present
-    if (CheckboxSetting(settings::g_developerTabSettings.flush_before_present, "Flush Command Queue Before Present")) {
-        ::g_flush_before_present.store(settings::g_developerTabSettings.flush_before_present.GetValue());
-    }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip(
-            "Flush command queue before ReShade shaders process. Reduces latency and increases FPS by "
-            "ensuring GPU commands are processed before shader execution.");
-    }
-
     // Prevent Fullscreen (global)
     if (CheckboxSetting(settings::g_developerTabSettings.prevent_fullscreen, "Prevent Fullscreen")) {
         // Update global variable for compatibility

@@ -353,12 +353,23 @@ IDXGISwapChain_ResizeBuffers1_pfn IDXGISwapChain_ResizeBuffers1_Original = nullp
 // IDXGISwapChain4 original function pointers
 IDXGISwapChain_SetHDRMetaData_pfn IDXGISwapChain_SetHDRMetaData_Original = nullptr;
 
-// Hook state
-static std::atomic<bool> g_dxgi_present_hooks_installed{false};
-static std::atomic<bool> g_createswapchain_vtable_hooked{false};
+// Hook state and swapchain tracking
+namespace {
+    std::atomic<bool> g_dxgi_present_hooks_installed{false};
+    std::atomic<bool> g_createswapchain_vtable_hooked{false};
+
+    // Track the last native swapchain used in OnPresentUpdateBefore
+    std::atomic<IDXGISwapChain*> g_last_present_update_swapchain{nullptr};
+} // namespace
 
 // Hooked IDXGISwapChain::Present function
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain *This, UINT SyncInterval, UINT Flags) {
+    // Skip if this is not the swapchain used by OnPresentUpdateBefore
+    IDXGISwapChain* expected_swapchain = g_last_present_update_swapchain.load();
+    if (expected_swapchain != nullptr && This != expected_swapchain) {
+        return IDXGISwapChain_Present_Original(This, SyncInterval, Flags);
+    }
+
     // Increment DXGI Present counter
     g_swapchain_event_counters[SWAPCHAIN_EVENT_DXGI_PRESENT].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
@@ -394,6 +405,12 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain *This, UI
 
 // Hooked IDXGISwapChain1::Present1 function
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1 *This, UINT SyncInterval, UINT PresentFlags, const DXGI_PRESENT_PARAMETERS *pPresentParameters) {
+    // Skip if this is not the swapchain used by OnPresentUpdateBefore
+    IDXGISwapChain* expected_swapchain = g_last_present_update_swapchain.load();
+    if (expected_swapchain != nullptr && reinterpret_cast<IDXGISwapChain*>(This) != expected_swapchain) {
+        return IDXGISwapChain_Present1_Original(This, SyncInterval, PresentFlags, pPresentParameters);
+    }
+
     // Increment DXGI Present1 counter
     g_swapchain_event_counters[SWAPCHAIN_EVENT_DXGI_PRESENT1].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
@@ -846,8 +863,10 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetHDRMetaData_Detour(IDXGISwapChain4 *
 }
 
 // Global variables to track hooked swapchains
-static std::atomic<IDXGISwapChain *> g_swapchain_hooked{nullptr};
-static IDXGISwapChain *g_hooked_swapchain = nullptr;
+namespace {
+    std::atomic<IDXGISwapChain *> g_swapchain_hooked{nullptr};
+    IDXGISwapChain *g_hooked_swapchain = nullptr;
+} // namespace
 
 // VTable hooking functions
 bool HookFactoryVTable(IDXGIFactory *factory);
@@ -1375,5 +1394,10 @@ void UninstallDxgiPresentHooks() {
 
 // Check if DXGI Present hooks are installed
 bool AreDxgiPresentHooksInstalled() { return g_dxgi_present_hooks_installed.load(); }
+
+// Record the native swapchain used in OnPresentUpdateBefore
+void RecordPresentUpdateSwapchain(IDXGISwapChain *swapchain) {
+    g_last_present_update_swapchain.store(swapchain);
+}
 
 } // namespace display_commanderhooks::dxgi

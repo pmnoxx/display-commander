@@ -797,6 +797,16 @@ void OnPresentUpdateBefore(reshade::api::command_queue * command_queue, reshade:
                            uint32_t /*dirty_rect_count*/, const reshade::api::rect * /*dirty_rects*/) {
     hookToSwapChain(swapchain);
 
+    // Record the native DXGI swapchain for Present detour filtering
+    if (swapchain != nullptr && (swapchain->get_device()->get_api() == reshade::api::device_api::d3d12 ||
+        swapchain->get_device()->get_api() == reshade::api::device_api::d3d11 ||
+        swapchain->get_device()->get_api() == reshade::api::device_api::d3d10)) {
+        IDXGISwapChain* dxgi_swapchain = reinterpret_cast<IDXGISwapChain*>(swapchain->get_native());
+        if (dxgi_swapchain != nullptr) {
+            display_commanderhooks::dxgi::RecordPresentUpdateSwapchain(dxgi_swapchain);
+        }
+    }
+
     HandleRenderStartAndEndTimes();
 
     HandleEndRenderSubmit();

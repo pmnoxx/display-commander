@@ -197,8 +197,6 @@ std::atomic<std::shared_ptr<const std::string>> g_hdr10_override_timestamp{std::
 // Keyboard Shortcut Settings (moved to earlier in file)
 
 // Performance optimization settings
-std::atomic<bool> g_flush_before_present =
-    true; // Flush command queue before present to reduce latency (enabled by default)
 std::atomic<LONGLONG> g_flush_before_present_time_ns{0};
 
 // Helper function for updating HDR10 override status atomically

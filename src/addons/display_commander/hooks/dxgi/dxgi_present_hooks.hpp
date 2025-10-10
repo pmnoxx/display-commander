@@ -161,4 +161,7 @@ bool HookSwapchain(IDXGISwapChain *swapchain);
 // Hook a specific factory when it's created
 bool HookFactory(IDXGIFactory *factory);
 
+// Record the native swapchain used in OnPresentUpdateBefore
+void RecordPresentUpdateSwapchain(IDXGISwapChain *swapchain);
+
 } // namespace display_commanderhooks::dxgi

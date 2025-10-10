@@ -3,6 +3,7 @@
 #include "../../swapchain_events.hpp"
 #include "../../utils.hpp"
 #include "../../globals.hpp"
+#include "../../settings/main_tab_settings.hpp"
 
 #include <MinHook.h>
 
@@ -53,7 +54,7 @@ namespace {
 
     // Helper function to enqueue GPU completion measurement for D3D11
     void EnqueueGPUCompletionD3D11(IDXGISwapChain* swapchain) {
-        if (!g_gpu_measurement_enabled.load()) {
+        if (settings::g_mainTabSettings.gpu_measurement_enabled.GetValue() == 0) {
             return;
         }
 
@@ -111,7 +112,7 @@ namespace {
 
     // Helper function to enqueue GPU completion measurement for D3D12
     void EnqueueGPUCompletionD3D12(IDXGISwapChain* swapchain) {
-        if (!g_gpu_measurement_enabled.load()) {
+        if (settings::g_mainTabSettings.gpu_measurement_enabled.GetValue() == 0) {
             return;
         }
 

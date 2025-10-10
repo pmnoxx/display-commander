@@ -81,7 +81,7 @@ void DrawFrameTimeGraph() {
     std::string overlay_text = "Frame Time: " + std::to_string(frame_times.back()).substr(0, 6) + " ms";
 
     // Add sim-to-display latency if GPU measurement is enabled and we have valid data
-    if (::g_gpu_measurement_enabled.load() && ::g_sim_to_display_latency_ns.load() > 0) {
+    if (settings::g_mainTabSettings.gpu_measurement_enabled.GetValue() != 0 && ::g_sim_to_display_latency_ns.load() > 0) {
         double sim_to_display_ms = (1.0 * ::g_sim_to_display_latency_ns.load() / utils::NS_TO_MS);
         overlay_text += " | Sim-to-Display Lat: " + std::to_string(sim_to_display_ms).substr(0, 6) + " ms";
 
@@ -1090,9 +1090,9 @@ void DrawImportantInfo() {
     // Frame Time Graph Section
     if (ImGui::CollapsingHeader("Frame Time Graph", ImGuiTreeNodeFlags_DefaultOpen)) {
         // GPU Measurement Enable/Disable Control
-        bool gpu_measurement = ::g_gpu_measurement_enabled.load();
+        bool gpu_measurement = settings::g_mainTabSettings.gpu_measurement_enabled.GetValue() != 0;
         if (ImGui::Checkbox("Enable GPU Completion Measurement", &gpu_measurement)) {
-            ::g_gpu_measurement_enabled.store(gpu_measurement);
+            settings::g_mainTabSettings.gpu_measurement_enabled.SetValue(gpu_measurement ? 1 : 0);
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip(
@@ -1117,7 +1117,7 @@ void DrawImportantInfo() {
         ImGui::TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
 
         // GPU Duration Display (only show if measurement is enabled and has data)
-        if (::g_gpu_measurement_enabled.load() && ::g_gpu_duration_ns.load() > 0) {
+        if (settings::g_mainTabSettings.gpu_measurement_enabled.GetValue() != 0 && ::g_gpu_duration_ns.load() > 0) {
             oss.str("");
             oss.clear();
             oss << "GPU Duration: " << std::fixed << std::setprecision(3)

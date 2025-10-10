@@ -3,6 +3,7 @@
 #include "utils.hpp"
 #include "utils/timing.hpp"
 #include "swapchain_events.hpp"
+#include "settings/main_tab_settings.hpp"
 
 #include <atomic>
 #include <chrono>
@@ -19,7 +20,7 @@ void GPUCompletionMonitoringThread() {
 
     while (g_gpu_monitoring_thread_running.load()) {
         // Check if GPU measurement is enabled
-        if (!g_gpu_measurement_enabled.load()) {
+        if (settings::g_mainTabSettings.gpu_measurement_enabled.GetValue() == 0) {
             // Sleep briefly when disabled to avoid busy-wait
             std::this_thread::sleep_for(std::chrono::milliseconds(16));
             continue;

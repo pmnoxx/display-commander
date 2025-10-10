@@ -82,6 +82,9 @@ class MainTabSettings {
     // Test Overlay Settings
     ui::new_ui::BoolSetting show_test_overlay;
 
+    // GPU Measurement Settings
+    ui::new_ui::IntSetting gpu_measurement_enabled;
+
     // Frame Time Graph Settings
     ui::new_ui::ComboSettingEnumRef<FrameTimeMode> frame_time_mode;
 

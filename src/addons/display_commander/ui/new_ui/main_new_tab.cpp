@@ -432,9 +432,16 @@ void DrawDisplaySettings() {
         if (selected_index >= 0 && selected_index < static_cast<int>(display_info.size())) {
             ImGui::SameLine();
             if (display_info[selected_index].supports_vrr) {
-                ImGui::TextColored(ui::colors::STATUS_ACTIVE, ICON_FK_OK " VRR");
-                if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip("Variable Refresh Rate (VRR) is supported on this display");
+                if (display_info[selected_index].vrr_enabled) {
+                    ImGui::TextColored(ui::colors::STATUS_ACTIVE, ICON_FK_OK " VRR Enabled");
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::SetTooltip("Variable Refresh Rate (VRR) is supported and currently enabled on this display");
+                    }
+                } else {
+                    ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f), ICON_FK_OK " VRR (Disabled)");
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::SetTooltip("Variable Refresh Rate (VRR) is supported but not currently enabled on this display");
+                    }
                 }
             } else {
                 ImGui::TextColored(ui::colors::TEXT_DIMMED, ICON_FK_CANCEL " No VRR");

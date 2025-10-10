@@ -28,6 +28,19 @@ bool CheckVRRSupport() {
     return false;
 }
 
+// Helper function to check if VRR is enabled on the current display
+bool CheckVRREnabled() {
+    auto displays = display_cache::g_displayCache.GetDisplays();
+    if (!displays) return false;
+
+    for (const auto& display : *displays) {
+        if (display->is_primary) {
+            return display->vrr_enabled;
+        }
+    }
+    return false;
+}
+
 namespace ui::new_ui {
 
 void InitDeveloperNewTab() {
@@ -292,14 +305,28 @@ void DrawNvapiSettings() {
         }
 
         // VRR warning for Reflex
-        if (reflex_enable && !CheckVRRSupport()) {
-            ImGui::SameLine();
-            ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f), ICON_FK_WARNING " VRR not detected");
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip(
-                    "Variable Refresh Rate (VRR) is not supported on your display. "
-                    "Reflex works best with VRR-enabled displays for optimal latency reduction. "
-                    "Consider enabling VRR in your display settings or using a VRR-capable monitor.");
+        if (reflex_enable) {
+            bool vrr_supported = CheckVRRSupport();
+            bool vrr_enabled = CheckVRREnabled();
+
+            if (!vrr_supported) {
+                ImGui::SameLine();
+                ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f), ICON_FK_WARNING " VRR not supported");
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip(
+                        "Variable Refresh Rate (VRR) is not supported on your display. "
+                        "Reflex works best with VRR-enabled displays for optimal latency reduction. "
+                        "Consider using a VRR-capable monitor (G-SYNC, FreeSync, etc.).");
+                }
+            } else if (!vrr_enabled) {
+                ImGui::SameLine();
+                ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f), ICON_FK_WARNING " VRR supported but disabled");
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip(
+                        "Variable Refresh Rate (VRR) is supported but not currently enabled on your display. "
+                        "Reflex works best with VRR enabled for optimal latency reduction. "
+                        "Enable G-SYNC, FreeSync, or Adaptive Sync in your display settings or NVIDIA Control Panel.");
+                }
             }
         }
         bool reflex_low_latency = settings::g_developerTabSettings.reflex_low_latency.GetValue();

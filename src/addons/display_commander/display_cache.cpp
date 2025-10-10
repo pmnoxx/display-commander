@@ -17,6 +17,9 @@
 #include <set>
 #include <sstream>
 
+// NVAPI includes for VRR detection
+#include "../../../external/nvapi/nvapi.h"
+
 using Microsoft::WRL::ComPtr;
 
 namespace display_cache {
@@ -168,6 +171,72 @@ bool DetectVRRSupport(HMONITOR monitor) {
     return false;
 }
 
+// Helper function to detect if VRR is currently enabled on a specific monitor
+bool DetectVRREnabled(HMONITOR monitor) {
+    if (monitor == nullptr) {
+        return false;
+    }
+
+    // Get monitor information to get device name
+    MONITORINFOEXW mi{};
+    mi.cbSize = sizeof(mi);
+    if (!GetMonitorInfoW(monitor, &mi)) {
+        return false;
+    }
+
+    // Convert device name from "\\\\.\\DISPLAY1" to "\\DISPLAY1" format for NVAPI
+    std::wstring device_name = mi.szDevice;
+    std::string display_name;
+
+    // Check if device name starts with "\\\\.\\DISPLAY"
+    if (device_name.find(L"\\\\.\\DISPLAY") == 0) {
+        // Extract "DISPLAY1" part
+        std::wstring display_part = device_name.substr(4); // Skip "\\\\.\\"
+        display_name = "\\" + std::string(display_part.begin(), display_part.end());
+    } else {
+        // Fallback: try to use the device name as-is
+        display_name = std::string(device_name.begin(), device_name.end());
+    }
+
+    // Initialize NVAPI if needed
+    static std::atomic<bool> nvapi_initialized{false};
+    static std::atomic<bool> nvapi_available{false};
+
+    if (!nvapi_initialized.load()) {
+        NvAPI_Status status = NvAPI_Initialize();
+        nvapi_available.store(status == NVAPI_OK);
+        nvapi_initialized.store(true);
+
+        if (status != NVAPI_OK) {
+            // NVAPI not available (likely non-NVIDIA GPU), this is not an error
+            return false;
+        }
+    }
+
+    if (!nvapi_available.load()) {
+        return false;
+    }
+
+    // Get display ID from display name
+    NvU32 display_id = 0;
+    NvAPI_Status status = NvAPI_DISP_GetDisplayIdByDisplayName(display_name.c_str(), &display_id);
+    if (status != NVAPI_OK) {
+        // Display not found or not an NVIDIA display
+        return false;
+    }
+
+    // Get VRR info
+    NV_GET_VRR_INFO vrr_info = {};
+    vrr_info.version = NV_GET_VRR_INFO_VER;
+    status = NvAPI_Disp_GetVRRInfo(display_id, &vrr_info);
+    if (status != NVAPI_OK) {
+        return false;
+    }
+
+    // Check if VRR is enabled (bIsVRREnabled or bIsDisplayInVRRMode)
+    return (vrr_info.bIsVRREnabled != 0) || (vrr_info.bIsDisplayInVRRMode != 0);
+}
+
 bool DisplayCache::Initialize() { return Refresh(); }
 
 bool DisplayCache::Refresh() {
@@ -246,6 +315,9 @@ bool DisplayCache::Refresh() {
 
         // Detect VRR support for this display (cache it to avoid expensive calls every frame)
         display_info->supports_vrr = DetectVRRSupport(monitor);
+
+        // Detect if VRR is currently enabled on this display (cache it to avoid expensive calls every frame)
+        display_info->vrr_enabled = DetectVRREnabled(monitor);
 
         // Add to snapshot
         new_displays.push_back(std::move(display_info));
@@ -418,6 +490,7 @@ std::vector<DisplayInfoForUI> DisplayCache::GetDisplayInfoForUI() const {
         // Set other properties
         info.is_primary = display->is_primary;
         info.supports_vrr = display->supports_vrr; // Use cached VRR support
+        info.vrr_enabled = display->vrr_enabled;   // Use cached VRR enabled status
         info.monitor_handle = display->monitor_handle;
         info.display_index = static_cast<int>(i);
 

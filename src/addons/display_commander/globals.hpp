@@ -507,15 +507,6 @@ extern std::thread g_monitoring_thread;
 // Render thread tracking
 extern std::atomic<DWORD> g_render_thread_id;
 
-// Spoof Fullscreen State enum
-enum class SpoofFullscreenState : int {
-    Disabled = 0,
-    SpoofAsFullscreen = 1,
-    SpoofAsWindowed = 2
-};
-
-// Import the global variable
-extern std::atomic<SpoofFullscreenState> s_spoof_fullscreen_state;
 extern std::atomic<bool> s_continue_rendering;
 
 // Forward declaration for tab settings

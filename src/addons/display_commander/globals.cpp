@@ -44,8 +44,6 @@ std::atomic<bool> s_prevent_fullscreen{false};
 // NVAPI Fullscreen Prevention
 std::atomic<bool> s_nvapi_fullscreen_prevention{false}; // disabled by default
 
-// Spoof Fullscreen State (for applications that query fullscreen status)
-std::atomic<SpoofFullscreenState> s_spoof_fullscreen_state{SpoofFullscreenState::Disabled};
 
 // Mouse position spoofing for auto-click sequences
 std::atomic<bool> s_spoof_mouse_position{false}; // disabled by default

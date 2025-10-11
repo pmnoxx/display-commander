@@ -81,43 +81,6 @@ void DrawDeveloperSettings() {
         ImGui::SetTooltip("Prevent exclusive fullscreen; keep borderless/windowed for stability and HDR.");
     }
 
-    // Spoof Fullscreen State
-    const char* spoof_fullscreen_labels[] = {"Disabled", "Spoof as Fullscreen", "Spoof as Windowed"};
-    int spoof_fullscreen_state = static_cast<int>(settings::g_developerTabSettings.spoof_fullscreen_state.GetValue());
-    if (ImGui::Combo("Spoof Fullscreen State", &spoof_fullscreen_state, spoof_fullscreen_labels, 3)) {
-        settings::g_developerTabSettings.spoof_fullscreen_state.SetValue(spoof_fullscreen_state);
-        s_spoof_fullscreen_state.store(static_cast<SpoofFullscreenState>(spoof_fullscreen_state));
-
-        // Log the change
-        std::ostringstream oss;
-        oss << "Fullscreen state spoofing changed to ";
-        if (spoof_fullscreen_state < 0.5f) {
-            oss << "Disabled";
-        } else if (spoof_fullscreen_state < 1.5f) {
-            oss << "Spoof as Fullscreen";
-        } else {
-            oss << "Spoof as Windowed";
-        }
-        LogInfo(oss.str().c_str());
-    }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip(
-            "Spoof fullscreen state detection for applications that query fullscreen status. Useful for "
-            "games that change behavior based on fullscreen state.");
-    }
-
-    // Reset button for Fullscreen State (only show if not at default)
-    if (s_spoof_fullscreen_state.load() != SpoofFullscreenState::Disabled) {
-        ImGui::SameLine();
-        if (ImGui::Button("Reset##DevFullscreen")) {
-            settings::g_developerTabSettings.spoof_fullscreen_state.SetValue(0);
-            s_spoof_fullscreen_state.store(SpoofFullscreenState::Disabled);
-            LogInfo("Fullscreen state spoofing reset to disabled");
-        }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Reset to default (Disabled)");
-        }
-    }
 
     // Continue Rendering
     if (CheckboxSetting(settings::g_developerTabSettings.continue_rendering, "Continue Rendering in Background")) {

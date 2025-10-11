@@ -178,6 +178,10 @@ public:
      */
     bool CopyFrameFromGameThread(IDXGISwapChain* source_swapchain);
 
+    // Copy thread implementation
+    void CopyThreadLoop();
+    void CopyThreadLoop2();
+
 private:
     DX11ProxyManager() = default;
     ~DX11ProxyManager() { Shutdown(); }
@@ -232,8 +236,6 @@ private:
     uint32_t shared_texture_height_{0};
     DXGI_FORMAT shared_texture_format_{DXGI_FORMAT_UNKNOWN};
 
-    // Copy thread implementation
-    void CopyThreadLoop();
 
     // Copy one frame from source to destination
     bool CopyFrame();

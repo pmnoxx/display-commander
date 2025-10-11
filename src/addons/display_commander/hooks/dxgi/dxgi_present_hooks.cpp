@@ -387,9 +387,14 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain *This, UI
 
     dx11_proxy::DX11ProxyManager::GetInstance().CopyFrameFromGameThread(This);
 
+
     // Call original function
     if (IDXGISwapChain_Present_Original != nullptr) {
         auto res= IDXGISwapChain_Present_Original(This, SyncInterval, Flags);
+
+        if (g_last_present_update_swapchain.load() == This) {
+            dx11_proxy::DX11ProxyManager::GetInstance().CopyThreadLoop2();
+        }
 
         // Note: GPU completion measurement is now enqueued earlier in OnPresentUpdateBefore
         // (before flush_command_queue) for more accurate timing
@@ -435,6 +440,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1 *This, 
 
         // Note: GPU completion measurement is now enqueued earlier in OnPresentUpdateBefore
         // (before flush_command_queue) for more accurate timing
+    //   dx11_proxy::DX11ProxyManager::GetInstance().CopyThreadLoop();
 
         ::OnPresentUpdateAfter2();
         return res;

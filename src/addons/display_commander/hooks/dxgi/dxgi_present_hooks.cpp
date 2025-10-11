@@ -676,7 +676,7 @@ HRESULT STDMETHODCALLTYPE IDXGIFactory_CreateSwapChain_Detour(IDXGIFactory *This
         if (SUCCEEDED(hr) && ppSwapChain != nullptr && *ppSwapChain != nullptr) {
             LogInfo("IDXGIFactory::CreateSwapChain succeeded, hooking new swapchain: 0x%p", *ppSwapChain);
             // causes sekiro to crash
-         //   HookSwapchain(*ppSwapChain);
+            // HookSwapchain(*ppSwapChain);
         }
 
         return hr;

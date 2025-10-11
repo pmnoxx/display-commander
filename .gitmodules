@@ -19,3 +19,6 @@
 [submodule "external/XInput_HID"]
 	path = external/XInput_HID
 	url = https://github.com/SpecialKO/XInput_HID.git
+[submodule "external-src/renodx"]
+	path = external-src/renodx
+	url = https://github.com/clshortfuse/renodx.git

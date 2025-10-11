@@ -1,5 +1,6 @@
 #include "addon.hpp"
 #include "display_restore.hpp"
+#include "dx11_proxy/dx11_proxy_manager.hpp"
 #include "exit_handler.hpp"
 #include "globals.hpp"
 #include "gpu_completion_monitoring.hpp"
@@ -287,6 +288,9 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
 
         // Clean up experimental tab threads
         ui::new_ui::CleanupExperimentalTab();
+
+        // Clean up DX11 proxy device
+        dx11_proxy::DX11ProxyManager::GetInstance().Shutdown();
 
         // Clean up NVAPI instances before shutdown
         if (g_latencyManager) {

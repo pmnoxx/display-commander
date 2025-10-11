@@ -1,6 +1,7 @@
 #include "experimental_tab.hpp"
 #include "../../autoclick/autoclick_manager.hpp"
 #include "../../dlss/dlss_indicator_manager.hpp"
+#include "../../dx11_proxy/dx11_proxy_ui.hpp"
 #include "../../globals.hpp"
 #include "../../hooks/sleep_hooks.hpp"
 #include "../../hooks/timeslowdown_hooks.hpp"
@@ -18,6 +19,9 @@ namespace ui::new_ui {
 void InitExperimentalTab() {
     LogInfo("InitExperimentalTab() - Starting to load experimental tab settings");
     settings::g_experimentalTabSettings.LoadAll();
+
+    // Initialize DX11 proxy UI
+    dx11_proxy::InitUI();
 
     // Apply the loaded settings to the actual hook system
     // This ensures the hook system matches the UI settings
@@ -59,6 +63,11 @@ void InitExperimentalTab() {
 void DrawExperimentalTab() {
     ImGui::Text("Experimental Tab - Advanced Features");
     ImGui::Separator();
+
+    if (ImGui::CollapsingHeader("DX11 Proxy Device (DX9 to DX11)", ImGuiTreeNodeFlags_None)) {
+        dx11_proxy::DrawDX11ProxyControls();
+    }
+    ImGui::Spacing();
 
     if (ImGui::CollapsingHeader("Direct3D 9 FLIPEX Upgrade", ImGuiTreeNodeFlags_None)) {
         DrawD3D9FlipExControls();

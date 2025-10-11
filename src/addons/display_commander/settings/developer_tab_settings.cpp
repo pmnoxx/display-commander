@@ -13,7 +13,6 @@ namespace settings {
 // Constructor - initialize all settings with proper keys and default values
 DeveloperTabSettings::DeveloperTabSettings()
     : prevent_fullscreen("PreventFullscreen", s_prevent_fullscreen, true, "DisplayCommander"),
-      spoof_fullscreen_state("SpoofFullscreenState", reinterpret_cast<std::atomic<int>&>(s_spoof_fullscreen_state), static_cast<int>(SpoofFullscreenState::Disabled), 0, 2, "DisplayCommander"),
       continue_rendering("ContinueRendering", s_continue_rendering, false, "DisplayCommander"),
       continuous_monitoring("ContinuousMonitoring", s_continuous_monitoring_enabled, true, "DisplayCommander"),
       prevent_always_on_top("PreventAlwaysOnTop", s_prevent_always_on_top, true, "DisplayCommander"),
@@ -41,7 +40,6 @@ DeveloperTabSettings::DeveloperTabSettings()
 
 void DeveloperTabSettings::LoadAll() {
     prevent_fullscreen.Load();
-    spoof_fullscreen_state.Load();
     continue_rendering.Load(); // This was missing!
     continuous_monitoring.Load();
     prevent_always_on_top.Load();
@@ -72,7 +70,6 @@ void DeveloperTabSettings::SaveAll() {
 
 std::vector<ui::new_ui::SettingBase *> DeveloperTabSettings::GetAllSettings() {
     return {&prevent_fullscreen,
-            &spoof_fullscreen_state,
             &continue_rendering,
             &continuous_monitoring,
             &prevent_always_on_top,

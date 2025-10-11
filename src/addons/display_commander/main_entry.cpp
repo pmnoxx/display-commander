@@ -31,12 +31,6 @@ void OverrideReShadeSettings();
 // Forward declaration for version check
 bool CheckReShadeVersionCompatibility();
 namespace {
-// Destroy device handler to restore display if needed
-void OnDestroyDevice(reshade::api::device * /*device*/) {
-    LogInfo("ReShade device destroyed - Attempting to restore display settings");
-    display_restore::RestoreAllIfEnabled();
-}
-
 void OnRegisterOverlayDisplayCommander(reshade::api::effect_runtime *runtime) {
     ui::new_ui::NewUISystem::GetInstance().Draw();
 }
@@ -221,7 +215,6 @@ void DoInitializationWithoutHwnd(HMODULE h_module, DWORD fdw_reason) {
     // Note: bind_resource, map_resource, unmap_resource events don't exist in ReShade API
     // These operations are handled differently in ReShade
     // Register device destroy event for restore-on-exit
-    reshade::register_event<reshade::addon_event::destroy_device>(OnDestroyDevice);
 
     // Install process-exit safety hooks to restore display on abnormal exits
     process_exit_hooks::Initialize();

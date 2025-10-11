@@ -682,14 +682,15 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetBuffer_Detour(IDXGISwapChain *This, 
     return IDXGISwapChain_GetBuffer_Original(This, Buffer, riid, ppSurface);
 }
 
+std::atomic<BOOL> g_last_set_fullscreen_state{false};
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetFullscreenState_Detour(IDXGISwapChain *This, BOOL Fullscreen, IDXGIOutput *pTarget) {
     g_swapchain_event_counters[SWAPCHAIN_EVENT_DXGI_SETFULLSCREENSTATE].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
     // Check if fullscreen prevention is enabled and we're trying to go fullscreen
-    if (Fullscreen && settings::g_developerTabSettings.prevent_fullscreen.GetValue()) {
-        LogInfo("IDXGISwapChain_SetFullscreenState blocked: fullscreen prevention enabled");
-        return S_OK; // Return success but don't actually change state
+    if (settings::g_developerTabSettings.prevent_fullscreen.GetValue()) {
+        g_last_set_fullscreen_state.store(Fullscreen);
+        return IDXGISwapChain_SetFullscreenState_Original(This, false, pTarget);
     }
 
     return IDXGISwapChain_SetFullscreenState_Original(This, Fullscreen, pTarget);
@@ -698,6 +699,10 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetFullscreenState_Detour(IDXGISwapChai
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetFullscreenState_Detour(IDXGISwapChain *This, BOOL *pFullscreen, IDXGIOutput **ppTarget) {
     g_swapchain_event_counters[SWAPCHAIN_EVENT_DXGI_GETFULLSCREENSTATE].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
+    if (settings::g_developerTabSettings.prevent_fullscreen.GetValue()) {
+        *pFullscreen = g_last_set_fullscreen_state.load();
+        return S_OK;
+    }
     return IDXGISwapChain_GetFullscreenState_Original(This, pFullscreen, ppTarget);
 }
 

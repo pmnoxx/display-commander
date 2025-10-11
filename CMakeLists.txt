@@ -18,9 +18,6 @@ endif()
 
 # Include addon subdirectories
 add_subdirectory(src/addons/display_commander)
-add_subdirectory(src/addons/d3d_debug_layer)
-add_subdirectory(src/addons/template_addon)
-add_subdirectory(src/addons/hide_hdr)
 
 # Include tools
 add_subdirectory(tools/driver_restart)

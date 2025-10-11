@@ -7,6 +7,7 @@
 namespace settings {
 
 // Bring setting types into scope
+using ui::new_ui::BoolSetting;
 using ui::new_ui::BoolSettingRef;
 using ui::new_ui::FloatSettingRef;
 using ui::new_ui::IntSettingRef;

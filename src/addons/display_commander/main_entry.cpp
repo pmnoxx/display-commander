@@ -191,7 +191,8 @@ void DoInitializationWithoutHwnd(HMODULE h_module, DWORD fdw_reason) {
     // Defer NVAPI init until after settings are loaded below
 
     // Register our fullscreen prevention event handler
-    reshade::register_event<reshade::addon_event::set_fullscreen_state>(OnSetFullscreenState);
+    // NOTE: Fullscreen prevention is now handled directly in IDXGISwapChain_SetFullscreenState_Detour
+    // reshade::register_event<reshade::addon_event::set_fullscreen_state>(OnSetFullscreenState);
 
     // NVAPI HDR monitor will be started after settings load below if enabled
     // Seed default fps limit snapshot

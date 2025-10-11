@@ -7,6 +7,8 @@
 #include "../../settings/developer_tab_settings.hpp"
 #include "../../settings/main_tab_settings.hpp"
 #include "../../widgets/resolution_widget/resolution_widget.hpp"
+#include "../../nvapi/reflex_manager.hpp"
+#include "../../hooks/nvapi_hooks.hpp"
 #include "../../res/forkawesome.h"
 #include "../../res/ui_colors.hpp"
 #include "../../utils.hpp"
@@ -573,6 +575,7 @@ void DrawDisplaySettings() {
         };
 
         int current_item = settings::g_mainTabSettings.fps_limiter_mode.GetValue();
+        int prev_item = current_item;
         if (ImGui::Combo("FPS Limiter Mode", &current_item, items, 5)) {
             settings::g_mainTabSettings.fps_limiter_mode.SetValue(current_item);
             s_fps_limiter_mode.store(static_cast<FpsLimiterMode>(current_item));
@@ -589,6 +592,12 @@ void DrawDisplaySettings() {
                 LogInfo("FPS Limiter: OnPresent Frame Synchronizer (Low Latency Mode) - Not implemented yet");
             } else if (mode == FpsLimiterMode::kLatentSync) {
                 LogInfo("FPS Limiter: VBlank Scanline Sync for VSYNC-OFF or without VRR");
+            }
+
+            if (mode == FpsLimiterMode::kReflex && prev_item != static_cast<int>(FpsLimiterMode::kReflex)) {
+                // reset the reflex auto configure setting
+                settings::g_developerTabSettings.reflex_auto_configure.SetValue(false);
+                s_reflex_auto_configure.store(false);
             }
         }
 

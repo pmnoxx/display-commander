@@ -31,6 +31,9 @@ class ReflexManager {
     // Optional: driver sleep call (minimal usage)
     bool Sleep();
 
+    // Restore sleep mode to default settings
+    static void RestoreSleepMode(IUnknown *d3d_device_, NV_SET_SLEEP_MODE_PARAMS *params);
+
     bool IsInitialized() const { return initialized_; }
 
   private:

@@ -135,3 +135,9 @@ bool ReflexManager::Sleep() {
     const auto st = NvAPI_D3D_Sleep_Direct(d3d_device_);
     return st == NVAPI_OK;
 }
+
+// params may be nullptr if no parameters were stored
+void ReflexManager::RestoreSleepMode(IUnknown *d3d_device_, NV_SET_SLEEP_MODE_PARAMS *params) {
+    // unsted for params == nullptr
+    NvAPI_D3D_SetSleepMode_Direct(d3d_device_, params);
+}

@@ -6,6 +6,7 @@
 #include "globals.hpp"
 #include "hooks/api_hooks.hpp"
 #include "hooks/windows_hooks/windows_message_hooks.hpp"
+#include "nvapi/reflex_manager.hpp"
 #include "settings/experimental_tab_settings.hpp"
 #include "settings/main_tab_settings.hpp"
 #include "settings/developer_tab_settings.hpp"
@@ -39,8 +40,11 @@ void HandleReflexAutoConfigure() {
         return;
     }
 
+
     // Check if native Reflex is active
     bool is_native_reflex_active = g_swapchain_event_counters[SWAPCHAIN_EVENT_NVAPI_D3D_SET_SLEEP_MODE].load() > 0;
+
+    bool is_reflex_mode = static_cast<FpsLimiterMode>(settings::g_mainTabSettings.fps_limiter_mode.GetValue()) == FpsLimiterMode::kReflex;
 
     // Get current settings
     bool reflex_enable = settings::g_developerTabSettings.reflex_enable.GetValue();
@@ -50,9 +54,15 @@ void HandleReflexAutoConfigure() {
     bool reflex_enable_sleep = settings::g_developerTabSettings.reflex_enable_sleep.GetValue();
 
     // Auto-configure Reflex settings
-    if (!reflex_enable) {
-        settings::g_developerTabSettings.reflex_enable.SetValue(true);
-        s_reflex_enable.store(true);
+    if (reflex_enable != is_reflex_mode) {
+        settings::g_developerTabSettings.reflex_enable.SetValue(is_reflex_mode);
+        s_reflex_enable.store(is_reflex_mode);
+
+        if (is_reflex_mode == false) {
+            // TODO move logic to Con
+            auto params = g_last_nvapi_sleep_mode_params.load();
+            ReflexManager::RestoreSleepMode(g_last_nvapi_sleep_mode_dev_ptr.load(), params ? params.get() : nullptr);
+        }
     }
 
     if (!reflex_low_latency) {

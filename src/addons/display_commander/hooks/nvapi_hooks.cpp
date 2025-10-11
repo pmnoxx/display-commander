@@ -1,5 +1,6 @@
 #include "nvapi_hooks.hpp"
 #include "../utils.hpp"
+#include "../utils/timing.hpp"
 #include "../globals.hpp"
 #include <MinHook.h>
 #include "../../../external/nvapi/nvapi_interface.h"
@@ -158,6 +159,13 @@ NvAPI_Status NvAPI_D3D_SetSleepMode_Direct(IUnknown *pDev, NV_SET_SLEEP_MODE_PAR
 // Direct call to NvAPI_D3D_Sleep without stats tracking
 // For internal use to avoid inflating statistics
 NvAPI_Status NvAPI_D3D_Sleep_Direct(IUnknown *pDev) {
+    {
+        static LONGLONG last_call = 0;
+        auto now = utils::get_now_ns();
+        g_sleep_reflex_injected_ns.store(now - last_call);
+        last_call = now;
+    }
+
     if (NvAPI_D3D_Sleep_Original != nullptr) {
         return NvAPI_D3D_Sleep_Original(pDev);
     }
@@ -193,6 +201,13 @@ NvAPI_Status __cdecl NvAPI_D3D_Sleep_Detour(IUnknown *pDev) {
     if (log_count < 3) {
         LogInfo("NVAPI Sleep called");
         log_count++;
+    }
+
+    {
+        static LONGLONG last_call = 0;
+        auto now = utils::get_now_ns();
+        g_sleep_reflex_native_ns.store(now - last_call);
+        last_call = now;
     }
 
     // Call original function

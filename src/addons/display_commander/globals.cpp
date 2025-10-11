@@ -311,6 +311,10 @@ std::atomic<std::shared_ptr<const std::string>> g_dlls_g_version{std::make_share
 std::atomic<std::shared_ptr<NV_SET_SLEEP_MODE_PARAMS>> g_last_nvapi_sleep_mode_params{nullptr};
 std::atomic<IUnknown*> g_last_nvapi_sleep_mode_dev_ptr{nullptr};
 
+// NVAPI Reflex timing tracking
+std::atomic<LONGLONG> g_sleep_reflex_injected_ns{0};
+std::atomic<LONGLONG> g_sleep_reflex_native_ns{0};
+
 
 // Experimental tab settings global instance
 namespace settings {

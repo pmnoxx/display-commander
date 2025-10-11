@@ -230,8 +230,12 @@ void DoInitializationWithoutHwnd(HMODULE h_module, DWORD fdw_reason) {
 }
 
 BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
+    // Early logging to detect crash timing
+    OutputDebugStringA("DisplayCommander: DllMain called\n");
+
     switch (fdw_reason) {
     case DLL_PROCESS_ATTACH: {
+        OutputDebugStringA("DisplayCommander: DLL_PROCESS_ATTACH\n");
         g_shutdown.store(false);
 
         if (g_dll_initialization_complete.load()) {
@@ -239,13 +243,16 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             return FALSE;
         }
 
+        OutputDebugStringA("DisplayCommander: About to register addon\n");
         if (!reshade::register_addon(h_module)) {
             // Registration failed - likely due to API version mismatch
+            OutputDebugStringA("DisplayCommander: ReShade addon registration FAILED\n");
             LogError("ReShade addon registration failed - this usually indicates an API version mismatch");
             LogError("Display Commander requires ReShade 6.5.1+ (API version 17) but detected older version");
             CheckReShadeVersionCompatibility();
             return FALSE;
         }
+        OutputDebugStringA("DisplayCommander: ReShade addon registration SUCCESS\n");
 
         // Registration successful - log version compatibility
         LogInfo("Display Commander v%s - ReShade addon registration successful (API version 17 supported)", DISPLAY_COMMANDER_VERSION_STRING);
@@ -253,7 +260,16 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
         // Store module handle for pinning
         g_hmodule = h_module;
 
-        DoInitializationWithoutHwnd(h_module, fdw_reason);
+        OutputDebugStringA("DisplayCommander: About to call DoInitializationWithoutHwnd\n");
+        __try {
+            DoInitializationWithoutHwnd(h_module, fdw_reason);
+            OutputDebugStringA("DisplayCommander: DoInitializationWithoutHwnd completed\n");
+        }
+        __except(EXCEPTION_EXECUTE_HANDLER) {
+            OutputDebugStringA("DisplayCommander: EXCEPTION in DoInitializationWithoutHwnd\n");
+            LogError("Exception occurred during initialization: 0x%x", GetExceptionCode());
+            return FALSE;
+        }
 
         break;
     }

@@ -74,6 +74,7 @@ void WINAPI Sleep_Detour(DWORD dwMilliseconds) {
     }
 }
 
+
 // Hooked SleepEx function
 DWORD WINAPI SleepEx_Detour(DWORD dwMilliseconds, BOOL bAlertable) {
     // Track total calls

@@ -684,6 +684,13 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetBuffer_Detour(IDXGISwapChain *This, 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetFullscreenState_Detour(IDXGISwapChain *This, BOOL Fullscreen, IDXGIOutput *pTarget) {
     g_swapchain_event_counters[SWAPCHAIN_EVENT_DXGI_SETFULLSCREENSTATE].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
+
+    // Check if fullscreen prevention is enabled and we're trying to go fullscreen
+    if (Fullscreen && s_prevent_fullscreen.load()) {
+        LogInfo("IDXGISwapChain_SetFullscreenState blocked: fullscreen prevention enabled");
+        return S_OK; // Return success but don't actually change state
+    }
+
     return IDXGISwapChain_SetFullscreenState_Original(This, Fullscreen, pTarget);
 }
 

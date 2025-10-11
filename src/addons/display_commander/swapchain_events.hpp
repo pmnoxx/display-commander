@@ -129,4 +129,4 @@ extern std::atomic<LONGLONG> g_sim_start_ns;
 // ============================================================================
 
 
-bool OnSetFullscreenState(reshade::api::swapchain *swapchain, bool fullscreen, void *hmonitor);
+// OnSetFullscreenState function removed - fullscreen prevention now handled directly in IDXGISwapChain_SetFullscreenState_Detour

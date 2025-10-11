@@ -1109,6 +1109,4 @@ void OnSetScissorRects(reshade::api::command_list *cmd_list, uint32_t first, uin
     cmd_list->bind_scissor_rects(first, count, scaled_rects.data());
 }
 
-bool OnSetFullscreenState(reshade::api::swapchain *swapchain, bool fullscreen, void *hmonitor) {
-    return fullscreen && s_prevent_fullscreen.load();
-}
+// OnSetFullscreenState function removed - fullscreen prevention now handled directly in IDXGISwapChain_SetFullscreenState_Detour

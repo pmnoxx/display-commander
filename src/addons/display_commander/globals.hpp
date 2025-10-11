@@ -703,6 +703,9 @@ extern std::atomic<IUnknown*> g_last_nvapi_sleep_mode_dev_ptr;  // Last device p
 extern std::atomic<LONGLONG> g_sleep_reflex_injected_ns;  // Time between injected Reflex sleep calls
 extern std::atomic<LONGLONG> g_sleep_reflex_native_ns;    // Time between native Reflex sleep calls
 
+// DX11 Proxy HWND for filtering
+extern HWND g_proxy_hwnd;
+
 // Continuous monitoring functions
 void StartContinuousMonitoring();
 void StopContinuousMonitoring();

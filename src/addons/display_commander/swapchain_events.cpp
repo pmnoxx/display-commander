@@ -76,6 +76,10 @@ bool OnCreateDevice(reshade::api::device_api api, uint32_t& api_version) {
 }
 
 void hookToSwapChain(reshade::api::swapchain *swapchain) {
+    HWND hwnd = static_cast<HWND>(swapchain->get_hwnd());
+    if (hwnd == g_proxy_hwnd) {
+        return;
+    }
     static std::set<reshade::api::swapchain *> hooked_swapchains;
 
     static reshade::api::swapchain *last_swapchain = nullptr;
@@ -107,7 +111,6 @@ void hookToSwapChain(reshade::api::swapchain *swapchain) {
 
     // Schedule auto-apply even on resizes (generation counter ensures only latest
     // runs)
-    HWND hwnd = static_cast<HWND>(swapchain->get_hwnd());
     if (hwnd != nullptr) {
         g_last_swapchain_hwnd.store(hwnd);
 

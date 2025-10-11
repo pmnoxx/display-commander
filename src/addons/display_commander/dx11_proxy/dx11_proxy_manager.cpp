@@ -4,7 +4,9 @@
 
 #include "dx11_proxy_manager.hpp"
 #include "dx11_proxy_shared_resources.hpp"
+#include "dx11_proxy_settings.hpp"
 #include "../utils.hpp"
+#include "../globals.hpp"
 #include <sstream>
 #include <chrono>
 #include <thread>
@@ -175,6 +177,10 @@ bool DX11ProxyManager::CreateSwapChain(HWND hwnd, uint32_t width, uint32_t heigh
         LogError(ss.str().c_str());
         return false;
     }
+
+    // Get format from settings
+    int format_index = g_dx11ProxySettings.swapchain_format.load();
+    swapchain_format_ = GetFormatFromIndex(format_index);
 
     // Configure swapchain description for modern flip model
     DXGI_SWAP_CHAIN_DESC1 desc = {};
@@ -356,10 +362,14 @@ void DX11ProxyManager::CopyThreadLoop() {
 bool DX11ProxyManager::CopyFrame() {
     // Ensure we have valid swapchains
     if (!source_swapchain_ || !swapchain_) {
+        LogWarn("DX11ProxyManager::CopyFrame: Missing swapchains - source: %p, proxy: %p",
+                source_swapchain_.Get(), swapchain_.Get());
         return false;
     }
 
     if (!device_ || !context_) {
+        LogWarn("DX11ProxyManager::CopyFrame: Missing device/context - device: %p, context: %p",
+                device_.Get(), context_.Get());
         return false;
     }
 
@@ -383,27 +393,56 @@ bool DX11ProxyManager::CopyFrame() {
         return false;
     }
 
-    // Use shared resources if devices are different
+    // Debug: Log texture info
+    D3D11_TEXTURE2D_DESC source_desc, dest_desc;
+    source_backbuffer->GetDesc(&source_desc);
+    dest_backbuffer->GetDesc(&dest_desc);
+
+    LogInfo("DX11ProxyManager::CopyFrame: Copying %dx%d (%d) -> %dx%d (%d), shared_resources: %s",
+            source_desc.Width, source_desc.Height, source_desc.Format,
+            dest_desc.Width, dest_desc.Height, dest_desc.Format,
+            use_shared_resources_ ? "enabled" : "disabled");
+
+    // Use shared resources if devices are different (RenoDX strategy)
     if (use_shared_resources_) {
-        if (!shared_texture_ || !source_context_) {
+        if (!shared_texture_ || !shared_handle_ || !source_context_) {
             LogError("DX11ProxyManager::CopyFrame: Shared resources not initialized");
             return false;
         }
 
+        // RenoDX Strategy: Open shared resource on source device (created on proxy device)
+        ComPtr<ID3D11Texture2D> shared_texture_on_source;
+        hr = source_device_->OpenSharedResource(shared_handle_, IID_PPV_ARGS(&shared_texture_on_source));
+        if (FAILED(hr)) {
+            std::stringstream ss;
+            ss << "DX11ProxyManager::CopyFrame: Failed to open shared resource on source device, HRESULT 0x" << std::hex << hr;
+            LogError(ss.str().c_str());
+            return false;
+        }
+
         // Step 1: Copy from game's backbuffer to shared texture (on game's device)
-        source_context_->CopyResource(shared_texture_.Get(), source_backbuffer.Get());
+        source_context_->CopyResource(shared_texture_on_source.Get(), source_backbuffer.Get());
 
         // Flush to ensure the copy completes before the next step
         source_context_->Flush();
 
         // Step 2: Copy from shared texture to our backbuffer (on our device)
         context_->CopyResource(dest_backbuffer.Get(), shared_texture_.Get());
+
+        // Flush to ensure the copy completes before present
+        context_->Flush();
     } else {
         // Direct copy - same device
+        LogInfo("DX11ProxyManager::CopyFrame: Performing direct copy (same device)");
         context_->CopyResource(dest_backbuffer.Get(), source_backbuffer.Get());
+
+        // Flush to ensure the copy completes before present
+        context_->Flush();
+        LogInfo("DX11ProxyManager::CopyFrame: Direct copy completed and flushed");
     }
 
     // Present the copied frame
+    LogInfo("DX11ProxyManager::CopyFrame: Presenting frame...");
     hr = swapchain_->Present(0, 0);
     if (FAILED(hr)) {
         std::stringstream ss;
@@ -412,6 +451,7 @@ bool DX11ProxyManager::CopyFrame() {
         return false;
     }
 
+    LogInfo("DX11ProxyManager::CopyFrame: Present succeeded");
     return true;
 }
 
@@ -484,6 +524,9 @@ HWND DX11ProxyManager::CreateTestWindow4K() {
     // Track test window
     test_windows_.push_back(test_hwnd);
 
+    // Set global proxy HWND for filtering
+    g_proxy_hwnd = test_hwnd;
+
     std::stringstream ss;
     ss << "DX11ProxyManager::CreateTestWindow4K: Created test window 0x"
        << std::hex << reinterpret_cast<uintptr_t>(test_hwnd)
@@ -507,6 +550,11 @@ void DX11ProxyManager::DestroyTestWindow(HWND test_hwnd) {
     auto it = std::find(test_windows_.begin(), test_windows_.end(), test_hwnd);
     if (it != test_windows_.end()) {
         test_windows_.erase(it);
+    }
+
+    // Clear global proxy HWND if this was the current one
+    if (g_proxy_hwnd == test_hwnd) {
+        g_proxy_hwnd = nullptr;
     }
 
     // Destroy the window
@@ -568,7 +616,7 @@ bool DX11ProxyManager::TestRender(int color_index) {
 }
 
 bool DX11ProxyManager::InitializeSharedResources(IDXGISwapChain* source_swapchain) {
-    LogInfo("DX11ProxyManager::InitializeSharedResources: Initializing shared resources for cross-device copy");
+    LogInfo("DX11ProxyManager::InitializeSharedResources: Initializing shared resources for cross-device copy (RenoDX strategy)");
 
     HRESULT hr;
 
@@ -595,7 +643,8 @@ bool DX11ProxyManager::InitializeSharedResources(IDXGISwapChain* source_swapchai
     LogInfo("InitializeSharedResources: Source texture: %ux%u, format %d",
             shared_texture_width_, shared_texture_height_, shared_texture_format_);
 
-    // Create shared texture on SOURCE device (game's device)
+    // RenoDX Strategy: Create shared texture on OUR device (proxy device) first
+    // This is more reliable than creating on source device (DX9 → DX11 is easier than DX11 → DX9)
     D3D11_TEXTURE2D_DESC shared_desc = {};
     shared_desc.Width = shared_texture_width_;
     shared_desc.Height = shared_texture_height_;
@@ -609,45 +658,35 @@ bool DX11ProxyManager::InitializeSharedResources(IDXGISwapChain* source_swapchai
     shared_desc.CPUAccessFlags = 0;
     shared_desc.MiscFlags = D3D11_RESOURCE_MISC_SHARED;  // Enable sharing!
 
-    ComPtr<ID3D11Texture2D> shared_texture_on_source;
-    hr = source_device_->CreateTexture2D(&shared_desc, nullptr, &shared_texture_on_source);
+    // Create shared texture on OUR device (proxy device)
+    hr = device_->CreateTexture2D(&shared_desc, nullptr, &shared_texture_);
     if (FAILED(hr)) {
         std::stringstream ss;
-        ss << "InitializeSharedResources: Failed to create shared texture on source device, HRESULT 0x" << std::hex << hr;
+        ss << "InitializeSharedResources: Failed to create shared texture on proxy device, HRESULT 0x" << std::hex << hr;
         LogError(ss.str().c_str());
         return false;
     }
 
-    LogInfo("InitializeSharedResources: Created shared texture on source device");
+    LogInfo("InitializeSharedResources: Created shared texture on proxy device");
 
-    // Get shared handle from the texture
+    // Get shared handle from OUR texture
     ComPtr<IDXGIResource> dxgi_resource;
-    hr = shared_texture_on_source.As(&dxgi_resource);
+    hr = shared_texture_.As(&dxgi_resource);
     if (FAILED(hr)) {
         LogError("InitializeSharedResources: Failed to get IDXGIResource");
+        shared_texture_.Reset();
         return false;
     }
 
-    HANDLE shared_handle = nullptr;
-    hr = dxgi_resource->GetSharedHandle(&shared_handle);
+    hr = dxgi_resource->GetSharedHandle(&shared_handle_);
     if (FAILED(hr)) {
         LogError("InitializeSharedResources: Failed to get shared handle");
+        shared_texture_.Reset();
         return false;
     }
 
-    LogInfo("InitializeSharedResources: Got shared handle: 0x%p", shared_handle);
-
-    // Open shared resource on OUR device (test window's device)
-    hr = device_->OpenSharedResource(shared_handle, IID_PPV_ARGS(&shared_texture_));
-    if (FAILED(hr)) {
-        std::stringstream ss;
-        ss << "InitializeSharedResources: Failed to open shared resource on dest device, HRESULT 0x" << std::hex << hr;
-        LogError(ss.str().c_str());
-        return false;
-    }
-
-    LogInfo("InitializeSharedResources: Successfully opened shared resource on dest device");
-    LogInfo("InitializeSharedResources: Shared resources initialized successfully!");
+    LogInfo("InitializeSharedResources: Got shared handle from proxy device: 0x%p", shared_handle_);
+    LogInfo("InitializeSharedResources: Shared resources initialized successfully using RenoDX strategy!");
 
     return true;
 }
@@ -658,6 +697,7 @@ void DX11ProxyManager::CleanupSharedResources() {
     }
 
     shared_texture_.Reset();
+    shared_handle_ = nullptr;
     source_context_.Reset();
     source_device_.Reset();
 
@@ -665,6 +705,341 @@ void DX11ProxyManager::CleanupSharedResources() {
     shared_texture_width_ = 0;
     shared_texture_height_ = 0;
     shared_texture_format_ = DXGI_FORMAT_UNKNOWN;
+}
+
+bool DX11ProxyManager::CopyFrameFromGameThread(IDXGISwapChain* source_swapchain) {
+    // Validate parameters
+    if (!source_swapchain) {
+        return false;
+    }
+
+    // Check if we have a valid proxy swapchain
+    if (!swapchain_ || !device_ || !context_) {
+        return false;
+    }
+
+    // Check if this is the swapchain we're monitoring
+    if (source_swapchain_ && source_swapchain != source_swapchain_.Get()) {
+        return false; // Different swapchain, ignore
+    }
+
+    HRESULT hr;
+
+    // Get back buffer from source swapchain (game's swapchain)
+    ComPtr<ID3D11Texture2D> source_backbuffer;
+    hr = source_swapchain->GetBuffer(0, IID_PPV_ARGS(&source_backbuffer));
+    if (FAILED(hr)) {
+        return false;
+    }
+
+    // Get back buffer from destination swapchain (proxy swapchain)
+    ComPtr<ID3D11Texture2D> dest_backbuffer;
+    hr = swapchain_->GetBuffer(0, IID_PPV_ARGS(&dest_backbuffer));
+    if (FAILED(hr)) {
+        return false;
+    }
+
+    // Get the device from source backbuffer to get its context
+    ComPtr<ID3D11Device> source_device;
+    source_backbuffer->GetDevice(&source_device);
+
+    ComPtr<ID3D11DeviceContext> source_context;
+    source_device->GetImmediateContext(&source_context);
+
+    // Check if devices are different (need shared resources)
+    if (source_device.Get() != device_.Get()) {
+        // Different devices - use RenoDX strategy:
+        // 1. Create shared texture on proxy device (DX11)
+        // 2. Open shared resource on source device (DX9/DX11)
+        // 3. Copy on source device to shared texture
+        // 4. Copy on proxy device from shared texture to backbuffer
+        if (!shared_texture_) {
+            // Initialize shared texture using RenoDX strategy: create on OUR device (proxy) first
+            LogInfo("DX11ProxyManager::CopyFrameFromGameThread: Creating shared texture using RenoDX strategy");
+
+            // Get texture description from source
+            D3D11_TEXTURE2D_DESC source_desc;
+            source_backbuffer->GetDesc(&source_desc);
+
+            // Create shared texture on OUR device (proxy device) - RenoDX strategy
+            D3D11_TEXTURE2D_DESC shared_desc = {};
+            shared_desc.Width = source_desc.Width;
+            shared_desc.Height = source_desc.Height;
+            shared_desc.MipLevels = 1;
+            shared_desc.ArraySize = 1;
+            shared_desc.Format = source_desc.Format;
+            shared_desc.SampleDesc.Count = 1;
+            shared_desc.SampleDesc.Quality = 0;
+            shared_desc.Usage = D3D11_USAGE_DEFAULT;
+            shared_desc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+            shared_desc.CPUAccessFlags = 0;
+            shared_desc.MiscFlags = D3D11_RESOURCE_MISC_SHARED;
+
+            // Create shared texture on OUR device (proxy device)
+            hr = device_->CreateTexture2D(&shared_desc, nullptr, &shared_texture_);
+            if (FAILED(hr)) {
+                LogError("DX11ProxyManager::CopyFrameFromGameThread: Failed to create shared texture on proxy device");
+                return false;
+            }
+
+            // Get shared handle from our device
+            ComPtr<IDXGIResource> dxgi_resource;
+            hr = shared_texture_.As(&dxgi_resource);
+            if (FAILED(hr)) {
+                LogError("DX11ProxyManager::CopyFrameFromGameThread: Failed to get IDXGIResource");
+                return false;
+            }
+
+            hr = dxgi_resource->GetSharedHandle(&shared_handle_);
+            if (FAILED(hr)) {
+                LogError("DX11ProxyManager::CopyFrameFromGameThread: Failed to get shared handle");
+                return false;
+            }
+
+            LogInfo("DX11ProxyManager::CopyFrameFromGameThread: Shared texture created on proxy device successfully");
+        }
+
+        // Step 1: Open shared resource on source device and copy from game's backbuffer
+        ComPtr<ID3D11Texture2D> shared_texture_on_source;
+        hr = source_device->OpenSharedResource(shared_handle_, IID_PPV_ARGS(&shared_texture_on_source));
+        if (FAILED(hr)) {
+            LogError("DX11ProxyManager::CopyFrameFromGameThread: Failed to open shared resource on source device");
+            return false;
+        }
+
+        // Copy from game's backbuffer to shared texture (on game's device, game's thread)
+        source_context->CopyResource(shared_texture_on_source.Get(), source_backbuffer.Get());
+
+        // Flush to ensure the copy completes before the next step
+        source_context->Flush();
+
+        // Step 2: Copy from shared texture to our backbuffer (on our device)
+        context_->CopyResource(dest_backbuffer.Get(), shared_texture_.Get());
+
+        // Flush to ensure the copy completes before present
+        context_->Flush();
+    } else {
+        // Same device - direct copy
+        context_->CopyResource(dest_backbuffer.Get(), source_backbuffer.Get());
+
+        // Flush to ensure the copy completes before present
+        context_->Flush();
+    }
+
+    // Present the copied frame
+    hr = swapchain_->Present(0, 0);
+    if (FAILED(hr)) {
+        return false;
+    }
+
+    // Increment frame counter
+    frames_copied_.fetch_add(1);
+
+    return true;
+}
+
+DXGI_FORMAT DX11ProxyManager::GetFormatFromIndex(int format_index) {
+    switch (format_index) {
+        case 0: return DXGI_FORMAT_R10G10B10A2_UNORM;  // HDR 10-bit
+        case 1: return DXGI_FORMAT_R16G16B16A16_FLOAT; // HDR 16-bit float
+        case 2: return DXGI_FORMAT_R8G8B8A8_UNORM;     // SDR 8-bit
+        default:
+            LogWarn("DX11ProxyManager::GetFormatFromIndex: Unknown format index %d, defaulting to R10G10B10A2", format_index);
+            return DXGI_FORMAT_R10G10B10A2_UNORM;
+    }
+}
+
+bool DX11ProxyManager::SetHDRColorSpace() {
+    std::lock_guard lock(mutex_);
+
+    if (!is_initialized_.load()) {
+        LogError("DX11ProxyManager::SetHDRColorSpace: Manager not initialized");
+        return false;
+    }
+
+    if (!swapchain_) {
+        LogError("DX11ProxyManager::SetHDRColorSpace: No swap chain available");
+        return false;
+    }
+
+    // Get IDXGISwapChain3 interface for SetColorSpace1
+    ComPtr<IDXGISwapChain3> swapchain3;
+    HRESULT hr = swapchain_.As(&swapchain3);
+    if (FAILED(hr)) {
+        LogError("DX11ProxyManager::SetHDRColorSpace: Failed to get IDXGISwapChain3 interface");
+        return false;
+    }
+
+    // Get current format from settings
+    int format_index = g_dx11ProxySettings.swapchain_format.load();
+    DXGI_FORMAT current_format = GetFormatFromIndex(format_index);
+
+    // Determine appropriate color space based on format
+    DXGI_COLOR_SPACE_TYPE color_space;
+    switch (current_format) {
+        case DXGI_FORMAT_R10G10B10A2_UNORM:
+            // HDR10 format - use HDR10 color space
+            color_space = DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020;
+            break;
+        case DXGI_FORMAT_R16G16B16A16_FLOAT:
+            // FP16 format - use scRGB color space
+            color_space = DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709;
+            break;
+        case DXGI_FORMAT_R8G8B8A8_UNORM:
+            // SDR format - use sRGB color space
+            color_space = DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
+            break;
+        default:
+            LogWarn("DX11ProxyManager::SetHDRColorSpace: Unknown format %d, using sRGB", static_cast<int>(current_format));
+            color_space = DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
+            break;
+    }
+
+    // Set the appropriate color space
+    hr = swapchain3->SetColorSpace1(color_space);
+    if (FAILED(hr)) {
+        std::stringstream ss;
+        ss << "DX11ProxyManager::SetHDRColorSpace: SetColorSpace1 failed with HRESULT 0x" << std::hex << hr;
+        LogError(ss.str().c_str());
+        return false;
+    }
+
+    std::stringstream ss;
+    ss << "DX11ProxyManager::SetHDRColorSpace: Successfully set color space " << static_cast<int>(color_space)
+       << " for format " << static_cast<int>(current_format) << " on proxy swap chain";
+    LogInfo(ss.str().c_str());
+    return true;
+}
+
+bool DX11ProxyManager::SetSourceColorSpace() {
+    std::lock_guard lock(mutex_);
+
+    if (!is_initialized_.load()) {
+        LogError("DX11ProxyManager::SetSourceColorSpace: Manager not initialized");
+        return false;
+    }
+
+    // Get the game's swap chain from global variables
+    void* game_swapchain_ptr = g_last_swapchain_ptr.load();
+    int game_api = g_last_swapchain_api.load();
+
+    if (!game_swapchain_ptr) {
+        LogError("DX11ProxyManager::SetSourceColorSpace: No game swap chain detected");
+        return false;
+    }
+
+    // Check if it's a compatible API (DX11 or DX12)
+    bool is_dx11 = (game_api == 0xb000); // reshade::api::device_api::d3d11
+    bool is_dx12 = (game_api == 0xc000); // reshade::api::device_api::d3d12
+    if (!is_dx11 && !is_dx12) {
+        LogError("DX11ProxyManager::SetSourceColorSpace: Incompatible API %d (need DX11 or DX12)", game_api);
+        return false;
+    }
+
+    // Get the native swap chain handle from ReShade
+    auto* reshade_swapchain = static_cast<reshade::api::swapchain*>(game_swapchain_ptr);
+    uint64_t native_handle = reshade_swapchain->get_native();
+
+    if (!native_handle) {
+        LogError("DX11ProxyManager::SetSourceColorSpace: Failed to get native swap chain handle");
+        return false;
+    }
+
+    // Cast to IDXGISwapChain
+    auto* native_swapchain = reinterpret_cast<IDXGISwapChain*>(native_handle);
+    ComPtr<IDXGISwapChain3> source_swapchain3;
+    HRESULT hr = native_swapchain->QueryInterface(IID_PPV_ARGS(&source_swapchain3));
+    if (FAILED(hr)) {
+        LogError("DX11ProxyManager::SetSourceColorSpace: Failed to get IDXGISwapChain3 interface from game swap chain");
+        return false;
+    }
+
+    // Get current format from settings
+    int format_index = g_dx11ProxySettings.swapchain_format.load();
+    DXGI_FORMAT current_format = GetFormatFromIndex(format_index);
+
+    // Get the actual swap chain format to see what the game is using
+    DXGI_SWAP_CHAIN_DESC1 desc;
+    ComPtr<IDXGISwapChain1> swapchain1;
+    hr = source_swapchain3.As(&swapchain1);
+    if (SUCCEEDED(hr)) {
+        hr = swapchain1->GetDesc1(&desc);
+        if (SUCCEEDED(hr)) {
+            LogInfo("DX11ProxyManager::SetSourceColorSpace: Game swap chain format: %d", static_cast<int>(desc.Format));
+        }
+    }
+
+    // Determine appropriate color space based on format
+    DXGI_COLOR_SPACE_TYPE color_space;
+    switch (current_format) {
+        case DXGI_FORMAT_R10G10B10A2_UNORM:
+            // HDR10 format - use HDR10 color space
+            color_space = DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020;
+            break;
+        case DXGI_FORMAT_R16G16B16A16_FLOAT:
+            // FP16 format - use scRGB color space
+            color_space = DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709;
+            break;
+        case DXGI_FORMAT_R8G8B8A8_UNORM:
+            // SDR format - use sRGB color space
+            color_space = DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
+            break;
+        default:
+            LogWarn("DX11ProxyManager::SetSourceColorSpace: Unknown format %d, using sRGB", static_cast<int>(current_format));
+            color_space = DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
+            break;
+    }
+
+    // Check if the color space is supported before trying to set it
+    UINT color_space_support = 0;
+    hr = source_swapchain3->CheckColorSpaceSupport(color_space, &color_space_support);
+    if (FAILED(hr)) {
+        std::stringstream ss;
+        ss << "DX11ProxyManager::SetSourceColorSpace: CheckColorSpaceSupport failed with HRESULT 0x" << std::hex << hr;
+        LogError(ss.str().c_str());
+        return false;
+    }
+
+    if (color_space_support == 0) {
+        LogError("DX11ProxyManager::SetSourceColorSpace: Color space %d not supported by game swap chain", static_cast<int>(color_space));
+        return false;
+    }
+
+    LogInfo("DX11ProxyManager::SetSourceColorSpace: Color space %d is supported, proceeding with SetColorSpace1", static_cast<int>(color_space));
+
+    // Set the appropriate color space on source swap chain
+    hr = source_swapchain3->SetColorSpace1(color_space);
+    if (FAILED(hr)) {
+        std::stringstream ss;
+        ss << "DX11ProxyManager::SetSourceColorSpace: SetColorSpace1 failed with HRESULT 0x" << std::hex << hr;
+        LogError(ss.str().c_str());
+
+        // Try fallback to basic sRGB color space
+        LogInfo("DX11ProxyManager::SetSourceColorSpace: Trying fallback to sRGB color space");
+        DXGI_COLOR_SPACE_TYPE fallback_color_space = DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
+
+        UINT fallback_support = 0;
+        hr = source_swapchain3->CheckColorSpaceSupport(fallback_color_space, &fallback_support);
+        if (SUCCEEDED(hr) && fallback_support > 0) {
+            hr = source_swapchain3->SetColorSpace1(fallback_color_space);
+            if (SUCCEEDED(hr)) {
+                LogInfo("DX11ProxyManager::SetSourceColorSpace: Successfully set fallback sRGB color space");
+                color_space = fallback_color_space; // Update for success message
+            } else {
+                LogError("DX11ProxyManager::SetSourceColorSpace: Fallback sRGB color space also failed");
+                return false;
+            }
+        } else {
+            LogError("DX11ProxyManager::SetSourceColorSpace: Fallback sRGB color space not supported");
+            return false;
+        }
+    }
+
+    std::stringstream ss;
+    ss << "DX11ProxyManager::SetSourceColorSpace: Successfully set color space " << static_cast<int>(color_space)
+       << " for format " << static_cast<int>(current_format) << " on source swap chain";
+    LogInfo(ss.str().c_str());
+    return true;
 }
 
 } // namespace dx11_proxy

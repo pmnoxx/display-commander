@@ -5,11 +5,20 @@
  * DXGI swapchain. This enables HDR support, flip models, and other modern features
  * for older DX9 games.
  *
- * Approach (inspired by RenoDX):
+ * RenoDX Strategy for Cross-Device Copy:
  * 1. Game renders normally in DX9
  * 2. Create separate DX11 device + swapchain
- * 3. Use shared resources to transfer DX9 backbuffer to DX11
- * 4. Present through DX11 swapchain with modern DXGI features
+ * 3. Create shared texture on DX11 proxy device (not DX9 source device)
+ * 4. Get shared handle from DX11 texture
+ * 5. Open shared resource on DX9 device using the handle
+ * 6. Copy: DX9 backbuffer → shared texture (on DX9 device)
+ * 7. Copy: shared texture → DX11 backbuffer (on DX11 device)
+ * 8. Present through DX11 swapchain with modern DXGI features
+ *
+ * Why create shared texture on DX11 (not DX9)?
+ * - DX11 has better shared resource support
+ * - DX9 can reliably open DX11's shared resources
+ * - Reverse (DX11 opening DX9 resources) is less reliable
  */
 
 #pragma once
@@ -81,6 +90,25 @@ public:
     IDXGISwapChain* GetSwapChain() const { return swapchain_.Get(); }
 
     /**
+     * Set HDR color space on the proxy swap chain
+     * @return true if successful, false if swap chain not available or operation failed
+     */
+    bool SetHDRColorSpace();
+
+    /**
+     * Set color space on the source swap chain (game's swap chain)
+     * @return true if successful, false if source swap chain not available or operation failed
+     */
+    bool SetSourceColorSpace();
+
+    /**
+     * Get DXGI format from format index
+     * @param format_index Index from settings (0=R10G10B10A2, 1=R16G16B16A16, 2=R8G8B8A8)
+     * @return Corresponding DXGI format
+     */
+    static DXGI_FORMAT GetFormatFromIndex(int format_index);
+
+    /**
      * Get current statistics
      */
     struct Stats {
@@ -142,6 +170,14 @@ public:
      */
     bool TestRender(int color_index = 0);
 
+    /**
+     * Copy frame from game thread using RenoDX strategy (called from Present hook)
+     * This is thread-safe as it's called on the game's rendering thread
+     * @param source_swapchain The game's swapchain to copy from
+     * @return true if copy succeeded
+     */
+    bool CopyFrameFromGameThread(IDXGISwapChain* source_swapchain);
+
 private:
     DX11ProxyManager() = default;
     ~DX11ProxyManager() { Shutdown(); }
@@ -188,6 +224,7 @@ private:
 
     // Shared resource support (for cross-device copy)
     ComPtr<ID3D11Texture2D> shared_texture_;       // Shared texture on our device
+    HANDLE shared_handle_{nullptr};                // Shared handle for cross-device access
     ComPtr<ID3D11Device> source_device_;           // Source device (game's device)
     ComPtr<ID3D11DeviceContext> source_context_;   // Source context (game's context)
     bool use_shared_resources_{false};             // Whether we need shared resources

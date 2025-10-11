@@ -311,6 +311,9 @@ std::atomic<IUnknown*> g_last_nvapi_sleep_mode_dev_ptr{nullptr};
 std::atomic<LONGLONG> g_sleep_reflex_injected_ns{0};
 std::atomic<LONGLONG> g_sleep_reflex_native_ns{0};
 
+// DX11 Proxy HWND for filtering
+HWND g_proxy_hwnd = nullptr;
+
 
 // Experimental tab settings global instance
 namespace settings {

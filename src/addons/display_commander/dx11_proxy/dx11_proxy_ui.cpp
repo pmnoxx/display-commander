@@ -125,6 +125,20 @@ void DrawDX11ProxyControls() {
             g_dx11ProxySettings.swapchain_format.store(format_idx);
             std::string msg = "DX11ProxyUI: Swapchain format changed to " + std::to_string(format_idx);
             LogInfo(msg.c_str());
+
+            // Auto-set color space if proxy is initialized and has swapchain
+            auto& manager = DX11ProxyManager::GetInstance();
+            if (manager.IsInitialized()) {
+                auto stats = manager.GetStats();
+                if (stats.has_swapchain) {
+                    bool success = manager.SetHDRColorSpace();
+                    if (success) {
+                        LogInfo("DX11ProxyUI: Auto-set color space for new format");
+                    } else {
+                        LogWarn("DX11ProxyUI: Failed to auto-set color space for new format");
+                    }
+                }
+            }
         }
         ImGui::SameLine();
         ImGui::TextDisabled("(?)");
@@ -327,6 +341,34 @@ void DrawDX11ProxyControls() {
     }
     ImGui::EndDisabled();
 
+    ImGui::SameLine();
+
+    // Color Space buttons
+    ImGui::BeginDisabled(!manager.IsInitialized() || !stats.has_swapchain);
+    if (ImGui::Button("Set Color Space (Proxy)")) {
+        LogInfo("DX11ProxyUI: User requested proxy color space setting");
+        bool success = manager.SetHDRColorSpace();
+        if (success) {
+            LogInfo("DX11ProxyUI: Proxy color space set successfully");
+        } else {
+            LogError("DX11ProxyUI: Failed to set proxy color space");
+        }
+    }
+    ImGui::EndDisabled();
+    ImGui::SameLine();
+    ImGui::TextDisabled("(?)");
+    if (ImGui::IsItemHovered()) {
+        ImGui::BeginTooltip();
+        ImGui::Text("Set color space on proxy swap chain:");
+        ImGui::Text("• R10G10B10A2: HDR10 (G2084/P2020)");
+        ImGui::Text("• R16G16B16A16: scRGB (G10/P709)");
+        ImGui::Text("• R8G8B8A8: sRGB (G22/P709)");
+        ImGui::Text("Requires: Proxy initialized + Swap chain created");
+        ImGui::EndTooltip();
+    }
+
+    ImGui::SameLine();
+
     ImGui::Spacing();
 
     // Quick test button: Enable + Create 4K Window + Initialize
@@ -431,6 +473,19 @@ void DrawDX11ProxyControls() {
     // Enable button only if all conditions are met
     bool can_copy = proxy_initialized && has_swapchain && has_game_swapchain && compatible_api;
 
+    // Test proxy swapchain rendering first
+    if (ImGui::Button("Test Proxy Render (Color Test)")) {
+        LogInfo("DX11ProxyUI: Testing proxy swapchain rendering");
+        static int test_color = 0;
+        if (manager.TestRender(test_color)) {
+            test_color = (test_color + 1) % 8;
+            LogInfo("DX11ProxyUI: Test render succeeded with color %d", test_color);
+        } else {
+            LogError("DX11ProxyUI: Test render failed");
+        }
+    }
+    ImGui::SameLine();
+
     ImGui::BeginDisabled(!can_copy);
     if (ImGui::Button("Display Game Content (Start Copying)")) {
         LogInfo("DX11ProxyUI: User requested to display game content");
@@ -443,9 +498,19 @@ void DrawDX11ProxyControls() {
             uint64_t native_handle = reshade_swapchain->get_native();
             IDXGISwapChain* native_swapchain = reinterpret_cast<IDXGISwapChain*>(native_handle);
 
+            LogInfo("DX11ProxyUI: ReShade swapchain: 0x%p, native handle: 0x%llx, native swapchain: 0x%p",
+                    game_swapchain_ptr, native_handle, native_swapchain);
+
             if (native_swapchain) {
-                manager.StartCopyThread(native_swapchain);
-                LogInfo("DX11ProxyUI: Started copying from game swapchain (native: 0x%p) to test window", native_swapchain);
+                // Check if this is our own proxy swapchain (we don't want to copy from ourselves!)
+                auto* proxy_swapchain = manager.GetSwapChain();
+                if (native_swapchain == proxy_swapchain) {
+                    LogError("DX11ProxyUI: Cannot copy from proxy swapchain to itself! Need game's original swapchain.");
+                    LogError("DX11ProxyUI: Proxy swapchain: 0x%p, ReShade swapchain: 0x%p", proxy_swapchain, native_swapchain);
+                } else {
+                    manager.StartCopyThread(native_swapchain);
+                    LogInfo("DX11ProxyUI: Started copying from game swapchain (native: 0x%p) to test window", native_swapchain);
+                }
             } else {
                 LogError("DX11ProxyUI: Failed to get native swapchain from ReShade");
             }
@@ -513,6 +578,34 @@ void DrawDX11ProxyControls() {
     ImGui::EndDisabled();
 
     ImGui::EndDisabled();
+
+    ImGui::SameLine();
+
+    // Set Color Space on Source Swap Chain button
+    bool has_compatible_source = (game_swapchain_ptr != nullptr) && compatible_api;
+    ImGui::BeginDisabled(!manager.IsInitialized() || !has_compatible_source);
+    if (ImGui::Button("Set Color Space (Source)")) {
+        LogInfo("DX11ProxyUI: User requested source color space setting");
+        bool success = manager.SetSourceColorSpace();
+        if (success) {
+            LogInfo("DX11ProxyUI: Source color space set successfully");
+        } else {
+            LogError("DX11ProxyUI: Failed to set source color space");
+        }
+    }
+    ImGui::EndDisabled();
+    ImGui::SameLine();
+    ImGui::TextDisabled("(?)");
+    if (ImGui::IsItemHovered()) {
+        ImGui::BeginTooltip();
+        ImGui::Text("Set color space on game's swap chain:");
+        ImGui::Text("• R10G10B10A2: HDR10 (G2084/P2020)");
+        ImGui::Text("• R16G16B16A16: scRGB (G10/P709)");
+        ImGui::Text("• R8G8B8A8: sRGB (G22/P709)");
+        ImGui::Text("Requires: Proxy initialized + Compatible game swap chain");
+        ImGui::Text("This affects the actual game's rendering!");
+        ImGui::EndTooltip();
+    }
 
     ImGui::Spacing();
 }

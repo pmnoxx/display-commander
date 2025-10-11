@@ -340,8 +340,6 @@ extern std::atomic<WindowMode> s_window_mode;
 extern std::atomic<AspectRatioType> s_aspect_index;
 extern std::atomic<int> s_aspect_width;
 
-// Prevent Fullscreen
-extern std::atomic<bool> s_prevent_fullscreen;
 
 // Fix HDR10 color space when backbuffer is RGB10A2
 extern std::atomic<bool> s_nvapi_fix_hdr10_colorspace;

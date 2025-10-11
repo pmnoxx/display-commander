@@ -38,8 +38,6 @@ std::atomic<int> s_aspect_width{0}; // 0 = Display Width, 1 = 3840, 2 = 2560, et
 // Right)
 std::atomic<WindowAlignment> s_window_alignment{WindowAlignment::kCenter}; // default to center (slot 0)
 
-// Prevent Fullscreen
-std::atomic<bool> s_prevent_fullscreen{false};
 
 // NVAPI Fullscreen Prevention
 std::atomic<bool> s_nvapi_fullscreen_prevention{false}; // disabled by default

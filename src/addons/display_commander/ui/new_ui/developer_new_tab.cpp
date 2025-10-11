@@ -72,11 +72,8 @@ void DrawDeveloperNewTab() {
 }
 
 void DrawDeveloperSettings() {
-    // Prevent Fullscreen (global)
-    if (CheckboxSetting(settings::g_developerTabSettings.prevent_fullscreen, "Prevent Fullscreen")) {
-        // Update global variable for compatibility
-        s_prevent_fullscreen.store(settings::g_developerTabSettings.prevent_fullscreen.GetValue());
-    }
+    // Prevent Fullscreen
+    CheckboxSetting(settings::g_developerTabSettings.prevent_fullscreen, "Prevent Fullscreen");
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Prevent exclusive fullscreen; keep borderless/windowed for stability and HDR.");
     }

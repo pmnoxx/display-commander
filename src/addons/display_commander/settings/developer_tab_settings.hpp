@@ -25,7 +25,7 @@ class DeveloperTabSettings {
     void SaveAll();
 
     // Developer Settings
-    BoolSettingRef prevent_fullscreen;
+    BoolSetting prevent_fullscreen;
     BoolSettingRef continue_rendering;
     BoolSettingRef continuous_monitoring;
     BoolSettingRef prevent_always_on_top;

@@ -4,6 +4,7 @@
 #include "../../utils.hpp"
 #include "../../globals.hpp"
 #include "../../settings/main_tab_settings.hpp"
+#include "../../settings/developer_tab_settings.hpp"
 
 #include <MinHook.h>
 
@@ -686,7 +687,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetFullscreenState_Detour(IDXGISwapChai
     g_swapchain_event_total_count.fetch_add(1);
 
     // Check if fullscreen prevention is enabled and we're trying to go fullscreen
-    if (Fullscreen && s_prevent_fullscreen.load()) {
+    if (Fullscreen && settings::g_developerTabSettings.prevent_fullscreen.GetValue()) {
         LogInfo("IDXGISwapChain_SetFullscreenState blocked: fullscreen prevention enabled");
         return S_OK; // Return success but don't actually change state
     }

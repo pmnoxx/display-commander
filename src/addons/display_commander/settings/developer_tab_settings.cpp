@@ -12,7 +12,7 @@ namespace settings {
 
 // Constructor - initialize all settings with proper keys and default values
 DeveloperTabSettings::DeveloperTabSettings()
-    : prevent_fullscreen("PreventFullscreen", s_prevent_fullscreen, true, "DisplayCommander"),
+    : prevent_fullscreen("PreventFullscreen", true, "DisplayCommander"),
       continue_rendering("ContinueRendering", s_continue_rendering, false, "DisplayCommander"),
       continuous_monitoring("ContinuousMonitoring", s_continuous_monitoring_enabled, true, "DisplayCommander"),
       prevent_always_on_top("PreventAlwaysOnTop", s_prevent_always_on_top, true, "DisplayCommander"),

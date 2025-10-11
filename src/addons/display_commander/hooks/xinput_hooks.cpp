@@ -87,8 +87,6 @@ DWORD WINAPI XInputGetState_Detour(DWORD dwUserIndex, XINPUT_STATE *pState) {
     if (XInputGetStateEx_Direct == nullptr || XInputGetState_Direct == nullptr) {
         return ERROR_DEVICE_NOT_CONNECTED;
     }
-    LogInfo("XXX XInputGetState called for controller %lu", dwUserIndex);
-
     // Track hook call statistics
     g_hook_stats[HOOK_XInputGetState].increment_total();
     static bool tried_get_state_ex = false;

@@ -11,6 +11,7 @@
 #include "../res/forkawesome.h"
 
 #include <deps/imgui/imgui.h>
+#include <reshade.hpp>
 #include <sstream>
 #include <string>
 
@@ -241,6 +242,16 @@ void DrawDX11ProxyControls() {
         if (stats.has_swapchain) {
             ImGui::Text("  Presented: %llu", stats.frames_presented);
         }
+        ImGui::Text("  Copied: %llu", stats.frames_copied);
+
+        ImGui::Spacing();
+
+        // Copy thread status
+        ImGui::TextColored(ui::colors::TEXT_LABEL, "Copy Thread:");
+        ImGui::Text("  Status: %s", stats.copy_thread_running ? "Running" : "Stopped");
+        if (stats.copy_thread_running) {
+            ImGui::TextColored(ui::colors::STATUS_ACTIVE, "  " ICON_FK_OK " Active (1 fps)");
+        }
 
         ImGui::Spacing();
 
@@ -315,6 +326,171 @@ void DrawDX11ProxyControls() {
         manager.Shutdown();
     }
     ImGui::EndDisabled();
+
+    ImGui::Spacing();
+
+    // Quick test button: Enable + Create 4K Window + Initialize
+    if (ImGui::Button("Quick Test: Enable + Create 4K Window")) {
+        LogInfo("DX11ProxyUI: User requested quick test - Enable + Create 4K Window");
+
+        // Step 1: Enable DX11 proxy
+        g_dx11ProxySettings.enabled.store(true);
+        g_dx11ProxySettings.create_swapchain.store(true);
+        LogInfo("DX11ProxyUI: Enabled DX11 proxy and swapchain creation");
+
+        // Step 2: Create 4K test window
+        HWND test_window = manager.CreateTestWindow4K();
+        if (test_window) {
+            LogInfo("DX11ProxyUI: Created 4K test window successfully");
+
+            // Step 3: Initialize with 4K dimensions
+            bool success = manager.Initialize(test_window, 3840, 2160, true);
+            if (success) {
+                LogInfo("DX11ProxyUI: Quick test initialization succeeded!");
+                // Window will be black until you start copying game content
+            } else {
+                LogError("DX11ProxyUI: Quick test initialization failed");
+                manager.DestroyTestWindow(test_window);
+            }
+        } else {
+            LogError("DX11ProxyUI: Failed to create 4K test window");
+        }
+    }
+    ImGui::SameLine();
+    ImGui::TextDisabled("(?)");
+    if (ImGui::IsItemHovered()) {
+        ImGui::BeginTooltip();
+        ImGui::Text("One-click test:");
+        ImGui::Text("1. Enables DX11 proxy");
+        ImGui::Text("2. Creates a 3840x2160 test window");
+        ImGui::Text("3. Initializes the proxy device");
+        ImGui::Text("Use this for quick testing!");
+        ImGui::Text("Window will be black until you start copying");
+        ImGui::EndTooltip();
+    }
+
+    ImGui::Spacing();
+
+    // Display game content - copy from game swapchain
+    ImGui::TextColored(ui::colors::TEXT_LABEL, "Game Content Display:");
+    ImGui::Spacing();
+
+    // Check all conditions
+    bool proxy_initialized = manager.IsInitialized();
+    bool has_swapchain = stats.has_swapchain;
+    void* game_swapchain_ptr = g_last_swapchain_ptr.load();
+    int game_api = g_last_swapchain_api.load();
+    bool has_game_swapchain = (game_swapchain_ptr != nullptr);
+
+    // Check if it's a compatible API (DX11 or DX12)
+    // ReShade uses hex enum values: d3d11=0xb000, d3d12=0xc000
+    bool is_dx11 = (game_api == 0xb000); // reshade::api::device_api::d3d11
+    bool is_dx12 = (game_api == 0xc000); // reshade::api::device_api::d3d12
+    bool compatible_api = is_dx11 || is_dx12;
+
+    // Show status
+    ImGui::Text("Status:");
+    ImGui::Indent();
+
+    // Proxy status
+    if (proxy_initialized) {
+        ImGui::TextColored(ui::colors::STATUS_ACTIVE, ICON_FK_OK " Proxy Initialized");
+    } else {
+        ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "X Proxy Not Initialized");
+    }
+
+    // Swapchain status
+    if (has_swapchain) {
+        ImGui::TextColored(ui::colors::STATUS_ACTIVE, ICON_FK_OK " Test Window Swapchain Ready");
+    } else {
+        ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "X No Test Window Swapchain");
+    }
+
+    // Game swapchain status
+    if (has_game_swapchain) {
+        ImGui::TextColored(ui::colors::STATUS_ACTIVE, ICON_FK_OK " Game Swapchain Detected");
+    } else {
+        ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "X No Game Swapchain (start a game first)");
+    }
+
+    // API status
+    if (has_game_swapchain) {
+        if (compatible_api) {
+            const char* api_name = is_dx11 ? "DX11" : "DX12";
+            ImGui::TextColored(ui::colors::STATUS_ACTIVE, ICON_FK_OK " Compatible API: %s", api_name);
+        } else {
+            // Use GetDeviceApiString to get proper API name
+            const char* api_name = GetDeviceApiString(static_cast<reshade::api::device_api>(game_api));
+            ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "X Incompatible API: %s (0x%x)", api_name, game_api);
+        }
+    }
+
+    ImGui::Unindent();
+    ImGui::Spacing();
+
+    // Enable button only if all conditions are met
+    bool can_copy = proxy_initialized && has_swapchain && has_game_swapchain && compatible_api;
+
+    ImGui::BeginDisabled(!can_copy);
+    if (ImGui::Button("Display Game Content (Start Copying)")) {
+        LogInfo("DX11ProxyUI: User requested to display game content");
+
+        if (game_swapchain_ptr && compatible_api) {
+            // The pointer is actually a reshade::api::swapchain*, need to get native
+            auto* reshade_swapchain = static_cast<reshade::api::swapchain*>(game_swapchain_ptr);
+
+            // Get the native DXGI swapchain from ReShade (returns uint64_t handle)
+            uint64_t native_handle = reshade_swapchain->get_native();
+            IDXGISwapChain* native_swapchain = reinterpret_cast<IDXGISwapChain*>(native_handle);
+
+            if (native_swapchain) {
+                manager.StartCopyThread(native_swapchain);
+                LogInfo("DX11ProxyUI: Started copying from game swapchain (native: 0x%p) to test window", native_swapchain);
+            } else {
+                LogError("DX11ProxyUI: Failed to get native swapchain from ReShade");
+            }
+        } else {
+            if (!compatible_api) {
+                LogError("DX11ProxyUI: Game is not DX11/DX12 (API: %d) - cannot copy", game_api);
+            } else {
+                LogError("DX11ProxyUI: No game swapchain available");
+            }
+        }
+    }
+    ImGui::SameLine();
+    ImGui::TextDisabled("(?)");
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+        ImGui::BeginTooltip();
+        ImGui::Text("Copy game's rendered frames to test window");
+        ImGui::Text("Copies once per second (1 fps)");
+        ImGui::Text("Uses shared resources for cross-device copy");
+        ImGui::Separator();
+        ImGui::Text("Requirements:");
+        ImGui::BulletText("Proxy initialized with test window");
+        ImGui::BulletText("Game running with DX11/DX12");
+        ImGui::BulletText("Game swapchain detected");
+        if (!can_copy) {
+            ImGui::Separator();
+            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "See status above for missing requirements");
+        }
+        ImGui::EndTooltip();
+    }
+    ImGui::EndDisabled();
+
+    ImGui::SameLine();
+
+    // Stop copy thread button
+    ImGui::BeginDisabled(!manager.IsCopyThreadRunning());
+    if (ImGui::Button("Stop Copying")) {
+        LogInfo("DX11ProxyUI: User stopped game content copying");
+        manager.StopCopyThread();
+    }
+    ImGui::EndDisabled();
+
+    if (manager.IsCopyThreadRunning()) {
+        ImGui::SameLine();
+        ImGui::TextColored(ui::colors::STATUS_ACTIVE, ICON_FK_OK " Copying");
+    }
 
     ImGui::Spacing();
 

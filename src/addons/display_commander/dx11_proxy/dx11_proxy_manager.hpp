@@ -21,6 +21,9 @@
 #include <atomic>
 #include <mutex>
 #include <cstdint>
+#include <thread>
+#include <vector>
+#include <windows.h>
 
 namespace dx11_proxy {
 
@@ -83,9 +86,11 @@ public:
     struct Stats {
         uint64_t frames_generated = 0;      // Frames processed through proxy
         uint64_t frames_presented = 0;      // Frames presented (future use)
+        uint64_t frames_copied = 0;         // Frames copied by copy thread
         uint64_t initialization_count = 0;
         uint64_t shutdown_count = 0;
         bool is_initialized = false;
+        bool copy_thread_running = false;   // Whether copy thread is active
         uint32_t swapchain_width = 0;
         uint32_t swapchain_height = 0;
         DXGI_FORMAT swapchain_format = DXGI_FORMAT_UNKNOWN;
@@ -101,6 +106,41 @@ public:
     void IncrementFrameGenerated() {
         frames_generated_.fetch_add(1);
     }
+
+    /**
+     * Start copy thread that copies from source swapchain to proxy swapchain
+     * @param source_swapchain Source swapchain to copy from
+     */
+    void StartCopyThread(IDXGISwapChain* source_swapchain);
+
+    /**
+     * Stop the copy thread
+     */
+    void StopCopyThread();
+
+    /**
+     * Check if copy thread is running
+     */
+    bool IsCopyThreadRunning() const { return copy_thread_running_.load(); }
+
+    /**
+     * Test function: Create a test window at 4K resolution (3840x2160)
+     * @return HWND of created window, or nullptr on failure
+     */
+    HWND CreateTestWindow4K();
+
+    /**
+     * Destroy test window created by CreateTestWindow4K
+     * @param test_hwnd Window handle to destroy
+     */
+    void DestroyTestWindow(HWND test_hwnd);
+
+    /**
+     * Test render function: Clear backbuffer to a color and present
+     * @param color_index Color index (0-7) for different colors
+     * @return true if render succeeded
+     */
+    bool TestRender(int color_index = 0);
 
 private:
     DX11ProxyManager() = default;
@@ -136,6 +176,36 @@ private:
     std::atomic<uint64_t> frames_presented_{0};    // Frames presented (future use)
     std::atomic<uint64_t> initialization_count_{0};
     std::atomic<uint64_t> shutdown_count_{0};
+    std::atomic<uint64_t> frames_copied_{0};       // Frames copied by copy thread
+
+    // Copy thread
+    std::thread copy_thread_;
+    std::atomic<bool> copy_thread_running_{false};
+    ComPtr<IDXGISwapChain> source_swapchain_;      // Source swapchain to copy from
+
+    // Test window tracking
+    std::vector<HWND> test_windows_;
+
+    // Shared resource support (for cross-device copy)
+    ComPtr<ID3D11Texture2D> shared_texture_;       // Shared texture on our device
+    ComPtr<ID3D11Device> source_device_;           // Source device (game's device)
+    ComPtr<ID3D11DeviceContext> source_context_;   // Source context (game's context)
+    bool use_shared_resources_{false};             // Whether we need shared resources
+    uint32_t shared_texture_width_{0};
+    uint32_t shared_texture_height_{0};
+    DXGI_FORMAT shared_texture_format_{DXGI_FORMAT_UNKNOWN};
+
+    // Copy thread implementation
+    void CopyThreadLoop();
+
+    // Copy one frame from source to destination
+    bool CopyFrame();
+
+    // Initialize shared resources for cross-device copy
+    bool InitializeSharedResources(IDXGISwapChain* source_swapchain);
+
+    // Cleanup shared resources
+    void CleanupSharedResources();
 };
 
 } // namespace dx11_proxy

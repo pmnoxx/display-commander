@@ -1,4 +1,7 @@
 #include "d3d9_present_hooks.hpp"
+#include "../../dx11_proxy/dx11_proxy_manager.hpp"
+#include "../../dx11_proxy/dx11_proxy_settings.hpp"
+#include "../../dx11_proxy/dx11_proxy_shared_resources.hpp"
 #include "../../globals.hpp"
 #include "../../performance_types.hpp"
 #include "../../swapchain_events.hpp"
@@ -54,6 +57,45 @@ HRESULT STDMETHODCALLTYPE IDirect3DDevice9_Present_Detour(
     // Record per-frame FPS sample for background aggregation
     RecordFrameTime(FrameTimeMode::kPresent);
 
+    // DX11 Proxy: Process frame through proxy device if enabled
+    if (dx11_proxy::g_dx11ProxySettings.enabled.load()) {
+        auto& proxy_manager = dx11_proxy::DX11ProxyManager::GetInstance();
+        auto& shared_resources = dx11_proxy::SharedResourceManager::GetInstance();
+
+        if (proxy_manager.IsInitialized()) {
+            // Initialize shared resources if not already done
+            if (!shared_resources.IsInitialized()) {
+                // Get backbuffer to determine format and size
+                IDirect3DSurface9* backbuffer = nullptr;
+                if (SUCCEEDED(This->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &backbuffer))) {
+                    D3DSURFACE_DESC desc;
+                    if (SUCCEEDED(backbuffer->GetDesc(&desc))) {
+                        shared_resources.Initialize(
+                            This,
+                            proxy_manager.GetDevice(),
+                            desc.Width,
+                            desc.Height,
+                            desc.Format
+                        );
+                    }
+                    backbuffer->Release();
+                }
+            }
+
+            // Transfer frame through shared resources
+            if (shared_resources.IsInitialized()) {
+                IDirect3DSurface9* backbuffer = nullptr;
+                if (SUCCEEDED(This->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &backbuffer))) {
+                    if (shared_resources.TransferFrame(This, backbuffer)) {
+                        // Frame transferred successfully
+                        proxy_manager.IncrementFrameGenerated();
+                    }
+                    backbuffer->Release();
+                }
+            }
+        }
+    }
+
     // Call original function
     if (IDirect3DDevice9_Present_Original != nullptr) {
         auto res= IDirect3DDevice9_Present_Original(This, pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion);
@@ -98,6 +140,45 @@ HRESULT STDMETHODCALLTYPE IDirect3DDevice9_PresentEx_Detour(
 
     // Record per-frame FPS sample for background aggregation
     RecordFrameTime(FrameTimeMode::kPresent);
+
+    // DX11 Proxy: Process frame through proxy device if enabled
+    if (dx11_proxy::g_dx11ProxySettings.enabled.load()) {
+        auto& proxy_manager = dx11_proxy::DX11ProxyManager::GetInstance();
+        auto& shared_resources = dx11_proxy::SharedResourceManager::GetInstance();
+
+        if (proxy_manager.IsInitialized()) {
+            // Initialize shared resources if not already done
+            if (!shared_resources.IsInitialized()) {
+                // Get backbuffer to determine format and size
+                IDirect3DSurface9* backbuffer = nullptr;
+                if (SUCCEEDED(This->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &backbuffer))) {
+                    D3DSURFACE_DESC desc;
+                    if (SUCCEEDED(backbuffer->GetDesc(&desc))) {
+                        shared_resources.Initialize(
+                            This,
+                            proxy_manager.GetDevice(),
+                            desc.Width,
+                            desc.Height,
+                            desc.Format
+                        );
+                    }
+                    backbuffer->Release();
+                }
+            }
+
+            // Transfer frame through shared resources
+            if (shared_resources.IsInitialized()) {
+                IDirect3DSurface9* backbuffer = nullptr;
+                if (SUCCEEDED(This->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &backbuffer))) {
+                    if (shared_resources.TransferFrame(This, backbuffer)) {
+                        // Frame transferred successfully
+                        proxy_manager.IncrementFrameGenerated();
+                    }
+                    backbuffer->Release();
+                }
+            }
+        }
+    }
 
     // Call original function
     if (IDirect3DDevice9_PresentEx_Original != nullptr) {

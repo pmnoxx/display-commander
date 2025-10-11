@@ -236,6 +236,9 @@ private:
     uint32_t shared_texture_height_{0};
     DXGI_FORMAT shared_texture_format_{DXGI_FORMAT_UNKNOWN};
 
+    // Query objects for synchronization (reused to avoid per-frame allocation)
+    ComPtr<ID3D11Query> source_copy_query_;        // Query for source device copy completion
+
 
     // Copy one frame from source to destination
     bool CopyFrame();

@@ -441,6 +441,35 @@ bool DX11ProxyManager::CopyFrame() {
         // Flush to ensure the copy completes before the next step
         source_context_->Flush();
 
+        // Use query-based fence instead of sleep for better synchronization
+        // This ensures the copy operation on the source device completes before
+        // proceeding to copy on the destination device, preventing race conditions
+        if (!source_copy_query_) {
+            // Create query object if not already created (reused for performance)
+            D3D11_QUERY_DESC query_desc = {};
+            query_desc.Query = D3D11_QUERY_EVENT;
+            query_desc.MiscFlags = 0;
+
+            HRESULT hr = source_device_->CreateQuery(&query_desc, &source_copy_query_);
+            if (FAILED(hr)) {
+                LogWarn("DX11ProxyManager::CopyFrame: Failed to create query, falling back to sleep");
+                std::this_thread::sleep_for(std::chrono::microseconds(100));
+            }
+        }
+
+        if (source_copy_query_) {
+            // Insert query after the copy operation to track completion
+            source_context_->End(source_copy_query_.Get());
+            source_context_->Flush();
+
+            // Wait for the query to complete (fence-like behavior)
+            // This blocks until the GPU has finished the copy operation
+            BOOL query_data = FALSE;
+            while (source_context_->GetData(source_copy_query_.Get(), &query_data, sizeof(query_data), 0) == S_FALSE) {
+                // Query not ready yet, yield CPU time instead of busy waiting
+                std::this_thread::yield();
+            }
+        }
         // Step 2: Copy from shared texture to our backbuffer (on our device)
         context_->CopyResource(dest_backbuffer.Get(), shared_texture_.Get());
 
@@ -491,7 +520,8 @@ HWND DX11ProxyManager::CreateTestWindow4K() {
 
     // Calculate window size with borders
     RECT window_rect = {0, 0, 3840, 2160};
-    DWORD style = WS_OVERLAPPEDWINDOW;
+    // Use WS_POPUP to remove title bar and borders for a clean fullscreen-like appearance
+    DWORD style = WS_POPUP | WS_VISIBLE;
     DWORD ex_style = 0;
 
     if (!AdjustWindowRectEx(&window_rect, style, FALSE, ex_style)) {
@@ -514,7 +544,7 @@ HWND DX11ProxyManager::CreateTestWindow4K() {
     HWND test_hwnd = CreateWindowExA(
         ex_style,
         window_class_name,
-        "DX11 Proxy Test Window - 4K (3840x2160)",
+        "DX11 Proxy Test Window - 4K (3840x2160) - No Title Bar",
         style,
         x, y,
         window_width, window_height,
@@ -532,8 +562,8 @@ HWND DX11ProxyManager::CreateTestWindow4K() {
         return nullptr;
     }
 
-    // Show the window
-    ShowWindow(test_hwnd, SW_SHOW);
+    // Show the window maximized
+    ShowWindow(test_hwnd, SW_MAXIMIZE);
     UpdateWindow(test_hwnd);
 
     // Track test window
@@ -543,7 +573,7 @@ HWND DX11ProxyManager::CreateTestWindow4K() {
     g_proxy_hwnd = test_hwnd;
 
     std::stringstream ss;
-    ss << "DX11ProxyManager::CreateTestWindow4K: Created test window 0x"
+    ss << "DX11ProxyManager::CreateTestWindow4K: Created test window (no title bar) 0x"
        << std::hex << reinterpret_cast<uintptr_t>(test_hwnd)
        << ", size: " << std::dec << window_width << "x" << window_height;
     LogInfo(ss.str().c_str());
@@ -715,6 +745,7 @@ void DX11ProxyManager::CleanupSharedResources() {
     shared_handle_ = nullptr;
     source_context_.Reset();
     source_device_.Reset();
+    source_copy_query_.Reset();  // Clean up query object
 
     use_shared_resources_ = false;
     shared_texture_width_ = 0;

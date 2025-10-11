@@ -5,6 +5,7 @@
 #include "../../globals.hpp"
 #include "../../settings/main_tab_settings.hpp"
 #include "../../settings/developer_tab_settings.hpp"
+#include "../../dx11_proxy/dx11_proxy_manager.hpp"
 
 #include <MinHook.h>
 
@@ -383,6 +384,9 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain *This, UI
     // Record per-frame FPS sample for background aggregation
     RecordFrameTime(FrameTimeMode::kPresent);
 
+
+    dx11_proxy::DX11ProxyManager::GetInstance().CopyFrameFromGameThread(This);
+
     // Call original function
     if (IDXGISwapChain_Present_Original != nullptr) {
         auto res= IDXGISwapChain_Present_Original(This, SyncInterval, Flags);
@@ -393,7 +397,6 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain *This, UI
         ::OnPresentUpdateAfter2();
         return res;
     }
-
     // Fallback to direct call if hook failed
     auto res= This->Present(SyncInterval, Flags);
 
@@ -423,6 +426,8 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1 *This, 
 
     // Record per-frame FPS sample for background aggregation
     RecordFrameTime(FrameTimeMode::kPresent);
+
+    dx11_proxy::DX11ProxyManager::GetInstance().CopyFrameFromGameThread(This);
 
     // Call original function
     if (IDXGISwapChain_Present1_Original != nullptr) {

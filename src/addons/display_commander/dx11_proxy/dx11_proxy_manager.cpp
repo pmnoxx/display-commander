@@ -353,7 +353,7 @@ void DX11ProxyManager::CopyThreadLoop() {
         }
 
         // Sleep for 1 second (1000 milliseconds)
-        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 
     LogInfo("[COPY-THREAD] Copy thread loop exiting");
@@ -433,12 +433,12 @@ bool DX11ProxyManager::CopyFrame() {
         context_->Flush();
     } else {
         // Direct copy - same device
-        LogInfo("DX11ProxyManager::CopyFrame: Performing direct copy (same device)");
-        context_->CopyResource(dest_backbuffer.Get(), source_backbuffer.Get());
+    //    LogInfo("DX11ProxyManager::CopyFrame: Performing direct copy (same device)");
+      //  context_->CopyResource(dest_backbuffer.Get(), source_backbuffer.Get());
 
         // Flush to ensure the copy completes before present
-        context_->Flush();
-        LogInfo("DX11ProxyManager::CopyFrame: Direct copy completed and flushed");
+   //     context_->Flush();
+    //    LogInfo("DX11ProxyManager::CopyFrame: Direct copy completed and flushed");
     }
 
     // Present the copied frame
@@ -709,19 +709,35 @@ void DX11ProxyManager::CleanupSharedResources() {
 
 bool DX11ProxyManager::CopyFrameFromGameThread(IDXGISwapChain* source_swapchain) {
     // Validate parameters
+    if (true) {
+        return false;
+    }
     if (!source_swapchain) {
         return false;
     }
+    // Check if this is the swapchain we're monitoring
+  //  if (source_swapchain_ && source_swapchain != source_swapchain_.Get()) {
+  //      LogError("DX11ProxyManager::CopyFrameFromGameThread: Different swapchain, ignore");
+  //      return false; // Different swapchain, ignore
+  //  }
 
     // Check if we have a valid proxy swapchain
-    if (!swapchain_ || !device_ || !context_) {
+    if (!swapchain_) {
+        LogError("DX11ProxyManager::CopyFrameFromGameThread: Missing swapchain");
+        return false;
+    }
+    // Check if we have a valid proxy swapchain
+    if ( !device_) {
+        LogError("DX11ProxyManager::CopyFrameFromGameThread: Missing device");
+        return false;
+    }
+    // Check if we have a valid proxy swapchain
+    if (!context_) {
+        LogError("DX11ProxyManager::CopyFrameFromGameThread: Missing context");
         return false;
     }
 
-    // Check if this is the swapchain we're monitoring
-    if (source_swapchain_ && source_swapchain != source_swapchain_.Get()) {
-        return false; // Different swapchain, ignore
-    }
+    LogInfo("DX11ProxyManager::CopyFrameFromGameThread: Copying frame from game thread");
 
     HRESULT hr;
 
@@ -747,56 +763,14 @@ bool DX11ProxyManager::CopyFrameFromGameThread(IDXGISwapChain* source_swapchain)
     source_device->GetImmediateContext(&source_context);
 
     // Check if devices are different (need shared resources)
-    if (source_device.Get() != device_.Get()) {
+    if (source_device.Get() == device_.Get()) {
         // Different devices - use RenoDX strategy:
         // 1. Create shared texture on proxy device (DX11)
         // 2. Open shared resource on source device (DX9/DX11)
         // 3. Copy on source device to shared texture
         // 4. Copy on proxy device from shared texture to backbuffer
         if (!shared_texture_) {
-            // Initialize shared texture using RenoDX strategy: create on OUR device (proxy) first
-            LogInfo("DX11ProxyManager::CopyFrameFromGameThread: Creating shared texture using RenoDX strategy");
-
-            // Get texture description from source
-            D3D11_TEXTURE2D_DESC source_desc;
-            source_backbuffer->GetDesc(&source_desc);
-
-            // Create shared texture on OUR device (proxy device) - RenoDX strategy
-            D3D11_TEXTURE2D_DESC shared_desc = {};
-            shared_desc.Width = source_desc.Width;
-            shared_desc.Height = source_desc.Height;
-            shared_desc.MipLevels = 1;
-            shared_desc.ArraySize = 1;
-            shared_desc.Format = source_desc.Format;
-            shared_desc.SampleDesc.Count = 1;
-            shared_desc.SampleDesc.Quality = 0;
-            shared_desc.Usage = D3D11_USAGE_DEFAULT;
-            shared_desc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
-            shared_desc.CPUAccessFlags = 0;
-            shared_desc.MiscFlags = D3D11_RESOURCE_MISC_SHARED;
-
-            // Create shared texture on OUR device (proxy device)
-            hr = device_->CreateTexture2D(&shared_desc, nullptr, &shared_texture_);
-            if (FAILED(hr)) {
-                LogError("DX11ProxyManager::CopyFrameFromGameThread: Failed to create shared texture on proxy device");
-                return false;
-            }
-
-            // Get shared handle from our device
-            ComPtr<IDXGIResource> dxgi_resource;
-            hr = shared_texture_.As(&dxgi_resource);
-            if (FAILED(hr)) {
-                LogError("DX11ProxyManager::CopyFrameFromGameThread: Failed to get IDXGIResource");
-                return false;
-            }
-
-            hr = dxgi_resource->GetSharedHandle(&shared_handle_);
-            if (FAILED(hr)) {
-                LogError("DX11ProxyManager::CopyFrameFromGameThread: Failed to get shared handle");
-                return false;
-            }
-
-            LogInfo("DX11ProxyManager::CopyFrameFromGameThread: Shared texture created on proxy device successfully");
+            return false;
         }
 
         // Step 1: Open shared resource on source device and copy from game's backbuffer
@@ -806,6 +780,7 @@ bool DX11ProxyManager::CopyFrameFromGameThread(IDXGISwapChain* source_swapchain)
             LogError("DX11ProxyManager::CopyFrameFromGameThread: Failed to open shared resource on source device");
             return false;
         }
+        LogInfo("DX11ProxyManager::CopyFrameFromGameThread: Opened shared resource on source device successfully");
 
         // Copy from game's backbuffer to shared texture (on game's device, game's thread)
         source_context->CopyResource(shared_texture_on_source.Get(), source_backbuffer.Get());
@@ -814,16 +789,16 @@ bool DX11ProxyManager::CopyFrameFromGameThread(IDXGISwapChain* source_swapchain)
         source_context->Flush();
 
         // Step 2: Copy from shared texture to our backbuffer (on our device)
-        context_->CopyResource(dest_backbuffer.Get(), shared_texture_.Get());
+      //  context_->CopyResource(dest_backbuffer.Get(), shared_texture_.Get());
 
         // Flush to ensure the copy completes before present
-        context_->Flush();
+      //  context_->Flush();
     } else {
         // Same device - direct copy
-        context_->CopyResource(dest_backbuffer.Get(), source_backbuffer.Get());
+    //    context_->CopyResource(dest_backbuffer.Get(), source_backbuffer.Get());
 
         // Flush to ensure the copy completes before present
-        context_->Flush();
+       // context_->Flush();
     }
 
     // Present the copied frame
@@ -951,6 +926,13 @@ bool DX11ProxyManager::SetSourceColorSpace() {
     HRESULT hr = native_swapchain->QueryInterface(IID_PPV_ARGS(&source_swapchain3));
     if (FAILED(hr)) {
         LogError("DX11ProxyManager::SetSourceColorSpace: Failed to get IDXGISwapChain3 interface from game swap chain");
+        return false;
+    }
+
+    // setfullscreen false
+    hr = source_swapchain3->SetFullscreenState(FALSE, nullptr);
+    if (FAILED(hr)) {
+        LogError("DX11ProxyManager::SetSourceColorSpace: Failed to set fullscreen state to false");
         return false;
     }
 

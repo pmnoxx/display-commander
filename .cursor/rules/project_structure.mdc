@@ -106,7 +106,7 @@ Only add files to this list which you have read wholly. Update descriptions when
 
 
 ### includes
-- use ImGui from reshade <deps/imgui/imgui.h>
+- use ImGui from reshade requires <imgui.h> and <reshade.hpp>
 - use MinHook for hooks
 
 ### not allowed

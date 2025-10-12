@@ -2,6 +2,7 @@
 #include "../utils.hpp"
 #include "dxgi/dxgi_present_hooks.hpp"
 #include "globals.hpp"
+#include "hid_hooks.hpp"
 #include "loadlibrary_hooks.hpp"
 #include "process_exit_hooks.hpp"
 #include "sleep_hooks.hpp"
@@ -314,6 +315,11 @@ bool InstallApiHooks() {
         LogError("Failed to install DirectInput hooks");
     }
 
+    // Install HID hooks
+    if (!InstallHidHooks()) {
+        LogError("Failed to install HID hooks");
+    }
+
     g_api_hooks_installed.store(true);
     LogInfo("API hooks installed successfully");
 
@@ -338,6 +344,9 @@ void UninstallApiHooks() {
 
     // Uninstall DirectInput hooks
     UninstallDirectInputHooks();
+
+    // Uninstall HID hooks
+    UninstallHidHooks();
 
     // Uninstall Windows message hooks
     UninstallWindowsMessageHooks();

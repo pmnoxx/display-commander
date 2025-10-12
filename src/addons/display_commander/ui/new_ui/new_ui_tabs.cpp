@@ -4,6 +4,7 @@
 #include "../../widgets/xinput_widget/xinput_widget.hpp"
 #include "developer_new_tab.hpp"
 #include "experimental_tab.hpp"
+#include "hid_input_tab.hpp"
 #include "hook_stats_tab.hpp"
 #include "main_new_tab.hpp"
 #include "streamline_tab.hpp"
@@ -76,6 +77,7 @@ void InitializeNewUI() {
     ui::new_ui::InitMainNewTab();
     ui::new_ui::InitDeveloperNewTab();
     ui::new_ui::InitSwapchainTab();
+    ui::new_ui::InitHidInputTab();
 
     // Initialize XInput widget
     display_commander::widgets::xinput_widget::InitializeXInputWidget();
@@ -170,6 +172,16 @@ void InitializeNewUI() {
             LogError("Error drawing streamline tab: %s", e.what());
         } catch (...) {
             LogError("Unknown error drawing streamline tab");
+        }
+    });
+
+    g_tab_manager.AddTab("HID Input", "hid_input", []() {
+        try {
+            ui::new_ui::DrawHidInputTab();
+        } catch (const std::exception &e) {
+            LogError("Error drawing HID input tab: %s", e.what());
+        } catch (...) {
+            LogError("Unknown error drawing HID input tab");
         }
     });
 

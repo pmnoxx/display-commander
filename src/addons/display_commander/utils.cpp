@@ -240,30 +240,6 @@ float ApplyDeadzone(float value, float deadzone, float max_input) {
     return sign * scaled;
 }
 
-float ProcessStickInput(float value, float deadzone, float max_input, float min_output) {
-    // Step 1: Apply deadzone processing
-    float processed_value = ApplyDeadzone(value, deadzone, max_input);
-
-    // If within deadzone, return 0 (deadzone should always be 0)
-    if (processed_value == 0.0f) {
-        return 0.0f;
-    }
-
-    // Step 2: Apply max_input mapping (e.g., 0.7 max input maps to 1.0 max output)
-    float mapped_value = processed_value;
-
-    // Step 3: Apply min_output mapping (e.g., 0.3 min output maps 0.0-1.0 to 0.3-1.0)
-    float sign = (mapped_value >= 0.0f) ? 1.0f : -1.0f;
-    float abs_mapped = std::abs(mapped_value);
-    float output_mapped = min_output + (abs_mapped * (1.0f - min_output));
-    float final_value = sign * output_mapped;
-
-    // Step 4: Clamp to valid range [-1.0, 1.0]
-    float clamped_value = std::clamp(final_value, -1.0f, 1.0f);
-
-    return clamped_value;
-}
-
 // XInput thumbstick scaling helpers (handles asymmetric SHORT range: -32768 to 32767)
 float ShortToFloat(SHORT value) {
     // Proper linear mapping from [-32768, 32767] to [-1.0f, 1.0f]

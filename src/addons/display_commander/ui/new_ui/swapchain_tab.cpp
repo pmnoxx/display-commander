@@ -93,7 +93,7 @@ void AutoApplyTrigger() {
     if (!auto_apply_hdr_metadata) {
         return;
     }
-    if (g_last_swapchain_api.load() != static_cast<int>(reshade::api::device_api::d3d12) && g_last_swapchain_api.load() != static_cast<int>(reshade::api::device_api::d3d11) && g_last_swapchain_api.load() != static_cast<int>(reshade::api::device_api::d3d10)) {
+    if (g_last_reshade_device_api.load() != static_cast<int>(reshade::api::device_api::d3d12) && g_last_reshade_device_api.load() != static_cast<int>(reshade::api::device_api::d3d11) && g_last_reshade_device_api.load() != static_cast<int>(reshade::api::device_api::d3d10)) {
         return;
     }
     static bool first_apply = true;
@@ -747,7 +747,7 @@ void DrawDLSSGSummary() {
 void DrawDxgiCompositionInfo() {
     if (ImGui::CollapsingHeader("DXGI Composition Information", ImGuiTreeNodeFlags_DefaultOpen)) {
         const char* mode_str = "Unknown";
-        int current_api = g_last_swapchain_api.load();
+        int current_api = g_last_reshade_device_api.load();
         DxgiBypassMode flip_state = GetFlipStateForAPI(current_api);
 
         switch (flip_state) {

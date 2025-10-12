@@ -33,7 +33,7 @@ IDXGISwapChain* swapchain = reinterpret_cast<IDXGISwapChain*>(native_handle);
 
 ### API Validation:
 ```cpp
-int game_api = g_last_swapchain_api.load();
+int game_api = g_last_reshade_device_api.load();
 bool is_dx11 = (game_api == 4);  // reshade::api::device_api::d3d11
 bool is_dx12 = (game_api == 5);  // reshade::api::device_api::d3d12
 bool compatible = is_dx11 || is_dx12;

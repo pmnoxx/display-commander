@@ -101,7 +101,7 @@ void hookToSwapChain(reshade::api::swapchain *swapchain) {
     LogInfo("onInitSwapChain: swapchain: 0x%p", swapchain);
 
     // Store the current swapchain for UI access
-    g_last_swapchain_api.store(static_cast<int>(swapchain->get_device()->get_api()));
+    g_last_reshade_device_api.store(static_cast<int>(swapchain->get_device()->get_api()));
     g_last_swapchain_ptr.store(static_cast<void*>(swapchain));
 
     // Query and store API version/feature level
@@ -899,7 +899,7 @@ void AutoSetColorSpace(reshade::api::swapchain *swapchain) {
 
     // Get the game's swap chain
     void* game_swapchain_ptr = g_last_swapchain_ptr.load();
-    int game_api = g_last_swapchain_api.load();
+    int game_api = g_last_reshade_device_api.load();
 
     if (!game_swapchain_ptr) {
         return;

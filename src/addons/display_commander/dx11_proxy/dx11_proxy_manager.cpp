@@ -944,7 +944,7 @@ bool DX11ProxyManager::SetSourceColorSpace() {
 
     // Get the game's swap chain from global variables
     void* game_swapchain_ptr = g_last_swapchain_ptr.load();
-    int game_api = g_last_swapchain_api.load();
+    int game_api = g_last_reshade_device_api.load();
 
     if (!game_swapchain_ptr) {
         LogError("DX11ProxyManager::SetSourceColorSpace: No game swap chain detected");

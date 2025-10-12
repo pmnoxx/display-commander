@@ -33,13 +33,12 @@ function Get-CurrentVersion {
 
     $content = Get-Content $versionFile -Raw
 
-    # Extract version numbers using regex
+    # Extract version numbers using regex (build number is now git-based)
     $majorMatch = [regex]::Match($content, '#define DISPLAY_COMMANDER_VERSION_MAJOR (\d+)')
     $minorMatch = [regex]::Match($content, '#define DISPLAY_COMMANDER_VERSION_MINOR (\d+)')
     $patchMatch = [regex]::Match($content, '#define DISPLAY_COMMANDER_VERSION_PATCH (\d+)')
-    $buildMatch = [regex]::Match($content, '#define DISPLAY_COMMANDER_VERSION_BUILD (\d+)')
 
-    if (-not $majorMatch.Success -or -not $minorMatch.Success -or -not $patchMatch.Success -or -not $buildMatch.Success) {
+    if (-not $majorMatch.Success -or -not $minorMatch.Success -or -not $patchMatch.Success) {
         Write-ColorOutput "Error: Could not parse version numbers from version.hpp" $Red
         exit 1
     }
@@ -48,7 +47,7 @@ function Get-CurrentVersion {
         Major = [int]$majorMatch.Groups[1].Value
         Minor = [int]$minorMatch.Groups[1].Value
         Patch = [int]$patchMatch.Groups[1].Value
-        Build = [int]$buildMatch.Groups[1].Value
+        Build = 0  # Build number is now git-based, not stored in file
     }
 }
 
@@ -58,15 +57,14 @@ function Update-VersionFile {
     $versionFile = "src\addons\display_commander\version.hpp"
     $content = Get-Content $versionFile -Raw
 
-    # Update individual version numbers
+    # Update individual version numbers (build number is now git-based, so skip it)
     $content = $content -replace '#define DISPLAY_COMMANDER_VERSION_MAJOR \d+', "#define DISPLAY_COMMANDER_VERSION_MAJOR $($Version.Major)"
     $content = $content -replace '#define DISPLAY_COMMANDER_VERSION_MINOR \d+', "#define DISPLAY_COMMANDER_VERSION_MINOR $($Version.Minor)"
     $content = $content -replace '#define DISPLAY_COMMANDER_VERSION_PATCH \d+', "#define DISPLAY_COMMANDER_VERSION_PATCH $($Version.Patch)"
-    $content = $content -replace '#define DISPLAY_COMMANDER_VERSION_BUILD \d+', "#define DISPLAY_COMMANDER_VERSION_BUILD $($Version.Build)"
 
-    # Update version string
+    # Update version string (major.minor.patch only, build number is git-based)
     $versionString = "$($Version.Major).$($Version.Minor).$($Version.Patch)"
-    $content = $content -replace '#define DISPLAY_COMMANDER_VERSION_STRING "[^"]*"', "#define DISPLAY_COMMANDER_VERSION_STRING `"$versionString`""
+    $content = $content -replace '#define DISPLAY_COMMANDER_VERSION_STRING_MAJOR_MINOR_PATCH "[^"]*"', "#define DISPLAY_COMMANDER_VERSION_STRING_MAJOR_MINOR_PATCH `"$versionString`""
 
     # Update build date and time
     $buildDate = Get-Date -Format "yyyy-MM-dd"
@@ -78,6 +76,7 @@ function Update-VersionFile {
     Set-Content -Path $versionFile -Value $content -NoNewline
 
     Write-ColorOutput "Updated version to: $versionString" $Green
+    Write-ColorOutput "Build number will be automatically set from git commit count" $Yellow
     Write-ColorOutput "Build date: $buildDate $buildTime" $Green
 }
 

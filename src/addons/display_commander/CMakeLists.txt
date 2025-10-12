@@ -18,6 +18,9 @@ if(EXPERIMENTAL_TAB)
   target_compile_definitions(zzz_display_commander PRIVATE EXPERIMENTAL_TAB=1)
 endif()
 
+# Add git commit count as build number
+target_compile_definitions(zzz_display_commander PRIVATE GIT_COMMIT_COUNT=${GIT_COMMIT_COUNT})
+
 # MSVC-specific flags
 if(MSVC)
   target_compile_options(zzz_display_commander PRIVATE /bigobj /arch:SSE2)

@@ -2,6 +2,34 @@ cmake_minimum_required(VERSION 3.20)
 
 project(reshade_display_commander VERSION 0.2.4 LANGUAGES CXX)
 
+# Function to get git commit count for build number
+function(get_git_commit_count OUTPUT_VAR)
+    find_package(Git QUIET)
+    if(NOT GIT_FOUND)
+        set(${OUTPUT_VAR} "0" PARENT_SCOPE)
+        return()
+    endif()
+    
+    execute_process(
+        COMMAND "${GIT_EXECUTABLE}" rev-list --count HEAD
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+        RESULT_VARIABLE GIT_RESULT
+        OUTPUT_VARIABLE GIT_OUTPUT
+        ERROR_QUIET
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+    
+    if(NOT GIT_RESULT EQUAL 0)
+        set(${OUTPUT_VAR} "0" PARENT_SCOPE)
+        return()
+    endif()
+    
+    set(${OUTPUT_VAR} "${GIT_OUTPUT}" PARENT_SCOPE)
+endfunction()
+
+# Get git commit count for build number
+get_git_commit_count(GIT_COMMIT_COUNT)
+
 # Build options
 option(EXPERIMENTAL_TAB "Enable experimental tab functionality" OFF)
 

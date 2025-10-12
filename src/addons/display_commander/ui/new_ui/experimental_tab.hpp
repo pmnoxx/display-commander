@@ -35,6 +35,9 @@ void DrawDlssIndicatorControls();
 // Draw D3D9 FLIPEX controls section
 void DrawD3D9FlipExControls();
 
+// Draw disable flip chain controls section
+void DrawDisableFlipChainControls();
+
 // Draw developer tools section
 void DrawDeveloperTools();
 

@@ -41,6 +41,9 @@ void OnPresentUpdateBefore(reshade::api::command_queue *queue, reshade::api::swa
 void OnPresentUpdateAfter2();
 void OnPresentFlags2(uint32_t *present_flags, PresentApiType api_type);
 
+// Auto color space helper
+void AutoSetColorSpace(reshade::api::swapchain *swapchain);
+
 // Buffer resolution upgrade event handlers
 bool OnCreateResource(reshade::api::device *device, reshade::api::resource_desc &desc,
                       reshade::api::subresource_data *initial_data, reshade::api::resource_usage usage);

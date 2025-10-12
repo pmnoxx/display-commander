@@ -73,9 +73,11 @@ std::atomic<bool> s_continue_rendering{false}; // Disabled by default
 
 // Fix HDR10 color space when backbuffer is RGB10A2
 std::atomic<bool> s_nvapi_fix_hdr10_colorspace{false};
+std::atomic<bool> s_auto_colorspace{false};
 
 // Hide HDR capabilities from applications
 std::atomic<bool> s_hide_hdr_capabilities{false};
+std::atomic<bool> s_enable_flip_chain{false};
 
 // D3D9 to D3D9Ex upgrade
 std::atomic<bool> s_enable_d3d9_upgrade{true}; // Enabled by default
@@ -118,6 +120,7 @@ std::atomic<int> g_comp_last_logged{0};
 std::atomic<void*> g_last_swapchain_ptr{nullptr};
 std::atomic<int> g_last_swapchain_api{0};
 std::atomic<uint32_t> g_last_api_version{0};
+std::atomic<std::shared_ptr<reshade::api::swapchain_desc>> g_last_swapchain_desc{nullptr};
 std::atomic<uint64_t> g_init_apply_generation{0};
 std::atomic<HWND> g_last_swapchain_hwnd{nullptr};
 std::atomic<bool> g_shutdown{false};

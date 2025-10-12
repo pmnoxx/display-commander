@@ -344,8 +344,12 @@ extern std::atomic<int> s_aspect_width;
 // Fix HDR10 color space when backbuffer is RGB10A2
 extern std::atomic<bool> s_nvapi_fix_hdr10_colorspace;
 
+// Auto color space setting
+extern std::atomic<bool> s_auto_colorspace;
+
 // Hide HDR capabilities from applications
 extern std::atomic<bool> s_hide_hdr_capabilities;
+extern std::atomic<bool> s_enable_flip_chain;
 
 // D3D9 to D3D9Ex upgrade
 extern std::atomic<bool> s_enable_d3d9_upgrade;
@@ -398,6 +402,7 @@ extern std::atomic<int> g_comp_last_logged;
 extern std::atomic<void*> g_last_swapchain_ptr; // Using void* to avoid reshade dependency
 extern std::atomic<int> g_last_swapchain_api; // Store device API type
 extern std::atomic<uint32_t> g_last_api_version; // Store API version/feature level (e.g., D3D_FEATURE_LEVEL_11_1)
+extern std::atomic<std::shared_ptr<reshade::api::swapchain_desc>> g_last_swapchain_desc; // Store last swapchain description
 extern std::atomic<uint64_t> g_init_apply_generation;
 extern std::atomic<HWND> g_last_swapchain_hwnd;
 extern std::atomic<bool> g_shutdown;

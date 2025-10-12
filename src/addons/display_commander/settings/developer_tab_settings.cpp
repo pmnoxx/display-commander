@@ -18,6 +18,8 @@ DeveloperTabSettings::DeveloperTabSettings()
       prevent_always_on_top("PreventAlwaysOnTop", s_prevent_always_on_top, true, "DisplayCommander"),
       nvapi_fix_hdr10_colorspace("NvapiFixHDR10Colorspace", s_nvapi_fix_hdr10_colorspace, false, "DisplayCommander"),
       hide_hdr_capabilities("HideHDRCapabilities", s_hide_hdr_capabilities, false, "DisplayCommander"),
+      enable_flip_chain("EnableFlipChain", s_enable_flip_chain, false, "DisplayCommander"),
+      auto_colorspace("AutoColorspace", s_auto_colorspace, false, "DisplayCommander"),
       enable_d3d9_upgrade("EnableD3D9Upgrade", s_enable_d3d9_upgrade, true, "DisplayCommander"),
       nvapi_fullscreen_prevention("NvapiFullscreenPrevention", s_nvapi_fullscreen_prevention, false,
                                   "DisplayCommander"),
@@ -45,6 +47,8 @@ void DeveloperTabSettings::LoadAll() {
     prevent_always_on_top.Load();
     nvapi_fix_hdr10_colorspace.Load();
     hide_hdr_capabilities.Load();
+    enable_flip_chain.Load();
+    auto_colorspace.Load();
     enable_d3d9_upgrade.Load();
     nvapi_fullscreen_prevention.Load();
 
@@ -75,6 +79,8 @@ std::vector<ui::new_ui::SettingBase *> DeveloperTabSettings::GetAllSettings() {
             &prevent_always_on_top,
             &nvapi_fix_hdr10_colorspace,
             &hide_hdr_capabilities,
+            &enable_flip_chain,
+            &auto_colorspace,
             &enable_d3d9_upgrade,
             &nvapi_fullscreen_prevention,
 

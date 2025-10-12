@@ -342,5 +342,9 @@ void NVAPIFullscreenPrevention::CheckAndAutoEnable() {
         } else {
             LogWarn("NVAPI Auto-enable: Failed to enable fullscreen prevention for '%s'", processName.c_str());
         }
+
+        s_enable_flip_chain.store(true);
+        s_auto_colorspace.store(true);
+        LogInfo("NVAPI Auto-enable: Enabled flip chain for '%s'", processName.c_str());
     }
 }

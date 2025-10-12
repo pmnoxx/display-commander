@@ -34,6 +34,8 @@ class DeveloperTabSettings {
     // HDR and Colorspace Settings
     BoolSettingRef nvapi_fix_hdr10_colorspace;
     BoolSettingRef hide_hdr_capabilities;
+    BoolSettingRef enable_flip_chain;
+    BoolSettingRef auto_colorspace;
 
     // D3D9 to D3D9Ex Upgrade
     BoolSettingRef enable_d3d9_upgrade;

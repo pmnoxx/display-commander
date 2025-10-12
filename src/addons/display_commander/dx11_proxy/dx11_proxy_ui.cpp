@@ -17,6 +17,25 @@
 
 namespace dx11_proxy {
 
+// Convert ReShade format to DX11 proxy format index
+int ConvertReshadeFormatToProxyIndex(reshade::api::format reshade_format) {
+    switch (reshade_format) {
+        case reshade::api::format::r10g10b10a2_unorm:
+            return 0; // R10G10B10A2_UNORM (HDR 10-bit)
+        case reshade::api::format::r16g16b16a16_float:
+            return 1; // R16G16B16A16_FLOAT (HDR 16-bit float)
+        case reshade::api::format::r8g8b8a8_unorm:
+            return 2; // R8G8B8A8_UNORM (SDR 8-bit)
+        case reshade::api::format::b8g8r8a8_unorm:
+            return 2; // B8G8R8A8_UNORM maps to R8G8B8A8_UNORM
+        case reshade::api::format::r8g8b8a8_snorm:
+            return 2; // R8G8B8A8_SNORM maps to R8G8B8A8_UNORM
+        default:
+            LogWarn("DX11ProxyUI: Unknown ReShade format %d, defaulting to R10G10B10A2", static_cast<int>(reshade_format));
+            return 2; // Default to R10G10B10A2_UNORM
+    }
+}
+
 void InitUI() {
     LogInfo("DX11ProxyUI::InitUI - Initializing UI");
     // TODO: Load settings from file when implemented
@@ -371,22 +390,59 @@ void DrawDX11ProxyControls() {
 
     ImGui::Spacing();
 
-    // Quick test button: Enable + Create 4K Window + Initialize
-    if (ImGui::Button("Quick Test: Enable + Create 4K Window")) {
-        LogInfo("DX11ProxyUI: User requested quick test - Enable + Create 4K Window");
+    // Get actual back buffer dimensions and format from stored swapchain description
+    auto desc_ptr = g_last_swapchain_desc.load();
+    uint32_t width = 3840;  // Default fallback
+    uint32_t height = 2160; // Default fallback
+    int format_index = 0;   // Default to R10G10B10A2_UNORM
 
-        // Step 1: Enable DX11 proxy
+    if (desc_ptr) {
+        const auto& desc = *desc_ptr;
+        width = desc.back_buffer.texture.width;
+        height = desc.back_buffer.texture.height;
+
+        // Convert ReShade format to DX11 proxy format index
+        format_index = ConvertReshadeFormatToProxyIndex(desc.back_buffer.texture.format);
+    }
+
+    // Display detected back buffer information
+    ImGui::TextColored(ui::colors::TEXT_LABEL, "Detected Game Settings:");
+    if (desc_ptr) {
+        const auto& desc = *desc_ptr;
+        ImGui::Text("  Resolution: %ux%u", desc.back_buffer.texture.width, desc.back_buffer.texture.height);
+
+        // Display format name
+        const char* format_name = "Unknown";
+        switch (desc.back_buffer.texture.format) {
+            case reshade::api::format::r10g10b10a2_unorm: format_name = "R10G10B10A2_UNORM (HDR 10-bit)"; break;
+            case reshade::api::format::r16g16b16a16_float: format_name = "R16G16B16A16_FLOAT (HDR 16-bit)"; break;
+            case reshade::api::format::r8g8b8a8_unorm: format_name = "R8G8B8A8_UNORM (SDR 8-bit)"; break;
+            case reshade::api::format::b8g8r8a8_unorm: format_name = "B8G8R8A8_UNORM (SDR 8-bit)"; break;
+            default: format_name = "Unknown Format"; break;
+        }
+        ImGui::Text("  Format: %s", format_name);
+        ImGui::Text("  Proxy Format Index: %d", format_index);
+    } else {
+        ImGui::TextColored(ui::colors::TEXT_ERROR, "  No game detected - using defaults");
+    }
+    ImGui::Spacing();
+
+    // Quick test button: Enable + Create Window + Initialize
+    if (ImGui::Button("Quick Test: Enable + Create Window")) {
+        LogInfo("DX11ProxyUI: User requested quick test - Enable + Create Window");
+
+        // Step 1: Enable DX11 proxy and set format
         g_dx11ProxySettings.enabled.store(true);
         g_dx11ProxySettings.create_swapchain.store(true);
-        LogInfo("DX11ProxyUI: Enabled DX11 proxy and swapchain creation");
+        g_dx11ProxySettings.swapchain_format.store(format_index);
+        LogInfo("DX11ProxyUI: Enabled DX11 proxy and swapchain creation with format index %d", format_index);
 
-        // Step 2: Create 4K test window
         HWND test_window = manager.CreateTestWindow4K();
         if (test_window) {
-            LogInfo("DX11ProxyUI: Created 4K test window successfully");
+            LogInfo("DX11ProxyUI: Created test window successfully");
 
-            // Step 3: Initialize with 4K dimensions
-            bool success = manager.Initialize(test_window, 3840, 2160, true);
+            // Step 3: Initialize with actual dimensions
+            bool success = manager.Initialize(test_window, width, height, true);
             if (success) {
                 LogInfo("DX11ProxyUI: Quick test initialization succeeded!");
                 // Window will be black until you start copying game content
@@ -404,9 +460,9 @@ void DrawDX11ProxyControls() {
         ImGui::BeginTooltip();
         ImGui::Text("One-click test:");
         ImGui::Text("1. Enables DX11 proxy");
-        ImGui::Text("2. Creates a 3840x2160 test window");
+        ImGui::Text("2. Creates test window with actual game resolution and format");
         ImGui::Text("3. Initializes the proxy device");
-        ImGui::Text("Use this for quick testing!");
+        ImGui::Text("Uses real game settings instead of hardcoded values!");
         ImGui::Text("Window will be black until you start copying");
         ImGui::EndTooltip();
     }
@@ -583,7 +639,6 @@ void DrawDX11ProxyControls() {
 
     // Set Color Space on Source Swap Chain button
     bool has_compatible_source = (game_swapchain_ptr != nullptr) && compatible_api;
-    ImGui::BeginDisabled(!manager.IsInitialized() || !has_compatible_source);
     if (ImGui::Button("Set Color Space (Source)")) {
         LogInfo("DX11ProxyUI: User requested source color space setting");
         bool success = manager.SetSourceColorSpace();
@@ -593,6 +648,7 @@ void DrawDX11ProxyControls() {
             LogError("DX11ProxyUI: Failed to set source color space");
         }
     }
+    ImGui::BeginDisabled(!manager.IsInitialized() || !has_compatible_source);
     ImGui::EndDisabled();
     ImGui::SameLine();
     ImGui::TextDisabled("(?)");

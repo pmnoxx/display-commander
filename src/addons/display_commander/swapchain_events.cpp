@@ -18,6 +18,8 @@
 #include "performance_types.hpp"
 #include "settings/experimental_tab_settings.hpp"
 #include "settings/main_tab_settings.hpp"
+
+#include <dxgi.h>
 #include "swapchain_events.hpp"
 #include "swapchain_events_power_saving.hpp"
 #include "ui/new_ui/experimental_tab.hpp"
@@ -385,6 +387,10 @@ bool OnCreateSwapchainCapture(reshade::api::device_api api, reshade::api::swapch
     // Initialize if not already done
     DoInitializationWithHwnd(static_cast<HWND>(hwnd));
 
+    // Store swapchain description for UI display
+    auto initial_desc_copy = std::make_shared<reshade::api::swapchain_desc>(desc);
+    g_last_swapchain_desc.store(initial_desc_copy);
+
     // Check if this is a supported API (D3D9, D3D10, D3D11, D3D12)
     const bool is_d3d9 = (api == reshade::api::device_api::d3d9);
     const bool is_dxgi = (api == reshade::api::device_api::d3d12 || api == reshade::api::device_api::d3d11 || api == reshade::api::device_api::d3d10);
@@ -481,6 +487,59 @@ bool OnCreateSwapchainCapture(reshade::api::device_api api, reshade::api::swapch
             desc.back_buffer_count = 2;
             modified = true;
         }
+
+        // Disable flip chain if enabled (experimental feature)
+        if (settings::g_experimentalTabSettings.disable_flip_chain_enabled.GetValue()) {
+            // Check if current present mode is a flip model
+            const bool is_flip_discard = (desc.present_mode == DXGI_SWAP_EFFECT_FLIP_DISCARD);
+            const bool is_flip_sequential = (desc.present_mode == DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL);
+
+            if (is_flip_discard || is_flip_sequential) {
+                // Force traditional swap chain (DISCARD is more common and performant than SEQUENTIAL)
+                desc.present_mode = DXGI_SWAP_EFFECT_DISCARD;
+                modified = true;
+
+                // Log the change
+                std::ostringstream flip_oss;
+                flip_oss << "Disable Flip Chain: Changed present mode from ";
+                if (is_flip_discard) {
+                    flip_oss << "FLIP_DISCARD";
+                } else {
+                    flip_oss << "FLIP_SEQUENTIAL";
+                }
+                flip_oss << " to DISCARD (traditional swap chain)";
+                LogInfo("%s", flip_oss.str().c_str());
+            }
+        }
+
+        // Enable flip chain if enabled (experimental feature) - forces flip model
+        if (settings::g_experimentalTabSettings.enable_flip_chain_enabled.GetValue()
+        || s_enable_flip_chain.load()) {
+            // Check if current present mode is NOT a flip model
+            const bool is_flip_discard = (desc.present_mode == DXGI_SWAP_EFFECT_FLIP_DISCARD);
+            const bool is_flip_sequential = (desc.present_mode == DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL);
+            const bool is_traditional = (desc.present_mode == DXGI_SWAP_EFFECT_DISCARD || desc.present_mode == DXGI_SWAP_EFFECT_SEQUENTIAL);
+
+            if (is_traditional) {
+                // Store original mode for logging
+                uint32_t original_mode = desc.present_mode;
+
+                // Force flip model swap chain (FLIP_DISCARD is more performant than FLIP_SEQUENTIAL)
+                desc.present_mode = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+                modified = true;
+
+                // Log the change
+                std::ostringstream flip_oss;
+                flip_oss << "Enable Flip Chain: Changed present mode from ";
+                if (original_mode == DXGI_SWAP_EFFECT_DISCARD) {
+                    flip_oss << "DISCARD";
+                } else {
+                    flip_oss << "SEQUENTIAL";
+                }
+                flip_oss << " to FLIP_DISCARD (flip model swap chain)";
+                LogInfo("%s", flip_oss.str().c_str());
+            }
+        }
     }
 
     // Apply backbuffer format override if enabled (all APIs)
@@ -571,6 +630,10 @@ bool OnCreateSwapchainCapture(reshade::api::device_api api, reshade::api::swapch
 
         LogInfo(oss.str().c_str());
     }
+
+    // Update swapchain description after any modifications
+    auto final_desc_copy = std::make_shared<reshade::api::swapchain_desc>(desc);
+    g_last_swapchain_desc.store(final_desc_copy);
 
     return modified; // return true if we modified the desc
 }
@@ -802,6 +865,87 @@ void HandleFpsLimiter() {
         UpdateRollingAverage(handle_fps_limiter_start_duration_ns, fps_sleep_before_on_present_ns.load()));
 }
 
+// Helper function to automatically set color space based on format
+void AutoSetColorSpace(reshade::api::swapchain *swapchain) {
+    if (!s_auto_colorspace.load()) {
+        return;
+    }
+
+    // Get current swapchain description
+    auto desc_ptr = g_last_swapchain_desc.load();
+    if (!desc_ptr) {
+        return;
+    }
+
+    const auto& desc = *desc_ptr;
+    auto format = desc.back_buffer.texture.format;
+
+    // Determine appropriate color space based on format
+    DXGI_COLOR_SPACE_TYPE color_space;
+    std::string color_space_name;
+
+    if (format == reshade::api::format::r10g10b10a2_unorm) {
+        color_space = DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020; // HDR10
+        color_space_name = "HDR10 (ST2084)";
+    } else if (format == reshade::api::format::r16g16b16a16_float) {
+        color_space = DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709; // scRGB
+        color_space_name = "scRGB (Linear)";
+    } else if (format == reshade::api::format::r8g8b8a8_unorm) {
+        color_space = DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709; // sRGB
+        color_space_name = "sRGB (Non-linear)";
+    } else {
+        return; // Unsupported format
+    }
+
+    // Get the game's swap chain
+    void* game_swapchain_ptr = g_last_swapchain_ptr.load();
+    int game_api = g_last_swapchain_api.load();
+
+    if (!game_swapchain_ptr) {
+        return;
+    }
+
+    // Check if it's a compatible API (DX11 or DX12)
+    bool is_dx11 = (game_api == static_cast<int>(reshade::api::device_api::d3d11));
+    bool is_dx12 = (game_api == static_cast<int>(reshade::api::device_api::d3d12));
+    if (!is_dx11 && !is_dx12) {
+        return;
+    }
+
+    // Get the native swap chain handle from ReShade
+    auto* reshade_swapchain = static_cast<reshade::api::swapchain*>(game_swapchain_ptr);
+    uint64_t native_handle = reshade_swapchain->get_native();
+
+    if (!native_handle) {
+        return;
+    }
+
+    // Cast to IDXGISwapChain and get IDXGISwapChain3 interface
+    auto* native_swapchain = reinterpret_cast<IDXGISwapChain*>(native_handle);
+    Microsoft::WRL::ComPtr<IDXGISwapChain3> swapchain3;
+    HRESULT hr = native_swapchain->QueryInterface(IID_PPV_ARGS(&swapchain3));
+    if (FAILED(hr)) {
+        return;
+    }
+
+    // Check if the color space is supported before trying to set it
+    UINT color_space_support = 0;
+    hr = swapchain3->CheckColorSpaceSupport(color_space, &color_space_support);
+    if (FAILED(hr) || color_space_support == 0) {
+        // Try fallback to basic sRGB color space
+        DXGI_COLOR_SPACE_TYPE fallback_color_space = DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
+        UINT fallback_support = 0;
+        hr = swapchain3->CheckColorSpaceSupport(fallback_color_space, &fallback_support);
+        if (SUCCEEDED(hr) && fallback_support > 0) {
+            swapchain3->SetColorSpace1(fallback_color_space);
+        }
+        return;
+    }
+
+    // Set the appropriate color space
+    swapchain3->SetColorSpace1(color_space);
+}
+
 // Update composition state after presents (required for valid stats)
 void OnPresentUpdateBefore(reshade::api::command_queue * command_queue, reshade::api::swapchain *swapchain,
                            const reshade::api::rect * /*source_rect*/, const reshade::api::rect * /*dest_rect*/,
@@ -813,6 +957,9 @@ void OnPresentUpdateBefore(reshade::api::command_queue * command_queue, reshade:
     }
 
     hookToSwapChain(swapchain);
+
+    // Auto set color space if enabled
+    AutoSetColorSpace(swapchain);
 
     // Record the native DXGI swapchain for Present detour filtering
     if (swapchain != nullptr && (swapchain->get_device()->get_api() == reshade::api::device_api::d3d12 ||

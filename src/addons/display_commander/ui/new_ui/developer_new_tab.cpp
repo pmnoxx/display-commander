@@ -12,6 +12,9 @@
 #include <set>
 #include <sstream>
 
+#include <dxgi1_6.h>
+#include <wrl/client.h>
+
 static std::atomic<bool> s_restart_needed_nvapi(false);
 
 namespace ui::new_ui {
@@ -111,6 +114,33 @@ void DrawHdrDisplaySettings() {
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Hides HDR capabilities from applications by intercepting CheckColorSpaceSupport and GetDesc calls.\n"
                          "This can prevent games from detecting HDR support and force them to use SDR mode.");
+    }
+
+    // Enable Flip Chain
+    if (CheckboxSetting(settings::g_developerTabSettings.enable_flip_chain,
+                        "Enable flip chain")) {
+        s_enable_flip_chain.store(settings::g_developerTabSettings.enable_flip_chain.GetValue());
+        LogInfo("Enable flip chain setting changed to: %s",
+                settings::g_developerTabSettings.enable_flip_chain.GetValue() ? "true" : "false");
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Forces games to use flip model swap chains (FLIP_DISCARD) for better performance.\n"
+                         "This setting requires a game restart to take effect.\n"
+                         "Only works with DirectX 10/11/12 (DXGI) games.");
+    }
+
+    // Auto Color Space checkbox
+    bool auto_colorspace = settings::g_developerTabSettings.auto_colorspace.GetValue();
+    if (ImGui::Checkbox("Auto color space", &auto_colorspace)) {
+        settings::g_developerTabSettings.auto_colorspace.SetValue(auto_colorspace);
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Automatically sets the appropriate color space on the game's swap chain based on the current format.\n"
+                         "• HDR10 format (R10G10B10A2) → HDR10 color space (ST2084)\n"
+                         "• FP16 format (R16G16B16A16) → scRGB color space (Linear)\n"
+                         "• SDR format (R8G8B8A8) → sRGB color space (Non-linear)\n"
+                         "Only works with DirectX 11/12 games.\n"
+                         "Applied automatically in presentBefore.");
     }
 
     ImGui::Spacing();

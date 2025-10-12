@@ -933,12 +933,14 @@ bool DX11ProxyManager::SetHDRColorSpace() {
 }
 
 bool DX11ProxyManager::SetSourceColorSpace() {
+    #if 0
     std::lock_guard lock(mutex_);
 
     if (!is_initialized_.load()) {
         LogError("DX11ProxyManager::SetSourceColorSpace: Manager not initialized");
         return false;
     }
+    #endif
 
     // Get the game's swap chain from global variables
     void* game_swapchain_ptr = g_last_swapchain_ptr.load();

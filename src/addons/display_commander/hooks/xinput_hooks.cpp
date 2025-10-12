@@ -31,11 +31,10 @@ const std::array<const char*, 5> xinput_modules = {
 std::array<XInputGetStateEx_pfn, 5> original_xinput_get_state_ex_procs = {};
 std::array<XInputGetState_pfn, 5> original_xinput_get_state_procs = {};
 
-/*
+
 // Initialize XInput function pointers for direct calls
 static void InitializeXInputDirectFunctions() {
-    if (true) return;
-    if (XInputGetStateEx_Direct != nullptr && XInputSetState_Direct != nullptr && XInputGetBatteryInformation_Direct != nullptr) {
+    if (XInputSetState_Direct != nullptr || XInputGetBatteryInformation_Direct != nullptr) {
         return; // Already initialized
     }
     for (const char *module_name : xinput_modules) {
@@ -50,7 +49,7 @@ static void InitializeXInputDirectFunctions() {
             LogInfo("XInput module: %s not found", module_name);
         }
     }
-}*/
+}
 
 // Helper function to apply max input, min output, and deadzone to thumbstick values
 void ApplyThumbstickProcessing(XINPUT_STATE *pState, float left_max_input, float right_max_input, float left_min_output,
@@ -58,21 +57,23 @@ void ApplyThumbstickProcessing(XINPUT_STATE *pState, float left_max_input, float
     if (!pState)
         return;
 
-    // Process left stick using radial deadzone (preserves direction)
+    // Process left stick using unified function with correct scaling
     float lx = ShortToFloat(pState->Gamepad.sThumbLX);
     float ly = ShortToFloat(pState->Gamepad.sThumbLY);
 
-    ProcessStickInputRadial(lx, ly, left_deadzone, left_max_input, left_min_output);
+    lx = ProcessStickInput(lx, left_deadzone, left_max_input, left_min_output);
+    ly = ProcessStickInput(ly, left_deadzone, left_max_input, left_min_output);
 
     // Convert back to SHORT with correct scaling
     pState->Gamepad.sThumbLX = FloatToShort(lx);
     pState->Gamepad.sThumbLY = FloatToShort(ly);
 
-    // Process right stick using radial deadzone (preserves direction)
+    // Process right stick using unified function with correct scaling
     float rx = ShortToFloat(pState->Gamepad.sThumbRX);
     float ry = ShortToFloat(pState->Gamepad.sThumbRY);
 
-    ProcessStickInputRadial(rx, ry, right_deadzone, right_max_input, right_min_output);
+    rx = ProcessStickInput(rx, right_deadzone, right_max_input, right_min_output);
+    ry = ProcessStickInput(ry, right_deadzone, right_max_input, right_min_output);
 
     // Convert back to SHORT with correct scaling
     pState->Gamepad.sThumbRX = FloatToShort(rx);
@@ -87,6 +88,8 @@ DWORD WINAPI XInputGetState_Detour(DWORD dwUserIndex, XINPUT_STATE *pState) {
     if (XInputGetStateEx_Direct == nullptr || XInputGetState_Direct == nullptr) {
         return ERROR_DEVICE_NOT_CONNECTED;
     }
+    LogInfo("XXX XInputGetState called for controller %lu", dwUserIndex);
+
     // Track hook call statistics
     g_hook_stats[HOOK_XInputGetState].increment_total();
     static bool tried_get_state_ex = false;
@@ -289,6 +292,18 @@ bool InstallXInputHooks() {
    // InitializeXInputDirectFunctions();
 
     bool any_success = false;
+    for (size_t idx = 0; idx < std::size(xinput_modules); ++idx) {
+        const char *module_name = xinput_modules[idx];
+        HMODULE xinput_module = GetModuleHandleA(module_name);
+        if (xinput_module == nullptr) {
+            any_success = true;
+            break;
+        }
+    }
+
+    if (any_success) {
+        InitializeXInputDirectFunctions();
+    }
 
     // Try to hook ALL loaded XInput modules
     for (size_t idx = 0; idx < std::size(xinput_modules); ++idx) {

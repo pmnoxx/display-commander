@@ -156,14 +156,6 @@ std::unique_ptr<LatentSyncManager> g_latentSyncManager = std::make_unique<Latent
 // Global Latency Manager instance
 std::unique_ptr<LatencyManager> g_latencyManager = std::make_unique<LatencyManager>();
 
-// Direct atomic variables for latency tracking (UI access)
-std::atomic<float> g_current_latency_ms{0.0f};
-std::atomic<float> g_average_latency_ms{0.0f};
-std::atomic<float> g_min_latency_ms{0.0f};
-std::atomic<float> g_max_latency_ms{0.0f};
-std::atomic<uint64_t> g_current_frame{0};
-
-
 // Backbuffer dimensions
 std::atomic<int> g_last_backbuffer_width{0};
 std::atomic<int> g_last_backbuffer_height{0};

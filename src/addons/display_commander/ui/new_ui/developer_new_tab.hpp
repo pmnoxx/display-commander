@@ -23,9 +23,6 @@ void DrawResolutionOverrideSettings();
 // Draw keyboard shortcuts settings section
 void DrawKeyboardShortcutsSettings();
 
-// Draw latency display section
-void DrawLatencyDisplay();
-
 // Draw ReShade global config settings section
 void DrawReShadeGlobalConfigSettings();
 

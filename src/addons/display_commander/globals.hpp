@@ -425,13 +425,6 @@ extern std::unique_ptr<LatentSyncManager> g_latentSyncManager;
 // Latency Manager
 extern std::unique_ptr<LatencyManager> g_latencyManager;
 
-// Direct atomic variables for latency tracking (UI access)
-extern std::atomic<float> g_current_latency_ms;
-extern std::atomic<float> g_average_latency_ms;
-extern std::atomic<float> g_min_latency_ms;
-extern std::atomic<float> g_max_latency_ms;
-extern std::atomic<uint64_t> g_current_frame;
-
 // Present duration tracking
 extern std::atomic<LONGLONG> g_present_duration_ns;
 

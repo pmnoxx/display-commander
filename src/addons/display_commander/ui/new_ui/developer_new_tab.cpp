@@ -58,13 +58,6 @@ void DrawDeveloperNewTab() {
 
     ImGui::Spacing();
 
-    // Latency Display Section
-    if (ImGui::CollapsingHeader("Latency Display", ImGuiTreeNodeFlags_DefaultOpen)) {
-        DrawLatencyDisplay();
-    }
-
-    ImGui::Spacing();
-
     // ReShade Global Config Section
     if (ImGui::CollapsingHeader("ReShade Global Config", ImGuiTreeNodeFlags_DefaultOpen)) {
         DrawReShadeGlobalConfigSettings();
@@ -424,27 +417,6 @@ void DrawKeyboardShortcutsSettings() {
         ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Shortcut works when game is in foreground");
         ImGui::Unindent();
     }
-}
-
-void DrawLatencyDisplay() {
-    // Current Latency Display
-    extern std::atomic<float> g_current_latency_ms;
-    float latency = ::g_current_latency_ms.load();
-
-    std::ostringstream oss;
-    oss << "Current Latency: " << std::fixed << std::setprecision(2) << latency << " ms";
-    ImGui::TextUnformatted(oss.str().c_str());
-
-    // Present Duration Display
-    extern std::atomic<double> g_present_duration;
-    double present_duration = ::g_present_duration_ns.load();
-
-    oss.str("");
-    oss.clear();
-    oss << "Present Duration: " << std::fixed << std::setprecision(6) << present_duration << " ms";
-    ImGui::TextUnformatted(oss.str().c_str());
-    ImGui::SameLine();
-    ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "(smoothed)");
 }
 
 void DrawReShadeGlobalConfigSettings() {

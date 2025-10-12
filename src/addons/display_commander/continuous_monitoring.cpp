@@ -424,8 +424,10 @@ void ContinuousMonitoringThread() {
             last_1s_update_ns = now_ns;
             every1s_checks();
 
-            // Handle Reflex auto-configure
-            HandleReflexAutoConfigure();
+            // wait 10s before configuring reflex
+            if (now_ns - start_time >= 10 * utils::SEC_TO_NS) {
+                HandleReflexAutoConfigure();
+            }
 
             // Call auto-apply HDR metadata trigger
             ui::new_ui::AutoApplyTrigger();

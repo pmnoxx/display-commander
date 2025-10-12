@@ -82,16 +82,16 @@ void DrawFrameTimeGraph() {
                 min_frame_time, max_frame_time, avg_frame_time, avg_fps);
 
     // Create overlay text with current frame time
-    std::string overlay_text = "Frame Time: " + std::to_string(frame_times.back()).substr(0, 6) + " ms";
+    std::string overlay_text = "Frame Time: " + std::to_string(frame_times.back()).substr(0, 4) + " ms";
 
     // Add sim-to-display latency if GPU measurement is enabled and we have valid data
     if (settings::g_mainTabSettings.gpu_measurement_enabled.GetValue() != 0 && ::g_sim_to_display_latency_ns.load() > 0) {
         double sim_to_display_ms = (1.0 * ::g_sim_to_display_latency_ns.load() / utils::NS_TO_MS);
-        overlay_text += " | Sim-to-Display Lat: " + std::to_string(sim_to_display_ms).substr(0, 6) + " ms";
+        overlay_text += " | Sim-to-Display Lat: " + std::to_string(sim_to_display_ms).substr(0, 4) + " ms";
 
         // Add GPU late time (how much later GPU finishes compared to Present)
         double gpu_late_ms = (1.0 * ::g_gpu_late_time_ns.load() / utils::NS_TO_MS);
-        overlay_text += " | GPU Late: " + std::to_string(gpu_late_ms).substr(0, 6) + " ms";
+        overlay_text += " | GPU Late: " + std::to_string(gpu_late_ms).substr(0, 4) + " ms";
     }
 
     // Set graph size and scale

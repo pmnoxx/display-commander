@@ -58,7 +58,7 @@ MainTabSettings::MainTabSettings()
       no_render_in_background("no_render_in_background", s_no_render_in_background, false, "DisplayCommander"),
       no_present_in_background("no_present_in_background", s_no_present_in_background, false, "DisplayCommander"),
       show_test_overlay("show_test_overlay", false, "DisplayCommander"),
-      gpu_measurement_enabled("gpu_measurement_enabled", 0, 0, 1, "DisplayCommander"),
+      gpu_measurement_enabled("gpu_measurement_enabled", 1, 0, 1, "DisplayCommander"),
       target_display("target_display", "", "DisplayCommander"),
       game_window_display_device_id("game_window_display_device_id", "", "DisplayCommander"),
       selected_extended_display_device_id("selected_extended_display_device_id", "", "DisplayCommander"),

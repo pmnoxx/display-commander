@@ -57,7 +57,9 @@ target_include_directories(zzz_display_commander
     ${CMAKE_CURRENT_LIST_DIR}/../../../external/minhook/include    # MinHook headers
 )
 
-# System libraries removed (xinput, dinput8, winmm, dbghelp, and version) to avoid DLL dependency issues - they are loaded dynamically
+# System libraries removed (xinput, dinput8, winmm, dbghelp) to avoid DLL dependency issues - they are loaded dynamically
+# Version library is needed for GetFileVersionInfo functions
+target_link_libraries(zzz_display_commander PRIVATE version)
 
 # NVAPI static linking (official NVIDIA NVAPI layout: x86/ and amd64/)
 # NVIDIA recommends static linking - these are static libraries that act as shims

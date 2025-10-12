@@ -21,6 +21,7 @@
 #include <reshade.hpp>
 #include <wrl/client.h>
 #include <d3d11.h>
+#include <psapi.h>
 
 // Forward declarations for ReShade event handlers
 void OnInitEffectRuntime(reshade::api::effect_runtime *runtime);
@@ -31,6 +32,27 @@ void OverrideReShadeSettings();
 
 // Forward declaration for version check
 bool CheckReShadeVersionCompatibility();
+
+// Forward declaration for multiple ReShade detection
+void DetectMultipleReShadeVersions();
+
+// Structure to store ReShade module detection debug information
+struct ReShadeModuleInfo {
+    std::string path;
+    std::string version;
+    bool has_imgui_support;
+    HMODULE handle;
+};
+
+struct ReShadeDetectionDebugInfo {
+    int total_modules_found = 0;
+    std::vector<ReShadeModuleInfo> modules;
+    bool detection_completed = false;
+    std::string error_message;
+};
+
+// Global debug information storage
+ReShadeDetectionDebugInfo g_reshade_debug_info;
 namespace {
 void OnRegisterOverlayDisplayCommander(reshade::api::effect_runtime *runtime) {
     ui::new_ui::NewUISystem::GetInstance().Draw();
@@ -39,8 +61,9 @@ void OnRegisterOverlayDisplayCommander(reshade::api::effect_runtime *runtime) {
 
 // ReShade effect runtime event handler for input blocking
 void OnInitEffectRuntime(reshade::api::effect_runtime *runtime) {
-    if (runtime == nullptr)
+    if (runtime == nullptr) {
         return;
+    }
 
     g_reshade_runtime.store(runtime);
     LogInfo("ReShade effect runtime initialized - Input blocking now available");
@@ -53,7 +76,7 @@ void OnInitEffectRuntime(reshade::api::effect_runtime *runtime) {
 
         // Set up window procedure hooks now that we have the runtime
         HWND game_window = static_cast<HWND>(runtime->get_hwnd());
-        if (game_window != nullptr && IsWindow(game_window)) {
+        if (game_window != nullptr && IsWindow(game_window) != 0) {
             LogInfo("Game window detected - HWND: 0x%p", game_window);
 
             // Initialize if not already done
@@ -86,8 +109,9 @@ namespace {
 // Test callback for reshade_overlay event
 void OnReShadeOverlayTest(reshade::api::effect_runtime *runtime) {
     // Check the setting from main tab
-    if (!settings::g_mainTabSettings.show_test_overlay.GetValue())
+    if (!settings::g_mainTabSettings.show_test_overlay.GetValue()) {
         return;
+    }
 
     // Test widget that appears in the main ReShade overlay
     ui::new_ui::DrawFrameTimeGraph();
@@ -118,6 +142,122 @@ void OverrideReShadeSettings() {
     LogInfo("ReShade settings override completed successfully");
 }
 
+// Function to detect multiple ReShade versions by scanning all modules
+void DetectMultipleReShadeVersions() {
+    LogInfo("=== ReShade Module Detection ===");
+
+    // Reset debug info
+    g_reshade_debug_info = ReShadeDetectionDebugInfo();
+
+    HMODULE modules[1024];
+    DWORD num_modules = 0;
+
+    // Use K32EnumProcessModules for safe enumeration from DllMain
+    if (K32EnumProcessModules(GetCurrentProcess(), modules, sizeof(modules), &num_modules) == 0) {
+        DWORD error = GetLastError();
+        LogWarn("Failed to enumerate process modules: %lu", error);
+        g_reshade_debug_info.error_message = "Failed to enumerate process modules: " + std::to_string(error);
+        g_reshade_debug_info.detection_completed = true;
+        return;
+    }
+
+    if (num_modules > sizeof(modules)) {
+        num_modules = static_cast<DWORD>(sizeof(modules));
+    }
+
+    int reshade_module_count = 0;
+    std::vector<HMODULE> reshade_modules;
+
+    LogInfo("Scanning %lu modules for ReShade...", num_modules / sizeof(HMODULE));
+
+    for (DWORD i = 0; i < num_modules / sizeof(HMODULE); ++i) {
+        HMODULE module = modules[i];
+        if (module == nullptr) continue;
+
+        // Check if this module has ReShadeRegisterAddon
+        FARPROC register_func = GetProcAddress(module, "ReShadeRegisterAddon");
+        FARPROC unregister_func = GetProcAddress(module, "ReShadeUnregisterAddon");
+
+        if (register_func != nullptr && unregister_func != nullptr) {
+            reshade_module_count++;
+            reshade_modules.push_back(module);
+
+            // Create module info for debug storage
+            ReShadeModuleInfo module_info;
+            module_info.handle = module;
+
+            // Get module file path for detailed logging
+            wchar_t module_path[MAX_PATH];
+            DWORD path_length = GetModuleFileNameW(module, module_path, MAX_PATH);
+
+            if (path_length > 0) {
+                // Convert wide string to narrow string for logging
+                char narrow_path[MAX_PATH];
+                WideCharToMultiByte(CP_UTF8, 0, module_path, -1, narrow_path, MAX_PATH, nullptr, nullptr);
+                module_info.path = narrow_path;
+
+                LogInfo("Found ReShade module #%d: 0x%p - %s", reshade_module_count, module, narrow_path);
+
+                // Try to get version information
+                DWORD version_dummy = 0;
+                DWORD version_size = GetFileVersionInfoSizeW(module_path, &version_dummy);
+                if (version_size > 0) {
+                    std::vector<uint8_t> version_data(version_size);
+                    if (GetFileVersionInfoW(module_path, version_dummy, version_size, version_data.data()) != 0) {
+                VS_FIXEDFILEINFO *version_info = nullptr;
+                UINT version_info_size = 0;
+                if (VerQueryValueW(version_data.data(), L"\\", reinterpret_cast<LPVOID*>(&version_info), &version_info_size) != 0 &&
+                    version_info != nullptr) {
+                            char version_str[64];
+                            snprintf(version_str, sizeof(version_str), "%hu.%hu.%hu.%hu",
+                                HIWORD(version_info->dwFileVersionMS),
+                                LOWORD(version_info->dwFileVersionMS),
+                                HIWORD(version_info->dwFileVersionLS),
+                                LOWORD(version_info->dwFileVersionLS));
+                            module_info.version = version_str;
+                            LogInfo("  Version: %s", version_str);
+                        }
+                    }
+                }
+
+                // Check if this module also has ReShadeGetImGuiFunctionTable
+                FARPROC imgui_func = GetProcAddress(module, "ReShadeGetImGuiFunctionTable");
+                module_info.has_imgui_support = (imgui_func != nullptr);
+                LogInfo("  ImGui Support: %s", imgui_func != nullptr ? "Yes" : "No");
+
+            } else {
+                module_info.path = "(path unavailable)";
+                LogInfo("Found ReShade module #%d: 0x%p - (path unavailable)", reshade_module_count, module);
+            }
+
+            // Store module info for debug display
+            g_reshade_debug_info.modules.push_back(module_info);
+        }
+    }
+
+    LogInfo("=== ReShade Detection Complete ===");
+    LogInfo("Total ReShade modules found: %d", reshade_module_count);
+
+    // Update debug info
+    g_reshade_debug_info.total_modules_found = reshade_module_count;
+    g_reshade_debug_info.detection_completed = true;
+
+    if (reshade_module_count > 1) {
+        LogWarn("WARNING: Multiple ReShade versions detected! This may cause conflicts.");
+        LogWarn("Found %d ReShade modules - only the first one will be used for registration.", reshade_module_count);
+
+        // Log warning about potential conflicts
+        for (size_t i = 0; i < reshade_modules.size(); ++i) {
+            LogWarn("  ReShade module %zu: 0x%p", i + 1, reshade_modules[i]);
+        }
+    } else if (reshade_module_count == 1) {
+        LogInfo("Single ReShade module detected - proceeding with registration.");
+    } else {
+        LogError("No ReShade modules found! Registration will likely fail.");
+        g_reshade_debug_info.error_message = "No ReShade modules found! Registration will likely fail.";
+    }
+}
+
 // Version compatibility check function
 bool CheckReShadeVersionCompatibility() {
     static bool first_time = true;
@@ -129,18 +269,50 @@ bool CheckReShadeVersionCompatibility() {
     // We'll display a helpful error message to the user
     LogError("ReShade addon registration failed - API version not supported");
 
+    // Build debug information string
+    std::string debug_info = "ERROR DETAILS:\n";
+    debug_info += "• Required API Version: 17 (ReShade 6.5.1+)\n";
+    debug_info += "• Your ReShade Version: 16 or older\n";
+    debug_info += "• Status: Incompatible\n\n";
+
+    // Add module detection debug information
+    if (g_reshade_debug_info.detection_completed) {
+        debug_info += "MODULE DETECTION RESULTS:\n";
+        debug_info += "• Total ReShade modules found: " + std::to_string(g_reshade_debug_info.total_modules_found) + "\n";
+
+        if (!g_reshade_debug_info.error_message.empty()) {
+            debug_info += "• Error: " + g_reshade_debug_info.error_message + "\n";
+        }
+
+        if (!g_reshade_debug_info.modules.empty()) {
+            debug_info += "• Detected modules:\n";
+            for (size_t i = 0; i < g_reshade_debug_info.modules.size(); ++i) {
+                const auto& module = g_reshade_debug_info.modules[i];
+                debug_info += "  " + std::to_string(i + 1) + ". " + module.path + "\n";
+                if (!module.version.empty()) {
+                    debug_info += "     Version: " + module.version + "\n";
+                }
+                debug_info += "     ImGui Support: " + std::string(module.has_imgui_support ? "Yes" : "No") + "\n";
+                debug_info += "     Handle: 0x" + std::to_string(reinterpret_cast<uintptr_t>(module.handle)) + "\n";
+            }
+        } else {
+            debug_info += "• No ReShade modules detected\n";
+        }
+        debug_info += "\n";
+    } else {
+        debug_info += "MODULE DETECTION:\n";
+        debug_info += "• Detection not completed or failed\n\n";
+    }
+
+    debug_info += "SOLUTION:\n";
+    debug_info += "1. Download the latest ReShade from: https://reshade.me/\n";
+    debug_info += "2. Install ReShade 6.5.1 or newer\n";
+    debug_info += "3. Restart your game to load the updated ReShade\n\n";
+    debug_info += "This addon uses advanced features that require the newer ReShade API.";
+
     // Display detailed error message to user
     MessageBoxA(nullptr,
-        "Display Commander requires ReShade 6.5.1 or newer.\n\n"
-        "ERROR DETAILS:\n"
-        "• Required API Version: 17 (ReShade 6.5.1+)\n"
-        "• Your ReShade Version: 16 or older\n"
-        "• Status: Incompatible\n\n"
-        "SOLUTION:\n"
-        "1. Download the latest ReShade from: https://reshade.me/\n"
-        "2. Install ReShade 6.5.1 or newer\n"
-        "3. Restart your game to load the updated ReShade\n\n"
-        "This addon uses advanced features that require the newer ReShade API.",
+        debug_info.c_str(),
         "ReShade Version Incompatible - Update Required",
         MB_OK | MB_ICONERROR | MB_TOPMOST);
 
@@ -160,8 +332,8 @@ void DoInitializationWithoutHwnd(HMODULE h_module, DWORD fdw_reason) {
 
     // Pin the module to prevent premature unload
     HMODULE pinned_module = nullptr;
-    if (GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_PIN,
-                           reinterpret_cast<LPCWSTR>(h_module), &pinned_module)) {
+        if (GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_PIN,
+                               reinterpret_cast<LPCWSTR>(h_module), &pinned_module) != 0) {
         LogInfo("Module pinned successfully: 0x%p", pinned_module);
     } else {
         DWORD error = GetLastError();
@@ -249,10 +421,18 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             OutputDebugStringA("DisplayCommander: ReShade addon registration FAILED\n");
             LogError("ReShade addon registration failed - this usually indicates an API version mismatch");
             LogError("Display Commander requires ReShade 6.5.1+ (API version 17) but detected older version");
+
+            DetectMultipleReShadeVersions();
             CheckReShadeVersionCompatibility();
             return FALSE;
         }
+
+        DetectMultipleReShadeVersions();
         OutputDebugStringA("DisplayCommander: ReShade addon registration SUCCESS\n");
+
+        // Detect multiple ReShade versions AFTER successful registration to avoid interference
+        // This prevents our module scanning from interfering with ReShade's internal module detection
+        OutputDebugStringA("DisplayCommander: About to detect ReShade modules\n");
 
         // Registration successful - log version compatibility
         LogInfo("Display Commander v%s - ReShade addon registration successful (API version 17 supported)", DISPLAY_COMMANDER_VERSION_STRING);
@@ -323,7 +503,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
 
         // Unpin the module before unregistration
         if (g_hmodule != nullptr) {
-            if (FreeLibrary(g_hmodule)) {
+            if (FreeLibrary(g_hmodule) != 0) {
                 LogInfo("Module unpinned successfully: 0x%p", g_hmodule);
             } else {
                 DWORD error = GetLastError();

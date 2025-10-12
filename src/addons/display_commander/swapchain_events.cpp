@@ -373,8 +373,9 @@ static reshade::api::format GetFormatFromComboValue(int combo_value) {
         return reshade::api::format::r8g8b8a8_unorm; // Default fallback
     }
 }
+
 // Capture sync interval during create_swapchain
-bool OnCreateSwapchainCapture(reshade::api::device_api api, reshade::api::swapchain_desc &desc, void *hwnd) {
+bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapchain_desc &desc, void *hwnd) {
     // Don't reset counters on swapchain creation - let them accumulate throughout the session
 
     // Increment event counter
@@ -386,10 +387,6 @@ bool OnCreateSwapchainCapture(reshade::api::device_api api, reshade::api::swapch
 
     // Initialize if not already done
     DoInitializationWithHwnd(static_cast<HWND>(hwnd));
-
-    // Store swapchain description for UI display
-    auto initial_desc_copy = std::make_shared<reshade::api::swapchain_desc>(desc);
-    g_last_swapchain_desc.store(initial_desc_copy);
 
     // Check if this is a supported API (D3D9, D3D10, D3D11, D3D12)
     const bool is_d3d9 = (api == reshade::api::device_api::d3d9);
@@ -448,37 +445,31 @@ bool OnCreateSwapchainCapture(reshade::api::device_api api, reshade::api::swapch
         }
         return modified;
     }
-
-    if (!is_dxgi) {
-        LogWarn("OnCreateSwapchainCapture: Not a supported device API");
-        return false;
-    }
+    else if (is_dxgi) {
 
 
+        // Apply sync interval setting if enabled
+        bool modified = false;
 
-    // Apply sync interval setting if enabled
-    bool modified = false;
-
-    uint32_t prev_sync_interval = UINT32_MAX;
-    uint32_t prev_present_flags = desc.present_flags;
-    uint32_t prev_back_buffer_count = desc.back_buffer_count;
-    uint32_t prev_present_mode = desc.present_mode;
-    const bool is_flip =
-        (desc.present_mode == DXGI_SWAP_EFFECT_FLIP_DISCARD || desc.present_mode == DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL);
+        uint32_t prev_sync_interval = UINT32_MAX;
+        uint32_t prev_present_flags = desc.present_flags;
+        uint32_t prev_back_buffer_count = desc.back_buffer_count;
+        uint32_t prev_present_mode = desc.present_mode;
+        const bool is_flip =
+            (desc.present_mode == DXGI_SWAP_EFFECT_FLIP_DISCARD || desc.present_mode == DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL);
 
 
-    // Explicit VSYNC overrides take precedence over generic sync-interval
-    // dropdown (applies to all APIs)
-    if (s_force_vsync_on.load()) {
-        desc.sync_interval = 1; // VSYNC on
-        modified = true;
-    } else if (s_force_vsync_off.load()) {
-        desc.sync_interval = 0; // VSYNC off
-        modified = true;
-    }
+        // Explicit VSYNC overrides take precedence over generic sync-interval
+        // dropdown (applies to all APIs)
+        if (s_force_vsync_on.load()) {
+            desc.sync_interval = 1; // VSYNC on
+            modified = true;
+        } else if (s_force_vsync_off.load()) {
+            desc.sync_interval = 0; // VSYNC off
+            modified = true;
+        }
 
-    // DXGI-specific settings (only for D3D10/11/12)
-    if (is_dxgi) {
+        // DXGI-specific settings (only for D3D10/11/12)
         if (s_prevent_tearing.load() && (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING) != 0) {
             desc.present_flags &= ~DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
             modified = true;
@@ -540,102 +531,109 @@ bool OnCreateSwapchainCapture(reshade::api::device_api api, reshade::api::swapch
                 LogInfo("%s", flip_oss.str().c_str());
             }
         }
-    }
+        // Apply backbuffer format override if enabled (all APIs)
+        if (settings::g_experimentalTabSettings.backbuffer_format_override_enabled.GetValue()) {
+            reshade::api::format original_format = desc.back_buffer.texture.format;
+            reshade::api::format target_format =
+                GetFormatFromComboValue(settings::g_experimentalTabSettings.backbuffer_format_override.GetValue());
 
-    // Apply backbuffer format override if enabled (all APIs)
-    if (settings::g_experimentalTabSettings.backbuffer_format_override_enabled.GetValue()) {
-        reshade::api::format original_format = desc.back_buffer.texture.format;
-        reshade::api::format target_format =
-            GetFormatFromComboValue(settings::g_experimentalTabSettings.backbuffer_format_override.GetValue());
+            if (original_format != target_format) {
+                desc.back_buffer.texture.format = target_format;
+                modified = true;
 
-        if (original_format != target_format) {
-            desc.back_buffer.texture.format = target_format;
-            modified = true;
-
-            // Log the format change
-            std::ostringstream format_oss;
-            format_oss << "Backbuffer format override: " << static_cast<int>(original_format) << " -> "
-                       << static_cast<int>(target_format);
-            LogInfo("%s", format_oss.str().c_str());
-        }
-    }
-
-    // Log sync interval and present flags with detailed explanation
-    {
-        std::ostringstream oss;
-        oss << "Swapchain Creation - ";
-        oss << "API: " << (is_d3d9 ? "D3D9" : "DXGI") << ", ";
-        oss << "Sync Interval: " << desc.sync_interval << ", ";
-        oss << "Present Mode: " << prev_present_mode << " -> " << desc.present_mode << ", ";
-        oss << "Fullscreen: " << (desc.fullscreen_state ? "YES" : "NO") << ", ";
-        oss << "Back Buffers: " << prev_back_buffer_count << " -> " << desc.back_buffer_count;
-
-        if (is_dxgi) {
-            oss << ", Present Flags: 0x" << std::hex << prev_present_flags << " -> 0x" << desc.present_flags;
-        }
-
-        oss << " BackBufferCount: " << prev_back_buffer_count << " -> " << desc.back_buffer_count;
-
-        oss << " BackBuffer: " << desc.back_buffer.texture.width << "x" << desc.back_buffer.texture.height;
-
-        oss << " BackBuffer Format: " << (long long)desc.back_buffer.texture.format;
-
-        oss << " BackBuffer Usage: " << (long long)desc.back_buffer.usage;
-
-        // Show which features are enabled in present_flags
-        if (desc.present_flags == 0) {
-            oss << " (No special flags)";
-        } else {
-            oss << " - Enabled features:";
-            if (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_NONPREROTATED) {
-                oss << " NONPREROTATED";
-            }
-            if (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH) {
-                oss << " ALLOW_MODE_SWITCH";
-            }
-            if (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_GDI_COMPATIBLE) {
-                oss << " GDI_COMPATIBLE";
-            }
-            if (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_RESTRICTED_CONTENT) {
-                oss << " RESTRICTED_CONTENT";
-            }
-            if (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_RESTRICT_SHARED_RESOURCE_DRIVER) {
-                oss << " RESTRICT_SHARED_RESOURCE_DRIVER";
-            }
-            if (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_DISPLAY_ONLY) {
-                oss << " DISPLAY_ONLY";
-            }
-            if (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT) {
-                oss << " FRAME_LATENCY_WAITABLE_OBJECT";
-            }
-            if (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_FOREGROUND_LAYER) {
-                oss << " FOREGROUND_LAYER";
-            }
-            if (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_FULLSCREEN_VIDEO) {
-                oss << " FULLSCREEN_VIDEO";
-            }
-            if (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_YUV_VIDEO) {
-                oss << " YUV_VIDEO";
-            }
-            if (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_HW_PROTECTED) {
-                oss << " HW_PROTECTED";
-            }
-            if (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING) {
-                oss << " ALLOW_TEARING";
-            }
-            if (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_RESTRICTED_TO_ALL_HOLOGRAPHIC_DISPLAYS) {
-                oss << " RESTRICTED_TO_ALL_HOLOGRAPHIC_DISPLAYS";
+                // Log the format change
+                std::ostringstream format_oss;
+                format_oss << "Backbuffer format override: " << static_cast<int>(original_format) << " -> "
+                           << static_cast<int>(target_format);
+                LogInfo("%s", format_oss.str().c_str());
             }
         }
 
-        LogInfo(oss.str().c_str());
+        // Log sync interval and present flags with detailed explanation
+        {
+            std::ostringstream oss;
+            oss << "Swapchain Creation - ";
+            oss << "API: " << (is_d3d9 ? "D3D9" : "DXGI") << ", ";
+            oss << "Sync Interval: " << desc.sync_interval << ", ";
+            oss << "Present Mode: " << prev_present_mode << " -> " << desc.present_mode << ", ";
+            oss << "Fullscreen: " << (desc.fullscreen_state ? "YES" : "NO") << ", ";
+            oss << "Back Buffers: " << prev_back_buffer_count << " -> " << desc.back_buffer_count;
+
+            if (is_dxgi) {
+                oss << ", Present Flags: 0x" << std::hex << prev_present_flags << " -> 0x" << desc.present_flags;
+            }
+
+            oss << " BackBufferCount: " << prev_back_buffer_count << " -> " << desc.back_buffer_count;
+
+            oss << " BackBuffer: " << desc.back_buffer.texture.width << "x" << desc.back_buffer.texture.height;
+
+            oss << " BackBuffer Format: " << (long long)desc.back_buffer.texture.format;
+
+            oss << " BackBuffer Usage: " << (long long)desc.back_buffer.usage;
+
+            // Show which features are enabled in present_flags
+            if (desc.present_flags == 0) {
+                oss << " (No special flags)";
+            } else {
+                oss << " - Enabled features:";
+                if (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_NONPREROTATED) {
+                    oss << " NONPREROTATED";
+                }
+                if (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH) {
+                    oss << " ALLOW_MODE_SWITCH";
+                }
+                if (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_GDI_COMPATIBLE) {
+                    oss << " GDI_COMPATIBLE";
+                }
+                if (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_RESTRICTED_CONTENT) {
+                    oss << " RESTRICTED_CONTENT";
+                }
+                if (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_RESTRICT_SHARED_RESOURCE_DRIVER) {
+                    oss << " RESTRICT_SHARED_RESOURCE_DRIVER";
+                }
+                if (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_DISPLAY_ONLY) {
+                    oss << " DISPLAY_ONLY";
+                }
+                if (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT) {
+                    oss << " FRAME_LATENCY_WAITABLE_OBJECT";
+                }
+                if (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_FOREGROUND_LAYER) {
+                    oss << " FOREGROUND_LAYER";
+                }
+                if (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_FULLSCREEN_VIDEO) {
+                    oss << " FULLSCREEN_VIDEO";
+                }
+                if (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_YUV_VIDEO) {
+                    oss << " YUV_VIDEO";
+                }
+                if (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_HW_PROTECTED) {
+                    oss << " HW_PROTECTED";
+                }
+                if (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING) {
+                    oss << " ALLOW_TEARING";
+                }
+                if (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_RESTRICTED_TO_ALL_HOLOGRAPHIC_DISPLAYS) {
+                    oss << " RESTRICTED_TO_ALL_HOLOGRAPHIC_DISPLAYS";
+                }
+            }
+
+            LogInfo(oss.str().c_str());
+            return modified; // return true if we modified the desc
+        }
     }
 
-    // Update swapchain description after any modifications
-    auto final_desc_copy = std::make_shared<reshade::api::swapchain_desc>(desc);
-    g_last_swapchain_desc.store(final_desc_copy);
+    LogWarn("OnCreateSwapchainCapture: Not a supported device API - %d", static_cast<int>(api));
+    return false;
+}
 
-    return modified; // return true if we modified the desc
+bool OnCreateSwapchainCapture(reshade::api::device_api api, reshade::api::swapchain_desc &desc, void *hwnd) {
+
+    auto res = OnCreateSwapchainCapture2(api, desc, hwnd);
+
+    // Store swapchain description for UI display
+    auto initial_desc_copy = std::make_shared<reshade::api::swapchain_desc>(desc);
+    g_last_swapchain_desc.store(initial_desc_copy);
+    return res;
 }
 
 void OnInitSwapchain(reshade::api::swapchain *swapchain, bool resize) {

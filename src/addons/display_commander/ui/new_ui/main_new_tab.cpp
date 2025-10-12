@@ -21,6 +21,7 @@
 #include <shellapi.h>
 #include <reshade.hpp>
 #include <dxgi.h>
+#include <d3d9.h>
 
 #include <algorithm>
 #include <atomic>
@@ -858,6 +859,7 @@ void DrawDisplaySettings() {
                 ImGui::SetTooltip("Prevents tearing by clearing DXGI tearing flags and preferring sync.");
             }
 
+            bool is_d3d9 = g_last_reshade_device_api.load() == static_cast<int>(reshade::api::device_api::d3d9);
             bool is_dxgi = g_last_reshade_device_api.load() == static_cast<int>(reshade::api::device_api::d3d10)
             || g_last_reshade_device_api.load() == static_cast<int>(reshade::api::device_api::d3d11)
             || g_last_reshade_device_api.load() == static_cast<int>(reshade::api::device_api::d3d12);
@@ -901,25 +903,55 @@ void DrawDisplaySettings() {
                 // Present mode display with tooltip
                 ImGui::TextColored(ui::colors::TEXT_LABEL, "Current Present Mode:");
                 ImGui::SameLine();
-
+                ImVec4 present_mode_color = ui::colors::TEXT_DIMMED;
+                // DXGI specific display
                 // Determine present mode name and color
                 const char* present_mode_name = "Unknown";
-                ImVec4 present_mode_color = ui::colors::TEXT_DIMMED;
 
-                if (desc.present_mode == DXGI_SWAP_EFFECT_FLIP_DISCARD) {
-                    present_mode_name = "FLIP_DISCARD (Flip Model)";
-                    present_mode_color = ImVec4(0.0f, 1.0f, 0.0f, 1.0f); // Green
-                } else if (desc.present_mode == DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL) {
-                    present_mode_name = "FLIP_SEQUENTIAL (Flip Model)";
-                    present_mode_color = ImVec4(0.0f, 1.0f, 0.0f, 1.0f); // Green
-                } else if (desc.present_mode == DXGI_SWAP_EFFECT_DISCARD) {
-                    present_mode_name = "DISCARD (Traditional)";
-                    present_mode_color = ImVec4(1.0f, 0.8f, 0.0f, 1.0f); // Orange
-                } else if (desc.present_mode == DXGI_SWAP_EFFECT_SEQUENTIAL) {
-                    present_mode_name = "SEQUENTIAL (Traditional)";
-                    present_mode_color = ImVec4(1.0f, 0.8f, 0.0f, 1.0f); // Orange
+                if (is_d3d9) {
+                    // D3D9 specific display
+                    ImGui::TextColored(ui::colors::TEXT_LABEL, "Current Swap Effect:");
+                    ImGui::SameLine();
+                    if (desc.present_mode == D3DSWAPEFFECT_FLIPEX) {
+                        present_mode_name = "FLIPEX (Flip Model)";
+                        present_mode_color = ImVec4(0.0f, 1.0f, 0.0f, 1.0f); // Green
+                    } else if (desc.present_mode == D3DSWAPEFFECT_DISCARD) {
+                        present_mode_name = "DISCARD (Traditional)";
+                        present_mode_color = ImVec4(1.0f, 0.8f, 0.0f, 1.0f); // Orange
+                    } else if (desc.present_mode == D3DSWAPEFFECT_FLIP) {
+                        present_mode_name = "FLIP (Traditional)";
+                        present_mode_color = ImVec4(1.0f, 0.8f, 0.0f, 1.0f); // Orange
+                    } else if (desc.present_mode == D3DSWAPEFFECT_COPY) {
+                        present_mode_name = "COPY (Traditional)";
+                        present_mode_color = ImVec4(1.0f, 0.8f, 0.0f, 1.0f); // Orange
+                    } else if (desc.present_mode == D3DSWAPEFFECT_OVERLAY)  {
+                        present_mode_name = "OVERLAY (Traditional)";
+                        present_mode_color = ImVec4(1.0f, 0.8f, 0.0f, 1.0f); // Orange
+                    } else {
+                        present_mode_name = "Unknown";
+                        present_mode_color = ui::colors::TEXT_ERROR;
+                    }
+
+                } else if (is_dxgi) {
+
+                    if (desc.present_mode == DXGI_SWAP_EFFECT_FLIP_DISCARD) {
+                        present_mode_name = "FLIP_DISCARD (Flip Model)";
+                        present_mode_color = ImVec4(0.0f, 1.0f, 0.0f, 1.0f); // Green
+                    } else if (desc.present_mode == DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL) {
+                        present_mode_name = "FLIP_SEQUENTIAL (Flip Model)";
+                        present_mode_color = ImVec4(0.0f, 1.0f, 0.0f, 1.0f); // Green
+                    } else if (desc.present_mode == DXGI_SWAP_EFFECT_DISCARD) {
+                        present_mode_name = "DISCARD (Traditional)";
+                        present_mode_color = ImVec4(1.0f, 0.8f, 0.0f, 1.0f); // Orange
+                    } else if (desc.present_mode == DXGI_SWAP_EFFECT_SEQUENTIAL) {
+                        present_mode_name = "SEQUENTIAL (Traditional)";
+                        present_mode_color = ImVec4(1.0f, 0.8f, 0.0f, 1.0f); // Orange
+                    } else {
+                        present_mode_name = "Unknown";
+                        present_mode_color = ui::colors::TEXT_ERROR;
+                    }
                 } else {
-                    present_mode_name = "Unknown";
+                    present_mode_name = "Unsupported API (WIP)";
                     present_mode_color = ui::colors::TEXT_ERROR;
                 }
 

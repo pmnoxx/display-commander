@@ -179,7 +179,7 @@ void DrawMainNewTab() {
         ImGui::TextColored(ui::colors::TEXT_DEFAULT, "Version: %s | Build: %s %s", DISPLAY_COMMANDER_VERSION_STRING, DISPLAY_COMMANDER_BUILD_DATE, DISPLAY_COMMANDER_BUILD_TIME);
 
         // Display current graphics API with feature level/version
-        int api_value = g_last_swapchain_api.load();
+        int api_value = g_last_reshade_device_api.load();
         if (api_value != 0) {
             reshade::api::device_api api = static_cast<reshade::api::device_api>(api_value);
             uint32_t api_version = g_last_api_version.load();
@@ -858,6 +858,31 @@ void DrawDisplaySettings() {
                 ImGui::SetTooltip("Prevents tearing by clearing DXGI tearing flags and preferring sync.");
             }
 
+            bool is_dxgi = g_last_reshade_device_api.load() == static_cast<int>(reshade::api::device_api::d3d10)
+            || g_last_reshade_device_api.load() == static_cast<int>(reshade::api::device_api::d3d11)
+            || g_last_reshade_device_api.load() == static_cast<int>(reshade::api::device_api::d3d12);
+            bool enable_flip = settings::g_developerTabSettings.enable_flip_chain.GetValue();
+
+            bool is_flip = g_last_swapchain_desc.load() && (g_last_swapchain_desc.load()->present_mode == DXGI_SWAP_EFFECT_FLIP_DISCARD
+                || g_last_swapchain_desc.load()->present_mode == DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL);
+            static bool has_been_enabled = false;
+            has_been_enabled |= is_dxgi && (enable_flip || !is_flip);
+
+            if (has_been_enabled) {
+                ImGui::SameLine();
+
+                if (ImGui::Checkbox("Enable Flip Chain", &enable_flip)) {
+                    settings::g_developerTabSettings.enable_flip_chain.SetValue(enable_flip);
+                    s_enable_flip_chain.store(enable_flip);
+                    s_restart_needed_vsync_tearing.store(true);
+                    LogInfo(enable_flip ? "Enable Flip Chain enabled" : "Enable Flip Chain disabled");
+                }
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip("Forces games to use flip model swap chains (FLIP_DISCARD) for better performance.\n"
+                                    "This setting requires a game restart to take effect.\n"
+                                    "Only works with DirectX 10/11/12 (DXGI) games.");
+                }
+            }
             // Display restart-required notice if flagged
             if (s_restart_needed_vsync_tearing.load()) {
                 ImGui::Spacing();
@@ -906,7 +931,7 @@ void DrawDisplaySettings() {
                 ImGui::SameLine();
 
                 // Get flip state information
-                int current_api = g_last_swapchain_api.load();
+                int current_api = g_last_reshade_device_api.load();
                 DxgiBypassMode flip_state = GetFlipStateForAPI(current_api);
 
                 const char* flip_state_str = "Unknown";
@@ -1388,7 +1413,7 @@ void DrawImportantInfo() {
 
         // Flip State Display (renamed from DXGI Composition)
         const char* flip_state_str = "Unknown";
-        int current_api = g_last_swapchain_api.load();
+        int current_api = g_last_reshade_device_api.load();
         DxgiBypassMode flip_state = GetFlipStateForAPI(current_api);
 
         switch (flip_state) {

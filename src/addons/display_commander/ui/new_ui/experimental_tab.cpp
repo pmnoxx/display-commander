@@ -1,13 +1,11 @@
 #include "experimental_tab.hpp"
 #include "../../autoclick/autoclick_manager.hpp"
 #include "../../dlss/dlss_indicator_manager.hpp"
-#include "../../dx11_proxy/dx11_proxy_ui.hpp"
 #include "../../globals.hpp"
 #include "../../hooks/sleep_hooks.hpp"
 #include "../../hooks/timeslowdown_hooks.hpp"
 #include "../../settings/experimental_tab_settings.hpp"
 #include "../../utils.hpp"
-#include "../../res/forkawesome.h"
 
 #include <windows.h>
 
@@ -20,9 +18,6 @@ namespace ui::new_ui {
 void InitExperimentalTab() {
     LogInfo("InitExperimentalTab() - Starting to load experimental tab settings");
     settings::g_experimentalTabSettings.LoadAll();
-
-    // Initialize DX11 proxy UI
-    dx11_proxy::InitUI();
 
     // Apply the loaded settings to the actual hook system
     // This ensures the hook system matches the UI settings
@@ -65,18 +60,8 @@ void DrawExperimentalTab() {
     ImGui::Text("Experimental Tab - Advanced Features");
     ImGui::Separator();
 
-    if (ImGui::CollapsingHeader("DX11 Proxy Device (DX9 to DX11)", ImGuiTreeNodeFlags_None)) {
-        dx11_proxy::DrawDX11ProxyControls();
-    }
-    ImGui::Spacing();
-
     if (ImGui::CollapsingHeader("Direct3D 9 FLIPEX Upgrade", ImGuiTreeNodeFlags_None)) {
         DrawD3D9FlipExControls();
-    }
-    ImGui::Spacing();
-
-    if (ImGui::CollapsingHeader("Flip Chain Control (DXGI Only)", ImGuiTreeNodeFlags_None)) {
-        DrawDisableFlipChainControls();
     }
     ImGui::Spacing();
 
@@ -835,7 +820,7 @@ void DrawD3D9FlipExControls() {
     ImGui::Spacing();
 
     // Display current D3D9 state if applicable
-    int current_api = g_last_swapchain_api.load();
+    int current_api = g_last_reshade_device_api.load();
     uint32_t api_version = g_last_api_version.load();
 
     if (current_api == static_cast<int>(reshade::api::device_api::d3d9)) {
@@ -1020,135 +1005,6 @@ void DrawDeveloperTools() {
     ImGui::Spacing();
     ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Note: This button will trigger a debugger breakpoint when clicked.");
     ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Make sure you have a debugger attached before using this feature.");
-}
-
-void DrawDisableFlipChainControls() {
-    ImGui::Spacing();
-    ImGui::Separator();
-    ImGui::Spacing();
-
-    ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== Flip Chain Control (DXGI Only) ===");
-    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f),
-                       "⚠ EXPERIMENTAL FEATURE - Control swap chain present mode!");
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("These features allow you to control the swap chain present mode:\n\n"
-                         "Disable Flip Chain:\n"
-                         "  - Forces games to use traditional swap chains (DISCARD/SEQUENTIAL)\n"
-                         "  - Better compatibility with older games\n"
-                         "  - May fix rendering issues in some games\n"
-                         "  - Drawbacks: Higher input latency, reduced performance\n\n"
-                         "Enable Flip Chain:\n"
-                         "  - Forces games to use modern flip model (FLIP_DISCARD)\n"
-                         "  - Better performance and lower latency\n"
-                         "  - Modern gaming standard\n"
-                         "  - May improve frame pacing and reduce stuttering\n\n"
-                         "Requirements:\n"
-                         "  - DirectX 10/11/12 (DXGI) games only\n"
-                         "  - Not compatible with Direct3D 9\n"
-                         "  - Note: These settings require a game restart to take effect.");
-    }
-
-    ImGui::Spacing();
-
-    // Disable flip chain checkbox
-    if (CheckboxSetting(settings::g_experimentalTabSettings.disable_flip_chain_enabled, "Disable Flip Chain")) {
-        LogInfo("Disable flip chain %s",
-                settings::g_experimentalTabSettings.disable_flip_chain_enabled.GetValue() ? "enabled" : "disabled");
-
-        // If disable is enabled, disable the enable option
-        if (settings::g_experimentalTabSettings.disable_flip_chain_enabled.GetValue()) {
-            settings::g_experimentalTabSettings.enable_flip_chain_enabled.SetValue(false);
-        }
-    }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Disable flip model swap chains and force traditional swap chains.\n"
-                         "This setting requires a game restart to take effect.");
-    }
-
-    // Enable flip chain checkbox
-    if (CheckboxSetting(settings::g_experimentalTabSettings.enable_flip_chain_enabled, "Enable Flip Chain")) {
-        LogInfo("Enable flip chain %s",
-                settings::g_experimentalTabSettings.enable_flip_chain_enabled.GetValue() ? "enabled" : "disabled");
-
-        // If enable is enabled, disable the disable option
-        if (settings::g_experimentalTabSettings.enable_flip_chain_enabled.GetValue()) {
-            settings::g_experimentalTabSettings.disable_flip_chain_enabled.SetValue(false);
-        }
-    }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Force flip model swap chains (FLIP_DISCARD) for better performance.\n"
-                         "This setting requires a game restart to take effect.");
-    }
-
-    ImGui::Spacing();
-
-    // Display current API state if applicable
-    int current_api = g_last_swapchain_api.load();
-    uint32_t api_version = g_last_api_version.load();
-
-    if (current_api == static_cast<int>(reshade::api::device_api::d3d10) ||
-        current_api == static_cast<int>(reshade::api::device_api::d3d11) ||
-        current_api == static_cast<int>(reshade::api::device_api::d3d12)) {
-        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Current Game API:");
-        if (current_api == static_cast<int>(reshade::api::device_api::d3d10)) {
-            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "  Direct3D 10 (DXGI compatible)");
-        } else if (current_api == static_cast<int>(reshade::api::device_api::d3d11)) {
-            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "  Direct3D 11 (DXGI compatible)");
-        } else if (current_api == static_cast<int>(reshade::api::device_api::d3d12)) {
-            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "  Direct3D 12 (DXGI compatible)");
-        }
-
-        // Display current swapchain description
-        auto desc_ptr = g_last_swapchain_desc.load();
-        if (desc_ptr) {
-            const auto& desc = *desc_ptr;
-
-            // Present mode
-            if (desc.present_mode == DXGI_SWAP_EFFECT_FLIP_DISCARD) {
-                ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "  Current Swap Effect: FLIP_DISCARD (Flip Model)");
-            } else if (desc.present_mode == DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL) {
-                ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "  Current Swap Effect: FLIP_SEQUENTIAL (Flip Model)");
-            } else if (desc.present_mode == DXGI_SWAP_EFFECT_DISCARD) {
-                ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "  Current Swap Effect: DISCARD (Traditional)");
-            } else if (desc.present_mode == DXGI_SWAP_EFFECT_SEQUENTIAL) {
-                ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "  Current Swap Effect: SEQUENTIAL (Traditional)");
-            } else {
-                ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Current Swap Effect: %u", desc.present_mode);
-            }
-
-            // Additional swapchain details
-            ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Back Buffer Count: %u", desc.back_buffer_count);
-            ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Sync Interval: %u", desc.sync_interval);
-            ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Fullscreen: %s", desc.fullscreen_state ? "Yes" : "No");
-            if (desc.fullscreen_state && desc.fullscreen_refresh_rate > 0) {
-                ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Refresh Rate: %.2f Hz", desc.fullscreen_refresh_rate);
-            }
-            ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Back Buffer Size: %ux%u", desc.back_buffer.texture.width, desc.back_buffer.texture.height);
-            ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Back Buffer Format: %u", static_cast<uint32_t>(desc.back_buffer.texture.format));
-        } else {
-            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.5f, 1.0f), "  No swapchain description available");
-        }
-    } else if (current_api == static_cast<int>(reshade::api::device_api::d3d9)) {
-        ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.5f, 1.0f), "Current game is using Direct3D 9 (not supported)");
-    } else {
-        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "No DXGI game detected");
-    }
-
-    ImGui::Spacing();
-
-    // Information
-    ImGui::TextColored(ImVec4(0.6f, 0.8f, 1.0f, 1.0f), "How it works:");
-    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "1. Enable the feature above");
-    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "2. Restart the game");
-    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "3. The addon will force traditional swap chains");
-    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "4. Check the log file for swap chain modifications");
-
-    ImGui::Spacing();
-    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), ICON_FK_WARNING "WARNING: This may reduce performance and increase input latency!");
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Disabling flip chains can significantly impact performance and increase input latency.\n"
-                         "Only use this feature if you're experiencing compatibility issues with flip chains.");
-    }
 }
 
 } // namespace ui::new_ui

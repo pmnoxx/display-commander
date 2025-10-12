@@ -36,11 +36,43 @@ bool CheckReShadeVersionCompatibility();
 // Forward declaration for multiple ReShade detection
 void DetectMultipleReShadeVersions();
 
+// Function to parse version string and check if it's 6.5.1 or above
+bool IsVersion651OrAbove(const std::string& version_str) {
+    if (version_str.empty()) {
+        return false;
+    }
+
+    // Parse version string in format "major.minor.build.revision"
+    // We need to check if version is >= 6.5.1.0
+    int major = 0;
+    int minor = 0;
+    int build = 0;
+    int revision = 0;
+
+    if (sscanf_s(version_str.c_str(), "%d.%d.%d.%d", &major, &minor, &build, &revision) >= 2) {
+        // Check if version is 6.5.1 or above
+        if (major > 6) {
+            return true; // Major version > 6
+        }
+        if (major == 6) {
+            if (minor > 5) {
+                return true; // 6.x where x > 5
+            }
+            if (minor == 5) {
+                return build >= 1; // 6.5.x where x >= 1
+            }
+        }
+    }
+
+    return false;
+}
+
 // Structure to store ReShade module detection debug information
 struct ReShadeModuleInfo {
     std::string path;
     std::string version;
     bool has_imgui_support;
+    bool is_version_651_or_above;
     HMODULE handle;
 };
 
@@ -215,7 +247,9 @@ void DetectMultipleReShadeVersions() {
                                 HIWORD(version_info->dwFileVersionLS),
                                 LOWORD(version_info->dwFileVersionLS));
                             module_info.version = version_str;
+                            module_info.is_version_651_or_above = IsVersion651OrAbove(version_str);
                             LogInfo("  Version: %s", version_str);
+                            LogInfo("  Version 6.5.1+: %s", module_info.is_version_651_or_above ? "Yes" : "No");
                         }
                     }
                 }
@@ -224,6 +258,12 @@ void DetectMultipleReShadeVersions() {
                 FARPROC imgui_func = GetProcAddress(module, "ReShadeGetImGuiFunctionTable");
                 module_info.has_imgui_support = (imgui_func != nullptr);
                 LogInfo("  ImGui Support: %s", imgui_func != nullptr ? "Yes" : "No");
+
+                // If version extraction failed, set compatibility to false
+                if (module_info.version.empty()) {
+                    module_info.is_version_651_or_above = false;
+                    LogInfo("  Version 6.5.1+: No (version unknown)");
+                }
 
             } else {
                 module_info.path = "(path unavailable)";
@@ -237,6 +277,20 @@ void DetectMultipleReShadeVersions() {
 
     LogInfo("=== ReShade Detection Complete ===");
     LogInfo("Total ReShade modules found: %d", reshade_module_count);
+
+    // Check if any module meets version requirements
+    bool has_compatible_version = false;
+    for (const auto& module : g_reshade_debug_info.modules) {
+        if (module.is_version_651_or_above) {
+            has_compatible_version = true;
+            LogInfo("Found compatible ReShade version: %s", module.version.c_str());
+            break;
+        }
+    }
+
+    if (!has_compatible_version && !g_reshade_debug_info.modules.empty()) {
+        LogWarn("No ReShade modules found with version 6.5.1 or above");
+    }
 
     // Update debug info
     g_reshade_debug_info.total_modules_found = reshade_module_count;
@@ -272,7 +326,34 @@ bool CheckReShadeVersionCompatibility() {
     // Build debug information string
     std::string debug_info = "ERROR DETAILS:\n";
     debug_info += "• Required API Version: 17 (ReShade 6.5.1+)\n";
-    debug_info += "• Your ReShade Version: 16 or older\n";
+
+    // Check if we have version information
+    bool has_version_info = false;
+    bool has_compatible_version = false;
+    std::string detected_versions;
+
+    if (g_reshade_debug_info.detection_completed && !g_reshade_debug_info.modules.empty()) {
+        for (const auto& module : g_reshade_debug_info.modules) {
+            if (!module.version.empty()) {
+                has_version_info = true;
+                if (!detected_versions.empty()) {
+                    detected_versions += ", ";
+                }
+                detected_versions += module.version;
+
+                if (module.is_version_651_or_above) {
+                    has_compatible_version = true;
+                }
+            }
+        }
+    }
+
+    if (has_version_info) {
+        debug_info += "• Detected ReShade Versions: " + detected_versions + "\n";
+        debug_info += "• Version 6.5.1+ Compatible: " + std::string(has_compatible_version ? "Yes" : "No") + "\n";
+    } else {
+        debug_info += "• Your ReShade Version: Unknown (version detection failed)\n";
+    }
     debug_info += "• Status: Incompatible\n\n";
 
     // Add module detection debug information
@@ -291,6 +372,10 @@ bool CheckReShadeVersionCompatibility() {
                 debug_info += "  " + std::to_string(i + 1) + ". " + module.path + "\n";
                 if (!module.version.empty()) {
                     debug_info += "     Version: " + module.version + "\n";
+                    debug_info += "     Version 6.5.1+: " + std::string(module.is_version_651_or_above ? "Yes" : "No") + "\n";
+                } else {
+                    debug_info += "     Version: Unknown\n";
+                    debug_info += "     Version 6.5.1+: No (version unknown)\n";
                 }
                 debug_info += "     ImGui Support: " + std::string(module.has_imgui_support ? "Yes" : "No") + "\n";
                 debug_info += "     Handle: 0x" + std::to_string(reinterpret_cast<uintptr_t>(module.handle)) + "\n";

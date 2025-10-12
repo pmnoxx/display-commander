@@ -75,6 +75,7 @@ ExperimentalTabSettings::ExperimentalTabSettings()
     , d3d9_flipex_enabled("D3D9FlipExEnabled", true, "Experimental")
     , disable_flip_chain_enabled("DisableFlipChainEnabled", false, "Experimental")
     , enable_flip_chain_enabled("EnableFlipChainEnabled", false, "Experimental")
+    , suppress_dinput_hooks("SuppressDInputHooks", false, "Experimental")
 {
     // Initialize the all_settings_ vector
     all_settings_ = {
@@ -94,7 +95,8 @@ ExperimentalTabSettings::ExperimentalTabSettings()
         &dlss_indicator_enabled,
         &d3d9_flipex_enabled,
         &disable_flip_chain_enabled,
-        &enable_flip_chain_enabled
+        &enable_flip_chain_enabled,
+        &suppress_dinput_hooks
     };
 }
 

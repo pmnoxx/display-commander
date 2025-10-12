@@ -37,7 +37,7 @@ XInputWidget::XInputWidget() {
         // Initialize controller states
         for (int i = 0; i < XUSER_MAX_COUNT; ++i) {
             ZeroMemory(&g_shared_state->controller_states[i], sizeof(XINPUT_STATE));
-            g_shared_state->controller_connected[i] = false;
+            g_shared_state->controller_connected[i] = ControllerState::Uninitialized;
             g_shared_state->last_packet_numbers[i] = 0;
             g_shared_state->last_update_times[i] = 0;
 
@@ -323,10 +323,13 @@ void XInputWidget::DrawControllerState() {
 
     // Get controller state
     const XINPUT_STATE &state = g_shared_state->controller_states[selected_controller_];
-    bool connected = g_shared_state->controller_connected[selected_controller_];
+    ControllerState controller_state = g_shared_state->controller_connected[selected_controller_];
 
-    if (!connected) {
-        ImGui::TextColored(ui::colors::TEXT_DIMMED, "Controller %d not connected", selected_controller_);
+    if (controller_state == ControllerState::Uninitialized) {
+        ImGui::TextColored(ui::colors::TEXT_DIMMED, "Controller %d - Uninitialized", selected_controller_);
+        return;
+    } else if (controller_state == ControllerState::Unconnected) {
+        ImGui::TextColored(ui::colors::TEXT_DIMMED, "Controller %d - Disconnected", selected_controller_);
         return;
     }
 
@@ -799,8 +802,17 @@ std::string XInputWidget::GetControllerStatus(int controller_index) const {
         return "Invalid";
     }
 
-    bool connected = g_shared_state->controller_connected[controller_index];
-    return connected ? "Connected" : "Disconnected";
+    ControllerState state = g_shared_state->controller_connected[controller_index];
+    switch (state) {
+        case ControllerState::Uninitialized:
+            return "Uninitialized";
+        case ControllerState::Connected:
+            return "Connected";
+        case ControllerState::Unconnected:
+            return "Disconnected";
+        default:
+            return "Unknown";
+    }
 }
 
 bool XInputWidget::IsButtonPressed(WORD buttons, WORD button) const { return (buttons & button) != 0; }
@@ -933,7 +945,7 @@ void UpdateXInputState(DWORD user_index, const XINPUT_STATE *state) {
 
     // Update controller state
     shared_state->controller_states[user_index] = *state;
-    shared_state->controller_connected[user_index] = true;
+    shared_state->controller_connected[user_index] = ControllerState::Connected;
     shared_state->last_packet_numbers[user_index] = state->dwPacketNumber;
     shared_state->last_update_times[user_index] = GetOriginalTickCount64();
 

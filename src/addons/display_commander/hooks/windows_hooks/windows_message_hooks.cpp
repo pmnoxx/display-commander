@@ -107,7 +107,9 @@ static const std::array<const char*, HOOK_COUNT> g_hook_names = {"GetMessageA",
                                                "Sleep",
                                                "SleepEx",
                                                "WaitForSingleObject",
-                                               "WaitForMultipleObjects"};
+                                               "WaitForMultipleObjects",
+                                               "DirectInput8Create",
+                                               "DirectInputCreate"};
 
 // Helper function to determine if we should intercept messages
 bool ShouldInterceptMessage(HWND hWnd, UINT uMsg) {

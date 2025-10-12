@@ -52,6 +52,9 @@ void InitExperimentalTab() {
                                     static_cast<display_commanderhooks::TimerHookType>(
                                         settings::g_experimentalTabSettings.nt_query_system_time_hook.GetValue()));
 
+    // Apply DirectInput hook suppression setting
+    s_suppress_dinput_hooks.store(settings::g_experimentalTabSettings.suppress_dinput_hooks.GetValue());
+
     LogInfo("InitExperimentalTab() - Experimental tab settings loaded and applied to hook system");
 }
 

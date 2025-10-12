@@ -70,6 +70,12 @@ enum HookIndex {
     HOOK_WaitForSingleObject,
     HOOK_WaitForMultipleObjects,
 
+    // dinput8.dll hooks (41)
+    HOOK_DInput8CreateDevice,
+
+    // dinput.dll hooks (42)
+    HOOK_DInputCreateDevice,
+
     HOOK_COUNT
 };
 

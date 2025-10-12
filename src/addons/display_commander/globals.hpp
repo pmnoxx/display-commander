@@ -505,6 +505,9 @@ extern std::atomic<DWORD> g_render_thread_id;
 
 extern std::atomic<bool> s_continue_rendering;
 
+// DirectInput hook suppression
+extern std::atomic<bool> s_suppress_dinput_hooks;
+
 // Forward declaration for tab settings
 namespace settings {
 class ExperimentalTabSettings;

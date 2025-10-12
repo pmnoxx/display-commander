@@ -171,7 +171,7 @@ DWORD WINAPI XInputGetState_Detour(DWORD dwUserIndex, XINPUT_STATE *pState) {
         if (dwUserIndex < XUSER_MAX_COUNT) {
             auto shared_state = display_commander::widgets::xinput_widget::XInputWidget::GetSharedState();
             if (shared_state) {
-                shared_state->controller_connected[dwUserIndex] = false;
+                shared_state->controller_connected[dwUserIndex] = display_commander::widgets::xinput_widget::ControllerState::Unconnected;
             }
         }
         if (dwUserIndex == 0) {
@@ -267,7 +267,7 @@ DWORD WINAPI XInputGetStateEx_Detour(DWORD dwUserIndex, XINPUT_STATE *pState) {
         if (dwUserIndex < XUSER_MAX_COUNT) {
             auto shared_state = display_commander::widgets::xinput_widget::XInputWidget::GetSharedState();
             if (shared_state) {
-                shared_state->controller_connected[dwUserIndex] = false;
+                shared_state->controller_connected[dwUserIndex] = display_commander::widgets::xinput_widget::ControllerState::Unconnected;
             }
         }
         LogError("XXX XInput Controller %lu: GetStateEx failed with error %lu", dwUserIndex, result);

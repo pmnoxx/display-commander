@@ -65,6 +65,9 @@ std::atomic<DxgiBypassMode> s_dxgi_composition_state{DxgiBypassMode::kUnknown};
 // Continue rendering in background
 std::atomic<bool> s_continue_rendering{false}; // Disabled by default
 
+// DirectInput hook suppression
+std::atomic<bool> s_suppress_dinput_hooks{false}; // Disabled by default
+
 // Input blocking in background (0.0f off, 1.0f on)
 
 // Render blocking in background

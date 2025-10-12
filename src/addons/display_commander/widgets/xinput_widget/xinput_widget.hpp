@@ -17,11 +17,18 @@
 
 namespace display_commander::widgets::xinput_widget {
 
+// Controller connection states
+enum class ControllerState {
+    Uninitialized,  // Controller state has not been checked yet
+    Connected,      // Controller is connected and working
+    Unconnected     // Controller is not connected or failed
+};
+
 // Thread-safe shared state for XInput data
 struct XInputSharedState {
     // Controller states for all 4 possible controllers
     std::array<XINPUT_STATE, XUSER_MAX_COUNT> controller_states;
-    std::array<bool, XUSER_MAX_COUNT> controller_connected;
+    std::array<ControllerState, XUSER_MAX_COUNT> controller_connected;
     std::array<DWORD, XUSER_MAX_COUNT> last_packet_numbers;
 
     // Event counters

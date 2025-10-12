@@ -344,9 +344,9 @@ void DX11ProxyManager::StopCopyThread() {
 }
 
 void DX11ProxyManager::CopyThreadLoop2() {
-    LogInfo("[COPY-THREAD] Copy thread loop started");
 
     if (copy_thread_running_.load()) {
+        LogInfo("[COPY-THREAD] Copy thread loop started");
         // Copy one frame
         if (CopyFrame()) {
             frames_copied_.fetch_add(1);
@@ -354,9 +354,9 @@ void DX11ProxyManager::CopyThreadLoop2() {
 
         // Sleep for 1 second (1000 milliseconds)
        // std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        LogInfo("[COPY-THREAD] Copy thread loop exiting");
     }
 
-    LogInfo("[COPY-THREAD] Copy thread loop exiting");
 }
 void DX11ProxyManager::CopyThreadLoop() {
     /*LogInfo("[COPY-THREAD] Copy thread loop started");

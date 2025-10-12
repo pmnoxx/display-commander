@@ -10,6 +10,7 @@
 #include "windows_hooks/windows_message_hooks.hpp"
 #include "xinput_hooks.hpp"
 #include "nvapi_hooks.hpp"
+#include "dinput_hooks.hpp"
 #include <MinHook.h>
 
 // External reference to screensaver mode setting
@@ -307,6 +308,12 @@ bool InstallApiHooks() {
     if (!InstallLoadLibraryHooks()) {
         LogError("Failed to install LoadLibrary hooks");
     }
+
+    // Install DirectInput hooks
+    if (!InstallDirectInputHooks()) {
+        LogError("Failed to install DirectInput hooks");
+    }
+
     g_api_hooks_installed.store(true);
     LogInfo("API hooks installed successfully");
 
@@ -328,6 +335,9 @@ void UninstallApiHooks() {
 
     // Uninstall LoadLibrary hooks
     UninstallLoadLibraryHooks();
+
+    // Uninstall DirectInput hooks
+    UninstallDirectInputHooks();
 
     // Uninstall Windows message hooks
     UninstallWindowsMessageHooks();

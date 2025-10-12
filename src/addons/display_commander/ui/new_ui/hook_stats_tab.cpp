@@ -1,5 +1,8 @@
 #include "hook_stats_tab.hpp"
 #include "../../hooks/windows_hooks/windows_message_hooks.hpp"
+#include "../../hooks/dinput_hooks.hpp"
+#include "../../settings/experimental_tab_settings.hpp"
+#include "../../globals.hpp"
 #include <imgui.h>
 #include <reshade.hpp>
 
@@ -30,7 +33,9 @@ void DrawHookStatsTab() {
     static const DllGroup DLL_GROUPS[] = {
         {.name = "user32.dll", .start_index = 0, .end_index = 34},      // GetMessageA to DisplayConfigGetDeviceInfo
         {.name = "xinput1_4.dll", .start_index = 35, .end_index = 36},  // XInputGetState, XInputGetStateEx
-        {.name = "kernel32.dll", .start_index = 37, .end_index = 40}    // Sleep, SleepEx, WaitForSingleObject, WaitForMultipleObjects
+        {.name = "kernel32.dll", .start_index = 37, .end_index = 40},   // Sleep, SleepEx, WaitForSingleObject, WaitForMultipleObjects
+        {.name = "dinput8.dll", .start_index = 41, .end_index = 41},    // DirectInput8Create
+        {.name = "dinput.dll", .start_index = 42, .end_index = 42}      // DirectInputCreate
     };
 
     // Display statistics grouped by DLL
@@ -151,6 +156,82 @@ void DrawHookStatsTab() {
     if (total_all_calls > 0) {
         float suppression_rate = static_cast<float>(total_suppressed_calls) / static_cast<float>(total_all_calls) * 100.0f;
         ImGui::Text("Suppression Rate: %.2f%%", suppression_rate);
+    }
+
+    ImGui::Spacing();
+    ImGui::Separator();
+
+    // DirectInput Hook Suppression
+    ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "=== DirectInput Hook Controls ===");
+    ImGui::Text("Control DirectInput hook behavior and suppression");
+    ImGui::Separator();
+
+    // DirectInput hook suppression checkbox
+    bool suppress_dinput = settings::g_experimentalTabSettings.suppress_dinput_hooks.GetValue();
+    if (ImGui::Checkbox("Suppress DirectInput Hooks", &suppress_dinput)) {
+        settings::g_experimentalTabSettings.suppress_dinput_hooks.SetValue(suppress_dinput);
+        // Update the global atomic variable
+        s_suppress_dinput_hooks.store(suppress_dinput);
+    }
+    ImGui::SameLine();
+    ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "(Disable DirectInput hook processing)");
+
+    ImGui::Spacing();
+    ImGui::Separator();
+
+    // DirectInput Device Information
+    ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "=== DirectInput Device Information ===");
+    ImGui::Text("Track DirectInput device creation and connection status");
+    ImGui::Separator();
+
+    const auto& devices = display_commanderhooks::GetDInputDevices();
+
+    if (devices.empty()) {
+        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "No DirectInput devices created yet");
+    } else {
+        ImGui::Text("Created Devices: %zu", devices.size());
+
+        if (ImGui::BeginTable("DInputDevices", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable)) {
+            ImGui::TableSetupColumn("Device Name", ImGuiTableColumnFlags_WidthFixed, 150.0f);
+            ImGui::TableSetupColumn("Device Type", ImGuiTableColumnFlags_WidthFixed, 120.0f);
+            ImGui::TableSetupColumn("Interface", ImGuiTableColumnFlags_WidthFixed, 150.0f);
+            ImGui::TableSetupColumn("Creation Time", ImGuiTableColumnFlags_WidthFixed, 200.0f);
+            ImGui::TableHeadersRow();
+
+            for (const auto& device : devices) {
+                ImGui::TableNextRow();
+
+                ImGui::TableSetColumnIndex(0);
+                ImGui::Text("%s", device.device_name.c_str());
+
+                ImGui::TableSetColumnIndex(1);
+                // Convert device type to string
+                std::string device_type_name;
+                switch (device.device_type) {
+                    case 0x00000000: device_type_name = "Keyboard"; break;
+                    case 0x00000001: device_type_name = "Mouse"; break;
+                    case 0x00000002: device_type_name = "Joystick"; break;
+                    case 0x00000003: device_type_name = "Gamepad"; break;
+                    case 0x00000004: device_type_name = "Generic Device"; break;
+                    default: device_type_name = "Unknown Device"; break;
+                }
+                ImGui::Text("%s", device_type_name.c_str());
+
+                ImGui::TableSetColumnIndex(2);
+                ImGui::Text("%s", device.interface_name.c_str());
+
+                ImGui::TableSetColumnIndex(3);
+                auto now = std::chrono::steady_clock::now();
+                auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(now - device.creation_time);
+                ImGui::Text("%lld ms ago", duration.count());
+            }
+
+            ImGui::EndTable();
+        }
+
+        if (ImGui::Button("Clear Device History")) {
+            display_commanderhooks::ClearDInputDevices();
+        }
     }
 }
 

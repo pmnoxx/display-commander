@@ -89,6 +89,9 @@ class ExperimentalTabSettings {
     // Enable flip chain settings (DXGI only) - forces flip model
     BoolSetting enable_flip_chain_enabled;
 
+    // DirectInput hook suppression settings
+    BoolSetting suppress_dinput_hooks;
+
   private:
     std::vector<SettingBase *> all_settings_;
 };

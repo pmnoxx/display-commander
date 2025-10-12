@@ -280,29 +280,13 @@ bool InstallApiHooks() {
         LogInfo("CreateDXGIFactory1 ReShade hook created successfully");
     }*/
 
-    // Enable all hooks
- //..  if (MH_EnableHook(MH_ALL_HOOKS) != MH_OK) {
-  ////      LogError("Failed to enable API hooks");
-   // }
-
-    // Install XInput hooks
-    if (!InstallXInputHooks()) {
-        LogError("Failed to install XInput hooks");
-    }
-
-    // Install Windows.Gaming.Input hooks
-    if (!InstallWindowsGamingInputHooks()) {
-        LogError("Failed to install Windows.Gaming.Input hooks");
-    }
-
+    // todo: move to loadlibrary hooks
     // Install Windows message hooks
+
+
+    // ### SAME LIBRARY ###
     if (!InstallWindowsMessageHooks()) {
         LogError("Failed to install Windows message hooks");
-    }
-
-    // Install sleep hooks
-    if (!InstallSleepHooks()) {
-        LogError("Failed to install sleep hooks");
     }
 
     // Install timeslowdown hooks
@@ -315,12 +299,9 @@ bool InstallApiHooks() {
         LogError("Failed to install process exit hooks");
     }
 
-    // Install DXGI Present hooks
-    if (!display_commanderhooks::dxgi::InstallDxgiPresentHooks()) {
-        LogError("Failed to install DXGI Present hooks");
+    if (!InstallSleepHooks()) {
+        LogError("Failed to install sleep hooks");
     }
-
-    // NVAPI hooks will be installed when nvapi64.dll is loaded via LoadLibraryExW hook
 
     // Install LoadLibrary hooks
     if (!InstallLoadLibraryHooks()) {
@@ -360,9 +341,6 @@ void UninstallApiHooks() {
 
     // Uninstall process exit hooks
     UninstallProcessExitHooks();
-
-    // Uninstall DXGI Present hooks
-    display_commanderhooks::dxgi::UninstallDxgiPresentHooks();
 
     // NVAPI hooks are uninstalled via LoadLibrary hooks cleanup
 

@@ -895,32 +895,6 @@ namespace {
 // VTable hooking functions
 bool HookFactoryVTable(IDXGIFactory *factory);
 
-// Install DXGI Present hooks
-bool InstallDxgiPresentHooks() {
-    if (g_dxgi_present_hooks_installed.load()) {
-        LogInfo("DXGI Present hooks already installed");
-        return true;
-    }
-
-    // Initialize MinHook (only if not already initialized)
-    MH_STATUS init_status = MH_Initialize();
-    if (init_status != MH_OK && init_status != MH_ERROR_ALREADY_INITIALIZED) {
-        LogError("Failed to initialize MinHook for DXGI Present hooks - Status: %d", init_status);
-        return false;
-    }
-
-    if (init_status == MH_ERROR_ALREADY_INITIALIZED) {
-        LogInfo("MinHook already initialized, proceeding with DXGI Present hooks");
-    } else {
-        LogInfo("MinHook initialized successfully for DXGI Present hooks");
-    }
-
-    g_dxgi_present_hooks_installed.store(true);
-    LogInfo("DXGI Present hooks installed successfully - will hook swapchains when they are created");
-
-    return true;
-}
-
 // Hook a specific swapchain's vtable
 bool HookSwapchain(IDXGISwapChain *swapchain) {
     if (g_swapchain_hooked.load() == swapchain) {
@@ -1400,21 +1374,6 @@ bool HookFactory(IDXGIFactory *factory) {
     return HookFactoryVTable(factory);
 }
 
-// Uninstall DXGI Present hooks
-void UninstallDxgiPresentHooks() {
-    if (!g_dxgi_present_hooks_installed.load()) {
-        return;
-    }
-
-    // Disable hooks
-    MH_DisableHook(MH_ALL_HOOKS);
-
-    // Remove hooks
-    MH_RemoveHook(MH_ALL_HOOKS);
-
-    g_dxgi_present_hooks_installed.store(false);
-    LogInfo("DXGI Present hooks uninstalled");
-}
 
 // Check if DXGI Present hooks are installed
 bool AreDxgiPresentHooksInstalled() { return g_dxgi_present_hooks_installed.load(); }

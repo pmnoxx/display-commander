@@ -62,7 +62,8 @@ target_include_directories(zzz_display_commander
 
 # System libraries removed (xinput, dinput8, winmm, dbghelp) to avoid DLL dependency issues - they are loaded dynamically
 # Version library is needed for GetFileVersionInfo functions
-target_link_libraries(zzz_display_commander PRIVATE version)
+# HID libraries are needed for HID device enumeration and management
+target_link_libraries(zzz_display_commander PRIVATE version setupapi hid)
 
 # NVAPI static linking (official NVIDIA NVAPI layout: x86/ and amd64/)
 # NVIDIA recommends static linking - these are static libraries that act as shims

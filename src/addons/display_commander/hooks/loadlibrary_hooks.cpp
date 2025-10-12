@@ -338,10 +338,18 @@ bool InstallLoadLibraryHooks() {
         LogError("Failed to create LoadLibraryA hook");
         return false;
     }
+    if (MH_EnableHook(LoadLibraryA) != MH_OK) {
+        LogError("Failed to enable LoadLibraryA hook");
+        return false;
+    }
 
     // Hook LoadLibraryW
     if (MH_CreateHook(LoadLibraryW, LoadLibraryW_Detour, (LPVOID*)&LoadLibraryW_Original) != MH_OK) {
         LogError("Failed to create LoadLibraryW hook");
+        return false;
+    }
+    if (MH_EnableHook(LoadLibraryW) != MH_OK) {
+        LogError("Failed to enable LoadLibraryW hook");
         return false;
     }
 
@@ -350,16 +358,18 @@ bool InstallLoadLibraryHooks() {
         LogError("Failed to create LoadLibraryExA hook");
         return false;
     }
+    if (MH_EnableHook(LoadLibraryExA) != MH_OK) {
+        LogError("Failed to enable LoadLibraryExA hook");
+        return false;
+    }
 
     // Hook LoadLibraryExW
     if (MH_CreateHook(LoadLibraryExW, LoadLibraryExW_Detour, (LPVOID*)&LoadLibraryExW_Original) != MH_OK) {
         LogError("Failed to create LoadLibraryExW hook");
         return false;
     }
-
-    // Enable all hooks
-    if (MH_EnableHook(MH_ALL_HOOKS) != MH_OK) {
-        LogError("Failed to enable LoadLibrary hooks");
+    if (MH_EnableHook(LoadLibraryExW) != MH_OK) {
+        LogError("Failed to enable LoadLibraryExW hook");
         return false;
     }
 
@@ -472,10 +482,6 @@ bool IsModuleLoaded(const std::wstring& moduleName) {
         }
     }
     return false;
-}
-
-void RefreshModuleList() {
-    EnumerateLoadedModules();
 }
 
 void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {

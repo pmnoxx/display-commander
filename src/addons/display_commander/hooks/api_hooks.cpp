@@ -201,10 +201,16 @@ bool InstallApiHooks() {
     } else {
         LogInfo("MinHook initialized successfully for API hooks");
     }
+    if (MH_EnableHook(MH_ALL_HOOKS) != MH_OK) {
+        LogError("Failed to enable API hooks");
+    }
 
     // Hook GetFocus
     if (MH_CreateHook(GetFocus, GetFocus_Detour, (LPVOID *)&GetFocus_Original) != MH_OK) {
         LogError("Failed to create GetFocus hook");
+    }
+    if (MH_EnableHook(GetFocus) != MH_OK) {
+        LogError("Failed to enable GetFocus hook");
     }
 
     // Hook GetForegroundWindow
@@ -212,21 +218,33 @@ bool InstallApiHooks() {
         MH_OK) {
         LogError("Failed to create GetForegroundWindow hook");
     }
+    if (MH_EnableHook(GetForegroundWindow) != MH_OK) {
+        LogError("Failed to enable GetForegroundWindow hook");
+    }
 
     // Hook GetActiveWindow
     if (MH_CreateHook(GetActiveWindow, GetActiveWindow_Detour, (LPVOID *)&GetActiveWindow_Original) != MH_OK) {
         LogError("Failed to create GetActiveWindow hook");
+    }
+    if (MH_EnableHook(GetActiveWindow) != MH_OK) {
+        LogError("Failed to enable GetActiveWindow hook");
     }
 
     // Hook GetGUIThreadInfo
     if (MH_CreateHook(GetGUIThreadInfo, GetGUIThreadInfo_Detour, (LPVOID *)&GetGUIThreadInfo_Original) != MH_OK) {
         LogError("Failed to create GetGUIThreadInfo hook");
     }
+    if (MH_EnableHook(SetThreadExecutionState) != MH_OK) {
+        LogError("Failed to enable SetThreadExecutionState hook");
+    }
 
     // Hook SetThreadExecutionState
     if (MH_CreateHook(SetThreadExecutionState, SetThreadExecutionState_Detour,
                       (LPVOID *)&SetThreadExecutionState_Original) != MH_OK) {
         LogError("Failed to create SetThreadExecutionState hook");
+    }
+    if (MH_EnableHook(SetThreadExecutionState) != MH_OK) {
+        LogError("Failed to enable SetThreadExecutionState hook");
     }
 
     /*
@@ -263,9 +281,9 @@ bool InstallApiHooks() {
     }*/
 
     // Enable all hooks
-    if (MH_EnableHook(MH_ALL_HOOKS) != MH_OK) {
-        LogError("Failed to enable API hooks");
-    }
+ //..  if (MH_EnableHook(MH_ALL_HOOKS) != MH_OK) {
+  ////      LogError("Failed to enable API hooks");
+   // }
 
     // Install XInput hooks
     if (!InstallXInputHooks()) {
@@ -275,11 +293,6 @@ bool InstallApiHooks() {
     // Install Windows.Gaming.Input hooks
     if (!InstallWindowsGamingInputHooks()) {
         LogError("Failed to install Windows.Gaming.Input hooks");
-    }
-
-    // Install LoadLibrary hooks
-    if (!InstallLoadLibraryHooks()) {
-        LogError("Failed to install LoadLibrary hooks");
     }
 
     // Install Windows message hooks
@@ -309,6 +322,10 @@ bool InstallApiHooks() {
 
     // NVAPI hooks will be installed when nvapi64.dll is loaded via LoadLibraryExW hook
 
+    // Install LoadLibrary hooks
+    if (!InstallLoadLibraryHooks()) {
+        LogError("Failed to install LoadLibrary hooks");
+    }
     g_api_hooks_installed.store(true);
     LogInfo("API hooks installed successfully");
 

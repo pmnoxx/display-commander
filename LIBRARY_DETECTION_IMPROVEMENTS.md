@@ -42,26 +42,6 @@ Returns a copy of the current module list.
 ### `IsModuleLoaded(const std::wstring& moduleName)`
 Checks if a specific module is currently loaded.
 
-### `RefreshModuleList()`
-Refreshes the module list by re-enumerating all loaded modules.
-
-## Usage Example
-
-```cpp
-// Install hooks (automatically enumerates existing modules)
-if (InstallLoadLibraryHooks()) {
-    // Get list of all loaded modules
-    auto modules = GetLoadedModules();
-
-    // Check if a specific module is loaded
-    if (IsModuleLoaded(L"d3d11.dll")) {
-        std::wcout << L"Direct3D 11 is loaded" << std::endl;
-    }
-
-    // Refresh the module list
-    RefreshModuleList();
-}
-```
 
 ## Comparison with Special-K
 

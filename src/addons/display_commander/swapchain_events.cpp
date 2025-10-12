@@ -11,6 +11,7 @@
 #include "hooks/window_proc_hooks.hpp"
 #include "hooks/streamline_hooks.hpp"
 #include "hooks/windows_hooks/windows_message_hooks.hpp"
+#include "hooks/xinput_hooks.hpp"
 #include "input_remapping/input_remapping.hpp"
 #include "latency/latency_manager.hpp"
 #include "latent_sync/latent_sync_limiter.hpp"
@@ -43,7 +44,7 @@ bool is_target_resolution(int width, int height) {
     return width >= 1280 && width <= target_width.load() && height >= 720 && height <= target_height.load() &&
            width * 9 == height * 16;
 }
-std::atomic<bool> g_initialized{false};
+std::atomic<bool> g_initialized_with_hwnd{false};
 
 #include <set>
 
@@ -154,9 +155,10 @@ void hookToSwapChain(reshade::api::swapchain *swapchain) {
 // Centralized initialization method
 void DoInitializationWithHwnd(HWND hwnd) {
     bool expected = false;
-    if (!g_initialized.compare_exchange_strong(expected, true)) {
+    if (!g_initialized_with_hwnd.compare_exchange_strong(expected, true)) {
         return; // Already initialized
     }
+    display_commanderhooks::InstallXInputHooks();
 
     LogInfo("DoInitialization: Starting initialization with HWND: 0x%p", hwnd);
 

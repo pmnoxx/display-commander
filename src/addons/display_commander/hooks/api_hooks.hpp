@@ -6,8 +6,6 @@
 
 // Forward declarations for DXGI hooks
 namespace display_commanderhooks::dxgi {
-bool InstallDxgiPresentHooks();
-void UninstallDxgiPresentHooks();
 bool HookSwapchain(IDXGISwapChain *swapchain);
 bool HookFactory(IDXGIFactory *factory);
 } // namespace display_commanderhooks::dxgi

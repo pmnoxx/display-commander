@@ -151,8 +151,6 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetHDRMetaData_Detour(IDXGISwapChain4 *
 HRESULT STDMETHODCALLTYPE IDXGIFactory_CreateSwapChain_Detour(IDXGIFactory *This, IUnknown *pDevice, DXGI_SWAP_CHAIN_DESC *pDesc, IDXGISwapChain **ppSwapChain);
 
 // Hook management
-bool InstallDxgiPresentHooks();
-void UninstallDxgiPresentHooks();
 bool AreDxgiPresentHooksInstalled();
 
 // Hook a specific swapchain when it's created

@@ -128,6 +128,13 @@ void RecordFrameTime(FrameTimeMode reason = FrameTimeMode::kPresent);
 extern std::atomic<LONGLONG> g_sim_start_ns;
 
 // ============================================================================
+// INITIALIZATION STATE
+// ============================================================================
+
+// Global initialization state
+extern std::atomic<bool> g_initialized_with_hwnd;
+
+// ============================================================================
 // FORWARD DECLARATIONS
 // ============================================================================
 

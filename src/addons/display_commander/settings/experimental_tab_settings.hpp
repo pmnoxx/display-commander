@@ -92,6 +92,9 @@ class ExperimentalTabSettings {
     // DirectInput hook suppression settings
     BoolSetting suppress_dinput_hooks;
 
+    // HID device suppression settings
+    BoolSetting suppress_hid_devices;
+
   private:
     std::vector<SettingBase *> all_settings_;
 };

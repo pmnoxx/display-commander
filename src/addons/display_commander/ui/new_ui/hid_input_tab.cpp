@@ -1,6 +1,8 @@
 #include "hid_input_tab.hpp"
 #include "../../hooks/hid_hooks.hpp"
 #include "../../utils.hpp"
+#include "../../settings/experimental_tab_settings.hpp"
+#include "../../globals.hpp"
 #include <imgui.h>
 #include <reshade.hpp>
 #include <chrono>
@@ -9,7 +11,12 @@ namespace ui::new_ui {
 
 void InitHidInputTab() {
     LogInfo("Initializing HID Input tab");
-    // No specific initialization needed for HID input tab
+
+    // Check if HID suppression is enabled from settings
+    bool suppression_enabled = settings::g_experimentalTabSettings.suppress_hid_devices.GetValue();
+    if (suppression_enabled) {
+        LogInfo("HID suppression enabled from settings");
+    }
 }
 
 void DrawHidInputTab() {
@@ -47,6 +54,39 @@ void DrawHidInputTab() {
     if (ImGui::Button("Clear File History")) {
         display_commanderhooks::ClearHidFileHistory();
     }
+    ImGui::SameLine();
+
+    if (ImGui::Button("Reset Suppression Stats")) {
+        display_commanderhooks::ResetHidSuppressionStats();
+    }
+
+    ImGui::Spacing();
+    ImGui::Separator();
+
+    // HID Suppression Controls
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "HID Suppression:");
+
+    // Use settings system for persistence
+    bool suppression_enabled = settings::g_experimentalTabSettings.suppress_hid_devices.GetValue();
+    if (ImGui::Checkbox("Suppress HID Device Access (needs restart)", &suppression_enabled)) {
+        settings::g_experimentalTabSettings.suppress_hid_devices.SetValue(suppression_enabled);
+        LogInfo("HID suppression toggled: %s", suppression_enabled ? "enabled" : "disabled");
+    }
+
+    if (suppression_enabled) {
+        ImGui::SameLine();
+        ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "ACTIVE");
+
+        uint64_t suppressed_calls = display_commanderhooks::GetHidSuppressedCallsCount();
+        ImGui::Text("Suppressed Calls: %llu", suppressed_calls);
+
+        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.0f, 1.0f), "Warning: This will block all HID device access!");
+    } else {
+        ImGui::SameLine();
+        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "INACTIVE");
+    }
 
     ImGui::Spacing();
     ImGui::Separator();
@@ -58,11 +98,50 @@ void DrawHidInputTab() {
     ImGui::Text("Files Tracked: %llu", hook_stats.total_files_tracked.load());
     ImGui::Text("Total Bytes Read: %llu", hook_stats.total_bytes_read.load());
 
+    if (suppression_enabled) {
+        ImGui::Text("Suppressed Calls: %llu", display_commanderhooks::GetHidSuppressedCallsCount());
+    }
+
+    // Individual API Statistics
+    ImGui::Spacing();
+    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.0f, 1.0f), "API Call Statistics:");
+
+    // SetupDi APIs
+    ImGui::Text("SetupDiGetClassDevs: %llu calls, %llu suppressed",
+                hook_stats.setupdi_getclassdevs_calls.load(),
+                hook_stats.setupdi_getclassdevs_suppressed.load());
+    ImGui::Text("SetupDiEnumDeviceInterfaces: %llu calls, %llu suppressed",
+                hook_stats.setupdi_enumdeviceinterfaces_calls.load(),
+                hook_stats.setupdi_enumdeviceinterfaces_suppressed.load());
+    ImGui::Text("SetupDiGetDeviceInterfaceDetail: %llu calls, %llu suppressed",
+                hook_stats.setupdi_getdeviceinterfacedetail_calls.load(),
+                hook_stats.setupdi_getdeviceinterfacedetail_suppressed.load());
+    ImGui::Text("SetupDiEnumDeviceInfo: %llu calls, %llu suppressed",
+                hook_stats.setupdi_enumdeviceinfo_calls.load(),
+                hook_stats.setupdi_enumdeviceinfo_suppressed.load());
+    ImGui::Text("SetupDiGetDeviceRegistryProperty: %llu calls, %llu suppressed",
+                hook_stats.setupdi_getdeviceregistryproperty_calls.load(),
+                hook_stats.setupdi_getdeviceregistryproperty_suppressed.load());
+
+    // HidD APIs
+    ImGui::Text("HidD_GetHidGuid: %llu calls, %llu suppressed",
+                hook_stats.hidd_gethidguid_calls.load(),
+                hook_stats.hidd_gethidguid_suppressed.load());
+    ImGui::Text("HidD_GetAttributes: %llu calls, %llu suppressed",
+                hook_stats.hidd_getattributes_calls.load(),
+                hook_stats.hidd_getattributes_suppressed.load());
+    ImGui::Text("HidD_GetPreparsedData: %llu calls, %llu suppressed",
+                hook_stats.hidd_getpreparseddata_calls.load(),
+                hook_stats.hidd_getpreparseddata_suppressed.load());
+    ImGui::Text("HidD_FreePreparsedData: %llu calls, %llu suppressed",
+                hook_stats.hidd_freepreparseddata_calls.load(),
+                hook_stats.hidd_freepreparseddata_suppressed.load());
+
     ImGui::Spacing();
     ImGui::Separator();
 
     // File statistics table
-    const auto& file_stats = display_commanderhooks::GetHidFileStats();
+    const auto file_stats = display_commanderhooks::GetHidFileStats();
 
     if (file_stats.empty()) {
         ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "No HID device files tracked yet");

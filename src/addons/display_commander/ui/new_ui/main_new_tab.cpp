@@ -859,10 +859,11 @@ void DrawDisplaySettings() {
                 ImGui::SetTooltip("Prevents tearing by clearing DXGI tearing flags and preferring sync.");
             }
 
-            bool is_d3d9 = g_last_reshade_device_api.load() == static_cast<int>(reshade::api::device_api::d3d9);
+            int current_api = g_last_reshade_device_api.load();
+            bool is_d3d9 = current_api == static_cast<int>(reshade::api::device_api::d3d9);
             bool is_dxgi = g_last_reshade_device_api.load() == static_cast<int>(reshade::api::device_api::d3d10)
-            || g_last_reshade_device_api.load() == static_cast<int>(reshade::api::device_api::d3d11)
-            || g_last_reshade_device_api.load() == static_cast<int>(reshade::api::device_api::d3d12);
+            || current_api == static_cast<int>(reshade::api::device_api::d3d11)
+            || current_api == static_cast<int>(reshade::api::device_api::d3d12);
             bool enable_flip = settings::g_developerTabSettings.enable_flip_chain.GetValue();
 
             bool is_flip = g_last_swapchain_desc.load() && (g_last_swapchain_desc.load()->present_mode == DXGI_SWAP_EFFECT_FLIP_DISCARD
@@ -931,6 +932,24 @@ void DrawDisplaySettings() {
                         present_mode_name = "Unknown";
                         present_mode_color = ui::colors::TEXT_ERROR;
                     }
+                    DxgiBypassMode flip_state = GetFlipStateForAPI(current_api);
+
+                    const char* flip_state_str = "Unknown";
+                    switch (flip_state) {
+                        case DxgiBypassMode::kComposed:      flip_state_str = "Composed"; break;
+                        case DxgiBypassMode::kOverlay:       flip_state_str = "MPO iFlip"; break;
+                        case DxgiBypassMode::kIndependentFlip: flip_state_str = "iFlip"; break;
+                        case DxgiBypassMode::kUnknown:
+                        default:                             {
+                            if (desc.present_mode == DXGI_SWAP_EFFECT_FLIP_DISCARD || desc.present_mode == DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL) {
+                                flip_state_str = "Unknown";
+                            } else {
+                                flip_state_str = "Unavailable";
+                            }
+                            break;
+                        }
+                    }
+
 
                 } else if (is_dxgi) {
 
@@ -950,111 +969,118 @@ void DrawDisplaySettings() {
                         present_mode_name = "Unknown";
                         present_mode_color = ui::colors::TEXT_ERROR;
                     }
+                    ImGui::TextColored(present_mode_color, "%s", present_mode_name);
+
+                    // Add DxgiBypassMode on the same line
+                    ImGui::SameLine();
+                    ImGui::TextColored(ui::colors::TEXT_DIMMED, " | ");
+                    ImGui::SameLine();
+
+                    // Get flip state information
+                    int current_api = g_last_reshade_device_api.load();
+                    DxgiBypassMode flip_state = GetFlipStateForAPI(current_api);
+
+                    const char* flip_state_str = "Unknown";
+                    switch (flip_state) {
+                        case DxgiBypassMode::kComposed:      flip_state_str = "Composed"; break;
+                        case DxgiBypassMode::kOverlay:       flip_state_str = "MPO iFlip"; break;
+                        case DxgiBypassMode::kIndependentFlip: flip_state_str = "iFlip"; break;
+                        case DxgiBypassMode::kUnknown:
+                        default:                             {
+                            if (desc.present_mode == DXGI_SWAP_EFFECT_FLIP_DISCARD || desc.present_mode == DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL) {
+                                flip_state_str = "Unknown";
+                            } else {
+                                flip_state_str = "Unavailable";
+                            }
+                            break;
+                        }
+                    }
+
+                    ImVec4 flip_color;
+                    if (flip_state == DxgiBypassMode::kComposed) {
+                        flip_color = ui::colors::FLIP_COMPOSED; // Red - bad
+                    } else if (flip_state == DxgiBypassMode::kOverlay || flip_state == DxgiBypassMode::kIndependentFlip) {
+                        flip_color = ui::colors::FLIP_INDEPENDENT; // Green - good
+                    } else {
+                        flip_color = ui::colors::FLIP_UNKNOWN; // Yellow - unknown
+                    }
+
+                    ImGui::TextColored(flip_color, "Flip: %s", flip_state_str);
+
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::BeginTooltip();
+                        ImGui::TextColored(ui::colors::TEXT_LABEL, "Swapchain Information:");
+                        ImGui::Separator();
+
+                        // Present mode details
+                        ImGui::Text("Present Mode: %s", present_mode_name);
+                        ImGui::Text("Present Mode ID: %u", desc.present_mode);
+
+                        // Flip state information
+                        ImGui::Text("Flip State: %s", flip_state_str);
+                        if (flip_state == DxgiBypassMode::kComposed) {
+                            ImGui::TextColored(ui::colors::FLIP_COMPOSED, "  • Composed Flip (Red): Desktop Window Manager composition mode");
+                            ImGui::Text("    Higher latency, not ideal for gaming");
+                        } else if (flip_state == DxgiBypassMode::kOverlay) {
+                            ImGui::TextColored(ui::colors::FLIP_INDEPENDENT, "  • MPO Independent Flip (Green): Modern hardware overlay plane");
+                            ImGui::Text("    Best performance and lowest latency");
+                        } else if (flip_state == DxgiBypassMode::kIndependentFlip) {
+                            ImGui::TextColored(ui::colors::FLIP_INDEPENDENT, "  • Independent Flip (Green): Legacy direct flip mode");
+                            ImGui::Text("    Good performance and low latency");
+                        } else {
+                            ImGui::TextColored(ui::colors::FLIP_UNKNOWN, "  • Flip state not yet determined");
+                            ImGui::Text("    Wait for a few frames to render");
+                        }
+
+                        // Back buffer information
+                        ImGui::Text("Back Buffer Count: %u", desc.back_buffer_count);
+                        ImGui::Text("Back Buffer Size: %ux%u", desc.back_buffer.texture.width, desc.back_buffer.texture.height);
+
+                        // Format information
+                        const char* format_name = "Unknown";
+                        switch (desc.back_buffer.texture.format) {
+                            case reshade::api::format::r10g10b10a2_unorm: format_name = "R10G10B10A2_UNORM (HDR 10-bit)"; break;
+                            case reshade::api::format::r16g16b16a16_float: format_name = "R16G16B16A16_FLOAT (HDR 16-bit)"; break;
+                            case reshade::api::format::r8g8b8a8_unorm: format_name = "R8G8B8A8_UNORM (SDR 8-bit)"; break;
+                            case reshade::api::format::b8g8r8a8_unorm: format_name = "B8G8R8A8_UNORM (SDR 8-bit)"; break;
+                            default: format_name = "Unknown Format"; break;
+                        }
+                        ImGui::Text("Back Buffer Format: %s", format_name);
+
+                        // Sync and fullscreen information
+                        ImGui::Text("Sync Interval: %u", desc.sync_interval);
+                        ImGui::Text("Fullscreen: %s", desc.fullscreen_state ? "Yes" : "No");
+                        if (desc.fullscreen_state && desc.fullscreen_refresh_rate > 0) {
+                            ImGui::Text("Refresh Rate: %.2f Hz", desc.fullscreen_refresh_rate);
+                        }
+
+                        // Present flags (for DXGI)
+                        if (desc.present_flags != 0) {
+                            ImGui::Text("Present Flags: 0x%X", desc.present_flags);
+
+                            // Decode common present flags
+                            ImGui::Text("Flags:");
+                            if (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING) {
+                                ImGui::Text("  • ALLOW_TEARING (VRR/G-Sync)");
+                            }
+                            if (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT) {
+                                ImGui::Text("  • FRAME_LATENCY_WAITABLE_OBJECT");
+                            }
+                            if (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_DISPLAY_ONLY) {
+                                ImGui::Text("  • DISPLAY_ONLY");
+                            }
+                            if (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_RESTRICTED_CONTENT) {
+                                ImGui::Text("  • RESTRICTED_CONTENT");
+                            }
+                        }
+
+                        ImGui::EndTooltip();
+                    }
                 } else {
                     present_mode_name = "Unsupported API (WIP)";
                     present_mode_color = ui::colors::TEXT_ERROR;
                 }
 
-                ImGui::TextColored(present_mode_color, "%s", present_mode_name);
-
-                // Add DxgiBypassMode on the same line
-                ImGui::SameLine();
-                ImGui::TextColored(ui::colors::TEXT_DIMMED, " | ");
-                ImGui::SameLine();
-
-                // Get flip state information
-                int current_api = g_last_reshade_device_api.load();
-                DxgiBypassMode flip_state = GetFlipStateForAPI(current_api);
-
-                const char* flip_state_str = "Unknown";
-                switch (flip_state) {
-                    case DxgiBypassMode::kComposed:      flip_state_str = "Composed"; break;
-                    case DxgiBypassMode::kOverlay:       flip_state_str = "MPO iFlip"; break;
-                    case DxgiBypassMode::kIndependentFlip: flip_state_str = "iFlip"; break;
-                    case DxgiBypassMode::kUnknown:
-                    default:                             flip_state_str = "Unknown"; break;
-                }
-
-                ImVec4 flip_color;
-                if (flip_state == DxgiBypassMode::kComposed) {
-                    flip_color = ui::colors::FLIP_COMPOSED; // Red - bad
-                } else if (flip_state == DxgiBypassMode::kOverlay || flip_state == DxgiBypassMode::kIndependentFlip) {
-                    flip_color = ui::colors::FLIP_INDEPENDENT; // Green - good
-                } else {
-                    flip_color = ui::colors::FLIP_UNKNOWN; // Yellow - unknown
-                }
-
-                ImGui::TextColored(flip_color, "Flip: %s", flip_state_str);
-
-                if (ImGui::IsItemHovered()) {
-                    ImGui::BeginTooltip();
-                    ImGui::TextColored(ui::colors::TEXT_LABEL, "Swapchain Information:");
-                    ImGui::Separator();
-
-                    // Present mode details
-                    ImGui::Text("Present Mode: %s", present_mode_name);
-                    ImGui::Text("Present Mode ID: %u", desc.present_mode);
-
-                    // Flip state information
-                    ImGui::Text("Flip State: %s", flip_state_str);
-                    if (flip_state == DxgiBypassMode::kComposed) {
-                        ImGui::TextColored(ui::colors::FLIP_COMPOSED, "  • Composed Flip (Red): Desktop Window Manager composition mode");
-                        ImGui::Text("    Higher latency, not ideal for gaming");
-                    } else if (flip_state == DxgiBypassMode::kOverlay) {
-                        ImGui::TextColored(ui::colors::FLIP_INDEPENDENT, "  • MPO Independent Flip (Green): Modern hardware overlay plane");
-                        ImGui::Text("    Best performance and lowest latency");
-                    } else if (flip_state == DxgiBypassMode::kIndependentFlip) {
-                        ImGui::TextColored(ui::colors::FLIP_INDEPENDENT, "  • Independent Flip (Green): Legacy direct flip mode");
-                        ImGui::Text("    Good performance and low latency");
-                    } else {
-                        ImGui::TextColored(ui::colors::FLIP_UNKNOWN, "  • Flip state not yet determined");
-                        ImGui::Text("    Wait for a few frames to render");
-                    }
-
-                    // Back buffer information
-                    ImGui::Text("Back Buffer Count: %u", desc.back_buffer_count);
-                    ImGui::Text("Back Buffer Size: %ux%u", desc.back_buffer.texture.width, desc.back_buffer.texture.height);
-
-                    // Format information
-                    const char* format_name = "Unknown";
-                    switch (desc.back_buffer.texture.format) {
-                        case reshade::api::format::r10g10b10a2_unorm: format_name = "R10G10B10A2_UNORM (HDR 10-bit)"; break;
-                        case reshade::api::format::r16g16b16a16_float: format_name = "R16G16B16A16_FLOAT (HDR 16-bit)"; break;
-                        case reshade::api::format::r8g8b8a8_unorm: format_name = "R8G8B8A8_UNORM (SDR 8-bit)"; break;
-                        case reshade::api::format::b8g8r8a8_unorm: format_name = "B8G8R8A8_UNORM (SDR 8-bit)"; break;
-                        default: format_name = "Unknown Format"; break;
-                    }
-                    ImGui::Text("Back Buffer Format: %s", format_name);
-
-                    // Sync and fullscreen information
-                    ImGui::Text("Sync Interval: %u", desc.sync_interval);
-                    ImGui::Text("Fullscreen: %s", desc.fullscreen_state ? "Yes" : "No");
-                    if (desc.fullscreen_state && desc.fullscreen_refresh_rate > 0) {
-                        ImGui::Text("Refresh Rate: %.2f Hz", desc.fullscreen_refresh_rate);
-                    }
-
-                    // Present flags (for DXGI)
-                    if (desc.present_flags != 0) {
-                        ImGui::Text("Present Flags: 0x%X", desc.present_flags);
-
-                        // Decode common present flags
-                        ImGui::Text("Flags:");
-                        if (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING) {
-                            ImGui::Text("  • ALLOW_TEARING (VRR/G-Sync)");
-                        }
-                        if (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT) {
-                            ImGui::Text("  • FRAME_LATENCY_WAITABLE_OBJECT");
-                        }
-                        if (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_DISPLAY_ONLY) {
-                            ImGui::Text("  • DISPLAY_ONLY");
-                        }
-                        if (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_RESTRICTED_CONTENT) {
-                            ImGui::Text("  • RESTRICTED_CONTENT");
-                        }
-                    }
-
-                    ImGui::EndTooltip();
-                }
             } else {
                 ImGui::TextColored(ui::colors::TEXT_DIMMED, "No swapchain information available");
                 if (ImGui::IsItemHovered()) {

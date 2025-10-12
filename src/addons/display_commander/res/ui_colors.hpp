@@ -76,7 +76,7 @@ constexpr ImVec4 BUTTON_SELECTED_ACTIVE = ImVec4(0.10f, 0.50f, 0.10f, 1.0f);
 // ============================================================================
 
 // Flip state colors
-constexpr ImVec4 FLIP_COMPOSED = ImVec4(1.0f, 0.8f, 0.8f, 1.0f);      // Red for composed flip (bad)
+constexpr ImVec4 FLIP_COMPOSED = ImVec4(1.0f, 0.0f, 0.0f, 1.0f);      // Red for composed flip (bad)
 constexpr ImVec4 FLIP_INDEPENDENT = ImVec4(0.8f, 1.0f, 0.8f, 1.0f);   // Green for independent flip (good)
 constexpr ImVec4 FLIP_UNKNOWN = ImVec4(1.0f, 1.0f, 0.8f, 1.0f);       // Yellow for unknown
 

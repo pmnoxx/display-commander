@@ -153,9 +153,19 @@ bool InstallHIDSuppressionHooks() {
         return false;
     }
 
-    // Enable all hooks
-    if (MH_EnableHook(MH_ALL_HOOKS) != MH_OK) {
-        LogError("Failed to enable HID suppression hooks");
+    // Enable individual hooks
+    if (MH_EnableHook(ReadFile) != MH_OK) {
+        LogError("Failed to enable ReadFile hook for HID suppression");
+        return false;
+    }
+
+    if (MH_EnableHook(HidD_GetInputReport) != MH_OK) {
+        LogError("Failed to enable HidD_GetInputReport hook for HID suppression");
+        return false;
+    }
+
+    if (MH_EnableHook(HidD_GetAttributes) != MH_OK) {
+        LogError("Failed to enable HidD_GetAttributes hook for HID suppression");
         return false;
     }
 
@@ -171,12 +181,15 @@ void UninstallHIDSuppressionHooks() {
         return;
     }
 
-    // Disable all hooks
-    MH_DisableHook(MH_ALL_HOOKS);
+    // Disable individual hooks
+    MH_DisableHook(ReadFile);
+    MH_DisableHook(HidD_GetInputReport);
+    MH_DisableHook(HidD_GetAttributes);
 
-    // Remove hooks
+    // Remove individual hooks
     MH_RemoveHook(ReadFile);
-    // Note: API hooks created with MH_CreateHookApi are automatically removed when MH_DisableHook(MH_ALL_HOOKS) is called
+    MH_RemoveHook(HidD_GetInputReport);
+    MH_RemoveHook(HidD_GetAttributes);
 
     // Clean up
     ReadFile_Original = nullptr;

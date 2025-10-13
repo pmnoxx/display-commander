@@ -604,26 +604,30 @@ void DrawDisplaySettings() {
             ImGui::TextColored(ui::colors::TEXT_WARNING, "⚠ Low Latency Mode not implemented yet");
         }
         if (current_item == static_cast<int>(FpsLimiterMode::kReflex)) {
-            bool is_native_reflex_active = g_swapchain_event_counters[SWAPCHAIN_EVENT_NVAPI_D3D_SET_SLEEP_MODE].load() > 0;
-            if (is_native_reflex_active) {
-                ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), ICON_FK_OK " Native Reflex: ACTIVE");
-                if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip(
-                        "The game has native Reflex support and is actively using it. "
-                        "Do not enable addon Reflex features to avoid conflicts.");
-                }
-                double native_ns = g_sleep_reflex_native_ns.load();
-                double calls_per_second = native_ns <= 0 ? -1 : 1000000000.0 / static_cast<double>(native_ns);
-                ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Native Reflex: %.2f times/sec (%.1f ms interval)", calls_per_second, native_ns / 1000000.0);
+            // Check if we're running on D3D9 and show warning
+            int current_api = g_last_reshade_device_api.load();
+            if (current_api == static_cast<int>(reshade::api::device_api::d3d9)) {
+                ImGui::TextColored(ui::colors::TEXT_WARNING, ICON_FK_WARNING " Warning: Reflex does not work with Direct3D 9");
             } else {
-                ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), ICON_FK_OK " Injected Reflex: ACTIVE");
-                double injected_ns = g_sleep_reflex_injected_ns.load();
-                double calls_per_second = injected_ns <= 0 ? -1 : 1000000000.0 / static_cast<double>(injected_ns);
-                ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Injected Reflex: %.2f times/sec (%.1f ms interval)", calls_per_second, injected_ns / 1000000.0);
-            }
+                bool is_native_reflex_active = g_swapchain_event_counters[SWAPCHAIN_EVENT_NVAPI_D3D_SET_SLEEP_MODE].load() > 0;
+                if (is_native_reflex_active) {
+                    ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), ICON_FK_OK " Native Reflex: ACTIVE");
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::SetTooltip(
+                            "The game has native Reflex support and is actively using it. "
+                            "Do not enable addon Reflex features to avoid conflicts.");
+                    }
+                    double native_ns = g_sleep_reflex_native_ns.load();
+                    double calls_per_second = native_ns <= 0 ? -1 : 1000000000.0 / static_cast<double>(native_ns);
+                    ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Native Reflex: %.2f times/sec (%.1f ms interval)", calls_per_second, native_ns / 1000000.0);
+                } else {
+                    ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), ICON_FK_OK " Injected Reflex: ACTIVE");
+                    double injected_ns = g_sleep_reflex_injected_ns.load();
+                    double calls_per_second = injected_ns <= 0 ? -1 : 1000000000.0 / static_cast<double>(injected_ns);
+                    ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Injected Reflex: %.2f times/sec (%.1f ms interval)", calls_per_second, injected_ns / 1000000.0);
+                }
             //injected reflex status:
-
-
+            }
         }
 
 

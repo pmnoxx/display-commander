@@ -66,18 +66,14 @@ function Update-VersionFile {
     $versionString = "$($Version.Major).$($Version.Minor).$($Version.Patch)"
     $content = $content -replace '#define DISPLAY_COMMANDER_VERSION_STRING_MAJOR_MINOR_PATCH "[^"]*"', "#define DISPLAY_COMMANDER_VERSION_STRING_MAJOR_MINOR_PATCH `"$versionString`""
 
-    # Update build date and time
-    $buildDate = Get-Date -Format "yyyy-MM-dd"
-    $buildTime = Get-Date -Format "HH:mm:ss"
-    $content = $content -replace '#define DISPLAY_COMMANDER_BUILD_DATE "[^"]*"', "#define DISPLAY_COMMANDER_BUILD_DATE `"$buildDate`""
-    $content = $content -replace '#define DISPLAY_COMMANDER_BUILD_TIME "[^"]*"', "#define DISPLAY_COMMANDER_BUILD_TIME `"$buildTime`""
+    # Build date and time are now automatically set by CMake during build
 
     # Write back to file
     Set-Content -Path $versionFile -Value $content -NoNewline
 
     Write-ColorOutput "Updated version to: $versionString" $Green
     Write-ColorOutput "Build number will be automatically set from git commit count" $Yellow
-    Write-ColorOutput "Build date: $buildDate $buildTime" $Green
+    Write-ColorOutput "Build date and time will be automatically set by CMake during build" $Green
 }
 
 function Build-Project {

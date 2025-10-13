@@ -72,9 +72,9 @@ When you run the version bump script, it automatically updates:
 2. **Version string**:
    - `DISPLAY_COMMANDER_VERSION_STRING`
 
-3. **Build timestamp**:
-   - `DISPLAY_COMMANDER_BUILD_DATE`
-   - `DISPLAY_COMMANDER_BUILD_TIME`
+3. **Build timestamp** (automatically set by CMake):
+   - `DISPLAY_COMMANDER_BUILD_DATE` - automatically set to current date during build
+   - `DISPLAY_COMMANDER_BUILD_TIME` - automatically set to current time during build
 
 ## Options
 

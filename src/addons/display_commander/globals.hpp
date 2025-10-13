@@ -15,6 +15,7 @@
 #include <atomic>
 #include <array>
 #include <chrono>
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <thread>
@@ -45,7 +46,7 @@ struct ParameterValue {
         unsigned int uint_val;
         float float_val;
         double double_val;
-        unsigned long long ull_val;
+        uint64_t ull_val;
     };
 
     ParameterValue() : type(INT), int_val(0) {}
@@ -53,7 +54,7 @@ struct ParameterValue {
     ParameterValue(unsigned int val) : type(UINT), uint_val(val) {}
     ParameterValue(float val) : type(FLOAT), float_val(val) {}
     ParameterValue(double val) : type(DOUBLE), double_val(val) {}
-    ParameterValue(unsigned long long val) : type(ULL), ull_val(val) {}
+    ParameterValue(uint64_t val) : type(ULL), ull_val(val) {}
 
     // Type conversion methods
     int get_as_int() const {
@@ -100,12 +101,12 @@ struct ParameterValue {
         }
     }
 
-    unsigned long long get_as_ull() const {
+    uint64_t get_as_ull() const {
         switch (type) {
-            case INT: return static_cast<unsigned long long>(int_val);
-            case UINT: return static_cast<unsigned long long>(uint_val);
-            case FLOAT: return static_cast<unsigned long long>(float_val);
-            case DOUBLE: return static_cast<unsigned long long>(double_val);
+            case INT: return static_cast<uint64_t>(int_val);
+            case UINT: return static_cast<uint64_t>(uint_val);
+            case FLOAT: return static_cast<uint64_t>(float_val);
+            case DOUBLE: return static_cast<uint64_t>(double_val);
             case ULL: return ull_val;
             default: return 0;
         }
@@ -144,7 +145,7 @@ public:
     void update_uint(const std::string& key, unsigned int value) { update(key, ParameterValue(value)); }
     void update_float(const std::string& key, float value) { update(key, ParameterValue(value)); }
     void update_double(const std::string& key, double value) { update(key, ParameterValue(value)); }
-    void update_ull(const std::string& key, unsigned long long value) { update(key, ParameterValue(value)); }
+    void update_ull(const std::string& key, uint64_t value) { update(key, ParameterValue(value)); }
 
     // Get parameter value (thread-safe)
     bool get(const std::string& key, ParameterValue& value) const {
@@ -194,7 +195,7 @@ public:
         return false;
     }
 
-    bool get_as_ull(const std::string& key, unsigned long long& value) const {
+    bool get_as_ull(const std::string& key, uint64_t& value) const {
         ParameterValue param;
         if (get(key, param)) {
             value = param.get_as_ull();
@@ -706,6 +707,20 @@ extern std::atomic<IUnknown*> g_last_nvapi_sleep_mode_dev_ptr;  // Last device p
 // NVAPI Reflex timing tracking
 extern std::atomic<LONGLONG> g_sleep_reflex_injected_ns;  // Time between injected Reflex sleep calls
 extern std::atomic<LONGLONG> g_sleep_reflex_native_ns;    // Time between native Reflex sleep calls
+
+// Reflex debug counters
+extern std::atomic<uint32_t> g_reflex_sleep_count;          // Total Sleep calls
+extern std::atomic<uint32_t> g_reflex_apply_sleep_mode_count; // Total ApplySleepMode calls
+extern std::atomic<LONGLONG> g_reflex_sleep_duration_ns;    // Rolling average sleep duration in nanoseconds
+
+// Individual marker type counters
+extern std::atomic<uint32_t> g_reflex_marker_simulation_start_count;
+extern std::atomic<uint32_t> g_reflex_marker_simulation_end_count;
+extern std::atomic<uint32_t> g_reflex_marker_rendersubmit_start_count;
+extern std::atomic<uint32_t> g_reflex_marker_rendersubmit_end_count;
+extern std::atomic<uint32_t> g_reflex_marker_present_start_count;
+extern std::atomic<uint32_t> g_reflex_marker_present_end_count;
+extern std::atomic<uint32_t> g_reflex_marker_input_sample_count;
 
 // DX11 Proxy HWND for filtering
 extern HWND g_proxy_hwnd;

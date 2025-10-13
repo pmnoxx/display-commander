@@ -312,6 +312,20 @@ std::atomic<IUnknown*> g_last_nvapi_sleep_mode_dev_ptr{nullptr};
 std::atomic<LONGLONG> g_sleep_reflex_injected_ns{0};
 std::atomic<LONGLONG> g_sleep_reflex_native_ns{0};
 
+// Reflex debug counters
+std::atomic<uint32_t> g_reflex_sleep_count{0};
+std::atomic<uint32_t> g_reflex_apply_sleep_mode_count{0};
+std::atomic<LONGLONG> g_reflex_sleep_duration_ns{0};
+
+// Individual marker type counters
+std::atomic<uint32_t> g_reflex_marker_simulation_start_count{0};
+std::atomic<uint32_t> g_reflex_marker_simulation_end_count{0};
+std::atomic<uint32_t> g_reflex_marker_rendersubmit_start_count{0};
+std::atomic<uint32_t> g_reflex_marker_rendersubmit_end_count{0};
+std::atomic<uint32_t> g_reflex_marker_present_start_count{0};
+std::atomic<uint32_t> g_reflex_marker_present_end_count{0};
+std::atomic<uint32_t> g_reflex_marker_input_sample_count{0};
+
 // DX11 Proxy HWND for filtering
 HWND g_proxy_hwnd = nullptr;
 

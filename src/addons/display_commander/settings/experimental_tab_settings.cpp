@@ -6,76 +6,76 @@ namespace settings {
 
 
 ExperimentalTabSettings::ExperimentalTabSettings()
-    : auto_click_enabled("AutoClickEnabled", false, "Experimental")
-    , mouse_spoofing_enabled("MouseSpoofingEnabled", true, "Experimental")
-    , sequence_enabled("SequenceEnabled", 5, 0, 0, 1, "Experimental")  // 5 elements, default 0 (disabled), range 0-1
-    , sequence_x("SequenceX", 5, 0, -10000, 10000, "Experimental")     // 5 elements, default 0, range -10000 to 10000
-    , sequence_y("SequenceY", 5, 0, -10000, 10000, "Experimental")     // 5 elements, default 0, range -10000 to 10000
-    , sequence_interval("SequenceInterval", 5, 3000, 100, 60000, "Experimental") // 5 elements, default 3000ms, range 100-60000ms
-    , backbuffer_format_override_enabled("BackbufferFormatOverrideEnabled", false, "Experimental")
+    : auto_click_enabled("AutoClickEnabled", false, "DisplayCommander.Experimental")
+    , mouse_spoofing_enabled("MouseSpoofingEnabled", true, "DisplayCommander.Experimental")
+    , sequence_enabled("SequenceEnabled", 5, 0, 0, 1, "DisplayCommander.Experimental")  // 5 elements, default 0 (disabled), range 0-1
+    , sequence_x("SequenceX", 5, 0, -10000, 10000, "DisplayCommander.Experimental")     // 5 elements, default 0, range -10000 to 10000
+    , sequence_y("SequenceY", 5, 0, -10000, 10000, "DisplayCommander.Experimental")     // 5 elements, default 0, range -10000 to 10000
+    , sequence_interval("SequenceInterval", 5, 3000, 100, 60000, "DisplayCommander.Experimental") // 5 elements, default 3000ms, range 100-60000ms
+    , backbuffer_format_override_enabled("BackbufferFormatOverrideEnabled", false, "DisplayCommander.Experimental")
     , backbuffer_format_override("BackbufferFormatOverride", 0, {
         "R8G8B8A8_UNORM (8-bit)",
         "R10G10B10A2_UNORM (10-bit)",
         "R16G16B16A16_FLOAT (16-bit HDR)"
-    }, "Experimental")
-    , buffer_resolution_upgrade_enabled("BufferResolutionUpgradeEnabled", false, "Experimental")
-    , buffer_resolution_upgrade_width("BufferResolutionUpgradeWidth", 1280, 320, 7680, "Experimental")
-    , buffer_resolution_upgrade_height("BufferResolutionUpgradeHeight", 720, 240, 4320, "Experimental")
-    , buffer_resolution_upgrade_scale_factor("BufferResolutionUpgradeScaleFactor", 2, 1, 4, "Experimental")
+    }, "DisplayCommander.Experimental")
+    , buffer_resolution_upgrade_enabled("BufferResolutionUpgradeEnabled", false, "DisplayCommander.Experimental")
+    , buffer_resolution_upgrade_width("BufferResolutionUpgradeWidth", 1280, 320, 7680, "DisplayCommander.Experimental")
+    , buffer_resolution_upgrade_height("BufferResolutionUpgradeHeight", 720, 240, 4320, "DisplayCommander.Experimental")
+    , buffer_resolution_upgrade_scale_factor("BufferResolutionUpgradeScaleFactor", 2, 1, 4, "DisplayCommander.Experimental")
     , buffer_resolution_upgrade_mode("BufferResolutionUpgradeMode", 0, {
         "Upgrade 1280x720 by Scale Factor",
         "Upgrade by Scale Factor",
         "Upgrade Custom Resolution"
-    }, "Experimental")
-    , texture_format_upgrade_enabled("TextureFormatUpgradeEnabled", false, "Experimental")
-    , sleep_hook_enabled("SleepHookEnabled", false, "Experimental")
-    , sleep_multiplier("SleepMultiplier", 1.0f, 0.1f, 10.0f, "Experimental")
-    , min_sleep_duration_ms("MinSleepDurationMs", 0, 0, 10000, "Experimental")
-    , max_sleep_duration_ms("MaxSleepDurationMs", 0, 0, 10000, "Experimental")
-    , timeslowdown_enabled("TimeslowdownEnabled", false, "Experimental")
-    , timeslowdown_multiplier("TimeslowdownMultiplier", 1.0f, 0.1f, 10.0f, "Experimental")
-    , timeslowdown_max_multiplier("TimeslowdownMaxMultiplier", 10.0f, 1.0f, 1000.0f, "Experimental")
+    }, "DisplayCommander.Experimental")
+    , texture_format_upgrade_enabled("TextureFormatUpgradeEnabled", false, "DisplayCommander.Experimental")
+    , sleep_hook_enabled("SleepHookEnabled", false, "DisplayCommander.Experimental")
+    , sleep_multiplier("SleepMultiplier", 1.0f, 0.1f, 10.0f, "DisplayCommander.Experimental")
+    , min_sleep_duration_ms("MinSleepDurationMs", 0, 0, 10000, "DisplayCommander.Experimental")
+    , max_sleep_duration_ms("MaxSleepDurationMs", 0, 0, 10000, "DisplayCommander.Experimental")
+    , timeslowdown_enabled("TimeslowdownEnabled", false, "DisplayCommander.Experimental")
+    , timeslowdown_multiplier("TimeslowdownMultiplier", 1.0f, 0.1f, 10.0f, "DisplayCommander.Experimental")
+    , timeslowdown_max_multiplier("TimeslowdownMaxMultiplier", 10.0f, 1.0f, 1000.0f, "DisplayCommander.Experimental")
     , query_performance_counter_hook("QueryPerformanceCounterHook", 0, {
         "None",
         "Enabled"
-    }, "Experimental")
+    }, "DisplayCommander.Experimental")
     , get_tick_count_hook("GetTickCountHook", 0, {
         "None",
         "Enabled"
-    }, "Experimental")
+    }, "DisplayCommander.Experimental")
     , get_tick_count64_hook("GetTickCount64Hook", 0, {
         "None",
         "Enabled"
-    }, "Experimental")
+    }, "DisplayCommander.Experimental")
     , time_get_time_hook("TimeGetTimeHook", 0, {
         "None",
         "Enabled"
-    }, "Experimental")
+    }, "DisplayCommander.Experimental")
     , get_system_time_hook("GetSystemTimeHook", 0, {
         "None",
         "Enabled"
-    }, "Experimental")
+    }, "DisplayCommander.Experimental")
     , get_system_time_as_file_time_hook("GetSystemTimeAsFileTimeHook", 0, {
         "None",
         "Enabled"
-    }, "Experimental")
+    }, "DisplayCommander.Experimental")
     , get_system_time_precise_as_file_time_hook("GetSystemTimePreciseAsFileTimeHook", 0, {
         "None",
         "Enabled"
-    }, "Experimental")
+    }, "DisplayCommander.Experimental")
     , get_local_time_hook("GetLocalTimeHook", 0, {
         "None",
         "Enabled"
-    }, "Experimental")
+    }, "DisplayCommander.Experimental")
     , nt_query_system_time_hook("NtQuerySystemTimeHook", 0, {
         "None",
         "Enabled"
-    }, "Experimental")
-    , dlss_indicator_enabled("DlssIndicatorEnabled", false, "Experimental")
-    , d3d9_flipex_enabled("D3D9FlipExEnabled", true, "Experimental")
-    , disable_flip_chain_enabled("DisableFlipChainEnabled", false, "Experimental")
-    , enable_flip_chain_enabled("EnableFlipChainEnabled", false, "Experimental")
-    , suppress_dinput_hooks("SuppressDInputHooks", false, "Experimental")
+    }, "DisplayCommander.Experimental")
+    , dlss_indicator_enabled("DlssIndicatorEnabled", false, "DisplayCommander.Experimental")
+    , d3d9_flipex_enabled("D3D9FlipExEnabled", true, "DisplayCommander.Experimental")
+    , disable_flip_chain_enabled("DisableFlipChainEnabled", false, "DisplayCommander.Experimental")
+    , enable_flip_chain_enabled("EnableFlipChainEnabled", false, "DisplayCommander.Experimental")
+    , suppress_dinput_hooks("SuppressDInputHooks", false, "DisplayCommander.Experimental")
 {
     // Initialize the all_settings_ vector
     all_settings_ = {

@@ -4,6 +4,7 @@
 #include "../../hooks/xinput_hooks.hpp"
 #include "../../hooks/timeslowdown_hooks.hpp"
 #include "../../res/ui_colors.hpp"
+#include "../../config/display_commander_config.hpp"
 #include <chrono>
 #include <imgui.h>
 #include <reshade.hpp>
@@ -820,84 +821,84 @@ bool XInputWidget::IsButtonPressed(WORD buttons, WORD button) const { return (bu
 void XInputWidget::LoadSettings() {
     // Load enable XInput hooks setting
     bool enable_hooks;
-    if (reshade::get_config_value(nullptr, "DisplayCommander.XInputWidget", "EnableXInputHooks", enable_hooks)) {
+    if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "EnableXInputHooks", enable_hooks)) {
         g_shared_state->enable_xinput_hooks.store(enable_hooks);
     }
 
     // Load swap A/B buttons setting
     bool swap_buttons;
-    if (reshade::get_config_value(nullptr, "DisplayCommander.XInputWidget", "SwapABButtons", swap_buttons)) {
+    if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "SwapABButtons", swap_buttons)) {
         g_shared_state->swap_a_b_buttons.store(swap_buttons);
     }
 
     // Load left stick sensitivity setting
     float left_max_input;
-    if (reshade::get_config_value(nullptr, "DisplayCommander.XInputWidget", "LeftStickSensitivity", left_max_input)) {
+    if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "LeftStickSensitivity", left_max_input)) {
         g_shared_state->left_stick_max_input.store(left_max_input);
     }
 
     // Load right stick sensitivity setting
     float right_max_input;
-    if (reshade::get_config_value(nullptr, "DisplayCommander.XInputWidget", "RightStickSensitivity", right_max_input)) {
+    if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "RightStickSensitivity", right_max_input)) {
         g_shared_state->right_stick_max_input.store(right_max_input);
     }
 
     // Load left stick min input setting
     float left_deadzone;
-    if (reshade::get_config_value(nullptr, "DisplayCommander.XInputWidget", "LeftStickMinInput", left_deadzone)) {
+    if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "LeftStickMinInput", left_deadzone)) {
         g_shared_state->left_stick_deadzone.store(left_deadzone);
     }
 
     // Load right stick min input setting
     float right_deadzone;
-    if (reshade::get_config_value(nullptr, "DisplayCommander.XInputWidget", "RightStickMinInput", right_deadzone)) {
+    if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "RightStickMinInput", right_deadzone)) {
         g_shared_state->right_stick_deadzone.store(right_deadzone);
     }
 
     // Load left stick max output setting
     float left_min_output;
-    if (reshade::get_config_value(nullptr, "DisplayCommander.XInputWidget", "LeftStickMaxOutput", left_min_output)) {
+    if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "LeftStickMaxOutput", left_min_output)) {
         g_shared_state->left_stick_min_output.store(left_min_output);
     }
 
     // Load right stick max output setting
     float right_min_output;
-    if (reshade::get_config_value(nullptr, "DisplayCommander.XInputWidget", "RightStickMaxOutput", right_min_output)) {
+    if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "RightStickMaxOutput", right_min_output)) {
         g_shared_state->right_stick_min_output.store(right_min_output);
     }
 }
 
 void XInputWidget::SaveSettings() {
     // Save enable XInput hooks setting
-    reshade::set_config_value(nullptr, "DisplayCommander.XInputWidget", "EnableXInputHooks",
+    display_commander::config::set_config_value("DisplayCommander.XInputWidget", "EnableXInputHooks",
                               g_shared_state->enable_xinput_hooks.load());
 
     // Save swap A/B buttons setting
-    reshade::set_config_value(nullptr, "DisplayCommander.XInputWidget", "SwapABButtons",
+    display_commander::config::set_config_value("DisplayCommander.XInputWidget", "SwapABButtons",
                               g_shared_state->swap_a_b_buttons.load());
 
     // Save left stick sensitivity setting
-    reshade::set_config_value(nullptr, "DisplayCommander.XInputWidget", "LeftStickSensitivity",
+    display_commander::config::set_config_value("DisplayCommander.XInputWidget", "LeftStickSensitivity",
                               g_shared_state->left_stick_max_input.load());
 
     // Save right stick sensitivity setting
-    reshade::set_config_value(nullptr, "DisplayCommander.XInputWidget", "RightStickSensitivity",
+    display_commander::config::set_config_value("DisplayCommander.XInputWidget", "RightStickSensitivity",
                               g_shared_state->right_stick_max_input.load());
 
     // Save left stick min input setting
-    reshade::set_config_value(nullptr, "DisplayCommander.XInputWidget", "LeftStickMinInput",
+    display_commander::config::set_config_value("DisplayCommander.XInputWidget", "LeftStickMinInput",
                               g_shared_state->left_stick_deadzone.load());
 
     // Save right stick min input setting
-    reshade::set_config_value(nullptr, "DisplayCommander.XInputWidget", "RightStickMinInput",
+    display_commander::config::set_config_value("DisplayCommander.XInputWidget", "RightStickMinInput",
                               g_shared_state->right_stick_deadzone.load());
 
     // Save left stick max output setting
-    reshade::set_config_value(nullptr, "DisplayCommander.XInputWidget", "LeftStickMaxOutput",
+    display_commander::config::set_config_value("DisplayCommander.XInputWidget", "LeftStickMaxOutput",
                               g_shared_state->left_stick_min_output.load());
 
     // Save right stick max output setting
-    reshade::set_config_value(nullptr, "DisplayCommander.XInputWidget", "RightStickMaxOutput",
+    display_commander::config::set_config_value("DisplayCommander.XInputWidget", "RightStickMaxOutput",
                               g_shared_state->right_stick_min_output.load());
 }
 

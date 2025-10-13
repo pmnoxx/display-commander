@@ -1,6 +1,7 @@
 #include "settings_wrapper.hpp"
 #include "../../globals.hpp"
 #include "../../performance_types.hpp"
+#include "../../config/display_commander_config.hpp"
 
 #include <imgui.h>
 #include <reshade.hpp>
@@ -8,6 +9,7 @@
 
 #include "../../utils.hpp"
 #include <algorithm>
+#include <cctype>
 #include <cmath>
 
 
@@ -31,7 +33,7 @@ FloatSetting::FloatSetting(const std::string &key, float default_value, float mi
 
 void FloatSetting::Load() {
     float loaded_value;
-    if (reshade::get_config_value(nullptr, section_.c_str(), key_.c_str(), loaded_value)) {
+    if (display_commander::config::get_config_value(section_.c_str(), key_.c_str(), loaded_value)) {
         // If loaded value is invalid (NaN/Inf or out of range), fall back to default
         if (!std::isfinite(loaded_value) || loaded_value < min_ || loaded_value > max_) {
             const float safe_default = std::max(min_, std::min(max_, default_value_));
@@ -47,12 +49,13 @@ void FloatSetting::Load() {
     }
 }
 
-void FloatSetting::Save() { reshade::set_config_value(nullptr, section_.c_str(), key_.c_str(), value_.load()); }
+void FloatSetting::Save() { display_commander::config::set_config_value(section_.c_str(), key_.c_str(), value_.load()); }
 
 void FloatSetting::SetValue(float value) {
     const float clamped_value = std::max(min_, std::min(max_, value));
     value_.store(clamped_value);
     Save(); // Auto-save when value changes
+    display_commander::config::save_config(); // Write to disk
 }
 
 // IntSetting implementation
@@ -61,7 +64,7 @@ IntSetting::IntSetting(const std::string &key, int default_value, int min, int m
 
 void IntSetting::Load() {
     int loaded_value;
-    if (reshade::get_config_value(nullptr, section_.c_str(), key_.c_str(), loaded_value)) {
+    if (display_commander::config::get_config_value(section_.c_str(), key_.c_str(), loaded_value)) {
         // If loaded value is out of range, fall back to default
         if (loaded_value < min_ || loaded_value > max_) {
             const int safe_default = std::max(min_, std::min(max_, default_value_));
@@ -77,12 +80,13 @@ void IntSetting::Load() {
     }
 }
 
-void IntSetting::Save() { reshade::set_config_value(nullptr, section_.c_str(), key_.c_str(), value_.load()); }
+void IntSetting::Save() { display_commander::config::set_config_value(section_.c_str(), key_.c_str(), value_.load()); }
 
 void IntSetting::SetValue(int value) {
     const int clamped_value = std::max(min_, std::min(max_, value));
     value_.store(clamped_value);
     Save(); // Auto-save when value changes
+    display_commander::config::save_config(); // Write to disk
 }
 
 // BoolSetting implementation
@@ -91,7 +95,7 @@ BoolSetting::BoolSetting(const std::string &key, bool default_value, const std::
 
 void BoolSetting::Load() {
     int loaded_value;
-    if (reshade::get_config_value(nullptr, section_.c_str(), key_.c_str(), loaded_value)) {
+    if (display_commander::config::get_config_value(section_.c_str(), key_.c_str(), loaded_value)) {
         // Only accept strict 0/1, otherwise fall back to default
         if (loaded_value == 0 || loaded_value == 1) {
             value_.store(loaded_value != 0);
@@ -105,11 +109,12 @@ void BoolSetting::Load() {
     }
 }
 
-void BoolSetting::Save() { reshade::set_config_value(nullptr, section_.c_str(), key_.c_str(), value_.load() ? 1 : 0); }
+void BoolSetting::Save() { display_commander::config::set_config_value(section_.c_str(), key_.c_str(), value_.load() ? 1 : 0); }
 
 void BoolSetting::SetValue(bool value) {
     value_.store(value);
     Save(); // Auto-save when value changes
+    display_commander::config::save_config(); // Write to disk
 }
 
 // BoolSettingRef implementation
@@ -119,7 +124,7 @@ BoolSettingRef::BoolSettingRef(const std::string &key, std::atomic<bool> &extern
 
 void BoolSettingRef::Load() {
     int loaded_value;
-    if (reshade::get_config_value(nullptr, section_.c_str(), key_.c_str(), loaded_value)) {
+    if (display_commander::config::get_config_value(section_.c_str(), key_.c_str(), loaded_value)) {
         // Only accept strict 0/1, otherwise fall back to default
         if (loaded_value == 0 || loaded_value == 1) {
             external_ref_.get().store(loaded_value != 0);
@@ -134,12 +139,13 @@ void BoolSettingRef::Load() {
 }
 
 void BoolSettingRef::Save() {
-    reshade::set_config_value(nullptr, section_.c_str(), key_.c_str(), external_ref_.get().load() ? 1 : 0);
+    display_commander::config::set_config_value(section_.c_str(), key_.c_str(), external_ref_.get().load() ? 1 : 0);
 }
 
 void BoolSettingRef::SetValue(bool value) {
     external_ref_.get().store(value);
     Save(); // Auto-save when value changes
+    display_commander::config::save_config(); // Write to disk
 }
 
 // FloatSettingRef implementation
@@ -149,7 +155,7 @@ FloatSettingRef::FloatSettingRef(const std::string &key, std::atomic<float> &ext
 
 void FloatSettingRef::Load() {
     float loaded_value;
-    if (reshade::get_config_value(nullptr, section_.c_str(), key_.c_str(), loaded_value)) {
+    if (display_commander::config::get_config_value(section_.c_str(), key_.c_str(), loaded_value)) {
         // If loaded value is invalid (NaN/Inf or out of range), fall back to default
         if (!std::isfinite(loaded_value) || loaded_value < min_ || loaded_value > max_) {
             const float safe_default = std::max(min_, std::min(max_, default_value_));
@@ -166,13 +172,14 @@ void FloatSettingRef::Load() {
 }
 
 void FloatSettingRef::Save() {
-    reshade::set_config_value(nullptr, section_.c_str(), key_.c_str(), external_ref_.get().load());
+    display_commander::config::set_config_value(section_.c_str(), key_.c_str(), external_ref_.get().load());
 }
 
 void FloatSettingRef::SetValue(float value) {
     const float clamped_value = std::max(min_, std::min(max_, value));
     external_ref_.get().store(clamped_value);
     Save(); // Auto-save when value changes
+    display_commander::config::save_config(); // Write to disk
 }
 
 // IntSettingRef implementation
@@ -182,7 +189,7 @@ IntSettingRef::IntSettingRef(const std::string &key, std::atomic<int> &external_
 
 void IntSettingRef::Load() {
     int loaded_value;
-    if (reshade::get_config_value(nullptr, section_.c_str(), key_.c_str(), loaded_value)) {
+    if (display_commander::config::get_config_value(section_.c_str(), key_.c_str(), loaded_value)) {
         // If loaded value is out of range, fall back to default
         if (loaded_value < min_ || loaded_value > max_) {
             const int safe_default = std::max(min_, std::min(max_, default_value_));
@@ -199,13 +206,14 @@ void IntSettingRef::Load() {
 }
 
 void IntSettingRef::Save() {
-    reshade::set_config_value(nullptr, section_.c_str(), key_.c_str(), external_ref_.get().load());
+    display_commander::config::set_config_value(section_.c_str(), key_.c_str(), external_ref_.get().load());
 }
 
 void IntSettingRef::SetValue(int value) {
     const int clamped_value = std::max(min_, std::min(max_, value));
     external_ref_.get().store(clamped_value);
     Save(); // Auto-save when value changes
+    display_commander::config::save_config(); // Write to disk
 }
 
 // ComboSetting implementation
@@ -215,7 +223,7 @@ ComboSetting::ComboSetting(const std::string &key, int default_value, const std:
 
 void ComboSetting::Load() {
     int loaded_value;
-    if (reshade::get_config_value(nullptr, section_.c_str(), key_.c_str(), loaded_value)) {
+    if (display_commander::config::get_config_value(section_.c_str(), key_.c_str(), loaded_value)) {
         // If loaded index is out of range (e.g., labels changed), fall back to default
         const int max_index = static_cast<int>(labels_.size()) - 1;
         if (loaded_value < 0 || loaded_value > max_index) {
@@ -235,11 +243,12 @@ void ComboSetting::Load() {
     }
 }
 
-void ComboSetting::Save() { reshade::set_config_value(nullptr, section_.c_str(), key_.c_str(), value_); }
+void ComboSetting::Save() { display_commander::config::set_config_value(section_.c_str(), key_.c_str(), value_); }
 
 void ComboSetting::SetValue(int value) {
     value_ = std::max(0, std::min(static_cast<int>(labels_.size()) - 1, value));
     Save(); // Auto-save when value changes
+    display_commander::config::save_config(); // Write to disk
 }
 
 // ComboSettingRef implementation
@@ -249,7 +258,7 @@ ComboSettingRef::ComboSettingRef(const std::string &key, std::atomic<int> &exter
 
 void ComboSettingRef::Load() {
     int loaded_value;
-    if (reshade::get_config_value(nullptr, section_.c_str(), key_.c_str(), loaded_value)) {
+    if (display_commander::config::get_config_value(section_.c_str(), key_.c_str(), loaded_value)) {
         // If loaded index is out of range (e.g., labels changed), fall back to default
         const int max_index = static_cast<int>(labels_.size()) - 1;
         if (loaded_value < 0 || loaded_value > max_index) {
@@ -270,13 +279,14 @@ void ComboSettingRef::Load() {
 }
 
 void ComboSettingRef::Save() {
-    reshade::set_config_value(nullptr, section_.c_str(), key_.c_str(), external_ref_.get().load());
+    display_commander::config::set_config_value(section_.c_str(), key_.c_str(), external_ref_.get().load());
 }
 
 void ComboSettingRef::SetValue(int value) {
     int clamped_value = std::max(0, std::min(static_cast<int>(labels_.size()) - 1, value));
     external_ref_.get().store(clamped_value);
     Save(); // Auto-save when value changes
+    display_commander::config::save_config(); // Write to disk
 }
 
 // ComboSettingEnumRef implementation
@@ -288,7 +298,7 @@ ComboSettingEnumRef<EnumType>::ComboSettingEnumRef(const std::string &key, std::
 
 template <typename EnumType> void ComboSettingEnumRef<EnumType>::Load() {
     int loaded_value;
-    if (reshade::get_config_value(nullptr, section_.c_str(), key_.c_str(), loaded_value)) {
+    if (display_commander::config::get_config_value(section_.c_str(), key_.c_str(), loaded_value)) {
         // If loaded index is out of range (e.g., labels changed), fall back to default
         const int max_index = static_cast<int>(labels_.size()) - 1;
         if (loaded_value < 0 || loaded_value > max_index) {
@@ -309,13 +319,14 @@ template <typename EnumType> void ComboSettingEnumRef<EnumType>::Load() {
 }
 
 template <typename EnumType> void ComboSettingEnumRef<EnumType>::Save() {
-    reshade::set_config_value(nullptr, section_.c_str(), key_.c_str(), static_cast<int>(external_ref_.get().load()));
+    display_commander::config::set_config_value(section_.c_str(), key_.c_str(), static_cast<int>(external_ref_.get().load()));
 }
 
 template <typename EnumType> void ComboSettingEnumRef<EnumType>::SetValue(int value) {
     int clamped_value = std::max(0, std::min(static_cast<int>(labels_.size()) - 1, value));
     external_ref_.get().store(static_cast<EnumType>(clamped_value));
     Save(); // Auto-save when value changes
+    display_commander::config::save_config(); // Write to disk
 }
 
 // ResolutionPairSetting implementation
@@ -328,7 +339,7 @@ void ResolutionPairSetting::Load() {
     // Load width
     std::string width_key = key_ + "_width";
     int loaded_width;
-    if (reshade::get_config_value(nullptr, section_.c_str(), width_key.c_str(), loaded_width)) {
+    if (display_commander::config::get_config_value(section_.c_str(), width_key.c_str(), loaded_width)) {
         width_ = loaded_width;
     } else {
         width_ = default_width_;
@@ -337,7 +348,7 @@ void ResolutionPairSetting::Load() {
     // Load height
     std::string height_key = key_ + "_height";
     int loaded_height;
-    if (reshade::get_config_value(nullptr, section_.c_str(), height_key.c_str(), loaded_height)) {
+    if (display_commander::config::get_config_value(section_.c_str(), height_key.c_str(), loaded_height)) {
         height_ = loaded_height;
     } else {
         height_ = default_height_;
@@ -347,11 +358,11 @@ void ResolutionPairSetting::Load() {
 void ResolutionPairSetting::Save() {
     // Save width
     std::string width_key = key_ + "_width";
-    reshade::set_config_value(nullptr, section_.c_str(), width_key.c_str(), width_);
+    display_commander::config::set_config_value(section_.c_str(), width_key.c_str(), width_);
 
     // Save height
     std::string height_key = key_ + "_height";
-    reshade::set_config_value(nullptr, section_.c_str(), height_key.c_str(), height_);
+    display_commander::config::set_config_value(section_.c_str(), height_key.c_str(), height_);
 }
 
 void ResolutionPairSetting::SetResolution(int width, int height) {
@@ -377,7 +388,7 @@ void RefreshRatePairSetting::Load() {
     // Load numerator
     std::string num_key = key_ + "_num";
     int loaded_numerator;
-    if (reshade::get_config_value(nullptr, section_.c_str(), num_key.c_str(), loaded_numerator)) {
+    if (display_commander::config::get_config_value(section_.c_str(), num_key.c_str(), loaded_numerator)) {
         numerator_ = loaded_numerator;
     } else {
         numerator_ = default_numerator_;
@@ -386,7 +397,7 @@ void RefreshRatePairSetting::Load() {
     // Load denominator
     std::string denom_key = key_ + "_denum";
     int loaded_denominator;
-    if (reshade::get_config_value(nullptr, section_.c_str(), denom_key.c_str(), loaded_denominator)) {
+    if (display_commander::config::get_config_value(section_.c_str(), denom_key.c_str(), loaded_denominator)) {
         denominator_ = loaded_denominator;
     } else {
         denominator_ = default_denominator_;
@@ -396,11 +407,11 @@ void RefreshRatePairSetting::Load() {
 void RefreshRatePairSetting::Save() {
     // Save numerator
     std::string num_key = key_ + "_num";
-    reshade::set_config_value(nullptr, section_.c_str(), num_key.c_str(), numerator_);
+    display_commander::config::set_config_value(section_.c_str(), num_key.c_str(), numerator_);
 
     // Save denominator
     std::string denom_key = key_ + "_denum";
-    reshade::set_config_value(nullptr, section_.c_str(), denom_key.c_str(), denominator_);
+    display_commander::config::set_config_value(section_.c_str(), denom_key.c_str(), denominator_);
 }
 
 void RefreshRatePairSetting::SetRefreshRate(int numerator, int denominator) {
@@ -723,7 +734,7 @@ void FixedIntArraySetting::Load() {
         std::string element_key = key_ + "_" + std::to_string(i);
         int value = default_value_;
 
-        if (reshade::get_config_value(nullptr, section_.c_str(), element_key.c_str(), value)) {
+        if (display_commander::config::get_config_value(section_.c_str(), element_key.c_str(), value)) {
             // Clamp value to min/max range
             value = std::max(min_, std::min(max_, value));
             values_[i]->store(value);
@@ -745,7 +756,7 @@ void FixedIntArraySetting::Save() {
     for (size_t i = 0; i < array_size_; ++i) {
         std::string element_key = key_ + "_" + std::to_string(i);
         int value = values_[i]->load();
-        reshade::set_config_value(nullptr, section_.c_str(), element_key.c_str(), value);
+        display_commander::config::set_config_value(section_.c_str(), element_key.c_str(), value);
         LogInfo("FixedIntArraySetting::Save() - Saved %s[%zu] = %d to config", key_.c_str(), i, value);
     }
     is_dirty_ = false;
@@ -767,6 +778,7 @@ void FixedIntArraySetting::SetValue(size_t index, int value) {
     values_[index]->store(value);
     is_dirty_ = true;
     Save(); // Auto-save when value changes
+    display_commander::config::save_config(); // Write to disk
 }
 
 std::vector<int> FixedIntArraySetting::GetAllValues() const {
@@ -795,7 +807,7 @@ StringSetting::StringSetting(const std::string &key, const std::string &default_
 void StringSetting::Load() {
     char buffer[256] = {0};
     size_t buffer_size = sizeof(buffer);
-    if (reshade::get_config_value(nullptr, section_.c_str(), key_.c_str(), buffer, &buffer_size)) {
+    if (display_commander::config::get_config_value(section_.c_str(), key_.c_str(), buffer, &buffer_size)) {
         value_ = std::string(buffer);
     } else {
         // Use default value
@@ -806,7 +818,7 @@ void StringSetting::Load() {
 
 void StringSetting::Save() {
     if (is_dirty_) {
-        reshade::set_config_value(nullptr, section_.c_str(), key_.c_str(), value_.c_str());
+        display_commander::config::set_config_value(section_.c_str(), key_.c_str(), value_.c_str());
         is_dirty_ = false;
     }
 }
@@ -816,6 +828,7 @@ void StringSetting::SetValue(const std::string &value) {
         value_ = value;
         is_dirty_ = true;
         Save(); // Auto-save when value changes, consistent with other setting types
+        display_commander::config::save_config(); // Write to disk
     }
 }
 

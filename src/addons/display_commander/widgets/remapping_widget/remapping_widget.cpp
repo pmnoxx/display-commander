@@ -1,5 +1,6 @@
 #include "remapping_widget.hpp"
 #include "../../utils.hpp"
+#include "../../config/display_commander_config.hpp"
 
 #include <imgui.h>
 #include <reshade.hpp>
@@ -539,7 +540,7 @@ void RemappingWidget::LoadRemapToDialog(const input_remapping::ButtonRemap &rema
 void RemappingWidget::LoadSettings() {
     // Load selected controller
     int selected_controller;
-    if (reshade::get_config_value(nullptr, "DisplayCommander.RemappingWidget", "SelectedController",
+    if (display_commander::config::get_config_value("DisplayCommander.RemappingWidget", "SelectedController",
                                   selected_controller)) {
         selected_controller_ = selected_controller;
     }
@@ -549,7 +550,7 @@ void RemappingWidget::LoadSettings() {
 
 void RemappingWidget::SaveSettings() {
     // Save selected controller
-    reshade::set_config_value(nullptr, "DisplayCommander.RemappingWidget", "SelectedController", selected_controller_);
+    display_commander::config::set_config_value("DisplayCommander.RemappingWidget", "SelectedController", selected_controller_);
 
     LogInfo("RemappingWidget::SaveSettings() - Settings saved");
 }

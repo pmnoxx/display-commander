@@ -1,5 +1,6 @@
 #include "display_settings.hpp"
 #include "../utils.hpp"
+#include "../config/display_commander_config.hpp"
 
 #include <windows.h>
 
@@ -53,7 +54,7 @@ void DisplaySettings::LoadSettings() {
     // Load last device ID using string API
     char device_id_buffer[256] = {0};
     size_t device_id_size = sizeof(device_id_buffer);
-    if (reshade::get_config_value(nullptr, "DisplayCommander.DisplaySettings", "last_device_id", device_id_buffer,
+    if (display_commander::config::get_config_value("DisplayCommander.DisplaySettings", "last_device_id", device_id_buffer,
                                   &device_id_size)) {
         *last_device_id_ = std::string(device_id_buffer);
         LogInfo("DisplaySettings::LoadSettings() - Loaded last_device_id: %s", last_device_id_->c_str());
@@ -63,14 +64,14 @@ void DisplaySettings::LoadSettings() {
 
     // Load last resolution
     int loaded_width, loaded_height;
-    if (reshade::get_config_value(nullptr, "DisplayCommander.DisplaySettings", "last_width", loaded_width)) {
+    if (display_commander::config::get_config_value("DisplayCommander.DisplaySettings", "last_width", loaded_width)) {
         *last_width_ = loaded_width;
         LogInfo("DisplaySettings::LoadSettings() - Loaded last_width: %d", loaded_width);
     } else {
         LogInfo("DisplaySettings::LoadSettings() - last_width not found, using default: 0");
     }
 
-    if (reshade::get_config_value(nullptr, "DisplayCommander.DisplaySettings", "last_height", loaded_height)) {
+    if (display_commander::config::get_config_value("DisplayCommander.DisplaySettings", "last_height", loaded_height)) {
         *last_height_ = loaded_height;
         LogInfo("DisplaySettings::LoadSettings() - Loaded last_height: %d", loaded_height);
     } else {
@@ -79,7 +80,7 @@ void DisplaySettings::LoadSettings() {
 
     // Load last refresh rate
     uint32_t loaded_numerator, loaded_denominator;
-    if (reshade::get_config_value(nullptr, "DisplayCommander.DisplaySettings", "last_refresh_numerator",
+    if (display_commander::config::get_config_value("DisplayCommander.DisplaySettings", "last_refresh_numerator",
                                   loaded_numerator)) {
         *last_refresh_numerator_ = loaded_numerator;
         LogInfo("DisplaySettings::LoadSettings() - Loaded last_refresh_numerator: %u", loaded_numerator);
@@ -87,7 +88,7 @@ void DisplaySettings::LoadSettings() {
         LogInfo("DisplaySettings::LoadSettings() - last_refresh_numerator not found, using default: 0");
     }
 
-    if (reshade::get_config_value(nullptr, "DisplayCommander.DisplaySettings", "last_refresh_denominator",
+    if (display_commander::config::get_config_value("DisplayCommander.DisplaySettings", "last_refresh_denominator",
                                   loaded_denominator)) {
         *last_refresh_denominator_ = loaded_denominator;
         LogInfo("DisplaySettings::LoadSettings() - Loaded last_refresh_denominator: %u", loaded_denominator);
@@ -103,16 +104,16 @@ void DisplaySettings::SaveSettings() {
     LogInfo("DisplaySettings::SaveSettings() - Saving settings to ReShade");
 
     // Save last device ID using string API
-    reshade::set_config_value(nullptr, "DisplayCommander.DisplaySettings", "last_device_id", last_device_id_->c_str());
+    display_commander::config::set_config_value("DisplayCommander.DisplaySettings", "last_device_id", last_device_id_->c_str());
 
     // Save last resolution
-    reshade::set_config_value(nullptr, "DisplayCommander.DisplaySettings", "last_width", *last_width_);
-    reshade::set_config_value(nullptr, "DisplayCommander.DisplaySettings", "last_height", *last_height_);
+    display_commander::config::set_config_value("DisplayCommander.DisplaySettings", "last_width", *last_width_);
+    display_commander::config::set_config_value("DisplayCommander.DisplaySettings", "last_height", *last_height_);
 
     // Save last refresh rate
-    reshade::set_config_value(nullptr, "DisplayCommander.DisplaySettings", "last_refresh_numerator",
+    display_commander::config::set_config_value("DisplayCommander.DisplaySettings", "last_refresh_numerator",
                               *last_refresh_numerator_);
-    reshade::set_config_value(nullptr, "DisplayCommander.DisplaySettings", "last_refresh_denominator",
+    display_commander::config::set_config_value("DisplayCommander.DisplaySettings", "last_refresh_denominator",
                               *last_refresh_denominator_);
 
     LogInfo("DisplaySettings::SaveSettings() - Settings saved successfully");

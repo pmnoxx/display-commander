@@ -7,6 +7,7 @@
 #include "../utils.hpp"
 #include "utils/srwlock_wrapper.hpp"
 #include "../hooks/timeslowdown_hooks.hpp"
+#include "../config/display_commander_config.hpp"
 #include <reshade.hpp>
 
 namespace display_commander::input_remapping {
@@ -175,19 +176,19 @@ void InputRemapper::update_remap(WORD gamepad_button, int keyboard_vk, const std
 void InputRemapper::load_settings() {
     // Load remapping enabled state
     bool remapping_enabled;
-    if (reshade::get_config_value(nullptr, "DisplayCommander.InputRemapping", "Enabled", remapping_enabled)) {
+    if (display_commander::config::get_config_value("DisplayCommander.InputRemapping", "Enabled", remapping_enabled)) {
         _remapping_enabled.store(remapping_enabled);
     }
 
     // Load default input method
     int default_method;
-    if (reshade::get_config_value(nullptr, "DisplayCommander.InputRemapping", "DefaultMethod", default_method)) {
+    if (display_commander::config::get_config_value("DisplayCommander.InputRemapping", "DefaultMethod", default_method)) {
         _default_input_method = static_cast<KeyboardInputMethod>(default_method);
     }
 
     // Load remappings count
     int remapping_count;
-    if (reshade::get_config_value(nullptr, "DisplayCommander.InputRemapping", "Count", remapping_count)) {
+    if (display_commander::config::get_config_value("DisplayCommander.InputRemapping", "Count", remapping_count)) {
         // Load each remapping
         for (int i = 0; i < remapping_count; ++i) {
             std::string key_prefix = "Remapping" + std::to_string(i) + ".";
@@ -197,17 +198,17 @@ void InputRemapper::load_settings() {
             char keyboard_name[256] = {0};
             size_t keyboard_name_size = sizeof(keyboard_name);
 
-            if (reshade::get_config_value(nullptr, "DisplayCommander.InputRemapping",
+            if (display_commander::config::get_config_value("DisplayCommander.InputRemapping",
                                           (key_prefix + "GamepadButton").c_str(), gamepad_button) &&
-                reshade::get_config_value(nullptr, "DisplayCommander.InputRemapping",
+                display_commander::config::get_config_value("DisplayCommander.InputRemapping",
                                           (key_prefix + "KeyboardVk").c_str(), keyboard_vk) &&
-                reshade::get_config_value(nullptr, "DisplayCommander.InputRemapping",
+                display_commander::config::get_config_value("DisplayCommander.InputRemapping",
                                           (key_prefix + "InputMethod").c_str(), input_method) &&
-                reshade::get_config_value(nullptr, "DisplayCommander.InputRemapping", (key_prefix + "Enabled").c_str(),
+                display_commander::config::get_config_value("DisplayCommander.InputRemapping", (key_prefix + "Enabled").c_str(),
                                           enabled) &&
-                reshade::get_config_value(nullptr, "DisplayCommander.InputRemapping", (key_prefix + "HoldMode").c_str(),
+                display_commander::config::get_config_value("DisplayCommander.InputRemapping", (key_prefix + "HoldMode").c_str(),
                                           hold_mode) &&
-                reshade::get_config_value(nullptr, "DisplayCommander.InputRemapping",
+                display_commander::config::get_config_value("DisplayCommander.InputRemapping",
                                           (key_prefix + "KeyboardName").c_str(), keyboard_name, &keyboard_name_size)) {
 
                 ButtonRemap remap(static_cast<WORD>(gamepad_button), keyboard_vk, keyboard_name, enabled,
@@ -229,14 +230,14 @@ void InputRemapper::load_settings() {
 
 void InputRemapper::save_settings() {
     // Save remapping enabled state
-    reshade::set_config_value(nullptr, "DisplayCommander.InputRemapping", "Enabled", _remapping_enabled.load());
+    display_commander::config::set_config_value("DisplayCommander.InputRemapping", "Enabled", _remapping_enabled.load());
 
     // Save default input method
-    reshade::set_config_value(nullptr, "DisplayCommander.InputRemapping", "DefaultMethod",
+    display_commander::config::set_config_value("DisplayCommander.InputRemapping", "DefaultMethod",
                               static_cast<int>(_default_input_method));
 
     // Save remappings count
-    reshade::set_config_value(nullptr, "DisplayCommander.InputRemapping", "Count",
+    display_commander::config::set_config_value("DisplayCommander.InputRemapping", "Count",
                               static_cast<int>(_remappings.size()));
 
     // Save each remapping
@@ -244,17 +245,17 @@ void InputRemapper::save_settings() {
         const auto &remap = _remappings[i];
         std::string key_prefix = "Remapping" + std::to_string(i) + ".";
 
-        reshade::set_config_value(nullptr, "DisplayCommander.InputRemapping", (key_prefix + "GamepadButton").c_str(),
+        display_commander::config::set_config_value("DisplayCommander.InputRemapping", (key_prefix + "GamepadButton").c_str(),
                                   static_cast<int>(remap.gamepad_button));
-        reshade::set_config_value(nullptr, "DisplayCommander.InputRemapping", (key_prefix + "KeyboardVk").c_str(),
+        display_commander::config::set_config_value("DisplayCommander.InputRemapping", (key_prefix + "KeyboardVk").c_str(),
                                   remap.keyboard_vk);
-        reshade::set_config_value(nullptr, "DisplayCommander.InputRemapping", (key_prefix + "InputMethod").c_str(),
+        display_commander::config::set_config_value("DisplayCommander.InputRemapping", (key_prefix + "InputMethod").c_str(),
                                   static_cast<int>(remap.input_method));
-        reshade::set_config_value(nullptr, "DisplayCommander.InputRemapping", (key_prefix + "Enabled").c_str(),
+        display_commander::config::set_config_value("DisplayCommander.InputRemapping", (key_prefix + "Enabled").c_str(),
                                   remap.enabled);
-        reshade::set_config_value(nullptr, "DisplayCommander.InputRemapping", (key_prefix + "HoldMode").c_str(),
+        display_commander::config::set_config_value("DisplayCommander.InputRemapping", (key_prefix + "HoldMode").c_str(),
                                   remap.hold_mode);
-        reshade::set_config_value(nullptr, "DisplayCommander.InputRemapping", (key_prefix + "KeyboardName").c_str(),
+        display_commander::config::set_config_value("DisplayCommander.InputRemapping", (key_prefix + "KeyboardName").c_str(),
                                   remap.keyboard_name.c_str());
     }
 

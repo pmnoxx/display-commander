@@ -1,4 +1,5 @@
 #include "addon.hpp"
+#include "config/display_commander_config.hpp"
 #include "display_restore.hpp"
 #include "dx11_proxy/dx11_proxy_manager.hpp"
 #include "exit_handler.hpp"
@@ -23,6 +24,7 @@
 #include <wrl/client.h>
 #include <d3d11.h>
 #include <psapi.h>
+#include <chrono>
 
 // Forward declarations for ReShade event handlers
 void OnInitEffectRuntime(reshade::api::effect_runtime *runtime);
@@ -92,6 +94,14 @@ void OnRegisterOverlayDisplayCommander(reshade::api::effect_runtime *runtime) {
     autoclick::UpdateLastUIDrawTime();
 
     ui::new_ui::NewUISystem::GetInstance().Draw();
+
+    // Periodically save config to ensure settings are persisted
+    static auto last_save_time = std::chrono::steady_clock::now();
+    auto now = std::chrono::steady_clock::now();
+    if (std::chrono::duration_cast<std::chrono::seconds>(now - last_save_time).count() >= 5) {
+        display_commander::config::save_config();
+        last_save_time = now;
+    }
 }
 } // namespace
 
@@ -532,6 +542,10 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
 
         // Registration successful - log version compatibility
         LogInfo("Display Commander v%s - ReShade addon registration successful (API version 17 supported)", DISPLAY_COMMANDER_VERSION_STRING);
+
+        // Initialize DisplayCommander config system
+        display_commander::config::DisplayCommanderConfigManager::GetInstance().Initialize();
+        LogInfo("DisplayCommander config system initialized");
 
         // Store module handle for pinning
         g_hmodule = h_module;

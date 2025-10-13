@@ -3,6 +3,7 @@
 #include "../../settings/main_tab_settings.hpp"
 #include "../../swapchain_events_power_saving.hpp"
 #include "../../utils.hpp"
+#include "../../config/display_commander_config.hpp"
 
 #include <array>
 #include <algorithm>
@@ -50,23 +51,23 @@ void InitSwapchainTab() {
     int32_t max_cll = 1000;
     int32_t max_fall = 100;
 
-    // Read HDR metadata settings from ReShade config
-    reshade::get_config_value(nullptr, "ReShade_HDR_Metadata", "prim_red_x", prim_red_x);
-    reshade::get_config_value(nullptr, "ReShade_HDR_Metadata", "prim_red_y", prim_red_y);
-    reshade::get_config_value(nullptr, "ReShade_HDR_Metadata", "prim_green_x", prim_green_x);
-    reshade::get_config_value(nullptr, "ReShade_HDR_Metadata", "prim_green_y", prim_green_y);
-    reshade::get_config_value(nullptr, "ReShade_HDR_Metadata", "prim_blue_x", prim_blue_x);
-    reshade::get_config_value(nullptr, "ReShade_HDR_Metadata", "prim_blue_y", prim_blue_y);
-    reshade::get_config_value(nullptr, "ReShade_HDR_Metadata", "white_point_x", white_point_x);
-    reshade::get_config_value(nullptr, "ReShade_HDR_Metadata", "white_point_y", white_point_y);
-    reshade::get_config_value(nullptr, "ReShade_HDR_Metadata", "max_mdl", max_mdl);
-    reshade::get_config_value(nullptr, "ReShade_HDR_Metadata", "min_mdl", min_mdl);
-    reshade::get_config_value(nullptr, "ReShade_HDR_Metadata", "max_cll", max_cll);
-    reshade::get_config_value(nullptr, "ReShade_HDR_Metadata", "max_fall", max_fall);
+    // Read HDR metadata settings from DisplayCommander config
+    display_commander::config::get_config_value("ReShade_HDR_Metadata", "prim_red_x", prim_red_x);
+    display_commander::config::get_config_value("ReShade_HDR_Metadata", "prim_red_y", prim_red_y);
+    display_commander::config::get_config_value("ReShade_HDR_Metadata", "prim_green_x", prim_green_x);
+    display_commander::config::get_config_value("ReShade_HDR_Metadata", "prim_green_y", prim_green_y);
+    display_commander::config::get_config_value("ReShade_HDR_Metadata", "prim_blue_x", prim_blue_x);
+    display_commander::config::get_config_value("ReShade_HDR_Metadata", "prim_blue_y", prim_blue_y);
+    display_commander::config::get_config_value("ReShade_HDR_Metadata", "white_point_x", white_point_x);
+    display_commander::config::get_config_value("ReShade_HDR_Metadata", "white_point_y", white_point_y);
+    display_commander::config::get_config_value("ReShade_HDR_Metadata", "max_mdl", max_mdl);
+    display_commander::config::get_config_value("ReShade_HDR_Metadata", "min_mdl", min_mdl);
+    display_commander::config::get_config_value("ReShade_HDR_Metadata", "max_cll", max_cll);
+    display_commander::config::get_config_value("ReShade_HDR_Metadata", "max_fall", max_fall);
 
     // Read has_last_metadata flag from config
-    reshade::get_config_value(nullptr, "ReShade_HDR_Metadata", "has_last_metadata", has_last_metadata);
-    reshade::get_config_value(nullptr, "ReShade_HDR_Metadata", "auto_apply_hdr_metadata", auto_apply_hdr_metadata);
+    display_commander::config::get_config_value("ReShade_HDR_Metadata", "has_last_metadata", has_last_metadata);
+    display_commander::config::get_config_value("ReShade_HDR_Metadata", "auto_apply_hdr_metadata", auto_apply_hdr_metadata);
 
     // Initialize HDR metadata with loaded values
     last_hdr_metadata.RedPrimary[0] = static_cast<UINT16>(prim_red_x * 65535);
@@ -910,7 +911,7 @@ void DrawSwapchainInfo() {
             // Auto-apply HDR metadata checkbox
             if (ImGui::Checkbox("Auto-apply HDR metadata", &auto_apply_hdr_metadata)) {
                 // Save the setting to config when changed
-                reshade::set_config_value(nullptr, "ReShade_HDR_Metadata", "auto_apply_hdr_metadata", auto_apply_hdr_metadata);
+                display_commander::config::set_config_value("ReShade_HDR_Metadata", "auto_apply_hdr_metadata", auto_apply_hdr_metadata);
             }
             ImGui::SameLine();
             ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "?");
@@ -944,20 +945,20 @@ void DrawSwapchainInfo() {
                     has_last_metadata = true;
                     last_metadata_source = "Set HDR Metadata (Rec. 2020 defaults)";
 
-                    // Save HDR metadata to ReShade config
-                    reshade::set_config_value(nullptr, "ReShade_HDR_Metadata", "prim_red_x", 0.708);
-                    reshade::set_config_value(nullptr, "ReShade_HDR_Metadata", "prim_red_y", 0.292);
-                    reshade::set_config_value(nullptr, "ReShade_HDR_Metadata", "prim_green_x", 0.170);
-                    reshade::set_config_value(nullptr, "ReShade_HDR_Metadata", "prim_green_y", 0.797);
-                    reshade::set_config_value(nullptr, "ReShade_HDR_Metadata", "prim_blue_x", 0.131);
-                    reshade::set_config_value(nullptr, "ReShade_HDR_Metadata", "prim_blue_y", 0.046);
-                    reshade::set_config_value(nullptr, "ReShade_HDR_Metadata", "white_point_x", 0.3127);
-                    reshade::set_config_value(nullptr, "ReShade_HDR_Metadata", "white_point_y", 0.3290);
-                    reshade::set_config_value(nullptr, "ReShade_HDR_Metadata", "max_mdl", 1000);
-                    reshade::set_config_value(nullptr, "ReShade_HDR_Metadata", "min_mdl", 0.0f);
-                    reshade::set_config_value(nullptr, "ReShade_HDR_Metadata", "max_cll", 1000);
-                    reshade::set_config_value(nullptr, "ReShade_HDR_Metadata", "max_fall", 100);
-                    reshade::set_config_value(nullptr, "ReShade_HDR_Metadata", "has_last_metadata", true);
+                    // Save HDR metadata to DisplayCommander config
+                    display_commander::config::set_config_value("ReShade_HDR_Metadata", "prim_red_x", 0.708);
+                    display_commander::config::set_config_value("ReShade_HDR_Metadata", "prim_red_y", 0.292);
+                    display_commander::config::set_config_value("ReShade_HDR_Metadata", "prim_green_x", 0.170);
+                    display_commander::config::set_config_value("ReShade_HDR_Metadata", "prim_green_y", 0.797);
+                    display_commander::config::set_config_value("ReShade_HDR_Metadata", "prim_blue_x", 0.131);
+                    display_commander::config::set_config_value("ReShade_HDR_Metadata", "prim_blue_y", 0.046);
+                    display_commander::config::set_config_value("ReShade_HDR_Metadata", "white_point_x", 0.3127);
+                    display_commander::config::set_config_value("ReShade_HDR_Metadata", "white_point_y", 0.3290);
+                    display_commander::config::set_config_value("ReShade_HDR_Metadata", "max_mdl", 1000);
+                    display_commander::config::set_config_value("ReShade_HDR_Metadata", "min_mdl", 0.0f);
+                    display_commander::config::set_config_value("ReShade_HDR_Metadata", "max_cll", 1000);
+                    display_commander::config::set_config_value("ReShade_HDR_Metadata", "max_fall", 100);
+                    display_commander::config::set_config_value("ReShade_HDR_Metadata", "has_last_metadata", true);
 
                     ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✓ HDR metadata set to Rec. 2020 defaults and saved to config");
                 } else {
@@ -983,7 +984,7 @@ void DrawSwapchainInfo() {
                 if (SUCCEEDED(hr)) {
                     // Clear the stored metadata since it's disabled
                     has_last_metadata = false;
-                    reshade::set_config_value(nullptr, "ReShade_HDR_Metadata", "has_last_metadata", false);
+                    display_commander::config::set_config_value("ReShade_HDR_Metadata", "has_last_metadata", false);
                     last_metadata_source = "Disabled";
                     ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✓ HDR metadata disabled");
                 } else {
@@ -1091,20 +1092,20 @@ void DrawSwapchainInfo() {
                     has_last_metadata = true;
                     last_metadata_source = "Custom HDR Values";
 
-                    // Save HDR metadata to ReShade config
-                    reshade::set_config_value(nullptr, "ReShade_HDR_Metadata", "prim_red_x", hdr10_metadata.RedPrimary[0] / 65535.0);
-                    reshade::set_config_value(nullptr, "ReShade_HDR_Metadata", "prim_red_y", hdr10_metadata.RedPrimary[1] / 65535.0);
-                    reshade::set_config_value(nullptr, "ReShade_HDR_Metadata", "prim_green_x", hdr10_metadata.GreenPrimary[0] / 65535.0);
-                    reshade::set_config_value(nullptr, "ReShade_HDR_Metadata", "prim_green_y", hdr10_metadata.GreenPrimary[1] / 65535.0);
-                    reshade::set_config_value(nullptr, "ReShade_HDR_Metadata", "prim_blue_x", hdr10_metadata.BluePrimary[0] / 65535.0);
-                    reshade::set_config_value(nullptr, "ReShade_HDR_Metadata", "prim_blue_y", hdr10_metadata.BluePrimary[1] / 65535.0);
-                    reshade::set_config_value(nullptr, "ReShade_HDR_Metadata", "white_point_x", hdr10_metadata.WhitePoint[0] / 65535.0);
-                    reshade::set_config_value(nullptr, "ReShade_HDR_Metadata", "white_point_y", hdr10_metadata.WhitePoint[1] / 65535.0);
-                    reshade::set_config_value(nullptr, "ReShade_HDR_Metadata", "max_mdl", static_cast<int32_t>(hdr10_metadata.MaxMasteringLuminance));
-                    reshade::set_config_value(nullptr, "ReShade_HDR_Metadata", "min_mdl", hdr10_metadata.MinMasteringLuminance / 10000.0f);
-                    reshade::set_config_value(nullptr, "ReShade_HDR_Metadata", "max_cll", static_cast<int32_t>(hdr10_metadata.MaxContentLightLevel));
-                    reshade::set_config_value(nullptr, "ReShade_HDR_Metadata", "max_fall", static_cast<int32_t>(hdr10_metadata.MaxFrameAverageLightLevel));
-                    reshade::set_config_value(nullptr, "ReShade_HDR_Metadata", "has_last_metadata", true);
+                    // Save HDR metadata to DisplayCommander config
+                    display_commander::config::set_config_value("ReShade_HDR_Metadata", "prim_red_x", hdr10_metadata.RedPrimary[0] / 65535.0);
+                    display_commander::config::set_config_value("ReShade_HDR_Metadata", "prim_red_y", hdr10_metadata.RedPrimary[1] / 65535.0);
+                    display_commander::config::set_config_value("ReShade_HDR_Metadata", "prim_green_x", hdr10_metadata.GreenPrimary[0] / 65535.0);
+                    display_commander::config::set_config_value("ReShade_HDR_Metadata", "prim_green_y", hdr10_metadata.GreenPrimary[1] / 65535.0);
+                    display_commander::config::set_config_value("ReShade_HDR_Metadata", "prim_blue_x", hdr10_metadata.BluePrimary[0] / 65535.0);
+                    display_commander::config::set_config_value("ReShade_HDR_Metadata", "prim_blue_y", hdr10_metadata.BluePrimary[1] / 65535.0);
+                    display_commander::config::set_config_value("ReShade_HDR_Metadata", "white_point_x", hdr10_metadata.WhitePoint[0] / 65535.0);
+                    display_commander::config::set_config_value("ReShade_HDR_Metadata", "white_point_y", hdr10_metadata.WhitePoint[1] / 65535.0);
+                    display_commander::config::set_config_value("ReShade_HDR_Metadata", "max_mdl", static_cast<int32_t>(hdr10_metadata.MaxMasteringLuminance));
+                    display_commander::config::set_config_value("ReShade_HDR_Metadata", "min_mdl", hdr10_metadata.MinMasteringLuminance / 10000.0f);
+                    display_commander::config::set_config_value("ReShade_HDR_Metadata", "max_cll", static_cast<int32_t>(hdr10_metadata.MaxContentLightLevel));
+                    display_commander::config::set_config_value("ReShade_HDR_Metadata", "max_fall", static_cast<int32_t>(hdr10_metadata.MaxFrameAverageLightLevel));
+                    display_commander::config::set_config_value("ReShade_HDR_Metadata", "has_last_metadata", true);
 
                     ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✓ All HDR values applied and saved to config");
                 } else {

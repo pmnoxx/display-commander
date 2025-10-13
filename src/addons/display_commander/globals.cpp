@@ -55,6 +55,9 @@ std::atomic<bool> s_enable_timeslowdown_shortcut{true};
 std::atomic<bool> s_enable_adhd_toggle_shortcut{true};
 std::atomic<bool> s_enable_autoclick_shortcut{false};
 
+// Auto-click enabled state (atomic, not loaded from config)
+std::atomic<bool> g_auto_click_enabled{false};
+
 // Performance: background FPS cap
 
 // VSync and tearing controls

@@ -283,6 +283,7 @@ void HandleKeyboardShortcuts() {
           // Use our keyboard tracker instead of ReShade runtime
           if (display_commanderhooks::keyboard_tracker::IsKeyPressed('P') &&
               display_commanderhooks::keyboard_tracker::IsKeyDown(VK_CONTROL)) {
+              LogInfo("Ctrl+P shortcut detected - toggling auto-click");
               // Toggle auto-click sequences
               autoclick::ToggleAutoClickEnabled();
           }

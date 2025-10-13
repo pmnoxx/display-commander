@@ -1,6 +1,7 @@
 #include "exit_handler.hpp"
 #include "display_restore.hpp"
 #include "utils.hpp"
+#include "utils/display_commander_logger.hpp"
 #include <atomic>
 #include <fstream>
 #include <iomanip>
@@ -12,33 +13,11 @@ namespace exit_handler {
 // Atomic flag to prevent multiple exit calls
 static std::atomic<bool> g_exit_handled{false};
 
-// Helper function to write directly to debug.log and flush
+// Helper function to write to DisplayCommander.log using the logger system
 void WriteToDebugLog(const std::string &message) {
     try {
-        // Get the current time
-        SYSTEMTIME time;
-        GetLocalTime(&time);
-
-        // Format timestamp
-        std::ostringstream timestamp;
-        timestamp << std::setfill('0') << std::setw(2) << time.wHour << ":" << std::setw(2) << time.wMinute << ":"
-                  << std::setw(2) << time.wSecond << ":" << std::setw(3) << time.wMilliseconds;
-
-        // Format the complete log line
-        std::ostringstream log_line;
-        log_line << timestamp.str() << " [" << std::setw(5) << GetCurrentThreadId() << "] | INFO  | " << message
-                 << "\r\n";
-
-        // Write directly to debug.log file
-        std::ofstream log_file("debug.log", std::ios::app);
-        if (log_file.is_open()) {
-            log_file << log_line.str();
-            log_file.flush(); // Force flush to ensure data is written
-            log_file.close();
-        }
-
-        // Also output to debug console
-        OutputDebugStringA(log_line.str().c_str());
+        // Use the DisplayCommander logger system
+        display_commander::logger::LogInfo(message.c_str());
     } catch (...) {
         // Ignore any errors during logging to prevent crashes
     }
@@ -51,7 +30,7 @@ void OnHandleExit(ExitSource source, const std::string &message) {
     std::ostringstream exit_message;
     exit_message << "[Exit Handler] Detected exit from " << GetExitSourceString(source) << ": " << message;
 
-    // Write directly to debug.log and flush
+    // Write to DisplayCommander.log using the logger system
     WriteToDebugLog(exit_message.str());
 
     if (!g_exit_handled.compare_exchange_strong(expected, true)) {

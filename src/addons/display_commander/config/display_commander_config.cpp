@@ -1,5 +1,6 @@
 #include "display_commander_config.hpp"
 #include "../utils.hpp"
+#include "../utils/display_commander_logger.hpp"
 #include <fstream>
 #include <sstream>
 #include <filesystem>
@@ -173,6 +174,14 @@ void DisplayCommanderConfigManager::Initialize() {
 
     config_path_ = GetConfigFilePath();
     config_file_ = std::make_unique<IniFile>();
+
+    // Initialize logger with DisplayCommander.log in the same directory as config
+    std::filesystem::path config_dir = std::filesystem::path(config_path_).parent_path();
+    std::string log_path = (config_dir / "DisplayCommander.log").string();
+    display_commander::logger::Initialize(log_path);
+
+    // Test the logger
+    display_commander::logger::LogInfo("DisplayCommander config system initializing - logger test successful");
 
     EnsureConfigFileExists();
 

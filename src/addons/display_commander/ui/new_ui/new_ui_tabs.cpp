@@ -227,7 +227,7 @@ void InitializeNewUI() {
 
 
     // Add experimental tab conditionally based on advanced settings
-    g_tab_manager.AddTab("DisplayCommander.Experimental", "DisplayCommander.Experimental", []() {
+    g_tab_manager.AddTab("Experimental", "experimental", []() {
         try {
             ui::new_ui::DrawExperimentalTab();
         } catch (const std::exception &e) {

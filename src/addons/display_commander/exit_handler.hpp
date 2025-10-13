@@ -27,7 +27,7 @@ void OnHandleExit(ExitSource source, const std::string &message);
 // Helper function to get string representation of exit source
 const char *GetExitSourceString(ExitSource source);
 
-// Helper function to write directly to debug.log (for use by other modules)
+// Helper function to write to DisplayCommander.log (for use by other modules)
 void WriteToDebugLog(const std::string &message);
 
 } // namespace exit_handler

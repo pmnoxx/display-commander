@@ -76,7 +76,6 @@ ExperimentalTabSettings::ExperimentalTabSettings()
     , disable_flip_chain_enabled("DisableFlipChainEnabled", false, "Experimental")
     , enable_flip_chain_enabled("EnableFlipChainEnabled", false, "Experimental")
     , suppress_dinput_hooks("SuppressDInputHooks", false, "Experimental")
-    , suppress_hid_devices("SuppressHidDevices", false, "Experimental")
 {
     // Initialize the all_settings_ vector
     all_settings_ = {
@@ -98,7 +97,6 @@ ExperimentalTabSettings::ExperimentalTabSettings()
         &disable_flip_chain_enabled,
         &enable_flip_chain_enabled,
         &suppress_dinput_hooks,
-        &suppress_hid_devices
     };
 }
 

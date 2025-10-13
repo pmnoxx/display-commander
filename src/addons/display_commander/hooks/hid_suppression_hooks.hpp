@@ -16,8 +16,11 @@ extern HidD_GetInputReport_pfn HidD_GetInputReport_Original;
 extern HidD_GetAttributes_pfn HidD_GetAttributes_Original;
 
 // Hooked HID functions
+BOOL WINAPI ReadFile_Direct(HANDLE hFile, LPVOID lpBuffer, DWORD nNumberOfBytesToRead, LPDWORD lpNumberOfBytesRead, LPOVERLAPPED lpOverlapped);
 BOOL WINAPI ReadFile_Detour(HANDLE hFile, LPVOID lpBuffer, DWORD nNumberOfBytesToRead, LPDWORD lpNumberOfBytesRead, LPOVERLAPPED lpOverlapped);
+BOOLEAN __stdcall HidD_GetInputReport_Direct(HANDLE HidDeviceObject, PVOID ReportBuffer, ULONG ReportBufferLength);
 BOOLEAN __stdcall HidD_GetInputReport_Detour(HANDLE HidDeviceObject, PVOID ReportBuffer, ULONG ReportBufferLength);
+BOOLEAN __stdcall HidD_GetAttributes_Direct(HANDLE HidDeviceObject, PHIDD_ATTRIBUTES Attributes);
 BOOLEAN __stdcall HidD_GetAttributes_Detour(HANDLE HidDeviceObject, PHIDD_ATTRIBUTES Attributes);
 
 // Hook management

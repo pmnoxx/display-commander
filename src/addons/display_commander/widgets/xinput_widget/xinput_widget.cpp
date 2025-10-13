@@ -137,6 +137,16 @@ void XInputWidget::DrawSettings() {
             ImGui::SetTooltip("Swap the A and B button mappings");
         }
 
+        // DualSense to XInput conversion
+        bool dualsense_xinput = g_shared_state->enable_dualsense_xinput.load();
+        if (ImGui::Checkbox("DualSense to XInput", &dualsense_xinput)) {
+            g_shared_state->enable_dualsense_xinput.store(dualsense_xinput);
+            SaveSettings();
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Convert DualSense controller input to XInput format (requires Special-K)");
+        }
+
         // Left stick deadzone setting
         float left_deadzone = g_shared_state->left_stick_deadzone.load();
         if (ImGui::SliderFloat("Left Stick Dead Zone (Min Input)", &left_deadzone, 0.0f, 50.0f, "%.0f%%")) {
@@ -831,6 +841,12 @@ void XInputWidget::LoadSettings() {
         g_shared_state->swap_a_b_buttons.store(swap_buttons);
     }
 
+    // Load DualSense to XInput conversion setting
+    bool dualsense_xinput;
+    if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "EnableDualSenseXInput", dualsense_xinput)) {
+        g_shared_state->enable_dualsense_xinput.store(dualsense_xinput);
+    }
+
     // Load left stick sensitivity setting
     float left_max_input;
     if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "LeftStickSensitivity", left_max_input)) {
@@ -876,6 +892,10 @@ void XInputWidget::SaveSettings() {
     // Save swap A/B buttons setting
     display_commander::config::set_config_value("DisplayCommander.XInputWidget", "SwapABButtons",
                               g_shared_state->swap_a_b_buttons.load());
+
+    // Save DualSense to XInput conversion setting
+    display_commander::config::set_config_value("DisplayCommander.XInputWidget", "EnableDualSenseXInput",
+                              g_shared_state->enable_dualsense_xinput.load());
 
     // Save left stick sensitivity setting
     display_commander::config::set_config_value("DisplayCommander.XInputWidget", "LeftStickSensitivity",

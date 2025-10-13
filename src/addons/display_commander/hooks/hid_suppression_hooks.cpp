@@ -41,6 +41,14 @@ bool IsHIDSuppressionEnabled() {
     return settings::g_experimentalTabSettings.hid_suppression_enabled.GetValue();
 }
 
+BOOL WINAPI ReadFile_Direct(HANDLE hFile, LPVOID lpBuffer, DWORD nNumberOfBytesToRead, LPDWORD lpNumberOfBytesRead, LPOVERLAPPED lpOverlapped) {
+    // Call original function
+    return ReadFile_Original ?
+        ReadFile_Original(hFile, lpBuffer, nNumberOfBytesToRead, lpNumberOfBytesRead, lpOverlapped) :
+        ReadFile(hFile, lpBuffer, nNumberOfBytesToRead, lpNumberOfBytesRead, lpOverlapped);
+}
+
+
 // Hooked ReadFile function - suppresses HID input reading for games
 BOOL WINAPI ReadFile_Detour(HANDLE hFile, LPVOID lpBuffer, DWORD nNumberOfBytesToRead, LPDWORD lpNumberOfBytesRead, LPOVERLAPPED lpOverlapped) {
     // Check if HID suppression is enabled and ReadFile blocking is enabled
@@ -68,6 +76,14 @@ BOOL WINAPI ReadFile_Detour(HANDLE hFile, LPVOID lpBuffer, DWORD nNumberOfBytesT
         ReadFile(hFile, lpBuffer, nNumberOfBytesToRead, lpNumberOfBytesRead, lpOverlapped);
 }
 
+
+BOOLEAN __stdcall HidD_GetInputReport_Direct(HANDLE HidDeviceObject, PVOID ReportBuffer, ULONG ReportBufferLength) {
+    return HidD_GetInputReport_Original ?
+        HidD_GetInputReport_Original(HidDeviceObject, ReportBuffer, ReportBufferLength) :
+        HidD_GetInputReport(HidDeviceObject, ReportBuffer, ReportBufferLength);
+}
+
+
 // Hooked HidD_GetInputReport function - suppresses HID input report reading
 BOOLEAN __stdcall HidD_GetInputReport_Detour(HANDLE HidDeviceObject, PVOID ReportBuffer, ULONG ReportBufferLength) {
     // Check if HID suppression is enabled and GetInputReport blocking is enabled
@@ -85,6 +101,13 @@ BOOLEAN __stdcall HidD_GetInputReport_Detour(HANDLE HidDeviceObject, PVOID Repor
         HidD_GetInputReport_Original(HidDeviceObject, ReportBuffer, ReportBufferLength) :
         HidD_GetInputReport(HidDeviceObject, ReportBuffer, ReportBufferLength);
 }
+
+BOOLEAN __stdcall HidD_GetAttributes_Direct(HANDLE HidDeviceObject, PHIDD_ATTRIBUTES Attributes) {
+    return HidD_GetAttributes_Original ?
+        HidD_GetAttributes_Original(HidDeviceObject, Attributes) :
+        HidD_GetAttributes(HidDeviceObject, Attributes);
+}
+
 
 // Hooked HidD_GetAttributes function - returns error when detecting DualSense
 BOOLEAN __stdcall HidD_GetAttributes_Detour(HANDLE HidDeviceObject, PHIDD_ATTRIBUTES Attributes) {

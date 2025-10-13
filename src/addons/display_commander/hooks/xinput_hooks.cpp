@@ -1,4 +1,5 @@
 #include "xinput_hooks.hpp"
+#include "dualsense_hooks.hpp"
 #include "../input_remapping/input_remapping.hpp"
 #include "../utils.hpp"
 #include "../widgets/xinput_widget/xinput_widget.hpp"
@@ -91,8 +92,23 @@ DWORD WINAPI XInputGetState_Detour(DWORD dwUserIndex, XINPUT_STATE *pState) {
     static bool tried_get_state_ex = false;
     static bool use_get_state_ex = false;
 
-    // Call original function - prefer XInputGetStateEx_Original for Guide button support
-    DWORD result = use_get_state_ex ? XInputGetStateEx_Direct(dwUserIndex, pState) : XInputGetState_Direct(dwUserIndex, pState);
+    // Check if DualSense to XInput conversion is enabled
+    auto shared_state = display_commander::widgets::xinput_widget::XInputWidget::GetSharedState();
+    bool dualsense_enabled = shared_state && shared_state->enable_dualsense_xinput.load();
+
+    DWORD result = ERROR_DEVICE_NOT_CONNECTED;
+
+    // Try DualSense conversion first if enabled
+    if (dualsense_enabled && display_commander::hooks::IsDualSenseAvailable()) {
+        if (display_commander::hooks::ConvertDualSenseToXInput(dwUserIndex, pState)) {
+            result = ERROR_SUCCESS;
+        }
+    }
+
+    // Fall back to original XInput if DualSense conversion failed or is disabled
+    if (result != ERROR_SUCCESS) {
+        result = use_get_state_ex ? XInputGetStateEx_Direct(dwUserIndex, pState) : XInputGetState_Direct(dwUserIndex, pState);
+    }
 
     // Apply A/B button swapping if enabled
     if (result == ERROR_SUCCESS) {
@@ -192,8 +208,23 @@ DWORD WINAPI XInputGetStateEx_Detour(DWORD dwUserIndex, XINPUT_STATE *pState) {
     // Track hook call statistics
     g_hook_stats[HOOK_XInputGetStateEx].increment_total();
 
-    // Call original function - always use XInputGetStateEx_Original if available
-    DWORD result = XInputGetStateEx_Direct != nullptr ? XInputGetStateEx_Direct(dwUserIndex, pState) : ERROR_DEVICE_NOT_CONNECTED;
+    // Check if DualSense to XInput conversion is enabled
+    auto shared_state = display_commander::widgets::xinput_widget::XInputWidget::GetSharedState();
+    bool dualsense_enabled = shared_state && shared_state->enable_dualsense_xinput.load();
+
+    DWORD result = ERROR_DEVICE_NOT_CONNECTED;
+
+    // Try DualSense conversion first if enabled
+    if (dualsense_enabled && display_commander::hooks::IsDualSenseAvailable()) {
+        if (display_commander::hooks::ConvertDualSenseToXInput(dwUserIndex, pState)) {
+            result = ERROR_SUCCESS;
+        }
+    }
+
+    // Fall back to original XInput if DualSense conversion failed or is disabled
+    if (result != ERROR_SUCCESS) {
+        result = XInputGetStateEx_Direct != nullptr ? XInputGetStateEx_Direct(dwUserIndex, pState) : ERROR_DEVICE_NOT_CONNECTED;
+    }
 
     // Apply A/B button swapping if enabled
     if (result == ERROR_SUCCESS) {
@@ -286,6 +317,11 @@ bool InstallXInputHooks() {
     if (shared_state && !shared_state->enable_xinput_hooks.load()) {
         LogInfo("XInput hooks are disabled, skipping installation");
         return true;
+    }
+
+    // Initialize DualSense support if needed
+    if (shared_state && shared_state->enable_dualsense_xinput.load()) {
+        display_commander::hooks::InitializeDualSenseSupport();
     }
 
     bool any_success = false;

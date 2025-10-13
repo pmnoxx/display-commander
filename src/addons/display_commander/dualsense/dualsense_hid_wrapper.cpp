@@ -1,5 +1,6 @@
 #include "dualsense_hid_wrapper.hpp"
 #include "../utils.hpp"
+#include "../hooks/hid_suppression_hooks.hpp"
 #include <deps/imgui/imgui.h>
 #include <include/reshade.hpp>
 #include <setupapi.h>
@@ -121,7 +122,7 @@ void DualSenseHIDWrapper::EnumerateHIDDevices() {
                     HIDD_ATTRIBUTES attributes = {};
                     attributes.Size = sizeof(HIDD_ATTRIBUTES);
 
-                    if (HidD_GetAttributes(hDevice, &attributes)) {
+                    if (renodx::hooks::HidD_GetAttributes_Direct(hDevice, &attributes)) {
                         // Check if this is a supported device based on current filter
                         int current_filter = hid_type_filter_.load();
                         if (IsDeviceTypeEnabled(attributes.VendorID, attributes.ProductID, current_filter)) {
@@ -243,7 +244,7 @@ void DualSenseHIDWrapper::UpdateDeviceFromHID(DualSenseDevice& device) {
     BYTE inputReport[78] = {0}; // Max size for Bluetooth reports
 
     // Try to read input report
-    if (ReadFile(device.hid_device->hDeviceFile, inputReport, sizeof(inputReport), &bytesRead, nullptr)) {
+    if (renodx::hooks::ReadFile_Direct(device.hid_device->hDeviceFile, inputReport, sizeof(inputReport), &bytesRead, nullptr)) {
         if (bytesRead > 0) {
             // Update timestamp
             device.last_update_time = GetTickCount();

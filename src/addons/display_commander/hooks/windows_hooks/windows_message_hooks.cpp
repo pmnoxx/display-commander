@@ -1046,222 +1046,216 @@ bool InstallWindowsMessageHooks() {
     }
 
     // Hook GetMessageA
-    if (MH_CreateHook(GetMessageA, GetMessageA_Detour, (LPVOID *)&GetMessageA_Original) != MH_OK) {
-        LogError("Failed to create GetMessageA hook");
+    if (!CreateAndEnableHook(GetMessageA, GetMessageA_Detour, (LPVOID *)&GetMessageA_Original, "GetMessageA")) {
+        LogError("Failed to create and enable GetMessageA hook");
         return false;
     }
 
     // Hook GetMessageW
-    if (MH_CreateHook(GetMessageW, GetMessageW_Detour, (LPVOID *)&GetMessageW_Original) != MH_OK) {
-        LogError("Failed to create GetMessageW hook");
+    if (!CreateAndEnableHook(GetMessageW, GetMessageW_Detour, (LPVOID *)&GetMessageW_Original, "GetMessageW")) {
+        LogError("Failed to create and enable GetMessageW hook");
         return false;
     }
 
     // Hook PeekMessageA
-    if (MH_CreateHook(PeekMessageA, PeekMessageA_Detour, (LPVOID *)&PeekMessageA_Original) != MH_OK) {
-        LogError("Failed to create PeekMessageA hook");
+    if (!CreateAndEnableHook(PeekMessageA, PeekMessageA_Detour, (LPVOID *)&PeekMessageA_Original, "PeekMessageA")) {
+        LogError("Failed to create and enable PeekMessageA hook");
         return false;
     }
 
     // Hook PeekMessageW
-    if (MH_CreateHook(PeekMessageW, PeekMessageW_Detour, (LPVOID *)&PeekMessageW_Original) != MH_OK) {
-        LogError("Failed to create PeekMessageW hook");
+    if (!CreateAndEnableHook(PeekMessageW, PeekMessageW_Detour, (LPVOID *)&PeekMessageW_Original, "PeekMessageW")) {
+        LogError("Failed to create and enable PeekMessageW hook");
         return false;
     }
 
     // Hook PostMessageA
-    if (MH_CreateHook(PostMessageA, PostMessageA_Detour, (LPVOID *)&PostMessageA_Original) != MH_OK) {
-        LogError("Failed to create PostMessageA hook");
+    if (!CreateAndEnableHook(PostMessageA, PostMessageA_Detour, (LPVOID *)&PostMessageA_Original, "PostMessageA")) {
+        LogError("Failed to create and enable PostMessageA hook");
         return false;
     }
 
     // Hook PostMessageW
-    if (MH_CreateHook(PostMessageW, PostMessageW_Detour, (LPVOID *)&PostMessageW_Original) != MH_OK) {
-        LogError("Failed to create PostMessageW hook");
+    if (!CreateAndEnableHook(PostMessageW, PostMessageW_Detour, (LPVOID *)&PostMessageW_Original, "PostMessageW")) {
+        LogError("Failed to create and enable PostMessageW hook");
         return false;
     }
 
     // Hook GetKeyboardState
-    if (MH_CreateHook(GetKeyboardState, GetKeyboardState_Detour, (LPVOID *)&GetKeyboardState_Original) != MH_OK) {
-        LogError("Failed to create GetKeyboardState hook");
+    if (!CreateAndEnableHook(GetKeyboardState, GetKeyboardState_Detour, (LPVOID *)&GetKeyboardState_Original, "GetKeyboardState")) {
+        LogError("Failed to create and enable GetKeyboardState hook");
         return false;
     }
 
     // Hook ClipCursor
-    if (MH_CreateHook(ClipCursor, ClipCursor_Detour, (LPVOID *)&ClipCursor_Original) != MH_OK) {
-        LogError("Failed to create ClipCursor hook");
+    if (!CreateAndEnableHook(ClipCursor, ClipCursor_Detour, (LPVOID *)&ClipCursor_Original, "ClipCursor")) {
+        LogError("Failed to create and enable ClipCursor hook");
         return false;
     }
 
     // Hook GetCursorPos
-    if (MH_CreateHook(GetCursorPos, GetCursorPos_Detour, (LPVOID *)&GetCursorPos_Original) != MH_OK) {
-        LogError("Failed to create GetCursorPos hook");
+    if (!CreateAndEnableHook(GetCursorPos, GetCursorPos_Detour, (LPVOID *)&GetCursorPos_Original, "GetCursorPos")) {
+        LogError("Failed to create and enable GetCursorPos hook");
         return false;
     }
 
     // Hook SetCursorPos
-    if (MH_CreateHook(SetCursorPos, SetCursorPos_Detour, (LPVOID *)&SetCursorPos_Original) != MH_OK) {
-        LogError("Failed to create SetCursorPos hook");
+    if (!CreateAndEnableHook(SetCursorPos, SetCursorPos_Detour, (LPVOID *)&SetCursorPos_Original, "SetCursorPos")) {
+        LogError("Failed to create and enable SetCursorPos hook");
         return false;
     }
 
     // Hook GetKeyState
-    if (MH_CreateHook(GetKeyState, GetKeyState_Detour, (LPVOID *)&GetKeyState_Original) != MH_OK) {
-        LogError("Failed to create GetKeyState hook");
+    if (!CreateAndEnableHook(GetKeyState, GetKeyState_Detour, (LPVOID *)&GetKeyState_Original, "GetKeyState")) {
+        LogError("Failed to create and enable GetKeyState hook");
         return false;
     }
 
     // Hook GetAsyncKeyState
-    if (MH_CreateHook(GetAsyncKeyState, GetAsyncKeyState_Detour, (LPVOID *)&GetAsyncKeyState_Original) != MH_OK) {
-        LogError("Failed to create GetAsyncKeyState hook");
+    if (!CreateAndEnableHook(GetAsyncKeyState, GetAsyncKeyState_Detour, (LPVOID *)&GetAsyncKeyState_Original, "GetAsyncKeyState")) {
+        LogError("Failed to create and enable GetAsyncKeyState hook");
         return false;
     }
 
     // Hook SetWindowsHookExA
-    if (MH_CreateHook(SetWindowsHookExA, SetWindowsHookExA_Detour, (LPVOID *)&SetWindowsHookExA_Original) != MH_OK) {
-        LogError("Failed to create SetWindowsHookExA hook");
+    if (!CreateAndEnableHook(SetWindowsHookExA, SetWindowsHookExA_Detour, (LPVOID *)&SetWindowsHookExA_Original, "SetWindowsHookExA")) {
+        LogError("Failed to create and enable SetWindowsHookExA hook");
         return false;
     }
 
     // Hook SetWindowsHookExW
-    if (MH_CreateHook(SetWindowsHookExW, SetWindowsHookExW_Detour, (LPVOID *)&SetWindowsHookExW_Original) != MH_OK) {
-        LogError("Failed to create SetWindowsHookExW hook");
+    if (!CreateAndEnableHook(SetWindowsHookExW, SetWindowsHookExW_Detour, (LPVOID *)&SetWindowsHookExW_Original, "SetWindowsHookExW")) {
+        LogError("Failed to create and enable SetWindowsHookExW hook");
         return false;
     }
 
     // Hook UnhookWindowsHookEx
-    if (MH_CreateHook(UnhookWindowsHookEx, UnhookWindowsHookEx_Detour, (LPVOID *)&UnhookWindowsHookEx_Original) !=
-        MH_OK) {
-        LogError("Failed to create UnhookWindowsHookEx hook");
+    if (!CreateAndEnableHook(UnhookWindowsHookEx, UnhookWindowsHookEx_Detour, (LPVOID *)&UnhookWindowsHookEx_Original, "UnhookWindowsHookEx")) {
+        LogError("Failed to create and enable UnhookWindowsHookEx hook");
         return false;
     }
 
     // Hook GetRawInputBuffer
-    if (MH_CreateHook(GetRawInputBuffer, GetRawInputBuffer_Detour, (LPVOID *)&GetRawInputBuffer_Original) != MH_OK) {
-        LogError("Failed to create GetRawInputBuffer hook");
+    if (!CreateAndEnableHook(GetRawInputBuffer, GetRawInputBuffer_Detour, (LPVOID *)&GetRawInputBuffer_Original, "GetRawInputBuffer")) {
+        LogError("Failed to create and enable GetRawInputBuffer hook");
         return false;
     }
 
     // Hook TranslateMessage
-    if (MH_CreateHook(TranslateMessage, TranslateMessage_Detour, (LPVOID *)&TranslateMessage_Original) != MH_OK) {
-        LogError("Failed to create TranslateMessage hook");
+    if (!CreateAndEnableHook(TranslateMessage, TranslateMessage_Detour, (LPVOID *)&TranslateMessage_Original, "TranslateMessage")) {
+        LogError("Failed to create and enable TranslateMessage hook");
         return false;
     }
 
     // Hook DispatchMessageA
-    if (MH_CreateHook(DispatchMessageA, DispatchMessageA_Detour, (LPVOID *)&DispatchMessageA_Original) != MH_OK) {
-        LogError("Failed to create DispatchMessageA hook");
+    if (!CreateAndEnableHook(DispatchMessageA, DispatchMessageA_Detour, (LPVOID *)&DispatchMessageA_Original, "DispatchMessageA")) {
+        LogError("Failed to create and enable DispatchMessageA hook");
         return false;
     }
 
     // Hook DispatchMessageW
-    if (MH_CreateHook(DispatchMessageW, DispatchMessageW_Detour, (LPVOID *)&DispatchMessageW_Original) != MH_OK) {
-        LogError("Failed to create DispatchMessageW hook");
+    if (!CreateAndEnableHook(DispatchMessageW, DispatchMessageW_Detour, (LPVOID *)&DispatchMessageW_Original, "DispatchMessageW")) {
+        LogError("Failed to create and enable DispatchMessageW hook");
         return false;
     }
 
     // Hook GetRawInputData
-    if (MH_CreateHook(GetRawInputData, GetRawInputData_Detour, (LPVOID *)&GetRawInputData_Original) != MH_OK) {
-        LogError("Failed to create GetRawInputData hook");
+    if (!CreateAndEnableHook(GetRawInputData, GetRawInputData_Detour, (LPVOID *)&GetRawInputData_Original, "GetRawInputData")) {
+        LogError("Failed to create and enable GetRawInputData hook");
         return false;
     }
 
     // Hook RegisterRawInputDevices
-    if (MH_CreateHook(RegisterRawInputDevices, RegisterRawInputDevices_Detour,
-                      (LPVOID *)&RegisterRawInputDevices_Original) != MH_OK) {
-        LogError("Failed to create RegisterRawInputDevices hook");
+    if (!CreateAndEnableHook(RegisterRawInputDevices, RegisterRawInputDevices_Detour,
+                             (LPVOID *)&RegisterRawInputDevices_Original, "RegisterRawInputDevices")) {
+        LogError("Failed to create and enable RegisterRawInputDevices hook");
         return false;
     }
 
     // Hook VkKeyScan
-    if (MH_CreateHook(VkKeyScan, VkKeyScan_Detour, (LPVOID *)&VkKeyScan_Original) != MH_OK) {
-        LogError("Failed to create VkKeyScan hook");
+    if (!CreateAndEnableHook(VkKeyScan, VkKeyScan_Detour, (LPVOID *)&VkKeyScan_Original, "VkKeyScan")) {
+        LogError("Failed to create and enable VkKeyScan hook");
         return false;
     }
 
     // Hook VkKeyScanEx
-    if (MH_CreateHook(VkKeyScanEx, VkKeyScanEx_Detour, (LPVOID *)&VkKeyScanEx_Original) != MH_OK) {
-        LogError("Failed to create VkKeyScanEx hook");
+    if (!CreateAndEnableHook(VkKeyScanEx, VkKeyScanEx_Detour, (LPVOID *)&VkKeyScanEx_Original, "VkKeyScanEx")) {
+        LogError("Failed to create and enable VkKeyScanEx hook");
         return false;
     }
 
     // Hook ToAscii
-    if (MH_CreateHook(ToAscii, ToAscii_Detour, (LPVOID *)&ToAscii_Original) != MH_OK) {
-        LogError("Failed to create ToAscii hook");
+    if (!CreateAndEnableHook(ToAscii, ToAscii_Detour, (LPVOID *)&ToAscii_Original, "ToAscii")) {
+        LogError("Failed to create and enable ToAscii hook");
         return false;
     }
 
     // Hook ToAsciiEx
-    if (MH_CreateHook(ToAsciiEx, ToAsciiEx_Detour, (LPVOID *)&ToAsciiEx_Original) != MH_OK) {
-        LogError("Failed to create ToAsciiEx hook");
+    if (!CreateAndEnableHook(ToAsciiEx, ToAsciiEx_Detour, (LPVOID *)&ToAsciiEx_Original, "ToAsciiEx")) {
+        LogError("Failed to create and enable ToAsciiEx hook");
         return false;
     }
 
     // Hook ToUnicode
-    if (MH_CreateHook(ToUnicode, ToUnicode_Detour, (LPVOID *)&ToUnicode_Original) != MH_OK) {
-        LogError("Failed to create ToUnicode hook");
+    if (!CreateAndEnableHook(ToUnicode, ToUnicode_Detour, (LPVOID *)&ToUnicode_Original, "ToUnicode")) {
+        LogError("Failed to create and enable ToUnicode hook");
         return false;
     }
 
     // Hook ToUnicodeEx
-    if (MH_CreateHook(ToUnicodeEx, ToUnicodeEx_Detour, (LPVOID *)&ToUnicodeEx_Original) != MH_OK) {
-        LogError("Failed to create ToUnicodeEx hook");
+    if (!CreateAndEnableHook(ToUnicodeEx, ToUnicodeEx_Detour, (LPVOID *)&ToUnicodeEx_Original, "ToUnicodeEx")) {
+        LogError("Failed to create and enable ToUnicodeEx hook");
         return false;
     }
 
     // Hook GetKeyNameTextA
-    if (MH_CreateHook(GetKeyNameTextA, GetKeyNameTextA_Detour, (LPVOID *)&GetKeyNameTextA_Original) != MH_OK) {
-        LogError("Failed to create GetKeyNameTextA hook");
+    if (!CreateAndEnableHook(GetKeyNameTextA, GetKeyNameTextA_Detour, (LPVOID *)&GetKeyNameTextA_Original, "GetKeyNameTextA")) {
+        LogError("Failed to create and enable GetKeyNameTextA hook");
         return false;
     }
 
     // Hook GetKeyNameTextW
-    if (MH_CreateHook(GetKeyNameTextW, GetKeyNameTextW_Detour, (LPVOID *)&GetKeyNameTextW_Original) != MH_OK) {
-        LogError("Failed to create GetKeyNameTextW hook");
+    if (!CreateAndEnableHook(GetKeyNameTextW, GetKeyNameTextW_Detour, (LPVOID *)&GetKeyNameTextW_Original, "GetKeyNameTextW")) {
+        LogError("Failed to create and enable GetKeyNameTextW hook");
         return false;
     }
 
     // Hook SendInput
-    if (MH_CreateHook(SendInput, SendInput_Detour, (LPVOID *)&SendInput_Original) != MH_OK) {
-        LogError("Failed to create SendInput hook");
+    if (!CreateAndEnableHook(SendInput, SendInput_Detour, (LPVOID *)&SendInput_Original, "SendInput")) {
+        LogError("Failed to create and enable SendInput hook");
         return false;
     }
 
     // Hook keybd_event
-    if (MH_CreateHook(keybd_event, keybd_event_Detour, (LPVOID *)&keybd_event_Original) != MH_OK) {
-        LogError("Failed to create keybd_event hook");
+    if (!CreateAndEnableHook(keybd_event, keybd_event_Detour, (LPVOID *)&keybd_event_Original, "keybd_event")) {
+        LogError("Failed to create and enable keybd_event hook");
         return false;
     }
 
     // Hook mouse_event
-    if (MH_CreateHook(mouse_event, mouse_event_Detour, (LPVOID *)&mouse_event_Original) != MH_OK) {
-        LogError("Failed to create mouse_event hook");
+    if (!CreateAndEnableHook(mouse_event, mouse_event_Detour, (LPVOID *)&mouse_event_Original, "mouse_event")) {
+        LogError("Failed to create and enable mouse_event hook");
         return false;
     }
 
     // Hook MapVirtualKey
-    if (MH_CreateHook(MapVirtualKey, MapVirtualKey_Detour, (LPVOID *)&MapVirtualKey_Original) != MH_OK) {
-        LogError("Failed to create MapVirtualKey hook");
+    if (!CreateAndEnableHook(MapVirtualKey, MapVirtualKey_Detour, (LPVOID *)&MapVirtualKey_Original, "MapVirtualKey")) {
+        LogError("Failed to create and enable MapVirtualKey hook");
         return false;
     }
 
     // Hook MapVirtualKeyEx
-    if (MH_CreateHook(MapVirtualKeyEx, MapVirtualKeyEx_Detour, (LPVOID *)&MapVirtualKeyEx_Original) != MH_OK) {
-        LogError("Failed to create MapVirtualKeyEx hook");
+    if (!CreateAndEnableHook(MapVirtualKeyEx, MapVirtualKeyEx_Detour, (LPVOID *)&MapVirtualKeyEx_Original, "MapVirtualKeyEx")) {
+        LogError("Failed to create and enable MapVirtualKeyEx hook");
         return false;
     }
 
     // Hook DisplayConfigGetDeviceInfo
-    if (MH_CreateHook(DisplayConfigGetDeviceInfo, DisplayConfigGetDeviceInfo_Detour, (LPVOID *)&DisplayConfigGetDeviceInfo_Original) != MH_OK) {
-        LogError("Failed to create DisplayConfigGetDeviceInfo hook");
+    if (!CreateAndEnableHook(DisplayConfigGetDeviceInfo, DisplayConfigGetDeviceInfo_Detour, (LPVOID *)&DisplayConfigGetDeviceInfo_Original, "DisplayConfigGetDeviceInfo")) {
+        LogError("Failed to create and enable DisplayConfigGetDeviceInfo hook");
         return false;
     }
 
-    // Enable all hooks
-    if (MH_EnableHook(MH_ALL_HOOKS) != MH_OK) {
-        LogError("Failed to enable Windows message hooks");
-        return false;
-    }
 
     g_message_hooks_installed.store(true);
     LogInfo("Windows message hooks installed successfully");

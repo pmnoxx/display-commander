@@ -69,5 +69,8 @@ inline T UpdateRollingAverage(T new_value, T old_value, int alpha = 64) {
     return (new_value + (alpha - 1) * old_value) / alpha;
 }
 
+// MinHook wrapper functions
+bool CreateAndEnableHook(LPVOID pTarget, LPVOID pDetour, LPVOID* ppOriginal, const char* hookName);
+
 // External declarations needed by utility functions
 extern std::atomic<std::shared_ptr<const std::vector<MonitorInfo>>> g_monitors;

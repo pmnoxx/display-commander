@@ -333,64 +333,44 @@ bool HookNGXParameterVTable(NVSDK_NGX_Parameter* Params) {
     LogInfo("Installing NGX Parameter vtable hooks...");
 
     // Hook SetI (vtable index 3)
-    if (MH_CreateHook(vftable[3], reinterpret_cast<LPVOID>(NVSDK_NGX_Parameter_SetI_Detour),
-                      reinterpret_cast<LPVOID*>(&NVSDK_NGX_Parameter_SetI_Original)) != MH_OK) {
-        LogInfo("NGX hooks: Failed to hook NVSDK_NGX_Parameter_SetI vtable");
-    }
+    CreateAndEnableHook(vftable[3], reinterpret_cast<LPVOID>(NVSDK_NGX_Parameter_SetI_Detour),
+                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_Parameter_SetI_Original),
+                        "NVSDK_NGX_Parameter_SetI");
 
     // Hook SetUI (vtable index 4)
-    if (MH_CreateHook(vftable[4], reinterpret_cast<LPVOID>(NVSDK_NGX_Parameter_SetUI_Detour),
-                      reinterpret_cast<LPVOID*>(&NVSDK_NGX_Parameter_SetUI_Original)) != MH_OK) {
-        LogInfo("NGX hooks: Failed to hook NVSDK_NGX_Parameter_SetUI vtable");
-    }
-
+    CreateAndEnableHook(vftable[4], reinterpret_cast<LPVOID>(NVSDK_NGX_Parameter_SetUI_Detour),
+                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_Parameter_SetUI_Original),
+                        "NVSDK_NGX_Parameter_SetUI");
     // Hook SetD (vtable index 5)
-    if (MH_CreateHook(vftable[5], reinterpret_cast<LPVOID>(NVSDK_NGX_Parameter_SetD_Detour),
-                      reinterpret_cast<LPVOID*>(&NVSDK_NGX_Parameter_SetD_Original)) != MH_OK) {
-        LogInfo("NGX hooks: Failed to hook NVSDK_NGX_Parameter_SetD vtable");
-    }
+    CreateAndEnableHook(vftable[5], reinterpret_cast<LPVOID>(NVSDK_NGX_Parameter_SetD_Detour),
+                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_Parameter_SetD_Original),
+                        "NVSDK_NGX_Parameter_SetD");
 
     // Hook SetF (vtable index 6)
-    if (MH_CreateHook(vftable[6], reinterpret_cast<LPVOID>(NVSDK_NGX_Parameter_SetF_Detour),
-                      reinterpret_cast<LPVOID*>(&NVSDK_NGX_Parameter_SetF_Original)) != MH_OK) {
-        LogInfo("NGX hooks: Failed to hook NVSDK_NGX_Parameter_SetF vtable");
-    }
+    CreateAndEnableHook(vftable[6], reinterpret_cast<LPVOID>(NVSDK_NGX_Parameter_SetF_Detour),
+                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_Parameter_SetF_Original),
+                        "NVSDK_NGX_Parameter_SetF");
 
     // Hook SetULL (vtable index 7)
-    if (MH_CreateHook(vftable[7], reinterpret_cast<LPVOID>(NVSDK_NGX_Parameter_SetULL_Detour),
-                      reinterpret_cast<LPVOID*>(&NVSDK_NGX_Parameter_SetULL_Original)) != MH_OK) {
-        LogInfo("NGX hooks: Failed to hook NVSDK_NGX_Parameter_SetULL vtable");
-    }
-
+    CreateAndEnableHook(vftable[7], reinterpret_cast<LPVOID>(NVSDK_NGX_Parameter_SetULL_Detour),
+                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_Parameter_SetULL_Original),
+                        "NVSDK_NGX_Parameter_SetULL");
     // Hook GetVoidPointer (vtable index 8) - Special-K uses index 8
-    if (MH_CreateHook(vftable[8], reinterpret_cast<LPVOID>(NVSDK_NGX_Parameter_GetVoidPointer_Detour),
-                      reinterpret_cast<LPVOID*>(&NVSDK_NGX_Parameter_GetVoidPointer_Original)) != MH_OK) {
-        LogInfo("NGX hooks: Failed to hook NVSDK_NGX_Parameter_GetVoidPointer vtable");
-    }
-
+    CreateAndEnableHook(vftable[8], reinterpret_cast<LPVOID>(NVSDK_NGX_Parameter_GetVoidPointer_Detour),
+                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_Parameter_GetVoidPointer_Original),
+                        "NVSDK_NGX_Parameter_GetVoidPointer");
     // Hook GetI (vtable index 11) - Special-K uses index 11
-    if (MH_CreateHook(vftable[11], reinterpret_cast<LPVOID>(NVSDK_NGX_Parameter_GetI_Detour),
-                      reinterpret_cast<LPVOID*>(&NVSDK_NGX_Parameter_GetI_Original)) != MH_OK) {
-        LogInfo("NGX hooks: Failed to hook NVSDK_NGX_Parameter_GetI vtable");
-    }
-
+    CreateAndEnableHook(vftable[11], reinterpret_cast<LPVOID>(NVSDK_NGX_Parameter_GetI_Detour),
+                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_Parameter_GetI_Original),
+                        "NVSDK_NGX_Parameter_GetI");
     // Hook GetUI (vtable index 12) - Special-K uses index 12
-    if (MH_CreateHook(vftable[12], reinterpret_cast<LPVOID>(NVSDK_NGX_Parameter_GetUI_Detour),
-                      reinterpret_cast<LPVOID*>(&NVSDK_NGX_Parameter_GetUI_Original)) != MH_OK) {
-        LogInfo("NGX hooks: Failed to hook NVSDK_NGX_Parameter_GetUI vtable");
-    }
-
+    CreateAndEnableHook(vftable[12], reinterpret_cast<LPVOID>(NVSDK_NGX_Parameter_GetUI_Detour),
+                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_Parameter_GetUI_Original),
+                        "NVSDK_NGX_Parameter_GetUI");
     // Hook GetULL (vtable index 15) - Special-K uses index 15
-    if (MH_CreateHook(vftable[15], reinterpret_cast<LPVOID>(NVSDK_NGX_Parameter_GetULL_Detour),
-                      reinterpret_cast<LPVOID*>(&NVSDK_NGX_Parameter_GetULL_Original)) != MH_OK) {
-        LogInfo("NGX hooks: Failed to hook NVSDK_NGX_Parameter_GetULL vtable");
-    }
-
-    // Enable hooks
-    if (MH_EnableHook(MH_ALL_HOOKS) != MH_OK) {
-        LogError("Failed to enable NGX vtable hooks");
-        return false;
-    }
+    CreateAndEnableHook(vftable[15], reinterpret_cast<LPVOID>(NVSDK_NGX_Parameter_GetULL_Detour),
+                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_Parameter_GetULL_Original),
+                        "NVSDK_NGX_Parameter_GetULL");
 
     g_ngx_vtable_hooks_installed = true;
     LogInfo("NGX Parameter vtable hooks installed successfully");
@@ -480,38 +460,28 @@ bool InstallNGXHooks() {
     // We'll hook their vtables when they're called
 
     // Hook D3D12 GetParameters
-    if (MH_CreateHook(GetProcAddress(ngx_dll, "NVSDK_NGX_D3D12_GetParameters"),
-                      reinterpret_cast<LPVOID>(NVSDK_NGX_D3D12_GetParameters_Detour),
-                      reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D12_GetParameters_Original)) != MH_OK) {
-        LogInfo("NGX hooks: Failed to hook NVSDK_NGX_D3D12_GetParameters");
-    }
+    CreateAndEnableHook(GetProcAddress(ngx_dll, "NVSDK_NGX_D3D12_GetParameters"),
+                        reinterpret_cast<LPVOID>(NVSDK_NGX_D3D12_GetParameters_Detour),
+                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D12_GetParameters_Original),
+                        "NVSDK_NGX_D3D12_GetParameters");
 
     // Hook D3D12 AllocateParameters
-    if (MH_CreateHook(GetProcAddress(ngx_dll, "NVSDK_NGX_D3D12_AllocateParameters"),
-                      reinterpret_cast<LPVOID>(NVSDK_NGX_D3D12_AllocateParameters_Detour),
-                      reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D12_AllocateParameters_Original)) != MH_OK) {
-        LogInfo("NGX hooks: Failed to hook NVSDK_NGX_D3D12_AllocateParameters");
-    }
+    CreateAndEnableHook(GetProcAddress(ngx_dll, "NVSDK_NGX_D3D12_AllocateParameters"),
+                        reinterpret_cast<LPVOID>(NVSDK_NGX_D3D12_AllocateParameters_Detour),
+                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D12_AllocateParameters_Original),
+                        "NVSDK_NGX_D3D12_AllocateParameters");
 
     // Hook D3D11 GetParameters
-    if (MH_CreateHook(GetProcAddress(ngx_dll, "NVSDK_NGX_D3D11_GetParameters"),
-                      reinterpret_cast<LPVOID>(NVSDK_NGX_D3D11_GetParameters_Detour),
-                      reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D11_GetParameters_Original)) != MH_OK) {
-        LogInfo("NGX hooks: Failed to hook NVSDK_NGX_D3D11_GetParameters");
-    }
+    CreateAndEnableHook(GetProcAddress(ngx_dll, "NVSDK_NGX_D3D11_GetParameters"),
+                        reinterpret_cast<LPVOID>(NVSDK_NGX_D3D11_GetParameters_Detour),
+                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D11_GetParameters_Original),
+                        "NVSDK_NGX_D3D11_GetParameters");
 
     // Hook D3D11 AllocateParameters
-    if (MH_CreateHook(GetProcAddress(ngx_dll, "NVSDK_NGX_D3D11_AllocateParameters"),
-                      reinterpret_cast<LPVOID>(NVSDK_NGX_D3D11_AllocateParameters_Detour),
-                      reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D11_AllocateParameters_Original)) != MH_OK) {
-        LogInfo("NGX hooks: Failed to hook NVSDK_NGX_D3D11_AllocateParameters");
-    }
-
-    // Enable hooks
-    if (MH_EnableHook(MH_ALL_HOOKS) != MH_OK) {
-        LogError("Failed to enable NGX initialization hooks");
-        return false;
-    }
+    CreateAndEnableHook(GetProcAddress(ngx_dll, "NVSDK_NGX_D3D11_AllocateParameters"),
+                        reinterpret_cast<LPVOID>(NVSDK_NGX_D3D11_AllocateParameters_Detour),
+                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D11_AllocateParameters_Original),
+                        "NVSDK_NGX_D3D11_AllocateParameters");
 
     LogInfo("NGX initialization hooks installed successfully");
     LogInfo("NGX Parameter vtable hooks will be installed when Parameter objects are created");

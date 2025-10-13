@@ -63,20 +63,14 @@ bool InstallProcessExitHooks() {
     }
 
     // Hook ExitProcess
-    if (MH_CreateHook(ExitProcess, ExitProcess_Detour, (LPVOID *)&ExitProcess_Original) != MH_OK) {
-        LogError("Failed to create ExitProcess hook");
+    if (!CreateAndEnableHook(ExitProcess, ExitProcess_Detour, (LPVOID *)&ExitProcess_Original, "ExitProcess")) {
+        LogError("Failed to create and enable ExitProcess hook");
         return false;
     }
 
     // Hook TerminateProcess
-    if (MH_CreateHook(TerminateProcess, TerminateProcess_Detour, (LPVOID *)&TerminateProcess_Original) != MH_OK) {
-        LogError("Failed to create TerminateProcess hook");
-        return false;
-    }
-
-    // Enable all hooks
-    if (MH_EnableHook(MH_ALL_HOOKS) != MH_OK) {
-        LogError("Failed to enable process exit hooks");
+    if (!CreateAndEnableHook(TerminateProcess, TerminateProcess_Detour, (LPVOID *)&TerminateProcess_Original, "TerminateProcess")) {
+        LogError("Failed to create and enable TerminateProcess hook");
         return false;
     }
 

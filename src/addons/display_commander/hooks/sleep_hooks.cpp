@@ -248,34 +248,27 @@ bool InstallSleepHooks() {
     }
 
     // Hook Sleep
-    if (MH_CreateHook(Sleep, Sleep_Detour, (LPVOID *)&Sleep_Original) != MH_OK) {
-        LogError("Failed to create Sleep hook");
+    if (!CreateAndEnableHook(Sleep, Sleep_Detour, (LPVOID *)&Sleep_Original, "Sleep")) {
+        LogError("Failed to create and enable Sleep hook");
         return false;
     }
 
     // Hook SleepEx
-    if (MH_CreateHook(SleepEx, SleepEx_Detour, (LPVOID *)&SleepEx_Original) != MH_OK) {
-        LogError("Failed to create SleepEx hook");
+    if (!CreateAndEnableHook(SleepEx, SleepEx_Detour, (LPVOID *)&SleepEx_Original, "SleepEx")) {
+        LogError("Failed to create and enable SleepEx hook");
         return false;
     }
 
     // Hook WaitForSingleObject
-    if (MH_CreateHook(WaitForSingleObject, WaitForSingleObject_Detour, (LPVOID *)&WaitForSingleObject_Original) !=
-        MH_OK) {
-        LogError("Failed to create WaitForSingleObject hook");
+    if (!CreateAndEnableHook(WaitForSingleObject, WaitForSingleObject_Detour, (LPVOID *)&WaitForSingleObject_Original, "WaitForSingleObject")) {
+        LogError("Failed to create and enable WaitForSingleObject hook");
         return false;
     }
 
     // Hook WaitForMultipleObjects
-    if (MH_CreateHook(WaitForMultipleObjects, WaitForMultipleObjects_Detour,
-                      (LPVOID *)&WaitForMultipleObjects_Original) != MH_OK) {
-        LogError("Failed to create WaitForMultipleObjects hook");
-        return false;
-    }
-
-    // Enable all hooks
-    if (MH_EnableHook(MH_ALL_HOOKS) != MH_OK) {
-        LogError("Failed to enable sleep hooks");
+    if (!CreateAndEnableHook(WaitForMultipleObjects, WaitForMultipleObjects_Detour,
+                             (LPVOID *)&WaitForMultipleObjects_Original, "WaitForMultipleObjects")) {
+        LogError("Failed to create and enable WaitForMultipleObjects hook");
         return false;
     }
 

@@ -948,9 +948,6 @@ void DrawDisplaySettings() {
                 const char* present_mode_name = "Unknown";
 
                 if (is_d3d9) {
-                    // D3D9 specific display
-                    ImGui::TextColored(ui::colors::TEXT_LABEL, "Current Swap Effect:");
-                    ImGui::SameLine();
                     if (desc.present_mode == D3DSWAPEFFECT_FLIPEX) {
                         present_mode_name = "FLIPEX (Flip Model)";
                         present_mode_color = ImVec4(0.0f, 1.0f, 0.0f, 1.0f); // Green
@@ -972,6 +969,14 @@ void DrawDisplaySettings() {
                     }
                     DxgiBypassMode flip_state = GetFlipStateForAPI(current_api);
 
+                    ImVec4 flip_color;
+                    if (flip_state == DxgiBypassMode::kComposed) {
+                        flip_color = ui::colors::FLIP_COMPOSED; // Red - bad
+                    } else if (flip_state == DxgiBypassMode::kOverlay || flip_state == DxgiBypassMode::kIndependentFlip) {
+                        flip_color = ui::colors::FLIP_INDEPENDENT; // Green - good
+                    } else {
+                        flip_color = ui::colors::FLIP_UNKNOWN; // Yellow - unknown
+                    }
                     const char* flip_state_str = "Unknown";
                     switch (flip_state) {
                         case DxgiBypassMode::kComposed:      flip_state_str = "Composed"; break;
@@ -987,6 +992,13 @@ void DrawDisplaySettings() {
                             break;
                         }
                     }
+                    ImGui::TextColored(present_mode_color, "%s", present_mode_name);
+
+                    // Add DxgiBypassMode on the same line
+                    ImGui::SameLine();
+                    ImGui::TextColored(ui::colors::TEXT_DIMMED, " | ");
+                    ImGui::SameLine();
+                    ImGui::TextColored(flip_color, "Flip: %s", flip_state_str);
 
 
                 } else if (is_dxgi) {
@@ -1163,7 +1175,7 @@ void DrawAudioSettings() {
 
     // Audio Mute checkbox
     bool audio_mute = s_audio_mute.load();
-    if (ImGui::Checkbox("Audio Mute", &audio_mute)) {
+    if (ImGui::Checkbox("Mute", &audio_mute)) {
         settings::g_mainTabSettings.audio_mute.SetValue(audio_mute);
 
         // Apply mute/unmute immediately

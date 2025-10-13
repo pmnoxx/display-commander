@@ -76,6 +76,11 @@ ExperimentalTabSettings::ExperimentalTabSettings()
     , disable_flip_chain_enabled("DisableFlipChainEnabled", false, "DisplayCommander.Experimental")
     , enable_flip_chain_enabled("EnableFlipChainEnabled", false, "DisplayCommander.Experimental")
     , suppress_dinput_hooks("SuppressDInputHooks", false, "DisplayCommander.Experimental")
+    , hid_suppression_enabled("HIDSuppressionEnabled", false, "DisplayCommander.Experimental")
+    , hid_suppression_dualsense_only("HIDSuppressionDualSenseOnly", true, "DisplayCommander.Experimental")
+    , hid_suppression_block_readfile("HIDSuppressionBlockReadFile", true, "DisplayCommander.Experimental")
+    , hid_suppression_block_getinputreport("HIDSuppressionBlockGetInputReport", true, "DisplayCommander.Experimental")
+    , hid_suppression_block_getattributes("HIDSuppressionBlockGetAttributes", true, "DisplayCommander.Experimental")
 {
     // Initialize the all_settings_ vector
     all_settings_ = {
@@ -97,6 +102,8 @@ ExperimentalTabSettings::ExperimentalTabSettings()
         &disable_flip_chain_enabled,
         &enable_flip_chain_enabled,
         &suppress_dinput_hooks,
+        &hid_suppression_enabled, &hid_suppression_dualsense_only, &hid_suppression_block_readfile,
+        &hid_suppression_block_getinputreport, &hid_suppression_block_getattributes,
     };
 }
 

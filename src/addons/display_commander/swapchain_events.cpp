@@ -12,6 +12,7 @@
 #include "hooks/streamline_hooks.hpp"
 #include "hooks/windows_hooks/windows_message_hooks.hpp"
 #include "hooks/xinput_hooks.hpp"
+#include "hooks/hid_suppression_hooks.hpp"
 #include "input_remapping/input_remapping.hpp"
 #include "latency/latency_manager.hpp"
 #include "latent_sync/latent_sync_limiter.hpp"
@@ -28,6 +29,7 @@
 #include "utils.hpp"
 #include "utils/timing.hpp"
 #include "widgets/xinput_widget/xinput_widget.hpp"
+#include "widgets/dualsense_widget/dualsense_widget.hpp"
 
 #include <d3d9.h>
 #include <dxgi.h>
@@ -183,6 +185,14 @@ void DoInitializationWithHwnd(HWND hwnd) {
     g_nvapiFullscreenPrevention.CheckAndAutoEnable();
 
     ui::new_ui::InitExperimentalTab();
+
+    // Initialize DualSense support
+    display_commander::widgets::dualsense_widget::InitializeDualSenseWidget();
+
+    // Install HID suppression hooks if enabled
+    if (settings::g_experimentalTabSettings.hid_suppression_enabled.GetValue()) {
+        renodx::hooks::InstallHIDSuppressionHooks();
+    }
 
     // Set up window hooks if we have a valid HWND
     if (hwnd != nullptr && IsWindow(hwnd)) {

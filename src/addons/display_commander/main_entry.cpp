@@ -15,6 +15,8 @@
 #include "swapchain_events_power_saving.hpp"
 #include "ui/new_ui/experimental_tab.hpp"
 #include "ui/new_ui/main_new_tab.hpp"
+#include "widgets/dualsense_widget/dualsense_widget.hpp"
+#include "hooks/hid_suppression_hooks.hpp"
 #include "ui/new_ui/new_ui_main.hpp"
 #include "utils/timing.hpp"
 #include "version.hpp"
@@ -594,6 +596,12 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
 
         // Clean up experimental tab threads
         ui::new_ui::CleanupExperimentalTab();
+
+        // Clean up DualSense support
+        display_commander::widgets::dualsense_widget::CleanupDualSenseWidget();
+
+        // Clean up HID suppression hooks
+        renodx::hooks::UninstallHIDSuppressionHooks();
 
         // Clean up DX11 proxy device
         dx11_proxy::DX11ProxyManager::GetInstance().Shutdown();

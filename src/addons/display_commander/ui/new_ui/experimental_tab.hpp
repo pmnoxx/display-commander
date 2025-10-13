@@ -41,6 +41,9 @@ void DrawDisableFlipChainControls();
 // Draw developer tools section
 void DrawDeveloperTools();
 
+// Draw HID suppression controls section
+void DrawHIDSuppression();
+
 // Cleanup function to stop background threads
 void CleanupExperimentalTab();
 

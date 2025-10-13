@@ -616,12 +616,6 @@ void DrawDisplaySettings() {
                 double calls_per_second = native_ns <= 0 ? -1 : 1000000000.0 / static_cast<double>(native_ns);
                 ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Native Reflex: %.2f times/sec (%.1f ms interval)", calls_per_second, native_ns / 1000000.0);
             } else {
-                ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), ICON_FK_MINUS " Native Reflex: INACTIVE");
-                if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip(
-                        "No native Reflex activity detected. "
-                        "The game may not have Reflex support or it is disabled.");
-                }
                 ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), ICON_FK_OK " Injected Reflex: ACTIVE");
                 double injected_ns = g_sleep_reflex_injected_ns.load();
                 double calls_per_second = injected_ns <= 0 ? -1 : 1000000000.0 / static_cast<double>(injected_ns);

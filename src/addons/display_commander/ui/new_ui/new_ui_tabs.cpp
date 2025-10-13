@@ -2,6 +2,7 @@
 #include "../../utils.hpp"
 #include "../../widgets/remapping_widget/remapping_widget.hpp"
 #include "../../widgets/xinput_widget/xinput_widget.hpp"
+#include "../../settings/main_tab_settings.hpp"
 #include "developer_new_tab.hpp"
 #include "experimental_tab.hpp"
 #include "hid_input_tab.hpp"
@@ -11,6 +12,7 @@
 #include "swapchain_tab.hpp"
 #include "window_info_tab.hpp"
 #include <imgui.h>
+#include <winbase.h>
 #include <reshade.hpp>
 
 namespace ui::new_ui {
@@ -24,13 +26,13 @@ TabManager::TabManager() : active_tab_(0) {
     tabs_.store(std::make_shared<const std::vector<Tab>>(std::vector<Tab>{}));
 }
 
-void TabManager::AddTab(const std::string &name, const std::string &id, std::function<void()> on_draw) {
+void TabManager::AddTab(const std::string &name, const std::string &id, std::function<void()> on_draw, bool is_advanced_tab) {
     // Get current tabs atomically
     auto current_tabs = tabs_.load();
 
     // Create new vector with existing tabs plus the new one
     auto new_tabs = std::make_shared<std::vector<Tab>>(*current_tabs);
-    new_tabs->push_back({name, id, on_draw, true});
+    new_tabs->push_back({name, id, on_draw, true, is_advanced_tab});
 
     // Atomically replace the tabs with const version
     // This ensures thread-safe updates with copy-on-write semantics
@@ -50,7 +52,15 @@ void TabManager::Draw() {
     // Draw tab bar
     if (ImGui::BeginTabBar("MainTabs", ImGuiTabBarFlags_None)) {
         for (size_t i = 0; i < current_tabs->size(); ++i) {
-            if (!(*current_tabs)[i].is_visible) {
+            // Check if tab should be visible
+            bool should_show = (*current_tabs)[i].is_visible;
+
+            // Check advanced settings for advanced tabs
+            if ((*current_tabs)[i].is_advanced_tab) {
+                should_show = should_show && settings::g_mainTabSettings.advanced_settings_enabled.GetValue();
+            }
+
+            if (!should_show) {
                 continue;
             }
 
@@ -93,7 +103,7 @@ void InitializeNewUI() {
         } catch (...) {
             LogError("Unknown error drawing main new tab");
         }
-    });
+    }, false); // Main tab is not advanced
 
     g_tab_manager.AddTab("Developer", "developer_new", []() {
         try {
@@ -103,7 +113,7 @@ void InitializeNewUI() {
         } catch (...) {
             LogError("Unknown error drawing developer new tab");
         }
-    });
+    }, true); // Developer tab is advanced
 
     g_tab_manager.AddTab("Window Info", "window_info", []() {
         try {
@@ -113,7 +123,7 @@ void InitializeNewUI() {
         } catch (...) {
             LogError("Unknown error drawing window info tab");
         }
-    });
+    }, true); // Window Info tab is not advanced
 
     g_tab_manager.AddTab("Swapchain", "swapchain", []() {
         try {
@@ -123,7 +133,7 @@ void InitializeNewUI() {
         } catch (...) {
             LogError("Unknown error drawing swapchain tab");
         }
-    });
+    }, true); // Swapchain tab is not advanced
 
     g_tab_manager.AddTab("Important Info", "important_info", []() {
         try {
@@ -133,9 +143,9 @@ void InitializeNewUI() {
         } catch (...) {
             LogError("Unknown error drawing important info tab");
         }
-    });
+    }, true); // Important Info tab is not advanced
 
-    g_tab_manager.AddTab("XInput (Experimental)", "xinput", []() {
+    g_tab_manager.AddTab("XInput", "xinput", []() {
         try {
             display_commander::widgets::xinput_widget::DrawXInputWidget();
         } catch (const std::exception &e) {
@@ -143,7 +153,7 @@ void InitializeNewUI() {
         } catch (...) {
             LogError("Unknown error drawing XInput widget");
         }
-    });
+    }, true); // XInput tab is advanced
 
     g_tab_manager.AddTab("Remapping (Experimental)", "remapping", []() {
         try {
@@ -153,7 +163,7 @@ void InitializeNewUI() {
         } catch (...) {
             LogError("Unknown error drawing remapping widget");
         }
-    });
+    }, true); // Remapping tab is advanced
 
     g_tab_manager.AddTab("Hook Statistics", "hook_stats", []() {
         try {
@@ -163,7 +173,7 @@ void InitializeNewUI() {
         } catch (...) {
             LogError("Unknown error drawing hook stats tab");
         }
-    });
+    }, true); // Hook Statistics tab is advanced
 
     g_tab_manager.AddTab("Streamline", "streamline", []() {
         try {
@@ -173,7 +183,7 @@ void InitializeNewUI() {
         } catch (...) {
             LogError("Unknown error drawing streamline tab");
         }
-    });
+    }, true); // Streamline tab is advanced
 
     g_tab_manager.AddTab("HID Input", "hid_input", []() {
         try {
@@ -183,9 +193,9 @@ void InitializeNewUI() {
         } catch (...) {
             LogError("Unknown error drawing HID input tab");
         }
-    });
+    }, true); // HID Input tab is advanced
 
-#if EXPERIMENTAL_TAB == 1 || EXPERIMENTAL_TAB_PRIVATE == 1
+    // Add experimental tab conditionally based on advanced settings
     g_tab_manager.AddTab("Experimental", "experimental", []() {
         try {
             ui::new_ui::DrawExperimentalTab();
@@ -194,8 +204,7 @@ void InitializeNewUI() {
         } catch (...) {
             LogError("Unknown error drawing experimental tab");
         }
-    });
-#endif
+    }, true); // Experimental tab is advanced
 }
 
 // Draw the new UI

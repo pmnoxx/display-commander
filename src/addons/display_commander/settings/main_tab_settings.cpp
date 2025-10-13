@@ -66,7 +66,8 @@ MainTabSettings::MainTabSettings()
       screensaver_mode("screensaver_mode", s_screensaver_mode, static_cast<int>(ScreensaverMode::kDefault),
                        {"Default (no change)", "Disable when Focused", "Disable"}, "DisplayCommander"),
       frame_time_mode("frame_time_mode", s_frame_time_mode, static_cast<int>(FrameTimeMode::kPresent),
-                      {"Frame Present Time", "Frame Start Time (input)", "Frame Display Time later (Present or GPU Completion whichever comes later)"}, "DisplayCommander") {
+                      {"Frame Present Time", "Frame Start Time (input)", "Frame Display Time later (Present or GPU Completion whichever comes later)"}, "DisplayCommander"),
+      advanced_settings_enabled("advanced_settings_enabled", false, "DisplayCommander") {
 
     // Initialize the all_settings_ vector
     all_settings_ = {
@@ -101,6 +102,7 @@ MainTabSettings::MainTabSettings()
         &selected_extended_display_device_id,
         &adhd_multi_monitor_enabled,
         &screensaver_mode,
+        &advanced_settings_enabled,
     };
 }
 

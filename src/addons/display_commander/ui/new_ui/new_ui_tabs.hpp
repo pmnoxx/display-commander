@@ -15,6 +15,7 @@ struct Tab {
     std::string id;
     std::function<void()> on_draw;
     bool is_visible = true;
+    bool is_advanced_tab = false;
 };
 
 // Main tab manager class
@@ -25,7 +26,7 @@ class TabManager {
     ~TabManager() = default;
 
     // Add a new tab (thread-safe)
-    void AddTab(const std::string &name, const std::string &id, std::function<void()> on_draw);
+    void AddTab(const std::string &name, const std::string &id, std::function<void()> on_draw, bool is_advanced_tab = false);
 
     // Draw the tab bar and content (thread-safe)
     void Draw();

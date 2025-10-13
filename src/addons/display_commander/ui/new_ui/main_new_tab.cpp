@@ -171,6 +171,25 @@ void InitMainNewTab() {
     }
 }
 
+void DrawAdvancedSettings() {
+
+    // Advanced Settings Control
+    {
+        bool advanced_settings = settings::g_mainTabSettings.advanced_settings_enabled.GetValue();
+        if (ImGui::Checkbox(ICON_FK_FILE_CODE " Advanced Settings", &advanced_settings)) {
+            settings::g_mainTabSettings.advanced_settings_enabled.SetValue(advanced_settings);
+            LogInfo("Advanced settings %s", advanced_settings ? "enabled" : "disabled");
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip(
+                "Enable advanced settings to show advanced tabs (Developer, Experimental, HID Input, etc.).\n"
+                "When disabled, advanced tabs will be hidden to simplify the interface.");
+        }
+    }
+
+    ImGui::Spacing();
+}
+
 void DrawMainNewTab() {
     // Load saved settings once and sync legacy globals
 
@@ -279,6 +298,9 @@ void DrawMainNewTab() {
 
     if (ImGui::CollapsingHeader("Important Info", ImGuiTreeNodeFlags_DefaultOpen)) {
         DrawImportantInfo();
+    }
+    if (ImGui::CollapsingHeader("Advanced Settings", ImGuiTreeNodeFlags_None)) {
+        DrawAdvancedSettings();
     }
 }
 
@@ -1268,6 +1290,7 @@ void DrawWindowControls() {
     ImGui::EndGroup();
 }
 void DrawImportantInfo() {
+
 
     // Test Overlay Control
     {

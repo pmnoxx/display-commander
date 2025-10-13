@@ -96,6 +96,9 @@ class MainTabSettings {
     // Screensaver Control
     ui::new_ui::ComboSettingEnumRef<ScreensaverMode> screensaver_mode;
 
+    // Advanced Settings
+    ui::new_ui::BoolSetting advanced_settings_enabled;
+
   private:
     std::vector<ui::new_ui::SettingBase *> all_settings_;
 };

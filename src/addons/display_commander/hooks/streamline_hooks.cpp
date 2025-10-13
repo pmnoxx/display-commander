@@ -105,40 +105,34 @@ bool InstallStreamlineHooks() {
     LogInfo("Installing Streamline hooks...");
 
     // Hook slInit
-    if (MH_CreateHook(GetProcAddress(sl_interposer, "slInit"),
-                      reinterpret_cast<LPVOID>(slInit_Detour),
-                      reinterpret_cast<LPVOID*>(&slInit_Original)) != MH_OK) {
-        LogError("Failed to hook slInit");
+    if (!CreateAndEnableHook(GetProcAddress(sl_interposer, "slInit"),
+                             reinterpret_cast<LPVOID>(slInit_Detour),
+                             reinterpret_cast<LPVOID*>(&slInit_Original), "slInit")) {
+        LogError("Failed to create and enable slInit hook");
         return false;
     }
 
     // Hook slIsFeatureSupported
-    if (MH_CreateHook(GetProcAddress(sl_interposer, "slIsFeatureSupported"),
-                      reinterpret_cast<LPVOID>(slIsFeatureSupported_Detour),
-                      reinterpret_cast<LPVOID*>(&slIsFeatureSupported_Original)) != MH_OK) {
-        LogError("Failed to hook slIsFeatureSupported");
+    if (!CreateAndEnableHook(GetProcAddress(sl_interposer, "slIsFeatureSupported"),
+                             reinterpret_cast<LPVOID>(slIsFeatureSupported_Detour),
+                             reinterpret_cast<LPVOID*>(&slIsFeatureSupported_Original), "slIsFeatureSupported")) {
+        LogError("Failed to create and enable slIsFeatureSupported hook");
         return false;
     }
 
     // Hook slGetNativeInterface
-    if (MH_CreateHook(GetProcAddress(sl_interposer, "slGetNativeInterface"),
-                      reinterpret_cast<LPVOID>(slGetNativeInterface_Detour),
-                      reinterpret_cast<LPVOID*>(&slGetNativeInterface_Original)) != MH_OK) {
-        LogError("Failed to hook slGetNativeInterface");
+    if (!CreateAndEnableHook(GetProcAddress(sl_interposer, "slGetNativeInterface"),
+                             reinterpret_cast<LPVOID>(slGetNativeInterface_Detour),
+                             reinterpret_cast<LPVOID*>(&slGetNativeInterface_Original), "slGetNativeInterface")) {
+        LogError("Failed to create and enable slGetNativeInterface hook");
         return false;
     }
 
     // Hook slUpgradeInterface
-    if (MH_CreateHook(GetProcAddress(sl_interposer, "slUpgradeInterface"),
-                      reinterpret_cast<LPVOID>(slUpgradeInterface_Detour),
-                      reinterpret_cast<LPVOID*>(&slUpgradeInterface_Original)) != MH_OK) {
-        LogError("Failed to hook slUpgradeInterface");
-        return false;
-    }
-
-    // Enable hooks
-    if (MH_EnableHook(MH_ALL_HOOKS) != MH_OK) {
-        LogError("Failed to enable Streamline hooks");
+    if (!CreateAndEnableHook(GetProcAddress(sl_interposer, "slUpgradeInterface"),
+                             reinterpret_cast<LPVOID>(slUpgradeInterface_Detour),
+                             reinterpret_cast<LPVOID*>(&slUpgradeInterface_Original), "slUpgradeInterface")) {
+        LogError("Failed to create and enable slUpgradeInterface hook");
         return false;
     }
 

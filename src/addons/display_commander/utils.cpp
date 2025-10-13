@@ -7,6 +7,7 @@
 #include <cstdio>
 #include <string>
 #include <reshade.hpp>
+#include <MinHook.h>
 
 // Version.dll dynamic loading
 namespace {
@@ -380,4 +381,32 @@ std::string GetDeviceApiVersionString(reshade::api::device_api api, uint32_t api
     }
 
     return std::string(buffer);
+}
+
+// MinHook wrapper function that combines CreateHook and EnableHook with proper error handling
+bool CreateAndEnableHook(LPVOID pTarget, LPVOID pDetour, LPVOID* ppOriginal, const char* hookName) {
+    if (pTarget == nullptr || pDetour == nullptr) {
+        LogError("CreateAndEnableHook: Invalid parameters for hook '%s'", hookName ? hookName : "Unknown");
+        return false;
+    }
+
+    // Create the hook
+    MH_STATUS createResult = MH_CreateHook(pTarget, pDetour, ppOriginal);
+    if (createResult != MH_OK) {
+        LogError("CreateAndEnableHook: Failed to create hook '%s' (status: %d)",
+                 hookName ? hookName : "Unknown", createResult);
+        return false;
+    }
+
+    // Enable the hook
+    MH_STATUS enableResult = MH_EnableHook(pTarget);
+    if (enableResult != MH_OK) {
+        LogError("CreateAndEnableHook: Failed to enable hook '%s' (status: %d)",
+                 hookName ? hookName : "Unknown", enableResult);
+        return false;
+    }
+
+    LogInfo("CreateAndEnableHook: Successfully created and enabled hook '%s'",
+            hookName ? hookName : "Unknown");
+    return true;
 }

@@ -202,10 +202,6 @@ bool InstallApiHooks() {
     } else {
         LogInfo("MinHook initialized successfully for API hooks");
     }
-    if (MH_EnableHook(MH_ALL_HOOKS) != MH_OK) {
-        LogError("Failed to enable API hooks");
-    }
-
     // Hook GetFocus
     if (MH_CreateHook(GetFocus, GetFocus_Detour, (LPVOID *)&GetFocus_Original) != MH_OK) {
         LogError("Failed to create GetFocus hook");

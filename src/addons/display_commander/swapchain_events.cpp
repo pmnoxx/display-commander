@@ -406,6 +406,12 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
 
     // D3D9 FLIPEX upgrade logic (only for D3D9)
     if (is_d3d9) {
+        bool modified = false;
+        if (desc.fullscreen_state) {
+            LogInfo("D3D9: Changed fullscreen state from %s to %s", desc.fullscreen_state ? "YES" : "NO", desc.fullscreen_state ? "NO" : "YES");
+            desc.fullscreen_state = false;
+            modified = true;
+        }
         if (!settings::g_experimentalTabSettings.d3d9_flipex_enabled.GetValue()) {
             g_used_flipex.store(false);
             return false;
@@ -415,7 +421,6 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
 
         // Check if we should apply FLIPEX
         bool can_apply_flipex = true;
-        bool modified = false;
 
         /*
         // FLIPEX requires full-screen mode

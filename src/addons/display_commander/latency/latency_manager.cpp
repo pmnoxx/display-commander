@@ -1,7 +1,11 @@
 #include "latency_manager.hpp"
 #include "../globals.hpp"
 #include "../utils.hpp"
+#include "../utils/timing.hpp"
 #include "reflex_provider.hpp"
+
+// Namespace alias for cleaner code
+namespace timing = utils;
 
 
 LatencyManager::LatencyManager() = default;
@@ -68,19 +72,75 @@ uint64_t LatencyManager::IncreaseFrameId() {
 bool LatencyManager::SetMarker(LatencyMarkerType marker) {
     if (!IsInitialized())
         return false;
+
+    // Increment specific marker type counter
+    extern std::atomic<uint32_t> g_reflex_marker_simulation_start_count;
+    extern std::atomic<uint32_t> g_reflex_marker_simulation_end_count;
+    extern std::atomic<uint32_t> g_reflex_marker_rendersubmit_start_count;
+    extern std::atomic<uint32_t> g_reflex_marker_rendersubmit_end_count;
+    extern std::atomic<uint32_t> g_reflex_marker_present_start_count;
+    extern std::atomic<uint32_t> g_reflex_marker_present_end_count;
+    extern std::atomic<uint32_t> g_reflex_marker_input_sample_count;
+
+    switch (marker) {
+        case LatencyMarkerType::SIMULATION_START:
+            g_reflex_marker_simulation_start_count.fetch_add(1, std::memory_order_relaxed);
+            break;
+        case LatencyMarkerType::SIMULATION_END:
+            g_reflex_marker_simulation_end_count.fetch_add(1, std::memory_order_relaxed);
+            break;
+        case LatencyMarkerType::RENDERSUBMIT_START:
+            g_reflex_marker_rendersubmit_start_count.fetch_add(1, std::memory_order_relaxed);
+            break;
+        case LatencyMarkerType::RENDERSUBMIT_END:
+            g_reflex_marker_rendersubmit_end_count.fetch_add(1, std::memory_order_relaxed);
+            break;
+        case LatencyMarkerType::PRESENT_START:
+            g_reflex_marker_present_start_count.fetch_add(1, std::memory_order_relaxed);
+            break;
+        case LatencyMarkerType::PRESENT_END:
+            g_reflex_marker_present_end_count.fetch_add(1, std::memory_order_relaxed);
+            break;
+        case LatencyMarkerType::INPUT_SAMPLE:
+            g_reflex_marker_input_sample_count.fetch_add(1, std::memory_order_relaxed);
+            break;
+    }
+
     return provider_->SetMarker(marker);
 }
 
 bool LatencyManager::ApplySleepMode(bool low_latency, bool boost, bool use_markers) {
     if (!IsInitialized())
         return false;
+
+    // Increment debug counter
+    extern std::atomic<uint32_t> g_reflex_apply_sleep_mode_count;
+    g_reflex_apply_sleep_mode_count.fetch_add(1, std::memory_order_relaxed);
+
     return provider_->ApplySleepMode(low_latency, boost, use_markers);
 }
 
 bool LatencyManager::Sleep() {
     if (!IsInitialized())
         return false;
-    return provider_->Sleep();
+
+    // Increment debug counter
+    extern std::atomic<uint32_t> g_reflex_sleep_count;
+    extern std::atomic<LONGLONG> g_reflex_sleep_duration_ns;
+    g_reflex_sleep_count.fetch_add(1, std::memory_order_relaxed);
+
+    // Measure sleep duration
+    LONGLONG sleep_start_ns = timing::get_now_ns();
+    bool result = provider_->Sleep();
+    LONGLONG sleep_end_ns = timing::get_now_ns();
+
+    // Update rolling average sleep duration
+    LONGLONG sleep_duration_ns = sleep_end_ns - sleep_start_ns;
+    LONGLONG old_duration = g_reflex_sleep_duration_ns.load();
+    LONGLONG smoothed_duration = UpdateRollingAverage(sleep_duration_ns, old_duration);
+    g_reflex_sleep_duration_ns.store(smoothed_duration);
+
+    return result;
 }
 
 void LatencyManager::SetConfig(const LatencyConfig &config) {

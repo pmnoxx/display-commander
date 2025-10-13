@@ -317,6 +317,90 @@ void DrawNvapiSettings() {
         if (reflex_auto_configure) {
             ImGui::EndDisabled();
         }
+
+        // Reflex Debug Counters Section
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        if (ImGui::CollapsingHeader("Reflex Debug Counters", ImGuiTreeNodeFlags_DefaultOpen)) {
+            extern std::atomic<uint32_t> g_reflex_sleep_count;
+            extern std::atomic<uint32_t> g_reflex_apply_sleep_mode_count;
+            extern std::atomic<LONGLONG> g_reflex_sleep_duration_ns;
+            extern std::atomic<uint32_t> g_reflex_marker_simulation_start_count;
+            extern std::atomic<uint32_t> g_reflex_marker_simulation_end_count;
+            extern std::atomic<uint32_t> g_reflex_marker_rendersubmit_start_count;
+            extern std::atomic<uint32_t> g_reflex_marker_rendersubmit_end_count;
+            extern std::atomic<uint32_t> g_reflex_marker_present_start_count;
+            extern std::atomic<uint32_t> g_reflex_marker_present_end_count;
+            extern std::atomic<uint32_t> g_reflex_marker_input_sample_count;
+
+            uint32_t sleep_count = ::g_reflex_sleep_count.load();
+            uint32_t apply_sleep_mode_count = ::g_reflex_apply_sleep_mode_count.load();
+            LONGLONG sleep_duration_ns = ::g_reflex_sleep_duration_ns.load();
+            uint32_t sim_start_count = ::g_reflex_marker_simulation_start_count.load();
+            uint32_t sim_end_count = ::g_reflex_marker_simulation_end_count.load();
+            uint32_t render_start_count = ::g_reflex_marker_rendersubmit_start_count.load();
+            uint32_t render_end_count = ::g_reflex_marker_rendersubmit_end_count.load();
+            uint32_t present_start_count = ::g_reflex_marker_present_start_count.load();
+            uint32_t present_end_count = ::g_reflex_marker_present_end_count.load();
+            uint32_t input_sample_count = ::g_reflex_marker_input_sample_count.load();
+
+            uint32_t total_marker_count = sim_start_count + sim_end_count + render_start_count +
+                                        render_end_count + present_start_count + present_end_count + input_sample_count;
+
+            ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Reflex API Call Counters:");
+            ImGui::Indent();
+            ImGui::Text("Sleep calls: %u", sleep_count);
+            if (sleep_count > 0) {
+                double sleep_duration_ms = sleep_duration_ns / 1000000.0;
+                ImGui::Text("Avg Sleep Duration: %.3f ms", sleep_duration_ms);
+            }
+            ImGui::Text("ApplySleepMode calls: %u", apply_sleep_mode_count);
+            ImGui::Text("Total SetMarker calls: %u", total_marker_count);
+            ImGui::Unindent();
+
+            ImGui::Spacing();
+            ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Individual Marker Type Counts:");
+            ImGui::Indent();
+            ImGui::Text("SIMULATION_START: %u", sim_start_count);
+            ImGui::Text("SIMULATION_END: %u", sim_end_count);
+            ImGui::Text("RENDERSUBMIT_START: %u", render_start_count);
+            ImGui::Text("RENDERSUBMIT_END: %u", render_end_count);
+            ImGui::Text("PRESENT_START: %u", present_start_count);
+            ImGui::Text("PRESENT_END: %u", present_end_count);
+            ImGui::Text("INPUT_SAMPLE: %u", input_sample_count);
+            ImGui::Unindent();
+
+            ImGui::Spacing();
+            ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "These counters help debug Reflex FPS limiter issues in DX9 games.");
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Marker counts show which specific markers are being set:\n"
+                                 "• SIMULATION_START/END: Frame simulation markers\n"
+                                 "• RENDERSUBMIT_START/END: GPU submission markers\n"
+                                 "• PRESENT_START/END: Present call markers\n"
+                                 "• INPUT_SAMPLE: Input sampling markers\n\n"
+                                 "If all marker counts are 0, Reflex markers are not being set.\n"
+                                 "If Sleep calls are 0, the Reflex sleep mode is not being called.\n"
+                                 "If ApplySleepMode calls are 0, the Reflex configuration is not being applied.");
+            }
+
+            if (ImGui::Button("Reset Counters")) {
+                ::g_reflex_sleep_count.store(0);
+                ::g_reflex_apply_sleep_mode_count.store(0);
+                ::g_reflex_sleep_duration_ns.store(0);
+                ::g_reflex_marker_simulation_start_count.store(0);
+                ::g_reflex_marker_simulation_end_count.store(0);
+                ::g_reflex_marker_rendersubmit_start_count.store(0);
+                ::g_reflex_marker_rendersubmit_end_count.store(0);
+                ::g_reflex_marker_present_start_count.store(0);
+                ::g_reflex_marker_present_end_count.store(0);
+                ::g_reflex_marker_input_sample_count.store(0);
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Reset all Reflex debug counters to zero.");
+            }
+        }
     }
 }
 

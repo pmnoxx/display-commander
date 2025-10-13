@@ -902,7 +902,7 @@ void DrawDisplaySettings() {
             if (has_been_enabled) {
                 ImGui::SameLine();
 
-                if (ImGui::Checkbox("Enable Flip Chain", &enable_flip)) {
+                if (ImGui::Checkbox("Enable Flip Chain (requires restart)", &enable_flip)) {
                     settings::g_developerTabSettings.enable_flip_chain.SetValue(enable_flip);
                     s_enable_flip_chain.store(enable_flip);
                     s_restart_needed_vsync_tearing.store(true);
@@ -916,9 +916,10 @@ void DrawDisplaySettings() {
             }
 
             if (is_d3d9) {
+                ImGui::SameLine();
                 // TODO add checkbox enable D9EX with flip model
                 bool enable_d9ex_with_flip = settings::g_experimentalTabSettings.d3d9_flipex_enabled.GetValue();
-                if (ImGui::Checkbox("Enable D9EX with Flip Model", &enable_d9ex_with_flip)) {
+                if (ImGui::Checkbox("Enable Flip State (requires restart)", &enable_d9ex_with_flip)) {
                     settings::g_experimentalTabSettings.d3d9_flipex_enabled.SetValue(enable_d9ex_with_flip);
                     LogInfo(enable_d9ex_with_flip ? "Enable D9EX with Flip Model enabled" : "Enable D9EX with Flip Model disabled");
                 }

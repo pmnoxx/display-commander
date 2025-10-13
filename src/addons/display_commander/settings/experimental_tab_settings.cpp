@@ -72,7 +72,7 @@ ExperimentalTabSettings::ExperimentalTabSettings()
         "Enabled"
     }, "DisplayCommander.Experimental")
     , dlss_indicator_enabled("DlssIndicatorEnabled", false, "DisplayCommander.Experimental")
-    , d3d9_flipex_enabled("D3D9FlipExEnabled", true, "DisplayCommander.Experimental")
+    , d3d9_flipex_enabled("D3D9FlipExEnabled", false, "DisplayCommander.Experimental")
     , disable_flip_chain_enabled("DisableFlipChainEnabled", false, "DisplayCommander.Experimental")
     , enable_flip_chain_enabled("EnableFlipChainEnabled", false, "DisplayCommander.Experimental")
     , suppress_dinput_hooks("SuppressDInputHooks", false, "DisplayCommander.Experimental")

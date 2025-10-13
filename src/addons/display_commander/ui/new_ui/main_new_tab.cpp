@@ -251,7 +251,7 @@ void DrawMainNewTab() {
     ImGui::Spacing();
 
     // Input Blocking (Background) Section
-    if (ImGui::CollapsingHeader("Input Control (Background)", ImGuiTreeNodeFlags_None)) {
+    if (ImGui::CollapsingHeader("Input Control", ImGuiTreeNodeFlags_None)) {
         bool block_any_in_background = settings::g_mainTabSettings.block_input_in_background.GetValue();
         if (ImGui::Checkbox("Block Input in Background", &block_any_in_background)) {
             settings::g_mainTabSettings.block_input_in_background.SetValue(block_any_in_background);
@@ -259,6 +259,7 @@ void DrawMainNewTab() {
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Blocks mouse, keyboard, and cursor warping while the game window is not focused.");
         }
+        ImGui::SameLine();
 
         // Input blocking without Reshade (handled by Windows message hooks)
         bool block_without_reshade = settings::g_mainTabSettings.block_input_without_reshade.GetValue();
@@ -270,6 +271,16 @@ void DrawMainNewTab() {
             ImGui::SetTooltip(
                 "Uses Windows message hooks to block input independently of Reshade's system. Required "
                 "for future gamepad remapping features.");
+        }
+        ImGui::SameLine();
+        // Show XInput tab checkbox
+        bool show_xinput_tab = settings::g_mainTabSettings.show_xinput_tab.GetValue();
+        if (ImGui::Checkbox("Show XInput Tab", &show_xinput_tab)) {
+            settings::g_mainTabSettings.show_xinput_tab.SetValue(show_xinput_tab);
+            LogInfo("Show XInput tab %s", show_xinput_tab ? "enabled" : "disabled");
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Shows the XInput controller monitoring tab even when advanced settings are disabled.");
         }
     }
 

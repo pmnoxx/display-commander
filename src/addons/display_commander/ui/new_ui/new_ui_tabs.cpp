@@ -54,9 +54,15 @@ void TabManager::Draw() {
             // Check if tab should be visible
             bool should_show = (*current_tabs)[i].is_visible;
 
-            // Check advanced settings for advanced tabs
-            if ((*current_tabs)[i].is_advanced_tab) {
-                should_show = should_show && settings::g_mainTabSettings.advanced_settings_enabled.GetValue();
+            // Special case for XInput tab - show if either advanced settings OR show_xinput_tab is enabled
+            if ((*current_tabs)[i].id == "xinput") {
+                should_show = should_show && (settings::g_mainTabSettings.advanced_settings_enabled.GetValue() ||
+                                             settings::g_mainTabSettings.show_xinput_tab.GetValue());
+            } else {
+                // Check advanced settings for other advanced tabs
+                if ((*current_tabs)[i].is_advanced_tab) {
+                    should_show = should_show && settings::g_mainTabSettings.advanced_settings_enabled.GetValue();
+                }
             }
 
             if (!should_show) {

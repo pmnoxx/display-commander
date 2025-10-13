@@ -98,6 +98,7 @@ class MainTabSettings {
 
     // Advanced Settings
     ui::new_ui::BoolSetting advanced_settings_enabled;
+    ui::new_ui::BoolSetting show_xinput_tab;
 
   private:
     std::vector<ui::new_ui::SettingBase *> all_settings_;

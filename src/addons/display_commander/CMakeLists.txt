@@ -21,6 +21,10 @@ endif()
 # Add git commit count as build number
 target_compile_definitions(zzz_display_commander PRIVATE GIT_COMMIT_COUNT=${GIT_COMMIT_COUNT})
 
+# Add build date and time as compile definitions
+target_compile_definitions(zzz_display_commander PRIVATE ${BUILD_DATE_DEFINE})
+target_compile_definitions(zzz_display_commander PRIVATE ${BUILD_TIME_DEFINE})
+
 # MSVC-specific flags
 if(MSVC)
   target_compile_options(zzz_display_commander PRIVATE /bigobj /arch:SSE2)

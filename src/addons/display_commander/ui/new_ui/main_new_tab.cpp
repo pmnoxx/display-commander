@@ -5,6 +5,7 @@
 #include "../../latent_sync/latent_sync_limiter.hpp"
 #include "../../performance_types.hpp"
 #include "../../settings/developer_tab_settings.hpp"
+#include "../../settings/experimental_tab_settings.hpp"
 #include "../../settings/main_tab_settings.hpp"
 #include "../../widgets/resolution_widget/resolution_widget.hpp"
 #include "../../nvapi/reflex_manager.hpp"
@@ -908,6 +909,16 @@ void DrawDisplaySettings() {
                                     "Only works with DirectX 10/11/12 (DXGI) games.");
                 }
             }
+
+            if (is_d3d9) {
+                // TODO add checkbox enable D9EX with flip model
+                bool enable_d9ex_with_flip = settings::g_experimentalTabSettings.d3d9_flipex_enabled.GetValue();
+                if (ImGui::Checkbox("Enable D9EX with Flip Model", &enable_d9ex_with_flip)) {
+                    settings::g_experimentalTabSettings.d3d9_flipex_enabled.SetValue(enable_d9ex_with_flip);
+                    LogInfo(enable_d9ex_with_flip ? "Enable D9EX with Flip Model enabled" : "Enable D9EX with Flip Model disabled");
+                }
+            }
+
             // Display restart-required notice if flagged
             if (s_restart_needed_vsync_tearing.load()) {
                 ImGui::Spacing();

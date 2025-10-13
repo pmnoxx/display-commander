@@ -247,8 +247,7 @@ void every1s_checks() {
                 << "   (1% Low: " << std::setprecision(1) << one_percent_low << ", 0.1% Low: " << std::setprecision(1)
                 << point_one_percent_low << ")"
                 << "   Top FT: P99 " << std::setprecision(1) << p99_frame_time_ms << " ms"
-                << ", P99.9 " << std::setprecision(1) << p999_frame_time_ms << " ms"
-                << " since reset";
+                << ", P99.9 " << std::setprecision(1) << p999_frame_time_ms << " ms";
         g_perf_text_shared.store(std::make_shared<const std::string>(fps_oss.str()));
     }
 

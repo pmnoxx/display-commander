@@ -51,7 +51,7 @@ MainTabSettings::MainTabSettings()
       mute_in_background("mute_in_background", s_mute_in_background, false, "DisplayCommander"),
       mute_in_background_if_other_audio("mute_in_background_if_other_audio", s_mute_in_background_if_other_audio, false,
                                         "DisplayCommander"),
-      audio_volume_auto_apply("audio_volume_auto_apply", false, "DisplayCommander"),
+      audio_volume_auto_apply("audio_volume_auto_apply", true, "DisplayCommander"),
       block_input_in_background("block_input_in_background", s_block_input_in_background, true, "DisplayCommander"),
       block_input_without_reshade("block_input_without_reshade", s_block_input_without_reshade, false,
                                   "DisplayCommander"),

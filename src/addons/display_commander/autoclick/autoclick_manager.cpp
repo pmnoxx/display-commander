@@ -3,6 +3,7 @@
 #include "../settings/experimental_tab_settings.hpp"
 #include "../ui/new_ui/settings_wrapper.hpp"
 #include "../utils.hpp"
+#include "../utils/timing.hpp"
 #include <imgui.h>
 #include <windows.h>
 #include <chrono>
@@ -13,7 +14,12 @@ namespace autoclick {
 // Global variables for auto-click functionality
 std::atomic<bool> g_auto_click_thread_running{false};
 std::thread g_auto_click_thread;
-bool g_move_mouse = true;
+const bool g_move_mouse = true;
+const bool g_mouse_spoofing_enabled = true;
+
+// UI state tracking for optimization
+std::atomic<bool> g_ui_overlay_open{false};
+std::atomic<LONGLONG> g_last_ui_draw_time_ns{0};
 
 // Helper function to perform a click at the specified coordinates
 void PerformClick(int x, int y, int sequence_num, bool is_test) {
@@ -32,7 +38,7 @@ void PerformClick(int x, int y, int sequence_num, bool is_test) {
     // Move mouse to the target location if enabled
     if (g_move_mouse) {
         // Check if mouse position spoofing is enabled
-        if (settings::g_experimentalTabSettings.mouse_spoofing_enabled.GetValue()) {
+        if (g_mouse_spoofing_enabled) {
             // Use spoofing instead of actually moving the cursor
             s_spoofed_mouse_x.store(screen_pos.x);
             s_spoofed_mouse_y.store(screen_pos.y);
@@ -52,8 +58,8 @@ void PerformClick(int x, int y, int sequence_num, bool is_test) {
 
     LogInfo("%s click for sequence %d sent to game window at (%d, %d)%s", is_test ? "Test" : "Auto", sequence_num, x, y,
             g_move_mouse
-                ? (settings::g_experimentalTabSettings.mouse_spoofing_enabled.GetValue() ? " - mouse position spoofed"
-                                                                                         : " - mouse moved to screen")
+                ? (g_mouse_spoofing_enabled ? " - mouse position spoofed"
+                                           : " - mouse moved to screen")
                 : " - mouse not moved");
 }
 
@@ -61,7 +67,8 @@ void PerformClick(int x, int y, int sequence_num, bool is_test) {
 void DrawSequence(int sequence_num) {
     int idx = sequence_num - 1; // Convert to 0-based index
 
-    ImGui::TextColored(ImVec4(0.9f, 0.9f, 0.9f, 1.0f), "Sequence %d:", sequence_num);
+    ImGui::TextColored(ImVec4(0.9f, 0.9f, 0.9f, 1.0f), "%d:", sequence_num);
+    ImGui::SameLine();
 
     // Get current values from settings
     bool enabled = settings::g_experimentalTabSettings.sequence_enabled.GetValue(idx) != 0;
@@ -149,27 +156,50 @@ void DrawSequence(int sequence_num) {
     ImGui::Spacing();
 }
 
-// Auto-click thread function
+// Auto-click thread function - always running, sleeps when inactive
 void AutoClickThread() {
     g_auto_click_thread_running.store(true);
+    LogInfo("Auto-click thread started");
 
-    while (settings::g_experimentalTabSettings.auto_click_enabled.GetValue()) {
-        // Get the current game window handle
-        HWND hwnd = g_last_swapchain_hwnd.load();
-        if (hwnd && IsWindow(hwnd)) {
-            // Process each enabled click sequence using settings directly
-            for (int i = 0; i < 5; i++) {
-                if (settings::g_experimentalTabSettings.sequence_enabled.GetValue(i) != 0) {
-                    int x = settings::g_experimentalTabSettings.sequence_x.GetValue(i);
-                    int y = settings::g_experimentalTabSettings.sequence_y.GetValue(i);
-                    int interval = settings::g_experimentalTabSettings.sequence_interval.GetValue(i);
-                    PerformClick(x, y, i + 1, false);
-                    std::this_thread::sleep_for(std::chrono::milliseconds(interval));
+    while (true) {
+        // Check if auto-click is enabled
+        if (g_auto_click_enabled.load()) {
+            // Check if UI overlay is open - if so, sleep for 2 seconds
+            if (g_ui_overlay_open.load()) {
+                LogDebug("Auto-click: UI overlay is open, sleeping for 2 seconds");
+                std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+                continue;
+            }
+
+            // Check if UI was drawn recently (within last 2 seconds) - if so, sleep briefly
+            LONGLONG now_ns = utils::get_now_ns();
+            LONGLONG last_ui_draw = g_last_ui_draw_time_ns.load();
+            if (last_ui_draw > 0 && (now_ns - last_ui_draw) < (2 * utils::SEC_TO_NS)) {
+                LogDebug("Auto-click: UI was drawn recently, sleeping for 500ms");
+                std::this_thread::sleep_for(std::chrono::milliseconds(500));
+                continue;
+            }
+
+            // Get the current game window handle
+            HWND hwnd = g_last_swapchain_hwnd.load();
+            if (hwnd && IsWindow(hwnd)) {
+                // Process each enabled click sequence using settings directly
+                for (int i = 0; i < 5; i++) {
+                    if (settings::g_experimentalTabSettings.sequence_enabled.GetValue(i) != 0) {
+                        int x = settings::g_experimentalTabSettings.sequence_x.GetValue(i);
+                        int y = settings::g_experimentalTabSettings.sequence_y.GetValue(i);
+                        int interval = settings::g_experimentalTabSettings.sequence_interval.GetValue(i);
+                        PerformClick(x, y, i + 1, false);
+                        std::this_thread::sleep_for(std::chrono::milliseconds(interval));
+                    }
                 }
+            } else {
+                LogWarn("Auto-click: No valid game window handle available");
+                // Wait a bit before retrying
+                std::this_thread::sleep_for(std::chrono::milliseconds(1000));
             }
         } else {
-            LogWarn("Auto-click: No valid game window handle available");
-            // Wait a bit before retrying
+            // Auto-click is disabled, sleep for 1 second
             std::this_thread::sleep_for(std::chrono::milliseconds(1000));
         }
     }
@@ -177,36 +207,35 @@ void AutoClickThread() {
     g_auto_click_thread_running.store(false);
 }
 
+// Function to start the auto-click thread
+void StartAutoClickThread() {
+    if (!g_auto_click_thread_running.load()) {
+        g_auto_click_thread = std::thread(AutoClickThread);
+        LogInfo("Auto-click thread started");
+    }
+}
+
+// Function to stop the auto-click thread
+void StopAutoClickThread() {
+    if (g_auto_click_thread_running.load()) {
+        // Note: We can't actually stop the thread since it runs forever
+        // The thread will just sleep when auto-click is disabled
+        LogInfo("Auto-click thread will sleep when disabled");
+    }
+}
+
 // Function to toggle auto-click enabled state
 void ToggleAutoClickEnabled() {
-    bool auto_click_enabled = settings::g_experimentalTabSettings.auto_click_enabled.GetValue();
-    settings::g_experimentalTabSettings.auto_click_enabled.SetValue(!auto_click_enabled);
+    bool new_auto_click_enabled = !g_auto_click_enabled.load();
 
-    auto_click_enabled = !auto_click_enabled; // Update local variable
+    g_auto_click_enabled.store(new_auto_click_enabled);
 
-    if (auto_click_enabled) {
-        // Start auto-click thread
-        if (!g_auto_click_thread_running.load()) {
-            g_auto_click_thread = std::thread(AutoClickThread);
-            LogInfo("Auto-click sequences enabled via shortcut");
+    LogInfo("ToggleAutoClickEnabled - new state: %s", new_auto_click_enabled ? "enabled" : "disabled");
 
-            // Auto-enable mouse spoofing if it's not explicitly disabled and mouse movement is enabled
-            if (g_move_mouse && !settings::g_experimentalTabSettings.mouse_spoofing_enabled.GetValue()) {
-                settings::g_experimentalTabSettings.mouse_spoofing_enabled.SetValue(true);
-                LogInfo("Auto-enabled mouse position spoofing for better stealth");
-            }
-        }
+    if (new_auto_click_enabled) {
+        LogInfo("Auto-click sequences enabled via shortcut");
     } else {
-        // Stop auto-click thread
-        if (g_auto_click_thread_running.load()) {
-            // Wait for thread to finish
-            if (g_auto_click_thread.joinable()) {
-                g_auto_click_thread.join();
-            }
-            // Disable mouse spoofing when auto-click is disabled
-            settings::g_experimentalTabSettings.mouse_spoofing_enabled.SetValue(false);
-            LogInfo("Auto-click sequences disabled via shortcut - mouse spoofing also disabled");
-        }
+        LogInfo("Auto-click sequences disabled via shortcut");
     }
 }
 
@@ -248,74 +277,25 @@ void DrawAutoClickFeature() {
     }
 
     // Master enable/disable checkbox
-    if (CheckboxSetting(settings::g_experimentalTabSettings.auto_click_enabled, "Enable Auto-Click Sequences")) {
-        bool auto_click_enabled = settings::g_experimentalTabSettings.auto_click_enabled.GetValue();
+    bool auto_click_enabled = g_auto_click_enabled.load();
+    if (ImGui::Checkbox("Enable Auto-Click Sequences", &auto_click_enabled)) {
+        g_auto_click_enabled.store(auto_click_enabled);
 
         if (auto_click_enabled) {
-            // Start auto-click thread
-            if (!g_auto_click_thread_running.load()) {
-                g_auto_click_thread = std::thread(AutoClickThread);
-                LogInfo("Auto-click sequences enabled");
-
-                // Auto-enable mouse spoofing if it's not explicitly disabled and mouse movement is enabled
-                if (g_move_mouse && !settings::g_experimentalTabSettings.mouse_spoofing_enabled.GetValue()) {
-                    settings::g_experimentalTabSettings.mouse_spoofing_enabled.SetValue(true);
-                    LogInfo("Auto-enabled mouse position spoofing for better stealth");
-                }
-            }
+            LogInfo("Auto-click sequences enabled");
         } else {
-            // Stop auto-click thread
-            if (g_auto_click_thread_running.load()) {
-                // Wait for thread to finish
-                if (g_auto_click_thread.joinable()) {
-                    g_auto_click_thread.join();
-                }
-                // Disable mouse spoofing when auto-click is disabled
-                settings::g_experimentalTabSettings.mouse_spoofing_enabled.SetValue(false);
-                LogInfo("Auto-click sequences disabled - mouse spoofing also disabled");
-            }
+            LogInfo("Auto-click sequences disabled");
         }
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Enable/disable all auto-click sequences. Each sequence can be individually configured "
-                          "below.\n\nShortcut: Ctrl+P (can be enabled in Developer tab)\n\nNote: Mouse position spoofing will be auto-enabled for better stealth when mouse movement is enabled.");
+                          "below.\n\nShortcut: Ctrl+P (can be enabled in Developer tab)\n\nNote: Mouse position spoofing is always enabled for better stealth.");
     }
-
-    // Mouse movement toggle
-    ImGui::Spacing();
-    if (ImGui::Checkbox("Move Mouse Before Clicking", &g_move_mouse)) {
-        LogInfo("Mouse movement %s", g_move_mouse ? "enabled" : "disabled");
-    }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Whether to physically move the mouse cursor to the click location before sending click "
-                          "messages.\n\nDisable this if the game detects mouse movement as suspicious behavior.");
-    }
-
-    // Mouse position spoofing toggle
-    bool auto_click_enabled = settings::g_experimentalTabSettings.auto_click_enabled.GetValue();
-
-    if (CheckboxSetting(settings::g_experimentalTabSettings.mouse_spoofing_enabled,
-                        "Enable Mouse Position Spoofing")) {
-        LogInfo("Mouse position spoofing %s", settings::g_experimentalTabSettings.mouse_spoofing_enabled.GetValue()
-                                                   ? "enabled"
-                                                   : "disabled");
-    }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Spoof mouse position instead of actually moving the cursor.\nThis can help avoid detection "
-                          "by games that monitor mouse movement.\n\nNote: This only works when 'Move Mouse Before "
-                          "Clicking' is enabled.");
-    }
-
-    // Show warning when spoofing is enabled but auto-click is disabled
-    if (settings::g_experimentalTabSettings.mouse_spoofing_enabled.GetValue() && !auto_click_enabled) {
-        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "⚠ Mouse spoofing enabled but auto-click sequences are disabled");
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Mouse position spoofing is configured but will not work until auto-click sequences are enabled.");
-        }
-    }
+    // Mouse position spoofing is always enabled
+    ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "✓ Mouse position spoofing is always enabled for better stealth");
 
     // Show current status
-    if (settings::g_experimentalTabSettings.auto_click_enabled.GetValue()) {
+    if (g_auto_click_enabled.load()) {
         if (g_auto_click_thread_running.load()) {
             ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✁EAuto-click sequences are ACTIVE");
         } else {
@@ -342,7 +322,7 @@ void DrawAutoClickFeature() {
 
     ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Active sequences: %d/5", enabled_sequences);
 
-    if (enabled_sequences > 0 && settings::g_experimentalTabSettings.auto_click_enabled.GetValue()) {
+    if (enabled_sequences > 0 && g_auto_click_enabled.load()) {
         ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f),
                            "Sequences will execute in order: 1 ↁE2 ↁE3 ↁE4 ↁE5 ↁErepeat");
     }
@@ -352,6 +332,18 @@ void DrawAutoClickFeature() {
 
     // Draw mouse coordinates display
     DrawMouseCoordinatesDisplay();
+}
+
+// UI state management functions
+void UpdateUIOverlayState(bool is_open) {
+    g_ui_overlay_open.store(is_open);
+    LogDebug("Auto-click: UI overlay state updated to %s", is_open ? "open" : "closed");
+}
+
+void UpdateLastUIDrawTime() {
+    LONGLONG now_ns = utils::get_now_ns();
+    g_last_ui_draw_time_ns.store(now_ns);
+    LogDebug("Auto-click: UI draw time updated to %lld ns", now_ns);
 }
 
 } // namespace autoclick

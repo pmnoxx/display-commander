@@ -382,6 +382,9 @@ extern std::atomic<bool> s_enable_timeslowdown_shortcut;
 extern std::atomic<bool> s_enable_adhd_toggle_shortcut;
 extern std::atomic<bool> s_enable_autoclick_shortcut;
 
+// Auto-click enabled state (atomic, not loaded from config)
+extern std::atomic<bool> g_auto_click_enabled;
+
 // FPS Limiter Settings
 
 // VSync and Tearing Controls

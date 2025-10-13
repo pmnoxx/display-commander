@@ -7,7 +7,7 @@ namespace settings {
 
 ExperimentalTabSettings::ExperimentalTabSettings()
     : auto_click_enabled("AutoClickEnabled", false, "Experimental")
-    , mouse_spoofing_enabled("MouseSpoofingEnabled", false, "Experimental")
+    , mouse_spoofing_enabled("MouseSpoofingEnabled", true, "Experimental")
     , sequence_enabled("SequenceEnabled", 5, 0, 0, 1, "Experimental")  // 5 elements, default 0 (disabled), range 0-1
     , sequence_x("SequenceX", 5, 0, -10000, 10000, "Experimental")     // 5 elements, default 0, range -10000 to 10000
     , sequence_y("SequenceY", 5, 0, -10000, 10000, "Experimental")     // 5 elements, default 0, range -10000 to 10000

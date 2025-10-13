@@ -17,6 +17,7 @@
 #include "ui/new_ui/new_ui_main.hpp"
 #include "utils/timing.hpp"
 #include "version.hpp"
+#include "autoclick/autoclick_manager.hpp"
 
 #include <reshade.hpp>
 #include <wrl/client.h>
@@ -87,6 +88,9 @@ struct ReShadeDetectionDebugInfo {
 ReShadeDetectionDebugInfo g_reshade_debug_info;
 namespace {
 void OnRegisterOverlayDisplayCommander(reshade::api::effect_runtime *runtime) {
+    // Update UI draw time for auto-click optimization
+    autoclick::UpdateLastUIDrawTime();
+
     ui::new_ui::NewUISystem::GetInstance().Draw();
 }
 } // namespace
@@ -118,6 +122,9 @@ void OnInitEffectRuntime(reshade::api::effect_runtime *runtime) {
         }
         registered_overlay = true;
         reshade::register_overlay("Display Commander", OnRegisterOverlayDisplayCommander);
+
+        // Start the auto-click thread (always running, sleeps when disabled)
+        autoclick::StartAutoClickThread();
     }
 }
 
@@ -132,6 +139,10 @@ bool OnReShadeOverlayOpen(reshade::api::effect_runtime *runtime, bool open, resh
     } else {
         LogInfo("ReShade overlay closed - Input blocking inactive");
     }
+
+    // Update auto-click UI state for optimization
+    autoclick::UpdateUIOverlayState(open);
+
     return false; // Don't prevent ReShade from opening/closing the overlay
 }
 

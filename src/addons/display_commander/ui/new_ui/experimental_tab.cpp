@@ -249,13 +249,10 @@ void DrawMouseCoordinatesDisplay() {
 
 // Cleanup function to stop background threads
 void CleanupExperimentalTab() {
-    // Stop auto-click thread
-    if (settings::g_experimentalTabSettings.auto_click_enabled.GetValue()) {
-        settings::g_experimentalTabSettings.auto_click_enabled.SetValue(false);
-        if (autoclick::g_auto_click_thread_running.load() && autoclick::g_auto_click_thread.joinable()) {
-            autoclick::g_auto_click_thread.join();
-        }
-        LogInfo("Experimental tab cleanup: Auto-click thread stopped");
+    // Disable auto-click (thread will sleep when disabled)
+    if (g_auto_click_enabled.load()) {
+        g_auto_click_enabled.store(false);
+        LogInfo("Experimental tab cleanup: Auto-click disabled (thread will sleep)");
     }
 }
 

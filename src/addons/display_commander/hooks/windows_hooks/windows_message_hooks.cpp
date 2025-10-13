@@ -423,9 +423,8 @@ BOOL WINAPI ClipCursor_Detour(const RECT *lpRect) {
 BOOL WINAPI GetCursorPos_Detour(LPPOINT lpPoint) {
     // If mouse position spoofing is enabled AND auto-click is enabled, return spoofed position
     if (settings::g_experimentalTabSettings.mouse_spoofing_enabled.GetValue() && lpPoint != nullptr) {
-        // Check if auto-click is enabled by checking if the experimental tab settings are available
-        // and auto-click is enabled
-        if (settings::g_experimentalTabSettings.auto_click_enabled.GetValue()) {
+        // Check if auto-click is enabled
+        if (g_auto_click_enabled.load()) {
             lpPoint->x = s_spoofed_mouse_x.load();
             lpPoint->y = s_spoofed_mouse_y.load();
             return TRUE;
@@ -457,9 +456,8 @@ BOOL WINAPI SetCursorPos_Detour(int X, int Y) {
 
     // If mouse position spoofing is enabled AND auto-click is enabled, update spoofed position instead of moving cursor
     if (settings::g_experimentalTabSettings.mouse_spoofing_enabled.GetValue()) {
-        // Check if auto-click is enabled by checking if the experimental tab settings are available
-        // and auto-click is enabled
-        if (settings::g_experimentalTabSettings.auto_click_enabled.GetValue()) {
+        // Check if auto-click is enabled
+        if (g_auto_click_enabled.load()) {
             s_spoofed_mouse_x.store(X);
             s_spoofed_mouse_y.store(Y);
             return TRUE; // Return success without actually moving the cursor

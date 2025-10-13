@@ -334,42 +334,26 @@ bool InstallLoadLibraryHooks() {
     }
 
     // Hook LoadLibraryA
-    if (MH_CreateHook(LoadLibraryA, LoadLibraryA_Detour, (LPVOID*)&LoadLibraryA_Original) != MH_OK) {
-        LogError("Failed to create LoadLibraryA hook");
-        return false;
-    }
-    if (MH_EnableHook(LoadLibraryA) != MH_OK) {
-        LogError("Failed to enable LoadLibraryA hook");
+    if (!CreateAndEnableHook(LoadLibraryA, LoadLibraryA_Detour, (LPVOID*)&LoadLibraryA_Original, "LoadLibraryA")) {
+        LogError("Failed to create and enable LoadLibraryA hook");
         return false;
     }
 
     // Hook LoadLibraryW
-    if (MH_CreateHook(LoadLibraryW, LoadLibraryW_Detour, (LPVOID*)&LoadLibraryW_Original) != MH_OK) {
-        LogError("Failed to create LoadLibraryW hook");
-        return false;
-    }
-    if (MH_EnableHook(LoadLibraryW) != MH_OK) {
-        LogError("Failed to enable LoadLibraryW hook");
+    if (!CreateAndEnableHook(LoadLibraryW, LoadLibraryW_Detour, (LPVOID*)&LoadLibraryW_Original, "LoadLibraryW")) {
+        LogError("Failed to create and enable LoadLibraryW hook");
         return false;
     }
 
     // Hook LoadLibraryExA
-    if (MH_CreateHook(LoadLibraryExA, LoadLibraryExA_Detour, (LPVOID*)&LoadLibraryExA_Original) != MH_OK) {
-        LogError("Failed to create LoadLibraryExA hook");
-        return false;
-    }
-    if (MH_EnableHook(LoadLibraryExA) != MH_OK) {
-        LogError("Failed to enable LoadLibraryExA hook");
+    if (!CreateAndEnableHook(LoadLibraryExA, LoadLibraryExA_Detour, (LPVOID*)&LoadLibraryExA_Original, "LoadLibraryExA")) {
+        LogError("Failed to create and enable LoadLibraryExA hook");
         return false;
     }
 
     // Hook LoadLibraryExW
-    if (MH_CreateHook(LoadLibraryExW, LoadLibraryExW_Detour, (LPVOID*)&LoadLibraryExW_Original) != MH_OK) {
-        LogError("Failed to create LoadLibraryExW hook");
-        return false;
-    }
-    if (MH_EnableHook(LoadLibraryExW) != MH_OK) {
-        LogError("Failed to enable LoadLibraryExW hook");
+    if (!CreateAndEnableHook(LoadLibraryExW, LoadLibraryExW_Detour, (LPVOID*)&LoadLibraryExW_Original, "LoadLibraryExW")) {
+        LogError("Failed to create and enable LoadLibraryExW hook");
         return false;
     }
 

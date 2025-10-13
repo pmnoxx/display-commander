@@ -343,7 +343,7 @@ void UpdateUIOverlayState(bool is_open) {
 void UpdateLastUIDrawTime() {
     LONGLONG now_ns = utils::get_now_ns();
     g_last_ui_draw_time_ns.store(now_ns);
-    LogDebug("Auto-click: UI draw time updated to %lld ns", now_ns);
+    //LogDebug("Auto-click: UI draw time updated to %lld ns", now_ns);
 }
 
 } // namespace autoclick

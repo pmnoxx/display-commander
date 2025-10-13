@@ -48,7 +48,43 @@ void TabManager::Draw() {
         return;
     }
 
-    // Draw tab bar
+    // Count visible tabs first
+    int visible_tab_count = 0;
+    int first_visible_tab_index = -1;
+
+    for (size_t i = 0; i < current_tabs->size(); ++i) {
+        // Check if tab should be visible
+        bool should_show = (*current_tabs)[i].is_visible;
+
+        // Special case for XInput tab - show if either advanced settings OR show_xinput_tab is enabled
+        if ((*current_tabs)[i].id == "xinput") {
+            should_show = should_show && (settings::g_mainTabSettings.advanced_settings_enabled.GetValue() ||
+                                         settings::g_mainTabSettings.show_xinput_tab.GetValue());
+        } else {
+            // Check advanced settings for other advanced tabs
+            if ((*current_tabs)[i].is_advanced_tab) {
+                should_show = should_show && settings::g_mainTabSettings.advanced_settings_enabled.GetValue();
+            }
+        }
+
+        if (should_show) {
+            visible_tab_count++;
+            if (first_visible_tab_index == -1) {
+                first_visible_tab_index = static_cast<int>(i);
+            }
+        }
+    }
+
+    // If only one tab is visible, draw it directly without tab bar
+    if (visible_tab_count == 1) {
+        // Draw the single visible tab content directly
+        if (first_visible_tab_index >= 0 && (*current_tabs)[first_visible_tab_index].on_draw) {
+            (*current_tabs)[first_visible_tab_index].on_draw();
+        }
+        return;
+    }
+
+    // Draw tab bar only when multiple tabs are visible
     if (ImGui::BeginTabBar("MainTabs", ImGuiTabBarFlags_None)) {
         for (size_t i = 0; i < current_tabs->size(); ++i) {
             // Check if tab should be visible

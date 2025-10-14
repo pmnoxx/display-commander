@@ -10,9 +10,8 @@
 #include "streamline_tab.hpp"
 #include "swapchain_tab.hpp"
 #include "window_info_tab.hpp"
-#include <imgui.h>
+#include <reshade_imgui.hpp>
 #include <winbase.h>
-#include <reshade.hpp>
 
 namespace ui::new_ui {
 

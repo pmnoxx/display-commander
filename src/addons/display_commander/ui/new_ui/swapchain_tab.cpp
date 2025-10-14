@@ -11,9 +11,8 @@
 #include <map>
 #include <cctype>
 #include <dxgi1_6.h>
-#include <imgui.h>
+#include <reshade_imgui.hpp>
 #include <wrl/client.h>
-#include <reshade.hpp>
 
 namespace ui::new_ui {
      bool has_last_metadata = false;

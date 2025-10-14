@@ -7,8 +7,7 @@
 #include "../../config/display_commander_config.hpp"
 #include "../../settings/experimental_tab_settings.hpp"
 #include <chrono>
-#include <imgui.h>
-#include <reshade.hpp>
+#include <reshade_imgui.hpp>
 #include <thread>
 #include <vector>
 #include <windows.h>

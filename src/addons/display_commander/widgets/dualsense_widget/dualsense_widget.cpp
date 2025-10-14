@@ -1,8 +1,7 @@
 #include "dualsense_widget.hpp"
 #include "../../utils.hpp"
 #include "../../hooks/dualsense_hooks.hpp"
-#include <imgui.h>
-#include <reshade.hpp>
+#include <reshade_imgui.hpp>
 #include <chrono>
 #include <vector>
 #include <windows.h>

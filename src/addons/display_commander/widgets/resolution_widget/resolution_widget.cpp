@@ -7,9 +7,8 @@
 #include "utils/timing.hpp"
 #include <algorithm>
 #include <cmath>
-#include <imgui.h>
+#include <reshade_imgui.hpp>
 #include <iomanip>
-#include <reshade.hpp>
 #include <sstream>
 #include <string>
 

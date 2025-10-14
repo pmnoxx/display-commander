@@ -2,8 +2,7 @@
 
 #include <atomic>
 #include <functional>
-#include <imgui.h>
-#include <reshade.hpp>
+#include <reshade_imgui.hpp>
 #include <string>
 
 

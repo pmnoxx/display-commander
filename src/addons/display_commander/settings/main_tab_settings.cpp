@@ -186,11 +186,13 @@ void UpdateFpsLimitMaximums() {
     float max_fps = max(60.f, static_cast<float>(max_refresh_rate));
 
     // Update the maximum values
-    g_mainTabSettings.fps_limit.SetMax(max_fps);
-    g_mainTabSettings.fps_limit_background.SetMax(max_fps);
+    if (g_mainTabSettings.fps_limit.GetValue() != max_fps) {
+        g_mainTabSettings.fps_limit.SetMax(max_fps);
+        g_mainTabSettings.fps_limit_background.SetMax(max_fps);
 
-    LogInfo("Updated FPS limit maximum to %.1f FPS (based on max monitor refresh rate of %.1f Hz)", max_fps,
-            max_refresh_rate);
+        LogInfo("Updated FPS limit maximum to %.1f FPS (based on max monitor refresh rate of %.1f Hz)", max_fps,
+                max_refresh_rate);
+    }
 }
 
 } // namespace settings

@@ -11,9 +11,8 @@
 #include <algorithm>
 #include <atomic>
 #include <chrono>
-#include <imgui.h>
+#include <reshade_imgui.hpp>
 #include <iomanip>
-#include <reshade.hpp>
 #include <sstream>
 #include <thread>
 

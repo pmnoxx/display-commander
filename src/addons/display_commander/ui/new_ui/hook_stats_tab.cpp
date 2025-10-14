@@ -3,8 +3,7 @@
 #include "../../hooks/dinput_hooks.hpp"
 #include "../../settings/experimental_tab_settings.hpp"
 #include "../../globals.hpp"
-#include <imgui.h>
-#include <reshade.hpp>
+#include <reshade_imgui.hpp>
 
 namespace ui::new_ui {
 

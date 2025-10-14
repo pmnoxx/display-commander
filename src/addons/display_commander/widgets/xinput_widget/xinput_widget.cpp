@@ -377,6 +377,12 @@ void XInputWidget::DrawControllerState() {
 
     // Draw battery status
     DrawBatteryStatus(selected_controller_);
+
+    // Draw DualSense report if dualsense_to_xinput is enabled
+    if (g_shared_state->enable_dualsense_xinput.load()) {
+        ImGui::Spacing();
+        DrawDualSenseReport(selected_controller_);
+    }
 }
 
 void XInputWidget::DrawButtonStates(const XINPUT_GAMEPAD &gamepad) {
@@ -1459,6 +1465,233 @@ void UpdateBatteryStatus(DWORD user_index) {
         // Mark battery info as invalid if we can't get it
         shared_state->battery_info_valid[user_index] = false;
         LogWarn("XXX Failed to get battery info for controller %lu: %lu", user_index, result);
+    }
+}
+
+void XInputWidget::DrawDualSenseReport(int controller_index) {
+    if (ImGui::CollapsingHeader("DualSense Input Report", ImGuiTreeNodeFlags_DefaultOpen)) {
+        // Check if DualSense HID wrapper is available
+        if (!display_commander::dualsense::g_dualsense_hid_wrapper) {
+            ImGui::TextColored(ui::colors::TEXT_DIMMED, "DualSense HID wrapper not available");
+            return;
+        }
+
+        // Get devices from HID wrapper
+        const auto& devices = display_commander::dualsense::g_dualsense_hid_wrapper->GetDevices();
+
+        if (devices.empty()) {
+            ImGui::TextColored(ui::colors::TEXT_DIMMED, "No DualSense devices detected");
+            return;
+        }
+
+        // Find the device that corresponds to the selected controller
+        // For now, we'll use the first available device
+        // In a more sophisticated implementation, we'd map controller indices to device indices
+        const auto& device = devices[0];
+
+        if (!device.is_connected) {
+            ImGui::TextColored(ui::colors::TEXT_DIMMED, "DualSense device not connected");
+            return;
+        }
+
+        // Display basic device info
+        ImGui::TextColored(ui::colors::STATUS_ACTIVE, "Device: %s",
+                          device.device_name.empty() ? "DualSense Controller" : device.device_name.c_str());
+        ImGui::Text("Connection: %s", device.connection_type.c_str());
+        ImGui::Text("Vendor ID: 0x%04X", device.vendor_id);
+        ImGui::Text("Product ID: 0x%04X", device.product_id);
+
+        // Display last update time
+        if (device.last_update_time > 0) {
+            DWORD now = GetTickCount();
+            DWORD age_ms = now - device.last_update_time;
+            ImGui::Text("Last Update: %lu ms ago", age_ms);
+        }
+
+        ImGui::Spacing();
+
+        // Display input report size and first few bytes
+        if (device.hid_device && device.hid_device->input_report.size() > 0) {
+            ImGui::Text("Input Report Size: %zu bytes", device.hid_device->input_report.size());
+
+            // Show first 16 bytes in hex format
+            const auto& inputReport = device.hid_device->input_report;
+            std::string hex_string = "";
+            for (size_t i = 0; i < (inputReport.size() < 16 ? inputReport.size() : 16); ++i) {
+                char hex_byte[4];
+                sprintf_s(hex_byte, "%02X ", inputReport[i]);
+                hex_string += hex_byte;
+            }
+            ImGui::Text("First 16 bytes: %s", hex_string.c_str());
+
+            ImGui::Spacing();
+
+            // Display Special-K DualSense data if available
+            if (ImGui::CollapsingHeader("Special-K DualSense Data", ImGuiTreeNodeFlags_DefaultOpen)) {
+                const auto& sk_data = device.sk_dualsense_data;
+
+                // Basic input data
+                if (ImGui::CollapsingHeader("Input Data", ImGuiTreeNodeFlags_DefaultOpen)) {
+                    ImGui::Columns(2, "SKInputColumns", false);
+
+                    // Sticks
+                    ImGui::Text("Left Stick: X=%d, Y=%d", sk_data.LeftStickX, sk_data.LeftStickY);
+                    ImGui::NextColumn();
+                    ImGui::Text("Right Stick: X=%d, Y=%d", sk_data.RightStickX, sk_data.RightStickY);
+                    ImGui::NextColumn();
+
+                    // Triggers
+                    ImGui::Text("Left Trigger: %d", sk_data.TriggerLeft);
+                    ImGui::NextColumn();
+                    ImGui::Text("Right Trigger: %d", sk_data.TriggerRight);
+                    ImGui::NextColumn();
+
+                    // D-pad
+                    const char* dpad_names[] = {"Up", "Up-Right", "Right", "Down-Right", "Down", "Down-Left", "Left", "Up-Left", "None"};
+                    ImGui::Text("D-Pad: %s", dpad_names[static_cast<int>(sk_data.DPad)]);
+                    ImGui::NextColumn();
+                    ImGui::Text("Sequence: %d", sk_data.SeqNo);
+                    ImGui::NextColumn();
+
+                    ImGui::Columns(1);
+                }
+
+                // Button states
+                if (ImGui::CollapsingHeader("Button States", ImGuiTreeNodeFlags_DefaultOpen)) {
+                    ImGui::Columns(3, "SKButtonColumns", false);
+
+                    // Face buttons
+                    ImGui::Text("Square: %s", sk_data.ButtonSquare ? "PRESSED" : "Released");
+                    ImGui::NextColumn();
+                    ImGui::Text("Cross: %s", sk_data.ButtonCross ? "PRESSED" : "Released");
+                    ImGui::NextColumn();
+                    ImGui::Text("Circle: %s", sk_data.ButtonCircle ? "PRESSED" : "Released");
+                    ImGui::NextColumn();
+                    ImGui::Text("Triangle: %s", sk_data.ButtonTriangle ? "PRESSED" : "Released");
+                    ImGui::NextColumn();
+
+                    // Shoulder buttons
+                    ImGui::Text("L1: %s", sk_data.ButtonL1 ? "PRESSED" : "Released");
+                    ImGui::NextColumn();
+                    ImGui::Text("R1: %s", sk_data.ButtonR1 ? "PRESSED" : "Released");
+                    ImGui::NextColumn();
+                    ImGui::Text("L2: %s", sk_data.ButtonL2 ? "PRESSED" : "Released");
+                    ImGui::NextColumn();
+                    ImGui::Text("R2: %s", sk_data.ButtonR2 ? "PRESSED" : "Released");
+                    ImGui::NextColumn();
+
+                    // System buttons
+                    ImGui::Text("Create: %s", sk_data.ButtonCreate ? "PRESSED" : "Released");
+                    ImGui::NextColumn();
+                    ImGui::Text("Options: %s", sk_data.ButtonOptions ? "PRESSED" : "Released");
+                    ImGui::NextColumn();
+                    ImGui::Text("L3: %s", sk_data.ButtonL3 ? "PRESSED" : "Released");
+                    ImGui::NextColumn();
+                    ImGui::Text("R3: %s", sk_data.ButtonR3 ? "PRESSED" : "Released");
+                    ImGui::NextColumn();
+                    ImGui::Text("Home: %s", sk_data.ButtonHome ? "PRESSED" : "Released");
+                    ImGui::NextColumn();
+                    ImGui::Text("Touchpad: %s", sk_data.ButtonPad ? "PRESSED" : "Released");
+                    ImGui::NextColumn();
+                    ImGui::Text("Mute: %s", sk_data.ButtonMute ? "PRESSED" : "Released");
+                    ImGui::NextColumn();
+
+                    // Edge controller buttons
+                    if (sk_data.ButtonLeftFunction || sk_data.ButtonRightFunction || sk_data.ButtonLeftPaddle || sk_data.ButtonRightPaddle) {
+                        ImGui::Text("Left Function: %s", sk_data.ButtonLeftFunction ? "PRESSED" : "Released");
+                        ImGui::NextColumn();
+                        ImGui::Text("Right Function: %s", sk_data.ButtonRightFunction ? "PRESSED" : "Released");
+                        ImGui::NextColumn();
+                        ImGui::Text("Left Paddle: %s", sk_data.ButtonLeftPaddle ? "PRESSED" : "Released");
+                        ImGui::NextColumn();
+                        ImGui::Text("Right Paddle: %s", sk_data.ButtonRightPaddle ? "PRESSED" : "Released");
+                        ImGui::NextColumn();
+                    }
+
+                    ImGui::Columns(1);
+                }
+
+                // Battery and power
+                if (ImGui::CollapsingHeader("Battery & Power")) {
+                    ImGui::Columns(2, "SKPowerColumns", false);
+
+                    ImGui::Text("Battery: %d%%", sk_data.PowerPercent * 10);
+                    ImGui::NextColumn();
+                    const char* power_state_names[] = {"Unknown", "Charging", "Discharging", "Not Charging", "Full"};
+                    ImGui::Text("Power State: %s", power_state_names[static_cast<int>(sk_data.PowerState)]);
+                    ImGui::NextColumn();
+                    ImGui::Text("USB Data: %s", sk_data.PluggedUsbData ? "Yes" : "No");
+                    ImGui::NextColumn();
+                    ImGui::Text("USB Power: %s", sk_data.PluggedUsbPower ? "Yes" : "No");
+                    ImGui::NextColumn();
+                    ImGui::Text("Headphones: %s", sk_data.PluggedHeadphones ? "Yes" : "No");
+                    ImGui::NextColumn();
+                    ImGui::Text("Microphone: %s", sk_data.PluggedMic ? "Yes" : "No");
+                    ImGui::NextColumn();
+                    ImGui::Text("External Mic: %s", sk_data.PluggedExternalMic ? "Yes" : "No");
+                    ImGui::NextColumn();
+                    ImGui::Text("Mic Muted: %s", sk_data.MicMuted ? "Yes" : "No");
+                    ImGui::NextColumn();
+                    ImGui::Text("Haptic Filter: %s", sk_data.HapticLowPassFilter ? "On" : "Off");
+                    ImGui::NextColumn();
+
+                    ImGui::Columns(1);
+                }
+
+                // Motion sensors
+                if (ImGui::CollapsingHeader("Motion Sensors")) {
+                    ImGui::Columns(2, "SKMotionColumns", false);
+
+                    ImGui::Text("Angular Velocity X: %d", sk_data.AngularVelocityX);
+                    ImGui::NextColumn();
+                    ImGui::Text("Angular Velocity Y: %d", sk_data.AngularVelocityY);
+                    ImGui::NextColumn();
+                    ImGui::Text("Angular Velocity Z: %d", sk_data.AngularVelocityZ);
+                    ImGui::NextColumn();
+                    ImGui::Text("Accelerometer X: %d", sk_data.AccelerometerX);
+                    ImGui::NextColumn();
+                    ImGui::Text("Accelerometer Y: %d", sk_data.AccelerometerY);
+                    ImGui::NextColumn();
+                    ImGui::Text("Accelerometer Z: %d", sk_data.AccelerometerZ);
+                    ImGui::NextColumn();
+                    ImGui::Text("Temperature: %d°C", sk_data.Temperature);
+                    ImGui::NextColumn();
+                    ImGui::Text("Sensor Timestamp: %u", sk_data.SensorTimestamp);
+                    ImGui::NextColumn();
+
+                    ImGui::Columns(1);
+                }
+
+                // Adaptive triggers
+                if (ImGui::CollapsingHeader("Adaptive Triggers")) {
+                    ImGui::Columns(2, "SKTriggerColumns", false);
+
+                    ImGui::Text("Left Trigger Status: %d", sk_data.TriggerLeftStatus);
+                    ImGui::NextColumn();
+                    ImGui::Text("Right Trigger Status: %d", sk_data.TriggerRightStatus);
+                    ImGui::NextColumn();
+                    ImGui::Text("Left Stop Location: %d", sk_data.TriggerLeftStopLocation);
+                    ImGui::NextColumn();
+                    ImGui::Text("Right Stop Location: %d", sk_data.TriggerRightStopLocation);
+                    ImGui::NextColumn();
+                    ImGui::Text("Left Effect: %d", sk_data.TriggerLeftEffect);
+                    ImGui::NextColumn();
+                    ImGui::Text("Right Effect: %d", sk_data.TriggerRightEffect);
+                    ImGui::NextColumn();
+
+                    ImGui::Columns(1);
+                }
+
+                // Timestamps
+                if (ImGui::CollapsingHeader("Timestamps")) {
+                    ImGui::Text("Host Timestamp: %u", sk_data.HostTimestamp);
+                    ImGui::Text("Device Timestamp: %u", sk_data.DeviceTimeStamp);
+                    ImGui::Text("Sensor Timestamp: %u", sk_data.SensorTimestamp);
+                }
+            }
+        } else {
+            ImGui::TextColored(ui::colors::TEXT_DIMMED, "No input report data available");
+        }
     }
 }
 

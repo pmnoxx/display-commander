@@ -501,6 +501,7 @@ void DualSenseHIDWrapper::ParseDualSenseSticks(DualSenseDevice& device, const BY
     device.current_state.Gamepad.sThumbLY = leftY;
     device.current_state.Gamepad.sThumbRX = rightX;
     device.current_state.Gamepad.sThumbRY = rightY;
+
 }
 
 void DualSenseHIDWrapper::ParseDualSenseTriggers(DualSenseDevice& device, const BYTE* inputReport) {
@@ -587,9 +588,9 @@ void DualSenseHIDWrapper::ConvertSpecialKToXInput(DualSenseDevice& device) {
     // Analog sticks - convert from 8-bit to 16-bit signed values
     // DualSense uses 0-255 range, XInput uses -32768 to 32767
     xinput_state.sThumbLX = static_cast<SHORT>((sk_data.LeftStickX - 128) * 256);
-    xinput_state.sThumbLY = static_cast<SHORT>((sk_data.LeftStickY - 128) * 256);
+    xinput_state.sThumbLY = static_cast<SHORT>((127 - sk_data.LeftStickY) * 256);
     xinput_state.sThumbRX = static_cast<SHORT>((sk_data.RightStickX - 128) * 256);
-    xinput_state.sThumbRY = static_cast<SHORT>((sk_data.RightStickY - 128) * 256);
+    xinput_state.sThumbRY = static_cast<SHORT>((127 - sk_data.RightStickY) * 256);
 
     // Triggers - convert from 8-bit to 8-bit (already in correct range)
     xinput_state.bLeftTrigger = sk_data.TriggerLeft;

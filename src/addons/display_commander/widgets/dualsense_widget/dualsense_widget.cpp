@@ -1,7 +1,8 @@
 #include "dualsense_widget.hpp"
 #include "../../utils.hpp"
-#include <deps/imgui/imgui.h>
-#include <include/reshade.hpp>
+#include "../../hooks/dualsense_hooks.hpp"
+#include <imgui.h>
+#include <reshade.hpp>
 #include <chrono>
 #include <vector>
 #include <windows.h>
@@ -21,20 +22,22 @@ DEFINE_GUID(GUID_DEVINTERFACE_HID, 0x4d1e55b2, 0xf16f, 0x11cf, 0x88, 0xcb, 0x00,
 namespace display_commander::widgets::dualsense_widget {
 
 // Global shared state
-std::shared_ptr<DualSenseSharedState> DualSenseWidget::g_shared_state = nullptr;
+std::shared_ptr<DualSenseSharedState> DualSenseWidget::g_shared_state_ds = nullptr;
 
 // Global widget instance
 std::unique_ptr<DualSenseWidget> g_dualsense_widget = nullptr;
 
 DualSenseWidget::DualSenseWidget() {
     // Initialize shared state if not already done
-    if (!g_shared_state) {
-        g_shared_state = std::make_shared<DualSenseSharedState>();
+    if (!g_shared_state_ds) {
+        g_shared_state_ds = std::make_shared<DualSenseSharedState>();
     }
 }
 
 void DualSenseWidget::Initialize() {
     if (is_initialized_) return;
+
+    display_commander::hooks::InitializeDualSenseSupport();
 
     LogInfo("DualSenseWidget::Initialize() - Starting DualSense widget initialization");
 
@@ -65,7 +68,7 @@ void DualSenseWidget::OnDraw() {
         Initialize();
     }
 
-    if (!g_shared_state) {
+    if (!g_shared_state_ds) {
         ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "DualSense shared state not initialized");
         return;
     }
@@ -93,9 +96,9 @@ void DualSenseWidget::OnDraw() {
 void DualSenseWidget::DrawSettings() {
     if (ImGui::CollapsingHeader("DualSense Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
         // Enable DualSense detection
-        bool enable_detection = g_shared_state->enable_dualsense_detection.load();
+        bool enable_detection = g_shared_state_ds->enable_dualsense_detection.load();
         if (ImGui::Checkbox("Enable DualSense Detection", &enable_detection)) {
-            g_shared_state->enable_dualsense_detection.store(enable_detection);
+            g_shared_state_ds->enable_dualsense_detection.store(enable_detection);
             SaveSettings();
         }
         if (ImGui::IsItemHovered()) {
@@ -104,9 +107,9 @@ void DualSenseWidget::DrawSettings() {
 
         if (enable_detection) {
             // Show device IDs
-            bool show_device_ids = g_shared_state->show_device_ids.load();
+            bool show_device_ids = g_shared_state_ds->show_device_ids.load();
             if (ImGui::Checkbox("Show Device IDs", &show_device_ids)) {
-                g_shared_state->show_device_ids.store(show_device_ids);
+                g_shared_state_ds->show_device_ids.store(show_device_ids);
                 SaveSettings();
             }
             if (ImGui::IsItemHovered()) {
@@ -114,9 +117,9 @@ void DualSenseWidget::DrawSettings() {
             }
 
             // Show connection type
-            bool show_connection_type = g_shared_state->show_connection_type.load();
+            bool show_connection_type = g_shared_state_ds->show_connection_type.load();
             if (ImGui::Checkbox("Show Connection Type", &show_connection_type)) {
-                g_shared_state->show_connection_type.store(show_connection_type);
+                g_shared_state_ds->show_connection_type.store(show_connection_type);
                 SaveSettings();
             }
             if (ImGui::IsItemHovered()) {
@@ -124,9 +127,9 @@ void DualSenseWidget::DrawSettings() {
             }
 
             // Show battery info
-            bool show_battery_info = g_shared_state->show_battery_info.load();
+            bool show_battery_info = g_shared_state_ds->show_battery_info.load();
             if (ImGui::Checkbox("Show Battery Information", &show_battery_info)) {
-                g_shared_state->show_battery_info.store(show_battery_info);
+                g_shared_state_ds->show_battery_info.store(show_battery_info);
                 SaveSettings();
             }
             if (ImGui::IsItemHovered()) {
@@ -134,9 +137,9 @@ void DualSenseWidget::DrawSettings() {
             }
 
             // Show advanced features
-            bool show_advanced_features = g_shared_state->show_advanced_features.load();
+            bool show_advanced_features = g_shared_state_ds->show_advanced_features.load();
             if (ImGui::Checkbox("Show Advanced Features", &show_advanced_features)) {
-                g_shared_state->show_advanced_features.store(show_advanced_features);
+                g_shared_state_ds->show_advanced_features.store(show_advanced_features);
                 SaveSettings();
             }
             if (ImGui::IsItemHovered()) {
@@ -146,7 +149,7 @@ void DualSenseWidget::DrawSettings() {
             ImGui::Spacing();
 
             // HID device type selection
-            int hid_type = g_shared_state->selected_hid_type.load();
+            int hid_type = g_shared_state_ds->selected_hid_type.load();
             const char* hid_types[] = {
                 "Auto (All Supported)",
                 "DualSense Regular Only",
@@ -156,7 +159,7 @@ void DualSenseWidget::DrawSettings() {
             };
 
             if (ImGui::Combo("Device Type Filter", &hid_type, hid_types, 5)) {
-                g_shared_state->selected_hid_type.store(hid_type);
+                g_shared_state_ds->selected_hid_type.store(hid_type);
                 display_commander::dualsense::g_dualsense_hid_wrapper->SetHIDTypeFilter(hid_type);
                 SaveSettings();
             }
@@ -179,11 +182,11 @@ void DualSenseWidget::DrawSettings() {
 
 void DualSenseWidget::DrawEventCounters() {
     if (ImGui::CollapsingHeader("Event Counters", ImGuiTreeNodeFlags_DefaultOpen)) {
-        uint64_t total_events = g_shared_state->total_events.load();
-        uint64_t button_events = g_shared_state->button_events.load();
-        uint64_t stick_events = g_shared_state->stick_events.load();
-        uint64_t trigger_events = g_shared_state->trigger_events.load();
-        uint64_t touchpad_events = g_shared_state->touchpad_events.load();
+        uint64_t total_events = g_shared_state_ds->total_events.load();
+        uint64_t button_events = g_shared_state_ds->button_events.load();
+        uint64_t stick_events = g_shared_state_ds->stick_events.load();
+        uint64_t trigger_events = g_shared_state_ds->trigger_events.load();
+        uint64_t touchpad_events = g_shared_state_ds->touchpad_events.load();
 
         ImGui::Text("Total Events: %llu", total_events);
         ImGui::Text("Button Events: %llu", button_events);
@@ -193,18 +196,18 @@ void DualSenseWidget::DrawEventCounters() {
 
         // Reset button
         if (ImGui::Button("Reset Counters")) {
-            g_shared_state->total_events.store(0);
-            g_shared_state->button_events.store(0);
-            g_shared_state->stick_events.store(0);
-            g_shared_state->trigger_events.store(0);
-            g_shared_state->touchpad_events.store(0);
+            g_shared_state_ds->total_events.store(0);
+            g_shared_state_ds->button_events.store(0);
+            g_shared_state_ds->stick_events.store(0);
+            g_shared_state_ds->trigger_events.store(0);
+            g_shared_state_ds->touchpad_events.store(0);
         }
     }
 }
 
 void DualSenseWidget::DrawDeviceList() {
     if (ImGui::CollapsingHeader("Connected Devices", ImGuiTreeNodeFlags_DefaultOpen)) {
-        if (!g_shared_state->enable_dualsense_detection.load()) {
+        if (!g_shared_state_ds->enable_dualsense_detection.load()) {
             ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "DualSense detection is disabled");
             return;
         }
@@ -219,8 +222,8 @@ void DualSenseWidget::DrawDeviceList() {
 
         // Get devices from HID wrapper
         const auto& hid_devices = display_commander::dualsense::g_dualsense_hid_wrapper->GetDevices();
-        g_shared_state->devices.assign(hid_devices.begin(), hid_devices.end());
-        const auto& devices = g_shared_state->devices;
+        g_shared_state_ds->devices.assign(hid_devices.begin(), hid_devices.end());
+        const auto& devices = g_shared_state_ds->devices;
 
         if (devices.empty()) {
             ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "No DualSense devices detected");
@@ -246,11 +249,11 @@ void DualSenseWidget::DrawDeviceList() {
                 std::string device_name = device.device_name.empty() ?
                     "DualSense Controller" : device.device_name;
 
-                if (g_shared_state->show_connection_type.load()) {
+                if (g_shared_state_ds->show_connection_type.load()) {
                     device_name += " (" + device.connection_type + ")";
                 }
 
-                if (g_shared_state->show_device_ids.load()) {
+                if (g_shared_state_ds->show_device_ids.load()) {
                     char vid_str[16], pid_str[16];
                     sprintf_s(vid_str, "%04X", device.vendor_id);
                     sprintf_s(pid_str, "%04X", device.product_id);
@@ -274,11 +277,11 @@ void DualSenseWidget::DrawDeviceList() {
 }
 
 void DualSenseWidget::DrawDeviceInfo() {
-    if (selected_device_ < 0 || selected_device_ >= static_cast<int>(g_shared_state->devices.size())) {
+    if (selected_device_ < 0 || selected_device_ >= static_cast<int>(g_shared_state_ds->devices.size())) {
         return;
     }
 
-    const auto& device = g_shared_state->devices[selected_device_];
+    const auto& device = g_shared_state_ds->devices[selected_device_];
 
     ImGui::TextColored(ImVec4(0.9f, 0.9f, 0.9f, 1.0f), "=== Device Details ===");
     ImGui::Spacing();
@@ -327,13 +330,13 @@ void DualSenseWidget::DrawDeviceDetails(const DualSenseDeviceInfo& device) {
     }
 
     // Battery information
-    if (g_shared_state->show_battery_info.load()) {
+    if (g_shared_state_ds->show_battery_info.load()) {
         DrawBatteryStatus(device);
         ImGui::Spacing();
     }
 
     // Advanced features
-    if (g_shared_state->show_advanced_features.load()) {
+    if (g_shared_state_ds->show_advanced_features.load()) {
         DrawAdvancedFeatures(device);
     }
 
@@ -612,7 +615,7 @@ std::string DualSenseWidget::GetHIDTypeString(int hid_type) const {
 }
 
 bool DualSenseWidget::IsDeviceTypeEnabled(USHORT product_id) const {
-    int hid_type = g_shared_state->selected_hid_type.load();
+    int hid_type = g_shared_state_ds->selected_hid_type.load();
     return display_commander::dualsense::g_dualsense_hid_wrapper->IsDeviceTypeEnabled(0x054c, product_id, hid_type);
 }
 
@@ -620,58 +623,58 @@ void DualSenseWidget::LoadSettings() {
     // Load enable detection setting
     bool enable_detection;
     if (reshade::get_config_value(nullptr, "DisplayCommander.DualSenseWidget", "EnableDetection", enable_detection)) {
-        g_shared_state->enable_dualsense_detection.store(enable_detection);
+        g_shared_state_ds->enable_dualsense_detection.store(enable_detection);
     }
 
     // Load show device IDs setting
     bool show_device_ids;
     if (reshade::get_config_value(nullptr, "DisplayCommander.DualSenseWidget", "ShowDeviceIds", show_device_ids)) {
-        g_shared_state->show_device_ids.store(show_device_ids);
+        g_shared_state_ds->show_device_ids.store(show_device_ids);
     }
 
     // Load show connection type setting
     bool show_connection_type;
     if (reshade::get_config_value(nullptr, "DisplayCommander.DualSenseWidget", "ShowConnectionType", show_connection_type)) {
-        g_shared_state->show_connection_type.store(show_connection_type);
+        g_shared_state_ds->show_connection_type.store(show_connection_type);
     }
 
     // Load show battery info setting
     bool show_battery_info;
     if (reshade::get_config_value(nullptr, "DisplayCommander.DualSenseWidget", "ShowBatteryInfo", show_battery_info)) {
-        g_shared_state->show_battery_info.store(show_battery_info);
+        g_shared_state_ds->show_battery_info.store(show_battery_info);
     }
 
     // Load show advanced features setting
     bool show_advanced_features;
     if (reshade::get_config_value(nullptr, "DisplayCommander.DualSenseWidget", "ShowAdvancedFeatures", show_advanced_features)) {
-        g_shared_state->show_advanced_features.store(show_advanced_features);
+        g_shared_state_ds->show_advanced_features.store(show_advanced_features);
     }
 
     // Load HID type filter setting
     int hid_type;
     if (reshade::get_config_value(nullptr, "DisplayCommander.DualSenseWidget", "HIDTypeFilter", hid_type)) {
-        g_shared_state->selected_hid_type.store(hid_type);
+        g_shared_state_ds->selected_hid_type.store(hid_type);
     }
 }
 
 void DualSenseWidget::SaveSettings() {
     // Save enable detection setting
-    reshade::set_config_value(nullptr, "DisplayCommander.DualSenseWidget", "EnableDetection", g_shared_state->enable_dualsense_detection.load());
+    reshade::set_config_value(nullptr, "DisplayCommander.DualSenseWidget", "EnableDetection", g_shared_state_ds->enable_dualsense_detection.load());
 
     // Save show device IDs setting
-    reshade::set_config_value(nullptr, "DisplayCommander.DualSenseWidget", "ShowDeviceIds", g_shared_state->show_device_ids.load());
+    reshade::set_config_value(nullptr, "DisplayCommander.DualSenseWidget", "ShowDeviceIds", g_shared_state_ds->show_device_ids.load());
 
     // Save show connection type setting
-    reshade::set_config_value(nullptr, "DisplayCommander.DualSenseWidget", "ShowConnectionType", g_shared_state->show_connection_type.load());
+    reshade::set_config_value(nullptr, "DisplayCommander.DualSenseWidget", "ShowConnectionType", g_shared_state_ds->show_connection_type.load());
 
     // Save show battery info setting
-    reshade::set_config_value(nullptr, "DisplayCommander.DualSenseWidget", "ShowBatteryInfo", g_shared_state->show_battery_info.load());
+    reshade::set_config_value(nullptr, "DisplayCommander.DualSenseWidget", "ShowBatteryInfo", g_shared_state_ds->show_battery_info.load());
 
     // Save show advanced features setting
-    reshade::set_config_value(nullptr, "DisplayCommander.DualSenseWidget", "ShowAdvancedFeatures", g_shared_state->show_advanced_features.load());
+    reshade::set_config_value(nullptr, "DisplayCommander.DualSenseWidget", "ShowAdvancedFeatures", g_shared_state_ds->show_advanced_features.load());
 
     // Save HID type filter setting
-    reshade::set_config_value(nullptr, "DisplayCommander.DualSenseWidget", "HIDTypeFilter", g_shared_state->selected_hid_type.load());
+    reshade::set_config_value(nullptr, "DisplayCommander.DualSenseWidget", "HIDTypeFilter", g_shared_state_ds->selected_hid_type.load());
 }
 
 
@@ -682,7 +685,7 @@ void DualSenseWidget::UpdateDeviceStates() {
 
 
 std::shared_ptr<DualSenseSharedState> DualSenseWidget::GetSharedState() {
-    return g_shared_state;
+    return g_shared_state_ds;
 }
 
 // Global functions for integration

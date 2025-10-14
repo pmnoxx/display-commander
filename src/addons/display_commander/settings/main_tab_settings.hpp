@@ -35,7 +35,7 @@ class MainTabSettings {
     MainTabSettings();
     ~MainTabSettings() = default;
 
-    // Load all settings from Reshade config
+    // Load all settings from DisplayCommander config
     void LoadSettings();
 
     // Get all settings for loading

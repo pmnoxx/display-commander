@@ -667,6 +667,7 @@ extern std::atomic<bool> s_reflex_enable_sleep;    // Enable Reflex sleep mode (
 extern std::atomic<bool> s_enable_reflex_logging;  // Enable Reflex logging
 
 
+
 // DLLS-G (DLSS Frame Generation) status
 extern std::atomic<bool> g_dlls_g_loaded;                                 // DLLS-G loaded status
 extern std::atomic<std::shared_ptr<const std::string>> g_dlls_g_version;  // DLLS-G version string

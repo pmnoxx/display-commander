@@ -38,7 +38,8 @@ DeveloperTabSettings::DeveloperTabSettings()
                                         "DisplayCommander"),
       enable_timeslowdown_shortcut("EnableTimeslowdownShortcut", s_enable_timeslowdown_shortcut, true, "DisplayCommander"),
       enable_adhd_toggle_shortcut("EnableAdhdToggleShortcut", s_enable_adhd_toggle_shortcut, true, "DisplayCommander"),
-      enable_autoclick_shortcut("EnableAutoclickShortcut", s_enable_autoclick_shortcut, false, "DisplayCommander") {}
+      enable_autoclick_shortcut("EnableAutoclickShortcut", s_enable_autoclick_shortcut, false, "DisplayCommander"),
+      safemode("Safemode", false, "DisplayCommander") {}
 
 void DeveloperTabSettings::LoadAll() {
     prevent_fullscreen.Load();
@@ -64,11 +65,16 @@ void DeveloperTabSettings::LoadAll() {
     reflex_use_markers.Load();
     reflex_enable_sleep.Load();
     reflex_logging.Load();
+    safemode.Load();
 
     // All Ref classes automatically sync with global variables
 }
 
 void DeveloperTabSettings::SaveAll() {
+    // Save all settings that don't auto-save
+    prevent_fullscreen.Save();
+    safemode.Save();
+
     // All Ref classes automatically save when values change
 }
 
@@ -96,7 +102,8 @@ std::vector<ui::new_ui::SettingBase *> DeveloperTabSettings::GetAllSettings() {
             &enable_background_toggle_shortcut,
             &enable_timeslowdown_shortcut,
             &enable_adhd_toggle_shortcut,
-            &enable_autoclick_shortcut};
+            &enable_autoclick_shortcut,
+            &safemode};
 }
 
 // Global instance is now defined in globals.cpp

@@ -19,10 +19,10 @@ class DeveloperTabSettings {
     DeveloperTabSettings();
     ~DeveloperTabSettings() = default;
 
-    // Load all settings from ReShade config
+    // Load all settings from DisplayCommander config
     void LoadAll();
 
-    // Save all settings to ReShade config
+    // Save all settings to DisplayCommander config
     void SaveAll();
 
     // Developer Settings
@@ -58,6 +58,9 @@ class DeveloperTabSettings {
     BoolSettingRef reflex_use_markers;
     BoolSettingRef reflex_enable_sleep;
     BoolSettingRef reflex_logging;
+
+    // Safemode setting
+    BoolSetting safemode;
 
     // Get all settings for bulk operations
     std::vector<SettingBase *> GetAllSettings();

@@ -1086,6 +1086,13 @@ void DrawHIDSuppression() {
             ImGui::SetTooltip("Block HidD_GetAttributes operations to prevent device detection.");
         }
 
+        if (CheckboxSetting(settings::g_experimentalTabSettings.hid_suppression_block_createfile, "Block CreateFile")) {
+            LogInfo("HID suppression CreateFile blocking %s", settings::g_experimentalTabSettings.hid_suppression_block_createfile.GetValue() ? "enabled" : "disabled");
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Block CreateFile operations on HID device paths (\\?\\hid#).");
+        }
+
         ImGui::Spacing();
 
         // Show current settings summary
@@ -1094,6 +1101,7 @@ void DrawHIDSuppression() {
         ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  ReadFile: %s", settings::g_experimentalTabSettings.hid_suppression_block_readfile.GetValue() ? "Blocked" : "Allowed");
         ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  GetInputReport: %s", settings::g_experimentalTabSettings.hid_suppression_block_getinputreport.GetValue() ? "Blocked" : "Allowed");
         ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  GetAttributes: %s", settings::g_experimentalTabSettings.hid_suppression_block_getattributes.GetValue() ? "Blocked" : "Allowed");
+        ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  CreateFile: %s", settings::g_experimentalTabSettings.hid_suppression_block_createfile.GetValue() ? "Blocked" : "Allowed");
 
         // Show hook status
         bool hooks_installed = renodx::hooks::AreHIDSuppressionHooksInstalled();

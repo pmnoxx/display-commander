@@ -103,20 +103,21 @@ DWORD WINAPI XInputGetState_Detour(DWORD dwUserIndex, XINPUT_STATE *pState) {
         if (display_commander::hooks::ConvertDualSenseToXInput(dwUserIndex, pState)) {
             result = ERROR_SUCCESS;
         }
-        return result;
     }
 
     // Fall back to original XInput if DualSense conversion failed or is disabled
     if (result != ERROR_SUCCESS) {
         result = use_get_state_ex ? XInputGetStateEx_Direct(dwUserIndex, pState) : XInputGetState_Direct(dwUserIndex, pState);
+        if (result == ERROR_SUCCESS) {
+            if (!tried_get_state_ex) {
+                tried_get_state_ex = true;
+                use_get_state_ex = XInputGetStateEx_Direct(dwUserIndex, pState) == ERROR_SUCCESS;
+            }
+        }
     }
 
     // Apply A/B button swapping if enabled
     if (result == ERROR_SUCCESS) {
-        if (!tried_get_state_ex) {
-            tried_get_state_ex = true;
-            use_get_state_ex = XInputGetStateEx_Direct(dwUserIndex, pState) == ERROR_SUCCESS;
-        }
 
         auto shared_state = display_commander::widgets::xinput_widget::XInputWidget::GetSharedState();
 
@@ -220,7 +221,6 @@ DWORD WINAPI XInputGetStateEx_Detour(DWORD dwUserIndex, XINPUT_STATE *pState) {
         if (display_commander::hooks::ConvertDualSenseToXInput(dwUserIndex, pState)) {
             result = ERROR_SUCCESS;
         }
-        return result;
     }
 
     // Fall back to original XInput if DualSense conversion failed or is disabled

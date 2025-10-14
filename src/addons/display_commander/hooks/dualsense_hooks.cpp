@@ -116,8 +116,20 @@ bool ReadDualSenseState(DWORD user_index, DualSenseState& state) {
     return state.connected;
 }
 
+void DualSensePollingOnce() {
+    if (g_dualsense_available.load()) {
+        for (DWORD i = 0; i < 1; ++i) {
+            DualSenseState new_state;
+            if (ReadDualSenseState(i, new_state)) {
+                g_dualsense_states[i] = new_state;
+            }
+        }
+    }
+}
+
 // Background thread to poll DualSense controllers
 void DualSensePollingThread() {
+    /*
     while (g_dualsense_thread_running.load()) {
         if (!display_commander::widgets::xinput_widget::XInputWidget::GetSharedState()->enable_dualsense_xinput.load()) {
             std::this_thread::sleep_for(std::chrono::milliseconds(1000));
@@ -136,7 +148,7 @@ void DualSensePollingThread() {
 
         // Poll at 60Hz
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
-    }
+    }*/
 }
 
 bool InitializeDualSenseSupport() {
@@ -216,6 +228,7 @@ bool ConvertDualSenseToXInput(DWORD user_index, XINPUT_STATE* state) {
     if (!g_dualsense_available.load() || user_index >= XUSER_MAX_COUNT || state == nullptr) {
         return false;
     }
+    DualSensePollingOnce();
 
     const DualSenseState& dualsense = g_dualsense_states[user_index];
     if (!dualsense.connected) {

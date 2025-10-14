@@ -133,6 +133,11 @@ struct XInputSharedState {
 
     // Thread safety
     mutable std::atomic<bool> is_updating{false};
+
+    // XInput call timing tracking for smooth rate calculation
+    std::atomic<uint64_t> last_xinput_call_time_ns{0};
+    std::atomic<uint64_t> xinput_getstate_update_ns{0};
+    std::atomic<uint64_t> xinput_getstateex_update_ns{0};
 };
 
 // XInput widget class

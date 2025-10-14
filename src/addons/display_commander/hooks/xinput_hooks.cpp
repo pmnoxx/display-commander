@@ -2,6 +2,7 @@
 #include "dualsense_hooks.hpp"
 #include "../input_remapping/input_remapping.hpp"
 #include "../utils.hpp"
+#include "../utils/timing.hpp"
 #include "../widgets/xinput_widget/xinput_widget.hpp"
 #include "../swapchain_events.hpp"
 #include "windows_hooks/windows_message_hooks.hpp"
@@ -50,6 +51,13 @@ static void InitializeXInputDirectFunctions() {
     }
 }
 
+
+float recenter(float value, float center) {
+    auto new_value = value - center;
+
+    return new_value / (1 + abs(center));
+}
+
 // Helper function to apply max input, min output, deadzone, and center calibration to thumbstick values
 void ApplyThumbstickProcessing(XINPUT_STATE *pState, float left_max_input, float right_max_input, float left_min_output,
                                float right_min_output, float left_deadzone, float right_deadzone,
@@ -62,8 +70,8 @@ void ApplyThumbstickProcessing(XINPUT_STATE *pState, float left_max_input, float
     float ly = ShortToFloat(pState->Gamepad.sThumbLY);
 
     // Apply center calibration (recenter the stick)
-    lx -= left_center_x;
-    ly -= left_center_y;
+    lx = recenter(lx, left_center_x);
+    ly = recenter(ly, left_center_y);
 
     ProcessStickInputRadial(lx, ly, left_deadzone, left_max_input, left_min_output);
 
@@ -76,8 +84,8 @@ void ApplyThumbstickProcessing(XINPUT_STATE *pState, float left_max_input, float
     float ry = ShortToFloat(pState->Gamepad.sThumbRY);
 
     // Apply center calibration (recenter the stick)
-    rx -= right_center_x;
-    ry -= right_center_y;
+    rx = recenter(rx, right_center_x);
+    ry = recenter(ry, right_center_y);
 
     ProcessStickInputRadial(rx, ry, right_deadzone, right_max_input, right_min_output);
 
@@ -98,11 +106,28 @@ DWORD WINAPI XInputGetState_Detour(DWORD dwUserIndex, XINPUT_STATE *pState) {
 
     // Track hook call statistics
     g_hook_stats[HOOK_XInputGetState].increment_total();
+
+    // Measure timing for smooth call rate calculation
+    auto shared_state = display_commander::widgets::xinput_widget::XInputWidget::GetSharedState();
+    if (shared_state && dwUserIndex == 0) {
+        uint64_t current_time_ns = utils::get_now_ns();
+        uint64_t last_call_time = shared_state->last_xinput_call_time_ns.load();
+
+        if (last_call_time > 0) {
+            uint64_t time_since_last_call_ns = current_time_ns - last_call_time;
+            // Only update if time since last call is reasonable (ignore if > 1000ms)
+            if (time_since_last_call_ns < 1 * utils::SEC_TO_NS) { // 1 second in nanoseconds
+                uint64_t old_update_ns = shared_state->xinput_getstate_update_ns.load();
+                uint64_t new_update_ns = UpdateRollingAverage(time_since_last_call_ns, old_update_ns);
+                shared_state->xinput_getstate_update_ns.store(new_update_ns);
+            }
+        }
+        shared_state->last_xinput_call_time_ns.store(current_time_ns);
+    }
     static bool tried_get_state_ex = false;
     static bool use_get_state_ex = false;
 
     // Check if DualSense to XInput conversion is enabled
-    auto shared_state = display_commander::widgets::xinput_widget::XInputWidget::GetSharedState();
     bool dualsense_enabled = shared_state && shared_state->enable_dualsense_xinput.load();
 
     DWORD result = ERROR_DEVICE_NOT_CONNECTED;
@@ -224,8 +249,25 @@ DWORD WINAPI XInputGetStateEx_Detour(DWORD dwUserIndex, XINPUT_STATE *pState) {
     // Track hook call statistics
     g_hook_stats[HOOK_XInputGetStateEx].increment_total();
 
-    // Check if DualSense to XInput conversion is enabled
+    // Measure timing for smooth call rate calculation
     auto shared_state = display_commander::widgets::xinput_widget::XInputWidget::GetSharedState();
+    if (shared_state && dwUserIndex == 0) {
+        uint64_t current_time_ns = utils::get_now_ns();
+        uint64_t last_call_time = shared_state->last_xinput_call_time_ns.load();
+
+        if (last_call_time > 0) {
+            uint64_t time_since_last_call_ns = current_time_ns - last_call_time;
+            // Only update if time since last call is reasonable (ignore if > 1000ms)
+            if (time_since_last_call_ns < 1000000000ULL) { // 1000ms in nanoseconds
+                uint64_t old_update_ns = shared_state->xinput_getstateex_update_ns.load();
+                uint64_t new_update_ns = UpdateRollingAverage(time_since_last_call_ns, old_update_ns);
+                shared_state->xinput_getstateex_update_ns.store(new_update_ns);
+            }
+        }
+        shared_state->last_xinput_call_time_ns.store(current_time_ns);
+    }
+
+    // Check if DualSense to XInput conversion is enabled
     bool dualsense_enabled = shared_state && shared_state->enable_dualsense_xinput.load();
 
     DWORD result = ERROR_DEVICE_NOT_CONNECTED;

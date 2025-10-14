@@ -5,6 +5,8 @@
 #include <MinHook.h>
 #include <atomic>
 #include <mutex>
+#include <algorithm>
+#include <string>
 
 namespace renodx::hooks {
 
@@ -12,6 +14,8 @@ namespace renodx::hooks {
 ReadFile_pfn ReadFile_Original = nullptr;
 HidD_GetInputReport_pfn HidD_GetInputReport_Original = nullptr;
 HidD_GetAttributes_pfn HidD_GetAttributes_Original = nullptr;
+CreateFileA_pfn CreateFileA_Original = nullptr;
+CreateFileW_pfn CreateFileW_Original = nullptr;
 
 // Hook state
 static std::atomic<bool> g_hid_suppression_hooks_installed{false};
@@ -139,6 +143,75 @@ BOOLEAN __stdcall HidD_GetAttributes_Detour(HANDLE HidDeviceObject, PHIDD_ATTRIB
     return result;
 }
 
+// Helper function to check if a path is a HID device path
+bool IsHIDDevicePath(const std::wstring& path) {
+    // Convert to lowercase for case-insensitive comparison
+    std::wstring lowerPath = path;
+    std::transform(lowerPath.begin(), lowerPath.end(), lowerPath.begin(), ::towlower);
+
+    // Check for HID device path patterns
+    return lowerPath.find(L"\\hid") != std::wstring::npos;
+}
+
+bool IsHIDDevicePath(const std::string& path) {
+    // Convert to lowercase for case-insensitive comparison
+    std::string lowerPath = path;
+    std::transform(lowerPath.begin(), lowerPath.end(), lowerPath.begin(), ::tolower);
+
+    // Check for HID device path patterns
+    return lowerPath.find("\\hid") != std::string::npos;
+}
+
+// Direct CreateFileA function (calls original)
+HANDLE WINAPI CreateFileA_Direct(LPCSTR lpFileName, DWORD dwDesiredAccess, DWORD dwShareMode, LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition, DWORD dwFlagsAndAttributes, HANDLE hTemplateFile) {
+    return CreateFileA_Original ?
+        CreateFileA_Original(lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile) :
+        CreateFileA(lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
+}
+
+// Hooked CreateFileA function - blocks HID device access
+HANDLE WINAPI CreateFileA_Detour(LPCSTR lpFileName, DWORD dwDesiredAccess, DWORD dwShareMode, LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition, DWORD dwFlagsAndAttributes, HANDLE hTemplateFile) {
+    // Check if HID suppression is enabled and CreateFile blocking is enabled
+    if (ShouldSuppressHIDInput() && settings::g_experimentalTabSettings.hid_suppression_block_createfile.GetValue()) {
+        if (lpFileName && IsHIDDevicePath(std::string(lpFileName))) {
+            LogInfo("HID suppression: Blocked CreateFileA access to HID device: %s", lpFileName);
+            SetLastError(ERROR_ACCESS_DENIED);
+            return INVALID_HANDLE_VALUE;
+        }
+    }
+
+    LogInfo("HID suppression: CreateFileA access to HID device: %s", lpFileName);
+    // Call original function
+    return CreateFileA_Original ?
+        CreateFileA_Original(lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile) :
+        CreateFileA(lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
+}
+
+// Direct CreateFileW function (calls original)
+HANDLE WINAPI CreateFileW_Direct(LPCWSTR lpFileName, DWORD dwDesiredAccess, DWORD dwShareMode, LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition, DWORD dwFlagsAndAttributes, HANDLE hTemplateFile) {
+    return CreateFileW_Original ?
+        CreateFileW_Original(lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile) :
+        CreateFileW(lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
+}
+
+// Hooked CreateFileW function - blocks HID device access
+HANDLE WINAPI CreateFileW_Detour(LPCWSTR lpFileName, DWORD dwDesiredAccess, DWORD dwShareMode, LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition, DWORD dwFlagsAndAttributes, HANDLE hTemplateFile) {
+    // Check if HID suppression is enabled and CreateFile blocking is enabled
+    if (ShouldSuppressHIDInput() && settings::g_experimentalTabSettings.hid_suppression_block_createfile.GetValue()) {
+        if (lpFileName && IsHIDDevicePath(std::wstring(lpFileName))) {
+            LogInfo("HID suppression: Blocked CreateFileW access to HID device: %ls", lpFileName);
+            SetLastError(ERROR_ACCESS_DENIED);
+            return INVALID_HANDLE_VALUE;
+        }
+    }
+
+    LogInfo("HID suppression: CreateFileW access to HID device: %ls", lpFileName);
+    // Call original function
+    return CreateFileW_Original ?
+        CreateFileW_Original(lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile) :
+        CreateFileW(lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
+}
+
 bool InstallHIDSuppressionHooks() {
     if (g_hid_suppression_hooks_installed.load()) {
         LogInfo("HID suppression hooks already installed");
@@ -165,14 +238,26 @@ bool InstallHIDSuppressionHooks() {
     }
 
     // Hook HidD_GetInputReport
-    if (MH_CreateHookApi(L"hid.dll", "HidD_GetInputReport", HidD_GetInputReport_Detour, (LPVOID*)&HidD_GetInputReport_Original) != MH_OK) {
-        LogError("Failed to create HidD_GetInputReport hook for HID suppression");
+//    if (MH_CreateHookApi(L"hid.dll", "HidD_GetInputReport", HidD_GetInputReport_Detour, (LPVOID*)&HidD_GetInputReport_Original) != MH_OK) {
+ //       LogError("Failed to create HidD_GetInputReport hook for HID suppression");
+  //      return false;
+  //  }
+
+    // Hook HidD_GetAttributes
+ //   if (MH_CreateHookApi(L"hid.dll", "HidD_GetAttributes", HidD_GetAttributes_Detour, (LPVOID*)&HidD_GetAttributes_Original) != MH_OK) {
+ //       LogError("Failed to create HidD_GetAttributes hook for HID suppression");
+ //       return false;
+ //   }
+
+    // Hook CreateFileA
+    if (MH_CreateHook(CreateFileA, CreateFileA_Detour, (LPVOID*)&CreateFileA_Original) != MH_OK) {
+        LogError("Failed to create CreateFileA hook for HID suppression");
         return false;
     }
 
-    // Hook HidD_GetAttributes
-    if (MH_CreateHookApi(L"hid.dll", "HidD_GetAttributes", HidD_GetAttributes_Detour, (LPVOID*)&HidD_GetAttributes_Original) != MH_OK) {
-        LogError("Failed to create HidD_GetAttributes hook for HID suppression");
+    // Hook CreateFileW
+    if (MH_CreateHook(CreateFileW, CreateFileW_Detour, (LPVOID*)&CreateFileW_Original) != MH_OK) {
+        LogError("Failed to create CreateFileW hook for HID suppression");
         return false;
     }
 
@@ -182,13 +267,23 @@ bool InstallHIDSuppressionHooks() {
         return false;
     }
 
-    if (MH_EnableHook(HidD_GetInputReport) != MH_OK) {
-        LogError("Failed to enable HidD_GetInputReport hook for HID suppression");
+    //if (MH_EnableHook(HidD_GetInputReport) != MH_OK) {
+  //      LogError("Failed to enable HidD_GetInputReport hook for HID suppression");
+  //      return false;
+  //  }
+
+   // if (MH_EnableHook(HidD_GetAttributes) != MH_OK) {
+  //      LogError("Failed to enable HidD_GetAttributes hook for HID suppression");
+   //     return false;
+   // }
+
+    if (MH_EnableHook(CreateFileA) != MH_OK) {
+        LogError("Failed to enable CreateFileA hook for HID suppression");
         return false;
     }
 
-    if (MH_EnableHook(HidD_GetAttributes) != MH_OK) {
-        LogError("Failed to enable HidD_GetAttributes hook for HID suppression");
+    if (MH_EnableHook(CreateFileW) != MH_OK) {
+        LogError("Failed to enable CreateFileW hook for HID suppression");
         return false;
     }
 
@@ -208,16 +303,22 @@ void UninstallHIDSuppressionHooks() {
     MH_DisableHook(ReadFile);
     MH_DisableHook(HidD_GetInputReport);
     MH_DisableHook(HidD_GetAttributes);
+    MH_DisableHook(CreateFileA);
+    MH_DisableHook(CreateFileW);
 
     // Remove individual hooks
     MH_RemoveHook(ReadFile);
     MH_RemoveHook(HidD_GetInputReport);
     MH_RemoveHook(HidD_GetAttributes);
+    MH_RemoveHook(CreateFileA);
+    MH_RemoveHook(CreateFileW);
 
     // Clean up
     ReadFile_Original = nullptr;
     HidD_GetInputReport_Original = nullptr;
     HidD_GetAttributes_Original = nullptr;
+    CreateFileA_Original = nullptr;
+    CreateFileW_Original = nullptr;
 
     g_hid_suppression_hooks_installed.store(false);
     LogInfo("HID suppression hooks uninstalled successfully");

@@ -98,6 +98,7 @@ class ExperimentalTabSettings {
     BoolSetting hid_suppression_block_readfile;
     BoolSetting hid_suppression_block_getinputreport;
     BoolSetting hid_suppression_block_getattributes;
+    BoolSetting hid_suppression_block_createfile;
 
   private:
     std::vector<SettingBase *> all_settings_;

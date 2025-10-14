@@ -302,12 +302,37 @@ void XInputWidget::DrawEventCounters() {
         ImGui::Text("Stick Events: %llu", stick_events);
         ImGui::Text("Trigger Events: %llu", trigger_events);
 
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::TextColored(ui::colors::TEXT_DEFAULT, "XInput Call Rate (Smooth)");
+
+        // Display smooth call rate for XInputGetState
+        uint64_t getstate_update_ns = g_shared_state->xinput_getstate_update_ns.load();
+        if (getstate_update_ns > 0) {
+            double getstate_rate_hz = 1000000000.0 / getstate_update_ns; // Convert ns to Hz
+            ImGui::Text("XInputGetState Rate: %.1f Hz (%.2f ms)", getstate_rate_hz, getstate_update_ns / 1000000.0);
+        } else {
+            ImGui::TextColored(ui::colors::TEXT_DIMMED, "XInputGetState Rate: No data");
+        }
+
+        // Display smooth call rate for XInputGetStateEx
+        uint64_t getstateex_update_ns = g_shared_state->xinput_getstateex_update_ns.load();
+        if (getstateex_update_ns > 0) {
+            double getstateex_rate_hz = 1000000000.0 / getstateex_update_ns; // Convert ns to Hz
+            ImGui::Text("XInputGetStateEx Rate: %.1f Hz (%.2f ms)", getstateex_rate_hz, getstateex_update_ns / 1000000.0);
+        } else {
+            ImGui::TextColored(ui::colors::TEXT_DIMMED, "XInputGetStateEx Rate: No data");
+        }
+
         // Reset button
         if (ImGui::Button("Reset Counters")) {
             g_shared_state->total_events.store(0);
             g_shared_state->button_events.store(0);
             g_shared_state->stick_events.store(0);
             g_shared_state->trigger_events.store(0);
+            g_shared_state->xinput_getstate_update_ns.store(0);
+            g_shared_state->xinput_getstateex_update_ns.store(0);
+            g_shared_state->last_xinput_call_time_ns.store(0);
         }
     }
 }

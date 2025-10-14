@@ -50,15 +50,20 @@ static void InitializeXInputDirectFunctions() {
     }
 }
 
-// Helper function to apply max input, min output, and deadzone to thumbstick values
+// Helper function to apply max input, min output, deadzone, and center calibration to thumbstick values
 void ApplyThumbstickProcessing(XINPUT_STATE *pState, float left_max_input, float right_max_input, float left_min_output,
-                               float right_min_output, float left_deadzone, float right_deadzone) {
+                               float right_min_output, float left_deadzone, float right_deadzone,
+                               float left_center_x, float left_center_y, float right_center_x, float right_center_y) {
     if (!pState)
         return;
 
     // Process left stick using radial processing (preserves direction)
     float lx = ShortToFloat(pState->Gamepad.sThumbLX);
     float ly = ShortToFloat(pState->Gamepad.sThumbLY);
+
+    // Apply center calibration (recenter the stick)
+    lx -= left_center_x;
+    ly -= left_center_y;
 
     ProcessStickInputRadial(lx, ly, left_deadzone, left_max_input, left_min_output);
 
@@ -69,6 +74,10 @@ void ApplyThumbstickProcessing(XINPUT_STATE *pState, float left_max_input, float
     // Process right stick using radial processing (preserves direction)
     float rx = ShortToFloat(pState->Gamepad.sThumbRX);
     float ry = ShortToFloat(pState->Gamepad.sThumbRY);
+
+    // Apply center calibration (recenter the stick)
+    rx -= right_center_x;
+    ry -= right_center_y;
 
     ProcessStickInputRadial(rx, ry, right_deadzone, right_max_input, right_min_output);
 
@@ -156,7 +165,7 @@ DWORD WINAPI XInputGetState_Detour(DWORD dwUserIndex, XINPUT_STATE *pState) {
                 pState->Gamepad.wButtons = swapped_buttons;
             }
 
-            // Apply max input, min output, and deadzone processing
+            // Apply max input, min output, deadzone, and center calibration processing
             if (shared_state) {
                 float left_max_input = shared_state->left_stick_max_input.load();
                 float right_max_input = shared_state->right_stick_max_input.load();
@@ -167,8 +176,13 @@ DWORD WINAPI XInputGetState_Detour(DWORD dwUserIndex, XINPUT_STATE *pState) {
                 float right_deadzone =
                     shared_state->right_stick_deadzone.load() / 100.0f; // Convert percentage to decimal
 
+                float left_center_x = shared_state->left_stick_center_x.load();
+                float left_center_y = shared_state->left_stick_center_y.load();
+                float right_center_x = shared_state->right_stick_center_x.load();
+                float right_center_y = shared_state->right_stick_center_y.load();
+
                 ApplyThumbstickProcessing(pState, left_max_input, right_max_input, left_min_output, right_min_output,
-                                          left_deadzone, right_deadzone);
+                                          left_deadzone, right_deadzone, left_center_x, left_center_y, right_center_x, right_center_y);
             }
 
             // Process input remapping before updating state
@@ -267,7 +281,7 @@ DWORD WINAPI XInputGetStateEx_Detour(DWORD dwUserIndex, XINPUT_STATE *pState) {
                 pState->Gamepad.wButtons = swapped_buttons;
             }
 
-            // Apply max input, min output, and deadzone processing
+            // Apply max input, min output, deadzone, and center calibration processing
             if (shared_state) {
                 float left_max_input = shared_state->left_stick_max_input.load();
                 float right_max_input = shared_state->right_stick_max_input.load();
@@ -278,8 +292,13 @@ DWORD WINAPI XInputGetStateEx_Detour(DWORD dwUserIndex, XINPUT_STATE *pState) {
                 float right_deadzone =
                     shared_state->right_stick_deadzone.load() / 100.0f; // Convert percentage to decimal
 
+                float left_center_x = shared_state->left_stick_center_x.load();
+                float left_center_y = shared_state->left_stick_center_y.load();
+                float right_center_x = shared_state->right_stick_center_x.load();
+                float right_center_y = shared_state->right_stick_center_y.load();
+
                 ApplyThumbstickProcessing(pState, left_max_input, right_max_input, left_min_output, right_min_output,
-                                          left_deadzone, right_deadzone);
+                                          left_deadzone, right_deadzone, left_center_x, left_center_y, right_center_x, right_center_y);
             }
 
             // Process input remapping before updating state

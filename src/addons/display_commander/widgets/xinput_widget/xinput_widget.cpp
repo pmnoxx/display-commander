@@ -231,6 +231,62 @@ void XInputWidget::DrawSettings() {
             ImGui::SetTooltip(
                 "Removes game's deadzone by setting minimum output (30%% = eliminates small movements, 0%% = normal)");
         }
+
+        ImGui::Separator();
+        ImGui::Text("Stick Center Calibration");
+        ImGui::Text("Adjust these values to recenter your analog sticks if they drift:");
+
+        // Left stick center X setting
+        float left_center_x = g_shared_state->left_stick_center_x.load();
+        if (ImGui::SliderFloat("Left Stick Center X", &left_center_x, -1.0f, 1.0f, "%.3f")) {
+            g_shared_state->left_stick_center_x.store(left_center_x);
+            SaveSettings();
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("X-axis center offset for left stick (-1.0 to 1.0)");
+        }
+
+        // Left stick center Y setting
+        float left_center_y = g_shared_state->left_stick_center_y.load();
+        if (ImGui::SliderFloat("Left Stick Center Y", &left_center_y, -1.0f, 1.0f, "%.3f")) {
+            g_shared_state->left_stick_center_y.store(left_center_y);
+            SaveSettings();
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Y-axis center offset for left stick (-1.0 to 1.0)");
+        }
+
+        // Right stick center X setting
+        float right_center_x = g_shared_state->right_stick_center_x.load();
+        if (ImGui::SliderFloat("Right Stick Center X", &right_center_x, -1.0f, 1.0f, "%.3f")) {
+            g_shared_state->right_stick_center_x.store(right_center_x);
+            SaveSettings();
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("X-axis center offset for right stick (-1.0 to 1.0)");
+        }
+
+        // Right stick center Y setting
+        float right_center_y = g_shared_state->right_stick_center_y.load();
+        if (ImGui::SliderFloat("Right Stick Center Y", &right_center_y, -1.0f, 1.0f, "%.3f")) {
+            g_shared_state->right_stick_center_y.store(right_center_y);
+            SaveSettings();
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Y-axis center offset for right stick (-1.0 to 1.0)");
+        }
+
+        // Reset centers button
+        if (ImGui::Button("Reset Stick Centers")) {
+            g_shared_state->left_stick_center_x.store(0.0f);
+            g_shared_state->left_stick_center_y.store(0.0f);
+            g_shared_state->right_stick_center_x.store(0.0f);
+            g_shared_state->right_stick_center_y.store(0.0f);
+            SaveSettings();
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Reset all stick center offsets to 0.0");
+        }
     }
 }
 
@@ -482,13 +538,19 @@ void XInputWidget::DrawStickStates(const XINPUT_GAMEPAD &gamepad) {
         float lx = ShortToFloat(gamepad.sThumbLX);
         float ly = ShortToFloat(gamepad.sThumbLY);
 
+        // Apply center calibration (recenter the stick)
+        float left_center_x = g_shared_state->left_stick_center_x.load();
+        float left_center_y = g_shared_state->left_stick_center_y.load();
+        float lx_recentered = lx - left_center_x;
+        float ly_recentered = ly - left_center_y;
+
         // Apply final processing (radial deadzone preserves direction)
-        float lx_final = lx;
-        float ly_final = ly;
+        float lx_final = lx_recentered;
+        float ly_final = ly_recentered;
         ProcessStickInputRadial(lx_final, ly_final, left_deadzone, left_max_input, left_min_output);
 
-        ImGui::Text("X: %.3f (Final: %.3f, Raw: %d)", lx, lx_final, gamepad.sThumbLX);
-        ImGui::Text("Y: %.3f (Final: %.3f, Raw: %d)", ly, ly_final, gamepad.sThumbLY);
+        ImGui::Text("X: %.3f (Raw) -> %.3f (Recentered) -> %.3f (Final) [Raw: %d]", lx, lx_recentered, lx_final, gamepad.sThumbLX);
+        ImGui::Text("Y: %.3f (Raw) -> %.3f (Recentered) -> %.3f (Final) [Raw: %d]", ly, ly_recentered, ly_final, gamepad.sThumbLY);
 
         // Visual representation
         ImGui::Text("Position:");
@@ -518,13 +580,19 @@ void XInputWidget::DrawStickStates(const XINPUT_GAMEPAD &gamepad) {
         float rx = ShortToFloat(gamepad.sThumbRX);
         float ry = ShortToFloat(gamepad.sThumbRY);
 
+        // Apply center calibration (recenter the stick)
+        float right_center_x = g_shared_state->right_stick_center_x.load();
+        float right_center_y = g_shared_state->right_stick_center_y.load();
+        float rx_recentered = rx - right_center_x;
+        float ry_recentered = ry - right_center_y;
+
         // Apply final processing (radial deadzone preserves direction)
-        float rx_final = rx;
-        float ry_final = ry;
+        float rx_final = rx_recentered;
+        float ry_final = ry_recentered;
         ProcessStickInputRadial(rx_final, ry_final, right_deadzone, right_max_input, right_min_output);
 
-        ImGui::Text("X: %.3f (Final: %.3f, Raw: %d)", rx, rx_final, gamepad.sThumbRX);
-        ImGui::Text("Y: %.3f (Final: %.3f, Raw: %d)", ry, ry_final, gamepad.sThumbRY);
+        ImGui::Text("X: %.3f (Raw) -> %.3f (Recentered) -> %.3f (Final) [Raw: %d]", rx, rx_recentered, rx_final, gamepad.sThumbRX);
+        ImGui::Text("Y: %.3f (Raw) -> %.3f (Recentered) -> %.3f (Final) [Raw: %d]", ry, ry_recentered, ry_final, gamepad.sThumbRY);
 
         // Visual representation for right stick
         ImGui::Text("Position:");
@@ -899,6 +967,27 @@ void XInputWidget::LoadSettings() {
     if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "RightStickMaxOutput", right_min_output)) {
         g_shared_state->right_stick_min_output.store(right_min_output);
     }
+
+    // Load stick center calibration settings
+    float left_center_x;
+    if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "LeftStickCenterX", left_center_x)) {
+        g_shared_state->left_stick_center_x.store(left_center_x);
+    }
+
+    float left_center_y;
+    if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "LeftStickCenterY", left_center_y)) {
+        g_shared_state->left_stick_center_y.store(left_center_y);
+    }
+
+    float right_center_x;
+    if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "RightStickCenterX", right_center_x)) {
+        g_shared_state->right_stick_center_x.store(right_center_x);
+    }
+
+    float right_center_y;
+    if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "RightStickCenterY", right_center_y)) {
+        g_shared_state->right_stick_center_y.store(right_center_y);
+    }
 }
 
 void XInputWidget::SaveSettings() {
@@ -937,6 +1026,19 @@ void XInputWidget::SaveSettings() {
     // Save right stick max output setting
     display_commander::config::set_config_value("DisplayCommander.XInputWidget", "RightStickMaxOutput",
                               g_shared_state->right_stick_min_output.load());
+
+    // Save stick center calibration settings
+    display_commander::config::set_config_value("DisplayCommander.XInputWidget", "LeftStickCenterX",
+                              g_shared_state->left_stick_center_x.load());
+
+    display_commander::config::set_config_value("DisplayCommander.XInputWidget", "LeftStickCenterY",
+                              g_shared_state->left_stick_center_y.load());
+
+    display_commander::config::set_config_value("DisplayCommander.XInputWidget", "RightStickCenterX",
+                              g_shared_state->right_stick_center_x.load());
+
+    display_commander::config::set_config_value("DisplayCommander.XInputWidget", "RightStickCenterY",
+                              g_shared_state->right_stick_center_y.load());
 }
 
 std::shared_ptr<XInputSharedState> XInputWidget::GetSharedState() { return g_shared_state; }

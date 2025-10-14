@@ -116,7 +116,7 @@ public:
 private:
 
     // Global shared state
-    static std::shared_ptr<DualSenseSharedState> g_shared_state;
+    static std::shared_ptr<DualSenseSharedState> g_shared_state_ds;
 };
 
 // Global widget instance

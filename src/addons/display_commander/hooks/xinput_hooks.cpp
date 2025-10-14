@@ -103,6 +103,7 @@ DWORD WINAPI XInputGetState_Detour(DWORD dwUserIndex, XINPUT_STATE *pState) {
         if (display_commander::hooks::ConvertDualSenseToXInput(dwUserIndex, pState)) {
             result = ERROR_SUCCESS;
         }
+        return result;
     }
 
     // Fall back to original XInput if DualSense conversion failed or is disabled
@@ -219,6 +220,7 @@ DWORD WINAPI XInputGetStateEx_Detour(DWORD dwUserIndex, XINPUT_STATE *pState) {
         if (display_commander::hooks::ConvertDualSenseToXInput(dwUserIndex, pState)) {
             result = ERROR_SUCCESS;
         }
+        return result;
     }
 
     // Fall back to original XInput if DualSense conversion failed or is disabled
@@ -320,7 +322,9 @@ bool InstallXInputHooks() {
     }
 
     // Initialize DualSense support if needed
+    LogInfo("[DUALSENSE] Initializing1 DualSense support");
     if (shared_state && shared_state->enable_dualsense_xinput.load()) {
+        LogInfo("[DUALSENSE] Initializing2 DualSense support");
         display_commander::hooks::InitializeDualSenseSupport();
     }
 

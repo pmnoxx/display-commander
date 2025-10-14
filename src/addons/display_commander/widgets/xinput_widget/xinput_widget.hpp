@@ -8,6 +8,7 @@
 #include <vector>
 #include <windows.h>
 #include <xinput.h>
+#include "../../dualsense/dualsense_hid_wrapper.hpp"
 
 
 // Guide button constant (not defined in standard XInput headers)
@@ -138,6 +139,7 @@ class XInputWidget {
                                  float right_max_input, float right_min_output);
     void DrawTriggerStates(const XINPUT_GAMEPAD &gamepad);
     void DrawBatteryStatus(int controller_index);
+    void DrawDualSenseReport(int controller_index);
 
     // Helper functions
     std::string GetButtonName(WORD button) const;

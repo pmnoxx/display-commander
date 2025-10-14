@@ -1,6 +1,8 @@
 #include "dualsense_hooks.hpp"
 #include "hid_suppression_hooks.hpp"
 #include "../utils.hpp"
+#include "../dualsense/dualsense_hid_wrapper.hpp"
+#include "../widgets/xinput_widget/xinput_widget.hpp"
 #include <atomic>
 #include <thread>
 #include <chrono>
@@ -82,51 +84,45 @@ bool ReadDualSenseState(DWORD user_index, DualSenseState& state) {
     if (user_index >= XUSER_MAX_COUNT) {
         return false;
     }
+    LogInfo("[DUALSENSE] ReadDualSenseState called for controller %lu", user_index);
 
-    // Initialize direct HID functions if needed
-    InitializeDirectHIDFunctions();
-
-    // This is a placeholder implementation for direct HID reading
-    // In a real implementation, you would:
-    // 1. Enumerate HID devices to find DualSense controllers
-    // 2. Use ReadFile_Direct or HidD_GetInputReport_Direct to read input reports
-    // 3. Parse the DualSense input report format
-    // 4. Convert the data to XInput format
-
-    // Example of how to use the direct functions (commented out):
-    /*
-    if (ReadFile_Direct) {
-        // Use ReadFile_Direct to read from HID device handle
-        // This bypasses the HID suppression hooks
-        DWORD bytesRead = 0;
-        BYTE inputReport[78]; // DualSense input report size
-        if (ReadFile_Direct(hidDeviceHandle, inputReport, sizeof(inputReport), &bytesRead, nullptr)) {
-            // Parse the input report and convert to XInput format
-            // ... parsing code would go here ...
-        }
+    // Check if DualSense HID wrapper is available
+    if (!display_commander::dualsense::g_dualsense_hid_wrapper) {
+        return false;
     }
+    LogInfo("[DUALSENSE] DualSense HID wrapper available");
 
-    if (HidD_GetInputReport_Direct) {
-        // Use HidD_GetInputReport_Direct to read input report
-        // This also bypasses the HID suppression hooks
-        BYTE inputReport[78];
-        if (HidD_GetInputReport_Direct(hidDeviceHandle, inputReport, sizeof(inputReport))) {
-            // Parse the input report and convert to XInput format
-            // ... parsing code would go here ...
-        }
+    // Update all device states from HID
+    display_commander::dualsense::g_dualsense_hid_wrapper->UpdateDeviceStates();
+
+    // Get the device from HID wrapper
+    auto* device = display_commander::dualsense::g_dualsense_hid_wrapper->GetDevice(user_index);
+    if (device == nullptr || !device->is_connected) {
+        state.connected = false;
+        return false;
     }
-    */
-
-    // For now, we'll just return false to indicate no DualSense data
-    // This prevents the feature from working until proper HID integration is implemented
-    return false;
+    LogInfo("[DUALSENSE] DualSense device available");
+    // Convert the device state to our DualSenseState format
+    state.connected = device->is_connected;
+    state.buttons = device->current_state.Gamepad.wButtons;
+    state.left_stick_x = device->current_state.Gamepad.sThumbLX;
+    state.left_stick_y = device->current_state.Gamepad.sThumbLY;
+    state.right_stick_x = device->current_state.Gamepad.sThumbRX;
+    state.right_stick_y = device->current_state.Gamepad.sThumbRY;
+    state.left_trigger = device->current_state.Gamepad.bLeftTrigger;
+    state.right_trigger = device->current_state.Gamepad.bRightTrigger;
+    state.packet_number = device->current_state.dwPacketNumber;
+    LogInfo("[DUALSENSE] DualSense state converted to XInput format state.connected %d", (int)state.connected);
+    return state.connected;
 }
 
 // Background thread to poll DualSense controllers
 void DualSensePollingThread() {
     while (g_dualsense_thread_running.load()) {
+        //LogInfo("[DUALSENSE] DualSense polling thread running");
         if (g_dualsense_available.load()) {
-            for (DWORD i = 0; i < XUSER_MAX_COUNT; ++i) {
+            for (DWORD i = 0; i < 1; ++i) {
+                //LogInfo("[DUALSENSE] DualSense polling thread reading state for controller %lu", i);
                 DualSenseState new_state;
                 if (ReadDualSenseState(i, new_state)) {
                     g_dualsense_states[i] = new_state;
@@ -135,7 +131,7 @@ void DualSensePollingThread() {
         }
 
         // Poll at 60Hz
-        std::this_thread::sleep_for(std::chrono::milliseconds(16));
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 }
 
@@ -146,16 +142,19 @@ bool InitializeDualSenseSupport() {
 
     LogInfo("Initializing DualSense support...");
 
-    // Initialize direct HID functions first
-    InitializeDirectHIDFunctions();
+    // Initialize DualSense HID wrapper first
+    display_commander::dualsense::InitializeDualSenseHID();
 
-    // Check if we have the necessary HID functions
-    if (ReadFile_Direct == nullptr && HidD_GetInputReport_Direct == nullptr) {
-        LogError("DualSense: No direct HID functions available");
+    // Check if HID wrapper is available
+    if (!display_commander::dualsense::g_dualsense_hid_wrapper) {
+        LogError("DualSense: Failed to initialize HID wrapper");
         g_dualsense_initialized.store(true);
         g_dualsense_available.store(false);
         return false;
     }
+
+    // Initialize direct HID functions for fallback
+    InitializeDirectHIDFunctions();
 
     // Check if Special-K is available (optional)
     bool sk_available = CheckSpecialKDualSenseSupport();
@@ -174,6 +173,7 @@ bool InitializeDualSenseSupport() {
     // Start polling thread
     g_dualsense_thread_running.store(true);
     g_dualsense_thread = std::thread(DualSensePollingThread);
+
 
     g_dualsense_available.store(true);
     g_dualsense_initialized.store(true);
@@ -195,6 +195,9 @@ void CleanupDualSenseSupport() {
         g_dualsense_thread.join();
     }
 
+    // Cleanup HID wrapper
+    display_commander::dualsense::CleanupDualSenseHID();
+
     g_dualsense_available.store(false);
     g_dualsense_initialized.store(false);
 
@@ -205,8 +208,8 @@ bool IsDualSenseAvailable() {
     return g_dualsense_available.load();
 }
 
-bool ConvertDualSenseToXInput(DWORD user_index, XINPUT_STATE* pState) {
-    if (!g_dualsense_available.load() || user_index >= XUSER_MAX_COUNT || pState == nullptr) {
+bool ConvertDualSenseToXInput(DWORD user_index, XINPUT_STATE* state) {
+    if (!g_dualsense_available.load() || user_index >= XUSER_MAX_COUNT || state == nullptr) {
         return false;
     }
 
@@ -216,14 +219,35 @@ bool ConvertDualSenseToXInput(DWORD user_index, XINPUT_STATE* pState) {
     }
 
     // Convert DualSense state to XInput format
-    pState->dwPacketNumber = dualsense.packet_number;
-    pState->Gamepad.wButtons = dualsense.buttons;
-    pState->Gamepad.sThumbLX = dualsense.left_stick_x;
-    pState->Gamepad.sThumbLY = dualsense.left_stick_y;
-    pState->Gamepad.sThumbRX = dualsense.right_stick_x;
-    pState->Gamepad.sThumbRY = dualsense.right_stick_y;
-    pState->Gamepad.bLeftTrigger = dualsense.left_trigger;
-    pState->Gamepad.bRightTrigger = dualsense.right_trigger;
+    state->dwPacketNumber = dualsense.packet_number;
+    state->Gamepad.wButtons = dualsense.buttons;
+    state->Gamepad.sThumbLX = dualsense.left_stick_x;
+    state->Gamepad.sThumbLY = dualsense.left_stick_y;
+    state->Gamepad.sThumbRX = dualsense.right_stick_x;
+    state->Gamepad.sThumbRY = dualsense.right_stick_y;
+    state->Gamepad.bLeftTrigger = dualsense.left_trigger;
+    state->Gamepad.bRightTrigger = dualsense.right_trigger;
+
+    // Update XInput UI structures for proper display
+    auto shared_state = display_commander::widgets::xinput_widget::XInputWidget::GetSharedState();
+    if (shared_state) {
+        // Thread-safe update
+        while (shared_state->is_updating.exchange(true)) {
+            // Wait for other thread to finish
+            std::this_thread::sleep_for(std::chrono::microseconds(1));
+        }
+
+        // Update controller state for UI display
+        shared_state->controller_states[user_index] = *state;
+        shared_state->controller_connected[user_index] = display_commander::widgets::xinput_widget::ControllerState::Connected;
+        shared_state->last_packet_numbers[user_index] = state->dwPacketNumber;
+        shared_state->last_update_times[user_index] = GetTickCount64();
+
+        // Increment event counter
+        shared_state->total_events.fetch_add(1);
+
+        shared_state->is_updating.store(false);
+    }
 
     return true;
 }

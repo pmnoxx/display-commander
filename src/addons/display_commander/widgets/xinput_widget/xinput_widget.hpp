@@ -92,6 +92,12 @@ struct XInputSharedState {
     std::atomic<float> right_stick_deadzone{
         0.0f}; // Right stick dead zone (min input) - 0.0 = no deadzone, 15.0 = ignores small movements
 
+    // Stick center calibration
+    std::atomic<float> left_stick_center_x{0.0f};  // Left stick X center offset
+    std::atomic<float> left_stick_center_y{0.0f};  // Left stick Y center offset
+    std::atomic<float> right_stick_center_x{0.0f}; // Right stick X center offset
+    std::atomic<float> right_stick_center_y{0.0f}; // Right stick Y center offset
+
     // Last update time for each controller
     std::array<std::atomic<uint64_t>, XUSER_MAX_COUNT> last_update_times;
 
@@ -99,6 +105,31 @@ struct XInputSharedState {
     std::array<XINPUT_BATTERY_INFORMATION, XUSER_MAX_COUNT> battery_info;
     std::array<std::atomic<uint64_t>, XUSER_MAX_COUNT> last_battery_update_times;
     std::array<std::atomic<bool>, XUSER_MAX_COUNT> battery_info_valid;
+
+    // Recenter calibration data
+    struct RecenterData {
+        // Raw min/max values for each axis (range -32768 to 32767)
+        std::atomic<SHORT> left_stick_x_min{32767};
+        std::atomic<SHORT> left_stick_x_max{-32768};
+        std::atomic<SHORT> left_stick_y_min{32767};
+        std::atomic<SHORT> left_stick_y_max{-32768};
+        std::atomic<SHORT> right_stick_x_min{32767};
+        std::atomic<SHORT> right_stick_x_max{-32768};
+        std::atomic<SHORT> right_stick_y_min{32767};
+        std::atomic<SHORT> right_stick_y_max{-32768};
+
+        // Computed center values
+        std::atomic<SHORT> left_stick_x_center{0};
+        std::atomic<SHORT> left_stick_y_center{0};
+        std::atomic<SHORT> right_stick_x_center{0};
+        std::atomic<SHORT> right_stick_y_center{0};
+
+        // Recording state
+        std::atomic<bool> is_recording{false};
+        std::atomic<bool> has_data{false};
+    };
+
+    RecenterData recenter_data;
 
     // Thread safety
     mutable std::atomic<bool> is_updating{false};
@@ -162,6 +193,14 @@ class XInputWidget {
     void ExecuteChordAction(const XInputSharedState::Chord &chord, DWORD user_index);
     std::string GetChordButtonNames(WORD buttons) const;
 
+     // Recenter calibration functions
+    void DrawRecenterSettings();
+    void ClearRecenterData();
+    void StartRecenterRecording();
+    void StopRecenterRecording();
+    void ProcessRecenterData(SHORT left_x, SHORT left_y, SHORT right_x, SHORT right_y);
+    void ApplyRecenterCalibration(SHORT &left_x, SHORT &left_y, SHORT &right_x, SHORT &right_y);
+
     // Global shared state
     static std::shared_ptr<XInputSharedState> g_shared_state;
 };
@@ -180,5 +219,8 @@ void UpdateBatteryStatus(DWORD user_index);
 void IncrementEventCounter(const std::string &event_type);
 void ProcessChordDetection(DWORD user_index, WORD button_state);
 void CheckAndHandleScreenshot();
+
+// Recenter calibration functions for hooks
+void ProcessRecenterData(SHORT left_x, SHORT left_y, SHORT right_x, SHORT right_y);
 
 } // namespace display_commander::widgets::xinput_widget

@@ -300,6 +300,7 @@ std::atomic<bool> s_reflex_use_markers{true};
 std::atomic<bool> s_reflex_enable_sleep{false}; // Disabled by default
 std::atomic<bool> s_enable_reflex_logging{false}; // Disabled by default
 
+
 // DLLS-G (DLSS Frame Generation) status
 std::atomic<bool> g_dlls_g_loaded{false};
 std::atomic<std::shared_ptr<const std::string>> g_dlls_g_version{std::make_shared<const std::string>("Unknown")};

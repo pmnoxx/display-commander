@@ -93,6 +93,20 @@ void DrawDeveloperSettings() {
             "messages to keep games running in background.");
     }
 
+    // Safemode setting
+    if (CheckboxSetting(settings::g_developerTabSettings.safemode, "Safemode (requires restart)")) {
+        LogInfo("Safemode setting changed to: %s", settings::g_developerTabSettings.safemode.GetValue() ? "enabled" : "disabled");
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Safemode disables all auto-apply settings and sets FPS limiter to disabled.\n"
+                         "When enabled, it will automatically set itself to 0 and disable:\n"
+                         "• Auto-apply resolution changes\n"
+                         "• Auto-apply refresh rate changes\n"
+                         "• Apply display settings at start\n"
+                         "• FPS limiter mode (set to disabled)\n\n"
+                         "This setting requires a game restart to take effect.");
+    }
+
     ImGui::Spacing();
 }
 

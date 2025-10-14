@@ -11,11 +11,13 @@
 #include "nvapi/nvapi_fullscreen_prevention.hpp"
 #include "process_exit_hooks.hpp"
 #include "settings/main_tab_settings.hpp"
+#include "settings/developer_tab_settings.hpp"
 #include "swapchain_events.hpp"
 #include "swapchain_events_power_saving.hpp"
 #include "ui/new_ui/experimental_tab.hpp"
 #include "ui/new_ui/main_new_tab.hpp"
 #include "widgets/dualsense_widget/dualsense_widget.hpp"
+#include "widgets/xinput_widget/xinput_widget.hpp"
 #include "hooks/hid_suppression_hooks.hpp"
 #include "ui/new_ui/new_ui_main.hpp"
 #include "utils/timing.hpp"
@@ -40,6 +42,9 @@ bool CheckReShadeVersionCompatibility();
 
 // Forward declaration for multiple ReShade detection
 void DetectMultipleReShadeVersions();
+
+// Forward declaration for safemode function
+void HandleSafemode();
 
 // Function to parse version string and check if it's 6.5.1 or above
 bool IsVersion651OrAbove(const std::string& version_str) {
@@ -427,6 +432,51 @@ bool CheckReShadeVersionCompatibility() {
     return false;
 }
 
+// Safemode function - handles safemode logic
+void HandleSafemode() {
+    // Load developer settings to get safemode value
+    settings::g_developerTabSettings.LoadAll();
+
+    bool safemode_enabled = settings::g_developerTabSettings.safemode.GetValue();
+
+    if (safemode_enabled) {
+        LogInfo("Safemode enabled - disabling auto-apply settings, continue rendering, FPS limiter, and XInput hooks");
+
+        // Set safemode to 0 (force set to 0)
+        settings::g_developerTabSettings.safemode.SetValue(false);
+
+        // Disable all auto-apply settings
+        s_auto_apply_resolution_change.store(false);
+        s_auto_apply_refresh_rate_change.store(false);
+        s_apply_display_settings_at_start.store(false);
+
+        // Disable continue rendering
+        s_continue_rendering.store(false);
+
+        // Set FPS limiter mode to 0 (Disabled)
+        s_fps_limiter_mode.store(FpsLimiterMode::kDisabled);
+
+        // Disable XInput hooks
+        auto xinput_shared_state = display_commander::widgets::xinput_widget::XInputWidget::GetSharedState();
+        if (xinput_shared_state) {
+            xinput_shared_state->enable_xinput_hooks.store(false);
+            // Save XInput setting to config
+            display_commander::config::set_config_value("DisplayCommander.XInputWidget", "EnableXInputHooks", false);
+        }
+
+        // Save the changes
+        settings::g_developerTabSettings.SaveAll();
+
+        LogInfo("Safemode applied - auto-apply settings disabled, continue rendering disabled, FPS limiter set to disabled, XInput hooks disabled");
+    } else {
+        // If unset, force set to 0 so it appears in config
+        settings::g_developerTabSettings.safemode.SetValue(false);
+        settings::g_developerTabSettings.SaveAll();
+
+        LogInfo("Safemode not enabled - setting to 0 for config visibility");
+    }
+}
+
 void DoInitializationWithoutHwnd(HMODULE h_module, DWORD fdw_reason) {
 
     // Initialize QPC timing constants based on actual frequency
@@ -538,16 +588,19 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
         DetectMultipleReShadeVersions();
         OutputDebugStringA("DisplayCommander: ReShade addon registration SUCCESS\n");
 
-        // Detect multiple ReShade versions AFTER successful registration to avoid interference
-        // This prevents our module scanning from interfering with ReShade's internal module detection
-        OutputDebugStringA("DisplayCommander: About to detect ReShade modules\n");
-
         // Registration successful - log version compatibility
         LogInfo("Display Commander v%s - ReShade addon registration successful (API version 17 supported)", DISPLAY_COMMANDER_VERSION_STRING);
 
-        // Initialize DisplayCommander config system
+        // Initialize DisplayCommander config system before handling safemode
         display_commander::config::DisplayCommanderConfigManager::GetInstance().Initialize();
         LogInfo("DisplayCommander config system initialized");
+
+        // Handle safemode after config system is initialized
+        HandleSafemode();
+
+        // Detect multiple ReShade versions AFTER successful registration to avoid interference
+        // This prevents our module scanning from interfering with ReShade's internal module detection
+        OutputDebugStringA("DisplayCommander: About to detect ReShade modules\n");
 
         // Store module handle for pinning
         g_hmodule = h_module;

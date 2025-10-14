@@ -119,6 +119,10 @@ bool ReadDualSenseState(DWORD user_index, DualSenseState& state) {
 // Background thread to poll DualSense controllers
 void DualSensePollingThread() {
     while (g_dualsense_thread_running.load()) {
+        if (!display_commander::widgets::xinput_widget::XInputWidget::GetSharedState()->enable_dualsense_xinput.load()) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+            continue;
+        }
         //LogInfo("[DUALSENSE] DualSense polling thread running");
         if (g_dualsense_available.load()) {
             for (DWORD i = 0; i < 1; ++i) {

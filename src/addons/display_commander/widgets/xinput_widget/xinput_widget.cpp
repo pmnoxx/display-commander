@@ -5,6 +5,7 @@
 #include "../../hooks/timeslowdown_hooks.hpp"
 #include "../../res/ui_colors.hpp"
 #include "../../config/display_commander_config.hpp"
+#include "../../settings/experimental_tab_settings.hpp"
 #include <chrono>
 #include <imgui.h>
 #include <reshade.hpp>
@@ -145,6 +146,16 @@ void XInputWidget::DrawSettings() {
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Convert DualSense controller input to XInput format (requires Special-K)");
+        }
+
+        // HID suppression enable
+        bool hid_suppression = settings::g_experimentalTabSettings.hid_suppression_enabled.GetValue();
+        if (ImGui::Checkbox("Enable HID Suppression", &hid_suppression)) {
+            settings::g_experimentalTabSettings.hid_suppression_enabled.SetValue(hid_suppression);
+            LogInfo("HID suppression %s", hid_suppression ? "enabled" : "disabled");
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Suppress HID input reading for games to prevent them from detecting controllers.\nUseful for preventing games from interfering with controller input handling.");
         }
 
         // Left stick deadzone setting

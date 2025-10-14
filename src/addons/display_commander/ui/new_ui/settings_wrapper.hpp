@@ -157,11 +157,19 @@ class FloatSettingRef : public SettingBase {
     std::atomic<float> &GetAtomic() { return external_ref_.get(); }
     const std::atomic<float> &GetAtomic() const { return external_ref_.get(); }
 
+    // Dirty value management for slider interactions
+    void SetDirtyValue(float value) { dirty_value_ = value; has_dirty_value_ = true; }
+    float GetDirtyValue() const { return dirty_value_; }
+    bool HasDirtyValue() const { return has_dirty_value_; }
+    void ClearDirtyValue() { has_dirty_value_ = false; }
+
   private:
     std::reference_wrapper<std::atomic<float>> external_ref_;
     float default_value_;
     float min_;
     float max_;
+    float dirty_value_;  // Stores intermediate value during slider interaction
+    bool has_dirty_value_;  // Tracks whether dirty_value_ is valid
 };
 
 // Integer setting wrapper that references an external atomic variable
@@ -183,11 +191,19 @@ class IntSettingRef : public SettingBase {
     std::atomic<int> &GetAtomic() { return external_ref_.get(); }
     const std::atomic<int> &GetAtomic() const { return external_ref_.get(); }
 
+    // Dirty value management for slider interactions
+    void SetDirtyValue(int value) { dirty_value_ = value; has_dirty_value_ = true; }
+    int GetDirtyValue() const { return dirty_value_; }
+    bool HasDirtyValue() const { return has_dirty_value_; }
+    void ClearDirtyValue() { has_dirty_value_ = false; }
+
   private:
     std::reference_wrapper<std::atomic<int>> external_ref_;
     int default_value_;
     int min_;
     int max_;
+    int dirty_value_;  // Stores intermediate value during slider interaction
+    bool has_dirty_value_;  // Tracks whether dirty_value_ is valid
 };
 
 // Combo setting wrapper

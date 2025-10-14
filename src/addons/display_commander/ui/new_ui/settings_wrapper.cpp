@@ -151,7 +151,8 @@ void BoolSettingRef::SetValue(bool value) {
 // FloatSettingRef implementation
 FloatSettingRef::FloatSettingRef(const std::string &key, std::atomic<float> &external_ref, float default_value,
                                  float min, float max, const std::string &section)
-    : SettingBase(key, section), external_ref_(external_ref), default_value_(default_value), min_(min), max_(max) {}
+    : SettingBase(key, section), external_ref_(external_ref), default_value_(default_value), min_(min), max_(max),
+      dirty_value_(0.0f), has_dirty_value_(false) {}
 
 void FloatSettingRef::Load() {
     float loaded_value;
@@ -185,7 +186,8 @@ void FloatSettingRef::SetValue(float value) {
 // IntSettingRef implementation
 IntSettingRef::IntSettingRef(const std::string &key, std::atomic<int> &external_ref, int default_value, int min,
                              int max, const std::string &section)
-    : SettingBase(key, section), external_ref_(external_ref), default_value_(default_value), min_(min), max_(max) {}
+    : SettingBase(key, section), external_ref_(external_ref), default_value_(default_value), min_(min), max_(max),
+      dirty_value_(0), has_dirty_value_(false) {}
 
 void IntSettingRef::Load() {
     int loaded_value;
@@ -466,9 +468,14 @@ bool SliderFloatSetting(FloatSettingRef &setting, const char *label, const char 
     float value = setting.GetValue();
     bool changed = ImGui::SliderFloat(label, &value, setting.GetMin(), setting.GetMax(), format);
     if (changed) {
-        if (!ImGui::IsItemActive()) {
-            setting.SetValue(value);
-        }
+        // Store the dirty value for later application
+        setting.SetDirtyValue(value);
+    }
+
+    // Apply dirty value when slider becomes inactive
+    if (!ImGui::IsItemActive() && setting.HasDirtyValue()) {
+        setting.SetValue(setting.GetDirtyValue());
+        setting.ClearDirtyValue();
     }
     // Show reset-to-default button if value differs from default
     {
@@ -520,7 +527,14 @@ bool SliderIntSetting(IntSettingRef &setting, const char *label, const char *for
     int value = setting.GetValue();
     bool changed = ImGui::SliderInt(label, &value, setting.GetMin(), setting.GetMax(), format);
     if (changed) {
-        setting.SetValue(value);
+        // Store the dirty value for later application
+        setting.SetDirtyValue(value);
+    }
+
+    // Apply dirty value when slider becomes inactive
+    if (!ImGui::IsItemActive() && setting.HasDirtyValue()) {
+        setting.SetValue(setting.GetDirtyValue());
+        setting.ClearDirtyValue();
     }
     // Show reset-to-default button if value differs from default
     {

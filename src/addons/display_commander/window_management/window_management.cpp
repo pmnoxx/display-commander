@@ -187,7 +187,7 @@ void CalculateWindowState(HWND hwnd, const char* reason) {
         local_state.display_width = display_width;
         local_state.display_height = display_height;
 
-        LogDebug("CalculateWindowState: target_w=%d, target_h=%d", local_state.target_w, local_state.target_h);
+        // LogDebug("CalculateWindowState: target_w=%d, target_h=%d", local_state.target_w, local_state.target_h);
 
         // Publish snapshot under a lightweight lock
         g_window_state.store(std::make_shared<GlobalWindowState>(local_state));

@@ -466,7 +466,9 @@ bool SliderFloatSetting(FloatSettingRef &setting, const char *label, const char 
     float value = setting.GetValue();
     bool changed = ImGui::SliderFloat(label, &value, setting.GetMin(), setting.GetMax(), format);
     if (changed) {
-        setting.SetValue(value);
+        if (!ImGui::IsItemActive()) {
+            setting.SetValue(value);
+        }
     }
     // Show reset-to-default button if value differs from default
     {

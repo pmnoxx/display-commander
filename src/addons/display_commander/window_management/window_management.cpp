@@ -4,7 +4,6 @@
 #include "../globals.hpp"
 #include "../settings/main_tab_settings.hpp"
 #include "../ui/ui_display_tab.hpp"
-#include "../utils.hpp"
 
 #include <sstream>
 
@@ -36,7 +35,7 @@ void CalculateWindowState(HWND hwnd, const char* reason) {
         local_state.current_ex_style & ~(WS_EX_DLGMODALFRAME | WS_EX_WINDOWEDGE | WS_EX_CLIENTEDGE | WS_EX_STATICEDGE);
 
     // PREVENT ALWAYS ON TOP: Remove WS_EX_TOPMOST and WS_EX_TOOLWINDOW styles
-    if (s_prevent_always_on_top.load() && (local_state.new_ex_style & (WS_EX_TOPMOST | WS_EX_TOOLWINDOW))) {
+    if (s_prevent_always_on_top.load() && (local_state.new_ex_style & (WS_EX_TOPMOST | WS_EX_TOOLWINDOW)) != 0) {
         local_state.new_ex_style &= ~(WS_EX_TOPMOST | WS_EX_TOOLWINDOW);
 
         // Log if we're removing always on top styles
@@ -150,14 +149,14 @@ void CalculateWindowState(HWND hwnd, const char* reason) {
         local_state.target_x = disp->x;
         local_state.target_y = disp->y;
 
-        const RECT& mr = {disp->x, disp->y, disp->x + disp->width, disp->y + disp->height};
+        const RECT mr = {disp->x, disp->y, disp->x + disp->width, disp->y + disp->height};
 
         // Apply alignment based on setting
         switch (s_window_alignment.load()) {
             default:
             case WindowAlignment::kCenter:  // Default to center
-                local_state.target_x = max(mr.left, mr.left + (mr.right - mr.left - local_state.target_w) / 2);
-                local_state.target_y = max(mr.top, mr.top + (mr.bottom - mr.top - local_state.target_h) / 2);
+                local_state.target_x = max(mr.left, mr.left + ((mr.right - mr.left - local_state.target_w) / 2));
+                local_state.target_y = max(mr.top, mr.top + ((mr.bottom - mr.top - local_state.target_h) / 2));
                 break;
             case WindowAlignment::kTopLeft:
                 local_state.target_x = mr.left;

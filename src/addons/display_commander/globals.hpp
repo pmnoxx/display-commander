@@ -7,9 +7,8 @@
 #include <windows.h>
 
 #include <d3d11.h>
-#include <imgui.h>
+#include <reshade_imgui.hpp>
 #include <wrl/client.h>
-#include <reshade.hpp>
 
 
 #include <atomic>

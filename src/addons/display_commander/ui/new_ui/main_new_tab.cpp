@@ -17,10 +17,9 @@
 #include "utils/timing.hpp"
 #include "version.hpp"
 
-#include <imgui.h>
+#include <reshade_imgui.hpp>
 #include <minwindef.h>
 #include <shellapi.h>
-#include <reshade.hpp>
 #include <dxgi.h>
 #include <d3d9.h>
 

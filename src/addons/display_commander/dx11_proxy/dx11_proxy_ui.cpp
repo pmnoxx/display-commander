@@ -10,8 +10,7 @@
 #include "../res/ui_colors.hpp"
 #include "../res/forkawesome.h"
 
-#include <deps/imgui/imgui.h>
-#include <reshade.hpp>
+#include <reshade_imgui.hpp>
 #include <sstream>
 #include <string>
 

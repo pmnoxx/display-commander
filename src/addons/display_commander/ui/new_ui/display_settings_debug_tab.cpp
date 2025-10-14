@@ -2,8 +2,7 @@
 #include "../../settings/display_settings.hpp"
 #include "../../utils.hpp"
 
-#include <imgui.h>
-#include <reshade.hpp>
+#include <reshade_imgui.hpp>
 
 namespace ui::new_ui {
 

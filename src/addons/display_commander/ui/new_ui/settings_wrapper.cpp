@@ -3,8 +3,7 @@
 #include "../../performance_types.hpp"
 #include "../../config/display_commander_config.hpp"
 
-#include <imgui.h>
-#include <reshade.hpp>
+#include <reshade_imgui.hpp>
 #include "../../res/forkawesome.h"
 
 #include "../../utils.hpp"

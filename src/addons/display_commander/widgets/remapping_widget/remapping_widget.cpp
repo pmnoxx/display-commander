@@ -2,8 +2,7 @@
 #include "../../utils.hpp"
 #include "../../config/display_commander_config.hpp"
 
-#include <imgui.h>
-#include <reshade.hpp>
+#include <reshade_imgui.hpp>
 
 namespace display_commander::widgets::remapping_widget {
 // Global widget instance

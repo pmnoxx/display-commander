@@ -30,7 +30,6 @@ HRESULT WINAPI DirectInputCreateW_Detour(HINSTANCE hinst, DWORD dwVersion, LPDIR
 // Hook management
 bool InstallDirectInputHooks();
 void UninstallDirectInputHooks();
-bool AreDirectInputHooksInstalled();
 
 // Device creation tracking
 struct DInputDeviceInfo {

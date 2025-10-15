@@ -24,7 +24,6 @@ void PerformClick(int x, int y, int sequence_num, bool is_test = false);
 void AutoClickThread();
 void ToggleAutoClickEnabled();
 void StartAutoClickThread();
-void StopAutoClickThread();
 void DrawAutoClickFeature();
 void DrawSequence(int sequence_num);
 void DrawMouseCoordinatesDisplay();

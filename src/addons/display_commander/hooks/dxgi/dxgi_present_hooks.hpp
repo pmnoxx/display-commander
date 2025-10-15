@@ -150,9 +150,6 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetHDRMetaData_Detour(IDXGISwapChain4 *
 // Hooked DXGI Factory CreateSwapChain functions
 HRESULT STDMETHODCALLTYPE IDXGIFactory_CreateSwapChain_Detour(IDXGIFactory *This, IUnknown *pDevice, DXGI_SWAP_CHAIN_DESC *pDesc, IDXGISwapChain **ppSwapChain);
 
-// Hook management
-bool AreDxgiPresentHooksInstalled();
-
 // Hook a specific swapchain when it's created
 bool HookSwapchain(IDXGISwapChain *swapchain);
 

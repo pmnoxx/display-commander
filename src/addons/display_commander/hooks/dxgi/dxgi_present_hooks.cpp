@@ -1368,9 +1368,6 @@ bool HookFactory(IDXGIFactory *factory) {
 }
 
 
-// Check if DXGI Present hooks are installed
-bool AreDxgiPresentHooksInstalled() { return g_dxgi_present_hooks_installed.load(); }
-
 // Record the native swapchain used in OnPresentUpdateBefore
 void RecordPresentUpdateSwapchain(IDXGISwapChain *swapchain) {
     g_last_present_update_swapchain.store(swapchain);

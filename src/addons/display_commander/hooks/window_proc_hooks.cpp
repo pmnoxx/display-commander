@@ -271,7 +271,6 @@ void UninstallWindowProcHooks() {
     LogInfo("Window procedure hooks uninstalled successfully");
 }
 
-bool AreWindowProcHooksInstalled() { return g_hooks_installed.load(); }
 
 bool IsContinueRenderingEnabled() { return s_continue_rendering.load(); }
 
@@ -289,25 +288,6 @@ void SendFakeActivationMessages(HWND hwnd) {
     PostMessage(hwnd, WM_NCACTIVATE, TRUE, 0);
 
     LogInfo("Sent fake activation messages to window - HWND: 0x%p", hwnd);
-}
-
-void FakeActivateWindow(HWND hwnd) {
-    if (!s_continue_rendering.load()) {
-        return;
-    }
-
-    if (hwnd == nullptr || !IsWindow(hwnd)) {
-        return;
-    }
-
-    // Send fake activation messages
-    SendFakeActivationMessages(hwnd);
-
-    // Also try to bring the window to front (but don't steal focus from other apps)
-    SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
-    SetWindowPos(hwnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
-
-    LogInfo("Fake activated window - HWND: 0x%p", hwnd);
 }
 
 // Set the target window to hook

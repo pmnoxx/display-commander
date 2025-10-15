@@ -106,13 +106,4 @@ std::vector<ui::new_ui::SettingBase *> DeveloperTabSettings::GetAllSettings() {
             &safemode};
 }
 
-// Global instance is now defined in globals.cpp
-
-// Legacy function for backward compatibility - now uses the new settings wrapper
-void AddDeveloperNewTabSettings(std::vector<void *> &settings) {
-    // This function is now deprecated in favor of the settings wrapper system
-    // The settings are now managed by DeveloperTabSettings class
-    // This function is kept for backward compatibility but doesn't add any new settings
-}
-
 } // namespace settings

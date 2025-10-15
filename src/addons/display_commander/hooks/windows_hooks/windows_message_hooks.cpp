@@ -1350,9 +1350,6 @@ void UninstallWindowsMessageHooks() {
     LogInfo("Windows message hooks uninstalled successfully");
 }
 
-// Check if Windows message hooks are installed
-bool AreWindowsMessageHooksInstalled() { return g_message_hooks_installed.load(); }
-
 // Hook statistics access functions
 const HookCallStats &GetHookStats(int hook_index) {
     if (hook_index >= 0 && hook_index < HOOK_COUNT) {

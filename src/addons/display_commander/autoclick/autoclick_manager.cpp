@@ -214,16 +214,6 @@ void StartAutoClickThread() {
         LogInfo("Auto-click thread started");
     }
 }
-
-// Function to stop the auto-click thread
-void StopAutoClickThread() {
-    if (g_auto_click_thread_running.load()) {
-        // Note: We can't actually stop the thread since it runs forever
-        // The thread will just sleep when auto-click is disabled
-        LogInfo("Auto-click thread will sleep when disabled");
-    }
-}
-
 // Function to toggle auto-click enabled state
 void ToggleAutoClickEnabled() {
     bool new_auto_click_enabled = !g_auto_click_enabled.load();

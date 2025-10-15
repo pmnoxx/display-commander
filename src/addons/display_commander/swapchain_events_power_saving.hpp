@@ -48,32 +48,6 @@ bool OnResolveTextureRegion(reshade::api::command_list *cmd_list, reshade::api::
                             reshade::api::resource dest, uint32_t dest_subresource, uint32_t dest_x, uint32_t dest_y,
                             uint32_t dest_z, reshade::api::format format);
 
-// Clear operations (frame-specific, safe to suspend)
-bool OnClearRenderTargetView(reshade::api::command_list *cmd_list, reshade::api::resource_view rtv,
-                             const float color[4], uint32_t rect_count, const reshade::api::rect *rects);
-bool OnClearDepthStencilView(reshade::api::command_list *cmd_list, reshade::api::resource_view dsv, const float *depth,
-                             const uint8_t *stencil, uint32_t rect_count, const reshade::api::rect *rects);
-bool OnClearUnorderedAccessViewUint(reshade::api::command_list *cmd_list, reshade::api::resource_view uav,
-                                    const uint32_t values[4], uint32_t rect_count, const reshade::api::rect *rects);
-bool OnClearUnorderedAccessViewFloat(reshade::api::command_list *cmd_list, reshade::api::resource_view uav,
-                                     const float values[4], uint32_t rect_count, const reshade::api::rect *rects);
-
-// Mipmap generation (very GPU intensive, frame-specific)
-bool OnGenerateMipmaps(reshade::api::command_list *cmd_list, reshade::api::resource_view srv);
-
-// Blit operations (frame-specific image processing)
-bool OnBlit(reshade::api::command_list *cmd_list, reshade::api::resource source, uint32_t source_subresource,
-            const reshade::api::subresource_box *source_box, reshade::api::resource dest, uint32_t dest_subresource,
-            const reshade::api::subresource_box *dest_box, reshade::api::filter_mode filter);
-
-// Query operations (frame-specific statistics)
-bool OnBeginQuery(reshade::api::command_list *cmd_list, reshade::api::query_heap heap, reshade::api::query_type type,
-                  uint32_t index);
-bool OnEndQuery(reshade::api::command_list *cmd_list, reshade::api::query_heap heap, reshade::api::query_type type,
-                uint32_t index);
-bool OnResolveQueryData(reshade::api::command_list *cmd_list, reshade::api::query_heap heap,
-                        reshade::api::query_type type, uint32_t first, uint32_t count, reshade::api::resource dest,
-                        uint64_t dest_offset);
 
 // Helper function to determine if an operation should be suppressed for power saving
 bool ShouldSuppressOperation();

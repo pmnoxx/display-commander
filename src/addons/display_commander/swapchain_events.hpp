@@ -107,7 +107,6 @@ extern std::atomic<bool> s_suppress_memory_ops_in_background;
 
 // DXGI composition state utilities
 DxgiBypassMode GetIndependentFlipState(IDXGISwapChain *dxgi_swapchain);
-bool SetIndependentFlipState(reshade::api::swapchain *swapchain);
 const char *DxgiBypassModeToString(DxgiBypassMode mode);
 
 // Query DXGI composition state - should only be called from DXGI present hooks

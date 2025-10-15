@@ -378,9 +378,6 @@ void UninstallApiHooks() {
     g_api_hooks_installed.store(false);
     LogInfo("API hooks uninstalled successfully");
 }
-
-bool AreApiHooksInstalled() { return g_api_hooks_installed.load(); }
-
 // Function to set the game window (should be called when we detect the game window)
 void SetGameWindow(HWND hwnd) {
     g_game_window = hwnd;

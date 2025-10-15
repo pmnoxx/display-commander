@@ -19,6 +19,5 @@ BOOL WINAPI TerminateProcess_Detour(HANDLE hProcess, UINT uExitCode);
 // Hook management
 bool InstallProcessExitHooks();
 void UninstallProcessExitHooks();
-bool AreProcessExitHooksInstalled();
 
 } // namespace display_commanderhooks

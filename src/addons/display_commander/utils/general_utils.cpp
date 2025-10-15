@@ -223,24 +223,6 @@ void ProcessStickInputRadial(float &x, float &y, float deadzone, float max_input
     y = y * output_magnitude / magnitude;
 }
 
-// Legacy per-axis function (deprecated - kept for compatibility)
-float ApplyDeadzone(float value, float deadzone, float max_input) {
-    if (deadzone <= 0.0f) {
-        return value; // No deadzone applied
-    }
-
-    float abs_value = std::abs(value);
-    float sign = (value >= 0.0f) ? 1.0f : -1.0f;
-
-    // Traditional deadzone behavior
-    if (abs_value < deadzone) {
-        return 0.0f;
-    }
-    // Scale the value to remove the deadzone
-    float scaled = min(1.0f, (abs_value - deadzone) / (max_input - deadzone));
-    return sign * scaled;
-}
-
 // XInput thumbstick scaling helpers (handles asymmetric SHORT range: -32768 to 32767)
 float ShortToFloat(SHORT value) {
     // Proper linear mapping from [-32768, 32767] to [-1.0f, 1.0f]

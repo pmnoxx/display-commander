@@ -480,6 +480,4 @@ bool InstallXInputHooks() {
     return any_success;
 }
 
-bool AreXInputHooksInstalled() { return g_xinput_hooks_installed.load(); }
-
 } // namespace display_commanderhooks

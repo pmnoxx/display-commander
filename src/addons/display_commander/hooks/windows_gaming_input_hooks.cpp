@@ -204,6 +204,4 @@ void UninstallWindowsGamingInputHooks() {
     LogInfo("Windows.Gaming.Input hooks uninstalled successfully");
 }
 
-bool AreWindowsGamingInputHooksInstalled() { return g_wgi_hooks_installed.load(); }
-
 } // namespace display_commanderhooks

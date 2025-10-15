@@ -45,7 +45,6 @@ HRESULT WINAPI CreateDXGIFactory1_Detour(REFIID riid, void **ppFactory);
 bool InstallApiHooks();
 bool InstallDxgiHooks();
 void UninstallApiHooks();
-bool AreApiHooksInstalled();
 
 // Helper functions
 HWND GetGameWindow();

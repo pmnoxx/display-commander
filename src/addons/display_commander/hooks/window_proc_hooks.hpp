@@ -13,14 +13,10 @@ namespace display_commanderhooks {
 bool InstallWindowProcHooks(HWND hwnd);
 void UninstallWindowProcHooks();
 
-// Check if hooks are installed
-bool AreWindowProcHooksInstalled();
-
 // Get continue rendering status for debugging
 bool IsContinueRenderingEnabled();
 
 // Fake activation functions
-void FakeActivateWindow(HWND hwnd);
 void SendFakeActivationMessages(HWND hwnd);
 
 // Set the target window to hook

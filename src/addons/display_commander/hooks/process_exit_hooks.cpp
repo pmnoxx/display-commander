@@ -101,6 +101,4 @@ void UninstallProcessExitHooks() {
     LogInfo("Process exit hooks uninstalled successfully");
 }
 
-bool AreProcessExitHooksInstalled() { return g_process_exit_hooks_installed.load(); }
-
 } // namespace display_commanderhooks

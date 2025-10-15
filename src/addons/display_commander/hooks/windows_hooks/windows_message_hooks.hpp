@@ -196,7 +196,6 @@ LONG WINAPI DisplayConfigGetDeviceInfo_Detour(DISPLAYCONFIG_DEVICE_INFO_HEADER *
 // Hook management
 bool InstallWindowsMessageHooks();
 void UninstallWindowsMessageHooks();
-bool AreWindowsMessageHooksInstalled();
 
 // Helper functions
 bool ShouldInterceptMessage(HWND hWnd, UINT uMsg);

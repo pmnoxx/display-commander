@@ -254,10 +254,4 @@ void UninstallDirectInputHooks() {
     g_dinput_hooks_installed.store(false);
     LogInfo("DirectInput hooks uninstalled successfully");
 }
-
-// Check if DirectInput hooks are installed
-bool AreDirectInputHooksInstalled() {
-    return g_dinput_hooks_installed.load();
-}
-
 } // namespace display_commanderhooks

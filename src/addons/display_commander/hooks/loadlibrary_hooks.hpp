@@ -46,7 +46,6 @@ HMODULE WINAPI LoadLibraryExW_Detour(LPCWSTR lpLibFileName, HANDLE hFile, DWORD 
 // Hook management
 bool InstallLoadLibraryHooks();
 void UninstallLoadLibraryHooks();
-bool AreLoadLibraryHooksInstalled();
 
 // Module enumeration and tracking
 bool EnumerateLoadedModules();

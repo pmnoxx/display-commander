@@ -391,11 +391,6 @@ void UninstallLoadLibraryHooks() {
     g_loadlibrary_hooks_installed.store(false);
     LogInfo("LoadLibrary hooks uninstalled successfully");
 }
-
-bool AreLoadLibraryHooksInstalled() {
-    return g_loadlibrary_hooks_installed.load();
-}
-
 bool EnumerateLoadedModules() {
     utils::SRWLockExclusive lock(g_module_srwlock);
 

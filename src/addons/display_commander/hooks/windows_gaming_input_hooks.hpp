@@ -23,6 +23,5 @@ HRESULT WINAPI RoGetActivationFactory_Detour(HSTRING activatableClassId, REFIID 
 // Hook management functions
 bool InstallWindowsGamingInputHooks();
 void UninstallWindowsGamingInputHooks();
-bool AreWindowsGamingInputHooksInstalled();
 
 } // namespace display_commanderhooks

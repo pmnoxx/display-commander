@@ -1,5 +1,5 @@
 #include "nvapi_hooks.hpp"
-#include "../utils.hpp"
+#include "../utils/general_utils.hpp"
 #include "../utils/timing.hpp"
 #include "../globals.hpp"
 #include <MinHook.h>
@@ -279,16 +279,10 @@ bool InstallNVAPIHooks() {
 
     LogInfo("NVAPI hooks: Successfully got NvAPI_Disp_GetHdrCapabilities address via QueryInterface");
 
-    // Create hook
-    if (MH_CreateHook(original_func, NvAPI_Disp_GetHdrCapabilities_Detour,
-                      reinterpret_cast<LPVOID*>(&NvAPI_Disp_GetHdrCapabilities_Original)) != MH_OK) {
-        LogInfo("NVAPI hooks: Failed to create NvAPI_Disp_GetHdrCapabilities hook");
-        return false;
-    }
-
-    // Enable hook
-    if (MH_EnableHook(original_func) != MH_OK) {
-        LogInfo("NVAPI hooks: Failed to enable NvAPI_Disp_GetHdrCapabilities hook");
+    // Create and enable hook
+    if (!CreateAndEnableHook(original_func, NvAPI_Disp_GetHdrCapabilities_Detour,
+                            reinterpret_cast<LPVOID*>(&NvAPI_Disp_GetHdrCapabilities_Original), "NvAPI_Disp_GetHdrCapabilities")) {
+        LogInfo("NVAPI hooks: Failed to create and enable NvAPI_Disp_GetHdrCapabilities hook");
         return false;
     }
 
@@ -329,13 +323,8 @@ bool InstallNVAPIHooks() {
             continue;
         }
 
-        if (MH_CreateHook(original_func, detour_functions[i], original_functions[i]) != MH_OK) {
-            LogInfo("NVAPI hooks: Failed to create %s hook", reflex_functions[i]);
-            continue;
-        }
-
-        if (MH_EnableHook(original_func) != MH_OK) {
-            LogInfo("NVAPI hooks: Failed to enable %s hook", reflex_functions[i]);
+        if (!CreateAndEnableHook(original_func, detour_functions[i], original_functions[i], reflex_functions[i])) {
+            LogInfo("NVAPI hooks: Failed to create and enable %s hook", reflex_functions[i]);
             continue;
         }
 

@@ -2,6 +2,7 @@
 #include "../utils.hpp"
 #include "windows_hooks/windows_message_hooks.hpp"
 #include "../globals.hpp"
+#include "../utils/general_utils.hpp"
 #include <MinHook.h>
 #include <chrono>
 #include <vector>
@@ -178,14 +179,10 @@ bool InstallDirectInputHooks() {
     if (dinput8_module) {
         auto DirectInput8Create_sys = reinterpret_cast<DirectInput8Create_pfn>(GetProcAddress(dinput8_module, "DirectInput8Create"));
         if (DirectInput8Create_sys) {
-            if (MH_CreateHook(DirectInput8Create_sys, DirectInput8Create_Detour, (LPVOID*)&DirectInput8Create_Original) == MH_OK) {
-                if (MH_EnableHook(DirectInput8Create_sys) == MH_OK) {
-                    LogInfo("DirectInput8Create hook installed successfully");
-                } else {
-                    LogError("Failed to enable DirectInput8Create hook");
-                }
+            if (CreateAndEnableHook(DirectInput8Create_sys, DirectInput8Create_Detour, (LPVOID*)&DirectInput8Create_Original, "DirectInput8Create")) {
+                LogInfo("DirectInput8Create hook installed successfully");
             } else {
-                LogError("Failed to create DirectInput8Create hook");
+                LogError("Failed to create and enable DirectInput8Create hook");
             }
         } else {
             LogWarn("DirectInput8Create not found in dinput8.dll");
@@ -199,14 +196,10 @@ bool InstallDirectInputHooks() {
     if (dinput_module) {
         auto DirectInputCreateA_sys = reinterpret_cast<DirectInputCreateA_pfn>(GetProcAddress(dinput_module, "DirectInputCreateA"));
         if (DirectInputCreateA_sys) {
-            if (MH_CreateHook(DirectInputCreateA_sys, DirectInputCreateA_Detour, (LPVOID*)&DirectInputCreateA_Original) == MH_OK) {
-                if (MH_EnableHook(DirectInputCreateA_sys) == MH_OK) {
-                    LogInfo("DirectInputCreateA hook installed successfully");
-                } else {
-                    LogError("Failed to enable DirectInputCreateA hook");
-                }
+            if (CreateAndEnableHook(DirectInputCreateA_sys, DirectInputCreateA_Detour, (LPVOID*)&DirectInputCreateA_Original, "DirectInputCreateA")) {
+                LogInfo("DirectInputCreateA hook installed successfully");
             } else {
-                LogError("Failed to create DirectInputCreateA hook");
+                LogError("Failed to create and enable DirectInputCreateA hook");
             }
         } else {
             LogWarn("DirectInputCreateA not found in dinput.dll");
@@ -215,14 +208,10 @@ bool InstallDirectInputHooks() {
         // Hook DirectInputCreateW
         auto DirectInputCreateW_sys = reinterpret_cast<DirectInputCreateW_pfn>(GetProcAddress(dinput_module, "DirectInputCreateW"));
         if (DirectInputCreateW_sys) {
-            if (MH_CreateHook(DirectInputCreateW_sys, DirectInputCreateW_Detour, (LPVOID*)&DirectInputCreateW_Original) == MH_OK) {
-                if (MH_EnableHook(DirectInputCreateW_sys) == MH_OK) {
-                    LogInfo("DirectInputCreateW hook installed successfully");
-                } else {
-                    LogError("Failed to enable DirectInputCreateW hook");
-                }
+            if (CreateAndEnableHook(DirectInputCreateW_sys, DirectInputCreateW_Detour, (LPVOID*)&DirectInputCreateW_Original, "DirectInputCreateW")) {
+                LogInfo("DirectInputCreateW hook installed successfully");
             } else {
-                LogError("Failed to create DirectInputCreateW hook");
+                LogError("Failed to create and enable DirectInputCreateW hook");
             }
         } else {
             LogWarn("DirectInputCreateW not found in dinput.dll");

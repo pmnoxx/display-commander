@@ -1,7 +1,7 @@
 #include "dxgi_present_hooks.hpp"
 #include "../../performance_types.hpp"
 #include "../../swapchain_events.hpp"
-#include "../../utils.hpp"
+#include "../../utils/general_utils.hpp"
 #include "../../globals.hpp"
 #include "../../settings/main_tab_settings.hpp"
 #include "../../settings/developer_tab_settings.hpp"
@@ -1343,20 +1343,13 @@ bool HookFactoryVTable(IDXGIFactory *factory) {
             return true; // Consider this success since it's already hooked
         }
 
-        MH_STATUS hook_status = MH_CreateHook(vtable[10], IDXGIFactory_CreateSwapChain_Detour, (LPVOID *)&IDXGIFactory_CreateSwapChain_Original);
-        if (hook_status != MH_OK) {
-            LogError("Failed to create IDXGIFactory::CreateSwapChain hook - Status: %d (0x%x)", hook_status, hook_status);
+        if (!CreateAndEnableHook(vtable[10], IDXGIFactory_CreateSwapChain_Detour, (LPVOID *)&IDXGIFactory_CreateSwapChain_Original, "IDXGIFactory::CreateSwapChain")) {
+            LogError("Failed to create and enable IDXGIFactory::CreateSwapChain hook");
 
             // Check if MinHook is initialized
             MH_STATUS init_status = MH_Initialize();
             LogInfo("MinHook initialization status: %d (0x%x)", init_status, init_status);
 
-            return false;
-        }
-
-        // Enable the CreateSwapChain hook
-        if (MH_EnableHook(vtable[10]) != MH_OK) {
-            LogError("Failed to enable IDXGIFactory::CreateSwapChain hook");
             return false;
         }
 

@@ -223,13 +223,6 @@ void DoInitializationWithHwnd(HWND hwnd) {
         LogInfo("Streamline hooks not installed (Streamline not detected)");
     }
 
-    // Initialize ADHD Multi-Monitor Mode
-    if (adhd_multi_monitor::api::Initialize()) {
-        LogInfo("ADHD Multi-Monitor Mode initialized successfully");
-    } else {
-        LogWarn("Failed to initialize ADHD Multi-Monitor Mode");
-    }
-
     // Initialize keyboard tracking system
     display_commanderhooks::keyboard_tracker::Initialize();
     LogInfo("Keyboard tracking system initialized");
@@ -317,7 +310,7 @@ void QueryDxgiCompositionState(IDXGISwapChain *dxgi_swapchain) {
     // Periodically refresh colorspace and enumerate devices (approx every 4
     // seconds at 60fps = 240 frames)
     static int present_after_counter = 0;
-    if (present_after_counter % 256 == 0) {
+    if (present_after_counter % 256 == 1) {
         // Compute DXGI composition state and log on change
         DxgiBypassMode mode = GetIndependentFlipState(dxgi_swapchain);
 

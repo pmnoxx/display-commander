@@ -43,6 +43,7 @@ HRESULT WINAPI CreateDXGIFactory1_Detour(REFIID riid, void **ppFactory);
 
 // Hook management
 bool InstallApiHooks();
+bool InstallDxgiHooks();
 void UninstallApiHooks();
 bool AreApiHooksInstalled();
 

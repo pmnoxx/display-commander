@@ -32,7 +32,7 @@ bool AdhdMultiMonitorManager::Initialize() {
 
     // Check if we have a valid game window handle
     HWND game_hwnd = g_last_swapchain_hwnd.load();
-    if (!game_hwnd || !IsWindow(game_hwnd))
+    if (game_hwnd == nullptr || !IsWindow(game_hwnd))
         return false;
 
     // Enumerate available monitors

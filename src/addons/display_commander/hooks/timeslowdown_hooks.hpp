@@ -10,6 +10,20 @@ namespace display_commanderhooks {
 // Timer hook types enum
 enum class TimerHookType { None = 0, Enabled = 1 };
 
+// Timer hook identifier enum for efficient lookups
+enum class TimerHookIdentifier {
+    QueryPerformanceCounter = 0,
+    GetTickCount = 1,
+    GetTickCount64 = 2,
+    TimeGetTime = 3,
+    GetSystemTime = 4,
+    GetSystemTimeAsFileTime = 5,
+    GetSystemTimePreciseAsFileTime = 6,
+    GetLocalTime = 7,
+    NtQuerySystemTime = 8,
+    Count = 9
+};
+
 // Function pointer types for timeslowdown hooks
 using QueryPerformanceCounter_pfn = BOOL(WINAPI *)(LARGE_INTEGER *lpPerformanceCount);
 using QueryPerformanceFrequency_pfn = BOOL(WINAPI *)(LARGE_INTEGER *lpFrequency);
@@ -66,6 +80,17 @@ bool IsTimerHookEnabled(const char *hook_name);
 
 // Statistics
 uint64_t GetTimerHookCallCount(const char *hook_name);
+
+// Efficient enum-based functions (for internal use)
+void SetTimerHookTypeById(TimerHookIdentifier id, TimerHookType type);
+TimerHookType GetTimerHookTypeById(TimerHookIdentifier id);
+bool IsTimerHookEnabledById(TimerHookIdentifier id);
+uint64_t GetTimerHookCallCountById(TimerHookIdentifier id);
+TimerHookIdentifier GetHookIdentifierByName(const char *hook_name);
+
+// UI helper functions for efficient hook management
+const TimerHookIdentifier* GetAllHookIdentifiers();
+const char* GetHookNameById(TimerHookIdentifier id);
 
 // Hook type constants
 extern const char *HOOK_QUERY_PERFORMANCE_COUNTER;

@@ -84,39 +84,72 @@ static std::atomic<uint64_t> g_nt_query_system_time_call_count{0};
 // Atomic shared_ptr for thread-safe state access
 static std::atomic<std::shared_ptr<const TimeslowdownState>> g_timeslowdown_state{std::make_shared<TimeslowdownState>()};
 
-// Helper function to get hook type by name (DLL-safe)
-TimerHookType GetHookTypeByName(const char *hook_name) {
+// Helper function to get hook identifier by name (DLL-safe) - kept for backward compatibility only
+TimerHookIdentifier GetHookIdentifierByName(const char *hook_name) {
     if (strcmp(hook_name, HOOK_QUERY_PERFORMANCE_COUNTER) == 0) {
-        return g_query_performance_counter_hook_type.load();
+        return TimerHookIdentifier::QueryPerformanceCounter;
     } else if (strcmp(hook_name, HOOK_GET_TICK_COUNT) == 0) {
-        return g_get_tick_count_hook_type.load();
+        return TimerHookIdentifier::GetTickCount;
     } else if (strcmp(hook_name, HOOK_GET_TICK_COUNT64) == 0) {
-        return g_get_tick_count64_hook_type.load();
+        return TimerHookIdentifier::GetTickCount64;
     } else if (strcmp(hook_name, HOOK_TIME_GET_TIME) == 0) {
-        return g_time_get_time_hook_type.load();
+        return TimerHookIdentifier::TimeGetTime;
     } else if (strcmp(hook_name, HOOK_GET_SYSTEM_TIME) == 0) {
-        return g_get_system_time_hook_type.load();
+        return TimerHookIdentifier::GetSystemTime;
     } else if (strcmp(hook_name, HOOK_GET_SYSTEM_TIME_AS_FILE_TIME) == 0) {
-        return g_get_system_time_as_file_time_hook_type.load();
+        return TimerHookIdentifier::GetSystemTimeAsFileTime;
     } else if (strcmp(hook_name, HOOK_GET_SYSTEM_TIME_PRECISE_AS_FILE_TIME) == 0) {
-        return g_get_system_time_precise_as_file_time_hook_type.load();
+        return TimerHookIdentifier::GetSystemTimePreciseAsFileTime;
     } else if (strcmp(hook_name, HOOK_GET_LOCAL_TIME) == 0) {
-        return g_get_local_time_hook_type.load();
+        return TimerHookIdentifier::GetLocalTime;
     } else if (strcmp(hook_name, HOOK_NT_QUERY_SYSTEM_TIME) == 0) {
-        return g_nt_query_system_time_hook_type.load();
+        return TimerHookIdentifier::NtQuerySystemTime;
     }
-    return TimerHookType::None;
+    return TimerHookIdentifier::Count; // Invalid identifier
 }
 
-// Helper function to check if a hook should be applied (DLL-safe)
-bool ShouldApplyHook(const char *hook_name) {
-    TimerHookType type = GetHookTypeByName(hook_name);
-
-    if (type == TimerHookType::None) {
-        return false;
+// Helper function to get hook type by identifier (DLL-safe)
+TimerHookType GetHookTypeById(TimerHookIdentifier id) {
+    switch (id) {
+        case TimerHookIdentifier::QueryPerformanceCounter:
+            return g_query_performance_counter_hook_type.load();
+        case TimerHookIdentifier::GetTickCount:
+            return g_get_tick_count_hook_type.load();
+        case TimerHookIdentifier::GetTickCount64:
+            return g_get_tick_count64_hook_type.load();
+        case TimerHookIdentifier::TimeGetTime:
+            return g_time_get_time_hook_type.load();
+        case TimerHookIdentifier::GetSystemTime:
+            return g_get_system_time_hook_type.load();
+        case TimerHookIdentifier::GetSystemTimeAsFileTime:
+            return g_get_system_time_as_file_time_hook_type.load();
+        case TimerHookIdentifier::GetSystemTimePreciseAsFileTime:
+            return g_get_system_time_precise_as_file_time_hook_type.load();
+        case TimerHookIdentifier::GetLocalTime:
+            return g_get_local_time_hook_type.load();
+        case TimerHookIdentifier::NtQuerySystemTime:
+            return g_nt_query_system_time_hook_type.load();
+        default:
+            return TimerHookType::None;
     }
+}
 
-    return true; // TimerHookType::Enabled
+// Helper function to get hook type by name (DLL-safe) - kept for backward compatibility
+TimerHookType GetHookTypeByName(const char *hook_name) {
+    TimerHookIdentifier id = GetHookIdentifierByName(hook_name);
+    return GetHookTypeById(id);
+}
+
+// Helper function to check if a hook should be applied by identifier (DLL-safe)
+bool ShouldApplyHookById(TimerHookIdentifier id) {
+    TimerHookType type = GetHookTypeById(id);
+    return type != TimerHookType::None;
+}
+
+// Helper function to check if a hook should be applied (DLL-safe) - kept for backward compatibility
+bool ShouldApplyHook(const char *hook_name) {
+    TimerHookIdentifier id = GetHookIdentifierByName(hook_name);
+    return ShouldApplyHookById(id);
 }
 
 // Hooked QueryPerformanceCounter function
@@ -131,8 +164,8 @@ BOOL WINAPI QueryPerformanceCounter_Detour(LARGE_INTEGER *lpPerformanceCount) {
     if (result == FALSE || lpPerformanceCount == nullptr) {
         return result;
     }
-    // Check if this hook should be applied
-    if (!ShouldApplyHook(HOOK_QUERY_PERFORMANCE_COUNTER)) {
+    // Check if this hook should be applied (efficient enum-based check)
+    if (!ShouldApplyHookById(TimerHookIdentifier::QueryPerformanceCounter)) {
         return result;
     }
 
@@ -206,8 +239,8 @@ DWORD WINAPI GetTickCount_Detour() {
     // Call original function first
     DWORD result = GetTickCount_Original();
 
-    // Check if this hook should be applied
-    if (!ShouldApplyHook(HOOK_GET_TICK_COUNT)) {
+    // Check if this hook should be applied (efficient enum-based check)
+    if (!ShouldApplyHookById(TimerHookIdentifier::GetTickCount)) {
         return result;
     }
 
@@ -232,8 +265,8 @@ ULONGLONG WINAPI GetTickCount64_Detour() {
     // Call original function first
     ULONGLONG result = GetTickCount64_Original();
 
-    // Check if this hook should be applied
-    if (!ShouldApplyHook(HOOK_GET_TICK_COUNT64)) {
+    // Check if this hook should be applied (efficient enum-based check)
+    if (!ShouldApplyHookById(TimerHookIdentifier::GetTickCount64)) {
         return result;
     }
 
@@ -277,8 +310,8 @@ DWORD WINAPI timeGetTime_Detour() {
     // Call original function first
     DWORD result = timeGetTime_Original();
 
-    // Check if this hook should be applied
-    if (!ShouldApplyHook(HOOK_TIME_GET_TIME)) {
+    // Check if this hook should be applied (efficient enum-based check)
+    if (!ShouldApplyHookById(TimerHookIdentifier::TimeGetTime)) {
         return result;
     }
 
@@ -304,8 +337,8 @@ void WINAPI GetSystemTime_Detour(LPSYSTEMTIME lpSystemTime) {
     // Call original function first
     GetSystemTime_Original(lpSystemTime);
 
-    // Check if this hook should be applied
-    if (!ShouldApplyHook(HOOK_GET_SYSTEM_TIME)) {
+    // Check if this hook should be applied (efficient enum-based check)
+    if (!ShouldApplyHookById(TimerHookIdentifier::GetSystemTime)) {
         return;
     }
 
@@ -343,8 +376,8 @@ void WINAPI GetSystemTimeAsFileTime_Detour(LPFILETIME lpSystemTimeAsFileTime) {
     // Call original function first
     GetSystemTimeAsFileTime_Original(lpSystemTimeAsFileTime);
 
-    // Check if this hook should be applied
-    if (!ShouldApplyHook(HOOK_GET_SYSTEM_TIME_AS_FILE_TIME)) {
+    // Check if this hook should be applied (efficient enum-based check)
+    if (!ShouldApplyHookById(TimerHookIdentifier::GetSystemTimeAsFileTime)) {
         return;
     }
 
@@ -376,8 +409,8 @@ void WINAPI GetSystemTimePreciseAsFileTime_Detour(LPFILETIME lpSystemTimeAsFileT
     // Call original function first
     GetSystemTimePreciseAsFileTime_Original(lpSystemTimeAsFileTime);
 
-    // Check if this hook should be applied
-    if (!ShouldApplyHook(HOOK_GET_SYSTEM_TIME_PRECISE_AS_FILE_TIME)) {
+    // Check if this hook should be applied (efficient enum-based check)
+    if (!ShouldApplyHookById(TimerHookIdentifier::GetSystemTimePreciseAsFileTime)) {
         return;
     }
 
@@ -409,8 +442,8 @@ void WINAPI GetLocalTime_Detour(LPSYSTEMTIME lpSystemTime) {
     // Call original function first
     GetLocalTime_Original(lpSystemTime);
 
-    // Check if this hook should be applied
-    if (!ShouldApplyHook(HOOK_GET_LOCAL_TIME)) {
+    // Check if this hook should be applied (efficient enum-based check)
+    if (!ShouldApplyHookById(TimerHookIdentifier::GetLocalTime)) {
         return;
     }
 
@@ -454,8 +487,8 @@ NTSTATUS WINAPI NtQuerySystemTime_Detour(PLARGE_INTEGER SystemTime) {
     // Call original function first
     NTSTATUS result = NtQuerySystemTime_Original(SystemTime);
 
-    // Check if this hook should be applied
-    if (!ShouldApplyHook(HOOK_NT_QUERY_SYSTEM_TIME)) {
+    // Check if this hook should be applied (efficient enum-based check)
+    if (!ShouldApplyHookById(TimerHookIdentifier::NtQuerySystemTime)) {
         return result;
     }
 
@@ -500,7 +533,7 @@ bool InstallTimeslowdownHooks() {
         LogError("Failed to create and enable QueryPerformanceCounter hook");
         return false;
     }
-/*
+
     // Hook QueryPerformanceFrequency
     if (!CreateAndEnableHook(QueryPerformanceFrequency, QueryPerformanceFrequency_Detour,
                              (LPVOID *)&QueryPerformanceFrequency_Original, "QueryPerformanceFrequency")) {
@@ -574,7 +607,7 @@ bool InstallTimeslowdownHooks() {
     } else {
         LogInfo("ntdll.dll not available for NtQuerySystemTime hook");
     }
-*/
+
     g_timeslowdown_hooks_installed.store(true);
     LogInfo("Timeslowdown hooks installed successfully");
 
@@ -666,31 +699,86 @@ void SetTimeslowdownEnabled(bool enabled) {
     LogInfo("Timeslowdown %s", enabled ? "enabled" : "disabled");
 }
 
-// Individual hook type configuration (DLL-safe)
-void SetTimerHookType(const char *hook_name, TimerHookType type) {
-    if (strcmp(hook_name, HOOK_QUERY_PERFORMANCE_COUNTER) == 0) {
-        g_query_performance_counter_hook_type.store(type);
-    } else if (strcmp(hook_name, HOOK_GET_TICK_COUNT) == 0) {
-        g_get_tick_count_hook_type.store(type);
-    } else if (strcmp(hook_name, HOOK_GET_TICK_COUNT64) == 0) {
-        g_get_tick_count64_hook_type.store(type);
-    } else if (strcmp(hook_name, HOOK_TIME_GET_TIME) == 0) {
-        g_time_get_time_hook_type.store(type);
-    } else if (strcmp(hook_name, HOOK_GET_SYSTEM_TIME) == 0) {
-        g_get_system_time_hook_type.store(type);
-    } else if (strcmp(hook_name, HOOK_GET_SYSTEM_TIME_AS_FILE_TIME) == 0) {
-        g_get_system_time_as_file_time_hook_type.store(type);
-    } else if (strcmp(hook_name, HOOK_GET_SYSTEM_TIME_PRECISE_AS_FILE_TIME) == 0) {
-        g_get_system_time_precise_as_file_time_hook_type.store(type);
-    } else if (strcmp(hook_name, HOOK_GET_LOCAL_TIME) == 0) {
-        g_get_local_time_hook_type.store(type);
-    } else if (strcmp(hook_name, HOOK_NT_QUERY_SYSTEM_TIME) == 0) {
-        g_nt_query_system_time_hook_type.store(type);
+// Efficient enum-based hook type configuration (DLL-safe)
+void SetTimerHookTypeById(TimerHookIdentifier id, TimerHookType type) {
+    switch (id) {
+        case TimerHookIdentifier::QueryPerformanceCounter:
+            g_query_performance_counter_hook_type.store(type);
+            break;
+        case TimerHookIdentifier::GetTickCount:
+            g_get_tick_count_hook_type.store(type);
+            break;
+        case TimerHookIdentifier::GetTickCount64:
+            g_get_tick_count64_hook_type.store(type);
+            break;
+        case TimerHookIdentifier::TimeGetTime:
+            g_time_get_time_hook_type.store(type);
+            break;
+        case TimerHookIdentifier::GetSystemTime:
+            g_get_system_time_hook_type.store(type);
+            break;
+        case TimerHookIdentifier::GetSystemTimeAsFileTime:
+            g_get_system_time_as_file_time_hook_type.store(type);
+            break;
+        case TimerHookIdentifier::GetSystemTimePreciseAsFileTime:
+            g_get_system_time_precise_as_file_time_hook_type.store(type);
+            break;
+        case TimerHookIdentifier::GetLocalTime:
+            g_get_local_time_hook_type.store(type);
+            break;
+        case TimerHookIdentifier::NtQuerySystemTime:
+            g_nt_query_system_time_hook_type.store(type);
+            break;
+        default:
+            return; // Invalid identifier
     }
-
-    LogInfo("Timer hook %s set to %s", hook_name, type == TimerHookType::None ? "None" : "Enabled");
 }
 
+// Individual hook type configuration (DLL-safe) - kept for backward compatibility
+void SetTimerHookType(const char *hook_name, TimerHookType type) {
+    TimerHookIdentifier id = GetHookIdentifierByName(hook_name);
+    if (id != TimerHookIdentifier::Count) {
+        SetTimerHookTypeById(id, type);
+        LogInfo("Timer hook %s set to %s", hook_name, type == TimerHookType::None ? "None" : "Enabled");
+    }
+}
+
+// Efficient enum-based functions
+TimerHookType GetTimerHookTypeById(TimerHookIdentifier id) {
+    return GetHookTypeById(id);
+}
+
+bool IsTimerHookEnabledById(TimerHookIdentifier id) {
+    TimerHookType type = GetTimerHookTypeById(id);
+    return type == TimerHookType::Enabled;
+}
+
+uint64_t GetTimerHookCallCountById(TimerHookIdentifier id) {
+    switch (id) {
+        case TimerHookIdentifier::QueryPerformanceCounter:
+            return g_qpc_call_count.load(std::memory_order_relaxed);
+        case TimerHookIdentifier::GetTickCount:
+            return g_get_tick_count_call_count.load(std::memory_order_relaxed);
+        case TimerHookIdentifier::GetTickCount64:
+            return g_get_tick_count64_call_count.load(std::memory_order_relaxed);
+        case TimerHookIdentifier::TimeGetTime:
+            return g_time_get_time_call_count.load(std::memory_order_relaxed);
+        case TimerHookIdentifier::GetSystemTime:
+            return g_get_system_time_call_count.load(std::memory_order_relaxed);
+        case TimerHookIdentifier::GetSystemTimeAsFileTime:
+            return g_get_system_time_as_file_time_call_count.load(std::memory_order_relaxed);
+        case TimerHookIdentifier::GetSystemTimePreciseAsFileTime:
+            return g_get_system_time_precise_as_file_time_call_count.load(std::memory_order_relaxed);
+        case TimerHookIdentifier::GetLocalTime:
+            return g_get_local_time_call_count.load(std::memory_order_relaxed);
+        case TimerHookIdentifier::NtQuerySystemTime:
+            return g_nt_query_system_time_call_count.load(std::memory_order_relaxed);
+        default:
+            return 0;
+    }
+}
+
+// Backward compatibility functions
 TimerHookType GetTimerHookType(const char *hook_name) { return GetHookTypeByName(hook_name); }
 
 bool IsTimerHookEnabled(const char *hook_name) {
@@ -699,28 +787,50 @@ bool IsTimerHookEnabled(const char *hook_name) {
 }
 
 uint64_t GetTimerHookCallCount(const char *hook_name) {
-    if (strcmp(hook_name, HOOK_QUERY_PERFORMANCE_COUNTER) == 0) {
-        return g_qpc_call_count.load(std::memory_order_relaxed);
-    } else if (strcmp(hook_name, HOOK_GET_TICK_COUNT) == 0) {
-        return g_get_tick_count_call_count.load(std::memory_order_relaxed);
-    } else if (strcmp(hook_name, HOOK_GET_TICK_COUNT64) == 0) {
-        return g_get_tick_count64_call_count.load(std::memory_order_relaxed);
-    } else if (strcmp(hook_name, HOOK_TIME_GET_TIME) == 0) {
-        return g_time_get_time_call_count.load(std::memory_order_relaxed);
-    } else if (strcmp(hook_name, HOOK_GET_SYSTEM_TIME) == 0) {
-        return g_get_system_time_call_count.load(std::memory_order_relaxed);
-    } else if (strcmp(hook_name, HOOK_GET_SYSTEM_TIME_AS_FILE_TIME) == 0) {
-        return g_get_system_time_as_file_time_call_count.load(std::memory_order_relaxed);
-    } else if (strcmp(hook_name, HOOK_GET_SYSTEM_TIME_PRECISE_AS_FILE_TIME) == 0) {
-        return g_get_system_time_precise_as_file_time_call_count.load(std::memory_order_relaxed);
-    } else if (strcmp(hook_name, HOOK_GET_LOCAL_TIME) == 0) {
-        return g_get_local_time_call_count.load(std::memory_order_relaxed);
-    } else if (strcmp(hook_name, HOOK_NT_QUERY_SYSTEM_TIME) == 0) {
-        return g_nt_query_system_time_call_count.load(std::memory_order_relaxed);
-    } else if (strcmp(hook_name, HOOK_QUERY_PERFORMANCE_COUNTER) == 0) {
-        return g_qpc_call_count.load(std::memory_order_relaxed);
+    TimerHookIdentifier id = GetHookIdentifierByName(hook_name);
+    return GetTimerHookCallCountById(id);
+}
+
+// UI helper functions for efficient hook management
+static const TimerHookIdentifier g_all_hook_identifiers[] = {
+    TimerHookIdentifier::QueryPerformanceCounter,
+    TimerHookIdentifier::GetTickCount,
+    TimerHookIdentifier::GetTickCount64,
+    TimerHookIdentifier::TimeGetTime,
+    TimerHookIdentifier::GetSystemTime,
+    TimerHookIdentifier::GetSystemTimeAsFileTime,
+    TimerHookIdentifier::GetSystemTimePreciseAsFileTime,
+    TimerHookIdentifier::GetLocalTime,
+    TimerHookIdentifier::NtQuerySystemTime
+};
+
+const TimerHookIdentifier* GetAllHookIdentifiers() {
+    return g_all_hook_identifiers;
+}
+
+const char* GetHookNameById(TimerHookIdentifier id) {
+    switch (id) {
+        case TimerHookIdentifier::QueryPerformanceCounter:
+            return HOOK_QUERY_PERFORMANCE_COUNTER;
+        case TimerHookIdentifier::GetTickCount:
+            return HOOK_GET_TICK_COUNT;
+        case TimerHookIdentifier::GetTickCount64:
+            return HOOK_GET_TICK_COUNT64;
+        case TimerHookIdentifier::TimeGetTime:
+            return HOOK_TIME_GET_TIME;
+        case TimerHookIdentifier::GetSystemTime:
+            return HOOK_GET_SYSTEM_TIME;
+        case TimerHookIdentifier::GetSystemTimeAsFileTime:
+            return HOOK_GET_SYSTEM_TIME_AS_FILE_TIME;
+        case TimerHookIdentifier::GetSystemTimePreciseAsFileTime:
+            return HOOK_GET_SYSTEM_TIME_PRECISE_AS_FILE_TIME;
+        case TimerHookIdentifier::GetLocalTime:
+            return HOOK_GET_LOCAL_TIME;
+        case TimerHookIdentifier::NtQuerySystemTime:
+            return HOOK_NT_QUERY_SYSTEM_TIME;
+        default:
+            return nullptr;
     }
-    return 0;
 }
 
 } // namespace display_commanderhooks

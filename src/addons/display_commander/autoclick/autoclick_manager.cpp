@@ -1,4 +1,5 @@
 #include "autoclick_manager.hpp"
+#include "../res/forkawesome.h"
 #include "../globals.hpp"
 #include "../settings/experimental_tab_settings.hpp"
 #include "../ui/new_ui/settings_wrapper.hpp"
@@ -260,7 +261,7 @@ void DrawAutoClickFeature() {
     ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== Auto-Click Sequences ===");
 
     // Warning about experimental nature
-    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "⚠ EXPERIMENTAL FEATURE - Use with caution!");
+    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), ICON_FK_WARNING " EXPERIMENTAL FEATURE - Use with caution!");
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("This feature sends mouse click messages directly to the game window.\nUse responsibly and "
                           "be aware of game rules and terms of service.");
@@ -289,7 +290,7 @@ void DrawAutoClickFeature() {
         if (g_auto_click_thread_running.load()) {
             ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✁EAuto-click sequences are ACTIVE");
         } else {
-            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "⚠ Auto-click sequences are STARTING...");
+            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), ICON_FK_WARNING " Auto-click sequences are STARTING...");
         }
     }
 

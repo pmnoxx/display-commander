@@ -17,6 +17,7 @@
 
 static std::atomic<bool> s_restart_needed_nvapi(false);
 
+
 namespace ui::new_ui {
 
 void InitDeveloperNewTab() {
@@ -24,11 +25,20 @@ void InitDeveloperNewTab() {
     static bool settings_loaded = false;
     if (!settings_loaded) {
         settings::g_developerTabSettings.LoadAll();
+
+        // Apply LoadFromDllMain setting to ReShade on startup
+        utils::SetLoadFromDllMain(settings::g_developerTabSettings.load_from_dll_main.GetValue());
+
         settings_loaded = true;
     }
 }
 
 void DrawDeveloperNewTab() {
+    if (ImGui::CollapsingHeader("Features Enabled By Default", ImGuiTreeNodeFlags_DefaultOpen)) {
+        DrawFeaturesEnabledByDefault();
+    }
+    ImGui::Spacing();
+
     // Developer Settings Section
     if (ImGui::CollapsingHeader("Developer Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
         DrawDeveloperSettings();
@@ -67,7 +77,7 @@ void DrawDeveloperNewTab() {
     ImGui::Separator();
 }
 
-void DrawDeveloperSettings() {
+void DrawFeaturesEnabledByDefault() {
     // Prevent Fullscreen
     CheckboxSetting(settings::g_developerTabSettings.prevent_fullscreen, "Prevent Fullscreen");
     if (ImGui::IsItemHovered()) {
@@ -80,6 +90,24 @@ void DrawDeveloperSettings() {
         ImGui::SetTooltip("Prevents windows from becoming always on top, even if they are moved or resized.");
     }
 
+    // LoadFromDllMain setting
+    if (CheckboxSetting(settings::g_developerTabSettings.load_from_dll_main, "LoadFromDllMain (requires restart)")) {
+        LogInfo("LoadFromDllMain setting changed to: %s", settings::g_developerTabSettings.load_from_dll_main.GetValue() ? "enabled" : "disabled");
+        // Apply the setting to ReShade immediately
+        utils::SetLoadFromDllMain(settings::g_developerTabSettings.load_from_dll_main.GetValue());
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Sets LoadFromDllMain=1 in ReShade configuration.\n"
+                         "This setting controls how ReShade loads and initializes.\n"
+                         "When enabled, ReShade will load from DllMain instead of the normal loading process.\n"
+                         "This setting requires a game restart to take effect.");
+    }
+
+    ImGui::Spacing();
+
+}
+
+void DrawDeveloperSettings() {
 
     // Continue Rendering
     if (CheckboxSetting(settings::g_developerTabSettings.continue_rendering, "Continue Rendering in Background")) {
@@ -107,7 +135,6 @@ void DrawDeveloperSettings() {
                          "This setting requires a game restart to take effect.");
     }
 
-    ImGui::Spacing();
 }
 
 void DrawHdrDisplaySettings() {

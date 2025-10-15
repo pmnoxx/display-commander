@@ -191,12 +191,24 @@ void OverrideReShadeSettings() {
     reshade::set_config_value(nullptr, "GENERAL", "CheckForUpdates", 0);
     LogInfo("ReShade settings override - CheckForUpdates set to 0 (disabled)");
 
-    // Set LoadFromDllMain to 1 and log previous value
-    int32_t load_from_dll_main = 0;
-    reshade::get_config_value(nullptr, "ADDON", "LoadFromDllMain", load_from_dll_main);
-    LogInfo("ReShade settings override - LoadFromDllMain previous value: %d", load_from_dll_main);
-    reshade::set_config_value(nullptr, "ADDON", "LoadFromDllMain", 1);
-    LogInfo("ReShade settings override - LoadFromDllMain set to 1");
+    // Read LoadFromDllMain value from DisplayCommander.ini
+    int32_t load_from_dll_main_from_display_commander = 1; // Default to 1 if not found
+    bool found_in_display_commander = display_commander::config::get_config_value("DisplayCommander", "LoadFromDllMain", load_from_dll_main_from_display_commander);
+
+    if (found_in_display_commander) {
+        LogInfo("ReShade settings override - LoadFromDllMain value from DisplayCommander.ini: %d", load_from_dll_main_from_display_commander);
+    } else {
+        LogInfo("ReShade settings override - LoadFromDllMain not found in DisplayCommander.ini, using default value: %d", load_from_dll_main_from_display_commander);
+    }
+
+    // Get current value from ReShade.ini for logging
+    int32_t current_reshade_value = 0;
+    reshade::get_config_value(nullptr, "ADDON", "LoadFromDllMain", current_reshade_value);
+    LogInfo("ReShade settings override - LoadFromDllMain current ReShade value: %d", current_reshade_value);
+
+    // Set LoadFromDllMain to the value from DisplayCommander.ini
+    reshade::set_config_value(nullptr, "ADDON", "LoadFromDllMain", load_from_dll_main_from_display_commander);
+    LogInfo("ReShade settings override - LoadFromDllMain set to %d (from DisplayCommander.ini)", load_from_dll_main_from_display_commander);
 
     LogInfo("ReShade settings override completed successfully");
 }
@@ -488,8 +500,6 @@ void DoInitializationWithoutHwnd(HMODULE h_module, DWORD fdw_reason) {
         LogWarn("Failed to setup high-resolution timer");
     }
 
-    // Override ReShade settings early to set tutorial as viewed and disable auto updates
-    OverrideReShadeSettings();
 
     LogInfo("DLLMain (DisplayCommander) %lld %d h_module: 0x%p", utils::get_now_ns(), fdw_reason,
             reinterpret_cast<uintptr_t>(h_module));
@@ -563,6 +573,8 @@ void DoInitializationWithoutHwnd(HMODULE h_module, DWORD fdw_reason) {
     display_commanderhooks::InstallApiHooks();
 
     g_dll_initialization_complete.store(true);
+    // Override ReShade settings early to set tutorial as viewed and disable auto updates
+    OverrideReShadeSettings();
 }
 
 BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {

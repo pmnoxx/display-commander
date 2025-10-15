@@ -2,6 +2,9 @@
 
 namespace ui::new_ui {
 
+// Draw features enabled by default section
+void DrawFeaturesEnabledByDefault();
+
 // Draw the developer new tab content
 void DrawDeveloperNewTab();
 

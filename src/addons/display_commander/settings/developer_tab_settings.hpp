@@ -62,6 +62,9 @@ class DeveloperTabSettings {
     // Safemode setting
     BoolSetting safemode;
 
+    // ReShade LoadFromDllMain setting
+    BoolSetting load_from_dll_main;
+
     // Get all settings for bulk operations
     std::vector<SettingBase *> GetAllSettings();
 };

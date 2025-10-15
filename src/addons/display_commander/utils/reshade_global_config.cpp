@@ -33,7 +33,8 @@ const std::map<std::string, std::vector<std::string>> TRACKED_SETTINGS = {
         "NoEffectCache",
         "NoReloadOnInit",
         "PerformanceMode",
-        "NoDebugInfo"
+        "NoDebugInfo",
+        "LoadFromDllMain"
     }},
     {"OVERLAY", {
         "ClockFormat",
@@ -287,6 +288,19 @@ bool SaveGlobalSettings(const ReShadeGlobalSettings& settings) {
             total_settings, settings.additional_settings.size());
 
     return true;
+}
+
+bool SetLoadFromDllMain(bool enabled) {
+    const char* value = enabled ? "1" : "0";
+
+    try {
+        reshade::set_config_value(nullptr, "GENERAL", "LoadFromDllMain", value);
+        LogInfo("Set LoadFromDllMain to %s in ReShade configuration", value);
+        return true;
+    } catch (...) {
+        LogInfo("Failed to set LoadFromDllMain to %s in ReShade configuration", value);
+        return false;
+    }
 }
 
 } // namespace utils

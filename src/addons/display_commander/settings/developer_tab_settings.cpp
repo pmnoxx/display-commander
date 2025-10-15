@@ -39,7 +39,8 @@ DeveloperTabSettings::DeveloperTabSettings()
       enable_timeslowdown_shortcut("EnableTimeslowdownShortcut", s_enable_timeslowdown_shortcut, true, "DisplayCommander"),
       enable_adhd_toggle_shortcut("EnableAdhdToggleShortcut", s_enable_adhd_toggle_shortcut, true, "DisplayCommander"),
       enable_autoclick_shortcut("EnableAutoclickShortcut", s_enable_autoclick_shortcut, false, "DisplayCommander"),
-      safemode("Safemode", false, "DisplayCommander") {}
+      safemode("Safemode", false, "DisplayCommander"),
+      load_from_dll_main("LoadFromDllMain", true, "DisplayCommander") {}
 
 void DeveloperTabSettings::LoadAll() {
     prevent_fullscreen.Load();
@@ -66,6 +67,7 @@ void DeveloperTabSettings::LoadAll() {
     reflex_enable_sleep.Load();
     reflex_logging.Load();
     safemode.Load();
+    load_from_dll_main.Load();
 
     // All Ref classes automatically sync with global variables
 }
@@ -74,6 +76,7 @@ void DeveloperTabSettings::SaveAll() {
     // Save all settings that don't auto-save
     prevent_fullscreen.Save();
     safemode.Save();
+    load_from_dll_main.Save();
 
     // All Ref classes automatically save when values change
 }
@@ -103,7 +106,8 @@ std::vector<ui::new_ui::SettingBase *> DeveloperTabSettings::GetAllSettings() {
             &enable_timeslowdown_shortcut,
             &enable_adhd_toggle_shortcut,
             &enable_autoclick_shortcut,
-            &safemode};
+            &safemode,
+            &load_from_dll_main};
 }
 
 } // namespace settings

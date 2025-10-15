@@ -1,5 +1,6 @@
 #include "windows_gaming_input_hooks.hpp"
 #include "../utils.hpp"
+#include "../utils/general_utils.hpp"
 #include <MinHook.h>
 #include <atomic>
 #include <string>
@@ -168,20 +169,14 @@ bool InstallWindowsGamingInputHooks() {
 
     LogInfo("Found RoGetActivationFactory at: 0x%p", ro_get_activation_factory_proc);
 
-    // Create the hook
-    if (MH_CreateHook(ro_get_activation_factory_proc, RoGetActivationFactory_Detour,
-                      (LPVOID *)&RoGetActivationFactory_Original) == MH_OK) {
-        if (MH_EnableHook(ro_get_activation_factory_proc) == MH_OK) {
-            g_wgi_hooks_installed.store(true);
-            LogInfo("Successfully hooked RoGetActivationFactory");
-            return true;
-        } else {
-            LogError("Failed to enable RoGetActivationFactory hook");
-            MH_RemoveHook(ro_get_activation_factory_proc);
-            return false;
-        }
+    // Create and enable the hook
+    if (CreateAndEnableHook(ro_get_activation_factory_proc, RoGetActivationFactory_Detour,
+                           (LPVOID *)&RoGetActivationFactory_Original, "RoGetActivationFactory")) {
+        g_wgi_hooks_installed.store(true);
+        LogInfo("Successfully hooked RoGetActivationFactory");
+        return true;
     } else {
-        LogError("Failed to create RoGetActivationFactory hook");
+        LogError("Failed to create and enable RoGetActivationFactory hook");
         return false;
     }
 }

@@ -401,8 +401,15 @@ bool CreateAndEnableHook(LPVOID pTarget, LPVOID pDetour, LPVOID* ppOriginal, con
     // Enable the hook
     MH_STATUS enableResult = MH_EnableHook(pTarget);
     if (enableResult != MH_OK) {
-        LogError("CreateAndEnableHook: Failed to enable hook '%s' (status: %s)",
+        LogError("CreateAndEnableHook: Failed to enable hook '%s' (status: %s), removing hook",
                  hookName ? hookName : "Unknown", MH_StatusToString(enableResult));
+
+        // Clean up the hook if enabling failed
+        MH_STATUS removeResult = MH_RemoveHook(pTarget);
+        if (removeResult != MH_OK) {
+            LogError("CreateAndEnableHook: Failed to remove hook '%s' after enable failure (status: %s)",
+                     hookName ? hookName : "Unknown", MH_StatusToString(removeResult));
+        }
         return false;
     }
 

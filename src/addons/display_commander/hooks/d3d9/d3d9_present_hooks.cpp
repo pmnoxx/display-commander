@@ -5,6 +5,7 @@
 #include "../../globals.hpp"
 #include "../../performance_types.hpp"
 #include "../../swapchain_events.hpp"
+#include "../../utils/general_utils.hpp"
 
 #include <d3d9.h>
 #include <MinHook.h>
@@ -217,30 +218,18 @@ bool HookD3D9Present(IDirect3DDevice9 *device) {
     }
 
     // Hook Present (vtable index 17 for IDirect3DDevice9::Present)
-    if (MH_CreateHook(vtable[17], &IDirect3DDevice9_Present_Detour,
-                      reinterpret_cast<LPVOID *>(&IDirect3DDevice9_Present_Original)) != MH_OK) {
-        LogWarn("HookD3D9Present: failed to create Present hook");
-        return false;
-    }
-
-    if (MH_EnableHook(vtable[17]) != MH_OK) {
-        LogWarn("HookD3D9Present: failed to enable Present hook");
+    if (!CreateAndEnableHook(vtable[17], &IDirect3DDevice9_Present_Detour,
+                             reinterpret_cast<LPVOID *>(&IDirect3DDevice9_Present_Original), "IDirect3DDevice9::Present")) {
+        LogWarn("HookD3D9Present: failed to create and enable Present hook");
         return false;
     }
 
     // Hook PresentEx (vtable index 121 for IDirect3DDevice9Ex::PresentEx)
     // Note: PresentEx is only available on IDirect3DDevice9Ex, so we need to check if it exists
-    if (MH_CreateHook(vtable[121], &IDirect3DDevice9_PresentEx_Detour,
-                      reinterpret_cast<LPVOID *>(&IDirect3DDevice9_PresentEx_Original)) != MH_OK) {
-        LogInfo("HookD3D9Present: PresentEx hook not available (device may not be IDirect3DDevice9Ex)");
+    if (!CreateAndEnableHook(vtable[121], &IDirect3DDevice9_PresentEx_Detour,
+                             reinterpret_cast<LPVOID *>(&IDirect3DDevice9_PresentEx_Original), "IDirect3DDevice9Ex::PresentEx")) {
+        LogWarn("HookD3D9Present: PresentEx hook not available (device may not be IDirect3DDevice9Ex)");
         // This is not a fatal error, PresentEx is optional
-    } else {
-        if (MH_EnableHook(vtable[121]) != MH_OK) {
-            LogWarn("HookD3D9Present: failed to enable PresentEx hook");
-            // This is not fatal, we can continue with just Present
-        } else {
-            LogInfo("HookD3D9Present: PresentEx hook enabled successfully");
-        }
     }
 
     g_d3d9_present_hooks_installed.store(true);

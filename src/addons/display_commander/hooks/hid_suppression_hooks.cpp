@@ -1,6 +1,7 @@
 #include "hid_suppression_hooks.hpp"
 #include "../globals.hpp"
 #include "../utils.hpp"
+#include "../utils/general_utils.hpp"
 #include "../settings/experimental_tab_settings.hpp"
 #include <MinHook.h>
 #include <atomic>
@@ -232,8 +233,8 @@ bool InstallHIDSuppressionHooks() {
     }
 
     // Hook ReadFile
-    if (MH_CreateHook(ReadFile, ReadFile_Detour, (LPVOID*)&ReadFile_Original) != MH_OK) {
-        LogError("Failed to create ReadFile hook for HID suppression");
+    if (!CreateAndEnableHook(ReadFile, ReadFile_Detour, (LPVOID*)&ReadFile_Original, "ReadFile")) {
+        LogError("Failed to create and enable ReadFile hook for HID suppression");
         return false;
     }
 
@@ -250,42 +251,18 @@ bool InstallHIDSuppressionHooks() {
  //   }
 
     // Hook CreateFileA
-    if (MH_CreateHook(CreateFileA, CreateFileA_Detour, (LPVOID*)&CreateFileA_Original) != MH_OK) {
-        LogError("Failed to create CreateFileA hook for HID suppression");
+    if (!CreateAndEnableHook(CreateFileA, CreateFileA_Detour, (LPVOID*)&CreateFileA_Original, "CreateFileA")) {
+        LogError("Failed to create and enable CreateFileA hook for HID suppression");
         return false;
     }
 
     // Hook CreateFileW
-    if (MH_CreateHook(CreateFileW, CreateFileW_Detour, (LPVOID*)&CreateFileW_Original) != MH_OK) {
-        LogError("Failed to create CreateFileW hook for HID suppression");
+    if (!CreateAndEnableHook(CreateFileW, CreateFileW_Detour, (LPVOID*)&CreateFileW_Original, "CreateFileW")) {
+        LogError("Failed to create and enable CreateFileW hook for HID suppression");
         return false;
     }
 
-    // Enable individual hooks
-    if (MH_EnableHook(ReadFile) != MH_OK) {
-        LogError("Failed to enable ReadFile hook for HID suppression");
-        return false;
-    }
-
-    //if (MH_EnableHook(HidD_GetInputReport) != MH_OK) {
-  //      LogError("Failed to enable HidD_GetInputReport hook for HID suppression");
-  //      return false;
-  //  }
-
-   // if (MH_EnableHook(HidD_GetAttributes) != MH_OK) {
-  //      LogError("Failed to enable HidD_GetAttributes hook for HID suppression");
-   //     return false;
-   // }
-
-    if (MH_EnableHook(CreateFileA) != MH_OK) {
-        LogError("Failed to enable CreateFileA hook for HID suppression");
-        return false;
-    }
-
-    if (MH_EnableHook(CreateFileW) != MH_OK) {
-        LogError("Failed to enable CreateFileW hook for HID suppression");
-        return false;
-    }
+    // Hooks are already enabled by CreateAndEnableHook
 
     g_hid_suppression_hooks_installed.store(true);
     LogInfo("HID suppression hooks installed successfully");

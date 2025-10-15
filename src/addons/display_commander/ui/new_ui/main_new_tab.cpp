@@ -760,6 +760,11 @@ void DrawDisplaySettings() {
         const char* fmt = (current_value > 0.0f) ? "%.3f FPS" : "No Limit";
         if (SliderFloatSettingRef(settings::g_mainTabSettings.fps_limit, "FPS Limit", fmt)) {}
 
+        auto cur_limit = settings::g_mainTabSettings.fps_limit.GetValue();
+        if (cur_limit > 0.0f && cur_limit < 10.0f) {
+            settings::g_mainTabSettings.fps_limit.SetValue(0.0f);
+        }
+
         if (!fps_limit_enabled) {
             ImGui::EndDisabled();
         }

@@ -814,54 +814,53 @@ void HandleFpsLimiter() {
     } else {
         target_fps = s_fps_limit.load();
     }
-    if (target_fps > 0.0f && target_fps < 5.0f) {
-        target_fps = 5.0f;
+    if (target_fps > 0.0f && target_fps < 10.0f) {
+        target_fps = 0.0f;
     }
+    late_amount_ns.store(0);
     if (target_fps > 0.0f) {
         flush_command_queue();
-    }
 
-    late_amount_ns.store(0);
-
-    // Call FPS Limiter on EVERY frame (not throttled)
-    switch (s_fps_limiter_mode.load()) {
-    case FpsLimiterMode::kDisabled: {
-        // No FPS limiting - do nothing
-        break;
-    }
-    case FpsLimiterMode::kReflex: {
-        if (!s_reflex_auto_configure.load()) {
-            s_reflex_auto_configure.store(true);
+        // Call FPS Limiter on EVERY frame (not throttled)
+        switch (s_fps_limiter_mode.load()) {
+        case FpsLimiterMode::kDisabled: {
+            // No FPS limiting - do nothing
+            break;
         }
-        // Reflex mode - auto-configuration is handled when mode is selected
-        // Reflex manages frame rate limiting internally
-        break;
-    }
-    case FpsLimiterMode::kOnPresentSync: {
-        // Use FPS limiter manager for OnPresent Frame Synchronizer mode
-        if (dxgi::fps_limiter::g_customFpsLimiter) {
-            auto &limiter = dxgi::fps_limiter::g_customFpsLimiter;
-            if (target_fps > 0.0f) {
-                limiter->LimitFrameRate(target_fps);
+        case FpsLimiterMode::kReflex: {
+            if (!s_reflex_auto_configure.load()) {
+                s_reflex_auto_configure.store(true);
             }
+            // Reflex mode - auto-configuration is handled when mode is selected
+            // Reflex manages frame rate limiting internally
+            break;
         }
-        break;
-    }
-    case FpsLimiterMode::kOnPresentSyncLowLatency: {
-        // Low latency mode not implemented yet - treat as disabled
-        LogInfo("FPS Limiter: OnPresent Frame Synchronizer (Low Latency Mode) - Not implemented yet");
-        break;
-    }
-    case FpsLimiterMode::kLatentSync: {
-        // Use latent sync manager for VBlank Scanline Sync mode
-        if (dxgi::latent_sync::g_latentSyncManager) {
-            auto &latent = dxgi::latent_sync::g_latentSyncManager->GetLatentLimiter();
-            if (target_fps > 0.0f) {
-                latent.LimitFrameRate();
+        case FpsLimiterMode::kOnPresentSync: {
+            // Use FPS limiter manager for OnPresent Frame Synchronizer mode
+            if (dxgi::fps_limiter::g_customFpsLimiter) {
+                auto &limiter = dxgi::fps_limiter::g_customFpsLimiter;
+                if (target_fps > 0.0f) {
+                    limiter->LimitFrameRate(target_fps);
+                }
             }
+            break;
         }
-        break;
-    }
+        case FpsLimiterMode::kOnPresentSyncLowLatency: {
+            // Low latency mode not implemented yet - treat as disabled
+            LogInfo("FPS Limiter: OnPresent Frame Synchronizer (Low Latency Mode) - Not implemented yet");
+            break;
+        }
+        case FpsLimiterMode::kLatentSync: {
+            // Use latent sync manager for VBlank Scanline Sync mode
+            if (dxgi::latent_sync::g_latentSyncManager) {
+                auto &latent = dxgi::latent_sync::g_latentSyncManager->GetLatentLimiter();
+                if (target_fps > 0.0f) {
+                    latent.LimitFrameRate();
+                }
+            }
+            break;
+        }
+        }
     }
 
     LONGLONG handle_fps_limiter_start_end_time_ns = utils::get_now_ns();

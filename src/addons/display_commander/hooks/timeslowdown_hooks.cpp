@@ -83,8 +83,6 @@ static std::atomic<uint64_t> g_nt_query_system_time_call_count{0};
 // Atomic pointer for thread-safe state access
 static std::atomic<TimeslowdownState *> g_timeslowdown_state{new TimeslowdownState()};
 
-const bool min_enabled = false;
-
 // Helper function to get hook type by name (DLL-safe)
 TimerHookType GetHookTypeByName(const char *hook_name) {
     if (strcmp(hook_name, HOOK_QUERY_PERFORMANCE_COUNTER) == 0) {
@@ -132,7 +130,6 @@ BOOL WINAPI QueryPerformanceCounter_Detour(LARGE_INTEGER *lpPerformanceCount) {
     if (result == FALSE || lpPerformanceCount == nullptr) {
         return result;
     }
-
     // Check if this hook should be applied
     if (!ShouldApplyHook(HOOK_QUERY_PERFORMANCE_COUNTER)) {
         return result;
@@ -159,15 +156,9 @@ BOOL WINAPI QueryPerformanceCounter_Detour(LARGE_INTEGER *lpPerformanceCount) {
                 new_state->original_quad_ts = now_qpc;
                 new_state->original_quad_value = now_qpc;
             } else if (current_state->multiplier != new_multiplier) {
-                if (min_enabled) {
-                    new_state->original_quad_value =
-                        max(now_qpc, current_state->original_quad_value +
-                                         (now_qpc - current_state->original_quad_ts) * current_state->multiplier);
-                } else {
-                    new_state->original_quad_value =
-                        current_state->original_quad_value +
-                        (now_qpc - current_state->original_quad_ts) * current_state->multiplier;
-                }
+                new_state->original_quad_value =
+                    current_state->original_quad_value +
+                    (now_qpc - current_state->original_quad_ts) * current_state->multiplier;
                 new_state->original_quad_ts = now_qpc;
             }
 
@@ -180,14 +171,8 @@ BOOL WINAPI QueryPerformanceCounter_Detour(LARGE_INTEGER *lpPerformanceCount) {
         }
 
         // Apply timeslowdown calculation
-        if (min_enabled) {
-            lpPerformanceCount->QuadPart =
-                min(now_qpc, current_state->original_quad_value +
-                                 (now_qpc - current_state->original_quad_ts) * current_state->multiplier);
-        } else {
-            lpPerformanceCount->QuadPart = current_state->original_quad_value +
-                                           (now_qpc - current_state->original_quad_ts) * current_state->multiplier;
-        }
+        lpPerformanceCount->QuadPart = current_state->original_quad_value +
+                                        (now_qpc - current_state->original_quad_ts) * current_state->multiplier;
     }
 
     return true;

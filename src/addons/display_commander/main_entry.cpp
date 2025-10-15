@@ -1,6 +1,5 @@
 #include "addon.hpp"
 #include "config/display_commander_config.hpp"
-#include "display_restore.hpp"
 #include "dx11_proxy/dx11_proxy_manager.hpp"
 #include "exit_handler.hpp"
 #include "globals.hpp"
@@ -665,7 +664,6 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
         }
 
         // Clean up NVAPI fullscreen prevention
-        extern NVAPIFullscreenPrevention g_nvapiFullscreenPrevention;
         g_nvapiFullscreenPrevention.Cleanup();
 
         // Note: reshade::unregister_addon() will automatically unregister all events and overlays

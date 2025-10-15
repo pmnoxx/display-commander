@@ -957,6 +957,9 @@ void AutoSetColorSpace(reshade::api::swapchain *swapchain) {
 void OnPresentUpdateBefore(reshade::api::command_queue * command_queue, reshade::api::swapchain *swapchain,
                            const reshade::api::rect * /*source_rect*/, const reshade::api::rect * /*dest_rect*/,
                            uint32_t /*dirty_rect_count*/, const reshade::api::rect * /*dirty_rects*/) {
+    if (swapchain == nullptr) {
+        return;
+    }
 
     HWND hwnd = static_cast<HWND>(swapchain->get_hwnd());
     if (hwnd == g_proxy_hwnd) {
@@ -969,9 +972,9 @@ void OnPresentUpdateBefore(reshade::api::command_queue * command_queue, reshade:
     AutoSetColorSpace(swapchain);
 
     // Record the native DXGI swapchain for Present detour filtering
-    if (swapchain != nullptr && (swapchain->get_device()->get_api() == reshade::api::device_api::d3d12 ||
+    if (swapchain->get_device()->get_api() == reshade::api::device_api::d3d12 ||
         swapchain->get_device()->get_api() == reshade::api::device_api::d3d11 ||
-        swapchain->get_device()->get_api() == reshade::api::device_api::d3d10)) {
+        swapchain->get_device()->get_api() == reshade::api::device_api::d3d10) {
         IDXGISwapChain* dxgi_swapchain = reinterpret_cast<IDXGISwapChain*>(swapchain->get_native());
         if (dxgi_swapchain != nullptr) {
             display_commanderhooks::dxgi::RecordPresentUpdateSwapchain(dxgi_swapchain);
@@ -979,7 +982,7 @@ void OnPresentUpdateBefore(reshade::api::command_queue * command_queue, reshade:
     }
 
     // Record the native D3D9 device for Present detour filtering
-    if (swapchain != nullptr && swapchain->get_device()->get_api() == reshade::api::device_api::d3d9) {
+    if (swapchain->get_device()->get_api() == reshade::api::device_api::d3d9) {
         IDirect3DDevice9* d3d9_device = reinterpret_cast<IDirect3DDevice9*>(swapchain->get_device()->get_native());
         if (d3d9_device != nullptr) {
             display_commanderhooks::d3d9::RecordPresentUpdateDevice(d3d9_device);
@@ -991,11 +994,8 @@ void OnPresentUpdateBefore(reshade::api::command_queue * command_queue, reshade:
     HandleEndRenderSubmit();
     // NVIDIA Reflex: RENDERSUBMIT_END marker (minimal)
     if (s_reflex_enable_current_frame.load()) {
-        auto *device = swapchain ? swapchain->get_device() : nullptr;
-        if (device && g_latencyManager->Initialize(device)) {
-            if (s_reflex_use_markers.load()) {
-                g_latencyManager->SetMarker(LatencyMarkerType::RENDERSUBMIT_END);
-            }
+        if (s_reflex_use_markers.load()) {
+            g_latencyManager->SetMarker(LatencyMarkerType::RENDERSUBMIT_END);
         }
     }
     // Always flush command queue before present to reduce latency
@@ -1006,8 +1006,6 @@ void OnPresentUpdateBefore(reshade::api::command_queue * command_queue, reshade:
     if (swapchain->get_device()->get_api() == reshade::api::device_api::d3d11 ||
         swapchain->get_device()->get_api() == reshade::api::device_api::d3d12) {
         EnqueueGPUCompletion(swapchain, command_queue);
-    } else {
-        g_gpu_fence_failure_reason.store("Failed to get device from swapchain");
     }
 
     flush_command_queue(); // Flush command queue before addons start processing

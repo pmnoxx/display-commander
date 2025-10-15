@@ -393,16 +393,16 @@ bool CreateAndEnableHook(LPVOID pTarget, LPVOID pDetour, LPVOID* ppOriginal, con
     // Create the hook
     MH_STATUS createResult = MH_CreateHook(pTarget, pDetour, ppOriginal);
     if (createResult != MH_OK) {
-        LogError("CreateAndEnableHook: Failed to create hook '%s' (status: %d)",
-                 hookName ? hookName : "Unknown", createResult);
+        LogError("CreateAndEnableHook: Failed to create hook '%s' (status: %s)",
+                 hookName ? hookName : "Unknown", MH_StatusToString(createResult));
         return false;
     }
 
     // Enable the hook
     MH_STATUS enableResult = MH_EnableHook(pTarget);
     if (enableResult != MH_OK) {
-        LogError("CreateAndEnableHook: Failed to enable hook '%s' (status: %d)",
-                 hookName ? hookName : "Unknown", enableResult);
+        LogError("CreateAndEnableHook: Failed to enable hook '%s' (status: %s)",
+                 hookName ? hookName : "Unknown", MH_StatusToString(enableResult));
         return false;
     }
 

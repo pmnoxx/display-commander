@@ -631,6 +631,7 @@ bool ResolutionWidget::TryApplyResolution(int display_index, const ResolutionDat
     dm.dmDisplayFrequency =
         static_cast<DWORD>(std::lround(static_cast<double>(refresh_num) / static_cast<double>(refresh_denom)));
 
+    LogInfo("ResolutionWidget::TryApplyResolution() - Applying resolution: %dx%d @ %d/%d", width, height, refresh_num, refresh_denom);
     LONG result = ChangeDisplaySettingsExW(mi.szDevice, &dm, nullptr, CDS_UPDATEREGISTRY, nullptr);
     if (result == DISP_CHANGE_SUCCESSFUL) {
         s_resolution_applied_at_least_once.store(true);

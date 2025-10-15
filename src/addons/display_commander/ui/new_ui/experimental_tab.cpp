@@ -567,6 +567,15 @@ void DrawTimeSlowdownControls() {
         ImGui::SetTooltip("Enable time manipulation via timer API hooks.");
     }
 
+    // Compatibility mode checkbox
+    if (CheckboxSetting(settings::g_experimentalTabSettings.timeslowdown_compatibility_mode, "Compatibility Mode")) {
+        LogInfo("Time slowdown compatibility mode %s",
+                settings::g_experimentalTabSettings.timeslowdown_compatibility_mode.GetValue() ? "enabled" : "disabled");
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Enable compatibility mode for time slowdown hooks. This may improve compatibility with certain games.");
+    }
+
     if (settings::g_experimentalTabSettings.timeslowdown_enabled.GetValue()) {
         ImGui::Spacing();
 

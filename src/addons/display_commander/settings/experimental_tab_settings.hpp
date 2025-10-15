@@ -63,6 +63,7 @@ class ExperimentalTabSettings {
 
     // Time slowdown settings
     BoolSetting timeslowdown_enabled;
+    BoolSetting timeslowdown_compatibility_mode;
     FloatSetting timeslowdown_multiplier;
     FloatSetting timeslowdown_max_multiplier;
 

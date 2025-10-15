@@ -139,6 +139,11 @@ BOOL WINAPI QueryPerformanceCounter_Detour(LARGE_INTEGER *lpPerformanceCount) {
     // Get current state atomically
     auto current_state = g_timeslowdown_state.load();
 
+    if (!settings::g_experimentalTabSettings.timeslowdown_enabled.GetValue()
+       && settings::g_experimentalTabSettings.timeslowdown_compatibility_mode.GetValue()) {
+        return result;
+    }
+
     // if time slow down is enabled, or was enabled before, then apply the time slow down
     if (current_state->original_quad_ts > 0 || settings::g_experimentalTabSettings.timeslowdown_enabled.GetValue()) {
         LONGLONG now_qpc = lpPerformanceCount->QuadPart;

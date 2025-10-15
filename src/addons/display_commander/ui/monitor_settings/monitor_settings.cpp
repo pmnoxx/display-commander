@@ -181,6 +181,7 @@ static bool TryApplyCurrentSelectionOnce(int &out_monitor_index, int &out_width,
     dm.dmPelsHeight = height;
     dm.dmDisplayFrequency = static_cast<DWORD>(std::lround(refresh_rate.ToHz()));
 
+    LogInfo("TryApplyCurrentSelectionOnce() - ChangeDisplaySettingsExW: %S", mi.szDevice);
     LONG result = ChangeDisplaySettingsExW(mi.szDevice, &dm, nullptr, CDS_UPDATEREGISTRY, nullptr);
     if (result == DISP_CHANGE_SUCCESSFUL) {
         s_resolution_applied_at_least_once.store(true);
@@ -892,6 +893,7 @@ void HandleDXGIAPIApplyButton() {
                                 // Round the refresh rate to the nearest integer for DEVMODE fallback
                                 dm.dmDisplayFrequency = static_cast<DWORD>(std::round(refresh_rate.ToHz()));
 
+                                LogInfo("HandleDXGIAPIApplyButton() - ChangeDisplaySettingsExW: %S", device_name.c_str());
                                 // Apply the changes using legacy API
                                 LONG result = ChangeDisplaySettingsExW(device_name.c_str(), &dm, nullptr,
                                                                        CDS_UPDATEREGISTRY, nullptr);

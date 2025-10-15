@@ -68,10 +68,11 @@ bool ApplyModeForDevice(const std::wstring &extended_device_id, const OriginalMo
     } else {
         dm.dmDisplayFrequency = static_cast<DWORD>(hz + 0.5);
     }
+    // Try with CDS_UPDATEREGISTRY as fallback
+    LogInfo("ApplyModeForDevice() - ChangeDisplaySettingsExW: %S", extended_device_id.c_str());
     LONG res = ChangeDisplaySettingsExW(extended_device_id.c_str(), &dm, nullptr, 0, nullptr);
     if (res == DISP_CHANGE_SUCCESSFUL)
         return true;
-    // Try with CDS_UPDATEREGISTRY as fallback
     res = ChangeDisplaySettingsExW(extended_device_id.c_str(), &dm, nullptr, CDS_UPDATEREGISTRY, nullptr);
     return res == DISP_CHANGE_SUCCESSFUL;
 }

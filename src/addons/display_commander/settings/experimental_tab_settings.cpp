@@ -33,6 +33,7 @@ ExperimentalTabSettings::ExperimentalTabSettings()
     , min_sleep_duration_ms("MinSleepDurationMs", 0, 0, 10000, "DisplayCommander.Experimental")
     , max_sleep_duration_ms("MaxSleepDurationMs", 0, 0, 10000, "DisplayCommander.Experimental")
     , timeslowdown_enabled("TimeslowdownEnabled", false, "DisplayCommander.Experimental")
+    , timeslowdown_compatibility_mode("TimeslowdownCompatibilityMode", false, "DisplayCommander.Experimental")
     , timeslowdown_multiplier("TimeslowdownMultiplier", 1.0f, 0.1f, 10.0f, "DisplayCommander.Experimental")
     , timeslowdown_max_multiplier("TimeslowdownMaxMultiplier", 10.0f, 1.0f, 1000.0f, "DisplayCommander.Experimental")
     , query_performance_counter_hook("QueryPerformanceCounterHook", 0, {
@@ -93,7 +94,7 @@ ExperimentalTabSettings::ExperimentalTabSettings()
         &buffer_resolution_upgrade_scale_factor, &buffer_resolution_upgrade_mode,
         &texture_format_upgrade_enabled,
         &sleep_hook_enabled, &sleep_multiplier, &min_sleep_duration_ms, &max_sleep_duration_ms,
-        &timeslowdown_enabled, &timeslowdown_multiplier, &timeslowdown_max_multiplier,
+        &timeslowdown_enabled, &timeslowdown_compatibility_mode, &timeslowdown_multiplier, &timeslowdown_max_multiplier,
         &query_performance_counter_hook, &get_tick_count_hook, &get_tick_count64_hook,
         &time_get_time_hook, &get_system_time_hook,
         &get_system_time_as_file_time_hook, &get_system_time_precise_as_file_time_hook,

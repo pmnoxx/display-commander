@@ -169,6 +169,10 @@ bool DisplayCache::Refresh() {
     }
 
     static bool first_time_log = true;
+
+
+    auto old_displays = displays.load(std::memory_order_acquire);
+
     // Process each monitor
     for (HMONITOR monitor : monitors) {
         auto display_info = std::make_unique<DisplayInfo>();
@@ -197,11 +201,19 @@ bool DisplayCache::Refresh() {
             continue;
         }
 
-        // Enumerate resolutions and refresh rates
-        EnumerateDisplayModes(monitor, display_info->resolutions);
+        for (const auto &old_display_info : *old_displays) {
+            if (old_display_info->simple_device_id == display_info->simple_device_id) {
+                display_info->resolutions = old_display_info->resolutions;
+            }
+        }
 
-        // Sort resolutions
-        std::sort(display_info->resolutions.begin(), display_info->resolutions.end());
+        if (display_info->resolutions.empty()) { // only update resolutions if they are not already set
+            // Enumerate resolutions and refresh rates
+            EnumerateDisplayModes(monitor, display_info->resolutions);
+
+            // Sort resolutions
+            std::sort(display_info->resolutions.begin(), display_info->resolutions.end());
+        }
 
         // Add to snapshot
         new_displays.push_back(std::move(display_info));

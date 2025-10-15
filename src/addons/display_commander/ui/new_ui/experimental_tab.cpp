@@ -1,4 +1,5 @@
 #include "experimental_tab.hpp"
+#include "../../res/forkawesome.h"
 #include "../../autoclick/autoclick_manager.hpp"
 #include "../../dlss/dlss_indicator_manager.hpp"
 #include "../../globals.hpp"
@@ -24,33 +25,33 @@ void InitExperimentalTab() {
     // Apply the loaded settings to the actual hook system
     // This ensures the hook system matches the UI settings
     LogInfo("InitExperimentalTab() - Applying loaded timer hook settings to hook system");
-    display_commanderhooks::SetTimerHookType(display_commanderhooks::HOOK_QUERY_PERFORMANCE_COUNTER,
+    display_commanderhooks::SetTimerHookTypeById(display_commanderhooks::TimerHookIdentifier::QueryPerformanceCounter,
                                     static_cast<display_commanderhooks::TimerHookType>(
                                         settings::g_experimentalTabSettings.query_performance_counter_hook.GetValue()));
-    display_commanderhooks::SetTimerHookType(
-        display_commanderhooks::HOOK_GET_TICK_COUNT,
+    display_commanderhooks::SetTimerHookTypeById(
+        display_commanderhooks::TimerHookIdentifier::GetTickCount,
         static_cast<display_commanderhooks::TimerHookType>(settings::g_experimentalTabSettings.get_tick_count_hook.GetValue()));
-    display_commanderhooks::SetTimerHookType(display_commanderhooks::HOOK_GET_TICK_COUNT64,
+    display_commanderhooks::SetTimerHookTypeById(display_commanderhooks::TimerHookIdentifier::GetTickCount64,
                                     static_cast<display_commanderhooks::TimerHookType>(
                                         settings::g_experimentalTabSettings.get_tick_count64_hook.GetValue()));
-    display_commanderhooks::SetTimerHookType(
-        display_commanderhooks::HOOK_TIME_GET_TIME,
+    display_commanderhooks::SetTimerHookTypeById(
+        display_commanderhooks::TimerHookIdentifier::TimeGetTime,
         static_cast<display_commanderhooks::TimerHookType>(settings::g_experimentalTabSettings.time_get_time_hook.GetValue()));
-    display_commanderhooks::SetTimerHookType(
-        display_commanderhooks::HOOK_GET_SYSTEM_TIME,
+    display_commanderhooks::SetTimerHookTypeById(
+        display_commanderhooks::TimerHookIdentifier::GetSystemTime,
         static_cast<display_commanderhooks::TimerHookType>(settings::g_experimentalTabSettings.get_system_time_hook.GetValue()));
-    display_commanderhooks::SetTimerHookType(
-        display_commanderhooks::HOOK_GET_SYSTEM_TIME_AS_FILE_TIME,
+    display_commanderhooks::SetTimerHookTypeById(
+        display_commanderhooks::TimerHookIdentifier::GetSystemTimeAsFileTime,
         static_cast<display_commanderhooks::TimerHookType>(
             settings::g_experimentalTabSettings.get_system_time_as_file_time_hook.GetValue()));
-    display_commanderhooks::SetTimerHookType(
-        display_commanderhooks::HOOK_GET_SYSTEM_TIME_PRECISE_AS_FILE_TIME,
+    display_commanderhooks::SetTimerHookTypeById(
+        display_commanderhooks::TimerHookIdentifier::GetSystemTimePreciseAsFileTime,
         static_cast<display_commanderhooks::TimerHookType>(
             settings::g_experimentalTabSettings.get_system_time_precise_as_file_time_hook.GetValue()));
-    display_commanderhooks::SetTimerHookType(
-        display_commanderhooks::HOOK_GET_LOCAL_TIME,
+    display_commanderhooks::SetTimerHookTypeById(
+        display_commanderhooks::TimerHookIdentifier::GetLocalTime,
         static_cast<display_commanderhooks::TimerHookType>(settings::g_experimentalTabSettings.get_local_time_hook.GetValue()));
-    display_commanderhooks::SetTimerHookType(display_commanderhooks::HOOK_NT_QUERY_SYSTEM_TIME,
+    display_commanderhooks::SetTimerHookTypeById(display_commanderhooks::TimerHookIdentifier::NtQuerySystemTime,
                                     static_cast<display_commanderhooks::TimerHookType>(
                                         settings::g_experimentalTabSettings.nt_query_system_time_hook.GetValue()));
 
@@ -231,13 +232,13 @@ void DrawMouseCoordinatesDisplay() {
                                   mouse_pos.y >= window_rect.top && mouse_pos.y <= window_rect.bottom);
 
         if (mouse_over_window) {
-            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✁EMouse is over game window");
+            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), ICON_FK_OK " Mouse is over game window");
         } else {
-            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "⚠ Mouse is outside game window");
+            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), ICON_FK_WARNING " Mouse is outside game window");
         }
 
     } else {
-        ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "No valid game window handle available");
+        ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), ICON_FK_WARNING " No valid game window handle available");
     }
 
     // Refresh button to update coordinates
@@ -274,7 +275,7 @@ void DrawBackbufferFormatOverride() {
     ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== Backbuffer Format Override ===");
 
     // Warning about experimental nature
-    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "⚠ EXPERIMENTAL FEATURE - May cause compatibility issues!");
+    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), ICON_FK_WARNING " EXPERIMENTAL FEATURE - May cause compatibility issues!");
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("This feature overrides the backbuffer format during swapchain creation.\nUse with caution "
                           "as it may cause rendering issues or crashes in some games.");
@@ -323,7 +324,7 @@ void DrawBufferResolutionUpgrade() {
     ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== Buffer Resolution Upgrade ===");
 
     // Warning about experimental nature
-    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "⚠ EXPERIMENTAL FEATURE - May cause performance issues!");
+    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), ICON_FK_WARNING " EXPERIMENTAL FEATURE - May cause performance issues!");
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("This feature upgrades internal buffer resolutions during resource creation.\nUse with "
                           "caution as it may cause performance issues or rendering artifacts.");
@@ -427,7 +428,7 @@ void DrawTextureFormatUpgrade() {
     ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== Texture Format Upgrade ===");
 
     // Warning about experimental nature
-    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "⚠ EXPERIMENTAL FEATURE - May cause performance issues!");
+    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), ICON_FK_WARNING " EXPERIMENTAL FEATURE - May cause performance issues!");
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("This feature upgrades texture formats to RGB16A16 during resource creation.\nUse with "
                           "caution as it may cause performance issues or rendering artifacts.");
@@ -461,7 +462,7 @@ void DrawTextureFormatUpgrade() {
 void DrawSleepHookControls() {
     ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== Sleep Hook Controls ===");
     ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f),
-                       "⚠ EXPERIMENTAL FEATURE - Hooks game sleep calls for FPS control!");
+                       ICON_FK_WARNING " EXPERIMENTAL FEATURE - Hooks game sleep calls for FPS control!");
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip(
             "This feature hooks Windows Sleep APIs (Sleep, SleepEx, WaitForSingleObject, WaitForMultipleObjects) to "
@@ -550,7 +551,7 @@ void DrawSleepHookControls() {
 void DrawTimeSlowdownControls() {
     ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== Time Slowdown Controls ===");
     ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f),
-                       "⚠ EXPERIMENTAL FEATURE - Manipulates game time via multiple timer APIs!");
+                       ICON_FK_WARNING " EXPERIMENTAL FEATURE - Manipulates game time via multiple timer APIs!");
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("This feature hooks multiple timer APIs to manipulate game time.\nUseful for bypassing FPS "
                           "limits and slowing down/speeding up games that use various timing methods.");
@@ -566,6 +567,7 @@ void DrawTimeSlowdownControls() {
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Enable time manipulation via timer API hooks.");
     }
+    ImGui::SameLine();
 
     // Compatibility mode checkbox
     if (CheckboxSetting(settings::g_experimentalTabSettings.timeslowdown_compatibility_mode, "Compatibility Mode")) {
@@ -622,12 +624,12 @@ void DrawTimeSlowdownControls() {
         ImGui::Spacing();
 
         // QueryPerformanceCounter hook
-        uint64_t qpc_calls = display_commanderhooks::GetTimerHookCallCount(display_commanderhooks::HOOK_QUERY_PERFORMANCE_COUNTER);
+        uint64_t qpc_calls = display_commanderhooks::GetTimerHookCallCountById(display_commanderhooks::TimerHookIdentifier::QueryPerformanceCounter);
         if (ComboSettingWrapper(settings::g_experimentalTabSettings.query_performance_counter_hook,
                                 "QueryPerformanceCounter")) {
             display_commanderhooks::TimerHookType type = static_cast<display_commanderhooks::TimerHookType>(
                 settings::g_experimentalTabSettings.query_performance_counter_hook.GetValue());
-            display_commanderhooks::SetTimerHookType(display_commanderhooks::HOOK_QUERY_PERFORMANCE_COUNTER, type);
+            display_commanderhooks::SetTimerHookTypeById(display_commanderhooks::TimerHookIdentifier::QueryPerformanceCounter, type);
         }
         ImGui::SameLine();
         ImGui::Text("[%llu calls]", qpc_calls);
@@ -636,11 +638,11 @@ void DrawTimeSlowdownControls() {
         }
 
         // GetTickCount hook
-        uint64_t gtc_calls = display_commanderhooks::GetTimerHookCallCount(display_commanderhooks::HOOK_GET_TICK_COUNT);
+        uint64_t gtc_calls = display_commanderhooks::GetTimerHookCallCountById(display_commanderhooks::TimerHookIdentifier::GetTickCount);
         if (ComboSettingWrapper(settings::g_experimentalTabSettings.get_tick_count_hook, "GetTickCount")) {
             display_commanderhooks::TimerHookType type = static_cast<display_commanderhooks::TimerHookType>(
                 settings::g_experimentalTabSettings.get_tick_count_hook.GetValue());
-            display_commanderhooks::SetTimerHookType(display_commanderhooks::HOOK_GET_TICK_COUNT, type);
+            display_commanderhooks::SetTimerHookTypeById(display_commanderhooks::TimerHookIdentifier::GetTickCount, type);
         }
         ImGui::SameLine();
         ImGui::Text("[%llu calls]", gtc_calls);
@@ -649,11 +651,11 @@ void DrawTimeSlowdownControls() {
         }
 
         // GetTickCount64 hook
-        uint64_t gtc64_calls = display_commanderhooks::GetTimerHookCallCount(display_commanderhooks::HOOK_GET_TICK_COUNT64);
+        uint64_t gtc64_calls = display_commanderhooks::GetTimerHookCallCountById(display_commanderhooks::TimerHookIdentifier::GetTickCount64);
         if (ComboSettingWrapper(settings::g_experimentalTabSettings.get_tick_count64_hook, "GetTickCount64")) {
             display_commanderhooks::TimerHookType type = static_cast<display_commanderhooks::TimerHookType>(
                 settings::g_experimentalTabSettings.get_tick_count64_hook.GetValue());
-            display_commanderhooks::SetTimerHookType(display_commanderhooks::HOOK_GET_TICK_COUNT64, type);
+            display_commanderhooks::SetTimerHookTypeById(display_commanderhooks::TimerHookIdentifier::GetTickCount64, type);
         }
         ImGui::SameLine();
         ImGui::Text("[%llu calls]", gtc64_calls);
@@ -662,11 +664,11 @@ void DrawTimeSlowdownControls() {
         }
 
         // timeGetTime hook
-        uint64_t tgt_calls = display_commanderhooks::GetTimerHookCallCount(display_commanderhooks::HOOK_TIME_GET_TIME);
+        uint64_t tgt_calls = display_commanderhooks::GetTimerHookCallCountById(display_commanderhooks::TimerHookIdentifier::TimeGetTime);
         if (ComboSettingWrapper(settings::g_experimentalTabSettings.time_get_time_hook, "timeGetTime")) {
             display_commanderhooks::TimerHookType type = static_cast<display_commanderhooks::TimerHookType>(
                 settings::g_experimentalTabSettings.time_get_time_hook.GetValue());
-            display_commanderhooks::SetTimerHookType(display_commanderhooks::HOOK_TIME_GET_TIME, type);
+            display_commanderhooks::SetTimerHookTypeById(display_commanderhooks::TimerHookIdentifier::TimeGetTime, type);
         }
         ImGui::SameLine();
         ImGui::Text("[%llu calls]", tgt_calls);
@@ -675,11 +677,11 @@ void DrawTimeSlowdownControls() {
         }
 
         // GetSystemTime hook
-        uint64_t gst_calls = display_commanderhooks::GetTimerHookCallCount(display_commanderhooks::HOOK_GET_SYSTEM_TIME);
+        uint64_t gst_calls = display_commanderhooks::GetTimerHookCallCountById(display_commanderhooks::TimerHookIdentifier::GetSystemTime);
         if (ComboSettingWrapper(settings::g_experimentalTabSettings.get_system_time_hook, "GetSystemTime")) {
             display_commanderhooks::TimerHookType type = static_cast<display_commanderhooks::TimerHookType>(
                 settings::g_experimentalTabSettings.get_system_time_hook.GetValue());
-            display_commanderhooks::SetTimerHookType(display_commanderhooks::HOOK_GET_SYSTEM_TIME, type);
+            display_commanderhooks::SetTimerHookTypeById(display_commanderhooks::TimerHookIdentifier::GetSystemTime, type);
         }
         ImGui::SameLine();
         ImGui::Text("[%llu calls]", gst_calls);
@@ -688,12 +690,12 @@ void DrawTimeSlowdownControls() {
         }
 
         // GetSystemTimeAsFileTime hook
-        uint64_t gst_aft_calls = display_commanderhooks::GetTimerHookCallCount(display_commanderhooks::HOOK_GET_SYSTEM_TIME_AS_FILE_TIME);
+        uint64_t gst_aft_calls = display_commanderhooks::GetTimerHookCallCountById(display_commanderhooks::TimerHookIdentifier::GetSystemTimeAsFileTime);
         if (ComboSettingWrapper(settings::g_experimentalTabSettings.get_system_time_as_file_time_hook,
                                 "GetSystemTimeAsFileTime")) {
             display_commanderhooks::TimerHookType type = static_cast<display_commanderhooks::TimerHookType>(
                 settings::g_experimentalTabSettings.get_system_time_as_file_time_hook.GetValue());
-            display_commanderhooks::SetTimerHookType(display_commanderhooks::HOOK_GET_SYSTEM_TIME_AS_FILE_TIME, type);
+            display_commanderhooks::SetTimerHookTypeById(display_commanderhooks::TimerHookIdentifier::GetSystemTimeAsFileTime, type);
         }
         ImGui::SameLine();
         ImGui::Text("[%llu calls]", gst_aft_calls);
@@ -703,12 +705,12 @@ void DrawTimeSlowdownControls() {
 
         // GetSystemTimePreciseAsFileTime hook
         uint64_t gstp_aft_calls =
-            display_commanderhooks::GetTimerHookCallCount(display_commanderhooks::HOOK_GET_SYSTEM_TIME_PRECISE_AS_FILE_TIME);
+            display_commanderhooks::GetTimerHookCallCountById(display_commanderhooks::TimerHookIdentifier::GetSystemTimePreciseAsFileTime);
         if (ComboSettingWrapper(settings::g_experimentalTabSettings.get_system_time_precise_as_file_time_hook,
                                 "GetSystemTimePreciseAsFileTime")) {
             display_commanderhooks::TimerHookType type = static_cast<display_commanderhooks::TimerHookType>(
                 settings::g_experimentalTabSettings.get_system_time_precise_as_file_time_hook.GetValue());
-            display_commanderhooks::SetTimerHookType(display_commanderhooks::HOOK_GET_SYSTEM_TIME_PRECISE_AS_FILE_TIME, type);
+            display_commanderhooks::SetTimerHookTypeById(display_commanderhooks::TimerHookIdentifier::GetSystemTimePreciseAsFileTime, type);
         }
         ImGui::SameLine();
         ImGui::Text("[%llu calls]", gstp_aft_calls);
@@ -717,11 +719,11 @@ void DrawTimeSlowdownControls() {
         }
 
         // GetLocalTime hook
-        uint64_t glt_calls = display_commanderhooks::GetTimerHookCallCount(display_commanderhooks::HOOK_GET_LOCAL_TIME);
+        uint64_t glt_calls = display_commanderhooks::GetTimerHookCallCountById(display_commanderhooks::TimerHookIdentifier::GetLocalTime);
         if (ComboSettingWrapper(settings::g_experimentalTabSettings.get_local_time_hook, "GetLocalTime")) {
             display_commanderhooks::TimerHookType type = static_cast<display_commanderhooks::TimerHookType>(
                 settings::g_experimentalTabSettings.get_local_time_hook.GetValue());
-            display_commanderhooks::SetTimerHookType(display_commanderhooks::HOOK_GET_LOCAL_TIME, type);
+            display_commanderhooks::SetTimerHookTypeById(display_commanderhooks::TimerHookIdentifier::GetLocalTime, type);
         }
         ImGui::SameLine();
         ImGui::Text("[%llu calls]", glt_calls);
@@ -730,11 +732,11 @@ void DrawTimeSlowdownControls() {
         }
 
         // NtQuerySystemTime hook
-        uint64_t ntqst_calls = display_commanderhooks::GetTimerHookCallCount(display_commanderhooks::HOOK_NT_QUERY_SYSTEM_TIME);
+        uint64_t ntqst_calls = display_commanderhooks::GetTimerHookCallCountById(display_commanderhooks::TimerHookIdentifier::NtQuerySystemTime);
         if (ComboSettingWrapper(settings::g_experimentalTabSettings.nt_query_system_time_hook, "NtQuerySystemTime")) {
             display_commanderhooks::TimerHookType type = static_cast<display_commanderhooks::TimerHookType>(
                 settings::g_experimentalTabSettings.nt_query_system_time_hook.GetValue());
-            display_commanderhooks::SetTimerHookType(display_commanderhooks::HOOK_NT_QUERY_SYSTEM_TIME, type);
+            display_commanderhooks::SetTimerHookTypeById(display_commanderhooks::TimerHookIdentifier::NtQuerySystemTime, type);
         }
         ImGui::SameLine();
         ImGui::Text("[%llu calls]", ntqst_calls);
@@ -775,24 +777,26 @@ void DrawTimeSlowdownControls() {
                                     "GetSystemTimePreciseAsFileTime",
                                     "GetLocalTime",
                                     "NtQuerySystemTime"};
-        const char *hook_constants[] = {display_commanderhooks::HOOK_QUERY_PERFORMANCE_COUNTER,
-                                        display_commanderhooks::HOOK_GET_TICK_COUNT,
-                                        display_commanderhooks::HOOK_GET_TICK_COUNT64,
-                                        display_commanderhooks::HOOK_TIME_GET_TIME,
-                                        display_commanderhooks::HOOK_GET_SYSTEM_TIME,
-                                        display_commanderhooks::HOOK_GET_SYSTEM_TIME_AS_FILE_TIME,
-                                        display_commanderhooks::HOOK_GET_SYSTEM_TIME_PRECISE_AS_FILE_TIME,
-                                        display_commanderhooks::HOOK_GET_LOCAL_TIME,
-                                        display_commanderhooks::HOOK_NT_QUERY_SYSTEM_TIME};
+        display_commanderhooks::TimerHookIdentifier hook_identifiers[] = {
+            display_commanderhooks::TimerHookIdentifier::QueryPerformanceCounter,
+            display_commanderhooks::TimerHookIdentifier::GetTickCount,
+            display_commanderhooks::TimerHookIdentifier::GetTickCount64,
+            display_commanderhooks::TimerHookIdentifier::TimeGetTime,
+            display_commanderhooks::TimerHookIdentifier::GetSystemTime,
+            display_commanderhooks::TimerHookIdentifier::GetSystemTimeAsFileTime,
+            display_commanderhooks::TimerHookIdentifier::GetSystemTimePreciseAsFileTime,
+            display_commanderhooks::TimerHookIdentifier::GetLocalTime,
+            display_commanderhooks::TimerHookIdentifier::NtQuerySystemTime
+        };
 
         for (int i = 0; i < 9; i++) {
-            if (display_commanderhooks::IsTimerHookEnabled(hook_constants[i])) {
+            if (display_commanderhooks::IsTimerHookEnabledById(hook_identifiers[i])) {
                 ImGui::TextColored(ImVec4(0.6f, 1.0f, 0.6f, 1.0f), "    %s", hook_names[i]);
             }
         }
 
         ImGui::Spacing();
-        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "⚠ WARNING: This affects all time-based game logic!");
+        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), ICON_FK_WARNING " WARNING: This affects all time-based game logic!");
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Time slowdown affects all game systems that use the selected timer APIs for timing.");
         }
@@ -809,7 +813,7 @@ void DrawD3D9FlipExControls() {
 
     ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== Direct3D 9 FLIPEX Upgrade ===");
     ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f),
-                       "⚠ EXPERIMENTAL FEATURE - Upgrades D3D9 games to use FLIPEX swap effect!");
+                       ICON_FK_WARNING " EXPERIMENTAL FEATURE - Upgrades D3D9 games to use FLIPEX swap effect!");
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("This feature upgrades Direct3D 9 games to use the D3DSWAPEFFECT_FLIPEX swap effect.\n"
                          "FLIPEX leverages the Desktop Window Manager (DWM) for better performance on Windows Vista+.\n"
@@ -880,7 +884,7 @@ void DrawD3D9FlipExControls() {
     ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "5. Check the log file for upgrade status");
 
     ImGui::Spacing();
-    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "⚠ WARNING: If the game fails to start, disable this feature!");
+    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), ICON_FK_WARNING " WARNING: If the game fails to start, disable this feature!");
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Some games and drivers don't support FLIPEX.\n"
                          "If you experience crashes or black screens, disable this feature.");
@@ -894,7 +898,7 @@ void DrawDlssIndicatorControls() {
 
     ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== DLSS Indicator Controls ===");
     ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f),
-                       "⚠ EXPERIMENTAL FEATURE - Modifies NVIDIA registry settings!");
+                       ICON_FK_WARNING " EXPERIMENTAL FEATURE - Modifies NVIDIA registry settings!");
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("This feature modifies the NVIDIA registry to enable/disable the DLSS indicator.\n"
                          "The indicator appears in the bottom left corner when enabled.\n"
@@ -1000,7 +1004,7 @@ void DrawDlssIndicatorControls() {
     ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "5. The indicator appears in the bottom left corner when enabled");
 
     ImGui::Spacing();
-    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "⚠ WARNING: Registry modifications require administrator privileges!");
+    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), ICON_FK_WARNING " WARNING: Registry modifications require administrator privileges!");
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("The registry modification requires administrator privileges.\n"
                          "Windows will prompt for elevation when executing .reg files.");
@@ -1009,7 +1013,7 @@ void DrawDlssIndicatorControls() {
 
 void DrawDeveloperTools() {
     ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== Developer Tools ===");
-    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "⚠ EXPERIMENTAL FEATURE - For debugging purposes only!");
+    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), ICON_FK_WARNING " EXPERIMENTAL FEATURE - For debugging purposes only!");
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("These tools are for developers and debugging purposes.\nUse with caution as they can cause crashes or unexpected behavior.");
     }
@@ -1117,7 +1121,7 @@ void DrawHIDSuppression() {
         ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Hooks Status: %s", hooks_installed ? "Installed" : "Not Installed");
 
         ImGui::Spacing();
-        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "⚠ WARNING: This prevents games from reading HID input!");
+        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), ICON_FK_WARNING " WARNING: This prevents games from reading HID input!");
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("HID suppression prevents games from reading controller input directly.\nThis may cause games to not recognize controllers or behave unexpectedly.\nUse with caution and test thoroughly.");
         }

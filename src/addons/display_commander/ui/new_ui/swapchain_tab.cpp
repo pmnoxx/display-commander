@@ -1,4 +1,5 @@
 #include "swapchain_tab.hpp"
+#include "../../res/forkawesome.h"
 #include "../../globals.hpp"
 #include "../../settings/main_tab_settings.hpp"
 #include "../../swapchain_events_power_saving.hpp"
@@ -401,7 +402,7 @@ void DrawSwapchainEventCounters() {
                 s_suppress_binding_in_background.store(suppress_binding);
             }
             ImGui::SameLine();
-            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "⚠");
+            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), ICON_FK_WARNING);
             if (ImGui::IsItemHovered()) {
                 ImGui::SetTooltip("Skip resource binding operations (may cause rendering issues)");
             }
@@ -583,7 +584,7 @@ void DrawNGXParameters() {
             ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f), "ull (%zu)", ull_count);
             ImGui::Unindent();
         } else {
-            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "⚠ No NGX parameters detected yet");
+            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), ICON_FK_WARNING " No NGX parameters detected yet");
         }
 
         ImGui::Separator();
@@ -867,7 +868,7 @@ void DrawSwapchainInfo() {
                     if (supports_hdr) {
                         ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "  ✓ HDR-capable display detected");
                     } else {
-                        ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "  ⚠ Display does not support HDR");
+                        ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "  " ICON_FK_WARNING " Display does not support HDR");
                     }
 
                     // VRR support detection using CheckHardwareCompositionSupport
@@ -882,7 +883,7 @@ void DrawSwapchainInfo() {
                     if (supports_vrr) {
                         ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "  ✓ Variable Refresh Rate (VRR) supported");
                     } else {
-                        ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "  ⚠ Display does not support VRR");
+                        ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "  " ICON_FK_WARNING " Display does not support VRR");
                     }
                 } else {
                     ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "Failed to get output description");
@@ -1180,7 +1181,7 @@ void DrawSwapchainInfo() {
                 } else if (is_rec2020) {
                     ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "  ✓ Matches Rec. 2020 color space");
                 } else {
-                    ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "  ⚠ Custom color space (not Rec. 709/2020)");
+                    ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "  " ICON_FK_WARNING " Custom color space (not Rec. 709/2020)");
                 }
             } else {
                 ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "No HDR metadata has been set yet.");

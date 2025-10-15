@@ -481,6 +481,13 @@ void DoInitializationWithoutHwnd(HMODULE h_module, DWORD fdw_reason) {
     // Initialize QPC timing constants based on actual frequency
     utils::initialize_qpc_timing_constants();
 
+    // Setup high-resolution timer for maximum precision
+    if (utils::setup_high_resolution_timer()) {
+        LogInfo("High-resolution timer setup successful");
+    } else {
+        LogWarn("Failed to setup high-resolution timer");
+    }
+
     // Override ReShade settings early to set tutorial as viewed and disable auto updates
     OverrideReShadeSettings();
 

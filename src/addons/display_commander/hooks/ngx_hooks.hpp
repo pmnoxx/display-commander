@@ -8,7 +8,6 @@ enum NVSDK_NGX_Result;
 
 // NGX hook functions
 bool InstallNGXHooks();
-void UninstallNGXHooks();
 
 // Internal vtable hooking function
 bool HookNGXParameterVTable(NVSDK_NGX_Parameter* Params);

@@ -105,7 +105,7 @@ bool supports_mwaitx(void) {
 bool setup_high_resolution_timer() {
     // Get QPC frequency
     LARGE_INTEGER frequency;
-    if (display_commanderhooks::QueryPerformanceFrequency_Original) {
+    if (display_commanderhooks::QueryPerformanceFrequency_Original != nullptr) {
         display_commanderhooks::QueryPerformanceFrequency_Original(&frequency);
     } else {
         QueryPerformanceFrequency(&frequency);
@@ -114,15 +114,19 @@ bool setup_high_resolution_timer() {
 
     // Load NTDLL functions dynamically
     HMODULE ntdll = GetModuleHandleA("ntdll.dll");
-    if (!ntdll)
+    if (ntdll == nullptr) {
+        LogError("Failed to get ntdll.dll handle");
         return false;
+    }
 
     ZwQueryTimerResolution =
         reinterpret_cast<ZwQueryTimerResolution_t>(GetProcAddress(ntdll, "ZwQueryTimerResolution"));
     ZwSetTimerResolution = reinterpret_cast<ZwSetTimerResolution_t>(GetProcAddress(ntdll, "ZwSetTimerResolution"));
 
-    if (ZwQueryTimerResolution == nullptr || ZwSetTimerResolution == nullptr)
+    if (ZwQueryTimerResolution == nullptr || ZwSetTimerResolution == nullptr) {
+        LogError("Failed to load ZwQueryTimerResolution or ZwSetTimerResolution");
         return false;
+    }
 
     ULONG min, max, cur;
     if (ZwQueryTimerResolution(&min, &max, &cur) == STATUS_SUCCESS) {
@@ -132,9 +136,11 @@ bool setup_high_resolution_timer() {
         // Set timer resolution to maximum for highest precision
         if (ZwSetTimerResolution(max, TRUE, &cur) == STATUS_SUCCESS) {
             timer_res_qpc = cur;
+            LogInfo("Timer resolution set to maximum");
             return true;
         }
     }
+    LogError("Failed to set timer resolution to maximum");
 
     return false;
 }

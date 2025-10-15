@@ -488,59 +488,6 @@ bool InstallNGXHooks() {
     return true;
 }
 
-// Uninstall NGX hooks
-void UninstallNGXHooks() {
-    // Disable hooks
-    MH_DisableHook(MH_ALL_HOOKS);
-
-    // Remove hooks
-    if (NVSDK_NGX_Parameter_SetF_Original != nullptr) {
-        MH_RemoveHook(GetProcAddress(GetModuleHandleA("_nvngx.dll"), "NVSDK_NGX_Parameter_SetF"));
-        NVSDK_NGX_Parameter_SetF_Original = nullptr;
-    }
-
-    if (NVSDK_NGX_Parameter_SetD_Original != nullptr) {
-        MH_RemoveHook(GetProcAddress(GetModuleHandleA("_nvngx.dll"), "NVSDK_NGX_Parameter_SetD"));
-        NVSDK_NGX_Parameter_SetD_Original = nullptr;
-    }
-
-    if (NVSDK_NGX_Parameter_SetI_Original != nullptr) {
-        MH_RemoveHook(GetProcAddress(GetModuleHandleA("_nvngx.dll"), "NVSDK_NGX_Parameter_SetI"));
-        NVSDK_NGX_Parameter_SetI_Original = nullptr;
-    }
-
-    if (NVSDK_NGX_Parameter_SetUI_Original != nullptr) {
-        MH_RemoveHook(GetProcAddress(GetModuleHandleA("_nvngx.dll"), "NVSDK_NGX_Parameter_SetUI"));
-        NVSDK_NGX_Parameter_SetUI_Original = nullptr;
-    }
-
-    if (NVSDK_NGX_Parameter_SetULL_Original != nullptr) {
-        MH_RemoveHook(GetProcAddress(GetModuleHandleA("_nvngx.dll"), "NVSDK_NGX_Parameter_SetULL"));
-        NVSDK_NGX_Parameter_SetULL_Original = nullptr;
-    }
-
-    if (NVSDK_NGX_Parameter_GetI_Original != nullptr) {
-        MH_RemoveHook(GetProcAddress(GetModuleHandleA("_nvngx.dll"), "NVSDK_NGX_Parameter_GetI"));
-        NVSDK_NGX_Parameter_GetI_Original = nullptr;
-    }
-
-    if (NVSDK_NGX_Parameter_GetUI_Original != nullptr) {
-        MH_RemoveHook(GetProcAddress(GetModuleHandleA("_nvngx.dll"), "NVSDK_NGX_Parameter_GetUI"));
-        NVSDK_NGX_Parameter_GetUI_Original = nullptr;
-    }
-
-    if (NVSDK_NGX_Parameter_GetULL_Original != nullptr) {
-        MH_RemoveHook(GetProcAddress(GetModuleHandleA("_nvngx.dll"), "NVSDK_NGX_Parameter_GetULL"));
-        NVSDK_NGX_Parameter_GetULL_Original = nullptr;
-    }
-
-    if (NVSDK_NGX_Parameter_GetVoidPointer_Original != nullptr) {
-        MH_RemoveHook(GetProcAddress(GetModuleHandleA("_nvngx.dll"), "NVSDK_NGX_Parameter_GetVoidPointer"));
-        NVSDK_NGX_Parameter_GetVoidPointer_Original = nullptr;
-    }
-
-    LogInfo("NGX hooks uninstalled");
-}
 
 // Get NGX hook statistics
 uint64_t GetNGXHookCount(int event_type) {

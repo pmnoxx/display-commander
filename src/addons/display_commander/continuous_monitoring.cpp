@@ -380,10 +380,10 @@ void ContinuousMonitoringThread() {
     LONGLONG last_cache_refresh_ns = start_time;
     LONGLONG last_60fps_update_ns = start_time;
     LONGLONG last_1s_update_ns = start_time;
-    const LONGLONG FPS_60_INTERVAL_NS = utils::SEC_TO_NS / 120;
+    const LONGLONG fps_120_interval_ns = utils::SEC_TO_NS / 120;
 
     while (g_monitoring_thread_running.load()) {
-        std::this_thread::sleep_for(std::chrono::nanoseconds(FPS_60_INTERVAL_NS));
+        std::this_thread::sleep_for(std::chrono::nanoseconds(fps_120_interval_ns));
         // Periodic display cache refresh off the UI thread
         {
             LONGLONG now_ns = utils::get_now_ns();
@@ -404,7 +404,7 @@ void ContinuousMonitoringThread() {
 
         // 60 FPS updates (every ~16.67ms)
         LONGLONG now_ns = utils::get_now_ns();
-        if (now_ns - last_60fps_update_ns >= FPS_60_INTERVAL_NS) {
+        if (now_ns - last_60fps_update_ns >= fps_120_interval_ns) {
             last_60fps_update_ns = now_ns;
             adhd_multi_monitor::api::Initialize();
             adhd_multi_monitor::api::SetEnabled(settings::g_mainTabSettings.adhd_multi_monitor_enabled.GetValue());

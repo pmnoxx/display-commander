@@ -140,33 +140,6 @@ bool InstallStreamlineHooks() {
     return true;
 }
 
-void UninstallStreamlineHooks() {
-    // Disable hooks
-    MH_DisableHook(MH_ALL_HOOKS);
-
-    // Remove hooks
-    if (slInit_Original != nullptr) {
-        MH_RemoveHook(GetProcAddress(GetModuleHandleW(L"sl.interposer.dll"), "slInit"));
-        slInit_Original = nullptr;
-    }
-
-    if (slIsFeatureSupported_Original != nullptr) {
-        MH_RemoveHook(GetProcAddress(GetModuleHandleW(L"sl.interposer.dll"), "slIsFeatureSupported"));
-        slIsFeatureSupported_Original = nullptr;
-    }
-
-    if (slGetNativeInterface_Original != nullptr) {
-        MH_RemoveHook(GetProcAddress(GetModuleHandleW(L"sl.interposer.dll"), "slGetNativeInterface"));
-        slGetNativeInterface_Original = nullptr;
-    }
-
-    if (slUpgradeInterface_Original != nullptr) {
-        MH_RemoveHook(GetProcAddress(GetModuleHandleW(L"sl.interposer.dll"), "slUpgradeInterface"));
-        slUpgradeInterface_Original = nullptr;
-    }
-
-    LogInfo("Streamline hooks uninstalled");
-}
 
 // Get last SDK version from slInit calls
 uint64_t GetLastStreamlineSDKVersion() {

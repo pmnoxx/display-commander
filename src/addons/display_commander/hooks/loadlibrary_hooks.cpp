@@ -1,4 +1,5 @@
 #include "loadlibrary_hooks.hpp"
+#include "api_hooks.hpp"
 #include "xinput_hooks.hpp"
 #include "windows_gaming_input_hooks.hpp"
 #include "nvapi_hooks.hpp"
@@ -475,6 +476,16 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
     std::wstring lowerModuleName = moduleName;
     std::transform(lowerModuleName.begin(), lowerModuleName.end(), lowerModuleName.begin(), ::towlower);
 
+
+    // dxgi.dll
+    if (lowerModuleName.find(L"dxgi.dll") != std::wstring::npos) {
+        LogInfo("Installing DXGI hooks for module: %ws", moduleName.c_str());
+        if (InstallDxgiHooks()) {
+            LogInfo("DXGI hooks installed successfully");
+        } else {
+            LogError("Failed to install DXGI hooks");
+        }
+    }
 
     if (lowerModuleName.find(L"sl.interposer.dll") != std::wstring::npos) {
         LogInfo("Installing Streamline hooks for module: %ws", moduleName.c_str());

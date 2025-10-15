@@ -183,9 +183,17 @@ HRESULT WINAPI CreateDXGIFactory1_Detour(REFIID riid, void **ppFactory) {
 }
 
 bool InstallDxgiHooks() {
+    static bool dxgi_hooks_installed = false;
+    if (dxgi_hooks_installed) {
+        LogInfo("DXGI hooks already installed");
+        return true;
+    }
+    dxgi_hooks_installed = true;
+
+
     // Get dxgi.dll module handle
     HMODULE dxgi_module = GetModuleHandleW(L"dxgi.dll");
-    if (!dxgi_module) {
+    if (dxgi_module == nullptr) {
         LogError("Failed to get dxgi.dll module handle");
         return false;
     }
@@ -269,12 +277,6 @@ bool InstallApiHooks() {
     // Hook SetThreadExecutionState
     if (!CreateAndEnableHook(SetThreadExecutionState, SetThreadExecutionState_Detour, reinterpret_cast<LPVOID *>(&SetThreadExecutionState_Original), "SetThreadExecutionState")) {
         LogError("Failed to create and enable SetThreadExecutionState hook");
-    }
-
-    // Install DXGI hooks
-    if (!InstallDxgiHooks()) {
-        LogError("Failed to install DXGI hooks");
-        return false;
     }
 
     // todo: move to loadlibrary hooks

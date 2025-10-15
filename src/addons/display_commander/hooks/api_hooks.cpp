@@ -1,5 +1,5 @@
 #include "api_hooks.hpp"
-#include "../utils.hpp"
+#include "../utils/general_utils.hpp"
 #include "dxgi/dxgi_present_hooks.hpp"
 #include "globals.hpp"
 #include "loadlibrary_hooks.hpp"
@@ -8,8 +8,6 @@
 #include "timeslowdown_hooks.hpp"
 #include "windows_gaming_input_hooks.hpp"
 #include "windows_hooks/windows_message_hooks.hpp"
-#include "xinput_hooks.hpp"
-#include "nvapi_hooks.hpp"
 #include "dinput_hooks.hpp"
 #include <MinHook.h>
 
@@ -184,6 +182,52 @@ HRESULT WINAPI CreateDXGIFactory1_Detour(REFIID riid, void **ppFactory) {
     return hr;
 }
 
+bool InstallDxgiHooks() {
+    // Get dxgi.dll module handle
+    HMODULE dxgi_module = GetModuleHandleW(L"dxgi.dll");
+    if (!dxgi_module) {
+        LogError("Failed to get dxgi.dll module handle");
+        return false;
+    }
+
+    // Hook CreateDXGIFactory - try both system and ReShade versions
+    auto CreateDXGIFactory_sys = reinterpret_cast<decltype(&CreateDXGIFactory)>(GetProcAddress(dxgi_module, "CreateDXGIFactory"));
+    if (CreateDXGIFactory_sys != nullptr) {
+        if (!CreateAndEnableHook(CreateDXGIFactory_sys, CreateDXGIFactory_Detour, reinterpret_cast<LPVOID *>(&CreateDXGIFactory_Original), "CreateDXGIFactory")) {
+            LogError("Failed to create and enable CreateDXGIFactory system hook");
+            return false;
+        }
+        LogInfo("CreateDXGIFactory system hook created successfully");
+    } else {
+        LogWarn("Failed to get CreateDXGIFactory system address, trying ReShade version");
+        if (!CreateAndEnableHook(CreateDXGIFactory, CreateDXGIFactory_Detour, reinterpret_cast<LPVOID *>(&CreateDXGIFactory_Original), "CreateDXGIFactory")) {
+            LogError("Failed to create and enable CreateDXGIFactory ReShade hook");
+            return false;
+        }
+        LogInfo("CreateDXGIFactory ReShade hook created successfully");
+    }
+
+    // Hook CreateDXGIFactory1 - try both system and ReShade versions
+    auto CreateDXGIFactory1_sys = reinterpret_cast<decltype(&CreateDXGIFactory1)>(GetProcAddress(dxgi_module, "CreateDXGIFactory1"));
+    if (CreateDXGIFactory1_sys != nullptr) {
+        if (!CreateAndEnableHook(CreateDXGIFactory1_sys, CreateDXGIFactory1_Detour, reinterpret_cast<LPVOID *>(&CreateDXGIFactory1_Original), "CreateDXGIFactory1")) {
+            LogError("Failed to create and enable CreateDXGIFactory1 system hook");
+            return false;
+        }
+        LogInfo("CreateDXGIFactory1 system hook created successfully");
+    } else {
+        LogWarn("Failed to get CreateDXGIFactory1 system address, trying ReShade version");
+        if (!CreateAndEnableHook(CreateDXGIFactory1, CreateDXGIFactory1_Detour, reinterpret_cast<LPVOID *>(&CreateDXGIFactory1_Original), "CreateDXGIFactory1")) {
+            LogError("Failed to create and enable CreateDXGIFactory1 ReShade hook");
+            return false;
+        }
+        LogInfo("CreateDXGIFactory1 ReShade hook created successfully");
+    }
+
+    LogInfo("DXGI hooks installed successfully");
+    return true;
+}
+
 bool InstallApiHooks() {
     if (g_api_hooks_installed.load()) {
         LogInfo("API hooks already installed");
@@ -203,79 +247,35 @@ bool InstallApiHooks() {
         LogInfo("MinHook initialized successfully for API hooks");
     }
     // Hook GetFocus
-    if (MH_CreateHook(GetFocus, GetFocus_Detour, (LPVOID *)&GetFocus_Original) != MH_OK) {
-        LogError("Failed to create GetFocus hook");
-    }
-    if (MH_EnableHook(GetFocus) != MH_OK) {
-        LogError("Failed to enable GetFocus hook");
+    if (!CreateAndEnableHook(GetFocus, GetFocus_Detour, reinterpret_cast<LPVOID *>(&GetFocus_Original), "GetFocus")) {
+        LogError("Failed to create and enable GetFocus hook");
     }
 
     // Hook GetForegroundWindow
-    if (MH_CreateHook(GetForegroundWindow, GetForegroundWindow_Detour, (LPVOID *)&GetForegroundWindow_Original) !=
-        MH_OK) {
-        LogError("Failed to create GetForegroundWindow hook");
-    }
-    if (MH_EnableHook(GetForegroundWindow) != MH_OK) {
-        LogError("Failed to enable GetForegroundWindow hook");
+    if (!CreateAndEnableHook(GetForegroundWindow, GetForegroundWindow_Detour, reinterpret_cast<LPVOID *>(&GetForegroundWindow_Original), "GetForegroundWindow")) {
+        LogError("Failed to create and enable GetForegroundWindow hook");
     }
 
     // Hook GetActiveWindow
-    if (MH_CreateHook(GetActiveWindow, GetActiveWindow_Detour, (LPVOID *)&GetActiveWindow_Original) != MH_OK) {
-        LogError("Failed to create GetActiveWindow hook");
-    }
-    if (MH_EnableHook(GetActiveWindow) != MH_OK) {
-        LogError("Failed to enable GetActiveWindow hook");
+    if (!CreateAndEnableHook(GetActiveWindow, GetActiveWindow_Detour, reinterpret_cast<LPVOID *>(&GetActiveWindow_Original), "GetActiveWindow")) {
+        LogError("Failed to create and enable GetActiveWindow hook");
     }
 
     // Hook GetGUIThreadInfo
-    if (MH_CreateHook(GetGUIThreadInfo, GetGUIThreadInfo_Detour, (LPVOID *)&GetGUIThreadInfo_Original) != MH_OK) {
-        LogError("Failed to create GetGUIThreadInfo hook");
-    }
-    if (MH_EnableHook(SetThreadExecutionState) != MH_OK) {
-        LogError("Failed to enable SetThreadExecutionState hook");
+    if (!CreateAndEnableHook(GetGUIThreadInfo, GetGUIThreadInfo_Detour, reinterpret_cast<LPVOID *>(&GetGUIThreadInfo_Original), "GetGUIThreadInfo")) {
+        LogError("Failed to create and enable GetGUIThreadInfo hook");
     }
 
     // Hook SetThreadExecutionState
-    if (MH_CreateHook(SetThreadExecutionState, SetThreadExecutionState_Detour,
-                      (LPVOID *)&SetThreadExecutionState_Original) != MH_OK) {
-        LogError("Failed to create SetThreadExecutionState hook");
-    }
-    if (MH_EnableHook(SetThreadExecutionState) != MH_OK) {
-        LogError("Failed to enable SetThreadExecutionState hook");
+    if (!CreateAndEnableHook(SetThreadExecutionState, SetThreadExecutionState_Detour, reinterpret_cast<LPVOID *>(&SetThreadExecutionState_Original), "SetThreadExecutionState")) {
+        LogError("Failed to create and enable SetThreadExecutionState hook");
     }
 
-    /*
-    // Hook CreateDXGIFactory - try both system and ReShade versions
-    HMODULE dxgi_module = GetModuleHandleW(L"dxgi.dll");
-    if (dxgi_module) {
-        auto CreateDXGIFactory_sys = reinterpret_cast<decltype(&CreateDXGIFactory)>(GetProcAddress(dxgi_module, "CreateDXGIFactory"));
-        if (CreateDXGIFactory_sys && MH_CreateHook(CreateDXGIFactory_sys, CreateDXGIFactory_Detour, (LPVOID *)&CreateDXGIFactory_Original) == MH_OK) {
-            LogInfo("CreateDXGIFactory system hook created successfully");
-        } else {
-            LogWarn("Failed to create CreateDXGIFactory system hook, trying ReShade version");
-            if (MH_CreateHook(CreateDXGIFactory, CreateDXGIFactory_Detour, (LPVOID *)&CreateDXGIFactory_Original) != MH_OK) {
-                LogError("Failed to create CreateDXGIFactory hook");
-                return false;
-            }
-            LogInfo("CreateDXGIFactory ReShade hook created successfully");
-        }
-    } else {
-        LogError("Failed to get dxgi.dll module handle");
+    // Install DXGI hooks
+    if (!InstallDxgiHooks()) {
+        LogError("Failed to install DXGI hooks");
         return false;
     }
-
-    // Hook CreateDXGIFactory1 - try both system and ReShade versions
-    auto CreateDXGIFactory1_sys = reinterpret_cast<decltype(&CreateDXGIFactory1)>(GetProcAddress(dxgi_module, "CreateDXGIFactory1"));
-    if (CreateDXGIFactory1_sys && MH_CreateHook(CreateDXGIFactory1_sys, CreateDXGIFactory1_Detour, (LPVOID *)&CreateDXGIFactory1_Original) == MH_OK) {
-        LogInfo("CreateDXGIFactory1 system hook created successfully");
-    } else {
-        LogWarn("Failed to create CreateDXGIFactory1 system hook, trying ReShade version");
-        if (MH_CreateHook(CreateDXGIFactory1, CreateDXGIFactory1_Detour, (LPVOID *)&CreateDXGIFactory1_Original) != MH_OK) {
-            LogError("Failed to create CreateDXGIFactory1 hook");
-            return false;
-        }
-        LogInfo("CreateDXGIFactory1 ReShade hook created successfully");
-    }*/
 
     // todo: move to loadlibrary hooks
     // Install Windows message hooks

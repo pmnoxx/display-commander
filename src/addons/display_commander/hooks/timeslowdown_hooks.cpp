@@ -4,6 +4,7 @@
 #include "../utils.hpp"
 #include <MinHook.h>
 #include <atomic>
+#include <memory>
 #include <windows.h>
 
 // NTSTATUS constants
@@ -80,8 +81,8 @@ static std::atomic<uint64_t> g_get_system_time_precise_as_file_time_call_count{0
 static std::atomic<uint64_t> g_get_local_time_call_count{0};
 static std::atomic<uint64_t> g_nt_query_system_time_call_count{0};
 
-// Atomic pointer for thread-safe state access
-static std::atomic<TimeslowdownState *> g_timeslowdown_state{new TimeslowdownState()};
+// Atomic shared_ptr for thread-safe state access
+static std::atomic<std::shared_ptr<const TimeslowdownState>> g_timeslowdown_state{std::make_shared<TimeslowdownState>()};
 
 // Helper function to get hook type by name (DLL-safe)
 TimerHookType GetHookTypeByName(const char *hook_name) {
@@ -136,7 +137,7 @@ BOOL WINAPI QueryPerformanceCounter_Detour(LARGE_INTEGER *lpPerformanceCount) {
     }
 
     // Get current state atomically
-    TimeslowdownState *current_state = g_timeslowdown_state.load();
+    auto current_state = g_timeslowdown_state.load();
 
     // if time slow down is enabled, or was enabled before, then apply the time slow down
     if (current_state->original_quad_ts > 0 || settings::g_experimentalTabSettings.timeslowdown_enabled.GetValue()) {
@@ -150,7 +151,7 @@ BOOL WINAPI QueryPerformanceCounter_Detour(LARGE_INTEGER *lpPerformanceCount) {
 
         if (needs_update) {
             // Create new state with updated values
-            auto new_state = new TimeslowdownState(*current_state);
+            auto new_state = std::make_shared<TimeslowdownState>(*current_state);
 
             if (new_state->original_quad_ts == 0) {
                 new_state->original_quad_ts = now_qpc;
@@ -164,9 +165,8 @@ BOOL WINAPI QueryPerformanceCounter_Detour(LARGE_INTEGER *lpPerformanceCount) {
 
             new_state->multiplier = new_multiplier;
 
-            // Atomically update the state and clean up old state
-            TimeslowdownState *old_state = g_timeslowdown_state.exchange(new_state);
-            delete old_state;
+            // Atomically update the state
+            g_timeslowdown_state.store(new_state);
             current_state = new_state;
         }
 
@@ -495,7 +495,7 @@ bool InstallTimeslowdownHooks() {
         LogError("Failed to create and enable QueryPerformanceCounter hook");
         return false;
     }
-
+/*
     // Hook QueryPerformanceFrequency
     if (!CreateAndEnableHook(QueryPerformanceFrequency, QueryPerformanceFrequency_Detour,
                              (LPVOID *)&QueryPerformanceFrequency_Original, "QueryPerformanceFrequency")) {
@@ -569,7 +569,7 @@ bool InstallTimeslowdownHooks() {
     } else {
         LogInfo("ntdll.dll not available for NtQuerySystemTime hook");
     }
-
+*/
     g_timeslowdown_hooks_installed.store(true);
     LogInfo("Timeslowdown hooks installed successfully");
 
@@ -623,8 +623,7 @@ void UninstallTimeslowdownHooks() {
     NtQuerySystemTime_Original = nullptr;
 
     // Clean up state
-    TimeslowdownState *state = g_timeslowdown_state.exchange(nullptr);
-    delete state;
+    g_timeslowdown_state.store(std::make_shared<TimeslowdownState>());
 
     // Reset hook types to None (atomic variables don't need explicit cleanup)
     g_query_performance_counter_hook_type.store(TimerHookType::None);

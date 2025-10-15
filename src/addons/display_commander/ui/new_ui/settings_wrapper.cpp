@@ -463,16 +463,26 @@ bool SliderFloatSetting(FloatSetting &setting, const char *label, const char *fo
     return changed;
 }
 
-bool SliderFloatSetting(FloatSettingRef &setting, const char *label, const char *format) {
+bool SliderFloatSettingRef(FloatSettingRef &setting, const char *label, const char *format) {
     float value = setting.GetValue();
     bool changed = ImGui::SliderFloat(label, &value, setting.GetMin(), setting.GetMax(), format);
     if (changed) {
-        // Store the dirty value for later application
-        setting.SetDirtyValue(value);
+        // Check if this is keyboard input or mouse input
+        ImGuiIO& io = ImGui::GetIO();
+        bool is_mouse_input = io.MouseDown[0] || io.MouseDown[1] || io.MouseDown[2]; // Any mouse button held
+
+        if (is_mouse_input) {
+            // Mouse input (slider dragging) - apply immediately
+            setting.ClearDirtyValue();
+            setting.SetValue(value);
+        } else {
+            // Keyboard input - store as dirty value for later application
+            setting.SetDirtyValue(value);
+        }
     }
 
-    // Apply dirty value when slider becomes inactive
-    if (!ImGui::IsItemActive() && setting.HasDirtyValue()) {
+    // Apply dirty value when keyboard editing is finished
+    if (ImGui::IsItemDeactivatedAfterEdit() && setting.HasDirtyValue()) {
         setting.SetValue(setting.GetDirtyValue());
         setting.ClearDirtyValue();
     }
@@ -526,12 +536,23 @@ bool SliderIntSetting(IntSettingRef &setting, const char *label, const char *for
     int value = setting.GetValue();
     bool changed = ImGui::SliderInt(label, &value, setting.GetMin(), setting.GetMax(), format);
     if (changed) {
-        // Store the dirty value for later application
-        setting.SetDirtyValue(value);
+        // TODO: consider doing it for other slider settings as well
+        // Check if this is keyboard input or mouse input
+        ImGuiIO& io = ImGui::GetIO();
+        bool is_mouse_input = io.MouseDown[0] || io.MouseDown[1] || io.MouseDown[2]; // Any mouse button held
+
+        if (is_mouse_input) {
+            // Mouse input (slider dragging) - apply immediately
+            setting.ClearDirtyValue();
+            setting.SetValue(value);
+        } else {
+            // Keyboard input - store as dirty value for later application
+            setting.SetDirtyValue(value);
+        }
     }
 
-    // Apply dirty value when slider becomes inactive
-    if (!ImGui::IsItemActive() && setting.HasDirtyValue()) {
+    // Apply dirty value when keyboard editing is finished
+    if (ImGui::IsItemDeactivatedAfterEdit() && setting.HasDirtyValue()) {
         setting.SetValue(setting.GetDirtyValue());
         setting.ClearDirtyValue();
     }

@@ -640,7 +640,7 @@ void DrawDisplaySettings() {
                             "Adds a small delay after present to smooth frame pacing and reduce stuttering");
 
             float current_delay = settings::g_mainTabSettings.present_pacing_delay_percentage.GetValue();
-            if (SliderFloatSetting(settings::g_mainTabSettings.present_pacing_delay_percentage,
+            if (SliderFloatSettingRef(settings::g_mainTabSettings.present_pacing_delay_percentage,
                                 "Present Pacing Delay", "%.1f%%")) {
                 // The setting is automatically synced via FloatSettingRef
             }
@@ -758,7 +758,7 @@ void DrawDisplaySettings() {
 
         float current_value = settings::g_mainTabSettings.fps_limit.GetValue();
         const char* fmt = (current_value > 0.0f) ? "%.3f FPS" : "No Limit";
-        if (SliderFloatSetting(settings::g_mainTabSettings.fps_limit, "FPS Limit", fmt)) {}
+        if (SliderFloatSettingRef(settings::g_mainTabSettings.fps_limit, "FPS Limit", fmt)) {}
 
         if (!fps_limit_enabled) {
             ImGui::EndDisabled();
@@ -834,7 +834,7 @@ void DrawDisplaySettings() {
 
             float current_bg = settings::g_mainTabSettings.fps_limit_background.GetValue();
             const char* fmt_bg = (current_bg > 0.0f) ? "%.0f FPS" : "No Limit";
-            if (SliderFloatSetting(settings::g_mainTabSettings.fps_limit_background, "Background FPS Limit", fmt_bg)) {}
+            if (SliderFloatSettingRef(settings::g_mainTabSettings.fps_limit_background, "Background FPS Limit", fmt_bg)) {}
 
             if (!fps_limit_enabled) {
                 ImGui::EndDisabled();

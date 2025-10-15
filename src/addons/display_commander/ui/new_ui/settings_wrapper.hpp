@@ -391,7 +391,7 @@ class StringSetting : public SettingBase {
 bool SliderFloatSetting(FloatSetting &setting, const char *label, const char *format = "%.3f");
 
 // SliderFloat wrapper for FloatSettingRef
-bool SliderFloatSetting(FloatSettingRef &setting, const char *label, const char *format = "%.3f");
+bool SliderFloatSettingRef(FloatSettingRef &setting, const char *label, const char *format = "%.3f");
 
 // SliderInt wrapper
 bool SliderIntSetting(IntSetting &setting, const char *label, const char *format = "%d");

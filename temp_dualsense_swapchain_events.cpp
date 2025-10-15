@@ -320,7 +320,11 @@ void OnPresentUpdateAfter(reshade::api::command_queue* /*queue*/, reshade::api::
 
   // Log render thread ID changes for debugging
   if (previous_render_thread_id != current_thread_id && previous_render_thread_id != 0) {
-    LogDebug("[TID:" + std::to_string(current_thread_id) + "] Render thread changed from " + std::to_string(previous_render_thread_id) + " to " + std::to_string(current_thread_id));
+    static int count = 0;
+    count++;
+    if (count <= 10) {
+      LogDebug("[TID:" + std::to_string(current_thread_id) + "] Render thread changed from " + std::to_string(previous_render_thread_id) + " to " + std::to_string(current_thread_id));
+    }
   }
 
   // Increment event counter

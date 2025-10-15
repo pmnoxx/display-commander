@@ -697,8 +697,12 @@ void OnPresentUpdateAfter2() {
 
     // Log render thread ID changes for debugging
     if (previous_render_thread_id != current_thread_id && previous_render_thread_id != 0) {
-        LogDebug("[TID:%d] Render thread changed from %d to %d", current_thread_id, previous_render_thread_id,
-                 current_thread_id);
+        static int count = 0;
+        count++;
+        if (count <= 10) {
+            LogDebug("[TID:%d] Render thread changed from %d to %d", current_thread_id, previous_render_thread_id,
+                     current_thread_id);
+        }
     }
 
     // Increment event counter

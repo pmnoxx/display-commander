@@ -138,34 +138,31 @@ void MarkDeviceChangedByDeviceName(const std::wstring &device_name) {
 // (ApplyModeForDevice is in anonymous namespace above)
 
 void RestoreAll() {
-    // Use initial display state instead of tracking changes
-    if (!display_initial_state::g_initialDisplayState.IsCaptured()) {
-        LogWarn("RestoreAll: No initial display state captured, cannot restore");
+    auto current_data = s_data.load();
+
+    if (current_data->devices_changed.empty()) {
+        LogInfo("RestoreAll: No devices were changed, nothing to restore");
         return;
     }
 
-    auto initial_states = display_initial_state::g_initialDisplayState.GetInitialStates();
-    if (!initial_states || initial_states->empty()) {
-        LogWarn("RestoreAll: No initial display states available");
-        return;
-    }
+    LogInfo("RestoreAll: Restoring %zu changed devices", current_data->devices_changed.size());
 
-    LogInfo("RestoreAll: Restoring %zu displays to initial state", initial_states->size());
+    for (const auto &device_name : current_data->devices_changed) {
+        auto it = current_data->device_to_original.find(device_name);
+        if (it == current_data->device_to_original.end()) {
+            LogWarn("RestoreAll: No original mode found for device %S, skipping", device_name.c_str());
+            continue;
+        }
 
-    for (const auto &state : *initial_states) {
-        OriginalMode mode;
-        mode.width = state.width;
-        mode.height = state.height;
-        mode.refresh_num = state.refresh_numerator;
-        mode.refresh_den = state.refresh_denominator;
+        const auto &original_mode = it->second;
+        LogInfo("RestoreAll: Restoring %S to %dx%d @ %u/%u", device_name.c_str(),
+                original_mode.width, original_mode.height,
+                original_mode.refresh_num, original_mode.refresh_den);
 
-        LogInfo("RestoreAll: Restoring %S to %dx%d @ %u/%u", state.device_name.c_str(), mode.width, mode.height,
-                mode.refresh_num, mode.refresh_den);
-
-        if (ApplyModeForDevice(state.device_name, mode)) {
-            LogInfo("RestoreAll: Successfully restored %S", state.device_name.c_str());
+        if (ApplyModeForDevice(device_name, original_mode)) {
+            LogInfo("RestoreAll: Successfully restored %S", device_name.c_str());
         } else {
-            LogError("RestoreAll: Failed to restore %S", state.device_name.c_str());
+            LogError("RestoreAll: Failed to restore %S", device_name.c_str());
         }
     }
 }
@@ -188,35 +185,25 @@ void Clear() {
 }
 
 bool HasAnyChanges() {
-    // Since we now restore to initial state regardless of changes,
-    // we consider there are always "changes" if auto-restore is enabled
-    // and we have initial state captured
-    return ::s_auto_restore_resolution_on_close && display_initial_state::g_initialDisplayState.IsCaptured();
+    auto current_data = s_data.load();
+    return ::s_auto_restore_resolution_on_close && !current_data->devices_changed.empty();
 }
 
 bool RestoreDisplayByDeviceName(const std::wstring &device_name) {
-    // Use initial display state instead of tracking changes
-    if (!display_initial_state::g_initialDisplayState.IsCaptured()) {
-        LogWarn("RestoreDisplayByDeviceName: No initial display state captured");
+    auto current_data = s_data.load();
+
+    auto it = current_data->device_to_original.find(device_name);
+    if (it == current_data->device_to_original.end()) {
+        LogWarn("RestoreDisplayByDeviceName: No original mode found for device %S", device_name.c_str());
         return false;
     }
 
-    const auto *initial_state = display_initial_state::g_initialDisplayState.GetInitialStateForDevice(device_name);
-    if (!initial_state) {
-        LogWarn("RestoreDisplayByDeviceName: No initial state found for device %S", device_name.c_str());
-        return false;
-    }
+    const auto &original_mode = it->second;
+    LogInfo("RestoreDisplayByDeviceName: Restoring %S to %dx%d @ %u/%u", device_name.c_str(),
+            original_mode.width, original_mode.height,
+            original_mode.refresh_num, original_mode.refresh_den);
 
-    OriginalMode mode;
-    mode.width = initial_state->width;
-    mode.height = initial_state->height;
-    mode.refresh_num = initial_state->refresh_numerator;
-    mode.refresh_den = initial_state->refresh_denominator;
-
-    LogInfo("RestoreDisplayByDeviceName: Restoring %S to %dx%d @ %u/%u", device_name.c_str(), mode.width, mode.height,
-            mode.refresh_num, mode.refresh_den);
-
-    return ApplyModeForDevice(device_name, mode);
+    return ApplyModeForDevice(device_name, original_mode);
 }
 
 bool RestoreDisplayByIndex(int display_index) {

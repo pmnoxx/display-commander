@@ -165,7 +165,7 @@ void ComputeDesiredSize(int display_width, int display_height, int &out_w, int &
     out_w = want_w;
     out_h = want_w * ar.h / ar.w;
 
-    LogInfo("ComputeDesiredSize: out_w=%d, out_h=%d (width_index=%d)", out_w, out_h, s_aspect_width.load());
+    //LogInfo("ComputeDesiredSize: out_w=%d, out_h=%d (width_index=%d)", out_w, out_h, s_aspect_width.load());
 }
 
 // Monitor enumeration callback

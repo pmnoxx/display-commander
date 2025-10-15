@@ -129,8 +129,6 @@ void DrawGlobalWindowState() {
     if (ImGui::CollapsingHeader("Global Window State", ImGuiTreeNodeFlags_DefaultOpen)) {
         HWND hwnd = g_last_swapchain_hwnd.load();
         if (hwnd != nullptr) {
-            // Calculate desired state using global window state
-            CalculateWindowState(hwnd, "ui_display");
 
             auto window_state = ::g_window_state.load();
             if (window_state) {

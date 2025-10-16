@@ -52,3 +52,7 @@ external-src/
 # Cursor IDE exceptions
 .cursor
 !.cursor/rules/project_structure.mdc
+
+# run_tmp
+run_tmp/
+res_injector/injector_config.ini

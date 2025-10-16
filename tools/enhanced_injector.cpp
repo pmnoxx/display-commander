@@ -25,6 +25,7 @@
 #include <iostream>
 #include <chrono>
 #include <thread>
+#include <array>
 
 #define RESHADE_LOADING_THREAD_FUNC 1
 
@@ -66,6 +67,12 @@ struct TargetProcess
     std::unordered_set<DWORD> injected_pids; // Track injected PIDs to avoid duplicates
 };
 
+// Forward declarations
+static void update_acl_for_uwp(LPWSTR path);
+#if RESHADE_LOADING_THREAD_FUNC
+static DWORD WINAPI loading_thread_func(loading_data *arg);
+#endif
+
 class EnhancedInjector
 {
 private:
@@ -79,7 +86,8 @@ private:
     {
         auto now = std::chrono::system_clock::now();
         auto time_t = std::chrono::system_clock::to_time_t(now);
-        auto tm = *std::localtime(&time_t);
+        struct tm tm;
+        localtime_s(&tm, &time_t);
 
         wprintf(L"[%02d:%02d:%02d] %s\n",
             tm.tm_hour, tm.tm_min, tm.tm_sec, message.c_str());
@@ -145,23 +153,86 @@ private:
                     if (line[0] == L'#' || line[0] == L';')
                         continue;
 
-                    size_t equals_pos = line.find(L'=');
-                    if (equals_pos != std::wstring::npos)
+                    // Check for Games=[...] format
+                    if (line.find(L"Games=[") != std::wstring::npos)
                     {
-                        std::wstring key = line.substr(0, equals_pos);
-                        std::wstring value = line.substr(equals_pos + 1);
+                        std::wstring gamesList;
+                        size_t start = line.find(L'[');
 
-                        // Remove whitespace
-                        key.erase(0, key.find_first_not_of(L" \t"));
-                        key.erase(key.find_last_not_of(L" \t") + 1);
-                        value.erase(0, value.find_first_not_of(L" \t"));
-                        value.erase(value.find_last_not_of(L" \t") + 1);
+                        if (start != std::wstring::npos)
+                        {
+                            // Check if it's single line format: Games=[game1, game2]
+                            size_t end = line.find(L']', start);
+                            if (end != std::wstring::npos)
+                            {
+                                gamesList = line.substr(start + 1, end - start - 1);
+                            }
+                            else
+                            {
+                                // Multiline format: Games=[\n  game1,\n  game2\n]
+                                gamesList = line.substr(start + 1);
 
-                        TargetProcess target;
-                        target.exe_name = value;
-                        target.display_name = key;
-                        target.enabled = true;
-                        targets.push_back(target);
+                                // Continue reading lines until we find the closing ]
+                                while (std::getline(file, line) && line.find(L']') == std::wstring::npos)
+                                {
+                                    line_number++;
+                                    gamesList += L" " + line;
+                                }
+
+                                // Remove the closing ] from the last line
+                                if (line.find(L']') != std::wstring::npos)
+                                {
+                                    size_t endPos = line.find(L']');
+                                    gamesList += L" " + line.substr(0, endPos);
+                                }
+                            }
+
+                            // Split by comma and process each game
+                            size_t pos = 0;
+                            while (pos < gamesList.length())
+                            {
+                                size_t comma = gamesList.find(L',', pos);
+                                std::wstring game = gamesList.substr(pos, comma - pos);
+
+                                // Remove whitespace
+                                game.erase(0, game.find_first_not_of(L" \t"));
+                                game.erase(game.find_last_not_of(L" \t") + 1);
+
+                                if (!game.empty())
+                                {
+                                    TargetProcess target;
+                                    target.exe_name = game;
+                                    target.display_name = game.substr(0, game.find_last_of(L'.'));
+                                    target.enabled = true;
+                                    targets.push_back(target);
+                                }
+
+                                if (comma == std::wstring::npos) break;
+                                pos = comma + 1;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        // Handle traditional key=value format
+                        size_t equals_pos = line.find(L'=');
+                        if (equals_pos != std::wstring::npos)
+                        {
+                            std::wstring key = line.substr(0, equals_pos);
+                            std::wstring value = line.substr(equals_pos + 1);
+
+                            // Remove whitespace
+                            key.erase(0, key.find_first_not_of(L" \t"));
+                            key.erase(key.find_last_not_of(L" \t") + 1);
+                            value.erase(0, value.find_first_not_of(L" \t"));
+                            value.erase(value.find_last_not_of(L" \t") + 1);
+
+                            TargetProcess target;
+                            target.exe_name = value;
+                            target.display_name = key;
+                            target.enabled = true;
+                            targets.push_back(target);
+                        }
                     }
                 }
             }
@@ -440,6 +511,10 @@ public:
         SetupReShadePath();
 
         LogMessage(L"Monitoring " + std::to_wstring(targets.size()) + L" target executables");
+        for (auto& target : targets)
+        {
+            LogMessage(L"Target: " + target.display_name + L" (PID " + std::to_wstring(target.injected_pids.size()) + L")");
+        }
         LogMessage(L"Press Ctrl+C to stop monitoring");
 
         return true;
@@ -448,6 +523,9 @@ public:
     void Run()
     {
         running = true;
+
+        std::array<bool, 65536> process_seen = {};
+
 
         while (running)
         {
@@ -461,37 +539,44 @@ public:
                 PROCESSENTRY32W process = { sizeof(process) };
                 for (BOOL next = Process32FirstW(snapshot, &process); next; next = Process32NextW(snapshot, &process))
                 {
+                    auto pid = process.th32ProcessID;
+                    if (process_seen[pid]) continue;
+                    process_seen[pid] = true;
+
+                //  ..  LogMessage(L"Process: " + std::wstring(process.szExeFile) + L" (PID " + std::to_wstring(process.th32ProcessID) + L")");
                     if (!running) break; // Check for stop signal
 
                     for (auto& target : targets)
                     {
-                        if (!target.enabled) continue;
+                        // arguments target.exe_name
+                        //LogMessage(L"Arguments: " + target.exe_name + L" " + process.szExeFile);
+                       // if (!target.enabled) continue;
 
                         // Check if this process matches our target
                         if (_wcsicmp(process.szExeFile, target.exe_name.c_str()) == 0)
                         {
                             // Check if we've already injected into this PID
-                            if (target.injected_pids.find(process.th32ProcessID) == target.injected_pids.end())
-                            {
-                                if (verbose_logging)
-                                {
+                      //      if (target.injected_pids.find(process.th32ProcessID) == target.injected_pids.end())
+                         //   {
+                             //   if (verbose_logging)
+                              //  {
                                     LogMessage(L"Found new " + target.display_name + L" process (PID " +
                                              std::to_wstring(process.th32ProcessID) + L")");
-                                }
+                             //   }
 
                                 // Attempt injection
                                 if (InjectIntoProcess(process.th32ProcessID, target))
                                 {
                                     target.injected_pids.insert(process.th32ProcessID);
                                 }
-                            }
+                       //     }
                         }
                     }
                 }
             }
 
             // Sleep to avoid overburdening the CPU
-            Sleep(1000); // Check every second
+            //Sleep(1000); // Check every second
         }
     }
 
@@ -528,12 +613,12 @@ static void update_acl_for_uwp(LPWSTR path)
     SECURITY_INFORMATION siInfo = DACL_SECURITY_INFORMATION;
 
     // Get the existing DACL for the file
-    if (GetNamedSecurityInfo(path, SE_FILE_OBJECT, DACL_SECURITY_INFORMATION, nullptr, nullptr, &old_acl, nullptr, &sd) != ERROR_SUCCESS)
+    if (GetNamedSecurityInfoW(path, SE_FILE_OBJECT, DACL_SECURITY_INFORMATION, nullptr, nullptr, &old_acl, nullptr, &sd) != ERROR_SUCCESS)
         return;
 
     // Get the SID for 'ALL_APPLICATION_PACKAGES'
     PSID sid = nullptr;
-    if (ConvertStringSidToSid(TEXT("S-1-15-2-1"), &sid))
+    if (ConvertStringSidToSidW(L"S-1-15-2-1", &sid))
     {
         EXPLICIT_ACCESS access = {};
         access.grfAccessPermissions = GENERIC_READ | GENERIC_EXECUTE;
@@ -546,7 +631,7 @@ static void update_acl_for_uwp(LPWSTR path)
         // Update the DACL with the new entry
         if (SetEntriesInAcl(1, &access, old_acl, &new_acl) == ERROR_SUCCESS)
         {
-            SetNamedSecurityInfo(path, SE_FILE_OBJECT, siInfo, NULL, NULL, new_acl, NULL);
+            SetNamedSecurityInfoW(path, SE_FILE_OBJECT, siInfo, NULL, NULL, new_acl, NULL);
             LocalFree(new_acl);
         }
 

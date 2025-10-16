@@ -14,7 +14,6 @@ add_executable(enhanced_injector
 
 # Set target properties
 set_target_properties(enhanced_injector PROPERTIES
-    WIN32_EXECUTABLE TRUE
     OUTPUT_NAME "enhanced_injector"
 )
 

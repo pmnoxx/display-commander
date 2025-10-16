@@ -116,6 +116,11 @@ void OnInitEffectRuntime(reshade::api::effect_runtime *runtime) {
     if (runtime == nullptr) {
         return;
     }
+    extern bool IsWindowInvalid(HWND hwnd);
+
+    if (IsWindowInvalid(static_cast<HWND>(runtime->get_hwnd()))) {
+        return;
+    }
 
     g_reshade_runtime.store(runtime);
     LogInfo("ReShade effect runtime initialized - Input blocking now available");

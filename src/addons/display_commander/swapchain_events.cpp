@@ -50,6 +50,21 @@ std::atomic<bool> g_initialized_with_hwnd{false};
 
 #include <set>
 
+bool IsWindowInvalid(HWND hwnd) {
+    #if 1
+    return false;
+    #else
+    RECT rect;
+    if (!GetWindowRect(hwnd, &rect)) {
+        return true;
+    }
+    int width = rect.right - rect.left;
+    int height = rect.bottom - rect.top;
+    return width < 640 || height < 480;
+    #endif
+}
+
+
 // ============================================================================
 // D3D9 to D3D9Ex Upgrade Handler
 // ============================================================================
@@ -83,6 +98,9 @@ bool OnCreateDevice(reshade::api::device_api api, uint32_t& api_version) {
 void hookToSwapChain(reshade::api::swapchain *swapchain) {
     HWND hwnd = static_cast<HWND>(swapchain->get_hwnd());
     if (hwnd == g_proxy_hwnd) {
+        return;
+    }
+    if (IsWindowInvalid(hwnd)) {
         return;
     }
     static std::set<reshade::api::swapchain *> hooked_swapchains;
@@ -642,9 +660,13 @@ bool OnCreateSwapchainCapture(reshade::api::device_api api, reshade::api::swapch
 
     // Store swapchain description for UI display
     auto initial_desc_copy = std::make_shared<reshade::api::swapchain_desc>(desc);
+    if (desc.back_buffer.texture.width < 640) {
+        return false;
+    }
     g_last_swapchain_desc.store(initial_desc_copy);
     return res;
 }
+
 
 void OnInitSwapchain(reshade::api::swapchain *swapchain, bool resize) {
     if (swapchain == nullptr) {
@@ -655,6 +677,16 @@ void OnInitSwapchain(reshade::api::swapchain *swapchain, bool resize) {
     // Increment event counter
     g_swapchain_event_counters[SWAPCHAIN_EVENT_INIT_SWAPCHAIN].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
+
+    // backbuffer desc
+    HWND hwnd = static_cast<HWND>(swapchain->get_hwnd());
+    if (!hwnd) {
+        return;
+    }
+    if (IsWindowInvalid(hwnd)) {
+        return;
+    }
+    // how to check
     hookToSwapChain(swapchain);
 }
 
@@ -956,7 +988,6 @@ void AutoSetColorSpace(reshade::api::swapchain *swapchain) {
     // Set the appropriate color space
     swapchain3->SetColorSpace1(color_space);
 }
-
 // Update composition state after presents (required for valid stats)
 void OnPresentUpdateBefore(reshade::api::command_queue * command_queue, reshade::api::swapchain *swapchain,
                            const reshade::api::rect * /*source_rect*/, const reshade::api::rect * /*dest_rect*/,
@@ -967,6 +998,10 @@ void OnPresentUpdateBefore(reshade::api::command_queue * command_queue, reshade:
 
     HWND hwnd = static_cast<HWND>(swapchain->get_hwnd());
     if (hwnd == g_proxy_hwnd) {
+        return;
+    }
+
+    if (IsWindowInvalid(hwnd)) {
         return;
     }
 

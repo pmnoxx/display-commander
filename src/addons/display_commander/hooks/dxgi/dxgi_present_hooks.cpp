@@ -901,6 +901,12 @@ bool HookSwapchain(IDXGISwapChain *swapchain) {
         return false;
     }
     LogInfo("Hooking swapchain: 0x%p", swapchain);
+    static bool installed = false;
+    if (installed) {
+        LogInfo("IDXGISwapChain hooks already installed");
+        return true;
+    }
+    installed = true;
 
     g_hooked_swapchain = swapchain;
     g_swapchain_hooked.store(swapchain);
@@ -947,6 +953,7 @@ bool HookSwapchain(IDXGISwapChain *swapchain) {
 | **38** | **IDXGISwapChain3** | **SetColorSpace1** | **Set color space** |
 | **39** | **IDXGISwapChain3** | **ResizeBuffers1** | **Resize buffers with parameters** |
 */
+
 
     // Detect swapchain interface version for safe vtable access
     int interfaceVersion = GetSwapchainInterfaceVersion(swapchain);

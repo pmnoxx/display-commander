@@ -3,6 +3,7 @@
 #include "../globals.hpp"
 #include "../settings/swapchain_tab_settings.hpp"
 #include <MinHook.h>
+#include <algorithm>
 #include <string>
 #include <vector>
 
@@ -134,6 +135,87 @@ NVSDK_NGX_D3D11_EvaluateFeature_pfn NVSDK_NGX_D3D11_EvaluateFeature_Original = n
 // Global flag to track if vtable hooks are installed
 static bool g_ngx_vtable_hooks_installed = false;
 
+// DLSS preset parameter names arrays
+static const std::vector<std::string> g_dlss_sr_preset_params = {
+    "DLSS.Hint.Render.Preset.Quality",
+    "DLSS.Hint.Render.Preset.Balanced",
+    "DLSS.Hint.Render.Preset.Performance",
+    "DLSS.Hint.Render.Preset.UltraPerformance",
+    "DLSS.Hint.Render.Preset.UltraQuality",
+    "DLSS.Hint.Render.Preset.DLAA"
+};
+
+static const std::vector<std::string> g_dlss_rr_preset_params = {
+    "RayReconstruction.Hint.Render.Preset.Quality",
+    "RayReconstruction.Hint.Render.Preset.Balanced",
+    "RayReconstruction.Hint.Render.Preset.Performance",
+    "RayReconstruction.Hint.Render.Preset.UltraPerformance",
+    "RayReconstruction.Hint.Render.Preset.UltraQuality",
+    "RayReconstruction.Hint.Render.Preset.DLAA"
+};
+
+// Helper function to check if a parameter name is in the DLSS preset array
+static bool IsDLSSPresetParameter(const std::string& param_name, const std::vector<std::string>& preset_params) {
+    return std::find(preset_params.begin(), preset_params.end(), param_name) != preset_params.end();
+}
+
+// Function to automatically set DLSS preset parameters during initialization
+static void ApplyDLSSPresetParameters(NVSDK_NGX_Parameter* InParameters) {
+    if (InParameters == nullptr) {
+        return;
+    }
+
+    // Check if presets have already been applied
+    if (g_ngx_presets_initialized.load()) {
+        return;
+    }
+
+    // Check if preset override is enabled
+    if (!settings::g_swapchainTabSettings.dlss_preset_override_enabled.GetValue()) {
+        return;
+    }
+
+    LogInfo("Applying DLSS preset parameters during NGX initialization...");
+
+    // Get preset values
+    int sr_preset = settings::g_swapchainTabSettings.dlss_sr_preset_override.GetValue();
+    int rr_preset = settings::g_swapchainTabSettings.dlss_rr_preset_override.GetValue();
+
+    // Apply DLSS Super Resolution preset parameters
+    if (sr_preset > 0) { // 0 = Game Default, 1+ = Preset A+
+        for (const auto& param_name : g_dlss_sr_preset_params) {
+            if (NVSDK_NGX_Parameter_SetI_Original != nullptr) {
+                NVSDK_NGX_Parameter_SetI_Original(InParameters, param_name.c_str(), sr_preset);
+                g_ngx_parameters.update_int(param_name, sr_preset);
+                LogInfo("Applied DLSS SR preset: %s -> %d (Preset %c)",
+                       param_name.c_str(), sr_preset, 'A' + sr_preset - 1);
+            }
+        }
+    }
+
+    // Apply DLSS Ray Reconstruction preset parameters
+    if (rr_preset > 0) { // 0 = Game Default, 1+ = Preset A+
+        for (const auto& param_name : g_dlss_rr_preset_params) {
+            if (NVSDK_NGX_Parameter_SetI_Original != nullptr) {
+                NVSDK_NGX_Parameter_SetI_Original(InParameters, param_name.c_str(), rr_preset);
+                g_ngx_parameters.update_int(param_name, rr_preset);
+                LogInfo("Applied DLSS RR preset: %s -> %d (Preset %c)",
+                       param_name.c_str(), rr_preset, 'A' + rr_preset - 1);
+            }
+        }
+    }
+
+    // Mark as initialized
+    g_ngx_presets_initialized.store(true);
+    LogInfo("DLSS preset parameters applied successfully");
+}
+
+// Function to reset NGX preset initialization flag
+void ResetNGXPresetInitialization() {
+    g_ngx_presets_initialized.store(false);
+    LogInfo("NGX preset initialization flag reset - presets will be reapplied on next initialization");
+}
+
 // Hooked NVSDK_NGX_Parameter_SetF function
 void NVSDK_CONV NVSDK_NGX_Parameter_SetF_Detour(NVSDK_NGX_Parameter* InParameter, const char* InName, float InValue) {
     // Increment counter
@@ -193,13 +275,7 @@ void NVSDK_CONV NVSDK_NGX_Parameter_SetI_Detour(NVSDK_NGX_Parameter* InParameter
         std::string param_name = std::string(InName);
 
         // Check for DLSS Super Resolution preset parameters
-        if (param_name == "DLSS.Hint.Render.Preset.Quality" ||
-            param_name == "DLSS.Hint.Render.Preset.Balanced" ||
-            param_name == "DLSS.Hint.Render.Preset.Performance" ||
-            param_name == "DLSS.Hint.Render.Preset.UltraPerformance" ||
-            param_name == "DLSS.Hint.Render.Preset.UltraQuality" ||
-            param_name == "DLSS.Hint.Render.Preset.DLAA") {
-
+        if (IsDLSSPresetParameter(param_name, g_dlss_sr_preset_params)) {
             int sr_preset = settings::g_swapchainTabSettings.dlss_sr_preset_override.GetValue();
             if (sr_preset > 0) { // 0 = Game Default, 1+ = Preset A+
                 InValue = sr_preset;
@@ -208,13 +284,7 @@ void NVSDK_CONV NVSDK_NGX_Parameter_SetI_Detour(NVSDK_NGX_Parameter* InParameter
         }
 
         // Check for DLSS Ray Reconstruction preset parameters
-        if (param_name == "RayReconstruction.Hint.Render.Preset.Quality" ||
-            param_name == "RayReconstruction.Hint.Render.Preset.Balanced" ||
-            param_name == "RayReconstruction.Hint.Render.Preset.Performance" ||
-            param_name == "RayReconstruction.Hint.Render.Preset.UltraPerformance" ||
-            param_name == "RayReconstruction.Hint.Render.Preset.UltraQuality" ||
-            param_name == "RayReconstruction.Hint.Render.Preset.DLAA") {
-
+        if (IsDLSSPresetParameter(param_name, g_dlss_rr_preset_params)) {
             int rr_preset = settings::g_swapchainTabSettings.dlss_rr_preset_override.GetValue();
             if (rr_preset > 0) { // 0 = Game Default, 1+ = Preset A+
                 InValue = rr_preset;
@@ -252,13 +322,7 @@ void NVSDK_CONV NVSDK_NGX_Parameter_SetUI_Detour(NVSDK_NGX_Parameter* InParamete
         std::string param_name = std::string(InName);
 
         // Check for DLSS Super Resolution preset parameters
-        if (param_name == "DLSS.Hint.Render.Preset.Quality" ||
-            param_name == "DLSS.Hint.Render.Preset.Balanced" ||
-            param_name == "DLSS.Hint.Render.Preset.Performance" ||
-            param_name == "DLSS.Hint.Render.Preset.UltraPerformance" ||
-            param_name == "DLSS.Hint.Render.Preset.UltraQuality" ||
-            param_name == "DLSS.Hint.Render.Preset.DLAA") {
-
+        if (IsDLSSPresetParameter(param_name, g_dlss_sr_preset_params)) {
             int sr_preset = settings::g_swapchainTabSettings.dlss_sr_preset_override.GetValue();
             if (sr_preset > 0) { // 0 = Game Default, 1+ = Preset A+
                 InValue = static_cast<unsigned int>(sr_preset);
@@ -267,13 +331,7 @@ void NVSDK_CONV NVSDK_NGX_Parameter_SetUI_Detour(NVSDK_NGX_Parameter* InParamete
         }
 
         // Check for DLSS Ray Reconstruction preset parameters
-        if (param_name == "RayReconstruction.Hint.Render.Preset.Quality" ||
-            param_name == "RayReconstruction.Hint.Render.Preset.Balanced" ||
-            param_name == "RayReconstruction.Hint.Render.Preset.Performance" ||
-            param_name == "RayReconstruction.Hint.Render.Preset.UltraPerformance" ||
-            param_name == "RayReconstruction.Hint.Render.Preset.UltraQuality" ||
-            param_name == "RayReconstruction.Hint.Render.Preset.DLAA") {
-
+        if (IsDLSSPresetParameter(param_name, g_dlss_rr_preset_params)) {
             int rr_preset = settings::g_swapchainTabSettings.dlss_rr_preset_override.GetValue();
             if (rr_preset > 0) { // 0 = Game Default, 1+ = Preset A+
                 InValue = static_cast<unsigned int>(rr_preset);
@@ -690,6 +748,8 @@ bool HookNGXParameterVTable(NVSDK_NGX_Parameter* Params) {
                         reinterpret_cast<LPVOID*>(&NVSDK_NGX_Parameter_GetULL_Original),
                         "NVSDK_NGX_Parameter_GetULL");
 
+
+
     g_ngx_vtable_hooks_installed = true;
     LogInfo("NGX Parameter vtable hooks installed successfully");
     return true;
@@ -705,6 +765,8 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_GetParameters_Detour(NVSDK_NGX_Param
 
     if (ret == NVSDK_NGX_Result_Success && InParameters != nullptr && *InParameters != nullptr) {
         HookNGXParameterVTable(*InParameters);
+        // Apply DLSS preset parameters during initialization
+        ApplyDLSSPresetParameters(*InParameters);
     }
 
     return ret;
@@ -720,6 +782,8 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_AllocateParameters_Detour(NVSDK_NGX_
 
     if (ret == NVSDK_NGX_Result_Success && InParameters != nullptr && *InParameters != nullptr) {
         HookNGXParameterVTable(*InParameters);
+        // Apply DLSS preset parameters during initialization
+        ApplyDLSSPresetParameters(*InParameters);
     }
 
     return ret;
@@ -735,6 +799,8 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_GetParameters_Detour(NVSDK_NGX_Param
 
     if (ret == NVSDK_NGX_Result_Success && InParameters != nullptr && *InParameters != nullptr) {
         HookNGXParameterVTable(*InParameters);
+        // Apply DLSS preset parameters during initialization
+        ApplyDLSSPresetParameters(*InParameters);
     }
 
     return ret;
@@ -750,6 +816,8 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_AllocateParameters_Detour(NVSDK_NGX_
 
     if (ret == NVSDK_NGX_Result_Success && InParameters != nullptr && *InParameters != nullptr) {
         HookNGXParameterVTable(*InParameters);
+        // Apply DLSS preset parameters during initialization
+        ApplyDLSSPresetParameters(*InParameters);
     }
 
     return ret;

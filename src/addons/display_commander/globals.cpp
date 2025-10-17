@@ -579,3 +579,6 @@ size_t GetReShadeRuntimeCount() {
     utils::SRWLockShared lock(g_reshade_runtimes_lock);
     return g_reshade_runtimes.size();
 }
+
+// NGX preset initialization tracking
+std::atomic<bool> g_ngx_presets_initialized{false};

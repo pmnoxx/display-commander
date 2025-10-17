@@ -504,6 +504,8 @@ void DoInitializationWithoutHwnd(HMODULE h_module, DWORD fdw_reason) {
     // Load all settings at startup
     settings::LoadAllSettingsAtStartup();
 
+    HandleSafemode();
+
     // Pin the module to prevent premature unload
     HMODULE pinned_module = nullptr;
         if (GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_PIN,
@@ -617,7 +619,6 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
 
 
         // Handle safemode after config system is initialized
-        HandleSafemode();
 
         // Detect multiple ReShade versions AFTER successful registration to avoid interference
         // This prevents our module scanning from interfering with ReShade's internal module detection

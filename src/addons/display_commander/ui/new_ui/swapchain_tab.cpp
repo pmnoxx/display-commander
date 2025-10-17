@@ -1480,6 +1480,8 @@ void DrawDLSSPresetOverride() {
                             "Enable DLSS Preset Override")) {
             LogInfo("DLSS preset override %s",
                     settings::g_swapchainTabSettings.dlss_preset_override_enabled.GetValue() ? "enabled" : "disabled");
+            // Reset NGX preset initialization when override is enabled/disabled
+            ResetNGXPresetInitialization();
         }
 
         if (ImGui::IsItemHovered()) {
@@ -1496,6 +1498,8 @@ void DrawDLSSPresetOverride() {
                 const std::vector<const char*>& labels = settings::g_swapchainTabSettings.dlss_sr_preset_override.GetLabels();
                 LogInfo("DLSS SR preset changed to %s (index %d)",
                         labels[preset], preset);
+                // Reset NGX preset initialization so new preset will be applied on next initialization
+                ResetNGXPresetInitialization();
             }
             if (ImGui::IsItemHovered()) {
                 ImGui::SetTooltip("Select the DLSS Super Resolution preset to override.\nGame Default = 0, Preset A = 1, Preset B = 2, etc.");
@@ -1507,6 +1511,8 @@ void DrawDLSSPresetOverride() {
                 const std::vector<const char*>& labels = settings::g_swapchainTabSettings.dlss_rr_preset_override.GetLabels();
                 LogInfo("DLSS RR preset changed to %s (index %d)",
                         labels[preset], preset);
+                // Reset NGX preset initialization so new preset will be applied on next initialization
+                ResetNGXPresetInitialization();
             }
             if (ImGui::IsItemHovered()) {
                 ImGui::SetTooltip("Select the DLSS Ray Reconstruction preset to override.\nGame Default = 0, Preset A = 1, Preset B = 2, etc.");

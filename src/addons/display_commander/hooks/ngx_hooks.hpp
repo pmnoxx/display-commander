@@ -22,3 +22,6 @@ bool IsDLSSEnabled();
 bool IsDLSSGEnabled();
 bool IsRayReconstructionEnabled();
 std::string GetEnabledFeaturesSummary();
+
+// NGX preset management functions
+void ResetNGXPresetInitialization();

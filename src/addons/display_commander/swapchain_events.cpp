@@ -38,6 +38,7 @@
 
 #include <atomic>
 #include <sstream>
+#include <set>
 
 std::atomic<int> target_width = 3840;
 std::atomic<int> target_height = 2160;
@@ -47,22 +48,6 @@ bool is_target_resolution(int width, int height) {
            width * 9 == height * 16;
 }
 std::atomic<bool> g_initialized_with_hwnd{false};
-
-#include <set>
-
-bool IsWindowInvalid(HWND hwnd) {
-    #if 1
-    return false;
-    #else
-    RECT rect;
-    if (!GetWindowRect(hwnd, &rect)) {
-        return true;
-    }
-    int width = rect.right - rect.left;
-    int height = rect.bottom - rect.top;
-    return width < 640 || height < 480;
-    #endif
-}
 
 
 // ============================================================================
@@ -147,9 +132,6 @@ void OnDestroyEffectRuntime(reshade::api::effect_runtime *runtime) {
 void hookToSwapChain(reshade::api::swapchain *swapchain) {
     HWND hwnd = static_cast<HWND>(swapchain->get_hwnd());
     if (hwnd == g_proxy_hwnd) {
-        return;
-    }
-    if (IsWindowInvalid(hwnd)) {
         return;
     }
     static std::set<reshade::api::swapchain *> hooked_swapchains;
@@ -732,9 +714,6 @@ void OnInitSwapchain(reshade::api::swapchain *swapchain, bool resize) {
     if (!hwnd) {
         return;
     }
-    if (IsWindowInvalid(hwnd)) {
-        return;
-    }
     // how to check
     hookToSwapChain(swapchain);
 }
@@ -888,6 +867,7 @@ void flush_command_queue() {
         return;
 
     reshade::api::effect_runtime* runtime = GetFirstReShadeRuntime();
+
     if (runtime != nullptr) {
         runtime->get_command_queue()->flush_immediate_command_list();
     } else {
@@ -1057,7 +1037,13 @@ void OnPresentUpdateBefore(reshade::api::command_queue * command_queue, reshade:
         return;
     }
 
-    if (IsWindowInvalid(hwnd)) {
+    reshade::api::effect_runtime* first_runtime = GetFirstReShadeRuntime();
+    if (first_runtime != nullptr && first_runtime->get_hwnd() != hwnd) {
+        static int log_count = 0;
+        if (log_count < 100) {
+            LogInfo("Invalid Runtime HWND OnPresentUpdateBefore - First ReShade runtime: 0x%p, hwnd: 0x%p", first_runtime, hwnd);
+            log_count++;
+        }
         return;
     }
 

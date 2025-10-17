@@ -876,6 +876,13 @@ void OnPresentUpdateAfter2(void* native_device, DeviceTypeDC device_type) {
     RecordFrameTime(FrameTimeMode::kFrameBegin);
 }
 
+void flush_command_queue_with_command_queue(reshade::api::command_queue *command_queue) {
+    if (ShouldBackgroundSuppressOperation())
+        return;
+
+    command_queue->flush_immediate_command_list();
+}
+
 void flush_command_queue() {
     if (ShouldBackgroundSuppressOperation())
         return;
@@ -1096,7 +1103,7 @@ void OnPresentUpdateBefore(reshade::api::command_queue * command_queue, reshade:
         EnqueueGPUCompletion(swapchain, command_queue);
     }
 
-    flush_command_queue(); // Flush command queue before addons start processing
+    flush_command_queue_with_command_queue(command_queue); // Flush command queue before addons start processing
                            // to reduce rendering latency caused by reshade
 
     // Increment event counter

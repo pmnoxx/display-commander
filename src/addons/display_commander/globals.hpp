@@ -400,8 +400,16 @@ extern std::atomic<bool> g_auto_click_enabled;
 // VSync and Tearing Controls
 
 // ReShade Integration
-extern std::atomic<reshade::api::effect_runtime*> g_reshade_runtime;
+extern std::vector<reshade::api::effect_runtime*> g_reshade_runtimes;
+extern SRWLOCK g_reshade_runtimes_lock;
 extern void (*g_custom_fps_limiter_callback)();
+
+// ReShade runtime management functions
+void AddReShadeRuntime(reshade::api::effect_runtime* runtime);
+void RemoveReShadeRuntime(reshade::api::effect_runtime* runtime);
+reshade::api::effect_runtime* GetFirstReShadeRuntime();
+std::vector<reshade::api::effect_runtime*> GetAllReShadeRuntimes();
+size_t GetReShadeRuntimeCount();
 
 // Monitor Management
 // g_monitor_labels removed - UI now uses GetDisplayInfoForUI() directly for better reliability

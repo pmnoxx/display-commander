@@ -356,7 +356,7 @@ void OnPresentUpdateAfter(reshade::api::command_queue* /*queue*/, reshade::api::
 
   // Apply input blocking based on background/foreground; avoid OS calls and redundant writes
   {
-    reshade::api::effect_runtime* runtime = g_reshade_runtime.load();
+    reshade::api::effect_runtime* runtime = GetFirstReShadeRuntime();
     if (runtime != nullptr) {
       const bool is_background = g_app_in_background.load(std::memory_order_acquire);
       const bool wants_block_input = s_block_input_in_background.load();
@@ -366,11 +366,11 @@ void OnPresentUpdateAfter(reshade::api::command_queue* /*queue*/, reshade::api::
       }
       LogInfo("Block input in background: %s wants to block: %s", is_background ? "true" : "false", wants_block_input ? "true" : "false");
     } else {
-      // Log error when g_reshade_runtime is null and input blocking is desired
+      // Log error when no ReShade runtime is available and input blocking is desired
       const bool is_background = g_app_in_background.load(std::memory_order_acquire);
       const bool wants_block_input = s_block_input_in_background.load();
       if (wants_block_input) {
-        LogError("Block input in background failed: g_reshade_runtime is null (background=%s, setting=%s)",
+        LogError("Block input in background failed: no ReShade runtime available (background=%s, setting=%s)",
                  is_background ? "true" : "false",
                  s_block_input_in_background.load() ? "true" : "false");
       }
@@ -437,10 +437,12 @@ void OnPresentUpdateAfter(reshade::api::command_queue* /*queue*/, reshade::api::
 
 void flush_command_queue() {
   if (ShouldBackgroundSuppressOperation()) return;
-  if (g_reshade_runtime.load() != nullptr) {
-    g_reshade_runtime.load()->get_command_queue()->flush_immediate_command_list();
+
+  reshade::api::effect_runtime* runtime = GetFirstReShadeRuntime();
+  if (runtime != nullptr) {
+    runtime->get_command_queue()->flush_immediate_command_list();
   } else {
-    LogError("flush_command_queue failed: g_reshade_runtime is null");
+    LogError("flush_command_queue failed: no ReShade runtime available");
   }
 }
 
@@ -551,8 +553,8 @@ void OnPresentUpdateBefore(
   bool is_game_in_foreground = (game_hwnd != nullptr && GetForegroundWindow() == game_hwnd);
 
   if (s_enable_mute_unmute_shortcut.load() && is_game_in_foreground) {
-    // Get the runtime from the atomic variable
-    reshade::api::effect_runtime* runtime = g_reshade_runtime.load();
+    // Get the first available runtime
+    reshade::api::effect_runtime* runtime = GetFirstReShadeRuntime();
     if (runtime != nullptr) {
       // Check for Ctrl+M shortcut
       if (runtime->is_key_pressed('M') && runtime->is_key_down(VK_CONTROL)) {
@@ -569,14 +571,14 @@ void OnPresentUpdateBefore(
         }
       }
     } else {
-      LogError("Mute/unmute shortcut failed: g_reshade_runtime is null");
+      LogError("Mute/unmute shortcut failed: no ReShade runtime available");
     }
   }
 
   // Handle Ctrl+R shortcut for background toggle (only when game is in foreground)
   if (s_enable_background_toggle_shortcut.load() && is_game_in_foreground) {
-    // Get the runtime from the atomic variable
-    reshade::api::effect_runtime* runtime = g_reshade_runtime.load();
+    // Get the first available runtime
+    reshade::api::effect_runtime* runtime = GetFirstReShadeRuntime();
     if (runtime != nullptr) {
       // Check for Ctrl+R shortcut
       if (runtime->is_key_pressed('R') && runtime->is_key_down(VK_CONTROL)) {
@@ -598,7 +600,7 @@ void OnPresentUpdateBefore(
         LogInfo(oss.str().c_str());
       }
     } else {
-      LogError("Background toggle shortcut failed: g_reshade_runtime is null");
+      LogError("Background toggle shortcut failed: no ReShade runtime available");
     }
   }
 

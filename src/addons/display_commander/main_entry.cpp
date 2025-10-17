@@ -122,7 +122,7 @@ void OnInitEffectRuntime(reshade::api::effect_runtime *runtime) {
         return;
     }
 
-    g_reshade_runtime.store(runtime);
+    AddReShadeRuntime(runtime);
     LogInfo("ReShade effect runtime initialized - Input blocking now available");
 
     if (s_nvapi_fix_hdr10_colorspace.load()) {
@@ -155,7 +155,7 @@ bool OnReShadeOverlayOpen(reshade::api::effect_runtime *runtime, bool open, resh
         LogInfo("ReShade overlay opened - Input blocking active");
         // When ReShade overlay opens, we can also use its input blocking
         if (runtime != nullptr) {
-            g_reshade_runtime.store(runtime);
+            AddReShadeRuntime(runtime);
         }
     } else {
         LogInfo("ReShade overlay closed - Input blocking inactive");

@@ -6,6 +6,8 @@
 #include "settings/experimental_tab_settings.hpp"
 #include "settings/main_tab_settings.hpp"
 #include "utils.hpp"
+#include "utils/srwlock_wrapper.hpp"
+#include <algorithm>
 #include "../../../external/nvapi/nvapi.h"
 
 #include <d3d11.h>
@@ -90,8 +92,9 @@ std::atomic<bool> s_enable_d3d9_upgrade{true}; // Enabled by default
 std::atomic<bool> s_d3d9_upgrade_successful{false}; // Track if upgrade was successful
 std::atomic<bool> g_used_flipex{false}; // Track if FLIPEX is currently being used
 
-// ReShade runtime for input blocking
-std::atomic<reshade::api::effect_runtime *> g_reshade_runtime = nullptr;
+// ReShade runtimes for input blocking (multiple runtimes support)
+std::vector<reshade::api::effect_runtime *> g_reshade_runtimes;
+SRWLOCK g_reshade_runtimes_lock = SRWLOCK_INIT;
 
 // Prevent always on top behavior
 std::atomic<bool> s_prevent_always_on_top{true}; // Prevent games from staying on top by default
@@ -511,4 +514,54 @@ DLSSGSummary GetDLSSGSummary() {
     }
 
     return summary;
+}
+
+// Helper functions for ReShade runtime management
+void AddReShadeRuntime(reshade::api::effect_runtime* runtime) {
+    if (runtime == nullptr) {
+        return;
+    }
+
+    utils::SRWLockExclusive lock(g_reshade_runtimes_lock);
+
+    // Check if runtime is already in the vector
+    auto it = std::find(g_reshade_runtimes.begin(), g_reshade_runtimes.end(), runtime);
+    if (it == g_reshade_runtimes.end()) {
+        g_reshade_runtimes.push_back(runtime);
+        LogInfo("Added ReShade runtime to vector - Total runtimes: %zu", g_reshade_runtimes.size());
+    }
+}
+
+void RemoveReShadeRuntime(reshade::api::effect_runtime* runtime) {
+    if (runtime == nullptr) {
+        return;
+    }
+
+    utils::SRWLockExclusive lock(g_reshade_runtimes_lock);
+
+    auto it = std::find(g_reshade_runtimes.begin(), g_reshade_runtimes.end(), runtime);
+    if (it != g_reshade_runtimes.end()) {
+        g_reshade_runtimes.erase(it);
+        LogInfo("Removed ReShade runtime from vector - Total runtimes: %zu", g_reshade_runtimes.size());
+    }
+}
+
+reshade::api::effect_runtime* GetFirstReShadeRuntime() {
+    utils::SRWLockShared lock(g_reshade_runtimes_lock);
+
+    if (g_reshade_runtimes.empty()) {
+        return nullptr;
+    }
+
+    return g_reshade_runtimes[0];
+}
+
+std::vector<reshade::api::effect_runtime*> GetAllReShadeRuntimes() {
+    utils::SRWLockShared lock(g_reshade_runtimes_lock);
+    return g_reshade_runtimes;
+}
+
+size_t GetReShadeRuntimeCount() {
+    utils::SRWLockShared lock(g_reshade_runtimes_lock);
+    return g_reshade_runtimes.size();
 }

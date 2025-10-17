@@ -3,8 +3,8 @@
 #include "../../globals.hpp"
 #include "../../settings/main_tab_settings.hpp"
 #include "../../swapchain_events_power_saving.hpp"
-#include "../../utils.hpp"
 #include "../../config/display_commander_config.hpp"
+#include "../../utils/general_utils.hpp"
 
 #include <array>
 #include <algorithm>
@@ -14,6 +14,7 @@
 #include <dxgi1_6.h>
 #include <reshade_imgui.hpp>
 #include <wrl/client.h>
+#include <sstream>
 
 namespace ui::new_ui {
      bool has_last_metadata = false;
@@ -789,6 +790,185 @@ void DrawDxgiCompositionInfo() {
 }
 
 void DrawSwapchainInfo() {
+    // reshade runtimes list:
+    if (ImGui::CollapsingHeader("ReShade Runtimes", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::Text("ReShade runtimes count: %zu", g_reshade_runtimes.size());
+
+        for (size_t i = 0; i < g_reshade_runtimes.size(); ++i) {
+            auto* runtime = g_reshade_runtimes[i];
+
+            // Create a collapsible header for each runtime
+            std::stringstream ss;
+            ss << "Runtime " << i << " (0x" << std::hex << std::uppercase << reinterpret_cast<uintptr_t>(runtime) << ")";
+            std::string runtime_header = ss.str();
+            if (ImGui::CollapsingHeader(runtime_header.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
+                ImGui::Indent();
+
+                // Basic runtime info
+                ImGui::Text("Address: 0x%p", runtime);
+                ImGui::Text("HWND: 0x%p", runtime->get_hwnd());
+                ImGui::Text("Command Queue: 0x%p", runtime->get_command_queue());
+                ImGui::Text("Device: 0x%p", runtime->get_device());
+
+                // Backbuffer count and current index
+                uint32_t back_buffer_count = runtime->get_back_buffer_count();
+                uint32_t current_back_buffer_index = runtime->get_current_back_buffer_index();
+                ImGui::Text("Back Buffer Count: %d", back_buffer_count);
+                ImGui::Text("Current Back Buffer Index: %d", current_back_buffer_index);
+
+                // Detailed backbuffer information
+                if (back_buffer_count > 0) {
+                    ImGui::Separator();
+                    ImGui::Text("Backbuffer Details:");
+
+                    // Get device for resource queries
+                    auto* device = runtime->get_device();
+                    if (device != nullptr) {
+                        for (uint32_t j = 0; j < back_buffer_count; ++j) {
+                            try {
+                                auto back_buffer = runtime->get_back_buffer(j);
+                                if (back_buffer.handle != 0) {
+                                    auto desc = device->get_resource_desc(back_buffer);
+
+                                    std::stringstream buffer_ss;
+                                    buffer_ss << "Backbuffer " << j << " (0x" << std::hex << std::uppercase << back_buffer.handle << ")";
+                                    std::string buffer_header = buffer_ss.str();
+                                    if (ImGui::CollapsingHeader(buffer_header.c_str())) {
+                                        ImGui::Indent();
+
+                                        // Resource type
+                                        const char* type_str = "Unknown";
+                                        switch (desc.type) {
+                                            case reshade::api::resource_type::buffer: type_str = "Buffer"; break;
+                                            case reshade::api::resource_type::texture_1d: type_str = "Texture 1D"; break;
+                                            case reshade::api::resource_type::texture_2d: type_str = "Texture 2D"; break;
+                                            case reshade::api::resource_type::texture_3d: type_str = "Texture 3D"; break;
+                                            case reshade::api::resource_type::surface: type_str = "Surface"; break;
+                                            default: break;
+                                        }
+                                        ImGui::Text("Type: %s", type_str);
+
+                                        // Texture dimensions and properties
+                                        if (desc.type == reshade::api::resource_type::texture_2d ||
+                                            desc.type == reshade::api::resource_type::texture_3d ||
+                                            desc.type == reshade::api::resource_type::surface) {
+                                            ImGui::Text("Dimensions: %dx%d", desc.texture.width, desc.texture.height);
+                                            ImGui::Text("Depth/Layers: %d", desc.texture.depth_or_layers);
+                                            ImGui::Text("Mip Levels: %d", desc.texture.levels);
+                                            ImGui::Text("Samples: %d", desc.texture.samples);
+
+                                            // Format information
+                                            const char* format_str = "Unknown";
+                                            switch (desc.texture.format) {
+                                                case reshade::api::format::r8g8b8a8_unorm: format_str = "R8G8B8A8_UNORM"; break;
+                                                case reshade::api::format::r8g8b8a8_unorm_srgb: format_str = "R8G8B8A8_UNORM_SRGB"; break;
+                                                case reshade::api::format::b8g8r8a8_unorm: format_str = "B8G8R8A8_UNORM"; break;
+                                                case reshade::api::format::b8g8r8a8_unorm_srgb: format_str = "B8G8R8A8_UNORM_SRGB"; break;
+                                                case reshade::api::format::r10g10b10a2_unorm: format_str = "R10G10B10A2_UNORM"; break;
+                                                case reshade::api::format::r16g16b16a16_float: format_str = "R16G16B16A16_FLOAT"; break;
+                                                case reshade::api::format::r32g32b32a32_float: format_str = "R32G32B32A32_FLOAT"; break;
+                                                case reshade::api::format::r11g11b10_float: format_str = "R11G11B10_FLOAT"; break;
+                                                case reshade::api::format::r16g16b16a16_unorm: format_str = "R16G16B16A16_UNORM"; break;
+                                                case reshade::api::format::r16g16b16a16_snorm: format_str = "R16G16B16A16_SNORM"; break;
+                                                case reshade::api::format::r32g32b32a32_uint: format_str = "R32G32B32A32_UINT"; break;
+                                                case reshade::api::format::r32g32b32a32_sint: format_str = "R32G32B32A32_SINT"; break;
+                                                case reshade::api::format::d24_unorm_s8_uint: format_str = "D24_UNORM_S8_UINT"; break;
+                                                case reshade::api::format::d32_float: format_str = "D32_FLOAT"; break;
+                                                case reshade::api::format::d32_float_s8_uint: format_str = "D32_FLOAT_S8_UINT"; break;
+                                                case reshade::api::format::bc1_unorm: format_str = "BC1_UNORM"; break;
+                                                case reshade::api::format::bc1_unorm_srgb: format_str = "BC1_UNORM_SRGB"; break;
+                                                case reshade::api::format::bc2_unorm: format_str = "BC2_UNORM"; break;
+                                                case reshade::api::format::bc2_unorm_srgb: format_str = "BC2_UNORM_SRGB"; break;
+                                                case reshade::api::format::bc3_unorm: format_str = "BC3_UNORM"; break;
+                                                case reshade::api::format::bc3_unorm_srgb: format_str = "BC3_UNORM_SRGB"; break;
+                                                case reshade::api::format::bc4_unorm: format_str = "BC4_UNORM"; break;
+                                                case reshade::api::format::bc4_snorm: format_str = "BC4_SNORM"; break;
+                                                case reshade::api::format::bc5_unorm: format_str = "BC5_UNORM"; break;
+                                                case reshade::api::format::bc5_snorm: format_str = "BC5_SNORM"; break;
+                                                case reshade::api::format::bc6h_ufloat: format_str = "BC6H_UFLOAT"; break;
+                                                case reshade::api::format::bc6h_sfloat: format_str = "BC6H_SFLOAT"; break;
+                                                case reshade::api::format::bc7_unorm: format_str = "BC7_UNORM"; break;
+                                                case reshade::api::format::bc7_unorm_srgb: format_str = "BC7_UNORM_SRGB"; break;
+                                                default: format_str = "Custom/Unknown"; break;
+                                            }
+                                            ImGui::Text("Format: %s", format_str);
+                                        }
+
+                                        // Buffer information
+                                        if (desc.type == reshade::api::resource_type::buffer) {
+                                            ImGui::Text("Size: %llu bytes", desc.buffer.size);
+                                            ImGui::Text("Stride: %u bytes", desc.buffer.stride);
+                                        }
+
+                                        // Memory heap information
+                                        const char* heap_str = "Unknown";
+                                        switch (desc.heap) {
+                                            case reshade::api::memory_heap::unknown: heap_str = "Unknown"; break;
+                                            case reshade::api::memory_heap::gpu_only: heap_str = "GPU Only"; break;
+                                            case reshade::api::memory_heap::cpu_to_gpu: heap_str = "CPU to GPU"; break;
+                                            case reshade::api::memory_heap::gpu_to_cpu: heap_str = "GPU to CPU"; break;
+                                            case reshade::api::memory_heap::cpu_only: heap_str = "CPU Only"; break;
+                                            case reshade::api::memory_heap::custom: heap_str = "Custom"; break;
+                                        }
+                                        ImGui::Text("Memory Heap: %s", heap_str);
+
+                                        // Usage flags
+                                        std::string usage_flags;
+                                        if ((desc.usage & reshade::api::resource_usage::render_target) != reshade::api::resource_usage::undefined) usage_flags += "RenderTarget ";
+                                        if ((desc.usage & reshade::api::resource_usage::depth_stencil) != reshade::api::resource_usage::undefined) usage_flags += "DepthStencil ";
+                                        if ((desc.usage & reshade::api::resource_usage::shader_resource) != reshade::api::resource_usage::undefined) usage_flags += "ShaderResource ";
+                                        if ((desc.usage & reshade::api::resource_usage::copy_source) != reshade::api::resource_usage::undefined) usage_flags += "CopySource ";
+                                        if ((desc.usage & reshade::api::resource_usage::copy_dest) != reshade::api::resource_usage::undefined) usage_flags += "CopyDest ";
+                                        if ((desc.usage & reshade::api::resource_usage::resolve_source) != reshade::api::resource_usage::undefined) usage_flags += "ResolveSource ";
+                                        if ((desc.usage & reshade::api::resource_usage::resolve_dest) != reshade::api::resource_usage::undefined) usage_flags += "ResolveDest ";
+                                        if ((desc.usage & reshade::api::resource_usage::present) != reshade::api::resource_usage::undefined) usage_flags += "Present ";
+                                        if ((desc.usage & reshade::api::resource_usage::acceleration_structure) != reshade::api::resource_usage::undefined) usage_flags += "AccelerationStructure ";
+                                        if ((desc.usage & reshade::api::resource_usage::unordered_access) != reshade::api::resource_usage::undefined) usage_flags += "UnorderedAccess ";
+
+                                        if (usage_flags.empty()) {
+                                            usage_flags = "None";
+                                        } else {
+                                            usage_flags.pop_back(); // Remove trailing space
+                                        }
+                                        ImGui::Text("Usage: %s", usage_flags.c_str());
+
+                                        // Resource flags
+                                        std::string flag_str;
+                                        if ((desc.flags & reshade::api::resource_flags::shared) != reshade::api::resource_flags::none) flag_str += "Shared ";
+                                        if ((desc.flags & reshade::api::resource_flags::shared_nt_handle) != reshade::api::resource_flags::none) flag_str += "SharedNTHandle ";
+                                        if ((desc.flags & reshade::api::resource_flags::cube_compatible) != reshade::api::resource_flags::none) flag_str += "CubeCompatible ";
+                                        if ((desc.flags & reshade::api::resource_flags::sparse_binding) != reshade::api::resource_flags::none) flag_str += "SparseBinding ";
+                                        if ((desc.flags & reshade::api::resource_flags::generate_mipmaps) != reshade::api::resource_flags::none) flag_str += "GenerateMipmaps ";
+                                        if ((desc.flags & reshade::api::resource_flags::dynamic) != reshade::api::resource_flags::none) flag_str += "Dynamic ";
+
+                                        if (flag_str.empty()) {
+                                            flag_str = "None";
+                                        } else {
+                                            flag_str.pop_back(); // Remove trailing space
+                                        }
+                                        ImGui::Text("Flags: %s", flag_str.c_str());
+
+                                        // Current buffer indicator
+                                        if (j == current_back_buffer_index) {
+                                            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "*** CURRENT BUFFER ***");
+                                        }
+
+                                        ImGui::Unindent();
+                                    }
+                                }
+                            } catch (...) {
+                                ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "Backbuffer %d: Error querying resource", j);
+                            }
+                        }
+                    } else {
+                        ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "Device not available for resource queries");
+                    }
+                }
+
+                ImGui::Unindent();
+            }
+        }
+    }
 
     if (ImGui::CollapsingHeader("Swapchain Information", ImGuiTreeNodeFlags_DefaultOpen)) {
         // warning this tab may crash

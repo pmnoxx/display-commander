@@ -133,12 +133,9 @@ void OnDestroyEffectRuntime(reshade::api::effect_runtime *runtime) {
 
     LogInfo("Effect runtime destroyed - performing cleanup operations runtime: %p", runtime);
 
-    // Clear the global runtime reference if it matches the destroyed runtime
-    reshade::api::effect_runtime *current_runtime = g_reshade_runtime.load();
-    if (current_runtime == runtime) {
-        g_reshade_runtime.store(nullptr);
-        LogInfo("Cleared global runtime reference");
-    }
+    // Remove the runtime from the global runtime vector
+    RemoveReShadeRuntime(runtime);
+    LogInfo("Removed runtime from global runtime vector");
 
     // Reset any runtime-specific state
     // Note: Most cleanup is handled in DLL_PROCESS_DETACH, but this provides
@@ -882,10 +879,12 @@ void OnPresentUpdateAfter2(void* native_device, DeviceTypeDC device_type) {
 void flush_command_queue() {
     if (ShouldBackgroundSuppressOperation())
         return;
-    if (g_reshade_runtime.load() != nullptr) {
-        g_reshade_runtime.load()->get_command_queue()->flush_immediate_command_list();
+
+    reshade::api::effect_runtime* runtime = GetFirstReShadeRuntime();
+    if (runtime != nullptr) {
+        runtime->get_command_queue()->flush_immediate_command_list();
     } else {
-        LogError("flush_command_queue failed: g_reshade_runtime is null");
+        LogError("flush_command_queue failed: no ReShade runtime available");
     }
 }
 

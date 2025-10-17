@@ -1310,7 +1310,7 @@ void XInputWidget::ExecuteChordAction(const XInputSharedState::Chord &chord, DWO
         LogInfo("XXX Taking screenshot via chord detection");
 
         // Get the ReShade runtime instance
-        reshade::api::effect_runtime *runtime = g_reshade_runtime.load();
+        reshade::api::effect_runtime *runtime = GetFirstReShadeRuntime();
 
         if (runtime != nullptr) {
             // Set the screenshot trigger flag - this will be handled in the present event
@@ -1324,7 +1324,7 @@ void XInputWidget::ExecuteChordAction(const XInputSharedState::Chord &chord, DWO
         LogInfo("XXX Toggling ReShade UI via chord detection");
 
         // Get the ReShade runtime instance
-        reshade::api::effect_runtime *runtime = g_reshade_runtime.load();
+        reshade::api::effect_runtime *runtime = GetFirstReShadeRuntime();
 
         if (runtime != nullptr) {
             try {
@@ -1437,7 +1437,7 @@ void ProcessChordDetection(DWORD user_index, WORD button_state) {
                 LogInfo("XXX Taking screenshot via chord detection");
 
                 // Get the ReShade runtime instance
-                reshade::api::effect_runtime *runtime = g_reshade_runtime.load();
+                reshade::api::effect_runtime *runtime = GetFirstReShadeRuntime();
 
                 if (runtime != nullptr) {
                     // Set the screenshot trigger flag - this will be handled in the present event
@@ -1451,7 +1451,7 @@ void ProcessChordDetection(DWORD user_index, WORD button_state) {
                 LogInfo("XXX Toggling ReShade UI via chord detection");
 
                 // Get the ReShade runtime instance
-                reshade::api::effect_runtime *runtime = g_reshade_runtime.load();
+                reshade::api::effect_runtime *runtime = GetFirstReShadeRuntime();
 
                 if (runtime != nullptr) {
                     try {
@@ -1520,7 +1520,7 @@ void CheckAndHandleScreenshot() {
             shared_state->trigger_screenshot.store(false);
 
             // Get the ReShade runtime instance
-            reshade::api::effect_runtime *runtime = g_reshade_runtime.load();
+            reshade::api::effect_runtime *runtime = GetFirstReShadeRuntime();
 
             if (runtime != nullptr) {
                 // Use PrintScreen key simulation to trigger ReShade's built-in screenshot system

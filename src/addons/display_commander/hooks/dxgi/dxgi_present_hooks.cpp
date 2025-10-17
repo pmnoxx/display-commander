@@ -921,7 +921,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetHDRMetaData_Detour(IDXGISwapChain4 *
 
 // Global variables to track hooked swapchains
 namespace {
-    std::atomic<IDXGISwapChain *> g_swapchain_hooked{nullptr};
+    // Legacy variables - kept for compatibility but will be replaced by SwapchainTrackingManager
     IDXGISwapChain *g_hooked_swapchain = nullptr;
 } // namespace
 
@@ -930,7 +930,7 @@ bool HookFactoryVTable(IDXGIFactory *factory);
 
 // Hook a specific swapchain's vtable
 bool HookSwapchain(IDXGISwapChain *swapchain) {
-    if (g_swapchain_hooked.load() == swapchain) {
+    if (g_swapchainTrackingManager.IsSwapchainTracked(swapchain)) {
         return false;
     }
     LogInfo("Hooking swapchain: 0x%p", swapchain);
@@ -942,7 +942,7 @@ bool HookSwapchain(IDXGISwapChain *swapchain) {
     installed = true;
 
     g_hooked_swapchain = swapchain;
-    g_swapchain_hooked.store(swapchain);
+    g_swapchainTrackingManager.AddSwapchain(swapchain);
 
     // Get the vtable
     void **vtable = *(void ***)swapchain;
@@ -1411,6 +1411,35 @@ bool HookFactory(IDXGIFactory *factory) {
 // Record the native swapchain used in OnPresentUpdateBefore
 void RecordPresentUpdateSwapchain(IDXGISwapChain *swapchain) {
     g_last_present_update_swapchain.store(swapchain);
+}
+
+// Swapchain tracking management functions
+bool IsSwapchainTracked(IDXGISwapChain *swapchain) {
+    return g_swapchainTrackingManager.IsSwapchainTracked(swapchain);
+}
+
+bool AddSwapchainToTracking(IDXGISwapChain *swapchain) {
+    return g_swapchainTrackingManager.AddSwapchain(swapchain);
+}
+
+bool RemoveSwapchainFromTracking(IDXGISwapChain *swapchain) {
+    return g_swapchainTrackingManager.RemoveSwapchain(swapchain);
+}
+
+std::vector<IDXGISwapChain*> GetAllTrackedSwapchains() {
+    return g_swapchainTrackingManager.GetAllTrackedSwapchains();
+}
+
+size_t GetTrackedSwapchainCount() {
+    return g_swapchainTrackingManager.GetTrackedSwapchainCount();
+}
+
+void ClearAllTrackedSwapchains() {
+    g_swapchainTrackingManager.ClearAll();
+}
+
+bool HasTrackedSwapchains() {
+    return g_swapchainTrackingManager.HasTrackedSwapchains();
 }
 
 } // namespace display_commanderhooks::dxgi

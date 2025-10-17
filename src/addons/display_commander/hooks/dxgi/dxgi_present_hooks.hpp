@@ -7,6 +7,8 @@
 #include <dxgi1_4.h>
 #include <dxgi1_5.h>
 
+#include <vector>
+
 /*
  * IDXGISwapChain VTable Layout Reference
  * ======================================
@@ -158,5 +160,14 @@ bool HookFactory(IDXGIFactory *factory);
 
 // Record the native swapchain used in OnPresentUpdateBefore
 void RecordPresentUpdateSwapchain(IDXGISwapChain *swapchain);
+
+// Swapchain tracking management functions
+bool IsSwapchainTracked(IDXGISwapChain *swapchain);
+bool AddSwapchainToTracking(IDXGISwapChain *swapchain);
+bool RemoveSwapchainFromTracking(IDXGISwapChain *swapchain);
+std::vector<IDXGISwapChain*> GetAllTrackedSwapchains();
+size_t GetTrackedSwapchainCount();
+void ClearAllTrackedSwapchains();
+bool HasTrackedSwapchains();
 
 } // namespace display_commanderhooks::dxgi

@@ -165,6 +165,9 @@ std::unique_ptr<LatentSyncManager> g_latentSyncManager = std::make_unique<Latent
 // Global Latency Manager instance
 std::unique_ptr<LatencyManager> g_latencyManager = std::make_unique<LatencyManager>();
 
+// Global Swapchain Tracking Manager instance
+SwapchainTrackingManager g_swapchainTrackingManager;
+
 // Backbuffer dimensions
 std::atomic<int> g_last_backbuffer_width{0};
 std::atomic<int> g_last_backbuffer_height{0};

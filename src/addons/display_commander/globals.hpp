@@ -3,6 +3,7 @@
 #include "display_cache.hpp"
 #include "dxgi/custom_fps_limiter.hpp"
 #include "latent_sync/latent_sync_manager.hpp"
+#include "utils/srwlock_wrapper.hpp"
 
 #include <windows.h>
 
@@ -20,6 +21,7 @@
 #include <thread>
 #include <vector>
 #include <unordered_map>
+#include <unordered_set>
 #include <shared_mutex>
 
 // NVAPI types
@@ -42,6 +44,7 @@ class SpinLock;
 class BackgroundWindowManager;
 class LatentSyncManager;
 class LatencyManager;
+class SwapchainTrackingManager;
 
 // Unified parameter value that can hold multiple types
 struct ParameterValue {
@@ -315,6 +318,84 @@ struct GlobalWindowState {
     }
 };
 
+// Swapchain tracking manager for thread-safe swapchain management
+class SwapchainTrackingManager {
+private:
+    std::unordered_set<IDXGISwapChain*> hooked_swapchains_;
+    mutable SRWLOCK lock_;
+
+public:
+    SwapchainTrackingManager() : lock_(SRWLOCK_INIT) {}
+
+    // Add a swapchain to the tracked set
+    bool AddSwapchain(IDXGISwapChain* swapchain) {
+        if (swapchain == nullptr) {
+            return false;
+        }
+
+        utils::SRWLockExclusive lock(lock_);
+
+        // Check if already tracked
+        if (hooked_swapchains_.find(swapchain) != hooked_swapchains_.end()) {
+            return false; // Already tracked
+        }
+
+        hooked_swapchains_.insert(swapchain);
+        return true;
+    }
+
+    // Remove a swapchain from the tracked set
+    bool RemoveSwapchain(IDXGISwapChain* swapchain) {
+        if (swapchain == nullptr) {
+            return false;
+        }
+
+        utils::SRWLockExclusive lock(lock_);
+
+        auto it = hooked_swapchains_.find(swapchain);
+        if (it != hooked_swapchains_.end()) {
+            hooked_swapchains_.erase(it);
+            return true;
+        }
+
+        return false; // Not found
+    }
+
+    // Check if a swapchain is being tracked
+    bool IsSwapchainTracked(IDXGISwapChain* swapchain) const {
+        if (swapchain == nullptr) {
+            return false;
+        }
+
+        utils::SRWLockShared lock(lock_);
+        return hooked_swapchains_.find(swapchain) != hooked_swapchains_.end();
+    }
+
+    // Get all tracked swapchains (returns a copy for thread safety)
+    std::vector<IDXGISwapChain*> GetAllTrackedSwapchains() const {
+        utils::SRWLockShared lock(lock_);
+        return std::vector<IDXGISwapChain*>(hooked_swapchains_.begin(), hooked_swapchains_.end());
+    }
+
+    // Get the number of tracked swapchains
+    size_t GetTrackedSwapchainCount() const {
+        utils::SRWLockShared lock(lock_);
+        return hooked_swapchains_.size();
+    }
+
+    // Clear all tracked swapchains
+    void ClearAll() {
+        utils::SRWLockExclusive lock(lock_);
+        hooked_swapchains_.clear();
+    }
+
+    // Check if any swapchains are being tracked
+    bool HasTrackedSwapchains() const {
+        utils::SRWLockShared lock(lock_);
+        return !hooked_swapchains_.empty();
+    }
+};
+
 // Performance stats structure
 struct PerfSample {
     double timestamp_seconds;
@@ -442,6 +523,9 @@ extern std::unique_ptr<LatentSyncManager> g_latentSyncManager;
 
 // Latency Manager
 extern std::unique_ptr<LatencyManager> g_latencyManager;
+
+// Global Swapchain Tracking Manager instance
+extern SwapchainTrackingManager g_swapchainTrackingManager;
 
 // Present duration tracking
 extern std::atomic<LONGLONG> g_present_duration_ns;

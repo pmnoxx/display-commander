@@ -2,6 +2,8 @@
 #include "../utils.hpp"
 #include "../globals.hpp"
 #include <MinHook.h>
+#include <string>
+#include <vector>
 
 // NGX type definitions (minimal subset needed for hooks)
 #define NVSDK_CONV __cdecl
@@ -390,6 +392,25 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_Init_ProjectID_Detour(const char *In
 NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_CreateFeature_Detour(ID3D12GraphicsCommandList *InCmdList, NVSDK_NGX_Feature InFeatureID, NVSDK_NGX_Parameter *InParameters, NVSDK_NGX_Handle **OutHandle) {
     LogInfo("NGX D3D12 CreateFeature called - FeatureID: %d", InFeatureID);
 
+    // Track enabled features based on FeatureID
+    switch (InFeatureID) {
+        case NVSDK_NGX_Feature_SuperSampling:
+            LogInfo("DLSS Super Resolution feature being created");
+            g_ngx_parameters.update_int("Feature.DLSS.Enabled", 1);
+            break;
+        case NVSDK_NGX_Feature_FrameGeneration:
+            LogInfo("DLSS Frame Generation feature being created");
+            g_ngx_parameters.update_int("Feature.DLSSG.Enabled", 1);
+            break;
+        case NVSDK_NGX_Feature_RayReconstruction:
+            LogInfo("Ray Reconstruction feature being created");
+            g_ngx_parameters.update_int("Feature.RayReconstruction.Enabled", 1);
+            break;
+        default:
+            LogInfo("Unknown NGX feature being created - FeatureID: %d", InFeatureID);
+            break;
+    }
+
     // Hook the parameter vtable if we have parameters
     if (InParameters != nullptr) {
         HookNGXParameterVTable(InParameters);
@@ -465,6 +486,25 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_Init_ProjectID_Detour(const char *In
 // D3D11 CreateFeature detour
 NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_CreateFeature_Detour(ID3D11DeviceContext *InDevCtx, NVSDK_NGX_Feature InFeatureID, NVSDK_NGX_Parameter *InParameters, NVSDK_NGX_Handle **OutHandle) {
     LogInfo("NGX D3D11 CreateFeature called - FeatureID: %d", InFeatureID);
+
+    // Track enabled features based on FeatureID
+    switch (InFeatureID) {
+        case NVSDK_NGX_Feature_SuperSampling:
+            LogInfo("DLSS Super Resolution feature being created (D3D11)");
+            g_ngx_parameters.update_int("Feature.DLSS.Enabled", 1);
+            break;
+        case NVSDK_NGX_Feature_FrameGeneration:
+            LogInfo("DLSS Frame Generation feature being created (D3D11)");
+            g_ngx_parameters.update_int("Feature.DLSSG.Enabled", 1);
+            break;
+        case NVSDK_NGX_Feature_RayReconstruction:
+            LogInfo("Ray Reconstruction feature being created (D3D11)");
+            g_ngx_parameters.update_int("Feature.RayReconstruction.Enabled", 1);
+            break;
+        default:
+            LogInfo("Unknown NGX feature being created (D3D11) - FeatureID: %d", InFeatureID);
+            break;
+    }
 
     // Hook the parameter vtable if we have parameters
     if (InParameters != nullptr) {
@@ -776,4 +816,48 @@ uint64_t GetTotalNGXHookCount() {
         total += g_swapchain_event_counters[i].load();
     }
     return total;
+}
+
+// Feature status checking functions
+bool IsDLSSEnabled() {
+    int enabled;
+    return g_ngx_parameters.get_as_int("Feature.DLSS.Enabled", enabled) && enabled == 1;
+}
+
+bool IsDLSSGEnabled() {
+    int enabled;
+    return g_ngx_parameters.get_as_int("Feature.DLSSG.Enabled", enabled) && enabled == 1;
+}
+
+bool IsRayReconstructionEnabled() {
+    int enabled;
+    return g_ngx_parameters.get_as_int("Feature.RayReconstruction.Enabled", enabled) && enabled == 1;
+}
+
+std::string GetEnabledFeaturesSummary() {
+    std::vector<std::string> enabled_features;
+
+    if (IsDLSSEnabled()) {
+        enabled_features.push_back("DLSS");
+    }
+    if (IsDLSSGEnabled()) {
+        enabled_features.push_back("DLSS-G");
+    }
+    if (IsRayReconstructionEnabled()) {
+        enabled_features.push_back("Ray Reconstruction");
+    }
+
+    if (enabled_features.empty()) {
+        return "No NGX features detected";
+    }
+
+    std::string result;
+    for (size_t i = 0; i < enabled_features.size(); ++i) {
+        if (i > 0) {
+            result += ", ";
+        }
+        result += enabled_features[i];
+    }
+
+    return result;
 }

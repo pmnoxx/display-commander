@@ -615,9 +615,14 @@ namespace settings {
 class ExperimentalTabSettings;
 class DeveloperTabSettings;
 class MainTabSettings;
+class SwapchainTabSettings;
 extern ExperimentalTabSettings g_experimentalTabSettings;
 extern DeveloperTabSettings g_developerTabSettings;
 extern MainTabSettings g_mainTabSettings;
+extern SwapchainTabSettings g_swapchainTabSettings;
+
+// Function to load all settings at startup
+void LoadAllSettingsAtStartup();
 }  // namespace settings
 
 // Swapchain event counter indices

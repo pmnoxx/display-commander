@@ -19,8 +19,7 @@ namespace ui::new_ui {
 
 // Initialize experimental tab
 void InitExperimentalTab() {
-    LogInfo("InitExperimentalTab() - Starting to load experimental tab settings");
-    settings::g_experimentalTabSettings.LoadAll();
+    LogInfo("InitExperimentalTab() - Settings already loaded at startup");
 
     // Apply the loaded settings to the actual hook system
     // This ensures the hook system matches the UI settings
@@ -71,10 +70,6 @@ void DrawExperimentalTab() {
     }
     ImGui::Spacing();
 
-    if (ImGui::CollapsingHeader("DLSS Preset Override", ImGuiTreeNodeFlags_None)) {
-        DrawDLSSPresetOverride();
-    }
-    ImGui::Spacing();
 
     if (ImGui::CollapsingHeader("Backbuffer Format Override", ImGuiTreeNodeFlags_None)) {
         // Draw backbuffer format override section
@@ -1133,70 +1128,5 @@ void DrawHIDSuppression() {
     }
 }
 
-void DrawDLSSPresetOverride() {
-    ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== DLSS Preset Override ===");
-
-    // Warning about experimental nature
-    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), ICON_FK_WARNING " EXPERIMENTAL FEATURE - May require alt-tab to apply changes!");
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("This feature overrides DLSS presets at runtime.\nChanges may require alt-tabbing out and back into the game to take effect.\nUse with caution as it may cause rendering issues in some games.");
-    }
-
-    ImGui::Spacing();
-
-    // Enable/disable checkbox
-    if (CheckboxSetting(settings::g_experimentalTabSettings.dlss_preset_override_enabled,
-                        "Enable DLSS Preset Override")) {
-        LogInfo("DLSS preset override %s",
-                settings::g_experimentalTabSettings.dlss_preset_override_enabled.GetValue() ? "enabled" : "disabled");
-    }
-
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Override DLSS presets at runtime using NGX parameter interception.\nThis works similar to Special-K's DLSS preset override feature.");
-    }
-
-    // Preset selection (only enabled when override is enabled)
-    if (settings::g_experimentalTabSettings.dlss_preset_override_enabled.GetValue()) {
-        ImGui::Spacing();
-
-        // DLSS Super Resolution preset
-        if (ComboSettingWrapper(settings::g_experimentalTabSettings.dlss_sr_preset_override, "DLSS Super Resolution Preset")) {
-            int preset = settings::g_experimentalTabSettings.dlss_sr_preset_override.GetValue();
-            const std::vector<const char*>& labels = settings::g_experimentalTabSettings.dlss_sr_preset_override.GetLabels();
-            LogInfo("DLSS SR preset changed to %s (index %d)",
-                    labels[preset], preset);
-        }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Select the DLSS Super Resolution preset to override.\nGame Default = 0, Preset A = 1, Preset B = 2, etc.");
-        }
-
-        // DLSS Ray Reconstruction preset
-        if (ComboSettingWrapper(settings::g_experimentalTabSettings.dlss_rr_preset_override, "DLSS Ray Reconstruction Preset")) {
-            int preset = settings::g_experimentalTabSettings.dlss_rr_preset_override.GetValue();
-            const std::vector<const char*>& labels = settings::g_experimentalTabSettings.dlss_rr_preset_override.GetLabels();
-            LogInfo("DLSS RR preset changed to %s (index %d)",
-                    labels[preset], preset);
-        }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Select the DLSS Ray Reconstruction preset to override.\nGame Default = 0, Preset A = 1, Preset B = 2, etc.");
-        }
-
-        ImGui::Spacing();
-
-        // Show current settings summary
-        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Current Settings:");
-        const std::vector<const char*>& sr_labels = settings::g_experimentalTabSettings.dlss_sr_preset_override.GetLabels();
-        const std::vector<const char*>& rr_labels = settings::g_experimentalTabSettings.dlss_rr_preset_override.GetLabels();
-        ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  DLSS SR Preset: %s",
-                           sr_labels[settings::g_experimentalTabSettings.dlss_sr_preset_override.GetValue()]);
-        ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  DLSS RR Preset: %s",
-                           rr_labels[settings::g_experimentalTabSettings.dlss_rr_preset_override.GetValue()]);
-
-        ImGui::Spacing();
-        ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "Note: Preset values are mapped as follows:");
-        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "  Game Default = 0, Preset A = 1, Preset B = 2, ..., Preset O = 15");
-        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "  These values override the corresponding NGX parameter values.");
-    }
-}
 
 } // namespace ui::new_ui

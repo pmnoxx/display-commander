@@ -444,9 +444,7 @@ bool CheckReShadeVersionCompatibility() {
 
 // Safemode function - handles safemode logic
 void HandleSafemode() {
-    // Load developer settings to get safemode value
-    settings::g_developerTabSettings.LoadAll();
-
+    // Developer settings already loaded at startup
     bool safemode_enabled = settings::g_developerTabSettings.safemode.GetValue();
 
     if (safemode_enabled) {
@@ -502,6 +500,9 @@ void DoInitializationWithoutHwnd(HMODULE h_module, DWORD fdw_reason) {
 
     LogInfo("DLLMain (DisplayCommander) %lld %d h_module: 0x%p", utils::get_now_ns(), fdw_reason,
             reinterpret_cast<uintptr_t>(h_module));
+
+    // Load all settings at startup
+    settings::LoadAllSettingsAtStartup();
 
     // Pin the module to prevent premature unload
     HMODULE pinned_module = nullptr;
@@ -613,6 +614,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
         // Initialize DisplayCommander config system before handling safemode
         display_commander::config::DisplayCommanderConfigManager::GetInstance().Initialize();
         LogInfo("DisplayCommander config system initialized");
+
 
         // Handle safemode after config system is initialized
         HandleSafemode();

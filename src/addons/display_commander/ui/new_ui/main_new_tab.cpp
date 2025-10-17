@@ -140,8 +140,7 @@ void DrawFrameTimeGraph() {
 void InitMainNewTab() {
     static bool settings_loaded_once = false;
     if (!settings_loaded_once) {
-        // Ensure developer settings (including continuous monitoring) are loaded so UI reflects saved state
-        settings::g_developerTabSettings.LoadAll();
+        // Settings already loaded at startup
         settings::g_mainTabSettings.LoadSettings();
         s_window_mode = static_cast<WindowMode>(settings::g_mainTabSettings.window_mode.GetValue());
         s_aspect_index = static_cast<AspectRatioType>(settings::g_mainTabSettings.aspect_index.GetValue());

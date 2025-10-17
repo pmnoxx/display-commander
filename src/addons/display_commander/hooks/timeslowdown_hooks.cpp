@@ -243,12 +243,16 @@ DWORD WINAPI GetTickCount_Detour() {
     if (!ShouldApplyHookById(TimerHookIdentifier::GetTickCount)) {
         return result;
     }
+    static DWORD start_time = 0;
+    if (start_time == 0) {
+        start_time = result;
+    }
 
     // Apply timeslowdown if enabled
     if (settings::g_experimentalTabSettings.timeslowdown_enabled.GetValue()) {
         float multiplier = settings::g_experimentalTabSettings.timeslowdown_multiplier.GetValue();
         if (multiplier > 0.0) {
-            result = static_cast<DWORD>(result * multiplier);
+            result = static_cast<DWORD>(start_time + (result - start_time) * multiplier);
         }
     }
 

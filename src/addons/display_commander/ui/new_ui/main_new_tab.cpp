@@ -1573,7 +1573,7 @@ void DrawAdhdMultiMonitorControls(bool hasBlackCurtainSetting) {
     bool adhdEnabled = settings::g_mainTabSettings.adhd_multi_monitor_enabled.GetValue();
     if (ImGui::Checkbox("ADHD Multi-Monitor Mode", &adhdEnabled)) {
         settings::g_mainTabSettings.adhd_multi_monitor_enabled.SetValue(adhdEnabled);
-        adhd_multi_monitor::api::SetEnabled(adhdEnabled);
+        //adhd_multi_monitor::api::SetEnabled(adhdEnabled);
         LogInfo("ADHD Multi-Monitor Mode %s", adhdEnabled ? "enabled" : "disabled");
     }
 

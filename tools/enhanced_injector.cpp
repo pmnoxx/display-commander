@@ -22,9 +22,7 @@
 #include <string>
 #include <unordered_set>
 #include <fstream>
-#include <iostream>
 #include <chrono>
-#include <thread>
 #include <array>
 
 #define RESHADE_LOADING_THREAD_FUNC 1

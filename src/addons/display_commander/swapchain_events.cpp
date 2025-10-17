@@ -95,6 +95,47 @@ bool OnCreateDevice(reshade::api::device_api api, uint32_t& api_version) {
     return true;
 }
 
+void OnDestroyDevice(reshade::api::device *device) {
+    if (device == nullptr) {
+        return;
+    }
+
+    LogInfo("Device destroyed - performing cleanup operations device: %p", device);
+
+    // Clean up device-specific resources
+    // Note: Most cleanup is handled in DLL_PROCESS_DETACH, but this provides
+    // device-specific cleanup when a device is destroyed during runtime
+
+    // Reset any device-specific state
+    // g_initialized_with_hwnd.store(false);
+
+    // Clean up any device-specific resources that need immediate cleanup
+    // (Most resources are cleaned up in DLL_PROCESS_DETACH)
+
+    //     LogInfo("Device cleanup completed");
+}
+
+void OnDestroyEffectRuntime(reshade::api::effect_runtime *runtime) {
+    if (runtime == nullptr) {
+        return;
+    }
+
+    LogInfo("Effect runtime destroyed - performing cleanup operations runtime: %p", runtime);
+
+    // Clear the global runtime reference if it matches the destroyed runtime
+    reshade::api::effect_runtime *current_runtime = g_reshade_runtime.load();
+    if (current_runtime == runtime) {
+        g_reshade_runtime.store(nullptr);
+        LogInfo("Cleared global runtime reference");
+    }
+
+    // Reset any runtime-specific state
+    // Note: Most cleanup is handled in DLL_PROCESS_DETACH, but this provides
+    // runtime-specific cleanup when a runtime is destroyed during runtime
+
+    LogInfo("Effect runtime cleanup completed");
+}
+
 void hookToSwapChain(reshade::api::swapchain *swapchain) {
     HWND hwnd = static_cast<HWND>(swapchain->get_hwnd());
     if (hwnd == g_proxy_hwnd) {

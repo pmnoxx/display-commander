@@ -1134,12 +1134,12 @@ bool OnBindPipeline(reshade::api::command_list *cmd_list, reshade::api::pipeline
 }
 
 // Present flags callback to strip DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING
-void OnPresentFlags2(uint32_t *present_flags, PresentApiType api_type) {
+void OnPresentFlags2(uint32_t *present_flags, DeviceTypeDC api_type) {
     // Increment event counter
     g_swapchain_event_counters[SWAPCHAIN_EVENT_PRESENT_FLAGS].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
-    if (api_type == PresentApiType::DXGI)
+    if (api_type == DeviceTypeDC::DX11 || api_type == DeviceTypeDC::DX12 || api_type == DeviceTypeDC::DX10)
     {
         // Always strip DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING flag
         if (s_prevent_tearing.load() && *present_flags & DXGI_PRESENT_ALLOW_TEARING) {

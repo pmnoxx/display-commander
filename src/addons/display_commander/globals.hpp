@@ -28,13 +28,10 @@
 // Constants
 #define DEBUG_LEVEL_0
 
-enum class PresentApiType {
-    DX9,
-    DXGI
-};
 
 enum class DeviceTypeDC {
     DX9,
+    DX10,
     DX11,
     DX12
 };

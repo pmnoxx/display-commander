@@ -13,7 +13,7 @@
 #include <array>
 
 // Forward declarations to avoid including headers that cause redefinition
-extern void OnPresentFlags2(uint32_t *present_flags, PresentApiType api_type);
+extern void OnPresentFlags2(uint32_t *present_flags, DeviceTypeDC device_type);
 extern void LogInfo(const char *format, ...);
 extern void LogWarn(const char *format, ...);
 
@@ -53,7 +53,7 @@ HRESULT STDMETHODCALLTYPE IDirect3DDevice9_Present_Detour(
 
     // Call OnPresentFlags2 with flags = 0 (no flags for regular Present)
     uint32_t present_flags = 0;
-    OnPresentFlags2(&present_flags, PresentApiType::DX9);
+    OnPresentFlags2(&present_flags, DeviceTypeDC::DX9);
 
     // Record per-frame FPS sample for background aggregation
     RecordFrameTime(FrameTimeMode::kPresent);
@@ -137,7 +137,7 @@ HRESULT STDMETHODCALLTYPE IDirect3DDevice9_PresentEx_Detour(
 
     // Call OnPresentFlags with the actual flags
     uint32_t present_flags = static_cast<uint32_t>(dwFlags);
-    OnPresentFlags2(&present_flags, PresentApiType::DX9);
+    OnPresentFlags2(&present_flags, DeviceTypeDC::DX9);
 
     // Record per-frame FPS sample for background aggregation
     RecordFrameTime(FrameTimeMode::kPresent);

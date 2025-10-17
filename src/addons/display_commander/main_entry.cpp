@@ -532,6 +532,7 @@ void DoInitializationWithoutHwnd(HMODULE h_module, DWORD fdw_reason) {
 
     // Register ReShade effect runtime events for input blocking
     reshade::register_event<reshade::addon_event::init_effect_runtime>(OnInitEffectRuntime);
+    reshade::register_event<reshade::addon_event::destroy_effect_runtime>(OnDestroyEffectRuntime);
     reshade::register_event<reshade::addon_event::reshade_open_overlay>(OnReShadeOverlayOpen);
 
     // Defer NVAPI init until after settings are loaded below
@@ -567,6 +568,7 @@ void DoInitializationWithoutHwnd(HMODULE h_module, DWORD fdw_reason) {
     // Note: bind_resource, map_resource, unmap_resource events don't exist in ReShade API
     // These operations are handled differently in ReShade
     // Register device destroy event for restore-on-exit
+    reshade::register_event<reshade::addon_event::destroy_device>(OnDestroyDevice);
 
     // Install process-exit safety hooks to restore display on abnormal exits
     process_exit_hooks::Initialize();

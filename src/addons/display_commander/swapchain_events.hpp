@@ -26,6 +26,10 @@ bool OnBindPipeline(reshade::api::command_list *cmd_list, reshade::api::pipeline
 
 // Device lifecycle hooks
 bool OnCreateDevice(reshade::api::device_api api, uint32_t& api_version);
+void OnDestroyDevice(reshade::api::device *device);
+
+// Effect runtime lifecycle hooks
+void OnDestroyEffectRuntime(reshade::api::effect_runtime *runtime);
 
 // Swapchain lifecycle hooks
 void OnInitSwapchain(reshade::api::swapchain *swapchain, bool resize);

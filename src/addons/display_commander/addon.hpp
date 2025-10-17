@@ -28,9 +28,6 @@ DxgiBypassMode GetIndependentFlipState(IDXGISwapChain* dxgi_swapchain);
 
 
 
-// Include consolidated swapchain events header
-#include "swapchain_events.hpp"
-
 // Command list and queue lifecycle hooks (declared in swapchain_events.hpp)
 
 // Function declarations

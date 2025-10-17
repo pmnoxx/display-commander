@@ -1,10 +1,15 @@
 #include "reflex_provider.hpp"
 #include "../utils.hpp"
+#include "../globals.hpp"
 
 ReflexProvider::ReflexProvider() = default;
 ReflexProvider::~ReflexProvider() = default;
 
 bool ReflexProvider::Initialize(reshade::api::device *device) { return reflex_manager_.Initialize(device); }
+
+bool ReflexProvider::InitializeNative(void* native_device, DeviceTypeDC device_type) {
+    return reflex_manager_.InitializeNative(native_device, device_type);
+}
 
 void ReflexProvider::Shutdown() { reflex_manager_.Shutdown(); }
 

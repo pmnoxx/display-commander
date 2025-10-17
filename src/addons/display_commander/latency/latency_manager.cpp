@@ -45,6 +45,39 @@ bool LatencyManager::Initialize(reshade::api::device *device, LatencyTechnology 
     return true;
 }
 
+bool LatencyManager::Initialize(void* native_device, DeviceTypeDC device_type, LatencyTechnology technology) {
+    if (initialized_.load(std::memory_order_acquire)) {
+        // Already initialized, check if we need to switch technology
+        if (config_.technology != technology) {
+            return SwitchTechnologyNative(technology, native_device, device_type);
+        }
+        return true;
+    }
+
+    // Create provider for the requested technology
+    provider_ = CreateProvider(technology);
+    if (!provider_) {
+        LogWarn("LatencyManager: Failed to create provider for technology");
+        return false;
+    }
+
+    // Initialize the provider with native device
+    if (!provider_->InitializeNative(native_device, device_type)) {
+        LogWarn("LatencyManager: Failed to initialize provider with native device");
+        provider_.reset();
+        return false;
+    }
+
+    config_.technology = technology;
+    initialized_.store(true, std::memory_order_release);
+
+    std::ostringstream oss;
+    oss << "LatencyManager: Initialized with " << provider_->GetTechnologyName() << " (native device)";
+    LogInfo(oss.str().c_str());
+
+    return true;
+}
+
 void LatencyManager::Shutdown() {
     if (!initialized_.exchange(false, std::memory_order_release)) {
         return; // Already shutdown
@@ -195,6 +228,40 @@ bool LatencyManager::SwitchTechnology(LatencyTechnology technology, reshade::api
 
     std::ostringstream oss;
     oss << "LatencyManager: Switched to " << provider_->GetTechnologyName();
+    LogInfo(oss.str().c_str());
+
+    return true;
+}
+
+bool LatencyManager::SwitchTechnologyNative(LatencyTechnology technology, void* native_device, DeviceTypeDC device_type) {
+    if (technology == config_.technology && IsInitialized()) {
+        return true; // Already using this technology
+    }
+
+    // Shutdown current provider
+    if (provider_) {
+        provider_->Shutdown();
+        provider_.reset();
+    }
+
+    // Create new provider
+    provider_ = CreateProvider(technology);
+    if (!provider_) {
+        LogWarn("LatencyManager: Failed to create provider for technology switch");
+        return false;
+    }
+
+    // Initialize new provider with native device
+    if (!provider_->InitializeNative(native_device, device_type)) {
+        LogWarn("LatencyManager: Failed to initialize new provider with native device");
+        provider_.reset();
+        return false;
+    }
+
+    config_.technology = technology;
+
+    std::ostringstream oss;
+    oss << "LatencyManager: Switched to " << provider_->GetTechnologyName() << " (native device)";
     LogInfo(oss.str().c_str());
 
     return true;

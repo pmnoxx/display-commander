@@ -41,6 +41,28 @@ bool ReflexManager::Initialize(reshade::api::device *device) {
     return true;
 }
 
+bool ReflexManager::InitializeNative(void* native_device, DeviceTypeDC device_type) {
+    if (initialized_.load(std::memory_order_acquire))
+        return true;
+    if (!EnsureNvApi())
+        return false;
+
+    // Only support D3D11 and D3D12 for Reflex
+    if (device_type != DeviceTypeDC::DX11 && device_type != DeviceTypeDC::DX12) {
+        LogWarn("Reflex: Only D3D11 and D3D12 are supported, got device type %d", static_cast<int>(device_type));
+        return false;
+    }
+
+    d3d_device_ = static_cast<IUnknown*>(native_device);
+    if (d3d_device_ == nullptr) {
+        LogWarn("Reflex: native device is null");
+        return false;
+    }
+
+    initialized_.store(true, std::memory_order_release);
+    return true;
+}
+
 void ReflexManager::Shutdown() {
     if (!initialized_.exchange(false, std::memory_order_release))
         return;

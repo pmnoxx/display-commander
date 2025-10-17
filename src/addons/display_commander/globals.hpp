@@ -26,8 +26,18 @@
 #include "../../../external/nvapi/nvapi.h"
 
 // Constants
-#define ImTextureID ImU64
 #define DEBUG_LEVEL_0
+
+enum class PresentApiType {
+    DX9,
+    DXGI
+};
+
+enum class DeviceTypeDC {
+    DX9,
+    DX11,
+    DX12
+};
 
 // Forward declarations
 
@@ -402,7 +412,7 @@ extern std::atomic<bool> s_continuous_monitoring_enabled;
 // Atomic variables
 extern std::atomic<int> g_comp_query_counter;
 extern std::atomic<int> g_comp_last_logged;
-extern std::atomic<void*> g_last_swapchain_ptr; // Using void* to avoid reshade dependency
+extern std::atomic<void*> g_last_swapchain_ptr; // Using void* to avoid reshade dependency // TODO: unsafe remove later
 extern std::atomic<int> g_last_reshade_device_api; // Store device API type
 extern std::atomic<uint32_t> g_last_api_version; // Store API version/feature level (e.g., D3D_FEATURE_LEVEL_11_1)
 extern std::atomic<std::shared_ptr<reshade::api::swapchain_desc>> g_last_swapchain_desc; // Store last swapchain description

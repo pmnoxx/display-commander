@@ -44,8 +44,13 @@ int slIsFeatureSupported_Detour(int feature, const void* adapterInfo) {
     g_swapchain_event_counters[SWAPCHAIN_EVENT_STREAMLINE_SL_IS_FEATURE_SUPPORTED].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
-    // Log the call
-    LogInfo("slIsFeatureSupported called (Feature: %d)", feature);
+
+    static int log_count = 0;
+    if (log_count < 30) {
+        // Log the call
+        LogInfo("slIsFeatureSupported called (Feature: %d)", feature);
+        log_count++;
+    }
 
     // Call original function
     if (slIsFeatureSupported_Original != nullptr) {

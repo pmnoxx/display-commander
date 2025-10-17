@@ -791,6 +791,9 @@ void DrawDxgiCompositionInfo() {
 void DrawSwapchainInfo() {
 
     if (ImGui::CollapsingHeader("Swapchain Information", ImGuiTreeNodeFlags_DefaultOpen)) {
+        // warning this tab may crash
+
+
         // Get the current swapchain from global variable
         void* swapchain_ptr = g_last_swapchain_ptr.load();
         if (swapchain_ptr == nullptr) {

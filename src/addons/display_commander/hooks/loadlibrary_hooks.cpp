@@ -6,6 +6,8 @@
 #include "ngx_hooks.hpp"
 #include "streamline_hooks.hpp"
 #include "../utils.hpp"
+#include "../settings/streamline_tab_settings.hpp"
+#include "../globals.hpp"
 #include "utils/srwlock_wrapper.hpp"
 #include <MinHook.h>
 #include <chrono>
@@ -13,8 +15,45 @@
 #include <sstream>
 #include <filesystem>
 #include <unordered_set>
+#include <algorithm>
 
 namespace display_commanderhooks {
+
+// Helper function to check if a DLL should be overridden and get the override path
+std::wstring GetDLSSOverridePath(const std::wstring& dll_path) {
+    // Check if DLSS override is enabled
+    if (!settings::g_streamlineTabSettings.dlss_override_enabled.GetValue()) {
+        return L"";
+    }
+
+    std::string override_folder = settings::g_streamlineTabSettings.dlss_override_folder.GetValue();
+    if (override_folder.empty()) {
+        return L"";
+    }
+
+    // Extract filename from full path
+    std::filesystem::path path(dll_path);
+    std::wstring filename = path.filename().wstring();
+
+    // Convert to lowercase for case-insensitive comparison
+    std::transform(filename.begin(), filename.end(), filename.begin(), ::towlower);
+
+    // Convert folder path to wide string
+    std::wstring w_override_folder(override_folder.begin(), override_folder.end());
+
+    // Check which DLL is being loaded and if override is enabled
+    if (filename == L"nvngx_dlss.dll" && settings::g_streamlineTabSettings.dlss_override_dlss.GetValue()) {
+        return w_override_folder + L"\\nvngx_dlss.dll";
+    }
+    else if (filename == L"nvngx_dlssd.dll" && settings::g_streamlineTabSettings.dlss_override_dlss_fg.GetValue()) {
+        return w_override_folder + L"\\nvngx_dlssd.dll";
+    }
+    else if (filename == L"nvngx_dlssg.dll" && settings::g_streamlineTabSettings.dlss_override_dlss_rr.GetValue()) {
+        return w_override_folder + L"\\nvngx_dlssg.dll";
+    }
+
+    return L"";
+}
 
 // Original function pointers
 LoadLibraryA_pfn LoadLibraryA_Original = nullptr;
@@ -86,8 +125,27 @@ HMODULE WINAPI LoadLibraryA_Detour(LPCSTR lpLibFileName) {
 
     LogInfo("[%s] LoadLibraryA called: %s", timestamp.c_str(), dll_name.c_str());
 
-    // Call original function
-    HMODULE result = LoadLibraryA_Original ? LoadLibraryA_Original(lpLibFileName) : LoadLibraryA(lpLibFileName);
+    // Check for DLSS override
+    LPCSTR actual_lib_file_name = lpLibFileName;
+
+    if (lpLibFileName) {
+        std::wstring w_dll_name = std::wstring(dll_name.begin(), dll_name.end());
+        std::wstring override_path = GetDLSSOverridePath(w_dll_name);
+
+        if (!override_path.empty()) {
+            // Check if override file exists
+            if (std::filesystem::exists(override_path)) {
+                std::string narrow_override_path = WideToNarrow(override_path);
+                actual_lib_file_name = narrow_override_path.c_str();
+                LogInfo("[%s] DLSS Override: Redirecting %s to %s", timestamp.c_str(), dll_name.c_str(), narrow_override_path.c_str());
+            } else {
+                LogInfo("[%s] DLSS Override: Override file not found: %s", timestamp.c_str(), WideToNarrow(override_path).c_str());
+            }
+        }
+    }
+
+    // Call original function with potentially overridden path
+    HMODULE result = LoadLibraryA_Original ? LoadLibraryA_Original(actual_lib_file_name) : LoadLibraryA(actual_lib_file_name);
 
     if (result) {
         LogInfo("[%s] LoadLibraryA success: %s -> HMODULE: 0x%p", timestamp.c_str(), dll_name.c_str(), result);
@@ -139,8 +197,27 @@ HMODULE WINAPI LoadLibraryW_Detour(LPCWSTR lpLibFileName) {
 
     LogInfo("[%s] LoadLibraryW called: %s", timestamp.c_str(), dll_name.c_str());
 
-    // Call original function
-    HMODULE result = LoadLibraryW_Original ? LoadLibraryW_Original(lpLibFileName) : LoadLibraryW(lpLibFileName);
+    // Check for DLSS override
+    LPCWSTR actual_lib_file_name = lpLibFileName;
+    std::wstring override_path;
+
+    if (lpLibFileName) {
+        std::wstring w_dll_name = lpLibFileName;
+        override_path = GetDLSSOverridePath(w_dll_name);
+
+        if (!override_path.empty()) {
+            // Check if override file exists
+            if (std::filesystem::exists(override_path)) {
+                actual_lib_file_name = override_path.c_str();
+                LogInfo("[%s] DLSS Override: Redirecting %s to %s", timestamp.c_str(), dll_name.c_str(), WideToNarrow(override_path).c_str());
+            } else {
+                LogInfo("[%s] DLSS Override: Override file not found: %s", timestamp.c_str(), WideToNarrow(override_path).c_str());
+            }
+        }
+    }
+
+    // Call original function with potentially overridden path
+    HMODULE result = LoadLibraryW_Original ? LoadLibraryW_Original(actual_lib_file_name) : LoadLibraryW(actual_lib_file_name);
 
     if (result) {
         LogInfo("[%s] LoadLibraryW success: %s -> HMODULE: 0x%p", timestamp.c_str(), dll_name.c_str(), result);
@@ -193,10 +270,29 @@ HMODULE WINAPI LoadLibraryExA_Detour(LPCSTR lpLibFileName, HANDLE hFile, DWORD d
     LogInfo("[%s] LoadLibraryExA called: %s, hFile: 0x%p, dwFlags: 0x%08X",
             timestamp.c_str(), dll_name.c_str(), hFile, dwFlags);
 
-    // Call original function
+    // Check for DLSS override
+    LPCSTR actual_lib_file_name = lpLibFileName;
+
+    if (lpLibFileName) {
+        std::wstring w_dll_name = std::wstring(dll_name.begin(), dll_name.end());
+        std::wstring override_path = GetDLSSOverridePath(w_dll_name);
+
+        if (!override_path.empty()) {
+            // Check if override file exists
+            if (std::filesystem::exists(override_path)) {
+                std::string narrow_override_path = WideToNarrow(override_path);
+                actual_lib_file_name = narrow_override_path.c_str();
+                LogInfo("[%s] DLSS Override: Redirecting %s to %s", timestamp.c_str(), dll_name.c_str(), narrow_override_path.c_str());
+            } else {
+                LogInfo("[%s] DLSS Override: Override file not found: %s", timestamp.c_str(), WideToNarrow(override_path).c_str());
+            }
+        }
+    }
+
+    // Call original function with potentially overridden path
     HMODULE result = LoadLibraryExA_Original ?
-        LoadLibraryExA_Original(lpLibFileName, hFile, dwFlags) :
-        LoadLibraryExA(lpLibFileName, hFile, dwFlags);
+        LoadLibraryExA_Original(actual_lib_file_name, hFile, dwFlags) :
+        LoadLibraryExA(actual_lib_file_name, hFile, dwFlags);
 
     if (result) {
         LogInfo("[%s] LoadLibraryExA success: %s -> HMODULE: 0x%p", timestamp.c_str(), dll_name.c_str(), result);
@@ -260,10 +356,29 @@ HMODULE WINAPI LoadLibraryExW_Detour(LPCWSTR lpLibFileName, HANDLE hFile, DWORD 
     LogInfo("[%s] LoadLibraryExW called: %s, hFile: 0x%p, dwFlags: 0x%08X",
             timestamp.c_str(), dll_name.c_str(), hFile, dwFlags);
 
-    // Call original function
+    // Check for DLSS override
+    LPCWSTR actual_lib_file_name = lpLibFileName;
+    std::wstring override_path;
+
+    if (lpLibFileName) {
+        std::wstring w_dll_name = lpLibFileName;
+        override_path = GetDLSSOverridePath(w_dll_name);
+
+        if (!override_path.empty()) {
+            // Check if override file exists
+            if (std::filesystem::exists(override_path)) {
+                actual_lib_file_name = override_path.c_str();
+                LogInfo("[%s] DLSS Override: Redirecting %s to %s", timestamp.c_str(), dll_name.c_str(), WideToNarrow(override_path).c_str());
+            } else {
+                LogInfo("[%s] DLSS Override: Override file not found: %s", timestamp.c_str(), WideToNarrow(override_path).c_str());
+            }
+        }
+    }
+
+    // Call original function with potentially overridden path
     HMODULE result = LoadLibraryExW_Original ?
-        LoadLibraryExW_Original(lpLibFileName, hFile, dwFlags) :
-        LoadLibraryExW(lpLibFileName, hFile, dwFlags);
+        LoadLibraryExW_Original(actual_lib_file_name, hFile, dwFlags) :
+        LoadLibraryExW(actual_lib_file_name, hFile, dwFlags);
 
     if (result) {
         LogInfo("[%s] LoadLibraryExW success: %s -> HMODULE: 0x%p", timestamp.c_str(), dll_name.c_str(), result);

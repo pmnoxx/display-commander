@@ -616,10 +616,12 @@ class ExperimentalTabSettings;
 class DeveloperTabSettings;
 class MainTabSettings;
 class SwapchainTabSettings;
+class StreamlineTabSettings;
 extern ExperimentalTabSettings g_experimentalTabSettings;
 extern DeveloperTabSettings g_developerTabSettings;
 extern MainTabSettings g_mainTabSettings;
 extern SwapchainTabSettings g_swapchainTabSettings;
+extern StreamlineTabSettings g_streamlineTabSettings;
 
 // Function to load all settings at startup
 void LoadAllSettingsAtStartup();

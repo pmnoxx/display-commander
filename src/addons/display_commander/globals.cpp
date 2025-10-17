@@ -6,6 +6,7 @@
 #include "settings/experimental_tab_settings.hpp"
 #include "settings/main_tab_settings.hpp"
 #include "settings/swapchain_tab_settings.hpp"
+#include "settings/streamline_tab_settings.hpp"
 #include "utils.hpp"
 #include "utils/srwlock_wrapper.hpp"
 #include <algorithm>
@@ -344,12 +345,14 @@ ExperimentalTabSettings g_experimentalTabSettings;
 DeveloperTabSettings g_developerTabSettings;
 MainTabSettings g_mainTabSettings;
 SwapchainTabSettings g_swapchainTabSettings;
+StreamlineTabSettings g_streamlineTabSettings;
 // Function to load all settings at startup
 void LoadAllSettingsAtStartup() {
     g_developerTabSettings.LoadAll();
     g_experimentalTabSettings.LoadAll();
     g_mainTabSettings.LoadSettings();
     g_swapchainTabSettings.LoadAll();
+    g_streamlineTabSettings.LoadAll();
     LogInfo("All settings loaded at startup");
 }
 

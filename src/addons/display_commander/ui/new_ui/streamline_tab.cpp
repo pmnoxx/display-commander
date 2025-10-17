@@ -1,11 +1,14 @@
 #include "streamline_tab.hpp"
 #include "../../globals.hpp"
 #include "../../hooks/streamline_hooks.hpp"
+#include "../../settings/streamline_tab_settings.hpp"
 #include "../../utils.hpp"
 
 #include <imgui.h>
 #include <windows.h>
 #include <string>
+#include <filesystem>
+#include <numeric>
 
 namespace ui::new_ui {
 
@@ -79,6 +82,97 @@ void DrawStreamlineTab() {
     ImGui::Text("slIsFeatureSupported calls: %u", sl_feature_count);
     ImGui::Text("slGetNativeInterface calls: %u", sl_interface_count);
     ImGui::Text("slUpgradeInterface calls: %u", sl_upgrade_count);
+
+    ImGui::Spacing();
+
+    // DLSS Override Settings
+    ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "DLSS Override Settings:");
+    ImGui::Separator();
+
+    // Enable DLSS Override
+    bool dlss_override_enabled = settings::g_streamlineTabSettings.dlss_override_enabled.GetValue();
+    if (ImGui::Checkbox("Enable DLSS Override", &dlss_override_enabled)) {
+        settings::g_streamlineTabSettings.dlss_override_enabled.SetValue(dlss_override_enabled);
+    }
+
+    if (dlss_override_enabled) {
+        ImGui::Indent();
+
+        // Folder selection
+        ImGui::Text("Override Folder:");
+        static char folder_input_buffer[512] = "";
+        static bool folder_input_initialized = false;
+
+        // Initialize the input buffer with current value
+        if (!folder_input_initialized) {
+            std::string current_folder = settings::g_streamlineTabSettings.dlss_override_folder.GetValue();
+            strncpy_s(folder_input_buffer, current_folder.c_str(), sizeof(folder_input_buffer) - 1);
+            folder_input_buffer[sizeof(folder_input_buffer) - 1] = '\0';
+            folder_input_initialized = true;
+        }
+
+        ImGui::InputText("##dlss_override_folder", folder_input_buffer, sizeof(folder_input_buffer));
+
+        // Update settings when text changes
+        if (ImGui::IsItemDeactivatedAfterEdit()) {
+            settings::g_streamlineTabSettings.dlss_override_folder.SetValue(std::string(folder_input_buffer));
+        }
+
+        // Help text
+        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Enter folder path (e.g., C:\\MyDLSSFiles). Place your DLL files in this folder.");
+
+        // Show current folder status
+        std::string current_folder = settings::g_streamlineTabSettings.dlss_override_folder.GetValue();
+        if (!current_folder.empty()) {
+            bool folder_exists = std::filesystem::exists(current_folder);
+            if (folder_exists) {
+                ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✓ Folder exists: %s", current_folder.c_str());
+
+                // Check for expected DLL files
+                std::vector<std::string> expected_dlls = {"nvngx_dlss.dll", "nvngx_dlssd.dll", "nvngx_dlssg.dll"};
+                std::vector<std::string> found_dlls;
+
+                for (const auto& dll_name : expected_dlls) {
+                    std::string dll_path = current_folder + "\\" + dll_name;
+                    if (std::filesystem::exists(dll_path)) {
+                        found_dlls.push_back(dll_name);
+                    }
+                }
+
+                if (!found_dlls.empty()) {
+                    ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Found DLLs: %s",
+                        std::accumulate(found_dlls.begin(), found_dlls.end(), std::string(""),
+                            [](const std::string& a, const std::string& b) { return a + (a.empty() ? "" : ", ") + b; }).c_str());
+                } else {
+                    ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "No DLSS DLL files found in folder");
+                }
+            } else {
+                ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "⚠ Folder not found: %s", current_folder.c_str());
+            }
+        }
+
+        ImGui::Spacing();
+
+        // Individual DLL overrides
+        ImGui::Text("Override DLLs:");
+
+        bool dlss_override_dlss = settings::g_streamlineTabSettings.dlss_override_dlss.GetValue();
+        if (ImGui::Checkbox("Override nvngx_dlss.dll (DLSS)", &dlss_override_dlss)) {
+            settings::g_streamlineTabSettings.dlss_override_dlss.SetValue(dlss_override_dlss);
+        }
+
+        bool dlss_override_dlss_fg = settings::g_streamlineTabSettings.dlss_override_dlss_fg.GetValue();
+        if (ImGui::Checkbox("Override nvngx_dlssd.dll (DLSS-FG)", &dlss_override_dlss_fg)) {
+            settings::g_streamlineTabSettings.dlss_override_dlss_fg.SetValue(dlss_override_dlss_fg);
+        }
+
+        bool dlss_override_dlss_rr = settings::g_streamlineTabSettings.dlss_override_dlss_rr.GetValue();
+        if (ImGui::Checkbox("Override nvngx_dlssg.dll (DLSS-RR)", &dlss_override_dlss_rr)) {
+            settings::g_streamlineTabSettings.dlss_override_dlss_rr.SetValue(dlss_override_dlss_rr);
+        }
+
+        ImGui::Unindent();
+    }
 
     ImGui::Spacing();
 

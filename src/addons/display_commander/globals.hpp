@@ -829,6 +829,9 @@ extern std::atomic<uint32_t> g_reflex_marker_input_sample_count;
 // DX11 Proxy HWND for filtering
 extern HWND g_proxy_hwnd;
 
+// NGX preset initialization tracking
+extern std::atomic<bool> g_ngx_presets_initialized;
+
 // Continuous monitoring functions
 void StartContinuousMonitoring();
 void StopContinuousMonitoring();

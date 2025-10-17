@@ -12,6 +12,7 @@ class ReflexProvider : public ILatencyProvider {
 
     // ILatencyProvider interface
     bool Initialize(reshade::api::device *device) override;
+    bool InitializeNative(void* native_device, DeviceTypeDC device_type) override;
     void Shutdown() override;
     bool IsInitialized() const override;
 

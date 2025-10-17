@@ -399,7 +399,21 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain *This, UI
         // Note: GPU completion measurement is now enqueued earlier in OnPresentUpdateBefore
         // (before flush_command_queue) for more accurate timing
 
-        ::OnPresentUpdateAfter2();
+        // Get device from swapchain for latency manager
+        IUnknown* device = nullptr;
+        DeviceTypeDC device_type = DeviceTypeDC::DX11; // Default to DX11 for DXGI
+        This->GetDevice(IID_PPV_ARGS(&device));
+        if (device) {
+            // Try to determine if it's D3D11 or D3D12
+            Microsoft::WRL::ComPtr<ID3D11Device> d3d11_device;
+            Microsoft::WRL::ComPtr<ID3D12Device> d3d12_device;
+            if (SUCCEEDED(device->QueryInterface(IID_PPV_ARGS(&d3d11_device)))) {
+                device_type = DeviceTypeDC::DX11;
+            } else if (SUCCEEDED(device->QueryInterface(IID_PPV_ARGS(&d3d12_device)))) {
+                device_type = DeviceTypeDC::DX12;
+            }
+        }
+        ::OnPresentUpdateAfter2(device, device_type);
         return res;
     }
     // Fallback to direct call if hook failed
@@ -408,7 +422,21 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain *This, UI
     // Note: GPU completion measurement is now enqueued earlier in OnPresentUpdateBefore
     // (before flush_command_queue) for more accurate timing
 
-    ::OnPresentUpdateAfter2();
+    // Get device from swapchain for latency manager
+    IUnknown* device = nullptr;
+    DeviceTypeDC device_type = DeviceTypeDC::DX11; // Default to DX11 for DXGI
+    This->GetDevice(IID_PPV_ARGS(&device));
+    if (device) {
+        // Try to determine if it's D3D11 or D3D12
+            Microsoft::WRL::ComPtr<ID3D11Device> d3d11_device;
+            Microsoft::WRL::ComPtr<ID3D12Device> d3d12_device;
+        if (SUCCEEDED(device->QueryInterface(IID_PPV_ARGS(&d3d11_device)))) {
+            device_type = DeviceTypeDC::DX11;
+        } else if (SUCCEEDED(device->QueryInterface(IID_PPV_ARGS(&d3d12_device)))) {
+            device_type = DeviceTypeDC::DX12;
+        }
+    }
+    ::OnPresentUpdateAfter2(device, device_type);
     return res;
 }
 
@@ -442,7 +470,21 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1 *This, 
         // (before flush_command_queue) for more accurate timing
     //   dx11_proxy::DX11ProxyManager::GetInstance().CopyThreadLoop();
 
-        ::OnPresentUpdateAfter2();
+        // Get device from swapchain for latency manager
+        IUnknown* device = nullptr;
+        DeviceTypeDC device_type = DeviceTypeDC::DX11; // Default to DX11 for DXGI
+        This->GetDevice(IID_PPV_ARGS(&device));
+        if (device) {
+            // Try to determine if it's D3D11 or D3D12
+            Microsoft::WRL::ComPtr<ID3D11Device> d3d11_device;
+            Microsoft::WRL::ComPtr<ID3D12Device> d3d12_device;
+            if (SUCCEEDED(device->QueryInterface(IID_PPV_ARGS(&d3d11_device)))) {
+                device_type = DeviceTypeDC::DX11;
+            } else if (SUCCEEDED(device->QueryInterface(IID_PPV_ARGS(&d3d12_device)))) {
+                device_type = DeviceTypeDC::DX12;
+            }
+        }
+        ::OnPresentUpdateAfter2(device, device_type);
         return res;
     }
 
@@ -452,7 +494,21 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1 *This, 
     // Note: GPU completion measurement is now enqueued earlier in OnPresentUpdateBefore
     // (before flush_command_queue) for more accurate timing
 
-    ::OnPresentUpdateAfter2();
+    // Get device from swapchain for latency manager
+    IUnknown* device = nullptr;
+    DeviceTypeDC device_type = DeviceTypeDC::DX11; // Default to DX11 for DXGI
+    This->GetDevice(IID_PPV_ARGS(&device));
+    if (device) {
+        // Try to determine if it's D3D11 or D3D12
+            Microsoft::WRL::ComPtr<ID3D11Device> d3d11_device;
+            Microsoft::WRL::ComPtr<ID3D12Device> d3d12_device;
+        if (SUCCEEDED(device->QueryInterface(IID_PPV_ARGS(&d3d11_device)))) {
+            device_type = DeviceTypeDC::DX11;
+        } else if (SUCCEEDED(device->QueryInterface(IID_PPV_ARGS(&d3d12_device)))) {
+            device_type = DeviceTypeDC::DX12;
+        }
+    }
+    ::OnPresentUpdateAfter2(device, device_type);
     return res;
 }
 

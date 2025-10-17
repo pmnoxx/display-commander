@@ -11,10 +11,9 @@
 // API TYPE ENUM
 // ============================================================================
 
-enum class PresentApiType {
-    DX9,
-    DXGI
-};
+
+// Forward declaration for OnPresentUpdateAfter2
+void OnPresentUpdateAfter2(void* native_device, DeviceTypeDC device_type);
 
 // ============================================================================
 // SWAPCHAIN EVENT HANDLERS
@@ -42,7 +41,7 @@ void DoInitializationWithHwnd(HWND hwnd);
 void OnPresentUpdateBefore(reshade::api::command_queue *queue, reshade::api::swapchain *swapchain,
                            const reshade::api::rect *source_rect, const reshade::api::rect *dest_rect,
                            uint32_t dirty_rect_count, const reshade::api::rect *dirty_rects);
-void OnPresentUpdateAfter2();
+void OnPresentUpdateAfter2(void* native_device, DeviceTypeDC device_type);
 void OnPresentFlags2(uint32_t *present_flags, PresentApiType api_type);
 
 // Auto color space helper

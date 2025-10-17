@@ -102,6 +102,17 @@ void OnDestroyDevice(reshade::api::device *device) {
 
     LogInfo("Device destroyed - performing cleanup operations device: %p", device);
 
+    /*
+    if (g_last_swapchain_ptr.load() != nullptr) {
+        reshade::api::swapchain *swapchain = reinterpret_cast<reshade::api::swapchain *>(g_last_swapchain_ptr.load());
+        if (swapchain != nullptr && swapchain->get_device() == device) {
+
+                LogInfo("Clearing global swapchain reference swapchain: %p", swapchain);
+                g_last_swapchain_ptr.store(nullptr);
+            }
+        }
+    }*/
+
     // Clean up device-specific resources
     // Note: Most cleanup is handled in DLL_PROCESS_DETACH, but this provides
     // device-specific cleanup when a device is destroyed during runtime
@@ -762,7 +773,7 @@ LONGLONG TimerPresentPacingDelayEnd(LONGLONG start_ns) {
     return end_ns;
 }
 
-void OnPresentUpdateAfter2() {
+void OnPresentUpdateAfter2(void* native_device, DeviceTypeDC device_type) {
     // Track render thread ID
     DWORD current_thread_id = GetCurrentThreadId();
     DWORD previous_render_thread_id = g_render_thread_id.load();
@@ -843,9 +854,7 @@ void OnPresentUpdateAfter2() {
     // NVIDIA Reflex: SIMULATION_END marker (minimal) and Sleep
     if (s_reflex_enable.load()) {
         s_reflex_enable_current_frame.store(true);
-        auto *swapchain = static_cast<reshade::api::swapchain*>(g_last_swapchain_ptr.load(std::memory_order_acquire));
-        auto *device = swapchain ? swapchain->get_device() : nullptr;
-        if (device && g_latencyManager->Initialize(device)) {
+        if (native_device && g_latencyManager->Initialize(native_device, device_type)) {
             g_latencyManager->IncreaseFrameId();
             // Apply sleep mode opportunistically each frame to reflect current
             // toggles

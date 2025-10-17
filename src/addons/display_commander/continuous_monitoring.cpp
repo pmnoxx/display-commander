@@ -153,10 +153,6 @@ void every1s_checks() {
         }
     }
 
-    // BACKGROUND: Composition state logging and periodic device/colorspace refresh
-    // NOTE: This functionality has been moved to OnPresentUpdateAfter to avoid
-    // accessing g_last_swapchain_ptr from the continuous monitoring thread
-
     // Aggregate FPS/frametime metrics and publish shared text once per second
     {
         extern std::atomic<uint32_t> g_perf_ring_head;

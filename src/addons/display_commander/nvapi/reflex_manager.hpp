@@ -7,6 +7,7 @@
 #include <nvapi.h>
 #include <reshade.hpp>
 
+#include "../globals.hpp"
 // Minimal NVIDIA Reflex manager (D3D11/D3D12 only) using NVAPI.
 // Avoids re-declaring any NVAPI structs; uses official headers.
 // Initialized lazily on first use when enabled.
@@ -18,6 +19,10 @@ class ReflexManager {
 
     // Initialize with a ReShade device to obtain underlying D3D device pointer.
     bool Initialize(reshade::api::device *device);
+
+    // Initialize with native device directly
+    bool InitializeNative(void* native_device, DeviceTypeDC device_type);
+
     void Shutdown();
 
     // Configure Reflex sleep mode (Low Latency + Boost + markers optimization).

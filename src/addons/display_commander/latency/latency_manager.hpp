@@ -3,6 +3,7 @@
 #include <atomic>
 #include <memory>
 #include <reshade.hpp>
+#include "../globals.hpp"
 
 // Forward declarations
 class ReflexManager;
@@ -38,6 +39,7 @@ class ILatencyProvider {
 
     // Core lifecycle
     virtual bool Initialize(reshade::api::device *device) = 0;
+    virtual bool InitializeNative(void* native_device, DeviceTypeDC device_type) = 0;
     virtual void Shutdown() = 0;
     virtual bool IsInitialized() const = 0;
 
@@ -65,6 +67,9 @@ class LatencyManager {
     // Initialize with a specific technology
     bool Initialize(reshade::api::device *device, LatencyTechnology technology = LatencyTechnology::NVIDIA_Reflex);
 
+    // Initialize with native device (alternative to ReShade device)
+    bool Initialize(void* native_device, DeviceTypeDC device_type, LatencyTechnology technology = LatencyTechnology::NVIDIA_Reflex);
+
     // Shutdown current provider
     void Shutdown();
 
@@ -91,6 +96,7 @@ class LatencyManager {
 
     // Switch between technologies at runtime
     bool SwitchTechnology(LatencyTechnology technology, reshade::api::device *device);
+    bool SwitchTechnologyNative(LatencyTechnology technology, void* native_device, DeviceTypeDC device_type);
 
   private:
     std::unique_ptr<ILatencyProvider> provider_;

@@ -44,8 +44,6 @@ void DrawDeveloperTools();
 // Draw HID suppression controls section
 void DrawHIDSuppression();
 
-// Draw DLSS preset override controls section
-void DrawDLSSPresetOverride();
 
 // Cleanup function to stop background threads
 void CleanupExperimentalTab();

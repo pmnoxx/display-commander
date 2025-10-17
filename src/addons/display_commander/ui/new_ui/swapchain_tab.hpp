@@ -33,6 +33,9 @@ void DrawNGXParameters();
 // Draw DLSS/DLSS-G summary section
 void DrawDLSSGSummary();
 
+// Draw DLSS preset override section
+void DrawDLSSPresetOverride();
+
 // Helper functions for DXGI string conversion
 const char* GetDXGIFormatString(DXGI_FORMAT format);
 const char* GetDXGIScalingString(DXGI_SCALING scaling);

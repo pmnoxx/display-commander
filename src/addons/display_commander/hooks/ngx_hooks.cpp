@@ -1,7 +1,7 @@
 #include "ngx_hooks.hpp"
 #include "../utils.hpp"
 #include "../globals.hpp"
-#include "../settings/experimental_tab_settings.hpp"
+#include "../settings/swapchain_tab_settings.hpp"
 #include <MinHook.h>
 #include <string>
 #include <vector>
@@ -189,7 +189,7 @@ void NVSDK_CONV NVSDK_NGX_Parameter_SetI_Detour(NVSDK_NGX_Parameter* InParameter
     g_swapchain_event_total_count.fetch_add(1);
 
     // DLSS preset override logic
-    if (InName != nullptr && settings::g_experimentalTabSettings.dlss_preset_override_enabled.GetValue()) {
+    if (InName != nullptr && settings::g_swapchainTabSettings.dlss_preset_override_enabled.GetValue()) {
         std::string param_name = std::string(InName);
 
         // Check for DLSS Super Resolution preset parameters
@@ -200,7 +200,7 @@ void NVSDK_CONV NVSDK_NGX_Parameter_SetI_Detour(NVSDK_NGX_Parameter* InParameter
             param_name == "DLSS.Hint.Render.Preset.UltraQuality" ||
             param_name == "DLSS.Hint.Render.Preset.DLAA") {
 
-            int sr_preset = settings::g_experimentalTabSettings.dlss_sr_preset_override.GetValue();
+            int sr_preset = settings::g_swapchainTabSettings.dlss_sr_preset_override.GetValue();
             if (sr_preset > 0) { // 0 = Game Default, 1+ = Preset A+
                 InValue = sr_preset;
                 LogInfo("DLSS SR preset override: %s -> %d (Preset %c)", param_name.c_str(), InValue, 'A' + sr_preset - 1);
@@ -215,7 +215,7 @@ void NVSDK_CONV NVSDK_NGX_Parameter_SetI_Detour(NVSDK_NGX_Parameter* InParameter
             param_name == "RayReconstruction.Hint.Render.Preset.UltraQuality" ||
             param_name == "RayReconstruction.Hint.Render.Preset.DLAA") {
 
-            int rr_preset = settings::g_experimentalTabSettings.dlss_rr_preset_override.GetValue();
+            int rr_preset = settings::g_swapchainTabSettings.dlss_rr_preset_override.GetValue();
             if (rr_preset > 0) { // 0 = Game Default, 1+ = Preset A+
                 InValue = rr_preset;
                 LogInfo("DLSS RR preset override: %s -> %d (Preset %c)", param_name.c_str(), InValue, 'A' + rr_preset - 1);
@@ -248,7 +248,7 @@ void NVSDK_CONV NVSDK_NGX_Parameter_SetUI_Detour(NVSDK_NGX_Parameter* InParamete
     g_swapchain_event_total_count.fetch_add(1);
 
     // DLSS preset override logic
-    if (InName != nullptr && settings::g_experimentalTabSettings.dlss_preset_override_enabled.GetValue()) {
+    if (InName != nullptr && settings::g_swapchainTabSettings.dlss_preset_override_enabled.GetValue()) {
         std::string param_name = std::string(InName);
 
         // Check for DLSS Super Resolution preset parameters
@@ -259,7 +259,7 @@ void NVSDK_CONV NVSDK_NGX_Parameter_SetUI_Detour(NVSDK_NGX_Parameter* InParamete
             param_name == "DLSS.Hint.Render.Preset.UltraQuality" ||
             param_name == "DLSS.Hint.Render.Preset.DLAA") {
 
-            int sr_preset = settings::g_experimentalTabSettings.dlss_sr_preset_override.GetValue();
+            int sr_preset = settings::g_swapchainTabSettings.dlss_sr_preset_override.GetValue();
             if (sr_preset > 0) { // 0 = Game Default, 1+ = Preset A+
                 InValue = static_cast<unsigned int>(sr_preset);
                 LogInfo("DLSS SR preset override: %s -> %u (Preset %c)", param_name.c_str(), InValue, 'A' + sr_preset - 1);
@@ -274,7 +274,7 @@ void NVSDK_CONV NVSDK_NGX_Parameter_SetUI_Detour(NVSDK_NGX_Parameter* InParamete
             param_name == "RayReconstruction.Hint.Render.Preset.UltraQuality" ||
             param_name == "RayReconstruction.Hint.Render.Preset.DLAA") {
 
-            int rr_preset = settings::g_experimentalTabSettings.dlss_rr_preset_override.GetValue();
+            int rr_preset = settings::g_swapchainTabSettings.dlss_rr_preset_override.GetValue();
             if (rr_preset > 0) { // 0 = Game Default, 1+ = Preset A+
                 InValue = static_cast<unsigned int>(rr_preset);
                 LogInfo("DLSS RR preset override: %s -> %u (Preset %c)", param_name.c_str(), InValue, 'A' + rr_preset - 1);

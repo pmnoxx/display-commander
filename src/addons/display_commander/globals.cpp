@@ -5,6 +5,7 @@
 #include "settings/developer_tab_settings.hpp"
 #include "settings/experimental_tab_settings.hpp"
 #include "settings/main_tab_settings.hpp"
+#include "settings/swapchain_tab_settings.hpp"
 #include "utils.hpp"
 #include "utils/srwlock_wrapper.hpp"
 #include <algorithm>
@@ -342,6 +343,16 @@ namespace settings {
 ExperimentalTabSettings g_experimentalTabSettings;
 DeveloperTabSettings g_developerTabSettings;
 MainTabSettings g_mainTabSettings;
+SwapchainTabSettings g_swapchainTabSettings;
+// Function to load all settings at startup
+void LoadAllSettingsAtStartup() {
+    g_developerTabSettings.LoadAll();
+    g_experimentalTabSettings.LoadAll();
+    g_mainTabSettings.LoadSettings();
+    g_swapchainTabSettings.LoadAll();
+    LogInfo("All settings loaded at startup");
+}
+
 } // namespace settings
 
 // NGX Parameter Storage global instance

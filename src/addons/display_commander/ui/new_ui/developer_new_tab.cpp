@@ -24,7 +24,7 @@ void InitDeveloperNewTab() {
     // Ensure settings are loaded
     static bool settings_loaded = false;
     if (!settings_loaded) {
-        settings::g_developerTabSettings.LoadAll();
+        // Settings already loaded at startup
 
         // Apply LoadFromDllMain setting to ReShade on startup
         utils::SetLoadFromDllMain(settings::g_developerTabSettings.load_from_dll_main.GetValue());

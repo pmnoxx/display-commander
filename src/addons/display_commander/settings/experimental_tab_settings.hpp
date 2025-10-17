@@ -101,10 +101,6 @@ class ExperimentalTabSettings {
     BoolSetting hid_suppression_block_getattributes;
     BoolSetting hid_suppression_block_createfile;
 
-    // DLSS preset override settings
-    BoolSetting dlss_preset_override_enabled;
-    ComboSetting dlss_sr_preset_override;
-    ComboSetting dlss_rr_preset_override;
 
   private:
     std::vector<SettingBase *> all_settings_;

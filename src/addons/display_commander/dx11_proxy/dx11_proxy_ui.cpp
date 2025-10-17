@@ -475,7 +475,7 @@ void DrawDX11ProxyControls() {
     // Check all conditions
     bool proxy_initialized = manager.IsInitialized();
     bool has_swapchain = stats.has_swapchain;
-    void* game_swapchain_ptr = g_last_swapchain_ptr.load();
+    void* game_swapchain_ptr = g_last_swapchain_ptr_unsafe.load();
     int game_api = g_last_reshade_device_api.load();
     bool has_game_swapchain = (game_swapchain_ptr != nullptr);
 

@@ -103,12 +103,12 @@ void OnDestroyDevice(reshade::api::device *device) {
     LogInfo("Device destroyed - performing cleanup operations device: %p", device);
 
     /*
-    if (g_last_swapchain_ptr.load() != nullptr) {
-        reshade::api::swapchain *swapchain = reinterpret_cast<reshade::api::swapchain *>(g_last_swapchain_ptr.load());
+    if (g_last_swapchain_ptr_unsafe.load() != nullptr) {
+        reshade::api::swapchain *swapchain = reinterpret_cast<reshade::api::swapchain *>(g_last_swapchain_ptr_unsafe.load());
         if (swapchain != nullptr && swapchain->get_device() == device) {
 
                 LogInfo("Clearing global swapchain reference swapchain: %p", swapchain);
-                g_last_swapchain_ptr.store(nullptr);
+                g_last_swapchain_ptr_unsafe.store(nullptr);
             }
         }
     }*/
@@ -172,7 +172,7 @@ void hookToSwapChain(reshade::api::swapchain *swapchain) {
 
     // Store the current swapchain for UI access
     g_last_reshade_device_api.store(static_cast<int>(swapchain->get_device()->get_api()));
-    g_last_swapchain_ptr.store(static_cast<void*>(swapchain));
+    g_last_swapchain_ptr_unsafe.store(static_cast<void*>(swapchain));
 
     // Query and store API version/feature level
     uint32_t api_version = 0;
@@ -847,7 +847,7 @@ void OnPresentUpdateAfter2(void* native_device, DeviceTypeDC device_type) {
 
     // DXGI composition state computation and periodic device/colorspace refresh
     // (moved from continuous monitoring thread to avoid accessing
-    // g_last_swapchain_ptr from background thread)
+    // g_last_swapchain_ptr_unsafe from background thread)
     // NVIDIA Reflex: SIMULATION_END marker (minimal) and Sleep
     if (s_reflex_enable.load()) {
         s_reflex_enable_current_frame.store(true);
@@ -990,7 +990,7 @@ void AutoSetColorSpace(reshade::api::swapchain *swapchain) {
     }
 
     // Get the game's swap chain
-    void* game_swapchain_ptr = g_last_swapchain_ptr.load();
+    void* game_swapchain_ptr = g_last_swapchain_ptr_unsafe.load();
     int game_api = g_last_reshade_device_api.load();
 
     if (!game_swapchain_ptr) {

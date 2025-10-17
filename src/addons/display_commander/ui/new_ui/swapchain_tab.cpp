@@ -765,7 +765,7 @@ void DrawDxgiCompositionInfo() {
 
         // Get colorspace string directly from swapchain
         std::string colorspace_str = "Unknown";
-        if (auto *swapchain_ptr = g_last_swapchain_ptr.load()) {
+        if (auto *swapchain_ptr = g_last_swapchain_ptr_unsafe.load()) {
             auto *swapchain = static_cast<reshade::api::swapchain*>(swapchain_ptr);
             auto colorspace = swapchain->get_color_space();
             switch (colorspace) {
@@ -975,7 +975,7 @@ void DrawSwapchainInfo() {
 
 
         // Get the current swapchain from global variable
-        void* swapchain_ptr = g_last_swapchain_ptr.load();
+        void* swapchain_ptr = g_last_swapchain_ptr_unsafe.load();
         if (swapchain_ptr == nullptr) {
             ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "No active swapchain detected");
             return;

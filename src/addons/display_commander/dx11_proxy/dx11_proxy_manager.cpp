@@ -943,7 +943,7 @@ bool DX11ProxyManager::SetSourceColorSpace() {
     #endif
 
     // Get the game's swap chain from global variables
-    void* game_swapchain_ptr = g_last_swapchain_ptr.load();
+    void* game_swapchain_ptr = g_last_swapchain_ptr_unsafe.load();
     int game_api = g_last_reshade_device_api.load();
 
     if (!game_swapchain_ptr) {

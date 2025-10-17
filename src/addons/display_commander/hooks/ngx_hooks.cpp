@@ -565,7 +565,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_ReleaseFeature_Detour(NVSDK_NGX_Hand
 
 // D3D12 EvaluateFeature detour
 NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_EvaluateFeature_Detour(ID3D12GraphicsCommandList *InCmdList, const NVSDK_NGX_Handle *InFeatureHandle, const NVSDK_NGX_Parameter *InParameters, PFN_NVSDK_NGX_ProgressCallback InCallback) {
-    LogInfo("NGX D3D12 EvaluateFeature called");
+   // LogInfo("NGX D3D12 EvaluateFeature called");
 
     // Hook the parameter vtable if we have parameters
     if (InParameters != nullptr) {

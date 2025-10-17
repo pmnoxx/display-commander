@@ -81,6 +81,19 @@ int slUpgradeInterface_Detour(void** baseInterface) {
     g_swapchain_event_counters[SWAPCHAIN_EVENT_STREAMLINE_SL_UPGRADE_INTERFACE].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
+    IDXGISwapChain* swapchain{};
+    if (SUCCEEDED(static_cast<IUnknown*>(*baseInterface)->QueryInterface(&swapchain))) {
+        swapchain->Release();
+        LogInfo("[slUpgradeInterface] Found IDXGISwapChain interface");
+    }
+
+    IDXGIFactory* dxgi_factory{};
+    if (SUCCEEDED(static_cast<IUnknown*>(*baseInterface)->QueryInterface(&dxgi_factory))) {
+        dxgi_factory->Release();
+        LogInfo("[slUpgradeInterface] Found IDXGIFactory interface");
+    }
+
+
     // Log the call
     LogInfo("slUpgradeInterface called");
 

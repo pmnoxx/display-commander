@@ -83,6 +83,43 @@ ExperimentalTabSettings::ExperimentalTabSettings()
     , hid_suppression_block_getinputreport("HIDSuppressionBlockGetInputReport", true, "DisplayCommander.Experimental")
     , hid_suppression_block_getattributes("HIDSuppressionBlockGetAttributes", true, "DisplayCommander.Experimental")
     , hid_suppression_block_createfile("HIDSuppressionBlockCreateFile", true, "DisplayCommander.Experimental")
+    , dlss_preset_override_enabled("DLSSPresetOverrideEnabled", false, "DisplayCommander.Experimental")
+    , dlss_sr_preset_override("DLSSSRPresetOverride", 0, {
+        "Game Default",
+        "Preset A",
+        "Preset B",
+        "Preset C",
+        "Preset D",
+        "Preset E",
+        "Preset F",
+        "Preset G",
+        "Preset H",
+        "Preset I",
+        "Preset J",
+        "Preset K",
+        "Preset L",
+        "Preset M",
+        "Preset N",
+        "Preset O"
+    }, "DisplayCommander.Experimental")
+    , dlss_rr_preset_override("DLSSRRPresetOverride", 0, {
+        "Game Default",
+        "Preset A",
+        "Preset B",
+        "Preset C",
+        "Preset D",
+        "Preset E",
+        "Preset F",
+        "Preset G",
+        "Preset H",
+        "Preset I",
+        "Preset J",
+        "Preset K",
+        "Preset L",
+        "Preset M",
+        "Preset N",
+        "Preset O"
+    }, "DisplayCommander.Experimental")
 {
     // Initialize the all_settings_ vector
     all_settings_ = {
@@ -107,6 +144,7 @@ ExperimentalTabSettings::ExperimentalTabSettings()
         &hid_suppression_enabled, &hid_suppression_dualsense_only, &hid_suppression_block_readfile,
         &hid_suppression_block_getinputreport, &hid_suppression_block_getattributes,
         &hid_suppression_block_createfile,
+        &dlss_preset_override_enabled, &dlss_sr_preset_override, &dlss_rr_preset_override,
     };
 }
 

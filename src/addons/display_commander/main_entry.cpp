@@ -96,50 +96,61 @@ struct ReShadeDetectionDebugInfo {
 ReShadeDetectionDebugInfo g_reshade_debug_info;
 namespace {
 void OnRegisterOverlayDisplayCommander(reshade::api::effect_runtime *runtime) {
-    // Update UI draw time for auto-click optimization
-    autoclick::UpdateLastUIDrawTime();
+    __try {
+        // Update UI draw time for auto-click optimization
+        autoclick::UpdateLastUIDrawTime();
 
-    ui::new_ui::NewUISystem::GetInstance().Draw();
+        ui::new_ui::NewUISystem::GetInstance().Draw();
 
-    // Periodically save config to ensure settings are persisted
-    static auto last_save_time = std::chrono::steady_clock::now();
-    auto now = std::chrono::steady_clock::now();
-    if (std::chrono::duration_cast<std::chrono::seconds>(now - last_save_time).count() >= 5) {
-        display_commander::config::save_config();
-        last_save_time = now;
+        // Periodically save config to ensure settings are persisted
+        static auto last_save_time = std::chrono::steady_clock::now();
+        auto now = std::chrono::steady_clock::now();
+        if (std::chrono::duration_cast<std::chrono::seconds>(now - last_save_time).count() >= 5) {
+            display_commander::config::save_config();
+            last_save_time = now;
+        }
     }
+    __except(EXCEPTION_EXECUTE_HANDLER) {
+        LogError("Exception occurred during Continuous Monitoring: 0x%x", GetExceptionCode());
+    }
+
 }
 } // namespace
 
 // ReShade effect runtime event handler for input blocking
 void OnInitEffectRuntime(reshade::api::effect_runtime *runtime) {
-    if (runtime == nullptr) {
-        return;
-    }
-    AddReShadeRuntime(runtime);
-    LogInfo("ReShade effect runtime initialized - Input blocking now available");
-
-    if (s_nvapi_fix_hdr10_colorspace.load()) {
-        runtime->set_color_space(reshade::api::color_space::hdr10_st2084);
-    }
-    static bool registered_overlay = false;
-    if (!registered_overlay) {
-
-        // Set up window procedure hooks now that we have the runtime
-        HWND game_window = static_cast<HWND>(runtime->get_hwnd());
-        if (game_window != nullptr && IsWindow(game_window) != 0) {
-            LogInfo("Game window detected - HWND: 0x%p", game_window);
-
-            // Initialize if not already done
-            DoInitializationWithHwnd(game_window);
-        } else {
-            LogWarn("ReShade runtime window is not valid - HWND: 0x%p", game_window);
+    __try {
+        if (runtime == nullptr) {
+            return;
         }
-        registered_overlay = true;
-        reshade::register_overlay("Display Commander", OnRegisterOverlayDisplayCommander);
+        AddReShadeRuntime(runtime);
+        LogInfo("ReShade effect runtime initialized - Input blocking now available");
 
-        // Start the auto-click thread (always running, sleeps when disabled)
-        autoclick::StartAutoClickThread();
+        if (s_nvapi_fix_hdr10_colorspace.load()) {
+            runtime->set_color_space(reshade::api::color_space::hdr10_st2084);
+        }
+        static bool registered_overlay = false;
+        if (!registered_overlay) {
+
+            // Set up window procedure hooks now that we have the runtime
+            HWND game_window = static_cast<HWND>(runtime->get_hwnd());
+            if (game_window != nullptr && IsWindow(game_window) != 0) {
+                LogInfo("Game window detected - HWND: 0x%p", game_window);
+
+                // Initialize if not already done
+                DoInitializationWithHwnd(game_window);
+            } else {
+                LogWarn("ReShade runtime window is not valid - HWND: 0x%p", game_window);
+            }
+            registered_overlay = true;
+            reshade::register_overlay("Display Commander", OnRegisterOverlayDisplayCommander);
+
+            // Start the auto-click thread (always running, sleeps when disabled)
+            autoclick::StartAutoClickThread();
+        }
+    }
+    __except(EXCEPTION_EXECUTE_HANDLER) {
+        LogError("Exception occurred during OnInitEffectRuntime: 0x%x", GetExceptionCode());
     }
 }
 
@@ -606,29 +617,29 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             CheckReShadeVersionCompatibility();
             return FALSE;
         }
-
-        DetectMultipleReShadeVersions();
-        OutputDebugStringA("DisplayCommander: ReShade addon registration SUCCESS\n");
-
-        // Registration successful - log version compatibility
-        LogInfo("Display Commander v%s - ReShade addon registration successful (API version 17 supported)", DISPLAY_COMMANDER_VERSION_STRING);
-
-        // Initialize DisplayCommander config system before handling safemode
-        display_commander::config::DisplayCommanderConfigManager::GetInstance().Initialize();
-        LogInfo("DisplayCommander config system initialized");
-
-
-        // Handle safemode after config system is initialized
-
-        // Detect multiple ReShade versions AFTER successful registration to avoid interference
-        // This prevents our module scanning from interfering with ReShade's internal module detection
-        OutputDebugStringA("DisplayCommander: About to detect ReShade modules\n");
-
-        // Store module handle for pinning
-        g_hmodule = h_module;
-
-        OutputDebugStringA("DisplayCommander: About to call DoInitializationWithoutHwnd\n");
         __try {
+
+            DetectMultipleReShadeVersions();
+            OutputDebugStringA("DisplayCommander: ReShade addon registration SUCCESS\n");
+
+            // Registration successful - log version compatibility
+            LogInfo("Display Commander v%s - ReShade addon registration successful (API version 17 supported)", DISPLAY_COMMANDER_VERSION_STRING);
+
+            // Initialize DisplayCommander config system before handling safemode
+            display_commander::config::DisplayCommanderConfigManager::GetInstance().Initialize();
+            LogInfo("DisplayCommander config system initialized");
+
+
+            // Handle safemode after config system is initialized
+
+            // Detect multiple ReShade versions AFTER successful registration to avoid interference
+            // This prevents our module scanning from interfering with ReShade's internal module detection
+            OutputDebugStringA("DisplayCommander: About to detect ReShade modules\n");
+
+            // Store module handle for pinning
+            g_hmodule = h_module;
+
+            OutputDebugStringA("DisplayCommander: About to call DoInitializationWithoutHwnd\n");
             DoInitializationWithoutHwnd(h_module, fdw_reason);
             OutputDebugStringA("DisplayCommander: DoInitializationWithoutHwnd completed\n");
         }

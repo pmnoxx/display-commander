@@ -976,33 +976,13 @@ void AutoSetColorSpace(reshade::api::swapchain *swapchain) {
         return; // Unsupported format
     }
 
-    // Get the game's swap chain
-    void* game_swapchain_ptr = g_last_swapchain_ptr_unsafe.load();
-    int game_api = g_last_reshade_device_api.load();
-
-    if (!game_swapchain_ptr) {
+    auto* unknown = reinterpret_cast<IUnknown*>(swapchain->get_native());
+    if (unknown == nullptr) {
         return;
     }
 
-    // Check if it's a compatible API (DX11 or DX12)
-    bool is_dx11 = (game_api == static_cast<int>(reshade::api::device_api::d3d11));
-    bool is_dx12 = (game_api == static_cast<int>(reshade::api::device_api::d3d12));
-    if (!is_dx11 && !is_dx12) {
-        return;
-    }
-
-    // Get the native swap chain handle from ReShade
-    auto* reshade_swapchain = static_cast<reshade::api::swapchain*>(game_swapchain_ptr);
-    uint64_t native_handle = reshade_swapchain->get_native();
-
-    if (!native_handle) {
-        return;
-    }
-
-    // Cast to IDXGISwapChain and get IDXGISwapChain3 interface
-    auto* native_swapchain = reinterpret_cast<IDXGISwapChain*>(native_handle);
     Microsoft::WRL::ComPtr<IDXGISwapChain3> swapchain3;
-    HRESULT hr = native_swapchain->QueryInterface(IID_PPV_ARGS(&swapchain3));
+    HRESULT hr = unknown->QueryInterface(IID_PPV_ARGS(&swapchain3));
     if (FAILED(hr)) {
         return;
     }

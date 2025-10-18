@@ -917,11 +917,6 @@ void HandleFpsLimiter() {
             }
             break;
         }
-        case FpsLimiterMode::kOnPresentSyncLowLatency: {
-            // Low latency mode not implemented yet - treat as disabled
-            LogInfo("FPS Limiter: OnPresent Frame Synchronizer (Low Latency Mode) - Not implemented yet");
-            break;
-        }
         case FpsLimiterMode::kLatentSync: {
             // Use latent sync manager for VBlank Scanline Sync mode
             if (dxgi::latent_sync::g_latentSyncManager) {
@@ -930,6 +925,11 @@ void HandleFpsLimiter() {
                     latent.LimitFrameRate();
                 }
             }
+            break;
+        }
+        case FpsLimiterMode::kNonReflexLowLatency: {
+            // Non-Reflex Low Latency Mode not implemented yet - treat as disabled
+            LogInfo("FPS Limiter: Non-Reflex Low Latency Mode - Not implemented yet");
             break;
         }
         }

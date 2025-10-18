@@ -559,10 +559,10 @@ void DrawDisplaySettings() {
     {
         const char* items[] = {
             "Disabled",
-            "Reflex",
-            "OnPresent Frame Synchronizer",
-            "OnPresent Frame Synchronizer (Low Latency Mode) (not implemented yet)",
-            "VBlank Scanline Sync for VSync-OFF"
+            "Reflex (low latency mode) Non-VRR DX11/DX12 (supports DLSS-G)",
+            "Synchronize frame Present/Start Time (adds latency to offer more consistent frame timing) VRR/Non-VRR",
+            "Synchronize to Display Refresh Rate (fraction of monitor refresh rate) Non-VRR",
+            "Non-Reflex Low Latency Mode (not implemented) VRR"
         };
 
         int current_item = settings::g_mainTabSettings.fps_limiter_mode.GetValue();
@@ -579,10 +579,10 @@ void DrawDisplaySettings() {
                 settings::g_developerTabSettings.reflex_auto_configure.SetValue(true);
             } else if (mode == FpsLimiterMode::kOnPresentSync) {
                 LogInfo("FPS Limiter: OnPresent Frame Synchronizer");
-            } else if (mode == FpsLimiterMode::kOnPresentSyncLowLatency) {
-                LogInfo("FPS Limiter: OnPresent Frame Synchronizer (Low Latency Mode) - Not implemented yet");
             } else if (mode == FpsLimiterMode::kLatentSync) {
                 LogInfo("FPS Limiter: VBlank Scanline Sync for VSYNC-OFF or without VRR");
+            } else if (mode == FpsLimiterMode::kNonReflexLowLatency) {
+                LogInfo("FPS Limiter: Non-Reflex Low Latency Mode - Not implemented yet");
             }
 
             if (mode == FpsLimiterMode::kReflex && prev_item != static_cast<int>(FpsLimiterMode::kReflex)) {
@@ -594,13 +594,9 @@ void DrawDisplaySettings() {
 
         // Custom rendering for grayed out option
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Choose limiter: OnPresent Frame Synchronizer (synchronized frame display timing) or VBlank Scanline Sync\n\nOnPresent Frame Synchronizer adds latency as it delays frame display time to be more consistent - it prioritizes starting frame processing at the same time.\n\nOnPresent Frame Synchronizer Low Latency mode (not implemented): delays processing frame to lower latency, at cost of frame pacing.\n\nVBlank Scanline Sync synchronizes frame presentation with monitor refresh cycles for smooth frame pacing without VSync.");
+            ImGui::SetTooltip("Choose limiter: OnPresent Frame Synchronizer (synchronized frame display timing) or VBlank Scanline Sync\n\nOnPresent Frame Synchronizer adds latency as it delays frame display time to be more consistent - it prioritizes starting frame processing at the same time.\n\nVBlank Scanline Sync synchronizes frame presentation with monitor refresh cycles for smooth frame pacing without VSync.");
         }
 
-        // Show warning for low latency mode
-        if (current_item == static_cast<int>(FpsLimiterMode::kOnPresentSyncLowLatency)) { // kOnPresentSyncLowLatency
-            ImGui::TextColored(ui::colors::TEXT_WARNING, ICON_FK_WARNING " Low Latency Mode not implemented yet");
-        }
         if (current_item == static_cast<int>(FpsLimiterMode::kReflex)) {
             // Check if we're running on D3D9 and show warning
             int current_api = g_last_reshade_device_api.load();
@@ -628,6 +624,10 @@ void DrawDisplaySettings() {
             }
         }
 
+        // Show warning for non-implemented low latency mode
+        if (current_item == static_cast<int>(FpsLimiterMode::kNonReflexLowLatency)) {
+            ImGui::TextColored(ui::colors::TEXT_WARNING, ICON_FK_WARNING " Non-Reflex Low Latency Mode not implemented yet");
+        }
 
         // Present Pacing Delay slider (persisted)
         if (current_item == static_cast<int>(FpsLimiterMode::kOnPresentSync)) {

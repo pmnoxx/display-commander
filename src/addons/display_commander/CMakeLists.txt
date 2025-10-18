@@ -36,6 +36,9 @@ if(MSVC)
   target_compile_options(zzz_display_commander PRIVATE /D_ENABLE_EXTENDED_ALIGNED_STORAGE)
   # Suppress Microsoft extension warnings for function pointer casting (common with MinHook)
   target_compile_options(zzz_display_commander PRIVATE /wd4191)
+
+  # Use static runtime linking to avoid dependency on debug runtime DLLs
+  set_property(TARGET zzz_display_commander PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif()
 
 # GCC/Clang-specific flags
@@ -114,6 +117,11 @@ if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/../../../external/minhook")
   # When using clang-cl, undefine _MSC_VER for MinHook C sources to force memcpy path instead of __movsb
   if(CMAKE_C_COMPILER_ID STREQUAL "Clang")
     set_source_files_properties(${MINHOOK_SOURCES} PROPERTIES COMPILE_OPTIONS "-U_MSC_VER")
+  endif()
+
+  # Use static runtime linking for MinHook as well
+  if(MSVC)
+    set_property(TARGET minhook PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
   endif()
 
   # Link MinHook to display commander

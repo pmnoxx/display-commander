@@ -890,7 +890,7 @@ void HandleFpsLimiter() {
         target_fps = 0.0f;
     }
     late_amount_ns.store(0);
-    if (target_fps > 0.0f) {
+    if (target_fps > 0.0f || s_fps_limiter_mode.load() == FpsLimiterMode::kLatentSync) {
         flush_command_queue();
 
         // Call FPS Limiter on EVERY frame (not throttled)

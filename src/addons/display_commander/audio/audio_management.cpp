@@ -40,8 +40,8 @@ bool SetMuteForCurrentProcess(bool mute) {
             IAudioSessionControl *session_control = nullptr;
             if (FAILED(session_enumerator->GetSession(i, &session_control)) || session_control == nullptr)
                 continue;
-            IAudioSessionControl2 *session_control2 = nullptr;
-            if (SUCCEEDED(session_control->QueryInterface(&session_control2)) && session_control2 != nullptr) {
+            Microsoft::WRL::ComPtr<IAudioSessionControl2> session_control2 = nullptr;
+            if (SUCCEEDED(session_control->QueryInterface(IID_PPV_ARGS(&session_control2))) && session_control2 != nullptr) {
                 DWORD pid = 0;
                 session_control2->GetProcessId(&pid);
                 if (pid == target_pid) {
@@ -52,7 +52,6 @@ bool SetMuteForCurrentProcess(bool mute) {
                         success = true;
                     }
                 }
-                session_control2->Release();
             }
             session_control->Release();
         }

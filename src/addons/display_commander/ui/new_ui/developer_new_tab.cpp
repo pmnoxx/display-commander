@@ -796,7 +796,7 @@ void DrawReShadeGlobalConfigSettings() {
     ImGui::Spacing();
 
     // Apply current -> global
-    if (ImGui::Button("Apply: Current → Global")) {
+    if (ImGui::Button("Apply: Current -> Global")) {
         // Refresh current settings before saving
         utils::ReadCurrentReShadeSettings(currentSettings);
 
@@ -820,7 +820,7 @@ void DrawReShadeGlobalConfigSettings() {
     ImGui::SameLine();
 
     // Apply global -> current
-    if (ImGui::Button("Apply: Global → Current")) {
+    if (ImGui::Button("Apply: Global -> Current")) {
         // Refresh global settings before applying
         if (utils::LoadGlobalSettings(globalSettings)) {
             if (utils::WriteCurrentReShadeSettings(globalSettings)) {
@@ -844,6 +844,8 @@ void DrawReShadeGlobalConfigSettings() {
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Apply global profile to current game's ReShade settings\n(Overwrites current game's ReShade.ini)");
     }
+    // warn requires pressing reload button on Home page in reshade for settings to be visible
+    ImGui::TextColored(ImVec4(1.0f, 0.7f, 0.0f, 1.0f), "Warning: Requires pressing 'RELOAD' button on Home page in ReShade for settings to be visible");
 
     // Status message
     if (!statusMessage.empty()) {

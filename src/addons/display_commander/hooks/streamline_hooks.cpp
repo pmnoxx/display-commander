@@ -76,6 +76,7 @@ int slGetNativeInterface_Detour(void* proxyInterface, void** baseInterface) {
     return -1; // Error if original not available
 }
 
+// Reference: https://github.com/NVIDIA-RTX/Streamline/blob/b998246a3d499c08765c5681b229c9e6b4513348/source/core/sl.api/sl.cpp#L625
 int slUpgradeInterface_Detour(void** baseInterface) {
     // Increment counter
     g_swapchain_event_counters[SWAPCHAIN_EVENT_STREAMLINE_SL_UPGRADE_INTERFACE].fetch_add(1);

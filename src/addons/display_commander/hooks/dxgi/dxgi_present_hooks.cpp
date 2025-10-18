@@ -997,6 +997,7 @@ bool HookSwapchain(IDXGISwapChain *swapchain) {
     // ============================================================================
     LogInfo("Hooking IDXGISwapChain methods (indices 8-17)");
 
+
     // Hook Present (index 8) - Critical method, always present
     if (MH_CreateHook(vtable[8], IDXGISwapChain_Present_Detour, (LPVOID *)&IDXGISwapChain_Present_Original) != MH_OK) {
         LogError("Failed to create IDXGISwapChain::Present hook");

@@ -560,8 +560,8 @@ void DrawDisplaySettings() {
         const char* items[] = {
             "Disabled",
             "Reflex (low latency mode) Non-VRR DX11/DX12 (supports DLSS-G)",
-            "Synchronize frame Present/Start Time (adds latency to offer more consistent frame timing) VRR/Non-VRR",
-            "Synchronize to Display Refresh Rate (fraction of monitor refresh rate) Non-VRR",
+            "Sync frame Present/Start Time (adds latency to offer more consistent frame timing) VRR/Non-VRR",
+            "Sync to Display Refresh Rate (fraction of monitor refresh rate) Non-VRR",
             "Non-Reflex Low Latency Mode (not implemented) VRR"
         };
 
@@ -681,7 +681,7 @@ void DrawDisplaySettings() {
         // VBlank Sync Divisor (only visible if latent sync mode is selected)
         int current_divisor = settings::g_mainTabSettings.vblank_sync_divisor.GetValue();
         int temp_divisor = current_divisor;
-        if (ImGui::SliderInt("VBlank Sync Divisor", &temp_divisor, 0, 8, "%d")) {
+        if (ImGui::SliderInt("VBlank Sync Divisor (controls FPS limit as fraction of monitor refresh rate)", &temp_divisor, 0, 8, "%d")) {
             settings::g_mainTabSettings.vblank_sync_divisor.SetValue(temp_divisor);
             s_vblank_sync_divisor.store(temp_divisor);
         }
@@ -747,7 +747,7 @@ void DrawDisplaySettings() {
 
     // FPS Limit slider (persisted)
 
-    bool fps_limit_enabled = s_fps_limiter_mode.load() != FpsLimiterMode::kDisabled || s_reflex_enable.load();
+    bool fps_limit_enabled = s_fps_limiter_mode.load() != FpsLimiterMode::kDisabled && s_fps_limiter_mode.load() != FpsLimiterMode::kLatentSync || s_reflex_enable.load();
 
 
     {
@@ -763,13 +763,13 @@ void DrawDisplaySettings() {
         if (cur_limit > 0.0f && cur_limit < 10.0f) {
             settings::g_mainTabSettings.fps_limit.SetValue(0.0f);
         }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Set FPS limit for the game (0 = no limit). Now uses the new Custom FPS Limiter system.");
+        }
 
         if (!fps_limit_enabled) {
             ImGui::EndDisabled();
         }
-    }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Set FPS limit for the game (0 = no limit). Now uses the new Custom FPS Limiter system.");
     }
 
     // FPS Limiter Warning - Check if OnPresentFlags events are working

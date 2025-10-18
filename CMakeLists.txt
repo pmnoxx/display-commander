@@ -50,7 +50,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Enable C for third-party C sources (MinHook)
 enable_language(C)
 
-# Use direct externals (drop RENODX_SUBMODULE_DIR)
+# Use direct externals
 if(NOT EXISTS "${CMAKE_CURRENT_LIST_DIR}/external/reshade")
   message(FATAL_ERROR "Missing submodule: external/reshade. Run: git submodule update --init --recursive")
 endif()

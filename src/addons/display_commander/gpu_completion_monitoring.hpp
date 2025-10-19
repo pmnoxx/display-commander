@@ -4,3 +4,6 @@
 void StartGPUCompletionMonitoring();
 void StopGPUCompletionMonitoring();
 
+// GPU completion callback for OpenGL (assumes immediate completion)
+void HandleOpenGLGPUCompletion();
+

@@ -1074,6 +1074,10 @@ void OnPresentUpdateBefore(reshade::api::command_queue * command_queue, reshade:
     if (swapchain->get_device()->get_api() == reshade::api::device_api::d3d11 ||
         swapchain->get_device()->get_api() == reshade::api::device_api::d3d12) {
         EnqueueGPUCompletion(swapchain, command_queue);
+    } else {
+        g_sim_start_ns_for_measurement.store(g_sim_start_ns.load());
+        g_present_update_after2_called.store(false);
+        g_gpu_completion_callback_finished.store(false);
     }
 
     flush_command_queue_with_command_queue(command_queue); // Flush command queue before addons start processing

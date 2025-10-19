@@ -6,6 +6,7 @@
 #include "../../performance_types.hpp"
 #include "../../swapchain_events.hpp"
 #include "../../utils/general_utils.hpp"
+#include "../../gpu_completion_monitoring.hpp"
 
 #include <d3d9.h>
 #include <MinHook.h>
@@ -98,12 +99,20 @@ HRESULT STDMETHODCALLTYPE IDirect3DDevice9_Present_Detour(
     // Call original function
     if (IDirect3DDevice9_Present_Original != nullptr) {
         auto res= IDirect3DDevice9_Present_Original(This, pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion);
+
+        // Handle GPU completion for D3D9 (assumes immediate completion)
+        HandleOpenGLGPUCompletion();
+
         ::OnPresentUpdateAfter2(This, DeviceTypeDC::DX9);
         return res;
     }
 
     // Fallback to direct call if hook failed
     auto res= This->Present(pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion);
+
+    // Handle GPU completion for D3D9 (assumes immediate completion)
+    HandleOpenGLGPUCompletion();
+
     ::OnPresentUpdateAfter2(This, DeviceTypeDC::DX9);
     return res;
 }
@@ -182,6 +191,10 @@ HRESULT STDMETHODCALLTYPE IDirect3DDevice9_PresentEx_Detour(
     // Call original function
     if (IDirect3DDevice9_PresentEx_Original != nullptr) {
         auto res= IDirect3DDevice9_PresentEx_Original(This, pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion, dwFlags);
+
+        // Handle GPU completion for D3D9 (assumes immediate completion)
+        HandleOpenGLGPUCompletion();
+
         ::OnPresentUpdateAfter2(This, DeviceTypeDC::DX9);
         return res;
     }
@@ -190,9 +203,17 @@ HRESULT STDMETHODCALLTYPE IDirect3DDevice9_PresentEx_Detour(
     // Note: PresentEx is only available on IDirect3DDevice9Ex, so we need to cast
     if (auto *deviceEx = static_cast<IDirect3DDevice9Ex *>(This)) {
         auto res= deviceEx->PresentEx(pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion, dwFlags);
+
+        // Handle GPU completion for D3D9 (assumes immediate completion)
+        HandleOpenGLGPUCompletion();
+
         ::OnPresentUpdateAfter2(This, DeviceTypeDC::DX9);
         return res;
     }
+
+    // Handle GPU completion for D3D9 (assumes immediate completion)
+    HandleOpenGLGPUCompletion();
+
     ::OnPresentUpdateAfter2(This, DeviceTypeDC::DX9);
     return D3DERR_INVALIDCALL;
 }

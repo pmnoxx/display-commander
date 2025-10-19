@@ -3,6 +3,7 @@
 #include "../globals.hpp"
 #include "../swapchain_events.hpp"
 #include "../performance_types.hpp"
+#include "../gpu_completion_monitoring.hpp"
 #include <array>
 #include <MinHook.h>
 #include <windows.h>
@@ -54,8 +55,12 @@ BOOL WINAPI wglSwapBuffers_Detour(HDC hdc) {
     // Call original function
     BOOL result = wglSwapBuffers_Original(hdc);
 
+    // Handle GPU completion for OpenGL (assumes immediate completion)
+    HandleOpenGLGPUCompletion();
+
     // Call OnPresentUpdateAfter2 after the present
     OnPresentUpdateAfter2(hdc, DeviceTypeDC::OpenGL);
+
 
     return result;
 }

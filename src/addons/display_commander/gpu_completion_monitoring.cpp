@@ -149,3 +149,62 @@ void StopGPUCompletionMonitoring() {
     LogInfo("GPU completion monitoring thread stopped");
 }
 
+// GPU completion callback for OpenGL (assumes immediate completion)
+void HandleOpenGLGPUCompletion() {
+    // For OpenGL, we assume GPU processing finished immediately after wglSwapBuffers
+    // This is a reasonable assumption since OpenGL doesn't have the same GPU completion
+    // tracking mechanisms as DirectX
+
+    LONGLONG gpu_completion_time = utils::get_now_ns();
+    LONGLONG present_start_time = g_present_start_time_ns.load();
+
+    // Calculate GPU duration
+    if (present_start_time > 0) {
+        LONGLONG gpu_duration_new_ns = gpu_completion_time - present_start_time;
+
+        // Smooth the GPU duration with exponential moving average
+        // Alpha = 64 means we average over ~64 frames
+        LONGLONG old_duration = g_gpu_duration_ns.load();
+        LONGLONG smoothed_duration = UpdateRollingAverage(gpu_duration_new_ns, old_duration);
+
+        // Store the smoothed duration and exact completion time
+        g_gpu_duration_ns.store(smoothed_duration);
+        g_gpu_completion_time_ns.store(gpu_completion_time);
+    }
+
+    // Sim-to-display latency measurement
+    // Check if this callback finishes second (after OnPresentUpdateAfter2)
+    LONGLONG sim_start_for_measurement = g_sim_start_ns_for_measurement.load();
+    if (sim_start_for_measurement > 0) {
+        g_gpu_completion_callback_finished.store(true);
+        g_gpu_completion_callback_time_ns.store(gpu_completion_time);
+
+        // If OnPresentUpdateAfter2 was already called, we're finishing second
+        if (g_present_update_after2_called.load()) {
+            // Calculate sim-to-display latency
+            LONGLONG latency_new_ns = gpu_completion_time - sim_start_for_measurement;
+
+            // Smooth the latency with exponential moving average
+            LONGLONG old_latency = g_sim_to_display_latency_ns.load();
+            LONGLONG smoothed_latency = UpdateRollingAverage(latency_new_ns, old_latency);
+
+            g_sim_to_display_latency_ns.store(smoothed_latency);
+
+            // Record frame time for Display Timing mode (GPU finished second, this is actual display time)
+            RecordFrameTime(FrameTimeMode::kDisplayTiming);
+
+            // Calculate GPU late time (GPU finished after Present)
+            LONGLONG present_time = g_present_update_after2_time_ns.load();
+            if (present_time > 0) {
+                LONGLONG gpu_late_new_ns = gpu_completion_time - present_time;
+                LONGLONG old_gpu_late = g_gpu_late_time_ns.load();
+                LONGLONG smoothed_gpu_late = UpdateRollingAverage(gpu_late_new_ns, old_gpu_late);
+                g_gpu_late_time_ns.store(smoothed_gpu_late);
+            }
+        } else {
+            // GPU finished first, so late time is 0
+            g_gpu_late_time_ns.store(0);
+        }
+    }
+}
+

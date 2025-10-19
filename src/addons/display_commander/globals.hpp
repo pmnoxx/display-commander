@@ -627,6 +627,26 @@ extern StreamlineTabSettings g_streamlineTabSettings;
 void LoadAllSettingsAtStartup();
 }  // namespace settings
 
+// OpenGL hook counter indices
+enum OpenGLHookIndex {
+    OPENGL_HOOK_WGL_SWAPBUFFERS,
+    OPENGL_HOOK_WGL_MAKECURRENT,
+    OPENGL_HOOK_WGL_CREATECONTEXT,
+    OPENGL_HOOK_WGL_DELETECONTEXT,
+    OPENGL_HOOK_WGL_CHOOSEPIXELFORMAT,
+    OPENGL_HOOK_WGL_SETPIXELFORMAT,
+    OPENGL_HOOK_WGL_GETPIXELFORMAT,
+    OPENGL_HOOK_WGL_DESCRIBEPIXELFORMAT,
+    OPENGL_HOOK_WGL_CREATECONTEXTATTRIBSARB,
+    OPENGL_HOOK_WGL_CHOOSEPIXELFORMATARB,
+    OPENGL_HOOK_WGL_GETPIXELFORMATATTRIBIVARB,
+    OPENGL_HOOK_WGL_GETPIXELFORMATATTRIBFVARB,
+    OPENGL_HOOK_WGL_GETPROCADDRESS,
+    OPENGL_HOOK_WGL_SWAPINTERVALEXT,
+    OPENGL_HOOK_WGL_GETSWAPINTERVALEXT,
+    NUM_OPENGL_HOOKS
+};
+
 // Swapchain event counter indices
 enum SwapchainEventIndex {
     SWAPCHAIN_EVENT_BEGIN_RENDER_PASS,
@@ -735,6 +755,10 @@ enum SwapchainEventIndex {
 // Swapchain event counters - reset on each swapchain creation
 extern std::array<std::atomic<uint32_t>, NUM_EVENTS> g_swapchain_event_counters;  // Array for all On* events
 extern std::atomic<uint32_t> g_swapchain_event_total_count;   // Total events across all types
+
+// OpenGL hook counters
+extern std::array<std::atomic<uint64_t>, NUM_OPENGL_HOOKS> g_opengl_hook_counters;  // Array for all OpenGL hook events
+extern std::atomic<uint64_t> g_opengl_hook_total_count;   // Total OpenGL hook events across all types
 
 // Unsorted TODO: Add in correct order above
 extern std::atomic<LONGLONG> g_present_start_time_ns;

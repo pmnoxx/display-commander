@@ -189,3 +189,6 @@ copy_railgrade_files "_univ" "/c/Program Files (x86)/Steam/steamapps/common/HITM
 copy_railgrade_files "_univ" "/d/SteamLibrary/steamapps/common/Godstrike"
 
 copy_railgrade_files "_univ" "/c/Program Files (x86)/Steam/steamapps/common/Blue Protocol Star Resonance/bpsr"
+
+
+copy_railgrade_files "_univ" "/c/Program Files (x86)/Steam/steamapps/common/Halls of Torment Prelude"

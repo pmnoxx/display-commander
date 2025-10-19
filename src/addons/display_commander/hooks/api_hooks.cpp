@@ -3,6 +3,7 @@
 #include "dxgi/dxgi_present_hooks.hpp"
 #include "globals.hpp"
 #include "loadlibrary_hooks.hpp"
+#include "opengl_hooks.hpp"
 #include "process_exit_hooks.hpp"
 #include "sleep_hooks.hpp"
 #include "timeslowdown_hooks.hpp"
@@ -312,6 +313,10 @@ bool InstallApiHooks() {
         LogError("Failed to install DirectInput hooks");
     }
 
+    // Install OpenGL hooks
+    if (!InstallOpenGLHooks()) {
+        LogError("Failed to install OpenGL hooks");
+    }
 
     g_api_hooks_installed.store(true);
     LogInfo("API hooks installed successfully");
@@ -338,6 +343,8 @@ void UninstallApiHooks() {
     // Uninstall DirectInput hooks
     UninstallDirectInputHooks();
 
+    // Uninstall OpenGL hooks
+    UninstallOpenGLHooks();
 
     // Uninstall Windows message hooks
     UninstallWindowsMessageHooks();

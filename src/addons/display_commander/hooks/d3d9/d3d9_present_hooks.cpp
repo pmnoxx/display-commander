@@ -14,8 +14,6 @@
 
 // Forward declarations to avoid including headers that cause redefinition
 extern void OnPresentFlags2(uint32_t *present_flags, DeviceTypeDC device_type);
-extern void LogInfo(const char *format, ...);
-extern void LogWarn(const char *format, ...);
 
 namespace display_commanderhooks::d3d9 {
 

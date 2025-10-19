@@ -1,6 +1,7 @@
 #include "hook_stats_tab.hpp"
 #include "../../hooks/windows_hooks/windows_message_hooks.hpp"
 #include "../../hooks/dinput_hooks.hpp"
+#include "../../hooks/opengl_hooks.hpp"
 #include "../../settings/experimental_tab_settings.hpp"
 #include "../../globals.hpp"
 #include <reshade_imgui.hpp>
@@ -231,6 +232,94 @@ void DrawHookStatsTab() {
         if (ImGui::Button("Clear Device History")) {
             display_commanderhooks::ClearDInputDevices();
         }
+    }
+
+    ImGui::Spacing();
+    ImGui::Separator();
+
+    // OpenGL Hook Statistics
+    ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "=== OpenGL Hook Statistics ===");
+    ImGui::Text("Track the number of times each OpenGL/WGL function was called");
+    ImGui::Separator();
+
+    // Reset OpenGL statistics button
+    if (ImGui::Button("Reset OpenGL Statistics")) {
+        for (int i = 0; i < NUM_OPENGL_HOOKS; ++i) {
+            g_opengl_hook_counters[i].store(0);
+        }
+        g_opengl_hook_total_count.store(0);
+    }
+    ImGui::SameLine();
+    ImGui::Text("Click to reset all OpenGL counters to zero");
+
+    ImGui::Spacing();
+    ImGui::Separator();
+
+    // Function names array
+    static const char* opengl_function_names[] = {
+        "wglSwapBuffers",
+        "wglMakeCurrent",
+        "wglCreateContext",
+        "wglDeleteContext",
+        "wglChoosePixelFormat",
+        "wglSetPixelFormat",
+        "wglGetPixelFormat",
+        "wglDescribePixelFormat",
+        "wglCreateContextAttribsARB",
+        "wglChoosePixelFormatARB",
+        "wglGetPixelFormatAttribivARB",
+        "wglGetPixelFormatAttribfvARB",
+        "wglGetProcAddress",
+        "wglSwapIntervalEXT",
+        "wglGetSwapIntervalEXT"
+    };
+
+    uint64_t total_opengl_calls = 0;
+
+    // Display OpenGL hook statistics in a table
+    if (ImGui::BeginTable("OpenGLHooks", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable)) {
+        ImGui::TableSetupColumn("Function Name", ImGuiTableColumnFlags_WidthFixed, 300.0f);
+        ImGui::TableSetupColumn("Call Count", ImGuiTableColumnFlags_WidthFixed, 150.0f);
+        ImGui::TableHeadersRow();
+        for (int i = 0; i < NUM_OPENGL_HOOKS; ++i) {
+            uint64_t call_count = g_opengl_hook_counters[i].load();
+            total_opengl_calls += call_count;
+
+            ImGui::TableNextRow();
+
+            // Function name
+            ImGui::TableSetColumnIndex(0);
+            ImGui::Text("%s", opengl_function_names[i]);
+
+            // Call count
+            ImGui::TableSetColumnIndex(1);
+            if (call_count > 0) {
+                ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "%llu", call_count);
+            } else {
+                ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "%llu", call_count);
+            }
+        }
+
+        ImGui::EndTable();
+    }
+
+    ImGui::Spacing();
+    ImGui::Separator();
+
+    // OpenGL summary statistics
+    ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "OpenGL Summary:");
+    ImGui::Text("Total OpenGL Hook Calls: %llu", g_opengl_hook_total_count.load());
+    ImGui::Text("OpenGL Functions Called: %llu", total_opengl_calls);
+
+    // Show if OpenGL hooks are installed
+    bool opengl_hooks_installed = AreOpenGLHooksInstalled();
+    ImGui::Text("OpenGL Hooks Status: %s", opengl_hooks_installed ? "Installed" : "Not Installed");
+    if (opengl_hooks_installed) {
+        ImGui::SameLine();
+        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✓");
+    } else {
+        ImGui::SameLine();
+        ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "✗");
     }
 }
 

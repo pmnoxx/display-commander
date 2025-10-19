@@ -835,6 +835,7 @@ extern UnifiedParameterMap g_ngx_parameters; // Unified NGX parameters supportin
 struct DLSSGSummary {
     bool dlss_active = false;
     bool dlss_g_active = false;
+    bool ray_reconstruction_active = false;
     std::string internal_resolution = "N/A";
     std::string output_resolution = "N/A";
     std::string scaling_ratio = "N/A";

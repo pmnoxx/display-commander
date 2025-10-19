@@ -13,6 +13,7 @@
 #include "hooks/windows_hooks/windows_message_hooks.hpp"
 #include "hooks/xinput_hooks.hpp"
 #include "hooks/hid_suppression_hooks.hpp"
+#include "hooks/ngx_hooks.hpp"
 #include "input_remapping/input_remapping.hpp"
 #include "latency/latency_manager.hpp"
 #include "latent_sync/latent_sync_limiter.hpp"
@@ -87,6 +88,9 @@ void OnDestroyDevice(reshade::api::device *device) {
     }
 
     LogInfo("Device destroyed - performing cleanup operations device: %p", device);
+
+    // Clean up NGX handle tracking
+    CleanupNGXHooks();
 
     /*
     if (g_last_swapchain_ptr_unsafe.load() != nullptr) {

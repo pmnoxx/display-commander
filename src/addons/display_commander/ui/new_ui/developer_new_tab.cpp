@@ -270,12 +270,6 @@ void DrawHdrDisplaySettings() {
 }
 
 void DrawNvapiSettings() {
-    // HDR10 Colorspace Fix
-    if (CheckboxSetting(settings::g_developerTabSettings.nvapi_fix_hdr10_colorspace,
-                        "Set ReShade Effects Processing to HDR10 Colorspace")) {
-        s_nvapi_fix_hdr10_colorspace.store(settings::g_developerTabSettings.nvapi_fix_hdr10_colorspace.GetValue());
-        s_restart_needed_nvapi.store(true);
-    }
 
     // NVAPI Fullscreen Prevention
     if (CheckboxSetting(settings::g_developerTabSettings.nvapi_fullscreen_prevention, "NVAPI Fullscreen Prevention")) {
@@ -290,8 +284,7 @@ void DrawNvapiSettings() {
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip(
             "Automatically enable NVAPI features for specific games:\n"
-            "• NVAPI Fullscreen Prevention\n"
-            "• HDR10 Colorspace Fix\n\n"
+            "• NVAPI Fullscreen Prevention\n\n"
             "Note: DLDSR needs to be off for proper functionality\n\n"
             "Supported games:\n"
             "• Armored Core 6\n"

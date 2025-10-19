@@ -130,9 +130,6 @@ void OnInitEffectRuntime(reshade::api::effect_runtime* runtime) {
         AddReShadeRuntime(runtime);
         LogInfo("ReShade effect runtime initialized - Input blocking now available");
 
-        if (s_nvapi_fix_hdr10_colorspace.load()) {
-            runtime->set_color_space(reshade::api::color_space::hdr10_st2084);
-        }
         static bool registered_overlay = false;
         if (!registered_overlay) {
             // Set up window procedure hooks now that we have the runtime

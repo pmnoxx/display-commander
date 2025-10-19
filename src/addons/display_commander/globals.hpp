@@ -430,9 +430,6 @@ extern std::atomic<AspectRatioType> s_aspect_index;
 extern std::atomic<int> s_aspect_width;
 
 
-// Fix HDR10 color space when backbuffer is RGB10A2
-extern std::atomic<bool> s_nvapi_fix_hdr10_colorspace;
-
 // Auto color space setting
 extern std::atomic<bool> s_auto_colorspace;
 

@@ -321,10 +321,6 @@ void NVAPIFullscreenPrevention::CheckAndAutoEnable() {
             LogInfo("NVAPI Auto-enable: Enabled fullscreen prevention for '%s'", processName.c_str());
         }
 
-        if (!s_nvapi_fix_hdr10_colorspace.load()) {
-            s_nvapi_fix_hdr10_colorspace.store(true);
-            LogInfo("NVAPI Auto-enable: Enabled HDR10 colorspace fix for '%s'", processName.c_str());
-        }
 
         // Initialize and enable the NVAPI fullscreen prevention
         if (!g_nvapiFullscreenPrevention.IsAvailable()) {

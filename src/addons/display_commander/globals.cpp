@@ -81,8 +81,6 @@ std::atomic<bool> s_suppress_dinput_hooks{false}; // Disabled by default
 
 // Present blocking in background
 
-// Fix HDR10 color space when backbuffer is RGB10A2
-std::atomic<bool> s_nvapi_fix_hdr10_colorspace{false};
 std::atomic<bool> s_auto_colorspace{false};
 
 // Hide HDR capabilities from applications

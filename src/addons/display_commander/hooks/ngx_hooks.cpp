@@ -522,24 +522,6 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_Init_ProjectID_Detour(const char *In
 NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_CreateFeature_Detour(ID3D12GraphicsCommandList *InCmdList, NVSDK_NGX_Feature InFeatureID, NVSDK_NGX_Parameter *InParameters, NVSDK_NGX_Handle **OutHandle) {
     LogInfo("NGX D3D12 CreateFeature called - FeatureID: %d", InFeatureID);
 
-    // Track enabled features based on FeatureID using global atomic variables
-    switch (InFeatureID) {
-        case NVSDK_NGX_Feature_SuperSampling:
-            LogInfo("DLSS Super Resolution feature being created");
-            g_dlss_enabled.store(true);
-            break;
-        case NVSDK_NGX_Feature_FrameGeneration:
-            LogInfo("DLSS Frame Generation feature being created");
-            g_dlssg_enabled.store(true);
-            break;
-        case NVSDK_NGX_Feature_RayReconstruction:
-            LogInfo("Ray Reconstruction feature being created");
-            g_ray_reconstruction_enabled.store(true);
-            break;
-        default:
-            LogInfo("Unknown NGX feature being created - FeatureID: %d", InFeatureID);
-            break;
-    }
 
     // Hook the parameter vtable if we have parameters
     if (InParameters != nullptr) {
@@ -547,7 +529,29 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_CreateFeature_Detour(ID3D12GraphicsC
     }
 
     if (NVSDK_NGX_D3D12_CreateFeature_Original != nullptr) {
-        return NVSDK_NGX_D3D12_CreateFeature_Original(InCmdList, InFeatureID, InParameters, OutHandle);
+        auto res= NVSDK_NGX_D3D12_CreateFeature_Original(InCmdList, InFeatureID, InParameters, OutHandle);
+
+        // Track enabled features based on FeatureID using global atomic variables
+        if (res == NVSDK_NGX_Result_Success) {
+            switch (InFeatureID) {
+                case NVSDK_NGX_Feature_SuperSampling:
+                    LogInfo("DLSS Super Resolution feature being created");
+                    g_dlss_enabled.store(true);
+                    break;
+                case NVSDK_NGX_Feature_FrameGeneration:
+                    LogInfo("DLSS Frame Generation feature being created");
+                    g_dlssg_enabled.store(true);
+                    break;
+                case NVSDK_NGX_Feature_RayReconstruction:
+                    LogInfo("Ray Reconstruction feature being created");
+                    g_ray_reconstruction_enabled.store(true);
+                    break;
+                default:
+                    LogInfo("Unknown NGX feature being created - FeatureID: %d", InFeatureID);
+                    break;
+            }
+        }
+        return res;
     }
 
     return NVSDK_NGX_Result_Fail;
@@ -617,24 +621,6 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_Init_ProjectID_Detour(const char *In
 NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_CreateFeature_Detour(ID3D11DeviceContext *InDevCtx, NVSDK_NGX_Feature InFeatureID, NVSDK_NGX_Parameter *InParameters, NVSDK_NGX_Handle **OutHandle) {
     LogInfo("NGX D3D11 CreateFeature called - FeatureID: %d", InFeatureID);
 
-    // Track enabled features based on FeatureID using global atomic variables
-    switch (InFeatureID) {
-        case NVSDK_NGX_Feature_SuperSampling:
-            LogInfo("DLSS Super Resolution feature being created (D3D11)");
-            g_dlss_enabled.store(true);
-            break;
-        case NVSDK_NGX_Feature_FrameGeneration:
-            LogInfo("DLSS Frame Generation feature being created (D3D11)");
-            g_dlssg_enabled.store(true);
-            break;
-        case NVSDK_NGX_Feature_RayReconstruction:
-            LogInfo("Ray Reconstruction feature being created (D3D11)");
-            g_ray_reconstruction_enabled.store(true);
-            break;
-        default:
-            LogInfo("Unknown NGX feature being created (D3D11) - FeatureID: %d", InFeatureID);
-            break;
-    }
 
     // Hook the parameter vtable if we have parameters
     if (InParameters != nullptr) {
@@ -642,7 +628,29 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_CreateFeature_Detour(ID3D11DeviceCon
     }
 
     if (NVSDK_NGX_D3D11_CreateFeature_Original != nullptr) {
-        return NVSDK_NGX_D3D11_CreateFeature_Original(InDevCtx, InFeatureID, InParameters, OutHandle);
+        auto res= NVSDK_NGX_D3D11_CreateFeature_Original(InDevCtx, InFeatureID, InParameters, OutHandle);
+        // Track enabled features based on FeatureID using global atomic variables
+        if (res == NVSDK_NGX_Result_Success) {
+            switch (InFeatureID) {
+                case NVSDK_NGX_Feature_SuperSampling:
+                    LogInfo("DLSS Super Resolution feature being created (D3D11)");
+                    g_dlss_enabled.store(true);
+                    break;
+                case NVSDK_NGX_Feature_FrameGeneration:
+                    LogInfo("DLSS Frame Generation feature being created (D3D11)");
+                    g_dlssg_enabled.store(true);
+                    break;
+                case NVSDK_NGX_Feature_RayReconstruction:
+                    LogInfo("Ray Reconstruction feature being created (D3D11)");
+                    g_ray_reconstruction_enabled.store(true);
+                    break;
+                default:
+                    LogInfo("Unknown NGX feature being created (D3D11) - FeatureID: %d", InFeatureID);
+                    break;
+            }
+        }
+
+        return res;
     }
 
     return NVSDK_NGX_Result_Fail;

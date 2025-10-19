@@ -378,15 +378,20 @@ UnifiedParameterMap g_ngx_parameters;
 DLSSGSummary GetDLSSGSummary() {
     DLSSGSummary summary;
 
-    // Check if any NGX parameters exist (indicates DLSS is active)
-    if (g_ngx_parameters.size() > 0) {
+    // Use the new global tracking variables for more accurate status
+    summary.dlss_active = g_dlss_enabled.load();
+    summary.dlss_g_active = g_dlssg_enabled.load();
+    summary.ray_reconstruction_active = g_ray_reconstruction_enabled.load();
+
+    // Also check NGX parameters as a fallback for additional info
+    if (g_ngx_parameters.size() > 0 && !summary.dlss_active) {
         summary.dlss_active = true;
     }
 
-    // Check DLSS-G activity
+    // Check DLSS-G activity from parameters as additional verification
     unsigned int is_recording;
     if (g_ngx_parameters.get_as_uint("DLSSG.IsRecording", is_recording)) {
-        summary.dlss_g_active = (is_recording == 1);
+        summary.dlss_g_active = (is_recording == 1) || summary.dlss_g_active;
     }
 
     // Get resolutions - using correct parameter names

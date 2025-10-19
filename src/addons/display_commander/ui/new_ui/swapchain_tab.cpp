@@ -603,8 +603,8 @@ void DrawNGXParameters() {
 }
 
 void DrawDLSSGSummary() {
-    if (ImGui::CollapsingHeader("DLSS/DLSS-G Summary", ImGuiTreeNodeFlags_DefaultOpen)) {
-        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "DLSS/DLSS-G Status Overview");
+    if (ImGui::CollapsingHeader("DLSS/DLSS-G/RR Summary", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "DLSS/DLSS-G/Ray Reconstruction Status Overview");
         ImGui::Separator();
 
         DLSSGSummary summary = GetDLSSGSummary();
@@ -625,6 +625,12 @@ void DrawDLSSGSummary() {
         ImGui::NextColumn();
         ImGui::TextColored(summary.dlss_g_active ? ImVec4(0.0f, 1.0f, 0.0f, 1.0f) : ImVec4(1.0f, 0.0f, 0.0f, 1.0f),
                           "%s", summary.dlss_g_active ? "Yes" : "No");
+        ImGui::NextColumn();
+
+        ImGui::Text("Ray Reconstruction:");
+        ImGui::NextColumn();
+        ImGui::TextColored(summary.ray_reconstruction_active ? ImVec4(0.0f, 1.0f, 0.0f, 1.0f) : ImVec4(1.0f, 0.0f, 0.0f, 1.0f),
+                          "%s", summary.ray_reconstruction_active ? "Yes" : "No");
         ImGui::NextColumn();
 
         ImGui::Text("FG Mode:");
@@ -751,6 +757,10 @@ void DrawDLSSGSummary() {
 
         if (summary.dlss_g_active) {
             ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "DLSS Frame Generation is currently active!");
+        }
+
+        if (summary.ray_reconstruction_active) {
+            ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "Ray Reconstruction is currently active!");
         }
 
         if (summary.ofa_enabled == "Yes") {

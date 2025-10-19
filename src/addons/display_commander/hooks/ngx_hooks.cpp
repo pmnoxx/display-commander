@@ -7,6 +7,8 @@
 #include <algorithm>
 #include <string>
 #include <vector>
+#include <map>
+#include <mutex>
 
 // NGX type definitions (minimal subset needed for hooks)
 #define NVSDK_CONV __cdecl
@@ -42,6 +44,10 @@ typedef enum NVSDK_NGX_Version {
 // Progress callback type
 typedef void (NVSDK_CONV *PFN_NVSDK_NGX_ProgressCallback)(float InCurrentProgress, bool &OutShouldCancel);
 
+// Handle tracking for NGX features
+static std::map<NVSDK_NGX_Handle*, NVSDK_NGX_Feature> g_ngx_handle_map;
+static std::mutex g_ngx_handle_mutex;
+
 typedef enum NVSDK_NGX_Result
 {
     NVSDK_NGX_Result_Success = 0x1,
@@ -68,6 +74,78 @@ typedef enum NVSDK_NGX_Result
 
 #define NVSDK_NGX_SUCCEED(value) (((value) & 0xFFF00000) != NVSDK_NGX_Result_Fail)
 #define NVSDK_NGX_FAILED(value) (((value) & 0xFFF00000) == NVSDK_NGX_Result_Fail)
+
+// Helper functions for handle tracking
+static void TrackNGXHandle(NVSDK_NGX_Handle* handle, NVSDK_NGX_Feature feature) {
+    if (handle == nullptr) return;
+
+    std::lock_guard<std::mutex> lock(g_ngx_handle_mutex);
+    g_ngx_handle_map[handle] = feature;
+
+    // Update global tracking variables
+    switch (feature) {
+        case NVSDK_NGX_Feature_SuperSampling:
+            g_dlss_enabled.store(true);
+            LogInfo("NGX DLSS Super Resolution enabled");
+            break;
+        case NVSDK_NGX_Feature_FrameGeneration:
+            g_dlssg_enabled.store(true);
+            LogInfo("NGX DLSS Frame Generation enabled");
+            break;
+        case NVSDK_NGX_Feature_RayReconstruction:
+            g_ray_reconstruction_enabled.store(true);
+            LogInfo("NGX Ray Reconstruction enabled");
+            break;
+    }
+}
+
+static void UntrackNGXHandle(NVSDK_NGX_Handle* handle) {
+    if (handle == nullptr) return;
+
+    std::lock_guard<std::mutex> lock(g_ngx_handle_mutex);
+    auto it = g_ngx_handle_map.find(handle);
+    if (it != g_ngx_handle_map.end()) {
+        NVSDK_NGX_Feature feature = it->second;
+        g_ngx_handle_map.erase(it);
+
+        // Update global tracking variables
+        switch (feature) {
+            case NVSDK_NGX_Feature_SuperSampling:
+                g_dlss_enabled.store(false);
+                LogInfo("NGX DLSS Super Resolution disabled");
+                break;
+            case NVSDK_NGX_Feature_FrameGeneration:
+                g_dlssg_enabled.store(false);
+                LogInfo("NGX DLSS Frame Generation disabled");
+                break;
+            case NVSDK_NGX_Feature_RayReconstruction:
+                g_ray_reconstruction_enabled.store(false);
+                LogInfo("NGX Ray Reconstruction disabled");
+                break;
+        }
+    }
+}
+
+static NVSDK_NGX_Feature GetFeatureFromHandle(NVSDK_NGX_Handle* handle) {
+    if (handle == nullptr) return static_cast<NVSDK_NGX_Feature>(-1);
+
+    std::lock_guard<std::mutex> lock(g_ngx_handle_mutex);
+    auto it = g_ngx_handle_map.find(handle);
+    return (it != g_ngx_handle_map.end()) ? it->second : static_cast<NVSDK_NGX_Feature>(-1);
+}
+
+// Cleanup function to clear handle map and reset tracking variables
+static void CleanupNGXHandleTracking() {
+    std::lock_guard<std::mutex> lock(g_ngx_handle_mutex);
+    g_ngx_handle_map.clear();
+
+    // Reset all tracking variables
+    g_dlss_enabled.store(false);
+    g_dlssg_enabled.store(false);
+    g_ray_reconstruction_enabled.store(false);
+
+    LogInfo("NGX handle tracking cleaned up");
+}
 
 // NGX function pointer type definitions (following Special-K's approach)
 using NVSDK_NGX_Parameter_SetF_pfn = void (NVSDK_CONV *)(NVSDK_NGX_Parameter* InParameter, const char* InName, float InValue);
@@ -531,25 +609,9 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_CreateFeature_Detour(ID3D12GraphicsC
     if (NVSDK_NGX_D3D12_CreateFeature_Original != nullptr) {
         auto res= NVSDK_NGX_D3D12_CreateFeature_Original(InCmdList, InFeatureID, InParameters, OutHandle);
 
-        // Track enabled features based on FeatureID using global atomic variables
-        if (res == NVSDK_NGX_Result_Success) {
-            switch (InFeatureID) {
-                case NVSDK_NGX_Feature_SuperSampling:
-                    LogInfo("DLSS Super Resolution feature being created");
-                    g_dlss_enabled.store(true);
-                    break;
-                case NVSDK_NGX_Feature_FrameGeneration:
-                    LogInfo("DLSS Frame Generation feature being created");
-                    g_dlssg_enabled.store(true);
-                    break;
-                case NVSDK_NGX_Feature_RayReconstruction:
-                    LogInfo("Ray Reconstruction feature being created");
-                    g_ray_reconstruction_enabled.store(true);
-                    break;
-                default:
-                    LogInfo("Unknown NGX feature being created - FeatureID: %d", InFeatureID);
-                    break;
-            }
+        // Track the handle and feature type if creation was successful
+        if (res == NVSDK_NGX_Result_Success && OutHandle != nullptr && *OutHandle != nullptr) {
+            TrackNGXHandle(*OutHandle, InFeatureID);
         }
         return res;
     }
@@ -559,10 +621,29 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_CreateFeature_Detour(ID3D12GraphicsC
 
 // D3D12 ReleaseFeature detour
 NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_ReleaseFeature_Detour(NVSDK_NGX_Handle *InHandle) {
-    LogInfo("NGX D3D12 ReleaseFeature called");
+    // Get feature type before releasing to log which feature is being released
+    NVSDK_NGX_Feature feature = GetFeatureFromHandle(InHandle);
+    if (feature != static_cast<NVSDK_NGX_Feature>(-1)) {
+        const char* featureName = "Unknown";
+        switch (feature) {
+            case NVSDK_NGX_Feature_SuperSampling: featureName = "DLSS Super Resolution"; break;
+            case NVSDK_NGX_Feature_FrameGeneration: featureName = "DLSS Frame Generation"; break;
+            case NVSDK_NGX_Feature_RayReconstruction: featureName = "Ray Reconstruction"; break;
+        }
+        LogInfo("NGX D3D12 ReleaseFeature called - Releasing %s", featureName);
+    } else {
+        LogInfo("NGX D3D12 ReleaseFeature called - Unknown feature handle");
+    }
 
     if (NVSDK_NGX_D3D12_ReleaseFeature_Original != nullptr) {
-        return NVSDK_NGX_D3D12_ReleaseFeature_Original(InHandle);
+        auto result = NVSDK_NGX_D3D12_ReleaseFeature_Original(InHandle);
+
+        // Untrack the handle after successful release
+        if (result == NVSDK_NGX_Result_Success) {
+            UntrackNGXHandle(InHandle);
+        }
+
+        return result;
     }
 
     return NVSDK_NGX_Result_Fail;
@@ -629,25 +710,10 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_CreateFeature_Detour(ID3D11DeviceCon
 
     if (NVSDK_NGX_D3D11_CreateFeature_Original != nullptr) {
         auto res= NVSDK_NGX_D3D11_CreateFeature_Original(InDevCtx, InFeatureID, InParameters, OutHandle);
-        // Track enabled features based on FeatureID using global atomic variables
-        if (res == NVSDK_NGX_Result_Success) {
-            switch (InFeatureID) {
-                case NVSDK_NGX_Feature_SuperSampling:
-                    LogInfo("DLSS Super Resolution feature being created (D3D11)");
-                    g_dlss_enabled.store(true);
-                    break;
-                case NVSDK_NGX_Feature_FrameGeneration:
-                    LogInfo("DLSS Frame Generation feature being created (D3D11)");
-                    g_dlssg_enabled.store(true);
-                    break;
-                case NVSDK_NGX_Feature_RayReconstruction:
-                    LogInfo("Ray Reconstruction feature being created (D3D11)");
-                    g_ray_reconstruction_enabled.store(true);
-                    break;
-                default:
-                    LogInfo("Unknown NGX feature being created (D3D11) - FeatureID: %d", InFeatureID);
-                    break;
-            }
+
+        // Track the handle and feature type if creation was successful
+        if (res == NVSDK_NGX_Result_Success && OutHandle != nullptr && *OutHandle != nullptr) {
+            TrackNGXHandle(*OutHandle, InFeatureID);
         }
 
         return res;
@@ -658,10 +724,29 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_CreateFeature_Detour(ID3D11DeviceCon
 
 // D3D11 ReleaseFeature detour
 NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_ReleaseFeature_Detour(NVSDK_NGX_Handle *InHandle) {
-    LogInfo("NGX D3D11 ReleaseFeature called");
+    // Get feature type before releasing to log which feature is being released
+    NVSDK_NGX_Feature feature = GetFeatureFromHandle(InHandle);
+    if (feature != static_cast<NVSDK_NGX_Feature>(-1)) {
+        const char* featureName = "Unknown";
+        switch (feature) {
+            case NVSDK_NGX_Feature_SuperSampling: featureName = "DLSS Super Resolution"; break;
+            case NVSDK_NGX_Feature_FrameGeneration: featureName = "DLSS Frame Generation"; break;
+            case NVSDK_NGX_Feature_RayReconstruction: featureName = "Ray Reconstruction"; break;
+        }
+        LogInfo("NGX D3D11 ReleaseFeature called - Releasing %s", featureName);
+    } else {
+        LogInfo("NGX D3D11 ReleaseFeature called - Unknown feature handle");
+    }
 
     if (NVSDK_NGX_D3D11_ReleaseFeature_Original != nullptr) {
-        return NVSDK_NGX_D3D11_ReleaseFeature_Original(InHandle);
+        auto result = NVSDK_NGX_D3D11_ReleaseFeature_Original(InHandle);
+
+        // Untrack the handle after successful release
+        if (result == NVSDK_NGX_Result_Success) {
+            UntrackNGXHandle(InHandle);
+        }
+
+        return result;
     }
 
     return NVSDK_NGX_Result_Fail;
@@ -951,6 +1036,12 @@ bool InstallNGXHooks() {
     LogInfo("NGX Init, CreateFeature, and EvaluateFeature hooks are now active");
     LogInfo("VTable hooks are called automatically inside detour functions");
     return true;
+}
+
+// Cleanup NGX hooks and reset tracking
+void CleanupNGXHooks() {
+    LogInfo("Cleaning up NGX hooks and handle tracking");
+    CleanupNGXHandleTracking();
 }
 
 

@@ -3,7 +3,7 @@
 #include "../../nvapi/nvapi_fullscreen_prevention.hpp"
 #include "../../res/forkawesome.h"
 #include "../../settings/developer_tab_settings.hpp"
-#include "../../utils.hpp"
+#include "../../utils/general_utils.hpp"
 #include "../../utils/reshade_global_config.hpp"
 #include "settings_wrapper.hpp"
 
@@ -14,7 +14,6 @@
 #include <wrl/client.h>
 
 static std::atomic<bool> s_restart_needed_nvapi(false);
-
 
 namespace ui::new_ui {
 
@@ -90,23 +89,75 @@ void DrawFeaturesEnabledByDefault() {
 
     // LoadFromDllMain setting
     if (CheckboxSetting(settings::g_developerTabSettings.load_from_dll_main, "LoadFromDllMain (requires restart)")) {
-        LogInfo("LoadFromDllMain setting changed to: %s", settings::g_developerTabSettings.load_from_dll_main.GetValue() ? "enabled" : "disabled");
+        LogInfo("LoadFromDllMain setting changed to: %s",
+                settings::g_developerTabSettings.load_from_dll_main.GetValue() ? "enabled" : "disabled");
         // Apply the setting to ReShade immediately
         utils::SetLoadFromDllMain(settings::g_developerTabSettings.load_from_dll_main.GetValue());
     }
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Sets LoadFromDllMain=1 in ReShade configuration.\n"
-                         "This setting controls how ReShade loads and initializes.\n"
-                         "When enabled, ReShade will load from DllMain instead of the normal loading process.\n"
-                         "This setting requires a game restart to take effect.");
+        ImGui::SetTooltip(
+            "Sets LoadFromDllMain=1 in ReShade configuration.\n"
+            "This setting controls how ReShade loads and initializes.\n"
+            "When enabled, ReShade will load from DllMain instead of the normal loading process.\n"
+            "This setting requires a game restart to take effect.");
+    }
+
+    // Load Streamline setting
+    if (CheckboxSetting(settings::g_developerTabSettings.load_streamline, "Load Streamline (sl.interposer.dll)")) {
+        LogInfo("Load Streamline setting changed to: %s",
+                settings::g_developerTabSettings.load_streamline.GetValue() ? "enabled" : "disabled");
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip(
+            "Controls whether to load and hook into sl.interposer.dll (Streamline SDK).\n"
+            "When enabled, Display Commander will install hooks for Streamline functions.\n"
+            "This setting is automatically disabled when safemode is enabled.\n"
+            "This setting requires a game restart to take effect.");
+    }
+
+    // Load _nvngx setting
+    if (CheckboxSetting(settings::g_developerTabSettings.load_nvngx, "Load _nvngx (_nvngx.dll)")) {
+        LogInfo("Load _nvngx setting changed to: %s",
+                settings::g_developerTabSettings.load_nvngx.GetValue() ? "enabled" : "disabled");
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip(
+            "Controls whether to load and hook into _nvngx.dll (NVIDIA NGX SDK).\n"
+            "When enabled, Display Commander will install hooks for NGX functions.\n"
+            "This setting is automatically disabled when safemode is enabled.\n"
+            "This setting requires a game restart to take effect.");
+    }
+
+    // Load nvapi64 setting
+    if (CheckboxSetting(settings::g_developerTabSettings.load_nvapi64, "Load nvapi64 (nvapi64.dll)")) {
+        LogInfo("Load nvapi64 setting changed to: %s",
+                settings::g_developerTabSettings.load_nvapi64.GetValue() ? "enabled" : "disabled");
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip(
+            "Controls whether to load and hook into nvapi64.dll (NVIDIA API).\n"
+            "When enabled, Display Commander will install hooks for NVAPI functions.\n"
+            "This setting is automatically disabled when safemode is enabled.\n"
+            "This setting requires a game restart to take effect.");
+    }
+
+    // Load XInput setting
+    if (CheckboxSetting(settings::g_developerTabSettings.load_xinput, "Load XInput (xinput*.dll)")) {
+        LogInfo("Load XInput setting changed to: %s",
+                settings::g_developerTabSettings.load_xinput.GetValue() ? "enabled" : "disabled");
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip(
+            "Controls whether to load and hook into XInput libraries (xinput1_4.dll, xinput1_3.dll, etc.).\n"
+            "When enabled, Display Commander will install hooks for XInput functions.\n"
+            "This setting is automatically disabled when safemode is enabled.\n"
+            "This setting requires a game restart to take effect.");
     }
 
     ImGui::Spacing();
-
 }
 
 void DrawDeveloperSettings() {
-
     // Continue Rendering
     if (CheckboxSetting(settings::g_developerTabSettings.continue_rendering, "Continue Rendering in Background")) {
         s_continue_rendering.store(settings::g_developerTabSettings.continue_rendering.GetValue());
@@ -121,44 +172,45 @@ void DrawDeveloperSettings() {
 
     // Safemode setting
     if (CheckboxSetting(settings::g_developerTabSettings.safemode, "Safemode (requires restart)")) {
-        LogInfo("Safemode setting changed to: %s", settings::g_developerTabSettings.safemode.GetValue() ? "enabled" : "disabled");
+        LogInfo("Safemode setting changed to: %s",
+                settings::g_developerTabSettings.safemode.GetValue() ? "enabled" : "disabled");
     }
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Safemode disables all auto-apply settings and sets FPS limiter to disabled.\n"
-                         "When enabled, it will automatically set itself to 0 and disable:\n"
-                         "• Auto-apply resolution changes\n"
-                         "• Auto-apply refresh rate changes\n"
-                         "• Apply display settings at start\n"
-                         "• FPS limiter mode (set to disabled)\n\n"
-                         "This setting requires a game restart to take effect.");
+        ImGui::SetTooltip(
+            "Safemode disables all auto-apply settings and sets FPS limiter to disabled.\n"
+            "When enabled, it will automatically set itself to 0 and disable:\n"
+            "• Auto-apply resolution changes\n"
+            "• Auto-apply refresh rate changes\n"
+            "• Apply display settings at start\n"
+            "• FPS limiter mode (set to disabled)\n\n"
+            "This setting requires a game restart to take effect.");
     }
-
 }
 
 void DrawHdrDisplaySettings() {
     // Hide HDR Capabilities
-    if (CheckboxSetting(settings::g_developerTabSettings.hide_hdr_capabilities,
-                        "Hide game's native HDR")) {
+    if (CheckboxSetting(settings::g_developerTabSettings.hide_hdr_capabilities, "Hide game's native HDR")) {
         s_hide_hdr_capabilities.store(settings::g_developerTabSettings.hide_hdr_capabilities.GetValue());
         LogInfo("HDR hiding setting changed to: %s",
                 settings::g_developerTabSettings.hide_hdr_capabilities.GetValue() ? "true" : "false");
     }
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Hides HDR capabilities from applications by intercepting CheckColorSpaceSupport and GetDesc calls.\n"
-                         "This can prevent games from detecting HDR support and force them to use SDR mode.");
+        ImGui::SetTooltip(
+            "Hides HDR capabilities from applications by intercepting CheckColorSpaceSupport and GetDesc calls.\n"
+            "This can prevent games from detecting HDR support and force them to use SDR mode.");
     }
 
     // Enable Flip Chain
-    if (CheckboxSetting(settings::g_developerTabSettings.enable_flip_chain,
-                        "Enable flip chain")) {
+    if (CheckboxSetting(settings::g_developerTabSettings.enable_flip_chain, "Enable flip chain")) {
         s_enable_flip_chain.store(settings::g_developerTabSettings.enable_flip_chain.GetValue());
         LogInfo("Enable flip chain setting changed to: %s",
                 settings::g_developerTabSettings.enable_flip_chain.GetValue() ? "true" : "false");
     }
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Forces games to use flip model swap chains (FLIP_DISCARD) for better performance.\n"
-                         "This setting requires a game restart to take effect.\n"
-                         "Only works with DirectX 10/11/12 (DXGI) games.");
+        ImGui::SetTooltip(
+            "Forces games to use flip model swap chains (FLIP_DISCARD) for better performance.\n"
+            "This setting requires a game restart to take effect.\n"
+            "Only works with DirectX 10/11/12 (DXGI) games.");
     }
 
     // Auto Color Space checkbox
@@ -167,12 +219,13 @@ void DrawHdrDisplaySettings() {
         settings::g_developerTabSettings.auto_colorspace.SetValue(auto_colorspace);
     }
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Automatically sets the appropriate color space on the game's swap chain based on the current format.\n"
-                         "• HDR10 format (R10G10B10A2) → HDR10 color space (ST2084)\n"
-                         "• FP16 format (R16G16B16A16) → scRGB color space (Linear)\n"
-                         "• SDR format (R8G8B8A8) → sRGB color space (Non-linear)\n"
-                         "Only works with DirectX 11/12 games.\n"
-                         "Applied automatically in presentBefore.");
+        ImGui::SetTooltip(
+            "Automatically sets the appropriate color space on the game's swap chain based on the current format.\n"
+            "• HDR10 format (R10G10B10A2) → HDR10 color space (ST2084)\n"
+            "• FP16 format (R16G16B16A16) → scRGB color space (Linear)\n"
+            "• SDR format (R8G8B8A8) → sRGB color space (Non-linear)\n"
+            "Only works with DirectX 11/12 games.\n"
+            "Applied automatically in presentBefore.");
     }
 
     ImGui::Spacing();
@@ -182,16 +235,16 @@ void DrawHdrDisplaySettings() {
     // D3D9 to D3D9Ex Upgrade
     ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Direct3D 9 Settings");
 
-    if (CheckboxSetting(settings::g_developerTabSettings.enable_d3d9_upgrade,
-                        "Enable D3D9 to D3D9Ex Upgrade")) {
+    if (CheckboxSetting(settings::g_developerTabSettings.enable_d3d9_upgrade, "Enable D3D9 to D3D9Ex Upgrade")) {
         s_enable_d3d9_upgrade.store(settings::g_developerTabSettings.enable_d3d9_upgrade.GetValue());
         LogInfo("D3D9 to D3D9Ex upgrade setting changed to: %s",
                 settings::g_developerTabSettings.enable_d3d9_upgrade.GetValue() ? "enabled" : "disabled");
     }
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Automatically upgrades Direct3D 9 to Direct3D 9Ex for improved performance and features.\n"
-                         "D3D9Ex provides better memory management, flip model presentation, and reduced latency.\n"
-                         "This feature is enabled by default and works transparently with D3D9 games.");
+        ImGui::SetTooltip(
+            "Automatically upgrades Direct3D 9 to Direct3D 9Ex for improved performance and features.\n"
+            "D3D9Ex provides better memory management, flip model presentation, and reduced latency.\n"
+            "This feature is enabled by default and works transparently with D3D9 games.");
     }
 
     // Show upgrade status
@@ -199,16 +252,18 @@ void DrawHdrDisplaySettings() {
         ImGui::Indent();
         ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), ICON_FK_OK " D3D9 upgraded to D3D9Ex successfully");
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Direct3D 9 was successfully upgraded to Direct3D 9Ex.\n"
-                             "Your game is now using the enhanced D3D9Ex API.");
+            ImGui::SetTooltip(
+                "Direct3D 9 was successfully upgraded to Direct3D 9Ex.\n"
+                "Your game is now using the enhanced D3D9Ex API.");
         }
         ImGui::Unindent();
     } else if (settings::g_developerTabSettings.enable_d3d9_upgrade.GetValue()) {
         ImGui::Indent();
         ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Waiting for D3D9 device creation...");
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("The upgrade will occur when the game creates a Direct3D 9 device.\n"
-                             "If the game is not using D3D9, this setting has no effect.");
+            ImGui::SetTooltip(
+                "The upgrade will occur when the game creates a Direct3D 9 device.\n"
+                "If the game is not using D3D9, this setting has no effect.");
         }
         ImGui::Unindent();
     }
@@ -233,20 +288,21 @@ void DrawNvapiSettings() {
 
     ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "NVAPI Auto-enable for Games");
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Automatically enable NVAPI features for specific games:\n"
-                         "• NVAPI Fullscreen Prevention\n"
-                         "• HDR10 Colorspace Fix\n\n"
-                         "Note: DLDSR needs to be off for proper functionality\n\n"
-                         "Supported games:\n"
-                         "• Armored Core 6\n"
-                         "• Devil May Cry 5\n"
-                         "• Elden Ring\n"
-                         "• Hitman\n"
-                         "• Resident Evil 2\n"
-                         "• Resident Evil 3\n"
-                         "• Resident Evil 7\n"
-                         "• Resident Evil 8\n"
-                         "• Sekiro: Shadows Die Twice");
+        ImGui::SetTooltip(
+            "Automatically enable NVAPI features for specific games:\n"
+            "• NVAPI Fullscreen Prevention\n"
+            "• HDR10 Colorspace Fix\n\n"
+            "Note: DLDSR needs to be off for proper functionality\n\n"
+            "Supported games:\n"
+            "• Armored Core 6\n"
+            "• Devil May Cry 5\n"
+            "• Elden Ring\n"
+            "• Hitman\n"
+            "• Resident Evil 2\n"
+            "• Resident Evil 3\n"
+            "• Resident Evil 7\n"
+            "• Resident Evil 8\n"
+            "• Sekiro: Shadows Die Twice");
     }
     // Display restart-required notice if flagged
     if (s_restart_needed_nvapi.load()) {
@@ -263,7 +319,6 @@ void DrawNvapiSettings() {
 
     // Minimal NVIDIA Reflex Controls (device runtime dependent)
     if (ImGui::CollapsingHeader("NVIDIA Reflex (Minimal)", ImGuiTreeNodeFlags_DefaultOpen)) {
-
         // Native Reflex Status Indicator
         bool is_native_reflex_active = g_swapchain_event_counters[SWAPCHAIN_EVENT_NVAPI_D3D_SET_SLEEP_MODE].load() > 0;
         if (is_native_reflex_active) {
@@ -329,8 +384,9 @@ void DrawNvapiSettings() {
         // Warning about enabling Reflex when game already has it
         if (is_native_reflex_active && settings::g_developerTabSettings.reflex_use_markers.GetValue()) {
             ImGui::SameLine();
-            ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f),
-                            ICON_FK_WARNING " Warning: Do not enable 'Use Markers to Optimize' if the game already has built-in Reflex support!");
+            ImGui::TextColored(
+                ImVec4(1.0f, 0.6f, 0.0f, 1.0f), ICON_FK_WARNING
+                " Warning: Do not enable 'Use Markers to Optimize' if the game already has built-in Reflex support!");
         }
 
         if (ImGui::Checkbox("Enable Reflex Sleep Mode", &reflex_enable_sleep)) {
@@ -339,8 +395,9 @@ void DrawNvapiSettings() {
         }
         if (is_native_reflex_active && settings::g_developerTabSettings.reflex_enable_sleep.GetValue()) {
             ImGui::SameLine();
-            ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f),
-                            ICON_FK_WARNING " Warning: Do not enable 'Enable Reflex Sleep Mode' if the game already has built-in Reflex support!");
+            ImGui::TextColored(
+                ImVec4(1.0f, 0.6f, 0.0f, 1.0f), ICON_FK_WARNING
+                " Warning: Do not enable 'Enable Reflex Sleep Mode' if the game already has built-in Reflex support!");
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Enable Reflex sleep mode calls (disabled by default for safety).");
@@ -351,7 +408,7 @@ void DrawNvapiSettings() {
             s_enable_reflex_logging.store(reflex_logging);
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(                "Enable detailed logging of Reflex marker operations for debugging purposes.");
+            ImGui::SetTooltip("Enable detailed logging of Reflex marker operations for debugging purposes.");
         }
         if (reflex_auto_configure) {
             ImGui::EndDisabled();
@@ -385,8 +442,8 @@ void DrawNvapiSettings() {
             uint32_t present_end_count = ::g_reflex_marker_present_end_count.load();
             uint32_t input_sample_count = ::g_reflex_marker_input_sample_count.load();
 
-            uint32_t total_marker_count = sim_start_count + sim_end_count + render_start_count +
-                                        render_end_count + present_start_count + present_end_count + input_sample_count;
+            uint32_t total_marker_count = sim_start_count + sim_end_count + render_start_count + render_end_count
+                                          + present_start_count + present_end_count + input_sample_count;
 
             ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Reflex API Call Counters:");
             ImGui::Indent();
@@ -412,16 +469,18 @@ void DrawNvapiSettings() {
             ImGui::Unindent();
 
             ImGui::Spacing();
-            ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "These counters help debug Reflex FPS limiter issues in DX9 games.");
+            ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f),
+                               "These counters help debug Reflex FPS limiter issues in DX9 games.");
             if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("Marker counts show which specific markers are being set:\n"
-                                 "• SIMULATION_START/END: Frame simulation markers\n"
-                                 "• RENDERSUBMIT_START/END: GPU submission markers\n"
-                                 "• PRESENT_START/END: Present call markers\n"
-                                 "• INPUT_SAMPLE: Input sampling markers\n\n"
-                                 "If all marker counts are 0, Reflex markers are not being set.\n"
-                                 "If Sleep calls are 0, the Reflex sleep mode is not being called.\n"
-                                 "If ApplySleepMode calls are 0, the Reflex configuration is not being applied.");
+                ImGui::SetTooltip(
+                    "Marker counts show which specific markers are being set:\n"
+                    "• SIMULATION_START/END: Frame simulation markers\n"
+                    "• RENDERSUBMIT_START/END: GPU submission markers\n"
+                    "• PRESENT_START/END: Present call markers\n"
+                    "• INPUT_SAMPLE: Input sampling markers\n\n"
+                    "If all marker counts are 0, Reflex markers are not being set.\n"
+                    "If Sleep calls are 0, the Reflex sleep mode is not being called.\n"
+                    "If ApplySleepMode calls are 0, the Reflex configuration is not being applied.");
             }
 
             if (ImGui::Button("Reset Counters")) {
@@ -487,7 +546,8 @@ void DrawKeyboardShortcutsSettings() {
     // Enable Time Slowdown Shortcut (Ctrl+T)
     if (CheckboxSetting(settings::g_developerTabSettings.enable_timeslowdown_shortcut,
                         "Enable Time Slowdown Shortcut (Ctrl+T)")) {
-        ::s_enable_timeslowdown_shortcut.store(settings::g_developerTabSettings.enable_timeslowdown_shortcut.GetValue());
+        ::s_enable_timeslowdown_shortcut.store(
+            settings::g_developerTabSettings.enable_timeslowdown_shortcut.GetValue());
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip(
@@ -561,7 +621,8 @@ void DrawReShadeGlobalConfigSettings() {
         LogInfo("Auto-loaded ReShade settings for comparison");
     }
 
-    ImGui::TextWrapped("Manage global ReShade settings (EffectSearchPaths, TextureSearchPaths, keyboard shortcuts, etc.).");
+    ImGui::TextWrapped(
+        "Manage global ReShade settings (EffectSearchPaths, TextureSearchPaths, keyboard shortcuts, etc.).");
     ImGui::TextWrapped("Copy settings between current game and global profile.");
 
     ImGui::Spacing();
@@ -605,7 +666,9 @@ void DrawReShadeGlobalConfigSettings() {
         }
     }
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Reload and compare current game's ReShade settings with global profile\n(Useful if you edited either ReShade.ini or DisplayCommander.ini manually)");
+        ImGui::SetTooltip(
+            "Reload and compare current game's ReShade settings with global profile\n(Useful if you edited either "
+            "ReShade.ini or DisplayCommander.ini manually)");
     }
 
     ImGui::Spacing();
@@ -707,7 +770,8 @@ void DrawReShadeGlobalConfigSettings() {
         }
 
         ImGui::Spacing();
-        ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Legend: Local = Current game settings, Global = DisplayCommander.ini profile");
+        ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f),
+                           "Legend: Local = Current game settings, Global = DisplayCommander.ini profile");
     }
 
     ImGui::Spacing();
@@ -765,10 +829,12 @@ void DrawReShadeGlobalConfigSettings() {
         }
     }
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Apply global profile to current game's ReShade settings\n(Overwrites current game's ReShade.ini)");
+        ImGui::SetTooltip(
+            "Apply global profile to current game's ReShade settings\n(Overwrites current game's ReShade.ini)");
     }
     // warn requires pressing reload button on Home page in reshade for settings to be visible
-    ImGui::TextColored(ImVec4(1.0f, 0.7f, 0.0f, 1.0f), "Warning: Requires pressing 'RELOAD' button on Home page in ReShade for settings to be visible");
+    ImGui::TextColored(ImVec4(1.0f, 0.7f, 0.0f, 1.0f),
+                       "Warning: Requires pressing 'RELOAD' button on Home page in ReShade for settings to be visible");
 
     // Status message
     if (!statusMessage.empty()) {
@@ -806,7 +872,8 @@ void DrawReShadeGlobalConfigSettings() {
     // View global settings
     if (ImGui::TreeNode("View Global Profile")) {
         if (globalSettings.additional_settings.empty()) {
-            ImGui::TextColored(ImVec4(1.0f, 0.7f, 0.0f, 1.0f), "No global profile found. Create one using 'Apply: Current → Global'.");
+            ImGui::TextColored(ImVec4(1.0f, 0.7f, 0.0f, 1.0f),
+                               "No global profile found. Create one using 'Apply: Current → Global'.");
         } else {
             for (const auto& [section, keys_values] : globalSettings.additional_settings) {
                 ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "[%s]", section.c_str());

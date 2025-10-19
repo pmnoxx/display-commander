@@ -1,6 +1,7 @@
 #include "streamline_hooks.hpp"
+#include "../settings/developer_tab_settings.hpp"
 #include "../globals.hpp"
-#include "../utils.hpp"
+#include "../utils/general_utils.hpp"
 
 #include <MinHook.h>
 #include <cstdint>
@@ -107,6 +108,11 @@ int slUpgradeInterface_Detour(void** baseInterface) {
 }
 
 bool InstallStreamlineHooks() {
+    if (!settings::g_developerTabSettings.load_streamline.GetValue()) {
+        LogInfo("Streamline hooks not installed - load_streamline is disabled");
+        return false;
+    }
+
     // Check if Streamline DLLs are loaded
     HMODULE sl_interposer = GetModuleHandleW(L"sl.interposer.dll");
     if (sl_interposer == nullptr) {

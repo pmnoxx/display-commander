@@ -7,6 +7,7 @@
 #include "streamline_hooks.hpp"
 #include "../utils.hpp"
 #include "../settings/streamline_tab_settings.hpp"
+#include "../settings/developer_tab_settings.hpp"
 #include "../globals.hpp"
 #include "utils/srwlock_wrapper.hpp"
 #include <MinHook.h>
@@ -597,6 +598,7 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
         }
     }
     else if (lowerModuleName.find(L"sl.interposer.dll") != std::wstring::npos) {
+        // Check if Streamline loading is enabled
         LogInfo("Installing Streamline hooks for module: %ws", moduleName.c_str());
         if (InstallStreamlineHooks()) {
             LogInfo("Streamline hooks installed successfully");
@@ -607,11 +609,16 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
 
     // XInput hooks
     else if (lowerModuleName.find(L"xinput") != std::wstring::npos) {
-        LogInfo("Installing XInput hooks for module: %ws", moduleName.c_str());
-        if (InstallXInputHooks()) {
-            LogInfo("XInput hooks installed successfully");
+        // Check if XInput loading is enabled
+        if (settings::g_developerTabSettings.load_xinput.GetValue()) {
+            LogInfo("Installing XInput hooks for module: %ws", moduleName.c_str());
+            if (InstallXInputHooks()) {
+                LogInfo("XInput hooks installed successfully");
+            } else {
+                LogError("Failed to install XInput hooks");
+            }
         } else {
-            LogError("Failed to install XInput hooks");
+            LogInfo("XInput hooks installation skipped - Load XInput setting is disabled");
         }
     }
 
@@ -628,6 +635,7 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
 
     // NVAPI hooks
     else if (lowerModuleName.find(L"nvapi64.dll") != std::wstring::npos) {
+        // Check if nvapi64 loading is enabled
         LogInfo("Installing NVAPI hooks for module: %ws", moduleName.c_str());
         if (InstallNVAPIHooks()) {
             LogInfo("NVAPI hooks installed successfully");
@@ -637,12 +645,13 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
     }
     // NGX hooks
     else if (lowerModuleName.find(L"_nvngx.dll") != std::wstring::npos) {
-        LogInfo("Installing NGX hooks for module: %ws", moduleName.c_str());
-        if (InstallNGXHooks()) {
-            LogInfo("NGX hooks installed successfully");
-        } else {
-            LogError("Failed to install NGX hooks");
-        }
+        // Check if _nvngx loading is enabled
+            LogInfo("Installing NGX hooks for module: %ws", moduleName.c_str());
+            if (InstallNGXHooks()) {
+                LogInfo("NGX hooks installed successfully");
+            } else {
+                LogError("Failed to install NGX hooks");
+            }
     }
 
     // Generic logging for other modules

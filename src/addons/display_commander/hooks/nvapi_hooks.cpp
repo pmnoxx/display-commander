@@ -2,8 +2,11 @@
 #include "../utils/general_utils.hpp"
 #include "../utils/timing.hpp"
 #include "../globals.hpp"
-#include <MinHook.h>
 #include "../../../external/nvapi/nvapi_interface.h"
+#include "../settings/developer_tab_settings.hpp"
+
+
+#include <MinHook.h>
 
 // Function pointer type definitions (following Special-K's approach)
 using NvAPI_D3D_SetLatencyMarker_pfn = NvAPI_Status (__cdecl *)(__in IUnknown *pDev, __in NV_LATENCY_MARKER_PARAMS *pSetLatencyMarkerParams);
@@ -241,6 +244,11 @@ NvAPI_Status __cdecl NvAPI_D3D_GetLatency_Detour(IUnknown *pDev, NV_LATENCY_RESU
 
 // Install NVAPI hooks
 bool InstallNVAPIHooks() {
+    if (!settings::g_developerTabSettings.load_nvapi64.GetValue()) {
+        LogInfo("NVAPI hooks not installed - load_nvapi64 is disabled");
+        return false;
+    }
+
     // Follow Special-K's approach: get NvAPI_QueryInterface first, then use it to get other functions
     HMODULE nvapi_dll = GetModuleHandleA("nvapi64.dll");
     if (!nvapi_dll) {

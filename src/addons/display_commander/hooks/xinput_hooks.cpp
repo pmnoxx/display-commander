@@ -1,7 +1,8 @@
 #include "xinput_hooks.hpp"
+#include "../settings/developer_tab_settings.hpp"
 #include "dualsense_hooks.hpp"
 #include "../input_remapping/input_remapping.hpp"
-#include "../utils.hpp"
+#include "../utils/general_utils.hpp"
 #include "../utils/timing.hpp"
 #include "../widgets/xinput_widget/xinput_widget.hpp"
 #include "../swapchain_events.hpp"
@@ -371,6 +372,11 @@ DWORD WINAPI XInputGetStateEx_Detour(DWORD dwUserIndex, XINPUT_STATE *pState) {
 }
 
 bool InstallXInputHooks() {
+    if (!settings::g_developerTabSettings.load_xinput.GetValue()) {
+        LogInfo("XInput hooks not installed - load_xinput is disabled");
+        return false;
+    }
+
     if (!g_initialized_with_hwnd.load()) {
         LogInfo("Skipping XInput hooks installation until display commander is initialized");
         return true;

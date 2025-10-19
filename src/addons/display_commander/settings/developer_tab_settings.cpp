@@ -40,7 +40,11 @@ DeveloperTabSettings::DeveloperTabSettings()
       enable_adhd_toggle_shortcut("EnableAdhdToggleShortcut", s_enable_adhd_toggle_shortcut, true, "DisplayCommander"),
       enable_autoclick_shortcut("EnableAutoclickShortcut", s_enable_autoclick_shortcut, false, "DisplayCommander"),
       safemode("Safemode", false, "DisplayCommander"),
-      load_from_dll_main("LoadFromDllMain", true, "DisplayCommander") {}
+      load_from_dll_main("LoadFromDllMain", true, "DisplayCommander"),
+      load_streamline("LoadStreamline", true, "DisplayCommander"),
+      load_nvngx("LoadNvngx", true, "DisplayCommander"),
+      load_nvapi64("LoadNvapi64", true, "DisplayCommander"),
+      load_xinput("LoadXInput", true, "DisplayCommander") {}
 
 void DeveloperTabSettings::LoadAll() {
     prevent_fullscreen.Load();
@@ -68,6 +72,10 @@ void DeveloperTabSettings::LoadAll() {
     reflex_logging.Load();
     safemode.Load();
     load_from_dll_main.Load();
+    load_streamline.Load();
+    load_nvngx.Load();
+    load_nvapi64.Load();
+    load_xinput.Load();
 
     // All Ref classes automatically sync with global variables
 }
@@ -77,6 +85,10 @@ void DeveloperTabSettings::SaveAll() {
     prevent_fullscreen.Save();
     safemode.Save();
     load_from_dll_main.Save();
+    load_streamline.Save();
+    load_nvngx.Save();
+    load_nvapi64.Save();
+    load_xinput.Save();
 
     // All Ref classes automatically save when values change
 }
@@ -107,7 +119,11 @@ std::vector<ui::new_ui::SettingBase *> DeveloperTabSettings::GetAllSettings() {
             &enable_adhd_toggle_shortcut,
             &enable_autoclick_shortcut,
             &safemode,
-            &load_from_dll_main};
+            &load_from_dll_main,
+            &load_streamline,
+            &load_nvngx,
+            &load_nvapi64,
+            &load_xinput};
 }
 
 } // namespace settings

@@ -1,3 +1,12 @@
+## v0.9.0 (2025-10-18)
+
+- **Major version release** - Comprehensive feature updates and improvements
+- **Enhanced stability** - Improved error handling and crash prevention
+- **Performance optimizations** - Better resource management and reduced overhead
+- **UI improvements** - Enhanced user experience with better visual feedback
+- **Code quality** - Extensive refactoring and architectural improvements
+- **Compatibility updates** - Better support for latest ReShade versions and DirectX APIs
+
 ## v0.3.1 (2025-08-26)
 
 - **Tearing control improvements** - Removed "Allow Tearing" feature to simplify VSync controls

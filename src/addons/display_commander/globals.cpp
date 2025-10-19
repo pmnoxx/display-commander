@@ -372,6 +372,9 @@ void LoadAllSettingsAtStartup() {
 // NGX Parameter Storage global instance
 UnifiedParameterMap g_ngx_parameters;
 
+// NGX Counters global instance
+NGXCounters g_ngx_counters;
+
 // Get DLSS/DLSS-G summary from NGX parameters
 DLSSGSummary GetDLSSGSummary() {
     DLSSGSummary summary;

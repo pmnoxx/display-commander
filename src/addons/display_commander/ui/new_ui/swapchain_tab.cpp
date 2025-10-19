@@ -256,17 +256,6 @@ void DrawSwapchainEventCounters() {
             {SWAPCHAIN_EVENT_NVAPI_D3D_SET_SLEEP_MODE, "SWAPCHAIN_EVENT_NVAPI_D3D_SET_SLEEP_MODE"},
             {SWAPCHAIN_EVENT_NVAPI_D3D_SLEEP, "SWAPCHAIN_EVENT_NVAPI_D3D_SLEEP"},
             {SWAPCHAIN_EVENT_NVAPI_D3D_GET_LATENCY, "SWAPCHAIN_EVENT_NVAPI_D3D_GET_LATENCY"},
-            // NGX Parameter hooks
-            {SWAPCHAIN_EVENT_NGX_PARAMETER_SETF, "SWAPCHAIN_EVENT_NGX_PARAMETER_SETF"},
-            {SWAPCHAIN_EVENT_NGX_PARAMETER_SETD, "SWAPCHAIN_EVENT_NGX_PARAMETER_SETD"},
-            {SWAPCHAIN_EVENT_NGX_PARAMETER_SETI, "SWAPCHAIN_EVENT_NGX_PARAMETER_SETI"},
-            {SWAPCHAIN_EVENT_NGX_PARAMETER_SETUI, "SWAPCHAIN_EVENT_NGX_PARAMETER_SETUI"},
-            {SWAPCHAIN_EVENT_NGX_PARAMETER_SETULL, "SWAPCHAIN_EVENT_NGX_PARAMETER_SETULL"},
-            // NGX Parameter getter hooks
-            {SWAPCHAIN_EVENT_NGX_PARAMETER_GETI, "SWAPCHAIN_EVENT_NGX_PARAMETER_GETI"},
-            {SWAPCHAIN_EVENT_NGX_PARAMETER_GETUI, "SWAPCHAIN_EVENT_NGX_PARAMETER_GETUI"},
-            {SWAPCHAIN_EVENT_NGX_PARAMETER_GETULL, "SWAPCHAIN_EVENT_NGX_PARAMETER_GETULL"},
-            {SWAPCHAIN_EVENT_NGX_PARAMETER_GETVOIDPOINTER, "SWAPCHAIN_EVENT_NGX_PARAMETER_GETVOIDPOINTER"},
             // Streamline hooks
             {SWAPCHAIN_EVENT_STREAMLINE_SL_INIT, "SWAPCHAIN_EVENT_STREAMLINE_SL_INIT"},
             {SWAPCHAIN_EVENT_STREAMLINE_SL_IS_FEATURE_SUPPORTED, "SWAPCHAIN_EVENT_STREAMLINE_SL_IS_FEATURE_SUPPORTED"},
@@ -284,7 +273,7 @@ void DrawSwapchainEventCounters() {
             ImVec4 color;
         };
 
-        static const std::array<EventGroup, 13> event_groups = {{{   .name="ReShade Events", .start_idx=SWAPCHAIN_EVENT_BEGIN_RENDER_PASS, .end_idx=SWAPCHAIN_EVENT_RESOLVE_QUERY_DATA, .color=ImVec4(0.8f, 0.8f, 1.0f, 1.0f)},
+        static const std::array<EventGroup, 11> event_groups = {{{   .name="ReShade Events", .start_idx=SWAPCHAIN_EVENT_BEGIN_RENDER_PASS, .end_idx=SWAPCHAIN_EVENT_RESOLVE_QUERY_DATA, .color=ImVec4(0.8f, 0.8f, 1.0f, 1.0f)},
                                             {   .name="DXGI Core Methods", .start_idx=SWAPCHAIN_EVENT_DXGI_PRESENT, .end_idx=SWAPCHAIN_EVENT_DXGI_GETFRAMESTATISTICS, .color=ImVec4(0.8f, 1.0f, 0.8f, 1.0f)},
                                             {   .name="DXGI SwapChain1 Methods", .start_idx=SWAPCHAIN_EVENT_DXGI_GETDESC1, .end_idx=SWAPCHAIN_EVENT_DXGI_GETROTATION, .color=ImVec4(1.0f, 0.8f, 0.8f, 1.0f)},
                                             {   .name="DXGI SwapChain2 Methods", .start_idx=SWAPCHAIN_EVENT_DXGI_SETSOURCESIZE, .end_idx=SWAPCHAIN_EVENT_DXGI_GETMATRIXTRANSFORM, .color=ImVec4(1.0f, 1.0f, 0.8f, 1.0f)},
@@ -294,8 +283,6 @@ void DrawSwapchainEventCounters() {
                                             {   .name="DirectX 9 Methods", .start_idx=SWAPCHAIN_EVENT_DX9_PRESENT, .end_idx=SWAPCHAIN_EVENT_DX9_PRESENT, .color=ImVec4(1.0f, 0.6f, 0.6f, 1.0f)},
                                             {   .name="NVAPI HDR Methods", .start_idx=SWAPCHAIN_EVENT_NVAPI_GET_HDR_CAPABILITIES, .end_idx=SWAPCHAIN_EVENT_NVAPI_GET_HDR_CAPABILITIES, .color=ImVec4(0.6f, 1.0f, 0.6f, 1.0f)},
                                             {   .name="NVAPI Reflex Methods", .start_idx=SWAPCHAIN_EVENT_NVAPI_D3D_SET_LATENCY_MARKER, .end_idx=SWAPCHAIN_EVENT_NVAPI_D3D_GET_LATENCY, .color=ImVec4(0.6f, 1.0f, 0.8f, 1.0f)},
-                                            {   .name="NGX Parameter Set Methods", .start_idx=SWAPCHAIN_EVENT_NGX_PARAMETER_SETF, .end_idx=SWAPCHAIN_EVENT_NGX_PARAMETER_SETULL, .color=ImVec4(1.0f, 0.8f, 0.6f, 1.0f)},
-                                            {   .name="NGX Parameter Get Methods", .start_idx=SWAPCHAIN_EVENT_NGX_PARAMETER_GETI, .end_idx=SWAPCHAIN_EVENT_NGX_PARAMETER_GETVOIDPOINTER, .color=ImVec4(1.0f, 0.6f, 0.8f, 1.0f)},
                                             {   .name="Streamline Methods", .start_idx=SWAPCHAIN_EVENT_STREAMLINE_SL_INIT, .end_idx=SWAPCHAIN_EVENT_STREAMLINE_SL_UPGRADE_INTERFACE, .color=ImVec4(0.6f, 0.8f, 1.0f, 1.0f)}}};
 
         for (const auto& group : event_groups) {
@@ -328,6 +315,71 @@ void DrawSwapchainEventCounters() {
         } else {
             ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f),
                                "Status: No swapchain events detected - check if addon is properly loaded");
+        }
+    }
+
+    // NGX Counters Section
+    if (ImGui::CollapsingHeader("NGX Counters", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "NVIDIA NGX Function Call Counters");
+        ImGui::Separator();
+
+        // Parameter functions
+        if (ImGui::CollapsingHeader("Parameter Functions", ImGuiTreeNodeFlags_DefaultOpen)) {
+            ImGui::Indent();
+            ImGui::Text("SetF: %u", g_ngx_counters.parameter_setf_count.load());
+            ImGui::Text("SetD: %u", g_ngx_counters.parameter_setd_count.load());
+            ImGui::Text("SetI: %u", g_ngx_counters.parameter_seti_count.load());
+            ImGui::Text("SetUI: %u", g_ngx_counters.parameter_setui_count.load());
+            ImGui::Text("SetULL: %u", g_ngx_counters.parameter_setull_count.load());
+            ImGui::Text("GetI: %u", g_ngx_counters.parameter_geti_count.load());
+            ImGui::Text("GetUI: %u", g_ngx_counters.parameter_getui_count.load());
+            ImGui::Text("GetULL: %u", g_ngx_counters.parameter_getull_count.load());
+            ImGui::Text("GetVoidPointer: %u", g_ngx_counters.parameter_getvoidpointer_count.load());
+            ImGui::Unindent();
+        }
+
+        // D3D12 Feature Management
+        if (ImGui::CollapsingHeader("D3D12 Feature Management", ImGuiTreeNodeFlags_DefaultOpen)) {
+            ImGui::Indent();
+            ImGui::Text("Init: %u", g_ngx_counters.d3d12_init_count.load());
+            ImGui::Text("Init Ext: %u", g_ngx_counters.d3d12_init_ext_count.load());
+            ImGui::Text("Init ProjectID: %u", g_ngx_counters.d3d12_init_projectid_count.load());
+            ImGui::Text("CreateFeature: %u", g_ngx_counters.d3d12_createfeature_count.load());
+            ImGui::Text("ReleaseFeature: %u", g_ngx_counters.d3d12_releasefeature_count.load());
+            ImGui::Text("EvaluateFeature: %u", g_ngx_counters.d3d12_evaluatefeature_count.load());
+            ImGui::Text("GetParameters: %u", g_ngx_counters.d3d12_getparameters_count.load());
+            ImGui::Text("AllocateParameters: %u", g_ngx_counters.d3d12_allocateparameters_count.load());
+            ImGui::Unindent();
+        }
+
+        // D3D11 Feature Management
+        if (ImGui::CollapsingHeader("D3D11 Feature Management", ImGuiTreeNodeFlags_DefaultOpen)) {
+            ImGui::Indent();
+            ImGui::Text("Init: %u", g_ngx_counters.d3d11_init_count.load());
+            ImGui::Text("Init Ext: %u", g_ngx_counters.d3d11_init_ext_count.load());
+            ImGui::Text("Init ProjectID: %u", g_ngx_counters.d3d11_init_projectid_count.load());
+            ImGui::Text("CreateFeature: %u", g_ngx_counters.d3d11_createfeature_count.load());
+            ImGui::Text("ReleaseFeature: %u", g_ngx_counters.d3d11_releasefeature_count.load());
+            ImGui::Text("EvaluateFeature: %u", g_ngx_counters.d3d11_evaluatefeature_count.load());
+            ImGui::Text("GetParameters: %u", g_ngx_counters.d3d11_getparameters_count.load());
+            ImGui::Text("AllocateParameters: %u", g_ngx_counters.d3d11_allocateparameters_count.load());
+            ImGui::Unindent();
+        }
+
+        ImGui::Separator();
+        ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "Total NGX Calls: %u", g_ngx_counters.total_count.load());
+
+        // Reset button
+        if (ImGui::Button("Reset NGX Counters")) {
+            g_ngx_counters.reset();
+        }
+
+        // Show status message
+        uint32_t total_ngx_calls = g_ngx_counters.total_count.load();
+        if (total_ngx_calls > 0) {
+            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Status: NGX functions are being called");
+        } else {
+            ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Status: No NGX calls detected yet");
         }
     }
 

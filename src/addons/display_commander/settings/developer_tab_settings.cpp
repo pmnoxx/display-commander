@@ -16,7 +16,6 @@ DeveloperTabSettings::DeveloperTabSettings()
       continue_rendering("ContinueRendering", s_continue_rendering, false, "DisplayCommander"),
       continuous_monitoring("ContinuousMonitoring", s_continuous_monitoring_enabled, true, "DisplayCommander"),
       prevent_always_on_top("PreventAlwaysOnTop", s_prevent_always_on_top, true, "DisplayCommander"),
-      nvapi_fix_hdr10_colorspace("NvapiFixHDR10Colorspace", s_nvapi_fix_hdr10_colorspace, false, "DisplayCommander"),
       hide_hdr_capabilities("HideHDRCapabilities", s_hide_hdr_capabilities, false, "DisplayCommander"),
       enable_flip_chain("EnableFlipChain", s_enable_flip_chain, false, "DisplayCommander"),
       auto_colorspace("AutoColorspace", s_auto_colorspace, false, "DisplayCommander"),
@@ -51,7 +50,6 @@ void DeveloperTabSettings::LoadAll() {
     continue_rendering.Load(); // This was missing!
     continuous_monitoring.Load();
     prevent_always_on_top.Load();
-    nvapi_fix_hdr10_colorspace.Load();
     hide_hdr_capabilities.Load();
     enable_flip_chain.Load();
     auto_colorspace.Load();
@@ -98,7 +96,6 @@ std::vector<ui::new_ui::SettingBase *> DeveloperTabSettings::GetAllSettings() {
             &continue_rendering,
             &continuous_monitoring,
             &prevent_always_on_top,
-            &nvapi_fix_hdr10_colorspace,
             &hide_hdr_capabilities,
             &enable_flip_chain,
             &auto_colorspace,

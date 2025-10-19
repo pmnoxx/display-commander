@@ -972,18 +972,23 @@ void AutoSetColorSpace(reshade::api::swapchain *swapchain) {
 
     // Determine appropriate color space based on format
     DXGI_COLOR_SPACE_TYPE color_space;
+    reshade::api::color_space reshade_color_space;
     std::string color_space_name;
 
     if (format == reshade::api::format::r10g10b10a2_unorm) {
         color_space = DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020; // HDR10
+        reshade_color_space = reshade::api::color_space::hdr10_st2084;
         color_space_name = "HDR10 (ST2084)";
     } else if (format == reshade::api::format::r16g16b16a16_float) {
         color_space = DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709; // scRGB
+        reshade_color_space = reshade::api::color_space::extended_srgb_linear;
         color_space_name = "scRGB (Linear)";
     } else if (format == reshade::api::format::r8g8b8a8_unorm) {
         color_space = DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709; // sRGB
+        reshade_color_space = reshade::api::color_space::srgb_nonlinear;
         color_space_name = "sRGB (Non-linear)";
     } else {
+        LogError("AutoSetColorSpace: Unsupported format %d", static_cast<int>(format));
         return; // Unsupported format
     }
 
@@ -1008,12 +1013,24 @@ void AutoSetColorSpace(reshade::api::swapchain *swapchain) {
         hr = swapchain3->CheckColorSpaceSupport(fallback_color_space, &fallback_support);
         if (SUCCEEDED(hr) && fallback_support > 0) {
             swapchain3->SetColorSpace1(fallback_color_space);
+
+            // Set ReShade runtime color space to sRGB fallback
+            reshade::api::effect_runtime* runtime = GetFirstReShadeRuntime();
+            if (runtime != nullptr) {
+                runtime->set_color_space(reshade::api::color_space::srgb_nonlinear);
+            }
         }
         return;
     }
 
     // Set the appropriate color space
     swapchain3->SetColorSpace1(color_space);
+
+    // Set ReShade runtime color space
+    reshade::api::effect_runtime* runtime = GetFirstReShadeRuntime();
+    if (runtime != nullptr) {
+        runtime->set_color_space(reshade_color_space);
+    }
 }
 // Update composition state after presents (required for valid stats)
 void OnPresentUpdateBefore(reshade::api::command_queue * command_queue, reshade::api::swapchain *swapchain,

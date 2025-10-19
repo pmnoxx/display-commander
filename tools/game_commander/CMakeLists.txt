@@ -34,6 +34,13 @@ add_executable(game_commander ${SOURCES} ${IMGUI_SOURCES})
 
 # Windows specific
 if(WIN32)
+    # Choose the correct GLFW library based on target architecture
+    if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+        set(GLFW_LIB_DIR "lib-vc2010-64")
+    else()
+        set(GLFW_LIB_DIR "lib-vc2010-32")
+    endif()
+
     target_link_libraries(game_commander
         user32
         shell32
@@ -48,7 +55,7 @@ if(WIN32)
         gdi32
         comctl32
         opengl32
-        ${CMAKE_SOURCE_DIR}/external/reshade/deps/imgui/examples/libs/glfw/lib-vc2010-64/glfw3.lib
+        ${CMAKE_SOURCE_DIR}/external/reshade/deps/imgui/examples/libs/glfw/${GLFW_LIB_DIR}/glfw3.lib
     )
 
     # Add legacy stdio definitions for VS2015+ compatibility

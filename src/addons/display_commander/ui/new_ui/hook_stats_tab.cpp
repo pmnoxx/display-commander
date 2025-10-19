@@ -351,7 +351,13 @@ void DrawHookStatsTab() {
         "ChangeDisplaySettingsA",
         "ChangeDisplaySettingsW",
         "ChangeDisplaySettingsExA",
-        "ChangeDisplaySettingsExW"
+        "ChangeDisplaySettingsExW",
+        "SetWindowPos",
+        "ShowWindow",
+        "SetWindowLongA",
+        "SetWindowLongW",
+        "SetWindowLongPtrA",
+        "SetWindowLongPtrW"
     };
 
     uint64_t total_display_settings_calls = 0;

@@ -76,58 +76,10 @@ jobs:
           if-no-files-found: error
           retention-days: 30 # Keep nightly builds for 30 days
 
-  nightly-build-driver-restart:
-    name: Nightly Build Driver Restart Tool
-    runs-on: windows-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - name: Setup Ninja
-        uses: seanmiddleditch/gha-setup-ninja@v5
-
-      - name: Setup MSVC (x64)
-        uses: ilammy/msvc-dev-cmd@v1
-        with:
-          arch: x64
-
-      - name: Configure
-        shell: bash
-        run: |
-          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
-
-      - name: Build Driver Restart Tool
-        shell: bash
-        run: |
-          cmake --build build --config Release --target driver_restart --parallel
-
-      - name: Collect Driver Restart Artifact
-        shell: bash
-        run: |
-          mkdir -p artifacts
-          if [ -f "build/tools/driver_restart.exe" ]; then
-            echo "Found driver_restart.exe: build/tools/driver_restart.exe"
-            cp "build/tools/driver_restart.exe" "artifacts/driver_restart.exe"
-          else
-            echo "Error: driver_restart.exe not found in build/tools/" >&2
-            find build -type f -name "*.exe" || true
-            exit 1
-          fi
-
-      - name: Upload Driver Restart Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: nightly-driver-restart-tool
-          path: artifacts/driver_restart.exe
-          if-no-files-found: error
-          retention-days: 30
 
   nightly-release:
     name: Nightly Release
-    needs: [ nightly-build, nightly-build-driver-restart ]
+    needs: [ nightly-build ]
     runs-on: windows-latest
     steps:
       - name: Download build artifacts (x64)
@@ -142,11 +94,6 @@ jobs:
           name: nightly-zzz-display-commander-addon32
           path: artifacts
 
-      - name: Download driver restart tool
-        uses: actions/download-artifact@v4
-        with:
-          name: nightly-driver-restart-tool
-          path: artifacts
 
       - name: Create/Update Nightly Release
         uses: ncipollo/release-action@v1
@@ -166,6 +113,5 @@ jobs:
             **Files**:
             - `zzz_display_commander.addon64` - 64-bit version
             - `zzz_display_commander.addon32` - 32-bit version
-            - `driver_restart.exe` - Graphics driver restart utility
 
             **Note**: These are development builds. For stable releases, use the main releases.

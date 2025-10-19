@@ -301,12 +301,12 @@ bool IsVTableEntryValid(void** vtable, int index) {
 
     // Basic bounds check - most swapchains should have at least 18 entries (IDXGISwapChain1)
     // but we'll be conservative and check for null
-    __try {
+  //  __try {
         return vtable[index] != nullptr;
-    }
-    __except(EXCEPTION_EXECUTE_HANDLER) {
-        return false;
-    }
+  //  }
+ //   __except(EXCEPTION_EXECUTE_HANDLER) {
+//        return false;
+ //   }
 }
 
 // Original function pointers

@@ -20,6 +20,8 @@
 #include <sstream>
 #include <thread>
 
+// #define TRY_CATCH_BLOCKS
+
 // External reference to screensaver mode setting
 extern std::atomic<ScreensaverMode> s_screensaver_mode;
 
@@ -370,74 +372,78 @@ void HandleKeyboardShortcuts() {
 
 // Main monitoring thread function
 void ContinuousMonitoringThread() {
+#ifdef TRY_CATCH_BLOCKS
     __try {
-        LogInfo("Continuous monitoring thread started");
+#endif
+    LogInfo("Continuous monitoring thread started");
 
-        auto start_time = utils::get_now_ns();
-        LONGLONG last_cache_refresh_ns = start_time;
-        LONGLONG last_60fps_update_ns = start_time;
-        LONGLONG last_1s_update_ns = start_time;
-        const LONGLONG fps_120_interval_ns = utils::SEC_TO_NS / 120;
+    auto start_time = utils::get_now_ns();
+    LONGLONG last_cache_refresh_ns = start_time;
+    LONGLONG last_60fps_update_ns = start_time;
+    LONGLONG last_1s_update_ns = start_time;
+    const LONGLONG fps_120_interval_ns = utils::SEC_TO_NS / 120;
 
-        while (g_monitoring_thread_running.load()) {
-            std::this_thread::sleep_for(std::chrono::nanoseconds(fps_120_interval_ns));
-            // Periodic display cache refresh off the UI thread
-            {
-                LONGLONG now_ns = utils::get_now_ns();
-                if (now_ns - last_cache_refresh_ns >= 2 * utils::SEC_TO_NS) {
-                    display_cache::g_displayCache.Refresh();
-                    last_cache_refresh_ns = now_ns;
-                    // No longer need to cache monitor labels - UI calls GetDisplayInfoForUI() directly
-                }
-            }
-            // Wait for 1 second to start
-            if (utils::get_now_ns() - start_time < 1 * utils::SEC_TO_NS) {
-                continue;
-            }
-            // Check if monitoring is still enabled
-            if (!s_continuous_monitoring_enabled.load()) {
-                continue;
-            }
-
-            // 60 FPS updates (every ~16.67ms)
+    while (g_monitoring_thread_running.load()) {
+        std::this_thread::sleep_for(std::chrono::nanoseconds(fps_120_interval_ns));
+        // Periodic display cache refresh off the UI thread
+        {
             LONGLONG now_ns = utils::get_now_ns();
-            if (now_ns - last_60fps_update_ns >= fps_120_interval_ns) {
-                last_60fps_update_ns = now_ns;
-                adhd_multi_monitor::api::Initialize();
-                adhd_multi_monitor::api::SetEnabled(settings::g_mainTabSettings.adhd_multi_monitor_enabled.GetValue());
-
-                // Update ADHD Multi-Monitor Mode at 60 FPS
-                adhd_multi_monitor::api::Update();
-
-                // Update keyboard tracking system
-                display_commanderhooks::keyboard_tracker::Update();
-
-                // Handle keyboard shortcuts
-                HandleKeyboardShortcuts();
-
-                // Reset keyboard frame states for next frame
-                display_commanderhooks::keyboard_tracker::ResetFrame();
-            }
-
-            if (now_ns - last_1s_update_ns >= 1 * utils::SEC_TO_NS) {
-                last_1s_update_ns = now_ns;
-                every1s_checks();
-
-                // wait 10s before configuring reflex
-                if (now_ns - start_time >= 10 * utils::SEC_TO_NS) {
-                    HandleReflexAutoConfigure();
-                }
-
-                // Call auto-apply HDR metadata trigger
-                ui::new_ui::AutoApplyTrigger();
+            if (now_ns - last_cache_refresh_ns >= 2 * utils::SEC_TO_NS) {
+                display_cache::g_displayCache.Refresh();
+                last_cache_refresh_ns = now_ns;
+                // No longer need to cache monitor labels - UI calls GetDisplayInfoForUI() directly
             }
         }
+        // Wait for 1 second to start
+        if (utils::get_now_ns() - start_time < 1 * utils::SEC_TO_NS) {
+            continue;
+        }
+        // Check if monitoring is still enabled
+        if (!s_continuous_monitoring_enabled.load()) {
+            continue;
+        }
 
-        LogInfo("Continuous monitoring thread stopped");
+        // 60 FPS updates (every ~16.67ms)
+        LONGLONG now_ns = utils::get_now_ns();
+        if (now_ns - last_60fps_update_ns >= fps_120_interval_ns) {
+            last_60fps_update_ns = now_ns;
+            adhd_multi_monitor::api::Initialize();
+            adhd_multi_monitor::api::SetEnabled(settings::g_mainTabSettings.adhd_multi_monitor_enabled.GetValue());
+
+            // Update ADHD Multi-Monitor Mode at 60 FPS
+            adhd_multi_monitor::api::Update();
+
+            // Update keyboard tracking system
+            display_commanderhooks::keyboard_tracker::Update();
+
+            // Handle keyboard shortcuts
+            HandleKeyboardShortcuts();
+
+            // Reset keyboard frame states for next frame
+            display_commanderhooks::keyboard_tracker::ResetFrame();
+        }
+
+        if (now_ns - last_1s_update_ns >= 1 * utils::SEC_TO_NS) {
+            last_1s_update_ns = now_ns;
+            every1s_checks();
+
+            // wait 10s before configuring reflex
+            if (now_ns - start_time >= 10 * utils::SEC_TO_NS) {
+                HandleReflexAutoConfigure();
+            }
+
+            // Call auto-apply HDR metadata trigger
+            ui::new_ui::AutoApplyTrigger();
+        }
+    }
+#ifdef TRY_CATCH_BLOCKS
     }
     __except(EXCEPTION_EXECUTE_HANDLER) {
         LogError("Exception occurred during Continuous Monitoring: 0x%x", GetExceptionCode());
     }
+#endif
+
+    LogInfo("Continuous monitoring thread stopped");
 }
 
 // Start continuous monitoring

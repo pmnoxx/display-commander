@@ -252,6 +252,23 @@ bool GameListManager::launchGame(const Game& game) {
         } else {
             std::cout << "ReShade DLL not found for local injection: " << reshade_dll_path << std::endl;
         }
+
+        // Copy display commander addon if configured
+        std::string display_commander_path = is_32bit ? options_.display_commander_path_32bit : options_.display_commander_path_64bit;
+        if (!display_commander_path.empty() && std::filesystem::exists(display_commander_path)) {
+            try {
+                // Get the filename from the display commander path
+                std::string display_commander_filename = std::filesystem::path(display_commander_path).filename().string();
+                std::string display_commander_dest = game_dir + "\\" + display_commander_filename;
+
+                std::filesystem::copy_file(display_commander_path, display_commander_dest, std::filesystem::copy_options::overwrite_existing);
+                std::cout << "Display commander addon copied: " << display_commander_filename << " to " << game_dir << std::endl;
+            } catch (const std::exception& e) {
+                std::cout << "Failed to copy display commander addon: " << e.what() << std::endl;
+            }
+        } else {
+            std::cout << "Display commander addon not found for local injection: " << display_commander_path << std::endl;
+        }
     }
 
     if (game.is_steam_game) {
@@ -387,8 +404,10 @@ void GameListManager::loadOptions() {
             options_.reshade_path_32bit = value;
         } else if (key == "reshade_path_64bit") {
             options_.reshade_path_64bit = value;
-        } else if (key == "display_commander_path") {
-            options_.display_commander_path = value;
+        } else if (key == "display_commander_path_32bit") {
+            options_.display_commander_path_32bit = value;
+        } else if (key == "display_commander_path_64bit") {
+            options_.display_commander_path_64bit = value;
         } else if (key == "override_shaders_path") {
             options_.override_shaders_path = (value == "true");
         } else if (key == "shaders_path") {
@@ -421,7 +440,8 @@ void GameListManager::saveOptions() {
 
     file << "reshade_path_32bit = \"" << options_.reshade_path_32bit << "\"\n";
     file << "reshade_path_64bit = \"" << options_.reshade_path_64bit << "\"\n";
-    file << "display_commander_path = \"" << options_.display_commander_path << "\"\n";
+    file << "display_commander_path_32bit = \"" << options_.display_commander_path_32bit << "\"\n";
+    file << "display_commander_path_64bit = \"" << options_.display_commander_path_64bit << "\"\n";
     file << "override_shaders_path = " << (options_.override_shaders_path ? "true" : "false") << "\n";
     file << "shaders_path = \"" << options_.shaders_path << "\"\n";
     file << "override_textures_path = " << (options_.override_textures_path ? "true" : "false") << "\n";

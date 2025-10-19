@@ -24,7 +24,7 @@ public:
     // Configuration
     void setTargetGames(const std::vector<Game>& games);
     void setReShadeDllPaths(const std::string& path_32bit, const std::string& path_64bit);
-    void setDisplayCommanderPath(const std::string& path);
+    void setDisplayCommanderPaths(const std::string& path_32bit, const std::string& path_64bit);
     void setVerboseLogging(bool enabled);
 
     // Status
@@ -36,6 +36,7 @@ private:
         std::string exe_name;
         std::string display_name;
         bool enabled;
+        bool use_local_injection;
         std::unordered_set<DWORD> injected_pids;
     };
 
@@ -53,7 +54,8 @@ private:
     std::vector<TargetProcess> targets_;
     std::string reshade_dll_path_32bit_;
     std::string reshade_dll_path_64bit_;
-    std::string display_commander_path_;
+    std::string display_commander_path_32bit_;
+    std::string display_commander_path_64bit_;
     std::atomic<bool> running_;
     std::atomic<bool> verbose_logging_;
     std::unique_ptr<std::thread> monitoring_thread_;

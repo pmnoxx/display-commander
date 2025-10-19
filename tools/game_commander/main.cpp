@@ -53,7 +53,8 @@ static int proxy_dll_type = 0; // 0=None, 1=OpenGL32, 2=DXGI, 3=D3D11, 4=D3D12
 // Global options data (will be synced with GameListManager)
 static char reshade_path_32bit[512] = "";
 static char reshade_path_64bit[512] = "";
-static char display_commander_path[512] = "";
+static char display_commander_path_32bit[512] = "";
+static char display_commander_path_64bit[512] = "";
 static bool override_shaders_path = false;
 static char shaders_path[512] = "";
 static bool override_textures_path = false;
@@ -248,9 +249,7 @@ void renderMainWindow(GameListManager* gameList) {
             // Configure injector service
             const auto& options = gameList->getOptions();
             g_injector_service->setReShadeDllPaths(options.reshade_path_32bit, options.reshade_path_64bit);
-            if (!options.display_commander_path.empty()) {
-                g_injector_service->setDisplayCommanderPath(options.display_commander_path);
-            }
+            g_injector_service->setDisplayCommanderPaths(options.display_commander_path_32bit, options.display_commander_path_64bit);
             g_injector_service->setVerboseLogging(options.injector_verbose_logging);
 
             if (g_injector_service->start()) {
@@ -655,17 +654,30 @@ void renderOptionsDialog(GameListManager* gameList, bool* show_dialog) {
         ImGui::SetTooltip("Path to Reshade 64-bit DLL (e.g., ReShade64.dll)");
     }
 
-    // Display Commander Path
-    ImGui::InputText("Display Commander Path", display_commander_path, sizeof(display_commander_path));
+    // Display Commander 32-bit Path
+    ImGui::InputText("Display Commander 32-bit Path", display_commander_path_32bit, sizeof(display_commander_path_32bit));
     ImGui::SameLine();
-    if (ImGui::Button("Browse##display_commander")) {
-        std::string selectedFile = openFileDialog("Executable Files (*.exe)\0*.exe\0All Files (*.*)\0*.*\0");
+    if (ImGui::Button("Browse##display_commander32")) {
+        std::string selectedFile = openFileDialog("Addon Files (*.addon32)\0*.addon32\0All Files (*.*)\0*.*\0");
         if (!selectedFile.empty()) {
-            strncpy_s(display_commander_path, sizeof(display_commander_path), selectedFile.c_str(), _TRUNCATE);
+            strncpy_s(display_commander_path_32bit, sizeof(display_commander_path_32bit), selectedFile.c_str(), _TRUNCATE);
         }
     }
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Path to Display Commander executable (e.g., zzz_display_commander.addon64)");
+        ImGui::SetTooltip("Path to Display Commander 32-bit addon (e.g., zzz_display_commander.addon32)");
+    }
+
+    // Display Commander 64-bit Path
+    ImGui::InputText("Display Commander 64-bit Path", display_commander_path_64bit, sizeof(display_commander_path_64bit));
+    ImGui::SameLine();
+    if (ImGui::Button("Browse##display_commander64")) {
+        std::string selectedFile = openFileDialog("Addon Files (*.addon64)\0*.addon64\0All Files (*.*)\0*.*\0");
+        if (!selectedFile.empty()) {
+            strncpy_s(display_commander_path_64bit, sizeof(display_commander_path_64bit), selectedFile.c_str(), _TRUNCATE);
+        }
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Path to Display Commander 64-bit addon (e.g., zzz_display_commander.addon64)");
     }
 
     #if 0
@@ -818,7 +830,8 @@ void loadOptionsFromManager(GameListManager* gameList) {
 
     strncpy_s(reshade_path_32bit, sizeof(reshade_path_32bit), options.reshade_path_32bit.c_str(), _TRUNCATE);
     strncpy_s(reshade_path_64bit, sizeof(reshade_path_64bit), options.reshade_path_64bit.c_str(), _TRUNCATE);
-    strncpy_s(display_commander_path, sizeof(display_commander_path), options.display_commander_path.c_str(), _TRUNCATE);
+    strncpy_s(display_commander_path_32bit, sizeof(display_commander_path_32bit), options.display_commander_path_32bit.c_str(), _TRUNCATE);
+    strncpy_s(display_commander_path_64bit, sizeof(display_commander_path_64bit), options.display_commander_path_64bit.c_str(), _TRUNCATE);
     override_shaders_path = options.override_shaders_path;
     strncpy_s(shaders_path, sizeof(shaders_path), options.shaders_path.c_str(), _TRUNCATE);
     override_textures_path = options.override_textures_path;
@@ -834,7 +847,8 @@ void saveOptionsToManager(GameListManager* gameList) {
 
     options.reshade_path_32bit = std::string(reshade_path_32bit);
     options.reshade_path_64bit = std::string(reshade_path_64bit);
-    options.display_commander_path = std::string(display_commander_path);
+    options.display_commander_path_32bit = std::string(display_commander_path_32bit);
+    options.display_commander_path_64bit = std::string(display_commander_path_64bit);
     options.override_shaders_path = override_shaders_path;
     options.shaders_path = std::string(shaders_path);
     options.override_textures_path = override_textures_path;
@@ -899,10 +913,7 @@ int main() {
         g_injector_service->setTargetGames(gameList->getGames());
         // Set ReShade DLL paths from config
         g_injector_service->setReShadeDllPaths(reshade_path_32bit, reshade_path_64bit);
-        if (display_commander_path[0]) {
-            // Set display commander path if one is configured
-            g_injector_service->setDisplayCommanderPath(display_commander_path);
-        }
+        g_injector_service->setDisplayCommanderPaths(display_commander_path_32bit, display_commander_path_64bit);
         g_injector_service->setVerboseLogging(injector_verbose_logging);
 
         if (g_injector_service->start()) {

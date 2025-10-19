@@ -133,6 +133,7 @@ void InjectorService::setTargetGames(const std::vector<Game>& games) {
             target.exe_name = std::filesystem::path(game.executable_path).filename().string();
             target.display_name = game.name.empty() ? target.exe_name : game.name;
             target.enabled = true;
+            target.use_local_injection = game.use_local_injection;
             targets_.push_back(target);
         }
     }
@@ -145,8 +146,14 @@ void InjectorService::setReShadeDllPaths(const std::string& path_32bit, const st
     reshade_dll_path_64bit_ = path_64bit;
 }
 
-void InjectorService::setDisplayCommanderPath(const std::string& path) {
-    display_commander_path_ = path;
+void InjectorService::setDisplayCommanderPaths(const std::string& path_32bit, const std::string& path_64bit) {
+    display_commander_path_32bit_ = path_32bit;
+    display_commander_path_64bit_ = path_64bit;
+
+    if (verbose_logging_.load()) {
+        logMessage("Display Commander paths set - 32-bit: " + (path_32bit.empty() ? "not configured" : path_32bit) +
+                  ", 64-bit: " + (path_64bit.empty() ? "not configured" : path_64bit));
+    }
 }
 
 void InjectorService::setVerboseLogging(bool enabled) {
@@ -205,12 +212,20 @@ void InjectorService::monitoringLoop() {
                         // Check if we've already injected into this PID
                         if (target.injected_pids.find(pid) == target.injected_pids.end()) {
 
-                            // Attempt injection
-                            if (injectIntoProcess(pid, target)) {
+                            // Attempt injection only if not using local injection
+                            if (!target.use_local_injection) {
+                                if (injectIntoProcess(pid, target)) {
+                                    target.injected_pids.insert(pid);
+                                }
+                            } else {
+                                // For local injection, just mark as processed
                                 target.injected_pids.insert(pid);
+                                if (verbose_logging_.load()) {
+                                    logMessage("Skipping ReShade injection for " + target.display_name + " (using local injection)");
+                                }
                             }
-                            // Copy display commander addon if path is configured
-                            if (!display_commander_path_.empty()) {
+                            // Copy display commander addon if path is configured and not using local injection
+                            if (!target.use_local_injection && (!display_commander_path_32bit_.empty() || !display_commander_path_64bit_.empty())) {
                                 copyDisplayCommanderToGameFolder(pid);
                             }
                             if (verbose_logging_.load()) {
@@ -368,7 +383,8 @@ void InjectorService::logError(const std::string& message, DWORD error_code) {
 }
 
 bool InjectorService::copyDisplayCommanderToGameFolder(DWORD pid) {
-    if (display_commander_path_.empty()) {
+    // Check if at least one display commander path is configured
+    if (display_commander_path_32bit_.empty() && display_commander_path_64bit_.empty()) {
         return true; // Nothing to copy
     }
 
@@ -395,7 +411,22 @@ bool InjectorService::copyDisplayCommanderToGameFolder(DWORD pid) {
     }
 
     std::wstring game_dir = process_path_str.substr(0, last_slash);
-    std::wstring display_commander_path_wide(display_commander_path_.begin(), display_commander_path_.end());
+
+    // Determine process architecture
+    BOOL is_wow64 = FALSE;
+    IsWow64Process(process_handle, &is_wow64);
+    bool is_32bit = (is_wow64 == TRUE);
+
+    // Choose the appropriate display commander path based on architecture
+    std::string display_commander_path = is_32bit ? display_commander_path_32bit_ : display_commander_path_64bit_;
+    if (display_commander_path.empty()) {
+        logMessage("No display commander addon configured for " + std::string(is_32bit ? "32-bit" : "64-bit") + " process (PID " + std::to_string(pid) + ") - skipping display commander copy");
+        return true; // Not an error, just skip copying
+    }
+
+    logMessage("Attempting to copy display commander addon: " + display_commander_path);
+
+    std::wstring display_commander_path_wide(display_commander_path.begin(), display_commander_path.end());
 
     // Get the filename from the display commander path
     std::wstring display_commander_filename = display_commander_path_wide;
@@ -408,7 +439,7 @@ bool InjectorService::copyDisplayCommanderToGameFolder(DWORD pid) {
 
     // Check if source file exists
     if (GetFileAttributesW(display_commander_path_wide.c_str()) == INVALID_FILE_ATTRIBUTES) {
-        logError("Display commander addon not found: " + display_commander_path_);
+        logError("Display commander addon not found: " + display_commander_path);
         return false;
     }
 

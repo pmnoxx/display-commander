@@ -43,7 +43,8 @@ struct Game {
 struct GlobalOptions {
     std::string reshade_path_32bit;
     std::string reshade_path_64bit;
-    std::string display_commander_path;
+    std::string display_commander_path_32bit;
+    std::string display_commander_path_64bit;
     bool override_shaders_path;
     std::string shaders_path;
     bool override_textures_path;

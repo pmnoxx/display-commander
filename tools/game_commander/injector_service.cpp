@@ -1,10 +1,11 @@
 #include "injector_service.h"
 #include "game_list.h"
+#include "srwlock_wrapper.h"
+#include <fstream>
 #include <iostream>
 #include <chrono>
 #include <filesystem>
 #include <iomanip>
-#include <mutex>
 #include <array>
 #include <sddl.h>
 #include <AclAPI.h>
@@ -123,7 +124,7 @@ void InjectorService::stop() {
 }
 
 void InjectorService::setTargetGames(const std::vector<Game>& games) {
-    std::lock_guard<std::mutex> lock(targets_mutex_);
+    game_commander::SRWLockExclusive lock(targets_srwlock_);
 
     targets_.clear();
     for (const auto& game : games) {
@@ -153,7 +154,7 @@ void InjectorService::setVerboseLogging(bool enabled) {
 }
 
 size_t InjectorService::getInjectedProcessCount() const {
-    std::lock_guard<std::mutex> lock(targets_mutex_);
+    game_commander::SRWLockShared lock(targets_srwlock_);
 
     size_t total = 0;
     for (const auto& target : targets_) {
@@ -163,7 +164,7 @@ size_t InjectorService::getInjectedProcessCount() const {
 }
 
 std::vector<std::string> InjectorService::getInjectedProcesses() const {
-    std::lock_guard<std::mutex> lock(targets_mutex_);
+    game_commander::SRWLockShared lock(targets_srwlock_);
 
     std::vector<std::string> processes;
     for (const auto& target : targets_) {
@@ -192,7 +193,8 @@ void InjectorService::monitoringLoop() {
                 if (process_seen[pid]) continue;
                 process_seen[pid] = true;
 
-                std::lock_guard<std::mutex> lock(targets_mutex_);
+                game_commander::SRWLockExclusive lock(targets_srwlock_);
+                // TODO(pmnoxx): optimize as set if list is too long
                 for (auto& target : targets_) {
                     if (!target.enabled) continue;
 
@@ -202,18 +204,17 @@ void InjectorService::monitoringLoop() {
                     if (_wcsicmp(process.szExeFile, exe_name_wide.c_str()) == 0) {
                         // Check if we've already injected into this PID
                         if (target.injected_pids.find(pid) == target.injected_pids.end()) {
-                            if (verbose_logging_.load()) {
-                                logMessage("Found new " + target.display_name + " process (PID " + std::to_string(pid) + ")");
-                            }
-
-                            // Copy display commander addon if path is configured
-                            if (!display_commander_path_.empty()) {
-                                copyDisplayCommanderToGameFolder(pid);
-                            }
 
                             // Attempt injection
                             if (injectIntoProcess(pid, target)) {
                                 target.injected_pids.insert(pid);
+                            }
+                            // Copy display commander addon if path is configured
+                            if (!display_commander_path_.empty()) {
+                                copyDisplayCommanderToGameFolder(pid);
+                            }
+                            if (verbose_logging_.load()) {
+                                logMessage("Found new " + target.display_name + " process (PID " + std::to_string(pid) + ")");
                             }
                         }
                     }
@@ -221,8 +222,8 @@ void InjectorService::monitoringLoop() {
             }
         }
 
-        // Sleep to avoid overburdening the CPU
-       // std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+        // don't sleep to make sure we catch all new processes
+        // std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     }
 }
 
@@ -329,7 +330,7 @@ bool InjectorService::isProcessRunning(DWORD pid) {
 }
 
 void InjectorService::cleanupInjectedPids() {
-    std::lock_guard<std::mutex> lock(targets_mutex_);
+    game_commander::SRWLockExclusive lock(targets_srwlock_);
 
     for (auto& target : targets_) {
         auto it = target.injected_pids.begin();
@@ -470,4 +471,64 @@ static void update_acl_for_uwp(LPWSTR path) {
     }
 
     LocalFree(sd);
+}
+
+bool InjectorService::performLocalInjection(const Game& game) {
+    if (!game.use_local_injection || game.proxy_dll_type == ProxyDllType::None) {
+        return false;
+    }
+
+    // Determine the game directory
+    std::string game_dir;
+    if (!game.working_directory.empty()) {
+        game_dir = game.working_directory;
+    } else {
+        game_dir = std::filesystem::path(game.executable_path).parent_path().string();
+    }
+
+    // Determine which ReShade DLL to use based on architecture
+    // For now, we'll try to detect the architecture by checking if the executable is 32-bit or 64-bit
+    bool is_32bit = false;
+    std::ifstream file(game.executable_path, std::ios::binary);
+    if (file.is_open()) {
+        char header[2];
+        file.read(header, 2);
+        if (header[0] == 'M' && header[1] == 'Z') {
+            // PE file, check machine type
+            file.seekg(60); // Offset to PE header
+            uint32_t pe_offset;
+            file.read(reinterpret_cast<char*>(&pe_offset), 4);
+            file.seekg(pe_offset + 4); // Machine type offset
+            uint16_t machine_type;
+            file.read(reinterpret_cast<char*>(&machine_type), 2);
+            is_32bit = (machine_type == 0x014c); // IMAGE_FILE_MACHINE_I386
+        }
+        file.close();
+    }
+
+    std::string reshade_dll_path = is_32bit ? reshade_dll_path_32bit_ : reshade_dll_path_64bit_;
+    if (reshade_dll_path.empty()) {
+        logError("No ReShade DLL configured for " + std::string(is_32bit ? "32-bit" : "64-bit") + " architecture");
+        return false;
+    }
+
+    if (!std::filesystem::exists(reshade_dll_path)) {
+        logError("ReShade DLL not found: " + reshade_dll_path);
+        return false;
+    }
+
+    // Get the proxy DLL filename
+    std::string proxy_dll_name = getProxyDllFilename(game.proxy_dll_type);
+    std::string proxy_dll_path = game_dir + "\\" + proxy_dll_name;
+
+    try {
+        // Copy the ReShade DLL as the proxy DLL
+        std::filesystem::copy_file(reshade_dll_path, proxy_dll_path, std::filesystem::copy_options::overwrite_existing);
+
+        logMessage("Local injection successful: " + proxy_dll_name + " copied to " + game_dir);
+        return true;
+    } catch (const std::exception& e) {
+        logError("Failed to copy ReShade DLL as " + proxy_dll_name + ": " + e.what());
+        return false;
+    }
 }

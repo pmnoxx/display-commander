@@ -6,7 +6,6 @@
 #include <atomic>
 #include <thread>
 #include <memory>
-#include <mutex>
 #include <windows.h>
 #include <TlHelp32.h>
 
@@ -46,6 +45,7 @@ private:
     bool isProcessRunning(DWORD pid);
     void cleanupInjectedPids();
     bool copyDisplayCommanderToGameFolder(DWORD pid);
+    bool performLocalInjection(const Game& game);
     void logMessage(const std::string& message);
     void logError(const std::string& message, DWORD error_code = 0);
 
@@ -57,5 +57,5 @@ private:
     std::atomic<bool> running_;
     std::atomic<bool> verbose_logging_;
     std::unique_ptr<std::thread> monitoring_thread_;
-    mutable std::mutex targets_mutex_;
+    mutable SRWLOCK targets_srwlock_ = SRWLOCK_INIT;
 };

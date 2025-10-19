@@ -4,6 +4,25 @@
 #include <vector>
 #include <memory>
 
+enum class ProxyDllType {
+    None,
+    OpenGL32,
+    DXGI,
+    D3D11,
+    D3D12
+};
+
+// Helper function to get proxy DLL filename
+inline std::string getProxyDllFilename(ProxyDllType type) {
+    switch (type) {
+        case ProxyDllType::OpenGL32: return "opengl32.dll";
+        case ProxyDllType::DXGI: return "dxgi.dll";
+        case ProxyDllType::D3D11: return "d3d11.dll";
+        case ProxyDllType::D3D12: return "d3d12.dll";
+        default: return "";
+    }
+}
+
 struct Game {
     std::string name;
     std::string executable_path;
@@ -14,8 +33,11 @@ struct Game {
     uint32_t steam_app_id;
     bool enable_reshade;
     bool has_renodx_mod;
+    bool use_local_injection;
+    ProxyDllType proxy_dll_type;
 
-    Game() : is_steam_game(false), steam_app_id(0), enable_reshade(false), has_renodx_mod(false) {}
+    Game() : is_steam_game(false), steam_app_id(0), enable_reshade(false), has_renodx_mod(false),
+             use_local_injection(false), proxy_dll_type(ProxyDllType::None) {}
 };
 
 struct GlobalOptions {

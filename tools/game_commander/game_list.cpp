@@ -106,6 +106,8 @@ void GameListManager::loadGames() {
                 else if (key == "steam_app_id") current_game.steam_app_id = std::stoul(value);
                 else if (key == "enable_reshade") current_game.enable_reshade = (value == "true");
                 else if (key == "has_renodx_mod") current_game.has_renodx_mod = (value == "true");
+                else if (key == "use_local_injection") current_game.use_local_injection = (value == "true");
+                else if (key == "proxy_dll_type") current_game.proxy_dll_type = static_cast<ProxyDllType>(std::stoi(value));
             }
         }
     }
@@ -147,7 +149,9 @@ void GameListManager::saveGames() {
         file << "is_steam_game = " << (game.is_steam_game ? "true" : "false") << "\n";
         file << "steam_app_id = " << game.steam_app_id << "\n";
         file << "enable_reshade = " << (game.enable_reshade ? "true" : "false") << "\n";
-        file << "has_renodx_mod = " << (game.has_renodx_mod ? "true" : "false") << "\n\n";
+        file << "has_renodx_mod = " << (game.has_renodx_mod ? "true" : "false") << "\n";
+        file << "use_local_injection = " << (game.use_local_injection ? "true" : "false") << "\n";
+        file << "proxy_dll_type = " << static_cast<int>(game.proxy_dll_type) << "\n\n";
     }
 
     file.close();
@@ -163,6 +167,8 @@ void GameListManager::createDefaultConfig() {
     example1.is_steam_game = false;
     example1.enable_reshade = false;
     example1.has_renodx_mod = false;
+    example1.use_local_injection = false;
+    example1.proxy_dll_type = ProxyDllType::None;
     games_.push_back(example1);
 
     saveGames();
@@ -200,6 +206,54 @@ bool GameListManager::launchGame(size_t index) {
 }
 
 bool GameListManager::launchGame(const Game& game) {
+    // Perform local injection if enabled
+    if (game.use_local_injection && game.proxy_dll_type != ProxyDllType::None) {
+        std::cout << "Performing local injection for " << game.name << "..." << std::endl;
+
+        // Determine the game directory
+        std::string game_dir;
+        if (!game.working_directory.empty()) {
+            game_dir = game.working_directory;
+        } else {
+            game_dir = std::filesystem::path(game.executable_path).parent_path().string();
+        }
+
+        // Get the proxy DLL filename
+        std::string proxy_dll_name = getProxyDllFilename(game.proxy_dll_type);
+        std::string proxy_dll_path = game_dir + "\\" + proxy_dll_name;
+
+        // Determine which ReShade DLL to use based on architecture
+        bool is_32bit = false;
+        std::ifstream file(game.executable_path, std::ios::binary);
+        if (file.is_open()) {
+            char header[2];
+            file.read(header, 2);
+            if (header[0] == 'M' && header[1] == 'Z') {
+                // PE file, check machine type
+                file.seekg(60); // Offset to PE header
+                uint32_t pe_offset;
+                file.read(reinterpret_cast<char*>(&pe_offset), 4);
+                file.seekg(pe_offset + 4); // Machine type offset
+                uint16_t machine_type;
+                file.read(reinterpret_cast<char*>(&machine_type), 2);
+                is_32bit = (machine_type == 0x014c); // IMAGE_FILE_MACHINE_I386
+            }
+            file.close();
+        }
+
+        std::string reshade_dll_path = is_32bit ? options_.reshade_path_32bit : options_.reshade_path_64bit;
+        if (!reshade_dll_path.empty() && std::filesystem::exists(reshade_dll_path)) {
+            try {
+                std::filesystem::copy_file(reshade_dll_path, proxy_dll_path, std::filesystem::copy_options::overwrite_existing);
+                std::cout << "Local injection successful: " << proxy_dll_name << " copied to " << game_dir << std::endl;
+            } catch (const std::exception& e) {
+                std::cout << "Failed to copy ReShade DLL as " << proxy_dll_name << ": " << e.what() << std::endl;
+            }
+        } else {
+            std::cout << "ReShade DLL not found for local injection: " << reshade_dll_path << std::endl;
+        }
+    }
+
     if (game.is_steam_game) {
         // Launch via Steam
         std::string steam_url = "steam://run/" + std::to_string(game.steam_app_id);
@@ -219,24 +273,77 @@ bool GameListManager::launchGame(const Game& game) {
         STARTUPINFOA si = {};
         PROCESS_INFORMATION pi = {};
         si.cb = sizeof(si);
+        si.dwFlags = STARTF_USESHOWWINDOW;
+        si.wShowWindow = SW_SHOW;
+
+        // Determine the working directory - use the executable's directory if not specified
+        std::string working_dir = game.working_directory;
+        if (working_dir.empty()) {
+            working_dir = std::filesystem::path(game.executable_path).parent_path().string();
+        }
+
+        // Use the full executable path
+        std::string exe_path = game.executable_path;
 
         BOOL success = CreateProcessA(
-            nullptr,
+            exe_path.c_str(),  // Use executable path as first parameter
             const_cast<char*>(command.c_str()),
             nullptr,
             nullptr,
             FALSE,
-            0,
+            CREATE_NEW_PROCESS_GROUP,  // Create new process group
             nullptr,
-            game.working_directory.empty() ? nullptr : game.working_directory.c_str(),
+            working_dir.c_str(),
             &si,
             &pi
         );
+        std::cout << "Launched game: " << game.executable_path << " with command: " << command <<" success: " << success << std::endl;
+        std::cout << "Working directory: " << working_dir << std::endl;
+
+        if (!success) {
+            DWORD error = GetLastError();
+            std::cout << "CreateProcess failed with error: " << error << std::endl;
+
+            // Check if the executable exists
+            if (GetFileAttributesA(game.executable_path.c_str()) == INVALID_FILE_ATTRIBUTES) {
+                std::cout << "Executable file not found: " << game.executable_path << std::endl;
+            }
+
+            // Check if working directory exists
+            if (!game.working_directory.empty() && GetFileAttributesA(game.working_directory.c_str()) == INVALID_FILE_ATTRIBUTES) {
+                std::cout << "Working directory not found: " << game.working_directory << std::endl;
+            }
+        }
 
         if (success) {
-            CloseHandle(pi.hProcess);
-            CloseHandle(pi.hThread);
-            return true;
+            // Give the process a moment to start
+            Sleep(100);
+
+            // Check if process is still running
+            DWORD exit_code;
+            if (GetExitCodeProcess(pi.hProcess, &exit_code) && exit_code == STILL_ACTIVE) {
+                std::cout << "Game process started successfully (PID: " << pi.dwProcessId << ")" << std::endl;
+                CloseHandle(pi.hProcess);
+                CloseHandle(pi.hThread);
+                return true;
+            } else {
+                std::cout << "Game process exited immediately (exit code: " << exit_code << ")" << std::endl;
+                CloseHandle(pi.hProcess);
+                CloseHandle(pi.hThread);
+
+                // Try fallback with ShellExecute
+                std::cout << "Trying fallback with ShellExecute..." << std::endl;
+                HINSTANCE result = ShellExecuteA(nullptr, "open", game.executable_path.c_str(),
+                    game.launch_arguments.empty() ? nullptr : game.launch_arguments.c_str(),
+                    working_dir.c_str(), SW_SHOW);
+
+                if (reinterpret_cast<intptr_t>(result) > 32) {
+                    std::cout << "Fallback launch successful" << std::endl;
+                    return true;
+                } else {
+                    std::cout << "Fallback launch failed" << std::endl;
+                }
+            }
         }
 
         return false;

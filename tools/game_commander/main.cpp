@@ -47,6 +47,8 @@ static bool is_steam_game = false;
 static int steam_app_id = 0;
 static bool enable_reshade = false;
 static bool has_renodx_mod = false;
+static bool use_local_injection = false;
+static int proxy_dll_type = 0; // 0=None, 1=OpenGL32, 2=DXGI, 3=D3D11, 4=D3D12
 
 // Global options data (will be synced with GameListManager)
 static char reshade_path_32bit[512] = "";
@@ -78,6 +80,8 @@ void clearForm() {
     steam_app_id = 0;
     enable_reshade = false;
     has_renodx_mod = false;
+    use_local_injection = false;
+    proxy_dll_type = 0;
 }
 
 void loadGameIntoForm(const Game& game) {
@@ -90,6 +94,8 @@ void loadGameIntoForm(const Game& game) {
     steam_app_id = static_cast<int>(game.steam_app_id);
     enable_reshade = game.enable_reshade;
     has_renodx_mod = game.has_renodx_mod;
+    use_local_injection = game.use_local_injection;
+    proxy_dll_type = static_cast<int>(game.proxy_dll_type);
 }
 
 void autoDetectRenoDXAndSetReshade() {
@@ -399,6 +405,21 @@ void renderAddGameDialog(GameListManager* gameList, bool* show_dialog) {
         ImGui::SetTooltip("Injects Reshade when launching this game");
     }
 
+    ImGui::Checkbox("Use Local Injection", &use_local_injection);
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Copy ReShade DLL as a proxy DLL instead of injecting (useful when injection fails)");
+    }
+
+    if (use_local_injection) {
+        ImGui::Indent();
+        const char* proxy_types[] = { "None", "opengl32.dll", "dxgi.dll", "d3d11.dll", "d3d12.dll" };
+        ImGui::Combo("Proxy DLL Type", &proxy_dll_type, proxy_types, 5);
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Select which system DLL to replace with ReShade");
+        }
+        ImGui::Unindent();
+    }
+
     ImGui::Checkbox("Has RenoDX Mod", &has_renodx_mod);
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Mark this game as having RenoDX mod installed");
@@ -430,6 +451,8 @@ void renderAddGameDialog(GameListManager* gameList, bool* show_dialog) {
         newGame.steam_app_id = static_cast<uint32_t>(steam_app_id);
         newGame.enable_reshade = enable_reshade;
         newGame.has_renodx_mod = has_renodx_mod;
+        newGame.use_local_injection = use_local_injection;
+        newGame.proxy_dll_type = static_cast<ProxyDllType>(proxy_dll_type);
 
         gameList->addGame(newGame);
         *show_dialog = false;
@@ -517,6 +540,21 @@ void renderEditGameDialog(GameListManager* gameList, bool* show_dialog, int* edi
         ImGui::SetTooltip("Injects Reshade when launching this game");
     }
 
+    ImGui::Checkbox("Use Local Injection", &use_local_injection);
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Copy ReShade DLL as a proxy DLL instead of injecting (useful when injection fails)");
+    }
+
+    if (use_local_injection) {
+        ImGui::Indent();
+        const char* proxy_types[] = { "None", "opengl32.dll", "dxgi.dll", "d3d11.dll", "d3d12.dll" };
+        ImGui::Combo("Proxy DLL Type", &proxy_dll_type, proxy_types, 5);
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Select which system DLL to replace with ReShade");
+        }
+        ImGui::Unindent();
+    }
+
     ImGui::Checkbox("Has RenoDX Mod", &has_renodx_mod);
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Mark this game as having RenoDX mod installed");
@@ -548,6 +586,8 @@ void renderEditGameDialog(GameListManager* gameList, bool* show_dialog, int* edi
         updatedGame.steam_app_id = static_cast<uint32_t>(steam_app_id);
         updatedGame.enable_reshade = enable_reshade;
         updatedGame.has_renodx_mod = has_renodx_mod;
+        updatedGame.use_local_injection = use_local_injection;
+        updatedGame.proxy_dll_type = static_cast<ProxyDllType>(proxy_dll_type);
 
         gameList->updateGame(*editing_index, updatedGame);
         *show_dialog = false;

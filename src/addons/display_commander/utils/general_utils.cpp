@@ -366,36 +366,36 @@ std::string GetDeviceApiVersionString(reshade::api::device_api api, uint32_t api
 }
 
 // MinHook wrapper function that combines CreateHook and EnableHook with proper error handling
-bool CreateAndEnableHook(LPVOID pTarget, LPVOID pDetour, LPVOID* ppOriginal, const char* hookName) {
-    if (pTarget == nullptr || pDetour == nullptr) {
-        LogError("CreateAndEnableHook: Invalid parameters for hook '%s'", hookName ? hookName : "Unknown");
+bool CreateAndEnableHook(LPVOID ptarget, LPVOID pdetour, LPVOID* ppOriginal, const char* hookName) {
+    if (ptarget == nullptr || pdetour == nullptr) {
+        LogError("CreateAndEnableHook: Invalid parameters for hook '%s' ptarget: %p, pdetour: %p", hookName != nullptr ? hookName : "Unknown", ptarget, pdetour);
         return false;
     }
 
     // Create the hook
-    MH_STATUS createResult = MH_CreateHook(pTarget, pDetour, ppOriginal);
-    if (createResult != MH_OK) {
+    MH_STATUS create_result = MH_CreateHook(ptarget, pdetour, ppOriginal);
+    if (create_result != MH_OK) {
         LogError("CreateAndEnableHook: Failed to create hook '%s' (status: %s)",
-                 hookName ? hookName : "Unknown", MH_StatusToString(createResult));
+                 hookName != nullptr ? hookName : "Unknown", MH_StatusToString(create_result));
         return false;
     }
 
     // Enable the hook
-    MH_STATUS enableResult = MH_EnableHook(pTarget);
-    if (enableResult != MH_OK) {
+    MH_STATUS enable_result = MH_EnableHook(ptarget);
+    if (enable_result != MH_OK) {
         LogError("CreateAndEnableHook: Failed to enable hook '%s' (status: %s), removing hook",
-                 hookName ? hookName : "Unknown", MH_StatusToString(enableResult));
+                 hookName != nullptr ? hookName : "Unknown", MH_StatusToString(enable_result));
 
         // Clean up the hook if enabling failed
-        MH_STATUS removeResult = MH_RemoveHook(pTarget);
-        if (removeResult != MH_OK) {
+        MH_STATUS remove_result = MH_RemoveHook(ptarget);
+        if (remove_result != MH_OK) {
             LogError("CreateAndEnableHook: Failed to remove hook '%s' after enable failure (status: %s)",
-                     hookName ? hookName : "Unknown", MH_StatusToString(removeResult));
+                     hookName != nullptr ? hookName : "Unknown", MH_StatusToString(remove_result));
         }
         return false;
     }
 
     LogInfo("CreateAndEnableHook: Successfully created and enabled hook '%s'",
-            hookName ? hookName : "Unknown");
+            hookName != nullptr ? hookName : "Unknown");
     return true;
 }

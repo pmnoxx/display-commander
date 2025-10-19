@@ -407,20 +407,32 @@ DLSSGSummary GetDLSSGSummary() {
         summary.scaling_ratio = std::string(buffer);
     }
 
-    // Get quality preset (try to infer from available presets)
-    unsigned int dummy_uint;
-    if (g_ngx_parameters.get_as_uint("DLSS.Hint.Render.Preset.Quality", dummy_uint)) {
-        summary.quality_preset = "Quality";
-    } else if (g_ngx_parameters.get_as_uint("DLSS.Hint.Render.Preset.Balanced", dummy_uint)) {
-        summary.quality_preset = "Balanced";
-    } else if (g_ngx_parameters.get_as_uint("DLSS.Hint.Render.Preset.Performance", dummy_uint)) {
-        summary.quality_preset = "Performance";
-    } else if (g_ngx_parameters.get_as_uint("DLSS.Hint.Render.Preset.UltraPerformance", dummy_uint)) {
-        summary.quality_preset = "Ultra Performance";
-    } else if (g_ngx_parameters.get_as_uint("DLSS.Hint.Render.Preset.UltraQuality", dummy_uint)) {
-        summary.quality_preset = "Ultra Quality";
-    } else if (g_ngx_parameters.get_as_uint("DLSS.Hint.Render.Preset.DLAA", dummy_uint)) {
-        summary.quality_preset = "DLAA";
+    // Get quality preset based on PerfQualityValue (like Special-K does)
+    unsigned int perf_quality;
+    if (g_ngx_parameters.get_as_uint("PerfQualityValue", perf_quality)) {
+        switch (perf_quality) {
+            case 0: // NVSDK_NGX_PerfQuality_Value_MaxPerf
+                summary.quality_preset = "Performance";
+                break;
+            case 1: // NVSDK_NGX_PerfQuality_Value_Balanced
+                summary.quality_preset = "Balanced";
+                break;
+            case 2: // NVSDK_NGX_PerfQuality_Value_MaxQuality
+                summary.quality_preset = "Quality";
+                break;
+            case 3: // NVSDK_NGX_PerfQuality_Value_UltraPerformance
+                summary.quality_preset = "Ultra Performance";
+                break;
+            case 4: // NVSDK_NGX_PerfQuality_Value_UltraQuality
+                summary.quality_preset = "Ultra Quality";
+                break;
+            case 5: // NVSDK_NGX_PerfQuality_Value_DLAA
+                summary.quality_preset = "DLAA";
+                break;
+            default:
+                summary.quality_preset = "Unknown";
+                break;
+        }
     }
 
     // Get camera information

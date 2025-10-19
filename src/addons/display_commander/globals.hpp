@@ -747,17 +747,6 @@ enum SwapchainEventIndex {
     SWAPCHAIN_EVENT_NVAPI_D3D_SET_SLEEP_MODE,
     SWAPCHAIN_EVENT_NVAPI_D3D_SLEEP,
     SWAPCHAIN_EVENT_NVAPI_D3D_GET_LATENCY,
-    // NGX Parameter hooks
-    SWAPCHAIN_EVENT_NGX_PARAMETER_SETF,
-    SWAPCHAIN_EVENT_NGX_PARAMETER_SETD,
-    SWAPCHAIN_EVENT_NGX_PARAMETER_SETI,
-    SWAPCHAIN_EVENT_NGX_PARAMETER_SETUI,
-    SWAPCHAIN_EVENT_NGX_PARAMETER_SETULL,
-    // NGX Parameter getter hooks
-    SWAPCHAIN_EVENT_NGX_PARAMETER_GETI,
-    SWAPCHAIN_EVENT_NGX_PARAMETER_GETUI,
-    SWAPCHAIN_EVENT_NGX_PARAMETER_GETULL,
-    SWAPCHAIN_EVENT_NGX_PARAMETER_GETVOIDPOINTER,
     // Streamline hooks
     SWAPCHAIN_EVENT_STREAMLINE_SL_INIT,
     SWAPCHAIN_EVENT_STREAMLINE_SL_IS_FEATURE_SUPPORTED,
@@ -827,6 +816,89 @@ extern std::atomic<bool> g_ray_reconstruction_enabled; // Ray Reconstruction ena
 
 // NGX Parameter Storage (unified thread-safe atomic shared_ptr hashmap)
 extern UnifiedParameterMap g_ngx_parameters; // Unified NGX parameters supporting all types
+
+// NGX Counters structure for tracking NGX function calls
+struct NGXCounters {
+    // Parameter functions
+    std::atomic<uint32_t> parameter_setf_count;
+    std::atomic<uint32_t> parameter_setd_count;
+    std::atomic<uint32_t> parameter_seti_count;
+    std::atomic<uint32_t> parameter_setui_count;
+    std::atomic<uint32_t> parameter_setull_count;
+    std::atomic<uint32_t> parameter_geti_count;
+    std::atomic<uint32_t> parameter_getui_count;
+    std::atomic<uint32_t> parameter_getull_count;
+    std::atomic<uint32_t> parameter_getvoidpointer_count;
+
+    // D3D12 Feature management functions
+    std::atomic<uint32_t> d3d12_init_count;
+    std::atomic<uint32_t> d3d12_init_ext_count;
+    std::atomic<uint32_t> d3d12_init_projectid_count;
+    std::atomic<uint32_t> d3d12_createfeature_count;
+    std::atomic<uint32_t> d3d12_releasefeature_count;
+    std::atomic<uint32_t> d3d12_evaluatefeature_count;
+    std::atomic<uint32_t> d3d12_getparameters_count;
+    std::atomic<uint32_t> d3d12_allocateparameters_count;
+
+    // D3D11 Feature management functions
+    std::atomic<uint32_t> d3d11_init_count;
+    std::atomic<uint32_t> d3d11_init_ext_count;
+    std::atomic<uint32_t> d3d11_init_projectid_count;
+    std::atomic<uint32_t> d3d11_createfeature_count;
+    std::atomic<uint32_t> d3d11_releasefeature_count;
+    std::atomic<uint32_t> d3d11_evaluatefeature_count;
+    std::atomic<uint32_t> d3d11_getparameters_count;
+    std::atomic<uint32_t> d3d11_allocateparameters_count;
+
+    // Total counter
+    std::atomic<uint32_t> total_count;
+
+    // Constructor to initialize all counters to 0
+    NGXCounters() :
+        parameter_setf_count(0), parameter_setd_count(0), parameter_seti_count(0),
+        parameter_setui_count(0), parameter_setull_count(0), parameter_geti_count(0),
+        parameter_getui_count(0), parameter_getull_count(0), parameter_getvoidpointer_count(0),
+        d3d12_init_count(0), d3d12_init_ext_count(0), d3d12_init_projectid_count(0),
+        d3d12_createfeature_count(0), d3d12_releasefeature_count(0), d3d12_evaluatefeature_count(0),
+        d3d12_getparameters_count(0), d3d12_allocateparameters_count(0),
+        d3d11_init_count(0), d3d11_init_ext_count(0), d3d11_init_projectid_count(0),
+        d3d11_createfeature_count(0), d3d11_releasefeature_count(0), d3d11_evaluatefeature_count(0),
+        d3d11_getparameters_count(0), d3d11_allocateparameters_count(0),
+        total_count(0) {}
+
+    // Reset all counters to 0
+    void reset() {
+        parameter_setf_count.store(0);
+        parameter_setd_count.store(0);
+        parameter_seti_count.store(0);
+        parameter_setui_count.store(0);
+        parameter_setull_count.store(0);
+        parameter_geti_count.store(0);
+        parameter_getui_count.store(0);
+        parameter_getull_count.store(0);
+        parameter_getvoidpointer_count.store(0);
+        d3d12_init_count.store(0);
+        d3d12_init_ext_count.store(0);
+        d3d12_init_projectid_count.store(0);
+        d3d12_createfeature_count.store(0);
+        d3d12_releasefeature_count.store(0);
+        d3d12_evaluatefeature_count.store(0);
+        d3d12_getparameters_count.store(0);
+        d3d12_allocateparameters_count.store(0);
+        d3d11_init_count.store(0);
+        d3d11_init_ext_count.store(0);
+        d3d11_init_projectid_count.store(0);
+        d3d11_createfeature_count.store(0);
+        d3d11_releasefeature_count.store(0);
+        d3d11_evaluatefeature_count.store(0);
+        d3d11_getparameters_count.store(0);
+        d3d11_allocateparameters_count.store(0);
+        total_count.store(0);
+    }
+};
+
+// NGX Counters global instance
+extern NGXCounters g_ngx_counters;
 
 // DLSS/DLSS-G Summary structure
 struct DLSSGSummary {

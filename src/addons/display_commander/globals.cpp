@@ -321,6 +321,11 @@ std::atomic<bool> s_enable_reflex_logging{false}; // Disabled by default
 std::atomic<bool> g_dlls_g_loaded{false};
 std::atomic<std::shared_ptr<const std::string>> g_dlls_g_version{std::make_shared<const std::string>("Unknown")};
 
+// NGX Feature status tracking (set in CreateFeature detours)
+std::atomic<bool> g_dlss_enabled{false};          // DLSS Super Resolution enabled
+std::atomic<bool> g_dlssg_enabled{false};         // DLSS Frame Generation enabled
+std::atomic<bool> g_ray_reconstruction_enabled{false}; // Ray Reconstruction enabled
+
 // NVAPI SetSleepMode tracking
 std::atomic<std::shared_ptr<NV_SET_SLEEP_MODE_PARAMS>> g_last_nvapi_sleep_mode_params{nullptr};
 std::atomic<IUnknown*> g_last_nvapi_sleep_mode_dev_ptr{nullptr};

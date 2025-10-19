@@ -522,19 +522,19 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_Init_ProjectID_Detour(const char *In
 NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_CreateFeature_Detour(ID3D12GraphicsCommandList *InCmdList, NVSDK_NGX_Feature InFeatureID, NVSDK_NGX_Parameter *InParameters, NVSDK_NGX_Handle **OutHandle) {
     LogInfo("NGX D3D12 CreateFeature called - FeatureID: %d", InFeatureID);
 
-    // Track enabled features based on FeatureID
+    // Track enabled features based on FeatureID using global atomic variables
     switch (InFeatureID) {
         case NVSDK_NGX_Feature_SuperSampling:
             LogInfo("DLSS Super Resolution feature being created");
-            g_ngx_parameters.update_int("Feature.DLSS.Enabled", 1);
+            g_dlss_enabled.store(true);
             break;
         case NVSDK_NGX_Feature_FrameGeneration:
             LogInfo("DLSS Frame Generation feature being created");
-            g_ngx_parameters.update_int("Feature.DLSSG.Enabled", 1);
+            g_dlssg_enabled.store(true);
             break;
         case NVSDK_NGX_Feature_RayReconstruction:
             LogInfo("Ray Reconstruction feature being created");
-            g_ngx_parameters.update_int("Feature.RayReconstruction.Enabled", 1);
+            g_ray_reconstruction_enabled.store(true);
             break;
         default:
             LogInfo("Unknown NGX feature being created - FeatureID: %d", InFeatureID);
@@ -617,19 +617,19 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_Init_ProjectID_Detour(const char *In
 NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_CreateFeature_Detour(ID3D11DeviceContext *InDevCtx, NVSDK_NGX_Feature InFeatureID, NVSDK_NGX_Parameter *InParameters, NVSDK_NGX_Handle **OutHandle) {
     LogInfo("NGX D3D11 CreateFeature called - FeatureID: %d", InFeatureID);
 
-    // Track enabled features based on FeatureID
+    // Track enabled features based on FeatureID using global atomic variables
     switch (InFeatureID) {
         case NVSDK_NGX_Feature_SuperSampling:
             LogInfo("DLSS Super Resolution feature being created (D3D11)");
-            g_ngx_parameters.update_int("Feature.DLSS.Enabled", 1);
+            g_dlss_enabled.store(true);
             break;
         case NVSDK_NGX_Feature_FrameGeneration:
             LogInfo("DLSS Frame Generation feature being created (D3D11)");
-            g_ngx_parameters.update_int("Feature.DLSSG.Enabled", 1);
+            g_dlssg_enabled.store(true);
             break;
         case NVSDK_NGX_Feature_RayReconstruction:
             LogInfo("Ray Reconstruction feature being created (D3D11)");
-            g_ngx_parameters.update_int("Feature.RayReconstruction.Enabled", 1);
+            g_ray_reconstruction_enabled.store(true);
             break;
         default:
             LogInfo("Unknown NGX feature being created (D3D11) - FeatureID: %d", InFeatureID);
@@ -965,18 +965,15 @@ uint64_t GetTotalNGXHookCount() {
 
 // Feature status checking functions
 bool IsDLSSEnabled() {
-    int enabled;
-    return g_ngx_parameters.get_as_int("Feature.DLSS.Enabled", enabled) && enabled == 1;
+    return g_dlss_enabled.load();
 }
 
 bool IsDLSSGEnabled() {
-    int enabled;
-    return g_ngx_parameters.get_as_int("Feature.DLSSG.Enabled", enabled) && enabled == 1;
+    return g_dlssg_enabled.load();
 }
 
 bool IsRayReconstructionEnabled() {
-    int enabled;
-    return g_ngx_parameters.get_as_int("Feature.RayReconstruction.Enabled", enabled) && enabled == 1;
+    return g_ray_reconstruction_enabled.load();
 }
 
 std::string GetEnabledFeaturesSummary() {

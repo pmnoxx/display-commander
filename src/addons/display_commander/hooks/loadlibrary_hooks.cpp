@@ -596,8 +596,7 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
             LogError("Failed to install DXGI hooks");
         }
     }
-
-    if (lowerModuleName.find(L"sl.interposer.dll") != std::wstring::npos) {
+    else if (lowerModuleName.find(L"sl.interposer.dll") != std::wstring::npos) {
         LogInfo("Installing Streamline hooks for module: %ws", moduleName.c_str());
         if (InstallStreamlineHooks()) {
             LogInfo("Streamline hooks installed successfully");
@@ -607,7 +606,7 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
     }
 
     // XInput hooks
-    if (lowerModuleName.find(L"xinput") != std::wstring::npos) {
+    else if (lowerModuleName.find(L"xinput") != std::wstring::npos) {
         LogInfo("Installing XInput hooks for module: %ws", moduleName.c_str());
         if (InstallXInputHooks()) {
             LogInfo("XInput hooks installed successfully");
@@ -627,25 +626,6 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
         }
     }
 
-
-    // Direct3D hooks
-    else if (lowerModuleName.find(L"d3d") != std::wstring::npos) {
-        LogInfo("Direct3D module detected: %ws", moduleName.c_str());
-        // TODO: Add Direct3D hook installation when implemented
-    }
-
-    // OpenGL hooks
-    else if (lowerModuleName.find(L"opengl") != std::wstring::npos) {
-        LogInfo("OpenGL module detected: %ws", moduleName.c_str());
-        // TODO: Add OpenGL hook installation when implemented
-    }
-
-    // Vulkan hooks
-    else if (lowerModuleName.find(L"vulkan") != std::wstring::npos) {
-        LogInfo("Vulkan module detected: %ws", moduleName.c_str());
-        // TODO: Add Vulkan hook installation when implemented
-    }
-
     // NVAPI hooks
     else if (lowerModuleName.find(L"nvapi64.dll") != std::wstring::npos) {
         LogInfo("Installing NVAPI hooks for module: %ws", moduleName.c_str());
@@ -663,39 +643,6 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
         } else {
             LogError("Failed to install NGX hooks");
         }
-    }
-
-    // Steam hooks
-    else if (lowerModuleName.find(L"steam") != std::wstring::npos) {
-        LogInfo("Steam module detected: %ws", moduleName.c_str());
-        // TODO: Add Steam hook installation when implemented
-    }
-
-    // Epic Games hooks
-    else if (lowerModuleName.find(L"eos") != std::wstring::npos ||
-    lowerModuleName.find(L"epic") != std::wstring::npos) {
-        LogInfo("Epic Games module detected: %ws", moduleName.c_str());
-        // TODO: Add Epic Games hook installation when implemented
-    }
-
-    // NVIDIA hooks
-    else if (lowerModuleName.find(L"nv") != std::wstring::npos ||
-    lowerModuleName.find(L"nvidia") != std::wstring::npos) {
-        LogInfo("NVIDIA module detected: %ws", moduleName.c_str());
-        // TODO: Add NVIDIA hook installation when implemented
-    }
-
-    // AMD hooks
-    else if (lowerModuleName.find(L"amd") != std::wstring::npos ||
-    lowerModuleName.find(L"ati") != std::wstring::npos) {
-        LogInfo("AMD module detected: %ws", moduleName.c_str());
-        // TODO: Add AMD hook installation when implemented
-    }
-
-    // Intel hooks
-    else if (lowerModuleName.find(L"intel") != std::wstring::npos) {
-        LogInfo("Intel module detected: %ws", moduleName.c_str());
-        // TODO: Add Intel hook installation when implemented
     }
 
     // Generic logging for other modules

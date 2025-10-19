@@ -983,7 +983,9 @@ void DrawSwapchainInfo() {
         }
     }
 
-    if (ImGui::CollapsingHeader("Swapchain Information", ImGuiTreeNodeFlags_DefaultOpen)) {
+    auto last_api = g_last_reshade_device_api.load();
+    auto is_dxgi = last_api == static_cast<int>(reshade::api::device_api::d3d11) || last_api == static_cast<int>(reshade::api::device_api::d3d12);
+    if (is_dxgi && ImGui::CollapsingHeader("Swapchain Information", ImGuiTreeNodeFlags_DefaultOpen)) {
         // warning this tab may crash
 
 
@@ -1000,10 +1002,11 @@ void DrawSwapchainInfo() {
             return;
         }
 
+        Microsoft::WRL::ComPtr<IUnknown> unknown_swapchain = reinterpret_cast<IUnknown*>(swapchain->get_native());
         // Try to get DXGI swapchain interface
         Microsoft::WRL::ComPtr<IDXGISwapChain1> dxgi_swapchain;
-        auto* native_swapchain = reinterpret_cast<IDXGISwapChain*>(swapchain->get_native());
-        if (FAILED(native_swapchain->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain)))) {
+
+        if (FAILED(unknown_swapchain->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain)))) {
             ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "Failed to get DXGI swapchain interface");
             return;
         }

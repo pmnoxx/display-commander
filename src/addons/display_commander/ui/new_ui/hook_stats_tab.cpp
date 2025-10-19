@@ -4,6 +4,8 @@
 #include "../../hooks/opengl_hooks.hpp"
 #include "../../settings/experimental_tab_settings.hpp"
 #include "../../globals.hpp"
+
+#include "../../res/forkawesome.h"
 #include <reshade_imgui.hpp>
 
 namespace ui::new_ui {
@@ -316,10 +318,10 @@ void DrawHookStatsTab() {
     ImGui::Text("OpenGL Hooks Status: %s", opengl_hooks_installed ? "Installed" : "Not Installed");
     if (opengl_hooks_installed) {
         ImGui::SameLine();
-        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✓");
+        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), ICON_FK_OK);
     } else {
         ImGui::SameLine();
-        ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "✗");
+        ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), ICON_FK_CANCEL);
     }
 }
 

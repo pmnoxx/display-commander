@@ -59,5 +59,4 @@ endif()
 add_subdirectory(src/addons/display_commander)
 
 # Include tools
-add_subdirectory(tools/driver_restart)
 add_subdirectory(tools)

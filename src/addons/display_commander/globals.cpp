@@ -276,6 +276,10 @@ std::atomic<uint32_t> g_swapchain_event_total_count{0}; // Total events across a
 std::array<std::atomic<uint64_t>, NUM_OPENGL_HOOKS> g_opengl_hook_counters = {}; // Array for all OpenGL hook events
 std::atomic<uint64_t> g_opengl_hook_total_count{0}; // Total OpenGL hook events across all types
 
+// Display settings hook counters
+std::array<std::atomic<uint64_t>, NUM_DISPLAY_SETTINGS_HOOKS> g_display_settings_hook_counters = {}; // Array for all display settings hook events
+std::atomic<uint64_t> g_display_settings_hook_total_count{0}; // Total display settings hook events across all types
+
 // Present pacing delay as percentage of frame time - 0% to 100%
 // This adds a delay after present to improve frame pacing and reduce CPU usage
 // Higher values create more consistent frame timing but may increase latency

@@ -2,6 +2,7 @@
 #include "../../hooks/windows_hooks/windows_message_hooks.hpp"
 #include "../../hooks/dinput_hooks.hpp"
 #include "../../hooks/opengl_hooks.hpp"
+#include "../../hooks/display_settings_hooks.hpp"
 #include "../../settings/experimental_tab_settings.hpp"
 #include "../../globals.hpp"
 
@@ -317,6 +318,83 @@ void DrawHookStatsTab() {
     bool opengl_hooks_installed = AreOpenGLHooksInstalled();
     ImGui::Text("OpenGL Hooks Status: %s", opengl_hooks_installed ? "Installed" : "Not Installed");
     if (opengl_hooks_installed) {
+        ImGui::SameLine();
+        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), ICON_FK_OK);
+    } else {
+        ImGui::SameLine();
+        ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), ICON_FK_CANCEL);
+    }
+
+    ImGui::Spacing();
+    ImGui::Separator();
+
+    // Display Settings Hook Statistics
+    ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "=== Display Settings Hook Statistics ===");
+    ImGui::Text("Track the number of times each display settings function was called");
+    ImGui::Separator();
+
+    // Reset Display Settings statistics button
+    if (ImGui::Button("Reset Display Settings Statistics")) {
+        for (int i = 0; i < NUM_DISPLAY_SETTINGS_HOOKS; ++i) {
+            g_display_settings_hook_counters[i].store(0);
+        }
+        g_display_settings_hook_total_count.store(0);
+    }
+    ImGui::SameLine();
+    ImGui::Text("Click to reset all display settings counters to zero");
+
+    ImGui::Spacing();
+    ImGui::Separator();
+
+    // Function names array
+    static const char* display_settings_function_names[] = {
+        "ChangeDisplaySettingsA",
+        "ChangeDisplaySettingsW",
+        "ChangeDisplaySettingsExA",
+        "ChangeDisplaySettingsExW"
+    };
+
+    uint64_t total_display_settings_calls = 0;
+
+    // Display display settings hook statistics in a table
+    if (ImGui::BeginTable("DisplaySettingsHooks", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable)) {
+        ImGui::TableSetupColumn("Function Name", ImGuiTableColumnFlags_WidthFixed, 300.0f);
+        ImGui::TableSetupColumn("Call Count", ImGuiTableColumnFlags_WidthFixed, 150.0f);
+        ImGui::TableHeadersRow();
+        for (int i = 0; i < NUM_DISPLAY_SETTINGS_HOOKS; ++i) {
+            uint64_t call_count = g_display_settings_hook_counters[i].load();
+            total_display_settings_calls += call_count;
+
+            ImGui::TableNextRow();
+
+            // Function name
+            ImGui::TableSetColumnIndex(0);
+            ImGui::Text("%s", display_settings_function_names[i]);
+
+            // Call count
+            ImGui::TableSetColumnIndex(1);
+            if (call_count > 0) {
+                ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "%llu", call_count);
+            } else {
+                ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "%llu", call_count);
+            }
+        }
+
+        ImGui::EndTable();
+    }
+
+    ImGui::Spacing();
+    ImGui::Separator();
+
+    // Display settings summary statistics
+    ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "Display Settings Summary:");
+    ImGui::Text("Total Display Settings Hook Calls: %llu", g_display_settings_hook_total_count.load());
+    ImGui::Text("Display Settings Functions Called: %llu", total_display_settings_calls);
+
+    // Show if display settings hooks are installed
+    bool display_settings_hooks_installed = AreDisplaySettingsHooksInstalled();
+    ImGui::Text("Display Settings Hooks Status: %s", display_settings_hooks_installed ? "Installed" : "Not Installed");
+    if (display_settings_hooks_installed) {
         ImGui::SameLine();
         ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), ICON_FK_OK);
     } else {

@@ -10,6 +10,7 @@
 #include "windows_gaming_input_hooks.hpp"
 #include "windows_hooks/windows_message_hooks.hpp"
 #include "dinput_hooks.hpp"
+#include "display_settings_hooks.hpp"
 #include <MinHook.h>
 
 // External reference to screensaver mode setting
@@ -316,6 +317,11 @@ bool InstallApiHooks() {
     // Install OpenGL hooks
     if (!InstallOpenGLHooks()) {
         LogError("Failed to install OpenGL hooks");
+    }
+
+    // Install display settings hooks
+    if (!InstallDisplaySettingsHooks()) {
+        LogError("Failed to install display settings hooks");
     }
 
     g_api_hooks_installed.store(true);

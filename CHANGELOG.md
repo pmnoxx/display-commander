@@ -1,11 +1,13 @@
 ## v0.9.0 (2025-10-18)
 
-- **Major version release** - Comprehensive feature updates and improvements
-- **Enhanced stability** - Improved error handling and crash prevention
-- **Performance optimizations** - Better resource management and reduced overhead
-- **UI improvements** - Enhanced user experience with better visual feedback
-- **Code quality** - Extensive refactoring and architectural improvements
-- **Compatibility updates** - Better support for latest ReShade versions and DirectX APIs
+- **FPS limiter enhancements** - Added fps limiter for DLSS-g through native reflex
+- **Reflex integration** - Added "reflex" fps limiter mode, which can either control native reflex or inject reflex
+- **HDR compatibility fixes** - Added a fix for HDR in NVAPI HDR games (Sekiro, Resident Evil, Hitman, etc.)
+- **DLSS Profile controls** - Added controls for overriding DLSS Profile A/B/C/D/E/...
+- **Stability improvements** - Fixed various stability issues
+- **DX9 support** - Added DX9 support
+- **ReShade compatibility** - Added support for stable ReShade 6.5.1/6.6.0
+- **UE4/UE5 compatibility** - Fixed compatibility issues with UE4/UE5 UUU
 
 ## v0.3.1 (2025-08-26)
 

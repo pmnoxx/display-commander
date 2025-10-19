@@ -648,6 +648,15 @@ enum OpenGLHookIndex {
     NUM_OPENGL_HOOKS
 };
 
+// Display settings hook counter indices
+enum DisplaySettingsHookIndex {
+    DISPLAY_SETTINGS_HOOK_CHANGEDISPLAYSETTINGSA,
+    DISPLAY_SETTINGS_HOOK_CHANGEDISPLAYSETTINGSW,
+    DISPLAY_SETTINGS_HOOK_CHANGEDISPLAYSETTINGSEXA,
+    DISPLAY_SETTINGS_HOOK_CHANGEDISPLAYSETTINGSEXW,
+    NUM_DISPLAY_SETTINGS_HOOKS
+};
+
 // Swapchain event counter indices
 enum SwapchainEventIndex {
     SWAPCHAIN_EVENT_BEGIN_RENDER_PASS,
@@ -760,6 +769,10 @@ extern std::atomic<uint32_t> g_swapchain_event_total_count;   // Total events ac
 // OpenGL hook counters
 extern std::array<std::atomic<uint64_t>, NUM_OPENGL_HOOKS> g_opengl_hook_counters;  // Array for all OpenGL hook events
 extern std::atomic<uint64_t> g_opengl_hook_total_count;   // Total OpenGL hook events across all types
+
+// Display settings hook counters
+extern std::array<std::atomic<uint64_t>, NUM_DISPLAY_SETTINGS_HOOKS> g_display_settings_hook_counters;  // Array for all display settings hook events
+extern std::atomic<uint64_t> g_display_settings_hook_total_count;   // Total display settings hook events across all types
 
 // Unsorted TODO: Add in correct order above
 extern std::atomic<LONGLONG> g_present_start_time_ns;

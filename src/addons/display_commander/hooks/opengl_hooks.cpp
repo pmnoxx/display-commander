@@ -1,6 +1,8 @@
 #include "opengl_hooks.hpp"
 #include "../utils.hpp"
 #include "../globals.hpp"
+#include "../swapchain_events.hpp"
+#include "../performance_types.hpp"
 #include <array>
 #include <MinHook.h>
 #include <windows.h>
@@ -41,7 +43,21 @@ static std::atomic<bool> g_opengl_hooks_installed{false};
 BOOL WINAPI wglSwapBuffers_Detour(HDC hdc) {
     g_opengl_hook_counters[OPENGL_HOOK_WGL_SWAPBUFFERS].fetch_add(1);
     g_opengl_hook_total_count.fetch_add(1);
-    return wglSwapBuffers_Original(hdc);
+
+    // Call OnPresentFlags2 with flags = 0 (no flags for OpenGL)
+    uint32_t present_flags = 0;
+    OnPresentFlags2(&present_flags, DeviceTypeDC::OpenGL);
+
+    // Record per-frame FPS sample for background aggregation
+    RecordFrameTime(FrameTimeMode::kPresent);
+
+    // Call original function
+    BOOL result = wglSwapBuffers_Original(hdc);
+
+    // Call OnPresentUpdateAfter2 after the present
+    OnPresentUpdateAfter2(hdc, DeviceTypeDC::OpenGL);
+
+    return result;
 }
 
 BOOL WINAPI wglMakeCurrent_Detour(HDC hdc, HGLRC hglrc) {

@@ -35,7 +35,8 @@ enum class DeviceTypeDC {
     DX9,
     DX10,
     DX11,
-    DX12
+    DX12,
+    OpenGL
 };
 
 // Forward declarations

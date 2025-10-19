@@ -65,6 +65,18 @@ class DeveloperTabSettings {
     // ReShade LoadFromDllMain setting
     BoolSetting load_from_dll_main;
 
+    // Streamline loading setting
+    BoolSetting load_streamline;
+
+    // NGX loading setting
+    BoolSetting load_nvngx;
+
+    // NVAPI loading setting
+    BoolSetting load_nvapi64;
+
+    // XInput loading setting
+    BoolSetting load_xinput;
+
     // Get all settings for bulk operations
     std::vector<SettingBase *> GetAllSettings();
 };

@@ -1,37 +1,37 @@
 #include "addon.hpp"
+#include "autoclick/autoclick_manager.hpp"
 #include "config/display_commander_config.hpp"
 #include "dx11_proxy/dx11_proxy_manager.hpp"
 #include "exit_handler.hpp"
 #include "globals.hpp"
 #include "gpu_completion_monitoring.hpp"
 #include "hooks/api_hooks.hpp"
+#include "hooks/hid_suppression_hooks.hpp"
 #include "hooks/window_proc_hooks.hpp"
 #include "latency/latency_manager.hpp"
 #include "nvapi/nvapi_fullscreen_prevention.hpp"
 #include "process_exit_hooks.hpp"
-#include "settings/main_tab_settings.hpp"
 #include "settings/developer_tab_settings.hpp"
+#include "settings/main_tab_settings.hpp"
 #include "swapchain_events.hpp"
 #include "swapchain_events_power_saving.hpp"
 #include "ui/new_ui/experimental_tab.hpp"
 #include "ui/new_ui/main_new_tab.hpp"
-#include "widgets/dualsense_widget/dualsense_widget.hpp"
-#include "widgets/xinput_widget/xinput_widget.hpp"
-#include "hooks/hid_suppression_hooks.hpp"
 #include "ui/new_ui/new_ui_main.hpp"
 #include "utils/timing.hpp"
 #include "version.hpp"
-#include "autoclick/autoclick_manager.hpp"
+#include "widgets/dualsense_widget/dualsense_widget.hpp"
+#include "widgets/xinput_widget/xinput_widget.hpp"
 
-#include <reshade.hpp>
-#include <wrl/client.h>
 #include <d3d11.h>
 #include <psapi.h>
+#include <wrl/client.h>
 #include <chrono>
+#include <reshade.hpp>
 
 // Forward declarations for ReShade event handlers
-void OnInitEffectRuntime(reshade::api::effect_runtime *runtime);
-bool OnReShadeOverlayOpen(reshade::api::effect_runtime *runtime, bool open, reshade::api::input_source source);
+void OnInitEffectRuntime(reshade::api::effect_runtime* runtime);
+bool OnReShadeOverlayOpen(reshade::api::effect_runtime* runtime, bool open, reshade::api::input_source source);
 
 // Forward declaration for ReShade settings override
 void OverrideReShadeSettings();
@@ -61,14 +61,14 @@ bool IsVersion651OrAbove(const std::string& version_str) {
     if (sscanf_s(version_str.c_str(), "%d.%d.%d.%d", &major, &minor, &build, &revision) >= 2) {
         // Check if version is 6.5.1 or above
         if (major > 6) {
-            return true; // Major version > 6
+            return true;  // Major version > 6
         }
         if (major == 6) {
             if (minor > 5) {
-                return true; // 6.x where x > 5
+                return true;  // 6.x where x > 5
             }
             if (minor == 5) {
-                return build >= 1; // 6.5.x where x >= 1
+                return build >= 1;  // 6.5.x where x >= 1
             }
         }
     }
@@ -95,7 +95,7 @@ struct ReShadeDetectionDebugInfo {
 // Global debug information storage
 ReShadeDetectionDebugInfo g_reshade_debug_info;
 namespace {
-void OnRegisterOverlayDisplayCommander(reshade::api::effect_runtime *runtime) {
+void OnRegisterOverlayDisplayCommander(reshade::api::effect_runtime* runtime) {
 #ifdef TRY_CATCH_BLOCKS
     __try {
 #endif
@@ -112,17 +112,15 @@ void OnRegisterOverlayDisplayCommander(reshade::api::effect_runtime *runtime) {
             last_save_time = now;
         }
 #ifdef TRY_CATCH_BLOCKS
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        LogError("Exception occurred during Continuous Monitoring: 0x%x", GetExceptionCode());
     }
-        __except(EXCEPTION_EXECUTE_HANDLER) {
-            LogError("Exception occurred during Continuous Monitoring: 0x%x", GetExceptionCode());
-        }
 #endif
-
 }
-} // namespace
+}  // namespace
 
 // ReShade effect runtime event handler for input blocking
-void OnInitEffectRuntime(reshade::api::effect_runtime *runtime) {
+void OnInitEffectRuntime(reshade::api::effect_runtime* runtime) {
 #ifdef TRY_CATCH_BLOCKS
     __try {
 #endif
@@ -137,7 +135,6 @@ void OnInitEffectRuntime(reshade::api::effect_runtime *runtime) {
         }
         static bool registered_overlay = false;
         if (!registered_overlay) {
-
             // Set up window procedure hooks now that we have the runtime
             HWND game_window = static_cast<HWND>(runtime->get_hwnd());
             if (game_window != nullptr && IsWindow(game_window) != 0) {
@@ -155,15 +152,14 @@ void OnInitEffectRuntime(reshade::api::effect_runtime *runtime) {
             autoclick::StartAutoClickThread();
         }
 #ifdef TRY_CATCH_BLOCKS
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        LogError("Exception occurred during OnInitEffectRuntime: 0x%x", GetExceptionCode());
     }
-        __except(EXCEPTION_EXECUTE_HANDLER) {
-            LogError("Exception occurred during OnInitEffectRuntime: 0x%x", GetExceptionCode());
-        }
 #endif
 }
 
 // ReShade overlay event handler for input blocking
-bool OnReShadeOverlayOpen(reshade::api::effect_runtime *runtime, bool open, reshade::api::input_source source) {
+bool OnReShadeOverlayOpen(reshade::api::effect_runtime* runtime, bool open, reshade::api::input_source source) {
     if (open) {
         LogInfo("ReShade overlay opened - Input blocking active");
         // When ReShade overlay opens, we can also use its input blocking
@@ -177,14 +173,14 @@ bool OnReShadeOverlayOpen(reshade::api::effect_runtime *runtime, bool open, resh
     // Update auto-click UI state for optimization
     autoclick::UpdateUIOverlayState(open);
 
-    return false; // Don't prevent ReShade from opening/closing the overlay
+    return false;  // Don't prevent ReShade from opening/closing the overlay
 }
 
 // Direct overlay draw callback (no settings2 indirection)
 namespace {
 
 // Test callback for reshade_overlay event
-void OnReShadeOverlayTest(reshade::api::effect_runtime *runtime) {
+void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
     // Check the setting from main tab
     if (!settings::g_mainTabSettings.show_test_overlay.GetValue()) {
         return;
@@ -193,7 +189,7 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime *runtime) {
     // Test widget that appears in the main ReShade overlay
     ui::new_ui::DrawFrameTimeGraph();
 }
-} // namespace
+}  // namespace
 
 bool initialized = false;
 
@@ -203,20 +199,24 @@ void OverrideReShadeSettings() {
 
     // Set tutorial progress to 4 (fully viewed)
     reshade::set_config_value(nullptr, "OVERLAY", "TutorialProgress", 4);
-    //LogInfo("ReShade settings override - TutorialProgress set to 4 (viewed)");
+    // LogInfo("ReShade settings override - TutorialProgress set to 4 (viewed)");
 
     // Disable auto updates
     reshade::set_config_value(nullptr, "GENERAL", "CheckForUpdates", 0);
     LogInfo("ReShade settings override - CheckForUpdates set to 0 (disabled)");
 
     // Read LoadFromDllMain value from DisplayCommander.ini
-    int32_t load_from_dll_main_from_display_commander = 1; // Default to 1 if not found
-    bool found_in_display_commander = display_commander::config::get_config_value("DisplayCommander", "LoadFromDllMain", load_from_dll_main_from_display_commander);
+    int32_t load_from_dll_main_from_display_commander = 1;  // Default to 1 if not found
+    bool found_in_display_commander = display_commander::config::get_config_value(
+        "DisplayCommander", "LoadFromDllMain", load_from_dll_main_from_display_commander);
 
     if (found_in_display_commander) {
-        LogInfo("ReShade settings override - LoadFromDllMain value from DisplayCommander.ini: %d", load_from_dll_main_from_display_commander);
+        LogInfo("ReShade settings override - LoadFromDllMain value from DisplayCommander.ini: %d",
+                load_from_dll_main_from_display_commander);
     } else {
-        LogInfo("ReShade settings override - LoadFromDllMain not found in DisplayCommander.ini, using default value: %d", load_from_dll_main_from_display_commander);
+        LogInfo(
+            "ReShade settings override - LoadFromDllMain not found in DisplayCommander.ini, using default value: %d",
+            load_from_dll_main_from_display_commander);
     }
 
     // Get current value from ReShade.ini for logging
@@ -226,7 +226,8 @@ void OverrideReShadeSettings() {
 
     // Set LoadFromDllMain to the value from DisplayCommander.ini
     reshade::set_config_value(nullptr, "ADDON", "LoadFromDllMain", load_from_dll_main_from_display_commander);
-    LogInfo("ReShade settings override - LoadFromDllMain set to %d (from DisplayCommander.ini)", load_from_dll_main_from_display_commander);
+    LogInfo("ReShade settings override - LoadFromDllMain set to %d (from DisplayCommander.ini)",
+            load_from_dll_main_from_display_commander);
 
     LogInfo("ReShade settings override completed successfully");
 }
@@ -293,16 +294,16 @@ void DetectMultipleReShadeVersions() {
                 if (version_size > 0) {
                     std::vector<uint8_t> version_data(version_size);
                     if (GetFileVersionInfoW(module_path, version_dummy, version_size, version_data.data()) != 0) {
-                VS_FIXEDFILEINFO *version_info = nullptr;
-                UINT version_info_size = 0;
-                if (VerQueryValueW(version_data.data(), L"\\", reinterpret_cast<LPVOID*>(&version_info), &version_info_size) != 0 &&
-                    version_info != nullptr) {
+                        VS_FIXEDFILEINFO* version_info = nullptr;
+                        UINT version_info_size = 0;
+                        if (VerQueryValueW(version_data.data(), L"\\", reinterpret_cast<LPVOID*>(&version_info),
+                                           &version_info_size)
+                                != 0
+                            && version_info != nullptr) {
                             char version_str[64];
                             snprintf(version_str, sizeof(version_str), "%hu.%hu.%hu.%hu",
-                                HIWORD(version_info->dwFileVersionMS),
-                                LOWORD(version_info->dwFileVersionMS),
-                                HIWORD(version_info->dwFileVersionLS),
-                                LOWORD(version_info->dwFileVersionLS));
+                                     HIWORD(version_info->dwFileVersionMS), LOWORD(version_info->dwFileVersionMS),
+                                     HIWORD(version_info->dwFileVersionLS), LOWORD(version_info->dwFileVersionLS));
                             module_info.version = version_str;
                             module_info.is_version_651_or_above = IsVersion651OrAbove(version_str);
                             LogInfo("  Version: %s", version_str);
@@ -416,7 +417,8 @@ bool CheckReShadeVersionCompatibility() {
     // Add module detection debug information
     if (g_reshade_debug_info.detection_completed) {
         debug_info += "MODULE DETECTION RESULTS:\n";
-        debug_info += "• Total ReShade modules found: " + std::to_string(g_reshade_debug_info.total_modules_found) + "\n";
+        debug_info +=
+            "• Total ReShade modules found: " + std::to_string(g_reshade_debug_info.total_modules_found) + "\n";
 
         if (!g_reshade_debug_info.error_message.empty()) {
             debug_info += "• Error: " + g_reshade_debug_info.error_message + "\n";
@@ -429,7 +431,8 @@ bool CheckReShadeVersionCompatibility() {
                 debug_info += "  " + std::to_string(i + 1) + ". " + module.path + "\n";
                 if (!module.version.empty()) {
                     debug_info += "     Version: " + module.version + "\n";
-                    debug_info += "     Version 6.5.1+: " + std::string(module.is_version_651_or_above ? "Yes" : "No") + "\n";
+                    debug_info +=
+                        "     Version 6.5.1+: " + std::string(module.is_version_651_or_above ? "Yes" : "No") + "\n";
                 } else {
                     debug_info += "     Version: Unknown\n";
                     debug_info += "     Version 6.5.1+: No (version unknown)\n";
@@ -453,10 +456,8 @@ bool CheckReShadeVersionCompatibility() {
     debug_info += "This addon uses advanced features that require the newer ReShade API.";
 
     // Display detailed error message to user
-    MessageBoxA(nullptr,
-        debug_info.c_str(),
-        "ReShade Version Incompatible - Update Required",
-        MB_OK | MB_ICONERROR | MB_TOPMOST);
+    MessageBoxA(nullptr, debug_info.c_str(), "ReShade Version Incompatible - Update Required",
+                MB_OK | MB_ICONERROR | MB_TOPMOST);
 
     return false;
 }
@@ -467,7 +468,9 @@ void HandleSafemode() {
     bool safemode_enabled = settings::g_developerTabSettings.safemode.GetValue();
 
     if (safemode_enabled) {
-        LogInfo("Safemode enabled - disabling auto-apply settings, continue rendering, FPS limiter, and XInput hooks");
+        LogInfo(
+            "Safemode enabled - disabling auto-apply settings, continue rendering, FPS limiter, XInput hooks, and "
+            "Streamline loading");
 
         // Set safemode to 0 (force set to 0)
         settings::g_developerTabSettings.safemode.SetValue(false);
@@ -491,10 +494,25 @@ void HandleSafemode() {
             display_commander::config::set_config_value("DisplayCommander.XInputWidget", "EnableXInputHooks", false);
         }
 
+        // Disable Streamline loading
+        settings::g_developerTabSettings.load_streamline.SetValue(false);
+
+        // Disable _nvngx loading
+        settings::g_developerTabSettings.load_nvngx.SetValue(false);
+
+        // Disable nvapi64 loading
+        settings::g_developerTabSettings.load_nvapi64.SetValue(false);
+
+        // Disable XInput loading
+        settings::g_developerTabSettings.load_xinput.SetValue(false);
+
         // Save the changes
         settings::g_developerTabSettings.SaveAll();
 
-        LogInfo("Safemode applied - auto-apply settings disabled, continue rendering disabled, FPS limiter set to disabled, XInput hooks disabled");
+        LogInfo(
+            "Safemode applied - auto-apply settings disabled, continue rendering disabled, FPS limiter set to "
+            "disabled, XInput hooks disabled, Streamline loading disabled, _nvngx loading disabled, nvapi64 loading "
+            "disabled, XInput loading disabled");
     } else {
         // If unset, force set to 0 so it appears in config
         settings::g_developerTabSettings.safemode.SetValue(false);
@@ -505,7 +523,6 @@ void HandleSafemode() {
 }
 
 void DoInitializationWithoutHwnd(HMODULE h_module, DWORD fdw_reason) {
-
     // Initialize QPC timing constants based on actual frequency
     utils::initialize_qpc_timing_constants();
 
@@ -515,7 +532,6 @@ void DoInitializationWithoutHwnd(HMODULE h_module, DWORD fdw_reason) {
     } else {
         LogWarn("Failed to setup high-resolution timer");
     }
-
 
     LogInfo("DLLMain (DisplayCommander) %lld %d h_module: 0x%p", utils::get_now_ns(), fdw_reason,
             reinterpret_cast<uintptr_t>(h_module));
@@ -527,8 +543,9 @@ void DoInitializationWithoutHwnd(HMODULE h_module, DWORD fdw_reason) {
 
     // Pin the module to prevent premature unload
     HMODULE pinned_module = nullptr;
-        if (GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_PIN,
-                               reinterpret_cast<LPCWSTR>(h_module), &pinned_module) != 0) {
+    if (GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_PIN,
+                           reinterpret_cast<LPCWSTR>(h_module), &pinned_module)
+        != 0) {
         LogInfo("Module pinned successfully: 0x%p", pinned_module);
     } else {
         DWORD error = GetLastError();
@@ -561,7 +578,7 @@ void DoInitializationWithoutHwnd(HMODULE h_module, DWORD fdw_reason) {
     // Seed default fps limit snapshot
     // GetFpsLimit removed from proxy, use s_fps_limit directly
     reshade::register_event<reshade::addon_event::present>(OnPresentUpdateBefore);
-    //reshade::register_event<reshade::addon_event::finish_present>(OnPresentUpdateAfter);
+    // reshade::register_event<reshade::addon_event::finish_present>(OnPresentUpdateAfter);
 
     // Register draw event handlers for render timing
     reshade::register_event<reshade::addon_event::draw>(OnDraw);
@@ -574,7 +591,7 @@ void DoInitializationWithoutHwnd(HMODULE h_module, DWORD fdw_reason) {
     reshade::register_event<reshade::addon_event::dispatch_rays>(OnDispatchRays);
     reshade::register_event<reshade::addon_event::copy_resource>(OnCopyResource);
     reshade::register_event<reshade::addon_event::update_buffer_region>(OnUpdateBufferRegion);
-   // reshade::register_event<reshade::addon_event::update_buffer_region_command>(OnUpdateBufferRegionCommand);
+    // reshade::register_event<reshade::addon_event::update_buffer_region_command>(OnUpdateBufferRegionCommand);
 
     // Register buffer resolution upgrade event handlers
     reshade::register_event<reshade::addon_event::create_resource>(OnCreateResource);
@@ -605,37 +622,37 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
     OutputDebugStringA("DisplayCommander: DllMain called\n");
 
     switch (fdw_reason) {
-    case DLL_PROCESS_ATTACH: {
-        OutputDebugStringA("DisplayCommander: DLL_PROCESS_ATTACH\n");
-        g_shutdown.store(false);
+        case DLL_PROCESS_ATTACH: {
+            OutputDebugStringA("DisplayCommander: DLL_PROCESS_ATTACH\n");
+            g_shutdown.store(false);
 
-        if (g_dll_initialization_complete.load()) {
-            LogError("DLLMain(DisplayCommander) already initialized");
-            return FALSE;
-        }
+            if (g_dll_initialization_complete.load()) {
+                LogError("DLLMain(DisplayCommander) already initialized");
+                return FALSE;
+            }
 
-        OutputDebugStringA("DisplayCommander: About to register addon\n");
-        if (!reshade::register_addon(h_module)) {
-            // Registration failed - likely due to API version mismatch
-            OutputDebugStringA("DisplayCommander: ReShade addon registration FAILED\n");
-            LogError("ReShade addon registration failed - this usually indicates an API version mismatch");
-            LogError("Display Commander requires ReShade 6.5.1+ (API version 17) but detected older version");
+            OutputDebugStringA("DisplayCommander: About to register addon\n");
+            if (!reshade::register_addon(h_module)) {
+                // Registration failed - likely due to API version mismatch
+                OutputDebugStringA("DisplayCommander: ReShade addon registration FAILED\n");
+                LogError("ReShade addon registration failed - this usually indicates an API version mismatch");
+                LogError("Display Commander requires ReShade 6.5.1+ (API version 17) but detected older version");
 
-            DetectMultipleReShadeVersions();
-            CheckReShadeVersionCompatibility();
-            return FALSE;
-        }
+                DetectMultipleReShadeVersions();
+                CheckReShadeVersionCompatibility();
+                return FALSE;
+            }
 
             DetectMultipleReShadeVersions();
             OutputDebugStringA("DisplayCommander: ReShade addon registration SUCCESS\n");
 
             // Registration successful - log version compatibility
-            LogInfo("Display Commander v%s - ReShade addon registration successful (API version 17 supported)", DISPLAY_COMMANDER_VERSION_STRING);
+            LogInfo("Display Commander v%s - ReShade addon registration successful (API version 17 supported)",
+                    DISPLAY_COMMANDER_VERSION_STRING);
 
             // Initialize DisplayCommander config system before handling safemode
             display_commander::config::DisplayCommanderConfigManager::GetInstance().Initialize();
             LogInfo("DisplayCommander config system initialized");
-
 
             // Handle safemode after config system is initialized
 
@@ -650,75 +667,75 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             DoInitializationWithoutHwnd(h_module, fdw_reason);
             OutputDebugStringA("DisplayCommander: DoInitializationWithoutHwnd completed\n");
 
-        break;
-    }
-    case DLL_THREAD_ATTACH: {
-        break;
-    }
-    case DLL_THREAD_DETACH: {
-        // Log exit detection
-        // exit_handler::OnHandleExit(exit_handler::ExitSource::DLL_THREAD_DETACH_EVENT, "DLL thread detach");
-        break;
-    }
-
-    case DLL_PROCESS_DETACH:
-        LogInfo("DLL_PROCESS_DETACH: DLL process detach");
-        g_shutdown.store(true);
-
-        // Log exit detection
-        exit_handler::OnHandleExit(exit_handler::ExitSource::DLL_PROCESS_DETACH_EVENT, "DLL process detach");
-
-        // Clean up input blocking system
-        // Input blocking cleanup is now handled by Windows message hooks
-
-        // Clean up window procedure hooks
-        display_commanderhooks::UninstallWindowProcHooks();
-
-        // Clean up API hooks
-        display_commanderhooks::UninstallApiHooks();
-
-        // Clean up continuous monitoring if it's running
-        StopContinuousMonitoring();
-        StopGPUCompletionMonitoring();
-
-        // Clean up experimental tab threads
-        ui::new_ui::CleanupExperimentalTab();
-
-        // Clean up DualSense support
-        display_commander::widgets::dualsense_widget::CleanupDualSenseWidget();
-
-        // Clean up HID suppression hooks
-        renodx::hooks::UninstallHIDSuppressionHooks();
-
-        // Clean up DX11 proxy device
-        dx11_proxy::DX11ProxyManager::GetInstance().Shutdown();
-
-        // Clean up NVAPI instances before shutdown
-        if (g_latencyManager) {
-            g_latencyManager->Shutdown();
+            break;
+        }
+        case DLL_THREAD_ATTACH: {
+            break;
+        }
+        case DLL_THREAD_DETACH: {
+            // Log exit detection
+            // exit_handler::OnHandleExit(exit_handler::ExitSource::DLL_THREAD_DETACH_EVENT, "DLL thread detach");
+            break;
         }
 
-        // Clean up NVAPI fullscreen prevention
-        g_nvapiFullscreenPrevention.Cleanup();
+        case DLL_PROCESS_DETACH:
+            LogInfo("DLL_PROCESS_DETACH: DLL process detach");
+            g_shutdown.store(true);
 
-        // Note: reshade::unregister_addon() will automatically unregister all events and overlays
-        // registered by this add-on, so manual unregistration is not needed and can cause issues
-        // display_restore::RestoreAllIfEnabled(); // restore display settings on exit
+            // Log exit detection
+            exit_handler::OnHandleExit(exit_handler::ExitSource::DLL_PROCESS_DETACH_EVENT, "DLL process detach");
 
-        // Unpin the module before unregistration
-        if (g_hmodule != nullptr) {
-            if (FreeLibrary(g_hmodule) != 0) {
-                LogInfo("Module unpinned successfully: 0x%p", g_hmodule);
-            } else {
-                DWORD error = GetLastError();
-                LogWarn("Failed to unpin module: 0x%p, Error: %lu", g_hmodule, error);
+            // Clean up input blocking system
+            // Input blocking cleanup is now handled by Windows message hooks
+
+            // Clean up window procedure hooks
+            display_commanderhooks::UninstallWindowProcHooks();
+
+            // Clean up API hooks
+            display_commanderhooks::UninstallApiHooks();
+
+            // Clean up continuous monitoring if it's running
+            StopContinuousMonitoring();
+            StopGPUCompletionMonitoring();
+
+            // Clean up experimental tab threads
+            ui::new_ui::CleanupExperimentalTab();
+
+            // Clean up DualSense support
+            display_commander::widgets::dualsense_widget::CleanupDualSenseWidget();
+
+            // Clean up HID suppression hooks
+            renodx::hooks::UninstallHIDSuppressionHooks();
+
+            // Clean up DX11 proxy device
+            dx11_proxy::DX11ProxyManager::GetInstance().Shutdown();
+
+            // Clean up NVAPI instances before shutdown
+            if (g_latencyManager) {
+                g_latencyManager->Shutdown();
             }
-            g_hmodule = nullptr;
-        }
 
-        reshade::unregister_addon(h_module);
+            // Clean up NVAPI fullscreen prevention
+            g_nvapiFullscreenPrevention.Cleanup();
 
-        break;
+            // Note: reshade::unregister_addon() will automatically unregister all events and overlays
+            // registered by this add-on, so manual unregistration is not needed and can cause issues
+            // display_restore::RestoreAllIfEnabled(); // restore display settings on exit
+
+            // Unpin the module before unregistration
+            if (g_hmodule != nullptr) {
+                if (FreeLibrary(g_hmodule) != 0) {
+                    LogInfo("Module unpinned successfully: 0x%p", g_hmodule);
+                } else {
+                    DWORD error = GetLastError();
+                    LogWarn("Failed to unpin module: 0x%p, Error: %lu", g_hmodule, error);
+                }
+                g_hmodule = nullptr;
+            }
+
+            reshade::unregister_addon(h_module);
+
+            break;
     }
 
     return TRUE;

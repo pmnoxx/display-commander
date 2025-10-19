@@ -1,5 +1,6 @@
 #include "ngx_hooks.hpp"
-#include "../utils.hpp"
+#include "../settings/developer_tab_settings.hpp"
+#include "../utils/general_utils.hpp"
 #include "../globals.hpp"
 #include "../settings/swapchain_tab_settings.hpp"
 #include <MinHook.h>
@@ -825,6 +826,11 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_AllocateParameters_Detour(NVSDK_NGX_
 
 // Install NGX hooks
 bool InstallNGXHooks() {
+    if (!settings::g_developerTabSettings.load_nvngx.GetValue()) {
+        LogInfo("NGX hooks not installed - load_nvngx is disabled");
+        return false;
+    }
+
     // Check if NGX DLLs are loaded
     HMODULE ngx_dll = GetModuleHandleA("_nvngx.dll");
     if (!ngx_dll) {

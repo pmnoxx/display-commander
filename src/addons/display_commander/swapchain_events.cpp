@@ -20,13 +20,14 @@
 #include "performance_types.hpp"
 #include "settings/experimental_tab_settings.hpp"
 #include "settings/main_tab_settings.hpp"
+#include "settings/developer_tab_settings.hpp"
 
 #include <dxgi.h>
 #include "swapchain_events.hpp"
 #include "swapchain_events_power_saving.hpp"
 #include "ui/new_ui/experimental_tab.hpp"
 #include "ui/new_ui/new_ui_main.hpp"
-#include "utils.hpp"
+#include "utils/general_utils.hpp"
 #include "utils/timing.hpp"
 #include "widgets/xinput_widget/xinput_widget.hpp"
 #include "widgets/dualsense_widget/dualsense_widget.hpp"
@@ -209,7 +210,13 @@ void DoInitializationWithHwnd(HWND hwnd) {
     if (!g_initialized_with_hwnd.compare_exchange_strong(expected, true)) {
         return; // Already initialized
     }
-    display_commanderhooks::InstallXInputHooks();
+
+    // Install XInput hooks if enabled
+    if (settings::g_developerTabSettings.load_xinput.GetValue()) {
+        display_commanderhooks::InstallXInputHooks();
+    } else {
+        LogInfo("XInput hooks installation skipped - Load XInput setting is disabled");
+    }
 
     LogInfo("DoInitialization: Starting initialization with HWND: 0x%p", hwnd);
 

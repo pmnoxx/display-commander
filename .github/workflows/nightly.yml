@@ -26,6 +26,56 @@ jobs:
             artifact_suffix: addon32
             artifact_name: zzz_display_commander.addon32
 
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Ninja
+        uses: seanmiddleditch/gha-setup-ninja@v5
+
+      - name: Setup MSVC (${{ matrix.devcmd_arch }})
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: ${{ matrix.devcmd_arch }}
+
+      - name: Configure
+        shell: bash
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        shell: bash
+        run: |
+          cmake --build build --config Release --parallel
+
+      - name: Collect artifacts
+        id: collect
+        shell: bash
+        run: |
+          mkdir -p artifacts
+          # Look specifically for display_commander addon files
+          display_commander_file=$(find build -type f -name "zzz_display_commander.${{ matrix.artifact_suffix }}" | head -1)
+          if [ -z "$display_commander_file" ]; then
+            echo "Display Commander addon file not found; listing build dir for debugging:" >&2
+            find build -type f -name "*.${{ matrix.artifact_suffix }}" || true
+            ls -la build || true
+            exit 1
+          fi
+          # Copy the display_commander addon with the correct name
+          cp "$display_commander_file" "artifacts/${{ matrix.artifact_name }}"
+
+          echo "artifact_dir=artifacts" >> $GITHUB_OUTPUT
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-zzz-display-commander-${{ matrix.artifact_suffix }}
+          path: ${{ steps.collect.outputs.artifact_dir }}/*
+          if-no-files-found: error
+          retention-days: 30 # Keep nightly builds for 30 days
+
   nightly-build-driver-restart:
     name: Nightly Build Driver Restart Tool
     runs-on: windows-latest
@@ -74,51 +124,6 @@ jobs:
           path: artifacts/driver_restart.exe
           if-no-files-found: error
           retention-days: 30
-          submodules: recursive
-
-      - name: Setup Ninja
-        uses: seanmiddleditch/gha-setup-ninja@v5
-
-      - name: Setup MSVC (${{ matrix.devcmd_arch }})
-        uses: ilammy/msvc-dev-cmd@v1
-        with:
-          arch: ${{ matrix.devcmd_arch }}
-
-      - name: Configure
-        shell: bash
-        run: |
-          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
-
-      - name: Build
-        shell: bash
-        run: |
-          cmake --build build --config Release --parallel
-
-      - name: Collect artifacts
-        id: collect
-        shell: bash
-        run: |
-          mkdir -p artifacts
-          # Look specifically for display_commander addon files
-          display_commander_file=$(find build -type f -name "zzz_display_commander.${{ matrix.artifact_suffix }}" | head -1)
-          if [ -z "$display_commander_file" ]; then
-            echo "Display Commander addon file not found; listing build dir for debugging:" >&2
-            find build -type f -name "*.${{ matrix.artifact_suffix }}" || true
-            ls -la build || true
-            exit 1
-          fi
-          # Copy the display_commander addon with the correct name
-          cp "$display_commander_file" "artifacts/${{ matrix.artifact_name }}"
-
-          echo "artifact_dir=artifacts" >> $GITHUB_OUTPUT
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: nightly-zzz-display-commander-${{ matrix.artifact_suffix }}
-          path: ${{ steps.collect.outputs.artifact_dir }}/*
-          if-no-files-found: error
-          retention-days: 30 # Keep nightly builds for 30 days
 
   nightly-release:
     name: Nightly Release

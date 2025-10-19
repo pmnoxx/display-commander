@@ -823,6 +823,11 @@ extern std::atomic<bool> s_enable_reflex_logging;  // Enable Reflex logging
 extern std::atomic<bool> g_dlls_g_loaded;                                 // DLLS-G loaded status
 extern std::atomic<std::shared_ptr<const std::string>> g_dlls_g_version;  // DLLS-G version string
 
+// NGX Feature status tracking (set in CreateFeature detours)
+extern std::atomic<bool> g_dlss_enabled;          // DLSS Super Resolution enabled
+extern std::atomic<bool> g_dlssg_enabled;         // DLSS Frame Generation enabled
+extern std::atomic<bool> g_ray_reconstruction_enabled; // Ray Reconstruction enabled
+
 // NGX Parameter Storage (unified thread-safe atomic shared_ptr hashmap)
 extern UnifiedParameterMap g_ngx_parameters; // Unified NGX parameters supporting all types
 

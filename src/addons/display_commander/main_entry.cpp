@@ -96,7 +96,9 @@ struct ReShadeDetectionDebugInfo {
 ReShadeDetectionDebugInfo g_reshade_debug_info;
 namespace {
 void OnRegisterOverlayDisplayCommander(reshade::api::effect_runtime *runtime) {
+#ifdef TRY_CATCH_BLOCKS
     __try {
+#endif
         // Update UI draw time for auto-click optimization
         autoclick::UpdateLastUIDrawTime();
 
@@ -109,17 +111,21 @@ void OnRegisterOverlayDisplayCommander(reshade::api::effect_runtime *runtime) {
             display_commander::config::save_config();
             last_save_time = now;
         }
+#ifdef TRY_CATCH_BLOCKS
     }
-    __except(EXCEPTION_EXECUTE_HANDLER) {
-        LogError("Exception occurred during Continuous Monitoring: 0x%x", GetExceptionCode());
-    }
+        __except(EXCEPTION_EXECUTE_HANDLER) {
+            LogError("Exception occurred during Continuous Monitoring: 0x%x", GetExceptionCode());
+        }
+#endif
 
 }
 } // namespace
 
 // ReShade effect runtime event handler for input blocking
 void OnInitEffectRuntime(reshade::api::effect_runtime *runtime) {
+#ifdef TRY_CATCH_BLOCKS
     __try {
+#endif
         if (runtime == nullptr) {
             return;
         }
@@ -148,10 +154,12 @@ void OnInitEffectRuntime(reshade::api::effect_runtime *runtime) {
             // Start the auto-click thread (always running, sleeps when disabled)
             autoclick::StartAutoClickThread();
         }
+#ifdef TRY_CATCH_BLOCKS
     }
-    __except(EXCEPTION_EXECUTE_HANDLER) {
-        LogError("Exception occurred during OnInitEffectRuntime: 0x%x", GetExceptionCode());
-    }
+        __except(EXCEPTION_EXECUTE_HANDLER) {
+            LogError("Exception occurred during OnInitEffectRuntime: 0x%x", GetExceptionCode());
+        }
+#endif
 }
 
 // ReShade overlay event handler for input blocking
@@ -617,7 +625,6 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             CheckReShadeVersionCompatibility();
             return FALSE;
         }
-        __try {
 
             DetectMultipleReShadeVersions();
             OutputDebugStringA("DisplayCommander: ReShade addon registration SUCCESS\n");
@@ -642,12 +649,6 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             OutputDebugStringA("DisplayCommander: About to call DoInitializationWithoutHwnd\n");
             DoInitializationWithoutHwnd(h_module, fdw_reason);
             OutputDebugStringA("DisplayCommander: DoInitializationWithoutHwnd completed\n");
-        }
-        __except(EXCEPTION_EXECUTE_HANDLER) {
-            OutputDebugStringA("DisplayCommander: EXCEPTION in DoInitializationWithoutHwnd\n");
-            LogError("Exception occurred during initialization: 0x%x", GetExceptionCode());
-            return FALSE;
-        }
 
         break;
     }

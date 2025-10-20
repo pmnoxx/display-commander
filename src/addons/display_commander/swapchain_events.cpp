@@ -447,7 +447,7 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
     // Don't reset counters on swapchain creation - let them accumulate throughout the session
 
     // Increment event counter
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_CREATE_SWAPCHAIN_CAPTURE].fetch_add(1);
+    g_reshade_event_counters[RESHADE_EVENT_CREATE_SWAPCHAIN_CAPTURE].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
     if (hwnd == nullptr)
@@ -720,7 +720,7 @@ void OnInitSwapchain(reshade::api::swapchain *swapchain, bool resize) {
     }
 
     // Increment event counter
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_INIT_SWAPCHAIN].fetch_add(1);
+    g_reshade_event_counters[RESHADE_EVENT_INIT_SWAPCHAIN].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
     // backbuffer desc
@@ -780,7 +780,7 @@ void OnPresentUpdateAfter2(void* native_device, DeviceTypeDC device_type) {
     }
 
     // Increment event counter
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_PRESENT_UPDATE_AFTER].fetch_add(1);
+    g_reshade_event_counters[RESHADE_EVENT_PRESENT_UPDATE_AFTER].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
     if (s_reflex_enable_current_frame.load()) {
@@ -1108,7 +1108,7 @@ void OnPresentUpdateBefore(reshade::api::command_queue * command_queue, reshade:
                            // to reduce rendering latency caused by reshade
 
     // Increment event counter
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_PRESENT_UPDATE_BEFORE].fetch_add(1);
+    g_reshade_event_counters[RESHADE_EVENT_PRESENT_UPDATE_BEFORE].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
     // Check for XInput chord screenshot trigger
@@ -1123,7 +1123,7 @@ void OnPresentUpdateBefore(reshade::api::command_queue * command_queue, reshade:
 bool OnBindPipeline(reshade::api::command_list *cmd_list, reshade::api::pipeline_stage stages,
                     reshade::api::pipeline pipeline) {
     // Increment event counter
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_BIND_PIPELINE].fetch_add(1);
+    g_reshade_event_counters[RESHADE_EVENT_BIND_PIPELINE].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
     // Power saving: skip pipeline binding in background if enabled
@@ -1137,7 +1137,7 @@ bool OnBindPipeline(reshade::api::command_list *cmd_list, reshade::api::pipeline
 // Present flags callback to strip DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING
 void OnPresentFlags2(uint32_t *present_flags, DeviceTypeDC api_type) {
     // Increment event counter
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_PRESENT_FLAGS].fetch_add(1);
+    g_reshade_event_counters[RESHADE_EVENT_PRESENT_FLAGS].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
     if (api_type == DeviceTypeDC::DX11 || api_type == DeviceTypeDC::DX12 || api_type == DeviceTypeDC::DX10)

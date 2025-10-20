@@ -23,7 +23,7 @@ static std::atomic<uint64_t> g_last_sdk_version{0};
 // Hook functions
 int slInit_Detour(void* pref, uint64_t sdkVersion) {
     // Increment counter
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_STREAMLINE_SL_INIT].fetch_add(1);
+    g_streamline_event_counters[STREAMLINE_EVENT_SL_INIT].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
     // Store the SDK version
@@ -42,7 +42,7 @@ int slInit_Detour(void* pref, uint64_t sdkVersion) {
 
 int slIsFeatureSupported_Detour(int feature, const void* adapterInfo) {
     // Increment counter
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_STREAMLINE_SL_IS_FEATURE_SUPPORTED].fetch_add(1);
+    g_streamline_event_counters[STREAMLINE_EVENT_SL_IS_FEATURE_SUPPORTED].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
 
@@ -63,7 +63,7 @@ int slIsFeatureSupported_Detour(int feature, const void* adapterInfo) {
 
 int slGetNativeInterface_Detour(void* proxyInterface, void** baseInterface) {
     // Increment counter
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_STREAMLINE_SL_GET_NATIVE_INTERFACE].fetch_add(1);
+    g_streamline_event_counters[STREAMLINE_EVENT_SL_GET_NATIVE_INTERFACE].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
     // Log the call
@@ -80,7 +80,7 @@ int slGetNativeInterface_Detour(void* proxyInterface, void** baseInterface) {
 // Reference: https://github.com/NVIDIA-RTX/Streamline/blob/b998246a3d499c08765c5681b229c9e6b4513348/source/core/sl.api/sl.cpp#L625
 int slUpgradeInterface_Detour(void** baseInterface) {
     // Increment counter
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_STREAMLINE_SL_UPGRADE_INTERFACE].fetch_add(1);
+    g_streamline_event_counters[STREAMLINE_EVENT_SL_UPGRADE_INTERFACE].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
     IDXGISwapChain* swapchain{};

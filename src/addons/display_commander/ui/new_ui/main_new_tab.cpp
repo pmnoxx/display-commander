@@ -824,7 +824,7 @@ void DrawDisplaySettings() {
 
     // FPS Limiter Warning - Check if OnPresentFlags events are working
     if (fps_limit_enabled) {
-        uint32_t event_count = g_swapchain_event_counters[SWAPCHAIN_EVENT_PRESENT_FLAGS].load();
+        uint32_t event_count = g_reshade_event_counters[RESHADE_EVENT_PRESENT_FLAGS].load();
         bool show_warning = (event_count == 0);
 
         if (show_warning) {

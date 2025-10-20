@@ -28,7 +28,7 @@ bool ShouldBackgroundSuppressOperation() {
 bool OnDispatch(reshade::api::command_list *cmd_list, uint32_t group_count_x, uint32_t group_count_y,
                 uint32_t group_count_z) {
     // Increment event counter
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_DISPATCH].fetch_add(1);
+    g_reshade_event_counters[RESHADE_EVENT_DISPATCH].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
     // Power saving: skip compute shader dispatches in background
@@ -43,7 +43,7 @@ bool OnDispatch(reshade::api::command_list *cmd_list, uint32_t group_count_x, ui
 bool OnDispatchMesh(reshade::api::command_list *cmd_list, uint32_t group_count_x, uint32_t group_count_y,
                     uint32_t group_count_z) {
     // Increment event counter
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_DISPATCH_MESH].fetch_add(1);
+    g_reshade_event_counters[RESHADE_EVENT_DISPATCH_MESH].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
     // Power saving: skip mesh shader dispatches in background
@@ -62,7 +62,7 @@ bool OnDispatchRays(reshade::api::command_list *cmd_list, reshade::api::resource
                     uint64_t callable_offset, uint64_t callable_size, uint64_t callable_stride, uint32_t width,
                     uint32_t height, uint32_t depth) {
     // Increment event counter
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_DISPATCH_RAYS].fetch_add(1);
+    g_reshade_event_counters[RESHADE_EVENT_DISPATCH_RAYS].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
     // Power saving: skip ray tracing dispatches in background
@@ -76,7 +76,7 @@ bool OnDispatchRays(reshade::api::command_list *cmd_list, reshade::api::resource
 // Power saving for resource copying
 bool OnCopyResource(reshade::api::command_list *cmd_list, reshade::api::resource source, reshade::api::resource dest) {
     // Increment event counter
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_COPY_RESOURCE].fetch_add(1);
+    g_reshade_event_counters[RESHADE_EVENT_COPY_RESOURCE].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
     // Power saving: skip resource copying in background
@@ -91,7 +91,7 @@ bool OnCopyResource(reshade::api::command_list *cmd_list, reshade::api::resource
 bool OnUpdateBufferRegion(reshade::api::device *device, const void *data, reshade::api::resource resource,
                           uint64_t offset, uint64_t size) {
     // Increment event counter
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_UPDATE_BUFFER_REGION].fetch_add(1);
+    g_reshade_event_counters[RESHADE_EVENT_UPDATE_BUFFER_REGION].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
     // Power saving: skip buffer updates in background
@@ -106,7 +106,7 @@ bool OnUpdateBufferRegion(reshade::api::device *device, const void *data, reshad
 bool OnUpdateBufferRegionCommand(reshade::api::command_list *cmd_list, const void *data, reshade::api::resource dest,
                                  uint64_t dest_offset, uint64_t size) {
     // Increment event counter
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_UPDATE_BUFFER_REGION_COMMAND].fetch_add(1);
+    g_reshade_event_counters[RESHADE_EVENT_UPDATE_BUFFER_REGION_COMMAND].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
     // Power saving: skip command-based buffer updates in background
@@ -121,7 +121,7 @@ bool OnUpdateBufferRegionCommand(reshade::api::command_list *cmd_list, const voi
 bool OnBindResource(reshade::api::command_list *cmd_list, reshade::api::shader_stage stages,
                     reshade::api::descriptor_table table, uint32_t binding, reshade::api::resource_view value) {
     // Increment event counter
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_BIND_RESOURCE].fetch_add(1);
+    g_reshade_event_counters[RESHADE_EVENT_BIND_RESOURCE].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
     // Power saving: skip resource binding in background
@@ -136,7 +136,7 @@ bool OnBindResource(reshade::api::command_list *cmd_list, reshade::api::shader_s
 bool OnMapResource(reshade::api::device *device, reshade::api::resource resource, uint32_t subresource,
                    reshade::api::map_access access, reshade::api::subresource_data *data) {
     // Increment event counter
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_MAP_RESOURCE].fetch_add(1);
+    g_reshade_event_counters[RESHADE_EVENT_MAP_RESOURCE].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
     // Power saving: skip resource mapping in background
@@ -158,7 +158,7 @@ void OnUnmapResource(reshade::api::device *device, reshade::api::resource resour
 bool OnCopyBufferRegion(reshade::api::command_list *cmd_list, reshade::api::resource source, uint64_t source_offset,
                         reshade::api::resource dest, uint64_t dest_offset, uint64_t size) {
     // Increment event counter
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_COPY_BUFFER_REGION].fetch_add(1);
+    g_reshade_event_counters[RESHADE_EVENT_COPY_BUFFER_REGION].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
     // Power saving: skip buffer region copying in background
@@ -175,7 +175,7 @@ bool OnCopyBufferToTexture(reshade::api::command_list *cmd_list, reshade::api::r
                            uint32_t row_length, uint32_t slice_height, reshade::api::resource dest,
                            uint32_t dest_subresource, const reshade::api::subresource_box *dest_box) {
     // Increment event counter
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_COPY_BUFFER_TO_TEXTURE].fetch_add(1);
+    g_reshade_event_counters[RESHADE_EVENT_COPY_BUFFER_TO_TEXTURE].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
     // Power saving: skip buffer to texture copying in background
@@ -192,7 +192,7 @@ bool OnCopyTextureToBuffer(reshade::api::command_list *cmd_list, reshade::api::r
                            reshade::api::resource dest, uint64_t dest_offset, uint32_t row_length,
                            uint32_t slice_height) {
     // Increment event counter
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_COPY_TEXTURE_TO_BUFFER].fetch_add(1);
+    g_reshade_event_counters[RESHADE_EVENT_COPY_TEXTURE_TO_BUFFER].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
     // Power saving: skip texture to buffer copying in background
@@ -209,7 +209,7 @@ bool OnCopyTextureRegion(reshade::api::command_list *cmd_list, reshade::api::res
                          reshade::api::resource dest, uint32_t dest_subresource,
                          const reshade::api::subresource_box *dest_box, reshade::api::filter_mode filter) {
     // Increment event counter
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_COPY_TEXTURE_REGION].fetch_add(1);
+    g_reshade_event_counters[RESHADE_EVENT_COPY_TEXTURE_REGION].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
     // Power saving: skip texture region copying in background
@@ -227,7 +227,7 @@ bool OnResolveTextureRegion(reshade::api::command_list *cmd_list, reshade::api::
                             reshade::api::resource dest, uint32_t dest_subresource, uint32_t dest_x, uint32_t dest_y,
                             uint32_t dest_z, reshade::api::format format) {
     // Increment event counter
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_RESOLVE_TEXTURE_REGION].fetch_add(1);
+    g_reshade_event_counters[RESHADE_EVENT_RESOLVE_TEXTURE_REGION].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
     // Power saving: skip texture region resolving in background
@@ -242,7 +242,7 @@ bool OnResolveTextureRegion(reshade::api::command_list *cmd_list, reshade::api::
 bool OnDraw(reshade::api::command_list *cmd_list, uint32_t vertex_count, uint32_t instance_count, uint32_t first_vertex,
             uint32_t first_instance) {
     // Increment event counter
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_DRAW].fetch_add(1);
+    g_reshade_event_counters[RESHADE_EVENT_DRAW].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
     // Set render start time if it's 0 (first draw call of the frame)
@@ -259,7 +259,7 @@ bool OnDraw(reshade::api::command_list *cmd_list, uint32_t vertex_count, uint32_
 bool OnDrawIndexed(reshade::api::command_list *cmd_list, uint32_t index_count, uint32_t instance_count,
                    uint32_t first_index, int32_t vertex_offset, uint32_t first_instance) {
     // Increment event counter
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_DRAW_INDEXED].fetch_add(1);
+    g_reshade_event_counters[RESHADE_EVENT_DRAW_INDEXED].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
     // Set render start time if it's 0 (first draw call of the frame)
@@ -276,7 +276,7 @@ bool OnDrawIndexed(reshade::api::command_list *cmd_list, uint32_t index_count, u
 bool OnDrawOrDispatchIndirect(reshade::api::command_list *cmd_list, reshade::api::indirect_command type,
                               reshade::api::resource buffer, uint64_t offset, uint32_t draw_count, uint32_t stride) {
     // Increment event counter
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_DRAW_OR_DISPATCH_INDIRECT].fetch_add(1);
+    g_reshade_event_counters[RESHADE_EVENT_DRAW_OR_DISPATCH_INDIRECT].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
     // Set render start time if it's 0 (first draw call of the frame)

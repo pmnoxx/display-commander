@@ -147,7 +147,7 @@ EXECUTION_STATE WINAPI SetThreadExecutionState_Detour(EXECUTION_STATE esFlags) {
 // Hooked CreateDXGIFactory function
 HRESULT WINAPI CreateDXGIFactory_Detour(REFIID riid, void **ppFactory) {
     // Increment counter
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_DXGI_CREATEFACTORY].fetch_add(1);
+    g_dxgi_factory_event_counters[DXGI_FACTORY_EVENT_CREATEFACTORY].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
     // Call original function
@@ -167,7 +167,7 @@ HRESULT WINAPI CreateDXGIFactory_Detour(REFIID riid, void **ppFactory) {
 // Hooked CreateDXGIFactory1 function
 HRESULT WINAPI CreateDXGIFactory1_Detour(REFIID riid, void **ppFactory) {
     // Increment counter
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_DXGI_CREATEFACTORY1].fetch_add(1);
+    g_dxgi_factory_event_counters[DXGI_FACTORY_EVENT_CREATEFACTORY1].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
     // Call original function

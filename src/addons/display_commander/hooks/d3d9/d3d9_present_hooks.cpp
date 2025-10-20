@@ -47,7 +47,7 @@ HRESULT STDMETHODCALLTYPE IDirect3DDevice9_Present_Detour(
     }
 
     // Increment DX9 Present counter
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_DX9_PRESENT].fetch_add(1);
+    g_dx9_event_counters[DX9_EVENT_PRESENT].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
     // Call OnPresentFlags2 with flags = 0 (no flags for regular Present)
@@ -139,7 +139,7 @@ HRESULT STDMETHODCALLTYPE IDirect3DDevice9_PresentEx_Detour(
     }
 
     // Increment DX9 Present counter
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_DX9_PRESENT].fetch_add(1);
+    g_dx9_event_counters[DX9_EVENT_PRESENT].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
     // Call OnPresentFlags with the actual flags

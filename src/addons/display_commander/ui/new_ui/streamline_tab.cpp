@@ -73,10 +73,10 @@ void DrawStreamlineTab() {
     ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Streamline Event Counters:");
     ImGui::Separator();
 
-    uint32_t sl_init_count = g_swapchain_event_counters[SWAPCHAIN_EVENT_STREAMLINE_SL_INIT].load();
-    uint32_t sl_feature_count = g_swapchain_event_counters[SWAPCHAIN_EVENT_STREAMLINE_SL_IS_FEATURE_SUPPORTED].load();
-    uint32_t sl_interface_count = g_swapchain_event_counters[SWAPCHAIN_EVENT_STREAMLINE_SL_GET_NATIVE_INTERFACE].load();
-    uint32_t sl_upgrade_count = g_swapchain_event_counters[SWAPCHAIN_EVENT_STREAMLINE_SL_UPGRADE_INTERFACE].load();
+    uint32_t sl_init_count = g_streamline_event_counters[STREAMLINE_EVENT_SL_INIT].load();
+    uint32_t sl_feature_count = g_streamline_event_counters[STREAMLINE_EVENT_SL_IS_FEATURE_SUPPORTED].load();
+    uint32_t sl_interface_count = g_streamline_event_counters[STREAMLINE_EVENT_SL_GET_NATIVE_INTERFACE].load();
+    uint32_t sl_upgrade_count = g_streamline_event_counters[STREAMLINE_EVENT_SL_UPGRADE_INTERFACE].load();
 
     ImGui::Text("slInit calls: %u", sl_init_count);
     ImGui::Text("slIsFeatureSupported calls: %u", sl_feature_count);

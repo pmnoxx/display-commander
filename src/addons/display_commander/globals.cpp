@@ -266,7 +266,16 @@ DxgiBypassMode GetFlipStateForAPI(int api) {
 }
 
 // Swapchain event counters - reset on each swapchain creation
-std::array<std::atomic<uint32_t>, NUM_EVENTS> g_swapchain_event_counters = {}; // Array for all On* events
+// Separate event counter arrays for each category
+std::array<std::atomic<uint32_t>, NUM_RESHADE_EVENTS> g_reshade_event_counters = {};
+std::array<std::atomic<uint32_t>, NUM_DXGI_CORE_EVENTS> g_dxgi_core_event_counters = {};
+std::array<std::atomic<uint32_t>, NUM_DXGI_SC1_EVENTS> g_dxgi_sc1_event_counters = {};
+std::array<std::atomic<uint32_t>, NUM_DXGI_SC2_EVENTS> g_dxgi_sc2_event_counters = {};
+std::array<std::atomic<uint32_t>, NUM_DXGI_SC3_EVENTS> g_dxgi_sc3_event_counters = {};
+std::array<std::atomic<uint32_t>, NUM_DXGI_FACTORY_EVENTS> g_dxgi_factory_event_counters = {};
+std::array<std::atomic<uint32_t>, NUM_DXGI_SC4_EVENTS> g_dxgi_sc4_event_counters = {};
+std::array<std::atomic<uint32_t>, NUM_DX9_EVENTS> g_dx9_event_counters = {};
+std::array<std::atomic<uint32_t>, NUM_STREAMLINE_EVENTS> g_streamline_event_counters = {};
 
 // NVAPI event counters - separate from swapchain events
 std::array<std::atomic<uint32_t>, NUM_NVAPI_EVENTS> g_nvapi_event_counters = {}; // Array for NVAPI events

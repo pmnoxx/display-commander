@@ -389,7 +389,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain *This, UI
     }
 
     // Increment DXGI Present counter
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_DXGI_PRESENT].fetch_add(1);
+    g_dxgi_core_event_counters[DXGI_CORE_EVENT_PRESENT].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
     // Query DXGI composition state (moved from ReShade present events)
@@ -453,7 +453,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1 *This, 
     }
 
     // Increment DXGI Present1 counter
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_DXGI_PRESENT1].fetch_add(1);
+    g_dxgi_sc1_event_counters[DXGI_SC1_EVENT_PRESENT1].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
     // Query DXGI composition state (moved from ReShade present events)
@@ -493,7 +493,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1 *This, 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetDesc_Detour(IDXGISwapChain *This, DXGI_SWAP_CHAIN_DESC *pDesc) {
 
     // Increment DXGI GetDesc counter
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_DXGI_GETDESC].fetch_add(1);
+    g_dxgi_core_event_counters[DXGI_CORE_EVENT_GETDESC].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
     // Call original function
@@ -560,7 +560,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetDesc_Detour(IDXGISwapChain *This, DX
 // Hooked IDXGISwapChain1::GetDesc1 function
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetDesc1_Detour(IDXGISwapChain1 *This, DXGI_SWAP_CHAIN_DESC1 *pDesc) {
     // Increment DXGI GetDesc1 counter
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_DXGI_GETDESC1].fetch_add(1);
+    g_dxgi_sc1_event_counters[DXGI_SC1_EVENT_GETDESC1].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
     // Call original function
@@ -626,7 +626,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetDesc1_Detour(IDXGISwapChain1 *This, 
 // Hooked IDXGISwapChain3::CheckColorSpaceSupport function
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_CheckColorSpaceSupport_Detour(IDXGISwapChain3 *This, DXGI_COLOR_SPACE_TYPE ColorSpace, UINT *pColorSpaceSupport) {
     // Increment DXGI CheckColorSpaceSupport counter
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_DXGI_CHECKCOLORSPACESUPPORT].fetch_add(1);
+    g_dxgi_sc3_event_counters[DXGI_SC3_EVENT_CHECKCOLORSPACESUPPORT].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
     // Log the color space check (only on first few calls to avoid spam)
@@ -689,7 +689,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_CheckColorSpaceSupport_Detour(IDXGISwap
 // Hooked IDXGIFactory::CreateSwapChain function
 HRESULT STDMETHODCALLTYPE IDXGIFactory_CreateSwapChain_Detour(IDXGIFactory *This, IUnknown *pDevice, DXGI_SWAP_CHAIN_DESC *pDesc, IDXGISwapChain **ppSwapChain) {
     // Increment DXGI Factory CreateSwapChain counter
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_DXGI_FACTORY_CREATESWAPCHAIN].fetch_add(1);
+    g_dxgi_factory_event_counters[DXGI_FACTORY_EVENT_CREATESWAPCHAIN].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
     // Log the swapchain creation parameters (only on first few calls to avoid spam)
@@ -721,14 +721,14 @@ HRESULT STDMETHODCALLTYPE IDXGIFactory_CreateSwapChain_Detour(IDXGIFactory *This
 
 // Additional DXGI detour functions
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetBuffer_Detour(IDXGISwapChain *This, UINT Buffer, REFIID riid, void **ppSurface) {
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_DXGI_GETBUFFER].fetch_add(1);
+    g_dxgi_core_event_counters[DXGI_CORE_EVENT_GETBUFFER].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
     return IDXGISwapChain_GetBuffer_Original(This, Buffer, riid, ppSurface);
 }
 
 std::atomic<BOOL> g_last_set_fullscreen_state{false};
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetFullscreenState_Detour(IDXGISwapChain *This, BOOL Fullscreen, IDXGIOutput *pTarget) {
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_DXGI_SETFULLSCREENSTATE].fetch_add(1);
+    g_dxgi_core_event_counters[DXGI_CORE_EVENT_SETFULLSCREENSTATE].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
     // Check if fullscreen prevention is enabled and we're trying to go fullscreen
@@ -741,7 +741,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetFullscreenState_Detour(IDXGISwapChai
 }
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetFullscreenState_Detour(IDXGISwapChain *This, BOOL *pFullscreen, IDXGIOutput **ppTarget) {
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_DXGI_GETFULLSCREENSTATE].fetch_add(1);
+    g_dxgi_core_event_counters[DXGI_CORE_EVENT_GETFULLSCREENSTATE].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
     if (settings::g_developerTabSettings.prevent_fullscreen.GetValue()) {
         *pFullscreen = g_last_set_fullscreen_state.load();
@@ -751,148 +751,148 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetFullscreenState_Detour(IDXGISwapChai
 }
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_ResizeBuffers_Detour(IDXGISwapChain *This, UINT BufferCount, UINT Width, UINT Height, DXGI_FORMAT NewFormat, UINT SwapChainFlags) {
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_DXGI_RESIZEBUFFERS].fetch_add(1);
+    g_dxgi_core_event_counters[DXGI_CORE_EVENT_RESIZEBUFFERS].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
     return IDXGISwapChain_ResizeBuffers_Original(This, BufferCount, Width, Height, NewFormat, SwapChainFlags);
 }
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_ResizeTarget_Detour(IDXGISwapChain *This, const DXGI_MODE_DESC *pNewTargetParameters) {
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_DXGI_RESIZETARGET].fetch_add(1);
+    g_dxgi_core_event_counters[DXGI_CORE_EVENT_RESIZETARGET].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
     return IDXGISwapChain_ResizeTarget_Original(This, pNewTargetParameters);
 }
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetContainingOutput_Detour(IDXGISwapChain *This, IDXGIOutput **ppOutput) {
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_DXGI_GETCONTAININGOUTPUT].fetch_add(1);
+    g_dxgi_core_event_counters[DXGI_CORE_EVENT_GETCONTAININGOUTPUT].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
     return IDXGISwapChain_GetContainingOutput_Original(This, ppOutput);
 }
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetFrameStatistics_Detour(IDXGISwapChain *This, DXGI_FRAME_STATISTICS *pStats) {
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_DXGI_GETFRAMESTATISTICS].fetch_add(1);
+    g_dxgi_core_event_counters[DXGI_CORE_EVENT_GETFRAMESTATISTICS].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
     return IDXGISwapChain_GetFrameStatistics_Original(This, pStats);
 }
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetLastPresentCount_Detour(IDXGISwapChain *This, UINT *pLastPresentCount) {
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_DXGI_GETLASTPRESENTCOUNT].fetch_add(1);
+    g_dxgi_core_event_counters[DXGI_CORE_EVENT_GETLASTPRESENTCOUNT].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
     return IDXGISwapChain_GetLastPresentCount_Original(This, pLastPresentCount);
 }
 
 // IDXGISwapChain1 detour functions
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetFullscreenDesc_Detour(IDXGISwapChain1 *This, DXGI_SWAP_CHAIN_FULLSCREEN_DESC *pDesc) {
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_DXGI_GETFULLSCREENDESC].fetch_add(1);
+    g_dxgi_sc1_event_counters[DXGI_SC1_EVENT_GETFULLSCREENDESC].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
     return IDXGISwapChain_GetFullscreenDesc_Original(This, pDesc);
 }
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetHwnd_Detour(IDXGISwapChain1 *This, HWND *pHwnd) {
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_DXGI_GETHWND].fetch_add(1);
+    g_dxgi_sc1_event_counters[DXGI_SC1_EVENT_GETHWND].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
     return IDXGISwapChain_GetHwnd_Original(This, pHwnd);
 }
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetCoreWindow_Detour(IDXGISwapChain1 *This, REFIID refiid, void **ppUnk) {
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_DXGI_GETCOREWINDOW].fetch_add(1);
+    g_dxgi_sc1_event_counters[DXGI_SC1_EVENT_GETCOREWINDOW].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
     return IDXGISwapChain_GetCoreWindow_Original(This, refiid, ppUnk);
 }
 
 BOOL STDMETHODCALLTYPE IDXGISwapChain_IsTemporaryMonoSupported_Detour(IDXGISwapChain1 *This) {
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_DXGI_ISTEMPORARYMONOSUPPORTED].fetch_add(1);
+    g_dxgi_sc1_event_counters[DXGI_SC1_EVENT_ISTEMPORARYMONOSUPPORTED].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
     return IDXGISwapChain_IsTemporaryMonoSupported_Original(This);
 }
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetRestrictToOutput_Detour(IDXGISwapChain1 *This, IDXGIOutput **ppRestrictToOutput) {
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_DXGI_GETRESTRICTTOOUTPUT].fetch_add(1);
+    g_dxgi_sc1_event_counters[DXGI_SC1_EVENT_GETRESTRICTTOOUTPUT].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
     return IDXGISwapChain_GetRestrictToOutput_Original(This, ppRestrictToOutput);
 }
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetBackgroundColor_Detour(IDXGISwapChain1 *This, const DXGI_RGBA *pColor) {
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_DXGI_SETBACKGROUNDCOLOR].fetch_add(1);
+    g_dxgi_sc1_event_counters[DXGI_SC1_EVENT_SETBACKGROUNDCOLOR].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
     return IDXGISwapChain_SetBackgroundColor_Original(This, pColor);
 }
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetBackgroundColor_Detour(IDXGISwapChain1 *This, DXGI_RGBA *pColor) {
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_DXGI_GETBACKGROUNDCOLOR].fetch_add(1);
+    g_dxgi_sc1_event_counters[DXGI_SC1_EVENT_GETBACKGROUNDCOLOR].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
     return IDXGISwapChain_GetBackgroundColor_Original(This, pColor);
 }
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetRotation_Detour(IDXGISwapChain1 *This, DXGI_MODE_ROTATION Rotation) {
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_DXGI_SETROTATION].fetch_add(1);
+    g_dxgi_sc1_event_counters[DXGI_SC1_EVENT_SETROTATION].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
     return IDXGISwapChain_SetRotation_Original(This, Rotation);
 }
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetRotation_Detour(IDXGISwapChain1 *This, DXGI_MODE_ROTATION *pRotation) {
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_DXGI_GETROTATION].fetch_add(1);
+    g_dxgi_sc1_event_counters[DXGI_SC1_EVENT_GETROTATION].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
     return IDXGISwapChain_GetRotation_Original(This, pRotation);
 }
 
 // IDXGISwapChain2 detour functions
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetSourceSize_Detour(IDXGISwapChain2 *This, UINT Width, UINT Height) {
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_DXGI_SETSOURCESIZE].fetch_add(1);
+    g_dxgi_sc2_event_counters[DXGI_SC2_EVENT_SETSOURCESIZE].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
     return IDXGISwapChain_SetSourceSize_Original(This, Width, Height);
 }
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetSourceSize_Detour(IDXGISwapChain2 *This, UINT *pWidth, UINT *pHeight) {
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_DXGI_GETSOURCESIZE].fetch_add(1);
+    g_dxgi_sc2_event_counters[DXGI_SC2_EVENT_GETSOURCESIZE].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
     return IDXGISwapChain_GetSourceSize_Original(This, pWidth, pHeight);
 }
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetMaximumFrameLatency_Detour(IDXGISwapChain2 *This, UINT MaxLatency) {
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_DXGI_SETMAXIMUMFRAMELATENCY].fetch_add(1);
+    g_dxgi_sc2_event_counters[DXGI_SC2_EVENT_SETMAXIMUMFRAMELATENCY].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
     return IDXGISwapChain_SetMaximumFrameLatency_Original(This, MaxLatency);
 }
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetMaximumFrameLatency_Detour(IDXGISwapChain2 *This, UINT *pMaxLatency) {
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_DXGI_GETMAXIMUMFRAMELATENCY].fetch_add(1);
+    g_dxgi_sc2_event_counters[DXGI_SC2_EVENT_GETMAXIMUMFRAMELATENCY].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
     return IDXGISwapChain_GetMaximumFrameLatency_Original(This, pMaxLatency);
 }
 
 HANDLE STDMETHODCALLTYPE IDXGISwapChain_GetFrameLatencyWaitableObject_Detour(IDXGISwapChain2 *This) {
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_DXGI_GETFRAMELATENCYWAIABLEOBJECT].fetch_add(1);
+    g_dxgi_sc2_event_counters[DXGI_SC2_EVENT_GETFRAMELATENCYWAIABLEOBJECT].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
     return IDXGISwapChain_GetFrameLatencyWaitableObject_Original(This);
 }
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetMatrixTransform_Detour(IDXGISwapChain2 *This, const DXGI_MATRIX_3X2_F *pMatrix) {
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_DXGI_SETMATRIXTRANSFORM].fetch_add(1);
+    g_dxgi_sc2_event_counters[DXGI_SC2_EVENT_SETMATRIXTRANSFORM].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
     return IDXGISwapChain_SetMatrixTransform_Original(This, pMatrix);
 }
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetMatrixTransform_Detour(IDXGISwapChain2 *This, DXGI_MATRIX_3X2_F *pMatrix) {
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_DXGI_GETMATRIXTRANSFORM].fetch_add(1);
+    g_dxgi_sc2_event_counters[DXGI_SC2_EVENT_GETMATRIXTRANSFORM].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
     return IDXGISwapChain_GetMatrixTransform_Original(This, pMatrix);
 }
 
 // IDXGISwapChain3 detour functions
 UINT STDMETHODCALLTYPE IDXGISwapChain_GetCurrentBackBufferIndex_Detour(IDXGISwapChain3 *This) {
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_DXGI_GETCURRENTBACKBUFFERINDEX].fetch_add(1);
+    g_dxgi_sc3_event_counters[DXGI_SC3_EVENT_GETCURRENTBACKBUFFERINDEX].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
     return IDXGISwapChain_GetCurrentBackBufferIndex_Original(This);
 }
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetColorSpace1_Detour(IDXGISwapChain3 *This, DXGI_COLOR_SPACE_TYPE ColorSpace) {
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_DXGI_SETCOLORSPACE1].fetch_add(1);
+    g_dxgi_sc3_event_counters[DXGI_SC3_EVENT_SETCOLORSPACE1].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
     return IDXGISwapChain_SetColorSpace1_Original(This, ColorSpace);
 }
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_ResizeBuffers1_Detour(IDXGISwapChain3 *This, UINT BufferCount, UINT Width, UINT Height, DXGI_FORMAT Format, UINT SwapChainFlags, const UINT *pCreationNodeMask, IUnknown *const *ppPresentQueue) {
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_DXGI_RESIZEBUFFERS1].fetch_add(1);
+    g_dxgi_sc3_event_counters[DXGI_SC3_EVENT_RESIZEBUFFERS1].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
     return IDXGISwapChain_ResizeBuffers1_Original(This, BufferCount, Width, Height, Format, SwapChainFlags, pCreationNodeMask, ppPresentQueue);
 }
@@ -900,7 +900,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_ResizeBuffers1_Detour(IDXGISwapChain3 *
 // IDXGISwapChain4 detour functions
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetHDRMetaData_Detour(IDXGISwapChain4 *This, DXGI_HDR_METADATA_TYPE Type, UINT Size, void *pMetaData) {
     // Increment DXGI SetHDRMetaData counter
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_DXGI_SETHDRMETADATA].fetch_add(1);
+    g_dxgi_sc4_event_counters[DXGI_SC4_EVENT_SETHDRMETADATA].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
     // Log the HDR metadata call (only on first few calls to avoid spam)

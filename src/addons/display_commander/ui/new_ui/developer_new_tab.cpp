@@ -344,7 +344,8 @@ void DrawNvapiSettings() {
 
         bool reflex_low_latency = settings::g_developerTabSettings.reflex_low_latency.GetValue();
         bool reflex_boost = settings::g_developerTabSettings.reflex_boost.GetValue();
-        bool reflex_markers = settings::g_developerTabSettings.reflex_use_markers.GetValue();
+        bool reflex_use_markers = settings::g_developerTabSettings.reflex_use_markers.GetValue();
+        bool reflex_generate_markers = settings::g_developerTabSettings.reflex_generate_markers.GetValue();
         bool reflex_enable_sleep = settings::g_developerTabSettings.reflex_enable_sleep.GetValue();
 
         if (ImGui::Checkbox("Auto Configure Reflex", &reflex_auto_configure)) {
@@ -379,16 +380,27 @@ void DrawNvapiSettings() {
         if (reflex_auto_configure) {
             ImGui::BeginDisabled();
         }
-        if (ImGui::Checkbox("Use Markers to Optimize", &reflex_markers)) {
-            settings::g_developerTabSettings.reflex_use_markers.SetValue(reflex_markers);
-            s_reflex_use_markers.store(reflex_markers);
+        if (ImGui::Checkbox("Use Markers for Optimization", &reflex_use_markers)) {
+            settings::g_developerTabSettings.reflex_use_markers.SetValue(reflex_use_markers);
+            s_reflex_use_markers.store(reflex_use_markers);
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Tell NVIDIA Reflex to use markers for optimization");
+        }
+
+        if (ImGui::Checkbox("Generate Markers in Timeline", &reflex_generate_markers)) {
+            settings::g_developerTabSettings.reflex_generate_markers.SetValue(reflex_generate_markers);
+            s_reflex_generate_markers.store(reflex_generate_markers);
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Generate markers in the frame timeline for latency measurement");
         }
         // Warning about enabling Reflex when game already has it
-        if (is_native_reflex_active && settings::g_developerTabSettings.reflex_use_markers.GetValue()) {
+        if (is_native_reflex_active && settings::g_developerTabSettings.reflex_generate_markers.GetValue()) {
             ImGui::SameLine();
             ImGui::TextColored(
                 ImVec4(1.0f, 0.6f, 0.0f, 1.0f), ICON_FK_WARNING
-                " Warning: Do not enable 'Use Markers to Optimize' if the game already has built-in Reflex support!");
+                " Warning: Do not enable 'Generate Markers for Optimization' if the game already has built-in Reflex support!");
         }
 
         if (ImGui::Checkbox("Enable Reflex Sleep Mode", &reflex_enable_sleep)) {

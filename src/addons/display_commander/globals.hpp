@@ -802,7 +802,8 @@ extern std::atomic<bool> s_reflex_enable;          // Enable NVIDIA Reflex integ
 extern std::atomic<bool> s_reflex_enable_current_frame;          // Enable NVIDIA Reflex integration for current frame
 extern std::atomic<bool> s_reflex_low_latency;     // Low Latency Mode
 extern std::atomic<bool> s_reflex_boost;           // Low Latency Boost
-extern std::atomic<bool> s_reflex_use_markers;     // Use markers to optimize
+extern std::atomic<bool> s_reflex_use_markers;     // Use markers for optimization
+extern std::atomic<bool> s_reflex_generate_markers; // Generate markers in frame timeline
 extern std::atomic<bool> s_reflex_enable_sleep;    // Enable Reflex sleep mode (off by default)
 extern std::atomic<bool> s_enable_reflex_logging;  // Enable Reflex logging
 

@@ -100,11 +100,10 @@ bool ReflexManager::ApplySleepMode(bool low_latency, bool boost, bool use_marker
     params.version = NV_SET_SLEEP_MODE_PARAMS_VER;
     params.bLowLatencyMode = low_latency ? NV_TRUE : NV_FALSE;
     params.bLowLatencyBoost = boost ? NV_TRUE : NV_FALSE;
-    params.bUseMarkersToOptimize = use_markers ? NV_TRUE : NV_FALSE;
-    //  params.minimumIntervalUs = 0; // no explicit limiter in minimal integration
+    params.bUseMarkersToOptimize = (use_markers ? NV_TRUE : NV_FALSE);
     double target_fps_limit = s_fps_limit.load();
     params.minimumIntervalUs =
-        target_fps_limit > 0.0f ? (UINT)(round(1000000.0 / target_fps_limit)) : 0; // + (__SK_ForceDLSSGPacing ? 6 : 0);
+        target_fps_limit > 0.0f ? (UINT)(round(1000000.0 / target_fps_limit)) : 0;
 
     const auto st = NvAPI_D3D_SetSleepMode_Direct(d3d_device_, &params);
     if (st != NVAPI_OK) {

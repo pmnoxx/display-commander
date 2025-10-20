@@ -330,7 +330,7 @@ void HandleRenderStartAndEndTimes() {
                 UpdateRollingAverage(g_simulation_duration_ns_new, g_simulation_duration_ns.load()));
 
             if (s_reflex_enable_current_frame.load()) {
-                if (s_reflex_use_markers.load()) {
+                if (s_reflex_generate_markers.load()) {
                     if (g_latencyManager->IsInitialized()) {
                         g_latencyManager->SetMarker(LatencyMarkerType::SIMULATION_END);
                         g_latencyManager->SetMarker(LatencyMarkerType::RENDERSUBMIT_START);
@@ -784,7 +784,7 @@ void OnPresentUpdateAfter2(void* native_device, DeviceTypeDC device_type) {
     g_swapchain_event_total_count.fetch_add(1);
 
     if (s_reflex_enable_current_frame.load()) {
-        if (s_reflex_use_markers.load()) {
+        if (s_reflex_generate_markers.load()) {
             if (g_latencyManager->IsInitialized()) {
                 g_latencyManager->SetMarker(LatencyMarkerType::PRESENT_END);
             }
@@ -853,7 +853,7 @@ void OnPresentUpdateAfter2(void* native_device, DeviceTypeDC device_type) {
             if (s_reflex_enable_sleep.load()) {
                 g_latencyManager->Sleep();
             }
-            if (s_reflex_use_markers.load()) {
+            if (s_reflex_generate_markers.load()) {
                 g_latencyManager->SetMarker(LatencyMarkerType::SIMULATION_START);
             }
         }
@@ -1086,7 +1086,7 @@ void OnPresentUpdateBefore(reshade::api::command_queue * command_queue, reshade:
     HandleEndRenderSubmit();
     // NVIDIA Reflex: RENDERSUBMIT_END marker (minimal)
     if (s_reflex_enable_current_frame.load()) {
-        if (s_reflex_use_markers.load()) {
+        if (s_reflex_generate_markers.load()) {
             g_latencyManager->SetMarker(LatencyMarkerType::RENDERSUBMIT_END);
         }
     }
@@ -1163,7 +1163,7 @@ void OnPresentFlags2(uint32_t *present_flags, DeviceTypeDC api_type) {
     HandleFpsLimiter();
 
     if (s_reflex_enable_current_frame.load()) {
-        if (s_reflex_use_markers.load()) {
+        if (s_reflex_generate_markers.load()) {
             if (g_latencyManager->IsInitialized()) {
                 g_latencyManager->SetMarker(LatencyMarkerType::PRESENT_START);
             }

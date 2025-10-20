@@ -7,6 +7,7 @@
 
 // External declarations for the global variables
 extern std::atomic<bool> s_background_feature_enabled;
+extern std::atomic<bool> s_reflex_generate_markers;
 
 namespace settings {
 
@@ -29,6 +30,7 @@ DeveloperTabSettings::DeveloperTabSettings()
       reflex_low_latency("ReflexLowLatency", s_reflex_low_latency, false, "DisplayCommander"),
       reflex_boost("ReflexBoost", s_reflex_boost, false, "DisplayCommander"),
       reflex_use_markers("ReflexUseMarkers", s_reflex_use_markers, true, "DisplayCommander"),
+      reflex_generate_markers("ReflexGenerateMarkers", s_reflex_generate_markers, true, "DisplayCommander"),
       reflex_enable_sleep("ReflexEnableSleep", s_reflex_enable_sleep, false, "DisplayCommander"),
       reflex_logging("ReflexLogging", s_enable_reflex_logging, false, "DisplayCommander"),
 

@@ -52,7 +52,8 @@ void HandleReflexAutoConfigure() {
     bool reflex_enable = settings::g_developerTabSettings.reflex_enable.GetValue();
     bool reflex_low_latency = settings::g_developerTabSettings.reflex_low_latency.GetValue();
     bool reflex_boost = settings::g_developerTabSettings.reflex_boost.GetValue();
-    bool reflex_markers = settings::g_developerTabSettings.reflex_use_markers.GetValue();
+    bool reflex_use_markers = settings::g_developerTabSettings.reflex_use_markers.GetValue();
+    bool reflex_generate_markers = settings::g_developerTabSettings.reflex_generate_markers.GetValue();
     bool reflex_enable_sleep = settings::g_developerTabSettings.reflex_enable_sleep.GetValue();
 
     // Auto-configure Reflex settings
@@ -76,10 +77,14 @@ void HandleReflexAutoConfigure() {
         settings::g_developerTabSettings.reflex_boost.SetValue(true);
         s_reflex_boost.store(true);
     } */
+    {
+        settings::g_developerTabSettings.reflex_use_markers.SetValue(true);
+        s_reflex_use_markers.store(true);
+    }
 
-    if (reflex_markers == is_native_reflex_active) {
-        settings::g_developerTabSettings.reflex_use_markers.SetValue(!is_native_reflex_active);
-        s_reflex_use_markers.store(!is_native_reflex_active);
+    if (reflex_generate_markers == is_native_reflex_active) {
+        settings::g_developerTabSettings.reflex_generate_markers.SetValue(!is_native_reflex_active);
+        s_reflex_generate_markers.store(!is_native_reflex_active);
     }
 
     if (reflex_enable_sleep == is_native_reflex_active) {

@@ -203,7 +203,8 @@ void InjectorService::monitoringLoop() {
                 game_commander::SRWLockExclusive lock(targets_srwlock_);
                 // TODO(pmnoxx): optimize as set if list is too long
                 for (auto& target : targets_) {
-                    if (!target.enabled) continue;
+                    // doesn't work turned off for now
+                    // .. if (!target.enabled) continue;
 
                     // Convert to wide string for comparison
                     std::wstring exe_name_wide(target.exe_name.begin(), target.exe_name.end());

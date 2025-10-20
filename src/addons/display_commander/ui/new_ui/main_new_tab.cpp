@@ -14,6 +14,7 @@
 #include "../../res/ui_colors.hpp"
 #include "../../utils.hpp"
 #include "../../globals.hpp"
+#include "imgui.h"
 #include "utils/timing.hpp"
 #include "version.hpp"
 
@@ -621,6 +622,23 @@ void DrawDisplaySettings() {
                     ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Injected Reflex: %.2f times/sec (%.1f ms interval)", calls_per_second, injected_ns / 1000000.0);
                 }
             //injected reflex status:
+            }
+            bool reflex_low_latency = settings::g_developerTabSettings.reflex_low_latency.GetValue();
+            if (ImGui::Checkbox("Low Latency Mode", &reflex_low_latency)) {
+                settings::g_developerTabSettings.reflex_low_latency.SetValue(reflex_low_latency);
+                s_reflex_low_latency.store(reflex_low_latency);
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Enables NVIDIA Reflex Low Latency Mode to reduce input lag and system latency.\nThis helps improve responsiveness in competitive gaming scenarios.");
+            }
+            ImGui::SameLine();
+            bool reflex_boost = settings::g_developerTabSettings.reflex_boost.GetValue();
+            if (ImGui::Checkbox("Boost", &reflex_boost)) {
+                settings::g_developerTabSettings.reflex_boost.SetValue(reflex_boost);
+                s_reflex_boost.store(reflex_boost);
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Enables NVIDIA Reflex Boost mode for maximum latency reduction.\nThis mode may increase GPU power consumption but provides the lowest possible input lag.");
             }
         }
 

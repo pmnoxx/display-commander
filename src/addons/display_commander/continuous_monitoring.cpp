@@ -67,7 +67,7 @@ void HandleReflexAutoConfigure() {
         }
     }
 
-    if (!reflex_low_latency) {
+   /* if (!reflex_low_latency) {
         settings::g_developerTabSettings.reflex_low_latency.SetValue(true);
         s_reflex_low_latency.store(true);
     }
@@ -75,7 +75,7 @@ void HandleReflexAutoConfigure() {
     if (!reflex_boost) {
         settings::g_developerTabSettings.reflex_boost.SetValue(true);
         s_reflex_boost.store(true);
-    }
+    } */
 
     if (reflex_markers == is_native_reflex_active) {
         settings::g_developerTabSettings.reflex_use_markers.SetValue(!is_native_reflex_active);

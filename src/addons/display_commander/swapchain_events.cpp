@@ -244,6 +244,9 @@ void DoInitializationWithHwnd(HWND hwnd) {
     // Check for auto-enable NVAPI features for specific games
     g_nvapiFullscreenPrevention.CheckAndAutoEnable();
 
+    // Initialize fake NVAPI if enabled
+    nvapi::g_fakeNvapiManager.Initialize();
+
     ui::new_ui::InitExperimentalTab();
 
     // Initialize DualSense support

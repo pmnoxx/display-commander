@@ -715,6 +715,9 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             // Clean up NVAPI fullscreen prevention
             g_nvapiFullscreenPrevention.Cleanup();
 
+            // Clean up fake NVAPI
+            nvapi::g_fakeNvapiManager.Cleanup();
+
             // Note: reshade::unregister_addon() will automatically unregister all events and overlays
             // registered by this add-on, so manual unregistration is not needed and can cause issues
             // display_restore::RestoreAllIfEnabled(); // restore display settings on exit

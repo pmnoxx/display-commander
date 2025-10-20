@@ -559,7 +559,7 @@ void DrawDisplaySettings() {
     {
         const char* items[] = {
             "Disabled",
-            "Reflex (low latency mode) Non-VRR DX11/DX12 (supports DLSS-G)",
+            "NVIDIA Reflex (low latency mode + boost) VRR DX11/DX12 (DLSS-FG aware)",
             "Sync frame Present/Start Time (adds latency to offer more consistent frame timing) VRR/Non-VRR",
             "Sync to Display Refresh Rate (fraction of monitor refresh rate) Non-VRR",
             "Non-Reflex Low Latency Mode (not implemented) VRR"

@@ -399,3 +399,21 @@ bool CreateAndEnableHook(LPVOID ptarget, LPVOID pdetour, LPVOID* ppOriginal, con
             hookName != nullptr ? hookName : "Unknown");
     return true;
 }
+
+// Get the directory where the addon is located
+std::filesystem::path GetAddonDirectory() {
+    char module_path[MAX_PATH];
+
+    // Try to get the module handle using a static variable address
+    static int dummy = 0;
+    HMODULE hModule = nullptr;
+    if (GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                          reinterpret_cast<LPCSTR>(&dummy), &hModule) != 0) {
+        GetModuleFileNameA(hModule, module_path, MAX_PATH);
+    } else {
+        // Fallback to current directory
+        GetCurrentDirectoryA(MAX_PATH, module_path);
+    }
+
+    return std::filesystem::path(module_path).parent_path();
+}

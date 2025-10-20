@@ -73,6 +73,9 @@ class DeveloperTabSettings {
     // NVAPI loading setting
     BoolSetting load_nvapi64;
 
+    // Fake NVAPI setting
+    BoolSetting fake_nvapi_enabled;
+
     // XInput loading setting
     BoolSetting load_xinput;
 

@@ -9,6 +9,7 @@
 #include <windef.h>
 
 #include <atomic>
+#include <filesystem>
 #include <memory>
 #include <string>
 #include <vector>
@@ -52,6 +53,9 @@ SHORT FloatToShort(float value);
 
 // DLL version information
 std::string GetDLLVersionString(const std::wstring& dllPath);
+
+// Addon directory utilities
+std::filesystem::path GetAddonDirectory();
 
 // Forward declaration for ReShade API types
 namespace reshade { namespace api { enum class device_api; } }

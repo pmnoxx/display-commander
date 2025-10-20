@@ -1,6 +1,7 @@
 #include "developer_new_tab.hpp"
 #include "../../globals.hpp"
 #include "../../nvapi/nvapi_fullscreen_prevention.hpp"
+#include "../../nvapi/fake_nvapi_manager.hpp"
 #include "../../res/forkawesome.h"
 #include "../../settings/developer_tab_settings.hpp"
 #include "../../utils/general_utils.hpp"
@@ -491,6 +492,85 @@ void DrawNvapiSettings() {
             if (ImGui::IsItemHovered()) {
                 ImGui::SetTooltip("Reset all Reflex debug counters to zero.");
             }
+        }
+    }
+
+    // Fake NVAPI Settings
+    ImGui::Spacing();
+    if (ImGui::CollapsingHeader("AntiLag 2 / XeLL support (fakenvapi / custom nvapi64.dll)", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "Fake NVAPI (Experimental)");
+
+        bool fake_nvapi_enabled = settings::g_developerTabSettings.fake_nvapi_enabled.GetValue();
+        if (ImGui::Checkbox("Enable custom nvapi64.dll loading / fakenvapi", &fake_nvapi_enabled)) {
+            settings::g_developerTabSettings.fake_nvapi_enabled.SetValue(fake_nvapi_enabled);
+            settings::g_developerTabSettings.fake_nvapi_enabled.Save();
+            s_restart_needed_nvapi.store(true);
+        }
+         if (ImGui::IsItemHovered()) {
+             ImGui::SetTooltip(
+                 "Enable fake NVAPI to spoof NVIDIA detection on non-NVIDIA systems.\n"
+                 "This allows DLSS and other NVIDIA features to work on AMD/Intel GPUs.\n\n"
+                 "WARNING: This is experimental and may cause instability!\n"
+                 "Requires nvapi64.dll or fakenvapi.dll to be placed next to the addon.\n"
+                 "For newer optiscaler builds, use nvapi64.dll (rename fakenvapi.dll if needed).\n\n"
+                 "Based on fakenvapi project: https://github.com/emoose/fakenvapi\n"
+                 "Download from: https://github.com/optiscaler/fakenvapi/releases");
+         }
+
+        // Fake NVAPI Status
+        auto stats = nvapi::g_fakeNvapiManager.GetStatistics();
+        std::string status_msg = nvapi::g_fakeNvapiManager.GetStatusMessage();
+
+        // Show warning if fakenvapi.dll is found (needs renaming)
+        if (stats.fakenvapi_dll_found) {
+            ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f), ICON_FK_WARNING " Warning: fakenvapi.dll found - rename to nvapi64.dll");
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip(
+                    "fakenvapi.dll was found in the addon directory.\n"
+                    "For newer optiscaler builds, rename fakenvapi.dll to nvapi64.dll\n"
+                    "to ensure proper functionality.");
+            }
+        }
+
+        if (stats.is_nvapi64_loaded && !stats.fake_nvapi_loaded) {
+            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Status: Real nvapi64.dll detected - fake NVAPI disabled");
+        } else if (stats.fake_nvapi_loaded) {
+            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Status: Fake NVAPI active - spoofing NVIDIA detection");
+        } else if (!stats.last_error.empty()) {
+            ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "Status: %s", stats.last_error.c_str());
+        } else {
+            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Status: %s", status_msg.c_str());
+        }
+
+    // Statistics
+    if (ImGui::CollapsingHeader("Fake NVAPI Statistics", ImGuiTreeNodeFlags_None)) {
+        ImGui::Text("nvapi64.dll loaded before DC: %s", stats.was_nvapi64_loaded_before_dc ? "Yes" : "No");
+        ImGui::Text("nvapi64.dll currently loaded: %s", stats.is_nvapi64_loaded ? "Yes" : "No");
+        ImGui::Text("libxell.dll loaded: %s", stats.is_libxell_loaded ? "Yes" : "No");
+        ImGui::Text("Fake NVAPI Loaded: %s", stats.fake_nvapi_loaded ? "Yes" : "No");
+        ImGui::Text("Override Enabled: %s", stats.override_enabled ? "Yes" : "No");
+
+        if (stats.fakenvapi_dll_found) {
+            ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f), ICON_FK_WARNING ": fakenvapi.dll found: Yes (needs renaming to nvapi64.dll)");
+        } else {
+            ImGui::Text("fakenvapi.dll found: No");
+        }
+
+            if (!stats.last_error.empty()) {
+                ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "Last Error: %s", stats.last_error.c_str());
+            }
+        }
+
+        // Warning about experimental nature
+        ImGui::Spacing();
+        ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f), "⚠️ Experimental Feature");
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip(
+                "Fake NVAPI is experimental and may cause:\n"
+                "• Game crashes or instability\n"
+                "• Performance issues\n"
+                "• Incompatibility with some games\n\n"
+                "Use at your own risk!");
         }
     }
 }

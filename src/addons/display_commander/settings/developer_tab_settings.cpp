@@ -43,6 +43,7 @@ DeveloperTabSettings::DeveloperTabSettings()
       load_streamline("LoadStreamline", true, "DisplayCommander"),
       load_nvngx("LoadNvngx", true, "DisplayCommander"),
       load_nvapi64("LoadNvapi64", true, "DisplayCommander"),
+      fake_nvapi_enabled("FakeNvapiEnabled", true, "DisplayCommander"),
       load_xinput("LoadXInput", true, "DisplayCommander") {}
 
 void DeveloperTabSettings::LoadAll() {
@@ -73,6 +74,7 @@ void DeveloperTabSettings::LoadAll() {
     load_streamline.Load();
     load_nvngx.Load();
     load_nvapi64.Load();
+    fake_nvapi_enabled.Load();
     load_xinput.Load();
 
     // All Ref classes automatically sync with global variables
@@ -86,6 +88,7 @@ void DeveloperTabSettings::SaveAll() {
     load_streamline.Save();
     load_nvngx.Save();
     load_nvapi64.Save();
+    fake_nvapi_enabled.Save();
     load_xinput.Save();
 
     // All Ref classes automatically save when values change
@@ -120,6 +123,7 @@ std::vector<ui::new_ui::SettingBase *> DeveloperTabSettings::GetAllSettings() {
             &load_streamline,
             &load_nvngx,
             &load_nvapi64,
+            &fake_nvapi_enabled,
             &load_xinput};
 }
 

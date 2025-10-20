@@ -369,6 +369,9 @@ void LoadAllSettingsAtStartup() {
 
 } // namespace settings
 
+// Fake NVAPI manager global instance
+nvapi::FakeNvapiManager g_fakeNvapiManager;
+
 // NGX Parameter Storage global instance
 UnifiedParameterMap g_ngx_parameters;
 

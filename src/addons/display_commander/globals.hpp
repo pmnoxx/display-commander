@@ -27,6 +27,9 @@
 // NVAPI types
 #include "../../../external/nvapi/nvapi.h"
 
+// Fake NVAPI manager
+#include "nvapi/fake_nvapi_manager.hpp"
+
 // Constants
 #define DEBUG_LEVEL_0
 

@@ -1033,6 +1033,7 @@ void DrawDisplaySettings() {
                     } else if (flip_state == DxgiBypassMode::kOverlay || flip_state == DxgiBypassMode::kIndependentFlip) {
                         flip_color = ui::colors::FLIP_INDEPENDENT; // Green - good
                     } else if (flip_state == DxgiBypassMode::kQueryFailedSwapchainNull ||
+                               flip_state == DxgiBypassMode::kQueryFailedNoSwapchain1 ||
                                flip_state == DxgiBypassMode::kQueryFailedNoMedia ||
                                flip_state == DxgiBypassMode::kQueryFailedNoStats) {
                         flip_color = ui::colors::TEXT_ERROR; // Red - query failed
@@ -1047,6 +1048,7 @@ void DrawDisplaySettings() {
                         case DxgiBypassMode::kIndependentFlip:          flip_state_str = "iFlip"; break;
                         case DxgiBypassMode::kQueryFailedSwapchainNull: flip_state_str = "Query Failed: Null"; break;
                         case DxgiBypassMode::kQueryFailedNoMedia:       flip_state_str = "Query Failed: No Media"; break;
+                        case DxgiBypassMode::kQueryFailedNoSwapchain1:  flip_state_str = "Query Failed: No Swapchain1"; break;
                         case DxgiBypassMode::kQueryFailedNoStats:       flip_state_str = "Query Failed: No Stats"; break;
                         case DxgiBypassMode::kUnknown:
                         default:                                        {
@@ -1104,6 +1106,7 @@ void DrawDisplaySettings() {
                         case DxgiBypassMode::kIndependentFlip:          flip_state_str = "iFlip"; break;
                         case DxgiBypassMode::kQueryFailedSwapchainNull: flip_state_str = "Query Failed: Null"; break;
                         case DxgiBypassMode::kQueryFailedNoMedia:       flip_state_str = "Query Failed: No Media"; break;
+                        case DxgiBypassMode::kQueryFailedNoSwapchain1:  flip_state_str = "Query Failed: No Swapchain1"; break;
                         case DxgiBypassMode::kQueryFailedNoStats:       flip_state_str = "Query Failed: No Stats"; break;
                         case DxgiBypassMode::kUnknown:
                         default:                                        {
@@ -1122,6 +1125,7 @@ void DrawDisplaySettings() {
                     } else if (flip_state == DxgiBypassMode::kOverlay || flip_state == DxgiBypassMode::kIndependentFlip) {
                         flip_color = ui::colors::FLIP_INDEPENDENT; // Green - good
                     } else if (flip_state == DxgiBypassMode::kQueryFailedSwapchainNull ||
+                               flip_state == DxgiBypassMode::kQueryFailedNoSwapchain1 ||
                                flip_state == DxgiBypassMode::kQueryFailedNoMedia ||
                                flip_state == DxgiBypassMode::kQueryFailedNoStats) {
                         flip_color = ui::colors::TEXT_ERROR; // Red - query failed
@@ -1160,6 +1164,9 @@ void DrawDisplaySettings() {
                         } else if (flip_state == DxgiBypassMode::kQueryFailedNoStats) {
                             ImGui::TextColored(ui::colors::TEXT_ERROR, "  • Query Failed: GetFrameStatisticsMedia failed");
                             ImGui::Text("    Cannot determine flip state - call after at least one Present");
+                        } else if (flip_state == DxgiBypassMode::kQueryFailedNoSwapchain1) {
+                            ImGui::TextColored(ui::colors::TEXT_ERROR, "  • Query Failed: IDXGISwapChain1 not available");
+                            ImGui::Text("    Cannot determine flip state - SwapChain1 interface not supported");
                         } else if (flip_state == DxgiBypassMode::kUnset) {
                             ImGui::TextColored(ui::colors::FLIP_UNKNOWN, "  • Flip state not yet queried");
                             ImGui::Text("    Initial state - will be determined on first query");
@@ -1618,6 +1625,7 @@ void DrawImportantInfo() {
             case DxgiBypassMode::kIndependentFlip:          flip_state_str = "Legacy Independent Flip"; break;
             case DxgiBypassMode::kQueryFailedSwapchainNull: flip_state_str = "Query Failed: Swapchain Null"; break;
             case DxgiBypassMode::kQueryFailedNoMedia:       flip_state_str = "Query Failed: No Media Interface"; break;
+            case DxgiBypassMode::kQueryFailedNoSwapchain1:  flip_state_str = "Query Failed: No Swapchain1"; break;
             case DxgiBypassMode::kQueryFailedNoStats:       flip_state_str = "Query Failed: No Statistics"; break;
             case DxgiBypassMode::kUnknown:
             default:                                        flip_state_str = "Unknown"; break;
@@ -1635,6 +1643,7 @@ void DrawImportantInfo() {
             // Independent Flip modes - Green
             ImGui::TextColored(ui::colors::FLIP_INDEPENDENT, "%s", oss.str().c_str());
         } else if (flip_state == DxgiBypassMode::kQueryFailedSwapchainNull ||
+                   flip_state == DxgiBypassMode::kQueryFailedNoSwapchain1 ||
                    flip_state == DxgiBypassMode::kQueryFailedNoMedia ||
                    flip_state == DxgiBypassMode::kQueryFailedNoStats) {
             // Query Failed - Red

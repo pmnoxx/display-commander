@@ -6,10 +6,25 @@ DxgiBypassMode GetIndependentFlipState(IDXGISwapChain *dxgi_swapchain) {
         return DxgiBypassMode::kQueryFailedSwapchainNull;
     }
 
+    // Per DXGI guidance, query for IDXGISwapChain1 first, then obtain IDXGISwapChainMedia
+    Microsoft::WRL::ComPtr<IDXGISwapChain1> sc1;
+    {
+        HRESULT hr = dxgi_swapchain->QueryInterface(IID_PPV_ARGS(&sc1));
+        if (FAILED(hr) || sc1 == nullptr) {
+            LogDebug("DXGI IF state: QI IDXGISwapChain1 failed hr=0x%x", hr);
+            // Log swap effect for diagnostics
+            DXGI_SWAP_CHAIN_DESC scd{};
+            if (SUCCEEDED(dxgi_swapchain->GetDesc(&scd))) {
+                LogDebug("DXGI IF state: SwapEffect=%d", static_cast<int>(scd.SwapEffect));
+            }
+            return DxgiBypassMode::kQueryFailedNoSwapchain1;
+        }
+    }
+
     Microsoft::WRL::ComPtr<IDXGISwapChainMedia> media;
     {
-        HRESULT hr = dxgi_swapchain->QueryInterface(IID_PPV_ARGS(&media));
-        if (FAILED(hr)) {
+        HRESULT hr = sc1->QueryInterface(IID_PPV_ARGS(&media));
+        if (FAILED(hr) || media == nullptr) {
             LogDebug("DXGI IF state: QI IDXGISwapChainMedia failed hr=0x%x", hr);
             // Log swap effect for diagnostics
             DXGI_SWAP_CHAIN_DESC scd{};
@@ -57,6 +72,8 @@ const char *DxgiBypassModeToString(DxgiBypassMode mode) {
         return "Independent Flip";
     case DxgiBypassMode::kQueryFailedSwapchainNull:
         return "Query Failed: Swapchain Null";
+    case DxgiBypassMode::kQueryFailedNoSwapchain1:
+        return "Query Failed: No Swapchain1";
     case DxgiBypassMode::kQueryFailedNoMedia:
         return "Query Failed: No Media Interface";
     case DxgiBypassMode::kQueryFailedNoStats:

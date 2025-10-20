@@ -253,6 +253,7 @@ enum class DxgiBypassMode : std::uint8_t {
     kOverlay,                  // Hardware overlay (MPO) presentation mode
     kIndependentFlip,          // Independent flip presentation mode
     kQueryFailedSwapchainNull, // Query failed: swapchain is null
+    kQueryFailedNoSwapchain1,  // Query failed: IDXGISwapChain1 not available
     kQueryFailedNoMedia,       // Query failed: IDXGISwapChainMedia not available
     kQueryFailedNoStats        // Query failed: GetFrameStatisticsMedia failed
 };

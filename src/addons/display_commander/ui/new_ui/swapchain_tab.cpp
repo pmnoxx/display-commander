@@ -890,6 +890,7 @@ void DrawDxgiCompositionInfo() {
             case DxgiBypassMode::kIndependentFlip:          mode_str = "Legacy Independent Flip"; break;
             case DxgiBypassMode::kQueryFailedSwapchainNull: mode_str = "Query Failed: Swapchain Null"; break;
             case DxgiBypassMode::kQueryFailedNoMedia:       mode_str = "Query Failed: No Media Interface"; break;
+            case DxgiBypassMode::kQueryFailedNoSwapchain1:  mode_str = "Query Failed: No Swapchain1"; break;
             case DxgiBypassMode::kQueryFailedNoStats:       mode_str = "Query Failed: No Statistics"; break;
             case DxgiBypassMode::kUnknown:
             default:                                        mode_str = "Unknown"; break;

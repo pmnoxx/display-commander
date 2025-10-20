@@ -144,7 +144,7 @@ void XInputWidget::DrawSettings() {
             SaveSettings();
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Convert DualSense controller input to XInput format (requires Special-K)");
+            ImGui::SetTooltip("Convert DualSense controller input to XInput format");
         }
 
         // HID suppression enable

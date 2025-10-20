@@ -5,7 +5,6 @@
 
 // Forward declarations for NGX types
 struct NVSDK_NGX_Parameter;
-enum NVSDK_NGX_Result;
 
 // NGX hook functions
 bool InstallNGXHooks();

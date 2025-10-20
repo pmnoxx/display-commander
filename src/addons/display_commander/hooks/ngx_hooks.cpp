@@ -9,6 +9,7 @@
 #include <vector>
 #include <map>
 #include <mutex>
+#include "../../../external/nvidia-dlss/include/nvsdk_ngx_defs.h"
 
 // NGX type definitions (minimal subset needed for hooks)
 #define NVSDK_CONV __cdecl
@@ -24,22 +25,45 @@ typedef struct NVSDK_NGX_Parameter NVSDK_NGX_Parameter;
 typedef struct NVSDK_NGX_Handle NVSDK_NGX_Handle;
 typedef struct NVSDK_NGX_FeatureCommonInfo NVSDK_NGX_FeatureCommonInfo;
 
-// NGX enums // TODO: use constants from nvidia sdk header file
-typedef enum NVSDK_NGX_Feature {
-    NVSDK_NGX_Feature_SuperSampling = 0,
-    NVSDK_NGX_Feature_FrameGeneration = 1,
-    NVSDK_NGX_Feature_RayReconstruction = 2
-} NVSDK_NGX_Feature;
+// Using official NVIDIA NGX enums from nvsdk_ngx_defs.h
 
-typedef enum NVSDK_NGX_EngineType {
-    NVSDK_NGX_ENGINETYPE_UNREAL = 0,
-    NVSDK_NGX_ENGINETYPE_UNITY = 1,
-    NVSDK_NGX_ENGINETYPE_OTHER = 2
-} NVSDK_NGX_EngineType;
+// Helper function to get feature name from enum
+const char* GetNGXFeatureName(NVSDK_NGX_Feature feature) {
+    switch (feature) {
+        case NVSDK_NGX_Feature_Reserved0: return "Reserved0";
+        case NVSDK_NGX_Feature_SuperSampling: return "SuperSampling (DLSS)";
+        case NVSDK_NGX_Feature_InPainting: return "InPainting";
+        case NVSDK_NGX_Feature_ImageSuperResolution: return "ImageSuperResolution";
+        case NVSDK_NGX_Feature_SlowMotion: return "SlowMotion";
+        case NVSDK_NGX_Feature_VideoSuperResolution: return "VideoSuperResolution";
+        case NVSDK_NGX_Feature_Reserved1: return "Reserved1";
+        case NVSDK_NGX_Feature_Reserved2: return "Reserved2";
+        case NVSDK_NGX_Feature_Reserved3: return "Reserved3";
+        case NVSDK_NGX_Feature_ImageSignalProcessing: return "ImageSignalProcessing";
+        case NVSDK_NGX_Feature_DeepResolve: return "DeepResolve";
+        case NVSDK_NGX_Feature_FrameGeneration: return "FrameGeneration (DLSS-G)";
+        case NVSDK_NGX_Feature_DeepDVC: return "DeepDVC";
+        case NVSDK_NGX_Feature_RayReconstruction: return "RayReconstruction";
+        case NVSDK_NGX_Feature_Reserved14: return "Reserved14";
+        case NVSDK_NGX_Feature_Reserved15: return "Reserved15";
+        case NVSDK_NGX_Feature_Reserved16: return "Reserved16";
+        case NVSDK_NGX_Feature_Reserved_SDK: return "Reserved SDK";
+        case NVSDK_NGX_Feature_Reserved_Core: return "Reserved Core";
+        case NVSDK_NGX_Feature_Reserved_Unknown: return "Reserved Unknown";
+        default: return "Unknown Feature";
+    }
+}
 
-typedef enum NVSDK_NGX_Version {
-    NVSDK_NGX_Version_API = 0x00000001
-} NVSDK_NGX_Version;
+// Helper function to get engine type name from enum
+const char* GetNGXEngineTypeName(NVSDK_NGX_EngineType engineType) {
+    switch (engineType) {
+        case NVSDK_NGX_ENGINE_TYPE_CUSTOM: return "Custom";
+        case NVSDK_NGX_ENGINE_TYPE_UNREAL: return "Unreal Engine";
+        case NVSDK_NGX_ENGINE_TYPE_UNITY: return "Unity";
+        case NVSDK_NGX_ENGINE_TYPE_OMNIVERSE: return "Omniverse";
+        default: return "Unknown Engine";
+    }
+}
 
 // Progress callback type
 typedef void (NVSDK_CONV *PFN_NVSDK_NGX_ProgressCallback)(float InCurrentProgress, bool &OutShouldCancel);
@@ -48,29 +72,7 @@ typedef void (NVSDK_CONV *PFN_NVSDK_NGX_ProgressCallback)(float InCurrentProgres
 static std::map<NVSDK_NGX_Handle*, NVSDK_NGX_Feature> g_ngx_handle_map;
 static std::mutex g_ngx_handle_mutex;
 
-typedef enum NVSDK_NGX_Result
-{
-    NVSDK_NGX_Result_Success = 0x1,
-    NVSDK_NGX_Result_Fail = 0xBAD00000,
-    NVSDK_NGX_Result_FAIL_FeatureNotSupported = NVSDK_NGX_Result_Fail | 1,
-    NVSDK_NGX_Result_FAIL_PlatformError = NVSDK_NGX_Result_Fail | 2,
-    NVSDK_NGX_Result_FAIL_FeatureAlreadyExists = NVSDK_NGX_Result_Fail | 3,
-    NVSDK_NGX_Result_FAIL_FeatureNotFound = NVSDK_NGX_Result_Fail | 4,
-    NVSDK_NGX_Result_FAIL_InvalidParameter = NVSDK_NGX_Result_Fail | 5,
-    NVSDK_NGX_Result_FAIL_ScratchBufferTooSmall = NVSDK_NGX_Result_Fail | 6,
-    NVSDK_NGX_Result_FAIL_NotInitialized = NVSDK_NGX_Result_Fail | 7,
-    NVSDK_NGX_Result_FAIL_UnsupportedInputFormat = NVSDK_NGX_Result_Fail | 8,
-    NVSDK_NGX_Result_FAIL_RWFlagMissing = NVSDK_NGX_Result_Fail | 9,
-    NVSDK_NGX_Result_FAIL_MissingInput = NVSDK_NGX_Result_Fail | 10,
-    NVSDK_NGX_Result_FAIL_UnableToInitializeFeature = NVSDK_NGX_Result_Fail | 11,
-    NVSDK_NGX_Result_FAIL_OutOfDate = NVSDK_NGX_Result_Fail | 12,
-    NVSDK_NGX_Result_FAIL_OutOfGPUMemory = NVSDK_NGX_Result_Fail | 13,
-    NVSDK_NGX_Result_FAIL_UnsupportedFormat = NVSDK_NGX_Result_Fail | 14,
-    NVSDK_NGX_Result_FAIL_UnableToWriteToAppDataPath = NVSDK_NGX_Result_Fail | 15,
-    NVSDK_NGX_Result_FAIL_UnsupportedParameter = NVSDK_NGX_Result_Fail | 16,
-    NVSDK_NGX_Result_FAIL_Denied = NVSDK_NGX_Result_Fail | 17,
-    NVSDK_NGX_Result_FAIL_NotImplemented = NVSDK_NGX_Result_Fail | 18,
-} NVSDK_NGX_Result;
+// Using official NVIDIA NGX enums from nvsdk_ngx_defs.h
 
 #define NVSDK_NGX_SUCCEED(value) (((value) & 0xFFF00000) != NVSDK_NGX_Result_Fail)
 #define NVSDK_NGX_FAILED(value) (((value) & 0xFFF00000) == NVSDK_NGX_Result_Fail)

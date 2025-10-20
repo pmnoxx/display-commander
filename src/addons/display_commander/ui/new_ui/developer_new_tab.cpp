@@ -380,7 +380,7 @@ void DrawNvapiSettings() {
         if (reflex_auto_configure) {
             ImGui::BeginDisabled();
         }
-        if (ImGui::Checkbox("Use Markers for Optimization", &reflex_use_markers)) {
+        if (ImGui::Checkbox("Use Reflex Markers", &reflex_use_markers)) {
             settings::g_developerTabSettings.reflex_use_markers.SetValue(reflex_use_markers);
             s_reflex_use_markers.store(reflex_use_markers);
         }
@@ -388,7 +388,7 @@ void DrawNvapiSettings() {
             ImGui::SetTooltip("Tell NVIDIA Reflex to use markers for optimization");
         }
 
-        if (ImGui::Checkbox("Generate Markers in Timeline", &reflex_generate_markers)) {
+        if (ImGui::Checkbox("Generate Reflex Markers", &reflex_generate_markers)) {
             settings::g_developerTabSettings.reflex_generate_markers.SetValue(reflex_generate_markers);
             s_reflex_generate_markers.store(reflex_generate_markers);
         }
@@ -400,7 +400,7 @@ void DrawNvapiSettings() {
             ImGui::SameLine();
             ImGui::TextColored(
                 ImVec4(1.0f, 0.6f, 0.0f, 1.0f), ICON_FK_WARNING
-                " Warning: Do not enable 'Generate Markers for Optimization' if the game already has built-in Reflex support!");
+                " Warning: Do not enable 'Generate Reflex Markers' if the game already has built-in Reflex support!");
         }
 
         if (ImGui::Checkbox("Enable Reflex Sleep Mode", &reflex_enable_sleep)) {

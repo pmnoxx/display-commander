@@ -705,14 +705,6 @@ void DrawDLSSGSummary() {
         ImGui::TextColored(fg_color, "%s", summary.fg_mode.c_str());
         ImGui::NextColumn();
 
-        // Ray Reconstruction status
-        ImGui::Text("Ray Reconstruction:");
-        ImGui::NextColumn();
-        bool ray_reconstruction_enabled = IsRayReconstructionEnabled();
-        ImVec4 rr_color = ray_reconstruction_enabled ? ImVec4(0.0f, 1.0f, 0.0f, 1.0f) : ImVec4(1.0f, 0.0f, 0.0f, 1.0f);
-        ImGui::TextColored(rr_color, "%s", ray_reconstruction_enabled ? "Enabled" : "Disabled");
-        ImGui::NextColumn();
-
         ImGui::Separator();
 
         // Resolution information

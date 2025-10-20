@@ -533,9 +533,9 @@ void DrawNvapiSettings() {
         }
 
         if (stats.is_nvapi64_loaded && !stats.fake_nvapi_loaded) {
-            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Status: Real nvapi64.dll detected - fake NVAPI disabled");
+            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Status: nvapi64.dll was auto-loaded by the game.");
         } else if (stats.fake_nvapi_loaded) {
-            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Status: Fake NVAPI active - spoofing NVIDIA detection");
+            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Status: nvapi64.dll was loaded by DC from local directory.");
         } else if (!stats.last_error.empty()) {
             ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "Status: %s", stats.last_error.c_str());
         } else {

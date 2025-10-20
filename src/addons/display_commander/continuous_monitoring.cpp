@@ -44,7 +44,7 @@ void HandleReflexAutoConfigure() {
 
 
     // Check if native Reflex is active
-    bool is_native_reflex_active = g_swapchain_event_counters[SWAPCHAIN_EVENT_NVAPI_D3D_SET_SLEEP_MODE].load() > 0;
+    bool is_native_reflex_active = g_nvapi_event_counters[NVAPI_EVENT_D3D_SET_SLEEP_MODE].load() > 0;
 
     bool is_reflex_mode = static_cast<FpsLimiterMode>(settings::g_mainTabSettings.fps_limiter_mode.GetValue()) == FpsLimiterMode::kReflex;
 

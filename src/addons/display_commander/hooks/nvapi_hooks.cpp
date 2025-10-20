@@ -38,7 +38,7 @@ namespace {
 // Hooked NvAPI_Disp_GetHdrCapabilities function
 NvAPI_Status __cdecl NvAPI_Disp_GetHdrCapabilities_Detour(NvU32 displayId, NV_HDR_CAPABILITIES *pHdrCapabilities) {
     // Increment counter
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_NVAPI_GET_HDR_CAPABILITIES].fetch_add(1);
+    g_nvapi_event_counters[NVAPI_EVENT_GET_HDR_CAPABILITIES].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
     // Log the call (first few times only)
@@ -100,7 +100,7 @@ NvAPI_Status __cdecl NvAPI_Disp_GetHdrCapabilities_Detour(NvU32 displayId, NV_HD
 // Hooked NvAPI_D3D_SetLatencyMarker function
 NvAPI_Status __cdecl NvAPI_D3D_SetLatencyMarker_Detour(IUnknown *pDev, NV_LATENCY_MARKER_PARAMS *pSetLatencyMarkerParams) {
     // Increment counter
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_NVAPI_D3D_SET_LATENCY_MARKER].fetch_add(1);
+    g_nvapi_event_counters[NVAPI_EVENT_D3D_SET_LATENCY_MARKER].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
     // Log the call (first few times only)
@@ -122,7 +122,7 @@ NvAPI_Status __cdecl NvAPI_D3D_SetLatencyMarker_Detour(IUnknown *pDev, NV_LATENC
 // Hooked NvAPI_D3D_SetSleepMode function
 NvAPI_Status __cdecl NvAPI_D3D_SetSleepMode_Detour(IUnknown *pDev, NV_SET_SLEEP_MODE_PARAMS *pSetSleepModeParams) {
     // Increment counter
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_NVAPI_D3D_SET_SLEEP_MODE].fetch_add(1);
+    g_nvapi_event_counters[NVAPI_EVENT_D3D_SET_SLEEP_MODE].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
     // Store the parameters for UI display
@@ -196,8 +196,11 @@ NvAPI_Status NvAPI_D3D_GetLatency_Direct(IUnknown *pDev, NV_LATENCY_RESULT_PARAM
 // Hooked NvAPI_D3D_Sleep function
 NvAPI_Status __cdecl NvAPI_D3D_Sleep_Detour(IUnknown *pDev) {
     // Increment counter
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_NVAPI_D3D_SLEEP].fetch_add(1);
+    g_nvapi_event_counters[NVAPI_EVENT_D3D_SLEEP].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
+
+    // Record timestamp of this sleep call
+    g_nvapi_last_sleep_timestamp_ns.store(utils::get_now_ns());
 
     // Log the call (first few times only)
     static int log_count = 0;
@@ -224,7 +227,7 @@ NvAPI_Status __cdecl NvAPI_D3D_Sleep_Detour(IUnknown *pDev) {
 // Hooked NvAPI_D3D_GetLatency function
 NvAPI_Status __cdecl NvAPI_D3D_GetLatency_Detour(IUnknown *pDev, NV_LATENCY_RESULT_PARAMS *pGetLatencyParams) {
     // Increment counter
-    g_swapchain_event_counters[SWAPCHAIN_EVENT_NVAPI_D3D_GET_LATENCY].fetch_add(1);
+    g_nvapi_event_counters[NVAPI_EVENT_D3D_GET_LATENCY].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
     // Log the call (first few times only)

@@ -33,6 +33,7 @@ DeveloperTabSettings::DeveloperTabSettings()
       reflex_generate_markers("ReflexGenerateMarkers", s_reflex_generate_markers, true, "DisplayCommander"),
       reflex_enable_sleep("ReflexEnableSleep", s_reflex_enable_sleep, false, "DisplayCommander"),
       reflex_logging("ReflexLogging", s_enable_reflex_logging, false, "DisplayCommander"),
+      reflex_supress_native("ReflexSupressNative", s_reflex_supress_native, false, "DisplayCommander"),
 
       enable_mute_unmute_shortcut("EnableMuteUnmuteShortcut", s_enable_mute_unmute_shortcut, true, "DisplayCommander"),
       enable_background_toggle_shortcut("EnableBackgroundToggleShortcut", s_enable_background_toggle_shortcut, true,
@@ -71,6 +72,7 @@ void DeveloperTabSettings::LoadAll() {
     reflex_use_markers.Load();
     reflex_enable_sleep.Load();
     reflex_logging.Load();
+    reflex_supress_native.Load();
     safemode.Load();
     load_from_dll_main.Load();
     load_streamline.Load();
@@ -114,6 +116,7 @@ std::vector<ui::new_ui::SettingBase *> DeveloperTabSettings::GetAllSettings() {
             &reflex_use_markers,
             &reflex_enable_sleep,
             &reflex_logging,
+            &reflex_supress_native,
 
             &enable_mute_unmute_shortcut,
             &enable_background_toggle_shortcut,

@@ -3,7 +3,7 @@
 DxgiBypassMode GetIndependentFlipState(IDXGISwapChain *dxgi_swapchain) {
     if (dxgi_swapchain == nullptr) {
         LogDebug("DXGI IF state: swapchain is null");
-        return DxgiBypassMode::kUnknown;
+        return DxgiBypassMode::kQueryFailedSwapchainNull;
     }
 
     Microsoft::WRL::ComPtr<IDXGISwapChainMedia> media;
@@ -16,7 +16,7 @@ DxgiBypassMode GetIndependentFlipState(IDXGISwapChain *dxgi_swapchain) {
             if (SUCCEEDED(dxgi_swapchain->GetDesc(&scd))) {
                 LogDebug("DXGI IF state: SwapEffect=%d", static_cast<int>(scd.SwapEffect));
             }
-            return DxgiBypassMode::kUnknown;
+            return DxgiBypassMode::kQueryFailedNoMedia;
         }
     }
 
@@ -29,7 +29,7 @@ DxgiBypassMode GetIndependentFlipState(IDXGISwapChain *dxgi_swapchain) {
             if (SUCCEEDED(dxgi_swapchain->GetDesc(&scd))) {
                 LogDebug("DXGI IF state: SwapEffect=%d", static_cast<int>(scd.SwapEffect));
             }
-            return DxgiBypassMode::kUnknown; // Call after at least one Present
+            return DxgiBypassMode::kQueryFailedNoStats; // Call after at least one Present
         }
     }
 
@@ -47,12 +47,20 @@ DxgiBypassMode GetIndependentFlipState(IDXGISwapChain *dxgi_swapchain) {
 
 const char *DxgiBypassModeToString(DxgiBypassMode mode) {
     switch (mode) {
+    case DxgiBypassMode::kUnset:
+        return "Unset";
     case DxgiBypassMode::kComposed:
         return "Composed";
     case DxgiBypassMode::kOverlay:
         return "Hardware Overlay (MPO)";
     case DxgiBypassMode::kIndependentFlip:
         return "Independent Flip";
+    case DxgiBypassMode::kQueryFailedSwapchainNull:
+        return "Query Failed: Swapchain Null";
+    case DxgiBypassMode::kQueryFailedNoMedia:
+        return "Query Failed: No Media Interface";
+    case DxgiBypassMode::kQueryFailedNoStats:
+        return "Query Failed: No Statistics";
     case DxgiBypassMode::kUnknown:
     default:
         return "Unknown";

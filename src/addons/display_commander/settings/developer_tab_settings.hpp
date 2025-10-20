@@ -58,6 +58,7 @@ class DeveloperTabSettings {
     BoolSettingRef reflex_generate_markers;
     BoolSettingRef reflex_enable_sleep;
     BoolSettingRef reflex_logging;
+    BoolSettingRef reflex_supress_native;
 
     // Safemode setting
     BoolSetting safemode;

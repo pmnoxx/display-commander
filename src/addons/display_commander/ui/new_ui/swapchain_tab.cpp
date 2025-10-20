@@ -6,6 +6,7 @@
 #include "../../swapchain_events_power_saving.hpp"
 #include "../../config/display_commander_config.hpp"
 #include "../../utils/general_utils.hpp"
+#include "../../utils/timing.hpp"
 #include "../../hooks/ngx_hooks.hpp"
 
 #include <array>
@@ -250,12 +251,6 @@ void DrawSwapchainEventCounters() {
             {SWAPCHAIN_EVENT_DXGI_CREATEFACTORY1, "SWAPCHAIN_EVENT_DXGI_CREATEFACTORY1"},
             {SWAPCHAIN_EVENT_DXGI_SETHDRMETADATA, "SWAPCHAIN_EVENT_DXGI_SETHDRMETADATA"},
             {SWAPCHAIN_EVENT_DX9_PRESENT, "SWAPCHAIN_EVENT_DX9_PRESENT"},
-            {SWAPCHAIN_EVENT_NVAPI_GET_HDR_CAPABILITIES, "SWAPCHAIN_EVENT_NVAPI_GET_HDR_CAPABILITIES"},
-            // NVAPI Reflex hooks
-            {SWAPCHAIN_EVENT_NVAPI_D3D_SET_LATENCY_MARKER, "SWAPCHAIN_EVENT_NVAPI_D3D_SET_LATENCY_MARKER"},
-            {SWAPCHAIN_EVENT_NVAPI_D3D_SET_SLEEP_MODE, "SWAPCHAIN_EVENT_NVAPI_D3D_SET_SLEEP_MODE"},
-            {SWAPCHAIN_EVENT_NVAPI_D3D_SLEEP, "SWAPCHAIN_EVENT_NVAPI_D3D_SLEEP"},
-            {SWAPCHAIN_EVENT_NVAPI_D3D_GET_LATENCY, "SWAPCHAIN_EVENT_NVAPI_D3D_GET_LATENCY"},
             // Streamline hooks
             {SWAPCHAIN_EVENT_STREAMLINE_SL_INIT, "SWAPCHAIN_EVENT_STREAMLINE_SL_INIT"},
             {SWAPCHAIN_EVENT_STREAMLINE_SL_IS_FEATURE_SUPPORTED, "SWAPCHAIN_EVENT_STREAMLINE_SL_IS_FEATURE_SUPPORTED"},
@@ -281,8 +276,6 @@ void DrawSwapchainEventCounters() {
                                             {   .name="DXGI Factory Methods", .start_idx=SWAPCHAIN_EVENT_DXGI_FACTORY_CREATESWAPCHAIN, .end_idx=SWAPCHAIN_EVENT_DXGI_CREATEFACTORY1, .color=ImVec4(1.0f, 0.8f, 1.0f, 1.0f)},
                                             {   .name="DXGI SwapChain4 Methods", .start_idx=SWAPCHAIN_EVENT_DXGI_SETHDRMETADATA, .end_idx=SWAPCHAIN_EVENT_DXGI_SETHDRMETADATA, .color=ImVec4(0.8f, 0.8f, 0.8f, 1.0f)},
                                             {   .name="DirectX 9 Methods", .start_idx=SWAPCHAIN_EVENT_DX9_PRESENT, .end_idx=SWAPCHAIN_EVENT_DX9_PRESENT, .color=ImVec4(1.0f, 0.6f, 0.6f, 1.0f)},
-                                            {   .name="NVAPI HDR Methods", .start_idx=SWAPCHAIN_EVENT_NVAPI_GET_HDR_CAPABILITIES, .end_idx=SWAPCHAIN_EVENT_NVAPI_GET_HDR_CAPABILITIES, .color=ImVec4(0.6f, 1.0f, 0.6f, 1.0f)},
-                                            {   .name="NVAPI Reflex Methods", .start_idx=SWAPCHAIN_EVENT_NVAPI_D3D_SET_LATENCY_MARKER, .end_idx=SWAPCHAIN_EVENT_NVAPI_D3D_GET_LATENCY, .color=ImVec4(0.6f, 1.0f, 0.8f, 1.0f)},
                                             {   .name="Streamline Methods", .start_idx=SWAPCHAIN_EVENT_STREAMLINE_SL_INIT, .end_idx=SWAPCHAIN_EVENT_STREAMLINE_SL_UPGRADE_INTERFACE, .color=ImVec4(0.6f, 0.8f, 1.0f, 1.0f)}}};
 
         for (const auto& group : event_groups) {
@@ -308,6 +301,77 @@ void DrawSwapchainEventCounters() {
 
         ImGui::Separator();
         ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "Total Events: %u", total_events);
+
+        // NVAPI Event Counters Section
+        ImGui::Spacing();
+        if (ImGui::CollapsingHeader("NVAPI Event Counters", ImGuiTreeNodeFlags_DefaultOpen)) {
+            // NVAPI event mapping
+            static const std::vector<std::pair<NvapiEventIndex, const char*>> nvapi_event_mapping = {
+                {NVAPI_EVENT_GET_HDR_CAPABILITIES, "NVAPI_EVENT_GET_HDR_CAPABILITIES"},
+                {NVAPI_EVENT_D3D_SET_LATENCY_MARKER, "NVAPI_EVENT_D3D_SET_LATENCY_MARKER"},
+                {NVAPI_EVENT_D3D_SET_SLEEP_MODE, "NVAPI_EVENT_D3D_SET_SLEEP_MODE"},
+                {NVAPI_EVENT_D3D_SLEEP, "NVAPI_EVENT_D3D_SLEEP"},
+                {NVAPI_EVENT_D3D_GET_LATENCY, "NVAPI_EVENT_D3D_GET_LATENCY"}
+            };
+
+            uint32_t nvapi_total_events = 0;
+
+            // Group NVAPI events by category
+            struct NvapiEventGroup {
+                const char* name;
+                NvapiEventIndex start_idx;
+                NvapiEventIndex end_idx;
+                ImVec4 color;
+            };
+
+            static const std::vector<NvapiEventGroup> nvapi_event_groups = {
+                {   .name="NVAPI HDR Methods", .start_idx=NVAPI_EVENT_GET_HDR_CAPABILITIES, .end_idx=NVAPI_EVENT_GET_HDR_CAPABILITIES, .color=ImVec4(0.6f, 1.0f, 0.6f, 1.0f)},
+                {   .name="NVAPI Reflex Methods", .start_idx=NVAPI_EVENT_D3D_SET_LATENCY_MARKER, .end_idx=NVAPI_EVENT_D3D_GET_LATENCY, .color=ImVec4(0.6f, 1.0f, 0.8f, 1.0f)}
+            };
+
+            for (const auto& group : nvapi_event_groups) {
+                if (ImGui::CollapsingHeader(group.name, ImGuiTreeNodeFlags_DefaultOpen)) {
+                    ImGui::Indent();
+
+                    for (int i = static_cast<int>(group.start_idx); i <= static_cast<int>(group.end_idx); ++i) {
+                        uint32_t count = g_nvapi_event_counters[i].load();
+                        nvapi_total_events += count;
+
+                        ImGui::TextColored(group.color, "%s: %u", nvapi_event_mapping[i].second, count);
+                    }
+
+                    ImGui::Unindent();
+                }
+            }
+
+            ImGui::Separator();
+            ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "Total NVAPI Events: %u", nvapi_total_events);
+
+            // Show last sleep timestamp
+            uint64_t last_sleep_timestamp = g_nvapi_last_sleep_timestamp_ns.load();
+            if (last_sleep_timestamp > 0) {
+                uint64_t current_time = utils::get_now_ns();
+                uint64_t time_since_sleep = current_time - last_sleep_timestamp;
+                double time_since_sleep_ms = static_cast<double>(time_since_sleep) / utils::NS_TO_MS;
+
+                ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "Last Sleep: %.2f ms ago", time_since_sleep_ms);
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip("Time since the last NVAPI_D3D_Sleep call was made.\nLower values indicate more recent sleep calls.");
+                }
+            } else {
+                ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Last Sleep: Never");
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip("No NVAPI_D3D_Sleep calls have been made yet.");
+                }
+            }
+
+            // Show NVAPI status message
+            if (nvapi_total_events > 0) {
+                ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Status: NVAPI events are working correctly");
+            } else {
+                ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Status: No NVAPI events detected");
+            }
+        }
 
         // Show status message
         if (total_events > 0) {
@@ -820,11 +884,15 @@ void DrawDxgiCompositionInfo() {
         DxgiBypassMode flip_state = GetFlipStateForAPI(current_api);
 
         switch (flip_state) {
-            case DxgiBypassMode::kComposed:      mode_str = "Composed Flip"; break;
-            case DxgiBypassMode::kOverlay:       mode_str = "Modern Independent Flip"; break;
-            case DxgiBypassMode::kIndependentFlip: mode_str = "Legacy Independent Flip"; break;
+            case DxgiBypassMode::kUnset:                    mode_str = "Unset"; break;
+            case DxgiBypassMode::kComposed:                 mode_str = "Composed Flip"; break;
+            case DxgiBypassMode::kOverlay:                  mode_str = "Modern Independent Flip"; break;
+            case DxgiBypassMode::kIndependentFlip:          mode_str = "Legacy Independent Flip"; break;
+            case DxgiBypassMode::kQueryFailedSwapchainNull: mode_str = "Query Failed: Swapchain Null"; break;
+            case DxgiBypassMode::kQueryFailedNoMedia:       mode_str = "Query Failed: No Media Interface"; break;
+            case DxgiBypassMode::kQueryFailedNoStats:       mode_str = "Query Failed: No Statistics"; break;
             case DxgiBypassMode::kUnknown:
-            default:                             mode_str = "Unknown"; break;
+            default:                                        mode_str = "Unknown"; break;
         }
 
         // Get backbuffer format

@@ -67,7 +67,7 @@ std::atomic<bool> g_auto_click_enabled{false};
 // VSync and tearing controls
 
 // Monitor and display settings
-std::atomic<DxgiBypassMode> s_dxgi_composition_state{DxgiBypassMode::kUnknown};
+std::atomic<DxgiBypassMode> s_dxgi_composition_state{DxgiBypassMode::kUnset};
 
 // Continue rendering in background
 std::atomic<bool> s_continue_rendering{false}; // Disabled by default
@@ -125,7 +125,7 @@ std::atomic<bool> s_resolution_applied_at_least_once{false}; // Disabled by defa
 
 // Atomic variables
 std::atomic<int> g_comp_query_counter{0};
-std::atomic<int> g_comp_last_logged{0};
+std::atomic<DxgiBypassMode> g_comp_last_logged{DxgiBypassMode::kUnset};
 std::atomic<void*> g_last_swapchain_ptr_unsafe{nullptr}; // TODO: unsafe remove later
 std::atomic<int> g_last_reshade_device_api{0};
 std::atomic<uint32_t> g_last_api_version{0};
@@ -268,6 +268,12 @@ DxgiBypassMode GetFlipStateForAPI(int api) {
 // Swapchain event counters - reset on each swapchain creation
 std::array<std::atomic<uint32_t>, NUM_EVENTS> g_swapchain_event_counters = {}; // Array for all On* events
 
+// NVAPI event counters - separate from swapchain events
+std::array<std::atomic<uint32_t>, NUM_NVAPI_EVENTS> g_nvapi_event_counters = {}; // Array for NVAPI events
+
+// NVAPI sleep timestamp tracking
+std::atomic<uint64_t> g_nvapi_last_sleep_timestamp_ns{0}; // Last NVAPI_D3D_Sleep call timestamp in nanoseconds
+
 std::atomic<uint32_t> g_swapchain_event_total_count{0}; // Total events across all types
 
 // OpenGL hook counters
@@ -313,6 +319,7 @@ std::atomic<bool> s_reflex_boost{false};
 std::atomic<bool> s_reflex_use_markers{true};     // Use markers for optimization
 std::atomic<bool> s_reflex_generate_markers{true}; // Generate markers in frame timeline
 std::atomic<bool> s_reflex_enable_sleep{false}; // Disabled by default
+std::atomic<bool> s_reflex_supress_native{false}; // Disabled by default
 std::atomic<bool> s_enable_reflex_logging{false}; // Disabled by default
 
 

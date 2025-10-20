@@ -577,6 +577,18 @@ void DrawTimeSlowdownControls() {
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Enable compatibility mode for time slowdown hooks. This may improve compatibility with certain games.");
     }
+	ImGui::SameLine();
+	if (ImGui::SmallButton("Reset TS")) {
+		// Reset time slowdown to defaults
+		settings::g_experimentalTabSettings.timeslowdown_enabled.SetValue(false);
+		display_commanderhooks::SetTimeslowdownEnabled(false);
+		settings::g_experimentalTabSettings.timeslowdown_multiplier.SetValue(1.0f);
+		display_commanderhooks::SetTimeslowdownMultiplier(1.0f);
+		LogInfo("Time slowdown reset: disabled and multiplier set to 1.0x");
+	}
+	if (ImGui::IsItemHovered()) {
+		ImGui::SetTooltip("Disable Time Slowdown and set multiplier to 1.0x.");
+	}
 
     if (settings::g_experimentalTabSettings.timeslowdown_enabled.GetValue()) {
         ImGui::Spacing();

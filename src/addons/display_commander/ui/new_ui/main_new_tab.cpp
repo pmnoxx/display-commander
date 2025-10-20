@@ -1105,7 +1105,14 @@ void DrawDisplaySettings() {
                         case DxgiBypassMode::kOverlay:                  flip_state_str = "MPO iFlip"; break;
                         case DxgiBypassMode::kIndependentFlip:          flip_state_str = "iFlip"; break;
                         case DxgiBypassMode::kQueryFailedSwapchainNull: flip_state_str = "Query Failed: Null"; break;
-                        case DxgiBypassMode::kQueryFailedNoMedia:       flip_state_str = "Query Failed: No Media"; break;
+                        case DxgiBypassMode::kQueryFailedNoMedia:       {
+                            if (GetModuleHandleA("sl.interposer.dll") != nullptr) {
+                                flip_state_str = "(Streamline Interposer detected - Flip State Query not supported)";
+                            } else {
+                                flip_state_str = "Query Failed: No Media";
+                            }
+                            break;
+                        }
                         case DxgiBypassMode::kQueryFailedNoSwapchain1:  flip_state_str = "Query Failed: No Swapchain1"; break;
                         case DxgiBypassMode::kQueryFailedNoStats:       flip_state_str = "Query Failed: No Stats"; break;
                         case DxgiBypassMode::kUnknown:
@@ -1159,8 +1166,13 @@ void DrawDisplaySettings() {
                             ImGui::TextColored(ui::colors::TEXT_ERROR, "  • Query Failed: Swapchain is null");
                             ImGui::Text("    Cannot determine flip state - swapchain not available");
                         } else if (flip_state == DxgiBypassMode::kQueryFailedNoMedia) {
-                            ImGui::TextColored(ui::colors::TEXT_ERROR, "  • Query Failed: IDXGISwapChainMedia not available");
-                            ImGui::Text("    Cannot determine flip state - media interface not supported");
+                            if (GetModuleHandleA("sl.interposer.dll") != nullptr) {
+                                ImGui::TextColored(ui::colors::TEXT_ERROR,  ICON_FK_WARNING "  • Streamline Interposer detected - Flip State Query not supported");
+                                ImGui::Text("    Cannot determine flip state - call after at least one Present");
+                            } else {
+                                ImGui::TextColored(ui::colors::TEXT_ERROR, "  • Query Failed: GetFrameStatisticsMedia failed");
+                                ImGui::Text("    Cannot determine flip state - call after at least one Present");
+                            }
                         } else if (flip_state == DxgiBypassMode::kQueryFailedNoStats) {
                             ImGui::TextColored(ui::colors::TEXT_ERROR, "  • Query Failed: GetFrameStatisticsMedia failed");
                             ImGui::Text("    Cannot determine flip state - call after at least one Present");

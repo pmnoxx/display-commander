@@ -36,6 +36,19 @@ namespace ui::new_ui {
 namespace {
 // Flag to indicate a restart is required after changing VSync/tearing options
 std::atomic<bool> s_restart_needed_vsync_tearing{false};
+
+// Helper function to check if native Reflex is active
+bool IsNativeReflexActive() {
+    return g_nvapi_event_counters[NVAPI_EVENT_D3D_SET_SLEEP_MODE].load() > 0;
+}
+
+// Helper function to check if injected Reflex is active
+bool DidNativeReflexSleepRecently() {
+    // Check if injected Reflex has been called recently (within last 100ms)
+    auto now = utils::get_now_ns();
+    auto last_injected_call = g_nvapi_last_sleep_timestamp_ns.load();
+    return last_injected_call > 0 && (now - last_injected_call) < utils::SEC_TO_NS; // 1s in nanoseconds
+}
 }  // anonymous namespace
 
 void DrawFrameTimeGraph() {
@@ -421,6 +434,7 @@ void DrawQuickResolutionChanger() {
 }
 
 void DrawDisplaySettings() {
+    auto now = utils::get_now_ns();
     {
         // Target Display dropdown
         // Use device ID-based approach for better reliability
@@ -604,8 +618,7 @@ void DrawDisplaySettings() {
             if (current_api == static_cast<int>(reshade::api::device_api::d3d9)) {
                 ImGui::TextColored(ui::colors::TEXT_WARNING, ICON_FK_WARNING " Warning: Reflex does not work with Direct3D 9");
             } else {
-                bool is_native_reflex_active = g_swapchain_event_counters[SWAPCHAIN_EVENT_NVAPI_D3D_SET_SLEEP_MODE].load() > 0;
-                if (is_native_reflex_active) {
+                if (IsNativeReflexActive()) {
                     ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), ICON_FK_OK " Native Reflex: ACTIVE");
                     if (ImGui::IsItemHovered()) {
                         ImGui::SetTooltip(
@@ -615,14 +628,24 @@ void DrawDisplaySettings() {
                     double native_ns = g_sleep_reflex_native_ns.load();
                     double calls_per_second = native_ns <= 0 ? -1 : 1000000000.0 / static_cast<double>(native_ns);
                     ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Native Reflex: %.2f times/sec (%.1f ms interval)", calls_per_second, native_ns / 1000000.0);
+                    if (!DidNativeReflexSleepRecently()) {
+                        ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f), ICON_FK_WARNING " Warning: Native Reflex is not sleeping recently - may indicate issues! (FIXME)");
+                    }
                 } else {
                     ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), ICON_FK_OK " Injected Reflex: ACTIVE");
                     double injected_ns = g_sleep_reflex_injected_ns.load();
                     double calls_per_second = injected_ns <= 0 ? -1 : 1000000000.0 / static_cast<double>(injected_ns);
                     ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Injected Reflex: %.2f times/sec (%.1f ms interval)", calls_per_second, injected_ns / 1000000.0);
+
+
+                    // Warn if both native and injected reflex are running simultaneously
+                    if (DidNativeReflexSleepRecently()) {
+                        ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f), ICON_FK_WARNING " Warning: Both native and injected Reflex are active - this may cause conflicts! (FIXME)");
+                    }
                 }
             //injected reflex status:
             }
+            #if 0
             bool reflex_low_latency = settings::g_developerTabSettings.reflex_low_latency.GetValue();
             if (ImGui::Checkbox("Low Latency Mode", &reflex_low_latency)) {
                 settings::g_developerTabSettings.reflex_low_latency.SetValue(reflex_low_latency);
@@ -632,6 +655,7 @@ void DrawDisplaySettings() {
                 ImGui::SetTooltip("Enables NVIDIA Reflex Low Latency Mode to reduce input lag and system latency.\nThis helps improve responsiveness in competitive gaming scenarios.");
             }
             ImGui::SameLine();
+            #endif
             bool reflex_boost = settings::g_developerTabSettings.reflex_boost.GetValue();
             if (ImGui::Checkbox("Boost", &reflex_boost)) {
                 settings::g_developerTabSettings.reflex_boost.SetValue(reflex_boost);
@@ -639,6 +663,14 @@ void DrawDisplaySettings() {
             }
             if (ImGui::IsItemHovered()) {
                 ImGui::SetTooltip("Enables NVIDIA Reflex Boost mode for maximum latency reduction.\nThis mode may increase GPU power consumption but provides the lowest possible input lag.");
+            }
+            if (IsNativeReflexActive()) {
+                if (CheckboxSetting(settings::g_developerTabSettings.reflex_supress_native, "Override Native Reflex (PlaceHolder)")) {
+                    LogInfo("Override Native Reflex %s", settings::g_developerTabSettings.reflex_supress_native.GetValue() ? "enabled" : "disabled");
+                }
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip("Override the game's native Reflex implementation with the addon's injected version.");
+                }
             }
         }
 
@@ -1000,16 +1032,24 @@ void DrawDisplaySettings() {
                         flip_color = ui::colors::FLIP_COMPOSED; // Red - bad
                     } else if (flip_state == DxgiBypassMode::kOverlay || flip_state == DxgiBypassMode::kIndependentFlip) {
                         flip_color = ui::colors::FLIP_INDEPENDENT; // Green - good
+                    } else if (flip_state == DxgiBypassMode::kQueryFailedSwapchainNull ||
+                               flip_state == DxgiBypassMode::kQueryFailedNoMedia ||
+                               flip_state == DxgiBypassMode::kQueryFailedNoStats) {
+                        flip_color = ui::colors::TEXT_ERROR; // Red - query failed
                     } else {
-                        flip_color = ui::colors::FLIP_UNKNOWN; // Yellow - unknown
+                        flip_color = ui::colors::FLIP_UNKNOWN; // Yellow - unknown/unset
                     }
                     const char* flip_state_str = "Unknown";
                     switch (flip_state) {
-                        case DxgiBypassMode::kComposed:      flip_state_str = "Composed"; break;
-                        case DxgiBypassMode::kOverlay:       flip_state_str = "MPO iFlip"; break;
-                        case DxgiBypassMode::kIndependentFlip: flip_state_str = "iFlip"; break;
+                        case DxgiBypassMode::kUnset:                    flip_state_str = "Unset"; break;
+                        case DxgiBypassMode::kComposed:                 flip_state_str = "Composed"; break;
+                        case DxgiBypassMode::kOverlay:                  flip_state_str = "MPO iFlip"; break;
+                        case DxgiBypassMode::kIndependentFlip:          flip_state_str = "iFlip"; break;
+                        case DxgiBypassMode::kQueryFailedSwapchainNull: flip_state_str = "Query Failed: Null"; break;
+                        case DxgiBypassMode::kQueryFailedNoMedia:       flip_state_str = "Query Failed: No Media"; break;
+                        case DxgiBypassMode::kQueryFailedNoStats:       flip_state_str = "Query Failed: No Stats"; break;
                         case DxgiBypassMode::kUnknown:
-                        default:                             {
+                        default:                                        {
                             if (desc.present_mode == DXGI_SWAP_EFFECT_FLIP_DISCARD || desc.present_mode == DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL) {
                                 flip_state_str = "Unknown";
                             } else {
@@ -1058,11 +1098,15 @@ void DrawDisplaySettings() {
 
                     const char* flip_state_str = "Unknown";
                     switch (flip_state) {
-                        case DxgiBypassMode::kComposed:      flip_state_str = "Composed"; break;
-                        case DxgiBypassMode::kOverlay:       flip_state_str = "MPO iFlip"; break;
-                        case DxgiBypassMode::kIndependentFlip: flip_state_str = "iFlip"; break;
+                        case DxgiBypassMode::kUnset:                    flip_state_str = "Unset"; break;
+                        case DxgiBypassMode::kComposed:                 flip_state_str = "Composed"; break;
+                        case DxgiBypassMode::kOverlay:                  flip_state_str = "MPO iFlip"; break;
+                        case DxgiBypassMode::kIndependentFlip:          flip_state_str = "iFlip"; break;
+                        case DxgiBypassMode::kQueryFailedSwapchainNull: flip_state_str = "Query Failed: Null"; break;
+                        case DxgiBypassMode::kQueryFailedNoMedia:       flip_state_str = "Query Failed: No Media"; break;
+                        case DxgiBypassMode::kQueryFailedNoStats:       flip_state_str = "Query Failed: No Stats"; break;
                         case DxgiBypassMode::kUnknown:
-                        default:                             {
+                        default:                                        {
                             if (desc.present_mode == DXGI_SWAP_EFFECT_FLIP_DISCARD || desc.present_mode == DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL) {
                                 flip_state_str = "Unknown";
                             } else {
@@ -1077,8 +1121,12 @@ void DrawDisplaySettings() {
                         flip_color = ui::colors::FLIP_COMPOSED; // Red - bad
                     } else if (flip_state == DxgiBypassMode::kOverlay || flip_state == DxgiBypassMode::kIndependentFlip) {
                         flip_color = ui::colors::FLIP_INDEPENDENT; // Green - good
+                    } else if (flip_state == DxgiBypassMode::kQueryFailedSwapchainNull ||
+                               flip_state == DxgiBypassMode::kQueryFailedNoMedia ||
+                               flip_state == DxgiBypassMode::kQueryFailedNoStats) {
+                        flip_color = ui::colors::TEXT_ERROR; // Red - query failed
                     } else {
-                        flip_color = ui::colors::FLIP_UNKNOWN; // Yellow - unknown
+                        flip_color = ui::colors::FLIP_UNKNOWN; // Yellow - unknown/unset
                     }
 
                     ImGui::TextColored(flip_color, "Flip: %s", flip_state_str);
@@ -1103,6 +1151,18 @@ void DrawDisplaySettings() {
                         } else if (flip_state == DxgiBypassMode::kIndependentFlip) {
                             ImGui::TextColored(ui::colors::FLIP_INDEPENDENT, "  • Independent Flip (Green): Legacy direct flip mode");
                             ImGui::Text("    Good performance and low latency");
+                        } else if (flip_state == DxgiBypassMode::kQueryFailedSwapchainNull) {
+                            ImGui::TextColored(ui::colors::TEXT_ERROR, "  • Query Failed: Swapchain is null");
+                            ImGui::Text("    Cannot determine flip state - swapchain not available");
+                        } else if (flip_state == DxgiBypassMode::kQueryFailedNoMedia) {
+                            ImGui::TextColored(ui::colors::TEXT_ERROR, "  • Query Failed: IDXGISwapChainMedia not available");
+                            ImGui::Text("    Cannot determine flip state - media interface not supported");
+                        } else if (flip_state == DxgiBypassMode::kQueryFailedNoStats) {
+                            ImGui::TextColored(ui::colors::TEXT_ERROR, "  • Query Failed: GetFrameStatisticsMedia failed");
+                            ImGui::Text("    Cannot determine flip state - call after at least one Present");
+                        } else if (flip_state == DxgiBypassMode::kUnset) {
+                            ImGui::TextColored(ui::colors::FLIP_UNKNOWN, "  • Flip state not yet queried");
+                            ImGui::Text("    Initial state - will be determined on first query");
                         } else {
                             ImGui::TextColored(ui::colors::FLIP_UNKNOWN, "  • Flip state not yet determined");
                             ImGui::Text("    Wait for a few frames to render");
@@ -1552,11 +1612,15 @@ void DrawImportantInfo() {
         DxgiBypassMode flip_state = GetFlipStateForAPI(current_api);
 
         switch (flip_state) {
-            case DxgiBypassMode::kComposed:      flip_state_str = "Composed Flip"; break;
-            case DxgiBypassMode::kOverlay:       flip_state_str = "MPO Independent Flip"; break;
-            case DxgiBypassMode::kIndependentFlip: flip_state_str = "Legacy Independent Flip"; break;
+            case DxgiBypassMode::kUnset:                    flip_state_str = "Unset"; break;
+            case DxgiBypassMode::kComposed:                 flip_state_str = "Composed Flip"; break;
+            case DxgiBypassMode::kOverlay:                  flip_state_str = "MPO Independent Flip"; break;
+            case DxgiBypassMode::kIndependentFlip:          flip_state_str = "Legacy Independent Flip"; break;
+            case DxgiBypassMode::kQueryFailedSwapchainNull: flip_state_str = "Query Failed: Swapchain Null"; break;
+            case DxgiBypassMode::kQueryFailedNoMedia:       flip_state_str = "Query Failed: No Media Interface"; break;
+            case DxgiBypassMode::kQueryFailedNoStats:       flip_state_str = "Query Failed: No Statistics"; break;
             case DxgiBypassMode::kUnknown:
-            default:                             flip_state_str = "Unknown"; break;
+            default:                                        flip_state_str = "Unknown"; break;
         }
 
         oss.str("");
@@ -1570,8 +1634,13 @@ void DrawImportantInfo() {
         } else if (flip_state == DxgiBypassMode::kOverlay || flip_state == DxgiBypassMode::kIndependentFlip) {
             // Independent Flip modes - Green
             ImGui::TextColored(ui::colors::FLIP_INDEPENDENT, "%s", oss.str().c_str());
+        } else if (flip_state == DxgiBypassMode::kQueryFailedSwapchainNull ||
+                   flip_state == DxgiBypassMode::kQueryFailedNoMedia ||
+                   flip_state == DxgiBypassMode::kQueryFailedNoStats) {
+            // Query Failed - Red
+            ImGui::TextColored(ui::colors::TEXT_ERROR, "%s", oss.str().c_str());
         } else {
-            // Unknown - Yellow
+            // Unknown/Unset - Yellow
             ImGui::TextColored(ui::colors::FLIP_UNKNOWN, "%s", oss.str().c_str());
         }
     }

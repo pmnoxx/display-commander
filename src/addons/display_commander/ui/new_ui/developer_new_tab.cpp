@@ -315,7 +315,7 @@ void DrawNvapiSettings() {
     // Minimal NVIDIA Reflex Controls (device runtime dependent)
     if (ImGui::CollapsingHeader("NVIDIA Reflex (Minimal)", ImGuiTreeNodeFlags_DefaultOpen)) {
         // Native Reflex Status Indicator
-        bool is_native_reflex_active = g_swapchain_event_counters[SWAPCHAIN_EVENT_NVAPI_D3D_SET_SLEEP_MODE].load() > 0;
+        bool is_native_reflex_active = g_nvapi_event_counters[NVAPI_EVENT_D3D_SET_SLEEP_MODE].load() > 0;
         if (is_native_reflex_active) {
             ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), ICON_FK_OK " Native Reflex: ACTIVE");
             if (ImGui::IsItemHovered()) {

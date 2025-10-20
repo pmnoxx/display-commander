@@ -246,7 +246,16 @@ extern std::atomic<Microsoft::WRL::ComPtr<IDXGIFactory1>*> g_shared_dxgi_factory
 Microsoft::WRL::ComPtr<IDXGIFactory1> GetSharedDXGIFactory();
 
 // Enums
-enum class DxgiBypassMode : std::uint8_t { kUnknown, kComposed, kOverlay, kIndependentFlip };
+enum class DxgiBypassMode : std::uint8_t {
+    kUnset,                    // Initial state, not yet queried
+    kUnknown,                  // Query succeeded but unknown composition mode
+    kComposed,                 // Composed presentation mode
+    kOverlay,                  // Hardware overlay (MPO) presentation mode
+    kIndependentFlip,          // Independent flip presentation mode
+    kQueryFailedSwapchainNull, // Query failed: swapchain is null
+    kQueryFailedNoMedia,       // Query failed: IDXGISwapChainMedia not available
+    kQueryFailedNoStats        // Query failed: GetFrameStatisticsMedia failed
+};
 enum class WindowStyleMode : std::uint8_t { KEEP, BORDERLESS, OVERLAPPED_WINDOW };
 enum class FpsLimiterMode : std::uint8_t { kDisabled = 0, kReflex = 1, kOnPresentSync = 2, kLatentSync = 3, kNonReflexLowLatency = 4 };
 enum class WindowMode : std::uint8_t { kFullscreen = 0, kAspectRatio = 1 };
@@ -498,7 +507,7 @@ extern std::atomic<bool> s_continuous_monitoring_enabled;
 
 // Atomic variables
 extern std::atomic<int> g_comp_query_counter;
-extern std::atomic<int> g_comp_last_logged;
+extern std::atomic<DxgiBypassMode> g_comp_last_logged;
 extern std::atomic<void*> g_last_swapchain_ptr_unsafe; // Using void* to avoid reshade dependency // TODO: unsafe remove later
 extern std::atomic<int> g_last_reshade_device_api; // Store device API type
 extern std::atomic<uint32_t> g_last_api_version; // Store API version/feature level (e.g., D3D_FEATURE_LEVEL_11_1)
@@ -744,12 +753,6 @@ enum SwapchainEventIndex {
     SWAPCHAIN_EVENT_DXGI_CREATEFACTORY1,
     SWAPCHAIN_EVENT_DXGI_SETHDRMETADATA,
     SWAPCHAIN_EVENT_DX9_PRESENT,
-    SWAPCHAIN_EVENT_NVAPI_GET_HDR_CAPABILITIES,
-    // NVAPI Reflex hooks
-    SWAPCHAIN_EVENT_NVAPI_D3D_SET_LATENCY_MARKER,
-    SWAPCHAIN_EVENT_NVAPI_D3D_SET_SLEEP_MODE,
-    SWAPCHAIN_EVENT_NVAPI_D3D_SLEEP,
-    SWAPCHAIN_EVENT_NVAPI_D3D_GET_LATENCY,
     // Streamline hooks
     SWAPCHAIN_EVENT_STREAMLINE_SL_INIT,
     SWAPCHAIN_EVENT_STREAMLINE_SL_IS_FEATURE_SUPPORTED,
@@ -758,8 +761,24 @@ enum SwapchainEventIndex {
     NUM_EVENTS
 };
 
+// NVAPI event counters - separate from swapchain events
+enum NvapiEventIndex {
+    NVAPI_EVENT_GET_HDR_CAPABILITIES,
+    NVAPI_EVENT_D3D_SET_LATENCY_MARKER,
+    NVAPI_EVENT_D3D_SET_SLEEP_MODE,
+    NVAPI_EVENT_D3D_SLEEP,
+    NVAPI_EVENT_D3D_GET_LATENCY,
+    NUM_NVAPI_EVENTS
+};
+
 // Swapchain event counters - reset on each swapchain creation
 extern std::array<std::atomic<uint32_t>, NUM_EVENTS> g_swapchain_event_counters;  // Array for all On* events
+
+// NVAPI event counters - separate from swapchain events
+extern std::array<std::atomic<uint32_t>, NUM_NVAPI_EVENTS> g_nvapi_event_counters;  // Array for NVAPI events
+
+// NVAPI sleep timestamp tracking
+extern std::atomic<uint64_t> g_nvapi_last_sleep_timestamp_ns;  // Last NVAPI_D3D_Sleep call timestamp in nanoseconds
 extern std::atomic<uint32_t> g_swapchain_event_total_count;   // Total events across all types
 
 // OpenGL hook counters
@@ -805,6 +824,7 @@ extern std::atomic<bool> s_reflex_boost;           // Low Latency Boost
 extern std::atomic<bool> s_reflex_use_markers;     // Use markers for optimization
 extern std::atomic<bool> s_reflex_generate_markers; // Generate markers in frame timeline
 extern std::atomic<bool> s_reflex_enable_sleep;    // Enable Reflex sleep mode (off by default)
+extern std::atomic<bool> s_reflex_supress_native;  // Suppress native Reflex to use injected version
 extern std::atomic<bool> s_enable_reflex_logging;  // Enable Reflex logging
 
 

@@ -391,7 +391,7 @@ void DrawSwapchainEventCounters() {
         auto params = g_last_nvapi_sleep_mode_params.load();
         if (params) {
             ImGui::Text("Low Latency Mode: %s", params->bLowLatencyMode ? "Enabled" : "Disabled");
-            ImGui::Text("Low Latency Boost: %s", params->bLowLatencyBoost ? "Enabled" : "Disabled");
+            ImGui::Text("Boost: %s", params->bLowLatencyBoost ? "Enabled" : "Disabled");
             ImGui::Text("Use Markers to Optimize: %s", params->bUseMarkersToOptimize ? "Enabled" : "Disabled");
             ImGui::Text("Minimum Interval: %u μs", params->minimumIntervalUs);
 

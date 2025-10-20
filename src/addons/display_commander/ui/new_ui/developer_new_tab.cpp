@@ -6,6 +6,7 @@
 #include "../../settings/developer_tab_settings.hpp"
 #include "../../utils/general_utils.hpp"
 #include "../../utils/reshade_global_config.hpp"
+#include "imgui.h"
 #include "settings_wrapper.hpp"
 
 #include <atomic>
@@ -356,20 +357,27 @@ void DrawNvapiSettings() {
         if (reflex_auto_configure) {
             ImGui::BeginDisabled();
             ImGui::Text("Auto-configure is handled by continuous monitoring");
-            ImGui::EndDisabled();
         }
 
         if (ImGui::Checkbox("Enable Reflex", &reflex_enable)) {
             settings::g_developerTabSettings.reflex_enable.SetValue(reflex_enable);
             s_reflex_enable.store(reflex_enable);
         }
+        if (reflex_auto_configure) {
+            ImGui::EndDisabled();
+            ImGui::Text("Auto-configure is handled by continuous monitoring");
+        }
+
         if (ImGui::Checkbox("Low Latency Mode", &reflex_low_latency)) {
             settings::g_developerTabSettings.reflex_low_latency.SetValue(reflex_low_latency);
             s_reflex_low_latency.store(reflex_low_latency);
         }
-        if (ImGui::Checkbox("Low Latency Boost", &reflex_boost)) {
+        if (ImGui::Checkbox("Boost", &reflex_boost)) {
             settings::g_developerTabSettings.reflex_boost.SetValue(reflex_boost);
             s_reflex_boost.store(reflex_boost);
+        }
+        if (reflex_auto_configure) {
+            ImGui::BeginDisabled();
         }
         if (ImGui::Checkbox("Use Markers to Optimize", &reflex_markers)) {
             settings::g_developerTabSettings.reflex_use_markers.SetValue(reflex_markers);

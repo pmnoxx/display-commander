@@ -27,6 +27,8 @@ Note: Applying window operations from the main thread can crash some apps. This 
 - FPS limiter: Foreground and background caps using a custom limiter
 - Audio controls: Per-process volume, manual mute, mute in background, conditional background mute
 - Live indicators: flip state
+- **NVIDIA Reflex support**: Low-latency mode integration for reduced input lag
+- **AntiLag II/XeLL support**: AMD AntiLag 2 and XeLL latency reduction technologies (via fake NVAPI)
 
 ## Known Issues
 

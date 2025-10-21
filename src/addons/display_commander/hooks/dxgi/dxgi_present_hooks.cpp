@@ -355,6 +355,11 @@ IDXGISwapChain_ResizeBuffers1_pfn IDXGISwapChain_ResizeBuffers1_Original = nullp
 // IDXGISwapChain4 original function pointers
 IDXGISwapChain_SetHDRMetaData_pfn IDXGISwapChain_SetHDRMetaData_Original = nullptr;
 
+// IDXGIOutput original function pointers
+IDXGIOutput_SetGammaControl_pfn IDXGIOutput_SetGammaControl_Original = nullptr;
+IDXGIOutput_GetGammaControl_pfn IDXGIOutput_GetGammaControl_Original = nullptr;
+IDXGIOutput_GetDesc_pfn IDXGIOutput_GetDesc_Original = nullptr;
+
 // Hook state and swapchain tracking
 namespace {
     std::atomic<bool> g_dxgi_present_hooks_installed{false};
@@ -765,7 +770,15 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_ResizeTarget_Detour(IDXGISwapChain *Thi
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetContainingOutput_Detour(IDXGISwapChain *This, IDXGIOutput **ppOutput) {
     g_dxgi_core_event_counters[DXGI_CORE_EVENT_GETCONTAININGOUTPUT].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
-    return IDXGISwapChain_GetContainingOutput_Original(This, ppOutput);
+
+    HRESULT hr = IDXGISwapChain_GetContainingOutput_Original(This, ppOutput);
+
+    // Hook the IDXGIOutput if we successfully got one
+    if (SUCCEEDED(hr) && ppOutput && *ppOutput) {
+        HookIDXGIOutput(*ppOutput);
+    }
+
+    return hr;
 }
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetFrameStatistics_Detour(IDXGISwapChain *This, DXGI_FRAME_STATISTICS *pStats) {
@@ -919,11 +932,145 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetHDRMetaData_Detour(IDXGISwapChain4 *
     return This->SetHDRMetaData(Type, Size, pMetaData);
 }
 
+// Hooked IDXGIOutput functions
+HRESULT STDMETHODCALLTYPE IDXGIOutput_SetGammaControl_Detour(IDXGIOutput *This, const DXGI_GAMMA_CONTROL *pArray) {
+    // Increment DXGI Output SetGammaControl counter
+    g_dxgi_output_event_counters[DXGI_OUTPUT_EVENT_SETGAMMACONTROL].fetch_add(1);
+    g_swapchain_event_total_count.fetch_add(1);
+
+    // Log the SetGammaControl call (only on first few calls to avoid spam)
+    static int setgammacontrol_log_count = 0;
+    if (setgammacontrol_log_count < 3) {
+        LogInfo("IDXGIOutput::SetGammaControl called");
+        setgammacontrol_log_count++;
+    }
+
+    // Call original function
+    if (IDXGIOutput_SetGammaControl_Original != nullptr) {
+        return IDXGIOutput_SetGammaControl_Original(This, pArray);
+    }
+
+    // Fallback to direct call if hook failed
+    return This->SetGammaControl(pArray);
+}
+
+HRESULT STDMETHODCALLTYPE IDXGIOutput_GetGammaControl_Detour(IDXGIOutput *This, DXGI_GAMMA_CONTROL *pArray) {
+    // Increment DXGI Output GetGammaControl counter
+    g_dxgi_output_event_counters[DXGI_OUTPUT_EVENT_GETGAMMACONTROL].fetch_add(1);
+    g_swapchain_event_total_count.fetch_add(1);
+
+    // Log the GetGammaControl call (only on first few calls to avoid spam)
+    static int getgammacontrol_log_count = 0;
+    if (getgammacontrol_log_count < 3) {
+        LogInfo("IDXGIOutput::GetGammaControl called");
+        getgammacontrol_log_count++;
+    }
+
+    // Call original function
+    if (IDXGIOutput_GetGammaControl_Original != nullptr) {
+        return IDXGIOutput_GetGammaControl_Original(This, pArray);
+    }
+
+    // Fallback to direct call if hook failed
+    return This->GetGammaControl(pArray);
+}
+
+HRESULT STDMETHODCALLTYPE IDXGIOutput_GetDesc_Detour(IDXGIOutput *This, DXGI_OUTPUT_DESC *pDesc) {
+    // Increment DXGI Output GetDesc counter
+    g_dxgi_output_event_counters[DXGI_OUTPUT_EVENT_GETDESC].fetch_add(1);
+    g_swapchain_event_total_count.fetch_add(1);
+
+    // Log the GetDesc call (only on first few calls to avoid spam)
+    static int getdesc_log_count = 0;
+    if (getdesc_log_count < 3) {
+        LogInfo("IDXGIOutput::GetDesc called");
+        getdesc_log_count++;
+    }
+
+    // Call original function
+    if (IDXGIOutput_GetDesc_Original != nullptr) {
+        return IDXGIOutput_GetDesc_Original(This, pDesc);
+    }
+
+    // Fallback to direct call if hook failed
+    return This->GetDesc(pDesc);
+}
+
 // Global variables to track hooked swapchains
 namespace {
     // Legacy variables - kept for compatibility but will be replaced by SwapchainTrackingManager
     IDXGISwapChain *g_hooked_swapchain = nullptr;
+
+    // Track hooked IDXGIOutput objects to avoid duplicate hooking
+    std::atomic<bool> g_dxgi_output_hooks_installed{false};
 } // namespace
+
+// Hook IDXGIOutput methods
+bool HookIDXGIOutput(IDXGIOutput *output) {
+    if (!output) {
+        return false;
+    }
+
+    // Check if we already hooked this output
+    static std::atomic<bool> output_hooked{false};
+    if (output_hooked.load()) {
+        return true;
+    }
+
+    // Get the vtable
+    void **vtable = *(void ***)output;
+
+    // IDXGIOutput vtable layout:
+    // [0-2]   IUnknown methods
+    // [3-5]   IDXGIObject methods
+    // [6-7]   IDXGIDeviceSubObject methods
+    // [8]     IDXGIOutput::GetDesc
+    // [9]     IDXGIOutput::GetDisplayModeList
+    // [10]    IDXGIOutput::FindClosestMatchingMode
+    // [11]    IDXGIOutput::WaitForVBlank
+    // [12]    IDXGIOutput::TakeOwnership
+    // [13]    IDXGIOutput::ReleaseOwnership
+    // [14]    IDXGIOutput::GetGammaControlCapabilities
+    // [15]    IDXGIOutput::SetGammaControl
+    // [16]    IDXGIOutput::GetGammaControl
+    // [17]    IDXGIOutput::SetDisplaySurface
+    // [18]    IDXGIOutput::GetDisplaySurfaceData
+    // [19]    IDXGIOutput::GetFrameStatistics
+
+    LogInfo("Hooking IDXGIOutput methods");
+
+    // Hook SetGammaControl (index 15)
+    if (IsVTableEntryValid(vtable, 15)) {
+        if (MH_CreateHook(vtable[15], IDXGIOutput_SetGammaControl_Detour, (LPVOID *)&IDXGIOutput_SetGammaControl_Original) != MH_OK) {
+            LogError("Failed to create IDXGIOutput::SetGammaControl hook");
+        } else {
+            LogInfo("IDXGIOutput::SetGammaControl hook created successfully");
+        }
+    }
+
+    // Hook GetGammaControl (index 16)
+    if (IsVTableEntryValid(vtable, 16)) {
+        if (MH_CreateHook(vtable[16], IDXGIOutput_GetGammaControl_Detour, (LPVOID *)&IDXGIOutput_GetGammaControl_Original) != MH_OK) {
+            LogError("Failed to create IDXGIOutput::GetGammaControl hook");
+        } else {
+            LogInfo("IDXGIOutput::GetGammaControl hook created successfully");
+        }
+    }
+
+    // Hook GetDesc (index 8)
+    if (IsVTableEntryValid(vtable, 8)) {
+        if (MH_CreateHook(vtable[8], IDXGIOutput_GetDesc_Detour, (LPVOID *)&IDXGIOutput_GetDesc_Original) != MH_OK) {
+            LogError("Failed to create IDXGIOutput::GetDesc hook");
+        } else {
+            LogInfo("IDXGIOutput::GetDesc hook created successfully");
+        }
+    }
+
+    output_hooked.store(true);
+    g_dxgi_output_hooks_installed.store(true);
+
+    return true;
+}
 
 // VTable hooking functions
 bool HookFactoryVTable(IDXGIFactory *factory);

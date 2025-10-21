@@ -85,6 +85,11 @@ using IDXGISwapChain_ResizeBuffers1_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGISwap
 // IDXGISwapChain4 function pointer types
 using IDXGISwapChain_SetHDRMetaData_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGISwapChain4 *This, DXGI_HDR_METADATA_TYPE Type, UINT Size, void *pMetaData);
 
+// IDXGIOutput function pointer types
+using IDXGIOutput_SetGammaControl_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGIOutput *This, const DXGI_GAMMA_CONTROL *pArray);
+using IDXGIOutput_GetGammaControl_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGIOutput *This, DXGI_GAMMA_CONTROL *pArray);
+using IDXGIOutput_GetDesc_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGIOutput *This, DXGI_OUTPUT_DESC *pDesc);
+
 // Original function pointers
 extern IDXGISwapChain_Present_pfn IDXGISwapChain_Present_Original;
 extern IDXGISwapChain_Present1_pfn IDXGISwapChain_Present1_Original;
@@ -131,6 +136,11 @@ extern IDXGISwapChain_ResizeBuffers1_pfn IDXGISwapChain_ResizeBuffers1_Original;
 // IDXGISwapChain4 original function pointers
 extern IDXGISwapChain_SetHDRMetaData_pfn IDXGISwapChain_SetHDRMetaData_Original;
 
+// IDXGIOutput original function pointers
+extern IDXGIOutput_SetGammaControl_pfn IDXGIOutput_SetGammaControl_Original;
+extern IDXGIOutput_GetGammaControl_pfn IDXGIOutput_GetGammaControl_Original;
+extern IDXGIOutput_GetDesc_pfn IDXGIOutput_GetDesc_Original;
+
 // Hooked DXGI Present functions
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain *This, UINT SyncInterval, UINT Flags);
 
@@ -160,6 +170,14 @@ bool HookFactory(IDXGIFactory *factory);
 
 // Record the native swapchain used in OnPresentUpdateBefore
 void RecordPresentUpdateSwapchain(IDXGISwapChain *swapchain);
+
+// Hooked IDXGIOutput functions
+HRESULT STDMETHODCALLTYPE IDXGIOutput_SetGammaControl_Detour(IDXGIOutput *This, const DXGI_GAMMA_CONTROL *pArray);
+HRESULT STDMETHODCALLTYPE IDXGIOutput_GetGammaControl_Detour(IDXGIOutput *This, DXGI_GAMMA_CONTROL *pArray);
+HRESULT STDMETHODCALLTYPE IDXGIOutput_GetDesc_Detour(IDXGIOutput *This, DXGI_OUTPUT_DESC *pDesc);
+
+// IDXGIOutput hooking function
+bool HookIDXGIOutput(IDXGIOutput *output);
 
 // Swapchain tracking management functions
 bool IsSwapchainTracked(IDXGISwapChain *swapchain);

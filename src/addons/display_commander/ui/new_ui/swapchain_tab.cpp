@@ -309,6 +309,14 @@ void DrawSwapchainEventCounters() {
         };
         displayEventCategory("DXGI SwapChain4 Methods", g_dxgi_sc4_event_counters, dxgi_sc4_event_names, ImVec4(0.8f, 0.8f, 0.8f, 1.0f));
 
+        // DXGI Output Methods
+        static const std::map<DxgiOutputEventIndex, const char*> dxgi_output_event_names = {
+            {DXGI_OUTPUT_EVENT_SETGAMMACONTROL, "DXGI_OUTPUT_EVENT_SETGAMMACONTROL"},
+            {DXGI_OUTPUT_EVENT_GETGAMMACONTROL, "DXGI_OUTPUT_EVENT_GETGAMMACONTROL"},
+            {DXGI_OUTPUT_EVENT_GETDESC, "DXGI_OUTPUT_EVENT_GETDESC"}
+        };
+        displayEventCategory("DXGI Output Methods", g_dxgi_output_event_counters, dxgi_output_event_names, ImVec4(0.8f, 1.0f, 0.8f, 1.0f));
+
         // DirectX 9 Methods
         static const std::map<Dx9EventIndex, const char*> dx9_event_names = {
             {DX9_EVENT_PRESENT, "DX9_EVENT_PRESENT"}

@@ -785,7 +785,15 @@ enum DxgiSwapChain4EventIndex {
     NUM_DXGI_SC4_EVENTS
 };
 
-// DirectX 9 Methods (74)
+// DXGI Output Methods (74-76)
+enum DxgiOutputEventIndex {
+    DXGI_OUTPUT_EVENT_SETGAMMACONTROL,
+    DXGI_OUTPUT_EVENT_GETGAMMACONTROL,
+    DXGI_OUTPUT_EVENT_GETDESC,
+    NUM_DXGI_OUTPUT_EVENTS
+};
+
+// DirectX 9 Methods (77)
 enum Dx9EventIndex {
     DX9_EVENT_PRESENT,
     NUM_DX9_EVENTS
@@ -819,6 +827,7 @@ extern std::array<std::atomic<uint32_t>, NUM_DXGI_SC2_EVENTS> g_dxgi_sc2_event_c
 extern std::array<std::atomic<uint32_t>, NUM_DXGI_SC3_EVENTS> g_dxgi_sc3_event_counters;
 extern std::array<std::atomic<uint32_t>, NUM_DXGI_FACTORY_EVENTS> g_dxgi_factory_event_counters;
 extern std::array<std::atomic<uint32_t>, NUM_DXGI_SC4_EVENTS> g_dxgi_sc4_event_counters;
+extern std::array<std::atomic<uint32_t>, NUM_DXGI_OUTPUT_EVENTS> g_dxgi_output_event_counters;
 extern std::array<std::atomic<uint32_t>, NUM_DX9_EVENTS> g_dx9_event_counters;
 extern std::array<std::atomic<uint32_t>, NUM_STREAMLINE_EVENTS> g_streamline_event_counters;
 

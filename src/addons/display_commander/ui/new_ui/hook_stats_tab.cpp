@@ -3,6 +3,7 @@
 #include "../../hooks/dinput_hooks.hpp"
 #include "../../hooks/opengl_hooks.hpp"
 #include "../../hooks/display_settings_hooks.hpp"
+#include "../../hooks/hid_statistics.hpp"
 #include "../../settings/experimental_tab_settings.hpp"
 #include "../../globals.hpp"
 
@@ -406,6 +407,149 @@ void DrawHookStatsTab() {
     } else {
         ImGui::SameLine();
         ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), ICON_FK_CANCEL);
+    }
+
+    ImGui::Spacing();
+    ImGui::Separator();
+
+    // HID API Statistics
+    ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "=== HID API Statistics ===");
+    ImGui::Text("Track HID device access calls (CreateFile, ReadFile, WriteFile, etc.)");
+    ImGui::Separator();
+
+    // Reset HID statistics button
+    if (ImGui::Button("Reset HID Statistics")) {
+        display_commanderhooks::ResetAllHIDStats();
+    }
+    ImGui::SameLine();
+    ImGui::Text("Click to reset all HID counters to zero");
+
+    ImGui::Spacing();
+    ImGui::Separator();
+
+    // Initialize HID statistics totals
+    uint64_t total_hid_calls = 0;
+    uint64_t total_successful = 0;
+    uint64_t total_failed = 0;
+    uint64_t total_blocked = 0;
+
+    // Display HID API statistics in a table
+    if (ImGui::BeginTable("HIDAPIStats", 5, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable)) {
+        ImGui::TableSetupColumn("API Function", ImGuiTableColumnFlags_WidthFixed, 200.0f);
+        ImGui::TableSetupColumn("Total Calls", ImGuiTableColumnFlags_WidthFixed, 100.0f);
+        ImGui::TableSetupColumn("Successful", ImGuiTableColumnFlags_WidthFixed, 100.0f);
+        ImGui::TableSetupColumn("Failed", ImGuiTableColumnFlags_WidthFixed, 100.0f);
+        ImGui::TableSetupColumn("Blocked", ImGuiTableColumnFlags_WidthFixed, 100.0f);
+        ImGui::TableHeadersRow();
+
+        for (int i = 0; i < display_commanderhooks::GetHIDAPICount(); ++i) {
+            const auto& stats = display_commanderhooks::GetHIDAPIStats(static_cast<display_commanderhooks::HIDAPIType>(i));
+            const char* api_name = display_commanderhooks::GetHIDAPIName(static_cast<display_commanderhooks::HIDAPIType>(i));
+
+            uint64_t total_calls = stats.total_calls.load();
+            uint64_t successful_calls = stats.successful_calls.load();
+            uint64_t failed_calls = stats.failed_calls.load();
+            uint64_t blocked_calls = stats.blocked_calls.load();
+
+            total_hid_calls += total_calls;
+            total_successful += successful_calls;
+            total_failed += failed_calls;
+            total_blocked += blocked_calls;
+
+            ImGui::TableNextRow();
+
+            // API name
+            ImGui::TableSetColumnIndex(0);
+            ImGui::Text("%s", api_name);
+
+            // Total calls
+            ImGui::TableSetColumnIndex(1);
+            if (total_calls > 0) {
+                ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "%llu", total_calls);
+            } else {
+                ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "%llu", total_calls);
+            }
+
+            // Successful calls
+            ImGui::TableSetColumnIndex(2);
+            if (successful_calls > 0) {
+                ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "%llu", successful_calls);
+            } else {
+                ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "%llu", successful_calls);
+            }
+
+            // Failed calls
+            ImGui::TableSetColumnIndex(3);
+            if (failed_calls > 0) {
+                ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "%llu", failed_calls);
+            } else {
+                ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "%llu", failed_calls);
+            }
+
+            // Blocked calls
+            ImGui::TableSetColumnIndex(4);
+            if (blocked_calls > 0) {
+                ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "%llu", blocked_calls);
+            } else {
+                ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "%llu", blocked_calls);
+            }
+        }
+
+        ImGui::EndTable();
+    }
+
+    ImGui::Spacing();
+    ImGui::Separator();
+
+    // HID API summary statistics
+    ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "HID API Summary:");
+    ImGui::Text("Total HID API Calls: %llu", total_hid_calls);
+    ImGui::Text("Successful Calls: %llu", total_successful);
+    ImGui::Text("Failed Calls: %llu", total_failed);
+    ImGui::Text("Blocked Calls: %llu", total_blocked);
+
+    if (total_hid_calls > 0) {
+        float success_rate = static_cast<float>(total_successful) / static_cast<float>(total_hid_calls) * 100.0f;
+        float failure_rate = static_cast<float>(total_failed) / static_cast<float>(total_hid_calls) * 100.0f;
+        float block_rate = static_cast<float>(total_blocked) / static_cast<float>(total_hid_calls) * 100.0f;
+        ImGui::Text("Success Rate: %.2f%%", success_rate);
+        ImGui::Text("Failure Rate: %.2f%%", failure_rate);
+        ImGui::Text("Block Rate: %.2f%%", block_rate);
+    }
+
+    ImGui::Spacing();
+    ImGui::Separator();
+
+    // HID Device Type Statistics
+    ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "=== HID Device Type Statistics ===");
+    ImGui::Text("Track different types of HID devices accessed");
+    ImGui::Separator();
+
+    const auto& device_stats = display_commanderhooks::GetHIDDeviceStats();
+    uint64_t total_devices = device_stats.total_devices.load();
+    uint64_t dualsense_devices = device_stats.dualsense_devices.load();
+    uint64_t xbox_devices = device_stats.xbox_devices.load();
+    uint64_t generic_devices = device_stats.generic_hid_devices.load();
+    uint64_t unknown_devices = device_stats.unknown_devices.load();
+
+    ImGui::Text("Total HID Devices: %llu", total_devices);
+    ImGui::Text("DualSense Controllers: %llu", dualsense_devices);
+    ImGui::Text("Xbox Controllers: %llu", xbox_devices);
+    ImGui::Text("Generic HID Devices: %llu", generic_devices);
+    ImGui::Text("Unknown Devices: %llu", unknown_devices);
+
+    if (total_devices > 0) {
+        float dualsense_rate = static_cast<float>(dualsense_devices) / static_cast<float>(total_devices) * 100.0f;
+        float xbox_rate = static_cast<float>(xbox_devices) / static_cast<float>(total_devices) * 100.0f;
+        float generic_rate = static_cast<float>(generic_devices) / static_cast<float>(total_devices) * 100.0f;
+        float unknown_rate = static_cast<float>(unknown_devices) / static_cast<float>(total_devices) * 100.0f;
+
+        ImGui::Spacing();
+        ImGui::Text("Device Distribution:");
+        ImGui::Text("DualSense: %.2f%%", dualsense_rate);
+        ImGui::Text("Xbox: %.2f%%", xbox_rate);
+        ImGui::Text("Generic HID: %.2f%%", generic_rate);
+        ImGui::Text("Unknown: %.2f%%", unknown_rate);
     }
 }
 

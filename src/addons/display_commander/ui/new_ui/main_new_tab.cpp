@@ -241,6 +241,18 @@ void DrawMainNewTab() {
             ImGui::SetTooltip("Support Display Commander development with a coffee!");
         }
     }
+    
+    // Gamma Control Warning
+    uint32_t gamma_control_calls = g_dxgi_output_event_counters[DXGI_OUTPUT_EVENT_SETGAMMACONTROL].load();
+    if (gamma_control_calls > 0) {
+        ImGui::Spacing();
+        ImGui::TextColored(ui::colors::TEXT_WARNING, ICON_FK_WARNING " WARNING: Game is using gamma control (SetGammaControl called %u times)", gamma_control_calls);
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("The game is actively modifying display gamma settings. This may affect color accuracy and HDR functionality. Check the Swapchain tab for more details.");
+        }
+        ImGui::Spacing();
+    }
+    
     ImGui::Spacing();
     // Display Settings Section
     if (ImGui::CollapsingHeader("Display Settings", ImGuiTreeNodeFlags_DefaultOpen)) {

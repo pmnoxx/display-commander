@@ -296,112 +296,109 @@ bool InstallAdditionalHIDHooks() {
         LogInfo("MinHook initialized successfully for additional HID hooks");
     }
 
+    // Track hook installation success/failure
+    int successful_hooks = 0;
+    int total_hooks = 0;
+
     // Hook WriteFile
-    if (!CreateAndEnableHook(WriteFile, WriteFile_Detour, (LPVOID*)&WriteFile_Original, "WriteFile")) {
-        LogError("Failed to create and enable WriteFile hook");
-        return false;
+    total_hooks++;
+    if (CreateAndEnableHook(WriteFile, WriteFile_Detour, (LPVOID*)&WriteFile_Original, "WriteFile")) {
+        successful_hooks++;
+    } else {
+        LogWarn("Failed to install WriteFile hook, continuing with other hooks");
     }
 
     // Hook DeviceIoControl
-    if (!CreateAndEnableHook(DeviceIoControl, DeviceIoControl_Detour, (LPVOID*)&DeviceIoControl_Original, "DeviceIoControl")) {
-        LogError("Failed to create and enable DeviceIoControl hook");
-        return false;
+    total_hooks++;
+    if (CreateAndEnableHook(DeviceIoControl, DeviceIoControl_Detour, (LPVOID*)&DeviceIoControl_Original, "DeviceIoControl")) {
+        successful_hooks++;
+    } else {
+        LogWarn("Failed to install DeviceIoControl hook, continuing with other hooks");
     }
 
-    // Hook HidD functions
-    if (MH_CreateHookApi(L"hid.dll", "HidD_GetPreparsedData", HidD_GetPreparsedData_Detour, (LPVOID*)&HidD_GetPreparsedData_Original) != MH_OK) {
-        LogError("Failed to create HidD_GetPreparsedData hook");
-        return false;
-    }
-    if (MH_EnableHook(HidD_GetPreparsedData) != MH_OK) {
-        LogError("Failed to enable HidD_GetPreparsedData hook");
-        return false;
+    // Hook HidD functions using CreateAndEnableHook for consistency
+    total_hooks++;
+    if (CreateAndEnableHook(HidD_GetPreparsedData, HidD_GetPreparsedData_Detour, (LPVOID*)&HidD_GetPreparsedData_Original, "HidD_GetPreparsedData")) {
+        successful_hooks++;
+    } else {
+        LogWarn("Failed to install HidD_GetPreparsedData hook, continuing with other hooks");
     }
 
-    if (MH_CreateHookApi(L"hid.dll", "HidD_FreePreparsedData", HidD_FreePreparsedData_Detour, (LPVOID*)&HidD_FreePreparsedData_Original) != MH_OK) {
-        LogError("Failed to create HidD_FreePreparsedData hook");
-        return false;
-    }
-    if (MH_EnableHook(HidD_FreePreparsedData) != MH_OK) {
-        LogError("Failed to enable HidD_FreePreparsedData hook");
-        return false;
+    total_hooks++;
+    if (CreateAndEnableHook(HidD_FreePreparsedData, HidD_FreePreparsedData_Detour, (LPVOID*)&HidD_FreePreparsedData_Original, "HidD_FreePreparsedData")) {
+        successful_hooks++;
+    } else {
+        LogWarn("Failed to install HidD_FreePreparsedData hook, continuing with other hooks");
     }
 
-    if (MH_CreateHookApi(L"hid.dll", "HidP_GetCaps", HidP_GetCaps_Detour, (LPVOID*)&HidP_GetCaps_Original) != MH_OK) {
-        LogError("Failed to create HidP_GetCaps hook");
-        return false;
-    }
-    if (MH_EnableHook(HidP_GetCaps) != MH_OK) {
-        LogError("Failed to enable HidP_GetCaps hook");
-        return false;
+    total_hooks++;
+    if (CreateAndEnableHook(HidP_GetCaps, HidP_GetCaps_Detour, (LPVOID*)&HidP_GetCaps_Original, "HidP_GetCaps")) {
+        successful_hooks++;
+    } else {
+        LogWarn("Failed to install HidP_GetCaps hook, continuing with other hooks");
     }
 
-    if (MH_CreateHookApi(L"hid.dll", "HidD_GetManufacturerString", HidD_GetManufacturerString_Detour, (LPVOID*)&HidD_GetManufacturerString_Original) != MH_OK) {
-        LogError("Failed to create HidD_GetManufacturerString hook");
-        return false;
-    }
-    if (MH_EnableHook(HidD_GetManufacturerString) != MH_OK) {
-        LogError("Failed to enable HidD_GetManufacturerString hook");
-        return false;
+    total_hooks++;
+    if (CreateAndEnableHook(HidD_GetManufacturerString, HidD_GetManufacturerString_Detour, (LPVOID*)&HidD_GetManufacturerString_Original, "HidD_GetManufacturerString")) {
+        successful_hooks++;
+    } else {
+        LogWarn("Failed to install HidD_GetManufacturerString hook, continuing with other hooks");
     }
 
-    if (MH_CreateHookApi(L"hid.dll", "HidD_GetProductString", HidD_GetProductString_Detour, (LPVOID*)&HidD_GetProductString_Original) != MH_OK) {
-        LogError("Failed to create HidD_GetProductString hook");
-        return false;
-    }
-    if (MH_EnableHook(HidD_GetProductString) != MH_OK) {
-        LogError("Failed to enable HidD_GetProductString hook");
-        return false;
+    total_hooks++;
+    if (CreateAndEnableHook(HidD_GetProductString, HidD_GetProductString_Detour, (LPVOID*)&HidD_GetProductString_Original, "HidD_GetProductString")) {
+        successful_hooks++;
+    } else {
+        LogWarn("Failed to install HidD_GetProductString hook, continuing with other hooks");
     }
 
-    if (MH_CreateHookApi(L"hid.dll", "HidD_GetSerialNumberString", HidD_GetSerialNumberString_Detour, (LPVOID*)&HidD_GetSerialNumberString_Original) != MH_OK) {
-        LogError("Failed to create HidD_GetSerialNumberString hook");
-        return false;
-    }
-    if (MH_EnableHook(HidD_GetSerialNumberString) != MH_OK) {
-        LogError("Failed to enable HidD_GetSerialNumberString hook");
-        return false;
+    total_hooks++;
+    if (CreateAndEnableHook(HidD_GetSerialNumberString, HidD_GetSerialNumberString_Detour, (LPVOID*)&HidD_GetSerialNumberString_Original, "HidD_GetSerialNumberString")) {
+        successful_hooks++;
+    } else {
+        LogWarn("Failed to install HidD_GetSerialNumberString hook, continuing with other hooks");
     }
 
-    if (MH_CreateHookApi(L"hid.dll", "HidD_GetNumInputBuffers", HidD_GetNumInputBuffers_Detour, (LPVOID*)&HidD_GetNumInputBuffers_Original) != MH_OK) {
-        LogError("Failed to create HidD_GetNumInputBuffers hook");
-        return false;
-    }
-    if (MH_EnableHook(HidD_GetNumInputBuffers) != MH_OK) {
-        LogError("Failed to enable HidD_GetNumInputBuffers hook");
-        return false;
+    total_hooks++;
+    if (CreateAndEnableHook(HidD_GetNumInputBuffers, HidD_GetNumInputBuffers_Detour, (LPVOID*)&HidD_GetNumInputBuffers_Original, "HidD_GetNumInputBuffers")) {
+        successful_hooks++;
+    } else {
+        LogWarn("Failed to install HidD_GetNumInputBuffers hook, continuing with other hooks");
     }
 
-    if (MH_CreateHookApi(L"hid.dll", "HidD_SetNumInputBuffers", HidD_SetNumInputBuffers_Detour, (LPVOID*)&HidD_SetNumInputBuffers_Original) != MH_OK) {
-        LogError("Failed to create HidD_SetNumInputBuffers hook");
-        return false;
-    }
-    if (MH_EnableHook(HidD_SetNumInputBuffers) != MH_OK) {
-        LogError("Failed to enable HidD_SetNumInputBuffers hook");
-        return false;
+    total_hooks++;
+    if (CreateAndEnableHook(HidD_SetNumInputBuffers, HidD_SetNumInputBuffers_Detour, (LPVOID*)&HidD_SetNumInputBuffers_Original, "HidD_SetNumInputBuffers")) {
+        successful_hooks++;
+    } else {
+        LogWarn("Failed to install HidD_SetNumInputBuffers hook, continuing with other hooks");
     }
 
-    if (MH_CreateHookApi(L"hid.dll", "HidD_GetFeature", HidD_GetFeature_Detour, (LPVOID*)&HidD_GetFeature_Original) != MH_OK) {
-        LogError("Failed to create HidD_GetFeature hook");
-        return false;
-    }
-    if (MH_EnableHook(HidD_GetFeature) != MH_OK) {
-        LogError("Failed to enable HidD_GetFeature hook");
-        return false;
+    total_hooks++;
+    if (CreateAndEnableHook(HidD_GetFeature, HidD_GetFeature_Detour, (LPVOID*)&HidD_GetFeature_Original, "HidD_GetFeature")) {
+        successful_hooks++;
+    } else {
+        LogWarn("Failed to install HidD_GetFeature hook, continuing with other hooks");
     }
 
-    if (MH_CreateHookApi(L"hid.dll", "HidD_SetFeature", HidD_SetFeature_Detour, (LPVOID*)&HidD_SetFeature_Original) != MH_OK) {
-        LogError("Failed to create HidD_SetFeature hook");
-        return false;
-    }
-    if (MH_EnableHook(HidD_SetFeature) != MH_OK) {
-        LogError("Failed to enable HidD_SetFeature hook");
-        return false;
+    total_hooks++;
+    if (CreateAndEnableHook(HidD_SetFeature, HidD_SetFeature_Detour, (LPVOID*)&HidD_SetFeature_Original, "HidD_SetFeature")) {
+        successful_hooks++;
+    } else {
+        LogWarn("Failed to install HidD_SetFeature hook, continuing with other hooks");
     }
 
-    g_additional_hid_hooks_installed.store(true);
-    LogInfo("Successfully installed additional HID hooks");
-    return true;
+    // Mark as installed if at least one hook succeeded
+    if (successful_hooks > 0) {
+        g_additional_hid_hooks_installed.store(true);
+        LogInfo("Successfully installed %d/%d additional HID hooks", successful_hooks, total_hooks);
+        if (successful_hooks < total_hooks) {
+            LogWarn("Some HID hooks failed to install, but continuing with available functionality");
+        }
+        return true;
+    } else {
+        LogError("Failed to install any additional HID hooks");
+        return false;
+    }
 }
 
 void UninstallAdditionalHIDHooks() {
@@ -410,19 +407,68 @@ void UninstallAdditionalHIDHooks() {
         return;
     }
 
-    // Disable all hooks
-    MH_DisableHook(WriteFile);
-    MH_DisableHook(DeviceIoControl);
-    MH_DisableHook(HidD_GetPreparsedData);
-    MH_DisableHook(HidD_FreePreparsedData);
-    MH_DisableHook(HidP_GetCaps);
-    MH_DisableHook(HidD_GetManufacturerString);
-    MH_DisableHook(HidD_GetProductString);
-    MH_DisableHook(HidD_GetSerialNumberString);
-    MH_DisableHook(HidD_GetNumInputBuffers);
-    MH_DisableHook(HidD_SetNumInputBuffers);
-    MH_DisableHook(HidD_GetFeature);
-    MH_DisableHook(HidD_SetFeature);
+    LogInfo("Uninstalling additional HID hooks...");
+
+    // Disable hooks only if they have original function pointers (indicating successful installation)
+    if (WriteFile_Original) {
+        MH_DisableHook(WriteFile);
+        WriteFile_Original = nullptr;
+    }
+
+    if (DeviceIoControl_Original) {
+        MH_DisableHook(DeviceIoControl);
+        DeviceIoControl_Original = nullptr;
+    }
+
+    if (HidD_GetPreparsedData_Original) {
+        MH_DisableHook(HidD_GetPreparsedData);
+        HidD_GetPreparsedData_Original = nullptr;
+    }
+
+    if (HidD_FreePreparsedData_Original) {
+        MH_DisableHook(HidD_FreePreparsedData);
+        HidD_FreePreparsedData_Original = nullptr;
+    }
+
+    if (HidP_GetCaps_Original) {
+        MH_DisableHook(HidP_GetCaps);
+        HidP_GetCaps_Original = nullptr;
+    }
+
+    if (HidD_GetManufacturerString_Original) {
+        MH_DisableHook(HidD_GetManufacturerString);
+        HidD_GetManufacturerString_Original = nullptr;
+    }
+
+    if (HidD_GetProductString_Original) {
+        MH_DisableHook(HidD_GetProductString);
+        HidD_GetProductString_Original = nullptr;
+    }
+
+    if (HidD_GetSerialNumberString_Original) {
+        MH_DisableHook(HidD_GetSerialNumberString);
+        HidD_GetSerialNumberString_Original = nullptr;
+    }
+
+    if (HidD_GetNumInputBuffers_Original) {
+        MH_DisableHook(HidD_GetNumInputBuffers);
+        HidD_GetNumInputBuffers_Original = nullptr;
+    }
+
+    if (HidD_SetNumInputBuffers_Original) {
+        MH_DisableHook(HidD_SetNumInputBuffers);
+        HidD_SetNumInputBuffers_Original = nullptr;
+    }
+
+    if (HidD_GetFeature_Original) {
+        MH_DisableHook(HidD_GetFeature);
+        HidD_GetFeature_Original = nullptr;
+    }
+
+    if (HidD_SetFeature_Original) {
+        MH_DisableHook(HidD_SetFeature);
+        HidD_SetFeature_Original = nullptr;
+    }
 
     g_additional_hid_hooks_installed.store(false);
     LogInfo("Successfully uninstalled additional HID hooks");

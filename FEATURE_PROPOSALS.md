@@ -38,6 +38,8 @@ This document tracks proposed features and ideas for future development. These a
 
 • VRR detection / current reflex rate dection
 
+• Track/present games setting their own gamma using IDXGIOutput::SetGammaControl, which could break other games. For example, BioShock 2. 
+
 ## Low Priority Proposals
 
 • Add crashes interception, so we can print to logs when crash occurs.

@@ -255,12 +255,73 @@ void DrawMainNewTab() {
         ImGui::Spacing();
     }
 
-    // NvAnselSDK.dll Warning
-    if (display_commanderhooks::IsModuleLoaded(L"NvAnselSDK.dll")) {
+    // NVIDIA Ansel/Camera SDK Warning (check for all possible DLL names)
+    bool ansel_loaded = display_commanderhooks::IsModuleLoaded(L"NvAnselSDK.dll") ||
+                       display_commanderhooks::IsModuleLoaded(L"AnselSDK64.dll") ||
+                       display_commanderhooks::IsModuleLoaded(L"NvCameraSDK64.dll") ||
+                       display_commanderhooks::IsModuleLoaded(L"NvCameraAPI64.dll") ||
+                       display_commanderhooks::IsModuleLoaded(L"GFExperienceCore.dll");
+
+    // Also check full paths in case modules are stored with full paths instead of just filenames
+    if (!ansel_loaded) {
+        auto loaded_modules = display_commanderhooks::GetLoadedModules();
+        for (const auto& module : loaded_modules) {
+            std::wstring module_name_lower = module.moduleName;
+            std::wstring module_path_lower = module.fullPath;
+            std::transform(module_name_lower.begin(), module_name_lower.end(), module_name_lower.begin(), ::towlower);
+            std::transform(module_path_lower.begin(), module_path_lower.end(), module_path_lower.begin(), ::towlower);
+
+            if (module_name_lower.find(L"anselsdk64.dll") != std::wstring::npos ||
+                module_name_lower.find(L"nvanselsdk.dll") != std::wstring::npos ||
+                module_name_lower.find(L"nvcamerasdk64.dll") != std::wstring::npos ||
+                module_name_lower.find(L"nvcameraapi64.dll") != std::wstring::npos ||
+                module_name_lower.find(L"gfexperiencecore.dll") != std::wstring::npos ||
+                module_path_lower.find(L"anselsdk64.dll") != std::wstring::npos ||
+                module_path_lower.find(L"nvanselsdk.dll") != std::wstring::npos ||
+                module_path_lower.find(L"nvcamerasdk64.dll") != std::wstring::npos ||
+                module_path_lower.find(L"nvcameraapi64.dll") != std::wstring::npos ||
+                module_path_lower.find(L"gfexperiencecore.dll") != std::wstring::npos) {
+                ansel_loaded = true;
+                break;
+            }
+        }
+    }
+
+    // Debug logging for Ansel detection
+    static bool debug_logged = false;
+    if (!debug_logged) {
+        LogInfo("Ansel detection check: NvAnselSDK.dll=%s, AnselSDK64.dll=%s, NvCameraSDK64.dll=%s, NvCameraAPI64.dll=%s, GFExperienceCore.dll=%s",
+                display_commanderhooks::IsModuleLoaded(L"NvAnselSDK.dll") ? "YES" : "NO",
+                display_commanderhooks::IsModuleLoaded(L"AnselSDK64.dll") ? "YES" : "NO",
+                display_commanderhooks::IsModuleLoaded(L"NvCameraSDK64.dll") ? "YES" : "NO",
+                display_commanderhooks::IsModuleLoaded(L"NvCameraAPI64.dll") ? "YES" : "NO",
+                display_commanderhooks::IsModuleLoaded(L"GFExperienceCore.dll") ? "YES" : "NO");
+
+        LogInfo("Fallback Ansel detection result: %s", ansel_loaded ? "YES" : "NO");
+
+        // Also log all loaded modules for debugging
+        auto loaded_modules = display_commanderhooks::GetLoadedModules();
+        LogInfo("Total loaded modules: %zu", loaded_modules.size());
+        for (const auto& module : loaded_modules) {
+            // Check if module name contains Ansel, Camera, or GFExperience (case insensitive)
+            std::wstring module_name_lower = module.moduleName;
+            std::transform(module_name_lower.begin(), module_name_lower.end(), module_name_lower.begin(), ::towlower);
+
+            if (module_name_lower.find(L"ansel") != std::wstring::npos ||
+                module_name_lower.find(L"camera") != std::wstring::npos ||
+                module_name_lower.find(L"gfexperience") != std::wstring::npos) {
+                LogInfo("Found Ansel/Camera related module: %S (path: %S)",
+                        module.moduleName.c_str(), module.fullPath.c_str());
+            }
+        }
+        debug_logged = true;
+    }
+
+    if (ansel_loaded) {
         ImGui::Spacing();
-        ImGui::TextColored(ui::colors::TEXT_WARNING, ICON_FK_WARNING " WARNING: NvAnselSDK.dll is loaded");
+        ImGui::TextColored(ui::colors::TEXT_WARNING, ICON_FK_WARNING " WARNING: NVIDIA Ansel/Camera SDK is loaded");
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("NVIDIA Ansel SDK is loaded. This may interfere with display settings and HDR functionality. TODO: Implement Ansel disabling feature.");
+            ImGui::SetTooltip("NVIDIA Ansel/Camera SDK is loaded (NvAnselSDK.dll, AnselSDK64.dll, NvCameraSDK64.dll, NvCameraAPI64.dll, or GFExperienceCore.dll). This may interfere with display settings and HDR functionality. TODO: Implement Ansel disabling feature.");
         }
         ImGui::Spacing();
     }

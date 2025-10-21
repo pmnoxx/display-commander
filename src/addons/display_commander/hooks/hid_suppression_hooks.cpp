@@ -3,6 +3,7 @@
 #include "../utils.hpp"
 #include "../utils/general_utils.hpp"
 #include "../settings/experimental_tab_settings.hpp"
+#include "../widgets/xinput_widget/xinput_widget.hpp"
 #include <MinHook.h>
 #include <atomic>
 #include <mutex>
@@ -163,6 +164,30 @@ bool IsHIDDevicePath(const std::string& path) {
     return lowerPath.find("\\hid") != std::string::npos;
 }
 
+bool IsDualSenseDevicePath(const std::string& path) {
+    // Convert to lowercase for case-insensitive comparison
+    std::string lowerPath = path;
+    std::transform(lowerPath.begin(), lowerPath.end(), lowerPath.begin(), ::tolower);
+
+    // Check for DualSense device path patterns
+    // Look for Sony vendor ID (054c) and DualSense product IDs (0ce6, 0df2)
+    return (lowerPath.find("vid_054c") != std::string::npos &&
+            (lowerPath.find("pid_0ce6") != std::string::npos ||  // DualSense Controller (Regular)
+             lowerPath.find("pid_0df2") != std::string::npos));   // DualSense Edge Controller
+}
+
+bool IsDualSenseDevicePath(const std::wstring& path) {
+    // Convert to lowercase for case-insensitive comparison
+    std::wstring lowerPath = path;
+    std::transform(lowerPath.begin(), lowerPath.end(), lowerPath.begin(), ::towlower);
+
+    // Check for DualSense device path patterns
+    // Look for Sony vendor ID (054c) and DualSense product IDs (0ce6, 0df2)
+    return (lowerPath.find(L"vid_054c") != std::wstring::npos &&
+            (lowerPath.find(L"pid_0ce6") != std::wstring::npos ||  // DualSense Controller (Regular)
+             lowerPath.find(L"pid_0df2") != std::wstring::npos));   // DualSense Edge Controller
+}
+
 // Direct CreateFileA function (calls original)
 HANDLE WINAPI CreateFileA_Direct(LPCSTR lpFileName, DWORD dwDesiredAccess, DWORD dwShareMode, LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition, DWORD dwFlagsAndAttributes, HANDLE hTemplateFile) {
     return CreateFileA_Original ?
@@ -172,6 +197,23 @@ HANDLE WINAPI CreateFileA_Direct(LPCSTR lpFileName, DWORD dwDesiredAccess, DWORD
 
 // Hooked CreateFileA function - blocks HID device access
 HANDLE WINAPI CreateFileA_Detour(LPCSTR lpFileName, DWORD dwDesiredAccess, DWORD dwShareMode, LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition, DWORD dwFlagsAndAttributes, HANDLE hTemplateFile) {
+    // Check if this is a HID device access and increment counters
+    if (lpFileName && IsHIDDevicePath(std::string(lpFileName))) {
+        // Increment total HID CreateFile counter
+        auto shared_state = display_commander::widgets::xinput_widget::XInputWidget::GetSharedState();
+        if (shared_state) {
+            shared_state->hid_createfile_total.fetch_add(1);
+
+            // Check if it's a DualSense device
+            if (IsDualSenseDevicePath(std::string(lpFileName))) {
+                shared_state->hid_createfile_dualsense.fetch_add(1);
+                LogInfo("HID CreateFile: DualSense device access detected: %s", lpFileName);
+            }
+        }
+
+        LogInfo("HID suppression: CreateFileA access to HID device: %s", lpFileName);
+    }
+
     // Check if HID suppression is enabled and CreateFile blocking is enabled
     if (ShouldSuppressHIDInput() && settings::g_experimentalTabSettings.hid_suppression_block_createfile.GetValue()) {
         if (lpFileName && IsHIDDevicePath(std::string(lpFileName))) {
@@ -181,7 +223,6 @@ HANDLE WINAPI CreateFileA_Detour(LPCSTR lpFileName, DWORD dwDesiredAccess, DWORD
         }
     }
 
-    LogInfo("HID suppression: CreateFileA access to HID device: %s", lpFileName);
     // Call original function
     return CreateFileA_Original ?
         CreateFileA_Original(lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile) :
@@ -197,6 +238,23 @@ HANDLE WINAPI CreateFileW_Direct(LPCWSTR lpFileName, DWORD dwDesiredAccess, DWOR
 
 // Hooked CreateFileW function - blocks HID device access
 HANDLE WINAPI CreateFileW_Detour(LPCWSTR lpFileName, DWORD dwDesiredAccess, DWORD dwShareMode, LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition, DWORD dwFlagsAndAttributes, HANDLE hTemplateFile) {
+    // Check if this is a HID device access and increment counters
+    if (lpFileName && IsHIDDevicePath(std::wstring(lpFileName))) {
+        // Increment total HID CreateFile counter
+        auto shared_state = display_commander::widgets::xinput_widget::XInputWidget::GetSharedState();
+        if (shared_state) {
+            shared_state->hid_createfile_total.fetch_add(1);
+
+            // Check if it's a DualSense device
+            if (IsDualSenseDevicePath(std::wstring(lpFileName))) {
+                shared_state->hid_createfile_dualsense.fetch_add(1);
+                LogInfo("HID CreateFile: DualSense device access detected: %ls", lpFileName);
+            }
+        }
+
+        LogInfo("HID suppression: CreateFileW access to HID device: %ls", lpFileName);
+    }
+
     // Check if HID suppression is enabled and CreateFile blocking is enabled
     if (ShouldSuppressHIDInput() && settings::g_experimentalTabSettings.hid_suppression_block_createfile.GetValue()) {
         if (lpFileName && IsHIDDevicePath(std::wstring(lpFileName))) {
@@ -206,7 +264,6 @@ HANDLE WINAPI CreateFileW_Detour(LPCWSTR lpFileName, DWORD dwDesiredAccess, DWOR
         }
     }
 
-    LogInfo("HID suppression: CreateFileW access to HID device: %ls", lpFileName);
     // Call original function
     return CreateFileW_Original ?
         CreateFileW_Original(lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile) :

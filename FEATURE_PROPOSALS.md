@@ -38,7 +38,9 @@ This document tracks proposed features and ideas for future development. These a
 
 • VRR detection / current reflex rate dection
 
-• Track/present games setting their own gamma using IDXGIOutput::SetGammaControl, which could break other games. For example, BioShock 2. 
+• Track/present games setting their own gamma using IDXGIOutput::SetGammaControl, which could break other games. For example, BioShock 2.
+
+• Add NVIDIA Ansel detection / supression feature
 
 ## Low Priority Proposals
 

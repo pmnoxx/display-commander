@@ -2,24 +2,39 @@
 
 This document tracks proposed features and ideas for future development. These are not planned features but rather ideas to keep track of for potential future implementation.
 
-## Accepted Proposals
+## Finished prosals
 
-• ADHD Mult-screen mode
+• ADHD Multi-screen mode
 
 • XInput support
 
 • Reflex with low-latency mode + boost
 
-## Proposed Features
+• AntiLag II/Xell support through fakenvapi
+
+• Dual Sense to XInput remapping + Hiding HID devices from page
+
+• DLSS-FG compatible frame limiter (using native reflex)
+
+• Flip State Query support for games without Streamline
+
+## Active Proposals
+
+• PCL stats reporting (show PCV-AL latency in nvidia overlay)
+
+• Flip State Query support for games running Streamline
+
+• DLSS-FG compatible frame limiter (using custom fps limiter)
+
+• Low latency custom frame limiter
+
+• Native Dual Sense support (adding anti-dead zones, etc.)
+
+• VRR detection / current reflex rate dection
+
+## Proposed Proposals
 
 • Add crashes interception, so we can print to logs when crash occurs.
-
-
-• Secondary monitors display black output similar to ADHD mode on Special-K
-
-• AMD Anti-Lag 2 support
-
-• Intel low lag mode support
 
 • Bluetooth DualSense vibration support
 
@@ -28,10 +43,6 @@ This document tracks proposed features and ideas for future development. These a
 • Gamepad keys to keyboard
 
 • Record video gamepad chord
-
-• DLSS-FG compatible frame limiter
-
-• Low latency custom frame limiter
 
 • VBlank Scanline Sync (partially implemented)
 

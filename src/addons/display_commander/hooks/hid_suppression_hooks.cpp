@@ -1,4 +1,5 @@
 #include "hid_suppression_hooks.hpp"
+#include "hid_statistics.hpp"
 #include "../globals.hpp"
 #include "../utils.hpp"
 #include "../utils/general_utils.hpp"
@@ -57,6 +58,10 @@ BOOL WINAPI ReadFile_Direct(HANDLE hFile, LPVOID lpBuffer, DWORD nNumberOfBytesT
 
 // Hooked ReadFile function - suppresses HID input reading for games
 BOOL WINAPI ReadFile_Detour(HANDLE hFile, LPVOID lpBuffer, DWORD nNumberOfBytesToRead, LPDWORD lpNumberOfBytesRead, LPOVERLAPPED lpOverlapped) {
+    // Increment HID statistics
+    auto& stats = display_commanderhooks::g_hid_api_stats[display_commanderhooks::HID_READFILE];
+    stats.increment_total();
+
     // Check if HID suppression is enabled and ReadFile blocking is enabled
     if (ShouldSuppressHIDInput() && settings::g_experimentalTabSettings.hid_suppression_block_readfile.GetValue()) {
         // Check if this looks like a HID device read operation
@@ -70,6 +75,7 @@ BOOL WINAPI ReadFile_Detour(HANDLE hFile, LPVOID lpBuffer, DWORD nNumberOfBytesT
                     *lpNumberOfBytesRead = 0;
                 }
                 SetLastError(ERROR_DEVICE_NOT_CONNECTED);
+                stats.increment_blocked();
                 LogInfo("HID suppression: Blocked ReadFile operation on potential HID device");
                 return FALSE;
             }
@@ -77,9 +83,18 @@ BOOL WINAPI ReadFile_Detour(HANDLE hFile, LPVOID lpBuffer, DWORD nNumberOfBytesT
     }
 
     // Call original function
-    return ReadFile_Original ?
+    BOOL result = ReadFile_Original ?
         ReadFile_Original(hFile, lpBuffer, nNumberOfBytesToRead, lpNumberOfBytesRead, lpOverlapped) :
         ReadFile(hFile, lpBuffer, nNumberOfBytesToRead, lpNumberOfBytesRead, lpOverlapped);
+
+    // Update statistics based on result
+    if (result) {
+        stats.increment_successful();
+    } else {
+        stats.increment_failed();
+    }
+
+    return result;
 }
 
 
@@ -197,17 +212,33 @@ HANDLE WINAPI CreateFileA_Direct(LPCSTR lpFileName, DWORD dwDesiredAccess, DWORD
 
 // Hooked CreateFileA function - blocks HID device access
 HANDLE WINAPI CreateFileA_Detour(LPCSTR lpFileName, DWORD dwDesiredAccess, DWORD dwShareMode, LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition, DWORD dwFlagsAndAttributes, HANDLE hTemplateFile) {
+    // Increment HID statistics
+    auto& stats = display_commanderhooks::g_hid_api_stats[display_commanderhooks::HID_CREATEFILE_A];
+    stats.increment_total();
+
     // Check if this is a HID device access and increment counters
     if (lpFileName && IsHIDDevicePath(std::string(lpFileName))) {
-        // Increment total HID CreateFile counter
+        // Update device type statistics
+        auto& device_stats = display_commanderhooks::g_hid_device_stats;
+        device_stats.increment_total();
+
+        if (display_commanderhooks::IsDualSenseDevice(std::string(lpFileName))) {
+            device_stats.increment_dualsense();
+            LogInfo("HID CreateFile: DualSense device access detected: %s", lpFileName);
+        } else if (display_commanderhooks::IsXboxDevice(std::string(lpFileName))) {
+            device_stats.increment_xbox();
+        } else if (display_commanderhooks::IsHIDDevice(std::string(lpFileName))) {
+            device_stats.increment_generic();
+        } else {
+            device_stats.increment_unknown();
+        }
+
+        // Legacy counter for backward compatibility
         auto shared_state = display_commander::widgets::xinput_widget::XInputWidget::GetSharedState();
         if (shared_state) {
             shared_state->hid_createfile_total.fetch_add(1);
-
-            // Check if it's a DualSense device
             if (IsDualSenseDevicePath(std::string(lpFileName))) {
                 shared_state->hid_createfile_dualsense.fetch_add(1);
-                LogInfo("HID CreateFile: DualSense device access detected: %s", lpFileName);
             }
         }
 
@@ -218,15 +249,25 @@ HANDLE WINAPI CreateFileA_Detour(LPCSTR lpFileName, DWORD dwDesiredAccess, DWORD
     if (ShouldSuppressHIDInput() && settings::g_experimentalTabSettings.hid_suppression_block_createfile.GetValue()) {
         if (lpFileName && IsHIDDevicePath(std::string(lpFileName))) {
             LogInfo("HID suppression: Blocked CreateFileA access to HID device: %s", lpFileName);
+            stats.increment_blocked();
             SetLastError(ERROR_ACCESS_DENIED);
             return INVALID_HANDLE_VALUE;
         }
     }
 
     // Call original function
-    return CreateFileA_Original ?
+    HANDLE result = CreateFileA_Original ?
         CreateFileA_Original(lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile) :
         CreateFileA(lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
+
+    // Update statistics based on result
+    if (result != INVALID_HANDLE_VALUE) {
+        stats.increment_successful();
+    } else {
+        stats.increment_failed();
+    }
+
+    return result;
 }
 
 // Direct CreateFileW function (calls original)
@@ -238,17 +279,33 @@ HANDLE WINAPI CreateFileW_Direct(LPCWSTR lpFileName, DWORD dwDesiredAccess, DWOR
 
 // Hooked CreateFileW function - blocks HID device access
 HANDLE WINAPI CreateFileW_Detour(LPCWSTR lpFileName, DWORD dwDesiredAccess, DWORD dwShareMode, LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition, DWORD dwFlagsAndAttributes, HANDLE hTemplateFile) {
+    // Increment HID statistics
+    auto& stats = display_commanderhooks::g_hid_api_stats[display_commanderhooks::HID_CREATEFILE_W];
+    stats.increment_total();
+
     // Check if this is a HID device access and increment counters
     if (lpFileName && IsHIDDevicePath(std::wstring(lpFileName))) {
-        // Increment total HID CreateFile counter
+        // Update device type statistics
+        auto& device_stats = display_commanderhooks::g_hid_device_stats;
+        device_stats.increment_total();
+
+        if (display_commanderhooks::IsDualSenseDevice(std::wstring(lpFileName))) {
+            device_stats.increment_dualsense();
+            LogInfo("HID CreateFile: DualSense device access detected: %ls", lpFileName);
+        } else if (display_commanderhooks::IsXboxDevice(std::wstring(lpFileName))) {
+            device_stats.increment_xbox();
+        } else if (display_commanderhooks::IsHIDDevice(std::wstring(lpFileName))) {
+            device_stats.increment_generic();
+        } else {
+            device_stats.increment_unknown();
+        }
+
+        // Legacy counter for backward compatibility
         auto shared_state = display_commander::widgets::xinput_widget::XInputWidget::GetSharedState();
         if (shared_state) {
             shared_state->hid_createfile_total.fetch_add(1);
-
-            // Check if it's a DualSense device
             if (IsDualSenseDevicePath(std::wstring(lpFileName))) {
                 shared_state->hid_createfile_dualsense.fetch_add(1);
-                LogInfo("HID CreateFile: DualSense device access detected: %ls", lpFileName);
             }
         }
 
@@ -259,15 +316,25 @@ HANDLE WINAPI CreateFileW_Detour(LPCWSTR lpFileName, DWORD dwDesiredAccess, DWOR
     if (ShouldSuppressHIDInput() && settings::g_experimentalTabSettings.hid_suppression_block_createfile.GetValue()) {
         if (lpFileName && IsHIDDevicePath(std::wstring(lpFileName))) {
             LogInfo("HID suppression: Blocked CreateFileW access to HID device: %ls", lpFileName);
+            stats.increment_blocked();
             SetLastError(ERROR_ACCESS_DENIED);
             return INVALID_HANDLE_VALUE;
         }
     }
 
     // Call original function
-    return CreateFileW_Original ?
+    HANDLE result = CreateFileW_Original ?
         CreateFileW_Original(lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile) :
         CreateFileW(lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
+
+    // Update statistics based on result
+    if (result != INVALID_HANDLE_VALUE) {
+        stats.increment_successful();
+    } else {
+        stats.increment_failed();
+    }
+
+    return result;
 }
 
 bool InstallHIDSuppressionHooks() {

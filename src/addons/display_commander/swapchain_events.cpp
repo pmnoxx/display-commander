@@ -13,6 +13,7 @@
 #include "hooks/windows_hooks/windows_message_hooks.hpp"
 #include "hooks/xinput_hooks.hpp"
 #include "hooks/hid_suppression_hooks.hpp"
+#include "hooks/hid_additional_hooks.hpp"
 #include "hooks/ngx_hooks.hpp"
 #include "input_remapping/input_remapping.hpp"
 #include "latency/latency_manager.hpp"
@@ -256,6 +257,9 @@ void DoInitializationWithHwnd(HWND hwnd) {
     if (settings::g_experimentalTabSettings.hid_suppression_enabled.GetValue()) {
         renodx::hooks::InstallHIDSuppressionHooks();
     }
+
+    // Install additional HID hooks for statistics tracking
+    display_commanderhooks::InstallAdditionalHIDHooks();
 
     // Set up window hooks if we have a valid HWND
     if (hwnd != nullptr && IsWindow(hwnd)) {

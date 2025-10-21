@@ -157,6 +157,17 @@ void XInputWidget::DrawSettings() {
             ImGui::SetTooltip("Suppress HID input reading for games to prevent them from detecting controllers.\nUseful for preventing games from interfering with controller input handling.");
         }
 
+        // HID CreateFile counters
+        ImGui::Spacing();
+        ImGui::TextColored(ui::colors::TEXT_DEFAULT, "HID CreateFile Detection:");
+        uint64_t hid_total = g_shared_state->hid_createfile_total.load();
+        uint64_t hid_dualsense = g_shared_state->hid_createfile_dualsense.load();
+        ImGui::Text("HID CreateFile Total: %llu", hid_total);
+        ImGui::Text("HID CreateFile DualSense: %llu", hid_dualsense);
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Shows how many times the game tried to open HID devices via CreateFile.\nDualSense counter shows specifically DualSense controller access attempts.");
+        }
+
         // Left stick deadzone setting
         float left_deadzone = g_shared_state->left_stick_deadzone.load();
         if (ImGui::SliderFloat("Left Stick Dead Zone (Min Input)", &left_deadzone, 0.0f, 50.0f, "%.0f%%")) {
@@ -332,6 +343,8 @@ void XInputWidget::DrawEventCounters() {
             g_shared_state->xinput_getstate_update_ns.store(0);
             g_shared_state->xinput_getstateex_update_ns.store(0);
             g_shared_state->last_xinput_call_time_ns.store(0);
+            g_shared_state->hid_createfile_total.store(0);
+            g_shared_state->hid_createfile_dualsense.store(0);
         }
     }
 }

@@ -38,6 +38,10 @@ struct XInputSharedState {
     std::atomic<uint64_t> stick_events{0};
     std::atomic<uint64_t> trigger_events{0};
 
+    // HID CreateFile counters
+    std::atomic<uint64_t> hid_createfile_total{0};
+    std::atomic<uint64_t> hid_createfile_dualsense{0};
+
     // Chord detection
     struct Chord {
         WORD buttons;

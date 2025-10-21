@@ -67,14 +67,6 @@ void ReflexManager::Shutdown() {
     if (!initialized_.exchange(false, std::memory_order_release))
         return;
 
-    // Check if shutdown is in progress to avoid NVAPI calls during DLL unload
-    extern std::atomic<bool> g_shutdown;
-    if (g_shutdown.load()) {
-        LogInfo("ReflexManager shutdown skipped - shutdown in progress");
-        d3d_device_ = nullptr;
-        return;
-    }
-
     // Disable sleep mode by setting all parameters to false/disabled
     NV_SET_SLEEP_MODE_PARAMS params = {};
     params.version = NV_SET_SLEEP_MODE_PARAMS_VER;
@@ -89,11 +81,6 @@ void ReflexManager::Shutdown() {
 
 bool ReflexManager::ApplySleepMode(bool low_latency, bool boost, bool use_markers) {
     if (!initialized_.load(std::memory_order_acquire) || d3d_device_ == nullptr)
-        return false;
-
-    // Check if shutdown is in progress to avoid NVAPI calls during DLL unload
-    extern std::atomic<bool> g_shutdown;
-    if (g_shutdown.load())
         return false;
 
     NV_SET_SLEEP_MODE_PARAMS params = {};
@@ -119,10 +106,6 @@ bool ReflexManager::SetMarker(NV_LATENCY_MARKER_TYPE marker) {
     if (!initialized_.load(std::memory_order_acquire) || d3d_device_ == nullptr)
         return false;
 
-    // Check if shutdown is in progress to avoid NVAPI calls during DLL unload
-    if (g_shutdown.load())
-        return false;
-
     if (s_enable_reflex_logging.load()) {
         std::ostringstream oss;
         oss << utils::get_now_ns() % utils::SEC_TO_NS << " Reflex: SetMarker " << marker << " frame_id "
@@ -145,11 +128,6 @@ bool ReflexManager::SetMarker(NV_LATENCY_MARKER_TYPE marker) {
 
 bool ReflexManager::Sleep() {
     if (!initialized_.load(std::memory_order_acquire) || d3d_device_ == nullptr)
-        return false;
-
-    // Check if shutdown is in progress to avoid NVAPI calls during DLL unload
-    extern std::atomic<bool> g_shutdown;
-    if (g_shutdown.load())
         return false;
 
     const auto st = NvAPI_D3D_Sleep_Direct(d3d_device_);

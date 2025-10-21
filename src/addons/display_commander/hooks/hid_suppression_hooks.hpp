@@ -2,6 +2,7 @@
 
 #include <windows.h>
 #include <hidsdi.h>
+#include <string>
 
 namespace renodx::hooks {
 
@@ -38,6 +39,10 @@ bool AreHIDSuppressionHooksInstalled();
 
 // Helper functions
 bool IsDualSenseDevice(USHORT vendorId, USHORT productId);
+bool IsHIDDevicePath(const std::wstring& path);
+bool IsHIDDevicePath(const std::string& path);
+bool IsDualSenseDevicePath(const std::wstring& path);
+bool IsDualSenseDevicePath(const std::string& path);
 bool ShouldSuppressHIDInput();
 void SetHIDSuppressionEnabled(bool enabled);
 bool IsHIDSuppressionEnabled();

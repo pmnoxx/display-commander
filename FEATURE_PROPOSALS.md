@@ -18,6 +18,8 @@ This document tracks proposed features and ideas for future development. These a
 
 • Flip State Query support for games without Streamline
 
+• DLSS Preset override game default/A/B/C/D/...
+
 ## Active Proposals
 
 • PCL stats reporting (show PCV-AL latency in nvidia overlay)

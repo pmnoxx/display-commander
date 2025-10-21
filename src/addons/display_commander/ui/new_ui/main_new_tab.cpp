@@ -11,6 +11,7 @@
 #include "../../widgets/resolution_widget/resolution_widget.hpp"
 #include "../../nvapi/reflex_manager.hpp"
 #include "../../hooks/nvapi_hooks.hpp"
+#include "../../hooks/loadlibrary_hooks.hpp"
 #include "../../res/forkawesome.h"
 #include "../../res/ui_colors.hpp"
 #include "../../utils.hpp"
@@ -241,7 +242,7 @@ void DrawMainNewTab() {
             ImGui::SetTooltip("Support Display Commander development with a coffee!");
         }
     }
-    
+
     // Gamma Control Warning
     uint32_t gamma_control_calls = g_dxgi_output_event_counters[DXGI_OUTPUT_EVENT_SETGAMMACONTROL].load();
     if (gamma_control_calls > 0) {
@@ -252,7 +253,17 @@ void DrawMainNewTab() {
         }
         ImGui::Spacing();
     }
-    
+
+    // NvAnselSDK.dll Warning
+    if (display_commanderhooks::IsModuleLoaded(L"NvAnselSDK.dll")) {
+        ImGui::Spacing();
+        ImGui::TextColored(ui::colors::TEXT_WARNING, ICON_FK_WARNING " WARNING: NvAnselSDK.dll is loaded");
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("NVIDIA Ansel SDK is loaded. This may interfere with display settings and HDR functionality. TODO: Implement Ansel disabling feature.");
+        }
+        ImGui::Spacing();
+    }
+
     ImGui::Spacing();
     // Display Settings Section
     if (ImGui::CollapsingHeader("Display Settings", ImGuiTreeNodeFlags_DefaultOpen)) {

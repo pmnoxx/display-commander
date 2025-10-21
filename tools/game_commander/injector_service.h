@@ -35,8 +35,11 @@ private:
     struct TargetProcess {
         std::string exe_name;
         std::string display_name;
+        std::string executable_path;
+        std::string working_directory;
         bool enabled;
         bool use_local_injection;
+        int proxy_dll_type; // ProxyDllType as int
         std::unordered_set<DWORD> injected_pids;
     };
 
@@ -47,6 +50,7 @@ private:
     void cleanupInjectedPids();
     bool copyDisplayCommanderToGameFolder(DWORD pid);
     bool performLocalInjection(const Game& game);
+    bool performLocalInjection(const TargetProcess& target);
     void logMessage(const std::string& message);
     void logError(const std::string& message, DWORD error_code = 0);
 

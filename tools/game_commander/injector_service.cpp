@@ -7,6 +7,7 @@
 #include <filesystem>
 #include <iomanip>
 #include <array>
+#include <algorithm>
 #include <sddl.h>
 #include <AclAPI.h>
 
@@ -132,8 +133,11 @@ void InjectorService::setTargetGames(const std::vector<Game>& games) {
             TargetProcess target;
             target.exe_name = std::filesystem::path(game.executable_path).filename().string();
             target.display_name = game.name.empty() ? target.exe_name : game.name;
+            target.executable_path = game.executable_path;
+            target.working_directory = game.working_directory;
             target.enabled = true;
             target.use_local_injection = game.use_local_injection;
+            target.proxy_dll_type = static_cast<int>(game.proxy_dll_type);
             targets_.push_back(target);
         }
     }
@@ -229,10 +233,16 @@ void InjectorService::monitoringLoop() {
                                     target.injected_pids.insert(pid);
                                 }
                             } else {
-                                // For local injection, just mark as processed
-                                target.injected_pids.insert(pid);
-                                if (verbose_logging_.load()) {
-                                    logMessage("Skipping ReShade injection for " + target.display_name + " (using local injection)");
+                                // Perform local injection
+                                if (performLocalInjection(target)) {
+                                    target.injected_pids.insert(pid);
+                                    if (verbose_logging_.load()) {
+                                        logMessage("Local injection completed for " + target.display_name);
+                                    }
+                                } else {
+                                    if (verbose_logging_.load()) {
+                                        logMessage("Local injection failed for " + target.display_name);
+                                    }
                                 }
                             }
                             // Copy display commander addon if path is configured and not using local injection
@@ -559,18 +569,142 @@ bool InjectorService::performLocalInjection(const Game& game) {
         return false;
     }
 
-    // Get the proxy DLL filename
-    std::string proxy_dll_name = getProxyDllFilename(game.proxy_dll_type);
-    std::string proxy_dll_path = game_dir + "\\" + proxy_dll_name;
+    // Get the proxy DLL filename(s) to copy
+    std::vector<std::string> proxy_dll_names = getProxyDllFilenames(game.proxy_dll_type);
+    bool all_success = true;
+    std::string success_message = "Local injection successful: ";
 
-    try {
-        // Copy the ReShade DLL as the proxy DLL
-        std::filesystem::copy_file(reshade_dll_path, proxy_dll_path, std::filesystem::copy_options::overwrite_existing);
+    // Copy selected proxy DLLs
+    for (const auto& proxy_dll_name : proxy_dll_names) {
+        std::string proxy_dll_path = game_dir + "\\" + proxy_dll_name;
 
-        logMessage("Local injection successful: " + proxy_dll_name + " copied to " + game_dir);
+        try {
+            // Copy the ReShade DLL as the proxy DLL
+            std::filesystem::copy_file(reshade_dll_path, proxy_dll_path, std::filesystem::copy_options::overwrite_existing);
+            success_message += proxy_dll_name + " ";
+        } catch (const std::exception& e) {
+            logError("Failed to copy ReShade DLL as " + proxy_dll_name + ": " + e.what());
+            all_success = false;
+        }
+    }
+
+    // Clean up unselected proxy DLLs
+    std::vector<std::string> all_proxy_dlls = getAllProxyDllFilenames();
+    for (const auto& dll_name : all_proxy_dlls) {
+        // Skip if this DLL is in our selected list
+        if (std::find(proxy_dll_names.begin(), proxy_dll_names.end(), dll_name) != proxy_dll_names.end()) {
+            continue;
+        }
+
+        std::string dll_path = game_dir + "\\" + dll_name;
+        if (std::filesystem::exists(dll_path)) {
+            try {
+                std::filesystem::remove(dll_path);
+                logMessage("Removed unselected proxy DLL: " + dll_name);
+            } catch (const std::exception& e) {
+                logError("Failed to remove unselected proxy DLL " + dll_name + ": " + e.what());
+            }
+        }
+    }
+
+    if (all_success) {
+        success_message += "copied to " + game_dir;
+        logMessage(success_message);
         return true;
-    } catch (const std::exception& e) {
-        logError("Failed to copy ReShade DLL as " + proxy_dll_name + ": " + e.what());
+    } else {
+        logError("Some proxy DLLs failed to copy");
+        return false;
+    }
+}
+
+bool InjectorService::performLocalInjection(const TargetProcess& target) {
+    if (!target.use_local_injection || target.proxy_dll_type == 0) { // 0 = ProxyDllType::None
+        return false;
+    }
+
+    // Determine the game directory
+    std::string game_dir;
+    if (!target.working_directory.empty()) {
+        game_dir = target.working_directory;
+    } else {
+        game_dir = std::filesystem::path(target.executable_path).parent_path().string();
+    }
+
+    // Determine which ReShade DLL to use based on architecture
+    // For now, we'll try to detect the architecture by checking if the executable is 32-bit or 64-bit
+    bool is_32bit = false;
+    std::ifstream file(target.executable_path, std::ios::binary);
+    if (file.is_open()) {
+        char header[2];
+        file.read(header, 2);
+        if (header[0] == 'M' && header[1] == 'Z') {
+            // PE file, check machine type
+            file.seekg(60); // Offset to PE header
+            uint32_t pe_offset;
+            file.read(reinterpret_cast<char*>(&pe_offset), 4);
+            file.seekg(pe_offset + 4); // Machine type offset
+            uint16_t machine_type;
+            file.read(reinterpret_cast<char*>(&machine_type), 2);
+            is_32bit = (machine_type == 0x014c); // IMAGE_FILE_MACHINE_I386
+        }
+        file.close();
+    }
+
+    std::string reshade_dll_path = is_32bit ? reshade_dll_path_32bit_ : reshade_dll_path_64bit_;
+    if (reshade_dll_path.empty()) {
+        logError("No ReShade DLL configured for " + std::string(is_32bit ? "32-bit" : "64-bit") + " architecture");
+        return false;
+    }
+
+    if (!std::filesystem::exists(reshade_dll_path)) {
+        logError("ReShade DLL not found: " + reshade_dll_path);
+        return false;
+    }
+
+    // Get the proxy DLL filename(s) to copy
+    std::vector<std::string> proxy_dll_names = getProxyDllFilenames(static_cast<ProxyDllType>(target.proxy_dll_type));
+    bool all_success = true;
+    std::string success_message = "Local injection successful: ";
+
+    // Copy selected proxy DLLs
+    for (const auto& proxy_dll_name : proxy_dll_names) {
+        std::string proxy_dll_path = game_dir + "\\" + proxy_dll_name;
+
+        try {
+            // Copy the ReShade DLL as the proxy DLL
+            std::filesystem::copy_file(reshade_dll_path, proxy_dll_path, std::filesystem::copy_options::overwrite_existing);
+            success_message += proxy_dll_name + " ";
+        } catch (const std::exception& e) {
+            logError("Failed to copy ReShade DLL as " + proxy_dll_name + ": " + e.what());
+            all_success = false;
+        }
+    }
+
+    // Clean up unselected proxy DLLs
+    std::vector<std::string> all_proxy_dlls = getAllProxyDllFilenames();
+    for (const auto& dll_name : all_proxy_dlls) {
+        // Skip if this DLL is in our selected list
+        if (std::find(proxy_dll_names.begin(), proxy_dll_names.end(), dll_name) != proxy_dll_names.end()) {
+            continue;
+        }
+
+        std::string dll_path = game_dir + "\\" + dll_name;
+        if (std::filesystem::exists(dll_path)) {
+            try {
+                std::filesystem::remove(dll_path);
+                logMessage("Removed unselected proxy DLL: " + dll_name);
+            } catch (const std::exception& e) {
+                logError("Failed to remove unselected proxy DLL " + dll_name + ": " + e.what());
+            }
+        }
+    }
+
+    if (all_success) {
+        success_message += "copied to " + game_dir;
+        logMessage(success_message);
+        return true;
+    } else {
+        logError("Some proxy DLLs failed to copy");
         return false;
     }
 }

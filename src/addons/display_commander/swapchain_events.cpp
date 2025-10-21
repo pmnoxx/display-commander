@@ -736,6 +736,15 @@ void OnInitSwapchain(reshade::api::swapchain *swapchain, bool resize) {
     if (!hwnd) {
         return;
     }
+    reshade::api::effect_runtime* first_runtime = GetFirstReShadeRuntime();
+    if (first_runtime != nullptr && first_runtime->get_hwnd() != hwnd) {
+        static int log_count = 0;
+        if (log_count < 100) {
+            LogInfo("Invalid Runtime HWND OnPresentUpdateBefore - First ReShade runtime: 0x%p, hwnd: 0x%p", first_runtime, hwnd);
+            log_count++;
+        }
+        return;
+    }
     // how to check
     hookToSwapChain(swapchain);
 }

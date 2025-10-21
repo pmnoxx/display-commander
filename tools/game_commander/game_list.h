@@ -8,8 +8,11 @@ enum class ProxyDllType {
     None,
     OpenGL32,
     DXGI,
+    D3D9,
     D3D11,
-    D3D12
+    D3D12,
+    TwoWay,   // Copies dxgi.dll, d3d9.dll
+    ThreeWay  // Copies d3d9.dll, opengl32.dll, dxgi.dll
 };
 
 // Helper function to get proxy DLL filename
@@ -17,10 +20,30 @@ inline std::string getProxyDllFilename(ProxyDllType type) {
     switch (type) {
         case ProxyDllType::OpenGL32: return "opengl32.dll";
         case ProxyDllType::DXGI: return "dxgi.dll";
+        case ProxyDllType::D3D9: return "d3d9.dll";
         case ProxyDllType::D3D11: return "d3d11.dll";
         case ProxyDllType::D3D12: return "d3d12.dll";
+        case ProxyDllType::TwoWay: return "dxgi.dll"; // Primary DLL for TwoWay
+        case ProxyDllType::ThreeWay: return "opengl32.dll"; // Primary DLL for ThreeWay
         default: return "";
     }
+}
+
+// Helper function to get all proxy DLL filenames for multi-way options
+inline std::vector<std::string> getProxyDllFilenames(ProxyDllType type) {
+    switch (type) {
+        case ProxyDllType::TwoWay:
+            return {"dxgi.dll", "d3d9.dll"};
+        case ProxyDllType::ThreeWay:
+            return {"opengl32.dll", "dxgi.dll", "d3d9.dll"};
+        default:
+            return {getProxyDllFilename(type)};
+    }
+}
+
+// Helper function to get all possible proxy DLL filenames
+inline std::vector<std::string> getAllProxyDllFilenames() {
+    return {"opengl32.dll", "dxgi.dll", "d3d9.dll", "d3d11.dll", "d3d12.dll"};
 }
 
 struct Game {

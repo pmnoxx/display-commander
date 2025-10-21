@@ -30,6 +30,7 @@ void loadOptionsFromManager(GameListManager* gameList);
 void saveOptionsToManager(GameListManager* gameList);
 bool scanForRenoDXFiles(const std::string& gamePath);
 void autoDetectRenoDXAndSetReshade();
+void openGameFolder(const std::string& gamePath);
 
 // Global UI state
 static bool show_add_game_dialog = false;
@@ -48,7 +49,7 @@ static int steam_app_id = 0;
 static bool enable_reshade = false;
 static bool has_renodx_mod = false;
 static bool use_local_injection = false;
-static int proxy_dll_type = 0; // 0=None, 1=OpenGL32, 2=DXGI, 3=D3D11, 4=D3D12
+static int proxy_dll_type = 0; // 0=None, 1=OpenGL32, 2=DXGI, 3=D3D9, 4=D3D11, 5=D3D12, 6=TwoWay, 7=ThreeWay
 
 // Global options data (will be synced with GameListManager)
 static char reshade_path_32bit[512] = "";
@@ -286,7 +287,7 @@ void renderMainWindow(GameListManager* gameList) {
         ImGui::Text("%s", game.executable_path.c_str());
 
         // Buttons
-        ImGui::SameLine(ImGui::GetWindowWidth() - 300);
+        ImGui::SameLine(ImGui::GetWindowWidth() - 350);
 
         if (ImGui::Button("Launch")) {
             auto game_name_or_path = game.name.empty() ? game.executable_path : game.name;
@@ -305,13 +306,31 @@ void renderMainWindow(GameListManager* gameList) {
         }
 
         ImGui::SameLine();
+        if (ImGui::Button("Open")) {
+            // Extract directory from executable path
+            std::filesystem::path exePath(game.executable_path);
+            std::string gameDir = exePath.parent_path().string();
+            openGameFolder(gameDir);
+        }
+
+        ImGui::SameLine();
         if (ImGui::Button("Delete")) {
             gameList->removeGame(i);
+
+            // Update injector service with new settings
+            if (g_injector_service) {
+                g_injector_service->setTargetGames(gameList->getGames());
+            }
         }
         ImGui::SameLine();
         if (ImGui::Checkbox("Reshade", &const_cast<Game&>(game).enable_reshade)) {
             // Update the game in the list when checkbox is toggled
             gameList->updateGame(i, game);
+
+            // Update injector service with new settings
+            if (g_injector_service) {
+                g_injector_service->setTargetGames(gameList->getGames());
+            }
         }
         // Reshade checkbox
         if (ImGui::IsItemHovered()) {
@@ -411,8 +430,8 @@ void renderAddGameDialog(GameListManager* gameList, bool* show_dialog) {
 
     if (use_local_injection) {
         ImGui::Indent();
-        const char* proxy_types[] = { "None", "opengl32.dll", "dxgi.dll", "d3d11.dll", "d3d12.dll" };
-        ImGui::Combo("Proxy DLL Type", &proxy_dll_type, proxy_types, 5);
+        const char* proxy_types[] = { "None", "opengl32.dll", "dxgi.dll", "d3d9.dll", "d3d11.dll", "d3d12.dll", "2-way (dxgi+d3d9)", "3-way (d3d9+opengl32+dxgi)" };
+        ImGui::Combo("Proxy DLL Type", &proxy_dll_type, proxy_types, 8);
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Select which system DLL to replace with ReShade");
         }
@@ -454,6 +473,12 @@ void renderAddGameDialog(GameListManager* gameList, bool* show_dialog) {
         newGame.proxy_dll_type = static_cast<ProxyDllType>(proxy_dll_type);
 
         gameList->addGame(newGame);
+
+        // Update injector service with new settings
+        if (g_injector_service) {
+            g_injector_service->setTargetGames(gameList->getGames());
+        }
+
         *show_dialog = false;
         clearForm();
     }
@@ -546,8 +571,8 @@ void renderEditGameDialog(GameListManager* gameList, bool* show_dialog, int* edi
 
     if (use_local_injection) {
         ImGui::Indent();
-        const char* proxy_types[] = { "None", "opengl32.dll", "dxgi.dll", "d3d11.dll", "d3d12.dll" };
-        ImGui::Combo("Proxy DLL Type", &proxy_dll_type, proxy_types, 5);
+        const char* proxy_types[] = { "None", "opengl32.dll", "dxgi.dll", "d3d9.dll", "d3d11.dll", "d3d12.dll", "2-way (dxgi+d3d9)", "3-way (d3d9+opengl32+dxgi)" };
+        ImGui::Combo("Proxy DLL Type", &proxy_dll_type, proxy_types, 8);
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Select which system DLL to replace with ReShade");
         }
@@ -589,6 +614,12 @@ void renderEditGameDialog(GameListManager* gameList, bool* show_dialog, int* edi
         updatedGame.proxy_dll_type = static_cast<ProxyDllType>(proxy_dll_type);
 
         gameList->updateGame(*editing_index, updatedGame);
+
+        // Update injector service with new settings
+        if (g_injector_service) {
+            g_injector_service->setTargetGames(gameList->getGames());
+        }
+
         *show_dialog = false;
         *editing_index = -1;
         clearForm();
@@ -857,6 +888,28 @@ void saveOptionsToManager(GameListManager* gameList) {
     // Injector service options
     options.injector_service_enabled = injector_service_enabled;
     options.injector_verbose_logging = injector_verbose_logging;
+}
+
+void openGameFolder(const std::string& gamePath) {
+    if (gamePath.empty()) {
+        std::cout << "Cannot open folder: path is empty" << std::endl;
+        return;
+    }
+
+    // Check if the path exists
+    if (!std::filesystem::exists(gamePath)) {
+        std::cout << "Cannot open folder: path does not exist: " << gamePath << std::endl;
+        return;
+    }
+
+    // Open the folder in Windows Explorer
+    HINSTANCE result = ShellExecuteA(nullptr, "open", "explorer.exe", gamePath.c_str(), nullptr, SW_SHOW);
+
+    if (reinterpret_cast<INT_PTR>(result) <= 32) {
+        std::cout << "Failed to open folder: " << gamePath << " (Error code: " << reinterpret_cast<INT_PTR>(result) << ")" << std::endl;
+    } else {
+        std::cout << "Opened folder: " << gamePath << std::endl;
+    }
 }
 
 int main() {

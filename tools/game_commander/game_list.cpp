@@ -3,6 +3,7 @@
 #include <iostream>
 #include <filesystem>
 #include <cstdlib>
+#include <algorithm>
 #include <windows.h>
 
 #ifdef _WIN32
@@ -218,9 +219,8 @@ bool GameListManager::launchGame(const Game& game) {
             game_dir = std::filesystem::path(game.executable_path).parent_path().string();
         }
 
-        // Get the proxy DLL filename
-        std::string proxy_dll_name = getProxyDllFilename(game.proxy_dll_type);
-        std::string proxy_dll_path = game_dir + "\\" + proxy_dll_name;
+        // Get the proxy DLL filename(s) to copy
+        std::vector<std::string> proxy_dll_names = getProxyDllFilenames(game.proxy_dll_type);
 
         // Determine which ReShade DLL to use based on architecture
         bool is_32bit = false;
@@ -243,11 +243,43 @@ bool GameListManager::launchGame(const Game& game) {
 
         std::string reshade_dll_path = is_32bit ? options_.reshade_path_32bit : options_.reshade_path_64bit;
         if (!reshade_dll_path.empty() && std::filesystem::exists(reshade_dll_path)) {
-            try {
-                std::filesystem::copy_file(reshade_dll_path, proxy_dll_path, std::filesystem::copy_options::overwrite_existing);
-                std::cout << "Local injection successful: " << proxy_dll_name << " copied to " << game_dir << std::endl;
-            } catch (const std::exception& e) {
-                std::cout << "Failed to copy ReShade DLL as " << proxy_dll_name << ": " << e.what() << std::endl;
+            bool all_success = true;
+            std::string success_message = "Local injection successful: ";
+
+            // Copy selected proxy DLLs
+            for (const auto& proxy_dll_name : proxy_dll_names) {
+                std::string proxy_dll_path = game_dir + "\\" + proxy_dll_name;
+                try {
+                    std::filesystem::copy_file(reshade_dll_path, proxy_dll_path, std::filesystem::copy_options::overwrite_existing);
+                    success_message += proxy_dll_name + " ";
+                } catch (const std::exception& e) {
+                    std::cout << "Failed to copy ReShade DLL as " << proxy_dll_name << ": " << e.what() << std::endl;
+                    all_success = false;
+                }
+            }
+
+            // Clean up unselected proxy DLLs
+            std::vector<std::string> all_proxy_dlls = getAllProxyDllFilenames();
+            for (const auto& dll_name : all_proxy_dlls) {
+                // Skip if this DLL is in our selected list
+                if (std::find(proxy_dll_names.begin(), proxy_dll_names.end(), dll_name) != proxy_dll_names.end()) {
+                    continue;
+                }
+
+                std::string dll_path = game_dir + "\\" + dll_name;
+                if (std::filesystem::exists(dll_path)) {
+                    try {
+                        std::filesystem::remove(dll_path);
+                        std::cout << "Removed unselected proxy DLL: " << dll_name << std::endl;
+                    } catch (const std::exception& e) {
+                        std::cout << "Failed to remove unselected proxy DLL " << dll_name << ": " << e.what() << std::endl;
+                    }
+                }
+            }
+
+            if (all_success) {
+                success_message += "copied to " + game_dir;
+                std::cout << success_message << std::endl;
             }
         } else {
             std::cout << "ReShade DLL not found for local injection: " << reshade_dll_path << std::endl;

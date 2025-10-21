@@ -248,6 +248,7 @@ void DrawMainNewTab() {
     if (gamma_control_calls > 0) {
         ImGui::Spacing();
         ImGui::TextColored(ui::colors::TEXT_WARNING, ICON_FK_WARNING " WARNING: Game is using gamma control (SetGammaControl called %u times)", gamma_control_calls);
+        LogInfo("TODO: Implement supressing SetGammaControl calls feature.");
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("The game is actively modifying display gamma settings. This may affect color accuracy and HDR functionality. Check the Swapchain tab for more details.");
         }

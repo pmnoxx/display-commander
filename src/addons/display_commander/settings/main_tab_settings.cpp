@@ -68,7 +68,8 @@ MainTabSettings::MainTabSettings()
       frame_time_mode("frame_time_mode", s_frame_time_mode, static_cast<int>(FrameTimeMode::kPresent),
                       {"Frame Present Time", "Frame Start Time (input)", "Frame Display Time later (Present or GPU Completion whichever comes later)"}, "DisplayCommander"),
       advanced_settings_enabled("advanced_settings_enabled", false, "DisplayCommander"),
-      show_xinput_tab("show_xinput_tab", false, "DisplayCommander") {
+      show_xinput_tab("show_xinput_tab", false, "DisplayCommander"),
+      skip_ansel_loading("skip_ansel_loading", false, "DisplayCommander") {
 
     // Initialize the all_settings_ vector
     all_settings_ = {
@@ -105,6 +106,7 @@ MainTabSettings::MainTabSettings()
         &screensaver_mode,
         &advanced_settings_enabled,
         &show_xinput_tab,
+        &skip_ansel_loading,
     };
 }
 

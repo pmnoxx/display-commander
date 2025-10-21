@@ -8,6 +8,7 @@
 #include "../utils.hpp"
 #include "../settings/streamline_tab_settings.hpp"
 #include "../settings/developer_tab_settings.hpp"
+#include "../settings/main_tab_settings.hpp"
 #include "../globals.hpp"
 #include "utils/srwlock_wrapper.hpp"
 #include <MinHook.h>
@@ -19,6 +20,41 @@
 #include <algorithm>
 
 namespace display_commanderhooks {
+
+// Helper function to check if a DLL should be blocked (Ansel libraries)
+bool ShouldBlockAnselDLL(const std::wstring& dll_path) {
+    // Check if Ansel skip is enabled
+    if (!settings::g_mainTabSettings.skip_ansel_loading.GetValue()) {
+        return false;
+    }
+
+    // Extract filename from full path
+    std::filesystem::path path(dll_path);
+    std::wstring filename = path.filename().wstring();
+
+    // Convert to lowercase for case-insensitive comparison
+    std::transform(filename.begin(), filename.end(), filename.begin(), ::towlower);
+
+    // List of Ansel-related DLLs to block
+    static const std::vector<std::wstring> ansel_dlls = {
+        L"nvanselsdk.dll",
+        L"anselsdk64.dll",
+        L"nvcamerasdk64.dll",
+        L"nvcameraapi64.dll",
+        L"gfexperiencecore.dll",
+        L"nvcamera64.dll",
+        L"nvcamera32.dll"
+    };
+
+    // Check if the DLL is in the Ansel list
+    for (const auto& ansel_dll : ansel_dlls) {
+        if (filename == ansel_dll) {
+            return true;
+        }
+    }
+
+    return false;
+}
 
 // Helper function to check if a DLL should be overridden and get the override path
 std::wstring GetDLSSOverridePath(const std::wstring& dll_path) {
@@ -126,6 +162,15 @@ HMODULE WINAPI LoadLibraryA_Detour(LPCSTR lpLibFileName) {
 
     LogInfo("[%s] LoadLibraryA called: %s", timestamp.c_str(), dll_name.c_str());
 
+    // Check for Ansel blocking
+    if (lpLibFileName) {
+        std::wstring w_dll_name = std::wstring(dll_name.begin(), dll_name.end());
+        if (ShouldBlockAnselDLL(w_dll_name)) {
+            LogInfo("[%s] Ansel Block: Blocking %s from loading", timestamp.c_str(), dll_name.c_str());
+            return nullptr; // Return nullptr to indicate failure to load
+        }
+    }
+
     // Check for DLSS override
     LPCSTR actual_lib_file_name = lpLibFileName;
 
@@ -197,6 +242,15 @@ HMODULE WINAPI LoadLibraryW_Detour(LPCWSTR lpLibFileName) {
     std::string dll_name = lpLibFileName ? WideToNarrow(lpLibFileName) : "NULL";
 
     LogInfo("[%s] LoadLibraryW called: %s", timestamp.c_str(), dll_name.c_str());
+
+    // Check for Ansel blocking
+    if (lpLibFileName) {
+        std::wstring w_dll_name = lpLibFileName;
+        if (ShouldBlockAnselDLL(w_dll_name)) {
+            LogInfo("[%s] Ansel Block: Blocking %s from loading", timestamp.c_str(), dll_name.c_str());
+            return nullptr; // Return nullptr to indicate failure to load
+        }
+    }
 
     // Check for DLSS override
     LPCWSTR actual_lib_file_name = lpLibFileName;
@@ -270,6 +324,15 @@ HMODULE WINAPI LoadLibraryExA_Detour(LPCSTR lpLibFileName, HANDLE hFile, DWORD d
 
     LogInfo("[%s] LoadLibraryExA called: %s, hFile: 0x%p, dwFlags: 0x%08X",
             timestamp.c_str(), dll_name.c_str(), hFile, dwFlags);
+
+    // Check for Ansel blocking
+    if (lpLibFileName) {
+        std::wstring w_dll_name = std::wstring(dll_name.begin(), dll_name.end());
+        if (ShouldBlockAnselDLL(w_dll_name)) {
+            LogInfo("[%s] Ansel Block: Blocking %s from loading", timestamp.c_str(), dll_name.c_str());
+            return nullptr; // Return nullptr to indicate failure to load
+        }
+    }
 
     // Check for DLSS override
     LPCSTR actual_lib_file_name = lpLibFileName;
@@ -356,6 +419,15 @@ HMODULE WINAPI LoadLibraryExW_Detour(LPCWSTR lpLibFileName, HANDLE hFile, DWORD 
 
     LogInfo("[%s] LoadLibraryExW called: %s, hFile: 0x%p, dwFlags: 0x%08X",
             timestamp.c_str(), dll_name.c_str(), hFile, dwFlags);
+
+    // Check for Ansel blocking
+    if (lpLibFileName) {
+        std::wstring w_dll_name = lpLibFileName;
+        if (ShouldBlockAnselDLL(w_dll_name)) {
+            LogInfo("[%s] Ansel Block: Blocking %s from loading", timestamp.c_str(), dll_name.c_str());
+            return nullptr; // Return nullptr to indicate failure to load
+        }
+    }
 
     // Check for DLSS override
     LPCWSTR actual_lib_file_name = lpLibFileName;

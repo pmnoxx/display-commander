@@ -237,7 +237,6 @@ void DrawMainNewTab() {
             ShellExecuteA(nullptr, "open", "https://ko-fi.com/pmnox", nullptr, nullptr, SW_SHOW);
         }
         ui::colors::PopIconColor();
-        ImGui::SameLine();
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Support Display Commander development with a coffee!");
         }
@@ -319,10 +318,41 @@ void DrawMainNewTab() {
 
     if (ansel_loaded) {
         ImGui::Spacing();
-        ImGui::TextColored(ui::colors::TEXT_WARNING, ICON_FK_WARNING " WARNING: NVIDIA Ansel/Camera SDK is loaded");
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("NVIDIA Ansel/Camera SDK is loaded (NvAnselSDK.dll, AnselSDK64.dll, NvCameraSDK64.dll, NvCameraAPI64.dll, or GFExperienceCore.dll). This may interfere with display settings and HDR functionality. TODO: Implement Ansel disabling feature.");
+        bool skip_ansel = settings::g_mainTabSettings.skip_ansel_loading.GetValue();
+        if (skip_ansel) {
+            ImGui::TextColored(ui::colors::TEXT_WARNING, ICON_FK_WARNING " WARNING: NVIDIA Ansel/Camera SDK is loaded (Skip enabled but already loaded)");
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("NVIDIA Ansel/Camera SDK was already loaded before the skip setting could take effect. Restart the game to apply the skip setting.");
+            }
+        } else {
+            ImGui::TextColored(ui::colors::TEXT_WARNING, ICON_FK_WARNING " WARNING: NVIDIA Ansel/Camera SDK is loaded");
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("NVIDIA Ansel/Camera SDK is loaded (NvAnselSDK.dll, AnselSDK64.dll, NvCameraSDK64.dll, NvCameraAPI64.dll, or GFExperienceCore.dll). This may interfere with display settings and HDR functionality. Enable 'Skip Loading Ansel Libraries' to prevent this.");
+            }
         }
+        ImGui::Spacing();
+    }
+
+    // Ansel Control Section
+    if (ansel_loaded || settings::g_mainTabSettings.skip_ansel_loading.GetValue()) {
+        bool skip_ansel = settings::g_mainTabSettings.skip_ansel_loading.GetValue();
+        if (ImGui::Checkbox("Skip Loading Ansel Libraries", &skip_ansel)) {
+            settings::g_mainTabSettings.skip_ansel_loading.SetValue(skip_ansel);
+            LogInfo("Skip Ansel loading %s", skip_ansel ? "enabled" : "disabled");
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Prevents Ansel-related DLLs from being loaded by the game. This can help avoid conflicts with display settings and HDR functionality. Requires restart to take effect.");
+        }
+
+        if (skip_ansel) {
+            ImGui::SameLine();
+            if (ansel_loaded) {
+                ImGui::TextColored(ui::colors::TEXT_WARNING, ICON_FK_WARNING " Already Loaded");
+            } else {
+                ImGui::TextColored(ui::colors::TEXT_SUCCESS, ICON_FK_OK " Active");
+            }
+        }
+
         ImGui::Spacing();
     }
 

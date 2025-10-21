@@ -100,6 +100,9 @@ class MainTabSettings {
     ui::new_ui::BoolSetting advanced_settings_enabled;
     ui::new_ui::BoolSetting show_xinput_tab;
 
+    // Ansel Control
+    ui::new_ui::BoolSetting skip_ansel_loading;
+
   private:
     std::vector<ui::new_ui::SettingBase *> all_settings_;
 };

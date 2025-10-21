@@ -18,6 +18,7 @@
 #include "input_remapping/input_remapping.hpp"
 #include "latency/latency_manager.hpp"
 #include "latent_sync/latent_sync_limiter.hpp"
+#include "latent_sync/refresh_rate_monitor_integration.hpp"
 #include "nvapi/nvapi_fullscreen_prevention.hpp"
 #include "performance_types.hpp"
 #include "settings/experimental_tab_settings.hpp"
@@ -238,6 +239,9 @@ void DoInitializationWithHwnd(HWND hwnd) {
     ui::new_ui::InitializeNewUISystem();
     StartContinuousMonitoring();
     StartGPUCompletionMonitoring();
+
+    // Initialize refresh rate monitoring
+    dxgi::fps_limiter::StartRefreshRateMonitoring();
 
     // Initialize experimental tab
     std::thread(RunBackgroundAudioMonitor).detach();

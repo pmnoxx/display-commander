@@ -3,6 +3,7 @@
 #include "../../adhd_multi_monitor/adhd_simple_api.hpp"
 #include "../../audio/audio_management.hpp"
 #include "../../latent_sync/latent_sync_limiter.hpp"
+#include "../../latent_sync/refresh_rate_monitor_integration.hpp"
 #include "../../performance_types.hpp"
 #include "../../settings/developer_tab_settings.hpp"
 #include "../../settings/experimental_tab_settings.hpp"
@@ -1663,6 +1664,68 @@ void DrawImportantInfo() {
         } else {
             // Unknown/Unset - Yellow
             ImGui::TextColored(ui::colors::FLIP_UNKNOWN, "%s", oss.str().c_str());
+        }
+    }
+
+    ImGui::Spacing();
+
+    // Refresh Rate Monitor Section
+    if (ImGui::CollapsingHeader("Refresh Rate Monitor", ImGuiTreeNodeFlags_None)) {
+        // Start/Stop monitoring controls
+        bool is_monitoring = dxgi::fps_limiter::IsRefreshRateMonitoringActive();
+
+        if (ImGui::Button(is_monitoring ? ICON_FK_CANCEL " Stop Monitoring" : ICON_FK_PLUS " Start Monitoring")) {
+            if (is_monitoring) {
+                dxgi::fps_limiter::StopRefreshRateMonitoring();
+            } else {
+                dxgi::fps_limiter::StartRefreshRateMonitoring();
+            }
+        }
+
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip(
+                "Measures actual display refresh rate by calling WaitForVBlank in a loop.\n"
+                "This shows the real refresh rate which may differ from the configured rate\n"
+                "due to VRR, power management, or other factors.");
+        }
+
+        ImGui::SameLine();
+
+        // Status display
+        std::string status = dxgi::fps_limiter::GetRefreshRateStatusString();
+        ImGui::TextColored(ui::colors::TEXT_DIMMED, "Status: %s", status.c_str());
+
+        // Get refresh rate statistics
+        auto stats = dxgi::fps_limiter::GetRefreshRateStats();
+
+        if (stats.is_valid && stats.sample_count > 0) {
+            ImGui::Spacing();
+
+            // Current refresh rate (large, prominent display)
+            ImGui::Text("Measured Refresh Rate:");
+            ImGui::SameLine();
+            ImGui::TextColored(ui::colors::TEXT_HIGHLIGHT, "%.2f Hz", stats.smoothed_rate);
+
+            // Detailed statistics
+            ImGui::Indent();
+            ImGui::Text("Current: %.2f Hz", stats.current_rate);
+            ImGui::Text("Min: %.2f Hz", stats.min_rate);
+            ImGui::Text("Max: %.2f Hz", stats.max_rate);
+            ImGui::Text("Samples: %u", stats.sample_count);
+            ImGui::Unindent();
+
+            // VRR detection hint
+            if (stats.max_rate > stats.min_rate + 1.0) {
+                ImGui::Spacing();
+                ui::colors::PushIconColor(ui::colors::ICON_SUCCESS);
+                ImGui::TextUnformatted(ICON_FK_OK);
+                ui::colors::PopIconColor();
+                ImGui::SameLine();
+                ImGui::TextColored(ui::colors::TEXT_SUCCESS, "Variable Refresh Rate (VRR) detected");
+            }
+        } else if (is_monitoring) {
+            ImGui::Spacing();
+            ImGui::TextColored(ui::colors::TEXT_DIMMED, "Collecting data...");
         }
     }
 }

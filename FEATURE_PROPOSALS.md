@@ -20,7 +20,11 @@ This document tracks proposed features and ideas for future development. These a
 
 • DLSS Preset override game default/A/B/C/D/...
 
-## Active Proposals
+• VBlank Scanline Sync
+
+• Screensaver control options: "default behavior / Disable screensaver while game is in foreground / disable screensaver while game is running"
+
+## Proposals
 
 • PCL stats reporting (show PCV-AL latency in nvidia overlay)
 
@@ -34,7 +38,7 @@ This document tracks proposed features and ideas for future development. These a
 
 • VRR detection / current reflex rate dection
 
-## Proposed Proposals
+## Low Priority Proposals
 
 • Add crashes interception, so we can print to logs when crash occurs.
 
@@ -46,10 +50,6 @@ This document tracks proposed features and ideas for future development. These a
 
 • Record video gamepad chord
 
-• VBlank Scanline Sync (partially implemented)
-
 • DX9/OPENGL/VULKAN -> DX11 proxy
 
 • Swap Chain upgrades to Flip State Swap chain
-
-• Screensaver control options: "default behavior / Disable screensaver while game is in foreground / disable screensaver while game is running"

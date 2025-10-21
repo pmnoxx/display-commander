@@ -183,7 +183,7 @@ std::vector<std::string> InjectorService::getInjectedProcesses() const {
 }
 
 void InjectorService::monitoringLoop() {
-    std::array<bool, 65536> process_seen = {};
+    std::array<DWORD, 65536> process_last_seen = {};
 
     int cnt = 0;
     while (running_.load()) {
@@ -202,8 +202,12 @@ void InjectorService::monitoringLoop() {
                 if (!running_.load()) break;
 
                 auto pid = process.th32ProcessID;
-                if (process_seen[pid]) continue;
-                process_seen[pid] = true;
+                auto hash = std::hash<std::wstring>{}(process.szExeFile);
+                if (process_last_seen[pid] == cnt - 1) {
+                    process_last_seen[pid] = cnt;
+                    continue;
+                }
+                process_last_seen[pid] = cnt;
 
                 game_commander::SRWLockExclusive lock(targets_srwlock_);
                 // TODO(pmnoxx): optimize as set if list is too long
@@ -217,6 +221,7 @@ void InjectorService::monitoringLoop() {
                     if (_wcsicmp(process.szExeFile, exe_name_wide.c_str()) == 0) {
                         // Check if we've already injected into this PID
                         if (target.injected_pids.find(pid) == target.injected_pids.end()) {
+                            logMessage("Found new " + target.display_name + " process (PID " + std::to_string(pid) + ")");
 
                             // Attempt injection only if not using local injection
                             if (!target.use_local_injection) {

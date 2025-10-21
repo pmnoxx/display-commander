@@ -9,6 +9,7 @@
 #include "hooks/hid_suppression_hooks.hpp"
 #include "hooks/window_proc_hooks.hpp"
 #include "latency/latency_manager.hpp"
+#include "latent_sync/refresh_rate_monitor_integration.hpp"
 #include "nvapi/nvapi_fullscreen_prevention.hpp"
 #include "process_exit_hooks.hpp"
 #include "settings/developer_tab_settings.hpp"
@@ -694,6 +695,9 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             // Clean up continuous monitoring if it's running
             StopContinuousMonitoring();
             StopGPUCompletionMonitoring();
+
+            // Clean up refresh rate monitoring
+            dxgi::fps_limiter::StopRefreshRateMonitoring();
 
             // Clean up experimental tab threads
             ui::new_ui::CleanupExperimentalTab();

@@ -1232,7 +1232,7 @@ void DrawSwapchainInfo(reshade::api::effect_runtime* runtime) {
                     ImGui::Text("  VRR Support: %s", supports_vrr ? "Yes" : "No");
 
                     if (supports_vrr) {
-                        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "  ✓ Variable Refresh Rate (VRR) supported");
+                        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "  ✓ Variable Refresh Rate (VRR) supported (WIP - not implemented yet)");
                     } else {
                         ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "  " ICON_FK_WARNING " Display does not support VRR");
                     }

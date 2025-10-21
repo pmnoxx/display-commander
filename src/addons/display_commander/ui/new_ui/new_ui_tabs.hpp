@@ -7,13 +7,15 @@
 #include <string>
 #include <vector>
 
+#include <reshade.hpp>
+
 namespace ui::new_ui {
 
 // Tab structure for the new UI system
 struct Tab {
     std::string name;
     std::string id;
-    std::function<void()> on_draw;
+    std::function<void(reshade::api::effect_runtime* runtime)> on_draw;
     bool is_visible = true;
     bool is_advanced_tab = false;
 };
@@ -26,10 +28,10 @@ class TabManager {
     ~TabManager() = default;
 
     // Add a new tab (thread-safe)
-    void AddTab(const std::string &name, const std::string &id, std::function<void()> on_draw, bool is_advanced_tab = false);
+    void AddTab(const std::string &name, const std::string &id, std::function<void(reshade::api::effect_runtime* runtime)> on_draw, bool is_advanced_tab = false);
 
     // Draw the tab bar and content (thread-safe)
-    void Draw();
+    void Draw(reshade::api::effect_runtime* runtime);
 
     // Get current active tab (thread-safe)
     int GetActiveTab() const { return active_tab_; }
@@ -49,6 +51,6 @@ extern TabManager g_tab_manager;
 void InitializeNewUI();
 
 // Draw the new UI
-void DrawNewUI();
+void DrawNewUI(reshade::api::effect_runtime* runtime);
 
 } // namespace ui::new_ui

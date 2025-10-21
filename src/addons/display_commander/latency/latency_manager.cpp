@@ -103,17 +103,14 @@ uint64_t LatencyManager::IncreaseFrameId() {
 }
 
 bool LatencyManager::SetMarker(LatencyMarkerType marker) {
-    if (!IsInitialized())
+    if (!IsInitialized()) {
         return false;
+    }
 
-    // Increment specific marker type counter
-    extern std::atomic<uint32_t> g_reflex_marker_simulation_start_count;
-    extern std::atomic<uint32_t> g_reflex_marker_simulation_end_count;
-    extern std::atomic<uint32_t> g_reflex_marker_rendersubmit_start_count;
-    extern std::atomic<uint32_t> g_reflex_marker_rendersubmit_end_count;
-    extern std::atomic<uint32_t> g_reflex_marker_present_start_count;
-    extern std::atomic<uint32_t> g_reflex_marker_present_end_count;
-    extern std::atomic<uint32_t> g_reflex_marker_input_sample_count;
+    auto result = provider_->SetMarker(marker);
+    if (!result) {
+        return result;
+    }
 
     switch (marker) {
         case LatencyMarkerType::SIMULATION_START:
@@ -138,8 +135,7 @@ bool LatencyManager::SetMarker(LatencyMarkerType marker) {
             g_reflex_marker_input_sample_count.fetch_add(1, std::memory_order_relaxed);
             break;
     }
-
-    return provider_->SetMarker(marker);
+    return result;
 }
 
 bool LatencyManager::ApplySleepMode(bool low_latency, bool boost, bool use_markers) {

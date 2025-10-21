@@ -148,7 +148,7 @@ void AutoApplyTrigger() {
     }
 }
 
-void DrawSwapchainTab() {
+void DrawSwapchainTab(reshade::api::effect_runtime* runtime) {
     ImGui::Text("Swapchain Tab - DXGI Information");
     ImGui::Separator();
 
@@ -161,7 +161,7 @@ void DrawSwapchainTab() {
     ImGui::Spacing();
     DrawNGXParameters();
     ImGui::Spacing();
-    DrawSwapchainInfo();
+    DrawSwapchainInfo(runtime);
     ImGui::Spacing();
     DrawDxgiCompositionInfo();
 }
@@ -950,7 +950,11 @@ void DrawDxgiCompositionInfo() {
     }
 }
 
-void DrawSwapchainInfo() {
+void DrawSwapchainInfo(reshade::api::effect_runtime* runtime) {
+    // todo replace g_last_swapchain_ptr_unsafe with runtime->get_device()->get_native()
+    //runtime->get_device()->get_native();
+
+
     // reshade runtimes list:
     if (ImGui::CollapsingHeader("ReShade Runtimes", ImGuiTreeNodeFlags_DefaultOpen)) {
         ImGui::Text("ReShade runtimes count: %zu", g_reshade_runtimes.size());

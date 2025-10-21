@@ -416,6 +416,9 @@ void DrawNvapiSettings() {
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Enable Reflex sleep mode calls (disabled by default for safety).");
         }
+        if (reflex_auto_configure) {
+            ImGui::EndDisabled();
+        }
         bool reflex_logging = settings::g_developerTabSettings.reflex_logging.GetValue();
         if (ImGui::Checkbox("Enable Reflex Logging", &reflex_logging)) {
             settings::g_developerTabSettings.reflex_logging.SetValue(reflex_logging);
@@ -423,9 +426,6 @@ void DrawNvapiSettings() {
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Enable detailed logging of Reflex marker operations for debugging purposes.");
-        }
-        if (reflex_auto_configure) {
-            ImGui::EndDisabled();
         }
 
         // Reflex Debug Counters Section

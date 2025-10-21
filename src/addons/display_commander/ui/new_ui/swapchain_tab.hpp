@@ -2,6 +2,7 @@
 
 #include <imgui.h>
 #include <dxgi1_6.h>
+#include <reshade.hpp>
 
 
 namespace ui::new_ui {
@@ -13,10 +14,10 @@ void InitSwapchainTab();
 void AutoApplyTrigger();
 
 // Draw the swapchain tab content
-void DrawSwapchainTab();
+void DrawSwapchainTab(reshade::api::effect_runtime* runtime);
 
 // Draw swapchain information section
-void DrawSwapchainInfo();
+void DrawSwapchainInfo(reshade::api::effect_runtime* runtime);
 
 // Draw adapter information section
 void DrawAdapterInfo();

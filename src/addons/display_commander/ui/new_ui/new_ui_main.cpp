@@ -1,5 +1,6 @@
 #include "new_ui_main.hpp"
 #include "../../utils.hpp"
+#include <reshade.hpp>
 
 namespace ui::new_ui {
 
@@ -24,13 +25,13 @@ void NewUISystem::Initialize() {
     LogInfo("New UI system initialized successfully");
 }
 
-void NewUISystem::Draw() {
+void NewUISystem::Draw(reshade::api::effect_runtime* runtime) {
     if (!enabled_ || !initialized_) {
         return;
     }
 
     // Draw the new UI system
-    DrawNewUI();
+    DrawNewUI(runtime);
 }
 
 // Convenience functions

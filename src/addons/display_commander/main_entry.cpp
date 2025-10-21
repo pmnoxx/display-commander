@@ -102,7 +102,7 @@ void OnRegisterOverlayDisplayCommander(reshade::api::effect_runtime* runtime) {
         // Update UI draw time for auto-click optimization
         autoclick::UpdateLastUIDrawTime();
 
-        ui::new_ui::NewUISystem::GetInstance().Draw();
+        ui::new_ui::NewUISystem::GetInstance().Draw(runtime);
 
         // Periodically save config to ensure settings are persisted
         static auto last_save_time = std::chrono::steady_clock::now();

@@ -120,7 +120,6 @@ bool ReflexManager::SetMarker(NV_LATENCY_MARKER_TYPE marker) {
         return false;
 
     // Check if shutdown is in progress to avoid NVAPI calls during DLL unload
-    extern std::atomic<bool> g_shutdown;
     if (g_shutdown.load())
         return false;
 

@@ -185,7 +185,12 @@ std::vector<std::string> InjectorService::getInjectedProcesses() const {
 void InjectorService::monitoringLoop() {
     std::array<bool, 65536> process_seen = {};
 
+    int cnt = 0;
     while (running_.load()) {
+        if (cnt % 1000 == 0) {
+            logMessage("Monitoring loop iteration: " + std::to_string(cnt));
+        }
+        cnt++;
         // Clean up terminated processes
         cleanupInjectedPids();
 

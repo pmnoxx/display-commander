@@ -1,6 +1,7 @@
 #pragma once
 
 #include "new_ui_tabs.hpp"
+#include <reshade.hpp>
 
 namespace ui::new_ui {
 
@@ -13,7 +14,7 @@ class NewUISystem {
     void Initialize();
 
     // Draw the new UI
-    void Draw();
+    void Draw(reshade::api::effect_runtime* runtime);
 
     // Check if the new UI system is enabled
     bool IsEnabled() const { return enabled_; }

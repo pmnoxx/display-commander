@@ -24,7 +24,7 @@ TabManager::TabManager() : active_tab_(0) {
     tabs_.store(std::make_shared<const std::vector<Tab>>(std::vector<Tab>{}));
 }
 
-void TabManager::AddTab(const std::string &name, const std::string &id, std::function<void()> on_draw, bool is_advanced_tab) {
+void TabManager::AddTab(const std::string &name, const std::string &id, std::function<void(reshade::api::effect_runtime* runtime)> on_draw, bool is_advanced_tab) {
     // Get current tabs atomically
     auto current_tabs = tabs_.load();
 
@@ -37,7 +37,7 @@ void TabManager::AddTab(const std::string &name, const std::string &id, std::fun
     tabs_.store(std::shared_ptr<const std::vector<Tab>>(new_tabs));
 }
 
-void TabManager::Draw() {
+void TabManager::Draw(reshade::api::effect_runtime* runtime) {
     // Get current tabs atomically
     auto current_tabs = tabs_.load();
 
@@ -78,7 +78,7 @@ void TabManager::Draw() {
     if (visible_tab_count == 1) {
         // Draw the single visible tab content directly
         if (first_visible_tab_index >= 0 && (*current_tabs)[first_visible_tab_index].on_draw) {
-            (*current_tabs)[first_visible_tab_index].on_draw();
+            (*current_tabs)[first_visible_tab_index].on_draw(runtime);
         }
         return;
     }
@@ -109,7 +109,7 @@ void TabManager::Draw() {
 
                 // Draw tab content
                 if ((*current_tabs)[i].on_draw) {
-                    (*current_tabs)[i].on_draw();
+                    (*current_tabs)[i].on_draw(runtime);
                 }
 
                 ImGui::EndTabItem();
@@ -134,7 +134,7 @@ void InitializeNewUI() {
     // Initialize remapping widget
     display_commander::widgets::remapping_widget::InitializeRemappingWidget();
 
-    g_tab_manager.AddTab("Main", "main_new", []() {
+    g_tab_manager.AddTab("Main", "main_new", [](reshade::api::effect_runtime* runtime) {
         try {
             ui::new_ui::DrawMainNewTab();
         } catch (const std::exception &e) {
@@ -144,7 +144,7 @@ void InitializeNewUI() {
         }
     }, false); // Main tab is not advanced
 
-    g_tab_manager.AddTab("Developer", "developer_new", []() {
+    g_tab_manager.AddTab("Developer", "developer_new", [](reshade::api::effect_runtime* runtime) {
         try {
             ui::new_ui::DrawDeveloperNewTab();
         } catch (const std::exception &e) {
@@ -154,7 +154,7 @@ void InitializeNewUI() {
         }
     }, true); // Developer tab is advanced
 
-    g_tab_manager.AddTab("Window Info", "window_info", []() {
+    g_tab_manager.AddTab("Window Info", "window_info", [](reshade::api::effect_runtime* runtime) {
         try {
             ui::new_ui::DrawWindowInfoTab();
         } catch (const std::exception &e) {
@@ -164,9 +164,9 @@ void InitializeNewUI() {
         }
     }, true); // Window Info tab is not advanced
 
-    g_tab_manager.AddTab("Swapchain", "swapchain", []() {
+    g_tab_manager.AddTab("Swapchain", "swapchain", [](reshade::api::effect_runtime* runtime) {
         try {
-            ui::new_ui::DrawSwapchainTab();
+            ui::new_ui::DrawSwapchainTab(runtime);
         } catch (const std::exception &e) {
             LogError("Error drawing swapchain tab: %s", e.what());
         } catch (...) {
@@ -174,7 +174,7 @@ void InitializeNewUI() {
         }
     }, true); // Swapchain tab is not advanced
 
-    g_tab_manager.AddTab("Important Info", "important_info", []() {
+    g_tab_manager.AddTab("Important Info", "important_info", [](reshade::api::effect_runtime* runtime) {
         try {
             ui::new_ui::DrawImportantInfo();
         } catch (const std::exception &e) {
@@ -184,7 +184,7 @@ void InitializeNewUI() {
         }
     }, true); // Important Info tab is not advanced
 
-    g_tab_manager.AddTab("XInput", "xinput", []() {
+    g_tab_manager.AddTab("XInput", "xinput", [](reshade::api::effect_runtime* runtime) {
         try {
             display_commander::widgets::xinput_widget::DrawXInputWidget();
         } catch (const std::exception &e) {
@@ -194,7 +194,7 @@ void InitializeNewUI() {
         }
     }, true); // XInput tab is advanced
 
-    g_tab_manager.AddTab("Remapping (Experimental)", "remapping", []() {
+    g_tab_manager.AddTab("Remapping (Experimental)", "remapping", [](reshade::api::effect_runtime* runtime) {
         try {
             display_commander::widgets::remapping_widget::DrawRemappingWidget();
         } catch (const std::exception &e) {
@@ -204,7 +204,7 @@ void InitializeNewUI() {
         }
     }, true); // Remapping tab is advanced
 
-    g_tab_manager.AddTab("Hook Statistics", "hook_stats", []() {
+    g_tab_manager.AddTab("Hook Statistics", "hook_stats", [](reshade::api::effect_runtime* runtime) {
         try {
             ui::new_ui::DrawHookStatsTab();
         } catch (const std::exception &e) {
@@ -214,7 +214,7 @@ void InitializeNewUI() {
         }
     }, true); // Hook Statistics tab is advanced
 
-    g_tab_manager.AddTab("Streamline", "streamline", []() {
+    g_tab_manager.AddTab("Streamline", "streamline", [](reshade::api::effect_runtime* runtime) {
         try {
             ui::new_ui::DrawStreamlineTab();
         } catch (const std::exception &e) {
@@ -226,7 +226,7 @@ void InitializeNewUI() {
 
 
     // Add experimental tab conditionally based on advanced settings
-    g_tab_manager.AddTab("Experimental", "experimental", []() {
+    g_tab_manager.AddTab("Experimental", "experimental", [](reshade::api::effect_runtime* runtime) {
         try {
             ui::new_ui::DrawExperimentalTab();
         } catch (const std::exception &e) {
@@ -238,6 +238,6 @@ void InitializeNewUI() {
 }
 
 // Draw the new UI
-void DrawNewUI() { g_tab_manager.Draw(); }
+void DrawNewUI(reshade::api::effect_runtime* runtime) { g_tab_manager.Draw(runtime); }
 
 } // namespace ui::new_ui

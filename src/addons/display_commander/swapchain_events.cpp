@@ -472,6 +472,10 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
     if (is_d3d9) {
         bool modified = false;
         if (desc.fullscreen_state) {
+            if (!settings::g_developerTabSettings.prevent_fullscreen.GetValue()) {
+                LogWarn("D3D9: Fullscreen state change blocked by developer settings");
+                return false;
+            }
             LogInfo("D3D9: Changed fullscreen state from %s to %s", desc.fullscreen_state ? "YES" : "NO", desc.fullscreen_state ? "NO" : "YES");
             desc.fullscreen_state = false;
             modified = true;

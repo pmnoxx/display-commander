@@ -56,3 +56,6 @@ external-src/
 # run_tmp
 run_tmp/
 res_injector/injector_config.ini
+
+# user settings
+im_gui.ini

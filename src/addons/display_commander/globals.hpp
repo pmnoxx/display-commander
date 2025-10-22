@@ -1006,10 +1006,30 @@ struct DLSSGSummary {
     std::string dlssg_dll_version = "N/A";
     std::string dlssd_dll_version = "N/A";
     std::string supported_dlss_presets = "N/A";
+    std::string supported_dlss_rr_presets = "N/A";
+};
+
+// DLSS Model Profile structure
+struct DLSSModelProfile {
+    bool is_valid = false;
+    int sr_quality_preset = 0;
+    int sr_balanced_preset = 0;
+    int sr_performance_preset = 0;
+    int sr_ultra_performance_preset = 0;
+    int sr_ultra_quality_preset = 0;
+    int sr_dlaa_preset = 0;
+    int rr_quality_preset = 0;
+    int rr_balanced_preset = 0;
+    int rr_performance_preset = 0;
+    int rr_ultra_performance_preset = 0;
+    int rr_ultra_quality_preset = 0;
 };
 
 // Function to get DLSS/DLSS-G summary from NGX parameters
 DLSSGSummary GetDLSSGSummary();
+
+// Function to get DLSS Model Profile
+DLSSModelProfile GetDLSSModelProfile();
 
 // NVAPI SetSleepMode tracking
 extern std::atomic<std::shared_ptr<NV_SET_SLEEP_MODE_PARAMS>> g_last_nvapi_sleep_mode_params;  // Last SetSleepMode parameters

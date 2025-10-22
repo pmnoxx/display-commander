@@ -429,22 +429,32 @@ bool isBetween(int major, int minor, int patch, int minMajor, int minMinor, int 
     return version >= minVersion && version <= maxVersion;
 }
 
-// Get supported DLSS presets based on DLL version
-std::string GetSupportedDLSSPresets(int major, int minor, int patch) {
+// Get supported DLSS Super Resolution presets based on DLL version
+std::string GetSupportedDLSSSRPresets(int major, int minor, int patch) {
     std::string supported_presets;
 
-    // NVIDIA released DLSS 3.8.10 removed A,B,C,D
-    if (isBetween(major, minor, patch, 3, 1, 30, 3, 8, 10 - 1)) {
+    // 3.8.10-3.8.10
+    if (isBetween(major, minor, patch, 3, 8, 10, 3, 8, 10)) {
+        return "E,F";
+    }
+
+    // 3.1.30-310.4.0
+    if (isBetween(major, minor, patch, 3, 1, 30, 310, 3, 999)) {
         supported_presets += "A,B,C,D";
     }
 
-    // v3.1.30 introduced preset E
+    // 3.7.0-310.3.999
+    if (isBetween(major, minor, patch, 3, 7, 0, 310, 3, 999)) {
+        if (!supported_presets.empty()) supported_presets += ",";
+        supported_presets += "E";
+    }
+    // 3.7.0-999.999.999
     if (isBetween(major, minor, patch, 3, 7, 0, 999, 999, 999)) {
         if (!supported_presets.empty()) supported_presets += ",";
-        supported_presets += "E,F";
+        supported_presets += "F";
     }
 
-    // v310.2 introduced preset K
+    // 310.2.0-999.999.999
     if (isBetween(major, minor, patch, 310, 2, 0, 999, 999, 999)) {
         if (!supported_presets.empty()) supported_presets += ",";
         supported_presets += "J,K";
@@ -452,8 +462,30 @@ std::string GetSupportedDLSSPresets(int major, int minor, int patch) {
     return supported_presets;
 }
 
-// Parse version string and return supported presets
-std::string GetSupportedDLSSPresetsFromVersionString(const std::string& versionString) {
+// Get supported DLSS Ray Reconstruction presets based on DLL version
+// RR supports A, B, C, D, E presets depending on version (A, B, C added in newer versions)
+std::string GetSupportedDLSSRRPresets(int major, int minor, int patch) {
+    // Ray Reconstruction was introduced in DLSS 3.5.0+
+    if (!isBetween(major, minor, patch, 3, 5, 0, 999, 999, 999)) {
+        return ""; // For older versions, RR is not supported
+    }
+
+    // 3.5.0-310.3.999: RR supports A, B, C, D, E presets
+    if (isBetween(major, minor, patch, 3, 5, 0, 310, 3, 999)) {
+        return "A,B,C,D,E";
+    }
+
+    // 310.4.0-999.999.999: RR supports A, B, C, D, E presets (and potentially more)
+    if (isBetween(major, minor, patch, 310, 4, 0, 999, 999, 999)) {
+        return "A,B,C,D,E";
+    }
+
+    // Fallback for other versions that support RR but with limited presets
+    return "D,E";
+}
+
+// Parse version string and return supported SR presets
+std::string GetSupportedDLSSSRPresetsFromVersionString(const std::string& versionString) {
     // Handle "Not loaded" or "Unknown" cases
     if (versionString == "Not loaded" || versionString == "Unknown" || versionString == "N/A") {
         return "N/A";
@@ -483,7 +515,41 @@ std::string GetSupportedDLSSPresetsFromVersionString(const std::string& versionS
         }
     }
 
-    return GetSupportedDLSSPresets(major, minor, patch);
+    return GetSupportedDLSSSRPresets(major, minor, patch);
+}
+
+// Parse version string and return supported RR presets
+std::string GetSupportedDLSSRRPresetsFromVersionString(const std::string& versionString) {
+    // Handle "Not loaded" or "Unknown" cases
+    if (versionString == "Not loaded" || versionString == "Unknown" || versionString == "N/A") {
+        return "N/A";
+    }
+
+    // Parse version string (format: "major.minor.build.revision" or "major.minor.patch")
+    int major = 0, minor = 0, patch = 0;
+
+    // Try to parse the version string
+    size_t first_dot = versionString.find('.');
+    if (first_dot != std::string::npos) {
+        major = std::stoi(versionString.substr(0, first_dot));
+
+        size_t second_dot = versionString.find('.', first_dot + 1);
+        if (second_dot != std::string::npos) {
+            minor = std::stoi(versionString.substr(first_dot + 1, second_dot - first_dot - 1));
+
+            // Look for third dot (build.revision format) or use as patch
+            size_t third_dot = versionString.find('.', second_dot + 1);
+            if (third_dot != std::string::npos) {
+                // Format: major.minor.build.revision - use build as patch
+                patch = std::stoi(versionString.substr(second_dot + 1, third_dot - second_dot - 1));
+            } else {
+                // Format: major.minor.patch
+                patch = std::stoi(versionString.substr(second_dot + 1));
+            }
+        }
+    }
+
+    return GetSupportedDLSSRRPresets(major, minor, patch);
 }
 
 // Generate DLSS preset options based on supported presets
@@ -559,7 +625,7 @@ void TestDLSSPresetSupport() {
     };
 
     for (const auto& test : test_versions) {
-        std::string presets = GetSupportedDLSSPresets(test.major, test.minor, test.patch);
+        std::string presets = GetSupportedDLSSSRPresets(test.major, test.minor, test.patch);
         LogInfo("Version %d.%d.%d (%s): Presets [%s]",
                 test.major, test.minor, test.patch, test.description, presets.c_str());
     }

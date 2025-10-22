@@ -615,8 +615,11 @@ DLSSGSummary GetDLSSGSummary() {
         summary.dlssd_dll_version = "Not loaded";
     }
 
-    // Determine supported DLSS presets based on DLSS DLL version
-    summary.supported_dlss_presets = GetSupportedDLSSPresetsFromVersionString(summary.dlss_dll_version);
+    // Determine supported DLSS SR presets based on DLSS DLL version
+    summary.supported_dlss_presets = GetSupportedDLSSSRPresetsFromVersionString(summary.dlss_dll_version);
+
+    // Determine supported DLSS RR presets based on DLSS DLL version
+    summary.supported_dlss_rr_presets = GetSupportedDLSSRRPresetsFromVersionString(summary.dlss_dll_version);
 
     return summary;
 }
@@ -673,3 +676,68 @@ size_t GetReShadeRuntimeCount() {
 
 // NGX preset initialization tracking
 std::atomic<bool> g_ngx_presets_initialized{false};
+
+// Get DLSS Model Profile
+DLSSModelProfile GetDLSSModelProfile() {
+    DLSSModelProfile profile;
+
+    // Read Super Resolution preset values
+    int sr_quality;
+    if (g_ngx_parameters.get_as_int("DLSS.Hint.Render.Preset.Quality", sr_quality)) {
+        profile.sr_quality_preset = sr_quality;
+        profile.is_valid = true;
+    }
+
+    int sr_balanced;
+    if (g_ngx_parameters.get_as_int("DLSS.Hint.Render.Preset.Balanced", sr_balanced)) {
+        profile.sr_balanced_preset = sr_balanced;
+    }
+
+    int sr_performance;
+    if (g_ngx_parameters.get_as_int("DLSS.Hint.Render.Preset.Performance", sr_performance)) {
+        profile.sr_performance_preset = sr_performance;
+    }
+
+    int sr_ultra_performance;
+    if (g_ngx_parameters.get_as_int("DLSS.Hint.Render.Preset.UltraPerformance", sr_ultra_performance)) {
+        profile.sr_ultra_performance_preset = sr_ultra_performance;
+    }
+
+    int sr_ultra_quality;
+    if (g_ngx_parameters.get_as_int("DLSS.Hint.Render.Preset.UltraQuality", sr_ultra_quality)) {
+        profile.sr_ultra_quality_preset = sr_ultra_quality;
+    }
+
+    int sr_dlaa;
+    if (g_ngx_parameters.get_as_int("DLSS.Hint.Render.Preset.DLAA", sr_dlaa)) {
+        profile.sr_dlaa_preset = sr_dlaa;
+    }
+
+    // Read Ray Reconstruction preset values
+    int rr_quality;
+    if (g_ngx_parameters.get_as_int("RayReconstruction.Hint.Render.Preset.Quality", rr_quality)) {
+        profile.rr_quality_preset = rr_quality;
+    }
+
+    int rr_balanced;
+    if (g_ngx_parameters.get_as_int("RayReconstruction.Hint.Render.Preset.Balanced", rr_balanced)) {
+        profile.rr_balanced_preset = rr_balanced;
+    }
+
+    int rr_performance;
+    if (g_ngx_parameters.get_as_int("RayReconstruction.Hint.Render.Preset.Performance", rr_performance)) {
+        profile.rr_performance_preset = rr_performance;
+    }
+
+    int rr_ultra_performance;
+    if (g_ngx_parameters.get_as_int("RayReconstruction.Hint.Render.Preset.UltraPerformance", rr_ultra_performance)) {
+        profile.rr_ultra_performance_preset = rr_ultra_performance;
+    }
+
+    int rr_ultra_quality;
+    if (g_ngx_parameters.get_as_int("RayReconstruction.Hint.Render.Preset.UltraQuality", rr_ultra_quality)) {
+        profile.rr_ultra_quality_preset = rr_ultra_quality;
+    }
+
+    return profile;
+}

@@ -1,43 +1,42 @@
 #include "swapchain_tab.hpp"
-#include "../../res/forkawesome.h"
+#include "../../config/display_commander_config.hpp"
 #include "../../globals.hpp"
+#include "../../hooks/ngx_hooks.hpp"
+#include "../../res/forkawesome.h"
 #include "../../settings/main_tab_settings.hpp"
 #include "../../settings/swapchain_tab_settings.hpp"
 #include "../../swapchain_events_power_saving.hpp"
-#include "../../config/display_commander_config.hpp"
 #include "../../utils/general_utils.hpp"
 #include "../../utils/timing.hpp"
-#include "../../hooks/ngx_hooks.hpp"
 
-#include <array>
-#include <algorithm>
-#include <vector>
-#include <map>
-#include <cctype>
 #include <dxgi1_6.h>
-#include <reshade_imgui.hpp>
 #include <wrl/client.h>
+#include <algorithm>
+#include <array>
+#include <cctype>
+#include <map>
+#include <reshade_imgui.hpp>
 #include <sstream>
+#include <vector>
 
 namespace ui::new_ui {
-     bool has_last_metadata = false;
-     bool auto_apply_hdr_metadata = false;
+bool has_last_metadata = false;
+bool auto_apply_hdr_metadata = false;
 
+// Static variables to track last set HDR metadata values
+DXGI_HDR_METADATA_HDR10 last_hdr_metadata = {
+    .RedPrimary = {32768, 21634},
+    .GreenPrimary = {19661, 39321},
+    .BluePrimary = {9830, 3932},
+    .WhitePoint = {20493, 21564},
+    .MaxMasteringLuminance = 1000,
+    .MinMasteringLuminance = 0,
+    .MaxContentLightLevel = 1000,
+    .MaxFrameAverageLightLevel = 400,
+};
+DXGI_HDR_METADATA_HDR10 dirty_last_metadata = last_hdr_metadata;
 
-     // Static variables to track last set HDR metadata values
-     DXGI_HDR_METADATA_HDR10 last_hdr_metadata = {
-         .RedPrimary = {32768, 21634},
-         .GreenPrimary = {19661, 39321},
-         .BluePrimary = {9830, 3932},
-         .WhitePoint = {20493, 21564},
-         .MaxMasteringLuminance = 1000,
-         .MinMasteringLuminance = 0,
-         .MaxContentLightLevel = 1000,
-         .MaxFrameAverageLightLevel = 400,
-     };
-     DXGI_HDR_METADATA_HDR10 dirty_last_metadata = last_hdr_metadata;
-
-     std::string last_metadata_source = "None";
+std::string last_metadata_source = "None";
 
 // Initialize swapchain tab
 void InitSwapchainTab() {
@@ -72,7 +71,8 @@ void InitSwapchainTab() {
 
     // Read has_last_metadata flag from config
     display_commander::config::get_config_value("ReShade_HDR_Metadata", "has_last_metadata", has_last_metadata);
-    display_commander::config::get_config_value("ReShade_HDR_Metadata", "auto_apply_hdr_metadata", auto_apply_hdr_metadata);
+    display_commander::config::get_config_value("ReShade_HDR_Metadata", "auto_apply_hdr_metadata",
+                                                auto_apply_hdr_metadata);
 
     // Initialize HDR metadata with loaded values
     last_hdr_metadata.RedPrimary[0] = static_cast<UINT16>(prim_red_x * 65535);
@@ -99,7 +99,9 @@ void AutoApplyTrigger() {
     if (!auto_apply_hdr_metadata) {
         return;
     }
-    if (g_last_reshade_device_api.load() != static_cast<int>(reshade::api::device_api::d3d12) && g_last_reshade_device_api.load() != static_cast<int>(reshade::api::device_api::d3d11) && g_last_reshade_device_api.load() != static_cast<int>(reshade::api::device_api::d3d10)) {
+    if (g_last_reshade_device_api.load() != static_cast<int>(reshade::api::device_api::d3d12)
+        && g_last_reshade_device_api.load() != static_cast<int>(reshade::api::device_api::d3d11)
+        && g_last_reshade_device_api.load() != static_cast<int>(reshade::api::device_api::d3d10)) {
         return;
     }
     static bool first_apply = true;
@@ -107,7 +109,7 @@ void AutoApplyTrigger() {
     // Get the current swapchain
     HWND hwnd = g_last_swapchain_hwnd.load();
     if (hwnd == nullptr || !IsWindow(hwnd)) {
-        return; // No valid swapchain window
+        return;  // No valid swapchain window
     }
 
     // Get the DXGI swapchain from the window
@@ -176,7 +178,8 @@ void DrawSwapchainEventCounters() {
         uint32_t total_events = 0;
 
         // Helper function to display event category
-        auto displayEventCategory = [&](const char* name, const auto& event_array, const auto& event_names_map, ImVec4 header_color) {
+        auto displayEventCategory = [&](const char* name, const auto& event_array, const auto& event_names_map,
+                                        ImVec4 header_color) {
             if (ImGui::CollapsingHeader(name, ImGuiTreeNodeFlags_DefaultOpen)) {
                 ImGui::Indent();
 
@@ -239,9 +242,9 @@ void DrawSwapchainEventCounters() {
             {RESHADE_EVENT_BLIT, "RESHADE_EVENT_BLIT"},
             {RESHADE_EVENT_BEGIN_QUERY, "RESHADE_EVENT_BEGIN_QUERY"},
             {RESHADE_EVENT_END_QUERY, "RESHADE_EVENT_END_QUERY"},
-            {RESHADE_EVENT_RESOLVE_QUERY_DATA, "RESHADE_EVENT_RESOLVE_QUERY_DATA"}
-        };
-        displayEventCategory("ReShade Events", g_reshade_event_counters, reshade_event_names, ImVec4(0.8f, 0.8f, 1.0f, 1.0f));
+            {RESHADE_EVENT_RESOLVE_QUERY_DATA, "RESHADE_EVENT_RESOLVE_QUERY_DATA"}};
+        displayEventCategory("ReShade Events", g_reshade_event_counters, reshade_event_names,
+                             ImVec4(0.8f, 0.8f, 1.0f, 1.0f));
 
         // DXGI Core Methods
         static const std::map<DxgiCoreEventIndex, const char*> dxgi_core_event_names = {
@@ -254,9 +257,9 @@ void DrawSwapchainEventCounters() {
             {DXGI_CORE_EVENT_RESIZETARGET, "DXGI_CORE_EVENT_RESIZETARGET"},
             {DXGI_CORE_EVENT_GETCONTAININGOUTPUT, "DXGI_CORE_EVENT_GETCONTAININGOUTPUT"},
             {DXGI_CORE_EVENT_GETFRAMESTATISTICS, "DXGI_CORE_EVENT_GETFRAMESTATISTICS"},
-            {DXGI_CORE_EVENT_GETLASTPRESENTCOUNT, "DXGI_CORE_EVENT_GETLASTPRESENTCOUNT"}
-        };
-        displayEventCategory("DXGI Core Methods", g_dxgi_core_event_counters, dxgi_core_event_names, ImVec4(0.8f, 1.0f, 0.8f, 1.0f));
+            {DXGI_CORE_EVENT_GETLASTPRESENTCOUNT, "DXGI_CORE_EVENT_GETLASTPRESENTCOUNT"}};
+        displayEventCategory("DXGI Core Methods", g_dxgi_core_event_counters, dxgi_core_event_names,
+                             ImVec4(0.8f, 1.0f, 0.8f, 1.0f));
 
         // DXGI SwapChain1 Methods
         static const std::map<DxgiSwapChain1EventIndex, const char*> dxgi_sc1_event_names = {
@@ -270,9 +273,9 @@ void DrawSwapchainEventCounters() {
             {DXGI_SC1_EVENT_SETBACKGROUNDCOLOR, "DXGI_SC1_EVENT_SETBACKGROUNDCOLOR"},
             {DXGI_SC1_EVENT_GETBACKGROUNDCOLOR, "DXGI_SC1_EVENT_GETBACKGROUNDCOLOR"},
             {DXGI_SC1_EVENT_SETROTATION, "DXGI_SC1_EVENT_SETROTATION"},
-            {DXGI_SC1_EVENT_GETROTATION, "DXGI_SC1_EVENT_GETROTATION"}
-        };
-        displayEventCategory("DXGI SwapChain1 Methods", g_dxgi_sc1_event_counters, dxgi_sc1_event_names, ImVec4(1.0f, 0.8f, 0.8f, 1.0f));
+            {DXGI_SC1_EVENT_GETROTATION, "DXGI_SC1_EVENT_GETROTATION"}};
+        displayEventCategory("DXGI SwapChain1 Methods", g_dxgi_sc1_event_counters, dxgi_sc1_event_names,
+                             ImVec4(1.0f, 0.8f, 0.8f, 1.0f));
 
         // DXGI SwapChain2 Methods
         static const std::map<DxgiSwapChain2EventIndex, const char*> dxgi_sc2_event_names = {
@@ -282,55 +285,54 @@ void DrawSwapchainEventCounters() {
             {DXGI_SC2_EVENT_GETMAXIMUMFRAMELATENCY, "DXGI_SC2_EVENT_GETMAXIMUMFRAMELATENCY"},
             {DXGI_SC2_EVENT_GETFRAMELATENCYWAIABLEOBJECT, "DXGI_SC2_EVENT_GETFRAMELATENCYWAIABLEOBJECT"},
             {DXGI_SC2_EVENT_SETMATRIXTRANSFORM, "DXGI_SC2_EVENT_SETMATRIXTRANSFORM"},
-            {DXGI_SC2_EVENT_GETMATRIXTRANSFORM, "DXGI_SC2_EVENT_GETMATRIXTRANSFORM"}
-        };
-        displayEventCategory("DXGI SwapChain2 Methods", g_dxgi_sc2_event_counters, dxgi_sc2_event_names, ImVec4(1.0f, 1.0f, 0.8f, 1.0f));
+            {DXGI_SC2_EVENT_GETMATRIXTRANSFORM, "DXGI_SC2_EVENT_GETMATRIXTRANSFORM"}};
+        displayEventCategory("DXGI SwapChain2 Methods", g_dxgi_sc2_event_counters, dxgi_sc2_event_names,
+                             ImVec4(1.0f, 1.0f, 0.8f, 1.0f));
 
         // DXGI SwapChain3 Methods
         static const std::map<DxgiSwapChain3EventIndex, const char*> dxgi_sc3_event_names = {
             {DXGI_SC3_EVENT_GETCURRENTBACKBUFFERINDEX, "DXGI_SC3_EVENT_GETCURRENTBACKBUFFERINDEX"},
             {DXGI_SC3_EVENT_CHECKCOLORSPACESUPPORT, "DXGI_SC3_EVENT_CHECKCOLORSPACESUPPORT"},
             {DXGI_SC3_EVENT_SETCOLORSPACE1, "DXGI_SC3_EVENT_SETCOLORSPACE1"},
-            {DXGI_SC3_EVENT_RESIZEBUFFERS1, "DXGI_SC3_EVENT_RESIZEBUFFERS1"}
-        };
-        displayEventCategory("DXGI SwapChain3 Methods", g_dxgi_sc3_event_counters, dxgi_sc3_event_names, ImVec4(0.8f, 1.0f, 1.0f, 1.0f));
+            {DXGI_SC3_EVENT_RESIZEBUFFERS1, "DXGI_SC3_EVENT_RESIZEBUFFERS1"}};
+        displayEventCategory("DXGI SwapChain3 Methods", g_dxgi_sc3_event_counters, dxgi_sc3_event_names,
+                             ImVec4(0.8f, 1.0f, 1.0f, 1.0f));
 
         // DXGI Factory Methods
         static const std::map<DxgiFactoryEventIndex, const char*> dxgi_factory_event_names = {
             {DXGI_FACTORY_EVENT_CREATESWAPCHAIN, "DXGI_FACTORY_EVENT_CREATESWAPCHAIN"},
             {DXGI_FACTORY_EVENT_CREATEFACTORY, "DXGI_FACTORY_EVENT_CREATEFACTORY"},
-            {DXGI_FACTORY_EVENT_CREATEFACTORY1, "DXGI_FACTORY_EVENT_CREATEFACTORY1"}
-        };
-        displayEventCategory("DXGI Factory Methods", g_dxgi_factory_event_counters, dxgi_factory_event_names, ImVec4(1.0f, 0.8f, 1.0f, 1.0f));
+            {DXGI_FACTORY_EVENT_CREATEFACTORY1, "DXGI_FACTORY_EVENT_CREATEFACTORY1"}};
+        displayEventCategory("DXGI Factory Methods", g_dxgi_factory_event_counters, dxgi_factory_event_names,
+                             ImVec4(1.0f, 0.8f, 1.0f, 1.0f));
 
         // DXGI SwapChain4 Methods
         static const std::map<DxgiSwapChain4EventIndex, const char*> dxgi_sc4_event_names = {
-            {DXGI_SC4_EVENT_SETHDRMETADATA, "DXGI_SC4_EVENT_SETHDRMETADATA"}
-        };
-        displayEventCategory("DXGI SwapChain4 Methods", g_dxgi_sc4_event_counters, dxgi_sc4_event_names, ImVec4(0.8f, 0.8f, 0.8f, 1.0f));
+            {DXGI_SC4_EVENT_SETHDRMETADATA, "DXGI_SC4_EVENT_SETHDRMETADATA"}};
+        displayEventCategory("DXGI SwapChain4 Methods", g_dxgi_sc4_event_counters, dxgi_sc4_event_names,
+                             ImVec4(0.8f, 0.8f, 0.8f, 1.0f));
 
         // DXGI Output Methods
         static const std::map<DxgiOutputEventIndex, const char*> dxgi_output_event_names = {
             {DXGI_OUTPUT_EVENT_SETGAMMACONTROL, "DXGI_OUTPUT_EVENT_SETGAMMACONTROL"},
             {DXGI_OUTPUT_EVENT_GETGAMMACONTROL, "DXGI_OUTPUT_EVENT_GETGAMMACONTROL"},
-            {DXGI_OUTPUT_EVENT_GETDESC, "DXGI_OUTPUT_EVENT_GETDESC"}
-        };
-        displayEventCategory("DXGI Output Methods", g_dxgi_output_event_counters, dxgi_output_event_names, ImVec4(0.8f, 1.0f, 0.8f, 1.0f));
+            {DXGI_OUTPUT_EVENT_GETDESC, "DXGI_OUTPUT_EVENT_GETDESC"}};
+        displayEventCategory("DXGI Output Methods", g_dxgi_output_event_counters, dxgi_output_event_names,
+                             ImVec4(0.8f, 1.0f, 0.8f, 1.0f));
 
         // DirectX 9 Methods
-        static const std::map<Dx9EventIndex, const char*> dx9_event_names = {
-            {DX9_EVENT_PRESENT, "DX9_EVENT_PRESENT"}
-        };
-        displayEventCategory("DirectX 9 Methods", g_dx9_event_counters, dx9_event_names, ImVec4(1.0f, 0.6f, 0.6f, 1.0f));
+        static const std::map<Dx9EventIndex, const char*> dx9_event_names = {{DX9_EVENT_PRESENT, "DX9_EVENT_PRESENT"}};
+        displayEventCategory("DirectX 9 Methods", g_dx9_event_counters, dx9_event_names,
+                             ImVec4(1.0f, 0.6f, 0.6f, 1.0f));
 
         // Streamline Methods
         static const std::map<StreamlineEventIndex, const char*> streamline_event_names = {
             {STREAMLINE_EVENT_SL_INIT, "STREAMLINE_EVENT_SL_INIT"},
             {STREAMLINE_EVENT_SL_IS_FEATURE_SUPPORTED, "STREAMLINE_EVENT_SL_IS_FEATURE_SUPPORTED"},
             {STREAMLINE_EVENT_SL_GET_NATIVE_INTERFACE, "STREAMLINE_EVENT_SL_GET_NATIVE_INTERFACE"},
-            {STREAMLINE_EVENT_SL_UPGRADE_INTERFACE, "STREAMLINE_EVENT_SL_UPGRADE_INTERFACE"}
-        };
-        displayEventCategory("Streamline Methods", g_streamline_event_counters, streamline_event_names, ImVec4(0.6f, 0.8f, 1.0f, 1.0f));
+            {STREAMLINE_EVENT_SL_UPGRADE_INTERFACE, "STREAMLINE_EVENT_SL_UPGRADE_INTERFACE"}};
+        displayEventCategory("Streamline Methods", g_streamline_event_counters, streamline_event_names,
+                             ImVec4(0.6f, 0.8f, 1.0f, 1.0f));
 
         ImGui::Separator();
         ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "Total Events: %u", total_events);
@@ -344,8 +346,7 @@ void DrawSwapchainEventCounters() {
                 {NVAPI_EVENT_D3D_SET_LATENCY_MARKER, "NVAPI_EVENT_D3D_SET_LATENCY_MARKER"},
                 {NVAPI_EVENT_D3D_SET_SLEEP_MODE, "NVAPI_EVENT_D3D_SET_SLEEP_MODE"},
                 {NVAPI_EVENT_D3D_SLEEP, "NVAPI_EVENT_D3D_SLEEP"},
-                {NVAPI_EVENT_D3D_GET_LATENCY, "NVAPI_EVENT_D3D_GET_LATENCY"}
-            };
+                {NVAPI_EVENT_D3D_GET_LATENCY, "NVAPI_EVENT_D3D_GET_LATENCY"}};
 
             uint32_t nvapi_total_events = 0;
 
@@ -358,9 +359,14 @@ void DrawSwapchainEventCounters() {
             };
 
             static const std::vector<NvapiEventGroup> nvapi_event_groups = {
-                {   .name="NVAPI HDR Methods", .start_idx=NVAPI_EVENT_GET_HDR_CAPABILITIES, .end_idx=NVAPI_EVENT_GET_HDR_CAPABILITIES, .color=ImVec4(0.6f, 1.0f, 0.6f, 1.0f)},
-                {   .name="NVAPI Reflex Methods", .start_idx=NVAPI_EVENT_D3D_SET_LATENCY_MARKER, .end_idx=NVAPI_EVENT_D3D_GET_LATENCY, .color=ImVec4(0.6f, 1.0f, 0.8f, 1.0f)}
-            };
+                {.name = "NVAPI HDR Methods",
+                 .start_idx = NVAPI_EVENT_GET_HDR_CAPABILITIES,
+                 .end_idx = NVAPI_EVENT_GET_HDR_CAPABILITIES,
+                 .color = ImVec4(0.6f, 1.0f, 0.6f, 1.0f)},
+                {.name = "NVAPI Reflex Methods",
+                 .start_idx = NVAPI_EVENT_D3D_SET_LATENCY_MARKER,
+                 .end_idx = NVAPI_EVENT_D3D_GET_LATENCY,
+                 .color = ImVec4(0.6f, 1.0f, 0.8f, 1.0f)}};
 
             for (const auto& group : nvapi_event_groups) {
                 if (ImGui::CollapsingHeader(group.name, ImGuiTreeNodeFlags_DefaultOpen)) {
@@ -389,7 +395,9 @@ void DrawSwapchainEventCounters() {
 
                 ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "Last Sleep: %.2f ms ago", time_since_sleep_ms);
                 if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip("Time since the last NVAPI_D3D_Sleep call was made.\nLower values indicate more recent sleep calls.");
+                    ImGui::SetTooltip(
+                        "Time since the last NVAPI_D3D_Sleep call was made.\nLower values indicate more recent sleep "
+                        "calls.");
                 }
             } else {
                 ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Last Sleep: Never");
@@ -607,7 +615,7 @@ void DrawNGXParameters() {
                         snprintf(buffer, sizeof(buffer), "%.6f", value.get_as_float());
                         value_str = std::string(buffer);
                         type_str = "float";
-                        color = ImVec4(0.0f, 1.0f, 1.0f, 1.0f); // Cyan
+                        color = ImVec4(0.0f, 1.0f, 1.0f, 1.0f);  // Cyan
                         break;
                     }
                     case ParameterValue::DOUBLE: {
@@ -615,52 +623,46 @@ void DrawNGXParameters() {
                         snprintf(buffer, sizeof(buffer), "%.6f", value.get_as_double());
                         value_str = std::string(buffer);
                         type_str = "double";
-                        color = ImVec4(0.0f, 1.0f, 0.8f, 1.0f); // Light cyan
+                        color = ImVec4(0.0f, 1.0f, 0.8f, 1.0f);  // Light cyan
                         break;
                     }
                     case ParameterValue::INT: {
                         value_str = std::to_string(value.get_as_int());
                         type_str = "int";
-                        color = ImVec4(1.0f, 1.0f, 0.0f, 1.0f); // Yellow
+                        color = ImVec4(1.0f, 1.0f, 0.0f, 1.0f);  // Yellow
                         break;
                     }
                     case ParameterValue::UINT: {
                         value_str = std::to_string(value.get_as_uint());
                         type_str = "uint";
-                        color = ImVec4(1.0f, 0.8f, 0.0f, 1.0f); // Orange
+                        color = ImVec4(1.0f, 0.8f, 0.0f, 1.0f);  // Orange
                         break;
                     }
                     case ParameterValue::ULL: {
                         value_str = std::to_string(value.get_as_ull());
                         type_str = "ull";
-                        color = ImVec4(1.0f, 0.6f, 0.0f, 1.0f); // Dark orange
+                        color = ImVec4(1.0f, 0.6f, 0.0f, 1.0f);  // Dark orange
                         break;
                     }
                     default:
                         value_str = "unknown";
                         type_str = "unknown";
-                        color = ImVec4(0.5f, 0.5f, 0.5f, 1.0f); // Gray
+                        color = ImVec4(0.5f, 0.5f, 0.5f, 1.0f);  // Gray
                         break;
                 }
 
-                all_params.push_back({
-                    key,
-                    value_str,
-                    type_str,
-                    color
-                });
+                all_params.push_back({key, value_str, type_str, color});
             }
         }
 
         // Sort parameters alphabetically by name
         std::sort(all_params.begin(), all_params.end(),
-                  [](const ParameterEntry& a, const ParameterEntry& b) {
-                      return a.name < b.name;
-                  });
+                  [](const ParameterEntry& a, const ParameterEntry& b) { return a.name < b.name; });
 
         // Display unified parameter list
         if (!all_params.empty()) {
-            ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "All Parameters (%zu) - Sorted Alphabetically:", all_params.size());
+            ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f),
+                               "All Parameters (%zu) - Sorted Alphabetically:", all_params.size());
             ImGui::Spacing();
 
             // Add search filter
@@ -670,9 +672,9 @@ void DrawNGXParameters() {
 
             // Create a table-like display
             ImGui::Columns(3, "NGXParameters", true);
-            ImGui::SetColumnWidth(0, 750); // Parameter name (increased for long names)
-            ImGui::SetColumnWidth(1, 80);  // Type
-            ImGui::SetColumnWidth(2, 150); // Value
+            ImGui::SetColumnWidth(0, 750);  // Parameter name (increased for long names)
+            ImGui::SetColumnWidth(1, 80);   // Type
+            ImGui::SetColumnWidth(2, 150);  // Value
 
             // Header
             ImGui::TextColored(ImVec4(1.0f, 1.0f, 1.0f, 1.0f), "Parameter Name");
@@ -694,7 +696,7 @@ void DrawNGXParameters() {
                     std::transform(lower_filter.begin(), lower_filter.end(), lower_filter.begin(), ::tolower);
 
                     if (lower_name.find(lower_filter) == std::string::npos) {
-                        continue; // Skip this parameter if it doesn't match the filter
+                        continue;  // Skip this parameter if it doesn't match the filter
                     }
                 }
 
@@ -711,11 +713,12 @@ void DrawNGXParameters() {
             if (strlen(search_filter) > 0) {
                 ImGui::Columns(1);
                 ImGui::Spacing();
-                ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Showing %zu of %zu parameters", displayed_count, all_params.size());
+                ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Showing %zu of %zu parameters", displayed_count,
+                                   all_params.size());
                 ImGui::Spacing();
             }
 
-            ImGui::Columns(1); // Reset columns
+            ImGui::Columns(1);  // Reset columns
             ImGui::Spacing();
 
             // Show type legend with counts
@@ -725,17 +728,26 @@ void DrawNGXParameters() {
             // Count parameters by type
             size_t float_count = 0, double_count = 0, int_count = 0, uint_count = 0, ull_count = 0;
             for (const auto& param : all_params) {
-                if (param.type == "float") float_count++;
-                else if (param.type == "double") double_count++;
-                else if (param.type == "int") int_count++;
-                else if (param.type == "uint") uint_count++;
-                else if (param.type == "ull") ull_count++;
+                if (param.type == "float")
+                    float_count++;
+                else if (param.type == "double")
+                    double_count++;
+                else if (param.type == "int")
+                    int_count++;
+                else if (param.type == "uint")
+                    uint_count++;
+                else if (param.type == "ull")
+                    ull_count++;
             }
 
-            ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "float (%zu)", float_count); ImGui::SameLine(100);
-            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.8f, 1.0f), "double (%zu)", double_count); ImGui::SameLine(200);
-            ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "int (%zu)", int_count); ImGui::SameLine(300);
-            ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "uint (%zu)", uint_count); ImGui::SameLine(400);
+            ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "float (%zu)", float_count);
+            ImGui::SameLine(100);
+            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.8f, 1.0f), "double (%zu)", double_count);
+            ImGui::SameLine(200);
+            ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "int (%zu)", int_count);
+            ImGui::SameLine(300);
+            ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "uint (%zu)", uint_count);
+            ImGui::SameLine(400);
             ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f), "ull (%zu)", ull_count);
             ImGui::Unindent();
         } else {
@@ -760,44 +772,45 @@ void DrawDLSSGSummary() {
 
         // Create a two-column layout for the summary
         ImGui::Columns(2, "DLSSGSummaryColumns", false);
-        ImGui::SetColumnWidth(0, 300); // Label column
-        ImGui::SetColumnWidth(1, 350); // Value column
+        ImGui::SetColumnWidth(0, 300);  // Label column
+        ImGui::SetColumnWidth(1, 350);  // Value column
 
         // Status indicators
         ImGui::Text("DLSS Active:");
         ImGui::NextColumn();
-        ImGui::TextColored(summary.dlss_active ? ImVec4(0.0f, 1.0f, 0.0f, 1.0f) : ImVec4(1.0f, 0.0f, 0.0f, 1.0f),
-                          "%s", summary.dlss_active ? "Yes" : "No");
+        ImGui::TextColored(summary.dlss_active ? ImVec4(0.0f, 1.0f, 0.0f, 1.0f) : ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "%s",
+                           summary.dlss_active ? "Yes" : "No");
         ImGui::NextColumn();
 
         ImGui::Text("DLSS-G Active:");
         ImGui::NextColumn();
         ImGui::TextColored(summary.dlss_g_active ? ImVec4(0.0f, 1.0f, 0.0f, 1.0f) : ImVec4(1.0f, 0.0f, 0.0f, 1.0f),
-                          "%s", summary.dlss_g_active ? "Yes" : "No");
+                           "%s", summary.dlss_g_active ? "Yes" : "No");
         ImGui::NextColumn();
 
         ImGui::Text("Ray Reconstruction:");
         ImGui::NextColumn();
-        ImGui::TextColored(summary.ray_reconstruction_active ? ImVec4(0.0f, 1.0f, 0.0f, 1.0f) : ImVec4(1.0f, 0.0f, 0.0f, 1.0f),
-                          "%s", summary.ray_reconstruction_active ? "Yes" : "No");
+        ImGui::TextColored(
+            summary.ray_reconstruction_active ? ImVec4(0.0f, 1.0f, 0.0f, 1.0f) : ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "%s",
+            summary.ray_reconstruction_active ? "Yes" : "No");
         ImGui::NextColumn();
 
         ImGui::Text("FG Mode:");
         ImGui::NextColumn();
         // Color code based on FG mode
-        ImVec4 fg_color = ImVec4(0.8f, 0.8f, 0.8f, 1.0f); // Default gray
+        ImVec4 fg_color = ImVec4(0.8f, 0.8f, 0.8f, 1.0f);  // Default gray
         if (summary.fg_mode == "2x") {
-            fg_color = ImVec4(0.0f, 1.0f, 0.0f, 1.0f); // Green for 2x
+            fg_color = ImVec4(0.0f, 1.0f, 0.0f, 1.0f);  // Green for 2x
         } else if (summary.fg_mode == "3x") {
-            fg_color = ImVec4(1.0f, 1.0f, 0.0f, 1.0f); // Yellow for 3x
+            fg_color = ImVec4(1.0f, 1.0f, 0.0f, 1.0f);  // Yellow for 3x
         } else if (summary.fg_mode == "4x") {
-            fg_color = ImVec4(1.0f, 0.5f, 0.0f, 1.0f); // Orange for 4x
+            fg_color = ImVec4(1.0f, 0.5f, 0.0f, 1.0f);  // Orange for 4x
         } else if (summary.fg_mode.find("x") != std::string::npos) {
-            fg_color = ImVec4(1.0f, 0.0f, 1.0f, 1.0f); // Magenta for higher modes
+            fg_color = ImVec4(1.0f, 0.0f, 1.0f, 1.0f);  // Magenta for higher modes
         } else if (summary.fg_mode == "Disabled") {
-            fg_color = ImVec4(1.0f, 0.0f, 0.0f, 1.0f); // Red for disabled
+            fg_color = ImVec4(1.0f, 0.0f, 0.0f, 1.0f);  // Red for disabled
         } else if (summary.fg_mode == "Unknown") {
-            fg_color = ImVec4(0.5f, 0.5f, 0.5f, 1.0f); // Gray for unknown
+            fg_color = ImVec4(0.5f, 0.5f, 0.5f, 1.0f);  // Gray for unknown
         }
         ImGui::TextColored(fg_color, "%s", summary.fg_mode.c_str());
         ImGui::NextColumn();
@@ -821,7 +834,6 @@ void DrawDLSSGSummary() {
             ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "%s", summary.dlssd_dll_version.c_str());
             ImGui::NextColumn();
         }
-
 
         ImGui::Separator();
 
@@ -879,20 +891,23 @@ void DrawDLSSGSummary() {
         // Technical settings
         ImGui::Text("Depth Inverted:");
         ImGui::NextColumn();
-        ImGui::TextColored(summary.depth_inverted == "Yes" ? ImVec4(1.0f, 0.5f, 0.0f, 1.0f) : ImVec4(0.5f, 1.0f, 0.5f, 1.0f),
-                          "%s", summary.depth_inverted.c_str());
+        ImGui::TextColored(
+            summary.depth_inverted == "Yes" ? ImVec4(1.0f, 0.5f, 0.0f, 1.0f) : ImVec4(0.5f, 1.0f, 0.5f, 1.0f), "%s",
+            summary.depth_inverted.c_str());
         ImGui::NextColumn();
 
         ImGui::Text("HDR Enabled:");
         ImGui::NextColumn();
-        ImGui::TextColored(summary.hdr_enabled == "Yes" ? ImVec4(0.0f, 1.0f, 0.0f, 1.0f) : ImVec4(0.8f, 0.8f, 0.8f, 1.0f),
-                          "%s", summary.hdr_enabled.c_str());
+        ImGui::TextColored(
+            summary.hdr_enabled == "Yes" ? ImVec4(0.0f, 1.0f, 0.0f, 1.0f) : ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "%s",
+            summary.hdr_enabled.c_str());
         ImGui::NextColumn();
 
         ImGui::Text("Motion Vectors:");
         ImGui::NextColumn();
-        ImGui::TextColored(summary.motion_vectors_included == "Yes" ? ImVec4(0.0f, 1.0f, 0.0f, 1.0f) : ImVec4(1.0f, 0.0f, 0.0f, 1.0f),
-                          "%s", summary.motion_vectors_included.c_str());
+        ImGui::TextColored(
+            summary.motion_vectors_included == "Yes" ? ImVec4(0.0f, 1.0f, 0.0f, 1.0f) : ImVec4(1.0f, 0.0f, 0.0f, 1.0f),
+            "%s", summary.motion_vectors_included.c_str());
         ImGui::NextColumn();
 
         ImGui::Text("Frame Time Delta:");
@@ -907,15 +922,17 @@ void DrawDLSSGSummary() {
 
         ImGui::Text("Optical Flow Accelerator:");
         ImGui::NextColumn();
-        ImGui::TextColored(summary.ofa_enabled == "Yes" ? ImVec4(0.0f, 1.0f, 0.0f, 1.0f) : ImVec4(1.0f, 0.0f, 0.0f, 1.0f),
-                          "%s", summary.ofa_enabled.c_str());
+        ImGui::TextColored(
+            summary.ofa_enabled == "Yes" ? ImVec4(0.0f, 1.0f, 0.0f, 1.0f) : ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "%s",
+            summary.ofa_enabled.c_str());
         ImGui::NextColumn();
 
-        ImGui::Columns(1); // Reset columns
+        ImGui::Columns(1);  // Reset columns
 
         // Add some helpful information
         ImGui::Spacing();
-        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Note: Values update in real-time as the game calls NGX functions");
+        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f),
+                           "Note: Values update in real-time as the game calls NGX functions");
 
         if (summary.dlss_g_active) {
             ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "DLSS Frame Generation is currently active!");
@@ -955,8 +972,8 @@ void DrawDxgiCompositionInfo() {
 
         // Get colorspace string directly from swapchain
         std::string colorspace_str = "Unknown";
-        if (auto *swapchain_ptr = g_last_swapchain_ptr_unsafe.load()) {
-            auto *swapchain = static_cast<reshade::api::swapchain*>(swapchain_ptr);
+        if (auto* swapchain_ptr = g_last_swapchain_ptr_unsafe.load()) {
+            auto* swapchain = static_cast<reshade::api::swapchain*>(swapchain_ptr);
             auto colorspace = swapchain->get_color_space();
             switch (colorspace) {
                 case reshade::api::color_space::unknown:              colorspace_str = "Unknown"; break;
@@ -981,8 +998,7 @@ void DrawDxgiCompositionInfo() {
 
 void DrawSwapchainInfo(reshade::api::effect_runtime* runtime) {
     // todo replace g_last_swapchain_ptr_unsafe with runtime->get_device()->get_native()
-    //runtime->get_device()->get_native();
-
+    // runtime->get_device()->get_native();
 
     // reshade runtimes list:
     if (ImGui::CollapsingHeader("ReShade Runtimes", ImGuiTreeNodeFlags_DefaultOpen)) {
@@ -993,7 +1009,8 @@ void DrawSwapchainInfo(reshade::api::effect_runtime* runtime) {
 
             // Create a collapsible header for each runtime
             std::stringstream ss;
-            ss << "Runtime " << i << " (0x" << std::hex << std::uppercase << reinterpret_cast<uintptr_t>(runtime) << ")";
+            ss << "Runtime " << i << " (0x" << std::hex << std::uppercase << reinterpret_cast<uintptr_t>(runtime)
+               << ")";
             std::string runtime_header = ss.str();
             if (ImGui::CollapsingHeader(runtime_header.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
                 ImGui::Indent();
@@ -1025,7 +1042,8 @@ void DrawSwapchainInfo(reshade::api::effect_runtime* runtime) {
                                     auto desc = device->get_resource_desc(back_buffer);
 
                                     std::stringstream buffer_ss;
-                                    buffer_ss << "Backbuffer " << j << " (0x" << std::hex << std::uppercase << back_buffer.handle << ")";
+                                    buffer_ss << "Backbuffer " << j << " (0x" << std::hex << std::uppercase
+                                              << back_buffer.handle << ")";
                                     std::string buffer_header = buffer_ss.str();
                                     if (ImGui::CollapsingHeader(buffer_header.c_str())) {
                                         ImGui::Indent();
@@ -1034,18 +1052,24 @@ void DrawSwapchainInfo(reshade::api::effect_runtime* runtime) {
                                         const char* type_str = "Unknown";
                                         switch (desc.type) {
                                             case reshade::api::resource_type::buffer: type_str = "Buffer"; break;
-                                            case reshade::api::resource_type::texture_1d: type_str = "Texture 1D"; break;
-                                            case reshade::api::resource_type::texture_2d: type_str = "Texture 2D"; break;
-                                            case reshade::api::resource_type::texture_3d: type_str = "Texture 3D"; break;
+                                            case reshade::api::resource_type::texture_1d:
+                                                type_str = "Texture 1D";
+                                                break;
+                                            case reshade::api::resource_type::texture_2d:
+                                                type_str = "Texture 2D";
+                                                break;
+                                            case reshade::api::resource_type::texture_3d:
+                                                type_str = "Texture 3D";
+                                                break;
                                             case reshade::api::resource_type::surface: type_str = "Surface"; break;
-                                            default: break;
+                                            default:                                   break;
                                         }
                                         ImGui::Text("Type: %s", type_str);
 
                                         // Texture dimensions and properties
-                                        if (desc.type == reshade::api::resource_type::texture_2d ||
-                                            desc.type == reshade::api::resource_type::texture_3d ||
-                                            desc.type == reshade::api::resource_type::surface) {
+                                        if (desc.type == reshade::api::resource_type::texture_2d
+                                            || desc.type == reshade::api::resource_type::texture_3d
+                                            || desc.type == reshade::api::resource_type::surface) {
                                             ImGui::Text("Dimensions: %dx%d", desc.texture.width, desc.texture.height);
                                             ImGui::Text("Depth/Layers: %d", desc.texture.depth_or_layers);
                                             ImGui::Text("Mip Levels: %d", desc.texture.levels);
@@ -1054,35 +1078,75 @@ void DrawSwapchainInfo(reshade::api::effect_runtime* runtime) {
                                             // Format information
                                             const char* format_str = "Unknown";
                                             switch (desc.texture.format) {
-                                                case reshade::api::format::r8g8b8a8_unorm: format_str = "R8G8B8A8_UNORM"; break;
-                                                case reshade::api::format::r8g8b8a8_unorm_srgb: format_str = "R8G8B8A8_UNORM_SRGB"; break;
-                                                case reshade::api::format::b8g8r8a8_unorm: format_str = "B8G8R8A8_UNORM"; break;
-                                                case reshade::api::format::b8g8r8a8_unorm_srgb: format_str = "B8G8R8A8_UNORM_SRGB"; break;
-                                                case reshade::api::format::r10g10b10a2_unorm: format_str = "R10G10B10A2_UNORM"; break;
-                                                case reshade::api::format::r16g16b16a16_float: format_str = "R16G16B16A16_FLOAT"; break;
-                                                case reshade::api::format::r32g32b32a32_float: format_str = "R32G32B32A32_FLOAT"; break;
-                                                case reshade::api::format::r11g11b10_float: format_str = "R11G11B10_FLOAT"; break;
-                                                case reshade::api::format::r16g16b16a16_unorm: format_str = "R16G16B16A16_UNORM"; break;
-                                                case reshade::api::format::r16g16b16a16_snorm: format_str = "R16G16B16A16_SNORM"; break;
-                                                case reshade::api::format::r32g32b32a32_uint: format_str = "R32G32B32A32_UINT"; break;
-                                                case reshade::api::format::r32g32b32a32_sint: format_str = "R32G32B32A32_SINT"; break;
-                                                case reshade::api::format::d24_unorm_s8_uint: format_str = "D24_UNORM_S8_UINT"; break;
+                                                case reshade::api::format::r8g8b8a8_unorm:
+                                                    format_str = "R8G8B8A8_UNORM";
+                                                    break;
+                                                case reshade::api::format::r8g8b8a8_unorm_srgb:
+                                                    format_str = "R8G8B8A8_UNORM_SRGB";
+                                                    break;
+                                                case reshade::api::format::b8g8r8a8_unorm:
+                                                    format_str = "B8G8R8A8_UNORM";
+                                                    break;
+                                                case reshade::api::format::b8g8r8a8_unorm_srgb:
+                                                    format_str = "B8G8R8A8_UNORM_SRGB";
+                                                    break;
+                                                case reshade::api::format::r10g10b10a2_unorm:
+                                                    format_str = "R10G10B10A2_UNORM";
+                                                    break;
+                                                case reshade::api::format::r16g16b16a16_float:
+                                                    format_str = "R16G16B16A16_FLOAT";
+                                                    break;
+                                                case reshade::api::format::r32g32b32a32_float:
+                                                    format_str = "R32G32B32A32_FLOAT";
+                                                    break;
+                                                case reshade::api::format::r11g11b10_float:
+                                                    format_str = "R11G11B10_FLOAT";
+                                                    break;
+                                                case reshade::api::format::r16g16b16a16_unorm:
+                                                    format_str = "R16G16B16A16_UNORM";
+                                                    break;
+                                                case reshade::api::format::r16g16b16a16_snorm:
+                                                    format_str = "R16G16B16A16_SNORM";
+                                                    break;
+                                                case reshade::api::format::r32g32b32a32_uint:
+                                                    format_str = "R32G32B32A32_UINT";
+                                                    break;
+                                                case reshade::api::format::r32g32b32a32_sint:
+                                                    format_str = "R32G32B32A32_SINT";
+                                                    break;
+                                                case reshade::api::format::d24_unorm_s8_uint:
+                                                    format_str = "D24_UNORM_S8_UINT";
+                                                    break;
                                                 case reshade::api::format::d32_float: format_str = "D32_FLOAT"; break;
-                                                case reshade::api::format::d32_float_s8_uint: format_str = "D32_FLOAT_S8_UINT"; break;
+                                                case reshade::api::format::d32_float_s8_uint:
+                                                    format_str = "D32_FLOAT_S8_UINT";
+                                                    break;
                                                 case reshade::api::format::bc1_unorm: format_str = "BC1_UNORM"; break;
-                                                case reshade::api::format::bc1_unorm_srgb: format_str = "BC1_UNORM_SRGB"; break;
+                                                case reshade::api::format::bc1_unorm_srgb:
+                                                    format_str = "BC1_UNORM_SRGB";
+                                                    break;
                                                 case reshade::api::format::bc2_unorm: format_str = "BC2_UNORM"; break;
-                                                case reshade::api::format::bc2_unorm_srgb: format_str = "BC2_UNORM_SRGB"; break;
+                                                case reshade::api::format::bc2_unorm_srgb:
+                                                    format_str = "BC2_UNORM_SRGB";
+                                                    break;
                                                 case reshade::api::format::bc3_unorm: format_str = "BC3_UNORM"; break;
-                                                case reshade::api::format::bc3_unorm_srgb: format_str = "BC3_UNORM_SRGB"; break;
+                                                case reshade::api::format::bc3_unorm_srgb:
+                                                    format_str = "BC3_UNORM_SRGB";
+                                                    break;
                                                 case reshade::api::format::bc4_unorm: format_str = "BC4_UNORM"; break;
                                                 case reshade::api::format::bc4_snorm: format_str = "BC4_SNORM"; break;
                                                 case reshade::api::format::bc5_unorm: format_str = "BC5_UNORM"; break;
                                                 case reshade::api::format::bc5_snorm: format_str = "BC5_SNORM"; break;
-                                                case reshade::api::format::bc6h_ufloat: format_str = "BC6H_UFLOAT"; break;
-                                                case reshade::api::format::bc6h_sfloat: format_str = "BC6H_SFLOAT"; break;
+                                                case reshade::api::format::bc6h_ufloat:
+                                                    format_str = "BC6H_UFLOAT";
+                                                    break;
+                                                case reshade::api::format::bc6h_sfloat:
+                                                    format_str = "BC6H_SFLOAT";
+                                                    break;
                                                 case reshade::api::format::bc7_unorm: format_str = "BC7_UNORM"; break;
-                                                case reshade::api::format::bc7_unorm_srgb: format_str = "BC7_UNORM_SRGB"; break;
+                                                case reshade::api::format::bc7_unorm_srgb:
+                                                    format_str = "BC7_UNORM_SRGB";
+                                                    break;
                                                 default: format_str = "Custom/Unknown"; break;
                                             }
                                             ImGui::Text("Format: %s", format_str);
@@ -1097,61 +1161,95 @@ void DrawSwapchainInfo(reshade::api::effect_runtime* runtime) {
                                         // Memory heap information
                                         const char* heap_str = "Unknown";
                                         switch (desc.heap) {
-                                            case reshade::api::memory_heap::unknown: heap_str = "Unknown"; break;
-                                            case reshade::api::memory_heap::gpu_only: heap_str = "GPU Only"; break;
+                                            case reshade::api::memory_heap::unknown:    heap_str = "Unknown"; break;
+                                            case reshade::api::memory_heap::gpu_only:   heap_str = "GPU Only"; break;
                                             case reshade::api::memory_heap::cpu_to_gpu: heap_str = "CPU to GPU"; break;
                                             case reshade::api::memory_heap::gpu_to_cpu: heap_str = "GPU to CPU"; break;
-                                            case reshade::api::memory_heap::cpu_only: heap_str = "CPU Only"; break;
-                                            case reshade::api::memory_heap::custom: heap_str = "Custom"; break;
+                                            case reshade::api::memory_heap::cpu_only:   heap_str = "CPU Only"; break;
+                                            case reshade::api::memory_heap::custom:     heap_str = "Custom"; break;
                                         }
                                         ImGui::Text("Memory Heap: %s", heap_str);
 
                                         // Usage flags
                                         std::string usage_flags;
-                                        if ((desc.usage & reshade::api::resource_usage::render_target) != reshade::api::resource_usage::undefined) usage_flags += "RenderTarget ";
-                                        if ((desc.usage & reshade::api::resource_usage::depth_stencil) != reshade::api::resource_usage::undefined) usage_flags += "DepthStencil ";
-                                        if ((desc.usage & reshade::api::resource_usage::shader_resource) != reshade::api::resource_usage::undefined) usage_flags += "ShaderResource ";
-                                        if ((desc.usage & reshade::api::resource_usage::copy_source) != reshade::api::resource_usage::undefined) usage_flags += "CopySource ";
-                                        if ((desc.usage & reshade::api::resource_usage::copy_dest) != reshade::api::resource_usage::undefined) usage_flags += "CopyDest ";
-                                        if ((desc.usage & reshade::api::resource_usage::resolve_source) != reshade::api::resource_usage::undefined) usage_flags += "ResolveSource ";
-                                        if ((desc.usage & reshade::api::resource_usage::resolve_dest) != reshade::api::resource_usage::undefined) usage_flags += "ResolveDest ";
-                                        if ((desc.usage & reshade::api::resource_usage::present) != reshade::api::resource_usage::undefined) usage_flags += "Present ";
-                                        if ((desc.usage & reshade::api::resource_usage::acceleration_structure) != reshade::api::resource_usage::undefined) usage_flags += "AccelerationStructure ";
-                                        if ((desc.usage & reshade::api::resource_usage::unordered_access) != reshade::api::resource_usage::undefined) usage_flags += "UnorderedAccess ";
+                                        if ((desc.usage & reshade::api::resource_usage::render_target)
+                                            != reshade::api::resource_usage::undefined)
+                                            usage_flags += "RenderTarget ";
+                                        if ((desc.usage & reshade::api::resource_usage::depth_stencil)
+                                            != reshade::api::resource_usage::undefined)
+                                            usage_flags += "DepthStencil ";
+                                        if ((desc.usage & reshade::api::resource_usage::shader_resource)
+                                            != reshade::api::resource_usage::undefined)
+                                            usage_flags += "ShaderResource ";
+                                        if ((desc.usage & reshade::api::resource_usage::copy_source)
+                                            != reshade::api::resource_usage::undefined)
+                                            usage_flags += "CopySource ";
+                                        if ((desc.usage & reshade::api::resource_usage::copy_dest)
+                                            != reshade::api::resource_usage::undefined)
+                                            usage_flags += "CopyDest ";
+                                        if ((desc.usage & reshade::api::resource_usage::resolve_source)
+                                            != reshade::api::resource_usage::undefined)
+                                            usage_flags += "ResolveSource ";
+                                        if ((desc.usage & reshade::api::resource_usage::resolve_dest)
+                                            != reshade::api::resource_usage::undefined)
+                                            usage_flags += "ResolveDest ";
+                                        if ((desc.usage & reshade::api::resource_usage::present)
+                                            != reshade::api::resource_usage::undefined)
+                                            usage_flags += "Present ";
+                                        if ((desc.usage & reshade::api::resource_usage::acceleration_structure)
+                                            != reshade::api::resource_usage::undefined)
+                                            usage_flags += "AccelerationStructure ";
+                                        if ((desc.usage & reshade::api::resource_usage::unordered_access)
+                                            != reshade::api::resource_usage::undefined)
+                                            usage_flags += "UnorderedAccess ";
 
                                         if (usage_flags.empty()) {
                                             usage_flags = "None";
                                         } else {
-                                            usage_flags.pop_back(); // Remove trailing space
+                                            usage_flags.pop_back();  // Remove trailing space
                                         }
                                         ImGui::Text("Usage: %s", usage_flags.c_str());
 
                                         // Resource flags
                                         std::string flag_str;
-                                        if ((desc.flags & reshade::api::resource_flags::shared) != reshade::api::resource_flags::none) flag_str += "Shared ";
-                                        if ((desc.flags & reshade::api::resource_flags::shared_nt_handle) != reshade::api::resource_flags::none) flag_str += "SharedNTHandle ";
-                                        if ((desc.flags & reshade::api::resource_flags::cube_compatible) != reshade::api::resource_flags::none) flag_str += "CubeCompatible ";
-                                        if ((desc.flags & reshade::api::resource_flags::sparse_binding) != reshade::api::resource_flags::none) flag_str += "SparseBinding ";
-                                        if ((desc.flags & reshade::api::resource_flags::generate_mipmaps) != reshade::api::resource_flags::none) flag_str += "GenerateMipmaps ";
-                                        if ((desc.flags & reshade::api::resource_flags::dynamic) != reshade::api::resource_flags::none) flag_str += "Dynamic ";
+                                        if ((desc.flags & reshade::api::resource_flags::shared)
+                                            != reshade::api::resource_flags::none)
+                                            flag_str += "Shared ";
+                                        if ((desc.flags & reshade::api::resource_flags::shared_nt_handle)
+                                            != reshade::api::resource_flags::none)
+                                            flag_str += "SharedNTHandle ";
+                                        if ((desc.flags & reshade::api::resource_flags::cube_compatible)
+                                            != reshade::api::resource_flags::none)
+                                            flag_str += "CubeCompatible ";
+                                        if ((desc.flags & reshade::api::resource_flags::sparse_binding)
+                                            != reshade::api::resource_flags::none)
+                                            flag_str += "SparseBinding ";
+                                        if ((desc.flags & reshade::api::resource_flags::generate_mipmaps)
+                                            != reshade::api::resource_flags::none)
+                                            flag_str += "GenerateMipmaps ";
+                                        if ((desc.flags & reshade::api::resource_flags::dynamic)
+                                            != reshade::api::resource_flags::none)
+                                            flag_str += "Dynamic ";
 
                                         if (flag_str.empty()) {
                                             flag_str = "None";
                                         } else {
-                                            flag_str.pop_back(); // Remove trailing space
+                                            flag_str.pop_back();  // Remove trailing space
                                         }
                                         ImGui::Text("Flags: %s", flag_str.c_str());
 
                                         // Current buffer indicator
                                         if (j == current_back_buffer_index) {
-                                            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "*** CURRENT BUFFER ***");
+                                            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f),
+                                                               "*** CURRENT BUFFER ***");
                                         }
 
                                         ImGui::Unindent();
                                     }
                                 }
                             } catch (...) {
-                                ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "Backbuffer %d: Error querying resource", j);
+                                ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f),
+                                                   "Backbuffer %d: Error querying resource", j);
                             }
                         }
                     } else {
@@ -1165,10 +1263,10 @@ void DrawSwapchainInfo(reshade::api::effect_runtime* runtime) {
     }
 
     auto last_api = g_last_reshade_device_api.load();
-    auto is_dxgi = last_api == static_cast<int>(reshade::api::device_api::d3d11) || last_api == static_cast<int>(reshade::api::device_api::d3d12);
+    auto is_dxgi = last_api == static_cast<int>(reshade::api::device_api::d3d11)
+                   || last_api == static_cast<int>(reshade::api::device_api::d3d12);
     if (is_dxgi && ImGui::CollapsingHeader("Swapchain Information", ImGuiTreeNodeFlags_DefaultOpen)) {
         // warning this tab may crash
-
 
         // Get the current swapchain from global variable
         void* swapchain_ptr = g_last_swapchain_ptr_unsafe.load();
@@ -1248,22 +1346,26 @@ void DrawSwapchainInfo(reshade::api::effect_runtime* runtime) {
                     if (supports_hdr) {
                         ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "  ✓ HDR-capable display detected");
                     } else {
-                        ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "  " ICON_FK_WARNING " Display does not support HDR");
+                        ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f),
+                                           "  " ICON_FK_WARNING " Display does not support HDR");
                     }
 
                     // VRR support detection using CheckHardwareCompositionSupport
                     UINT support_flags = 0;
                     bool supports_vrr = false;
                     if (SUCCEEDED(output6->CheckHardwareCompositionSupport(&support_flags))) {
-                        // Check for VRR support flag (0x1 = DXGI_HARDWARE_COMPOSITION_SUPPORT_FLAG_VARIABLE_REFRESH_RATE)
+                        // Check for VRR support flag (0x1 =
+                        // DXGI_HARDWARE_COMPOSITION_SUPPORT_FLAG_VARIABLE_REFRESH_RATE)
                         supports_vrr = (support_flags & 0x1) != 0;
                     }
                     ImGui::Text("  VRR Support: %s", supports_vrr ? "Yes" : "No");
 
                     if (supports_vrr) {
-                        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "  ✓ Variable Refresh Rate (VRR) supported (WIP - not implemented yet)");
+                        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f),
+                                           "  ✓ Variable Refresh Rate (VRR) supported (WIP - not implemented yet)");
                     } else {
-                        ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "  " ICON_FK_WARNING " Display does not support VRR");
+                        ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f),
+                                           "  " ICON_FK_WARNING " Display does not support VRR");
                     }
                 } else {
                     ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "Failed to get output description");
@@ -1291,7 +1393,8 @@ void DrawSwapchainInfo(reshade::api::effect_runtime* runtime) {
             // Auto-apply HDR metadata checkbox
             if (ImGui::Checkbox("Auto-apply HDR metadata", &auto_apply_hdr_metadata)) {
                 // Save the setting to config when changed
-                display_commander::config::set_config_value("ReShade_HDR_Metadata", "auto_apply_hdr_metadata", auto_apply_hdr_metadata);
+                display_commander::config::set_config_value("ReShade_HDR_Metadata", "auto_apply_hdr_metadata",
+                                                            auto_apply_hdr_metadata);
             }
             ImGui::SameLine();
             ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "?");
@@ -1303,14 +1406,14 @@ void DrawSwapchainInfo(reshade::api::effect_runtime* runtime) {
             if (ImGui::Button("Set to Rec. 2020 defaults")) {
                 // Set HDR10 metadata to Rec. 2020 default values
                 DXGI_HDR_METADATA_HDR10 hdr10_metadata = {};
-                hdr10_metadata.RedPrimary[0] = 0.708 * 65535; //(Rec. 2020 red x)
-                hdr10_metadata.RedPrimary[1] = 0.292 * 65535; //(Rec. 2020 red y)
+                hdr10_metadata.RedPrimary[0] = 0.708 * 65535;    //(Rec. 2020 red x)
+                hdr10_metadata.RedPrimary[1] = 0.292 * 65535;    //(Rec. 2020 red y)
                 hdr10_metadata.GreenPrimary[0] = 0.170 * 65535;  //(Rec. 2020 green x)
-                hdr10_metadata.GreenPrimary[1] = 0.797 * 65535; //(Rec. 2020 green y)
-                hdr10_metadata.BluePrimary[0] = 0.131 * 65535; //(Rec. 2020 blue x)
-                hdr10_metadata.BluePrimary[1] = 0.046 * 65535; //(Rec. 2020 blue y)
-                hdr10_metadata.WhitePoint[0] = 0.3127 * 65535; //(D65 white x)
-                hdr10_metadata.WhitePoint[1] = 0.3290 * 65535; //(D65 white y)
+                hdr10_metadata.GreenPrimary[1] = 0.797 * 65535;  //(Rec. 2020 green y)
+                hdr10_metadata.BluePrimary[0] = 0.131 * 65535;   //(Rec. 2020 blue x)
+                hdr10_metadata.BluePrimary[1] = 0.046 * 65535;   //(Rec. 2020 blue y)
+                hdr10_metadata.WhitePoint[0] = 0.3127 * 65535;   //(D65 white x)
+                hdr10_metadata.WhitePoint[1] = 0.3290 * 65535;   //(D65 white y)
                 hdr10_metadata.MaxMasteringLuminance = 1000;     // 1000 nits
                 hdr10_metadata.MinMasteringLuminance = 0;        // 0 nits
                 hdr10_metadata.MaxContentLightLevel = 1000;      // 1000 nits
@@ -1340,7 +1443,8 @@ void DrawSwapchainInfo(reshade::api::effect_runtime* runtime) {
                     display_commander::config::set_config_value("ReShade_HDR_Metadata", "max_fall", 100);
                     display_commander::config::set_config_value("ReShade_HDR_Metadata", "has_last_metadata", true);
 
-                    ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✓ HDR metadata set to Rec. 2020 defaults and saved to config");
+                    ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f),
+                                       "✓ HDR metadata set to Rec. 2020 defaults and saved to config");
                 } else {
                     ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "✗ Failed to clear HDR metadata: 0x%08lX",
                                        static_cast<unsigned long>(hr));
@@ -1473,18 +1577,31 @@ void DrawSwapchainInfo(reshade::api::effect_runtime* runtime) {
                     last_metadata_source = "Custom HDR Values";
 
                     // Save HDR metadata to DisplayCommander config
-                    display_commander::config::set_config_value("ReShade_HDR_Metadata", "prim_red_x", hdr10_metadata.RedPrimary[0] / 65535.0);
-                    display_commander::config::set_config_value("ReShade_HDR_Metadata", "prim_red_y", hdr10_metadata.RedPrimary[1] / 65535.0);
-                    display_commander::config::set_config_value("ReShade_HDR_Metadata", "prim_green_x", hdr10_metadata.GreenPrimary[0] / 65535.0);
-                    display_commander::config::set_config_value("ReShade_HDR_Metadata", "prim_green_y", hdr10_metadata.GreenPrimary[1] / 65535.0);
-                    display_commander::config::set_config_value("ReShade_HDR_Metadata", "prim_blue_x", hdr10_metadata.BluePrimary[0] / 65535.0);
-                    display_commander::config::set_config_value("ReShade_HDR_Metadata", "prim_blue_y", hdr10_metadata.BluePrimary[1] / 65535.0);
-                    display_commander::config::set_config_value("ReShade_HDR_Metadata", "white_point_x", hdr10_metadata.WhitePoint[0] / 65535.0);
-                    display_commander::config::set_config_value("ReShade_HDR_Metadata", "white_point_y", hdr10_metadata.WhitePoint[1] / 65535.0);
-                    display_commander::config::set_config_value("ReShade_HDR_Metadata", "max_mdl", static_cast<int32_t>(hdr10_metadata.MaxMasteringLuminance));
-                    display_commander::config::set_config_value("ReShade_HDR_Metadata", "min_mdl", hdr10_metadata.MinMasteringLuminance / 10000.0f);
-                    display_commander::config::set_config_value("ReShade_HDR_Metadata", "max_cll", static_cast<int32_t>(hdr10_metadata.MaxContentLightLevel));
-                    display_commander::config::set_config_value("ReShade_HDR_Metadata", "max_fall", static_cast<int32_t>(hdr10_metadata.MaxFrameAverageLightLevel));
+                    display_commander::config::set_config_value("ReShade_HDR_Metadata", "prim_red_x",
+                                                                hdr10_metadata.RedPrimary[0] / 65535.0);
+                    display_commander::config::set_config_value("ReShade_HDR_Metadata", "prim_red_y",
+                                                                hdr10_metadata.RedPrimary[1] / 65535.0);
+                    display_commander::config::set_config_value("ReShade_HDR_Metadata", "prim_green_x",
+                                                                hdr10_metadata.GreenPrimary[0] / 65535.0);
+                    display_commander::config::set_config_value("ReShade_HDR_Metadata", "prim_green_y",
+                                                                hdr10_metadata.GreenPrimary[1] / 65535.0);
+                    display_commander::config::set_config_value("ReShade_HDR_Metadata", "prim_blue_x",
+                                                                hdr10_metadata.BluePrimary[0] / 65535.0);
+                    display_commander::config::set_config_value("ReShade_HDR_Metadata", "prim_blue_y",
+                                                                hdr10_metadata.BluePrimary[1] / 65535.0);
+                    display_commander::config::set_config_value("ReShade_HDR_Metadata", "white_point_x",
+                                                                hdr10_metadata.WhitePoint[0] / 65535.0);
+                    display_commander::config::set_config_value("ReShade_HDR_Metadata", "white_point_y",
+                                                                hdr10_metadata.WhitePoint[1] / 65535.0);
+                    display_commander::config::set_config_value(
+                        "ReShade_HDR_Metadata", "max_mdl", static_cast<int32_t>(hdr10_metadata.MaxMasteringLuminance));
+                    display_commander::config::set_config_value("ReShade_HDR_Metadata", "min_mdl",
+                                                                hdr10_metadata.MinMasteringLuminance / 10000.0f);
+                    display_commander::config::set_config_value(
+                        "ReShade_HDR_Metadata", "max_cll", static_cast<int32_t>(hdr10_metadata.MaxContentLightLevel));
+                    display_commander::config::set_config_value(
+                        "ReShade_HDR_Metadata", "max_fall",
+                        static_cast<int32_t>(hdr10_metadata.MaxFrameAverageLightLevel));
                     display_commander::config::set_config_value("ReShade_HDR_Metadata", "has_last_metadata", true);
 
                     ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✓ All HDR values applied and saved to config");
@@ -1561,7 +1678,8 @@ void DrawSwapchainInfo(reshade::api::effect_runtime* runtime) {
                 } else if (is_rec2020) {
                     ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "  ✓ Matches Rec. 2020 color space");
                 } else {
-                    ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "  " ICON_FK_WARNING " Custom color space (not Rec. 709/2020)");
+                    ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f),
+                                       "  " ICON_FK_WARNING " Custom color space (not Rec. 709/2020)");
                 }
             } else {
                 ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "No HDR metadata has been set yet.");
@@ -1652,9 +1770,12 @@ void DrawDLSSPresetOverride() {
         ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== DLSS Preset Override ===");
 
         // Warning about experimental nature
-        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), ICON_FK_WARNING " EXPERIMENTAL FEATURE - May require alt-tab to apply changes!");
+        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f),
+                           ICON_FK_WARNING " EXPERIMENTAL FEATURE - May require alt-tab to apply changes!");
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("This feature overrides DLSS presets at runtime.\nChanges may require alt-tabbing out and back into the game to take effect.\nUse with caution as it may cause rendering issues in some games.");
+            ImGui::SetTooltip(
+                "This feature overrides DLSS presets at runtime.\nChanges may require alt-tabbing out and back into "
+                "the game to take effect.\nUse with caution as it may cause rendering issues in some games.");
         }
 
         ImGui::Spacing();
@@ -1669,7 +1790,9 @@ void DrawDLSSPresetOverride() {
         }
 
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Override DLSS presets at runtime using NGX parameter interception.\nThis works similar to Special-K's DLSS preset override feature.");
+            ImGui::SetTooltip(
+                "Override DLSS presets at runtime using NGX parameter interception.\nThis works similar to Special-K's "
+                "DLSS preset override feature.");
         }
 
         // Preset selection (only enabled when override is enabled)
@@ -1687,74 +1810,158 @@ void DrawDLSSPresetOverride() {
                 preset_cstrs.push_back(option.c_str());
             }
 
-            // Find current selection
-            std::string current_value = settings::g_swapchainTabSettings.dlss_sr_preset_override.GetValue();
-            int current_selection = 0;
-            for (size_t i = 0; i < preset_options.size(); ++i) {
-                if (current_value == preset_options[i]) {
-                    current_selection = static_cast<int>(i);
-                    break;
+            if (!summary.ray_reconstruction_active) {
+                // Find current selection
+                std::string current_value = settings::g_swapchainTabSettings.dlss_sr_preset_override.GetValue();
+                int current_selection = 0;
+                for (size_t i = 0; i < preset_options.size(); ++i) {
+                    if (current_value == preset_options[i]) {
+                        current_selection = static_cast<int>(i);
+                        break;
+                    }
                 }
-            }
 
-            if (ImGui::Combo("DLSS Super Resolution Preset", &current_selection, preset_cstrs.data(), static_cast<int>(preset_cstrs.size()))) {
-                settings::g_swapchainTabSettings.dlss_sr_preset_override.SetValue(preset_options[current_selection]);
-                LogInfo("DLSS SR preset changed to %s (index %d)",
-                        preset_options[current_selection].c_str(), current_selection);
-                // Reset NGX preset initialization so new preset will be applied on next initialization
-                ResetNGXPresetInitialization();
-            }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("Select the DLSS Super Resolution preset to override.\nGame Default = no override (don't change anything)\nDLSS Default = set value to 0\nPreset A = 1, Preset B = 2, etc.\nOnly presets supported by your DLSS version are shown.");
-            }
-
-            // DLSS Ray Reconstruction preset - Dynamic based on supported presets
-            std::vector<std::string> rr_preset_options = GetDLSSPresetOptions(summary.supported_dlss_presets);
-
-            // Convert to const char* array for ImGui
-            std::vector<const char*> rr_preset_cstrs;
-            rr_preset_cstrs.reserve(rr_preset_options.size());
-            for (const auto& option : rr_preset_options) {
-                rr_preset_cstrs.push_back(option.c_str());
-            }
-
-            // Find current selection
-            std::string current_rr_value = settings::g_swapchainTabSettings.dlss_rr_preset_override.GetValue();
-            int current_rr_selection = 0;
-            for (size_t i = 0; i < rr_preset_options.size(); ++i) {
-                if (current_rr_value == rr_preset_options[i]) {
-                    current_rr_selection = static_cast<int>(i);
-                    break;
+                if (ImGui::Combo("DLSS Super Resolution Preset", &current_selection, preset_cstrs.data(),
+                                 static_cast<int>(preset_cstrs.size()))) {
+                    settings::g_swapchainTabSettings.dlss_sr_preset_override.SetValue(
+                        preset_options[current_selection]);
+                    LogInfo("DLSS SR preset changed to %s (index %d)", preset_options[current_selection].c_str(),
+                            current_selection);
+                    // Reset NGX preset initialization so new preset will be applied on next initialization
+                    ResetNGXPresetInitialization();
                 }
-            }
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip(
+                        "Select the DLSS Super Resolution preset to override.\nGame Default = no override (don't "
+                        "change anything)\nDLSS Default = set value to 0\nPreset A = 1, Preset B = 2, etc.\nOnly "
+                        "presets supported by your DLSS version are shown.");
+                }
+            } else {
+                // DLSS Ray Reconstruction preset - Dynamic based on supported RR presets
+                std::vector<std::string> rr_preset_options = GetDLSSPresetOptions(summary.supported_dlss_rr_presets);
 
-            if (ImGui::Combo("DLSS Ray Reconstruction Preset", &current_rr_selection, rr_preset_cstrs.data(), static_cast<int>(rr_preset_cstrs.size()))) {
-                settings::g_swapchainTabSettings.dlss_rr_preset_override.SetValue(rr_preset_options[current_rr_selection]);
-                LogInfo("DLSS RR preset changed to %s (index %d)",
-                        rr_preset_options[current_rr_selection].c_str(), current_rr_selection);
-                // Reset NGX preset initialization so new preset will be applied on next initialization
-                ResetNGXPresetInitialization();
-            }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("Select the DLSS Ray Reconstruction preset to override.\nGame Default = no override (don't change anything)\nDLSS Default = set value to 0\nPreset A = 1, Preset B = 2, etc.\nOnly presets supported by your DLSS version are shown.");
+                // Convert to const char* array for ImGui
+                std::vector<const char*> rr_preset_cstrs;
+                rr_preset_cstrs.reserve(rr_preset_options.size());
+                for (const auto& option : rr_preset_options) {
+                    rr_preset_cstrs.push_back(option.c_str());
+                }
+
+                // Find current selection
+                std::string current_rr_value = settings::g_swapchainTabSettings.dlss_rr_preset_override.GetValue();
+                int current_rr_selection = 0;
+                for (size_t i = 0; i < rr_preset_options.size(); ++i) {
+                    if (current_rr_value == rr_preset_options[i]) {
+                        current_rr_selection = static_cast<int>(i);
+                        break;
+                    }
+                }
+
+                if (ImGui::Combo("DLSS Ray Reconstruction Preset", &current_rr_selection, rr_preset_cstrs.data(),
+                                 static_cast<int>(rr_preset_cstrs.size()))) {
+                    settings::g_swapchainTabSettings.dlss_rr_preset_override.SetValue(
+                        rr_preset_options[current_rr_selection]);
+                    LogInfo("DLSS RR preset changed to %s (index %d)", rr_preset_options[current_rr_selection].c_str(),
+                            current_rr_selection);
+                    // Reset NGX preset initialization so new preset will be applied on next initialization
+                    ResetNGXPresetInitialization();
+                }
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip(
+                        "Select the DLSS Ray Reconstruction preset to override.\nGame Default = no override (don't "
+                        "change anything)\nDLSS Default = set value to 0\nPreset A = 1, Preset B = 2, Preset C = 3, "
+                        "Preset D = 4, Preset E = 5, etc.\nA, B, C, D, E presets are supported for Ray Reconstruction "
+                        "(version dependent).");
+                }
             }
 
             ImGui::Spacing();
 
             // Show current settings summary
             ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Current Settings:");
-            ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  DLSS SR Preset: %s",
-                               settings::g_swapchainTabSettings.dlss_sr_preset_override.GetValue().c_str());
-            ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  DLSS RR Preset: %s",
-                               settings::g_swapchainTabSettings.dlss_rr_preset_override.GetValue().c_str());
-
+            if (!summary.ray_reconstruction_active) {
+                ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  DLSS SR Preset: %s",
+                                   settings::g_swapchainTabSettings.dlss_sr_preset_override.GetValue().c_str());
+            } else {
+                ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  DLSS RR Preset: %s",
+                                   settings::g_swapchainTabSettings.dlss_rr_preset_override.GetValue().c_str());
+            }
             ImGui::Spacing();
             ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "Note: Preset values are mapped as follows:");
             ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "  Game Default = no override (don't change anything)");
             ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "  DLSS Default = set value to 0");
             ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "  Preset A = 1, Preset B = 2, etc.");
-            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "  Only presets supported by your DLSS version (%s) are shown.", summary.supported_dlss_presets.c_str());
-            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "  These values override the corresponding NGX parameter values.");
+            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "  SR presets supported by your DLSS version: %s",
+                               summary.supported_dlss_presets.c_str());
+            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "  RR presets supported by your DLSS version: %s",
+                               summary.supported_dlss_rr_presets.c_str());
+            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f),
+                               "  These values override the corresponding NGX parameter values.");
+
+            // DLSS Model Profile display
+            DLSSModelProfile model_profile = GetDLSSModelProfile();
+            if (model_profile.is_valid) {
+                ImGui::Spacing();
+                ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "DLSS Model Profile:");
+
+                // Get current quality preset to determine which values to show
+                std::string current_quality = summary.quality_preset;
+                int sr_preset_value = 0;
+                int rr_preset_value = 0;
+
+                // Determine which preset values to display based on current quality preset
+                if (current_quality == "Quality") {
+                    sr_preset_value = model_profile.sr_quality_preset;
+                    rr_preset_value = model_profile.rr_quality_preset;
+                } else if (current_quality == "Balanced") {
+                    sr_preset_value = model_profile.sr_balanced_preset;
+                    rr_preset_value = model_profile.rr_balanced_preset;
+                } else if (current_quality == "Performance") {
+                    sr_preset_value = model_profile.sr_performance_preset;
+                    rr_preset_value = model_profile.rr_performance_preset;
+                } else if (current_quality == "Ultra Performance") {
+                    sr_preset_value = model_profile.sr_ultra_performance_preset;
+                    rr_preset_value = model_profile.rr_ultra_performance_preset;
+                } else if (current_quality == "Ultra Quality") {
+                    sr_preset_value = model_profile.sr_ultra_quality_preset;
+                    rr_preset_value = model_profile.rr_ultra_quality_preset;
+                } else if (current_quality == "DLAA") {
+                    sr_preset_value = model_profile.sr_dlaa_preset;
+                    rr_preset_value = 0;  // DLAA doesn't have RR equivalent
+                } else {
+                    // Default to Quality if unknown
+                    sr_preset_value = model_profile.sr_quality_preset;
+                    rr_preset_value = model_profile.rr_quality_preset;
+                }
+
+                if (!summary.ray_reconstruction_active) {
+                    // Display current preset values
+                    ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "  Super Resolution (%s): %d",
+                                       current_quality.c_str(), sr_preset_value);
+                } else {
+                    // Display current preset values
+                    ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "  Ray Reconstruction (%s): %d",
+                                       current_quality.c_str(), rr_preset_value);
+                }
+
+                // Show all values in tooltip
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip(
+                        "All DLSS Model Profile Values:\n"
+                        "Super Resolution:\n"
+                        "  Quality: %d, Balanced: %d, Performance: %d\n"
+                        "  Ultra Performance: %d, Ultra Quality: %d, DLAA: %d\n"
+                        "Ray Reconstruction:\n"
+                        "  Quality: %d, Balanced: %d, Performance: %d\n"
+                        "  Ultra Performance: %d, Ultra Quality: %d",
+                        model_profile.sr_quality_preset, model_profile.sr_balanced_preset,
+                        model_profile.sr_performance_preset, model_profile.sr_ultra_performance_preset,
+                        model_profile.sr_ultra_quality_preset, model_profile.sr_dlaa_preset,
+                        model_profile.rr_quality_preset, model_profile.rr_balanced_preset,
+                        model_profile.rr_performance_preset, model_profile.rr_ultra_performance_preset,
+                        model_profile.rr_ultra_quality_preset);
+                }
+            }
         }
     }
 }

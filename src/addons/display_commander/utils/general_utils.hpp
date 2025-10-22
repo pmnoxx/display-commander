@@ -56,8 +56,10 @@ std::string GetDLLVersionString(const std::wstring& dllPath);
 
 // DLSS preset support functions
 bool isBetween(int major, int minor, int patch, int minMajor, int minMinor, int minPatch, int maxMajor, int maxMinor, int maxPatch);
-std::string GetSupportedDLSSPresets(int major, int minor, int patch);
-std::string GetSupportedDLSSPresetsFromVersionString(const std::string& versionString);
+std::string GetSupportedDLSSSRPresets(int major, int minor, int patch);
+std::string GetSupportedDLSSSRPresetsFromVersionString(const std::string& versionString);
+std::string GetSupportedDLSSRRPresets(int major, int minor, int patch);
+std::string GetSupportedDLSSRRPresetsFromVersionString(const std::string& versionString);
 std::vector<std::string> GetDLSSPresetOptions(const std::string& supportedPresets);
 int GetDLSSPresetValue(const std::string& presetString);
 void TestDLSSPresetSupport(); // Test function for debugging

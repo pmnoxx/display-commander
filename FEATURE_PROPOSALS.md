@@ -42,6 +42,10 @@ This document tracks proposed features and ideas for future development. These a
 
 • Track/present games setting their own gamma using IDXGIOutput::SetGammaControl, which could break other games. For example, BioShock 2.
 
+• DLSS DLL Loader (https://github.com/beeradmoore/dlss-swapper-manifest-builder)
+
+• DLLS Quality Preset override
+
 ## Low Priority Proposals
 
 • Add crashes interception, so we can print to logs when crash occurs.

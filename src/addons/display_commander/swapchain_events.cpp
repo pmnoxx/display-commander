@@ -60,7 +60,7 @@ std::atomic<bool> g_initialized_with_hwnd{false};
 
 bool OnCreateDevice(reshade::api::device_api api, uint32_t& api_version) {
     // Check if D3D9 upgrade is enabled
-    if (!s_enable_d3d9_upgrade.load()) {
+    if (!s_enable_d3d9e_upgrade.load()) {
         return false;
     }
 
@@ -77,14 +77,14 @@ bool OnCreateDevice(reshade::api::device_api api, uint32_t& api_version) {
     // Check if already D3D9Ex (0x9100)
     if (api_version == 0x9100) {
         LogInfo("D3D9Ex already detected, no upgrade needed");
-        s_d3d9_upgrade_successful.store(true);
+        s_d3d9e_upgrade_successful.store(true);
         return false;
     }
 
     // Upgrade D3D9 (0x9000) to D3D9Ex (0x9100)
     LogInfo("Upgrading Direct3D 9 (0x%x) to Direct3D 9Ex (0x9100)", api_version);
     api_version = 0x9100;
-    s_d3d9_upgrade_successful.store(true);
+    s_d3d9e_upgrade_successful.store(true);
 
     return true;
 }

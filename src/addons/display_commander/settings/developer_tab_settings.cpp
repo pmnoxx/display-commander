@@ -20,7 +20,7 @@ DeveloperTabSettings::DeveloperTabSettings()
       hide_hdr_capabilities("HideHDRCapabilities", s_hide_hdr_capabilities, false, "DisplayCommander"),
       enable_flip_chain("EnableFlipChain", s_enable_flip_chain, false, "DisplayCommander"),
       auto_colorspace("AutoColorspace", s_auto_colorspace, false, "DisplayCommander"),
-      enable_d3d9e_upgrade("EnableD3D9EUpgrade", s_enable_d3d9_upgrade, false, "DisplayCommander"),
+      enable_d3d9e_upgrade("EnableD3D9EUpgrade", s_enable_d3d9e_upgrade, true, "DisplayCommander"),
       nvapi_fullscreen_prevention("NvapiFullscreenPrevention", s_nvapi_fullscreen_prevention, false,
                                   "DisplayCommander"),
 

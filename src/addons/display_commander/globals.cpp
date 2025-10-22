@@ -89,8 +89,8 @@ std::atomic<bool> s_hide_hdr_capabilities{false};
 std::atomic<bool> s_enable_flip_chain{false};
 
 // D3D9 to D3D9Ex upgrade
-std::atomic<bool> s_enable_d3d9_upgrade{true}; // Enabled by default
-std::atomic<bool> s_d3d9_upgrade_successful{false}; // Track if upgrade was successful
+std::atomic<bool> s_enable_d3d9e_upgrade{true}; // Enabled by default
+std::atomic<bool> s_d3d9e_upgrade_successful{false}; // Track if upgrade was successful
 std::atomic<bool> g_used_flipex{false}; // Track if FLIPEX is currently being used
 
 // ReShade runtimes for input blocking (multiple runtimes support)
@@ -573,7 +573,7 @@ DLSSGSummary GetDLSSGSummary() {
     }
 
     // Get DLL versions for DLSS and DLSS-G
-    // Check for nvngx_dlss.dll (DLSS Super Resolution)
+    // Check for nvngx_dlss.dll (DLSS Super FResolution)
     HMODULE dlss_handle = GetModuleHandleW(L"nvngx_dlss.dll");
     if (dlss_handle != nullptr) {
         wchar_t dlss_path[MAX_PATH];

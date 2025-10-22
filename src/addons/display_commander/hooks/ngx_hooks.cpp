@@ -181,6 +181,9 @@ using NVSDK_NGX_D3D11_CreateFeature_pfn = NVSDK_NGX_Result (NVSDK_CONV *)(ID3D11
 using NVSDK_NGX_D3D11_ReleaseFeature_pfn = NVSDK_NGX_Result (NVSDK_CONV *)(NVSDK_NGX_Handle *InHandle);
 using NVSDK_NGX_D3D11_EvaluateFeature_pfn = NVSDK_NGX_Result (NVSDK_CONV *)(ID3D11DeviceContext *InDevCtx, const NVSDK_NGX_Handle *InFeatureHandle, const NVSDK_NGX_Parameter *InParameters, PFN_NVSDK_NGX_ProgressCallback InCallback);
 
+// UpdateFeature function pointer type
+using NVSDK_NGX_UpdateFeature_pfn = NVSDK_NGX_Result (NVSDK_CONV *)(const NVSDK_NGX_Application_Identifier *ApplicationId, const NVSDK_NGX_Feature FeatureID);
+
 // Original function pointers
 NVSDK_NGX_Parameter_SetF_pfn NVSDK_NGX_Parameter_SetF_Original = nullptr;
 NVSDK_NGX_Parameter_SetD_pfn NVSDK_NGX_Parameter_SetD_Original = nullptr;
@@ -212,6 +215,9 @@ NVSDK_NGX_D3D11_AllocateParameters_pfn NVSDK_NGX_D3D11_AllocateParameters_Origin
 NVSDK_NGX_D3D11_CreateFeature_pfn NVSDK_NGX_D3D11_CreateFeature_Original = nullptr;
 NVSDK_NGX_D3D11_ReleaseFeature_pfn NVSDK_NGX_D3D11_ReleaseFeature_Original = nullptr;
 NVSDK_NGX_D3D11_EvaluateFeature_pfn NVSDK_NGX_D3D11_EvaluateFeature_Original = nullptr;
+
+// UpdateFeature original function pointer
+NVSDK_NGX_UpdateFeature_pfn NVSDK_NGX_UpdateFeature_Original = nullptr;
 
 // Global flag to track if vtable hooks are installed
 static bool g_ngx_vtable_hooks_installed = false;
@@ -844,6 +850,38 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_EvaluateFeature_Detour(ID3D11DeviceC
     return NVSDK_NGX_Result_Fail;
 }
 
+// UpdateFeature detour
+NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_UpdateFeature_Detour(const NVSDK_NGX_Application_Identifier *ApplicationId, const NVSDK_NGX_Feature FeatureID) {
+    // Increment NGX counters
+    g_ngx_counters.total_count.fetch_add(1);
+
+    // Log the UpdateFeature call with feature details
+    const char* featureName = GetNGXFeatureName(FeatureID);
+    LogInfo("NGX UpdateFeature called - FeatureID: %d (%s)", FeatureID, featureName);
+
+    // Log application ID if available
+    if (ApplicationId != nullptr) {
+        if (ApplicationId->IdentifierType == NVSDK_NGX_Application_Identifier_Type_Application_Id) {
+            LogInfo("NGX UpdateFeature - ApplicationId: %llu", ApplicationId->v.ApplicationId);
+        } else if (ApplicationId->IdentifierType == NVSDK_NGX_Application_Identifier_Type_Project_Id) {
+            LogInfo("NGX UpdateFeature - ProjectId: %s", ApplicationId->v.ProjectDesc.ProjectId);
+        }
+    }
+
+    // TODO: Implement UpdateFeature suppression on crash
+    // This function can cause crashes in some games, consider adding:
+    // 1. Crash detection around the call
+    // 2. Automatic suppression if crashes are detected
+    // 3. User-configurable option to disable UpdateFeature calls
+    LogInfo("TODO: Consider implementing UpdateFeature suppression on crash detection");
+
+    if (NVSDK_NGX_UpdateFeature_Original != nullptr) {
+        return NVSDK_NGX_UpdateFeature_Original(ApplicationId, FeatureID);
+    }
+
+    return NVSDK_NGX_Result_Fail;
+}
+
 // Function to hook NGX Parameter vtable (following Special-K's approach)
 bool HookNGXParameterVTable(NVSDK_NGX_Parameter* Params) {
     if (Params == nullptr) {
@@ -1094,6 +1132,12 @@ bool InstallNGXHooks() {
                         reinterpret_cast<LPVOID>(NVSDK_NGX_D3D11_EvaluateFeature_Detour),
                         reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D11_EvaluateFeature_Original),
                         "NVSDK_NGX_D3D11_EvaluateFeature");
+
+    // Hook UpdateFeature function
+    CreateAndEnableHook(GetProcAddress(ngx_dll, "NVSDK_NGX_UpdateFeature"),
+                        reinterpret_cast<LPVOID>(NVSDK_NGX_UpdateFeature_Detour),
+                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_UpdateFeature_Original),
+                        "NVSDK_NGX_UpdateFeature");
 
     // Hook NGX parameter functions to get Parameter objects
     // These functions are exported from _nvngx.dll and return Parameter objects

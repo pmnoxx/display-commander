@@ -14,4 +14,7 @@ void PrintStackTraceToDbgView();
 // Generate a stack trace and return it as a single formatted string
 std::string GetStackTraceString();
 
+// Check if nvngx_update.exe is currently running
+bool IsNvngxUpdateRunning();
+
 } // namespace stack_trace

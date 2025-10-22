@@ -4,6 +4,7 @@
 #include <dbghelp.h>
 #include <sstream>
 #include <iomanip>
+#include <tlhelp32.h>
 
 namespace stack_trace {
 
@@ -69,6 +70,33 @@ BOOL CALLBACK ReadProcessMemoryRoutine64(
     return FALSE;
 }
 } // namespace
+
+bool IsNvngxUpdateRunning() {
+    HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    if (snapshot == INVALID_HANDLE_VALUE) {
+        return false;
+    }
+
+    PROCESSENTRY32W process_entry = {};
+    process_entry.dwSize = sizeof(PROCESSENTRY32W);
+
+    bool found = false;
+    if (Process32FirstW(snapshot, &process_entry)) {
+        do {
+            // Convert wide string to narrow string for comparison
+            std::wstring process_name(process_entry.szExeFile);
+            std::string process_name_narrow(process_name.begin(), process_name.end());
+
+            if (_stricmp(process_name_narrow.c_str(), "nvngx_update.exe") == 0) {
+                found = true;
+                break;
+            }
+        } while (Process32NextW(snapshot, &process_entry));
+    }
+
+    CloseHandle(snapshot);
+    return found;
+}
 
 std::vector<std::string> GenerateStackTrace() {
     std::vector<std::string> stack_trace;
@@ -188,6 +216,13 @@ void PrintStackTraceToDbgView() {
         // Print footer
         OutputDebugStringA("=== END STACK TRACE ===\n");
 
+        // Check and print nvngx_update.exe status
+        if (IsNvngxUpdateRunning()) {
+            OutputDebugStringA("=== NVNGX UPDATE STATUS ===\n");
+            OutputDebugStringA("nvngx_update.exe is currently running\n");
+            OutputDebugStringA("=== END NVNGX UPDATE STATUS ===\n");
+        }
+
     } catch (...) {
         OutputDebugStringA("=== STACK TRACE ERROR ===\n");
         OutputDebugStringA("Exception occurred while generating stack trace\n");
@@ -207,6 +242,16 @@ std::string GetStackTraceString() {
         }
 
         result << "=== END STACK TRACE ===\n";
+
+        // Check and add nvngx_update.exe status
+        if (IsNvngxUpdateRunning()) {
+            result << "=== NVNGX UPDATE STATUS ===\n";
+            result << "nvngx_update.exe is currently running\n";
+            result << "TODO: add logic to stop nvngx_update.exe if it is running\n";
+            result << "TODO: add display popup to inform user about the issue\n";
+            result << "=== END NVNGX UPDATE STATUS ===\n";
+        }
+
         return result.str();
 
     } catch (...) {

@@ -615,6 +615,9 @@ DLSSGSummary GetDLSSGSummary() {
         summary.dlssd_dll_version = "Not loaded";
     }
 
+    // Determine supported DLSS presets based on DLSS DLL version
+    summary.supported_dlss_presets = GetSupportedDLSSPresetsFromVersionString(summary.dlss_dll_version);
+
     return summary;
 }
 

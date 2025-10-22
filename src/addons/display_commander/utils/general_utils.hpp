@@ -54,6 +54,14 @@ SHORT FloatToShort(float value);
 // DLL version information
 std::string GetDLLVersionString(const std::wstring& dllPath);
 
+// DLSS preset support functions
+bool isBetween(int major, int minor, int patch, int minMajor, int minMinor, int minPatch, int maxMajor, int maxMinor, int maxPatch);
+std::string GetSupportedDLSSPresets(int major, int minor, int patch);
+std::string GetSupportedDLSSPresetsFromVersionString(const std::string& versionString);
+std::vector<std::string> GetDLSSPresetOptions(const std::string& supportedPresets);
+int GetDLSSPresetValue(const std::string& presetString);
+void TestDLSSPresetSupport(); // Test function for debugging
+
 // Addon directory utilities
 std::filesystem::path GetAddonDirectory();
 

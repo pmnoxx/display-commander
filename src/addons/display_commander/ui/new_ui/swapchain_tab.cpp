@@ -806,6 +806,8 @@ void DrawDLSSGSummary() {
         ImGui::Text("DLSS DLL Version:");
         ImGui::NextColumn();
         ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "%s", summary.dlss_dll_version.c_str());
+        ImGui::SameLine();
+        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), " [%s]", summary.supported_dlss_presets.c_str());
         ImGui::NextColumn();
 
         ImGui::Text("DLSS-G DLL Version:");
@@ -1674,46 +1676,84 @@ void DrawDLSSPresetOverride() {
         if (settings::g_swapchainTabSettings.dlss_preset_override_enabled.GetValue()) {
             ImGui::Spacing();
 
-            // DLSS Super Resolution preset
-            if (ComboSettingWrapper(settings::g_swapchainTabSettings.dlss_sr_preset_override, "DLSS Super Resolution Preset")) {
-                int preset = settings::g_swapchainTabSettings.dlss_sr_preset_override.GetValue();
-                const std::vector<const char*>& labels = settings::g_swapchainTabSettings.dlss_sr_preset_override.GetLabels();
-                LogInfo("DLSS SR preset changed to %s (index %d)",
-                        labels[preset], preset);
-                // Reset NGX preset initialization so new preset will be applied on next initialization
-                ResetNGXPresetInitialization();
-            }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("Select the DLSS Super Resolution preset to override.\nGame Default = 0, Preset A = 1, Preset B = 2, etc.");
+            // DLSS Super Resolution preset - Dynamic based on supported presets
+            DLSSGSummary summary = GetDLSSGSummary();
+            std::vector<std::string> preset_options = GetDLSSPresetOptions(summary.supported_dlss_presets);
+
+            // Convert to const char* array for ImGui
+            std::vector<const char*> preset_cstrs;
+            preset_cstrs.reserve(preset_options.size());
+            for (const auto& option : preset_options) {
+                preset_cstrs.push_back(option.c_str());
             }
 
-            // DLSS Ray Reconstruction preset
-            if (ComboSettingWrapper(settings::g_swapchainTabSettings.dlss_rr_preset_override, "DLSS Ray Reconstruction Preset")) {
-                int preset = settings::g_swapchainTabSettings.dlss_rr_preset_override.GetValue();
-                const std::vector<const char*>& labels = settings::g_swapchainTabSettings.dlss_rr_preset_override.GetLabels();
-                LogInfo("DLSS RR preset changed to %s (index %d)",
-                        labels[preset], preset);
+            // Find current selection
+            std::string current_value = settings::g_swapchainTabSettings.dlss_sr_preset_override.GetValue();
+            int current_selection = 0;
+            for (size_t i = 0; i < preset_options.size(); ++i) {
+                if (current_value == preset_options[i]) {
+                    current_selection = static_cast<int>(i);
+                    break;
+                }
+            }
+
+            if (ImGui::Combo("DLSS Super Resolution Preset", &current_selection, preset_cstrs.data(), static_cast<int>(preset_cstrs.size()))) {
+                settings::g_swapchainTabSettings.dlss_sr_preset_override.SetValue(preset_options[current_selection]);
+                LogInfo("DLSS SR preset changed to %s (index %d)",
+                        preset_options[current_selection].c_str(), current_selection);
                 // Reset NGX preset initialization so new preset will be applied on next initialization
                 ResetNGXPresetInitialization();
             }
             if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("Select the DLSS Ray Reconstruction preset to override.\nGame Default = 0, Preset A = 1, Preset B = 2, etc.");
+                ImGui::SetTooltip("Select the DLSS Super Resolution preset to override.\nGame Default = no override (don't change anything)\nDLSS Default = set value to 0\nPreset A = 1, Preset B = 2, etc.\nOnly presets supported by your DLSS version are shown.");
+            }
+
+            // DLSS Ray Reconstruction preset - Dynamic based on supported presets
+            std::vector<std::string> rr_preset_options = GetDLSSPresetOptions(summary.supported_dlss_presets);
+
+            // Convert to const char* array for ImGui
+            std::vector<const char*> rr_preset_cstrs;
+            rr_preset_cstrs.reserve(rr_preset_options.size());
+            for (const auto& option : rr_preset_options) {
+                rr_preset_cstrs.push_back(option.c_str());
+            }
+
+            // Find current selection
+            std::string current_rr_value = settings::g_swapchainTabSettings.dlss_rr_preset_override.GetValue();
+            int current_rr_selection = 0;
+            for (size_t i = 0; i < rr_preset_options.size(); ++i) {
+                if (current_rr_value == rr_preset_options[i]) {
+                    current_rr_selection = static_cast<int>(i);
+                    break;
+                }
+            }
+
+            if (ImGui::Combo("DLSS Ray Reconstruction Preset", &current_rr_selection, rr_preset_cstrs.data(), static_cast<int>(rr_preset_cstrs.size()))) {
+                settings::g_swapchainTabSettings.dlss_rr_preset_override.SetValue(rr_preset_options[current_rr_selection]);
+                LogInfo("DLSS RR preset changed to %s (index %d)",
+                        rr_preset_options[current_rr_selection].c_str(), current_rr_selection);
+                // Reset NGX preset initialization so new preset will be applied on next initialization
+                ResetNGXPresetInitialization();
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Select the DLSS Ray Reconstruction preset to override.\nGame Default = no override (don't change anything)\nDLSS Default = set value to 0\nPreset A = 1, Preset B = 2, etc.\nOnly presets supported by your DLSS version are shown.");
             }
 
             ImGui::Spacing();
 
             // Show current settings summary
             ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Current Settings:");
-            const std::vector<const char*>& sr_labels = settings::g_swapchainTabSettings.dlss_sr_preset_override.GetLabels();
-            const std::vector<const char*>& rr_labels = settings::g_swapchainTabSettings.dlss_rr_preset_override.GetLabels();
             ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  DLSS SR Preset: %s",
-                               sr_labels[settings::g_swapchainTabSettings.dlss_sr_preset_override.GetValue()]);
+                               settings::g_swapchainTabSettings.dlss_sr_preset_override.GetValue().c_str());
             ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  DLSS RR Preset: %s",
-                               rr_labels[settings::g_swapchainTabSettings.dlss_rr_preset_override.GetValue()]);
+                               settings::g_swapchainTabSettings.dlss_rr_preset_override.GetValue().c_str());
 
             ImGui::Spacing();
             ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "Note: Preset values are mapped as follows:");
-            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "  Game Default = 0, Preset A = 1, Preset B = 2, ..., Preset O = 15");
+            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "  Game Default = no override (don't change anything)");
+            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "  DLSS Default = set value to 0");
+            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "  Preset A = 1, Preset B = 2, etc.");
+            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "  Only presets supported by your DLSS version (%s) are shown.", summary.supported_dlss_presets.c_str());
             ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "  These values override the corresponding NGX parameter values.");
         }
     }

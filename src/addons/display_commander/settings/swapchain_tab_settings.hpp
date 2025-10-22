@@ -15,6 +15,7 @@ using ui::new_ui::FloatSetting;
 using ui::new_ui::FloatSettingRef;
 using ui::new_ui::IntSetting;
 using ui::new_ui::SettingBase;
+using ui::new_ui::StringSetting;
 
 // Settings manager for the swapchain tab
 class SwapchainTabSettings {
@@ -30,8 +31,8 @@ class SwapchainTabSettings {
 
     // DLSS preset override settings
     BoolSetting dlss_preset_override_enabled;
-    ComboSetting dlss_sr_preset_override;
-    ComboSetting dlss_rr_preset_override;
+    StringSetting dlss_sr_preset_override;
+    StringSetting dlss_rr_preset_override;
 
   private:
     std::vector<SettingBase *> all_settings_;

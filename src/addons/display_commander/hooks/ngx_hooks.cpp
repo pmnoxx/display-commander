@@ -259,29 +259,39 @@ static void ApplyDLSSPresetParameters(NVSDK_NGX_Parameter* InParameters) {
     LogInfo("Applying DLSS preset parameters during NGX initialization...");
 
     // Get preset values
-    int sr_preset = settings::g_swapchainTabSettings.dlss_sr_preset_override.GetValue();
-    int rr_preset = settings::g_swapchainTabSettings.dlss_rr_preset_override.GetValue();
+    int sr_preset = GetDLSSPresetValue(settings::g_swapchainTabSettings.dlss_sr_preset_override.GetValue());
+    int rr_preset = GetDLSSPresetValue(settings::g_swapchainTabSettings.dlss_rr_preset_override.GetValue());
 
     // Apply DLSS Super Resolution preset parameters
-    if (sr_preset > 0) { // 0 = Game Default, 1+ = Preset A+
+    if (sr_preset >= 0) { // -1 = Game Default (no override), 0 = DLSS Default, 1+ = Preset A+
         for (const auto& param_name : g_dlss_sr_preset_params) {
             if (NVSDK_NGX_Parameter_SetI_Original != nullptr) {
                 NVSDK_NGX_Parameter_SetI_Original(InParameters, param_name.c_str(), sr_preset);
                 g_ngx_parameters.update_int(param_name, sr_preset);
-                LogInfo("Applied DLSS SR preset: %s -> %d (Preset %c)",
-                       param_name.c_str(), sr_preset, 'A' + sr_preset - 1);
+                if (sr_preset == 0) {
+                    LogInfo("Applied DLSS SR preset: %s -> %d (DLSS Default)",
+                           param_name.c_str(), sr_preset);
+                } else {
+                    LogInfo("Applied DLSS SR preset: %s -> %d (Preset %c)",
+                           param_name.c_str(), sr_preset, 'A' + sr_preset - 1);
+                }
             }
         }
     }
 
     // Apply DLSS Ray Reconstruction preset parameters
-    if (rr_preset > 0) { // 0 = Game Default, 1+ = Preset A+
+    if (rr_preset >= 0) { // -1 = Game Default (no override), 0 = DLSS Default, 1+ = Preset A+
         for (const auto& param_name : g_dlss_rr_preset_params) {
             if (NVSDK_NGX_Parameter_SetI_Original != nullptr) {
                 NVSDK_NGX_Parameter_SetI_Original(InParameters, param_name.c_str(), rr_preset);
                 g_ngx_parameters.update_int(param_name, rr_preset);
-                LogInfo("Applied DLSS RR preset: %s -> %d (Preset %c)",
-                       param_name.c_str(), rr_preset, 'A' + rr_preset - 1);
+                if (rr_preset == 0) {
+                    LogInfo("Applied DLSS RR preset: %s -> %d (DLSS Default)",
+                           param_name.c_str(), rr_preset);
+                } else {
+                    LogInfo("Applied DLSS RR preset: %s -> %d (Preset %c)",
+                           param_name.c_str(), rr_preset, 'A' + rr_preset - 1);
+                }
             }
         }
     }
@@ -357,19 +367,27 @@ void NVSDK_CONV NVSDK_NGX_Parameter_SetI_Detour(NVSDK_NGX_Parameter* InParameter
 
         // Check for DLSS Super Resolution preset parameters
         if (IsDLSSPresetParameter(param_name, g_dlss_sr_preset_params)) {
-            int sr_preset = settings::g_swapchainTabSettings.dlss_sr_preset_override.GetValue();
-            if (sr_preset > 0) { // 0 = Game Default, 1+ = Preset A+
+            int sr_preset = GetDLSSPresetValue(settings::g_swapchainTabSettings.dlss_sr_preset_override.GetValue());
+            if (sr_preset >= 0) { // -1 = Game Default (no override), 0 = DLSS Default, 1+ = Preset A+
                 InValue = sr_preset;
-                LogInfo("DLSS SR preset override: %s -> %d (Preset %c)", param_name.c_str(), InValue, 'A' + sr_preset - 1);
+                if (sr_preset == 0) {
+                    LogInfo("DLSS SR preset override: %s -> %d (DLSS Default)", param_name.c_str(), InValue);
+                } else {
+                    LogInfo("DLSS SR preset override: %s -> %d (Preset %c)", param_name.c_str(), InValue, 'A' + sr_preset - 1);
+                }
             }
         }
 
         // Check for DLSS Ray Reconstruction preset parameters
         if (IsDLSSPresetParameter(param_name, g_dlss_rr_preset_params)) {
-            int rr_preset = settings::g_swapchainTabSettings.dlss_rr_preset_override.GetValue();
-            if (rr_preset > 0) { // 0 = Game Default, 1+ = Preset A+
+            int rr_preset = GetDLSSPresetValue(settings::g_swapchainTabSettings.dlss_rr_preset_override.GetValue());
+            if (rr_preset >= 0) { // -1 = Game Default (no override), 0 = DLSS Default, 1+ = Preset A+
                 InValue = rr_preset;
-                LogInfo("DLSS RR preset override: %s -> %d (Preset %c)", param_name.c_str(), InValue, 'A' + rr_preset - 1);
+                if (rr_preset == 0) {
+                    LogInfo("DLSS RR preset override: %s -> %d (DLSS Default)", param_name.c_str(), InValue);
+                } else {
+                    LogInfo("DLSS RR preset override: %s -> %d (Preset %c)", param_name.c_str(), InValue, 'A' + rr_preset - 1);
+                }
             }
         }
     }
@@ -404,19 +422,27 @@ void NVSDK_CONV NVSDK_NGX_Parameter_SetUI_Detour(NVSDK_NGX_Parameter* InParamete
 
         // Check for DLSS Super Resolution preset parameters
         if (IsDLSSPresetParameter(param_name, g_dlss_sr_preset_params)) {
-            int sr_preset = settings::g_swapchainTabSettings.dlss_sr_preset_override.GetValue();
-            if (sr_preset > 0) { // 0 = Game Default, 1+ = Preset A+
+            int sr_preset = GetDLSSPresetValue(settings::g_swapchainTabSettings.dlss_sr_preset_override.GetValue());
+            if (sr_preset >= 0) { // -1 = Game Default (no override), 0 = DLSS Default, 1+ = Preset A+
                 InValue = static_cast<unsigned int>(sr_preset);
-                LogInfo("DLSS SR preset override: %s -> %u (Preset %c)", param_name.c_str(), InValue, 'A' + sr_preset - 1);
+                if (sr_preset == 0) {
+                    LogInfo("DLSS SR preset override: %s -> %u (DLSS Default)", param_name.c_str(), InValue);
+                } else {
+                    LogInfo("DLSS SR preset override: %s -> %u (Preset %c)", param_name.c_str(), InValue, 'A' + sr_preset - 1);
+                }
             }
         }
 
         // Check for DLSS Ray Reconstruction preset parameters
         if (IsDLSSPresetParameter(param_name, g_dlss_rr_preset_params)) {
-            int rr_preset = settings::g_swapchainTabSettings.dlss_rr_preset_override.GetValue();
-            if (rr_preset > 0) { // 0 = Game Default, 1+ = Preset A+
+            int rr_preset = GetDLSSPresetValue(settings::g_swapchainTabSettings.dlss_rr_preset_override.GetValue());
+            if (rr_preset >= 0) { // -1 = Game Default (no override), 0 = DLSS Default, 1+ = Preset A+
                 InValue = static_cast<unsigned int>(rr_preset);
-                LogInfo("DLSS RR preset override: %s -> %u (Preset %c)", param_name.c_str(), InValue, 'A' + rr_preset - 1);
+                if (rr_preset == 0) {
+                    LogInfo("DLSS RR preset override: %s -> %u (DLSS Default)", param_name.c_str(), InValue);
+                } else {
+                    LogInfo("DLSS RR preset override: %s -> %u (Preset %c)", param_name.c_str(), InValue, 'A' + rr_preset - 1);
+                }
             }
         }
     }

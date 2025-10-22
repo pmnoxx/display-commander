@@ -1005,6 +1005,7 @@ struct DLSSGSummary {
     std::string dlss_dll_version = "N/A";
     std::string dlssg_dll_version = "N/A";
     std::string dlssd_dll_version = "N/A";
+    std::string supported_dlss_presets = "N/A";
 };
 
 // Function to get DLSS/DLSS-G summary from NGX parameters

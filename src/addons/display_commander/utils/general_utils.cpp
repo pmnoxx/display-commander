@@ -6,6 +6,7 @@
 #include <vector>
 #include <cstdio>
 #include <string>
+#include <sstream>
 #include <reshade.hpp>
 #include <MinHook.h>
 
@@ -416,4 +417,152 @@ std::filesystem::path GetAddonDirectory() {
     }
 
     return std::filesystem::path(module_path).parent_path();
+}
+
+// Helper function to check if a version is between two version ranges (inclusive)
+bool isBetween(int major, int minor, int patch, int minMajor, int minMinor, int minPatch, int maxMajor, int maxMinor, int maxPatch) {
+    // Convert version to comparable integer (major * 10000 + minor * 100 + patch)
+    int version = (major * 10000) + (minor * 100) + patch;
+    int minVersion = (minMajor * 10000) + (minMinor * 100) + minPatch;
+    int maxVersion = (maxMajor * 10000) + (maxMinor * 100) + maxPatch;
+
+    return version >= minVersion && version <= maxVersion;
+}
+
+// Get supported DLSS presets based on DLL version
+std::string GetSupportedDLSSPresets(int major, int minor, int patch) {
+    std::string supported_presets;
+
+    // NVIDIA released DLSS 3.8.10 removed A,B,C,D
+    if (isBetween(major, minor, patch, 3, 1, 30, 3, 8, 10 - 1)) {
+        supported_presets += "A,B,C,D";
+    }
+
+    // v3.1.30 introduced preset E
+    if (isBetween(major, minor, patch, 3, 7, 0, 999, 999, 999)) {
+        if (!supported_presets.empty()) supported_presets += ",";
+        supported_presets += "E,F";
+    }
+
+    // v310.2 introduced preset K
+    if (isBetween(major, minor, patch, 310, 2, 0, 999, 999, 999)) {
+        if (!supported_presets.empty()) supported_presets += ",";
+        supported_presets += "J,K";
+    }
+    return supported_presets;
+}
+
+// Parse version string and return supported presets
+std::string GetSupportedDLSSPresetsFromVersionString(const std::string& versionString) {
+    // Handle "Not loaded" or "Unknown" cases
+    if (versionString == "Not loaded" || versionString == "Unknown" || versionString == "N/A") {
+        return "N/A";
+    }
+
+    // Parse version string (format: "major.minor.build.revision" or "major.minor.patch")
+    int major = 0, minor = 0, patch = 0;
+
+    // Try to parse the version string
+    size_t first_dot = versionString.find('.');
+    if (first_dot != std::string::npos) {
+        major = std::stoi(versionString.substr(0, first_dot));
+
+        size_t second_dot = versionString.find('.', first_dot + 1);
+        if (second_dot != std::string::npos) {
+            minor = std::stoi(versionString.substr(first_dot + 1, second_dot - first_dot - 1));
+
+            // Look for third dot (build.revision format) or use as patch
+            size_t third_dot = versionString.find('.', second_dot + 1);
+            if (third_dot != std::string::npos) {
+                // Format: major.minor.build.revision - use build as patch
+                patch = std::stoi(versionString.substr(second_dot + 1, third_dot - second_dot - 1));
+            } else {
+                // Format: major.minor.patch
+                patch = std::stoi(versionString.substr(second_dot + 1));
+            }
+        }
+    }
+
+    return GetSupportedDLSSPresets(major, minor, patch);
+}
+
+// Generate DLSS preset options based on supported presets
+std::vector<std::string> GetDLSSPresetOptions(const std::string& supportedPresets) {
+    std::vector<std::string> options;
+
+    // Always include Game Default and DLSS Default
+    options.push_back("Game Default");
+    options.push_back("DLSS Default");
+
+    // Parse supported presets string (e.g., "A,B,C,D" or "E,F")
+    if (supportedPresets != "N/A" && !supportedPresets.empty()) {
+        std::stringstream ss(supportedPresets);
+        std::string preset;
+
+        while (std::getline(ss, preset, ',')) {
+            // Trim whitespace
+            preset.erase(0, preset.find_first_not_of(" \t"));
+            preset.erase(preset.find_last_not_of(" \t") + 1);
+
+            if (!preset.empty()) {
+                options.push_back("Preset " + preset);
+            }
+        }
+    }
+
+    return options;
+}
+
+// Convert DLSS preset string to integer value
+int GetDLSSPresetValue(const std::string& presetString) {
+    if (presetString == "Game Default") {
+        return -1; // No override - don't change anything
+    }
+    else if (presetString == "DLSS Default") {
+        return 0; // Use DLSS default (value 0)
+    }
+    else if (presetString.substr(0, 7) == "Preset ") {
+        // Extract the preset letter (e.g., "Preset A" -> "A")
+        std::string presetLetter = presetString.substr(7);
+        if (presetLetter.length() == 1) {
+            char letter = presetLetter[0];
+            if (letter >= 'A' && letter <= 'Z') {
+                return letter - 'A' + 1; // A=1, B=2, C=3, etc.
+            }
+        }
+    }
+
+    // Default to no override if string doesn't match expected format
+    return -1;
+}
+
+// Test function to demonstrate DLSS preset support (can be called for debugging)
+void TestDLSSPresetSupport() {
+    LogInfo("=== DLSS Preset Support Test ===");
+
+    // Test various versions
+    struct TestVersion {
+        int major, minor, patch;
+        const char* description;
+    };
+
+    TestVersion test_versions[] = {
+        {3, 1, 29, "Before preset E introduction"},
+        {3, 1, 30, "Preset E introduced"},
+        {3, 6, 99, "Before preset F introduction"},
+        {3, 7, 0, "Preset F introduced"},
+        {3, 8, 10, "Special case: only E,F"},
+        {3, 8, 11, "After special case"},
+        {310, 1, 99, "Before preset K introduction"},
+        {310, 2, 0, "Preset K introduced"},
+        {310, 3, 0, "Latest with all presets"}
+    };
+
+    for (const auto& test : test_versions) {
+        std::string presets = GetSupportedDLSSPresets(test.major, test.minor, test.patch);
+        LogInfo("Version %d.%d.%d (%s): Presets [%s]",
+                test.major, test.minor, test.patch, test.description, presets.c_str());
+    }
+
+    LogInfo("=== End DLSS Preset Support Test ===");
 }

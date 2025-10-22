@@ -21,7 +21,7 @@ This feature automatically upgrades Direct3D 9 applications to use the enhanced 
    - Added `s_d3d9_upgrade_successful` - Track upgrade success status
 
 2. **settings/developer_tab_settings.hpp / .cpp**
-   - Added `enable_d3d9_upgrade` setting with persistence
+   - Added `enable_d3d9e_upgrade` setting with persistence
    - Default value: `true` (enabled)
 
 3. **swapchain_events.hpp / .cpp**
@@ -77,7 +77,7 @@ Located in: **Developer Tab → HDR and Display Settings → Direct3D 9 Settings
 ### ReShade Settings (DisplayCommander section)
 ```ini
 [DisplayCommander]
-EnableD3D9Upgrade=1  # 1 = enabled, 0 = disabled
+EnableD3D9EUpgrade=1  # 1 = enabled, 0 = disabled
 ```
 
 ## Code Example

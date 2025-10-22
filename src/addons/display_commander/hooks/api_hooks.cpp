@@ -131,6 +131,9 @@ BOOL WINAPI GetGUIThreadInfo_Detour(DWORD idThread, PGUITHREADINFO pgui) {
 
 // Hooked SetThreadExecutionState function
 EXECUTION_STATE WINAPI SetThreadExecutionState_Detour(EXECUTION_STATE esFlags) {
+    // Track total calls
+    g_hook_stats[HOOK_SetThreadExecutionState].increment_total();
+
     // Check screensaver mode setting
     ScreensaverMode screensaver_mode = s_screensaver_mode.load();
 
@@ -138,6 +141,9 @@ EXECUTION_STATE WINAPI SetThreadExecutionState_Detour(EXECUTION_STATE esFlags) {
     if (screensaver_mode == ScreensaverMode::kDisableWhenFocused || screensaver_mode == ScreensaverMode::kDisable) {
         return 0x0; // Block game's attempt to control execution state
     }
+
+    // Track unsuppressed calls (when we call the original function)
+    g_hook_stats[HOOK_SetThreadExecutionState].increment_unsuppressed();
 
     // Call original function for kDefault mode
     return SetThreadExecutionState_Original ? SetThreadExecutionState_Original(esFlags)

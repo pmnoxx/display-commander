@@ -64,18 +64,19 @@ enum HookIndex {
     HOOK_XInputGetState,
     HOOK_XInputGetStateEx,
 
-    // kernel32.dll hooks (37-42)
+    // kernel32.dll hooks (37-43)
     HOOK_Sleep,
     HOOK_SleepEx,
     HOOK_WaitForSingleObject,
     HOOK_WaitForMultipleObjects,
     HOOK_SetUnhandledExceptionFilter,
     HOOK_IsDebuggerPresent,
+    HOOK_SetThreadExecutionState,
 
-    // dinput8.dll hooks (42)
+    // dinput8.dll hooks (44)
     HOOK_DInput8CreateDevice,
 
-    // dinput.dll hooks (43)
+    // dinput.dll hooks (45)
     HOOK_DInputCreateDevice,
 
     HOOK_COUNT

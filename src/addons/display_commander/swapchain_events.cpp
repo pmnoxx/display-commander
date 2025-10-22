@@ -533,14 +533,20 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
 
         // Apply FLIPEX if all requirements are met
         if (can_apply_flipex && desc.present_mode != d3dswapeffect_flipex) {
+            assert(!desc.fullscreen_state && desc.back_buffer_count >= 2);
             LogInfo("D3D9 FLIPEX: Upgrading swap effect from %u to FLIPEX (5)", desc.present_mode);
             LogInfo("D3D9 FLIPEX: Full-screen: %s, Back buffers: %u",
                    desc.fullscreen_state ? "YES" : "NO", desc.back_buffer_count);
 
             desc.present_mode = d3dswapeffect_flipex;
-            if (desc.present_flags & D3DPRESENT_DONOTFLIP) {
+            if ((desc.present_flags & D3DPRESENT_DONOTFLIP) != 0) {
                 LogInfo("D3D9 FLIPEX: Stripping D3DPRESENT_DONOTFLIP flag");
                 desc.present_flags &= ~D3DPRESENT_DONOTFLIP;
+                modified = true;
+            }
+            if (desc.sync_interval != D3DPRESENT_INTERVAL_IMMEDIATE) {
+                LogInfo("D3D9 FLIPEX: Setting sync interval to immediate");
+                desc.sync_interval = D3DPRESENT_INTERVAL_IMMEDIATE;
                 modified = true;
             }
             g_used_flipex.store(true);

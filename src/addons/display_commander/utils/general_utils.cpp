@@ -9,6 +9,7 @@
 #include <sstream>
 #include <reshade.hpp>
 #include <MinHook.h>
+#include <d3d9.h>
 
 // Version.dll dynamic loading
 namespace {
@@ -652,25 +653,16 @@ std::string D3DPresentFlagsToString(uint32_t presentFlags) {
 
     std::string result;
 
-    // D3DPRESENT flags (these are the most common ones)
-    if (presentFlags & 0x00000001) result += "D3DPRESENT_DONOTFLIP | ";
-    if (presentFlags & 0x00000002) result += "D3DPRESENT_DONOTWAIT | ";
-    if (presentFlags & 0x00000004) result += "D3DPRESENT_FLIPRESTART | ";
-    if (presentFlags & 0x00000008) result += "D3DPRESENT_FORCEIMMEDIATE | ";
-    if (presentFlags & 0x00000010) result += "D3DPRESENT_LINEAR_CONTENT | ";
-    if (presentFlags & 0x00000020) result += "D3DPRESENT_VIDEO_RESTRICT_TO_MONITOR | ";
-    if (presentFlags & 0x00000040) result += "D3DPRESENT_UPDATEOVERLAYONLY | ";
-    if (presentFlags & 0x00000080) result += "D3DPRESENT_HIDEOVERLAY | ";
-    if (presentFlags & 0x00000100) result += "D3DPRESENT_UPDATECOLORSPACE | ";
-    if (presentFlags & 0x00000200) result += "D3DPRESENT_FULLSCREEN_RESTART | ";
-    if (presentFlags & 0x00000400) result += "D3DPRESENT_FULLSCREEN_DESKTOP | ";
-    if (presentFlags & 0x00000800) result += "D3DPRESENT_FULLSCREEN_WINDOWED | ";
-    if (presentFlags & 0x00001000) result += "D3DPRESENT_FULLSCREEN_EXCLUSIVE | ";
-    if (presentFlags & 0x00002000) result += "D3DPRESENT_FULLSCREEN_ALLOWTearing | ";
-    if (presentFlags & 0x00004000) result += "D3DPRESENT_FULLSCREEN_DISABLE | ";
-    if (presentFlags & 0x00008000) result += "D3DPRESENT_FULLSCREEN_REMOVE | ";
-    if (presentFlags & 0x00010000) result += "D3DPRESENT_FULLSCREEN_TOGGLE | ";
-
+    // D3DPRESENT flags (using actual D3D9 constants)
+    if (presentFlags & D3DPRESENT_DONOTWAIT) result += "D3DPRESENT_DONOTWAIT | ";
+    if (presentFlags & D3DPRESENT_LINEAR_CONTENT) result += "D3DPRESENT_LINEAR_CONTENT | ";
+    if (presentFlags & D3DPRESENT_DONOTFLIP) result += "D3DPRESENT_DONOTFLIP | ";
+    if (presentFlags & D3DPRESENT_FLIPRESTART) result += "D3DPRESENT_FLIPRESTART | ";
+    if (presentFlags & D3DPRESENT_VIDEO_RESTRICT_TO_MONITOR) result += "D3DPRESENT_VIDEO_RESTRICT_TO_MONITOR | ";
+    if (presentFlags & D3DPRESENT_UPDATEOVERLAYONLY) result += "D3DPRESENT_UPDATEOVERLAYONLY | ";
+    if (presentFlags & D3DPRESENT_HIDEOVERLAY) result += "D3DPRESENT_HIDEOVERLAY | ";
+    if (presentFlags & D3DPRESENT_UPDATECOLORKEY) result += "D3DPRESENT_UPDATECOLORKEY | ";
+    if (presentFlags & D3DPRESENT_FORCEIMMEDIATE) result += "D3DPRESENT_FORCEIMMEDIATE | ";
     // Remove trailing " | " if present
     if (!result.empty() && result.length() >= 3) {
         result.erase(result.length() - 3);

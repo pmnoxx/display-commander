@@ -108,8 +108,14 @@ void every1s_checks() {
 
             if (app_in_background) {
                 LogInfo("Continuous monitoring: App moved to BACKGROUND");
+                // Release cursor clipping when going to background
+                display_commanderhooks::ClipCursor_Direct(nullptr);
+                LogInfo("Continuous monitoring: Released cursor clipping for background");
             } else {
                 LogInfo("Continuous monitoring: App moved to FOREGROUND");
+                // Restore cursor clipping when coming to foreground
+                display_commanderhooks::RestoreClipCursor();
+                LogInfo("Continuous monitoring: Restored cursor clipping for foreground");
             }
         }
 

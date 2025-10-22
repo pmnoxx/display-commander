@@ -169,6 +169,8 @@ BOOL WINAPI PostMessageA_Detour(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lPara
 BOOL WINAPI PostMessageW_Detour(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam);
 BOOL WINAPI GetKeyboardState_Detour(PBYTE lpKeyState);
 BOOL WINAPI ClipCursor_Detour(const RECT *lpRect);
+BOOL ClipCursor_Direct(const RECT *lpRect);
+void RestoreClipCursor();
 BOOL WINAPI GetCursorPos_Detour(LPPOINT lpPoint);
 BOOL WINAPI SetCursorPos_Detour(int X, int Y);
 SHORT WINAPI GetKeyState_Detour(int vKey);

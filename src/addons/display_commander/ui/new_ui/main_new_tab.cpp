@@ -12,6 +12,7 @@
 #include "../../nvapi/reflex_manager.hpp"
 #include "../../hooks/nvapi_hooks.hpp"
 #include "../../hooks/loadlibrary_hooks.hpp"
+#include "../../hooks/windows_hooks/windows_message_hooks.hpp"
 #include "../../res/forkawesome.h"
 #include "../../res/ui_colors.hpp"
 #include "../../utils.hpp"
@@ -383,6 +384,10 @@ void DrawMainNewTab() {
         bool block_any_in_background = settings::g_mainTabSettings.block_input_in_background.GetValue();
         if (ImGui::Checkbox("Block Input in Background", &block_any_in_background)) {
             settings::g_mainTabSettings.block_input_in_background.SetValue(block_any_in_background);
+            // Restore cursor clipping when input blocking is disabled
+            if (!block_any_in_background) {
+                display_commanderhooks::RestoreClipCursor();
+            }
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Blocks mouse, keyboard, and cursor warping while the game window is not focused.");
@@ -393,7 +398,10 @@ void DrawMainNewTab() {
         bool block_without_reshade = settings::g_mainTabSettings.block_input_without_reshade.GetValue();
         if (ImGui::Checkbox("Block input", &block_without_reshade)) {
             settings::g_mainTabSettings.block_input_without_reshade.SetValue(block_without_reshade);
-            // No need to call update function - the message hooks check the setting directly
+            // Restore cursor clipping when input blocking is disabled
+            if (!block_without_reshade) {
+                display_commanderhooks::RestoreClipCursor();
+            }
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip(

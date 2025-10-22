@@ -409,6 +409,22 @@ BOOL WINAPI GetKeyboardState_Detour(PBYTE lpKeyState) {
     return result;
 }
 
+// Function to call ClipCursor directly without going through the hook
+BOOL ClipCursor_Direct(const RECT *lpRect) {
+    // Call the original Windows API directly, bypassing our hook
+    return ClipCursor_Original ? ClipCursor_Original(lpRect) : ClipCursor(lpRect);
+}
+
+// Function to restore cursor clipping when input blocking is disabled
+void RestoreClipCursor() {
+    // Only restore if we have a valid clipping rectangle stored
+    if ((s_last_clip_cursor.right - s_last_clip_cursor.left) != 0 &&
+        (s_last_clip_cursor.bottom - s_last_clip_cursor.top) != 0) {
+        // Restore the previous clipping rectangle using direct call
+        ClipCursor_Direct(&s_last_clip_cursor);
+    }
+}
+
 // Hooked ClipCursor function
 BOOL WINAPI ClipCursor_Detour(const RECT *lpRect) {
     // Store the clip rectangle for reference

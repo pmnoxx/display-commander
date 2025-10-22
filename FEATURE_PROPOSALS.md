@@ -46,6 +46,8 @@ This document tracks proposed features and ideas for future development. These a
 
 • DLSS Quality Preset override
 
+• DX9 -> DX9E swap chain upgrade
+
 ## Low Priority Proposals
 
 • Add crashes interception, so we can print to logs when crash occurs.

@@ -242,4 +242,12 @@ LONGLONG get_now_ns() {
     return now_ticks.QuadPart * utils::QPC_TO_NS;
 }
 
+// Get real time bypassing any hooks (for comparison with spoofed time)
+LONGLONG get_real_time_ns() {
+    LARGE_INTEGER now_ticks = {};
+    // Always use the original Windows API, never the hooked version
+    QueryPerformanceCounter(&now_ticks);
+    return now_ticks.QuadPart * utils::QPC_TO_NS;
+}
+
 } // namespace utils

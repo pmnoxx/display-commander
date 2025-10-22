@@ -4,6 +4,7 @@
 #include "../../settings/main_tab_settings.hpp"
 #include "../../utils.hpp"
 #include "../api_hooks.hpp" // For GetGameWindow and other functions
+#include "../../process_exit_hooks.hpp" // For UnhandledExceptionHandler
 #include <MinHook.h>
 #include <array>
 
@@ -55,6 +56,8 @@ mouse_event_pfn mouse_event_Original = nullptr;
 MapVirtualKey_pfn MapVirtualKey_Original = nullptr;
 MapVirtualKeyEx_pfn MapVirtualKeyEx_Original = nullptr;
 DisplayConfigGetDeviceInfo_pfn DisplayConfigGetDeviceInfo_Original = nullptr;
+SetUnhandledExceptionFilter_pfn SetUnhandledExceptionFilter_Original = nullptr;
+IsDebuggerPresent_pfn IsDebuggerPresent_Original = nullptr;
 
 // Hook state
 static std::atomic<bool> g_message_hooks_installed{false};
@@ -108,6 +111,8 @@ static const std::array<const char*, HOOK_COUNT> g_hook_names = {"GetMessageA",
                                                "SleepEx",
                                                "WaitForSingleObject",
                                                "WaitForMultipleObjects",
+                                               "SetUnhandledExceptionFilter",
+                                               "IsDebuggerPresent",
                                                "DirectInput8Create",
                                                "DirectInputCreate"};
 
@@ -1025,6 +1030,42 @@ LONG WINAPI DisplayConfigGetDeviceInfo_Detour(DISPLAYCONFIG_DEVICE_INFO_HEADER *
     return result;
 }
 
+LPTOP_LEVEL_EXCEPTION_FILTER WINAPI SetUnhandledExceptionFilter_Detour(LPTOP_LEVEL_EXCEPTION_FILTER lpTopLevelExceptionFilter) {
+    // Track total calls
+    g_hook_stats[HOOK_SetUnhandledExceptionFilter].increment_total();
+
+    // Spoof: Always install our own exception handler instead of the one passed by the game
+    // This is similar to Special-K's approach - we ignore the parameter and force our handler
+    // Call the original function but with our own handler instead of the game's handler
+    LPTOP_LEVEL_EXCEPTION_FILTER result = SetUnhandledExceptionFilter_Original ?
+        SetUnhandledExceptionFilter_Original(process_exit_hooks::UnhandledExceptionHandler) :  // Force our handler
+        SetUnhandledExceptionFilter(process_exit_hooks::UnhandledExceptionHandler);
+
+    // All calls are suppressed by overriding the argument.
+
+    return result;
+}
+
+BOOL WINAPI IsDebuggerPresent_Detour() {
+    // Track total calls
+    g_hook_stats[HOOK_IsDebuggerPresent].increment_total();
+
+    // Call original function to get actual debugger status
+    BOOL result = IsDebuggerPresent_Original ?
+        IsDebuggerPresent_Original() :
+        IsDebuggerPresent();
+
+    // Log debugger detection attempts for monitoring
+    if (result) {
+        LogInfo("IsDebuggerPresent: Debugger detected by game");
+    }
+
+    // All calls are passed through (not suppressed)
+    g_hook_stats[HOOK_IsDebuggerPresent].increment_unsuppressed();
+
+    return result;
+}
+
 // Install Windows message hooks
 bool InstallWindowsMessageHooks() {
     if (g_message_hooks_installed.load()) {
@@ -1256,6 +1297,17 @@ bool InstallWindowsMessageHooks() {
         return false;
     }
 
+    // Hook SetUnhandledExceptionFilter
+    if (!CreateAndEnableHook(SetUnhandledExceptionFilter, SetUnhandledExceptionFilter_Detour, (LPVOID *)&SetUnhandledExceptionFilter_Original, "SetUnhandledExceptionFilter")) {
+        LogError("Failed to create and enable SetUnhandledExceptionFilter hook");
+        return false;
+    }
+
+    // Hook IsDebuggerPresent
+    if (!CreateAndEnableHook(IsDebuggerPresent, IsDebuggerPresent_Detour, (LPVOID *)&IsDebuggerPresent_Original, "IsDebuggerPresent")) {
+        LogError("Failed to create and enable IsDebuggerPresent hook");
+        return false;
+    }
 
     g_message_hooks_installed.store(true);
     LogInfo("Windows message hooks installed successfully");
@@ -1308,6 +1360,7 @@ void UninstallWindowsMessageHooks() {
     MH_RemoveHook(mouse_event);
     MH_RemoveHook(MapVirtualKey);
     MH_RemoveHook(MapVirtualKeyEx);
+    MH_RemoveHook(IsDebuggerPresent);
 
     // Clean up
     GetMessageA_Original = nullptr;
@@ -1345,6 +1398,8 @@ void UninstallWindowsMessageHooks() {
     MapVirtualKey_Original = nullptr;
     MapVirtualKeyEx_Original = nullptr;
     DisplayConfigGetDeviceInfo_Original = nullptr;
+    SetUnhandledExceptionFilter_Original = nullptr;
+    IsDebuggerPresent_Original = nullptr;
 
     g_message_hooks_installed.store(false);
     LogInfo("Windows message hooks uninstalled successfully");

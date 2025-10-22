@@ -2,9 +2,8 @@
 #include "display_restore.hpp"
 #include "utils.hpp"
 #include "utils/display_commander_logger.hpp"
+#include <reshade.hpp>
 #include <atomic>
-#include <fstream>
-#include <iomanip>
 #include <sstream>
 #include <windows.h>
 
@@ -13,11 +12,18 @@ namespace exit_handler {
 // Atomic flag to prevent multiple exit calls
 static std::atomic<bool> g_exit_handled{false};
 
-// Helper function to write to DisplayCommander.log using the logger system
+// Helper function to write to both ReShade log and DisplayCommander.log
 void WriteToDebugLog(const std::string &message) {
     try {
-        // Use the DisplayCommander logger system
+        // Write to DisplayCommander.log using the logger system
         display_commander::logger::LogInfo(message.c_str());
+
+        // Also write to ReShade log for comprehensive coverage
+        reshade::log::message(reshade::log::level::info, message.c_str());
+
+        // Also output to DbgView for immediate visibility (similar to Special-K)
+        OutputDebugStringA(message.c_str());
+        OutputDebugStringA("\n");
     } catch (...) {
         // Ignore any errors during logging to prevent crashes
     }

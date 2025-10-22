@@ -37,9 +37,9 @@ void DrawHookStatsTab() {
     static const DllGroup DLL_GROUPS[] = {
         {.name = "user32.dll", .start_index = 0, .end_index = 34},      // GetMessageA to DisplayConfigGetDeviceInfo
         {.name = "xinput1_4.dll", .start_index = 35, .end_index = 36},  // XInputGetState, XInputGetStateEx
-        {.name = "kernel32.dll", .start_index = 37, .end_index = 40},   // Sleep, SleepEx, WaitForSingleObject, WaitForMultipleObjects
-        {.name = "dinput8.dll", .start_index = 41, .end_index = 41},    // DirectInput8Create
-        {.name = "dinput.dll", .start_index = 42, .end_index = 42}      // DirectInputCreate
+        {.name = "kernel32.dll", .start_index = 37, .end_index = 42},   // Sleep, SleepEx, WaitForSingleObject, WaitForMultipleObjects, SetUnhandledExceptionFilter, IsDebuggerPresent
+        {.name = "dinput8.dll", .start_index = 43, .end_index = 43},    // DirectInput8Create
+        {.name = "dinput.dll", .start_index = 44, .end_index = 44}      // DirectInputCreate
     };
 
     // Display statistics grouped by DLL

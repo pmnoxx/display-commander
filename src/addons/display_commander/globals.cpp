@@ -8,6 +8,7 @@
 #include "settings/swapchain_tab_settings.hpp"
 #include "settings/streamline_tab_settings.hpp"
 #include "utils.hpp"
+#include "utils/general_utils.hpp"
 #include "utils/srwlock_wrapper.hpp"
 #include <algorithm>
 #include "../../../external/nvapi/nvapi.h"
@@ -569,6 +570,49 @@ DLSSGSummary GetDLSSGSummary() {
     int ofa_enabled;
     if (g_ngx_parameters.get_as_int("Enable.OFA", ofa_enabled)) {
         summary.ofa_enabled = (ofa_enabled == 1) ? "Yes" : "No";
+    }
+
+    // Get DLL versions for DLSS and DLSS-G
+    // Check for nvngx_dlss.dll (DLSS Super Resolution)
+    HMODULE dlss_handle = GetModuleHandleW(L"nvngx_dlss.dll");
+    if (dlss_handle != nullptr) {
+        wchar_t dlss_path[MAX_PATH];
+        DWORD path_length = GetModuleFileNameW(dlss_handle, dlss_path, MAX_PATH);
+        if (path_length > 0) {
+            summary.dlss_dll_version = GetDLLVersionString(std::wstring(dlss_path));
+        } else {
+            summary.dlss_dll_version = "Loaded (path unknown)";
+        }
+    } else {
+        summary.dlss_dll_version = "Not loaded";
+    }
+
+    // Check for nvngx_dlssg.dll (DLSS Frame Generation)
+    HMODULE dlssg_handle = GetModuleHandleW(L"nvngx_dlssg.dll");
+    if (dlssg_handle != nullptr) {
+        wchar_t dlssg_path[MAX_PATH];
+        DWORD path_length = GetModuleFileNameW(dlssg_handle, dlssg_path, MAX_PATH);
+        if (path_length > 0) {
+            summary.dlssg_dll_version = GetDLLVersionString(std::wstring(dlssg_path));
+        } else {
+            summary.dlssg_dll_version = "Loaded (path unknown)";
+        }
+    } else {
+        summary.dlssg_dll_version = "Not loaded";
+    }
+
+    // Check for nvngx_dlssd.dll (DLSS Denoising)
+    HMODULE dlssd_handle = GetModuleHandleW(L"nvngx_dlssd.dll");
+    if (dlssd_handle != nullptr) {
+        wchar_t dlssd_path[MAX_PATH];
+        DWORD path_length = GetModuleFileNameW(dlssd_handle, dlssd_path, MAX_PATH);
+        if (path_length > 0) {
+            summary.dlssd_dll_version = GetDLLVersionString(std::wstring(dlssd_path));
+        } else {
+            summary.dlssd_dll_version = "Loaded (path unknown)";
+        }
+    } else {
+        summary.dlssd_dll_version = "Not loaded";
     }
 
     return summary;

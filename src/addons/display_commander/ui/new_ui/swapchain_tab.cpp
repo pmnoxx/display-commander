@@ -802,6 +802,25 @@ void DrawDLSSGSummary() {
         ImGui::TextColored(fg_color, "%s", summary.fg_mode.c_str());
         ImGui::NextColumn();
 
+        // DLL Version information
+        ImGui::Text("DLSS DLL Version:");
+        ImGui::NextColumn();
+        ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "%s", summary.dlss_dll_version.c_str());
+        ImGui::NextColumn();
+
+        ImGui::Text("DLSS-G DLL Version:");
+        ImGui::NextColumn();
+        ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "%s", summary.dlssg_dll_version.c_str());
+        ImGui::NextColumn();
+
+        if (summary.dlssd_dll_version != "Not loaded") {
+            ImGui::Text("DLSS-D DLL Version:");
+            ImGui::NextColumn();
+            ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "%s", summary.dlssd_dll_version.c_str());
+            ImGui::NextColumn();
+        }
+
+
         ImGui::Separator();
 
         // Resolution information

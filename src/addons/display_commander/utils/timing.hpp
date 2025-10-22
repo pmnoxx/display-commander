@@ -28,4 +28,7 @@ LONGLONG get_now_qpc();
 void wait_until_ns(LONGLONG target_ns, HANDLE &timer_handle);
 LONGLONG get_now_ns();
 
+// Get real time bypassing any hooks (for comparison with spoofed time)
+LONGLONG get_real_time_ns();
+
 } // namespace utils

@@ -64,16 +64,18 @@ enum HookIndex {
     HOOK_XInputGetState,
     HOOK_XInputGetStateEx,
 
-    // kernel32.dll hooks (37-40)
+    // kernel32.dll hooks (37-42)
     HOOK_Sleep,
     HOOK_SleepEx,
     HOOK_WaitForSingleObject,
     HOOK_WaitForMultipleObjects,
+    HOOK_SetUnhandledExceptionFilter,
+    HOOK_IsDebuggerPresent,
 
-    // dinput8.dll hooks (41)
+    // dinput8.dll hooks (42)
     HOOK_DInput8CreateDevice,
 
-    // dinput.dll hooks (42)
+    // dinput.dll hooks (43)
     HOOK_DInputCreateDevice,
 
     HOOK_COUNT
@@ -115,6 +117,8 @@ using mouse_event_pfn = void(WINAPI *)(DWORD, DWORD, DWORD, DWORD, ULONG_PTR);
 using MapVirtualKey_pfn = UINT(WINAPI *)(UINT, UINT);
 using MapVirtualKeyEx_pfn = UINT(WINAPI *)(UINT, UINT, HKL);
 using DisplayConfigGetDeviceInfo_pfn = LONG(WINAPI *)(DISPLAYCONFIG_DEVICE_INFO_HEADER *);
+using SetUnhandledExceptionFilter_pfn = LPTOP_LEVEL_EXCEPTION_FILTER(WINAPI *)(LPTOP_LEVEL_EXCEPTION_FILTER);
+using IsDebuggerPresent_pfn = BOOL(WINAPI *)();
 
 // Original function pointers
 extern GetMessageA_pfn GetMessageA_Original;
@@ -152,6 +156,8 @@ extern mouse_event_pfn mouse_event_Original;
 extern MapVirtualKey_pfn MapVirtualKey_Original;
 extern MapVirtualKeyEx_pfn MapVirtualKeyEx_Original;
 extern DisplayConfigGetDeviceInfo_pfn DisplayConfigGetDeviceInfo_Original;
+extern SetUnhandledExceptionFilter_pfn SetUnhandledExceptionFilter_Original;
+extern IsDebuggerPresent_pfn IsDebuggerPresent_Original;
 
 // Hooked message functions
 BOOL WINAPI GetMessageA_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax);
@@ -192,6 +198,8 @@ void WINAPI mouse_event_Detour(DWORD dwFlags, DWORD dx, DWORD dy, DWORD dwData, 
 UINT WINAPI MapVirtualKey_Detour(UINT uCode, UINT uMapType);
 UINT WINAPI MapVirtualKeyEx_Detour(UINT uCode, UINT uMapType, HKL dwhkl);
 LONG WINAPI DisplayConfigGetDeviceInfo_Detour(DISPLAYCONFIG_DEVICE_INFO_HEADER *requestPacket);
+LPTOP_LEVEL_EXCEPTION_FILTER WINAPI SetUnhandledExceptionFilter_Detour(LPTOP_LEVEL_EXCEPTION_FILTER lpTopLevelExceptionFilter);
+BOOL WINAPI IsDebuggerPresent_Detour();
 
 // Hook management
 bool InstallWindowsMessageHooks();

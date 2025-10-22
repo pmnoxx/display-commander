@@ -9,6 +9,8 @@
 #include "../../settings/experimental_tab_settings.hpp"
 #include "../../widgets/dualsense_widget/dualsense_widget.hpp"
 #include "../../utils.hpp"
+#include "../../utils/timing.hpp"
+#include "../../utils/stack_trace.hpp"
 
 #include <windows.h>
 
@@ -767,6 +769,48 @@ void DrawTimeSlowdownControls() {
         ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Max Time Multiplier: %.0fx",
                            settings::g_experimentalTabSettings.timeslowdown_max_multiplier.GetValue());
 
+        // Time comparison display
+        ImGui::Spacing();
+        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Time Comparison:");
+
+        // Get both real and spoofed time
+        LONGLONG real_time_ns = utils::get_real_time_ns();
+        LONGLONG spoofed_time_ns = utils::get_now_ns();
+        LONGLONG time_difference_ns = spoofed_time_ns - real_time_ns;
+
+        // Convert to more readable units
+        double real_time_ms = real_time_ns / 1000000.0;
+        double spoofed_time_ms = spoofed_time_ns / 1000000.0;
+        double time_difference_ms = time_difference_ns / 1000000.0;
+
+        // Calculate percentage difference
+        double percentage_diff = 0.0;
+        if (real_time_ns > 0) {
+            percentage_diff = static_cast<double>(time_difference_ns) / real_time_ns * 100.0;
+        }
+
+        // Display the comparison
+        ImGui::TextColored(ImVec4(0.6f, 1.0f, 0.6f, 1.0f), "  Real Time: %.3f ms", real_time_ms);
+        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.6f, 1.0f), "  Spoofed Time: %.3f ms", spoofed_time_ms);
+
+        // Color code the difference based on magnitude
+        ImVec4 diff_color;
+        if (abs(percentage_diff) < 0.1) {
+            diff_color = ImVec4(0.6f, 1.0f, 0.6f, 1.0f); // Green for minimal difference
+        } else if (abs(percentage_diff) < 1.0) {
+            diff_color = ImVec4(1.0f, 1.0f, 0.6f, 1.0f); // Yellow for small difference
+        } else {
+            diff_color = ImVec4(1.0f, 0.6f, 0.6f, 1.0f); // Red for significant difference
+        }
+
+        ImGui::TextColored(diff_color, "  Difference: %+.3f ms (%+.2f%%)", time_difference_ms, percentage_diff);
+
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Shows the difference between real system time and time as seen by the game.\n"
+                             "Positive values mean the game sees time as faster than real time.\n"
+                             "Negative values mean the game sees time as slower than real time.");
+        }
+
         // Show hook status
         bool hooks_installed = display_commanderhooks::AreTimeslowdownHooksInstalled();
         ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Hooks Status: %s",
@@ -1041,9 +1085,36 @@ void DrawDeveloperTools() {
         ImGui::SetTooltip("Triggers a debugger breakpoint. Useful for attaching a debugger at a specific moment.\nWARNING: Will crash if no debugger is attached!");
     }
 
+    ImGui::SameLine();
+
+    // Stack Trace Test Button
+    if (ImGui::Button("Test Stack Trace")) {
+        LogInfo("Stack trace test triggered by user");
+        stack_trace::PrintStackTraceToDbgView();
+        LogInfo("Stack trace printed to DbgView - check DebugView application");
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Generates and prints a stack trace to DbgView.\nUseful for testing stack trace functionality.\nMake sure DebugView is running to see the output!");
+    }
+
+    ImGui::SameLine();
+
+    // Test Crash Handler Button
+    if (ImGui::Button("Test Crash Handler")) {
+        LogInfo("Test crash handler triggered by user - this will cause an intentional crash!");
+        // Trigger an intentional access violation to test our crash handler
+        int* null_ptr = nullptr;
+        *null_ptr = 42; // This will cause an access violation and trigger our UnhandledExceptionHandler
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Triggers an intentional crash to test the SetUnhandledExceptionFilter spoofing and crash logging system.\nWARNING: This will crash the application!\nUse this to verify that our exception handler is working correctly.");
+    }
+
     ImGui::Spacing();
-    ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Note: This button will trigger a debugger breakpoint when clicked.");
-    ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Make sure you have a debugger attached before using this feature.");
+    ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Note: Debugger break button will trigger a debugger breakpoint when clicked.");
+    ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Make sure you have a debugger attached before using the debugger break feature.");
+    ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.5f, 1.0f), "WARNING: Crash Handler test will intentionally crash the application!");
+    ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Use it to test our SetUnhandledExceptionFilter spoofing and crash logging system.");
 }
 
 void DrawHIDSuppression() {

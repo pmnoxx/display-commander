@@ -101,6 +101,10 @@ class ExperimentalTabSettings {
     BoolSetting hid_suppression_block_getattributes;
     BoolSetting hid_suppression_block_createfile;
 
+    // Debug output hook settings
+    BoolSetting debug_output_log_to_reshade;
+    BoolSetting debug_output_show_stats;
+
 
   private:
     std::vector<SettingBase *> all_settings_;

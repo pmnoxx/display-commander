@@ -11,6 +11,7 @@
 #include "windows_hooks/windows_message_hooks.hpp"
 #include "dinput_hooks.hpp"
 #include "display_settings_hooks.hpp"
+#include "debug_output_hooks.hpp"
 #include <MinHook.h>
 
 // External reference to screensaver mode setting
@@ -330,6 +331,11 @@ bool InstallApiHooks() {
         LogError("Failed to install display settings hooks");
     }
 
+    // Install debug output hooks
+    if (!debug_output::InstallDebugOutputHooks()) {
+        LogError("Failed to install debug output hooks");
+    }
+
     g_api_hooks_installed.store(true);
     LogInfo("API hooks installed successfully");
 
@@ -370,6 +376,9 @@ void UninstallApiHooks() {
 
     // Uninstall process exit hooks
     UninstallProcessExitHooks();
+
+    // Uninstall debug output hooks
+    debug_output::UninstallDebugOutputHooks();
 
     // NVAPI hooks are uninstalled via LoadLibrary hooks cleanup
 

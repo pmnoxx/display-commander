@@ -616,9 +616,6 @@ void DoInitializationWithoutHwnd(HMODULE h_module, DWORD fdw_reason) {
 }
 
 BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
-    // Early logging to detect crash timing
-    OutputDebugStringA("DisplayCommander: DllMain called\n");
-
     switch (fdw_reason) {
         case DLL_PROCESS_ATTACH: {
             OutputDebugStringA("DisplayCommander: DLL_PROCESS_ATTACH\n");

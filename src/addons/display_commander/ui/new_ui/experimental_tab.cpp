@@ -6,6 +6,7 @@
 #include "../../hooks/sleep_hooks.hpp"
 #include "../../hooks/timeslowdown_hooks.hpp"
 #include "../../hooks/hid_suppression_hooks.hpp"
+#include "../../hooks/debug_output_hooks.hpp"
 #include "../../settings/experimental_tab_settings.hpp"
 #include "../../widgets/dualsense_widget/dualsense_widget.hpp"
 #include "../../utils.hpp"
@@ -194,6 +195,13 @@ void DrawExperimentalTab() {
     // Draw developer tools
     if (ImGui::CollapsingHeader("Developer Tools", ImGuiTreeNodeFlags_None)) {
         DrawDeveloperTools();
+    }
+
+    ImGui::Spacing();
+
+    // Draw debug output hooks
+    if (ImGui::CollapsingHeader("Debug Output Hooks", ImGuiTreeNodeFlags_None)) {
+        DrawDebugOutputHooks();
     }
 
 }
@@ -1209,6 +1217,65 @@ void DrawHIDSuppression() {
             ImGui::SetTooltip("HID suppression prevents games from reading controller input directly.\nThis may cause games to not recognize controllers or behave unexpectedly.\nUse with caution and test thoroughly.");
         }
     }
+}
+
+void DrawDebugOutputHooks() {
+    ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== Debug Output Hooks ===");
+    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), ICON_FK_WARNING " EXPERIMENTAL FEATURE - Hooks OutputDebugStringA/W to log to ReShade!");
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("This feature hooks Windows debug output functions (OutputDebugStringA/W) and logs their output to the ReShade log file.\nUseful for debugging games that use debug output for logging or error reporting.");
+    }
+
+    ImGui::Spacing();
+
+    // Log to ReShade setting
+    if (CheckboxSetting(settings::g_experimentalTabSettings.debug_output_log_to_reshade, "Log to ReShade")) {
+        LogInfo("Debug output logging to ReShade %s",
+                settings::g_experimentalTabSettings.debug_output_log_to_reshade.GetValue() ? "enabled" : "disabled");
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("When enabled, debug output will be logged to ReShade.log.\nWhen disabled, debug output will only be passed through to the original functions.");
+    }
+
+    // Show statistics setting
+    if (CheckboxSetting(settings::g_experimentalTabSettings.debug_output_show_stats, "Show Statistics")) {
+        LogInfo("Debug output statistics display %s",
+                settings::g_experimentalTabSettings.debug_output_show_stats.GetValue() ? "enabled" : "disabled");
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Display statistics about captured debug output calls in the UI.");
+    }
+
+    // Show statistics if enabled
+    if (settings::g_experimentalTabSettings.debug_output_show_stats.GetValue()) {
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== Debug Output Statistics ===");
+
+        auto& stats = display_commanderhooks::debug_output::GetDebugOutputStats();
+
+        ImGui::Text("OutputDebugStringA calls: %llu",
+                   static_cast<unsigned long long>(stats.output_debug_string_a_calls.load()));
+        ImGui::Text("OutputDebugStringW calls: %llu",
+                   static_cast<unsigned long long>(stats.output_debug_string_w_calls.load()));
+        ImGui::Text("Total bytes logged: %llu",
+                   static_cast<unsigned long long>(stats.total_bytes_logged.load()));
+
+        // Reset statistics button
+        if (ImGui::Button("Reset Statistics")) {
+            stats.output_debug_string_a_calls.store(0);
+            stats.output_debug_string_w_calls.store(0);
+            stats.total_bytes_logged.store(0);
+            LogInfo("Debug output statistics reset");
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Reset all debug output statistics to zero.");
+        }
+    }
+
+    ImGui::Spacing();
+    ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Note: This feature captures debug output from OutputDebugStringA and OutputDebugStringW calls.");
+    ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Debug output will appear in ReShade.log when enabled.");
 }
 
 

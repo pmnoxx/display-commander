@@ -44,6 +44,9 @@ void DrawDeveloperTools();
 // Draw HID suppression controls section
 void DrawHIDSuppression();
 
+// Draw debug output hooks section
+void DrawDebugOutputHooks();
+
 
 // Cleanup function to stop background threads
 void CleanupExperimentalTab();

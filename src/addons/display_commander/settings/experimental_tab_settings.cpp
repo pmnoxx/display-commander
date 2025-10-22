@@ -83,6 +83,8 @@ ExperimentalTabSettings::ExperimentalTabSettings()
     , hid_suppression_block_getinputreport("HIDSuppressionBlockGetInputReport", true, "DisplayCommander.Experimental")
     , hid_suppression_block_getattributes("HIDSuppressionBlockGetAttributes", true, "DisplayCommander.Experimental")
     , hid_suppression_block_createfile("HIDSuppressionBlockCreateFile", true, "DisplayCommander.Experimental")
+    , debug_output_log_to_reshade("DebugOutputLogToReShade", true, "DisplayCommander.Experimental")
+    , debug_output_show_stats("DebugOutputShowStats", true, "DisplayCommander.Experimental")
 {
     // Initialize the all_settings_ vector
     all_settings_ = {
@@ -107,6 +109,7 @@ ExperimentalTabSettings::ExperimentalTabSettings()
         &hid_suppression_enabled, &hid_suppression_dualsense_only, &hid_suppression_block_readfile,
         &hid_suppression_block_getinputreport, &hid_suppression_block_getattributes,
         &hid_suppression_block_createfile,
+        &debug_output_log_to_reshade, &debug_output_show_stats,
     };
 }
 

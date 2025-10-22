@@ -237,10 +237,10 @@ void DrawHdrDisplaySettings() {
     // D3D9 to D3D9Ex Upgrade
     ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Direct3D 9 Settings");
 
-    if (CheckboxSetting(settings::g_developerTabSettings.enable_d3d9_upgrade, "Enable D3D9 to D3D9Ex Upgrade")) {
-        s_enable_d3d9_upgrade.store(settings::g_developerTabSettings.enable_d3d9_upgrade.GetValue());
+    if (CheckboxSetting(settings::g_developerTabSettings.enable_d3d9e_upgrade, "Enable D3D9 to D3D9Ex Upgrade")) {
+        s_enable_d3d9_upgrade.store(settings::g_developerTabSettings.enable_d3d9e_upgrade.GetValue());
         LogInfo("D3D9 to D3D9Ex upgrade setting changed to: %s",
-                settings::g_developerTabSettings.enable_d3d9_upgrade.GetValue() ? "enabled" : "disabled");
+                settings::g_developerTabSettings.enable_d3d9e_upgrade.GetValue() ? "enabled" : "disabled");
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip(
@@ -259,7 +259,7 @@ void DrawHdrDisplaySettings() {
                 "Your game is now using the enhanced D3D9Ex API.");
         }
         ImGui::Unindent();
-    } else if (settings::g_developerTabSettings.enable_d3d9_upgrade.GetValue()) {
+    } else if (settings::g_developerTabSettings.enable_d3d9e_upgrade.GetValue()) {
         ImGui::Indent();
         ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Waiting for D3D9 device creation...");
         if (ImGui::IsItemHovered()) {

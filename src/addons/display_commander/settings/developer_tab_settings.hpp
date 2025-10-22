@@ -37,7 +37,7 @@ class DeveloperTabSettings {
     BoolSettingRef auto_colorspace;
 
     // D3D9 to D3D9Ex Upgrade
-    BoolSettingRef enable_d3d9_upgrade;
+    BoolSettingRef enable_d3d9e_upgrade;
 
     // NVAPI Settings
     BoolSettingRef nvapi_fullscreen_prevention;

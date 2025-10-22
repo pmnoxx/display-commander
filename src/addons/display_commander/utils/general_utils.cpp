@@ -632,3 +632,56 @@ void TestDLSSPresetSupport() {
 
     LogInfo("=== End DLSS Preset Support Test ===");
 }
+
+// D3D9 present mode and flags string conversion functions
+const char* D3DSwapEffectToString(uint32_t swapEffect) {
+    switch (swapEffect) {
+        case 1: return "D3DSWAPEFFECT_DISCARD";
+        case 2: return "D3DSWAPEFFECT_FLIP";
+        case 3: return "D3DSWAPEFFECT_COPY";
+        case 4: return "D3DSWAPEFFECT_OVERLAY";
+        case 5: return "D3DSWAPEFFECT_FLIPEX";
+        default: return "UNKNOWN_SWAP_EFFECT";
+    }
+}
+
+std::string D3DPresentFlagsToString(uint32_t presentFlags) {
+    if (presentFlags == 0) {
+        return "NONE";
+    }
+
+    std::string result;
+
+    // D3DPRESENT flags (these are the most common ones)
+    if (presentFlags & 0x00000001) result += "D3DPRESENT_DONOTFLIP | ";
+    if (presentFlags & 0x00000002) result += "D3DPRESENT_DONOTWAIT | ";
+    if (presentFlags & 0x00000004) result += "D3DPRESENT_FLIPRESTART | ";
+    if (presentFlags & 0x00000008) result += "D3DPRESENT_FORCEIMMEDIATE | ";
+    if (presentFlags & 0x00000010) result += "D3DPRESENT_LINEAR_CONTENT | ";
+    if (presentFlags & 0x00000020) result += "D3DPRESENT_VIDEO_RESTRICT_TO_MONITOR | ";
+    if (presentFlags & 0x00000040) result += "D3DPRESENT_UPDATEOVERLAYONLY | ";
+    if (presentFlags & 0x00000080) result += "D3DPRESENT_HIDEOVERLAY | ";
+    if (presentFlags & 0x00000100) result += "D3DPRESENT_UPDATECOLORSPACE | ";
+    if (presentFlags & 0x00000200) result += "D3DPRESENT_FULLSCREEN_RESTART | ";
+    if (presentFlags & 0x00000400) result += "D3DPRESENT_FULLSCREEN_DESKTOP | ";
+    if (presentFlags & 0x00000800) result += "D3DPRESENT_FULLSCREEN_WINDOWED | ";
+    if (presentFlags & 0x00001000) result += "D3DPRESENT_FULLSCREEN_EXCLUSIVE | ";
+    if (presentFlags & 0x00002000) result += "D3DPRESENT_FULLSCREEN_ALLOWTearing | ";
+    if (presentFlags & 0x00004000) result += "D3DPRESENT_FULLSCREEN_DISABLE | ";
+    if (presentFlags & 0x00008000) result += "D3DPRESENT_FULLSCREEN_REMOVE | ";
+    if (presentFlags & 0x00010000) result += "D3DPRESENT_FULLSCREEN_TOGGLE | ";
+
+    // Remove trailing " | " if present
+    if (!result.empty() && result.length() >= 3) {
+        result.erase(result.length() - 3);
+    }
+
+    // If no known flags were found, show the raw value
+    if (result.empty()) {
+        char buffer[32];
+        snprintf(buffer, sizeof(buffer), "0x%08X", presentFlags);
+        result = buffer;
+    }
+
+    return result;
+}

@@ -44,7 +44,7 @@ This document tracks proposed features and ideas for future development. These a
 
 • DLSS DLL Loader (https://github.com/beeradmoore/dlss-swapper-manifest-builder)
 
-• DLLS Quality Preset override
+• DLSS Quality Preset override
 
 ## Low Priority Proposals
 

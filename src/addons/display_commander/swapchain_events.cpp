@@ -538,6 +538,11 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
                    desc.fullscreen_state ? "YES" : "NO", desc.back_buffer_count);
 
             desc.present_mode = d3dswapeffect_flipex;
+            if (desc.present_flags & D3DPRESENT_DONOTFLIP) {
+                LogInfo("D3D9 FLIPEX: Stripping D3DPRESENT_DONOTFLIP flag");
+                desc.present_flags &= ~D3DPRESENT_DONOTFLIP;
+                modified = true;
+            }
             g_used_flipex.store(true);
             modified = true;
 

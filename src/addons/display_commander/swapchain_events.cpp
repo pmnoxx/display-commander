@@ -61,6 +61,7 @@ std::atomic<bool> g_initialized_with_hwnd{false};
 bool OnCreateDevice(reshade::api::device_api api, uint32_t& api_version) {
     // Check if D3D9 upgrade is enabled
     if (!s_enable_d3d9e_upgrade.load()) {
+        LogInfo("D3D9 to D3D9Ex upgrade disabled");
         return false;
     }
 
@@ -488,6 +489,7 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
             oss << "Back Buffer: " << desc.back_buffer.texture.width << "x" << desc.back_buffer.texture.height << ", ";
             oss << "Back Buffer Format: " << (long long)desc.back_buffer.texture.format << ", ";
             oss << "Back Buffer Usage: " << (long long)desc.back_buffer.usage;
+            oss << "Multisample: " << desc.back_buffer.texture.samples << ", ";
             LogInfo(oss.str().c_str());
         }
 
@@ -524,29 +526,48 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
         }*/
 
         // FLIPEX requires at least 2 back buffers
-        if (desc.back_buffer_count < 2) {
+        if (desc.back_buffer_count < 3) {
             LogInfo("D3D9 FLIPEX: Increasing back buffer count from %u to 2 (required for FLIPEX)",
                    desc.back_buffer_count);
-            desc.back_buffer_count = 2;
+            desc.back_buffer_count = 3;
             modified = true;
         }
 
         // Apply FLIPEX if all requirements are met
         if (can_apply_flipex && desc.present_mode != d3dswapeffect_flipex) {
+            if (!s_d3d9e_upgrade_successful.load()) {
+                LogWarn("D3D9 FLIPEX: D3D9Ex upgrade not successful, skipping FLIPEX");
+                return false;
+            }
             assert(!desc.fullscreen_state && desc.back_buffer_count >= 2);
             LogInfo("D3D9 FLIPEX: Upgrading swap effect from %u to FLIPEX (5)", desc.present_mode);
             LogInfo("D3D9 FLIPEX: Full-screen: %s, Back buffers: %u",
                    desc.fullscreen_state ? "YES" : "NO", desc.back_buffer_count);
 
             desc.present_mode = d3dswapeffect_flipex;
-            if ((desc.present_flags & D3DPRESENT_DONOTFLIP) != 0) {
-                LogInfo("D3D9 FLIPEX: Stripping D3DPRESENT_DONOTFLIP flag");
-                desc.present_flags &= ~D3DPRESENT_DONOTFLIP;
-                modified = true;
-            }
             if (desc.sync_interval != D3DPRESENT_INTERVAL_IMMEDIATE) {
                 LogInfo("D3D9 FLIPEX: Setting sync interval to immediate");
                 desc.sync_interval = D3DPRESENT_INTERVAL_IMMEDIATE;
+                modified = true;
+            }
+            if ((desc.present_flags & D3DPRESENT_DONOTFLIP) != 0) {
+                LogInfo("D3D9 FLIPEX: Stripping D3DPRESENT_DONOTFLIP flag");
+                desc.present_flags &= ~D3DPRESENT_DONOTFLIP; // only fullscreen mode is supported
+                modified = true;
+            }
+            if ((desc.present_flags & D3DPRESENTFLAG_LOCKABLE_BACKBUFFER) != 0) {
+                LogInfo("D3D9 FLIPEX: Stripping D3DPRESENTFLAG_LOCKABLE_BACKBUFFER flag");
+                desc.present_flags &= ~D3DPRESENTFLAG_LOCKABLE_BACKBUFFER;
+                modified = true;
+            }
+            if ((desc.present_flags & D3DPRESENTFLAG_DEVICECLIP) != 0) {
+                LogInfo("D3D9 FLIPEX: Stripping D3DPRESENTFLAG_DEVICECLIP flag");
+                desc.present_flags &= ~D3DPRESENTFLAG_DEVICECLIP;
+                modified = true;
+            }
+            if (desc.back_buffer.texture.samples != 1) {
+                LogInfo("D3D9 FLIPEX: Setting multisample type to 1");
+                desc.back_buffer.texture.samples = 1;
                 modified = true;
             }
             g_used_flipex.store(true);

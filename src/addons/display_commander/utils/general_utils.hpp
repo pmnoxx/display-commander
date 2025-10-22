@@ -85,5 +85,9 @@ inline T UpdateRollingAverage(T new_value, T old_value, int alpha = 64) {
 // MinHook wrapper functions
 bool CreateAndEnableHook(LPVOID pTarget, LPVOID pDetour, LPVOID* ppOriginal, const char* hookName);
 
+// D3D9 present mode and flags string conversion functions
+const char* D3DSwapEffectToString(uint32_t swapEffect);
+std::string D3DPresentFlagsToString(uint32_t presentFlags);
+
 // External declarations needed by utility functions
 extern std::atomic<std::shared_ptr<const std::vector<MonitorInfo>>> g_monitors;

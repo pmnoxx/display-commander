@@ -475,6 +475,23 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
 
     // D3D9 FLIPEX upgrade logic (only for D3D9)
     if (is_d3d9) {
+        // log desc
+        {
+            std::ostringstream oss;
+            oss << "OnCreateSwapchainCapture - ";
+            oss << "API: " << static_cast<int>(api) << ", ";
+            oss << "Fullscreen: " << (desc.fullscreen_state ? "YES" : "NO") << ", ";
+            oss << "Back Buffers: " << desc.back_buffer_count << ", ";
+            oss << "Present Mode: " << D3DSwapEffectToString(desc.present_mode) << ", ";
+            oss << "Sync Interval: " << desc.sync_interval << ", ";
+            oss << "Present Flags: " << D3DPresentFlagsToString(desc.present_flags) << ", ";
+            oss << "Back Buffer: " << desc.back_buffer.texture.width << "x" << desc.back_buffer.texture.height << ", ";
+            oss << "Back Buffer Format: " << (long long)desc.back_buffer.texture.format << ", ";
+            oss << "Back Buffer Usage: " << (long long)desc.back_buffer.usage;
+            LogInfo(oss.str().c_str());
+        }
+
+
         bool modified = false;
         if (desc.fullscreen_state) {
             if (!settings::g_developerTabSettings.prevent_fullscreen.GetValue()) {

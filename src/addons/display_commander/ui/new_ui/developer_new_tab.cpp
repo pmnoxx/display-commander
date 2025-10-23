@@ -359,63 +359,65 @@ void DrawNvapiSettings() {
             ImGui::Text("Auto-configure is handled by continuous monitoring");
         }
 
-        if (ImGui::Checkbox("Low Latency Mode", &reflex_low_latency)) {
-            settings::g_developerTabSettings.reflex_low_latency.SetValue(reflex_low_latency);
-            s_reflex_low_latency.store(reflex_low_latency);
-        }
-        if (ImGui::Checkbox("Boost", &reflex_boost)) {
-            settings::g_developerTabSettings.reflex_boost.SetValue(reflex_boost);
-            s_reflex_boost.store(reflex_boost);
-        }
-        if (reflex_auto_configure) {
-            ImGui::BeginDisabled();
-        }
-        if (ImGui::Checkbox("Use Reflex Markers", &reflex_use_markers)) {
-            settings::g_developerTabSettings.reflex_use_markers.SetValue(reflex_use_markers);
-            s_reflex_use_markers.store(reflex_use_markers);
-        }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Tell NVIDIA Reflex to use markers for optimization");
-        }
+        if (reflex_enable) {
+            if (ImGui::Checkbox("Low Latency Mode", &reflex_low_latency)) {
+                settings::g_developerTabSettings.reflex_low_latency.SetValue(reflex_low_latency);
+                s_reflex_low_latency.store(reflex_low_latency);
+            }
+            if (ImGui::Checkbox("Boost", &reflex_boost)) {
+                settings::g_developerTabSettings.reflex_boost.SetValue(reflex_boost);
+                s_reflex_boost.store(reflex_boost);
+            }
+            if (reflex_auto_configure) {
+                ImGui::BeginDisabled();
+            }
+            if (ImGui::Checkbox("Use Reflex Markers", &reflex_use_markers)) {
+                settings::g_developerTabSettings.reflex_use_markers.SetValue(reflex_use_markers);
+                s_reflex_use_markers.store(reflex_use_markers);
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Tell NVIDIA Reflex to use markers for optimization");
+            }
 
-        if (ImGui::Checkbox("Generate Reflex Markers", &reflex_generate_markers)) {
-            settings::g_developerTabSettings.reflex_generate_markers.SetValue(reflex_generate_markers);
-            s_reflex_generate_markers.store(reflex_generate_markers);
-        }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Generate markers in the frame timeline for latency measurement");
-        }
-        // Warning about enabling Reflex when game already has it
-        if (is_native_reflex_active && settings::g_developerTabSettings.reflex_generate_markers.GetValue()) {
-            ImGui::SameLine();
-            ImGui::TextColored(
-                ImVec4(1.0f, 0.6f, 0.0f, 1.0f), ICON_FK_WARNING
-                " Warning: Do not enable 'Generate Reflex Markers' if the game already has built-in Reflex support!");
-        }
+            if (ImGui::Checkbox("Generate Reflex Markers", &reflex_generate_markers)) {
+                settings::g_developerTabSettings.reflex_generate_markers.SetValue(reflex_generate_markers);
+                s_reflex_generate_markers.store(reflex_generate_markers);
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Generate markers in the frame timeline for latency measurement");
+            }
+            // Warning about enabling Reflex when game already has it
+            if (is_native_reflex_active && settings::g_developerTabSettings.reflex_generate_markers.GetValue()) {
+                ImGui::SameLine();
+                ImGui::TextColored(
+                    ImVec4(1.0f, 0.6f, 0.0f, 1.0f), ICON_FK_WARNING
+                    " Warning: Do not enable 'Generate Reflex Markers' if the game already has built-in Reflex support!");
+            }
 
-        if (ImGui::Checkbox("Enable Reflex Sleep Mode", &reflex_enable_sleep)) {
-            settings::g_developerTabSettings.reflex_enable_sleep.SetValue(reflex_enable_sleep);
-            s_reflex_enable_sleep.store(reflex_enable_sleep);
-        }
-        if (is_native_reflex_active && settings::g_developerTabSettings.reflex_enable_sleep.GetValue()) {
-            ImGui::SameLine();
-            ImGui::TextColored(
-                ImVec4(1.0f, 0.6f, 0.0f, 1.0f), ICON_FK_WARNING
-                " Warning: Do not enable 'Enable Reflex Sleep Mode' if the game already has built-in Reflex support!");
-        }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Enable Reflex sleep mode calls (disabled by default for safety).");
-        }
-        if (reflex_auto_configure) {
-            ImGui::EndDisabled();
-        }
-        bool reflex_logging = settings::g_developerTabSettings.reflex_logging.GetValue();
-        if (ImGui::Checkbox("Enable Reflex Logging", &reflex_logging)) {
-            settings::g_developerTabSettings.reflex_logging.SetValue(reflex_logging);
-            s_enable_reflex_logging.store(reflex_logging);
-        }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Enable detailed logging of Reflex marker operations for debugging purposes.");
+            if (ImGui::Checkbox("Enable Reflex Sleep Mode", &reflex_enable_sleep)) {
+                settings::g_developerTabSettings.reflex_enable_sleep.SetValue(reflex_enable_sleep);
+                s_reflex_enable_sleep.store(reflex_enable_sleep);
+            }
+            if (is_native_reflex_active && settings::g_developerTabSettings.reflex_enable_sleep.GetValue()) {
+                ImGui::SameLine();
+                ImGui::TextColored(
+                    ImVec4(1.0f, 0.6f, 0.0f, 1.0f), ICON_FK_WARNING
+                    " Warning: Do not enable 'Enable Reflex Sleep Mode' if the game already has built-in Reflex support!");
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Enable Reflex sleep mode calls (disabled by default for safety).");
+            }
+            if (reflex_auto_configure) {
+                ImGui::EndDisabled();
+            }
+            bool reflex_logging = settings::g_developerTabSettings.reflex_logging.GetValue();
+            if (ImGui::Checkbox("Enable Reflex Logging", &reflex_logging)) {
+                settings::g_developerTabSettings.reflex_logging.SetValue(reflex_logging);
+                s_enable_reflex_logging.store(reflex_logging);
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Enable detailed logging of Reflex marker operations for debugging purposes.");
+            }
         }
 
         // Reflex Debug Counters Section

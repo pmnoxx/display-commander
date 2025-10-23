@@ -45,7 +45,6 @@ std::atomic<WindowAlignment> s_window_alignment{WindowAlignment::kCenter}; // de
 
 
 // NVAPI Fullscreen Prevention
-std::atomic<bool> s_nvapi_fullscreen_prevention{false}; // disabled by default
 
 
 // Mouse position spoofing for auto-click sequences
@@ -54,11 +53,6 @@ std::atomic<int> s_spoofed_mouse_x{0};
 std::atomic<int> s_spoofed_mouse_y{0};
 
 // Keyboard Shortcuts
-std::atomic<bool> s_enable_mute_unmute_shortcut{true};
-std::atomic<bool> s_enable_background_toggle_shortcut{true};
-std::atomic<bool> s_enable_timeslowdown_shortcut{true};
-std::atomic<bool> s_enable_adhd_toggle_shortcut{true};
-std::atomic<bool> s_enable_autoclick_shortcut{false};
 
 // Auto-click enabled state (atomic, not loaded from config)
 std::atomic<bool> g_auto_click_enabled{false};
@@ -71,7 +65,6 @@ std::atomic<bool> g_auto_click_enabled{false};
 std::atomic<DxgiBypassMode> s_dxgi_composition_state{DxgiBypassMode::kUnset};
 
 // Continue rendering in background
-std::atomic<bool> s_continue_rendering{false}; // Disabled by default
 
 // DirectInput hook suppression
 std::atomic<bool> s_suppress_dinput_hooks{false}; // Disabled by default
@@ -82,11 +75,8 @@ std::atomic<bool> s_suppress_dinput_hooks{false}; // Disabled by default
 
 // Present blocking in background
 
-std::atomic<bool> s_auto_colorspace{false};
 
 // Hide HDR capabilities from applications
-std::atomic<bool> s_hide_hdr_capabilities{false};
-std::atomic<bool> s_enable_flip_chain{false};
 
 // D3D9 to D3D9Ex upgrade
 //std::atomic<bool> s_enable_d3d9e_upgrade{true}; // Enabled by default
@@ -98,7 +88,6 @@ std::vector<reshade::api::effect_runtime *> g_reshade_runtimes;
 SRWLOCK g_reshade_runtimes_lock = SRWLOCK_INIT;
 
 // Prevent always on top behavior
-std::atomic<bool> s_prevent_always_on_top{true}; // Prevent games from staying on top by default
 
 // Background feature - show black window behind game when not fullscreen
 
@@ -137,7 +126,6 @@ std::atomic<bool> g_shutdown{false};
 std::atomic<bool> g_muted_applied{false};
 
 // Continuous monitoring system
-std::atomic<bool> s_continuous_monitoring_enabled{true}; // Enabled by default
 std::atomic<bool> g_monitoring_thread_running{false};
 std::thread g_monitoring_thread;
 
@@ -322,16 +310,6 @@ std::atomic<LONGLONG> g_gpu_completion_callback_time_ns{0};  // Time when GPU co
 std::atomic<LONGLONG> g_gpu_late_time_ns{0};  // GPU late time (0 if GPU finished first, otherwise difference)
 
 // NVIDIA Reflex minimal controls (disabled by default)
-std::atomic<bool> s_reflex_auto_configure{false}; // Disabled by default
-std::atomic<bool> s_reflex_enable{false};
-std::atomic<bool> s_reflex_enable_current_frame{false};
-std::atomic<bool> s_reflex_low_latency{false};
-std::atomic<bool> s_reflex_boost{false};
-std::atomic<bool> s_reflex_use_markers{false};     // Use markers for optimization
-std::atomic<bool> s_reflex_generate_markers{false}; // Generate markers in frame timeline
-std::atomic<bool> s_reflex_enable_sleep{false}; // Disabled by default
-std::atomic<bool> s_reflex_supress_native{false}; // Disabled by default
-std::atomic<bool> s_enable_reflex_logging{false}; // Disabled by default
 
 
 // DLLS-G (DLSS Frame Generation) status

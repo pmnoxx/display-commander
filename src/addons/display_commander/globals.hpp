@@ -443,18 +443,14 @@ extern std::atomic<bool> s_apply_display_settings_at_start;
 extern std::atomic<bool> s_resolution_applied_at_least_once;
 
 // Window management
-extern std::atomic<bool> s_prevent_always_on_top;
 extern std::atomic<WindowMode> s_window_mode;
 extern std::atomic<AspectRatioType> s_aspect_index;
 extern std::atomic<int> s_aspect_width;
 
 
 // Auto color space setting
-extern std::atomic<bool> s_auto_colorspace;
 
 // Hide HDR capabilities from applications
-extern std::atomic<bool> s_hide_hdr_capabilities;
-extern std::atomic<bool> s_enable_flip_chain;
 
 // D3D9 to D3D9Ex upgrade
 //extern std::atomic<bool> s_enable_d3d9e_upgrade;
@@ -475,17 +471,11 @@ extern std::atomic<int> s_spoofed_mouse_y;
 // Present blocking in background
 
 // NVAPI Settings
-extern std::atomic<bool> s_nvapi_fullscreen_prevention;
 extern std::atomic<bool> s_nvapi_auto_enable;
 
 // Audio Settings
 
 // Keyboard Shortcuts
-extern std::atomic<bool> s_enable_mute_unmute_shortcut;
-extern std::atomic<bool> s_enable_background_toggle_shortcut;
-extern std::atomic<bool> s_enable_timeslowdown_shortcut;
-extern std::atomic<bool> s_enable_adhd_toggle_shortcut;
-extern std::atomic<bool> s_enable_autoclick_shortcut;
 
 // Auto-click enabled state (atomic, not loaded from config)
 extern std::atomic<bool> g_auto_click_enabled;
@@ -510,7 +500,6 @@ size_t GetReShadeRuntimeCount();
 // g_monitor_labels removed - UI now uses GetDisplayInfoForUI() directly for better reliability
 
 // Continuous monitoring and rendering
-extern std::atomic<bool> s_continuous_monitoring_enabled;
 
 // Atomic variables
 extern std::atomic<int> g_comp_query_counter;
@@ -606,9 +595,6 @@ void UpdateHdr10OverrideTimestamp(const std::string& timestamp);
 // Helper function to get flip state based on API type
 DxgiBypassMode GetFlipStateForAPI(int api);
 
-// Keyboard Shortcut Settings (Experimental)
-extern std::atomic<bool> s_enable_mute_unmute_shortcut;
-
 // Performance optimization settings
 extern std::atomic<LONGLONG> g_flush_before_present_time_ns;
 
@@ -622,10 +608,37 @@ extern std::thread g_monitoring_thread;
 // Render thread tracking
 extern std::atomic<DWORD> g_render_thread_id;
 
-extern std::atomic<bool> s_continue_rendering;
 
 // DirectInput hook suppression
 extern std::atomic<bool> s_suppress_dinput_hooks;
+
+// External declarations for atomic variables moved to developer_tab_settings.cpp
+extern std::atomic<bool> s_continue_rendering;
+extern std::atomic<bool> s_continuous_monitoring_enabled;
+extern std::atomic<bool> s_prevent_always_on_top;
+extern std::atomic<bool> s_hide_hdr_capabilities;
+extern std::atomic<bool> s_enable_flip_chain;
+extern std::atomic<bool> s_auto_colorspace;
+extern std::atomic<bool> s_nvapi_fullscreen_prevention;
+
+// Reflex settings
+extern std::atomic<bool> s_reflex_auto_configure;
+extern std::atomic<bool> s_reflex_enable;
+extern std::atomic<bool> s_reflex_enable_current_frame;
+extern std::atomic<bool> s_reflex_low_latency;
+extern std::atomic<bool> s_reflex_boost;
+extern std::atomic<bool> s_reflex_use_markers;
+extern std::atomic<bool> s_reflex_generate_markers;
+extern std::atomic<bool> s_reflex_enable_sleep;
+extern std::atomic<bool> s_reflex_supress_native;
+extern std::atomic<bool> s_enable_reflex_logging;
+
+// Shortcut settings
+extern std::atomic<bool> s_enable_mute_unmute_shortcut;
+extern std::atomic<bool> s_enable_background_toggle_shortcut;
+extern std::atomic<bool> s_enable_timeslowdown_shortcut;
+extern std::atomic<bool> s_enable_adhd_toggle_shortcut;
+extern std::atomic<bool> s_enable_autoclick_shortcut;
 
 // Forward declaration for tab settings
 namespace settings {
@@ -879,16 +892,6 @@ extern std::atomic<LONGLONG> g_gpu_completion_callback_time_ns;  // Time when GP
 extern std::atomic<LONGLONG> g_gpu_late_time_ns;  // GPU late time (0 if GPU finished first, otherwise difference)
 
 // NVIDIA Reflex minimal controls
-extern std::atomic<bool> s_reflex_auto_configure;  // Auto-configure Reflex on startup
-extern std::atomic<bool> s_reflex_enable;          // Enable NVIDIA Reflex integration
-extern std::atomic<bool> s_reflex_enable_current_frame;          // Enable NVIDIA Reflex integration for current frame
-extern std::atomic<bool> s_reflex_low_latency;     // Low Latency Mode
-extern std::atomic<bool> s_reflex_boost;           // Low Latency Boost
-extern std::atomic<bool> s_reflex_use_markers;     // Use markers for optimization
-extern std::atomic<bool> s_reflex_generate_markers; // Generate markers in frame timeline
-extern std::atomic<bool> s_reflex_enable_sleep;    // Enable Reflex sleep mode (off by default)
-extern std::atomic<bool> s_reflex_supress_native;  // Suppress native Reflex to use injected version
-extern std::atomic<bool> s_enable_reflex_logging;  // Enable Reflex logging
 
 
 

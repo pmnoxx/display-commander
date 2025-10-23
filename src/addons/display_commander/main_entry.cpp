@@ -486,12 +486,10 @@ void HandleSafemode() {
 
         // Disable XInput hooks
         auto xinput_shared_state = display_commander::widgets::xinput_widget::XInputWidget::GetSharedState();
-        if (xinput_shared_state) {
-            xinput_shared_state->enable_xinput_hooks.store(false);
-            // Save XInput setting to config
-            display_commander::config::set_config_value("DisplayCommander.XInputWidget", "EnableXInputHooks", false);
-        }
+        assert(xinput_shared_state);
+        xinput_shared_state->enable_xinput_hooks.store(false);
 
+#if 0
         // Disable Streamline loading
         settings::g_developerTabSettings.load_streamline.SetValue(false);
 
@@ -502,7 +500,8 @@ void HandleSafemode() {
         settings::g_developerTabSettings.load_nvapi64.SetValue(false);
 
         // Disable XInput loading
-        settings::g_developerTabSettings.load_xinput.SetValue(false);
+        settings::g_developerTabSettings.load_xinput.SetValue(false);]
+#endif
 
         // Save the changes
         settings::g_developerTabSettings.SaveAll();

@@ -20,7 +20,6 @@ std::atomic<bool> s_audio_mute{false};
 std::atomic<bool> s_mute_in_background{false};
 std::atomic<bool> s_mute_in_background_if_other_audio{false};
 std::atomic<bool> s_block_input_in_background{true};
-std::atomic<bool> s_block_input_without_reshade{false};
 std::atomic<bool> s_no_render_in_background{false};
 std::atomic<bool> s_no_present_in_background{false};
 std::atomic<ScreensaverMode> s_screensaver_mode{ScreensaverMode::kDefault};
@@ -53,8 +52,6 @@ MainTabSettings::MainTabSettings()
                                         "DisplayCommander"),
       audio_volume_auto_apply("audio_volume_auto_apply", true, "DisplayCommander"),
       block_input_in_background("block_input_in_background", s_block_input_in_background, true, "DisplayCommander"),
-      block_input_without_reshade("block_input_without_reshade", s_block_input_without_reshade, false,
-                                  "DisplayCommander"),
       no_render_in_background("no_render_in_background", s_no_render_in_background, false, "DisplayCommander"),
       no_present_in_background("no_present_in_background", s_no_present_in_background, false, "DisplayCommander"),
       show_test_overlay("show_test_overlay", false, "DisplayCommander"),
@@ -93,7 +90,6 @@ MainTabSettings::MainTabSettings()
         &mute_in_background_if_other_audio,
         &audio_volume_auto_apply,
         &block_input_in_background,
-        &block_input_without_reshade,
         &no_render_in_background,
         &no_present_in_background,
         &show_test_overlay,

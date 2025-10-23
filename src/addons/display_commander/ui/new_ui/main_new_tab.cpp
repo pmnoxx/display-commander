@@ -399,22 +399,6 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
             ImGui::SetTooltip("Blocks mouse, keyboard, and cursor warping while the game window is not focused.");
         }
         ImGui::SameLine();
-
-        // Input blocking without Reshade (handled by Windows message hooks)
-        bool block_without_reshade = settings::g_mainTabSettings.block_input_without_reshade.GetValue();
-        if (ImGui::Checkbox("Block input", &block_without_reshade)) {
-            settings::g_mainTabSettings.block_input_without_reshade.SetValue(block_without_reshade);
-            // Restore cursor clipping when input blocking is disabled
-            if (!block_without_reshade) {
-                display_commanderhooks::RestoreClipCursor();
-            }
-        }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
-                "Uses Windows message hooks to block input independently of Reshade's system. Required "
-                "for future gamepad remapping features.");
-        }
-        ImGui::SameLine();
         // Show XInput tab checkbox
         bool show_xinput_tab = settings::g_mainTabSettings.show_xinput_tab.GetValue();
         if (ImGui::Checkbox("Show XInput Tab", &show_xinput_tab)) {

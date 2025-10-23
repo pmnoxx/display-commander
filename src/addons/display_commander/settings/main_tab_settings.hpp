@@ -23,7 +23,6 @@ extern std::atomic<bool> s_audio_mute;
 extern std::atomic<bool> s_mute_in_background;
 extern std::atomic<bool> s_mute_in_background_if_other_audio;
 extern std::atomic<bool> s_block_input_in_background;
-extern std::atomic<bool> s_block_input_without_reshade;
 extern std::atomic<bool> s_no_render_in_background;
 extern std::atomic<bool> s_no_present_in_background;
 
@@ -73,7 +72,6 @@ class MainTabSettings {
 
     // Input Blocking (Background) Settings
     ui::new_ui::BoolSettingRef block_input_in_background;
-    ui::new_ui::BoolSettingRef block_input_without_reshade;
 
     // Render Blocking (Background) Settings
     ui::new_ui::BoolSettingRef no_render_in_background;

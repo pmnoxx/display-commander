@@ -595,38 +595,38 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
 
 
         // Enable flip chain if enabled (experimental feature) - forces flip model
-        if (settings::g_experimentalTabSettings.enable_flip_chain_enabled.GetValue()
-        || s_enable_flip_chain.load()) {
-            if (desc.back_buffer_count < 2) {
-                desc.back_buffer_count = 2;
-                modified = true;
-
-                LogInfo("DXGI: Increasing back buffer count from %u to 2", desc.back_buffer_count);
-            }
+        if (!is_flip && (settings::g_experimentalTabSettings.enable_flip_chain_enabled.GetValue()
+                         || s_enable_flip_chain.load())) {
             // Check if current present mode is NOT a flip model
-            const bool is_flip_discard = (desc.present_mode == DXGI_SWAP_EFFECT_FLIP_DISCARD);
-            const bool is_flip_sequential = (desc.present_mode == DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL);
-            const bool is_traditional = (desc.present_mode == DXGI_SWAP_EFFECT_DISCARD || desc.present_mode == DXGI_SWAP_EFFECT_SEQUENTIAL);
 
-            if (is_traditional) {
-                // Store original mode for logging
-                uint32_t original_mode = desc.present_mode;
-
-                // Force flip model swap chain (FLIP_DISCARD is more performant than FLIP_SEQUENTIAL)
-                desc.present_mode = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+            if (desc.back_buffer_count < 3) {
+                desc.back_buffer_count = 3;
                 modified = true;
 
-                // Log the change
-                std::ostringstream flip_oss;
-                flip_oss << "Enable Flip Chain: Changed present mode from ";
-                if (original_mode == DXGI_SWAP_EFFECT_DISCARD) {
-                    flip_oss << "DISCARD";
-                } else {
-                    flip_oss << "SEQUENTIAL";
-                }
-                flip_oss << " to FLIP_DISCARD (flip model swap chain)";
-                LogInfo("%s", flip_oss.str().c_str());
+                LogInfo("DXGI FLIP UPGRADE: Increasing back buffer count from %u to 2", desc.back_buffer_count);
             }
+            if (desc.back_buffer.texture.samples != 1) {
+                LogInfo("DXGI FLIP UPGRADE: Setting multisample type to 1");
+                desc.back_buffer.texture.samples = 1;
+                modified = true;
+            }
+            // Store original mode for logging
+            uint32_t original_mode = desc.present_mode;
+
+            // Force flip model swap chain (FLIP_DISCARD is more performant than FLIP_SEQUENTIAL)
+            desc.present_mode = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+            modified = true;
+
+            // Log the change
+            std::ostringstream flip_oss;
+            flip_oss << "DXGI FLIP UPGRADE: Changed present mode from ";
+            if (original_mode == DXGI_SWAP_EFFECT_DISCARD) {
+                flip_oss << "DISCARD";
+            } else {
+                flip_oss << "SEQUENTIAL";
+            }
+            flip_oss << " to FLIP_DISCARD (flip model swap chain)";
+            LogInfo("%s", flip_oss.str().c_str());
         }
         // Apply backbuffer format override if enabled (all APIs)
         if (settings::g_experimentalTabSettings.backbuffer_format_override_enabled.GetValue()) {

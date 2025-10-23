@@ -4,10 +4,12 @@
 #include "../../nvapi/fake_nvapi_manager.hpp"
 #include "../../res/forkawesome.h"
 #include "../../settings/developer_tab_settings.hpp"
+#include "../../settings/experimental_tab_settings.hpp"
 #include "../../utils/general_utils.hpp"
 #include "../../utils/reshade_global_config.hpp"
 #include "imgui.h"
 #include "settings_wrapper.hpp"
+
 
 #include <atomic>
 #include <set>
@@ -235,20 +237,7 @@ void DrawHdrDisplaySettings() {
     ImGui::Separator();
     ImGui::Spacing();
 
-    // D3D9 to D3D9Ex Upgrade
-    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Direct3D 9 Settings");
 
-    if (CheckboxSetting(settings::g_developerTabSettings.enable_d3d9e_upgrade, "Enable D3D9 to D3D9Ex Upgrade")) {
-        s_enable_d3d9e_upgrade.store(settings::g_developerTabSettings.enable_d3d9e_upgrade.GetValue());
-        LogInfo("D3D9 to D3D9Ex upgrade setting changed to: %s",
-                settings::g_developerTabSettings.enable_d3d9e_upgrade.GetValue() ? "enabled" : "disabled");
-    }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip(
-            "Automatically upgrades Direct3D 9 to Direct3D 9Ex for improved performance and features.\n"
-            "D3D9Ex provides better memory management, flip model presentation, and reduced latency.\n"
-            "This feature is enabled by default and works transparently with D3D9 games.");
-    }
 
     // Show upgrade status
     if (s_d3d9e_upgrade_successful.load()) {
@@ -260,7 +249,7 @@ void DrawHdrDisplaySettings() {
                 "Your game is now using the enhanced D3D9Ex API.");
         }
         ImGui::Unindent();
-    } else if (settings::g_developerTabSettings.enable_d3d9e_upgrade.GetValue()) {
+    } else if (settings::g_experimentalTabSettings.d3d9_flipex_enabled.GetValue()) {
         ImGui::Indent();
         ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Waiting for D3D9 device creation...");
         if (ImGui::IsItemHovered()) {

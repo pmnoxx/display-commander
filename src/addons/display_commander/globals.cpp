@@ -89,7 +89,7 @@ std::atomic<bool> s_hide_hdr_capabilities{false};
 std::atomic<bool> s_enable_flip_chain{false};
 
 // D3D9 to D3D9Ex upgrade
-std::atomic<bool> s_enable_d3d9e_upgrade{true}; // Enabled by default
+//std::atomic<bool> s_enable_d3d9e_upgrade{true}; // Enabled by default
 std::atomic<bool> s_d3d9e_upgrade_successful{false}; // Track if upgrade was successful
 std::atomic<bool> g_used_flipex{false}; // Track if FLIPEX is currently being used
 

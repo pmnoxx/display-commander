@@ -84,8 +84,6 @@ class ExperimentalTabSettings {
     // D3D9 FLIPEX upgrade settings
     BoolSetting d3d9_flipex_enabled;
 
-    // Disable flip chain settings (DXGI only)
-    BoolSetting disable_flip_chain_enabled;
 
     // Enable flip chain settings (DXGI only) - forces flip model
     BoolSetting enable_flip_chain_enabled;

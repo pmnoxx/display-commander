@@ -19,7 +19,9 @@ std::atomic<float> s_audio_volume_percent{100.f};
 std::atomic<bool> s_audio_mute{false};
 std::atomic<bool> s_mute_in_background{false};
 std::atomic<bool> s_mute_in_background_if_other_audio{false};
-std::atomic<bool> s_block_input_in_background{true};
+std::atomic<InputBlockingMode> s_keyboard_input_blocking{InputBlockingMode::kEnabledInBackground};
+std::atomic<InputBlockingMode> s_mouse_input_blocking{InputBlockingMode::kEnabledInBackground};
+std::atomic<InputBlockingMode> s_gamepad_input_blocking{InputBlockingMode::kDisabled};
 std::atomic<bool> s_no_render_in_background{false};
 std::atomic<bool> s_no_present_in_background{false};
 std::atomic<ScreensaverMode> s_screensaver_mode{ScreensaverMode::kDefault};
@@ -51,7 +53,9 @@ MainTabSettings::MainTabSettings()
       mute_in_background_if_other_audio("mute_in_background_if_other_audio", s_mute_in_background_if_other_audio, false,
                                         "DisplayCommander"),
       audio_volume_auto_apply("audio_volume_auto_apply", true, "DisplayCommander"),
-      block_input_in_background("block_input_in_background", s_block_input_in_background, true, "DisplayCommander"),
+      keyboard_input_blocking("keyboard_input_blocking", s_keyboard_input_blocking, static_cast<int>(InputBlockingMode::kEnabledInBackground), {"Disabled", "Enabled", "Enabled (in background)"}, "DisplayCommander"),
+      mouse_input_blocking("mouse_input_blocking", s_mouse_input_blocking, static_cast<int>(InputBlockingMode::kEnabledInBackground), {"Disabled", "Enabled", "Enabled (in background)"}, "DisplayCommander"),
+      gamepad_input_blocking("gamepad_input_blocking", s_gamepad_input_blocking, static_cast<int>(InputBlockingMode::kDisabled), {"Disabled", "Enabled", "Enabled (in background)"}, "DisplayCommander"),
       no_render_in_background("no_render_in_background", s_no_render_in_background, false, "DisplayCommander"),
       no_present_in_background("no_present_in_background", s_no_present_in_background, false, "DisplayCommander"),
       show_test_overlay("show_test_overlay", false, "DisplayCommander"),
@@ -89,7 +93,9 @@ MainTabSettings::MainTabSettings()
         &mute_in_background,
         &mute_in_background_if_other_audio,
         &audio_volume_auto_apply,
-        &block_input_in_background,
+        &keyboard_input_blocking,
+        &mouse_input_blocking,
+        &gamepad_input_blocking,
         &no_render_in_background,
         &no_present_in_background,
         &show_test_overlay,

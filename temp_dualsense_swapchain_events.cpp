@@ -7,6 +7,7 @@
 #include "audio/audio_management.hpp"
 #include "hooks/api_hooks.hpp"
 #include "hooks/sleep_hooks.hpp"
+#include "hooks/windows_hooks/windows_message_hooks.hpp"
 #include "utils.hpp"
 #include "utils/timing.hpp"
 #include "widgets/xinput_widget/xinput_widget.hpp"
@@ -356,29 +357,6 @@ void OnPresentUpdateAfter(reshade::api::command_queue* /*queue*/, reshade::api::
     }
     TimerPresentPacingDelay();
     HandleOnPresentEnd();
-
-    // Apply input blocking based on background/foreground; avoid OS calls and redundant writes
-    {
-        reshade::api::effect_runtime* runtime = GetFirstReShadeRuntime();
-        if (runtime != nullptr) {
-            const bool is_background = g_app_in_background.load(std::memory_order_acquire);
-            const bool wants_block_input = s_block_input_in_background.load();
-            // Call every frame as long as any blocking is desired
-            if (is_background && wants_block_input) {
-                runtime->block_input_next_frame();
-            }
-            LogInfo("Block input in background: %s wants to block: %s", is_background ? "true" : "false",
-                    wants_block_input ? "true" : "false");
-        } else {
-            // Log error when no ReShade runtime is available and input blocking is desired
-            const bool is_background = g_app_in_background.load(std::memory_order_acquire);
-            const bool wants_block_input = s_block_input_in_background.load();
-            if (wants_block_input) {
-                LogError("Block input in background failed: no ReShade runtime available (background=%s, setting=%s)",
-                         is_background ? "true" : "false", s_block_input_in_background.load() ? "true" : "false");
-            }
-        }
-    }
 
     // DXGI composition state computation and periodic device/colorspace refresh
     // (moved from continuous monitoring thread to avoid accessing g_last_swapchain_ptr from background thread)

@@ -22,7 +22,9 @@ extern std::atomic<float> s_audio_volume_percent;
 extern std::atomic<bool> s_audio_mute;
 extern std::atomic<bool> s_mute_in_background;
 extern std::atomic<bool> s_mute_in_background_if_other_audio;
-extern std::atomic<bool> s_block_input_in_background;
+extern std::atomic<InputBlockingMode> s_keyboard_input_blocking;
+extern std::atomic<InputBlockingMode> s_mouse_input_blocking;
+extern std::atomic<InputBlockingMode> s_gamepad_input_blocking;
 extern std::atomic<bool> s_no_render_in_background;
 extern std::atomic<bool> s_no_present_in_background;
 
@@ -70,8 +72,10 @@ class MainTabSettings {
     ui::new_ui::BoolSettingRef mute_in_background_if_other_audio;
     ui::new_ui::BoolSetting audio_volume_auto_apply;
 
-    // Input Blocking (Background) Settings
-    ui::new_ui::BoolSettingRef block_input_in_background;
+    // Input Blocking Settings
+    ui::new_ui::ComboSettingEnumRef<InputBlockingMode> keyboard_input_blocking;
+    ui::new_ui::ComboSettingEnumRef<InputBlockingMode> mouse_input_blocking;
+    ui::new_ui::ComboSettingEnumRef<InputBlockingMode> gamepad_input_blocking;
 
     // Render Blocking (Background) Settings
     ui::new_ui::BoolSettingRef no_render_in_background;

@@ -11,12 +11,53 @@
 
 namespace display_commanderhooks {
 
-// Helper function to check if input should be blocked
-bool ShouldBlockInput() {
+// Helper functions for specific input types
+bool ShouldBlockKeyboardInput() {
     const bool is_background = g_app_in_background.load(std::memory_order_acquire);
-    const bool block_in_background = s_block_input_in_background.load();
+    const InputBlockingMode mode = s_keyboard_input_blocking.load();
 
-    return is_background && block_in_background;
+    switch (mode) {
+        case InputBlockingMode::kDisabled:
+            return false;
+        case InputBlockingMode::kEnabled:
+            return true;
+        case InputBlockingMode::kEnabledInBackground:
+            return is_background;
+        default:
+            return false;
+    }
+}
+
+bool ShouldBlockMouseInput() {
+    const bool is_background = g_app_in_background.load(std::memory_order_acquire);
+    const InputBlockingMode mode = s_mouse_input_blocking.load();
+
+    switch (mode) {
+        case InputBlockingMode::kDisabled:
+            return false;
+        case InputBlockingMode::kEnabled:
+            return true;
+        case InputBlockingMode::kEnabledInBackground:
+            return is_background;
+        default:
+            return false;
+    }
+}
+
+bool ShouldBlockGamepadInput() {
+    const bool is_background = g_app_in_background.load(std::memory_order_acquire);
+    const InputBlockingMode mode = s_gamepad_input_blocking.load();
+
+    switch (mode) {
+        case InputBlockingMode::kDisabled:
+            return false;
+        case InputBlockingMode::kEnabled:
+            return true;
+        case InputBlockingMode::kEnabledInBackground:
+            return is_background;
+        default:
+            return false;
+    }
 }
 
 // Original function pointers
@@ -139,10 +180,6 @@ bool ShouldInterceptMessage(HWND hWnd, UINT uMsg) {
 
 // Check if we should suppress a message (for input blocking)
 bool ShouldSuppressMessage(HWND hWnd, UINT uMsg) {
-    // Only suppress if input blocking is enabled (either manual or background)
-    if (!ShouldBlockInput()) {
-        return false;
-    }
 
     // Get the game window from API hooks
     HWND gameWindow = GetGameWindow();
@@ -162,6 +199,7 @@ bool ShouldSuppressMessage(HWND hWnd, UINT uMsg) {
         case WM_SYSCHAR:
         case WM_DEADCHAR:
         case WM_SYSDEADCHAR:
+           return ShouldBlockKeyboardInput();
         // Mouse DOWN messages only
         case WM_LBUTTONDOWN:
         case WM_RBUTTONDOWN:
@@ -172,7 +210,7 @@ bool ShouldSuppressMessage(HWND hWnd, UINT uMsg) {
         case WM_MOUSEHWHEEL:
         // Cursor messages
         case WM_SETCURSOR:
-            return true;
+            return ShouldBlockMouseInput();
         // Allow UP events to pass through to clear stuck keys/buttons
         case WM_KEYUP:
         case WM_SYSKEYUP:
@@ -356,8 +394,8 @@ BOOL WINAPI GetKeyboardState_Detour(PBYTE lpKeyState) {
     // Call original function first
     BOOL result = GetKeyboardState_Original ? GetKeyboardState_Original(lpKeyState) : GetKeyboardState(lpKeyState);
 
-    // If input blocking is enabled and we got valid key state data
-    if (result && lpKeyState != nullptr && ShouldBlockInput()) {
+    // If keyboard input blocking is enabled and we got valid key state data
+    if (result && lpKeyState != nullptr && ShouldBlockKeyboardInput()) {
         // Clear all key states to simulate no keys being pressed
         // This effectively blocks keyboard input at the state level
         memset(lpKeyState, 0, 256); // 256 bytes for all virtual keys
@@ -395,7 +433,7 @@ BOOL WINAPI ClipCursor_Detour(const RECT *lpRect) {
     s_last_clip_cursor = (lpRect != nullptr) ? *lpRect : RECT{};
 
     // If input blocking is enabled, disable cursor clipping
-    if (ShouldBlockInput()) {
+    if (ShouldBlockMouseInput()) {
         // Disable cursor clipping when input is blocked
         lpRect = nullptr;
     }
@@ -416,8 +454,8 @@ BOOL WINAPI GetCursorPos_Detour(LPPOINT lpPoint) {
         }
     }
 
-    // If input blocking is enabled, return last known cursor position
-    if (ShouldBlockInput() && lpPoint != nullptr) {
+    // If mouse input blocking is enabled, return last known cursor position
+    if (ShouldBlockMouseInput() && lpPoint != nullptr) {
         *lpPoint = s_last_cursor_position;
         return TRUE;
     }
@@ -449,8 +487,8 @@ BOOL WINAPI SetCursorPos_Detour(int X, int Y) {
         }
     }
 
-    // If input blocking is enabled, block cursor position changes
-    if (ShouldBlockInput()) {
+    // If mouse input blocking is enabled, block cursor position changes
+    if (ShouldBlockMouseInput()) {
         return TRUE; // Block the cursor position change
     }
 
@@ -464,7 +502,7 @@ SHORT WINAPI GetKeyState_Detour(int vKey) {
     g_hook_stats[HOOK_GetKeyState].increment_total();
 
     // If input blocking is enabled, return 0 for all keys
-    if (ShouldBlockInput()) {
+    if (ShouldBlockKeyboardInput()) {
         // Block all keyboard keys (0x08-0xFF) and mouse buttons
         if ((vKey >= 0x08 && vKey <= 0xFF) || (vKey >= VK_LBUTTON && vKey <= VK_XBUTTON2)) {
             return 0; // Block input
@@ -484,7 +522,7 @@ SHORT WINAPI GetAsyncKeyState_Detour(int vKey) {
     g_hook_stats[HOOK_GetAsyncKeyState].increment_total();
 
     // If input blocking is enabled, return 0 for all keys
-    if (ShouldBlockInput()) {
+    if (ShouldBlockKeyboardInput()) {
         // Block all keyboard keys (0x08-0xFF) and mouse buttons
         if ((vKey >= 0x08 && vKey <= 0xFF) || (vKey >= VK_LBUTTON && vKey <= VK_XBUTTON2)) {
             return 0; // Block input
@@ -545,7 +583,7 @@ UINT WINAPI GetRawInputBuffer_Detour(PRAWINPUT pData, PUINT pcbSize, UINT cbSize
                                              : GetRawInputBuffer(pData, pcbSize, cbSizeHeader);
 
     // If input blocking is enabled and we got data, replace it
-    if (result > 0 && pData != nullptr && pcbSize != nullptr && ShouldBlockInput()) {
+    if (result > 0 && pData != nullptr && pcbSize != nullptr) {
         // Replace blocked input data with harmless data
         PRAWINPUT current = pData;
         UINT processed_count = 0;
@@ -554,9 +592,9 @@ UINT WINAPI GetRawInputBuffer_Detour(PRAWINPUT pData, PUINT pcbSize, UINT cbSize
             // Check if this input should be replaced
             bool should_replace = false;
 
-            if (current->header.dwType == RIM_TYPEKEYBOARD) {
+            if (current->header.dwType == RIM_TYPEKEYBOARD && ShouldBlockKeyboardInput()) {
                 should_replace = true; // Replace all keyboard input
-            } else if (current->header.dwType == RIM_TYPEMOUSE) {
+            } else if (current->header.dwType == RIM_TYPEMOUSE && ShouldBlockMouseInput()) {
                 should_replace = true; // Replace all mouse input
             }
 
@@ -622,7 +660,7 @@ UINT WINAPI GetRawInputBuffer_Detour(PRAWINPUT pData, PUINT pcbSize, UINT cbSize
 // Hooked TranslateMessage function
 BOOL WINAPI TranslateMessage_Detour(const MSG *lpMsg) {
     // If input blocking is enabled, don't translate messages that should be blocked
-    if (ShouldBlockInput() && lpMsg != nullptr) {
+    if (lpMsg != nullptr) {
         // Check if this message should be suppressed
         if (ShouldSuppressMessage(lpMsg->hwnd, lpMsg->message)) {
             // Don't translate blocked messages
@@ -637,7 +675,7 @@ BOOL WINAPI TranslateMessage_Detour(const MSG *lpMsg) {
 // Hooked DispatchMessageA function
 LRESULT WINAPI DispatchMessageA_Detour(const MSG *lpMsg) {
     // If input blocking is enabled, don't dispatch messages that should be blocked
-    if (ShouldBlockInput() && lpMsg != nullptr) {
+    if (lpMsg != nullptr) {
         // Check if this message should be suppressed
         if (ShouldSuppressMessage(lpMsg->hwnd, lpMsg->message)) {
             // Return 0 to indicate the message was "processed" (blocked)
@@ -652,7 +690,7 @@ LRESULT WINAPI DispatchMessageA_Detour(const MSG *lpMsg) {
 // Hooked DispatchMessageW function
 LRESULT WINAPI DispatchMessageW_Detour(const MSG *lpMsg) {
     // If input blocking is enabled, don't dispatch messages that should be blocked
-    if (ShouldBlockInput() && lpMsg != nullptr) {
+    if (lpMsg != nullptr) {
         // Check if this message should be suppressed
         if (ShouldSuppressMessage(lpMsg->hwnd, lpMsg->message)) {
             // Return 0 to indicate the message was "processed" (blocked)
@@ -676,13 +714,13 @@ UINT WINAPI GetRawInputData_Detour(HRAWINPUT hRawInput, UINT uiCommand, LPVOID p
                       : GetRawInputData(hRawInput, uiCommand, pData, pcbSize, cbSizeHeader);
 
     // If input blocking is enabled and we got data, filter it
-    if (result != UINT(-1) && pData != nullptr && pcbSize != nullptr && ShouldBlockInput()) {
+    if (result != UINT(-1) && pData != nullptr && pcbSize != nullptr) {
         // For raw input data, we need to check if it's keyboard or mouse input
         if (uiCommand == RID_INPUT) {
             RAWINPUT *rawInput = static_cast<RAWINPUT *>(pData);
 
             // Only block DOWN events, allow UP events to clear stuck keys/buttons
-            if (rawInput->header.dwType == RIM_TYPEKEYBOARD) {
+            if (rawInput->header.dwType == RIM_TYPEKEYBOARD && ShouldBlockKeyboardInput()) {
                 // Only block key DOWN events, allow UP events to clear stuck keys
                 if (rawInput->data.keyboard.Flags & RI_KEY_BREAK) {
                     // This is a key UP event, don't block it - let it pass through
@@ -697,7 +735,7 @@ UINT WINAPI GetRawInputData_Detour(HRAWINPUT hRawInput, UINT uiCommand, LPVOID p
                     rawInput->data.keyboard.Message = 0; // No message
                     rawInput->data.keyboard.ExtraInformation = 0;
                 }
-            } else if (rawInput->header.dwType == RIM_TYPEMOUSE) {
+            } else if (rawInput->header.dwType == RIM_TYPEMOUSE && ShouldBlockMouseInput()) {
                 // Only block mouse DOWN events, allow UP events to clear stuck buttons
                 if (rawInput->data.mouse.usButtonFlags &
                     (RI_MOUSE_LEFT_BUTTON_UP | RI_MOUSE_RIGHT_BUTTON_UP | RI_MOUSE_MIDDLE_BUTTON_UP |
@@ -715,10 +753,11 @@ UINT WINAPI GetRawInputData_Detour(HRAWINPUT hRawInput, UINT uiCommand, LPVOID p
                     rawInput->data.mouse.lLastY = 0;
                     rawInput->data.mouse.ulExtraInformation = 0;
                 }
+            } else {
+                g_hook_stats[HOOK_GetRawInputData].increment_unsuppressed();
             }
 
             // Track unsuppressed calls (data was processed/replaced)
-            g_hook_stats[HOOK_GetRawInputData].increment_unsuppressed();
         }
     }
     return result;
@@ -743,8 +782,8 @@ BOOL WINAPI RegisterRawInputDevices_Detour(PCRAWINPUTDEVICE pRawInputDevices, UI
 
 // Hooked VkKeyScan function
 SHORT WINAPI VkKeyScan_Detour(CHAR ch) {
-    // If input blocking is enabled, return -1 to indicate no virtual key found
-    if (ShouldBlockInput()) {
+    // If keyboard input blocking is enabled, return -1 to indicate no virtual key found
+    if (ShouldBlockKeyboardInput()) {
         return -1; // No virtual key found
     }
 
@@ -754,8 +793,8 @@ SHORT WINAPI VkKeyScan_Detour(CHAR ch) {
 
 // Hooked VkKeyScanEx function
 SHORT WINAPI VkKeyScanEx_Detour(CHAR ch, HKL dwhkl) {
-    // If input blocking is enabled, return -1 to indicate no virtual key found
-    if (ShouldBlockInput()) {
+    // If keyboard input blocking is enabled, return -1 to indicate no virtual key found
+    if (ShouldBlockKeyboardInput()) {
         return -1; // No virtual key found
     }
 
@@ -765,8 +804,8 @@ SHORT WINAPI VkKeyScanEx_Detour(CHAR ch, HKL dwhkl) {
 
 // Hooked ToAscii function
 int WINAPI ToAscii_Detour(UINT uVirtKey, UINT uScanCode, const BYTE *lpKeyState, LPWORD lpChar, UINT uFlags) {
-    // If input blocking is enabled, return 0 to indicate no character generated
-    if (ShouldBlockInput()) {
+    // If keyboard input blocking is enabled, return 0 to indicate no character generated
+    if (ShouldBlockKeyboardInput()) {
         return 0; // No character generated
     }
 
@@ -778,8 +817,8 @@ int WINAPI ToAscii_Detour(UINT uVirtKey, UINT uScanCode, const BYTE *lpKeyState,
 // Hooked ToAsciiEx function
 int WINAPI ToAsciiEx_Detour(UINT uVirtKey, UINT uScanCode, const BYTE *lpKeyState, LPWORD lpChar, UINT uFlags,
                             HKL dwhkl) {
-    // If input blocking is enabled, return 0 to indicate no character generated
-    if (ShouldBlockInput()) {
+    // If keyboard input blocking is enabled, return 0 to indicate no character generated
+    if (ShouldBlockKeyboardInput()) {
         return 0; // No character generated
     }
 
@@ -791,8 +830,8 @@ int WINAPI ToAsciiEx_Detour(UINT uVirtKey, UINT uScanCode, const BYTE *lpKeyStat
 // Hooked ToUnicode function
 int WINAPI ToUnicode_Detour(UINT wVirtKey, UINT wScanCode, const BYTE *lpKeyState, LPWSTR pwszBuff, int cchBuff,
                             UINT wFlags) {
-    // If input blocking is enabled, return 0 to indicate no character generated
-    if (ShouldBlockInput()) {
+    // If keyboard input blocking is enabled, return 0 to indicate no character generated
+    if (ShouldBlockKeyboardInput()) {
         return 0; // No character generated
     }
 
@@ -804,8 +843,8 @@ int WINAPI ToUnicode_Detour(UINT wVirtKey, UINT wScanCode, const BYTE *lpKeyStat
 // Hooked ToUnicodeEx function
 int WINAPI ToUnicodeEx_Detour(UINT wVirtKey, UINT wScanCode, const BYTE *lpKeyState, LPWSTR pwszBuff, int cchBuff,
                               UINT wFlags, HKL dwhkl) {
-    // If input blocking is enabled, return 0 to indicate no character generated
-    if (ShouldBlockInput()) {
+    // If keyboard input blocking is enabled, return 0 to indicate no character generated
+    if (ShouldBlockKeyboardInput()) {
         return 0; // No character generated
     }
 
@@ -817,8 +856,8 @@ int WINAPI ToUnicodeEx_Detour(UINT wVirtKey, UINT wScanCode, const BYTE *lpKeySt
 
 // Hooked GetKeyNameTextA function
 int WINAPI GetKeyNameTextA_Detour(LONG lParam, LPSTR lpString, int cchSize) {
-    // If input blocking is enabled, return 0 to indicate no key name
-    if (ShouldBlockInput()) {
+    // If keyboard input blocking is enabled, return 0 to indicate no key name
+    if (ShouldBlockKeyboardInput()) {
         HWND gameWindow = GetGameWindow();
         if (gameWindow != nullptr) {
             if (lpString != nullptr && cchSize > 0) {
@@ -835,8 +874,8 @@ int WINAPI GetKeyNameTextA_Detour(LONG lParam, LPSTR lpString, int cchSize) {
 
 // Hooked GetKeyNameTextW function
 int WINAPI GetKeyNameTextW_Detour(LONG lParam, LPWSTR lpString, int cchSize) {
-    // If input blocking is enabled, return 0 to indicate no key name
-    if (ShouldBlockInput()) {
+    // If keyboard input blocking is enabled, return 0 to indicate no key name
+    if (ShouldBlockKeyboardInput()) {
         if (lpString != nullptr && cchSize > 0) {
             lpString[0] = L'\0'; // Empty string
         }
@@ -850,8 +889,8 @@ int WINAPI GetKeyNameTextW_Detour(LONG lParam, LPWSTR lpString, int cchSize) {
 
 // Hooked SendInput function
 UINT WINAPI SendInput_Detour(UINT nInputs, LPINPUT pInputs, int cbSize) {
-    // If input blocking is enabled, selectively block DOWN events
-    if (ShouldBlockInput() && pInputs != nullptr) {
+    // If keyboard input blocking is enabled, selectively block DOWN events
+    if (ShouldBlockKeyboardInput() && pInputs != nullptr) {
         UINT allowed_inputs = 0;
 
         // Filter inputs - only allow UP events to pass through
@@ -905,8 +944,8 @@ UINT WINAPI SendInput_Detour(UINT nInputs, LPINPUT pInputs, int cbSize) {
 
 // Hooked keybd_event function
 void WINAPI keybd_event_Detour(BYTE bVk, BYTE bScan, DWORD dwFlags, ULONG_PTR dwExtraInfo) {
-    // If input blocking is enabled, selectively block DOWN events
-    if (ShouldBlockInput()) {
+    // If keyboard input blocking is enabled, selectively block DOWN events
+    if (ShouldBlockKeyboardInput()) {
         // Only block key DOWN events, allow UP events to clear stuck keys
         if (!(dwFlags & KEYEVENTF_KEYUP)) {
             // This is a key DOWN event, block it
@@ -930,8 +969,8 @@ void WINAPI keybd_event_Detour(BYTE bVk, BYTE bScan, DWORD dwFlags, ULONG_PTR dw
 
 // Hooked mouse_event function
 void WINAPI mouse_event_Detour(DWORD dwFlags, DWORD dx, DWORD dy, DWORD dwData, ULONG_PTR dwExtraInfo) {
-    // If input blocking is enabled, selectively block DOWN events
-    if (ShouldBlockInput()) {
+    // If mouse input blocking is enabled, selectively block DOWN events
+    if (ShouldBlockMouseInput()) {
         // Only block mouse DOWN events, allow UP events to clear stuck buttons
         if (dwFlags & (MOUSEEVENTF_LEFTDOWN | MOUSEEVENTF_RIGHTDOWN | MOUSEEVENTF_MIDDLEDOWN | MOUSEEVENTF_XDOWN)) {
             // This is a mouse DOWN event, block it
@@ -955,8 +994,8 @@ void WINAPI mouse_event_Detour(DWORD dwFlags, DWORD dx, DWORD dy, DWORD dwData, 
 
 // Hooked MapVirtualKey function
 UINT WINAPI MapVirtualKey_Detour(UINT uCode, UINT uMapType) {
-    // If input blocking is enabled, return 0 for virtual key mapping
-    if (ShouldBlockInput()) {
+    // If keyboard input blocking is enabled, return 0 for virtual key mapping
+    if (ShouldBlockKeyboardInput()) {
         return 0; // Block virtual key mapping
     }
 
@@ -966,8 +1005,8 @@ UINT WINAPI MapVirtualKey_Detour(UINT uCode, UINT uMapType) {
 
 // Hooked MapVirtualKeyEx function
 UINT WINAPI MapVirtualKeyEx_Detour(UINT uCode, UINT uMapType, HKL dwhkl) {
-    // If input blocking is enabled, return 0 for virtual key mapping
-    if (ShouldBlockInput()) {
+    // If keyboard input blocking is enabled, return 0 for virtual key mapping
+    if (ShouldBlockKeyboardInput()) {
         return 0; // Block virtual key mapping
     }
 

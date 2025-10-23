@@ -88,9 +88,9 @@ void DrawFeaturesEnabledByDefault() {
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Prevents windows from becoming always on top, even if they are moved or resized.");
     }
-
+#if 0
     // LoadFromDllMain setting
-    if (CheckboxSetting(settings::g_developerTabSettings.load_from_dll_main, "LoadFromDllMain (requires restart)")) {
+    if (CheckboxSetting(settings::g_developerTabSettings.load_from_dll_main, "Load DLL Early (ReShade) (requires restart)")) {
         LogInfo("LoadFromDllMain setting changed to: %s",
                 settings::g_developerTabSettings.load_from_dll_main.GetValue() ? "enabled" : "disabled");
         // Apply the setting to ReShade immediately
@@ -105,7 +105,7 @@ void DrawFeaturesEnabledByDefault() {
     }
 
     // Load Streamline setting
-    if (CheckboxSetting(settings::g_developerTabSettings.load_streamline, "Load Streamline (sl.interposer.dll)")) {
+    if (CheckboxSetting(settings::g_developerTabSettings.load_streamline, "Hook Streamline SDK (sl.interposer.dll)")) {
         LogInfo("Load Streamline setting changed to: %s",
                 settings::g_developerTabSettings.load_streamline.GetValue() ? "enabled" : "disabled");
     }
@@ -118,7 +118,7 @@ void DrawFeaturesEnabledByDefault() {
     }
 
     // Load _nvngx setting
-    if (CheckboxSetting(settings::g_developerTabSettings.load_nvngx, "Load _nvngx (_nvngx.dll)")) {
+    if (CheckboxSetting(settings::g_developerTabSettings.load_nvngx, "Hook NVIDIA NGX SDK (_nvngx.dll)")) {
         LogInfo("Load _nvngx setting changed to: %s",
                 settings::g_developerTabSettings.load_nvngx.GetValue() ? "enabled" : "disabled");
     }
@@ -131,7 +131,7 @@ void DrawFeaturesEnabledByDefault() {
     }
 
     // Load nvapi64 setting
-    if (CheckboxSetting(settings::g_developerTabSettings.load_nvapi64, "Load nvapi64 (nvapi64.dll)")) {
+    if (CheckboxSetting(settings::g_developerTabSettings.load_nvapi64, "Hook NVIDIA API (nvapi64.dll)")) {
         LogInfo("Load nvapi64 setting changed to: %s",
                 settings::g_developerTabSettings.load_nvapi64.GetValue() ? "enabled" : "disabled");
     }
@@ -144,7 +144,7 @@ void DrawFeaturesEnabledByDefault() {
     }
 
     // Load XInput setting
-    if (CheckboxSetting(settings::g_developerTabSettings.load_xinput, "Load XInput (xinput*.dll)")) {
+    if (CheckboxSetting(settings::g_developerTabSettings.load_xinput, "Hook XInput (xinput*.dll)")) {
         LogInfo("Load XInput setting changed to: %s",
                 settings::g_developerTabSettings.load_xinput.GetValue() ? "enabled" : "disabled");
     }
@@ -157,6 +157,7 @@ void DrawFeaturesEnabledByDefault() {
     }
 
     ImGui::Spacing();
+    #endif
 }
 
 void DrawDeveloperSettings() {

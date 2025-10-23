@@ -210,12 +210,10 @@ bool InstallWindowsMessageHooks();
 void UninstallWindowsMessageHooks();
 
 // Helper functions
-bool ShouldInterceptMessage(HWND hWnd, UINT uMsg);
 bool ShouldSuppressMessage(HWND hWnd, UINT uMsg);
 void SuppressMessage(LPMSG lpMsg);
 
 // Input blocking helper functions
-bool ShouldBlockInput();
 bool ShouldBlockKeyboardInput();
 bool ShouldBlockMouseInput();
 bool ShouldBlockGamepadInput();

@@ -60,19 +60,22 @@ void DeveloperTabSettings::LoadAll() {
     //enable_d3d9e_upgrade.Load();
     nvapi_fullscreen_prevention.Load();
 
-    enable_mute_unmute_shortcut.Load();
-    enable_background_toggle_shortcut.Load();
-    enable_timeslowdown_shortcut.Load();
-    enable_adhd_toggle_shortcut.Load();
-    enable_autoclick_shortcut.Load();
     reflex_auto_configure.Load();
     reflex_enable.Load();
     reflex_low_latency.Load();
     reflex_boost.Load();
     reflex_use_markers.Load();
+    reflex_generate_markers.Load();
     reflex_enable_sleep.Load();
     reflex_logging.Load();
     reflex_supress_native.Load();
+
+
+    enable_mute_unmute_shortcut.Load();
+    enable_background_toggle_shortcut.Load();
+    enable_timeslowdown_shortcut.Load();
+    enable_adhd_toggle_shortcut.Load();
+    enable_autoclick_shortcut.Load();
     safemode.Load();
     load_from_dll_main.Load();
     load_streamline.Load();

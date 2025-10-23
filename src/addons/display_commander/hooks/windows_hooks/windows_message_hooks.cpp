@@ -156,27 +156,6 @@ static const std::array<const char*, HOOK_COUNT> g_hook_names = {"GetMessageA",
                                                "DirectInput8Create",
                                                "DirectInputCreate"};
 
-// Helper function to determine if we should intercept messages
-bool ShouldInterceptMessage(HWND hWnd, UINT uMsg) {
-    // Only intercept if continue rendering is enabled
-    if (!s_continue_rendering.load()) {
-        return false;
-    }
-
-    // Get the game window from API hooks
-    HWND gameWindow = GetGameWindow();
-    if (gameWindow == nullptr) {
-        return false;
-    }
-
-    // Check if the message is for the game window or its children
-    if (hWnd == nullptr || hWnd == gameWindow || IsChild(gameWindow, hWnd)) {
-        return true;
-    }
-
-    return false;
-}
-
 
 // Check if we should suppress a message (for input blocking)
 bool ShouldSuppressMessage(HWND hWnd, UINT uMsg) {

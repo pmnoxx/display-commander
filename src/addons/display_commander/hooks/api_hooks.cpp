@@ -27,6 +27,7 @@ GetActiveWindow_pfn GetActiveWindow_Original = nullptr;
 GetGUIThreadInfo_pfn GetGUIThreadInfo_Original = nullptr;
 SetThreadExecutionState_pfn SetThreadExecutionState_Original = nullptr;
 SetWindowLongPtrW_pfn SetWindowLongPtrW_Original = nullptr;
+SetWindowPos_pfn SetWindowPos_Original = nullptr;
 CreateDXGIFactory_pfn CreateDXGIFactory_Original = nullptr;
 CreateDXGIFactory1_pfn CreateDXGIFactory1_Original = nullptr;
 D3D11CreateDeviceAndSwapChain_pfn D3D11CreateDeviceAndSwapChain_Original = nullptr;
@@ -171,6 +172,26 @@ LONG_PTR WINAPI SetWindowLongPtrW_Detour(HWND hWnd, int nIndex, LONG_PTR dwNewLo
     // Call original function with unmodified value
     return SetWindowLongPtrW_Original ? SetWindowLongPtrW_Original(hWnd, nIndex, dwNewLong)
                                      : SetWindowLongPtrW(hWnd, nIndex, dwNewLong);
+}
+
+// Hooked SetWindowPos function
+BOOL WINAPI SetWindowPos_Detour(HWND hWnd, HWND hWndInsertAfter, int X, int Y, int cx, int cy, UINT uFlags) {
+    // Only process if prevent_always_on_top is enabled
+    if (settings::g_developerTabSettings.prevent_always_on_top.GetValue()) {
+        // Check if we're trying to set the window to be always on top
+        if (hWndInsertAfter == HWND_TOPMOST) {
+            // Replace HWND_TOPMOST with HWND_NOTOPMOST to prevent always-on-top behavior
+            LogInfo("SetWindowPos: Preventing always-on-top for window 0x%p - Replacing HWND_TOPMOST with HWND_NOTOPMOST", hWnd);
+
+            // Call original function with HWND_NOTOPMOST instead of HWND_TOPMOST
+            return SetWindowPos_Original ? SetWindowPos_Original(hWnd, HWND_NOTOPMOST, X, Y, cx, cy, uFlags)
+                                         : SetWindowPos(hWnd, HWND_NOTOPMOST, X, Y, cx, cy, uFlags);
+        }
+    }
+
+    // Call original function with unmodified parameters
+    return SetWindowPos_Original ? SetWindowPos_Original(hWnd, hWndInsertAfter, X, Y, cx, cy, uFlags)
+                                 : SetWindowPos(hWnd, hWndInsertAfter, X, Y, cx, cy, uFlags);
 }
 
 // Hooked CreateDXGIFactory function
@@ -476,6 +497,11 @@ bool InstallApiHooks() {
     // Hook SetWindowLongPtrW
     if (!CreateAndEnableHook(SetWindowLongPtrW, SetWindowLongPtrW_Detour, reinterpret_cast<LPVOID *>(&SetWindowLongPtrW_Original), "SetWindowLongPtrW")) {
         LogError("Failed to create and enable SetWindowLongPtrW hook");
+    }
+
+    // Hook SetWindowPos
+    if (!CreateAndEnableHook(SetWindowPos, SetWindowPos_Detour, reinterpret_cast<LPVOID *>(&SetWindowPos_Original), "SetWindowPos")) {
+        LogError("Failed to create and enable SetWindowPos hook");
     }
 
     // todo: move to loadlibrary hooks

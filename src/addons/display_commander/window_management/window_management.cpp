@@ -39,14 +39,11 @@ void CalculateWindowState(HWND hwnd, const char* reason) {
     if (settings::g_developerTabSettings.prevent_always_on_top.GetValue() && (local_state.new_ex_style & (WS_EX_TOPMOST | WS_EX_TOOLWINDOW)) != 0) {
         local_state.new_ex_style &= ~(WS_EX_TOPMOST | WS_EX_TOOLWINDOW);
 
-        // Log if we're removing always on top styles
-        if ((local_state.current_ex_style & (WS_EX_TOPMOST | WS_EX_TOOLWINDOW)) != 0) {
-            std::ostringstream oss;
-            oss << "ApplyWindowChange: PREVENTING ALWAYS ON TOP - Removing "
-                   "extended styles 0x"
-                << std::hex << (local_state.current_ex_style & (WS_EX_TOPMOST | WS_EX_TOOLWINDOW));
-            LogInfo(oss.str().c_str());
-        }
+        std::ostringstream oss;
+        oss << "ApplyWindowChange: PREVENTING ALWAYS ON TOP - Removing "
+                "extended styles 0x"
+            << std::hex << (local_state.current_ex_style & (WS_EX_TOPMOST | WS_EX_TOOLWINDOW));
+        LogInfo(oss.str().c_str());
     }
     if (local_state.current_style != local_state.new_style) {
         local_state.style_changed = true;
@@ -223,11 +220,18 @@ void ApplyWindowChange(HWND hwnd, const char* reason, bool force_apply) {
 
         if (s.style_changed) {
             LogDebug("ApplyWindowChange: Setting new style %d -> %d", s.current_style, s.new_style);
-            SetWindowLongPtrW(hwnd, GWL_STYLE, s.new_style);
+            // print error
+            auto result = SetWindowLongPtrW(hwnd, GWL_STYLE, s.new_style);
+            if (result == 0) {
+                LogError("ApplyWindowChange: SetWindowLongPtrW failed with error %lu (0x%lx)", GetLastError(), GetLastError());
+            }
         }
         if (s.style_changed_ex) {
             LogDebug("ApplyWindowChange: Setting new ex style %d -> %d", s.current_ex_style, s.new_ex_style);
-            SetWindowLongPtrW(hwnd, GWL_EXSTYLE, s.new_ex_style);
+            auto result = SetWindowLongPtrW(hwnd, GWL_EXSTYLE, s.new_ex_style);
+            if (result == 0) {
+                LogError("ApplyWindowChange: SetWindowLongPtrW failed with error %lu (0x%lx)", GetLastError(), GetLastError());
+            }
         }
 
         if ((s.style_changed || s.style_changed_ex) && !s.needs_resize && !s.needs_move) {

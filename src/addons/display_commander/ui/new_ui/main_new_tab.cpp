@@ -13,6 +13,7 @@
 #include "../../hooks/nvapi_hooks.hpp"
 #include "../../hooks/loadlibrary_hooks.hpp"
 #include "../../hooks/windows_hooks/windows_message_hooks.hpp"
+#include "../../hooks/window_proc_hooks.hpp"
 #include "../../res/forkawesome.h"
 #include "../../res/ui_colors.hpp"
 #include "../../utils.hpp"
@@ -1572,15 +1573,16 @@ void DrawWindowControls() {
         std::thread([hwnd]() {
             LogDebug("Restore Window button pressed (bg thread)");
             ShowWindow(hwnd, SW_RESTORE);
+            display_commanderhooks::SendFakeActivationMessages(hwnd);
         }).detach();
     }
     ui::colors::PopIconColor();
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Restore the minimized game window.");
     }
+    #if 0
 
     ImGui::SameLine();
-
     // Maximize Window Button
     ui::colors::PushIconColor(ui::colors::ICON_POSITIVE);
     if (ImGui::Button(ICON_FK_PLUS " Maximize Window")) {
@@ -1601,7 +1603,7 @@ void DrawWindowControls() {
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Maximize the window to fill the current monitor.");
     }
-
+#endif
     ImGui::EndGroup();
 }
 void DrawImportantInfo() {

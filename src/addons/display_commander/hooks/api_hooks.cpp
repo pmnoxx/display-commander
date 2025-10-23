@@ -38,11 +38,6 @@ static HWND g_game_window = nullptr;
 
 HWND GetGameWindow() { return g_game_window; }
 
-bool IsGameWindow(HWND hwnd) {
-    if (hwnd == nullptr)
-        return false;
-    return hwnd == g_game_window || IsChild(g_game_window, hwnd) || IsChild(hwnd, g_game_window);
-}
 
 // Hooked GetFocus function
 HWND WINAPI GetFocus_Detour() {

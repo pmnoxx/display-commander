@@ -13,11 +13,10 @@ namespace display_commanderhooks {
 
 // Helper function to check if input should be blocked
 bool ShouldBlockInput() {
-    const bool block_without_reshade = s_block_input_without_reshade.load();
     const bool is_background = g_app_in_background.load(std::memory_order_acquire);
     const bool block_in_background = s_block_input_in_background.load();
 
-    return block_without_reshade || (is_background && block_in_background);
+    return is_background && block_in_background;
 }
 
 // Original function pointers

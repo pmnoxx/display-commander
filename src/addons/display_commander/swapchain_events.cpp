@@ -60,7 +60,7 @@ std::atomic<bool> g_initialized_with_hwnd{false};
 
 bool OnCreateDevice(reshade::api::device_api api, uint32_t& api_version) {
     // Check if D3D9 upgrade is enabled
-    if (!s_enable_d3d9e_upgrade.load()) {
+    if (!settings::g_experimentalTabSettings.d3d9_flipex_enabled.GetValue()) {
         LogInfo("D3D9 to D3D9Ex upgrade disabled");
         return false;
     }
@@ -495,7 +495,7 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
 
 
         bool modified = false;
-        if (desc.fullscreen_state) {
+        if (desc.fullscreen_state && settings::g_developerTabSettings.prevent_fullscreen.GetValue()) {
             if (!settings::g_developerTabSettings.prevent_fullscreen.GetValue()) {
                 LogWarn("D3D9: Fullscreen state change blocked by developer settings");
                 return false;
@@ -504,47 +504,26 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
             desc.fullscreen_state = false;
             modified = true;
         }
-        if (!settings::g_experimentalTabSettings.d3d9_flipex_enabled.GetValue()) {
-            g_used_flipex.store(false);
-            return false;
-        }
-        // D3DSWAPEFFECT_FLIPEX = 5
-        constexpr uint32_t d3dswapeffect_flipex = 5;
-
-        // Check if we should apply FLIPEX
-        bool can_apply_flipex = true;
-
-        /*
-        // FLIPEX requires full-screen mode
-        if (!desc.fullscreen_state) {
-            static int flipex_windowed_warning_count = 0;
-            if (flipex_windowed_warning_count < 3) {
-                LogWarn("D3D9 FLIPEX: Cannot apply FLIPEX - game is in windowed mode (requires full-screen)");
-                flipex_windowed_warning_count++;
-            }
-            can_apply_flipex = false;
-        }*/
-
-        // FLIPEX requires at least 2 back buffers
-        if (desc.back_buffer_count < 3) {
-            LogInfo("D3D9 FLIPEX: Increasing back buffer count from %u to 2 (required for FLIPEX)",
-                   desc.back_buffer_count);
-            desc.back_buffer_count = 3;
-            modified = true;
-        }
 
         // Apply FLIPEX if all requirements are met
-        if (can_apply_flipex && desc.present_mode != d3dswapeffect_flipex) {
+        if (settings::g_experimentalTabSettings.d3d9_flipex_enabled.GetValue() && desc.present_mode != D3DSWAPEFFECT_FLIPEX) {
+
+            if (desc.back_buffer_count < 3) {
+                LogInfo("D3D9 FLIPEX: Increasing back buffer count from %u to 2 (required for FLIPEX)",
+                       desc.back_buffer_count);
+                desc.back_buffer_count = 3;
+                modified = true;
+            }
             if (!s_d3d9e_upgrade_successful.load()) {
                 LogWarn("D3D9 FLIPEX: D3D9Ex upgrade not successful, skipping FLIPEX");
                 return false;
             }
-            assert(!desc.fullscreen_state && desc.back_buffer_count >= 2);
+            assert(desc.back_buffer_count >= 2);
             LogInfo("D3D9 FLIPEX: Upgrading swap effect from %u to FLIPEX (5)", desc.present_mode);
             LogInfo("D3D9 FLIPEX: Full-screen: %s, Back buffers: %u",
                    desc.fullscreen_state ? "YES" : "NO", desc.back_buffer_count);
 
-            desc.present_mode = d3dswapeffect_flipex;
+            desc.present_mode = D3DSWAPEFFECT_FLIPEX;
             if (desc.sync_interval != D3DPRESENT_INTERVAL_IMMEDIATE) {
                 LogInfo("D3D9 FLIPEX: Setting sync interval to immediate");
                 desc.sync_interval = D3DPRESENT_INTERVAL_IMMEDIATE;
@@ -616,31 +595,10 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
         if (desc.back_buffer_count < 2) {
             desc.back_buffer_count = 2;
             modified = true;
+
+            LogInfo("DXGI: Increasing back buffer count from %u to 2", desc.back_buffer_count);
         }
 
-        // Disable flip chain if enabled (experimental feature)
-        if (settings::g_experimentalTabSettings.disable_flip_chain_enabled.GetValue()) {
-            // Check if current present mode is a flip model
-            const bool is_flip_discard = (desc.present_mode == DXGI_SWAP_EFFECT_FLIP_DISCARD);
-            const bool is_flip_sequential = (desc.present_mode == DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL);
-
-            if (is_flip_discard || is_flip_sequential) {
-                // Force traditional swap chain (DISCARD is more common and performant than SEQUENTIAL)
-                desc.present_mode = DXGI_SWAP_EFFECT_DISCARD;
-                modified = true;
-
-                // Log the change
-                std::ostringstream flip_oss;
-                flip_oss << "Disable Flip Chain: Changed present mode from ";
-                if (is_flip_discard) {
-                    flip_oss << "FLIP_DISCARD";
-                } else {
-                    flip_oss << "FLIP_SEQUENTIAL";
-                }
-                flip_oss << " to DISCARD (traditional swap chain)";
-                LogInfo("%s", flip_oss.str().c_str());
-            }
-        }
 
         // Enable flip chain if enabled (experimental feature) - forces flip model
         if (settings::g_experimentalTabSettings.enable_flip_chain_enabled.GetValue()

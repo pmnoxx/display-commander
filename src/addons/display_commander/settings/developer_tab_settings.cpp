@@ -20,7 +20,7 @@ DeveloperTabSettings::DeveloperTabSettings()
       hide_hdr_capabilities("HideHDRCapabilities", s_hide_hdr_capabilities, false, "DisplayCommander"),
       enable_flip_chain("EnableFlipChain", s_enable_flip_chain, false, "DisplayCommander"),
       auto_colorspace("AutoColorspace", s_auto_colorspace, false, "DisplayCommander"),
-      enable_d3d9e_upgrade("EnableD3D9EUpgrade", s_enable_d3d9e_upgrade, true, "DisplayCommander"),
+      //enable_d3d9e_upgrade("EnableD3D9EUpgrade", s_enable_d3d9e_upgrade, true, "DisplayCommander"),
       nvapi_fullscreen_prevention("NvapiFullscreenPrevention", s_nvapi_fullscreen_prevention, false,
                                   "DisplayCommander"),
 
@@ -57,7 +57,7 @@ void DeveloperTabSettings::LoadAll() {
     hide_hdr_capabilities.Load();
     enable_flip_chain.Load();
     auto_colorspace.Load();
-    enable_d3d9e_upgrade.Load();
+    //enable_d3d9e_upgrade.Load();
     nvapi_fullscreen_prevention.Load();
 
     enable_mute_unmute_shortcut.Load();
@@ -106,7 +106,7 @@ std::vector<ui::new_ui::SettingBase *> DeveloperTabSettings::GetAllSettings() {
             &hide_hdr_capabilities,
             &enable_flip_chain,
             &auto_colorspace,
-            &enable_d3d9e_upgrade,
+            //&enable_d3d9e_upgrade,
             &nvapi_fullscreen_prevention,
 
             &reflex_auto_configure,

@@ -285,6 +285,12 @@ enum class ScreensaverMode : std::uint8_t {
     kDisable = 2              // Disable
 };
 
+enum class InputBlockingMode : std::uint8_t {
+    kDisabled = 0,              // Disabled
+    kEnabled = 1,               // Always enabled
+    kEnabledInBackground = 2    // Only enabled when in background
+};
+
 // Structures
 struct GlobalWindowState {
     int desired_width = 0;

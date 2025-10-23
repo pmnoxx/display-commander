@@ -385,20 +385,53 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
 
     ImGui::Spacing();
 
-    // Input Blocking (Background) Section
+    // Input Blocking Section
     if (ImGui::CollapsingHeader("Input Control", ImGuiTreeNodeFlags_None)) {
-        bool block_any_in_background = settings::g_mainTabSettings.block_input_in_background.GetValue();
-        if (ImGui::Checkbox("Block Input in Background", &block_any_in_background)) {
-            settings::g_mainTabSettings.block_input_in_background.SetValue(block_any_in_background);
+        ImGui::Text("Input Blocking:");
+
+        // Create 3 columns with fixed width
+        ImGui::Columns(3, "InputBlockingColumns", true);
+
+        // First line: Headers
+        ImGui::Text("Keyboard");
+        ImGui::NextColumn();
+        ImGui::Text("Mouse");
+        ImGui::NextColumn();
+        ImGui::Text("Gamepad");
+        ImGui::NextColumn();
+
+        // Second line: Selectors
+        if (ui::new_ui::ComboSettingEnumRefWrapper(settings::g_mainTabSettings.keyboard_input_blocking, "##Keyboard")) {
             // Restore cursor clipping when input blocking is disabled
-            if (!block_any_in_background) {
+            if (settings::g_mainTabSettings.keyboard_input_blocking.GetValue() == static_cast<int>(InputBlockingMode::kDisabled)) {
                 display_commanderhooks::RestoreClipCursor();
             }
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Blocks mouse, keyboard, and cursor warping while the game window is not focused.");
+            ImGui::SetTooltip("Controls keyboard input blocking behavior.");
         }
-        ImGui::SameLine();
+
+        ImGui::NextColumn();
+
+        if (ui::new_ui::ComboSettingEnumRefWrapper(settings::g_mainTabSettings.mouse_input_blocking, "##Mouse")) {
+            // Restore cursor clipping when input blocking is disabled
+            if (settings::g_mainTabSettings.mouse_input_blocking.GetValue() == static_cast<int>(InputBlockingMode::kDisabled)) {
+                display_commanderhooks::RestoreClipCursor();
+            }
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Controls mouse input blocking behavior.");
+        }
+
+        ImGui::NextColumn();
+
+        ui::new_ui::ComboSettingEnumRefWrapper(settings::g_mainTabSettings.gamepad_input_blocking, "##Gamepad");
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Controls gamepad input blocking behavior.");
+        }
+
+        ImGui::Columns(1); // Reset to single column
+
         // Show XInput tab checkbox
         bool show_xinput_tab = settings::g_mainTabSettings.show_xinput_tab.GetValue();
         if (ImGui::Checkbox("Show XInput Tab", &show_xinput_tab)) {

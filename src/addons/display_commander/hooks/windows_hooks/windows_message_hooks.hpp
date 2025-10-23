@@ -4,6 +4,7 @@
 #include <atomic>
 #include <windows.h>
 #include <wingdi.h>  // For DISPLAYCONFIG_* structures
+#include "../../globals.hpp"  // For InputBlockingMode enum
 
 
 namespace display_commanderhooks {
@@ -212,6 +213,12 @@ void UninstallWindowsMessageHooks();
 bool ShouldInterceptMessage(HWND hWnd, UINT uMsg);
 bool ShouldSuppressMessage(HWND hWnd, UINT uMsg);
 void SuppressMessage(LPMSG lpMsg);
+
+// Input blocking helper functions
+bool ShouldBlockInput();
+bool ShouldBlockKeyboardInput();
+bool ShouldBlockMouseInput();
+bool ShouldBlockGamepadInput();
 
 // Hook call statistics
 extern std::array<HookCallStats, HOOK_COUNT> g_hook_stats;

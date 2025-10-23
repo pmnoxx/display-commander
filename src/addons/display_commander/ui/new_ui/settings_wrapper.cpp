@@ -734,6 +734,10 @@ template bool ComboSettingEnumRefWrapper<FrameTimeMode>(ComboSettingEnumRef<Fram
 template class ComboSettingEnumRef<WindowMode>;
 template bool ComboSettingEnumRefWrapper<WindowMode>(ComboSettingEnumRef<WindowMode> &setting, const char *label);
 
+// Explicit template instantiations for InputBlockingMode
+template class ComboSettingEnumRef<InputBlockingMode>;
+template bool ComboSettingEnumRefWrapper<InputBlockingMode>(ComboSettingEnumRef<InputBlockingMode> &setting, const char *label);
+
 void SeparatorSetting() { ImGui::Separator(); }
 
 void SpacingSetting() { ImGui::Spacing(); }

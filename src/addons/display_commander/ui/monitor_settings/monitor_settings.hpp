@@ -2,8 +2,14 @@
 
 #include <string>
 #include <vector>
+#include "../new_ui/settings_wrapper.hpp"
 
 namespace ui::monitor_settings {
+
+// Global settings variables
+extern ui::new_ui::BoolSetting g_setting_auto_apply_resolution;
+extern ui::new_ui::BoolSetting g_setting_auto_apply_refresh;
+extern ui::new_ui::BoolSetting g_setting_apply_display_settings_at_start;
 // Handle auto-detection of current display settings
 void HandleAutoDetection();
 

@@ -3,6 +3,7 @@
 #include "../../settings/experimental_tab_settings.hpp" // For g_experimentalTabSettings
 #include "../../settings/main_tab_settings.hpp"
 #include "../../utils.hpp"
+#include "../../utils/general_utils.hpp"
 #include "../api_hooks.hpp" // For GetGameWindow and other functions
 #include "../../process_exit_hooks.hpp" // For UnhandledExceptionHandler
 #include <MinHook.h>
@@ -1072,7 +1073,7 @@ bool InstallWindowsMessageHooks() {
     }
 
     // Initialize MinHook (only if not already initialized)
-    MH_STATUS init_status = MH_Initialize();
+    MH_STATUS init_status = SafeInitializeMinHook();
     if (init_status != MH_OK && init_status != MH_ERROR_ALREADY_INITIALIZED) {
         LogError("Failed to initialize MinHook for Windows message hooks - Status: %d", init_status);
         return false;

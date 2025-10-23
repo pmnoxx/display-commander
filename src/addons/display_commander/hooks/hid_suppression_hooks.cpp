@@ -344,7 +344,7 @@ bool InstallHIDSuppressionHooks() {
     }
 
     // Initialize MinHook (only if not already initialized)
-    MH_STATUS init_status = MH_Initialize();
+    MH_STATUS init_status = SafeInitializeMinHook();
     if (init_status != MH_OK && init_status != MH_ERROR_ALREADY_INITIALIZED) {
         LogError("Failed to initialize MinHook for HID suppression hooks - Status: %d", init_status);
         return false;

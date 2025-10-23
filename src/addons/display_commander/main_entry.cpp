@@ -16,6 +16,7 @@
 #include "settings/main_tab_settings.hpp"
 #include "swapchain_events.hpp"
 #include "swapchain_events_power_saving.hpp"
+#include "ui/monitor_settings/monitor_settings.hpp"
 #include "ui/new_ui/experimental_tab.hpp"
 #include "ui/new_ui/main_new_tab.hpp"
 #include "ui/new_ui/new_ui_main.hpp"
@@ -29,6 +30,7 @@
 #include <wrl/client.h>
 #include <chrono>
 #include <reshade.hpp>
+
 
 // Forward declarations for ReShade event handlers
 void OnInitEffectRuntime(reshade::api::effect_runtime* runtime);
@@ -467,27 +469,29 @@ void HandleSafemode() {
 
     if (safemode_enabled) {
         LogInfo(
-            "Safemode enabled - disabling auto-apply settings, continue rendering, FPS limiter, XInput hooks, and "
+            "Safemode enabled - disabling auto-apply settings, continue rendering, FPS limiter, XInput hooks, MinHook initialization, and "
             "Streamline loading");
 
         // Set safemode to 0 (force set to 0)
         settings::g_developerTabSettings.safemode.SetValue(false);
+        settings::g_developerTabSettings.prevent_fullscreen.SetValue(false);
+        settings::g_developerTabSettings.continue_rendering.SetValue(true);
+        settings::g_developerTabSettings.suppress_minhook.SetValue(true);
+
+        settings::g_mainTabSettings.fps_limiter_mode.SetValue((int)FpsLimiterMode::kDisabled);
 
         // Disable all auto-apply settings
-        s_auto_apply_resolution_change.store(false);
-        s_auto_apply_refresh_rate_change.store(false);
-        s_apply_display_settings_at_start.store(false);
-
-        // Disable continue rendering
-        s_continue_rendering.store(false);
-
-        // Set FPS limiter mode to 0 (Disabled)
-        s_fps_limiter_mode.store(FpsLimiterMode::kDisabled);
+        ui::monitor_settings::g_setting_auto_apply_resolution.SetValue(false);
+        ui::monitor_settings::g_setting_auto_apply_refresh.SetValue(false);
+        ui::monitor_settings::g_setting_apply_display_settings_at_start.SetValue(false);
 
         // Disable XInput hooks
         auto xinput_shared_state = display_commander::widgets::xinput_widget::XInputWidget::GetSharedState();
         assert(xinput_shared_state);
         xinput_shared_state->enable_xinput_hooks.store(false);
+
+        // Enable MinHook suppression
+        settings::g_developerTabSettings.suppress_minhook.SetValue(true);
 
 #if 0
         // Disable Streamline loading
@@ -508,7 +512,7 @@ void HandleSafemode() {
 
         LogInfo(
             "Safemode applied - auto-apply settings disabled, continue rendering disabled, FPS limiter set to "
-            "disabled, XInput hooks disabled, Streamline loading disabled, _nvngx loading disabled, nvapi64 loading "
+            "disabled, XInput hooks disabled, MinHook initialization suppressed, Streamline loading disabled, _nvngx loading disabled, nvapi64 loading "
             "disabled, XInput loading disabled");
     } else {
         // If unset, force set to 0 so it appears in config

@@ -2,6 +2,7 @@
 #include "../globals.hpp"
 #include "../settings/experimental_tab_settings.hpp"
 #include "../utils.hpp"
+#include "../utils/general_utils.hpp"
 #include "../swapchain_events.hpp"
 #include <MinHook.h>
 #include <atomic>
@@ -517,7 +518,7 @@ bool InstallTimeslowdownHooks() {
     }
 
     // Initialize MinHook (only if not already initialized)
-    MH_STATUS init_status = MH_Initialize();
+    MH_STATUS init_status = SafeInitializeMinHook();
     if (init_status != MH_OK && init_status != MH_ERROR_ALREADY_INITIALIZED) {
         LogError("Failed to initialize MinHook for timeslowdown hooks - Status: %d", init_status);
         return false;

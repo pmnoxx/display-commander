@@ -1,6 +1,7 @@
 #include "general_utils.hpp"
 
 #include "globals.hpp"
+#include "settings/developer_tab_settings.hpp"
 #include <algorithm>
 #include <utility>
 #include <vector>
@@ -400,6 +401,24 @@ bool CreateAndEnableHook(LPVOID ptarget, LPVOID pdetour, LPVOID* ppOriginal, con
     LogInfo("CreateAndEnableHook: Successfully created and enabled hook '%s'",
             hookName != nullptr ? hookName : "Unknown");
     return true;
+}
+
+// MinHook initialization wrapper that checks suppress_minhook setting
+MH_STATUS SafeInitializeMinHook() {
+    // Check if MinHook initialization is suppressed
+    if (settings::g_developerTabSettings.suppress_minhook.GetValue()) {
+        LogInfo("MinHook initialization suppressed by suppress_minhook setting");
+        return MH_ERROR_ALREADY_INITIALIZED; // Return this to indicate "already initialized" to avoid errors
+    }
+
+    // Initialize MinHook (only if not already initialized)
+    MH_STATUS init_status = MH_Initialize();
+    if (init_status != MH_OK && init_status != MH_ERROR_ALREADY_INITIALIZED) {
+        LogError("Failed to initialize MinHook - Status: %d", init_status);
+        return init_status;
+    }
+
+    return init_status;
 }
 
 // Get the directory where the addon is located

@@ -190,6 +190,20 @@ void DrawDeveloperSettings() {
             "• FPS limiter mode (set to disabled)\n\n"
             "This setting requires a game restart to take effect.");
     }
+
+    // Suppress MinHook setting
+    if (CheckboxSetting(settings::g_developerTabSettings.suppress_minhook, "Suppress MinHook Initialization")) {
+        LogInfo("Suppress MinHook setting changed to: %s",
+                settings::g_developerTabSettings.suppress_minhook.GetValue() ? "enabled" : "disabled");
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip(
+            "Suppress all MinHook initialization calls (MH_Initialize).\n"
+            "When enabled, all hook functions will skip MinHook initialization.\n"
+            "This can help with compatibility issues or debugging.\n"
+            "This setting is automatically enabled when safemode is active.\n\n"
+            "This setting requires a game restart to take effect.");
+    }
 }
 
 void DrawHdrDisplaySettings() {

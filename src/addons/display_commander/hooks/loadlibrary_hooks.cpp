@@ -6,6 +6,7 @@
 #include "ngx_hooks.hpp"
 #include "streamline_hooks.hpp"
 #include "../utils.hpp"
+#include "../utils/general_utils.hpp"
 #include "../settings/streamline_tab_settings.hpp"
 #include "../settings/developer_tab_settings.hpp"
 #include "../settings/main_tab_settings.hpp"
@@ -510,7 +511,7 @@ bool InstallLoadLibraryHooks() {
     }
 
     // Initialize MinHook (only if not already initialized)
-    MH_STATUS init_status = MH_Initialize();
+    MH_STATUS init_status = SafeInitializeMinHook();
     if (init_status != MH_OK && init_status != MH_ERROR_ALREADY_INITIALIZED) {
         LogError("Failed to initialize MinHook for LoadLibrary hooks - Status: %d", init_status);
         return false;

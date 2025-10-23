@@ -19,9 +19,9 @@
 namespace ui::monitor_settings {
 
 // Persistent settings for monitor settings UI
-static ui::new_ui::BoolSetting g_setting_auto_apply_resolution("AutoApplyResolution", false);
-static ui::new_ui::BoolSetting g_setting_auto_apply_refresh("AutoApplyRefresh", false);
-static ui::new_ui::BoolSetting g_setting_apply_display_settings_at_start("ApplyDisplaySettingsAtStart", false);
+ui::new_ui::BoolSetting g_setting_auto_apply_resolution("AutoApplyResolution", false);
+ui::new_ui::BoolSetting g_setting_auto_apply_refresh("AutoApplyRefresh", false);
+ui::new_ui::BoolSetting g_setting_apply_display_settings_at_start("ApplyDisplaySettingsAtStart", false);
 
 // Per-display persisted selections (support displays 0..3) - NEW FORMAT
 static ui::new_ui::ResolutionPairSetting g_setting_selected_resolution_0("SelectedResolutionIndex_0", 0, 0);

@@ -1537,7 +1537,7 @@ bool HookFactoryVTable(IDXGIFactory *factory) {
             LogError("Failed to create and enable IDXGIFactory::CreateSwapChain hook");
 
             // Check if MinHook is initialized
-            MH_STATUS init_status = MH_Initialize();
+            MH_STATUS init_status = SafeInitializeMinHook();
             LogInfo("MinHook initialization status: %d (0x%x)", init_status, init_status);
 
             return false;

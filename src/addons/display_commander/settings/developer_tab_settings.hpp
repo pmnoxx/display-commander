@@ -81,6 +81,9 @@ class DeveloperTabSettings {
     // XInput loading setting
     BoolSetting load_xinput;
 
+    // MinHook suppression setting
+    BoolSetting suppress_minhook;
+
     // Get all settings for bulk operations
     std::vector<SettingBase *> GetAllSettings();
 };

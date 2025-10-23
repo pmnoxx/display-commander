@@ -13,6 +13,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <MinHook.h>
 
 // Structs needed for utility functions
 struct AspectRatio {
@@ -84,6 +85,7 @@ inline T UpdateRollingAverage(T new_value, T old_value, int alpha = 64) {
 
 // MinHook wrapper functions
 bool CreateAndEnableHook(LPVOID pTarget, LPVOID pDetour, LPVOID* ppOriginal, const char* hookName);
+MH_STATUS SafeInitializeMinHook();
 
 // D3D9 present mode and flags string conversion functions
 const char* D3DSwapEffectToString(uint32_t swapEffect);

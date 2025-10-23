@@ -152,7 +152,8 @@ LONG_PTR WINAPI SetWindowLongPtrW_Detour(HWND hWnd, int nIndex, LONG_PTR dwNewLo
     // Only process if prevent_always_on_top is enabled
     if (settings::g_developerTabSettings.prevent_always_on_top.GetValue()) {
         if (nIndex == GWL_STYLE) {
-            dwNewLong &= ~(WS_CAPTION | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU);
+            // WS_POPUP added to fix godstrike
+            dwNewLong &= ~(WS_CAPTION | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU | WS_POPUP);
         }
         if (nIndex == GWL_EXSTYLE) {
             dwNewLong &= ~(WS_EX_DLGMODALFRAME | WS_EX_WINDOWEDGE | WS_EX_CLIENTEDGE | WS_EX_STATICEDGE);

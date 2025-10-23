@@ -31,7 +31,7 @@ void CalculateWindowState(HWND hwnd, const char* reason) {
 
     // Calculate new borderless styles
     local_state.new_style =
-        local_state.current_style & ~(WS_CAPTION | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU);
+        local_state.current_style & ~(WS_CAPTION | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU | WS_POPUP);
     local_state.new_ex_style =
         local_state.current_ex_style & ~(WS_EX_DLGMODALFRAME | WS_EX_WINDOWEDGE | WS_EX_CLIENTEDGE | WS_EX_STATICEDGE);
 

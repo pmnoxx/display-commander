@@ -546,7 +546,7 @@ void DrawNvapiSettings() {
         std::string status_msg = nvapi::g_fakeNvapiManager.GetStatusMessage();
 
         // Show warning if fakenvapi.dll is found (needs renaming)
-        if (stats.fakenvapi_dll_found) {
+        if (fake_nvapi_enabled && stats.fakenvapi_dll_found) {
             ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f), ICON_FK_WARNING " Warning: fakenvapi.dll found - rename to nvapi64.dll");
             if (ImGui::IsItemHovered()) {
                 ImGui::SetTooltip(

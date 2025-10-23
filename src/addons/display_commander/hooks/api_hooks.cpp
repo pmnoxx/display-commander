@@ -151,8 +151,11 @@ EXECUTION_STATE WINAPI SetThreadExecutionState_Detour(EXECUTION_STATE esFlags) {
 LONG_PTR WINAPI SetWindowLongPtrW_Detour(HWND hWnd, int nIndex, LONG_PTR dwNewLong) {
     // Only process if prevent_always_on_top is enabled
     if (settings::g_developerTabSettings.prevent_always_on_top.GetValue()) {
-        // Check if we're setting extended window styles (GWL_EXSTYLE)
+        if (nIndex == GWL_STYLE) {
+            dwNewLong &= ~(WS_CAPTION | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU);
+        }
         if (nIndex == GWL_EXSTYLE) {
+            dwNewLong &= ~(WS_EX_DLGMODALFRAME | WS_EX_WINDOWEDGE | WS_EX_CLIENTEDGE | WS_EX_STATICEDGE);
             // Remove WS_EX_TOPMOST and WS_EX_TOOLWINDOW styles
             LONG_PTR modifiedLong = dwNewLong;
             if ((dwNewLong & (WS_EX_TOPMOST | WS_EX_TOOLWINDOW)) != 0) {

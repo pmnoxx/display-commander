@@ -592,17 +592,17 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
             desc.present_flags &= ~DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
             modified = true;
         }
-        if (desc.back_buffer_count < 2) {
-            desc.back_buffer_count = 2;
-            modified = true;
-
-            LogInfo("DXGI: Increasing back buffer count from %u to 2", desc.back_buffer_count);
-        }
 
 
         // Enable flip chain if enabled (experimental feature) - forces flip model
         if (settings::g_experimentalTabSettings.enable_flip_chain_enabled.GetValue()
         || s_enable_flip_chain.load()) {
+            if (desc.back_buffer_count < 2) {
+                desc.back_buffer_count = 2;
+                modified = true;
+
+                LogInfo("DXGI: Increasing back buffer count from %u to 2", desc.back_buffer_count);
+            }
             // Check if current present mode is NOT a flip model
             const bool is_flip_discard = (desc.present_mode == DXGI_SWAP_EFFECT_FLIP_DISCARD);
             const bool is_flip_sequential = (desc.present_mode == DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL);

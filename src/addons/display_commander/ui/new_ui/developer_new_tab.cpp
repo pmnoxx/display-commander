@@ -84,9 +84,7 @@ void DrawFeaturesEnabledByDefault() {
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Prevent exclusive fullscreen; keep borderless/windowed for stability and HDR.");
     }
-    if (CheckboxSetting(settings::g_developerTabSettings.prevent_always_on_top, "Prevent Always On Top")) {
-        s_prevent_always_on_top.store(settings::g_developerTabSettings.prevent_always_on_top.GetValue());
-    }
+    CheckboxSetting(settings::g_developerTabSettings.prevent_always_on_top, "Prevent Always On Top");
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Prevents windows from becoming always on top, even if they are moved or resized.");
     }

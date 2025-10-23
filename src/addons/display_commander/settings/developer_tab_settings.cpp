@@ -8,7 +8,6 @@
 // Atomic variables for developer tab settings
 std::atomic<bool> s_continue_rendering{false}; // Disabled by default
 std::atomic<bool> s_continuous_monitoring_enabled{true}; // Enabled by default
-std::atomic<bool> s_prevent_always_on_top{true}; // Prevent games from staying on top by default
 std::atomic<bool> s_hide_hdr_capabilities{false};
 std::atomic<bool> s_enable_flip_chain{false};
 std::atomic<bool> s_auto_colorspace{false};
@@ -40,7 +39,7 @@ DeveloperTabSettings::DeveloperTabSettings()
     : prevent_fullscreen("PreventFullscreen", true, "DisplayCommander"),
       continue_rendering("ContinueRendering", s_continue_rendering, s_continue_rendering.load(), "DisplayCommander"),
       continuous_monitoring("ContinuousMonitoring", s_continuous_monitoring_enabled, s_continuous_monitoring_enabled.load(), "DisplayCommander"),
-      prevent_always_on_top("PreventAlwaysOnTop", s_prevent_always_on_top, s_prevent_always_on_top.load(), "DisplayCommander"),
+      prevent_always_on_top("PreventAlwaysOnTop", true, "DisplayCommander"),
       hide_hdr_capabilities("HideHDRCapabilities", s_hide_hdr_capabilities, s_hide_hdr_capabilities.load(), "DisplayCommander"),
       enable_flip_chain("EnableFlipChain", s_enable_flip_chain, s_enable_flip_chain.load(), "DisplayCommander"),
       auto_colorspace("AutoColorspace", s_auto_colorspace, s_auto_colorspace.load(), "DisplayCommander"),

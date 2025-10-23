@@ -136,7 +136,7 @@ void InitializeNewUI() {
 
     g_tab_manager.AddTab("Main", "main_new", [](reshade::api::effect_runtime* runtime) {
         try {
-            ui::new_ui::DrawMainNewTab();
+            ui::new_ui::DrawMainNewTab(runtime);
         } catch (const std::exception &e) {
             LogError("Error drawing main new tab: %s", e.what());
         } catch (...) {

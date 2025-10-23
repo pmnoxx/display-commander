@@ -26,6 +26,12 @@
 #include <shellapi.h>
 #include <dxgi.h>
 #include <d3d9.h>
+#include <d3d9types.h>
+
+// Define IID for IDirect3DDevice9 if not already defined
+#ifndef IID_IDirect3DDevice9
+EXTERN_C const GUID IID_IDirect3DDevice9 = {0xd0223b96, 0xbf7a, 0x43fd, {0x92, 0xbd, 0xa4, 0x3b, 0x8d, 0x82, 0x9a, 0x7b}};
+#endif
 
 #include <algorithm>
 #include <atomic>
@@ -206,7 +212,7 @@ void DrawAdvancedSettings() {
     ImGui::Spacing();
 }
 
-void DrawMainNewTab() {
+void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
     // Load saved settings once and sync legacy globals
 
     // Version and build information at the top
@@ -360,7 +366,7 @@ void DrawMainNewTab() {
     ImGui::Spacing();
     // Display Settings Section
     if (ImGui::CollapsingHeader("Display Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
-        DrawDisplaySettings();
+        DrawDisplaySettings(runtime);
     }
 
     ImGui::Spacing();
@@ -557,7 +563,10 @@ void DrawQuickResolutionChanger() {
     }
 }
 
-void DrawDisplaySettings() {
+void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
+    assert(runtime != nullptr);
+    auto native_device = reinterpret_cast<IUnknown*>(runtime->get_device()->get_native());
+
     auto now = utils::get_now_ns();
     {
         // Target Display dropdown
@@ -1127,9 +1136,29 @@ void DrawDisplaySettings() {
                 ImVec4 present_mode_color = ui::colors::TEXT_DIMMED;
                 // DXGI specific display
                 // Determine present mode name and color
-                const char* present_mode_name = "Unknown";
+                std::string present_mode_name = "Unknown";
 
                 if (is_d3d9) {
+                    // dx9 device
+                    #if 0
+                    IDirect3DDevice9* d3d9_device = nullptr;
+                    IDirect3DSwapChain9* swap_chain = nullptr;
+                    HRESULT hr = d3d9_device->GetSwapChain(0, &swap_chain);
+
+                    bool is_fullscreen = false;
+                    if (SUCCEEDED(hr) && swap_chain) {
+                        D3DPRESENT_PARAMETERS params;
+                        hr = swap_chain->GetPresentParameters(&params);
+                        if (SUCCEEDED(hr)) {
+                            is_fullscreen = !params.Windowed;
+                        }
+                        swap_chain->Release();
+                    }
+                    if (d3d9_device != nullptr) {
+                        d3d9_device->Release();
+                    }
+                    #endif
+
                     if (desc.present_mode == D3DSWAPEFFECT_FLIPEX) {
                         present_mode_name = "FLIPEX (Flip Model)";
                         present_mode_color = ImVec4(0.0f, 1.0f, 0.0f, 1.0f); // Green
@@ -1148,6 +1177,9 @@ void DrawDisplaySettings() {
                     } else {
                         present_mode_name = "Unknown";
                         present_mode_color = ui::colors::TEXT_ERROR;
+                    }
+                    if (desc.fullscreen_state) {
+                        present_mode_name = present_mode_name + "(FSE)";
                     }
                     DxgiBypassMode flip_state = GetFlipStateForAPI(current_api);
 
@@ -1184,7 +1216,7 @@ void DrawDisplaySettings() {
                             break;
                         }
                     }
-                    ImGui::TextColored(present_mode_color, "%s", present_mode_name);
+                    ImGui::TextColored(present_mode_color, "%s", present_mode_name.c_str());
 
                     // Add DxgiBypassMode on the same line
                     ImGui::SameLine();
@@ -1211,7 +1243,7 @@ void DrawDisplaySettings() {
                         present_mode_name = "Unknown";
                         present_mode_color = ui::colors::TEXT_ERROR;
                     }
-                    ImGui::TextColored(present_mode_color, "%s", present_mode_name);
+                    ImGui::TextColored(present_mode_color, "%s", present_mode_name.c_str());
 
                     // Add DxgiBypassMode on the same line
                     ImGui::SameLine();
@@ -1272,7 +1304,7 @@ void DrawDisplaySettings() {
                         ImGui::Separator();
 
                         // Present mode details
-                        ImGui::Text("Present Mode: %s", present_mode_name);
+                        ImGui::Text("Present Mode: %s", present_mode_name.c_str());
                         ImGui::Text("Present Mode ID: %u", desc.present_mode);
 
                         // Flip state information

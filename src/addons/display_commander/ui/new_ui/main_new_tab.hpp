@@ -1,5 +1,7 @@
 #pragma once
 
+#include <reshade_imgui.hpp>
+
 namespace ui::new_ui {
 
 void InitMainNewTab();
@@ -7,10 +9,10 @@ void InitMainNewTab();
 void InitDeveloperNewTab();
 
 // Draw the main new tab content
-void DrawMainNewTab();
+void DrawMainNewTab(reshade::api::effect_runtime* runtime);
 
 // Draw display settings section
-void DrawDisplaySettings();
+void DrawDisplaySettings(reshade::api::effect_runtime* runtime);
 
 // Draw audio settings section
 void DrawAudioSettings();

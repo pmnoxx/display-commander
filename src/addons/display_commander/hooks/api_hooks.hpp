@@ -19,6 +19,7 @@ using GetForegroundWindow_pfn = HWND(WINAPI *)();
 using GetActiveWindow_pfn = HWND(WINAPI *)();
 using GetGUIThreadInfo_pfn = BOOL(WINAPI *)(DWORD, PGUITHREADINFO);
 using SetThreadExecutionState_pfn = EXECUTION_STATE(WINAPI *)(EXECUTION_STATE);
+using SetWindowLongPtrW_pfn = LONG_PTR(WINAPI *)(HWND, int, LONG_PTR);
 
 // DXGI Factory creation function pointer types
 using CreateDXGIFactory_pfn = HRESULT(WINAPI *)(REFIID, void **);
@@ -36,6 +37,7 @@ extern GetForegroundWindow_pfn GetForegroundWindow_Original;
 extern GetActiveWindow_pfn GetActiveWindow_Original;
 extern GetGUIThreadInfo_pfn GetGUIThreadInfo_Original;
 extern SetThreadExecutionState_pfn SetThreadExecutionState_Original;
+extern SetWindowLongPtrW_pfn SetWindowLongPtrW_Original;
 extern CreateDXGIFactory_pfn CreateDXGIFactory_Original;
 extern CreateDXGIFactory1_pfn CreateDXGIFactory1_Original;
 extern D3D11CreateDeviceAndSwapChain_pfn D3D11CreateDeviceAndSwapChain_Original;
@@ -47,6 +49,7 @@ HWND WINAPI GetForegroundWindow_Detour();
 HWND WINAPI GetActiveWindow_Detour();
 BOOL WINAPI GetGUIThreadInfo_Detour(DWORD idThread, PGUITHREADINFO pgui);
 EXECUTION_STATE WINAPI SetThreadExecutionState_Detour(EXECUTION_STATE esFlags);
+LONG_PTR WINAPI SetWindowLongPtrW_Detour(HWND hWnd, int nIndex, LONG_PTR dwNewLong);
 HRESULT WINAPI CreateDXGIFactory_Detour(REFIID riid, void **ppFactory);
 HRESULT WINAPI CreateDXGIFactory1_Detour(REFIID riid, void **ppFactory);
 HRESULT WINAPI D3D11CreateDeviceAndSwapChain_Detour(IDXGIAdapter* pAdapter, D3D_DRIVER_TYPE DriverType, HMODULE Software, UINT Flags, const D3D_FEATURE_LEVEL* pFeatureLevels, UINT FeatureLevels, UINT SDKVersion, const DXGI_SWAP_CHAIN_DESC* pSwapChainDesc, IDXGISwapChain** ppSwapChain, ID3D11Device** ppDevice, D3D_FEATURE_LEVEL* pFeatureLevel, ID3D11DeviceContext** ppImmediateContext);

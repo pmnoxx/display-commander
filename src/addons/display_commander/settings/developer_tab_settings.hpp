@@ -29,7 +29,7 @@ class DeveloperTabSettings {
     BoolSetting prevent_fullscreen;
     BoolSettingRef continue_rendering;
     BoolSettingRef continuous_monitoring;
-    BoolSettingRef prevent_always_on_top;
+    BoolSetting prevent_always_on_top;
 
     // HDR and Colorspace Settings
     BoolSettingRef hide_hdr_capabilities;

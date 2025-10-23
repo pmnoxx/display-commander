@@ -12,6 +12,7 @@
 #include "dinput_hooks.hpp"
 #include "display_settings_hooks.hpp"
 #include "debug_output_hooks.hpp"
+#include "../settings/developer_tab_settings.hpp"
 #include <MinHook.h>
 
 // External reference to screensaver mode setting
@@ -25,6 +26,7 @@ GetForegroundWindow_pfn GetForegroundWindow_Original = nullptr;
 GetActiveWindow_pfn GetActiveWindow_Original = nullptr;
 GetGUIThreadInfo_pfn GetGUIThreadInfo_Original = nullptr;
 SetThreadExecutionState_pfn SetThreadExecutionState_Original = nullptr;
+SetWindowLongPtrW_pfn SetWindowLongPtrW_Original = nullptr;
 CreateDXGIFactory_pfn CreateDXGIFactory_Original = nullptr;
 CreateDXGIFactory1_pfn CreateDXGIFactory1_Original = nullptr;
 D3D11CreateDeviceAndSwapChain_pfn D3D11CreateDeviceAndSwapChain_Original = nullptr;
@@ -142,6 +144,33 @@ EXECUTION_STATE WINAPI SetThreadExecutionState_Detour(EXECUTION_STATE esFlags) {
     // Call original function for kDefault mode
     return SetThreadExecutionState_Original ? SetThreadExecutionState_Original(esFlags)
                                             : SetThreadExecutionState(esFlags);
+}
+
+// Hooked SetWindowLongPtrW function
+LONG_PTR WINAPI SetWindowLongPtrW_Detour(HWND hWnd, int nIndex, LONG_PTR dwNewLong) {
+    // Only process if prevent_always_on_top is enabled
+    if (settings::g_developerTabSettings.prevent_always_on_top.GetValue()) {
+        // Check if we're setting extended window styles (GWL_EXSTYLE)
+        if (nIndex == GWL_EXSTYLE) {
+            // Remove WS_EX_TOPMOST and WS_EX_TOOLWINDOW styles
+            LONG_PTR modifiedLong = dwNewLong;
+            if ((dwNewLong & (WS_EX_TOPMOST | WS_EX_TOOLWINDOW)) != 0) {
+                modifiedLong = dwNewLong & ~(WS_EX_TOPMOST | WS_EX_TOOLWINDOW);
+
+                // Log the modification
+                LogInfo("SetWindowLongPtrW: Stripped always-on-top styles from window 0x%p - Original: 0x%llx, Modified: 0x%llx",
+                        hWnd, (unsigned long long)dwNewLong, (unsigned long long)modifiedLong);
+            }
+
+            // Call original function with modified value
+            return SetWindowLongPtrW_Original ? SetWindowLongPtrW_Original(hWnd, nIndex, modifiedLong)
+                                             : SetWindowLongPtrW(hWnd, nIndex, modifiedLong);
+        }
+    }
+
+    // Call original function with unmodified value
+    return SetWindowLongPtrW_Original ? SetWindowLongPtrW_Original(hWnd, nIndex, dwNewLong)
+                                     : SetWindowLongPtrW(hWnd, nIndex, dwNewLong);
 }
 
 // Hooked CreateDXGIFactory function
@@ -442,6 +471,11 @@ bool InstallApiHooks() {
     // Hook SetThreadExecutionState
     if (!CreateAndEnableHook(SetThreadExecutionState, SetThreadExecutionState_Detour, reinterpret_cast<LPVOID *>(&SetThreadExecutionState_Original), "SetThreadExecutionState")) {
         LogError("Failed to create and enable SetThreadExecutionState hook");
+    }
+
+    // Hook SetWindowLongPtrW
+    if (!CreateAndEnableHook(SetWindowLongPtrW, SetWindowLongPtrW_Detour, reinterpret_cast<LPVOID *>(&SetWindowLongPtrW_Original), "SetWindowLongPtrW")) {
+        LogError("Failed to create and enable SetWindowLongPtrW hook");
     }
 
     // todo: move to loadlibrary hooks

@@ -3,6 +3,7 @@
 #include "../display_cache.hpp"
 #include "../globals.hpp"
 #include "../settings/main_tab_settings.hpp"
+#include "../settings/developer_tab_settings.hpp"
 #include "../ui/ui_display_tab.hpp"
 
 #include <sstream>
@@ -35,7 +36,7 @@ void CalculateWindowState(HWND hwnd, const char* reason) {
         local_state.current_ex_style & ~(WS_EX_DLGMODALFRAME | WS_EX_WINDOWEDGE | WS_EX_CLIENTEDGE | WS_EX_STATICEDGE);
 
     // PREVENT ALWAYS ON TOP: Remove WS_EX_TOPMOST and WS_EX_TOOLWINDOW styles
-    if (s_prevent_always_on_top.load() && (local_state.new_ex_style & (WS_EX_TOPMOST | WS_EX_TOOLWINDOW)) != 0) {
+    if (settings::g_developerTabSettings.prevent_always_on_top.GetValue() && (local_state.new_ex_style & (WS_EX_TOPMOST | WS_EX_TOOLWINDOW)) != 0) {
         local_state.new_ex_style &= ~(WS_EX_TOPMOST | WS_EX_TOOLWINDOW);
 
         // Log if we're removing always on top styles

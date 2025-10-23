@@ -735,10 +735,10 @@ std::atomic<BOOL> g_last_set_fullscreen_state{false};
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetFullscreenState_Detour(IDXGISwapChain *This, BOOL Fullscreen, IDXGIOutput *pTarget) {
     g_dxgi_core_event_counters[DXGI_CORE_EVENT_SETFULLSCREENSTATE].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
+    g_last_set_fullscreen_state.store(Fullscreen);
 
     // Check if fullscreen prevention is enabled and we're trying to go fullscreen
     if (settings::g_developerTabSettings.prevent_fullscreen.GetValue()) {
-        g_last_set_fullscreen_state.store(Fullscreen);
         return IDXGISwapChain_SetFullscreenState_Original(This, false, pTarget);
     }
 
@@ -748,11 +748,13 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetFullscreenState_Detour(IDXGISwapChai
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetFullscreenState_Detour(IDXGISwapChain *This, BOOL *pFullscreen, IDXGIOutput **ppTarget) {
     g_dxgi_core_event_counters[DXGI_CORE_EVENT_GETFULLSCREENSTATE].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
+    auto hr = IDXGISwapChain_GetFullscreenState_Original(This, pFullscreen, ppTarget);
+
     if (settings::g_developerTabSettings.prevent_fullscreen.GetValue()) {
         *pFullscreen = g_last_set_fullscreen_state.load();
-        return S_OK;
     }
-    return IDXGISwapChain_GetFullscreenState_Original(This, pFullscreen, ppTarget);
+
+    return hr;
 }
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_ResizeBuffers_Detour(IDXGISwapChain *This, UINT BufferCount, UINT Width, UINT Height, DXGI_FORMAT NewFormat, UINT SwapChainFlags) {

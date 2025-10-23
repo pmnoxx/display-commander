@@ -137,30 +137,6 @@ bool ShouldInterceptMessage(HWND hWnd, UINT uMsg) {
     return false;
 }
 
-// Process intercepted messages
-void ProcessInterceptedMessage(LPMSG lpMsg) {
-    if (lpMsg == nullptr) {
-        return;
-    }
-
-    // Log message details for debugging
-    // LogInfo("Intercepted message: HWND=0x%p, Msg=0x%04X, WParam=0x%08X, LParam=0x%08X",
-    //        lpMsg->hwnd, lpMsg->message, lpMsg->wParam, lpMsg->lParam);
-
-    // Handle specific messages if needed
-    switch (lpMsg->message) {
-    case WM_ACTIVATE:
-    case WM_ACTIVATEAPP:
-    case WM_SETFOCUS:
-    case WM_KILLFOCUS:
-        // These messages might affect rendering, so we intercept them
-        LogInfo("Intercepted focus/activation message: 0x%04X", lpMsg->message);
-        break;
-    default:
-        // For other messages, we just log them
-        break;
-    }
-}
 
 // Check if we should suppress a message (for input blocking)
 bool ShouldSuppressMessage(HWND hWnd, UINT uMsg) {
@@ -263,9 +239,7 @@ BOOL WINAPI GetMessageA_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT 
             SuppressMessage(lpMsg);
         }
         // Check if we should intercept it for other purposes
-        else if (ShouldInterceptMessage(hWnd, lpMsg->message)) {
-            ProcessInterceptedMessage(lpMsg);
-            // Track unsuppressed calls
+        else {
             g_hook_stats[HOOK_GetMessageA].increment_unsuppressed();
         }
     }
@@ -289,8 +263,7 @@ BOOL WINAPI GetMessageW_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT 
             SuppressMessage(lpMsg);
         }
         // Check if we should intercept it for other purposes
-        else if (ShouldInterceptMessage(hWnd, lpMsg->message)) {
-            ProcessInterceptedMessage(lpMsg);
+        else {
             // Track unsuppressed calls
             g_hook_stats[HOOK_GetMessageW].increment_unsuppressed();
         }
@@ -311,10 +284,6 @@ BOOL WINAPI PeekMessageA_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT
         if (ShouldSuppressMessage(hWnd, lpMsg->message)) {
             SuppressMessage(lpMsg);
         }
-        // Check if we should intercept it for other purposes
-        else if (ShouldInterceptMessage(hWnd, lpMsg->message)) {
-            ProcessInterceptedMessage(lpMsg);
-        }
     }
 
     return result;
@@ -331,10 +300,6 @@ BOOL WINAPI PeekMessageW_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT
         // Check if we should suppress this message (input blocking)
         if (ShouldSuppressMessage(hWnd, lpMsg->message)) {
             SuppressMessage(lpMsg);
-        }
-        // Check if we should intercept it for other purposes
-        else if (ShouldInterceptMessage(hWnd, lpMsg->message)) {
-            ProcessInterceptedMessage(lpMsg);
         }
     }
 

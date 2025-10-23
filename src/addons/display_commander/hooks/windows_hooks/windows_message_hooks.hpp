@@ -210,7 +210,6 @@ void UninstallWindowsMessageHooks();
 
 // Helper functions
 bool ShouldInterceptMessage(HWND hWnd, UINT uMsg);
-void ProcessInterceptedMessage(LPMSG lpMsg);
 bool ShouldSuppressMessage(HWND hWnd, UINT uMsg);
 void SuppressMessage(LPMSG lpMsg);
 

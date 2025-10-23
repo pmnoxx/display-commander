@@ -27,6 +27,8 @@ GetGUIThreadInfo_pfn GetGUIThreadInfo_Original = nullptr;
 SetThreadExecutionState_pfn SetThreadExecutionState_Original = nullptr;
 CreateDXGIFactory_pfn CreateDXGIFactory_Original = nullptr;
 CreateDXGIFactory1_pfn CreateDXGIFactory1_Original = nullptr;
+D3D11CreateDeviceAndSwapChain_pfn D3D11CreateDeviceAndSwapChain_Original = nullptr;
+D3D12CreateDevice_pfn D3D12CreateDevice_Original = nullptr;
 
 // Hook state
 static std::atomic<bool> g_api_hooks_installed{false};
@@ -191,6 +193,121 @@ HRESULT WINAPI CreateDXGIFactory1_Detour(REFIID riid, void **ppFactory) {
     return hr;
 }
 
+// Hooked D3D11CreateDeviceAndSwapChain function
+HRESULT WINAPI D3D11CreateDeviceAndSwapChain_Detour(
+    IDXGIAdapter* pAdapter,
+    D3D_DRIVER_TYPE DriverType,
+    HMODULE Software,
+    UINT Flags,
+    const D3D_FEATURE_LEVEL* pFeatureLevels,
+    UINT FeatureLevels,
+    UINT SDKVersion,
+    const DXGI_SWAP_CHAIN_DESC* pSwapChainDesc,
+    IDXGISwapChain** ppSwapChain,
+    ID3D11Device** ppDevice,
+    D3D_FEATURE_LEVEL* pFeatureLevel,
+    ID3D11DeviceContext** ppImmediateContext)
+{
+    LogInfo("=== D3D11CreateDeviceAndSwapChain Called ===");
+    LogInfo("  pAdapter: 0x%p", pAdapter);
+    LogInfo("  DriverType: %d", DriverType);
+    LogInfo("  Software: 0x%p", Software);
+    LogInfo("  Flags: 0x%08X", Flags);
+    LogInfo("  pFeatureLevels: 0x%p", pFeatureLevels);
+    LogInfo("  FeatureLevels: %u", FeatureLevels);
+    LogInfo("  SDKVersion: %u", SDKVersion);
+    LogInfo("  pSwapChainDesc: 0x%p", pSwapChainDesc);
+    LogInfo("  ppSwapChain: 0x%p", ppSwapChain);
+    LogInfo("  ppDevice: 0x%p", ppDevice);
+    LogInfo("  pFeatureLevel: 0x%p", pFeatureLevel);
+    LogInfo("  ppImmediateContext: 0x%p", ppImmediateContext);
+
+    // Log feature levels if provided
+    if (pFeatureLevels && FeatureLevels > 0) {
+        LogInfo("  Feature Levels:");
+        for (UINT i = 0; i < FeatureLevels; i++) {
+            LogInfo("    [%u]: 0x%04X", i, pFeatureLevels[i]);
+        }
+    }
+
+    // Log swap chain description if provided
+    if (pSwapChainDesc) {
+        LogInfo("  Swap Chain Description:");
+        LogInfo("    BufferDesc.Width: %u", pSwapChainDesc->BufferDesc.Width);
+        LogInfo("    BufferDesc.Height: %u", pSwapChainDesc->BufferDesc.Height);
+        LogInfo("    BufferDesc.RefreshRate: %u/%u", pSwapChainDesc->BufferDesc.RefreshRate.Numerator, pSwapChainDesc->BufferDesc.RefreshRate.Denominator);
+        LogInfo("    BufferDesc.Format: %d", pSwapChainDesc->BufferDesc.Format);
+        LogInfo("    BufferDesc.ScanlineOrdering: %d", pSwapChainDesc->BufferDesc.ScanlineOrdering);
+        LogInfo("    BufferDesc.Scaling: %d", pSwapChainDesc->BufferDesc.Scaling);
+        LogInfo("    SampleDesc.Count: %u", pSwapChainDesc->SampleDesc.Count);
+        LogInfo("    SampleDesc.Quality: %u", pSwapChainDesc->SampleDesc.Quality);
+        LogInfo("    BufferUsage: 0x%08X", pSwapChainDesc->BufferUsage);
+        LogInfo("    BufferCount: %u", pSwapChainDesc->BufferCount);
+        LogInfo("    OutputWindow: 0x%p", pSwapChainDesc->OutputWindow);
+        LogInfo("    Windowed: %s", pSwapChainDesc->Windowed ? "TRUE" : "FALSE");
+        LogInfo("    SwapEffect: %d", pSwapChainDesc->SwapEffect);
+        LogInfo("    Flags: 0x%08X", pSwapChainDesc->Flags);
+    }
+
+    // Call original function
+    HRESULT hr = D3D11CreateDeviceAndSwapChain_Original ?
+        D3D11CreateDeviceAndSwapChain_Original(pAdapter, DriverType, Software, Flags, pFeatureLevels, FeatureLevels, SDKVersion, pSwapChainDesc, ppSwapChain, ppDevice, pFeatureLevel, ppImmediateContext) :
+        E_FAIL; // D3D11CreateDeviceAndSwapChain not available
+
+    LogInfo("  Result: 0x%08X (%s)", hr, SUCCEEDED(hr) ? "SUCCESS" : "FAILED");
+
+    // Log output parameters if successful
+    if (SUCCEEDED(hr)) {
+        if (ppDevice && *ppDevice) {
+            LogInfo("  Created Device: 0x%p", *ppDevice);
+        }
+        if (ppImmediateContext && *ppImmediateContext) {
+            LogInfo("  Created Context: 0x%p", *ppImmediateContext);
+        }
+        if (ppSwapChain && *ppSwapChain) {
+            LogInfo("  Created SwapChain: 0x%p", *ppSwapChain);
+        }
+        if (pFeatureLevel && *pFeatureLevel) {
+            LogInfo("  Feature Level: 0x%04X", *pFeatureLevel);
+        }
+    }
+
+    LogInfo("=== D3D11CreateDeviceAndSwapChain Complete ===");
+    return hr;
+}
+
+// Hooked D3D12CreateDevice function
+HRESULT WINAPI D3D12CreateDevice_Detour(
+    IUnknown* pAdapter,
+    D3D_FEATURE_LEVEL MinimumFeatureLevel,
+    REFIID riid,
+    void** ppDevice)
+{
+    LogInfo("=== D3D12CreateDevice Called ===");
+    LogInfo("  pAdapter: 0x%p", pAdapter);
+    LogInfo("  MinimumFeatureLevel: 0x%04X", MinimumFeatureLevel);
+    LogInfo("  riid: {%08X-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X}",
+            riid.Data1, riid.Data2, riid.Data3,
+            riid.Data4[0], riid.Data4[1], riid.Data4[2], riid.Data4[3],
+            riid.Data4[4], riid.Data4[5], riid.Data4[6], riid.Data4[7]);
+    LogInfo("  ppDevice: 0x%p", ppDevice);
+
+    // Call original function
+    HRESULT hr = D3D12CreateDevice_Original ?
+        D3D12CreateDevice_Original(pAdapter, MinimumFeatureLevel, riid, ppDevice) :
+        E_FAIL; // D3D12CreateDevice not available
+
+    LogInfo("  Result: 0x%08X (%s)", hr, SUCCEEDED(hr) ? "SUCCESS" : "FAILED");
+
+    // Log output parameters if successful
+    if (SUCCEEDED(hr) && ppDevice && *ppDevice) {
+        LogInfo("  Created Device: 0x%p", *ppDevice);
+    }
+
+    LogInfo("=== D3D12CreateDevice Complete ===");
+    return hr;
+}
+
 bool InstallDxgiHooks() {
     static bool dxgi_hooks_installed = false;
     if (dxgi_hooks_installed) {
@@ -242,6 +359,54 @@ bool InstallDxgiHooks() {
     }
 
     LogInfo("DXGI hooks installed successfully");
+    return true;
+}
+
+bool InstallD3DDeviceHooks() {
+    static bool d3d_device_hooks_installed = false;
+    if (d3d_device_hooks_installed) {
+        LogInfo("D3D device hooks already installed");
+        return true;
+    }
+    d3d_device_hooks_installed = true;
+
+    LogInfo("Installing D3D device creation hooks...");
+
+    // Hook D3D11CreateDeviceAndSwapChain
+    HMODULE d3d11_module = GetModuleHandleW(L"d3d11.dll");
+    if (d3d11_module != nullptr) {
+        auto D3D11CreateDeviceAndSwapChain_sys = reinterpret_cast<decltype(&D3D11CreateDeviceAndSwapChain)>(GetProcAddress(d3d11_module, "D3D11CreateDeviceAndSwapChain"));
+        if (D3D11CreateDeviceAndSwapChain_sys != nullptr) {
+            if (!CreateAndEnableHook(D3D11CreateDeviceAndSwapChain_sys, D3D11CreateDeviceAndSwapChain_Detour, reinterpret_cast<LPVOID *>(&D3D11CreateDeviceAndSwapChain_Original), "D3D11CreateDeviceAndSwapChain")) {
+                LogError("Failed to create and enable D3D11CreateDeviceAndSwapChain hook");
+                return false;
+            }
+            LogInfo("D3D11CreateDeviceAndSwapChain hook created successfully");
+        } else {
+            LogWarn("Failed to get D3D11CreateDeviceAndSwapChain address from d3d11.dll");
+        }
+    } else {
+        LogWarn("Failed to get d3d11.dll module handle");
+    }
+
+    // Hook D3D12CreateDevice
+    HMODULE d3d12_module = GetModuleHandleW(L"d3d12.dll");
+    if (d3d12_module != nullptr) {
+        auto D3D12CreateDevice_sys = reinterpret_cast<decltype(&D3D12CreateDevice)>(GetProcAddress(d3d12_module, "D3D12CreateDevice"));
+        if (D3D12CreateDevice_sys != nullptr) {
+            if (!CreateAndEnableHook(D3D12CreateDevice_sys, D3D12CreateDevice_Detour, reinterpret_cast<LPVOID *>(&D3D12CreateDevice_Original), "D3D12CreateDevice")) {
+                LogError("Failed to create and enable D3D12CreateDevice hook");
+                return false;
+            }
+            LogInfo("D3D12CreateDevice hook created successfully");
+        } else {
+            LogWarn("Failed to get D3D12CreateDevice address from d3d12.dll");
+        }
+    } else {
+        LogWarn("Failed to get d3d12.dll module handle");
+    }
+
+    LogInfo("D3D device hooks installed successfully");
     return true;
 }
 
@@ -336,6 +501,11 @@ bool InstallApiHooks() {
         LogError("Failed to install debug output hooks");
     }
 
+    // Install D3D device creation hooks
+    if (!InstallD3DDeviceHooks()) {
+        LogError("Failed to install D3D device hooks");
+    }
+
     g_api_hooks_installed.store(true);
     LogInfo("API hooks installed successfully");
 
@@ -394,6 +564,23 @@ void UninstallApiHooks() {
     MH_RemoveHook(CreateDXGIFactory);
     MH_RemoveHook(CreateDXGIFactory1);
 
+    // Remove D3D device hooks
+    HMODULE d3d11_module = GetModuleHandleW(L"d3d11.dll");
+    if (d3d11_module != nullptr) {
+        auto D3D11CreateDeviceAndSwapChain_sys = reinterpret_cast<decltype(&D3D11CreateDeviceAndSwapChain)>(GetProcAddress(d3d11_module, "D3D11CreateDeviceAndSwapChain"));
+        if (D3D11CreateDeviceAndSwapChain_sys != nullptr) {
+            MH_RemoveHook(D3D11CreateDeviceAndSwapChain_sys);
+        }
+    }
+
+    HMODULE d3d12_module = GetModuleHandleW(L"d3d12.dll");
+    if (d3d12_module != nullptr) {
+        auto D3D12CreateDevice_sys = reinterpret_cast<decltype(&D3D12CreateDevice)>(GetProcAddress(d3d12_module, "D3D12CreateDevice"));
+        if (D3D12CreateDevice_sys != nullptr) {
+            MH_RemoveHook(D3D12CreateDevice_sys);
+        }
+    }
+
     // Clean up
     GetFocus_Original = nullptr;
     GetForegroundWindow_Original = nullptr;
@@ -402,6 +589,8 @@ void UninstallApiHooks() {
     SetThreadExecutionState_Original = nullptr;
     CreateDXGIFactory_Original = nullptr;
     CreateDXGIFactory1_Original = nullptr;
+    D3D11CreateDeviceAndSwapChain_Original = nullptr;
+    D3D12CreateDevice_Original = nullptr;
 
     g_api_hooks_installed.store(false);
     LogInfo("API hooks uninstalled successfully");

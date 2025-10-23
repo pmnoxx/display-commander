@@ -2,6 +2,7 @@
 #include "../globals.hpp"
 #include "../settings/experimental_tab_settings.hpp"
 #include "../utils.hpp"
+#include "../swapchain_events.hpp"
 #include <MinHook.h>
 #include <atomic>
 #include <memory>
@@ -161,7 +162,7 @@ BOOL WINAPI QueryPerformanceCounter_Detour(LARGE_INTEGER *lpPerformanceCount) {
 
     // Call original function first
     BOOL result = QueryPerformanceCounter_Original(lpPerformanceCount);
-    if (result == FALSE || lpPerformanceCount == nullptr) {
+    if (result == FALSE || lpPerformanceCount == nullptr || !g_initialized_with_hwnd.load()) {
         return result;
     }
     // Check if this hook should be applied (efficient enum-based check)

@@ -46,10 +46,6 @@ bool IsGameWindow(HWND hwnd) {
 
 // Hooked GetFocus function
 HWND WINAPI GetFocus_Detour() {
-    if (true) {
-        return g_game_window;
-    }
-
     if (s_continue_rendering.load() && g_game_window != nullptr && IsWindow(g_game_window)) {
         // Return the game window even when it doesn't have focus
         //   LogInfo("GetFocus_Detour: Returning game window due to continue rendering - HWND: 0x%p", g_game_window);

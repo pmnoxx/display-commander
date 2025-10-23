@@ -152,19 +152,11 @@ LRESULT CALLBACK WindowProc_Detour(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
         break;
 
     case WM_ENTERSIZEMOVE:
-        // Handle window entering size/move mode
-        if (continue_rendering_enabled) {
-            LogInfo("WM_ENTERSIZEMOVE: Window entering size/move mode - HWND: 0x%p", hwnd);
-        }
         break;
 
     case WM_EXITSIZEMOVE:
         // Handle window exiting size/move mode
-        if (continue_rendering_enabled) {
-            LogInfo("WM_EXITSIZEMOVE: Window exiting size/move mode - HWND: 0x%p", hwnd);
-            // Ensure window stays active after resize/move
-            SendFakeActivationMessages(hwnd);
-        }
+        SendFakeActivationMessages(hwnd);
         break;
 
     case WM_QUIT:

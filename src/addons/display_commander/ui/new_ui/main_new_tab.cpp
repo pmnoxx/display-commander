@@ -387,17 +387,16 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
 
     // Input Blocking Section
     if (ImGui::CollapsingHeader("Input Control", ImGuiTreeNodeFlags_None)) {
-        ImGui::Text("Input Blocking:");
 
         // Create 3 columns with fixed width
         ImGui::Columns(3, "InputBlockingColumns", true);
 
         // First line: Headers
-        ImGui::Text("Keyboard");
+        ImGui::Text("Suppress Keyboard");
         ImGui::NextColumn();
-        ImGui::Text("Mouse");
+        ImGui::Text("Suppress Mouse");
         ImGui::NextColumn();
-        ImGui::Text("Gamepad");
+        ImGui::Text("Suppress Gamepad");
         ImGui::NextColumn();
 
         // Second line: Selectors

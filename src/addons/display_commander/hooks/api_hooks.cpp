@@ -162,20 +162,7 @@ LONG_PTR WINAPI SetWindowLongPtrW_Detour(HWND hWnd, int nIndex, LONG_PTR dwNewLo
             dwNewLong &= ~(WS_CAPTION | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU | WS_POPUP);
         }
         if (nIndex == GWL_EXSTYLE) {
-            dwNewLong &= ~(WS_EX_DLGMODALFRAME | WS_EX_WINDOWEDGE | WS_EX_CLIENTEDGE | WS_EX_STATICEDGE);
-            // Remove WS_EX_TOPMOST and WS_EX_TOOLWINDOW styles
-            LONG_PTR modifiedLong = dwNewLong;
-            if ((dwNewLong & (WS_EX_TOPMOST | WS_EX_TOOLWINDOW)) != 0) {
-                modifiedLong = dwNewLong & ~(WS_EX_TOPMOST | WS_EX_TOOLWINDOW);
-
-                // Log the modification
-                LogInfo("SetWindowLongPtrW: Stripped always-on-top styles from window 0x%p - Original: 0x%llx, Modified: 0x%llx",
-                        hWnd, (unsigned long long)dwNewLong, (unsigned long long)modifiedLong);
-            }
-
-            // Call original function with modified value
-            return SetWindowLongPtrW_Original ? SetWindowLongPtrW_Original(hWnd, nIndex, modifiedLong)
-                                             : SetWindowLongPtrW(hWnd, nIndex, modifiedLong);
+            dwNewLong &= ~(WS_EX_DLGMODALFRAME | WS_EX_WINDOWEDGE | WS_EX_CLIENTEDGE | WS_EX_STATICEDGE | WS_EX_TOPMOST | WS_EX_TOOLWINDOW);
         }
     }
 
@@ -198,84 +185,6 @@ BOOL WINAPI SetWindowPos_Detour(HWND hWnd, HWND hWndInsertAfter, int X, int Y, i
                                          : SetWindowPos(hWnd, HWND_NOTOPMOST, X, Y, cx, cy, uFlags);
         }
     }
-/*
-    // Apply spoofing logic if and only if hwnd matches g_last_swapchain_hwnd
-    HWND swapchain_hwnd = g_last_swapchain_hwnd.load();
-    if (hWnd == swapchain_hwnd && swapchain_hwnd != nullptr) {
-        // Get the current window state to apply spoofing
-        auto window_state = g_window_state.load();
-        if (window_state) {
-            auto s = *window_state;
-
-            // Apply the same scaling calculations as in ApplyWindowChange
-            float scaling_percentage_width = 1.0f;
-            float scaling_percentage_height = 1.0f;
-
-            // Get DPI scaling from the display cache
-            const auto* disp = display_cache::g_displayCache.GetDisplay(s.current_monitor_index);
-            if (disp != nullptr) {
-                float dpi = disp->GetDpiScaling();
-                LogInfo("SetWindowPos_Detour: Applying spoofing for swapchain window 0x%p, target_x: %d, target_y: %d, target_w: %d, target_h: %d, dpi: %f",
-                       hWnd, s.target_x, s.target_y, s.target_w, s.target_h, dpi);
-            }
-
-            // Get DPI using GetDpiForWindow with g_last_swapchain_hwnd (same as ApplyWindowChange)
-            if (swapchain_hwnd != nullptr) {
-                UINT dpi = GetDpiForWindow(swapchain_hwnd);
-                LogInfo("SetWindowPos_Detour: Window DPI from GetDpiForWindow: %u", dpi);
-            }
-
-            // Query Windows display scaling settings (same as ApplyWindowChange)
-            HDC hdc = GetDC(swapchain_hwnd);
-            if (hdc != nullptr) {
-                int system_dpi_x = GetDeviceCaps(hdc, LOGPIXELSX);
-                int system_dpi_y = GetDeviceCaps(hdc, LOGPIXELSY);
-
-                // Get virtual resolution (logical resolution before DPI scaling)
-                int virtual_width = GetDeviceCaps(hdc, HORZRES);
-                int virtual_height = GetDeviceCaps(hdc, VERTRES);
-
-                // Get physical resolution (actual pixel resolution)
-                int physical_width = GetDeviceCaps(hdc, DESKTOPHORZRES);
-                int physical_height = GetDeviceCaps(hdc, DESKTOPVERTRES);
-
-                ReleaseDC(nullptr, hdc);
-
-                // Prevent division by zero
-                if (physical_width > 0 && physical_height > 0) {
-                    scaling_percentage_width = static_cast<float>(virtual_width) / static_cast<float>(physical_width);
-                    scaling_percentage_height = static_cast<float>(virtual_height) / static_cast<float>(physical_height);
-                } else {
-                    LogWarn("SetWindowPos_Detour: Invalid physical resolution %dx%d, using default scaling", physical_width, physical_height);
-                    scaling_percentage_width = 1.0f;
-                    scaling_percentage_height = 1.0f;
-                }
-                LogInfo("SetWindowPos_Detour: Windows Display Scaling - Width: %.0f%%, Height: %.0f%%",
-                       scaling_percentage_width, scaling_percentage_height);
-            }
-
-            // Calculate final dimensions with scaling (same as ApplyWindowChange)
-            int final_width = static_cast<int>(round(s.target_w * scaling_percentage_width));
-            int final_height = static_cast<int>(round(s.target_h * scaling_percentage_height));
-
-            // Validate parameters before SetWindowPos call
-            if (final_width <= 0 || final_height <= 0) {
-                LogWarn("SetWindowPos_Detour: Invalid calculated dimensions %dx%d, using original parameters", final_width, final_height);
-            } else if (s.target_x < -32768 || s.target_x > 32767 || s.target_y < -32768 || s.target_y > 32767) {
-                LogWarn("SetWindowPos_Detour: Invalid coordinates (%d, %d), using original parameters", s.target_x, s.target_y);
-            } else {
-                // Use spoofed values
-                LogDebug("SetWindowPos_Detour: Using spoofed values - x=%d, y=%d, w=%d, h=%d, flags=0x%x",
-                        s.target_x, s.target_y, final_width, final_height, uFlags);
-
-                auto result = SetWindowPos_Original ? SetWindowPos_Original(hWnd, hWndInsertAfter, s.target_x, s.target_y, final_width, final_height, uFlags)
-                                             : SetWindowPos(hWnd, hWndInsertAfter, s.target_x, s.target_y, final_width, final_height, uFlags);
-
-                SendFakeActivationMessages(hWnd);
-                return result;
-            }
-        }
-    }*/
 
     // Call original function with unmodified parameters
     return SetWindowPos_Original ? SetWindowPos_Original(hWnd, hWndInsertAfter, X, Y, cx, cy, uFlags)
@@ -648,48 +557,55 @@ bool InstallWindowsApiHooks() {
         return false;
     }
 
+    // MH initialize
+    MH_STATUS init_status = SafeInitializeMinHook(display_commanderhooks::HookType::WINDOW_API);
+    if (init_status != MH_OK && init_status != MH_ERROR_ALREADY_INITIALIZED) {
+        LogError("Failed to initialize MinHook for Windows API hooks - Status: %d", init_status);
+        return false;
+    }
+
+    if (init_status == MH_ERROR_ALREADY_INITIALIZED) {
+        LogInfo("MinHook already initialized, proceeding with Windows API hooks");
+    } else {
+        LogInfo("MinHook initialized successfully for Windows API hooks");
+    }
+
+
     LogInfo("Installing Windows API hooks...");
 
     // Hook GetFocus
     if (!CreateAndEnableHook(GetFocus, GetFocus_Detour, reinterpret_cast<LPVOID *>(&GetFocus_Original), "GetFocus")) {
         LogError("Failed to create and enable GetFocus hook");
-        return false;
     }
 
     // Hook GetForegroundWindow
     if (!CreateAndEnableHook(GetForegroundWindow, GetForegroundWindow_Detour, reinterpret_cast<LPVOID *>(&GetForegroundWindow_Original), "GetForegroundWindow")) {
         LogError("Failed to create and enable GetForegroundWindow hook");
-        return false;
     }
 
     // Hook GetActiveWindow
     if (!CreateAndEnableHook(GetActiveWindow, GetActiveWindow_Detour, reinterpret_cast<LPVOID *>(&GetActiveWindow_Original), "GetActiveWindow")) {
         LogError("Failed to create and enable GetActiveWindow hook");
-        return false;
     }
 
     // Hook GetGUIThreadInfo
     if (!CreateAndEnableHook(GetGUIThreadInfo, GetGUIThreadInfo_Detour, reinterpret_cast<LPVOID *>(&GetGUIThreadInfo_Original), "GetGUIThreadInfo")) {
         LogError("Failed to create and enable GetGUIThreadInfo hook");
-        return false;
     }
 
     // Hook SetThreadExecutionState
     if (!CreateAndEnableHook(SetThreadExecutionState, SetThreadExecutionState_Detour, reinterpret_cast<LPVOID *>(&SetThreadExecutionState_Original), "SetThreadExecutionState")) {
         LogError("Failed to create and enable SetThreadExecutionState hook");
-        return false;
     }
 
     // Hook SetWindowLongPtrW
     if (!CreateAndEnableHook(SetWindowLongPtrW, SetWindowLongPtrW_Detour, reinterpret_cast<LPVOID *>(&SetWindowLongPtrW_Original), "SetWindowLongPtrW")) {
         LogError("Failed to create and enable SetWindowLongPtrW hook");
-        return false;
     }
 
     // Hook SetWindowPos
     if (!CreateAndEnableHook(SetWindowPos, SetWindowPos_Detour, reinterpret_cast<LPVOID *>(&SetWindowPos_Original), "SetWindowPos")) {
         LogError("Failed to create and enable SetWindowPos hook");
-        return false;
     }
 
     LogInfo("Windows API hooks installed successfully");

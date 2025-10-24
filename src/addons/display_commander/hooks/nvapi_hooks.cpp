@@ -5,7 +5,7 @@
 #include "../globals.hpp"
 #include "../../../external/nvapi/nvapi_interface.h"
 #include "../settings/developer_tab_settings.hpp"
-
+#include "hook_suppression_manager.hpp"
 
 #include <MinHook.h>
 
@@ -253,6 +253,12 @@ bool InstallNVAPIHooks() {
         return false;
     }
 
+    // Check if NVAPI hooks should be suppressed
+    if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(display_commanderhooks::HookType::NVAPI)) {
+        LogInfo("NVAPI hooks installation suppressed by user setting");
+        return false;
+    }
+
     // Follow Special-K's approach: get NvAPI_QueryInterface first, then use it to get other functions
     HMODULE nvapi_dll = GetModuleHandleA("nvapi64.dll");
     if (!nvapi_dll) {
@@ -342,6 +348,9 @@ bool InstallNVAPIHooks() {
 
         LogInfo("NVAPI hooks: Successfully installed %s hook", reflex_functions[i]);
     }
+
+    // Mark NVAPI hooks as installed
+    display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(display_commanderhooks::HookType::NVAPI);
 
     return true;
 }

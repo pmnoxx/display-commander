@@ -6,6 +6,7 @@
 #include "../utils/logging.hpp"
 #include "../settings/experimental_tab_settings.hpp"
 #include "../widgets/xinput_widget/xinput_widget.hpp"
+#include "hook_suppression_manager.hpp"
 #include <MinHook.h>
 #include <atomic>
 #include <mutex>
@@ -344,8 +345,14 @@ bool InstallHIDSuppressionHooks() {
         return true;
     }
 
+    // Check if HID suppression hooks should be suppressed
+    if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(display_commanderhooks::HookType::HID_SUPPRESSION)) {
+        LogInfo("HID suppression hooks installation suppressed by user setting");
+        return false;
+    }
+
     // Initialize MinHook (only if not already initialized)
-    MH_STATUS init_status = SafeInitializeMinHook();
+    MH_STATUS init_status = SafeInitializeMinHook(display_commanderhooks::HookType::HID_SUPPRESSION);
     if (init_status != MH_OK && init_status != MH_ERROR_ALREADY_INITIALIZED) {
         LogError("Failed to initialize MinHook for HID suppression hooks - Status: %d", init_status);
         return false;
@@ -391,6 +398,9 @@ bool InstallHIDSuppressionHooks() {
 
     g_hid_suppression_hooks_installed.store(true);
     LogInfo("HID suppression hooks installed successfully");
+
+    // Mark HID suppression hooks as installed
+    display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(display_commanderhooks::HookType::HID_SUPPRESSION);
 
     return true;
 }

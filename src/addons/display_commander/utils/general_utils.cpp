@@ -2,6 +2,7 @@
 #include "logging.hpp"
 #include "globals.hpp"
 #include "settings/developer_tab_settings.hpp"
+#include "../hooks/hook_suppression_manager.hpp"
 #include <algorithm>
 #include <vector>
 #include <cstdio>
@@ -369,20 +370,27 @@ bool CreateAndEnableHook(LPVOID ptarget, LPVOID pdetour, LPVOID* ppOriginal, con
 }
 
 // MinHook initialization wrapper that checks suppress_minhook setting
-MH_STATUS SafeInitializeMinHook() {
+MH_STATUS SafeInitializeMinHook(display_commanderhooks::HookType hookType) {
     // Check if MinHook initialization is suppressed
     if (settings::g_developerTabSettings.suppress_minhook.GetValue()) {
-        LogInfo("MinHook initialization suppressed by suppress_minhook setting");
+        LogInfo("MinHook initialization suppressed by suppress_minhook setting for %s hooks", display_commanderhooks::HookSuppressionManager::GetInstance().GetHookTypeName(hookType).c_str());
         return MH_ERROR_ALREADY_INITIALIZED; // Return this to indicate "already initialized" to avoid errors
     }
+    static bool minhook_initialized = false;
+    if (minhook_initialized) {
+        LogInfo("MinHook already initialized, proceeding with %s hooks", display_commanderhooks::HookSuppressionManager::GetInstance().GetHookTypeName(hookType).c_str());
+        return MH_OK;
+    }
+    minhook_initialized = true;
 
     // Initialize MinHook (only if not already initialized)
     MH_STATUS init_status = MH_Initialize();
     if (init_status != MH_OK && init_status != MH_ERROR_ALREADY_INITIALIZED) {
-        LogError("Failed to initialize MinHook - Status: %d", init_status);
+        LogError("Failed to initialize MinHook for %s hooks - Status: %d", display_commanderhooks::HookSuppressionManager::GetInstance().GetHookTypeName(hookType).c_str(), init_status);
         return init_status;
     }
 
+    LogInfo("MinHook initialized successfully for %s hooks", display_commanderhooks::HookSuppressionManager::GetInstance().GetHookTypeName(hookType).c_str());
     return init_status;
 }
 

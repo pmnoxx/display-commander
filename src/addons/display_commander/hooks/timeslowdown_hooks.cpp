@@ -526,7 +526,7 @@ bool InstallTimeslowdownHooks() {
     }
 
     // Initialize MinHook (only if not already initialized)
-    MH_STATUS init_status = SafeInitializeMinHook();
+    MH_STATUS init_status = SafeInitializeMinHook(display_commanderhooks::HookType::TIMESLOWDOWN);
     if (init_status != MH_OK && init_status != MH_ERROR_ALREADY_INITIALIZED) {
         LogError("Failed to initialize MinHook for timeslowdown hooks - Status: %d", init_status);
         return false;

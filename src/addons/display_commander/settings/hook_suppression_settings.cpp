@@ -4,6 +4,9 @@
 namespace settings {
 
 HookSuppressionSettings::HookSuppressionSettings()
+    // Hook suppression settings - hooks with true are suppressed by default (blacklisted)
+    // Most hooks are enabled by default (false) for normal operation
+    // Only hooks that are typically not needed or can cause issues are blacklisted by default
     : suppress_dxgi_hooks("DxgiHooks", false, "DisplayCommander.HookSuppression")
     , suppress_d3d_device_hooks("D3DDeviceHooks", false, "DisplayCommander.HookSuppression")
     , suppress_xinput_hooks("XInputHooks", false, "DisplayCommander.HookSuppression")
@@ -13,14 +16,15 @@ HookSuppressionSettings::HookSuppressionSettings()
     , suppress_windows_gaming_input_hooks("WindowsGamingInputHooks", false, "DisplayCommander.HookSuppression")
     , suppress_hid_hooks("HidHooks", false, "DisplayCommander.HookSuppression")
     , suppress_api_hooks("ApiHooks", false, "DisplayCommander.HookSuppression")
+    , suppress_window_api_hooks("WindowApiHooks", false, "DisplayCommander.HookSuppression")
     , suppress_sleep_hooks("SleepHooks", false, "DisplayCommander.HookSuppression")
     , suppress_timeslowdown_hooks("TimeslowdownHooks", false, "DisplayCommander.HookSuppression")
-    , suppress_debug_output_hooks("DebugOutputHooks", false, "DisplayCommander.HookSuppression")
+    , suppress_debug_output_hooks("DebugOutputHooks", true, "DisplayCommander.HookSuppression")  // BLACKLISTED: Debug output can be noisy
     , suppress_loadlibrary_hooks("LoadLibraryHooks", false, "DisplayCommander.HookSuppression")
     , suppress_display_settings_hooks("DisplaySettingsHooks", false, "DisplayCommander.HookSuppression")
     , suppress_windows_message_hooks("WindowsMessageHooks", false, "DisplayCommander.HookSuppression")
     , suppress_opengl_hooks("OpenGLHooks", false, "DisplayCommander.HookSuppression")
-    , suppress_hid_suppression_hooks("HidSuppressionHooks", false, "DisplayCommander.HookSuppression")
+    , suppress_hid_suppression_hooks("HidSuppressionHooks", true, "DisplayCommander.HookSuppression")  // BLACKLISTED: Experimental feature
     , suppress_nvapi_hooks("NvapiHooks", false, "DisplayCommander.HookSuppression")
     , suppress_process_exit_hooks("ProcessExitHooks", false, "DisplayCommander.HookSuppression")
     , dxgi_hooks_installed("DxgiHooks", false, "DisplayCommander.HooksInstalled")
@@ -32,6 +36,7 @@ HookSuppressionSettings::HookSuppressionSettings()
     , windows_gaming_input_hooks_installed("WindowsGamingInputHooks", false, "DisplayCommander.HooksInstalled")
     , hid_hooks_installed("HidHooks", false, "DisplayCommander.HooksInstalled")
     , api_hooks_installed("ApiHooks", false, "DisplayCommander.HooksInstalled")
+    , window_api_hooks_installed("WindowApiHooks", false, "DisplayCommander.HooksInstalled")
     , sleep_hooks_installed("SleepHooks", false, "DisplayCommander.HooksInstalled")
     , timeslowdown_hooks_installed("TimeslowdownHooks", false, "DisplayCommander.HooksInstalled")
     , debug_output_hooks_installed("DebugOutputHooks", false, "DisplayCommander.HooksInstalled")
@@ -54,6 +59,7 @@ HookSuppressionSettings::HookSuppressionSettings()
         &suppress_windows_gaming_input_hooks,
         &suppress_hid_hooks,
         &suppress_api_hooks,
+        &suppress_window_api_hooks,
         &suppress_sleep_hooks,
         &suppress_timeslowdown_hooks,
         &suppress_debug_output_hooks,
@@ -73,6 +79,7 @@ HookSuppressionSettings::HookSuppressionSettings()
         &windows_gaming_input_hooks_installed,
         &hid_hooks_installed,
         &api_hooks_installed,
+        &window_api_hooks_installed,
         &sleep_hooks_installed,
         &timeslowdown_hooks_installed,
         &debug_output_hooks_installed,

@@ -5,6 +5,7 @@
 #include "../swapchain_events.hpp"
 #include "../performance_types.hpp"
 #include "../gpu_completion_monitoring.hpp"
+#include "hook_suppression_manager.hpp"
 #include <array>
 #include <MinHook.h>
 #include <windows.h>
@@ -157,6 +158,12 @@ bool InstallOpenGLHooks() {
         return true;
     }
 
+    // Check if OpenGL hooks should be suppressed
+    if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(display_commanderhooks::HookType::OPENGL)) {
+        LogInfo("OpenGL hooks installation suppressed by user setting");
+        return false;
+    }
+
     if (g_shutdown.load()) {
         LogInfo("OpenGL hooks installation skipped - shutdown in progress");
         return false;
@@ -307,6 +314,10 @@ bool InstallOpenGLHooks() {
 
     g_opengl_hooks_installed.store(true);
     LogInfo("OpenGL hooks installed successfully");
+
+    // Mark OpenGL hooks as installed
+    display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(display_commanderhooks::HookType::OPENGL);
+
     return true;
 }
 

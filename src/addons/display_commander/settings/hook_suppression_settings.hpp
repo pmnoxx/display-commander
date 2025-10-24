@@ -11,6 +11,8 @@ using ui::new_ui::BoolSetting;
 using ui::new_ui::SettingBase;
 
 // Settings manager for hook suppression
+// Hooks with suppress_xxx_hooks = true are blacklisted by default
+// Currently blacklisted: DEBUG_OUTPUT (can be noisy), HID_SUPPRESSION (experimental)
 class HookSuppressionSettings {
   public:
     HookSuppressionSettings();
@@ -32,6 +34,7 @@ class HookSuppressionSettings {
     BoolSetting suppress_windows_gaming_input_hooks;
     BoolSetting suppress_hid_hooks;
     BoolSetting suppress_api_hooks;
+    BoolSetting suppress_window_api_hooks;
     BoolSetting suppress_sleep_hooks;
     BoolSetting suppress_timeslowdown_hooks;
     BoolSetting suppress_debug_output_hooks;
@@ -53,6 +56,7 @@ class HookSuppressionSettings {
     BoolSetting windows_gaming_input_hooks_installed;
     BoolSetting hid_hooks_installed;
     BoolSetting api_hooks_installed;
+    BoolSetting window_api_hooks_installed;
     BoolSetting sleep_hooks_installed;
     BoolSetting timeslowdown_hooks_installed;
     BoolSetting debug_output_hooks_installed;

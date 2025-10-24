@@ -7,6 +7,7 @@
 #include "../../settings/main_tab_settings.hpp"
 #include "../../settings/developer_tab_settings.hpp"
 #include "../../dx11_proxy/dx11_proxy_manager.hpp"
+#include "../hook_suppression_manager.hpp"
 
 #include <MinHook.h>
 
@@ -1137,6 +1138,15 @@ bool HookSwapchain(IDXGISwapChain *swapchain) {
 | **39** | **IDXGISwapChain3** | **ResizeBuffers1** | **Resize buffers with parameters** |
 */
 
+    //minhook initialization
+    MH_STATUS init_status = SafeInitializeMinHook(display_commanderhooks::HookType::DXGI);
+    if (init_status != MH_OK && init_status != MH_ERROR_ALREADY_INITIALIZED) {
+        LogError("Failed to initialize MinHook for DXGI hooks - Status: %d", init_status);
+        return false;
+    }
+    if (init_status == MH_ERROR_ALREADY_INITIALIZED) {
+        LogInfo("MinHook already initialized, proceeding with DXGI hooks");
+    }
 
     // Detect swapchain interface version for safe vtable access
     int interfaceVersion = GetSwapchainInterfaceVersion(swapchain);
@@ -1151,7 +1161,6 @@ bool HookSwapchain(IDXGISwapChain *swapchain) {
     // Hook Present (index 8) - Critical method, always present
     if (MH_CreateHook(vtable[8], IDXGISwapChain_Present_Detour, (LPVOID *)&IDXGISwapChain_Present_Original) != MH_OK) {
         LogError("Failed to create IDXGISwapChain::Present hook");
-        return false;
     }
 
     // Hook other IDXGISwapChain methods (9-11, 13-17) with safe vtable access
@@ -1538,7 +1547,7 @@ bool HookFactoryVTable(IDXGIFactory *factory) {
             LogError("Failed to create and enable IDXGIFactory::CreateSwapChain hook");
 
             // Check if MinHook is initialized
-            MH_STATUS init_status = SafeInitializeMinHook();
+            MH_STATUS init_status = SafeInitializeMinHook(display_commanderhooks::HookType::DXGI);
             LogInfo("MinHook initialization status: %d (0x%x)", init_status, init_status);
 
             return false;

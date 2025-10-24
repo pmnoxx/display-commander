@@ -15,6 +15,7 @@ enum class HookType {
     WINDOWS_GAMING_INPUT,
     HID,
     API,
+    WINDOW_API,
     SLEEP,
     TIMESLOWDOWN,
     DEBUG_OUTPUT,
@@ -46,6 +47,9 @@ public:
 
     // Check if a hook was previously installed
     bool WasHookInstalled(HookType hookType);
+
+    // Get the human-readable name for a hook type
+    std::string GetHookTypeName(HookType hookType);
 
 private:
     HookSuppressionManager() = default;

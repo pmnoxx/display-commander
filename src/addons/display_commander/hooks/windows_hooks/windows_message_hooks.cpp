@@ -413,6 +413,10 @@ BOOL WINAPI PostMessageA_Detour(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lPara
     // Track total calls
     g_hook_stats[HOOK_PostMessageA].increment_total();
 
+    if (ShouldBlockMouseInput() && Msg == WM_MOUSEMOVE) {
+        return TRUE;
+    }
+
     // Check if we should suppress this message (input blocking)
     if (ShouldSuppressMessage(hWnd, Msg)) {
         // Log suppressed input for debugging
@@ -441,6 +445,10 @@ BOOL WINAPI PostMessageA_Detour(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lPara
 BOOL WINAPI PostMessageW_Detour(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam) {
     // Track total calls
     g_hook_stats[HOOK_PostMessageW].increment_total();
+    if (ShouldBlockMouseInput() && Msg == WM_MOUSEMOVE) {
+        return TRUE;
+    }
+
 
     // Check if we should suppress this message (input blocking)
     if (ShouldSuppressMessage(hWnd, Msg)) {

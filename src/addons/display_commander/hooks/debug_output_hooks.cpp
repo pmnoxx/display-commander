@@ -3,6 +3,7 @@
 #include "../utils/logging.hpp"
 #include "../globals.hpp"
 #include "../settings/experimental_tab_settings.hpp"
+#include "hook_suppression_manager.hpp"
 #include <MinHook.h>
 #include <atomic>
 #include <string>
@@ -98,8 +99,14 @@ bool InstallDebugOutputHooks() {
         return true;
     }
 
+    // Check if debug output hooks should be suppressed
+    if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(display_commanderhooks::HookType::DEBUG_OUTPUT)) {
+        LogInfo("Debug output hooks installation suppressed by user setting");
+        return false;
+    }
+
     // Initialize MinHook (only if not already initialized)
-    MH_STATUS init_status = SafeInitializeMinHook();
+    MH_STATUS init_status = SafeInitializeMinHook(display_commanderhooks::HookType::DEBUG_OUTPUT);
     if (init_status != MH_OK && init_status != MH_ERROR_ALREADY_INITIALIZED) {
         LogError("Failed to initialize MinHook for debug output hooks - Status: %d", init_status);
         return false;
@@ -149,6 +156,9 @@ bool InstallDebugOutputHooks() {
     g_debug_output_hooks_installed.store(true);
     LogInfo("Debug output hooks installed successfully - OutputDebugStringA: %p, OutputDebugStringW: %p",
             OutputDebugStringA_sys, OutputDebugStringW_sys);
+
+    // Mark debug output hooks as installed
+    display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(display_commanderhooks::HookType::DEBUG_OUTPUT);
 
     return true;
 }

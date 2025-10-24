@@ -15,6 +15,11 @@
 #include <vector>
 #include <MinHook.h>
 
+// Forward declaration for HookType enum
+namespace display_commanderhooks {
+    enum class HookType;
+}
+
 // Structs needed for utility functions
 struct AspectRatio {
     int w;
@@ -81,7 +86,7 @@ inline T UpdateRollingAverage(T new_value, T old_value, int alpha = 64) {
 
 // MinHook wrapper functions
 bool CreateAndEnableHook(LPVOID pTarget, LPVOID pDetour, LPVOID* ppOriginal, const char* hookName);
-MH_STATUS SafeInitializeMinHook();
+MH_STATUS SafeInitializeMinHook(display_commanderhooks::HookType hookType);
 
 // D3D9 present mode and flags string conversion functions
 const char* D3DSwapEffectToString(uint32_t swapEffect);

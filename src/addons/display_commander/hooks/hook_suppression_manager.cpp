@@ -29,6 +29,8 @@ bool HookSuppressionManager::ShouldSuppressHook(HookType hookType) {
             return settings::g_hook_suppression_settings.suppress_hid_hooks.GetValue();
         case HookType::API:
             return settings::g_hook_suppression_settings.suppress_api_hooks.GetValue();
+        case HookType::WINDOW_API:
+            return settings::g_hook_suppression_settings.suppress_window_api_hooks.GetValue();
         case HookType::SLEEP:
             return settings::g_hook_suppression_settings.suppress_sleep_hooks.GetValue();
         case HookType::TIMESLOWDOWN:
@@ -50,6 +52,7 @@ bool HookSuppressionManager::ShouldSuppressHook(HookType hookType) {
         case HookType::PROCESS_EXIT:
             return settings::g_hook_suppression_settings.suppress_process_exit_hooks.GetValue();
         default:
+            LogError("HookSuppressionManager::ShouldSuppressHook - Invalid hook type: %d", static_cast<int>(hookType));
             return false;
     }
 }
@@ -108,6 +111,12 @@ void HookSuppressionManager::MarkHookInstalled(HookType hookType) {
             if (!settings::g_hook_suppression_settings.api_hooks_installed.GetValue()) {
                 settings::g_hook_suppression_settings.api_hooks_installed.SetValue(true);
                 settings::g_hook_suppression_settings.suppress_api_hooks.SetValue(false);
+            }
+            break;
+        case HookType::WINDOW_API:
+            if (!settings::g_hook_suppression_settings.window_api_hooks_installed.GetValue()) {
+                settings::g_hook_suppression_settings.window_api_hooks_installed.SetValue(true);
+                settings::g_hook_suppression_settings.suppress_window_api_hooks.SetValue(false);
             }
             break;
         case HookType::SLEEP:
@@ -170,6 +179,11 @@ void HookSuppressionManager::MarkHookInstalled(HookType hookType) {
                 settings::g_hook_suppression_settings.suppress_process_exit_hooks.SetValue(false);
             }
             break;
+
+        default:
+
+            LogError("HookSuppressionManager::MarkHookInstalled - Invalid hook type: %d", static_cast<int>(hookType));
+            break;
     }
 
     LogInfo("HookSuppressionManager::MarkHookInstalled - Marked %d as installed and set suppression to false", static_cast<int>(hookType));
@@ -195,6 +209,8 @@ std::string HookSuppressionManager::GetSuppressionSettingName(HookType hookType)
             return "SuppressHidHooks";
         case HookType::API:
             return "SuppressApiHooks";
+        case HookType::WINDOW_API:
+            return "SuppressWindowApiHooks";
         case HookType::SLEEP:
             return "SuppressSleepHooks";
         case HookType::TIMESLOWDOWN:
@@ -240,6 +256,8 @@ std::string HookSuppressionManager::GetInstallationSettingName(HookType hookType
             return "HidHooksInstalled";
         case HookType::API:
             return "ApiHooksInstalled";
+        case HookType::WINDOW_API:
+            return "WindowApiHooksInstalled";
         case HookType::SLEEP:
             return "SleepHooksInstalled";
         case HookType::TIMESLOWDOWN:
@@ -285,6 +303,8 @@ bool HookSuppressionManager::WasHookInstalled(HookType hookType) {
             return settings::g_hook_suppression_settings.hid_hooks_installed.GetValue();
         case HookType::API:
             return settings::g_hook_suppression_settings.api_hooks_installed.GetValue();
+        case HookType::WINDOW_API:
+            return settings::g_hook_suppression_settings.window_api_hooks_installed.GetValue();
         case HookType::SLEEP:
             return settings::g_hook_suppression_settings.sleep_hooks_installed.GetValue();
         case HookType::TIMESLOWDOWN:
@@ -307,6 +327,53 @@ bool HookSuppressionManager::WasHookInstalled(HookType hookType) {
             return settings::g_hook_suppression_settings.process_exit_hooks_installed.GetValue();
         default:
             return false;
+    }
+}
+
+std::string HookSuppressionManager::GetHookTypeName(HookType hookType) {
+    switch (hookType) {
+        case HookType::DXGI:
+            return "DXGI";
+        case HookType::D3D_DEVICE:
+            return "D3D Device";
+        case HookType::XINPUT:
+            return "XInput";
+        case HookType::DINPUT:
+            return "DirectInput";
+        case HookType::STREAMLINE:
+            return "Streamline";
+        case HookType::NGX:
+            return "NGX";
+        case HookType::WINDOWS_GAMING_INPUT:
+            return "Windows Gaming Input";
+        case HookType::HID:
+            return "HID";
+        case HookType::API:
+            return "API";
+        case HookType::WINDOW_API:
+            return "Window API";
+        case HookType::SLEEP:
+            return "Sleep";
+        case HookType::TIMESLOWDOWN:
+            return "Time Slowdown";
+        case HookType::DEBUG_OUTPUT:
+            return "Debug Output";
+        case HookType::LOADLIBRARY:
+            return "LoadLibrary";
+        case HookType::DISPLAY_SETTINGS:
+            return "Display Settings";
+        case HookType::WINDOWS_MESSAGE:
+            return "Windows Message";
+        case HookType::OPENGL:
+            return "OpenGL";
+        case HookType::HID_SUPPRESSION:
+            return "HID Suppression";
+        case HookType::NVAPI:
+            return "NVAPI";
+        case HookType::PROCESS_EXIT:
+            return "Process Exit";
+        default:
+            return "Unknown";
     }
 }
 

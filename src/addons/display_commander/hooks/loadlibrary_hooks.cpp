@@ -519,7 +519,7 @@ bool InstallLoadLibraryHooks() {
     }
 
     // Initialize MinHook (only if not already initialized)
-    MH_STATUS init_status = SafeInitializeMinHook();
+    MH_STATUS init_status = SafeInitializeMinHook(display_commanderhooks::HookType::LOADLIBRARY);
     if (init_status != MH_OK && init_status != MH_ERROR_ALREADY_INITIALIZED) {
         LogError("Failed to initialize MinHook for LoadLibrary hooks - Status: %d", init_status);
         return false;

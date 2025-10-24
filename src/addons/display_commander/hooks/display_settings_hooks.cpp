@@ -3,6 +3,7 @@
 #include "../utils/logging.hpp"
 #include "../globals.hpp"
 #include "../settings/developer_tab_settings.hpp"
+#include "hook_suppression_manager.hpp"
 #include <MinHook.h>
 #include <windows.h>
 #include <wingdi.h>
@@ -182,11 +183,11 @@ bool InstallDisplaySettingsHooks() {
         return true;
     }
 
-    if (g_shutdown.load()) {
-        LogInfo("Display settings hooks installation skipped - shutdown in progress");
+    // Check if display settings hooks should be suppressed
+    if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(display_commanderhooks::HookType::DISPLAY_SETTINGS)) {
+        LogInfo("Display settings hooks installation suppressed by user setting");
         return false;
     }
-
     LogInfo("Installing display settings hooks...");
 
     // Hook ChangeDisplaySettingsA
@@ -244,6 +245,10 @@ bool InstallDisplaySettingsHooks() {
 
     g_display_settings_hooks_installed.store(true);
     LogInfo("Display settings hooks installed successfully");
+
+    // Mark display settings hooks as installed
+    display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(display_commanderhooks::HookType::DISPLAY_SETTINGS);
+
     return true;
 }
 

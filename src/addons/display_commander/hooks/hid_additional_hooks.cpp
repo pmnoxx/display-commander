@@ -291,7 +291,7 @@ bool InstallAdditionalHIDHooks() {
     }
 
     // Initialize MinHook (only if not already initialized)
-    MH_STATUS init_status = SafeInitializeMinHook();
+    MH_STATUS init_status = SafeInitializeMinHook(display_commanderhooks::HookType::HID);
     if (init_status != MH_OK && init_status != MH_ERROR_ALREADY_INITIALIZED) {
         LogError("Failed to initialize MinHook for additional HID hooks - Status: %d", init_status);
         return false;

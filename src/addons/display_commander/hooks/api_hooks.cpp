@@ -514,8 +514,24 @@ bool InstallDxgiHooks() {
         return false;
     }
 
+    if (true) {
+        return false;
+    }
+
     dxgi_hooks_installed = true;
 
+    // Initialize MinHook (only if not already initialized)
+    MH_STATUS init_status = SafeInitializeMinHook(display_commanderhooks::HookType::DXGI);
+    if (init_status != MH_OK && init_status != MH_ERROR_ALREADY_INITIALIZED) {
+        LogError("Failed to initialize MinHook for DXGI hooks - Status: %d", init_status);
+        return false;
+    }
+
+    if (init_status == MH_ERROR_ALREADY_INITIALIZED) {
+        LogInfo("MinHook already initialized, proceeding with DXGI hooks");
+    } else {
+        LogInfo("MinHook initialized successfully for DXGI hooks");
+    }
 
     // Get dxgi.dll module handle
     HMODULE dxgi_module = GetModuleHandleW(L"dxgi.dll");
@@ -625,20 +641,73 @@ bool InstallD3DDeviceHooks() {
     return true;
 }
 
+bool InstallWindowsApiHooks() {
+    // Check if Windows API hooks should be suppressed
+    if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(display_commanderhooks::HookType::WINDOW_API)) {
+        LogInfo("Windows API hooks installation suppressed by user setting");
+        return false;
+    }
+
+    LogInfo("Installing Windows API hooks...");
+
+    // Hook GetFocus
+    if (!CreateAndEnableHook(GetFocus, GetFocus_Detour, reinterpret_cast<LPVOID *>(&GetFocus_Original), "GetFocus")) {
+        LogError("Failed to create and enable GetFocus hook");
+        return false;
+    }
+
+    // Hook GetForegroundWindow
+    if (!CreateAndEnableHook(GetForegroundWindow, GetForegroundWindow_Detour, reinterpret_cast<LPVOID *>(&GetForegroundWindow_Original), "GetForegroundWindow")) {
+        LogError("Failed to create and enable GetForegroundWindow hook");
+        return false;
+    }
+
+    // Hook GetActiveWindow
+    if (!CreateAndEnableHook(GetActiveWindow, GetActiveWindow_Detour, reinterpret_cast<LPVOID *>(&GetActiveWindow_Original), "GetActiveWindow")) {
+        LogError("Failed to create and enable GetActiveWindow hook");
+        return false;
+    }
+
+    // Hook GetGUIThreadInfo
+    if (!CreateAndEnableHook(GetGUIThreadInfo, GetGUIThreadInfo_Detour, reinterpret_cast<LPVOID *>(&GetGUIThreadInfo_Original), "GetGUIThreadInfo")) {
+        LogError("Failed to create and enable GetGUIThreadInfo hook");
+        return false;
+    }
+
+    // Hook SetThreadExecutionState
+    if (!CreateAndEnableHook(SetThreadExecutionState, SetThreadExecutionState_Detour, reinterpret_cast<LPVOID *>(&SetThreadExecutionState_Original), "SetThreadExecutionState")) {
+        LogError("Failed to create and enable SetThreadExecutionState hook");
+        return false;
+    }
+
+    // Hook SetWindowLongPtrW
+    if (!CreateAndEnableHook(SetWindowLongPtrW, SetWindowLongPtrW_Detour, reinterpret_cast<LPVOID *>(&SetWindowLongPtrW_Original), "SetWindowLongPtrW")) {
+        LogError("Failed to create and enable SetWindowLongPtrW hook");
+        return false;
+    }
+
+    // Hook SetWindowPos
+    if (!CreateAndEnableHook(SetWindowPos, SetWindowPos_Detour, reinterpret_cast<LPVOID *>(&SetWindowPos_Original), "SetWindowPos")) {
+        LogError("Failed to create and enable SetWindowPos hook");
+        return false;
+    }
+
+    LogInfo("Windows API hooks installed successfully");
+
+    // Mark Windows API hooks as installed
+    display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(display_commanderhooks::HookType::WINDOW_API);
+
+    return true;
+}
+
 bool InstallApiHooks() {
     if (g_api_hooks_installed.load()) {
         LogInfo("API hooks already installed");
         return true;
     }
-
-    // Check if API hooks should be suppressed
-    if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(display_commanderhooks::HookType::API)) {
-        LogInfo("API hooks installation suppressed by user setting");
-        return false;
-    }
-
+    #if 0
     // Initialize MinHook (only if not already initialized)
-    MH_STATUS init_status = SafeInitializeMinHook();
+    MH_STATUS init_status = SafeInitializeMinHook(display_commanderhooks::HookType::API);
     if (init_status != MH_OK && init_status != MH_ERROR_ALREADY_INITIALIZED) {
         LogError("Failed to initialize MinHook for API hooks - Status: %d", init_status);
         return false;
@@ -649,112 +718,43 @@ bool InstallApiHooks() {
     } else {
         LogInfo("MinHook initialized successfully for API hooks");
     }
-    // Hook GetFocus
-    if (!CreateAndEnableHook(GetFocus, GetFocus_Detour, reinterpret_cast<LPVOID *>(&GetFocus_Original), "GetFocus")) {
-        LogError("Failed to create and enable GetFocus hook");
-    }
-
-    // Hook GetForegroundWindow
-    if (!CreateAndEnableHook(GetForegroundWindow, GetForegroundWindow_Detour, reinterpret_cast<LPVOID *>(&GetForegroundWindow_Original), "GetForegroundWindow")) {
-        LogError("Failed to create and enable GetForegroundWindow hook");
-    }
-
-    // Hook GetActiveWindow
-    if (!CreateAndEnableHook(GetActiveWindow, GetActiveWindow_Detour, reinterpret_cast<LPVOID *>(&GetActiveWindow_Original), "GetActiveWindow")) {
-        LogError("Failed to create and enable GetActiveWindow hook");
-    }
-
-    // Hook GetGUIThreadInfo
-    if (!CreateAndEnableHook(GetGUIThreadInfo, GetGUIThreadInfo_Detour, reinterpret_cast<LPVOID *>(&GetGUIThreadInfo_Original), "GetGUIThreadInfo")) {
-        LogError("Failed to create and enable GetGUIThreadInfo hook");
-    }
-
-    // Hook SetThreadExecutionState
-    if (!CreateAndEnableHook(SetThreadExecutionState, SetThreadExecutionState_Detour, reinterpret_cast<LPVOID *>(&SetThreadExecutionState_Original), "SetThreadExecutionState")) {
-        LogError("Failed to create and enable SetThreadExecutionState hook");
-    }
-
-    // Hook SetWindowLongPtrW
-    if (!CreateAndEnableHook(SetWindowLongPtrW, SetWindowLongPtrW_Detour, reinterpret_cast<LPVOID *>(&SetWindowLongPtrW_Original), "SetWindowLongPtrW")) {
-        LogError("Failed to create and enable SetWindowLongPtrW hook");
-    }
-
-    // Hook SetWindowPos
-    if (!CreateAndEnableHook(SetWindowPos, SetWindowPos_Detour, reinterpret_cast<LPVOID *>(&SetWindowPos_Original), "SetWindowPos")) {
-        LogError("Failed to create and enable SetWindowPos hook");
-    }
-
-    #if 0
-    // Hook SetCursor
-    if (!CreateAndEnableHook(SetCursor, SetCursor_Detour, reinterpret_cast<LPVOID *>(&SetCursor_Original), "SetCursor")) {
-        LogError("Failed to create and enable SetCursor hook");
-    }
-
-    // Hook ShowCursor
-    if (!CreateAndEnableHook(ShowCursor, ShowCursor_Detour, reinterpret_cast<LPVOID *>(&ShowCursor_Original), "ShowCursor")) {
-        LogError("Failed to create and enable ShowCursor hook");
-    }
     #endif
 
-
+    // Install Windows API hooks
+    InstallWindowsApiHooks();
     // todo: move to loadlibrary hooks
     // Install Windows message hooks
 
 
     // ### SAME LIBRARY ###
-    if (!InstallWindowsMessageHooks()) {
-        LogError("Failed to install Windows message hooks");
-    }
+    InstallWindowsMessageHooks();
 
-    // Install timeslowdown hooks
-    if (!InstallTimeslowdownHooks()) {
-        LogError("Failed to install timeslowdown hooks");
-    }
+    InstallTimeslowdownHooks();
 
-    // Install process exit hooks
-    if (!InstallProcessExitHooks()) {
-        LogError("Failed to install process exit hooks");
-    }
+    InstallProcessExitHooks();
 
-    if (!InstallSleepHooks()) {
-        LogError("Failed to install sleep hooks");
-    }
+    InstallSleepHooks();
 
     // Install LoadLibrary hooks
-    if (!InstallLoadLibraryHooks()) {
-        LogError("Failed to install LoadLibrary hooks");
-    }
+    InstallLoadLibraryHooks();
 
     // Install DirectInput hooks
-    if (!InstallDirectInputHooks()) {
-        LogError("Failed to install DirectInput hooks");
-    }
+    InstallDirectInputHooks();
 
     // Install OpenGL hooks
-    if (!InstallOpenGLHooks()) {
-        LogError("Failed to install OpenGL hooks");
-    }
+    InstallOpenGLHooks();
 
     // Install display settings hooks
-    if (!InstallDisplaySettingsHooks()) {
-        LogError("Failed to install display settings hooks");
-    }
+    InstallDisplaySettingsHooks();
 
     // Install debug output hooks
-    if (!debug_output::InstallDebugOutputHooks()) {
-        LogError("Failed to install debug output hooks");
-    }
+    debug_output::InstallDebugOutputHooks();
 
     // Install D3D device creation hooks
-    if (!InstallD3DDeviceHooks()) {
-        LogError("Failed to install D3D device hooks");
-    }
+    InstallD3DDeviceHooks();
 
     g_api_hooks_installed.store(true);
     LogInfo("API hooks installed successfully");
-
-    // Mark API hooks as installed
-    display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(display_commanderhooks::HookType::API);
 
     // Debug: Show current continue rendering state
     bool current_state = s_continue_rendering.load();

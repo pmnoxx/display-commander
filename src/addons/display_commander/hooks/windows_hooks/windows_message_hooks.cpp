@@ -7,6 +7,7 @@
 #include "../../utils/logging.hpp"
 #include "../api_hooks.hpp" // For GetGameWindow and other functions
 #include "../../process_exit_hooks.hpp" // For UnhandledExceptionHandler
+#include "../hook_suppression_manager.hpp"
 #include <MinHook.h>
 #include <array>
 
@@ -1199,8 +1200,14 @@ bool InstallWindowsMessageHooks() {
         return true;
     }
 
+    // Check if Windows message hooks should be suppressed
+    if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(display_commanderhooks::HookType::WINDOW_API)) {
+        LogInfo("Windows message hooks installation suppressed by user setting");
+        return false;
+    }
+
     // Initialize MinHook (only if not already initialized)
-    MH_STATUS init_status = SafeInitializeMinHook();
+    MH_STATUS init_status = SafeInitializeMinHook(display_commanderhooks::HookType::WINDOWS_MESSAGE);
     if (init_status != MH_OK && init_status != MH_ERROR_ALREADY_INITIALIZED) {
         LogError("Failed to initialize MinHook for Windows message hooks - Status: %d", init_status);
         return false;
@@ -1449,8 +1456,12 @@ bool InstallWindowsMessageHooks() {
         return false;
     }
 
+
     g_message_hooks_installed.store(true);
     LogInfo("Windows message hooks installed successfully");
+
+    // Mark Windows message hooks as installed
+    display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(display_commanderhooks::HookType::WINDOW_API);
 
     return true;
 }

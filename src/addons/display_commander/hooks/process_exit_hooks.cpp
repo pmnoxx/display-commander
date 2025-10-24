@@ -2,6 +2,7 @@
 #include "../utils.hpp"
 #include "../utils/general_utils.hpp"
 #include "../utils/logging.hpp"
+#include "hook_suppression_manager.hpp"
 #include <MinHook.h>
 
 namespace display_commanderhooks {
@@ -51,8 +52,14 @@ bool InstallProcessExitHooks() {
         return true;
     }
 
+    // Check if process exit hooks should be suppressed
+    if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(display_commanderhooks::HookType::PROCESS_EXIT)) {
+        LogInfo("Process exit hooks installation suppressed by user setting");
+        return false;
+    }
+
     // Initialize MinHook (only if not already initialized)
-    MH_STATUS init_status = SafeInitializeMinHook();
+    MH_STATUS init_status = SafeInitializeMinHook(display_commanderhooks::HookType::PROCESS_EXIT);
     if (init_status != MH_OK && init_status != MH_ERROR_ALREADY_INITIALIZED) {
         LogError("Failed to initialize MinHook for process exit hooks - Status: %d", init_status);
         return false;
@@ -78,6 +85,9 @@ bool InstallProcessExitHooks() {
 
     g_process_exit_hooks_installed.store(true);
     LogInfo("Process exit hooks installed successfully");
+
+    // Mark process exit hooks as installed
+    display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(display_commanderhooks::HookType::PROCESS_EXIT);
 
     return true;
 }

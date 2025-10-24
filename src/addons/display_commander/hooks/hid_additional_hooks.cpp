@@ -1,6 +1,6 @@
 #include "hid_additional_hooks.hpp"
+#include "hook_suppression_manager.hpp"
 #include "hid_statistics.hpp"
-#include "../utils.hpp"
 #include "../utils/general_utils.hpp"
 #include "../utils/logging.hpp"
 #include <MinHook.h>
@@ -284,6 +284,12 @@ bool InstallAdditionalHIDHooks() {
         return true;
     }
 
+    // Check if HID hooks should be suppressed
+    if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(display_commanderhooks::HookType::HID)) {
+        LogInfo("HID hooks installation suppressed by user setting");
+        return false;
+    }
+
     // Initialize MinHook (only if not already initialized)
     MH_STATUS init_status = SafeInitializeMinHook();
     if (init_status != MH_OK && init_status != MH_ERROR_ALREADY_INITIALIZED) {
@@ -395,6 +401,10 @@ bool InstallAdditionalHIDHooks() {
         if (successful_hooks < total_hooks) {
             LogWarn("Some HID hooks failed to install, but continuing with available functionality");
         }
+
+        // Mark HID hooks as installed
+        display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(display_commanderhooks::HookType::HID);
+
         return true;
     } else {
         LogError("Failed to install any additional HID hooks");

@@ -1,4 +1,5 @@
 #include "dinput_hooks.hpp"
+#include "hook_suppression_manager.hpp"
 #include "windows_hooks/windows_message_hooks.hpp"
 #include "../globals.hpp"
 #include "../utils/general_utils.hpp"
@@ -177,6 +178,12 @@ bool InstallDirectInputHooks() {
         return true;
     }
 
+    // Check if DirectInput hooks should be suppressed
+    if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(display_commanderhooks::HookType::DINPUT)) {
+        LogInfo("DirectInput hooks installation suppressed by user setting");
+        return false;
+    }
+
     // Initialize MinHook (only if not already initialized)
     MH_STATUS init_status = SafeInitializeMinHook();
     if (init_status != MH_OK && init_status != MH_ERROR_ALREADY_INITIALIZED) {
@@ -238,6 +245,9 @@ bool InstallDirectInputHooks() {
 
     g_dinput_hooks_installed.store(true);
     LogInfo("DirectInput hooks installation completed");
+
+    // Mark DirectInput hooks as installed
+    display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(display_commanderhooks::HookType::DINPUT);
 
     return true;
 }

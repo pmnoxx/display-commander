@@ -1,4 +1,5 @@
 #include "loadlibrary_hooks.hpp"
+#include "hook_suppression_manager.hpp"
 #include "api_hooks.hpp"
 #include "xinput_hooks.hpp"
 #include "windows_gaming_input_hooks.hpp"
@@ -505,6 +506,12 @@ bool InstallLoadLibraryHooks() {
         return true;
     }
 
+    // Check if LoadLibrary hooks should be suppressed
+    if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(display_commanderhooks::HookType::LOADLIBRARY)) {
+        LogInfo("LoadLibrary hooks installation suppressed by user setting");
+        return false;
+    }
+
     // First, enumerate all currently loaded modules
     LogInfo("Enumerating currently loaded modules...");
     if (!EnumerateLoadedModules()) {
@@ -550,6 +557,9 @@ bool InstallLoadLibraryHooks() {
 
     g_loadlibrary_hooks_installed.store(true);
     LogInfo("LoadLibrary hooks installed successfully");
+
+    // Mark LoadLibrary hooks as installed
+    display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(display_commanderhooks::HookType::LOADLIBRARY);
 
     return true;
 }

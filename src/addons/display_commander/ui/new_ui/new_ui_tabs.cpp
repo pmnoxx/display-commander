@@ -6,6 +6,7 @@
 #include "developer_new_tab.hpp"
 #include "experimental_tab.hpp"
 #include "hook_stats_tab.hpp"
+#include "hook_suppression_tab.hpp"
 #include "main_new_tab.hpp"
 #include "streamline_tab.hpp"
 #include "swapchain_tab.hpp"
@@ -213,6 +214,16 @@ void InitializeNewUI() {
             LogError("Unknown error drawing hook stats tab");
         }
     }, true); // Hook Statistics tab is advanced
+
+    g_tab_manager.AddTab("Hook Suppression", "hook_suppression", [](reshade::api::effect_runtime* runtime) {
+        try {
+            ui::new_ui::RenderHookSuppressionTab();
+        } catch (const std::exception &e) {
+            LogError("Error drawing hook suppression tab: %s", e.what());
+        } catch (...) {
+            LogError("Unknown error drawing hook suppression tab");
+        }
+    }, true); // Hook Suppression tab is advanced
 
     g_tab_manager.AddTab("Streamline", "streamline", [](reshade::api::effect_runtime* runtime) {
         try {

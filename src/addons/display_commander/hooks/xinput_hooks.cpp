@@ -1,4 +1,5 @@
 #include "xinput_hooks.hpp"
+#include "hook_suppression_manager.hpp"
 #include "../utils/logging.hpp"
 #include "../settings/developer_tab_settings.hpp"
 #include "dualsense_hooks.hpp"
@@ -378,6 +379,12 @@ bool InstallXInputHooks() {
         return false;
     }
 
+    // Check if XInput hooks should be suppressed
+    if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(display_commanderhooks::HookType::XINPUT)) {
+        LogInfo("XInput hooks installation suppressed by user setting");
+        return false;
+    }
+
     if (!g_initialized_with_hwnd.load()) {
         LogInfo("Skipping XInput hooks installation until display commander is initialized");
         return true;
@@ -482,6 +489,9 @@ bool InstallXInputHooks() {
     }
     if (any_success) {
         g_xinput_hooks_installed.store(true);
+
+        // Mark XInput hooks as installed
+        display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(display_commanderhooks::HookType::XINPUT);
     }
 
     return any_success;

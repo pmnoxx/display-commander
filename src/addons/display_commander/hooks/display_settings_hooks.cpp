@@ -235,10 +235,12 @@ bool InstallDisplaySettingsHooks() {
         return false;
     }
 
+    #if 0
     if (!CreateAndEnableHook(SetWindowLongPtrW, SetWindowLongPtrW_Detour, (LPVOID*)&SetWindowLongPtrW_Original, "SetWindowLongPtrW")) {
         LogError("Failed to create and enable SetWindowLongPtrW hook");
         return false;
     }
+    #endif
 
     g_display_settings_hooks_installed.store(true);
     LogInfo("Display settings hooks installed successfully");

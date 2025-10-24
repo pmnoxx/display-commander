@@ -1,4 +1,5 @@
 #include "windows_gaming_input_hooks.hpp"
+#include "hook_suppression_manager.hpp"
 #include "../utils.hpp"
 #include "../utils/general_utils.hpp"
 #include "../utils/logging.hpp"
@@ -153,6 +154,12 @@ bool InstallWindowsGamingInputHooks() {
         return true;
     }
 
+    // Check if Windows Gaming Input hooks should be suppressed
+    if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(display_commanderhooks::HookType::WINDOWS_GAMING_INPUT)) {
+        LogInfo("Windows Gaming Input hooks installation suppressed by user setting");
+        return false;
+    }
+
     // MinHook is already initialized by API hooks, so we don't need to initialize it again
 
     // Get the address of RoGetActivationFactory from combase.dll
@@ -175,6 +182,10 @@ bool InstallWindowsGamingInputHooks() {
                            (LPVOID *)&RoGetActivationFactory_Original, "RoGetActivationFactory")) {
         g_wgi_hooks_installed.store(true);
         LogInfo("Successfully hooked RoGetActivationFactory");
+
+        // Mark Windows Gaming Input hooks as installed
+        display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(display_commanderhooks::HookType::WINDOWS_GAMING_INPUT);
+
         return true;
     } else {
         LogError("Failed to create and enable RoGetActivationFactory hook");

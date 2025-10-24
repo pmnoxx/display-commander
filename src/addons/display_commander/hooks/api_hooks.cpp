@@ -1,4 +1,5 @@
 #include "api_hooks.hpp"
+#include "hook_suppression_manager.hpp"
 #include "../utils/general_utils.hpp"
 #include "../utils/logging.hpp"
 #include "dxgi/dxgi_present_hooks.hpp"
@@ -506,6 +507,13 @@ bool InstallDxgiHooks() {
         LogInfo("DXGI hooks already installed");
         return true;
     }
+
+    // Check if DXGI hooks should be suppressed
+    if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(display_commanderhooks::HookType::DXGI)) {
+        LogInfo("DXGI hooks installation suppressed by user setting");
+        return false;
+    }
+
     dxgi_hooks_installed = true;
 
 
@@ -551,6 +559,10 @@ bool InstallDxgiHooks() {
     }
 
     LogInfo("DXGI hooks installed successfully");
+
+    // Mark DXGI hooks as installed
+    display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(display_commanderhooks::HookType::DXGI);
+
     return true;
 }
 
@@ -560,6 +572,13 @@ bool InstallD3DDeviceHooks() {
         LogInfo("D3D device hooks already installed");
         return true;
     }
+
+    // Check if D3D device hooks should be suppressed
+    if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(display_commanderhooks::HookType::D3D_DEVICE)) {
+        LogInfo("D3D device hooks installation suppressed by user setting");
+        return false;
+    }
+
     d3d_device_hooks_installed = true;
 
     LogInfo("Installing D3D device creation hooks...");
@@ -599,6 +618,10 @@ bool InstallD3DDeviceHooks() {
     }
 
     LogInfo("D3D device hooks installed successfully");
+
+    // Mark D3D device hooks as installed
+    display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(display_commanderhooks::HookType::D3D_DEVICE);
+
     return true;
 }
 
@@ -606,6 +629,12 @@ bool InstallApiHooks() {
     if (g_api_hooks_installed.load()) {
         LogInfo("API hooks already installed");
         return true;
+    }
+
+    // Check if API hooks should be suppressed
+    if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(display_commanderhooks::HookType::API)) {
+        LogInfo("API hooks installation suppressed by user setting");
+        return false;
     }
 
     // Initialize MinHook (only if not already initialized)
@@ -723,6 +752,9 @@ bool InstallApiHooks() {
 
     g_api_hooks_installed.store(true);
     LogInfo("API hooks installed successfully");
+
+    // Mark API hooks as installed
+    display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(display_commanderhooks::HookType::API);
 
     // Debug: Show current continue rendering state
     bool current_state = s_continue_rendering.load();

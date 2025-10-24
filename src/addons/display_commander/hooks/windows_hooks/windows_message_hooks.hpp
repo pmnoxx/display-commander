@@ -46,6 +46,8 @@ enum HookIndex {
     HOOK_DispatchMessageW,
     HOOK_GetRawInputData,
     HOOK_RegisterRawInputDevices,
+    HOOK_GetRawInputDeviceList,
+    HOOK_DefRawInputProc,
     HOOK_VkKeyScan,
     HOOK_VkKeyScanEx,
     HOOK_ToAscii,
@@ -105,6 +107,8 @@ using DispatchMessageA_pfn = LRESULT(WINAPI *)(const MSG *);
 using DispatchMessageW_pfn = LRESULT(WINAPI *)(const MSG *);
 using GetRawInputData_pfn = UINT(WINAPI *)(HRAWINPUT, UINT, LPVOID, PUINT, UINT);
 using RegisterRawInputDevices_pfn = BOOL(WINAPI *)(PCRAWINPUTDEVICE, UINT, UINT);
+using GetRawInputDeviceList_pfn = UINT(WINAPI *)(PRAWINPUTDEVICELIST, PUINT, UINT);
+using DefRawInputProc_pfn = LRESULT(WINAPI *)(PRAWINPUT, INT, UINT);
 using VkKeyScan_pfn = SHORT(WINAPI *)(CHAR);
 using VkKeyScanEx_pfn = SHORT(WINAPI *)(CHAR, HKL);
 using ToAscii_pfn = int(WINAPI *)(UINT, UINT, const BYTE *, LPWORD, UINT);
@@ -144,6 +148,8 @@ extern DispatchMessageA_pfn DispatchMessageA_Original;
 extern DispatchMessageW_pfn DispatchMessageW_Original;
 extern GetRawInputData_pfn GetRawInputData_Original;
 extern RegisterRawInputDevices_pfn RegisterRawInputDevices_Original;
+extern GetRawInputDeviceList_pfn GetRawInputDeviceList_Original;
+extern DefRawInputProc_pfn DefRawInputProc_Original;
 extern VkKeyScan_pfn VkKeyScan_Original;
 extern VkKeyScanEx_pfn VkKeyScanEx_Original;
 extern ToAscii_pfn ToAscii_Original;
@@ -185,6 +191,8 @@ LRESULT WINAPI DispatchMessageA_Detour(const MSG *lpMsg);
 LRESULT WINAPI DispatchMessageW_Detour(const MSG *lpMsg);
 UINT WINAPI GetRawInputData_Detour(HRAWINPUT hRawInput, UINT uiCommand, LPVOID pData, PUINT pcbSize, UINT cbSizeHeader);
 BOOL WINAPI RegisterRawInputDevices_Detour(PCRAWINPUTDEVICE pRawInputDevices, UINT uiNumDevices, UINT cbSize);
+UINT WINAPI GetRawInputDeviceList_Detour(PRAWINPUTDEVICELIST pRawInputDeviceList, PUINT puiNumDevices, UINT cbSize);
+LRESULT WINAPI DefRawInputProc_Detour(PRAWINPUT paRawInput, INT nInput, UINT cbSizeHeader);
 SHORT WINAPI VkKeyScan_Detour(CHAR ch);
 SHORT WINAPI VkKeyScanEx_Detour(CHAR ch, HKL dwhkl);
 int WINAPI ToAscii_Detour(UINT uVirtKey, UINT uScanCode, const BYTE *lpKeyState, LPWORD lpChar, UINT uFlags);

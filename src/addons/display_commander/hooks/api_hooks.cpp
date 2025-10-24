@@ -12,7 +12,9 @@
 #include "dinput_hooks.hpp"
 #include "display_settings_hooks.hpp"
 #include "debug_output_hooks.hpp"
+#include "window_proc_hooks.hpp"
 #include "../settings/developer_tab_settings.hpp"
+#include "../display_cache.hpp"
 #include <MinHook.h>
 
 // External reference to screensaver mode setting
@@ -192,6 +194,84 @@ BOOL WINAPI SetWindowPos_Detour(HWND hWnd, HWND hWndInsertAfter, int X, int Y, i
                                          : SetWindowPos(hWnd, HWND_NOTOPMOST, X, Y, cx, cy, uFlags);
         }
     }
+/*
+    // Apply spoofing logic if and only if hwnd matches g_last_swapchain_hwnd
+    HWND swapchain_hwnd = g_last_swapchain_hwnd.load();
+    if (hWnd == swapchain_hwnd && swapchain_hwnd != nullptr) {
+        // Get the current window state to apply spoofing
+        auto window_state = g_window_state.load();
+        if (window_state) {
+            auto s = *window_state;
+
+            // Apply the same scaling calculations as in ApplyWindowChange
+            float scaling_percentage_width = 1.0f;
+            float scaling_percentage_height = 1.0f;
+
+            // Get DPI scaling from the display cache
+            const auto* disp = display_cache::g_displayCache.GetDisplay(s.current_monitor_index);
+            if (disp != nullptr) {
+                float dpi = disp->GetDpiScaling();
+                LogInfo("SetWindowPos_Detour: Applying spoofing for swapchain window 0x%p, target_x: %d, target_y: %d, target_w: %d, target_h: %d, dpi: %f",
+                       hWnd, s.target_x, s.target_y, s.target_w, s.target_h, dpi);
+            }
+
+            // Get DPI using GetDpiForWindow with g_last_swapchain_hwnd (same as ApplyWindowChange)
+            if (swapchain_hwnd != nullptr) {
+                UINT dpi = GetDpiForWindow(swapchain_hwnd);
+                LogInfo("SetWindowPos_Detour: Window DPI from GetDpiForWindow: %u", dpi);
+            }
+
+            // Query Windows display scaling settings (same as ApplyWindowChange)
+            HDC hdc = GetDC(swapchain_hwnd);
+            if (hdc != nullptr) {
+                int system_dpi_x = GetDeviceCaps(hdc, LOGPIXELSX);
+                int system_dpi_y = GetDeviceCaps(hdc, LOGPIXELSY);
+
+                // Get virtual resolution (logical resolution before DPI scaling)
+                int virtual_width = GetDeviceCaps(hdc, HORZRES);
+                int virtual_height = GetDeviceCaps(hdc, VERTRES);
+
+                // Get physical resolution (actual pixel resolution)
+                int physical_width = GetDeviceCaps(hdc, DESKTOPHORZRES);
+                int physical_height = GetDeviceCaps(hdc, DESKTOPVERTRES);
+
+                ReleaseDC(nullptr, hdc);
+
+                // Prevent division by zero
+                if (physical_width > 0 && physical_height > 0) {
+                    scaling_percentage_width = static_cast<float>(virtual_width) / static_cast<float>(physical_width);
+                    scaling_percentage_height = static_cast<float>(virtual_height) / static_cast<float>(physical_height);
+                } else {
+                    LogWarn("SetWindowPos_Detour: Invalid physical resolution %dx%d, using default scaling", physical_width, physical_height);
+                    scaling_percentage_width = 1.0f;
+                    scaling_percentage_height = 1.0f;
+                }
+                LogInfo("SetWindowPos_Detour: Windows Display Scaling - Width: %.0f%%, Height: %.0f%%",
+                       scaling_percentage_width, scaling_percentage_height);
+            }
+
+            // Calculate final dimensions with scaling (same as ApplyWindowChange)
+            int final_width = static_cast<int>(round(s.target_w * scaling_percentage_width));
+            int final_height = static_cast<int>(round(s.target_h * scaling_percentage_height));
+
+            // Validate parameters before SetWindowPos call
+            if (final_width <= 0 || final_height <= 0) {
+                LogWarn("SetWindowPos_Detour: Invalid calculated dimensions %dx%d, using original parameters", final_width, final_height);
+            } else if (s.target_x < -32768 || s.target_x > 32767 || s.target_y < -32768 || s.target_y > 32767) {
+                LogWarn("SetWindowPos_Detour: Invalid coordinates (%d, %d), using original parameters", s.target_x, s.target_y);
+            } else {
+                // Use spoofed values
+                LogDebug("SetWindowPos_Detour: Using spoofed values - x=%d, y=%d, w=%d, h=%d, flags=0x%x",
+                        s.target_x, s.target_y, final_width, final_height, uFlags);
+
+                auto result = SetWindowPos_Original ? SetWindowPos_Original(hWnd, hWndInsertAfter, s.target_x, s.target_y, final_width, final_height, uFlags)
+                                             : SetWindowPos(hWnd, hWndInsertAfter, s.target_x, s.target_y, final_width, final_height, uFlags);
+
+                SendFakeActivationMessages(hWnd);
+                return result;
+            }
+        }
+    }*/
 
     // Call original function with unmodified parameters
     return SetWindowPos_Original ? SetWindowPos_Original(hWnd, hWndInsertAfter, X, Y, cx, cy, uFlags)

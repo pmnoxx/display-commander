@@ -83,6 +83,8 @@ DispatchMessageA_pfn DispatchMessageA_Original = nullptr;
 DispatchMessageW_pfn DispatchMessageW_Original = nullptr;
 GetRawInputData_pfn GetRawInputData_Original = nullptr;
 RegisterRawInputDevices_pfn RegisterRawInputDevices_Original = nullptr;
+GetRawInputDeviceList_pfn GetRawInputDeviceList_Original = nullptr;
+DefRawInputProc_pfn DefRawInputProc_Original = nullptr;
 VkKeyScan_pfn VkKeyScan_Original = nullptr;
 VkKeyScanEx_pfn VkKeyScanEx_Original = nullptr;
 ToAscii_pfn ToAscii_Original = nullptr;
@@ -132,6 +134,8 @@ static const std::array<const char*, HOOK_COUNT> g_hook_names = {"GetMessageA",
                                                "DispatchMessageW",
                                                "GetRawInputData",
                                                "RegisterRawInputDevices",
+                                               "GetRawInputDeviceList",
+                                               "DefRawInputProc",
                                                "VkKeyScan",
                                                "VkKeyScanEx",
                                                "ToAscii",
@@ -760,6 +764,63 @@ BOOL WINAPI RegisterRawInputDevices_Detour(PCRAWINPUTDEVICE pRawInputDevices, UI
                                             : RegisterRawInputDevices(pRawInputDevices, uiNumDevices, cbSize);
 }
 
+// Hooked GetRawInputDeviceList function
+UINT WINAPI GetRawInputDeviceList_Detour(PRAWINPUTDEVICELIST pRawInputDeviceList, PUINT puiNumDevices, UINT cbSize) {
+    g_hook_stats[HOOK_GetRawInputDeviceList].increment_total();
+
+    // Call original function
+    UINT result = GetRawInputDeviceList_Original ? GetRawInputDeviceList_Original(pRawInputDeviceList, puiNumDevices, cbSize)
+                                                  : GetRawInputDeviceList(pRawInputDeviceList, puiNumDevices, cbSize);
+
+    if (result != (UINT)-1) {
+        g_hook_stats[HOOK_GetRawInputDeviceList].increment_unsuppressed();
+
+        // Log device list information
+        if (pRawInputDeviceList != nullptr && puiNumDevices != nullptr) {
+            LogInfo("GetRawInputDeviceList returned %u devices", *puiNumDevices);
+            for (UINT i = 0; i < *puiNumDevices; ++i) {
+                LogInfo("Device %u: Handle=%p, Type=%u", i, pRawInputDeviceList[i].hDevice, pRawInputDeviceList[i].dwType);
+            }
+        }
+    }
+
+    return result;
+}
+
+// Hooked DefRawInputProc function
+LRESULT WINAPI DefRawInputProc_Detour(PRAWINPUT paRawInput, INT nInput, UINT cbSizeHeader) {
+    g_hook_stats[HOOK_DefRawInputProc].increment_total();
+
+    // Check if we should block raw input processing
+    bool should_block = false;
+
+    if (paRawInput != nullptr && nInput > 0) {
+        for (INT i = 0; i < nInput; ++i) {
+            PRAWINPUT current = &paRawInput[i];
+
+            if (current->header.dwType == RIM_TYPEKEYBOARD && ShouldBlockKeyboardInput()) {
+                should_block = true;
+                break;
+            } else if (current->header.dwType == RIM_TYPEMOUSE && ShouldBlockMouseInput()) {
+                should_block = true;
+                break;
+            }
+        }
+    }
+
+    if (should_block) {
+        // Return 0 to indicate the message was processed (blocked)
+        return 0;
+    }
+
+    // Call original function
+    LRESULT result = DefRawInputProc_Original ? DefRawInputProc_Original(paRawInput, nInput, cbSizeHeader)
+                                              : ::DefRawInputProc(&paRawInput, nInput, cbSizeHeader);
+
+    g_hook_stats[HOOK_DefRawInputProc].increment_unsuppressed();
+    return result;
+}
+
 // Hooked VkKeyScan function
 SHORT WINAPI VkKeyScan_Detour(CHAR ch) {
     // If keyboard input blocking is enabled, return -1 to indicate no virtual key found
@@ -1212,6 +1273,20 @@ bool InstallWindowsMessageHooks() {
         return false;
     }
 
+    // Hook GetRawInputDeviceList
+    if (!CreateAndEnableHook(GetRawInputDeviceList, GetRawInputDeviceList_Detour,
+                             (LPVOID *)&GetRawInputDeviceList_Original, "GetRawInputDeviceList")) {
+        LogError("Failed to create and enable GetRawInputDeviceList hook");
+        return false;
+    }
+
+    // Hook DefRawInputProc
+    if (!CreateAndEnableHook(DefRawInputProc, DefRawInputProc_Detour,
+                             (LPVOID *)&DefRawInputProc_Original, "DefRawInputProc")) {
+        LogError("Failed to create and enable DefRawInputProc hook");
+        return false;
+    }
+
     // Hook VkKeyScan
     if (!CreateAndEnableHook(VkKeyScan, VkKeyScan_Detour, (LPVOID *)&VkKeyScan_Original, "VkKeyScan")) {
         LogError("Failed to create and enable VkKeyScan hook");
@@ -1346,6 +1421,8 @@ void UninstallWindowsMessageHooks() {
     MH_RemoveHook(DispatchMessageW);
     MH_RemoveHook(GetRawInputData);
     MH_RemoveHook(RegisterRawInputDevices);
+    MH_RemoveHook(GetRawInputDeviceList);
+    MH_RemoveHook(DefRawInputProc);
     MH_RemoveHook(VkKeyScan);
     MH_RemoveHook(VkKeyScanEx);
     MH_RemoveHook(ToAscii);
@@ -1383,6 +1460,8 @@ void UninstallWindowsMessageHooks() {
     DispatchMessageW_Original = nullptr;
     GetRawInputData_Original = nullptr;
     RegisterRawInputDevices_Original = nullptr;
+    GetRawInputDeviceList_Original = nullptr;
+    DefRawInputProc_Original = nullptr;
     VkKeyScan_Original = nullptr;
     VkKeyScanEx_Original = nullptr;
     ToAscii_Original = nullptr;

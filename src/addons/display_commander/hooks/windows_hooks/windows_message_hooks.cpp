@@ -547,11 +547,11 @@ SHORT WINAPI GetKeyState_Detour(int vKey) {
     g_hook_stats[HOOK_GetKeyState].increment_total();
 
     // If input blocking is enabled, return 0 for all keys
-    if (ShouldBlockKeyboardInput()) {
-        // Block all keyboard keys (0x08-0xFF) and mouse buttons
-        if ((vKey >= 0x08 && vKey <= 0xFF) || (vKey >= VK_LBUTTON && vKey <= VK_XBUTTON2)) {
-            return 0; // Block input
-        }
+    if (ShouldBlockKeyboardInput() && (vKey >= 0x08 && vKey <= 0xFF)) {
+        return 0; // Block input
+    }
+    if (ShouldBlockMouseInput() && (vKey >= VK_LBUTTON && vKey <= VK_XBUTTON2)) {
+        return 0; // Block input
     }
 
     // Track unsuppressed calls
@@ -567,11 +567,11 @@ SHORT WINAPI GetAsyncKeyState_Detour(int vKey) {
     g_hook_stats[HOOK_GetAsyncKeyState].increment_total();
 
     // If input blocking is enabled, return 0 for all keys
-    if (ShouldBlockKeyboardInput()) {
-        // Block all keyboard keys (0x08-0xFF) and mouse buttons
-        if ((vKey >= 0x08 && vKey <= 0xFF) || (vKey >= VK_LBUTTON && vKey <= VK_XBUTTON2)) {
-            return 0; // Block input
-        }
+    if (ShouldBlockKeyboardInput() && (vKey >= 0x08 && vKey <= 0xFF)) {
+        return 0; // Block input
+    }
+    if (ShouldBlockMouseInput() && (vKey >= VK_LBUTTON && vKey <= VK_XBUTTON2)) {
+        return 0; // Block input
     }
 
     // Track unsuppressed calls

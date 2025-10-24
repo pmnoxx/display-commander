@@ -22,6 +22,25 @@ struct HookCallStats {
     }
 };
 
+// DLL group enumeration
+enum class DllGroup {
+    USER32,
+    XINPUT1_4,
+    KERNEL32,
+    DINPUT8,
+    DINPUT,
+    OPENGL,
+    DISPLAY_SETTINGS,
+    HID_API,
+    COUNT
+};
+
+// Hook information structure
+struct HookInfo {
+    const char* name;
+    DllGroup dll_group;
+};
+
 // Hook call statistics
 enum HookIndex {
     // user32.dll hooks (0-34)
@@ -81,6 +100,54 @@ enum HookIndex {
 
     // dinput.dll hooks (45)
     HOOK_DInputCreateDevice,
+
+    // OpenGL/WGL hooks (46-60)
+    HOOK_wglSwapBuffers,
+    HOOK_wglMakeCurrent,
+    HOOK_wglCreateContext,
+    HOOK_wglDeleteContext,
+    HOOK_wglChoosePixelFormat,
+    HOOK_wglSetPixelFormat,
+    HOOK_wglGetPixelFormat,
+    HOOK_wglDescribePixelFormat,
+    HOOK_wglCreateContextAttribsARB,
+    HOOK_wglChoosePixelFormatARB,
+    HOOK_wglGetPixelFormatAttribivARB,
+    HOOK_wglGetPixelFormatAttribfvARB,
+    HOOK_wglGetProcAddress,
+    HOOK_wglSwapIntervalEXT,
+    HOOK_wglGetSwapIntervalEXT,
+
+    // Display Settings hooks (61-70)
+    HOOK_ChangeDisplaySettingsA,
+    HOOK_ChangeDisplaySettingsW,
+    HOOK_ChangeDisplaySettingsExA,
+    HOOK_ChangeDisplaySettingsExW,
+    HOOK_SetWindowPos,
+    HOOK_ShowWindow,
+    HOOK_SetWindowLongA,
+    HOOK_SetWindowLongW,
+    HOOK_SetWindowLongPtrA,
+    HOOK_SetWindowLongPtrW,
+
+    // HID API hooks (71-87)
+    HOOK_HID_CreateFileA,
+    HOOK_HID_CreateFileW,
+    HOOK_HID_ReadFile,
+    HOOK_HID_WriteFile,
+    HOOK_HID_DeviceIoControl,
+    HOOK_HIDD_GetInputReport,
+    HOOK_HIDD_GetAttributes,
+    HOOK_HIDD_GetPreparsedData,
+    HOOK_HIDD_FreePreparsedData,
+    HOOK_HIDD_GetCaps,
+    HOOK_HIDD_GetManufacturerString,
+    HOOK_HIDD_GetProductString,
+    HOOK_HIDD_GetSerialNumberString,
+    HOOK_HIDD_GetNumInputBuffers,
+    HOOK_HIDD_SetNumInputBuffers,
+    HOOK_HIDD_GetFeature,
+    HOOK_HIDD_SetFeature,
 
     HOOK_COUNT
 };
@@ -234,6 +301,11 @@ const HookCallStats &GetHookStats(int hook_index);
 void ResetAllHookStats();
 int GetHookCount();
 const char *GetHookName(int hook_index);
+
+// DLL group helper functions
+const char* GetDllGroupName(DllGroup group);
+DllGroup GetHookDllGroup(int hook_index);
+const HookInfo& GetHookInfo(int hook_index);
 
 // Keyboard state tracking
 namespace keyboard_tracker {

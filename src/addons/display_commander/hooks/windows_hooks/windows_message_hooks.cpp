@@ -78,6 +78,7 @@ GetKeyboardState_pfn GetKeyboardState_Original = nullptr;
 ClipCursor_pfn ClipCursor_Original = nullptr;
 GetCursorPos_pfn GetCursorPos_Original = nullptr;
 SetCursorPos_pfn SetCursorPos_Original = nullptr;
+SetPhysicalCursorPos_pfn SetPhysicalCursorPos_Original = nullptr;
 GetKeyState_pfn GetKeyState_Original = nullptr;
 GetAsyncKeyState_pfn GetAsyncKeyState_Original = nullptr;
 SetWindowsHookExA_pfn SetWindowsHookExA_Original = nullptr;
@@ -131,6 +132,7 @@ static const std::array<HookInfo, HOOK_COUNT> g_hook_info = {{
     {"ClipCursor", DllGroup::USER32},
     {"GetCursorPos", DllGroup::USER32},
     {"SetCursorPos", DllGroup::USER32},
+    {"SetPhysicalCursorPos", DllGroup::USER32},
     {"GetKeyState", DllGroup::USER32},
     {"GetAsyncKeyState", DllGroup::USER32},
     {"SetWindowsHookExA", DllGroup::USER32},
@@ -362,9 +364,15 @@ BOOL WINAPI GetMessageW_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT 
 
 // Hooked PeekMessageA function
 BOOL WINAPI PeekMessageA_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax, UINT wRemoveMsg) {
+    // Track total calls
+    g_hook_stats[HOOK_PeekMessageA].increment_total();
+
     // Call original function first
     BOOL result = PeekMessageA_Original ? PeekMessageA_Original(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax, wRemoveMsg)
                                         : PeekMessageA(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax, wRemoveMsg);
+
+    // Track unsuppressed calls (when we call the original function)
+    g_hook_stats[HOOK_PeekMessageA].increment_unsuppressed();
 
     // If we got a message
     if (result && lpMsg != nullptr) {
@@ -379,9 +387,15 @@ BOOL WINAPI PeekMessageA_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT
 
 // Hooked PeekMessageW function
 BOOL WINAPI PeekMessageW_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax, UINT wRemoveMsg) {
+    // Track total calls
+    g_hook_stats[HOOK_PeekMessageW].increment_total();
+
     // Call original function first
     BOOL result = PeekMessageW_Original ? PeekMessageW_Original(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax, wRemoveMsg)
                                         : PeekMessageW(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax, wRemoveMsg);
+
+    // Track unsuppressed calls (when we call the original function)
+    g_hook_stats[HOOK_PeekMessageW].increment_unsuppressed();
 
     // If we got a message
     if (result && lpMsg != nullptr) {
@@ -396,6 +410,9 @@ BOOL WINAPI PeekMessageW_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT
 
 // Hooked PostMessageA function
 BOOL WINAPI PostMessageA_Detour(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam) {
+    // Track total calls
+    g_hook_stats[HOOK_PostMessageA].increment_total();
+
     // Check if we should suppress this message (input blocking)
     if (ShouldSuppressMessage(hWnd, Msg)) {
         // Log suppressed input for debugging
@@ -412,6 +429,9 @@ BOOL WINAPI PostMessageA_Detour(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lPara
         return TRUE;
     }
 
+    // Track unsuppressed calls (when we call the original function)
+    g_hook_stats[HOOK_PostMessageA].increment_unsuppressed();
+
     // Call original function
     return PostMessageA_Original ? PostMessageA_Original(hWnd, Msg, wParam, lParam)
                                  : PostMessageA(hWnd, Msg, wParam, lParam);
@@ -419,6 +439,9 @@ BOOL WINAPI PostMessageA_Detour(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lPara
 
 // Hooked PostMessageW function
 BOOL WINAPI PostMessageW_Detour(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam) {
+    // Track total calls
+    g_hook_stats[HOOK_PostMessageW].increment_total();
+
     // Check if we should suppress this message (input blocking)
     if (ShouldSuppressMessage(hWnd, Msg)) {
         // Log suppressed input for debugging
@@ -435,6 +458,9 @@ BOOL WINAPI PostMessageW_Detour(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lPara
         return TRUE;
     }
 
+    // Track unsuppressed calls (when we call the original function)
+    g_hook_stats[HOOK_PostMessageW].increment_unsuppressed();
+
     // Call original function
     return PostMessageW_Original ? PostMessageW_Original(hWnd, Msg, wParam, lParam)
                                  : PostMessageW(hWnd, Msg, wParam, lParam);
@@ -442,8 +468,14 @@ BOOL WINAPI PostMessageW_Detour(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lPara
 
 // Hooked GetKeyboardState function
 BOOL WINAPI GetKeyboardState_Detour(PBYTE lpKeyState) {
+    // Track total calls
+    g_hook_stats[HOOK_GetKeyboardState].increment_total();
+
     // Call original function first
     BOOL result = GetKeyboardState_Original ? GetKeyboardState_Original(lpKeyState) : GetKeyboardState(lpKeyState);
+
+    // Track unsuppressed calls (when we call the original function)
+    g_hook_stats[HOOK_GetKeyboardState].increment_unsuppressed();
 
     // If keyboard input blocking is enabled and we got valid key state data
     if (result && lpKeyState != nullptr && ShouldBlockKeyboardInput()) {
@@ -480,6 +512,9 @@ void RestoreClipCursor() {
 
 // Hooked ClipCursor function
 BOOL WINAPI ClipCursor_Detour(const RECT *lpRect) {
+    // Track total calls
+    g_hook_stats[HOOK_ClipCursor].increment_total();
+
     // Store the clip rectangle for reference
     s_last_clip_cursor = (lpRect != nullptr) ? *lpRect : RECT{};
 
@@ -487,7 +522,10 @@ BOOL WINAPI ClipCursor_Detour(const RECT *lpRect) {
     if (ShouldBlockMouseInput()) {
         // Disable cursor clipping when input is blocked
         lpRect = nullptr;
+    } else{
+        g_hook_stats[HOOK_ClipCursor].increment_unsuppressed();
     }
+    // Track unsuppressed calls (when we call the original function)
 
     // Call original function
     return ClipCursor_Original ? ClipCursor_Original(lpRect) : ClipCursor(lpRect);
@@ -495,6 +533,9 @@ BOOL WINAPI ClipCursor_Detour(const RECT *lpRect) {
 
 // Hooked GetCursorPos function
 BOOL WINAPI GetCursorPos_Detour(LPPOINT lpPoint) {
+    // Track total calls
+    g_hook_stats[HOOK_GetCursorPos].increment_total();
+
     // If mouse position spoofing is enabled AND auto-click is enabled, return spoofed position
     if (settings::g_experimentalTabSettings.mouse_spoofing_enabled.GetValue() && lpPoint != nullptr) {
         // Check if auto-click is enabled
@@ -511,6 +552,9 @@ BOOL WINAPI GetCursorPos_Detour(LPPOINT lpPoint) {
         return TRUE;
     }
 
+    // Track unsuppressed calls (when we call the original function)
+    g_hook_stats[HOOK_GetCursorPos].increment_unsuppressed();
+
     // Call original function
     BOOL result = GetCursorPos_Original ? GetCursorPos_Original(lpPoint) : GetCursorPos(lpPoint);
 
@@ -524,6 +568,9 @@ BOOL WINAPI GetCursorPos_Detour(LPPOINT lpPoint) {
 
 // Hooked SetCursorPos function
 BOOL WINAPI SetCursorPos_Detour(int X, int Y) {
+    // Track total calls
+    g_hook_stats[HOOK_SetCursorPos].increment_total();
+
     // Update last known cursor position
     s_last_cursor_position.x = X;
     s_last_cursor_position.y = Y;
@@ -541,10 +588,42 @@ BOOL WINAPI SetCursorPos_Detour(int X, int Y) {
     // If mouse input blocking is enabled, block cursor position changes
     if (ShouldBlockMouseInput()) {
         return TRUE; // Block the cursor position change
+    } else {
+        g_hook_stats[HOOK_SetCursorPos].increment_unsuppressed();
     }
 
     // Call original function
     return SetCursorPos_Original ? SetCursorPos_Original(X, Y) : SetCursorPos(X, Y);
+}
+
+// Hooked SetPhysicalCursorPos function
+BOOL WINAPI SetPhysicalCursorPos_Detour(int X, int Y) {
+    // Track total calls
+    g_hook_stats[HOOK_SetPhysicalCursorPos].increment_total();
+
+    // Update last known cursor position
+    s_last_cursor_position.x = X;
+    s_last_cursor_position.y = Y;
+
+    // If mouse position spoofing is enabled AND auto-click is enabled, update spoofed position instead of moving cursor
+    if (settings::g_experimentalTabSettings.mouse_spoofing_enabled.GetValue()) {
+        // Check if auto-click is enabled
+        if (g_auto_click_enabled.load()) {
+            s_spoofed_mouse_x.store(X);
+            s_spoofed_mouse_y.store(Y);
+            return TRUE; // Return success without actually moving the cursor
+        }
+    }
+
+    // If mouse input blocking is enabled, block cursor position changes
+    if (ShouldBlockMouseInput()) {
+        return TRUE; // Block the cursor position change
+    } else {
+        g_hook_stats[HOOK_SetPhysicalCursorPos].increment_unsuppressed();
+    }
+
+    // Call original function
+    return SetPhysicalCursorPos_Original ? SetPhysicalCursorPos_Original(X, Y) : SetPhysicalCursorPos(X, Y);
 }
 
 // Hooked GetKeyState function
@@ -589,9 +668,15 @@ SHORT WINAPI GetAsyncKeyState_Detour(int vKey) {
 
 // Hooked SetWindowsHookExA function
 HHOOK WINAPI SetWindowsHookExA_Detour(int idHook, HOOKPROC lpfn, HINSTANCE hmod, DWORD dwThreadId) {
+    // Track total calls
+    g_hook_stats[HOOK_SetWindowsHookExA].increment_total();
+
     // Call original function first
     HHOOK result = SetWindowsHookExA_Original ? SetWindowsHookExA_Original(idHook, lpfn, hmod, dwThreadId)
                                               : SetWindowsHookExA(idHook, lpfn, hmod, dwThreadId);
+
+    // Track unsuppressed calls (when we call the original function)
+    g_hook_stats[HOOK_SetWindowsHookExA].increment_unsuppressed();
 
     // Log hook installation for debugging
     if (result != nullptr) {
@@ -603,9 +688,15 @@ HHOOK WINAPI SetWindowsHookExA_Detour(int idHook, HOOKPROC lpfn, HINSTANCE hmod,
 
 // Hooked SetWindowsHookExW function
 HHOOK WINAPI SetWindowsHookExW_Detour(int idHook, HOOKPROC lpfn, HINSTANCE hmod, DWORD dwThreadId) {
+    // Track total calls
+    g_hook_stats[HOOK_SetWindowsHookExW].increment_total();
+
     // Call original function first
     HHOOK result = SetWindowsHookExW_Original ? SetWindowsHookExW_Original(idHook, lpfn, hmod, dwThreadId)
                                               : SetWindowsHookExW(idHook, lpfn, hmod, dwThreadId);
+
+    // Track unsuppressed calls (when we call the original function)
+    g_hook_stats[HOOK_SetWindowsHookExW].increment_unsuppressed();
 
     // Log hook installation for debugging
     if (result != nullptr) {
@@ -617,8 +708,14 @@ HHOOK WINAPI SetWindowsHookExW_Detour(int idHook, HOOKPROC lpfn, HINSTANCE hmod,
 
 // Hooked UnhookWindowsHookEx function
 BOOL WINAPI UnhookWindowsHookEx_Detour(HHOOK hhk) {
+    // Track total calls
+    g_hook_stats[HOOK_UnhookWindowsHookEx].increment_total();
+
     // Log hook removal for debugging
     LogInfo("UnhookWindowsHookEx called: hhk=0x%p", hhk);
+
+    // Track unsuppressed calls (when we call the original function)
+    g_hook_stats[HOOK_UnhookWindowsHookEx].increment_unsuppressed();
 
     // Call original function
     return UnhookWindowsHookEx_Original ? UnhookWindowsHookEx_Original(hhk) : UnhookWindowsHookEx(hhk);
@@ -710,6 +807,9 @@ UINT WINAPI GetRawInputBuffer_Detour(PRAWINPUT pData, PUINT pcbSize, UINT cbSize
 
 // Hooked TranslateMessage function
 BOOL WINAPI TranslateMessage_Detour(const MSG *lpMsg) {
+    // Track total calls
+    g_hook_stats[HOOK_TranslateMessage].increment_total();
+
     // If input blocking is enabled, don't translate messages that should be blocked
     if (lpMsg != nullptr) {
         // Check if this message should be suppressed
@@ -719,12 +819,18 @@ BOOL WINAPI TranslateMessage_Detour(const MSG *lpMsg) {
         }
     }
 
+    // Track unsuppressed calls (when we call the original function)
+    g_hook_stats[HOOK_TranslateMessage].increment_unsuppressed();
+
     // Call original function
     return TranslateMessage_Original ? TranslateMessage_Original(lpMsg) : TranslateMessage(lpMsg);
 }
 
 // Hooked DispatchMessageA function
 LRESULT WINAPI DispatchMessageA_Detour(const MSG *lpMsg) {
+    // Track total calls
+    g_hook_stats[HOOK_DispatchMessageA].increment_total();
+
     // If input blocking is enabled, don't dispatch messages that should be blocked
     if (lpMsg != nullptr) {
         // Check if this message should be suppressed
@@ -733,6 +839,9 @@ LRESULT WINAPI DispatchMessageA_Detour(const MSG *lpMsg) {
             return 0;
         }
     }
+
+    // Track unsuppressed calls (when we call the original function)
+    g_hook_stats[HOOK_DispatchMessageA].increment_unsuppressed();
 
     // Call original function
     return DispatchMessageA_Original ? DispatchMessageA_Original(lpMsg) : DispatchMessageA(lpMsg);
@@ -740,6 +849,9 @@ LRESULT WINAPI DispatchMessageA_Detour(const MSG *lpMsg) {
 
 // Hooked DispatchMessageW function
 LRESULT WINAPI DispatchMessageW_Detour(const MSG *lpMsg) {
+    // Track total calls
+    g_hook_stats[HOOK_DispatchMessageW].increment_total();
+
     // If input blocking is enabled, don't dispatch messages that should be blocked
     if (lpMsg != nullptr) {
         // Check if this message should be suppressed
@@ -748,6 +860,9 @@ LRESULT WINAPI DispatchMessageW_Detour(const MSG *lpMsg) {
             return 0;
         }
     }
+
+    // Track unsuppressed calls (when we call the original function)
+    g_hook_stats[HOOK_DispatchMessageW].increment_unsuppressed();
 
     // Call original function
     return DispatchMessageW_Original ? DispatchMessageW_Original(lpMsg) : DispatchMessageW(lpMsg);
@@ -816,6 +931,9 @@ UINT WINAPI GetRawInputData_Detour(HRAWINPUT hRawInput, UINT uiCommand, LPVOID p
 
 // Hooked RegisterRawInputDevices function
 BOOL WINAPI RegisterRawInputDevices_Detour(PCRAWINPUTDEVICE pRawInputDevices, UINT uiNumDevices, UINT cbSize) {
+    // Track total calls
+    g_hook_stats[HOOK_RegisterRawInputDevices].increment_total();
+
     // Log raw input device registration for debugging
     if (pRawInputDevices != nullptr && uiNumDevices > 0) {
         LogInfo("RegisterRawInputDevices called: %u devices", uiNumDevices);
@@ -825,6 +943,9 @@ BOOL WINAPI RegisterRawInputDevices_Detour(PCRAWINPUTDEVICE pRawInputDevices, UI
                     pRawInputDevices[i].hwndTarget);
         }
     }
+
+    // Track unsuppressed calls (when we call the original function)
+    g_hook_stats[HOOK_RegisterRawInputDevices].increment_unsuppressed();
 
     // Call original function
     return RegisterRawInputDevices_Original ? RegisterRawInputDevices_Original(pRawInputDevices, uiNumDevices, cbSize)
@@ -890,10 +1011,16 @@ LRESULT WINAPI DefRawInputProc_Detour(PRAWINPUT paRawInput, INT nInput, UINT cbS
 
 // Hooked VkKeyScan function
 SHORT WINAPI VkKeyScan_Detour(CHAR ch) {
+    // Track total calls
+    g_hook_stats[HOOK_VkKeyScan].increment_total();
+
     // If keyboard input blocking is enabled, return -1 to indicate no virtual key found
     if (ShouldBlockKeyboardInput()) {
         return -1; // No virtual key found
     }
+
+    // Track unsuppressed calls (when we call the original function)
+    g_hook_stats[HOOK_VkKeyScan].increment_unsuppressed();
 
     // Call original function
     return VkKeyScan_Original ? VkKeyScan_Original(ch) : VkKeyScan(ch);
@@ -901,9 +1028,14 @@ SHORT WINAPI VkKeyScan_Detour(CHAR ch) {
 
 // Hooked VkKeyScanEx function
 SHORT WINAPI VkKeyScanEx_Detour(CHAR ch, HKL dwhkl) {
+    // Track total calls
+    g_hook_stats[HOOK_VkKeyScanEx].increment_total();
+
     // If keyboard input blocking is enabled, return -1 to indicate no virtual key found
     if (ShouldBlockKeyboardInput()) {
         return -1; // No virtual key found
+    } else {
+        g_hook_stats[HOOK_VkKeyScanEx].increment_unsuppressed();
     }
 
     // Call original function
@@ -912,10 +1044,16 @@ SHORT WINAPI VkKeyScanEx_Detour(CHAR ch, HKL dwhkl) {
 
 // Hooked ToAscii function
 int WINAPI ToAscii_Detour(UINT uVirtKey, UINT uScanCode, const BYTE *lpKeyState, LPWORD lpChar, UINT uFlags) {
+    // Track total calls
+    g_hook_stats[HOOK_ToAscii].increment_total();
+
     // If keyboard input blocking is enabled, return 0 to indicate no character generated
     if (ShouldBlockKeyboardInput()) {
         return 0; // No character generated
     }
+
+    // Track unsuppressed calls (when we call the original function)
+    g_hook_stats[HOOK_ToAscii].increment_unsuppressed();
 
     // Call original function
     return ToAscii_Original ? ToAscii_Original(uVirtKey, uScanCode, lpKeyState, lpChar, uFlags)
@@ -925,9 +1063,14 @@ int WINAPI ToAscii_Detour(UINT uVirtKey, UINT uScanCode, const BYTE *lpKeyState,
 // Hooked ToAsciiEx function
 int WINAPI ToAsciiEx_Detour(UINT uVirtKey, UINT uScanCode, const BYTE *lpKeyState, LPWORD lpChar, UINT uFlags,
                             HKL dwhkl) {
+    // Track total calls
+    g_hook_stats[HOOK_ToAsciiEx].increment_total();
+
     // If keyboard input blocking is enabled, return 0 to indicate no character generated
     if (ShouldBlockKeyboardInput()) {
         return 0; // No character generated
+    } else {
+        g_hook_stats[HOOK_ToAsciiEx].increment_unsuppressed();
     }
 
     // Call original function
@@ -938,9 +1081,14 @@ int WINAPI ToAsciiEx_Detour(UINT uVirtKey, UINT uScanCode, const BYTE *lpKeyStat
 // Hooked ToUnicode function
 int WINAPI ToUnicode_Detour(UINT wVirtKey, UINT wScanCode, const BYTE *lpKeyState, LPWSTR pwszBuff, int cchBuff,
                             UINT wFlags) {
+    // Track total calls
+    g_hook_stats[HOOK_ToUnicode].increment_total();
+
     // If keyboard input blocking is enabled, return 0 to indicate no character generated
     if (ShouldBlockKeyboardInput()) {
         return 0; // No character generated
+    } else {
+        g_hook_stats[HOOK_ToUnicode].increment_unsuppressed();
     }
 
     // Call original function
@@ -951,9 +1099,14 @@ int WINAPI ToUnicode_Detour(UINT wVirtKey, UINT wScanCode, const BYTE *lpKeyStat
 // Hooked ToUnicodeEx function
 int WINAPI ToUnicodeEx_Detour(UINT wVirtKey, UINT wScanCode, const BYTE *lpKeyState, LPWSTR pwszBuff, int cchBuff,
                               UINT wFlags, HKL dwhkl) {
+    // Track total calls
+    g_hook_stats[HOOK_ToUnicodeEx].increment_total();
+
     // If keyboard input blocking is enabled, return 0 to indicate no character generated
     if (ShouldBlockKeyboardInput()) {
         return 0; // No character generated
+    } else {
+        g_hook_stats[HOOK_ToUnicodeEx].increment_unsuppressed();
     }
 
     // Call original function
@@ -964,6 +1117,9 @@ int WINAPI ToUnicodeEx_Detour(UINT wVirtKey, UINT wScanCode, const BYTE *lpKeySt
 
 // Hooked GetKeyNameTextA function
 int WINAPI GetKeyNameTextA_Detour(LONG lParam, LPSTR lpString, int cchSize) {
+    // Track total calls
+    g_hook_stats[HOOK_GetKeyNameTextA].increment_total();
+
     // If keyboard input blocking is enabled, return 0 to indicate no key name
     if (ShouldBlockKeyboardInput()) {
         HWND gameWindow = GetGameWindow();
@@ -973,6 +1129,8 @@ int WINAPI GetKeyNameTextA_Detour(LONG lParam, LPSTR lpString, int cchSize) {
             }
             return 0; // No key name
         }
+    } else {
+        g_hook_stats[HOOK_GetKeyNameTextA].increment_unsuppressed();
     }
 
     // Call original function
@@ -982,12 +1140,17 @@ int WINAPI GetKeyNameTextA_Detour(LONG lParam, LPSTR lpString, int cchSize) {
 
 // Hooked GetKeyNameTextW function
 int WINAPI GetKeyNameTextW_Detour(LONG lParam, LPWSTR lpString, int cchSize) {
+    // Track total calls
+    g_hook_stats[HOOK_GetKeyNameTextW].increment_total();
+
     // If keyboard input blocking is enabled, return 0 to indicate no key name
     if (ShouldBlockKeyboardInput()) {
         if (lpString != nullptr && cchSize > 0) {
             lpString[0] = L'\0'; // Empty string
         }
         return 0; // No key name
+    } else {
+        g_hook_stats[HOOK_GetKeyNameTextW].increment_unsuppressed();
     }
 
     // Call original function
@@ -997,6 +1160,9 @@ int WINAPI GetKeyNameTextW_Detour(LONG lParam, LPWSTR lpString, int cchSize) {
 
 // Hooked SendInput function
 UINT WINAPI SendInput_Detour(UINT nInputs, LPINPUT pInputs, int cbSize) {
+    // Track total calls
+    g_hook_stats[HOOK_SendInput].increment_total();
+
     // If keyboard input blocking is enabled, selectively block DOWN events
     if (ShouldBlockKeyboardInput() && pInputs != nullptr) {
         UINT allowed_inputs = 0;
@@ -1013,7 +1179,7 @@ UINT WINAPI SendInput_Detour(UINT nInputs, LPINPUT pInputs, int cbSize) {
             } else if (pInputs[i].type == INPUT_MOUSE) {
                 // Block mouse DOWN events, allow UP events
                 if (pInputs[i].mi.dwFlags &
-                    (MOUSEEVENTF_LEFTDOWN | MOUSEEVENTF_RIGHTDOWN | MOUSEEVENTF_MIDDLEDOWN | MOUSEEVENTF_XDOWN)) {
+                    (MOUSEEVENTF_LEFTDOWN | MOUSEEVENTF_RIGHTDOWN | MOUSEEVENTF_MIDDLEDOWN | MOUSEEVENTF_XDOWN | MOUSEEVENTF_MOVE | MOUSEEVENTF_WHEEL | MOUSEEVENTF_HWHEEL | MOUSEEVENTF_ABSOLUTE)) {
                     should_block = true; // This is a mouse DOWN event
                 }
             }
@@ -1044,6 +1210,8 @@ UINT WINAPI SendInput_Detour(UINT nInputs, LPINPUT pInputs, int cbSize) {
             }
             nInputs = allowed_inputs; // Update count to only process allowed inputs
         }
+    } else {
+        g_hook_stats[HOOK_SendInput].increment_unsuppressed();
     }
 
     // Call original function with potentially filtered inputs
@@ -1052,6 +1220,9 @@ UINT WINAPI SendInput_Detour(UINT nInputs, LPINPUT pInputs, int cbSize) {
 
 // Hooked keybd_event function
 void WINAPI keybd_event_Detour(BYTE bVk, BYTE bScan, DWORD dwFlags, ULONG_PTR dwExtraInfo) {
+    // Track total calls
+    g_hook_stats[HOOK_keybd_event].increment_total();
+
     // If keyboard input blocking is enabled, selectively block DOWN events
     if (ShouldBlockKeyboardInput()) {
         // Only block key DOWN events, allow UP events to clear stuck keys
@@ -1065,6 +1236,8 @@ void WINAPI keybd_event_Detour(BYTE bVk, BYTE bScan, DWORD dwFlags, ULONG_PTR dw
             return; // Block keyboard DOWN event generation
         }
         // This is a key UP event, allow it through to clear stuck keys
+    } else {
+        g_hook_stats[HOOK_keybd_event].increment_unsuppressed();
     }
 
     // Call original function
@@ -1077,10 +1250,13 @@ void WINAPI keybd_event_Detour(BYTE bVk, BYTE bScan, DWORD dwFlags, ULONG_PTR dw
 
 // Hooked mouse_event function
 void WINAPI mouse_event_Detour(DWORD dwFlags, DWORD dx, DWORD dy, DWORD dwData, ULONG_PTR dwExtraInfo) {
+    // Track total calls
+    g_hook_stats[HOOK_mouse_event].increment_total();
+
     // If mouse input blocking is enabled, selectively block DOWN events
     if (ShouldBlockMouseInput()) {
         // Only block mouse DOWN events, allow UP events to clear stuck buttons
-        if (dwFlags & (MOUSEEVENTF_LEFTDOWN | MOUSEEVENTF_RIGHTDOWN | MOUSEEVENTF_MIDDLEDOWN | MOUSEEVENTF_XDOWN)) {
+        if (dwFlags & (MOUSEEVENTF_LEFTDOWN | MOUSEEVENTF_RIGHTDOWN | MOUSEEVENTF_MIDDLEDOWN | MOUSEEVENTF_XDOWN | MOUSEEVENTF_MOVE)) {
             // This is a mouse DOWN event, block it
             static std::atomic<int> block_counter{0};
             int count = block_counter.fetch_add(1);
@@ -1090,6 +1266,8 @@ void WINAPI mouse_event_Detour(DWORD dwFlags, DWORD dx, DWORD dy, DWORD dwData, 
             return; // Block mouse DOWN event generation
         }
         // This is a mouse UP event or movement, allow it through to clear stuck buttons
+    } else {
+        g_hook_stats[HOOK_mouse_event].increment_unsuppressed();
     }
 
     // Call original function
@@ -1102,9 +1280,14 @@ void WINAPI mouse_event_Detour(DWORD dwFlags, DWORD dx, DWORD dy, DWORD dwData, 
 
 // Hooked MapVirtualKey function
 UINT WINAPI MapVirtualKey_Detour(UINT uCode, UINT uMapType) {
+    // Track total calls
+    g_hook_stats[HOOK_MapVirtualKey].increment_total();
+
     // If keyboard input blocking is enabled, return 0 for virtual key mapping
     if (ShouldBlockKeyboardInput()) {
         return 0; // Block virtual key mapping
+    } else {
+        g_hook_stats[HOOK_MapVirtualKey].increment_unsuppressed();
     }
 
     // Call original function
@@ -1113,9 +1296,14 @@ UINT WINAPI MapVirtualKey_Detour(UINT uCode, UINT uMapType) {
 
 // Hooked MapVirtualKeyEx function
 UINT WINAPI MapVirtualKeyEx_Detour(UINT uCode, UINT uMapType, HKL dwhkl) {
+    // Track total calls
+    g_hook_stats[HOOK_MapVirtualKeyEx].increment_total();
+
     // If keyboard input blocking is enabled, return 0 for virtual key mapping
     if (ShouldBlockKeyboardInput()) {
         return 0; // Block virtual key mapping
+    } else {
+        g_hook_stats[HOOK_MapVirtualKeyEx].increment_unsuppressed();
     }
 
     // Call original function
@@ -1222,238 +1410,204 @@ bool InstallWindowsMessageHooks() {
     // Hook GetMessageA
     if (!CreateAndEnableHook(GetMessageA, GetMessageA_Detour, (LPVOID *)&GetMessageA_Original, "GetMessageA")) {
         LogError("Failed to create and enable GetMessageA hook");
-        return false;
     }
 
     // Hook GetMessageW
     if (!CreateAndEnableHook(GetMessageW, GetMessageW_Detour, (LPVOID *)&GetMessageW_Original, "GetMessageW")) {
         LogError("Failed to create and enable GetMessageW hook");
-        return false;
     }
 
     // Hook PeekMessageA
     if (!CreateAndEnableHook(PeekMessageA, PeekMessageA_Detour, (LPVOID *)&PeekMessageA_Original, "PeekMessageA")) {
         LogError("Failed to create and enable PeekMessageA hook");
-        return false;
     }
 
     // Hook PeekMessageW
     if (!CreateAndEnableHook(PeekMessageW, PeekMessageW_Detour, (LPVOID *)&PeekMessageW_Original, "PeekMessageW")) {
         LogError("Failed to create and enable PeekMessageW hook");
-        return false;
     }
 
     // Hook PostMessageA
     if (!CreateAndEnableHook(PostMessageA, PostMessageA_Detour, (LPVOID *)&PostMessageA_Original, "PostMessageA")) {
         LogError("Failed to create and enable PostMessageA hook");
-        return false;
     }
 
     // Hook PostMessageW
     if (!CreateAndEnableHook(PostMessageW, PostMessageW_Detour, (LPVOID *)&PostMessageW_Original, "PostMessageW")) {
         LogError("Failed to create and enable PostMessageW hook");
-        return false;
     }
 
     // Hook GetKeyboardState
     if (!CreateAndEnableHook(GetKeyboardState, GetKeyboardState_Detour, (LPVOID *)&GetKeyboardState_Original, "GetKeyboardState")) {
         LogError("Failed to create and enable GetKeyboardState hook");
-        return false;
     }
 
     // Hook ClipCursor
     if (!CreateAndEnableHook(ClipCursor, ClipCursor_Detour, (LPVOID *)&ClipCursor_Original, "ClipCursor")) {
         LogError("Failed to create and enable ClipCursor hook");
-        return false;
     }
 
     // Hook GetCursorPos
     if (!CreateAndEnableHook(GetCursorPos, GetCursorPos_Detour, (LPVOID *)&GetCursorPos_Original, "GetCursorPos")) {
         LogError("Failed to create and enable GetCursorPos hook");
-        return false;
     }
 
     // Hook SetCursorPos
     if (!CreateAndEnableHook(SetCursorPos, SetCursorPos_Detour, (LPVOID *)&SetCursorPos_Original, "SetCursorPos")) {
         LogError("Failed to create and enable SetCursorPos hook");
-        return false;
+    }
+
+    // Hook SetPhysicalCursorPos
+    if (!CreateAndEnableHook(SetPhysicalCursorPos, SetPhysicalCursorPos_Detour, (LPVOID *)&SetPhysicalCursorPos_Original, "SetPhysicalCursorPos")) {
+        LogError("Failed to create and enable SetPhysicalCursorPos hook");
     }
 
     // Hook GetKeyState
     if (!CreateAndEnableHook(GetKeyState, GetKeyState_Detour, (LPVOID *)&GetKeyState_Original, "GetKeyState")) {
         LogError("Failed to create and enable GetKeyState hook");
-        return false;
     }
 
     // Hook GetAsyncKeyState
     if (!CreateAndEnableHook(GetAsyncKeyState, GetAsyncKeyState_Detour, (LPVOID *)&GetAsyncKeyState_Original, "GetAsyncKeyState")) {
         LogError("Failed to create and enable GetAsyncKeyState hook");
-        return false;
     }
 
     // Hook SetWindowsHookExA
     if (!CreateAndEnableHook(SetWindowsHookExA, SetWindowsHookExA_Detour, (LPVOID *)&SetWindowsHookExA_Original, "SetWindowsHookExA")) {
         LogError("Failed to create and enable SetWindowsHookExA hook");
-        return false;
     }
 
     // Hook SetWindowsHookExW
     if (!CreateAndEnableHook(SetWindowsHookExW, SetWindowsHookExW_Detour, (LPVOID *)&SetWindowsHookExW_Original, "SetWindowsHookExW")) {
         LogError("Failed to create and enable SetWindowsHookExW hook");
-        return false;
     }
 
     // Hook UnhookWindowsHookEx
     if (!CreateAndEnableHook(UnhookWindowsHookEx, UnhookWindowsHookEx_Detour, (LPVOID *)&UnhookWindowsHookEx_Original, "UnhookWindowsHookEx")) {
         LogError("Failed to create and enable UnhookWindowsHookEx hook");
-        return false;
     }
 
     // Hook GetRawInputBuffer
     if (!CreateAndEnableHook(GetRawInputBuffer, GetRawInputBuffer_Detour, (LPVOID *)&GetRawInputBuffer_Original, "GetRawInputBuffer")) {
         LogError("Failed to create and enable GetRawInputBuffer hook");
-        return false;
     }
 
     // Hook TranslateMessage
     if (!CreateAndEnableHook(TranslateMessage, TranslateMessage_Detour, (LPVOID *)&TranslateMessage_Original, "TranslateMessage")) {
         LogError("Failed to create and enable TranslateMessage hook");
-        return false;
     }
 
     // Hook DispatchMessageA
     if (!CreateAndEnableHook(DispatchMessageA, DispatchMessageA_Detour, (LPVOID *)&DispatchMessageA_Original, "DispatchMessageA")) {
         LogError("Failed to create and enable DispatchMessageA hook");
-        return false;
     }
 
     // Hook DispatchMessageW
     if (!CreateAndEnableHook(DispatchMessageW, DispatchMessageW_Detour, (LPVOID *)&DispatchMessageW_Original, "DispatchMessageW")) {
         LogError("Failed to create and enable DispatchMessageW hook");
-        return false;
     }
 
     // Hook GetRawInputData
     if (!CreateAndEnableHook(GetRawInputData, GetRawInputData_Detour, (LPVOID *)&GetRawInputData_Original, "GetRawInputData")) {
         LogError("Failed to create and enable GetRawInputData hook");
-        return false;
     }
 
     // Hook RegisterRawInputDevices
     if (!CreateAndEnableHook(RegisterRawInputDevices, RegisterRawInputDevices_Detour,
                              (LPVOID *)&RegisterRawInputDevices_Original, "RegisterRawInputDevices")) {
         LogError("Failed to create and enable RegisterRawInputDevices hook");
-        return false;
     }
 
     // Hook GetRawInputDeviceList
     if (!CreateAndEnableHook(GetRawInputDeviceList, GetRawInputDeviceList_Detour,
                              (LPVOID *)&GetRawInputDeviceList_Original, "GetRawInputDeviceList")) {
         LogError("Failed to create and enable GetRawInputDeviceList hook");
-        return false;
     }
 
     // Hook DefRawInputProc
     if (!CreateAndEnableHook(DefRawInputProc, DefRawInputProc_Detour,
                              (LPVOID *)&DefRawInputProc_Original, "DefRawInputProc")) {
         LogError("Failed to create and enable DefRawInputProc hook");
-        return false;
     }
 
     // Hook VkKeyScan
     if (!CreateAndEnableHook(VkKeyScan, VkKeyScan_Detour, (LPVOID *)&VkKeyScan_Original, "VkKeyScan")) {
         LogError("Failed to create and enable VkKeyScan hook");
-        return false;
     }
 
     // Hook VkKeyScanEx
     if (!CreateAndEnableHook(VkKeyScanEx, VkKeyScanEx_Detour, (LPVOID *)&VkKeyScanEx_Original, "VkKeyScanEx")) {
         LogError("Failed to create and enable VkKeyScanEx hook");
-        return false;
     }
 
     // Hook ToAscii
     if (!CreateAndEnableHook(ToAscii, ToAscii_Detour, (LPVOID *)&ToAscii_Original, "ToAscii")) {
         LogError("Failed to create and enable ToAscii hook");
-        return false;
     }
 
     // Hook ToAsciiEx
     if (!CreateAndEnableHook(ToAsciiEx, ToAsciiEx_Detour, (LPVOID *)&ToAsciiEx_Original, "ToAsciiEx")) {
         LogError("Failed to create and enable ToAsciiEx hook");
-        return false;
     }
 
     // Hook ToUnicode
     if (!CreateAndEnableHook(ToUnicode, ToUnicode_Detour, (LPVOID *)&ToUnicode_Original, "ToUnicode")) {
         LogError("Failed to create and enable ToUnicode hook");
-        return false;
     }
 
     // Hook ToUnicodeEx
     if (!CreateAndEnableHook(ToUnicodeEx, ToUnicodeEx_Detour, (LPVOID *)&ToUnicodeEx_Original, "ToUnicodeEx")) {
         LogError("Failed to create and enable ToUnicodeEx hook");
-        return false;
     }
 
     // Hook GetKeyNameTextA
     if (!CreateAndEnableHook(GetKeyNameTextA, GetKeyNameTextA_Detour, (LPVOID *)&GetKeyNameTextA_Original, "GetKeyNameTextA")) {
         LogError("Failed to create and enable GetKeyNameTextA hook");
-        return false;
     }
 
     // Hook GetKeyNameTextW
     if (!CreateAndEnableHook(GetKeyNameTextW, GetKeyNameTextW_Detour, (LPVOID *)&GetKeyNameTextW_Original, "GetKeyNameTextW")) {
         LogError("Failed to create and enable GetKeyNameTextW hook");
-        return false;
     }
 
     // Hook SendInput
     if (!CreateAndEnableHook(SendInput, SendInput_Detour, (LPVOID *)&SendInput_Original, "SendInput")) {
         LogError("Failed to create and enable SendInput hook");
-        return false;
     }
 
     // Hook keybd_event
     if (!CreateAndEnableHook(keybd_event, keybd_event_Detour, (LPVOID *)&keybd_event_Original, "keybd_event")) {
         LogError("Failed to create and enable keybd_event hook");
-        return false;
     }
 
     // Hook mouse_event
     if (!CreateAndEnableHook(mouse_event, mouse_event_Detour, (LPVOID *)&mouse_event_Original, "mouse_event")) {
         LogError("Failed to create and enable mouse_event hook");
-        return false;
     }
 
     // Hook MapVirtualKey
     if (!CreateAndEnableHook(MapVirtualKey, MapVirtualKey_Detour, (LPVOID *)&MapVirtualKey_Original, "MapVirtualKey")) {
         LogError("Failed to create and enable MapVirtualKey hook");
-        return false;
     }
 
     // Hook MapVirtualKeyEx
     if (!CreateAndEnableHook(MapVirtualKeyEx, MapVirtualKeyEx_Detour, (LPVOID *)&MapVirtualKeyEx_Original, "MapVirtualKeyEx")) {
         LogError("Failed to create and enable MapVirtualKeyEx hook");
-        return false;
     }
 
     // Hook DisplayConfigGetDeviceInfo
     if (!CreateAndEnableHook(DisplayConfigGetDeviceInfo, DisplayConfigGetDeviceInfo_Detour, (LPVOID *)&DisplayConfigGetDeviceInfo_Original, "DisplayConfigGetDeviceInfo")) {
         LogError("Failed to create and enable DisplayConfigGetDeviceInfo hook");
-        return false;
     }
 
     // Hook SetUnhandledExceptionFilter
     if (!CreateAndEnableHook(SetUnhandledExceptionFilter, SetUnhandledExceptionFilter_Detour, (LPVOID *)&SetUnhandledExceptionFilter_Original, "SetUnhandledExceptionFilter")) {
         LogError("Failed to create and enable SetUnhandledExceptionFilter hook");
-        return false;
     }
 
     // Hook IsDebuggerPresent
     if (!CreateAndEnableHook(IsDebuggerPresent, IsDebuggerPresent_Detour, (LPVOID *)&IsDebuggerPresent_Original, "IsDebuggerPresent")) {
         LogError("Failed to create and enable IsDebuggerPresent hook");
-        return false;
     }
 
 
@@ -1487,6 +1641,7 @@ void UninstallWindowsMessageHooks() {
     MH_RemoveHook(ClipCursor);
     MH_RemoveHook(GetCursorPos);
     MH_RemoveHook(SetCursorPos);
+    MH_RemoveHook(SetPhysicalCursorPos);
     MH_RemoveHook(GetKeyState);
     MH_RemoveHook(GetAsyncKeyState);
     MH_RemoveHook(SetWindowsHookExA);
@@ -1526,6 +1681,7 @@ void UninstallWindowsMessageHooks() {
     ClipCursor_Original = nullptr;
     GetCursorPos_Original = nullptr;
     SetCursorPos_Original = nullptr;
+    SetPhysicalCursorPos_Original = nullptr;
     GetKeyState_Original = nullptr;
     GetAsyncKeyState_Original = nullptr;
     SetWindowsHookExA_Original = nullptr;

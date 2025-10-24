@@ -96,7 +96,7 @@ void HandleReflexAutoConfigure() {
 void check_is_background() {
     // Get the current swapchain window
     HWND hwnd = g_last_swapchain_hwnd.load();
-    if (hwnd != nullptr && IsWindow(hwnd)) {
+    if (hwnd != nullptr) {
         // BACKGROUND DETECTION: Check if the app is in background using original GetForegroundWindow
         HWND current_foreground_hwnd = GetCurrentForeGroundWindow();
         bool app_in_background = current_foreground_hwnd == nullptr;
@@ -107,7 +107,7 @@ void check_is_background() {
             if (app_in_background) {
                 LogInfo("Continuous monitoring: App moved to BACKGROUND");
                 // Release cursor clipping when going to background
-                display_commanderhooks::ClipCursor_Direct(nullptr);
+                //display_commanderhooks::ClipCursor_Direct(nullptr);
 
                 // Set cursor to default arrow when moving to background
                 //display_commanderhooks::SetCursor_Direct(LoadCursor(nullptr, IDC_ARROW));
@@ -117,7 +117,7 @@ void check_is_background() {
             } else {
                 LogInfo("Continuous monitoring: App moved to FOREGROUND");
                 // Restore cursor clipping when coming to foreground
-                display_commanderhooks::RestoreClipCursor();
+                //display_commanderhooks::RestoreClipCursor();
                 LogInfo("Continuous monitoring: Restored cursor clipping for foreground");
 
                 //display_commanderhooks::RestoreSetCursor();

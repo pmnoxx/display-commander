@@ -3,6 +3,7 @@
 #include "globals.hpp"
 #include "settings/main_tab_settings.hpp"
 #include "utils.hpp"
+#include "utils/logging.hpp"
 
 #include <windows.h>
 #include <wingdi.h>

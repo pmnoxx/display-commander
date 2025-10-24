@@ -1,5 +1,6 @@
 #include "resolution_settings.hpp"
 #include "../../utils.hpp"
+#include "../../utils/logging.hpp"
 #include "../../config/display_commander_config.hpp"
 #include <imgui.h>
 #include <reshade.hpp>

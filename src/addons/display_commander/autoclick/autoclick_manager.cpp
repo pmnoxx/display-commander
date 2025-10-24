@@ -2,8 +2,7 @@
 #include "../res/forkawesome.h"
 #include "../globals.hpp"
 #include "../settings/experimental_tab_settings.hpp"
-#include "../ui/new_ui/settings_wrapper.hpp"
-#include "../utils.hpp"
+#include "../utils/logging.hpp"
 #include "../utils/timing.hpp"
 #include <imgui.h>
 #include <windows.h>

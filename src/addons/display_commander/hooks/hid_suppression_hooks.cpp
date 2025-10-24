@@ -3,6 +3,7 @@
 #include "../globals.hpp"
 #include "../utils.hpp"
 #include "../utils/general_utils.hpp"
+#include "../utils/logging.hpp"
 #include "../settings/experimental_tab_settings.hpp"
 #include "../widgets/xinput_widget/xinput_widget.hpp"
 #include <MinHook.h>

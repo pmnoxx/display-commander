@@ -12,6 +12,7 @@
 #include "settings/developer_tab_settings.hpp"
 #include "ui/new_ui/swapchain_tab.hpp"
 #include "utils.hpp"
+#include "utils/logging.hpp"
 #include "utils/timing.hpp"
 
 #include <algorithm>

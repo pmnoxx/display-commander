@@ -4,7 +4,7 @@
  */
 
 #include "input_remapping.hpp"
-#include "../utils.hpp"
+#include "../utils/logging.hpp"
 #include "utils/srwlock_wrapper.hpp"
 #include "../hooks/timeslowdown_hooks.hpp"
 #include "../config/display_commander_config.hpp"

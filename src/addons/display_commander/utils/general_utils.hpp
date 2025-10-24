@@ -33,10 +33,6 @@ extern const AspectRatio ASPECT_OPTIONS[];
 
 // Forward declarations for utility functions
 RECT RectFromWH(int width, int height);
-void LogInfo(const char *msg, ...);
-void LogWarn(const char *msg, ...);
-void LogError(const char *msg, ...);
-void LogDebug(const char *msg, ...);
 // Window state detection
 AspectRatio GetAspectByIndex(int index);
 int GetAspectWidthValue(int display_width);

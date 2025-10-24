@@ -1,5 +1,6 @@
 #include "api_hooks.hpp"
 #include "../utils/general_utils.hpp"
+#include "../utils/logging.hpp"
 #include "dxgi/dxgi_present_hooks.hpp"
 #include "globals.hpp"
 #include "loadlibrary_hooks.hpp"

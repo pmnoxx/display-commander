@@ -3,6 +3,7 @@
 #include "display_initial_state.hpp"
 #include "globals.hpp"
 #include "utils.hpp"
+#include "utils/logging.hpp"
 #include <atomic>
 #include <map>
 #include <memory>

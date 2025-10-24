@@ -1,7 +1,7 @@
 #include "latent_sync_limiter.hpp"
 #include "../globals.hpp"
 #include "../settings/main_tab_settings.hpp"
-#include "../utils.hpp"
+#include "../utils/logging.hpp"
 #include "utils/timing.hpp"
 #include <dxgi1_6.h>
 

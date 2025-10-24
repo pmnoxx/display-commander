@@ -1,6 +1,6 @@
 #include "display_initial_state.hpp"
 #include "display_cache.hpp"
-#include "utils.hpp"
+#include "utils/logging.hpp"
 
 namespace display_initial_state {
 

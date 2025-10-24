@@ -9,6 +9,7 @@
 #include "settings/streamline_tab_settings.hpp"
 #include "utils.hpp"
 #include "utils/general_utils.hpp"
+#include "utils/logging.hpp"
 #include "utils/srwlock_wrapper.hpp"
 #include <algorithm>
 #include "../../../external/nvapi/nvapi.h"

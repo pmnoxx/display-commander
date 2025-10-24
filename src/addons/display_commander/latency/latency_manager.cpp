@@ -1,6 +1,7 @@
 #include "latency_manager.hpp"
 #include "../globals.hpp"
 #include "../utils.hpp"
+#include "../utils/logging.hpp"
 #include "../utils/timing.hpp"
 #include "reflex_provider.hpp"
 

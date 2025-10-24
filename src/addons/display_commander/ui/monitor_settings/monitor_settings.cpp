@@ -7,6 +7,7 @@
 #include "../../resolution_helpers.hpp"
 #include "../../settings/main_tab_settings.hpp"
 #include "../../utils.hpp"
+#include "../../utils/logging.hpp"
 #include "../new_ui/settings_wrapper.hpp"
 #include <algorithm>
 #include <atomic>

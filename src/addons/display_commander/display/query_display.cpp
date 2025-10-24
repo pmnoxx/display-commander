@@ -1,6 +1,5 @@
 #include "query_display.hpp"
-#include "utils.hpp"
-
+#include "../utils/logging.hpp"
 #include <windows.h>
 
 #include <dxgi.h>

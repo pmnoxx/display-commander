@@ -1,8 +1,8 @@
 #include "dualsense_hooks.hpp"
 #include "hid_suppression_hooks.hpp"
-#include "../utils.hpp"
 #include "../dualsense/dualsense_hid_wrapper.hpp"
 #include "../widgets/xinput_widget/xinput_widget.hpp"
+#include "../utils/logging.hpp"
 #include <atomic>
 #include <thread>
 #include <chrono>

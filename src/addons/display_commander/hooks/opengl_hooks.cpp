@@ -1,5 +1,6 @@
 #include "opengl_hooks.hpp"
 #include "../utils.hpp"
+#include "../utils/logging.hpp"
 #include "../globals.hpp"
 #include "../swapchain_events.hpp"
 #include "../performance_types.hpp"

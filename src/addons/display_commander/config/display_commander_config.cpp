@@ -1,5 +1,6 @@
 #include "display_commander_config.hpp"
 #include "../utils.hpp"
+#include "../utils/logging.hpp"
 #include "../utils/display_commander_logger.hpp"
 #include <fstream>
 #include <sstream>

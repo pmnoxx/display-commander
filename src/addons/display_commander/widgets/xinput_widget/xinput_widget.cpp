@@ -1,6 +1,7 @@
 #include "xinput_widget.hpp"
 #include "../../globals.hpp"
-#include "../../utils.hpp"
+#include "../../utils/logging.hpp"
+#include "../../utils/general_utils.hpp"
 #include "../../hooks/xinput_hooks.hpp"
 #include "../../hooks/timeslowdown_hooks.hpp"
 #include "../../res/ui_colors.hpp"

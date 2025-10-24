@@ -3,6 +3,7 @@
 #include "../settings/experimental_tab_settings.hpp"
 #include "../utils.hpp"
 #include "../utils/general_utils.hpp"
+#include "../utils/logging.hpp"
 #include "windows_hooks/windows_message_hooks.hpp"
 #include <MinHook.h>
 #include <windows.h>

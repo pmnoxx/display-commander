@@ -1,5 +1,6 @@
 #include "nvapi_hooks.hpp"
 #include "../utils/general_utils.hpp"
+#include "../utils/logging.hpp"
 #include "../utils/timing.hpp"
 #include "../globals.hpp"
 #include "../../../external/nvapi/nvapi_interface.h"

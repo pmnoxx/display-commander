@@ -1,6 +1,7 @@
 #include "windows_gaming_input_hooks.hpp"
 #include "../utils.hpp"
 #include "../utils/general_utils.hpp"
+#include "../utils/logging.hpp"
 #include <MinHook.h>
 #include <atomic>
 #include <string>

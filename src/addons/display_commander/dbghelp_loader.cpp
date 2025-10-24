@@ -1,5 +1,5 @@
 #include "dbghelp_loader.hpp"
-#include "utils.hpp"
+#include "utils/logging.hpp"
 #include <atomic>
 
 namespace dbghelp_loader {

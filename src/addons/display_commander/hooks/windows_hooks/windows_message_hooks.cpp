@@ -4,6 +4,7 @@
 #include "../../settings/main_tab_settings.hpp"
 #include "../../utils.hpp"
 #include "../../utils/general_utils.hpp"
+#include "../../utils/logging.hpp"
 #include "../api_hooks.hpp" // For GetGameWindow and other functions
 #include "../../process_exit_hooks.hpp" // For UnhandledExceptionHandler
 #include <MinHook.h>

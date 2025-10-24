@@ -31,6 +31,7 @@
 #include "ui/new_ui/experimental_tab.hpp"
 #include "ui/new_ui/new_ui_main.hpp"
 #include "utils/general_utils.hpp"
+#include "utils/logging.hpp"
 #include "utils/timing.hpp"
 #include "widgets/xinput_widget/xinput_widget.hpp"
 #include "widgets/dualsense_widget/dualsense_widget.hpp"

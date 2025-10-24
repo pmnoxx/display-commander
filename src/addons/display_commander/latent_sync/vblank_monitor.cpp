@@ -1,7 +1,7 @@
 #include "vblank_monitor.hpp"
 #include "../display/query_display.hpp"
 #include "../globals.hpp"
-#include "../utils.hpp"
+#include "../utils/logging.hpp"
 #include "utils/timing.hpp"
 #include <dxgi1_6.h>
 #include <iostream>

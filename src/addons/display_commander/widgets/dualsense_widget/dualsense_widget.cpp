@@ -1,5 +1,6 @@
 #include "dualsense_widget.hpp"
 #include "../../utils.hpp"
+#include "../../utils/logging.hpp"
 #include "../../hooks/dualsense_hooks.hpp"
 #include <reshade_imgui.hpp>
 #include <chrono>

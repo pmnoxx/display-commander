@@ -1,6 +1,6 @@
 #include "corewindow_proxy.hpp"
 #include "../../utils.hpp"
-
+#include "../../utils/logging.hpp"
 namespace display_commanderhooks::wgi {
 
 // CoreWindowProxy Implementation

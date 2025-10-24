@@ -1,5 +1,5 @@
 #include "refresh_rate_monitor.hpp"
-#include "../utils.hpp"
+#include "../utils/logging.hpp"
 #include <algorithm>
 #include <dxgi.h>
 #include <iostream>

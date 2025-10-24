@@ -1,7 +1,6 @@
-#include "../utils.hpp"
+#include "../utils/logging.hpp"
 #include "vblank_monitor.hpp"
 #include <memory>
-#include <string>
 #include <windows.h>
 
 // Example of how to integrate VBlankMonitor with existing code

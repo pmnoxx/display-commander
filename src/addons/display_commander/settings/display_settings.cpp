@@ -1,5 +1,5 @@
 #include "display_settings.hpp"
-#include "../utils.hpp"
+#include "../utils/logging.hpp"
 #include "../config/display_commander_config.hpp"
 
 #include <windows.h>

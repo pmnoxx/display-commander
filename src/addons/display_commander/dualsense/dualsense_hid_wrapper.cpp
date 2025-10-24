@@ -1,5 +1,6 @@
 #include "dualsense_hid_wrapper.hpp"
 #include "../utils.hpp"
+#include "../utils/logging.hpp"
 #include "../hooks/hid_suppression_hooks.hpp"
 #include <reshade_imgui.hpp>
 #include <setupapi.h>

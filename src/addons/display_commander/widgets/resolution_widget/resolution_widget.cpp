@@ -4,6 +4,7 @@
 #include "../../globals.hpp"
 #include "../../resolution_helpers.hpp"
 #include "../../utils.hpp"
+#include "../../utils/logging.hpp"
 #include "utils/timing.hpp"
 #include <algorithm>
 #include <cmath>

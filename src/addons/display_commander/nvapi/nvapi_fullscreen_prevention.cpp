@@ -1,5 +1,6 @@
 #include "nvapi_fullscreen_prevention.hpp"
 #include "../utils.hpp"
+#include "../utils/logging.hpp"
 #include "globals.hpp"
 #include <NvApiDriverSettings.h>
 #include <algorithm>

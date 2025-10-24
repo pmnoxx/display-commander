@@ -1,5 +1,6 @@
 #include "reshade_global_config.hpp"
 #include "../utils.hpp"
+#include "../utils/logging.hpp"
 
 #include <Windows.h>
 #include <ShlObj.h>

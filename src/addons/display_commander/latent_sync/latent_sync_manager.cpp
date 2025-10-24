@@ -1,5 +1,5 @@
 #include "latent_sync_manager.hpp"
-#include "../addon.hpp"
+#include "../utils/logging.hpp"
 
 namespace dxgi::latent_sync {
 

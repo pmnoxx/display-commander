@@ -2,6 +2,7 @@
 #include "../../performance_types.hpp"
 #include "../../swapchain_events.hpp"
 #include "../../utils/general_utils.hpp"
+#include "../../utils/logging.hpp"
 #include "../../globals.hpp"
 #include "../../settings/main_tab_settings.hpp"
 #include "../../settings/developer_tab_settings.hpp"

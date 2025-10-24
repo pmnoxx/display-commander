@@ -1,4 +1,5 @@
 #include "../addon.hpp"
+#include "../utils/logging.hpp"
 
 DxgiBypassMode GetIndependentFlipState(IDXGISwapChain *dxgi_swapchain) {
     if (dxgi_swapchain == nullptr) {

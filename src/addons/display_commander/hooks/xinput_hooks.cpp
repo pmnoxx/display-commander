@@ -1,4 +1,5 @@
 #include "xinput_hooks.hpp"
+#include "../utils/logging.hpp"
 #include "../settings/developer_tab_settings.hpp"
 #include "dualsense_hooks.hpp"
 #include "../input_remapping/input_remapping.hpp"

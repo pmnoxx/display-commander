@@ -1,6 +1,7 @@
 #include "timing.hpp"
 #include "../hooks/timeslowdown_hooks.hpp"
 #include "../utils.hpp"
+#include "../utils/logging.hpp"
 
 #include <windows.h>
 

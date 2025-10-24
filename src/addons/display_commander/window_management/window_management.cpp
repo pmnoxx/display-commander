@@ -2,6 +2,7 @@
 #include "../addon.hpp"
 #include "../display_cache.hpp"
 #include "../globals.hpp"
+#include "../utils/logging.hpp"
 #include "../settings/main_tab_settings.hpp"
 #include "../settings/developer_tab_settings.hpp"
 #include "../ui/ui_display_tab.hpp"

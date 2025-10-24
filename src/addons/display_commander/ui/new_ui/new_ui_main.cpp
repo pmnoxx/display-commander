@@ -1,5 +1,5 @@
 #include "new_ui_main.hpp"
-#include "../../utils.hpp"
+#include "../../utils/logging.hpp"
 #include <reshade.hpp>
 
 namespace ui::new_ui {

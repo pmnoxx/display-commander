@@ -1,6 +1,6 @@
 #include "display_settings_debug_tab.hpp"
 #include "../../settings/display_settings.hpp"
-#include "../../utils.hpp"
+#include "../../utils/logging.hpp"
 
 #include <reshade_imgui.hpp>
 

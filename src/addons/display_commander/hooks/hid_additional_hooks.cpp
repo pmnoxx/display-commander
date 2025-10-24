@@ -2,6 +2,7 @@
 #include "hid_statistics.hpp"
 #include "../utils.hpp"
 #include "../utils/general_utils.hpp"
+#include "../utils/logging.hpp"
 #include <MinHook.h>
 #include <atomic>
 

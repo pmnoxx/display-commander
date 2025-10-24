@@ -1,9 +1,8 @@
 #include "general_utils.hpp"
-
+#include "logging.hpp"
 #include "globals.hpp"
 #include "settings/developer_tab_settings.hpp"
 #include <algorithm>
-#include <utility>
 #include <vector>
 #include <cstdio>
 #include <string>
@@ -81,40 +80,6 @@ RECT RectFromWH(int width, int height) {
 }
 
 // Utility function implementations
-void LogInfo(const char *msg, ...) {
-    va_list args;
-    va_start(args, msg);
-    char buffer[1024];
-    vsnprintf(buffer, sizeof(buffer), msg, args);
-    va_end(args);
-    reshade::log::message(reshade::log::level::info, buffer);
-}
-
-void LogWarn(const char *msg, ...) {
-    va_list args;
-    va_start(args, msg);
-    char buffer[1024];
-    vsnprintf(buffer, sizeof(buffer), msg, args);
-    va_end(args);
-    reshade::log::message(reshade::log::level::warning, buffer);
-}
-
-void LogError(const char *msg, ...) {
-    va_list args;
-    va_start(args, msg);
-    char buffer[1024];
-    vsnprintf(buffer, sizeof(buffer), msg, args);
-    va_end(args);
-    reshade::log::message(reshade::log::level::error, buffer);
-}
-void LogDebug(const char *msg, ...) {
-    va_list args;
-    va_start(args, msg);
-    char buffer[1024];
-    vsnprintf(buffer, sizeof(buffer), msg, args);
-    va_end(args);
-    reshade::log::message(reshade::log::level::debug, buffer);
-}
 
 AspectRatio GetAspectByIndex(AspectRatioType aspect_type) {
     int index = static_cast<int>(aspect_type);

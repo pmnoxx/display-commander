@@ -4,6 +4,7 @@
 
 #include "dx11_proxy_shared_resources.hpp"
 #include "../utils.hpp"
+#include "../utils/logging.hpp"
 #include <sstream>
 
 namespace dx11_proxy {

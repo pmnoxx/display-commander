@@ -1,6 +1,7 @@
 #include "ngx_hooks.hpp"
 #include "../settings/developer_tab_settings.hpp"
 #include "../utils/general_utils.hpp"
+#include "../utils/logging.hpp"
 #include "../globals.hpp"
 #include "../settings/swapchain_tab_settings.hpp"
 #include <MinHook.h>

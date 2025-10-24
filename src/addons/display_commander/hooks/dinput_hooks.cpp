@@ -3,6 +3,7 @@
 #include "windows_hooks/windows_message_hooks.hpp"
 #include "../globals.hpp"
 #include "../utils/general_utils.hpp"
+#include "../utils/logging.hpp"
 #include <MinHook.h>
 #include <chrono>
 #include <vector>

@@ -1,5 +1,6 @@
 #include "debug_output_hooks.hpp"
 #include "../utils/general_utils.hpp"
+#include "../utils/logging.hpp"
 #include "../globals.hpp"
 #include "../settings/experimental_tab_settings.hpp"
 #include <MinHook.h>

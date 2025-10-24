@@ -2,6 +2,7 @@
 #include "../addon.hpp"
 #include "../settings/main_tab_settings.hpp"
 #include "../utils.hpp"
+#include "../utils/logging.hpp"
 #include <sstream>
 #include <thread>
 

@@ -17,6 +17,7 @@
 #include "../../res/forkawesome.h"
 #include "../../res/ui_colors.hpp"
 #include "../../utils.hpp"
+#include "../../utils/logging.hpp"
 #include "../../globals.hpp"
 #include "imgui.h"
 #include "utils/timing.hpp"

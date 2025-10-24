@@ -1,5 +1,6 @@
 #include "streamline_tab_settings.hpp"
 #include "../utils.hpp"
+#include "../utils/logging.hpp"
 
 // Atomic variables for DLSS override settings
 std::atomic<bool> s_dlss_override_enabled{false};

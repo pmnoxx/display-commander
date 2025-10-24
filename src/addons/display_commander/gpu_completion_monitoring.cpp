@@ -1,6 +1,7 @@
 #include "gpu_completion_monitoring.hpp"
 #include "globals.hpp"
 #include "utils.hpp"
+#include "utils/logging.hpp"
 #include "utils/timing.hpp"
 #include "swapchain_events.hpp"
 #include "settings/main_tab_settings.hpp"

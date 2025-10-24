@@ -6,6 +6,7 @@
 #include "dx11_proxy_shared_resources.hpp"
 #include "dx11_proxy_settings.hpp"
 #include "../utils.hpp"
+#include "../utils/logging.hpp"
 #include "../globals.hpp"
 #include <sstream>
 #include <chrono>

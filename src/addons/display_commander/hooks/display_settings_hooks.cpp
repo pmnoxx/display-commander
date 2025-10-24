@@ -1,5 +1,6 @@
 #include "display_settings_hooks.hpp"
 #include "../utils.hpp"
+#include "../utils/logging.hpp"
 #include "../globals.hpp"
 #include "../settings/developer_tab_settings.hpp"
 #include <MinHook.h>

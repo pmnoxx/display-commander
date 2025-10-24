@@ -9,14 +9,13 @@
 #include "../../hooks/debug_output_hooks.hpp"
 #include "../../settings/experimental_tab_settings.hpp"
 #include "../../widgets/dualsense_widget/dualsense_widget.hpp"
-#include "../../utils.hpp"
+#include "../../utils/logging.hpp"
 #include "../../utils/timing.hpp"
 #include "../../utils/stack_trace.hpp"
 
 #include <windows.h>
 
 #include <atomic>
-#include <thread>
 
 namespace ui::new_ui {
 

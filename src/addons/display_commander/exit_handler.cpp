@@ -1,6 +1,7 @@
 #include "exit_handler.hpp"
 #include "display_restore.hpp"
 #include "utils.hpp"
+#include "utils/logging.hpp"
 #include "utils/display_commander_logger.hpp"
 #include <reshade.hpp>
 #include <atomic>

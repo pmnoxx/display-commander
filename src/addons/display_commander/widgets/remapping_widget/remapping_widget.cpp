@@ -1,5 +1,6 @@
 #include "remapping_widget.hpp"
 #include "../../utils.hpp"
+#include "../../utils/logging.hpp"
 #include "../../config/display_commander_config.hpp"
 
 #include <reshade_imgui.hpp>

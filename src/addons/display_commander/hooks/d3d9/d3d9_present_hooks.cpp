@@ -6,6 +6,7 @@
 #include "../../performance_types.hpp"
 #include "../../swapchain_events.hpp"
 #include "../../utils/general_utils.hpp"
+#include "../../utils/logging.hpp"
 #include "../../gpu_completion_monitoring.hpp"
 
 #include <d3d9.h>

@@ -7,6 +7,7 @@
 #include "../exit_handler.hpp"
 #include "../globals.hpp"
 #include "../utils.hpp"
+#include "../utils/logging.hpp"
 #include <atomic>
 
 

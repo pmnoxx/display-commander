@@ -6,6 +6,7 @@
 #include "../../settings/developer_tab_settings.hpp"
 #include "../../settings/experimental_tab_settings.hpp"
 #include "../../utils/general_utils.hpp"
+#include "../../utils/logging.hpp"
 #include "../../utils/reshade_global_config.hpp"
 #include "imgui.h"
 #include "settings_wrapper.hpp"

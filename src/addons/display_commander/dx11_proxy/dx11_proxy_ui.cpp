@@ -9,6 +9,7 @@
 #include "../globals.hpp"
 #include "../res/ui_colors.hpp"
 #include "../res/forkawesome.h"
+#include "../utils/logging.hpp"
 
 #include <reshade_imgui.hpp>
 #include <sstream>

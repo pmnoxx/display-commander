@@ -2,6 +2,7 @@
 #include "../settings/developer_tab_settings.hpp"
 #include "../globals.hpp"
 #include "../utils/general_utils.hpp"
+#include "../utils/logging.hpp"
 
 #include <MinHook.h>
 #include <cstdint>

@@ -1,6 +1,6 @@
 #include "adhd_multi_monitor.hpp"
 #include "../globals.hpp"
-#include "../utils.hpp"
+#include "../utils/logging.hpp"
 #include "../hooks/api_hooks.hpp"
 #include <algorithm>
 #include <dwmapi.h>

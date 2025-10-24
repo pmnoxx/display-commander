@@ -7,6 +7,7 @@
 #include "../../settings/swapchain_tab_settings.hpp"
 #include "../../swapchain_events_power_saving.hpp"
 #include "../../utils/general_utils.hpp"
+#include "../../utils/logging.hpp"
 #include "../../utils/timing.hpp"
 
 #include <dxgi1_6.h>

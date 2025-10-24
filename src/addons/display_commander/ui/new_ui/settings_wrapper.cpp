@@ -6,9 +6,8 @@
 #include <reshade_imgui.hpp>
 #include "../../res/forkawesome.h"
 
-#include "../../utils.hpp"
+#include "../../utils/logging.hpp"
 #include <algorithm>
-#include <cctype>
 #include <cmath>
 
 

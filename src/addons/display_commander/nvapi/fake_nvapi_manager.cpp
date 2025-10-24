@@ -2,6 +2,7 @@
 #include "../settings/developer_tab_settings.hpp"
 #include "../globals.hpp"
 #include "../utils.hpp"
+#include "../utils/logging.hpp"
 
 #include <filesystem>
 #include <mutex>

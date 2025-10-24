@@ -1,4 +1,5 @@
 #include "streamline_hooks.hpp"
+#include "hook_suppression_manager.hpp"
 #include "../settings/developer_tab_settings.hpp"
 #include "../globals.hpp"
 #include "../utils/general_utils.hpp"
@@ -114,6 +115,12 @@ bool InstallStreamlineHooks() {
         return false;
     }
 
+    // Check if Streamline hooks should be suppressed
+    if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(display_commanderhooks::HookType::STREAMLINE)) {
+        LogInfo("Streamline hooks installation suppressed by user setting");
+        return false;
+    }
+
     // Check if Streamline DLLs are loaded
     HMODULE sl_interposer = GetModuleHandleW(L"sl.interposer.dll");
     if (sl_interposer == nullptr) {
@@ -163,6 +170,10 @@ bool InstallStreamlineHooks() {
     }
 
     LogInfo("Streamline hooks installed successfully");
+
+    // Mark Streamline hooks as installed
+    display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(display_commanderhooks::HookType::STREAMLINE);
+
     return true;
 }
 

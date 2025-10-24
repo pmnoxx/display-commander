@@ -1,4 +1,5 @@
 #include "timeslowdown_hooks.hpp"
+#include "hook_suppression_manager.hpp"
 #include "../globals.hpp"
 #include "../settings/experimental_tab_settings.hpp"
 #include "../utils.hpp"
@@ -518,6 +519,12 @@ bool InstallTimeslowdownHooks() {
         return true;
     }
 
+    // Check if Time Slowdown hooks should be suppressed
+    if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(display_commanderhooks::HookType::TIMESLOWDOWN)) {
+        LogInfo("Time Slowdown hooks installation suppressed by user setting");
+        return false;
+    }
+
     // Initialize MinHook (only if not already initialized)
     MH_STATUS init_status = SafeInitializeMinHook();
     if (init_status != MH_OK && init_status != MH_ERROR_ALREADY_INITIALIZED) {
@@ -617,6 +624,9 @@ bool InstallTimeslowdownHooks() {
 
     g_timeslowdown_hooks_installed.store(true);
     LogInfo("Timeslowdown hooks installed successfully");
+
+    // Mark Time Slowdown hooks as installed
+    display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(display_commanderhooks::HookType::TIMESLOWDOWN);
 
     return true;
 }

@@ -501,7 +501,7 @@ void HandleSafemode() {
         settings::g_developerTabSettings.safemode.SetValue(false);
         settings::g_developerTabSettings.prevent_fullscreen.SetValue(false);
         settings::g_developerTabSettings.continue_rendering.SetValue(false);
-        settings::g_developerTabSettings.suppress_minhook.SetValue(true);
+        settings::g_developerTabSettings.suppress_minhook.SetValue(false);
 
         settings::g_mainTabSettings.fps_limiter_mode.SetValue((int)FpsLimiterMode::kDisabled);
 

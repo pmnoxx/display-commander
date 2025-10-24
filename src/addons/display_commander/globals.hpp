@@ -659,11 +659,13 @@ class DeveloperTabSettings;
 class MainTabSettings;
 class SwapchainTabSettings;
 class StreamlineTabSettings;
+class HookSuppressionSettings;
 extern ExperimentalTabSettings g_experimentalTabSettings;
 extern DeveloperTabSettings g_developerTabSettings;
 extern MainTabSettings g_mainTabSettings;
 extern SwapchainTabSettings g_swapchainTabSettings;
 extern StreamlineTabSettings g_streamlineTabSettings;
+extern settings::HookSuppressionSettings g_hook_suppression_settings;
 
 // Function to load all settings at startup
 void LoadAllSettingsAtStartup();

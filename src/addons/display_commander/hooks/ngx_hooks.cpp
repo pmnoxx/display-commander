@@ -1,4 +1,5 @@
 #include "ngx_hooks.hpp"
+#include "hook_suppression_manager.hpp"
 #include "../settings/developer_tab_settings.hpp"
 #include "../utils/general_utils.hpp"
 #include "../utils/logging.hpp"
@@ -1055,6 +1056,12 @@ bool InstallNGXHooks() {
         return false;
     }
 
+    // Check if NGX hooks should be suppressed
+    if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(display_commanderhooks::HookType::NGX)) {
+        LogInfo("NGX hooks installation suppressed by user setting");
+        return false;
+    }
+
     // Check if NGX DLLs are loaded
     HMODULE ngx_dll = GetModuleHandleA("_nvngx.dll");
     if (!ngx_dll) {
@@ -1172,6 +1179,10 @@ bool InstallNGXHooks() {
     LogInfo("NGX Parameter vtable hooks will be installed when Parameter objects are created");
     LogInfo("NGX Init, CreateFeature, and EvaluateFeature hooks are now active");
     LogInfo("VTable hooks are called automatically inside detour functions");
+
+    // Mark NGX hooks as installed
+    display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(display_commanderhooks::HookType::NGX);
+
     return true;
 }
 

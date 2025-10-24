@@ -35,11 +35,11 @@ void DrawHookStatsTab() {
     };
 
     static const DllGroup DLL_GROUPS[] = {
-        {.name = "user32.dll", .start_index = 0, .end_index = 34},      // GetMessageA to DisplayConfigGetDeviceInfo
-        {.name = "xinput1_4.dll", .start_index = 35, .end_index = 36},  // XInputGetState, XInputGetStateEx
-        {.name = "kernel32.dll", .start_index = 37, .end_index = 43},   // Sleep, SleepEx, WaitForSingleObject, WaitForMultipleObjects, SetUnhandledExceptionFilter, IsDebuggerPresent, SetThreadExecutionState
-        {.name = "dinput8.dll", .start_index = 44, .end_index = 44},    // DirectInput8Create
-        {.name = "dinput.dll", .start_index = 45, .end_index = 45}      // DirectInputCreate
+        {.name = "user32.dll", .start_index = 0, .end_index = 36},      // GetMessageA to DisplayConfigGetDeviceInfo
+        {.name = "xinput1_4.dll", .start_index = 37, .end_index = 38},  // XInputGetState, XInputGetStateEx
+        {.name = "kernel32.dll", .start_index = 39, .end_index = 45},   // Sleep, SleepEx, WaitForSingleObject, WaitForMultipleObjects, SetUnhandledExceptionFilter, IsDebuggerPresent, SetThreadExecutionState
+        {.name = "dinput8.dll", .start_index = 46, .end_index = 46},    // DirectInput8Create
+        {.name = "dinput.dll", .start_index = 47, .end_index = 47}      // DirectInputCreate
     };
 
     // Display statistics grouped by DLL
@@ -515,6 +515,104 @@ void DrawHookStatsTab() {
         ImGui::Text("Success Rate: %.2f%%", success_rate);
         ImGui::Text("Failure Rate: %.2f%%", failure_rate);
         ImGui::Text("Block Rate: %.2f%%", block_rate);
+    }
+
+    ImGui::Spacing();
+    ImGui::Separator();
+
+    // Raw Input Hook Statistics
+    ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "=== Raw Input Hook Statistics ===");
+    ImGui::Text("Track raw input API calls and device enumeration");
+    ImGui::Separator();
+
+    // Raw Input function names
+    static const char* raw_input_function_names[] = {
+        "GetRawInputBuffer",
+        "GetRawInputData",
+        "RegisterRawInputDevices",
+        "GetRawInputDeviceList",
+        "DefRawInputProc"
+    };
+
+    // Raw Input hook indices (these correspond to the hook indices in the main array)
+    static const int raw_input_hook_indices[] = {
+        display_commanderhooks::HOOK_GetRawInputBuffer,
+        display_commanderhooks::HOOK_GetRawInputData,
+        display_commanderhooks::HOOK_RegisterRawInputDevices,
+        display_commanderhooks::HOOK_GetRawInputDeviceList,
+        display_commanderhooks::HOOK_DefRawInputProc
+    };
+
+    uint64_t total_raw_input_calls = 0;
+    uint64_t total_raw_input_unsuppressed = 0;
+
+    // Display raw input hook statistics in a table
+    if (ImGui::BeginTable("RawInputHooks", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable)) {
+        ImGui::TableSetupColumn("Function Name", ImGuiTableColumnFlags_WidthFixed, 250.0f);
+        ImGui::TableSetupColumn("Total Calls", ImGuiTableColumnFlags_WidthFixed, 120.0f);
+        ImGui::TableSetupColumn("Unsuppressed Calls", ImGuiTableColumnFlags_WidthFixed, 150.0f);
+        ImGui::TableSetupColumn("Suppressed Calls", ImGuiTableColumnFlags_WidthFixed, 150.0f);
+        ImGui::TableHeadersRow();
+
+        for (int i = 0; i < 5; ++i) {
+            const auto& stats = display_commanderhooks::GetHookStats(raw_input_hook_indices[i]);
+            const char* function_name = raw_input_function_names[i];
+
+            uint64_t total_calls = stats.total_calls.load();
+            uint64_t unsuppressed_calls = stats.unsuppressed_calls.load();
+            uint64_t suppressed_calls = total_calls - unsuppressed_calls;
+
+            total_raw_input_calls += total_calls;
+            total_raw_input_unsuppressed += unsuppressed_calls;
+
+            ImGui::TableNextRow();
+
+            // Function name
+            ImGui::TableSetColumnIndex(0);
+            ImGui::Text("%s", function_name);
+
+            // Total calls
+            ImGui::TableSetColumnIndex(1);
+            if (total_calls > 0) {
+                ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "%llu", total_calls);
+            } else {
+                ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "%llu", total_calls);
+            }
+
+            // Unsuppressed calls
+            ImGui::TableSetColumnIndex(2);
+            if (unsuppressed_calls > 0) {
+                ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "%llu", unsuppressed_calls);
+            } else {
+                ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "%llu", unsuppressed_calls);
+            }
+
+            // Suppressed calls
+            ImGui::TableSetColumnIndex(3);
+            if (suppressed_calls > 0) {
+                ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "%llu", suppressed_calls);
+            } else {
+                ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "%llu", suppressed_calls);
+            }
+        }
+
+        ImGui::EndTable();
+    }
+
+    ImGui::Spacing();
+    ImGui::Separator();
+
+    // Raw Input summary statistics
+    ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "Raw Input Summary:");
+    ImGui::Text("Total Raw Input Calls: %llu", total_raw_input_calls);
+    ImGui::Text("Unsuppressed Calls: %llu", total_raw_input_unsuppressed);
+
+    uint64_t total_raw_input_suppressed = total_raw_input_calls - total_raw_input_unsuppressed;
+    ImGui::Text("Suppressed Calls: %llu", total_raw_input_suppressed);
+
+    if (total_raw_input_calls > 0) {
+        float raw_input_suppression_rate = static_cast<float>(total_raw_input_suppressed) / static_cast<float>(total_raw_input_calls) * 100.0f;
+        ImGui::Text("Raw Input Suppression Rate: %.2f%%", raw_input_suppression_rate);
     }
 
     ImGui::Spacing();

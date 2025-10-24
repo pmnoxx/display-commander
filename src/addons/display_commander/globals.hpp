@@ -469,6 +469,9 @@ extern std::atomic<int> s_spoofed_mouse_y;
 // SetCursor detour - store last cursor value atomically
 extern std::atomic<HCURSOR> s_last_cursor_value;
 
+// ShowCursor detour - store last show cursor state atomically
+extern std::atomic<int> s_last_show_cursor_arg;
+
 // Render blocking in background
 
 // Present blocking in background

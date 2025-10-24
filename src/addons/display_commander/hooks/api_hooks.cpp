@@ -11,7 +11,6 @@
 #include "windows_gaming_input_hooks.hpp"
 #include "windows_hooks/windows_message_hooks.hpp"
 #include "dinput_hooks.hpp"
-#include "display_settings_hooks.hpp"
 #include "debug_output_hooks.hpp"
 #include "window_proc_hooks.hpp"
 #include "../settings/developer_tab_settings.hpp"
@@ -32,10 +31,23 @@ SetThreadExecutionState_pfn SetThreadExecutionState_Original = nullptr;
 SetWindowLongPtrW_pfn SetWindowLongPtrW_Original = nullptr;
 SetWindowPos_pfn SetWindowPos_Original = nullptr;
 SetCursor_pfn SetCursor_Original = nullptr;
+ShowCursor_pfn ShowCursor_Original = nullptr;
 CreateDXGIFactory_pfn CreateDXGIFactory_Original = nullptr;
 CreateDXGIFactory1_pfn CreateDXGIFactory1_Original = nullptr;
 D3D11CreateDeviceAndSwapChain_pfn D3D11CreateDeviceAndSwapChain_Original = nullptr;
 D3D12CreateDevice_pfn D3D12CreateDevice_Original = nullptr;
+
+// Display settings original function pointers
+ChangeDisplaySettingsA_pfn ChangeDisplaySettingsA_Original = nullptr;
+ChangeDisplaySettingsW_pfn ChangeDisplaySettingsW_Original = nullptr;
+ChangeDisplaySettingsExA_pfn ChangeDisplaySettingsExA_Original = nullptr;
+ChangeDisplaySettingsExW_pfn ChangeDisplaySettingsExW_Original = nullptr;
+
+// Window management original function pointers
+ShowWindow_pfn ShowWindow_Original = nullptr;
+SetWindowLongA_pfn SetWindowLongA_Original = nullptr;
+SetWindowLongW_pfn SetWindowLongW_Original = nullptr;
+SetWindowLongPtrA_pfn SetWindowLongPtrA_Original = nullptr;
 
 // Hook state
 static std::atomic<bool> g_api_hooks_installed{false};
@@ -153,6 +165,10 @@ EXECUTION_STATE WINAPI SetThreadExecutionState_Detour(EXECUTION_STATE esFlags) {
 
 // Hooked SetWindowLongPtrW function
 LONG_PTR WINAPI SetWindowLongPtrW_Detour(HWND hWnd, int nIndex, LONG_PTR dwNewLong) {
+    // Update display settings hook counter
+    g_display_settings_hook_counters[DISPLAY_SETTINGS_HOOK_SETWINDOWLONGPTRW].fetch_add(1);
+    g_display_settings_hook_total_count.fetch_add(1);
+
     // Only process if prevent_always_on_top is enabled
     if (settings::g_developerTabSettings.prevent_always_on_top.GetValue()) {
         if (nIndex == GWL_STYLE) {
@@ -184,6 +200,10 @@ LONG_PTR WINAPI SetWindowLongPtrW_Detour(HWND hWnd, int nIndex, LONG_PTR dwNewLo
 
 // Hooked SetWindowPos function
 BOOL WINAPI SetWindowPos_Detour(HWND hWnd, HWND hWndInsertAfter, int X, int Y, int cx, int cy, UINT uFlags) {
+    // Update display settings hook counter
+    g_display_settings_hook_counters[DISPLAY_SETTINGS_HOOK_SETWINDOWPOS].fetch_add(1);
+    g_display_settings_hook_total_count.fetch_add(1);
+
     // Only process if prevent_always_on_top is enabled
     if (settings::g_developerTabSettings.prevent_always_on_top.GetValue()) {
         // Check if we're trying to set the window to be always on top
@@ -281,8 +301,6 @@ BOOL WINAPI SetWindowPos_Detour(HWND hWnd, HWND hWndInsertAfter, int X, int Y, i
 }
 
 HCURSOR WINAPI SetCursor_Direct(HCURSOR hCursor) {
-    // Store the cursor value atomically
-    s_last_cursor_value.store(hCursor);
 
     // Call original function
     return SetCursor_Original ? SetCursor_Original(hCursor) : SetCursor(hCursor);
@@ -303,6 +321,12 @@ void RestoreSetCursor() {
     }
 }
 
+void RestoreShowCursor() {
+    // Get the last stored show cursor count atomically
+    int last_show_cursor_arg = s_last_show_cursor_arg.load();
+    ShowCursor_Direct(last_show_cursor_arg);
+}
+
 
 // Hooked SetCursor function
 HCURSOR WINAPI SetCursor_Detour(HCURSOR hCursor) {
@@ -314,6 +338,29 @@ HCURSOR WINAPI SetCursor_Detour(HCURSOR hCursor) {
 
     // Call original function
     return SetCursor_Direct(hCursor);
+}
+
+int WINAPI ShowCursor_Direct(BOOL bShow) {
+    // Call original function
+    return ShowCursor_Original ? ShowCursor_Original(bShow) : ShowCursor(bShow);
+}
+
+// Hooked ShowCursor function
+int WINAPI ShowCursor_Detour(BOOL bShow) {
+    s_last_show_cursor_arg.store(bShow);
+
+
+    if (ShouldBlockMouseInput()) {
+        bShow = FALSE;
+    }
+
+    // Call original function
+    int result = ShowCursor_Direct(bShow);
+    // Store the cursor count atomically
+
+    LogDebug("ShowCursor_Detour: bShow=%d, result=%d", bShow, result);
+
+    return result;
 }
 
 // Hooked CreateDXGIFactory function
@@ -469,6 +516,136 @@ HRESULT WINAPI D3D12CreateDevice_Detour(
 
     LogInfo("=== D3D12CreateDevice Complete ===");
     return hr;
+}
+
+// Display settings detour functions
+LONG WINAPI ChangeDisplaySettingsA_Detour(DEVMODEA *lpDevMode, DWORD dwFlags) {
+    g_display_settings_hook_counters[DISPLAY_SETTINGS_HOOK_CHANGEDISPLAYSETTINGSA].fetch_add(1);
+    g_display_settings_hook_total_count.fetch_add(1);
+
+    // Check if fullscreen prevention is enabled
+    if (settings::g_developerTabSettings.prevent_fullscreen.GetValue()) {
+        LogInfo("ChangeDisplaySettingsA blocked - fullscreen prevention enabled");
+        return DISP_CHANGE_SUCCESSFUL; // Return success without changing display mode
+    }
+
+    return ChangeDisplaySettingsA_Original(lpDevMode, dwFlags);
+}
+
+LONG WINAPI ChangeDisplaySettingsW_Detour(DEVMODEW *lpDevMode, DWORD dwFlags) {
+    g_display_settings_hook_counters[DISPLAY_SETTINGS_HOOK_CHANGEDISPLAYSETTINGSW].fetch_add(1);
+    g_display_settings_hook_total_count.fetch_add(1);
+
+    // Check if fullscreen prevention is enabled
+    if (settings::g_developerTabSettings.prevent_fullscreen.GetValue()) {
+        LogInfo("ChangeDisplaySettingsW blocked - fullscreen prevention enabled");
+        return DISP_CHANGE_SUCCESSFUL; // Return success without changing display mode
+    }
+
+    return ChangeDisplaySettingsW_Original(lpDevMode, dwFlags);
+}
+
+LONG WINAPI ChangeDisplaySettingsExA_Detour(LPCSTR lpszDeviceName, DEVMODEA *lpDevMode, HWND hWnd, DWORD dwFlags, LPVOID lParam) {
+    g_display_settings_hook_counters[DISPLAY_SETTINGS_HOOK_CHANGEDISPLAYSETTINGSEXA].fetch_add(1);
+    g_display_settings_hook_total_count.fetch_add(1);
+
+    // Check if fullscreen prevention is enabled
+    if (settings::g_developerTabSettings.prevent_fullscreen.GetValue()) {
+        LogInfo("ChangeDisplaySettingsExA blocked - fullscreen prevention enabled");
+        return DISP_CHANGE_SUCCESSFUL; // Return success without changing display mode
+    }
+
+    return ChangeDisplaySettingsExA_Original(lpszDeviceName, lpDevMode, hWnd, dwFlags, lParam);
+}
+
+LONG WINAPI ChangeDisplaySettingsExW_Detour(LPCWSTR lpszDeviceName, DEVMODEW *lpDevMode, HWND hWnd, DWORD dwFlags, LPVOID lParam) {
+    g_display_settings_hook_counters[DISPLAY_SETTINGS_HOOK_CHANGEDISPLAYSETTINGSEXW].fetch_add(1);
+    g_display_settings_hook_total_count.fetch_add(1);
+
+    // Check if fullscreen prevention is enabled
+    if (settings::g_developerTabSettings.prevent_fullscreen.GetValue()) {
+        LogInfo("ChangeDisplaySettingsExW blocked - fullscreen prevention enabled");
+        return DISP_CHANGE_SUCCESSFUL; // Return success without changing display mode
+    }
+
+    return ChangeDisplaySettingsExW_Original(lpszDeviceName, lpDevMode, hWnd, dwFlags, lParam);
+}
+
+// Window management detour functions
+BOOL WINAPI ShowWindow_Detour(HWND hWnd, int nCmdShow) {
+    g_display_settings_hook_counters[DISPLAY_SETTINGS_HOOK_SHOWWINDOW].fetch_add(1);
+    g_display_settings_hook_total_count.fetch_add(1);
+
+    // Check if fullscreen prevention is enabled
+    if (settings::g_developerTabSettings.prevent_fullscreen.GetValue()) {
+        // Prevent maximize operations that could lead to fullscreen
+        if (nCmdShow == SW_MAXIMIZE || nCmdShow == SW_SHOWMAXIMIZED) {
+            LogInfo("ShowWindow blocked maximize attempt - forcing normal window");
+            return ShowWindow_Original(hWnd, SW_SHOWNORMAL);
+        }
+    }
+
+    return ShowWindow_Original(hWnd, nCmdShow);
+}
+
+LONG WINAPI SetWindowLongA_Detour(HWND hWnd, int nIndex, LONG dwNewLong) {
+    g_display_settings_hook_counters[DISPLAY_SETTINGS_HOOK_SETWINDOWLONGA].fetch_add(1);
+    g_display_settings_hook_total_count.fetch_add(1);
+
+    // Check if fullscreen prevention is enabled
+    if (settings::g_developerTabSettings.prevent_fullscreen.GetValue()) {
+        // Prevent window style changes that enable fullscreen
+        if (nIndex == GWL_STYLE) {
+            // Remove fullscreen-enabling styles
+            if (dwNewLong & WS_POPUP) {
+                LogInfo("SetWindowLongA blocked WS_POPUP style - forcing windowed style");
+                dwNewLong &= ~WS_POPUP;
+                dwNewLong |= WS_OVERLAPPEDWINDOW;
+            }
+        }
+    }
+
+    return SetWindowLongA_Original(hWnd, nIndex, dwNewLong);
+}
+
+LONG WINAPI SetWindowLongW_Detour(HWND hWnd, int nIndex, LONG dwNewLong) {
+    g_display_settings_hook_counters[DISPLAY_SETTINGS_HOOK_SETWINDOWLONGW].fetch_add(1);
+    g_display_settings_hook_total_count.fetch_add(1);
+
+    // Check if fullscreen prevention is enabled
+    if (settings::g_developerTabSettings.prevent_fullscreen.GetValue()) {
+        // Prevent window style changes that enable fullscreen
+        if (nIndex == GWL_STYLE) {
+            // Remove fullscreen-enabling styles
+            if (dwNewLong & WS_POPUP) {
+                LogInfo("SetWindowLongW blocked WS_POPUP style - forcing windowed style");
+                dwNewLong &= ~WS_POPUP;
+                dwNewLong |= WS_OVERLAPPEDWINDOW;
+            }
+        }
+    }
+
+    return SetWindowLongW_Original(hWnd, nIndex, dwNewLong);
+}
+
+LONG_PTR WINAPI SetWindowLongPtrA_Detour(HWND hWnd, int nIndex, LONG_PTR dwNewLong) {
+    g_display_settings_hook_counters[DISPLAY_SETTINGS_HOOK_SETWINDOWLONGPTRA].fetch_add(1);
+    g_display_settings_hook_total_count.fetch_add(1);
+
+    // Check if fullscreen prevention is enabled
+    if (settings::g_developerTabSettings.prevent_fullscreen.GetValue()) {
+        // Prevent window style changes that enable fullscreen
+        if (nIndex == GWL_STYLE) {
+            // Remove fullscreen-enabling styles
+            if (dwNewLong & WS_POPUP) {
+                LogInfo("SetWindowLongPtrA blocked WS_POPUP style - forcing windowed style");
+                dwNewLong &= ~WS_POPUP;
+                dwNewLong |= WS_OVERLAPPEDWINDOW;
+            }
+        }
+    }
+
+    return SetWindowLongPtrA_Original(hWnd, nIndex, dwNewLong);
 }
 
 bool InstallDxgiHooks() {
@@ -631,6 +808,11 @@ bool InstallApiHooks() {
         LogError("Failed to create and enable SetCursor hook");
     }
 
+    // Hook ShowCursor
+    if (!CreateAndEnableHook(ShowCursor, ShowCursor_Detour, reinterpret_cast<LPVOID *>(&ShowCursor_Original), "ShowCursor")) {
+        LogError("Failed to create and enable ShowCursor hook");
+    }
+
     // todo: move to loadlibrary hooks
     // Install Windows message hooks
 
@@ -670,8 +852,44 @@ bool InstallApiHooks() {
     }
 
     // Install display settings hooks
-    if (!InstallDisplaySettingsHooks()) {
-        LogError("Failed to install display settings hooks");
+    // Hook ChangeDisplaySettingsA
+    if (!CreateAndEnableHook(ChangeDisplaySettingsA, ChangeDisplaySettingsA_Detour, (LPVOID*)&ChangeDisplaySettingsA_Original, "ChangeDisplaySettingsA")) {
+        LogError("Failed to create and enable ChangeDisplaySettingsA hook");
+    }
+
+    // Hook ChangeDisplaySettingsW
+    if (!CreateAndEnableHook(ChangeDisplaySettingsW, ChangeDisplaySettingsW_Detour, (LPVOID*)&ChangeDisplaySettingsW_Original, "ChangeDisplaySettingsW")) {
+        LogError("Failed to create and enable ChangeDisplaySettingsW hook");
+    }
+
+    // Hook ChangeDisplaySettingsExA
+    if (!CreateAndEnableHook(ChangeDisplaySettingsExA, ChangeDisplaySettingsExA_Detour, (LPVOID*)&ChangeDisplaySettingsExA_Original, "ChangeDisplaySettingsExA")) {
+        LogError("Failed to create and enable ChangeDisplaySettingsExA hook");
+    }
+
+    // Hook ChangeDisplaySettingsExW
+    if (!CreateAndEnableHook(ChangeDisplaySettingsExW, ChangeDisplaySettingsExW_Detour, (LPVOID*)&ChangeDisplaySettingsExW_Original, "ChangeDisplaySettingsExW")) {
+        LogError("Failed to create and enable ChangeDisplaySettingsExW hook");
+    }
+
+    // Hook ShowWindow
+    if (!CreateAndEnableHook(ShowWindow, ShowWindow_Detour, (LPVOID*)&ShowWindow_Original, "ShowWindow")) {
+        LogError("Failed to create and enable ShowWindow hook");
+    }
+
+    // Hook SetWindowLongA
+    if (!CreateAndEnableHook(SetWindowLongA, SetWindowLongA_Detour, (LPVOID*)&SetWindowLongA_Original, "SetWindowLongA")) {
+        LogError("Failed to create and enable SetWindowLongA hook");
+    }
+
+    // Hook SetWindowLongW
+    if (!CreateAndEnableHook(SetWindowLongW, SetWindowLongW_Detour, (LPVOID*)&SetWindowLongW_Original, "SetWindowLongW")) {
+        LogError("Failed to create and enable SetWindowLongW hook");
+    }
+
+    // Hook SetWindowLongPtrA
+    if (!CreateAndEnableHook(SetWindowLongPtrA, SetWindowLongPtrA_Detour, (LPVOID*)&SetWindowLongPtrA_Original, "SetWindowLongPtrA")) {
+        LogError("Failed to create and enable SetWindowLongPtrA hook");
     }
 
     // Install debug output hooks
@@ -742,8 +960,19 @@ void UninstallApiHooks() {
     MH_RemoveHook(SetWindowLongPtrW);
     MH_RemoveHook(SetWindowPos);
     MH_RemoveHook(SetCursor);
+    MH_RemoveHook(ShowCursor);
     MH_RemoveHook(CreateDXGIFactory);
     MH_RemoveHook(CreateDXGIFactory1);
+
+    // Remove display settings hooks
+    MH_RemoveHook(ChangeDisplaySettingsA);
+    MH_RemoveHook(ChangeDisplaySettingsW);
+    MH_RemoveHook(ChangeDisplaySettingsExA);
+    MH_RemoveHook(ChangeDisplaySettingsExW);
+    MH_RemoveHook(ShowWindow);
+    MH_RemoveHook(SetWindowLongA);
+    MH_RemoveHook(SetWindowLongW);
+    MH_RemoveHook(SetWindowLongPtrA);
 
     // Remove D3D device hooks
     HMODULE d3d11_module = GetModuleHandleW(L"d3d11.dll");
@@ -771,10 +1000,21 @@ void UninstallApiHooks() {
     SetWindowLongPtrW_Original = nullptr;
     SetWindowPos_Original = nullptr;
     SetCursor_Original = nullptr;
+    ShowCursor_Original = nullptr;
     CreateDXGIFactory_Original = nullptr;
     CreateDXGIFactory1_Original = nullptr;
     D3D11CreateDeviceAndSwapChain_Original = nullptr;
     D3D12CreateDevice_Original = nullptr;
+
+    // Clean up display settings hooks
+    ChangeDisplaySettingsA_Original = nullptr;
+    ChangeDisplaySettingsW_Original = nullptr;
+    ChangeDisplaySettingsExA_Original = nullptr;
+    ChangeDisplaySettingsExW_Original = nullptr;
+    ShowWindow_Original = nullptr;
+    SetWindowLongA_Original = nullptr;
+    SetWindowLongW_Original = nullptr;
+    SetWindowLongPtrA_Original = nullptr;
 
     g_api_hooks_installed.store(false);
     LogInfo("API hooks uninstalled successfully");

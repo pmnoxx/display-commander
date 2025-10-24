@@ -175,10 +175,10 @@ LONG_PTR WINAPI SetWindowLongPtrW_Detour(HWND hWnd, int nIndex, LONG_PTR dwNewLo
 BOOL WINAPI SetWindowPos_Detour(HWND hWnd, HWND hWndInsertAfter, int X, int Y, int cx, int cy, UINT uFlags) {
     // Only process if prevent_always_on_top is enabled
     if (settings::g_developerTabSettings.prevent_always_on_top.GetValue()) {
-        hWndInsertAfter = nullptr;
+        hWndInsertAfter = HWND_NOTOPMOST;
         /*
         // Check if we're trying to set the window to be always on top
-        if (hWndInsertAfter == HWND_TOPMOST) {
+        if (hWndInsertAfter != HWND_TOPMOST) {
             // Replace HWND_TOPMOST with HWND_NOTOPMOST to prevent always-on-top behavior
             LogInfo("SetWindowPos: Preventing always-on-top for window 0x%p - Replacing HWND_TOPMOST with HWND_NOTOPMOST", hWnd);
 
@@ -623,7 +623,7 @@ bool InstallApiHooks() {
         LogInfo("API hooks already installed");
         return true;
     }
-    #if 0
+    #if 1
     // Initialize MinHook (only if not already initialized)
     MH_STATUS init_status = SafeInitializeMinHook(display_commanderhooks::HookType::API);
     if (init_status != MH_OK && init_status != MH_ERROR_ALREADY_INITIALIZED) {

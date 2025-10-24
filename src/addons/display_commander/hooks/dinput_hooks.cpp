@@ -272,6 +272,7 @@ void UninstallDirectInputHooks() {
     LogInfo("DirectInput hooks uninstalled successfully");
 }
 
+#if 0
 // DirectInput Device State Hook Functions
 HRESULT WINAPI DInputDevice_GetDeviceState_Detour(LPVOID pDevice, DWORD cbData, LPVOID lpvData) {
     // Get the original function from the device hook
@@ -434,6 +435,7 @@ void HookDirectInputDeviceVTable(LPVOID device, const std::string& device_name, 
     LogInfo("HookDirectInputDeviceVTable: Device %s (%s) vtable hooked successfully",
            device_name.c_str(), GetDeviceTypeName(device_type).c_str());
 }
+#endif
 
 // Unhook DirectInput device vtable
 void UnhookDirectInputDeviceVTable(LPVOID device) {

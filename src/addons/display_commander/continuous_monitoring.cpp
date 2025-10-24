@@ -11,7 +11,6 @@
 #include "settings/main_tab_settings.hpp"
 #include "settings/developer_tab_settings.hpp"
 #include "ui/new_ui/swapchain_tab.hpp"
-#include "utils.hpp"
 #include "utils/logging.hpp"
 #include "utils/timing.hpp"
 
@@ -112,11 +111,17 @@ void every1s_checks() {
                 // Release cursor clipping when going to background
                 display_commanderhooks::ClipCursor_Direct(nullptr);
                 LogInfo("Continuous monitoring: Released cursor clipping for background");
+
+                // Set cursor to default arrow when moving to background
+                display_commanderhooks::SetCursor_Direct(LoadCursor(nullptr, IDC_ARROW));
+                LogInfo("Continuous monitoring: Set cursor to default arrow for background");
             } else {
                 LogInfo("Continuous monitoring: App moved to FOREGROUND");
                 // Restore cursor clipping when coming to foreground
                 display_commanderhooks::RestoreClipCursor();
                 LogInfo("Continuous monitoring: Restored cursor clipping for foreground");
+
+                display_commanderhooks::RestoreSetCursor();
             }
         }
 

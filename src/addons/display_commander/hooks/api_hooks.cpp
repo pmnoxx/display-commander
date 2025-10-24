@@ -31,6 +31,7 @@ GetGUIThreadInfo_pfn GetGUIThreadInfo_Original = nullptr;
 SetThreadExecutionState_pfn SetThreadExecutionState_Original = nullptr;
 SetWindowLongPtrW_pfn SetWindowLongPtrW_Original = nullptr;
 SetWindowPos_pfn SetWindowPos_Original = nullptr;
+SetCursor_pfn SetCursor_Original = nullptr;
 CreateDXGIFactory_pfn CreateDXGIFactory_Original = nullptr;
 CreateDXGIFactory1_pfn CreateDXGIFactory1_Original = nullptr;
 D3D11CreateDeviceAndSwapChain_pfn D3D11CreateDeviceAndSwapChain_Original = nullptr;
@@ -277,6 +278,42 @@ BOOL WINAPI SetWindowPos_Detour(HWND hWnd, HWND hWndInsertAfter, int X, int Y, i
     // Call original function with unmodified parameters
     return SetWindowPos_Original ? SetWindowPos_Original(hWnd, hWndInsertAfter, X, Y, cx, cy, uFlags)
                                  : SetWindowPos(hWnd, hWndInsertAfter, X, Y, cx, cy, uFlags);
+}
+
+HCURSOR WINAPI SetCursor_Direct(HCURSOR hCursor) {
+    // Store the cursor value atomically
+    s_last_cursor_value.store(hCursor);
+
+    // Call original function
+    return SetCursor_Original ? SetCursor_Original(hCursor) : SetCursor(hCursor);
+}
+
+void RestoreSetCursor() {
+    // Get the last stored cursor value atomically
+    HCURSOR last_cursor = s_last_cursor_value.load();
+
+    if (last_cursor != nullptr) {
+        // Restore the cursor using the direct function
+        SetCursor_Direct(last_cursor);
+        LogInfo("RestoreSetCursor: Restored cursor to 0x%p", last_cursor);
+    } else {
+        // If no cursor was stored, set to default arrow
+        SetCursor_Direct(LoadCursor(nullptr, IDC_ARROW));
+        LogInfo("RestoreSetCursor: No previous cursor found, set to default arrow");
+    }
+}
+
+
+// Hooked SetCursor function
+HCURSOR WINAPI SetCursor_Detour(HCURSOR hCursor) {
+    // Store the cursor value atomically
+    s_last_cursor_value.store(hCursor);
+    if (ShouldBlockMouseInput()) {
+        hCursor = LoadCursor(nullptr, IDC_ARROW);
+    }
+
+    // Call original function
+    return SetCursor_Direct(hCursor);
 }
 
 // Hooked CreateDXGIFactory function
@@ -589,6 +626,11 @@ bool InstallApiHooks() {
         LogError("Failed to create and enable SetWindowPos hook");
     }
 
+    // Hook SetCursor
+    if (!CreateAndEnableHook(SetCursor, SetCursor_Detour, reinterpret_cast<LPVOID *>(&SetCursor_Original), "SetCursor")) {
+        LogError("Failed to create and enable SetCursor hook");
+    }
+
     // todo: move to loadlibrary hooks
     // Install Windows message hooks
 
@@ -697,6 +739,9 @@ void UninstallApiHooks() {
     MH_RemoveHook(GetActiveWindow);
     MH_RemoveHook(GetGUIThreadInfo);
     MH_RemoveHook(SetThreadExecutionState);
+    MH_RemoveHook(SetWindowLongPtrW);
+    MH_RemoveHook(SetWindowPos);
+    MH_RemoveHook(SetCursor);
     MH_RemoveHook(CreateDXGIFactory);
     MH_RemoveHook(CreateDXGIFactory1);
 
@@ -723,6 +768,9 @@ void UninstallApiHooks() {
     GetActiveWindow_Original = nullptr;
     GetGUIThreadInfo_Original = nullptr;
     SetThreadExecutionState_Original = nullptr;
+    SetWindowLongPtrW_Original = nullptr;
+    SetWindowPos_Original = nullptr;
+    SetCursor_Original = nullptr;
     CreateDXGIFactory_Original = nullptr;
     CreateDXGIFactory1_Original = nullptr;
     D3D11CreateDeviceAndSwapChain_Original = nullptr;

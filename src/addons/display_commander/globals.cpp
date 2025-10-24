@@ -164,6 +164,9 @@ std::unique_ptr<LatencyManager> g_latencyManager = std::make_unique<LatencyManag
 // Global frame ID for latency management
 std::atomic<uint64_t> g_global_frame_id{0};
 
+// Global frame ID for UI drawing tracking
+std::atomic<uint64_t> g_last_ui_drawn_frame_id{0};
+
 // Global Swapchain Tracking Manager instance
 SwapchainTrackingManager g_swapchainTrackingManager;
 

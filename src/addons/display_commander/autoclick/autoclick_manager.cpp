@@ -333,6 +333,9 @@ void UpdateUIOverlayState(bool is_open) {
 void UpdateLastUIDrawTime() {
     LONGLONG now_ns = utils::get_now_ns();
     g_last_ui_draw_time_ns.store(now_ns);
+
+    // Also update the frame ID when UI is drawn
+    g_last_ui_drawn_frame_id.store(g_global_frame_id.load());
     //LogDebug("Auto-click: UI draw time updated to %lld ns", now_ns);
 }
 

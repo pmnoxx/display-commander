@@ -161,6 +161,11 @@ void OnInitEffectRuntime(reshade::api::effect_runtime* runtime) {
 
 // ReShade overlay event handler for input blocking
 bool OnReShadeOverlayOpen(reshade::api::effect_runtime* runtime, bool open, reshade::api::input_source source) {
+
+    // store last frame id, when UI was opened
+    g_last_ui_drawn_frame_id.store(g_global_frame_id.load());
+
+
     if (open) {
         LogInfo("ReShade overlay opened - Input blocking active");
         // When ReShade overlay opens, we can also use its input blocking
@@ -229,6 +234,24 @@ void OverrideReShadeSettings() {
     reshade::set_config_value(nullptr, "ADDON", "LoadFromDllMain", load_from_dll_main_from_display_commander);
     LogInfo("ReShade settings override - LoadFromDllMain set to %d (from DisplayCommander.ini)",
             load_from_dll_main_from_display_commander);
+
+    // Check if InputProcessing has been set to 0 at least once before
+    int32_t input_processing_set_once = 0;
+    bool found_input_processing_setting = display_commander::config::get_config_value(
+        "DisplayCommander", "InputProcessingSetOnce", input_processing_set_once);
+
+    if (!found_input_processing_setting || input_processing_set_once == 0) {
+        // Set InputProcessing to 0 only if it hasn't been set before
+        reshade::set_config_value(nullptr, "INPUT", "InputProcessing", "0");
+        LogInfo("ReShade settings override - InputProcessing set to 0 (first time)");
+
+        // Mark that we've set InputProcessing to 0 at least once
+        display_commander::config::set_config_value("DisplayCommander", "InputProcessingSetOnce", 1);
+        display_commander::config::save_config();
+        LogInfo("ReShade settings override - InputProcessingSetOnce marked as set");
+    } else {
+        LogInfo("ReShade settings override - InputProcessing already set to 0 previously, skipping");
+    }
 
     LogInfo("ReShade settings override completed successfully");
 }

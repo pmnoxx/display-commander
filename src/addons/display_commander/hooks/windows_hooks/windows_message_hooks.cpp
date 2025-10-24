@@ -13,6 +13,10 @@
 
 namespace display_commanderhooks {
 
+bool IsUIOpenedRecently() {
+    return g_global_frame_id.load() - g_last_ui_drawn_frame_id.load() < 3;
+}
+
 // Helper functions for specific input types
 bool ShouldBlockKeyboardInput() {
     const bool is_background = g_app_in_background.load(std::memory_order_acquire);
@@ -24,7 +28,7 @@ bool ShouldBlockKeyboardInput() {
         case InputBlockingMode::kEnabled:
             return true;
         case InputBlockingMode::kEnabledInBackground:
-            return is_background;
+            return is_background || IsUIOpenedRecently();
         default:
             return false;
     }
@@ -40,7 +44,7 @@ bool ShouldBlockMouseInput() {
         case InputBlockingMode::kEnabled:
             return true;
         case InputBlockingMode::kEnabledInBackground:
-            return is_background;
+            return is_background || IsUIOpenedRecently();
         default:
             return false;
     }
@@ -56,7 +60,7 @@ bool ShouldBlockGamepadInput() {
         case InputBlockingMode::kEnabled:
             return true;
         case InputBlockingMode::kEnabledInBackground:
-            return is_background;
+            return is_background || IsUIOpenedRecently();
         default:
             return false;
     }

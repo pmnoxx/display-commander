@@ -103,6 +103,9 @@ class ExperimentalTabSettings {
     BoolSetting debug_output_log_to_reshade;
     BoolSetting debug_output_show_stats;
 
+    // DirectInput device state blocking
+    BoolSetting dinput_device_state_blocking;
+
 
   private:
     std::vector<SettingBase *> all_settings_;

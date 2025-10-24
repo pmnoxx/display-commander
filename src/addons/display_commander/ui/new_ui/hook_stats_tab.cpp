@@ -187,6 +187,25 @@ void DrawHookStatsTab() {
     ImGui::SameLine();
     ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "(Disable DirectInput hook processing)");
 
+    // DirectInput device state blocking checkbox
+    bool dinput_device_state_blocking = settings::g_experimentalTabSettings.dinput_device_state_blocking.GetValue();
+    if (ImGui::Checkbox("DirectInput Device State Blocking", &dinput_device_state_blocking)) {
+        settings::g_experimentalTabSettings.dinput_device_state_blocking.SetValue(dinput_device_state_blocking);
+    }
+    ImGui::SameLine();
+    ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "(Block mouse/keyboard input via DirectInput)");
+
+    // Show device hook count
+    int device_hook_count = display_commanderhooks::GetDirectInputDeviceHookCount();
+    ImGui::Text("Hooked Devices: %d", device_hook_count);
+
+    // Manual hook button
+    if (ImGui::Button("Hook All DirectInput Devices")) {
+        display_commanderhooks::HookAllDirectInputDevices();
+    }
+    ImGui::SameLine();
+    ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "(Manually hook existing devices)");
+
     ImGui::Spacing();
     ImGui::Separator();
 

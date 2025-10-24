@@ -84,6 +84,7 @@ ExperimentalTabSettings::ExperimentalTabSettings()
     , hid_suppression_block_createfile("HIDSuppressionBlockCreateFile", true, "DisplayCommander.Experimental")
     , debug_output_log_to_reshade("DebugOutputLogToReShade", true, "DisplayCommander.Experimental")
     , debug_output_show_stats("DebugOutputShowStats", true, "DisplayCommander.Experimental")
+    , dinput_device_state_blocking("DInputDeviceStateBlocking", true, "DisplayCommander.Experimental")
 {
     // Initialize the all_settings_ vector
     all_settings_ = {
@@ -108,6 +109,7 @@ ExperimentalTabSettings::ExperimentalTabSettings()
         &hid_suppression_block_getinputreport, &hid_suppression_block_getattributes,
         &hid_suppression_block_createfile,
         &debug_output_log_to_reshade, &debug_output_show_stats,
+        &dinput_device_state_blocking,
     };
 }
 

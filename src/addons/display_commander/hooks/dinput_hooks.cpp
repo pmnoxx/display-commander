@@ -1,13 +1,15 @@
 #include "dinput_hooks.hpp"
-#include "../utils.hpp"
 #include "windows_hooks/windows_message_hooks.hpp"
 #include "../globals.hpp"
 #include "../utils/general_utils.hpp"
 #include "../utils/logging.hpp"
+#include "../settings/experimental_tab_settings.hpp"
 #include <MinHook.h>
 #include <chrono>
 #include <vector>
 #include <mutex>
+#include <unordered_map>
+#include <dinput.h>
 
 namespace display_commanderhooks {
 
@@ -22,6 +24,19 @@ static std::atomic<bool> g_dinput_hooks_installed{false};
 // Device tracking
 static std::vector<DInputDeviceInfo> g_dinput_devices;
 static std::mutex g_dinput_devices_mutex;
+
+// Device state hooking
+struct DInputDeviceHook {
+    LPVOID device;
+    std::string device_name;
+    DWORD device_type;
+    LPVOID original_getdevicestate;
+    LPVOID original_getdevicedata;
+    bool vtable_hooked;
+};
+
+static std::unordered_map<LPVOID, DInputDeviceHook> g_dinput_device_hooks;
+static std::mutex g_dinput_device_hooks_mutex;
 
 // Hook statistics are now part of the main system
 
@@ -249,10 +264,247 @@ void UninstallDirectInputHooks() {
         DirectInputCreateW_Original = nullptr;
     }
 
-    // Clear device tracking
+    // Clear device tracking and hooks
     ClearDInputDevices();
+    ClearAllDirectInputDeviceHooks();
 
     g_dinput_hooks_installed.store(false);
     LogInfo("DirectInput hooks uninstalled successfully");
 }
+
+// DirectInput Device State Hook Functions
+HRESULT WINAPI DInputDevice_GetDeviceState_Detour(LPVOID pDevice, DWORD cbData, LPVOID lpvData) {
+    // Get the original function from the device hook
+    std::lock_guard<std::mutex> lock(g_dinput_device_hooks_mutex);
+    auto it = g_dinput_device_hooks.find(pDevice);
+    if (it == g_dinput_device_hooks.end()) {
+        LogWarn("DInputDevice_GetDeviceState_Detour: Device not found in hooks map");
+        return E_FAIL;
+    }
+
+    DInputDeviceHook& hook = it->second;
+
+    // Call original function
+    typedef HRESULT (STDMETHODCALLTYPE *GetDeviceState_t)(LPVOID, DWORD, LPVOID);
+    GetDeviceState_t original_func = reinterpret_cast<GetDeviceState_t>(hook.original_getdevicestate);
+    HRESULT hr = original_func(pDevice, cbData, lpvData);
+
+    if (SUCCEEDED(hr) && lpvData != nullptr) {
+        // Check device type and apply input blocking
+        switch (LOBYTE(hook.device_type)) {
+        case DI8DEVTYPE_MOUSE:
+            if (ShouldBlockMouseInput() && settings::g_experimentalTabSettings.dinput_device_state_blocking.GetValue()) {
+                // Clear mouse button states (similar to ReShade's approach)
+                if (cbData == sizeof(DIMOUSESTATE) || cbData == sizeof(DIMOUSESTATE2)) {
+                    std::memset(static_cast<LPBYTE>(lpvData) + offsetof(DIMOUSESTATE, rgbButtons), 0,
+                               cbData - offsetof(DIMOUSESTATE, rgbButtons));
+                    LogDebug("DInputDevice_GetDeviceState: Blocked mouse button input for device %s",
+                            hook.device_name.c_str());
+                } else {
+                    // For other mouse data structures, clear all data
+                    std::memset(lpvData, 0, cbData);
+                }
+            }
+            break;
+        case DI8DEVTYPE_KEYBOARD:
+            if (ShouldBlockKeyboardInput() && settings::g_experimentalTabSettings.dinput_device_state_blocking.GetValue()) {
+                // Clear all keyboard data
+                std::memset(lpvData, 0, cbData);
+                LogDebug("DInputDevice_GetDeviceState: Blocked keyboard input for device %s",
+                        hook.device_name.c_str());
+            }
+            break;
+        }
+    }
+
+    return hr;
+}
+
+HRESULT WINAPI DInputDevice_GetDeviceData_Detour(LPVOID pDevice, DWORD cbObjectData, LPDIDEVICEOBJECTDATA rgdod, LPDWORD pdwInOut, DWORD dwFlags) {
+    // Get the original function from the device hook
+    std::lock_guard<std::mutex> lock(g_dinput_device_hooks_mutex);
+    auto it = g_dinput_device_hooks.find(pDevice);
+    if (it == g_dinput_device_hooks.end()) {
+        LogWarn("DInputDevice_GetDeviceData_Detour: Device not found in hooks map");
+        return E_FAIL;
+    }
+
+    DInputDeviceHook& hook = it->second;
+
+    // Call original function
+    typedef HRESULT (STDMETHODCALLTYPE *GetDeviceData_t)(LPVOID, DWORD, LPDIDEVICEOBJECTDATA, LPDWORD, DWORD);
+    GetDeviceData_t original_func = reinterpret_cast<GetDeviceData_t>(hook.original_getdevicedata);
+    HRESULT hr = original_func(pDevice, cbObjectData, rgdod, pdwInOut, dwFlags);
+
+    if (SUCCEEDED(hr) && (dwFlags & DIGDD_PEEK) == 0 && rgdod != nullptr && pdwInOut != nullptr && *pdwInOut != 0) {
+        // Check device type and apply input blocking
+        switch (LOBYTE(hook.device_type)) {
+        case DI8DEVTYPE_MOUSE:
+            if (ShouldBlockMouseInput() && settings::g_experimentalTabSettings.dinput_device_state_blocking.GetValue()) {
+                *pdwInOut = 0; // Clear the data count
+                hr = DI_OK; // Overwrite potential 'DI_BUFFEROVERFLOW'
+                LogDebug("DInputDevice_GetDeviceData: Blocked mouse input events for device %s",
+                        hook.device_name.c_str());
+            }
+            break;
+        case DI8DEVTYPE_KEYBOARD:
+            if (ShouldBlockKeyboardInput() && settings::g_experimentalTabSettings.dinput_device_state_blocking.GetValue()) {
+                *pdwInOut = 0; // Clear the data count
+                hr = DI_OK;
+                LogDebug("DInputDevice_GetDeviceData: Blocked keyboard input events for device %s",
+                        hook.device_name.c_str());
+            }
+            break;
+        }
+    }
+
+    return hr;
+}
+
+// Hook DirectInput device vtable
+void HookDirectInputDeviceVTable(LPVOID device, const std::string& device_name, DWORD device_type) {
+    if (device == nullptr) {
+        LogWarn("HookDirectInputDeviceVTable: Device is nullptr");
+        return;
+    }
+
+    std::lock_guard<std::mutex> lock(g_dinput_device_hooks_mutex);
+
+    // Check if already hooked
+    if (g_dinput_device_hooks.find(device) != g_dinput_device_hooks.end()) {
+        LogDebug("HookDirectInputDeviceVTable: Device %s already hooked", device_name.c_str());
+        return;
+    }
+
+    // Get vtable
+    LPVOID* vtable = *reinterpret_cast<LPVOID**>(device);
+    if (vtable == nullptr) {
+        LogWarn("HookDirectInputDeviceVTable: Failed to get vtable for device %s", device_name.c_str());
+        return;
+    }
+
+    // Create device hook entry
+    DInputDeviceHook hook;
+    hook.device = device;
+    hook.device_name = device_name;
+    hook.device_type = device_type;
+    hook.original_getdevicestate = vtable[9]; // GetDeviceState is at index 9
+    hook.original_getdevicedata = vtable[10]; // GetDeviceData is at index 10
+    hook.vtable_hooked = false;
+
+    // Hook GetDeviceState
+    if (hook.original_getdevicestate != nullptr) {
+        if (MH_CreateHook(hook.original_getdevicestate, DInputDevice_GetDeviceState_Detour,
+                         &hook.original_getdevicestate) == MH_OK) {
+            if (MH_EnableHook(hook.original_getdevicestate) == MH_OK) {
+                hook.vtable_hooked = true;
+                LogInfo("HookDirectInputDeviceVTable: Successfully hooked GetDeviceState for device %s",
+                       device_name.c_str());
+            } else {
+                LogWarn("HookDirectInputDeviceVTable: Failed to enable GetDeviceState hook for device %s",
+                       device_name.c_str());
+            }
+        } else {
+            LogWarn("HookDirectInputDeviceVTable: Failed to create GetDeviceState hook for device %s",
+                   device_name.c_str());
+        }
+    }
+
+    // Hook GetDeviceData
+    if (hook.original_getdevicedata != nullptr) {
+        if (MH_CreateHook(hook.original_getdevicedata, DInputDevice_GetDeviceData_Detour,
+                         &hook.original_getdevicedata) == MH_OK) {
+            if (MH_EnableHook(hook.original_getdevicedata) == MH_OK) {
+                hook.vtable_hooked = true;
+                LogInfo("HookDirectInputDeviceVTable: Successfully hooked GetDeviceData for device %s",
+                       device_name.c_str());
+            } else {
+                LogWarn("HookDirectInputDeviceVTable: Failed to enable GetDeviceData hook for device %s",
+                       device_name.c_str());
+            }
+        } else {
+            LogWarn("HookDirectInputDeviceVTable: Failed to create GetDeviceData hook for device %s",
+                   device_name.c_str());
+        }
+    }
+
+    // Store the hook
+    g_dinput_device_hooks[device] = hook;
+
+    LogInfo("HookDirectInputDeviceVTable: Device %s (%s) vtable hooked successfully",
+           device_name.c_str(), GetDeviceTypeName(device_type).c_str());
+}
+
+// Unhook DirectInput device vtable
+void UnhookDirectInputDeviceVTable(LPVOID device) {
+    if (device == nullptr) {
+        return;
+    }
+
+    std::lock_guard<std::mutex> lock(g_dinput_device_hooks_mutex);
+
+    auto it = g_dinput_device_hooks.find(device);
+    if (it == g_dinput_device_hooks.end()) {
+        return;
+    }
+
+    DInputDeviceHook& hook = it->second;
+
+    // Disable hooks
+    if (hook.original_getdevicestate != nullptr) {
+        MH_DisableHook(hook.original_getdevicestate);
+        MH_RemoveHook(hook.original_getdevicestate);
+    }
+
+    if (hook.original_getdevicedata != nullptr) {
+        MH_DisableHook(hook.original_getdevicedata);
+        MH_RemoveHook(hook.original_getdevicedata);
+    }
+
+    // Remove from map
+    g_dinput_device_hooks.erase(it);
+
+    LogInfo("UnhookDirectInputDeviceVTable: Device %s vtable unhooked", hook.device_name.c_str());
+}
+
+// Clear all DirectInput device hooks
+void ClearAllDirectInputDeviceHooks() {
+    std::lock_guard<std::mutex> lock(g_dinput_device_hooks_mutex);
+
+    for (auto& pair : g_dinput_device_hooks) {
+        DInputDeviceHook& hook = pair.second;
+
+        // Disable hooks
+        if (hook.original_getdevicestate != nullptr) {
+            MH_DisableHook(hook.original_getdevicestate);
+            MH_RemoveHook(hook.original_getdevicestate);
+        }
+
+        if (hook.original_getdevicedata != nullptr) {
+            MH_DisableHook(hook.original_getdevicedata);
+            MH_RemoveHook(hook.original_getdevicedata);
+        }
+    }
+
+    g_dinput_device_hooks.clear();
+    LogInfo("ClearAllDirectInputDeviceHooks: All DirectInput device hooks cleared");
+}
+
+// Hook all DirectInput devices (for manual hooking)
+void HookAllDirectInputDevices() {
+    std::lock_guard<std::mutex> lock(g_dinput_device_hooks_mutex);
+
+    // This is a placeholder function - in a real implementation, you would need to
+    // enumerate all existing DirectInput devices and hook them
+    // For now, this function exists to provide the interface for manual hooking
+
+    LogInfo("HookAllDirectInputDevices: Manual device hooking requested (not implemented yet)");
+}
+
+// Get count of hooked DirectInput devices
+int GetDirectInputDeviceHookCount() {
+    std::lock_guard<std::mutex> lock(g_dinput_device_hooks_mutex);
+    return static_cast<int>(g_dinput_device_hooks.size());
+}
+
 } // namespace display_commanderhooks

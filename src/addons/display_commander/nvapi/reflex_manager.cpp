@@ -100,8 +100,6 @@ bool ReflexManager::ApplySleepMode(bool low_latency, bool boost, bool use_marker
     return true;
 }
 
-NvU64 ReflexManager::IncreaseFrameId() { return frame_id_.fetch_add(1, std::memory_order_acq_rel); }
-
 bool ReflexManager::SetMarker(NV_LATENCY_MARKER_TYPE marker) {
     if (!initialized_.load(std::memory_order_acquire) || d3d_device_ == nullptr)
         return false;
@@ -109,14 +107,14 @@ bool ReflexManager::SetMarker(NV_LATENCY_MARKER_TYPE marker) {
     if (s_enable_reflex_logging.load()) {
         std::ostringstream oss;
         oss << utils::get_now_ns() % utils::SEC_TO_NS << " Reflex: SetMarker " << marker << " frame_id "
-            << frame_id_.load(std::memory_order_acquire);
+            << g_global_frame_id.load(std::memory_order_acquire);
         LogInfo(oss.str().c_str());
     }
 
     NV_LATENCY_MARKER_PARAMS mp = {};
     mp.version = NV_LATENCY_MARKER_PARAMS_VER;
     mp.markerType = marker;
-    mp.frameID = frame_id_.load(std::memory_order_acquire);
+    mp.frameID = g_global_frame_id.load(std::memory_order_acquire);
 
     const auto st = NvAPI_D3D_SetLatencyMarker_Direct(d3d_device_, &mp);
     if (st != NVAPI_OK) {

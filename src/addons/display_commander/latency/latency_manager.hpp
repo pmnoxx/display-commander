@@ -43,8 +43,6 @@ class ILatencyProvider {
     virtual void Shutdown() = 0;
     virtual bool IsInitialized() const = 0;
 
-    // Frame management
-    virtual uint64_t IncreaseFrameId() = 0;
 
     // Markers for frame timing
     virtual bool SetMarker(LatencyMarkerType marker) = 0;

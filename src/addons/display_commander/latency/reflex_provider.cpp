@@ -15,7 +15,6 @@ void ReflexProvider::Shutdown() { reflex_manager_.Shutdown(); }
 
 bool ReflexProvider::IsInitialized() const { return reflex_manager_.IsInitialized(); }
 
-uint64_t ReflexProvider::IncreaseFrameId() { return reflex_manager_.IncreaseFrameId(); }
 
 bool ReflexProvider::SetMarker(LatencyMarkerType marker) {
     if (!IsInitialized())

@@ -47,5 +47,4 @@ class ReflexManager {
   private:
     std::atomic<bool> initialized_{false};
     IUnknown *d3d_device_ = nullptr; // not owned
-    std::atomic<NvU64> frame_id_{0};
 };

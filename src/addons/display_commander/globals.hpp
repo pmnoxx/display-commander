@@ -530,6 +530,9 @@ extern std::unique_ptr<LatentSyncManager> g_latentSyncManager;
 // Latency Manager
 extern std::unique_ptr<LatencyManager> g_latencyManager;
 
+// Global frame ID for latency management
+extern std::atomic<uint64_t> g_global_frame_id;
+
 // Global Swapchain Tracking Manager instance
 extern SwapchainTrackingManager g_swapchainTrackingManager;
 

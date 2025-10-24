@@ -16,7 +16,6 @@ class ReflexProvider : public ILatencyProvider {
     void Shutdown() override;
     bool IsInitialized() const override;
 
-    uint64_t IncreaseFrameId() override;
     bool SetMarker(LatencyMarkerType marker) override;
     bool ApplySleepMode(bool low_latency, bool boost, bool use_markers) override;
     bool Sleep() override;

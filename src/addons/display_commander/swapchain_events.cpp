@@ -878,16 +878,12 @@ void OnPresentUpdateAfter2(void* native_device, DeviceTypeDC device_type) {
     if (s_reflex_enable.load()) {
         s_reflex_enable_current_frame.store(true);
         if (native_device && g_latencyManager->Initialize(native_device, device_type)) {
-            g_latencyManager->IncreaseFrameId();
             // Apply sleep mode opportunistically each frame to reflect current
             // toggles
             g_latencyManager->ApplySleepMode(s_reflex_low_latency.load(), s_reflex_boost.load(),
                                              s_reflex_use_markers.load());
             if (s_reflex_enable_sleep.load()) {
                 g_latencyManager->Sleep();
-            }
-            if (s_reflex_generate_markers.load()) {
-                g_latencyManager->SetMarker(LatencyMarkerType::SIMULATION_START);
             }
         }
     } else {
@@ -896,6 +892,16 @@ void OnPresentUpdateAfter2(void* native_device, DeviceTypeDC device_type) {
             g_latencyManager->Shutdown();
         }
     }
+
+    g_global_frame_id.fetch_add(1);
+
+
+    if (s_reflex_enable_current_frame.load()) {
+        if (s_reflex_generate_markers.load()) {
+            g_latencyManager->SetMarker(LatencyMarkerType::SIMULATION_START);
+        }
+    }
+
     auto end_ns = TimerPresentPacingDelayEnd(start_ns);
     HandleOnPresentEnd();
 

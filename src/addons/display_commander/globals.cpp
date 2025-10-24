@@ -154,6 +154,9 @@ std::unique_ptr<LatentSyncManager> g_latentSyncManager = std::make_unique<Latent
 // Global Latency Manager instance
 std::unique_ptr<LatencyManager> g_latencyManager = std::make_unique<LatencyManager>();
 
+// Global frame ID for latency management
+std::atomic<uint64_t> g_global_frame_id{0};
+
 // Global Swapchain Tracking Manager instance
 SwapchainTrackingManager g_swapchainTrackingManager;
 

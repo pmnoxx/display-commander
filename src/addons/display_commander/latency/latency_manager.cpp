@@ -96,12 +96,6 @@ bool LatencyManager::IsInitialized() const {
     return initialized_.load(std::memory_order_acquire) && provider_ && provider_->IsInitialized();
 }
 
-uint64_t LatencyManager::IncreaseFrameId() {
-    if (!IsInitialized())
-        return 0;
-    return provider_->IncreaseFrameId();
-}
-
 bool LatencyManager::SetMarker(LatencyMarkerType marker) {
     if (!IsInitialized()) {
         return false;

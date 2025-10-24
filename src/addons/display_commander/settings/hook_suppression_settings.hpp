@@ -25,7 +25,8 @@ class HookSuppressionSettings {
     std::vector<SettingBase *> GetAllSettings();
 
     // Hook suppression settings
-    BoolSetting suppress_dxgi_hooks;
+    BoolSetting suppress_dxgi_factory_hooks;
+    BoolSetting suppress_dxgi_swapchain_hooks;
     BoolSetting suppress_d3d_device_hooks;
     BoolSetting suppress_xinput_hooks;
     BoolSetting suppress_dinput_hooks;
@@ -47,7 +48,8 @@ class HookSuppressionSettings {
     BoolSetting suppress_process_exit_hooks;
 
     // Auto-detection settings (set to 1 when hooks are successfully installed)
-    BoolSetting dxgi_hooks_installed;
+    BoolSetting dxgi_factory_hooks_installed;
+    BoolSetting dxgi_swapchain_hooks_installed;
     BoolSetting d3d_device_hooks_installed;
     BoolSetting xinput_hooks_installed;
     BoolSetting dinput_hooks_installed;

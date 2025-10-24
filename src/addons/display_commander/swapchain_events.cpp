@@ -25,6 +25,7 @@
 #include "settings/main_tab_settings.hpp"
 #include "settings/developer_tab_settings.hpp"
 
+#include <d3d11.h>
 #include <dxgi.h>
 #include "swapchain_events.hpp"
 #include "swapchain_events_power_saving.hpp"
@@ -185,9 +186,54 @@ void hookToSwapChain(reshade::api::swapchain *swapchain) {
         // Initialize if not already done
         DoInitializationWithHwnd(hwnd);
 
+        auto api = swapchain->get_device()->get_api();
+
         // Hook DXGI Present calls for this swapchain
         // Get the underlying DXGI swapchain from the ReShade swapchain
-        if (swapchain->get_device()->get_api() == reshade::api::device_api::d3d12 || swapchain->get_device()->get_api() == reshade::api::device_api::d3d11 || swapchain->get_device()->get_api() == reshade::api::device_api::d3d10) {
+
+        if (api == reshade::api::device_api::d3d10) {
+            auto *id3d10device   = reinterpret_cast<ID3D10Device *>(swapchain->get_native());
+            IDXGISwapChain *dxgi_swapchain = nullptr;
+            if (SUCCEEDED(id3d10device->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain)))) {
+                if (display_commanderhooks::dxgi::HookSwapchain(dxgi_swapchain)) {
+                    LogInfo("Successfully hooked DXGI Present calls for swapchain: 0x%p", id3d10device);
+                }
+            }
+            return;
+        }
+
+        if (api == reshade::api::device_api::d3d11) {
+            auto *id3d11device   = reinterpret_cast<ID3D11Device *>(swapchain->get_native());
+
+            // query IDXGISwapChain interface
+            IDXGISwapChain *dxgi_swapchain = nullptr;
+            if (SUCCEEDED(id3d11device->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain)))) {
+                if (display_commanderhooks::dxgi::HookSwapchain(dxgi_swapchain)) {
+                    LogInfo("Successfully hooked DXGI Present calls for swapchain: 0x%p", dxgi_swapchain);
+                } else {
+                    LogWarn("Failed to hook DXGI Present calls for swapchain: 0x%p", dxgi_swapchain);
+                }
+            }
+
+            return;
+        }
+
+        if (api == reshade::api::device_api::d3d12) {
+            auto *id3d12device   = reinterpret_cast<ID3D12Device *>(swapchain->get_native());
+
+            // query IDXGISwapChain interface
+            IDXGISwapChain *dxgi_swapchain = nullptr;
+            if (SUCCEEDED(id3d12device->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain)))) {
+                if (display_commanderhooks::dxgi::HookSwapchain(dxgi_swapchain)) {
+                    LogInfo("Successfully hooked DXGI Present calls for swapchain: 0x%p", dxgi_swapchain);
+                } else {
+                    LogWarn("Failed to hook DXGI Present calls for swapchain: 0x%p", dxgi_swapchain);
+                }
+            }
+            return;
+        }
+        #if 0
+        if (api == reshade::api::device_api::d3d12 || api == reshade::api::device_api::d3d11) {
             if (auto *dxgi_swapchain = reinterpret_cast<IDXGISwapChain *>(swapchain->get_native())) {
                 if (display_commanderhooks::dxgi::HookSwapchain(dxgi_swapchain)) {
                     LogInfo("Successfully hooked DXGI Present calls for swapchain: 0x%p", dxgi_swapchain);
@@ -199,10 +245,12 @@ void hookToSwapChain(reshade::api::swapchain *swapchain) {
                         "hooking");
             }
         }
+        #endif
         // Try to hook DX9 Present calls if this is a DX9 device
         // Get the underlying DX9 device from the ReShade device
-        if (swapchain->get_device()->get_api() == reshade::api::device_api::d3d9) {
+        if (api == reshade::api::device_api::d3d9) {
             if (auto *device = swapchain->get_device()) {
+                // do query instead
                 if (auto *d3d9_device = reinterpret_cast<IDirect3DDevice9 *>(device->get_native())) {
                     if (display_commanderhooks::d3d9::HookD3D9Present(d3d9_device)) {
                         LogInfo("Successfully hooked DX9 Present calls for device: 0x%p", d3d9_device);

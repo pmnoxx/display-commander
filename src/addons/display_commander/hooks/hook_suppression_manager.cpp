@@ -11,8 +11,10 @@ HookSuppressionManager& HookSuppressionManager::GetInstance() {
 
 bool HookSuppressionManager::ShouldSuppressHook(HookType hookType) {
     switch (hookType) {
-        case HookType::DXGI:
-            return settings::g_hook_suppression_settings.suppress_dxgi_hooks.GetValue();
+        case HookType::DXGI_FACTORY:
+            return settings::g_hook_suppression_settings.suppress_dxgi_factory_hooks.GetValue();
+        case HookType::DXGI_SWAPCHAIN:
+            return settings::g_hook_suppression_settings.suppress_dxgi_swapchain_hooks.GetValue();
         case HookType::D3D_DEVICE:
             return settings::g_hook_suppression_settings.suppress_d3d_device_hooks.GetValue();
         case HookType::XINPUT:
@@ -59,10 +61,16 @@ bool HookSuppressionManager::ShouldSuppressHook(HookType hookType) {
 
 void HookSuppressionManager::MarkHookInstalled(HookType hookType) {
     switch (hookType) {
-        case HookType::DXGI:
-            if (!settings::g_hook_suppression_settings.dxgi_hooks_installed.GetValue()) {
-                settings::g_hook_suppression_settings.dxgi_hooks_installed.SetValue(true);
-                settings::g_hook_suppression_settings.suppress_dxgi_hooks.SetValue(false);
+        case HookType::DXGI_FACTORY:
+            if (!settings::g_hook_suppression_settings.dxgi_factory_hooks_installed.GetValue()) {
+                settings::g_hook_suppression_settings.dxgi_factory_hooks_installed.SetValue(true);
+                settings::g_hook_suppression_settings.suppress_dxgi_factory_hooks.SetValue(false);
+            }
+            break;
+        case HookType::DXGI_SWAPCHAIN:
+            if (!settings::g_hook_suppression_settings.suppress_dxgi_swapchain_hooks.GetValue()) {
+                settings::g_hook_suppression_settings.suppress_dxgi_swapchain_hooks.SetValue(true);
+                settings::g_hook_suppression_settings.suppress_dxgi_swapchain_hooks.SetValue(false);
             }
             break;
         case HookType::D3D_DEVICE:
@@ -191,8 +199,10 @@ void HookSuppressionManager::MarkHookInstalled(HookType hookType) {
 
 std::string HookSuppressionManager::GetSuppressionSettingName(HookType hookType) {
     switch (hookType) {
-        case HookType::DXGI:
-            return "SuppressDxgiHooks";
+        case HookType::DXGI_FACTORY:
+            return "SuppressDxgiFactoryHooks";
+        case HookType::DXGI_SWAPCHAIN:
+            return "SuppressDxgiSwapchainHooks";
         case HookType::D3D_DEVICE:
             return "SuppressD3DDeviceHooks";
         case HookType::XINPUT:
@@ -232,14 +242,17 @@ std::string HookSuppressionManager::GetSuppressionSettingName(HookType hookType)
         case HookType::PROCESS_EXIT:
             return "SuppressProcessExitHooks";
         default:
+            LogError("HookSuppressionManager::GetSuppressionSettingName - Invalid hook type: %d", static_cast<int>(hookType));
             return "";
     }
 }
 
 std::string HookSuppressionManager::GetInstallationSettingName(HookType hookType) {
     switch (hookType) {
-        case HookType::DXGI:
-            return "DxgiHooksInstalled";
+        case HookType::DXGI_FACTORY:
+            return "DxgiFactoryHooksInstalled";
+        case HookType::DXGI_SWAPCHAIN:
+            return "DxgiSwapchainHooksInstalled";
         case HookType::D3D_DEVICE:
             return "D3DDeviceHooksInstalled";
         case HookType::XINPUT:
@@ -279,14 +292,17 @@ std::string HookSuppressionManager::GetInstallationSettingName(HookType hookType
         case HookType::PROCESS_EXIT:
             return "ProcessExitHooksInstalled";
         default:
+            LogError("HookSuppressionManager::GetInstallationSettingName - Invalid hook type: %d", static_cast<int>(hookType));
             return "";
     }
 }
 
 bool HookSuppressionManager::WasHookInstalled(HookType hookType) {
     switch (hookType) {
-        case HookType::DXGI:
-            return settings::g_hook_suppression_settings.dxgi_hooks_installed.GetValue();
+        case HookType::DXGI_FACTORY:
+            return settings::g_hook_suppression_settings.dxgi_factory_hooks_installed.GetValue();
+        case HookType::DXGI_SWAPCHAIN:
+            return settings::g_hook_suppression_settings.dxgi_swapchain_hooks_installed.GetValue();
         case HookType::D3D_DEVICE:
             return settings::g_hook_suppression_settings.d3d_device_hooks_installed.GetValue();
         case HookType::XINPUT:
@@ -326,14 +342,17 @@ bool HookSuppressionManager::WasHookInstalled(HookType hookType) {
         case HookType::PROCESS_EXIT:
             return settings::g_hook_suppression_settings.process_exit_hooks_installed.GetValue();
         default:
+            LogError("HookSuppressionManager::WasHookInstalled - Invalid hook type: %d", static_cast<int>(hookType));
             return false;
     }
 }
 
 std::string HookSuppressionManager::GetHookTypeName(HookType hookType) {
     switch (hookType) {
-        case HookType::DXGI:
-            return "DXGI";
+        case HookType::DXGI_FACTORY:
+            return "DXGI Factory";
+        case HookType::DXGI_SWAPCHAIN:
+            return "DXGI Swapchain";
         case HookType::D3D_DEVICE:
             return "D3D Device";
         case HookType::XINPUT:
@@ -373,6 +392,7 @@ std::string HookSuppressionManager::GetHookTypeName(HookType hookType) {
         case HookType::PROCESS_EXIT:
             return "Process Exit";
         default:
+            LogError("HookSuppressionManager::GetHookTypeName - Invalid hook type: %d", static_cast<int>(hookType));
             return "Unknown";
     }
 }

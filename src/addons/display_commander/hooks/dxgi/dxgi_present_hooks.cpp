@@ -1137,9 +1137,15 @@ bool HookSwapchain(IDXGISwapChain *swapchain) {
 | **38** | **IDXGISwapChain3** | **SetColorSpace1** | **Set color space** |
 | **39** | **IDXGISwapChain3** | **ResizeBuffers1** | **Resize buffers with parameters** |
 */
+    // Check if LoadLibrary hooks should be suppressed
+    if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(display_commanderhooks::HookType::DXGI_SWAPCHAIN)) {
+        LogInfo("HookSwapchain installation suppressed by user setting");
+        return false;
+    }
+
 
     //minhook initialization
-    MH_STATUS init_status = SafeInitializeMinHook(display_commanderhooks::HookType::DXGI);
+    MH_STATUS init_status = SafeInitializeMinHook(display_commanderhooks::HookType::DXGI_SWAPCHAIN);
     if (init_status != MH_OK && init_status != MH_ERROR_ALREADY_INITIALIZED) {
         LogError("Failed to initialize MinHook for DXGI hooks - Status: %d", init_status);
         return false;
@@ -1147,6 +1153,8 @@ bool HookSwapchain(IDXGISwapChain *swapchain) {
     if (init_status == MH_ERROR_ALREADY_INITIALIZED) {
         LogInfo("MinHook already initialized, proceeding with DXGI hooks");
     }
+
+    display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(display_commanderhooks::HookType::DXGI_SWAPCHAIN);
 
     // Detect swapchain interface version for safe vtable access
     int interfaceVersion = GetSwapchainInterfaceVersion(swapchain);
@@ -1160,7 +1168,9 @@ bool HookSwapchain(IDXGISwapChain *swapchain) {
 
     // Hook Present (index 8) - Critical method, always present
     if (MH_CreateHook(vtable[8], IDXGISwapChain_Present_Detour, (LPVOID *)&IDXGISwapChain_Present_Original) != MH_OK) {
+        MH_DisableHook(vtable[8]);
         LogError("Failed to create IDXGISwapChain::Present hook");
+        return false;
     }
 
     // Hook other IDXGISwapChain methods (9-11, 13-17) with safe vtable access
@@ -1503,6 +1513,10 @@ bool HookSwapchain(IDXGISwapChain *swapchain) {
 
 // Hook a specific factory's vtable
 bool HookFactoryVTable(IDXGIFactory *factory) {
+    if (true) {
+        LogInfo("DXGI factory hooking suppressed by user setting");
+        return false;
+    }
     if (factory == nullptr) {
         return false;
     }
@@ -1545,10 +1559,6 @@ bool HookFactoryVTable(IDXGIFactory *factory) {
 
         if (!CreateAndEnableHook(vtable[10], IDXGIFactory_CreateSwapChain_Detour, (LPVOID *)&IDXGIFactory_CreateSwapChain_Original, "IDXGIFactory::CreateSwapChain")) {
             LogError("Failed to create and enable IDXGIFactory::CreateSwapChain hook");
-
-            // Check if MinHook is initialized
-            MH_STATUS init_status = SafeInitializeMinHook(display_commanderhooks::HookType::DXGI);
-            LogInfo("MinHook initialization status: %d (0x%x)", init_status, init_status);
 
             return false;
         }

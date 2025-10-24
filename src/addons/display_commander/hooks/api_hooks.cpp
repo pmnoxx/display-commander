@@ -509,7 +509,7 @@ bool InstallDxgiHooks() {
     }
 
     // Check if DXGI hooks should be suppressed
-    if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(display_commanderhooks::HookType::DXGI)) {
+    if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(display_commanderhooks::HookType::DXGI_FACTORY)) {
         LogInfo("DXGI hooks installation suppressed by user setting");
         return false;
     }
@@ -521,7 +521,7 @@ bool InstallDxgiHooks() {
     dxgi_hooks_installed = true;
 
     // Initialize MinHook (only if not already initialized)
-    MH_STATUS init_status = SafeInitializeMinHook(display_commanderhooks::HookType::DXGI);
+    MH_STATUS init_status = SafeInitializeMinHook(display_commanderhooks::HookType::DXGI_FACTORY);
     if (init_status != MH_OK && init_status != MH_ERROR_ALREADY_INITIALIZED) {
         LogError("Failed to initialize MinHook for DXGI hooks - Status: %d", init_status);
         return false;
@@ -539,6 +539,7 @@ bool InstallDxgiHooks() {
         LogError("Failed to get dxgi.dll module handle");
         return false;
     }
+    display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(display_commanderhooks::HookType::DXGI_FACTORY);
 
     // Hook CreateDXGIFactory - try both system and ReShade versions
     auto CreateDXGIFactory_sys = reinterpret_cast<decltype(&CreateDXGIFactory)>(GetProcAddress(dxgi_module, "CreateDXGIFactory"));
@@ -577,7 +578,6 @@ bool InstallDxgiHooks() {
     LogInfo("DXGI hooks installed successfully");
 
     // Mark DXGI hooks as installed
-    display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(display_commanderhooks::HookType::DXGI);
 
     return true;
 }

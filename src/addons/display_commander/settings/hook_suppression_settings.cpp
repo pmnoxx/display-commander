@@ -7,7 +7,8 @@ HookSuppressionSettings::HookSuppressionSettings()
     // Hook suppression settings - hooks with true are suppressed by default (blacklisted)
     // Most hooks are enabled by default (false) for normal operation
     // Only hooks that are typically not needed or can cause issues are blacklisted by default
-    : suppress_dxgi_hooks("DxgiHooks", false, "DisplayCommander.HookSuppression")
+    : suppress_dxgi_factory_hooks("DxgiFactoryHooks", false, "DisplayCommander.HookSuppression")
+    , suppress_dxgi_swapchain_hooks("DxgiSwapchainHooks", false, "DisplayCommander.HookSuppression")
     , suppress_d3d_device_hooks("D3DDeviceHooks", false, "DisplayCommander.HookSuppression")
     , suppress_xinput_hooks("XInputHooks", false, "DisplayCommander.HookSuppression")
     , suppress_dinput_hooks("DInputHooks", false, "DisplayCommander.HookSuppression")
@@ -27,7 +28,8 @@ HookSuppressionSettings::HookSuppressionSettings()
     , suppress_hid_suppression_hooks("HidSuppressionHooks", true, "DisplayCommander.HookSuppression")  // BLACKLISTED: Experimental feature
     , suppress_nvapi_hooks("NvapiHooks", false, "DisplayCommander.HookSuppression")
     , suppress_process_exit_hooks("ProcessExitHooks", false, "DisplayCommander.HookSuppression")
-    , dxgi_hooks_installed("DxgiHooks", false, "DisplayCommander.HooksInstalled")
+    , dxgi_factory_hooks_installed("DxgiFactoryHooks", false, "DisplayCommander.HooksInstalled")
+    , dxgi_swapchain_hooks_installed("DxgiSwapchainHooks", false, "DisplayCommander.HooksInstalled")
     , d3d_device_hooks_installed("D3DDeviceHooks", false, "DisplayCommander.HooksInstalled")
     , xinput_hooks_installed("XInputHooks", false, "DisplayCommander.HooksInstalled")
     , dinput_hooks_installed("DInputHooks", false, "DisplayCommander.HooksInstalled")
@@ -50,7 +52,8 @@ HookSuppressionSettings::HookSuppressionSettings()
 {
     // Initialize the all_settings_ vector
     all_settings_ = {
-        &suppress_dxgi_hooks,
+        &suppress_dxgi_factory_hooks,
+        &suppress_dxgi_swapchain_hooks,
         &suppress_d3d_device_hooks,
         &suppress_xinput_hooks,
         &suppress_dinput_hooks,
@@ -70,7 +73,8 @@ HookSuppressionSettings::HookSuppressionSettings()
         &suppress_hid_suppression_hooks,
         &suppress_nvapi_hooks,
         &suppress_process_exit_hooks,
-        &dxgi_hooks_installed,
+        &dxgi_factory_hooks_installed,
+        &dxgi_swapchain_hooks_installed,
         &d3d_device_hooks_installed,
         &xinput_hooks_installed,
         &dinput_hooks_installed,

@@ -6,7 +6,8 @@ namespace display_commanderhooks {
 
 // Hook types that can be suppressed
 enum class HookType {
-    DXGI,
+    DXGI_FACTORY,
+    DXGI_SWAPCHAIN,
     D3D_DEVICE,
     XINPUT,
     DINPUT,

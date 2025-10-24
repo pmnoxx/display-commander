@@ -20,14 +20,23 @@ void RenderHookSuppressionTab() {
         ImGui::Text("Suppress Hooks:");
         ImGui::Separator();
 
-        // DXGI hooks
-        bool suppress_dxgi = settings::g_hook_suppression_settings.suppress_dxgi_hooks.GetValue();
-        bool dxgi_installed = settings::g_hook_suppression_settings.dxgi_hooks_installed.GetValue();
-        if (ImGui::Checkbox("Suppress DXGI Hooks", &suppress_dxgi)) {
-            settings::g_hook_suppression_settings.suppress_dxgi_hooks.SetValue(suppress_dxgi);
+        // DXGI Factory hooks
+        bool suppress_dxgi_factory = settings::g_hook_suppression_settings.suppress_dxgi_factory_hooks.GetValue();
+        bool dxgi_factory_installed = settings::g_hook_suppression_settings.dxgi_factory_hooks_installed.GetValue();
+        if (ImGui::Checkbox("Suppress DXGI Factory Hooks", &suppress_dxgi_factory)) {
+            settings::g_hook_suppression_settings.suppress_dxgi_factory_hooks.SetValue(suppress_dxgi_factory);
         }
         ImGui::SameLine();
-        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "(Installed: %s)", dxgi_installed ? "Yes" : "No");
+        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "(Installed: %s)", dxgi_factory_installed ? "Yes" : "No");
+
+        // DXGI Swapchain hooks
+        bool suppress_dxgi_swapchain = settings::g_hook_suppression_settings.suppress_dxgi_swapchain_hooks.GetValue();
+        bool dxgi_swapchain_installed = settings::g_hook_suppression_settings.dxgi_swapchain_hooks_installed.GetValue();
+        if (ImGui::Checkbox("Suppress DXGI Swapchain Hooks", &suppress_dxgi_swapchain)) {
+            settings::g_hook_suppression_settings.suppress_dxgi_swapchain_hooks.SetValue(suppress_dxgi_swapchain);
+        }
+        ImGui::SameLine();
+        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "(Installed: %s)", dxgi_swapchain_installed ? "Yes" : "No");
 
         // D3D Device hooks
         bool suppress_d3d = settings::g_hook_suppression_settings.suppress_d3d_device_hooks.GetValue();
@@ -196,7 +205,8 @@ void RenderHookSuppressionTab() {
 
         // Reset all installed flags
         if (ImGui::Button("Reset All Installation Flags")) {
-            settings::g_hook_suppression_settings.dxgi_hooks_installed.SetValue(false);
+            settings::g_hook_suppression_settings.dxgi_factory_hooks_installed.SetValue(false);
+            settings::g_hook_suppression_settings.dxgi_swapchain_hooks_installed.SetValue(false);
             settings::g_hook_suppression_settings.d3d_device_hooks_installed.SetValue(false);
             settings::g_hook_suppression_settings.xinput_hooks_installed.SetValue(false);
             settings::g_hook_suppression_settings.dinput_hooks_installed.SetValue(false);

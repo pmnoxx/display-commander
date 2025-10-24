@@ -110,11 +110,12 @@ void every1s_checks() {
                 LogInfo("Continuous monitoring: App moved to BACKGROUND");
                 // Release cursor clipping when going to background
                 display_commanderhooks::ClipCursor_Direct(nullptr);
-                LogInfo("Continuous monitoring: Released cursor clipping for background");
 
                 // Set cursor to default arrow when moving to background
                 display_commanderhooks::SetCursor_Direct(LoadCursor(nullptr, IDC_ARROW));
-                LogInfo("Continuous monitoring: Set cursor to default arrow for background");
+
+                // Hide cursor when moving to background
+                display_commanderhooks::ShowCursor_Direct(TRUE);
             } else {
                 LogInfo("Continuous monitoring: App moved to FOREGROUND");
                 // Restore cursor clipping when coming to foreground
@@ -122,6 +123,8 @@ void every1s_checks() {
                 LogInfo("Continuous monitoring: Restored cursor clipping for foreground");
 
                 display_commanderhooks::RestoreSetCursor();
+
+                display_commanderhooks::RestoreShowCursor();
             }
         }
 

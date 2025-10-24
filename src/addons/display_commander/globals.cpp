@@ -56,6 +56,9 @@ std::atomic<int> s_spoofed_mouse_y{0};
 // SetCursor detour - store last cursor value atomically
 std::atomic<HCURSOR> s_last_cursor_value{nullptr};
 
+// ShowCursor detour - store last show cursor state atomically
+std::atomic<int> s_last_show_cursor_arg{0};
+
 // Keyboard Shortcuts
 
 // Auto-click enabled state (atomic, not loaded from config)

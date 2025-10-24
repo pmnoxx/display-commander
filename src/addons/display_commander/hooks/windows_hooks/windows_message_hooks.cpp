@@ -112,54 +112,115 @@ static RECT s_last_clip_cursor = {};
 // Hook statistics array
 std::array<HookCallStats, HOOK_COUNT> g_hook_stats;
 
-// Hook names for display
-static const std::array<const char*, HOOK_COUNT> g_hook_names = {"GetMessageA",
-                                               "GetMessageW",
-                                               "PeekMessageA",
-                                               "PeekMessageW",
-                                               "PostMessageA",
-                                               "PostMessageW",
-                                               "GetKeyboardState",
-                                               "ClipCursor",
-                                               "GetCursorPos",
-                                               "SetCursorPos",
-                                               "GetKeyState",
-                                               "GetAsyncKeyState",
-                                               "SetWindowsHookExA",
-                                               "SetWindowsHookExW",
-                                               "UnhookWindowsHookEx",
-                                               "GetRawInputBuffer",
-                                               "TranslateMessage",
-                                               "DispatchMessageA",
-                                               "DispatchMessageW",
-                                               "GetRawInputData",
-                                               "RegisterRawInputDevices",
-                                               "GetRawInputDeviceList",
-                                               "DefRawInputProc",
-                                               "VkKeyScan",
-                                               "VkKeyScanEx",
-                                               "ToAscii",
-                                               "ToAsciiEx",
-                                               "ToUnicode",
-                                               "ToUnicodeEx",
-                                               "GetKeyNameTextA",
-                                               "GetKeyNameTextW",
-                                               "SendInput",
-                                               "keybd_event",
-                                               "mouse_event",
-                                               "MapVirtualKey",
-                                               "MapVirtualKeyEx",
-                                               "DisplayConfigGetDeviceInfo",
-                                               "XInputGetState",
-                                               "XInputGetStateEx",
-                                               "Sleep",
-                                               "SleepEx",
-                                               "WaitForSingleObject",
-                                               "WaitForMultipleObjects",
-                                               "SetUnhandledExceptionFilter",
-                                               "IsDebuggerPresent",
-                                               "DirectInput8Create",
-                                               "DirectInputCreate"};
+// Hook information array
+static const std::array<HookInfo, HOOK_COUNT> g_hook_info = {{
+    // user32.dll hooks
+    HookInfo{"GetMessageA", DllGroup::USER32},
+    {"GetMessageW", DllGroup::USER32},
+    {"PeekMessageA", DllGroup::USER32},
+    {"PeekMessageW", DllGroup::USER32},
+    {"PostMessageA", DllGroup::USER32},
+    {"PostMessageW", DllGroup::USER32},
+    {"GetKeyboardState", DllGroup::USER32},
+    {"ClipCursor", DllGroup::USER32},
+    {"GetCursorPos", DllGroup::USER32},
+    {"SetCursorPos", DllGroup::USER32},
+    {"GetKeyState", DllGroup::USER32},
+    {"GetAsyncKeyState", DllGroup::USER32},
+    {"SetWindowsHookExA", DllGroup::USER32},
+    {"SetWindowsHookExW", DllGroup::USER32},
+    {"UnhookWindowsHookEx", DllGroup::USER32},
+    {"GetRawInputBuffer", DllGroup::USER32},
+    {"TranslateMessage", DllGroup::USER32},
+    {"DispatchMessageA", DllGroup::USER32},
+    {"DispatchMessageW", DllGroup::USER32},
+    {"GetRawInputData", DllGroup::USER32},
+    {"RegisterRawInputDevices", DllGroup::USER32},
+    {"GetRawInputDeviceList", DllGroup::USER32},
+    {"DefRawInputProc", DllGroup::USER32},
+    {"VkKeyScan", DllGroup::USER32},
+    {"VkKeyScanEx", DllGroup::USER32},
+    {"ToAscii", DllGroup::USER32},
+    {"ToAsciiEx", DllGroup::USER32},
+    {"ToUnicode", DllGroup::USER32},
+    {"ToUnicodeEx", DllGroup::USER32},
+    {"GetKeyNameTextA", DllGroup::USER32},
+    {"GetKeyNameTextW", DllGroup::USER32},
+    {"SendInput", DllGroup::USER32},
+    {"keybd_event", DllGroup::USER32},
+    {"mouse_event", DllGroup::USER32},
+    {"MapVirtualKey", DllGroup::USER32},
+    {"MapVirtualKeyEx", DllGroup::USER32},
+    {"DisplayConfigGetDeviceInfo", DllGroup::USER32},
+
+    // xinput1_4.dll hooks
+    {"XInputGetState", DllGroup::XINPUT1_4},
+    {"XInputGetStateEx", DllGroup::XINPUT1_4},
+
+    // kernel32.dll hooks
+    {"Sleep", DllGroup::KERNEL32},
+    {"SleepEx", DllGroup::KERNEL32},
+    {"WaitForSingleObject", DllGroup::KERNEL32},
+    {"WaitForMultipleObjects", DllGroup::KERNEL32},
+    {"SetUnhandledExceptionFilter", DllGroup::KERNEL32},
+    {"IsDebuggerPresent", DllGroup::KERNEL32},
+    {"SetThreadExecutionState", DllGroup::KERNEL32},
+
+    // dinput8.dll hooks
+    {"DirectInput8Create", DllGroup::DINPUT8},
+
+    // dinput.dll hooks
+    {"DirectInputCreate", DllGroup::DINPUT},
+
+    // OpenGL/WGL hooks
+    {"wglSwapBuffers", DllGroup::OPENGL},
+    {"wglMakeCurrent", DllGroup::OPENGL},
+    {"wglCreateContext", DllGroup::OPENGL},
+    {"wglDeleteContext", DllGroup::OPENGL},
+    {"wglChoosePixelFormat", DllGroup::OPENGL},
+    {"wglSetPixelFormat", DllGroup::OPENGL},
+    {"wglGetPixelFormat", DllGroup::OPENGL},
+    {"wglDescribePixelFormat", DllGroup::OPENGL},
+    {"wglCreateContextAttribsARB", DllGroup::OPENGL},
+    {"wglChoosePixelFormatARB", DllGroup::OPENGL},
+    {"wglGetPixelFormatAttribivARB", DllGroup::OPENGL},
+    {"wglGetPixelFormatAttribfvARB", DllGroup::OPENGL},
+    {"wglGetProcAddress", DllGroup::OPENGL},
+    {"wglSwapIntervalEXT", DllGroup::OPENGL},
+    {"wglGetSwapIntervalEXT", DllGroup::OPENGL},
+
+    // Display Settings hooks
+    {"ChangeDisplaySettingsA", DllGroup::DISPLAY_SETTINGS},
+    {"ChangeDisplaySettingsW", DllGroup::DISPLAY_SETTINGS},
+    {"ChangeDisplaySettingsExA", DllGroup::DISPLAY_SETTINGS},
+    {"ChangeDisplaySettingsExW", DllGroup::DISPLAY_SETTINGS},
+    {"SetWindowPos", DllGroup::DISPLAY_SETTINGS},
+    {"ShowWindow", DllGroup::DISPLAY_SETTINGS},
+    {"SetWindowLongA", DllGroup::DISPLAY_SETTINGS},
+    {"SetWindowLongW", DllGroup::DISPLAY_SETTINGS},
+    {"SetWindowLongPtrA", DllGroup::DISPLAY_SETTINGS},
+    {"SetWindowLongPtrW", DllGroup::DISPLAY_SETTINGS},
+
+    // HID API hooks
+    {"HID_CreateFileA", DllGroup::HID_API},
+    {"HID_CreateFileW", DllGroup::HID_API},
+    {"HID_ReadFile", DllGroup::HID_API},
+    {"HID_WriteFile", DllGroup::HID_API},
+    {"HID_DeviceIoControl", DllGroup::HID_API},
+    {"HIDD_GetInputReport", DllGroup::HID_API},
+    {"HIDD_GetAttributes", DllGroup::HID_API},
+    {"HIDD_GetPreparsedData", DllGroup::HID_API},
+    {"HIDD_FreePreparsedData", DllGroup::HID_API},
+    {"HIDD_GetCaps", DllGroup::HID_API},
+    {"HIDD_GetManufacturerString", DllGroup::HID_API},
+    {"HIDD_GetProductString", DllGroup::HID_API},
+    {"HIDD_GetSerialNumberString", DllGroup::HID_API},
+    {"HIDD_GetNumInputBuffers", DllGroup::HID_API},
+    {"HIDD_SetNumInputBuffers", DllGroup::HID_API},
+    {"HIDD_GetFeature", DllGroup::HID_API},
+    {"HIDD_SetFeature", DllGroup::HID_API}
+}};
+
 
 
 // Check if we should suppress a message (for input blocking)
@@ -1502,9 +1563,39 @@ int GetHookCount() { return HOOK_COUNT; }
 
 const char *GetHookName(int hook_index) {
     if (hook_index >= 0 && hook_index < HOOK_COUNT) {
-        return g_hook_names[hook_index];
+        return g_hook_info[hook_index].name;
     }
     return "Unknown";
+}
+
+// DLL group helper functions
+const char* GetDllGroupName(DllGroup group) {
+    switch (group) {
+        case DllGroup::USER32: return "user32.dll";
+        case DllGroup::XINPUT1_4: return "xinput1_4.dll";
+        case DllGroup::KERNEL32: return "kernel32.dll";
+        case DllGroup::DINPUT8: return "dinput8.dll";
+        case DllGroup::DINPUT: return "dinput.dll";
+        case DllGroup::OPENGL: return "opengl32.dll";
+        case DllGroup::DISPLAY_SETTINGS: return "user32.dll (display_settings)";
+        case DllGroup::HID_API: return "kernel32.dll (hid_api)";
+        default: return "Unknown";
+    }
+}
+
+DllGroup GetHookDllGroup(int hook_index) {
+    if (hook_index >= 0 && hook_index < HOOK_COUNT) {
+        return g_hook_info[hook_index].dll_group;
+    }
+    return DllGroup::COUNT;
+}
+
+const HookInfo& GetHookInfo(int hook_index) {
+    static const HookInfo empty_info = {"Unknown", DllGroup::COUNT};
+    if (hook_index >= 0 && hook_index < HOOK_COUNT) {
+        return g_hook_info[hook_index];
+    }
+    return empty_info;
 }
 
 // Keyboard state tracking implementation

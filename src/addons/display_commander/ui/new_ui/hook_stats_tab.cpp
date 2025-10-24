@@ -27,19 +27,16 @@ void DrawHookStatsTab() {
     ImGui::Spacing();
     ImGui::Separator();
 
-    // Define DLL groupings for hooks
-    struct DllGroup {
-        const char* name;
-        int start_index;
-        int end_index;
-    };
-
-    static const DllGroup DLL_GROUPS[] = {
-        {.name = "user32.dll", .start_index = 0, .end_index = 36},      // GetMessageA to DisplayConfigGetDeviceInfo
-        {.name = "xinput1_4.dll", .start_index = 37, .end_index = 38},  // XInputGetState, XInputGetStateEx
-        {.name = "kernel32.dll", .start_index = 39, .end_index = 45},   // Sleep, SleepEx, WaitForSingleObject, WaitForMultipleObjects, SetUnhandledExceptionFilter, IsDebuggerPresent, SetThreadExecutionState
-        {.name = "dinput8.dll", .start_index = 46, .end_index = 46},    // DirectInput8Create
-        {.name = "dinput.dll", .start_index = 47, .end_index = 47}      // DirectInputCreate
+    // Define DLL groups using the new enum-based system
+    static const display_commanderhooks::DllGroup DLL_GROUPS[] = {
+        display_commanderhooks::DllGroup::USER32,
+        display_commanderhooks::DllGroup::XINPUT1_4,
+        display_commanderhooks::DllGroup::KERNEL32,
+        display_commanderhooks::DllGroup::DINPUT8,
+        display_commanderhooks::DllGroup::DINPUT,
+        display_commanderhooks::DllGroup::OPENGL,
+        display_commanderhooks::DllGroup::DISPLAY_SETTINGS,
+        display_commanderhooks::DllGroup::HID_API
     };
 
     // Display statistics grouped by DLL
@@ -51,20 +48,26 @@ void DrawHookStatsTab() {
         uint64_t group_unsuppressed_calls = 0;
         int group_hook_count = 0;
 
-        for (int i = group.start_index; i <= group.end_index && i < hook_count; ++i) {
-            const auto &stats = display_commanderhooks::GetHookStats(i);
-            group_total_calls += stats.total_calls.load();
-            group_unsuppressed_calls += stats.unsuppressed_calls.load();
-            group_hook_count++;
+        // Iterate through all hooks and find those belonging to this DLL group
+        for (int i = 0; i < hook_count; ++i) {
+            if (display_commanderhooks::GetHookDllGroup(i) == group) {
+                const auto &stats = display_commanderhooks::GetHookStats(i);
+                group_total_calls += stats.total_calls.load();
+                group_unsuppressed_calls += stats.unsuppressed_calls.load();
+                group_hook_count++;
+            }
         }
 
         uint64_t group_suppressed_calls = group_total_calls - group_unsuppressed_calls;
 
+        // Get DLL group name
+        const char* group_name = display_commanderhooks::GetDllGroupName(group);
+
         // Create collapsible header for each DLL group
-        ImGui::PushID(group.name);
+        ImGui::PushID(group_name);
 
         bool group_open = ImGui::CollapsingHeader(
-            group.name,
+            group_name,
             ImGuiTreeNodeFlags_DefaultOpen |
             (group_total_calls > 0 ? ImGuiTreeNodeFlags_None : ImGuiTreeNodeFlags_Leaf)
         );
@@ -85,41 +88,43 @@ void DrawHookStatsTab() {
             if (ImGui::BeginTable("HookStats", 4,
                                   ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable)) {
                 // Table headers
-                ImGui::TableSetupColumn("Hook Name", ImGuiTableColumnFlags_WidthFixed, 200.0f);
+                ImGui::TableSetupColumn("Hook Name", ImGuiTableColumnFlags_WidthFixed, 400.0f);
                 ImGui::TableSetupColumn("Total Calls", ImGuiTableColumnFlags_WidthFixed, 120.0f);
                 ImGui::TableSetupColumn("Unsuppressed Calls", ImGuiTableColumnFlags_WidthFixed, 150.0f);
                 ImGui::TableSetupColumn("Suppressed Calls", ImGuiTableColumnFlags_WidthFixed, 150.0f);
                 ImGui::TableHeadersRow();
 
                 // Display statistics for each hook in this group
-                for (int i = group.start_index; i <= group.end_index && i < hook_count; ++i) {
-                    const auto &stats = display_commanderhooks::GetHookStats(i);
-                    const char *hook_name = display_commanderhooks::GetHookName(i);
+                for (int i = 0; i < hook_count; ++i) {
+                    if (display_commanderhooks::GetHookDllGroup(i) == group) {
+                        const auto &stats = display_commanderhooks::GetHookStats(i);
+                        const char *hook_name = display_commanderhooks::GetHookName(i);
 
-                    uint64_t total_calls = stats.total_calls.load();
-                    uint64_t unsuppressed_calls = stats.unsuppressed_calls.load();
-                    uint64_t suppressed_calls = total_calls - unsuppressed_calls;
+                        uint64_t total_calls = stats.total_calls.load();
+                        uint64_t unsuppressed_calls = stats.unsuppressed_calls.load();
+                        uint64_t suppressed_calls = total_calls - unsuppressed_calls;
 
-                    ImGui::TableNextRow();
+                        ImGui::TableNextRow();
 
-                    // Hook name
-                    ImGui::TableSetColumnIndex(0);
-                    ImGui::Text("%s", hook_name);
+                        // Hook name
+                        ImGui::TableSetColumnIndex(0);
+                        ImGui::Text("%s", hook_name);
 
-                    // Total calls
-                    ImGui::TableSetColumnIndex(1);
-                    ImGui::Text("%llu", total_calls);
+                        // Total calls
+                        ImGui::TableSetColumnIndex(1);
+                        ImGui::Text("%llu", total_calls);
 
-                    // Unsuppressed calls
-                    ImGui::TableSetColumnIndex(2);
-                    ImGui::Text("%llu", unsuppressed_calls);
+                        // Unsuppressed calls
+                        ImGui::TableSetColumnIndex(2);
+                        ImGui::Text("%llu", unsuppressed_calls);
 
-                    // Suppressed calls
-                    ImGui::TableSetColumnIndex(3);
-                    if (suppressed_calls > 0) {
-                        ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.5f, 1.0f), "%llu", suppressed_calls);
-                    } else {
-                        ImGui::Text("%llu", suppressed_calls);
+                        // Suppressed calls
+                        ImGui::TableSetColumnIndex(3);
+                        if (suppressed_calls > 0) {
+                            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.5f, 1.0f), "%llu", suppressed_calls);
+                        } else {
+                            ImGui::Text("%llu", suppressed_calls);
+                        }
                     }
                 }
 
@@ -144,10 +149,12 @@ void DrawHookStatsTab() {
 
     // Calculate totals across all DLL groups
     for (const auto& group : DLL_GROUPS) {
-        for (int i = group.start_index; i <= group.end_index && i < hook_count; ++i) {
-            const auto &stats = display_commanderhooks::GetHookStats(i);
-            total_all_calls += stats.total_calls.load();
-            total_unsuppressed_calls += stats.unsuppressed_calls.load();
+        for (int i = 0; i < hook_count; ++i) {
+            if (display_commanderhooks::GetHookDllGroup(i) == group) {
+                const auto &stats = display_commanderhooks::GetHookStats(i);
+                total_all_calls += stats.total_calls.load();
+                total_unsuppressed_calls += stats.unsuppressed_calls.load();
+            }
         }
     }
 
@@ -241,382 +248,8 @@ void DrawHookStatsTab() {
     ImGui::Spacing();
     ImGui::Separator();
 
-    // OpenGL Hook Statistics
-    ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "=== OpenGL Hook Statistics ===");
-    ImGui::Text("Track the number of times each OpenGL/WGL function was called");
-    ImGui::Separator();
 
-    // Reset OpenGL statistics button
-    if (ImGui::Button("Reset OpenGL Statistics")) {
-        for (int i = 0; i < NUM_OPENGL_HOOKS; ++i) {
-            g_opengl_hook_counters[i].store(0);
-        }
-        g_opengl_hook_total_count.store(0);
-    }
-    ImGui::SameLine();
-    ImGui::Text("Click to reset all OpenGL counters to zero");
 
-    ImGui::Spacing();
-    ImGui::Separator();
-
-    // Function names array
-    static const char* opengl_function_names[] = {
-        "wglSwapBuffers",
-        "wglMakeCurrent",
-        "wglCreateContext",
-        "wglDeleteContext",
-        "wglChoosePixelFormat",
-        "wglSetPixelFormat",
-        "wglGetPixelFormat",
-        "wglDescribePixelFormat",
-        "wglCreateContextAttribsARB",
-        "wglChoosePixelFormatARB",
-        "wglGetPixelFormatAttribivARB",
-        "wglGetPixelFormatAttribfvARB",
-        "wglGetProcAddress",
-        "wglSwapIntervalEXT",
-        "wglGetSwapIntervalEXT"
-    };
-
-    uint64_t total_opengl_calls = 0;
-
-    // Display OpenGL hook statistics in a table
-    if (ImGui::BeginTable("OpenGLHooks", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable)) {
-        ImGui::TableSetupColumn("Function Name", ImGuiTableColumnFlags_WidthFixed, 300.0f);
-        ImGui::TableSetupColumn("Call Count", ImGuiTableColumnFlags_WidthFixed, 150.0f);
-        ImGui::TableHeadersRow();
-        for (int i = 0; i < NUM_OPENGL_HOOKS; ++i) {
-            uint64_t call_count = g_opengl_hook_counters[i].load();
-            total_opengl_calls += call_count;
-
-            ImGui::TableNextRow();
-
-            // Function name
-            ImGui::TableSetColumnIndex(0);
-            ImGui::Text("%s", opengl_function_names[i]);
-
-            // Call count
-            ImGui::TableSetColumnIndex(1);
-            if (call_count > 0) {
-                ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "%llu", call_count);
-            } else {
-                ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "%llu", call_count);
-            }
-        }
-
-        ImGui::EndTable();
-    }
-
-    ImGui::Spacing();
-    ImGui::Separator();
-
-    // OpenGL summary statistics
-    ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "OpenGL Summary:");
-    ImGui::Text("Total OpenGL Hook Calls: %llu", g_opengl_hook_total_count.load());
-    ImGui::Text("OpenGL Functions Called: %llu", total_opengl_calls);
-
-    // Show if OpenGL hooks are installed
-    bool opengl_hooks_installed = AreOpenGLHooksInstalled();
-    ImGui::Text("OpenGL Hooks Status: %s", opengl_hooks_installed ? "Installed" : "Not Installed");
-    if (opengl_hooks_installed) {
-        ImGui::SameLine();
-        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), ICON_FK_OK);
-    } else {
-        ImGui::SameLine();
-        ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), ICON_FK_CANCEL);
-    }
-
-    ImGui::Spacing();
-    ImGui::Separator();
-
-    // Display Settings Hook Statistics
-    ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "=== Display Settings Hook Statistics ===");
-    ImGui::Text("Track the number of times each display settings function was called");
-    ImGui::Separator();
-
-    // Reset Display Settings statistics button
-    if (ImGui::Button("Reset Display Settings Statistics")) {
-        for (int i = 0; i < NUM_DISPLAY_SETTINGS_HOOKS; ++i) {
-            g_display_settings_hook_counters[i].store(0);
-        }
-        g_display_settings_hook_total_count.store(0);
-    }
-    ImGui::SameLine();
-    ImGui::Text("Click to reset all display settings counters to zero");
-
-    ImGui::Spacing();
-    ImGui::Separator();
-
-    // Function names array
-    static const char* display_settings_function_names[] = {
-        "ChangeDisplaySettingsA",
-        "ChangeDisplaySettingsW",
-        "ChangeDisplaySettingsExA",
-        "ChangeDisplaySettingsExW",
-        "SetWindowPos",
-        "ShowWindow",
-        "SetWindowLongA",
-        "SetWindowLongW",
-        "SetWindowLongPtrA",
-        "SetWindowLongPtrW"
-    };
-
-    uint64_t total_display_settings_calls = 0;
-
-    // Display display settings hook statistics in a table
-    if (ImGui::BeginTable("DisplaySettingsHooks", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable)) {
-        ImGui::TableSetupColumn("Function Name", ImGuiTableColumnFlags_WidthFixed, 300.0f);
-        ImGui::TableSetupColumn("Call Count", ImGuiTableColumnFlags_WidthFixed, 150.0f);
-        ImGui::TableHeadersRow();
-        for (int i = 0; i < NUM_DISPLAY_SETTINGS_HOOKS; ++i) {
-            uint64_t call_count = g_display_settings_hook_counters[i].load();
-            total_display_settings_calls += call_count;
-
-            ImGui::TableNextRow();
-
-            // Function name
-            ImGui::TableSetColumnIndex(0);
-            ImGui::Text("%s", display_settings_function_names[i]);
-
-            // Call count
-            ImGui::TableSetColumnIndex(1);
-            if (call_count > 0) {
-                ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "%llu", call_count);
-            } else {
-                ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "%llu", call_count);
-            }
-        }
-
-        ImGui::EndTable();
-    }
-
-    ImGui::Spacing();
-    ImGui::Separator();
-
-    // Display settings summary statistics
-    ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "Display Settings Summary:");
-    ImGui::Text("Total Display Settings Hook Calls: %llu", g_display_settings_hook_total_count.load());
-    ImGui::Text("Display Settings Functions Called: %llu", total_display_settings_calls);
-
-    // Show if display settings hooks are installed
-    bool display_settings_hooks_installed = AreDisplaySettingsHooksInstalled();
-    ImGui::Text("Display Settings Hooks Status: %s", display_settings_hooks_installed ? "Installed" : "Not Installed");
-    if (display_settings_hooks_installed) {
-        ImGui::SameLine();
-        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), ICON_FK_OK);
-    } else {
-        ImGui::SameLine();
-        ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), ICON_FK_CANCEL);
-    }
-
-    ImGui::Spacing();
-    ImGui::Separator();
-
-    // HID API Statistics
-    ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "=== HID API Statistics ===");
-    ImGui::Text("Track HID device access calls (CreateFile, ReadFile, WriteFile, etc.)");
-    ImGui::Separator();
-
-    // Reset HID statistics button
-    if (ImGui::Button("Reset HID Statistics")) {
-        display_commanderhooks::ResetAllHIDStats();
-    }
-    ImGui::SameLine();
-    ImGui::Text("Click to reset all HID counters to zero");
-
-    ImGui::Spacing();
-    ImGui::Separator();
-
-    // Initialize HID statistics totals
-    uint64_t total_hid_calls = 0;
-    uint64_t total_successful = 0;
-    uint64_t total_failed = 0;
-    uint64_t total_blocked = 0;
-
-    // Display HID API statistics in a table
-    if (ImGui::BeginTable("HIDAPIStats", 5, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable)) {
-        ImGui::TableSetupColumn("API Function", ImGuiTableColumnFlags_WidthFixed, 200.0f);
-        ImGui::TableSetupColumn("Total Calls", ImGuiTableColumnFlags_WidthFixed, 100.0f);
-        ImGui::TableSetupColumn("Successful", ImGuiTableColumnFlags_WidthFixed, 100.0f);
-        ImGui::TableSetupColumn("Failed", ImGuiTableColumnFlags_WidthFixed, 100.0f);
-        ImGui::TableSetupColumn("Blocked", ImGuiTableColumnFlags_WidthFixed, 100.0f);
-        ImGui::TableHeadersRow();
-
-        for (int i = 0; i < display_commanderhooks::GetHIDAPICount(); ++i) {
-            const auto& stats = display_commanderhooks::GetHIDAPIStats(static_cast<display_commanderhooks::HIDAPIType>(i));
-            const char* api_name = display_commanderhooks::GetHIDAPIName(static_cast<display_commanderhooks::HIDAPIType>(i));
-
-            uint64_t total_calls = stats.total_calls.load();
-            uint64_t successful_calls = stats.successful_calls.load();
-            uint64_t failed_calls = stats.failed_calls.load();
-            uint64_t blocked_calls = stats.blocked_calls.load();
-
-            total_hid_calls += total_calls;
-            total_successful += successful_calls;
-            total_failed += failed_calls;
-            total_blocked += blocked_calls;
-
-            ImGui::TableNextRow();
-
-            // API name
-            ImGui::TableSetColumnIndex(0);
-            ImGui::Text("%s", api_name);
-
-            // Total calls
-            ImGui::TableSetColumnIndex(1);
-            if (total_calls > 0) {
-                ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "%llu", total_calls);
-            } else {
-                ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "%llu", total_calls);
-            }
-
-            // Successful calls
-            ImGui::TableSetColumnIndex(2);
-            if (successful_calls > 0) {
-                ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "%llu", successful_calls);
-            } else {
-                ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "%llu", successful_calls);
-            }
-
-            // Failed calls
-            ImGui::TableSetColumnIndex(3);
-            if (failed_calls > 0) {
-                ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "%llu", failed_calls);
-            } else {
-                ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "%llu", failed_calls);
-            }
-
-            // Blocked calls
-            ImGui::TableSetColumnIndex(4);
-            if (blocked_calls > 0) {
-                ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "%llu", blocked_calls);
-            } else {
-                ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "%llu", blocked_calls);
-            }
-        }
-
-        ImGui::EndTable();
-    }
-
-    ImGui::Spacing();
-    ImGui::Separator();
-
-    // HID API summary statistics
-    ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "HID API Summary:");
-    ImGui::Text("Total HID API Calls: %llu", total_hid_calls);
-    ImGui::Text("Successful Calls: %llu", total_successful);
-    ImGui::Text("Failed Calls: %llu", total_failed);
-    ImGui::Text("Blocked Calls: %llu", total_blocked);
-
-    if (total_hid_calls > 0) {
-        float success_rate = static_cast<float>(total_successful) / static_cast<float>(total_hid_calls) * 100.0f;
-        float failure_rate = static_cast<float>(total_failed) / static_cast<float>(total_hid_calls) * 100.0f;
-        float block_rate = static_cast<float>(total_blocked) / static_cast<float>(total_hid_calls) * 100.0f;
-        ImGui::Text("Success Rate: %.2f%%", success_rate);
-        ImGui::Text("Failure Rate: %.2f%%", failure_rate);
-        ImGui::Text("Block Rate: %.2f%%", block_rate);
-    }
-
-    ImGui::Spacing();
-    ImGui::Separator();
-
-    // Raw Input Hook Statistics
-    ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "=== Raw Input Hook Statistics ===");
-    ImGui::Text("Track raw input API calls and device enumeration");
-    ImGui::Separator();
-
-    // Raw Input function names
-    static const char* raw_input_function_names[] = {
-        "GetRawInputBuffer",
-        "GetRawInputData",
-        "RegisterRawInputDevices",
-        "GetRawInputDeviceList",
-        "DefRawInputProc"
-    };
-
-    // Raw Input hook indices (these correspond to the hook indices in the main array)
-    static const int raw_input_hook_indices[] = {
-        display_commanderhooks::HOOK_GetRawInputBuffer,
-        display_commanderhooks::HOOK_GetRawInputData,
-        display_commanderhooks::HOOK_RegisterRawInputDevices,
-        display_commanderhooks::HOOK_GetRawInputDeviceList,
-        display_commanderhooks::HOOK_DefRawInputProc
-    };
-
-    uint64_t total_raw_input_calls = 0;
-    uint64_t total_raw_input_unsuppressed = 0;
-
-    // Display raw input hook statistics in a table
-    if (ImGui::BeginTable("RawInputHooks", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable)) {
-        ImGui::TableSetupColumn("Function Name", ImGuiTableColumnFlags_WidthFixed, 250.0f);
-        ImGui::TableSetupColumn("Total Calls", ImGuiTableColumnFlags_WidthFixed, 120.0f);
-        ImGui::TableSetupColumn("Unsuppressed Calls", ImGuiTableColumnFlags_WidthFixed, 150.0f);
-        ImGui::TableSetupColumn("Suppressed Calls", ImGuiTableColumnFlags_WidthFixed, 150.0f);
-        ImGui::TableHeadersRow();
-
-        for (int i = 0; i < 5; ++i) {
-            const auto& stats = display_commanderhooks::GetHookStats(raw_input_hook_indices[i]);
-            const char* function_name = raw_input_function_names[i];
-
-            uint64_t total_calls = stats.total_calls.load();
-            uint64_t unsuppressed_calls = stats.unsuppressed_calls.load();
-            uint64_t suppressed_calls = total_calls - unsuppressed_calls;
-
-            total_raw_input_calls += total_calls;
-            total_raw_input_unsuppressed += unsuppressed_calls;
-
-            ImGui::TableNextRow();
-
-            // Function name
-            ImGui::TableSetColumnIndex(0);
-            ImGui::Text("%s", function_name);
-
-            // Total calls
-            ImGui::TableSetColumnIndex(1);
-            if (total_calls > 0) {
-                ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "%llu", total_calls);
-            } else {
-                ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "%llu", total_calls);
-            }
-
-            // Unsuppressed calls
-            ImGui::TableSetColumnIndex(2);
-            if (unsuppressed_calls > 0) {
-                ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "%llu", unsuppressed_calls);
-            } else {
-                ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "%llu", unsuppressed_calls);
-            }
-
-            // Suppressed calls
-            ImGui::TableSetColumnIndex(3);
-            if (suppressed_calls > 0) {
-                ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "%llu", suppressed_calls);
-            } else {
-                ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "%llu", suppressed_calls);
-            }
-        }
-
-        ImGui::EndTable();
-    }
-
-    ImGui::Spacing();
-    ImGui::Separator();
-
-    // Raw Input summary statistics
-    ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "Raw Input Summary:");
-    ImGui::Text("Total Raw Input Calls: %llu", total_raw_input_calls);
-    ImGui::Text("Unsuppressed Calls: %llu", total_raw_input_unsuppressed);
-
-    uint64_t total_raw_input_suppressed = total_raw_input_calls - total_raw_input_unsuppressed;
-    ImGui::Text("Suppressed Calls: %llu", total_raw_input_suppressed);
-
-    if (total_raw_input_calls > 0) {
-        float raw_input_suppression_rate = static_cast<float>(total_raw_input_suppressed) / static_cast<float>(total_raw_input_calls) * 100.0f;
-        ImGui::Text("Raw Input Suppression Rate: %.2f%%", raw_input_suppression_rate);
-    }
-
-    ImGui::Spacing();
-    ImGui::Separator();
 
     // HID Device Type Statistics
     ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "=== HID Device Type Statistics ===");

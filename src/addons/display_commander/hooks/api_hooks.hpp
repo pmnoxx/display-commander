@@ -34,18 +34,6 @@ using D3D11CreateDeviceAndSwapChain_pfn = HRESULT(WINAPI *)(IDXGIAdapter*, D3D_D
 // D3D12 Device creation function pointer types
 using D3D12CreateDevice_pfn = HRESULT(WINAPI *)(IUnknown*, D3D_FEATURE_LEVEL, REFIID, void**);
 
-// Display settings hook function pointer types
-using ChangeDisplaySettingsA_pfn = LONG(WINAPI *)(DEVMODEA *lpDevMode, DWORD dwFlags);
-using ChangeDisplaySettingsW_pfn = LONG(WINAPI *)(DEVMODEW *lpDevMode, DWORD dwFlags);
-using ChangeDisplaySettingsExA_pfn = LONG(WINAPI *)(LPCSTR lpszDeviceName, DEVMODEA *lpDevMode, HWND hWnd, DWORD dwFlags, LPVOID lParam);
-using ChangeDisplaySettingsExW_pfn = LONG(WINAPI *)(LPCWSTR lpszDeviceName, DEVMODEW *lpDevMode, HWND hWnd, DWORD dwFlags, LPVOID lParam);
-
-// Window management hook function pointer types (for OpenGL fullscreen prevention)
-using ShowWindow_pfn = BOOL(WINAPI *)(HWND hWnd, int nCmdShow);
-using SetWindowLongA_pfn = LONG(WINAPI *)(HWND hWnd, int nIndex, LONG dwNewLong);
-using SetWindowLongW_pfn = LONG(WINAPI *)(HWND hWnd, int nIndex, LONG dwNewLong);
-using SetWindowLongPtrA_pfn = LONG_PTR(WINAPI *)(HWND hWnd, int nIndex, LONG_PTR dwNewLong);
-
 // API hook function pointers
 extern GetFocus_pfn GetFocus_Original;
 extern GetForegroundWindow_pfn GetForegroundWindow_Original;
@@ -61,18 +49,6 @@ extern CreateDXGIFactory1_pfn CreateDXGIFactory1_Original;
 extern D3D11CreateDeviceAndSwapChain_pfn D3D11CreateDeviceAndSwapChain_Original;
 extern D3D12CreateDevice_pfn D3D12CreateDevice_Original;
 
-// Display settings hook function pointers
-extern ChangeDisplaySettingsA_pfn ChangeDisplaySettingsA_Original;
-extern ChangeDisplaySettingsW_pfn ChangeDisplaySettingsW_Original;
-extern ChangeDisplaySettingsExA_pfn ChangeDisplaySettingsExA_Original;
-extern ChangeDisplaySettingsExW_pfn ChangeDisplaySettingsExW_Original;
-
-// Window management hook function pointers
-extern ShowWindow_pfn ShowWindow_Original;
-extern SetWindowLongA_pfn SetWindowLongA_Original;
-extern SetWindowLongW_pfn SetWindowLongW_Original;
-extern SetWindowLongPtrA_pfn SetWindowLongPtrA_Original;
-
 // Hooked API functions
 HWND WINAPI GetFocus_Detour();
 HWND WINAPI GetForegroundWindow_Detour();
@@ -87,18 +63,6 @@ HRESULT WINAPI CreateDXGIFactory_Detour(REFIID riid, void **ppFactory);
 HRESULT WINAPI CreateDXGIFactory1_Detour(REFIID riid, void **ppFactory);
 HRESULT WINAPI D3D11CreateDeviceAndSwapChain_Detour(IDXGIAdapter* pAdapter, D3D_DRIVER_TYPE DriverType, HMODULE Software, UINT Flags, const D3D_FEATURE_LEVEL* pFeatureLevels, UINT FeatureLevels, UINT SDKVersion, const DXGI_SWAP_CHAIN_DESC* pSwapChainDesc, IDXGISwapChain** ppSwapChain, ID3D11Device** ppDevice, D3D_FEATURE_LEVEL* pFeatureLevel, ID3D11DeviceContext** ppImmediateContext);
 HRESULT WINAPI D3D12CreateDevice_Detour(IUnknown* pAdapter, D3D_FEATURE_LEVEL MinimumFeatureLevel, REFIID riid, void** ppDevice);
-
-// Display settings detour functions
-LONG WINAPI ChangeDisplaySettingsA_Detour(DEVMODEA *lpDevMode, DWORD dwFlags);
-LONG WINAPI ChangeDisplaySettingsW_Detour(DEVMODEW *lpDevMode, DWORD dwFlags);
-LONG WINAPI ChangeDisplaySettingsExA_Detour(LPCSTR lpszDeviceName, DEVMODEA *lpDevMode, HWND hWnd, DWORD dwFlags, LPVOID lParam);
-LONG WINAPI ChangeDisplaySettingsExW_Detour(LPCWSTR lpszDeviceName, DEVMODEW *lpDevMode, HWND hWnd, DWORD dwFlags, LPVOID lParam);
-
-// Window management detour functions
-BOOL WINAPI ShowWindow_Detour(HWND hWnd, int nCmdShow);
-LONG WINAPI SetWindowLongA_Detour(HWND hWnd, int nIndex, LONG dwNewLong);
-LONG WINAPI SetWindowLongW_Detour(HWND hWnd, int nIndex, LONG dwNewLong);
-LONG_PTR WINAPI SetWindowLongPtrA_Detour(HWND hWnd, int nIndex, LONG_PTR dwNewLong);
 
 // Hook management
 bool InstallApiHooks();

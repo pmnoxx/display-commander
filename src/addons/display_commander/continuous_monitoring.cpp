@@ -93,9 +93,7 @@ void HandleReflexAutoConfigure() {
     }
 }
 
-void every1s_checks() {
-    static int seconds_counter = 0;
-
+void check_is_background() {
     // Get the current swapchain window
     HWND hwnd = g_last_swapchain_hwnd.load();
     if (hwnd != nullptr && IsWindow(hwnd)) {
@@ -139,6 +137,10 @@ void every1s_checks() {
             }
         }
     }
+
+}
+
+void every1s_checks() {
 
     // SCREENSAVER MANAGEMENT: Update execution state based on screensaver mode and background status
     {
@@ -269,7 +271,6 @@ void every1s_checks() {
         g_perf_text_shared.store(std::make_shared<const std::string>(fps_oss.str()));
     }
 
-    ++seconds_counter;
 }
 
 void HandleKeyboardShortcuts() {
@@ -426,6 +427,7 @@ void ContinuousMonitoringThread() {
         // 60 FPS updates (every ~16.67ms)
         LONGLONG now_ns = utils::get_now_ns();
         if (now_ns - last_60fps_update_ns >= fps_120_interval_ns) {
+            check_is_background();
             last_60fps_update_ns = now_ns;
             adhd_multi_monitor::api::Initialize();
             adhd_multi_monitor::api::SetEnabled(settings::g_mainTabSettings.adhd_multi_monitor_enabled.GetValue());

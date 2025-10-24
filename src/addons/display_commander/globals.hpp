@@ -9,6 +9,7 @@
 
 #include <d3d11.h>
 #include <reshade_imgui.hpp>
+#include <winnt.h>
 #include <wrl/client.h>
 
 
@@ -470,7 +471,7 @@ extern std::atomic<int> s_spoofed_mouse_y;
 extern std::atomic<HCURSOR> s_last_cursor_value;
 
 // ShowCursor detour - store last show cursor state atomically
-extern std::atomic<int> s_last_show_cursor_arg;
+extern std::atomic<BOOL> s_last_show_cursor_arg;
 
 // Render blocking in background
 
@@ -692,7 +693,7 @@ enum DisplaySettingsHookIndex {
     DISPLAY_SETTINGS_HOOK_CHANGEDISPLAYSETTINGSEXA,
     DISPLAY_SETTINGS_HOOK_CHANGEDISPLAYSETTINGSEXW,
     // Window management hooks for OpenGL fullscreen prevention
-    DISPLAY_SETTINGS_HOOK_SETWINDOWPOS,
+    // DISPLAY_SETTINGS_HOOK_SETWINDOWPOS moved to api_hooks.cpp
     DISPLAY_SETTINGS_HOOK_SHOWWINDOW,
     DISPLAY_SETTINGS_HOOK_SETWINDOWLONGA,
     DISPLAY_SETTINGS_HOOK_SETWINDOWLONGW,

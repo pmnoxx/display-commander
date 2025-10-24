@@ -34,6 +34,9 @@ class SwapchainTabSettings {
     StringSetting dlss_sr_preset_override;
     StringSetting dlss_rr_preset_override;
 
+    // DLSS-G MultiFrameCount override setting
+    ComboSetting dlssg_multiframe_override;
+
   private:
     std::vector<SettingBase *> all_settings_;
 };

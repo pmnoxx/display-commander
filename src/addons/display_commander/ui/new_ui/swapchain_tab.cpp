@@ -9,6 +9,7 @@
 #include "../../utils/general_utils.hpp"
 #include "../../utils/logging.hpp"
 #include "../../utils/timing.hpp"
+#include "hooks/window_proc_hooks.hpp"
 
 #include <dxgi1_6.h>
 #include <wrl/client.h>
@@ -1898,70 +1899,119 @@ void DrawDLSSPresetOverride() {
                                summary.supported_dlss_rr_presets.c_str());
             ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f),
                                "  These values override the corresponding NGX parameter values.");
+        }
 
-            // DLSS Model Profile display
-            DLSSModelProfile model_profile = GetDLSSModelProfile();
-            if (model_profile.is_valid) {
-                ImGui::Spacing();
-                ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "DLSS Model Profile:");
+        // DLSS-G MultiFrameCount Override section
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== DLSS-G MultiFrameCount Override ===");
 
-                // Get current quality preset to determine which values to show
-                std::string current_quality = summary.quality_preset;
-                int sr_preset_value = 0;
-                int rr_preset_value = 0;
+        // Warning about experimental nature
+        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f),
+                           ICON_FK_WARNING " EXPERIMENTAL FEATURE - May require game restart to apply changes!");
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip(
+                "This feature overrides DLSS-G MultiFrameCount parameter at runtime.\n"
+                "Changes may require restarting the game to take effect.\n"
+                "Use with caution as it may cause rendering issues in some games.");
+        }
 
-                // Determine which preset values to display based on current quality preset
-                if (current_quality == "Quality") {
-                    sr_preset_value = model_profile.sr_quality_preset;
-                    rr_preset_value = model_profile.rr_quality_preset;
-                } else if (current_quality == "Balanced") {
-                    sr_preset_value = model_profile.sr_balanced_preset;
-                    rr_preset_value = model_profile.rr_balanced_preset;
-                } else if (current_quality == "Performance") {
-                    sr_preset_value = model_profile.sr_performance_preset;
-                    rr_preset_value = model_profile.rr_performance_preset;
-                } else if (current_quality == "Ultra Performance") {
-                    sr_preset_value = model_profile.sr_ultra_performance_preset;
-                    rr_preset_value = model_profile.rr_ultra_performance_preset;
-                } else if (current_quality == "Ultra Quality") {
-                    sr_preset_value = model_profile.sr_ultra_quality_preset;
-                    rr_preset_value = model_profile.rr_ultra_quality_preset;
-                } else if (current_quality == "DLAA") {
-                    sr_preset_value = model_profile.sr_dlaa_preset;
-                    rr_preset_value = 0;  // DLAA doesn't have RR equivalent
-                } else {
-                    // Default to Quality if unknown
-                    sr_preset_value = model_profile.sr_quality_preset;
-                    rr_preset_value = model_profile.rr_quality_preset;
-                }
+        ImGui::Spacing();
 
-                if (!summary.ray_reconstruction_active) {
-                    // Display current preset values
-                    ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "  Super Resolution (%s): %d",
-                                       current_quality.c_str(), sr_preset_value);
-                } else {
-                    // Display current preset values
-                    ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "  Ray Reconstruction (%s): %d",
-                                       current_quality.c_str(), rr_preset_value);
-                }
+        // DLSS-G MultiFrameCount override dropdown
+        static const char* multiframe_options[] = {"No override", "2x", "3x", "4x"};
+        int current_multiframe = settings::g_swapchainTabSettings.dlssg_multiframe_override.GetValue();
 
-                // Show all values in tooltip
-                if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip(
-                        "All DLSS Model Profile Values:\n"
-                        "Super Resolution:\n"
-                        "  Quality: %d, Balanced: %d, Performance: %d\n"
-                        "  Ultra Performance: %d, Ultra Quality: %d, DLAA: %d\n"
-                        "Ray Reconstruction:\n"
-                        "  Quality: %d, Balanced: %d, Performance: %d\n"
-                        "  Ultra Performance: %d, Ultra Quality: %d",
-                        model_profile.sr_quality_preset, model_profile.sr_balanced_preset,
-                        model_profile.sr_performance_preset, model_profile.sr_ultra_performance_preset,
-                        model_profile.sr_ultra_quality_preset, model_profile.sr_dlaa_preset,
-                        model_profile.rr_quality_preset, model_profile.rr_balanced_preset,
-                        model_profile.rr_performance_preset, model_profile.rr_ultra_performance_preset,
-                        model_profile.rr_ultra_quality_preset);
-                }
+        if (ImGui::Combo("DLSS-G MultiFrameCount Override", &current_multiframe, multiframe_options, 4)) {
+            settings::g_swapchainTabSettings.dlssg_multiframe_override.SetValue(current_multiframe);
+            LogInfo("DLSS-G MultiFrameCount override changed to %s (index %d)",
+                    multiframe_options[current_multiframe], current_multiframe);
+            display_commanderhooks::SendFakeActivationMessages(g_last_swapchain_hwnd.load());
+        }
+
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip(
+                "Override DLSS-G MultiFrameCount parameter:\n"
+                "No override = don't change anything (game default)\n"
+                "2x = set MultiFrameCount to 2\n"
+                "3x = set MultiFrameCount to 3\n"
+                "4x = set MultiFrameCount to 4\n"
+                "This affects DLSS-G frame generation multiplier.");
+        }
+
+        // Show current setting
+        ImGui::Spacing();
+        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Current Setting:");
+        ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  DLSS-G MultiFrameCount: %s",
+                           multiframe_options[current_multiframe]);
+
+        ImGui::Spacing();
+        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Note: This setting overrides the DLSS-G MultiFrameCount parameter.");
+        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Higher values may improve frame generation quality but increase latency.");
+
+        // DLSS Model Profile display
+        DLSSModelProfile model_profile = GetDLSSModelProfile();
+        if (model_profile.is_valid) {
+            ImGui::Spacing();
+            ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "DLSS Model Profile:");
+
+            // Get current quality preset to determine which values to show
+            DLSSGSummary summary = GetDLSSGSummary();
+            std::string current_quality = summary.quality_preset;
+            int sr_preset_value = 0;
+            int rr_preset_value = 0;
+
+            // Determine which preset values to display based on current quality preset
+            if (current_quality == "Quality") {
+                sr_preset_value = model_profile.sr_quality_preset;
+                rr_preset_value = model_profile.rr_quality_preset;
+            } else if (current_quality == "Balanced") {
+                sr_preset_value = model_profile.sr_balanced_preset;
+                rr_preset_value = model_profile.rr_balanced_preset;
+            } else if (current_quality == "Performance") {
+                sr_preset_value = model_profile.sr_performance_preset;
+                rr_preset_value = model_profile.rr_performance_preset;
+            } else if (current_quality == "Ultra Performance") {
+                sr_preset_value = model_profile.sr_ultra_performance_preset;
+                rr_preset_value = model_profile.rr_ultra_performance_preset;
+            } else if (current_quality == "Ultra Quality") {
+                sr_preset_value = model_profile.sr_ultra_quality_preset;
+                rr_preset_value = model_profile.rr_ultra_quality_preset;
+            } else if (current_quality == "DLAA") {
+                sr_preset_value = model_profile.sr_dlaa_preset;
+                rr_preset_value = 0;  // DLAA doesn't have RR equivalent
+            } else {
+                // Default to Quality if unknown
+                sr_preset_value = model_profile.sr_quality_preset;
+                rr_preset_value = model_profile.rr_quality_preset;
+            }
+
+            if (!summary.ray_reconstruction_active) {
+                // Display current preset values
+                ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "  Super Resolution (%s): %d",
+                                   current_quality.c_str(), sr_preset_value);
+            } else {
+                // Display current preset values
+                ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "  Ray Reconstruction (%s): %d",
+                                   current_quality.c_str(), rr_preset_value);
+            }
+
+            // Show all values in tooltip
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip(
+                    "All DLSS Model Profile Values:\n"
+                    "Super Resolution:\n"
+                    "  Quality: %d, Balanced: %d, Performance: %d\n"
+                    "  Ultra Performance: %d, Ultra Quality: %d, DLAA: %d\n"
+                    "Ray Reconstruction:\n"
+                    "  Quality: %d, Balanced: %d, Performance: %d\n"
+                    "  Ultra Performance: %d, Ultra Quality: %d",
+                    model_profile.sr_quality_preset, model_profile.sr_balanced_preset,
+                    model_profile.sr_performance_preset, model_profile.sr_ultra_performance_preset,
+                    model_profile.sr_ultra_quality_preset, model_profile.sr_dlaa_preset,
+                    model_profile.rr_quality_preset, model_profile.rr_balanced_preset,
+                    model_profile.rr_performance_preset, model_profile.rr_ultra_performance_preset,
+                    model_profile.rr_ultra_quality_preset);
             }
         }
     }

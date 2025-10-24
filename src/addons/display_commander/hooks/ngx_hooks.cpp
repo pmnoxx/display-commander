@@ -321,10 +321,25 @@ void NVSDK_CONV NVSDK_NGX_Parameter_SetF_Detour(NVSDK_NGX_Parameter* InParameter
     g_ngx_counters.parameter_setf_count.fetch_add(1);
     g_ngx_counters.total_count.fetch_add(1);
 
-        // Store parameter in thread-safe storage
-        if (InName != nullptr) {
-            g_ngx_parameters.update_float(std::string(InName), InValue);
+    // DLSS-G MultiFrameCount override logic
+    if (InName != nullptr) {
+        std::string param_name = std::string(InName);
+
+        // Check for DLSS-G MultiFrameCount parameter
+        if (param_name == "DLSSG.MultiFrameCount") {
+            int multiframe_override = settings::g_swapchainTabSettings.dlssg_multiframe_override.GetValue();
+            if (multiframe_override > 0) { // 0 = No override, 1+ = 2x, 3x, 4x
+                int override_value = multiframe_override; // Convert 1,2,3 to 2,3,4
+                InValue = static_cast<float>(override_value);
+                LogInfo("DLSS-G MultiFrameCount override: %s -> %f (%dx)", param_name.c_str(), InValue, override_value);
+            }
         }
+    }
+
+    // Store parameter in thread-safe storage
+    if (InName != nullptr) {
+        g_ngx_parameters.update_float(std::string(InName), InValue);
+    }
 
     // Log the call (first few times only)
     static int log_count = 0;
@@ -345,10 +360,25 @@ void NVSDK_CONV NVSDK_NGX_Parameter_SetD_Detour(NVSDK_NGX_Parameter* InParameter
     g_ngx_counters.parameter_setd_count.fetch_add(1);
     g_ngx_counters.total_count.fetch_add(1);
 
-        // Store parameter in thread-safe storage
-        if (InName != nullptr) {
-            g_ngx_parameters.update_double(std::string(InName), InValue);
+    // DLSS-G MultiFrameCount override logic
+    if (InName != nullptr) {
+        std::string param_name = std::string(InName);
+
+        // Check for DLSS-G MultiFrameCount parameter
+        if (param_name == "DLSSG.MultiFrameCount") {
+            int multiframe_override = settings::g_swapchainTabSettings.dlssg_multiframe_override.GetValue();
+            if (multiframe_override > 0) { // 0 = No override, 1+ = 2x, 3x, 4x
+                int override_value = multiframe_override + 1; // Convert 1,2,3 to 2,3,4
+                InValue = static_cast<double>(override_value);
+                LogInfo("DLSS-G MultiFrameCount override: %s -> %f (%dx)", param_name.c_str(), InValue, override_value);
+            }
         }
+    }
+
+    // Store parameter in thread-safe storage
+    if (InName != nullptr) {
+        g_ngx_parameters.update_double(std::string(InName), InValue);
+    }
 
     // Log the call (first few times only)
     static int log_count = 0;
@@ -396,6 +426,21 @@ void NVSDK_CONV NVSDK_NGX_Parameter_SetI_Detour(NVSDK_NGX_Parameter* InParameter
                 } else {
                     LogInfo("DLSS RR preset override: %s -> %d (Preset %c)", param_name.c_str(), InValue, 'A' + rr_preset - 1);
                 }
+            }
+        }
+    }
+
+    // DLSS-G MultiFrameCount override logic
+    if (InName != nullptr) {
+        std::string param_name = std::string(InName);
+
+        // Check for DLSS-G MultiFrameCount parameter
+        if (param_name == "DLSSG.MultiFrameCount") {
+            int multiframe_override = settings::g_swapchainTabSettings.dlssg_multiframe_override.GetValue();
+            if (multiframe_override > 0) { // 0 = No override, 1+ = 2x, 3x, 4x
+                int override_value = multiframe_override + 1; // Convert 1,2,3 to 2,3,4
+                InValue = override_value;
+                LogInfo("DLSS-G MultiFrameCount override: %s -> %d (%dx)", param_name.c_str(), InValue, override_value);
             }
         }
     }
@@ -455,6 +500,21 @@ void NVSDK_CONV NVSDK_NGX_Parameter_SetUI_Detour(NVSDK_NGX_Parameter* InParamete
         }
     }
 
+    // DLSS-G MultiFrameCount override logic
+    if (InName != nullptr) {
+        std::string param_name = std::string(InName);
+
+        // Check for DLSS-G MultiFrameCount parameter
+        if (param_name == "DLSSG.MultiFrameCount") {
+            int multiframe_override = settings::g_swapchainTabSettings.dlssg_multiframe_override.GetValue();
+            if (multiframe_override > 0) { // 0 = No override, 1+ = 2x, 3x, 4x
+                int override_value = multiframe_override; // Convert 1,2,3 to 2,3,4
+                InValue = static_cast<unsigned int>(override_value);
+                LogInfo("DLSS-G MultiFrameCount override: %s -> %u (%dx)", param_name.c_str(), InValue, override_value);
+            }
+        }
+    }
+
     // Store parameter in thread-safe storage
     if (InName != nullptr) {
         g_ngx_parameters.update_uint(std::string(InName), InValue);
@@ -479,10 +539,25 @@ void NVSDK_CONV NVSDK_NGX_Parameter_SetULL_Detour(NVSDK_NGX_Parameter* InParamet
     g_ngx_counters.parameter_setull_count.fetch_add(1);
     g_ngx_counters.total_count.fetch_add(1);
 
-        // Store parameter in thread-safe storage
-        if (InName != nullptr) {
-            g_ngx_parameters.update_ull(std::string(InName), InValue);
+    // DLSS-G MultiFrameCount override logic
+    if (InName != nullptr) {
+        std::string param_name = std::string(InName);
+
+        // Check for DLSS-G MultiFrameCount parameter
+        if (param_name == "DLSSG.MultiFrameCount") {
+            int multiframe_override = settings::g_swapchainTabSettings.dlssg_multiframe_override.GetValue();
+            if (multiframe_override > 0) { // 0 = No override, 1+ = 2x, 3x, 4x
+                int override_value = multiframe_override + 1; // Convert 1,2,3 to 2,3,4
+                InValue = static_cast<unsigned long long>(override_value);
+                LogInfo("DLSS-G MultiFrameCount override: %s -> %llu (%dx)", param_name.c_str(), InValue, override_value);
+            }
         }
+    }
+
+    // Store parameter in thread-safe storage
+    if (InName != nullptr) {
+        g_ngx_parameters.update_ull(std::string(InName), InValue);
+    }
 
     // Log the call (first few times only)
     static int log_count = 0;

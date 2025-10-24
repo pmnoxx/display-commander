@@ -175,6 +175,8 @@ LONG_PTR WINAPI SetWindowLongPtrW_Detour(HWND hWnd, int nIndex, LONG_PTR dwNewLo
 BOOL WINAPI SetWindowPos_Detour(HWND hWnd, HWND hWndInsertAfter, int X, int Y, int cx, int cy, UINT uFlags) {
     // Only process if prevent_always_on_top is enabled
     if (settings::g_developerTabSettings.prevent_always_on_top.GetValue()) {
+        hWndInsertAfter = nullptr;
+        /*
         // Check if we're trying to set the window to be always on top
         if (hWndInsertAfter == HWND_TOPMOST) {
             // Replace HWND_TOPMOST with HWND_NOTOPMOST to prevent always-on-top behavior
@@ -183,7 +185,7 @@ BOOL WINAPI SetWindowPos_Detour(HWND hWnd, HWND hWndInsertAfter, int X, int Y, i
             // Call original function with HWND_NOTOPMOST instead of HWND_TOPMOST
             return SetWindowPos_Original ? SetWindowPos_Original(hWnd, HWND_NOTOPMOST, X, Y, cx, cy, uFlags)
                                          : SetWindowPos(hWnd, HWND_NOTOPMOST, X, Y, cx, cy, uFlags);
-        }
+        }*/
     }
 
     // Call original function with unmodified parameters

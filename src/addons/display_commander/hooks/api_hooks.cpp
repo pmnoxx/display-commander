@@ -181,8 +181,8 @@ BOOL WINAPI SetWindowPos_Detour(HWND hWnd, HWND hWndInsertAfter, int X, int Y, i
             LogInfo("SetWindowPos: Preventing always-on-top for window 0x%p - Replacing HWND_TOPMOST with HWND_NOTOPMOST", hWnd);
 
             // Call original function with HWND_NOTOPMOST instead of HWND_TOPMOST
-            return SetWindowPos_Original ? SetWindowPos_Original(hWnd, HWND_BOTTOM, X, Y, cx, cy, uFlags)
-                                         : SetWindowPos(hWnd, HWND_BOTTOM, X, Y, cx, cy, uFlags);
+            return SetWindowPos_Original ? SetWindowPos_Original(hWnd, HWND_NOTOPMOST, X, Y, cx, cy, uFlags)
+                                         : SetWindowPos(hWnd, HWND_NOTOPMOST, X, Y, cx, cy, uFlags);
         }
     }
 

@@ -6,8 +6,8 @@
 #include "window_proc_hooks.hpp"
 #include "../exit_handler.hpp"
 #include "../globals.hpp"
-#include "../utils.hpp"
 #include "../utils/logging.hpp"
+#include "../ui/new_ui/window_info_tab.hpp"
 #include <atomic>
 
 
@@ -20,6 +20,9 @@ static WNDPROC g_original_window_proc = nullptr;
 
 // Hooked window procedure
 LRESULT CALLBACK WindowProc_Detour(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+    // Track only known messages for debugging
+    ui::new_ui::AddMessageToHistoryIfKnown(uMsg, wParam, lParam);
+
     // Check if continue rendering is enabled
     bool continue_rendering_enabled = s_continue_rendering.load();
 
@@ -77,6 +80,7 @@ LRESULT CALLBACK WindowProc_Detour(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
                 LogInfo("WM_NCACTIVATE: Window activated - ensuring continued rendering - HWND: 0x%p", hwnd);
                 // Send fake focus message to maintain active state
                 DetourWindowMessage(hwnd, WM_SETFOCUS, 0, 0);
+                return 0;
             } else {
                 // Non-client area is being deactivated - suppress and fake activation
                 LogInfo("WM_NCACTIVATE: Suppressing deactivation - HWND: 0x%p", hwnd);

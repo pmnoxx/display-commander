@@ -655,6 +655,7 @@ bool InstallApiHooks() {
         LogError("Failed to create and enable SetWindowPos hook");
     }
 
+    #if 0
     // Hook SetCursor
     if (!CreateAndEnableHook(SetCursor, SetCursor_Detour, reinterpret_cast<LPVOID *>(&SetCursor_Original), "SetCursor")) {
         LogError("Failed to create and enable SetCursor hook");
@@ -664,6 +665,8 @@ bool InstallApiHooks() {
     if (!CreateAndEnableHook(ShowCursor, ShowCursor_Detour, reinterpret_cast<LPVOID *>(&ShowCursor_Original), "ShowCursor")) {
         LogError("Failed to create and enable ShowCursor hook");
     }
+    #endif
+
 
     // todo: move to loadlibrary hooks
     // Install Windows message hooks

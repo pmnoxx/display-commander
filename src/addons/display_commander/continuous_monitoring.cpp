@@ -110,19 +110,19 @@ void check_is_background() {
                 display_commanderhooks::ClipCursor_Direct(nullptr);
 
                 // Set cursor to default arrow when moving to background
-                display_commanderhooks::SetCursor_Direct(LoadCursor(nullptr, IDC_ARROW));
+                //display_commanderhooks::SetCursor_Direct(LoadCursor(nullptr, IDC_ARROW));
 
                 // Hide cursor when moving to background
-                display_commanderhooks::ShowCursor_Direct(TRUE);
+                //display_commanderhooks::ShowCursor_Direct(TRUE);
             } else {
                 LogInfo("Continuous monitoring: App moved to FOREGROUND");
                 // Restore cursor clipping when coming to foreground
                 display_commanderhooks::RestoreClipCursor();
                 LogInfo("Continuous monitoring: Restored cursor clipping for foreground");
 
-                display_commanderhooks::RestoreSetCursor();
+                //display_commanderhooks::RestoreSetCursor();
 
-                display_commanderhooks::RestoreShowCursor();
+                //display_commanderhooks::RestoreShowCursor();
             }
         }
 

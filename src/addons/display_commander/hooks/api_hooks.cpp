@@ -43,14 +43,14 @@ D3D12CreateDevice_pfn D3D12CreateDevice_Original = nullptr;
 static std::atomic<bool> g_api_hooks_installed{false};
 
 // Get the game window handle (we'll need to track this)
-static HWND g_game_window = nullptr;
+static std::atomic<HWND> g_game_window = nullptr;
 
 HWND GetGameWindow() { return g_game_window; }
 
 
 // Hooked GetFocus function
 HWND WINAPI GetFocus_Detour() {
-    if (s_continue_rendering.load() && g_game_window != nullptr && IsWindow(g_game_window)) {
+    if (s_continue_rendering.load() && g_game_window.load() != nullptr && IsWindow(g_game_window.load())) {
         // Return the game window even when it doesn't have focus
         //   LogInfo("GetFocus_Detour: Returning game window due to continue rendering - HWND: 0x%p", g_game_window);
         return g_game_window;
@@ -62,7 +62,7 @@ HWND WINAPI GetFocus_Detour() {
 
 // Hooked GetForegroundWindow function
 HWND WINAPI GetForegroundWindow_Detour() {
-    if (s_continue_rendering.load() && g_game_window != nullptr && IsWindow(g_game_window)) {
+    if (s_continue_rendering.load() && g_game_window.load() != nullptr && IsWindow(g_game_window.load())) {
         // Return the game window even when it's not in foreground
         //    LogInfo("GetForegroundWindow_Detour: Returning game window due to continue rendering - HWND: 0x%p",
         //    g_game_window);
@@ -75,7 +75,7 @@ HWND WINAPI GetForegroundWindow_Detour() {
 
 // Hooked GetActiveWindow function
 HWND WINAPI GetActiveWindow_Detour() {
-    if (s_continue_rendering.load() && g_game_window != nullptr && IsWindow(g_game_window)) {
+    if (s_continue_rendering.load() && g_game_window.load() != nullptr && IsWindow(g_game_window.load())) {
         // Return the game window even when it's not the active window
         // Check if we're in the same thread as the game window
         DWORD dwPid = 0;
@@ -99,7 +99,7 @@ HWND WINAPI GetActiveWindow_Detour() {
 
 // Hooked GetGUIThreadInfo function
 BOOL WINAPI GetGUIThreadInfo_Detour(DWORD idThread, PGUITHREADINFO pgui) {
-    if (s_continue_rendering.load() && g_game_window != nullptr && IsWindow(g_game_window)) {
+    if (s_continue_rendering.load() && g_game_window.load() != nullptr && IsWindow(g_game_window.load())) {
         // Call original function first
         BOOL result =
             GetGUIThreadInfo_Original ? GetGUIThreadInfo_Original(idThread, pgui) : GetGUIThreadInfo(idThread, pgui);
@@ -121,7 +121,7 @@ BOOL WINAPI GetGUIThreadInfo_Detour(DWORD idThread, PGUITHREADINFO pgui) {
 
                 LogInfo("GetGUIThreadInfo_Detour: Modified thread info to show game window as active - HWND: 0x%p, "
                         "Thread: %lu",
-                        g_game_window, idThread);
+                        g_game_window.load(), idThread);
             }
         }
 
@@ -171,10 +171,13 @@ LONG_PTR WINAPI SetWindowLongPtrW_Detour(HWND hWnd, int nIndex, LONG_PTR dwNewLo
                                      : SetWindowLongPtrW(hWnd, nIndex, dwNewLong);
 }
 
+
 // Hooked SetWindowPos function
 BOOL WINAPI SetWindowPos_Detour(HWND hWnd, HWND hWndInsertAfter, int X, int Y, int cx, int cy, UINT uFlags) {
+
+
     // Only process if prevent_always_on_top is enabled
-    if (settings::g_developerTabSettings.prevent_always_on_top.GetValue()) {
+    if (hWnd == g_game_window && settings::g_developerTabSettings.prevent_always_on_top.GetValue()) {
         hWndInsertAfter = HWND_NOTOPMOST;
         /*
         // Check if we're trying to set the window to be always on top

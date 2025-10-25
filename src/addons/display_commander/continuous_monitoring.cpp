@@ -26,9 +26,7 @@
 extern std::atomic<ScreensaverMode> s_screensaver_mode;
 
 HWND GetCurrentForeGroundWindow() {
-    HWND foreground_window = display_commanderhooks::GetForegroundWindow_Original != nullptr
-                                 ? display_commanderhooks::GetForegroundWindow_Original()
-                                 : GetForegroundWindow();
+    HWND foreground_window = display_commanderhooks::GetForegroundWindow_Direct();
 
     DWORD window_pid = 0;
     DWORD thread_id = GetWindowThreadProcessId(foreground_window, &window_pid);

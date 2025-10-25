@@ -3,6 +3,7 @@
 #include "../../hooks/streamline_hooks.hpp"
 #include "../../settings/streamline_tab_settings.hpp"
 #include "../../utils.hpp"
+#include "../../res/forkawesome.h"
 
 #include <imgui.h>
 #include <windows.h>
@@ -126,7 +127,7 @@ void DrawStreamlineTab() {
         if (!current_folder.empty()) {
             bool folder_exists = std::filesystem::exists(current_folder);
             if (folder_exists) {
-                ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✓ Folder exists: %s", current_folder.c_str());
+                ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), ICON_FK_OK " Folder exists: %s", current_folder.c_str());
 
                 // Check for expected DLL files
                 std::vector<std::string> expected_dlls = {"nvngx_dlss.dll", "nvngx_dlssd.dll", "nvngx_dlssg.dll"};
@@ -147,7 +148,7 @@ void DrawStreamlineTab() {
                     ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "No DLSS DLL files found in folder");
                 }
             } else {
-                ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "⚠ Folder not found: %s", current_folder.c_str());
+                ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), ICON_FK_WARNING " Folder not found: %s", current_folder.c_str());
             }
         }
 

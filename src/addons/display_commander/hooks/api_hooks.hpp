@@ -30,6 +30,7 @@ using CreateDXGIFactory1_pfn = HRESULT(WINAPI *)(REFIID, void **);
 
 // D3D11 Device creation function pointer types
 using D3D11CreateDeviceAndSwapChain_pfn = HRESULT(WINAPI *)(IDXGIAdapter*, D3D_DRIVER_TYPE, HMODULE, UINT, const D3D_FEATURE_LEVEL*, UINT, UINT, const DXGI_SWAP_CHAIN_DESC*, IDXGISwapChain**, ID3D11Device**, D3D_FEATURE_LEVEL*, ID3D11DeviceContext**);
+using D3D11CreateDevice_pfn = HRESULT(WINAPI *)(IDXGIAdapter*, D3D_DRIVER_TYPE, HMODULE, UINT, const D3D_FEATURE_LEVEL*, UINT, UINT, ID3D11Device**, D3D_FEATURE_LEVEL*, ID3D11DeviceContext**);
 
 // D3D12 Device creation function pointer types
 using D3D12CreateDevice_pfn = HRESULT(WINAPI *)(IUnknown*, D3D_FEATURE_LEVEL, REFIID, void**);
@@ -47,6 +48,7 @@ extern ShowCursor_pfn ShowCursor_Original;
 extern CreateDXGIFactory_pfn CreateDXGIFactory_Original;
 extern CreateDXGIFactory1_pfn CreateDXGIFactory1_Original;
 extern D3D11CreateDeviceAndSwapChain_pfn D3D11CreateDeviceAndSwapChain_Original;
+extern D3D11CreateDevice_pfn D3D11CreateDevice_Original;
 extern D3D12CreateDevice_pfn D3D12CreateDevice_Original;
 
 // Hooked API functions
@@ -62,6 +64,7 @@ int WINAPI ShowCursor_Detour(BOOL bShow);
 HRESULT WINAPI CreateDXGIFactory_Detour(REFIID riid, void **ppFactory);
 HRESULT WINAPI CreateDXGIFactory1_Detour(REFIID riid, void **ppFactory);
 HRESULT WINAPI D3D11CreateDeviceAndSwapChain_Detour(IDXGIAdapter* pAdapter, D3D_DRIVER_TYPE DriverType, HMODULE Software, UINT Flags, const D3D_FEATURE_LEVEL* pFeatureLevels, UINT FeatureLevels, UINT SDKVersion, const DXGI_SWAP_CHAIN_DESC* pSwapChainDesc, IDXGISwapChain** ppSwapChain, ID3D11Device** ppDevice, D3D_FEATURE_LEVEL* pFeatureLevel, ID3D11DeviceContext** ppImmediateContext);
+HRESULT WINAPI D3D11CreateDevice_Detour(IDXGIAdapter* pAdapter, D3D_DRIVER_TYPE DriverType, HMODULE Software, UINT Flags, const D3D_FEATURE_LEVEL* pFeatureLevels, UINT FeatureLevels, UINT SDKVersion, ID3D11Device** ppDevice, D3D_FEATURE_LEVEL* pFeatureLevel, ID3D11DeviceContext** ppImmediateContext);
 HRESULT WINAPI D3D12CreateDevice_Detour(IUnknown* pAdapter, D3D_FEATURE_LEVEL MinimumFeatureLevel, REFIID riid, void** ppDevice);
 
 // Hook management

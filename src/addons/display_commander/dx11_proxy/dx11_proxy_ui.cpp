@@ -3,16 +3,16 @@
  */
 
 #include "dx11_proxy_ui.hpp"
+#include "../globals.hpp"
+#include "../res/forkawesome.h"
+#include "../res/ui_colors.hpp"
+#include "../utils/general_utils.hpp"
+#include "../utils/logging.hpp"
 #include "dx11_proxy_manager.hpp"
 #include "dx11_proxy_settings.hpp"
-#include "../utils.hpp"
-#include "../globals.hpp"
-#include "../res/ui_colors.hpp"
-#include "../res/forkawesome.h"
-#include "../utils/logging.hpp"
+
 
 #include <reshade_imgui.hpp>
-#include <sstream>
 #include <string>
 
 namespace dx11_proxy {
@@ -20,19 +20,15 @@ namespace dx11_proxy {
 // Convert ReShade format to DX11 proxy format index
 int ConvertReshadeFormatToProxyIndex(reshade::api::format reshade_format) {
     switch (reshade_format) {
-        case reshade::api::format::r10g10b10a2_unorm:
-            return 0; // R10G10B10A2_UNORM (HDR 10-bit)
-        case reshade::api::format::r16g16b16a16_float:
-            return 1; // R16G16B16A16_FLOAT (HDR 16-bit float)
-        case reshade::api::format::r8g8b8a8_unorm:
-            return 2; // R8G8B8A8_UNORM (SDR 8-bit)
-        case reshade::api::format::b8g8r8a8_unorm:
-            return 2; // B8G8R8A8_UNORM maps to R8G8B8A8_UNORM
-        case reshade::api::format::r8g8b8a8_snorm:
-            return 2; // R8G8B8A8_SNORM maps to R8G8B8A8_UNORM
+        case reshade::api::format::r10g10b10a2_unorm:  return 0;  // R10G10B10A2_UNORM (HDR 10-bit)
+        case reshade::api::format::r16g16b16a16_float: return 1;  // R16G16B16A16_FLOAT (HDR 16-bit float)
+        case reshade::api::format::r8g8b8a8_unorm:     return 2;  // R8G8B8A8_UNORM (SDR 8-bit)
+        case reshade::api::format::b8g8r8a8_unorm:     return 2;  // B8G8R8A8_UNORM maps to R8G8B8A8_UNORM
+        case reshade::api::format::r8g8b8a8_snorm:     return 2;      // R8G8B8A8_SNORM maps to R8G8B8A8_UNORM
         default:
-            LogWarn("DX11ProxyUI: Unknown ReShade format %d, defaulting to R10G10B10A2", static_cast<int>(reshade_format));
-            return 2; // Default to R10G10B10A2_UNORM
+            LogWarn("DX11ProxyUI: Unknown ReShade format %d, defaulting to R10G10B10A2",
+                    static_cast<int>(reshade_format));
+            return 2;  // Default to R10G10B10A2_UNORM
     }
 }
 
@@ -48,7 +44,9 @@ void DrawDX11ProxyControls() {
 
     // Warning banner
     ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 200, 0, 255));
-    ImGui::TextWrapped("EXPERIMENTAL: This feature creates a separate DX11 device to present DX9 game content through a modern DXGI swapchain.");
+    ImGui::TextWrapped(
+        "EXPERIMENTAL: This feature creates a separate DX11 device to present DX9 game content through a modern DXGI "
+        "swapchain.");
     ImGui::PopStyleColor();
     ImGui::Spacing();
 
@@ -134,11 +132,7 @@ void DrawDX11ProxyControls() {
 
     // Swapchain format
     {
-        const char* format_names[] = {
-            "R10G10B10A2 (HDR 10-bit)",
-            "R16G16B16A16 Float (HDR 16-bit)",
-            "R8G8B8A8 (SDR)"
-        };
+        const char* format_names[] = {"R10G10B10A2 (HDR 10-bit)", "R16G16B16A16 Float (HDR 16-bit)", "R8G8B8A8 (SDR)"};
         int format_idx = g_dx11ProxySettings.swapchain_format.load();
         if (ImGui::Combo("Swapchain Format", &format_idx, format_names, IM_ARRAYSIZE(format_names))) {
             g_dx11ProxySettings.swapchain_format.store(format_idx);
@@ -392,9 +386,9 @@ void DrawDX11ProxyControls() {
 
     // Get actual back buffer dimensions and format from stored swapchain description
     auto desc_ptr = g_last_swapchain_desc.load();
-    uint32_t width = 3840;  // Default fallback
-    uint32_t height = 2160; // Default fallback
-    int format_index = 0;   // Default to R10G10B10A2_UNORM
+    uint32_t width = 3840;   // Default fallback
+    uint32_t height = 2160;  // Default fallback
+    int format_index = 0;    // Default to R10G10B10A2_UNORM
 
     if (desc_ptr) {
         const auto& desc = *desc_ptr;
@@ -414,11 +408,11 @@ void DrawDX11ProxyControls() {
         // Display format name
         const char* format_name = "Unknown";
         switch (desc.back_buffer.texture.format) {
-            case reshade::api::format::r10g10b10a2_unorm: format_name = "R10G10B10A2_UNORM (HDR 10-bit)"; break;
+            case reshade::api::format::r10g10b10a2_unorm:  format_name = "R10G10B10A2_UNORM (HDR 10-bit)"; break;
             case reshade::api::format::r16g16b16a16_float: format_name = "R16G16B16A16_FLOAT (HDR 16-bit)"; break;
-            case reshade::api::format::r8g8b8a8_unorm: format_name = "R8G8B8A8_UNORM (SDR 8-bit)"; break;
-            case reshade::api::format::b8g8r8a8_unorm: format_name = "B8G8R8A8_UNORM (SDR 8-bit)"; break;
-            default: format_name = "Unknown Format"; break;
+            case reshade::api::format::r8g8b8a8_unorm:     format_name = "R8G8B8A8_UNORM (SDR 8-bit)"; break;
+            case reshade::api::format::b8g8r8a8_unorm:     format_name = "B8G8R8A8_UNORM (SDR 8-bit)"; break;
+            default:                                       format_name = "Unknown Format"; break;
         }
         ImGui::Text("  Format: %s", format_name);
         ImGui::Text("  Proxy Format Index: %d", format_index);
@@ -482,8 +476,8 @@ void DrawDX11ProxyControls() {
 
     // Check if it's a compatible API (DX11 or DX12)
     // ReShade uses hex enum values: d3d11=0xb000, d3d12=0xc000
-    bool is_dx11 = (game_api == 0xb000); // reshade::api::device_api::d3d11
-    bool is_dx12 = (game_api == 0xc000); // reshade::api::device_api::d3d12
+    bool is_dx11 = (game_api == 0xb000);  // reshade::api::device_api::d3d11
+    bool is_dx12 = (game_api == 0xc000);  // reshade::api::device_api::d3d12
     bool compatible_api = is_dx11 || is_dx12;
 
     // Show status
@@ -561,11 +555,14 @@ void DrawDX11ProxyControls() {
                 // Check if this is our own proxy swapchain (we don't want to copy from ourselves!)
                 auto* proxy_swapchain = manager.GetSwapChain();
                 if (native_swapchain == proxy_swapchain) {
-                    LogError("DX11ProxyUI: Cannot copy from proxy swapchain to itself! Need game's original swapchain.");
-                    LogError("DX11ProxyUI: Proxy swapchain: 0x%p, ReShade swapchain: 0x%p", proxy_swapchain, native_swapchain);
+                    LogError(
+                        "DX11ProxyUI: Cannot copy from proxy swapchain to itself! Need game's original swapchain.");
+                    LogError("DX11ProxyUI: Proxy swapchain: 0x%p, ReShade swapchain: 0x%p", proxy_swapchain,
+                             native_swapchain);
                 } else {
                     manager.StartCopyThread(native_swapchain);
-                    LogInfo("DX11ProxyUI: Started copying from game swapchain (native: 0x%p) to test window", native_swapchain);
+                    LogInfo("DX11ProxyUI: Started copying from game swapchain (native: 0x%p) to test window",
+                            native_swapchain);
                 }
             } else {
                 LogError("DX11ProxyUI: Failed to get native swapchain from ReShade");
@@ -666,5 +663,4 @@ void DrawDX11ProxyControls() {
     ImGui::Spacing();
 }
 
-} // namespace dx11_proxy
-
+}  // namespace dx11_proxy

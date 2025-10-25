@@ -203,6 +203,53 @@ void DrawDeveloperSettings() {
             "This setting is automatically enabled when safemode is active.\n\n"
             "This setting requires a game restart to take effect.");
     }
+
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::Spacing();
+
+    // Debug Layer checkbox with warning
+    ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f), ICON_FK_WARNING);
+    ImGui::SameLine();
+    ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f), "REQUIRES SETUP:");
+    ImGui::SameLine();
+    if (CheckboxSetting(settings::g_developerTabSettings.debug_layer_enabled, "Enable DX11/DX12 Debug Layer")) {
+        LogInfo("Debug layer setting changed to: %s",
+                settings::g_developerTabSettings.debug_layer_enabled.GetValue() ? "enabled" : "disabled");
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip(
+            ICON_FK_WARNING " WARNING: Debug Layer Setup Required " ICON_FK_WARNING "\n\n"
+            "REQUIREMENTS:\n"
+            "• Windows 11 SDK must be installed\n"
+            "• Download: https://developer.microsoft.com/en-us/windows/downloads/windows-sdk/\n"
+            "• Install 'Graphics Tools' and 'Debugging Tools for Windows'\n\n"
+            "SETUP STEPS:\n"
+            "1. Install Windows 11 SDK with Graphics Tools\n"
+            "2. Run DbgView.exe as Administrator\n"
+            "3. Enable this setting\n"
+            "4. RESTART THE GAME for changes to take effect\n\n"
+            "FEATURES:\n"
+            "• D3D11: Adds D3D11_CREATE_DEVICE_DEBUG flag\n"
+            "• D3D12: Enables debug layer via D3D12GetDebugInterface\n"
+            "• Breaks on all severity levels (ERROR, WARNING, INFO)\n"
+            "• Debug output appears in DbgView\n\n"
+            ICON_FK_WARNING " May significantly impact performance when enabled!");
+    }
+
+    // Show status when debug layer is enabled
+    if (settings::g_developerTabSettings.debug_layer_enabled.GetValue()) {
+        ImGui::SameLine();
+        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), ICON_FK_OK " ACTIVE");
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip(
+                "Debug layer is currently ENABLED.\n"
+                "• Debug output should appear in DbgView\n"
+                "• Performance may be significantly reduced\n"
+                "• Restart game if you just enabled this setting\n"
+                "• Disable when not debugging to restore performance");
+        }
+    }
 }
 
 void DrawHdrDisplaySettings() {
@@ -246,9 +293,6 @@ void DrawHdrDisplaySettings() {
             "Applied automatically in presentBefore.");
     }
 
-    ImGui::Spacing();
-    ImGui::Separator();
-    ImGui::Spacing();
 
 
 
@@ -588,7 +632,7 @@ void DrawNvapiSettings() {
 
         // Warning about experimental nature
         ImGui::Spacing();
-        ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f), "⚠️ Experimental Feature");
+        ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f), ICON_FK_WARNING " Experimental Feature");
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip(
                 "Fake NVAPI is experimental and may cause:\n"

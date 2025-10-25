@@ -1,9 +1,16 @@
 #include "api_hooks.hpp"
-#include "hook_suppression_manager.hpp"
+#include <d3d11.h>
+#include <d3d12.h>
+#include <MinHook.h>
+#include "../settings/developer_tab_settings.hpp"
 #include "../utils/general_utils.hpp"
 #include "../utils/logging.hpp"
+#include "debug_output_hooks.hpp"
+#include "dinput_hooks.hpp"
+#include "display_settings_hooks.hpp"
 #include "dxgi/dxgi_present_hooks.hpp"
 #include "globals.hpp"
+#include "hook_suppression_manager.hpp"
 #include "loadlibrary_hooks.hpp"
 #include "opengl_hooks.hpp"
 #include "process_exit_hooks.hpp"
@@ -11,13 +18,6 @@
 #include "timeslowdown_hooks.hpp"
 #include "windows_gaming_input_hooks.hpp"
 #include "windows_hooks/windows_message_hooks.hpp"
-#include "dinput_hooks.hpp"
-#include "display_settings_hooks.hpp"
-#include "debug_output_hooks.hpp"
-#include "window_proc_hooks.hpp"
-#include "../settings/developer_tab_settings.hpp"
-#include "../display_cache.hpp"
-#include <MinHook.h>
 
 // External reference to screensaver mode setting
 extern std::atomic<ScreensaverMode> s_screensaver_mode;
@@ -37,6 +37,7 @@ ShowCursor_pfn ShowCursor_Original = nullptr;
 CreateDXGIFactory_pfn CreateDXGIFactory_Original = nullptr;
 CreateDXGIFactory1_pfn CreateDXGIFactory1_Original = nullptr;
 D3D11CreateDeviceAndSwapChain_pfn D3D11CreateDeviceAndSwapChain_Original = nullptr;
+D3D11CreateDevice_pfn D3D11CreateDevice_Original = nullptr;
 D3D12CreateDevice_pfn D3D12CreateDevice_Original = nullptr;
 
 // Hook state
@@ -46,7 +47,6 @@ static std::atomic<bool> g_api_hooks_installed{false};
 static std::atomic<HWND> g_game_window = nullptr;
 
 HWND GetGameWindow() { return g_game_window; }
-
 
 // Hooked GetFocus function
 HWND WINAPI GetFocus_Detour() {
@@ -113,15 +113,16 @@ BOOL WINAPI GetGUIThreadInfo_Detour(DWORD idThread, PGUITHREADINFO pgui) {
                 // Set the game window as active and focused
                 pgui->hwndActive = g_game_window;
                 pgui->hwndFocus = g_game_window;
-                pgui->hwndCapture = nullptr;     // Clear capture to prevent issues
-                pgui->hwndCaret = g_game_window; // Set caret to game window
+                pgui->hwndCapture = nullptr;      // Clear capture to prevent issues
+                pgui->hwndCaret = g_game_window;  // Set caret to game window
 
                 // Set appropriate flags (using standard Windows constants)
-                pgui->flags = 0x00000001 | 0x00000002; // GTI_CARETBLINKING | GTI_CARETSHOWN
+                pgui->flags = 0x00000001 | 0x00000002;  // GTI_CARETBLINKING | GTI_CARETSHOWN
 
-                LogInfo("GetGUIThreadInfo_Detour: Modified thread info to show game window as active - HWND: 0x%p, "
-                        "Thread: %lu",
-                        g_game_window.load(), idThread);
+                LogInfo(
+                    "GetGUIThreadInfo_Detour: Modified thread info to show game window as active - HWND: 0x%p, "
+                    "Thread: %lu",
+                    g_game_window.load(), idThread);
             }
         }
 
@@ -142,7 +143,7 @@ EXECUTION_STATE WINAPI SetThreadExecutionState_Detour(EXECUTION_STATE esFlags) {
 
     // If screensaver mode is DisableWhenFocused or Disable, ignore all calls
     if (screensaver_mode == ScreensaverMode::kDisableWhenFocused || screensaver_mode == ScreensaverMode::kDisable) {
-        return 0x0; // Block game's attempt to control execution state
+        return 0x0;  // Block game's attempt to control execution state
     }
 
     // Track unsuppressed calls (when we call the original function)
@@ -162,20 +163,18 @@ LONG_PTR WINAPI SetWindowLongPtrW_Detour(HWND hWnd, int nIndex, LONG_PTR dwNewLo
             dwNewLong &= ~(WS_CAPTION | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU | WS_POPUP);
         }
         if (nIndex == GWL_EXSTYLE) {
-            dwNewLong &= ~(WS_EX_DLGMODALFRAME | WS_EX_WINDOWEDGE | WS_EX_CLIENTEDGE | WS_EX_STATICEDGE | WS_EX_TOPMOST | WS_EX_TOOLWINDOW);
+            dwNewLong &= ~(WS_EX_DLGMODALFRAME | WS_EX_WINDOWEDGE | WS_EX_CLIENTEDGE | WS_EX_STATICEDGE | WS_EX_TOPMOST
+                           | WS_EX_TOOLWINDOW);
         }
     }
 
     // Call original function with unmodified value
     return SetWindowLongPtrW_Original ? SetWindowLongPtrW_Original(hWnd, nIndex, dwNewLong)
-                                     : SetWindowLongPtrW(hWnd, nIndex, dwNewLong);
+                                      : SetWindowLongPtrW(hWnd, nIndex, dwNewLong);
 }
-
 
 // Hooked SetWindowPos function
 BOOL WINAPI SetWindowPos_Detour(HWND hWnd, HWND hWndInsertAfter, int X, int Y, int cx, int cy, UINT uFlags) {
-
-
     // Only process if prevent_always_on_top is enabled
     if (hWnd == g_game_window && settings::g_developerTabSettings.prevent_always_on_top.GetValue()) {
         hWndInsertAfter = HWND_NOTOPMOST;
@@ -183,7 +182,8 @@ BOOL WINAPI SetWindowPos_Detour(HWND hWnd, HWND hWndInsertAfter, int X, int Y, i
         // Check if we're trying to set the window to be always on top
         if (hWndInsertAfter != HWND_TOPMOST) {
             // Replace HWND_TOPMOST with HWND_NOTOPMOST to prevent always-on-top behavior
-            LogInfo("SetWindowPos: Preventing always-on-top for window 0x%p - Replacing HWND_TOPMOST with HWND_NOTOPMOST", hWnd);
+            LogInfo("SetWindowPos: Preventing always-on-top for window 0x%p - Replacing HWND_TOPMOST with
+        HWND_NOTOPMOST", hWnd);
 
             // Call original function with HWND_NOTOPMOST instead of HWND_TOPMOST
             return SetWindowPos_Original ? SetWindowPos_Original(hWnd, HWND_NOTOPMOST, X, Y, cx, cy, uFlags)
@@ -197,7 +197,6 @@ BOOL WINAPI SetWindowPos_Detour(HWND hWnd, HWND hWndInsertAfter, int X, int Y, i
 }
 
 HCURSOR WINAPI SetCursor_Direct(HCURSOR hCursor) {
-
     // Call original function
     return SetCursor_Original ? SetCursor_Original(hCursor) : SetCursor(hCursor);
 }
@@ -223,7 +222,6 @@ void RestoreShowCursor() {
     ShowCursor_Direct(bShow);
 }
 
-
 // Hooked SetCursor function
 HCURSOR WINAPI SetCursor_Detour(HCURSOR hCursor) {
     // Store the cursor value atomically
@@ -246,7 +244,6 @@ int WINAPI ShowCursor_Direct(BOOL bShow) {
 int WINAPI ShowCursor_Detour(BOOL bShow) {
     s_last_show_cursor_arg.store(bShow);
 
-
     if (ShouldBlockMouseInput()) {
         bShow = FALSE;
     }
@@ -261,27 +258,27 @@ int WINAPI ShowCursor_Detour(BOOL bShow) {
 }
 
 // Hooked CreateDXGIFactory function
-HRESULT WINAPI CreateDXGIFactory_Detour(REFIID riid, void **ppFactory) {
+HRESULT WINAPI CreateDXGIFactory_Detour(REFIID riid, void** ppFactory) {
     // Increment counter
     g_dxgi_factory_event_counters[DXGI_FACTORY_EVENT_CREATEFACTORY].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
     // Call original function
-    HRESULT hr = CreateDXGIFactory_Original ? CreateDXGIFactory_Original(riid, ppFactory)
-                                            : CreateDXGIFactory(riid, ppFactory);
+    HRESULT hr =
+        CreateDXGIFactory_Original ? CreateDXGIFactory_Original(riid, ppFactory) : CreateDXGIFactory(riid, ppFactory);
 
     // If successful and we got a factory, hook it
     if (SUCCEEDED(hr) && ppFactory != nullptr && *ppFactory != nullptr) {
-        IDXGIFactory *factory = static_cast<IDXGIFactory *>(*ppFactory);
+        IDXGIFactory* factory = static_cast<IDXGIFactory*>(*ppFactory);
         LogInfo("CreateDXGIFactory succeeded, hooking factory: 0x%p", factory);
-        display_commanderhooks::dxgi::HookFactory(factory);// crashes Returnal
+        display_commanderhooks::dxgi::HookFactory(factory);  // crashes Returnal
     }
 
     return hr;
 }
 
 // Hooked CreateDXGIFactory1 function
-HRESULT WINAPI CreateDXGIFactory1_Detour(REFIID riid, void **ppFactory) {
+HRESULT WINAPI CreateDXGIFactory1_Detour(REFIID riid, void** ppFactory) {
     // Increment counter
     g_dxgi_factory_event_counters[DXGI_FACTORY_EVENT_CREATEFACTORY1].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
@@ -292,29 +289,22 @@ HRESULT WINAPI CreateDXGIFactory1_Detour(REFIID riid, void **ppFactory) {
 
     // If successful and we got a factory, hook it
     if (SUCCEEDED(hr) && ppFactory != nullptr && *ppFactory != nullptr) {
-        IDXGIFactory *factory = static_cast<IDXGIFactory *>(*ppFactory);
+        IDXGIFactory* factory = static_cast<IDXGIFactory*>(*ppFactory);
         LogInfo("CreateDXGIFactory1 succeeded, hooking factory: 0x%p", factory);
-        display_commanderhooks::dxgi::HookFactory(factory); // crashes Returnal
+        display_commanderhooks::dxgi::HookFactory(factory);  // crashes Returnal
     }
 
     return hr;
 }
 
 // Hooked D3D11CreateDeviceAndSwapChain function
-HRESULT WINAPI D3D11CreateDeviceAndSwapChain_Detour(
-    IDXGIAdapter* pAdapter,
-    D3D_DRIVER_TYPE DriverType,
-    HMODULE Software,
-    UINT Flags,
-    const D3D_FEATURE_LEVEL* pFeatureLevels,
-    UINT FeatureLevels,
-    UINT SDKVersion,
-    const DXGI_SWAP_CHAIN_DESC* pSwapChainDesc,
-    IDXGISwapChain** ppSwapChain,
-    ID3D11Device** ppDevice,
-    D3D_FEATURE_LEVEL* pFeatureLevel,
-    ID3D11DeviceContext** ppImmediateContext)
-{
+HRESULT WINAPI D3D11CreateDeviceAndSwapChain_Detour(IDXGIAdapter* pAdapter, D3D_DRIVER_TYPE DriverType,
+                                                    HMODULE Software, UINT Flags,
+                                                    const D3D_FEATURE_LEVEL* pFeatureLevels, UINT FeatureLevels,
+                                                    UINT SDKVersion, const DXGI_SWAP_CHAIN_DESC* pSwapChainDesc,
+                                                    IDXGISwapChain** ppSwapChain, ID3D11Device** ppDevice,
+                                                    D3D_FEATURE_LEVEL* pFeatureLevel,
+                                                    ID3D11DeviceContext** ppImmediateContext) {
     LogInfo("=== D3D11CreateDeviceAndSwapChain Called ===");
     LogInfo("  pAdapter: 0x%p", pAdapter);
     LogInfo("  DriverType: %d", DriverType);
@@ -329,6 +319,13 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain_Detour(
     LogInfo("  pFeatureLevel: 0x%p", pFeatureLevel);
     LogInfo("  ppImmediateContext: 0x%p", ppImmediateContext);
 
+    // Apply debug layer flag if enabled
+    UINT modifiedFlags = Flags;
+    if (settings::g_developerTabSettings.debug_layer_enabled.GetValue()) {
+        modifiedFlags |= D3D11_CREATE_DEVICE_DEBUG;
+        LogInfo("  Debug layer enabled - Modified Flags: 0x%08X", modifiedFlags);
+    }
+
     // Log feature levels if provided
     if (pFeatureLevels && FeatureLevels > 0) {
         LogInfo("  Feature Levels:");
@@ -342,7 +339,8 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain_Detour(
         LogInfo("  Swap Chain Description:");
         LogInfo("    BufferDesc.Width: %u", pSwapChainDesc->BufferDesc.Width);
         LogInfo("    BufferDesc.Height: %u", pSwapChainDesc->BufferDesc.Height);
-        LogInfo("    BufferDesc.RefreshRate: %u/%u", pSwapChainDesc->BufferDesc.RefreshRate.Numerator, pSwapChainDesc->BufferDesc.RefreshRate.Denominator);
+        LogInfo("    BufferDesc.RefreshRate: %u/%u", pSwapChainDesc->BufferDesc.RefreshRate.Numerator,
+                pSwapChainDesc->BufferDesc.RefreshRate.Denominator);
         LogInfo("    BufferDesc.Format: %d", pSwapChainDesc->BufferDesc.Format);
         LogInfo("    BufferDesc.ScanlineOrdering: %d", pSwapChainDesc->BufferDesc.ScanlineOrdering);
         LogInfo("    BufferDesc.Scaling: %d", pSwapChainDesc->BufferDesc.Scaling);
@@ -356,12 +354,39 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain_Detour(
         LogInfo("    Flags: 0x%08X", pSwapChainDesc->Flags);
     }
 
-    // Call original function
-    HRESULT hr = D3D11CreateDeviceAndSwapChain_Original ?
-        D3D11CreateDeviceAndSwapChain_Original(pAdapter, DriverType, Software, Flags, pFeatureLevels, FeatureLevels, SDKVersion, pSwapChainDesc, ppSwapChain, ppDevice, pFeatureLevel, ppImmediateContext) :
-        E_FAIL; // D3D11CreateDeviceAndSwapChain not available
+    // Call original function with modified flags
+    HRESULT hr = D3D11CreateDeviceAndSwapChain_Original
+                     ? D3D11CreateDeviceAndSwapChain_Original(pAdapter, DriverType, Software, modifiedFlags,
+                                                              pFeatureLevels, FeatureLevels, SDKVersion, pSwapChainDesc,
+                                                              ppSwapChain, ppDevice, pFeatureLevel, ppImmediateContext)
+                     : E_FAIL;  // D3D11CreateDeviceAndSwapChain not available
 
     LogInfo("  Result: 0x%08X (%s)", hr, SUCCEEDED(hr) ? "SUCCESS" : "FAILED");
+
+    // Setup D3D11 debug info queue if debug layer is enabled and device creation was successful
+    if (SUCCEEDED(hr) && ppDevice && *ppDevice && settings::g_developerTabSettings.debug_layer_enabled.GetValue()) {
+        ID3D11Device* device = static_cast<ID3D11Device*>(*ppDevice);
+        ID3D11Debug* debug_device = nullptr;
+        HRESULT debug_hr = device->QueryInterface(IID_PPV_ARGS(&debug_device));
+        if (SUCCEEDED(debug_hr) && debug_device != nullptr) {
+            ID3D11InfoQueue* info_queue = nullptr;
+            HRESULT info_hr = debug_device->QueryInterface(IID_PPV_ARGS(&info_queue));
+            if (SUCCEEDED(info_hr) && info_queue != nullptr) {
+                info_queue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_ERROR, true);
+                info_queue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_CORRUPTION, true);
+                info_queue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_WARNING, true);
+                info_queue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_INFO, true);
+                info_queue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_MESSAGE, true);
+                LogInfo("  D3D11 debug info queue configured for all severity levels");
+                info_queue->Release();
+            } else {
+                LogWarn("  Failed to get D3D11 info queue: 0x%08X", info_hr);
+            }
+            debug_device->Release();
+        } else {
+            LogWarn("  Failed to get D3D11 debug device: 0x%08X", debug_hr);
+        }
+    }
 
     // Log output parameters if successful
     if (SUCCEEDED(hr)) {
@@ -383,28 +408,151 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain_Detour(
     return hr;
 }
 
+// Hooked D3D11CreateDevice function
+HRESULT WINAPI D3D11CreateDevice_Detour(IDXGIAdapter* pAdapter, D3D_DRIVER_TYPE DriverType,
+                                        HMODULE Software, UINT Flags,
+                                        const D3D_FEATURE_LEVEL* pFeatureLevels, UINT FeatureLevels,
+                                        UINT SDKVersion, ID3D11Device** ppDevice,
+                                        D3D_FEATURE_LEVEL* pFeatureLevel, ID3D11DeviceContext** ppImmediateContext) {
+    LogInfo("=== D3D11CreateDevice Called ===");
+    LogInfo("  pAdapter: 0x%p", pAdapter);
+    LogInfo("  DriverType: %d", DriverType);
+    LogInfo("  Software: 0x%p", Software);
+    LogInfo("  Flags: 0x%08X", Flags);
+    LogInfo("  pFeatureLevels: 0x%p", pFeatureLevels);
+    LogInfo("  FeatureLevels: %u", FeatureLevels);
+    LogInfo("  SDKVersion: %u", SDKVersion);
+    LogInfo("  ppDevice: 0x%p", ppDevice);
+    LogInfo("  pFeatureLevel: 0x%p", pFeatureLevel);
+    LogInfo("  ppImmediateContext: 0x%p", ppImmediateContext);
+
+    // Apply debug layer flag if enabled
+    UINT modifiedFlags = Flags;
+    if (settings::g_developerTabSettings.debug_layer_enabled.GetValue()) {
+        modifiedFlags |= D3D11_CREATE_DEVICE_DEBUG;
+        LogInfo("  Debug layer enabled - Modified Flags: 0x%08X", modifiedFlags);
+    }
+
+    // Log feature levels if provided
+    if (pFeatureLevels && FeatureLevels > 0) {
+        LogInfo("  Feature Levels:");
+        for (UINT i = 0; i < FeatureLevels; i++) {
+            LogInfo("    [%u]: 0x%04X", i, pFeatureLevels[i]);
+        }
+    }
+
+    // Call original function with modified flags
+    HRESULT hr = D3D11CreateDevice_Original
+                     ? D3D11CreateDevice_Original(pAdapter, DriverType, Software, modifiedFlags,
+                                                 pFeatureLevels, FeatureLevels, SDKVersion, ppDevice,
+                                                 pFeatureLevel, ppImmediateContext)
+                     : E_FAIL;  // D3D11CreateDevice not available
+
+    LogInfo("  Result: 0x%08X (%s)", hr, SUCCEEDED(hr) ? "SUCCESS" : "FAILED");
+
+    // Setup D3D11 debug info queue if debug layer is enabled and device creation was successful
+    if (SUCCEEDED(hr) && ppDevice && *ppDevice && settings::g_developerTabSettings.debug_layer_enabled.GetValue()) {
+        ID3D11Device* device = static_cast<ID3D11Device*>(*ppDevice);
+        ID3D11Debug* debug_device = nullptr;
+        HRESULT debug_hr = device->QueryInterface(IID_PPV_ARGS(&debug_device));
+        if (SUCCEEDED(debug_hr) && debug_device != nullptr) {
+            ID3D11InfoQueue* info_queue = nullptr;
+            HRESULT info_hr = debug_device->QueryInterface(IID_PPV_ARGS(&info_queue));
+            if (SUCCEEDED(info_hr) && info_queue != nullptr) {
+                info_queue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_ERROR, true);
+                info_queue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_CORRUPTION, true);
+                info_queue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_WARNING, true);
+                info_queue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_INFO, true);
+                info_queue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_MESSAGE, true);
+                LogInfo("  D3D11 debug info queue configured for all severity levels");
+                info_queue->Release();
+            } else {
+                LogWarn("  Failed to get D3D11 info queue: 0x%08X", info_hr);
+            }
+            debug_device->Release();
+        } else {
+            LogWarn("  Failed to get D3D11 debug device: 0x%08X", debug_hr);
+        }
+    }
+
+    // Log output parameters if successful
+    if (SUCCEEDED(hr)) {
+        if (ppDevice && *ppDevice) {
+            LogInfo("  Created Device: 0x%p", *ppDevice);
+        }
+        if (ppImmediateContext && *ppImmediateContext) {
+            LogInfo("  Created Context: 0x%p", *ppImmediateContext);
+        }
+        if (pFeatureLevel && *pFeatureLevel) {
+            LogInfo("  Feature Level: 0x%04X", *pFeatureLevel);
+        }
+    }
+
+    LogInfo("=== D3D11CreateDevice Complete ===");
+    return hr;
+}
+
 // Hooked D3D12CreateDevice function
-HRESULT WINAPI D3D12CreateDevice_Detour(
-    IUnknown* pAdapter,
-    D3D_FEATURE_LEVEL MinimumFeatureLevel,
-    REFIID riid,
-    void** ppDevice)
-{
+HRESULT WINAPI D3D12CreateDevice_Detour(IUnknown* pAdapter, D3D_FEATURE_LEVEL MinimumFeatureLevel, REFIID riid,
+                                        void** ppDevice) {
     LogInfo("=== D3D12CreateDevice Called ===");
     LogInfo("  pAdapter: 0x%p", pAdapter);
     LogInfo("  MinimumFeatureLevel: 0x%04X", MinimumFeatureLevel);
-    LogInfo("  riid: {%08X-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X}",
-            riid.Data1, riid.Data2, riid.Data3,
-            riid.Data4[0], riid.Data4[1], riid.Data4[2], riid.Data4[3],
-            riid.Data4[4], riid.Data4[5], riid.Data4[6], riid.Data4[7]);
+    LogInfo("  riid: {%08X-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X}", riid.Data1, riid.Data2, riid.Data3,
+            riid.Data4[0], riid.Data4[1], riid.Data4[2], riid.Data4[3], riid.Data4[4], riid.Data4[5], riid.Data4[6],
+            riid.Data4[7]);
     LogInfo("  ppDevice: 0x%p", ppDevice);
 
     // Call original function
-    HRESULT hr = D3D12CreateDevice_Original ?
-        D3D12CreateDevice_Original(pAdapter, MinimumFeatureLevel, riid, ppDevice) :
-        E_FAIL; // D3D12CreateDevice not available
+    HRESULT hr = D3D12CreateDevice_Original ? D3D12CreateDevice_Original(pAdapter, MinimumFeatureLevel, riid, ppDevice)
+                                            : E_FAIL;  // D3D12CreateDevice not available
 
     LogInfo("  Result: 0x%08X (%s)", hr, SUCCEEDED(hr) ? "SUCCESS" : "FAILED");
+
+    // Enable debug layer if setting is enabled and device creation was successful
+    if (SUCCEEDED(hr) && ppDevice && *ppDevice && settings::g_developerTabSettings.debug_layer_enabled.GetValue()) {
+        LogInfo("  Enabling D3D12 debug layer...");
+
+        // Get D3D12 debug interface
+        HMODULE d3d12_module = GetModuleHandleW(L"d3d12.dll");
+        if (d3d12_module != nullptr) {
+            auto D3D12GetDebugInterface = reinterpret_cast<decltype(&::D3D12GetDebugInterface)>(
+                GetProcAddress(d3d12_module, "D3D12GetDebugInterface"));
+            if (D3D12GetDebugInterface != nullptr) {
+                ID3D12Debug* debug_controller = nullptr;
+                HRESULT debug_hr = D3D12GetDebugInterface(IID_PPV_ARGS(&debug_controller));
+                if (SUCCEEDED(debug_hr) && debug_controller != nullptr) {
+                    debug_controller->EnableDebugLayer();
+                    LogInfo("  D3D12 debug layer enabled successfully");
+                    debug_controller->Release();
+                } else {
+                    LogWarn("  Failed to enable D3D12 debug layer: 0x%08X", debug_hr);
+                }
+            } else {
+                LogWarn("  D3D12GetDebugInterface not available");
+            }
+        } else {
+            LogWarn("  d3d12.dll module not found");
+        }
+
+        // Setup debug interface to break on any warnings/errors (similar to DX12_ENABLE_DEBUG_LAYER)
+        if (SUCCEEDED(hr) && ppDevice && *ppDevice) {
+            ID3D12Device* device = static_cast<ID3D12Device*>(*ppDevice);
+            ID3D12InfoQueue* info_queue = nullptr;
+            HRESULT info_hr = device->QueryInterface(IID_PPV_ARGS(&info_queue));
+            if (SUCCEEDED(info_hr) && info_queue != nullptr) {
+                info_queue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, true);
+                info_queue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, true);
+                info_queue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_WARNING, true);
+                info_queue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_INFO, true);
+                info_queue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_MESSAGE, true);
+                LogInfo("  D3D12 debug info queue configured for all severity levels");
+                info_queue->Release();
+            } else {
+                LogWarn("  Failed to get D3D12 info queue: 0x%08X", info_hr);
+            }
+        }
+    }
 
     // Log output parameters if successful
     if (SUCCEEDED(hr) && ppDevice && *ppDevice) {
@@ -423,7 +571,8 @@ bool InstallDxgiHooks() {
     }
 
     // Check if DXGI hooks should be suppressed
-    if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(display_commanderhooks::HookType::DXGI_FACTORY)) {
+    if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(
+            display_commanderhooks::HookType::DXGI_FACTORY)) {
         LogInfo("DXGI hooks installation suppressed by user setting");
         return false;
     }
@@ -453,19 +602,23 @@ bool InstallDxgiHooks() {
         LogError("Failed to get dxgi.dll module handle");
         return false;
     }
-    display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(display_commanderhooks::HookType::DXGI_FACTORY);
+    display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(
+        display_commanderhooks::HookType::DXGI_FACTORY);
 
     // Hook CreateDXGIFactory - try both system and ReShade versions
-    auto CreateDXGIFactory_sys = reinterpret_cast<decltype(&CreateDXGIFactory)>(GetProcAddress(dxgi_module, "CreateDXGIFactory"));
+    auto CreateDXGIFactory_sys =
+        reinterpret_cast<decltype(&CreateDXGIFactory)>(GetProcAddress(dxgi_module, "CreateDXGIFactory"));
     if (CreateDXGIFactory_sys != nullptr) {
-        if (!CreateAndEnableHook(CreateDXGIFactory_sys, CreateDXGIFactory_Detour, reinterpret_cast<LPVOID *>(&CreateDXGIFactory_Original), "CreateDXGIFactory")) {
+        if (!CreateAndEnableHook(CreateDXGIFactory_sys, CreateDXGIFactory_Detour,
+                                 reinterpret_cast<LPVOID*>(&CreateDXGIFactory_Original), "CreateDXGIFactory")) {
             LogError("Failed to create and enable CreateDXGIFactory system hook");
             return false;
         }
         LogInfo("CreateDXGIFactory system hook created successfully");
     } else {
         LogWarn("Failed to get CreateDXGIFactory system address, trying ReShade version");
-        if (!CreateAndEnableHook(CreateDXGIFactory, CreateDXGIFactory_Detour, reinterpret_cast<LPVOID *>(&CreateDXGIFactory_Original), "CreateDXGIFactory")) {
+        if (!CreateAndEnableHook(CreateDXGIFactory, CreateDXGIFactory_Detour,
+                                 reinterpret_cast<LPVOID*>(&CreateDXGIFactory_Original), "CreateDXGIFactory")) {
             LogError("Failed to create and enable CreateDXGIFactory ReShade hook");
             return false;
         }
@@ -473,16 +626,19 @@ bool InstallDxgiHooks() {
     }
 
     // Hook CreateDXGIFactory1 - try both system and ReShade versions
-    auto CreateDXGIFactory1_sys = reinterpret_cast<decltype(&CreateDXGIFactory1)>(GetProcAddress(dxgi_module, "CreateDXGIFactory1"));
+    auto CreateDXGIFactory1_sys =
+        reinterpret_cast<decltype(&CreateDXGIFactory1)>(GetProcAddress(dxgi_module, "CreateDXGIFactory1"));
     if (CreateDXGIFactory1_sys != nullptr) {
-        if (!CreateAndEnableHook(CreateDXGIFactory1_sys, CreateDXGIFactory1_Detour, reinterpret_cast<LPVOID *>(&CreateDXGIFactory1_Original), "CreateDXGIFactory1")) {
+        if (!CreateAndEnableHook(CreateDXGIFactory1_sys, CreateDXGIFactory1_Detour,
+                                 reinterpret_cast<LPVOID*>(&CreateDXGIFactory1_Original), "CreateDXGIFactory1")) {
             LogError("Failed to create and enable CreateDXGIFactory1 system hook");
             return false;
         }
         LogInfo("CreateDXGIFactory1 system hook created successfully");
     } else {
         LogWarn("Failed to get CreateDXGIFactory1 system address, trying ReShade version");
-        if (!CreateAndEnableHook(CreateDXGIFactory1, CreateDXGIFactory1_Detour, reinterpret_cast<LPVOID *>(&CreateDXGIFactory1_Original), "CreateDXGIFactory1")) {
+        if (!CreateAndEnableHook(CreateDXGIFactory1, CreateDXGIFactory1_Detour,
+                                 reinterpret_cast<LPVOID*>(&CreateDXGIFactory1_Original), "CreateDXGIFactory1")) {
             LogError("Failed to create and enable CreateDXGIFactory1 ReShade hook");
             return false;
         }
@@ -504,7 +660,8 @@ bool InstallD3DDeviceHooks() {
     }
 
     // Check if D3D device hooks should be suppressed
-    if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(display_commanderhooks::HookType::D3D_DEVICE)) {
+    if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(
+            display_commanderhooks::HookType::D3D_DEVICE)) {
         LogInfo("D3D device hooks installation suppressed by user setting");
         return false;
     }
@@ -516,15 +673,33 @@ bool InstallD3DDeviceHooks() {
     // Hook D3D11CreateDeviceAndSwapChain
     HMODULE d3d11_module = GetModuleHandleW(L"d3d11.dll");
     if (d3d11_module != nullptr) {
-        auto D3D11CreateDeviceAndSwapChain_sys = reinterpret_cast<decltype(&D3D11CreateDeviceAndSwapChain)>(GetProcAddress(d3d11_module, "D3D11CreateDeviceAndSwapChain"));
+        auto D3D11CreateDeviceAndSwapChain_sys = reinterpret_cast<decltype(&D3D11CreateDeviceAndSwapChain)>(
+            GetProcAddress(d3d11_module, "D3D11CreateDeviceAndSwapChain"));
         if (D3D11CreateDeviceAndSwapChain_sys != nullptr) {
-            if (!CreateAndEnableHook(D3D11CreateDeviceAndSwapChain_sys, D3D11CreateDeviceAndSwapChain_Detour, reinterpret_cast<LPVOID *>(&D3D11CreateDeviceAndSwapChain_Original), "D3D11CreateDeviceAndSwapChain")) {
+            if (!CreateAndEnableHook(D3D11CreateDeviceAndSwapChain_sys, D3D11CreateDeviceAndSwapChain_Detour,
+                                     reinterpret_cast<LPVOID*>(&D3D11CreateDeviceAndSwapChain_Original),
+                                     "D3D11CreateDeviceAndSwapChain")) {
                 LogError("Failed to create and enable D3D11CreateDeviceAndSwapChain hook");
                 return false;
             }
             LogInfo("D3D11CreateDeviceAndSwapChain hook created successfully");
         } else {
             LogWarn("Failed to get D3D11CreateDeviceAndSwapChain address from d3d11.dll");
+        }
+
+        // Hook D3D11CreateDevice
+        auto D3D11CreateDevice_sys = reinterpret_cast<decltype(&D3D11CreateDevice)>(
+            GetProcAddress(d3d11_module, "D3D11CreateDevice"));
+        if (D3D11CreateDevice_sys != nullptr) {
+            if (!CreateAndEnableHook(D3D11CreateDevice_sys, D3D11CreateDevice_Detour,
+                                     reinterpret_cast<LPVOID*>(&D3D11CreateDevice_Original),
+                                     "D3D11CreateDevice")) {
+                LogError("Failed to create and enable D3D11CreateDevice hook");
+                return false;
+            }
+            LogInfo("D3D11CreateDevice hook created successfully");
+        } else {
+            LogWarn("Failed to get D3D11CreateDevice address from d3d11.dll");
         }
     } else {
         LogWarn("Failed to get d3d11.dll module handle");
@@ -533,9 +708,11 @@ bool InstallD3DDeviceHooks() {
     // Hook D3D12CreateDevice
     HMODULE d3d12_module = GetModuleHandleW(L"d3d12.dll");
     if (d3d12_module != nullptr) {
-        auto D3D12CreateDevice_sys = reinterpret_cast<decltype(&D3D12CreateDevice)>(GetProcAddress(d3d12_module, "D3D12CreateDevice"));
+        auto D3D12CreateDevice_sys =
+            reinterpret_cast<decltype(&D3D12CreateDevice)>(GetProcAddress(d3d12_module, "D3D12CreateDevice"));
         if (D3D12CreateDevice_sys != nullptr) {
-            if (!CreateAndEnableHook(D3D12CreateDevice_sys, D3D12CreateDevice_Detour, reinterpret_cast<LPVOID *>(&D3D12CreateDevice_Original), "D3D12CreateDevice")) {
+            if (!CreateAndEnableHook(D3D12CreateDevice_sys, D3D12CreateDevice_Detour,
+                                     reinterpret_cast<LPVOID*>(&D3D12CreateDevice_Original), "D3D12CreateDevice")) {
                 LogError("Failed to create and enable D3D12CreateDevice hook");
                 return false;
             }
@@ -550,14 +727,16 @@ bool InstallD3DDeviceHooks() {
     LogInfo("D3D device hooks installed successfully");
 
     // Mark D3D device hooks as installed
-    display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(display_commanderhooks::HookType::D3D_DEVICE);
+    display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(
+        display_commanderhooks::HookType::D3D_DEVICE);
 
     return true;
 }
 
 bool InstallWindowsApiHooks() {
     // Check if Windows API hooks should be suppressed
-    if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(display_commanderhooks::HookType::WINDOW_API)) {
+    if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(
+            display_commanderhooks::HookType::WINDOW_API)) {
         LogInfo("Windows API hooks installation suppressed by user setting");
         return false;
     }
@@ -575,48 +754,54 @@ bool InstallWindowsApiHooks() {
         LogInfo("MinHook initialized successfully for Windows API hooks");
     }
 
-
     LogInfo("Installing Windows API hooks...");
 
     // Hook GetFocus
-    if (!CreateAndEnableHook(GetFocus, GetFocus_Detour, reinterpret_cast<LPVOID *>(&GetFocus_Original), "GetFocus")) {
+    if (!CreateAndEnableHook(GetFocus, GetFocus_Detour, reinterpret_cast<LPVOID*>(&GetFocus_Original), "GetFocus")) {
         LogError("Failed to create and enable GetFocus hook");
     }
 
     // Hook GetForegroundWindow
-    if (!CreateAndEnableHook(GetForegroundWindow, GetForegroundWindow_Detour, reinterpret_cast<LPVOID *>(&GetForegroundWindow_Original), "GetForegroundWindow")) {
+    if (!CreateAndEnableHook(GetForegroundWindow, GetForegroundWindow_Detour,
+                             reinterpret_cast<LPVOID*>(&GetForegroundWindow_Original), "GetForegroundWindow")) {
         LogError("Failed to create and enable GetForegroundWindow hook");
     }
 
     // Hook GetActiveWindow
-    if (!CreateAndEnableHook(GetActiveWindow, GetActiveWindow_Detour, reinterpret_cast<LPVOID *>(&GetActiveWindow_Original), "GetActiveWindow")) {
+    if (!CreateAndEnableHook(GetActiveWindow, GetActiveWindow_Detour,
+                             reinterpret_cast<LPVOID*>(&GetActiveWindow_Original), "GetActiveWindow")) {
         LogError("Failed to create and enable GetActiveWindow hook");
     }
 
     // Hook GetGUIThreadInfo
-    if (!CreateAndEnableHook(GetGUIThreadInfo, GetGUIThreadInfo_Detour, reinterpret_cast<LPVOID *>(&GetGUIThreadInfo_Original), "GetGUIThreadInfo")) {
+    if (!CreateAndEnableHook(GetGUIThreadInfo, GetGUIThreadInfo_Detour,
+                             reinterpret_cast<LPVOID*>(&GetGUIThreadInfo_Original), "GetGUIThreadInfo")) {
         LogError("Failed to create and enable GetGUIThreadInfo hook");
     }
 
     // Hook SetThreadExecutionState
-    if (!CreateAndEnableHook(SetThreadExecutionState, SetThreadExecutionState_Detour, reinterpret_cast<LPVOID *>(&SetThreadExecutionState_Original), "SetThreadExecutionState")) {
+    if (!CreateAndEnableHook(SetThreadExecutionState, SetThreadExecutionState_Detour,
+                             reinterpret_cast<LPVOID*>(&SetThreadExecutionState_Original), "SetThreadExecutionState")) {
         LogError("Failed to create and enable SetThreadExecutionState hook");
     }
 
     // Hook SetWindowLongPtrW
-    if (!CreateAndEnableHook(SetWindowLongPtrW, SetWindowLongPtrW_Detour, reinterpret_cast<LPVOID *>(&SetWindowLongPtrW_Original), "SetWindowLongPtrW")) {
+    if (!CreateAndEnableHook(SetWindowLongPtrW, SetWindowLongPtrW_Detour,
+                             reinterpret_cast<LPVOID*>(&SetWindowLongPtrW_Original), "SetWindowLongPtrW")) {
         LogError("Failed to create and enable SetWindowLongPtrW hook");
     }
 
     // Hook SetWindowPos
-    if (!CreateAndEnableHook(SetWindowPos, SetWindowPos_Detour, reinterpret_cast<LPVOID *>(&SetWindowPos_Original), "SetWindowPos")) {
+    if (!CreateAndEnableHook(SetWindowPos, SetWindowPos_Detour, reinterpret_cast<LPVOID*>(&SetWindowPos_Original),
+                             "SetWindowPos")) {
         LogError("Failed to create and enable SetWindowPos hook");
     }
 
     LogInfo("Windows API hooks installed successfully");
 
     // Mark Windows API hooks as installed
-    display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(display_commanderhooks::HookType::WINDOW_API);
+    display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(
+        display_commanderhooks::HookType::WINDOW_API);
 
     return true;
 }
@@ -626,7 +811,7 @@ bool InstallApiHooks() {
         LogInfo("API hooks already installed");
         return true;
     }
-    #if 1
+#if 1
     // Initialize MinHook (only if not already initialized)
     MH_STATUS init_status = SafeInitializeMinHook(display_commanderhooks::HookType::API);
     if (init_status != MH_OK && init_status != MH_ERROR_ALREADY_INITIALIZED) {
@@ -639,13 +824,12 @@ bool InstallApiHooks() {
     } else {
         LogInfo("MinHook initialized successfully for API hooks");
     }
-    #endif
+#endif
 
     // Install Windows API hooks
     InstallWindowsApiHooks();
     // todo: move to loadlibrary hooks
     // Install Windows message hooks
-
 
     // ### SAME LIBRARY ###
     InstallWindowsMessageHooks();
@@ -705,7 +889,6 @@ void UninstallApiHooks() {
     // Uninstall Windows message hooks
     UninstallWindowsMessageHooks();
 
-
     // Uninstall sleep hooks
     UninstallSleepHooks();
 
@@ -739,15 +922,23 @@ void UninstallApiHooks() {
     // Remove D3D device hooks
     HMODULE d3d11_module = GetModuleHandleW(L"d3d11.dll");
     if (d3d11_module != nullptr) {
-        auto D3D11CreateDeviceAndSwapChain_sys = reinterpret_cast<decltype(&D3D11CreateDeviceAndSwapChain)>(GetProcAddress(d3d11_module, "D3D11CreateDeviceAndSwapChain"));
+        auto D3D11CreateDeviceAndSwapChain_sys = reinterpret_cast<decltype(&D3D11CreateDeviceAndSwapChain)>(
+            GetProcAddress(d3d11_module, "D3D11CreateDeviceAndSwapChain"));
         if (D3D11CreateDeviceAndSwapChain_sys != nullptr) {
             MH_RemoveHook(D3D11CreateDeviceAndSwapChain_sys);
+        }
+
+        auto D3D11CreateDevice_sys = reinterpret_cast<decltype(&D3D11CreateDevice)>(
+            GetProcAddress(d3d11_module, "D3D11CreateDevice"));
+        if (D3D11CreateDevice_sys != nullptr) {
+            MH_RemoveHook(D3D11CreateDevice_sys);
         }
     }
 
     HMODULE d3d12_module = GetModuleHandleW(L"d3d12.dll");
     if (d3d12_module != nullptr) {
-        auto D3D12CreateDevice_sys = reinterpret_cast<decltype(&D3D12CreateDevice)>(GetProcAddress(d3d12_module, "D3D12CreateDevice"));
+        auto D3D12CreateDevice_sys =
+            reinterpret_cast<decltype(&D3D12CreateDevice)>(GetProcAddress(d3d12_module, "D3D12CreateDevice"));
         if (D3D12CreateDevice_sys != nullptr) {
             MH_RemoveHook(D3D12CreateDevice_sys);
         }
@@ -766,6 +957,7 @@ void UninstallApiHooks() {
     CreateDXGIFactory_Original = nullptr;
     CreateDXGIFactory1_Original = nullptr;
     D3D11CreateDeviceAndSwapChain_Original = nullptr;
+    D3D11CreateDevice_Original = nullptr;
     D3D12CreateDevice_Original = nullptr;
 
     g_api_hooks_installed.store(false);
@@ -777,4 +969,4 @@ void SetGameWindow(HWND hwnd) {
     LogInfo("Game window set for API hooks - HWND: 0x%p", hwnd);
 }
 
-} // namespace display_commanderhooks
+}  // namespace display_commanderhooks

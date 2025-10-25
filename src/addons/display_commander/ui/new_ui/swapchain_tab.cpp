@@ -9,7 +9,6 @@
 #include "../../utils/general_utils.hpp"
 #include "../../utils/logging.hpp"
 #include "../../utils/timing.hpp"
-#include "hooks/window_proc_hooks.hpp"
 
 #include <dxgi1_6.h>
 #include <wrl/client.h>
@@ -760,7 +759,7 @@ void DrawNGXParameters() {
         ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Total NGX Parameters: %zu", all_params.size());
 
         if (!all_params.empty()) {
-            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✓ NGX parameter hooks are working correctly");
+            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), ICON_FK_OK " NGX parameter hooks are working correctly");
         }
     }
 }
@@ -1346,7 +1345,8 @@ void DrawSwapchainInfo(reshade::api::effect_runtime* runtime) {
                     ImGui::Text("  HDR Support: %s", supports_hdr ? "Yes" : "No");
 
                     if (supports_hdr) {
-                        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "  ✓ HDR-capable display detected");
+                        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f),
+                                           "  " ICON_FK_OK " HDR-capable display detected");
                     } else {
                         ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f),
                                            "  " ICON_FK_WARNING " Display does not support HDR");
@@ -1364,7 +1364,8 @@ void DrawSwapchainInfo(reshade::api::effect_runtime* runtime) {
 
                     if (supports_vrr) {
                         ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f),
-                                           "  ✓ Variable Refresh Rate (VRR) supported (WIP - not implemented yet)");
+                                           "  " ICON_FK_OK
+                                           " Variable Refresh Rate (VRR) supported (WIP - not implemented yet)");
                     } else {
                         ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f),
                                            "  " ICON_FK_WARNING " Display does not support VRR");
@@ -1446,7 +1447,7 @@ void DrawSwapchainInfo(reshade::api::effect_runtime* runtime) {
                     display_commander::config::set_config_value("ReShade_HDR_Metadata", "has_last_metadata", true);
 
                     ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f),
-                                       "✓ HDR metadata set to Rec. 2020 defaults and saved to config");
+                                       ICON_FK_OK " HDR metadata set to Rec. 2020 defaults and saved to config");
                 } else {
                     ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "✗ Failed to clear HDR metadata: 0x%08lX",
                                        static_cast<unsigned long>(hr));
@@ -1472,7 +1473,7 @@ void DrawSwapchainInfo(reshade::api::effect_runtime* runtime) {
                     has_last_metadata = false;
                     display_commander::config::set_config_value("ReShade_HDR_Metadata", "has_last_metadata", false);
                     last_metadata_source = "Disabled";
-                    ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✓ HDR metadata disabled");
+                    ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), ICON_FK_OK " HDR metadata disabled");
                 } else {
                     ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "✗ Failed to disable HDR metadata: 0x%08lX",
                                        static_cast<unsigned long>(hr));
@@ -1606,7 +1607,8 @@ void DrawSwapchainInfo(reshade::api::effect_runtime* runtime) {
                         static_cast<int32_t>(hdr10_metadata.MaxFrameAverageLightLevel));
                     display_commander::config::set_config_value("ReShade_HDR_Metadata", "has_last_metadata", true);
 
-                    ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✓ All HDR values applied and saved to config");
+                    ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f),
+                                       ICON_FK_OK " All HDR values applied and saved to config");
                 } else {
                     ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "✗ Failed to apply HDR values: 0x%08lX",
                                        static_cast<unsigned long>(hr));
@@ -1676,9 +1678,10 @@ void DrawSwapchainInfo(reshade::api::effect_runtime* runtime) {
                      && abs(green_y - 0.797f) < 0.01f && abs(blue_x - 0.131f) < 0.01f && abs(blue_y - 0.046f) < 0.01f);
 
                 if (is_rec709) {
-                    ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "  ✓ Matches Rec. 709 color space");
+                    ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "  " ICON_FK_OK " Matches Rec. 709 color space");
                 } else if (is_rec2020) {
-                    ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "  ✓ Matches Rec. 2020 color space");
+                    ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f),
+                                       "  " ICON_FK_OK " Matches Rec. 2020 color space");
                 } else {
                     ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f),
                                        "  " ICON_FK_WARNING " Custom color space (not Rec. 709/2020)");
@@ -1918,7 +1921,7 @@ void DrawDLSSPresetOverride() {
 
         ImGui::Spacing();
 
-        #if 0
+#if 0
         // DLSS-G MultiFrameCount override dropdown
         static const char* multiframe_options[] = {"No override", "2x", "3x", "4x"};
         int current_multiframe = settings::g_swapchainTabSettings.dlssg_multiframe_override.GetValue();
@@ -1948,7 +1951,7 @@ void DrawDLSSPresetOverride() {
         ImGui::Spacing();
         ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Note: This setting overrides the DLSS-G MultiFrameCount parameter.");
         ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Higher values may improve frame generation quality but increase latency.");
-        #endif
+#endif
 
         // DLSS Model Profile display
         DLSSModelProfile model_profile = GetDLSSModelProfile();

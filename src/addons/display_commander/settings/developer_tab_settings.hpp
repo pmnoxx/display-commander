@@ -15,7 +15,7 @@ using ui::new_ui::SettingBase;
 
 // Developer tab settings manager
 class DeveloperTabSettings {
-  public:
+   public:
     DeveloperTabSettings();
     ~DeveloperTabSettings() = default;
 
@@ -37,7 +37,7 @@ class DeveloperTabSettings {
     BoolSettingRef auto_colorspace;
 
     // D3D9 to D3D9Ex Upgrade
-    //BoolSettingRef enable_d3d9e_upgrade;
+    // BoolSettingRef enable_d3d9e_upgrade;
 
     // NVAPI Settings
     BoolSettingRef nvapi_fullscreen_prevention;
@@ -84,11 +84,14 @@ class DeveloperTabSettings {
     // MinHook suppression setting
     BoolSetting suppress_minhook;
 
+    // Debug Layer setting
+    BoolSetting debug_layer_enabled;
+
     // Get all settings for bulk operations
-    std::vector<SettingBase *> GetAllSettings();
+    std::vector<SettingBase*> GetAllSettings();
 };
 
 // Global instance
 extern DeveloperTabSettings g_developerTabSettings;
 
-} // namespace settings
+}  // namespace settings

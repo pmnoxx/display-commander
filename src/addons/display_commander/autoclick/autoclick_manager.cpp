@@ -282,7 +282,7 @@ void DrawAutoClickFeature() {
                           "below.\n\nShortcut: Ctrl+P (can be enabled in Developer tab)\n\nNote: Mouse position spoofing is always enabled for better stealth.");
     }
     // Mouse position spoofing is always enabled
-    ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "✓ Mouse position spoofing is always enabled for better stealth");
+    ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), ICON_FK_OK " Mouse position spoofing is always enabled for better stealth");
 
     // Show current status
     if (g_auto_click_enabled.load()) {

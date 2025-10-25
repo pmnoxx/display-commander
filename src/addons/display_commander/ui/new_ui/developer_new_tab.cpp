@@ -5,7 +5,6 @@
 #include "../../res/forkawesome.h"
 #include "../../settings/developer_tab_settings.hpp"
 #include "../../settings/experimental_tab_settings.hpp"
-#include "../../utils/general_utils.hpp"
 #include "../../utils/logging.hpp"
 #include "../../utils/reshade_global_config.hpp"
 #include "imgui.h"
@@ -183,10 +182,10 @@ void DrawDeveloperSettings() {
         ImGui::SetTooltip(
             "Safemode disables all auto-apply settings and sets FPS limiter to disabled.\n"
             "When enabled, it will automatically set itself to 0 and disable:\n"
-            "• Auto-apply resolution changes\n"
-            "• Auto-apply refresh rate changes\n"
-            "• Apply display settings at start\n"
-            "• FPS limiter mode (set to disabled)\n\n"
+            "- Auto-apply resolution changes\n"
+            "- Auto-apply refresh rate changes\n"
+            "- Apply display settings at start\n"
+            "- FPS limiter mode (set to disabled)\n\n"
             "This setting requires a game restart to take effect.");
     }
 
@@ -221,19 +220,19 @@ void DrawDeveloperSettings() {
         ImGui::SetTooltip(
             ICON_FK_WARNING " WARNING: Debug Layer Setup Required " ICON_FK_WARNING "\n\n"
             "REQUIREMENTS:\n"
-            "• Windows 11 SDK must be installed\n"
-            "• Download: https://developer.microsoft.com/en-us/windows/downloads/windows-sdk/\n"
-            "• Install 'Graphics Tools' and 'Debugging Tools for Windows'\n\n"
+            "- Windows 11 SDK must be installed\n"
+            "- Download: https://developer.microsoft.com/en-us/windows/downloads/windows-sdk/\n"
+            "- Install 'Graphics Tools' and 'Debugging Tools for Windows'\n\n"
             "SETUP STEPS:\n"
             "1. Install Windows 11 SDK with Graphics Tools\n"
             "2. Run DbgView.exe as Administrator\n"
             "3. Enable this setting\n"
             "4. RESTART THE GAME for changes to take effect\n\n"
             "FEATURES:\n"
-            "• D3D11: Adds D3D11_CREATE_DEVICE_DEBUG flag\n"
-            "• D3D12: Enables debug layer via D3D12GetDebugInterface\n"
-            "• Breaks on all severity levels (ERROR, WARNING, INFO)\n"
-            "• Debug output appears in DbgView\n\n"
+            "- D3D11: Adds D3D11_CREATE_DEVICE_DEBUG flag\n"
+            "- D3D12: Enables debug layer via D3D12GetDebugInterface\n"
+            "- Breaks on all severity levels (ERROR, WARNING, INFO)\n"
+            "- Debug output appears in DbgView\n\n"
             ICON_FK_WARNING " May significantly impact performance when enabled!");
     }
 
@@ -244,10 +243,10 @@ void DrawDeveloperSettings() {
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip(
                 "Debug layer is currently ENABLED.\n"
-                "• Debug output should appear in DbgView\n"
-                "• Performance may be significantly reduced\n"
-                "• Restart game if you just enabled this setting\n"
-                "• Disable when not debugging to restore performance");
+                "- Debug output should appear in DbgView\n"
+                "- Performance may be significantly reduced\n"
+                "- Restart game if you just enabled this setting\n"
+                "- Disable when not debugging to restore performance");
         }
     }
 }
@@ -286,9 +285,9 @@ void DrawHdrDisplaySettings() {
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip(
             "Automatically sets the appropriate color space on the game's swap chain based on the current format.\n"
-            "• HDR10 format (R10G10B10A2) → HDR10 color space (ST2084)\n"
-            "• FP16 format (R16G16B16A16) → scRGB color space (Linear)\n"
-            "• SDR format (R8G8B8A8) → sRGB color space (Non-linear)\n"
+            "- HDR10 format (R10G10B10A2) → HDR10 color space (ST2084)\n"
+            "- FP16 format (R16G16B16A16) → scRGB color space (Linear)\n"
+            "- SDR format (R8G8B8A8) → sRGB color space (Non-linear)\n"
             "Only works with DirectX 11/12 games.\n"
             "Applied automatically in presentBefore.");
     }
@@ -333,18 +332,18 @@ void DrawNvapiSettings() {
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip(
             "Automatically enable NVAPI features for specific games:\n"
-            "• NVAPI Fullscreen Prevention\n\n"
+            "- NVAPI Fullscreen Prevention\n\n"
             "Note: DLDSR needs to be off for proper functionality\n\n"
             "Supported games:\n"
-            "• Armored Core 6\n"
-            "• Devil May Cry 5\n"
-            "• Elden Ring\n"
-            "• Hitman\n"
-            "• Resident Evil 2\n"
-            "• Resident Evil 3\n"
-            "• Resident Evil 7\n"
-            "• Resident Evil 8\n"
-            "• Sekiro: Shadows Die Twice");
+            "- Armored Core 6\n"
+            "- Devil May Cry 5\n"
+            "- Elden Ring\n"
+            "- Hitman\n"
+            "- Resident Evil 2\n"
+            "- Resident Evil 3\n"
+            "- Resident Evil 7\n"
+            "- Resident Evil 8\n"
+            "- Sekiro: Shadows Die Twice");
     }
     // Display restart-required notice if flagged
     if (s_restart_needed_nvapi.load()) {
@@ -353,10 +352,10 @@ void DrawNvapiSettings() {
     }
     if (::g_nvapiFullscreenPrevention.IsAvailable()) {
         // Library loaded successfully
-        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✁ENVAPI Library: Loaded");
+        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), ICON_FK_OK " NVAPI Library: Loaded");
     } else {
         // Library not loaded
-        ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "✁ENVAPI Library: Not Loaded");
+        ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), ICON_FK_CANCEL " NVAPI Library: Not Loaded");
     }
 
     // Minimal NVIDIA Reflex Controls (device runtime dependent)
@@ -537,10 +536,10 @@ void DrawNvapiSettings() {
             if (ImGui::IsItemHovered()) {
                 ImGui::SetTooltip(
                     "Marker counts show which specific markers are being set:\n"
-                    "• SIMULATION_START/END: Frame simulation markers\n"
-                    "• RENDERSUBMIT_START/END: GPU submission markers\n"
-                    "• PRESENT_START/END: Present call markers\n"
-                    "• INPUT_SAMPLE: Input sampling markers\n\n"
+                    "- SIMULATION_START/END: Frame simulation markers\n"
+                    "- RENDERSUBMIT_START/END: GPU submission markers\n"
+                    "- PRESENT_START/END: Present call markers\n"
+                    "- INPUT_SAMPLE: Input sampling markers\n\n"
                     "If all marker counts are 0, Reflex markers are not being set.\n"
                     "If Sleep calls are 0, the Reflex sleep mode is not being called.\n"
                     "If ApplySleepMode calls are 0, the Reflex configuration is not being applied.");
@@ -636,9 +635,9 @@ void DrawNvapiSettings() {
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip(
                 "Fake NVAPI is experimental and may cause:\n"
-                "• Game crashes or instability\n"
-                "• Performance issues\n"
-                "• Incompatibility with some games\n\n"
+                "- Game crashes or instability\n"
+                "- Performance issues\n"
+                "- Incompatibility with some games\n\n"
                 "Use at your own risk!");
         }
     }

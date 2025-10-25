@@ -582,7 +582,7 @@ void DrawSwapchainEventCounters() {
         ImGui::Text("  Power Saving Active: %s", (main_power_saving && is_background) ? "Yes" : "No");
 
         if (main_power_saving && is_background) {
-            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "  ✁EPower saving is currently active");
+            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "  " ICON_FK_OK " Power saving is currently active");
         }
     }
 }

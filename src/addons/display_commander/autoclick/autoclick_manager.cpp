@@ -287,7 +287,7 @@ void DrawAutoClickFeature() {
     // Show current status
     if (g_auto_click_enabled.load()) {
         if (g_auto_click_thread_running.load()) {
-            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✁EAuto-click sequences are ACTIVE");
+            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), ICON_FK_OK " Auto-click sequences are ACTIVE");
         } else {
             ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), ICON_FK_WARNING " Auto-click sequences are STARTING...");
         }

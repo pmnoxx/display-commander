@@ -155,9 +155,9 @@ void DrawFrameTimeGraph() {
 
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Select which timing events to record for the frame time graph:\n"
-                         "• Present-to-Present: Records time between Present calls\n"
-                         "• Frame Begin-to-Frame Begin: Records time between frame begin events\n"
-                         "• Display Timing: Records when frames are actually displayed (based on GPU completion)\n"
+                         "- Present-to-Present: Records time between Present calls\n"
+                         "- Frame Begin-to-Frame Begin: Records time between frame begin events\n"
+                         "- Display Timing: Records when frames are actually displayed (based on GPU completion)\n"
                          "  Note: Display Timing requires GPU measurement to be enabled");
     }
 }
@@ -454,9 +454,9 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip(
                 "Controls screensaver behavior while the game is running:\n\n"
-                "• Default (no change): Preserves original game behavior\n"
-                "• Disable when Focused: Disables screensaver when game window is focused\n"
-                "• Disable: Always disables screensaver while game is running\n\n"
+                "- Default (no change): Preserves original game behavior\n"
+                "- Disable when Focused: Disables screensaver when game window is focused\n"
+                "- Disable: Always disables screensaver while game is running\n\n"
                 "Note: This feature requires the screensaver implementation to be active.");
         }
     }
@@ -826,8 +826,9 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                 ImGui::SetTooltip("Enables NVIDIA Reflex Boost mode for maximum latency reduction.\nThis mode may increase GPU power consumption but provides the lowest possible input lag.");
             }
             if (IsNativeReflexActive()) {
-                if (CheckboxSetting(settings::g_developerTabSettings.reflex_supress_native, "Override Native Reflex (PlaceHolder)")) {
-                    LogInfo("Override Native Reflex %s", settings::g_developerTabSettings.reflex_supress_native.GetValue() ? "enabled" : "disabled");
+                ImGui::SameLine();
+                if (CheckboxSetting(settings::g_developerTabSettings.reflex_supress_native, ICON_FK_WARNING " Suppress Native Reflex (WIP)")) {
+                    LogInfo("Suppress Native Reflex %s", settings::g_developerTabSettings.reflex_supress_native.GetValue() ? "enabled" : "disabled");
                 }
                 if (ImGui::IsItemHovered()) {
                     ImGui::SetTooltip("Override the game's native Reflex implementation with the addon's injected version.");
@@ -858,9 +859,9 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                 ImGui::SetTooltip(
                     "Present Pacing Delay: Adds delay to starting next frame.\n\n"
                     "How it reduces latency:\n"
-                    "• Allow for more time for CPU to process input.\n"
-                    "• Lower values provide more consistent frame timing.\n"
-                    "• Higher values provide lower latency but slightly less consistent timing.\n"
+                    "- Allow for more time for CPU to process input.\n"
+                    "- Lower values provide more consistent frame timing.\n"
+                    "- Higher values provide lower latency but slightly less consistent timing.\n"
                     "Range: 0%% to 100%%. Default: 0%% (1 frame time delay).\n"
                     "Manual fine-tuning required.");
             }
@@ -1338,20 +1339,20 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                         // Flip state information
                         ImGui::Text("Flip State: %s", flip_state_str);
                         if (flip_state == DxgiBypassMode::kComposed) {
-                            ImGui::TextColored(ui::colors::FLIP_COMPOSED, "  • Composed Flip (Red): Desktop Window Manager composition mode");
+                            ImGui::TextColored(ui::colors::FLIP_COMPOSED, "  - Composed Flip (Red): Desktop Window Manager composition mode");
                             ImGui::Text("    Higher latency, not ideal for gaming");
                         } else if (flip_state == DxgiBypassMode::kOverlay) {
-                            ImGui::TextColored(ui::colors::FLIP_INDEPENDENT, "  • MPO Independent Flip (Green): Modern hardware overlay plane");
+                            ImGui::TextColored(ui::colors::FLIP_INDEPENDENT, "  - MPO Independent Flip (Green): Modern hardware overlay plane");
                             ImGui::Text("    Best performance and lowest latency");
                         } else if (flip_state == DxgiBypassMode::kIndependentFlip) {
-                            ImGui::TextColored(ui::colors::FLIP_INDEPENDENT, "  • Independent Flip (Green): Legacy direct flip mode");
+                            ImGui::TextColored(ui::colors::FLIP_INDEPENDENT, "  - Independent Flip (Green): Legacy direct flip mode");
                             ImGui::Text("    Good performance and low latency");
                         } else if (flip_state == DxgiBypassMode::kQueryFailedSwapchainNull) {
-                            ImGui::TextColored(ui::colors::TEXT_ERROR, "  • Query Failed: Swapchain is null");
+                            ImGui::TextColored(ui::colors::TEXT_ERROR, "  - Query Failed: Swapchain is null");
                             ImGui::Text("    Cannot determine flip state - swapchain not available");
                         } else if (flip_state == DxgiBypassMode::kQueryFailedNoMedia) {
                             if (GetModuleHandleA("sl.interposer.dll") != nullptr) {
-                                ImGui::TextColored(ui::colors::TEXT_ERROR,  ICON_FK_WARNING "  • Streamline Interposer detected - Flip State Query not supported");
+                                ImGui::TextColored(ui::colors::TEXT_ERROR,  ICON_FK_WARNING "  - Streamline Interposer detected - Flip State Query not supported");
                                 ImGui::Text("    Cannot determine flip state - call after at least one Present");
                             } else {
                                 ImGui::TextColored(ui::colors::TEXT_ERROR, "  • Query Failed: GetFrameStatisticsMedia failed");

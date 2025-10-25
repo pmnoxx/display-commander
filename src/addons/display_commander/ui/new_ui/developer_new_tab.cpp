@@ -410,6 +410,7 @@ void DrawNvapiSettings() {
             "- Sekiro: Shadows Die Twice");
     }
 
+
     // Display restart warning if needed
     if (s_restart_needed_nvapi.load()) {
         ImGui::Spacing();

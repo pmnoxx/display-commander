@@ -1202,7 +1202,6 @@ void OnPresentUpdateBefore(reshade::api::command_queue * command_queue, reshade:
     // Check for XInput chord screenshot trigger
     display_commander::widgets::xinput_widget::CheckAndHandleScreenshot();
 
-    #if 0
     // Check if app is in background and block input for next frame if so
     if (g_app_in_background.load(std::memory_order_acquire)) {
         reshade::api::effect_runtime* runtime = GetFirstReShadeRuntime();
@@ -1210,7 +1209,6 @@ void OnPresentUpdateBefore(reshade::api::command_queue * command_queue, reshade:
             runtime->block_input_next_frame();
         }
     }
-    #endif
 
     // Note: DXGI composition state query moved to QueryDxgiCompositionState()
     // and is now called only from DXGI present hooks

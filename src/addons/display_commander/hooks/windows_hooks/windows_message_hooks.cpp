@@ -20,6 +20,9 @@ bool IsUIOpenedRecently() {
 
 // Helper functions for specific input types
 bool ShouldBlockKeyboardInput() {
+    if (true) {
+        return false;
+    }
     const bool is_background = g_app_in_background.load(std::memory_order_acquire);
     const InputBlockingMode mode = s_keyboard_input_blocking.load();
 

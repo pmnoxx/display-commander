@@ -1918,6 +1918,7 @@ void DrawDLSSPresetOverride() {
 
         ImGui::Spacing();
 
+        #if 0
         // DLSS-G MultiFrameCount override dropdown
         static const char* multiframe_options[] = {"No override", "2x", "3x", "4x"};
         int current_multiframe = settings::g_swapchainTabSettings.dlssg_multiframe_override.GetValue();
@@ -1928,7 +1929,6 @@ void DrawDLSSPresetOverride() {
                     multiframe_options[current_multiframe], current_multiframe);
             display_commanderhooks::SendFakeActivationMessages(g_last_swapchain_hwnd.load());
         }
-
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip(
                 "Override DLSS-G MultiFrameCount parameter:\n"
@@ -1948,6 +1948,7 @@ void DrawDLSSPresetOverride() {
         ImGui::Spacing();
         ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Note: This setting overrides the DLSS-G MultiFrameCount parameter.");
         ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Higher values may improve frame generation quality but increase latency.");
+        #endif
 
         // DLSS Model Profile display
         DLSSModelProfile model_profile = GetDLSSModelProfile();

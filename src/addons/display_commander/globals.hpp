@@ -629,7 +629,6 @@ extern std::atomic<bool> s_suppress_dinput_hooks;
 
 // External declarations for atomic variables moved to developer_tab_settings.cpp
 extern std::atomic<bool> s_continue_rendering;
-extern std::atomic<bool> s_continuous_monitoring_enabled;
 extern std::atomic<bool> s_hide_hdr_capabilities;
 extern std::atomic<bool> s_enable_flip_chain;
 extern std::atomic<bool> s_auto_colorspace;

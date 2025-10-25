@@ -681,8 +681,8 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
         }
     }
     // Auto-apply (continuous monitoring) checkbox next to Window Mode
-    if (CheckboxSetting(settings::g_developerTabSettings.continuous_monitoring, "Auto-apply")) {
-        s_continuous_monitoring_enabled.store(settings::g_developerTabSettings.continuous_monitoring.GetValue());
+    if (CheckboxSetting(settings::g_mainTabSettings.auto_apply_display_setting, "Auto-apply")) {
+        s_auto_apply_display_setting.store(settings::g_mainTabSettings.auto_apply_display_setting.GetValue());
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Auto-apply window mode changes and continuously keep window size/position in sync.");

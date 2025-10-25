@@ -7,7 +7,6 @@
 
 // Atomic variables for developer tab settings
 std::atomic<bool> s_continue_rendering{false};            // Disabled by default
-std::atomic<bool> s_continuous_monitoring_enabled{true};  // Enabled by default
 std::atomic<bool> s_hide_hdr_capabilities{false};
 std::atomic<bool> s_enable_flip_chain{false};
 std::atomic<bool> s_auto_colorspace{false};
@@ -43,8 +42,6 @@ namespace settings {
 DeveloperTabSettings::DeveloperTabSettings()
     : prevent_fullscreen("PreventFullscreen", true, "DisplayCommander"),
       continue_rendering("ContinueRendering", s_continue_rendering, s_continue_rendering.load(), "DisplayCommander"),
-      continuous_monitoring("ContinuousMonitoring", s_continuous_monitoring_enabled,
-                            s_continuous_monitoring_enabled.load(), "DisplayCommander"),
       prevent_always_on_top("PreventAlwaysOnTop", true, "DisplayCommander"),
       hide_hdr_capabilities("HideHDRCapabilities", s_hide_hdr_capabilities, s_hide_hdr_capabilities.load(),
                             "DisplayCommander"),
@@ -96,7 +93,6 @@ DeveloperTabSettings::DeveloperTabSettings()
 void DeveloperTabSettings::LoadAll() {
     prevent_fullscreen.Load();
     continue_rendering.Load();  // This was missing!
-    continuous_monitoring.Load();
     prevent_always_on_top.Load();
     hide_hdr_capabilities.Load();
     enable_flip_chain.Load();
@@ -153,7 +149,7 @@ void DeveloperTabSettings::SaveAll() {
 }
 
 std::vector<ui::new_ui::SettingBase*> DeveloperTabSettings::GetAllSettings() {
-    return {&prevent_fullscreen, &continue_rendering, &continuous_monitoring, &prevent_always_on_top,
+    return {&prevent_fullscreen, &continue_rendering, &prevent_always_on_top,
             &hide_hdr_capabilities, &enable_flip_chain, &auto_colorspace,
             //&enable_d3d9e_upgrade,
             &nvapi_fullscreen_prevention, &nvapi_auto_enable_enabled,

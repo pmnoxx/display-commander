@@ -16,6 +16,7 @@ struct MessageHistoryEntry {
     LPARAM lParam;
     std::string messageName;
     std::string description;
+    bool wasSuppressed;
 };
 
 // Draw the window info tab content
@@ -49,10 +50,10 @@ void DrawMessageSendingUI();
 void DrawMessageHistory();
 
 // Add message to history
-void AddMessageToHistory(UINT message, WPARAM wParam, LPARAM lParam);
+void AddMessageToHistory(UINT message, WPARAM wParam, LPARAM lParam, bool wasSuppressed = false);
 
 // Add message to history only if it's a known message
-void AddMessageToHistoryIfKnown(UINT message, WPARAM wParam, LPARAM lParam);
+void AddMessageToHistoryIfKnown(UINT message, WPARAM wParam, LPARAM lParam, bool wasSuppressed = false);
 
 // Get message name from message ID
 std::string GetMessageName(UINT message);

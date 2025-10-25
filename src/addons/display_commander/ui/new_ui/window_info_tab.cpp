@@ -328,7 +328,7 @@ void DrawMessageSendingUI() {
             LRESULT result = SendMessage(hwnd, message, wParam, lParam);
 
             // Add to history
-            AddMessageToHistory(message, wParam, lParam);
+            AddMessageToHistory(message, wParam, lParam, false);
 
             ImGui::Text("Message sent! Result: 0x%08X", static_cast<unsigned int>(result));
         }
@@ -346,7 +346,7 @@ void DrawMessageSendingUI() {
             BOOL result = PostMessage(hwnd, message, wParam, lParam);
 
             // Add to history
-            AddMessageToHistory(message, wParam, lParam);
+            AddMessageToHistory(message, wParam, lParam, false);
 
             ImGui::Text("Message posted! Result: %s", result ? "Success" : "Failed");
         }
@@ -386,14 +386,19 @@ void DrawMessageHistory() {
 
         // Display message history in reverse order (newest first)
         ImGui::Text("Received Messages:");
+
+        // Add helpful information about suppression
+        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f),
+            "Note: Messages are only suppressed when Continue Rendering is enabled or Input Blocking is active (Ctrl+I)");
         ImGui::Separator();
 
         // Create a table-like display
-        if (ImGui::BeginTable("MessageHistory", 5, ImGuiTableFlags_Borders | ImGuiTableFlags_Resizable)) {
+        if (ImGui::BeginTable("MessageHistory", 6, ImGuiTableFlags_Borders | ImGuiTableFlags_Resizable)) {
             ImGui::TableSetupColumn("Time", ImGuiTableColumnFlags_WidthFixed, 80);
             ImGui::TableSetupColumn("Message", ImGuiTableColumnFlags_WidthFixed, 120);
             ImGui::TableSetupColumn("wParam", ImGuiTableColumnFlags_WidthFixed, 80);
             ImGui::TableSetupColumn("lParam", ImGuiTableColumnFlags_WidthFixed, 80);
+            ImGui::TableSetupColumn("Suppressed", ImGuiTableColumnFlags_WidthFixed, 80);
             ImGui::TableSetupColumn("Description", ImGuiTableColumnFlags_WidthStretch);
             ImGui::TableHeadersRow();
 
@@ -415,6 +420,13 @@ void DrawMessageHistory() {
                 ImGui::Text("0x%08X", static_cast<unsigned int>(entry.lParam));
 
                 ImGui::TableNextColumn();
+                if (entry.wasSuppressed) {
+                    ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "YES");
+                } else {
+                    ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "NO");
+                }
+
+                ImGui::TableNextColumn();
                 ImGui::Text("%s", entry.description.c_str());
             }
 
@@ -428,7 +440,7 @@ void DrawMessageHistory() {
     }
 }
 
-void AddMessageToHistory(UINT message, WPARAM wParam, LPARAM lParam) {
+void AddMessageToHistory(UINT message, WPARAM wParam, LPARAM lParam, bool wasSuppressed) {
     // Get current time
     auto now = std::chrono::system_clock::now();
     auto time_t = std::chrono::system_clock::to_time_t(now);
@@ -445,6 +457,7 @@ void AddMessageToHistory(UINT message, WPARAM wParam, LPARAM lParam) {
     entry.lParam = lParam;
     entry.messageName = GetMessageName(message);
     entry.description = GetMessageDescription(message, wParam, lParam);
+    entry.wasSuppressed = wasSuppressed;
 
     g_message_history.push_back(entry);
 
@@ -454,7 +467,7 @@ void AddMessageToHistory(UINT message, WPARAM wParam, LPARAM lParam) {
     }
 }
 
-void AddMessageToHistoryIfKnown(UINT message, WPARAM wParam, LPARAM lParam) {
+void AddMessageToHistoryIfKnown(UINT message, WPARAM wParam, LPARAM lParam, bool wasSuppressed) {
     // Only track known messages
     switch (message) {
         case WM_ACTIVATE:
@@ -472,7 +485,7 @@ void AddMessageToHistoryIfKnown(UINT message, WPARAM wParam, LPARAM lParam) {
         case WM_QUIT:
         case WM_CLOSE:
         case WM_DESTROY:
-            AddMessageToHistory(message, wParam, lParam);
+            AddMessageToHistory(message, wParam, lParam, wasSuppressed);
             break;
         default:
             // Don't track unknown messages

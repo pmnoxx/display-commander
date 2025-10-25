@@ -8,6 +8,7 @@
 #include "../api_hooks.hpp" // For GetGameWindow and other functions
 #include "../../process_exit_hooks.hpp" // For UnhandledExceptionHandler
 #include "../hook_suppression_manager.hpp"
+#include "../../ui/new_ui/window_info_tab.hpp" // For message history tracking
 #include <MinHook.h>
 #include <array>
 
@@ -341,10 +342,14 @@ BOOL WINAPI GetMessageA_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT 
         // Check if we should suppress this message (input blocking)
         if (ShouldSuppressMessage(hWnd, lpMsg->message)) {
             SuppressMessage(lpMsg);
+            // Track suppressed message in history
+            ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, true);
         }
         // Check if we should intercept it for other purposes
         else {
             g_hook_stats[HOOK_GetMessageA].increment_unsuppressed();
+            // Track unsuppressed message in history
+            ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, false);
         }
     }
 
@@ -365,11 +370,15 @@ BOOL WINAPI GetMessageW_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT 
         // Check if we should suppress this message (input blocking)
         if (ShouldSuppressMessage(hWnd, lpMsg->message)) {
             SuppressMessage(lpMsg);
+            // Track suppressed message in history
+            ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, true);
         }
         // Check if we should intercept it for other purposes
         else {
             // Track unsuppressed calls
             g_hook_stats[HOOK_GetMessageW].increment_unsuppressed();
+            // Track unsuppressed message in history
+            ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, false);
         }
     }
 
@@ -393,6 +402,11 @@ BOOL WINAPI PeekMessageA_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT
         // Check if we should suppress this message (input blocking)
         if (ShouldSuppressMessage(hWnd, lpMsg->message)) {
             SuppressMessage(lpMsg);
+            // Track suppressed message in history
+            ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, true);
+        } else {
+            // Track unsuppressed message in history
+            ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, false);
         }
     }
 
@@ -416,6 +430,11 @@ BOOL WINAPI PeekMessageW_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT
         // Check if we should suppress this message (input blocking)
         if (ShouldSuppressMessage(hWnd, lpMsg->message)) {
             SuppressMessage(lpMsg);
+            // Track suppressed message in history
+            ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, true);
+        } else {
+            // Track unsuppressed message in history
+            ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, false);
         }
     }
 
@@ -443,12 +462,18 @@ BOOL WINAPI PostMessageA_Detour(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lPara
                     lParam);
         }
 
+        // Track suppressed message in history
+        ui::new_ui::AddMessageToHistoryIfKnown(Msg, wParam, lParam, true);
+
         // Return TRUE to indicate the message was "processed" (blocked)
         return TRUE;
     }
 
     // Track unsuppressed calls (when we call the original function)
     g_hook_stats[HOOK_PostMessageA].increment_unsuppressed();
+
+    // Track unsuppressed message in history
+    ui::new_ui::AddMessageToHistoryIfKnown(Msg, wParam, lParam, false);
 
     // Call original function
     return PostMessageA_Original ? PostMessageA_Original(hWnd, Msg, wParam, lParam)
@@ -476,12 +501,18 @@ BOOL WINAPI PostMessageW_Detour(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lPara
                     lParam);
         }
 
+        // Track suppressed message in history
+        ui::new_ui::AddMessageToHistoryIfKnown(Msg, wParam, lParam, true);
+
         // Return TRUE to indicate the message was "processed" (blocked)
         return TRUE;
     }
 
     // Track unsuppressed calls (when we call the original function)
     g_hook_stats[HOOK_PostMessageW].increment_unsuppressed();
+
+    // Track unsuppressed message in history
+    ui::new_ui::AddMessageToHistoryIfKnown(Msg, wParam, lParam, false);
 
     // Call original function
     return PostMessageW_Original ? PostMessageW_Original(hWnd, Msg, wParam, lParam)
@@ -857,8 +888,13 @@ LRESULT WINAPI DispatchMessageA_Detour(const MSG *lpMsg) {
     if (lpMsg != nullptr) {
         // Check if this message should be suppressed
         if (ShouldSuppressMessage(lpMsg->hwnd, lpMsg->message)) {
+            // Track suppressed message in history
+            ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, true);
             // Return 0 to indicate the message was "processed" (blocked)
             return 0;
+        } else {
+            // Track unsuppressed message in history
+            ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, false);
         }
     }
 
@@ -878,8 +914,13 @@ LRESULT WINAPI DispatchMessageW_Detour(const MSG *lpMsg) {
     if (lpMsg != nullptr) {
         // Check if this message should be suppressed
         if (ShouldSuppressMessage(lpMsg->hwnd, lpMsg->message)) {
+            // Track suppressed message in history
+            ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, true);
             // Return 0 to indicate the message was "processed" (blocked)
             return 0;
+        } else {
+            // Track unsuppressed message in history
+            ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, false);
         }
     }
 

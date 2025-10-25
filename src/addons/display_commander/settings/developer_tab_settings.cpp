@@ -91,42 +91,11 @@ DeveloperTabSettings::DeveloperTabSettings()
       debug_break_on_severity("DebugBreakOnSeverity", false, "DisplayCommander") {}
 
 void DeveloperTabSettings::LoadAll() {
-    prevent_fullscreen.Load();
-    continue_rendering.Load();  // This was missing!
-    prevent_always_on_top.Load();
-    hide_hdr_capabilities.Load();
-    enable_flip_chain.Load();
-    auto_colorspace.Load();
-    // enable_d3d9e_upgrade.Load();
-    nvapi_fullscreen_prevention.Load();
-    nvapi_auto_enable_enabled.Load();
+    // Get all settings for smart logging
+    auto all_settings = GetAllSettings();
 
-    reflex_auto_configure.Load();
-    reflex_enable.Load();
-    reflex_low_latency.Load();
-    reflex_boost.Load();
-    reflex_use_markers.Load();
-    reflex_generate_markers.Load();
-    reflex_enable_sleep.Load();
-    reflex_logging.Load();
-    reflex_supress_native.Load();
-
-    enable_mute_unmute_shortcut.Load();
-    enable_background_toggle_shortcut.Load();
-    enable_timeslowdown_shortcut.Load();
-    enable_adhd_toggle_shortcut.Load();
-    enable_autoclick_shortcut.Load();
-    enable_input_blocking_shortcut.Load();
-    safemode.Load();
-    load_from_dll_main.Load();
-    load_streamline.Load();
-    load_nvngx.Load();
-    load_nvapi64.Load();
-    fake_nvapi_enabled.Load();
-    load_xinput.Load();
-    suppress_minhook.Load();
-    debug_layer_enabled.Load();
-    debug_break_on_severity.Load();
+    // Use smart logging to show only changed settings
+    ui::new_ui::LoadTabSettingsWithSmartLogging(all_settings, "Developer Tab");
 
     // All Ref classes automatically sync with global variables
 }

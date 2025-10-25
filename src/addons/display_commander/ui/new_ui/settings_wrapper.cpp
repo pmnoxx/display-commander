@@ -49,6 +49,10 @@ void FloatSetting::Load() {
 
 void FloatSetting::Save() { display_commander::config::set_config_value(section_.c_str(), key_.c_str(), value_.load()); }
 
+std::string FloatSetting::GetValueAsString() const {
+    return std::to_string(value_.load());
+}
+
 void FloatSetting::SetValue(float value) {
     const float clamped_value = std::max(min_, std::min(max_, value));
     value_.store(clamped_value);
@@ -80,6 +84,10 @@ void IntSetting::Load() {
 
 void IntSetting::Save() { display_commander::config::set_config_value(section_.c_str(), key_.c_str(), value_.load()); }
 
+std::string IntSetting::GetValueAsString() const {
+    return std::to_string(value_.load());
+}
+
 void IntSetting::SetValue(int value) {
     const int clamped_value = std::max(min_, std::min(max_, value));
     value_.store(clamped_value);
@@ -108,6 +116,10 @@ void BoolSetting::Load() {
 }
 
 void BoolSetting::Save() { display_commander::config::set_config_value(section_.c_str(), key_.c_str(), value_.load() ? 1 : 0); }
+
+std::string BoolSetting::GetValueAsString() const {
+    return value_.load() ? "1" : "0";
+}
 
 void BoolSetting::SetValue(bool value) {
     value_.store(value);
@@ -138,6 +150,10 @@ void BoolSettingRef::Load() {
 
 void BoolSettingRef::Save() {
     display_commander::config::set_config_value(section_.c_str(), key_.c_str(), external_ref_.get().load() ? 1 : 0);
+}
+
+std::string BoolSettingRef::GetValueAsString() const {
+    return external_ref_.get().load() ? "1" : "0";
 }
 
 void BoolSettingRef::SetValue(bool value) {
@@ -174,6 +190,10 @@ void FloatSettingRef::Save() {
     display_commander::config::set_config_value(section_.c_str(), key_.c_str(), external_ref_.get().load());
 }
 
+std::string FloatSettingRef::GetValueAsString() const {
+    return std::to_string(external_ref_.get().load());
+}
+
 void FloatSettingRef::SetValue(float value) {
     const float clamped_value = std::max(min_, std::min(max_, value));
     external_ref_.get().store(clamped_value);
@@ -207,6 +227,10 @@ void IntSettingRef::Load() {
 
 void IntSettingRef::Save() {
     display_commander::config::set_config_value(section_.c_str(), key_.c_str(), external_ref_.get().load());
+}
+
+std::string IntSettingRef::GetValueAsString() const {
+    return std::to_string(external_ref_.get().load());
 }
 
 void IntSettingRef::SetValue(int value) {
@@ -245,6 +269,10 @@ void ComboSetting::Load() {
 
 void ComboSetting::Save() { display_commander::config::set_config_value(section_.c_str(), key_.c_str(), value_); }
 
+std::string ComboSetting::GetValueAsString() const {
+    return std::to_string(value_);
+}
+
 void ComboSetting::SetValue(int value) {
     value_ = std::max(0, std::min(static_cast<int>(labels_.size()) - 1, value));
     Save(); // Auto-save when value changes
@@ -280,6 +308,10 @@ void ComboSettingRef::Load() {
 
 void ComboSettingRef::Save() {
     display_commander::config::set_config_value(section_.c_str(), key_.c_str(), external_ref_.get().load());
+}
+
+std::string ComboSettingRef::GetValueAsString() const {
+    return std::to_string(external_ref_.get().load());
 }
 
 void ComboSettingRef::SetValue(int value) {
@@ -320,6 +352,10 @@ template <typename EnumType> void ComboSettingEnumRef<EnumType>::Load() {
 
 template <typename EnumType> void ComboSettingEnumRef<EnumType>::Save() {
     display_commander::config::set_config_value(section_.c_str(), key_.c_str(), static_cast<int>(external_ref_.get().load()));
+}
+
+template <typename EnumType> std::string ComboSettingEnumRef<EnumType>::GetValueAsString() const {
+    return std::to_string(static_cast<int>(external_ref_.get().load()));
 }
 
 template <typename EnumType> void ComboSettingEnumRef<EnumType>::SetValue(int value) {
@@ -363,6 +399,10 @@ void ResolutionPairSetting::Save() {
     // Save height
     std::string height_key = key_ + "_height";
     display_commander::config::set_config_value(section_.c_str(), height_key.c_str(), height_);
+}
+
+std::string ResolutionPairSetting::GetValueAsString() const {
+    return std::to_string(width_) + "x" + std::to_string(height_);
 }
 
 void ResolutionPairSetting::SetResolution(int width, int height) {
@@ -412,6 +452,10 @@ void RefreshRatePairSetting::Save() {
     // Save denominator
     std::string denom_key = key_ + "_denum";
     display_commander::config::set_config_value(section_.c_str(), denom_key.c_str(), denominator_);
+}
+
+std::string RefreshRatePairSetting::GetValueAsString() const {
+    return std::to_string(numerator_) + "/" + std::to_string(denominator_);
 }
 
 void RefreshRatePairSetting::SetRefreshRate(int numerator, int denominator) {
@@ -749,6 +793,35 @@ void LoadTabSettings(const std::vector<SettingBase *> &settings) {
     }
 }
 
+// Smart logging function that only logs settings changed from default values
+void LoadTabSettingsWithSmartLogging(const std::vector<SettingBase *> &settings, const std::string& tab_name) {
+    std::vector<std::string> changed_settings;
+
+    for (auto *setting : settings) {
+        if (setting != nullptr) {
+            // Store the original value before loading
+            std::string original_value = setting->GetValueAsString();
+            setting->Load();
+            std::string loaded_value = setting->GetValueAsString();
+
+            // Check if the value changed from default
+            if (original_value != loaded_value) {
+                changed_settings.push_back(setting->GetKey() + " " + original_value + "->" + loaded_value);
+            }
+        }
+    }
+
+    // Log only if there are changed settings
+    if (!changed_settings.empty()) {
+        LogInfo("%s settings loaded - %zu non-default values:", tab_name.c_str(), changed_settings.size());
+        for (const auto& setting : changed_settings) {
+            LogInfo("  %s", setting.c_str());
+        }
+    } else {
+        LogInfo("%s settings loaded - all values at default", tab_name.c_str());
+    }
+}
+
 // FixedIntArraySetting implementation
 FixedIntArraySetting::FixedIntArraySetting(const std::string &key, size_t array_size, int default_value, int min,
                                            int max, const std::string &section)
@@ -799,6 +872,16 @@ void FixedIntArraySetting::Save() {
         LogInfo("FixedIntArraySetting::Save() - Saved %s[%zu] = %d to config", key_.c_str(), i, value);
     }
     is_dirty_ = false;
+}
+
+std::string FixedIntArraySetting::GetValueAsString() const {
+    std::string result = "[";
+    for (size_t i = 0; i < array_size_; ++i) {
+        if (i > 0) result += ",";
+        result += std::to_string(values_[i]->load());
+    }
+    result += "]";
+    return result;
 }
 
 int FixedIntArraySetting::GetValue(size_t index) const {
@@ -860,6 +943,10 @@ void StringSetting::Save() {
         display_commander::config::set_config_value(section_.c_str(), key_.c_str(), value_.c_str());
         is_dirty_ = false;
     }
+}
+
+std::string StringSetting::GetValueAsString() const {
+    return value_;
 }
 
 void StringSetting::SetValue(const std::string &value) {

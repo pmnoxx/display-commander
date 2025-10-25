@@ -25,7 +25,6 @@ std::atomic<InputBlockingMode> s_mouse_input_blocking{InputBlockingMode::kEnable
 std::atomic<InputBlockingMode> s_gamepad_input_blocking{InputBlockingMode::kDisabled};
 std::atomic<bool> s_no_render_in_background{false};
 std::atomic<bool> s_no_present_in_background{false};
-std::atomic<bool> s_auto_apply_display_setting{true};  // Enabled by default
 std::atomic<ScreensaverMode> s_screensaver_mode{ScreensaverMode::kDefault};
 std::atomic<FrameTimeMode> s_frame_time_mode{FrameTimeMode::kPresent};
 
@@ -72,8 +71,7 @@ MainTabSettings::MainTabSettings()
                       {"Frame Present Time", "Frame Start Time (input)", "Frame Display Time later (Present or GPU Completion whichever comes later)"}, "DisplayCommander"),
       advanced_settings_enabled("advanced_settings_enabled", false, "DisplayCommander"),
       show_xinput_tab("show_xinput_tab", false, "DisplayCommander"),
-      skip_ansel_loading("skip_ansel_loading", false, "DisplayCommander"),
-      auto_apply_display_setting("auto_apply_display_setting", s_auto_apply_display_setting, s_auto_apply_display_setting.load(), "DisplayCommander") {
+      skip_ansel_loading("skip_ansel_loading", false, "DisplayCommander") {
 
     // Initialize the all_settings_ vector
     all_settings_ = {
@@ -112,14 +110,13 @@ MainTabSettings::MainTabSettings()
         &advanced_settings_enabled,
         &show_xinput_tab,
         &skip_ansel_loading,
-        &auto_apply_display_setting,
     };
 }
 
 // TODO add initialization of other settings
 void MainTabSettings::LoadSettings() {
     LogInfo("MainTabSettings::LoadSettings() called");
-    LoadTabSettings(all_settings_);
+    LoadTabSettingsWithSmartLogging(all_settings_, "Main Tab");
 
     // Apply ADHD Multi-Monitor Mode settings after loading
     adhd_multi_monitor::api::SetEnabled(adhd_multi_monitor_enabled.GetValue());

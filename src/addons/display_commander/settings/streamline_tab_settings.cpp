@@ -30,7 +30,7 @@ StreamlineTabSettings::StreamlineTabSettings()
 
 void StreamlineTabSettings::LoadAll() {
     LogInfo("StreamlineTabSettings::LoadAll() called");
-    LoadTabSettings(all_settings_);
+    LoadTabSettingsWithSmartLogging(all_settings_, "Streamline Tab");
     LogInfo("StreamlineTabSettings::LoadAll() completed");
 }
 

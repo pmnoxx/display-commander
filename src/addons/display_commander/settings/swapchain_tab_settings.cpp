@@ -16,7 +16,7 @@ SwapchainTabSettings::SwapchainTabSettings()
 }
 
 void SwapchainTabSettings::LoadAll() {
-    LoadTabSettings(all_settings_);
+    LoadTabSettingsWithSmartLogging(all_settings_, "Swapchain Tab");
 }
 
 std::vector<SettingBase *> SwapchainTabSettings::GetAllSettings() {

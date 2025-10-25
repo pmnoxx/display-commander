@@ -680,13 +680,6 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                 "2=Top Right, 3=Bottom Left, 4=Bottom Right.");
         }
     }
-    // Auto-apply (continuous monitoring) checkbox next to Window Mode
-    if (CheckboxSetting(settings::g_mainTabSettings.auto_apply_display_setting, "Auto-apply")) {
-        s_auto_apply_display_setting.store(settings::g_mainTabSettings.auto_apply_display_setting.GetValue());
-    }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Auto-apply window mode changes and continuously keep window size/position in sync.");
-    }
     // Background Black Curtain checkbox (only shown in Aspect Ratio mode)
     if (s_window_mode.load() == WindowMode::kAspectRatio) {
         ImGui::SameLine();

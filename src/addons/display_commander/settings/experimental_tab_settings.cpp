@@ -127,7 +127,7 @@ void ExperimentalTabSettings::LoadAll() {
             settings_to_load.push_back(setting);
         }
     }
-    LoadTabSettings(settings_to_load);
+    LoadTabSettingsWithSmartLogging(settings_to_load, "Experimental Tab");
 }
 
 std::vector<SettingBase*> ExperimentalTabSettings::GetAllSettings() {

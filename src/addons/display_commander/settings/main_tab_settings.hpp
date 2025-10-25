@@ -27,7 +27,6 @@ extern std::atomic<InputBlockingMode> s_mouse_input_blocking;
 extern std::atomic<InputBlockingMode> s_gamepad_input_blocking;
 extern std::atomic<bool> s_no_render_in_background;
 extern std::atomic<bool> s_no_present_in_background;
-extern std::atomic<bool> s_auto_apply_display_setting;
 
 namespace settings {
 
@@ -105,9 +104,6 @@ class MainTabSettings {
 
     // Ansel Control
     ui::new_ui::BoolSetting skip_ansel_loading;
-
-    // Auto-apply Display Settings
-    ui::new_ui::BoolSettingRef auto_apply_display_setting;
 
   private:
     std::vector<ui::new_ui::SettingBase *> all_settings_;

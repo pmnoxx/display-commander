@@ -436,11 +436,7 @@ void ContinuousMonitoringThread() {
         if (utils::get_now_ns() - start_time < 1 * utils::SEC_TO_NS) {
             continue;
         }
-        // Check if monitoring is still enabled
-        if (!s_auto_apply_display_setting.load()) {
-            continue;
-        }
-
+        // Auto-apply is always enabled (checkbox removed)
         // 60 FPS updates (every ~16.67ms)
         LONGLONG now_ns = utils::get_now_ns();
         if (now_ns - last_60fps_update_ns >= fps_120_interval_ns) {

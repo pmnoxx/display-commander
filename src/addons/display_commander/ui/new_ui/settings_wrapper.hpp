@@ -34,6 +34,9 @@ class SettingBase {
     void MarkClean() { is_dirty_ = false; }
     void MarkDirty() { is_dirty_ = true; }
 
+    // Get the current value as a string for comparison
+    virtual std::string GetValueAsString() const = 0;
+
   protected:
     std::string key_;
     std::string section_;
@@ -48,6 +51,7 @@ class FloatSetting : public SettingBase {
 
     void Load() override;
     void Save() override;
+    std::string GetValueAsString() const override;
 
     float GetValue() const { return value_.load(); }
     void SetValue(float value);
@@ -75,6 +79,7 @@ class IntSetting : public SettingBase {
 
     void Load() override;
     void Save() override;
+    std::string GetValueAsString() const override;
 
     int GetValue() const { return value_.load(); }
     void SetValue(int value);
@@ -100,6 +105,7 @@ class BoolSetting : public SettingBase {
 
     void Load() override;
     void Save() override;
+    std::string GetValueAsString() const override;
 
     bool GetValue() const { return value_.load(); }
     void SetValue(bool value);
@@ -122,6 +128,7 @@ class BoolSettingRef : public SettingBase {
 
     void Load() override;
     void Save() override;
+    std::string GetValueAsString() const override;
 
     bool GetValue() const { return external_ref_.get().load(); }
     void SetValue(bool value);
@@ -144,6 +151,7 @@ class FloatSettingRef : public SettingBase {
 
     void Load() override;
     void Save() override;
+    std::string GetValueAsString() const override;
 
     float GetValue() const { return external_ref_.get().load(); }
     void SetValue(float value);
@@ -179,6 +187,7 @@ class IntSettingRef : public SettingBase {
 
     void Load() override;
     void Save() override;
+    std::string GetValueAsString() const override;
 
     int GetValue() const { return external_ref_.get().load(); }
     void SetValue(int value);
@@ -213,6 +222,7 @@ class ComboSetting : public SettingBase {
 
     void Load() override;
     void Save() override;
+    std::string GetValueAsString() const override;
 
     int GetValue() const { return value_; }
     void SetValue(int value);
@@ -233,6 +243,7 @@ class ComboSettingRef : public SettingBase {
 
     void Load() override;
     void Save() override;
+    std::string GetValueAsString() const override;
 
     int GetValue() const { return external_ref_.get().load(); }
     void SetValue(int value);
@@ -257,6 +268,7 @@ template <typename EnumType> class ComboSettingEnumRef : public SettingBase {
 
     void Load() override;
     void Save() override;
+    std::string GetValueAsString() const override;
 
     int GetValue() const { return static_cast<int>(external_ref_.get().load()); }
     void SetValue(int value);
@@ -281,6 +293,7 @@ class ResolutionPairSetting : public SettingBase {
 
     void Load() override;
     void Save() override;
+    std::string GetValueAsString() const override;
 
     int GetWidth() const { return width_; }
     int GetHeight() const { return height_; }
@@ -305,6 +318,7 @@ class RefreshRatePairSetting : public SettingBase {
 
     void Load() override;
     void Save() override;
+    std::string GetValueAsString() const override;
 
     int GetNumerator() const { return numerator_; }
     int GetDenominator() const { return denominator_; }
@@ -333,6 +347,7 @@ class FixedIntArraySetting : public SettingBase {
 
     void Load() override;
     void Save() override;
+    std::string GetValueAsString() const override;
 
     // Get value at index
     int GetValue(size_t index) const;
@@ -375,6 +390,7 @@ class StringSetting : public SettingBase {
 
     void Load() override;
     void Save() override;
+    std::string GetValueAsString() const override;
 
     // Get/set values
     const std::string &GetValue() const { return value_; }
@@ -424,5 +440,8 @@ void SpacingSetting();
 
 // Utility function to load all settings for a tab
 void LoadTabSettings(const std::vector<SettingBase *> &settings);
+
+// Smart logging function that only logs settings changed from default values
+void LoadTabSettingsWithSmartLogging(const std::vector<SettingBase *> &settings, const std::string& tab_name);
 
 } // namespace ui::new_ui

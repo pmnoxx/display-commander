@@ -100,9 +100,8 @@ HookSuppressionSettings::HookSuppressionSettings()
 void HookSuppressionSettings::LoadAll() {
     LogInfo("HookSuppressionSettings::LoadAll() - Loading hook suppression settings");
 
-    for (auto* setting : all_settings_) {
-        setting->Load();
-    }
+    // Use smart logging to show only changed settings
+    ui::new_ui::LoadTabSettingsWithSmartLogging(all_settings_, "Hook Suppression");
 
     LogInfo("HookSuppressionSettings::LoadAll() - Hook suppression settings loaded");
 }

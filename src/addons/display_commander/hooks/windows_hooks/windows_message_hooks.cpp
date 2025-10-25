@@ -1785,9 +1785,11 @@ const HookInfo& GetHookInfo(int hook_index) {
 namespace keyboard_tracker {
 
 // Keyboard state arrays (256 keys)
-static std::array<std::atomic<bool>, 256> s_key_down{};
-static std::array<std::atomic<bool>, 256> s_key_pressed{};
-static std::array<bool, 256> s_prev_key_state{};
+std::array<std::atomic<bool>, 256> s_key_down{};
+std::array<std::atomic<bool>, 256> s_key_pressed{};
+std::array<bool, 256> s_prev_key_state{};
+// only get key state if it was ever checked
+std::array<bool, 256> was_ever_checked{};
 
 void Initialize() {
     // Initialize all states to false
@@ -1799,10 +1801,17 @@ void Initialize() {
 }
 
 void Update() {
+    auto first_reshade_runtime = GetFirstReShadeRuntime();
     // Update keyboard state using GetAsyncKeyState
     for (int vKey = 0; vKey < 256; ++vKey) {
+        if (!was_ever_checked[vKey]) {
+            continue;
+        }
         // Use the original GetAsyncKeyState to get real keyboard state
         SHORT state = GetAsyncKeyState_Original ? GetAsyncKeyState_Original(vKey) : GetAsyncKeyState(vKey);
+        if (first_reshade_runtime != nullptr) {
+            state |= first_reshade_runtime->is_key_down(vKey) ? 0x8000 : 0;
+        }
 
         // Check if key is currently down (high-order bit)
         bool is_down = (state & 0x8000) != 0;
@@ -1830,11 +1839,13 @@ void ResetFrame() {
 
 bool IsKeyDown(int vKey) {
     if (vKey < 0 || vKey >= 256) return false;
+    was_ever_checked[vKey] = true;
     return s_key_down[vKey].load();
 }
 
 bool IsKeyPressed(int vKey) {
     if (vKey < 0 || vKey >= 256) return false;
+    was_ever_checked[vKey] = true;
     return s_key_pressed[vKey].load();
 }
 

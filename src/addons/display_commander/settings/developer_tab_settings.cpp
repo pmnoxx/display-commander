@@ -26,6 +26,7 @@ std::atomic<bool> s_reflex_supress_native{false};    // Disabled by default
 std::atomic<bool> s_enable_reflex_logging{false};    // Disabled by default
 
 // Shortcut settings
+std::atomic<bool> s_enable_hotkeys{true};  // Enable hotkeys by default
 std::atomic<bool> s_enable_mute_unmute_shortcut{true};
 std::atomic<bool> s_enable_background_toggle_shortcut{true};
 std::atomic<bool> s_enable_timeslowdown_shortcut{true};
@@ -67,6 +68,7 @@ DeveloperTabSettings::DeveloperTabSettings()
       reflex_supress_native("ReflexSupressNative", s_reflex_supress_native, s_reflex_supress_native.load(),
                             "DisplayCommander"),
 
+      enable_hotkeys("EnableHotkeys", true, "DisplayCommander"),
       enable_mute_unmute_shortcut("EnableMuteUnmuteShortcut", s_enable_mute_unmute_shortcut,
                                   s_enable_mute_unmute_shortcut.load(), "DisplayCommander"),
       enable_background_toggle_shortcut("EnableBackgroundToggleShortcut", s_enable_background_toggle_shortcut,
@@ -103,6 +105,7 @@ void DeveloperTabSettings::LoadAll() {
 void DeveloperTabSettings::SaveAll() {
     // Save all settings that don't auto-save
     prevent_fullscreen.Save();
+    enable_hotkeys.Save();
     safemode.Save();
     load_from_dll_main.Save();
     load_streamline.Save();
@@ -126,7 +129,7 @@ std::vector<ui::new_ui::SettingBase*> DeveloperTabSettings::GetAllSettings() {
             &reflex_auto_configure, &reflex_enable, &reflex_low_latency, &reflex_boost, &reflex_use_markers,
             &reflex_enable_sleep, &reflex_logging, &reflex_supress_native,
 
-            &enable_mute_unmute_shortcut, &enable_background_toggle_shortcut, &enable_timeslowdown_shortcut,
+            &enable_hotkeys, &enable_mute_unmute_shortcut, &enable_background_toggle_shortcut, &enable_timeslowdown_shortcut,
             &enable_adhd_toggle_shortcut, &enable_autoclick_shortcut, &enable_input_blocking_shortcut, &safemode, &load_from_dll_main, &load_streamline,
             &load_nvngx, &load_nvapi64, &fake_nvapi_enabled, &load_xinput, &suppress_minhook, &debug_layer_enabled,
             &debug_break_on_severity};

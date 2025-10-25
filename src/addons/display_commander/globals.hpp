@@ -647,6 +647,7 @@ extern std::atomic<bool> s_reflex_supress_native;
 extern std::atomic<bool> s_enable_reflex_logging;
 
 // Shortcut settings
+extern std::atomic<bool> s_enable_hotkeys;
 extern std::atomic<bool> s_enable_mute_unmute_shortcut;
 extern std::atomic<bool> s_enable_background_toggle_shortcut;
 extern std::atomic<bool> s_enable_timeslowdown_shortcut;

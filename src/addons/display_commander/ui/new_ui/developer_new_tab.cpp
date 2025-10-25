@@ -679,24 +679,37 @@ void DrawNvapiSettings() {
 }
 
 void DrawKeyboardShortcutsSettings() {
-    // Enable Mute/Unmute Shortcut (Ctrl+M)
-    if (CheckboxSetting(settings::g_developerTabSettings.enable_mute_unmute_shortcut,
-                        "Enable Mute/Unmute Shortcut (Ctrl+M)")) {
-        ::s_enable_mute_unmute_shortcut.store(settings::g_developerTabSettings.enable_mute_unmute_shortcut.GetValue());
+    // Enable Hotkeys Master Toggle
+    if (CheckboxSetting(settings::g_developerTabSettings.enable_hotkeys, "Enable Hotkeys")) {
+        // Update the atomic variable when the setting changes
+        s_enable_hotkeys.store(settings::g_developerTabSettings.enable_hotkeys.GetValue());
     }
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip(
-            "Enable keyboard shortcut Ctrl+M to quickly mute/unmute audio. Only works when the game is "
-            "in the foreground.");
+        ImGui::SetTooltip("Master toggle for all keyboard shortcuts. When disabled, all hotkey settings below will be hidden and shortcuts will not work.");
     }
 
-    // Info text for Ctrl+M
-    if (settings::g_developerTabSettings.enable_mute_unmute_shortcut.GetValue()) {
+    // Only show individual hotkey settings if hotkeys are enabled
+    if (settings::g_developerTabSettings.enable_hotkeys.GetValue()) {
         ImGui::Indent();
-        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Press Ctrl+M to toggle audio mute state");
-        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Shortcut works when game is in foreground");
-        ImGui::Unindent();
-    }
+
+        // Enable Mute/Unmute Shortcut (Ctrl+M)
+        if (CheckboxSetting(settings::g_developerTabSettings.enable_mute_unmute_shortcut,
+                            "Enable Mute/Unmute Shortcut (Ctrl+M)")) {
+            ::s_enable_mute_unmute_shortcut.store(settings::g_developerTabSettings.enable_mute_unmute_shortcut.GetValue());
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip(
+                "Enable keyboard shortcut Ctrl+M to quickly mute/unmute audio. Only works when the game is "
+                "in the foreground.");
+        }
+
+        // Info text for Ctrl+M
+        if (settings::g_developerTabSettings.enable_mute_unmute_shortcut.GetValue()) {
+            ImGui::Indent();
+            ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Press Ctrl+M to toggle audio mute state");
+            ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Shortcut works when game is in foreground");
+            ImGui::Unindent();
+        }
 
     // Enable Background Toggle Shortcut (Ctrl+R)
     if (CheckboxSetting(settings::g_developerTabSettings.enable_background_toggle_shortcut,
@@ -739,61 +752,64 @@ void DrawKeyboardShortcutsSettings() {
         ImGui::Unindent();
     }
 
-    // Enable ADHD Toggle Shortcut (Ctrl+D)
-    if (CheckboxSetting(settings::g_developerTabSettings.enable_adhd_toggle_shortcut,
-                        "Enable ADHD Toggle Shortcut (Ctrl+D)")) {
-        ::s_enable_adhd_toggle_shortcut.store(settings::g_developerTabSettings.enable_adhd_toggle_shortcut.GetValue());
-    }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip(
-            "Enable keyboard shortcut Ctrl+D to quickly toggle ADHD Multi-Monitor Mode. Only works when the game is "
-            "in the foreground.");
-    }
+        // Enable ADHD Toggle Shortcut (Ctrl+D)
+        if (CheckboxSetting(settings::g_developerTabSettings.enable_adhd_toggle_shortcut,
+                            "Enable ADHD Toggle Shortcut (Ctrl+D)")) {
+            ::s_enable_adhd_toggle_shortcut.store(settings::g_developerTabSettings.enable_adhd_toggle_shortcut.GetValue());
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip(
+                "Enable keyboard shortcut Ctrl+D to quickly toggle ADHD Multi-Monitor Mode. Only works when the game is "
+                "in the foreground.");
+        }
 
-    // Info text for Ctrl+D
-    if (settings::g_developerTabSettings.enable_adhd_toggle_shortcut.GetValue()) {
-        ImGui::Indent();
-        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Press Ctrl+D to toggle ADHD Multi-Monitor Mode");
-        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Shortcut works when game is in foreground");
-        ImGui::Unindent();
-    }
+        // Info text for Ctrl+D
+        if (settings::g_developerTabSettings.enable_adhd_toggle_shortcut.GetValue()) {
+            ImGui::Indent();
+            ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Press Ctrl+D to toggle ADHD Multi-Monitor Mode");
+            ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Shortcut works when game is in foreground");
+            ImGui::Unindent();
+        }
 
-    // Enable Input Blocking Shortcut (Ctrl+I)
-    if (CheckboxSetting(settings::g_developerTabSettings.enable_input_blocking_shortcut,
-                        "Enable Input Blocking Shortcut (Ctrl+I)")) {
-        ::s_enable_input_blocking_shortcut.store(settings::g_developerTabSettings.enable_input_blocking_shortcut.GetValue());
-    }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip(
-            "Enable keyboard shortcut Ctrl+I to quickly toggle input blocking. Only works when the game is "
-            "in the foreground.");
-    }
+        // Enable Input Blocking Shortcut (Ctrl+I)
+        if (CheckboxSetting(settings::g_developerTabSettings.enable_input_blocking_shortcut,
+                            "Enable Input Blocking Shortcut (Ctrl+I)")) {
+            ::s_enable_input_blocking_shortcut.store(settings::g_developerTabSettings.enable_input_blocking_shortcut.GetValue());
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip(
+                "Enable keyboard shortcut Ctrl+I to quickly toggle input blocking. Only works when the game is "
+                "in the foreground.");
+        }
 
-    // Info text for Ctrl+I
-    if (settings::g_developerTabSettings.enable_input_blocking_shortcut.GetValue()) {
-        ImGui::Indent();
-        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Press Ctrl+I to toggle input blocking");
-        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Shortcut works when game is in foreground");
-        ImGui::Unindent();
-    }
+        // Info text for Ctrl+I
+        if (settings::g_developerTabSettings.enable_input_blocking_shortcut.GetValue()) {
+            ImGui::Indent();
+            ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Press Ctrl+I to toggle input blocking");
+            ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Shortcut works when game is in foreground");
+            ImGui::Unindent();
+        }
 
-    // Enable Auto-Click Shortcut (Ctrl+P)
-    if (CheckboxSetting(settings::g_developerTabSettings.enable_autoclick_shortcut,
-                        "Enable Auto-Click Shortcut (Ctrl+P)")) {
-        ::s_enable_autoclick_shortcut.store(settings::g_developerTabSettings.enable_autoclick_shortcut.GetValue());
-    }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip(
-            "Enable keyboard shortcut Ctrl+P to quickly toggle Auto-Click sequences. Only works when the game is "
-            "in the foreground.");
-    }
+        // Enable Auto-Click Shortcut (Ctrl+P)
+        if (CheckboxSetting(settings::g_developerTabSettings.enable_autoclick_shortcut,
+                            "Enable Auto-Click Shortcut (Ctrl+P)")) {
+            ::s_enable_autoclick_shortcut.store(settings::g_developerTabSettings.enable_autoclick_shortcut.GetValue());
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip(
+                "Enable keyboard shortcut Ctrl+P to quickly toggle Auto-Click sequences. Only works when the game is "
+                "in the foreground.");
+        }
 
-    // Info text for Ctrl+P
-    if (settings::g_developerTabSettings.enable_autoclick_shortcut.GetValue()) {
-        ImGui::Indent();
-        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Press Ctrl+P to toggle Auto-Click sequences");
-        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Shortcut works when game is in foreground");
-        ImGui::Unindent();
+        // Info text for Ctrl+P
+        if (settings::g_developerTabSettings.enable_autoclick_shortcut.GetValue()) {
+            ImGui::Indent();
+            ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Press Ctrl+P to toggle Auto-Click sequences");
+            ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Shortcut works when game is in foreground");
+            ImGui::Unindent();
+        }
+
+        ImGui::Unindent(); // Close the indentation for all hotkey settings
     }
 }
 

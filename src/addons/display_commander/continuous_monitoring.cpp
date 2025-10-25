@@ -273,6 +273,11 @@ void every1s_checks() {
 }
 
 void HandleKeyboardShortcuts() {
+      // Check if hotkeys are enabled globally
+      if (!s_enable_hotkeys.load()) {
+          return; // Exit early if hotkeys are disabled
+      }
+
       // Handle keyboard shortcuts (only when game is in foreground)
       HWND game_hwnd = g_last_swapchain_hwnd.load();
       bool is_game_in_foreground = (game_hwnd != nullptr && GetForegroundWindow() == game_hwnd);

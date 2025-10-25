@@ -1006,12 +1006,6 @@ void DrawSwapchainInfo(reshade::api::effect_runtime* runtime) {
     if (ImGui::CollapsingHeader("ReShade Runtimes", ImGuiTreeNodeFlags_DefaultOpen)) {
         ImGui::Text("ReShade runtimes count: %zu", g_reshade_runtimes.size());
 
-        // Input blocking status
-        bool mouse_blocked = display_commanderhooks::ShouldBlockMouseInput();
-        bool keyboard_blocked = display_commanderhooks::ShouldBlockKeyboardInput();
-
-        ImGui::Text("Mouse Input Blocked: %s", mouse_blocked ? "Yes" : "No");
-        ImGui::Text("Keyboard Input Blocked: %s", keyboard_blocked ? "Yes" : "No");
 
         for (size_t i = 0; i < g_reshade_runtimes.size(); ++i) {
             auto* runtime = g_reshade_runtimes[i];
@@ -1269,6 +1263,31 @@ void DrawSwapchainInfo(reshade::api::effect_runtime* runtime) {
                 ImGui::Unindent();
             }
         }
+    }
+
+    // Window Information section
+    if (ImGui::CollapsingHeader("Window Information", ImGuiTreeNodeFlags_DefaultOpen)) {
+        // Get current foreground window
+        HWND foreground_window = display_commanderhooks::GetForegroundWindow_Direct();
+        HWND current_hwnd = g_last_swapchain_hwnd.load();
+
+        ImGui::Text("Current Foreground Window: 0x%p", foreground_window);
+        ImGui::Text("Swapchain Window: 0x%p", current_hwnd);
+
+        // Check if current window is foreground
+        bool is_foreground = (foreground_window == current_hwnd);
+        ImGui::Text("Is Current Window Foreground: %s", is_foreground ? "Yes" : "No");
+
+        // Input blocking status
+        bool mouse_blocked = display_commanderhooks::ShouldBlockMouseInput();
+        bool keyboard_blocked = display_commanderhooks::ShouldBlockKeyboardInput();
+        bool toggle_active = s_input_blocking_toggle.load();
+
+        ImGui::Separator();
+        ImGui::Text("Input Blocking Status:");
+        ImGui::Text("  Ctrl+I Toggle Active: %s", toggle_active ? "Yes" : "No");
+        ImGui::Text("  Mouse Input Blocked: %s", mouse_blocked ? "Yes" : "No");
+        ImGui::Text("  Keyboard Input Blocked: %s", keyboard_blocked ? "Yes" : "No");
     }
 
     auto last_api = g_last_reshade_device_api.load();

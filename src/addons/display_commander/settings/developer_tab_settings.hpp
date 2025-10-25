@@ -48,6 +48,7 @@ class DeveloperTabSettings {
     BoolSettingRef enable_timeslowdown_shortcut;
     BoolSettingRef enable_adhd_toggle_shortcut;
     BoolSettingRef enable_autoclick_shortcut;
+    BoolSettingRef enable_input_blocking_shortcut;
 
     // Minimal NVIDIA Reflex controls
     BoolSettingRef reflex_auto_configure;

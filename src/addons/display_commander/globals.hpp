@@ -483,6 +483,8 @@ extern std::atomic<bool> s_nvapi_auto_enable;
 // Audio Settings
 
 // Keyboard Shortcuts
+extern std::atomic<bool> s_enable_input_blocking_shortcut;
+extern std::atomic<bool> s_input_blocking_toggle;
 
 // Auto-click enabled state (atomic, not loaded from config)
 extern std::atomic<bool> g_auto_click_enabled;

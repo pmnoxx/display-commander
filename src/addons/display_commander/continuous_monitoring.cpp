@@ -387,6 +387,24 @@ void HandleKeyboardShortcuts() {
               LogInfo(oss.str().c_str());
           }
       }
+
+      // Handle Ctrl+I shortcut for input blocking toggle (only when game is in foreground)
+      if (s_enable_input_blocking_shortcut.load() && is_game_in_foreground) {
+          // Use our keyboard tracker instead of ReShade runtime
+          if (display_commanderhooks::keyboard_tracker::IsKeyPressed('I') &&
+              display_commanderhooks::keyboard_tracker::IsKeyDown(VK_CONTROL)) {
+              // Toggle input blocking state
+              bool current_state = s_input_blocking_toggle.load();
+              bool new_state = !current_state;
+
+              s_input_blocking_toggle.store(new_state);
+
+              // Log the action
+              std::ostringstream oss;
+              oss << "Input Blocking " << (new_state ? "enabled" : "disabled") << " via Ctrl+I shortcut";
+              LogInfo(oss.str().c_str());
+          }
+      }
 }
 
 // Main monitoring thread function

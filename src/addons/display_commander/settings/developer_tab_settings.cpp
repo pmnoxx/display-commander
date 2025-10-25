@@ -81,7 +81,8 @@ DeveloperTabSettings::DeveloperTabSettings()
       fake_nvapi_enabled("FakeNvapiEnabled", true, "DisplayCommander"),
       load_xinput("LoadXInput", true, "DisplayCommander"),
       suppress_minhook("SuppressMinhook", false, "DisplayCommander"),
-      debug_layer_enabled("DebugLayerEnabled", false, "DisplayCommander") {}
+      debug_layer_enabled("DebugLayerEnabled", false, "DisplayCommander"),
+      debug_break_on_severity("DebugBreakOnSeverity", false, "DisplayCommander") {}
 
 void DeveloperTabSettings::LoadAll() {
     prevent_fullscreen.Load();
@@ -118,6 +119,7 @@ void DeveloperTabSettings::LoadAll() {
     load_xinput.Load();
     suppress_minhook.Load();
     debug_layer_enabled.Load();
+    debug_break_on_severity.Load();
 
     // All Ref classes automatically sync with global variables
 }
@@ -134,6 +136,7 @@ void DeveloperTabSettings::SaveAll() {
     load_xinput.Save();
     suppress_minhook.Save();
     debug_layer_enabled.Save();
+    debug_break_on_severity.Save();
 
     // All Ref classes automatically save when values change
 }
@@ -149,7 +152,8 @@ std::vector<ui::new_ui::SettingBase*> DeveloperTabSettings::GetAllSettings() {
 
             &enable_mute_unmute_shortcut, &enable_background_toggle_shortcut, &enable_timeslowdown_shortcut,
             &enable_adhd_toggle_shortcut, &enable_autoclick_shortcut, &safemode, &load_from_dll_main, &load_streamline,
-            &load_nvngx, &load_nvapi64, &fake_nvapi_enabled, &load_xinput, &suppress_minhook, &debug_layer_enabled};
+            &load_nvngx, &load_nvapi64, &fake_nvapi_enabled, &load_xinput, &suppress_minhook, &debug_layer_enabled,
+            &debug_break_on_severity};
 }
 
 }  // namespace settings

@@ -249,6 +249,28 @@ void DrawDeveloperSettings() {
                 "- Disable when not debugging to restore performance");
         }
     }
+
+    // SetBreakOnSeverity checkbox (only shown when debug layer is enabled)
+    if (settings::g_developerTabSettings.debug_layer_enabled.GetValue()) {
+        ImGui::Indent();
+        if (CheckboxSetting(settings::g_developerTabSettings.debug_break_on_severity, "SetBreakOnSeverity (All Levels)")) {
+            LogInfo("Debug break on severity setting changed to: %s",
+                    settings::g_developerTabSettings.debug_break_on_severity.GetValue() ? "enabled" : "disabled");
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip(
+                "Enable SetBreakOnSeverity for all debug message levels.\n"
+                "When enabled, the debugger will break on:\n"
+                "- ERROR messages\n"
+                "- CORRUPTION messages\n"
+                "- WARNING messages\n"
+                "- INFO messages\n"
+                "- MESSAGE messages\n\n"
+                "This setting only takes effect when debug layer is enabled.\n"
+                "Requires a game restart to take effect.");
+        }
+        ImGui::Unindent();
+    }
 }
 
 void DrawHdrDisplaySettings() {

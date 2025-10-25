@@ -86,6 +86,7 @@ class DeveloperTabSettings {
 
     // Debug Layer setting
     BoolSetting debug_layer_enabled;
+    BoolSetting debug_break_on_severity;
 
     // Get all settings for bulk operations
     std::vector<SettingBase*> GetAllSettings();

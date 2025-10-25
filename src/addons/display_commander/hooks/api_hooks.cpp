@@ -376,12 +376,17 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain_Detour(IDXGIAdapter* pAdapter, D3D_
             ID3D11InfoQueue* info_queue = nullptr;
             HRESULT info_hr = debug_device->QueryInterface(IID_PPV_ARGS(&info_queue));
             if (SUCCEEDED(info_hr) && info_queue != nullptr) {
-                info_queue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_ERROR, true);
-                info_queue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_CORRUPTION, true);
-                info_queue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_WARNING, true);
-                info_queue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_INFO, true);
-                info_queue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_MESSAGE, true);
-                LogInfo("  D3D11 debug info queue configured for all severity levels");
+                // Only set break on severity if the setting is enabled
+                if (settings::g_developerTabSettings.debug_break_on_severity.GetValue()) {
+                    info_queue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_ERROR, true);
+                    info_queue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_CORRUPTION, true);
+                    info_queue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_WARNING, true);
+                    info_queue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_INFO, true);
+                    info_queue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_MESSAGE, true);
+                    LogInfo("  D3D11 debug info queue configured for all severity levels");
+                } else {
+                    LogInfo("  D3D11 debug info queue configured (SetBreakOnSeverity disabled)");
+                }
                 info_queue->Release();
             } else {
                 LogWarn("  Failed to get D3D11 info queue: 0x%08X", info_hr);
@@ -463,12 +468,17 @@ HRESULT WINAPI D3D11CreateDevice_Detour(IDXGIAdapter* pAdapter, D3D_DRIVER_TYPE 
             ID3D11InfoQueue* info_queue = nullptr;
             HRESULT info_hr = debug_device->QueryInterface(IID_PPV_ARGS(&info_queue));
             if (SUCCEEDED(info_hr) && info_queue != nullptr) {
-                info_queue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_ERROR, true);
-                info_queue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_CORRUPTION, true);
-                info_queue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_WARNING, true);
-                info_queue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_INFO, true);
-                info_queue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_MESSAGE, true);
-                LogInfo("  D3D11 debug info queue configured for all severity levels");
+                // Only set break on severity if the setting is enabled
+                if (settings::g_developerTabSettings.debug_break_on_severity.GetValue()) {
+                    info_queue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_ERROR, true);
+                    info_queue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_CORRUPTION, true);
+                    info_queue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_WARNING, true);
+                    info_queue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_INFO, true);
+                    info_queue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_MESSAGE, true);
+                    LogInfo("  D3D11 debug info queue configured for all severity levels");
+                } else {
+                    LogInfo("  D3D11 debug info queue configured (SetBreakOnSeverity disabled)");
+                }
                 info_queue->Release();
             } else {
                 LogWarn("  Failed to get D3D11 info queue: 0x%08X", info_hr);
@@ -545,12 +555,17 @@ HRESULT WINAPI D3D12CreateDevice_Detour(IUnknown* pAdapter, D3D_FEATURE_LEVEL Mi
             ID3D12InfoQueue* info_queue = nullptr;
             HRESULT info_hr = device->QueryInterface(IID_PPV_ARGS(&info_queue));
             if (SUCCEEDED(info_hr) && info_queue != nullptr) {
-                info_queue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, true);
-                info_queue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, true);
-                info_queue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_WARNING, true);
-                info_queue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_INFO, true);
-                info_queue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_MESSAGE, true);
-                LogInfo("  D3D12 debug info queue configured for all severity levels");
+                // Only set break on severity if the setting is enabled
+                if (settings::g_developerTabSettings.debug_break_on_severity.GetValue()) {
+                    info_queue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, true);
+                    info_queue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, true);
+                    info_queue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_WARNING, true);
+                    info_queue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_INFO, true);
+                    info_queue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_MESSAGE, true);
+                    LogInfo("  D3D12 debug info queue configured for all severity levels");
+                } else {
+                    LogInfo("  D3D12 debug info queue configured (SetBreakOnSeverity disabled)");
+                }
                 info_queue->Release();
             } else {
                 LogWarn("  Failed to get D3D12 info queue: 0x%08X", info_hr);

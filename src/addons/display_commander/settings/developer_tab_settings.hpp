@@ -43,6 +43,7 @@ class DeveloperTabSettings {
     BoolSettingRef nvapi_auto_enable_enabled;
 
     // Keyboard Shortcut Settings (Experimental)
+    BoolSetting enable_hotkeys;
     BoolSettingRef enable_mute_unmute_shortcut;
     BoolSettingRef enable_background_toggle_shortcut;
     BoolSettingRef enable_timeslowdown_shortcut;

@@ -745,6 +745,25 @@ void DrawKeyboardShortcutsSettings() {
         ImGui::Unindent();
     }
 
+    // Enable Input Blocking Shortcut (Ctrl+I)
+    if (CheckboxSetting(settings::g_developerTabSettings.enable_input_blocking_shortcut,
+                        "Enable Input Blocking Shortcut (Ctrl+I)")) {
+        ::s_enable_input_blocking_shortcut.store(settings::g_developerTabSettings.enable_input_blocking_shortcut.GetValue());
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip(
+            "Enable keyboard shortcut Ctrl+I to quickly toggle input blocking. Only works when the game is "
+            "in the foreground.");
+    }
+
+    // Info text for Ctrl+I
+    if (settings::g_developerTabSettings.enable_input_blocking_shortcut.GetValue()) {
+        ImGui::Indent();
+        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Press Ctrl+I to toggle input blocking");
+        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Shortcut works when game is in foreground");
+        ImGui::Unindent();
+    }
+
     // Enable Auto-Click Shortcut (Ctrl+P)
     if (CheckboxSetting(settings::g_developerTabSettings.enable_autoclick_shortcut,
                         "Enable Auto-Click Shortcut (Ctrl+P)")) {

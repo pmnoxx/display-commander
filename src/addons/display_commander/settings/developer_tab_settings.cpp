@@ -31,6 +31,10 @@ std::atomic<bool> s_enable_background_toggle_shortcut{true};
 std::atomic<bool> s_enable_timeslowdown_shortcut{true};
 std::atomic<bool> s_enable_adhd_toggle_shortcut{true};
 std::atomic<bool> s_enable_autoclick_shortcut{false};
+std::atomic<bool> s_enable_input_blocking_shortcut{true};
+
+// Input blocking toggle state (controlled by Ctrl+I)
+std::atomic<bool> s_input_blocking_toggle{false};
 
 namespace settings {
 
@@ -73,6 +77,8 @@ DeveloperTabSettings::DeveloperTabSettings()
                                   s_enable_adhd_toggle_shortcut.load(), "DisplayCommander"),
       enable_autoclick_shortcut("EnableAutoclickShortcut", s_enable_autoclick_shortcut,
                                 s_enable_autoclick_shortcut.load(), "DisplayCommander"),
+      enable_input_blocking_shortcut("EnableInputBlockingShortcut", s_enable_input_blocking_shortcut,
+                                     s_enable_input_blocking_shortcut.load(), "DisplayCommander"),
       safemode("Safemode", false, "DisplayCommander"),
       load_from_dll_main("LoadFromDllMain", true, "DisplayCommander"),
       load_streamline("LoadStreamline", true, "DisplayCommander"),
@@ -110,6 +116,7 @@ void DeveloperTabSettings::LoadAll() {
     enable_timeslowdown_shortcut.Load();
     enable_adhd_toggle_shortcut.Load();
     enable_autoclick_shortcut.Load();
+    enable_input_blocking_shortcut.Load();
     safemode.Load();
     load_from_dll_main.Load();
     load_streamline.Load();
@@ -151,7 +158,7 @@ std::vector<ui::new_ui::SettingBase*> DeveloperTabSettings::GetAllSettings() {
             &reflex_enable_sleep, &reflex_logging, &reflex_supress_native,
 
             &enable_mute_unmute_shortcut, &enable_background_toggle_shortcut, &enable_timeslowdown_shortcut,
-            &enable_adhd_toggle_shortcut, &enable_autoclick_shortcut, &safemode, &load_from_dll_main, &load_streamline,
+            &enable_adhd_toggle_shortcut, &enable_autoclick_shortcut, &enable_input_blocking_shortcut, &safemode, &load_from_dll_main, &load_streamline,
             &load_nvngx, &load_nvapi64, &fake_nvapi_enabled, &load_xinput, &suppress_minhook, &debug_layer_enabled,
             &debug_break_on_severity};
 }

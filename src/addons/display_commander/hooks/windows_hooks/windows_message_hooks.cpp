@@ -20,9 +20,11 @@ bool IsUIOpenedRecently() {
 
 // Helper functions for specific input types
 bool ShouldBlockKeyboardInput() {
-    if (true) {
-        return false;
+    // Check if Ctrl+I toggle is active
+    if (s_input_blocking_toggle.load()) {
+        return true;
     }
+
     const bool is_background = g_app_in_background.load(std::memory_order_acquire);
     const InputBlockingMode mode = s_keyboard_input_blocking.load();
 
@@ -39,6 +41,11 @@ bool ShouldBlockKeyboardInput() {
 }
 
 bool ShouldBlockMouseInput() {
+    // Check if Ctrl+I toggle is active
+    if (s_input_blocking_toggle.load()) {
+        return true;
+    }
+
     const bool is_background = g_app_in_background.load(std::memory_order_acquire);
     const InputBlockingMode mode = s_mouse_input_blocking.load();
 

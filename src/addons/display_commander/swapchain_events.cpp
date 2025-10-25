@@ -19,6 +19,7 @@
 #include "latency/latency_manager.hpp"
 #include "latent_sync/latent_sync_limiter.hpp"
 #include "latent_sync/refresh_rate_monitor_integration.hpp"
+#include "nvapi/nvapi_fullscreen_prevention.hpp"
 #include "performance_types.hpp"
 #include "settings/experimental_tab_settings.hpp"
 #include "settings/main_tab_settings.hpp"
@@ -303,6 +304,8 @@ void DoInitializationWithHwnd(HWND hwnd) {
     // Initialize experimental tab
     std::thread(RunBackgroundAudioMonitor).detach();
 
+    // Check for auto-enable NVAPI features for specific games
+    g_nvapiFullscreenPrevention.CheckAndAutoEnable();
 
     // Initialize fake NVAPI if enabled
     nvapi::g_fakeNvapiManager.Initialize();

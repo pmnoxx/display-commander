@@ -65,6 +65,9 @@ std::atomic<BOOL> s_last_show_cursor_arg{TRUE};
 // Auto-click enabled state (atomic, not loaded from config)
 std::atomic<bool> g_auto_click_enabled{false};
 
+// NVAPI Settings
+std::atomic<bool> s_restart_needed_nvapi{false};
+
 // Performance: background FPS cap
 
 // VSync and tearing controls

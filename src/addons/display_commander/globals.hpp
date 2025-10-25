@@ -479,6 +479,7 @@ extern std::atomic<BOOL> s_last_show_cursor_arg;
 
 // NVAPI Settings
 extern std::atomic<bool> s_nvapi_auto_enable;
+extern std::atomic<bool> s_restart_needed_nvapi;
 
 // Audio Settings
 

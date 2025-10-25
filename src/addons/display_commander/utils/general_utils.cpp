@@ -669,3 +669,67 @@ std::string D3DPresentFlagsToString(uint32_t presentFlags) {
 
     return result;
 }
+
+// Game detection utilities
+std::string GetCurrentProcessName() {
+    char processPath[MAX_PATH];
+    DWORD pathLength = GetModuleFileNameA(nullptr, processPath, MAX_PATH);
+
+    if (pathLength == 0) {
+        return "Unknown";
+    }
+
+    std::string fullPath(processPath);
+    size_t lastSlash = fullPath.find_last_of("\\/");
+
+    if (lastSlash != std::string::npos) {
+        std::string fileName = fullPath.substr(lastSlash + 1);
+        // Remove .exe extension if present
+        size_t dotPos = fileName.find_last_of('.');
+        if (dotPos != std::string::npos && fileName.substr(dotPos) == ".exe") {
+            fileName = fileName.substr(0, dotPos);
+        }
+        return fileName;
+    }
+
+    return fullPath;
+}
+
+bool IsGameInNvapiAutoEnableList(const std::string& processName) {
+    // List of supported games for NVAPI auto-enable
+    static const std::vector<std::string> supportedGames = {
+        "armoredcore6", "ac6", "armoredcorevi", "acvi",
+        "dmc5", "devilmaycry5", "devilmaycryv",
+        "eldenring", "elden_ring",
+        "hitman", "hitman3", "hitmaniii",
+        "re2", "residentevil2", "resident_evil_2", "re2remake",
+        "re3", "residentevil3", "resident_evil_3", "re3remake",
+        "re7", "residentevil7", "resident_evil_7", "re7biohazard",
+        "re8", "residentevil8", "resident_evil_8", "re8village",
+        "sekiro", "sekiroshadowsdietwice", "sekiro_shadows_die_twice"
+    };
+
+    // Convert process name to lowercase for case-insensitive comparison
+    std::string lowerProcessName = processName;
+    std::transform(lowerProcessName.begin(), lowerProcessName.end(), lowerProcessName.begin(), ::tolower);
+
+    // Check if the process name matches any supported game
+    for (const auto& game : supportedGames) {
+        if (lowerProcessName.find(game) != std::string::npos) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+std::string GetNvapiAutoEnableGameStatus() {
+    std::string processName = GetCurrentProcessName();
+    bool isSupported = IsGameInNvapiAutoEnableList(processName);
+
+    if (isSupported) {
+        return "✓ " + processName + " (Supported)";
+    } else {
+        return "✗ " + processName + " (Not Supported)";
+    }
+}

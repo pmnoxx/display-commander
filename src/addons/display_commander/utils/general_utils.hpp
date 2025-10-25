@@ -109,5 +109,10 @@ inline void ModifyWindowStyle(int nIndex, T& dwNewLong, bool prevent_always_on_t
     }
 }
 
+// Game detection utilities
+std::string GetCurrentProcessName();
+bool IsGameInNvapiAutoEnableList(const std::string& processName);
+std::string GetNvapiAutoEnableGameStatus();
+
 // External declarations needed by utility functions
 extern std::atomic<std::shared_ptr<const std::vector<MonitorInfo>>> g_monitors;

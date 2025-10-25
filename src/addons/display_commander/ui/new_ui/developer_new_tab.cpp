@@ -6,6 +6,7 @@
 #include "../../settings/experimental_tab_settings.hpp"
 #include "../../utils/logging.hpp"
 #include "../../utils/reshade_global_config.hpp"
+#include "../../utils/general_utils.hpp"
 #include "imgui.h"
 #include "settings_wrapper.hpp"
 
@@ -15,8 +16,6 @@
 
 #include <dxgi1_6.h>
 #include <wrl/client.h>
-
-static std::atomic<bool> s_restart_needed_nvapi(false);
 
 // External atomic variables from settings
 extern std::atomic<bool> s_nvapi_auto_enable_enabled;
@@ -367,6 +366,31 @@ void DrawNvapiSettings() {
         ImGui::SetTooltip("Automatically enable NVAPI features for supported games when they are launched.");
     }
 
+    // Display current game status
+    ImGui::Spacing();
+    std::string gameStatus = GetNvapiAutoEnableGameStatus();
+    bool isGameSupported = IsGameInNvapiAutoEnableList(GetCurrentProcessName());
+
+    if (isGameSupported) {
+        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), ICON_FK_OK " Current Game: %s", gameStatus.c_str());
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("This game is supported for NVAPI auto-enable features.");
+        }
+        // Warning about Alt+Enter requirement
+        ImGui::Spacing();
+        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), ICON_FK_WARNING " Warning: Requires pressing Alt+Enter once");
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip(
+                "Press Alt-Enter to enable HDR.\n"
+        }
+
+    } else {
+        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), ICON_FK_CANCEL " Current Game: %s", gameStatus.c_str());
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("This game is not in the NVAPI auto-enable supported games list.");
+        }
+    }
+
     ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "NVAPI Auto-enable for Games");
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip(
@@ -382,11 +406,6 @@ void DrawNvapiSettings() {
             "- Resident Evil 7\n"
             "- Resident Evil 8\n"
             "- Sekiro: Shadows Die Twice");
-    }
-    // Display restart-required notice if flagged
-    if (s_restart_needed_nvapi.load()) {
-        ImGui::Spacing();
-        ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "Game restart required to apply NVAPI changes.");
     }
 
     // Minimal NVIDIA Reflex Controls (device runtime dependent)

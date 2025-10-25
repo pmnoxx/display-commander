@@ -8,6 +8,9 @@
 #include <sstream>
 #include <vector>
 
+// External atomic variables from settings
+extern std::atomic<bool> s_nvapi_auto_enable_enabled;
+
 NVAPIFullscreenPrevention::NVAPIFullscreenPrevention() {}
 
 NVAPIFullscreenPrevention::~NVAPIFullscreenPrevention() { Cleanup(); }
@@ -298,6 +301,12 @@ bool NVAPIFullscreenPrevention::IsGameInAutoEnableList(const std::string& proces
 }
 
 void NVAPIFullscreenPrevention::CheckAndAutoEnable() {
+
+    // Check if NVAPI auto-enable is enabled in settings
+    if (!s_nvapi_auto_enable_enabled.load()) {
+        LogInfo("NVAPI Auto-enable: Disabled in settings, skipping auto-enable");
+        return;
+    }
 
     // Get current process name
     char exe_path[MAX_PATH];

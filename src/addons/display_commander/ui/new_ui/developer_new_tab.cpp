@@ -19,6 +19,9 @@
 
 static std::atomic<bool> s_restart_needed_nvapi(false);
 
+// External atomic variables from settings
+extern std::atomic<bool> s_nvapi_auto_enable_enabled;
+
 namespace ui::new_ui {
 
 void InitDeveloperNewTab() {
@@ -348,6 +351,16 @@ void DrawNvapiSettings() {
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Use NVAPI to prevent fullscreen mode at the driver level.");
+    }
+
+    // NVAPI Auto-enable checkbox
+    if (CheckboxSetting(settings::g_developerTabSettings.nvapi_auto_enable_enabled, "Enable NVAPI Auto-enable for Games")) {
+        s_nvapi_auto_enable_enabled.store(settings::g_developerTabSettings.nvapi_auto_enable_enabled.GetValue());
+        LogInfo("NVAPI Auto-enable setting changed to: %s",
+                settings::g_developerTabSettings.nvapi_auto_enable_enabled.GetValue() ? "true" : "false");
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Automatically enable NVAPI features for supported games when they are launched.");
     }
 
     ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "NVAPI Auto-enable for Games");

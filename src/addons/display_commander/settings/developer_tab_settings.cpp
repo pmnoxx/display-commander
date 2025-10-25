@@ -12,6 +12,7 @@ std::atomic<bool> s_hide_hdr_capabilities{false};
 std::atomic<bool> s_enable_flip_chain{false};
 std::atomic<bool> s_auto_colorspace{false};
 std::atomic<bool> s_nvapi_fullscreen_prevention{false};  // disabled by default
+std::atomic<bool> s_nvapi_auto_enable_enabled{true};    // enabled by default
 
 // Reflex settings
 std::atomic<bool> s_reflex_auto_configure{false};  // Disabled by default
@@ -52,6 +53,8 @@ DeveloperTabSettings::DeveloperTabSettings()
       // enable_d3d9e_upgrade("EnableD3D9EUpgrade", s_enable_d3d9e_upgrade, true, "DisplayCommander"),
       nvapi_fullscreen_prevention("NvapiFullscreenPrevention", s_nvapi_fullscreen_prevention,
                                   s_nvapi_fullscreen_prevention.load(), "DisplayCommander"),
+      nvapi_auto_enable_enabled("NvapiAutoEnableEnabled", s_nvapi_auto_enable_enabled,
+                                s_nvapi_auto_enable_enabled.load(), "DisplayCommander"),
 
       // Minimal NVIDIA Reflex controls
       reflex_auto_configure("ReflexAutoConfigure", s_reflex_auto_configure, s_reflex_auto_configure.load(),
@@ -100,6 +103,7 @@ void DeveloperTabSettings::LoadAll() {
     auto_colorspace.Load();
     // enable_d3d9e_upgrade.Load();
     nvapi_fullscreen_prevention.Load();
+    nvapi_auto_enable_enabled.Load();
 
     reflex_auto_configure.Load();
     reflex_enable.Load();
@@ -152,7 +156,7 @@ std::vector<ui::new_ui::SettingBase*> DeveloperTabSettings::GetAllSettings() {
     return {&prevent_fullscreen, &continue_rendering, &continuous_monitoring, &prevent_always_on_top,
             &hide_hdr_capabilities, &enable_flip_chain, &auto_colorspace,
             //&enable_d3d9e_upgrade,
-            &nvapi_fullscreen_prevention,
+            &nvapi_fullscreen_prevention, &nvapi_auto_enable_enabled,
 
             &reflex_auto_configure, &reflex_enable, &reflex_low_latency, &reflex_boost, &reflex_use_markers,
             &reflex_enable_sleep, &reflex_logging, &reflex_supress_native,

@@ -92,4 +92,8 @@ HWND WINAPI GetForegroundWindow_Direct();
 void RestoreSetCursor();
 void RestoreShowCursor();
 
+// Input blocking functions (forward declarations)
+bool ShouldBlockMouseInput();
+bool ShouldBlockKeyboardInput();
+
 } // namespace display_commanderhooks

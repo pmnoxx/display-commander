@@ -1,6 +1,7 @@
 #include "swapchain_tab.hpp"
 #include "../../config/display_commander_config.hpp"
 #include "../../globals.hpp"
+#include "../../hooks/api_hooks.hpp"
 #include "../../hooks/ngx_hooks.hpp"
 #include "../../res/forkawesome.h"
 #include "../../settings/main_tab_settings.hpp"
@@ -1004,6 +1005,13 @@ void DrawSwapchainInfo(reshade::api::effect_runtime* runtime) {
     // reshade runtimes list:
     if (ImGui::CollapsingHeader("ReShade Runtimes", ImGuiTreeNodeFlags_DefaultOpen)) {
         ImGui::Text("ReShade runtimes count: %zu", g_reshade_runtimes.size());
+
+        // Input blocking status
+        bool mouse_blocked = display_commanderhooks::ShouldBlockMouseInput();
+        bool keyboard_blocked = display_commanderhooks::ShouldBlockKeyboardInput();
+
+        ImGui::Text("Mouse Input Blocked: %s", mouse_blocked ? "Yes" : "No");
+        ImGui::Text("Keyboard Input Blocked: %s", keyboard_blocked ? "Yes" : "No");
 
         for (size_t i = 0; i < g_reshade_runtimes.size(); ++i) {
             auto* runtime = g_reshade_runtimes[i];

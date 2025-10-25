@@ -81,11 +81,14 @@ void DrawDeveloperNewTab() {
 }
 
 void DrawFeaturesEnabledByDefault() {
+    ImGui::Indent();
+
     // Prevent Fullscreen
     CheckboxSetting(settings::g_developerTabSettings.prevent_fullscreen, "Prevent Fullscreen");
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Prevent exclusive fullscreen; keep borderless/windowed for stability and HDR.");
     }
+
     CheckboxSetting(settings::g_developerTabSettings.prevent_always_on_top, "Prevent Always On Top");
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Prevents windows from becoming always on top, even if they are moved or resized.");
@@ -160,9 +163,13 @@ void DrawFeaturesEnabledByDefault() {
 
     ImGui::Spacing();
     #endif
+
+    ImGui::Unindent();
 }
 
 void DrawDeveloperSettings() {
+    ImGui::Indent();
+
     // Continue Rendering
     if (CheckboxSetting(settings::g_developerTabSettings.continue_rendering, "Continue Rendering in Background")) {
         s_continue_rendering.store(settings::g_developerTabSettings.continue_rendering.GetValue());
@@ -273,9 +280,13 @@ void DrawDeveloperSettings() {
         }
         ImGui::Unindent();
     }
+
+    ImGui::Unindent();
 }
 
 void DrawHdrDisplaySettings() {
+    ImGui::Indent();
+
     // Hide HDR Capabilities
     if (CheckboxSetting(settings::g_developerTabSettings.hide_hdr_capabilities, "Hide game's native HDR")) {
         s_hide_hdr_capabilities.store(settings::g_developerTabSettings.hide_hdr_capabilities.GetValue());
@@ -339,10 +350,12 @@ void DrawHdrDisplaySettings() {
         }
         ImGui::Unindent();
     }
+
+    ImGui::Unindent();
 }
 
 void DrawNvapiSettings() {
-
+    ImGui::Indent();
 
     // NVAPI Auto-enable checkbox
     if (CheckboxSetting(settings::g_developerTabSettings.nvapi_auto_enable_enabled, "Enable NVAPI Auto-enable for Games")) {
@@ -378,6 +391,7 @@ void DrawNvapiSettings() {
 
     // Minimal NVIDIA Reflex Controls (device runtime dependent)
     if (ImGui::CollapsingHeader("NVIDIA Reflex (Minimal)", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::Indent();
         // Native Reflex Status Indicator
         bool is_native_reflex_active = g_nvapi_event_counters[NVAPI_EVENT_D3D_SET_SLEEP_MODE].load() > 0;
         if (is_native_reflex_active) {
@@ -579,11 +593,13 @@ void DrawNvapiSettings() {
                 ImGui::SetTooltip("Reset all Reflex debug counters to zero.");
             }
         }
+        ImGui::Unindent();
     }
 
     // Fake NVAPI Settings
     ImGui::Spacing();
     if (ImGui::CollapsingHeader("AntiLag 2 / XeLL support (fakenvapi / custom nvapi64.dll)", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::Indent();
         ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "Fake NVAPI (Experimental)");
 
         bool fake_nvapi_enabled = settings::g_developerTabSettings.fake_nvapi_enabled.GetValue();
@@ -658,10 +674,15 @@ void DrawNvapiSettings() {
                 "- Incompatibility with some games\n\n"
                 "Use at your own risk!");
         }
+        ImGui::Unindent();
     }
+
+    ImGui::Unindent();
 }
 
 void DrawKeyboardShortcutsSettings() {
+    ImGui::Indent();
+
     // Enable Hotkeys Master Toggle
     if (CheckboxSetting(settings::g_developerTabSettings.enable_hotkeys, "Enable Hotkeys")) {
         // Update the atomic variable when the setting changes
@@ -794,9 +815,13 @@ void DrawKeyboardShortcutsSettings() {
 
         ImGui::Unindent(); // Close the indentation for all hotkey settings
     }
+
+    ImGui::Unindent();
 }
 
 void DrawReShadeGlobalConfigSettings() {
+    ImGui::Indent();
+
     static utils::ReShadeGlobalSettings currentSettings;
     static utils::ReShadeGlobalSettings globalSettings;
     static bool initialLoadDone = false;
@@ -1090,6 +1115,8 @@ void DrawReShadeGlobalConfigSettings() {
 
         ImGui::TreePop();
     }
+
+    ImGui::Unindent();
 }
 
 }  // namespace ui::new_ui

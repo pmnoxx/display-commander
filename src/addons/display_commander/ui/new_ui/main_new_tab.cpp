@@ -368,27 +368,34 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
     ImGui::Spacing();
     // Display Settings Section
     if (ImGui::CollapsingHeader("Display Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::Indent();
         DrawDisplaySettings(runtime);
+        ImGui::Unindent();
     }
 
     ImGui::Spacing();
 
     // Monitor/Display Resolution Settings Section
     if (ImGui::CollapsingHeader("Resolution Control", ImGuiTreeNodeFlags_None)) {
+        ImGui::Indent();
         display_commander::widgets::resolution_widget::DrawResolutionWidget();
+        ImGui::Unindent();
     }
 
     ImGui::Spacing();
 
     // Audio Settings Section
     if (ImGui::CollapsingHeader("Audio Control", ImGuiTreeNodeFlags_None)) {
+        ImGui::Indent();
         DrawAudioSettings();
+        ImGui::Unindent();
     }
 
     ImGui::Spacing();
 
     // Input Blocking Section
     if (ImGui::CollapsingHeader("Input Control", ImGuiTreeNodeFlags_None)) {
+        ImGui::Indent();
 
         // Create 3 columns with fixed width
         ImGui::Columns(3, "InputBlockingColumns", true);
@@ -442,12 +449,15 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Shows the XInput controller monitoring tab even when advanced settings are disabled.");
         }
+
+        ImGui::Unindent();
     }
 
     ImGui::Spacing();
 
     // Screensaver Control Section
     if (ImGui::CollapsingHeader("Screensaver Control", ImGuiTreeNodeFlags_None)) {
+        ImGui::Indent();
         if (ComboSettingEnumRefWrapper(settings::g_mainTabSettings.screensaver_mode, "Screensaver Mode")) {
             LogInfo("Screensaver mode changed to %d", settings::g_mainTabSettings.screensaver_mode.GetValue());
         }
@@ -459,6 +469,7 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
                 "- Disable: Always disables screensaver while game is running\n\n"
                 "Note: This feature requires the screensaver implementation to be active.");
         }
+        ImGui::Unindent();
     }
 
     ImGui::Spacing();
@@ -469,10 +480,14 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
     ImGui::Spacing();
 
     if (ImGui::CollapsingHeader("Important Info", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::Indent();
         DrawImportantInfo();
+        ImGui::Unindent();
     }
     if (ImGui::CollapsingHeader("Advanced Settings", ImGuiTreeNodeFlags_None)) {
+        ImGui::Indent();
         DrawAdvancedSettings();
+        ImGui::Unindent();
     }
 }
 

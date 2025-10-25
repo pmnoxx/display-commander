@@ -75,12 +75,15 @@ void XInputWidget::Cleanup() {
 }
 
 void XInputWidget::OnDraw() {
+    ImGui::Indent();
+
     if (!is_initialized_) {
         Initialize();
     }
 
     if (!g_shared_state) {
         ImGui::TextColored(ui::colors::ICON_CRITICAL, "XInput shared state not initialized");
+        ImGui::Unindent();
         return;
     }
 
@@ -110,9 +113,13 @@ void XInputWidget::OnDraw() {
 
     // Draw selected controller state
     DrawControllerState();
+
+    ImGui::Unindent();
 }
 
 void XInputWidget::DrawSettings() {
+    ImGui::Indent();
+
     if (ImGui::CollapsingHeader("Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
         // Enable XInput hooks
         bool enable_hooks = g_shared_state->enable_xinput_hooks.load();
@@ -299,9 +306,13 @@ void XInputWidget::DrawSettings() {
             ImGui::SetTooltip("Reset all stick center offsets to 0.0");
         }
     }
+
+    ImGui::Unindent();
 }
 
 void XInputWidget::DrawEventCounters() {
+    ImGui::Indent();
+
     if (ImGui::CollapsingHeader("Event Counters", ImGuiTreeNodeFlags_DefaultOpen)) {
         uint64_t total_events = g_shared_state->total_events.load();
         uint64_t button_events = g_shared_state->button_events.load();
@@ -348,9 +359,13 @@ void XInputWidget::DrawEventCounters() {
             g_shared_state->hid_createfile_dualsense.store(0);
         }
     }
+
+    ImGui::Unindent();
 }
 
 void XInputWidget::DrawVibrationTest() {
+    ImGui::Indent();
+
     if (ImGui::CollapsingHeader("Vibration Test", ImGuiTreeNodeFlags_DefaultOpen)) {
         ImGui::Text("Test controller vibration motors:");
         ImGui::Spacing();
@@ -402,9 +417,13 @@ void XInputWidget::DrawVibrationTest() {
         ImGui::TextColored(ui::colors::TEXT_DIMMED,
                            "Note: Vibration will continue until stopped or controller disconnects");
     }
+
+    ImGui::Unindent();
 }
 
 void XInputWidget::DrawControllerSelector() {
+    ImGui::Indent();
+
     ImGui::Text("Controller:");
     ImGui::SameLine();
 
@@ -429,11 +448,16 @@ void XInputWidget::DrawControllerSelector() {
         ImGui::EndCombo();
     }
     ImGui::PopID();
+
+    ImGui::Unindent();
 }
 
 void XInputWidget::DrawControllerState() {
+    ImGui::Indent();
+
     if (selected_controller_ < 0 || selected_controller_ >= XUSER_MAX_COUNT) {
         ImGui::TextColored(ui::colors::ICON_CRITICAL, "Invalid controller selected");
+        ImGui::Unindent();
         return;
     }
 
@@ -488,6 +512,8 @@ void XInputWidget::DrawControllerState() {
         ImGui::Spacing();
         DrawDualSenseReport(selected_controller_);
     }
+
+    ImGui::Unindent();
 }
 
 void XInputWidget::DrawButtonStates(const XINPUT_GAMEPAD &gamepad) {
@@ -1103,9 +1129,13 @@ void CleanupXInputWidget() {
 }
 
 void DrawXInputWidget() {
+    ImGui::Indent();
+
     if (g_xinput_widget) {
         g_xinput_widget->OnDraw();
     }
+
+    ImGui::Unindent();
 }
 
 // Global functions for hooks to use
@@ -1207,6 +1237,8 @@ void XInputWidget::StopVibration() {
 
 // Chord detection functions
 void XInputWidget::DrawChordSettings() {
+    ImGui::Indent();
+
     if (ImGui::CollapsingHeader("Chord Detection", ImGuiTreeNodeFlags_DefaultOpen)) {
         ImGui::Text("Button combinations that trigger actions:");
         ImGui::Spacing();
@@ -1249,6 +1281,8 @@ void XInputWidget::DrawChordSettings() {
             }
         }
     }
+
+    ImGui::Unindent();
 }
 
 void XInputWidget::InitializeDefaultChords() {

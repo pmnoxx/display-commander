@@ -399,6 +399,24 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain *This, UI
     g_dxgi_core_event_counters[DXGI_CORE_EVENT_PRESENT].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
+    // Prevent always on top for swapchain window if enabled
+    if (settings::g_developerTabSettings.prevent_always_on_top.GetValue()) {
+        HWND swapchain_hwnd = g_last_swapchain_hwnd.load();
+        if (swapchain_hwnd && IsWindow(swapchain_hwnd)) {
+            // Remove always on top styles from the window
+            LONG_PTR current_style = GetWindowLongPtrW(swapchain_hwnd, GWL_EXSTYLE);
+            if (current_style & (WS_EX_TOPMOST | WS_EX_TOOLWINDOW)) {
+                LONG_PTR new_style = current_style & ~(WS_EX_TOPMOST | WS_EX_TOOLWINDOW);
+                SetWindowLongPtrW(swapchain_hwnd, GWL_EXSTYLE, new_style);
+                // Only log occasionally to avoid spam
+                static std::atomic<int> prevent_always_on_top_log_count{0};
+                if (prevent_always_on_top_log_count.fetch_add(1) < 3) {
+                    LogInfo("IDXGISwapChain_Present_Detour: Prevented always on top for window 0x%p", swapchain_hwnd);
+                }
+            }
+        }
+    }
+
     // Query DXGI composition state (moved from ReShade present events)
     ::QueryDxgiCompositionState(This);
 
@@ -462,6 +480,24 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1 *This, 
     // Increment DXGI Present1 counter
     g_dxgi_sc1_event_counters[DXGI_SC1_EVENT_PRESENT1].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
+
+    // Prevent always on top for swapchain window if enabled
+    if (settings::g_developerTabSettings.prevent_always_on_top.GetValue()) {
+        HWND swapchain_hwnd = g_last_swapchain_hwnd.load();
+        if (swapchain_hwnd && IsWindow(swapchain_hwnd)) {
+            // Remove always on top styles from the window
+            LONG_PTR current_style = GetWindowLongPtrW(swapchain_hwnd, GWL_EXSTYLE);
+            if (current_style & (WS_EX_TOPMOST | WS_EX_TOOLWINDOW)) {
+                LONG_PTR new_style = current_style & ~(WS_EX_TOPMOST | WS_EX_TOOLWINDOW);
+                SetWindowLongPtrW(swapchain_hwnd, GWL_EXSTYLE, new_style);
+                // Only log occasionally to avoid spam
+                static std::atomic<int> prevent_always_on_top_log_count_present1{0};
+                if (prevent_always_on_top_log_count_present1.fetch_add(1) < 3) {
+                    LogInfo("IDXGISwapChain_Present1_Detour: Prevented always on top for window 0x%p", swapchain_hwnd);
+                }
+            }
+        }
+    }
 
     // Query DXGI composition state (moved from ReShade present events)
     ::QueryDxgiCompositionState(This);
@@ -708,6 +744,17 @@ HRESULT STDMETHODCALLTYPE IDXGIFactory_CreateSwapChain_Detour(IDXGIFactory *This
         createswapchain_log_count++;
     }
 
+    // Prevent always on top for swapchain window if enabled
+    if (settings::g_developerTabSettings.prevent_always_on_top.GetValue() && pDesc != nullptr && pDesc->OutputWindow) {
+        // Remove always on top styles from the window
+        LONG_PTR current_style = GetWindowLongPtrW(pDesc->OutputWindow, GWL_EXSTYLE);
+        if (current_style & (WS_EX_TOPMOST | WS_EX_TOOLWINDOW)) {
+            LONG_PTR new_style = current_style & ~(WS_EX_TOPMOST | WS_EX_TOOLWINDOW);
+            SetWindowLongPtrW(pDesc->OutputWindow, GWL_EXSTYLE, new_style);
+            LogInfo("IDXGIFactory_CreateSwapChain_Detour: Prevented always on top for swapchain window 0x%p", pDesc->OutputWindow);
+        }
+    }
+
     // Call original function
     if (IDXGIFactory_CreateSwapChain_Original != nullptr) {
         HRESULT hr = IDXGIFactory_CreateSwapChain_Original(This, pDevice, pDesc, ppSwapChain);
@@ -733,10 +780,19 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetBuffer_Detour(IDXGISwapChain *This, 
     return IDXGISwapChain_GetBuffer_Original(This, Buffer, riid, ppSurface);
 }
 
-std::atomic<BOOL> g_last_set_fullscreen_state{false};
+std::atomic<int> g_last_set_fullscreen_state{-1}; // -1 for not set, 0 for false, 1 for true
+std::atomic<IDXGIOutput*> g_last_set_fullscreen_target{nullptr};
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetFullscreenState_Detour(IDXGISwapChain *This, BOOL Fullscreen, IDXGIOutput *pTarget) {
+
+
     g_dxgi_core_event_counters[DXGI_CORE_EVENT_SETFULLSCREENSTATE].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
+
+    if (Fullscreen == g_last_set_fullscreen_state.load() && pTarget == g_last_set_fullscreen_target.load()) {
+        return S_OK;
+    }
+
+    g_last_set_fullscreen_target.store(pTarget);
     g_last_set_fullscreen_state.store(Fullscreen);
 
     // Check if fullscreen prevention is enabled and we're trying to go fullscreen
@@ -752,7 +808,8 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetFullscreenState_Detour(IDXGISwapChai
     g_swapchain_event_total_count.fetch_add(1);
     auto hr = IDXGISwapChain_GetFullscreenState_Original(This, pFullscreen, ppTarget);
 
-    if (settings::g_developerTabSettings.prevent_fullscreen.GetValue()) {
+    // NOTE: we assume that ppTarget is g_last_set_fullscreen_target.load()
+    if (settings::g_developerTabSettings.prevent_fullscreen.GetValue() && g_last_set_fullscreen_state.load() != -1) {
         *pFullscreen = g_last_set_fullscreen_state.load();
     }
 
@@ -807,7 +864,21 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetFullscreenDesc_Detour(IDXGISwapChain
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetHwnd_Detour(IDXGISwapChain1 *This, HWND *pHwnd) {
     g_dxgi_sc1_event_counters[DXGI_SC1_EVENT_GETHWND].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
-    return IDXGISwapChain_GetHwnd_Original(This, pHwnd);
+
+    HRESULT hr = IDXGISwapChain_GetHwnd_Original(This, pHwnd);
+
+    // Prevent always on top for the returned window handle if enabled
+    if (SUCCEEDED(hr) && settings::g_developerTabSettings.prevent_always_on_top.GetValue() && pHwnd && *pHwnd) {
+        // Remove always on top styles from the window
+        LONG_PTR current_style = GetWindowLongPtrW(*pHwnd, GWL_EXSTYLE);
+        if (current_style & (WS_EX_TOPMOST | WS_EX_TOOLWINDOW)) {
+            LONG_PTR new_style = current_style & ~(WS_EX_TOPMOST | WS_EX_TOOLWINDOW);
+            SetWindowLongPtrW(*pHwnd, GWL_EXSTYLE, new_style);
+            LogInfo("IDXGISwapChain_GetHwnd_Detour: Prevented always on top for window 0x%p", *pHwnd);
+        }
+    }
+
+    return hr;
 }
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetCoreWindow_Detour(IDXGISwapChain1 *This, REFIID refiid, void **ppUnk) {

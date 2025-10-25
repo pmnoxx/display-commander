@@ -154,7 +154,6 @@ void AutoApplyTrigger() {
 
 void DrawSwapchainTab(reshade::api::effect_runtime* runtime) {
     ImGui::Text("Swapchain Tab - DXGI Information");
-    ImGui::Separator();
 
     // Draw all swapchain-related sections
     DrawSwapchainEventCounters();
@@ -171,6 +170,7 @@ void DrawSwapchainTab(reshade::api::effect_runtime* runtime) {
 }
 
 void DrawSwapchainEventCounters() {
+
     if (ImGui::CollapsingHeader("Swapchain Event Counters", ImGuiTreeNodeFlags_None)) {
         ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Event Counters (Green = Working, Red = Not Working)");
         ImGui::Separator();
@@ -589,6 +589,7 @@ void DrawSwapchainEventCounters() {
 }
 
 void DrawNGXParameters() {
+
     if (ImGui::CollapsingHeader("NGX Parameters", ImGuiTreeNodeFlags_None)) {
         ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "NGX Parameter Values (Live from Game)");
         ImGui::Separator();
@@ -763,9 +764,11 @@ void DrawNGXParameters() {
             ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), ICON_FK_OK " NGX parameter hooks are working correctly");
         }
     }
+
 }
 
 void DrawDLSSGSummary() {
+
     if (ImGui::CollapsingHeader("DLSS/DLSS-G/RR Summary", ImGuiTreeNodeFlags_DefaultOpen)) {
         ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "DLSS/DLSS-G/Ray Reconstruction Status Overview");
         ImGui::Separator();
@@ -999,6 +1002,7 @@ void DrawDxgiCompositionInfo() {
 }
 
 void DrawSwapchainInfo(reshade::api::effect_runtime* runtime) {
+
     // todo replace g_last_swapchain_ptr_unsafe with runtime->get_device()->get_native()
     // runtime->get_device()->get_native();
 
@@ -1798,6 +1802,7 @@ const char* GetDXGIColorSpaceString(DXGI_COLOR_SPACE_TYPE color_space) {
 }
 
 void DrawDLSSPresetOverride() {
+
     if (ImGui::CollapsingHeader("DLSS Preset Override", ImGuiTreeNodeFlags_None)) {
         ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== DLSS Preset Override ===");
 

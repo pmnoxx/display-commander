@@ -84,7 +84,7 @@ DeveloperTabSettings::DeveloperTabSettings()
       load_streamline("LoadStreamline", true, "DisplayCommander"),
       load_nvngx("LoadNvngx", true, "DisplayCommander"),
       load_nvapi64("LoadNvapi64", true, "DisplayCommander"),
-      fake_nvapi_enabled("FakeNvapiEnabled", true, "DisplayCommander"),
+      fake_nvapi_enabled("FakeNvapiEnabled", false, "DisplayCommander"),
       load_xinput("LoadXInput", true, "DisplayCommander"),
       suppress_minhook("SuppressMinhook", false, "DisplayCommander"),
       debug_layer_enabled("DebugLayerEnabled", false, "DisplayCommander"),

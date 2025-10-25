@@ -199,34 +199,6 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
 }
 }  // namespace
 
-bool initialized = false;
-
-// Check if .dc_uber_user file exists in user profile folder
-bool IsUberUser() {
-    // Get user's home directory using Windows API
-    wchar_t* user_profile = nullptr;
-    size_t len = 0;
-
-    // Try to get USERPROFILE environment variable
-    if (_wdupenv_s(&user_profile, &len, L"USERPROFILE") == 0 && user_profile != nullptr) {
-        std::filesystem::path uber_user_file = std::filesystem::path(user_profile) / L".dc_uber_user";
-        free(user_profile);
-
-        bool exists = std::filesystem::exists(uber_user_file);
-        LogInfo("Dev features enabled");
-        return exists;
-    }
-
-    // Fallback: use SHGetFolderPath
-    wchar_t path[MAX_PATH];
-    if (SUCCEEDED(SHGetFolderPathW(nullptr, CSIDL_PROFILE, nullptr, 0, path))) {
-        std::filesystem::path uber_user_file = std::filesystem::path(path) / L".dc_uber_user";
-        bool exists = std::filesystem::exists(uber_user_file);
-        return exists;
-    }
-
-    return false;
-}
 
 // Override ReShade settings to set tutorial as viewed and disable auto updates
 void OverrideReShadeSettings() {
@@ -264,28 +236,6 @@ void OverrideReShadeSettings() {
     LogInfo("ReShade settings override - LoadFromDllMain set to %d (from DisplayCommander.ini)",
             load_from_dll_main_from_display_commander);
 
-    // Check if user is an uber user before setting InputProcessing
-    if (IsUberUser()) {
-        // Check if InputProcessing has been set to 0 at least once before
-        int32_t input_processing_set_once = 0;
-        bool found_input_processing_setting = display_commander::config::get_config_value(
-            "DisplayCommander", "InputProcessingSetOnce", input_processing_set_once);
-
-        if (!found_input_processing_setting || input_processing_set_once == 0) {
-            // Set InputProcessing to 0 only if it hasn't been set before
-            reshade::set_config_value(nullptr, "INPUT", "InputProcessing", "0");
-            LogInfo("ReShade settings override - InputProcessing set to 0 (first time) for uber user");
-
-            // Mark that we've set InputProcessing to 0 at least once
-            display_commander::config::set_config_value("DisplayCommander", "InputProcessingSetOnce", 1);
-            display_commander::config::save_config();
-            LogInfo("ReShade settings override - InputProcessingSetOnce marked as set");
-        } else {
-            LogInfo("ReShade settings override - InputProcessing already set to 0 previously, skipping");
-        }
-    } else {
-        LogInfo("ReShade settings override - Not an uber user, skipping InputProcessing override");
-    }
 
     LogInfo("ReShade settings override completed successfully");
 }

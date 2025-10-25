@@ -68,7 +68,7 @@ DeveloperTabSettings::DeveloperTabSettings()
       reflex_supress_native("ReflexSupressNative", s_reflex_supress_native, s_reflex_supress_native.load(),
                             "DisplayCommander"),
 
-      enable_hotkeys("EnableHotkeys", true, "DisplayCommander"),
+      enable_hotkeys("EnableHotkeys", false, "DisplayCommander"),
       enable_mute_unmute_shortcut("EnableMuteUnmuteShortcut", s_enable_mute_unmute_shortcut,
                                   s_enable_mute_unmute_shortcut.load(), "DisplayCommander"),
       enable_background_toggle_shortcut("EnableBackgroundToggleShortcut", s_enable_background_toggle_shortcut,

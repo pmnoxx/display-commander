@@ -17,10 +17,6 @@ ChangeDisplaySettingsExW_pfn ChangeDisplaySettingsExW_Original = nullptr;
 // Window management original function pointers
 // SetWindowPos_Original moved to api_hooks.cpp to avoid duplicate declaration
 ShowWindow_pfn ShowWindow_Original = nullptr;
-SetWindowLongA_pfn SetWindowLongA_Original = nullptr;
-SetWindowLongW_pfn SetWindowLongW_Original = nullptr;
-SetWindowLongPtrA_pfn SetWindowLongPtrA_Original = nullptr;
-SetWindowLongPtrW_pfn SetWindowLongPtrW_Original = nullptr;
 
 // Hook installation state
 static std::atomic<bool> g_display_settings_hooks_installed{false};
@@ -96,85 +92,7 @@ BOOL WINAPI ShowWindow_Detour(HWND hWnd, int nCmdShow) {
     return ShowWindow_Original(hWnd, nCmdShow);
 }
 
-LONG WINAPI SetWindowLongA_Detour(HWND hWnd, int nIndex, LONG dwNewLong) {
-    g_display_settings_hook_counters[DISPLAY_SETTINGS_HOOK_SETWINDOWLONGA].fetch_add(1);
-    g_display_settings_hook_total_count.fetch_add(1);
 
-    // Check if fullscreen prevention is enabled
-    if (settings::g_developerTabSettings.prevent_fullscreen.GetValue()) {
-        // Prevent window style changes that enable fullscreen
-        if (nIndex == GWL_STYLE) {
-            // Remove fullscreen-enabling styles
-            if (dwNewLong & WS_POPUP) {
-                LogInfo("SetWindowLongA blocked WS_POPUP style - forcing windowed style");
-                dwNewLong &= ~WS_POPUP;
-                dwNewLong |= WS_OVERLAPPEDWINDOW;
-            }
-        }
-    }
-
-    return SetWindowLongA_Original(hWnd, nIndex, dwNewLong);
-}
-
-LONG WINAPI SetWindowLongW_Detour(HWND hWnd, int nIndex, LONG dwNewLong) {
-    g_display_settings_hook_counters[DISPLAY_SETTINGS_HOOK_SETWINDOWLONGW].fetch_add(1);
-    g_display_settings_hook_total_count.fetch_add(1);
-
-    // Check if fullscreen prevention is enabled
-    if (settings::g_developerTabSettings.prevent_fullscreen.GetValue()) {
-        // Prevent window style changes that enable fullscreen
-        if (nIndex == GWL_STYLE) {
-            // Remove fullscreen-enabling styles
-            if (dwNewLong & WS_POPUP) {
-                LogInfo("SetWindowLongW blocked WS_POPUP style - forcing windowed style");
-                dwNewLong &= ~WS_POPUP;
-                dwNewLong |= WS_OVERLAPPEDWINDOW;
-            }
-        }
-    }
-
-    return SetWindowLongW_Original(hWnd, nIndex, dwNewLong);
-}
-
-LONG_PTR WINAPI SetWindowLongPtrA_Detour(HWND hWnd, int nIndex, LONG_PTR dwNewLong) {
-    g_display_settings_hook_counters[DISPLAY_SETTINGS_HOOK_SETWINDOWLONGPTRA].fetch_add(1);
-    g_display_settings_hook_total_count.fetch_add(1);
-
-    // Check if fullscreen prevention is enabled
-    if (settings::g_developerTabSettings.prevent_fullscreen.GetValue()) {
-        // Prevent window style changes that enable fullscreen
-        if (nIndex == GWL_STYLE) {
-            // Remove fullscreen-enabling styles
-            if (dwNewLong & WS_POPUP) {
-                LogInfo("SetWindowLongPtrA blocked WS_POPUP style - forcing windowed style");
-                dwNewLong &= ~WS_POPUP;
-                dwNewLong |= WS_OVERLAPPEDWINDOW;
-            }
-        }
-    }
-
-    return SetWindowLongPtrA_Original(hWnd, nIndex, dwNewLong);
-}
-
-LONG_PTR WINAPI SetWindowLongPtrW_Detour(HWND hWnd, int nIndex, LONG_PTR dwNewLong) {
-    g_display_settings_hook_counters[DISPLAY_SETTINGS_HOOK_SETWINDOWLONGPTRW].fetch_add(1);
-    g_display_settings_hook_total_count.fetch_add(1);
-
-    // Check if fullscreen prevention is enabled
-    if (settings::g_developerTabSettings.prevent_fullscreen.GetValue()) {
-        // Prevent window style changes that enable fullscreen
-        if (nIndex == GWL_STYLE) {
-            // Remove fullscreen-enabling styles
-            if (dwNewLong & WS_POPUP) {
-                LogInfo("SetWindowLongPtrW blocked WS_POPUP style - forcing windowed style");
-                dwNewLong &= ~WS_POPUP;
-                dwNewLong |= WS_OVERLAPPEDWINDOW;
-            }
-        }
-    }
-
-    return SetWindowLongPtrW_Original(hWnd, nIndex, dwNewLong);
-}
 
 // Hook installation function
 bool InstallDisplaySettingsHooks() {
@@ -221,20 +139,6 @@ bool InstallDisplaySettingsHooks() {
         return false;
     }
 
-    if (!CreateAndEnableHook(SetWindowLongA, SetWindowLongA_Detour, (LPVOID*)&SetWindowLongA_Original, "SetWindowLongA")) {
-        LogError("Failed to create and enable SetWindowLongA hook");
-        return false;
-    }
-
-    if (!CreateAndEnableHook(SetWindowLongW, SetWindowLongW_Detour, (LPVOID*)&SetWindowLongW_Original, "SetWindowLongW")) {
-        LogError("Failed to create and enable SetWindowLongW hook");
-        return false;
-    }
-
-    if (!CreateAndEnableHook(SetWindowLongPtrA, SetWindowLongPtrA_Detour, (LPVOID*)&SetWindowLongPtrA_Original, "SetWindowLongPtrA")) {
-        LogError("Failed to create and enable SetWindowLongPtrA hook");
-        return false;
-    }
 
     #if 0
     if (!CreateAndEnableHook(SetWindowLongPtrW, SetWindowLongPtrW_Detour, (LPVOID*)&SetWindowLongPtrW_Original, "SetWindowLongPtrW")) {
@@ -289,25 +193,7 @@ void UninstallDisplaySettingsHooks() {
         ShowWindow_Original = nullptr;
     }
 
-    if (SetWindowLongA_Original) {
-        MH_DisableHook(SetWindowLongA);
-        SetWindowLongA_Original = nullptr;
-    }
 
-    if (SetWindowLongW_Original) {
-        MH_DisableHook(SetWindowLongW);
-        SetWindowLongW_Original = nullptr;
-    }
-
-    if (SetWindowLongPtrA_Original) {
-        MH_DisableHook(SetWindowLongPtrA);
-        SetWindowLongPtrA_Original = nullptr;
-    }
-
-    if (SetWindowLongPtrW_Original) {
-        MH_DisableHook(SetWindowLongPtrW);
-        SetWindowLongPtrW_Original = nullptr;
-    }
 
     g_display_settings_hooks_installed.store(false);
     LogInfo("Display settings hooks uninstalled");

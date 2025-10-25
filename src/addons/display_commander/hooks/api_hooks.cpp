@@ -31,6 +31,9 @@ GetActiveWindow_pfn GetActiveWindow_Original = nullptr;
 GetGUIThreadInfo_pfn GetGUIThreadInfo_Original = nullptr;
 SetThreadExecutionState_pfn SetThreadExecutionState_Original = nullptr;
 SetWindowLongPtrW_pfn SetWindowLongPtrW_Original = nullptr;
+SetWindowLongA_pfn SetWindowLongA_Original = nullptr;
+SetWindowLongW_pfn SetWindowLongW_Original = nullptr;
+SetWindowLongPtrA_pfn SetWindowLongPtrA_Original = nullptr;
 SetWindowPos_pfn SetWindowPos_Original = nullptr;
 SetCursor_pfn SetCursor_Original = nullptr;
 ShowCursor_pfn ShowCursor_Original = nullptr;
@@ -162,14 +165,7 @@ EXECUTION_STATE WINAPI SetThreadExecutionState_Detour(EXECUTION_STATE esFlags) {
 LONG_PTR WINAPI SetWindowLongPtrW_Detour(HWND hWnd, int nIndex, LONG_PTR dwNewLong) {
     // Only process if prevent_always_on_top is enabled
     if (settings::g_developerTabSettings.prevent_always_on_top.GetValue()) {
-        if (nIndex == GWL_STYLE) {
-            // WS_POPUP added to fix godstrike
-            dwNewLong &= ~(WS_CAPTION | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU | WS_POPUP);
-        }
-        if (nIndex == GWL_EXSTYLE) {
-            dwNewLong &= ~(WS_EX_DLGMODALFRAME | WS_EX_WINDOWEDGE | WS_EX_CLIENTEDGE | WS_EX_STATICEDGE | WS_EX_TOPMOST
-                           | WS_EX_TOOLWINDOW);
-        }
+        ModifyWindowStyle(nIndex, dwNewLong);
     }
 
     // Call original function with unmodified value
@@ -177,12 +173,56 @@ LONG_PTR WINAPI SetWindowLongPtrW_Detour(HWND hWnd, int nIndex, LONG_PTR dwNewLo
                                       : SetWindowLongPtrW(hWnd, nIndex, dwNewLong);
 }
 
+// Hooked SetWindowLongA function
+LONG WINAPI SetWindowLongA_Detour(HWND hWnd, int nIndex, LONG dwNewLong) {
+    g_display_settings_hook_counters[DISPLAY_SETTINGS_HOOK_SETWINDOWLONGA].fetch_add(1);
+    g_display_settings_hook_total_count.fetch_add(1);
+
+    // Check if fullscreen prevention is enabled
+    if (settings::g_developerTabSettings.prevent_fullscreen.GetValue()) {
+        // Prevent window style changes that enable fullscreen
+        ModifyWindowStyle(nIndex, dwNewLong);
+    }
+
+    return SetWindowLongA_Original(hWnd, nIndex, dwNewLong);
+}
+
+// Hooked SetWindowLongW function
+LONG WINAPI SetWindowLongW_Detour(HWND hWnd, int nIndex, LONG dwNewLong) {
+    g_display_settings_hook_counters[DISPLAY_SETTINGS_HOOK_SETWINDOWLONGW].fetch_add(1);
+    g_display_settings_hook_total_count.fetch_add(1);
+
+    // Check if fullscreen prevention is enabled
+    if (settings::g_developerTabSettings.prevent_fullscreen.GetValue()) {
+        // Prevent window style changes that enable fullscreen
+        ModifyWindowStyle(nIndex, dwNewLong);
+    }
+
+    return SetWindowLongW_Original(hWnd, nIndex, dwNewLong);
+}
+
+// Hooked SetWindowLongPtrA function
+LONG_PTR WINAPI SetWindowLongPtrA_Detour(HWND hWnd, int nIndex, LONG_PTR dwNewLong) {
+    g_display_settings_hook_counters[DISPLAY_SETTINGS_HOOK_SETWINDOWLONGPTRA].fetch_add(1);
+    g_display_settings_hook_total_count.fetch_add(1);
+
+    // Check if fullscreen prevention is enabled
+    if (settings::g_developerTabSettings.prevent_fullscreen.GetValue()) {
+        // Prevent window style changes that enable fullscreen
+        ModifyWindowStyle(nIndex, dwNewLong);
+    }
+
+    return SetWindowLongPtrA_Original(hWnd, nIndex, dwNewLong);
+}
+
 // Hooked SetWindowPos function
 BOOL WINAPI SetWindowPos_Detour(HWND hWnd, HWND hWndInsertAfter, int X, int Y, int cx, int cy, UINT uFlags) {
     // Only process if prevent_always_on_top is enabled
-    if (hWnd == g_game_window && settings::g_developerTabSettings.prevent_always_on_top.GetValue()) {
+    if (hWnd == g_game_window && settings::g_developerTabSettings.prevent_always_on_top.GetValue() && hWndInsertAfter != HWND_NOTOPMOST) {
         hWndInsertAfter = HWND_NOTOPMOST;
+        // uFlags |= SWP_FRAMECHANGED; perhaphs not needed
         /*
+
         // Check if we're trying to set the window to be always on top
         if (hWndInsertAfter != HWND_TOPMOST) {
             // Replace HWND_TOPMOST with HWND_NOTOPMOST to prevent always-on-top behavior
@@ -810,6 +850,24 @@ bool InstallWindowsApiHooks() {
         LogError("Failed to create and enable SetWindowLongPtrW hook");
     }
 
+    // Hook SetWindowLongA
+    if (!CreateAndEnableHook(SetWindowLongA, SetWindowLongA_Detour,
+                             reinterpret_cast<LPVOID*>(&SetWindowLongA_Original), "SetWindowLongA")) {
+        LogError("Failed to create and enable SetWindowLongA hook");
+    }
+
+    // Hook SetWindowLongW
+    if (!CreateAndEnableHook(SetWindowLongW, SetWindowLongW_Detour,
+                             reinterpret_cast<LPVOID*>(&SetWindowLongW_Original), "SetWindowLongW")) {
+        LogError("Failed to create and enable SetWindowLongW hook");
+    }
+
+    // Hook SetWindowLongPtrA
+    if (!CreateAndEnableHook(SetWindowLongPtrA, SetWindowLongPtrA_Detour,
+                             reinterpret_cast<LPVOID*>(&SetWindowLongPtrA_Original), "SetWindowLongPtrA")) {
+        LogError("Failed to create and enable SetWindowLongPtrA hook");
+    }
+
     // Hook SetWindowPos
     if (!CreateAndEnableHook(SetWindowPos, SetWindowPos_Detour, reinterpret_cast<LPVOID*>(&SetWindowPos_Original),
                              "SetWindowPos")) {
@@ -932,6 +990,9 @@ void UninstallApiHooks() {
     MH_RemoveHook(GetGUIThreadInfo);
     MH_RemoveHook(SetThreadExecutionState);
     MH_RemoveHook(SetWindowLongPtrW);
+    MH_RemoveHook(SetWindowLongA);
+    MH_RemoveHook(SetWindowLongW);
+    MH_RemoveHook(SetWindowLongPtrA);
     MH_RemoveHook(SetWindowPos);
     MH_RemoveHook(SetCursor);
     MH_RemoveHook(ShowCursor);
@@ -970,6 +1031,9 @@ void UninstallApiHooks() {
     GetGUIThreadInfo_Original = nullptr;
     SetThreadExecutionState_Original = nullptr;
     SetWindowLongPtrW_Original = nullptr;
+    SetWindowLongA_Original = nullptr;
+    SetWindowLongW_Original = nullptr;
+    SetWindowLongPtrA_Original = nullptr;
     SetWindowPos_Original = nullptr;
     SetCursor_Original = nullptr;
     ShowCursor_Original = nullptr;

@@ -92,5 +92,19 @@ MH_STATUS SafeInitializeMinHook(display_commanderhooks::HookType hookType);
 const char* D3DSwapEffectToString(uint32_t swapEffect);
 std::string D3DPresentFlagsToString(uint32_t presentFlags);
 
+// Window style modification helper function
+// Modifies window styles to prevent fullscreen/always-on-top behavior
+template<typename T>
+inline void ModifyWindowStyle(int nIndex, T& dwNewLong) {
+    if (nIndex == GWL_STYLE) {
+        // WS_POPUP added to fix godstrike
+        dwNewLong &= ~(WS_CAPTION | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU | WS_POPUP);
+    }
+    if (nIndex == GWL_EXSTYLE) {
+        dwNewLong &= ~(WS_EX_DLGMODALFRAME | WS_EX_WINDOWEDGE | WS_EX_CLIENTEDGE | WS_EX_STATICEDGE | WS_EX_TOPMOST
+                       | WS_EX_TOOLWINDOW);
+    }
+}
+
 // External declarations needed by utility functions
 extern std::atomic<std::shared_ptr<const std::vector<MonitorInfo>>> g_monitors;

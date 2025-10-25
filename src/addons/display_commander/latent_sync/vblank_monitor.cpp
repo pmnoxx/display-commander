@@ -1,6 +1,7 @@
 #include "vblank_monitor.hpp"
 #include "../display/query_display.hpp"
 #include "../globals.hpp"
+#include "../hooks/api_hooks.hpp"
 #include "../utils/logging.hpp"
 #include "utils/timing.hpp"
 #include <dxgi1_6.h>
@@ -314,7 +315,7 @@ bool VBlankMonitor::EnsureAdapterBinding() {
     }
 
     // Try to bind to foreground window if no specific binding
-    HWND hwnd = GetForegroundWindow();
+    HWND hwnd = display_commanderhooks::GetForegroundWindow_Direct();
     {
         std::ostringstream oss;
         oss << "EnsureAdapterBinding: foreground hwnd=" << hwnd;

@@ -60,6 +60,10 @@ HWND WINAPI GetFocus_Detour() {
     return GetFocus_Original ? GetFocus_Original() : GetFocus();
 }
 
+HWND WINAPI GetForegroundWindow_Direct() {
+    return GetForegroundWindow_Original ? GetForegroundWindow_Original() : GetForegroundWindow();
+}
+
 // Hooked GetForegroundWindow function
 HWND WINAPI GetForegroundWindow_Detour() {
     if (s_continue_rendering.load() && g_game_window.load() != nullptr && IsWindow(g_game_window.load())) {
@@ -70,7 +74,7 @@ HWND WINAPI GetForegroundWindow_Detour() {
     }
 
     // Call original function
-    return GetForegroundWindow_Original ? GetForegroundWindow_Original() : GetForegroundWindow();
+    return GetForegroundWindow_Direct();
 }
 
 // Hooked GetActiveWindow function

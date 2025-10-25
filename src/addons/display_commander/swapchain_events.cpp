@@ -197,6 +197,7 @@ void hookToSwapChain(reshade::api::swapchain *swapchain) {
                 if (display_commanderhooks::dxgi::HookSwapchain(dxgi_swapchain)) {
                     LogInfo("Successfully hooked DXGI Present calls for swapchain: 0x%p", id3d10device);
                 }
+                dxgi_swapchain->Release();
             }
             return;
         }
@@ -212,6 +213,7 @@ void hookToSwapChain(reshade::api::swapchain *swapchain) {
                 } else {
                     LogWarn("Failed to hook DXGI Present calls for swapchain: 0x%p", dxgi_swapchain);
                 }
+                dxgi_swapchain->Release();
             }
 
             return;
@@ -228,6 +230,7 @@ void hookToSwapChain(reshade::api::swapchain *swapchain) {
                 } else {
                     LogWarn("Failed to hook DXGI Present calls for swapchain: 0x%p", dxgi_swapchain);
                 }
+                dxgi_swapchain->Release();
             }
             return;
         }

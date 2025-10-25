@@ -40,7 +40,6 @@ LRESULT CALLBACK WindowProc_Detour(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
             // Suppress focus loss messages when continue rendering is enabled
             if (LOWORD(wParam) == WA_INACTIVE) {
                 LogInfo("Suppressed window deactivation message due to continue rendering - HWND: 0x%p", hwnd);
-                SendFakeActivationMessages(hwnd);
                 return 0; // Suppress the message
             }
         }
@@ -73,7 +72,7 @@ LRESULT CALLBACK WindowProc_Detour(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
                 // Application is being activated - ensure proper state
                 LogInfo("WM_ACTIVATEAPP: Application activated - ensuring continued rendering - HWND: 0x%p", hwnd);
                 // Send fake focus message to maintain active state
-                DetourWindowMessage(hwnd, WM_SETFOCUS, 0, 0);
+                //DetourWindowMessage(hwnd, WM_SETFOCUS, 0, 0);
             }
         }
         break;

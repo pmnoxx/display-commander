@@ -113,6 +113,8 @@ GetKeyNameTextW_pfn GetKeyNameTextW_Original = nullptr;
 SendInput_pfn SendInput_Original = nullptr;
 keybd_event_pfn keybd_event_Original = nullptr;
 mouse_event_pfn mouse_event_Original = nullptr;
+SetCapture_pfn SetCapture_Original = nullptr;
+ReleaseCapture_pfn ReleaseCapture_Original = nullptr;
 MapVirtualKey_pfn MapVirtualKey_Original = nullptr;
 MapVirtualKeyEx_pfn MapVirtualKeyEx_Original = nullptr;
 DisplayConfigGetDeviceInfo_pfn DisplayConfigGetDeviceInfo_Original = nullptr;
@@ -167,6 +169,8 @@ static const std::array<HookInfo, HOOK_COUNT> g_hook_info = {{
     {"SendInput", DllGroup::USER32},
     {"keybd_event", DllGroup::USER32},
     {"mouse_event", DllGroup::USER32},
+    {"SetCapture", DllGroup::USER32},
+    {"ReleaseCapture", DllGroup::USER32},
     {"MapVirtualKey", DllGroup::USER32},
     {"MapVirtualKeyEx", DllGroup::USER32},
     {"DisplayConfigGetDeviceInfo", DllGroup::USER32},
@@ -1296,6 +1300,45 @@ void WINAPI mouse_event_Detour(DWORD dwFlags, DWORD dx, DWORD dy, DWORD dwData, 
     }
 }
 
+// Hooked SetCapture function
+HWND WINAPI SetCapture_Detour(HWND hWnd) {
+    // Track total calls
+    g_hook_stats[HOOK_SetCapture].increment_total();
+
+    if (hWnd != nullptr && ShouldBlockMouseInput()) {
+        ReleaseCapture();
+        return hWnd;
+    }
+
+    // Log the capture attempt
+    LogDebug("SetCapture_Detour: hWnd=0x%p", hWnd);
+
+    // Call original function
+    HWND result = SetCapture_Original ? SetCapture_Original(hWnd) : SetCapture(hWnd);
+
+    // Track unsuppressed calls
+    g_hook_stats[HOOK_SetCapture].increment_unsuppressed();
+
+    return result;
+}
+
+// Hooked ReleaseCapture function
+BOOL WINAPI ReleaseCapture_Detour() {
+    // Track total calls
+    g_hook_stats[HOOK_ReleaseCapture].increment_total();
+
+    // Log the release attempt
+    LogDebug("ReleaseCapture_Detour: called");
+
+    // Call original function
+    BOOL result = ReleaseCapture_Original ? ReleaseCapture_Original() : ReleaseCapture();
+
+    // Track unsuppressed calls
+    g_hook_stats[HOOK_ReleaseCapture].increment_unsuppressed();
+
+    return result;
+}
+
 // Hooked MapVirtualKey function
 UINT WINAPI MapVirtualKey_Detour(UINT uCode, UINT uMapType) {
     // Track total calls
@@ -1603,6 +1646,16 @@ bool InstallWindowsMessageHooks() {
         LogError("Failed to create and enable mouse_event hook");
     }
 
+    // Hook SetCapture
+    if (!CreateAndEnableHook(SetCapture, SetCapture_Detour, (LPVOID *)&SetCapture_Original, "SetCapture")) {
+        LogError("Failed to create and enable SetCapture hook");
+    }
+
+    // Hook ReleaseCapture
+    if (!CreateAndEnableHook(ReleaseCapture, ReleaseCapture_Detour, (LPVOID *)&ReleaseCapture_Original, "ReleaseCapture")) {
+        LogError("Failed to create and enable ReleaseCapture hook");
+    }
+
     // Hook MapVirtualKey
     if (!CreateAndEnableHook(MapVirtualKey, MapVirtualKey_Detour, (LPVOID *)&MapVirtualKey_Original, "MapVirtualKey")) {
         LogError("Failed to create and enable MapVirtualKey hook");
@@ -1724,6 +1777,8 @@ void UninstallWindowsMessageHooks() {
     SendInput_Original = nullptr;
     keybd_event_Original = nullptr;
     mouse_event_Original = nullptr;
+    SetCapture_Original = nullptr;
+    ReleaseCapture_Original = nullptr;
     MapVirtualKey_Original = nullptr;
     MapVirtualKeyEx_Original = nullptr;
     DisplayConfigGetDeviceInfo_Original = nullptr;

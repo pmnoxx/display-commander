@@ -79,6 +79,8 @@ enum HookIndex {
     HOOK_SendInput,
     HOOK_keybd_event,
     HOOK_mouse_event,
+    HOOK_SetCapture,
+    HOOK_ReleaseCapture,
     HOOK_MapVirtualKey,
     HOOK_MapVirtualKeyEx,
     HOOK_DisplayConfigGetDeviceInfo,
@@ -189,6 +191,8 @@ using GetKeyNameTextW_pfn = int(WINAPI *)(LONG, LPWSTR, int);
 using SendInput_pfn = UINT(WINAPI *)(UINT, LPINPUT, int);
 using keybd_event_pfn = void(WINAPI *)(BYTE, BYTE, DWORD, ULONG_PTR);
 using mouse_event_pfn = void(WINAPI *)(DWORD, DWORD, DWORD, DWORD, ULONG_PTR);
+using SetCapture_pfn = HWND(WINAPI *)(HWND);
+using ReleaseCapture_pfn = BOOL(WINAPI *)();
 using MapVirtualKey_pfn = UINT(WINAPI *)(UINT, UINT);
 using MapVirtualKeyEx_pfn = UINT(WINAPI *)(UINT, UINT, HKL);
 using DisplayConfigGetDeviceInfo_pfn = LONG(WINAPI *)(DISPLAYCONFIG_DEVICE_INFO_HEADER *);
@@ -231,6 +235,8 @@ extern GetKeyNameTextW_pfn GetKeyNameTextW_Original;
 extern SendInput_pfn SendInput_Original;
 extern keybd_event_pfn keybd_event_Original;
 extern mouse_event_pfn mouse_event_Original;
+extern SetCapture_pfn SetCapture_Original;
+extern ReleaseCapture_pfn ReleaseCapture_Original;
 extern MapVirtualKey_pfn MapVirtualKey_Original;
 extern MapVirtualKeyEx_pfn MapVirtualKeyEx_Original;
 extern DisplayConfigGetDeviceInfo_pfn DisplayConfigGetDeviceInfo_Original;
@@ -278,6 +284,8 @@ int WINAPI GetKeyNameTextW_Detour(LONG lParam, LPWSTR lpString, int cchSize);
 UINT WINAPI SendInput_Detour(UINT nInputs, LPINPUT pInputs, int cbSize);
 void WINAPI keybd_event_Detour(BYTE bVk, BYTE bScan, DWORD dwFlags, ULONG_PTR dwExtraInfo);
 void WINAPI mouse_event_Detour(DWORD dwFlags, DWORD dx, DWORD dy, DWORD dwData, ULONG_PTR dwExtraInfo);
+HWND WINAPI SetCapture_Detour(HWND hWnd);
+BOOL WINAPI ReleaseCapture_Detour();
 UINT WINAPI MapVirtualKey_Detour(UINT uCode, UINT uMapType);
 UINT WINAPI MapVirtualKeyEx_Detour(UINT uCode, UINT uMapType, HKL dwhkl);
 LONG WINAPI DisplayConfigGetDeviceInfo_Detour(DISPLAYCONFIG_DEVICE_INFO_HEADER *requestPacket);

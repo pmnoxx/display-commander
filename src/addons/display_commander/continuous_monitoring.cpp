@@ -104,6 +104,7 @@ void check_is_background() {
 
             if (app_in_background) {
                 LogInfo("Continuous monitoring: App moved to BACKGROUND");
+                ReleaseCapture();
                 // Release cursor clipping when going to background
                 //display_commanderhooks::ClipCursor_Direct(nullptr);
 

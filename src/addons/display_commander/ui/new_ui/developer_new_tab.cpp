@@ -1,6 +1,7 @@
 #include "developer_new_tab.hpp"
 #include "../../globals.hpp"
 #include "../../nvapi/fake_nvapi_manager.hpp"
+#include "../../nvapi/nvapi_fullscreen_prevention.hpp"
 #include "../../res/forkawesome.h"
 #include "../../settings/developer_tab_settings.hpp"
 #include "../../settings/experimental_tab_settings.hpp"
@@ -382,6 +383,7 @@ void DrawNvapiSettings() {
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip(
                 "Press Alt-Enter to enable HDR.\n"
+                "This is required for proper HDR functionality.");
         }
 
     } else {
@@ -406,6 +408,19 @@ void DrawNvapiSettings() {
             "- Resident Evil 7\n"
             "- Resident Evil 8\n"
             "- Sekiro: Shadows Die Twice");
+    }
+
+    // Display restart warning if needed
+    if (s_restart_needed_nvapi.load()) {
+        ImGui::Spacing();
+        ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "Game restart required to apply NVAPI changes.");
+    }
+    if (::g_nvapiFullscreenPrevention.IsAvailable()) {
+        // Library loaded successfully
+        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), ICON_FK_OK " NVAPI Library: Loaded");
+    } else {
+        // Library not loaded
+        ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), ICON_FK_CANCEL " NVAPI Library: Not Loaded");
     }
 
     // Minimal NVIDIA Reflex Controls (device runtime dependent)

@@ -5,6 +5,7 @@
 #include "../utils/general_utils.hpp"
 #include "../utils/logging.hpp"
 #include "../settings/main_tab_settings.hpp"
+#include "../settings/developer_tab_settings.hpp"
 #include "../ui/ui_display_tab.hpp"
 
 #include <sstream>
@@ -35,8 +36,8 @@ void CalculateWindowState(HWND hwnd, const char* reason) {
     local_state.new_ex_style = local_state.current_ex_style;
 
     // Apply window style modifications using the shared helper function
-    ModifyWindowStyle(GWL_STYLE, local_state.new_style);
-    ModifyWindowStyle(GWL_EXSTYLE, local_state.new_ex_style);
+    ModifyWindowStyle(GWL_STYLE, local_state.new_style, settings::g_developerTabSettings.prevent_always_on_top.GetValue());
+    ModifyWindowStyle(GWL_EXSTYLE, local_state.new_ex_style, settings::g_developerTabSettings.prevent_always_on_top.GetValue());
 
     if (local_state.current_style != local_state.new_style) {
         local_state.style_changed = true;

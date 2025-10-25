@@ -164,9 +164,7 @@ EXECUTION_STATE WINAPI SetThreadExecutionState_Detour(EXECUTION_STATE esFlags) {
 // Hooked SetWindowLongPtrW function
 LONG_PTR WINAPI SetWindowLongPtrW_Detour(HWND hWnd, int nIndex, LONG_PTR dwNewLong) {
     // Only process if prevent_always_on_top is enabled
-    if (settings::g_developerTabSettings.prevent_always_on_top.GetValue()) {
-        ModifyWindowStyle(nIndex, dwNewLong);
-    }
+    ModifyWindowStyle(nIndex, dwNewLong, settings::g_developerTabSettings.prevent_always_on_top.GetValue());
 
     // Call original function with unmodified value
     return SetWindowLongPtrW_Original ? SetWindowLongPtrW_Original(hWnd, nIndex, dwNewLong)
@@ -179,10 +177,7 @@ LONG WINAPI SetWindowLongA_Detour(HWND hWnd, int nIndex, LONG dwNewLong) {
     g_display_settings_hook_total_count.fetch_add(1);
 
     // Check if fullscreen prevention is enabled
-    if (settings::g_developerTabSettings.prevent_fullscreen.GetValue()) {
-        // Prevent window style changes that enable fullscreen
-        ModifyWindowStyle(nIndex, dwNewLong);
-    }
+    ModifyWindowStyle(nIndex, dwNewLong, settings::g_developerTabSettings.prevent_always_on_top.GetValue());
 
     return SetWindowLongA_Original(hWnd, nIndex, dwNewLong);
 }
@@ -193,10 +188,7 @@ LONG WINAPI SetWindowLongW_Detour(HWND hWnd, int nIndex, LONG dwNewLong) {
     g_display_settings_hook_total_count.fetch_add(1);
 
     // Check if fullscreen prevention is enabled
-    if (settings::g_developerTabSettings.prevent_fullscreen.GetValue()) {
-        // Prevent window style changes that enable fullscreen
-        ModifyWindowStyle(nIndex, dwNewLong);
-    }
+    ModifyWindowStyle(nIndex, dwNewLong, settings::g_developerTabSettings.prevent_always_on_top.GetValue());
 
     return SetWindowLongW_Original(hWnd, nIndex, dwNewLong);
 }
@@ -207,10 +199,10 @@ LONG_PTR WINAPI SetWindowLongPtrA_Detour(HWND hWnd, int nIndex, LONG_PTR dwNewLo
     g_display_settings_hook_total_count.fetch_add(1);
 
     // Check if fullscreen prevention is enabled
-    if (settings::g_developerTabSettings.prevent_fullscreen.GetValue()) {
+   // if (settings::g_developerTabSettings.prevent_fullscreen.GetValue()) {
         // Prevent window style changes that enable fullscreen
-        ModifyWindowStyle(nIndex, dwNewLong);
-    }
+    ModifyWindowStyle(nIndex, dwNewLong, settings::g_developerTabSettings.prevent_always_on_top.GetValue());
+   // }
 
     return SetWindowLongPtrA_Original(hWnd, nIndex, dwNewLong);
 }

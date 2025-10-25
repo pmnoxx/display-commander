@@ -20,9 +20,6 @@ static WNDPROC g_original_window_proc = nullptr;
 
 // Hooked window procedure
 LRESULT CALLBACK WindowProc_Detour(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
-    // Track only known messages for debugging
-    ui::new_ui::AddMessageToHistoryIfKnown(uMsg, wParam, lParam);
-
     // Check if continue rendering is enabled
     bool continue_rendering_enabled = s_continue_rendering.load();
 
@@ -40,6 +37,8 @@ LRESULT CALLBACK WindowProc_Detour(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
             // Suppress focus loss messages when continue rendering is enabled
             if (LOWORD(wParam) == WA_INACTIVE) {
                 LogInfo("Suppressed window deactivation message due to continue rendering - HWND: 0x%p", hwnd);
+                // Update the message history to show this was suppressed
+                ui::new_ui::AddMessageToHistoryIfKnown(uMsg, wParam, lParam, true);
                 return 0; // Suppress the message
             }
         }
@@ -54,7 +53,9 @@ LRESULT CALLBACK WindowProc_Detour(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
         // Handle focus loss - suppress if continue rendering is enabled
         if (continue_rendering_enabled) {
             LogInfo("Suppressed WM_KILLFOCUS message due to continue rendering - HWND: 0x%p", hwnd);
-           //SendFakeActivationMessages(hwnd);
+            // Update the message history to show this was suppressed
+            ui::new_ui::AddMessageToHistoryIfKnown(uMsg, wParam, lParam, true);
+            SendFakeActivationMessages(hwnd);
             return 0; // Suppress the message
         }
         LogInfo("Window focus lost message received - HWND: 0x%p", hwnd);
@@ -65,14 +66,16 @@ LRESULT CALLBACK WindowProc_Detour(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
         if (continue_rendering_enabled) {
             if (wParam == FALSE) { // Application is being deactivated
                 LogInfo("WM_ACTIVATEAPP: Suppressing application deactivation - HWND: 0x%p", hwnd);
+                // Update the message history to show this was suppressed
+                ui::new_ui::AddMessageToHistoryIfKnown(uMsg, wParam, lParam, true);
                 // Send fake activation to keep the game thinking it's active
-           //     SendFakeActivationMessages(hwnd);
+                SendFakeActivationMessages(hwnd);
                 return 0; // Suppress the message
             } else {
                 // Application is being activated - ensure proper state
                 LogInfo("WM_ACTIVATEAPP: Application activated - ensuring continued rendering - HWND: 0x%p", hwnd);
                 // Send fake focus message to maintain active state
-                //DetourWindowMessage(hwnd, WM_SETFOCUS, 0, 0);
+                DetourWindowMessage(hwnd, WM_SETFOCUS, 0, 0);
             }
         }
         break;
@@ -84,11 +87,13 @@ LRESULT CALLBACK WindowProc_Detour(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
                 // Non-client area is being activated - ensure window stays active
                 LogInfo("WM_NCACTIVATE: Window activated - ensuring continued rendering - HWND: 0x%p", hwnd);
                 // Send fake focus message to maintain active state
-                // DetourWindowMessage(hwnd, WM_SETFOCUS, 0, 0);
+                DetourWindowMessage(hwnd, WM_SETFOCUS, 0, 0);
                 return 0;
             } else {
                 // Non-client area is being deactivated - suppress and fake activation
                 LogInfo("WM_NCACTIVATE: Suppressing deactivation - HWND: 0x%p", hwnd);
+                // Update the message history to show this was suppressed
+                ui::new_ui::AddMessageToHistoryIfKnown(uMsg, wParam, lParam, true);
            //     SendFakeActivationMessages(hwnd);
                 return 0; // Suppress the message
             }
@@ -116,6 +121,8 @@ LRESULT CALLBACK WindowProc_Detour(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
             // Check if window is being minimized or hidden
             if (pWp->flags & SWP_HIDEWINDOW) {
                 LogInfo("WM_WINDOWPOSCHANGED: Suppressing window hide - HWND: 0x%p", hwnd);
+                // Update the message history to show this was suppressed
+                ui::new_ui::AddMessageToHistoryIfKnown(uMsg, wParam, lParam, true);
           //      SendFakeActivationMessages(hwnd);
                 return 0; // Suppress the message
             }
@@ -126,6 +133,8 @@ LRESULT CALLBACK WindowProc_Detour(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
         // Handle window visibility changes
         if (continue_rendering_enabled && wParam == FALSE) {
             // Suppress window hide messages when continue rendering is enabled
+            // Update the message history to show this was suppressed
+            ui::new_ui::AddMessageToHistoryIfKnown(uMsg, wParam, lParam, true);
             // Send fake activation to keep the game thinking it's active
        //     SendFakeActivationMessages(hwnd);
             return 0; // Suppress the message
@@ -155,6 +164,8 @@ LRESULT CALLBACK WindowProc_Detour(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
             // Prevent minimization when continue rendering is enabled
             if (wParam == SC_MINIMIZE) {
                 LogInfo("WM_SYSCOMMAND: Suppressing minimize command - HWND: 0x%p", hwnd);
+                // Update the message history to show this was suppressed
+                ui::new_ui::AddMessageToHistoryIfKnown(uMsg, wParam, lParam, true);
            //     SendFakeActivationMessages(hwnd);
                 return 0; // Suppress the message
             }
@@ -190,6 +201,9 @@ LRESULT CALLBACK WindowProc_Detour(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
     default:
         break;
     }
+
+    // Track message as not suppressed (since we're calling the original procedure)
+    ui::new_ui::AddMessageToHistoryIfKnown(uMsg, wParam, lParam, false);
 
     // Call the original window procedure
     if (g_original_window_proc) {

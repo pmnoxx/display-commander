@@ -95,14 +95,17 @@ std::string D3DPresentFlagsToString(uint32_t presentFlags);
 // Window style modification helper function
 // Modifies window styles to prevent fullscreen/always-on-top behavior
 template<typename T>
-inline void ModifyWindowStyle(int nIndex, T& dwNewLong) {
+inline void ModifyWindowStyle(int nIndex, T& dwNewLong, bool prevent_always_on_top) {
     if (nIndex == GWL_STYLE) {
         // WS_POPUP added to fix godstrike
         dwNewLong &= ~(WS_CAPTION | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU | WS_POPUP);
     }
     if (nIndex == GWL_EXSTYLE) {
-        dwNewLong &= ~(WS_EX_DLGMODALFRAME | WS_EX_WINDOWEDGE | WS_EX_CLIENTEDGE | WS_EX_STATICEDGE | WS_EX_TOPMOST
-                       | WS_EX_TOOLWINDOW);
+        dwNewLong &= ~(WS_EX_DLGMODALFRAME | WS_EX_WINDOWEDGE | WS_EX_CLIENTEDGE | WS_EX_STATICEDGE);
+
+        if (prevent_always_on_top) {
+            dwNewLong &= ~(WS_EX_TOPMOST | WS_EX_TOOLWINDOW);
+        }
     }
 }
 

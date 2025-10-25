@@ -3,6 +3,7 @@
 #include "../../autoclick/autoclick_manager.hpp"
 #include "../../dlss/dlss_indicator_manager.hpp"
 #include "../../globals.hpp"
+#include "../../hooks/api_hooks.hpp"
 #include "../../hooks/sleep_hooks.hpp"
 #include "../../hooks/timeslowdown_hooks.hpp"
 #include "../../hooks/hid_suppression_hooks.hpp"
@@ -266,7 +267,7 @@ void DrawMouseCoordinatesDisplay() {
     ImGui::Text("Window Valid: %s", (hwnd && IsWindow(hwnd)) ? "Yes" : "No");
 
     // Show current foreground window for comparison
-    HWND foreground_hwnd = GetForegroundWindow();
+    HWND foreground_hwnd = display_commanderhooks::GetForegroundWindow_Direct();
     ImGui::Text("Foreground Window: 0x%p", foreground_hwnd);
     ImGui::Text("Game Window is Foreground: %s", (hwnd == foreground_hwnd) ? "Yes" : "No");
 }

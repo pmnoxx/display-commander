@@ -84,6 +84,10 @@ HCURSOR WINAPI SetCursor_Direct(HCURSOR hCursor);
 
 // ShowCursor direct access function
 int WINAPI ShowCursor_Direct(BOOL bShow);
+
+// GetForegroundWindow direct access function
+HWND WINAPI GetForegroundWindow_Direct();
+
 // Restore cursor function
 void RestoreSetCursor();
 void RestoreShowCursor();

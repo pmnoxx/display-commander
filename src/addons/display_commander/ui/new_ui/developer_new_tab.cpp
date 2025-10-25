@@ -1,6 +1,5 @@
 #include "developer_new_tab.hpp"
 #include "../../globals.hpp"
-#include "../../nvapi/nvapi_fullscreen_prevention.hpp"
 #include "../../nvapi/fake_nvapi_manager.hpp"
 #include "../../res/forkawesome.h"
 #include "../../settings/developer_tab_settings.hpp"
@@ -344,14 +343,6 @@ void DrawHdrDisplaySettings() {
 
 void DrawNvapiSettings() {
 
-    // NVAPI Fullscreen Prevention
-    if (CheckboxSetting(settings::g_developerTabSettings.nvapi_fullscreen_prevention, "NVAPI Fullscreen Prevention")) {
-        s_nvapi_fullscreen_prevention.store(settings::g_developerTabSettings.nvapi_fullscreen_prevention.GetValue());
-        s_restart_needed_nvapi.store(true);
-    }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Use NVAPI to prevent fullscreen mode at the driver level.");
-    }
 
     // NVAPI Auto-enable checkbox
     if (CheckboxSetting(settings::g_developerTabSettings.nvapi_auto_enable_enabled, "Enable NVAPI Auto-enable for Games")) {
@@ -366,8 +357,7 @@ void DrawNvapiSettings() {
     ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "NVAPI Auto-enable for Games");
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip(
-            "Automatically enable NVAPI features for specific games:\n"
-            "- NVAPI Fullscreen Prevention\n\n"
+            "Automatically enable NVAPI features for specific games.\n\n"
             "Note: DLDSR needs to be off for proper functionality\n\n"
             "Supported games:\n"
             "- Armored Core 6\n"
@@ -384,13 +374,6 @@ void DrawNvapiSettings() {
     if (s_restart_needed_nvapi.load()) {
         ImGui::Spacing();
         ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "Game restart required to apply NVAPI changes.");
-    }
-    if (::g_nvapiFullscreenPrevention.IsAvailable()) {
-        // Library loaded successfully
-        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), ICON_FK_OK " NVAPI Library: Loaded");
-    } else {
-        // Library not loaded
-        ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), ICON_FK_CANCEL " NVAPI Library: Not Loaded");
     }
 
     // Minimal NVIDIA Reflex Controls (device runtime dependent)

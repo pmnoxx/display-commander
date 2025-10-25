@@ -10,7 +10,6 @@ std::atomic<bool> s_continue_rendering{false};            // Disabled by default
 std::atomic<bool> s_hide_hdr_capabilities{false};
 std::atomic<bool> s_enable_flip_chain{false};
 std::atomic<bool> s_auto_colorspace{false};
-std::atomic<bool> s_nvapi_fullscreen_prevention{false};  // disabled by default
 std::atomic<bool> s_nvapi_auto_enable_enabled{true};    // enabled by default
 
 // Reflex settings
@@ -49,8 +48,6 @@ DeveloperTabSettings::DeveloperTabSettings()
       enable_flip_chain("EnableFlipChain", s_enable_flip_chain, s_enable_flip_chain.load(), "DisplayCommander"),
       auto_colorspace("AutoColorspace", s_auto_colorspace, s_auto_colorspace.load(), "DisplayCommander"),
       // enable_d3d9e_upgrade("EnableD3D9EUpgrade", s_enable_d3d9e_upgrade, true, "DisplayCommander"),
-      nvapi_fullscreen_prevention("NvapiFullscreenPrevention", s_nvapi_fullscreen_prevention,
-                                  s_nvapi_fullscreen_prevention.load(), "DisplayCommander"),
       nvapi_auto_enable_enabled("NvapiAutoEnableEnabled", s_nvapi_auto_enable_enabled,
                                 s_nvapi_auto_enable_enabled.load(), "DisplayCommander"),
 
@@ -124,7 +121,7 @@ std::vector<ui::new_ui::SettingBase*> DeveloperTabSettings::GetAllSettings() {
     return {&prevent_fullscreen, &continue_rendering, &prevent_always_on_top,
             &hide_hdr_capabilities, &enable_flip_chain, &auto_colorspace,
             //&enable_d3d9e_upgrade,
-            &nvapi_fullscreen_prevention, &nvapi_auto_enable_enabled,
+            &nvapi_auto_enable_enabled,
 
             &reflex_auto_configure, &reflex_enable, &reflex_low_latency, &reflex_boost, &reflex_use_markers,
             &reflex_enable_sleep, &reflex_logging, &reflex_supress_native,

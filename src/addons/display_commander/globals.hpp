@@ -632,7 +632,6 @@ extern std::atomic<bool> s_continue_rendering;
 extern std::atomic<bool> s_hide_hdr_capabilities;
 extern std::atomic<bool> s_enable_flip_chain;
 extern std::atomic<bool> s_auto_colorspace;
-extern std::atomic<bool> s_nvapi_fullscreen_prevention;
 
 // Reflex settings
 extern std::atomic<bool> s_reflex_auto_configure;

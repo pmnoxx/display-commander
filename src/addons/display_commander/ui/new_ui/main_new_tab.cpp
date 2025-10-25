@@ -1655,29 +1655,6 @@ void DrawImportantInfo() {
                 "Shows as 'GPU Duration' in the timing metrics below.");
         }
 
-        // Display GPU fence status/failure reason
-        if (gpu_measurement) {
-            const char* failure_reason = ::g_gpu_fence_failure_reason.load();
-            if (failure_reason != nullptr) {
-                ImGui::Indent();
-                ui::colors::PushIconColor(ui::colors::ICON_ERROR);
-                ImGui::TextUnformatted(ICON_FK_WARNING);
-                ImGui::PopStyleColor();
-                ImGui::SameLine();
-                ImGui::TextColored(ui::colors::TEXT_ERROR, "GPU Fence Failed: %s", failure_reason);
-                ImGui::Unindent();
-            } else {
-                ImGui::Indent();
-                ui::colors::PushIconColor(ui::colors::ICON_SUCCESS);
-                ImGui::TextUnformatted(ICON_FK_OK);
-                ImGui::PopStyleColor();
-                ImGui::SameLine();
-                ImGui::TextColored(ui::colors::TEXT_SUCCESS, "GPU Fence Active");
-                ImGui::Unindent();
-            }
-        }
-
-        ImGui::Spacing();
 
         DrawFrameTimeGraph();
 

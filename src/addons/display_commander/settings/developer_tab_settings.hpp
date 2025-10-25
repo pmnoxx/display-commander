@@ -39,7 +39,6 @@ class DeveloperTabSettings {
     // BoolSettingRef enable_d3d9e_upgrade;
 
     // NVAPI Settings
-    BoolSettingRef nvapi_fullscreen_prevention;
     BoolSettingRef nvapi_auto_enable_enabled;
 
     // Keyboard Shortcut Settings (Experimental)

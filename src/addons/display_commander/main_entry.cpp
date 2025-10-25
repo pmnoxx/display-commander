@@ -10,7 +10,6 @@
 #include "hooks/window_proc_hooks.hpp"
 #include "latency/latency_manager.hpp"
 #include "latent_sync/refresh_rate_monitor_integration.hpp"
-#include "nvapi/nvapi_fullscreen_prevention.hpp"
 #include "process_exit_hooks.hpp"
 #include "settings/developer_tab_settings.hpp"
 #include "settings/main_tab_settings.hpp"
@@ -724,8 +723,6 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
                 g_latencyManager->Shutdown();
             }
 
-            // Clean up NVAPI fullscreen prevention
-            g_nvapiFullscreenPrevention.Cleanup();
 
             // Clean up fake NVAPI
             nvapi::g_fakeNvapiManager.Cleanup();

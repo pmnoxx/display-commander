@@ -2,9 +2,9 @@
 #include "../addon.hpp"
 #include "../display_cache.hpp"
 #include "../globals.hpp"
+#include "../utils/general_utils.hpp"
 #include "../utils/logging.hpp"
 #include "../settings/main_tab_settings.hpp"
-#include "../settings/developer_tab_settings.hpp"
 #include "../ui/ui_display_tab.hpp"
 
 #include <sstream>
@@ -30,22 +30,14 @@ void CalculateWindowState(HWND hwnd, const char* reason) {
     local_state.current_style = GetWindowLongPtrW(hwnd, GWL_STYLE);
     local_state.current_ex_style = GetWindowLongPtrW(hwnd, GWL_EXSTYLE);
 
-    // Calculate new borderless styles
-    local_state.new_style =
-        local_state.current_style & ~(WS_CAPTION | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU | WS_POPUP);
-    local_state.new_ex_style =
-        local_state.current_ex_style & ~(WS_EX_DLGMODALFRAME | WS_EX_WINDOWEDGE | WS_EX_CLIENTEDGE | WS_EX_STATICEDGE);
+    // Calculate new borderless styles using the shared helper function
+    local_state.new_style = local_state.current_style;
+    local_state.new_ex_style = local_state.current_ex_style;
 
-    // PREVENT ALWAYS ON TOP: Remove WS_EX_TOPMOST and WS_EX_TOOLWINDOW styles
-    if (settings::g_developerTabSettings.prevent_always_on_top.GetValue() && (local_state.new_ex_style & (WS_EX_TOPMOST | WS_EX_TOOLWINDOW)) != 0) {
-        local_state.new_ex_style &= ~(WS_EX_TOPMOST | WS_EX_TOOLWINDOW);
+    // Apply window style modifications using the shared helper function
+    ModifyWindowStyle(GWL_STYLE, local_state.new_style);
+    ModifyWindowStyle(GWL_EXSTYLE, local_state.new_ex_style);
 
-        std::ostringstream oss;
-        oss << "ApplyWindowChange: PREVENTING ALWAYS ON TOP - Removing "
-                "extended styles 0x"
-            << std::hex << (local_state.current_ex_style & (WS_EX_TOPMOST | WS_EX_TOOLWINDOW));
-        LogInfo(oss.str().c_str());
-    }
     if (local_state.current_style != local_state.new_style) {
         local_state.style_changed = true;
     }

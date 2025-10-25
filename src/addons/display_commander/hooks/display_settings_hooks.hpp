@@ -12,10 +12,6 @@ typedef LONG (WINAPI *ChangeDisplaySettingsExW_pfn)(LPCWSTR lpszDeviceName, DEVM
 // Window management hook function pointer types (for OpenGL fullscreen prevention)
 // SetWindowPos_pfn moved to api_hooks.hpp to avoid duplicate declaration
 typedef BOOL (WINAPI *ShowWindow_pfn)(HWND hWnd, int nCmdShow);
-typedef LONG (WINAPI *SetWindowLongA_pfn)(HWND hWnd, int nIndex, LONG dwNewLong);
-typedef LONG (WINAPI *SetWindowLongW_pfn)(HWND hWnd, int nIndex, LONG dwNewLong);
-typedef LONG_PTR (WINAPI *SetWindowLongPtrA_pfn)(HWND hWnd, int nIndex, LONG_PTR dwNewLong);
-typedef LONG_PTR (WINAPI *SetWindowLongPtrW_pfn)(HWND hWnd, int nIndex, LONG_PTR dwNewLong);
 
 // Display settings hook counters (defined in globals.hpp)
 
@@ -28,10 +24,6 @@ extern ChangeDisplaySettingsExW_pfn ChangeDisplaySettingsExW_Original;
 // Window management original function pointers
 // SetWindowPos_Original moved to api_hooks.hpp to avoid duplicate declaration
 extern ShowWindow_pfn ShowWindow_Original;
-extern SetWindowLongA_pfn SetWindowLongA_Original;
-extern SetWindowLongW_pfn SetWindowLongW_Original;
-extern SetWindowLongPtrA_pfn SetWindowLongPtrA_Original;
-extern SetWindowLongPtrW_pfn SetWindowLongPtrW_Original;
 
 // Hook installation function
 bool InstallDisplaySettingsHooks();

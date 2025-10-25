@@ -32,7 +32,7 @@ bool ShouldBlockKeyboardInput() {
         case InputBlockingMode::kEnabled:
             return true;
         case InputBlockingMode::kEnabledInBackground:
-            return is_background || IsUIOpenedRecently();
+            return is_background;
         default:
             return false;
     }
@@ -48,7 +48,7 @@ bool ShouldBlockMouseInput() {
         case InputBlockingMode::kEnabled:
             return true;
         case InputBlockingMode::kEnabledInBackground:
-            return is_background || IsUIOpenedRecently();
+            return is_background;
         default:
             return false;
     }
@@ -64,7 +64,7 @@ bool ShouldBlockGamepadInput() {
         case InputBlockingMode::kEnabled:
             return true;
         case InputBlockingMode::kEnabledInBackground:
-            return is_background || IsUIOpenedRecently();
+            return is_background;
         default:
             return false;
     }

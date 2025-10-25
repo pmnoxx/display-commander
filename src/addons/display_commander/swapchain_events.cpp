@@ -1202,8 +1202,11 @@ void OnPresentUpdateBefore(reshade::api::command_queue * command_queue, reshade:
     // Check for XInput chord screenshot trigger
     display_commander::widgets::xinput_widget::CheckAndHandleScreenshot();
 
+
+    auto should_block_mouse_and_keyboard_input = display_commanderhooks::ShouldBlockMouseInput() && display_commanderhooks::ShouldBlockKeyboardInput();
+
     // Check if app is in background and block input for next frame if so
-    if (g_app_in_background.load(std::memory_order_acquire)) {
+    if (should_block_mouse_and_keyboard_input) {
         reshade::api::effect_runtime* runtime = GetFirstReShadeRuntime();
         if (runtime != nullptr) {
             runtime->block_input_next_frame();

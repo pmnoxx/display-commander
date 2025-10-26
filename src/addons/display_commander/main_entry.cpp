@@ -190,13 +190,82 @@ namespace {
 
 // Test callback for reshade_overlay event
 void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
-    // Check the setting from main tab
+    // Check the setting from main tab first
     if (!settings::g_mainTabSettings.show_test_overlay.GetValue()) {
         return;
     }
 
+    bool any_enabled = settings::g_mainTabSettings.show_fps_counter.GetValue() || settings::g_mainTabSettings.gpu_measurement_enabled.GetValue();
+
+    if (!any_enabled) {
+        return;
+    }
+
+    ImGui::SetNextWindowPos(ImVec2(10.0f, 10.0f), ImGuiCond_Always);
+    // Set transparent background for the window (30% opacity)
+    ImGui::SetNextWindowBgAlpha(0.3f);
+    ImGui::SetNextWindowSize(ImVec2(450, 65), ImGuiCond_FirstUseEver);
+    // Auto size the window to the content
+    ImGui::Begin("Test Window", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_AlwaysAutoResize);
+
+    // Get current FPS from performance ring buffer
+
+    if (settings::g_mainTabSettings.show_fps_counter.GetValue()) {
+        const uint32_t head = ::g_perf_ring_head.load(std::memory_order_acquire);
+        const double current_time = ::g_perf_time_seconds.load(std::memory_order_acquire);
+        const double one_second_ago = current_time - 1.0;
+
+        if (head > 0 && current_time > 0.0) {
+            // Iterate through samples from the last second
+            uint32_t sample_count = 0;
+            int oldest_sample_index = -1;
+
+            // Iterate backwards through the ring buffer up to 1 second
+            for (uint32_t i = 0; i < head && i < ::kPerfRingCapacity; ++i) {
+                uint32_t idx = (head - 1 - i) & (::kPerfRingCapacity - 1);
+                const ::PerfSample& sample = ::g_perf_ring[idx];
+
+                // not enough data yet
+                if (sample.fps == 0.0f) break;
+
+                // Stop if we've gone past 1 second ago
+                if (sample.timestamp_seconds < one_second_ago) {
+                    oldest_sample_index = idx;
+                    break;
+                }
+
+                sample_count++;
+            }
+
+            // Calculate average
+            if (sample_count > 0 && oldest_sample_index >= 0) {
+                auto average_fps = sample_count / (current_time - ::g_perf_ring[oldest_sample_index].timestamp_seconds);
+                if (settings::g_mainTabSettings.show_labels.GetValue()) {
+                    ImGui::Text("%.1f fps", average_fps);
+                } else {
+                    ImGui::Text("%.1f", average_fps);
+                }
+            }
+        }
+    }
+
+    if (settings::g_mainTabSettings.gpu_measurement_enabled.GetValue() != 0) {
+        // Display sim-to-display latency
+        LONGLONG latency_ns = ::g_sim_to_display_latency_ns.load();
+        if (latency_ns > 0) {
+            double latency_ms = (1.0 * latency_ns / utils::NS_TO_MS);
+            if (settings::g_mainTabSettings.show_labels.GetValue()) {
+                ImGui::Text("%.1f ms lat", latency_ms);
+            } else {
+                ImGui::Text("%.1f", latency_ms);
+            }
+        }
+    }
+
+    ImGui::End();
+
     // Test widget that appears in the main ReShade overlay
-    ui::new_ui::DrawFrameTimeGraph();
+  //  ui::new_ui::DrawFrameTimeGraph();
 }
 }  // namespace
 

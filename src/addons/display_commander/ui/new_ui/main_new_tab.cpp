@@ -1622,7 +1622,7 @@ void DrawImportantInfo() {
     // Test Overlay Control
     {
         bool show_test_overlay = settings::g_mainTabSettings.show_test_overlay.GetValue();
-        if (ImGui::Checkbox(ICON_FK_SEARCH " Show Performance Overlay", &show_test_overlay)) {
+        if (ImGui::Checkbox(ICON_FK_SEARCH " Show Overlay", &show_test_overlay)) {
             settings::g_mainTabSettings.show_test_overlay.SetValue(show_test_overlay);
             LogInfo("Performance overlay %s", show_test_overlay ? "enabled" : "disabled");
         }
@@ -1632,6 +1632,37 @@ void DrawImportantInfo() {
                 "FPS counter, and other performance metrics. Demonstrates reshade_overlay event usage.\n"
                 "Shortcut: Ctrl+O");
         }
+        // show fps counter
+        bool show_fps_counter = settings::g_mainTabSettings.show_fps_counter.GetValue();
+        if (ImGui::Checkbox("FPS Counter", &show_fps_counter)) {
+            settings::g_mainTabSettings.show_fps_counter.SetValue(show_fps_counter);
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Shows the current FPS counter in the main ReShade overlay.");
+        }
+        ImGui::SameLine();
+        // GPU Measurement Enable/Disable Control
+        bool gpu_measurement = settings::g_mainTabSettings.gpu_measurement_enabled.GetValue() != 0;
+        if (ImGui::Checkbox("Show latency", &gpu_measurement)) {
+            settings::g_mainTabSettings.gpu_measurement_enabled.SetValue(gpu_measurement ? 1 : 0);
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip(
+                "Measures time from Present call to GPU completion using fences.\n"
+                "Requires D3D11 with Windows 10+ or D3D12.\n"
+                "Shows as 'GPU Duration' in the timing metrics below.");
+        }
+
+        ImGui::SameLine();
+        // Show Labels Control
+        bool show_labels = settings::g_mainTabSettings.show_labels.GetValue();
+        if (ImGui::Checkbox("Show labels", &show_labels)) {
+            settings::g_mainTabSettings.show_labels.SetValue(show_labels);
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Shows text labels (like 'fps:', 'lat:', etc.) before values in the overlay.");
+        }
+
     }
 
     ImGui::Spacing();
@@ -1658,20 +1689,8 @@ void DrawImportantInfo() {
 
     // Frame Time Graph Section
     if (ImGui::CollapsingHeader("Frame Time Graph", ImGuiTreeNodeFlags_DefaultOpen)) {
-        // GPU Measurement Enable/Disable Control
-        bool gpu_measurement = settings::g_mainTabSettings.gpu_measurement_enabled.GetValue() != 0;
-        if (ImGui::Checkbox("Enable GPU Completion Measurement", &gpu_measurement)) {
-            settings::g_mainTabSettings.gpu_measurement_enabled.SetValue(gpu_measurement ? 1 : 0);
-        }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
-                "Measures time from Present call to GPU completion using fences.\n"
-                "Requires D3D11 with Windows 10+ or D3D12.\n"
-                "Shows as 'GPU Duration' in the timing metrics below.");
-        }
-
         // Display GPU fence status/failure reason
-        if (gpu_measurement) {
+        if (settings::g_mainTabSettings.gpu_measurement_enabled.GetValue() != 0) {
             const char* failure_reason = ::g_gpu_fence_failure_reason.load();
             if (failure_reason != nullptr) {
                 ImGui::Indent();

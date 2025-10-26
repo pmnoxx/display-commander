@@ -27,11 +27,11 @@ std::atomic<bool> s_enable_reflex_logging{false};    // Disabled by default
 // Shortcut settings
 std::atomic<bool> s_enable_hotkeys{true};  // Enable hotkeys by default
 std::atomic<bool> s_enable_mute_unmute_shortcut{true};
-std::atomic<bool> s_enable_background_toggle_shortcut{true};
-std::atomic<bool> s_enable_timeslowdown_shortcut{true};
+std::atomic<bool> s_enable_background_toggle_shortcut{false};
+std::atomic<bool> s_enable_timeslowdown_shortcut{false};
 std::atomic<bool> s_enable_adhd_toggle_shortcut{true};
 std::atomic<bool> s_enable_autoclick_shortcut{false};
-std::atomic<bool> s_enable_input_blocking_shortcut{true};
+std::atomic<bool> s_enable_input_blocking_shortcut{false};
 
 // Input blocking toggle state (controlled by Ctrl+I)
 std::atomic<bool> s_input_blocking_toggle{false};
@@ -65,7 +65,7 @@ DeveloperTabSettings::DeveloperTabSettings()
       reflex_supress_native("ReflexSupressNative", s_reflex_supress_native, s_reflex_supress_native.load(),
                             "DisplayCommander"),
 
-      enable_hotkeys("EnableHotkeys", false, "DisplayCommander"),
+      enable_hotkeys("EnableHotkeys", true, "DisplayCommander"),
       enable_mute_unmute_shortcut("EnableMuteUnmuteShortcut", s_enable_mute_unmute_shortcut,
                                   s_enable_mute_unmute_shortcut.load(), "DisplayCommander"),
       enable_background_toggle_shortcut("EnableBackgroundToggleShortcut", s_enable_background_toggle_shortcut,

@@ -1002,6 +1002,28 @@ void DrawDxgiCompositionInfo() {
 }
 
 void DrawSwapchainInfo(reshade::api::effect_runtime* runtime) {
+    auto api = runtime->get_device()->get_api();
+    auto native = runtime->get_native();
+
+    Microsoft::WRL::ComPtr<IDXGISwapChain> dxgi_swapchain0 = nullptr;
+    if (api == reshade::api::device_api::d3d10) {
+        auto *id3d10device = reinterpret_cast<ID3D10Device *>(native);
+        id3d10device->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain0));
+    }
+    else if (api == reshade::api::device_api::d3d11) {
+        auto *id3d11device = reinterpret_cast<ID3D11Device *>(native);
+        id3d11device->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain0));
+    }
+    else if (api == reshade::api::device_api::d3d12) {
+        auto *id3d12device = reinterpret_cast<ID3D12Device *>(native);
+        id3d12device->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain0));
+    }
+    Microsoft::WRL::ComPtr<IDXGISwapChain1> dxgi_swapchain = nullptr;
+
+    if (dxgi_swapchain0 != nullptr) {
+        dxgi_swapchain0->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain));
+    }
+
 
     // todo replace g_last_swapchain_ptr_unsafe with runtime->get_device()->get_native()
     // runtime->get_device()->get_native();
@@ -1297,30 +1319,15 @@ void DrawSwapchainInfo(reshade::api::effect_runtime* runtime) {
     auto last_api = g_last_reshade_device_api.load();
     auto is_dxgi = last_api == static_cast<int>(reshade::api::device_api::d3d11)
                    || last_api == static_cast<int>(reshade::api::device_api::d3d12);
-    if (is_dxgi && ImGui::CollapsingHeader("Swapchain Information", ImGuiTreeNodeFlags_DefaultOpen)) {
+    if (dxgi_swapchain == nullptr) {
+        ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "No active swapchain detected");
+        return;
+    }
+    if (is_dxgi && ImGui::CollapsingHeader("Swapchain Information", ImGuiTreeNodeFlags_DefaultOpen) ) {
         // warning this tab may crash
 
         // Get the current swapchain from global variable
-        void* swapchain_ptr = g_last_swapchain_ptr_unsafe.load();
-        if (swapchain_ptr == nullptr) {
-            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "No active swapchain detected");
-            return;
-        }
 
-        auto* swapchain = static_cast<reshade::api::swapchain*>(swapchain_ptr);
-        if (swapchain == nullptr) {
-            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "No swapchain available");
-            return;
-        }
-
-        Microsoft::WRL::ComPtr<IUnknown> unknown_swapchain = reinterpret_cast<IUnknown*>(swapchain->get_native());
-        // Try to get DXGI swapchain interface
-        Microsoft::WRL::ComPtr<IDXGISwapChain1> dxgi_swapchain;
-
-        if (FAILED(unknown_swapchain->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain)))) {
-            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "Failed to get DXGI swapchain interface");
-            return;
-        }
 
         // Get swapchain description
         DXGI_SWAP_CHAIN_DESC1 desc1 = {};

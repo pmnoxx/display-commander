@@ -193,12 +193,11 @@ void hookToSwapChain(reshade::api::swapchain *swapchain) {
 
         if (api == reshade::api::device_api::d3d10) {
             auto *id3d10device   = reinterpret_cast<ID3D10Device *>(swapchain->get_native());
-            IDXGISwapChain *dxgi_swapchain = nullptr;
+            Microsoft::WRL::ComPtr<IDXGISwapChain> dxgi_swapchain{};
             if (SUCCEEDED(id3d10device->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain)))) {
-                if (display_commanderhooks::dxgi::HookSwapchain(dxgi_swapchain)) {
+                if (display_commanderhooks::dxgi::HookSwapchain(dxgi_swapchain.Get())) {
                     LogInfo("Successfully hooked DXGI Present calls for swapchain: 0x%p", id3d10device);
                 }
-                dxgi_swapchain->Release();
             }
             return;
         }
@@ -207,14 +206,13 @@ void hookToSwapChain(reshade::api::swapchain *swapchain) {
             auto *id3d11device   = reinterpret_cast<ID3D11Device *>(swapchain->get_native());
 
             // query IDXGISwapChain interface
-            IDXGISwapChain *dxgi_swapchain = nullptr;
+            Microsoft::WRL::ComPtr<IDXGISwapChain> dxgi_swapchain{};
             if (SUCCEEDED(id3d11device->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain)))) {
-                if (display_commanderhooks::dxgi::HookSwapchain(dxgi_swapchain)) {
-                    LogInfo("Successfully hooked DXGI Present calls for swapchain: 0x%p", dxgi_swapchain);
+                if (display_commanderhooks::dxgi::HookSwapchain(dxgi_swapchain.Get())) {
+                    LogInfo("Successfully hooked DXGI Present calls for swapchain: 0x%p", dxgi_swapchain.Get());
                 } else {
-                    LogWarn("Failed to hook DXGI Present calls for swapchain: 0x%p", dxgi_swapchain);
+                    LogWarn("Failed to hook DXGI Present calls for swapchain: 0x%p", dxgi_swapchain.Get());
                 }
-                dxgi_swapchain->Release();
             }
 
             return;
@@ -224,14 +222,13 @@ void hookToSwapChain(reshade::api::swapchain *swapchain) {
             auto *id3d12device   = reinterpret_cast<ID3D12Device *>(swapchain->get_native());
 
             // query IDXGISwapChain interface
-            IDXGISwapChain *dxgi_swapchain = nullptr;
+            Microsoft::WRL::ComPtr<IDXGISwapChain> dxgi_swapchain{};
             if (SUCCEEDED(id3d12device->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain)))) {
-                if (display_commanderhooks::dxgi::HookSwapchain(dxgi_swapchain)) {
-                    LogInfo("Successfully hooked DXGI Present calls for swapchain: 0x%p", dxgi_swapchain);
+                if (display_commanderhooks::dxgi::HookSwapchain(dxgi_swapchain.Get())) {
+                    LogInfo("Successfully hooked DXGI Present calls for swapchain: 0x%p", dxgi_swapchain.Get());
                 } else {
-                    LogWarn("Failed to hook DXGI Present calls for swapchain: 0x%p", dxgi_swapchain);
+                    LogWarn("Failed to hook DXGI Present calls for swapchain: 0x%p", dxgi_swapchain.Get());
                 }
-                dxgi_swapchain->Release();
             }
             return;
         }

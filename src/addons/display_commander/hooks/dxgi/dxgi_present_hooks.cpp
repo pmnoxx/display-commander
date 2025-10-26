@@ -266,30 +266,26 @@ namespace display_commanderhooks::dxgi {
 // Helper function to detect swapchain interface version
 int GetSwapchainInterfaceVersion(IDXGISwapChain* swapchain) {
     // Try IDXGISwapChain4 first (highest version)
-    IDXGISwapChain4* swapchain4 = nullptr;
+    Microsoft::WRL::ComPtr<IDXGISwapChain4> swapchain4{};
     if (SUCCEEDED(swapchain->QueryInterface(IID_PPV_ARGS(&swapchain4)))) {
-        swapchain4->Release();
         return 4;
     }
 
     // Try IDXGISwapChain3
-    IDXGISwapChain3* swapchain3 = nullptr;
+    Microsoft::WRL::ComPtr<IDXGISwapChain3> swapchain3{};
     if (SUCCEEDED(swapchain->QueryInterface(IID_PPV_ARGS(&swapchain3)))) {
-        swapchain3->Release();
         return 3;
     }
 
     // Try IDXGISwapChain2
-    IDXGISwapChain2* swapchain2 = nullptr;
+    Microsoft::WRL::ComPtr<IDXGISwapChain2> swapchain2{};
     if (SUCCEEDED(swapchain->QueryInterface(IID_PPV_ARGS(&swapchain2)))) {
-        swapchain2->Release();
         return 2;
     }
 
     // Try IDXGISwapChain1
-    IDXGISwapChain1* swapchain1 = nullptr;
+    Microsoft::WRL::ComPtr<IDXGISwapChain1> swapchain1{};
     if (SUCCEEDED(swapchain->QueryInterface(IID_PPV_ARGS(&swapchain1)))) {
-        swapchain1->Release();
         return 1;
     }
 

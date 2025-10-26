@@ -110,33 +110,29 @@ bool IsOtherAppPlayingAudio() {
             IAudioSessionControl *session_control = nullptr;
             if (FAILED(session_enumerator->GetSession(i, &session_control)) || session_control == nullptr)
                 continue;
-            IAudioSessionControl2 *session_control2 = nullptr;
-            if (SUCCEEDED(session_control->QueryInterface(&session_control2)) && session_control2 != nullptr) {
+            Microsoft::WRL::ComPtr<IAudioSessionControl2> session_control2{};
+            if (SUCCEEDED(session_control->QueryInterface(IID_PPV_ARGS(&session_control2)))) {
                 DWORD pid = 0;
                 session_control2->GetProcessId(&pid);
                 if (pid != 0 && pid != target_pid) {
                     // Check state and volume/mute
                     AudioSessionState state{};
                     if (SUCCEEDED(session_control->GetState(&state)) && state == AudioSessionStateActive) {
-                        ISimpleAudioVolume *simple_volume = nullptr;
-                        if (SUCCEEDED(session_control->QueryInterface(&simple_volume)) && simple_volume != nullptr) {
+                        Microsoft::WRL::ComPtr<ISimpleAudioVolume> simple_volume{};
+                        if (SUCCEEDED(session_control->QueryInterface(IID_PPV_ARGS(&simple_volume)))) {
                             float vol = 0.0f;
                             BOOL muted = FALSE;
                             if (SUCCEEDED(simple_volume->GetMasterVolume(&vol)) &&
                                 SUCCEEDED(simple_volume->GetMute(&muted))) {
                                 if (muted == FALSE && vol > 0.001f) {
                                     other_active = true;
-                                    simple_volume->Release();
-                                    session_control2->Release();
                                     session_control->Release();
                                     break;
                                 }
                             }
-                            simple_volume->Release();
                         }
                     }
                 }
-                session_control2->Release();
             }
             session_control->Release();
         }

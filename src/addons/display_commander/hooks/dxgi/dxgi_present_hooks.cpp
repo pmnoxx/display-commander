@@ -467,12 +467,15 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1 *This, 
         This->GetDevice(IID_PPV_ARGS(&device));
         if (device) {
             // Try to determine if it's D3D11 or D3D12
+            Microsoft::WRL::ComPtr<ID3D10Device> d3d10_device;
             Microsoft::WRL::ComPtr<ID3D11Device> d3d11_device;
             Microsoft::WRL::ComPtr<ID3D12Device> d3d12_device;
             if (SUCCEEDED(device->QueryInterface(IID_PPV_ARGS(&d3d11_device)))) {
                 device_type = DeviceTypeDC::DX11;
             } else if (SUCCEEDED(device->QueryInterface(IID_PPV_ARGS(&d3d12_device)))) {
                 device_type = DeviceTypeDC::DX12;
+            } else if (SUCCEEDED(device->QueryInterface(IID_PPV_ARGS(&d3d10_device)))) {
+                device_type = DeviceTypeDC::DX10;
             }
         }
     }

@@ -191,21 +191,19 @@ bool SetVolumeForCurrentProcess(float volume_0_100) {
         session_enumerator->GetCount(&count);
         for (int i = 0; i < count; ++i) {
             IAudioSessionControl *session_control = nullptr;
-            if (FAILED(session_enumerator->GetSession(i, &session_control)) || session_control == nullptr)
+            if (FAILED(session_enumerator->GetSession(i, &session_control)))
                 continue;
-            IAudioSessionControl2 *session_control2 = nullptr;
-            if (SUCCEEDED(session_control->QueryInterface(&session_control2)) && session_control2 != nullptr) {
+            Microsoft::WRL::ComPtr<IAudioSessionControl2> session_control2{};
+            if (SUCCEEDED(session_control->QueryInterface(IID_PPV_ARGS(&session_control2)))) {
                 DWORD pid = 0;
                 session_control2->GetProcessId(&pid);
                 if (pid == target_pid) {
-                    ISimpleAudioVolume *simple_volume = nullptr;
-                    if (SUCCEEDED(session_control->QueryInterface(&simple_volume)) && simple_volume != nullptr) {
+                    Microsoft::WRL::ComPtr<ISimpleAudioVolume> simple_volume{};
+                    if (SUCCEEDED(session_control->QueryInterface(IID_PPV_ARGS(&simple_volume)))) {
                         simple_volume->SetMasterVolume(scalar, nullptr);
-                        simple_volume->Release();
                         success = true;
                     }
                 }
-                session_control2->Release();
             }
             session_control->Release();
         }

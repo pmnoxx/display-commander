@@ -96,7 +96,7 @@ void check_is_background() {
     HWND hwnd = g_last_swapchain_hwnd.load();
     if (hwnd != nullptr) {
         // BACKGROUND DETECTION: Check if the app is in background using original GetForegroundWindow
-        HWND current_foreground_hwnd = GetCurrentForeGroundWindow();
+        HWND current_foreground_hwnd = g_last_swapchain_hwnd.load();
         bool app_in_background = current_foreground_hwnd == nullptr;
 
         if (app_in_background != g_app_in_background.load()) {

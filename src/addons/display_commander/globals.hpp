@@ -420,7 +420,8 @@ public:
 // Performance stats structure
 struct PerfSample {
     double timestamp_seconds;
-    float fps;
+    float fps; // deprecated, use dt instead
+    float dt;
 };
 
 // Monitor info structure

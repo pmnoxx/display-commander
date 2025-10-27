@@ -464,7 +464,7 @@ void RecordFrameTime(FrameTimeMode reason) {
     if (dt > 0.0) {
         const float fps = static_cast<float>(1.0 / dt);
         uint32_t idx = g_perf_ring_head.fetch_add(1, std::memory_order_acq_rel);
-        g_perf_ring[idx & (kPerfRingCapacity - 1)] = PerfSample{elapsed, fps};
+        g_perf_ring[idx & (kPerfRingCapacity - 1)] = PerfSample{.timestamp_seconds=elapsed, .fps=fps, .dt=static_cast<float>(dt)};
         last_tp = elapsed;
     }
 }

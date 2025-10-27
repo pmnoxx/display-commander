@@ -697,7 +697,6 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
     }
     // Background Black Curtain checkbox (only shown in Aspect Ratio mode)
     if (s_window_mode.load() == WindowMode::kAspectRatio) {
-        ImGui::SameLine();
         if (CheckboxSetting(settings::g_mainTabSettings.background_feature, "Background Black Curtain")) {
             LogInfo("Background black curtain setting changed");
         }
@@ -705,10 +704,10 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
             ImGui::SetTooltip(
                 "Creates a black background behind the game window when it doesn't cover the full screen.");
         }
+        ImGui::SameLine();
     }
 
     // ADHD Multi-Monitor Mode controls
-    ImGui::SameLine();
     DrawAdhdMultiMonitorControls(s_window_mode.load() == WindowMode::kAspectRatio);
 
     // Apply Changes button

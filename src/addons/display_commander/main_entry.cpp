@@ -220,40 +220,34 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
 
     if (settings::g_mainTabSettings.show_fps_counter.GetValue()) {
         const uint32_t head = ::g_perf_ring_head.load(std::memory_order_acquire);
-        const double current_time = ::g_perf_time_seconds.load(std::memory_order_acquire);
-        const double one_second_ago = current_time - 1.0;
+        double total_time = 0.0;
 
-        if (head > 0 && current_time > 0.0) {
-            // Iterate through samples from the last second
-            uint32_t sample_count = 0;
-            int oldest_sample_index = -1;
+        // Iterate through samples from the last second
+        uint32_t sample_count = 0;
 
-            // Iterate backwards through the ring buffer up to 1 second
-            for (uint32_t i = 0; i < head && i < ::kPerfRingCapacity; ++i) {
-                uint32_t idx = (head - 1 - i) & (::kPerfRingCapacity - 1);
-                const ::PerfSample& sample = ::g_perf_ring[idx];
+        // Iterate backwards through the ring buffer up to 1 second
+        for (uint32_t i = 0; i < ::kPerfRingCapacity; ++i) {
+            uint32_t idx = (head - 1 - i) & (::kPerfRingCapacity - 1);
+            const ::PerfSample& sample = ::g_perf_ring[idx];
 
-                // not enough data yet
-                if (sample.fps == 0.0f) break;
+            // not enough data yet
+            if (sample.dt == 0.0f || total_time >= 1.0) break;
 
-                // Stop if we've gone past 1 second ago
-                if (sample.timestamp_seconds < one_second_ago) {
-                    oldest_sample_index = idx;
-                    break;
-                }
+            sample_count++;
+            total_time += sample.dt;
+        }
 
-                sample_count++;
+        // Calculate average
+        if (sample_count > 0 && total_time >= 1.0) {
+            auto average_fps = sample_count / total_time;
+            if (settings::g_mainTabSettings.show_labels.GetValue()) {
+                ImGui::Text("%.1f fps", average_fps);
+            } else {
+                ImGui::Text("%.1f", average_fps);
             }
-
-            // Calculate average
-            if (sample_count > 0 && oldest_sample_index >= 0) {
-                auto average_fps = sample_count / (current_time - ::g_perf_ring[oldest_sample_index].timestamp_seconds);
-                if (settings::g_mainTabSettings.show_labels.GetValue()) {
-                    ImGui::Text("%.1f fps", average_fps);
-                } else {
-                    ImGui::Text("%.1f", average_fps);
-                }
-            }
+        } else {
+            ImGui::Text("No data sample_count: %d total_time: %.2f head: %d dt: %.5f", sample_count, total_time, head,
+                g_perf_ring[(head - 1) & (::kPerfRingCapacity - 1)].dt);
         }
     }
 

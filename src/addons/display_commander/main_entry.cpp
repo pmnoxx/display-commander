@@ -245,9 +245,6 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
             } else {
                 ImGui::Text("%.1f", average_fps);
             }
-        } else {
-            ImGui::Text("No data sample_count: %d total_time: %.2f head: %d dt: %.5f", sample_count, total_time, head,
-                g_perf_ring[(head - 1) & (::kPerfRingCapacity - 1)].dt);
         }
     }
 

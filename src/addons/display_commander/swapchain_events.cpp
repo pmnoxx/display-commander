@@ -6,6 +6,7 @@
 #include "gpu_completion_monitoring.hpp"
 #include "hooks/api_hooks.hpp"
 #include "hooks/d3d9/d3d9_present_hooks.hpp"
+#include "hooks/d3d11/d3d11_hooks.hpp"
 #include "hooks/dxgi/dxgi_present_hooks.hpp"
 #include "hooks/dxgi/dxgi_gpu_completion.hpp"
 #include "hooks/window_proc_hooks.hpp"
@@ -204,6 +205,25 @@ void hookToSwapChain(reshade::api::swapchain *swapchain) {
 
         if (api == reshade::api::device_api::d3d11) {
             auto *id3d11device   = reinterpret_cast<ID3D11Device *>(swapchain->get_native());
+
+            // Hook D3D11 Device
+            if (display_commanderhooks::HookD3D11Device(id3d11device)) {
+                LogInfo("Successfully hooked D3D11 device: 0x%p", id3d11device);
+            } else {
+                LogWarn("Failed to hook D3D11 device: 0x%p", id3d11device);
+            }
+
+            // Hook D3D11 Device Context
+            ID3D11DeviceContext* context = nullptr;
+            id3d11device->GetImmediateContext(&context);
+            if (context != nullptr) {
+                if (display_commanderhooks::HookD3D11DeviceContext(context)) {
+                    LogInfo("Successfully hooked D3D11 device context: 0x%p", context);
+                } else {
+                    LogWarn("Failed to hook D3D11 device context: 0x%p", context);
+                }
+                context->Release();
+            }
 
             // query IDXGISwapChain interface
             Microsoft::WRL::ComPtr<IDXGISwapChain> dxgi_swapchain{};

@@ -6,6 +6,7 @@
 #include "nvapi_hooks.hpp"
 #include "ngx_hooks.hpp"
 #include "streamline_hooks.hpp"
+#include "d3d11/d3d11_hooks.hpp"
 #include "../utils.hpp"
 #include "../utils/general_utils.hpp"
 #include "../utils/logging.hpp"
@@ -680,6 +681,11 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
         } else {
             LogError("Failed to install DXGI hooks");
         }
+    }
+    // d3d11.dll - D3D11 hooks will be installed via vtable hooking when device is created
+    // This is handled in swapchain initialization (swapchain_events.cpp)
+    else if (lowerModuleName.find(L"d3d11.dll") != std::wstring::npos) {
+        LogInfo("D3D11 hooks will be installed via vtable when device is created");
     }
     else if (lowerModuleName.find(L"sl.interposer.dll") != std::wstring::npos) {
         // Check if Streamline loading is enabled

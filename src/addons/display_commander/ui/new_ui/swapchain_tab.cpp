@@ -336,6 +336,14 @@ void DrawSwapchainEventCounters() {
         displayEventCategory("Streamline Methods", g_streamline_event_counters, streamline_event_names,
                              ImVec4(0.6f, 0.8f, 1.0f, 1.0f));
 
+        // D3D11 Texture Methods
+        static const std::map<D3D11TextureEventIndex, const char*> d3d11_texture_event_names = {
+            {D3D11_EVENT_CREATE_TEXTURE2D, "D3D11_EVENT_CREATE_TEXTURE2D"},
+            {D3D11_EVENT_UPDATE_SUBRESOURCE, "D3D11_EVENT_UPDATE_SUBRESOURCE"},
+            {D3D11_EVENT_UPDATE_SUBRESOURCE1, "D3D11_EVENT_UPDATE_SUBRESOURCE1"}};
+        displayEventCategory("D3D11 Texture Methods", g_d3d11_texture_event_counters, d3d11_texture_event_names,
+                             ImVec4(1.0f, 0.8f, 0.6f, 1.0f));
+
         ImGui::Separator();
         ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "Total Events: %u", total_events);
 

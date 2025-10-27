@@ -843,6 +843,14 @@ enum StreamlineEventIndex {
     NUM_STREAMLINE_EVENTS
 };
 
+// D3D11 Texture event counters
+enum D3D11TextureEventIndex {
+    D3D11_EVENT_CREATE_TEXTURE2D,
+    D3D11_EVENT_UPDATE_SUBRESOURCE,
+    D3D11_EVENT_UPDATE_SUBRESOURCE1,
+    NUM_D3D11_TEXTURE_EVENTS
+};
+
 // NVAPI event counters - separate from swapchain events
 enum NvapiEventIndex {
     NVAPI_EVENT_GET_HDR_CAPABILITIES,
@@ -865,6 +873,7 @@ extern std::array<std::atomic<uint32_t>, NUM_DXGI_SC4_EVENTS> g_dxgi_sc4_event_c
 extern std::array<std::atomic<uint32_t>, NUM_DXGI_OUTPUT_EVENTS> g_dxgi_output_event_counters;
 extern std::array<std::atomic<uint32_t>, NUM_DX9_EVENTS> g_dx9_event_counters;
 extern std::array<std::atomic<uint32_t>, NUM_STREAMLINE_EVENTS> g_streamline_event_counters;
+extern std::array<std::atomic<uint32_t>, NUM_D3D11_TEXTURE_EVENTS> g_d3d11_texture_event_counters;
 
 // NVAPI event counters - separate from swapchain events
 extern std::array<std::atomic<uint32_t>, NUM_NVAPI_EVENTS> g_nvapi_event_counters;  // Array for NVAPI events

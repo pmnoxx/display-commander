@@ -210,6 +210,14 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
 
     // Get current FPS from performance ring buffer
 
+    if (settings::g_mainTabSettings.show_clock.GetValue()) {
+        // Display current time
+        SYSTEMTIME st;
+        GetLocalTime(&st);
+        ImGui::Text("%02d:%02d:%02d", st.wHour, st.wMinute, st.wSecond);
+    }
+
+
     if (settings::g_mainTabSettings.show_fps_counter.GetValue()) {
         const uint32_t head = ::g_perf_ring_head.load(std::memory_order_acquire);
         const double current_time = ::g_perf_time_seconds.load(std::memory_order_acquire);
@@ -261,7 +269,6 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
             }
         }
     }
-
     ImGui::End();
 
     // Test widget that appears in the main ReShade overlay

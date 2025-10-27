@@ -85,6 +85,7 @@ class MainTabSettings {
     ui::new_ui::BoolSetting show_test_overlay;
     ui::new_ui::BoolSetting show_fps_counter;
     ui::new_ui::BoolSetting show_labels;
+    ui::new_ui::BoolSetting show_clock;
 
     // GPU Measurement Settings
     ui::new_ui::IntSetting gpu_measurement_enabled;

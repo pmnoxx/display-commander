@@ -16,8 +16,8 @@ std::atomic<bool> s_nvapi_auto_enable_enabled{true};    // enabled by default
 std::atomic<bool> s_reflex_auto_configure{false};  // Disabled by default
 std::atomic<bool> s_reflex_enable{false};
 std::atomic<bool> s_reflex_enable_current_frame{false};  // Enable NVIDIA Reflex integration for current frame
-std::atomic<bool> s_reflex_low_latency{false};
-std::atomic<bool> s_reflex_boost{false};
+std::atomic<bool> s_reflex_low_latency{true};
+std::atomic<bool> s_reflex_boost{true};
 std::atomic<bool> s_reflex_use_markers{false};       // Use markers for optimization
 std::atomic<bool> s_reflex_generate_markers{false};  // Generate markers in frame timeline
 std::atomic<bool> s_reflex_enable_sleep{false};      // Disabled by default

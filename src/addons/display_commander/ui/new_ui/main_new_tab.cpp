@@ -1663,6 +1663,16 @@ void DrawImportantInfo() {
             ImGui::SetTooltip("Shows text labels (like 'fps:', 'lat:', etc.) before values in the overlay.");
         }
 
+        ImGui::SameLine();
+        // Show Clock Control
+        bool show_clock = settings::g_mainTabSettings.show_clock.GetValue();
+        if (ImGui::Checkbox("Show clock", &show_clock)) {
+            settings::g_mainTabSettings.show_clock.SetValue(show_clock);
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Shows the current time (HH:MM:SS) in the overlay.");
+        }
+
     }
 
     ImGui::Spacing();

@@ -48,11 +48,6 @@ namespace {
 // Flag to indicate a restart is required after changing VSync/tearing options
 std::atomic<bool> s_restart_needed_vsync_tearing{false};
 
-// Helper function to check if native Reflex is active
-bool IsNativeReflexActive() {
-    return g_nvapi_event_counters[NVAPI_EVENT_D3D_SET_SLEEP_MODE].load() > 0;
-}
-
 // Helper function to check if injected Reflex is active
 bool DidNativeReflexSleepRecently() {
     // Check if injected Reflex has been called recently (within last 100ms)

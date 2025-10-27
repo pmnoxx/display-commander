@@ -4,6 +4,7 @@
 #include "dxgi/custom_fps_limiter.hpp"
 #include "latent_sync/latent_sync_manager.hpp"
 #include "utils/srwlock_wrapper.hpp"
+#include "utils/timing.hpp"
 
 #include <windows.h>
 
@@ -871,6 +872,13 @@ extern std::array<std::atomic<uint32_t>, NUM_NVAPI_EVENTS> g_nvapi_event_counter
 // NVAPI sleep timestamp tracking
 extern std::atomic<uint64_t> g_nvapi_last_sleep_timestamp_ns;  // Last NVAPI_D3D_Sleep call timestamp in nanoseconds
 extern std::atomic<uint32_t> g_swapchain_event_total_count;   // Total events across all types
+
+// Helper function to check if native Reflex is active
+inline bool IsNativeReflexActive() {
+    auto did_sleep_recently = (utils::get_now_ns() - g_nvapi_last_sleep_timestamp_ns) < 1 * utils::SEC_TO_NS;
+
+    return g_nvapi_event_counters[NVAPI_EVENT_D3D_SET_SLEEP_MODE].load() > 0 && did_sleep_recently;
+}
 
 // OpenGL hook counters
 extern std::array<std::atomic<uint64_t>, NUM_OPENGL_HOOKS> g_opengl_hook_counters;  // Array for all OpenGL hook events

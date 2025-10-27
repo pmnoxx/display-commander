@@ -28,7 +28,7 @@
 #include <dxgi1_6.h>
 #include <wrl/client.h>
 #include <atomic>
-#include <mutex>
+#include "../utils/srwlock_wrapper.hpp"
 #include <cstdint>
 #include <thread>
 #include <vector>
@@ -203,7 +203,7 @@ private:
 
     // State
     std::atomic<bool> is_initialized_{false};
-    mutable std::mutex mutex_;
+    mutable SRWLOCK mutex_ = SRWLOCK_INIT;
 
     // Configuration
     HWND game_hwnd_ = nullptr;

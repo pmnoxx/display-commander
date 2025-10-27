@@ -36,7 +36,7 @@ bool SharedResourceManager::Initialize(IDirect3DDevice9* d3d9_device,
                                       uint32_t width,
                                       uint32_t height,
                                       D3DFORMAT d3d9_format) {
-    std::lock_guard lock(mutex_);
+    utils::SRWLockExclusive lock(mutex_);
 
     if (is_initialized_) {
         LogInfo("SharedResourceManager::Initialize: Already initialized, cleaning up first");

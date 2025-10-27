@@ -4,12 +4,12 @@
 #include "../utils.hpp"
 #include "../utils/general_utils.hpp"
 #include "../utils/logging.hpp"
+#include "../utils/srwlock_wrapper.hpp"
 #include "../settings/experimental_tab_settings.hpp"
 #include "../widgets/xinput_widget/xinput_widget.hpp"
 #include "hook_suppression_manager.hpp"
 #include <MinHook.h>
 #include <atomic>
-#include <mutex>
 #include <algorithm>
 #include <string>
 
@@ -24,7 +24,7 @@ CreateFileW_pfn CreateFileW_Original = nullptr;
 
 // Hook state
 static std::atomic<bool> g_hid_suppression_hooks_installed{false};
-static std::mutex g_hid_suppression_mutex;
+static SRWLOCK g_hid_suppression_mutex = SRWLOCK_INIT;
 
 // DualSense device identifiers
 constexpr USHORT SONY_VENDOR_ID = 0x054c;
@@ -41,7 +41,7 @@ bool ShouldSuppressHIDInput() {
 }
 
 void SetHIDSuppressionEnabled(bool enabled) {
-    std::lock_guard<std::mutex> lock(g_hid_suppression_mutex);
+    utils::SRWLockExclusive lock(g_hid_suppression_mutex);
     settings::g_experimentalTabSettings.hid_suppression_enabled.SetValue(enabled);
     LogInfo("HID suppression %s", enabled ? "enabled" : "disabled");
 }

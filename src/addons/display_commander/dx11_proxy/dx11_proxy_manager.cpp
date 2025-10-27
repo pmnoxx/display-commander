@@ -17,7 +17,7 @@
 namespace dx11_proxy {
 
 bool DX11ProxyManager::Initialize(HWND game_hwnd, uint32_t width, uint32_t height, bool create_swapchain) {
-    std::lock_guard lock(mutex_);
+    utils::SRWLockExclusive lock(mutex_);
 
     if (is_initialized_.load()) {
         LogInfo("DX11ProxyManager::Initialize: Already initialized, shutting down first");
@@ -70,7 +70,7 @@ bool DX11ProxyManager::Initialize(HWND game_hwnd, uint32_t width, uint32_t heigh
 }
 
 void DX11ProxyManager::Shutdown() {
-    std::lock_guard lock(mutex_);
+    utils::SRWLockExclusive lock(mutex_);
 
     if (!is_initialized_.load()) {
         return;
@@ -872,7 +872,7 @@ DXGI_FORMAT DX11ProxyManager::GetFormatFromIndex(int format_index) {
 }
 
 bool DX11ProxyManager::SetHDRColorSpace() {
-    std::lock_guard lock(mutex_);
+    utils::SRWLockExclusive lock(mutex_);
 
     if (!is_initialized_.load()) {
         LogError("DX11ProxyManager::SetHDRColorSpace: Manager not initialized");
@@ -935,7 +935,7 @@ bool DX11ProxyManager::SetHDRColorSpace() {
 
 bool DX11ProxyManager::SetSourceColorSpace() {
     #if 0
-    std::lock_guard lock(mutex_);
+    utils::SRWLockExclusive lock(mutex_);
 
     if (!is_initialized_.load()) {
         LogError("DX11ProxyManager::SetSourceColorSpace: Manager not initialized");

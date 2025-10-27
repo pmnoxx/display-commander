@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 #include <memory>
-#include <mutex>
+#include "../utils/srwlock_wrapper.hpp"
 
 namespace display_commander::config {
 
@@ -54,7 +54,7 @@ private:
 
     std::unique_ptr<IniFile> config_file_;
     std::string config_path_;
-    mutable std::mutex config_mutex_;
+    mutable SRWLOCK config_mutex_ = SRWLOCK_INIT;
     bool initialized_ = false;
 };
 

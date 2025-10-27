@@ -2,8 +2,6 @@
 
 #include <windows.h>
 #include <string>
-#include <memory>
-#include <mutex>
 
 namespace display_commander::logger {
 

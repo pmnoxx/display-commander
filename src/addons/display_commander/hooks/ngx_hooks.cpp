@@ -3,6 +3,7 @@
 #include "../settings/developer_tab_settings.hpp"
 #include "../utils/general_utils.hpp"
 #include "../utils/logging.hpp"
+#include "../utils/srwlock_wrapper.hpp"
 #include "../globals.hpp"
 #include "../settings/swapchain_tab_settings.hpp"
 #include <MinHook.h>
@@ -10,7 +11,6 @@
 #include <string>
 #include <vector>
 #include <map>
-#include <mutex>
 #include "../../../external/nvidia-dlss/include/nvsdk_ngx_defs.h"
 
 // NGX type definitions (minimal subset needed for hooks)
@@ -72,7 +72,7 @@ typedef void (NVSDK_CONV *PFN_NVSDK_NGX_ProgressCallback)(float InCurrentProgres
 
 // Handle tracking for NGX features
 static std::map<NVSDK_NGX_Handle*, NVSDK_NGX_Feature> g_ngx_handle_map;
-static std::mutex g_ngx_handle_mutex;
+static SRWLOCK g_ngx_handle_mutex = SRWLOCK_INIT;
 
 // Using official NVIDIA NGX enums from nvsdk_ngx_defs.h
 
@@ -83,7 +83,7 @@ static std::mutex g_ngx_handle_mutex;
 static void TrackNGXHandle(NVSDK_NGX_Handle* handle, NVSDK_NGX_Feature feature) {
     if (handle == nullptr) return;
 
-    std::lock_guard<std::mutex> lock(g_ngx_handle_mutex);
+    utils::SRWLockExclusive lock(g_ngx_handle_mutex);
     g_ngx_handle_map[handle] = feature;
 
     // Update global tracking variables
@@ -106,7 +106,7 @@ static void TrackNGXHandle(NVSDK_NGX_Handle* handle, NVSDK_NGX_Feature feature) 
 static void UntrackNGXHandle(NVSDK_NGX_Handle* handle) {
     if (handle == nullptr) return;
 
-    std::lock_guard<std::mutex> lock(g_ngx_handle_mutex);
+    utils::SRWLockExclusive lock(g_ngx_handle_mutex);
     auto it = g_ngx_handle_map.find(handle);
     if (it != g_ngx_handle_map.end()) {
         NVSDK_NGX_Feature feature = it->second;
@@ -133,14 +133,14 @@ static void UntrackNGXHandle(NVSDK_NGX_Handle* handle) {
 static NVSDK_NGX_Feature GetFeatureFromHandle(NVSDK_NGX_Handle* handle) {
     if (handle == nullptr) return static_cast<NVSDK_NGX_Feature>(-1);
 
-    std::lock_guard<std::mutex> lock(g_ngx_handle_mutex);
+    utils::SRWLockExclusive lock(g_ngx_handle_mutex);
     auto it = g_ngx_handle_map.find(handle);
     return (it != g_ngx_handle_map.end()) ? it->second : static_cast<NVSDK_NGX_Feature>(-1);
 }
 
 // Cleanup function to clear handle map and reset tracking variables
 static void CleanupNGXHandleTracking() {
-    std::lock_guard<std::mutex> lock(g_ngx_handle_mutex);
+    utils::SRWLockExclusive lock(g_ngx_handle_mutex);
     g_ngx_handle_map.clear();
 
     // Reset all tracking variables

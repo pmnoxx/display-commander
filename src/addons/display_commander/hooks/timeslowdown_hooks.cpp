@@ -2,7 +2,6 @@
 #include "hook_suppression_manager.hpp"
 #include "../globals.hpp"
 #include "../settings/experimental_tab_settings.hpp"
-#include "../utils.hpp"
 #include "../utils/general_utils.hpp"
 #include "../utils/logging.hpp"
 #include "../swapchain_events.hpp"
@@ -35,6 +34,27 @@ const char *HOOK_GET_SYSTEM_TIME_PRECISE_AS_FILE_TIME = "GetSystemTimePreciseAsF
 const char *HOOK_GET_LOCAL_TIME = "GetLocalTime";
 const char *HOOK_NT_QUERY_SYSTEM_TIME = "NtQuerySystemTime";
 
+// Helper function to apply timeslowdown with baseline tracking
+template<typename T>
+T ApplyTimeslowdownWithBaseline(T result) {
+    static T start_time = 0;
+
+    // Initialize start_time on first call
+    if (start_time == 0) {
+        start_time = result;
+    }
+
+    // Apply timeslowdown if enabled
+    if (settings::g_experimentalTabSettings.timeslowdown_enabled.GetValue()) {
+        float multiplier = settings::g_experimentalTabSettings.timeslowdown_multiplier.GetValue();
+        if (multiplier > 0.0) {
+            result = static_cast<T>(start_time + ((result - start_time) * multiplier));
+        }
+    }
+
+    return result;
+}
+
 // Timeslowdown state structure
 struct TimeslowdownState {
     LONGLONG original_quad_ts;
@@ -58,35 +78,35 @@ GetLocalTime_pfn GetLocalTime_Original = nullptr;
 NtQuerySystemTime_pfn NtQuerySystemTime_Original = nullptr;
 
 // Hook state
-static std::atomic<bool> g_timeslowdown_hooks_installed{false};
+std::atomic<bool> g_timeslowdown_hooks_installed{false};
 
 // Timeslowdown configuration - now using global instance
 
 // Individual hook type configurations - using atomic variables for DLL safety
-static std::atomic<TimerHookType> g_query_performance_counter_hook_type{TimerHookType::None};
-static std::atomic<TimerHookType> g_get_tick_count_hook_type{TimerHookType::None};
-static std::atomic<TimerHookType> g_get_tick_count64_hook_type{TimerHookType::None};
-static std::atomic<TimerHookType> g_time_get_time_hook_type{TimerHookType::None};
-static std::atomic<TimerHookType> g_get_system_time_hook_type{TimerHookType::None};
-static std::atomic<TimerHookType> g_get_system_time_as_file_time_hook_type{TimerHookType::None};
-static std::atomic<TimerHookType> g_get_system_time_precise_as_file_time_hook_type{TimerHookType::None};
-static std::atomic<TimerHookType> g_get_local_time_hook_type{TimerHookType::None};
-static std::atomic<TimerHookType> g_nt_query_system_time_hook_type{TimerHookType::None};
+std::atomic<TimerHookType> g_query_performance_counter_hook_type{TimerHookType::None};
+std::atomic<TimerHookType> g_get_tick_count_hook_type{TimerHookType::None};
+std::atomic<TimerHookType> g_get_tick_count64_hook_type{TimerHookType::None};
+std::atomic<TimerHookType> g_time_get_time_hook_type{TimerHookType::None};
+std::atomic<TimerHookType> g_get_system_time_hook_type{TimerHookType::None};
+std::atomic<TimerHookType> g_get_system_time_as_file_time_hook_type{TimerHookType::None};
+std::atomic<TimerHookType> g_get_system_time_precise_as_file_time_hook_type{TimerHookType::None};
+std::atomic<TimerHookType> g_get_local_time_hook_type{TimerHookType::None};
+std::atomic<TimerHookType> g_nt_query_system_time_hook_type{TimerHookType::None};
 
 // Per-hook call counters
-static std::atomic<uint64_t> g_qpc_call_count{0};
-static std::atomic<uint64_t> g_qpf_call_count{0};
-static std::atomic<uint64_t> g_get_tick_count_call_count{0};
-static std::atomic<uint64_t> g_get_tick_count64_call_count{0};
-static std::atomic<uint64_t> g_time_get_time_call_count{0};
-static std::atomic<uint64_t> g_get_system_time_call_count{0};
-static std::atomic<uint64_t> g_get_system_time_as_file_time_call_count{0};
-static std::atomic<uint64_t> g_get_system_time_precise_as_file_time_call_count{0};
-static std::atomic<uint64_t> g_get_local_time_call_count{0};
-static std::atomic<uint64_t> g_nt_query_system_time_call_count{0};
+std::atomic<uint64_t> g_qpc_call_count{0};
+std::atomic<uint64_t> g_qpf_call_count{0};
+std::atomic<uint64_t> g_get_tick_count_call_count{0};
+std::atomic<uint64_t> g_get_tick_count64_call_count{0};
+std::atomic<uint64_t> g_time_get_time_call_count{0};
+std::atomic<uint64_t> g_get_system_time_call_count{0};
+std::atomic<uint64_t> g_get_system_time_as_file_time_call_count{0};
+std::atomic<uint64_t> g_get_system_time_precise_as_file_time_call_count{0};
+std::atomic<uint64_t> g_get_local_time_call_count{0};
+std::atomic<uint64_t> g_nt_query_system_time_call_count{0};
 
 // Atomic shared_ptr for thread-safe state access
-static std::atomic<std::shared_ptr<const TimeslowdownState>> g_timeslowdown_state{std::make_shared<TimeslowdownState>()};
+std::atomic<std::shared_ptr<const TimeslowdownState>> g_timeslowdown_state{std::make_shared<TimeslowdownState>()};
 
 // Helper function to get hook identifier by name (DLL-safe) - kept for backward compatibility only
 TimerHookIdentifier GetHookIdentifierByName(const char *hook_name) {
@@ -247,20 +267,9 @@ DWORD WINAPI GetTickCount_Detour() {
     if (!ShouldApplyHookById(TimerHookIdentifier::GetTickCount)) {
         return result;
     }
-    static DWORD start_time = 0;
-    if (start_time == 0) {
-        start_time = result;
-    }
 
-    // Apply timeslowdown if enabled
-    if (settings::g_experimentalTabSettings.timeslowdown_enabled.GetValue()) {
-        float multiplier = settings::g_experimentalTabSettings.timeslowdown_multiplier.GetValue();
-        if (multiplier > 0.0) {
-            result = static_cast<DWORD>(start_time + (result - start_time) * multiplier);
-        }
-    }
-
-    return result;
+    // Apply timeslowdown with baseline tracking
+    return ApplyTimeslowdownWithBaseline(result);
 }
 
 // Hooked GetTickCount64 function
@@ -278,15 +287,8 @@ ULONGLONG WINAPI GetTickCount64_Detour() {
         return result;
     }
 
-    // Apply timeslowdown if enabled
-    if (settings::g_experimentalTabSettings.timeslowdown_enabled.GetValue()) {
-        float multiplier = settings::g_experimentalTabSettings.timeslowdown_multiplier.GetValue();
-        if (multiplier > 0.0) {
-            result = static_cast<ULONGLONG>(result * multiplier);
-        }
-    }
-
-    return result;
+    // Apply timeslowdown with baseline tracking
+    return ApplyTimeslowdownWithBaseline(result);
 }
 
 // Initialize timeGetTime direct function pointer

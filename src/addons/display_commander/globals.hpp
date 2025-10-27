@@ -15,7 +15,6 @@
 
 #include <atomic>
 #include <array>
-#include <chrono>
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -23,7 +22,6 @@
 #include <vector>
 #include <unordered_map>
 #include <unordered_set>
-#include <shared_mutex>
 
 // NVAPI types
 #include "../../../external/nvapi/nvapi.h"

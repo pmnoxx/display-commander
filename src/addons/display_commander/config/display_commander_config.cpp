@@ -2,6 +2,7 @@
 #include "../utils.hpp"
 #include "../utils/logging.hpp"
 #include "../utils/display_commander_logger.hpp"
+#include "../utils/srwlock_wrapper.hpp"
 #include <fstream>
 #include <sstream>
 #include <filesystem>
@@ -167,7 +168,7 @@ DisplayCommanderConfigManager& DisplayCommanderConfigManager::GetInstance() {
 }
 
 void DisplayCommanderConfigManager::Initialize() {
-    std::lock_guard<std::mutex> lock(config_mutex_);
+    utils::SRWLockExclusive lock(config_mutex_);
 
     if (initialized_) {
         return;
@@ -197,7 +198,7 @@ void DisplayCommanderConfigManager::Initialize() {
 }
 
 bool DisplayCommanderConfigManager::GetConfigValue(const char* section, const char* key, std::string& value) {
-    std::lock_guard<std::mutex> lock(config_mutex_);
+    utils::SRWLockExclusive lock(config_mutex_);
     if (!initialized_) {
         Initialize();
     }
@@ -266,7 +267,7 @@ bool DisplayCommanderConfigManager::GetConfigValue(const char* section, const ch
 }
 
 bool DisplayCommanderConfigManager::GetConfigValue(const char* section, const char* key, std::vector<std::string>& values) {
-    std::lock_guard<std::mutex> lock(config_mutex_);
+    utils::SRWLockExclusive lock(config_mutex_);
     if (!initialized_) {
         Initialize();
     }
@@ -274,7 +275,7 @@ bool DisplayCommanderConfigManager::GetConfigValue(const char* section, const ch
 }
 
 void DisplayCommanderConfigManager::SetConfigValue(const char* section, const char* key, const std::string& value) {
-    std::lock_guard<std::mutex> lock(config_mutex_);
+    utils::SRWLockExclusive lock(config_mutex_);
     if (!initialized_) {
         Initialize();
     }
@@ -282,7 +283,7 @@ void DisplayCommanderConfigManager::SetConfigValue(const char* section, const ch
 }
 
 void DisplayCommanderConfigManager::SetConfigValue(const char* section, const char* key, const char* value) {
-    std::lock_guard<std::mutex> lock(config_mutex_);
+    utils::SRWLockExclusive lock(config_mutex_);
     if (!initialized_) {
         Initialize();
     }
@@ -310,7 +311,7 @@ void DisplayCommanderConfigManager::SetConfigValue(const char* section, const ch
 }
 
 void DisplayCommanderConfigManager::SetConfigValue(const char* section, const char* key, const std::vector<std::string>& values) {
-    std::lock_guard<std::mutex> lock(config_mutex_);
+    utils::SRWLockExclusive lock(config_mutex_);
     if (!initialized_) {
         Initialize();
     }
@@ -318,7 +319,7 @@ void DisplayCommanderConfigManager::SetConfigValue(const char* section, const ch
 }
 
 void DisplayCommanderConfigManager::SaveConfig() {
-    std::lock_guard<std::mutex> lock(config_mutex_);
+    utils::SRWLockExclusive lock(config_mutex_);
     if (!initialized_) {
         return;
     }

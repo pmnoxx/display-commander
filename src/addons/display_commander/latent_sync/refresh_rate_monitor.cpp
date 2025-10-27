@@ -1,5 +1,6 @@
 #include "refresh_rate_monitor.hpp"
 #include "../utils/logging.hpp"
+#include "../utils/srwlock_wrapper.hpp"
 #include <algorithm>
 #include <dxgi.h>
 #include <iostream>
@@ -156,7 +157,7 @@ void RefreshRateMonitor::MonitoringThread() {
 
     // Clear recent samples
     {
-        std::lock_guard<std::mutex> lock(m_recent_samples_mutex);
+        utils::SRWLockExclusive lock(m_recent_samples_mutex);
         m_recent_samples.clear();
     }
 
@@ -203,7 +204,7 @@ void RefreshRateMonitor::MonitoringThread() {
 
                     // Update rolling window of last 60 samples
                     {
-                        std::lock_guard<std::mutex> lock(m_recent_samples_mutex);
+                        utils::SRWLockExclusive lock(m_recent_samples_mutex);
                         m_recent_samples.push_back(refresh_rate);
 
                         // Keep only last 60 samples

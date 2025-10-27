@@ -3,9 +3,9 @@
 #include "../globals.hpp"
 #include "../utils.hpp"
 #include "../utils/logging.hpp"
+#include "../utils/srwlock_wrapper.hpp"
 
 #include <filesystem>
-#include <mutex>
 
 namespace nvapi {
 
@@ -46,7 +46,7 @@ bool FakeNvapiManager::Initialize() {
 
     // Check if fake NVAPI DLL exists (try both nvapi64.dll and fakenvapi.dll)
     if (!CheckFakeNvapiExists()) {
-        std::lock_guard<std::mutex> lock(error_mutex_);
+        utils::SRWLockExclusive lock(error_mutex_);
         last_error_ = "Fake nvapi64.dll or fakenvapi.dll not found in addon directory";
         LogInfo("Fake NVAPI: %s", last_error_.c_str());
         return false;
@@ -78,7 +78,7 @@ void FakeNvapiManager::Cleanup() {
 }
 
 std::string FakeNvapiManager::GetStatusMessage() const {
-    std::lock_guard<std::mutex> lock(error_mutex_);
+    utils::SRWLockExclusive lock(error_mutex_);
 
     if (nvidia_detected_.load()) {
         return "Real NVIDIA GPU detected - fake NVAPI disabled";
@@ -105,7 +105,7 @@ FakeNvapiManager::Statistics FakeNvapiManager::GetStatistics() const {
     stats.fakenvapi_dll_found = CheckFakenvapiExists();
 
     {
-        std::lock_guard<std::mutex> lock(error_mutex_);
+        utils::SRWLockExclusive lock(error_mutex_);
         stats.last_error = last_error_;
     }
 
@@ -183,7 +183,7 @@ bool FakeNvapiManager::LoadFakeNvapi() {
 
     // Both failed
     DWORD error = GetLastError();
-    std::lock_guard<std::mutex> lock(error_mutex_);
+    utils::SRWLockExclusive lock(error_mutex_);
     last_error_ = "Failed to load fake nvapi64.dll or fakenvapi.dll (Error: " + std::to_string(error) + ")";
     LogError("Fake NVAPI: %s", last_error_.c_str());
     return false;

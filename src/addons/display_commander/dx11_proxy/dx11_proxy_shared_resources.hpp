@@ -9,8 +9,8 @@
 #include <d3d9.h>
 #include <d3d11.h>
 #include <wrl/client.h>
-#include <mutex>
 #include <cstdint>
+#include "../utils/srwlock_wrapper.hpp"
 
 namespace dx11_proxy {
 
@@ -98,7 +98,7 @@ private:
 
     // State
     bool is_initialized_ = false;
-    mutable std::mutex mutex_;
+    mutable SRWLOCK mutex_ = SRWLOCK_INIT;
 
     // Resource info
     uint32_t width_ = 0;

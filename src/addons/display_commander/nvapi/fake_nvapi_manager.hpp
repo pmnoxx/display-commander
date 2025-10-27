@@ -2,8 +2,8 @@
 
 #include <windows.h>
 #include <atomic>
-#include <mutex>
 #include <string>
+#include "../utils/srwlock_wrapper.hpp"
 
 namespace nvapi {
 
@@ -67,7 +67,7 @@ class FakeNvapiManager {
 
     // Error tracking
     mutable std::string last_error_;
-    mutable std::mutex error_mutex_;
+    mutable SRWLOCK error_mutex_ = SRWLOCK_INIT;
 };
 
 // Global instance

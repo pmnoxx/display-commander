@@ -3,11 +3,11 @@
 #include <atomic>
 #include <chrono>
 #include <deque>
-#include <mutex>
 #include <string>
 #include <thread>
 #include <windows.h>
 #include <dxgi.h>
+#include "../utils/srwlock_wrapper.hpp"
 
 namespace dxgi::fps_limiter {
 
@@ -60,7 +60,7 @@ private:
 
     // Rolling window of last 60 samples for min/max calculation
     std::deque<double> m_recent_samples;
-    mutable std::mutex m_recent_samples_mutex;
+    mutable SRWLOCK m_recent_samples_mutex = SRWLOCK_INIT;
 
     // Timing data
     std::chrono::high_resolution_clock::time_point m_last_vblank_time;

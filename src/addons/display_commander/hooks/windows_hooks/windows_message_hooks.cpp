@@ -89,7 +89,6 @@ GetKeyboardState_pfn GetKeyboardState_Original = nullptr;
 ClipCursor_pfn ClipCursor_Original = nullptr;
 GetCursorPos_pfn GetCursorPos_Original = nullptr;
 SetCursorPos_pfn SetCursorPos_Original = nullptr;
-SetPhysicalCursorPos_pfn SetPhysicalCursorPos_Original = nullptr;
 GetKeyState_pfn GetKeyState_Original = nullptr;
 GetAsyncKeyState_pfn GetAsyncKeyState_Original = nullptr;
 SetWindowsHookExA_pfn SetWindowsHookExA_Original = nullptr;
@@ -145,7 +144,6 @@ static const std::array<HookInfo, HOOK_COUNT> g_hook_info = {{
     {"ClipCursor", DllGroup::USER32},
     {"GetCursorPos", DllGroup::USER32},
     {"SetCursorPos", DllGroup::USER32},
-    {"SetPhysicalCursorPos", DllGroup::USER32},
     {"GetKeyState", DllGroup::USER32},
     {"GetAsyncKeyState", DllGroup::USER32},
     {"SetWindowsHookExA", DllGroup::USER32},
@@ -647,36 +645,6 @@ BOOL WINAPI SetCursorPos_Detour(int X, int Y) {
 
     // Call original function
     return SetCursorPos_Original ? SetCursorPos_Original(X, Y) : SetCursorPos(X, Y);
-}
-
-// Hooked SetPhysicalCursorPos function
-BOOL WINAPI SetPhysicalCursorPos_Detour(int X, int Y) {
-    // Track total calls
-    g_hook_stats[HOOK_SetPhysicalCursorPos].increment_total();
-
-    // Update last known cursor position
-    s_last_cursor_position.x = X;
-    s_last_cursor_position.y = Y;
-
-    // If mouse position spoofing is enabled AND auto-click is enabled, update spoofed position instead of moving cursor
-    if (settings::g_experimentalTabSettings.mouse_spoofing_enabled.GetValue()) {
-        // Check if auto-click is enabled
-        if (g_auto_click_enabled.load()) {
-            s_spoofed_mouse_x.store(X);
-            s_spoofed_mouse_y.store(Y);
-            return TRUE; // Return success without actually moving the cursor
-        }
-    }
-
-    // If mouse input blocking is enabled, block cursor position changes
-    if (ShouldBlockMouseInput()) {
-        return TRUE; // Block the cursor position change
-    } else {
-        g_hook_stats[HOOK_SetPhysicalCursorPos].increment_unsuppressed();
-    }
-
-    // Call original function
-    return SetPhysicalCursorPos_Original ? SetPhysicalCursorPos_Original(X, Y) : SetPhysicalCursorPos(X, Y);
 }
 
 // Hooked GetKeyState function
@@ -1559,11 +1527,6 @@ bool InstallWindowsMessageHooks() {
         LogError("Failed to create and enable SetCursorPos hook");
     }
 
-    // Hook SetPhysicalCursorPos
-    if (!CreateAndEnableHook(SetPhysicalCursorPos, SetPhysicalCursorPos_Detour, (LPVOID *)&SetPhysicalCursorPos_Original, "SetPhysicalCursorPos")) {
-        LogError("Failed to create and enable SetPhysicalCursorPos hook");
-    }
-
     // Hook GetKeyState
     if (!CreateAndEnableHook(GetKeyState, GetKeyState_Detour, (LPVOID *)&GetKeyState_Original, "GetKeyState")) {
         LogError("Failed to create and enable GetKeyState hook");
@@ -1753,7 +1716,6 @@ void UninstallWindowsMessageHooks() {
     MH_RemoveHook(ClipCursor);
     MH_RemoveHook(GetCursorPos);
     MH_RemoveHook(SetCursorPos);
-    MH_RemoveHook(SetPhysicalCursorPos);
     MH_RemoveHook(GetKeyState);
     MH_RemoveHook(GetAsyncKeyState);
     MH_RemoveHook(SetWindowsHookExA);
@@ -1793,7 +1755,6 @@ void UninstallWindowsMessageHooks() {
     ClipCursor_Original = nullptr;
     GetCursorPos_Original = nullptr;
     SetCursorPos_Original = nullptr;
-    SetPhysicalCursorPos_Original = nullptr;
     GetKeyState_Original = nullptr;
     GetAsyncKeyState_Original = nullptr;
     SetWindowsHookExA_Original = nullptr;

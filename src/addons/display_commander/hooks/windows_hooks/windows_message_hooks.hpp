@@ -54,7 +54,6 @@ enum HookIndex {
     HOOK_ClipCursor,
     HOOK_GetCursorPos,
     HOOK_SetCursorPos,
-    HOOK_SetPhysicalCursorPos,
     HOOK_GetKeyState,
     HOOK_GetAsyncKeyState,
     HOOK_SetWindowsHookExA,
@@ -166,7 +165,6 @@ using GetKeyboardState_pfn = BOOL(WINAPI *)(PBYTE);
 using ClipCursor_pfn = BOOL(WINAPI *)(const RECT *);
 using GetCursorPos_pfn = BOOL(WINAPI *)(LPPOINT);
 using SetCursorPos_pfn = BOOL(WINAPI *)(int, int);
-using SetPhysicalCursorPos_pfn = BOOL(WINAPI *)(int, int);
 using GetKeyState_pfn = SHORT(WINAPI *)(int);
 using GetAsyncKeyState_pfn = SHORT(WINAPI *)(int);
 using SetWindowsHookExA_pfn = HHOOK(WINAPI *)(int, HOOKPROC, HINSTANCE, DWORD);
@@ -210,7 +208,6 @@ extern GetKeyboardState_pfn GetKeyboardState_Original;
 extern ClipCursor_pfn ClipCursor_Original;
 extern GetCursorPos_pfn GetCursorPos_Original;
 extern SetCursorPos_pfn SetCursorPos_Original;
-extern SetPhysicalCursorPos_pfn SetPhysicalCursorPos_Original;
 extern GetKeyState_pfn GetKeyState_Original;
 extern GetAsyncKeyState_pfn GetAsyncKeyState_Original;
 extern SetWindowsHookExA_pfn SetWindowsHookExA_Original;
@@ -256,7 +253,6 @@ BOOL ClipCursor_Direct(const RECT *lpRect);
 void RestoreClipCursor();
 BOOL WINAPI GetCursorPos_Detour(LPPOINT lpPoint);
 BOOL WINAPI SetCursorPos_Detour(int X, int Y);
-BOOL WINAPI SetPhysicalCursorPos_Detour(int X, int Y);
 SHORT WINAPI GetKeyState_Detour(int vKey);
 SHORT WINAPI GetAsyncKeyState_Detour(int vKey);
 HHOOK WINAPI SetWindowsHookExA_Detour(int idHook, HOOKPROC lpfn, HINSTANCE hmod, DWORD dwThreadId);

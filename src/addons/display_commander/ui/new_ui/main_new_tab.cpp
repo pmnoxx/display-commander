@@ -157,6 +157,61 @@ void DrawFrameTimeGraph() {
     }
 }
 
+// Compact overlay version with fixed width
+void DrawFrameTimeGraphOverlay() {
+    // Get frame time data from the performance ring buffer
+    const uint32_t head = ::g_perf_ring_head.load(std::memory_order_acquire);
+    const uint32_t count = (head > static_cast<uint32_t>(::kPerfRingCapacity)) ? static_cast<uint32_t>(::kPerfRingCapacity) : head;
+
+    if (count == 0) {
+        return; // Don't show anything if no data
+    }
+
+    // Collect frame times for the graph (last 150 samples for compact display)
+    static std::vector<float> frame_times;
+    frame_times.clear();
+    frame_times.reserve(min(count, 150u));
+
+    const uint32_t start = head - min(count, 150u);
+    for (uint32_t i = start; i < head; ++i) {
+        const ::PerfSample& sample = ::g_perf_ring[i & (::kPerfRingCapacity - 1)];
+        if (sample.fps > 0.0f) {
+            frame_times.push_back(1000.0f / sample.fps); // Convert FPS to frame time in ms
+        }
+    }
+
+    if (frame_times.empty()) {
+        return; // Don't show anything if no valid data
+    }
+
+    // Calculate statistics for the graph
+    float max_frame_time = *std::ranges::max_element(frame_times);
+    float avg_frame_time = 0.0f;
+    for (float ft : frame_times) {
+        avg_frame_time += ft;
+    }
+    avg_frame_time /= static_cast<float>(frame_times.size());
+
+    // Fixed width for overlay (compact)
+    ImVec2 graph_size = ImVec2(300.0f, 60.0f); // Fixed 300px width, 60px height
+    float scale_min = 0.0f;
+    float scale_max = max(avg_frame_time * 3.0f, max_frame_time + 1.0f); // Add some padding but less aggressive
+
+    // Draw compact frame time graph
+    ImGui::PlotLines("##FrameTime",
+                     frame_times.data(),
+                     static_cast<int>(frame_times.size()),
+                     0, // values_offset
+                     nullptr, // overlay_text - no text for compact version
+                     scale_min,
+                     scale_max,
+                     graph_size);
+
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Frame time graph (last 150 frames)\nAvg: %.2f ms | Max: %.2f ms", avg_frame_time, max_frame_time);
+    }
+}
+
 void InitMainNewTab() {
     static bool settings_loaded_once = false;
     if (!settings_loaded_once) {
@@ -1665,6 +1720,16 @@ void DrawImportantInfo() {
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Shows the current time (HH:MM:SS) in the overlay.");
+        }
+
+        ImGui::SameLine();
+        // Show Frame Time Graph Control
+        bool show_frame_time_graph = settings::g_mainTabSettings.show_frame_time_graph.GetValue();
+        if (ImGui::Checkbox("Show frame time graph", &show_frame_time_graph)) {
+            settings::g_mainTabSettings.show_frame_time_graph.SetValue(show_frame_time_graph);
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Shows a graph of frame times in the overlay.");
         }
 
     }

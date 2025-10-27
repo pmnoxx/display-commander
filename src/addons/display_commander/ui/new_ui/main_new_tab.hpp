@@ -29,4 +29,7 @@ void DrawImportantInfo();
 // Draw frame time graph section
 void DrawFrameTimeGraph();
 
+// Draw compact frame time graph for overlay (fixed width)
+void DrawFrameTimeGraphOverlay();
+
 }  // namespace ui::new_ui

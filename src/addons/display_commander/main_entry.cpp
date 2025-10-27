@@ -260,10 +260,14 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
             }
         }
     }
+
+    if (settings::g_mainTabSettings.show_frame_time_graph.GetValue()) {
+        ui::new_ui::DrawFrameTimeGraphOverlay();
+    }
+
     ImGui::End();
 
     // Test widget that appears in the main ReShade overlay
-  //  ui::new_ui::DrawFrameTimeGraph();
 }
 }  // namespace
 

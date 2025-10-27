@@ -86,6 +86,7 @@ class MainTabSettings {
     ui::new_ui::BoolSetting show_fps_counter;
     ui::new_ui::BoolSetting show_labels;
     ui::new_ui::BoolSetting show_clock;
+    ui::new_ui::BoolSetting show_frame_time_graph;
 
     // GPU Measurement Settings
     ui::new_ui::IntSetting gpu_measurement_enabled;

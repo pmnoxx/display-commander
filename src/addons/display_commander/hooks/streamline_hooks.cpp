@@ -1,5 +1,6 @@
 #include "streamline_hooks.hpp"
 #include "hook_suppression_manager.hpp"
+#include "dxgi_factory_wrapper.hpp"
 #include "../settings/developer_tab_settings.hpp"
 #include "../globals.hpp"
 #include "../utils/general_utils.hpp"
@@ -7,7 +8,8 @@
 #include "../config/display_commander_config.hpp"
 
 #include <MinHook.h>
-#include <cmath>
+#include <dxgi.h>
+#include <dxgi1_6.h>
 #include <cstdint>
 
 // Streamline function pointers
@@ -105,16 +107,37 @@ int slUpgradeInterface_Detour(void** baseInterface) {
         }
     }
 
+    auto* unknown = static_cast<IUnknown*>(*baseInterface);
 
-    // Log the call
-    LogInfo("slUpgradeInterface called");
-
-    // Call original function
-    if (slUpgradeInterface_Original != nullptr) {
-        return slUpgradeInterface_Original(baseInterface);
+    if (slUpgradeInterface_Original == nullptr) {
+        return -1; // Error if original not available
     }
 
-    return -1; // Error if original not available
+    IDXGIFactory7* dxgi_factory7{};
+    if (SUCCEEDED(unknown->QueryInterface(&dxgi_factory7))) {
+        LogInfo("[slUpgradeInterface] Found IDXGIFactory7 interface");
+
+        // Call original slUpgradeInterface first
+        HRESULT hr = slUpgradeInterface_Original(baseInterface);
+        if (FAILED(hr)) {
+            dxgi_factory7->Release();
+            return hr;
+        }
+
+        // Create wrapper to ensure it doesn't pass active queue for swapchain creation
+        auto* factory_wrapper = new display_commanderhooks::DXGIFactoryWrapper(dxgi_factory7);
+        factory_wrapper->SetSLGetNativeInterface(slGetNativeInterface_Original);
+        factory_wrapper->SetSLUpgradeInterface(slUpgradeInterface_Original);
+        // TODO(user): Set command queue map when available
+
+        *baseInterface = factory_wrapper;
+        LogInfo("[slUpgradeInterface] Created DXGIFactoryWrapper for Streamline compatibility");
+
+        dxgi_factory7->Release();
+        return 0; // sl::Result::eOk
+    }
+
+    return slUpgradeInterface_Original(baseInterface);
 }
 
 // Initialize config-driven prevent_slupgrade_interface flag

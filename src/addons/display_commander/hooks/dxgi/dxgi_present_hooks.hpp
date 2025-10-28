@@ -188,4 +188,5 @@ size_t GetTrackedSwapchainCount();
 void ClearAllTrackedSwapchains();
 bool HasTrackedSwapchains();
 
+bool HookSwapchainNative(IDXGISwapChain *swapchain);
 } // namespace display_commanderhooks::dxgi

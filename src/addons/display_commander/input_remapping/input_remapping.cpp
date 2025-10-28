@@ -153,6 +153,10 @@ void InputRemapper::clear_all_remaps() {
 
 void InputRemapper::set_remapping_enabled(bool enabled) {
     _remapping_enabled.store(enabled);
+
+    // Save the setting to config immediately
+    display_commander::config::set_config_value("DisplayCommander.InputRemapping", "Enabled", enabled);
+
     LogInfo("InputRemapper::set_remapping_enabled() - Remapping %s", enabled ? "enabled" : "disabled");
 }
 
@@ -175,16 +179,14 @@ void InputRemapper::update_remap(WORD gamepad_button, int keyboard_vk, const std
 
 void InputRemapper::load_settings() {
     // Load remapping enabled state
-    bool remapping_enabled;
-    if (display_commander::config::get_config_value("DisplayCommander.InputRemapping", "Enabled", remapping_enabled)) {
-        _remapping_enabled.store(remapping_enabled);
-    }
+    bool remapping_enabled = _remapping_enabled.load(); // Get current default value
+    display_commander::config::get_config_value("DisplayCommander.InputRemapping", "Enabled", remapping_enabled);
+    _remapping_enabled.store(remapping_enabled);
 
     // Load default input method
-    int default_method;
-    if (display_commander::config::get_config_value("DisplayCommander.InputRemapping", "DefaultMethod", default_method)) {
-        _default_input_method = static_cast<KeyboardInputMethod>(default_method);
-    }
+    int default_method = static_cast<int>(_default_input_method); // Get current default value
+    display_commander::config::get_config_value("DisplayCommander.InputRemapping", "DefaultMethod", default_method);
+    _default_input_method = static_cast<KeyboardInputMethod>(default_method);
 
     // Load remappings count
     int remapping_count;

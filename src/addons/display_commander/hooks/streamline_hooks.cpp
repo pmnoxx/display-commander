@@ -85,17 +85,6 @@ int slUpgradeInterface_Detour(void** baseInterface) {
     g_streamline_event_counters[STREAMLINE_EVENT_SL_UPGRADE_INTERFACE].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
-    Microsoft::WRL::ComPtr<IDXGISwapChain> swapchain{};
-    if (SUCCEEDED(swapchain->QueryInterface(IID_PPV_ARGS(&swapchain)))) {
-        LogInfo("[slUpgradeInterface] Found IDXGISwapChain interface");
-    }
-
-    Microsoft::WRL::ComPtr<IDXGIFactory> dxgi_factory{};
-    if (SUCCEEDED(dxgi_factory->QueryInterface(IID_PPV_ARGS(&dxgi_factory)))) {
-        LogInfo("[slUpgradeInterface] Found IDXGIFactory interface");
-    }
-
-
     // Log the call
     LogInfo("slUpgradeInterface called");
 

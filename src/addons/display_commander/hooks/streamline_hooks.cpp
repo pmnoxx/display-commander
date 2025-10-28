@@ -4,6 +4,7 @@
 #include "../globals.hpp"
 #include "../utils/general_utils.hpp"
 #include "../utils/logging.hpp"
+#include "../config/display_commander_config.hpp"
 
 #include <MinHook.h>
 #include <cstdint>
@@ -21,6 +22,9 @@ static slUpgradeInterface_pfn slUpgradeInterface_Original = nullptr;
 
 // Track SDK version from slInit calls
 static std::atomic<uint64_t> g_last_sdk_version{0};
+
+// Config-driven prevent slUpgradeInterface flag
+static std::atomic<bool> g_prevent_slupgrade_interface{false};
 
 // Hook functions
 int slInit_Detour(void* pref, uint64_t sdkVersion) {
@@ -85,6 +89,21 @@ int slUpgradeInterface_Detour(void** baseInterface) {
     g_streamline_event_counters[STREAMLINE_EVENT_SL_UPGRADE_INTERFACE].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
+    // Check config-driven flag
+    bool prevent_slupgrade_interface = g_prevent_slupgrade_interface.load();
+    if (prevent_slupgrade_interface) {
+        Microsoft::WRL::ComPtr<IDXGISwapChain> swapchain{};
+        if (SUCCEEDED(swapchain->QueryInterface(IID_PPV_ARGS(&swapchain)))) {
+            LogInfo("[slUpgradeInterface] Found IDXGISwapChain interface");
+        }
+
+        Microsoft::WRL::ComPtr<IDXGIFactory> dxgi_factory{};
+        if (SUCCEEDED(dxgi_factory->QueryInterface(IID_PPV_ARGS(&dxgi_factory)))) {
+            LogInfo("[slUpgradeInterface] Found IDXGIFactory interface");
+        }
+    }
+
+
     // Log the call
     LogInfo("slUpgradeInterface called");
 
@@ -94,6 +113,21 @@ int slUpgradeInterface_Detour(void** baseInterface) {
     }
 
     return -1; // Error if original not available
+}
+
+// Initialize config-driven prevent_slupgrade_interface flag
+void InitializePreventSLUpgradeInterface() {
+    bool prevent_slupgrade_interface = false;
+
+    if (display_commander::config::get_config_value("DisplayCommander.Safemode", "PreventSLUpgradeInterface", prevent_slupgrade_interface)) {
+        g_prevent_slupgrade_interface.store(prevent_slupgrade_interface);
+        LogInfo("Loaded PreventSLUpgradeInterface from config: %s", prevent_slupgrade_interface ? "enabled" : "disabled");
+    } else {
+        // Default to false if not found in config
+        g_prevent_slupgrade_interface.store(false);
+        display_commander::config::set_config_value("DisplayCommander.Safemode", "PreventSLUpgradeInterface", prevent_slupgrade_interface);
+        LogInfo("PreventSLUpgradeInterface not found in config, using default: disabled");
+    }
 }
 
 bool InstallStreamlineHooks() {
@@ -121,6 +155,9 @@ bool InstallStreamlineHooks() {
         return true;
     }
     g_streamline_hooks_installed = true;
+
+    // Initialize prevent_slupgrade_interface from config
+    InitializePreventSLUpgradeInterface();
 
     LogInfo("Installing Streamline hooks...");
 

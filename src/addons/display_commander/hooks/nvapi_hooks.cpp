@@ -104,6 +104,10 @@ NvAPI_Status __cdecl NvAPI_D3D_SetLatencyMarker_Detour(IUnknown *pDev, NV_LATENC
     g_nvapi_event_counters[NVAPI_EVENT_D3D_SET_LATENCY_MARKER].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
+    if (settings::g_developerTabSettings.reflex_supress_native.GetValue()) {
+        return NVAPI_OK;
+    }
+
     // Log the call (first few times only)
     static int log_count = 0;
     if (log_count < 3) {
@@ -125,6 +129,10 @@ NvAPI_Status __cdecl NvAPI_D3D_SetSleepMode_Detour(IUnknown *pDev, NV_SET_SLEEP_
     // Increment counter
     g_nvapi_event_counters[NVAPI_EVENT_D3D_SET_SLEEP_MODE].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
+
+    if (settings::g_developerTabSettings.reflex_supress_native.GetValue()) {
+        return NVAPI_OK;
+    }
 
     // Store the parameters for UI display
     if (pSetSleepModeParams != nullptr) {
@@ -199,6 +207,9 @@ NvAPI_Status __cdecl NvAPI_D3D_Sleep_Detour(IUnknown *pDev) {
     // Increment counter
     g_nvapi_event_counters[NVAPI_EVENT_D3D_SLEEP].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
+    if (settings::g_developerTabSettings.reflex_supress_native.GetValue()) {
+        return NVAPI_OK;
+    }
 
     // Record timestamp of this sleep call
     g_nvapi_last_sleep_timestamp_ns.store(utils::get_now_ns());

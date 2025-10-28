@@ -30,6 +30,9 @@
 // Fake NVAPI manager
 #include "nvapi/fake_nvapi_manager.hpp"
 
+// Settings
+#include "settings/developer_tab_settings.hpp"
+
 // Constants
 #define DEBUG_LEVEL_0
 
@@ -888,7 +891,7 @@ extern std::atomic<uint32_t> g_swapchain_event_total_count;   // Total events ac
 inline bool IsNativeReflexActive() {
     auto did_sleep_recently = (utils::get_now_ns() - g_nvapi_last_sleep_timestamp_ns) < 1 * utils::SEC_TO_NS;
 
-    return g_nvapi_event_counters[NVAPI_EVENT_D3D_SET_SLEEP_MODE].load() > 0 && did_sleep_recently;
+    return g_nvapi_event_counters[NVAPI_EVENT_D3D_SET_SLEEP_MODE].load() > 0 && did_sleep_recently && !settings::g_developerTabSettings.reflex_supress_native.GetValue();
 }
 
 // OpenGL hook counters

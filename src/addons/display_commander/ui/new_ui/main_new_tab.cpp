@@ -837,7 +837,7 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                 ImGui::TextColored(ui::colors::TEXT_WARNING, ICON_FK_WARNING " Warning: Reflex does not work with Direct3D 9");
             } else {
                 if (IsNativeReflexActive()) {
-                    ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), ICON_FK_OK " Native Reflex: ACTIVE");
+                    ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), ICON_FK_OK " Native Reflex: ACTIVE Native Frame Pacing: ON");
                     if (ImGui::IsItemHovered()) {
                         ImGui::SetTooltip(
                             "The game has native Reflex support and is actively using it. "
@@ -850,7 +850,7 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                         ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f), ICON_FK_WARNING " Warning: Native Reflex is not sleeping recently - may indicate issues! (FIXME)");
                     }
                 } else {
-                    ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), ICON_FK_OK " Injected Reflex: ACTIVE");
+                    ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), ICON_FK_OK " Injected Reflex: ACTIVE Native Frame Pacing: OFF");
                     double injected_ns = g_sleep_reflex_injected_ns.load();
                     double calls_per_second = injected_ns <= 0 ? -1 : 1000000000.0 / static_cast<double>(injected_ns);
                     ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Injected Reflex: %.2f times/sec (%.1f ms interval)", calls_per_second, injected_ns / 1000000.0);
@@ -895,11 +895,14 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
 
         // Show warning for non-implemented low latency mode
         if (current_item == static_cast<int>(FpsLimiterMode::kNonReflexLowLatency)) {
+            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Native Frame Pacing: OFF");
             ImGui::TextColored(ui::colors::TEXT_WARNING, ICON_FK_WARNING " Non-Reflex Low Latency Mode not implemented yet");
         }
 
         // Present Pacing Delay slider (persisted)
         if (current_item == static_cast<int>(FpsLimiterMode::kOnPresentSync)) {
+            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Native Frame Pacing: OFF");
+
             ImGui::TextColored(ui::colors::TEXT_HIGHLIGHT, "Present Pacing Delay:");
             ImGui::SameLine();
             ImGui::TextColored(ui::colors::TEXT_DIMMED, "Improves frame timing consistency");

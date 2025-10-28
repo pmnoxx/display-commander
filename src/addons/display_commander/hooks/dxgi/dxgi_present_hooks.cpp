@@ -1149,6 +1149,14 @@ bool HookIDXGIOutput(IDXGIOutput *output) {
 // VTable hooking functions
 bool HookFactoryVTable(IDXGIFactory *factory);
 
+
+bool HookSwapchainNative(IDXGISwapChain *swapchain) {
+
+    LogInfo("Hooking swapchain native: 0x%p (WIP - Not implemented)", swapchain);
+
+    return true;
+}
+
 // Hook a specific swapchain's vtable
 bool HookSwapchain(IDXGISwapChain *swapchain) {
     if (g_swapchainTrackingManager.IsSwapchainTracked(swapchain)) {

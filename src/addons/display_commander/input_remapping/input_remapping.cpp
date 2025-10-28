@@ -394,6 +394,60 @@ int InputRemapper::get_vk_code_from_name(const std::string &name) const {
         return VK_F11;
     if (name == "F12")
         return VK_F12;
+    if (name == "~")
+        return VK_OEM_3; // Tilde key
+    if (name == "A")
+        return 'A';
+    if (name == "B")
+        return 'B';
+    if (name == "C")
+        return 'C';
+    if (name == "D")
+        return 'D';
+    if (name == "E")
+        return 'E';
+    if (name == "F")
+        return 'F';
+    if (name == "G")
+        return 'G';
+    if (name == "H")
+        return 'H';
+    if (name == "I")
+        return 'I';
+    if (name == "J")
+        return 'J';
+    if (name == "K")
+        return 'K';
+    if (name == "L")
+        return 'L';
+    if (name == "M")
+        return 'M';
+    if (name == "N")
+        return 'N';
+    if (name == "O")
+        return 'O';
+    if (name == "P")
+        return 'P';
+    if (name == "Q")
+        return 'Q';
+    if (name == "R")
+        return 'R';
+    if (name == "S")
+        return 'S';
+    if (name == "T")
+        return 'T';
+    if (name == "U")
+        return 'U';
+    if (name == "V")
+        return 'V';
+    if (name == "W")
+        return 'W';
+    if (name == "X")
+        return 'X';
+    if (name == "Y")
+        return 'Y';
+    if (name == "Z")
+        return 'Z';
     return 0;
 }
 
@@ -516,7 +570,10 @@ std::vector<std::string> get_available_gamepad_buttons() {
 
 std::vector<std::string> get_available_keyboard_keys() {
     return {"Space", "Enter", "Escape", "Tab", "Shift", "Ctrl", "Alt", "F1",  "F2", "F3",
-            "F4",    "F5",    "F6",     "F7",  "F8",    "F9",   "F10", "F11", "F12"};
+            "F4",    "F5",    "F6",     "F7",  "F8",    "F9",   "F10", "F11", "F12",
+            "~",     "A",     "B",      "C",   "D",     "E",    "F",   "G",   "H",
+            "I",     "J",     "K",      "L",   "M",     "N",    "O",   "P",   "Q",
+            "R",     "S",     "T",      "U",   "V",     "W",    "X",   "Y",   "Z"};
 }
 
 void InputRemapper::increment_trigger_count(WORD gamepad_button) {

@@ -253,9 +253,14 @@ void RemappingWidget::DrawAddRemapDialog() {
 
         // Keyboard Key Selection
         ImGui::Text("Keyboard Key:");
-        const char *keyboard_keys[] = {"Space", "Enter", "Escape", "Tab", "Shift", "Ctrl", "Alt", "F1",  "F2", "F3",
-                                       "F4",    "F5",    "F6",     "F7",  "F8",    "F9",   "F10", "F11", "F12"};
-        if (ImGui::Combo("##KeyboardKey", &dialog_state_.selected_keyboard_key, keyboard_keys, 19)) {
+        auto keyboard_keys = input_remapping::get_available_keyboard_keys();
+        // Convert vector to const char* array for ImGui::Combo
+        std::vector<const char*> keyboard_keys_cstr;
+        for (const auto& key : keyboard_keys) {
+            keyboard_keys_cstr.push_back(key.c_str());
+        }
+        if (ImGui::Combo("##KeyboardKey", &dialog_state_.selected_keyboard_key,
+                        keyboard_keys_cstr.data(), static_cast<int>(keyboard_keys_cstr.size()))) {
             // Update selection
         }
 
@@ -322,9 +327,14 @@ void RemappingWidget::DrawEditRemapDialog() {
         ImGui::Combo("##GamepadButton", &dialog_state_.selected_gamepad_button, gamepad_buttons, 15);
 
         ImGui::Text("Keyboard Key:");
-        const char *keyboard_keys[] = {"Space", "Enter", "Escape", "Tab", "Shift", "Ctrl", "Alt", "F1",  "F2", "F3",
-                                       "F4",    "F5",    "F6",     "F7",  "F8",    "F9",   "F10", "F11", "F12"};
-        ImGui::Combo("##KeyboardKey", &dialog_state_.selected_keyboard_key, keyboard_keys, 19);
+        auto keyboard_keys = input_remapping::get_available_keyboard_keys();
+        // Convert vector to const char* array for ImGui::Combo
+        std::vector<const char*> keyboard_keys_cstr;
+        for (const auto& key : keyboard_keys) {
+            keyboard_keys_cstr.push_back(key.c_str());
+        }
+        ImGui::Combo("##KeyboardKey", &dialog_state_.selected_keyboard_key,
+                    keyboard_keys_cstr.data(), static_cast<int>(keyboard_keys_cstr.size()));
 
         ImGui::Text("Input Method:");
         const char *input_methods[] = {"SendInput", "keybd_event", "SendMessage", "PostMessage"};
@@ -500,6 +510,60 @@ int RemappingWidget::GetKeyboardVkFromIndex(int index) const {
         return VK_F11;
     case 18:
         return VK_F12;
+    case 19:
+        return VK_OEM_3; // Tilde key
+    case 20:
+        return 'A';
+    case 21:
+        return 'B';
+    case 22:
+        return 'C';
+    case 23:
+        return 'D';
+    case 24:
+        return 'E';
+    case 25:
+        return 'F';
+    case 26:
+        return 'G';
+    case 27:
+        return 'H';
+    case 28:
+        return 'I';
+    case 29:
+        return 'J';
+    case 30:
+        return 'K';
+    case 31:
+        return 'L';
+    case 32:
+        return 'M';
+    case 33:
+        return 'N';
+    case 34:
+        return 'O';
+    case 35:
+        return 'P';
+    case 36:
+        return 'Q';
+    case 37:
+        return 'R';
+    case 38:
+        return 'S';
+    case 39:
+        return 'T';
+    case 40:
+        return 'U';
+    case 41:
+        return 'V';
+    case 42:
+        return 'W';
+    case 43:
+        return 'X';
+    case 44:
+        return 'Y';
+    case 45:
+        return 'Z';
     default:
         return 0;
     }

@@ -207,12 +207,9 @@ NvAPI_Status __cdecl NvAPI_D3D_Sleep_Detour(IUnknown *pDev) {
     // Increment counter
     g_nvapi_event_counters[NVAPI_EVENT_D3D_SLEEP].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
-    if (settings::g_developerTabSettings.reflex_supress_native.GetValue()) {
-        return NVAPI_OK;
-    }
-
     // Record timestamp of this sleep call
     g_nvapi_last_sleep_timestamp_ns.store(utils::get_now_ns());
+
 
     // Log the call (first few times only)
     static int log_count = 0;
@@ -227,6 +224,11 @@ NvAPI_Status __cdecl NvAPI_D3D_Sleep_Detour(IUnknown *pDev) {
         g_sleep_reflex_native_ns.store(now - last_call);
         last_call = now;
     }
+
+    if (settings::g_developerTabSettings.reflex_supress_native.GetValue()) {
+        return NVAPI_OK;
+    }
+
 
     // Call original function
     if (NvAPI_D3D_Sleep_Original != nullptr) {

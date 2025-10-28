@@ -20,7 +20,6 @@
 
 // External atomic variables from settings
 extern std::atomic<bool> s_nvapi_auto_enable_enabled;
-extern std::atomic<bool> s_hide_proxy_swapchain_from_reshade;
 
 namespace ui::new_ui {
 
@@ -214,8 +213,7 @@ void DrawDeveloperSettings() {
     }
 
     // Hide Proxy Swap Chain from ReShade checkbox
-    if (CheckboxSetting(settings::g_developerTabSettings.hide_proxy_swapchain_from_reshade, "Hide proxy swap chain from ReShade")) {
-        s_hide_proxy_swapchain_from_reshade.store(settings::g_developerTabSettings.hide_proxy_swapchain_from_reshade.GetValue());
+    if (CheckboxSetting(settings::g_developerTabSettings.hide_proxy_swapchain_from_reshade, "Hide proxy swap chain from ReShade (DLSS FIX WIP)")) {
         LogInfo("Hide proxy swap chain from ReShade setting changed to: %s",
                 settings::g_developerTabSettings.hide_proxy_swapchain_from_reshade.GetValue() ? "enabled" : "disabled");
     }

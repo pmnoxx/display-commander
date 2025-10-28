@@ -116,6 +116,11 @@ NvAPI_Status __cdecl NvAPI_D3D_SetLatencyMarker_Detour(IUnknown *pDev, NV_LATENC
         log_count++;
     }
 
+    // check if IsNative reflex
+    if (!IsNativeReflexActive()) {
+        return NVAPI_OK;
+    }
+
     // Call original function
     if (NvAPI_D3D_SetLatencyMarker_Original != nullptr) {
         return NvAPI_D3D_SetLatencyMarker_Original(pDev, pSetLatencyMarkerParams);
@@ -150,6 +155,10 @@ NvAPI_Status __cdecl NvAPI_D3D_SetSleepMode_Detour(IUnknown *pDev, NV_SET_SLEEP_
                 pSetSleepModeParams ? pSetSleepModeParams->bUseMarkersToOptimize : -1);
         log_count++;
     }
+    if (!IsNativeReflexActive()) {
+        return NVAPI_OK;
+    }
+
 
     // Call original function
     if (NvAPI_D3D_SetSleepMode_Original != nullptr) {
@@ -224,6 +233,10 @@ NvAPI_Status __cdecl NvAPI_D3D_Sleep_Detour(IUnknown *pDev) {
         g_sleep_reflex_native_ns.store(now - last_call);
         last_call = now;
     }
+    if (!IsNativeReflexActive()) {
+        return NVAPI_OK;
+    }
+
 
     if (settings::g_developerTabSettings.reflex_supress_native.GetValue()) {
         return NVAPI_OK;

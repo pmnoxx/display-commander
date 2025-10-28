@@ -84,6 +84,7 @@ class MainTabSettings {
     // Test Overlay Settings
     ui::new_ui::BoolSetting show_test_overlay;
     ui::new_ui::BoolSetting show_fps_counter;
+    ui::new_ui::BoolSetting show_display_commander_ui;
     ui::new_ui::BoolSetting show_labels;
     ui::new_ui::BoolSetting show_clock;
     ui::new_ui::BoolSetting show_frame_time_graph;

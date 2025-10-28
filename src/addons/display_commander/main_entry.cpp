@@ -190,12 +190,21 @@ namespace {
 
 // Test callback for reshade_overlay event
 void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
+    const bool show_display_commander_ui = settings::g_mainTabSettings.show_display_commander_ui.GetValue();
+    if (show_display_commander_ui) {
+        // IMGui window
+        ImGui::Begin("Display Commander UI", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_AlwaysAutoResize);
+        ImGui::Text("Display Commander UI Placeholder");
+        ImGui::End();
+    }
+
+
     // Check the setting from main tab first
     if (!settings::g_mainTabSettings.show_test_overlay.GetValue()) {
         return;
     }
 
-    bool any_enabled = settings::g_mainTabSettings.show_fps_counter.GetValue() || settings::g_mainTabSettings.gpu_measurement_enabled.GetValue();
+    bool any_enabled = settings::g_mainTabSettings.show_fps_counter.GetValue() || settings::g_mainTabSettings.gpu_measurement_enabled.GetValue() || settings::g_mainTabSettings.show_frame_time_graph.GetValue();
 
     if (!any_enabled) {
         return;

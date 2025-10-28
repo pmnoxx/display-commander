@@ -848,6 +848,44 @@ void DrawKeyboardShortcutsSettings() {
             ImGui::Unindent();
         }
 
+        // Enable Display Commander UI Shortcut (Ctrl+Shift+Backspace)
+        if (CheckboxSetting(settings::g_developerTabSettings.enable_display_commander_ui_shortcut,
+                            "Enable Display Commander UI Shortcut (Ctrl+Shift+Backspace)")) {
+            ::s_enable_display_commander_ui_shortcut.store(settings::g_developerTabSettings.enable_display_commander_ui_shortcut.GetValue());
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip(
+                "Enable keyboard shortcut Ctrl+Shift+Backspace to toggle the Display Commander UI overlay. Only works when the game is "
+                "in the foreground.");
+        }
+
+        // Info text for Ctrl+Shift+Backspace
+        if (settings::g_developerTabSettings.enable_display_commander_ui_shortcut.GetValue()) {
+            ImGui::Indent();
+            ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Press Ctrl+Shift+Backspace to toggle Display Commander UI");
+            ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Shortcut works when game is in foreground");
+            ImGui::Unindent();
+        }
+
+        // Enable Performance Overlay Shortcut (Ctrl+O)
+        if (CheckboxSetting(settings::g_developerTabSettings.enable_performance_overlay_shortcut,
+                            "Enable Performance Overlay Shortcut (Ctrl+O)")) {
+            ::s_enable_performance_overlay_shortcut.store(settings::g_developerTabSettings.enable_performance_overlay_shortcut.GetValue());
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip(
+                "Enable keyboard shortcut Ctrl+O to toggle the performance overlay. Only works when the game is "
+                "in the foreground.");
+        }
+
+        // Info text for Ctrl+O
+        if (settings::g_developerTabSettings.enable_performance_overlay_shortcut.GetValue()) {
+            ImGui::Indent();
+            ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Press Ctrl+O to toggle Performance Overlay");
+            ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Shortcut works when game is in foreground");
+            ImGui::Unindent();
+        }
+
         ImGui::Unindent(); // Close the indentation for all hotkey settings
     }
 

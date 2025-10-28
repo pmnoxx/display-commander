@@ -653,6 +653,8 @@ extern std::atomic<bool> s_enable_background_toggle_shortcut;
 extern std::atomic<bool> s_enable_timeslowdown_shortcut;
 extern std::atomic<bool> s_enable_adhd_toggle_shortcut;
 extern std::atomic<bool> s_enable_autoclick_shortcut;
+extern std::atomic<bool> s_enable_display_commander_ui_shortcut;
+extern std::atomic<bool> s_enable_performance_overlay_shortcut;
 
 // Forward declaration for tab settings
 namespace settings {

@@ -7,9 +7,9 @@
 #include "hooks/api_hooks.hpp"
 #include "hooks/windows_hooks/windows_message_hooks.hpp"
 #include "nvapi/reflex_manager.hpp"
+#include "settings/developer_tab_settings.hpp"
 #include "settings/experimental_tab_settings.hpp"
 #include "settings/main_tab_settings.hpp"
-#include "settings/developer_tab_settings.hpp"
 #include "ui/new_ui/swapchain_tab.hpp"
 #include "utils/logging.hpp"
 #include "utils/timing.hpp"
@@ -40,11 +40,11 @@ void HandleReflexAutoConfigure() {
         return;
     }
 
-
     // Check if native Reflex is active
     bool is_native_reflex_active = IsNativeReflexActive();
 
-    bool is_reflex_mode = static_cast<FpsLimiterMode>(settings::g_mainTabSettings.fps_limiter_mode.GetValue()) == FpsLimiterMode::kReflex;
+    bool is_reflex_mode =
+        static_cast<FpsLimiterMode>(settings::g_mainTabSettings.fps_limiter_mode.GetValue()) == FpsLimiterMode::kReflex;
 
     // Get current settings
     bool reflex_enable = settings::g_developerTabSettings.reflex_enable.GetValue();
@@ -66,15 +66,15 @@ void HandleReflexAutoConfigure() {
         }
     }
 
-   /* if (!reflex_low_latency) {
-        settings::g_developerTabSettings.reflex_low_latency.SetValue(true);
-        s_reflex_low_latency.store(true);
-    }
+    /* if (!reflex_low_latency) {
+         settings::g_developerTabSettings.reflex_low_latency.SetValue(true);
+         s_reflex_low_latency.store(true);
+     }
 
-    if (!reflex_boost) {
-        settings::g_developerTabSettings.reflex_boost.SetValue(true);
-        s_reflex_boost.store(true);
-    } */
+     if (!reflex_boost) {
+         settings::g_developerTabSettings.reflex_boost.SetValue(true);
+         s_reflex_boost.store(true);
+     } */
     {
         settings::g_developerTabSettings.reflex_use_markers.SetValue(true);
         s_reflex_use_markers.store(true);
@@ -109,19 +109,19 @@ void check_is_background() {
                 display_commanderhooks::ClipCursor_Direct(nullptr);
 
                 // Set cursor to default arrow when moving to background
-                //display_commanderhooks::SetCursor_Direct(LoadCursor(nullptr, IDC_ARROW));
+                // display_commanderhooks::SetCursor_Direct(LoadCursor(nullptr, IDC_ARROW));
 
                 // Hide cursor when moving to background
-                //display_commanderhooks::ShowCursor_Direct(TRUE);
+                // display_commanderhooks::ShowCursor_Direct(TRUE);
             } else {
                 LogInfo("Continuous monitoring: App moved to FOREGROUND");
                 // Restore cursor clipping when coming to foreground
                 display_commanderhooks::RestoreClipCursor();
                 LogInfo("Continuous monitoring: Restored cursor clipping for foreground");
 
-                //display_commanderhooks::RestoreSetCursor();
+                // display_commanderhooks::RestoreSetCursor();
 
-                //display_commanderhooks::RestoreShowCursor();
+                // display_commanderhooks::RestoreShowCursor();
             }
         }
 
@@ -136,11 +136,9 @@ void check_is_background() {
             }
         }
     }
-
 }
 
 void every1s_checks() {
-
     // SCREENSAVER MANAGEMENT: Update execution state based on screensaver mode and background status
     {
         ScreensaverMode screensaver_mode = s_screensaver_mode.load();
@@ -265,8 +263,8 @@ void every1s_checks() {
         if (show_labels) {
             fps_oss << "FPS: " << std::fixed << std::setprecision(1) << fps_display << " (" << std::setprecision(1)
                     << frame_time_ms << " ms median)"
-                    << "   (1% Low: " << std::setprecision(1) << one_percent_low << ", 0.1% Low: " << std::setprecision(1)
-                    << point_one_percent_low << ")"
+                    << "   (1% Low: " << std::setprecision(1) << one_percent_low
+                    << ", 0.1% Low: " << std::setprecision(1) << point_one_percent_low << ")"
                     << "   Top FT: P99 " << std::setprecision(1) << p99_frame_time_ms << " ms"
                     << ", P99.9 " << std::setprecision(1) << p999_frame_time_ms << " ms";
         } else {
@@ -279,148 +277,186 @@ void every1s_checks() {
         }
         g_perf_text_shared.store(std::make_shared<const std::string>(fps_oss.str()));
     }
-
 }
 
 void HandleKeyboardShortcuts() {
-      // Check if hotkeys are enabled globally
-      if (!s_enable_hotkeys.load()) {
-          return; // Exit early if hotkeys are disabled
-      }
+    // Check if hotkeys are enabled globally
+    if (!s_enable_hotkeys.load()) {
+        return;  // Exit early if hotkeys are disabled
+    }
+    // Ensure all keys are being tracked by checking them first
+    display_commanderhooks::keyboard_tracker::IsKeyDown(VK_BACK);
+    display_commanderhooks::keyboard_tracker::IsKeyDown(VK_CONTROL);
+    display_commanderhooks::keyboard_tracker::IsKeyDown(VK_SHIFT);
+    display_commanderhooks::keyboard_tracker::IsKeyDown(VK_MENU);
 
-      // Handle keyboard shortcuts (only when game is in foreground)
-      HWND game_hwnd = g_last_swapchain_hwnd.load();
-      bool is_game_in_foreground = (game_hwnd != nullptr && GetForegroundWindow() == game_hwnd);
+    // Handle keyboard shortcuts (only when game is in foreground)
+    HWND game_hwnd = g_last_swapchain_hwnd.load();
+    bool is_game_in_foreground = (game_hwnd != nullptr && GetForegroundWindow() == game_hwnd);
 
-      if (s_enable_mute_unmute_shortcut.load() && is_game_in_foreground) {
-          // Use our keyboard tracker instead of ReShade runtime
-          if (display_commanderhooks::keyboard_tracker::IsKeyPressed('M') &&
-              display_commanderhooks::keyboard_tracker::IsKeyDown(VK_CONTROL)) {
-              // Toggle mute state
-              bool new_mute_state = !s_audio_mute.load();
-              if (SetMuteForCurrentProcess(new_mute_state)) {
-                  s_audio_mute.store(new_mute_state);
-                  g_muted_applied.store(new_mute_state);
+    if (s_enable_mute_unmute_shortcut.load() && is_game_in_foreground) {
+        // Use our keyboard tracker instead of ReShade runtime
+        if (display_commanderhooks::keyboard_tracker::IsKeyPressed('M')
+            && display_commanderhooks::keyboard_tracker::IsKeyDown(VK_CONTROL)
+            && !display_commanderhooks::keyboard_tracker::IsKeyDown(VK_SHIFT)
+            && !display_commanderhooks::keyboard_tracker::IsKeyDown(VK_MENU)) {
+            // Toggle mute state
+            bool new_mute_state = !s_audio_mute.load();
+            if (SetMuteForCurrentProcess(new_mute_state)) {
+                s_audio_mute.store(new_mute_state);
+                g_muted_applied.store(new_mute_state);
 
-                  // Log the action
-                  std::ostringstream oss;
-                  oss << "Audio " << (new_mute_state ? "muted" : "unmuted") << " via Ctrl+M shortcut";
-                  LogInfo(oss.str().c_str());
-              }
-          }
-      }
+                // Log the action
+                std::ostringstream oss;
+                oss << "Audio " << (new_mute_state ? "muted" : "unmuted") << " via Ctrl+M shortcut";
+                LogInfo(oss.str().c_str());
+            }
+        }
+    }
 
+    // Handle Ctrl+P shortcut for auto-click toggle (only when game is in foreground and advanced settings enabled)
+    if (s_enable_autoclick_shortcut.load() && is_game_in_foreground
+        && settings::g_mainTabSettings.advanced_settings_enabled.GetValue()) {
+        // Use our keyboard tracker instead of ReShade runtime
+        if (display_commanderhooks::keyboard_tracker::IsKeyPressed('P')
+            && display_commanderhooks::keyboard_tracker::IsKeyDown(VK_CONTROL)
+            && !display_commanderhooks::keyboard_tracker::IsKeyDown(VK_SHIFT)
+            && !display_commanderhooks::keyboard_tracker::IsKeyDown(VK_MENU)) {
+            LogInfo("Ctrl+P shortcut detected - toggling auto-click");
+            // Toggle auto-click sequences
+            autoclick::ToggleAutoClickEnabled();
+        }
+    }
 
+    // Handle Ctrl+R shortcut for background toggle (only when game is in
+    // foreground)
+    if (s_enable_background_toggle_shortcut.load() && is_game_in_foreground) {
+        // Use our keyboard tracker instead of ReShade runtime
+        if (display_commanderhooks::keyboard_tracker::IsKeyPressed('R')
+            && display_commanderhooks::keyboard_tracker::IsKeyDown(VK_CONTROL)
+            && !display_commanderhooks::keyboard_tracker::IsKeyDown(VK_SHIFT)
+            && !display_commanderhooks::keyboard_tracker::IsKeyDown(VK_MENU)) {
+            // Toggle render setting and make present follow the same state
+            bool new_render_state = !s_no_render_in_background.load();
+            bool new_present_state = new_render_state;  // Present always follows render state
 
-      // Handle Ctrl+P shortcut for auto-click toggle (only when game is in foreground and advanced settings enabled)
-      if (s_enable_autoclick_shortcut.load() && is_game_in_foreground && settings::g_mainTabSettings.advanced_settings_enabled.GetValue()) {
-          // Use our keyboard tracker instead of ReShade runtime
-          if (display_commanderhooks::keyboard_tracker::IsKeyPressed('P') &&
-              display_commanderhooks::keyboard_tracker::IsKeyDown(VK_CONTROL)) {
-              LogInfo("Ctrl+P shortcut detected - toggling auto-click");
-              // Toggle auto-click sequences
-              autoclick::ToggleAutoClickEnabled();
-          }
-      }
+            s_no_render_in_background.store(new_render_state);
+            s_no_present_in_background.store(new_present_state);
 
-      // Handle Ctrl+R shortcut for background toggle (only when game is in
-      // foreground)
-      if (s_enable_background_toggle_shortcut.load() && is_game_in_foreground) {
-          // Use our keyboard tracker instead of ReShade runtime
-          if (display_commanderhooks::keyboard_tracker::IsKeyPressed('R') &&
-              display_commanderhooks::keyboard_tracker::IsKeyDown(VK_CONTROL)) {
-              // Toggle render setting and make present follow the same state
-              bool new_render_state = !s_no_render_in_background.load();
-              bool new_present_state = new_render_state; // Present always follows render state
+            // Update the settings in the UI as well
+            settings::g_mainTabSettings.no_render_in_background.SetValue(new_render_state);
+            settings::g_mainTabSettings.no_present_in_background.SetValue(new_present_state);
 
-              s_no_render_in_background.store(new_render_state);
-              s_no_present_in_background.store(new_present_state);
+            // Log the action
+            std::ostringstream oss;
+            oss << "Background settings toggled via Ctrl+R shortcut - Both Render "
+                   "and Present: "
+                << (new_render_state ? "disabled" : "enabled");
+            LogInfo(oss.str().c_str());
+        }
+    }
 
-              // Update the settings in the UI as well
-              settings::g_mainTabSettings.no_render_in_background.SetValue(new_render_state);
-              settings::g_mainTabSettings.no_present_in_background.SetValue(new_present_state);
+    // Handle Ctrl+T shortcut for time slowdown toggle (only when game is in foreground)
+    if (s_enable_timeslowdown_shortcut.load() && is_game_in_foreground) {
+        // Use our keyboard tracker instead of ReShade runtime
+        if (display_commanderhooks::keyboard_tracker::IsKeyPressed('T')
+            && display_commanderhooks::keyboard_tracker::IsKeyDown(VK_CONTROL)
+            && !display_commanderhooks::keyboard_tracker::IsKeyDown(VK_SHIFT)
+            && !display_commanderhooks::keyboard_tracker::IsKeyDown(VK_MENU)) {
+            // Toggle time slowdown state
+            bool current_state = settings::g_experimentalTabSettings.timeslowdown_enabled.GetValue();
+            bool new_state = !current_state;
 
-              // Log the action
-              std::ostringstream oss;
-              oss << "Background settings toggled via Ctrl+R shortcut - Both Render "
-                     "and Present: "
-                  << (new_render_state ? "disabled" : "enabled");
-              LogInfo(oss.str().c_str());
-          }
-      }
+            settings::g_experimentalTabSettings.timeslowdown_enabled.SetValue(new_state);
 
-      // Handle Ctrl+T shortcut for time slowdown toggle (only when game is in foreground)
-      if (s_enable_timeslowdown_shortcut.load() && is_game_in_foreground) {
-          // Use our keyboard tracker instead of ReShade runtime
-          if (display_commanderhooks::keyboard_tracker::IsKeyPressed('T') &&
-              display_commanderhooks::keyboard_tracker::IsKeyDown(VK_CONTROL)) {
-              // Toggle time slowdown state
-              bool current_state = settings::g_experimentalTabSettings.timeslowdown_enabled.GetValue();
-              bool new_state = !current_state;
+            // Log the action
+            std::ostringstream oss;
+            oss << "Time Slowdown " << (new_state ? "enabled" : "disabled") << " via Ctrl+T shortcut";
+            LogInfo(oss.str().c_str());
+        }
+    }
 
-              settings::g_experimentalTabSettings.timeslowdown_enabled.SetValue(new_state);
+     // Handle Ctrl+O shortcut for performance overlay toggle (only when game is in foreground)
+     if (s_enable_performance_overlay_shortcut.load() && is_game_in_foreground) {
+        // Use our keyboard tracker instead of ReShade runtime
+        if (display_commanderhooks::keyboard_tracker::IsKeyPressed('O')
+            && display_commanderhooks::keyboard_tracker::IsKeyDown(VK_CONTROL)
+            && !display_commanderhooks::keyboard_tracker::IsKeyDown(VK_SHIFT)
+            && !display_commanderhooks::keyboard_tracker::IsKeyDown(VK_MENU)) {
+            // Toggle performance overlay state
+            bool current_state = settings::g_mainTabSettings.show_test_overlay.GetValue();
+            bool new_state = !current_state;
 
-              // Log the action
-              std::ostringstream oss;
-              oss << "Time Slowdown " << (new_state ? "enabled" : "disabled") << " via Ctrl+T shortcut";
-              LogInfo(oss.str().c_str());
-          }
-      }
+            settings::g_mainTabSettings.show_test_overlay.SetValue(new_state);
 
-      // Handle Ctrl+O shortcut for performance overlay toggle (only when game is in foreground)
-      if (is_game_in_foreground) {
-          // Use our keyboard tracker instead of ReShade runtime
-          if (display_commanderhooks::keyboard_tracker::IsKeyPressed('O') &&
-              display_commanderhooks::keyboard_tracker::IsKeyDown(VK_CONTROL)) {
-              // Toggle performance overlay state
-              bool current_state = settings::g_mainTabSettings.show_test_overlay.GetValue();
-              bool new_state = !current_state;
+            // Log the action
+            std::ostringstream oss;
+            oss << "Performance overlay " << (new_state ? "enabled" : "disabled") << " via Ctrl+O shortcut";
+            LogInfo(oss.str().c_str());
+        }
+    }
 
-              settings::g_mainTabSettings.show_test_overlay.SetValue(new_state);
+    // Handle Ctrl+Shift+Backspace shortcut for Display Commander UI toggle (only when game is in foreground)
+    if (s_enable_display_commander_ui_shortcut.load() && is_game_in_foreground) {
+        // Use our keyboard tracker instead of ReShade runtime
+        if (display_commanderhooks::keyboard_tracker::IsKeyPressed(VK_BACK)
+            && display_commanderhooks::keyboard_tracker::IsKeyDown(VK_CONTROL)
+            && display_commanderhooks::keyboard_tracker::IsKeyDown(VK_SHIFT)
+            && !display_commanderhooks::keyboard_tracker::IsKeyDown(VK_MENU)) {
+            // Toggle Display Commander UI state
+            bool current_state = settings::g_mainTabSettings.show_display_commander_ui.GetValue();
+            bool new_state = !current_state;
 
-              // Log the action
-              std::ostringstream oss;
-              oss << "Performance overlay " << (new_state ? "enabled" : "disabled") << " via Ctrl+O shortcut";
-              LogInfo(oss.str().c_str());
-          }
-      }
+            settings::g_mainTabSettings.show_display_commander_ui.SetValue(new_state);
 
-      // Handle Ctrl+D shortcut for ADHD toggle (only when game is in foreground)
-      if (s_enable_adhd_toggle_shortcut.load() && is_game_in_foreground) {
-          // Use our keyboard tracker instead of ReShade runtime
-          if (display_commanderhooks::keyboard_tracker::IsKeyPressed('D') &&
-              display_commanderhooks::keyboard_tracker::IsKeyDown(VK_CONTROL)) {
-              // Toggle ADHD Multi-Monitor Mode state
-              bool current_state = settings::g_mainTabSettings.adhd_multi_monitor_enabled.GetValue();
-              bool new_state = !current_state;
+            // Log the action
+            std::ostringstream oss;
+            oss << "Display Commander UI " << (new_state ? "enabled" : "disabled")
+                << " via Ctrl+Shift+Backspace shortcut";
+            LogInfo(oss.str().c_str());
+        }
+    }
 
-              settings::g_mainTabSettings.adhd_multi_monitor_enabled.SetValue(new_state);
-              adhd_multi_monitor::api::SetEnabled(new_state);
+    // Handle Ctrl+D shortcut for ADHD toggle (only when game is in foreground)
+    if (s_enable_adhd_toggle_shortcut.load() && is_game_in_foreground) {
+        // Use our keyboard tracker instead of ReShade runtime
+        if (display_commanderhooks::keyboard_tracker::IsKeyPressed('D')
+            && display_commanderhooks::keyboard_tracker::IsKeyDown(VK_CONTROL)
+            && !display_commanderhooks::keyboard_tracker::IsKeyDown(VK_SHIFT)
+            && !display_commanderhooks::keyboard_tracker::IsKeyDown(VK_MENU)) {
+            // Toggle ADHD Multi-Monitor Mode state
+            bool current_state = settings::g_mainTabSettings.adhd_multi_monitor_enabled.GetValue();
+            bool new_state = !current_state;
 
-              // Log the action
-              std::ostringstream oss;
-              oss << "ADHD Multi-Monitor Mode " << (new_state ? "enabled" : "disabled") << " via Ctrl+D shortcut";
-              LogInfo(oss.str().c_str());
-          }
-      }
+            settings::g_mainTabSettings.adhd_multi_monitor_enabled.SetValue(new_state);
+            adhd_multi_monitor::api::SetEnabled(new_state);
 
-      // Handle Ctrl+I shortcut for input blocking toggle (only when game is in foreground)
-      if (s_enable_input_blocking_shortcut.load() && is_game_in_foreground) {
-          // Use our keyboard tracker instead of ReShade runtime
-          if (display_commanderhooks::keyboard_tracker::IsKeyPressed('I') &&
-              display_commanderhooks::keyboard_tracker::IsKeyDown(VK_CONTROL)) {
-              // Toggle input blocking state
-              bool current_state = s_input_blocking_toggle.load();
-              bool new_state = !current_state;
+            // Log the action
+            std::ostringstream oss;
+            oss << "ADHD Multi-Monitor Mode " << (new_state ? "enabled" : "disabled") << " via Ctrl+D shortcut";
+            LogInfo(oss.str().c_str());
+        }
+    }
 
-              s_input_blocking_toggle.store(new_state);
+    // Handle Ctrl+I shortcut for input blocking toggle (only when game is in foreground)
+    if (s_enable_input_blocking_shortcut.load() && is_game_in_foreground) {
+        // Use our keyboard tracker instead of ReShade runtime
+        if (display_commanderhooks::keyboard_tracker::IsKeyPressed('I')
+            && display_commanderhooks::keyboard_tracker::IsKeyDown(VK_CONTROL)
+            && !display_commanderhooks::keyboard_tracker::IsKeyDown(VK_SHIFT)
+            && !display_commanderhooks::keyboard_tracker::IsKeyDown(VK_MENU)) {
+            // Toggle input blocking state
+            bool current_state = s_input_blocking_toggle.load();
+            bool new_state = !current_state;
 
-              // Log the action
-              std::ostringstream oss;
-              oss << "Input Blocking " << (new_state ? "enabled" : "disabled") << " via Ctrl+I shortcut";
-              LogInfo(oss.str().c_str());
-          }
-      }
+            s_input_blocking_toggle.store(new_state);
+
+            // Log the action
+            std::ostringstream oss;
+            oss << "Input Blocking " << (new_state ? "enabled" : "disabled") << " via Ctrl+I shortcut";
+            LogInfo(oss.str().c_str());
+        }
+    }
 }
 
 // Main monitoring thread function
@@ -428,67 +464,66 @@ void ContinuousMonitoringThread() {
 #ifdef TRY_CATCH_BLOCKS
     __try {
 #endif
-    LogInfo("Continuous monitoring thread started");
+        LogInfo("Continuous monitoring thread started");
 
-    auto start_time = utils::get_now_ns();
-    LONGLONG last_cache_refresh_ns = start_time;
-    LONGLONG last_60fps_update_ns = start_time;
-    LONGLONG last_1s_update_ns = start_time;
-    const LONGLONG fps_120_interval_ns = utils::SEC_TO_NS / 120;
+        auto start_time = utils::get_now_ns();
+        LONGLONG last_cache_refresh_ns = start_time;
+        LONGLONG last_60fps_update_ns = start_time;
+        LONGLONG last_1s_update_ns = start_time;
+        const LONGLONG fps_120_interval_ns = utils::SEC_TO_NS / 120;
 
-    while (g_monitoring_thread_running.load()) {
-        std::this_thread::sleep_for(std::chrono::nanoseconds(fps_120_interval_ns));
-        // Periodic display cache refresh off the UI thread
-        {
+        while (g_monitoring_thread_running.load()) {
+            std::this_thread::sleep_for(std::chrono::nanoseconds(fps_120_interval_ns));
+            // Periodic display cache refresh off the UI thread
+            {
+                LONGLONG now_ns = utils::get_now_ns();
+                if (now_ns - last_cache_refresh_ns >= 2 * utils::SEC_TO_NS) {
+                    display_cache::g_displayCache.Refresh();
+                    last_cache_refresh_ns = now_ns;
+                    // No longer need to cache monitor labels - UI calls GetDisplayInfoForUI() directly
+                }
+            }
+            // Wait for 1 second to start
+            if (utils::get_now_ns() - start_time < 1 * utils::SEC_TO_NS) {
+                continue;
+            }
+            // Auto-apply is always enabled (checkbox removed)
+            // 60 FPS updates (every ~16.67ms)
             LONGLONG now_ns = utils::get_now_ns();
-            if (now_ns - last_cache_refresh_ns >= 2 * utils::SEC_TO_NS) {
-                display_cache::g_displayCache.Refresh();
-                last_cache_refresh_ns = now_ns;
-                // No longer need to cache monitor labels - UI calls GetDisplayInfoForUI() directly
-            }
-        }
-        // Wait for 1 second to start
-        if (utils::get_now_ns() - start_time < 1 * utils::SEC_TO_NS) {
-            continue;
-        }
-        // Auto-apply is always enabled (checkbox removed)
-        // 60 FPS updates (every ~16.67ms)
-        LONGLONG now_ns = utils::get_now_ns();
-        if (now_ns - last_60fps_update_ns >= fps_120_interval_ns) {
-            check_is_background();
-            last_60fps_update_ns = now_ns;
-            adhd_multi_monitor::api::Initialize();
-            adhd_multi_monitor::api::SetEnabled(settings::g_mainTabSettings.adhd_multi_monitor_enabled.GetValue());
+            if (now_ns - last_60fps_update_ns >= fps_120_interval_ns) {
+                check_is_background();
+                last_60fps_update_ns = now_ns;
+                adhd_multi_monitor::api::Initialize();
+                adhd_multi_monitor::api::SetEnabled(settings::g_mainTabSettings.adhd_multi_monitor_enabled.GetValue());
 
-            // Update ADHD Multi-Monitor Mode at 60 FPS
-            adhd_multi_monitor::api::Update();
+                // Update ADHD Multi-Monitor Mode at 60 FPS
+                adhd_multi_monitor::api::Update();
 
-            // Update keyboard tracking system
-            display_commanderhooks::keyboard_tracker::Update();
+                // Update keyboard tracking system
+                display_commanderhooks::keyboard_tracker::Update();
 
-            // Handle keyboard shortcuts
-            HandleKeyboardShortcuts();
+                // Handle keyboard shortcuts
+                HandleKeyboardShortcuts();
 
-            // Reset keyboard frame states for next frame
-            display_commanderhooks::keyboard_tracker::ResetFrame();
-        }
-
-        if (now_ns - last_1s_update_ns >= 1 * utils::SEC_TO_NS) {
-            last_1s_update_ns = now_ns;
-            every1s_checks();
-
-            // wait 10s before configuring reflex
-            if (now_ns - start_time >= 10 * utils::SEC_TO_NS) {
-                HandleReflexAutoConfigure();
+                // Reset keyboard frame states for next frame
+                display_commanderhooks::keyboard_tracker::ResetFrame();
             }
 
-            // Call auto-apply HDR metadata trigger
-            ui::new_ui::AutoApplyTrigger();
+            if (now_ns - last_1s_update_ns >= 1 * utils::SEC_TO_NS) {
+                last_1s_update_ns = now_ns;
+                every1s_checks();
+
+                // wait 10s before configuring reflex
+                if (now_ns - start_time >= 10 * utils::SEC_TO_NS) {
+                    HandleReflexAutoConfigure();
+                }
+
+                // Call auto-apply HDR metadata trigger
+                ui::new_ui::AutoApplyTrigger();
+            }
         }
-    }
 #ifdef TRY_CATCH_BLOCKS
-    }
-    __except(EXCEPTION_EXECUTE_HANDLER) {
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
         LogError("Exception occurred during Continuous Monitoring: 0x%x", GetExceptionCode());
     }
 #endif

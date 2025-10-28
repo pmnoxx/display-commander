@@ -1,17 +1,17 @@
 #include "ngx_hooks.hpp"
-#include "hook_suppression_manager.hpp"
+#include <MinHook.h>
+#include <algorithm>
+#include <map>
+#include <string>
+#include <vector>
+#include "../../../external/nvidia-dlss/include/nvsdk_ngx_defs.h"
+#include "../globals.hpp"
 #include "../settings/developer_tab_settings.hpp"
+#include "../settings/swapchain_tab_settings.hpp"
 #include "../utils/general_utils.hpp"
 #include "../utils/logging.hpp"
 #include "../utils/srwlock_wrapper.hpp"
-#include "../globals.hpp"
-#include "../settings/swapchain_tab_settings.hpp"
-#include <MinHook.h>
-#include <algorithm>
-#include <string>
-#include <vector>
-#include <map>
-#include "../../../external/nvidia-dlss/include/nvsdk_ngx_defs.h"
+#include "hook_suppression_manager.hpp"
 
 // NGX type definitions (minimal subset needed for hooks)
 #define NVSDK_CONV __cdecl
@@ -32,43 +32,43 @@ typedef struct NVSDK_NGX_FeatureCommonInfo NVSDK_NGX_FeatureCommonInfo;
 // Helper function to get feature name from enum
 const char* GetNGXFeatureName(NVSDK_NGX_Feature feature) {
     switch (feature) {
-        case NVSDK_NGX_Feature_Reserved0: return "Reserved0";
-        case NVSDK_NGX_Feature_SuperSampling: return "SuperSampling (DLSS)";
-        case NVSDK_NGX_Feature_InPainting: return "InPainting";
-        case NVSDK_NGX_Feature_ImageSuperResolution: return "ImageSuperResolution";
-        case NVSDK_NGX_Feature_SlowMotion: return "SlowMotion";
-        case NVSDK_NGX_Feature_VideoSuperResolution: return "VideoSuperResolution";
-        case NVSDK_NGX_Feature_Reserved1: return "Reserved1";
-        case NVSDK_NGX_Feature_Reserved2: return "Reserved2";
-        case NVSDK_NGX_Feature_Reserved3: return "Reserved3";
+        case NVSDK_NGX_Feature_Reserved0:             return "Reserved0";
+        case NVSDK_NGX_Feature_SuperSampling:         return "SuperSampling (DLSS)";
+        case NVSDK_NGX_Feature_InPainting:            return "InPainting";
+        case NVSDK_NGX_Feature_ImageSuperResolution:  return "ImageSuperResolution";
+        case NVSDK_NGX_Feature_SlowMotion:            return "SlowMotion";
+        case NVSDK_NGX_Feature_VideoSuperResolution:  return "VideoSuperResolution";
+        case NVSDK_NGX_Feature_Reserved1:             return "Reserved1";
+        case NVSDK_NGX_Feature_Reserved2:             return "Reserved2";
+        case NVSDK_NGX_Feature_Reserved3:             return "Reserved3";
         case NVSDK_NGX_Feature_ImageSignalProcessing: return "ImageSignalProcessing";
-        case NVSDK_NGX_Feature_DeepResolve: return "DeepResolve";
-        case NVSDK_NGX_Feature_FrameGeneration: return "FrameGeneration (DLSS-G)";
-        case NVSDK_NGX_Feature_DeepDVC: return "DeepDVC";
-        case NVSDK_NGX_Feature_RayReconstruction: return "RayReconstruction";
-        case NVSDK_NGX_Feature_Reserved14: return "Reserved14";
-        case NVSDK_NGX_Feature_Reserved15: return "Reserved15";
-        case NVSDK_NGX_Feature_Reserved16: return "Reserved16";
-        case NVSDK_NGX_Feature_Reserved_SDK: return "Reserved SDK";
-        case NVSDK_NGX_Feature_Reserved_Core: return "Reserved Core";
-        case NVSDK_NGX_Feature_Reserved_Unknown: return "Reserved Unknown";
-        default: return "Unknown Feature";
+        case NVSDK_NGX_Feature_DeepResolve:           return "DeepResolve";
+        case NVSDK_NGX_Feature_FrameGeneration:       return "FrameGeneration (DLSS-G)";
+        case NVSDK_NGX_Feature_DeepDVC:               return "DeepDVC";
+        case NVSDK_NGX_Feature_RayReconstruction:     return "RayReconstruction";
+        case NVSDK_NGX_Feature_Reserved14:            return "Reserved14";
+        case NVSDK_NGX_Feature_Reserved15:            return "Reserved15";
+        case NVSDK_NGX_Feature_Reserved16:            return "Reserved16";
+        case NVSDK_NGX_Feature_Reserved_SDK:          return "Reserved SDK";
+        case NVSDK_NGX_Feature_Reserved_Core:         return "Reserved Core";
+        case NVSDK_NGX_Feature_Reserved_Unknown:      return "Reserved Unknown";
+        default:                                      return "Unknown Feature";
     }
 }
 
 // Helper function to get engine type name from enum
 const char* GetNGXEngineTypeName(NVSDK_NGX_EngineType engineType) {
     switch (engineType) {
-        case NVSDK_NGX_ENGINE_TYPE_CUSTOM: return "Custom";
-        case NVSDK_NGX_ENGINE_TYPE_UNREAL: return "Unreal Engine";
-        case NVSDK_NGX_ENGINE_TYPE_UNITY: return "Unity";
+        case NVSDK_NGX_ENGINE_TYPE_CUSTOM:    return "Custom";
+        case NVSDK_NGX_ENGINE_TYPE_UNREAL:    return "Unreal Engine";
+        case NVSDK_NGX_ENGINE_TYPE_UNITY:     return "Unity";
         case NVSDK_NGX_ENGINE_TYPE_OMNIVERSE: return "Omniverse";
-        default: return "Unknown Engine";
+        default:                              return "Unknown Engine";
     }
 }
 
 // Progress callback type
-typedef void (NVSDK_CONV *PFN_NVSDK_NGX_ProgressCallback)(float InCurrentProgress, bool &OutShouldCancel);
+typedef void(NVSDK_CONV* PFN_NVSDK_NGX_ProgressCallback)(float InCurrentProgress, bool& OutShouldCancel);
 
 // Handle tracking for NGX features
 static std::map<NVSDK_NGX_Handle*, NVSDK_NGX_Feature> g_ngx_handle_map;
@@ -77,7 +77,7 @@ static SRWLOCK g_ngx_handle_mutex = SRWLOCK_INIT;
 // Using official NVIDIA NGX enums from nvsdk_ngx_defs.h
 
 #define NVSDK_NGX_SUCCEED(value) (((value) & 0xFFF00000) != NVSDK_NGX_Result_Fail)
-#define NVSDK_NGX_FAILED(value) (((value) & 0xFFF00000) == NVSDK_NGX_Result_Fail)
+#define NVSDK_NGX_FAILED(value)  (((value) & 0xFFF00000) == NVSDK_NGX_Result_Fail)
 
 // Helper functions for handle tracking
 static void TrackNGXHandle(NVSDK_NGX_Handle* handle, NVSDK_NGX_Feature feature) {
@@ -152,39 +152,83 @@ static void CleanupNGXHandleTracking() {
 }
 
 // NGX function pointer type definitions (following Special-K's approach)
-using NVSDK_NGX_Parameter_SetF_pfn = void (NVSDK_CONV *)(NVSDK_NGX_Parameter* InParameter, const char* InName, float InValue);
-using NVSDK_NGX_Parameter_SetD_pfn = void (NVSDK_CONV *)(NVSDK_NGX_Parameter* InParameter, const char* InName, double InValue);
-using NVSDK_NGX_Parameter_SetI_pfn = void (NVSDK_CONV *)(NVSDK_NGX_Parameter* InParameter, const char* InName, int InValue);
-using NVSDK_NGX_Parameter_SetUI_pfn = void (NVSDK_CONV *)(NVSDK_NGX_Parameter* InParameter, const char* InName, unsigned int InValue);
-using NVSDK_NGX_Parameter_SetULL_pfn = void (NVSDK_CONV *)(NVSDK_NGX_Parameter* InParameter, const char* InName, unsigned long long InValue);
+using NVSDK_NGX_Parameter_SetF_pfn = void(NVSDK_CONV*)(NVSDK_NGX_Parameter* InParameter, const char* InName,
+                                                       float InValue);
+using NVSDK_NGX_Parameter_SetD_pfn = void(NVSDK_CONV*)(NVSDK_NGX_Parameter* InParameter, const char* InName,
+                                                       double InValue);
+using NVSDK_NGX_Parameter_SetI_pfn = void(NVSDK_CONV*)(NVSDK_NGX_Parameter* InParameter, const char* InName,
+                                                       int InValue);
+using NVSDK_NGX_Parameter_SetUI_pfn = void(NVSDK_CONV*)(NVSDK_NGX_Parameter* InParameter, const char* InName,
+                                                        unsigned int InValue);
+using NVSDK_NGX_Parameter_SetULL_pfn = void(NVSDK_CONV*)(NVSDK_NGX_Parameter* InParameter, const char* InName,
+                                                         unsigned long long InValue);
 
 // NGX parameter getter function pointer types
-using NVSDK_NGX_Parameter_GetI_pfn = NVSDK_NGX_Result (NVSDK_CONV *)(NVSDK_NGX_Parameter* InParameter, const char* InName, int* OutValue);
-using NVSDK_NGX_Parameter_GetUI_pfn = NVSDK_NGX_Result (NVSDK_CONV *)(NVSDK_NGX_Parameter* InParameter, const char* InName, unsigned int* OutValue);
-using NVSDK_NGX_Parameter_GetULL_pfn = NVSDK_NGX_Result (NVSDK_CONV *)(NVSDK_NGX_Parameter* InParameter, const char* InName, unsigned long long* OutValue);
-using NVSDK_NGX_Parameter_GetVoidPointer_pfn = NVSDK_NGX_Result (NVSDK_CONV *)(NVSDK_NGX_Parameter* InParameter, const char* InName, void** OutValue);
+using NVSDK_NGX_Parameter_GetI_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(NVSDK_NGX_Parameter* InParameter, const char* InName,
+                                                                   int* OutValue);
+using NVSDK_NGX_Parameter_GetUI_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(NVSDK_NGX_Parameter* InParameter,
+                                                                    const char* InName, unsigned int* OutValue);
+using NVSDK_NGX_Parameter_GetULL_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(NVSDK_NGX_Parameter* InParameter,
+                                                                     const char* InName, unsigned long long* OutValue);
+using NVSDK_NGX_Parameter_GetVoidPointer_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(NVSDK_NGX_Parameter* InParameter,
+                                                                             const char* InName, void** OutValue);
 
 // NGX initialization function pointer types
-using NVSDK_NGX_D3D12_Init_pfn = NVSDK_NGX_Result (NVSDK_CONV *)(unsigned long long InApplicationId, const wchar_t *InApplicationDataPath, ID3D12Device *InDevice, const NVSDK_NGX_FeatureCommonInfo *InFeatureInfo, NVSDK_NGX_Version InSDKVersion);
-using NVSDK_NGX_D3D12_Init_Ext_pfn = NVSDK_NGX_Result (NVSDK_CONV *)(unsigned long long InApplicationId, const wchar_t *InApplicationDataPath, ID3D12Device *InDevice, const NVSDK_NGX_FeatureCommonInfo *InFeatureInfo, void* Unknown5);
-using NVSDK_NGX_D3D12_Init_ProjectID_pfn = NVSDK_NGX_Result (NVSDK_CONV *)(const char *InProjectId, NVSDK_NGX_EngineType InEngineType, const char *InEngineVersion, const wchar_t *InApplicationDataPath, ID3D12Device *InDevice, const NVSDK_NGX_FeatureCommonInfo *InFeatureInfo, NVSDK_NGX_Version InSDKVersion);
-using NVSDK_NGX_D3D12_GetParameters_pfn = NVSDK_NGX_Result (NVSDK_CONV *)(NVSDK_NGX_Parameter** OutParameters);
-using NVSDK_NGX_D3D12_AllocateParameters_pfn = NVSDK_NGX_Result (NVSDK_CONV *)(NVSDK_NGX_Parameter** OutParameters);
-using NVSDK_NGX_D3D12_CreateFeature_pfn = NVSDK_NGX_Result (NVSDK_CONV *)(ID3D12GraphicsCommandList *InCmdList, NVSDK_NGX_Feature InFeatureID, NVSDK_NGX_Parameter *InParameters, NVSDK_NGX_Handle **OutHandle);
-using NVSDK_NGX_D3D12_ReleaseFeature_pfn = NVSDK_NGX_Result (NVSDK_CONV *)(NVSDK_NGX_Handle *InHandle);
-using NVSDK_NGX_D3D12_EvaluateFeature_pfn = NVSDK_NGX_Result (NVSDK_CONV *)(ID3D12GraphicsCommandList *InCmdList, const NVSDK_NGX_Handle *InFeatureHandle, const NVSDK_NGX_Parameter *InParameters, PFN_NVSDK_NGX_ProgressCallback InCallback);
+using NVSDK_NGX_D3D12_Init_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(unsigned long long InApplicationId,
+                                                               const wchar_t* InApplicationDataPath,
+                                                               ID3D12Device* InDevice,
+                                                               const NVSDK_NGX_FeatureCommonInfo* InFeatureInfo,
+                                                               NVSDK_NGX_Version InSDKVersion);
+using NVSDK_NGX_D3D12_Init_Ext_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(unsigned long long InApplicationId,
+                                                                   const wchar_t* InApplicationDataPath,
+                                                                   ID3D12Device* InDevice,
+                                                                   const NVSDK_NGX_FeatureCommonInfo* InFeatureInfo,
+                                                                   void* Unknown5);
+using NVSDK_NGX_D3D12_Init_ProjectID_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(
+    const char* InProjectId, NVSDK_NGX_EngineType InEngineType, const char* InEngineVersion,
+    const wchar_t* InApplicationDataPath, ID3D12Device* InDevice, const NVSDK_NGX_FeatureCommonInfo* InFeatureInfo,
+    NVSDK_NGX_Version InSDKVersion);
+using NVSDK_NGX_D3D12_GetParameters_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(NVSDK_NGX_Parameter** OutParameters);
+using NVSDK_NGX_D3D12_AllocateParameters_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(NVSDK_NGX_Parameter** OutParameters);
+using NVSDK_NGX_D3D12_CreateFeature_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(ID3D12GraphicsCommandList* InCmdList,
+                                                                        NVSDK_NGX_Feature InFeatureID,
+                                                                        NVSDK_NGX_Parameter* InParameters,
+                                                                        NVSDK_NGX_Handle** OutHandle);
+using NVSDK_NGX_D3D12_ReleaseFeature_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(NVSDK_NGX_Handle* InHandle);
+using NVSDK_NGX_D3D12_EvaluateFeature_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(ID3D12GraphicsCommandList* InCmdList,
+                                                                          const NVSDK_NGX_Handle* InFeatureHandle,
+                                                                          const NVSDK_NGX_Parameter* InParameters,
+                                                                          PFN_NVSDK_NGX_ProgressCallback InCallback);
 
-using NVSDK_NGX_D3D11_Init_pfn = NVSDK_NGX_Result (NVSDK_CONV *)(unsigned long long InApplicationId, const wchar_t *InApplicationDataPath, ID3D11Device *InDevice, const NVSDK_NGX_FeatureCommonInfo *InFeatureInfo, NVSDK_NGX_Version InSDKVersion);
-using NVSDK_NGX_D3D11_Init_Ext_pfn = NVSDK_NGX_Result (NVSDK_CONV *)(unsigned long long InApplicationId, const wchar_t *InApplicationDataPath, ID3D11Device *InDevice, const NVSDK_NGX_FeatureCommonInfo *InFeatureInfo, void* Unknown5);
-using NVSDK_NGX_D3D11_Init_ProjectID_pfn = NVSDK_NGX_Result (NVSDK_CONV *)(const char *InProjectId, NVSDK_NGX_EngineType InEngineType, const char *InEngineVersion, const wchar_t *InApplicationDataPath, ID3D11Device *InDevice, const NVSDK_NGX_FeatureCommonInfo *InFeatureInfo, NVSDK_NGX_Version InSDKVersion);
-using NVSDK_NGX_D3D11_GetParameters_pfn = NVSDK_NGX_Result (NVSDK_CONV *)(NVSDK_NGX_Parameter** OutParameters);
-using NVSDK_NGX_D3D11_AllocateParameters_pfn = NVSDK_NGX_Result (NVSDK_CONV *)(NVSDK_NGX_Parameter** OutParameters);
-using NVSDK_NGX_D3D11_CreateFeature_pfn = NVSDK_NGX_Result (NVSDK_CONV *)(ID3D11DeviceContext *InDevCtx, NVSDK_NGX_Feature InFeatureID, NVSDK_NGX_Parameter *InParameters, NVSDK_NGX_Handle **OutHandle);
-using NVSDK_NGX_D3D11_ReleaseFeature_pfn = NVSDK_NGX_Result (NVSDK_CONV *)(NVSDK_NGX_Handle *InHandle);
-using NVSDK_NGX_D3D11_EvaluateFeature_pfn = NVSDK_NGX_Result (NVSDK_CONV *)(ID3D11DeviceContext *InDevCtx, const NVSDK_NGX_Handle *InFeatureHandle, const NVSDK_NGX_Parameter *InParameters, PFN_NVSDK_NGX_ProgressCallback InCallback);
+using NVSDK_NGX_D3D11_Init_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(unsigned long long InApplicationId,
+                                                               const wchar_t* InApplicationDataPath,
+                                                               ID3D11Device* InDevice,
+                                                               const NVSDK_NGX_FeatureCommonInfo* InFeatureInfo,
+                                                               NVSDK_NGX_Version InSDKVersion);
+using NVSDK_NGX_D3D11_Init_Ext_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(unsigned long long InApplicationId,
+                                                                   const wchar_t* InApplicationDataPath,
+                                                                   ID3D11Device* InDevice,
+                                                                   const NVSDK_NGX_FeatureCommonInfo* InFeatureInfo,
+                                                                   void* Unknown5);
+using NVSDK_NGX_D3D11_Init_ProjectID_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(
+    const char* InProjectId, NVSDK_NGX_EngineType InEngineType, const char* InEngineVersion,
+    const wchar_t* InApplicationDataPath, ID3D11Device* InDevice, const NVSDK_NGX_FeatureCommonInfo* InFeatureInfo,
+    NVSDK_NGX_Version InSDKVersion);
+using NVSDK_NGX_D3D11_GetParameters_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(NVSDK_NGX_Parameter** OutParameters);
+using NVSDK_NGX_D3D11_AllocateParameters_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(NVSDK_NGX_Parameter** OutParameters);
+using NVSDK_NGX_D3D11_CreateFeature_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(ID3D11DeviceContext* InDevCtx,
+                                                                        NVSDK_NGX_Feature InFeatureID,
+                                                                        NVSDK_NGX_Parameter* InParameters,
+                                                                        NVSDK_NGX_Handle** OutHandle);
+using NVSDK_NGX_D3D11_ReleaseFeature_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(NVSDK_NGX_Handle* InHandle);
+using NVSDK_NGX_D3D11_EvaluateFeature_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(ID3D11DeviceContext* InDevCtx,
+                                                                          const NVSDK_NGX_Handle* InFeatureHandle,
+                                                                          const NVSDK_NGX_Parameter* InParameters,
+                                                                          PFN_NVSDK_NGX_ProgressCallback InCallback);
 
 // UpdateFeature function pointer type
-using NVSDK_NGX_UpdateFeature_pfn = NVSDK_NGX_Result (NVSDK_CONV *)(const NVSDK_NGX_Application_Identifier *ApplicationId, const NVSDK_NGX_Feature FeatureID);
+using NVSDK_NGX_UpdateFeature_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(const NVSDK_NGX_Application_Identifier* ApplicationId,
+                                                                  const NVSDK_NGX_Feature FeatureID);
 
 // Original function pointers
 NVSDK_NGX_Parameter_SetF_pfn NVSDK_NGX_Parameter_SetF_Original = nullptr;
@@ -226,22 +270,14 @@ static bool g_ngx_vtable_hooks_installed = false;
 
 // DLSS preset parameter names arrays
 static const std::vector<std::string> g_dlss_sr_preset_params = {
-    "DLSS.Hint.Render.Preset.Quality",
-    "DLSS.Hint.Render.Preset.Balanced",
-    "DLSS.Hint.Render.Preset.Performance",
-    "DLSS.Hint.Render.Preset.UltraPerformance",
-    "DLSS.Hint.Render.Preset.UltraQuality",
-    "DLSS.Hint.Render.Preset.DLAA"
-};
+    "DLSS.Hint.Render.Preset.Quality",      "DLSS.Hint.Render.Preset.Balanced",
+    "DLSS.Hint.Render.Preset.Performance",  "DLSS.Hint.Render.Preset.UltraPerformance",
+    "DLSS.Hint.Render.Preset.UltraQuality", "DLSS.Hint.Render.Preset.DLAA"};
 
 static const std::vector<std::string> g_dlss_rr_preset_params = {
-    "RayReconstruction.Hint.Render.Preset.Quality",
-    "RayReconstruction.Hint.Render.Preset.Balanced",
-    "RayReconstruction.Hint.Render.Preset.Performance",
-    "RayReconstruction.Hint.Render.Preset.UltraPerformance",
-    "RayReconstruction.Hint.Render.Preset.UltraQuality",
-    "RayReconstruction.Hint.Render.Preset.DLAA"
-};
+    "RayReconstruction.Hint.Render.Preset.Quality",      "RayReconstruction.Hint.Render.Preset.Balanced",
+    "RayReconstruction.Hint.Render.Preset.Performance",  "RayReconstruction.Hint.Render.Preset.UltraPerformance",
+    "RayReconstruction.Hint.Render.Preset.UltraQuality", "RayReconstruction.Hint.Render.Preset.DLAA"};
 
 // Helper function to check if a parameter name is in the DLSS preset array
 static bool IsDLSSPresetParameter(const std::string& param_name, const std::vector<std::string>& preset_params) {
@@ -271,34 +307,32 @@ static void ApplyDLSSPresetParameters(NVSDK_NGX_Parameter* InParameters) {
     int rr_preset = GetDLSSPresetValue(settings::g_swapchainTabSettings.dlss_rr_preset_override.GetValue());
 
     // Apply DLSS Super Resolution preset parameters
-    if (sr_preset >= 0) { // -1 = Game Default (no override), 0 = DLSS Default, 1+ = Preset A+
+    if (sr_preset >= 0) {  // -1 = Game Default (no override), 0 = DLSS Default, 1+ = Preset A+
         for (const auto& param_name : g_dlss_sr_preset_params) {
             if (NVSDK_NGX_Parameter_SetI_Original != nullptr) {
                 NVSDK_NGX_Parameter_SetI_Original(InParameters, param_name.c_str(), sr_preset);
                 g_ngx_parameters.update_int(param_name, sr_preset);
                 if (sr_preset == 0) {
-                    LogInfo("Applied DLSS SR preset: %s -> %d (DLSS Default)",
-                           param_name.c_str(), sr_preset);
+                    LogInfo("Applied DLSS SR preset: %s -> %d (DLSS Default)", param_name.c_str(), sr_preset);
                 } else {
-                    LogInfo("Applied DLSS SR preset: %s -> %d (Preset %c)",
-                           param_name.c_str(), sr_preset, 'A' + sr_preset - 1);
+                    LogInfo("Applied DLSS SR preset: %s -> %d (Preset %c)", param_name.c_str(), sr_preset,
+                            'A' + sr_preset - 1);
                 }
             }
         }
     }
 
     // Apply DLSS Ray Reconstruction preset parameters
-    if (rr_preset >= 0) { // -1 = Game Default (no override), 0 = DLSS Default, 1+ = Preset A+
+    if (rr_preset >= 0) {  // -1 = Game Default (no override), 0 = DLSS Default, 1+ = Preset A+
         for (const auto& param_name : g_dlss_rr_preset_params) {
             if (NVSDK_NGX_Parameter_SetI_Original != nullptr) {
                 NVSDK_NGX_Parameter_SetI_Original(InParameters, param_name.c_str(), rr_preset);
                 g_ngx_parameters.update_int(param_name, rr_preset);
                 if (rr_preset == 0) {
-                    LogInfo("Applied DLSS RR preset: %s -> %d (DLSS Default)",
-                           param_name.c_str(), rr_preset);
+                    LogInfo("Applied DLSS RR preset: %s -> %d (DLSS Default)", param_name.c_str(), rr_preset);
                 } else {
-                    LogInfo("Applied DLSS RR preset: %s -> %d (Preset %c)",
-                           param_name.c_str(), rr_preset, 'A' + rr_preset - 1);
+                    LogInfo("Applied DLSS RR preset: %s -> %d (Preset %c)", param_name.c_str(), rr_preset,
+                            'A' + rr_preset - 1);
                 }
             }
         }
@@ -320,21 +354,6 @@ void NVSDK_CONV NVSDK_NGX_Parameter_SetF_Detour(NVSDK_NGX_Parameter* InParameter
     // Increment NGX counters
     g_ngx_counters.parameter_setf_count.fetch_add(1);
     g_ngx_counters.total_count.fetch_add(1);
-
-    // DLSS-G MultiFrameCount override logic
-    if (InName != nullptr) {
-        std::string param_name = std::string(InName);
-
-        // Check for DLSS-G MultiFrameCount parameter
-        if (param_name == "DLSSG.MultiFrameCount") {
-            int multiframe_override = settings::g_swapchainTabSettings.dlssg_multiframe_override.GetValue();
-            if (multiframe_override > 0) { // 0 = No override, 1+ = 2x, 3x, 4x
-                int override_value = multiframe_override; // Convert 1,2,3 to 2,3,4
-                InValue = static_cast<float>(override_value);
-                LogInfo("DLSS-G MultiFrameCount override: %s -> %f (%dx)", param_name.c_str(), InValue, override_value);
-            }
-        }
-    }
 
     // Store parameter in thread-safe storage
     if (InName != nullptr) {
@@ -359,21 +378,6 @@ void NVSDK_CONV NVSDK_NGX_Parameter_SetD_Detour(NVSDK_NGX_Parameter* InParameter
     // Increment NGX counters
     g_ngx_counters.parameter_setd_count.fetch_add(1);
     g_ngx_counters.total_count.fetch_add(1);
-
-    // DLSS-G MultiFrameCount override logic
-    if (InName != nullptr) {
-        std::string param_name = std::string(InName);
-
-        // Check for DLSS-G MultiFrameCount parameter
-        if (param_name == "DLSSG.MultiFrameCount") {
-            int multiframe_override = settings::g_swapchainTabSettings.dlssg_multiframe_override.GetValue();
-            if (multiframe_override > 0) { // 0 = No override, 1+ = 2x, 3x, 4x
-                int override_value = multiframe_override + 1; // Convert 1,2,3 to 2,3,4
-                InValue = static_cast<double>(override_value);
-                LogInfo("DLSS-G MultiFrameCount override: %s -> %f (%dx)", param_name.c_str(), InValue, override_value);
-            }
-        }
-    }
 
     // Store parameter in thread-safe storage
     if (InName != nullptr) {
@@ -406,12 +410,13 @@ void NVSDK_CONV NVSDK_NGX_Parameter_SetI_Detour(NVSDK_NGX_Parameter* InParameter
         // Check for DLSS Super Resolution preset parameters
         if (IsDLSSPresetParameter(param_name, g_dlss_sr_preset_params)) {
             int sr_preset = GetDLSSPresetValue(settings::g_swapchainTabSettings.dlss_sr_preset_override.GetValue());
-            if (sr_preset >= 0) { // -1 = Game Default (no override), 0 = DLSS Default, 1+ = Preset A+
+            if (sr_preset >= 0) {  // -1 = Game Default (no override), 0 = DLSS Default, 1+ = Preset A+
                 InValue = sr_preset;
                 if (sr_preset == 0) {
                     LogInfo("DLSS SR preset override: %s -> %d (DLSS Default)", param_name.c_str(), InValue);
                 } else {
-                    LogInfo("DLSS SR preset override: %s -> %d (Preset %c)", param_name.c_str(), InValue, 'A' + sr_preset - 1);
+                    LogInfo("DLSS SR preset override: %s -> %d (Preset %c)", param_name.c_str(), InValue,
+                            'A' + sr_preset - 1);
                 }
             }
         }
@@ -419,28 +424,14 @@ void NVSDK_CONV NVSDK_NGX_Parameter_SetI_Detour(NVSDK_NGX_Parameter* InParameter
         // Check for DLSS Ray Reconstruction preset parameters
         if (IsDLSSPresetParameter(param_name, g_dlss_rr_preset_params)) {
             int rr_preset = GetDLSSPresetValue(settings::g_swapchainTabSettings.dlss_rr_preset_override.GetValue());
-            if (rr_preset >= 0) { // -1 = Game Default (no override), 0 = DLSS Default, 1+ = Preset A+
+            if (rr_preset >= 0) {  // -1 = Game Default (no override), 0 = DLSS Default, 1+ = Preset A+
                 InValue = rr_preset;
                 if (rr_preset == 0) {
                     LogInfo("DLSS RR preset override: %s -> %d (DLSS Default)", param_name.c_str(), InValue);
                 } else {
-                    LogInfo("DLSS RR preset override: %s -> %d (Preset %c)", param_name.c_str(), InValue, 'A' + rr_preset - 1);
+                    LogInfo("DLSS RR preset override: %s -> %d (Preset %c)", param_name.c_str(), InValue,
+                            'A' + rr_preset - 1);
                 }
-            }
-        }
-    }
-
-    // DLSS-G MultiFrameCount override logic
-    if (InName != nullptr) {
-        std::string param_name = std::string(InName);
-
-        // Check for DLSS-G MultiFrameCount parameter
-        if (param_name == "DLSSG.MultiFrameCount") {
-            int multiframe_override = settings::g_swapchainTabSettings.dlssg_multiframe_override.GetValue();
-            if (multiframe_override > 0) { // 0 = No override, 1+ = 2x, 3x, 4x
-                int override_value = multiframe_override + 1; // Convert 1,2,3 to 2,3,4
-                InValue = override_value;
-                LogInfo("DLSS-G MultiFrameCount override: %s -> %d (%dx)", param_name.c_str(), InValue, override_value);
             }
         }
     }
@@ -464,7 +455,8 @@ void NVSDK_CONV NVSDK_NGX_Parameter_SetI_Detour(NVSDK_NGX_Parameter* InParameter
 }
 
 // Hooked NVSDK_NGX_Parameter_SetUI function
-void NVSDK_CONV NVSDK_NGX_Parameter_SetUI_Detour(NVSDK_NGX_Parameter* InParameter, const char* InName, unsigned int InValue) {
+void NVSDK_CONV NVSDK_NGX_Parameter_SetUI_Detour(NVSDK_NGX_Parameter* InParameter, const char* InName,
+                                                 unsigned int InValue) {
     // Increment NGX counters
     g_ngx_counters.parameter_setui_count.fetch_add(1);
     g_ngx_counters.total_count.fetch_add(1);
@@ -476,12 +468,13 @@ void NVSDK_CONV NVSDK_NGX_Parameter_SetUI_Detour(NVSDK_NGX_Parameter* InParamete
         // Check for DLSS Super Resolution preset parameters
         if (IsDLSSPresetParameter(param_name, g_dlss_sr_preset_params)) {
             int sr_preset = GetDLSSPresetValue(settings::g_swapchainTabSettings.dlss_sr_preset_override.GetValue());
-            if (sr_preset >= 0) { // -1 = Game Default (no override), 0 = DLSS Default, 1+ = Preset A+
+            if (sr_preset >= 0) {  // -1 = Game Default (no override), 0 = DLSS Default, 1+ = Preset A+
                 InValue = static_cast<unsigned int>(sr_preset);
                 if (sr_preset == 0) {
                     LogInfo("DLSS SR preset override: %s -> %u (DLSS Default)", param_name.c_str(), InValue);
                 } else {
-                    LogInfo("DLSS SR preset override: %s -> %u (Preset %c)", param_name.c_str(), InValue, 'A' + sr_preset - 1);
+                    LogInfo("DLSS SR preset override: %s -> %u (Preset %c)", param_name.c_str(), InValue,
+                            'A' + sr_preset - 1);
                 }
             }
         }
@@ -489,28 +482,14 @@ void NVSDK_CONV NVSDK_NGX_Parameter_SetUI_Detour(NVSDK_NGX_Parameter* InParamete
         // Check for DLSS Ray Reconstruction preset parameters
         if (IsDLSSPresetParameter(param_name, g_dlss_rr_preset_params)) {
             int rr_preset = GetDLSSPresetValue(settings::g_swapchainTabSettings.dlss_rr_preset_override.GetValue());
-            if (rr_preset >= 0) { // -1 = Game Default (no override), 0 = DLSS Default, 1+ = Preset A+
+            if (rr_preset >= 0) {  // -1 = Game Default (no override), 0 = DLSS Default, 1+ = Preset A+
                 InValue = static_cast<unsigned int>(rr_preset);
                 if (rr_preset == 0) {
                     LogInfo("DLSS RR preset override: %s -> %u (DLSS Default)", param_name.c_str(), InValue);
                 } else {
-                    LogInfo("DLSS RR preset override: %s -> %u (Preset %c)", param_name.c_str(), InValue, 'A' + rr_preset - 1);
+                    LogInfo("DLSS RR preset override: %s -> %u (Preset %c)", param_name.c_str(), InValue,
+                            'A' + rr_preset - 1);
                 }
-            }
-        }
-    }
-
-    // DLSS-G MultiFrameCount override logic
-    if (InName != nullptr) {
-        std::string param_name = std::string(InName);
-
-        // Check for DLSS-G MultiFrameCount parameter
-        if (param_name == "DLSSG.MultiFrameCount") {
-            int multiframe_override = settings::g_swapchainTabSettings.dlssg_multiframe_override.GetValue();
-            if (multiframe_override > 0) { // 0 = No override, 1+ = 2x, 3x, 4x
-                int override_value = multiframe_override; // Convert 1,2,3 to 2,3,4
-                InValue = static_cast<unsigned int>(override_value);
-                LogInfo("DLSS-G MultiFrameCount override: %s -> %u (%dx)", param_name.c_str(), InValue, override_value);
             }
         }
     }
@@ -534,25 +513,11 @@ void NVSDK_CONV NVSDK_NGX_Parameter_SetUI_Detour(NVSDK_NGX_Parameter* InParamete
 }
 
 // Hooked NVSDK_NGX_Parameter_SetULL function
-void NVSDK_CONV NVSDK_NGX_Parameter_SetULL_Detour(NVSDK_NGX_Parameter* InParameter, const char* InName, unsigned long long InValue) {
+void NVSDK_CONV NVSDK_NGX_Parameter_SetULL_Detour(NVSDK_NGX_Parameter* InParameter, const char* InName,
+                                                  unsigned long long InValue) {
     // Increment NGX counters
     g_ngx_counters.parameter_setull_count.fetch_add(1);
     g_ngx_counters.total_count.fetch_add(1);
-
-    // DLSS-G MultiFrameCount override logic
-    if (InName != nullptr) {
-        std::string param_name = std::string(InName);
-
-        // Check for DLSS-G MultiFrameCount parameter
-        if (param_name == "DLSSG.MultiFrameCount") {
-            int multiframe_override = settings::g_swapchainTabSettings.dlssg_multiframe_override.GetValue();
-            if (multiframe_override > 0) { // 0 = No override, 1+ = 2x, 3x, 4x
-                int override_value = multiframe_override + 1; // Convert 1,2,3 to 2,3,4
-                InValue = static_cast<unsigned long long>(override_value);
-                LogInfo("DLSS-G MultiFrameCount override: %s -> %llu (%dx)", param_name.c_str(), InValue, override_value);
-            }
-        }
-    }
 
     // Store parameter in thread-safe storage
     if (InName != nullptr) {
@@ -573,7 +538,8 @@ void NVSDK_CONV NVSDK_NGX_Parameter_SetULL_Detour(NVSDK_NGX_Parameter* InParamet
 }
 
 // Hooked NVSDK_NGX_Parameter_GetI function
-NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_Parameter_GetI_Detour(NVSDK_NGX_Parameter* InParameter, const char* InName, int* OutValue) {
+NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_Parameter_GetI_Detour(NVSDK_NGX_Parameter* InParameter, const char* InName,
+                                                            int* OutValue) {
     // Increment NGX counters
     g_ngx_counters.parameter_geti_count.fetch_add(1);
     g_ngx_counters.total_count.fetch_add(1);
@@ -600,7 +566,8 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_Parameter_GetI_Detour(NVSDK_NGX_Parameter*
 }
 
 // Hooked NVSDK_NGX_Parameter_GetUI function
-NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_Parameter_GetUI_Detour(NVSDK_NGX_Parameter* InParameter, const char* InName, unsigned int* OutValue) {
+NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_Parameter_GetUI_Detour(NVSDK_NGX_Parameter* InParameter, const char* InName,
+                                                             unsigned int* OutValue) {
     // Increment NGX counters
     g_ngx_counters.parameter_getui_count.fetch_add(1);
     g_ngx_counters.total_count.fetch_add(1);
@@ -627,7 +594,8 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_Parameter_GetUI_Detour(NVSDK_NGX_Parameter
 }
 
 // Hooked NVSDK_NGX_Parameter_GetULL function
-NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_Parameter_GetULL_Detour(NVSDK_NGX_Parameter* InParameter, const char* InName, unsigned long long* OutValue) {
+NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_Parameter_GetULL_Detour(NVSDK_NGX_Parameter* InParameter, const char* InName,
+                                                              unsigned long long* OutValue) {
     // Increment NGX counters
     g_ngx_counters.parameter_getull_count.fetch_add(1);
     g_ngx_counters.total_count.fetch_add(1);
@@ -654,7 +622,8 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_Parameter_GetULL_Detour(NVSDK_NGX_Paramete
 }
 
 // Hooked NVSDK_NGX_Parameter_GetVoidPointer function
-NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_Parameter_GetVoidPointer_Detour(NVSDK_NGX_Parameter* InParameter, const char* InName, void** OutValue) {
+NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_Parameter_GetVoidPointer_Detour(NVSDK_NGX_Parameter* InParameter,
+                                                                      const char* InName, void** OutValue) {
     // Increment NGX counters
     g_ngx_counters.parameter_getvoidpointer_count.fetch_add(1);
     g_ngx_counters.total_count.fetch_add(1);
@@ -674,23 +643,50 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_Parameter_GetVoidPointer_Detour(NVSDK_NGX_
     return NVSDK_NGX_Result_Fail;
 }
 
+struct DECLSPEC_UUID("7F2C9A11-3B4E-4D6A-812F-5E9CD37A1B42") ReShadeRetrieveBaseInterface : IUnknown {};
+template <typename T>
+inline bool NativeFromReShadeProxy(T** reshade_proxy, bool enabled = true) {
+    if (!enabled) return false;
+
+    auto* unknown = static_cast<IUnknown*>(reinterpret_cast<void*>(*reshade_proxy));
+    if (unknown == nullptr) return false;
+    ReShadeRetrieveBaseInterface* native_base = nullptr;
+    if (SUCCEEDED(unknown->QueryInterface(&native_base))) {
+        native_base->Release();
+        *reshade_proxy = (T*)(native_base);
+        return true;
+    }
+    assert(false);
+    return false;
+}
+
 // D3D12 Init detour
-NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_Init_Detour(unsigned long long InApplicationId, const wchar_t *InApplicationDataPath, ID3D12Device *InDevice, const NVSDK_NGX_FeatureCommonInfo *InFeatureInfo, NVSDK_NGX_Version InSDKVersion) {
+NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_Init_Detour(unsigned long long InApplicationId,
+                                                        const wchar_t* InApplicationDataPath, ID3D12Device* InDevice,
+                                                        const NVSDK_NGX_FeatureCommonInfo* InFeatureInfo,
+                                                        NVSDK_NGX_Version InSDKVersion) {
     // Increment NGX counters
     g_ngx_counters.d3d12_init_count.fetch_add(1);
     g_ngx_counters.total_count.fetch_add(1);
 
     LogInfo("NGX D3D12 Init called - AppId: %llu", InApplicationId);
 
+    NativeFromReShadeProxy<ID3D12Device>(&InDevice, settings::g_developerTabSettings.hide_proxy_swapchain_from_reshade.GetValue());
+
     if (NVSDK_NGX_D3D12_Init_Original != nullptr) {
-        return NVSDK_NGX_D3D12_Init_Original(InApplicationId, InApplicationDataPath, InDevice, InFeatureInfo, InSDKVersion);
+        return NVSDK_NGX_D3D12_Init_Original(InApplicationId, InApplicationDataPath, InDevice, InFeatureInfo,
+                                             InSDKVersion);
     }
 
     return NVSDK_NGX_Result_Fail;
 }
 
 // D3D12 Init Ext detour
-NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_Init_Ext_Detour(unsigned long long InApplicationId, const wchar_t *InApplicationDataPath, ID3D12Device *InDevice, const NVSDK_NGX_FeatureCommonInfo *InFeatureInfo, void* Unknown5) {
+NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_Init_Ext_Detour(unsigned long long InApplicationId,
+                                                            const wchar_t* InApplicationDataPath,
+                                                            ID3D12Device* InDevice,
+                                                            const NVSDK_NGX_FeatureCommonInfo* InFeatureInfo,
+                                                            void* Unknown5) {
     // Increment NGX counters
     g_ngx_counters.d3d12_init_ext_count.fetch_add(1);
     g_ngx_counters.total_count.fetch_add(1);
@@ -698,14 +694,18 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_Init_Ext_Detour(unsigned long long I
     LogInfo("NGX D3D12 Init Ext called - AppId: %llu", InApplicationId);
 
     if (NVSDK_NGX_D3D12_Init_Ext_Original != nullptr) {
-        return NVSDK_NGX_D3D12_Init_Ext_Original(InApplicationId, InApplicationDataPath, InDevice, InFeatureInfo, Unknown5);
+        return NVSDK_NGX_D3D12_Init_Ext_Original(InApplicationId, InApplicationDataPath, InDevice, InFeatureInfo,
+                                                 Unknown5);
     }
 
     return NVSDK_NGX_Result_Fail;
 }
 
 // D3D12 Init ProjectID detour
-NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_Init_ProjectID_Detour(const char *InProjectId, NVSDK_NGX_EngineType InEngineType, const char *InEngineVersion, const wchar_t *InApplicationDataPath, ID3D12Device *InDevice, const NVSDK_NGX_FeatureCommonInfo *InFeatureInfo, NVSDK_NGX_Version InSDKVersion) {
+NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_Init_ProjectID_Detour(
+    const char* InProjectId, NVSDK_NGX_EngineType InEngineType, const char* InEngineVersion,
+    const wchar_t* InApplicationDataPath, ID3D12Device* InDevice, const NVSDK_NGX_FeatureCommonInfo* InFeatureInfo,
+    NVSDK_NGX_Version InSDKVersion) {
     // Increment NGX counters
     g_ngx_counters.d3d12_init_projectid_count.fetch_add(1);
     g_ngx_counters.total_count.fetch_add(1);
@@ -713,20 +713,23 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_Init_ProjectID_Detour(const char *In
     LogInfo("NGX D3D12 Init ProjectID called - ProjectId: %s", InProjectId ? InProjectId : "null");
 
     if (NVSDK_NGX_D3D12_Init_ProjectID_Original != nullptr) {
-        return NVSDK_NGX_D3D12_Init_ProjectID_Original(InProjectId, InEngineType, InEngineVersion, InApplicationDataPath, InDevice, InFeatureInfo, InSDKVersion);
+        return NVSDK_NGX_D3D12_Init_ProjectID_Original(InProjectId, InEngineType, InEngineVersion,
+                                                       InApplicationDataPath, InDevice, InFeatureInfo, InSDKVersion);
     }
 
     return NVSDK_NGX_Result_Fail;
 }
 
 // D3D12 CreateFeature detour
-NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_CreateFeature_Detour(ID3D12GraphicsCommandList *InCmdList, NVSDK_NGX_Feature InFeatureID, NVSDK_NGX_Parameter *InParameters, NVSDK_NGX_Handle **OutHandle) {
+NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_CreateFeature_Detour(ID3D12GraphicsCommandList* InCmdList,
+                                                                 NVSDK_NGX_Feature InFeatureID,
+                                                                 NVSDK_NGX_Parameter* InParameters,
+                                                                 NVSDK_NGX_Handle** OutHandle) {
     // Increment NGX counters
     g_ngx_counters.d3d12_createfeature_count.fetch_add(1);
     g_ngx_counters.total_count.fetch_add(1);
 
     LogInfo("NGX D3D12 CreateFeature called - FeatureID: %d", InFeatureID);
-
 
     // Hook the parameter vtable if we have parameters
     if (InParameters != nullptr) {
@@ -734,7 +737,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_CreateFeature_Detour(ID3D12GraphicsC
     }
 
     if (NVSDK_NGX_D3D12_CreateFeature_Original != nullptr) {
-        auto res= NVSDK_NGX_D3D12_CreateFeature_Original(InCmdList, InFeatureID, InParameters, OutHandle);
+        auto res = NVSDK_NGX_D3D12_CreateFeature_Original(InCmdList, InFeatureID, InParameters, OutHandle);
 
         // Track the handle and feature type if creation was successful
         if (res == NVSDK_NGX_Result_Success && OutHandle != nullptr && *OutHandle != nullptr) {
@@ -747,7 +750,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_CreateFeature_Detour(ID3D12GraphicsC
 }
 
 // D3D12 ReleaseFeature detour
-NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_ReleaseFeature_Detour(NVSDK_NGX_Handle *InHandle) {
+NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_ReleaseFeature_Detour(NVSDK_NGX_Handle* InHandle) {
     // Increment NGX counters
     g_ngx_counters.d3d12_releasefeature_count.fetch_add(1);
     g_ngx_counters.total_count.fetch_add(1);
@@ -757,8 +760,8 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_ReleaseFeature_Detour(NVSDK_NGX_Hand
     if (feature != static_cast<NVSDK_NGX_Feature>(-1)) {
         const char* featureName = "Unknown";
         switch (feature) {
-            case NVSDK_NGX_Feature_SuperSampling: featureName = "DLSS Super Resolution"; break;
-            case NVSDK_NGX_Feature_FrameGeneration: featureName = "DLSS Frame Generation"; break;
+            case NVSDK_NGX_Feature_SuperSampling:     featureName = "DLSS Super Resolution"; break;
+            case NVSDK_NGX_Feature_FrameGeneration:   featureName = "DLSS Frame Generation"; break;
             case NVSDK_NGX_Feature_RayReconstruction: featureName = "Ray Reconstruction"; break;
         }
         LogInfo("NGX D3D12 ReleaseFeature called - Releasing %s", featureName);
@@ -781,12 +784,15 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_ReleaseFeature_Detour(NVSDK_NGX_Hand
 }
 
 // D3D12 EvaluateFeature detour
-NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_EvaluateFeature_Detour(ID3D12GraphicsCommandList *InCmdList, const NVSDK_NGX_Handle *InFeatureHandle, const NVSDK_NGX_Parameter *InParameters, PFN_NVSDK_NGX_ProgressCallback InCallback) {
+NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_EvaluateFeature_Detour(ID3D12GraphicsCommandList* InCmdList,
+                                                                   const NVSDK_NGX_Handle* InFeatureHandle,
+                                                                   const NVSDK_NGX_Parameter* InParameters,
+                                                                   PFN_NVSDK_NGX_ProgressCallback InCallback) {
     // Increment NGX counters
     g_ngx_counters.d3d12_evaluatefeature_count.fetch_add(1);
     g_ngx_counters.total_count.fetch_add(1);
 
-   // LogInfo("NGX D3D12 EvaluateFeature called");
+    // LogInfo("NGX D3D12 EvaluateFeature called");
 
     // Hook the parameter vtable if we have parameters
     if (InParameters != nullptr) {
@@ -801,22 +807,32 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_EvaluateFeature_Detour(ID3D12Graphic
 }
 
 // D3D11 Init detour
-NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_Init_Detour(unsigned long long InApplicationId, const wchar_t *InApplicationDataPath, ID3D11Device *InDevice, const NVSDK_NGX_FeatureCommonInfo *InFeatureInfo, NVSDK_NGX_Version InSDKVersion) {
+NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_Init_Detour(unsigned long long InApplicationId,
+                                                        const wchar_t* InApplicationDataPath, ID3D11Device* InDevice,
+                                                        const NVSDK_NGX_FeatureCommonInfo* InFeatureInfo,
+                                                        NVSDK_NGX_Version InSDKVersion) {
     // Increment NGX counters
     g_ngx_counters.d3d11_init_count.fetch_add(1);
     g_ngx_counters.total_count.fetch_add(1);
 
     LogInfo("NGX D3D11 Init called - AppId: %llu", InApplicationId);
 
+    NativeFromReShadeProxy<ID3D11Device>(&InDevice, settings::g_developerTabSettings.hide_proxy_swapchain_from_reshade.GetValue());
+
     if (NVSDK_NGX_D3D11_Init_Original != nullptr) {
-        return NVSDK_NGX_D3D11_Init_Original(InApplicationId, InApplicationDataPath, InDevice, InFeatureInfo, InSDKVersion);
+        return NVSDK_NGX_D3D11_Init_Original(InApplicationId, InApplicationDataPath, InDevice, InFeatureInfo,
+                                             InSDKVersion);
     }
 
     return NVSDK_NGX_Result_Fail;
 }
 
 // D3D11 Init Ext detour
-NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_Init_Ext_Detour(unsigned long long InApplicationId, const wchar_t *InApplicationDataPath, ID3D11Device *InDevice, const NVSDK_NGX_FeatureCommonInfo *InFeatureInfo, void* Unknown5) {
+NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_Init_Ext_Detour(unsigned long long InApplicationId,
+                                                            const wchar_t* InApplicationDataPath,
+                                                            ID3D11Device* InDevice,
+                                                            const NVSDK_NGX_FeatureCommonInfo* InFeatureInfo,
+                                                            void* Unknown5) {
     // Increment NGX counters
     g_ngx_counters.d3d11_init_ext_count.fetch_add(1);
     g_ngx_counters.total_count.fetch_add(1);
@@ -824,14 +840,18 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_Init_Ext_Detour(unsigned long long I
     LogInfo("NGX D3D11 Init Ext called - AppId: %llu", InApplicationId);
 
     if (NVSDK_NGX_D3D11_Init_Ext_Original != nullptr) {
-        return NVSDK_NGX_D3D11_Init_Ext_Original(InApplicationId, InApplicationDataPath, InDevice, InFeatureInfo, Unknown5);
+        return NVSDK_NGX_D3D11_Init_Ext_Original(InApplicationId, InApplicationDataPath, InDevice, InFeatureInfo,
+                                                 Unknown5);
     }
 
     return NVSDK_NGX_Result_Fail;
 }
 
 // D3D11 Init ProjectID detour
-NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_Init_ProjectID_Detour(const char *InProjectId, NVSDK_NGX_EngineType InEngineType, const char *InEngineVersion, const wchar_t *InApplicationDataPath, ID3D11Device *InDevice, const NVSDK_NGX_FeatureCommonInfo *InFeatureInfo, NVSDK_NGX_Version InSDKVersion) {
+NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_Init_ProjectID_Detour(
+    const char* InProjectId, NVSDK_NGX_EngineType InEngineType, const char* InEngineVersion,
+    const wchar_t* InApplicationDataPath, ID3D11Device* InDevice, const NVSDK_NGX_FeatureCommonInfo* InFeatureInfo,
+    NVSDK_NGX_Version InSDKVersion) {
     // Increment NGX counters
     g_ngx_counters.d3d11_init_projectid_count.fetch_add(1);
     g_ngx_counters.total_count.fetch_add(1);
@@ -839,20 +859,23 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_Init_ProjectID_Detour(const char *In
     LogInfo("NGX D3D11 Init ProjectID called - ProjectId: %s", InProjectId ? InProjectId : "null");
 
     if (NVSDK_NGX_D3D11_Init_ProjectID_Original != nullptr) {
-        return NVSDK_NGX_D3D11_Init_ProjectID_Original(InProjectId, InEngineType, InEngineVersion, InApplicationDataPath, InDevice, InFeatureInfo, InSDKVersion);
+        return NVSDK_NGX_D3D11_Init_ProjectID_Original(InProjectId, InEngineType, InEngineVersion,
+                                                       InApplicationDataPath, InDevice, InFeatureInfo, InSDKVersion);
     }
 
     return NVSDK_NGX_Result_Fail;
 }
 
 // D3D11 CreateFeature detour
-NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_CreateFeature_Detour(ID3D11DeviceContext *InDevCtx, NVSDK_NGX_Feature InFeatureID, NVSDK_NGX_Parameter *InParameters, NVSDK_NGX_Handle **OutHandle) {
+NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_CreateFeature_Detour(ID3D11DeviceContext* InDevCtx,
+                                                                 NVSDK_NGX_Feature InFeatureID,
+                                                                 NVSDK_NGX_Parameter* InParameters,
+                                                                 NVSDK_NGX_Handle** OutHandle) {
     // Increment NGX counters
     g_ngx_counters.d3d11_createfeature_count.fetch_add(1);
     g_ngx_counters.total_count.fetch_add(1);
 
     LogInfo("NGX D3D11 CreateFeature called - FeatureID: %d", InFeatureID);
-
 
     // Hook the parameter vtable if we have parameters
     if (InParameters != nullptr) {
@@ -860,7 +883,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_CreateFeature_Detour(ID3D11DeviceCon
     }
 
     if (NVSDK_NGX_D3D11_CreateFeature_Original != nullptr) {
-        auto res= NVSDK_NGX_D3D11_CreateFeature_Original(InDevCtx, InFeatureID, InParameters, OutHandle);
+        auto res = NVSDK_NGX_D3D11_CreateFeature_Original(InDevCtx, InFeatureID, InParameters, OutHandle);
 
         // Track the handle and feature type if creation was successful
         if (res == NVSDK_NGX_Result_Success && OutHandle != nullptr && *OutHandle != nullptr) {
@@ -874,7 +897,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_CreateFeature_Detour(ID3D11DeviceCon
 }
 
 // D3D11 ReleaseFeature detour
-NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_ReleaseFeature_Detour(NVSDK_NGX_Handle *InHandle) {
+NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_ReleaseFeature_Detour(NVSDK_NGX_Handle* InHandle) {
     // Increment NGX counters
     g_ngx_counters.d3d11_releasefeature_count.fetch_add(1);
     g_ngx_counters.total_count.fetch_add(1);
@@ -884,8 +907,8 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_ReleaseFeature_Detour(NVSDK_NGX_Hand
     if (feature != static_cast<NVSDK_NGX_Feature>(-1)) {
         const char* featureName = "Unknown";
         switch (feature) {
-            case NVSDK_NGX_Feature_SuperSampling: featureName = "DLSS Super Resolution"; break;
-            case NVSDK_NGX_Feature_FrameGeneration: featureName = "DLSS Frame Generation"; break;
+            case NVSDK_NGX_Feature_SuperSampling:     featureName = "DLSS Super Resolution"; break;
+            case NVSDK_NGX_Feature_FrameGeneration:   featureName = "DLSS Frame Generation"; break;
             case NVSDK_NGX_Feature_RayReconstruction: featureName = "Ray Reconstruction"; break;
         }
         LogInfo("NGX D3D11 ReleaseFeature called - Releasing %s", featureName);
@@ -908,7 +931,10 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_ReleaseFeature_Detour(NVSDK_NGX_Hand
 }
 
 // D3D11 EvaluateFeature detour
-NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_EvaluateFeature_Detour(ID3D11DeviceContext *InDevCtx, const NVSDK_NGX_Handle *InFeatureHandle, const NVSDK_NGX_Parameter *InParameters, PFN_NVSDK_NGX_ProgressCallback InCallback) {
+NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_EvaluateFeature_Detour(ID3D11DeviceContext* InDevCtx,
+                                                                   const NVSDK_NGX_Handle* InFeatureHandle,
+                                                                   const NVSDK_NGX_Parameter* InParameters,
+                                                                   PFN_NVSDK_NGX_ProgressCallback InCallback) {
     // Increment NGX counters
     g_ngx_counters.d3d11_evaluatefeature_count.fetch_add(1);
     g_ngx_counters.total_count.fetch_add(1);
@@ -928,7 +954,8 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_EvaluateFeature_Detour(ID3D11DeviceC
 }
 
 // UpdateFeature detour
-NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_UpdateFeature_Detour(const NVSDK_NGX_Application_Identifier *ApplicationId, const NVSDK_NGX_Feature FeatureID) {
+NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_UpdateFeature_Detour(const NVSDK_NGX_Application_Identifier* ApplicationId,
+                                                           const NVSDK_NGX_Feature FeatureID) {
     // Increment NGX counters
     g_ngx_counters.total_count.fetch_add(1);
 
@@ -995,45 +1022,35 @@ bool HookNGXParameterVTable(NVSDK_NGX_Parameter* Params) {
 
     // Hook SetI (vtable index 3)
     CreateAndEnableHook(vftable[3], reinterpret_cast<LPVOID>(NVSDK_NGX_Parameter_SetI_Detour),
-                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_Parameter_SetI_Original),
-                        "NVSDK_NGX_Parameter_SetI");
+                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_Parameter_SetI_Original), "NVSDK_NGX_Parameter_SetI");
 
     // Hook SetUI (vtable index 4)
     CreateAndEnableHook(vftable[4], reinterpret_cast<LPVOID>(NVSDK_NGX_Parameter_SetUI_Detour),
-                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_Parameter_SetUI_Original),
-                        "NVSDK_NGX_Parameter_SetUI");
+                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_Parameter_SetUI_Original), "NVSDK_NGX_Parameter_SetUI");
     // Hook SetD (vtable index 5)
     CreateAndEnableHook(vftable[5], reinterpret_cast<LPVOID>(NVSDK_NGX_Parameter_SetD_Detour),
-                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_Parameter_SetD_Original),
-                        "NVSDK_NGX_Parameter_SetD");
+                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_Parameter_SetD_Original), "NVSDK_NGX_Parameter_SetD");
 
     // Hook SetF (vtable index 6)
     CreateAndEnableHook(vftable[6], reinterpret_cast<LPVOID>(NVSDK_NGX_Parameter_SetF_Detour),
-                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_Parameter_SetF_Original),
-                        "NVSDK_NGX_Parameter_SetF");
+                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_Parameter_SetF_Original), "NVSDK_NGX_Parameter_SetF");
 
     // Hook SetULL (vtable index 7)
     CreateAndEnableHook(vftable[7], reinterpret_cast<LPVOID>(NVSDK_NGX_Parameter_SetULL_Detour),
-                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_Parameter_SetULL_Original),
-                        "NVSDK_NGX_Parameter_SetULL");
+                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_Parameter_SetULL_Original), "NVSDK_NGX_Parameter_SetULL");
     // Hook GetVoidPointer (vtable index 8) - Special-K uses index 8
     CreateAndEnableHook(vftable[8], reinterpret_cast<LPVOID>(NVSDK_NGX_Parameter_GetVoidPointer_Detour),
                         reinterpret_cast<LPVOID*>(&NVSDK_NGX_Parameter_GetVoidPointer_Original),
                         "NVSDK_NGX_Parameter_GetVoidPointer");
     // Hook GetI (vtable index 11) - Special-K uses index 11
     CreateAndEnableHook(vftable[11], reinterpret_cast<LPVOID>(NVSDK_NGX_Parameter_GetI_Detour),
-                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_Parameter_GetI_Original),
-                        "NVSDK_NGX_Parameter_GetI");
+                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_Parameter_GetI_Original), "NVSDK_NGX_Parameter_GetI");
     // Hook GetUI (vtable index 12) - Special-K uses index 12
     CreateAndEnableHook(vftable[12], reinterpret_cast<LPVOID>(NVSDK_NGX_Parameter_GetUI_Detour),
-                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_Parameter_GetUI_Original),
-                        "NVSDK_NGX_Parameter_GetUI");
+                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_Parameter_GetUI_Original), "NVSDK_NGX_Parameter_GetUI");
     // Hook GetULL (vtable index 15) - Special-K uses index 15
     CreateAndEnableHook(vftable[15], reinterpret_cast<LPVOID>(NVSDK_NGX_Parameter_GetULL_Detour),
-                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_Parameter_GetULL_Original),
-                        "NVSDK_NGX_Parameter_GetULL");
-
-
+                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_Parameter_GetULL_Original), "NVSDK_NGX_Parameter_GetULL");
 
     g_ngx_vtable_hooks_installed = true;
     LogInfo("NGX Parameter vtable hooks installed successfully");
@@ -1132,7 +1149,8 @@ bool InstallNGXHooks() {
     }
 
     // Check if NGX hooks should be suppressed
-    if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(display_commanderhooks::HookType::NGX)) {
+    if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(
+            display_commanderhooks::HookType::NGX)) {
         LogInfo("NGX hooks installation suppressed by user setting");
         return false;
     }
@@ -1157,13 +1175,11 @@ bool InstallNGXHooks() {
     // D3D12 Init hooks
     CreateAndEnableHook(GetProcAddress(ngx_dll, "NVSDK_NGX_D3D12_Init"),
                         reinterpret_cast<LPVOID>(NVSDK_NGX_D3D12_Init_Detour),
-                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D12_Init_Original),
-                        "NVSDK_NGX_D3D12_Init");
+                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D12_Init_Original), "NVSDK_NGX_D3D12_Init");
 
     CreateAndEnableHook(GetProcAddress(ngx_dll, "NVSDK_NGX_D3D12_Init_Ext"),
                         reinterpret_cast<LPVOID>(NVSDK_NGX_D3D12_Init_Ext_Detour),
-                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D12_Init_Ext_Original),
-                        "NVSDK_NGX_D3D12_Init_Ext");
+                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D12_Init_Ext_Original), "NVSDK_NGX_D3D12_Init_Ext");
 
     CreateAndEnableHook(GetProcAddress(ngx_dll, "NVSDK_NGX_D3D12_Init_ProjectID"),
                         reinterpret_cast<LPVOID>(NVSDK_NGX_D3D12_Init_ProjectID_Detour),
@@ -1188,13 +1204,11 @@ bool InstallNGXHooks() {
     // D3D11 Init hooks
     CreateAndEnableHook(GetProcAddress(ngx_dll, "NVSDK_NGX_D3D11_Init"),
                         reinterpret_cast<LPVOID>(NVSDK_NGX_D3D11_Init_Detour),
-                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D11_Init_Original),
-                        "NVSDK_NGX_D3D11_Init");
+                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D11_Init_Original), "NVSDK_NGX_D3D11_Init");
 
     CreateAndEnableHook(GetProcAddress(ngx_dll, "NVSDK_NGX_D3D11_Init_Ext"),
                         reinterpret_cast<LPVOID>(NVSDK_NGX_D3D11_Init_Ext_Detour),
-                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D11_Init_Ext_Original),
-                        "NVSDK_NGX_D3D11_Init_Ext");
+                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D11_Init_Ext_Original), "NVSDK_NGX_D3D11_Init_Ext");
 
     CreateAndEnableHook(GetProcAddress(ngx_dll, "NVSDK_NGX_D3D11_Init_ProjectID"),
                         reinterpret_cast<LPVOID>(NVSDK_NGX_D3D11_Init_ProjectID_Detour),
@@ -1219,8 +1233,7 @@ bool InstallNGXHooks() {
     // Hook UpdateFeature function
     CreateAndEnableHook(GetProcAddress(ngx_dll, "NVSDK_NGX_UpdateFeature"),
                         reinterpret_cast<LPVOID>(NVSDK_NGX_UpdateFeature_Detour),
-                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_UpdateFeature_Original),
-                        "NVSDK_NGX_UpdateFeature");
+                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_UpdateFeature_Original), "NVSDK_NGX_UpdateFeature");
 
     // Hook NGX parameter functions to get Parameter objects
     // These functions are exported from _nvngx.dll and return Parameter objects
@@ -1256,7 +1269,8 @@ bool InstallNGXHooks() {
     LogInfo("VTable hooks are called automatically inside detour functions");
 
     // Mark NGX hooks as installed
-    display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(display_commanderhooks::HookType::NGX);
+    display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(
+        display_commanderhooks::HookType::NGX);
 
     return true;
 }
@@ -1266,7 +1280,6 @@ void CleanupNGXHooks() {
     LogInfo("Cleaning up NGX hooks and handle tracking");
     CleanupNGXHandleTracking();
 }
-
 
 // Get NGX hook statistics - now using dedicated NGX counters
 uint64_t GetNGXHookCount(int event_type) {
@@ -1280,17 +1293,11 @@ uint64_t GetTotalNGXHookCount() {
 }
 
 // Feature status checking functions
-bool IsDLSSEnabled() {
-    return g_dlss_enabled.load();
-}
+bool IsDLSSEnabled() { return g_dlss_enabled.load(); }
 
-bool IsDLSSGEnabled() {
-    return g_dlssg_enabled.load();
-}
+bool IsDLSSGEnabled() { return g_dlssg_enabled.load(); }
 
-bool IsRayReconstructionEnabled() {
-    return g_ray_reconstruction_enabled.load();
-}
+bool IsRayReconstructionEnabled() { return g_ray_reconstruction_enabled.load(); }
 
 std::string GetEnabledFeaturesSummary() {
     std::vector<std::string> enabled_features;

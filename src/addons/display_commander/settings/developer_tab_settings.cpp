@@ -10,7 +10,6 @@ std::atomic<bool> s_continue_rendering{false};            // Disabled by default
 std::atomic<bool> s_hide_hdr_capabilities{false};
 std::atomic<bool> s_enable_flip_chain{false};
 std::atomic<bool> s_auto_colorspace{false};
-std::atomic<bool> s_hide_proxy_swapchain_from_reshade{false};  // Disabled by default
 std::atomic<bool> s_nvapi_auto_enable_enabled{true};    // enabled by default
 
 // Reflex settings
@@ -50,7 +49,7 @@ DeveloperTabSettings::DeveloperTabSettings()
                             "DisplayCommander"),
       enable_flip_chain("EnableFlipChain", s_enable_flip_chain, s_enable_flip_chain.load(), "DisplayCommander"),
       auto_colorspace("AutoColorspace", s_auto_colorspace, s_auto_colorspace.load(), "DisplayCommander"),
-      hide_proxy_swapchain_from_reshade("HideProxySwapchainFromReShade", s_hide_proxy_swapchain_from_reshade, s_hide_proxy_swapchain_from_reshade.load(), "DisplayCommander"),
+      hide_proxy_swapchain_from_reshade("HideProxySwapchainFromReShade", false, "DisplayCommander"),
       // enable_d3d9e_upgrade("EnableD3D9EUpgrade", s_enable_d3d9e_upgrade, true, "DisplayCommander"),
       nvapi_auto_enable_enabled("NvapiAutoEnableEnabled", s_nvapi_auto_enable_enabled,
                                 s_nvapi_auto_enable_enabled.load(), "DisplayCommander"),
@@ -86,7 +85,7 @@ DeveloperTabSettings::DeveloperTabSettings()
                                            s_enable_display_commander_ui_shortcut.load(), "DisplayCommander"),
       enable_performance_overlay_shortcut("EnablePerformanceOverlayShortcut", s_enable_performance_overlay_shortcut,
                                            s_enable_performance_overlay_shortcut.load(), "DisplayCommander"),
-      safemode("Safemode", false, "DisplayCommander"),
+      safemode("Safemode", false, "DisplayCommander.Safemode"),
       load_from_dll_main("LoadFromDllMain", true, "DisplayCommander"),
       load_streamline("LoadStreamline", true, "DisplayCommander"),
       load_nvngx("LoadNvngx", true, "DisplayCommander"),
@@ -110,6 +109,7 @@ void DeveloperTabSettings::LoadAll() {
 void DeveloperTabSettings::SaveAll() {
     // Save all settings that don't auto-save
     prevent_fullscreen.Save();
+    hide_proxy_swapchain_from_reshade.Save();
     enable_hotkeys.Save();
     safemode.Save();
     load_from_dll_main.Save();

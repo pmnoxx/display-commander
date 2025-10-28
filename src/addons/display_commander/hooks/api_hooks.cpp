@@ -51,16 +51,29 @@ static std::atomic<HWND> g_game_window = nullptr;
 
 HWND GetGameWindow() { return g_game_window; }
 
+bool HWNDBelongsToCurrentProcess(HWND hwnd) {
+    DWORD dwPid = 0;
+    DWORD dwTid = GetWindowThreadProcessId(hwnd, &dwPid);
+    return GetCurrentProcessId() == dwPid;
+}
+
 // Hooked GetFocus function
 HWND WINAPI GetFocus_Detour() {
+    auto hwnd = GetFocus_Original ? GetFocus_Original() : GetFocus();
+
+    if (HWNDBelongsToCurrentProcess(hwnd)) {
+        return hwnd;
+    }
+
     if (s_continue_rendering.load() && g_game_window.load() != nullptr && IsWindow(g_game_window.load())) {
         // Return the game window even when it doesn't have focus
         //   LogInfo("GetFocus_Detour: Returning game window due to continue rendering - HWND: 0x%p", g_game_window);
         return g_game_window;
     }
 
+
     // Call original function
-    return GetFocus_Original ? GetFocus_Original() : GetFocus();
+    return hwnd;
 }
 
 HWND WINAPI GetForegroundWindow_Direct() {
@@ -69,6 +82,13 @@ HWND WINAPI GetForegroundWindow_Direct() {
 
 // Hooked GetForegroundWindow function
 HWND WINAPI GetForegroundWindow_Detour() {
+    auto hwnd = GetForegroundWindow_Direct();
+
+    if (HWNDBelongsToCurrentProcess(hwnd)) {
+        return hwnd;
+    }
+
+
     if (s_continue_rendering.load() && g_game_window.load() != nullptr && IsWindow(g_game_window.load())) {
         // Return the game window even when it's not in foreground
         //    LogInfo("GetForegroundWindow_Detour: Returning game window due to continue rendering - HWND: 0x%p",
@@ -77,11 +97,17 @@ HWND WINAPI GetForegroundWindow_Detour() {
     }
 
     // Call original function
-    return GetForegroundWindow_Direct();
+    return hwnd;
 }
 
 // Hooked GetActiveWindow function
 HWND WINAPI GetActiveWindow_Detour() {
+    auto hwnd = GetActiveWindow_Original ? GetActiveWindow_Original() : GetActiveWindow();
+
+    if (HWNDBelongsToCurrentProcess(hwnd)) {
+        return hwnd;
+    }
+
     if (s_continue_rendering.load() && g_game_window.load() != nullptr && IsWindow(g_game_window.load())) {
         // Return the game window even when it's not the active window
         // Check if we're in the same thread as the game window
@@ -101,7 +127,7 @@ HWND WINAPI GetActiveWindow_Detour() {
     }
 
     // Call original function
-    return GetActiveWindow_Original ? GetActiveWindow_Original() : GetActiveWindow();
+    return hwnd;
 }
 
 // Hooked GetGUIThreadInfo function

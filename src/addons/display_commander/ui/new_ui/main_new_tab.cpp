@@ -882,7 +882,7 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
             if (ImGui::IsItemHovered()) {
                 ImGui::SetTooltip("Enables NVIDIA Reflex Boost mode for maximum latency reduction.\nThis mode may increase GPU power consumption but provides the lowest possible input lag.");
             }
-            if (IsNativeReflexActive()) {
+            if (IsNativeReflexActive() || !settings::g_developerTabSettings.reflex_supress_native.GetValue()) {
                 ImGui::SameLine();
                 if (CheckboxSetting(settings::g_developerTabSettings.reflex_supress_native, ICON_FK_WARNING " Suppress Native Reflex (WIP)")) {
                     LogInfo("Suppress Native Reflex %s", settings::g_developerTabSettings.reflex_supress_native.GetValue() ? "enabled" : "disabled");
@@ -1625,6 +1625,50 @@ void DrawWindowControls() {
     ui::colors::PopIconColor();
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Minimize the current game window.");
+    }
+
+    ImGui::SameLine();
+
+    // Open Game Folder Button
+    ui::colors::PushIconColor(ui::colors::ICON_ACTION);
+    if (ImGui::Button(ICON_FK_FOLDER_OPEN " Open Game Folder")) {
+        std::thread([]() {
+            LogDebug("Open Game Folder button pressed (bg thread)");
+
+            // Get current process executable path
+            char process_path[MAX_PATH];
+            DWORD path_length = GetModuleFileNameA(nullptr, process_path, MAX_PATH);
+
+            if (path_length == 0) {
+                LogError("Failed to get current process path for folder opening");
+                return;
+            }
+
+            // Get the parent directory of the executable
+            std::string full_path(process_path);
+            size_t last_slash = full_path.find_last_of("\\/");
+
+            if (last_slash == std::string::npos) {
+                LogError("Invalid process path format: %s", full_path.c_str());
+                return;
+            }
+
+            std::string game_folder = full_path.substr(0, last_slash);
+            LogInfo("Opening game folder: %s", game_folder.c_str());
+
+            // Open the folder in Windows Explorer
+            HINSTANCE result = ShellExecuteA(nullptr, "explore", game_folder.c_str(), nullptr, nullptr, SW_SHOW);
+
+            if (reinterpret_cast<intptr_t>(result) <= 32) {
+                LogError("Failed to open game folder: %s (Error: %ld)", game_folder.c_str(), reinterpret_cast<intptr_t>(result));
+            } else {
+                LogInfo("Successfully opened game folder: %s", game_folder.c_str());
+            }
+        }).detach();
+    }
+    ui::colors::PopIconColor();
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Open the game's installation folder in Windows Explorer.");
     }
 
     ImGui::SameLine();

@@ -7,6 +7,7 @@
 #include "../config/display_commander_config.hpp"
 
 #include <MinHook.h>
+#include <cmath>
 #include <cstdint>
 
 // Streamline function pointers
@@ -91,6 +92,7 @@ int slUpgradeInterface_Detour(void** baseInterface) {
 
     // Check config-driven flag
     bool prevent_slupgrade_interface = g_prevent_slupgrade_interface.load();
+    LogInfo("prevent_slupgrade_interface: %d", static_cast<int>(prevent_slupgrade_interface));
     if (prevent_slupgrade_interface) {
         Microsoft::WRL::ComPtr<IDXGISwapChain> swapchain{};
         if (SUCCEEDED(swapchain->QueryInterface(IID_PPV_ARGS(&swapchain)))) {

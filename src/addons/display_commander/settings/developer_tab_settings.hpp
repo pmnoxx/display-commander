@@ -34,7 +34,7 @@ class DeveloperTabSettings {
     BoolSettingRef hide_hdr_capabilities;
     BoolSettingRef enable_flip_chain;
     BoolSettingRef auto_colorspace;
-    BoolSettingRef hide_proxy_swapchain_from_reshade;
+    BoolSetting hide_proxy_swapchain_from_reshade;
 
     // D3D9 to D3D9Ex Upgrade
     // BoolSettingRef enable_d3d9e_upgrade;

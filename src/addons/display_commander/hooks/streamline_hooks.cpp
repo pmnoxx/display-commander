@@ -189,14 +189,6 @@ int slUpgradeInterface_Detour(void** baseInterface) {
 
         DXGIFactory* reshade_factory = nullptr;
         UINT size = sizeof(reshade_factory);
-        dxgi_factory7->GetPrivateData(__uuidof(DXGIFactory), &size, &reshade_factory);
-        if (reshade_factory == nullptr) {
-          LogError("slUpgradeInterface() - Failed to get DXGIFactory proxy from IDXGIFactory7");
-          HRESULT hr = slUpgradeInterface_Original(baseInterface);
-
-          return hr;
-        }
-
 
         #if 1
         slUpgradeInterface_Original(reinterpret_cast<void**>(&dxgi_factory7));
@@ -215,6 +207,14 @@ int slUpgradeInterface_Detour(void** baseInterface) {
         *baseInterface = factory_wrapper;
 
         #else
+        dxgi_factory7->GetPrivateData(__uuidof(DXGIFactory), &size, &reshade_factory);
+        if (reshade_factory == nullptr) {
+          LogError("slUpgradeInterface() - Failed to get DXGIFactory proxy from IDXGIFactory7");
+          HRESULT hr = slUpgradeInterface_Original(baseInterface);
+
+          return hr;
+        }
+
         // Additional safety check for reshade_factory->_orig
         if (reshade_factory->_orig == nullptr) {
           LogError("slUpgradeInterface() - reshade_factory->_orig is null");
@@ -235,7 +235,11 @@ int slUpgradeInterface_Detour(void** baseInterface) {
 
         reshade_factory->_orig = real_factory;
 
-        *baseInterface = reshade_factory;
+        auto* factory_wrapper = new display_commanderhooks::DXGIFactoryWrapper(reshade_factory); // dxgi_factory7
+        factory_wrapper->SetSLGetNativeInterface(slGetNativeInterface_Original);
+        factory_wrapper->SetSLUpgradeInterface(slUpgradeInterface_Original);
+
+        *baseInterface = factory_wrapper;
         #endif
 
         /*

@@ -1084,7 +1084,8 @@ extern std::atomic<LONGLONG> g_sleep_reflex_native_timestamp_ns;  // Timestamp o
 inline bool IsNativeReflexActive() {
     auto did_sleep_recently = (utils::get_now_ns() - g_sleep_reflex_native_timestamp_ns.load()) < 1 * utils::SEC_TO_NS;
 
-    return g_nvapi_event_counters[NVAPI_EVENT_D3D_SET_SLEEP_MODE].load() > 0 && did_sleep_recently && !settings::g_developerTabSettings.reflex_supress_native.GetValue();
+    //return g_nvapi_event_counters[NVAPI_EVENT_D3D_SET_SLEEP_MODE].load() > 0 &&
+    return did_sleep_recently && !settings::g_developerTabSettings.reflex_supress_native.GetValue();
 }
 
 // Reflex debug counters

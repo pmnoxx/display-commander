@@ -156,6 +156,8 @@ void DrawSwapchainTab(reshade::api::effect_runtime* runtime) {
     ImGui::Text("Swapchain Tab - DXGI Information");
 
     // Draw all swapchain-related sections
+    DrawSwapchainWrapperStats();
+    ImGui::Spacing();
     DrawSwapchainEventCounters();
     ImGui::Spacing();
     DrawDLSSGSummary();
@@ -167,6 +169,31 @@ void DrawSwapchainTab(reshade::api::effect_runtime* runtime) {
     DrawSwapchainInfo(runtime);
     ImGui::Spacing();
     DrawDxgiCompositionInfo();
+}
+
+void DrawSwapchainWrapperStats() {
+    if (ImGui::CollapsingHeader("Swapchain Wrapper Statistics", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Present/Present1 Calls Per Second");
+        ImGui::Separator();
+
+        // Helper function to calculate and display calls per second
+        auto displayStats = [](const char* type_name, SwapChainWrapperStats& stats) {
+            uint64_t present_calls = stats.total_present_calls.load(std::memory_order_acquire);
+            uint64_t present1_calls = stats.total_present1_calls.load(std::memory_order_acquire);
+            double present_fps = stats.smoothed_present_fps.load(std::memory_order_acquire);
+            double present1_fps = stats.smoothed_present1_fps.load(std::memory_order_acquire);
+
+            ImGui::Text("%s:", type_name);
+            ImGui::Indent();
+            ImGui::Text("  Present: %.2f calls/sec (total: %llu)", present_fps, present_calls);
+            ImGui::Text("  Present1: %.2f calls/sec (total: %llu)", present1_fps, present1_calls);
+            ImGui::Unindent();
+        };
+
+        displayStats("Proxy", g_swapchain_wrapper_stats_proxy);
+        ImGui::Spacing();
+        displayStats("Native", g_swapchain_wrapper_stats_native);
+    }
 }
 
 void DrawSwapchainEventCounters() {

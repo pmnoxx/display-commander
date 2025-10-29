@@ -25,6 +25,9 @@ void DrawAdapterInfo();
 // Draw DXGI composition information
 void DrawDxgiCompositionInfo();
 
+// Draw swapchain wrapper statistics
+void DrawSwapchainWrapperStats();
+
 // Draw swapchain event counters
 void DrawSwapchainEventCounters();
 

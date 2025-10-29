@@ -1,5 +1,8 @@
 #include "dxgi_factory_wrapper.hpp"
 #include "../utils/logging.hpp"
+#include "../globals.hpp"
+#include "../utils/timing.hpp"
+#include "../utils/general_utils.hpp"
 #include "dxgi/dxgi_present_hooks.hpp"
 #include <dxgi.h>
 #include <dxgi1_2.h>
@@ -10,9 +13,277 @@
 
 namespace display_commanderhooks {
 
-DXGIFactoryWrapper::DXGIFactoryWrapper(IDXGIFactory7* originalFactory)
-    : m_originalFactory(originalFactory), m_refCount(1), m_slGetNativeInterface(nullptr), m_slUpgradeInterface(nullptr), m_commandQueueMap(nullptr) {
-    LogInfo("DXGIFactoryWrapper: Created wrapper for IDXGIFactory7");
+// Helper function to create a swapchain wrapper from any swapchain interface
+IDXGISwapChain4* CreateSwapChainWrapper(IDXGISwapChain* swapchain, SwapChainHook hookType) {
+    if (swapchain == nullptr) {
+        LogWarn("CreateSwapChainWrapper: swapchain is null");
+        return nullptr;
+    }
+
+    // Try to query for IDXGISwapChain4
+    Microsoft::WRL::ComPtr<IDXGISwapChain4> swapChain4;
+    if (FAILED(swapchain->QueryInterface(IID_PPV_ARGS(&swapChain4)))) {
+        LogWarn("CreateSwapChainWrapper: Failed to query IDXGISwapChain4 interface");
+        return nullptr;
+    }
+
+    const char* hookTypeName = (hookType == SwapChainHook::Proxy) ? "Proxy" : "Native";
+    LogInfo("CreateSwapChainWrapper: Creating wrapper for swapchain: 0x%p (hookType: %s)", swapchain, hookTypeName);
+
+    return new DXGISwapChain4Wrapper(swapChain4.Get(), hookType);
+}
+
+// DXGISwapChain4Wrapper implementation
+DXGISwapChain4Wrapper::DXGISwapChain4Wrapper(IDXGISwapChain4* originalSwapChain, SwapChainHook hookType)
+    : m_originalSwapChain(originalSwapChain), m_refCount(1), m_swapChainHookType(hookType) {
+    const char* hookTypeName = (hookType == SwapChainHook::Proxy) ? "Proxy" : "Native";
+    LogInfo("DXGISwapChain4Wrapper: Created wrapper for IDXGISwapChain4 (hookType: %s)", hookTypeName);
+}
+
+STDMETHODIMP DXGISwapChain4Wrapper::QueryInterface(REFIID riid, void **ppvObject) {
+    if (ppvObject == nullptr)
+        return E_POINTER;
+
+    // Support all swapchain interfaces
+    if (riid == IID_IUnknown || riid == __uuidof(IDXGIObject) || riid == __uuidof(IDXGIDeviceSubObject) ||
+        riid == __uuidof(IDXGISwapChain) || riid == __uuidof(IDXGISwapChain1) || riid == __uuidof(IDXGISwapChain2) ||
+        riid == __uuidof(IDXGISwapChain3) || riid == __uuidof(IDXGISwapChain4)) {
+        *ppvObject = static_cast<IDXGISwapChain4 *>(this);
+        AddRef();
+        return S_OK;
+    }
+
+    return m_originalSwapChain->QueryInterface(riid, ppvObject);
+}
+
+STDMETHODIMP_(ULONG) DXGISwapChain4Wrapper::AddRef() {
+    return InterlockedIncrement(&m_refCount);
+}
+
+STDMETHODIMP_(ULONG) DXGISwapChain4Wrapper::Release() {
+    ULONG refCount = InterlockedDecrement(&m_refCount);
+    if (refCount == 0) {
+        LogInfo("DXGISwapChain4Wrapper: Releasing wrapper");
+        delete this;
+    }
+    return refCount;
+}
+
+// IDXGIObject methods - delegate to original
+STDMETHODIMP DXGISwapChain4Wrapper::SetPrivateData(REFGUID Name, UINT DataSize, const void *pData) {
+    return m_originalSwapChain->SetPrivateData(Name, DataSize, pData);
+}
+
+STDMETHODIMP DXGISwapChain4Wrapper::SetPrivateDataInterface(REFGUID Name, const IUnknown *pUnknown) {
+    return m_originalSwapChain->SetPrivateDataInterface(Name, pUnknown);
+}
+
+STDMETHODIMP DXGISwapChain4Wrapper::GetPrivateData(REFGUID Name, UINT *pDataSize, void *pData) {
+    return m_originalSwapChain->GetPrivateData(Name, pDataSize, pData);
+}
+
+STDMETHODIMP DXGISwapChain4Wrapper::GetParent(REFIID riid, void **ppParent) {
+    return m_originalSwapChain->GetParent(riid, ppParent);
+}
+
+// IDXGIDeviceSubObject methods - delegate to original
+STDMETHODIMP DXGISwapChain4Wrapper::GetDevice(REFIID riid, void **ppDevice) {
+    return m_originalSwapChain->GetDevice(riid, ppDevice);
+}
+
+// IDXGISwapChain methods - delegate to original
+STDMETHODIMP DXGISwapChain4Wrapper::Present(UINT SyncInterval, UINT Flags) {
+    // Track statistics
+    SwapChainWrapperStats* stats = (m_swapChainHookType == SwapChainHook::Proxy)
+        ? &g_swapchain_wrapper_stats_proxy
+        : &g_swapchain_wrapper_stats_native;
+
+    uint64_t now_ns = utils::get_now_ns();
+    uint64_t last_time_ns = stats->last_present_time_ns.exchange(now_ns, std::memory_order_acq_rel);
+
+    stats->total_present_calls.fetch_add(1, std::memory_order_relaxed);
+
+    // Calculate FPS using rolling average
+    if (last_time_ns > 0) {
+        uint64_t delta_ns = now_ns - last_time_ns;
+        // Only update if time delta is reasonable (ignore if > 1 second)
+        if (delta_ns < 1000000000ULL && delta_ns > 0) {
+            // Calculate instantaneous FPS from delta time
+            double delta_seconds = static_cast<double>(delta_ns) / 1000000000.0;
+            double instant_fps = 1.0 / delta_seconds;
+
+            // Smooth the FPS using rolling average
+            double old_fps = stats->smoothed_present_fps.load(std::memory_order_acquire);
+            double new_fps = UpdateRollingAverage(instant_fps, old_fps);
+            stats->smoothed_present_fps.store(new_fps, std::memory_order_release);
+        }
+    }
+
+    return m_originalSwapChain->Present(SyncInterval, Flags);
+}
+
+STDMETHODIMP DXGISwapChain4Wrapper::GetBuffer(UINT Buffer, REFIID riid, void **ppSurface) {
+    return m_originalSwapChain->GetBuffer(Buffer, riid, ppSurface);
+}
+
+STDMETHODIMP DXGISwapChain4Wrapper::SetFullscreenState(BOOL Fullscreen, IDXGIOutput *pTarget) {
+    return m_originalSwapChain->SetFullscreenState(Fullscreen, pTarget);
+}
+
+STDMETHODIMP DXGISwapChain4Wrapper::GetFullscreenState(BOOL *pFullscreen, IDXGIOutput **ppTarget) {
+    return m_originalSwapChain->GetFullscreenState(pFullscreen, ppTarget);
+}
+
+STDMETHODIMP DXGISwapChain4Wrapper::GetDesc(DXGI_SWAP_CHAIN_DESC *pDesc) {
+    return m_originalSwapChain->GetDesc(pDesc);
+}
+
+STDMETHODIMP DXGISwapChain4Wrapper::ResizeBuffers(UINT BufferCount, UINT Width, UINT Height, DXGI_FORMAT Format, UINT SwapChainFlags) {
+    return m_originalSwapChain->ResizeBuffers(BufferCount, Width, Height, Format, SwapChainFlags);
+}
+
+STDMETHODIMP DXGISwapChain4Wrapper::ResizeTarget(const DXGI_MODE_DESC *pNewTargetParameters) {
+    return m_originalSwapChain->ResizeTarget(pNewTargetParameters);
+}
+
+STDMETHODIMP DXGISwapChain4Wrapper::GetContainingOutput(IDXGIOutput **ppOutput) {
+    return m_originalSwapChain->GetContainingOutput(ppOutput);
+}
+
+STDMETHODIMP DXGISwapChain4Wrapper::GetFrameStatistics(DXGI_FRAME_STATISTICS *pStats) {
+    return m_originalSwapChain->GetFrameStatistics(pStats);
+}
+
+STDMETHODIMP DXGISwapChain4Wrapper::GetLastPresentCount(UINT *pLastPresentCount) {
+    return m_originalSwapChain->GetLastPresentCount(pLastPresentCount);
+}
+
+// IDXGISwapChain1 methods - delegate to original
+STDMETHODIMP DXGISwapChain4Wrapper::GetDesc1(DXGI_SWAP_CHAIN_DESC1 *pDesc) {
+    return m_originalSwapChain->GetDesc1(pDesc);
+}
+
+STDMETHODIMP DXGISwapChain4Wrapper::GetFullscreenDesc(DXGI_SWAP_CHAIN_FULLSCREEN_DESC *pDesc) {
+    return m_originalSwapChain->GetFullscreenDesc(pDesc);
+}
+
+STDMETHODIMP DXGISwapChain4Wrapper::GetHwnd(HWND *pHwnd) {
+    return m_originalSwapChain->GetHwnd(pHwnd);
+}
+
+STDMETHODIMP DXGISwapChain4Wrapper::GetCoreWindow(REFIID refiid, void **ppUnk) {
+    return m_originalSwapChain->GetCoreWindow(refiid, ppUnk);
+}
+
+STDMETHODIMP DXGISwapChain4Wrapper::Present1(UINT SyncInterval, UINT PresentFlags, const DXGI_PRESENT_PARAMETERS *pPresentParameters) {
+    // Track statistics
+    SwapChainWrapperStats* stats = (m_swapChainHookType == SwapChainHook::Proxy)
+        ? &g_swapchain_wrapper_stats_proxy
+        : &g_swapchain_wrapper_stats_native;
+
+    uint64_t now_ns = utils::get_now_ns();
+    uint64_t last_time_ns = stats->last_present1_time_ns.exchange(now_ns, std::memory_order_acq_rel);
+
+    stats->total_present1_calls.fetch_add(1, std::memory_order_relaxed);
+
+    // Calculate FPS using rolling average
+    if (last_time_ns > 0) {
+        uint64_t delta_ns = now_ns - last_time_ns;
+        // Only update if time delta is reasonable (ignore if > 1 second)
+        if (delta_ns < 1000000000ULL && delta_ns > 0) {
+            // Calculate instantaneous FPS from delta time
+            double delta_seconds = static_cast<double>(delta_ns) / 1000000000.0;
+            double instant_fps = 1.0 / delta_seconds;
+
+            // Smooth the FPS using rolling average
+            double old_fps = stats->smoothed_present1_fps.load(std::memory_order_acquire);
+            double new_fps = UpdateRollingAverage(instant_fps, old_fps);
+            stats->smoothed_present1_fps.store(new_fps, std::memory_order_release);
+        }
+    }
+
+    return m_originalSwapChain->Present1(SyncInterval, PresentFlags, pPresentParameters);
+}
+
+STDMETHODIMP_(BOOL) DXGISwapChain4Wrapper::IsTemporaryMonoSupported() {
+    return m_originalSwapChain->IsTemporaryMonoSupported();
+}
+
+STDMETHODIMP DXGISwapChain4Wrapper::GetRestrictToOutput(IDXGIOutput **ppRestrictToOutput) {
+    return m_originalSwapChain->GetRestrictToOutput(ppRestrictToOutput);
+}
+
+STDMETHODIMP DXGISwapChain4Wrapper::SetBackgroundColor(const DXGI_RGBA *pColor) {
+    return m_originalSwapChain->SetBackgroundColor(pColor);
+}
+
+STDMETHODIMP DXGISwapChain4Wrapper::GetBackgroundColor(DXGI_RGBA *pColor) {
+    return m_originalSwapChain->GetBackgroundColor(pColor);
+}
+
+STDMETHODIMP DXGISwapChain4Wrapper::SetRotation(DXGI_MODE_ROTATION Rotation) {
+    return m_originalSwapChain->SetRotation(Rotation);
+}
+
+STDMETHODIMP DXGISwapChain4Wrapper::GetRotation(DXGI_MODE_ROTATION *pRotation) {
+    return m_originalSwapChain->GetRotation(pRotation);
+}
+
+// IDXGISwapChain2 methods - delegate to original
+STDMETHODIMP DXGISwapChain4Wrapper::SetSourceSize(UINT Width, UINT Height) {
+    return m_originalSwapChain->SetSourceSize(Width, Height);
+}
+
+STDMETHODIMP DXGISwapChain4Wrapper::GetSourceSize(UINT *pWidth, UINT *pHeight) {
+    return m_originalSwapChain->GetSourceSize(pWidth, pHeight);
+}
+
+STDMETHODIMP DXGISwapChain4Wrapper::SetMaximumFrameLatency(UINT MaxLatency) {
+    return m_originalSwapChain->SetMaximumFrameLatency(MaxLatency);
+}
+
+STDMETHODIMP DXGISwapChain4Wrapper::GetMaximumFrameLatency(UINT *pMaxLatency) {
+    return m_originalSwapChain->GetMaximumFrameLatency(pMaxLatency);
+}
+
+STDMETHODIMP_(HANDLE) DXGISwapChain4Wrapper::GetFrameLatencyWaitableObject() {
+    return m_originalSwapChain->GetFrameLatencyWaitableObject();
+}
+
+STDMETHODIMP DXGISwapChain4Wrapper::SetMatrixTransform(const DXGI_MATRIX_3X2_F *pMatrix) {
+    return m_originalSwapChain->SetMatrixTransform(pMatrix);
+}
+
+STDMETHODIMP DXGISwapChain4Wrapper::GetMatrixTransform(DXGI_MATRIX_3X2_F *pMatrix) {
+    return m_originalSwapChain->GetMatrixTransform(pMatrix);
+}
+
+// IDXGISwapChain3 methods - delegate to original
+STDMETHODIMP_(UINT) DXGISwapChain4Wrapper::GetCurrentBackBufferIndex() {
+    return m_originalSwapChain->GetCurrentBackBufferIndex();
+}
+
+STDMETHODIMP DXGISwapChain4Wrapper::CheckColorSpaceSupport(DXGI_COLOR_SPACE_TYPE ColorSpace, UINT *pColorSpaceSupport) {
+    return m_originalSwapChain->CheckColorSpaceSupport(ColorSpace, pColorSpaceSupport);
+}
+
+STDMETHODIMP DXGISwapChain4Wrapper::SetColorSpace1(DXGI_COLOR_SPACE_TYPE ColorSpace) {
+    return m_originalSwapChain->SetColorSpace1(ColorSpace);
+}
+
+STDMETHODIMP DXGISwapChain4Wrapper::ResizeBuffers1(UINT BufferCount, UINT Width, UINT Height, DXGI_FORMAT Format, UINT SwapChainFlags, const UINT *pNodeMask, IUnknown *const *ppPresentQueue) {
+    return m_originalSwapChain->ResizeBuffers1(BufferCount, Width, Height, Format, SwapChainFlags, pNodeMask, ppPresentQueue);
+}
+
+// IDXGISwapChain4 methods - delegate to original
+STDMETHODIMP DXGISwapChain4Wrapper::SetHDRMetaData(DXGI_HDR_METADATA_TYPE Type, UINT Size, void *pMetaData) {
+    return m_originalSwapChain->SetHDRMetaData(Type, Size, pMetaData);
+}
+
+DXGIFactoryWrapper::DXGIFactoryWrapper(IDXGIFactory7* originalFactory, SwapChainHook hookType)
+    : m_originalFactory(originalFactory), m_refCount(1), m_swapChainHookType(hookType), m_slGetNativeInterface(nullptr), m_slUpgradeInterface(nullptr), m_commandQueueMap(nullptr) {
+    const char* hookTypeName = (hookType == SwapChainHook::Proxy) ? "Proxy" : "Native";
+    LogInfo("DXGIFactoryWrapper: Created wrapper for IDXGIFactory7 (hookType: %s)", hookTypeName);
 }
 
 STDMETHODIMP DXGIFactoryWrapper::QueryInterface(REFIID riid, void **ppvObject) {
@@ -90,7 +361,14 @@ STDMETHODIMP DXGIFactoryWrapper::CreateSwapChain(IUnknown *pDevice, DXGI_SWAP_CH
         if (swapchain != nullptr) {
             LogInfo("DXGIFactoryWrapper::CreateSwapChain succeeded swapchain: 0x%p", swapchain);
 
-            hookToNativeSwapchain(swapchain);
+            // Create wrapper instead of hooking
+            IDXGISwapChain4* wrappedSwapChain = CreateSwapChainWrapper(swapchain, m_swapChainHookType);
+            if (wrappedSwapChain != nullptr) {
+                // Release the original swapchain and replace with wrapper
+                swapchain->Release();
+                *ppSwapChain = wrappedSwapChain;
+                wrappedSwapChain->AddRef();
+            }
         }
     }
 
@@ -129,10 +407,24 @@ STDMETHODIMP DXGIFactoryWrapper::CreateSwapChainForHwnd(IUnknown *pDevice, HWND 
         if (swapchain != nullptr) {
             LogInfo("DXGIFactoryWrapper::CreateSwapChainForHwnd succeeded swapchain: 0x%p", swapchain);
 
-            // Convert IDXGISwapChain1 to IDXGISwapChain for hooking
+            // Convert IDXGISwapChain1 to IDXGISwapChain for wrapper creation
             Microsoft::WRL::ComPtr<IDXGISwapChain> baseSwapchain;
             if (SUCCEEDED(swapchain->QueryInterface(IID_PPV_ARGS(&baseSwapchain)))) {
-                hookToNativeSwapchain(baseSwapchain.Get());
+                IDXGISwapChain4* wrappedSwapChain = CreateSwapChainWrapper(baseSwapchain.Get(), m_swapChainHookType);
+                if (wrappedSwapChain != nullptr) {
+                    // Release the original swapchain and replace with wrapper
+                    swapchain->Release();
+                    // Query wrapper for IDXGISwapChain1
+                    Microsoft::WRL::ComPtr<IDXGISwapChain1> swapChain1;
+                    if (SUCCEEDED(wrappedSwapChain->QueryInterface(IID_PPV_ARGS(&swapChain1)))) {
+                        *ppSwapChain = swapChain1.Detach();
+                    } else {
+                        // Fallback: keep original if query fails
+                        wrappedSwapChain->Release();
+                        *ppSwapChain = swapchain;
+                        swapchain->AddRef();
+                    }
+                }
             }
         }
     }
@@ -154,10 +446,24 @@ STDMETHODIMP DXGIFactoryWrapper::CreateSwapChainForCoreWindow(IUnknown *pDevice,
         if (swapchain != nullptr) {
             LogInfo("DXGIFactoryWrapper::CreateSwapChainForCoreWindow succeeded swapchain: 0x%p", swapchain);
 
-            // Convert IDXGISwapChain1 to IDXGISwapChain for hooking
+            // Convert IDXGISwapChain1 to IDXGISwapChain for wrapper creation
             Microsoft::WRL::ComPtr<IDXGISwapChain> baseSwapchain;
             if (SUCCEEDED(swapchain->QueryInterface(IID_PPV_ARGS(&baseSwapchain)))) {
-                hookToNativeSwapchain(baseSwapchain.Get());
+                IDXGISwapChain4* wrappedSwapChain = CreateSwapChainWrapper(baseSwapchain.Get(), m_swapChainHookType);
+                if (wrappedSwapChain != nullptr) {
+                    // Release the original swapchain and replace with wrapper
+                    swapchain->Release();
+                    // Query wrapper for IDXGISwapChain1
+                    Microsoft::WRL::ComPtr<IDXGISwapChain1> swapChain1;
+                    if (SUCCEEDED(wrappedSwapChain->QueryInterface(IID_PPV_ARGS(&swapChain1)))) {
+                        *ppSwapChain = swapChain1.Detach();
+                    } else {
+                        // Fallback: keep original if query fails
+                        wrappedSwapChain->Release();
+                        *ppSwapChain = swapchain;
+                        swapchain->AddRef();
+                    }
+                }
             }
         }
     }
@@ -207,10 +513,24 @@ STDMETHODIMP DXGIFactoryWrapper::CreateSwapChainForComposition(IUnknown *pDevice
         if (swapchain != nullptr) {
             LogInfo("DXGIFactoryWrapper::CreateSwapChainForComposition succeeded swapchain: 0x%p", swapchain);
 
-            // Convert IDXGISwapChain1 to IDXGISwapChain for hooking
+            // Convert IDXGISwapChain1 to IDXGISwapChain for wrapper creation
             Microsoft::WRL::ComPtr<IDXGISwapChain> baseSwapchain;
             if (SUCCEEDED(swapchain->QueryInterface(IID_PPV_ARGS(&baseSwapchain)))) {
-                hookToNativeSwapchain(baseSwapchain.Get());
+                IDXGISwapChain4* wrappedSwapChain = CreateSwapChainWrapper(baseSwapchain.Get(), m_swapChainHookType);
+                if (wrappedSwapChain != nullptr) {
+                    // Release the original swapchain and replace with wrapper
+                    swapchain->Release();
+                    // Query wrapper for IDXGISwapChain1
+                    Microsoft::WRL::ComPtr<IDXGISwapChain1> swapChain1;
+                    if (SUCCEEDED(wrappedSwapChain->QueryInterface(IID_PPV_ARGS(&swapChain1)))) {
+                        *ppSwapChain = swapChain1.Detach();
+                    } else {
+                        // Fallback: keep original if query fails
+                        wrappedSwapChain->Release();
+                        *ppSwapChain = swapchain;
+                        swapchain->AddRef();
+                    }
+                }
             }
         }
     }
@@ -267,22 +587,6 @@ void DXGIFactoryWrapper::SetCommandQueueMap(void* commandQueueMap) {
 bool DXGIFactoryWrapper::ShouldInterceptSwapChainCreation() const {
     // Check if Streamline integration is enabled
     return m_slGetNativeInterface != nullptr && m_slUpgradeInterface != nullptr;
-}
-
-void DXGIFactoryWrapper::hookToNativeSwapchain(IDXGISwapChain* swapchain) {
-    if (swapchain == nullptr) {
-        LogWarn("DXGIFactoryWrapper::hookToNativeSwapchain: swapchain is null");
-        return;
-    }
-
-    LogInfo("DXGIFactoryWrapper::hookToNativeSwapchain: Attempting to hook swapchain: 0x%p", swapchain);
-
-    // Use the existing DXGI hooking infrastructure
-    if (display_commanderhooks::dxgi::HookSwapchainNative(swapchain)) {
-        LogInfo("DXGIFactoryWrapper::hookToNativeSwapchain: Successfully hooked swapchain: 0x%p", swapchain);
-    } else {
-        LogWarn("DXGIFactoryWrapper::hookToNativeSwapchain: Failed to hook swapchain: 0x%p", swapchain);
-    }
 }
 
 } // namespace display_commanderhooks

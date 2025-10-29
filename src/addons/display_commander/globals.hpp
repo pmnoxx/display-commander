@@ -1078,11 +1078,13 @@ extern std::atomic<IUnknown*> g_last_nvapi_sleep_mode_dev_ptr;  // Last device p
 // NVAPI Reflex timing tracking
 extern std::atomic<LONGLONG> g_sleep_reflex_injected_ns;  // Time between injected Reflex sleep calls
 extern std::atomic<LONGLONG> g_sleep_reflex_native_ns;    // Time between native Reflex sleep calls
-extern std::atomic<LONGLONG> g_sleep_reflex_native_timestamp_ns;  // Timestamp of last native Reflex sleep call
+
+//g_nvapi_last_sleep_timestamp_ns
 
 // Helper function to check if native Reflex is active
 inline bool IsNativeReflexActive() {
-    auto did_sleep_recently = (utils::get_now_ns() - g_sleep_reflex_native_timestamp_ns.load()) < 1 * utils::SEC_TO_NS;
+
+    auto did_sleep_recently = (utils::get_now_ns() - g_nvapi_last_sleep_timestamp_ns.load()) < 1 * utils::SEC_TO_NS;
 
     //return g_nvapi_event_counters[NVAPI_EVENT_D3D_SET_SLEEP_MODE].load() > 0 &&
     return did_sleep_recently && !settings::g_developerTabSettings.reflex_supress_native.GetValue();
@@ -1107,6 +1109,19 @@ extern HWND g_proxy_hwnd;
 
 // NGX preset initialization tracking
 extern std::atomic<bool> g_ngx_presets_initialized;
+
+// Swapchain wrapper statistics
+struct SwapChainWrapperStats {
+    std::atomic<uint64_t> total_present_calls{0};
+    std::atomic<uint64_t> total_present1_calls{0};
+    std::atomic<uint64_t> last_present_time_ns{0};  // Last Present call time in nanoseconds
+    std::atomic<uint64_t> last_present1_time_ns{0};  // Last Present1 call time in nanoseconds
+    std::atomic<double> smoothed_present_fps{0.0};  // Smoothed FPS for Present (calls per second)
+    std::atomic<double> smoothed_present1_fps{0.0};  // Smoothed FPS for Present1 (calls per second)
+};
+
+extern SwapChainWrapperStats g_swapchain_wrapper_stats_proxy;
+extern SwapChainWrapperStats g_swapchain_wrapper_stats_native;
 
 // Continuous monitoring functions
 void StartContinuousMonitoring();

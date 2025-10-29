@@ -676,6 +676,10 @@ size_t GetReShadeRuntimeCount() {
 // NGX preset initialization tracking
 std::atomic<bool> g_ngx_presets_initialized{false};
 
+// Swapchain wrapper statistics
+SwapChainWrapperStats g_swapchain_wrapper_stats_proxy;
+SwapChainWrapperStats g_swapchain_wrapper_stats_native;
+
 // Get DLSS Model Profile
 DLSSModelProfile GetDLSSModelProfile() {
     DLSSModelProfile profile;

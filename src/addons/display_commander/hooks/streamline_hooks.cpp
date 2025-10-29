@@ -87,73 +87,12 @@ int slGetNativeInterface_Detour(void* proxyInterface, void** baseInterface) {
 }
 
 
-struct DECLSPEC_UUID("019778d4-a03a-7af4-b889-e92362d20238") DXGIFactory final : IDXGIFactory7
-{
-	DXGIFactory(IDXGIFactory *original);
-	~DXGIFactory();
+// Forward declaration for ReShade's DXGIFactory
+// We cannot include ReShade's internal headers, but we can work with the interface
+struct DXGIFactory;
 
-	DXGIFactory(const DXGIFactory &) = delete;
-	DXGIFactory &operator=(const DXGIFactory &) = delete;
-
-	#pragma region IUnknown
-	HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void **ppvObj) override;
-	ULONG   STDMETHODCALLTYPE AddRef() override;
-	ULONG   STDMETHODCALLTYPE Release() override;
-	#pragma endregion
-	#pragma region IDXGIObject
-	HRESULT STDMETHODCALLTYPE SetPrivateData(REFGUID Name, UINT DataSize, const void *pData) override;
-	HRESULT STDMETHODCALLTYPE SetPrivateDataInterface(REFGUID Name, const IUnknown *pUnknown) override;
-	HRESULT STDMETHODCALLTYPE GetPrivateData(REFGUID Name, UINT *pDataSize, void *pData) override;
-	HRESULT STDMETHODCALLTYPE GetParent(REFIID riid, void **ppParent) override;
-	#pragma endregion
-	#pragma region IDXGIFactory
-	HRESULT STDMETHODCALLTYPE EnumAdapters(UINT Adapter, IDXGIAdapter **ppAdapter) override;
-	HRESULT STDMETHODCALLTYPE MakeWindowAssociation(HWND WindowHandle, UINT Flags) override;
-	HRESULT STDMETHODCALLTYPE GetWindowAssociation(HWND *pWindowHandle) override;
-	HRESULT STDMETHODCALLTYPE CreateSwapChain(IUnknown *pDevice, DXGI_SWAP_CHAIN_DESC *pDesc, IDXGISwapChain **ppSwapChain) override;
-	HRESULT STDMETHODCALLTYPE CreateSoftwareAdapter(HMODULE Module, IDXGIAdapter **ppAdapter) override;
-	#pragma endregion
-	#pragma region IDXGIFactory1
-	HRESULT STDMETHODCALLTYPE EnumAdapters1(UINT Adapter, IDXGIAdapter1 **ppAdapter) override;
-	BOOL    STDMETHODCALLTYPE IsCurrent() override;
-	#pragma endregion
-	#pragma region IDXGIFactory2
-	BOOL    STDMETHODCALLTYPE IsWindowedStereoEnabled(void) override;
-	HRESULT STDMETHODCALLTYPE CreateSwapChainForHwnd(IUnknown *pDevice, HWND hWnd, const DXGI_SWAP_CHAIN_DESC1 *pDesc, const DXGI_SWAP_CHAIN_FULLSCREEN_DESC *pFullscreenDesc, IDXGIOutput *pRestrictToOutput, IDXGISwapChain1 **ppSwapChain) override;
-	HRESULT STDMETHODCALLTYPE CreateSwapChainForCoreWindow(IUnknown *pDevice, IUnknown *pWindow, const DXGI_SWAP_CHAIN_DESC1 *pDesc, IDXGIOutput *pRestrictToOutput, IDXGISwapChain1 **ppSwapChain) override;
-	HRESULT STDMETHODCALLTYPE GetSharedResourceAdapterLuid(HANDLE hResource, LUID *pLuid) override;
-	HRESULT STDMETHODCALLTYPE RegisterStereoStatusWindow(HWND WindowHandle, UINT wMsg, DWORD *pdwCookie) override;
-	HRESULT STDMETHODCALLTYPE RegisterStereoStatusEvent(HANDLE hEvent, DWORD *pdwCookie) override;
-	void    STDMETHODCALLTYPE UnregisterStereoStatus(DWORD dwCookie) override;
-	HRESULT STDMETHODCALLTYPE RegisterOcclusionStatusWindow(HWND WindowHandle, UINT wMsg, DWORD *pdwCookie) override;
-	HRESULT STDMETHODCALLTYPE RegisterOcclusionStatusEvent(HANDLE hEvent, DWORD *pdwCookie) override;
-	void    STDMETHODCALLTYPE UnregisterOcclusionStatus(DWORD dwCookie) override;
-	HRESULT STDMETHODCALLTYPE CreateSwapChainForComposition(IUnknown *pDevice, const DXGI_SWAP_CHAIN_DESC1 *pDesc, IDXGIOutput *pRestrictToOutput, IDXGISwapChain1 **ppSwapChain) override;
-	#pragma endregion
-	#pragma region IDXGIFactory3
-	UINT    STDMETHODCALLTYPE GetCreationFlags() override;
-	#pragma region
-	#pragma region IDXGIFactory4
-	HRESULT STDMETHODCALLTYPE EnumAdapterByLuid(LUID AdapterLuid, REFIID riid, void **ppvAdapter) override;
-	HRESULT STDMETHODCALLTYPE EnumWarpAdapter(REFIID riid, void **ppvAdapter) override;
-	#pragma region
-	#pragma region IDXGIFactory5
-	HRESULT STDMETHODCALLTYPE CheckFeatureSupport(DXGI_FEATURE Feature, void *pFeatureSupportData, UINT FeatureSupportDataSize) override;
-	#pragma endregion
-	#pragma region IDXGIFactory6
-	HRESULT STDMETHODCALLTYPE EnumAdapterByGpuPreference(UINT Adapter, DXGI_GPU_PREFERENCE GpuPreference, REFIID riid, void **ppvAdapter) override;
-	#pragma endregion
-	#pragma region IDXGIFactory7
-	HRESULT STDMETHODCALLTYPE RegisterAdaptersChangedEvent(HANDLE hEvent, DWORD *pdwCookie) override;
-	HRESULT STDMETHODCALLTYPE UnregisterAdaptersChangedEvent(DWORD dwCookie) override;
-	#pragma endregion
-
-	bool check_and_upgrade_interface(REFIID riid);
-
-	IDXGIFactory *_orig;
-	LONG _ref = 1;
-	unsigned short _interface_version;
-};
+// ReShade's DXGIFactory GUID - from external/reshade/source/dxgi/dxgi_factory.hpp
+const GUID IID_DXGIFactory_Reshade = {0x019778d4, 0xa03a, 0x7af4, {0xb8, 0x89, 0xe9, 0x23, 0x62, 0xd2, 0x02, 0x38}};
 
 // Reference: https://github.com/NVIDIA-RTX/Streamline/blob/b998246a3d499c08765c5681b229c9e6b4513348/source/core/sl.api/sl.cpp#L625
 int slUpgradeInterface_Detour(void** baseInterface) {
@@ -187,11 +126,16 @@ int slUpgradeInterface_Detour(void** baseInterface) {
         LogInfo("[slUpgradeInterface] Found IDXGIFactory7 interface");
 
 
-        DXGIFactory* reshade_factory = nullptr;
+        // Try to get ReShade's DXGIFactory from private data
+        void* reshade_factory = nullptr;
         UINT size = sizeof(reshade_factory);
 
         #if 1
-        slUpgradeInterface_Original(reinterpret_cast<void**>(&dxgi_factory7));
+        auto* factory_wrapper = new display_commanderhooks::DXGIFactoryWrapper(dxgi_factory7, display_commanderhooks::SwapChainHook::Proxy); // dxgi_factory7
+        factory_wrapper->SetSLGetNativeInterface(slGetNativeInterface_Original);
+        factory_wrapper->SetSLUpgradeInterface(slUpgradeInterface_Original);
+
+        slUpgradeInterface_Original(reinterpret_cast<void**>(&factory_wrapper));
         if (dxgi_factory7 == nullptr) {
           LogError("slUpgradeInterface() - dxgi_factory7 became null after slUpgradeInterface_Original call");
           HRESULT hr = slUpgradeInterface_Original(baseInterface);
@@ -199,55 +143,36 @@ int slUpgradeInterface_Detour(void** baseInterface) {
         }
 
         // Create wrapper to ensure it doesn't pass active queue for swapchain creation
-        auto* factory_wrapper = new display_commanderhooks::DXGIFactoryWrapper(dxgi_factory7); // dxgi_factory7
-        factory_wrapper->SetSLGetNativeInterface(slGetNativeInterface_Original);
-        factory_wrapper->SetSLUpgradeInterface(slUpgradeInterface_Original);
+        auto* factory_wrapper2 = new display_commanderhooks::DXGIFactoryWrapper(factory_wrapper, display_commanderhooks::SwapChainHook::Native); // dxgi_factory7
+        factory_wrapper2->SetSLGetNativeInterface(slGetNativeInterface_Original);
+        factory_wrapper2->SetSLUpgradeInterface(slUpgradeInterface_Original);
         // TODO(user): Set command queue map when available
 
-        *baseInterface = factory_wrapper;
+        *baseInterface = factory_wrapper2;
 
         #else
-        dxgi_factory7->GetPrivateData(__uuidof(DXGIFactory), &size, &reshade_factory);
-        if (reshade_factory == nullptr) {
-          LogError("slUpgradeInterface() - Failed to get DXGIFactory proxy from IDXGIFactory7");
-          HRESULT hr = slUpgradeInterface_Original(baseInterface);
+        // Try to retrieve ReShade's DXGIFactory using its GUID
+        HRESULT private_data_hr = dxgi_factory7->GetPrivateData(IID_DXGIFactory_Reshade, &size, &reshade_factory);
+        if (FAILED(private_data_hr) || reshade_factory == nullptr) {
+          LogError("slUpgradeInterface() - Failed to get DXGIFactory proxy from IDXGIFactory7, hr=0x%x", private_data_hr);
+          // Fallback: pass through to Streamline without wrapper
+          return slUpgradeInterface_Original(baseInterface);
+        }
 
+        // For UE compatibility, we need to be very careful about interface identity
+        // Instead of creating a wrapper, let's try a different approach:
+        // Pass the original interface to Streamline and let it handle the upgrade
+        HRESULT hr = slUpgradeInterface_Original(baseInterface);
+        if (FAILED(hr)) {
+          LogError("slUpgradeInterface() - Streamline upgrade failed, hr=0x%x", hr);
           return hr;
         }
 
-        // Additional safety check for reshade_factory->_orig
-        if (reshade_factory->_orig == nullptr) {
-          LogError("slUpgradeInterface() - reshade_factory->_orig is null");
-          HRESULT hr = slUpgradeInterface_Original(baseInterface);
-          return hr;
-        }
-        auto* real_factory = static_cast<IDXGIFactory7*>(reshade_factory->_orig);
-
-        // Call original slUpgradeInterface first
-        slUpgradeInterface_Original(reinterpret_cast<void**>(&real_factory)); // dxgi_factory7
-
-        // Validate that real_factory is still valid after the upgrade call
-        if (real_factory == nullptr) {
-          LogError("slUpgradeInterface() - real_factory became null after slUpgradeInterface_Original call");
-          HRESULT hr = slUpgradeInterface_Original(baseInterface);
-          return hr;
-        }
-
-        reshade_factory->_orig = real_factory;
-
-        auto* factory_wrapper = new display_commanderhooks::DXGIFactoryWrapper(reshade_factory); // dxgi_factory7
-        factory_wrapper->SetSLGetNativeInterface(slGetNativeInterface_Original);
-        factory_wrapper->SetSLUpgradeInterface(slUpgradeInterface_Original);
-
-        *baseInterface = factory_wrapper;
+        LogInfo("[slUpgradeInterface] Successfully upgraded interface for Streamline");
+        return hr;
         #endif
 
-        /*
-
-        */
-        LogInfo("[slUpgradeInterface] Created DXGIFactoryWrapper for Streamline compatibility");
-
-       // dxgi_factory7->Release();
+        dxgi_factory7->Release();
         return 0;
     }
 

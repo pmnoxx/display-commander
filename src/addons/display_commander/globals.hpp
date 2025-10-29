@@ -1111,6 +1111,9 @@ extern HWND g_proxy_hwnd;
 extern std::atomic<bool> g_ngx_presets_initialized;
 
 // Swapchain wrapper statistics
+// Frame time ring buffer capacity (must be power of 2 for efficient modulo)
+constexpr size_t kSwapchainFrameTimeCapacity = 256;
+
 struct SwapChainWrapperStats {
     std::atomic<uint64_t> total_present_calls{0};
     std::atomic<uint64_t> total_present1_calls{0};
@@ -1118,6 +1121,11 @@ struct SwapChainWrapperStats {
     std::atomic<uint64_t> last_present1_time_ns{0};  // Last Present1 call time in nanoseconds
     std::atomic<double> smoothed_present_fps{0.0};  // Smoothed FPS for Present (calls per second)
     std::atomic<double> smoothed_present1_fps{0.0};  // Smoothed FPS for Present1 (calls per second)
+
+    // Frame time ring buffer (stores frame times in milliseconds)
+    std::atomic<uint32_t> frame_time_head{0};  // Ring buffer head index
+    float frame_times[kSwapchainFrameTimeCapacity];  // Frame times in ms (array of floats)
+    std::atomic<uint64_t> last_present_combined_time_ns{0};  // Last call time for any Present/Present1
 };
 
 extern SwapChainWrapperStats g_swapchain_wrapper_stats_proxy;

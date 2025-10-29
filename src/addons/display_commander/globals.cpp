@@ -346,7 +346,6 @@ std::atomic<IUnknown*> g_last_nvapi_sleep_mode_dev_ptr{nullptr};
 // NVAPI Reflex timing tracking
 std::atomic<LONGLONG> g_sleep_reflex_injected_ns{0};
 std::atomic<LONGLONG> g_sleep_reflex_native_ns{0};
-std::atomic<LONGLONG> g_sleep_reflex_native_timestamp_ns{0};
 
 // Reflex debug counters
 std::atomic<uint32_t> g_reflex_sleep_count{0};

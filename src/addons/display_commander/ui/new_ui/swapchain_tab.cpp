@@ -173,26 +173,90 @@ void DrawSwapchainTab(reshade::api::effect_runtime* runtime) {
 
 void DrawSwapchainWrapperStats() {
     if (ImGui::CollapsingHeader("Swapchain Wrapper Statistics", ImGuiTreeNodeFlags_DefaultOpen)) {
-        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Present/Present1 Calls Per Second");
+        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Present/Present1 Calls Per Second & Frame Time Graphs");
         ImGui::Separator();
 
-        // Helper function to calculate and display calls per second
-        auto displayStats = [](const char* type_name, SwapChainWrapperStats& stats) {
+        // Helper function to display stats and frame graph for each swapchain type
+        auto displayStatsAndGraph = [](const char* type_name, SwapChainWrapperStats& stats, ImVec4 color) {
             uint64_t present_calls = stats.total_present_calls.load(std::memory_order_acquire);
             uint64_t present1_calls = stats.total_present1_calls.load(std::memory_order_acquire);
             double present_fps = stats.smoothed_present_fps.load(std::memory_order_acquire);
             double present1_fps = stats.smoothed_present1_fps.load(std::memory_order_acquire);
 
-            ImGui::Text("%s:", type_name);
+            ImGui::PushStyleColor(ImGuiCol_Text, color);
+            ImGui::Text("%s Swapchain:", type_name);
+            ImGui::PopStyleColor();
+
             ImGui::Indent();
             ImGui::Text("  Present: %.2f calls/sec (total: %llu)", present_fps, present_calls);
             ImGui::Text("  Present1: %.2f calls/sec (total: %llu)", present1_fps, present1_calls);
+
+            // Get frame time data from ring buffer
+            uint32_t head = stats.frame_time_head.load(std::memory_order_acquire);
+            uint32_t count = (head > kSwapchainFrameTimeCapacity) ? kSwapchainFrameTimeCapacity : head;
+
+            if (count > 0) {
+                // Collect frame times for the graph (last 256 frames)
+                std::vector<float> frame_times;
+                frame_times.reserve(count);
+
+                uint32_t start = (head >= kSwapchainFrameTimeCapacity) ? (head - kSwapchainFrameTimeCapacity) : 0;
+                for (uint32_t i = start; i < head; ++i) {
+                    float frame_time = stats.frame_times[i & (kSwapchainFrameTimeCapacity - 1)];
+                    if (frame_time > 0.0f) {
+                        frame_times.push_back(frame_time);
+                    }
+                }
+
+                if (!frame_times.empty()) {
+                    // Calculate statistics
+                    auto minmax_it = std::minmax_element(frame_times.begin(), frame_times.end());
+                    float min_ft = *minmax_it.first;
+                    float max_ft = *minmax_it.second;
+                    float avg_ft = 0.0f;
+                    for (float ft : frame_times) {
+                        avg_ft += ft;
+                    }
+                    avg_ft /= static_cast<float>(frame_times.size());
+
+                    // Calculate average FPS from average frame time
+                    float avg_fps = (avg_ft > 0.0f) ? (1000.0f / avg_ft) : 0.0f;
+
+                    // Display statistics
+                    ImGui::Text("  Frame Time: Min: %.2f ms | Max: %.2f ms | Avg: %.2f ms | FPS: %.1f",
+                                min_ft, max_ft, avg_ft, avg_fps);
+
+                    // Create overlay text
+                    std::string overlay_text = "Frame Time: " + std::to_string(frame_times.back()).substr(0, 4) + " ms";
+
+                    // Set graph size and scale
+                    ImVec2 graph_size = ImVec2(-1.0f, 150.0f); // Full width, 150px height
+                    float scale_min = 0.0f;
+                    float scale_max = (std::max)(avg_ft * 3.0f, max_ft + 2.0f);
+
+                    // Draw the frame time graph
+                    std::string graph_label = std::string("##FrameTime") + type_name;
+                    ImGui::PlotLines(graph_label.c_str(),
+                                     frame_times.data(),
+                                     static_cast<int>(frame_times.size()),
+                                     0, // values_offset
+                                     overlay_text.c_str(),
+                                     scale_min,
+                                     scale_max,
+                                     graph_size);
+                } else {
+                    ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "  No frame time data available yet...");
+                }
+            } else {
+                ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "  No frame time data available yet...");
+            }
+
             ImGui::Unindent();
         };
 
-        displayStats("Proxy", g_swapchain_wrapper_stats_proxy);
+        displayStatsAndGraph("Proxy", g_swapchain_wrapper_stats_proxy, ImVec4(0.4f, 0.8f, 1.0f, 1.0f));
         ImGui::Spacing();
-        displayStats("Native", g_swapchain_wrapper_stats_native);
+        displayStatsAndGraph("Native", g_swapchain_wrapper_stats_native, ImVec4(0.4f, 1.0f, 0.4f, 1.0f));
     }
 }
 

@@ -96,8 +96,16 @@ void check_is_background() {
     HWND hwnd = g_last_swapchain_hwnd.load();
     if (hwnd != nullptr) {
         // BACKGROUND DETECTION: Check if the app is in background using original GetForegroundWindow
-        HWND current_foreground_hwnd = g_last_swapchain_hwnd.load();
-        bool app_in_background = current_foreground_hwnd == nullptr;
+        HWND current_foreground_hwnd = display_commanderhooks::GetForegroundWindow_Direct();
+
+        // current pid
+        DWORD current_pid = GetCurrentProcessId();
+
+        // foreground pid
+        DWORD foreground_pid = 0;
+        DWORD foreground_tid = GetWindowThreadProcessId(current_foreground_hwnd, &foreground_pid);
+
+        bool app_in_background = foreground_pid != current_pid;
 
         if (app_in_background != g_app_in_background.load()) {
             g_app_in_background.store(app_in_background);

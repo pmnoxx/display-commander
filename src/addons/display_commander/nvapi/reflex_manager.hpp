@@ -26,7 +26,7 @@ class ReflexManager {
     void Shutdown();
 
     // Configure Reflex sleep mode (Low Latency + Boost + markers optimization).
-    bool ApplySleepMode(bool low_latency, bool boost, bool use_markers);
+    bool ApplySleepMode(bool low_latency, bool boost, bool use_markers, float fps_limit);
 
     NvU64 IncreaseFrameId();
 

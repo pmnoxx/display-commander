@@ -30,11 +30,11 @@ bool ReflexProvider::SetMarker(LatencyMarkerType marker) {
     return reflex_manager_.SetMarker(nv_marker);
 }
 
-bool ReflexProvider::ApplySleepMode(bool low_latency, bool boost, bool use_markers) {
+bool ReflexProvider::ApplySleepMode(bool low_latency, bool boost, bool use_markers, float fps_limit) {
     if (!IsInitialized())
         return false;
 
-    return reflex_manager_.ApplySleepMode(low_latency, boost, use_markers);
+    return reflex_manager_.ApplySleepMode(low_latency, boost, use_markers, fps_limit);
 }
 
 bool ReflexProvider::Sleep() {

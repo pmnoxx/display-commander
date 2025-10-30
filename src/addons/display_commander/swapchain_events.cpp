@@ -955,8 +955,9 @@ void OnPresentUpdateAfter2(void* native_device, DeviceTypeDC device_type) {
         if (native_device && g_latencyManager->Initialize(native_device, device_type)) {
             // Apply sleep mode opportunistically each frame to reflect current
             // toggles
+            float target_fps = GetTargetFps();
             g_latencyManager->ApplySleepMode(s_reflex_low_latency.load(), s_reflex_boost.load(),
-                                             s_reflex_use_markers.load());
+                                             s_reflex_use_markers.load(), target_fps);
             if (s_reflex_enable_sleep.load()) {
                 g_latencyManager->Sleep();
             }
@@ -1003,13 +1004,12 @@ void flush_command_queue() {
     }
 }
 
-void HandleFpsLimiter() {
-    LONGLONG handle_fps_limiter_start_time_ns = utils::get_now_ns();
+float GetTargetFps() {
     // Use background flag computed by monitoring thread; avoid
     // GetForegroundWindow here
-
     float target_fps = 0.0f;
-    if (g_app_in_background.load()) {
+    bool is_background = g_app_in_background.load();
+    if (is_background) {
         target_fps = s_fps_limit_background.load();
     } else {
         target_fps = s_fps_limit.load();
@@ -1017,6 +1017,12 @@ void HandleFpsLimiter() {
     if (target_fps > 0.0f && target_fps < 10.0f) {
         target_fps = 0.0f;
     }
+    return target_fps;
+}
+
+void HandleFpsLimiter() {
+    LONGLONG handle_fps_limiter_start_time_ns = utils::get_now_ns();
+    float target_fps = GetTargetFps();
     late_amount_ns.store(0);
     if (target_fps > 0.0f || s_fps_limiter_mode.load() == FpsLimiterMode::kLatentSync) {
         flush_command_queue();

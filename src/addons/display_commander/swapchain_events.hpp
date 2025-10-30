@@ -108,6 +108,9 @@ extern std::atomic<bool> s_suppress_memory_ops_in_background;
 // SWAPCHAIN UTILITY FUNCTIONS
 // ============================================================================
 
+// Get target FPS based on background state
+float GetTargetFps();
+
 // DXGI composition state utilities
 DxgiBypassMode GetIndependentFlipState(IDXGISwapChain *dxgi_swapchain);
 const char *DxgiBypassModeToString(DxgiBypassMode mode);

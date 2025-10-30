@@ -48,7 +48,7 @@ class ILatencyProvider {
     virtual bool SetMarker(LatencyMarkerType marker) = 0;
 
     // Sleep/limiting functionality
-    virtual bool ApplySleepMode(bool low_latency, bool boost, bool use_markers) = 0;
+    virtual bool ApplySleepMode(bool low_latency, bool boost, bool use_markers, float fps_limit) = 0;
     virtual bool Sleep() = 0;
 
     // Technology-specific info
@@ -81,7 +81,7 @@ class LatencyManager {
     bool SetMarker(LatencyMarkerType marker);
 
     // Sleep mode configuration
-    bool ApplySleepMode(bool low_latency, bool boost, bool use_markers);
+    bool ApplySleepMode(bool low_latency, bool boost, bool use_markers, float fps_limit);
     bool Sleep();
 
     // Configuration

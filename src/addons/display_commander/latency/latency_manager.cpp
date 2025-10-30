@@ -5,6 +5,9 @@
 #include "../utils/timing.hpp"
 #include "reflex_provider.hpp"
 
+// Forward declaration to avoid circular dependency
+extern float GetTargetFps();
+
 // Namespace alias for cleaner code
 namespace timing = utils;
 
@@ -133,7 +136,7 @@ bool LatencyManager::SetMarker(LatencyMarkerType marker) {
     return result;
 }
 
-bool LatencyManager::ApplySleepMode(bool low_latency, bool boost, bool use_markers) {
+bool LatencyManager::ApplySleepMode(bool low_latency, bool boost, bool use_markers, float fps_limit) {
     if (!IsInitialized())
         return false;
 
@@ -141,7 +144,7 @@ bool LatencyManager::ApplySleepMode(bool low_latency, bool boost, bool use_marke
     extern std::atomic<uint32_t> g_reflex_apply_sleep_mode_count;
     g_reflex_apply_sleep_mode_count.fetch_add(1, std::memory_order_relaxed);
 
-    return provider_->ApplySleepMode(low_latency, boost, use_markers);
+    return provider_->ApplySleepMode(low_latency, boost, use_markers, fps_limit);
 }
 
 bool LatencyManager::Sleep() {
@@ -172,7 +175,9 @@ void LatencyManager::SetConfig(const LatencyConfig &config) {
 
     // Apply configuration if initialized
     if (IsInitialized()) {
-        ApplySleepMode(config.low_latency_mode, config.boost_mode, config.use_markers);
+        // Use config.target_fps if available, otherwise get current target FPS
+        float fps_limit = GetTargetFps();
+        ApplySleepMode(config.low_latency_mode, config.boost_mode, config.use_markers, fps_limit);
     }
 }
 

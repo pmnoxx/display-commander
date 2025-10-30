@@ -49,7 +49,6 @@ DeveloperTabSettings::DeveloperTabSettings()
                             "DisplayCommander"),
       enable_flip_chain("EnableFlipChain", s_enable_flip_chain, s_enable_flip_chain.load(), "DisplayCommander"),
       auto_colorspace("AutoColorspace", s_auto_colorspace, s_auto_colorspace.load(), "DisplayCommander"),
-      hide_proxy_swapchain_from_reshade("HideProxySwapchainFromReShade", false, "DisplayCommander"),
       // enable_d3d9e_upgrade("EnableD3D9EUpgrade", s_enable_d3d9e_upgrade, true, "DisplayCommander"),
       nvapi_auto_enable_enabled("NvapiAutoEnableEnabled", s_nvapi_auto_enable_enabled,
                                 s_nvapi_auto_enable_enabled.load(), "DisplayCommander"),
@@ -109,7 +108,6 @@ void DeveloperTabSettings::LoadAll() {
 void DeveloperTabSettings::SaveAll() {
     // Save all settings that don't auto-save
     prevent_fullscreen.Save();
-    hide_proxy_swapchain_from_reshade.Save();
     enable_hotkeys.Save();
     safemode.Save();
     load_from_dll_main.Save();
@@ -127,7 +125,7 @@ void DeveloperTabSettings::SaveAll() {
 
 std::vector<ui::new_ui::SettingBase*> DeveloperTabSettings::GetAllSettings() {
     return {&prevent_fullscreen, &continue_rendering, &prevent_always_on_top,
-            &hide_hdr_capabilities, &enable_flip_chain, &auto_colorspace, &hide_proxy_swapchain_from_reshade,
+            &hide_hdr_capabilities, &enable_flip_chain, &auto_colorspace,
             //&enable_d3d9e_upgrade,
             &nvapi_auto_enable_enabled,
 

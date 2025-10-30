@@ -108,6 +108,12 @@ std::atomic<uint64_t> g_nt_query_system_time_call_count{0};
 // Atomic shared_ptr for thread-safe state access
 std::atomic<std::shared_ptr<const TimeslowdownState>> g_timeslowdown_state{std::make_shared<TimeslowdownState>()};
 
+// Render thread tracking
+std::atomic<DWORD> g_render_thread_id{0}; // 0 means not set yet
+
+// Thread-local storage for cached thread ID (per-thread cache)
+thread_local DWORD tls_thread_id = 0;
+
 // Helper function to get hook identifier by name (DLL-safe) - kept for backward compatibility only
 TimerHookIdentifier GetHookIdentifierByName(const char *hook_name) {
     if (strcmp(hook_name, HOOK_QUERY_PERFORMANCE_COUNTER) == 0) {
@@ -164,10 +170,53 @@ TimerHookType GetHookTypeByName(const char *hook_name) {
     return GetHookTypeById(id);
 }
 
+// Render thread management functions
+void SetRenderThreadId(DWORD thread_id) {
+    if (thread_id != 0) {
+        g_render_thread_id.store(thread_id, std::memory_order_release);
+        LogInfo("Render thread ID set to: %lu", thread_id);
+    }
+}
+
+DWORD GetRenderThreadId() {
+    return g_render_thread_id.load(std::memory_order_acquire);
+}
+
+bool IsCurrentThreadRenderThread() {
+    DWORD render_thread_id = GetRenderThreadId();
+    if (render_thread_id == 0) {
+        return false; // Render thread not set yet
+    }
+
+    // Use thread-local storage to cache thread ID for performance
+    if (tls_thread_id == 0) {
+        tls_thread_id = GetCurrentThreadId();
+    }
+
+    return tls_thread_id == render_thread_id;
+}
+
 // Helper function to check if a hook should be applied by identifier (DLL-safe)
 bool ShouldApplyHookById(TimerHookIdentifier id) {
     TimerHookType type = GetHookTypeById(id);
-    return type != TimerHookType::None;
+
+    if (type == TimerHookType::None) {
+        return false;
+    }
+
+    if (type == TimerHookType::Enabled) {
+        return true;
+    }
+
+    if (type == TimerHookType::EnableRenderThread) {
+        return IsCurrentThreadRenderThread();
+    }
+
+    if (type == TimerHookType::EnableNonRenderThread) {
+        return !IsCurrentThreadRenderThread();
+    }
+
+    return false;
 }
 
 // Helper function to check if a hook should be applied (DLL-safe) - kept for backward compatibility

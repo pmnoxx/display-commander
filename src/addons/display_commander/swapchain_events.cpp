@@ -16,6 +16,7 @@
 #include "hooks/hid_suppression_hooks.hpp"
 #include "hooks/hid_additional_hooks.hpp"
 #include "hooks/ngx_hooks.hpp"
+#include "hooks/timeslowdown_hooks.hpp"
 #include "input_remapping/input_remapping.hpp"
 #include "latency/latency_manager.hpp"
 #include "latent_sync/latent_sync_limiter.hpp"
@@ -832,6 +833,11 @@ void OnInitSwapchain(reshade::api::swapchain *swapchain, bool resize) {
     }
     // how to check
     hookToSwapChain(swapchain);
+
+    // Capture the render thread ID when swapchain is created
+    // This is called on the thread that creates the swapchain, which is typically the render thread
+    DWORD current_thread_id = GetCurrentThreadId();
+    display_commanderhooks::SetRenderThreadId(current_thread_id);
 }
 
 HANDLE g_timer_handle = nullptr;

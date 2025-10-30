@@ -8,7 +8,7 @@ namespace display_commanderhooks {
 // Timeslowdown configuration variables - now using global instance
 
 // Timer hook types enum
-enum class TimerHookType { None = 0, Enabled = 1 };
+enum class TimerHookType { None = 0, Enabled = 1, EnableRenderThread = 2, EnableNonRenderThread = 3 };
 
 // Timer hook identifier enum for efficient lookups
 enum class TimerHookIdentifier {
@@ -102,5 +102,10 @@ extern const char *HOOK_GET_SYSTEM_TIME_AS_FILE_TIME;
 extern const char *HOOK_GET_SYSTEM_TIME_PRECISE_AS_FILE_TIME;
 extern const char *HOOK_GET_LOCAL_TIME;
 extern const char *HOOK_NT_QUERY_SYSTEM_TIME;
+
+// Render thread management
+void SetRenderThreadId(DWORD thread_id);
+DWORD GetRenderThreadId();
+bool IsCurrentThreadRenderThread();
 
 } // namespace display_commanderhooks

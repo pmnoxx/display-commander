@@ -643,23 +643,6 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_Parameter_GetVoidPointer_Detour(NVSDK_NGX_
     return NVSDK_NGX_Result_Fail;
 }
 
-struct DECLSPEC_UUID("7F2C9A11-3B4E-4D6A-812F-5E9CD37A1B42") ReShadeRetrieveBaseInterface : IUnknown {};
-template <typename T>
-inline bool NativeFromReShadeProxy(T** reshade_proxy, bool enabled = true) {
-    if (!enabled) return false;
-
-    auto* unknown = static_cast<IUnknown*>(reinterpret_cast<void*>(*reshade_proxy));
-    if (unknown == nullptr) return false;
-    ReShadeRetrieveBaseInterface* native_base = nullptr;
-    if (SUCCEEDED(unknown->QueryInterface(&native_base))) {
-        native_base->Release();
-        *reshade_proxy = (T*)(native_base);
-        return true;
-    }
-    assert(false);
-    return false;
-}
-
 // D3D12 Init detour
 NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_Init_Detour(unsigned long long InApplicationId,
                                                         const wchar_t* InApplicationDataPath, ID3D12Device* InDevice,
@@ -670,8 +653,6 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_Init_Detour(unsigned long long InApp
     g_ngx_counters.total_count.fetch_add(1);
 
     LogInfo("NGX D3D12 Init called - AppId: %llu", InApplicationId);
-
-    NativeFromReShadeProxy<ID3D12Device>(&InDevice, settings::g_developerTabSettings.hide_proxy_swapchain_from_reshade.GetValue());
 
     if (NVSDK_NGX_D3D12_Init_Original != nullptr) {
         return NVSDK_NGX_D3D12_Init_Original(InApplicationId, InApplicationDataPath, InDevice, InFeatureInfo,
@@ -816,8 +797,6 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_Init_Detour(unsigned long long InApp
     g_ngx_counters.total_count.fetch_add(1);
 
     LogInfo("NGX D3D11 Init called - AppId: %llu", InApplicationId);
-
-    NativeFromReShadeProxy<ID3D11Device>(&InDevice, settings::g_developerTabSettings.hide_proxy_swapchain_from_reshade.GetValue());
 
     if (NVSDK_NGX_D3D11_Init_Original != nullptr) {
         return NVSDK_NGX_D3D11_Init_Original(InApplicationId, InApplicationDataPath, InDevice, InFeatureInfo,

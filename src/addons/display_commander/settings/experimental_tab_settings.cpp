@@ -38,7 +38,9 @@ ExperimentalTabSettings::ExperimentalTabSettings()
     , timeslowdown_max_multiplier("TimeslowdownMaxMultiplier", 10.0f, 1.0f, 1000.0f, "DisplayCommander.Experimental")
     , query_performance_counter_hook("QueryPerformanceCounterHook", 0, {
         "None",
-        "Enabled"
+        "Enabled",
+        "Enable Render Thread",
+        "Enable Non-Render Thread"
     }, "DisplayCommander.Experimental")
     , get_tick_count_hook("GetTickCountHook", 0, {
         "None",

@@ -353,6 +353,7 @@ void DrawHdrDisplaySettings() {
 }
 
 void DrawNvapiSettings() {
+    uint64_t now_ns = utils::get_now_ns();
     ImGui::Indent();
 
     // NVAPI Auto-enable checkbox
@@ -426,7 +427,7 @@ void DrawNvapiSettings() {
     if (ImGui::CollapsingHeader("NVIDIA Reflex (Minimal)", ImGuiTreeNodeFlags_DefaultOpen)) {
         ImGui::Indent();
         // Native Reflex Status Indicator
-        bool is_native_reflex_active = IsNativeReflexActive();
+        bool is_native_reflex_active = IsNativeReflexActive(now_ns);
         if (is_native_reflex_active) {
             ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), ICON_FK_OK " Native Reflex: ACTIVE Native Frame Pacing: ON");
             if (ImGui::IsItemHovered()) {

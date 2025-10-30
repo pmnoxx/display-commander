@@ -107,9 +107,9 @@ STDMETHODIMP DXGISwapChain4Wrapper::Present(UINT SyncInterval, UINT Flags) {
     if (last_time_ns > 0) {
         uint64_t delta_ns = now_ns - last_time_ns;
         // Only update if time delta is reasonable (ignore if > 1 second)
-        if (delta_ns < 1000000000ULL && delta_ns > 0) {
+        if (delta_ns < utils::SEC_TO_NS && delta_ns > 0) {
             // Calculate instantaneous FPS from delta time
-            double delta_seconds = static_cast<double>(delta_ns) / 1000000000.0;
+            double delta_seconds = static_cast<double>(delta_ns) / utils::SEC_TO_NS;
             double instant_fps = 1.0 / delta_seconds;
 
             // Smooth the FPS using rolling average
@@ -127,8 +127,8 @@ STDMETHODIMP DXGISwapChain4Wrapper::Present(UINT SyncInterval, UINT Flags) {
         if (stats->last_present_combined_time_ns.compare_exchange_strong(expected, now_ns, std::memory_order_acq_rel)) {
             if (last_combined > 0) {
                 uint64_t combined_delta_ns = now_ns - last_combined;
-                if (combined_delta_ns < 1000000000ULL && combined_delta_ns > 0) {
-                    float frame_time_ms = static_cast<float>(combined_delta_ns) / 1000000.0f;
+                if (combined_delta_ns < utils::SEC_TO_NS && combined_delta_ns > 0) {
+                    float frame_time_ms = static_cast<float>(combined_delta_ns) / utils::NS_TO_MS;
                     uint32_t head = stats->frame_time_head.fetch_add(1, std::memory_order_acq_rel);
                     stats->frame_times[head & (kSwapchainFrameTimeCapacity - 1)] = frame_time_ms;
                 }
@@ -207,9 +207,9 @@ STDMETHODIMP DXGISwapChain4Wrapper::Present1(UINT SyncInterval, UINT PresentFlag
     if (last_time_ns > 0) {
         uint64_t delta_ns = now_ns - last_time_ns;
         // Only update if time delta is reasonable (ignore if > 1 second)
-        if (delta_ns < 1000000000ULL && delta_ns > 0) {
+        if (delta_ns < utils::SEC_TO_NS && delta_ns > 0) {
             // Calculate instantaneous FPS from delta time
-            double delta_seconds = static_cast<double>(delta_ns) / 1000000000.0;
+            double delta_seconds = static_cast<double>(delta_ns) / utils::SEC_TO_NS;
             double instant_fps = 1.0 / delta_seconds;
 
             // Smooth the FPS using rolling average
@@ -227,8 +227,8 @@ STDMETHODIMP DXGISwapChain4Wrapper::Present1(UINT SyncInterval, UINT PresentFlag
         if (stats->last_present_combined_time_ns.compare_exchange_strong(expected, now_ns, std::memory_order_acq_rel)) {
             if (last_combined > 0) {
                 uint64_t combined_delta_ns = now_ns - last_combined;
-                if (combined_delta_ns < 1000000000ULL && combined_delta_ns > 0) {
-                    float frame_time_ms = static_cast<float>(combined_delta_ns) / 1000000.0f;
+                if (combined_delta_ns < utils::SEC_TO_NS && combined_delta_ns > 0) {
+                    float frame_time_ms = static_cast<float>(combined_delta_ns) / utils::NS_TO_MS;
                     uint32_t head = stats->frame_time_head.fetch_add(1, std::memory_order_acq_rel);
                     stats->frame_times[head & (kSwapchainFrameTimeCapacity - 1)] = frame_time_ms;
                 }

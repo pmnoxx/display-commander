@@ -22,7 +22,7 @@ LONG WINAPI UnhandledExceptionHandler(EXCEPTION_POINTERS *exception_info) {
     // Check if shutdown is in progress to avoid crashes during DLL unload
     if (g_shutdown.load()) {
         // During shutdown, just return without doing anything to avoid crashes
-        return EXCEPTION_CONTINUE_EXECUTION;
+        return EXCEPTION_EXECUTE_HANDLER;
     }
 
     // Ensure DbgHelp is loaded before attempting stack trace
@@ -75,9 +75,9 @@ LONG WINAPI UnhandledExceptionHandler(EXCEPTION_POINTERS *exception_info) {
     // if (g_prev_filter != nullptr) {
       //   return g_prev_filter(exception_info);
     // }
-     //return EXCEPTION_EXECUTE_HANDLER;
-     assert(IsDebuggerPresent());
-     return EXCEPTION_CONTINUE_EXECUTION;
+     return EXCEPTION_EXECUTE_HANDLER;
+    // assert(IsDebuggerPresent());
+   //  return EXCEPTION_CONTINUE_EXECUTION;
 }
 
 void Initialize() {

@@ -1078,16 +1078,21 @@ extern std::atomic<IUnknown*> g_last_nvapi_sleep_mode_dev_ptr;  // Last device p
 // NVAPI Reflex timing tracking
 extern std::atomic<LONGLONG> g_sleep_reflex_injected_ns;  // Time between injected Reflex sleep calls
 extern std::atomic<LONGLONG> g_sleep_reflex_native_ns;    // Time between native Reflex sleep calls
+// Smoothed (rolling average) time between native Reflex sleep calls
+extern std::atomic<LONGLONG> g_sleep_reflex_native_ns_smooth;
+// Smoothed (rolling average) time between injected Reflex sleep calls
+extern std::atomic<LONGLONG> g_sleep_reflex_injected_ns_smooth;
 
 //g_nvapi_last_sleep_timestamp_ns
 
 // Helper function to check if native Reflex is active
-inline bool IsNativeReflexActive() {
-
-    auto did_sleep_recently = (utils::get_now_ns() - g_nvapi_last_sleep_timestamp_ns.load()) < 1 * utils::SEC_TO_NS;
-
-    //return g_nvapi_event_counters[NVAPI_EVENT_D3D_SET_SLEEP_MODE].load() > 0 &&
+inline bool IsNativeReflexActive(uint64_t now_ns) {
+    auto did_sleep_recently = (now_ns - g_nvapi_last_sleep_timestamp_ns.load()) < 1 * utils::SEC_TO_NS;
     return did_sleep_recently && !settings::g_developerTabSettings.reflex_supress_native.GetValue();
+}
+// Backward-compatible overload (calls the above with current time)
+inline bool IsNativeReflexActive() {
+    return IsNativeReflexActive(utils::get_now_ns());
 }
 
 // Reflex debug counters

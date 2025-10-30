@@ -49,11 +49,9 @@ namespace {
 std::atomic<bool> s_restart_needed_vsync_tearing{false};
 
 // Helper function to check if injected Reflex is active
-bool DidNativeReflexSleepRecently() {
-    // Check if injected Reflex has been called recently (within last 100ms)
-    auto now = utils::get_now_ns();
+bool DidNativeReflexSleepRecently(uint64_t now_ns) {
     auto last_injected_call = g_nvapi_last_sleep_timestamp_ns.load();
-    return last_injected_call > 0 && (now - last_injected_call) < utils::SEC_TO_NS; // 1s in nanoseconds
+    return last_injected_call > 0 && (now_ns - last_injected_call) < utils::SEC_TO_NS; // 1s in nanoseconds
 }
 }  // anonymous namespace
 
@@ -836,31 +834,41 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
             if (current_api == static_cast<int>(reshade::api::device_api::d3d9)) {
                 ImGui::TextColored(ui::colors::TEXT_WARNING, ICON_FK_WARNING " Warning: Reflex does not work with Direct3D 9");
             } else {
-                if (IsNativeReflexActive()) {
+                uint64_t now_ns = utils::get_now_ns();
+                if (IsNativeReflexActive(now_ns)) {
                     ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), ICON_FK_OK " Native Reflex: ACTIVE Native Frame Pacing: ON");
                     if (ImGui::IsItemHovered()) {
                         ImGui::SetTooltip(
                             "The game has native Reflex support and is actively using it. "
                             "Do not enable addon Reflex features to avoid conflicts.");
                     }
-                    double native_ns = g_sleep_reflex_native_ns.load();
-                    double calls_per_second = native_ns <= 0 ? -1 : 1000000000.0 / static_cast<double>(native_ns);
+                    double native_ns = static_cast<double>(g_sleep_reflex_native_ns_smooth.load());
+                    double calls_per_second = native_ns <= 0 ? -1 : 1000000000.0 / native_ns;
                     ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Native Reflex: %.2f times/sec (%.1f ms interval)", calls_per_second, native_ns / 1000000.0);
-                    if (!DidNativeReflexSleepRecently()) {
+                    if (ImGui::IsItemHovered()) {
+                        double raw_ns = static_cast<double>(g_sleep_reflex_native_ns.load());
+                        ImGui::SetTooltip("Smoothed interval using rolling average. Raw: %.1f ms", raw_ns / 1000000.0);
+                    }
+                    if (!DidNativeReflexSleepRecently(now_ns)) {
                         ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f), ICON_FK_WARNING " Warning: Native Reflex is not sleeping recently - may indicate issues! (FIXME)");
                     }
                 } else {
                     ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), ICON_FK_OK " Injected Reflex: ACTIVE Native Frame Pacing: OFF");
-                    double injected_ns = g_sleep_reflex_injected_ns.load();
-                    double calls_per_second = injected_ns <= 0 ? -1 : 1000000000.0 / static_cast<double>(injected_ns);
+                    double injected_ns = static_cast<double>(g_sleep_reflex_injected_ns_smooth.load());
+                    double calls_per_second = injected_ns <= 0 ? -1 : 1000000000.0 / injected_ns;
                     ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Injected Reflex: %.2f times/sec (%.1f ms interval)", calls_per_second, injected_ns / 1000000.0);
+                    if (ImGui::IsItemHovered()) {
+                        double raw_ns = static_cast<double>(g_sleep_reflex_injected_ns.load());
+                        ImGui::SetTooltip("Smoothed interval using rolling average. Raw: %.1f ms", raw_ns / 1000000.0);
+                    }
 
 
                     // Warn if both native and injected reflex are running simultaneously
-                    if (DidNativeReflexSleepRecently()) {
+                    if (DidNativeReflexSleepRecently(now_ns)) {
                         ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f), ICON_FK_WARNING " Warning: Both native and injected Reflex are active - this may cause conflicts! (FIXME)");
                     }
                 }
+
             //injected reflex status:
             }
             #if 0
@@ -1712,6 +1720,7 @@ void DrawWindowControls() {
 #endif
     ImGui::EndGroup();
 }
+
 void DrawImportantInfo() {
 
 
@@ -2066,6 +2075,7 @@ void DrawImportantInfo() {
         }
     }
 }
+
 
 void DrawAdhdMultiMonitorControls(bool hasBlackCurtainSetting) {
     // Check if multiple monitors are available

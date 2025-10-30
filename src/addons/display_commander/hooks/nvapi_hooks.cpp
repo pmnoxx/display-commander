@@ -183,7 +183,13 @@ NvAPI_Status NvAPI_D3D_Sleep_Direct(IUnknown *pDev) {
     {
         static LONGLONG last_call = 0;
         auto now = utils::get_now_ns();
-        g_sleep_reflex_injected_ns.store(now - last_call);
+        LONGLONG delta = now - last_call;
+        g_sleep_reflex_injected_ns.store(delta);
+        if (delta > 0 && delta < 1 * utils::SEC_TO_NS) {
+            LONGLONG old_smooth = g_sleep_reflex_injected_ns_smooth.load();
+            LONGLONG new_smooth = UpdateRollingAverage<LONGLONG>(delta, old_smooth);
+            g_sleep_reflex_injected_ns_smooth.store(new_smooth);
+        }
         last_call = now;
     }
 
@@ -230,7 +236,14 @@ NvAPI_Status __cdecl NvAPI_D3D_Sleep_Detour(IUnknown *pDev) {
     {
         static LONGLONG last_call = 0;
         auto now = utils::get_now_ns();
-        g_sleep_reflex_native_ns.store(now - last_call);
+        LONGLONG delta = now - last_call;
+        g_sleep_reflex_native_ns.store(delta);
+        // Update smoothed rolling average if delta is reasonable (<1s and >0)
+        if (delta > 0 && delta < 1 * utils::SEC_TO_NS) {
+            LONGLONG old_smooth = g_sleep_reflex_native_ns_smooth.load();
+            LONGLONG new_smooth = UpdateRollingAverage<LONGLONG>(delta, old_smooth);
+            g_sleep_reflex_native_ns_smooth.store(new_smooth);
+        }
         last_call = now;
     }
     if (!IsNativeReflexActive()) {

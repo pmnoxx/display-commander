@@ -212,21 +212,6 @@ void DrawDeveloperSettings() {
             "This setting requires a game restart to take effect.");
     }
 
-    // Hide Proxy Swap Chain from ReShade checkbox
-    if (CheckboxSetting(settings::g_developerTabSettings.hide_proxy_swapchain_from_reshade, "Hide proxy swap chain from ReShade (DLSS FIX WIP)")) {
-        LogInfo("Hide proxy swap chain from ReShade setting changed to: %s",
-                settings::g_developerTabSettings.hide_proxy_swapchain_from_reshade.GetValue() ? "enabled" : "disabled");
-    }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip(
-            "Converts ReShade proxy devices to native devices for DLSS-G functions.\n"
-            "This can help DLSS-G work properly with ReShade by hiding the proxy device.\n"
-            "Only works with DirectX 11/12 games that use DLSS-G features.\n"
-            "Experimental feature - may cause instability.");
-    }
-
-    ImGui::Spacing();
-    ImGui::Separator();
     ImGui::Spacing();
 
     // Debug Layer checkbox with warning

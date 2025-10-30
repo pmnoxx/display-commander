@@ -638,9 +638,9 @@ void DrawTimeSlowdownControls() {
 
         // Timer Hook Selection
         ImGui::TextColored(ImVec4(0.9f, 0.9f, 1.0f, 1.0f), "Timer Hook Selection:");
-        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Choose which timer APIs to hook (None/Enabled)");
+        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Choose which timer APIs to hook (None/Enabled/Render Thread/Non-Render Thread)");
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Select which timer APIs to hook for time manipulation.");
+            ImGui::SetTooltip("Select which timer APIs to hook for time manipulation.\n\nOptions:\n- None: Disabled\n- Enabled: Hook all threads\n- Enable Render Thread: Only hook the render thread (detected from swapchain creation)\n- Enable Non-Render Thread: Hook all threads except the render thread");
         }
 
         ImGui::Spacing();
@@ -656,7 +656,7 @@ void DrawTimeSlowdownControls() {
         ImGui::SameLine();
         ImGui::Text("[%llu calls]", qpc_calls);
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("High-resolution timer used by most modern games for precise timing.");
+            ImGui::SetTooltip("High-resolution timer used by most modern games for precise timing.\n\nThread-specific modes (Render Thread/Non-Render Thread) require swapchain initialization to detect the render thread.");
         }
 
         // GetTickCount hook

@@ -882,7 +882,7 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
             if (ImGui::IsItemHovered()) {
                 ImGui::SetTooltip("Enables NVIDIA Reflex Boost mode for maximum latency reduction.\nThis mode may increase GPU power consumption but provides the lowest possible input lag.");
             }
-            if (IsNativeReflexActive() || !settings::g_developerTabSettings.reflex_supress_native.GetValue()) {
+            if (IsNativeReflexActive() || settings::g_developerTabSettings.reflex_supress_native.GetValue()) {
                 ImGui::SameLine();
                 if (CheckboxSetting(settings::g_developerTabSettings.reflex_supress_native, ICON_FK_WARNING " Suppress Native Reflex (WIP)")) {
                     LogInfo("Suppress Native Reflex %s", settings::g_developerTabSettings.reflex_supress_native.GetValue() ? "enabled" : "disabled");

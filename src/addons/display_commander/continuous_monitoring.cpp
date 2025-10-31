@@ -139,8 +139,7 @@ void check_is_background() {
 
         if (s_background_feature_enabled.load()) {
             // Only create/update background window if main window has focus
-            if (current_foreground_hwnd != nullptr) {  //            if (foreground_window == hwnd) {
-                LogInfo("Continuous monitoring: Calling UpdateBackgroundWindow for background window management");
+            if (current_foreground_hwnd != nullptr) {
                 g_backgroundWindowManager.UpdateBackgroundWindow(current_foreground_hwnd);
             }
         }

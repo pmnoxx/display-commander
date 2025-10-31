@@ -15,6 +15,7 @@
 #include "../../utils/stack_trace.hpp"
 
 #include <windows.h>
+#include <psapi.h>
 
 #include <atomic>
 
@@ -1119,10 +1120,165 @@ void DrawDeveloperTools() {
     }
 
     ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::Spacing();
+
+    // Unload ReShade DLL Button
+    ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.5f, 1.0f), ICON_FK_WARNING " DANGEROUS: Unload ReShade DLL");
+    ImGui::Spacing();
+    if (ImGui::Button("Unload ReShade DLL")) {
+        LogInfo("User requested to unload ReShade DLL");
+
+        // Find the ReShade module handle
+        HMODULE reshade_module = nullptr;
+        HMODULE modules[1024];
+        DWORD num_modules = 0;
+
+        if (K32EnumProcessModules(GetCurrentProcess(), modules, sizeof(modules), &num_modules) != 0) {
+            if (num_modules > sizeof(modules)) {
+                num_modules = static_cast<DWORD>(sizeof(modules));
+            }
+
+            for (DWORD i = 0; i < num_modules / sizeof(HMODULE); ++i) {
+                HMODULE module = modules[i];
+                if (module == nullptr) continue;
+
+                // Check if this module has ReShadeRegisterAddon and ReShadeUnregisterAddon
+                FARPROC register_func = GetProcAddress(module, "ReShadeRegisterAddon");
+                FARPROC unregister_func = GetProcAddress(module, "ReShadeUnregisterAddon");
+
+                if (register_func != nullptr && unregister_func != nullptr) {
+                    reshade_module = module;
+
+                    // Get module path for logging
+                    wchar_t module_path[MAX_PATH];
+                    DWORD path_length = GetModuleFileNameW(module, module_path, MAX_PATH);
+                    if (path_length > 0) {
+                        char narrow_path[MAX_PATH];
+                        WideCharToMultiByte(CP_UTF8, 0, module_path, -1, narrow_path, MAX_PATH, nullptr, nullptr);
+                        LogInfo("Found ReShade module: 0x%p - %s", module, narrow_path);
+                    } else {
+                        LogInfo("Found ReShade module: 0x%p (path unavailable)", module);
+                    }
+                    break;
+                }
+            }
+        }
+
+        if (reshade_module != nullptr) {
+            LogWarn("Attempting to unload ReShade DLL at 0x%p - This may cause a crash!", reshade_module);
+
+            // Store the module path for verification
+            wchar_t module_path[MAX_PATH];
+            DWORD path_length = GetModuleFileNameW(reshade_module, module_path, MAX_PATH);
+            std::string module_path_str;
+            if (path_length > 0) {
+                char narrow_path[MAX_PATH];
+                WideCharToMultiByte(CP_UTF8, 0, module_path, -1, narrow_path, MAX_PATH, nullptr, nullptr);
+                module_path_str = narrow_path;
+            }
+
+            // Attempt to unload the ReShade DLL by calling FreeLibrary multiple times
+            // WARNING: This is very dangerous and will likely crash if ReShade is in use
+            // ReShade may be pinned or have multiple references, so we need to try multiple times
+            int unload_attempts = 0;
+            const int max_attempts = 100; // Safety limit
+            bool still_loaded = true;
+
+            while (still_loaded && unload_attempts < max_attempts) {
+                if (FreeLibrary(reshade_module) != 0) {
+                    unload_attempts++;
+                    // Check if the module is still loaded by trying to get its handle again
+                    HMODULE check_module = nullptr;
+                    if (path_length > 0) {
+                        check_module = GetModuleHandleW(module_path);
+                    } else {
+                        // If we don't have the path, enumerate modules to check if it's still loaded
+                        HMODULE check_modules[1024];
+                        DWORD check_num_modules = 0;
+                        if (K32EnumProcessModules(GetCurrentProcess(), check_modules, sizeof(check_modules), &check_num_modules) != 0) {
+                            for (DWORD i = 0; i < check_num_modules / sizeof(HMODULE); ++i) {
+                                if (check_modules[i] == reshade_module) {
+                                    check_module = reshade_module;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    if (check_module == nullptr) {
+                        // Module is no longer loaded
+                        still_loaded = false;
+                        LogWarn("ReShade DLL unloaded successfully after %d FreeLibrary call(s)", unload_attempts);
+                        break;
+                    }
+                } else {
+                    // FreeLibrary failed - refcount reached 0, but module might still be loaded if pinned
+                    DWORD error = GetLastError();
+                    LogWarn("FreeLibrary failed after %d attempt(s), error: %lu", unload_attempts, error);
+
+                    // Check if module is still loaded (might be pinned)
+                    HMODULE check_module = nullptr;
+                    if (path_length > 0) {
+                        check_module = GetModuleHandleW(module_path);
+                    } else {
+                        HMODULE check_modules[1024];
+                        DWORD check_num_modules = 0;
+                        if (K32EnumProcessModules(GetCurrentProcess(), check_modules, sizeof(check_modules), &check_num_modules) != 0) {
+                            for (DWORD i = 0; i < check_num_modules / sizeof(HMODULE); ++i) {
+                                if (check_modules[i] == reshade_module) {
+                                    check_module = reshade_module;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    if (check_module != nullptr) {
+                        LogError("ReShade DLL is still loaded - module may be pinned or has other references");
+                        LogWarn("The module handle 0x%p is still valid, indicating the DLL was not unloaded", reshade_module);
+                    } else {
+                        still_loaded = false;
+                        LogWarn("ReShade DLL appears to be unloaded despite FreeLibrary failure");
+                    }
+                    break;
+                }
+            }
+
+            if (still_loaded) {
+                LogError("Failed to unload ReShade DLL after %d attempt(s) - module is likely pinned", unload_attempts);
+                LogWarn("ReShade DLL may be pinned (using GetModuleHandleExW with GET_MODULE_HANDLE_EX_FLAG_PIN)");
+                LogWarn("Or it may have active references from other code that prevent unloading");
+            }
+
+            // Final verification
+            HMODULE verify_module = nullptr;
+            if (path_length > 0) {
+                verify_module = GetModuleHandleW(module_path);
+            }
+            if (verify_module == nullptr) {
+                LogInfo("Verification: ReShade DLL is no longer in the module list");
+            } else {
+                LogWarn("Verification: ReShade DLL is still loaded at 0x%p", verify_module);
+            }
+        } else {
+            LogError("Failed to find ReShade module - Cannot unload ReShade DLL");
+        }
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Attempts to unload the ReShade DLL from memory.\n"
+                         "WARNING: This is extremely dangerous and will likely crash the game!\n"
+                         "ReShade may still be in use by the game or other addons.\n"
+                         "Only use this if you understand the risks and are debugging.");
+    }
+
+    ImGui::Spacing();
     ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Note: Debugger break button will trigger a debugger breakpoint when clicked.");
     ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Make sure you have a debugger attached before using the debugger break feature.");
     ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.5f, 1.0f), "WARNING: Crash Handler test will intentionally crash the application!");
     ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Use it to test our SetUnhandledExceptionFilter spoofing and crash logging system.");
+    ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), ICON_FK_WARNING " DANGER: Unload ReShade DLL button will attempt to unload ReShade from memory!");
+    ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), "This is extremely dangerous and will likely crash the game if ReShade is in use!");
 }
 
 void DrawHIDSuppression() {

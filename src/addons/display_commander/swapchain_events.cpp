@@ -83,7 +83,8 @@ bool OnCreateDevice(reshade::api::device_api api, uint32_t& api_version) {
     if (api_version == 0x9100) {
         LogInfo("D3D9Ex already detected, no upgrade needed");
         s_d3d9e_upgrade_successful.store(true);
-        return false;
+        // return false; // correct behavior, but reshade's bug, where it doesnt' report d3d9ex version
+        return true; // true to fix reshade's bug, where it doesnt' report d3d9ex version
     }
 
     // Upgrade D3D9 (0x9000) to D3D9Ex (0x9100)

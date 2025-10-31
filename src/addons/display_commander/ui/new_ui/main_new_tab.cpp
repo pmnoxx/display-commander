@@ -1746,6 +1746,15 @@ void DrawImportantInfo() {
             ImGui::SetTooltip("Shows the current FPS counter in the main ReShade overlay.");
         }
         ImGui::SameLine();
+        // CPU usage
+        bool show_cpu_usage = settings::g_mainTabSettings.show_cpu_usage.GetValue();
+        if (ImGui::Checkbox("CPU Usage", &show_cpu_usage)) {
+            settings::g_mainTabSettings.show_cpu_usage.SetValue(show_cpu_usage);
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Shows CPU usage as a percentage: (sim duration / frame time) * 100%");
+        }
+        ImGui::SameLine();
         // Show Display Commander UI Control
         bool show_display_commander_ui = settings::g_mainTabSettings.show_display_commander_ui.GetValue();
         if (ImGui::Checkbox("Show Display Commander UI", &show_display_commander_ui)) {

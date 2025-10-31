@@ -204,7 +204,7 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
         return;
     }
 
-    bool any_enabled = settings::g_mainTabSettings.show_fps_counter.GetValue() || settings::g_mainTabSettings.gpu_measurement_enabled.GetValue() || settings::g_mainTabSettings.show_frame_time_graph.GetValue();
+    bool any_enabled = settings::g_mainTabSettings.show_fps_counter.GetValue() || settings::g_mainTabSettings.gpu_measurement_enabled.GetValue() || settings::g_mainTabSettings.show_frame_time_graph.GetValue() || settings::g_mainTabSettings.show_cpu_usage.GetValue();
 
     if (!any_enabled) {
         return;
@@ -266,6 +266,39 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
                 ImGui::Text("%.1f ms lat", latency_ms);
             } else {
                 ImGui::Text("%.1f", latency_ms);
+            }
+        }
+    }
+
+    if (settings::g_mainTabSettings.show_cpu_usage.GetValue()) {
+        // Calculate CPU usage: (sim_duration / frame_time) * 100%
+        // Get most recent frame time from performance ring buffer
+        const uint32_t head = ::g_perf_ring_head.load(std::memory_order_acquire);
+        if (head > 0) {
+            const uint32_t last_idx = (head - 1) & (::kPerfRingCapacity - 1);
+            const ::PerfSample& last_sample = ::g_perf_ring[last_idx];
+
+            if (last_sample.dt > 0.0f) {
+                // Get simulation duration in nanoseconds
+                LONGLONG sim_duration_ns = ::g_simulation_duration_ns.load();
+
+                if (sim_duration_ns > 0) {
+                    // Convert frame time from seconds to nanoseconds
+                    LONGLONG frame_time_ns = static_cast<LONGLONG>(last_sample.dt * utils::SEC_TO_NS);
+
+                    // Calculate CPU usage percentage: (sim_duration / frame_time) * 100
+                    double cpu_usage_percent = (static_cast<double>(sim_duration_ns) / static_cast<double>(frame_time_ns)) * 100.0;
+
+                    // Clamp to 0-100%
+                    if (cpu_usage_percent < 0.0) cpu_usage_percent = 0.0;
+                    if (cpu_usage_percent > 100.0) cpu_usage_percent = 100.0;
+
+                    if (settings::g_mainTabSettings.show_labels.GetValue()) {
+                        ImGui::Text("%.1f%% cpu", cpu_usage_percent);
+                    } else {
+                        ImGui::Text("%.1f%%", cpu_usage_percent);
+                    }
+                }
             }
         }
     }

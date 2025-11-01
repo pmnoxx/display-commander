@@ -919,6 +919,10 @@ void DrawD3D9FlipExControls() {
         ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Current Game API:");
         ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "  Direct3D 9");
 
+        if (s_d3d9e_upgrade_successful.load()) {
+            api_version = 0x9100; // due to reshade's bug.
+        }
+
         if (api_version == 0x9100) {
             ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "  API Version: Direct3D 9Ex (FLIPEX compatible)");
         } else if (api_version == 0x9000) {

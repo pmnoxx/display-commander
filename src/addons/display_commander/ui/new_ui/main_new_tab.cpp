@@ -277,6 +277,11 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
             uint32_t api_version = g_last_api_version.load();
             ImGui::SameLine();
 
+
+            if (api == reshade::api::device_api::d3d9 && s_d3d9e_upgrade_successful.load()) {
+                api_version = 0x9100; // due to reshade's bug.
+            }
+
             // Display API with version/feature level if available
             if (api_version != 0) {
                 std::string api_string = GetDeviceApiVersionString(api, api_version);

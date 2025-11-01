@@ -32,6 +32,7 @@
 
 // Settings
 #include "settings/developer_tab_settings.hpp"
+#include "settings/hotkeys_tab_settings.hpp"
 
 // Constants
 #define DEBUG_LEVEL_0
@@ -666,10 +667,12 @@ class DeveloperTabSettings;
 class MainTabSettings;
 class SwapchainTabSettings;
 class StreamlineTabSettings;
+class HotkeysTabSettings;
 class HookSuppressionSettings;
 extern ExperimentalTabSettings g_experimentalTabSettings;
 extern DeveloperTabSettings g_developerTabSettings;
 extern MainTabSettings g_mainTabSettings;
+extern HotkeysTabSettings g_hotkeysTabSettings;
 extern SwapchainTabSettings g_swapchainTabSettings;
 extern StreamlineTabSettings g_streamlineTabSettings;
 extern settings::HookSuppressionSettings g_hook_suppression_settings;

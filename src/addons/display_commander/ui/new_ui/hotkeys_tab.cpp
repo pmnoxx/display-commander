@@ -1,0 +1,459 @@
+#include "hotkeys_tab.hpp"
+#include "../../settings/hotkeys_tab_settings.hpp"
+#include "../../globals.hpp"
+#include "../../utils/logging.hpp"
+#include "../../audio/audio_management.hpp"
+#include "../../adhd_multi_monitor/adhd_simple_api.hpp"
+#include "../../autoclick/autoclick_manager.hpp"
+#include "../../settings/main_tab_settings.hpp"
+#include "../../settings/experimental_tab_settings.hpp"
+#include "../../hooks/windows_hooks/windows_message_hooks.hpp"
+#include "settings_wrapper.hpp"
+#include "imgui.h"
+
+#include <algorithm>
+#include <cctype>
+#include <sstream>
+#include <vector>
+
+namespace ui::new_ui {
+
+namespace {
+// Hotkey definitions array (data-driven approach)
+std::vector<HotkeyDefinition> g_hotkey_definitions;
+}  // namespace
+
+// Initialize hotkey definitions with default values
+void InitializeHotkeyDefinitions() {
+    g_hotkey_definitions = {
+        {
+            "mute_unmute",
+            "Mute/Unmute Audio",
+            "ctrl+m",
+            "Toggle audio mute state",
+            []() {
+                bool new_mute_state = !s_audio_mute.load();
+                if (SetMuteForCurrentProcess(new_mute_state)) {
+                    s_audio_mute.store(new_mute_state);
+                    g_muted_applied.store(new_mute_state);
+                    std::ostringstream oss;
+                    oss << "Audio " << (new_mute_state ? "muted" : "unmuted") << " via hotkey";
+                    LogInfo(oss.str().c_str());
+                }
+            }
+        },
+        {
+            "background_toggle",
+            "Background Toggle",
+            "",
+            "Toggle both 'No Render in Background' and 'No Present in Background' settings",
+            []() {
+                bool new_render_state = !s_no_render_in_background.load();
+                bool new_present_state = new_render_state;
+                s_no_render_in_background.store(new_render_state);
+                s_no_present_in_background.store(new_present_state);
+                settings::g_mainTabSettings.no_render_in_background.SetValue(new_render_state);
+                settings::g_mainTabSettings.no_present_in_background.SetValue(new_present_state);
+                std::ostringstream oss;
+                oss << "Background settings toggled via hotkey - Both Render and Present: "
+                    << (new_render_state ? "disabled" : "enabled");
+                LogInfo(oss.str().c_str());
+            }
+        },
+        {
+            "timeslowdown",
+            "Time Slowdown Toggle",
+            "",
+            "Toggle Time Slowdown feature",
+            []() {
+                bool current_state = settings::g_experimentalTabSettings.timeslowdown_enabled.GetValue();
+                bool new_state = !current_state;
+                settings::g_experimentalTabSettings.timeslowdown_enabled.SetValue(new_state);
+                std::ostringstream oss;
+                oss << "Time Slowdown " << (new_state ? "enabled" : "disabled") << " via hotkey";
+                LogInfo(oss.str().c_str());
+            }
+        },
+        {
+            "adhd_toggle",
+            "ADHD Multi-Monitor Mode",
+            "ctrl+d",
+            "Toggle ADHD Multi-Monitor Mode",
+            []() {
+                bool current_state = settings::g_mainTabSettings.adhd_multi_monitor_enabled.GetValue();
+                bool new_state = !current_state;
+                settings::g_mainTabSettings.adhd_multi_monitor_enabled.SetValue(new_state);
+                adhd_multi_monitor::api::SetEnabled(new_state);
+                std::ostringstream oss;
+                oss << "ADHD Multi-Monitor Mode " << (new_state ? "enabled" : "disabled") << " via hotkey";
+                LogInfo(oss.str().c_str());
+            }
+        },
+        {
+            "autoclick",
+            "Auto-Click Toggle",
+            "",
+            "Toggle Auto-Click sequences (requires advanced settings)",
+            []() {
+                LogInfo("Auto-Click hotkey detected - toggling auto-click");
+                autoclick::ToggleAutoClickEnabled();
+            }
+        },
+        {
+            "input_blocking",
+            "Input Blocking Toggle",
+            "",
+            "Toggle input blocking",
+            []() {
+                bool current_state = s_input_blocking_toggle.load();
+                bool new_state = !current_state;
+                s_input_blocking_toggle.store(new_state);
+                std::ostringstream oss;
+                oss << "Input Blocking " << (new_state ? "enabled" : "disabled") << " via hotkey";
+                LogInfo(oss.str().c_str());
+            }
+        },
+        {
+            "display_commander_ui",
+            "Display Commander UI Toggle",
+            "ctrl+shift+backspace",
+            "Toggle the Display Commander UI overlay",
+            []() {
+                bool current_state = settings::g_mainTabSettings.show_display_commander_ui.GetValue();
+                bool new_state = !current_state;
+                settings::g_mainTabSettings.show_display_commander_ui.SetValue(new_state);
+                std::ostringstream oss;
+                oss << "Display Commander UI " << (new_state ? "enabled" : "disabled") << " via hotkey";
+                LogInfo(oss.str().c_str());
+            }
+        },
+        {
+            "performance_overlay",
+            "Performance Overlay Toggle",
+            "ctrl+o",
+            "Toggle the performance overlay",
+            []() {
+                bool current_state = settings::g_mainTabSettings.show_test_overlay.GetValue();
+                bool new_state = !current_state;
+                settings::g_mainTabSettings.show_test_overlay.SetValue(new_state);
+                std::ostringstream oss;
+                oss << "Performance overlay " << (new_state ? "enabled" : "disabled") << " via hotkey";
+                LogInfo(oss.str().c_str());
+            }
+        }
+    };
+
+    // Map settings to definitions
+    auto& settings = settings::g_hotkeysTabSettings;
+    if (g_hotkey_definitions.size() >= 8) {
+        // Load parsed shortcuts from settings
+        g_hotkey_definitions[0].parsed = ParseHotkeyString(settings.hotkey_mute_unmute.GetValue());
+        g_hotkey_definitions[1].parsed = ParseHotkeyString(settings.hotkey_background_toggle.GetValue());
+        g_hotkey_definitions[2].parsed = ParseHotkeyString(settings.hotkey_timeslowdown.GetValue());
+        g_hotkey_definitions[3].parsed = ParseHotkeyString(settings.hotkey_adhd_toggle.GetValue());
+        g_hotkey_definitions[4].parsed = ParseHotkeyString(settings.hotkey_autoclick.GetValue());
+        g_hotkey_definitions[5].parsed = ParseHotkeyString(settings.hotkey_input_blocking.GetValue());
+        g_hotkey_definitions[6].parsed = ParseHotkeyString(settings.hotkey_display_commander_ui.GetValue());
+        g_hotkey_definitions[7].parsed = ParseHotkeyString(settings.hotkey_performance_overlay.GetValue());
+    }
+}
+
+// Parse a shortcut string like "ctrl+t" or "ctrl+shift+backspace"
+ParsedHotkey ParseHotkeyString(const std::string& shortcut) {
+    ParsedHotkey result;
+    result.original_string = shortcut;
+
+    if (shortcut.empty()) {
+        return result;
+    }
+
+    // Convert to lowercase for case-insensitive parsing
+    std::string lower = shortcut;
+    std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
+
+    // Split by '+' and process each token
+    std::istringstream iss(lower);
+    std::string token;
+    std::vector<std::string> tokens;
+
+    while (std::getline(iss, token, '+')) {
+        // Trim whitespace
+        token.erase(0, token.find_first_not_of(" \t"));
+        token.erase(token.find_last_not_of(" \t") + 1);
+        if (!token.empty()) {
+            tokens.push_back(token);
+        }
+    }
+
+    if (tokens.empty()) {
+        return result;
+    }
+
+    // Process modifiers
+    for (size_t i = 0; i < tokens.size() - 1; ++i) {
+        if (tokens[i] == "ctrl" || tokens[i] == "control") {
+            result.ctrl = true;
+        } else if (tokens[i] == "shift") {
+            result.shift = true;
+        } else if (tokens[i] == "alt") {
+            result.alt = true;
+        }
+    }
+
+    // Last token is the key
+    std::string key_str = tokens.back();
+
+    // Map common key names to virtual key codes
+    if (key_str.length() == 1 && key_str[0] >= 'a' && key_str[0] <= 'z') {
+        // Single letter key
+        result.key_code = std::toupper(static_cast<unsigned char>(key_str[0]));
+    } else if (key_str == "backspace") {
+        result.key_code = VK_BACK;
+    } else if (key_str == "tab") {
+        result.key_code = VK_TAB;
+    } else if (key_str == "enter" || key_str == "return") {
+        result.key_code = VK_RETURN;
+    } else if (key_str == "escape" || key_str == "esc") {
+        result.key_code = VK_ESCAPE;
+    } else if (key_str == "space") {
+        result.key_code = VK_SPACE;
+    } else if (key_str == "delete" || key_str == "del") {
+        result.key_code = VK_DELETE;
+    } else if (key_str == "insert" || key_str == "ins") {
+        result.key_code = VK_INSERT;
+    } else if (key_str == "home") {
+        result.key_code = VK_HOME;
+    } else if (key_str == "end") {
+        result.key_code = VK_END;
+    } else if (key_str == "pageup" || key_str == "pgup") {
+        result.key_code = VK_PRIOR;
+    } else if (key_str == "pagedown" || key_str == "pgdn") {
+        result.key_code = VK_NEXT;
+    } else if (key_str == "up") {
+        result.key_code = VK_UP;
+    } else if (key_str == "down") {
+        result.key_code = VK_DOWN;
+    } else if (key_str == "left") {
+        result.key_code = VK_LEFT;
+    } else if (key_str == "right") {
+        result.key_code = VK_RIGHT;
+    } else if (key_str.length() >= 2 && (key_str[0] == 'f' || key_str[0] == 'F')) {
+        // Handle F followed by numbers (e.g., "f1", "f12")
+        try {
+            int fn_num = std::stoi(key_str.substr(1));
+            if (fn_num >= 1 && fn_num <= 12) {
+                result.key_code = VK_F1 + (fn_num - 1);
+            }
+        } catch (...) {
+            // Invalid function key number
+        }
+    }
+
+    return result;
+}
+
+// Format a parsed hotkey back to a string
+std::string FormatHotkeyString(const ParsedHotkey& hotkey) {
+    if (!hotkey.IsValid()) {
+        return "";
+    }
+
+    std::ostringstream oss;
+    bool first = true;
+
+    if (hotkey.ctrl) {
+        if (!first) oss << "+";
+        oss << "ctrl";
+        first = false;
+    }
+    if (hotkey.shift) {
+        if (!first) oss << "+";
+        oss << "shift";
+        first = false;
+    }
+    if (hotkey.alt) {
+        if (!first) oss << "+";
+        oss << "alt";
+        first = false;
+    }
+
+    if (!first) oss << "+";
+
+    // Format key name
+    if (hotkey.key_code >= 'A' && hotkey.key_code <= 'Z') {
+        oss << static_cast<char>(std::tolower(hotkey.key_code));
+    } else if (hotkey.key_code == VK_BACK) {
+        oss << "backspace";
+    } else if (hotkey.key_code >= VK_F1 && hotkey.key_code <= VK_F12) {
+        oss << "f" << (hotkey.key_code - VK_F1 + 1);
+    } else {
+        oss << "key" << hotkey.key_code;
+    }
+
+    return oss.str();
+}
+
+void InitHotkeysTab() {
+    // Ensure settings are loaded
+    static bool settings_loaded = false;
+    if (!settings_loaded) {
+        settings::g_hotkeysTabSettings.LoadAll();
+        InitializeHotkeyDefinitions();
+        settings_loaded = true;
+    }
+}
+
+void DrawHotkeysTab() {
+    auto& settings = settings::g_hotkeysTabSettings;
+
+    // Enable Hotkeys Master Toggle
+    if (CheckboxSetting(settings.enable_hotkeys, "Enable Hotkeys")) {
+        s_enable_hotkeys.store(settings.enable_hotkeys.GetValue());
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Master toggle for all keyboard shortcuts. When disabled, all hotkeys will not work.");
+    }
+
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::Spacing();
+
+    // Only show individual hotkey settings if hotkeys are enabled
+    if (settings.enable_hotkeys.GetValue()) {
+        // Update parsed shortcuts from settings
+        g_hotkey_definitions[0].parsed = ParseHotkeyString(settings.hotkey_mute_unmute.GetValue());
+        g_hotkey_definitions[1].parsed = ParseHotkeyString(settings.hotkey_background_toggle.GetValue());
+        g_hotkey_definitions[2].parsed = ParseHotkeyString(settings.hotkey_timeslowdown.GetValue());
+        g_hotkey_definitions[3].parsed = ParseHotkeyString(settings.hotkey_adhd_toggle.GetValue());
+        g_hotkey_definitions[4].parsed = ParseHotkeyString(settings.hotkey_autoclick.GetValue());
+        g_hotkey_definitions[5].parsed = ParseHotkeyString(settings.hotkey_input_blocking.GetValue());
+        g_hotkey_definitions[6].parsed = ParseHotkeyString(settings.hotkey_display_commander_ui.GetValue());
+        g_hotkey_definitions[7].parsed = ParseHotkeyString(settings.hotkey_performance_overlay.GetValue());
+
+        // Draw each hotkey configuration
+        for (size_t i = 0; i < g_hotkey_definitions.size(); ++i) {
+            auto& def = g_hotkey_definitions[i];
+
+            // Get corresponding setting
+            StringSetting* setting_ptr = nullptr;
+            switch (i) {
+                case 0: setting_ptr = &settings.hotkey_mute_unmute; break;
+                case 1: setting_ptr = &settings.hotkey_background_toggle; break;
+                case 2: setting_ptr = &settings.hotkey_timeslowdown; break;
+                case 3: setting_ptr = &settings.hotkey_adhd_toggle; break;
+                case 4: setting_ptr = &settings.hotkey_autoclick; break;
+                case 5: setting_ptr = &settings.hotkey_input_blocking; break;
+                case 6: setting_ptr = &settings.hotkey_display_commander_ui; break;
+                case 7: setting_ptr = &settings.hotkey_performance_overlay; break;
+                default: setting_ptr = nullptr; break;
+            }
+
+            if (!setting_ptr) continue;
+
+            StringSetting& setting = *setting_ptr;
+
+            ImGui::Text("%s", def.name.c_str());
+            if (ImGui::IsItemHovered() && !def.description.empty()) {
+                ImGui::SetTooltip("%s", def.description.c_str());
+            }
+            ImGui::SameLine();
+
+            // Input field for hotkey string
+            std::string current_value = setting.GetValue();
+            char buffer[256] = {0};
+            strncpy_s(buffer, sizeof(buffer), current_value.c_str(), _TRUNCATE);
+
+            ImGui::SetNextItemWidth(200);
+            if (ImGui::InputText(("##" + def.id).c_str(), buffer, sizeof(buffer))) {
+                std::string new_value(buffer);
+                setting.SetValue(new_value);
+                def.parsed = ParseHotkeyString(new_value);
+            }
+
+            // Show formatted display
+            if (def.parsed.IsValid()) {
+                ImGui::SameLine();
+                ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "(%s)", FormatHotkeyString(def.parsed).c_str());
+            } else if (!current_value.empty()) {
+                ImGui::SameLine();
+                ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f), "(invalid)");
+            } else {
+                ImGui::SameLine();
+                ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "(disabled)");
+            }
+
+            // Reset to default button
+            ImGui::SameLine();
+            if (ImGui::SmallButton(("Reset##" + def.id).c_str())) {
+                setting.SetValue(def.default_shortcut);
+                def.parsed = ParseHotkeyString(def.default_shortcut);
+            }
+
+            ImGui::Spacing();
+        }
+
+        ImGui::Spacing();
+        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Format: ctrl+shift+key");
+        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Empty string = disabled");
+        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Example: \"ctrl+t\", \"ctrl+shift+backspace\"");
+    }
+}
+
+// Process all hotkeys (call from continuous monitoring loop)
+void ProcessHotkeys() {
+    // Check if hotkeys are enabled globally
+    if (!s_enable_hotkeys.load()) {
+        return;
+    }
+
+    // Ensure all keys are being tracked
+    display_commanderhooks::keyboard_tracker::IsKeyDown(VK_CONTROL);
+    display_commanderhooks::keyboard_tracker::IsKeyDown(VK_SHIFT);
+    display_commanderhooks::keyboard_tracker::IsKeyDown(VK_MENU);
+
+    // Handle keyboard shortcuts (only when game is in foreground)
+    HWND game_hwnd = g_last_swapchain_hwnd.load();
+    bool is_game_in_foreground = (game_hwnd != nullptr && GetForegroundWindow() == game_hwnd);
+
+    if (!is_game_in_foreground) {
+        return;
+    }
+
+    // Process each hotkey definition
+    for (auto& def : g_hotkey_definitions) {
+        if (!def.parsed.IsValid() || def.parsed.IsEmpty()) {
+            continue;
+        }
+
+        const auto& hotkey = def.parsed;
+
+        // Check if the key was pressed
+        bool key_pressed = display_commanderhooks::keyboard_tracker::IsKeyPressed(hotkey.key_code);
+        if (!key_pressed) {
+            continue;
+        }
+
+        // Check modifier states (must match exactly - if hotkey requires modifier, it must be pressed; if not, it must not be pressed)
+        bool ctrl_down = display_commanderhooks::keyboard_tracker::IsKeyDown(VK_CONTROL);
+        bool shift_down = display_commanderhooks::keyboard_tracker::IsKeyDown(VK_SHIFT);
+        bool alt_down = display_commanderhooks::keyboard_tracker::IsKeyDown(VK_MENU);
+
+        // Check if modifiers match exactly
+        if (hotkey.ctrl != ctrl_down) continue;
+        if (hotkey.shift != shift_down) continue;
+        if (hotkey.alt != alt_down) continue;
+
+        // Special case for autoclick - requires advanced settings
+        if (def.id == "autoclick" && !settings::g_mainTabSettings.advanced_settings_enabled.GetValue()) {
+            continue;
+        }
+
+        // All conditions met - execute the action
+        if (def.action) {
+            def.action();
+        }
+    }
+}
+
+}  // namespace ui::new_ui
+

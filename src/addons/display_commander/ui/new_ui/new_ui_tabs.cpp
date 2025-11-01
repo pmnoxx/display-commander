@@ -10,6 +10,7 @@
 #include "streamline_tab.hpp"
 #include "swapchain_tab.hpp"
 #include "window_info_tab.hpp"
+#include "hotkeys_tab.hpp"
 #include <reshade_imgui.hpp>
 #include <winbase.h>
 
@@ -127,6 +128,7 @@ void InitializeNewUI() {
     ui::new_ui::InitMainNewTab();
     ui::new_ui::InitDeveloperNewTab();
     ui::new_ui::InitSwapchainTab();
+    ui::new_ui::InitHotkeysTab();
 
     // Initialize XInput widget
     display_commander::widgets::xinput_widget::InitializeXInputWidget();
@@ -153,6 +155,16 @@ void InitializeNewUI() {
             LogError("Unknown error drawing developer new tab");
         }
     }, true); // Developer tab is advanced
+
+    g_tab_manager.AddTab("Hotkeys", "hotkeys", [](reshade::api::effect_runtime* runtime) {
+        try {
+            ui::new_ui::DrawHotkeysTab();
+        } catch (const std::exception &e) {
+            LogError("Error drawing hotkeys tab: %s", e.what());
+        } catch (...) {
+            LogError("Unknown error drawing hotkeys tab");
+        }
+    }, false); // Hotkeys tab is not advanced
 
     g_tab_manager.AddTab("Window Info", "window_info", [](reshade::api::effect_runtime* runtime) {
         try {

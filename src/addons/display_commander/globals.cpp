@@ -7,6 +7,7 @@
 #include "settings/main_tab_settings.hpp"
 #include "settings/swapchain_tab_settings.hpp"
 #include "settings/streamline_tab_settings.hpp"
+#include "settings/hotkeys_tab_settings.hpp"
 #include "settings/hook_suppression_settings.hpp"
 #include "utils.hpp"
 #include "utils/general_utils.hpp"
@@ -374,6 +375,7 @@ DeveloperTabSettings g_developerTabSettings;
 MainTabSettings g_mainTabSettings;
 SwapchainTabSettings g_swapchainTabSettings;
 StreamlineTabSettings g_streamlineTabSettings;
+HotkeysTabSettings g_hotkeysTabSettings;
 HookSuppressionSettings g_hook_suppression_settings;
 // Function to load all settings at startup
 void LoadAllSettingsAtStartup() {
@@ -382,6 +384,7 @@ void LoadAllSettingsAtStartup() {
     g_mainTabSettings.LoadSettings();
     g_swapchainTabSettings.LoadAll();
     g_streamlineTabSettings.LoadAll();
+    g_hotkeysTabSettings.LoadAll();
     g_hook_suppression_settings.LoadAll();
     LogInfo("All settings loaded at startup");
 }

@@ -26,6 +26,8 @@ This document tracks proposed features and ideas for future development. These a
 
 • Screensaver control options: "default behavior / Disable screensaver while game is in foreground / disable screensaver while game is running"
 
+• DX9 -> DX9E swap chain upgrade
+
 ## Proposals
 
 • PCL stats reporting (show PCV-AL latency in nvidia overlay)
@@ -46,7 +48,11 @@ This document tracks proposed features and ideas for future development. These a
 
 • DLSS Quality Preset override
 
-• DX9 -> DX9E swap chain upgrade
+• Add chimes for taking screenshots from DS controller.
+
+• Rewrite gamepad remapping / gamepad chimes UI.
+
+• Add UI for "enable HDR" for monitors, to enable at start of game, turn off at game close.
 
 ## Low Priority Proposals
 

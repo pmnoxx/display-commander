@@ -9,6 +9,7 @@
 #include "../widgets/xinput_widget/xinput_widget.hpp"
 #include "../swapchain_events.hpp"
 #include "windows_hooks/windows_message_hooks.hpp"
+#include "../globals.hpp"
 #include <MinHook.h>
 #include <array>
 #include <string>
@@ -155,6 +156,9 @@ DWORD WINAPI XInputGetState_Detour(DWORD dwUserIndex, XINPUT_STATE *pState) {
 
     // Apply A/B button swapping if enabled
     if (result == ERROR_SUCCESS) {
+        // Store the frame ID when XInput is successfully detected
+        uint64_t current_frame_id = g_global_frame_id.load();
+        g_last_xinput_detected_frame_id.store(current_frame_id);
 
         auto shared_state = display_commander::widgets::xinput_widget::XInputWidget::GetSharedState();
 
@@ -289,6 +293,10 @@ DWORD WINAPI XInputGetStateEx_Detour(DWORD dwUserIndex, XINPUT_STATE *pState) {
 
     // Apply A/B button swapping if enabled
     if (result == ERROR_SUCCESS) {
+        // Store the frame ID when XInput is successfully detected
+        uint64_t current_frame_id = g_global_frame_id.load();
+        g_last_xinput_detected_frame_id.store(current_frame_id);
+
         auto shared_state = display_commander::widgets::xinput_widget::XInputWidget::GetSharedState();
 
         // Process chord detection first to check for input suppression

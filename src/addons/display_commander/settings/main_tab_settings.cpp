@@ -55,7 +55,7 @@ MainTabSettings::MainTabSettings()
                                         "DisplayCommander"),
       audio_volume_auto_apply("audio_volume_auto_apply", true, "DisplayCommander"),
       keyboard_input_blocking("keyboard_input_blocking", s_keyboard_input_blocking, static_cast<int>(InputBlockingMode::kEnabledInBackground), {"Disabled", "Enabled", "Enabled (in background)"}, "DisplayCommander"),
-      mouse_input_blocking("mouse_input_blocking", s_mouse_input_blocking, static_cast<int>(InputBlockingMode::kEnabledInBackground), {"Disabled", "Enabled", "Enabled (in background)"}, "DisplayCommander"),
+      mouse_input_blocking("mouse_input_blocking", s_mouse_input_blocking, static_cast<int>(InputBlockingMode::kEnabledInBackground), {"Disabled", "Enabled", "Enabled (in background)", "Enabled (when XInput detected)"}, "DisplayCommander"),
       gamepad_input_blocking("gamepad_input_blocking", s_gamepad_input_blocking, static_cast<int>(InputBlockingMode::kDisabled), {"Disabled", "Enabled", "Enabled (in background)"}, "DisplayCommander"),
       no_render_in_background("no_render_in_background", s_no_render_in_background, s_no_render_in_background.load(), "DisplayCommander"),
       no_present_in_background("no_present_in_background", s_no_present_in_background, s_no_present_in_background.load(), "DisplayCommander"),

@@ -292,7 +292,8 @@ enum class ScreensaverMode : std::uint8_t {
 enum class InputBlockingMode : std::uint8_t {
     kDisabled = 0,              // Disabled
     kEnabled = 1,               // Always enabled
-    kEnabledInBackground = 2    // Only enabled when in background
+    kEnabledInBackground = 2,   // Only enabled when in background
+    kEnabledWhenXInputDetected = 3 // Enabled when XInput gamepad is detected
 };
 
 // Structures
@@ -549,6 +550,9 @@ extern std::atomic<uint64_t> g_global_frame_id;
 
 // Global frame ID for UI drawing tracking
 extern std::atomic<uint64_t> g_last_ui_drawn_frame_id;
+
+// Global frame ID when XInput was last successfully detected
+extern std::atomic<uint64_t> g_last_xinput_detected_frame_id;
 
 // Global Swapchain Tracking Manager instance
 extern SwapchainTrackingManager g_swapchainTrackingManager;

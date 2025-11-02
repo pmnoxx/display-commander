@@ -57,6 +57,24 @@ bool ShouldBlockMouseInput() {
             return true;
         case InputBlockingMode::kEnabledInBackground:
             return is_background;
+        case InputBlockingMode::kEnabledWhenXInputDetected: {
+            // Check if XInput was detected recently (within last 180 frames, ~3 seconds at 60 FPS)
+            uint64_t current_frame_id = g_global_frame_id.load();
+            uint64_t last_xinput_frame_id = g_last_xinput_detected_frame_id.load();
+
+            // If XInput was never detected, return false
+            if (last_xinput_frame_id == 0) {
+                return false;
+            }
+
+            // Check if XInput was detected within the last 180 frames
+            constexpr uint64_t kXInputDetectionWindowFrames = 180;
+            uint64_t frame_difference = current_frame_id > last_xinput_frame_id
+                ? current_frame_id - last_xinput_frame_id
+                : 0;
+
+            return frame_difference < kXInputDetectionWindowFrames;
+        }
         default:
             return false;
     }

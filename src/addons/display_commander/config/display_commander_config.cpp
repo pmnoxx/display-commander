@@ -68,7 +68,9 @@ public:
     }
 
     bool SaveToFile(const std::string& filepath) {
-        std::ofstream file(filepath);
+        // Write to temp file first for atomic operation
+        std::string temp_filepath = filepath + ".temp";
+        std::ofstream file(temp_filepath);
         if (!file.is_open()) {
             return false;
         }
@@ -81,7 +83,17 @@ public:
             file << "\n";
         }
 
-        return true;
+        file.close();
+
+        // Atomically move temp file to final location
+        try {
+            std::filesystem::rename(temp_filepath, filepath);
+            return true;
+        } catch (const std::exception&) {
+            // Clean up temp file on failure
+            std::filesystem::remove(temp_filepath);
+            return false;
+        }
     }
 
     bool GetValue(const std::string& section, const std::string& key, std::string& value) const {

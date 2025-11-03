@@ -257,9 +257,13 @@ bool SaveGlobalSettings(const ReShadeGlobalSettings& settings) {
         return false;
     }
 
-    std::ofstream file(config_path);
+    // Write to temp file first for atomic operation
+    std::filesystem::path temp_path = config_path;
+    temp_path += L".temp";
+
+    std::ofstream file(temp_path);
     if (!file.is_open()) {
-        LogInfo("Failed to create/open DisplayCommander.ini at: %ls", config_path.c_str());
+        LogInfo("Failed to create/open DisplayCommander.ini.temp at: %ls", temp_path.c_str());
         return false;
     }
 
@@ -279,16 +283,25 @@ bool SaveGlobalSettings(const ReShadeGlobalSettings& settings) {
 
     file.close();
 
-    LogInfo("Saved global settings to: %ls", config_path.c_str());
+    // Atomically move temp file to final location
+    try {
+        std::filesystem::rename(temp_path, config_path);
+        LogInfo("Saved global settings to: %ls", config_path.c_str());
 
-    size_t total_settings = 0;
-    for (const auto& [section, keys_values] : settings.additional_settings) {
-        total_settings += keys_values.size();
+        size_t total_settings = 0;
+        for (const auto& [section, keys_values] : settings.additional_settings) {
+            total_settings += keys_values.size();
+        }
+        LogInfo("  Saved %zu settings across %zu sections",
+                total_settings, settings.additional_settings.size());
+
+        return true;
+    } catch (const std::exception& e) {
+        // Clean up temp file on failure
+        std::filesystem::remove(temp_path);
+        LogInfo("Failed to rename temp file to DisplayCommander.ini: %s", e.what());
+        return false;
     }
-    LogInfo("  Saved %zu settings across %zu sections",
-            total_settings, settings.additional_settings.size());
-
-    return true;
 }
 
 bool SetLoadFromDllMain(bool enabled) {

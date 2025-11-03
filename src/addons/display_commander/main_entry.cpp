@@ -137,8 +137,8 @@ void OnInitEffectRuntime(reshade::api::effect_runtime* runtime) {
         AddReShadeRuntime(runtime);
         LogInfo("ReShade effect runtime initialized - Input blocking now available");
 
-        static bool registered_overlay = false;
-        if (!registered_overlay) {
+        static bool initialized_with_hwnd = false;
+        if (!initialized_with_hwnd) {
             // Set up window procedure hooks now that we have the runtime
             HWND game_window = static_cast<HWND>(runtime->get_hwnd());
             if (game_window != nullptr && IsWindow(game_window) != 0) {
@@ -149,8 +149,7 @@ void OnInitEffectRuntime(reshade::api::effect_runtime* runtime) {
             } else {
                 LogWarn("ReShade runtime window is not valid - HWND: 0x%p", game_window);
             }
-            registered_overlay = true;
-            reshade::register_overlay("Display Commander", OnRegisterOverlayDisplayCommander);
+            initialized_with_hwnd = true;
 
             // Start the auto-click thread (always running, sleeps when disabled)
             autoclick::StartAutoClickThread();
@@ -774,6 +773,10 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             // Registration successful - log version compatibility
             LogInfo("Display Commander v%s - ReShade addon registration successful (API version 17 supported)",
                     DISPLAY_COMMANDER_VERSION_STRING);
+
+            // Register overlay early so it appears as a tab by default
+            reshade::register_overlay("Display Commander", OnRegisterOverlayDisplayCommander);
+            LogInfo("Display Commander overlay registered");
 
             // Initialize DisplayCommander config system before handling safemode
             display_commander::config::DisplayCommanderConfigManager::GetInstance().Initialize();

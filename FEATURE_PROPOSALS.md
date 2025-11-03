@@ -54,6 +54,10 @@ This document tracks proposed features and ideas for future development. These a
 
 • Add UI for "enable HDR" for monitors, to enable at start of game, turn off at game close.
 
+• Add choosing which tabs should stay open (not just all tabs)
+
+• Fix displaying DLSS version when NVIDIA driver overloads dlss version
+
 ## Low Priority Proposals
 
 • Add crashes interception, so we can print to logs when crash occurs.

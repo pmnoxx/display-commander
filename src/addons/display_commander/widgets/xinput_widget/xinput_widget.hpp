@@ -145,6 +145,37 @@ struct XInputSharedState {
     std::atomic<uint64_t> last_xinput_call_time_ns{0};
     std::atomic<uint64_t> xinput_getstate_update_ns{0};
     std::atomic<uint64_t> xinput_getstateex_update_ns{0};
+
+    // Autofire settings
+    struct AutofireButton {
+        WORD button_mask;
+        std::atomic<uint64_t> last_fire_frame_id; // Last frame when this button was toggled
+        std::atomic<bool> current_state;          // Current autofire state (on/off)
+
+        AutofireButton() : button_mask(0), last_fire_frame_id(0), current_state(false) {}
+        AutofireButton(WORD mask) : button_mask(mask), last_fire_frame_id(0), current_state(false) {}
+
+        // Copy constructor (needed for vector operations)
+        AutofireButton(const AutofireButton& other)
+            : button_mask(other.button_mask),
+              last_fire_frame_id(other.last_fire_frame_id.load()),
+              current_state(other.current_state.load()) {}
+
+        // Assignment operator
+        AutofireButton& operator=(const AutofireButton& other) {
+            if (this != &other) {
+                button_mask = other.button_mask;
+                last_fire_frame_id.store(other.last_fire_frame_id.load());
+                current_state.store(other.current_state.load());
+            }
+            return *this;
+        }
+    };
+
+    std::atomic<bool> autofire_enabled{false};              // Master enable/disable for autofire
+    std::atomic<uint32_t> autofire_frame_interval{1};        // Frames between toggles (1 = every frame, 2 = every other frame, etc.)
+    std::vector<AutofireButton> autofire_buttons;            // List of buttons with autofire enabled
+    mutable std::atomic<bool> autofire_is_updating{false};   // Thread safety for autofire_buttons vector access
 };
 
 // XInput widget class
@@ -205,6 +236,12 @@ class XInputWidget {
     void ExecuteChordAction(const XInputSharedState::Chord &chord, DWORD user_index);
     std::string GetChordButtonNames(WORD buttons) const;
 
+    // Autofire functions
+    void DrawAutofireSettings();
+    void AddAutofireButton(WORD button_mask);
+    void RemoveAutofireButton(WORD button_mask);
+    bool IsAutofireButton(WORD button_mask) const;
+
      // Recenter calibration functions
     void DrawRecenterSettings();
     void ClearRecenterData();
@@ -231,6 +268,7 @@ void UpdateBatteryStatus(DWORD user_index);
 void IncrementEventCounter(const std::string &event_type);
 void ProcessChordDetection(DWORD user_index, WORD button_state);
 void CheckAndHandleScreenshot();
+void ProcessAutofire(DWORD user_index, XINPUT_STATE *pState);
 
 // Recenter calibration functions for hooks
 void ProcessRecenterData(SHORT left_x, SHORT left_y, SHORT right_x, SHORT right_y);

@@ -7,8 +7,10 @@
 #include "../../res/ui_colors.hpp"
 #include "../../config/display_commander_config.hpp"
 #include "../../settings/experimental_tab_settings.hpp"
+#include <algorithm>
 #include <chrono>
 #include <reshade_imgui.hpp>
+#include <sstream>
 #include <thread>
 #include <vector>
 #include <windows.h>
@@ -105,6 +107,10 @@ void XInputWidget::OnDraw() {
 
     // Draw chord settings
     DrawChordSettings();
+    ImGui::Spacing();
+
+    // Draw autofire settings
+    DrawAutofireSettings();
     ImGui::Spacing();
 
     // Draw controller selector
@@ -1084,6 +1090,33 @@ void XInputWidget::LoadSettings() {
     if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "VibrationAmplification", vibration_amp)) {
         g_shared_state->vibration_amplification.store(vibration_amp);
     }
+
+    // Load autofire settings
+    bool autofire_enabled;
+    if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "AutofireEnabled", autofire_enabled)) {
+        g_shared_state->autofire_enabled.store(autofire_enabled);
+    }
+
+    uint32_t autofire_frame_interval;
+    if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "AutofireFrameInterval", autofire_frame_interval)) {
+        g_shared_state->autofire_frame_interval.store(autofire_frame_interval);
+    }
+
+    // Load autofire button list
+    std::string autofire_buttons_str;
+    if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "AutofireButtons", autofire_buttons_str)) {
+        // Parse comma-separated list of button masks
+        std::istringstream iss(autofire_buttons_str);
+        std::string token;
+        while (std::getline(iss, token, ',')) {
+            try {
+                WORD button_mask = static_cast<WORD>(std::stoul(token, nullptr, 16)); // Parse as hex
+                AddAutofireButton(button_mask);
+            } catch (...) {
+                // Ignore invalid entries
+            }
+        }
+    }
 }
 
 void XInputWidget::SaveSettings() {
@@ -1139,6 +1172,32 @@ void XInputWidget::SaveSettings() {
     // Save vibration amplification setting
     display_commander::config::set_config_value("DisplayCommander.XInputWidget", "VibrationAmplification",
                               g_shared_state->vibration_amplification.load());
+
+    // Save autofire settings
+    display_commander::config::set_config_value("DisplayCommander.XInputWidget", "AutofireEnabled",
+                              g_shared_state->autofire_enabled.load());
+
+    display_commander::config::set_config_value("DisplayCommander.XInputWidget", "AutofireFrameInterval",
+                              static_cast<uint32_t>(g_shared_state->autofire_frame_interval.load()));
+
+    // Save autofire button list as comma-separated hex values
+    while (g_shared_state->autofire_is_updating.exchange(true)) {
+        std::this_thread::sleep_for(std::chrono::microseconds(1));
+    }
+
+    std::string autofire_buttons_str;
+    for (const auto &af_button : g_shared_state->autofire_buttons) {
+        if (!autofire_buttons_str.empty()) {
+            autofire_buttons_str += ",";
+        }
+        char hex_str[16];
+        sprintf_s(hex_str, "%04X", af_button.button_mask);
+        autofire_buttons_str += hex_str;
+    }
+
+    g_shared_state->autofire_is_updating.store(false);
+
+    display_commander::config::set_config_value("DisplayCommander.XInputWidget", "AutofireButtons", autofire_buttons_str);
 }
 
 std::shared_ptr<XInputSharedState> XInputWidget::GetSharedState() { return g_shared_state; }
@@ -1914,6 +1973,270 @@ void XInputWidget::DrawDualSenseReport(int controller_index) {
             ImGui::TextColored(ui::colors::TEXT_DIMMED, "No input report data available");
         }
     }
+}
+
+// Autofire functions
+void XInputWidget::DrawAutofireSettings() {
+    ImGui::Indent();
+
+    if (ImGui::CollapsingHeader("Autofire Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
+        auto shared_state = GetSharedState();
+        if (!shared_state) {
+            ImGui::Unindent();
+            return;
+        }
+
+        // Master enable/disable
+        bool autofire_enabled = shared_state->autofire_enabled.load();
+        if (ImGui::Checkbox("Enable Autofire", &autofire_enabled)) {
+            shared_state->autofire_enabled.store(autofire_enabled);
+            SaveSettings();
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Enable autofire for selected buttons. When a button is held, it will toggle on/off at the specified frame interval.");
+        }
+
+        if (autofire_enabled) {
+            ImGui::Spacing();
+
+            // Frame interval setting
+            uint32_t frame_interval = shared_state->autofire_frame_interval.load();
+            int frame_interval_int = static_cast<int>(frame_interval);
+            if (ImGui::SliderInt("Frame Interval", &frame_interval_int, 1, 10, "%d frames")) {
+                if (frame_interval_int < 1) frame_interval_int = 1;
+                if (frame_interval_int > 10) frame_interval_int = 10;
+                shared_state->autofire_frame_interval.store(static_cast<uint32_t>(frame_interval_int));
+                SaveSettings();
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Number of frames between button toggles (1 = every frame, 2 = every other frame, etc.)");
+            }
+
+            ImGui::Spacing();
+            ImGui::Separator();
+            ImGui::Text("Select buttons for autofire:");
+
+            // Button selection checkboxes
+            const struct {
+                WORD mask;
+                const char *name;
+            } buttons[] = {
+                {XINPUT_GAMEPAD_A, "A"},
+                {XINPUT_GAMEPAD_B, "B"},
+                {XINPUT_GAMEPAD_X, "X"},
+                {XINPUT_GAMEPAD_Y, "Y"},
+                {XINPUT_GAMEPAD_LEFT_SHOULDER, "LB"},
+                {XINPUT_GAMEPAD_RIGHT_SHOULDER, "RB"},
+                {XINPUT_GAMEPAD_BACK, "Back"},
+                {XINPUT_GAMEPAD_START, "Start"},
+                {XINPUT_GAMEPAD_LEFT_THUMB, "LS"},
+                {XINPUT_GAMEPAD_RIGHT_THUMB, "RS"},
+                {XINPUT_GAMEPAD_DPAD_UP, "D-Up"},
+                {XINPUT_GAMEPAD_DPAD_DOWN, "D-Down"},
+                {XINPUT_GAMEPAD_DPAD_LEFT, "D-Left"},
+                {XINPUT_GAMEPAD_DPAD_RIGHT, "D-Right"},
+            };
+
+            // Thread-safe access to autofire_buttons
+            while (shared_state->autofire_is_updating.exchange(true)) {
+                std::this_thread::sleep_for(std::chrono::microseconds(1));
+            }
+
+            // Create a copy of the buttons list for safe iteration
+            std::vector<XInputSharedState::AutofireButton> autofire_buttons_copy = shared_state->autofire_buttons;
+
+            shared_state->autofire_is_updating.store(false);
+
+            // Display checkboxes in a grid
+            for (size_t i = 0; i < sizeof(buttons) / sizeof(buttons[0]); i += 2) {
+                if (i + 1 < sizeof(buttons) / sizeof(buttons[0])) {
+                    // Two buttons per row
+                    bool is_enabled1 = IsAutofireButton(buttons[i].mask);
+                    bool is_enabled2 = IsAutofireButton(buttons[i + 1].mask);
+
+                    if (ImGui::Checkbox(buttons[i].name, &is_enabled1)) {
+                        if (is_enabled1) {
+                            AddAutofireButton(buttons[i].mask);
+                        } else {
+                            RemoveAutofireButton(buttons[i].mask);
+                        }
+                        SaveSettings();
+                    }
+
+                    ImGui::SameLine();
+
+                    if (ImGui::Checkbox(buttons[i + 1].name, &is_enabled2)) {
+                        if (is_enabled2) {
+                            AddAutofireButton(buttons[i + 1].mask);
+                        } else {
+                            RemoveAutofireButton(buttons[i + 1].mask);
+                        }
+                        SaveSettings();
+                    }
+                } else {
+                    // Single button on last row
+                    bool is_enabled = IsAutofireButton(buttons[i].mask);
+                    if (ImGui::Checkbox(buttons[i].name, &is_enabled)) {
+                        if (is_enabled) {
+                            AddAutofireButton(buttons[i].mask);
+                        } else {
+                            RemoveAutofireButton(buttons[i].mask);
+                        }
+                        SaveSettings();
+                    }
+                }
+            }
+        }
+    }
+
+    ImGui::Unindent();
+}
+
+void XInputWidget::AddAutofireButton(WORD button_mask) {
+    auto shared_state = GetSharedState();
+    if (!shared_state) {
+        return;
+    }
+
+    // Thread-safe access
+    while (shared_state->autofire_is_updating.exchange(true)) {
+        std::this_thread::sleep_for(std::chrono::microseconds(1));
+    }
+
+    // Check if button already exists
+    bool exists = false;
+    for (const auto &af_button : shared_state->autofire_buttons) {
+        if (af_button.button_mask == button_mask) {
+            exists = true;
+            break;
+        }
+    }
+
+    if (!exists) {
+        shared_state->autofire_buttons.push_back(XInputSharedState::AutofireButton(button_mask));
+        LogInfo("XInputWidget::AddAutofireButton() - Added autofire for button 0x%04X", button_mask);
+    }
+
+    shared_state->autofire_is_updating.store(false);
+}
+
+void XInputWidget::RemoveAutofireButton(WORD button_mask) {
+    auto shared_state = GetSharedState();
+    if (!shared_state) {
+        return;
+    }
+
+    // Thread-safe access
+    while (shared_state->autofire_is_updating.exchange(true)) {
+        std::this_thread::sleep_for(std::chrono::microseconds(1));
+    }
+
+    // Remove button from list
+    auto it = std::remove_if(shared_state->autofire_buttons.begin(), shared_state->autofire_buttons.end(),
+                              [button_mask](const XInputSharedState::AutofireButton &af_button) {
+                                  return af_button.button_mask == button_mask;
+                              });
+    shared_state->autofire_buttons.erase(it, shared_state->autofire_buttons.end());
+
+    LogInfo("XInputWidget::RemoveAutofireButton() - Removed autofire for button 0x%04X", button_mask);
+
+    shared_state->autofire_is_updating.store(false);
+}
+
+bool XInputWidget::IsAutofireButton(WORD button_mask) const {
+    auto shared_state = GetSharedState();
+    if (!shared_state) {
+        return false;
+    }
+
+    // Thread-safe access
+    while (shared_state->autofire_is_updating.exchange(true)) {
+        std::this_thread::sleep_for(std::chrono::microseconds(1));
+    }
+
+    bool found = false;
+    for (const auto &af_button : shared_state->autofire_buttons) {
+        if (af_button.button_mask == button_mask) {
+            found = true;
+            break;
+        }
+    }
+
+    shared_state->autofire_is_updating.store(false);
+
+    return found;
+}
+
+// Global function for hooks to use
+void ProcessAutofire(DWORD user_index, XINPUT_STATE *pState) {
+    if (!pState) {
+        return;
+    }
+
+    auto shared_state = XInputWidget::GetSharedState();
+    if (!shared_state) {
+        return;
+    }
+
+    // Check if autofire is enabled
+    if (!shared_state->autofire_enabled.load()) {
+        return;
+    }
+
+    // Get current frame ID
+    uint64_t current_frame_id = g_global_frame_id.load();
+    uint32_t frame_interval = shared_state->autofire_frame_interval.load();
+
+    // Thread-safe access to autofire_buttons
+    while (shared_state->autofire_is_updating.exchange(true)) {
+        std::this_thread::sleep_for(std::chrono::microseconds(1));
+    }
+
+    // Store original button state before processing
+    WORD original_buttons = pState->Gamepad.wButtons;
+
+    // Process each autofire button directly from shared state
+    for (auto &af_button : shared_state->autofire_buttons) {
+        WORD button_mask = af_button.button_mask;
+        bool is_pressed = (original_buttons & button_mask) != 0;
+
+        if (is_pressed) {
+            // Button is held down, check if we should toggle
+            uint64_t last_fire_frame = af_button.last_fire_frame_id.load();
+            uint64_t frames_since_last_fire = current_frame_id - last_fire_frame;
+
+            if (frames_since_last_fire >= frame_interval || last_fire_frame == 0) {
+                // Toggle the button state
+                bool current_state = af_button.current_state.load();
+                bool new_state = !current_state;
+                af_button.current_state.store(new_state);
+                af_button.last_fire_frame_id.store(current_frame_id);
+
+                // Apply the toggle to the button state
+                if (new_state) {
+                    // Turn button on
+                    pState->Gamepad.wButtons |= button_mask;
+                } else {
+                    // Turn button off
+                    pState->Gamepad.wButtons &= ~button_mask;
+                }
+            } else {
+                // Keep the current state
+                bool current_state = af_button.current_state.load();
+                if (current_state) {
+                    pState->Gamepad.wButtons |= button_mask;
+                } else {
+                    pState->Gamepad.wButtons &= ~button_mask;
+                }
+            }
+        } else {
+            // Button is not pressed, reset state
+            af_button.current_state.store(false);
+            af_button.last_fire_frame_id.store(0);
+        }
+    }
+
+    shared_state->autofire_is_updating.store(false);
 }
 
 } // namespace display_commander::widgets::xinput_widget

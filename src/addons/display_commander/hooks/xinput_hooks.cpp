@@ -221,6 +221,9 @@ DWORD WINAPI XInputGetState_Detour(DWORD dwUserIndex, XINPUT_STATE *pState) {
             // Process input remapping before updating state
             display_commander::input_remapping::process_gamepad_input_for_remapping(dwUserIndex, pState);
 
+            // Process autofire
+            display_commander::widgets::xinput_widget::ProcessAutofire(dwUserIndex, pState);
+
             // Track unsuppressed call (input was processed)
             g_hook_stats[HOOK_XInputGetState].increment_unsuppressed();
         }
@@ -357,6 +360,9 @@ DWORD WINAPI XInputGetStateEx_Detour(DWORD dwUserIndex, XINPUT_STATE *pState) {
 
             // Process input remapping before updating state
             display_commander::input_remapping::process_gamepad_input_for_remapping(dwUserIndex, pState);
+
+            // Process autofire
+            display_commander::widgets::xinput_widget::ProcessAutofire(dwUserIndex, pState);
 
             // Track unsuppressed call (input was processed)
             g_hook_stats[HOOK_XInputGetStateEx].increment_unsuppressed();

@@ -20,7 +20,7 @@ namespace display_commander::widgets::xinput_widget {
 
 // Helper function to get original GetTickCount64 value (unhooked)
 static ULONGLONG GetOriginalTickCount64() {
-    if (display_commanderhooks::GetTickCount64_Original) {
+    if (enabled_experimental_features && display_commanderhooks::GetTickCount64_Original) {
         return display_commanderhooks::GetTickCount64_Original();
     } else {
         return GetTickCount64();
@@ -1999,17 +1999,46 @@ void XInputWidget::DrawAutofireSettings() {
         if (autofire_enabled) {
             ImGui::Spacing();
 
-            // Frame interval setting
+            // Frame interval setting with slider and input field
             uint32_t frame_interval = shared_state->autofire_frame_interval.load();
             int frame_interval_int = static_cast<int>(frame_interval);
-            if (ImGui::SliderInt("Frame Interval", &frame_interval_int, 1, 10, "%d frames")) {
-                if (frame_interval_int < 1) frame_interval_int = 1;
-                if (frame_interval_int > 10) frame_interval_int = 10;
+
+            ImGui::Text("Frame Interval:");
+            ImGui::SameLine();
+
+            // Input field for precise control
+            ImGui::SetNextItemWidth(80);
+            if (ImGui::InputInt("##FrameIntervalInput", &frame_interval_int, 1, 5, ImGuiInputTextFlags_EnterReturnsTrue)) {
+                if (frame_interval_int < 1) {
+                    frame_interval_int = 1;
+                } else if (frame_interval_int > 1000) {
+                    frame_interval_int = 1000;
+                }
                 shared_state->autofire_frame_interval.store(static_cast<uint32_t>(frame_interval_int));
                 SaveSettings();
             }
             if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("Number of frames between button toggles (1 = every frame, 2 = every other frame, etc.)");
+                ImGui::SetTooltip("Number of frames between button toggles (1-1000). Enter a value or use slider below.");
+            }
+
+            ImGui::SameLine();
+            ImGui::Text("frames");
+
+            // Slider for quick adjustment (1-60 range for common use)
+            int slider_value = frame_interval_int;
+            if (slider_value > 60) slider_value = 60; // Clamp for slider display
+            if (ImGui::SliderInt("##FrameIntervalSlider", &slider_value, 1, 60, "%d frames")) {
+                shared_state->autofire_frame_interval.store(static_cast<uint32_t>(slider_value));
+                SaveSettings();
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Quick adjustment slider (1-60 frames). Use input field above for values > 60.");
+            }
+
+            // Show effective rate information
+            if (frame_interval_int > 0) {
+                ImGui::TextColored(ui::colors::TEXT_DIMMED, "  At 60 FPS: ~%.1f fires/sec | At 120 FPS: ~%.1f fires/sec",
+                    60.0f / frame_interval_int, 120.0f / frame_interval_int);
             }
 
             ImGui::Spacing();

@@ -2,13 +2,31 @@
 # This script builds only the zzz_display_commander.addon64 file
 
 param(
-    [string]$BuildType = "RelWithDebInfo"
+    [string]$BuildType = "RelWithDebInfo",
+    [switch]$Experimental
 )
 
 Write-Host "Building Display Commander addon with configuration: $BuildType..." -ForegroundColor Green
 
+# Build CMake command with conditional experimental features flag
+$cmakeArgs = @(
+    "-S", ".",
+    "-B", "build",
+    "-G", "Ninja",
+    "-DCMAKE_BUILD_TYPE=$BuildType",
+    "-DEXPERIMENTAL_TAB=ON"
+)
+
+if ($Experimental) {
+    $cmakeArgs += "-DEXPERIMENTAL_FEATURES=ON"
+    Write-Host "Experimental features: ENABLED" -ForegroundColor Yellow
+} else {
+    $cmakeArgs += "-DEXPERIMENTAL_FEATURES=OFF"
+    Write-Host "Experimental features: DISABLED" -ForegroundColor Gray
+}
+
 # Configure and build only the display commander addon
-cmake -S . -B build -G Ninja "-DCMAKE_BUILD_TYPE=$BuildType" -DEXPERIMENTAL_TAB=ON
+cmake $cmakeArgs
 cmake --build build --config "$BuildType" --target zzz_display_commander
 
 # Check if build was successful

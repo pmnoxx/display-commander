@@ -106,7 +106,9 @@ void OnRegisterOverlayDisplayCommander(reshade::api::effect_runtime* runtime) {
     __try {
 #endif
         // Update UI draw time for auto-click optimization
-        autoclick::UpdateLastUIDrawTime();
+        if (enabled_experimental_features) {
+            autoclick::UpdateLastUIDrawTime();
+        }
 
         ui::new_ui::NewUISystem::GetInstance().Draw(runtime);
 
@@ -151,7 +153,9 @@ void OnInitEffectRuntime(reshade::api::effect_runtime* runtime) {
             initialized_with_hwnd = true;
 
             // Start the auto-click thread (always running, sleeps when disabled)
-            autoclick::StartAutoClickThread();
+            if (enabled_experimental_features) {
+                autoclick::StartAutoClickThread();
+            }
         }
 #ifdef TRY_CATCH_BLOCKS
     } __except (EXCEPTION_EXECUTE_HANDLER) {
@@ -178,7 +182,9 @@ bool OnReShadeOverlayOpen(reshade::api::effect_runtime* runtime, bool open, resh
     }
 
     // Update auto-click UI state for optimization
-    autoclick::UpdateUIOverlayState(open);
+    if (enabled_experimental_features) {
+        autoclick::UpdateUIOverlayState(open);
+    }
 
     return false;  // Don't prevent ReShade from opening/closing the overlay
 }

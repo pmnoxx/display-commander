@@ -43,6 +43,7 @@ message(STATUS "Build time: ${BUILD_TIME}")
 
 # Build options
 option(EXPERIMENTAL_TAB "Enable experimental tab functionality" OFF)
+option(EXPERIMENTAL_FEATURES "Enable experimental features (e.g., autofire)" OFF)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)

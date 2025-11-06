@@ -1,4 +1,5 @@
 #include "timing.hpp"
+#include "../globals.hpp"
 #include "../hooks/timeslowdown_hooks.hpp"
 #include "../utils.hpp"
 #include "../utils/logging.hpp"
@@ -224,7 +225,7 @@ void wait_until_ns(LONGLONG target_ns, HANDLE &timer_handle) {
 
 LONGLONG get_now_qpc() {
     LARGE_INTEGER now_ticks = {};
-    if (display_commanderhooks::QueryPerformanceCounter_Original) {
+    if (enabled_experimental_features && display_commanderhooks::QueryPerformanceCounter_Original) {
         display_commanderhooks::QueryPerformanceCounter_Original(&now_ticks);
     } else {
         QueryPerformanceCounter(&now_ticks);
@@ -235,7 +236,7 @@ LONGLONG get_now_qpc() {
 // Global timing function
 LONGLONG get_now_ns() {
     LARGE_INTEGER now_ticks = {};
-    if (display_commanderhooks::QueryPerformanceCounter_Original) {
+    if (enabled_experimental_features && display_commanderhooks::QueryPerformanceCounter_Original) {
         display_commanderhooks::QueryPerformanceCounter_Original(&now_ticks);
     } else {
         QueryPerformanceCounter(&now_ticks);

@@ -66,6 +66,7 @@ void InitializeHotkeyDefinitions() {
             "",
             "Toggle Time Slowdown feature",
             []() {
+                if (!enabled_experimental_features) return;
                 bool current_state = settings::g_experimentalTabSettings.timeslowdown_enabled.GetValue();
                 bool new_state = !current_state;
                 settings::g_experimentalTabSettings.timeslowdown_enabled.SetValue(new_state);
@@ -95,6 +96,7 @@ void InitializeHotkeyDefinitions() {
             "",
             "Toggle Auto-Click sequences (requires advanced settings)",
             []() {
+                if (!enabled_experimental_features) return;
                 LogInfo("Auto-Click hotkey detected - toggling auto-click");
                 autoclick::ToggleAutoClickEnabled();
             }
@@ -149,9 +151,11 @@ void InitializeHotkeyDefinitions() {
         // Load parsed shortcuts from settings
         g_hotkey_definitions[0].parsed = ParseHotkeyString(settings.hotkey_mute_unmute.GetValue());
         g_hotkey_definitions[1].parsed = ParseHotkeyString(settings.hotkey_background_toggle.GetValue());
-        g_hotkey_definitions[2].parsed = ParseHotkeyString(settings.hotkey_timeslowdown.GetValue());
+        if (enabled_experimental_features) {
+            g_hotkey_definitions[2].parsed = ParseHotkeyString(settings.hotkey_timeslowdown.GetValue());
+            g_hotkey_definitions[4].parsed = ParseHotkeyString(settings.hotkey_autoclick.GetValue());
+        }
         g_hotkey_definitions[3].parsed = ParseHotkeyString(settings.hotkey_adhd_toggle.GetValue());
-        g_hotkey_definitions[4].parsed = ParseHotkeyString(settings.hotkey_autoclick.GetValue());
         g_hotkey_definitions[5].parsed = ParseHotkeyString(settings.hotkey_input_blocking.GetValue());
         g_hotkey_definitions[6].parsed = ParseHotkeyString(settings.hotkey_display_commander_ui.GetValue());
         g_hotkey_definitions[7].parsed = ParseHotkeyString(settings.hotkey_performance_overlay.GetValue());
@@ -323,9 +327,11 @@ void DrawHotkeysTab() {
         // Update parsed shortcuts from settings
         g_hotkey_definitions[0].parsed = ParseHotkeyString(settings.hotkey_mute_unmute.GetValue());
         g_hotkey_definitions[1].parsed = ParseHotkeyString(settings.hotkey_background_toggle.GetValue());
-        g_hotkey_definitions[2].parsed = ParseHotkeyString(settings.hotkey_timeslowdown.GetValue());
+        if (enabled_experimental_features) {
+            g_hotkey_definitions[2].parsed = ParseHotkeyString(settings.hotkey_timeslowdown.GetValue());
+            g_hotkey_definitions[4].parsed = ParseHotkeyString(settings.hotkey_autoclick.GetValue());
+        }
         g_hotkey_definitions[3].parsed = ParseHotkeyString(settings.hotkey_adhd_toggle.GetValue());
-        g_hotkey_definitions[4].parsed = ParseHotkeyString(settings.hotkey_autoclick.GetValue());
         g_hotkey_definitions[5].parsed = ParseHotkeyString(settings.hotkey_input_blocking.GetValue());
         g_hotkey_definitions[6].parsed = ParseHotkeyString(settings.hotkey_display_commander_ui.GetValue());
         g_hotkey_definitions[7].parsed = ParseHotkeyString(settings.hotkey_performance_overlay.GetValue());
@@ -339,9 +345,9 @@ void DrawHotkeysTab() {
             switch (i) {
                 case 0: setting_ptr = &settings.hotkey_mute_unmute; break;
                 case 1: setting_ptr = &settings.hotkey_background_toggle; break;
-                case 2: setting_ptr = &settings.hotkey_timeslowdown; break;
+                case 2: if (enabled_experimental_features) setting_ptr = &settings.hotkey_timeslowdown; break;
                 case 3: setting_ptr = &settings.hotkey_adhd_toggle; break;
-                case 4: setting_ptr = &settings.hotkey_autoclick; break;
+                case 4: if (enabled_experimental_features) setting_ptr = &settings.hotkey_autoclick; break;
                 case 5: setting_ptr = &settings.hotkey_input_blocking; break;
                 case 6: setting_ptr = &settings.hotkey_display_commander_ui; break;
                 case 7: setting_ptr = &settings.hotkey_performance_overlay; break;

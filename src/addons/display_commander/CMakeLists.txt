@@ -18,6 +18,10 @@ if(EXPERIMENTAL_TAB)
   target_compile_definitions(zzz_display_commander PRIVATE EXPERIMENTAL_TAB=1)
 endif()
 
+if(EXPERIMENTAL_FEATURES)
+  target_compile_definitions(zzz_display_commander PRIVATE EXPERIMENTAL_FEATURES=1)
+endif()
+
 # Add git commit count as build number
 target_compile_definitions(zzz_display_commander PRIVATE GIT_COMMIT_COUNT=${GIT_COMMIT_COUNT})
 

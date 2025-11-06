@@ -929,7 +929,9 @@ bool InstallApiHooks() {
     // ### SAME LIBRARY ###
     InstallWindowsMessageHooks();
 
-    InstallTimeslowdownHooks();
+    if (enabled_experimental_features) {
+        InstallTimeslowdownHooks();
+    }
 
     InstallProcessExitHooks();
 

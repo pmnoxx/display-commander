@@ -38,6 +38,13 @@
 // Constants
 #define DEBUG_LEVEL_0
 
+// Experimental features flag - allows code to compile in both cases
+#ifdef EXPERIMENTAL_FEATURES
+constexpr bool enabled_experimental_features = true;
+#else
+constexpr bool enabled_experimental_features = false;
+#endif
+
 
 enum class DeviceTypeDC {
     DX9,

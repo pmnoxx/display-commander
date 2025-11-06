@@ -4,6 +4,7 @@
  */
 
 #include "input_remapping.hpp"
+#include "../globals.hpp"
 #include "../utils/logging.hpp"
 #include "utils/srwlock_wrapper.hpp"
 #include "../hooks/timeslowdown_hooks.hpp"
@@ -14,7 +15,7 @@ namespace display_commander::input_remapping {
 
 // Helper function to get original GetTickCount64 value (unhooked)
 static ULONGLONG GetOriginalTickCount64() {
-    if (display_commanderhooks::GetTickCount64_Original) {
+    if (enabled_experimental_features && display_commanderhooks::GetTickCount64_Original) {
         return display_commanderhooks::GetTickCount64_Original();
     } else {
         return GetTickCount64();

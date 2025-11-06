@@ -1763,6 +1763,15 @@ void DrawImportantInfo() {
             ImGui::SetTooltip("Shows the current FPS counter in the main ReShade overlay.");
         }
         ImGui::SameLine();
+        // show refresh rate
+        bool show_refresh_rate = settings::g_mainTabSettings.show_refresh_rate.GetValue();
+        if (ImGui::Checkbox("Refresh Rate", &show_refresh_rate)) {
+            settings::g_mainTabSettings.show_refresh_rate.SetValue(show_refresh_rate);
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Shows the current display refresh rate in the main ReShade overlay.");
+        }
+        ImGui::SameLine();
         // CPU usage
         bool show_cpu_usage = settings::g_mainTabSettings.show_cpu_usage.GetValue();
         if (ImGui::Checkbox("CPU Usage", &show_cpu_usage)) {
@@ -1821,6 +1830,15 @@ void DrawImportantInfo() {
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Shows a graph of frame times in the overlay.");
+        }
+
+        ImGui::Spacing();
+        // Overlay background transparency slider
+        if (SliderFloatSetting(settings::g_mainTabSettings.overlay_background_alpha, "Overlay Background Transparency", "%.2f")) {
+            // Setting is automatically saved by SliderFloatSetting
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Controls the transparency of the overlay background. 0.0 = fully transparent, 1.0 = fully opaque.");
         }
 
     }
@@ -2076,13 +2094,13 @@ void DrawImportantInfo() {
             // Current refresh rate (large, prominent display)
             ImGui::Text("Measured Refresh Rate:");
             ImGui::SameLine();
-            ImGui::TextColored(ui::colors::TEXT_HIGHLIGHT, "%.2f Hz", stats.smoothed_rate);
+            ImGui::TextColored(ui::colors::TEXT_HIGHLIGHT, "%.1f Hz", stats.smoothed_rate);
 
             // Detailed statistics
             ImGui::Indent();
-            ImGui::Text("Current: %.2f Hz", stats.current_rate);
-            ImGui::Text("Min: %.2f Hz", stats.min_rate);
-            ImGui::Text("Max: %.2f Hz", stats.max_rate);
+            ImGui::Text("Current: %.1f Hz", stats.current_rate);
+            ImGui::Text("Min: %.1f Hz", stats.min_rate);
+            ImGui::Text("Max: %.1f Hz", stats.max_rate);
             ImGui::Text("Samples: %u", stats.sample_count);
             ImGui::Unindent();
 

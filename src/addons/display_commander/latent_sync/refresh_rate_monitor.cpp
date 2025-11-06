@@ -2,11 +2,16 @@
 #include "../utils/logging.hpp"
 #include "../utils/srwlock_wrapper.hpp"
 #include "../utils/timing.hpp"
+#include "../hooks/dxgi/dxgi_present_hooks.hpp"
 #include <algorithm>
 #include <dxgi.h>
 #include <iostream>
 #include <sstream>
 #include <iomanip>
+
+// Undefine min and max macros to avoid conflicts with std::min and std::max
+#undef max
+#undef min
 
 // Simple logging wrapper to avoid dependency issues
 namespace {
@@ -24,6 +29,8 @@ RefreshRateMonitor::RefreshRateMonitor() {
     m_first_sample = true;
     m_initialization_failed = false;
     m_error_message.clear();
+    m_last_present_refresh_count = 0;
+    m_total_frames_displayed = 0;
 }
 
 RefreshRateMonitor::~RefreshRateMonitor() {
@@ -107,6 +114,65 @@ void RefreshRateMonitor::CleanupWaitForVBlank() {
         m_dxgi_factory->Release();
         m_dxgi_factory = nullptr;
     }
+    // Note: m_dxgi_swapchain is not owned by us, so we don't release it
+    m_dxgi_swapchain = nullptr;
+}
+
+LONGLONG RefreshRateMonitor::GetCurrentVBlankTime() {
+    // Try to get time from GetFrameStatistics if swapchain is available
+    // This is more accurate as it gives us the exact QPC time of the vblank
+    if (m_dxgi_swapchain != nullptr) {
+        DXGI_FRAME_STATISTICS stats = {};
+        HRESULT hr = m_dxgi_swapchain->GetFrameStatistics(&stats);
+        if (SUCCEEDED(hr)) {
+            // SyncQPCTime is a LARGE_INTEGER containing QPC ticks
+            // Convert to nanoseconds using QPC_TO_NS
+            LONGLONG qpc_ticks = stats.SyncQPCTime.QuadPart;
+            return qpc_ticks * utils::QPC_TO_NS;
+        }
+    }
+
+    // Fallback: try to get swapchain from tracked swapchains
+    // Get the first tracked swapchain and try to use its frame statistics
+    auto tracked_swapchains = display_commanderhooks::dxgi::GetAllTrackedSwapchains();
+    if (!tracked_swapchains.empty()) {
+        IDXGISwapChain* swapchain = tracked_swapchains[0];
+        if (swapchain != nullptr) {
+            DXGI_FRAME_STATISTICS stats = {};
+            HRESULT hr = swapchain->GetFrameStatistics(&stats);
+            if (SUCCEEDED(hr)) {
+                LONGLONG qpc_ticks = stats.SyncQPCTime.QuadPart;
+                return qpc_ticks * utils::QPC_TO_NS;
+            }
+        }
+    }
+
+    // Final fallback: use get_now_ns()
+    return utils::get_now_ns();
+}
+
+bool RefreshRateMonitor::GetFrameStatistics(DXGI_FRAME_STATISTICS& stats) {
+    // Try to get frame statistics from stored swapchain
+    if (m_dxgi_swapchain != nullptr) {
+        HRESULT hr = m_dxgi_swapchain->GetFrameStatistics(&stats);
+        if (SUCCEEDED(hr)) {
+            return true;
+        }
+    }
+
+    // Fallback: try to get swapchain from tracked swapchains
+    auto tracked_swapchains = display_commanderhooks::dxgi::GetAllTrackedSwapchains();
+    if (!tracked_swapchains.empty()) {
+        IDXGISwapChain* swapchain = tracked_swapchains[0];
+        if (swapchain != nullptr) {
+            HRESULT hr = swapchain->GetFrameStatistics(&stats);
+            if (SUCCEEDED(hr)) {
+                return true;
+            }
+        }
+    }
+
+    return false;
 }
 
 std::string RefreshRateMonitor::GetStatusString() const {
@@ -163,7 +229,15 @@ void RefreshRateMonitor::MonitoringThread() {
     }
 
     // Get current time for first measurement
-    m_last_vblank_time = utils::get_now_ns();
+    m_last_vblank_time = GetCurrentVBlankTime();
+
+    // Initialize frame count tracking
+    DXGI_FRAME_STATISTICS stats = {};
+    if (GetFrameStatistics(stats)) {
+        m_last_present_refresh_count = stats.PresentRefreshCount;
+    } else {
+        m_last_present_refresh_count = 0;
+    }
 
     // Main monitoring loop
     while (!m_should_stop.load()) {
@@ -182,8 +256,31 @@ void RefreshRateMonitor::MonitoringThread() {
                 continue;
             }
 
-            // Get current time
-            LONGLONG current_time = utils::get_now_ns();
+            // Get current time (prefer GetFrameStatistics if available)
+            LONGLONG current_time = GetCurrentVBlankTime();
+
+            // Get frame statistics to track number of frames displayed
+            DXGI_FRAME_STATISTICS stats = {};
+            bool has_frame_stats = GetFrameStatistics(stats);
+            uint32_t frames_displayed = 1; // Default to 1 frame if we can't get stats
+
+            if (has_frame_stats) {
+                if (!m_first_sample.load() && m_last_present_refresh_count > 0) {
+                    // Calculate how many frames were displayed since last measurement
+                    // PresentRefreshCount can wrap around, so handle that
+                    if (stats.PresentRefreshCount >= m_last_present_refresh_count) {
+                        frames_displayed = stats.PresentRefreshCount - m_last_present_refresh_count;
+                    } else {
+                        // Wrapped around (unlikely but possible)
+                        frames_displayed = stats.PresentRefreshCount + (UINT_MAX - m_last_present_refresh_count) + 1;
+                    }
+                    // Clamp to reasonable range (1-10 frames)
+                    if (frames_displayed == 0) frames_displayed = 1;
+                    frames_displayed = (std::min)(frames_displayed, static_cast<uint32_t>(10));
+                }
+                m_last_present_refresh_count = stats.PresentRefreshCount;
+                m_total_frames_displayed.fetch_add(frames_displayed);
+            }
 
             if (!m_first_sample.load()) {
                 // Calculate time difference
@@ -191,15 +288,16 @@ void RefreshRateMonitor::MonitoringThread() {
                 double duration_seconds = duration_ns / 1e9;
 
                 if (duration_seconds > 0.0) {
-                    // Calculate refresh rate
-                    double refresh_rate = 1.0 / duration_seconds;
+                    // Calculate refresh rate accounting for number of frames displayed
+                    // If multiple frames were displayed, adjust the rate accordingly
+                    double refresh_rate = static_cast<double>(frames_displayed) / duration_seconds;
 
                     // Update measured refresh rate
                     m_measured_refresh_rate = refresh_rate;
 
                     // Update smoothed refresh rate (exponential moving average)
                     double current_smoothed = m_smoothed_refresh_rate.load();
-                    double alpha = 0.1; // Smoothing factor
+                    double alpha = 1;//0.1; // Smoothing factor
                     double new_smoothed = (current_smoothed * (1.0 - alpha)) + (refresh_rate * alpha);
                     m_smoothed_refresh_rate = new_smoothed;
 
@@ -226,8 +324,9 @@ void RefreshRateMonitor::MonitoringThread() {
 
                     // Log every 60 samples (approximately once per second at 60Hz)
                     if (m_sample_count.load() % 60 == 0) {
-                        LogInfo("Refresh rate: %.2f Hz (smoothed: %.2f Hz, samples: %u)",
-                               refresh_rate, new_smoothed, m_sample_count.load());
+                        LogInfo("Refresh rate: %.2f Hz (smoothed: %.2f Hz, frames: %u, samples: %u, total frames: %llu)",
+                               refresh_rate, new_smoothed, frames_displayed, m_sample_count.load(),
+                               static_cast<uint64_t>(m_total_frames_displayed.load()));
                     }
                 }
             } else {

@@ -63,7 +63,7 @@ private:
     mutable SRWLOCK m_recent_samples_mutex = SRWLOCK_INIT;
 
     // Timing data
-    std::chrono::high_resolution_clock::time_point m_last_vblank_time;
+    LONGLONG m_last_vblank_time{0};
     std::atomic<bool> m_first_sample{true};
 
     // DXGI interfaces for WaitForVBlank

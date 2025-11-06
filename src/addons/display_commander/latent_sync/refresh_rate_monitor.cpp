@@ -1,6 +1,7 @@
 #include "refresh_rate_monitor.hpp"
 #include "../utils/logging.hpp"
 #include "../utils/srwlock_wrapper.hpp"
+#include "../utils/timing.hpp"
 #include <algorithm>
 #include <dxgi.h>
 #include <iostream>
@@ -162,7 +163,7 @@ void RefreshRateMonitor::MonitoringThread() {
     }
 
     // Get current time for first measurement
-    m_last_vblank_time = std::chrono::high_resolution_clock::now();
+    m_last_vblank_time = utils::get_now_ns();
 
     // Main monitoring loop
     while (!m_should_stop.load()) {
@@ -182,12 +183,12 @@ void RefreshRateMonitor::MonitoringThread() {
             }
 
             // Get current time
-            auto current_time = std::chrono::high_resolution_clock::now();
+            LONGLONG current_time = utils::get_now_ns();
 
             if (!m_first_sample.load()) {
                 // Calculate time difference
-                auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(current_time - m_last_vblank_time);
-                double duration_seconds = duration.count() / 1e9;
+                LONGLONG duration_ns = current_time - m_last_vblank_time;
+                double duration_seconds = duration_ns / 1e9;
 
                 if (duration_seconds > 0.0) {
                     // Calculate refresh rate

@@ -332,6 +332,10 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
         ui::new_ui::DrawFrameTimeGraphOverlay();
     }
 
+    if (settings::g_mainTabSettings.show_refresh_rate_frame_times.GetValue()) {
+        ui::new_ui::DrawRefreshRateFrameTimesGraph();
+    }
+
     ImGui::End();
 
     // Test widget that appears in the main ReShade overlay

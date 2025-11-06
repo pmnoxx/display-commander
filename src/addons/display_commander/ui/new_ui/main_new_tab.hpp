@@ -31,5 +31,6 @@ void DrawFrameTimeGraph();
 
 // Draw compact frame time graph for overlay (fixed width)
 void DrawFrameTimeGraphOverlay();
+void DrawRefreshRateFrameTimesGraph();
 
 }  // namespace ui::new_ui

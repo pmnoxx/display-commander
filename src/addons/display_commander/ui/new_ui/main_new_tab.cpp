@@ -155,6 +155,58 @@ void DrawFrameTimeGraph() {
     }
 }
 
+// Draw refresh rate frame times graph (display refresh intervals)
+void DrawRefreshRateFrameTimesGraph() {
+    // Convert refresh rates to frame times (ms) - lock-free iteration
+    static std::vector<float> frame_times;
+    frame_times.clear();
+    frame_times.reserve(256); // Reserve for max samples
+
+    ::dxgi::fps_limiter::ForEachRefreshRateSample([&](double rate) {
+        if (rate > 0.0) {
+            // Convert Hz to frame time in milliseconds
+            frame_times.push_back(static_cast<float>(1000.0 / rate));
+        }
+    });
+
+    if (frame_times.empty()) {
+        return; // Don't show anything if no valid data
+    }
+
+    // Calculate statistics for the graph
+    float max_frame_time = *std::ranges::max_element(frame_times);
+    float avg_frame_time = 0.0f;
+    for (float ft : frame_times) {
+        avg_frame_time += ft;
+    }
+    avg_frame_time /= static_cast<float>(frame_times.size());
+
+    // Fixed width for overlay (compact)
+    ImVec2 graph_size = ImVec2(300.0f, 60.0f); // Fixed 300px width, 60px height
+    float scale_min = 0.0f;
+    float scale_max = max(avg_frame_time * 3.0f, max_frame_time + 1.0f); // Add some padding but less aggressive
+
+    // Create overlay text with current refresh rate frame time
+   //.. std::string overlay_text = "Refresh Frame Time: " + std::to_string(frame_times.back()).substr(0, 4) + " ms";
+   // overlay_text += " | Avg: " + std::to_string(avg_frame_time).substr(0, 4) + " ms";
+
+    // Draw compact refresh rate frame time graph
+    ImGui::PlotLines("##RefreshRateFrameTime",
+                     frame_times.data(),
+                     static_cast<int>(frame_times.size()),
+                     0, // values_offset
+                     nullptr, // overlay_text - no text for compact version
+                     scale_min,
+                     scale_max,
+                     graph_size);
+
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Refresh rate frame time graph showing display refresh intervals in milliseconds.\n"
+                         "Lower values = higher refresh rate.\n"
+                         "Spikes indicate refresh rate variations (VRR, power management, etc.).");
+    }
+}
+
 // Compact overlay version with fixed width
 void DrawFrameTimeGraphOverlay() {
     // Get frame time data from the performance ring buffer
@@ -1802,7 +1854,7 @@ void DrawImportantInfo() {
                 "Shows as 'GPU Duration' in the timing metrics below.");
         }
 
-        ImGui::SameLine();
+        // ImGui::SameLine();
         // Show Labels Control
         bool show_labels = settings::g_mainTabSettings.show_labels.GetValue();
         if (ImGui::Checkbox("Show labels", &show_labels)) {
@@ -1830,6 +1882,15 @@ void DrawImportantInfo() {
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Shows a graph of frame times in the overlay.");
+        }
+        ImGui::SameLine();
+        // Show Refresh Rate Frame Times Graph Control
+        bool show_refresh_rate_frame_times = settings::g_mainTabSettings.show_refresh_rate_frame_times.GetValue();
+        if (ImGui::Checkbox("Show refresh rate frame times", &show_refresh_rate_frame_times)) {
+            settings::g_mainTabSettings.show_refresh_rate_frame_times.SetValue(show_refresh_rate_frame_times);
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Shows a graph of refresh rate frame times (display refresh intervals) in the overlay.");
         }
 
         ImGui::Spacing();

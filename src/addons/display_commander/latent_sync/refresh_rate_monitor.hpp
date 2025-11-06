@@ -1,12 +1,12 @@
 #pragma once
 
 #include <atomic>
-#include <deque>
+#include <array>
 #include <string>
 #include <thread>
 #include <windows.h>
 #include <dxgi.h>
-#include "../utils/srwlock_wrapper.hpp"
+
 
 namespace dxgi::fps_limiter {
 
@@ -41,6 +41,33 @@ public:
     std::string GetStatusString() const;
     bool IsDataValid() const { return m_sample_count.load() > 0; }
 
+    // Iterate through recent samples (lock-free, thread-safe)
+    // The callback is called for each sample. Data may be slightly stale during iteration.
+    template<typename Callback>
+    void ForEachRecentSample(Callback&& callback) const {
+        // Snapshot atomic values for lock-free iteration
+        size_t count = m_recent_samples_count.load(std::memory_order_acquire);
+        size_t write_index = m_recent_samples_write_index.load(std::memory_order_acquire);
+
+        if (count == 0) {
+            return;
+        }
+
+        // Iterate through valid samples in chronological order (oldest to newest)
+        if (count < RECENT_SAMPLES_SIZE) {
+            // Buffer not full yet, iterate from start
+            for (size_t i = 0; i < count; ++i) {
+                callback(m_recent_samples[i]);
+            }
+        } else {
+            // Buffer is full, iterate starting from write_index (oldest)
+            for (size_t i = 0; i < RECENT_SAMPLES_SIZE; ++i) {
+                size_t idx = (write_index + i) % RECENT_SAMPLES_SIZE;
+                callback(m_recent_samples[idx]);
+            }
+        }
+    }
+
     // Signal monitoring thread (called from render thread after Present)
     void SignalPresent();
 
@@ -61,9 +88,11 @@ private:
     std::atomic<double> m_max_refresh_rate{0.0};
     std::atomic<uint32_t> m_sample_count{0};
 
-    // Rolling window of last 60 samples for min/max calculation
-    std::deque<double> m_recent_samples;
-    mutable SRWLOCK m_recent_samples_mutex = SRWLOCK_INIT;
+    // Rolling window of last 256 samples for min/max calculation (fixed-size circular buffer)
+    static constexpr size_t RECENT_SAMPLES_SIZE = 256;
+    std::array<double, RECENT_SAMPLES_SIZE> m_recent_samples{};
+    std::atomic<size_t> m_recent_samples_write_index{0}; // Current write position in circular buffer
+    std::atomic<size_t> m_recent_samples_count{0}; // Number of valid samples (0-256)
 
     // Timing data
     LONGLONG m_last_vblank_time{0};

@@ -7,10 +7,8 @@
 // Example of how to integrate RefreshRateMonitor with existing code
 namespace dxgi::fps_limiter {
 
-namespace {
 // Global instance of the refresh rate monitor
 std::unique_ptr<RefreshRateMonitor> g_refresh_rate_monitor;
-} // anonymous namespace
 
 // Function to start refresh rate monitoring
 void StartRefreshRateMonitoring() {

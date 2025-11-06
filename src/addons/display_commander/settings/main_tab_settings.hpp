@@ -89,6 +89,7 @@ class MainTabSettings {
     ui::new_ui::BoolSetting show_labels;
     ui::new_ui::BoolSetting show_clock;
     ui::new_ui::BoolSetting show_frame_time_graph;
+    ui::new_ui::BoolSetting show_refresh_rate_frame_times;
     ui::new_ui::BoolSetting show_cpu_usage;
     ui::new_ui::FloatSetting overlay_background_alpha;
 

@@ -687,6 +687,9 @@ std::atomic<bool> g_ngx_presets_initialized{false};
 SwapChainWrapperStats g_swapchain_wrapper_stats_proxy;
 SwapChainWrapperStats g_swapchain_wrapper_stats_native;
 
+// Cached frame statistics (updated in present detour, read by monitoring thread)
+std::atomic<std::shared_ptr<DXGI_FRAME_STATISTICS>> g_cached_frame_stats{nullptr};
+
 // Get DLSS Model Profile
 DLSSModelProfile GetDLSSModelProfile() {
     DLSSModelProfile profile;

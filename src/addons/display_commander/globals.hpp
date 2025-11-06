@@ -9,6 +9,7 @@
 #include <windows.h>
 
 #include <d3d11.h>
+#include <dxgi.h>
 #include <reshade_imgui.hpp>
 #include <winnt.h>
 #include <wrl/client.h>
@@ -1132,6 +1133,9 @@ extern HWND g_proxy_hwnd;
 // NGX preset initialization tracking
 extern std::atomic<bool> g_ngx_presets_initialized;
 
+// Cached frame statistics (updated in present detour, read by monitoring thread)
+extern std::atomic<std::shared_ptr<DXGI_FRAME_STATISTICS>> g_cached_frame_stats;
+
 // Swapchain wrapper statistics
 // Frame time ring buffer capacity (must be power of 2 for efficient modulo)
 constexpr size_t kSwapchainFrameTimeCapacity = 256;
@@ -1157,4 +1161,5 @@ extern SwapChainWrapperStats g_swapchain_wrapper_stats_native;
 void StartContinuousMonitoring();
 void StopContinuousMonitoring();
 void HandleReflexAutoConfigure();
+
 

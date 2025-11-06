@@ -1,12 +1,11 @@
 #include "refresh_rate_monitor.hpp"
 #include "../utils/logging.hpp"
-#include "../utils/srwlock_wrapper.hpp"
 #include "../utils/timing.hpp"
 #include "../globals.hpp"
-#include <algorithm>
 #include <dxgi.h>
 #include <dwmapi.h>
 #include <iostream>
+#include <limits>
 #include <sstream>
 #include <iomanip>
 
@@ -130,14 +129,13 @@ void RefreshRateMonitor::SignalPresent() {
 }
 
 bool RefreshRateMonitor::GetCurrentVBlankTime(DXGI_FRAME_STATISTICS& stats) {
-    // Try to get frame statistics from stored swapchain
-/*    if (m_dxgi_swapchain != nullptr) {
-        HRESULT hr = m_dxgi_swapchain->GetFrameStatistics(&stats);
-        if (SUCCEEDED(hr)) {
-            return true;
-        }
+    // First, try to get from cached frame statistics (updated in present detour)
+    auto cached_stats = g_cached_frame_stats.load();
+    if (cached_stats != nullptr) {
+        stats = *cached_stats;
+        return true;
     }
-*/
+
     // Fallback: try to get swapchain from tracked swapchains
     // Iterate through all tracked swapchains while holding the lock
     bool found = false;
@@ -203,8 +201,9 @@ void RefreshRateMonitor::MonitoringThread() {
 
     // Clear recent samples
     {
-        utils::SRWLockExclusive lock(m_recent_samples_mutex);
-        m_recent_samples.clear();
+        m_recent_samples_write_index.store(0, std::memory_order_release);
+        m_recent_samples_count.store(0, std::memory_order_release);
+        m_recent_samples.fill(0.0);
     }
 
     // Get current time for first measurement
@@ -288,21 +287,49 @@ void RefreshRateMonitor::MonitoringThread() {
                     double new_smoothed = (current_smoothed * (1.0 - alpha)) + (refresh_rate * alpha);
                     m_smoothed_refresh_rate = new_smoothed;
 
-                    // Update rolling window of last 60 samples
+                    // Update rolling window of last 256 samples (circular buffer, lock-free)
                     {
-                        utils::SRWLockExclusive lock(m_recent_samples_mutex);
-                        m_recent_samples.push_back(refresh_rate);
+                        // Get current write position
+                        size_t write_idx = m_recent_samples_write_index.load(std::memory_order_relaxed);
 
-                        // Keep only last 60 samples
-                        if (m_recent_samples.size() > 60) {
-                            m_recent_samples.pop_front();
+                        // Write to current position
+                        m_recent_samples[write_idx] = refresh_rate;
+
+                        // Advance write index (circular)
+                        size_t new_write_idx = (write_idx + 1) % RECENT_SAMPLES_SIZE;
+                        m_recent_samples_write_index.store(new_write_idx, std::memory_order_release);
+
+                        // Update count (capped at RECENT_SAMPLES_SIZE)
+                        size_t count = m_recent_samples_count.load(std::memory_order_relaxed);
+                        if (count < RECENT_SAMPLES_SIZE) {
+                            m_recent_samples_count.store(count + 1, std::memory_order_release);
                         }
 
-                        // Update min/max from recent samples
-                        if (!m_recent_samples.empty()) {
-                            auto minmax = std::minmax_element(m_recent_samples.begin(), m_recent_samples.end());
-                            m_min_refresh_rate = *minmax.first;
-                            m_max_refresh_rate = *minmax.second;
+                        // Update min/max from recent samples (lock-free iteration)
+                        count = m_recent_samples_count.load(std::memory_order_acquire);
+                        write_idx = m_recent_samples_write_index.load(std::memory_order_acquire);
+                        if (count > 0) {
+                            double min_val = (std::numeric_limits<double>::max)();
+                            double max_val = (std::numeric_limits<double>::lowest)();
+
+                            // Iterate through valid samples (handle circular buffer correctly)
+                            if (count < RECENT_SAMPLES_SIZE) {
+                                // Buffer not full yet, check samples from 0 to count
+                                for (size_t i = 0; i < count; ++i) {
+                                    if (m_recent_samples[i] < min_val) min_val = m_recent_samples[i];
+                                    if (m_recent_samples[i] > max_val) max_val = m_recent_samples[i];
+                                }
+                            } else {
+                                // Buffer is full, iterate starting from write_index (oldest)
+                                for (size_t i = 0; i < RECENT_SAMPLES_SIZE; ++i) {
+                                    size_t idx = (write_idx + i) % RECENT_SAMPLES_SIZE;
+                                    if (m_recent_samples[idx] < min_val) min_val = m_recent_samples[idx];
+                                    if (m_recent_samples[idx] > max_val) max_val = m_recent_samples[idx];
+                                }
+                            }
+
+                            m_min_refresh_rate.store(min_val, std::memory_order_release);
+                            m_max_refresh_rate.store(max_val, std::memory_order_release);
                         }
                     }
 

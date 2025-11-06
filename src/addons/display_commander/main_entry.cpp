@@ -31,7 +31,6 @@
 #include <psapi.h>
 #include <shlobj.h>
 #include <wrl/client.h>
-#include <chrono>
 #include <cmath>
 #include <reshade.hpp>
 
@@ -112,9 +111,9 @@ void OnRegisterOverlayDisplayCommander(reshade::api::effect_runtime* runtime) {
         ui::new_ui::NewUISystem::GetInstance().Draw(runtime);
 
         // Periodically save config to ensure settings are persisted
-        static auto last_save_time = std::chrono::steady_clock::now();
-        auto now = std::chrono::steady_clock::now();
-        if (std::chrono::duration_cast<std::chrono::seconds>(now - last_save_time).count() >= 5) {
+        static LONGLONG last_save_time = utils::get_now_ns();
+        LONGLONG now = utils::get_now_ns();
+        if ((now - last_save_time) >= 5 * utils::SEC_TO_NS) {
             display_commander::config::save_config();
             last_save_time = now;
         }

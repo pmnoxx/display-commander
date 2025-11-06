@@ -4,7 +4,6 @@
 #include <dinput.h>
 #include <string>
 #include <vector>
-#include <chrono>
 
 namespace display_commanderhooks {
 
@@ -41,7 +40,7 @@ struct DInputDeviceInfo {
     std::string device_name;
     DWORD device_type;
     std::string interface_name;
-    std::chrono::steady_clock::time_point creation_time;
+    LONGLONG creation_time; // Time in nanoseconds from get_now_ns()
 };
 
 // Device tracking functions

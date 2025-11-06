@@ -1,9 +1,9 @@
 #include "dualsense_widget.hpp"
 #include "../../utils.hpp"
 #include "../../utils/logging.hpp"
+#include "../../utils/timing.hpp"
 #include "../../hooks/dualsense_hooks.hpp"
 #include <reshade_imgui.hpp>
-#include <chrono>
 #include <vector>
 #include <windows.h>
 #include <setupapi.h>
@@ -213,9 +213,9 @@ void DualSenseWidget::DrawDeviceList() {
         }
 
         // Update device states periodically
-        static auto last_update = std::chrono::steady_clock::now();
-        auto now = std::chrono::steady_clock::now();
-        if (std::chrono::duration_cast<std::chrono::milliseconds>(now - last_update).count() > 100) {
+        static LONGLONG last_update = utils::get_now_ns();
+        LONGLONG now = utils::get_now_ns();
+        if ((now - last_update) > 100 * utils::NS_TO_MS) {
             UpdateDeviceStates();
             last_update = now;
         }

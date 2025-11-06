@@ -6,6 +6,7 @@
 #include "../../hooks/hid_statistics.hpp"
 #include "../../settings/experimental_tab_settings.hpp"
 #include "../../globals.hpp"
+#include "../../utils/timing.hpp"
 
 #include "../../res/forkawesome.h"
 #include <reshade_imgui.hpp>
@@ -251,9 +252,10 @@ void DrawHookStatsTab() {
                 ImGui::Text("%s", device.interface_name.c_str());
 
                 ImGui::TableSetColumnIndex(3);
-                auto now = std::chrono::steady_clock::now();
-                auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(now - device.creation_time);
-                ImGui::Text("%lld ms ago", duration.count());
+                LONGLONG now = utils::get_now_ns();
+                LONGLONG duration_ns = now - device.creation_time;
+                LONGLONG duration_ms = duration_ns / utils::NS_TO_MS;
+                ImGui::Text("%lld ms ago", duration_ms);
             }
 
             ImGui::EndTable();

@@ -5,9 +5,9 @@
 #include "../utils/general_utils.hpp"
 #include "../utils/logging.hpp"
 #include "../utils/srwlock_wrapper.hpp"
+#include "../utils/timing.hpp"
 #include "../settings/experimental_tab_settings.hpp"
 #include <MinHook.h>
-#include <chrono>
 #include <vector>
 #include <unordered_map>
 #include <dinput.h>
@@ -73,7 +73,7 @@ void TrackDInputDeviceCreation(const std::string& device_name, DWORD device_type
     info.device_name = device_name;
     info.device_type = device_type;
     info.interface_name = interface_name;
-    info.creation_time = std::chrono::steady_clock::now();
+    info.creation_time = utils::get_now_ns();
 
     g_dinput_devices.push_back(info);
 

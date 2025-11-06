@@ -28,6 +28,12 @@ This document tracks proposed features and ideas for future development. These a
 
 • DX9 -> DX9E swap chain upgrade
 
+• Refresh rate monitor
+
+## Working on
+
+• Independent window for Display Commander (ctrl-shift-delete)
+
 ## Proposals
 
 • PCL stats reporting (show PCV-AL latency in nvidia overlay)

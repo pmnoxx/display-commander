@@ -195,6 +195,7 @@ static const std::array<HookInfo, HOOK_COUNT> g_hook_info = {{
     // xinput1_4.dll hooks
     {"XInputGetState", DllGroup::XINPUT1_4},
     {"XInputGetStateEx", DllGroup::XINPUT1_4},
+    {"XInputSetState", DllGroup::XINPUT1_4},
 
     // kernel32.dll hooks
     {"Sleep", DllGroup::KERNEL32},
@@ -1408,6 +1409,7 @@ LONG WINAPI DisplayConfigGetDeviceInfo_Detour(DISPLAYCONFIG_DEVICE_INFO_HEADER *
     LONG result = DisplayConfigGetDeviceInfo_Original ? DisplayConfigGetDeviceInfo_Original(requestPacket)
                                                      : DisplayConfigGetDeviceInfo(requestPacket);
 
+    bool supressed_hdr = false;
     // Hide HDR capabilities if enabled and this is an advanced color info request
     if (SUCCEEDED(result) && requestPacket != nullptr && s_hide_hdr_capabilities.load()) {
         if (requestPacket->type == DISPLAYCONFIG_DEVICE_INFO_GET_ADVANCED_COLOR_INFO) {
@@ -1424,11 +1426,15 @@ LONG WINAPI DisplayConfigGetDeviceInfo_Detour(DISPLAYCONFIG_DEVICE_INFO_HEADER *
                 LogInfo("HDR hiding: DisplayConfigGetDeviceInfo - hiding advanced color support");
                 hdr_hidden_log_count++;
             }
+            supressed_hdr = true;
         }
     }
+    if (!supressed_hdr) {
+        g_hook_stats[HOOK_DisplayConfigGetDeviceInfo].increment_unsuppressed();
+    }
+
 
     // Track unsuppressed calls
-    g_hook_stats[HOOK_DisplayConfigGetDeviceInfo].increment_unsuppressed();
 
     return result;
 }

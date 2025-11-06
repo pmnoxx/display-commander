@@ -84,11 +84,12 @@ enum HookIndex {
     HOOK_MapVirtualKeyEx,
     HOOK_DisplayConfigGetDeviceInfo,
 
-    // xinput1_4.dll hooks (35-36)
+    // xinput1_4.dll hooks (35-37)
     HOOK_XInputGetState,
     HOOK_XInputGetStateEx,
+    HOOK_XInputSetState,
 
-    // kernel32.dll hooks (37-43)
+    // kernel32.dll hooks (38-44)
     HOOK_Sleep,
     HOOK_SleepEx,
     HOOK_WaitForSingleObject,

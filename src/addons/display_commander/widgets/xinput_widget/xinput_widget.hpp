@@ -102,6 +102,9 @@ struct XInputSharedState {
     std::atomic<float> right_stick_center_x{0.0f}; // Right stick X center offset
     std::atomic<float> right_stick_center_y{0.0f}; // Right stick Y center offset
 
+    // Vibration amplification
+    std::atomic<float> vibration_amplification{1.0f}; // Vibration amplification multiplier (1.0 = normal, 2.0 = double)
+
     // Last update time for each controller
     std::array<std::atomic<uint64_t>, XUSER_MAX_COUNT> last_update_times;
 

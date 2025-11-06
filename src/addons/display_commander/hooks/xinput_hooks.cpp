@@ -37,6 +37,7 @@ const std::array<const char*, 5> xinput_modules = {
 
 std::array<XInputGetStateEx_pfn, 5> original_xinput_get_state_ex_procs = {};
 std::array<XInputGetState_pfn, 5> original_xinput_get_state_procs = {};
+std::array<XInputSetState_pfn, 5> original_xinput_set_state_procs = {};
 
 
 // Initialize XInput function pointers for direct calls
@@ -381,6 +382,53 @@ DWORD WINAPI XInputGetStateEx_Detour(DWORD dwUserIndex, XINPUT_STATE *pState) {
     return result;
 }
 
+// Hooked XInputSetState function
+DWORD WINAPI XInputSetState_Detour(DWORD dwUserIndex, XINPUT_VIBRATION *pVibration) {
+    if (pVibration == nullptr) {
+        return ERROR_INVALID_PARAMETER;
+    }
+    if (XInputSetState_Direct == nullptr) {
+        return ERROR_DEVICE_NOT_CONNECTED;
+    }
+
+    // Track hook call statistics
+    g_hook_stats[HOOK_XInputSetState].increment_total();
+
+    // Get vibration amplification setting
+    auto shared_state = display_commander::widgets::xinput_widget::XInputWidget::GetSharedState();
+    float amplification = 1.0f;
+    if (shared_state) {
+        amplification = shared_state->vibration_amplification.load();
+    }
+
+    // Apply amplification if enabled (amplification != 1.0)
+    XINPUT_VIBRATION vibration = *pVibration;
+    if (amplification != 1.0f) {
+        // Convert WORD (0-65535) to float, apply amplification, clamp, and convert back
+        float left_speed = static_cast<float>(vibration.wLeftMotorSpeed);
+        float right_speed = static_cast<float>(vibration.wRightMotorSpeed);
+
+        left_speed *= amplification;
+        right_speed *= amplification;
+
+        // Clamp to valid range (0-65535)
+        left_speed = (left_speed < 0.0f) ? 0.0f : (left_speed > 65535.0f) ? 65535.0f : left_speed;
+        right_speed = (right_speed < 0.0f) ? 0.0f : (right_speed > 65535.0f) ? 65535.0f : right_speed;
+
+        vibration.wLeftMotorSpeed = static_cast<WORD>(left_speed);
+        vibration.wRightMotorSpeed = static_cast<WORD>(right_speed);
+    }
+
+    // Call original function with amplified vibration
+    DWORD result = XInputSetState_Direct(dwUserIndex, &vibration);
+
+    if (result == ERROR_SUCCESS) {
+        g_hook_stats[HOOK_XInputSetState].increment_unsuppressed();
+    }
+
+    return result;
+}
+
 bool InstallXInputHooks() {
     if (!settings::g_developerTabSettings.load_xinput.GetValue()) {
         LogInfo("XInput hooks not installed - load_xinput is disabled");
@@ -487,8 +535,31 @@ bool InstallXInputHooks() {
             }
         }
 
-        if (update) {
+        // Hook XInputSetState
+        FARPROC xinput_set_state_proc = GetProcAddress(xinput_module, "XInputSetState");
+        if (xinput_set_state_proc != nullptr) {
+            LogInfo("Found XInputSetState in %s at: 0x%p", module_name, xinput_set_state_proc);
+
+            if (MH_CreateHook(xinput_set_state_proc, XInputSetState_Detour, reinterpret_cast<LPVOID *>(&original_xinput_set_state_procs[idx])) ==
+            MH_OK) {
+                if (update) {
+                    XInputSetState_Direct = original_xinput_set_state_procs[idx];
+                }
+                if (MH_EnableHook(xinput_set_state_proc) == MH_OK) {
+                    LogInfo("Successfully hooked XInputSetState in %s", module_name);
+                } else {
+                    MH_RemoveHook(xinput_set_state_proc);
+                }
+            }
+        } else if (update) {
+            // Fallback: get function pointer directly if hooking failed
             XInputSetState_Direct = (XInputSetState_pfn)GetProcAddress(xinput_module, "XInputSetState");
+        }
+
+        if (update) {
+            if (XInputSetState_Direct == nullptr) {
+                XInputSetState_Direct = (XInputSetState_pfn)GetProcAddress(xinput_module, "XInputSetState");
+            }
             XInputGetBatteryInformation_Direct = (XInputGetBatteryInformation_pfn)GetProcAddress(xinput_module, "XInputGetBatteryInformation");
         }
 

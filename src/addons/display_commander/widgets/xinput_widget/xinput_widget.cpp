@@ -305,6 +305,32 @@ void XInputWidget::DrawSettings() {
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Reset all stick center offsets to 0.0");
         }
+
+        ImGui::Separator();
+        ImGui::Text("Vibration Amplification");
+        ImGui::Text("Amplify controller vibration/rumble intensity:");
+
+        // Vibration amplification setting
+        float vibration_amp = g_shared_state->vibration_amplification.load();
+        float vibration_amp_percent = vibration_amp * 100.0f;
+        if (ImGui::SliderFloat("Vibration Amplification", &vibration_amp_percent, 0.0f, 1000.0f, "%.0f%%")) {
+            g_shared_state->vibration_amplification.store(vibration_amp_percent / 100.0f);
+            SaveSettings();
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip(
+                "Amplify controller vibration intensity (100%% = normal, 200%% = double, 500%% = maximum).\n"
+                "This affects all vibration commands from the game.");
+        }
+
+        // Reset vibration amplification button
+        if (ImGui::Button("Reset Vibration Amplification")) {
+            g_shared_state->vibration_amplification.store(1.0f);
+            SaveSettings();
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Reset vibration amplification to 100%% (normal)");
+        }
     }
 
     ImGui::Unindent();
@@ -1052,6 +1078,12 @@ void XInputWidget::LoadSettings() {
     if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "RightStickCenterY", right_center_y)) {
         g_shared_state->right_stick_center_y.store(right_center_y);
     }
+
+    // Load vibration amplification setting
+    float vibration_amp;
+    if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "VibrationAmplification", vibration_amp)) {
+        g_shared_state->vibration_amplification.store(vibration_amp);
+    }
 }
 
 void XInputWidget::SaveSettings() {
@@ -1103,6 +1135,10 @@ void XInputWidget::SaveSettings() {
 
     display_commander::config::set_config_value("DisplayCommander.XInputWidget", "RightStickCenterY",
                               g_shared_state->right_stick_center_y.load());
+
+    // Save vibration amplification setting
+    display_commander::config::set_config_value("DisplayCommander.XInputWidget", "VibrationAmplification",
+                              g_shared_state->vibration_amplification.load());
 }
 
 std::shared_ptr<XInputSharedState> XInputWidget::GetSharedState() { return g_shared_state; }

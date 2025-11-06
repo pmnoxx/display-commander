@@ -21,6 +21,7 @@ extern XInputGetBatteryInformation_pfn XInputGetBatteryInformation_Direct;
 // Hooked XInput functions
 DWORD WINAPI XInputGetState_Detour(DWORD dwUserIndex, XINPUT_STATE *pState);
 DWORD WINAPI XInputGetStateEx_Detour(DWORD dwUserIndex, XINPUT_STATE *pState);
+DWORD WINAPI XInputSetState_Detour(DWORD dwUserIndex, XINPUT_VIBRATION *pVibration);
 
 // Hook management
 bool InstallXInputHooks();

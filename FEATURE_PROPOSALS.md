@@ -64,6 +64,8 @@ This document tracks proposed features and ideas for future development. These a
 
 • Fix displaying DLSS version when NVIDIA driver overloads dlss version
 
+• Add option to disable logging in DC. (verbose)
+
 ## Low Priority Proposals
 
 • Add crashes interception, so we can print to logs when crash occurs.

@@ -626,23 +626,20 @@ void DrawNvapiSettings() {
     ImGui::Spacing();
     if (ImGui::CollapsingHeader("AntiLag 2 / XeLL support (fakenvapi / custom nvapi64.dll)", ImGuiTreeNodeFlags_DefaultOpen)) {
         ImGui::Indent();
-        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "Fake NVAPI (Experimental)");
+        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "Load AL2/AL+/XeLL through nvapi64.dll");
 
         bool fake_nvapi_enabled = settings::g_developerTabSettings.fake_nvapi_enabled.GetValue();
-        if (ImGui::Checkbox("Enable custom nvapi64.dll loading / fakenvapi", &fake_nvapi_enabled)) {
+        if (ImGui::Checkbox("Enable (requires restart)", &fake_nvapi_enabled)) {
             settings::g_developerTabSettings.fake_nvapi_enabled.SetValue(fake_nvapi_enabled);
             settings::g_developerTabSettings.fake_nvapi_enabled.Save();
             s_restart_needed_nvapi.store(true);
         }
          if (ImGui::IsItemHovered()) {
              ImGui::SetTooltip(
-                 "Enable fake NVAPI to spoof NVIDIA detection on non-NVIDIA systems.\n"
-                 "This allows DLSS and other NVIDIA features to work on AMD/Intel GPUs.\n\n"
-                 "WARNING: This is experimental and may cause instability!\n"
-                 "Requires nvapi64.dll or fakenvapi.dll to be placed next to the addon.\n"
-                 "For newer optiscaler builds, use nvapi64.dll (rename fakenvapi.dll if needed).\n\n"
-                 "Based on fakenvapi project: https://github.com/emoose/fakenvapi\n"
-                 "Download from: https://github.com/optiscaler/fakenvapi/releases");
+                "AntiLag 2, Vulkan AntiLag+ or XeLL are automatically selected when available.\n"
+                "Add nvapi64.dll to the addon directory (rename fakenvapi.dll if needed).\n\n"
+                "Downlaod from here: https://github.com/emoose/fakenvapi\n"
+             );
          }
 
         // Fake NVAPI Status

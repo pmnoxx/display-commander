@@ -91,4 +91,11 @@ std::string GetRefreshRateStatusString() {
     return g_refresh_rate_monitor->GetStatusString();
 }
 
+// Signal monitoring thread (called from render thread after Present)
+void SignalRefreshRateMonitor() {
+    if (g_refresh_rate_monitor && g_refresh_rate_monitor->IsMonitoring()) {
+        g_refresh_rate_monitor->SignalPresent();
+    }
+}
+
 } // namespace dxgi::fps_limiter

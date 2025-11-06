@@ -36,18 +36,19 @@ public:
     double GetMinRefreshRate() const { return m_min_refresh_rate.load(); }
     double GetMaxRefreshRate() const { return m_max_refresh_rate.load(); }
     uint32_t GetSampleCount() const { return m_sample_count.load(); }
-    uint64_t GetTotalFramesDisplayed() const { return m_total_frames_displayed.load(); }
 
     // Get status information
     std::string GetStatusString() const;
     bool IsDataValid() const { return m_sample_count.load() > 0; }
 
+    // Signal monitoring thread (called from render thread after Present)
+    void SignalPresent();
+
 private:
     void MonitoringThread();
     bool InitializeWaitForVBlank();
     void CleanupWaitForVBlank();
-    LONGLONG GetCurrentVBlankTime(); // Try GetFrameStatistics, fallback to get_now_ns()
-    bool GetFrameStatistics(DXGI_FRAME_STATISTICS& stats); // Get frame statistics from swapchain
+    bool GetCurrentVBlankTime(DXGI_FRAME_STATISTICS& stats); // Get frame statistics from swapchain, no fallback
     // Monitoring state
     std::thread m_monitor_thread;
     std::atomic<bool> m_monitoring{false};
@@ -67,8 +68,6 @@ private:
     // Timing data
     LONGLONG m_last_vblank_time{0};
     std::atomic<bool> m_first_sample{true};
-    uint32_t m_last_present_refresh_count{0}; // Last PresentRefreshCount from GetFrameStatistics
-    std::atomic<uint64_t> m_total_frames_displayed{0}; // Total frames displayed since start
 
     // DXGI interfaces for WaitForVBlank
     IDXGIFactory1* m_dxgi_factory{nullptr};
@@ -76,6 +75,9 @@ private:
 
     // Optional swapchain for GetFrameStatistics (more accurate timing)
     IDXGISwapChain* m_dxgi_swapchain{nullptr};
+
+    // Synchronization for signaling from render thread
+    HANDLE m_present_event{nullptr};
 
     // Error state
     std::atomic<bool> m_initialization_failed{false};

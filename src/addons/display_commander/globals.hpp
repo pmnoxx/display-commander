@@ -419,6 +419,16 @@ public:
         utils::SRWLockShared lock(lock_);
         return !hooked_swapchains_.empty();
     }
+
+    // Iterate through all tracked swapchains while holding the lock
+    // The callback is called for each swapchain while the lock is held
+    template<typename Callback>
+    void ForEachTrackedSwapchain(Callback&& callback) const {
+        utils::SRWLockShared lock(lock_);
+        for (IDXGISwapChain* swapchain : hooked_swapchains_) {
+            callback(swapchain);
+        }
+    }
 };
 
 // Performance stats structure

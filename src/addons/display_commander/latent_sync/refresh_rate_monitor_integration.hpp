@@ -11,6 +11,9 @@ bool IsRefreshRateMonitoringActive();
 double GetCurrentMeasuredRefreshRate();
 double GetSmoothedRefreshRate();
 
+// Signal monitoring thread (called from render thread after Present)
+void SignalRefreshRateMonitor();
+
 // Refresh rate statistics structure
 struct RefreshRateStats {
     double current_rate;

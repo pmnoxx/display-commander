@@ -7,9 +7,11 @@
 #include "../../settings/main_tab_settings.hpp"
 #include "../../settings/developer_tab_settings.hpp"
 #include "../../dx11_proxy/dx11_proxy_manager.hpp"
+#include "../../latent_sync/refresh_rate_monitor_integration.hpp"
 #include "../hook_suppression_manager.hpp"
 
 #include <MinHook.h>
+#include <dwmapi.h>
 
 #include <d3d11_4.h>
 #include <d3d12.h>
@@ -429,6 +431,9 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain *This, UI
     if (IDXGISwapChain_Present_Original != nullptr) {
         auto res= IDXGISwapChain_Present_Original(This, SyncInterval, Flags);
 
+        // Signal refresh rate monitoring thread (after DWM flush)
+        ::dxgi::fps_limiter::SignalRefreshRateMonitor();
+
         if (g_last_present_update_swapchain.load() == This) {
             dx11_proxy::DX11ProxyManager::GetInstance().CopyThreadLoop2();
         }
@@ -511,6 +516,10 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1 *This, 
     // Call original function
     if (IDXGISwapChain_Present1_Original != nullptr) {
         auto res= IDXGISwapChain_Present1_Original(This, SyncInterval, PresentFlags, pPresentParameters);
+
+
+        // Signal refresh rate monitoring thread (after DWM flush)
+        ::dxgi::fps_limiter::SignalRefreshRateMonitor();
 
         // Note: GPU completion measurement is now enqueued earlier in OnPresentUpdateBefore
         // (before flush_command_queue) for more accurate timing

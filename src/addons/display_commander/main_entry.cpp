@@ -203,15 +203,16 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
         return;
     }
 
-    bool any_enabled = settings::g_mainTabSettings.show_fps_counter.GetValue() || settings::g_mainTabSettings.gpu_measurement_enabled.GetValue() || settings::g_mainTabSettings.show_frame_time_graph.GetValue() || settings::g_mainTabSettings.show_cpu_usage.GetValue();
+    bool any_enabled = settings::g_mainTabSettings.show_fps_counter.GetValue() || settings::g_mainTabSettings.show_refresh_rate.GetValue() || settings::g_mainTabSettings.gpu_measurement_enabled.GetValue() || settings::g_mainTabSettings.show_frame_time_graph.GetValue() || settings::g_mainTabSettings.show_cpu_usage.GetValue();
 
     if (!any_enabled) {
         return;
     }
 
     ImGui::SetNextWindowPos(ImVec2(10.0f, 10.0f), ImGuiCond_Always);
-    // Set transparent background for the window (30% opacity)
-    ImGui::SetNextWindowBgAlpha(0.3f);
+    // Set transparent background for the window (configurable opacity)
+    float bg_alpha = settings::g_mainTabSettings.overlay_background_alpha.GetValue();
+    ImGui::SetNextWindowBgAlpha(bg_alpha);
     ImGui::SetNextWindowSize(ImVec2(450, 65), ImGuiCond_FirstUseEver);
     // Auto size the window to the content
     ImGui::Begin("Test Window", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_AlwaysAutoResize);
@@ -252,6 +253,32 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
                 ImGui::Text("%.1f fps", average_fps);
             } else {
                 ImGui::Text("%.1f", average_fps);
+            }
+        }
+    }
+
+    if (settings::g_mainTabSettings.show_refresh_rate.GetValue()) {
+        static double cached_refresh_rate = 0.0;
+        static LONGLONG last_update_ns = 0;
+        const LONGLONG update_interval_ns = 100 * utils::NS_TO_MS; // 200ms in nanoseconds
+
+        LONGLONG now_ns = utils::get_now_ns();
+
+        // Update cached value every 50ms
+        if (now_ns - last_update_ns >= update_interval_ns) {
+            auto stats = dxgi::fps_limiter::GetRefreshRateStats();
+            if (stats.is_valid && stats.sample_count > 0) {
+                cached_refresh_rate = stats.smoothed_rate;
+                last_update_ns = now_ns;
+            }
+        }
+
+        // Display cached value
+        if (cached_refresh_rate > 0.0) {
+            if (settings::g_mainTabSettings.show_labels.GetValue()) {
+                ImGui::Text("%.1fHz", cached_refresh_rate);
+            } else {
+                ImGui::Text("%.1f", cached_refresh_rate);
             }
         }
     }

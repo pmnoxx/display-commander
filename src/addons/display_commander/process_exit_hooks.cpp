@@ -60,13 +60,25 @@ LONG WINAPI UnhandledExceptionHandler(EXCEPTION_POINTERS *exception_info) {
         exit_handler::WriteToDebugLog(mem_details.str());
     }
 
-    // Print stack trace to DbgView
+    // Print stack trace to DbgView using exception context
     exit_handler::WriteToDebugLog("=== GENERATING STACK TRACE ===");
-    stack_trace::PrintStackTraceToDbgView();
+    CONTEXT* exception_context = nullptr;
+    if (exception_info && exception_info->ContextRecord) {
+        exception_context = exception_info->ContextRecord;
+    }
 
-    // Also log stack trace to file
-    std::string stack_trace_string = stack_trace::GetStackTraceString();
-    exit_handler::WriteToDebugLog(stack_trace_string);
+    // Generate stack trace using exception context
+    auto stack_trace = stack_trace::GenerateStackTrace(exception_context);
+
+    // Print to DbgView frame by frame
+    stack_trace::PrintStackTraceToDbgView(exception_context);
+
+    // Also log stack trace to file frame by frame to avoid truncation
+    exit_handler::WriteToDebugLog("=== STACK TRACE ===");
+    for (const auto& frame : stack_trace) {
+        exit_handler::WriteToDebugLog(frame);
+    }
+    exit_handler::WriteToDebugLog("=== END STACK TRACE ===");
 
     // Log exit detection
     exit_handler::OnHandleExit(exit_handler::ExitSource::UNHANDLED_EXCEPTION, "Unhandled exception detected");

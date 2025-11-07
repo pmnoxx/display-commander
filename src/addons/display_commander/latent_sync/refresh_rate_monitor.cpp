@@ -130,12 +130,16 @@ void RefreshRateMonitor::SignalPresent() {
 
 bool RefreshRateMonitor::GetCurrentVBlankTime(DXGI_FRAME_STATISTICS& stats) {
     // First, try to get from cached frame statistics (updated in present detour)
-    auto cached_stats = g_cached_frame_stats.load();
+    // Use memory_order_acquire to ensure we see the latest value and proper synchronization
+    // The local variable 'cached_stats' keeps the shared_ptr alive during dereference,
+    // preventing the object from being destroyed by another thread between load and dereference
+    auto cached_stats = g_cached_frame_stats.load(std::memory_order_acquire);
     if (cached_stats != nullptr) {
+        // Copy the stats - cached_stats keeps the shared_ptr alive during this operation
         stats = *cached_stats;
         return true;
     }
-
+/*
     // Fallback: try to get swapchain from tracked swapchains
     // Iterate through all tracked swapchains while holding the lock
     bool found = false;
@@ -147,9 +151,9 @@ bool RefreshRateMonitor::GetCurrentVBlankTime(DXGI_FRAME_STATISTICS& stats) {
             }
         }
     });
-
+*/
     // Return true if we found a valid swapchain with frame statistics, false otherwise
-    return found;
+    return false;
 }
 
 std::string RefreshRateMonitor::GetStatusString() const {

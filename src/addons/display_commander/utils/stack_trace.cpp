@@ -98,7 +98,9 @@ bool IsNvngxUpdateRunning() {
     return found;
 }
 
-std::vector<std::string> GenerateStackTrace() {
+namespace {
+// Internal helper function that does the actual stack trace generation
+std::vector<std::string> GenerateStackTraceInternal(CONTEXT* context_ptr) {
     std::vector<std::string> stack_trace;
 
     // Check if DbgHelp is available
@@ -120,10 +122,16 @@ std::vector<std::string> GenerateStackTrace() {
         }
     }
 
-    // Get current context
+    // Use provided context or capture current context
     CONTEXT context = {};
-    context.ContextFlags = CONTEXT_FULL;
-    RtlCaptureContext(&context);
+    if (context_ptr != nullptr) {
+        // Copy the provided context
+        context = *context_ptr;
+    } else {
+        // Get current context
+        context.ContextFlags = CONTEXT_FULL;
+        RtlCaptureContext(&context);
+    }
 
     // Initialize stack frame
     STACKFRAME64 stack_frame = {};
@@ -200,10 +208,23 @@ std::vector<std::string> GenerateStackTrace() {
 
     return stack_trace;
 }
+} // anonymous namespace
+
+std::vector<std::string> GenerateStackTrace() {
+    return GenerateStackTraceInternal(nullptr);
+}
+
+std::vector<std::string> GenerateStackTrace(CONTEXT* context) {
+    return GenerateStackTraceInternal(context);
+}
 
 void PrintStackTraceToDbgView() {
+    PrintStackTraceToDbgView(nullptr);
+}
+
+void PrintStackTraceToDbgView(CONTEXT* context) {
     try {
-        auto stack_trace = GenerateStackTrace();
+        auto stack_trace = GenerateStackTraceInternal(context);
 
         // Print header
         OutputDebugStringA("=== STACK TRACE ===\n");
@@ -231,8 +252,12 @@ void PrintStackTraceToDbgView() {
 }
 
 std::string GetStackTraceString() {
+    return GetStackTraceString(nullptr);
+}
+
+std::string GetStackTraceString(CONTEXT* context) {
     try {
-        auto stack_trace = GenerateStackTrace();
+        auto stack_trace = GenerateStackTraceInternal(context);
 
         std::ostringstream result;
         result << "=== STACK TRACE ===\n";

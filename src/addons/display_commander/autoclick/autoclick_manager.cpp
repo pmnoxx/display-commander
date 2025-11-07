@@ -21,6 +21,10 @@ const bool g_mouse_spoofing_enabled = true;
 std::atomic<bool> g_ui_overlay_open{false};
 std::atomic<LONGLONG> g_last_ui_draw_time_ns{0};
 
+// Global variables for up/down key press functionality
+std::atomic<bool> g_up_down_key_thread_running{false};
+std::thread g_up_down_key_thread;
+
 // Helper function to perform a click at the specified coordinates
 void PerformClick(int x, int y, int sequence_num, bool is_test) {
     HWND hwnd = g_last_swapchain_hwnd.load();
@@ -61,6 +65,22 @@ void PerformClick(int x, int y, int sequence_num, bool is_test) {
                 ? (g_mouse_spoofing_enabled ? " - mouse position spoofed"
                                            : " - mouse moved to screen")
                 : " - mouse not moved");
+}
+
+// Helper function to send keyboard key down message
+void SendKeyDown(HWND hwnd, int vk_code) {
+    if (hwnd == nullptr || IsWindow(hwnd) == FALSE) {
+        return;
+    }
+    PostMessage(hwnd, WM_KEYDOWN, vk_code, 0);
+}
+
+// Helper function to send keyboard key up message
+void SendKeyUp(HWND hwnd, int vk_code) {
+    if (hwnd == nullptr || IsWindow(hwnd) == FALSE) {
+        return;
+    }
+    PostMessage(hwnd, WM_KEYUP, vk_code, 0);
 }
 
 // Helper function to draw a sequence using settings directly
@@ -207,11 +227,97 @@ void AutoClickThread() {
     g_auto_click_thread_running.store(false);
 }
 
+// Up/Down key press thread function - always running, sleeps when inactive
+void UpDownKeyPressThread() {
+    g_up_down_key_thread_running.store(true);
+    LogInfo("Up/Down key press thread started");
+
+    while (true) {
+        // Check if up/down key press is enabled
+        if (settings::g_experimentalTabSettings.up_down_key_press_enabled.GetValue()) {
+            // Check if UI overlay is open - if so, sleep for 2 seconds
+            if (g_ui_overlay_open.load()) {
+                LogDebug("Up/Down key press: UI overlay is open, sleeping for 2 seconds");
+                std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+                continue;
+            }
+
+            // Check if UI was drawn recently (within last 2 seconds) - if so, sleep briefly
+            LONGLONG now_ns = utils::get_now_ns();
+            LONGLONG last_ui_draw = g_last_ui_draw_time_ns.load();
+            if (last_ui_draw > 0 && (now_ns - last_ui_draw) < (2 * utils::SEC_TO_NS)) {
+                LogDebug("Up/Down key press: UI was drawn recently, sleeping for 500ms");
+                std::this_thread::sleep_for(std::chrono::milliseconds(500));
+                continue;
+            }
+
+            // Get the current game window handle
+            HWND hwnd = g_last_swapchain_hwnd.load();
+            if (hwnd != nullptr && IsWindow(hwnd) != FALSE) {
+                // Press UP key for 9 seconds
+                LogInfo("Up/Down key press: Pressing UP key for 9 seconds");
+                SendKeyDown(hwnd, VK_UP);
+
+                // Hold for 9 seconds (checking every 100ms to allow early exit)
+                for (int i = 0; i < 90; i++) {
+                    if (!settings::g_experimentalTabSettings.up_down_key_press_enabled.GetValue()) {
+                        SendKeyUp(hwnd, VK_UP);
+                        break;
+                    }
+                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                }
+
+                // Release UP key
+                SendKeyUp(hwnd, VK_UP);
+
+                // Small delay before pressing DOWN
+                std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+                // Press DOWN key for 1 second
+                LogInfo("Up/Down key press: Pressing DOWN key for 1 second");
+                SendKeyDown(hwnd, VK_DOWN);
+
+                // Hold for 1 second (checking every 100ms to allow early exit)
+                for (int i = 0; i < 10; i++) {
+                    if (!settings::g_experimentalTabSettings.up_down_key_press_enabled.GetValue()) {
+                        SendKeyUp(hwnd, VK_DOWN);
+                        break;
+                    }
+                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                }
+
+                // Release DOWN key
+                SendKeyUp(hwnd, VK_DOWN);
+
+                // Small delay before next cycle
+                std::this_thread::sleep_for(std::chrono::milliseconds(50));
+            } else {
+                LogWarn("Up/Down key press: No valid game window handle available");
+                // Wait a bit before retrying
+                std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+            }
+        } else {
+            // Up/Down key press is disabled, sleep for 1 second
+            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+        }
+    }
+
+    g_up_down_key_thread_running.store(false);
+}
+
 // Function to start the auto-click thread
 void StartAutoClickThread() {
     if (!g_auto_click_thread_running.load()) {
         g_auto_click_thread = std::thread(AutoClickThread);
         LogInfo("Auto-click thread started");
+    }
+}
+
+// Function to start the up/down key press thread
+void StartUpDownKeyPressThread() {
+    if (!g_up_down_key_thread_running.load()) {
+        g_up_down_key_thread = std::thread(UpDownKeyPressThread);
+        LogInfo("Up/Down key press thread started");
     }
 }
 // Function to toggle auto-click enabled state
@@ -315,6 +421,23 @@ void DrawAutoClickFeature() {
     if (enabled_sequences > 0 && g_auto_click_enabled.load()) {
         ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f),
                            "Sequences will execute in order: 1 ↁE2 ↁE3 ↁE4 ↁE5 ↁErepeat");
+    }
+
+    ImGui::Spacing();
+    ImGui::Separator();
+
+    // Up/Down key press automation
+    bool up_down_enabled = settings::g_experimentalTabSettings.up_down_key_press_enabled.GetValue();
+    if (ImGui::Checkbox("Up/Down Key Press (9s up, 1s down, repeat)", &up_down_enabled)) {
+        settings::g_experimentalTabSettings.up_down_key_press_enabled.SetValue(up_down_enabled);
+        if (up_down_enabled) {
+            LogInfo("Up/Down key press automation enabled");
+        } else {
+            LogInfo("Up/Down key press automation disabled");
+        }
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Automatically presses UP key for 9 seconds, then DOWN key for 1 second, repeating forever.\nUses arrow keys (VK_UP/VK_DOWN).");
     }
 
     ImGui::Spacing();

@@ -155,6 +155,7 @@ void OnInitEffectRuntime(reshade::api::effect_runtime* runtime) {
             // Start the auto-click thread (always running, sleeps when disabled)
             if (enabled_experimental_features) {
                 autoclick::StartAutoClickThread();
+                autoclick::StartUpDownKeyPressThread();
             }
         }
 #ifdef TRY_CATCH_BLOCKS

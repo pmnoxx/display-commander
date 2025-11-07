@@ -19,6 +19,10 @@ extern const bool g_mouse_spoofing_enabled;
 extern std::atomic<bool> g_ui_overlay_open;
 extern std::atomic<LONGLONG> g_last_ui_draw_time_ns;
 
+// Global variables for up/down key press functionality
+extern std::atomic<bool> g_up_down_key_thread_running;
+extern std::thread g_up_down_key_thread;
+
 // Function declarations
 void PerformClick(int x, int y, int sequence_num, bool is_test = false);
 void AutoClickThread();
@@ -27,6 +31,8 @@ void StartAutoClickThread();
 void DrawAutoClickFeature();
 void DrawSequence(int sequence_num);
 void DrawMouseCoordinatesDisplay();
+void UpDownKeyPressThread();
+void StartUpDownKeyPressThread();
 
 // UI state management functions
 void UpdateUIOverlayState(bool is_open);

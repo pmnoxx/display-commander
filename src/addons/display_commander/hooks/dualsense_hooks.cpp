@@ -3,6 +3,7 @@
 #include "../dualsense/dualsense_hid_wrapper.hpp"
 #include "../widgets/xinput_widget/xinput_widget.hpp"
 #include "../utils/logging.hpp"
+#include "../utils/srwlock_wrapper.hpp"
 #include <atomic>
 #include <thread>
 #include <chrono>
@@ -249,10 +250,7 @@ bool ConvertDualSenseToXInput(DWORD user_index, XINPUT_STATE* state) {
     auto shared_state = display_commander::widgets::xinput_widget::XInputWidget::GetSharedState();
     if (shared_state) {
         // Thread-safe update
-        while (shared_state->is_updating.exchange(true)) {
-            // Wait for other thread to finish
-            std::this_thread::sleep_for(std::chrono::microseconds(1));
-        }
+        utils::SRWLockExclusive lock(shared_state->state_lock);
 
         // Update controller state for UI display
         shared_state->controller_states[user_index] = *state;
@@ -262,8 +260,6 @@ bool ConvertDualSenseToXInput(DWORD user_index, XINPUT_STATE* state) {
 
         // Increment event counter
         shared_state->total_events.fetch_add(1);
-
-        shared_state->is_updating.store(false);
     }
 
     return true;

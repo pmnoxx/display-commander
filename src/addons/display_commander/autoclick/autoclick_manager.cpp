@@ -6,7 +6,7 @@
 #include "../utils/timing.hpp"
 #include <imgui.h>
 #include <windows.h>
-#include <chrono>
+#include <algorithm>
 #include <thread>
 
 namespace autoclick {
@@ -14,6 +14,7 @@ namespace autoclick {
 // Global variables for auto-click functionality
 std::atomic<bool> g_auto_click_thread_running{false};
 std::thread g_auto_click_thread;
+HANDLE g_auto_click_timer_handle = nullptr;
 const bool g_move_mouse = true;
 const bool g_mouse_spoofing_enabled = true;
 
@@ -24,6 +25,7 @@ std::atomic<LONGLONG> g_last_ui_draw_time_ns{0};
 // Global variables for up/down key press functionality
 std::atomic<bool> g_up_down_key_thread_running{false};
 std::thread g_up_down_key_thread;
+HANDLE g_up_down_key_timer_handle = nullptr;
 
 // Helper function to perform a click at the specified coordinates
 void PerformClick(int x, int y, int sequence_num, bool is_test) {
@@ -50,14 +52,20 @@ void PerformClick(int x, int y, int sequence_num, bool is_test) {
         } else {
             // Actually move the cursor
             SetCursorPos(screen_pos.x, screen_pos.y);
-            std::this_thread::sleep_for(std::chrono::milliseconds(50)); // Small delay for mouse movement
+            // Small delay for mouse movement using accurate timing
+            LONGLONG wait_start_ns = utils::get_now_ns();
+            LONGLONG wait_target_ns = wait_start_ns + (50 * utils::NS_TO_MS);
+            utils::wait_until_ns(wait_target_ns, g_auto_click_timer_handle);
         }
     }
 
     // Send click messages
     LPARAM lParam = MAKELPARAM(x, y);
     PostMessage(hwnd, WM_LBUTTONDOWN, MK_LBUTTON, lParam);
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    // Small delay between mouse down and up using accurate timing
+    LONGLONG wait_start_ns = utils::get_now_ns();
+    LONGLONG wait_target_ns = wait_start_ns + (10 * utils::NS_TO_MS);
+    utils::wait_until_ns(wait_target_ns, g_auto_click_timer_handle);
     PostMessage(hwnd, WM_LBUTTONUP, MK_LBUTTON, lParam);
 
     LogInfo("%s click for sequence %d sent to game window at (%d, %d)%s", is_test ? "Test" : "Auto", sequence_num, x, y,
@@ -200,19 +208,23 @@ void AutoClickThread() {
     while (true) {
         // Check if auto-click is enabled
         if (g_auto_click_enabled.load()) {
-            // Check if UI overlay is open - if so, sleep for 2 seconds
+            // Check if UI overlay is open - if so, wait for 2 seconds using accurate timing
             if (g_ui_overlay_open.load()) {
-                LogDebug("Auto-click: UI overlay is open, sleeping for 2 seconds");
-                std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+                LogDebug("Auto-click: UI overlay is open, waiting for 2 seconds");
+                LONGLONG wait_start_ns = utils::get_now_ns();
+                LONGLONG wait_target_ns = wait_start_ns + (2000 * utils::NS_TO_MS);
+                utils::wait_until_ns(wait_target_ns, g_auto_click_timer_handle);
                 continue;
             }
 
-            // Check if UI was drawn recently (within last 2 seconds) - if so, sleep briefly
+            // Check if UI was drawn recently (within last 2 seconds) - if so, wait briefly using accurate timing
             LONGLONG now_ns = utils::get_now_ns();
             LONGLONG last_ui_draw = g_last_ui_draw_time_ns.load();
             if (last_ui_draw > 0 && (now_ns - last_ui_draw) < (2 * utils::SEC_TO_NS)) {
-                LogDebug("Auto-click: UI was drawn recently, sleeping for 500ms");
-                std::this_thread::sleep_for(std::chrono::milliseconds(500));
+                LogDebug("Auto-click: UI was drawn recently, waiting for 500ms");
+                LONGLONG wait_start_ns = utils::get_now_ns();
+                LONGLONG wait_target_ns = wait_start_ns + (500 * utils::NS_TO_MS);
+                utils::wait_until_ns(wait_target_ns, g_auto_click_timer_handle);
                 continue;
             }
 
@@ -226,17 +238,24 @@ void AutoClickThread() {
                         int y = settings::g_experimentalTabSettings.sequence_y.GetValue(i);
                         int interval = settings::g_experimentalTabSettings.sequence_interval.GetValue(i);
                         PerformClick(x, y, i + 1, false);
-                        std::this_thread::sleep_for(std::chrono::milliseconds(interval));
+                        // Wait for interval using accurate timing
+                        LONGLONG wait_start_ns = utils::get_now_ns();
+                        LONGLONG wait_target_ns = wait_start_ns + (static_cast<LONGLONG>(interval) * utils::NS_TO_MS);
+                        utils::wait_until_ns(wait_target_ns, g_auto_click_timer_handle);
                     }
                 }
             } else {
                 LogWarn("Auto-click: No valid game window handle available");
-                // Wait a bit before retrying
-                std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+                // Wait a bit before retrying using accurate timing
+                LONGLONG wait_start_ns = utils::get_now_ns();
+                LONGLONG wait_target_ns = wait_start_ns + (1000 * utils::NS_TO_MS);
+                utils::wait_until_ns(wait_target_ns, g_auto_click_timer_handle);
             }
         } else {
-            // Auto-click is disabled, sleep for 1 second
-            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+            // Auto-click is disabled, wait for 1 second using accurate timing
+            LONGLONG wait_start_ns = utils::get_now_ns();
+            LONGLONG wait_target_ns = wait_start_ns + (1000 * utils::NS_TO_MS);
+            utils::wait_until_ns(wait_target_ns, g_auto_click_timer_handle);
         }
     }
 
@@ -251,70 +270,98 @@ void UpDownKeyPressThread() {
     while (true) {
         // Check if up/down key press is enabled
         if (settings::g_experimentalTabSettings.up_down_key_press_enabled.GetValue()) {
-            // Check if UI overlay is open - if so, sleep for 2 seconds
+            // Check if UI overlay is open - if so, wait for 2 seconds using accurate timing
             if (g_ui_overlay_open.load()) {
-                LogDebug("Up/Down key press: UI overlay is open, sleeping for 2 seconds");
-                std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+                LogDebug("Up/Down key press: UI overlay is open, waiting for 2 seconds");
+                LONGLONG wait_start_ns = utils::get_now_ns();
+                LONGLONG wait_target_ns = wait_start_ns + (2000 * utils::NS_TO_MS);
+                utils::wait_until_ns(wait_target_ns, g_up_down_key_timer_handle);
                 continue;
             }
 
-            // Check if UI was drawn recently (within last 2 seconds) - if so, sleep briefly
+            // Check if UI was drawn recently (within last 2 seconds) - if so, wait briefly using accurate timing
             LONGLONG now_ns = utils::get_now_ns();
             LONGLONG last_ui_draw = g_last_ui_draw_time_ns.load();
             if (last_ui_draw > 0 && (now_ns - last_ui_draw) < (2 * utils::SEC_TO_NS)) {
-                LogDebug("Up/Down key press: UI was drawn recently, sleeping for 500ms");
-                std::this_thread::sleep_for(std::chrono::milliseconds(500));
+                LogDebug("Up/Down key press: UI was drawn recently, waiting for 500ms");
+                LONGLONG wait_start_ns = utils::get_now_ns();
+                LONGLONG wait_target_ns = wait_start_ns + (500 * utils::NS_TO_MS);
+                utils::wait_until_ns(wait_target_ns, g_up_down_key_timer_handle);
                 continue;
             }
 
             // Get the current game window handle
             HWND hwnd = g_last_swapchain_hwnd.load();
             if (hwnd != nullptr && IsWindow(hwnd) != FALSE) {
-                // Press UP key for 9 seconds
-                LogInfo("Up/Down key press: Pressing UP key for 9 seconds");
+                // Press UP key down
+                LogInfo("Up/Down key press: Pressing UP key down");
                 SendKeyDown(hwnd, VK_UP);
 
-                // Hold for 9 seconds (checking every 100ms to allow early exit)
-                for (int i = 0; i < 90; i++) {
+                // Hold for 10 seconds using accurate timing with early exit checking
+                LONGLONG up_start_ns = utils::get_now_ns();
+                LONGLONG up_target_ns = up_start_ns + (10 * utils::SEC_TO_NS);
+
+                // Check every 100ms for early exit while waiting
+                while (utils::get_now_ns() < up_target_ns) {
                     if (!settings::g_experimentalTabSettings.up_down_key_press_enabled.GetValue()) {
                         SendKeyUp(hwnd, VK_UP);
                         break;
                     }
-                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                    // Wait in 100ms chunks for early exit checking
+                    LONGLONG current_ns = utils::get_now_ns();
+                    LONGLONG next_check_ns = (std::min)(current_ns + (100 * utils::NS_TO_MS), up_target_ns);
+                    utils::wait_until_ns(next_check_ns, g_up_down_key_timer_handle);
                 }
 
                 // Release UP key
+                LogInfo("Up/Down key press: Releasing UP key");
                 SendKeyUp(hwnd, VK_UP);
 
-                // Small delay before pressing DOWN
-                std::this_thread::sleep_for(std::chrono::milliseconds(50));
+                // Wait 100ms before pressing DOWN using accurate timing
+                LONGLONG wait_start_ns = utils::get_now_ns();
+                LONGLONG wait_target_ns = wait_start_ns + (100 * utils::NS_TO_MS);
+                utils::wait_until_ns(wait_target_ns, g_up_down_key_timer_handle);
 
-                // Press DOWN key for 1 second
-                LogInfo("Up/Down key press: Pressing DOWN key for 1 second");
+                // Press DOWN key down
+                LogInfo("Up/Down key press: Pressing DOWN key down");
                 SendKeyDown(hwnd, VK_DOWN);
 
-                // Hold for 1 second (checking every 100ms to allow early exit)
-                for (int i = 0; i < 10; i++) {
+                // Hold for 3 seconds using accurate timing with early exit checking
+                LONGLONG down_start_ns = utils::get_now_ns();
+                LONGLONG down_target_ns = down_start_ns + (3 * utils::SEC_TO_NS);
+
+                // Check every 100ms for early exit while waiting
+                while (utils::get_now_ns() < down_target_ns) {
                     if (!settings::g_experimentalTabSettings.up_down_key_press_enabled.GetValue()) {
                         SendKeyUp(hwnd, VK_DOWN);
                         break;
                     }
-                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                    // Wait in 100ms chunks for early exit checking
+                    LONGLONG current_ns = utils::get_now_ns();
+                    LONGLONG next_check_ns = (std::min)(current_ns + (100 * utils::NS_TO_MS), down_target_ns);
+                    utils::wait_until_ns(next_check_ns, g_up_down_key_timer_handle);
                 }
 
                 // Release DOWN key
+                LogInfo("Up/Down key press: Releasing DOWN key");
                 SendKeyUp(hwnd, VK_DOWN);
 
-                // Small delay before next cycle
-                std::this_thread::sleep_for(std::chrono::milliseconds(50));
+                // Wait 100ms before next cycle using accurate timing
+                wait_start_ns = utils::get_now_ns();
+                wait_target_ns = wait_start_ns + (100 * utils::NS_TO_MS);
+                utils::wait_until_ns(wait_target_ns, g_up_down_key_timer_handle);
             } else {
                 LogWarn("Up/Down key press: No valid game window handle available");
-                // Wait a bit before retrying
-                std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+                // Wait a bit before retrying using accurate timing
+                LONGLONG wait_start_ns = utils::get_now_ns();
+                LONGLONG wait_target_ns = wait_start_ns + (1000 * utils::NS_TO_MS);
+                utils::wait_until_ns(wait_target_ns, g_up_down_key_timer_handle);
             }
         } else {
-            // Up/Down key press is disabled, sleep for 1 second
-            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+            // Up/Down key press is disabled, wait for 1 second using accurate timing
+            LONGLONG wait_start_ns = utils::get_now_ns();
+            LONGLONG wait_target_ns = wait_start_ns + (1000 * utils::NS_TO_MS);
+            utils::wait_until_ns(wait_target_ns, g_up_down_key_timer_handle);
         }
     }
 
@@ -444,7 +491,7 @@ void DrawAutoClickFeature() {
 
     // Up/Down key press automation
     bool up_down_enabled = settings::g_experimentalTabSettings.up_down_key_press_enabled.GetValue();
-    if (ImGui::Checkbox("Up/Down Key Press (9s up, 1s down, repeat)", &up_down_enabled)) {
+    if (ImGui::Checkbox("Up/Down Key Press (10s up, 3s down, repeat)", &up_down_enabled)) {
         settings::g_experimentalTabSettings.up_down_key_press_enabled.SetValue(up_down_enabled);
         if (up_down_enabled) {
             LogInfo("Up/Down key press automation enabled");
@@ -453,7 +500,7 @@ void DrawAutoClickFeature() {
         }
     }
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Automatically presses UP key for 9 seconds, then DOWN key for 1 second, repeating forever.\nUses arrow keys (VK_UP/VK_DOWN).");
+        ImGui::SetTooltip("Automatically presses UP key for 10 seconds, then DOWN key for 3 seconds, repeating forever.\nSequence: UP down → wait 10s → UP up → wait 100ms → DOWN down → wait 3s → DOWN up → wait 100ms → repeat.\nUses arrow keys (VK_UP/VK_DOWN) with SendInput API.");
     }
 
     ImGui::Spacing();

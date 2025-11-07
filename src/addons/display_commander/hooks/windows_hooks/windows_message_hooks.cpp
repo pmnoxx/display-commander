@@ -73,7 +73,7 @@ bool ShouldBlockMouseInput() {
                 ? current_frame_id - last_xinput_frame_id
                 : 0;
 
-            return frame_difference < kXInputDetectionWindowFrames;
+            return frame_difference < kXInputDetectionWindowFrames && !is_background;
         }
         default:
             return false;

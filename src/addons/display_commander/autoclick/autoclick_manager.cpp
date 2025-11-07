@@ -293,9 +293,9 @@ void UpDownKeyPressThread() {
             // Get the current game window handle
             HWND hwnd = g_last_swapchain_hwnd.load();
             if (hwnd != nullptr && IsWindow(hwnd) != FALSE) {
-                // Press UP key down
-                LogInfo("Up/Down key press: Pressing UP key down");
-                SendKeyDown(hwnd, VK_UP);
+                // Press W key down
+                LogInfo("Up/Down key press: Pressing W key down");
+                SendKeyDown(hwnd, 'W');
 
                 // Hold for 10 seconds using accurate timing with early exit checking
                 LONGLONG up_start_ns = utils::get_now_ns();
@@ -304,7 +304,7 @@ void UpDownKeyPressThread() {
                 // Check every 100ms for early exit while waiting
                 while (utils::get_now_ns() < up_target_ns) {
                     if (!settings::g_experimentalTabSettings.up_down_key_press_enabled.GetValue()) {
-                        SendKeyUp(hwnd, VK_UP);
+                        SendKeyUp(hwnd, 'W');
                         break;
                     }
                     // Wait in 100ms chunks for early exit checking
@@ -313,18 +313,18 @@ void UpDownKeyPressThread() {
                     utils::wait_until_ns(next_check_ns, g_up_down_key_timer_handle);
                 }
 
-                // Release UP key
-                LogInfo("Up/Down key press: Releasing UP key");
-                SendKeyUp(hwnd, VK_UP);
+                // Release W key
+                LogInfo("Up/Down key press: Releasing W key");
+                SendKeyUp(hwnd, 'W');
 
-                // Wait 100ms before pressing DOWN using accurate timing
+                // Wait 100ms before pressing S using accurate timing
                 LONGLONG wait_start_ns = utils::get_now_ns();
                 LONGLONG wait_target_ns = wait_start_ns + (100 * utils::NS_TO_MS);
                 utils::wait_until_ns(wait_target_ns, g_up_down_key_timer_handle);
 
-                // Press DOWN key down
-                LogInfo("Up/Down key press: Pressing DOWN key down");
-                SendKeyDown(hwnd, VK_DOWN);
+                // Press S key down
+                LogInfo("Up/Down key press: Pressing S key down");
+                SendKeyDown(hwnd, 'S');
 
                 // Hold for 3 seconds using accurate timing with early exit checking
                 LONGLONG down_start_ns = utils::get_now_ns();
@@ -333,7 +333,7 @@ void UpDownKeyPressThread() {
                 // Check every 100ms for early exit while waiting
                 while (utils::get_now_ns() < down_target_ns) {
                     if (!settings::g_experimentalTabSettings.up_down_key_press_enabled.GetValue()) {
-                        SendKeyUp(hwnd, VK_DOWN);
+                        SendKeyUp(hwnd, 'S');
                         break;
                     }
                     // Wait in 100ms chunks for early exit checking
@@ -342,9 +342,9 @@ void UpDownKeyPressThread() {
                     utils::wait_until_ns(next_check_ns, g_up_down_key_timer_handle);
                 }
 
-                // Release DOWN key
-                LogInfo("Up/Down key press: Releasing DOWN key");
-                SendKeyUp(hwnd, VK_DOWN);
+                // Release S key
+                LogInfo("Up/Down key press: Releasing S key");
+                SendKeyUp(hwnd, 'S');
 
                 // Wait 100ms before next cycle using accurate timing
                 wait_start_ns = utils::get_now_ns();
@@ -491,16 +491,16 @@ void DrawAutoClickFeature() {
 
     // Up/Down key press automation
     bool up_down_enabled = settings::g_experimentalTabSettings.up_down_key_press_enabled.GetValue();
-    if (ImGui::Checkbox("Up/Down Key Press (10s up, 3s down, repeat)", &up_down_enabled)) {
+    if (ImGui::Checkbox("W/S Key Press (10s W, 3s S, repeat)", &up_down_enabled)) {
         settings::g_experimentalTabSettings.up_down_key_press_enabled.SetValue(up_down_enabled);
         if (up_down_enabled) {
-            LogInfo("Up/Down key press automation enabled");
+            LogInfo("W/S key press automation enabled");
         } else {
-            LogInfo("Up/Down key press automation disabled");
+            LogInfo("W/S key press automation disabled");
         }
     }
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Automatically presses UP key for 10 seconds, then DOWN key for 3 seconds, repeating forever.\nSequence: UP down → wait 10s → UP up → wait 100ms → DOWN down → wait 3s → DOWN up → wait 100ms → repeat.\nUses arrow keys (VK_UP/VK_DOWN) with SendInput API.");
+        ImGui::SetTooltip("Automatically presses W key for 10 seconds, then S key for 3 seconds, repeating forever.\nSequence: W down → wait 10s → W up → wait 100ms → S down → wait 3s → S up → wait 100ms → repeat.\nUses W and S keys with SendInput API.");
     }
 
     ImGui::Spacing();

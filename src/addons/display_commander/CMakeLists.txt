@@ -43,6 +43,22 @@ if(MSVC)
 
   # Use static runtime linking to avoid dependency on debug runtime DLLs
   set_property(TARGET zzz_display_commander PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+
+  # Explicitly enable debug symbols for all build types (especially RelWithDebInfo)
+  # /Zi generates full debug information in a program database (PDB)
+  # /DEBUG generates debug information for the linker
+  target_compile_options(zzz_display_commander PRIVATE
+    $<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>:/Zi>
+  )
+  target_link_options(zzz_display_commander PRIVATE
+    $<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>:/DEBUG>
+  )
+
+  # Ensure PDB file is placed alongside the DLL for easier debugging
+  set_target_properties(zzz_display_commander PROPERTIES
+    PDB_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+    PDB_NAME "zzz_display_commander"
+  )
 endif()
 
 # GCC/Clang-specific flags

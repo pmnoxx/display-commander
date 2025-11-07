@@ -106,6 +106,9 @@ class ExperimentalTabSettings {
     // DirectInput device state blocking
     BoolSetting dinput_device_state_blocking;
 
+    // Up/Down key press automation (9s up, 1s down, repeat)
+    BoolSetting up_down_key_press_enabled;
+
 
   private:
     std::vector<SettingBase *> all_settings_;

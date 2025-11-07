@@ -73,8 +73,6 @@ public:
 
 private:
     void MonitoringThread();
-    bool InitializeWaitForVBlank();
-    void CleanupWaitForVBlank();
     bool GetCurrentVBlankTime(DXGI_FRAME_STATISTICS& stats); // Get frame statistics from swapchain, no fallback
     // Monitoring state
     std::thread m_monitor_thread;
@@ -97,13 +95,6 @@ private:
     // Timing data
     LONGLONG m_last_vblank_time{0};
     std::atomic<bool> m_first_sample{true};
-
-    // DXGI interfaces for WaitForVBlank
-    IDXGIFactory1* m_dxgi_factory{nullptr};
-    IDXGIOutput* m_dxgi_output{nullptr};
-
-    // Optional swapchain for GetFrameStatistics (more accurate timing)
-    IDXGISwapChain* m_dxgi_swapchain{nullptr};
 
     // Synchronization for signaling from render thread
     HANDLE m_present_event{nullptr};

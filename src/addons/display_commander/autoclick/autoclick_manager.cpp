@@ -68,19 +68,35 @@ void PerformClick(int x, int y, int sequence_num, bool is_test) {
 }
 
 // Helper function to send keyboard key down message
+// Uses SendInput (like gamepad remapping) for more reliable input injection
 void SendKeyDown(HWND hwnd, int vk_code) {
     if (hwnd == nullptr || IsWindow(hwnd) == FALSE) {
         return;
     }
-    PostMessage(hwnd, WM_KEYDOWN, vk_code, 0);
+    // Use SendInput for system-level input injection (same as gamepad remapping)
+    INPUT input = {};
+    input.type = INPUT_KEYBOARD;
+    input.ki.wVk = vk_code;
+    input.ki.dwFlags = 0; // Key down
+    input.ki.time = 0;
+    input.ki.dwExtraInfo = GetMessageExtraInfo();
+    SendInput(1, &input, sizeof(INPUT));
 }
 
 // Helper function to send keyboard key up message
+// Uses SendInput (like gamepad remapping) for more reliable input injection
 void SendKeyUp(HWND hwnd, int vk_code) {
     if (hwnd == nullptr || IsWindow(hwnd) == FALSE) {
         return;
     }
-    PostMessage(hwnd, WM_KEYUP, vk_code, 0);
+    // Use SendInput for system-level input injection (same as gamepad remapping)
+    INPUT input = {};
+    input.type = INPUT_KEYBOARD;
+    input.ki.wVk = vk_code;
+    input.ki.dwFlags = KEYEVENTF_KEYUP; // Key up
+    input.ki.time = 0;
+    input.ki.dwExtraInfo = GetMessageExtraInfo();
+    SendInput(1, &input, sizeof(INPUT));
 }
 
 // Helper function to draw a sequence using settings directly

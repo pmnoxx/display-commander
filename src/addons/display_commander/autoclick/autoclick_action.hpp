@@ -37,3 +37,4 @@ std::vector<AutoClickAction> DeserializeActions(const std::string& str);
 
 } // namespace autoclick
 
+

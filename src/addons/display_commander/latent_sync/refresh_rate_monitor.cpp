@@ -35,6 +35,7 @@ RefreshRateMonitor::RefreshRateMonitor() {
 
 RefreshRateMonitor::~RefreshRateMonitor() {
     StopMonitoring();
+    CleanupWaitForVBlank();
     if (m_present_event != nullptr) {
         CloseHandle(m_present_event);
         m_present_event = nullptr;
@@ -43,6 +44,14 @@ RefreshRateMonitor::~RefreshRateMonitor() {
 
 void RefreshRateMonitor::StartMonitoring() {
     if (m_monitoring.load()) {
+        return;
+    }
+
+    // Initialize WaitForVBlank function
+    if (!InitializeWaitForVBlank()) {
+        m_initialization_failed = true;
+        m_error_message = "Failed to initialize WaitForVBlank function";
+        LogMessage("Failed to start monitoring: " + m_error_message);
         return;
     }
 
@@ -70,6 +79,48 @@ void RefreshRateMonitor::StopMonitoring() {
     LogInfo("Refresh rate monitoring thread: StopMonitoring() completed - thread joined and stopped");
 }
 
+bool RefreshRateMonitor::InitializeWaitForVBlank() {
+    // WaitForVBlank is a method on IDXGIOutput interface, not a standalone function
+    // We'll create a DXGI factory and get the output to use WaitForVBlank
+    HRESULT hr = CreateDXGIFactory1(IID_PPV_ARGS(&m_dxgi_factory));
+    if (FAILED(hr)) {
+        LogError("Failed to create DXGI factory: 0x%08X", hr);
+        return false;
+    }
+
+    // Get the first adapter
+    IDXGIAdapter1* adapter = nullptr;
+    hr = m_dxgi_factory->EnumAdapters1(0, &adapter);
+    if (FAILED(hr)) {
+        LogError("Failed to enumerate adapters: 0x%08X", hr);
+        return false;
+    }
+
+    // Get the first output
+    hr = adapter->EnumOutputs(0, &m_dxgi_output);
+    adapter->Release();
+
+    if (FAILED(hr)) {
+        LogError("Failed to enumerate outputs: 0x%08X", hr);
+        return false;
+    }
+
+    LogInfo("Successfully initialized DXGI output for WaitForVBlank");
+    return true;
+}
+
+void RefreshRateMonitor::CleanupWaitForVBlank() {
+    if (m_dxgi_output != nullptr) {
+        m_dxgi_output->Release();
+        m_dxgi_output = nullptr;
+    }
+    if (m_dxgi_factory != nullptr) {
+        m_dxgi_factory->Release();
+        m_dxgi_factory = nullptr;
+    }
+    // Note: m_dxgi_swapchain is not owned by us, so we don't release it
+    m_dxgi_swapchain = nullptr;
+}
 
 void RefreshRateMonitor::SignalPresent() {
     if (m_present_event != nullptr && m_monitoring.load()) {
@@ -135,7 +186,7 @@ std::string RefreshRateMonitor::GetStatusString() const {
 
 void RefreshRateMonitor::MonitoringThread() {
     LogInfo("Refresh rate monitoring thread: entering main loop");
-    LogInfo("Refresh rate monitoring thread: STARTED - measuring actual refresh rate via DWM flush");
+    LogInfo("Refresh rate monitoring thread: STARTED - measuring actual refresh rate via WaitForVBlank");
 
     // Wait a bit for the system to stabilize
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -157,15 +208,22 @@ void RefreshRateMonitor::MonitoringThread() {
 
     // Get current time for first measurement
     DXGI_FRAME_STATISTICS stats = {};
-    if (GetCurrentVBlankTime(stats)) {
+        if (GetCurrentVBlankTime(stats)) {
         m_last_vblank_time = stats.SyncQPCTime.QuadPart * utils::QPC_TO_NS;
     }
+
 
     uint64_t m_last_present_refresh_count = 0;
     // Main monitoring loop
     while (!m_should_stop.load()) {
         try {
+            if (m_dxgi_output == nullptr) {
+                LogError("DXGI output is null");
+                break;
+            }
+
             // Wait for signal from render thread (after Present is called)
+            // This ensures DWM has been flushed before we check frame statistics
             if (m_present_event != nullptr) {
                 DWORD wait_result = WaitForSingleObject(m_present_event, 1000); // 1 second timeout
                 if (wait_result == WAIT_TIMEOUT) {
@@ -182,14 +240,21 @@ void RefreshRateMonitor::MonitoringThread() {
                 continue;
             }
 
-            // Flush DWM to ensure frame statistics are up to date
-            DwmFlush();
+            // Wait for vblank using IDXGIOutput::WaitForVBlank
+            HRESULT hr = m_dxgi_output->WaitForVBlank();
+            if (FAILED(hr)) {
+                LogError("WaitForVBlank failed with HRESULT: 0x%08X", hr);
+                // Continue trying, but sleep a bit to avoid busy waiting
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                continue;
+            }
 
             // Get current frame statistics (should now be accurate after DWM flush)
             DXGI_FRAME_STATISTICS stats = {};
             if (!GetCurrentVBlankTime(stats)) {
                 // If we can't get frame statistics, skip this sample
                 LogError("Failed to get frame statistics - skipping sample");
+              //  std::this_thread::sleep_for(std::chrono::milliseconds(1));
                 continue;
             }
 

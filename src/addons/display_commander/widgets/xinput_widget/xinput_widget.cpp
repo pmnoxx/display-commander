@@ -2,16 +2,15 @@
 #include "../../globals.hpp"
 #include "../../utils/logging.hpp"
 #include "../../utils/general_utils.hpp"
+#include "../../utils/srwlock_wrapper.hpp"
 #include "../../hooks/xinput_hooks.hpp"
 #include "../../hooks/timeslowdown_hooks.hpp"
 #include "../../res/ui_colors.hpp"
 #include "../../config/display_commander_config.hpp"
 #include "../../settings/experimental_tab_settings.hpp"
 #include <algorithm>
-#include <chrono>
 #include <reshade_imgui.hpp>
 #include <sstream>
-#include <thread>
 #include <vector>
 #include <windows.h>
 
@@ -493,7 +492,8 @@ void XInputWidget::DrawControllerState() {
         return;
     }
 
-    // Get controller state
+    // Get controller state (thread-safe read)
+    utils::SRWLockShared lock(g_shared_state->state_lock);
     const XINPUT_STATE &state = g_shared_state->controller_states[selected_controller_];
     ControllerState controller_state = g_shared_state->controller_connected[selected_controller_];
 
@@ -994,6 +994,8 @@ std::string XInputWidget::GetControllerStatus(int controller_index) const {
         return "Invalid";
     }
 
+    // Thread-safe read
+    utils::SRWLockShared lock(g_shared_state->state_lock);
     ControllerState state = g_shared_state->controller_connected[controller_index];
     switch (state) {
         case ControllerState::Uninitialized:
@@ -1181,9 +1183,7 @@ void XInputWidget::SaveSettings() {
                               static_cast<uint32_t>(g_shared_state->autofire_frame_interval.load()));
 
     // Save autofire button list as comma-separated hex values
-    while (g_shared_state->autofire_is_updating.exchange(true)) {
-        std::this_thread::sleep_for(std::chrono::microseconds(1));
-    }
+    utils::SRWLockExclusive lock(g_shared_state->autofire_lock);
 
     std::string autofire_buttons_str;
     for (const auto &af_button : g_shared_state->autofire_buttons) {
@@ -1194,8 +1194,6 @@ void XInputWidget::SaveSettings() {
         sprintf_s(hex_str, "%04X", af_button.button_mask);
         autofire_buttons_str += hex_str;
     }
-
-    g_shared_state->autofire_is_updating.store(false);
 
     display_commander::config::set_config_value("DisplayCommander.XInputWidget", "AutofireButtons", autofire_buttons_str);
 }
@@ -1241,10 +1239,7 @@ void UpdateXInputState(DWORD user_index, const XINPUT_STATE *state) {
     }
 
     // Thread-safe update
-    while (shared_state->is_updating.exchange(true)) {
-        // Wait for other thread to finish
-        std::this_thread::sleep_for(std::chrono::microseconds(1));
-    }
+    utils::SRWLockExclusive lock(shared_state->state_lock);
 
     // Update controller state
     shared_state->controller_states[user_index] = *state;
@@ -1254,8 +1249,6 @@ void UpdateXInputState(DWORD user_index, const XINPUT_STATE *state) {
 
     // Increment event counters
     shared_state->total_events.fetch_add(1);
-
-    shared_state->is_updating.store(false);
 }
 
 void IncrementEventCounter(const std::string &event_type) {
@@ -2067,14 +2060,10 @@ void XInputWidget::DrawAutofireSettings() {
             };
 
             // Thread-safe access to autofire_buttons
-            while (shared_state->autofire_is_updating.exchange(true)) {
-                std::this_thread::sleep_for(std::chrono::microseconds(1));
-            }
+            utils::SRWLockExclusive lock(shared_state->autofire_lock);
 
             // Create a copy of the buttons list for safe iteration
             std::vector<XInputSharedState::AutofireButton> autofire_buttons_copy = shared_state->autofire_buttons;
-
-            shared_state->autofire_is_updating.store(false);
 
             // Display checkboxes in a grid
             for (size_t i = 0; i < sizeof(buttons) / sizeof(buttons[0]); i += 2) {
@@ -2128,9 +2117,7 @@ void XInputWidget::AddAutofireButton(WORD button_mask) {
     }
 
     // Thread-safe access
-    while (shared_state->autofire_is_updating.exchange(true)) {
-        std::this_thread::sleep_for(std::chrono::microseconds(1));
-    }
+    utils::SRWLockExclusive lock(shared_state->autofire_lock);
 
     // Check if button already exists
     bool exists = false;
@@ -2145,8 +2132,6 @@ void XInputWidget::AddAutofireButton(WORD button_mask) {
         shared_state->autofire_buttons.push_back(XInputSharedState::AutofireButton(button_mask));
         LogInfo("XInputWidget::AddAutofireButton() - Added autofire for button 0x%04X", button_mask);
     }
-
-    shared_state->autofire_is_updating.store(false);
 }
 
 void XInputWidget::RemoveAutofireButton(WORD button_mask) {
@@ -2156,9 +2141,7 @@ void XInputWidget::RemoveAutofireButton(WORD button_mask) {
     }
 
     // Thread-safe access
-    while (shared_state->autofire_is_updating.exchange(true)) {
-        std::this_thread::sleep_for(std::chrono::microseconds(1));
-    }
+    utils::SRWLockExclusive lock(shared_state->autofire_lock);
 
     // Remove button from list
     auto it = std::remove_if(shared_state->autofire_buttons.begin(), shared_state->autofire_buttons.end(),
@@ -2168,8 +2151,6 @@ void XInputWidget::RemoveAutofireButton(WORD button_mask) {
     shared_state->autofire_buttons.erase(it, shared_state->autofire_buttons.end());
 
     LogInfo("XInputWidget::RemoveAutofireButton() - Removed autofire for button 0x%04X", button_mask);
-
-    shared_state->autofire_is_updating.store(false);
 }
 
 bool XInputWidget::IsAutofireButton(WORD button_mask) const {
@@ -2179,9 +2160,7 @@ bool XInputWidget::IsAutofireButton(WORD button_mask) const {
     }
 
     // Thread-safe access
-    while (shared_state->autofire_is_updating.exchange(true)) {
-        std::this_thread::sleep_for(std::chrono::microseconds(1));
-    }
+    utils::SRWLockExclusive lock(shared_state->autofire_lock);
 
     bool found = false;
     for (const auto &af_button : shared_state->autofire_buttons) {
@@ -2190,8 +2169,6 @@ bool XInputWidget::IsAutofireButton(WORD button_mask) const {
             break;
         }
     }
-
-    shared_state->autofire_is_updating.store(false);
 
     return found;
 }
@@ -2217,9 +2194,7 @@ void ProcessAutofire(DWORD user_index, XINPUT_STATE *pState) {
     uint32_t frame_interval = shared_state->autofire_frame_interval.load();
 
     // Thread-safe access to autofire_buttons
-    while (shared_state->autofire_is_updating.exchange(true)) {
-        std::this_thread::sleep_for(std::chrono::microseconds(1));
-    }
+    utils::SRWLockExclusive lock(shared_state->autofire_lock);
 
     // Store original button state before processing
     WORD original_buttons = pState->Gamepad.wButtons;
@@ -2264,8 +2239,6 @@ void ProcessAutofire(DWORD user_index, XINPUT_STATE *pState) {
             af_button.last_fire_frame_id.store(0);
         }
     }
-
-    shared_state->autofire_is_updating.store(false);
 }
 
 } // namespace display_commander::widgets::xinput_widget

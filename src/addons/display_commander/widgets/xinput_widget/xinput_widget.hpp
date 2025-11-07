@@ -139,7 +139,7 @@ struct XInputSharedState {
     RecenterData recenter_data;
 
     // Thread safety
-    mutable std::atomic<bool> is_updating{false};
+    mutable SRWLOCK state_lock = SRWLOCK_INIT;
 
     // XInput call timing tracking for smooth rate calculation
     std::atomic<uint64_t> last_xinput_call_time_ns{0};
@@ -175,7 +175,7 @@ struct XInputSharedState {
     std::atomic<bool> autofire_enabled{false};              // Master enable/disable for autofire
     std::atomic<uint32_t> autofire_frame_interval{1};        // Frames between toggles (1 = every frame, 2 = every other frame, etc.)
     std::vector<AutofireButton> autofire_buttons;            // List of buttons with autofire enabled
-    mutable std::atomic<bool> autofire_is_updating{false};   // Thread safety for autofire_buttons vector access
+    mutable SRWLOCK autofire_lock = SRWLOCK_INIT;           // Thread safety for autofire_buttons vector access
 };
 
 // XInput widget class

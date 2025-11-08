@@ -4,10 +4,13 @@
 #include "../settings/experimental_tab_settings.hpp"
 #include "../utils/logging.hpp"
 #include "../utils/timing.hpp"
+#include "../widgets/xinput_widget/xinput_widget.hpp"
 #include <imgui.h>
 #include <windows.h>
 #include <algorithm>
 #include <thread>
+#include <cmath>
+#include <memory>
 
 namespace autoclick {
 
@@ -26,6 +29,11 @@ std::atomic<LONGLONG> g_last_ui_draw_time_ns{0};
 std::atomic<bool> g_up_down_key_thread_running{false};
 std::thread g_up_down_key_thread;
 HANDLE g_up_down_key_timer_handle = nullptr;
+
+// Global variables for button-only press functionality
+std::atomic<bool> g_button_only_thread_running{false};
+std::thread g_button_only_thread;
+HANDLE g_button_only_timer_handle = nullptr;
 
 // Helper function to perform a click at the specified coordinates
 void PerformClick(int x, int y, int sequence_num, bool is_test) {
@@ -262,14 +270,146 @@ void AutoClickThread() {
     g_auto_click_thread_running.store(false);
 }
 
-// Up/Down key press thread function - always running, sleeps when inactive
+// Data structures for up/down key press sequence
+enum class GamepadActionType {
+    SET_STICK_AND_BUTTONS,  // Set left stick Y and button mask
+    WAIT,                    // Wait for a fixed duration
+    HOLD,                    // Hold current state for a duration with early exit checking
+    CLEAR                    // Clear all overrides
+};
+
+struct GamepadAction {
+    GamepadActionType type;
+    const char* log_message;
+    float left_stick_y;      // For SET_STICK_AND_BUTTONS: stick value (INFINITY = not set)
+    WORD button_mask;         // For SET_STICK_AND_BUTTONS: button mask
+    LONGLONG duration_ms;    // For WAIT/HOLD: duration in milliseconds (0 = use seconds)
+    LONGLONG duration_sec;   // For WAIT/HOLD: duration in seconds (0 = use milliseconds)
+};
+
+// Up/Down key press sequence definition
+static const GamepadAction g_up_down_sequence[] = {
+    // Set forward and button Y
+    {GamepadActionType::SET_STICK_AND_BUTTONS, "Up/Down gamepad: Setting left stick Y forward and button Y", 1.0f, XINPUT_GAMEPAD_Y, 0, 0},
+
+    // Wait 100ms before adding button A
+    {GamepadActionType::WAIT, nullptr, INFINITY, 0, 100, 0},
+
+    // Add button A (both Y and A pressed)
+    {GamepadActionType::SET_STICK_AND_BUTTONS, "Up/Down gamepad: Adding button A (Y and A both pressed)", 1.0f, XINPUT_GAMEPAD_Y | XINPUT_GAMEPAD_A, 0, 0},
+
+    // Hold for 10 seconds
+    {GamepadActionType::HOLD, nullptr, INFINITY, 0, 0, 10},
+
+    // Clear override
+    {GamepadActionType::CLEAR, "Up/Down gamepad: Clearing left stick Y override", INFINITY, 0, 0, 0},
+
+    // Wait 100ms before setting backward
+    {GamepadActionType::WAIT, nullptr, INFINITY, 0, 100, 0},
+
+    // Set backward and button Y
+    {GamepadActionType::SET_STICK_AND_BUTTONS, "Up/Down gamepad: Setting left stick Y backward and button Y", -1.0f, XINPUT_GAMEPAD_Y, 0, 0},
+
+    // Hold for 3 seconds
+    {GamepadActionType::HOLD, nullptr, INFINITY, 0, 0, 3},
+
+    // Clear override
+    {GamepadActionType::CLEAR, "Up/Down gamepad: Clearing left stick Y override", INFINITY, 0, 0, 0},
+
+    // Wait 100ms before next cycle
+    {GamepadActionType::WAIT, nullptr, INFINITY, 0, 100, 0}
+};
+
+// Button-only press sequence definition (Y/A buttons only, no stick movement)
+static const GamepadAction g_button_only_sequence[] = {
+    // Add button A (both Y and A pressed)
+    {GamepadActionType::SET_STICK_AND_BUTTONS, "Button-only gamepad: Adding button A (Y and A both pressed)", INFINITY, XINPUT_GAMEPAD_Y | XINPUT_GAMEPAD_A, 0, 0},
+
+    // Hold for 10 seconds
+    {GamepadActionType::HOLD, nullptr, INFINITY, 0, 1500, 0},
+
+    // Clear override
+    {GamepadActionType::CLEAR, "Button-only gamepad: Clearing button override", INFINITY, 0, 0, 0},
+
+    // Wait 100ms before next cycle
+    {GamepadActionType::WAIT, nullptr, INFINITY, 0, 100, 0}
+};
+
+// Helper function to execute a single gamepad action
+static bool ExecuteGamepadAction(const GamepadAction& action,
+                                  const std::shared_ptr<display_commander::widgets::xinput_widget::XInputSharedState>& shared_state,
+                                  HANDLE timer_handle) {
+    switch (action.type) {
+        case GamepadActionType::SET_STICK_AND_BUTTONS: {
+            if (action.log_message != nullptr) {
+                LogInfo("%s", action.log_message);
+            }
+            // Only set left_stick_y if it's not INFINITY (INFINITY means don't override stick)
+            if (action.left_stick_y != INFINITY) {
+                shared_state->override_state.left_stick_y.store(action.left_stick_y);
+            }
+            shared_state->override_state.buttons_pressed_mask.store(action.button_mask);
+            return true;
+        }
+
+        case GamepadActionType::WAIT: {
+            LONGLONG duration_ns = action.duration_ms > 0
+                ? (action.duration_ms * utils::NS_TO_MS)
+                : (action.duration_sec * utils::SEC_TO_NS);
+            LONGLONG wait_start_ns = utils::get_now_ns();
+            LONGLONG wait_target_ns = wait_start_ns + duration_ns;
+            utils::wait_until_ns(wait_target_ns, timer_handle);
+            return true;
+        }
+
+        case GamepadActionType::HOLD: {
+            LONGLONG duration_ns = action.duration_ms > 0
+                ? (action.duration_ms * utils::NS_TO_MS)
+                : (action.duration_sec * utils::SEC_TO_NS);
+            LONGLONG hold_start_ns = utils::get_now_ns();
+            LONGLONG hold_target_ns = hold_start_ns + duration_ns;
+
+            // Check every 100ms for early exit while waiting
+            while (utils::get_now_ns() < hold_target_ns) {
+                if (!g_auto_click_enabled.load()) {
+                    // Clear override on early exit
+                    shared_state->override_state.left_stick_y.store(INFINITY);
+                    shared_state->override_state.buttons_pressed_mask.store(0);
+                    return false; // Signal early exit
+                }
+                // Wait in 100ms chunks for early exit checking
+                LONGLONG current_ns = utils::get_now_ns();
+                LONGLONG next_check_ns = (std::min)(current_ns + (100 * utils::NS_TO_MS), hold_target_ns);
+                utils::wait_until_ns(next_check_ns, timer_handle);
+            }
+            return true;
+        }
+
+        case GamepadActionType::CLEAR: {
+            if (action.log_message != nullptr) {
+                LogInfo("%s", action.log_message);
+            }
+            shared_state->override_state.left_stick_y.store(INFINITY);
+            shared_state->override_state.buttons_pressed_mask.store(0);
+            return true;
+        }
+
+        default:
+            return false;
+    }
+}
+
+// Up/Down key presss thread function - always running, sleeps when inactive
 void UpDownKeyPressThread() {
     g_up_down_key_thread_running.store(true);
     LogInfo("Up/Down key press thread started");
 
     while (true) {
+        // Check if auto-click is enabled (master switch)
+        bool auto_click_enabled = g_auto_click_enabled.load();
+
         // Check if up/down key press is enabled
-        if (settings::g_experimentalTabSettings.up_down_key_press_enabled.GetValue()) {
+        if (auto_click_enabled && settings::g_experimentalTabSettings.up_down_key_press_enabled.GetValue()) {
             // Check if UI overlay is open - if so, wait for 2 seconds using accurate timing
             if (g_ui_overlay_open.load()) {
                 LogDebug("Up/Down key press: UI overlay is open, waiting for 2 seconds");
@@ -290,71 +430,22 @@ void UpDownKeyPressThread() {
                 continue;
             }
 
-            // Get the current game window handle
-            HWND hwnd = g_last_swapchain_hwnd.load();
-            if (hwnd != nullptr && IsWindow(hwnd) != FALSE) {
-                // Press W key down
-                LogInfo("Up/Down key press: Pressing W key down");
-                SendKeyDown(hwnd, 'W');
-
-                // Hold for 10 seconds using accurate timing with early exit checking
-                LONGLONG up_start_ns = utils::get_now_ns();
-                LONGLONG up_target_ns = up_start_ns + (10 * utils::SEC_TO_NS);
-
-                // Check every 100ms for early exit while waiting
-                while (utils::get_now_ns() < up_target_ns) {
-                    if (!settings::g_experimentalTabSettings.up_down_key_press_enabled.GetValue()) {
-                        SendKeyUp(hwnd, 'W');
+            // Get the shared XInput state (works even if controller is disconnected - hooks will spoof connection)
+            auto shared_state = display_commander::widgets::xinput_widget::XInputWidget::GetSharedState();
+            if (shared_state) {
+                // Execute the sequence of actions
+                // Note: Override state works even when controller is disconnected - XInput hooks will spoof connection
+                for (const auto& action : g_up_down_sequence) {
+                    if (!ExecuteGamepadAction(action, shared_state, g_up_down_key_timer_handle)) {
+                        // Early exit requested
                         break;
                     }
-                    // Wait in 100ms chunks for early exit checking
-                    LONGLONG current_ns = utils::get_now_ns();
-                    LONGLONG next_check_ns = (std::min)(current_ns + (100 * utils::NS_TO_MS), up_target_ns);
-                    utils::wait_until_ns(next_check_ns, g_up_down_key_timer_handle);
                 }
-
-                // Release W key
-                LogInfo("Up/Down key press: Releasing W key");
-                SendKeyUp(hwnd, 'W');
-
-                // Wait 100ms before pressing S using accurate timing
+            } else {
+                // Shared state should always be available, but if not, wait briefly and retry
+                LogDebug("Up/Down gamepad: Shared state not yet available, waiting...");
                 LONGLONG wait_start_ns = utils::get_now_ns();
                 LONGLONG wait_target_ns = wait_start_ns + (100 * utils::NS_TO_MS);
-                utils::wait_until_ns(wait_target_ns, g_up_down_key_timer_handle);
-
-                // Press S key down
-                LogInfo("Up/Down key press: Pressing S key down");
-                SendKeyDown(hwnd, 'S');
-
-                // Hold for 3 seconds using accurate timing with early exit checking
-                LONGLONG down_start_ns = utils::get_now_ns();
-                LONGLONG down_target_ns = down_start_ns + (3 * utils::SEC_TO_NS);
-
-                // Check every 100ms for early exit while waiting
-                while (utils::get_now_ns() < down_target_ns) {
-                    if (!settings::g_experimentalTabSettings.up_down_key_press_enabled.GetValue()) {
-                        SendKeyUp(hwnd, 'S');
-                        break;
-                    }
-                    // Wait in 100ms chunks for early exit checking
-                    LONGLONG current_ns = utils::get_now_ns();
-                    LONGLONG next_check_ns = (std::min)(current_ns + (100 * utils::NS_TO_MS), down_target_ns);
-                    utils::wait_until_ns(next_check_ns, g_up_down_key_timer_handle);
-                }
-
-                // Release S key
-                LogInfo("Up/Down key press: Releasing S key");
-                SendKeyUp(hwnd, 'S');
-
-                // Wait 100ms before next cycle using accurate timing
-                wait_start_ns = utils::get_now_ns();
-                wait_target_ns = wait_start_ns + (100 * utils::NS_TO_MS);
-                utils::wait_until_ns(wait_target_ns, g_up_down_key_timer_handle);
-            } else {
-                LogWarn("Up/Down key press: No valid game window handle available");
-                // Wait a bit before retrying using accurate timing
-                LONGLONG wait_start_ns = utils::get_now_ns();
-                LONGLONG wait_target_ns = wait_start_ns + (1000 * utils::NS_TO_MS);
                 utils::wait_until_ns(wait_target_ns, g_up_down_key_timer_handle);
             }
         } else {
@@ -366,6 +457,66 @@ void UpDownKeyPressThread() {
     }
 
     g_up_down_key_thread_running.store(false);
+}
+
+// Button-only press thread function - always running, sleeps when inactive
+void ButtonOnlyPressThread() {
+    g_button_only_thread_running.store(true);
+    LogInfo("Button-only press thread started");
+
+    while (true) {
+        // Check if auto-click is enabled (master switch)
+        bool auto_click_enabled = g_auto_click_enabled.load();
+
+        // Check if button-only press is enabled
+        if (auto_click_enabled && settings::g_experimentalTabSettings.button_only_press_enabled.GetValue()) {
+            // Check if UI overlay is open - if so, wait for 2 seconds using accurate timing
+            if (g_ui_overlay_open.load()) {
+                LogDebug("Button-only press: UI overlay is open, waiting for 2 seconds");
+                LONGLONG wait_start_ns = utils::get_now_ns();
+                LONGLONG wait_target_ns = wait_start_ns + (2000 * utils::NS_TO_MS);
+                utils::wait_until_ns(wait_target_ns, g_button_only_timer_handle);
+                continue;
+            }
+
+            // Check if UI was drawn recently (within last 2 seconds) - if so, wait briefly using accurate timing
+            LONGLONG now_ns = utils::get_now_ns();
+            LONGLONG last_ui_draw = g_last_ui_draw_time_ns.load();
+            if (last_ui_draw > 0 && (now_ns - last_ui_draw) < (2 * utils::SEC_TO_NS)) {
+                LogDebug("Button-only press: UI was drawn recently, waiting for 500ms");
+                LONGLONG wait_start_ns = utils::get_now_ns();
+                LONGLONG wait_target_ns = wait_start_ns + (500 * utils::NS_TO_MS);
+                utils::wait_until_ns(wait_target_ns, g_button_only_timer_handle);
+                continue;
+            }
+
+            // Get the shared XInput state (works even if controller is disconnected - hooks will spoof connection)
+            auto shared_state = display_commander::widgets::xinput_widget::XInputWidget::GetSharedState();
+            if (shared_state) {
+                // Execute the sequence of actions
+                // Note: Override state works even when controller is disconnected - XInput hooks will spoof connection
+                for (const auto& action : g_button_only_sequence) {
+                    if (!ExecuteGamepadAction(action, shared_state, g_button_only_timer_handle)) {
+                        // Early exit requested
+                        break;
+                    }
+                }
+            } else {
+                // Shared state should always be available, but if not, wait briefly and retry
+                LogDebug("Button-only gamepad: Shared state not yet available, waiting...");
+                LONGLONG wait_start_ns = utils::get_now_ns();
+                LONGLONG wait_target_ns = wait_start_ns + (100 * utils::NS_TO_MS);
+                utils::wait_until_ns(wait_target_ns, g_button_only_timer_handle);
+            }
+        } else {
+            // Button-only press is disabled, wait for 1 second using accurate timing
+            LONGLONG wait_start_ns = utils::get_now_ns();
+            LONGLONG wait_target_ns = wait_start_ns + (1000 * utils::NS_TO_MS);
+            utils::wait_until_ns(wait_target_ns, g_button_only_timer_handle);
+        }
+    }
+
+    g_button_only_thread_running.store(false);
 }
 
 // Function to start the auto-click thread
@@ -381,6 +532,14 @@ void StartUpDownKeyPressThread() {
     if (!g_up_down_key_thread_running.load()) {
         g_up_down_key_thread = std::thread(UpDownKeyPressThread);
         LogInfo("Up/Down key press thread started");
+    }
+}
+
+// Function to start the button-only press thread
+void StartButtonOnlyPressThread() {
+    if (!g_button_only_thread_running.load()) {
+        g_button_only_thread = std::thread(ButtonOnlyPressThread);
+        LogInfo("Button-only press thread started");
     }
 }
 // Function to toggle auto-click enabled state
@@ -491,6 +650,13 @@ void DrawAutoClickFeature() {
 
     // Up/Down key press automation
     bool up_down_enabled = settings::g_experimentalTabSettings.up_down_key_press_enabled.GetValue();
+    bool auto_click_enabled_state = g_auto_click_enabled.load();
+
+    // Disable checkbox if auto-click is off
+    if (!auto_click_enabled_state) {
+        ImGui::BeginDisabled();
+    }
+
     if (ImGui::Checkbox("W/S Key Press (10s W, 3s S, repeat)", &up_down_enabled)) {
         settings::g_experimentalTabSettings.up_down_key_press_enabled.SetValue(up_down_enabled);
         if (up_down_enabled) {
@@ -500,7 +666,35 @@ void DrawAutoClickFeature() {
         }
     }
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Automatically presses W key for 10 seconds, then S key for 3 seconds, repeating forever.\nSequence: W down → wait 10s → W up → wait 100ms → S down → wait 3s → S up → wait 100ms → repeat.\nUses W and S keys with SendInput API.");
+        ImGui::SetTooltip("Automatically presses W key for 10 seconds, then S key for 3 seconds, repeating forever.\nSequence: W down → wait 10s → W up → wait 100ms → S down → wait 3s → S up → wait 100ms → repeat.\nUses W and S keys with SendInput API.\n\nRequires 'Enable Auto-Click Sequences' to be enabled.");
+    }
+
+    if (!auto_click_enabled_state) {
+        ImGui::EndDisabled();
+    }
+
+    // Button-only press automation
+    bool button_only_enabled = settings::g_experimentalTabSettings.button_only_press_enabled.GetValue();
+
+    // Disable checkbox if auto-click is off
+    if (!auto_click_enabled_state) {
+        ImGui::BeginDisabled();
+    }
+
+    if (ImGui::Checkbox("Y/A Button Press Only (10s hold, repeat)", &button_only_enabled)) {
+        settings::g_experimentalTabSettings.button_only_press_enabled.SetValue(button_only_enabled);
+        if (button_only_enabled) {
+            LogInfo("Button-only press automation enabled");
+        } else {
+            LogInfo("Button-only press automation disabled");
+        }
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Automatically presses Y button, then adds A button (Y+A), holds for 10 seconds, then clears and repeats.\nSequence: Y down → wait 100ms → Y+A down → hold 10s → clear → wait 100ms → repeat.\nNo stick movement - buttons only.\n\nRequires 'Enable Auto-Click Sequences' to be enabled.");
+    }
+
+    if (!auto_click_enabled_state) {
+        ImGui::EndDisabled();
     }
 
     ImGui::Spacing();

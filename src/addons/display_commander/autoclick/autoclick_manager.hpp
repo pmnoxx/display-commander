@@ -23,6 +23,10 @@ extern std::atomic<LONGLONG> g_last_ui_draw_time_ns;
 extern std::atomic<bool> g_up_down_key_thread_running;
 extern std::thread g_up_down_key_thread;
 
+// Global variables for button-only press functionality
+extern std::atomic<bool> g_button_only_thread_running;
+extern std::thread g_button_only_thread;
+
 // Function declarations
 void PerformClick(int x, int y, int sequence_num, bool is_test = false);
 void AutoClickThread();
@@ -33,6 +37,8 @@ void DrawSequence(int sequence_num);
 void DrawMouseCoordinatesDisplay();
 void UpDownKeyPressThread();
 void StartUpDownKeyPressThread();
+void ButtonOnlyPressThread();
+void StartButtonOnlyPressThread();
 
 // UI state management functions
 void UpdateUIOverlayState(bool is_open);

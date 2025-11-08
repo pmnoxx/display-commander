@@ -156,6 +156,7 @@ void OnInitEffectRuntime(reshade::api::effect_runtime* runtime) {
             if (enabled_experimental_features) {
                 autoclick::StartAutoClickThread();
                 autoclick::StartUpDownKeyPressThread();
+                autoclick::StartButtonOnlyPressThread();
             }
         }
 #ifdef TRY_CATCH_BLOCKS

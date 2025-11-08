@@ -109,7 +109,17 @@ class MainTabSettings {
 
     // Advanced Settings
     ui::new_ui::BoolSetting advanced_settings_enabled;
+
+    // Individual Tab Visibility Settings
+    ui::new_ui::BoolSetting show_developer_tab;
+    ui::new_ui::BoolSetting show_window_info_tab;
+    ui::new_ui::BoolSetting show_swapchain_tab;
+    ui::new_ui::BoolSetting show_important_info_tab;
     ui::new_ui::BoolSetting show_xinput_tab;
+    ui::new_ui::BoolSetting show_remapping_tab;
+    ui::new_ui::BoolSetting show_hook_stats_tab;
+    ui::new_ui::BoolSetting show_streamline_tab;
+    ui::new_ui::BoolSetting show_experimental_tab;
 
     // Ansel Control
     ui::new_ui::BoolSetting skip_ansel_loading;

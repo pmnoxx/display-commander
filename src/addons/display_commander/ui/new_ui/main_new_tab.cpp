@@ -20,6 +20,7 @@
 #include "../../utils/logging.hpp"
 #include "../../globals.hpp"
 #include "imgui.h"
+#include "settings_wrapper.hpp"
 #include "utils/timing.hpp"
 #include "version.hpp"
 
@@ -312,7 +313,7 @@ void DrawAdvancedSettings() {
     // Advanced Settings Control
     {
         bool advanced_settings = settings::g_mainTabSettings.advanced_settings_enabled.GetValue();
-        if (ImGui::Checkbox(ICON_FK_FILE_CODE " Advanced Settings", &advanced_settings)) {
+        if (ImGui::Checkbox(ICON_FK_FILE_CODE " Show All Tabs", &advanced_settings)) {
             settings::g_mainTabSettings.advanced_settings_enabled.SetValue(advanced_settings);
             LogInfo("Advanced settings %s", advanced_settings ? "enabled" : "disabled");
         }
@@ -322,6 +323,77 @@ void DrawAdvancedSettings() {
                 "When disabled, advanced tabs will be hidden to simplify the interface.");
         }
     }
+
+    ImGui::Spacing();
+
+    // Individual Tab Visibility Settings
+    ImGui::Text("Show Individual Tabs:");
+    ImGui::Indent();
+
+    if (CheckboxSetting(settings::g_mainTabSettings.show_developer_tab, "Show Developer Tab")) {
+        LogInfo("Show Developer tab %s", settings::g_mainTabSettings.show_developer_tab.GetValue() ? "enabled" : "disabled");
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Shows the Developer tab even when 'Show All Tabs' is disabled.");
+    }
+
+    if (CheckboxSetting(settings::g_mainTabSettings.show_window_info_tab, "Show Window Info Tab")) {
+        LogInfo("Show Window Info tab %s", settings::g_mainTabSettings.show_window_info_tab.GetValue() ? "enabled" : "disabled");
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Shows the Window Info tab even when 'Show All Tabs' is disabled.");
+    }
+
+    if (CheckboxSetting(settings::g_mainTabSettings.show_swapchain_tab, "Show Swapchain Tab")) {
+        LogInfo("Show Swapchain tab %s", settings::g_mainTabSettings.show_swapchain_tab.GetValue() ? "enabled" : "disabled");
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Shows the Swapchain tab even when 'Show All Tabs' is disabled.");
+    }
+
+    if (CheckboxSetting(settings::g_mainTabSettings.show_important_info_tab, "Show Important Info Tab")) {
+        LogInfo("Show Important Info tab %s", settings::g_mainTabSettings.show_important_info_tab.GetValue() ? "enabled" : "disabled");
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Shows the Important Info tab even when 'Show All Tabs' is disabled.");
+    }
+
+    if (CheckboxSetting(settings::g_mainTabSettings.show_xinput_tab, "Show XInput Tab")) {
+        LogInfo("Show XInput tab %s", settings::g_mainTabSettings.show_xinput_tab.GetValue() ? "enabled" : "disabled");
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Shows the XInput controller monitoring tab even when 'Show All Tabs' is disabled.");
+    }
+
+    if (CheckboxSetting(settings::g_mainTabSettings.show_remapping_tab, "Show Remapping Tab")) {
+        LogInfo("Show Remapping tab %s", settings::g_mainTabSettings.show_remapping_tab.GetValue() ? "enabled" : "disabled");
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Shows the Remapping (Experimental) tab even when 'Show All Tabs' is disabled.");
+    }
+
+    if (CheckboxSetting(settings::g_mainTabSettings.show_hook_stats_tab, "Show Hook Statistics Tab")) {
+        LogInfo("Show Hook Statistics tab %s", settings::g_mainTabSettings.show_hook_stats_tab.GetValue() ? "enabled" : "disabled");
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Shows the Hook Statistics tab even when 'Show All Tabs' is disabled.");
+    }
+
+    if (CheckboxSetting(settings::g_mainTabSettings.show_streamline_tab, "Show Streamline Tab")) {
+        LogInfo("Show Streamline tab %s", settings::g_mainTabSettings.show_streamline_tab.GetValue() ? "enabled" : "disabled");
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Shows the Streamline tab even when 'Show All Tabs' is disabled.");
+    }
+
+    if (CheckboxSetting(settings::g_mainTabSettings.show_experimental_tab, "Show Experimental Tab")) {
+        LogInfo("Show Experimental tab %s", settings::g_mainTabSettings.show_experimental_tab.GetValue() ? "enabled" : "disabled");
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Shows the Experimental tab even when 'Show All Tabs' is disabled.");
+    }
+
+    ImGui::Unindent();
 
     ImGui::Spacing();
 }
@@ -560,16 +632,6 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
 
         ImGui::Columns(1); // Reset to single column
 
-        // Show XInput tab checkbox
-        bool show_xinput_tab = settings::g_mainTabSettings.show_xinput_tab.GetValue();
-        if (ImGui::Checkbox("Show XInput Tab", &show_xinput_tab)) {
-            settings::g_mainTabSettings.show_xinput_tab.SetValue(show_xinput_tab);
-            LogInfo("Show XInput tab %s", show_xinput_tab ? "enabled" : "disabled");
-        }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Shows the XInput controller monitoring tab even when advanced settings are disabled.");
-        }
-
         ImGui::Unindent();
     }
 
@@ -596,6 +658,27 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
 
     // Window Controls Section
     DrawWindowControls();
+
+    ImGui::Spacing();
+
+    // Background Rendering Section
+    if (ImGui::CollapsingHeader("Background Rendering", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::Indent();
+
+        // Continue Rendering
+        if (CheckboxSetting(settings::g_developerTabSettings.continue_rendering, "Continue Rendering in Background")) {
+            s_continue_rendering.store(settings::g_developerTabSettings.continue_rendering.GetValue());
+            LogInfo("Continue rendering in background %s",
+                    settings::g_developerTabSettings.continue_rendering.GetValue() ? "enabled" : "disabled");
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip(
+                "Prevent games from pausing or reducing performance when alt-tabbed. Blocks window focus "
+                "messages to keep games running in background.");
+        }
+
+        ImGui::Unindent();
+    }
 
     ImGui::Spacing();
 

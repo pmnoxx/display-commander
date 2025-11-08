@@ -56,15 +56,34 @@ void TabManager::Draw(reshade::api::effect_runtime* runtime) {
         // Check if tab should be visible
         bool should_show = (*current_tabs)[i].is_visible;
 
-        // Special case for XInput tab - show if either advanced settings OR show_xinput_tab is enabled
-        if ((*current_tabs)[i].id == "xinput") {
-            should_show = should_show && (settings::g_mainTabSettings.advanced_settings_enabled.GetValue() ||
-                                         settings::g_mainTabSettings.show_xinput_tab.GetValue());
-        } else {
-            // Check advanced settings for other advanced tabs
-            if ((*current_tabs)[i].is_advanced_tab) {
-                should_show = should_show && settings::g_mainTabSettings.advanced_settings_enabled.GetValue();
+        // Check individual tab settings for advanced tabs
+        if ((*current_tabs)[i].is_advanced_tab) {
+            bool tab_enabled = false;
+            const std::string& tab_id = (*current_tabs)[i].id;
+
+            // Check individual tab setting or fall back to "Show All Tabs"
+            if (tab_id == "developer_new") {
+                tab_enabled = settings::g_mainTabSettings.show_developer_tab.GetValue();
+            } else if (tab_id == "window_info") {
+                tab_enabled = settings::g_mainTabSettings.show_window_info_tab.GetValue();
+            } else if (tab_id == "swapchain") {
+                tab_enabled = settings::g_mainTabSettings.show_swapchain_tab.GetValue();
+            } else if (tab_id == "important_info") {
+                tab_enabled = settings::g_mainTabSettings.show_important_info_tab.GetValue();
+            } else if (tab_id == "xinput") {
+                tab_enabled = settings::g_mainTabSettings.show_xinput_tab.GetValue();
+            } else if (tab_id == "remapping") {
+                tab_enabled = settings::g_mainTabSettings.show_remapping_tab.GetValue();
+            } else if (tab_id == "hook_stats") {
+                tab_enabled = settings::g_mainTabSettings.show_hook_stats_tab.GetValue();
+            } else if (tab_id == "streamline") {
+                tab_enabled = settings::g_mainTabSettings.show_streamline_tab.GetValue();
+            } else if (tab_id == "experimental") {
+                tab_enabled = settings::g_mainTabSettings.show_experimental_tab.GetValue();
             }
+
+            // Show tab if individual setting is enabled OR "Show All Tabs" is enabled
+            should_show = should_show && (settings::g_mainTabSettings.advanced_settings_enabled.GetValue() || tab_enabled);
         }
 
         if (should_show) {
@@ -90,15 +109,34 @@ void TabManager::Draw(reshade::api::effect_runtime* runtime) {
             // Check if tab should be visible
             bool should_show = (*current_tabs)[i].is_visible;
 
-            // Special case for XInput tab - show if either advanced settings OR show_xinput_tab is enabled
-            if ((*current_tabs)[i].id == "xinput") {
-                should_show = should_show && (settings::g_mainTabSettings.advanced_settings_enabled.GetValue() ||
-                                             settings::g_mainTabSettings.show_xinput_tab.GetValue());
-            } else {
-                // Check advanced settings for other advanced tabs
-                if ((*current_tabs)[i].is_advanced_tab) {
-                    should_show = should_show && settings::g_mainTabSettings.advanced_settings_enabled.GetValue();
+            // Check individual tab settings for advanced tabs
+            if ((*current_tabs)[i].is_advanced_tab) {
+                bool tab_enabled = false;
+                const std::string& tab_id = (*current_tabs)[i].id;
+
+                // Check individual tab setting or fall back to "Show All Tabs"
+                if (tab_id == "developer_new") {
+                    tab_enabled = settings::g_mainTabSettings.show_developer_tab.GetValue();
+                } else if (tab_id == "window_info") {
+                    tab_enabled = settings::g_mainTabSettings.show_window_info_tab.GetValue();
+                } else if (tab_id == "swapchain") {
+                    tab_enabled = settings::g_mainTabSettings.show_swapchain_tab.GetValue();
+                } else if (tab_id == "important_info") {
+                    tab_enabled = settings::g_mainTabSettings.show_important_info_tab.GetValue();
+                } else if (tab_id == "xinput") {
+                    tab_enabled = settings::g_mainTabSettings.show_xinput_tab.GetValue();
+                } else if (tab_id == "remapping") {
+                    tab_enabled = settings::g_mainTabSettings.show_remapping_tab.GetValue();
+                } else if (tab_id == "hook_stats") {
+                    tab_enabled = settings::g_mainTabSettings.show_hook_stats_tab.GetValue();
+                } else if (tab_id == "streamline") {
+                    tab_enabled = settings::g_mainTabSettings.show_streamline_tab.GetValue();
+                } else if (tab_id == "experimental") {
+                    tab_enabled = settings::g_mainTabSettings.show_experimental_tab.GetValue();
                 }
+
+                // Show tab if individual setting is enabled OR "Show All Tabs" is enabled
+                should_show = should_show && (settings::g_mainTabSettings.advanced_settings_enabled.GetValue() || tab_enabled);
             }
 
             if (!should_show) {

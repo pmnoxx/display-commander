@@ -162,18 +162,6 @@ void DrawFeaturesEnabledByDefault() {
 void DrawDeveloperSettings() {
     ImGui::Indent();
 
-    // Continue Rendering
-    if (CheckboxSetting(settings::g_developerTabSettings.continue_rendering, "Continue Rendering in Background")) {
-        s_continue_rendering.store(settings::g_developerTabSettings.continue_rendering.GetValue());
-        LogInfo("Continue rendering in background %s",
-                settings::g_developerTabSettings.continue_rendering.GetValue() ? "enabled" : "disabled");
-    }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip(
-            "Prevent games from pausing or reducing performance when alt-tabbed. Blocks window focus "
-            "messages to keep games running in background.");
-    }
-
     // Safemode setting
     if (CheckboxSetting(settings::g_developerTabSettings.safemode, "Safemode (requires restart)")) {
         LogInfo("Safemode setting changed to: %s",

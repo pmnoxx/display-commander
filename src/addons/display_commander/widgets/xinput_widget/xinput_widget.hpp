@@ -95,6 +95,8 @@ struct XInputSharedState {
         0.0f}; // Left stick dead zone (min input) - 0.0 = no deadzone, 15.0 = ignores small movements
     std::atomic<float> right_stick_deadzone{
         0.0f}; // Right stick dead zone (min input) - 0.0 = no deadzone, 15.0 = ignores small movements
+    std::atomic<bool> left_stick_circular{true};  // Left stick processing mode: true = circular (radial), false = square (separate axes)
+    std::atomic<bool> right_stick_circular{true}; // Right stick processing mode: true = circular (radial), false = square (separate axes)
 
     // Stick center calibration
     std::atomic<float> left_stick_center_x{0.0f};  // Left stick X center offset

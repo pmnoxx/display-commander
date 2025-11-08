@@ -67,11 +67,12 @@ float recenter(float value, float center) {
 // Helper function to apply max input, min output, deadzone, and center calibration to thumbstick values
 void ApplyThumbstickProcessing(XINPUT_STATE *pState, float left_max_input, float right_max_input, float left_min_output,
                                float right_min_output, float left_deadzone, float right_deadzone,
-                               float left_center_x, float left_center_y, float right_center_x, float right_center_y) {
+                               float left_center_x, float left_center_y, float right_center_x, float right_center_y,
+                               bool left_circular, bool right_circular) {
     if (!pState)
         return;
 
-    // Process left stick using radial processing (preserves direction)
+    // Process left stick
     float lx = ShortToFloat(pState->Gamepad.sThumbLX);
     float ly = ShortToFloat(pState->Gamepad.sThumbLY);
 
@@ -79,13 +80,18 @@ void ApplyThumbstickProcessing(XINPUT_STATE *pState, float left_max_input, float
     lx = recenter(lx, left_center_x);
     ly = recenter(ly, left_center_y);
 
-    ProcessStickInputRadial(lx, ly, left_deadzone, left_max_input, left_min_output);
+    // Use circular or square processing based on toggle
+    if (left_circular) {
+        ProcessStickInputRadial(lx, ly, left_deadzone, left_max_input, left_min_output);
+    } else {
+        ProcessStickInputSquare(lx, ly, left_deadzone, left_max_input, left_min_output);
+    }
 
     // Convert back to SHORT with correct scaling
     pState->Gamepad.sThumbLX = FloatToShort(lx);
     pState->Gamepad.sThumbLY = FloatToShort(ly);
 
-    // Process right stick using radial processing (preserves direction)
+    // Process right stick
     float rx = ShortToFloat(pState->Gamepad.sThumbRX);
     float ry = ShortToFloat(pState->Gamepad.sThumbRY);
 
@@ -93,7 +99,12 @@ void ApplyThumbstickProcessing(XINPUT_STATE *pState, float left_max_input, float
     rx = recenter(rx, right_center_x);
     ry = recenter(ry, right_center_y);
 
-    ProcessStickInputRadial(rx, ry, right_deadzone, right_max_input, right_min_output);
+    // Use circular or square processing based on toggle
+    if (right_circular) {
+        ProcessStickInputRadial(rx, ry, right_deadzone, right_max_input, right_min_output);
+    } else {
+        ProcessStickInputSquare(rx, ry, right_deadzone, right_max_input, right_min_output);
+    }
 
     // Convert back to SHORT with correct scaling
     pState->Gamepad.sThumbRX = FloatToShort(rx);
@@ -272,8 +283,12 @@ DWORD WINAPI XInputGetState_Detour(DWORD dwUserIndex, XINPUT_STATE *pState) {
                 float right_center_x = shared_state->right_stick_center_x.load();
                 float right_center_y = shared_state->right_stick_center_y.load();
 
+                bool left_circular = shared_state->left_stick_circular.load();
+                bool right_circular = shared_state->right_stick_circular.load();
+
                 ApplyThumbstickProcessing(pState, left_max_input, right_max_input, left_min_output, right_min_output,
-                                          left_deadzone, right_deadzone, left_center_x, left_center_y, right_center_x, right_center_y);
+                                          left_deadzone, right_deadzone, left_center_x, left_center_y, right_center_x, right_center_y,
+                                          left_circular, right_circular);
             }
 
             // Process input remapping before updating state
@@ -469,8 +484,12 @@ DWORD WINAPI XInputGetStateEx_Detour(DWORD dwUserIndex, XINPUT_STATE *pState) {
                 float right_center_x = shared_state->right_stick_center_x.load();
                 float right_center_y = shared_state->right_stick_center_y.load();
 
+                bool left_circular = shared_state->left_stick_circular.load();
+                bool right_circular = shared_state->right_stick_circular.load();
+
                 ApplyThumbstickProcessing(pState, left_max_input, right_max_input, left_min_output, right_min_output,
-                                          left_deadzone, right_deadzone, left_center_x, left_center_y, right_center_x, right_center_y);
+                                          left_deadzone, right_deadzone, left_center_x, left_center_y, right_center_x, right_center_y,
+                                          left_circular, right_circular);
             }
 
             // Process input remapping before updating state

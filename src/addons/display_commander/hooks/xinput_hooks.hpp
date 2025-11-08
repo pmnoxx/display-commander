@@ -28,6 +28,8 @@ bool InstallXInputHooks();
 
 // Helper functions for thumbstick processing
 void ApplyThumbstickProcessing(XINPUT_STATE *pState, float left_max_input, float right_max_input, float left_min_output,
-                               float right_min_output, float left_deadzone, float right_deadzone);
+                               float right_min_output, float left_deadzone, float right_deadzone,
+                               float left_center_x, float left_center_y, float right_center_x, float right_center_y,
+                               bool left_circular, bool right_circular);
 
 } // namespace display_commanderhooks

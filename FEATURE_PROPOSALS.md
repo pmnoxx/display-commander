@@ -30,6 +30,8 @@ This document tracks proposed features and ideas for future development. These a
 
 • Refresh rate monitor
 
+• Add axial/square stick processing for anti-deadzone/deadzone.
+
 ## Working on
 
 • Independent window for Display Commander (ctrl-shift-delete)

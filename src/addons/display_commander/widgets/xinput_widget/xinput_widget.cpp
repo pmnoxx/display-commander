@@ -35,7 +35,6 @@ std::unique_ptr<XInputWidget> g_xinput_widget = nullptr;
 XInputWidget::XInputWidget() {
     // Initialize shared state if not already done
     if (!g_shared_state) {
-        g_shared_state = std::make_shared<XInputSharedState>();
 
         // Initialize controller states
         for (int i = 0; i < XUSER_MAX_COUNT; ++i) {
@@ -253,6 +252,42 @@ void XInputWidget::DrawSettings() {
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip(
                 "Removes game's deadzone by setting minimum output (30%% = eliminates small movements, 0%% = normal)");
+        }
+
+        ImGui::Separator();
+        ImGui::Text("Stick Processing Mode");
+        ImGui::Text("Choose how X/Y axes are processed together (circular) or separately (square):");
+
+        // Left stick processing mode toggle
+        bool left_circular = g_shared_state->left_stick_circular.load();
+        const char* left_mode_text = left_circular ? "Circular (Default)" : "Square";
+        if (ImGui::Checkbox("Left Stick: Circular Processing", &left_circular)) {
+            g_shared_state->left_stick_circular.store(left_circular);
+            SaveSettings();
+        }
+        ImGui::SameLine();
+        ImGui::TextColored(ui::colors::TEXT_DIMMED, "(%s)", left_mode_text);
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip(
+                "Circular: X/Y axes processed together (radial deadzone preserves direction)\n"
+                "Square: X/Y axes processed separately (independent deadzone per axis)\n"
+                "Affects deadzone, anti-deadzone, and sensitivity settings");
+        }
+
+        // Right stick processing mode toggle
+        bool right_circular = g_shared_state->right_stick_circular.load();
+        const char* right_mode_text = right_circular ? "Circular (Default)" : "Square";
+        if (ImGui::Checkbox("Right Stick: Circular Processing", &right_circular)) {
+            g_shared_state->right_stick_circular.store(right_circular);
+            SaveSettings();
+        }
+        ImGui::SameLine();
+        ImGui::TextColored(ui::colors::TEXT_DIMMED, "(%s)", right_mode_text);
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip(
+                "Circular: X/Y axes processed together (radial deadzone preserves direction)\n"
+                "Square: X/Y axes processed separately (independent deadzone per axis)\n"
+                "Affects deadzone, anti-deadzone, and sensitivity settings");
         }
 
         ImGui::Separator();
@@ -640,10 +675,15 @@ void XInputWidget::DrawStickStates(const XINPUT_GAMEPAD &gamepad) {
         float lx_recentered = lx - left_center_x;
         float ly_recentered = ly - left_center_y;
 
-        // Apply final processing (radial deadzone preserves direction)
+        // Apply final processing (use appropriate mode based on toggle)
         float lx_final = lx_recentered;
         float ly_final = ly_recentered;
-        ProcessStickInputRadial(lx_final, ly_final, left_deadzone, left_max_input, left_min_output);
+        bool left_circular = g_shared_state->left_stick_circular.load();
+        if (left_circular) {
+            ProcessStickInputRadial(lx_final, ly_final, left_deadzone, left_max_input, left_min_output);
+        } else {
+            ProcessStickInputSquare(lx_final, ly_final, left_deadzone, left_max_input, left_min_output);
+        }
 
         ImGui::Text("X: %.3f (Raw) -> %.3f (Recentered) -> %.3f (Final) [Raw: %d]", lx, lx_recentered, lx_final, gamepad.sThumbLX);
         ImGui::Text("Y: %.3f (Raw) -> %.3f (Recentered) -> %.3f (Final) [Raw: %d]", ly, ly_recentered, ly_final, gamepad.sThumbLY);
@@ -682,10 +722,15 @@ void XInputWidget::DrawStickStates(const XINPUT_GAMEPAD &gamepad) {
         float rx_recentered = rx - right_center_x;
         float ry_recentered = ry - right_center_y;
 
-        // Apply final processing (radial deadzone preserves direction)
+        // Apply final processing (use appropriate mode based on toggle)
         float rx_final = rx_recentered;
         float ry_final = ry_recentered;
-        ProcessStickInputRadial(rx_final, ry_final, right_deadzone, right_max_input, right_min_output);
+        bool right_circular = g_shared_state->right_stick_circular.load();
+        if (right_circular) {
+            ProcessStickInputRadial(rx_final, ry_final, right_deadzone, right_max_input, right_min_output);
+        } else {
+            ProcessStickInputSquare(rx_final, ry_final, right_deadzone, right_max_input, right_min_output);
+        }
 
         ImGui::Text("X: %.3f (Raw) -> %.3f (Recentered) -> %.3f (Final) [Raw: %d]", rx, rx_recentered, rx_final, gamepad.sThumbRX);
         ImGui::Text("Y: %.3f (Raw) -> %.3f (Recentered) -> %.3f (Final) [Raw: %d]", ry, ry_recentered, ry_final, gamepad.sThumbRY);
@@ -740,16 +785,26 @@ void XInputWidget::DrawStickStatesExtended(float left_deadzone, float left_max_i
             float x = input_values[i];
             float y = 0.0f; // Move along X axis for simplicity
 
-            // Left stick - apply radial processing
+            // Left stick - apply processing based on mode
             float lx_test = x;
             float ly_test = y;
-            ProcessStickInputRadial(lx_test, ly_test, left_deadzone, left_max_input, left_min_output);
+            bool left_circular = g_shared_state->left_stick_circular.load();
+            if (left_circular) {
+                ProcessStickInputRadial(lx_test, ly_test, left_deadzone, left_max_input, left_min_output);
+            } else {
+                ProcessStickInputSquare(lx_test, ly_test, left_deadzone, left_max_input, left_min_output);
+            }
             left_curve_y[i] = std::sqrt(lx_test * lx_test + ly_test * ly_test); // Show output magnitude
 
-            // Right stick - apply radial processing
+            // Right stick - apply processing based on mode
             float rx_test = x;
             float ry_test = y;
-            ProcessStickInputRadial(rx_test, ry_test, right_deadzone, right_max_input, right_min_output);
+            bool right_circular = g_shared_state->right_stick_circular.load();
+            if (right_circular) {
+                ProcessStickInputRadial(rx_test, ry_test, right_deadzone, right_max_input, right_min_output);
+            } else {
+                ProcessStickInputSquare(rx_test, ry_test, right_deadzone, right_max_input, right_min_output);
+            }
             right_curve_y[i] = std::sqrt(rx_test * rx_test + ry_test * ry_test); // Show output magnitude
 
             left_curve_x[i] = static_cast<float>(i);
@@ -1093,6 +1148,17 @@ void XInputWidget::LoadSettings() {
         g_shared_state->vibration_amplification.store(vibration_amp);
     }
 
+    // Load stick processing mode settings
+    bool left_circular;
+    if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "LeftStickCircular", left_circular)) {
+        g_shared_state->left_stick_circular.store(left_circular);
+    }
+
+    bool right_circular;
+    if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "RightStickCircular", right_circular)) {
+        g_shared_state->right_stick_circular.store(right_circular);
+    }
+
     // Load autofire settings
     bool autofire_enabled;
     if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "AutofireEnabled", autofire_enabled)) {
@@ -1174,6 +1240,13 @@ void XInputWidget::SaveSettings() {
     // Save vibration amplification setting
     display_commander::config::set_config_value("DisplayCommander.XInputWidget", "VibrationAmplification",
                               g_shared_state->vibration_amplification.load());
+
+    // Save stick processing mode settings
+    display_commander::config::set_config_value("DisplayCommander.XInputWidget", "LeftStickCircular",
+                              g_shared_state->left_stick_circular.load());
+
+    display_commander::config::set_config_value("DisplayCommander.XInputWidget", "RightStickCircular",
+                              g_shared_state->right_stick_circular.load());
 
     // Save autofire settings
     display_commander::config::set_config_value("DisplayCommander.XInputWidget", "AutofireEnabled",
@@ -2196,7 +2269,7 @@ void ProcessAutofire(DWORD user_index, XINPUT_STATE *pState) {
     // Thread-safe access to autofire_buttons
     utils::SRWLockExclusive lock(shared_state->autofire_lock);
 
-    // Store original button state before processing
+    // Store original buttonS state before processing
     WORD original_buttons = pState->Gamepad.wButtons;
 
     // Process each autofire button directly from shared state

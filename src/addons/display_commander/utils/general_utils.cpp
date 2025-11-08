@@ -192,6 +192,49 @@ void ProcessStickInputRadial(float &x, float &y, float deadzone, float max_input
     y = y * output_magnitude / magnitude;
 }
 
+// Process stick input with square deadzone (processes X and Y axes separately)
+void ProcessStickInputSquare(float &x, float &y, float deadzone, float max_input, float min_output) {
+    // Process X axis independently
+    float abs_x = std::abs(x);
+    float sign_x = (x >= 0.0f) ? 1.0f : -1.0f;
+
+    // Step 1: Apply square deadzone to X axis
+    if (abs_x < deadzone) {
+        x = 0.0f;
+    } else {
+        // Step 2: Apply max_input scaling to X axis
+        // Scale from [deadzone, max_input] to [0, 1]
+        float scaled_x = (std::min)(1.0f, max(0.0f, (abs_x - deadzone) / (max_input - deadzone)));
+
+        // Step 3: Apply min_output mapping to X axis
+        float output_x = min_output + (scaled_x * (1.0f - min_output));
+
+        // Step 4: Clamp and restore sign
+        output_x = std::clamp(output_x, 0.0f, 1.0f);
+        x = sign_x * output_x;
+    }
+
+    // Process Y axis independently
+    float abs_y = std::abs(y);
+    float sign_y = (y >= 0.0f) ? 1.0f : -1.0f;
+
+    // Step 1: Apply square deadzone to Y axis
+    if (abs_y < deadzone) {
+        y = 0.0f;
+    } else {
+        // Step 2: Apply max_input scaling to Y axis
+        // Scale from [deadzone, max_input] to [0, 1]
+        float scaled_y = (std::min)(1.0f, max(0.0f, (abs_y - deadzone) / (max_input - deadzone)));
+
+        // Step 3: Apply min_output mapping to Y axis
+        float output_y = min_output + (scaled_y * (1.0f - min_output));
+
+        // Step 4: Clamp and restore sign
+        output_y = std::clamp(output_y, 0.0f, 1.0f);
+        y = sign_y * output_y;
+    }
+}
+
 // XInput thumbstick scaling helpers (handles asymmetric SHORT range: -32768 to 32767)
 float ShortToFloat(SHORT value) {
     // Proper linear mapping from [-32768, 32767] to [-1.0f, 1.0f]

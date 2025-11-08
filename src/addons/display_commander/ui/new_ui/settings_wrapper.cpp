@@ -321,6 +321,37 @@ void ComboSettingRef::SetValue(int value) {
     display_commander::config::save_config(); // Write to disk
 }
 
+// Helper functions for LogLevel index <-> enum mapping (declared early for specializations)
+// Mapping: Index 0 -> Debug (4), Index 1 -> Info (3), Index 2 -> Warning (2), Index 3 -> Error (1)
+namespace {
+inline LogLevel LogLevelIndexToEnum(int index) {
+    switch (index) {
+        case 0: return LogLevel::Debug;
+        case 1: return LogLevel::Info;
+        case 2: return LogLevel::Warning;
+        case 3: return LogLevel::Error;
+        default: return LogLevel::Debug; // Default to Debug for out-of-range
+    }
+}
+
+inline int LogLevelEnumToIndex(LogLevel level) {
+    switch (level) {
+        case LogLevel::Debug: return 0;
+        case LogLevel::Info: return 1;
+        case LogLevel::Warning: return 2;
+        case LogLevel::Error: return 3;
+        default: return 0; // Default to Debug index
+    }
+}
+} // anonymous namespace
+
+// Forward declarations for LogLevel specializations
+template <> void ComboSettingEnumRef<LogLevel>::Load();
+template <> void ComboSettingEnumRef<LogLevel>::Save();
+template <> std::string ComboSettingEnumRef<LogLevel>::GetValueAsString() const;
+template <> int ComboSettingEnumRef<LogLevel>::GetValue() const;
+template <> void ComboSettingEnumRef<LogLevel>::SetValue(int value);
+
 // ComboSettingEnumRef implementation
 template <typename EnumType>
 ComboSettingEnumRef<EnumType>::ComboSettingEnumRef(const std::string &key, std::atomic<EnumType> &external_ref,
@@ -361,6 +392,56 @@ template <typename EnumType> std::string ComboSettingEnumRef<EnumType>::GetValue
 template <typename EnumType> void ComboSettingEnumRef<EnumType>::SetValue(int value) {
     int clamped_value = std::max(0, std::min(static_cast<int>(labels_.size()) - 1, value));
     external_ref_.get().store(static_cast<EnumType>(clamped_value));
+    Save(); // Auto-save when value changes
+    display_commander::config::save_config(); // Write to disk
+}
+
+// Explicit template specializations for LogLevel (must be before template instantiation)
+template <>
+void ComboSettingEnumRef<LogLevel>::Load() {
+    int loaded_index;
+    if (display_commander::config::get_config_value(section_.c_str(), key_.c_str(), loaded_index)) {
+        // If loaded index is out of range, fall back to default
+        const int max_index = static_cast<int>(labels_.size()) - 1;
+        if (loaded_index < 0 || loaded_index > max_index) {
+            int safe_default = default_value_;
+            if (safe_default < 0) {
+                safe_default = 0;
+            }
+            if (safe_default > max_index) {
+                safe_default = std::max(0, max_index);
+            }
+            external_ref_.get().store(LogLevelIndexToEnum(safe_default));
+            Save();
+        } else {
+            external_ref_.get().store(LogLevelIndexToEnum(loaded_index));
+        }
+    } else {
+        // Use default value if not found
+        external_ref_.get().store(LogLevelIndexToEnum(default_value_));
+    }
+}
+
+template <>
+void ComboSettingEnumRef<LogLevel>::Save() {
+    int index = LogLevelEnumToIndex(external_ref_.get().load());
+    display_commander::config::set_config_value(section_.c_str(), key_.c_str(), index);
+}
+
+template <>
+std::string ComboSettingEnumRef<LogLevel>::GetValueAsString() const {
+    return std::to_string(LogLevelEnumToIndex(external_ref_.get().load()));
+}
+
+template <>
+int ComboSettingEnumRef<LogLevel>::GetValue() const {
+    return LogLevelEnumToIndex(external_ref_.get().load());
+}
+
+template <>
+void ComboSettingEnumRef<LogLevel>::SetValue(int value) {
+    int clamped_value = std::max(0, std::min(static_cast<int>(labels_.size()) - 1, value));
+    external_ref_.get().store(LogLevelIndexToEnum(clamped_value));
     Save(); // Auto-save when value changes
     display_commander::config::save_config(); // Write to disk
 }
@@ -781,7 +862,8 @@ template bool ComboSettingEnumRefWrapper<WindowMode>(ComboSettingEnumRef<WindowM
 template class ComboSettingEnumRef<InputBlockingMode>;
 template bool ComboSettingEnumRefWrapper<InputBlockingMode>(ComboSettingEnumRef<InputBlockingMode> &setting, const char *label);
 
-// Explicit template instantiations for LogLevel
+// Note: LogLevel uses explicit specializations for methods, but we still need to instantiate
+// the class template itself (for constructor and other non-specialized members)
 template class ComboSettingEnumRef<LogLevel>;
 template bool ComboSettingEnumRefWrapper<LogLevel>(ComboSettingEnumRef<LogLevel> &setting, const char *label);
 

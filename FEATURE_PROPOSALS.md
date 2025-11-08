@@ -34,6 +34,8 @@ This document tracks proposed features and ideas for future development. These a
 
 • Add choosing which tabs should stay open (not just all tabs)
 
+• Add option to disable logging in DC. (verbose)
+
 ## Working on
 
 • Independent window for Display Commander (ctrl-shift-delete)
@@ -65,8 +67,6 @@ This document tracks proposed features and ideas for future development. These a
 • Add UI for "enable HDR" for monitors, to enable at start of game, turn off at game close.
 
 • Fix displaying DLSS version when NVIDIA driver overloads dlss version
-
-• Add option to disable logging in DC. (verbose)
 
 ## Low Priority Proposals
 

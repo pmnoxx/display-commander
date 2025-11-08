@@ -1,10 +1,16 @@
 #include "logging.hpp"
+#include "../globals.hpp"
 
 #include <cstdio>
 #include <reshade.hpp>
 
 // Logging function implementations
 void LogInfo(const char *msg, ...) {
+    // Check if info level logging is enabled (log if message level <= min level)
+    if (static_cast<int>(LogLevel::Info) > static_cast<int>(g_min_log_level.load())) {
+        return;
+    }
+
     va_list args;
     va_start(args, msg);
     char buffer[1024];
@@ -14,6 +20,11 @@ void LogInfo(const char *msg, ...) {
 }
 
 void LogWarn(const char *msg, ...) {
+    // Check if warning level logging is enabled (log if message level <= min level)
+    if (static_cast<int>(LogLevel::Warning) > static_cast<int>(g_min_log_level.load())) {
+        return;
+    }
+
     va_list args;
     va_start(args, msg);
     char buffer[1024];
@@ -23,6 +34,7 @@ void LogWarn(const char *msg, ...) {
 }
 
 void LogError(const char *msg, ...) {
+    // Errors are always logged (lowest level = 1)
     va_list args;
     va_start(args, msg);
     char buffer[1024];
@@ -32,6 +44,11 @@ void LogError(const char *msg, ...) {
 }
 
 void LogDebug(const char *msg, ...) {
+    // Check if debug level logging is enabled (log if message level <= min level)
+    if (static_cast<int>(LogLevel::Debug) > static_cast<int>(g_min_log_level.load())) {
+        return;
+    }
+
     va_list args;
     va_start(args, msg);
     char buffer[1024];

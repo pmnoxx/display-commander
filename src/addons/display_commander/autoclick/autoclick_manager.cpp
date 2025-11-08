@@ -308,7 +308,7 @@ static const GamepadAction g_up_down_sequence[] = {
     {GamepadActionType::WAIT, nullptr, INFINITY, 0, 100, 0},
 
     // Set backward and button Y
-    {GamepadActionType::SET_STICK_AND_BUTTONS, "Up/Down gamepad: Setting left stick Y backward and button Y", -1.0f, XINPUT_GAMEPAD_Y, 0, 0},
+    {GamepadActionType::SET_STICK_AND_BUTTONS, "Up/Down gamepad: Setting left stick Y backward and button Y", -1.0f, XINPUT_GAMEPAD_Y | XINPUT_GAMEPAD_A, 0, 0},
 
     // Hold for 3 seconds
     {GamepadActionType::HOLD, nullptr, INFINITY, 0, 0, 3},

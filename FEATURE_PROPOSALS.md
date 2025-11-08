@@ -32,6 +32,8 @@ This document tracks proposed features and ideas for future development. These a
 
 • Add axial/square stick processing for anti-deadzone/deadzone.
 
+• Add choosing which tabs should stay open (not just all tabs)
+
 ## Working on
 
 • Independent window for Display Commander (ctrl-shift-delete)
@@ -61,8 +63,6 @@ This document tracks proposed features and ideas for future development. These a
 • Rewrite gamepad remapping / gamepad chimes UI.
 
 • Add UI for "enable HDR" for monitors, to enable at start of game, turn off at game close.
-
-• Add choosing which tabs should stay open (not just all tabs)
 
 • Fix displaying DLSS version when NVIDIA driver overloads dlss version
 

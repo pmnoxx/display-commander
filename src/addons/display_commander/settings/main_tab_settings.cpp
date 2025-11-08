@@ -79,7 +79,15 @@ MainTabSettings::MainTabSettings()
       frame_time_mode("frame_time_mode", s_frame_time_mode, static_cast<int>(FrameTimeMode::kPresent),
                       {"Frame Present Time", "Frame Start Time (input)", "Frame Display Time later (Present or GPU Completion whichever comes later)"}, "DisplayCommander"),
       advanced_settings_enabled("advanced_settings_enabled", false, "DisplayCommander"),
+      show_developer_tab("show_developer_tab", false, "DisplayCommander"),
+      show_window_info_tab("show_window_info_tab", false, "DisplayCommander"),
+      show_swapchain_tab("show_swapchain_tab", false, "DisplayCommander"),
+      show_important_info_tab("show_important_info_tab", false, "DisplayCommander"),
       show_xinput_tab("show_xinput_tab", false, "DisplayCommander"),
+      show_remapping_tab("show_remapping_tab", false, "DisplayCommander"),
+      show_hook_stats_tab("show_hook_stats_tab", false, "DisplayCommander"),
+      show_streamline_tab("show_streamline_tab", false, "DisplayCommander"),
+      show_experimental_tab("show_experimental_tab", false, "DisplayCommander"),
       skip_ansel_loading("skip_ansel_loading", false, "DisplayCommander") {
 
     // Initialize the all_settings_ vector
@@ -126,7 +134,15 @@ MainTabSettings::MainTabSettings()
         &adhd_multi_monitor_enabled,
         &screensaver_mode,
         &advanced_settings_enabled,
+        &show_developer_tab,
+        &show_window_info_tab,
+        &show_swapchain_tab,
+        &show_important_info_tab,
         &show_xinput_tab,
+        &show_remapping_tab,
+        &show_hook_stats_tab,
+        &show_streamline_tab,
+        &show_experimental_tab,
         &skip_ansel_loading,
     };
 }

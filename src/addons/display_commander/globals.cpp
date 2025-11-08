@@ -81,6 +81,9 @@ std::atomic<DxgiBypassMode> s_dxgi_composition_state{DxgiBypassMode::kUnset};
 // DirectInput hook suppression
 std::atomic<bool> s_suppress_dinput_hooks{false}; // Disabled by default
 
+// Logging level control (default to Debug = everything logged)
+std::atomic<LogLevel> g_min_log_level{LogLevel::Debug};
+
 // Input blocking in background (0.0f off, 1.0f on)
 
 // Render blocking in background

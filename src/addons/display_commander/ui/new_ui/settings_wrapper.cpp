@@ -781,6 +781,10 @@ template bool ComboSettingEnumRefWrapper<WindowMode>(ComboSettingEnumRef<WindowM
 template class ComboSettingEnumRef<InputBlockingMode>;
 template bool ComboSettingEnumRefWrapper<InputBlockingMode>(ComboSettingEnumRef<InputBlockingMode> &setting, const char *label);
 
+// Explicit template instantiations for LogLevel
+template class ComboSettingEnumRef<LogLevel>;
+template bool ComboSettingEnumRefWrapper<LogLevel>(ComboSettingEnumRef<LogLevel> &setting, const char *label);
+
 void SeparatorSetting() { ImGui::Separator(); }
 
 void SpacingSetting() { ImGui::Spacing(); }

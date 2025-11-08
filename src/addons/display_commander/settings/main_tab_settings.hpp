@@ -110,6 +110,9 @@ class MainTabSettings {
     // Advanced Settings
     ui::new_ui::BoolSetting advanced_settings_enabled;
 
+    // Logging Level
+    ui::new_ui::ComboSettingEnumRef<LogLevel> log_level;
+
     // Individual Tab Visibility Settings
     ui::new_ui::BoolSetting show_developer_tab;
     ui::new_ui::BoolSetting show_window_info_tab;

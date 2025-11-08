@@ -305,6 +305,9 @@ void InitMainNewTab() {
 
         // Initialize resolution widget
         display_commander::widgets::resolution_widget::InitializeResolutionWidget();
+
+        // Sync log level from settings
+        g_min_log_level.store(static_cast<LogLevel>(settings::g_mainTabSettings.log_level.GetValue()));
     }
 }
 
@@ -322,6 +325,22 @@ void DrawAdvancedSettings() {
                 "Enable advanced settings to show advanced tabs (Developer, Experimental, HID Input, etc.).\n"
                 "When disabled, advanced tabs will be hidden to simplify the interface.");
         }
+    }
+
+    ImGui::Spacing();
+
+    // Logging Level Control
+    if (ComboSettingEnumRefWrapper(settings::g_mainTabSettings.log_level, "Logging Level")) {
+        g_min_log_level.store(static_cast<LogLevel>(settings::g_mainTabSettings.log_level.GetValue()));
+        LogInfo("Logging level changed to: %d", static_cast<int>(settings::g_mainTabSettings.log_level.GetValue()));
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip(
+            "Controls the minimum log level to display:\n\n"
+            "- Error Only: Only error messages\n"
+            "- Warning: Errors and warnings\n"
+            "- Info: Errors, warnings, and info messages\n"
+            "- Debug (Everything): All log messages (default)");
     }
 
     ImGui::Spacing();

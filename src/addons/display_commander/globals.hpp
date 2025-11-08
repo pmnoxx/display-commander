@@ -54,6 +54,14 @@ enum class DeviceTypeDC {
     OpenGL
 };
 
+// Log level enum matching ReShade's log levels
+enum class LogLevel {
+    Error = 1,    // Only errors
+    Warning = 2,  // Errors and warnings
+    Info = 3,     // Errors, warnings, and info
+    Debug = 4     // Everything (default)
+};
+
 // Forward declarations
 
 class SpinLock;
@@ -653,6 +661,9 @@ extern std::atomic<DWORD> g_render_thread_id;
 
 // DirectInput hook suppression
 extern std::atomic<bool> s_suppress_dinput_hooks;
+
+// Logging level control
+extern std::atomic<LogLevel> g_min_log_level;
 
 // External declarations for atomic variables moved to developer_tab_settings.cpp
 extern std::atomic<bool> s_continue_rendering;

@@ -109,6 +109,9 @@ class ExperimentalTabSettings {
     // Up/Down key press automation (9s up, 1s down, repeat)
     BoolSetting up_down_key_press_enabled;
 
+    // Button-only press automation (Y/A buttons only, no stick movement)
+    BoolSetting button_only_press_enabled;
+
 
   private:
     std::vector<SettingBase *> all_settings_;

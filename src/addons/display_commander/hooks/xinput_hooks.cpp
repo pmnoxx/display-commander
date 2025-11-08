@@ -14,6 +14,7 @@
 #include <array>
 #include <string>
 #include <vector>
+#include <cmath>
 
 
 namespace display_commanderhooks {
@@ -132,6 +133,20 @@ DWORD WINAPI XInputGetState_Detour(DWORD dwUserIndex, XINPUT_STATE *pState) {
     static bool tried_get_state_ex = false;
     static bool use_get_state_ex = false;
 
+    // Check if override state is set - if so, spoof controller connection for controller 0
+    bool should_spoof_connection = false;
+    if (shared_state && dwUserIndex == 0) {
+        float override_ly = shared_state->override_state.left_stick_y.load();
+        WORD override_buttons = shared_state->override_state.buttons_pressed_mask.load();
+        // If any override is active, we need to spoof connection
+        if (!std::isinf(override_ly) || override_buttons != 0 ||
+            !std::isinf(shared_state->override_state.left_stick_x.load()) ||
+            !std::isinf(shared_state->override_state.right_stick_x.load()) ||
+            !std::isinf(shared_state->override_state.right_stick_y.load())) {
+            should_spoof_connection = true;
+        }
+    }
+
     // Check if DualSense to XInput conversion is enabled
     bool dualsense_enabled = shared_state && shared_state->enable_dualsense_xinput.load();
 
@@ -155,6 +170,21 @@ DWORD WINAPI XInputGetState_Detour(DWORD dwUserIndex, XINPUT_STATE *pState) {
         }
     }
 
+    // If controller is not connected but we need to spoof for override, create fake state
+    if (result != ERROR_SUCCESS && should_spoof_connection) {
+        // Initialize fake gamepad state (all zeros)
+        ZeroMemory(&pState->Gamepad, sizeof(XINPUT_GAMEPAD));
+        pState->dwPacketNumber = 0;
+        result = ERROR_SUCCESS; // Spoof as connected
+
+        // Mark controller as connected in shared state
+        if (shared_state && dwUserIndex < XUSER_MAX_COUNT) {
+            shared_state->controller_connected[dwUserIndex] = display_commander::widgets::xinput_widget::ControllerState::Connected;
+        }
+
+        LogInfo("XXX Spoofing controller 0 connection for override state");
+    }
+
     // Apply A/B button swapping if enabled
     if (result == ERROR_SUCCESS) {
         // Store the frame ID when XInput is successfully detected
@@ -168,6 +198,34 @@ DWORD WINAPI XInputGetState_Detour(DWORD dwUserIndex, XINPUT_STATE *pState) {
 
         // Store original state for UI tracking (before any modifications)
         XINPUT_STATE original_state = *pState;
+
+        // Apply override state if set (check before suppression)
+        if (shared_state) {
+            float override_lx = shared_state->override_state.left_stick_x.load();
+            float override_ly = shared_state->override_state.left_stick_y.load();
+            float override_rx = shared_state->override_state.right_stick_x.load();
+            float override_ry = shared_state->override_state.right_stick_y.load();
+            WORD override_buttons = shared_state->override_state.buttons_pressed_mask.load();
+
+            // Apply stick overrides (INFINITY means not overridden)
+            if (!std::isinf(override_lx)) {
+                pState->Gamepad.sThumbLX = FloatToShort(override_lx);
+            }
+            if (!std::isinf(override_ly)) {
+                pState->Gamepad.sThumbLY = FloatToShort(override_ly);
+            }
+            if (!std::isinf(override_rx)) {
+                pState->Gamepad.sThumbRX = FloatToShort(override_rx);
+            }
+            if (!std::isinf(override_ry)) {
+                pState->Gamepad.sThumbRY = FloatToShort(override_ry);
+            }
+
+            // Apply button override (mask 0 means no override)
+            if (override_buttons != 0) {
+                pState->Gamepad.wButtons |= override_buttons;
+            }
+        }
 
         // Check if input should be suppressed due to chord being pressed
         if (shared_state && shared_state->suppress_input.load()) {
@@ -278,6 +336,20 @@ DWORD WINAPI XInputGetStateEx_Detour(DWORD dwUserIndex, XINPUT_STATE *pState) {
         shared_state->last_xinput_call_time_ns.store(current_time_ns);
     }
 
+    // Check if override state is set - if so, spoof controller connection for controller 0
+    bool should_spoof_connection = false;
+    if (shared_state && dwUserIndex == 0) {
+        float override_ly = shared_state->override_state.left_stick_y.load();
+        WORD override_buttons = shared_state->override_state.buttons_pressed_mask.load();
+        // If any override is active, we need to spoof connection
+        if (!std::isinf(override_ly) || override_buttons != 0 ||
+            !std::isinf(shared_state->override_state.left_stick_x.load()) ||
+            !std::isinf(shared_state->override_state.right_stick_x.load()) ||
+            !std::isinf(shared_state->override_state.right_stick_y.load())) {
+            should_spoof_connection = true;
+        }
+    }
+
     // Check if DualSense to XInput conversion is enabled
     bool dualsense_enabled = shared_state && shared_state->enable_dualsense_xinput.load();
 
@@ -295,6 +367,21 @@ DWORD WINAPI XInputGetStateEx_Detour(DWORD dwUserIndex, XINPUT_STATE *pState) {
         result = XInputGetStateEx_Direct != nullptr ? XInputGetStateEx_Direct(dwUserIndex, pState) : ERROR_DEVICE_NOT_CONNECTED;
     }
 
+    // If controller is not connected but we need to spoof for override, create fake state
+    if (result != ERROR_SUCCESS && should_spoof_connection) {
+        // Initialize fake gamepad state (all zeros)
+        ZeroMemory(&pState->Gamepad, sizeof(XINPUT_GAMEPAD));
+        pState->dwPacketNumber = 0;
+        result = ERROR_SUCCESS; // Spoof as connected
+
+        // Mark controller as connected in shared state
+        if (shared_state && dwUserIndex < XUSER_MAX_COUNT) {
+            shared_state->controller_connected[dwUserIndex] = display_commander::widgets::xinput_widget::ControllerState::Connected;
+        }
+
+        LogInfo("XXX Spoofing controller 0 connection for override state");
+    }
+
     // Apply A/B button swapping if enabled
     if (result == ERROR_SUCCESS) {
         // Store the frame ID when XInput is successfully detected
@@ -308,6 +395,34 @@ DWORD WINAPI XInputGetStateEx_Detour(DWORD dwUserIndex, XINPUT_STATE *pState) {
 
         // Store original state for UI tracking (before any modifications)
         XINPUT_STATE original_state = *pState;
+
+        // Apply override state if set (check before suppression)
+        if (shared_state) {
+            float override_lx = shared_state->override_state.left_stick_x.load();
+            float override_ly = shared_state->override_state.left_stick_y.load();
+            float override_rx = shared_state->override_state.right_stick_x.load();
+            float override_ry = shared_state->override_state.right_stick_y.load();
+            WORD override_buttons = shared_state->override_state.buttons_pressed_mask.load();
+
+            // Apply stick overrides (INFINITY means not overridden)
+            if (!std::isinf(override_lx)) {
+                pState->Gamepad.sThumbLX = FloatToShort(override_lx);
+            }
+            if (!std::isinf(override_ly)) {
+                pState->Gamepad.sThumbLY = FloatToShort(override_ly);
+            }
+            if (!std::isinf(override_rx)) {
+                pState->Gamepad.sThumbRX = FloatToShort(override_rx);
+            }
+            if (!std::isinf(override_ry)) {
+                pState->Gamepad.sThumbRY = FloatToShort(override_ry);
+            }
+
+            // Apply button override (mask 0 means no override)
+            if (override_buttons != 0) {
+                pState->Gamepad.wButtons |= override_buttons;
+            }
+        }
 
         // Check if input should be suppressed due to chord being pressed
         if (shared_state && shared_state->suppress_input.load()) {

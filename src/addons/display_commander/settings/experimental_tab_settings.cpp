@@ -88,6 +88,7 @@ ExperimentalTabSettings::ExperimentalTabSettings()
     , debug_output_show_stats("DebugOutputShowStats", true, "DisplayCommander.Experimental")
     , dinput_device_state_blocking("DInputDeviceStateBlocking", true, "DisplayCommander.Experimental")
     , up_down_key_press_enabled("UpDownKeyPressEnabled", false, "DisplayCommander.Experimental")
+    , button_only_press_enabled("ButtonOnlyPressEnabled", false, "DisplayCommander.Experimental")
 {
     // Initialize the all_settings_ vector
     all_settings_ = {
@@ -114,6 +115,7 @@ ExperimentalTabSettings::ExperimentalTabSettings()
         &debug_output_log_to_reshade, &debug_output_show_stats,
         &dinput_device_state_blocking,
         &up_down_key_press_enabled,
+        &button_only_press_enabled,
     };
 }
 

@@ -102,6 +102,20 @@ struct XInputSharedState {
     std::atomic<float> right_stick_center_x{0.0f}; // Right stick X center offset
     std::atomic<float> right_stick_center_y{0.0f}; // Right stick Y center offset
 
+    // Gamepad input override state
+    // Values of INFINITY mean "not overridden" - use original input
+    // For sticks: -1.0 to 1.0 range (will be converted to SHORT)
+    // For buttons: mask of buttons to press (0 = no override)
+    struct OverrideState {
+        std::atomic<float> left_stick_x{INFINITY};   // INF when not overridden
+        std::atomic<float> left_stick_y{INFINITY};   // INF when not overridden
+        std::atomic<float> right_stick_x{INFINITY};   // INF when not overridden
+        std::atomic<float> right_stick_y{INFINITY};   // INF when not overridden
+        std::atomic<WORD> buttons_pressed_mask{0};    // Mask 0 = do nothing
+    };
+
+    OverrideState override_state;
+
     // Vibration amplification
     std::atomic<float> vibration_amplification{1.0f}; // Vibration amplification multiplier (1.0 = normal, 2.0 = double)
 

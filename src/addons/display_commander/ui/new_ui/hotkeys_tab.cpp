@@ -94,7 +94,7 @@ void InitializeHotkeyDefinitions() {
             "autoclick",
             "Auto-Click Toggle",
             "",
-            "Toggle Auto-Click sequences (requires advanced settings)",
+            "Toggle Auto-Click sequences (requires experimental features)",
             []() {
                 if (!enabled_experimental_features) return;
                 LogInfo("Auto-Click hotkey detected - toggling auto-click");
@@ -448,11 +448,6 @@ void ProcessHotkeys() {
         if (hotkey.ctrl != ctrl_down) continue;
         if (hotkey.shift != shift_down) continue;
         if (hotkey.alt != alt_down) continue;
-
-        // Special case for autoclick - requires advanced settings
-        if (def.id == "autoclick" && !settings::g_mainTabSettings.advanced_settings_enabled.GetValue()) {
-            continue;
-        }
 
         // All conditions met - execute the action
         if (def.action) {

@@ -40,6 +40,9 @@ std::array<XInputGetStateEx_pfn, 5> original_xinput_get_state_ex_procs = {};
 std::array<XInputGetState_pfn, 5> original_xinput_get_state_procs = {};
 std::array<XInputSetState_pfn, 5> original_xinput_set_state_procs = {};
 
+// Packet number tracking for each controller (0-3)
+static std::array<DWORD, 4> g_packet_numbers = {};
+
 
 // Initialize XInput function pointers for direct calls
 static void InitializeXInputDirectFunctions() {
@@ -145,18 +148,7 @@ DWORD WINAPI XInputGetState_Detour(DWORD dwUserIndex, XINPUT_STATE *pState) {
     static bool use_get_state_ex = false;
 
     // Check if override state is set - if so, spoof controller connection for controller 0
-    bool should_spoof_connection = false;
-    if (shared_state && dwUserIndex == 0) {
-        float override_ly = shared_state->override_state.left_stick_y.load();
-        WORD override_buttons = shared_state->override_state.buttons_pressed_mask.load();
-        // If any override is active, we need to spoof connection
-        if (!std::isinf(override_ly) || override_buttons != 0 ||
-            !std::isinf(shared_state->override_state.left_stick_x.load()) ||
-            !std::isinf(shared_state->override_state.right_stick_x.load()) ||
-            !std::isinf(shared_state->override_state.right_stick_y.load())) {
-            should_spoof_connection = true;
-        }
-    }
+    bool should_spoof_connection = g_auto_click_enabled.load() && dwUserIndex == 0;
 
     // Check if DualSense to XInput conversion is enabled
     bool dualsense_enabled = shared_state && shared_state->enable_dualsense_xinput.load();
@@ -181,12 +173,16 @@ DWORD WINAPI XInputGetState_Detour(DWORD dwUserIndex, XINPUT_STATE *pState) {
         }
     }
 
+    // Track whether we spoofed the connection
+    bool did_spoof_connection = false;
+
     // If controller is not connected but we need to spoof for override, create fake state
-    if (result != ERROR_SUCCESS && should_spoof_connection) {
+    if (should_spoof_connection) {
         // Initialize fake gamepad state (all zeros)
         ZeroMemory(&pState->Gamepad, sizeof(XINPUT_GAMEPAD));
-        pState->dwPacketNumber = 0;
+        // Packet number will be set just before return
         result = ERROR_SUCCESS; // Spoof as connected
+        did_spoof_connection = true;
 
         // Mark controller as connected in shared state
         if (shared_state && dwUserIndex < XUSER_MAX_COUNT) {
@@ -320,6 +316,14 @@ DWORD WINAPI XInputGetState_Detour(DWORD dwUserIndex, XINPUT_STATE *pState) {
         }
     }
 
+    // Override packet number with our tracked value just before returning
+    if (result == ERROR_SUCCESS && dwUserIndex < 4) {
+        // If we spoofed the connection, increment our tracked packet number
+        g_packet_numbers[dwUserIndex]++;
+        // Always override with our tracked packet number
+        pState->dwPacketNumber = g_packet_numbers[dwUserIndex];
+    }
+
     return result;
 }
 
@@ -352,18 +356,7 @@ DWORD WINAPI XInputGetStateEx_Detour(DWORD dwUserIndex, XINPUT_STATE *pState) {
     }
 
     // Check if override state is set - if so, spoof controller connection for controller 0
-    bool should_spoof_connection = false;
-    if (shared_state && dwUserIndex == 0) {
-        float override_ly = shared_state->override_state.left_stick_y.load();
-        WORD override_buttons = shared_state->override_state.buttons_pressed_mask.load();
-        // If any override is active, we need to spoof connection
-        if (!std::isinf(override_ly) || override_buttons != 0 ||
-            !std::isinf(shared_state->override_state.left_stick_x.load()) ||
-            !std::isinf(shared_state->override_state.right_stick_x.load()) ||
-            !std::isinf(shared_state->override_state.right_stick_y.load())) {
-            should_spoof_connection = true;
-        }
-    }
+    bool should_spoof_connection = g_auto_click_enabled.load() && dwUserIndex == 0;
 
     // Check if DualSense to XInput conversion is enabled
     bool dualsense_enabled = shared_state && shared_state->enable_dualsense_xinput.load();
@@ -382,12 +375,16 @@ DWORD WINAPI XInputGetStateEx_Detour(DWORD dwUserIndex, XINPUT_STATE *pState) {
         result = XInputGetStateEx_Direct != nullptr ? XInputGetStateEx_Direct(dwUserIndex, pState) : ERROR_DEVICE_NOT_CONNECTED;
     }
 
+    // Track whether we spoofed the connection
+    bool did_spoof_connection = false;
+
     // If controller is not connected but we need to spoof for override, create fake state
-    if (result != ERROR_SUCCESS && should_spoof_connection) {
+    if (should_spoof_connection) {
         // Initialize fake gamepad state (all zeros)
         ZeroMemory(&pState->Gamepad, sizeof(XINPUT_GAMEPAD));
-        pState->dwPacketNumber = 0;
+        // Packet number will be set just before return
         result = ERROR_SUCCESS; // Spoof as connected
+        did_spoof_connection = true;
 
         // Mark controller as connected in shared state
         if (shared_state && dwUserIndex < XUSER_MAX_COUNT) {
@@ -517,6 +514,14 @@ DWORD WINAPI XInputGetStateEx_Detour(DWORD dwUserIndex, XINPUT_STATE *pState) {
             }
         }
         LogError("XXX XInput Controller %lu: GetStateEx failed with error %lu", dwUserIndex, result);
+    }
+
+    // Override packet number with our tracked value just before returning
+    if (result == ERROR_SUCCESS && dwUserIndex < 4) {
+        // If we spoofed the connection, increment our tracked packet number
+        g_packet_numbers[dwUserIndex]++;
+        // Always override with our tracked packet number
+        pState->dwPacketNumber = g_packet_numbers[dwUserIndex];
     }
 
     return result;

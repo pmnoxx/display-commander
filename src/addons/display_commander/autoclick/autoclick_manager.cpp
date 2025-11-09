@@ -290,10 +290,15 @@ struct GamepadAction {
 // Up/Down key press sequence definition
 static const GamepadAction g_up_down_sequence[] = {
     // Set forward and button Y
-    {GamepadActionType::SET_STICK_AND_BUTTONS, "Up/Down gamepad: Setting left stick Y forward and button Y", 1.0f, XINPUT_GAMEPAD_Y, 0, 0},
+    {GamepadActionType::SET_STICK_AND_BUTTONS, "Up/Down gamepad: Setting left stick Y forward and button Y", 1.0f, XINPUT_GAMEPAD_Y | XINPUT_GAMEPAD_A, 0, 0},
+
+    // Wait 100ms before adding button A
+    {GamepadActionType::WAIT, nullptr, INFINITY, 0, 1000, 0},
+    {GamepadActionType::SET_STICK_AND_BUTTONS, "Up/Down gamepad: Setting left stick Y forward and button Y", 1.0f, 0, 0, 0},
 
     // Wait 100ms before adding button A
     {GamepadActionType::WAIT, nullptr, INFINITY, 0, 100, 0},
+
 
     // Add button A (both Y and A pressed)
     {GamepadActionType::SET_STICK_AND_BUTTONS, "Up/Down gamepad: Adding button A (Y and A both pressed)", 1.0f, XINPUT_GAMEPAD_Y | XINPUT_GAMEPAD_A, 0, 0},
@@ -308,7 +313,7 @@ static const GamepadAction g_up_down_sequence[] = {
     {GamepadActionType::WAIT, nullptr, INFINITY, 0, 100, 0},
 
     // Set backward and button Y
-    {GamepadActionType::SET_STICK_AND_BUTTONS, "Up/Down gamepad: Setting left stick Y backward and button Y", -1.0f, XINPUT_GAMEPAD_Y | XINPUT_GAMEPAD_A, 0, 0},
+    {GamepadActionType::SET_STICK_AND_BUTTONS, "Up/Down gamepad: Setting left stick Y backward and button Y", -1.0f, 0, 0, 0},
 
     // Hold for 3 seconds
     {GamepadActionType::HOLD, nullptr, INFINITY, 0, 0, 3},

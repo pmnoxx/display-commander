@@ -7,6 +7,7 @@
 #include "gpu_completion_monitoring.hpp"
 #include "hooks/api_hooks.hpp"
 #include "hooks/hid_suppression_hooks.hpp"
+#include "hooks/timeslowdown_hooks.hpp"
 #include "hooks/window_proc_hooks.hpp"
 #include "latency/latency_manager.hpp"
 #include "latent_sync/refresh_rate_monitor_integration.hpp"
@@ -32,6 +33,7 @@
 #include <shlobj.h>
 #include <wrl/client.h>
 #include <cmath>
+#include <cstring>
 #include <reshade.hpp>
 
 
@@ -210,11 +212,13 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
         return;
     }
 
-    bool any_enabled = settings::g_mainTabSettings.show_fps_counter.GetValue() || settings::g_mainTabSettings.show_refresh_rate.GetValue() || settings::g_mainTabSettings.gpu_measurement_enabled.GetValue() || settings::g_mainTabSettings.show_frame_time_graph.GetValue() || settings::g_mainTabSettings.show_cpu_usage.GetValue();
-
-    if (!any_enabled) {
-        return;
-    }
+    // Check which overlay components are enabled
+    bool show_fps_counter = settings::g_mainTabSettings.show_fps_counter.GetValue();
+    bool show_refresh_rate = settings::g_mainTabSettings.show_refresh_rate.GetValue();
+    bool show_gpu_measurement = (settings::g_mainTabSettings.gpu_measurement_enabled.GetValue() != 0);
+    bool show_frame_time_graph = settings::g_mainTabSettings.show_frame_time_graph.GetValue();
+    bool show_cpu_usage = settings::g_mainTabSettings.show_cpu_usage.GetValue();
+    bool show_enabledfeatures = display_commanderhooks::IsTimeslowdownEnabled() || ::g_auto_click_enabled.load();
 
     ImGui::SetNextWindowPos(ImVec2(10.0f, 10.0f), ImGuiCond_Always);
     // Set transparent background for the window (configurable opacity)
@@ -234,7 +238,7 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
     }
 
 
-    if (settings::g_mainTabSettings.show_fps_counter.GetValue()) {
+    if (show_fps_counter) {
         const uint32_t head = ::g_perf_ring_head.load(std::memory_order_acquire);
         double total_time = 0.0;
 
@@ -264,7 +268,7 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
         }
     }
 
-    if (settings::g_mainTabSettings.show_refresh_rate.GetValue()) {
+    if (show_refresh_rate) {
         static double cached_refresh_rate = 0.0;
         static LONGLONG last_update_ns = 0;
         const LONGLONG update_interval_ns = 100 * utils::NS_TO_MS; // 200ms in nanoseconds
@@ -290,7 +294,7 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
         }
     }
 
-    if (settings::g_mainTabSettings.gpu_measurement_enabled.GetValue() != 0) {
+    if (show_gpu_measurement) {
         // Display sim-to-display latency
         LONGLONG latency_ns = ::g_sim_to_display_latency_ns.load();
         if (latency_ns > 0) {
@@ -303,7 +307,7 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
         }
     }
 
-    if (settings::g_mainTabSettings.show_cpu_usage.GetValue()) {
+    if (show_cpu_usage) {
         // Calculate CPU usage: (sim_duration / frame_time) * 100%
         // Get most recent frame time from performance ring buffer
         const uint32_t head = ::g_perf_ring_head.load(std::memory_order_acquire);
@@ -336,7 +340,76 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
         }
     }
 
-    if (settings::g_mainTabSettings.show_frame_time_graph.GetValue()) {
+    // Show enabled features indicator (time slowdown, auto-click, etc.)
+    if (show_enabledfeatures) {
+        char feature_text[512];
+        char tooltip_text[512];
+        feature_text[0] = '\0';
+        tooltip_text[0] = '\0';
+
+        bool first_feature = true;
+
+        // Time Slowdown
+        if (display_commanderhooks::IsTimeslowdownEnabled()) {
+            float multiplier = display_commanderhooks::GetTimeslowdownMultiplier();
+            if (first_feature) {
+                if (settings::g_mainTabSettings.show_labels.GetValue()) {
+                    snprintf(feature_text, sizeof(feature_text), "%.2fx TS", multiplier);
+                } else {
+                    snprintf(feature_text, sizeof(feature_text), "%.2fx", multiplier);
+                }
+                snprintf(tooltip_text, sizeof(tooltip_text), "Time Slowdown: %.2fx multiplier", multiplier);
+                first_feature = false;
+            } else {
+                size_t len = strlen(feature_text);
+                if (settings::g_mainTabSettings.show_labels.GetValue()) {
+                    snprintf(feature_text + len, sizeof(feature_text) - len, ", %.2fx TS", multiplier);
+                } else {
+                    snprintf(feature_text + len, sizeof(feature_text) - len, ", %.2fx", multiplier);
+                }
+                len = strlen(tooltip_text);
+                snprintf(tooltip_text + len, sizeof(tooltip_text) - len, " | Time Slowdown: %.2fx multiplier", multiplier);
+            }
+        }
+
+        // Auto-Click
+        if (::g_auto_click_enabled.load()) {
+            if (first_feature) {
+                snprintf(feature_text, sizeof(feature_text), "AC");
+                snprintf(tooltip_text, sizeof(tooltip_text), "Auto-Click: Enabled");
+                first_feature = false;
+            } else {
+                size_t len = strlen(feature_text);
+                snprintf(feature_text + len, sizeof(feature_text) - len, ", AC");
+                len = strlen(tooltip_text);
+                snprintf(tooltip_text + len, sizeof(tooltip_text) - len, " | Auto-Click: Enabled");
+            }
+        }
+
+        // Add more features here as needed
+        // Example:
+        // if (some_other_feature_enabled) {
+        //     if (first_feature) {
+        //         snprintf(feature_text, sizeof(feature_text), "FEATURE");
+        //         snprintf(tooltip_text, sizeof(tooltip_text), "Feature: Description");
+        //         first_feature = false;
+        //     } else {
+        //         size_t len = strlen(feature_text);
+        //         snprintf(feature_text + len, sizeof(feature_text) - len, ", FEATURE");
+        //         len = strlen(tooltip_text);
+        //         snprintf(tooltip_text + len, sizeof(tooltip_text) - len, " | Feature: Description");
+        //     }
+        // }
+
+        if (feature_text[0] != '\0') {
+            ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "%s", feature_text);
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("%s", tooltip_text);
+            }
+        }
+    }
+
+    if (show_frame_time_graph) {
         ui::new_ui::DrawFrameTimeGraphOverlay();
     }
 

@@ -339,12 +339,6 @@ void RefreshRateMonitor::MonitoringThread() {
 
                     // Increment sample count
                     m_sample_count++;
-
-                    // Log every 60 samples (approximately once per second at 60Hz)
-                    if (m_sample_count.load() % 60 == 0) {
-                        LogInfo("Refresh rate: %.2f Hz (smoothed: %.2f Hz, samples: %u)",
-                               refresh_rate, new_smoothed, m_sample_count.load());
-                    }
                 }
             } else {
                 // First sample - just record the time

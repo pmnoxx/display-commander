@@ -2132,11 +2132,9 @@ void XInputWidget::DrawAutofireSettings() {
                 {XINPUT_GAMEPAD_DPAD_RIGHT, "D-Right"},
             };
 
-            // Thread-safe access to autofire_buttons
-            utils::SRWLockExclusive lock(shared_state->autofire_lock);
-
-            // Helper lambda to check if button exists (using already-locked data)
+            // Helper lambda to check if button exists (thread-safe)
             auto is_autofire_button = [&shared_state](WORD button_mask) -> bool {
+                utils::SRWLockShared lock(shared_state->autofire_lock);
                 for (const auto &af_button : shared_state->autofire_buttons) {
                     if (af_button.button_mask == button_mask) {
                         return true;
@@ -2153,84 +2151,96 @@ void XInputWidget::DrawAutofireSettings() {
                     bool is_enabled2 = is_autofire_button(buttons[i + 1].mask);
 
                     if (ImGui::Checkbox(buttons[i].name, &is_enabled1)) {
-                        if (is_enabled1) {
-                            // Add button directly (we already have the lock)
-                            bool exists = false;
-                            for (const auto &af_button : shared_state->autofire_buttons) {
-                                if (af_button.button_mask == buttons[i].mask) {
-                                    exists = true;
-                                    break;
+                        {
+                            // Acquire lock only for modification
+                            utils::SRWLockExclusive lock(shared_state->autofire_lock);
+                            if (is_enabled1) {
+                                // Add button
+                                bool exists = false;
+                                for (const auto &af_button : shared_state->autofire_buttons) {
+                                    if (af_button.button_mask == buttons[i].mask) {
+                                        exists = true;
+                                        break;
+                                    }
                                 }
+                                if (!exists) {
+                                    shared_state->autofire_buttons.push_back(XInputSharedState::AutofireButton(buttons[i].mask));
+                                    LogInfo("XInputWidget::DrawAutofireSettings() - Added autofire for button 0x%04X", buttons[i].mask);
+                                }
+                            } else {
+                                // Remove button
+                                auto it = std::remove_if(shared_state->autofire_buttons.begin(), shared_state->autofire_buttons.end(),
+                                                        [&buttons, i](const XInputSharedState::AutofireButton &af_button) {
+                                                            return af_button.button_mask == buttons[i].mask;
+                                                        });
+                                shared_state->autofire_buttons.erase(it, shared_state->autofire_buttons.end());
+                                LogInfo("XInputWidget::DrawAutofireSettings() - Removed autofire for button 0x%04X", buttons[i].mask);
                             }
-                            if (!exists) {
-                                shared_state->autofire_buttons.push_back(XInputSharedState::AutofireButton(buttons[i].mask));
-                                LogInfo("XInputWidget::DrawAutofireSettings() - Added autofire for button 0x%04X", buttons[i].mask);
-                            }
-                        } else {
-                            // Remove button directly (we already have the lock)
-                            auto it = std::remove_if(shared_state->autofire_buttons.begin(), shared_state->autofire_buttons.end(),
-                                                    [&buttons, i](const XInputSharedState::AutofireButton &af_button) {
-                                                        return af_button.button_mask == buttons[i].mask;
-                                                    });
-                            shared_state->autofire_buttons.erase(it, shared_state->autofire_buttons.end());
-                            LogInfo("XInputWidget::DrawAutofireSettings() - Removed autofire for button 0x%04X", buttons[i].mask);
-                        }
+                        } // Lock released here
                         SaveSettings();
                     }
 
                     ImGui::SameLine();
 
                     if (ImGui::Checkbox(buttons[i + 1].name, &is_enabled2)) {
-                        if (is_enabled2) {
-                            // Add button directly (we already have the lock)
-                            bool exists = false;
-                            for (const auto &af_button : shared_state->autofire_buttons) {
-                                if (af_button.button_mask == buttons[i + 1].mask) {
-                                    exists = true;
-                                    break;
+                        {
+                            // Acquire lock only for modification
+                            utils::SRWLockExclusive lock(shared_state->autofire_lock);
+                            if (is_enabled2) {
+                                // Add button
+                                bool exists = false;
+                                for (const auto &af_button : shared_state->autofire_buttons) {
+                                    if (af_button.button_mask == buttons[i + 1].mask) {
+                                        exists = true;
+                                        break;
+                                    }
                                 }
+                                if (!exists) {
+                                    shared_state->autofire_buttons.push_back(XInputSharedState::AutofireButton(buttons[i + 1].mask));
+                                    LogInfo("XInputWidget::DrawAutofireSettings() - Added autofire for button 0x%04X", buttons[i + 1].mask);
+                                }
+                            } else {
+                                // Remove button
+                                auto it = std::remove_if(shared_state->autofire_buttons.begin(), shared_state->autofire_buttons.end(),
+                                                        [&buttons, i](const XInputSharedState::AutofireButton &af_button) {
+                                                            return af_button.button_mask == buttons[i + 1].mask;
+                                                        });
+                                shared_state->autofire_buttons.erase(it, shared_state->autofire_buttons.end());
+                                LogInfo("XInputWidget::DrawAutofireSettings() - Removed autofire for button 0x%04X", buttons[i + 1].mask);
                             }
-                            if (!exists) {
-                                shared_state->autofire_buttons.push_back(XInputSharedState::AutofireButton(buttons[i + 1].mask));
-                                LogInfo("XInputWidget::DrawAutofireSettings() - Added autofire for button 0x%04X", buttons[i + 1].mask);
-                            }
-                        } else {
-                            // Remove button directly (we already have the lock)
-                            auto it = std::remove_if(shared_state->autofire_buttons.begin(), shared_state->autofire_buttons.end(),
-                                                    [&buttons, i](const XInputSharedState::AutofireButton &af_button) {
-                                                        return af_button.button_mask == buttons[i + 1].mask;
-                                                    });
-                            shared_state->autofire_buttons.erase(it, shared_state->autofire_buttons.end());
-                            LogInfo("XInputWidget::DrawAutofireSettings() - Removed autofire for button 0x%04X", buttons[i + 1].mask);
-                        }
+                        } // Lock released here
                         SaveSettings();
                     }
                 } else {
                     // Single button on last row
                     bool is_enabled = is_autofire_button(buttons[i].mask);
                     if (ImGui::Checkbox(buttons[i].name, &is_enabled)) {
-                        if (is_enabled) {
-                            // Add button directly (we already have the lock)
-                            bool exists = false;
-                            for (const auto &af_button : shared_state->autofire_buttons) {
-                                if (af_button.button_mask == buttons[i].mask) {
-                                    exists = true;
-                                    break;
+                        {
+                            // Acquire lock only for modification
+                            utils::SRWLockExclusive lock(shared_state->autofire_lock);
+                            if (is_enabled) {
+                                // Add button
+                                bool exists = false;
+                                for (const auto &af_button : shared_state->autofire_buttons) {
+                                    if (af_button.button_mask == buttons[i].mask) {
+                                        exists = true;
+                                        break;
+                                    }
                                 }
+                                if (!exists) {
+                                    shared_state->autofire_buttons.push_back(XInputSharedState::AutofireButton(buttons[i].mask));
+                                    LogInfo("XInputWidget::DrawAutofireSettings() - Added autofire for button 0x%04X", buttons[i].mask);
+                                }
+                            } else {
+                                // Remove button
+                                auto it = std::remove_if(shared_state->autofire_buttons.begin(), shared_state->autofire_buttons.end(),
+                                                        [&buttons, i](const XInputSharedState::AutofireButton &af_button) {
+                                                            return af_button.button_mask == buttons[i].mask;
+                                                        });
+                                shared_state->autofire_buttons.erase(it, shared_state->autofire_buttons.end());
+                                LogInfo("XInputWidget::DrawAutofireSettings() - Removed autofire for button 0x%04X", buttons[i].mask);
                             }
-                            if (!exists) {
-                                shared_state->autofire_buttons.push_back(XInputSharedState::AutofireButton(buttons[i].mask));
-                                LogInfo("XInputWidget::DrawAutofireSettings() - Added autofire for button 0x%04X", buttons[i].mask);
-                            }
-                        } else {
-                            // Remove button directly (we already have the lock)
-                            auto it = std::remove_if(shared_state->autofire_buttons.begin(), shared_state->autofire_buttons.end(),
-                                                    [&buttons, i](const XInputSharedState::AutofireButton &af_button) {
-                                                        return af_button.button_mask == buttons[i].mask;
-                                                    });
-                            shared_state->autofire_buttons.erase(it, shared_state->autofire_buttons.end());
-                            LogInfo("XInputWidget::DrawAutofireSettings() - Removed autofire for button 0x%04X", buttons[i].mask);
-                        }
+                        } // Lock released here
                         SaveSettings();
                     }
                 }

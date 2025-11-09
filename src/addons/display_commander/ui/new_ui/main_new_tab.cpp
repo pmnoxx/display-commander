@@ -1960,6 +1960,15 @@ void DrawImportantInfo() {
             ImGui::SetTooltip("Shows CPU usage as a percentage: (sim duration / frame time) * 100%");
         }
         ImGui::SameLine();
+        // Show Stopwatch Control
+        bool show_stopwatch = settings::g_mainTabSettings.show_stopwatch.GetValue();
+        if (ImGui::Checkbox("Stopwatch", &show_stopwatch)) {
+            settings::g_mainTabSettings.show_stopwatch.SetValue(show_stopwatch);
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Shows a stopwatch in the performance overlay. Use Ctrl+S to start/reset.");
+        }
+        ImGui::SameLine();
         // Show Display Commander UI Control
         bool show_display_commander_ui = settings::g_mainTabSettings.show_display_commander_ui.GetValue();
         if (ImGui::Checkbox("Show Display Commander UI", &show_display_commander_ui)) {

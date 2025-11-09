@@ -142,12 +142,46 @@ void InitializeHotkeyDefinitions() {
                 oss << "Performance overlay " << (new_state ? "enabled" : "disabled") << " via hotkey";
                 LogInfo(oss.str().c_str());
             }
+        },
+        {
+            "stopwatch",
+            "Stopwatch Start/Pause/Reset",
+            "ctrl+s",
+            "Start, pause, or reset the stopwatch (3-state cycle)",
+            []() {
+                bool is_running = g_stopwatch_running.load();
+                LONGLONG now_ns = utils::get_now_ns();
+                LONGLONG elapsed_ns = g_stopwatch_elapsed_time_ns.load();
+
+                if (is_running) {
+                    // State 2: Running -> Pause
+                    // Save current elapsed time and stop running
+                    LONGLONG start_time_ns = g_stopwatch_start_time_ns.load();
+                    LONGLONG current_elapsed_ns = now_ns - start_time_ns;
+                    g_stopwatch_elapsed_time_ns.store(current_elapsed_ns);
+                    g_stopwatch_running.store(false);
+                    LogInfo("Stopwatch paused via hotkey");
+                } else if (elapsed_ns > 0) {
+                    // State 3: Paused -> Reset (back to stopped)
+                    // Clear elapsed time
+                    g_stopwatch_elapsed_time_ns.store(0);
+                    g_stopwatch_start_time_ns.store(0);
+                    LogInfo("Stopwatch reset via hotkey");
+                } else {
+                    // State 1: Stopped -> Start
+                    // Start fresh: record start time and set running
+                    g_stopwatch_start_time_ns.store(now_ns);
+                    g_stopwatch_running.store(true);
+                    g_stopwatch_elapsed_time_ns.store(0);
+                    LogInfo("Stopwatch started via hotkey");
+                }
+            }
         }
     };
 
     // Map settings to definitions
     auto& settings = settings::g_hotkeysTabSettings;
-    if (g_hotkey_definitions.size() >= 8) {
+    if (g_hotkey_definitions.size() >= 9) {
         // Load parsed shortcuts from settings
         g_hotkey_definitions[0].parsed = ParseHotkeyString(settings.hotkey_mute_unmute.GetValue());
         g_hotkey_definitions[1].parsed = ParseHotkeyString(settings.hotkey_background_toggle.GetValue());
@@ -159,6 +193,7 @@ void InitializeHotkeyDefinitions() {
         g_hotkey_definitions[5].parsed = ParseHotkeyString(settings.hotkey_input_blocking.GetValue());
         g_hotkey_definitions[6].parsed = ParseHotkeyString(settings.hotkey_display_commander_ui.GetValue());
         g_hotkey_definitions[7].parsed = ParseHotkeyString(settings.hotkey_performance_overlay.GetValue());
+        g_hotkey_definitions[8].parsed = ParseHotkeyString(settings.hotkey_stopwatch.GetValue());
     }
 }
 
@@ -335,6 +370,7 @@ void DrawHotkeysTab() {
         g_hotkey_definitions[5].parsed = ParseHotkeyString(settings.hotkey_input_blocking.GetValue());
         g_hotkey_definitions[6].parsed = ParseHotkeyString(settings.hotkey_display_commander_ui.GetValue());
         g_hotkey_definitions[7].parsed = ParseHotkeyString(settings.hotkey_performance_overlay.GetValue());
+        g_hotkey_definitions[8].parsed = ParseHotkeyString(settings.hotkey_stopwatch.GetValue());
 
         // Draw each hotkey configuration
         for (size_t i = 0; i < g_hotkey_definitions.size(); ++i) {
@@ -351,6 +387,7 @@ void DrawHotkeysTab() {
                 case 5: setting_ptr = &settings.hotkey_input_blocking; break;
                 case 6: setting_ptr = &settings.hotkey_display_commander_ui; break;
                 case 7: setting_ptr = &settings.hotkey_performance_overlay; break;
+                case 8: setting_ptr = &settings.hotkey_stopwatch; break;
                 default: setting_ptr = nullptr; break;
             }
 

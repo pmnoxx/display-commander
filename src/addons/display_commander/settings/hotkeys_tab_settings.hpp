@@ -35,6 +35,7 @@ class HotkeysTabSettings {
     StringSetting hotkey_input_blocking;
     StringSetting hotkey_display_commander_ui;
     StringSetting hotkey_performance_overlay;
+    StringSetting hotkey_stopwatch;
 
     // Get all settings for bulk operations
     std::vector<SettingBase*> GetAllSettings();

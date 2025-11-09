@@ -340,6 +340,47 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
         }
     }
 
+    // Show stopwatch
+    if (settings::g_mainTabSettings.show_stopwatch.GetValue()) {
+        bool is_running = g_stopwatch_running.load();
+
+        // Update elapsed time if running
+        if (is_running) {
+            LONGLONG start_time_ns = g_stopwatch_start_time_ns.load();
+            LONGLONG now_ns = utils::get_now_ns();
+            LONGLONG elapsed_ns = now_ns - start_time_ns;
+            g_stopwatch_elapsed_time_ns.store(elapsed_ns);
+        }
+
+        LONGLONG elapsed_ns = g_stopwatch_elapsed_time_ns.load();
+        double elapsed_seconds = static_cast<double>(elapsed_ns) / static_cast<double>(utils::SEC_TO_NS);
+
+        // Format as HH:MM:SS.mmm
+        int hours = static_cast<int>(elapsed_seconds / 3600.0);
+        int minutes = static_cast<int>((elapsed_seconds - (hours * 3600.0)) / 60.0);
+        int seconds = static_cast<int>(elapsed_seconds - (hours * 3600.0) - (minutes * 60.0));
+        int milliseconds = static_cast<int>((elapsed_seconds - static_cast<int>(elapsed_seconds)) * 1000.0);
+
+        if (is_running) {
+            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "%02d:%02d:%02d.%03d", hours, minutes, seconds, milliseconds);
+        } else {
+            ImGui::Text("%02d:%02d:%02d.%03d", hours, minutes, seconds, milliseconds);
+        }
+
+        if (ImGui::IsItemHovered()) {
+            if (is_running) {
+                ImGui::SetTooltip("Stopwatch: Running\nPress Ctrl+S to pause");
+            } else {
+                LONGLONG elapsed_ns_check = g_stopwatch_elapsed_time_ns.load();
+                if (elapsed_ns_check > 0) {
+                    ImGui::SetTooltip("Stopwatch: Paused\nPress Ctrl+S to reset");
+                } else {
+                    ImGui::SetTooltip("Stopwatch: Stopped\nPress Ctrl+S to start");
+                }
+            }
+        }
+    }
+
     // Show enabled features indicator (time slowdown, auto-click, etc.)
     if (show_enabledfeatures) {
         char feature_text[512];

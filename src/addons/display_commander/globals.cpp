@@ -223,6 +223,11 @@ std::atomic<std::shared_ptr<const std::string>> g_hdr10_override_timestamp{std::
 // Performance optimization settings
 std::atomic<LONGLONG> g_flush_before_present_time_ns{0};
 
+// Stopwatch state
+std::atomic<bool> g_stopwatch_running{false};
+std::atomic<LONGLONG> g_stopwatch_start_time_ns{0};
+std::atomic<LONGLONG> g_stopwatch_elapsed_time_ns{0};
+
 // Helper function for updating HDR10 override status atomically
 void UpdateHdr10OverrideStatus(const std::string &status) {
     g_hdr10_override_status.store(std::make_shared<std::string>(status));

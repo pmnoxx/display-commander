@@ -191,7 +191,15 @@ void DrawRefreshRateFrameTimesGraph() {
    //.. std::string overlay_text = "Refresh Frame Time: " + std::to_string(frame_times.back()).substr(0, 4) + " ms";
    // overlay_text += " | Avg: " + std::to_string(avg_frame_time).substr(0, 4) + " ms";
 
-    // Draw compact refresh rate frame time graph
+    // Draw chart background with transparency
+    float chart_alpha = settings::g_mainTabSettings.overlay_chart_alpha.GetValue();
+    ImVec4 bg_color = ImGui::GetStyle().Colors[ImGuiCol_FrameBg];
+    bg_color.w *= chart_alpha; // Apply transparency to background
+
+    // Push style color so PlotLines uses the transparent background
+    ImGui::PushStyleColor(ImGuiCol_FrameBg, bg_color);
+
+    // Draw compact refresh rate frame time graph (line stays fully opaque)
     ImGui::PlotLines("##RefreshRateFrameTime",
                      frame_times.data(),
                      static_cast<int>(frame_times.size()),
@@ -200,6 +208,9 @@ void DrawRefreshRateFrameTimesGraph() {
                      scale_min,
                      scale_max,
                      graph_size);
+
+    // Restore original style color
+    ImGui::PopStyleColor();
 
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Refresh rate frame time graph showing display refresh intervals in milliseconds.\n"
@@ -248,7 +259,15 @@ void DrawFrameTimeGraphOverlay() {
     float scale_min = 0.0f;
     float scale_max = max(avg_frame_time * 3.0f, max_frame_time + 1.0f); // Add some padding but less aggressive
 
-    // Draw compact frame time graph
+    // Draw chart background with transparency
+    float chart_alpha = settings::g_mainTabSettings.overlay_chart_alpha.GetValue();
+    ImVec4 bg_color = ImGui::GetStyle().Colors[ImGuiCol_FrameBg];
+    bg_color.w *= chart_alpha; // Apply transparency to background
+
+    // Push style color so PlotLines uses the transparent background
+    ImGui::PushStyleColor(ImGuiCol_FrameBg, bg_color);
+
+    // Draw compact frame time graph (line stays fully opaque)
     ImGui::PlotLines("##FrameTime",
                      frame_times.data(),
                      static_cast<int>(frame_times.size()),
@@ -257,6 +276,9 @@ void DrawFrameTimeGraphOverlay() {
                      scale_min,
                      scale_max,
                      graph_size);
+
+    // Restore original style color
+    ImGui::PopStyleColor();
 
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Frame time graph (last 150 frames)\nAvg: %.2f ms | Max: %.2f ms", avg_frame_time, max_frame_time);
@@ -2005,6 +2027,13 @@ void DrawImportantInfo() {
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Controls the transparency of the overlay background. 0.0 = fully transparent, 1.0 = fully opaque.");
+        }
+        // Overlay chart transparency slider
+        if (SliderFloatSetting(settings::g_mainTabSettings.overlay_chart_alpha, "Frame Chart Transparency", "%.2f")) {
+            // Setting is automatically saved by SliderFloatSetting
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Controls the transparency of the frame time and refresh rate chart backgrounds. 0.0 = fully transparent, 1.0 = fully opaque. Chart lines remain fully visible.");
         }
 
     }

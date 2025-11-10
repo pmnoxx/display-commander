@@ -312,7 +312,7 @@ DWORD WINAPI XInputGetState_Detour(DWORD dwUserIndex, XINPUT_STATE *pState) {
             }
         }
         if (dwUserIndex == 0) {
-            LogError("XXX XInput Controller %lu: GetState failed with error %lu", dwUserIndex, result);
+            LogErrorThrottled(10, "XXX XInput Controller %lu: GetState failed with error %lu (Perhaps disable steam input?)", dwUserIndex, result);
         }
     }
 
@@ -513,7 +513,7 @@ DWORD WINAPI XInputGetStateEx_Detour(DWORD dwUserIndex, XINPUT_STATE *pState) {
                 shared_state->controller_connected[dwUserIndex] = display_commander::widgets::xinput_widget::ControllerState::Unconnected;
             }
         }
-        LogError("XXX XInput Controller %lu: GetStateEx failed with error %lu", dwUserIndex, result);
+        LogErrorThrottled(10, "XXX XInput Controller %lu: GetStateEx failed with error %lu (Perhaps disable steam input?)", dwUserIndex, result);
     }
 
     // Override packet number with our tracked value just before returning

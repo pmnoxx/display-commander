@@ -228,18 +228,16 @@ void DrawFrameTimeGraphOverlay() {
     if (count == 0) {
         return; // Don't show anything if no data
     }
+    const uint32_t samples_to_display = min(count, 256u);
 
-    // Collect frame times for the graph (last 150 samples for compact display)
+    // Collect frame times for the graph (last 256 samples for compact display)
     static std::vector<float> frame_times;
     frame_times.clear();
-    frame_times.reserve(min(count, 150u));
+        frame_times.reserve(samples_to_display);
 
-    const uint32_t start = head - min(count, 150u);
-    for (uint32_t i = start; i < head; ++i) {
-        const ::PerfSample& sample = ::g_perf_ring[i & (::kPerfRingCapacity - 1)];
-        if (sample.fps > 0.0f) {
-            frame_times.push_back(1000.0f / sample.fps); // Convert FPS to frame time in ms
-        }
+    for (uint32_t i = 0; i < samples_to_display; ++i) {
+        const ::PerfSample& sample = ::g_perf_ring[(head - samples_to_display + i) & (::kPerfRingCapacity - 1)];
+        frame_times.push_back(sample.dt); // Convert FPS to frame time in ms
     }
 
     if (frame_times.empty()) {
@@ -281,7 +279,7 @@ void DrawFrameTimeGraphOverlay() {
     ImGui::PopStyleColor();
 
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Frame time graph (last 150 frames)\nAvg: %.2f ms | Max: %.2f ms", avg_frame_time, max_frame_time);
+        ImGui::SetTooltip("Frame time graph (last 256 frames)\nAvg: %.2f ms | Max: %.2f ms", avg_frame_time, max_frame_time);
     }
 }
 

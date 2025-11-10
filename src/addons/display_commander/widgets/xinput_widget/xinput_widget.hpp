@@ -165,31 +165,32 @@ struct XInputSharedState {
     // Autofire settings
     struct AutofireButton {
         WORD button_mask;
-        std::atomic<uint64_t> last_fire_frame_id; // Last frame when this button was toggled
-        std::atomic<bool> current_state;          // Current autofire state (on/off)
+        std::atomic<uint64_t> phase_start_frame_id; // Frame when current phase (hold down/up) started
+        std::atomic<bool> is_holding_down;          // true = holding down phase, false = holding up phase
 
-        AutofireButton() : button_mask(0), last_fire_frame_id(0), current_state(false) {}
-        AutofireButton(WORD mask) : button_mask(mask), last_fire_frame_id(0), current_state(false) {}
+        AutofireButton() : button_mask(0), phase_start_frame_id(0), is_holding_down(true) {}
+        AutofireButton(WORD mask) : button_mask(mask), phase_start_frame_id(0), is_holding_down(true) {}
 
         // Copy constructor (needed for vector operations)
         AutofireButton(const AutofireButton& other)
             : button_mask(other.button_mask),
-              last_fire_frame_id(other.last_fire_frame_id.load()),
-              current_state(other.current_state.load()) {}
+              phase_start_frame_id(other.phase_start_frame_id.load()),
+              is_holding_down(other.is_holding_down.load()) {}
 
         // Assignment operator
         AutofireButton& operator=(const AutofireButton& other) {
             if (this != &other) {
                 button_mask = other.button_mask;
-                last_fire_frame_id.store(other.last_fire_frame_id.load());
-                current_state.store(other.current_state.load());
+                phase_start_frame_id.store(other.phase_start_frame_id.load());
+                is_holding_down.store(other.is_holding_down.load());
             }
             return *this;
         }
     };
 
     std::atomic<bool> autofire_enabled{false};              // Master enable/disable for autofire
-    std::atomic<uint32_t> autofire_frame_interval{1};        // Frames between toggles (1 = every frame, 2 = every other frame, etc.)
+    std::atomic<uint32_t> autofire_hold_down_frames{1};    // Frames to hold button down
+    std::atomic<uint32_t> autofire_hold_up_frames{1};      // Frames to hold button up
     std::vector<AutofireButton> autofire_buttons;            // List of buttons with autofire enabled
     mutable SRWLOCK autofire_lock = SRWLOCK_INIT;           // Thread safety for autofire_buttons vector access
 };

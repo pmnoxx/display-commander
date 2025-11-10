@@ -1165,9 +1165,22 @@ void XInputWidget::LoadSettings() {
         g_shared_state->autofire_enabled.store(autofire_enabled);
     }
 
+    // Load autofire frame settings (backward compatibility: try old name first, then new names)
     uint32_t autofire_frame_interval;
     if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "AutofireFrameInterval", autofire_frame_interval)) {
-        g_shared_state->autofire_frame_interval.store(autofire_frame_interval);
+        // Migrate old setting to new format (use as hold_down, set hold_up to same value)
+        g_shared_state->autofire_hold_down_frames.store(autofire_frame_interval);
+        g_shared_state->autofire_hold_up_frames.store(autofire_frame_interval);
+    } else {
+        // Load new settings
+        uint32_t hold_down_frames;
+        if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "AutofireHoldDownFrames", hold_down_frames)) {
+            g_shared_state->autofire_hold_down_frames.store(hold_down_frames);
+        }
+        uint32_t hold_up_frames;
+        if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "AutofireHoldUpFrames", hold_up_frames)) {
+            g_shared_state->autofire_hold_up_frames.store(hold_up_frames);
+        }
     }
 
     // Load autofire button list
@@ -1252,8 +1265,10 @@ void XInputWidget::SaveSettings() {
     display_commander::config::set_config_value("DisplayCommander.XInputWidget", "AutofireEnabled",
                               g_shared_state->autofire_enabled.load());
 
-    display_commander::config::set_config_value("DisplayCommander.XInputWidget", "AutofireFrameInterval",
-                              static_cast<uint32_t>(g_shared_state->autofire_frame_interval.load()));
+    display_commander::config::set_config_value("DisplayCommander.XInputWidget", "AutofireHoldDownFrames",
+                              static_cast<uint32_t>(g_shared_state->autofire_hold_down_frames.load()));
+    display_commander::config::set_config_value("DisplayCommander.XInputWidget", "AutofireHoldUpFrames",
+                              static_cast<uint32_t>(g_shared_state->autofire_hold_up_frames.load()));
 
     // Save autofire button list as comma-separated hex values
     utils::SRWLockExclusive lock(g_shared_state->autofire_lock);
@@ -2061,50 +2076,82 @@ void XInputWidget::DrawAutofireSettings() {
             if (!autofire_enabled) {
                 utils::SRWLockExclusive lock(shared_state->autofire_lock);
                 for (auto &af_button : shared_state->autofire_buttons) {
-                    af_button.current_state.store(false);
-                    af_button.last_fire_frame_id.store(0);
+                    af_button.is_holding_down.store(true);
+                    af_button.phase_start_frame_id.store(0);
                 }
             }
 
             SaveSettings();
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Enable autofire for selected buttons. When a button is held, it will toggle on/off at the specified frame interval.");
+            ImGui::SetTooltip("Enable autofire for selected buttons. When a button is held, it will cycle between hold down and hold up phases.");
         }
 
         if (autofire_enabled) {
             ImGui::Spacing();
 
-            // Frame interval setting with slider and input field
-            uint32_t frame_interval = shared_state->autofire_frame_interval.load();
-            int frame_interval_int = static_cast<int>(frame_interval);
+            // Hold down frames setting
+            uint32_t hold_down_frames = shared_state->autofire_hold_down_frames.load();
+            int hold_down_frames_int = static_cast<int>(hold_down_frames);
 
-            ImGui::Text("Frame Interval:");
+            ImGui::Text("Hold Down (frames): %d", hold_down_frames_int);
             ImGui::SameLine();
 
             // Input field for precise control
             ImGui::SetNextItemWidth(80);
-            if (ImGui::InputInt("##FrameIntervalInput", &frame_interval_int, 1, 5, ImGuiInputTextFlags_EnterReturnsTrue)) {
-                if (frame_interval_int < 1) {
-                    frame_interval_int = 1;
-                } else if (frame_interval_int > 1000) {
-                    frame_interval_int = 1000;
+            if (ImGui::InputInt("##HoldDownFramesInput", &hold_down_frames_int, 1, 5, ImGuiInputTextFlags_EnterReturnsTrue)) {
+                if (hold_down_frames_int < 1) {
+                    hold_down_frames_int = 1;
+                } else if (hold_down_frames_int > 1000) {
+                    hold_down_frames_int = 1000;
                 }
-                shared_state->autofire_frame_interval.store(static_cast<uint32_t>(frame_interval_int));
+                shared_state->autofire_hold_down_frames.store(static_cast<uint32_t>(hold_down_frames_int));
                 SaveSettings();
             }
             if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("Number of frames between button toggles (1-1000). Enter a value or use slider below.");
+                ImGui::SetTooltip("Number of frames to hold button down (1-1000). Enter a value or use slider below.");
             }
 
+            // Slider for quick adjustment (1-60 range for common use)
+            int slider_value_down = hold_down_frames_int;
+            if (slider_value_down > 60) slider_value_down = 60; // Clamp for slider display
+            if (ImGui::SliderInt("##HoldDownFramesSlider", &slider_value_down, 1, 60, "%d frames")) {
+                shared_state->autofire_hold_down_frames.store(static_cast<uint32_t>(slider_value_down));
+                SaveSettings();
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Quick adjustment slider (1-60 frames). Use input field above for values > 60.");
+            }
+
+            ImGui::Spacing();
+
+            // Hold up frames setting
+            uint32_t hold_up_frames = shared_state->autofire_hold_up_frames.load();
+            int hold_up_frames_int = static_cast<int>(hold_up_frames);
+
+            ImGui::Text("Hold Up (frames): %d", hold_up_frames_int);
             ImGui::SameLine();
-            ImGui::Text("frames");
+
+            // Input field for precise control
+            ImGui::SetNextItemWidth(80);
+            if (ImGui::InputInt("##HoldUpFramesInput", &hold_up_frames_int, 1, 5, ImGuiInputTextFlags_EnterReturnsTrue)) {
+                if (hold_up_frames_int < 1) {
+                    hold_up_frames_int = 1;
+                } else if (hold_up_frames_int > 1000) {
+                    hold_up_frames_int = 1000;
+                }
+                shared_state->autofire_hold_up_frames.store(static_cast<uint32_t>(hold_up_frames_int));
+                SaveSettings();
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Number of frames to hold button up (1-1000). Enter a value or use slider below.");
+            }
 
             // Slider for quick adjustment (1-60 range for common use)
-            int slider_value = frame_interval_int;
-            if (slider_value > 60) slider_value = 60; // Clamp for slider display
-            if (ImGui::SliderInt("##FrameIntervalSlider", &slider_value, 1, 60, "%d frames")) {
-                shared_state->autofire_frame_interval.store(static_cast<uint32_t>(slider_value));
+            int slider_value_up = hold_up_frames_int;
+            if (slider_value_up > 60) slider_value_up = 60; // Clamp for slider display
+            if (ImGui::SliderInt("##HoldUpFramesSlider", &slider_value_up, 1, 60, "%d frames")) {
+                shared_state->autofire_hold_up_frames.store(static_cast<uint32_t>(slider_value_up));
                 SaveSettings();
             }
             if (ImGui::IsItemHovered()) {
@@ -2112,9 +2159,10 @@ void XInputWidget::DrawAutofireSettings() {
             }
 
             // Show effective rate information
-            if (frame_interval_int > 0) {
-                ImGui::TextColored(ui::colors::TEXT_DIMMED, "  At 60 FPS: ~%.1f fires/sec | At 120 FPS: ~%.1f fires/sec",
-                    60.0f / frame_interval_int, 120.0f / frame_interval_int);
+            uint32_t total_cycle_frames = hold_down_frames + hold_up_frames;
+            if (total_cycle_frames > 0) {
+                ImGui::TextColored(ui::colors::TEXT_DIMMED, "  Cycle: %u frames total | At 60 FPS: ~%.1f cycles/sec | At 120 FPS: ~%.1f cycles/sec",
+                    total_cycle_frames, 60.0f / total_cycle_frames, 120.0f / total_cycle_frames);
             }
 
             ImGui::Spacing();
@@ -2341,15 +2389,16 @@ void ProcessAutofire(DWORD user_index, XINPUT_STATE *pState) {
         // When autofire is disabled, reset all autofire button states to prevent stale state
         utils::SRWLockExclusive lock(shared_state->autofire_lock);
         for (auto &af_button : shared_state->autofire_buttons) {
-            af_button.current_state.store(false);
-            af_button.last_fire_frame_id.store(0);
+            af_button.is_holding_down.store(true);
+            af_button.phase_start_frame_id.store(0);
         }
         return;
     }
 
     // Get current frame ID
     uint64_t current_frame_id = g_global_frame_id.load();
-    uint32_t frame_interval = shared_state->autofire_frame_interval.load();
+    uint32_t hold_down_frames = shared_state->autofire_hold_down_frames.load();
+    uint32_t hold_up_frames = shared_state->autofire_hold_up_frames.load();
 
     // Thread-safe access to autofire_buttons
     utils::SRWLockExclusive lock(shared_state->autofire_lock);
@@ -2363,38 +2412,49 @@ void ProcessAutofire(DWORD user_index, XINPUT_STATE *pState) {
         bool is_pressed = (original_buttons & button_mask) != 0;
 
         if (is_pressed) {
-            // Button is held down, check if we should toggle
-            uint64_t last_fire_frame = af_button.last_fire_frame_id.load();
-            uint64_t frames_since_last_fire = current_frame_id - last_fire_frame;
+            // Button is held down, process autofire cycle
+            uint64_t phase_start_frame = af_button.phase_start_frame_id.load();
+            bool is_holding_down = af_button.is_holding_down.load();
 
-            if (frames_since_last_fire >= frame_interval || last_fire_frame == 0) {
-                // Toggle the button state
-                bool current_state = af_button.current_state.load();
-                bool new_state = !current_state;
-                af_button.current_state.store(new_state);
-                af_button.last_fire_frame_id.store(current_frame_id);
+            // Initialize phase if this is the first frame
+            if (phase_start_frame == 0) {
+                af_button.phase_start_frame_id.store(current_frame_id);
+                af_button.is_holding_down.store(true);
+                is_holding_down = true;
+                phase_start_frame = current_frame_id;
+            }
 
-                // Apply the toggle to the button state
-                if (new_state) {
+            uint64_t frames_in_current_phase = current_frame_id - phase_start_frame;
+
+            if (is_holding_down) {
+                // Currently holding down - check if we should switch to hold up phase
+                if (frames_in_current_phase >= hold_down_frames) {
+                    // Switch to hold up phase
+                    af_button.is_holding_down.store(false);
+                    af_button.phase_start_frame_id.store(current_frame_id);
+                    // Turn button off
+                    pState->Gamepad.wButtons &= ~button_mask;
+                } else {
+                    // Keep holding down
+                    pState->Gamepad.wButtons |= button_mask;
+                }
+            } else {
+                // Currently holding up - check if we should switch to hold down phase
+                if (frames_in_current_phase >= hold_up_frames) {
+                    // Switch to hold down phase
+                    af_button.is_holding_down.store(true);
+                    af_button.phase_start_frame_id.store(current_frame_id);
                     // Turn button on
                     pState->Gamepad.wButtons |= button_mask;
                 } else {
-                    // Turn button off
-                    pState->Gamepad.wButtons &= ~button_mask;
-                }
-            } else {
-                // Keep the current state
-                bool current_state = af_button.current_state.load();
-                if (current_state) {
-                    pState->Gamepad.wButtons |= button_mask;
-                } else {
+                    // Keep holding up
                     pState->Gamepad.wButtons &= ~button_mask;
                 }
             }
         } else {
             // Button is not pressed, reset state
-            af_button.current_state.store(false);
-            af_button.last_fire_frame_id.store(0);
+            af_button.is_holding_down.store(true);
+            af_button.phase_start_frame_id.store(0);
         }
     }
 }

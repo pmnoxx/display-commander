@@ -145,35 +145,26 @@ void InitializeHotkeyDefinitions() {
         },
         {
             "stopwatch",
-            "Stopwatch Start/Pause/Reset",
+            "Stopwatch Start/Pause",
             "ctrl+s",
-            "Start, pause, or reset the stopwatch (3-state cycle)",
+            "Start or pause the stopwatch (2-state toggle)",
             []() {
                 bool is_running = g_stopwatch_running.load();
                 LONGLONG now_ns = utils::get_now_ns();
-                LONGLONG elapsed_ns = g_stopwatch_elapsed_time_ns.load();
 
                 if (is_running) {
-                    // State 2: Running -> Pause
-                    // Save current elapsed time and stop running
+                    // Running -> Pause: Save current elapsed time
                     LONGLONG start_time_ns = g_stopwatch_start_time_ns.load();
                     LONGLONG current_elapsed_ns = now_ns - start_time_ns;
                     g_stopwatch_elapsed_time_ns.store(current_elapsed_ns);
                     g_stopwatch_running.store(false);
                     LogInfo("Stopwatch paused via hotkey");
-                } else if (elapsed_ns > 0) {
-                    // State 3: Paused -> Reset (back to stopped)
-                    // Clear elapsed time
-                    g_stopwatch_elapsed_time_ns.store(0);
-                    g_stopwatch_start_time_ns.store(0);
-                    LogInfo("Stopwatch reset via hotkey");
                 } else {
-                    // State 1: Stopped -> Start
-                    // Start fresh: record start time and set running
+                    // Paused -> Running: Reset to 0 and start fresh
                     g_stopwatch_start_time_ns.store(now_ns);
-                    g_stopwatch_running.store(true);
                     g_stopwatch_elapsed_time_ns.store(0);
-                    LogInfo("Stopwatch started via hotkey");
+                    g_stopwatch_running.store(true);
+                    LogInfo("Stopwatch started/resumed via hotkey (reset to 0)");
                 }
             }
         }

@@ -653,6 +653,9 @@ extern std::atomic<bool> g_stopwatch_running;
 extern std::atomic<LONGLONG> g_stopwatch_start_time_ns;
 extern std::atomic<LONGLONG> g_stopwatch_elapsed_time_ns;
 
+// Game playtime tracking (time from game start)
+extern std::atomic<LONGLONG> g_game_start_time_ns;
+
 // Sleep delay after present as percentage of frame time - 0% to 100%
 extern std::atomic<float> s_sleep_after_present_frame_time_percentage;
 

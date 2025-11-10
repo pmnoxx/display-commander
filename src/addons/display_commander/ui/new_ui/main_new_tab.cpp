@@ -1933,6 +1933,15 @@ void DrawImportantInfo() {
                 "FPS counter, and other performance metrics. Demonstrates reshade_overlay event usage.\n"
                 "Shortcut: Ctrl+O");
         }
+        // Show Playtime Control
+        bool show_playtime = settings::g_mainTabSettings.show_playtime.GetValue();
+        if (ImGui::Checkbox("Playtime", &show_playtime)) {
+            settings::g_mainTabSettings.show_playtime.SetValue(show_playtime);
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Shows total playtime (time from game start) in the performance overlay.");
+        }
+        ImGui::SameLine();
         // show fps counter
         bool show_fps_counter = settings::g_mainTabSettings.show_fps_counter.GetValue();
         if (ImGui::Checkbox("FPS Counter", &show_fps_counter)) {

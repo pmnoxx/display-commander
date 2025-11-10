@@ -839,6 +839,13 @@ void OnInitSwapchain(reshade::api::swapchain *swapchain, bool resize) {
     // This is called on the thread that creates the swapchain, which is typically the render thread
     DWORD current_thread_id = GetCurrentThreadId();
     display_commanderhooks::SetRenderThreadId(current_thread_id);
+
+    // Set game start time on first swapchain initialization (only once)
+    LONGLONG expected = 0;
+    LONGLONG now_ns = utils::get_now_ns();
+    if (g_game_start_time_ns.compare_exchange_strong(expected, now_ns)) {
+        LogInfo("Game start time recorded: %lld ns", now_ns);
+    }
 }
 
 HANDLE g_timer_handle = nullptr;

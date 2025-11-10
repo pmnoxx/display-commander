@@ -238,6 +238,32 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
     }
 
 
+    // Show playtime (time from game start)
+    if (settings::g_mainTabSettings.show_playtime.GetValue()) {
+        LONGLONG game_start_time_ns = g_game_start_time_ns.load();
+        if (game_start_time_ns > 0) {
+            LONGLONG now_ns = utils::get_now_ns();
+            LONGLONG playtime_ns = now_ns - game_start_time_ns;
+            double playtime_seconds = static_cast<double>(playtime_ns) / static_cast<double>(utils::SEC_TO_NS);
+
+            // Format as HH:MM:SS.mmm
+            int hours = static_cast<int>(playtime_seconds / 3600.0);
+            int minutes = static_cast<int>((playtime_seconds - (hours * 3600.0)) / 60.0);
+            int seconds = static_cast<int>(playtime_seconds - (hours * 3600.0) - (minutes * 60.0));
+            int milliseconds = static_cast<int>((playtime_seconds - static_cast<int>(playtime_seconds)) * 1000.0);
+
+            if (settings::g_mainTabSettings.show_labels.GetValue()) {
+                ImGui::Text("%02d:%02d:%02d", hours, minutes, seconds);
+            } else {
+                ImGui::Text("%02d:%02d:%02d", hours, minutes, seconds);
+            }
+
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Playtime: Time elapsed since game start");
+            }
+        }
+    }
+
     if (show_fps_counter) {
         const uint32_t head = ::g_perf_ring_head.load(std::memory_order_acquire);
         double total_time = 0.0;
@@ -371,12 +397,7 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
             if (is_running) {
                 ImGui::SetTooltip("Stopwatch: Running\nPress Ctrl+S to pause");
             } else {
-                LONGLONG elapsed_ns_check = g_stopwatch_elapsed_time_ns.load();
-                if (elapsed_ns_check > 0) {
-                    ImGui::SetTooltip("Stopwatch: Paused\nPress Ctrl+S to reset");
-                } else {
-                    ImGui::SetTooltip("Stopwatch: Stopped\nPress Ctrl+S to start");
-                }
+                ImGui::SetTooltip("Stopwatch: Paused\nPress Ctrl+S to reset and start");
             }
         }
     }

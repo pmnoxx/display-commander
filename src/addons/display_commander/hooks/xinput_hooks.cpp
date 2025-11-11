@@ -317,7 +317,7 @@ DWORD WINAPI XInputGetState_Detour(DWORD dwUserIndex, XINPUT_STATE *pState) {
     }
 
     // Override packet number with our tracked value just before returning
-    if (result == ERROR_SUCCESS && dwUserIndex < 4) {
+    if (dwUserIndex < 4) {
         // If we spoofed the connection, increment our tracked packet number
         g_packet_numbers[dwUserIndex]++;
         // Always override with our tracked packet number
@@ -517,7 +517,7 @@ DWORD WINAPI XInputGetStateEx_Detour(DWORD dwUserIndex, XINPUT_STATE *pState) {
     }
 
     // Override packet number with our tracked value just before returning
-    if (result == ERROR_SUCCESS && dwUserIndex < 4) {
+    if (dwUserIndex < 4) {
         // If we spoofed the connection, increment our tracked packet number
         g_packet_numbers[dwUserIndex]++;
         // Always override with our tracked packet number

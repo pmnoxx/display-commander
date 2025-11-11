@@ -490,6 +490,74 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
 void OverrideReShadeSettings() {
     LogInfo("Overriding ReShade settings - Setting tutorial as viewed and disabling auto updates");
 
+    //
+    // [Window][Display Commander],Pos=1017,,20,Size=1344,,1255,Collapsed=0,DockId=0x00000001,,7
+
+    {
+        // Read Window config as string (ReShade stores docking data here)
+        std::string window_config;
+        size_t value_size = 0;
+
+        // First call to get the required buffer size
+        if (reshade::get_config_value(nullptr, "OVERLAY", "Window", nullptr, &value_size)) {
+            // Allocate buffer and read the value
+            window_config.resize(value_size);
+            if (reshade::get_config_value(nullptr, "OVERLAY", "Window", window_config.data(), &value_size)) {
+                // Remove null terminator if present (ReShade includes it in size)
+                if (!window_config.empty() && window_config.back() == '\0') {
+                    window_config.pop_back();
+                }
+            } else {
+                window_config.clear();
+            }
+        }
+
+        bool changed_window_config = false;
+
+        // Add Display Commander window config if not present
+        if (window_config.find("[Window][Display Commander]") == std::string::npos) {
+            if (!window_config.empty()) {
+                window_config.push_back('\0');
+            }
+            std::string to_add = "[Window][Display Commander],Pos=1017,,20,Size=1344,,1255,Collapsed=0,DockId=0x00000001,,999999,";
+            for (size_t i = 0; i < to_add.size(); i++) {
+                if (to_add[i] == ',') {
+                    window_config.push_back('\0');
+                }
+                else {
+                    window_config.push_back(to_add[i]);
+                }
+            }
+            changed_window_config = true;
+        }
+
+        // Add RenoDX window config if not present
+        if (window_config.find("[Window][RenoDX]") == std::string::npos) {
+            if (!window_config.empty()) {
+                window_config.push_back('\0');
+            }
+            std::string to_add = "[Window][RenoDX],Pos=1017,,20,Size=1344,,1255,Collapsed=0,DockId=0x00000001,,9999999,";
+            for (size_t i = 0; i < to_add.size(); i++) {
+                if (to_add[i] == ',') {
+                    window_config.push_back('\0');
+                }
+                else {
+                    window_config.push_back(to_add[i]);
+                }
+            }
+
+            changed_window_config = true;
+        }
+
+        // Write back if changed
+        if (changed_window_config) {
+            reshade::set_config_value(nullptr, "OVERLAY", "Window", window_config.c_str(), window_config.size());
+            LogInfo("Updated ReShade Window config with Display Commander and RenoDX docking settings");
+        }
+    }
+
+
+
     // Set tutorial progress to 4 (fully viewed)
     reshade::set_config_value(nullptr, "OVERLAY", "TutorialProgress", 4);
     // LogInfo("ReShade settings override - TutorialProgress set to 4 (viewed)");

@@ -235,13 +235,7 @@ LONGLONG get_now_qpc() {
 
 // Global timing function
 LONGLONG get_now_ns() {
-    LARGE_INTEGER now_ticks = {};
-    if (enabled_experimental_features && display_commanderhooks::QueryPerformanceCounter_Original) {
-        display_commanderhooks::QueryPerformanceCounter_Original(&now_ticks);
-    } else {
-        QueryPerformanceCounter(&now_ticks);
-    }
-    return now_ticks.QuadPart * utils::QPC_TO_NS;
+    return get_now_qpc() * utils::QPC_TO_NS;
 }
 
 // Get real time bypassing any hooks (for comparison with spoofed time)

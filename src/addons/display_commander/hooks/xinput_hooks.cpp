@@ -15,6 +15,7 @@
 #include <string>
 #include <vector>
 #include <cmath>
+#include <functional>
 
 
 namespace display_commanderhooks {
@@ -114,18 +115,12 @@ void ApplyThumbstickProcessing(XINPUT_STATE *pState, float left_max_input, float
     pState->Gamepad.sThumbRY = FloatToShort(ry);
 }
 
-// Hooked XInputGetState function
-DWORD WINAPI XInputGetState_Detour(DWORD dwUserIndex, XINPUT_STATE *pState) {
-    if (pState == nullptr) {
-        return ERROR_INVALID_PARAMETER;
-    }
-    if (XInputGetStateEx_Direct == nullptr || XInputGetState_Direct == nullptr) {
-        return ERROR_DEVICE_NOT_CONNECTED;
-    }
-  //  LogInfo("XXX XInputGetState called for controller %lu", dwUserIndex);
-
+// Helper function containing shared logic for XInputGetState and XInputGetStateEx
+static DWORD ProcessXInputGetState(DWORD dwUserIndex, XINPUT_STATE *pState, HookIndex hook_index,
+                                    std::atomic<uint64_t> &update_ns_field, const char *error_function_name,
+                                    const std::function<DWORD(DWORD, XINPUT_STATE *)> &call_original_func) {
     // Track hook call statistics
-    g_hook_stats[HOOK_XInputGetState].increment_total();
+    g_hook_stats[hook_index].increment_total();
 
     // Measure timing for smooth call rate calculation
     auto shared_state = display_commander::widgets::xinput_widget::XInputWidget::GetSharedState();
@@ -137,15 +132,13 @@ DWORD WINAPI XInputGetState_Detour(DWORD dwUserIndex, XINPUT_STATE *pState) {
             uint64_t time_since_last_call_ns = current_time_ns - last_call_time;
             // Only update if time since last call is reasonable (ignore if > 1000ms)
             if (time_since_last_call_ns < 1 * utils::SEC_TO_NS) { // 1 second in nanoseconds
-                uint64_t old_update_ns = shared_state->xinput_getstate_update_ns.load();
+                uint64_t old_update_ns = update_ns_field.load();
                 uint64_t new_update_ns = UpdateRollingAverage(time_since_last_call_ns, old_update_ns);
-                shared_state->xinput_getstate_update_ns.store(new_update_ns);
+                update_ns_field.store(new_update_ns);
             }
         }
         shared_state->last_xinput_call_time_ns.store(current_time_ns);
     }
-    static bool tried_get_state_ex = false;
-    static bool use_get_state_ex = false;
 
     // Check if override state is set - if so, spoof controller connection for controller 0
     bool should_spoof_connection = g_auto_click_enabled.load() && dwUserIndex == 0;
@@ -164,13 +157,7 @@ DWORD WINAPI XInputGetState_Detour(DWORD dwUserIndex, XINPUT_STATE *pState) {
 
     // Fall back to original XInput if DualSense conversion failed or is disabled
     if (result != ERROR_SUCCESS) {
-        result = use_get_state_ex ? XInputGetStateEx_Direct(dwUserIndex, pState) : XInputGetState_Direct(dwUserIndex, pState);
-        if (result == ERROR_SUCCESS) {
-            if (!tried_get_state_ex) {
-                tried_get_state_ex = true;
-                use_get_state_ex = XInputGetStateEx_Direct(dwUserIndex, pState) == ERROR_SUCCESS;
-            }
-        }
+        result = call_original_func(dwUserIndex, pState);
     }
 
     // Track whether we spoofed the connection
@@ -294,7 +281,7 @@ DWORD WINAPI XInputGetState_Detour(DWORD dwUserIndex, XINPUT_STATE *pState) {
             display_commander::widgets::xinput_widget::ProcessAutofire(dwUserIndex, pState);
 
             // Track unsuppressed call (input was processed)
-            g_hook_stats[HOOK_XInputGetState].increment_unsuppressed();
+            g_hook_stats[hook_index].increment_unsuppressed();
         }
 
         // Always update the UI state with the original state (before suppression/modifications)
@@ -312,7 +299,7 @@ DWORD WINAPI XInputGetState_Detour(DWORD dwUserIndex, XINPUT_STATE *pState) {
             }
         }
         if (dwUserIndex == 0) {
-            LogErrorThrottled(10, "XXX XInput Controller %lu: GetState failed with error %lu (Perhaps disable steam input?)", dwUserIndex, result);
+            LogErrorThrottled(10, "XXX XInput Controller %lu: %s failed with error %lu (Perhaps disable steam input?)", dwUserIndex, error_function_name, result);
         }
     }
 
@@ -327,204 +314,60 @@ DWORD WINAPI XInputGetState_Detour(DWORD dwUserIndex, XINPUT_STATE *pState) {
     return result;
 }
 
+// Hooked XInputGetState function
+DWORD WINAPI XInputGetState_Detour(DWORD dwUserIndex, XINPUT_STATE *pState) {
+    if (pState == nullptr) {
+        return ERROR_INVALID_PARAMETER;
+    }
+    if (XInputGetStateEx_Direct == nullptr || XInputGetState_Direct == nullptr) {
+        return ERROR_DEVICE_NOT_CONNECTED;
+    }
+
+    // Static state for fallback logic
+    static bool tried_get_state_ex = false;
+    static bool use_get_state_ex = false;
+
+    // Get shared state for timing field access
+    auto shared_state = display_commander::widgets::xinput_widget::XInputWidget::GetSharedState();
+    if (!shared_state) {
+        return ERROR_DEVICE_NOT_CONNECTED;
+    }
+
+    // Lambda to call original function with fallback logic
+    auto call_original = [&](DWORD user_index, XINPUT_STATE *state) -> DWORD {
+        DWORD result = use_get_state_ex ? XInputGetStateEx_Direct(user_index, state) : XInputGetState_Direct(user_index, state);
+        if (result == ERROR_SUCCESS) {
+            if (!tried_get_state_ex) {
+                tried_get_state_ex = true;
+                use_get_state_ex = XInputGetStateEx_Direct(user_index, state) == ERROR_SUCCESS;
+            }
+        }
+        return result;
+    };
+
+    return ProcessXInputGetState(dwUserIndex, pState, HOOK_XInputGetState,
+                                  shared_state->xinput_getstate_update_ns, "GetState", call_original);
+}
+
 // Hooked XInputGetStateEx function
 DWORD WINAPI XInputGetStateEx_Detour(DWORD dwUserIndex, XINPUT_STATE *pState) {
     if (pState == nullptr) {
         return ERROR_INVALID_PARAMETER;
     }
-   // LogInfo("XXX XInputGetStateEx called for controller %lu", dwUserIndex);
 
-    // Track hook call statistics
-    g_hook_stats[HOOK_XInputGetStateEx].increment_total();
-
-    // Measure timing for smooth call rate calculation
+    // Get shared state for timing field access
     auto shared_state = display_commander::widgets::xinput_widget::XInputWidget::GetSharedState();
-    if (shared_state && dwUserIndex == 0) {
-        uint64_t current_time_ns = utils::get_now_ns();
-        uint64_t last_call_time = shared_state->last_xinput_call_time_ns.load();
-
-        if (last_call_time > 0) {
-            uint64_t time_since_last_call_ns = current_time_ns - last_call_time;
-            // Only update if time since last call is reasonable (ignore if > 1000ms)
-            if (time_since_last_call_ns < 1000000000ULL) { // 1000ms in nanoseconds
-                uint64_t old_update_ns = shared_state->xinput_getstateex_update_ns.load();
-                uint64_t new_update_ns = UpdateRollingAverage(time_since_last_call_ns, old_update_ns);
-                shared_state->xinput_getstateex_update_ns.store(new_update_ns);
-            }
-        }
-        shared_state->last_xinput_call_time_ns.store(current_time_ns);
+    if (!shared_state) {
+        return ERROR_DEVICE_NOT_CONNECTED;
     }
 
-    // Check if override state is set - if so, spoof controller connection for controller 0
-    bool should_spoof_connection = g_auto_click_enabled.load() && dwUserIndex == 0;
+    // Lambda to call original function directly
+    auto call_original = [](DWORD user_index, XINPUT_STATE *state) -> DWORD {
+        return XInputGetStateEx_Direct != nullptr ? XInputGetStateEx_Direct(user_index, state) : ERROR_DEVICE_NOT_CONNECTED;
+    };
 
-    // Check if DualSense to XInput conversion is enabled
-    bool dualsense_enabled = shared_state && shared_state->enable_dualsense_xinput.load();
-
-    DWORD result = ERROR_DEVICE_NOT_CONNECTED;
-
-    // Try DualSense conversion first if enabled
-    if (dualsense_enabled && display_commander::hooks::IsDualSenseAvailable()) {
-        if (display_commander::hooks::ConvertDualSenseToXInput(dwUserIndex, pState)) {
-            result = ERROR_SUCCESS;
-        }
-    }
-
-    // Fall back to original XInput if DualSense conversion failed or is disabled
-    if (result != ERROR_SUCCESS) {
-        result = XInputGetStateEx_Direct != nullptr ? XInputGetStateEx_Direct(dwUserIndex, pState) : ERROR_DEVICE_NOT_CONNECTED;
-    }
-
-    // Track whether we spoofed the connection
-    bool did_spoof_connection = false;
-
-    // If controller is not connected but we need to spoof for override, create fake state
-    if (should_spoof_connection) {
-        // Initialize fake gamepad state (all zeros)
-        ZeroMemory(&pState->Gamepad, sizeof(XINPUT_GAMEPAD));
-        // Packet number will be set just before return
-        result = ERROR_SUCCESS; // Spoof as connected
-        did_spoof_connection = true;
-
-        // Mark controller as connected in shared state
-        if (shared_state && dwUserIndex < XUSER_MAX_COUNT) {
-            shared_state->controller_connected[dwUserIndex] = display_commander::widgets::xinput_widget::ControllerState::Connected;
-        }
-
-        LogInfo("XXX Spoofing controller 0 connection for override state");
-    }
-
-    // Apply A/B button swapping if enabled
-    if (result == ERROR_SUCCESS) {
-        // Store the frame ID when XInput is successfully detected
-        uint64_t current_frame_id = g_global_frame_id.load();
-        g_last_xinput_detected_frame_id.store(current_frame_id);
-
-        auto shared_state = display_commander::widgets::xinput_widget::XInputWidget::GetSharedState();
-
-        // Process chord detection first to check for input suppression
-        display_commander::widgets::xinput_widget::ProcessChordDetection(dwUserIndex, pState->Gamepad.wButtons);
-
-        // Store original state for UI tracking (before any modifications)
-        XINPUT_STATE original_state = *pState;
-
-        // Apply override state if set (check before suppression)
-        if (shared_state) {
-            float override_lx = shared_state->override_state.left_stick_x.load();
-            float override_ly = shared_state->override_state.left_stick_y.load();
-            float override_rx = shared_state->override_state.right_stick_x.load();
-            float override_ry = shared_state->override_state.right_stick_y.load();
-            WORD override_buttons = shared_state->override_state.buttons_pressed_mask.load();
-
-            // Apply stick overrides (INFINITY means not overridden)
-            if (!std::isinf(override_lx)) {
-                pState->Gamepad.sThumbLX = FloatToShort(override_lx);
-            }
-            if (!std::isinf(override_ly)) {
-                pState->Gamepad.sThumbLY = FloatToShort(override_ly);
-            }
-            if (!std::isinf(override_rx)) {
-                pState->Gamepad.sThumbRX = FloatToShort(override_rx);
-            }
-            if (!std::isinf(override_ry)) {
-                pState->Gamepad.sThumbRY = FloatToShort(override_ry);
-            }
-
-            // Apply button override (mask 0 means no override)
-            if (override_buttons != 0) {
-                pState->Gamepad.wButtons |= override_buttons;
-            }
-        }
-
-        // Check if input should be suppressed due to chord being pressed
-        if (shared_state && shared_state->suppress_input.load()) {
-            // Suppress all input by zeroing out the gamepad state
-            ZeroMemory(&pState->Gamepad, sizeof(XINPUT_GAMEPAD));
-            LogInfo("XXX Input suppressed due to chord being pressed (Controller %lu)", dwUserIndex);
-            // Don't increment unsuppressed - input was suppressed
-        } else {
-            // Input is not suppressed, process normally
-            if (shared_state && shared_state->swap_a_b_buttons.load()) {
-                // Swap A and B buttons
-                WORD original_buttons = pState->Gamepad.wButtons;
-                WORD swapped_buttons = original_buttons;
-
-                // If A is pressed, set B instead
-                if (original_buttons & XINPUT_GAMEPAD_A) {
-                    swapped_buttons |= XINPUT_GAMEPAD_B;
-                    swapped_buttons &= ~XINPUT_GAMEPAD_A;
-                    LogInfo("XXX A/B Swap: A pressed -> B set (Controller %lu)", dwUserIndex);
-                }
-                // If B is pressed, set A instead
-                if (original_buttons & XINPUT_GAMEPAD_B) {
-                    swapped_buttons |= XINPUT_GAMEPAD_A;
-                    swapped_buttons &= ~XINPUT_GAMEPAD_B;
-                    LogInfo("XXX A/B Swap: B pressed -> A set (Controller %lu)", dwUserIndex);
-                }
-
-                pState->Gamepad.wButtons = swapped_buttons;
-            }
-
-            // Apply max input, min output, deadzone, and center calibration processing
-            if (shared_state) {
-                float left_max_input = shared_state->left_stick_max_input.load();
-                float right_max_input = shared_state->right_stick_max_input.load();
-                float left_min_output = shared_state->left_stick_min_output.load();
-                float right_min_output = shared_state->right_stick_min_output.load();
-                float left_deadzone =
-                    shared_state->left_stick_deadzone.load() / 100.0f; // Convert percentage to decimal
-                float right_deadzone =
-                    shared_state->right_stick_deadzone.load() / 100.0f; // Convert percentage to decimal
-
-                float left_center_x = shared_state->left_stick_center_x.load();
-                float left_center_y = shared_state->left_stick_center_y.load();
-                float right_center_x = shared_state->right_stick_center_x.load();
-                float right_center_y = shared_state->right_stick_center_y.load();
-
-                bool left_circular = shared_state->left_stick_circular.load();
-                bool right_circular = shared_state->right_stick_circular.load();
-
-                ApplyThumbstickProcessing(pState, left_max_input, right_max_input, left_min_output, right_min_output,
-                                          left_deadzone, right_deadzone, left_center_x, left_center_y, right_center_x, right_center_y,
-                                          left_circular, right_circular);
-            }
-
-            // Process input remapping before updating state
-            display_commander::input_remapping::process_gamepad_input_for_remapping(dwUserIndex, pState);
-
-            // Process autofire
-            display_commander::widgets::xinput_widget::ProcessAutofire(dwUserIndex, pState);
-
-            // Track unsuppressed call (input was processed)
-            g_hook_stats[HOOK_XInputGetStateEx].increment_unsuppressed();
-        }
-
-        // Always update the UI state with the original state (before suppression/modifications)
-        // This ensures the UI shows the actual controller state regardless of suppression
-        display_commander::widgets::xinput_widget::UpdateXInputState(dwUserIndex, &original_state);
-
-        // Update battery status periodically
-        display_commander::widgets::xinput_widget::UpdateBatteryStatus(dwUserIndex);
-    } else {
-        // Mark controller as disconnected in shared state
-        if (dwUserIndex < XUSER_MAX_COUNT) {
-            auto shared_state = display_commander::widgets::xinput_widget::XInputWidget::GetSharedState();
-            if (shared_state) {
-                shared_state->controller_connected[dwUserIndex] = display_commander::widgets::xinput_widget::ControllerState::Unconnected;
-            }
-        }
-        LogErrorThrottled(10, "XXX XInput Controller %lu: GetStateEx failed with error %lu (Perhaps disable steam input?)", dwUserIndex, result);
-    }
-
-    // Override packet number with our tracked value just before returning
-    if (dwUserIndex < 4) {
-        // If we spoofed the connection, increment our tracked packet number
-        g_packet_numbers[dwUserIndex]++;
-        // Always override with our tracked packet number
-        pState->dwPacketNumber = g_packet_numbers[dwUserIndex];
-    }
-
-    return result;
+    return ProcessXInputGetState(dwUserIndex, pState, HOOK_XInputGetStateEx,
+                                  shared_state->xinput_getstateex_update_ns, "GetStateEx", call_original);
 }
 
 // Hooked XInputSetState function

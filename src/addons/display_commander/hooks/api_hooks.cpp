@@ -655,7 +655,8 @@ bool InstallDxgiHooks() {
     }
 
     if (true) {
-        return false;
+        LogInfo("DXGI hooks installation suppressed by user setting");
+        return true;
     }
 
     dxgi_hooks_installed = true;

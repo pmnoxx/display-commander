@@ -477,17 +477,16 @@ void RecordFrameTime(FrameTimeMode reason) {
         return; // Skip recording for this call reason
     }
 
-    static LONGLONG start_time_ns = utils::get_now_ns();
+    static LONGLONG previous_ns = utils::get_now_ns();
     LONGLONG now_ns = utils::get_now_ns();
-    const double elapsed = static_cast<double>(now_ns - start_time_ns) / static_cast<double>(utils::SEC_TO_NS);
+    const double elapsed = static_cast<double>(now_ns - previous_ns) / static_cast<double>(utils::SEC_TO_NS);
     g_perf_time_seconds.store(elapsed, std::memory_order_release);
-    static double last_tp = 0.0;
-    const double dt = elapsed - last_tp;
+    const double dt = elapsed;
     if (dt > 0.0) {
-        const float fps = static_cast<float>(1.0 / dt);
         uint32_t idx = g_perf_ring_head.fetch_add(1, std::memory_order_acq_rel);
-        g_perf_ring[idx & (kPerfRingCapacity - 1)] = PerfSample{.timestamp_seconds=elapsed, .fps=fps, .dt=static_cast<float>(dt)};
-        last_tp = elapsed;
+        g_perf_ring[idx & (kPerfRingCapacity - 1)] = PerfSample{.dt=static_cast<float>(dt)};
+        previous_ns = now_ns;
+
     }
 }
 
@@ -858,9 +857,9 @@ LONGLONG TimerPresentPacingDelayStart() {
         if (head > 0) {
             const uint32_t last_idx = (head - 1) & (kPerfRingCapacity - 1);
             const PerfSample &last_sample = g_perf_ring[last_idx];
-            if (last_sample.fps > 0.0f) {
+            if (last_sample.dt > 0.0f) {
                 // Convert FPS to frame time in milliseconds, then to nanoseconds
-                float frame_time_ms = 1000.0f / last_sample.fps;
+                float frame_time_ms = 1000.0f * last_sample.dt;
                 float delay_ms = frame_time_ms * (delay_percentage / 100.0f);
                 LONGLONG delta_ns = static_cast<LONGLONG>(delay_ms * utils::NS_TO_MS);
                 delta_ns -= late_amount_ns.load();

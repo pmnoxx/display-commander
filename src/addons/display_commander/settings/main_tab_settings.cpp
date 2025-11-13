@@ -71,7 +71,7 @@ MainTabSettings::MainTabSettings()
       show_stopwatch("show_stopwatch", false, "DisplayCommander"),
       show_playtime("show_playtime", false, "DisplayCommander"),
       overlay_background_alpha("overlay_background_alpha", 0.3f, 0.0f, 1.0f, "DisplayCommander"),
-      overlay_chart_alpha("overlay_chart_alpha", 1.0f, 0.0f, 1.0f, "DisplayCommander"),
+      overlay_chart_alpha("overlay_chart_alpha", 0.0f, 0.0f, 1.0f, "DisplayCommander"),
       gpu_measurement_enabled("gpu_measurement_enabled", 1, 0, 1, "DisplayCommander"),
       target_display("target_display", "", "DisplayCommander"),
       game_window_display_device_id("game_window_display_device_id", "", "DisplayCommander"),

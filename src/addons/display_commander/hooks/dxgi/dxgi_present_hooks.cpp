@@ -428,6 +428,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain *This, UI
     if (SUCCEEDED(This->GetFrameStatistics(&stats))) {
         // Use memory_order_release to ensure the shared_ptr is fully constructed before other threads see it
         g_cached_frame_stats.store(std::make_shared<DXGI_FRAME_STATISTICS>(stats), std::memory_order_release);
+        ::dxgi::fps_limiter::ProcessFrameStatistics(stats);
     }
 
     dx11_proxy::DX11ProxyManager::GetInstance().CopyFrameFromGameThread(This);
@@ -522,6 +523,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1 *This, 
     if (SUCCEEDED(This->GetFrameStatistics(&stats))) {
         // Use memory_order_release to ensure the shared_ptr is fully constructed before other threads see it
         g_cached_frame_stats.store(std::make_shared<DXGI_FRAME_STATISTICS>(stats), std::memory_order_release);
+        ::dxgi::fps_limiter::ProcessFrameStatistics(stats);
     }
 
     dx11_proxy::DX11ProxyManager::GetInstance().CopyFrameFromGameThread(This);

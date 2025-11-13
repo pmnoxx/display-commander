@@ -209,9 +209,9 @@ void every1s_checks() {
         const uint32_t start = head - count;
         for (uint32_t i = start; i < head; ++i) {
             const PerfSample& s = g_perf_ring[i & (kPerfRingCapacity - 1)];
-            if (s.fps > 0.0f) {
-                fps_values.push_back(s.fps);
-                frame_times_ms.push_back(1000.0f / s.fps);
+            if (s.dt > 0.0f) {
+                fps_values.push_back(1.0f / s.dt);
+                frame_times_ms.push_back(1000.0f * s.dt);
             }
         }
 

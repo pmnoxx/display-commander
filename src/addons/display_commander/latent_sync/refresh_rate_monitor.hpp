@@ -71,6 +71,9 @@ public:
     // Signal monitoring thread (called from render thread after Present)
     void SignalPresent();
 
+    // Process frame statistics (called from render thread after caching stats)
+    void ProcessFrameStatistics(DXGI_FRAME_STATISTICS& stats);
+
 private:
     void MonitoringThread();
     bool InitializeWaitForVBlank();

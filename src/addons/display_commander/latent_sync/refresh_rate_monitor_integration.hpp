@@ -19,6 +19,9 @@ double GetSmoothedRefreshRate();
 // Signal monitoring thread (called from render thread after Present)
 void SignalRefreshRateMonitor();
 
+// Process frame statistics (called from render thread after caching stats)
+void ProcessFrameStatistics(DXGI_FRAME_STATISTICS& stats);
+
 // Refresh rate statistics structure
 struct RefreshRateStats {
     double current_rate;

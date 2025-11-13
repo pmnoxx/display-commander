@@ -96,4 +96,16 @@ void SignalRefreshRateMonitor() {
     }
 }
 
+// Process frame statistics (called from render thread after caching stats)
+void ProcessFrameStatistics(DXGI_FRAME_STATISTICS& stats) {
+    // Frame statistics are already cached in g_cached_frame_stats by the Present detour
+    // This function can be used for any additional processing needed on the cached stats
+    // Currently, the monitoring thread reads from g_cached_frame_stats directly
+    // This is a placeholder for future processing if needed
+    if (g_refresh_rate_monitor && g_refresh_rate_monitor->IsMonitoring()) {
+        g_refresh_rate_monitor->ProcessFrameStatistics(stats);
+        // Additional processing can be added here if needed
+    }
+}
+
 } // namespace dxgi::fps_limiter

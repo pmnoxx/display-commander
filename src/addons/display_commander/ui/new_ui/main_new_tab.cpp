@@ -74,8 +74,8 @@ void DrawFrameTimeGraph() {
     const uint32_t start = head - min(count, 300u);
     for (uint32_t i = start; i < head; ++i) {
         const ::PerfSample& sample = ::g_perf_ring[i & (::kPerfRingCapacity - 1)];
-        if (sample.fps > 0.0f) {
-            frame_times.push_back(1000.0f / sample.fps); // Convert FPS to frame time in ms
+        if (sample.dt > 0.0f) {
+            frame_times.push_back(sample.dt); // Convert FPS to frame time in ms
         }
     }
 
@@ -185,7 +185,7 @@ void DrawRefreshRateFrameTimesGraph() {
     // Fixed width for overlay (compact)
     ImVec2 graph_size = ImVec2(300.0f, 60.0f); // Fixed 300px width, 60px height
     float scale_min = 0.0f;
-    float scale_max = max(avg_frame_time * 3.0f, max_frame_time + 1.0f); // Add some padding but less aggressive
+    float scale_max = max(avg_frame_time * 5.0f, max_frame_time + 2.0f); // Add some padding but less aggressive
 
     // Create overlay text with current refresh rate frame time
    //.. std::string overlay_text = "Refresh Frame Time: " + std::to_string(frame_times.back()).substr(0, 4) + " ms";
@@ -233,11 +233,11 @@ void DrawFrameTimeGraphOverlay() {
     // Collect frame times for the graph (last 256 samples for compact display)
     static std::vector<float> frame_times;
     frame_times.clear();
-        frame_times.reserve(samples_to_display);
+    frame_times.reserve(samples_to_display);
 
     for (uint32_t i = 0; i < samples_to_display; ++i) {
         const ::PerfSample& sample = ::g_perf_ring[(head - samples_to_display + i) & (::kPerfRingCapacity - 1)];
-        frame_times.push_back(sample.dt); // Convert FPS to frame time in ms
+        frame_times.push_back(1000.0 * sample.dt); // Convert FPS to frame time in ms
     }
 
     if (frame_times.empty()) {
@@ -255,7 +255,7 @@ void DrawFrameTimeGraphOverlay() {
     // Fixed width for overlay (compact)
     ImVec2 graph_size = ImVec2(300.0f, 60.0f); // Fixed 300px width, 60px height
     float scale_min = 0.0f;
-    float scale_max = max(avg_frame_time * 3.0f, max_frame_time + 1.0f); // Add some padding but less aggressive
+    float scale_max = max(avg_frame_time * 5.0f, max_frame_time + 2.0f); // Add some padding but less aggressive
 
     // Draw chart background with transparency
     float chart_alpha = settings::g_mainTabSettings.overlay_chart_alpha.GetValue();
@@ -2210,7 +2210,7 @@ void DrawImportantInfo() {
         if (head > 0) {
             const uint32_t last_idx = (head - 1) & (::kPerfRingCapacity - 1);
             const ::PerfSample& last_sample = ::g_perf_ring[last_idx];
-            current_fps = last_sample.fps;
+            current_fps = 1.0f / last_sample.dt;
         }
 
         if (current_fps > 0.0f) {

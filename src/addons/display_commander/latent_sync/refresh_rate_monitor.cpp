@@ -128,6 +128,109 @@ void RefreshRateMonitor::SignalPresent() {
     }
 }
 
+void RefreshRateMonitor::ProcessFrameStatistics(DXGI_FRAME_STATISTICS& stats) {
+        static uint64_t m_last_present_refresh_count = 0;
+
+    // Get current frame statistics (should now be accurate after DWM flush)
+       // DXGI_FRAME_STATISTICS stats = {};
+     //   if (!GetCurrentVBlankTime(stats)) {
+      //      // If we can't get frame statistics, skip this sample
+     //       LogError("Failed to get frame statistics - skipping sample");
+            //  std::this_thread::sleep_for(std::chrono::milliseconds(1));
+     //       return;
+     //   }
+
+        // Extract time from frame statistics
+        LONGLONG current_time = stats.SyncQPCTime.QuadPart * utils::QPC_TO_NS;
+        uint64_t current_present_refresh_count = stats.SyncRefreshCount;
+
+        // Calculate present refresh count difference
+        uint64_t present_refresh_count_diff = current_present_refresh_count - m_last_present_refresh_count;
+
+        if (present_refresh_count_diff == 0) {
+            return;
+        }
+        //m_last_vblank_time = stats.SyncQPCTime.QuadPart * utils::QPC_TO_NS;
+
+        if (!m_first_sample.load()) {
+            // Calculate time difference
+            LONGLONG duration_ns = (current_time - m_last_vblank_time) / present_refresh_count_diff;
+            double duration_seconds = duration_ns / 1e9;
+
+            if (duration_seconds > 0.0) {
+                // Calculate refresh rate
+                double refresh_rate = static_cast<double>(1) / duration_seconds;
+
+                // Update measured refresh rate
+                m_measured_refresh_rate = refresh_rate;
+
+                // Update smoothed refresh rate (exponential moving average)
+                double current_smoothed = m_smoothed_refresh_rate.load();
+                double alpha = 1; // Smoothing factor
+                double new_smoothed = (current_smoothed * (1.0 - alpha)) + (refresh_rate * alpha);
+                m_smoothed_refresh_rate = new_smoothed;
+
+                // Update rolling window of last 256 samples (circular buffer, lock-free)
+                for (size_t i = 0; i < present_refresh_count_diff; ++i) {
+                    // Get current write position
+                    size_t write_idx = m_recent_samples_write_index.load(std::memory_order_relaxed);
+
+                    // Write to current position
+                    m_recent_samples[write_idx] = refresh_rate;
+
+                    // Advance write index (circular)
+                    size_t new_write_idx = (write_idx + 1) % RECENT_SAMPLES_SIZE;
+                    m_recent_samples_write_index.store(new_write_idx, std::memory_order_release);
+
+                    // Update count (capped at RECENT_SAMPLES_SIZE)
+                    size_t count = m_recent_samples_count.load(std::memory_order_relaxed);
+                    if (count < RECENT_SAMPLES_SIZE) {
+                        m_recent_samples_count.store(count + 1, std::memory_order_release);
+                    }
+
+                    // Update min/max from recent samples (lock-free iteration)
+                    count = m_recent_samples_count.load(std::memory_order_acquire);
+                    write_idx = m_recent_samples_write_index.load(std::memory_order_acquire);
+                    if (count > 0) {
+                        double min_val = (std::numeric_limits<double>::max)();
+                        double max_val = (std::numeric_limits<double>::lowest)();
+
+                        // Iterate through valid samples (handle circular buffer correctly)
+                        if (count < RECENT_SAMPLES_SIZE) {
+                            // Buffer not full yet, check samples from 0 to count
+                            for (size_t i = 0; i < count; ++i) {
+                                if (m_recent_samples[i] < min_val) min_val = m_recent_samples[i];
+                                if (m_recent_samples[i] > max_val) max_val = m_recent_samples[i];
+                            }
+                        } else {
+                            // Buffer is full, iterate starting from write_index (oldest)
+                            for (size_t i = 0; i < RECENT_SAMPLES_SIZE; ++i) {
+                                size_t idx = (write_idx + i) % RECENT_SAMPLES_SIZE;
+                                if (m_recent_samples[idx] < min_val) min_val = m_recent_samples[idx];
+                                if (m_recent_samples[idx] > max_val) max_val = m_recent_samples[idx];
+                            }
+                        }
+
+                        m_min_refresh_rate.store(min_val, std::memory_order_release);
+                        m_max_refresh_rate.store(max_val, std::memory_order_release);
+                    }
+                }
+
+                // Increment sample count
+                m_sample_count++;
+            }
+        } else {
+            // First sample - just record the time
+            m_first_sample = false;
+        }
+
+        // Update last present refresh count
+        m_last_present_refresh_count = current_present_refresh_count;
+
+        // Update last vblank time
+        m_last_vblank_time = current_time;
+}
+
 bool RefreshRateMonitor::GetCurrentVBlankTime(DXGI_FRAME_STATISTICS& stats) {
     // First, try to get from cached frame statistics (updated in present detour)
     // Use memory_order_acquire to ensure we see the latest value and proper synchronization
@@ -193,31 +296,26 @@ void RefreshRateMonitor::MonitoringThread() {
     LogInfo("Refresh rate monitoring thread: STARTED - measuring actual refresh rate via WaitForVBlank");
 
     // Wait a bit for the system to stabilize
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  //  std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
     // Reset statistics
-    m_measured_refresh_rate = 0.0;
-    m_smoothed_refresh_rate = 0.0;
-    m_min_refresh_rate = 0.0;
-    m_max_refresh_rate = 0.0;
-    m_sample_count = 0;
-    m_first_sample = true;
+ //   m_measured_refresh_rate = 0.0;
+ //   m_smoothed_refresh_rate = 0.0;
+  //  m_min_refresh_rate = 0.0;
+  ////  m_max_refresh_rate = 0.0;
+   //m_sample_count = 0;
+  //  m_first_sample = true;
 
     // Clear recent samples
-    {
-        m_recent_samples_write_index.store(0, std::memory_order_release);
-        m_recent_samples_count.store(0, std::memory_order_release);
-        m_recent_samples.fill(0.0);
-    }
-
-    // Get current time for first measurement
-    DXGI_FRAME_STATISTICS stats = {};
-        if (GetCurrentVBlankTime(stats)) {
-        m_last_vblank_time = stats.SyncQPCTime.QuadPart * utils::QPC_TO_NS;
-    }
+  // {
+  //      m_recent_samples_write_index.store(0, std::memory_order_release);
+    //    m_recent_samples_count.store(0, std::memory_order_release);
+  //      m_recent_samples.fill(0.0);
+  //  }
 
 
-    uint64_t m_last_present_refresh_count = 0;
+
+    //uint64_t m_last_present_refresh_count = 0;
     // Main monitoring loop
     while (!m_should_stop.load()) {
         try {
@@ -244,6 +342,7 @@ void RefreshRateMonitor::MonitoringThread() {
                 continue;
             }
 
+            DwmFlush();
             // Wait for vblank using IDXGIOutput::WaitForVBlank
             HRESULT hr = m_dxgi_output->WaitForVBlank();
             if (FAILED(hr)) {
@@ -253,103 +352,7 @@ void RefreshRateMonitor::MonitoringThread() {
                 continue;
             }
 
-            // Get current frame statistics (should now be accurate after DWM flush)
-            DXGI_FRAME_STATISTICS stats = {};
-            if (!GetCurrentVBlankTime(stats)) {
-                // If we can't get frame statistics, skip this sample
-                LogError("Failed to get frame statistics - skipping sample");
-              //  std::this_thread::sleep_for(std::chrono::milliseconds(1));
-                continue;
-            }
 
-            // Extract time from frame statistics
-            LONGLONG current_time = stats.SyncQPCTime.QuadPart * utils::QPC_TO_NS;
-            uint64_t current_present_refresh_count = stats.SyncRefreshCount;
-
-            // Calculate present refresh count difference
-            uint64_t present_refresh_count_diff = current_present_refresh_count - m_last_present_refresh_count;
-
-            if (present_refresh_count_diff == 0) {
-                continue;
-            }
-
-            if (!m_first_sample.load()) {
-                // Calculate time difference
-                LONGLONG duration_ns = (current_time - m_last_vblank_time) / present_refresh_count_diff;
-                double duration_seconds = duration_ns / 1e9;
-
-                if (duration_seconds > 0.0) {
-                    // Calculate refresh rate
-                    double refresh_rate = static_cast<double>(1) / duration_seconds;
-
-                    // Update measured refresh rate
-                    m_measured_refresh_rate = refresh_rate;
-
-                    // Update smoothed refresh rate (exponential moving average)
-                    double current_smoothed = m_smoothed_refresh_rate.load();
-                    double alpha = 1; // Smoothing factor
-                    double new_smoothed = (current_smoothed * (1.0 - alpha)) + (refresh_rate * alpha);
-                    m_smoothed_refresh_rate = new_smoothed;
-
-                    // Update rolling window of last 256 samples (circular buffer, lock-free)
-                    {
-                        // Get current write position
-                        size_t write_idx = m_recent_samples_write_index.load(std::memory_order_relaxed);
-
-                        // Write to current position
-                        m_recent_samples[write_idx] = refresh_rate;
-
-                        // Advance write index (circular)
-                        size_t new_write_idx = (write_idx + 1) % RECENT_SAMPLES_SIZE;
-                        m_recent_samples_write_index.store(new_write_idx, std::memory_order_release);
-
-                        // Update count (capped at RECENT_SAMPLES_SIZE)
-                        size_t count = m_recent_samples_count.load(std::memory_order_relaxed);
-                        if (count < RECENT_SAMPLES_SIZE) {
-                            m_recent_samples_count.store(count + 1, std::memory_order_release);
-                        }
-
-                        // Update min/max from recent samples (lock-free iteration)
-                        count = m_recent_samples_count.load(std::memory_order_acquire);
-                        write_idx = m_recent_samples_write_index.load(std::memory_order_acquire);
-                        if (count > 0) {
-                            double min_val = (std::numeric_limits<double>::max)();
-                            double max_val = (std::numeric_limits<double>::lowest)();
-
-                            // Iterate through valid samples (handle circular buffer correctly)
-                            if (count < RECENT_SAMPLES_SIZE) {
-                                // Buffer not full yet, check samples from 0 to count
-                                for (size_t i = 0; i < count; ++i) {
-                                    if (m_recent_samples[i] < min_val) min_val = m_recent_samples[i];
-                                    if (m_recent_samples[i] > max_val) max_val = m_recent_samples[i];
-                                }
-                            } else {
-                                // Buffer is full, iterate starting from write_index (oldest)
-                                for (size_t i = 0; i < RECENT_SAMPLES_SIZE; ++i) {
-                                    size_t idx = (write_idx + i) % RECENT_SAMPLES_SIZE;
-                                    if (m_recent_samples[idx] < min_val) min_val = m_recent_samples[idx];
-                                    if (m_recent_samples[idx] > max_val) max_val = m_recent_samples[idx];
-                                }
-                            }
-
-                            m_min_refresh_rate.store(min_val, std::memory_order_release);
-                            m_max_refresh_rate.store(max_val, std::memory_order_release);
-                        }
-                    }
-
-                    // Increment sample count
-                    m_sample_count++;
-                }
-            } else {
-                // First sample - just record the time
-                m_first_sample = false;
-            }
-
-            // Update last present refresh count
-            m_last_present_refresh_count = current_present_refresh_count;
-
-            // Update last vblank time
-            m_last_vblank_time = current_time;
 
         } catch (const std::exception& e) {
             LogError("Exception in refresh rate monitoring thread: %s", e.what());

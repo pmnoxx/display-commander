@@ -1,7 +1,6 @@
 #include "xinput_hooks.hpp"
 #include "hook_suppression_manager.hpp"
 #include "../utils/logging.hpp"
-#include "../settings/developer_tab_settings.hpp"
 #include "dualsense_hooks.hpp"
 #include "../input_remapping/input_remapping.hpp"
 #include "../utils/general_utils.hpp"
@@ -170,17 +169,22 @@ static DWORD ProcessXInputGetState(DWORD dwUserIndex, XINPUT_STATE *pState, Hook
         // Packet number will be set just before return
         result = ERROR_SUCCESS; // Spoof as connected
         did_spoof_connection = true;
+    }
 
-        // Mark controller as connected in shared state
-        if (shared_state && dwUserIndex < XUSER_MAX_COUNT) {
-            shared_state->controller_connected[dwUserIndex] = display_commander::widgets::xinput_widget::ControllerState::Connected;
-        }
-
-        LogInfo("XXX Spoofing controller 0 connection for override state");
+    // Override packet number with our tracked value just before returning
+    if (dwUserIndex < 4) {
+        // If we spoofed the connection, increment our tracked packet number
+        g_packet_numbers[dwUserIndex]++;
+        // Always override with our tracked packet number
+        pState->dwPacketNumber = g_packet_numbers[dwUserIndex];
     }
 
     // Apply A/B button swapping if enabled
     if (result == ERROR_SUCCESS) {
+        // Mark controller as connected in shared state
+        if (shared_state && dwUserIndex < XUSER_MAX_COUNT) {
+            shared_state->controller_connected[dwUserIndex] = display_commander::widgets::xinput_widget::ControllerState::Connected;
+        }
         // Store the frame ID when XInput is successfully detected
         uint64_t current_frame_id = g_global_frame_id.load();
         g_last_xinput_detected_frame_id.store(current_frame_id);
@@ -303,14 +307,6 @@ static DWORD ProcessXInputGetState(DWORD dwUserIndex, XINPUT_STATE *pState, Hook
         }
     }
 
-    // Override packet number with our tracked value just before returning
-    if (dwUserIndex < 4) {
-        // If we spoofed the connection, increment our tracked packet number
-        g_packet_numbers[dwUserIndex]++;
-        // Always override with our tracked packet number
-        pState->dwPacketNumber = g_packet_numbers[dwUserIndex];
-    }
-
     return result;
 }
 
@@ -418,11 +414,6 @@ DWORD WINAPI XInputSetState_Detour(DWORD dwUserIndex, XINPUT_VIBRATION *pVibrati
 }
 
 bool InstallXInputHooks() {
-    if (!settings::g_developerTabSettings.load_xinput.GetValue()) {
-        LogInfo("XInput hooks not installed - load_xinput is disabled");
-        return false;
-    }
-
     // Check if XInput hooks should be suppressed
     if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(display_commanderhooks::HookType::XINPUT)) {
         LogInfo("XInput hooks installation suppressed by user setting");
@@ -433,14 +424,9 @@ bool InstallXInputHooks() {
         LogInfo("Skipping XInput hooks installation until display commander is initialized");
         return true;
     }
-    // Check if XInput hooks are enabled
-    auto shared_state = display_commander::widgets::xinput_widget::XInputWidget::GetSharedState();
-    if (shared_state && !shared_state->enable_xinput_hooks.load()) {
-        LogInfo("XInput hooks are disabled, skipping installation");
-        return true;
-    }
 
     // Initialize DualSense support if needed
+    auto shared_state = display_commander::widgets::xinput_widget::XInputWidget::GetSharedState();
     LogInfo("[DUALSENSE] Initializing1 DualSense support");
     if (shared_state && shared_state->enable_dualsense_xinput.load()) {
         LogInfo("[DUALSENSE] Initializing2 DualSense support");

@@ -449,7 +449,7 @@ public:
 
 // Performance stats structure
 struct PerfSample {
-    double timestamp_seconds;
+    //double timestamp_seconds;
     float dt;
 };
 

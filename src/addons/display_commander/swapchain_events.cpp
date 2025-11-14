@@ -294,12 +294,8 @@ void DoInitializationWithHwnd(HWND hwnd) {
         return; // Already initialized
     }
 
-    // Install XInput hooks if enabled
-    if (settings::g_developerTabSettings.load_xinput.GetValue()) {
-        display_commanderhooks::InstallXInputHooks();
-    } else {
-        LogInfo("XInput hooks installation skipped - Load XInput setting is disabled");
-    }
+    // Install XInput hooks
+    display_commanderhooks::InstallXInputHooks();
 
     LogInfo("DoInitialization: Starting initialization with HWND: 0x%p", hwnd);
 

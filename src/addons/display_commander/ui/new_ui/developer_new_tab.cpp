@@ -140,18 +140,6 @@ void DrawFeaturesEnabledByDefault() {
             "This setting requires a game restart to take effect.");
     }
 
-    // Load XInput setting
-    if (CheckboxSetting(settings::g_developerTabSettings.load_xinput, "Hook XInput (xinput*.dll)")) {
-        LogInfo("Load XInput setting changed to: %s",
-                settings::g_developerTabSettings.load_xinput.GetValue() ? "enabled" : "disabled");
-    }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip(
-            "Controls whether to load and hook into XInput libraries (xinput1_4.dll, xinput1_3.dll, etc.).\n"
-            "When enabled, Display Commander will install hooks for XInput functions.\n"
-            "This setting is automatically disabled when safemode is enabled.\n"
-            "This setting requires a game restart to take effect.");
-    }
 
     ImGui::Spacing();
     #endif

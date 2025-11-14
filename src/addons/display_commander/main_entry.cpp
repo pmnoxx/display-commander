@@ -15,6 +15,7 @@
 #include "process_exit_hooks.hpp"
 #include "settings/developer_tab_settings.hpp"
 #include "settings/experimental_tab_settings.hpp"
+#include "settings/hook_suppression_settings.hpp"
 #include "settings/main_tab_settings.hpp"
 #include "swapchain_events.hpp"
 #include "swapchain_events_power_saving.hpp"
@@ -26,16 +27,13 @@
 #include "utils/timing.hpp"
 #include "version.hpp"
 #include "widgets/dualsense_widget/dualsense_widget.hpp"
-#include "widgets/xinput_widget/xinput_widget.hpp"
 
 #include <d3d11.h>
 #include <psapi.h>
 #include <shlobj.h>
 #include <wrl/client.h>
-#include <cmath>
 #include <cstring>
 #include <reshade.hpp>
-
 
 // Forward declarations for ReShade event handlers
 void OnInitEffectRuntime(reshade::api::effect_runtime* runtime);
@@ -170,10 +168,8 @@ void OnInitEffectRuntime(reshade::api::effect_runtime* runtime) {
 
 // ReShade overlay event handler for input blocking
 bool OnReShadeOverlayOpen(reshade::api::effect_runtime* runtime, bool open, reshade::api::input_source source) {
-
     // store last frame id, when UI was opened
     g_last_ui_drawn_frame_id.store(g_global_frame_id.load());
-
 
     if (open) {
         LogInfo("ReShade overlay opened - Input blocking active");
@@ -201,11 +197,12 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
     const bool show_display_commander_ui = settings::g_mainTabSettings.show_display_commander_ui.GetValue();
     if (show_display_commander_ui) {
         // IMGui window
-        ImGui::Begin("Display Commander UI", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_AlwaysAutoResize);
+        ImGui::Begin("Display Commander UI", nullptr,
+                     ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoResize
+                         | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_AlwaysAutoResize);
         ImGui::Text("Display Commander UI Placeholder");
         ImGui::End();
     }
-
 
     // Check the setting from main tab first
     if (!settings::g_mainTabSettings.show_test_overlay.GetValue()) {
@@ -226,7 +223,9 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
     ImGui::SetNextWindowBgAlpha(bg_alpha);
     ImGui::SetNextWindowSize(ImVec2(450, 65), ImGuiCond_FirstUseEver);
     // Auto size the window to the content
-    ImGui::Begin("Test Window", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_AlwaysAutoResize);
+    ImGui::Begin("Test Window", nullptr,
+                 ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoResize
+                     | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_AlwaysAutoResize);
 
     // Get current FPS from performance ring buffer
 
@@ -236,7 +235,6 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
         GetLocalTime(&st);
         ImGui::Text("%02d:%02d:%02d", st.wHour, st.wMinute, st.wSecond);
     }
-
 
     // Show playtime (time from game start)
     if (settings::g_mainTabSettings.show_playtime.GetValue()) {
@@ -297,7 +295,7 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
     if (show_refresh_rate) {
         static double cached_refresh_rate = 0.0;
         static LONGLONG last_update_ns = 0;
-        const LONGLONG update_interval_ns = 100 * utils::NS_TO_MS; // 200ms in nanoseconds
+        const LONGLONG update_interval_ns = 100 * utils::NS_TO_MS;  // 200ms in nanoseconds
 
         LONGLONG now_ns = utils::get_now_ns();
 
@@ -350,7 +348,8 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
                     LONGLONG frame_time_ns = static_cast<LONGLONG>(last_sample.dt * utils::SEC_TO_NS);
 
                     // Calculate CPU usage percentage: (sim_duration / frame_time) * 100
-                    double cpu_usage_percent = (static_cast<double>(sim_duration_ns) / static_cast<double>(frame_time_ns)) * 100.0;
+                    double cpu_usage_percent =
+                        (static_cast<double>(sim_duration_ns) / static_cast<double>(frame_time_ns)) * 100.0;
 
                     // Clamp to 0-100%
                     if (cpu_usage_percent < 0.0) cpu_usage_percent = 0.0;
@@ -388,7 +387,8 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
         int milliseconds = static_cast<int>((elapsed_seconds - static_cast<int>(elapsed_seconds)) * 1000.0);
 
         if (is_running) {
-            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "%02d:%02d:%02d.%03d", hours, minutes, seconds, milliseconds);
+            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "%02d:%02d:%02d.%03d", hours, minutes, seconds,
+                               milliseconds);
         } else {
             ImGui::Text("%02d:%02d:%02d.%03d", hours, minutes, seconds, milliseconds);
         }
@@ -430,7 +430,8 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
                     snprintf(feature_text + len, sizeof(feature_text) - len, ", %.2fx", multiplier);
                 }
                 len = strlen(tooltip_text);
-                snprintf(tooltip_text + len, sizeof(tooltip_text) - len, " | Time Slowdown: %.2fx multiplier", multiplier);
+                snprintf(tooltip_text + len, sizeof(tooltip_text) - len, " | Time Slowdown: %.2fx multiplier",
+                         multiplier);
             }
         }
 
@@ -485,7 +486,6 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
 }
 }  // namespace
 
-
 // Override ReShade settings to set tutorial as viewed and disable auto updates
 void OverrideReShadeSettings() {
     LogInfo("Overriding ReShade settings - Setting tutorial as viewed and disabling auto updates");
@@ -519,12 +519,12 @@ void OverrideReShadeSettings() {
             if (!window_config.empty()) {
                 window_config.push_back('\0');
             }
-            std::string to_add = "[Window][Display Commander],Pos=1017,,20,Size=1344,,1255,Collapsed=0,DockId=0x00000001,,999999,";
+            std::string to_add =
+                "[Window][Display Commander],Pos=1017,,20,Size=1344,,1255,Collapsed=0,DockId=0x00000001,,999999,";
             for (size_t i = 0; i < to_add.size(); i++) {
                 if (to_add[i] == ',') {
                     window_config.push_back('\0');
-                }
-                else {
+                } else {
                     window_config.push_back(to_add[i]);
                 }
             }
@@ -536,12 +536,12 @@ void OverrideReShadeSettings() {
             if (!window_config.empty()) {
                 window_config.push_back('\0');
             }
-            std::string to_add = "[Window][RenoDX],Pos=1017,,20,Size=1344,,1255,Collapsed=0,DockId=0x00000001,,9999999,";
+            std::string to_add =
+                "[Window][RenoDX],Pos=1017,,20,Size=1344,,1255,Collapsed=0,DockId=0x00000001,,9999999,";
             for (size_t i = 0; i < to_add.size(); i++) {
                 if (to_add[i] == ',') {
                     window_config.push_back('\0');
-                }
-                else {
+                } else {
                     window_config.push_back(to_add[i]);
                 }
             }
@@ -555,8 +555,6 @@ void OverrideReShadeSettings() {
             LogInfo("Updated ReShade Window config with Display Commander and RenoDX docking settings");
         }
     }
-
-
 
     // Set tutorial progress to 4 (fully viewed)
     reshade::set_config_value(nullptr, "OVERLAY", "TutorialProgress", 4);
@@ -589,7 +587,6 @@ void OverrideReShadeSettings() {
     reshade::set_config_value(nullptr, "ADDON", "LoadFromDllMain", load_from_dll_main_from_display_commander);
     LogInfo("ReShade settings override - LoadFromDllMain set to %d (from DisplayCommander.ini)",
             load_from_dll_main_from_display_commander);
-
 
     LogInfo("ReShade settings override completed successfully");
 }
@@ -831,7 +828,8 @@ void HandleSafemode() {
 
     if (safemode_enabled) {
         LogInfo(
-            "Safemode enabled - disabling auto-apply settings, continue rendering, FPS limiter, XInput hooks, MinHook initialization, and "
+            "Safemode enabled - disabling auto-apply settings, continue rendering, FPS limiter, XInput hooks, MinHook "
+            "initialization, and "
             "Streamline loading");
 
         // Set safemode to 0 (force set to 0)
@@ -848,9 +846,7 @@ void HandleSafemode() {
         ui::monitor_settings::g_setting_apply_display_settings_at_start.SetValue(false);
 
         // Disable XInput hooks
-        auto xinput_shared_state = display_commander::widgets::xinput_widget::XInputWidget::GetSharedState();
-        assert(xinput_shared_state);
-        xinput_shared_state->enable_xinput_hooks.store(false);
+        settings::g_hook_suppression_settings.suppress_xinput_hooks.SetValue(true);
 
         // Enable MinHook suppression
         settings::g_developerTabSettings.suppress_minhook.SetValue(true);
@@ -864,9 +860,6 @@ void HandleSafemode() {
 
         // Disable nvapi64 loading
         settings::g_developerTabSettings.load_nvapi64.SetValue(false);
-
-        // Disable XInput loading
-        settings::g_developerTabSettings.load_xinput.SetValue(false);]
 #endif
 
         // Save the changes
@@ -874,7 +867,8 @@ void HandleSafemode() {
 
         LogInfo(
             "Safemode applied - auto-apply settings disabled, continue rendering disabled, FPS limiter set to "
-            "disabled, XInput hooks disabled, MinHook initialization suppressed, Streamline loading disabled, _nvngx loading disabled, nvapi64 loading "
+            "disabled, XInput hooks disabled, MinHook initialization suppressed, Streamline loading disabled, _nvngx "
+            "loading disabled, nvapi64 loading "
             "disabled, XInput loading disabled");
     } else {
         // If unset, force set to 0 so it appears in config

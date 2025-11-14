@@ -699,16 +699,11 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
 
     // XInput hooks
     else if (lowerModuleName.find(L"xinput") != std::wstring::npos) {
-        // Check if XInput loading is enabled
-        if (settings::g_developerTabSettings.load_xinput.GetValue()) {
-            LogInfo("Installing XInput hooks for module: %ws", moduleName.c_str());
-            if (InstallXInputHooks()) {
-                LogInfo("XInput hooks installed successfully");
-            } else {
-                LogError("Failed to install XInput hooks");
-            }
+        LogInfo("Installing XInput hooks for module: %ws", moduleName.c_str());
+        if (InstallXInputHooks()) {
+            LogInfo("XInput hooks installed successfully");
         } else {
-            LogInfo("XInput hooks installation skipped - Load XInput setting is disabled");
+            LogError("Failed to install XInput hooks");
         }
     }
 

@@ -81,9 +81,6 @@ class DeveloperTabSettings {
     // Fake NVAPI setting
     BoolSetting fake_nvapi_enabled;
 
-    // XInput loading setting
-    BoolSetting load_xinput;
-
     // MinHook suppression setting
     BoolSetting suppress_minhook;
 

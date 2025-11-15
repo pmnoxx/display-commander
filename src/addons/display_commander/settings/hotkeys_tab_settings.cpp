@@ -6,15 +6,15 @@ namespace settings {
 // Constructor - initialize all settings with proper keys and default values
 HotkeysTabSettings::HotkeysTabSettings()
     : enable_hotkeys("EnableHotkeys", true, "DisplayCommander"),
-      hotkey_mute_unmute("HotkeyMuteUnmute", "ctrl+m", "DisplayCommander"),
+      hotkey_mute_unmute("HotkeyMuteUnmute", "ctrl+shift+m", "DisplayCommander"),
       hotkey_background_toggle("HotkeyBackgroundToggle", "", "DisplayCommander"),
       hotkey_timeslowdown("HotkeyTimeslowdown", "", "DisplayCommander"),
-      hotkey_adhd_toggle("HotkeyAdhdToggle", "ctrl+d", "DisplayCommander"),
+      hotkey_adhd_toggle("HotkeyAdhdToggle", "ctrl+shift+d", "DisplayCommander"),
       hotkey_autoclick("HotkeyAutoclick", "", "DisplayCommander"),
       hotkey_input_blocking("HotkeyInputBlocking", "", "DisplayCommander"),
       hotkey_display_commander_ui("HotkeyDisplayCommanderUi", "ctrl+shift+backspace", "DisplayCommander"),
-      hotkey_performance_overlay("HotkeyPerformanceOverlay", "ctrl+o", "DisplayCommander"),
-      hotkey_stopwatch("HotkeyStopwatch", "ctrl+s", "DisplayCommander") {}
+      hotkey_performance_overlay("HotkeyPerformanceOverlay", "ctrl+shift+o", "DisplayCommander"),
+      hotkey_stopwatch("HotkeyStopwatch", "ctrl+shift+s", "DisplayCommander") {}
 
 void HotkeysTabSettings::LoadAll() {
     // Get all settings for smart logging

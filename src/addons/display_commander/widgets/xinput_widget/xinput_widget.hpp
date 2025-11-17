@@ -188,11 +188,43 @@ struct XInputSharedState {
         }
     };
 
+    // Autofire trigger settings
+    enum class TriggerType {
+        LeftTrigger,  // LT
+        RightTrigger  // RT
+    };
+
+    struct AutofireTrigger {
+        TriggerType trigger_type;
+        std::atomic<uint64_t> phase_start_frame_id; // Frame when current phase (hold down/up) started
+        std::atomic<bool> is_holding_down;          // true = holding down phase, false = holding up phase
+
+        AutofireTrigger() : trigger_type(TriggerType::LeftTrigger), phase_start_frame_id(0), is_holding_down(true) {}
+        AutofireTrigger(TriggerType type) : trigger_type(type), phase_start_frame_id(0), is_holding_down(true) {}
+
+        // Copy constructor (needed for vector operations)
+        AutofireTrigger(const AutofireTrigger& other)
+            : trigger_type(other.trigger_type),
+              phase_start_frame_id(other.phase_start_frame_id.load()),
+              is_holding_down(other.is_holding_down.load()) {}
+
+        // Assignment operator
+        AutofireTrigger& operator=(const AutofireTrigger& other) {
+            if (this != &other) {
+                trigger_type = other.trigger_type;
+                phase_start_frame_id.store(other.phase_start_frame_id.load());
+                is_holding_down.store(other.is_holding_down.load());
+            }
+            return *this;
+        }
+    };
+
     std::atomic<bool> autofire_enabled{false};              // Master enable/disable for autofire
     std::atomic<uint32_t> autofire_hold_down_frames{1};    // Frames to hold button down
     std::atomic<uint32_t> autofire_hold_up_frames{1};      // Frames to hold button up
     std::vector<AutofireButton> autofire_buttons;            // List of buttons with autofire enabled
-    mutable SRWLOCK autofire_lock = SRWLOCK_INIT;           // Thread safety for autofire_buttons vector access
+    std::vector<AutofireTrigger> autofire_triggers;          // List of triggers with autofire enabled
+    mutable SRWLOCK autofire_lock = SRWLOCK_INIT;           // Thread safety for autofire_buttons and autofire_triggers vector access
 };
 
 // XInput widget class
@@ -258,6 +290,9 @@ class XInputWidget {
     void AddAutofireButton(WORD button_mask);
     void RemoveAutofireButton(WORD button_mask);
     bool IsAutofireButton(WORD button_mask) const;
+    void AddAutofireTrigger(XInputSharedState::TriggerType trigger_type);
+    void RemoveAutofireTrigger(XInputSharedState::TriggerType trigger_type);
+    bool IsAutofireTrigger(XInputSharedState::TriggerType trigger_type) const;
 
      // Recenter calibration functions
     void DrawRecenterSettings();

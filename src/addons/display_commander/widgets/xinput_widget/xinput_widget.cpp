@@ -1194,6 +1194,28 @@ void XInputWidget::LoadSettings() {
             }
         }
     }
+
+    // Load autofire trigger list
+    std::string autofire_triggers_str;
+    if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "AutofireTriggers", autofire_triggers_str)) {
+        // Parse comma-separated list of trigger types (LT, RT)
+        std::istringstream iss(autofire_triggers_str);
+        std::string token;
+        while (std::getline(iss, token, ',')) {
+            // Trim whitespace
+            size_t start = token.find_first_not_of(" \t");
+            if (start != std::string::npos) {
+                size_t end = token.find_last_not_of(" \t");
+                token = token.substr(start, end - start + 1);
+
+                if (token == "LT" || token == "lt" || token == "LeftTrigger") {
+                    AddAutofireTrigger(XInputSharedState::TriggerType::LeftTrigger);
+                } else if (token == "RT" || token == "rt" || token == "RightTrigger") {
+                    AddAutofireTrigger(XInputSharedState::TriggerType::RightTrigger);
+                }
+            }
+        }
+    }
 }
 
 void XInputWidget::SaveSettings() {
@@ -1276,6 +1298,21 @@ void XInputWidget::SaveSettings() {
     }
 
     display_commander::config::set_config_value("DisplayCommander.XInputWidget", "AutofireButtons", autofire_buttons_str);
+
+    // Save autofire trigger list as comma-separated trigger names (LT, RT)
+    std::string autofire_triggers_str;
+    for (const auto &af_trigger : g_shared_state->autofire_triggers) {
+        if (!autofire_triggers_str.empty()) {
+            autofire_triggers_str += ",";
+        }
+        if (af_trigger.trigger_type == XInputSharedState::TriggerType::LeftTrigger) {
+            autofire_triggers_str += "LT";
+        } else if (af_trigger.trigger_type == XInputSharedState::TriggerType::RightTrigger) {
+            autofire_triggers_str += "RT";
+        }
+    }
+
+    display_commander::config::set_config_value("DisplayCommander.XInputWidget", "AutofireTriggers", autofire_triggers_str);
 }
 
 std::shared_ptr<XInputSharedState> XInputWidget::GetSharedState() { return g_shared_state; }
@@ -2064,12 +2101,16 @@ void XInputWidget::DrawAutofireSettings() {
         if (ImGui::Checkbox("Enable Autofire", &autofire_enabled)) {
             shared_state->autofire_enabled.store(autofire_enabled);
 
-            // When disabling autofire, reset all autofire button states
+            // When disabling autofire, reset all autofire button and trigger states
             if (!autofire_enabled) {
                 utils::SRWLockExclusive lock(shared_state->autofire_lock);
                 for (auto &af_button : shared_state->autofire_buttons) {
                     af_button.is_holding_down.store(true);
                     af_button.phase_start_frame_id.store(0);
+                }
+                for (auto &af_trigger : shared_state->autofire_triggers) {
+                    af_trigger.is_holding_down.store(true);
+                    af_trigger.phase_start_frame_id.store(0);
                 }
             }
 
@@ -2295,6 +2336,38 @@ void XInputWidget::DrawAutofireSettings() {
                     }
                 }
             }
+
+            ImGui::Spacing();
+            ImGui::Separator();
+            ImGui::Text("Select triggers for autofire:");
+
+            // Trigger selection checkboxes
+            bool is_lt_enabled = IsAutofireTrigger(XInputSharedState::TriggerType::LeftTrigger);
+            bool is_rt_enabled = IsAutofireTrigger(XInputSharedState::TriggerType::RightTrigger);
+
+            if (ImGui::Checkbox("LT (Left Trigger)", &is_lt_enabled)) {
+                if (is_lt_enabled) {
+                    AddAutofireTrigger(XInputSharedState::TriggerType::LeftTrigger);
+                    LogInfo("XInputWidget::DrawAutofireSettings() - Added autofire for LT");
+                } else {
+                    RemoveAutofireTrigger(XInputSharedState::TriggerType::LeftTrigger);
+                    LogInfo("XInputWidget::DrawAutofireSettings() - Removed autofire for LT");
+                }
+                SaveSettings();
+            }
+
+            ImGui::SameLine();
+
+            if (ImGui::Checkbox("RT (Right Trigger)", &is_rt_enabled)) {
+                if (is_rt_enabled) {
+                    AddAutofireTrigger(XInputSharedState::TriggerType::RightTrigger);
+                    LogInfo("XInputWidget::DrawAutofireSettings() - Added autofire for RT");
+                } else {
+                    RemoveAutofireTrigger(XInputSharedState::TriggerType::RightTrigger);
+                    LogInfo("XInputWidget::DrawAutofireSettings() - Removed autofire for RT");
+                }
+                SaveSettings();
+            }
         }
     }
 
@@ -2364,6 +2437,71 @@ bool XInputWidget::IsAutofireButton(WORD button_mask) const {
     return found;
 }
 
+void XInputWidget::AddAutofireTrigger(XInputSharedState::TriggerType trigger_type) {
+    auto shared_state = GetSharedState();
+    if (!shared_state) {
+        return;
+    }
+
+    // Thread-safe access
+    utils::SRWLockExclusive lock(shared_state->autofire_lock);
+
+    // Check if trigger already exists
+    bool exists = false;
+    for (const auto &af_trigger : shared_state->autofire_triggers) {
+        if (af_trigger.trigger_type == trigger_type) {
+            exists = true;
+            break;
+        }
+    }
+
+    if (!exists) {
+        shared_state->autofire_triggers.push_back(XInputSharedState::AutofireTrigger(trigger_type));
+        LogInfo("XInputWidget::AddAutofireTrigger() - Added autofire for trigger %s",
+                trigger_type == XInputSharedState::TriggerType::LeftTrigger ? "LT" : "RT");
+    }
+}
+
+void XInputWidget::RemoveAutofireTrigger(XInputSharedState::TriggerType trigger_type) {
+    auto shared_state = GetSharedState();
+    if (!shared_state) {
+        return;
+    }
+
+    // Thread-safe access
+    utils::SRWLockExclusive lock(shared_state->autofire_lock);
+
+    // Remove trigger from list
+    auto it = std::remove_if(shared_state->autofire_triggers.begin(), shared_state->autofire_triggers.end(),
+                              [trigger_type](const XInputSharedState::AutofireTrigger &af_trigger) {
+                                  return af_trigger.trigger_type == trigger_type;
+                              });
+    shared_state->autofire_triggers.erase(it, shared_state->autofire_triggers.end());
+
+    LogInfo("XInputWidget::RemoveAutofireTrigger() - Removed autofire for trigger %s",
+            trigger_type == XInputSharedState::TriggerType::LeftTrigger ? "LT" : "RT");
+}
+
+bool XInputWidget::IsAutofireTrigger(XInputSharedState::TriggerType trigger_type) const {
+    auto shared_state = GetSharedState();
+    if (!shared_state) {
+        return false;
+    }
+
+    // Thread-safe access
+    utils::SRWLockShared lock(shared_state->autofire_lock);
+
+    bool found = false;
+    for (const auto &af_trigger : shared_state->autofire_triggers) {
+        if (af_trigger.trigger_type == trigger_type) {
+            found = true;
+            break;
+        }
+    }
+
+    return found;
+}
+
 // Global function for hooks to use
 void ProcessAutofire(DWORD user_index, XINPUT_STATE *pState) {
     if (!pState) {
@@ -2378,11 +2516,15 @@ void ProcessAutofire(DWORD user_index, XINPUT_STATE *pState) {
     // Check if autofire is enabled
     bool autofire_enabled = shared_state->autofire_enabled.load();
     if (!autofire_enabled) {
-        // When autofire is disabled, reset all autofire button states to prevent stale state
+        // When autofire is disabled, reset all autofire button and trigger states to prevent stale state
         utils::SRWLockExclusive lock(shared_state->autofire_lock);
         for (auto &af_button : shared_state->autofire_buttons) {
             af_button.is_holding_down.store(true);
             af_button.phase_start_frame_id.store(0);
+        }
+        for (auto &af_trigger : shared_state->autofire_triggers) {
+            af_trigger.is_holding_down.store(true);
+            af_trigger.phase_start_frame_id.store(0);
         }
         return;
     }
@@ -2392,11 +2534,13 @@ void ProcessAutofire(DWORD user_index, XINPUT_STATE *pState) {
     uint32_t hold_down_frames = shared_state->autofire_hold_down_frames.load();
     uint32_t hold_up_frames = shared_state->autofire_hold_up_frames.load();
 
-    // Thread-safe access to autofire_buttons
+    // Thread-safe access to autofire_buttons and autofire_triggers
     utils::SRWLockExclusive lock(shared_state->autofire_lock);
 
-    // Store original buttonS state before processing
+    // Store original button state before processing
     WORD original_buttons = pState->Gamepad.wButtons;
+    BYTE original_left_trigger = pState->Gamepad.bLeftTrigger;
+    BYTE original_right_trigger = pState->Gamepad.bRightTrigger;
 
     // Process each autofire button directly from shared state
     for (auto &af_button : shared_state->autofire_buttons) {
@@ -2447,6 +2591,78 @@ void ProcessAutofire(DWORD user_index, XINPUT_STATE *pState) {
             // Button is not pressed, reset state
             af_button.is_holding_down.store(true);
             af_button.phase_start_frame_id.store(0);
+        }
+    }
+
+    // Process each autofire trigger directly from shared state
+    // Use threshold of 30 to avoid accidental activation from slight trigger pressure
+    const BYTE trigger_threshold = 30;
+    for (auto &af_trigger : shared_state->autofire_triggers) {
+        BYTE original_trigger_value = (af_trigger.trigger_type == XInputSharedState::TriggerType::LeftTrigger)
+                                       ? original_left_trigger
+                                       : original_right_trigger;
+        bool is_pressed = original_trigger_value > trigger_threshold;
+
+        if (is_pressed) {
+            // Trigger is held down, process autofire cycle
+            uint64_t phase_start_frame = af_trigger.phase_start_frame_id.load();
+            bool is_holding_down = af_trigger.is_holding_down.load();
+
+            // Initialize phase if this is the first frame
+            if (phase_start_frame == 0) {
+                af_trigger.phase_start_frame_id.store(current_frame_id);
+                af_trigger.is_holding_down.store(true);
+                is_holding_down = true;
+                phase_start_frame = current_frame_id;
+            }
+
+            uint64_t frames_in_current_phase = current_frame_id - phase_start_frame;
+
+            if (is_holding_down) {
+                // Currently holding down - check if we should switch to hold up phase
+                if (frames_in_current_phase >= hold_down_frames) {
+                    // Switch to hold up phase
+                    af_trigger.is_holding_down.store(false);
+                    af_trigger.phase_start_frame_id.store(current_frame_id);
+                    // Turn trigger off (set to 0)
+                    if (af_trigger.trigger_type == XInputSharedState::TriggerType::LeftTrigger) {
+                        pState->Gamepad.bLeftTrigger = 0;
+                    } else {
+                        pState->Gamepad.bRightTrigger = 0;
+                    }
+                } else {
+                    // Keep holding down (set to full value 255)
+                    if (af_trigger.trigger_type == XInputSharedState::TriggerType::LeftTrigger) {
+                        pState->Gamepad.bLeftTrigger = 255;
+                    } else {
+                        pState->Gamepad.bRightTrigger = 255;
+                    }
+                }
+            } else {
+                // Currently holding up - check if we should switch to hold down phase
+                if (frames_in_current_phase >= hold_up_frames) {
+                    // Switch to hold down phase
+                    af_trigger.is_holding_down.store(true);
+                    af_trigger.phase_start_frame_id.store(current_frame_id);
+                    // Turn trigger on (set to full value 255)
+                    if (af_trigger.trigger_type == XInputSharedState::TriggerType::LeftTrigger) {
+                        pState->Gamepad.bLeftTrigger = 255;
+                    } else {
+                        pState->Gamepad.bRightTrigger = 255;
+                    }
+                } else {
+                    // Keep holding up (set to 0)
+                    if (af_trigger.trigger_type == XInputSharedState::TriggerType::LeftTrigger) {
+                        pState->Gamepad.bLeftTrigger = 0;
+                    } else {
+                        pState->Gamepad.bRightTrigger = 0;
+                    }
+                }
+            }
+        } else {
+            // Trigger is not pressed, reset state
+            af_trigger.is_holding_down.store(true);
+            af_trigger.phase_start_frame_id.store(0);
         }
     }
 }

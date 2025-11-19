@@ -14,6 +14,7 @@ using XInputGetBatteryInformation_pfn = DWORD(WINAPI *)(DWORD, BYTE, XINPUT_BATT
 
 
 // XInput function pointers for direct calls
+extern XInputGetState_pfn XInputGetState_Direct;
 extern XInputGetStateEx_pfn XInputGetStateEx_Direct;
 extern XInputSetState_pfn XInputSetState_Direct;
 extern XInputGetBatteryInformation_pfn XInputGetBatteryInformation_Direct;

@@ -191,9 +191,6 @@ static DWORD ProcessXInputGetState(DWORD dwUserIndex, XINPUT_STATE *pState, Hook
 
         auto shared_state = display_commander::widgets::xinput_widget::XInputWidget::GetSharedState();
 
-        // Process chord detection first to check for input suppression
-        display_commander::widgets::xinput_widget::ProcessChordDetection(dwUserIndex, pState->Gamepad.wButtons);
-
         // Store original state for UI tracking (before any modifications)
         XINPUT_STATE original_state = *pState;
 
@@ -225,68 +222,60 @@ static DWORD ProcessXInputGetState(DWORD dwUserIndex, XINPUT_STATE *pState, Hook
             }
         }
 
-        // Check if input should be suppressed due to chord being pressed
-        if (shared_state && shared_state->suppress_input.load()) {
-            // Suppress all input by zeroing out the gamepad state
-            ZeroMemory(&pState->Gamepad, sizeof(XINPUT_GAMEPAD));
-            LogInfo("XXX Input suppressed due to chord being pressed (Controller %lu)", dwUserIndex);
-            // Don't increment unsuppressed - input was suppressed
-        } else {
-            // Input is not suppressed, process normally
-            if (shared_state && shared_state->swap_a_b_buttons.load()) {
-                // Swap A and B buttons
-                WORD original_buttons = pState->Gamepad.wButtons;
-                WORD swapped_buttons = original_buttons;
+        // Process input normally
+        if (shared_state && shared_state->swap_a_b_buttons.load()) {
+            // Swap A and B buttons
+            WORD original_buttons = pState->Gamepad.wButtons;
+            WORD swapped_buttons = original_buttons;
 
-                // If A is pressed, set B instead
-                if (original_buttons & XINPUT_GAMEPAD_A) {
-                    swapped_buttons |= XINPUT_GAMEPAD_B;
-                    swapped_buttons &= ~XINPUT_GAMEPAD_A;
-                    LogInfo("XXX A/B Swap: A pressed -> B set (Controller %lu)", dwUserIndex);
-                }
-                // If B is pressed, set A instead
-                if (original_buttons & XINPUT_GAMEPAD_B) {
-                    swapped_buttons |= XINPUT_GAMEPAD_A;
-                    swapped_buttons &= ~XINPUT_GAMEPAD_B;
-                    LogInfo("XXX A/B Swap: B pressed -> A set (Controller %lu)", dwUserIndex);
-                }
-
-                pState->Gamepad.wButtons = swapped_buttons;
+            // If A is pressed, set B instead
+            if (original_buttons & XINPUT_GAMEPAD_A) {
+                swapped_buttons |= XINPUT_GAMEPAD_B;
+                swapped_buttons &= ~XINPUT_GAMEPAD_A;
+                LogInfo("XXX A/B Swap: A pressed -> B set (Controller %lu)", dwUserIndex);
+            }
+            // If B is pressed, set A instead
+            if (original_buttons & XINPUT_GAMEPAD_B) {
+                swapped_buttons |= XINPUT_GAMEPAD_A;
+                swapped_buttons &= ~XINPUT_GAMEPAD_B;
+                LogInfo("XXX A/B Swap: B pressed -> A set (Controller %lu)", dwUserIndex);
             }
 
-            // Apply max input, min output, deadzone, and center calibration processing
-            if (shared_state) {
-                float left_max_input = shared_state->left_stick_max_input.load();
-                float right_max_input = shared_state->right_stick_max_input.load();
-                float left_min_output = shared_state->left_stick_min_output.load();
-                float right_min_output = shared_state->right_stick_min_output.load();
-                float left_deadzone =
-                    shared_state->left_stick_deadzone.load() / 100.0f; // Convert percentage to decimal
-                float right_deadzone =
-                    shared_state->right_stick_deadzone.load() / 100.0f; // Convert percentage to decimal
-
-                float left_center_x = shared_state->left_stick_center_x.load();
-                float left_center_y = shared_state->left_stick_center_y.load();
-                float right_center_x = shared_state->right_stick_center_x.load();
-                float right_center_y = shared_state->right_stick_center_y.load();
-
-                bool left_circular = shared_state->left_stick_circular.load();
-                bool right_circular = shared_state->right_stick_circular.load();
-
-                ApplyThumbstickProcessing(pState, left_max_input, right_max_input, left_min_output, right_min_output,
-                                          left_deadzone, right_deadzone, left_center_x, left_center_y, right_center_x, right_center_y,
-                                          left_circular, right_circular);
-            }
-
-            // Process input remapping before updating state
-            display_commander::input_remapping::process_gamepad_input_for_remapping(dwUserIndex, pState);
-
-            // Process autofire
-            display_commander::widgets::xinput_widget::ProcessAutofire(dwUserIndex, pState);
-
-            // Track unsuppressed call (input was processed)
-            g_hook_stats[hook_index].increment_unsuppressed();
+            pState->Gamepad.wButtons = swapped_buttons;
         }
+
+        // Apply max input, min output, deadzone, and center calibration processing
+        if (shared_state) {
+            float left_max_input = shared_state->left_stick_max_input.load();
+            float right_max_input = shared_state->right_stick_max_input.load();
+            float left_min_output = shared_state->left_stick_min_output.load();
+            float right_min_output = shared_state->right_stick_min_output.load();
+            float left_deadzone =
+                shared_state->left_stick_deadzone.load() / 100.0f; // Convert percentage to decimal
+            float right_deadzone =
+                shared_state->right_stick_deadzone.load() / 100.0f; // Convert percentage to decimal
+
+            float left_center_x = shared_state->left_stick_center_x.load();
+            float left_center_y = shared_state->left_stick_center_y.load();
+            float right_center_x = shared_state->right_stick_center_x.load();
+            float right_center_y = shared_state->right_stick_center_y.load();
+
+            bool left_circular = shared_state->left_stick_circular.load();
+            bool right_circular = shared_state->right_stick_circular.load();
+
+            ApplyThumbstickProcessing(pState, left_max_input, right_max_input, left_min_output, right_min_output,
+                                      left_deadzone, right_deadzone, left_center_x, left_center_y, right_center_x, right_center_y,
+                                      left_circular, right_circular);
+        }
+
+        // Process input remapping before updating state
+        display_commander::input_remapping::process_gamepad_input_for_remapping(dwUserIndex, pState);
+
+        // Process autofire
+        display_commander::widgets::xinput_widget::ProcessAutofire(dwUserIndex, pState);
+
+        // Track unsuppressed call (input was processed)
+        g_hook_stats[hook_index].increment_unsuppressed();
 
         // Always update the UI state with the original state (before suppression/modifications)
         // This ensures the UI shows the actual controller state regardless of suppression

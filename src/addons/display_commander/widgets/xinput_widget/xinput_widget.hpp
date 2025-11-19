@@ -42,40 +42,6 @@ struct XInputSharedState {
     std::atomic<uint64_t> hid_createfile_total{0};
     std::atomic<uint64_t> hid_createfile_dualsense{0};
 
-    // Chord detection
-    struct Chord {
-        WORD buttons;
-        std::string name;
-        std::string action;
-        bool enabled{true};
-        std::atomic<bool> is_pressed{false};
-        std::atomic<ULONGLONG> last_press_time{0};
-
-        // Default constructor
-        Chord() = default;
-
-        // Copy constructor
-        Chord(const Chord &other)
-            : buttons(other.buttons), name(other.name), action(other.action), enabled(other.enabled),
-              is_pressed(other.is_pressed.load()), last_press_time(other.last_press_time.load()) {}
-
-        // Assignment operator
-        Chord &operator=(const Chord &other) {
-            if (this != &other) {
-                buttons = other.buttons;
-                name = other.name;
-                action = other.action;
-                enabled = other.enabled;
-                is_pressed.store(other.is_pressed.load());
-                last_press_time.store(other.last_press_time.load());
-            }
-            return *this;
-        }
-    };
-
-    std::vector<Chord> chords;
-    std::atomic<WORD> current_button_state{0};
-    std::atomic<bool> suppress_input{false};
     std::atomic<bool> trigger_screenshot{false};
     std::atomic<bool> ui_overlay_open{false};
 
@@ -278,13 +244,6 @@ class XInputWidget {
     void TestRightMotor();
     void StopVibration();
 
-    // Chord detection functions
-    void DrawChordSettings();
-    void InitializeDefaultChords();
-    void ProcessChordDetection(DWORD user_index, WORD button_state);
-    void ExecuteChordAction(const XInputSharedState::Chord &chord, DWORD user_index);
-    std::string GetChordButtonNames(WORD buttons) const;
-
     // Autofire functions
     void DrawAutofireSettings();
     void AddAutofireButton(WORD button_mask);
@@ -318,7 +277,6 @@ void DrawXInputWidget();
 void UpdateXInputState(DWORD user_index, const XINPUT_STATE *state);
 void UpdateBatteryStatus(DWORD user_index);
 void IncrementEventCounter(const std::string &event_type);
-void ProcessChordDetection(DWORD user_index, WORD button_state);
 void CheckAndHandleScreenshot();
 void ProcessAutofire(DWORD user_index, XINPUT_STATE *pState);
 

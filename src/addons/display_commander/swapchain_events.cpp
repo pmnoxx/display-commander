@@ -1234,7 +1234,7 @@ void OnPresentUpdateBefore(reshade::api::command_queue * command_queue, reshade:
     g_reshade_event_counters[RESHADE_EVENT_PRESENT_UPDATE_BEFORE].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
-    // Check for XInput chord screenshot trigger
+    // Check for XInput screenshot trigger
     display_commander::widgets::xinput_widget::CheckAndHandleScreenshot();
 
 

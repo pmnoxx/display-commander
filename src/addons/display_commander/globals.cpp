@@ -203,6 +203,13 @@ std::atomic<double> g_perf_time_seconds{0.0};
 std::atomic<bool> g_perf_reset_requested{false};
 std::atomic<std::shared_ptr<const std::string>> g_perf_text_shared{std::make_shared<const std::string>("")};
 
+// Volume overlay display tracking
+std::atomic<LONGLONG> g_volume_change_time_ns{0};
+std::atomic<float> g_volume_display_value{0.0f};
+
+// Action notification system for overlay display
+std::atomic<ActionNotification> g_action_notification{ActionNotification{ActionNotificationType::None, 0, 0.0f, false, {0}}};
+
 // Vector variables
 std::atomic<std::shared_ptr<const std::vector<MonitorInfo>>> g_monitors{std::make_shared<std::vector<MonitorInfo>>()};
 
@@ -300,6 +307,9 @@ std::array<std::atomic<uint32_t>, NUM_DX9_EVENTS> g_dx9_event_counters = {};
 std::array<std::atomic<uint32_t>, NUM_STREAMLINE_EVENTS> g_streamline_event_counters = {};
 std::array<std::atomic<uint32_t>, NUM_D3D11_TEXTURE_EVENTS> g_d3d11_texture_event_counters = {};
 std::array<std::atomic<uint32_t>, NUM_D3D_SAMPLER_EVENTS> g_d3d_sampler_event_counters = {};
+std::array<std::atomic<uint32_t>, NUM_SAMPLER_FILTER_MODES> g_sampler_filter_mode_counters = {};
+std::array<std::atomic<uint32_t>, NUM_SAMPLER_ADDRESS_MODES> g_sampler_address_mode_counters = {};
+std::array<std::atomic<uint32_t>, MAX_ANISOTROPY_LEVELS> g_sampler_anisotropy_level_counters = {};
 
 // NVAPI event counters - separate from swapchain events
 std::array<std::atomic<uint32_t>, NUM_NVAPI_EVENTS> g_nvapi_event_counters = {}; // Array for NVAPI events

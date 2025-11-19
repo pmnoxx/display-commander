@@ -402,6 +402,66 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
         }
     }
 
+    // Show action notifications (volume, mute, etc.) for 10 seconds
+    ActionNotification notification = g_action_notification.load();
+    if (notification.type != ActionNotificationType::None) {
+        LONGLONG now_ns = utils::get_now_ns();
+        LONGLONG elapsed_ns = now_ns - notification.timestamp_ns;
+        const LONGLONG display_duration_ns = 10 * utils::SEC_TO_NS; // 10 seconds
+
+        if (elapsed_ns < display_duration_ns) {
+            // Display based on notification type
+            switch (notification.type) {
+            case ActionNotificationType::Volume: {
+                float volume_value = notification.float_value;
+                if (settings::g_mainTabSettings.show_labels.GetValue()) {
+                    ImGui::Text("%.0f%% vol", volume_value);
+                } else {
+                    ImGui::Text("%.0f%%", volume_value);
+                }
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip("Audio Volume: %.0f%%", volume_value);
+                }
+                break;
+            }
+            case ActionNotificationType::Mute: {
+                bool mute_state = notification.bool_value;
+                if (settings::g_mainTabSettings.show_labels.GetValue()) {
+                    ImGui::Text("%s", mute_state ? "Muted" : "Unmuted");
+                } else {
+                    ImGui::Text("%s", mute_state ? "Muted" : "Unmuted");
+                }
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip("Audio: %s", mute_state ? "Muted" : "Unmuted");
+                }
+                break;
+            }
+            case ActionNotificationType::GenericAction: {
+                if (settings::g_mainTabSettings.show_labels.GetValue()) {
+                    ImGui::Text("%s", notification.action_name);
+                } else {
+                    ImGui::Text("%s", notification.action_name);
+                }
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip("Gamepad Action: %s", notification.action_name);
+                }
+                break;
+            }
+            default:
+                break;
+            }
+        } else {
+            // Clear the notification after display duration expires
+            ActionNotification clear_notification;
+            clear_notification.type = ActionNotificationType::None;
+            clear_notification.timestamp_ns = 0;
+            clear_notification.float_value = 0.0f;
+            clear_notification.bool_value = false;
+            clear_notification.action_name[0] = '\0';
+            g_action_notification.store(clear_notification);
+        }
+    }
+
     // Show enabled features indicator (time slowdown, auto-click, etc.)
     if (show_enabledfeatures) {
         char feature_text[512];

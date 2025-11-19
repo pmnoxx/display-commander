@@ -3,10 +3,12 @@
 #include "../settings/main_tab_settings.hpp"
 #include "../utils.hpp"
 #include "../utils/logging.hpp"
+#include "../utils/timing.hpp"
+#include "../globals.hpp"
 #include <sstream>
 #include <thread>
 
-bool SetMuteForCurrentProcess(bool mute) {
+bool SetMuteForCurrentProcess(bool mute, bool trigger_notification) {
     const DWORD target_pid = GetCurrentProcessId();
     HRESULT hr = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
     const bool did_init = SUCCEEDED(hr);
@@ -72,6 +74,17 @@ bool SetMuteForCurrentProcess(bool mute) {
     std::ostringstream oss;
     oss << "BackgroundMute apply mute=" << (mute ? "1" : "0") << " success=" << (success ? "1" : "0");
     LogInfo(oss.str().c_str());
+
+    // Trigger action notification for overlay display (only if requested, typically for user-initiated changes)
+    if (success && trigger_notification) {
+        ActionNotification notification;
+        notification.type = ActionNotificationType::Mute;
+        notification.timestamp_ns = utils::get_now_ns();
+        notification.bool_value = mute;
+        notification.float_value = 0.0f;
+        g_action_notification.store(notification);
+    }
+
     return success;
 }
 
@@ -222,6 +235,115 @@ bool SetVolumeForCurrentProcess(float volume_0_100) {
     return success;
 }
 
+bool GetVolumeForCurrentProcess(float *volume_0_100_out) {
+    if (volume_0_100_out == nullptr) {
+        return false;
+    }
+
+    const DWORD target_pid = GetCurrentProcessId();
+    HRESULT hr = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+    const bool did_init = SUCCEEDED(hr);
+    if (!did_init && hr != RPC_E_CHANGED_MODE) {
+        LogWarn("CoInitializeEx failed for audio volume query");
+        return false;
+    }
+
+    bool success = false;
+    IMMDeviceEnumerator *device_enumerator = nullptr;
+    IMMDevice *device = nullptr;
+    IAudioSessionManager2 *session_manager = nullptr;
+    IAudioSessionEnumerator *session_enumerator = nullptr;
+
+    do {
+        hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL, IID_PPV_ARGS(&device_enumerator));
+        if (FAILED(hr) || device_enumerator == nullptr)
+            break;
+        hr = device_enumerator->GetDefaultAudioEndpoint(eRender, eMultimedia, &device);
+        if (FAILED(hr) || device == nullptr)
+            break;
+        hr = device->Activate(__uuidof(IAudioSessionManager2), CLSCTX_ALL, nullptr,
+                              reinterpret_cast<void **>(&session_manager));
+        if (FAILED(hr) || session_manager == nullptr)
+            break;
+        hr = session_manager->GetSessionEnumerator(&session_enumerator);
+        if (FAILED(hr) || session_enumerator == nullptr)
+            break;
+        int count = 0;
+        session_enumerator->GetCount(&count);
+        for (int i = 0; i < count; ++i) {
+            IAudioSessionControl *session_control = nullptr;
+            if (FAILED(session_enumerator->GetSession(i, &session_control)))
+                continue;
+            Microsoft::WRL::ComPtr<IAudioSessionControl2> session_control2{};
+            if (SUCCEEDED(session_control->QueryInterface(IID_PPV_ARGS(&session_control2)))) {
+                DWORD pid = 0;
+                session_control2->GetProcessId(&pid);
+                if (pid == target_pid) {
+                    Microsoft::WRL::ComPtr<ISimpleAudioVolume> simple_volume{};
+                    if (SUCCEEDED(session_control->QueryInterface(IID_PPV_ARGS(&simple_volume)))) {
+                        float scalar = 0.0f;
+                        if (SUCCEEDED(simple_volume->GetMasterVolume(&scalar))) {
+                            *volume_0_100_out = scalar * 100.0f;
+                            success = true;
+                        }
+                    }
+                }
+            }
+            session_control->Release();
+        }
+    } while (false);
+
+    if (session_enumerator != nullptr)
+        session_enumerator->Release();
+    if (session_manager != nullptr)
+        session_manager->Release();
+    if (device != nullptr)
+        device->Release();
+    if (device_enumerator != nullptr)
+        device_enumerator->Release();
+    if (did_init && hr != RPC_E_CHANGED_MODE)
+        CoUninitialize();
+
+    return success;
+}
+
+bool AdjustVolumeForCurrentProcess(float percent_change) {
+    float current_volume = 0.0f;
+    if (!GetVolumeForCurrentProcess(&current_volume)) {
+        // If we can't get current volume, use the stored value
+        current_volume = s_audio_volume_percent.load();
+    }
+
+    float new_volume = current_volume + percent_change;
+    // Clamp to valid range
+    new_volume = (std::max)(0.0f, (std::min)(new_volume, 100.0f));
+
+    if (SetVolumeForCurrentProcess(new_volume)) {
+        // Update stored value
+        s_audio_volume_percent.store(new_volume);
+
+        // Update overlay display tracking (legacy, for backward compatibility)
+        g_volume_change_time_ns.store(utils::get_now_ns());
+        g_volume_display_value.store(new_volume);
+
+        // Trigger action notification for overlay display
+        ActionNotification notification;
+        notification.type = ActionNotificationType::Volume;
+        notification.timestamp_ns = utils::get_now_ns();
+        notification.float_value = new_volume;
+        notification.bool_value = false;
+        g_action_notification.store(notification);
+
+        std::ostringstream oss;
+        oss << "Volume adjusted by " << (percent_change >= 0.0f ? "+" : "") << percent_change
+            << "% to " << new_volume << "%";
+        LogInfo(oss.str().c_str());
+        return true;
+    }
+
+    return false;
+}
+
 void RunBackgroundAudioMonitor() {
     // Wait for continuous monitoring to be ready before starting audio management
     while (!g_shutdown.load() && !g_monitoring_thread_running.load()) {
@@ -275,7 +397,7 @@ void RunBackgroundAudioMonitor() {
                 << " (background=" << (g_app_in_background.load() ? "true" : "false") << ")";
             LogInfo(oss.str().c_str());
 
-            if (SetMuteForCurrentProcess(want_mute)) {
+            if (SetMuteForCurrentProcess(want_mute, false)) {  // Don't trigger notification for background auto-mute
                 g_muted_applied.store(want_mute);
             }
         }

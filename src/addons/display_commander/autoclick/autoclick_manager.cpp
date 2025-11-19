@@ -331,13 +331,13 @@ static const GamepadAction g_button_only_sequence[] = {
     {GamepadActionType::SET_STICK_AND_BUTTONS, "Button-only gamepad: Adding button A (Y and A both pressed)", INFINITY, XINPUT_GAMEPAD_Y | XINPUT_GAMEPAD_A, 0, 0},
 
     // Hold for 10 seconds
-    {GamepadActionType::HOLD, nullptr, INFINITY, 0, 1500, 0},
+    {GamepadActionType::HOLD, nullptr, INFINITY, 0, 1000, 0},
 
     // Clear override
     {GamepadActionType::CLEAR, "Button-only gamepad: Clearing button override", INFINITY, 0, 0, 0},
 
     // Wait 100ms before next cycle
-    {GamepadActionType::WAIT, nullptr, INFINITY, 0, 100, 0}
+    {GamepadActionType::WAIT, nullptr, INFINITY, 0, 50, 0}
 };
 
 // Helper function to execute a single gamepad action

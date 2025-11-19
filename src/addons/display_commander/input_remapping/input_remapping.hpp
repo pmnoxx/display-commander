@@ -20,6 +20,14 @@
 #endif
 
 namespace display_commander::input_remapping {
+// Remap type enum
+enum class RemapType : int {
+    Keyboard = 0, // Map to keyboard key
+    Gamepad = 1,  // Map to gamepad button
+    Action = 2,   // Map to action (e.g., screenshot)
+    Count
+};
+
 // Keyboard input methods
 enum class KeyboardInputMethod : int {
     SendInput = 0,   // Modern SendInput API
@@ -31,25 +39,51 @@ enum class KeyboardInputMethod : int {
 
 // Remapping configuration for a single button
 struct ButtonRemap {
-    WORD gamepad_button;                       // XInput button constant
+    WORD gamepad_button;                       // XInput button constant (source)
+    RemapType remap_type;                     // Type of remapping (Keyboard, Gamepad, Action)
+
+    // Keyboard remapping fields (used when remap_type == Keyboard)
     int keyboard_vk;                           // Virtual key code
     std::string keyboard_name;                 // Human-readable key name
-    bool enabled;                              // Whether this remap is active
     KeyboardInputMethod input_method;          // Method to use for input
-    bool hold_mode;                            // If true, holds key while button pressed
+
+    // Gamepad remapping fields (used when remap_type == Gamepad)
+    WORD gamepad_target_button;                // Target XInput button constant
+
+    // Action remapping fields (used when remap_type == Action)
+    std::string action_name;                   // Action name (e.g., "screenshot")
+
+    bool enabled;                              // Whether this remap is active
+    bool hold_mode;                            // If true, holds key/button while button pressed
     std::atomic<bool> is_pressed{false};       // Current press state
     std::atomic<ULONGLONG> last_press_time{0}; // Last press timestamp
     std::atomic<uint64_t> trigger_count{0};    // Number of times this remapping was triggered
 
     ButtonRemap() = default;
+
+    // Constructor for keyboard remapping (backward compatible)
     ButtonRemap(WORD btn, int vk, const std::string &name, bool en = true,
                 KeyboardInputMethod method = KeyboardInputMethod::SendInput, bool hold = true)
-        : gamepad_button(btn), keyboard_vk(vk), keyboard_name(name), enabled(en), input_method(method),
-          hold_mode(hold) {}
+        : gamepad_button(btn), remap_type(RemapType::Keyboard), keyboard_vk(vk), keyboard_name(name),
+          gamepad_target_button(0), action_name(""), enabled(en), input_method(method), hold_mode(hold) {}
+
+    // Constructor for gamepad remapping
+    ButtonRemap(WORD btn, WORD target_btn, bool en = true, bool hold = true)
+        : gamepad_button(btn), remap_type(RemapType::Gamepad), keyboard_vk(0), keyboard_name(""),
+          gamepad_target_button(target_btn), action_name(""), enabled(en),
+          input_method(KeyboardInputMethod::SendInput), hold_mode(hold) {}
+
+    // Constructor for action remapping
+    ButtonRemap(WORD btn, const std::string &action, bool en = true, bool hold = false)
+        : gamepad_button(btn), remap_type(RemapType::Action), keyboard_vk(0), keyboard_name(""),
+          gamepad_target_button(0), action_name(action), enabled(en),
+          input_method(KeyboardInputMethod::SendInput), hold_mode(hold) {}
 
     // Copy constructor
     ButtonRemap(const ButtonRemap &other)
-        : gamepad_button(other.gamepad_button), keyboard_vk(other.keyboard_vk), keyboard_name(other.keyboard_name),
+        : gamepad_button(other.gamepad_button), remap_type(other.remap_type),
+          keyboard_vk(other.keyboard_vk), keyboard_name(other.keyboard_name),
+          gamepad_target_button(other.gamepad_target_button), action_name(other.action_name),
           enabled(other.enabled), input_method(other.input_method), hold_mode(other.hold_mode),
           is_pressed(other.is_pressed.load()), last_press_time(other.last_press_time.load()),
           trigger_count(other.trigger_count.load()) {}
@@ -58,8 +92,11 @@ struct ButtonRemap {
     ButtonRemap &operator=(const ButtonRemap &other) {
         if (this != &other) {
             gamepad_button = other.gamepad_button;
+            remap_type = other.remap_type;
             keyboard_vk = other.keyboard_vk;
             keyboard_name = other.keyboard_name;
+            gamepad_target_button = other.gamepad_target_button;
+            action_name = other.action_name;
             enabled = other.enabled;
             input_method = other.input_method;
             hold_mode = other.hold_mode;
@@ -84,7 +121,7 @@ class InputRemapper {
     void cleanup();
 
     // Process gamepad input and apply remappings
-    void process_gamepad_input(DWORD user_index, const XINPUT_STATE *state);
+    void process_gamepad_input(DWORD user_index, XINPUT_STATE *state);
 
     // Add/remove button remappings
     void add_button_remap(const ButtonRemap &remap);
@@ -108,6 +145,12 @@ class InputRemapper {
     // Update remapping settings
     void update_remap(WORD gamepad_button, int keyboard_vk, const std::string &keyboard_name,
                       KeyboardInputMethod method, bool hold_mode);
+
+    // Update remapping settings (overloaded for different remap types)
+    void update_remap_keyboard(WORD gamepad_button, int keyboard_vk, const std::string &keyboard_name,
+                               KeyboardInputMethod method, bool hold_mode);
+    void update_remap_gamepad(WORD gamepad_button, WORD target_button, bool hold_mode);
+    void update_remap_action(WORD gamepad_button, const std::string &action_name, bool hold_mode);
 
     // Settings management
     void load_settings();
@@ -138,6 +181,12 @@ class InputRemapper {
     void handle_button_press(WORD gamepad_button, DWORD user_index);
     void handle_button_release(WORD gamepad_button, DWORD user_index);
 
+    // Gamepad remapping - modify XINPUT_STATE
+    void apply_gamepad_remapping(DWORD user_index, XINPUT_STATE *state);
+
+    // Action execution
+    void execute_action(const std::string &action_name);
+
     // Settings
     std::atomic<bool> _remapping_enabled{false};
     std::atomic<bool> _initialized{false};
@@ -158,11 +207,13 @@ class InputRemapper {
 // Global functions for integration
 void initialize_input_remapping();
 void cleanup_input_remapping();
-void process_gamepad_input_for_remapping(DWORD user_index, const XINPUT_STATE *state);
+void process_gamepad_input_for_remapping(DWORD user_index, XINPUT_STATE *state);
 
 // Utility functions
 std::string get_keyboard_input_method_name(KeyboardInputMethod method);
+std::string get_remap_type_name(RemapType type);
 std::vector<std::string> get_available_keyboard_input_methods();
 std::vector<std::string> get_available_gamepad_buttons();
 std::vector<std::string> get_available_keyboard_keys();
+std::vector<std::string> get_available_actions();
 } // namespace display_commander::input_remapping

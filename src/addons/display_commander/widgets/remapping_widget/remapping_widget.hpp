@@ -36,9 +36,12 @@ class RemappingWidget {
 
     // Add/Edit dialog state
     struct RemapDialogState {
+        int selected_remap_type = 0; // 0=Keyboard, 1=Gamepad, 2=Action
         int selected_gamepad_button = 0;
         int selected_keyboard_key = 0;
         int selected_input_method = 0;
+        int selected_gamepad_target_button = 0;
+        int selected_action = 0;
         bool hold_mode = true;
         bool enabled = true;
     } dialog_state_;

@@ -43,6 +43,7 @@ class RemappingWidget {
         int selected_gamepad_target_button = 0;
         int selected_action = 0;
         bool hold_mode = true;
+        bool chord_mode = false;
         bool enabled = true;
     } dialog_state_;
 

@@ -93,9 +93,9 @@ void InputRemapper::process_gamepad_input(DWORD user_index, XINPUT_STATE *state)
         WORD button_mask = 1 << i;
         if ((changed & button_mask) != 0) {
             if ((current & button_mask) != 0) {
-                handle_button_press(button_mask, user_index);
+                handle_button_press(button_mask, user_index, current);
             } else {
-                handle_button_release(button_mask, user_index);
+                handle_button_release(button_mask, user_index, current);
             }
         }
     }
@@ -180,24 +180,24 @@ const ButtonRemap *InputRemapper::get_button_remap(WORD gamepad_button) const {
 }
 
 void InputRemapper::update_remap(WORD gamepad_button, int keyboard_vk, const std::string &keyboard_name,
-                                 KeyboardInputMethod method, bool hold_mode) {
-    ButtonRemap remap(gamepad_button, keyboard_vk, keyboard_name, true, method, hold_mode);
+                                 KeyboardInputMethod method, bool hold_mode, bool chord_mode) {
+    ButtonRemap remap(gamepad_button, keyboard_vk, keyboard_name, true, method, hold_mode, chord_mode);
     add_button_remap(remap);
 }
 
 void InputRemapper::update_remap_keyboard(WORD gamepad_button, int keyboard_vk, const std::string &keyboard_name,
-                                         KeyboardInputMethod method, bool hold_mode) {
-    ButtonRemap remap(gamepad_button, keyboard_vk, keyboard_name, true, method, hold_mode);
+                                         KeyboardInputMethod method, bool hold_mode, bool chord_mode) {
+    ButtonRemap remap(gamepad_button, keyboard_vk, keyboard_name, true, method, hold_mode, chord_mode);
     add_button_remap(remap);
 }
 
-void InputRemapper::update_remap_gamepad(WORD gamepad_button, WORD target_button, bool hold_mode) {
-    ButtonRemap remap(gamepad_button, target_button, true, hold_mode);
+void InputRemapper::update_remap_gamepad(WORD gamepad_button, WORD target_button, bool hold_mode, bool chord_mode) {
+    ButtonRemap remap(gamepad_button, target_button, true, hold_mode, chord_mode);
     add_button_remap(remap);
 }
 
-void InputRemapper::update_remap_action(WORD gamepad_button, const std::string &action_name, bool hold_mode) {
-    ButtonRemap remap(gamepad_button, action_name, true, hold_mode);
+void InputRemapper::update_remap_action(WORD gamepad_button, const std::string &action_name, bool hold_mode, bool chord_mode) {
+    ButtonRemap remap(gamepad_button, action_name, true, hold_mode, chord_mode);
     add_button_remap(remap);
 }
 
@@ -220,7 +220,7 @@ void InputRemapper::load_settings() {
             std::string key_prefix = "Remapping" + std::to_string(i) + ".";
 
             int gamepad_button, remap_type_int = 0;
-            bool enabled, hold_mode;
+            bool enabled, hold_mode, chord_mode = false;
 
             // Load common fields
             if (!display_commander::config::get_config_value("DisplayCommander.InputRemapping",
@@ -234,12 +234,17 @@ void InputRemapper::load_settings() {
                 continue;
             }
 
+            // Load chord_mode (optional, defaults to false for backward compatibility)
+            display_commander::config::get_config_value("DisplayCommander.InputRemapping", (key_prefix + "ChordMode").c_str(),
+                                      chord_mode);
+
             RemapType remap_type = static_cast<RemapType>(remap_type_int);
             ButtonRemap remap;
             remap.gamepad_button = static_cast<WORD>(gamepad_button);
             remap.remap_type = remap_type;
             remap.enabled = enabled;
             remap.hold_mode = hold_mode;
+            remap.chord_mode = chord_mode;
 
             // Load type-specific fields
             if (remap_type == RemapType::Keyboard) {
@@ -313,6 +318,8 @@ void InputRemapper::save_settings() {
                                   remap.enabled);
         display_commander::config::set_config_value("DisplayCommander.InputRemapping", (key_prefix + "HoldMode").c_str(),
                                   remap.hold_mode);
+        display_commander::config::set_config_value("DisplayCommander.InputRemapping", (key_prefix + "ChordMode").c_str(),
+                                  remap.chord_mode);
 
         // Save type-specific fields
         if (remap.remap_type == RemapType::Keyboard) {
@@ -533,10 +540,18 @@ void InputRemapper::update_button_states(DWORD user_index, WORD button_state) {
     _current_button_states[user_index].store(button_state);
 }
 
-void InputRemapper::handle_button_press(WORD gamepad_button, DWORD user_index) {
+void InputRemapper::handle_button_press(WORD gamepad_button, DWORD user_index, WORD current_button_state) {
     ButtonRemap *remap = const_cast<ButtonRemap *>(get_button_remap(gamepad_button));
     if (!remap || !remap->enabled)
         return;
+
+    // Check chord mode: if enabled, guide button must also be pressed
+    if (remap->chord_mode) {
+        if ((current_button_state & XINPUT_GAMEPAD_GUIDE) == 0) {
+            // Guide button not pressed, ignore this remapping
+            return;
+        }
+    }
 
     remap->is_pressed.store(true);
     remap->last_press_time.store(GetOriginalTickCount64());
@@ -599,10 +614,19 @@ void InputRemapper::handle_button_press(WORD gamepad_button, DWORD user_index) {
     }
 }
 
-void InputRemapper::handle_button_release(WORD gamepad_button, DWORD user_index) {
+void InputRemapper::handle_button_release(WORD gamepad_button, DWORD user_index, WORD current_button_state) {
     ButtonRemap *remap = const_cast<ButtonRemap *>(get_button_remap(gamepad_button));
     if (!remap || !remap->enabled || !remap->hold_mode)
         return;
+
+    // Check chord mode: if enabled, guide button must also be pressed (or was pressed when button was released)
+    // For release, we check if guide button is still pressed or if it was pressed when the button was held
+    if (remap->chord_mode) {
+        if ((current_button_state & XINPUT_GAMEPAD_GUIDE) == 0) {
+            // Guide button not pressed, ignore this remapping release
+            return;
+        }
+    }
 
     remap->is_pressed.store(false);
 
@@ -718,6 +742,14 @@ void InputRemapper::apply_gamepad_remapping(DWORD user_index, XINPUT_STATE *stat
     for (const auto &remap : _remappings) {
         if (!remap.enabled || remap.remap_type != RemapType::Gamepad) {
             continue;
+        }
+
+        // Check chord mode: if enabled, guide button must also be pressed
+        if (remap.chord_mode) {
+            if ((state->Gamepad.wButtons & XINPUT_GAMEPAD_GUIDE) == 0) {
+                // Guide button not pressed, skip this remapping
+                continue;
+            }
         }
 
         // Check if source button is pressed

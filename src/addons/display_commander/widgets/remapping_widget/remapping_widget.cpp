@@ -167,12 +167,13 @@ void RemappingWidget::DrawRemappingList() {
             ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Click 'Add New Remapping' to get started");
         } else {
             // Create a table for remappings
-            if (ImGui::BeginTable("RemappingsTable", 8, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
+            if (ImGui::BeginTable("RemappingsTable", 9, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
                 ImGui::TableSetupColumn("Gamepad Button");
                 ImGui::TableSetupColumn("Remap Type");
                 ImGui::TableSetupColumn("Target");
                 ImGui::TableSetupColumn("Input Method");
                 ImGui::TableSetupColumn("Hold Mode");
+                ImGui::TableSetupColumn("Chord Mode");
                 ImGui::TableSetupColumn("Trigger Count");
                 ImGui::TableSetupColumn("Enabled");
                 ImGui::TableSetupColumn("Actions");
@@ -228,6 +229,10 @@ void RemappingWidget::DrawRemapEntry(const input_remapping::ButtonRemap &remap, 
     ImGui::TableNextColumn();
     ImGui::Text("%s", remap.hold_mode ? "Yes" : "No");
 
+    // Chord Mode
+    ImGui::TableNextColumn();
+    ImGui::Text("%s", remap.chord_mode ? "Yes" : "No");
+
     // Trigger Count
     ImGui::TableNextColumn();
     ImGui::Text("%llu", remap.trigger_count.load());
@@ -239,11 +244,11 @@ void RemappingWidget::DrawRemapEntry(const input_remapping::ButtonRemap &remap, 
         // Update enabled state - need to preserve remap type
         auto &remapper = input_remapping::InputRemapper::get_instance();
         if (remap.remap_type == input_remapping::RemapType::Keyboard) {
-            remapper.update_remap_keyboard(remap.gamepad_button, remap.keyboard_vk, remap.keyboard_name, remap.input_method, remap.hold_mode);
+            remapper.update_remap_keyboard(remap.gamepad_button, remap.keyboard_vk, remap.keyboard_name, remap.input_method, remap.hold_mode, remap.chord_mode);
         } else if (remap.remap_type == input_remapping::RemapType::Gamepad) {
-            remapper.update_remap_gamepad(remap.gamepad_button, remap.gamepad_target_button, remap.hold_mode);
+            remapper.update_remap_gamepad(remap.gamepad_button, remap.gamepad_target_button, remap.hold_mode, remap.chord_mode);
         } else if (remap.remap_type == input_remapping::RemapType::Action) {
-            remapper.update_remap_action(remap.gamepad_button, remap.action_name, remap.hold_mode);
+            remapper.update_remap_action(remap.gamepad_button, remap.action_name, remap.hold_mode, remap.chord_mode);
         }
         LogInfo("RemappingWidget::DrawRemapEntry() - Toggled remap %d enabled state", index);
     }
@@ -333,6 +338,14 @@ void RemappingWidget::DrawAddRemapDialog() {
             ImGui::SetTooltip("If enabled, the target will be held down while the gamepad button is pressed");
         }
 
+        // Chord Mode
+        ImGui::Checkbox("Chord Mode", &dialog_state_.chord_mode);
+        ImGui::SameLine();
+        ImGui::TextDisabled("(?)");
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("If enabled, the remapping will only work when the Guide button is also pressed at the same time");
+        }
+
         // Enabled
         ImGui::Checkbox("Enabled", &dialog_state_.enabled);
 
@@ -349,17 +362,17 @@ void RemappingWidget::DrawAddRemapDialog() {
                 std::string keyboard_name = GetKeyboardKeyName(dialog_state_.selected_keyboard_key);
                 auto input_method = static_cast<input_remapping::KeyboardInputMethod>(dialog_state_.selected_input_method);
                 input_remapping::ButtonRemap remap(gamepad_button, keyboard_vk, keyboard_name, dialog_state_.enabled,
-                                                   input_method, dialog_state_.hold_mode);
+                                                   input_method, dialog_state_.hold_mode, dialog_state_.chord_mode);
                 remapper.add_button_remap(remap);
             } else if (dialog_state_.selected_remap_type == 1) { // Gamepad
                 WORD target_button = GetGamepadButtonFromIndex(dialog_state_.selected_gamepad_target_button);
-                input_remapping::ButtonRemap remap(gamepad_button, target_button, dialog_state_.enabled, dialog_state_.hold_mode);
+                input_remapping::ButtonRemap remap(gamepad_button, target_button, dialog_state_.enabled, dialog_state_.hold_mode, dialog_state_.chord_mode);
                 remapper.add_button_remap(remap);
             } else if (dialog_state_.selected_remap_type == 2) { // Action
                 auto actions = input_remapping::get_available_actions();
                 if (dialog_state_.selected_action >= 0 && dialog_state_.selected_action < static_cast<int>(actions.size())) {
                     std::string action_name = actions[dialog_state_.selected_action];
-                    input_remapping::ButtonRemap remap(gamepad_button, action_name, dialog_state_.enabled, dialog_state_.hold_mode);
+                    input_remapping::ButtonRemap remap(gamepad_button, action_name, dialog_state_.enabled, dialog_state_.hold_mode, dialog_state_.chord_mode);
                     remapper.add_button_remap(remap);
                 }
             }
@@ -437,6 +450,14 @@ void RemappingWidget::DrawEditRemapDialog() {
             ImGui::SetTooltip("If enabled, the target will be held down while the gamepad button is pressed");
         }
 
+        // Chord Mode
+        ImGui::Checkbox("Chord Mode", &dialog_state_.chord_mode);
+        ImGui::SameLine();
+        ImGui::TextDisabled("(?)");
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("If enabled, the remapping will only work when the Guide button is also pressed at the same time");
+        }
+
         // Enabled
         ImGui::Checkbox("Enabled", &dialog_state_.enabled);
 
@@ -451,15 +472,15 @@ void RemappingWidget::DrawEditRemapDialog() {
                 int keyboard_vk = GetKeyboardVkFromIndex(dialog_state_.selected_keyboard_key);
                 std::string keyboard_name = GetKeyboardKeyName(dialog_state_.selected_keyboard_key);
                 auto input_method = static_cast<input_remapping::KeyboardInputMethod>(dialog_state_.selected_input_method);
-                remapper.update_remap_keyboard(gamepad_button, keyboard_vk, keyboard_name, input_method, dialog_state_.hold_mode);
+                remapper.update_remap_keyboard(gamepad_button, keyboard_vk, keyboard_name, input_method, dialog_state_.hold_mode, dialog_state_.chord_mode);
             } else if (dialog_state_.selected_remap_type == 1) { // Gamepad
                 WORD target_button = GetGamepadButtonFromIndex(dialog_state_.selected_gamepad_target_button);
-                remapper.update_remap_gamepad(gamepad_button, target_button, dialog_state_.hold_mode);
+                remapper.update_remap_gamepad(gamepad_button, target_button, dialog_state_.hold_mode, dialog_state_.chord_mode);
             } else if (dialog_state_.selected_remap_type == 2) { // Action
                 auto actions = input_remapping::get_available_actions();
                 if (dialog_state_.selected_action >= 0 && dialog_state_.selected_action < static_cast<int>(actions.size())) {
                     std::string action_name = actions[dialog_state_.selected_action];
-                    remapper.update_remap_action(gamepad_button, action_name, dialog_state_.hold_mode);
+                    remapper.update_remap_action(gamepad_button, action_name, dialog_state_.hold_mode, dialog_state_.chord_mode);
                 }
             }
 
@@ -679,6 +700,7 @@ void RemappingWidget::ResetDialogState() {
     dialog_state_.selected_gamepad_target_button = 0;
     dialog_state_.selected_action = 0;
     dialog_state_.hold_mode = true;
+    dialog_state_.chord_mode = false;
     dialog_state_.enabled = true;
 }
 
@@ -726,6 +748,7 @@ void RemappingWidget::LoadRemapToDialog(const input_remapping::ButtonRemap &rema
     }
 
     dialog_state_.hold_mode = remap.hold_mode;
+    dialog_state_.chord_mode = remap.chord_mode;
     dialog_state_.enabled = remap.enabled;
 }
 

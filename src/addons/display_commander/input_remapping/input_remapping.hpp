@@ -55,6 +55,7 @@ struct ButtonRemap {
 
     bool enabled;                              // Whether this remap is active
     bool hold_mode;                            // If true, holds key/button while button pressed
+    bool chord_mode;                           // If true, remapping only works when guide button is also pressed
     std::atomic<bool> is_pressed{false};       // Current press state
     std::atomic<ULONGLONG> last_press_time{0}; // Last press timestamp
     std::atomic<uint64_t> trigger_count{0};    // Number of times this remapping was triggered
@@ -63,21 +64,21 @@ struct ButtonRemap {
 
     // Constructor for keyboard remapping (backward compatible)
     ButtonRemap(WORD btn, int vk, const std::string &name, bool en = true,
-                KeyboardInputMethod method = KeyboardInputMethod::SendInput, bool hold = true)
+                KeyboardInputMethod method = KeyboardInputMethod::SendInput, bool hold = true, bool chord = false)
         : gamepad_button(btn), remap_type(RemapType::Keyboard), keyboard_vk(vk), keyboard_name(name),
-          gamepad_target_button(0), action_name(""), enabled(en), input_method(method), hold_mode(hold) {}
+          gamepad_target_button(0), action_name(""), enabled(en), input_method(method), hold_mode(hold), chord_mode(chord) {}
 
     // Constructor for gamepad remapping
-    ButtonRemap(WORD btn, WORD target_btn, bool en = true, bool hold = true)
+    ButtonRemap(WORD btn, WORD target_btn, bool en = true, bool hold = true, bool chord = false)
         : gamepad_button(btn), remap_type(RemapType::Gamepad), keyboard_vk(0), keyboard_name(""),
           gamepad_target_button(target_btn), action_name(""), enabled(en),
-          input_method(KeyboardInputMethod::SendInput), hold_mode(hold) {}
+          input_method(KeyboardInputMethod::SendInput), hold_mode(hold), chord_mode(chord) {}
 
     // Constructor for action remapping
-    ButtonRemap(WORD btn, const std::string &action, bool en = true, bool hold = false)
+    ButtonRemap(WORD btn, const std::string &action, bool en = true, bool hold = false, bool chord = false)
         : gamepad_button(btn), remap_type(RemapType::Action), keyboard_vk(0), keyboard_name(""),
           gamepad_target_button(0), action_name(action), enabled(en),
-          input_method(KeyboardInputMethod::SendInput), hold_mode(hold) {}
+          input_method(KeyboardInputMethod::SendInput), hold_mode(hold), chord_mode(chord) {}
 
     // Copy constructor
     ButtonRemap(const ButtonRemap &other)
@@ -85,7 +86,7 @@ struct ButtonRemap {
           keyboard_vk(other.keyboard_vk), keyboard_name(other.keyboard_name),
           gamepad_target_button(other.gamepad_target_button), action_name(other.action_name),
           enabled(other.enabled), input_method(other.input_method), hold_mode(other.hold_mode),
-          is_pressed(other.is_pressed.load()), last_press_time(other.last_press_time.load()),
+          chord_mode(other.chord_mode), is_pressed(other.is_pressed.load()), last_press_time(other.last_press_time.load()),
           trigger_count(other.trigger_count.load()) {}
 
     // Assignment operator
@@ -100,6 +101,7 @@ struct ButtonRemap {
             enabled = other.enabled;
             input_method = other.input_method;
             hold_mode = other.hold_mode;
+            chord_mode = other.chord_mode;
             is_pressed.store(other.is_pressed.load());
             last_press_time.store(other.last_press_time.load());
             trigger_count.store(other.trigger_count.load());
@@ -144,13 +146,13 @@ class InputRemapper {
 
     // Update remapping settings
     void update_remap(WORD gamepad_button, int keyboard_vk, const std::string &keyboard_name,
-                      KeyboardInputMethod method, bool hold_mode);
+                      KeyboardInputMethod method, bool hold_mode, bool chord_mode = false);
 
     // Update remapping settings (overloaded for different remap types)
     void update_remap_keyboard(WORD gamepad_button, int keyboard_vk, const std::string &keyboard_name,
-                               KeyboardInputMethod method, bool hold_mode);
-    void update_remap_gamepad(WORD gamepad_button, WORD target_button, bool hold_mode);
-    void update_remap_action(WORD gamepad_button, const std::string &action_name, bool hold_mode);
+                               KeyboardInputMethod method, bool hold_mode, bool chord_mode = false);
+    void update_remap_gamepad(WORD gamepad_button, WORD target_button, bool hold_mode, bool chord_mode = false);
+    void update_remap_action(WORD gamepad_button, const std::string &action_name, bool hold_mode, bool chord_mode = false);
 
     // Settings management
     void load_settings();
@@ -178,8 +180,8 @@ class InputRemapper {
 
     // Button state tracking
     void update_button_states(DWORD user_index, WORD button_state);
-    void handle_button_press(WORD gamepad_button, DWORD user_index);
-    void handle_button_release(WORD gamepad_button, DWORD user_index);
+    void handle_button_press(WORD gamepad_button, DWORD user_index, WORD current_button_state);
+    void handle_button_release(WORD gamepad_button, DWORD user_index, WORD current_button_state);
 
     // Gamepad remapping - modify XINPUT_STATE
     void apply_gamepad_remapping(DWORD user_index, XINPUT_STATE *state);

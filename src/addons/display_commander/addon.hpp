@@ -19,7 +19,7 @@
 #include <audiopolicy.h>
 
 // Audio management functions
-bool SetMuteForCurrentProcess(bool mute);
+bool SetMuteForCurrentProcess(bool mute, bool trigger_notification);
 bool SetVolumeForCurrentProcess(float volume_0_100);
 void RunBackgroundAudioMonitor();
 

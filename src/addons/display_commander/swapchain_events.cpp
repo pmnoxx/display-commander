@@ -47,6 +47,8 @@
 #include <atomic>
 #include <sstream>
 #include <set>
+#include <algorithm>
+#include <cmath>
 
 std::atomic<int> target_width = 3840;
 std::atomic<int> target_height = 2160;
@@ -1387,6 +1389,84 @@ bool OnCreateSampler(reshade::api::device *device, reshade::api::sampler_desc &d
         g_d3d_sampler_event_counters[D3D_SAMPLER_EVENT_CREATE_SAMPLER_STATE_D3D11].fetch_add(1);
     } else if (api == reshade::api::device_api::d3d12) {
         g_d3d_sampler_event_counters[D3D_SAMPLER_EVENT_CREATE_SAMPLER_D3D12].fetch_add(1);
+    }
+
+    // Track original filter mode (BEFORE overrides)
+    reshade::api::filter_mode original_filter = desc.filter;
+    switch (original_filter) {
+        case reshade::api::filter_mode::min_mag_mip_point:
+        case reshade::api::filter_mode::min_mag_point_mip_linear:
+        case reshade::api::filter_mode::min_point_mag_linear_mip_point:
+        case reshade::api::filter_mode::min_point_mag_mip_linear:
+        case reshade::api::filter_mode::min_linear_mag_mip_point:
+        case reshade::api::filter_mode::min_linear_mag_point_mip_linear:
+            g_sampler_filter_mode_counters[SAMPLER_FILTER_POINT].fetch_add(1);
+            break;
+        case reshade::api::filter_mode::min_mag_linear_mip_point:
+        case reshade::api::filter_mode::min_mag_mip_linear:
+            g_sampler_filter_mode_counters[SAMPLER_FILTER_LINEAR].fetch_add(1);
+            break;
+        case reshade::api::filter_mode::min_mag_anisotropic_mip_point:
+        case reshade::api::filter_mode::anisotropic:
+            g_sampler_filter_mode_counters[SAMPLER_FILTER_ANISOTROPIC].fetch_add(1);
+            break;
+        case reshade::api::filter_mode::compare_min_mag_mip_point:
+        case reshade::api::filter_mode::compare_min_mag_point_mip_linear:
+        case reshade::api::filter_mode::compare_min_point_mag_linear_mip_point:
+        case reshade::api::filter_mode::compare_min_point_mag_mip_linear:
+        case reshade::api::filter_mode::compare_min_linear_mag_mip_point:
+        case reshade::api::filter_mode::compare_min_linear_mag_point_mip_linear:
+            g_sampler_filter_mode_counters[SAMPLER_FILTER_COMPARISON_POINT].fetch_add(1);
+            break;
+        case reshade::api::filter_mode::compare_min_mag_linear_mip_point:
+        case reshade::api::filter_mode::compare_min_mag_mip_linear:
+            g_sampler_filter_mode_counters[SAMPLER_FILTER_COMPARISON_LINEAR].fetch_add(1);
+            break;
+        case reshade::api::filter_mode::compare_min_mag_anisotropic_mip_point:
+        case reshade::api::filter_mode::compare_anisotropic:
+            g_sampler_filter_mode_counters[SAMPLER_FILTER_COMPARISON_ANISOTROPIC].fetch_add(1);
+            break;
+        default:
+            g_sampler_filter_mode_counters[SAMPLER_FILTER_OTHER].fetch_add(1);
+            break;
+    }
+
+    // Track original address mode (BEFORE overrides) - use U coordinate as representative
+    reshade::api::texture_address_mode original_address_u = desc.address_u;
+    switch (original_address_u) {
+        case reshade::api::texture_address_mode::wrap:
+            g_sampler_address_mode_counters[SAMPLER_ADDRESS_WRAP].fetch_add(1);
+            break;
+        case reshade::api::texture_address_mode::mirror:
+            g_sampler_address_mode_counters[SAMPLER_ADDRESS_MIRROR].fetch_add(1);
+            break;
+        case reshade::api::texture_address_mode::clamp:
+            g_sampler_address_mode_counters[SAMPLER_ADDRESS_CLAMP].fetch_add(1);
+            break;
+        case reshade::api::texture_address_mode::border:
+            g_sampler_address_mode_counters[SAMPLER_ADDRESS_BORDER].fetch_add(1);
+            break;
+        case reshade::api::texture_address_mode::mirror_once:
+            g_sampler_address_mode_counters[SAMPLER_ADDRESS_MIRROR_ONCE].fetch_add(1);
+            break;
+        default:
+            break;
+    }
+
+    // Track original anisotropy level (BEFORE overrides) - only for anisotropic filters
+    float original_max_anisotropy = desc.max_anisotropy;
+    if (original_filter == reshade::api::filter_mode::anisotropic ||
+        original_filter == reshade::api::filter_mode::compare_anisotropic ||
+        original_filter == reshade::api::filter_mode::min_mag_anisotropic_mip_point ||
+        original_filter == reshade::api::filter_mode::compare_min_mag_anisotropic_mip_point) {
+        // Clamp to valid range (1-16) and convert to index (level 1 = index 0, level 16 = index 15)
+        int anisotropy_level = static_cast<int>(std::round(original_max_anisotropy));
+        if (anisotropy_level < 1) anisotropy_level = 1;
+        if (anisotropy_level > 16) anisotropy_level = 16;
+        int index = anisotropy_level - 1; // Convert to 0-based index
+        if (index >= 0 && index < MAX_ANISOTROPY_LEVELS) {
+            g_sampler_anisotropy_level_counters[index].fetch_add(1);
+        }
     }
 
     bool modified = false;

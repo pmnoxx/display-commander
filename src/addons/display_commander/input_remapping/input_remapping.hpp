@@ -20,6 +20,16 @@
 #endif
 
 namespace display_commander::input_remapping {
+// Default chord type enum
+enum class DefaultChordType : int {
+    VolumeUp = 0,
+    VolumeDown = 1,
+    MuteUnmute = 2,
+    PerformanceOverlay = 3,
+    Screenshot = 4,
+    Count
+};
+
 // Remap type enum
 enum class RemapType : int {
     Keyboard = 0, // Map to keyboard key
@@ -56,6 +66,7 @@ struct ButtonRemap {
     bool enabled;                              // Whether this remap is active
     bool hold_mode;                            // If true, holds key/button while button pressed
     bool chord_mode;                           // If true, remapping only works when guide button is also pressed
+    bool is_default_chord;                     // If true, this remap was added by default chords feature
     std::atomic<bool> is_pressed{false};       // Current press state
     std::atomic<ULONGLONG> last_press_time{0}; // Last press timestamp
     std::atomic<uint64_t> trigger_count{0};    // Number of times this remapping was triggered
@@ -66,19 +77,19 @@ struct ButtonRemap {
     ButtonRemap(WORD btn, int vk, const std::string &name, bool en = true,
                 KeyboardInputMethod method = KeyboardInputMethod::SendInput, bool hold = true, bool chord = false)
         : gamepad_button(btn), remap_type(RemapType::Keyboard), keyboard_vk(vk), keyboard_name(name),
-          gamepad_target_button(0), action_name(""), enabled(en), input_method(method), hold_mode(hold), chord_mode(chord) {}
+          gamepad_target_button(0), action_name(""), enabled(en), input_method(method), hold_mode(hold), chord_mode(chord), is_default_chord(false) {}
 
     // Constructor for gamepad remapping
     ButtonRemap(WORD btn, WORD target_btn, bool en = true, bool hold = true, bool chord = false)
         : gamepad_button(btn), remap_type(RemapType::Gamepad), keyboard_vk(0), keyboard_name(""),
           gamepad_target_button(target_btn), action_name(""), enabled(en),
-          input_method(KeyboardInputMethod::SendInput), hold_mode(hold), chord_mode(chord) {}
+          input_method(KeyboardInputMethod::SendInput), hold_mode(hold), chord_mode(chord), is_default_chord(false) {}
 
     // Constructor for action remapping
     ButtonRemap(WORD btn, const std::string &action, bool en = true, bool hold = false, bool chord = false)
         : gamepad_button(btn), remap_type(RemapType::Action), keyboard_vk(0), keyboard_name(""),
           gamepad_target_button(0), action_name(action), enabled(en),
-          input_method(KeyboardInputMethod::SendInput), hold_mode(hold), chord_mode(chord) {}
+          input_method(KeyboardInputMethod::SendInput), hold_mode(hold), chord_mode(chord), is_default_chord(false) {}
 
     // Copy constructor
     ButtonRemap(const ButtonRemap &other)
@@ -86,7 +97,8 @@ struct ButtonRemap {
           keyboard_vk(other.keyboard_vk), keyboard_name(other.keyboard_name),
           gamepad_target_button(other.gamepad_target_button), action_name(other.action_name),
           enabled(other.enabled), input_method(other.input_method), hold_mode(other.hold_mode),
-          chord_mode(other.chord_mode), is_pressed(other.is_pressed.load()), last_press_time(other.last_press_time.load()),
+          chord_mode(other.chord_mode), is_default_chord(other.is_default_chord),
+          is_pressed(other.is_pressed.load()), last_press_time(other.last_press_time.load()),
           trigger_count(other.trigger_count.load()) {}
 
     // Assignment operator
@@ -102,6 +114,7 @@ struct ButtonRemap {
             input_method = other.input_method;
             hold_mode = other.hold_mode;
             chord_mode = other.chord_mode;
+            is_default_chord = other.is_default_chord;
             is_pressed.store(other.is_pressed.load());
             last_press_time.store(other.last_press_time.load());
             trigger_count.store(other.trigger_count.load());
@@ -157,6 +170,12 @@ class InputRemapper {
     // Settings management
     void load_settings();
     void save_settings();
+
+    // Default chords initialization (generic system)
+    void add_default_chords();
+    void remove_default_chords();
+    void add_default_chord_type(DefaultChordType chord_type);
+    void remove_default_chord_type(DefaultChordType chord_type);
 
     // Get singleton instance
     static InputRemapper &get_instance();

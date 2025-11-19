@@ -16,6 +16,10 @@
 #include <cmath>
 #include <functional>
 
+// Guide button constant (not defined in standard XInput headers)
+#ifndef XINPUT_GAMEPAD_GUIDE
+#define XINPUT_GAMEPAD_GUIDE 0x0400
+#endif
 
 namespace display_commanderhooks {
 
@@ -42,6 +46,7 @@ std::array<XInputSetState_pfn, 5> original_xinput_set_state_procs = {};
 
 // Packet number tracking for each controller (0-3)
 static std::array<DWORD, 4> g_packet_numbers = {};
+
 
 
 // Initialize XInput function pointers for direct calls

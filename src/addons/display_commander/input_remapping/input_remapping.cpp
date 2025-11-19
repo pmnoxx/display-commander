@@ -55,6 +55,11 @@ bool InputRemapper::initialize() {
     // Load settings
     load_settings();
 
+    // Add default chords if enabled
+    if (settings::g_mainTabSettings.enable_default_chords.GetValue()) {
+        add_default_chords();
+    }
+
     _initialized.store(true);
     LogInfo("InputRemapper::initialize() - Input remapping initialization complete");
 
@@ -102,6 +107,136 @@ void InputRemapper::process_gamepad_input(DWORD user_index, XINPUT_STATE *state)
 
     // Apply gamepad-to-gamepad remapping (modifies state)
     apply_gamepad_remapping(user_index, state);
+}
+
+void InputRemapper::add_default_chord_type(DefaultChordType chord_type) {
+    utils::SRWLockExclusive lock(_srwlock);
+
+    WORD button = 0;
+    std::string action_name;
+    const char* log_name = "";
+
+    // Map chord type to button and action
+    switch (chord_type) {
+    case DefaultChordType::VolumeUp:
+        button = XINPUT_GAMEPAD_DPAD_UP;
+        action_name = "increase volume";
+        log_name = "Guide + D-Pad Up = Increase Volume";
+        break;
+    case DefaultChordType::VolumeDown:
+        button = XINPUT_GAMEPAD_DPAD_DOWN;
+        action_name = "decrease volume";
+        log_name = "Guide + D-Pad Down = Decrease Volume";
+        break;
+    case DefaultChordType::MuteUnmute:
+        button = XINPUT_GAMEPAD_RIGHT_SHOULDER;
+        action_name = "mute/unmute audio";
+        log_name = "Guide + Right Shoulder = Mute/Unmute Audio";
+        break;
+    case DefaultChordType::PerformanceOverlay:
+        button = XINPUT_GAMEPAD_START;
+        action_name = "performance overlay toggle";
+        log_name = "Guide + Start = Toggle Performance Overlay";
+        break;
+    case DefaultChordType::Screenshot:
+        button = XINPUT_GAMEPAD_BACK;
+        action_name = "screenshot";
+        log_name = "Guide + Back = Take Screenshot";
+        break;
+    default:
+        return;
+    }
+
+    // Check if remapping already exists for this button (don't overwrite user settings)
+    auto it = _button_to_remap_index.find(button);
+    if (it == _button_to_remap_index.end()) {
+        // Add new default chord
+        ButtonRemap remap(button, action_name, true, false, true);
+        remap.is_default_chord = true;
+        _remappings.push_back(remap);
+        _button_to_remap_index[button] = _remappings.size() - 1;
+        save_settings();
+        LogInfo("InputRemapper::add_default_chord_type() - Added default chord: %s", log_name);
+    } else {
+        // Check if existing remap is a default chord
+        size_t idx = it->second;
+        if (idx < _remappings.size() && _remappings[idx].is_default_chord) {
+            // Re-enable if it was previously a default chord but disabled
+            _remappings[idx].enabled = true;
+            save_settings();
+            LogInfo("InputRemapper::add_default_chord_type() - Re-enabled default chord: %s", log_name);
+        }
+    }
+}
+
+void InputRemapper::remove_default_chord_type(DefaultChordType chord_type) {
+    utils::SRWLockExclusive lock(_srwlock);
+
+    WORD target_button = 0;
+
+    // Map chord type to button
+    switch (chord_type) {
+    case DefaultChordType::VolumeUp:
+        target_button = XINPUT_GAMEPAD_DPAD_UP;
+        break;
+    case DefaultChordType::VolumeDown:
+        target_button = XINPUT_GAMEPAD_DPAD_DOWN;
+        break;
+    case DefaultChordType::MuteUnmute:
+        target_button = XINPUT_GAMEPAD_RIGHT_SHOULDER;
+        break;
+    case DefaultChordType::PerformanceOverlay:
+        target_button = XINPUT_GAMEPAD_START;
+        break;
+    case DefaultChordType::Screenshot:
+        target_button = XINPUT_GAMEPAD_BACK;
+        break;
+    default:
+        return;
+    }
+
+    // Find and remove the default chord for this button
+    auto it = _button_to_remap_index.find(target_button);
+    if (it != _button_to_remap_index.end()) {
+        size_t idx = it->second;
+        if (idx < _remappings.size() && _remappings[idx].is_default_chord) {
+            WORD button = _remappings[idx].gamepad_button;
+
+            // Remove from button index map
+            _button_to_remap_index.erase(button);
+
+            // Remove from remappings vector
+            _remappings.erase(_remappings.begin() + idx);
+
+            // Update indices in button_to_remap_index for all remappings after the removed one
+            for (auto &pair : _button_to_remap_index) {
+                if (pair.second > idx) {
+                    pair.second--;
+                }
+            }
+
+            save_settings();
+            LogInfo("InputRemapper::remove_default_chord_type() - Removed default chord for button 0x%04X", button);
+        }
+    }
+}
+
+void InputRemapper::add_default_chords() {
+    // Add all default chord types
+    add_default_chord_type(DefaultChordType::VolumeUp);
+    add_default_chord_type(DefaultChordType::VolumeDown);
+    add_default_chord_type(DefaultChordType::MuteUnmute);
+    add_default_chord_type(DefaultChordType::PerformanceOverlay);
+    add_default_chord_type(DefaultChordType::Screenshot);
+}
+
+void InputRemapper::remove_default_chords() {
+    // Remove all default chord types
+    remove_default_chord_type(DefaultChordType::VolumeUp);
+    remove_default_chord_type(DefaultChordType::VolumeDown);
+    remove_default_chord_type(DefaultChordType::MuteUnmute);
+    remove_default_chord_type(DefaultChordType::PerformanceOverlay);
+    remove_default_chord_type(DefaultChordType::Screenshot);
 }
 
 void InputRemapper::add_button_remap(const ButtonRemap &remap) {
@@ -238,6 +373,11 @@ void InputRemapper::load_settings() {
             display_commander::config::get_config_value("DisplayCommander.InputRemapping", (key_prefix + "ChordMode").c_str(),
                                       chord_mode);
 
+            // Load is_default_chord (optional, defaults to false for backward compatibility)
+            bool is_default_chord = false;
+            display_commander::config::get_config_value("DisplayCommander.InputRemapping", (key_prefix + "IsDefaultChord").c_str(),
+                                      is_default_chord);
+
             RemapType remap_type = static_cast<RemapType>(remap_type_int);
             ButtonRemap remap;
             remap.gamepad_button = static_cast<WORD>(gamepad_button);
@@ -245,6 +385,7 @@ void InputRemapper::load_settings() {
             remap.enabled = enabled;
             remap.hold_mode = hold_mode;
             remap.chord_mode = chord_mode;
+            remap.is_default_chord = is_default_chord;
 
             // Load type-specific fields
             if (remap_type == RemapType::Keyboard) {
@@ -320,6 +461,8 @@ void InputRemapper::save_settings() {
                                   remap.hold_mode);
         display_commander::config::set_config_value("DisplayCommander.InputRemapping", (key_prefix + "ChordMode").c_str(),
                                   remap.chord_mode);
+        display_commander::config::set_config_value("DisplayCommander.InputRemapping", (key_prefix + "IsDefaultChord").c_str(),
+                                  remap.is_default_chord);
 
         // Save type-specific fields
         if (remap.remap_type == RemapType::Keyboard) {
@@ -771,14 +914,37 @@ void InputRemapper::apply_gamepad_remapping(DWORD user_index, XINPUT_STATE *stat
 }
 
 void InputRemapper::execute_action(const std::string &action_name) {
+    // Helper function to trigger generic action notification
+    auto trigger_action_notification = [](const std::string &name) {
+        ActionNotification notification = {};
+        notification.type = ActionNotificationType::GenericAction;
+        notification.timestamp_ns = utils::get_now_ns();
+        notification.float_value = 0.0f;
+        notification.bool_value = false;
+        size_t copy_len = (std::min)(name.length(), sizeof(notification.action_name) - 1);
+        name.copy(notification.action_name, copy_len);
+        notification.action_name[copy_len] = '\0';
+        g_action_notification.store(notification);
+    };
+
     if (action_name == "screenshot") {
-        // Trigger screenshot using the existing mechanism
-        auto shared_state = display_commander::widgets::xinput_widget::XInputWidget::GetSharedState();
-        if (shared_state) {
-            shared_state->trigger_screenshot.store(true);
-            LogInfo("InputRemapper::execute_action() - Screenshot action triggered");
+        // Use ReShade 6.6.2+ runtime screenshot API
+        reshade::api::effect_runtime* runtime = GetFirstReShadeRuntime();
+        if (runtime != nullptr) {
+            runtime->save_screenshot();
+            trigger_action_notification("Screenshot");
+            LogInfo("InputRemapper::execute_action() - Screenshot taken via ReShade runtime API");
         } else {
-            LogError("InputRemapper::execute_action() - Shared state not available for screenshot");
+            LogWarn("InputRemapper::execute_action() - ReShade runtime not available for screenshot");
+            // Fallback to old mechanism if runtime is not available
+            auto shared_state = display_commander::widgets::xinput_widget::XInputWidget::GetSharedState();
+            if (shared_state) {
+                shared_state->trigger_screenshot.store(true);
+                trigger_action_notification("Screenshot");
+                LogInfo("InputRemapper::execute_action() - Screenshot triggered via fallback mechanism");
+            } else {
+                LogError("InputRemapper::execute_action() - No screenshot mechanism available");
+            }
         }
     } else if (action_name == "time slowdown toggle") {
         // Toggle time slowdown enabled state
@@ -790,12 +956,14 @@ void InputRemapper::execute_action(const std::string &action_name) {
         bool new_state = !current_state;
         settings::g_experimentalTabSettings.timeslowdown_enabled.SetValue(new_state);
         display_commanderhooks::SetTimeslowdownEnabled(new_state);
+        trigger_action_notification("Time Slowdown " + std::string(new_state ? "On" : "Off"));
         LogInfo("InputRemapper::execute_action() - Time slowdown %s via action", new_state ? "enabled" : "disabled");
     } else if (action_name == "performance overlay toggle") {
         // Toggle performance overlay
         bool current_state = settings::g_mainTabSettings.show_test_overlay.GetValue();
         bool new_state = !current_state;
         settings::g_mainTabSettings.show_test_overlay.SetValue(new_state);
+        trigger_action_notification("Performance Overlay " + std::string(new_state ? "On" : "Off"));
         LogInfo("InputRemapper::execute_action() - Performance overlay %s via action", new_state ? "enabled" : "disabled");
     } else if (action_name == "mute/unmute audio") {
         // Toggle audio mute state
@@ -809,6 +977,20 @@ void InputRemapper::execute_action(const std::string &action_name) {
             LogInfo("InputRemapper::execute_action() - Audio %s via action", new_state ? "muted" : "unmuted");
         } else {
             LogError("InputRemapper::execute_action() - Failed to %s audio", new_state ? "mute" : "unmute");
+        }
+    } else if (action_name == "increase volume") {
+        // Increase volume by 10%
+        if (AdjustVolumeForCurrentProcess(10.0f)) {
+            LogInfo("InputRemapper::execute_action() - Volume increased by 10%%");
+        } else {
+            LogError("InputRemapper::execute_action() - Failed to increase volume");
+        }
+    } else if (action_name == "decrease volume") {
+        // Decrease volume by 10%
+        if (AdjustVolumeForCurrentProcess(-10.0f)) {
+            LogInfo("InputRemapper::execute_action() - Volume decreased by 10%%");
+        } else {
+            LogError("InputRemapper::execute_action() - Failed to decrease volume");
         }
     } else {
         LogError("InputRemapper::execute_action() - Unknown action: %s", action_name.c_str());
@@ -830,6 +1012,6 @@ std::string get_remap_type_name(RemapType type) {
 }
 
 std::vector<std::string> get_available_actions() {
-    return {"screenshot", "time slowdown toggle", "performance overlay toggle", "mute/unmute audio"};
+    return {"screenshot", "time slowdown toggle", "performance overlay toggle", "mute/unmute audio", "increase volume", "decrease volume"};
 }
 } // namespace display_commander::input_remapping

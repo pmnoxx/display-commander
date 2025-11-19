@@ -8,6 +8,7 @@
 #include "../../settings/developer_tab_settings.hpp"
 #include "../../settings/experimental_tab_settings.hpp"
 #include "../../settings/main_tab_settings.hpp"
+#include "../../input_remapping/input_remapping.hpp"
 #include "../../widgets/resolution_widget/resolution_widget.hpp"
 #include "../../nvapi/reflex_manager.hpp"
 #include "../../hooks/nvapi_hooks.hpp"
@@ -637,6 +638,104 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
             ImGui::SetTooltip("Total number of CreateSamplerState (D3D11) and CreateSampler (D3D12) calls intercepted.");
         }
 
+        // Show statistics if we have any calls
+        if (total_count > 0) {
+            ImGui::Spacing();
+            ImGui::Separator();
+            ImGui::Spacing();
+
+            // Filter Mode Statistics
+            ImGui::TextColored(ui::colors::TEXT_LABEL, "Filter Modes (Original Game Requests):");
+            ImGui::Indent();
+
+            uint32_t point_count = g_sampler_filter_mode_counters[SAMPLER_FILTER_POINT].load();
+            uint32_t linear_count = g_sampler_filter_mode_counters[SAMPLER_FILTER_LINEAR].load();
+            uint32_t aniso_count = g_sampler_filter_mode_counters[SAMPLER_FILTER_ANISOTROPIC].load();
+            uint32_t comp_point_count = g_sampler_filter_mode_counters[SAMPLER_FILTER_COMPARISON_POINT].load();
+            uint32_t comp_linear_count = g_sampler_filter_mode_counters[SAMPLER_FILTER_COMPARISON_LINEAR].load();
+            uint32_t comp_aniso_count = g_sampler_filter_mode_counters[SAMPLER_FILTER_COMPARISON_ANISOTROPIC].load();
+            uint32_t other_count = g_sampler_filter_mode_counters[SAMPLER_FILTER_OTHER].load();
+
+            if (point_count > 0) {
+                ImGui::Text("  Point: %u", point_count);
+            }
+            if (linear_count > 0) {
+                ImGui::Text("  Linear: %u", linear_count);
+            }
+            if (aniso_count > 0) {
+                ImGui::Text("  Anisotropic: %u", aniso_count);
+            }
+            if (comp_point_count > 0) {
+                ImGui::Text("  Comparison Point: %u", comp_point_count);
+            }
+            if (comp_linear_count > 0) {
+                ImGui::Text("  Comparison Linear: %u", comp_linear_count);
+            }
+            if (comp_aniso_count > 0) {
+                ImGui::Text("  Comparison Anisotropic: %u", comp_aniso_count);
+            }
+            if (other_count > 0) {
+                ImGui::Text("  Other: %u", other_count);
+            }
+
+            ImGui::Unindent();
+            ImGui::Spacing();
+
+            // Address Mode Statistics
+            ImGui::TextColored(ui::colors::TEXT_LABEL, "Address Modes (U Coordinate):");
+            ImGui::Indent();
+
+            uint32_t wrap_count = g_sampler_address_mode_counters[SAMPLER_ADDRESS_WRAP].load();
+            uint32_t mirror_count = g_sampler_address_mode_counters[SAMPLER_ADDRESS_MIRROR].load();
+            uint32_t clamp_count = g_sampler_address_mode_counters[SAMPLER_ADDRESS_CLAMP].load();
+            uint32_t border_count = g_sampler_address_mode_counters[SAMPLER_ADDRESS_BORDER].load();
+            uint32_t mirror_once_count = g_sampler_address_mode_counters[SAMPLER_ADDRESS_MIRROR_ONCE].load();
+
+            if (wrap_count > 0) {
+                ImGui::Text("  Wrap: %u", wrap_count);
+            }
+            if (mirror_count > 0) {
+                ImGui::Text("  Mirror: %u", mirror_count);
+            }
+            if (clamp_count > 0) {
+                ImGui::Text("  Clamp: %u", clamp_count);
+            }
+            if (border_count > 0) {
+                ImGui::Text("  Border: %u", border_count);
+            }
+            if (mirror_once_count > 0) {
+                ImGui::Text("  Mirror Once: %u", mirror_once_count);
+            }
+
+            ImGui::Unindent();
+            ImGui::Spacing();
+
+            // Anisotropy Level Statistics (only for anisotropic filters)
+            uint32_t total_aniso_samplers = 0;
+            for (int i = 0; i < MAX_ANISOTROPY_LEVELS; ++i) {
+                total_aniso_samplers += g_sampler_anisotropy_level_counters[i].load();
+            }
+
+            if (total_aniso_samplers > 0) {
+                ImGui::TextColored(ui::colors::TEXT_LABEL, "Anisotropic Filtering Levels (Original Game Requests):");
+                ImGui::Indent();
+
+                // Show only levels that have been used
+                for (int i = 0; i < MAX_ANISOTROPY_LEVELS; ++i) {
+                    uint32_t count = g_sampler_anisotropy_level_counters[i].load();
+                    if (count > 0) {
+                        int level = i + 1; // Convert from 0-based index to 1-based level
+                        ImGui::Text("  %dx: %u", level, count);
+                    }
+                }
+
+                ImGui::Unindent();
+                ImGui::Spacing();
+            }
+
+            ImGui::Separator();
+        }
+
         ImGui::Spacing();
 
         // Force Anisotropic Filtering
@@ -749,6 +848,31 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
         }
 
         ImGui::Columns(1); // Reset to single column
+
+        ImGui::Spacing();
+
+        // Enable Default Chords checkbox
+        if (CheckboxSetting(settings::g_mainTabSettings.enable_default_chords, "Enable Default Gamepad Chords")) {
+            // Re-initialize default chords if enabled, or remove them if disabled
+            auto &remapper = display_commander::input_remapping::InputRemapper::get_instance();
+            if (settings::g_mainTabSettings.enable_default_chords.GetValue()) {
+                remapper.add_default_chords();
+                LogInfo("Default chords enabled and added");
+            } else {
+                // Remove only default chords (not user-customized ones)
+                remapper.remove_default_chords();
+                LogInfo("Default chords disabled and removed");
+            }
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Enable default gamepad chords:\n"
+                             "- Guide + D-Pad Up: Increase Volume\n"
+                             "- Guide + D-Pad Down: Decrease Volume\n"
+                             "- Guide + Right Shoulder: Mute/Unmute Audio\n"
+                             "- Guide + Start: Toggle Performance Overlay\n"
+                             "- Guide + Back: Take Screenshot\n\n"
+                             "These chords are added to the input remapping system and can be customized.");
+        }
 
         ImGui::Unindent();
     }
@@ -1824,6 +1948,7 @@ void DrawAudioSettings() {
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Manually mute/unmute audio.");
     }
+
 
     // Mute in Background checkbox (disabled if Mute is ON)
     bool mute_in_bg = s_mute_in_background.load();

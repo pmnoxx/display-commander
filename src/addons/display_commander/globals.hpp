@@ -625,6 +625,29 @@ extern std::atomic<double> g_perf_time_seconds;
 extern std::atomic<bool> g_perf_reset_requested;
 extern std::atomic<std::shared_ptr<const std::string>> g_perf_text_shared;
 
+// Volume overlay display tracking
+extern std::atomic<LONGLONG> g_volume_change_time_ns;
+extern std::atomic<float> g_volume_display_value;
+
+// Action notification system for overlay display
+enum class ActionNotificationType {
+    None = 0,
+    Volume = 1,
+    Mute = 2,
+    GenericAction = 3,  // For any gamepad action
+    // Add more action types here as needed
+};
+
+struct ActionNotification {
+    ActionNotificationType type;
+    LONGLONG timestamp_ns;
+    float float_value;  // For volume percentage
+    bool bool_value;    // For mute state
+    char action_name[64];  // For generic actions (fixed-size array for atomic compatibility)
+};
+
+extern std::atomic<ActionNotification> g_action_notification;
+
 // Lock-free ring buffer for recent FPS samples (60s window at ~240 Hz -> 14400 max)
 constexpr size_t kPerfRingCapacity = 65536;
 
@@ -906,6 +929,32 @@ enum D3DSamplerEventIndex {
     NUM_D3D_SAMPLER_EVENTS
 };
 
+// Sampler filter mode statistics (tracks original game requests)
+enum SamplerFilterModeIndex {
+    SAMPLER_FILTER_POINT,
+    SAMPLER_FILTER_LINEAR,
+    SAMPLER_FILTER_ANISOTROPIC,
+    SAMPLER_FILTER_COMPARISON_POINT,
+    SAMPLER_FILTER_COMPARISON_LINEAR,
+    SAMPLER_FILTER_COMPARISON_ANISOTROPIC,
+    SAMPLER_FILTER_OTHER,
+    NUM_SAMPLER_FILTER_MODES
+};
+
+// Sampler address mode statistics (tracks original game requests)
+enum SamplerAddressModeIndex {
+    SAMPLER_ADDRESS_WRAP,
+    SAMPLER_ADDRESS_MIRROR,
+    SAMPLER_ADDRESS_CLAMP,
+    SAMPLER_ADDRESS_BORDER,
+    SAMPLER_ADDRESS_MIRROR_ONCE,
+    NUM_SAMPLER_ADDRESS_MODES
+};
+
+// Anisotropic filtering level statistics (tracks original game requests)
+// Index represents the anisotropy level (1-16), index 0 = level 1, index 15 = level 16
+constexpr int MAX_ANISOTROPY_LEVELS = 16;
+
 // NVAPI event counters - separate from swapchain events
 enum NvapiEventIndex {
     NVAPI_EVENT_GET_HDR_CAPABILITIES,
@@ -930,6 +979,9 @@ extern std::array<std::atomic<uint32_t>, NUM_DX9_EVENTS> g_dx9_event_counters;
 extern std::array<std::atomic<uint32_t>, NUM_STREAMLINE_EVENTS> g_streamline_event_counters;
 extern std::array<std::atomic<uint32_t>, NUM_D3D11_TEXTURE_EVENTS> g_d3d11_texture_event_counters;
 extern std::array<std::atomic<uint32_t>, NUM_D3D_SAMPLER_EVENTS> g_d3d_sampler_event_counters;
+extern std::array<std::atomic<uint32_t>, NUM_SAMPLER_FILTER_MODES> g_sampler_filter_mode_counters;
+extern std::array<std::atomic<uint32_t>, NUM_SAMPLER_ADDRESS_MODES> g_sampler_address_mode_counters;
+extern std::array<std::atomic<uint32_t>, MAX_ANISOTROPY_LEVELS> g_sampler_anisotropy_level_counters;
 
 // NVAPI event counters - separate from swapchain events
 extern std::array<std::atomic<uint32_t>, NUM_NVAPI_EVENTS> g_nvapi_event_counters;  // Array for NVAPI events

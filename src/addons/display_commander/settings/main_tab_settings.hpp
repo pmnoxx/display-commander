@@ -72,6 +72,9 @@ class MainTabSettings {
     ui::new_ui::BoolSettingRef mute_in_background_if_other_audio;
     ui::new_ui::BoolSetting audio_volume_auto_apply;
 
+    // Input Remapping Settings
+    ui::new_ui::BoolSetting enable_default_chords;
+
     // Input Blocking Settings
     ui::new_ui::ComboSettingEnumRef<InputBlockingMode> keyboard_input_blocking;
     ui::new_ui::ComboSettingEnumRef<InputBlockingMode> mouse_input_blocking;

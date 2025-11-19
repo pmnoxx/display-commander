@@ -615,6 +615,85 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
 
     ImGui::Spacing();
 
+    // Texture Filtering / Sampler State Section
+    if (ImGui::CollapsingHeader("Texture Filtering", ImGuiTreeNodeFlags_None)) {
+        ImGui::Indent();
+
+        // Display call count
+        uint32_t d3d11_count = g_d3d_sampler_event_counters[D3D_SAMPLER_EVENT_CREATE_SAMPLER_STATE_D3D11].load();
+        uint32_t d3d12_count = g_d3d_sampler_event_counters[D3D_SAMPLER_EVENT_CREATE_SAMPLER_D3D12].load();
+        uint32_t total_count = d3d11_count + d3d12_count;
+
+        ImGui::Text("CreateSampler Calls: %u", total_count);
+        if (d3d11_count > 0) {
+            ImGui::SameLine();
+            ImGui::TextColored(ui::colors::TEXT_DIMMED, "(D3D11: %u)", d3d11_count);
+        }
+        if (d3d12_count > 0) {
+            ImGui::SameLine();
+            ImGui::TextColored(ui::colors::TEXT_DIMMED, "(D3D12: %u)", d3d12_count);
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Total number of CreateSamplerState (D3D11) and CreateSampler (D3D12) calls intercepted.");
+        }
+
+        ImGui::Spacing();
+
+        // Force Anisotropic Filtering
+        bool force_aniso = settings::g_mainTabSettings.force_anisotropic_filtering.GetValue();
+        if (ImGui::Checkbox("Force Anisotropic Filtering", &force_aniso)) {
+            settings::g_mainTabSettings.force_anisotropic_filtering.SetValue(force_aniso);
+            LogInfo("Force anisotropic filtering %s", force_aniso ? "enabled" : "disabled");
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Forces linear texture filters to use anisotropic filtering. This improves texture quality at oblique angles.");
+        }
+
+        // Max Anisotropy
+        if (force_aniso) {
+            ImGui::Indent();
+            int max_aniso = settings::g_mainTabSettings.max_anisotropy.GetValue();
+            if (ImGui::SliderInt("Anisotropic Level", &max_aniso, 1, 16, "%dx")) {
+                settings::g_mainTabSettings.max_anisotropy.SetValue(max_aniso);
+                LogInfo("Max anisotropy set to %d", max_aniso);
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Maximum anisotropic filtering level (1-16). Higher values provide better quality but may impact performance.");
+            }
+            ImGui::Unindent();
+        }
+
+        ImGui::Spacing();
+
+        // Mipmap LOD Bias
+        float lod_bias = settings::g_mainTabSettings.force_mipmap_lod_bias.GetValue();
+        if (ImGui::SliderFloat("Mipmap LOD Bias", &lod_bias, -5.0f, 5.0f, lod_bias == 0.0f ? "Game Default" : "%.2f")) {
+            settings::g_mainTabSettings.force_mipmap_lod_bias.SetValue(lod_bias);
+            LogInfo("Mipmap LOD bias set to %.2f", lod_bias);
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip(
+                "Adjusts the mipmap level of detail bias. Positive values use higher quality mipmaps (sharper but more expensive), "
+                "negative values use lower quality mipmaps (blurrier but faster). Only applies to non-shadow samplers.");
+        }
+
+        // Reset button for LOD bias
+        if (lod_bias != 0.0f) {
+            ImGui::SameLine();
+            if (ImGui::Button("Game Default")) {
+                settings::g_mainTabSettings.force_mipmap_lod_bias.SetValue(0.0f);
+                LogInfo("Mipmap LOD bias reset to game default");
+            }
+        }
+
+        ImGui::Spacing();
+        ImGui::TextColored(ui::colors::TEXT_WARNING, ICON_FK_WARNING " Game restart may be required for changes to take full effect.");
+
+        ImGui::Unindent();
+    }
+
+    ImGui::Spacing();
+
     // Audio Settings Section
     if (ImGui::CollapsingHeader("Audio Control", ImGuiTreeNodeFlags_None)) {
         ImGui::Indent();

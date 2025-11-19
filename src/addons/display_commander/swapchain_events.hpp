@@ -52,6 +52,7 @@ bool OnCreateResource(reshade::api::device *device, reshade::api::resource_desc 
                       reshade::api::subresource_data *initial_data, reshade::api::resource_usage usage);
 bool OnCreateResourceView(reshade::api::device *device, reshade::api::resource resource,
                           reshade::api::resource_usage usage_type, reshade::api::resource_view_desc &desc);
+bool OnCreateSampler(reshade::api::device *device, reshade::api::sampler_desc &desc);
 void OnSetViewport(reshade::api::command_list *cmd_list, uint32_t first, uint32_t count,
                    const reshade::api::viewport *viewports);
 void OnSetScissorRects(reshade::api::command_list *cmd_list, uint32_t first, uint32_t count,

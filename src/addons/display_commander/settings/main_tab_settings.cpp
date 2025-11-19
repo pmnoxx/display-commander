@@ -93,7 +93,10 @@ MainTabSettings::MainTabSettings()
       show_hook_stats_tab("show_hook_stats_tab", false, "DisplayCommander"),
       show_streamline_tab("show_streamline_tab", false, "DisplayCommander"),
       show_experimental_tab("show_experimental_tab", false, "DisplayCommander"),
-      skip_ansel_loading("skip_ansel_loading", false, "DisplayCommander") {
+      skip_ansel_loading("skip_ansel_loading", false, "DisplayCommander"),
+      force_anisotropic_filtering("force_anisotropic_filtering", false, "DisplayCommander"),
+      max_anisotropy("max_anisotropy", 16, 1, 16, "DisplayCommander"),
+      force_mipmap_lod_bias("force_mipmap_lod_bias", 0.0f, -5.0f, 5.0f, "DisplayCommander") {
 
     // Initialize the all_settings_ vector
     all_settings_ = {
@@ -153,6 +156,9 @@ MainTabSettings::MainTabSettings()
         &show_streamline_tab,
         &show_experimental_tab,
         &skip_ansel_loading,
+        &force_anisotropic_filtering,
+        &max_anisotropy,
+        &force_mipmap_lod_bias,
     };
 }
 

@@ -215,6 +215,9 @@ void hookToSwapChain(reshade::api::swapchain *swapchain) {
                 LogWarn("Failed to hook D3D11 device: 0x%p", id3d11device);
             }
 
+            // Note: Sampler state hooks are now handled via ReShade's create_sampler event
+            // No need for vtable hooking since ReShade's proxy device intercepts all calls
+
             // Hook D3D11 Device Context
             ID3D11DeviceContext* context = nullptr;
             id3d11device->GetImmediateContext(&context);
@@ -1366,6 +1369,72 @@ bool OnCreateResource(reshade::api::device *device, reshade::api::resource_desc 
             LogInfo("ZZZ Texture format upgrade: %d -> %d (RGB16A16) at %d,%d", static_cast<int>(original_format),
                     static_cast<int>(target_format), desc.texture.width, desc.texture.height);
             modified = true;
+        }
+    }
+
+    return modified;
+}
+
+// Sampler creation event handler to override mipmap bias and anisotropic filtering
+bool OnCreateSampler(reshade::api::device *device, reshade::api::sampler_desc &desc) {
+    if (device == nullptr) {
+        return false;
+    }
+
+    // Track API type for counter
+    reshade::api::device_api api = device->get_api();
+    if (api == reshade::api::device_api::d3d11) {
+        g_d3d_sampler_event_counters[D3D_SAMPLER_EVENT_CREATE_SAMPLER_STATE_D3D11].fetch_add(1);
+    } else if (api == reshade::api::device_api::d3d12) {
+        g_d3d_sampler_event_counters[D3D_SAMPLER_EVENT_CREATE_SAMPLER_D3D12].fetch_add(1);
+    }
+
+    bool modified = false;
+
+    // Apply mipmap LOD bias override
+    if (settings::g_mainTabSettings.force_mipmap_lod_bias.GetValue() != 0.0f) {
+        // Only apply if MinLOD != MaxLOD and comparison op is NEVER (non-shadow samplers)
+        if (desc.min_lod != desc.max_lod && desc.compare_op == reshade::api::compare_op::never) {
+            desc.mip_lod_bias = settings::g_mainTabSettings.force_mipmap_lod_bias.GetValue();
+            modified = true;
+        }
+    }
+
+    // Apply anisotropic filtering override
+    if (settings::g_mainTabSettings.force_anisotropic_filtering.GetValue()) {
+        // Convert linear filters to anisotropic
+        switch (desc.filter) {
+            case reshade::api::filter_mode::min_mag_mip_linear:
+                desc.filter = reshade::api::filter_mode::anisotropic;
+                modified = true;
+                break;
+            case reshade::api::filter_mode::compare_min_mag_mip_linear:
+                desc.filter = reshade::api::filter_mode::compare_anisotropic;
+                modified = true;
+                break;
+            case reshade::api::filter_mode::min_mag_linear_mip_point:
+                desc.filter = reshade::api::filter_mode::anisotropic;
+                modified = true;
+                break;
+            case reshade::api::filter_mode::compare_min_mag_linear_mip_point:
+                desc.filter = reshade::api::filter_mode::compare_anisotropic;
+                modified = true;
+                break;
+            default:
+                break;
+        }
+    }
+
+    // Apply max anisotropy override for anisotropic filters
+    if (settings::g_mainTabSettings.max_anisotropy.GetValue() > 0) {
+        switch (desc.filter) {
+            case reshade::api::filter_mode::anisotropic:
+            case reshade::api::filter_mode::compare_anisotropic:
+                desc.max_anisotropy = static_cast<float>(settings::g_mainTabSettings.max_anisotropy.GetValue());
+                modified = true;
+                break;
+            default:
+                break;
         }
     }
 

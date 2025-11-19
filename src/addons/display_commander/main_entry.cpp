@@ -958,6 +958,7 @@ void DoInitializationWithoutHwnd(HMODULE h_module, DWORD fdw_reason) {
     // Register buffer resolution upgrade event handlers
     reshade::register_event<reshade::addon_event::create_resource>(OnCreateResource);
     reshade::register_event<reshade::addon_event::create_resource_view>(OnCreateResourceView);
+    reshade::register_event<reshade::addon_event::create_sampler>(OnCreateSampler);
     reshade::register_event<reshade::addon_event::bind_viewports>(OnSetViewport);
     reshade::register_event<reshade::addon_event::bind_scissor_rects>(OnSetScissorRects);
     // Note: bind_resource, map_resource, unmap_resource events don't exist in ReShade API

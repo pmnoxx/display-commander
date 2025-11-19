@@ -130,6 +130,11 @@ class MainTabSettings {
     // Ansel Control
     ui::new_ui::BoolSetting skip_ansel_loading;
 
+    // Sampler State Override Settings
+    ui::new_ui::BoolSetting force_anisotropic_filtering;
+    ui::new_ui::IntSetting max_anisotropy;
+    ui::new_ui::FloatSetting force_mipmap_lod_bias;
+
   private:
     std::vector<ui::new_ui::SettingBase *> all_settings_;
 };

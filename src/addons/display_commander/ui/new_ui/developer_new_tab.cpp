@@ -56,12 +56,11 @@ void DrawDeveloperNewTab() {
 
     ImGui::Spacing();
 
-    // NVAPI Settings Section
-    if (ImGui::CollapsingHeader("NVAPI Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
-        DrawNvapiSettings();
-    }
+    // NVAPI Settings Section - only show if game is in NVAPI game list
+    DrawNvapiSettings();
 
     ImGui::Spacing();
+
 
     // ReShade Global Config Section
     if (ImGui::CollapsingHeader("ReShade Global Config", ImGuiTreeNodeFlags_DefaultOpen)) {
@@ -322,73 +321,79 @@ void DrawHdrDisplaySettings() {
 
 void DrawNvapiSettings() {
     uint64_t now_ns = utils::get_now_ns();
-    ImGui::Indent();
 
-    // NVAPI Auto-enable checkbox
-    if (CheckboxSetting(settings::g_developerTabSettings.nvapi_auto_enable_enabled, "Enable NVAPI Auto-enable for Games")) {
-        s_nvapi_auto_enable_enabled.store(settings::g_developerTabSettings.nvapi_auto_enable_enabled.GetValue());
-        LogInfo("NVAPI Auto-enable setting changed to: %s",
-                settings::g_developerTabSettings.nvapi_auto_enable_enabled.GetValue() ? "true" : "false");
-    }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Automatically enable NVAPI features for supported games when they are launched.");
-    }
 
-    // Display current game status
-    ImGui::Spacing();
-    std::string gameStatus = GetNvapiAutoEnableGameStatus();
-    bool isGameSupported = IsGameInNvapiAutoEnableList(GetCurrentProcessName());
+    if (IsGameInNvapiAutoEnableList(GetCurrentProcessName())) {
+        if (ImGui::CollapsingHeader("NVAPI Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
+            ImGui::Indent();
+            // NVAPI Auto-enable checkbox
+            if (CheckboxSetting(settings::g_developerTabSettings.nvapi_auto_enable_enabled, "Enable NVAPI Auto-enable for Games")) {
+                s_nvapi_auto_enable_enabled.store(settings::g_developerTabSettings.nvapi_auto_enable_enabled.GetValue());
+                LogInfo("NVAPI Auto-enable setting changed to: %s",
+                        settings::g_developerTabSettings.nvapi_auto_enable_enabled.GetValue() ? "true" : "false");
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Automatically enable NVAPI features for supported games when they are launched.");
+            }
 
-    if (isGameSupported) {
-        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), ICON_FK_OK " Current Game: %s", gameStatus.c_str());
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("This game is supported for NVAPI auto-enable features.");
+            // Display current game status
+            ImGui::Spacing();
+            std::string gameStatus = GetNvapiAutoEnableGameStatus();
+            bool isGameSupported = IsGameInNvapiAutoEnableList(GetCurrentProcessName());
+
+            if (isGameSupported) {
+                ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), ICON_FK_OK " Current Game: %s", gameStatus.c_str());
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip("This game is supported for NVAPI auto-enable features.");
+                }
+                // Warning about Alt+Enter requirement
+                ImGui::Spacing();
+                ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), ICON_FK_WARNING " Warning: Requires pressing Alt+Enter once");
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip(
+                        "Press Alt-Enter to enable HDR.\n"
+                        "This is required for proper HDR functionality.");
+                }
+
+            } else {
+                ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), ICON_FK_CANCEL " Current Game: %s", gameStatus.c_str());
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip("This game is not in the NVAPI auto-enable supported games list.");
+                }
+            }
+
+            ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "NVAPI Auto-enable for Games");
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip(
+                    "Automatically enable NVAPI features for specific games.\n\n"
+                    "Note: DLDSR needs to be off for proper functionality\n\n"
+                    "Supported games:\n"
+                    "- Armored Core 6\n"
+                    "- Devil May Cry 5\n"
+                    "- Elden Ring\n"
+                    "- Hitman\n"
+                    "- Resident Evil 2\n"
+                    "- Resident Evil 3\n"
+                    "- Resident Evil 7\n"
+                    "- Resident Evil 8\n"
+                    "- Sekiro: Shadows Die Twice");
+            }
+
+
+            // Display restart warning if needed
+            if (s_restart_needed_nvapi.load()) {
+                ImGui::Spacing();
+                ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "Game restart required to apply NVAPI changes.");
+            }
+            if (::g_nvapiFullscreenPrevention.IsAvailable()) {
+                // Library loaded successfully
+                ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), ICON_FK_OK " NVAPI Library: Loaded");
+            } else {
+                // Library not loaded
+                ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), ICON_FK_CANCEL " NVAPI Library: Not Loaded");
+            }
         }
-        // Warning about Alt+Enter requirement
-        ImGui::Spacing();
-        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), ICON_FK_WARNING " Warning: Requires pressing Alt+Enter once");
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
-                "Press Alt-Enter to enable HDR.\n"
-                "This is required for proper HDR functionality.");
-        }
-
-    } else {
-        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), ICON_FK_CANCEL " Current Game: %s", gameStatus.c_str());
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("This game is not in the NVAPI auto-enable supported games list.");
-        }
-    }
-
-    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "NVAPI Auto-enable for Games");
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip(
-            "Automatically enable NVAPI features for specific games.\n\n"
-            "Note: DLDSR needs to be off for proper functionality\n\n"
-            "Supported games:\n"
-            "- Armored Core 6\n"
-            "- Devil May Cry 5\n"
-            "- Elden Ring\n"
-            "- Hitman\n"
-            "- Resident Evil 2\n"
-            "- Resident Evil 3\n"
-            "- Resident Evil 7\n"
-            "- Resident Evil 8\n"
-            "- Sekiro: Shadows Die Twice");
-    }
-
-
-    // Display restart warning if needed
-    if (s_restart_needed_nvapi.load()) {
-        ImGui::Spacing();
-        ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "Game restart required to apply NVAPI changes.");
-    }
-    if (::g_nvapiFullscreenPrevention.IsAvailable()) {
-        // Library loaded successfully
-        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), ICON_FK_OK " NVAPI Library: Loaded");
-    } else {
-        // Library not loaded
-        ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), ICON_FK_CANCEL " NVAPI Library: Not Loaded");
+        ImGui::Unindent();
     }
 
     // Minimal NVIDIA Reflex Controls (device runtime dependent)
@@ -676,7 +681,6 @@ void DrawNvapiSettings() {
         ImGui::Unindent();
     }
 
-    ImGui::Unindent();
 }
 
 

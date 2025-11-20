@@ -40,6 +40,8 @@ if(MSVC)
   target_compile_options(zzz_display_commander PRIVATE /D_ENABLE_EXTENDED_ALIGNED_STORAGE)
   # Suppress Microsoft extension warnings for function pointer casting (common with MinHook)
   target_compile_options(zzz_display_commander PRIVATE /wd4191)
+  # Use UTF-8 encoding for source files to support Unicode characters (fixes C4566 warning)
+  target_compile_options(zzz_display_commander PRIVATE /utf-8)
 
   # Use static runtime linking to avoid dependency on debug runtime DLLs
   set_property(TARGET zzz_display_commander PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")

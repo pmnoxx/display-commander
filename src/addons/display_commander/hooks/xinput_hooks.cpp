@@ -159,11 +159,6 @@ static DWORD ProcessXInputGetState(DWORD dwUserIndex, XINPUT_STATE *pState, Hook
         }
     }
 
-    // Fall back to original XInput if DualSense conversion failed or is disabled
-    if (result != ERROR_SUCCESS) {
-        result = call_original_func(dwUserIndex, pState);
-    }
-
     // Track whether we spoofed the connection
     bool did_spoof_connection = false;
 
@@ -175,6 +170,12 @@ static DWORD ProcessXInputGetState(DWORD dwUserIndex, XINPUT_STATE *pState, Hook
         result = ERROR_SUCCESS; // Spoof as connected
         did_spoof_connection = true;
     }
+
+    // Fall back to original XInput if DualSense conversion failed or is disabled
+    if (result != ERROR_SUCCESS) {
+        result = call_original_func(dwUserIndex, pState);
+    }
+
 
     // Override packet number with our tracked value just before returning
     if (dwUserIndex < 4) {

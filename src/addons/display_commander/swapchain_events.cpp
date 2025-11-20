@@ -1482,23 +1482,31 @@ bool OnCreateSampler(reshade::api::device *device, reshade::api::sampler_desc &d
 
     // Apply anisotropic filtering override
     if (settings::g_mainTabSettings.force_anisotropic_filtering.GetValue()) {
-        // Convert linear filters to anisotropic
+        // Convert linear filters to anisotropic based on individual filter type settings
         switch (desc.filter) {
             case reshade::api::filter_mode::min_mag_mip_linear:
-                desc.filter = reshade::api::filter_mode::anisotropic;
-                modified = true;
+                if (settings::g_mainTabSettings.upgrade_min_mag_mip_linear.GetValue()) {
+                    desc.filter = reshade::api::filter_mode::anisotropic;
+                    modified = true;
+                }
                 break;
             case reshade::api::filter_mode::compare_min_mag_mip_linear:
-                desc.filter = reshade::api::filter_mode::compare_anisotropic;
-                modified = true;
+                if (settings::g_mainTabSettings.upgrade_min_mag_mip_linear.GetValue()) {
+                    desc.filter = reshade::api::filter_mode::compare_anisotropic;
+                    modified = true;
+                }
                 break;
             case reshade::api::filter_mode::min_mag_linear_mip_point:
-                desc.filter = reshade::api::filter_mode::anisotropic;
-                modified = true;
+                if (settings::g_mainTabSettings.upgrade_min_mag_linear_mip_point.GetValue()) {
+                    desc.filter = reshade::api::filter_mode::anisotropic;
+                    modified = true;
+                }
                 break;
             case reshade::api::filter_mode::compare_min_mag_linear_mip_point:
-                desc.filter = reshade::api::filter_mode::compare_anisotropic;
-                modified = true;
+                if (settings::g_mainTabSettings.upgrade_min_mag_linear_mip_point.GetValue()) {
+                    desc.filter = reshade::api::filter_mode::compare_anisotropic;
+                    modified = true;
+                }
                 break;
             default:
                 break;

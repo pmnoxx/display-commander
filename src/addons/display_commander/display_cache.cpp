@@ -320,8 +320,8 @@ std::vector<std::string> DisplayCache::GetMonitorLabels() const {
         if (display) {
             std::ostringstream oss;
 
-            // Convert friendly name to string for user-friendly display
-            std::string friendly_name(display->friendly_name.begin(), display->friendly_name.end());
+            // Convert friendly name to string for user-friendly display (proper UTF-8 conversion)
+            std::string friendly_name = WideCharToUTF8(display->friendly_name);
 
             // Get high-precision refresh rate with full precision
             double exact_refresh_rate = display->current_refresh_rate.ToHz();
@@ -343,7 +343,7 @@ std::vector<std::string> DisplayCache::GetMonitorLabels() const {
             }
 
             // Format: [DeviceID] Friendly Name - Resolution @ PreciseRefreshRateHz [Raw: num/den]
-            std::string simple_device_id(display->simple_device_id.begin(), display->simple_device_id.end());
+            std::string simple_device_id = WideCharToUTF8(display->simple_device_id);
             oss << "[" << simple_device_id << "] " << friendly_name << " - " << display->GetCurrentResolutionString()
                 << "@" << rate_str << "Hz";
             labels.push_back(oss.str());
@@ -377,8 +377,8 @@ std::vector<DisplayInfoForUI> DisplayCache::GetDisplayInfoForUI() const {
         // Generate simple device ID (e.g., "DISPLAY1", "DISPLAY2")
         info.simple_device_id = "DISPLAY" + std::to_string(i + 1);
 
-        // Convert friendly name to string
-        info.friendly_name = std::string(display->friendly_name.begin(), display->friendly_name.end());
+        // Convert friendly name to string (proper UTF-8 conversion)
+        info.friendly_name = WideCharToUTF8(display->friendly_name);
 
         // Get current resolution and refresh rate strings
         info.current_resolution = display->GetCurrentResolutionString();
@@ -412,7 +412,7 @@ std::vector<DisplayInfoForUI> DisplayCache::GetDisplayInfoForUI() const {
         }
 
         // Format: [ExtendedDeviceID] Friendly Name - Resolution @ PreciseRefreshRateHz [Raw: num/den]
-        std::string simple_device_id(display->simple_device_id.begin(), display->simple_device_id.end());
+        std::string simple_device_id = WideCharToUTF8(display->simple_device_id);
         oss << "[" << simple_device_id << "] " << info.friendly_name << " - " << info.current_resolution
             << "@" << rate_str << "Hz";
         info.display_label = oss.str();
@@ -568,8 +568,8 @@ void DisplayCache::PrintVSyncFreqDivider() const {
 
         std::ostringstream oss;
         oss << "Display " << i << " (";
-        // Convert wstring to string for output
-        std::string friendly_name_str(display->friendly_name.begin(), display->friendly_name.end());
+        // Convert wstring to string for output (proper UTF-8 conversion)
+        std::string friendly_name_str = WideCharToUTF8(display->friendly_name);
         oss << friendly_name_str << "): ";
         oss << "Current refresh rate: " << display->current_refresh_rate.ToString();
         oss << " [Raw: " << display->current_refresh_rate.numerator << "/" << display->current_refresh_rate.denominator

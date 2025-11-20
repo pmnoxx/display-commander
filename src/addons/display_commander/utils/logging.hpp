@@ -8,6 +8,9 @@ void LogWarn(const char *msg, ...);
 void LogError(const char *msg, ...);
 void LogDebug(const char *msg, ...);
 
+// Log current logging level (always logs, even if logging is disabled)
+void LogCurrentLogLevel();
+
 // Throttled error logging macro
 // Usage: LogErrorThrottled(10, "Error message %d", value);
 // This will only log the error up to 10 times per call site

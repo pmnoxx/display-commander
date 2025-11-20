@@ -56,3 +56,21 @@ void LogDebug(const char *msg, ...) {
     va_end(args);
     reshade::log::message(reshade::log::level::debug, buffer);
 }
+
+// Helper function to convert LogLevel to string
+static const char* LogLevelToString(LogLevel level) {
+    switch (level) {
+        case LogLevel::Error:   return "Error";
+        case LogLevel::Warning: return "Warning";
+        case LogLevel::Info:    return "Info";
+        case LogLevel::Debug:   return "Debug";
+        default:                return "Unknown";
+    }
+}
+
+void LogCurrentLogLevel() {
+    // Always log the current logging level using LogError so it's always visible
+    // This helps diagnose if users have disabled logging
+    LogLevel current_level = g_min_log_level.load();
+    LogError("Current logging level: %s (value: %d)", LogLevelToString(current_level), static_cast<int>(current_level));
+}

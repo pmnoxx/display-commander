@@ -961,6 +961,9 @@ void DoInitializationWithoutHwnd(HMODULE h_module, DWORD fdw_reason) {
     // Load all settings at startup
     settings::LoadAllSettingsAtStartup();
 
+    // Log current logging level (always logs, even if logging is disabled)
+    LogCurrentLogLevel();
+
     HandleSafemode();
 
     // Pin the module to prevent premature unload

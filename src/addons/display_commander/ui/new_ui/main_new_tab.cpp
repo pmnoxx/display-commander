@@ -353,7 +353,8 @@ void DrawAdvancedSettings() {
     // Logging Level Control
     if (ComboSettingEnumRefWrapper(settings::g_mainTabSettings.log_level, "Logging Level")) {
         g_min_log_level.store(static_cast<LogLevel>(settings::g_mainTabSettings.log_level.GetValue()));
-        LogInfo("Logging level changed to: %d", static_cast<int>(settings::g_mainTabSettings.log_level.GetValue()));
+        // Always log the level change (using LogCurrentLogLevel which uses LogError)
+        LogCurrentLogLevel();
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip(

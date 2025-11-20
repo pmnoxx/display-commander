@@ -748,9 +748,34 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
             ImGui::SetTooltip("Forces linear texture filters to use anisotropic filtering. This improves texture quality at oblique angles.");
         }
 
-        // Max Anisotropy
+        // Filter Type Selection
         if (force_aniso) {
             ImGui::Indent();
+
+
+            bool upgrade_mip_point = settings::g_mainTabSettings.upgrade_min_mag_linear_mip_point.GetValue();
+            if (ImGui::Checkbox("Upgrade Bilinear Filters", &upgrade_mip_point)) {
+                settings::g_mainTabSettings.upgrade_min_mag_linear_mip_point.SetValue(upgrade_mip_point);
+                LogInfo("Upgrade bilinear filters %s", upgrade_mip_point ? "enabled" : "disabled");
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Upgrade bilinear filters (min_mag_linear_mip_point and compare_min_mag_linear_mip_point) to anisotropic filtering.\n"
+                                  "Bilinear filtering uses linear interpolation for min and mag, but point sampling for mip levels.");
+            }
+
+            bool upgrade_mip_linear = settings::g_mainTabSettings.upgrade_min_mag_mip_linear.GetValue();
+            if (ImGui::Checkbox("Upgrade Trilinear Filters", &upgrade_mip_linear)) {
+                settings::g_mainTabSettings.upgrade_min_mag_mip_linear.SetValue(upgrade_mip_linear);
+                LogInfo("Upgrade trilinear filters %s", upgrade_mip_linear ? "enabled" : "disabled");
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Upgrade trilinear filters (min_mag_mip_linear and compare_min_mag_mip_linear) to anisotropic filtering.\n"
+                                  "Trilinear filtering uses linear interpolation for min, mag, and mip levels.");
+            }
+
+            ImGui::Spacing();
+
+            // Max Anisotropy
             int max_aniso = settings::g_mainTabSettings.max_anisotropy.GetValue();
             if (ImGui::SliderInt("Anisotropic Level", &max_aniso, 1, 16, "%dx")) {
                 settings::g_mainTabSettings.max_anisotropy.SetValue(max_aniso);

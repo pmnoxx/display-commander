@@ -1491,7 +1491,7 @@ bool OnCreateSampler(reshade::api::device *device, reshade::api::sampler_desc &d
                 }
                 break;
             case reshade::api::filter_mode::compare_min_mag_mip_linear:
-                if (settings::g_mainTabSettings.upgrade_compare_min_mag_mip_linear.GetValue()) {
+                if (settings::g_mainTabSettings.upgrade_min_mag_mip_linear.GetValue()) {
                     desc.filter = reshade::api::filter_mode::compare_anisotropic;
                     modified = true;
                 }
@@ -1503,7 +1503,7 @@ bool OnCreateSampler(reshade::api::device *device, reshade::api::sampler_desc &d
                 }
                 break;
             case reshade::api::filter_mode::compare_min_mag_linear_mip_point:
-                if (settings::g_mainTabSettings.upgrade_compare_min_mag_linear_mip_point.GetValue()) {
+                if (settings::g_mainTabSettings.upgrade_min_mag_linear_mip_point.GetValue()) {
                     desc.filter = reshade::api::filter_mode::compare_anisotropic;
                     modified = true;
                 }

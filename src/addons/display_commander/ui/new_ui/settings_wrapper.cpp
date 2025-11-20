@@ -389,6 +389,10 @@ template <typename EnumType> std::string ComboSettingEnumRef<EnumType>::GetValue
     return std::to_string(static_cast<int>(external_ref_.get().load()));
 }
 
+template <typename EnumType> int ComboSettingEnumRef<EnumType>::GetValue() const {
+    return static_cast<int>(external_ref_.get().load());
+}
+
 template <typename EnumType> void ComboSettingEnumRef<EnumType>::SetValue(int value) {
     int clamped_value = std::max(0, std::min(static_cast<int>(labels_.size()) - 1, value));
     external_ref_.get().store(static_cast<EnumType>(clamped_value));

@@ -1,5 +1,6 @@
 #include "display_initial_state.hpp"
 #include "display_cache.hpp"
+#include "display/query_display.hpp"
 #include "utils/logging.hpp"
 
 namespace display_initial_state {
@@ -120,9 +121,9 @@ void InitialDisplayStateManager::PrintInitialStates() const {
         // Get extended device ID for this display
         std::string extended_device_id = display_cache::g_displayCache.GetExtendedDeviceIdFromMonitor(state.monitor_handle);
 
-        // Convert friendly name to string for logging
-        std::string friendly_name_str(state.friendly_name.begin(), state.friendly_name.end());
-        std::string device_name_str(state.device_name.begin(), state.device_name.end());
+        // Convert friendly name to string for logging (proper UTF-8 conversion)
+        std::string friendly_name_str = WideCharToUTF8(state.friendly_name);
+        std::string device_name_str = WideCharToUTF8(state.device_name);
 
         LogInfo("Display %d: %s (%s) - %dx%d @ %u/%u (%.6fHz) %s",
                 state.display_id, device_name_str.c_str(), friendly_name_str.c_str(),

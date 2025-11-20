@@ -270,7 +270,7 @@ template <typename EnumType> class ComboSettingEnumRef : public SettingBase {
     void Save() override;
     std::string GetValueAsString() const override;
 
-    int GetValue() const { return static_cast<int>(external_ref_.get().load()); }
+    int GetValue() const;
     void SetValue(int value);
     int GetDefaultValue() const { return default_value_; }
     const std::vector<const char *> &GetLabels() const { return labels_; }

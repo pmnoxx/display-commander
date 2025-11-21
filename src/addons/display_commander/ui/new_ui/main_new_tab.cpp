@@ -330,7 +330,9 @@ void InitMainNewTab() {
         display_commander::widgets::resolution_widget::InitializeResolutionWidget();
 
         // Sync log level from settings
-        g_min_log_level.store(static_cast<LogLevel>(settings::g_mainTabSettings.log_level.GetValue()));
+        // Note: The setting already updates g_min_log_level via SetValue() when loaded,
+        // so we don't need to manually update it here. The setting wrapper handles the
+        // index-to-enum conversion automatically.
     }
 }
 
@@ -353,8 +355,9 @@ void DrawAdvancedSettings() {
     ImGui::Spacing();
 
     // Logging Level Control
+    // Note: ComboSettingEnumRefWrapper already updates g_min_log_level via SetValue(),
+    // so we don't need to manually update it here. Just log the change.
     if (ComboSettingEnumRefWrapper(settings::g_mainTabSettings.log_level, "Logging Level")) {
-        g_min_log_level.store(static_cast<LogLevel>(settings::g_mainTabSettings.log_level.GetValue()));
         // Always log the level change (using LogCurrentLogLevel which uses LogError)
         LogCurrentLogLevel();
     }
@@ -1989,10 +1992,53 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                                     ImGui::TextColored(ui::colors::TEXT_WARNING, "  Sizes differ (may cause Composed Flip)");
                                 }
                             }
+
+                            // Display/monitor information
+                            ImGui::Separator();
+                            ImGui::TextColored(ui::colors::TEXT_LABEL, "Display Information:");
+                            HMONITOR monitor = MonitorFromWindow(game_window, MONITOR_DEFAULTTONEAREST);
+                            if (monitor != nullptr) {
+                                MONITORINFOEXW monitor_info = {};
+                                monitor_info.cbSize = sizeof(MONITORINFOEXW);
+                                if (GetMonitorInfoW(monitor, &monitor_info)) {
+                                    ImGui::Text("Monitor Rect: (%ld, %ld) to (%ld, %ld)",
+                                              monitor_info.rcMonitor.left, monitor_info.rcMonitor.top,
+                                              monitor_info.rcMonitor.right, monitor_info.rcMonitor.bottom);
+                                    long monitor_width = monitor_info.rcMonitor.right - monitor_info.rcMonitor.left;
+                                    long monitor_height = monitor_info.rcMonitor.bottom - monitor_info.rcMonitor.top;
+                                    ImGui::Text("Monitor Size: %ld x %ld", monitor_width, monitor_height);
+
+                                    // Check if window covers entire monitor
+                                    if (GetWindowRect(game_window, &window_rect)) {
+                                        bool covers_monitor = (window_rect.left == monitor_info.rcMonitor.left &&
+                                                             window_rect.top == monitor_info.rcMonitor.top &&
+                                                             window_rect.right == monitor_info.rcMonitor.right &&
+                                                             window_rect.bottom == monitor_info.rcMonitor.bottom);
+                                        if (covers_monitor) {
+                                            ImGui::TextColored(ui::colors::TEXT_SUCCESS, "  Window covers entire monitor");
+                                        } else {
+                                            ImGui::TextColored(ui::colors::TEXT_WARNING, "  Window does not cover entire monitor");
+                                        }
+                                    }
+                                }
+                            }
                         }
+
+                        // Detailed explanation for Composed Flip
                         if (flip_state == DxgiBypassMode::kComposed) {
+                            ImGui::Separator();
                             ImGui::TextColored(ui::colors::FLIP_COMPOSED, "  - Composed Flip (Red): Desktop Window Manager composition mode");
                             ImGui::Text("    Higher latency, not ideal for gaming");
+                            ImGui::Spacing();
+                            ImGui::TextColored(ui::colors::TEXT_LABEL, "Why Composed Flip?");
+                            ImGui::BulletText("Fullscreen: No (Borderless windowed mode)");
+                            ImGui::BulletText("DWM composition required for windowed mode");
+                            ImGui::BulletText("Independent Flip requires True Fullscreen Exclusive (FSE)");
+                            ImGui::Spacing();
+                            ImGui::TextColored(ui::colors::TEXT_DIMMED, "To achieve Independent Flip:");
+                            ImGui::BulletText("Enable True Fullscreen Exclusive in game settings");
+                            ImGui::BulletText("Or use borderless fullscreen with exact resolution match");
+                            ImGui::BulletText("Ensure no overlays or DWM effects are active");
                         } else if (flip_state == DxgiBypassMode::kOverlay) {
                             ImGui::TextColored(ui::colors::FLIP_INDEPENDENT, "  - MPO Independent Flip (Green): Modern hardware overlay plane");
                             ImGui::Text("    Best performance and lowest latency");

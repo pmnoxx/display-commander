@@ -13,6 +13,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <iomanip>
 #include <sstream>
 #include <vector>
 
@@ -167,12 +168,71 @@ void InitializeHotkeyDefinitions() {
                     LogInfo("Stopwatch started/resumed via hotkey (reset to 0)");
                 }
             }
+        },
+        {
+            "volume_up",
+            "Volume Up",
+            "ctrl+shift+up",
+            "Increase audio volume (percentage-based, min 1%)",
+            []() {
+                float current_volume = 0.0f;
+                if (!GetVolumeForCurrentProcess(&current_volume)) {
+                    current_volume = s_audio_volume_percent.load();
+                }
+
+                // Calculate percentage-based step: 20% of current volume, minimum 1%
+                float step = 0.0f;
+                if (current_volume <= 0.0f) {
+                    // Special case: if at 0%, jump to 1%
+                    step = 1.0f;
+                } else {
+                    // 20% of current volume, with minimum of 1%
+                    step = (std::max)(1.0f, current_volume * 0.20f);
+                }
+
+                if (AdjustVolumeForCurrentProcess(step)) {
+                    std::ostringstream oss;
+                    oss << "Volume increased by " << std::fixed << std::setprecision(1) << step << "% via hotkey";
+                    LogInfo(oss.str().c_str());
+                } else {
+                    LogWarn("Failed to increase volume via hotkey");
+                }
+            }
+        },
+        {
+            "volume_down",
+            "Volume Down",
+            "ctrl+shift+down",
+            "Decrease audio volume (percentage-based, min 1%)",
+            []() {
+                float current_volume = 0.0f;
+                if (!GetVolumeForCurrentProcess(&current_volume)) {
+                    current_volume = s_audio_volume_percent.load();
+                }
+
+                // Calculate percentage-based step: 20% of current volume, minimum 1%
+                if (current_volume <= 0.0f) {
+                    // Already at 0%, can't go lower
+                    return;
+                }
+
+                // 20% of current volume, with minimum of 1%
+                float step = (std::max)(1.0f, current_volume * 0.20f);
+
+                if (AdjustVolumeForCurrentProcess(-step)) {
+                    std::ostringstream oss;
+                    oss << "Volume decreased by " << std::fixed << std::setprecision(1) << step << "% via hotkey";
+                    LogInfo(oss.str().c_str());
+                } else {
+                    LogWarn("Failed to decrease volume via hotkey");
+                }
+            }
         }
     };
 
     // Map settings to definitions
     auto& settings = settings::g_hotkeysTabSettings;
-    if (g_hotkey_definitions.size() >= 9) {
+    if (g_hotkey_definitions.size() >= 11) {
         // Load parsed shortcuts from settings
         g_hotkey_definitions[0].parsed = ParseHotkeyString(settings.hotkey_mute_unmute.GetValue());
         g_hotkey_definitions[1].parsed = ParseHotkeyString(settings.hotkey_background_toggle.GetValue());
@@ -185,6 +245,8 @@ void InitializeHotkeyDefinitions() {
         g_hotkey_definitions[6].parsed = ParseHotkeyString(settings.hotkey_display_commander_ui.GetValue());
         g_hotkey_definitions[7].parsed = ParseHotkeyString(settings.hotkey_performance_overlay.GetValue());
         g_hotkey_definitions[8].parsed = ParseHotkeyString(settings.hotkey_stopwatch.GetValue());
+        g_hotkey_definitions[9].parsed = ParseHotkeyString(settings.hotkey_volume_up.GetValue());
+        g_hotkey_definitions[10].parsed = ParseHotkeyString(settings.hotkey_volume_down.GetValue());
     }
 }
 
@@ -362,6 +424,8 @@ void DrawHotkeysTab() {
         g_hotkey_definitions[6].parsed = ParseHotkeyString(settings.hotkey_display_commander_ui.GetValue());
         g_hotkey_definitions[7].parsed = ParseHotkeyString(settings.hotkey_performance_overlay.GetValue());
         g_hotkey_definitions[8].parsed = ParseHotkeyString(settings.hotkey_stopwatch.GetValue());
+        g_hotkey_definitions[9].parsed = ParseHotkeyString(settings.hotkey_volume_up.GetValue());
+        g_hotkey_definitions[10].parsed = ParseHotkeyString(settings.hotkey_volume_down.GetValue());
 
         // Draw each hotkey configuration
         for (size_t i = 0; i < g_hotkey_definitions.size(); ++i) {
@@ -379,6 +443,8 @@ void DrawHotkeysTab() {
                 case 6: setting_ptr = &settings.hotkey_display_commander_ui; break;
                 case 7: setting_ptr = &settings.hotkey_performance_overlay; break;
                 case 8: setting_ptr = &settings.hotkey_stopwatch; break;
+                case 9: setting_ptr = &settings.hotkey_volume_up; break;
+                case 10: setting_ptr = &settings.hotkey_volume_down; break;
                 default: setting_ptr = nullptr; break;
             }
 

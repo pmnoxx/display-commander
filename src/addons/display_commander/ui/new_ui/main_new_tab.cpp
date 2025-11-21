@@ -765,7 +765,17 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
                 LogInfo("Upgrade bilinear filters %s", upgrade_mip_point ? "enabled" : "disabled");
             }
             if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("Upgrade bilinear filters (min_mag_linear_mip_point and compare_min_mag_linear_mip_point) to anisotropic filtering.\n"
+                ImGui::SetTooltip("Upgrade bilinear filters (min_mag_linear_mip_point) to anisotropic filtering.\n"
+                                  "Bilinear filtering uses linear interpolation for min and mag, but point sampling for mip levels.");
+            }
+
+            bool upgrade_compare_mip_point = settings::g_mainTabSettings.upgrade_compare_min_mag_linear_mip_point.GetValue();
+            if (ImGui::Checkbox("Upgrade Compare Bilinear Filters", &upgrade_compare_mip_point)) {
+                settings::g_mainTabSettings.upgrade_compare_min_mag_linear_mip_point.SetValue(upgrade_compare_mip_point);
+                LogInfo("Upgrade compare bilinear filters %s", upgrade_compare_mip_point ? "enabled" : "disabled");
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Upgrade compare bilinear filters (compare_min_mag_linear_mip_point) to compare anisotropic filtering.\n"
                                   "Bilinear filtering uses linear interpolation for min and mag, but point sampling for mip levels.");
             }
 
@@ -775,7 +785,17 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
                 LogInfo("Upgrade trilinear filters %s", upgrade_mip_linear ? "enabled" : "disabled");
             }
             if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("Upgrade trilinear filters (min_mag_mip_linear and compare_min_mag_mip_linear) to anisotropic filtering.\n"
+                ImGui::SetTooltip("Upgrade trilinear filters (min_mag_mip_linear) to anisotropic filtering.\n"
+                                  "Trilinear filtering uses linear interpolation for min, mag, and mip levels.");
+            }
+
+            bool upgrade_compare_mip_linear = settings::g_mainTabSettings.upgrade_compare_min_mag_mip_linear.GetValue();
+            if (ImGui::Checkbox("Upgrade Compare Trilinear Filters", &upgrade_compare_mip_linear)) {
+                settings::g_mainTabSettings.upgrade_compare_min_mag_mip_linear.SetValue(upgrade_compare_mip_linear);
+                LogInfo("Upgrade compare trilinear filters %s", upgrade_compare_mip_linear ? "enabled" : "disabled");
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Upgrade compare trilinear filters (compare_min_mag_mip_linear) to compare anisotropic filtering.\n"
                                   "Trilinear filtering uses linear interpolation for min, mag, and mip levels.");
             }
 

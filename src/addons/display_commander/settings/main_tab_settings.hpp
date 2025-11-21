@@ -136,7 +136,9 @@ class MainTabSettings {
     // Sampler State Override Settings
     ui::new_ui::BoolSetting force_anisotropic_filtering;
     ui::new_ui::BoolSetting upgrade_min_mag_mip_linear;
+    ui::new_ui::BoolSetting upgrade_compare_min_mag_mip_linear;
     ui::new_ui::BoolSetting upgrade_min_mag_linear_mip_point;
+    ui::new_ui::BoolSetting upgrade_compare_min_mag_linear_mip_point;
     ui::new_ui::IntSetting max_anisotropy;
     ui::new_ui::FloatSetting force_mipmap_lod_bias;
 

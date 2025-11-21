@@ -97,7 +97,9 @@ MainTabSettings::MainTabSettings()
       skip_ansel_loading("skip_ansel_loading", false, "DisplayCommander"),
       force_anisotropic_filtering("force_anisotropic_filtering", false, "DisplayCommander"),
       upgrade_min_mag_mip_linear("upgrade_min_mag_mip_linear", true, "DisplayCommander"),
+      upgrade_compare_min_mag_mip_linear("upgrade_compare_min_mag_mip_linear", false, "DisplayCommander"),
       upgrade_min_mag_linear_mip_point("upgrade_min_mag_linear_mip_point", true, "DisplayCommander"),
+      upgrade_compare_min_mag_linear_mip_point("upgrade_compare_min_mag_linear_mip_point", false, "DisplayCommander"),
       max_anisotropy("max_anisotropy", 16, 1, 16, "DisplayCommander"),
       force_mipmap_lod_bias("force_mipmap_lod_bias", 0.0f, -5.0f, 5.0f, "DisplayCommander") {
 
@@ -162,7 +164,9 @@ MainTabSettings::MainTabSettings()
         &skip_ansel_loading,
         &force_anisotropic_filtering,
         &upgrade_min_mag_mip_linear,
+        &upgrade_compare_min_mag_mip_linear,
         &upgrade_min_mag_linear_mip_point,
+        &upgrade_compare_min_mag_linear_mip_point,
         &max_anisotropy,
         &force_mipmap_lod_bias,
     };

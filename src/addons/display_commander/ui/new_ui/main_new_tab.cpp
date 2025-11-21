@@ -1923,6 +1923,73 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
 
                         // Flip state information
                         ImGui::Text("Flip State: %s", flip_state_str);
+
+                        // Window information for debugging flip composed state
+                        HWND game_window = display_commanderhooks::GetGameWindow();
+                        if (game_window != nullptr && IsWindow(game_window)) {
+                            ImGui::Separator();
+                            ImGui::TextColored(ui::colors::TEXT_LABEL, "Window Information (Debug):");
+
+                            // Window coordinates
+                            RECT window_rect = {};
+                            RECT client_rect = {};
+                            if (GetWindowRect(game_window, &window_rect) && GetClientRect(game_window, &client_rect)) {
+                                ImGui::Text("Window Rect: (%ld, %ld) to (%ld, %ld)",
+                                          window_rect.left, window_rect.top,
+                                          window_rect.right, window_rect.bottom);
+                                ImGui::Text("Window Size: %ld x %ld",
+                                          window_rect.right - window_rect.left,
+                                          window_rect.bottom - window_rect.top);
+                                ImGui::Text("Client Rect: (%ld, %ld) to (%ld, %ld)",
+                                          client_rect.left, client_rect.top,
+                                          client_rect.right, client_rect.bottom);
+                                ImGui::Text("Client Size: %ld x %ld",
+                                          client_rect.right - client_rect.left,
+                                          client_rect.bottom - client_rect.top);
+                            }
+
+                            // Window flags
+                            LONG_PTR style = GetWindowLongPtrW(game_window, GWL_STYLE);
+                            LONG_PTR ex_style = GetWindowLongPtrW(game_window, GWL_EXSTYLE);
+
+                            ImGui::Text("Window Style: 0x%08lX", static_cast<unsigned long>(style));
+                            ImGui::Text("Window ExStyle: 0x%08lX", static_cast<unsigned long>(ex_style));
+
+                            // Key style flags that affect flip mode
+                            bool is_popup = (style & WS_POPUP) != 0;
+                            bool is_child = (style & WS_CHILD) != 0;
+                            bool has_caption = (style & WS_CAPTION) != 0;
+                            bool has_border = (style & WS_BORDER) != 0;
+                            bool is_layered = (ex_style & WS_EX_LAYERED) != 0;
+                            bool is_topmost = (ex_style & WS_EX_TOPMOST) != 0;
+                            bool is_transparent = (ex_style & WS_EX_TRANSPARENT) != 0;
+
+                            ImGui::Text("  WS_POPUP: %s", is_popup ? "Yes" : "No");
+                            ImGui::Text("  WS_CHILD: %s", is_child ? "Yes" : "No");
+                            ImGui::Text("  WS_CAPTION: %s", has_caption ? "Yes" : "No");
+                            ImGui::Text("  WS_BORDER: %s", has_border ? "Yes" : "No");
+                            ImGui::Text("  WS_EX_LAYERED: %s", is_layered ? "Yes" : "No");
+                            ImGui::Text("  WS_EX_TOPMOST: %s", is_topmost ? "Yes" : "No");
+                            ImGui::Text("  WS_EX_TRANSPARENT: %s", is_transparent ? "Yes" : "No");
+
+                            // Backbuffer vs window size comparison
+                            ImGui::Separator();
+                            ImGui::TextColored(ui::colors::TEXT_LABEL, "Size Comparison:");
+                            ImGui::Text("Backbuffer: %ux%u", desc.back_buffer.texture.width, desc.back_buffer.texture.height);
+                            if (GetWindowRect(game_window, &window_rect)) {
+                                long window_width = window_rect.right - window_rect.left;
+                                long window_height = window_rect.bottom - window_rect.top;
+                                ImGui::Text("Window: %ldx%ld", window_width, window_height);
+
+                                bool size_matches = (static_cast<long>(desc.back_buffer.texture.width) == window_width &&
+                                                   static_cast<long>(desc.back_buffer.texture.height) == window_height);
+                                if (size_matches) {
+                                    ImGui::TextColored(ui::colors::TEXT_SUCCESS, "  Sizes match");
+                                } else {
+                                    ImGui::TextColored(ui::colors::TEXT_WARNING, "  Sizes differ (may cause Composed Flip)");
+                                }
+                            }
+                        }
                         if (flip_state == DxgiBypassMode::kComposed) {
                             ImGui::TextColored(ui::colors::FLIP_COMPOSED, "  - Composed Flip (Red): Desktop Window Manager composition mode");
                             ImGui::Text("    Higher latency, not ideal for gaming");

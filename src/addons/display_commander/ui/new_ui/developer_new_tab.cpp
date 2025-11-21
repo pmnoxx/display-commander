@@ -8,6 +8,7 @@
 #include "../../utils/logging.hpp"
 #include "../../utils/reshade_global_config.hpp"
 #include "../../utils/general_utils.hpp"
+#include "../../utils/process_window_enumerator.hpp"
 #include "imgui.h"
 #include "settings_wrapper.hpp"
 
@@ -65,6 +66,25 @@ void DrawDeveloperNewTab() {
     // ReShade Global Config Section
     if (ImGui::CollapsingHeader("ReShade Global Config", ImGuiTreeNodeFlags_DefaultOpen)) {
         DrawReShadeGlobalConfigSettings();
+    }
+
+    ImGui::Spacing();
+
+    // Debug Tools Section
+    if (ImGui::CollapsingHeader("Debug Tools", ImGuiTreeNodeFlags_None)) {
+        ImGui::Indent();
+
+        if (ImGui::Button(ICON_FK_FILE " Log All Processes & Windows")) {
+            LogInfo("Button clicked: Starting process and window enumeration...");
+            display_commander::utils::LogAllProcessesAndWindows();
+            LogInfo("Button handler: Process and window enumeration function returned");
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Enumerates all running processes and their windows, logging detailed information to the log file.\n"
+                             "Useful for debugging overlay detection and window management issues.");
+        }
+
+        ImGui::Unindent();
     }
 
     ImGui::Spacing();

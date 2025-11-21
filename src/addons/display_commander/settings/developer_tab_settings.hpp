@@ -88,6 +88,9 @@ class DeveloperTabSettings {
     BoolSetting debug_layer_enabled;
     BoolSetting debug_break_on_severity;
 
+    // Discord Overlay auto-hide setting
+    BoolSetting auto_hide_discord_overlay;
+
     // Get all settings for bulk operations
     std::vector<SettingBase*> GetAllSettings();
 };

@@ -30,5 +30,8 @@ std::wstring GetWindowTitle(HWND hwnd);
 // Get process name from window handle
 std::wstring GetProcessNameFromWindow(HWND hwnd);
 
+// Check if a window with the specified title is visible
+bool IsWindowWithTitleVisible(const std::wstring& window_title);
+
 } // namespace display_commander::utils
 

@@ -201,6 +201,21 @@ void DrawDeveloperSettings() {
 
     ImGui::Spacing();
 
+    // Auto-hide Discord Overlay setting
+    if (CheckboxSetting(settings::g_developerTabSettings.auto_hide_discord_overlay, "Auto-hide Discord Overlay")) {
+        LogInfo("Auto-hide Discord Overlay setting changed to: %s",
+                settings::g_developerTabSettings.auto_hide_discord_overlay.GetValue() ? "enabled" : "disabled");
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip(
+            "Automatically hide Discord Overlay window when it overlaps with the game window.\n"
+            "This prevents the overlay from interfering with MPO iFlip and can improve performance.\n"
+            "Similar to Special-K's behavior when AllowWindowedMode=false.\n\n"
+            "The check runs every second in the continuous monitoring thread.");
+    }
+
+    ImGui::Spacing();
+
     // Debug Layer checkbox with warning
     ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f), ICON_FK_WARNING);
     ImGui::SameLine();

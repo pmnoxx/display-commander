@@ -116,7 +116,7 @@ void OnRegisterOverlayDisplayCommander(reshade::api::effect_runtime* runtime) {
         static LONGLONG last_save_time = utils::get_now_ns();
         LONGLONG now = utils::get_now_ns();
         if ((now - last_save_time) >= 5 * utils::SEC_TO_NS) {
-            display_commander::config::save_config();
+            display_commander::config::save_config("periodic save (every 5 seconds)");
             last_save_time = now;
         }
 #ifdef TRY_CATCH_BLOCKS

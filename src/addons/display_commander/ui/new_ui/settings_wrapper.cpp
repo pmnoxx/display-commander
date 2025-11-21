@@ -57,7 +57,8 @@ void FloatSetting::SetValue(float value) {
     const float clamped_value = std::max(min_, std::min(max_, value));
     value_.store(clamped_value);
     Save(); // Auto-save when value changes
-    display_commander::config::save_config(); // Write to disk
+    std::string reason = "setting changed: " + (section_ != DEFAULT_SECTION ? section_ + "." : "") + key_;
+    display_commander::config::save_config(reason.c_str()); // Write to disk
 }
 
 // IntSetting implementation
@@ -92,7 +93,8 @@ void IntSetting::SetValue(int value) {
     const int clamped_value = std::max(min_, std::min(max_, value));
     value_.store(clamped_value);
     Save(); // Auto-save when value changes
-    display_commander::config::save_config(); // Write to disk
+    std::string reason = "setting changed: " + (section_ != DEFAULT_SECTION ? section_ + "." : "") + key_;
+    display_commander::config::save_config(reason.c_str()); // Write to disk
 }
 
 // BoolSetting implementation
@@ -124,7 +126,8 @@ std::string BoolSetting::GetValueAsString() const {
 void BoolSetting::SetValue(bool value) {
     value_.store(value);
     Save(); // Auto-save when value changes
-    display_commander::config::save_config(); // Write to disk
+    std::string reason = "setting changed: " + (section_ != DEFAULT_SECTION ? section_ + "." : "") + key_;
+    display_commander::config::save_config(reason.c_str()); // Write to disk
 }
 
 // BoolSettingRef implementation
@@ -159,7 +162,8 @@ std::string BoolSettingRef::GetValueAsString() const {
 void BoolSettingRef::SetValue(bool value) {
     external_ref_.get().store(value);
     Save(); // Auto-save when value changes
-    display_commander::config::save_config(); // Write to disk
+    std::string reason = "setting changed: " + (section_ != DEFAULT_SECTION ? section_ + "." : "") + key_;
+    display_commander::config::save_config(reason.c_str()); // Write to disk
 }
 
 // FloatSettingRef implementation
@@ -198,7 +202,8 @@ void FloatSettingRef::SetValue(float value) {
     const float clamped_value = std::max(min_, std::min(max_, value));
     external_ref_.get().store(clamped_value);
     Save(); // Auto-save when value changes
-    display_commander::config::save_config(); // Write to disk
+    std::string reason = "setting changed: " + (section_ != DEFAULT_SECTION ? section_ + "." : "") + key_;
+    display_commander::config::save_config(reason.c_str()); // Write to disk
 }
 
 // IntSettingRef implementation
@@ -237,7 +242,8 @@ void IntSettingRef::SetValue(int value) {
     const int clamped_value = std::max(min_, std::min(max_, value));
     external_ref_.get().store(clamped_value);
     Save(); // Auto-save when value changes
-    display_commander::config::save_config(); // Write to disk
+    std::string reason = "setting changed: " + (section_ != DEFAULT_SECTION ? section_ + "." : "") + key_;
+    display_commander::config::save_config(reason.c_str()); // Write to disk
 }
 
 // ComboSetting implementation
@@ -276,7 +282,8 @@ std::string ComboSetting::GetValueAsString() const {
 void ComboSetting::SetValue(int value) {
     value_ = std::max(0, std::min(static_cast<int>(labels_.size()) - 1, value));
     Save(); // Auto-save when value changes
-    display_commander::config::save_config(); // Write to disk
+    std::string reason = "setting changed: " + (section_ != DEFAULT_SECTION ? section_ + "." : "") + key_;
+    display_commander::config::save_config(reason.c_str()); // Write to disk
 }
 
 // ComboSettingRef implementation
@@ -318,7 +325,8 @@ void ComboSettingRef::SetValue(int value) {
     int clamped_value = std::max(0, std::min(static_cast<int>(labels_.size()) - 1, value));
     external_ref_.get().store(clamped_value);
     Save(); // Auto-save when value changes
-    display_commander::config::save_config(); // Write to disk
+    std::string reason = "setting changed: " + (section_ != DEFAULT_SECTION ? section_ + "." : "") + key_;
+    display_commander::config::save_config(reason.c_str()); // Write to disk
 }
 
 // Helper functions for LogLevel index <-> enum mapping (declared early for specializations)
@@ -397,7 +405,8 @@ template <typename EnumType> void ComboSettingEnumRef<EnumType>::SetValue(int va
     int clamped_value = std::max(0, std::min(static_cast<int>(labels_.size()) - 1, value));
     external_ref_.get().store(static_cast<EnumType>(clamped_value));
     Save(); // Auto-save when value changes
-    display_commander::config::save_config(); // Write to disk
+    std::string reason = "setting changed: " + (section_ != DEFAULT_SECTION ? section_ + "." : "") + key_;
+    display_commander::config::save_config(reason.c_str()); // Write to disk
 }
 
 // Explicit template specializations for LogLevel (must be before template instantiation)
@@ -447,7 +456,8 @@ void ComboSettingEnumRef<LogLevel>::SetValue(int value) {
     int clamped_value = std::max(0, std::min(static_cast<int>(labels_.size()) - 1, value));
     external_ref_.get().store(LogLevelIndexToEnum(clamped_value));
     Save(); // Auto-save when value changes
-    display_commander::config::save_config(); // Write to disk
+    std::string reason = "setting changed: " + (section_ != DEFAULT_SECTION ? section_ + "." : "") + key_;
+    display_commander::config::save_config(reason.c_str()); // Write to disk
 }
 
 // ResolutionPairSetting implementation
@@ -990,7 +1000,8 @@ void FixedIntArraySetting::SetValue(size_t index, int value) {
     values_[index]->store(value);
     is_dirty_ = true;
     Save(); // Auto-save when value changes
-    display_commander::config::save_config(); // Write to disk
+    std::string reason = "setting changed: " + (section_ != DEFAULT_SECTION ? section_ + "." : "") + key_ + "[" + std::to_string(index) + "]";
+    display_commander::config::save_config(reason.c_str()); // Write to disk
 }
 
 std::vector<int> FixedIntArraySetting::GetAllValues() const {
@@ -1044,7 +1055,8 @@ void StringSetting::SetValue(const std::string &value) {
         value_ = value;
         is_dirty_ = true;
         Save(); // Auto-save when value changes, consistent with other setting types
-        display_commander::config::save_config(); // Write to disk
+        std::string reason = "setting changed: " + (section_ != DEFAULT_SECTION ? section_ + "." : "") + key_;
+        display_commander::config::save_config(reason.c_str()); // Write to disk
     }
 }
 

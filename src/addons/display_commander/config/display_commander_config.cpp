@@ -330,7 +330,7 @@ void DisplayCommanderConfigManager::SetConfigValue(const char* section, const ch
     config_file_->SetValue(section != nullptr ? section : "", key != nullptr ? key : "", values);
 }
 
-void DisplayCommanderConfigManager::SaveConfig() {
+void DisplayCommanderConfigManager::SaveConfig(const char* reason) {
     utils::SRWLockExclusive lock(config_mutex_);
     if (!initialized_) {
         return;
@@ -338,9 +338,17 @@ void DisplayCommanderConfigManager::SaveConfig() {
 
     EnsureConfigFileExists();
     if (config_file_->SaveToFile(config_path_)) {
-        LogInfo("DisplayCommanderConfigManager: Saved config to %s", config_path_.c_str());
+        if (reason != nullptr && reason[0] != '\0') {
+            LogInfo("DisplayCommanderConfigManager: Saved config to %s (reason: %s)", config_path_.c_str(), reason);
+        } else {
+            LogInfo("DisplayCommanderConfigManager: Saved config to %s", config_path_.c_str());
+        }
     } else {
-        LogError("DisplayCommanderConfigManager: Failed to save config to %s", config_path_.c_str());
+        if (reason != nullptr && reason[0] != '\0') {
+            LogError("DisplayCommanderConfigManager: Failed to save config to %s (reason: %s)", config_path_.c_str(), reason);
+        } else {
+            LogError("DisplayCommanderConfigManager: Failed to save config to %s", config_path_.c_str());
+        }
     }
 }
 
@@ -454,8 +462,8 @@ void set_config_value(const char* section, const char* key, const std::vector<st
     DisplayCommanderConfigManager::GetInstance().SetConfigValue(section, key, values);
 }
 
-void save_config() {
-    DisplayCommanderConfigManager::GetInstance().SaveConfig();
+void save_config(const char* reason) {
+    DisplayCommanderConfigManager::GetInstance().SaveConfig(reason);
 }
 
 } // namespace display_commander::config

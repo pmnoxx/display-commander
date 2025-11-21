@@ -38,7 +38,7 @@ public:
     void SetConfigValue(const char* section, const char* key, const std::vector<std::string>& values);
 
     // Save configuration to file
-    void SaveConfig();
+    void SaveConfig(const char* reason = nullptr);
 
     // Get config file path
     std::string GetConfigPath() const;
@@ -79,6 +79,6 @@ void set_config_value(const char* section, const char* key, bool value);
 void set_config_value(const char* section, const char* key, const std::vector<std::string>& values);
 
 // Save configuration to file
-void save_config();
+void save_config(const char* reason = nullptr);
 
 } // namespace display_commander::config

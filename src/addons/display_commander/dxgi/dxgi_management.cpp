@@ -26,11 +26,18 @@ DxgiBypassMode GetIndependentFlipState(IDXGISwapChain *dxgi_swapchain) {
     {
         HRESULT hr = sc1->QueryInterface(IID_PPV_ARGS(&media));
         if (FAILED(hr) || media == nullptr) {
-            LogDebug("DXGI IF state: QI IDXGISwapChainMedia failed hr=0x%x", hr);
+            // log up to 10 times
+            static int log_count = 0;
+            if (log_count < 10) {
+                LogDebug("DXGI IF state: QI IDXGISwapChainMedia failed hr=0x%x", hr);
+                log_count++;
+            }
             // Log swap effect for diagnostics
             DXGI_SWAP_CHAIN_DESC scd{};
             if (SUCCEEDED(dxgi_swapchain->GetDesc(&scd))) {
-                LogDebug("DXGI IF state: SwapEffect=%d", static_cast<int>(scd.SwapEffect));
+                if (log_count <= 10) {
+                    LogDebug("DXGI IF state: SwapEffect=%d", static_cast<int>(scd.SwapEffect));
+                }
             }
             return DxgiBypassMode::kQueryFailedNoMedia;
         }

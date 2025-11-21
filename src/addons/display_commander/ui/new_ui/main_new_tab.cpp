@@ -15,10 +15,12 @@
 #include "../../hooks/loadlibrary_hooks.hpp"
 #include "../../hooks/windows_hooks/windows_message_hooks.hpp"
 #include "../../hooks/window_proc_hooks.hpp"
+#include "../../hooks/api_hooks.hpp"
 #include "../../res/forkawesome.h"
 #include "../../res/ui_colors.hpp"
 #include "../../utils.hpp"
 #include "../../utils/logging.hpp"
+#include "../../utils/overlay_window_detector.hpp"
 #include "../../globals.hpp"
 #include "imgui.h"
 #include "settings_wrapper.hpp"
@@ -926,6 +928,98 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
 
     // Window Controls Section
     DrawWindowControls();
+
+    ImGui::Spacing();
+
+    // Overlay Windows Detection Section
+    if (ImGui::CollapsingHeader("Overlay Windows", ImGuiTreeNodeFlags_None)) {
+        ImGui::Indent();
+
+        HWND game_window = display_commanderhooks::GetGameWindow();
+        if (game_window != nullptr && IsWindow(game_window) != FALSE) {
+            static DWORD last_check_time = 0;
+            DWORD current_time = GetTickCount();
+
+            // Update overlay list every 500ms to avoid performance impact
+            static std::vector<display_commander::utils::OverlayWindowInfo> overlay_list;
+            if (current_time - last_check_time > 500) {
+                overlay_list = display_commander::utils::DetectOverlayWindows(game_window);
+                last_check_time = current_time;
+            }
+
+            if (overlay_list.empty()) {
+                ImGui::TextColored(ui::colors::TEXT_DIMMED, "No overlay windows detected");
+            } else {
+                ImGui::Text("Detected %zu overlay window(s):", overlay_list.size());
+                ImGui::Spacing();
+
+                // Create a table-like display
+                if (ImGui::BeginTable("OverlayWindows", 5, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable)) {
+                    ImGui::TableSetupColumn("Window Title", ImGuiTableColumnFlags_WidthStretch);
+                    ImGui::TableSetupColumn("Process", ImGuiTableColumnFlags_WidthStretch);
+                    ImGui::TableSetupColumn("PID", ImGuiTableColumnFlags_WidthFixed, 80.0f);
+                    ImGui::TableSetupColumn("Overlap Area", ImGuiTableColumnFlags_WidthFixed, 120.0f);
+                    ImGui::TableSetupColumn("Status", ImGuiTableColumnFlags_WidthFixed, 100.0f);
+                    ImGui::TableHeadersRow();
+
+                    for (const auto& overlay : overlay_list) {
+                        ImGui::TableNextRow();
+
+                        // Window Title
+                        ImGui::TableSetColumnIndex(0);
+                        std::string title_utf8 = overlay.window_title.empty() ?
+                            "(No Title)" :
+                            std::string(overlay.window_title.begin(), overlay.window_title.end());
+                        ImGui::TextUnformatted(title_utf8.c_str());
+
+                        // Process Name
+                        ImGui::TableSetColumnIndex(1);
+                        std::string process_utf8 = overlay.process_name.empty() ?
+                            "(Unknown)" :
+                            std::string(overlay.process_name.begin(), overlay.process_name.end());
+                        ImGui::TextUnformatted(process_utf8.c_str());
+
+                        // PID
+                        ImGui::TableSetColumnIndex(2);
+                        ImGui::Text("%lu", overlay.process_id);
+
+                        // Overlapping Area
+                        ImGui::TableSetColumnIndex(3);
+                        if (overlay.overlaps_game) {
+                            ImGui::Text("%ld px (%.1f%%)",
+                                       overlay.overlapping_area_pixels,
+                                       overlay.overlapping_area_percent);
+                        } else {
+                            ImGui::TextColored(ui::colors::TEXT_DIMMED, "No overlap");
+                        }
+
+                        // Status
+                        ImGui::TableSetColumnIndex(4);
+                        if (overlay.overlaps_game) {
+                            ui::colors::PushIconColor(ui::colors::ICON_WARNING);
+                            ImGui::Text(ICON_FK_WARNING " Overlapping");
+                            ui::colors::PopIconColor();
+                        } else if (overlay.is_visible) {
+                            ImGui::TextColored(ui::colors::TEXT_DIMMED, "Visible");
+                        } else {
+                            ImGui::TextColored(ui::colors::TEXT_DIMMED, "Hidden");
+                        }
+                    }
+
+                    ImGui::EndTable();
+                }
+            }
+        } else {
+            ImGui::TextColored(ui::colors::TEXT_DIMMED, "Game window not detected");
+        }
+
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Shows all windows that are above the game window in Z-order.\n"
+                             "Overlapping windows may cause performance issues.");
+        }
+
+        ImGui::Unindent();
+    }
 
     ImGui::Spacing();
 

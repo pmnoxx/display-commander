@@ -13,6 +13,7 @@ struct OverlayWindowInfo {
     DWORD process_id;
     bool is_visible;
     bool overlaps_game;
+    bool is_above_game;  // True if window is above the game window in Z-order
     long overlapping_area_pixels;  // Overlapping area in pixels (0 if not overlapping)
     float overlapping_area_percent; // Overlapping area as percentage of game window (0.0 if not overlapping)
 };

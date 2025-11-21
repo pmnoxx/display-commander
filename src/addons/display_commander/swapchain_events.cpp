@@ -556,7 +556,7 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
             oss << "Back Buffers: " << desc.back_buffer_count << ", ";
             oss << "Present Mode: " << D3DSwapEffectToString(desc.present_mode) << ", ";
             oss << "Sync Interval: " << desc.sync_interval << ", ";
-            oss << "Present Flags: " << D3DPresentFlagsToString(desc.present_flags) << ", ";
+            oss << "Device Creation Flags: " << D3DPresentFlagsToString(desc.present_flags) << ", ";
             oss << "Back Buffer: " << desc.back_buffer.texture.width << "x" << desc.back_buffer.texture.height << ", ";
             oss << "Back Buffer Format: " << (long long)desc.back_buffer.texture.format << ", ";
             oss << "Back Buffer Usage: " << (long long)desc.back_buffer.usage;
@@ -728,7 +728,7 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
             oss << "Back Buffers: " << prev_back_buffer_count << " -> " << desc.back_buffer_count;
 
             if (is_dxgi) {
-                oss << ", Present Flags: 0x" << std::hex << prev_present_flags << " -> 0x" << desc.present_flags;
+                oss << ", Device Creation Flags: 0x" << std::hex << prev_present_flags << " -> 0x" << desc.present_flags;
             }
 
             oss << " BackBufferCount: " << prev_back_buffer_count << " -> " << desc.back_buffer_count;
@@ -1286,7 +1286,7 @@ void OnPresentFlags2(uint32_t *present_flags, DeviceTypeDC api_type) {
 
             // Log the flag removal for debugging
             std::ostringstream oss;
-            oss << "Present flags callback: Stripped "
+            oss << "Device Creation Flags callback: Stripped "
                 "DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING, new flags: 0x"
                 << std::hex << *present_flags;
             LogInfo(oss.str().c_str());

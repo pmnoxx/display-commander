@@ -1851,7 +1851,7 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                     ImGui::SameLine();
                     ImGui::TextColored(ui::colors::TEXT_DIMMED, " | ");
                     ImGui::SameLine();
-                    ImGui::TextColored(flip_color, "Flip: %s", flip_state_str);
+                    ImGui::TextColored(flip_color, "Status: %s", flip_state_str);
 
                     // Check for Discord Overlay and show warning
                     static DWORD last_discord_check = 0;
@@ -1946,7 +1946,7 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                         flip_color = ui::colors::FLIP_UNKNOWN; // Yellow - unknown/unset
                     }
 
-                    ImGui::TextColored(flip_color, "Flip: %s", flip_state_str);
+                    ImGui::TextColored(flip_color, "Status: %s", flip_state_str);
 
                     if (ImGui::IsItemHovered()) {
                         ImGui::BeginTooltip();
@@ -1958,7 +1958,7 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                         ImGui::Text("Present Mode ID: %u", desc.present_mode);
 
                         // Flip state information
-                        ImGui::Text("Flip State: %s", flip_state_str);
+                        ImGui::Text("Status: %s", flip_state_str);
 
                         // Window information for debugging flip composed state
                         HWND game_window = display_commanderhooks::GetGameWindow();
@@ -2127,7 +2127,7 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
 
                         // Present flags (for DXGI)
                         if (desc.present_flags != 0) {
-                            ImGui::Text("Present Flags: 0x%X", desc.present_flags);
+                            ImGui::Text("Device Creation Flags: 0x%X", desc.present_flags);
 
                             // Decode common present flags
                             ImGui::Text("Flags:");
@@ -2717,7 +2717,7 @@ void DrawImportantInfo() {
 
         oss.str("");
         oss.clear();
-        oss << "Flip State: " << flip_state_str;
+        oss << "Status: " << flip_state_str;
 
         // Color code based on flip state
         if (flip_state == DxgiBypassMode::kComposed) {

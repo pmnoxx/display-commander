@@ -962,8 +962,8 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
                     ImGui::TableSetupColumn("Process", ImGuiTableColumnFlags_WidthStretch);
                     ImGui::TableSetupColumn("PID", ImGuiTableColumnFlags_WidthFixed, 80.0f);
                     ImGui::TableSetupColumn("Z-Order", ImGuiTableColumnFlags_WidthFixed, 100.0f);
-                    ImGui::TableSetupColumn("Overlap Area", ImGuiTableColumnFlags_WidthFixed, 120.0f);
-                    ImGui::TableSetupColumn("Status", ImGuiTableColumnFlags_WidthFixed, 100.0f);
+                    ImGui::TableSetupColumn("Overlap Area", ImGuiTableColumnFlags_WidthFixed, 170.0f);
+                    ImGui::TableSetupColumn("Status", ImGuiTableColumnFlags_WidthFixed, 200.0f);
                     ImGui::TableHeadersRow();
 
                     for (const auto& overlay : overlay_list) {
@@ -1853,6 +1853,27 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                     ImGui::SameLine();
                     ImGui::TextColored(flip_color, "Flip: %s", flip_state_str);
 
+                    // Check for Discord Overlay and show warning
+                    static DWORD last_discord_check = 0;
+                    DWORD current_time = GetTickCount();
+                    static bool discord_overlay_visible = false;
+
+                    if (current_time - last_discord_check > 1000) {  // Check every second
+                        discord_overlay_visible = display_commander::utils::IsWindowWithTitleVisible(L"Discord Overlay");
+                        last_discord_check = current_time;
+                    }
+
+                    if (discord_overlay_visible) {
+                        ImGui::SameLine();
+                        ui::colors::PushIconColor(ui::colors::ICON_WARNING);
+                        ImGui::Text(ICON_FK_WARNING " Discord Overlay");
+                        ui::colors::PopIconColor();
+                        if (ImGui::IsItemHovered()) {
+                            ImGui::SetTooltip("Discord Overlay is visible and may prevent MPO iFlip.\n"
+                                            "It can prevent Independent Flip mode and increase latency.\n"
+                                            "Consider disabling it or setting AllowWindowedMode=true in Special-K.");
+                        }
+                    }
 
                 } else if (is_dxgi) {
 

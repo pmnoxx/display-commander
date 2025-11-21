@@ -14,6 +14,7 @@
 #include "ui/new_ui/hotkeys_tab.hpp"
 #include "utils/logging.hpp"
 #include "utils/timing.hpp"
+#include "utils/overlay_window_detector.hpp"
 
 #include <algorithm>
 #include <chrono>
@@ -142,6 +143,43 @@ void check_is_background() {
             // Only create/update background window if main window has focus
             if (current_foreground_hwnd != nullptr) {
                 g_backgroundWindowManager.UpdateBackgroundWindow(current_foreground_hwnd);
+            }
+        }
+    }
+}
+
+void HandleDiscordOverlayAutoHide() {
+    // Only run if auto-hide is enabled
+    if (!settings::g_developerTabSettings.auto_hide_discord_overlay.GetValue()) {
+        return;
+    }
+
+    // Get the game window
+    HWND game_window = g_last_swapchain_hwnd.load();
+    if (game_window == nullptr || IsWindow(game_window) == FALSE) {
+        return;
+    }
+
+    // Check if game window is active
+    if (g_app_in_background.load()) {
+        return;  // Don't hide overlay when game is in background
+    }
+
+    // Get all overlapping windows
+    auto overlays = display_commander::utils::DetectOverlayWindows(game_window);
+
+    // Find Discord Overlay window
+    for (const auto& overlay : overlays) {
+        if (overlay.is_above_game && overlay.is_visible) {
+            // Check if window title contains "Discord Overlay" (case-insensitive)
+            std::wstring title_lower = overlay.window_title;
+            std::transform(title_lower.begin(), title_lower.end(), title_lower.begin(), ::towlower);
+
+            if (title_lower.find(L"discord overlay") != std::wstring::npos) {
+                // Hide the Discord Overlay window
+                ShowWindow(overlay.hwnd, SW_HIDE);
+                LogInfo("Auto-hid Discord Overlay window (HWND: 0x%p) to prevent MPO iFlip interference", overlay.hwnd);
+                break;  // Only hide the first matching window
             }
         }
     }
@@ -346,6 +384,9 @@ void ContinuousMonitoringThread() {
             if (now_ns - last_1s_update_ns >= 1 * utils::SEC_TO_NS) {
                 last_1s_update_ns = now_ns;
                 every1s_checks();
+
+                // Auto-hide Discord Overlay (runs every second)
+                HandleDiscordOverlayAutoHide();
 
                 // wait 10s before configuring reflex
                 if (now_ns - start_time >= 10 * utils::SEC_TO_NS) {

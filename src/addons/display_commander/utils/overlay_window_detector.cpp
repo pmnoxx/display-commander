@@ -65,6 +65,14 @@ std::vector<HWND> GetWindowsAboveGameWindow(HWND game_window) {
         return windows_above;
     }
 
+    // Get the monitor rect for area comparison
+    MONITORINFO miGame = {};
+    miGame.cbSize = sizeof(miGame);
+    if (!GetMonitorInfoW(hMonitorGame, &miGame)) {
+        return windows_above;
+    }
+    RECT game_monitor_rect = miGame.rcMonitor;
+
     // Enumerate all top-level windows (Special-K approach)
     std::set<HWND> hWndTopLevel;
     std::set<HWND> hWndTopLevelOnGameMonitor;
@@ -77,19 +85,16 @@ std::vector<HWND> GetWindowsAboveGameWindow(HWND game_window) {
         return TRUE;
     }, reinterpret_cast<LPARAM>(&hWndTopLevel));
 
-    // Filter windows by monitor (check if window center is on the same monitor as game)
+    // Filter windows by monitor (check if window rect overlaps with game monitor rect)
     for (HWND hWnd : hWndTopLevel) {
         RECT rcWindow = {};
         if (!GetWindowRect(hWnd, &rcWindow)) {
             continue;
         }
 
-        POINT pt = {
-            rcWindow.left + ((rcWindow.right - rcWindow.left) / 2),
-            rcWindow.top + ((rcWindow.bottom - rcWindow.top) / 2)
-        };
-
-        if (MonitorFromPoint(pt, MONITOR_DEFAULTTONEAREST) == hMonitorGame) {
+        // Check if window rect overlaps with game monitor rect (area-based comparison)
+        RECT intersect_rect = {};
+        if (IntersectRect(&intersect_rect, &rcWindow, &game_monitor_rect) != FALSE) {
             hWndTopLevelOnGameMonitor.emplace(hWnd);
         }
     }
@@ -146,11 +151,19 @@ std::vector<OverlayWindowInfo> DetectOverlayWindows(HWND game_window) {
         return overlays;
     }
 
+    // Get the monitor rect for area comparison
+    MONITORINFO miGame = {};
+    miGame.cbSize = sizeof(miGame);
+    if (!GetMonitorInfoW(hMonitorGame, &miGame)) {
+        return overlays;
+    }
+    RECT game_monitor_rect = miGame.rcMonitor;
+
     // Get all windows above the game window for Z-order checking
     auto windows_above = GetWindowsAboveGameWindow(game_window);
     std::set<HWND> windows_above_set(windows_above.begin(), windows_above.end());
 
-    // Enumerate all top-level windows on the same monitor (Special-K approach)
+    // Enumerate all top-level windows (Special-K approach)
     std::set<HWND> hWndTopLevel;
     std::set<HWND> hWndTopLevelOnGameMonitor;
 
@@ -162,7 +175,7 @@ std::vector<OverlayWindowInfo> DetectOverlayWindows(HWND game_window) {
         return TRUE;
     }, reinterpret_cast<LPARAM>(&hWndTopLevel));
 
-    // Filter windows by monitor (check if window center is on the same monitor as game)
+    // Filter windows by monitor (check if window rect overlaps with game monitor rect - area-based)
     for (HWND hWnd : hWndTopLevel) {
         // Only check visible windows
         if (IsWindowVisible(hWnd) == FALSE) {
@@ -174,12 +187,9 @@ std::vector<OverlayWindowInfo> DetectOverlayWindows(HWND game_window) {
             continue;
         }
 
-        POINT pt = {
-            rcWindow.left + ((rcWindow.right - rcWindow.left) / 2),
-            rcWindow.top + ((rcWindow.bottom - rcWindow.top) / 2)
-        };
-
-        if (MonitorFromPoint(pt, MONITOR_DEFAULTTONEAREST) == hMonitorGame) {
+        // Check if window rect overlaps with game monitor rect (area-based comparison)
+        RECT intersect_rect = {};
+        if (IntersectRect(&intersect_rect, &rcWindow, &game_monitor_rect) != FALSE) {
             hWndTopLevelOnGameMonitor.emplace(hWnd);
         }
     }

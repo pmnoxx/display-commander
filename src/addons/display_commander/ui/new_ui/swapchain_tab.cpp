@@ -2042,23 +2042,6 @@ void DrawDLSSPresetOverride() {
                                "  These values override the corresponding NGX parameter values.");
         }
 
-        // DLSS-G MultiFrameCount Override section
-        ImGui::Spacing();
-        ImGui::Separator();
-        ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== DLSS-G MultiFrameCount Override ===");
-
-        // Warning about experimental nature
-        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f),
-                           ICON_FK_WARNING " EXPERIMENTAL FEATURE - May require game restart to apply changes!");
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
-                "This feature overrides DLSS-G MultiFrameCount parameter at runtime.\n"
-                "Changes may require restarting the game to take effect.\n"
-                "Use with caution as it may cause rendering issues in some games.");
-        }
-
-        ImGui::Spacing();
-
         // DLSS Model Profile display
         DLSSModelProfile model_profile = GetDLSSModelProfile();
         if (model_profile.is_valid) {

@@ -957,10 +957,11 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
                 ImGui::Spacing();
 
                 // Create a table-like display
-                if (ImGui::BeginTable("OverlayWindows", 5, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable)) {
+                if (ImGui::BeginTable("OverlayWindows", 6, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable)) {
                     ImGui::TableSetupColumn("Window Title", ImGuiTableColumnFlags_WidthStretch);
                     ImGui::TableSetupColumn("Process", ImGuiTableColumnFlags_WidthStretch);
                     ImGui::TableSetupColumn("PID", ImGuiTableColumnFlags_WidthFixed, 80.0f);
+                    ImGui::TableSetupColumn("Z-Order", ImGuiTableColumnFlags_WidthFixed, 100.0f);
                     ImGui::TableSetupColumn("Overlap Area", ImGuiTableColumnFlags_WidthFixed, 120.0f);
                     ImGui::TableSetupColumn("Status", ImGuiTableColumnFlags_WidthFixed, 100.0f);
                     ImGui::TableHeadersRow();
@@ -986,8 +987,18 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
                         ImGui::TableSetColumnIndex(2);
                         ImGui::Text("%lu", overlay.process_id);
 
-                        // Overlapping Area
+                        // Z-Order (Above/Below)
                         ImGui::TableSetColumnIndex(3);
+                        if (overlay.is_above_game) {
+                            ui::colors::PushIconColor(ui::colors::ICON_WARNING);
+                            ImGui::Text(ICON_FK_WARNING " Above");
+                            ui::colors::PopIconColor();
+                        } else {
+                            ImGui::TextColored(ui::colors::TEXT_DIMMED, "Below");
+                        }
+
+                        // Overlapping Area
+                        ImGui::TableSetColumnIndex(4);
                         if (overlay.overlaps_game) {
                             ImGui::Text("%ld px (%.1f%%)",
                                        overlay.overlapping_area_pixels,
@@ -997,7 +1008,7 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
                         }
 
                         // Status
-                        ImGui::TableSetColumnIndex(4);
+                        ImGui::TableSetColumnIndex(5);
                         if (overlay.overlaps_game) {
                             ui::colors::PushIconColor(ui::colors::ICON_WARNING);
                             ImGui::Text(ICON_FK_WARNING " Overlapping");
@@ -1017,7 +1028,8 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
         }
 
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Shows all windows that are above the game window in Z-order.\n"
+            ImGui::SetTooltip("Shows all visible windows that overlap with the game window.\n"
+                             "Windows can be above or below the game in Z-order.\n"
                              "Overlapping windows may cause performance issues.");
         }
 

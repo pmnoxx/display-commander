@@ -6,6 +6,7 @@
 #include <dxgi1_2.h>
 #include <dxgi1_4.h>
 #include <dxgi1_5.h>
+#include <dxgi1_6.h>
 
 #include <vector>
 
@@ -90,6 +91,9 @@ using IDXGIOutput_SetGammaControl_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGIOutput
 using IDXGIOutput_GetGammaControl_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGIOutput *This, DXGI_GAMMA_CONTROL *pArray);
 using IDXGIOutput_GetDesc_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGIOutput *This, DXGI_OUTPUT_DESC *pDesc);
 
+// IDXGIOutput6 function pointer types
+using IDXGIOutput6_GetDesc1_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGIOutput6 *This, DXGI_OUTPUT_DESC1 *pDesc);
+
 // Original function pointers
 extern IDXGISwapChain_Present_pfn IDXGISwapChain_Present_Original;
 extern IDXGISwapChain_Present1_pfn IDXGISwapChain_Present1_Original;
@@ -141,6 +145,9 @@ extern IDXGIOutput_SetGammaControl_pfn IDXGIOutput_SetGammaControl_Original;
 extern IDXGIOutput_GetGammaControl_pfn IDXGIOutput_GetGammaControl_Original;
 extern IDXGIOutput_GetDesc_pfn IDXGIOutput_GetDesc_Original;
 
+// IDXGIOutput6 original function pointers
+extern IDXGIOutput6_GetDesc1_pfn IDXGIOutput6_GetDesc1_Original;
+
 // Hooked DXGI Present functions
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain *This, UINT SyncInterval, UINT Flags);
 
@@ -175,6 +182,9 @@ void RecordPresentUpdateSwapchain(IDXGISwapChain *swapchain);
 HRESULT STDMETHODCALLTYPE IDXGIOutput_SetGammaControl_Detour(IDXGIOutput *This, const DXGI_GAMMA_CONTROL *pArray);
 HRESULT STDMETHODCALLTYPE IDXGIOutput_GetGammaControl_Detour(IDXGIOutput *This, DXGI_GAMMA_CONTROL *pArray);
 HRESULT STDMETHODCALLTYPE IDXGIOutput_GetDesc_Detour(IDXGIOutput *This, DXGI_OUTPUT_DESC *pDesc);
+
+// Hooked IDXGIOutput6 functions
+HRESULT STDMETHODCALLTYPE IDXGIOutput6_GetDesc1_Detour(IDXGIOutput6 *This, DXGI_OUTPUT_DESC1 *pDesc);
 
 // IDXGIOutput hooking function
 bool HookIDXGIOutput(IDXGIOutput *output);

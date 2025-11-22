@@ -360,6 +360,9 @@ IDXGIOutput_SetGammaControl_pfn IDXGIOutput_SetGammaControl_Original = nullptr;
 IDXGIOutput_GetGammaControl_pfn IDXGIOutput_GetGammaControl_Original = nullptr;
 IDXGIOutput_GetDesc_pfn IDXGIOutput_GetDesc_Original = nullptr;
 
+// IDXGIOutput6 original function pointers
+IDXGIOutput6_GetDesc1_pfn IDXGIOutput6_GetDesc1_Original = nullptr;
+
 // Hook state and swapchain tracking
 namespace {
     std::atomic<bool> g_dxgi_present_hooks_installed{false};
@@ -1094,6 +1097,38 @@ HRESULT STDMETHODCALLTYPE IDXGIOutput_GetDesc_Detour(IDXGIOutput *This, DXGI_OUT
     return This->GetDesc(pDesc);
 }
 
+// Hooked IDXGIOutput6::GetDesc1 function
+HRESULT STDMETHODCALLTYPE IDXGIOutput6_GetDesc1_Detour(IDXGIOutput6 *This, DXGI_OUTPUT_DESC1 *pDesc) {
+    if (pDesc == nullptr) {
+        return DXGI_ERROR_INVALID_CALL;
+    }
+
+    // Call original function
+    HRESULT hr = S_OK;
+    if (IDXGIOutput6_GetDesc1_Original != nullptr) {
+        hr = IDXGIOutput6_GetDesc1_Original(This, pDesc);
+    } else {
+        // Fallback to direct call if hook failed
+        hr = This->GetDesc1(pDesc);
+    }
+
+    // Hide HDR capabilities if enabled (similar to Special-K's approach)
+    if (SUCCEEDED(hr) && pDesc != nullptr && s_hide_hdr_capabilities.load()) {
+        // Change HDR10 color space to sRGB to hide HDR support
+        if (pDesc->ColorSpace == DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020) {
+            pDesc->ColorSpace = DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
+
+            static int hdr_hidden_log_count = 0;
+            if (hdr_hidden_log_count < 3) {
+                LogInfo("HDR hiding: IDXGIOutput6::GetDesc1 - hiding HDR10 color space, forcing to sRGB");
+                hdr_hidden_log_count++;
+            }
+        }
+    }
+
+    return hr;
+}
+
 // Global variables to track hooked swapchains
 namespace {
     // Legacy variables - kept for compatibility but will be replaced by SwapchainTrackingManager
@@ -1162,6 +1197,30 @@ bool HookIDXGIOutput(IDXGIOutput *output) {
         } else {
             LogInfo("IDXGIOutput::GetDesc hook created successfully");
         }
+    }
+
+    // Hook IDXGIOutput6::GetDesc1 (index 27) - for HDR hiding
+    // First, QueryInterface for IDXGIOutput6 to get the extended interface
+    Microsoft::WRL::ComPtr<IDXGIOutput6> output6;
+    if (SUCCEEDED(output->QueryInterface(IID_PPV_ARGS(&output6))) && output6 != nullptr) {
+        void **output6_vtable = *(void ***)output6.Get();
+
+        // IDXGIOutput6::GetDesc1 is at index 27 in the vtable
+        if (IsVTableEntryValid(output6_vtable, 27)) {
+            if (MH_CreateHook(output6_vtable[27], IDXGIOutput6_GetDesc1_Detour, (LPVOID *)&IDXGIOutput6_GetDesc1_Original) != MH_OK) {
+                LogError("Failed to create IDXGIOutput6::GetDesc1 hook");
+            } else {
+                if (MH_EnableHook(output6_vtable[27]) != MH_OK) {
+                    LogError("Failed to enable IDXGIOutput6::GetDesc1 hook");
+                } else {
+                    LogInfo("IDXGIOutput6::GetDesc1 hook created and enabled successfully");
+                }
+            }
+        } else {
+            LogWarn("IDXGIOutput6::GetDesc1 vtable entry (index 27) is not valid");
+        }
+    } else {
+        LogInfo("IDXGIOutput6 interface not available, skipping GetDesc1 hook");
     }
 
     output_hooked.store(true);

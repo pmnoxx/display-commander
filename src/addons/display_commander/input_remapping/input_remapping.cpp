@@ -143,6 +143,16 @@ void InputRemapper::add_default_chord_type(DefaultChordType chord_type) {
         action_name = "screenshot";
         log_name = "Guide + Back = Take Screenshot";
         break;
+    case DefaultChordType::IncreaseGameSpeed:
+        button = XINPUT_GAMEPAD_DPAD_RIGHT;
+        action_name = "increase game speed";
+        log_name = "Guide + D-Pad Right = Increase Game Speed (10%)";
+        break;
+    case DefaultChordType::DecreaseGameSpeed:
+        button = XINPUT_GAMEPAD_DPAD_LEFT;
+        action_name = "decrease game speed";
+        log_name = "Guide + D-Pad Left = Decrease Game Speed (10%)";
+        break;
     default:
         return;
     }
@@ -191,6 +201,12 @@ void InputRemapper::remove_default_chord_type(DefaultChordType chord_type) {
     case DefaultChordType::Screenshot:
         target_button = XINPUT_GAMEPAD_BACK;
         break;
+    case DefaultChordType::IncreaseGameSpeed:
+        target_button = XINPUT_GAMEPAD_DPAD_RIGHT;
+        break;
+    case DefaultChordType::DecreaseGameSpeed:
+        target_button = XINPUT_GAMEPAD_DPAD_LEFT;
+        break;
     default:
         return;
     }
@@ -228,6 +244,12 @@ void InputRemapper::add_default_chords() {
     add_default_chord_type(DefaultChordType::MuteUnmute);
     add_default_chord_type(DefaultChordType::PerformanceOverlay);
     add_default_chord_type(DefaultChordType::Screenshot);
+
+    // Add experimental game speed chords only if experimental features are enabled
+    if (enabled_experimental_features) {
+        add_default_chord_type(DefaultChordType::IncreaseGameSpeed);
+        add_default_chord_type(DefaultChordType::DecreaseGameSpeed);
+    }
 }
 
 void InputRemapper::remove_default_chords() {
@@ -237,6 +259,10 @@ void InputRemapper::remove_default_chords() {
     remove_default_chord_type(DefaultChordType::MuteUnmute);
     remove_default_chord_type(DefaultChordType::PerformanceOverlay);
     remove_default_chord_type(DefaultChordType::Screenshot);
+
+    // Remove experimental game speed chords (only if they exist)
+    remove_default_chord_type(DefaultChordType::IncreaseGameSpeed);
+    remove_default_chord_type(DefaultChordType::DecreaseGameSpeed);
 }
 
 void InputRemapper::add_button_remap(const ButtonRemap &remap) {
@@ -979,19 +1005,128 @@ void InputRemapper::execute_action(const std::string &action_name) {
             LogError("InputRemapper::execute_action() - Failed to %s audio", new_state ? "mute" : "unmute");
         }
     } else if (action_name == "increase volume") {
-        // Increase volume by 10%
-        if (AdjustVolumeForCurrentProcess(10.0f)) {
-            LogInfo("InputRemapper::execute_action() - Volume increased by 10%%");
+        // Increase volume by relative 20% (multiply by 1.2), minimum 1% change
+        float current_volume = 0.0f;
+        if (!GetVolumeForCurrentProcess(&current_volume)) {
+            // If we can't get current volume, use stored value or default
+            current_volume = ::s_audio_volume_percent.load();
+        }
+
+        float new_volume = 0.0f;
+        if (current_volume <= 0.0f) {
+            // Special case: if at 0%, jump to 1%
+            new_volume = 1.0f;
+        } else {
+            // Calculate relative 20% increase (multiply by 1.2) for stability
+            new_volume = current_volume * 1.2f;
+            // Ensure minimum 1% absolute change
+            float min_new_volume = current_volume + 1.0f;
+            if (new_volume < min_new_volume) {
+                new_volume = min_new_volume;
+            }
+        }
+
+        // Clamp to valid range
+        new_volume = (std::max)(0.0f, (std::min)(new_volume, 100.0f));
+
+        if (SetVolumeForCurrentProcess(new_volume)) {
+            // Update stored value
+            ::s_audio_volume_percent.store(new_volume);
+
+            // Update overlay display tracking (legacy, for backward compatibility)
+            ::g_volume_change_time_ns.store(utils::get_now_ns());
+            ::g_volume_display_value.store(new_volume);
+
+            // Trigger action notification for overlay display
+            ActionNotification notification;
+            notification.type = ActionNotificationType::Volume;
+            notification.timestamp_ns = utils::get_now_ns();
+            notification.float_value = new_volume;
+            notification.bool_value = false;
+            ::g_action_notification.store(notification);
+
+            float change = new_volume - current_volume;
+            LogInfo("InputRemapper::execute_action() - Volume increased from %.1f%% to %.1f%% (change: +%.1f%%)",
+                   current_volume, new_volume, change);
         } else {
             LogError("InputRemapper::execute_action() - Failed to increase volume");
         }
     } else if (action_name == "decrease volume") {
-        // Decrease volume by 10%
-        if (AdjustVolumeForCurrentProcess(-10.0f)) {
-            LogInfo("InputRemapper::execute_action() - Volume decreased by 10%%");
+        // Decrease volume by relative 20% (divide by 1.2), minimum 1% change
+        float current_volume = 0.0f;
+        if (!GetVolumeForCurrentProcess(&current_volume)) {
+            // If we can't get current volume, use stored value or default
+            current_volume = ::s_audio_volume_percent.load();
+        }
+
+        if (current_volume <= 0.0f) {
+            // Already at 0%, can't go lower
+            return;
+        }
+
+        // Calculate relative 20% decrease (divide by 1.2) for stability
+        float new_volume = current_volume / 1.2f;
+        // Ensure minimum 1% absolute change
+        float max_new_volume = current_volume - 1.0f;
+        if (new_volume > max_new_volume) {
+            new_volume = max_new_volume;
+        }
+
+        // Clamp to valid range
+        new_volume = (std::max)(0.0f, (std::min)(new_volume, 100.0f));
+
+        if (SetVolumeForCurrentProcess(new_volume)) {
+            // Update stored value
+            ::s_audio_volume_percent.store(new_volume);
+
+            // Update overlay display tracking (legacy, for backward compatibility)
+            ::g_volume_change_time_ns.store(utils::get_now_ns());
+            ::g_volume_display_value.store(new_volume);
+
+            // Trigger action notification for overlay display
+            ActionNotification notification;
+            notification.type = ActionNotificationType::Volume;
+            notification.timestamp_ns = utils::get_now_ns();
+            notification.float_value = new_volume;
+            notification.bool_value = false;
+            ::g_action_notification.store(notification);
+
+            float change = new_volume - current_volume;
+            LogInfo("InputRemapper::execute_action() - Volume decreased from %.1f%% to %.1f%% (change: %.1f%%)",
+                   current_volume, new_volume, change);
         } else {
             LogError("InputRemapper::execute_action() - Failed to decrease volume");
         }
+    } else if (action_name == "increase game speed") {
+        // Increase game speed by 10% (multiply multiplier by 1.1)
+        if (!enabled_experimental_features) {
+            LogWarn("InputRemapper::execute_action() - Increase game speed requires experimental features");
+            return;
+        }
+        float current_multiplier = display_commanderhooks::GetTimeslowdownMultiplier();
+        float new_multiplier = current_multiplier * 1.1f;
+        float max_multiplier = settings::g_experimentalTabSettings.timeslowdown_max_multiplier.GetValue();
+        if (new_multiplier > max_multiplier) {
+            new_multiplier = max_multiplier;
+        }
+        display_commanderhooks::SetTimeslowdownMultiplier(new_multiplier);
+        trigger_action_notification("Game Speed: " + std::to_string(new_multiplier) + "x");
+        LogInfo("InputRemapper::execute_action() - Game speed increased from %.2fx to %.2fx", current_multiplier, new_multiplier);
+    } else if (action_name == "decrease game speed") {
+        // Decrease game speed by 10% (divide multiplier by 1.1)
+        if (!enabled_experimental_features) {
+            LogWarn("InputRemapper::execute_action() - Decrease game speed requires experimental features");
+            return;
+        }
+        float current_multiplier = display_commanderhooks::GetTimeslowdownMultiplier();
+        float new_multiplier = current_multiplier / 1.1f;
+        float min_multiplier = 0.1f; // Minimum multiplier
+        if (new_multiplier < min_multiplier) {
+            new_multiplier = min_multiplier;
+        }
+        display_commanderhooks::SetTimeslowdownMultiplier(new_multiplier);
+        trigger_action_notification("Game Speed: " + std::to_string(new_multiplier) + "x");
+        LogInfo("InputRemapper::execute_action() - Game speed decreased from %.2fx to %.2fx", current_multiplier, new_multiplier);
     } else {
         LogError("InputRemapper::execute_action() - Unknown action: %s", action_name.c_str());
     }
@@ -1012,6 +1147,6 @@ std::string get_remap_type_name(RemapType type) {
 }
 
 std::vector<std::string> get_available_actions() {
-    return {"screenshot", "time slowdown toggle", "performance overlay toggle", "mute/unmute audio", "increase volume", "decrease volume"};
+    return {"screenshot", "time slowdown toggle", "performance overlay toggle", "mute/unmute audio", "increase volume", "decrease volume", "increase game speed", "decrease game speed"};
 }
 } // namespace display_commander::input_remapping

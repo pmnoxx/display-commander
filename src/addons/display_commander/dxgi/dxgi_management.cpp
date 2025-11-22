@@ -12,11 +12,18 @@ DxgiBypassMode GetIndependentFlipState(IDXGISwapChain *dxgi_swapchain) {
     {
         HRESULT hr = dxgi_swapchain->QueryInterface(IID_PPV_ARGS(&sc1));
         if (FAILED(hr) || sc1 == nullptr) {
-            LogDebug("DXGI IF state: QI IDXGISwapChain1 failed hr=0x%x", hr);
+            // up to 3 times
+            static int log_count = 0;
             // Log swap effect for diagnostics
             DXGI_SWAP_CHAIN_DESC scd{};
             if (SUCCEEDED(dxgi_swapchain->GetDesc(&scd))) {
-                LogDebug("DXGI IF state: SwapEffect=%d", static_cast<int>(scd.SwapEffect));
+                if (log_count < 3) {
+                    LogDebug("DXGI IF state: SwapEffect=%d", static_cast<int>(scd.SwapEffect));
+                }
+            }
+            if (log_count < 3) {
+                LogDebug("DXGI IF state: QI IDXGISwapChain1 failed hr=0x%x", hr);
+                log_count++;
             }
             return DxgiBypassMode::kQueryFailedNoSwapchain1;
         }
@@ -28,16 +35,16 @@ DxgiBypassMode GetIndependentFlipState(IDXGISwapChain *dxgi_swapchain) {
         if (FAILED(hr) || media == nullptr) {
             // log up to 10 times
             static int log_count = 0;
-            if (log_count < 10) {
-                LogDebug("DXGI IF state: QI IDXGISwapChainMedia failed hr=0x%x", hr);
-                log_count++;
-            }
             // Log swap effect for diagnostics
             DXGI_SWAP_CHAIN_DESC scd{};
             if (SUCCEEDED(dxgi_swapchain->GetDesc(&scd))) {
-                if (log_count <= 10) {
+                if (log_count < 10) {
                     LogDebug("DXGI IF state: SwapEffect=%d", static_cast<int>(scd.SwapEffect));
                 }
+            }
+            if (log_count < 10) {
+                LogDebug("DXGI IF state: QI IDXGISwapChainMedia failed hr=0x%x", hr);
+                log_count++;
             }
             return DxgiBypassMode::kQueryFailedNoMedia;
         }
@@ -47,10 +54,17 @@ DxgiBypassMode GetIndependentFlipState(IDXGISwapChain *dxgi_swapchain) {
     {
         HRESULT hr = media->GetFrameStatisticsMedia(&stats);
         if (FAILED(hr)) {
-            LogDebug("DXGI IF state: GetFrameStatisticsMedia failed hr=0x%x (call after at least one Present)", hr);
+            // up to 3 times
+            static int log_count = 0;
             DXGI_SWAP_CHAIN_DESC scd{};
             if (SUCCEEDED(dxgi_swapchain->GetDesc(&scd))) {
-                LogDebug("DXGI IF state: SwapEffect=%d", static_cast<int>(scd.SwapEffect));
+                if (log_count < 3) {
+                    LogDebug("DXGI IF state: SwapEffect=%d", static_cast<int>(scd.SwapEffect));
+                }
+            }
+            if (log_count < 3) {
+                LogDebug("DXGI IF state: GetFrameStatisticsMedia failed hr=0x%x (call after at least one Present)", hr);
+                log_count++;
             }
             return DxgiBypassMode::kQueryFailedNoStats; // Call after at least one Present
         }

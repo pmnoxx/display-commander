@@ -27,6 +27,8 @@ enum class DefaultChordType : int {
     MuteUnmute = 2,
     PerformanceOverlay = 3,
     Screenshot = 4,
+    IncreaseGameSpeed = 5,
+    DecreaseGameSpeed = 6,
     Count
 };
 

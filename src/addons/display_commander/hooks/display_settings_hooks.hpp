@@ -33,3 +33,6 @@ void UninstallDisplaySettingsHooks();
 
 // Check if hooks are installed
 bool AreDisplaySettingsHooksInstalled();
+
+// Direct function that bypasses hooks - use this when we want to change resolution ourselves
+LONG ChangeDisplaySettingsExW_Direct(LPCWSTR lpszDeviceName, DEVMODEW *lpDevMode, HWND hWnd, DWORD dwFlags, LPVOID lParam);

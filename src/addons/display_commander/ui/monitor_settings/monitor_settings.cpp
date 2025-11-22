@@ -8,6 +8,7 @@
 #include "../../settings/main_tab_settings.hpp"
 #include "../../utils.hpp"
 #include "../../utils/logging.hpp"
+#include "../../hooks/display_settings_hooks.hpp"
 #include "../new_ui/settings_wrapper.hpp"
 #include <algorithm>
 #include <atomic>
@@ -182,8 +183,8 @@ static bool TryApplyCurrentSelectionOnce(int &out_monitor_index, int &out_width,
     dm.dmPelsHeight = height;
     dm.dmDisplayFrequency = static_cast<DWORD>(std::lround(refresh_rate.ToHz()));
 
-    LogInfo("TryApplyCurrentSelectionOnce() - ChangeDisplaySettingsExW: %S", mi.szDevice);
-    LONG result = ChangeDisplaySettingsExW(mi.szDevice, &dm, nullptr, CDS_UPDATEREGISTRY, nullptr);
+    LogInfo("TryApplyCurrentSelectionOnce() - ChangeDisplaySettingsExW_Direct: %S", mi.szDevice);
+    LONG result = ChangeDisplaySettingsExW_Direct(mi.szDevice, &dm, nullptr, CDS_UPDATEREGISTRY, nullptr);
     if (result == DISP_CHANGE_SUCCESSFUL) {
         s_resolution_applied_at_least_once.store(true);
         out_monitor_index = actual_monitor_index;
@@ -894,9 +895,9 @@ void HandleDXGIAPIApplyButton() {
                                 // Round the refresh rate to the nearest integer for DEVMODE fallback
                                 dm.dmDisplayFrequency = static_cast<DWORD>(std::round(refresh_rate.ToHz()));
 
-                                LogInfo("HandleDXGIAPIApplyButton() - ChangeDisplaySettingsExW: %S", device_name.c_str());
-                                // Apply the changes using legacy API
-                                LONG result = ChangeDisplaySettingsExW(device_name.c_str(), &dm, nullptr,
+                                LogInfo("HandleDXGIAPIApplyButton() - ChangeDisplaySettingsExW_Direct: %S", device_name.c_str());
+                                // Apply the changes using legacy API (direct, bypasses hooks)
+                                LONG result = ChangeDisplaySettingsExW_Direct(device_name.c_str(), &dm, nullptr,
                                                                        CDS_UPDATEREGISTRY, nullptr);
 
                                 if (result == DISP_CHANGE_SUCCESSFUL) {

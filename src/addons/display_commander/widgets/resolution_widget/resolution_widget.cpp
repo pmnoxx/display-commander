@@ -5,6 +5,7 @@
 #include "../../resolution_helpers.hpp"
 #include "../../utils.hpp"
 #include "../../utils/logging.hpp"
+#include "../../hooks/display_settings_hooks.hpp"
 #include "utils/timing.hpp"
 #include <algorithm>
 #include <cmath>
@@ -632,8 +633,8 @@ bool ResolutionWidget::TryApplyResolution(int display_index, const ResolutionDat
     dm.dmDisplayFrequency =
         static_cast<DWORD>(std::lround(static_cast<double>(refresh_num) / static_cast<double>(refresh_denom)));
 
-    LogInfo("ResolutionWidget::TryApplyResolution() - ChangeDisplaySettingsExW: %S", mi.szDevice);
-    LONG result = ChangeDisplaySettingsExW(mi.szDevice, &dm, nullptr, CDS_UPDATEREGISTRY, nullptr);
+    LogInfo("ResolutionWidget::TryApplyResolution() - ChangeDisplaySettingsExW_Direct: %S", mi.szDevice);
+    LONG result = ChangeDisplaySettingsExW_Direct(mi.szDevice, &dm, nullptr, CDS_UPDATEREGISTRY, nullptr);
     if (result == DISP_CHANGE_SUCCESSFUL) {
         s_resolution_applied_at_least_once.store(true);
     }

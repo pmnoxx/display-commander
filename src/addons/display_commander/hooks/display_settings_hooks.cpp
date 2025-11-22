@@ -203,3 +203,30 @@ void UninstallDisplaySettingsHooks() {
 bool AreDisplaySettingsHooksInstalled() {
     return g_display_settings_hooks_installed.load();
 }
+
+// Direct function that bypasses hooks - use this when we want to change resolution ourselves
+LONG ChangeDisplaySettingsExW_Direct(LPCWSTR lpszDeviceName, DEVMODEW *lpDevMode, HWND hWnd, DWORD dwFlags, LPVOID lParam) {
+    // If hook is installed and we have the original function pointer, use it
+    if (ChangeDisplaySettingsExW_Original) {
+        return ChangeDisplaySettingsExW_Original(lpszDeviceName, lpDevMode, hWnd, dwFlags, lParam);
+    }
+
+    // Otherwise, get the original function from user32.dll directly
+    static ChangeDisplaySettingsExW_pfn s_direct_func = nullptr;
+    if (!s_direct_func) {
+        HMODULE hUser32 = GetModuleHandleW(L"user32.dll");
+        if (hUser32) {
+            s_direct_func = reinterpret_cast<ChangeDisplaySettingsExW_pfn>(
+                GetProcAddress(hUser32, "ChangeDisplaySettingsExW"));
+        }
+    }
+
+    // If we have the direct function, use it
+    if (s_direct_func) {
+        return s_direct_func(lpszDeviceName, lpDevMode, hWnd, dwFlags, lParam);
+    }
+
+    // Last resort: call the function normally (will be hooked if hooks are installed, but we tried)
+    // This shouldn't happen in practice, but provides a fallback
+    return ChangeDisplaySettingsExW(lpszDeviceName, lpDevMode, hWnd, dwFlags, lParam);
+}

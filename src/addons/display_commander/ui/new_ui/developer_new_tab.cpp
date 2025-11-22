@@ -606,7 +606,7 @@ void DrawNvapiSettings() {
 
             ImGui::Spacing();
             ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f),
-                               "These counters help debug Reflex FPS limiter issues in DX9 games.");
+                               "These counters help debug Reflex FPS limiter issues.");
             if (ImGui::IsItemHovered()) {
                 ImGui::SetTooltip(
                     "Marker counts show which specific markers are being set:\n"
@@ -619,7 +619,51 @@ void DrawNvapiSettings() {
                     "If ApplySleepMode calls are 0, the Reflex configuration is not being applied.");
             }
 
+            ImGui::Spacing();
+            ImGui::Separator();
+            ImGui::Spacing();
+
+            // Native Reflex Counters
+            uint32_t native_sleep_count = ::g_nvapi_event_counters[NVAPI_EVENT_D3D_SLEEP].load();
+            uint32_t native_set_sleep_mode_count = ::g_nvapi_event_counters[NVAPI_EVENT_D3D_SET_SLEEP_MODE].load();
+            uint32_t native_set_latency_marker_count = ::g_nvapi_event_counters[NVAPI_EVENT_D3D_SET_LATENCY_MARKER].load();
+            uint32_t native_get_latency_count = ::g_nvapi_event_counters[NVAPI_EVENT_D3D_GET_LATENCY].load();
+            LONGLONG native_sleep_ns = ::g_sleep_reflex_native_ns.load();
+            LONGLONG native_sleep_ns_smooth = ::g_sleep_reflex_native_ns_smooth.load();
+
+            ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Native Reflex API Call Counters:");
+            ImGui::Indent();
+            ImGui::Text("NvAPI_D3D_Sleep calls: %u", native_sleep_count);
+            if (native_sleep_count > 0 && native_sleep_ns_smooth > 0) {
+                double native_calls_per_second = 1000000000.0 / static_cast<double>(native_sleep_ns_smooth);
+                ImGui::Text("Native Sleep Rate: %.2f times/sec (%.1f ms interval)",
+                           native_calls_per_second, native_sleep_ns_smooth / 1000000.0);
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip("Smoothed interval using rolling average. Raw: %.1f ms",
+                                    native_sleep_ns > 0 ? native_sleep_ns / 1000000.0 : 0.0);
+                }
+            }
+            ImGui::Text("NvAPI_D3D_SetSleepMode calls: %u", native_set_sleep_mode_count);
+            ImGui::Text("NvAPI_D3D_SetLatencyMarker calls: %u", native_set_latency_marker_count);
+            ImGui::Text("NvAPI_D3D_GetLatency calls: %u", native_get_latency_count);
+            ImGui::Unindent();
+
+            ImGui::Spacing();
+            ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f),
+                               "These counters track native Reflex API calls from the game.");
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip(
+                    "Native Reflex counters show when the game itself calls NVAPI Reflex functions:\n"
+                    "- NvAPI_D3D_Sleep: Game's sleep calls for frame pacing\n"
+                    "- NvAPI_D3D_SetSleepMode: Game's Reflex configuration calls\n"
+                    "- NvAPI_D3D_SetLatencyMarker: Game's latency marker calls\n"
+                    "- NvAPI_D3D_GetLatency: Game's latency query calls\n\n"
+                    "If all counts are 0, the game is not using native Reflex.\n"
+                    "If counts are increasing, the game has native Reflex support.");
+            }
+
             if (ImGui::Button("Reset Counters")) {
+                // Reset injected Reflex counters
                 ::g_reflex_sleep_count.store(0);
                 ::g_reflex_apply_sleep_mode_count.store(0);
                 ::g_reflex_sleep_duration_ns.store(0);
@@ -630,6 +674,14 @@ void DrawNvapiSettings() {
                 ::g_reflex_marker_present_start_count.store(0);
                 ::g_reflex_marker_present_end_count.store(0);
                 ::g_reflex_marker_input_sample_count.store(0);
+
+                // Reset native Reflex counters
+                ::g_nvapi_event_counters[NVAPI_EVENT_D3D_SLEEP].store(0);
+                ::g_nvapi_event_counters[NVAPI_EVENT_D3D_SET_SLEEP_MODE].store(0);
+                ::g_nvapi_event_counters[NVAPI_EVENT_D3D_SET_LATENCY_MARKER].store(0);
+                ::g_nvapi_event_counters[NVAPI_EVENT_D3D_GET_LATENCY].store(0);
+                ::g_sleep_reflex_native_ns.store(0);
+                ::g_sleep_reflex_native_ns_smooth.store(0);
             }
             if (ImGui::IsItemHovered()) {
                 ImGui::SetTooltip("Reset all Reflex debug counters to zero.");

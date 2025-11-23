@@ -776,3 +776,15 @@ std::string GetNvapiAutoEnableGameStatus() {
         return "✗ " + processName + " (Not Supported)";
     }
 }
+
+// GetCallingDLL implementation (similar to Special-K's SK_GetCallingDLL)
+HMODULE GetCallingDLL(LPCVOID pReturn) {
+    HMODULE hCallingMod = nullptr;
+
+    GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT |
+                        GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
+                        static_cast<const wchar_t*>(pReturn),
+                        &hCallingMod);
+
+    return hCallingMod;
+}

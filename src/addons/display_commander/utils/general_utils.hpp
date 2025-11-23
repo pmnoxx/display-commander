@@ -115,5 +115,21 @@ std::string GetCurrentProcessName();
 bool IsGameInNvapiAutoEnableList(const std::string& processName);
 std::string GetNvapiAutoEnableGameStatus();
 
+// Architecture detection utility
+// Returns true if code was built for 64-bit, false for 32-bit
+inline bool Is64BitBuild() {
+#ifdef _WIN64
+    return true;
+#else
+    return false;
+#endif
+}
+
+// Calling DLL detection utility (similar to Special-K's SK_GetCallingDLL)
+// Returns the HMODULE of the DLL that contains the given address
+// Default parameter uses _ReturnAddress() to get the caller's return address
+#pragma intrinsic (_ReturnAddress)
+HMODULE GetCallingDLL(LPCVOID pReturn = _ReturnAddress());
+
 // External declarations needed by utility functions
 extern std::atomic<std::shared_ptr<const std::vector<MonitorInfo>>> g_monitors;

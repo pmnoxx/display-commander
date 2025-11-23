@@ -744,73 +744,16 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
 
         ImGui::Spacing();
 
-        // Force Anisotropic Filtering
-        bool force_aniso = settings::g_mainTabSettings.force_anisotropic_filtering.GetValue();
-        if (ImGui::Checkbox("Force Anisotropic Filtering", &force_aniso)) {
-            settings::g_mainTabSettings.force_anisotropic_filtering.SetValue(force_aniso);
-            LogInfo("Force anisotropic filtering %s", force_aniso ? "enabled" : "disabled");
+        // Max Anisotropy Override
+        // Only affects existing anisotropic filters
+        int max_aniso = settings::g_mainTabSettings.max_anisotropy.GetValue();
+        if (ImGui::SliderInt("Anisotropic Level", &max_aniso, 0, 16, max_aniso == 0 ? "Disabled" : "%dx")) {
+            settings::g_mainTabSettings.max_anisotropy.SetValue(max_aniso);
+            LogInfo("Max anisotropy set to %d", max_aniso);
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Forces linear texture filters to use anisotropic filtering. This improves texture quality at oblique angles.");
-        }
-
-        // Filter Type Selection
-        if (force_aniso) {
-            ImGui::Indent();
-
-
-            bool upgrade_mip_point = settings::g_mainTabSettings.upgrade_min_mag_linear_mip_point.GetValue();
-            if (ImGui::Checkbox("Upgrade Bilinear Filters", &upgrade_mip_point)) {
-                settings::g_mainTabSettings.upgrade_min_mag_linear_mip_point.SetValue(upgrade_mip_point);
-                LogInfo("Upgrade bilinear filters %s", upgrade_mip_point ? "enabled" : "disabled");
-            }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("Upgrade bilinear filters (min_mag_linear_mip_point) to anisotropic filtering.\n"
-                                  "Bilinear filtering uses linear interpolation for min and mag, but point sampling for mip levels.");
-            }
-
-            bool upgrade_compare_mip_point = settings::g_mainTabSettings.upgrade_compare_min_mag_linear_mip_point.GetValue();
-            if (ImGui::Checkbox("Upgrade Compare Bilinear Filters", &upgrade_compare_mip_point)) {
-                settings::g_mainTabSettings.upgrade_compare_min_mag_linear_mip_point.SetValue(upgrade_compare_mip_point);
-                LogInfo("Upgrade compare bilinear filters %s", upgrade_compare_mip_point ? "enabled" : "disabled");
-            }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("Upgrade compare bilinear filters (compare_min_mag_linear_mip_point) to compare anisotropic filtering.\n"
-                                  "Bilinear filtering uses linear interpolation for min and mag, but point sampling for mip levels.");
-            }
-
-            bool upgrade_mip_linear = settings::g_mainTabSettings.upgrade_min_mag_mip_linear.GetValue();
-            if (ImGui::Checkbox("Upgrade Trilinear Filters", &upgrade_mip_linear)) {
-                settings::g_mainTabSettings.upgrade_min_mag_mip_linear.SetValue(upgrade_mip_linear);
-                LogInfo("Upgrade trilinear filters %s", upgrade_mip_linear ? "enabled" : "disabled");
-            }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("Upgrade trilinear filters (min_mag_mip_linear) to anisotropic filtering.\n"
-                                  "Trilinear filtering uses linear interpolation for min, mag, and mip levels.");
-            }
-
-            bool upgrade_compare_mip_linear = settings::g_mainTabSettings.upgrade_compare_min_mag_mip_linear.GetValue();
-            if (ImGui::Checkbox("Upgrade Compare Trilinear Filters", &upgrade_compare_mip_linear)) {
-                settings::g_mainTabSettings.upgrade_compare_min_mag_mip_linear.SetValue(upgrade_compare_mip_linear);
-                LogInfo("Upgrade compare trilinear filters %s", upgrade_compare_mip_linear ? "enabled" : "disabled");
-            }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("Upgrade compare trilinear filters (compare_min_mag_mip_linear) to compare anisotropic filtering.\n"
-                                  "Trilinear filtering uses linear interpolation for min, mag, and mip levels.");
-            }
-
-            ImGui::Spacing();
-
-            // Max Anisotropy
-            int max_aniso = settings::g_mainTabSettings.max_anisotropy.GetValue();
-            if (ImGui::SliderInt("Anisotropic Level", &max_aniso, 1, 16, "%dx")) {
-                settings::g_mainTabSettings.max_anisotropy.SetValue(max_aniso);
-                LogInfo("Max anisotropy set to %d", max_aniso);
-            }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("Maximum anisotropic filtering level (1-16). Higher values provide better quality but may impact performance.");
-            }
-            ImGui::Unindent();
+            ImGui::SetTooltip("Override maximum anisotropic filtering level (1-16) for existing anisotropic filters.\n"
+                              "Set to 0 to disable override. Only affects samplers that already use anisotropic filtering.");
         }
 
         ImGui::Spacing();

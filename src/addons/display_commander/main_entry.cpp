@@ -1,4 +1,5 @@
 #include "addon.hpp"
+#include "audio/audio_management.hpp"
 #include "autoclick/autoclick_manager.hpp"
 #include "config/display_commander_config.hpp"
 #include "dx11_proxy/dx11_proxy_manager.hpp"
@@ -212,6 +213,7 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
     // Check which overlay components are enabled
     bool show_fps_counter = settings::g_mainTabSettings.show_fps_counter.GetValue();
     bool show_refresh_rate = settings::g_mainTabSettings.show_refresh_rate.GetValue();
+    bool show_volume = settings::g_mainTabSettings.show_volume.GetValue();
     bool show_gpu_measurement = (settings::g_mainTabSettings.gpu_measurement_enabled.GetValue() != 0);
     bool show_frame_time_graph = settings::g_mainTabSettings.show_frame_time_graph.GetValue();
     bool show_cpu_usage = settings::g_mainTabSettings.show_cpu_usage.GetValue();
@@ -315,6 +317,25 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
             } else {
                 ImGui::Text("%.1f", cached_refresh_rate);
             }
+        }
+    }
+
+    if (show_volume) {
+        // Get current volume
+        float current_volume = 0.0f;
+        if (!GetVolumeForCurrentProcess(&current_volume)) {
+            // If we can't get current volume, use stored value
+            current_volume = s_audio_volume_percent.load();
+        }
+
+        // Display volume percentage
+        if (settings::g_mainTabSettings.show_labels.GetValue()) {
+            ImGui::Text("%.0f%% vol", current_volume);
+        } else {
+            ImGui::Text("%.0f%%", current_volume);
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Audio Volume: %.0f%%", current_volume);
         }
     }
 

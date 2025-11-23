@@ -2526,6 +2526,16 @@ void DrawImportantInfo() {
             ImGui::SetTooltip("Shows a graph of refresh rate frame times (display refresh intervals) in the overlay.");
         }
 
+        ImGui::SameLine();
+        // Show Volume Control
+        bool show_volume = settings::g_mainTabSettings.show_volume.GetValue();
+        if (ImGui::Checkbox("Show volume", &show_volume)) {
+            settings::g_mainTabSettings.show_volume.SetValue(show_volume);
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Shows the current audio volume percentage in the overlay.");
+        }
+
         ImGui::Spacing();
         // Overlay background transparency slider
         if (SliderFloatSetting(settings::g_mainTabSettings.overlay_background_alpha, "Overlay Background Transparency", "%.2f")) {

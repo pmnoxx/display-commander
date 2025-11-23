@@ -14,6 +14,7 @@ using ui::new_ui::FixedIntArraySetting;
 using ui::new_ui::FloatSetting;
 using ui::new_ui::FloatSettingRef;
 using ui::new_ui::IntSetting;
+using ui::new_ui::StringSetting;
 using ui::new_ui::SettingBase;
 
 // Settings manager for the experimental tab
@@ -77,6 +78,9 @@ class ExperimentalTabSettings {
     ComboSetting get_system_time_precise_as_file_time_hook;
     ComboSetting get_local_time_hook;
     ComboSetting nt_query_system_time_hook;
+
+    // QPC enabled modules (comma-separated list of module names)
+    StringSetting qpc_enabled_modules;
 
     // DLSS indicator settings
     BoolSetting dlss_indicator_enabled;

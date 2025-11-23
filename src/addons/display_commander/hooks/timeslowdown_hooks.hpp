@@ -2,6 +2,8 @@
 
 #include <stdint.h>
 #include <windows.h>
+#include <vector>
+#include <string>
 
 namespace display_commanderhooks {
 
@@ -107,5 +109,14 @@ extern const char *HOOK_NT_QUERY_SYSTEM_TIME;
 void SetRenderThreadId(DWORD thread_id);
 DWORD GetRenderThreadId();
 bool IsCurrentThreadRenderThread();
+
+// QPC calling module tracking
+std::vector<std::wstring> GetQPCallingModules();
+std::vector<std::pair<HMODULE, std::wstring>> GetQPCallingModulesWithHandles();
+void ClearQPCallingModules();
+bool IsQPCModuleEnabled(HMODULE hModule);
+void SetQPCModuleEnabled(HMODULE hModule, bool enabled);
+void LoadQPCEnabledModulesFromSettings(const std::string& enabled_modules_str);
+std::string SaveQPCEnabledModulesToSettings();
 
 } // namespace display_commanderhooks

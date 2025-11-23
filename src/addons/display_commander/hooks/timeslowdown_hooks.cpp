@@ -4,10 +4,16 @@
 #include "../settings/experimental_tab_settings.hpp"
 #include "../utils/general_utils.hpp"
 #include "../utils/logging.hpp"
+#include "../utils/srwlock_wrapper.hpp"
 #include "../swapchain_events.hpp"
 #include <MinHook.h>
 #include <atomic>
 #include <memory>
+#include <set>
+#include <map>
+#include <vector>
+#include <string>
+#include <sstream>
 #include <windows.h>
 
 // NTSTATUS constants
@@ -113,6 +119,37 @@ std::atomic<DWORD> g_render_thread_id{0}; // 0 means not set yet
 
 // Thread-local storage for cached thread ID (per-thread cache)
 thread_local DWORD tls_thread_id = 0;
+
+namespace {
+    // QPC calling module tracking
+    SRWLOCK g_qpc_modules_srwlock = SRWLOCK_INIT;
+    std::set<HMODULE> g_qpc_calling_modules;
+    // Map to track which modules have QPC enabled (default: enabled for all)
+    std::map<HMODULE, bool> g_qpc_module_enabled_states;
+} // anonymous namespace
+
+namespace {
+    // Helper function to get module name from HMODULE
+    std::wstring GetModuleNameFromHandle(HMODULE hModule) {
+        if (hModule == nullptr) {
+            return L"<null>";
+        }
+
+        wchar_t module_path[MAX_PATH];
+        DWORD path_length = GetModuleFileNameW(hModule, module_path, MAX_PATH);
+        if (path_length == 0) {
+            return L"<unknown>";
+        }
+
+        // Extract just the filename from the full path
+        std::wstring path(module_path);
+        size_t last_slash = path.find_last_of(L"\\/");
+        if (last_slash != std::wstring::npos) {
+            return path.substr(last_slash + 1);
+        }
+        return path;
+    }
+} // anonymous namespace
 
 // Helper function to get hook identifier by name (DLL-safe) - kept for backward compatibility only
 TimerHookIdentifier GetHookIdentifierByName(const char *hook_name) {
@@ -228,20 +265,77 @@ bool ShouldApplyHook(const char *hook_name) {
 // Hooked QueryPerformanceCounter function
 BOOL WINAPI QueryPerformanceCounter_Detour(LARGE_INTEGER *lpPerformanceCount) {
     g_qpc_call_count.fetch_add(1, std::memory_order_relaxed);
+
+    // Track calling module
+    HMODULE calling_module = GetCallingDLL();
+    if (calling_module != nullptr) {
+        bool is_new_module = false;
+        {
+            utils::SRWLockExclusive lock(g_qpc_modules_srwlock);
+            is_new_module = (g_qpc_calling_modules.find(calling_module) == g_qpc_calling_modules.end());
+            g_qpc_calling_modules.insert(calling_module);
+            // Default to disabled if not in map
+            if (g_qpc_module_enabled_states.find(calling_module) == g_qpc_module_enabled_states.end()) {
+                // Check settings if this is a new module
+                bool should_enable = false;
+                if (is_new_module) {
+                    std::string enabled_modules_str = settings::g_experimentalTabSettings.qpc_enabled_modules.GetValue();
+                    if (!enabled_modules_str.empty()) {
+                        std::wstring module_name = GetModuleNameFromHandle(calling_module);
+                        // Parse comma-separated module names
+                        std::stringstream ss(enabled_modules_str);
+                        std::string module_name_narrow;
+                        while (std::getline(ss, module_name_narrow, ',')) {
+                            // Trim whitespace
+                            module_name_narrow.erase(0, module_name_narrow.find_first_not_of(" \t"));
+                            module_name_narrow.erase(module_name_narrow.find_last_not_of(" \t") + 1);
+                            if (!module_name_narrow.empty()) {
+                                std::wstring wmodule_name(module_name_narrow.begin(), module_name_narrow.end());
+                                if (wmodule_name == module_name) {
+                                    should_enable = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+                g_qpc_module_enabled_states[calling_module] = should_enable;
+            }
+        }
+
+        // Check if this module has QPC enabled
+        bool module_enabled = false;
+        {
+            utils::SRWLockShared lock(g_qpc_modules_srwlock);
+            auto it = g_qpc_module_enabled_states.find(calling_module);
+            if (it != g_qpc_module_enabled_states.end()) {
+                module_enabled = it->second;
+            }
+        }
+
+        // If module is disabled, return original result without applying timeslowdown
+        if (!module_enabled) {
+            if (!QueryPerformanceCounter_Original) {
+                return QueryPerformanceCounter(lpPerformanceCount);
+            }
+            return QueryPerformanceCounter_Original(lpPerformanceCount);
+        }
+    }
+
     if (!QueryPerformanceCounter_Original) {
         return QueryPerformanceCounter(lpPerformanceCount);
     }
 
     // Call original function first
     BOOL result = QueryPerformanceCounter_Original(lpPerformanceCount);
-    if (result == FALSE || lpPerformanceCount == nullptr || !g_initialized_with_hwnd.load()) {
-        return result;
-    }
     // Check if this hook should be applied (efficient enum-based check)
     if (!ShouldApplyHookById(TimerHookIdentifier::QueryPerformanceCounter)) {
         return result;
     }
 
+    if (result == FALSE || lpPerformanceCount == nullptr || !g_initialized_with_hwnd.load()) {
+        return result;
+    }
     // Get current state atomically
     auto current_state = g_timeslowdown_state.load();
 
@@ -899,6 +993,119 @@ const char* GetHookNameById(TimerHookIdentifier id) {
         default:
             return nullptr;
     }
+}
+
+// QPC calling module tracking functions
+std::vector<std::wstring> GetQPCallingModules() {
+    utils::SRWLockShared lock(g_qpc_modules_srwlock);
+    std::vector<std::wstring> module_names;
+    module_names.reserve(g_qpc_calling_modules.size());
+
+    for (HMODULE hModule : g_qpc_calling_modules) {
+        module_names.push_back(GetModuleNameFromHandle(hModule));
+    }
+
+    return module_names;
+}
+
+std::vector<std::pair<HMODULE, std::wstring>> GetQPCallingModulesWithHandles() {
+    utils::SRWLockShared lock(g_qpc_modules_srwlock);
+    std::vector<std::pair<HMODULE, std::wstring>> modules;
+    modules.reserve(g_qpc_calling_modules.size());
+
+    for (HMODULE hModule : g_qpc_calling_modules) {
+        modules.push_back(std::make_pair(hModule, GetModuleNameFromHandle(hModule)));
+    }
+
+    return modules;
+}
+
+void ClearQPCallingModules() {
+    utils::SRWLockExclusive lock(g_qpc_modules_srwlock);
+    g_qpc_calling_modules.clear();
+    g_qpc_module_enabled_states.clear();
+}
+
+bool IsQPCModuleEnabled(HMODULE hModule) {
+    if (hModule == nullptr) {
+        return false; // Default disabled
+    }
+
+    utils::SRWLockShared lock(g_qpc_modules_srwlock);
+    auto it = g_qpc_module_enabled_states.find(hModule);
+    if (it != g_qpc_module_enabled_states.end()) {
+        return it->second;
+    }
+    return false; // Default disabled if not in map
+}
+
+void SetQPCModuleEnabled(HMODULE hModule, bool enabled) {
+    if (hModule == nullptr) {
+        return;
+    }
+
+    utils::SRWLockExclusive lock(g_qpc_modules_srwlock);
+    g_qpc_module_enabled_states[hModule] = enabled;
+    // Also ensure it's in the calling modules set
+    g_qpc_calling_modules.insert(hModule);
+}
+
+void LoadQPCEnabledModulesFromSettings(const std::string& enabled_modules_str) {
+    if (enabled_modules_str.empty()) {
+        return;
+    }
+
+    utils::SRWLockExclusive lock(g_qpc_modules_srwlock);
+
+    // Parse comma-separated module names
+    std::stringstream ss(enabled_modules_str);
+    std::string module_name;
+    std::set<std::wstring> enabled_module_names;
+
+    while (std::getline(ss, module_name, ',')) {
+        // Trim whitespace
+        module_name.erase(0, module_name.find_first_not_of(" \t"));
+        module_name.erase(module_name.find_last_not_of(" \t") + 1);
+        if (!module_name.empty()) {
+            // Convert to wide string for comparison
+            std::wstring wmodule_name(module_name.begin(), module_name.end());
+            enabled_module_names.insert(wmodule_name);
+        }
+    }
+
+    // Update enabled states based on module names
+    for (HMODULE hModule : g_qpc_calling_modules) {
+        std::wstring module_name = GetModuleNameFromHandle(hModule);
+        bool enabled = enabled_module_names.find(module_name) != enabled_module_names.end();
+        g_qpc_module_enabled_states[hModule] = enabled;
+    }
+}
+
+std::string SaveQPCEnabledModulesToSettings() {
+    utils::SRWLockShared lock(g_qpc_modules_srwlock);
+
+    std::vector<std::wstring> enabled_modules;
+    for (const auto& pair : g_qpc_module_enabled_states) {
+        if (pair.second) { // If enabled
+            std::wstring module_name = GetModuleNameFromHandle(pair.first);
+            if (!module_name.empty() && module_name != L"<null>" && module_name != L"<unknown>") {
+                enabled_modules.push_back(module_name);
+            }
+        }
+    }
+
+    // Convert to comma-separated string
+    std::string result;
+    for (size_t i = 0; i < enabled_modules.size(); ++i) {
+        // Convert wide string to narrow string
+        std::string narrow_name(enabled_modules[i].begin(), enabled_modules[i].end());
+        if (i > 0) {
+            result += ",";
+        }
+        result += narrow_name;
+    }
+
+    return result;
 }
 
 } // namespace display_commanderhooks

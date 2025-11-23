@@ -1,5 +1,6 @@
 #include "experimental_tab_settings.hpp"
 #include "../globals.hpp"
+#include "../hooks/timeslowdown_hooks.hpp"
 
 namespace settings {
 
@@ -74,6 +75,7 @@ ExperimentalTabSettings::ExperimentalTabSettings()
         "None",
         "Enabled"
     }, "DisplayCommander.Experimental")
+    , qpc_enabled_modules("QPCEnabledModules", "", "DisplayCommander.Experimental")
     , dlss_indicator_enabled("DlssIndicatorEnabled", false, "DisplayCommander.Experimental")
     , d3d9_flipex_enabled("D3D9FlipExEnabled", false, "DisplayCommander.Experimental")
     , enable_flip_chain_enabled("EnableFlipChainEnabled", false, "DisplayCommander.Experimental")
@@ -110,6 +112,7 @@ ExperimentalTabSettings::ExperimentalTabSettings()
         &time_get_time_hook, &get_system_time_hook,
         &get_system_time_as_file_time_hook, &get_system_time_precise_as_file_time_hook,
         &get_local_time_hook, &nt_query_system_time_hook,
+        &qpc_enabled_modules,
         &dlss_indicator_enabled,
         &d3d9_flipex_enabled,
         &enable_flip_chain_enabled,
@@ -144,6 +147,12 @@ void ExperimentalTabSettings::LoadAll() {
         }
     }
     LoadTabSettingsWithSmartLogging(settings_to_load, "Experimental Tab");
+
+    // Load QPC enabled modules after settings are loaded
+    qpc_enabled_modules.Load();
+    if (!qpc_enabled_modules.GetValue().empty()) {
+        display_commanderhooks::LoadQPCEnabledModulesFromSettings(qpc_enabled_modules.GetValue());
+    }
 }
 
 std::vector<SettingBase*> ExperimentalTabSettings::GetAllSettings() {

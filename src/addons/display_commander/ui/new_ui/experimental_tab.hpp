@@ -47,6 +47,9 @@ void DrawHIDSuppression();
 // Draw debug output hooks section
 void DrawDebugOutputHooks();
 
+// Draw anisotropic filtering upgrade section
+void DrawAnisotropicFilteringUpgrade();
+
 
 // Cleanup function to stop background threads
 void CleanupExperimentalTab();

@@ -89,6 +89,11 @@ ExperimentalTabSettings::ExperimentalTabSettings()
     , dinput_device_state_blocking("DInputDeviceStateBlocking", true, "DisplayCommander.Experimental")
     , up_down_key_press_enabled("UpDownKeyPressEnabled", false, "DisplayCommander.Experimental")
     , button_only_press_enabled("ButtonOnlyPressEnabled", false, "DisplayCommander.Experimental")
+    , force_anisotropic_filtering("ForceAnisotropicFiltering", false, "DisplayCommander.Experimental")
+    , upgrade_min_mag_mip_linear("UpgradeMinMagMipLinear", true, "DisplayCommander.Experimental")
+    , upgrade_compare_min_mag_mip_linear("UpgradeCompareMinMagMipLinear", false, "DisplayCommander.Experimental")
+    , upgrade_min_mag_linear_mip_point("UpgradeMinMagLinearMipPoint", true, "DisplayCommander.Experimental")
+    , upgrade_compare_min_mag_linear_mip_point("UpgradeCompareMinMagLinearMipPoint", false, "DisplayCommander.Experimental")
 {
     // Initialize the all_settings_ vector
     all_settings_ = {
@@ -116,6 +121,11 @@ ExperimentalTabSettings::ExperimentalTabSettings()
         &dinput_device_state_blocking,
         &up_down_key_press_enabled,
         &button_only_press_enabled,
+        &force_anisotropic_filtering,
+        &upgrade_min_mag_mip_linear,
+        &upgrade_compare_min_mag_mip_linear,
+        &upgrade_min_mag_linear_mip_point,
+        &upgrade_compare_min_mag_linear_mip_point,
     };
 }
 

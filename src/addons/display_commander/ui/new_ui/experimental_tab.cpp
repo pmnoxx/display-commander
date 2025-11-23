@@ -680,6 +680,98 @@ void DrawTimeSlowdownControls() {
             ImGui::SetTooltip("High-resolution timer used by most modern games for precise timing.\n\nThread-specific modes (Render Thread/Non-Render Thread) require swapchain initialization to detect the render thread.");
         }
 
+        // Display QPC calling modules with enable/disable checkboxes
+        {
+            static std::vector<std::pair<HMODULE, std::wstring>> cached_modules;
+            static uint64_t last_update_frame = 0;
+            uint64_t current_frame = ImGui::GetFrameCount();
+
+            // Update module list every 60 frames (~1 second at 60 FPS)
+            if (current_frame - last_update_frame > 60 || cached_modules.empty()) {
+                cached_modules = display_commanderhooks::GetQPCallingModulesWithHandles();
+                last_update_frame = current_frame;
+            }
+
+            if (!cached_modules.empty()) {
+                ImGui::Indent();
+                ImGui::TextColored(ImVec4(0.7f, 0.9f, 1.0f, 1.0f), "Calling Modules (%zu):", cached_modules.size());
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip("DLLs/modules that have called QueryPerformanceCounter\n\nCheck/uncheck to enable/disable time slowdown for specific modules");
+                }
+
+                // Show modules in a scrollable child window if there are many
+                if (cached_modules.size() > 5) {
+                    if (ImGui::BeginChild("QPCModules", ImVec2(0, 200), true)) {
+                        for (const auto& module_pair : cached_modules) {
+                            HMODULE hModule = module_pair.first;
+                            const std::wstring& module_name = module_pair.second;
+
+                            bool enabled = display_commanderhooks::IsQPCModuleEnabled(hModule);
+                            if (ImGui::Checkbox(("##QPCModule_" + std::to_string(reinterpret_cast<uintptr_t>(hModule))).c_str(), &enabled)) {
+                                display_commanderhooks::SetQPCModuleEnabled(hModule, enabled);
+                                // Save enabled modules to settings
+                                std::string enabled_modules_str = display_commanderhooks::SaveQPCEnabledModulesToSettings();
+                                settings::g_experimentalTabSettings.qpc_enabled_modules.SetValue(enabled_modules_str);
+                                settings::g_experimentalTabSettings.qpc_enabled_modules.Save();
+                                LogInfo("QPC module %ls %s", module_name.c_str(), enabled ? "enabled" : "disabled");
+                            }
+                            ImGui::SameLine();
+                            ImGui::Text("%ls", module_name.c_str());
+                        }
+                    }
+                    ImGui::EndChild();
+                } else {
+                    for (const auto& module_pair : cached_modules) {
+                        HMODULE hModule = module_pair.first;
+                        const std::wstring& module_name = module_pair.second;
+
+                        bool enabled = display_commanderhooks::IsQPCModuleEnabled(hModule);
+                        if (ImGui::Checkbox(("##QPCModule_" + std::to_string(reinterpret_cast<uintptr_t>(hModule))).c_str(), &enabled)) {
+                            display_commanderhooks::SetQPCModuleEnabled(hModule, enabled);
+                            // Save enabled modules to settings
+                            std::string enabled_modules_str = display_commanderhooks::SaveQPCEnabledModulesToSettings();
+                            settings::g_experimentalTabSettings.qpc_enabled_modules.SetValue(enabled_modules_str);
+                            settings::g_experimentalTabSettings.qpc_enabled_modules.Save();
+                            LogInfo("QPC module %ls %s", module_name.c_str(), enabled ? "enabled" : "disabled");
+                        }
+                        ImGui::SameLine();
+                        ImGui::Text("%ls", module_name.c_str());
+                    }
+                }
+
+                ImGui::Spacing();
+                if (ImGui::SmallButton("Save##QPCModules")) {
+                    std::string enabled_modules_str = display_commanderhooks::SaveQPCEnabledModulesToSettings();
+                    settings::g_experimentalTabSettings.qpc_enabled_modules.SetValue(enabled_modules_str);
+                    settings::g_experimentalTabSettings.qpc_enabled_modules.Save();
+                    LogInfo("QPC enabled modules saved: %s", enabled_modules_str.empty() ? "(none)" : enabled_modules_str.c_str());
+                }
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip("Save the current enabled/disabled state of all modules to settings.\nThis list will be automatically loaded on next startup.");
+                }
+                ImGui::SameLine();
+                if (ImGui::SmallButton("Select All##QPCModules")) {
+                    for (const auto& module_pair : cached_modules) {
+                        display_commanderhooks::SetQPCModuleEnabled(module_pair.first, true);
+                    }
+                    LogInfo("All QPC modules enabled (%zu modules)", cached_modules.size());
+                }
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip("Enable time slowdown for all tracked modules");
+                }
+                ImGui::SameLine();
+                if (ImGui::SmallButton("Clear##QPCModules")) {
+                    display_commanderhooks::ClearQPCallingModules();
+                    cached_modules.clear();
+                }
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip("Clear the list of tracked calling modules");
+                }
+
+                ImGui::Unindent();
+            }
+        }
+
         // GetTickCount hook
         uint64_t gtc_calls = display_commanderhooks::GetTimerHookCallCountById(display_commanderhooks::TimerHookIdentifier::GetTickCount);
         if (ComboSettingWrapper(settings::g_experimentalTabSettings.get_tick_count_hook, "GetTickCount")) {

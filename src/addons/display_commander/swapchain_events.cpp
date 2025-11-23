@@ -1480,44 +1480,13 @@ bool OnCreateSampler(reshade::api::device *device, reshade::api::sampler_desc &d
         }
     }
 
-    // Apply anisotropic filtering override
-    if (settings::g_mainTabSettings.force_anisotropic_filtering.GetValue()) {
-        // Convert linear filters to anisotropic based on individual filter type settings
-        switch (desc.filter) {
-            case reshade::api::filter_mode::min_mag_mip_linear:
-                if (settings::g_mainTabSettings.upgrade_min_mag_mip_linear.GetValue()) {
-                    desc.filter = reshade::api::filter_mode::anisotropic;
-                    modified = true;
-                }
-                break;
-            case reshade::api::filter_mode::compare_min_mag_mip_linear:
-                if (settings::g_mainTabSettings.upgrade_compare_min_mag_mip_linear.GetValue()) {
-                    desc.filter = reshade::api::filter_mode::compare_anisotropic;
-                    modified = true;
-                }
-                break;
-            case reshade::api::filter_mode::min_mag_linear_mip_point:
-                if (settings::g_mainTabSettings.upgrade_min_mag_linear_mip_point.GetValue()) {
-                    desc.filter = reshade::api::filter_mode::anisotropic;
-                    modified = true;
-                }
-                break;
-            case reshade::api::filter_mode::compare_min_mag_linear_mip_point:
-                if (settings::g_mainTabSettings.upgrade_compare_min_mag_linear_mip_point.GetValue()) {
-                    desc.filter = reshade::api::filter_mode::compare_anisotropic;
-                    modified = true;
-                }
-                break;
-            default:
-                break;
-        }
-    }
-
-    // Apply max anisotropy override for anisotropic filters
+    // Apply max anisotropy override for existing anisotropic filters
     if (settings::g_mainTabSettings.max_anisotropy.GetValue() > 0) {
         switch (desc.filter) {
             case reshade::api::filter_mode::anisotropic:
             case reshade::api::filter_mode::compare_anisotropic:
+            case reshade::api::filter_mode::min_mag_anisotropic_mip_point:
+            case reshade::api::filter_mode::compare_min_mag_anisotropic_mip_point:
                 desc.max_anisotropy = static_cast<float>(settings::g_mainTabSettings.max_anisotropy.GetValue());
                 modified = true;
                 break;

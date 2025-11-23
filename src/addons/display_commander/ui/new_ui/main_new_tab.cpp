@@ -1364,26 +1364,27 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                     }
                 }
 
-            //injected reflex status:
-            }
-            #if 0
-            bool reflex_low_latency = settings::g_developerTabSettings.reflex_low_latency.GetValue();
-            if (ImGui::Checkbox("Low Latency Mode", &reflex_low_latency)) {
-                settings::g_developerTabSettings.reflex_low_latency.SetValue(reflex_low_latency);
-                s_reflex_low_latency.store(reflex_low_latency);
-            }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("Enables NVIDIA Reflex Low Latency Mode to reduce input lag and system latency.\nThis helps improve responsiveness in competitive gaming scenarios.");
-            }
-            ImGui::SameLine();
-            #endif
-            bool reflex_boost = settings::g_developerTabSettings.reflex_boost.GetValue();
-            if (ImGui::Checkbox("Boost", &reflex_boost)) {
-                settings::g_developerTabSettings.reflex_boost.SetValue(reflex_boost);
-                s_reflex_boost.store(reflex_boost);
-            }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("Enables NVIDIA Reflex Boost mode for maximum latency reduction.\nThis mode may increase GPU power consumption but provides the lowest possible input lag.");
+                // Show Boost checkbox for both native and injected Reflex
+                ImGui::Spacing();
+                #if 0
+                bool reflex_low_latency = settings::g_developerTabSettings.reflex_low_latency.GetValue();
+                if (ImGui::Checkbox("Low Latency Mode", &reflex_low_latency)) {
+                    settings::g_developerTabSettings.reflex_low_latency.SetValue(reflex_low_latency);
+                    s_reflex_low_latency.store(reflex_low_latency);
+                }
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip("Enables NVIDIA Reflex Low Latency Mode to reduce input lag and system latency.\nThis helps improve responsiveness in competitive gaming scenarios.");
+                }
+                ImGui::SameLine();
+                #endif
+                bool reflex_boost = settings::g_developerTabSettings.reflex_boost.GetValue();
+                if (ImGui::Checkbox("Boost", &reflex_boost)) {
+                    settings::g_developerTabSettings.reflex_boost.SetValue(reflex_boost);
+                    s_reflex_boost.store(reflex_boost);
+                }
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip("Enables NVIDIA Reflex Boost mode for maximum latency reduction.\nThis mode may increase GPU power consumption but provides the lowest possible input lag.");
+                }
             }
             if (IsNativeReflexActive() || settings::g_developerTabSettings.reflex_supress_native.GetValue()) {
                 ImGui::SameLine();

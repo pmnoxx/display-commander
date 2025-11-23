@@ -1,4 +1,5 @@
 #include "experimental_tab.hpp"
+#include "settings_wrapper.hpp"
 #include "../../res/forkawesome.h"
 #include "../../autoclick/autoclick_manager.hpp"
 #include "../../dlss/dlss_indicator_manager.hpp"
@@ -9,6 +10,7 @@
 #include "../../hooks/hid_suppression_hooks.hpp"
 #include "../../hooks/debug_output_hooks.hpp"
 #include "../../settings/experimental_tab_settings.hpp"
+#include "../../settings/main_tab_settings.hpp"
 #include "../../widgets/dualsense_widget/dualsense_widget.hpp"
 #include "../../utils/logging.hpp"
 #include "../../utils/timing.hpp"
@@ -214,6 +216,13 @@ void DrawExperimentalTab() {
 
     if (ImGui::CollapsingHeader("DLSS Indicator Controls", ImGuiTreeNodeFlags_None)) {
         DrawDlssIndicatorControls();
+    }
+
+    ImGui::Spacing();
+
+    // Anisotropic Filtering Upgrade
+    if (ImGui::CollapsingHeader("Anisotropic Filtering Upgrade", ImGuiTreeNodeFlags_None)) {
+        DrawAnisotropicFilteringUpgrade();
     }
 }
 
@@ -1447,6 +1456,118 @@ void DrawDebugOutputHooks() {
     ImGui::Spacing();
     ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Note: This feature captures debug output from OutputDebugStringA and OutputDebugStringW calls.");
     ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Debug output will appear in ReShade.log when enabled.");
+}
+
+void DrawAnisotropicFilteringUpgrade() {
+    ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== Anisotropic Filtering Upgrade ===");
+    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f),
+                       ICON_FK_WARNING " EXPERIMENTAL FEATURE - Upgrades linear/bilinear filters to anisotropic!");
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("This feature upgrades linear and bilinear texture filters to anisotropic filtering.\n"
+                         "Anisotropic filtering improves texture quality on surfaces viewed at oblique angles.\n"
+                         "Use with caution as it may cause performance issues or rendering artifacts in some games.");
+    }
+
+    ImGui::Spacing();
+
+    // Master enable checkbox
+    if (CheckboxSetting(settings::g_experimentalTabSettings.force_anisotropic_filtering,
+                        "Enable Anisotropic Filtering Upgrade")) {
+        LogInfo("Anisotropic filtering upgrade %s",
+                settings::g_experimentalTabSettings.force_anisotropic_filtering.GetValue() ? "enabled" : "disabled");
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Enable automatic upgrade of linear/bilinear filters to anisotropic filtering.\n"
+                         "The anisotropy level is controlled by the 'Anisotropic Level' setting in the Main tab.");
+    }
+
+    if (settings::g_experimentalTabSettings.force_anisotropic_filtering.GetValue()) {
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Filter Upgrade Options:");
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Select which filter types to upgrade to anisotropic filtering.");
+        }
+
+        ImGui::Spacing();
+
+        // Upgrade trilinear (min_mag_mip_linear) to anisotropic
+        if (CheckboxSetting(settings::g_experimentalTabSettings.upgrade_min_mag_mip_linear,
+                            "Upgrade Trilinear Filters")) {
+            LogInfo("Upgrade trilinear filters %s",
+                    settings::g_experimentalTabSettings.upgrade_min_mag_mip_linear.GetValue() ? "enabled" : "disabled");
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Upgrade trilinear filters (min_mag_mip_linear) to full anisotropic filtering.\n"
+                             "This affects textures that use linear filtering for min, mag, and mip.");
+        }
+
+        // Upgrade compare trilinear (compare_min_mag_mip_linear) to compare anisotropic
+        if (CheckboxSetting(settings::g_experimentalTabSettings.upgrade_compare_min_mag_mip_linear,
+                            "Upgrade Compare Trilinear Filters")) {
+            LogInfo("Upgrade compare trilinear filters %s",
+                    settings::g_experimentalTabSettings.upgrade_compare_min_mag_mip_linear.GetValue() ? "enabled" : "disabled");
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Upgrade compare trilinear filters (compare_min_mag_mip_linear) to compare anisotropic filtering.\n"
+                             "This affects shadow samplers that use trilinear filtering.");
+        }
+
+        // Upgrade bilinear (min_mag_linear_mip_point) to anisotropic with point mip
+        if (CheckboxSetting(settings::g_experimentalTabSettings.upgrade_min_mag_linear_mip_point,
+                            "Upgrade Bilinear Filters")) {
+            LogInfo("Upgrade bilinear filters %s",
+                    settings::g_experimentalTabSettings.upgrade_min_mag_linear_mip_point.GetValue() ? "enabled" : "disabled");
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Upgrade bilinear filters (min_mag_linear_mip_point) to anisotropic with point mip filtering.\n"
+                             "This preserves point mip filtering while upgrading min/mag to anisotropic.");
+        }
+
+        // Upgrade compare bilinear (compare_min_mag_linear_mip_point) to compare anisotropic with point mip
+        if (CheckboxSetting(settings::g_experimentalTabSettings.upgrade_compare_min_mag_linear_mip_point,
+                            "Upgrade Compare Bilinear Filters")) {
+            LogInfo("Upgrade compare bilinear filters %s",
+                    settings::g_experimentalTabSettings.upgrade_compare_min_mag_linear_mip_point.GetValue() ? "enabled" : "disabled");
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Upgrade compare bilinear filters (compare_min_mag_linear_mip_point) to compare anisotropic with point mip.\n"
+                             "This affects shadow samplers that use bilinear filtering.");
+        }
+
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        // Show current settings summary
+        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Current Settings:");
+        ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Trilinear: %s",
+                           settings::g_experimentalTabSettings.upgrade_min_mag_mip_linear.GetValue() ? "Upgrade" : "Keep Original");
+        ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Compare Trilinear: %s",
+                           settings::g_experimentalTabSettings.upgrade_compare_min_mag_mip_linear.GetValue() ? "Upgrade" : "Keep Original");
+        ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Bilinear: %s",
+                           settings::g_experimentalTabSettings.upgrade_min_mag_linear_mip_point.GetValue() ? "Upgrade" : "Keep Original");
+        ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Compare Bilinear: %s",
+                           settings::g_experimentalTabSettings.upgrade_compare_min_mag_linear_mip_point.GetValue() ? "Upgrade" : "Keep Original");
+
+        // Show anisotropy level from main tab
+        int aniso_level = settings::g_mainTabSettings.max_anisotropy.GetValue();
+        if (aniso_level > 0) {
+            ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Anisotropy Level: %dx", aniso_level);
+        } else {
+            ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "  Anisotropy Level: 16x (default, set in Main tab)");
+        }
+
+        ImGui::Spacing();
+        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), ICON_FK_WARNING " WARNING: This may cause performance issues or rendering artifacts!");
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Upgrading filters to anisotropic may increase GPU load and cause visual artifacts in some games.\n"
+                             "The anisotropy level is controlled by the 'Anisotropic Level' setting in the Main tab.\n"
+                             "Set it to 0 in the Main tab to disable anisotropy override (defaults to 16x when upgrading).");
+        }
+    }
 }
 
 

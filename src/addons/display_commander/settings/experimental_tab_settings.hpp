@@ -112,6 +112,12 @@ class ExperimentalTabSettings {
     // Button-only press automation (Y/A buttons only, no stick movement)
     BoolSetting button_only_press_enabled;
 
+    // Anisotropic filtering upgrade settings
+    BoolSetting force_anisotropic_filtering;
+    BoolSetting upgrade_min_mag_mip_linear;
+    BoolSetting upgrade_compare_min_mag_mip_linear;
+    BoolSetting upgrade_min_mag_linear_mip_point;
+    BoolSetting upgrade_compare_min_mag_linear_mip_point;
 
   private:
     std::vector<SettingBase *> all_settings_;

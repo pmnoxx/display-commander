@@ -1480,6 +1480,57 @@ bool OnCreateSampler(reshade::api::device *device, reshade::api::sampler_desc &d
         }
     }
 
+    // Upgrade linear/bilinear filters to anisotropic (experimental tab)
+    if (settings::g_experimentalTabSettings.force_anisotropic_filtering.GetValue()) {
+        // Determine target max_anisotropy: use main tab setting if set, otherwise default to 16
+        int target_anisotropy = settings::g_mainTabSettings.max_anisotropy.GetValue();
+        if (target_anisotropy <= 0) {
+            target_anisotropy = 16; // Default to 16x if not set
+        }
+        float target_anisotropy_float = static_cast<float>(target_anisotropy);
+
+        switch (desc.filter) {
+            // Trilinear to full anisotropic
+            case reshade::api::filter_mode::min_mag_mip_linear:
+                if (settings::g_experimentalTabSettings.upgrade_min_mag_mip_linear.GetValue()) {
+                    desc.filter = reshade::api::filter_mode::anisotropic;
+                    desc.max_anisotropy = target_anisotropy_float;
+                    modified = true;
+                }
+                break;
+
+            // Compare trilinear to compare anisotropic
+            case reshade::api::filter_mode::compare_min_mag_mip_linear:
+                if (settings::g_experimentalTabSettings.upgrade_compare_min_mag_mip_linear.GetValue()) {
+                    desc.filter = reshade::api::filter_mode::compare_anisotropic;
+                    desc.max_anisotropy = target_anisotropy_float;
+                    modified = true;
+                }
+                break;
+
+            // Bilinear to anisotropic with point mip
+            case reshade::api::filter_mode::min_mag_linear_mip_point:
+                if (settings::g_experimentalTabSettings.upgrade_min_mag_linear_mip_point.GetValue()) {
+                    desc.filter = reshade::api::filter_mode::min_mag_anisotropic_mip_point;
+                    desc.max_anisotropy = target_anisotropy_float;
+                    modified = true;
+                }
+                break;
+
+            // Compare bilinear to compare anisotropic with point mip
+            case reshade::api::filter_mode::compare_min_mag_linear_mip_point:
+                if (settings::g_experimentalTabSettings.upgrade_compare_min_mag_linear_mip_point.GetValue()) {
+                    desc.filter = reshade::api::filter_mode::compare_min_mag_anisotropic_mip_point;
+                    desc.max_anisotropy = target_anisotropy_float;
+                    modified = true;
+                }
+                break;
+
+            default:
+                break;
+        }
+    }
+
     // Apply max anisotropy override for existing anisotropic filters
     if (settings::g_mainTabSettings.max_anisotropy.GetValue() > 0) {
         switch (desc.filter) {

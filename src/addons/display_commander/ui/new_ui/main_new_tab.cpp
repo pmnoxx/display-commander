@@ -2421,6 +2421,10 @@ void DrawImportantInfo() {
                 "FPS counter, and other performance metrics. Demonstrates reshade_overlay event usage.\n"
                 "Shortcut: Ctrl+O");
         }
+
+        // Grid layout for overlay display checkboxes (4 columns)
+        ImGui::Columns(4, "overlay_checkboxes", false);
+
         // Show Playtime Control
         bool show_playtime = settings::g_mainTabSettings.show_playtime.GetValue();
         if (ImGui::Checkbox("Playtime", &show_playtime)) {
@@ -2429,8 +2433,9 @@ void DrawImportantInfo() {
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Shows total playtime (time from game start) in the performance overlay.");
         }
-        ImGui::SameLine();
-        // show fps counter
+        ImGui::NextColumn();
+
+        // Show FPS Counter
         bool show_fps_counter = settings::g_mainTabSettings.show_fps_counter.GetValue();
         if (ImGui::Checkbox("FPS Counter", &show_fps_counter)) {
             settings::g_mainTabSettings.show_fps_counter.SetValue(show_fps_counter);
@@ -2438,8 +2443,9 @@ void DrawImportantInfo() {
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Shows the current FPS counter in the main ReShade overlay.");
         }
-        ImGui::SameLine();
-        // show refresh rate
+        ImGui::NextColumn();
+
+        // Show Refresh Rate
         bool show_refresh_rate = settings::g_mainTabSettings.show_refresh_rate.GetValue();
         if (ImGui::Checkbox("Refresh Rate", &show_refresh_rate)) {
             settings::g_mainTabSettings.show_refresh_rate.SetValue(show_refresh_rate);
@@ -2447,8 +2453,9 @@ void DrawImportantInfo() {
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Shows the current display refresh rate in the main ReShade overlay.");
         }
-        ImGui::SameLine();
-        // CPU usage
+        ImGui::NextColumn();
+
+        // Show CPU Usage
         bool show_cpu_usage = settings::g_mainTabSettings.show_cpu_usage.GetValue();
         if (ImGui::Checkbox("CPU Usage", &show_cpu_usage)) {
             settings::g_mainTabSettings.show_cpu_usage.SetValue(show_cpu_usage);
@@ -2456,7 +2463,8 @@ void DrawImportantInfo() {
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Shows CPU usage as a percentage: (sim duration / frame time) * 100%");
         }
-        ImGui::SameLine();
+        ImGui::NextColumn();
+
         // Show Stopwatch Control
         bool show_stopwatch = settings::g_mainTabSettings.show_stopwatch.GetValue();
         if (ImGui::Checkbox("Stopwatch", &show_stopwatch)) {
@@ -2465,7 +2473,8 @@ void DrawImportantInfo() {
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Shows a stopwatch in the performance overlay. Use Ctrl+S to start/reset.");
         }
-        ImGui::SameLine();
+        ImGui::NextColumn();
+
         // Show Display Commander UI Control
         bool show_display_commander_ui = settings::g_mainTabSettings.show_display_commander_ui.GetValue();
         if (ImGui::Checkbox("Show Display Commander UI", &show_display_commander_ui)) {
@@ -2474,7 +2483,8 @@ void DrawImportantInfo() {
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Shows the Display Commander UI overlay in the main ReShade overlay.\nShortcut: Ctrl+Shift+Delete");
         }
-        ImGui::SameLine();
+        ImGui::NextColumn();
+
         // GPU Measurement Enable/Disable Control
         bool gpu_measurement = settings::g_mainTabSettings.gpu_measurement_enabled.GetValue() != 0;
         if (ImGui::Checkbox("Show latency", &gpu_measurement)) {
@@ -2486,8 +2496,8 @@ void DrawImportantInfo() {
                 "Requires D3D11 with Windows 10+ or D3D12.\n"
                 "Shows as 'GPU Duration' in the timing metrics below.");
         }
+        ImGui::NextColumn();
 
-        // ImGui::SameLine();
         // Show Labels Control
         bool show_labels = settings::g_mainTabSettings.show_labels.GetValue();
         if (ImGui::Checkbox("Show labels", &show_labels)) {
@@ -2496,8 +2506,8 @@ void DrawImportantInfo() {
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Shows text labels (like 'fps:', 'lat:', etc.) before values in the overlay.");
         }
+        ImGui::NextColumn();
 
-        ImGui::SameLine();
         // Show Clock Control
         bool show_clock = settings::g_mainTabSettings.show_clock.GetValue();
         if (ImGui::Checkbox("Show clock", &show_clock)) {
@@ -2506,8 +2516,8 @@ void DrawImportantInfo() {
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Shows the current time (HH:MM:SS) in the overlay.");
         }
+        ImGui::NextColumn();
 
-        ImGui::SameLine();
         // Show Frame Time Graph Control
         bool show_frame_time_graph = settings::g_mainTabSettings.show_frame_time_graph.GetValue();
         if (ImGui::Checkbox("Show frame time graph", &show_frame_time_graph)) {
@@ -2516,7 +2526,8 @@ void DrawImportantInfo() {
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Shows a graph of frame times in the overlay.");
         }
-        ImGui::SameLine();
+        ImGui::NextColumn();
+
         // Show Refresh Rate Frame Times Graph Control
         bool show_refresh_rate_frame_times = settings::g_mainTabSettings.show_refresh_rate_frame_times.GetValue();
         if (ImGui::Checkbox("Show refresh rate frame times", &show_refresh_rate_frame_times)) {
@@ -2525,8 +2536,8 @@ void DrawImportantInfo() {
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Shows a graph of refresh rate frame times (display refresh intervals) in the overlay.");
         }
+        ImGui::NextColumn();
 
-        ImGui::SameLine();
         // Show Volume Control
         bool show_volume = settings::g_mainTabSettings.show_volume.GetValue();
         if (ImGui::Checkbox("Show volume", &show_volume)) {
@@ -2535,6 +2546,8 @@ void DrawImportantInfo() {
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Shows the current audio volume percentage in the overlay.");
         }
+
+        ImGui::Columns(1); // Reset to single column
 
         ImGui::Spacing();
         // Overlay background transparency slider

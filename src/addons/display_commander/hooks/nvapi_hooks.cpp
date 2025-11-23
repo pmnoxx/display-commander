@@ -104,6 +104,28 @@ NvAPI_Status __cdecl NvAPI_D3D_SetLatencyMarker_Detour(IUnknown *pDev, NV_LATENC
     g_nvapi_event_counters[NVAPI_EVENT_D3D_SET_LATENCY_MARKER].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
+    // Filter out RTSS calls (following Special-K approach)
+    // RTSS is not native Reflex, so ignore it
+    static HMODULE hModRTSS = Is64BitBuild() ? GetModuleHandleW(L"RTSSHooks64.dll") : GetModuleHandleW(L"RTSSHooks.dll");
+
+    // Get calling module using GetCallingDLL (similar to Special-K's SK_GetCallingDLL)
+    HMODULE calling_module = GetCallingDLL();
+
+    if (hModRTSS != nullptr && calling_module == hModRTSS) {
+        // Ignore RTSS calls - it's not native Reflex
+        return NVAPI_OK;
+    }
+
+    // Detect native Reflex: if the game calls SetLatencyMarker, it's using native Reflex
+    // This follows Special-K's detection approach
+    if (pSetLatencyMarkerParams != nullptr && !settings::g_developerTabSettings.reflex_supress_native.GetValue()) {
+        if (!g_native_reflex_detected.exchange(true)) {
+            // First time detection - log it
+            LogInfo("Native Reflex detected via SetLatencyMarker call (MarkerType: %d)",
+                    pSetLatencyMarkerParams->markerType);
+        }
+    }
+
     if (settings::g_developerTabSettings.reflex_supress_native.GetValue()) {
         return NVAPI_OK;
     }
@@ -114,11 +136,6 @@ NvAPI_Status __cdecl NvAPI_D3D_SetLatencyMarker_Detour(IUnknown *pDev, NV_LATENC
         LogInfo("NVAPI SetLatencyMarker called - MarkerType: %d",
                 pSetLatencyMarkerParams ? pSetLatencyMarkerParams->markerType : -1);
         log_count++;
-    }
-
-    // check if IsNative reflex
-    if (!IsNativeReflexActive()) {
-        return NVAPI_OK;
     }
 
     // Call original function

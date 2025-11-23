@@ -988,6 +988,7 @@ extern std::array<std::atomic<uint32_t>, NUM_NVAPI_EVENTS> g_nvapi_event_counter
 
 // NVAPI sleep timestamp tracking
 extern std::atomic<uint64_t> g_nvapi_last_sleep_timestamp_ns;  // Last NVAPI_D3D_Sleep call timestamp in nanoseconds
+extern std::atomic<bool> g_native_reflex_detected;  // Native Reflex detected via SetLatencyMarker calls
 extern std::atomic<uint32_t> g_swapchain_event_total_count;   // Total events across all types
 
 
@@ -1189,9 +1190,10 @@ extern std::atomic<LONGLONG> g_sleep_reflex_injected_ns_smooth;
 //g_nvapi_last_sleep_timestamp_ns
 
 // Helper function to check if native Reflex is active
+// Now detects native Reflex only via SetLatencyMarker calls (following Special-K approach)
 inline bool IsNativeReflexActive(uint64_t now_ns) {
-    auto did_sleep_recently = (now_ns - g_nvapi_last_sleep_timestamp_ns.load()) < 1 * utils::SEC_TO_NS;
-    return did_sleep_recently && !settings::g_developerTabSettings.reflex_supress_native.GetValue();
+    (void)now_ns; // Unused parameter, kept for backward compatibility
+    return g_native_reflex_detected.load() && !settings::g_developerTabSettings.reflex_supress_native.GetValue();
 }
 // Backward-compatible overload (calls the above with current time)
 inline bool IsNativeReflexActive() {

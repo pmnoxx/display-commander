@@ -316,6 +316,7 @@ std::array<std::atomic<uint32_t>, NUM_NVAPI_EVENTS> g_nvapi_event_counters = {};
 
 // NVAPI sleep timestamp tracking
 std::atomic<uint64_t> g_nvapi_last_sleep_timestamp_ns{0}; // Last NVAPI_D3D_Sleep call timestamp in nanoseconds
+std::atomic<bool> g_native_reflex_detected{false}; // Native Reflex detected via SetLatencyMarker calls
 
 std::atomic<uint32_t> g_swapchain_event_total_count{0}; // Total events across all types
 

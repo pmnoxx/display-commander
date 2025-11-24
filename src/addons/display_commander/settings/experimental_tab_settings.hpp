@@ -123,6 +123,10 @@ class ExperimentalTabSettings {
     BoolSetting upgrade_min_mag_linear_mip_point;
     BoolSetting upgrade_compare_min_mag_linear_mip_point;
 
+    // DLL blocking feature
+    BoolSetting dll_blocking_enabled;
+    StringSetting blocked_dlls;
+
   private:
     std::vector<SettingBase *> all_settings_;
 };

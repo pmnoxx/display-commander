@@ -1,6 +1,7 @@
 #include "experimental_tab_settings.hpp"
 #include "../globals.hpp"
 #include "../hooks/timeslowdown_hooks.hpp"
+#include "../hooks/loadlibrary_hooks.hpp"
 
 namespace settings {
 
@@ -92,10 +93,12 @@ ExperimentalTabSettings::ExperimentalTabSettings()
     , up_down_key_press_enabled("UpDownKeyPressEnabled", false, "DisplayCommander.Experimental")
     , button_only_press_enabled("ButtonOnlyPressEnabled", false, "DisplayCommander.Experimental")
     , force_anisotropic_filtering("ForceAnisotropicFiltering", false, "DisplayCommander.Experimental")
-    , upgrade_min_mag_mip_linear("UpgradeMinMagMipLinear", true, "DisplayCommander.Experimental")
+    , upgrade_min_mag_mip_linear("UpgradeMinMagMipLinear", false, "DisplayCommander.Experimental")
     , upgrade_compare_min_mag_mip_linear("UpgradeCompareMinMagMipLinear", false, "DisplayCommander.Experimental")
-    , upgrade_min_mag_linear_mip_point("UpgradeMinMagLinearMipPoint", true, "DisplayCommander.Experimental")
+    , upgrade_min_mag_linear_mip_point("UpgradeMinMagLinearMipPoint", false, "DisplayCommander.Experimental")
     , upgrade_compare_min_mag_linear_mip_point("UpgradeCompareMinMagLinearMipPoint", false, "DisplayCommander.Experimental")
+    , dll_blocking_enabled("DLLBlockingEnabled", false, "DisplayCommander.Experimental")
+    , blocked_dlls("BlockedDLLs", "", "DisplayCommander.Experimental")
 {
     // Initialize the all_settings_ vector
     all_settings_ = {
@@ -129,6 +132,8 @@ ExperimentalTabSettings::ExperimentalTabSettings()
         &upgrade_compare_min_mag_mip_linear,
         &upgrade_min_mag_linear_mip_point,
         &upgrade_compare_min_mag_linear_mip_point,
+        &dll_blocking_enabled,
+        &blocked_dlls,
     };
 }
 
@@ -152,6 +157,14 @@ void ExperimentalTabSettings::LoadAll() {
     qpc_enabled_modules.Load();
     if (!qpc_enabled_modules.GetValue().empty()) {
         display_commanderhooks::LoadQPCEnabledModulesFromSettings(qpc_enabled_modules.GetValue());
+    }
+
+    // Load blocked DLLs after settings are loaded (if DLL blocking is enabled)
+    if (dll_blocking_enabled.GetValue()) {
+        blocked_dlls.Load();
+        if (!blocked_dlls.GetValue().empty()) {
+            display_commanderhooks::LoadBlockedDLLsFromSettings(blocked_dlls.GetValue());
+        }
     }
 }
 

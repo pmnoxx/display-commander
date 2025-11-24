@@ -15,6 +15,7 @@
 
 #include <atomic>
 #include <set>
+#include <algorithm>
 
 #include <dxgi1_6.h>
 #include <wrl/client.h>
@@ -1070,5 +1071,6 @@ void DrawReShadeGlobalConfigSettings() {
 
     ImGui::Unindent();
 }
+
 
 }  // namespace ui::new_ui

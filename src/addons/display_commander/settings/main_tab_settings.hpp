@@ -89,6 +89,8 @@ class MainTabSettings {
     ui::new_ui::BoolSetting show_fps_counter;
     ui::new_ui::BoolSetting show_refresh_rate;
     ui::new_ui::BoolSetting show_display_commander_ui;
+    ui::new_ui::FloatSetting display_commander_ui_window_x;
+    ui::new_ui::FloatSetting display_commander_ui_window_y;
     ui::new_ui::BoolSetting show_labels;
     ui::new_ui::BoolSetting show_clock;
     ui::new_ui::BoolSetting show_frame_time_graph;

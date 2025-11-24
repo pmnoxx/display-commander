@@ -24,6 +24,7 @@
 #include "ui/new_ui/experimental_tab.hpp"
 #include "ui/new_ui/main_new_tab.hpp"
 #include "ui/new_ui/new_ui_main.hpp"
+#include "res/forkawesome.h"
 #include "utils/logging.hpp"
 #include "utils/timing.hpp"
 #include "version.hpp"
@@ -196,21 +197,80 @@ namespace {
 // Test callback for reshade_overlay event
 void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
     const bool show_display_commander_ui = settings::g_mainTabSettings.show_display_commander_ui.GetValue();
+
     if (show_display_commander_ui) {
+        // Block input every frame while overlay is open
+        if (runtime != nullptr) {
+            runtime->block_input_next_frame();
+        }
+
+        // Show cursor while overlay is open (same approach as ReShade)
+        ImGuiIO& io = ImGui::GetIO();
+        io.MouseDrawCursor = true;
+
         // Update UI draw time for auto-click optimization
         if (enabled_experimental_features) {
             autoclick::UpdateLastUIDrawTime();
         }
 
-        // IMGui window with fixed width
+        // IMGui window with fixed width and saved position
         const float fixed_width = 1600.0f;
+        float saved_x = settings::g_mainTabSettings.display_commander_ui_window_x.GetValue();
+        float saved_y = settings::g_mainTabSettings.display_commander_ui_window_y.GetValue();
+
+        // Restore saved position if available
+        static float last_saved_x = 0.0f;
+        static float last_saved_y = 0.0f;
+        if (saved_x > 0.0f || saved_y > 0.0f) {
+            // Only set position if it changed or window was just opened
+            if (saved_x != last_saved_x || saved_y != last_saved_y) {
+                ImGui::SetNextWindowPos(ImVec2(saved_x, saved_y), ImGuiCond_Once);
+                last_saved_x = saved_x;
+                last_saved_y = saved_y;
+            }
+        }
+
         ImGui::SetNextWindowSize(ImVec2(fixed_width, 0.0f), ImGuiCond_Always);
-        ImGui::Begin("Display Commander UI", nullptr,
-                     ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoResize
-                         | ImGuiWindowFlags_NoMove);
+        ImGui::Begin("Display Commander", nullptr,
+                     ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoResize);
+
+        // Custom title bar with close button
+        float titlebar_height = ImGui::GetTextLineHeight() + (ImGui::GetStyle().FramePadding.y * 2.0f);
+        ImGui::BeginChild("##titlebar", ImVec2(0, titlebar_height), false,
+                          ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+
+        // Title text
+        ImGui::Text("Display Commander");
+        ImGui::SameLine();
+
+        // Close button aligned to the right
+        float button_size = ImGui::GetTextLineHeight() + (ImGui::GetStyle().FramePadding.x * 2.0f);
+        ImGui::SetCursorPosX(ImGui::GetWindowWidth() - button_size);
+        if (ImGui::Button(ICON_FK_CANCEL, ImVec2(button_size, titlebar_height))) {
+            settings::g_mainTabSettings.show_display_commander_ui.SetValue(false);
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Close");
+        }
+
+        ImGui::EndChild();
+
+        // Save window position when it changes
+        ImVec2 current_pos = ImGui::GetWindowPos();
+        if (current_pos.x != saved_x || current_pos.y != saved_y) {
+            settings::g_mainTabSettings.display_commander_ui_window_x.SetValue(current_pos.x);
+            settings::g_mainTabSettings.display_commander_ui_window_y.SetValue(current_pos.y);
+            last_saved_x = current_pos.x;
+            last_saved_y = current_pos.y;
+        }
+
         // Render tabs
         ui::new_ui::NewUISystem::GetInstance().Draw(runtime);
         ImGui::End();
+    } else {
+        // Hide cursor when overlay is closed (same approach as ReShade)
+        ImGuiIO& io = ImGui::GetIO();
+        io.MouseDrawCursor = false;
     }
 
     // Check the setting from main tab first

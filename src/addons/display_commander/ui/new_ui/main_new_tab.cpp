@@ -2210,7 +2210,6 @@ void DrawAudioSettings() {
     if (s_audio_mute.load()) {
         ImGui::EndDisabled();
     }
-
     // Mute in Background only if other app plays audio
     bool mute_in_bg_if_other = s_mute_in_background_if_other_audio.load();
     if (s_audio_mute.load()) {
@@ -2238,6 +2237,103 @@ void DrawAudioSettings() {
     if (s_audio_mute.load()) {
         ImGui::EndDisabled();
     }
+
+    ImGui::Separator();
+
+    // Audio output device selector (per-application routing)
+    ImGui::Text("Output Device");
+
+    static std::vector<std::string> s_audio_device_names;
+    static std::vector<std::wstring> s_audio_device_ids;
+    static int s_selected_audio_device_index = 0; // 0 = System Default, 1..N = devices
+    static bool s_audio_devices_initialized = false;
+
+    // Refresh device list on first use or when user clicks refresh
+    auto refresh_audio_devices = []() {
+        s_audio_device_names.clear();
+        s_audio_device_ids.clear();
+        s_selected_audio_device_index = 0;
+
+        std::wstring current_device_id;
+        if (GetAudioOutputDevices(s_audio_device_names, s_audio_device_ids, current_device_id)) {
+            // Determine current selection: empty = system default, otherwise match by short device id
+            if (current_device_id.empty()) {
+                s_selected_audio_device_index = 0;
+            } else {
+                int matched = 0;
+                for (size_t i = 0; i < s_audio_device_ids.size(); ++i) {
+                    if (s_audio_device_ids[i] == current_device_id) {
+                        matched = static_cast<int>(i) + 1;
+                        break;
+                    }
+                }
+                s_selected_audio_device_index = matched;
+            }
+        }
+    };
+
+    if (!s_audio_devices_initialized) {
+        refresh_audio_devices();
+        s_audio_devices_initialized = true;
+    }
+
+    const char *current_label = "System Default";
+    if (s_selected_audio_device_index > 0 &&
+        static_cast<size_t>(s_selected_audio_device_index - 1) < s_audio_device_names.size()) {
+        current_label = s_audio_device_names[s_selected_audio_device_index - 1].c_str();
+    }
+
+    if (ImGui::BeginCombo("##AudioOutputDevice", current_label)) {
+        bool selection_changed = false;
+
+        // Option 0: System Default (no per-app override)
+        bool selected_default = (s_selected_audio_device_index == 0);
+        if (ImGui::Selectable("System Default (use Windows setting)", selected_default)) {
+            if (SetAudioOutputDeviceForCurrentProcess(L"")) {
+                s_selected_audio_device_index = 0;
+                selection_changed = true;
+            }
+        }
+        if (selected_default) {
+            ImGui::SetItemDefaultFocus();
+        }
+
+        // Actual devices
+        for (int i = 0; i < static_cast<int>(s_audio_device_names.size()); ++i) {
+            bool selected = (s_selected_audio_device_index == i + 1);
+            if (ImGui::Selectable(s_audio_device_names[i].c_str(), selected)) {
+                if (i >= 0 && static_cast<size_t>(i) < s_audio_device_ids.size()) {
+                    if (SetAudioOutputDeviceForCurrentProcess(s_audio_device_ids[i])) {
+                        s_selected_audio_device_index = i + 1;
+                        selection_changed = true;
+                    }
+                }
+            }
+            if (selected) {
+                ImGui::SetItemDefaultFocus();
+            }
+        }
+
+        ImGui::EndCombo();
+
+        if (selection_changed) {
+            // No additional state to sync; Windows persists per-process routing itself.
+        }
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip(
+            "Select which audio output device this game should use.\n"
+            "Uses Windows per-application audio routing (similar to 'App volume and device preferences').");
+    }
+
+    ImGui::SameLine();
+    if (ImGui::Button("Refresh Devices")) {
+        refresh_audio_devices();
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Re-scan active audio output devices (use after plugging/unplugging audio hardware).");
+    }
+
 }
 
 void DrawWindowControls() {

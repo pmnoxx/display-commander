@@ -24,8 +24,9 @@ struct ModuleInfo {
     DWORD sizeOfImage;
     LPVOID entryPoint;
     FILETIME loadTime;
+    bool loadedBeforeHooks;  // True if module was loaded before Display Commander hooks were installed
 
-    ModuleInfo() : hModule(nullptr), baseAddress(nullptr), sizeOfImage(0), entryPoint(nullptr) {
+    ModuleInfo() : hModule(nullptr), baseAddress(nullptr), sizeOfImage(0), entryPoint(nullptr), loadedBeforeHooks(false) {
         loadTime.dwHighDateTime = 0;
         loadTime.dwLowDateTime = 0;
     }
@@ -54,5 +55,14 @@ bool IsModuleLoaded(const std::wstring &moduleName);
 
 // Module loading callback
 void OnModuleLoaded(const std::wstring &moduleName, HMODULE hModule);
+
+// DLL blocking functions
+bool ShouldBlockDLL(const std::wstring& dll_path);
+void LoadBlockedDLLsFromSettings(const std::string& blocked_dlls_str);
+std::string SaveBlockedDLLsToSettings();
+bool IsDLLBlocked(const std::wstring& module_name);
+void SetDLLBlocked(const std::wstring& module_name, bool blocked);
+bool CanBlockDLL(const ModuleInfo& module_info);
+std::vector<std::wstring> GetBlockedDLLs();
 
 } // namespace display_commanderhooks

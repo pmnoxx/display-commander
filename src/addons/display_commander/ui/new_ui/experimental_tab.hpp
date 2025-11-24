@@ -50,6 +50,8 @@ void DrawDebugOutputHooks();
 // Draw anisotropic filtering upgrade section
 void DrawAnisotropicFilteringUpgrade();
 
+// Draw DLL blocking controls section
+void DrawDLLBlockingControls();
 
 // Cleanup function to stop background threads
 void CleanupExperimentalTab();

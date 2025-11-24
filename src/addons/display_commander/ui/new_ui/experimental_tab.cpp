@@ -9,6 +9,7 @@
 #include "../../hooks/timeslowdown_hooks.hpp"
 #include "../../hooks/hid_suppression_hooks.hpp"
 #include "../../hooks/debug_output_hooks.hpp"
+#include "../../hooks/loadlibrary_hooks.hpp"
 #include "../../settings/experimental_tab_settings.hpp"
 #include "../../settings/main_tab_settings.hpp"
 #include "../../widgets/dualsense_widget/dualsense_widget.hpp"
@@ -20,6 +21,7 @@
 #include <psapi.h>
 
 #include <atomic>
+#include <algorithm>
 
 namespace ui::new_ui {
 
@@ -223,6 +225,15 @@ void DrawExperimentalTab() {
     // Anisotropic Filtering Upgrade
     if (ImGui::CollapsingHeader("Anisotropic Filtering Upgrade", ImGuiTreeNodeFlags_None)) {
         DrawAnisotropicFilteringUpgrade();
+    }
+
+    ImGui::Spacing();
+
+    // DLL Blocking (Experimental)
+    if (enabled_experimental_features) {
+        if (ImGui::CollapsingHeader("DLL Blocking", ImGuiTreeNodeFlags_None)) {
+            DrawDLLBlockingControls();
+        }
     }
 }
 
@@ -1662,5 +1673,238 @@ void DrawAnisotropicFilteringUpgrade() {
     }
 }
 
+
+void DrawDLLBlockingControls() {
+    ImGui::Indent();
+
+    // Enable/disable DLL blocking feature
+    if (CheckboxSetting(settings::g_experimentalTabSettings.dll_blocking_enabled, "Enable DLL Blocking")) {
+        LogInfo("DLL Blocking %s",
+                settings::g_experimentalTabSettings.dll_blocking_enabled.GetValue() ? "enabled" : "disabled");
+
+        // Load blocked DLLs if enabling
+        if (settings::g_experimentalTabSettings.dll_blocking_enabled.GetValue()) {
+            settings::g_experimentalTabSettings.blocked_dlls.Load();
+            if (!settings::g_experimentalTabSettings.blocked_dlls.GetValue().empty()) {
+                display_commanderhooks::LoadBlockedDLLsFromSettings(settings::g_experimentalTabSettings.blocked_dlls.GetValue());
+            }
+        }
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Enable DLL blocking feature to prevent specific DLLs from loading.\n"
+                         "Blocked DLLs will be prevented from loading on next game restart.\n"
+                         ICON_FK_WARNING " EXPERIMENTAL FEATURE - Use with caution!");
+    }
+
+    if (!settings::g_experimentalTabSettings.dll_blocking_enabled.GetValue()) {
+        ImGui::Unindent();
+        return;
+    }
+
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::Spacing();
+
+    ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "Block DLLs from Loading");
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Check the boxes below to prevent specific DLLs from loading.\n"
+                         "Blocked DLLs will be prevented from loading on next game restart.\n"
+                         "Settings are automatically saved.");
+    }
+
+    ImGui::Spacing();
+
+    // Legend
+    ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Legend:");
+    ImGui::SameLine();
+    ImGui::TextColored(ImVec4(0.7f, 1.0f, 0.7f, 1.0f), "Green");
+    ImGui::SameLine();
+    ImGui::Text("= Can be blocked (loaded after Display Commander)");
+    ImGui::SameLine();
+    ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "Gray");
+    ImGui::SameLine();
+    ImGui::Text("= Cannot block (loaded before Display Commander)");
+    ImGui::SameLine();
+    ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.5f, 1.0f), "Red");
+    ImGui::SameLine();
+    ImGui::Text("= Blocked");
+
+    ImGui::Spacing();
+
+    // Get loaded modules
+    static std::vector<display_commanderhooks::ModuleInfo> cached_modules;
+    static uint64_t last_update_frame = 0;
+    uint64_t current_frame = ImGui::GetFrameCount();
+
+    // Update module list every 60 frames (~1 second at 60 FPS)
+    if (current_frame - last_update_frame > 60 || cached_modules.empty()) {
+        cached_modules = display_commanderhooks::GetLoadedModules();
+        last_update_frame = current_frame;
+    }
+
+    if (cached_modules.empty()) {
+        ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "No modules loaded yet");
+    } else {
+        ImGui::TextColored(ImVec4(0.7f, 0.9f, 1.0f, 1.0f), "Loaded Modules (%zu):", cached_modules.size());
+
+        // Show modules in a scrollable child window
+        if (ImGui::BeginChild("LoadedModules", ImVec2(0, 300), true)) {
+            for (const auto& module : cached_modules) {
+                std::wstring module_name = module.moduleName;
+                if (module_name.empty()) {
+                    module_name = L"<unknown>";
+                }
+
+                bool is_blocked = display_commanderhooks::IsDLLBlocked(module_name);
+                bool can_block = display_commanderhooks::CanBlockDLL(module);
+
+                // Convert to narrow string for display
+                std::string narrow_name(module_name.begin(), module_name.end());
+                std::string checkbox_id = "##BlockDLL_" + narrow_name;
+
+                // Disable checkbox if module can't be blocked
+                if (!can_block) {
+                    ImGui::BeginDisabled();
+                }
+
+                if (ImGui::Checkbox(checkbox_id.c_str(), &is_blocked)) {
+                    display_commanderhooks::SetDLLBlocked(module_name, is_blocked);
+
+                    // Save to settings
+                    std::string blocked_dlls_str = display_commanderhooks::SaveBlockedDLLsToSettings();
+                    settings::g_experimentalTabSettings.blocked_dlls.SetValue(blocked_dlls_str);
+                    settings::g_experimentalTabSettings.blocked_dlls.Save();
+
+                    LogInfo("DLL %s %s", narrow_name.c_str(), is_blocked ? "blocked" : "unblocked");
+                }
+
+                if (!can_block) {
+                    ImGui::EndDisabled();
+                }
+
+                ImGui::SameLine();
+
+                // Display module name with color based on status
+                if (!can_block) {
+                    // Gray out modules that can't be blocked (loaded before Display Commander)
+                    ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "%s", narrow_name.c_str());
+                    if (ImGui::IsItemHovered()) {
+                        std::string full_path(module.fullPath.begin(), module.fullPath.end());
+                        ImGui::SetTooltip("Cannot block: Loaded before Display Commander\nFull path: %s", full_path.c_str());
+                    }
+                } else if (is_blocked) {
+                    // Red for blocked modules
+                    ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.5f, 1.0f), "%s", narrow_name.c_str());
+                    if (ImGui::IsItemHovered()) {
+                        std::string full_path(module.fullPath.begin(), module.fullPath.end());
+                        ImGui::SetTooltip("Blocked: Will prevent loading on next restart\nFull path: %s", full_path.c_str());
+                    }
+                } else {
+                    // Normal color for unblocked modules that can be blocked
+                    ImGui::TextColored(ImVec4(0.7f, 1.0f, 0.7f, 1.0f), "%s", narrow_name.c_str());
+                    if (ImGui::IsItemHovered()) {
+                        std::string full_path(module.fullPath.begin(), module.fullPath.end());
+                        ImGui::SetTooltip("Can be blocked: Loaded after Display Commander\nFull path: %s", full_path.c_str());
+                    }
+                }
+            }
+        }
+        ImGui::EndChild();
+
+        ImGui::Spacing();
+
+        // Save button
+        if (ImGui::SmallButton("Save##BlockedDLLs")) {
+            std::string blocked_dlls_str = display_commanderhooks::SaveBlockedDLLsToSettings();
+            settings::g_experimentalTabSettings.blocked_dlls.SetValue(blocked_dlls_str);
+            settings::g_experimentalTabSettings.blocked_dlls.Save();
+            LogInfo("Blocked DLLs saved: %s", blocked_dlls_str.empty() ? "(none)" : blocked_dlls_str.c_str());
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Save the current blocked DLL list to settings");
+        }
+    }
+
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::Spacing();
+
+    // Show blocked DLLs that aren't in the loaded modules list
+    ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "Blocked DLLs (Not Loaded)");
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("DLLs that are blocked but haven't been loaded yet.\n"
+                         "Uncheck to allow them to load on next game restart.");
+    }
+
+    ImGui::Spacing();
+
+    // Get list of blocked DLLs
+    std::vector<std::wstring> blocked_dlls = display_commanderhooks::GetBlockedDLLs();
+
+    // Filter out DLLs that are already in the loaded modules list
+    std::vector<std::wstring> blocked_not_loaded;
+    for (const auto& blocked_dll : blocked_dlls) {
+        bool found_in_loaded = false;
+        // Check against cached_modules if available
+        if (!cached_modules.empty()) {
+            for (const auto& module : cached_modules) {
+                std::wstring module_name = module.moduleName;
+                if (module_name.empty()) {
+                    module_name = L"<unknown>";
+                }
+                std::wstring lower_module_name = module_name;
+                std::transform(lower_module_name.begin(), lower_module_name.end(), lower_module_name.begin(), ::towlower);
+
+                if (lower_module_name == blocked_dll) {
+                    found_in_loaded = true;
+                    break;
+                }
+            }
+        }
+        if (!found_in_loaded) {
+            blocked_not_loaded.push_back(blocked_dll);
+        }
+    }
+
+    if (blocked_not_loaded.empty()) {
+        ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "No blocked DLLs (all blocked DLLs are currently loaded)");
+    } else {
+        ImGui::TextColored(ImVec4(0.7f, 0.9f, 1.0f, 1.0f), "Blocked DLLs (%zu):", blocked_not_loaded.size());
+
+        // Show blocked DLLs in a scrollable child window
+        if (ImGui::BeginChild("BlockedNotLoadedModules", ImVec2(0, 200), true)) {
+            for (const auto& blocked_dll : blocked_not_loaded) {
+                bool is_blocked = true; // They're all blocked by definition
+
+                // Convert to narrow string for display
+                std::string narrow_name(blocked_dll.begin(), blocked_dll.end());
+                std::string checkbox_id = "##UnblockDLL_" + narrow_name;
+
+                if (ImGui::Checkbox(checkbox_id.c_str(), &is_blocked)) {
+                    // Unblock the DLL
+                    display_commanderhooks::SetDLLBlocked(blocked_dll, false);
+
+                    // Save to settings
+                    std::string blocked_dlls_str = display_commanderhooks::SaveBlockedDLLsToSettings();
+                    settings::g_experimentalTabSettings.blocked_dlls.SetValue(blocked_dlls_str);
+                    settings::g_experimentalTabSettings.blocked_dlls.Save();
+
+                    LogInfo("DLL %s unblocked", narrow_name.c_str());
+                }
+
+                ImGui::SameLine();
+
+                // Display blocked DLL name in red
+                ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.5f, 1.0f), "%s", narrow_name.c_str());
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip("Blocked: Will prevent loading on next restart\nUncheck to allow this DLL to load");
+                }
+            }
+        }
+        ImGui::EndChild();
+    }
+
+    ImGui::Unindent();
+}
 
 } // namespace ui::new_ui

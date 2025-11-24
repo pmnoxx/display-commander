@@ -12,6 +12,7 @@
 #include "../utils/logging.hpp"
 #include "../settings/streamline_tab_settings.hpp"
 #include "../settings/developer_tab_settings.hpp"
+#include "../settings/experimental_tab_settings.hpp"
 #include "../settings/main_tab_settings.hpp"
 #include "../globals.hpp"
 #include "utils/srwlock_wrapper.hpp"
@@ -21,6 +22,7 @@
 #include <sstream>
 #include <filesystem>
 #include <unordered_set>
+#include <set>
 #include <algorithm>
 
 namespace display_commanderhooks {
@@ -110,6 +112,13 @@ static std::vector<ModuleInfo> g_loaded_modules;
 static std::unordered_set<HMODULE> g_module_handles;
 static SRWLOCK g_module_srwlock = SRWLOCK_INIT;
 
+// Display Commander module handle (for determining which modules can be blocked)
+static HMODULE g_display_commander_module = nullptr;
+
+// Blocked DLL tracking
+static std::set<std::wstring> g_blocked_dlls;
+static SRWLOCK g_blocked_dlls_srwlock = SRWLOCK_INIT;
+
 // Helper function to get current timestamp as string
 std::string GetCurrentTimestamp() {
     auto now = std::chrono::system_clock::now();
@@ -175,6 +184,15 @@ HMODULE WINAPI LoadLibraryA_Detour(LPCSTR lpLibFileName) {
         }
     }
 
+    // Check for user-defined DLL blocking
+    if (lpLibFileName) {
+        std::wstring w_dll_name = std::wstring(dll_name.begin(), dll_name.end());
+        if (ShouldBlockDLL(w_dll_name)) {
+            LogInfo("[%s] DLL Block: Blocking %s from loading", timestamp.c_str(), dll_name.c_str());
+            return nullptr; // Return nullptr to indicate failure to load
+        }
+    }
+
     // Check for DLSS override
     LPCSTR actual_lib_file_name = lpLibFileName;
 
@@ -222,6 +240,9 @@ HMODULE WINAPI LoadLibraryA_Detour(LPCSTR lpLibFileName) {
 
                 moduleInfo.loadTime = GetModuleFileTime(result);
 
+                // Mark as loaded after hooks (added through hook detour)
+                moduleInfo.loadedBeforeHooks = false;
+
                 g_loaded_modules.push_back(moduleInfo);
                 g_module_handles.insert(result);
 
@@ -252,6 +273,15 @@ HMODULE WINAPI LoadLibraryW_Detour(LPCWSTR lpLibFileName) {
         std::wstring w_dll_name = lpLibFileName;
         if (ShouldBlockAnselDLL(w_dll_name)) {
             LogInfo("[%s] Ansel Block: Blocking %s from loading", timestamp.c_str(), dll_name.c_str());
+            return nullptr; // Return nullptr to indicate failure to load
+        }
+    }
+
+    // Check for user-defined DLL blocking
+    if (lpLibFileName) {
+        std::wstring w_dll_name = lpLibFileName;
+        if (ShouldBlockDLL(w_dll_name)) {
+            LogInfo("[%s] DLL Block: Blocking %s from loading", timestamp.c_str(), dll_name.c_str());
             return nullptr; // Return nullptr to indicate failure to load
         }
     }
@@ -303,6 +333,9 @@ HMODULE WINAPI LoadLibraryW_Detour(LPCWSTR lpLibFileName) {
 
                 moduleInfo.loadTime = GetModuleFileTime(result);
 
+                // Mark as loaded after hooks (added through hook detour)
+                moduleInfo.loadedBeforeHooks = false;
+
                 g_loaded_modules.push_back(moduleInfo);
                 g_module_handles.insert(result);
 
@@ -334,6 +367,15 @@ HMODULE WINAPI LoadLibraryExA_Detour(LPCSTR lpLibFileName, HANDLE hFile, DWORD d
         std::wstring w_dll_name = std::wstring(dll_name.begin(), dll_name.end());
         if (ShouldBlockAnselDLL(w_dll_name)) {
             LogInfo("[%s] Ansel Block: Blocking %s from loading", timestamp.c_str(), dll_name.c_str());
+            return nullptr; // Return nullptr to indicate failure to load
+        }
+    }
+
+    // Check for user-defined DLL blocking
+    if (lpLibFileName) {
+        std::wstring w_dll_name = std::wstring(dll_name.begin(), dll_name.end());
+        if (ShouldBlockDLL(w_dll_name)) {
+            LogInfo("[%s] DLL Block: Blocking %s from loading", timestamp.c_str(), dll_name.c_str());
             return nullptr; // Return nullptr to indicate failure to load
         }
     }
@@ -398,6 +440,9 @@ HMODULE WINAPI LoadLibraryExA_Detour(LPCSTR lpLibFileName, HANDLE hFile, DWORD d
 
                 moduleInfo.loadTime = GetModuleFileTime(result);
 
+                // Mark as loaded after hooks (added through hook detour)
+                moduleInfo.loadedBeforeHooks = false;
+
                 g_loaded_modules.push_back(moduleInfo);
                 g_module_handles.insert(result);
 
@@ -429,6 +474,15 @@ HMODULE WINAPI LoadLibraryExW_Detour(LPCWSTR lpLibFileName, HANDLE hFile, DWORD 
         std::wstring w_dll_name = lpLibFileName;
         if (ShouldBlockAnselDLL(w_dll_name)) {
             LogInfo("[%s] Ansel Block: Blocking %s from loading", timestamp.c_str(), dll_name.c_str());
+            return nullptr; // Return nullptr to indicate failure to load
+        }
+    }
+
+    // Check for user-defined DLL blocking
+    if (lpLibFileName) {
+        std::wstring w_dll_name = lpLibFileName;
+        if (ShouldBlockDLL(w_dll_name)) {
+            LogInfo("[%s] DLL Block: Blocking %s from loading", timestamp.c_str(), dll_name.c_str());
             return nullptr; // Return nullptr to indicate failure to load
         }
     }
@@ -483,6 +537,9 @@ HMODULE WINAPI LoadLibraryExW_Detour(LPCWSTR lpLibFileName, HANDLE hFile, DWORD 
 
                 moduleInfo.loadTime = GetModuleFileTime(result);
 
+                // Mark as loaded after hooks (added through hook detour)
+                moduleInfo.loadedBeforeHooks = false;
+
                 g_loaded_modules.push_back(moduleInfo);
                 g_module_handles.insert(result);
 
@@ -511,6 +568,38 @@ bool InstallLoadLibraryHooks() {
     if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(display_commanderhooks::HookType::LOADLIBRARY)) {
         LogInfo("LoadLibrary hooks installation suppressed by user setting");
         return false;
+    }
+
+    // Load blocked DLLs list BEFORE installing hooks to ensure blocking works
+    // Check if DLL blocking is enabled in experimental settings
+    if (settings::g_experimentalTabSettings.dll_blocking_enabled.GetValue()) {
+        settings::g_experimentalTabSettings.blocked_dlls.Load();
+        if (!settings::g_experimentalTabSettings.blocked_dlls.GetValue().empty()) {
+            LoadBlockedDLLsFromSettings(settings::g_experimentalTabSettings.blocked_dlls.GetValue());
+            LogInfo("Loaded blocked DLLs list: %s", settings::g_experimentalTabSettings.blocked_dlls.GetValue().c_str());
+        } else {
+            LogInfo("No blocked DLLs configured");
+        }
+    } else {
+        LogInfo("DLL blocking is disabled in experimental settings");
+    }
+
+    // Get Display Commander's module handle for comparison
+    // Try to get it from the current module
+    HMODULE hMod = nullptr;
+    if (GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                           reinterpret_cast<LPCWSTR>(&InstallLoadLibraryHooks), &hMod)) {
+        g_display_commander_module = hMod;
+        LogInfo("Display Commander module handle: 0x%p", hMod);
+    } else {
+        // Fallback: try to find by name
+        g_display_commander_module = GetModuleHandleW(L"display_commander.dll");
+        if (!g_display_commander_module) {
+            g_display_commander_module = GetModuleHandleW(L"display_commander64.dll");
+        }
+        if (g_display_commander_module) {
+            LogInfo("Display Commander module found by name: 0x%p", g_display_commander_module);
+        }
     }
 
     // First, enumerate all currently loaded modules
@@ -635,6 +724,9 @@ bool EnumerateLoadedModules() {
         // Get file time
         moduleInfo.loadTime = GetModuleFileTime(hModules[i]);
 
+        // Mark as loaded before hooks (enumerated modules were all loaded before Display Commander)
+        moduleInfo.loadedBeforeHooks = true;
+
         g_loaded_modules.push_back(moduleInfo);
         g_module_handles.insert(hModules[i]);
 
@@ -743,6 +835,135 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
     else {
         LogInfo("Other module loaded: %ws (0x%p)", moduleName.c_str(), hModule);
     }
+}
+
+// Helper function to check if a DLL should be blocked (user-defined blocking)
+bool ShouldBlockDLL(const std::wstring& dll_path) {
+    // Extract filename from full path
+    std::filesystem::path path(dll_path);
+    std::wstring filename = path.filename().wstring();
+
+    // Convert to lowercase for case-insensitive comparison
+    std::transform(filename.begin(), filename.end(), filename.begin(), ::towlower);
+
+    utils::SRWLockShared lock(g_blocked_dlls_srwlock);
+    bool is_blocked = g_blocked_dlls.find(filename) != g_blocked_dlls.end();
+
+    if (is_blocked) {
+        std::string narrow_filename(filename.begin(), filename.end());
+        std::string narrow_path(dll_path.begin(), dll_path.end());
+        LogInfo("ShouldBlockDLL: Found '%s' (from '%s') in blocked list", narrow_filename.c_str(), narrow_path.c_str());
+    }
+
+    return is_blocked;
+}
+
+bool IsDLLBlocked(const std::wstring& module_name) {
+    std::wstring lower_name = module_name;
+    std::transform(lower_name.begin(), lower_name.end(), lower_name.begin(), ::towlower);
+
+    utils::SRWLockShared lock(g_blocked_dlls_srwlock);
+    return g_blocked_dlls.find(lower_name) != g_blocked_dlls.end();
+}
+
+void SetDLLBlocked(const std::wstring& module_name, bool blocked) {
+    std::wstring lower_name = module_name;
+    std::transform(lower_name.begin(), lower_name.end(), lower_name.begin(), ::towlower);
+
+    utils::SRWLockExclusive lock(g_blocked_dlls_srwlock);
+    if (blocked) {
+        g_blocked_dlls.insert(lower_name);
+    } else {
+        g_blocked_dlls.erase(lower_name);
+    }
+}
+
+void LoadBlockedDLLsFromSettings(const std::string& blocked_dlls_str) {
+    if (blocked_dlls_str.empty()) {
+        return;
+    }
+
+    utils::SRWLockExclusive lock(g_blocked_dlls_srwlock);
+    g_blocked_dlls.clear();
+
+    // Parse comma-separated DLL names
+    std::stringstream ss(blocked_dlls_str);
+    std::string dll_name;
+
+    while (std::getline(ss, dll_name, ',')) {
+        // Trim whitespace
+        dll_name.erase(0, dll_name.find_first_not_of(" \t"));
+        dll_name.erase(dll_name.find_last_not_of(" \t") + 1);
+        if (!dll_name.empty()) {
+            // Convert to wide string
+            std::wstring wdll_name(dll_name.begin(), dll_name.end());
+
+            // Extract filename from path (in case full path is stored)
+            std::filesystem::path path(wdll_name);
+            std::wstring filename = path.filename().wstring();
+
+            // Convert to lowercase for case-insensitive comparison
+            std::transform(filename.begin(), filename.end(), filename.begin(), ::towlower);
+
+            // Store just the filename (matching ShouldBlockDLL behavior)
+            g_blocked_dlls.insert(filename);
+
+            // Log for debugging
+            std::string narrow_filename(filename.begin(), filename.end());
+            if (filename != wdll_name) {
+                std::string narrow_original(wdll_name.begin(), wdll_name.end());
+                LogInfo("Blocked DLL: Extracted filename '%s' from path '%s'", narrow_filename.c_str(), narrow_original.c_str());
+            } else {
+                LogInfo("Blocked DLL: '%s'", narrow_filename.c_str());
+            }
+        }
+    }
+}
+
+std::string SaveBlockedDLLsToSettings() {
+    utils::SRWLockShared lock(g_blocked_dlls_srwlock);
+
+    std::string result;
+    for (auto it = g_blocked_dlls.begin(); it != g_blocked_dlls.end(); ++it) {
+        if (!result.empty()) {
+            result += ",";
+        }
+        // Convert wide string to narrow string
+        std::string narrow_name(it->begin(), it->end());
+        result += narrow_name;
+    }
+
+    return result;
+}
+
+std::vector<std::wstring> GetBlockedDLLs() {
+    utils::SRWLockShared lock(g_blocked_dlls_srwlock);
+
+    std::vector<std::wstring> result;
+    result.reserve(g_blocked_dlls.size());
+    for (const auto& dll_name : g_blocked_dlls) {
+        result.push_back(dll_name);
+    }
+
+    return result;
+}
+
+bool CanBlockDLL(const ModuleInfo& module_info) {
+    // Modules loaded before hooks were installed cannot be blocked
+    // (they were already loaded when Display Commander started)
+    if (module_info.loadedBeforeHooks) {
+        return false;
+    }
+
+    // Also check if the module name suggests it's Display Commander itself
+    std::wstring lower_name = module_info.moduleName;
+    std::transform(lower_name.begin(), lower_name.end(), lower_name.begin(), ::towlower);
+    if (lower_name.find(L"display_commander") != std::wstring::npos) {
+        return false; // Can't block Display Commander itself
+    }
+
+    // Modules loaded after hooks were installed can be blocked
+    return true;
 }
 
 } // namespace display_commanderhooks

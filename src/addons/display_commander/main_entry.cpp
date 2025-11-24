@@ -197,11 +197,19 @@ namespace {
 void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
     const bool show_display_commander_ui = settings::g_mainTabSettings.show_display_commander_ui.GetValue();
     if (show_display_commander_ui) {
-        // IMGui window
+        // Update UI draw time for auto-click optimization
+        if (enabled_experimental_features) {
+            autoclick::UpdateLastUIDrawTime();
+        }
+
+        // IMGui window with fixed width
+        const float fixed_width = 1600.0f;
+        ImGui::SetNextWindowSize(ImVec2(fixed_width, 0.0f), ImGuiCond_Always);
         ImGui::Begin("Display Commander UI", nullptr,
                      ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoResize
-                         | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_AlwaysAutoResize);
-        ImGui::Text("Display Commander UI Placeholder");
+                         | ImGuiWindowFlags_NoMove);
+        // Render tabs
+        ui::new_ui::NewUISystem::GetInstance().Draw(runtime);
         ImGui::End();
     }
 

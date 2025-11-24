@@ -69,7 +69,7 @@ MainTabSettings::MainTabSettings()
       show_labels("show_labels", true, "DisplayCommander"),
       show_clock("show_clock", false, "DisplayCommander"),
       show_frame_time_graph("show_frame_time_graph", true, "DisplayCommander"),
-      show_refresh_rate_frame_times("show_refresh_rate_frame_times", false, "DisplayCommander"),
+      show_refresh_rate_frame_times("show_refresh_rate_frame_times", true, "DisplayCommander"),
       show_volume("show_volume", false, "DisplayCommander"),
       show_cpu_usage("show_cpu_usage", false, "DisplayCommander"),
       show_stopwatch("show_stopwatch", false, "DisplayCommander"),

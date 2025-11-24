@@ -1,12 +1,256 @@
 #include "audio_management.hpp"
+#include "audio_device_policy.hpp"
 #include "../addon.hpp"
 #include "../settings/main_tab_settings.hpp"
 #include "../utils.hpp"
 #include "../utils/logging.hpp"
 #include "../utils/timing.hpp"
 #include "../globals.hpp"
+#include <Functiondiscoverykeys_devpkey.h>
+#include <mmdeviceapi.h>
+#include <propvarutil.h>
 #include <sstream>
 #include <thread>
+
+namespace {
+
+// Helper to convert UTF-16 (wstring) to UTF-8 std::string
+std::string WStringToUtf8(const std::wstring &wstr) {
+    if (wstr.empty())
+        return std::string();
+
+    int size = WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), -1, nullptr, 0, nullptr, nullptr);
+    if (size <= 0)
+        return std::string();
+
+    std::string result(static_cast<size_t>(size - 1), '\0');
+    WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), -1, &result[0], size, nullptr, nullptr);
+    return result;
+}
+
+// Dynamic Windows Runtime function typedefs (avoid extra link deps)
+using RoGetActivationFactory_pfn = HRESULT(WINAPI *)(HSTRING activatableClassId, REFIID iid, void **factory);
+using WindowsCreateStringReference_pfn = HRESULT(WINAPI *)(PCWSTR sourceString, UINT32 length, HSTRING_HEADER *hstringHeader, HSTRING *string);
+using WindowsDeleteString_pfn = HRESULT(WINAPI *)(HSTRING string);
+using WindowsCreateString_pfn = HRESULT(WINAPI *)(PCWSTR sourceString, UINT32 length, HSTRING *string);
+using WindowsGetStringRawBuffer_pfn = PCWSTR(WINAPI *)(HSTRING string, UINT32 *length);
+
+// Helper to build full MMDevice endpoint ID like Special K (short ID -> full ID)
+std::wstring BuildFullAudioDeviceId(EDataFlow flow, const std::wstring &short_id) {
+    static const wchar_t *DEVICE_PREFIX = LR"(\\?\SWD#MMDEVAPI#)";
+    static const wchar_t *RENDER_POSTFIX = L"#{e6327cad-dcec-4949-ae8a-991e976a79d2}";
+    static const wchar_t *CAPTURE_POSTFIX = L"#{2eef81be-33fa-4800-9670-1cd474972c3f}";
+
+    const wchar_t *postfix = (flow == eRender) ? RENDER_POSTFIX : CAPTURE_POSTFIX;
+
+    std::wstring full;
+    full.reserve(wcslen(DEVICE_PREFIX) + short_id.size() + wcslen(postfix));
+    full.append(DEVICE_PREFIX);
+    full.append(short_id);
+    full.append(postfix);
+
+    return full;
+}
+
+// Get Windows Runtime string functions from combase.dll
+bool GetWindowsRuntimeStringFunctions(WindowsCreateStringReference_pfn &createStringRef,
+                                       WindowsDeleteString_pfn &deleteString,
+                                       WindowsCreateString_pfn &createString,
+                                       WindowsGetStringRawBuffer_pfn &getStringRawBuffer) {
+    static bool s_tried = false;
+    static bool s_success = false;
+    static WindowsCreateStringReference_pfn s_createStringRef = nullptr;
+    static WindowsDeleteString_pfn s_deleteString = nullptr;
+    static WindowsCreateString_pfn s_createString = nullptr;
+    static WindowsGetStringRawBuffer_pfn s_getStringRawBuffer = nullptr;
+
+    if (s_tried) {
+        createStringRef = s_createStringRef;
+        deleteString = s_deleteString;
+        createString = s_createString;
+        getStringRawBuffer = s_getStringRawBuffer;
+        return s_success;
+    }
+
+    s_tried = true;
+
+    HMODULE combase_module = GetModuleHandleA("combase.dll");
+    if (combase_module == nullptr) {
+        combase_module = LoadLibraryA("combase.dll");
+    }
+    if (combase_module == nullptr) {
+        LogWarn("AudioPolicyConfig: Failed to load combase.dll");
+        return false;
+    }
+
+    s_createStringRef = reinterpret_cast<WindowsCreateStringReference_pfn>(
+        GetProcAddress(combase_module, "WindowsCreateStringReference"));
+    s_deleteString = reinterpret_cast<WindowsDeleteString_pfn>(
+        GetProcAddress(combase_module, "WindowsDeleteString"));
+    s_createString = reinterpret_cast<WindowsCreateString_pfn>(
+        GetProcAddress(combase_module, "WindowsCreateString"));
+    s_getStringRawBuffer = reinterpret_cast<WindowsGetStringRawBuffer_pfn>(
+        GetProcAddress(combase_module, "WindowsGetStringRawBuffer"));
+
+    if (s_createStringRef == nullptr || s_deleteString == nullptr || s_createString == nullptr ||
+        s_getStringRawBuffer == nullptr) {
+        LogWarn("AudioPolicyConfig: Failed to load Windows Runtime string functions from combase.dll");
+        s_success = false;
+        return false;
+    }
+
+    s_success = true;
+    createStringRef = s_createStringRef;
+    deleteString = s_deleteString;
+    createString = s_createString;
+    getStringRawBuffer = s_getStringRawBuffer;
+    return true;
+}
+
+IAudioPolicyConfigFactory *GetAudioPolicyConfigFactory() {
+    static IAudioPolicyConfigFactory *s_factory = nullptr;
+    static bool s_tried = false;
+
+    if (s_tried) {
+        return s_factory;
+    }
+
+    s_tried = true;
+
+    WindowsCreateStringReference_pfn createStringRef = nullptr;
+    WindowsDeleteString_pfn deleteString = nullptr;
+    WindowsCreateString_pfn createString = nullptr;
+    WindowsGetStringRawBuffer_pfn getStringRawBuffer = nullptr;
+
+    if (!GetWindowsRuntimeStringFunctions(createStringRef, deleteString, createString, getStringRawBuffer)) {
+        return nullptr;
+    }
+
+    HMODULE combase_module = GetModuleHandleA("combase.dll");
+    if (combase_module == nullptr) {
+        combase_module = LoadLibraryA("combase.dll");
+    }
+    if (combase_module == nullptr) {
+        LogWarn("AudioPolicyConfig: Failed to load combase.dll");
+        return nullptr;
+    }
+
+    auto ro_get_activation_factory =
+        reinterpret_cast<RoGetActivationFactory_pfn>(GetProcAddress(combase_module, "RoGetActivationFactory"));
+    if (ro_get_activation_factory == nullptr) {
+        LogWarn("AudioPolicyConfig: RoGetActivationFactory not found in combase.dll");
+        return nullptr;
+    }
+
+    const wchar_t *name = L"Windows.Media.Internal.AudioPolicyConfig";
+    const UINT32 len = static_cast<UINT32>(wcslen(name));
+
+    HSTRING hClassName = nullptr;
+    HSTRING_HEADER header;
+    HRESULT hr = createStringRef(name, len, &header, &hClassName);
+    if (FAILED(hr) || hClassName == nullptr) {
+        if (hClassName != nullptr) {
+            deleteString(hClassName);
+        }
+        LogWarn("AudioPolicyConfig: WindowsCreateStringReference failed");
+        return nullptr;
+    }
+
+    IAudioPolicyConfigFactory *factory = nullptr;
+    hr = ro_get_activation_factory(hClassName, __uuidof(IAudioPolicyConfigFactory),
+                                   reinterpret_cast<void **>(&factory));
+
+    deleteString(hClassName);
+
+    if (FAILED(hr) || factory == nullptr) {
+        LogWarn("AudioPolicyConfig: RoGetActivationFactory failed (hr=0x%08lx)", hr);
+        return nullptr;
+    }
+
+    LogInfo("AudioPolicyConfig: Successfully acquired IAudioPolicyConfigFactory");
+    s_factory = factory;
+    return s_factory;
+}
+
+std::wstring GetPersistedDefaultEndpointForCurrentProcess(EDataFlow flow) {
+    IAudioPolicyConfigFactory *factory = GetAudioPolicyConfigFactory();
+    if (factory == nullptr) {
+        return std::wstring();
+    }
+
+    WindowsDeleteString_pfn deleteString = nullptr;
+    WindowsGetStringRawBuffer_pfn getStringRawBuffer = nullptr;
+    WindowsCreateStringReference_pfn createStringRef = nullptr;
+    WindowsCreateString_pfn createString = nullptr;
+
+    if (!GetWindowsRuntimeStringFunctions(createStringRef, deleteString, createString, getStringRawBuffer)) {
+        return std::wstring();
+    }
+
+    HSTRING hDeviceId = nullptr;
+    HRESULT hr = factory->GetPersistedDefaultAudioEndpoint(GetCurrentProcessId(), flow,
+                                                           eMultimedia | eConsole, &hDeviceId);
+    if (FAILED(hr) || hDeviceId == nullptr) {
+        return std::wstring();
+    }
+
+    UINT32 len = 0;
+    const wchar_t *buffer = getStringRawBuffer(hDeviceId, &len);
+    std::wstring result;
+    if (buffer != nullptr && len > 0) {
+        result.assign(buffer, buffer + len);
+    }
+
+    deleteString(hDeviceId);
+    return result;
+}
+
+bool SetPersistedDefaultEndpointForCurrentProcess(EDataFlow flow, const std::wstring &device_id) {
+    IAudioPolicyConfigFactory *factory = GetAudioPolicyConfigFactory();
+    if (factory == nullptr) {
+        return false;
+    }
+
+    WindowsDeleteString_pfn deleteString = nullptr;
+    WindowsGetStringRawBuffer_pfn getStringRawBuffer = nullptr;
+    WindowsCreateStringReference_pfn createStringRef = nullptr;
+    WindowsCreateString_pfn createString = nullptr;
+
+    if (!GetWindowsRuntimeStringFunctions(createStringRef, deleteString, createString, getStringRawBuffer)) {
+        return false;
+    }
+
+    HSTRING hDeviceId = nullptr;
+    if (!device_id.empty()) {
+        HRESULT hr_create =
+            createString(device_id.c_str(), static_cast<UINT32>(device_id.length()), &hDeviceId);
+        if (FAILED(hr_create)) {
+            LogWarn("AudioPolicyConfig: WindowsCreateString failed for device id");
+            return false;
+        }
+    }
+
+    const UINT pid = GetCurrentProcessId();
+
+    HRESULT hr_console =
+        factory->SetPersistedDefaultAudioEndpoint(pid, flow, eConsole, hDeviceId);
+    HRESULT hr_multimedia =
+        factory->SetPersistedDefaultAudioEndpoint(pid, flow, eMultimedia, hDeviceId);
+
+    if (hDeviceId != nullptr) {
+        deleteString(hDeviceId);
+    }
+
+    if (FAILED(hr_console) || FAILED(hr_multimedia)) {
+        LogWarn("AudioPolicyConfig: SetPersistedDefaultAudioEndpoint failed (console=0x%08lx, multimedia=0x%08lx)",
+                hr_console, hr_multimedia);
+        return false;
+    }
+
+    return true;
+}
+
+} // namespace
 
 bool SetMuteForCurrentProcess(bool mute, bool trigger_notification) {
     const DWORD target_pid = GetCurrentProcessId();
@@ -342,6 +586,140 @@ bool AdjustVolumeForCurrentProcess(float percent_change) {
     }
 
     return false;
+}
+
+bool GetAudioOutputDevices(std::vector<std::string> &device_names_utf8,
+                           std::vector<std::wstring> &device_ids,
+                           std::wstring &current_device_id) {
+    device_names_utf8.clear();
+    device_ids.clear();
+    current_device_id.clear();
+
+    HRESULT hr = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+    const bool did_init = SUCCEEDED(hr);
+    if (!did_init && hr != RPC_E_CHANGED_MODE) {
+        LogWarn("CoInitializeEx failed for audio device enumeration");
+        return false;
+    }
+
+    bool success = false;
+    IMMDeviceEnumerator *device_enumerator = nullptr;
+    IMMDeviceCollection *device_collection = nullptr;
+    IMMDevice *default_device = nullptr;
+    std::wstring default_device_full_id;
+
+    do {
+        hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL,
+                              IID_PPV_ARGS(&device_enumerator));
+        if (FAILED(hr) || device_enumerator == nullptr)
+            break;
+
+        // Get system default render endpoint (for annotation)
+        hr = device_enumerator->GetDefaultAudioEndpoint(eRender, eMultimedia, &default_device);
+        if (SUCCEEDED(hr) && default_device != nullptr) {
+            LPWSTR id = nullptr;
+            if (SUCCEEDED(default_device->GetId(&id)) && id != nullptr) {
+                std::wstring default_short_id(id);
+                CoTaskMemFree(id);
+                default_device_full_id = BuildFullAudioDeviceId(eRender, default_short_id);
+            }
+        }
+
+        // Enumerate active render endpoints
+        hr = device_enumerator->EnumAudioEndpoints(eRender, DEVICE_STATE_ACTIVE, &device_collection);
+        if (FAILED(hr) || device_collection == nullptr)
+            break;
+
+        const std::wstring persisted_full_id = GetPersistedDefaultEndpointForCurrentProcess(eRender);
+
+        UINT count = 0;
+        device_collection->GetCount(&count);
+
+        for (UINT i = 0; i < count; ++i) {
+            IMMDevice *device = nullptr;
+            if (FAILED(device_collection->Item(i, &device)) || device == nullptr)
+                continue;
+
+            LPWSTR id = nullptr;
+            if (FAILED(device->GetId(&id)) || id == nullptr) {
+                device->Release();
+                continue;
+            }
+
+            std::wstring id_ws(id);
+            CoTaskMemFree(id);
+
+            IPropertyStore *prop_store = nullptr;
+            std::wstring friendly_name = L"Unknown device";
+
+            if (SUCCEEDED(device->OpenPropertyStore(STGM_READ, &prop_store)) && prop_store != nullptr) {
+                PROPVARIANT var_name;
+                PropVariantInit(&var_name);
+                if (SUCCEEDED(prop_store->GetValue(PKEY_Device_FriendlyName, &var_name)) &&
+                    var_name.vt == VT_LPWSTR && var_name.pwszVal != nullptr) {
+                    friendly_name.assign(var_name.pwszVal);
+                }
+                PropVariantClear(&var_name);
+                prop_store->Release();
+            }
+
+            // Mark system default device in display name (compare using full IDs)
+            bool is_system_default = false;
+            if (!default_device_full_id.empty()) {
+                std::wstring full_id = BuildFullAudioDeviceId(eRender, id_ws);
+                is_system_default = (default_device_full_id == full_id);
+            }
+
+            std::wstring display_name = friendly_name;
+            if (is_system_default) {
+                display_name.append(L" (System Default)");
+            }
+
+            // Store short IDs; convert to full IDs only when persisting
+            if (!persisted_full_id.empty()) {
+                std::wstring full_id = BuildFullAudioDeviceId(eRender, id_ws);
+                if (current_device_id.empty() && full_id == persisted_full_id) {
+                    current_device_id = id_ws;
+                }
+            }
+
+            device_ids.emplace_back(std::move(id_ws));
+            device_names_utf8.emplace_back(WStringToUtf8(display_name));
+
+            device->Release();
+        }
+
+        success = true;
+    } while (false);
+
+    if (default_device != nullptr)
+        default_device->Release();
+    if (device_collection != nullptr)
+        device_collection->Release();
+    if (device_enumerator != nullptr)
+        device_enumerator->Release();
+    if (did_init && hr != RPC_E_CHANGED_MODE)
+        CoUninitialize();
+
+    return success;
+}
+
+bool SetAudioOutputDeviceForCurrentProcess(const std::wstring &device_id) {
+    // device_id is the short MMDevice ID from IMMDevice::GetId; convert to full ID
+    std::wstring full_id;
+    if (!device_id.empty()) {
+        full_id = BuildFullAudioDeviceId(eRender, device_id);
+    }
+
+    const bool ok = SetPersistedDefaultEndpointForCurrentProcess(eRender, full_id);
+
+    std::ostringstream oss;
+    oss << "AudioOutputDevice: "
+        << (device_id.empty() ? "Cleared override (System Default)"
+                              : "Set persisted default endpoint for process");
+    LogInfo(oss.str().c_str());
+
+    return ok;
 }
 
 void RunBackgroundAudioMonitor() {

@@ -29,6 +29,7 @@ enum class DefaultChordType : int {
     Screenshot = 4,
     IncreaseGameSpeed = 5,
     DecreaseGameSpeed = 6,
+    DisplayCommanderUI = 7,
     Count
 };
 

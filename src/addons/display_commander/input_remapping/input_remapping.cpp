@@ -153,6 +153,11 @@ void InputRemapper::add_default_chord_type(DefaultChordType chord_type) {
         action_name = "decrease game speed";
         log_name = "Guide + D-Pad Left = Decrease Game Speed (10%)";
         break;
+    case DefaultChordType::DisplayCommanderUI:
+        button = XINPUT_GAMEPAD_LEFT_SHOULDER;
+        action_name = "display commander ui toggle";
+        log_name = "Guide + Left Shoulder = Toggle Display Commander UI";
+        break;
     default:
         return;
     }
@@ -207,6 +212,9 @@ void InputRemapper::remove_default_chord_type(DefaultChordType chord_type) {
     case DefaultChordType::DecreaseGameSpeed:
         target_button = XINPUT_GAMEPAD_DPAD_LEFT;
         break;
+    case DefaultChordType::DisplayCommanderUI:
+        target_button = XINPUT_GAMEPAD_LEFT_SHOULDER;
+        break;
     default:
         return;
     }
@@ -244,6 +252,7 @@ void InputRemapper::add_default_chords() {
     add_default_chord_type(DefaultChordType::MuteUnmute);
     add_default_chord_type(DefaultChordType::PerformanceOverlay);
     add_default_chord_type(DefaultChordType::Screenshot);
+    add_default_chord_type(DefaultChordType::DisplayCommanderUI);
 
     // Add experimental game speed chords only if experimental features are enabled
     if (enabled_experimental_features) {
@@ -259,6 +268,7 @@ void InputRemapper::remove_default_chords() {
     remove_default_chord_type(DefaultChordType::MuteUnmute);
     remove_default_chord_type(DefaultChordType::PerformanceOverlay);
     remove_default_chord_type(DefaultChordType::Screenshot);
+    remove_default_chord_type(DefaultChordType::DisplayCommanderUI);
 
     // Remove experimental game speed chords (only if they exist)
     remove_default_chord_type(DefaultChordType::IncreaseGameSpeed);
@@ -1127,6 +1137,13 @@ void InputRemapper::execute_action(const std::string &action_name) {
         display_commanderhooks::SetTimeslowdownMultiplier(new_multiplier);
         trigger_action_notification("Game Speed: " + std::to_string(new_multiplier) + "x");
         LogInfo("InputRemapper::execute_action() - Game speed decreased from %.2fx to %.2fx", current_multiplier, new_multiplier);
+    } else if (action_name == "display commander ui toggle") {
+        // Toggle Display Commander UI
+        bool current_state = settings::g_mainTabSettings.show_display_commander_ui.GetValue();
+        bool new_state = !current_state;
+        settings::g_mainTabSettings.show_display_commander_ui.SetValue(new_state);
+        trigger_action_notification("Display Commander UI " + std::string(new_state ? "On" : "Off"));
+        LogInfo("InputRemapper::execute_action() - Display Commander UI %s via action", new_state ? "enabled" : "disabled");
     } else {
         LogError("InputRemapper::execute_action() - Unknown action: %s", action_name.c_str());
     }
@@ -1147,6 +1164,6 @@ std::string get_remap_type_name(RemapType type) {
 }
 
 std::vector<std::string> get_available_actions() {
-    return {"screenshot", "time slowdown toggle", "performance overlay toggle", "mute/unmute audio", "increase volume", "decrease volume", "increase game speed", "decrease game speed"};
+    return {"screenshot", "time slowdown toggle", "performance overlay toggle", "mute/unmute audio", "increase volume", "decrease volume", "increase game speed", "decrease game speed", "display commander ui toggle"};
 }
 } // namespace display_commander::input_remapping

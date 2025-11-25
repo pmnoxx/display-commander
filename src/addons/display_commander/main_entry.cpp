@@ -197,6 +197,7 @@ namespace {
 // Test callback for reshade_overlay event
 void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
     const bool show_display_commander_ui = settings::g_mainTabSettings.show_display_commander_ui.GetValue();
+    const bool show_tooltips = show_display_commander_ui; // only show tooltips if the UI is visible
 
     if (show_display_commander_ui) {
         // Block input every frame while overlay is open
@@ -402,7 +403,7 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
         } else {
             ImGui::Text("%.0f%%", current_volume);
         }
-        if (ImGui::IsItemHovered()) {
+        if (ImGui::IsItemHovered() && show_tooltips) {
             ImGui::SetTooltip("Audio Volume: %.0f%%", current_volume);
         }
     }
@@ -482,7 +483,7 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
             ImGui::Text("%02d:%02d:%02d.%03d", hours, minutes, seconds, milliseconds);
         }
 
-        if (ImGui::IsItemHovered()) {
+        if (ImGui::IsItemHovered() && show_tooltips) {
             if (is_running) {
                 ImGui::SetTooltip("Stopwatch: Running\nPress Ctrl+S to pause");
             } else {
@@ -508,7 +509,7 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
                 } else {
                     ImGui::Text("%.0f%%", volume_value);
                 }
-                if (ImGui::IsItemHovered()) {
+                if (ImGui::IsItemHovered() && show_tooltips) {
                     ImGui::SetTooltip("Audio Volume: %.0f%%", volume_value);
                 }
                 break;
@@ -520,7 +521,7 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
                 } else {
                     ImGui::Text("%s", mute_state ? "Muted" : "Unmuted");
                 }
-                if (ImGui::IsItemHovered()) {
+                if (ImGui::IsItemHovered() && show_tooltips) {
                     ImGui::SetTooltip("Audio: %s", mute_state ? "Muted" : "Unmuted");
                 }
                 break;
@@ -531,7 +532,7 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
                 } else {
                     ImGui::Text("%s", notification.action_name);
                 }
-                if (ImGui::IsItemHovered()) {
+                if (ImGui::IsItemHovered() && show_tooltips) {
                     ImGui::SetTooltip("Gamepad Action: %s", notification.action_name);
                 }
                 break;
@@ -615,7 +616,7 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
 
         if (feature_text[0] != '\0') {
             ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "%s", feature_text);
-            if (ImGui::IsItemHovered()) {
+            if (ImGui::IsItemHovered() && show_tooltips) {
                 ImGui::SetTooltip("%s", tooltip_text);
             }
         }

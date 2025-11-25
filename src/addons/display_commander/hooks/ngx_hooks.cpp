@@ -918,6 +918,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_EvaluateFeature_Detour(ID3D11DeviceC
     g_ngx_counters.d3d11_evaluatefeature_count.fetch_add(1);
     g_ngx_counters.total_count.fetch_add(1);
 
+
     //LogInfo("NGX D3D11 EvaluateFeature called");
 
     // Hook the parameter vtable if we have parameters

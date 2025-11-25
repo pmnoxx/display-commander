@@ -703,13 +703,7 @@ extern std::atomic<bool> s_auto_colorspace;
 
 // Reflex settings
 extern std::atomic<bool> s_reflex_auto_configure;
-extern std::atomic<bool> s_reflex_enable;
 extern std::atomic<bool> s_reflex_enable_current_frame;
-extern std::atomic<bool> s_reflex_low_latency;
-extern std::atomic<bool> s_reflex_boost;
-extern std::atomic<bool> s_reflex_use_markers;
-extern std::atomic<bool> s_reflex_generate_markers;
-extern std::atomic<bool> s_reflex_enable_sleep;
 extern std::atomic<bool> s_reflex_supress_native;
 extern std::atomic<bool> s_enable_reflex_logging;
 

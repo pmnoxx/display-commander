@@ -60,7 +60,6 @@ void HandleReflexAutoConfigure() {
     // Auto-configure Reflex settings
     if (reflex_enable != is_reflex_mode) {
         settings::g_developerTabSettings.reflex_enable.SetValue(is_reflex_mode);
-        s_reflex_enable.store(is_reflex_mode);
 
         if (is_reflex_mode == false) {
             // TODO move logic to Con
@@ -69,30 +68,25 @@ void HandleReflexAutoConfigure() {
         }
     }
 
-    /* if (!reflex_low_latency) {
+     if (!reflex_low_latency) {
          settings::g_developerTabSettings.reflex_low_latency.SetValue(true);
-         s_reflex_low_latency.store(true);
      }
-
+/*
      if (!reflex_boost) {
          settings::g_developerTabSettings.reflex_boost.SetValue(true);
-         s_reflex_boost.store(true);
      } */
     {
         if (!settings::g_developerTabSettings.reflex_use_markers.GetValue()) {
             settings::g_developerTabSettings.reflex_use_markers.SetValue(true);
-            s_reflex_use_markers.store(true);
         }
     }
 
     if (reflex_generate_markers == is_native_reflex_active && settings::g_developerTabSettings.reflex_generate_markers.GetValue() != !is_native_reflex_active) {
         settings::g_developerTabSettings.reflex_generate_markers.SetValue(!is_native_reflex_active);
-        s_reflex_generate_markers.store(!is_native_reflex_active);
     }
 
     if (reflex_enable_sleep == is_native_reflex_active && settings::g_developerTabSettings.reflex_enable_sleep.GetValue() != !is_native_reflex_active) {
         settings::g_developerTabSettings.reflex_enable_sleep.SetValue(!is_native_reflex_active);
-        s_reflex_enable_sleep.store(!is_native_reflex_active);
     }
 }
 

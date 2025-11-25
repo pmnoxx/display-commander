@@ -14,13 +14,7 @@ std::atomic<bool> s_nvapi_auto_enable_enabled{true};    // enabled by default
 
 // Reflex settings
 std::atomic<bool> s_reflex_auto_configure{false};  // Disabled by default
-std::atomic<bool> s_reflex_enable{false};
 std::atomic<bool> s_reflex_enable_current_frame{false};  // Enable NVIDIA Reflex integration for current frame
-std::atomic<bool> s_reflex_low_latency{true};
-std::atomic<bool> s_reflex_boost{true};
-std::atomic<bool> s_reflex_use_markers{false};       // Use markers for optimization
-std::atomic<bool> s_reflex_generate_markers{false};  // Generate markers in frame timeline
-std::atomic<bool> s_reflex_enable_sleep{false};      // Disabled by default
 std::atomic<bool> s_reflex_supress_native{false};    // Disabled by default
 std::atomic<bool> s_enable_reflex_logging{false};    // Disabled by default
 
@@ -56,13 +50,12 @@ DeveloperTabSettings::DeveloperTabSettings()
       // Minimal NVIDIA Reflex controls
       reflex_auto_configure("ReflexAutoConfigure", s_reflex_auto_configure, s_reflex_auto_configure.load(),
                             "DisplayCommander"),
-      reflex_enable("ReflexEnable", s_reflex_enable, s_reflex_enable.load(), "DisplayCommander"),
-      reflex_low_latency("ReflexLowLatency", s_reflex_low_latency, s_reflex_low_latency.load(), "DisplayCommander"),
-      reflex_boost("ReflexBoost", s_reflex_boost, s_reflex_boost.load(), "DisplayCommander"),
-      reflex_use_markers("ReflexUseMarkers", s_reflex_use_markers, s_reflex_use_markers.load(), "DisplayCommander"),
-      reflex_generate_markers("ReflexGenerateMarkers", s_reflex_generate_markers, s_reflex_generate_markers.load(),
-                              "DisplayCommander"),
-      reflex_enable_sleep("ReflexEnableSleep", s_reflex_enable_sleep, s_reflex_enable_sleep.load(), "DisplayCommander"),
+      reflex_enable("ReflexEnable", false, "DisplayCommander"),
+      reflex_low_latency("ReflexLowLatency", true, "DisplayCommander"),
+      reflex_boost("ReflexBoost", true, "DisplayCommander"),
+      reflex_use_markers("ReflexUseMarkers", false, "DisplayCommander"),
+      reflex_generate_markers("ReflexGenerateMarkers", false, "DisplayCommander"),
+      reflex_enable_sleep("ReflexEnableSleep", false, "DisplayCommander"),
       reflex_logging("ReflexLogging", s_enable_reflex_logging, s_enable_reflex_logging.load(), "DisplayCommander"),
       reflex_supress_native("ReflexSupressNative", s_reflex_supress_native, s_reflex_supress_native.load(),
                             "DisplayCommander"),
@@ -130,7 +123,7 @@ std::vector<ui::new_ui::SettingBase*> DeveloperTabSettings::GetAllSettings() {
             &nvapi_auto_enable_enabled,
 
             &reflex_auto_configure, &reflex_enable, &reflex_low_latency, &reflex_boost, &reflex_use_markers,
-            &reflex_enable_sleep, &reflex_logging, &reflex_supress_native,
+            &reflex_generate_markers, &reflex_enable_sleep, &reflex_logging, &reflex_supress_native,
 
             &enable_hotkeys, &enable_mute_unmute_shortcut, &enable_background_toggle_shortcut, &enable_timeslowdown_shortcut,
             &enable_adhd_toggle_shortcut, &enable_autoclick_shortcut, &enable_input_blocking_shortcut, &enable_display_commander_ui_shortcut, &enable_performance_overlay_shortcut, &safemode, &load_from_dll_main, &load_streamline,

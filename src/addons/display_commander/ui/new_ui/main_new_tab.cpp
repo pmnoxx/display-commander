@@ -1370,7 +1370,6 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                 bool reflex_low_latency = settings::g_developerTabSettings.reflex_low_latency.GetValue();
                 if (ImGui::Checkbox("Low Latency Mode", &reflex_low_latency)) {
                     settings::g_developerTabSettings.reflex_low_latency.SetValue(reflex_low_latency);
-                    s_reflex_low_latency.store(reflex_low_latency);
                 }
                 if (ImGui::IsItemHovered()) {
                     ImGui::SetTooltip("Enables NVIDIA Reflex Low Latency Mode to reduce input lag and system latency.\nThis helps improve responsiveness in competitive gaming scenarios.");
@@ -1380,7 +1379,6 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                 bool reflex_boost = settings::g_developerTabSettings.reflex_boost.GetValue();
                 if (ImGui::Checkbox("Boost", &reflex_boost)) {
                     settings::g_developerTabSettings.reflex_boost.SetValue(reflex_boost);
-                    s_reflex_boost.store(reflex_boost);
                 }
                 if (ImGui::IsItemHovered()) {
                     ImGui::SetTooltip("Enables NVIDIA Reflex Boost mode for maximum latency reduction.\nThis mode may increase GPU power consumption but provides the lowest possible input lag.");
@@ -1523,7 +1521,7 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
 
     // FPS Limit slider (persisted)
 
-    bool fps_limit_enabled = s_fps_limiter_mode.load() != FpsLimiterMode::kDisabled && s_fps_limiter_mode.load() != FpsLimiterMode::kLatentSync || s_reflex_enable.load();
+    bool fps_limit_enabled = s_fps_limiter_mode.load() != FpsLimiterMode::kDisabled && s_fps_limiter_mode.load() != FpsLimiterMode::kLatentSync || settings::g_developerTabSettings.reflex_enable.GetValue();
 
 
     {

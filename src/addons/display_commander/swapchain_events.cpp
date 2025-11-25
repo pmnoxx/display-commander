@@ -416,7 +416,7 @@ void HandleRenderStartAndEndTimes() {
                 UpdateRollingAverage(g_simulation_duration_ns_new, g_simulation_duration_ns.load()));
 
             if (s_reflex_enable_current_frame.load()) {
-                if (s_reflex_generate_markers.load()) {
+                if (settings::g_developerTabSettings.reflex_generate_markers.GetValue()) {
                     if (g_latencyManager->IsInitialized()) {
                         g_latencyManager->SetMarker(LatencyMarkerType::SIMULATION_END);
                         g_latencyManager->SetMarker(LatencyMarkerType::RENDERSUBMIT_START);
@@ -900,7 +900,7 @@ void OnPresentUpdateAfter2(void* native_device, DeviceTypeDC device_type) {
     g_swapchain_event_total_count.fetch_add(1);
 
     if (s_reflex_enable_current_frame.load()) {
-        if (s_reflex_generate_markers.load()) {
+        if (settings::g_developerTabSettings.reflex_generate_markers.GetValue()) {
             if (g_latencyManager->IsInitialized()) {
                 g_latencyManager->SetMarker(LatencyMarkerType::PRESENT_END);
             }
@@ -958,15 +958,16 @@ void OnPresentUpdateAfter2(void* native_device, DeviceTypeDC device_type) {
     // (moved from continuous monitoring thread to avoid accessing
     // g_last_swapchain_ptr_unsafe from background thread)
     // NVIDIA Reflex: SIMULATION_END marker (minimal) and Sleep
-    if (s_reflex_enable.load()) {
+    if (settings::g_developerTabSettings.reflex_enable.GetValue()) {
         s_reflex_enable_current_frame.store(true);
         if (native_device && g_latencyManager->Initialize(native_device, device_type)) {
             // Apply sleep mode opportunistically each frame to reflect current
             // toggles
             float target_fps = GetTargetFps();
-            g_latencyManager->ApplySleepMode(s_reflex_low_latency.load(), s_reflex_boost.load(),
-                                             s_reflex_use_markers.load(), target_fps);
-            if (s_reflex_enable_sleep.load()) {
+            g_latencyManager->ApplySleepMode(settings::g_developerTabSettings.reflex_low_latency.GetValue(),
+                                             settings::g_developerTabSettings.reflex_boost.GetValue(),
+                                             settings::g_developerTabSettings.reflex_use_markers.GetValue(), target_fps);
+            if (settings::g_developerTabSettings.reflex_enable_sleep.GetValue()) {
                 g_latencyManager->Sleep();
             }
         }
@@ -981,7 +982,7 @@ void OnPresentUpdateAfter2(void* native_device, DeviceTypeDC device_type) {
 
 
     if (s_reflex_enable_current_frame.load()) {
-        if (s_reflex_generate_markers.load()) {
+        if (settings::g_developerTabSettings.reflex_generate_markers.GetValue()) {
             g_latencyManager->SetMarker(LatencyMarkerType::SIMULATION_START);
         }
     }
@@ -1214,7 +1215,7 @@ void OnPresentUpdateBefore(reshade::api::command_queue * command_queue, reshade:
     HandleEndRenderSubmit();
     // NVIDIA Reflex: RENDERSUBMIT_END marker (minimal)
     if (s_reflex_enable_current_frame.load()) {
-        if (s_reflex_generate_markers.load()) {
+        if (settings::g_developerTabSettings.reflex_generate_markers.GetValue()) {
             g_latencyManager->SetMarker(LatencyMarkerType::RENDERSUBMIT_END);
         }
     }
@@ -1301,7 +1302,7 @@ void OnPresentFlags2(uint32_t *present_flags, DeviceTypeDC api_type) {
     HandleFpsLimiter();
 
     if (s_reflex_enable_current_frame.load()) {
-        if (s_reflex_generate_markers.load()) {
+        if (settings::g_developerTabSettings.reflex_generate_markers.GetValue()) {
             if (g_latencyManager->IsInitialized()) {
                 g_latencyManager->SetMarker(LatencyMarkerType::PRESENT_START);
             }

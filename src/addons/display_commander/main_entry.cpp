@@ -194,10 +194,19 @@ bool OnReShadeOverlayOpen(reshade::api::effect_runtime* runtime, bool open, resh
 // Direct overlay draw callback (no settings2 indirection)
 namespace {
 
+// Cursor state machine for tracking cursor visibility
+enum class CursorState {
+    Unknown,    // Initial/unknown state
+    Visible,    // Cursor is visible (UI is open)
+    Hidden      // Cursor is hidden (UI is closed)
+};
+
 // Test callback for reshade_overlay event
 void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
     const bool show_display_commander_ui = settings::g_mainTabSettings.show_display_commander_ui.GetValue();
     const bool show_tooltips = show_display_commander_ui; // only show tooltips if the UI is visible
+
+    static CursorState last_cursor_state = CursorState::Unknown;
 
     if (show_display_commander_ui) {
         // Block input every frame while overlay is open
@@ -205,6 +214,7 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
             runtime->block_input_next_frame();
         }
 
+        last_cursor_state = CursorState::Visible;
         // Show cursor while overlay is open (same approach as ReShade)
         ImGuiIO& io = ImGui::GetIO();
         io.MouseDrawCursor = true;
@@ -269,9 +279,12 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
         ui::new_ui::NewUISystem::GetInstance().Draw(runtime);
         ImGui::End();
     } else {
+        if (last_cursor_state != CursorState::Hidden) {
+            last_cursor_state = CursorState::Hidden;
         // Hide cursor when overlay is closed (same approach as ReShade)
-        ImGuiIO& io = ImGui::GetIO();
-        io.MouseDrawCursor = false;
+            ImGuiIO& io = ImGui::GetIO();
+            io.MouseDrawCursor = false;
+        }
     }
 
     // Check the setting from main tab first

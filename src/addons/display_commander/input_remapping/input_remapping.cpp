@@ -38,6 +38,8 @@ InputRemapper::InputRemapper() {
     for (int i = 0; i < XUSER_MAX_COUNT; ++i) {
         _previous_button_states[i].store(0);
         _current_button_states[i].store(0);
+        _guide_solo_candidate[i].store(false);
+        _guide_other_button_pressed[i].store(false);
     }
 }
 
@@ -115,6 +117,8 @@ void InputRemapper::add_default_chord_type(DefaultChordType chord_type) {
     WORD button = 0;
     std::string action_name;
     const char* log_name = "";
+    bool hold_mode = false;
+    bool chord_mode = true;
 
     // Map chord type to button and action
     switch (chord_type) {
@@ -154,9 +158,13 @@ void InputRemapper::add_default_chord_type(DefaultChordType chord_type) {
         log_name = "Guide + D-Pad Left = Decrease Game Speed (10%)";
         break;
     case DefaultChordType::DisplayCommanderUI:
-        button = XINPUT_GAMEPAD_LEFT_SHOULDER;
+        // Guide-alone toggle for Display Commander UI
+        button = XINPUT_GAMEPAD_GUIDE;
         action_name = "display commander ui toggle";
-        log_name = "Guide + Left Shoulder = Toggle Display Commander UI";
+        log_name = "Guide = Toggle Display Commander UI";
+        // For this action we want release-based handling with optional solo requirement
+        hold_mode = true;    // ensure release handler runs
+        chord_mode = false;  // no Guide chord for Guide itself
         break;
     default:
         return;
@@ -165,8 +173,8 @@ void InputRemapper::add_default_chord_type(DefaultChordType chord_type) {
     // Check if remapping already exists for this button (don't overwrite user settings)
     auto it = _button_to_remap_index.find(button);
     if (it == _button_to_remap_index.end()) {
-        // Add new default chord
-        ButtonRemap remap(button, action_name, true, false, true);
+        // Add new default chord / action
+        ButtonRemap remap(button, action_name, true, hold_mode, chord_mode);
         remap.is_default_chord = true;
         _remappings.push_back(remap);
         _button_to_remap_index[button] = _remappings.size() - 1;
@@ -724,6 +732,29 @@ void InputRemapper::handle_button_press(WORD gamepad_button, DWORD user_index, W
     if (!remap || !remap->enabled)
         return;
 
+    // If Guide-based Display Commander UI solo toggle is pending, any other button press cancels "solo" state
+    if (gamepad_button != XINPUT_GAMEPAD_GUIDE && user_index < XUSER_MAX_COUNT) {
+        if (_guide_solo_candidate[user_index].load()) {
+            _guide_other_button_pressed[user_index].store(true);
+        }
+    }
+
+    // Special handling for Guide button mapped to Display Commander UI toggle:
+    // - We want to trigger the action on Guide RELEASE, optionally only if no other buttons were pressed.
+    // - So we do NOT execute the action here on press; we just start tracking a potential solo press.
+    if (remap->remap_type == RemapType::Action &&
+        remap->action_name == "display commander ui toggle" &&
+        gamepad_button == XINPUT_GAMEPAD_GUIDE &&
+        user_index < XUSER_MAX_COUNT) {
+        _guide_solo_candidate[user_index].store(true);
+
+        // If any other button is currently held down, this cannot be a "solo" press
+        const WORD guide_mask = XINPUT_GAMEPAD_GUIDE;
+        WORD other_down = current_button_state & static_cast<WORD>(~guide_mask);
+        _guide_other_button_pressed[user_index].store(other_down != 0);
+        return;
+    }
+
     // Check chord mode: if enabled, guide button must also be pressed
     if (remap->chord_mode) {
         if ((current_button_state & XINPUT_GAMEPAD_GUIDE) == 0) {
@@ -847,8 +878,34 @@ void InputRemapper::handle_button_release(WORD gamepad_button, DWORD user_index,
                 get_button_name(remap->gamepad_target_button).c_str(), user_index);
         break;
     case RemapType::Action:
-        // Actions typically don't need release handling
-        success = true;
+        // Special handling for Guide-based Display Commander UI toggle:
+        // - Trigger on Guide RELEASE
+        // - Optionally require that no other buttons were pressed while Guide was held
+        if (remap->action_name == "display commander ui toggle" &&
+            gamepad_button == XINPUT_GAMEPAD_GUIDE &&
+            user_index < XUSER_MAX_COUNT) {
+            bool candidate_active = _guide_solo_candidate[user_index].load();
+            bool other_pressed = _guide_other_button_pressed[user_index].load();
+
+            // Clear tracking state
+            _guide_solo_candidate[user_index].store(false);
+            _guide_other_button_pressed[user_index].store(false);
+
+            if (candidate_active) {
+                bool require_solo =
+                    settings::g_mainTabSettings.guide_button_solo_ui_toggle_only.GetValue();
+
+                if (!require_solo || !other_pressed) {
+                    execute_action(remap->action_name);
+                    success = true;
+                    LogInfo("InputRemapper::handle_button_release() - Guide solo Display Commander UI toggle (Controller %lu)",
+                            user_index);
+                }
+            }
+        } else {
+            // Other actions typically don't need release handling
+            success = true;
+        }
         break;
     case RemapType::Count:
         // Should never happen

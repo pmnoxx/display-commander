@@ -8,6 +8,7 @@
 #include "../widgets/xinput_widget/xinput_widget.hpp"
 #include "../swapchain_events.hpp"
 #include "windows_hooks/windows_message_hooks.hpp"
+#include "../settings/main_tab_settings.hpp"
 #include "../globals.hpp"
 #include <MinHook.h>
 #include <array>

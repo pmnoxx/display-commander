@@ -868,6 +868,20 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
                              "These chords are added to the input remapping system and can be customized.");
         }
 
+        // Guide button behavior for Display Commander UI
+        bool require_solo_press = settings::g_mainTabSettings.guide_button_solo_ui_toggle_only.GetValue();
+        if (ImGui::Checkbox("Require Guide-only press to toggle Display Commander UI", &require_solo_press)) {
+            settings::g_mainTabSettings.guide_button_solo_ui_toggle_only.SetValue(require_solo_press);
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip(
+                "When enabled, tapping the Guide button will open/close Display Commander UI only if no other\n"
+                "gamepad buttons were pressed between Guide down and Guide up.\n\n"
+                "Example:\n"
+                "- Press Guide, do nothing else, release Guide -> Toggle Display Commander UI\n"
+                "- Press Guide + any other button (e.g. volume chords) -> Do NOT toggle Display Commander UI");
+        }
+
         ImGui::Unindent();
     }
 

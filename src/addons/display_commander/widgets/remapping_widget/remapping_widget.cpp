@@ -277,8 +277,8 @@ void RemappingWidget::DrawAddRemapDialog() {
         // Gamepad Button Selection
         ImGui::Text("Gamepad Button:");
         const char *gamepad_buttons[] = {"A",          "B",          "X",           "Y",           "D-Pad Up",
-                                         "D-Pad Down", "D-Pad Left", "D-Pad Right", "Start",       "Back",
-                                         "Guide",      "Left Stick", "Right Stick", "Left Bumper", "Right Bumper"};
+                                         "D-Pad Down", "D-Pad Left", "D-Pad Right", "Menu",        "View",
+                                         "Home",       "Left Stick", "Right Stick", "Left Bumper", "Right Bumper"};
         if (ImGui::Combo("##GamepadButton", &dialog_state_.selected_gamepad_button, gamepad_buttons, 15)) {
             // Update selection
         }
@@ -343,7 +343,7 @@ void RemappingWidget::DrawAddRemapDialog() {
         ImGui::SameLine();
         ImGui::TextDisabled("(?)");
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("If enabled, the remapping will only work when the Guide button is also pressed at the same time");
+            ImGui::SetTooltip("If enabled, the remapping will only work when the Home button is also pressed at the same time");
         }
 
         // Enabled
@@ -401,8 +401,8 @@ void RemappingWidget::DrawEditRemapDialog() {
         // Gamepad Button Selection
         ImGui::Text("Gamepad Button:");
         const char *gamepad_buttons[] = {"A",          "B",          "X",           "Y",           "D-Pad Up",
-                                         "D-Pad Down", "D-Pad Left", "D-Pad Right", "Start",       "Back",
-                                         "Guide",      "Left Stick", "Right Stick", "Left Bumper", "Right Bumper"};
+                                         "D-Pad Down", "D-Pad Left", "D-Pad Right", "Menu",        "View",
+                                         "Home",       "Left Stick", "Right Stick", "Left Bumper", "Right Bumper"};
         ImGui::Combo("##GamepadButton", &dialog_state_.selected_gamepad_button, gamepad_buttons, 15);
 
         // Remap Type Selection
@@ -455,7 +455,7 @@ void RemappingWidget::DrawEditRemapDialog() {
         ImGui::SameLine();
         ImGui::TextDisabled("(?)");
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("If enabled, the remapping will only work when the Guide button is also pressed at the same time");
+            ImGui::SetTooltip("If enabled, the remapping will only work when the Home button is also pressed at the same time");
         }
 
         // Enabled
@@ -528,9 +528,9 @@ std::string RemappingWidget::GetGamepadButtonNameFromCode(WORD button_code) cons
     case XINPUT_GAMEPAD_DPAD_RIGHT:
         return "D-Pad Right";
     case XINPUT_GAMEPAD_START:
-        return "Start";
+        return "Menu";
     case XINPUT_GAMEPAD_BACK:
-        return "Back";
+        return "View";
     case XINPUT_GAMEPAD_LEFT_THUMB:
         return "Left Stick";
     case XINPUT_GAMEPAD_RIGHT_THUMB:
@@ -548,7 +548,7 @@ std::string RemappingWidget::GetGamepadButtonNameFromCode(WORD button_code) cons
     case XINPUT_GAMEPAD_Y:
         return "Y";
     case XINPUT_GAMEPAD_GUIDE:
-        return "Guide";
+        return "Home";
     default:
         return "Unknown";
     }

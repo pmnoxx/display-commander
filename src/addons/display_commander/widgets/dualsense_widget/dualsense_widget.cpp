@@ -380,8 +380,8 @@ void DualSenseWidget::DrawButtonStates(const DualSenseDeviceInfo& device) {
             {XINPUT_GAMEPAD_Y, "Y"},
             {XINPUT_GAMEPAD_LEFT_SHOULDER, "LB"},
             {XINPUT_GAMEPAD_RIGHT_SHOULDER, "RB"},
-            {XINPUT_GAMEPAD_BACK, "Back"},
-            {XINPUT_GAMEPAD_START, "Start"},
+            {XINPUT_GAMEPAD_BACK, "View"},
+            {XINPUT_GAMEPAD_START, "Menu"},
             {XINPUT_GAMEPAD_LEFT_THUMB, "LS"},
             {XINPUT_GAMEPAD_RIGHT_THUMB, "RS"},
             {XINPUT_GAMEPAD_DPAD_UP, "D-Up"},
@@ -565,8 +565,8 @@ std::string DualSenseWidget::GetButtonName(WORD button) const {
         case XINPUT_GAMEPAD_Y: return "Y";
         case XINPUT_GAMEPAD_LEFT_SHOULDER: return "LB";
         case XINPUT_GAMEPAD_RIGHT_SHOULDER: return "RB";
-        case XINPUT_GAMEPAD_BACK: return "Back";
-        case XINPUT_GAMEPAD_START: return "Start";
+        case XINPUT_GAMEPAD_BACK: return "View";
+        case XINPUT_GAMEPAD_START: return "Menu";
         case XINPUT_GAMEPAD_LEFT_THUMB: return "LS";
         case XINPUT_GAMEPAD_RIGHT_THUMB: return "RS";
         case XINPUT_GAMEPAD_DPAD_UP: return "D-Up";

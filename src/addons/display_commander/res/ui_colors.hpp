@@ -39,7 +39,7 @@ constexpr ImVec4 ICON_DISABLED = ImVec4(0.5f, 0.5f, 0.5f, 1.0f);     // Gray for
 constexpr ImVec4 ICON_MUTED = ImVec4(0.6f, 0.6f, 0.6f, 1.0f);        // Light gray for muted
 constexpr ImVec4 ICON_DARK_GRAY = ImVec4(0.3f, 0.3f, 0.3f, 1.0f);    // Dark gray for unpressed buttons
 constexpr ImVec4 ICON_ORANGE = ImVec4(1.0f, 0.5f, 0.0f, 1.0f);       // Orange for low battery/warnings
-constexpr ImVec4 ICON_DARK_ORANGE = ImVec4(0.5f, 0.4f, 0.0f, 1.0f);  // Dark orange for guide button
+constexpr ImVec4 ICON_DARK_ORANGE = ImVec4(0.5f, 0.4f, 0.0f, 1.0f);  // Dark orange for home button
 
 // ============================================================================
 // Text Colors

@@ -544,7 +544,7 @@ void XInputWidget::DrawControllerState() {
 
     // Debug: Show raw button state
     ImGui::Text("Raw Button State: 0x%04X", state.Gamepad.wButtons);
-    ImGui::Text("Guide Button Constant: 0x%04X", XINPUT_GAMEPAD_GUIDE);
+    ImGui::Text("Home Button Constant: 0x%04X", XINPUT_GAMEPAD_GUIDE);
 
     // Get last update time
     uint64_t last_update = g_shared_state->last_update_times[selected_controller_].load();
@@ -594,9 +594,9 @@ void XInputWidget::DrawButtonStates(const XINPUT_GAMEPAD &gamepad) {
             {XINPUT_GAMEPAD_Y, "Y"},
             {XINPUT_GAMEPAD_LEFT_SHOULDER, "LB"},
             {XINPUT_GAMEPAD_RIGHT_SHOULDER, "RB"},
-            {XINPUT_GAMEPAD_BACK, "Back"},
-            {XINPUT_GAMEPAD_START, "Start"},
-            {XINPUT_GAMEPAD_GUIDE, "Guide"},
+            {XINPUT_GAMEPAD_BACK, "View"},
+            {XINPUT_GAMEPAD_START, "Menu"},
+            {XINPUT_GAMEPAD_GUIDE, "Home"},
             {XINPUT_GAMEPAD_LEFT_THUMB, "LS"},
             {XINPUT_GAMEPAD_RIGHT_THUMB, "RS"},
             {XINPUT_GAMEPAD_DPAD_UP, "D-Up"},
@@ -611,7 +611,7 @@ void XInputWidget::DrawButtonStates(const XINPUT_GAMEPAD &gamepad) {
                 bool pressed1 = IsButtonPressed(gamepad.wButtons, buttons[i].mask);
                 bool pressed2 = IsButtonPressed(gamepad.wButtons, buttons[i + 1].mask);
 
-                // Special styling for Guide button
+                // Special styling for Home button
                 if (buttons[i].mask == XINPUT_GAMEPAD_GUIDE) {
                     ImGui::PushStyleColor(ImGuiCol_Button,
                                           pressed1 ? ui::colors::ICON_WARNING : ui::colors::ICON_DARK_ORANGE);
@@ -624,7 +624,7 @@ void XInputWidget::DrawButtonStates(const XINPUT_GAMEPAD &gamepad) {
 
                 ImGui::SameLine();
 
-                // Special styling for Guide button
+                // Special styling for Home button
                 if (buttons[i + 1].mask == XINPUT_GAMEPAD_GUIDE) {
                     ImGui::PushStyleColor(ImGuiCol_Button,
                                           pressed2 ? ui::colors::ICON_WARNING : ui::colors::ICON_DARK_ORANGE);
@@ -638,7 +638,7 @@ void XInputWidget::DrawButtonStates(const XINPUT_GAMEPAD &gamepad) {
                 // Single button on last row
                 bool pressed = IsButtonPressed(gamepad.wButtons, buttons[i].mask);
 
-                // Special styling for Guide button
+                // Special styling for Home button
                 if (buttons[i].mask == XINPUT_GAMEPAD_GUIDE) {
                     ImGui::PushStyleColor(ImGuiCol_Button,
                                           pressed ? ui::colors::ICON_WARNING : ui::colors::ICON_DARK_ORANGE);
@@ -1020,11 +1020,11 @@ std::string XInputWidget::GetButtonName(WORD button) const {
     case XINPUT_GAMEPAD_RIGHT_SHOULDER:
         return "RB";
     case XINPUT_GAMEPAD_BACK:
-        return "Back";
+        return "View";
     case XINPUT_GAMEPAD_START:
-        return "Start";
+        return "Menu";
     case XINPUT_GAMEPAD_GUIDE:
-        return "Guide";
+        return "Home";
     case XINPUT_GAMEPAD_LEFT_THUMB:
         return "LS";
     case XINPUT_GAMEPAD_RIGHT_THUMB:
@@ -1889,8 +1889,8 @@ void XInputWidget::DrawAutofireSettings() {
                 {XINPUT_GAMEPAD_Y, "Y"},
                 {XINPUT_GAMEPAD_LEFT_SHOULDER, "LB"},
                 {XINPUT_GAMEPAD_RIGHT_SHOULDER, "RB"},
-                {XINPUT_GAMEPAD_BACK, "Back"},
-                {XINPUT_GAMEPAD_START, "Start"},
+                {XINPUT_GAMEPAD_BACK, "View"},
+                {XINPUT_GAMEPAD_START, "Menu"},
                 {XINPUT_GAMEPAD_LEFT_THUMB, "LS"},
                 {XINPUT_GAMEPAD_RIGHT_THUMB, "RS"},
                 {XINPUT_GAMEPAD_DPAD_UP, "D-Up"},

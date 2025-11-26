@@ -68,7 +68,7 @@ struct ButtonRemap {
 
     bool enabled;                              // Whether this remap is active
     bool hold_mode;                            // If true, holds key/button while button pressed
-    bool chord_mode;                           // If true, remapping only works when guide button is also pressed
+    bool chord_mode;                           // If true, remapping only works when home button is also pressed
     bool is_default_chord;                     // If true, this remap was added by default chords feature
     std::atomic<bool> is_pressed{false};       // Current press state
     std::atomic<ULONGLONG> last_press_time{0}; // Last press timestamp

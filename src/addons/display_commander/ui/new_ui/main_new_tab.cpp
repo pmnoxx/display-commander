@@ -860,26 +860,26 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Enable default gamepad chords:\n"
-                             "- Guide + D-Pad Up: Increase Volume\n"
-                             "- Guide + D-Pad Down: Decrease Volume\n"
-                             "- Guide + Right Shoulder: Mute/Unmute Audio\n"
-                             "- Guide + Start: Toggle Performance Overlay\n"
-                             "- Guide + Back: Take Screenshot\n\n"
+                             "- Home + D-Pad Up: Increase Volume\n"
+                             "- Home + D-Pad Down: Decrease Volume\n"
+                             "- Home + Right Shoulder: Mute/Unmute Audio\n"
+                             "- Home + Menu: Toggle Performance Overlay\n"
+                             "- Home + View: Take Screenshot\n\n"
                              "These chords are added to the input remapping system and can be customized.");
         }
 
-        // Guide button behavior for Display Commander UI
+        // Home button behavior for Display Commander UI
         bool require_solo_press = settings::g_mainTabSettings.guide_button_solo_ui_toggle_only.GetValue();
-        if (ImGui::Checkbox("Require Guide-only press to toggle Display Commander UI", &require_solo_press)) {
+        if (ImGui::Checkbox("Require Home-only press to toggle Display Commander UI", &require_solo_press)) {
             settings::g_mainTabSettings.guide_button_solo_ui_toggle_only.SetValue(require_solo_press);
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip(
-                "When enabled, tapping the Guide button will open/close Display Commander UI only if no other\n"
-                "gamepad buttons were pressed between Guide down and Guide up.\n\n"
+                "When enabled, tapping the Home button will open/close Display Commander UI only if no other\n"
+                "gamepad buttons were pressed between Home down and Home up.\n\n"
                 "Example:\n"
-                "- Press Guide, do nothing else, release Guide -> Toggle Display Commander UI\n"
-                "- Press Guide + any other button (e.g. volume chords) -> Do NOT toggle Display Commander UI");
+                "- Press Home, do nothing else, release Home -> Toggle Display Commander UI\n"
+                "- Press Home + any other button (e.g. volume chords) -> Do NOT toggle Display Commander UI");
         }
 
         ImGui::Unindent();

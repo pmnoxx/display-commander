@@ -125,43 +125,43 @@ void InputRemapper::add_default_chord_type(DefaultChordType chord_type) {
     case DefaultChordType::VolumeUp:
         button = XINPUT_GAMEPAD_DPAD_UP;
         action_name = "increase volume";
-        log_name = "Guide + D-Pad Up = Increase Volume";
+        log_name = "Home + D-Pad Up = Increase Volume";
         break;
     case DefaultChordType::VolumeDown:
         button = XINPUT_GAMEPAD_DPAD_DOWN;
         action_name = "decrease volume";
-        log_name = "Guide + D-Pad Down = Decrease Volume";
+        log_name = "Home + D-Pad Down = Decrease Volume";
         break;
     case DefaultChordType::MuteUnmute:
         button = XINPUT_GAMEPAD_RIGHT_SHOULDER;
         action_name = "mute/unmute audio";
-        log_name = "Guide + Right Shoulder = Mute/Unmute Audio";
+        log_name = "Home + Right Shoulder = Mute/Unmute Audio";
         break;
     case DefaultChordType::PerformanceOverlay:
         button = XINPUT_GAMEPAD_START;
         action_name = "performance overlay toggle";
-        log_name = "Guide + Start = Toggle Performance Overlay";
+        log_name = "Home + Menu = Toggle Performance Overlay";
         break;
     case DefaultChordType::Screenshot:
         button = XINPUT_GAMEPAD_BACK;
         action_name = "screenshot";
-        log_name = "Guide + Back = Take Screenshot";
+        log_name = "Home + View = Take Screenshot";
         break;
     case DefaultChordType::IncreaseGameSpeed:
         button = XINPUT_GAMEPAD_DPAD_RIGHT;
         action_name = "increase game speed";
-        log_name = "Guide + D-Pad Right = Increase Game Speed (10%)";
+        log_name = "Home + D-Pad Right = Increase Game Speed (10%)";
         break;
     case DefaultChordType::DecreaseGameSpeed:
         button = XINPUT_GAMEPAD_DPAD_LEFT;
         action_name = "decrease game speed";
-        log_name = "Guide + D-Pad Left = Decrease Game Speed (10%)";
+        log_name = "Home + D-Pad Left = Decrease Game Speed (10%)";
         break;
     case DefaultChordType::DisplayCommanderUI:
         // Guide-alone toggle for Display Commander UI
         button = XINPUT_GAMEPAD_GUIDE;
         action_name = "display commander ui toggle";
-        log_name = "Guide = Toggle Display Commander UI";
+        log_name = "Home = Toggle Display Commander UI";
         // For this action we want release-based handling with optional solo requirement
         hold_mode = true;    // ensure release handler runs
         chord_mode = false;  // no Guide chord for Guide itself
@@ -585,9 +585,9 @@ std::string InputRemapper::get_button_name(WORD button) const {
     case XINPUT_GAMEPAD_DPAD_RIGHT:
         return "D-Pad Right";
     case XINPUT_GAMEPAD_START:
-        return "Start";
+        return "Menu";
     case XINPUT_GAMEPAD_BACK:
-        return "Back";
+        return "View";
     case XINPUT_GAMEPAD_LEFT_THUMB:
         return "Left Stick";
     case XINPUT_GAMEPAD_RIGHT_THUMB:
@@ -605,7 +605,7 @@ std::string InputRemapper::get_button_name(WORD button) const {
     case XINPUT_GAMEPAD_Y:
         return "Y";
     case XINPUT_GAMEPAD_GUIDE:
-        return "Guide";
+        return "Home";
     default:
         return "Unknown";
     }
@@ -732,15 +732,15 @@ void InputRemapper::handle_button_press(WORD gamepad_button, DWORD user_index, W
     if (!remap || !remap->enabled)
         return;
 
-    // If Guide-based Display Commander UI solo toggle is pending, any other button press cancels "solo" state
+    // If Home-based Display Commander UI solo toggle is pending, any other button press cancels "solo" state
     if (gamepad_button != XINPUT_GAMEPAD_GUIDE && user_index < XUSER_MAX_COUNT) {
         if (_guide_solo_candidate[user_index].load()) {
             _guide_other_button_pressed[user_index].store(true);
         }
     }
 
-    // Special handling for Guide button mapped to Display Commander UI toggle:
-    // - We want to trigger the action on Guide RELEASE, optionally only if no other buttons were pressed.
+    // Special handling for Home button mapped to Display Commander UI toggle:
+    // - We want to trigger the action on Home RELEASE, optionally only if no other buttons were pressed.
     // - So we do NOT execute the action here on press; we just start tracking a potential solo press.
     if (remap->remap_type == RemapType::Action &&
         remap->action_name == "display commander ui toggle" &&
@@ -755,10 +755,10 @@ void InputRemapper::handle_button_press(WORD gamepad_button, DWORD user_index, W
         return;
     }
 
-    // Check chord mode: if enabled, guide button must also be pressed
+    // Check chord mode: if enabled, home button must also be pressed
     if (remap->chord_mode) {
         if ((current_button_state & XINPUT_GAMEPAD_GUIDE) == 0) {
-            // Guide button not pressed, ignore this remapping
+            // Home button not pressed, ignore this remapping
             return;
         }
     }
@@ -829,11 +829,11 @@ void InputRemapper::handle_button_release(WORD gamepad_button, DWORD user_index,
     if (!remap || !remap->enabled || !remap->hold_mode)
         return;
 
-    // Check chord mode: if enabled, guide button must also be pressed (or was pressed when button was released)
-    // For release, we check if guide button is still pressed or if it was pressed when the button was held
+    // Check chord mode: if enabled, home button must also be pressed (or was pressed when button was released)
+    // For release, we check if home button is still pressed or if it was pressed when the button was held
     if (remap->chord_mode) {
         if ((current_button_state & XINPUT_GAMEPAD_GUIDE) == 0) {
-            // Guide button not pressed, ignore this remapping release
+            // Home button not pressed, ignore this remapping release
             return;
         }
     }
@@ -878,9 +878,9 @@ void InputRemapper::handle_button_release(WORD gamepad_button, DWORD user_index,
                 get_button_name(remap->gamepad_target_button).c_str(), user_index);
         break;
     case RemapType::Action:
-        // Special handling for Guide-based Display Commander UI toggle:
-        // - Trigger on Guide RELEASE
-        // - Optionally require that no other buttons were pressed while Guide was held
+        // Special handling for Home-based Display Commander UI toggle:
+        // - Trigger on Home RELEASE
+        // - Optionally require that no other buttons were pressed while Home was held
         if (remap->action_name == "display commander ui toggle" &&
             gamepad_button == XINPUT_GAMEPAD_GUIDE &&
             user_index < XUSER_MAX_COUNT) {
@@ -898,7 +898,7 @@ void InputRemapper::handle_button_release(WORD gamepad_button, DWORD user_index,
                 if (!require_solo || !other_pressed) {
                     execute_action(remap->action_name);
                     success = true;
-                    LogInfo("InputRemapper::handle_button_release() - Guide solo Display Commander UI toggle (Controller %lu)",
+                    LogInfo("InputRemapper::handle_button_release() - Home solo Display Commander UI toggle (Controller %lu)",
                             user_index);
                 }
             }
@@ -944,7 +944,7 @@ std::vector<std::string> get_available_keyboard_input_methods() {
 
 std::vector<std::string> get_available_gamepad_buttons() {
     return {"A",     "B",    "X",     "Y",          "D-Pad Up",    "D-Pad Down",  "D-Pad Left",  "D-Pad Right",
-            "Start", "Back", "Guide", "Left Stick", "Right Stick", "Left Bumper", "Right Bumper"};
+            "Menu", "View", "Home", "Left Stick", "Right Stick", "Left Bumper", "Right Bumper"};
 }
 
 std::vector<std::string> get_available_keyboard_keys() {
@@ -980,10 +980,10 @@ void InputRemapper::apply_gamepad_remapping(DWORD user_index, XINPUT_STATE *stat
             continue;
         }
 
-        // Check chord mode: if enabled, guide button must also be pressed
+        // Check chord mode: if enabled, home button must also be pressed
         if (remap.chord_mode) {
             if ((state->Gamepad.wButtons & XINPUT_GAMEPAD_GUIDE) == 0) {
-                // Guide button not pressed, skip this remapping
+                // Home button not pressed, skip this remapping
                 continue;
             }
         }

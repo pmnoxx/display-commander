@@ -224,6 +224,10 @@ class InputRemapper {
     std::array<std::atomic<WORD>, XUSER_MAX_COUNT> _previous_button_states;
     std::array<std::atomic<WORD>, XUSER_MAX_COUNT> _current_button_states;
 
+    // Guide solo-press tracking for Display Commander UI toggle
+    std::array<std::atomic<bool>, XUSER_MAX_COUNT> _guide_solo_candidate;
+    std::array<std::atomic<bool>, XUSER_MAX_COUNT> _guide_other_button_pressed;
+
     // Thread safety
     mutable SRWLOCK _srwlock = SRWLOCK_INIT;
 };

@@ -74,6 +74,7 @@ class MainTabSettings {
 
     // Input Remapping Settings
     ui::new_ui::BoolSetting enable_default_chords;
+    ui::new_ui::BoolSetting guide_button_solo_ui_toggle_only;
 
     // Input Blocking Settings
     ui::new_ui::ComboSettingEnumRef<InputBlockingMode> keyboard_input_blocking;

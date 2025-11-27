@@ -278,6 +278,25 @@ static DWORD ProcessXInputGetState(DWORD dwUserIndex, XINPUT_STATE *pState, Hook
         // Process input remapping before updating state
         display_commander::input_remapping::process_gamepad_input_for_remapping(dwUserIndex, pState);
 
+        // Block gamepad input to game when home button is pressed (if enabled)
+        // This prevents accidental button presses while using shortcuts
+        auto &remapper = display_commander::input_remapping::InputRemapper::get_instance();
+        if (remapper.is_block_input_on_home_button() && (pState->Gamepad.wButtons & XINPUT_GAMEPAD_GUIDE) != 0) {
+            // Clear all buttons except home button (so remapping can still work)
+            WORD home_button_state = pState->Gamepad.wButtons & XINPUT_GAMEPAD_GUIDE;
+            pState->Gamepad.wButtons = home_button_state;
+
+            // Clear stick inputs
+            pState->Gamepad.sThumbLX = 0;
+            pState->Gamepad.sThumbLY = 0;
+            pState->Gamepad.sThumbRX = 0;
+            pState->Gamepad.sThumbRY = 0;
+
+            // Clear trigger inputs
+            pState->Gamepad.bLeftTrigger = 0;
+            pState->Gamepad.bRightTrigger = 0;
+        }
+
         // Process autofire
         display_commander::widgets::xinput_widget::ProcessAutofire(dwUserIndex, pState);
 

@@ -749,11 +749,11 @@ void DrawNvapiSettings() {
             ImGui::TextColored(ui::colors::TEXT_DEFAULT, "fakenvapi.dll found: No");
         }
 
-        if (!stats.last_error.empty()) {
+            if (!stats.last_error.empty()) {
             ImGui::TextColored(ui::colors::TEXT_ERROR, "Last Error: %s", stats.last_error.c_str());
-        }
+            }
         ImGui::Unindent();  // Unindent content
-    }
+        }
     ui::colors::PopNestedHeaderColors();  // Restore default header colors
     ImGui::Unindent();  // Unindent nested header section
 

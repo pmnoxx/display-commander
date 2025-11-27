@@ -422,6 +422,8 @@ nvapi::FakeNvapiManager g_fakeNvapiManager;
 
 // NGX Parameter Storage global instance
 UnifiedParameterMap g_ngx_parameters;
+UnifiedParameterMap g_ngx_parameter_overrides;
+std::atomic<NVSDK_NGX_Parameter*> g_last_ngx_parameter{nullptr};
 
 // NGX Counters global instance
 NGXCounters g_ngx_counters;

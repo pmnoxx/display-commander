@@ -244,7 +244,7 @@ void InitializeNewUI() {
         }
     }, true); // XInput tab is advanced
 
-    g_tab_manager.AddTab("Remapping (Experimental)", "remapping", [](reshade::api::effect_runtime* runtime) {
+    g_tab_manager.AddTab("Controller Remapping", "remapping", [](reshade::api::effect_runtime* runtime) {
         try {
             display_commander::widgets::remapping_widget::DrawRemappingWidget();
         } catch (const std::exception &e) {

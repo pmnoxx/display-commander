@@ -103,6 +103,22 @@ void RemappingWidget::DrawRemappingSettings() {
             ImGui::SetTooltip("When enabled, gamepad buttons will be mapped to keyboard inputs");
         }
 
+        // Block gamepad input to game when home button is pressed
+        bool block_input_on_home_button = remapper.is_block_input_on_home_button();
+        if (ImGui::Checkbox("Block Gamepad Input When Home Button Pressed", &block_input_on_home_button)) {
+            remapper.set_block_input_on_home_button(block_input_on_home_button);
+            LogInfo("RemappingWidget::DrawRemappingSettings() - Block input on home button %s",
+                    block_input_on_home_button ? "enabled" : "disabled");
+        }
+
+        ImGui::SameLine();
+        ImGui::TextDisabled("(?)");
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("When enabled, blocks all gamepad input to the game (except home button) while home button is pressed.\n"
+                             "This prevents accidental button presses while using shortcuts.\n"
+                             "Remapping system will still work normally.");
+        }
+
         // Show statistics
         const auto &remappings = remapper.get_remappings();
         ImGui::Text("Active Remappings: %zu", remappings.size());

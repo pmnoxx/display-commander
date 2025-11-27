@@ -343,8 +343,15 @@ void InputRemapper::set_remapping_enabled(bool enabled) {
 
     // Save the setting to config immediately
     display_commander::config::set_config_value("DisplayCommander.InputRemapping", "Enabled", enabled);
+}
 
-    LogInfo("InputRemapper::set_remapping_enabled() - Remapping %s", enabled ? "enabled" : "disabled");
+void InputRemapper::set_block_input_on_home_button(bool enabled) {
+    _block_input_on_home_button.store(enabled);
+
+    // Save the setting to config immediately
+    display_commander::config::set_config_value("DisplayCommander.InputRemapping", "BlockInputOnHomeButton", enabled);
+
+    LogInfo("InputRemapper::set_block_input_on_home_button() - Block input on home button %s", enabled ? "enabled" : "disabled");
 }
 
 void InputRemapper::set_default_input_method(KeyboardInputMethod method) {
@@ -385,6 +392,11 @@ void InputRemapper::load_settings() {
     bool remapping_enabled = _remapping_enabled.load(); // Get current default value
     display_commander::config::get_config_value("DisplayCommander.InputRemapping", "Enabled", remapping_enabled);
     _remapping_enabled.store(remapping_enabled);
+
+    // Load block input on home button setting
+    bool block_input_on_home_button = _block_input_on_home_button.load(); // Get current default value
+    display_commander::config::get_config_value("DisplayCommander.InputRemapping", "BlockInputOnHomeButton", block_input_on_home_button);
+    _block_input_on_home_button.store(block_input_on_home_button);
 
     // Load default input method
     int default_method = static_cast<int>(_default_input_method); // Get current default value
@@ -480,6 +492,9 @@ void InputRemapper::load_settings() {
 void InputRemapper::save_settings() {
     // Save remapping enabled state
     display_commander::config::set_config_value("DisplayCommander.InputRemapping", "Enabled", _remapping_enabled.load());
+
+    // Save block input on home button setting
+    display_commander::config::set_config_value("DisplayCommander.InputRemapping", "BlockInputOnHomeButton", _block_input_on_home_button.load());
 
     // Save default input method
     display_commander::config::set_config_value("DisplayCommander.InputRemapping", "DefaultMethod",

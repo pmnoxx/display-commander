@@ -1060,9 +1060,9 @@ void InputRemapper::execute_action(const std::string &action_name) {
         LogInfo("InputRemapper::execute_action() - Performance overlay %s via action", new_state ? "enabled" : "disabled");
     } else if (action_name == "mute/unmute audio") {
         // Toggle audio mute state
-        bool current_state = s_audio_mute.load();
+        bool current_state = settings::g_mainTabSettings.audio_mute.GetValue();
         bool new_state = !current_state;
-        s_audio_mute.store(new_state);
+        settings::g_mainTabSettings.audio_mute.SetValue(new_state);
 
         // Apply the mute state immediately
         if (SetMuteForCurrentProcess(new_state)) {

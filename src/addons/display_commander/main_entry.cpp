@@ -340,7 +340,7 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
                 ImGui::Text("%02d:%02d:%02d", hours, minutes, seconds);
             }
 
-            if (ImGui::IsItemHovered()) {
+            if (ImGui::IsItemHovered() && show_tooltips) {
                 ImGui::SetTooltip("Playtime: Time elapsed since game start");
             }
         }
@@ -664,11 +664,11 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
     }
 
     if (show_frame_time_graph) {
-        ui::new_ui::DrawFrameTimeGraphOverlay();
+        ui::new_ui::DrawFrameTimeGraphOverlay(show_tooltips);
     }
 
     if (settings::g_mainTabSettings.show_refresh_rate_frame_times.GetValue()) {
-        ui::new_ui::DrawRefreshRateFrameTimesGraph();
+        ui::new_ui::DrawRefreshRateFrameTimesGraph(show_tooltips);
     }
 
     ImGui::End();

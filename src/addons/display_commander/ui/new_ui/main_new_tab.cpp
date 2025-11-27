@@ -411,7 +411,7 @@ void DrawAdvancedSettings() {
         LogInfo("Show Remapping tab %s", settings::g_mainTabSettings.show_remapping_tab.GetValue() ? "enabled" : "disabled");
     }
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Shows the Remapping (Experimental) tab even when 'Show All Tabs' is disabled.");
+        ImGui::SetTooltip("Shows the Controller Remapping tab even when 'Show All Tabs' is disabled.");
     }
 
     if (CheckboxSetting(settings::g_mainTabSettings.show_hook_stats_tab, "Show Hook Statistics Tab")) {

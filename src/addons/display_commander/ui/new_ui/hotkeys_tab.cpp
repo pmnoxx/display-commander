@@ -33,9 +33,9 @@ void InitializeHotkeyDefinitions() {
             "ctrl+m",
             "Toggle audio mute state",
             []() {
-                bool new_mute_state = !s_audio_mute.load();
+                bool new_mute_state = !settings::g_mainTabSettings.audio_mute.GetValue();
+                settings::g_mainTabSettings.audio_mute.SetValue(new_mute_state);
                 if (SetMuteForCurrentProcess(new_mute_state)) {
-                    s_audio_mute.store(new_mute_state);
                     g_muted_applied.store(new_mute_state);
                     std::ostringstream oss;
                     oss << "Audio " << (new_mute_state ? "muted" : "unmuted") << " via hotkey";

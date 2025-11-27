@@ -295,17 +295,13 @@ void InitMainNewTab() {
         s_aspect_index = static_cast<AspectRatioType>(settings::g_mainTabSettings.aspect_index.GetValue());
         s_window_alignment = static_cast<WindowAlignment>(settings::g_mainTabSettings.alignment.GetValue());
         // FPS limits are now automatically synced via FloatSettingRef
-        // Audio mute settings are automatically synced via BoolSettingRef, but we need to apply them
-        s_audio_mute.store(settings::g_mainTabSettings.audio_mute.GetValue());
-        s_mute_in_background.store(settings::g_mainTabSettings.mute_in_background.GetValue());
-        s_mute_in_background_if_other_audio.store(
-            settings::g_mainTabSettings.mute_in_background_if_other_audio.GetValue());
-        s_no_present_in_background.store(settings::g_mainTabSettings.no_present_in_background.GetValue());
+        // Audio mute settings are automatically synced via BoolSettingRef
+        // Background mute settings are automatically synced via BoolSettingRef
         // VSync & Tearing - all automatically synced via BoolSettingRef
 
         // Apply loaded mute state immediately if manual mute is enabled
         // (BoolSettingRef already synced s_audio_mute, but we need to apply it to the audio system)
-        if (s_audio_mute.load()) {
+        if (settings::g_mainTabSettings.audio_mute.GetValue()) {
             if (::SetMuteForCurrentProcess(true)) {
                 ::g_muted_applied.store(true);
                 LogInfo("Audio mute state loaded and applied from settings");

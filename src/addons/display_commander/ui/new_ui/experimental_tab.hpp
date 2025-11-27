@@ -26,6 +26,9 @@ void DrawTextureFormatUpgrade();
 // Draw sleep hook controls section
 void DrawSleepHookControls();
 
+// Draw rand hook controls section
+void DrawRandHookControls();
+
 // Draw time slowdown controls section
 void DrawTimeSlowdownControls();
 

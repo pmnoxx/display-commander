@@ -410,14 +410,29 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
             current_volume = s_audio_volume_percent.load();
         }
 
+        // Check if audio is muted
+        bool is_muted = g_muted_applied.load();
+
         // Display volume percentage
         if (settings::g_mainTabSettings.show_labels.GetValue()) {
-            ImGui::Text("%.0f%% vol", current_volume);
+            if (is_muted) {
+                ImGui::Text("%.0f%% vol muted", current_volume);
+            } else {
+                ImGui::Text("%.0f%% vol", current_volume);
+            }
         } else {
-            ImGui::Text("%.0f%%", current_volume);
+            if (is_muted) {
+                ImGui::Text("%.0f%% muted", current_volume);
+            } else {
+                ImGui::Text("%.0f%%", current_volume);
+            }
         }
         if (ImGui::IsItemHovered() && show_tooltips) {
-            ImGui::SetTooltip("Audio Volume: %.0f%%", current_volume);
+            if (is_muted) {
+                ImGui::SetTooltip("Audio Volume: %.0f%% (Muted)", current_volume);
+            } else {
+                ImGui::SetTooltip("Audio Volume: %.0f%%", current_volume);
+            }
         }
     }
 
@@ -517,13 +532,26 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
             switch (notification.type) {
             case ActionNotificationType::Volume: {
                 float volume_value = notification.float_value;
+                bool is_muted = g_muted_applied.load();
                 if (settings::g_mainTabSettings.show_labels.GetValue()) {
-                    ImGui::Text("%.0f%% vol", volume_value);
+                    if (is_muted) {
+                        ImGui::Text("%.0f%% vol muted", volume_value);
+                    } else {
+                        ImGui::Text("%.0f%% vol", volume_value);
+                    }
                 } else {
-                    ImGui::Text("%.0f%%", volume_value);
+                    if (is_muted) {
+                        ImGui::Text("%.0f%% muted", volume_value);
+                    } else {
+                        ImGui::Text("%.0f%%", volume_value);
+                    }
                 }
                 if (ImGui::IsItemHovered() && show_tooltips) {
-                    ImGui::SetTooltip("Audio Volume: %.0f%%", volume_value);
+                    if (is_muted) {
+                        ImGui::SetTooltip("Audio Volume: %.0f%% (Muted)", volume_value);
+                    } else {
+                        ImGui::SetTooltip("Audio Volume: %.0f%%", volume_value);
+                    }
                 }
                 break;
             }

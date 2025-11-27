@@ -14,6 +14,7 @@
 #include "loadlibrary_hooks.hpp"
 #include "opengl_hooks.hpp"
 #include "process_exit_hooks.hpp"
+#include "rand_hooks.hpp"
 #include "sleep_hooks.hpp"
 #include "timeslowdown_hooks.hpp"
 #include "windows_gaming_input_hooks.hpp"
@@ -956,6 +957,11 @@ bool InstallApiHooks() {
     // Install D3D device creation hooks
     InstallD3DDeviceHooks();
 
+    // Install rand hooks (experimental feature)
+    if (enabled_experimental_features) {
+        InstallRandHooks();
+    }
+
     g_api_hooks_installed.store(true);
     LogInfo("API hooks installed successfully");
 
@@ -998,6 +1004,9 @@ void UninstallApiHooks() {
 
     // Uninstall debug output hooks
     debug_output::UninstallDebugOutputHooks();
+
+    // Uninstall rand hooks
+    UninstallRandHooks();
 
     // NVAPI hooks are uninstalled via LoadLibrary hooks cleanup
 

@@ -127,6 +127,14 @@ class ExperimentalTabSettings {
     BoolSetting dll_blocking_enabled;
     StringSetting blocked_dlls;
 
+    // Rand hook settings
+    BoolSetting rand_hook_enabled;
+    IntSetting rand_hook_value;
+
+    // Rand_s hook settings
+    BoolSetting rand_s_hook_enabled;
+    IntSetting rand_s_hook_value;
+
   private:
     std::vector<SettingBase *> all_settings_;
 };

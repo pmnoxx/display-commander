@@ -5,6 +5,7 @@
 #include "../../dlss/dlss_indicator_manager.hpp"
 #include "../../globals.hpp"
 #include "../../hooks/api_hooks.hpp"
+#include "../../hooks/rand_hooks.hpp"
 #include "../../hooks/sleep_hooks.hpp"
 #include "../../hooks/timeslowdown_hooks.hpp"
 #include "../../hooks/hid_suppression_hooks.hpp"
@@ -22,6 +23,8 @@
 
 #include <atomic>
 #include <algorithm>
+#include <climits>
+#include <cstdlib>
 
 namespace ui::new_ui {
 
@@ -178,6 +181,14 @@ void DrawExperimentalTab() {
     if (enabled_experimental_features) {
         if (ImGui::CollapsingHeader("Sleep Hook Controls", ImGuiTreeNodeFlags_None)) {
             DrawSleepHookControls();
+        }
+        ImGui::Spacing();
+    }
+
+    // Draw rand hook controls
+    if (enabled_experimental_features) {
+        if (ImGui::CollapsingHeader("Rand Hook Controls", ImGuiTreeNodeFlags_None)) {
+            DrawRandHookControls();
         }
         ImGui::Spacing();
     }
@@ -585,6 +596,137 @@ void DrawSleepHookControls() {
                 ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Time Saved: %lld ms",
                                    static_cast<int64_t>(total_original) - static_cast<int64_t>(total_modified));
             }
+        }
+    }
+}
+
+void DrawRandHookControls() {
+    ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== Rand Hook Controls ===");
+    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f),
+                       ICON_FK_WARNING " EXPERIMENTAL FEATURE - Hooks C runtime rand() function to return constant value!");
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip(
+            "This feature hooks the C runtime rand() function from msvcrt.dll or ucrtbase.dll.\n"
+            "When enabled, rand() will always return the configured constant value instead of random numbers.\n"
+            "Useful for games that use rand() for randomization that you want to control.");
+    }
+
+    ImGui::Spacing();
+
+    // Enable/disable checkbox
+    if (CheckboxSetting(settings::g_experimentalTabSettings.rand_hook_enabled, "Enable Rand Hook")) {
+        LogInfo("Rand hook %s",
+                settings::g_experimentalTabSettings.rand_hook_enabled.GetValue() ? "enabled" : "disabled");
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Enable hook for C runtime rand() function to return a constant value.");
+    }
+
+    if (settings::g_experimentalTabSettings.rand_hook_enabled.GetValue()) {
+        ImGui::Spacing();
+
+        // Rand value slider
+        if (SliderIntSetting(settings::g_experimentalTabSettings.rand_hook_value, "Rand Value", "%d")) {
+            LogInfo("Rand hook value set to %d", settings::g_experimentalTabSettings.rand_hook_value.GetValue());
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Constant value that rand() will return when the hook is enabled.\n"
+                             "Range: %d (INT_MIN) to %d (INT_MAX)\n"
+                             "Note: Standard rand() returns 0 to %d (RAND_MAX), but the hook allows any int value including negatives.", INT_MIN, INT_MAX, RAND_MAX);
+        }
+
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        // Statistics
+        uint64_t rand_calls = display_commanderhooks::GetRandCallCount();
+        bool hooks_installed = display_commanderhooks::AreRandHooksInstalled();
+
+        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Statistics:");
+        ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Total rand() calls: %llu", rand_calls);
+        ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Hooks Status: %s",
+                           hooks_installed ? "Installed" : "Not Installed");
+
+        // Show current settings
+        ImGui::Spacing();
+        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Current Settings:");
+        ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Rand Value: %d",
+                           settings::g_experimentalTabSettings.rand_hook_value.GetValue());
+
+        ImGui::Spacing();
+        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), ICON_FK_WARNING " WARNING: This affects all code that uses rand()!");
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("The rand() hook affects all code in the game process that calls rand(),\n"
+                             "including game logic, AI, procedural generation, etc.");
+        }
+    }
+
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::Spacing();
+
+    // Rand_s hook controls
+    ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== Rand_s Hook Controls ===");
+    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f),
+                       ICON_FK_WARNING " EXPERIMENTAL FEATURE - Hooks C runtime rand_s() function to return constant value!");
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip(
+            "This feature hooks the C runtime rand_s() function from msvcrt.dll or ucrtbase.dll.\n"
+            "rand_s() is the secure version of rand() that uses cryptographically secure random number generation.\n"
+            "When enabled, rand_s() will always return the configured constant value instead of random numbers.\n"
+            "Useful for games that use rand_s() for randomization that you want to control.");
+    }
+
+    ImGui::Spacing();
+
+    // Enable/disable checkbox
+    if (CheckboxSetting(settings::g_experimentalTabSettings.rand_s_hook_enabled, "Enable Rand_s Hook")) {
+        LogInfo("Rand_s hook %s",
+                settings::g_experimentalTabSettings.rand_s_hook_enabled.GetValue() ? "enabled" : "disabled");
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Enable hook for C runtime rand_s() function to return a constant value.");
+    }
+
+    if (settings::g_experimentalTabSettings.rand_s_hook_enabled.GetValue()) {
+        ImGui::Spacing();
+
+        // Rand_s value slider
+        if (SliderIntSetting(settings::g_experimentalTabSettings.rand_s_hook_value, "Rand_s Value", "%u")) {
+            LogInfo("Rand_s hook value set to %u", settings::g_experimentalTabSettings.rand_s_hook_value.GetValue());
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Constant value that rand_s() will return when the hook is enabled.\n"
+                             "Range: 0 to %u (UINT_MAX)", UINT_MAX);
+        }
+
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        // Statistics
+        uint64_t rand_s_calls = display_commanderhooks::GetRand_sCallCount();
+        bool hooks_installed = display_commanderhooks::AreRandHooksInstalled();
+
+        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Statistics:");
+        ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Total rand_s() calls: %llu", rand_s_calls);
+        ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Hooks Status: %s",
+                           hooks_installed ? "Installed" : "Not Installed");
+
+        // Show current settings
+        ImGui::Spacing();
+        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Current Settings:");
+        ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Rand_s Value: %u",
+                           settings::g_experimentalTabSettings.rand_s_hook_value.GetValue());
+
+        ImGui::Spacing();
+        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), ICON_FK_WARNING " WARNING: This affects all code that uses rand_s()!");
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("The rand_s() hook affects all code in the game process that calls rand_s(),\n"
+                             "including game logic, AI, procedural generation, etc.\n"
+                             "Note: rand_s() is designed for cryptographically secure random numbers,\n"
+                             "so hooking it may affect security-sensitive operations.");
         }
     }
 }

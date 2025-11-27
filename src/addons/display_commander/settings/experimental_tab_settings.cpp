@@ -2,6 +2,8 @@
 #include "../globals.hpp"
 #include "../hooks/timeslowdown_hooks.hpp"
 #include "../hooks/loadlibrary_hooks.hpp"
+#include <cstdlib>
+#include <climits>
 
 namespace settings {
 
@@ -99,6 +101,10 @@ ExperimentalTabSettings::ExperimentalTabSettings()
     , upgrade_compare_min_mag_linear_mip_point("UpgradeCompareMinMagLinearMipPoint", false, "DisplayCommander.Experimental")
     , dll_blocking_enabled("DLLBlockingEnabled", false, "DisplayCommander.Experimental")
     , blocked_dlls("BlockedDLLs", "", "DisplayCommander.Experimental")
+    , rand_hook_enabled("RandHookEnabled", false, "DisplayCommander.Experimental")
+    , rand_hook_value("RandHookValue", 0, INT_MIN, INT_MAX, "DisplayCommander.Experimental")
+    , rand_s_hook_enabled("Rand_sHookEnabled", false, "DisplayCommander.Experimental")
+    , rand_s_hook_value("Rand_sHookValue", 0, 0, UINT_MAX, "DisplayCommander.Experimental")
 {
     // Initialize the all_settings_ vector
     all_settings_ = {
@@ -134,6 +140,10 @@ ExperimentalTabSettings::ExperimentalTabSettings()
         &upgrade_compare_min_mag_linear_mip_point,
         &dll_blocking_enabled,
         &blocked_dlls,
+        &rand_hook_enabled,
+        &rand_hook_value,
+        &rand_s_hook_enabled,
+        &rand_s_hook_value,
     };
 }
 

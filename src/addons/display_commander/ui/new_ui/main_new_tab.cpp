@@ -160,7 +160,7 @@ void DrawFrameTimeGraph() {
 }
 
 // Draw refresh rate frame times graph (display refresh intervals)
-void DrawRefreshRateFrameTimesGraph() {
+void DrawRefreshRateFrameTimesGraph(bool show_tooltips) {
     // Convert refresh rates to frame times (ms) - lock-free iteration
     static std::vector<float> frame_times;
     frame_times.clear();
@@ -215,7 +215,7 @@ void DrawRefreshRateFrameTimesGraph() {
     // Restore original style color
     ImGui::PopStyleColor();
 
-    if (ImGui::IsItemHovered()) {
+    if (ImGui::IsItemHovered() && show_tooltips) {
         ImGui::SetTooltip("Refresh rate frame time graph showing display refresh intervals in milliseconds.\n"
                          "Lower values = higher refresh rate.\n"
                          "Spikes indicate refresh rate variations (VRR, power management, etc.).");
@@ -223,7 +223,7 @@ void DrawRefreshRateFrameTimesGraph() {
 }
 
 // Compact overlay version with fixed width
-void DrawFrameTimeGraphOverlay() {
+void DrawFrameTimeGraphOverlay(bool show_tooltips) {
     // Get frame time data from the performance ring buffer
     const uint32_t head = ::g_perf_ring_head.load(std::memory_order_acquire);
     const uint32_t count = (head > static_cast<uint32_t>(::kPerfRingCapacity)) ? static_cast<uint32_t>(::kPerfRingCapacity) : head;
@@ -281,7 +281,7 @@ void DrawFrameTimeGraphOverlay() {
     // Restore original style color
     ImGui::PopStyleColor();
 
-    if (ImGui::IsItemHovered()) {
+    if (ImGui::IsItemHovered() && show_tooltips) {
         ImGui::SetTooltip("Frame time graph (last 256 frames)\nAvg: %.2f ms | Max: %.2f ms", avg_frame_time, max_frame_time);
     }
 }

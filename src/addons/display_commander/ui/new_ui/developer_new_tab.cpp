@@ -3,6 +3,7 @@
 #include "../../nvapi/fake_nvapi_manager.hpp"
 #include "../../nvapi/nvapi_fullscreen_prevention.hpp"
 #include "../../res/forkawesome.h"
+#include "../../res/ui_colors.hpp"
 #include "../../settings/developer_tab_settings.hpp"
 #include "../../settings/experimental_tab_settings.hpp"
 #include "../../utils/logging.hpp"
@@ -689,7 +690,7 @@ void DrawNvapiSettings() {
     ImGui::Spacing();
     if (ImGui::CollapsingHeader("AntiLag 2 / XeLL support (fakenvapi / custom nvapi64.dll)", ImGuiTreeNodeFlags_DefaultOpen)) {
         ImGui::Indent();
-        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "Load AL2/AL+/XeLL through nvapi64.dll");
+        ImGui::TextColored(ui::colors::TEXT_WARNING, "Load AL2/AL+/XeLL through nvapi64.dll");
 
         bool fake_nvapi_enabled = settings::g_developerTabSettings.fake_nvapi_enabled.GetValue();
         if (ImGui::Checkbox("Enable (requires restart)", &fake_nvapi_enabled)) {
@@ -711,7 +712,7 @@ void DrawNvapiSettings() {
 
         // Show warning if fakenvapi.dll is found (needs renaming)
         if (fake_nvapi_enabled && stats.fakenvapi_dll_found) {
-            ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f), ICON_FK_WARNING " Warning: fakenvapi.dll found - rename to nvapi64.dll");
+            ImGui::TextColored(ui::colors::TEXT_WARNING, ICON_FK_WARNING " Warning: fakenvapi.dll found - rename to nvapi64.dll");
             if (ImGui::IsItemHovered()) {
                 ImGui::SetTooltip(
                     "fakenvapi.dll was found in the addon directory.\n"
@@ -721,37 +722,44 @@ void DrawNvapiSettings() {
         }
 
         if (stats.is_nvapi64_loaded && !stats.fake_nvapi_loaded) {
-            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Status: nvapi64.dll was auto-loaded by the game.");
+            ImGui::TextColored(ui::colors::TEXT_SUCCESS, "Status: nvapi64.dll was auto-loaded by the game.");
         } else if (stats.fake_nvapi_loaded) {
-            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Status: nvapi64.dll was loaded by DC from local directory.");
+            ImGui::TextColored(ui::colors::TEXT_SUCCESS, "Status: nvapi64.dll was loaded by DC from local directory.");
         } else if (!stats.last_error.empty()) {
-            ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "Status: %s", stats.last_error.c_str());
+            ImGui::TextColored(ui::colors::TEXT_ERROR, "Status: %s", stats.last_error.c_str());
         } else {
-            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Status: %s", status_msg.c_str());
+            ImGui::TextColored(ui::colors::TEXT_DIMMED, "Status: %s", status_msg.c_str());
         }
 
-    // Statistics
+    // Statistics (see docs/UI_STYLE_GUIDE.md for depth/indent rules)
+    // Depth 2: Nested subsection with indentation and distinct colors
+    ImGui::Indent();  // Indent nested header
+    ui::colors::PushNestedHeaderColors();  // Apply distinct colors for nested header
     if (ImGui::CollapsingHeader("Fake NVAPI Statistics", ImGuiTreeNodeFlags_None)) {
-        ImGui::Text("nvapi64.dll loaded before DC: %s", stats.was_nvapi64_loaded_before_dc ? "Yes" : "No");
-        ImGui::Text("nvapi64.dll currently loaded: %s", stats.is_nvapi64_loaded ? "Yes" : "No");
-        ImGui::Text("libxell.dll loaded: %s", stats.is_libxell_loaded ? "Yes" : "No");
-        ImGui::Text("Fake NVAPI Loaded: %s", stats.fake_nvapi_loaded ? "Yes" : "No");
-        ImGui::Text("Override Enabled: %s", stats.override_enabled ? "Yes" : "No");
+        ImGui::Indent();  // Indent content inside subsection
+        ImGui::TextColored(ui::colors::TEXT_DEFAULT, "nvapi64.dll loaded before DC: %s", stats.was_nvapi64_loaded_before_dc ? "Yes" : "No");
+        ImGui::TextColored(ui::colors::TEXT_DEFAULT, "nvapi64.dll currently loaded: %s", stats.is_nvapi64_loaded ? "Yes" : "No");
+        ImGui::TextColored(ui::colors::TEXT_DEFAULT, "libxell.dll loaded: %s", stats.is_libxell_loaded ? "Yes" : "No");
+        ImGui::TextColored(ui::colors::TEXT_DEFAULT, "Fake NVAPI Loaded: %s", stats.fake_nvapi_loaded ? "Yes" : "No");
+        ImGui::TextColored(ui::colors::TEXT_DEFAULT, "Override Enabled: %s", stats.override_enabled ? "Yes" : "No");
 
         if (stats.fakenvapi_dll_found) {
-            ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f), ICON_FK_WARNING ": fakenvapi.dll found: Yes (needs renaming to nvapi64.dll)");
+            ImGui::TextColored(ui::colors::TEXT_WARNING, ICON_FK_WARNING ": fakenvapi.dll found: Yes (needs renaming to nvapi64.dll)");
         } else {
-            ImGui::Text("fakenvapi.dll found: No");
+            ImGui::TextColored(ui::colors::TEXT_DEFAULT, "fakenvapi.dll found: No");
         }
 
-            if (!stats.last_error.empty()) {
-                ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "Last Error: %s", stats.last_error.c_str());
-            }
+        if (!stats.last_error.empty()) {
+            ImGui::TextColored(ui::colors::TEXT_ERROR, "Last Error: %s", stats.last_error.c_str());
         }
+        ImGui::Unindent();  // Unindent content
+    }
+    ui::colors::PopNestedHeaderColors();  // Restore default header colors
+    ImGui::Unindent();  // Unindent nested header section
 
         // Warning about experimental nature
         ImGui::Spacing();
-        ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f), ICON_FK_WARNING " Experimental Feature");
+        ImGui::TextColored(ui::colors::TEXT_WARNING, ICON_FK_WARNING " Experimental Feature");
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip(
                 "Fake NVAPI is experimental and may cause:\n"
@@ -798,7 +806,7 @@ void DrawReShadeGlobalConfigSettings() {
     // Display current ReShade.ini path info
     std::filesystem::path dcConfigPath = utils::GetDisplayCommanderConfigPath();
     std::string dcConfigPathStr = dcConfigPath.string();
-    ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Global profile location:");
+    ImGui::TextColored(ui::colors::TEXT_DIMMED, "Global profile location:");
     ImGui::Indent();
     ImGui::TextWrapped("%s", dcConfigPathStr.c_str());
     ImGui::Unindent();
@@ -806,7 +814,7 @@ void DrawReShadeGlobalConfigSettings() {
     ImGui::Spacing();
 
     // Compare button
-    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Configuration comparison:");
+    ImGui::TextColored(ui::colors::TEXT_DEFAULT, "Configuration comparison:");
 
     if (ImGui::Button("Compare local config vs global config")) {
         // Reload both settings for fresh comparison
@@ -815,19 +823,19 @@ void DrawReShadeGlobalConfigSettings() {
 
         if (currentLoaded && globalLoaded) {
             statusMessage = ICON_FK_OK " Reloaded both configurations for comparison";
-            statusColor = ImVec4(0.4f, 1.0f, 0.4f, 1.0f);
+            statusColor = ui::colors::TEXT_SUCCESS;
             LogInfo("Reloaded both current and global settings for comparison");
         } else if (currentLoaded) {
             statusMessage = ICON_FK_WARNING " Reloaded current settings, global profile not found";
-            statusColor = ImVec4(1.0f, 0.7f, 0.0f, 1.0f);
+            statusColor = ui::colors::TEXT_WARNING;
             LogInfo("Reloaded current settings, global profile not found");
         } else if (globalLoaded) {
             statusMessage = ICON_FK_WARNING " Reloaded global profile, current settings failed to load";
-            statusColor = ImVec4(1.0f, 0.7f, 0.0f, 1.0f);
+            statusColor = ui::colors::TEXT_WARNING;
             LogInfo("Reloaded global settings, current settings failed to load");
         } else {
             statusMessage = ICON_FK_CANCEL " Failed to reload both configurations";
-            statusColor = ImVec4(1.0f, 0.4f, 0.4f, 1.0f);
+            statusColor = ui::colors::TEXT_ERROR;
             LogInfo("Failed to reload both configurations");
         }
     }
@@ -841,9 +849,13 @@ void DrawReShadeGlobalConfigSettings() {
     ImGui::Separator();
     ImGui::Spacing();
 
-    // Unified comparison view
+    // Unified comparison view (see docs/UI_STYLE_GUIDE.md for depth/indent rules)
+    // Depth 1: Nested subsection with indentation and distinct colors
+    ImGui::Indent();  // Indent nested header
+    ui::colors::PushNestedHeaderColors();  // Apply distinct colors for nested header
     if (ImGui::CollapsingHeader("Configuration Comparison", ImGuiTreeNodeFlags_None)) {
-        ImGui::TextWrapped("Shows differences between local (current game) and global configurations:");
+        ImGui::Indent();  // Indent content inside subsection
+        ImGui::TextColored(ui::colors::TEXT_DEFAULT, "Shows differences between local (current game) and global configurations:");
         ImGui::Spacing();
 
         bool anyChanges = false;
@@ -858,7 +870,7 @@ void DrawReShadeGlobalConfigSettings() {
         }
 
         for (const auto& section : allSections) {
-            ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "[%s]", section.c_str());
+            ImGui::TextColored(ui::colors::TEXT_LABEL, "[%s]", section.c_str());
             ImGui::Indent();
 
             auto currentSectionIt = currentSettings.additional_settings.find(section);
@@ -899,24 +911,24 @@ void DrawReShadeGlobalConfigSettings() {
                 if (currentValue != globalValue) {
                     sectionHasChanges = true;
                     anyChanges = true;
-                    ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "%s:", key.c_str());
+                    ImGui::TextColored(ui::colors::TEXT_LABEL, "%s:", key.c_str());
                     ImGui::Indent();
 
                     // Show both values side by side for better comparison
-                    ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Local:  ");
+                    ImGui::TextColored(ui::colors::TEXT_DIMMED, "Local:  ");
                     ImGui::SameLine();
                     if (currentValue.empty()) {
-                        ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "(empty)");
+                        ImGui::TextColored(ui::colors::TEXT_SUBTLE, "(empty)");
                     } else {
-                        ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "%s", currentValue.c_str());
+                        ImGui::TextColored(ui::colors::TEXT_SUCCESS, "%s", currentValue.c_str());
                     }
 
-                    ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Global: ");
+                    ImGui::TextColored(ui::colors::TEXT_DIMMED, "Global: ");
                     ImGui::SameLine();
                     if (globalValue.empty()) {
-                        ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "(empty)");
+                        ImGui::TextColored(ui::colors::TEXT_SUBTLE, "(empty)");
                     } else {
-                        ImGui::TextColored(ImVec4(1.0f, 0.7f, 0.0f, 1.0f), "%s", globalValue.c_str());
+                        ImGui::TextColored(ui::colors::TEXT_WARNING, "%s", globalValue.c_str());
                     }
 
                     ImGui::Unindent();
@@ -924,7 +936,7 @@ void DrawReShadeGlobalConfigSettings() {
             }
 
             if (!sectionHasChanges) {
-                ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "No differences");
+                ImGui::TextColored(ui::colors::TEXT_SUCCESS, "No differences");
             }
 
             ImGui::Unindent();
@@ -932,13 +944,16 @@ void DrawReShadeGlobalConfigSettings() {
         }
 
         if (!anyChanges) {
-            ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "All settings are identical!");
+            ImGui::TextColored(ui::colors::TEXT_SUCCESS, "All settings are identical!");
         }
 
         ImGui::Spacing();
-        ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f),
+        ImGui::TextColored(ui::colors::TEXT_DIMMED,
                            "Legend: Local = Current game settings, Global = DisplayCommander.ini profile");
+        ImGui::Unindent();  // Unindent content
     }
+    ui::colors::PopNestedHeaderColors();  // Restore default header colors
+    ImGui::Unindent();  // Unindent nested header section
 
     ImGui::Spacing();
     ImGui::Separator();
@@ -955,14 +970,14 @@ void DrawReShadeGlobalConfigSettings() {
 
         if (utils::SaveGlobalSettings(currentSettings)) {
             statusMessage = ICON_FK_OK " Copied current settings to global profile";
-            statusColor = ImVec4(0.4f, 1.0f, 0.4f, 1.0f);
+            statusColor = ui::colors::TEXT_SUCCESS;
             LogInfo("Saved current settings to global profile");
 
             // Reload global settings to reflect changes
             utils::LoadGlobalSettings(globalSettings);
         } else {
             statusMessage = ICON_FK_CANCEL " Failed to save to global profile";
-            statusColor = ImVec4(1.0f, 0.4f, 0.4f, 1.0f);
+            statusColor = ui::colors::TEXT_ERROR;
             LogInfo("Failed to save to global profile");
         }
     }
@@ -978,19 +993,19 @@ void DrawReShadeGlobalConfigSettings() {
         if (utils::LoadGlobalSettings(globalSettings)) {
             if (utils::WriteCurrentReShadeSettings(globalSettings)) {
                 statusMessage = ICON_FK_OK " Applied global profile to current game";
-                statusColor = ImVec4(0.4f, 1.0f, 0.4f, 1.0f);
+                statusColor = ui::colors::TEXT_SUCCESS;
                 LogInfo("Applied global settings to current ReShade.ini");
 
                 // Reload current settings to reflect changes
                 utils::ReadCurrentReShadeSettings(currentSettings);
             } else {
                 statusMessage = ICON_FK_CANCEL " Failed to apply global settings";
-                statusColor = ImVec4(1.0f, 0.4f, 0.4f, 1.0f);
+                statusColor = ui::colors::TEXT_ERROR;
                 LogInfo("Failed to apply global settings");
             }
         } else {
             statusMessage = ICON_FK_CANCEL " No global profile found (create one first)";
-            statusColor = ImVec4(1.0f, 0.7f, 0.0f, 1.0f);
+            statusColor = ui::colors::TEXT_WARNING;
             LogInfo("No global settings file found");
         }
     }

@@ -2637,8 +2637,12 @@ void DrawImportantInfo() {
 
     ImGui::Spacing();
 
-    // Frame Time Graph Section
+    // Frame Time Graph Section (see docs/UI_STYLE_GUIDE.md for depth/indent rules)
+    // Depth 1: Nested subsection with indentation and distinct colors
+    ImGui::Indent();  // Indent nested header
+    ui::colors::PushNestedHeaderColors();  // Apply distinct colors for nested header
     if (ImGui::CollapsingHeader("Frame Time Graph", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::Indent();  // Indent content inside subsection
         // Display GPU fence status/failure reason
         if (settings::g_mainTabSettings.gpu_measurement_enabled.GetValue() != 0) {
             const char* failure_reason = ::g_gpu_fence_failure_reason.load();
@@ -2889,7 +2893,10 @@ void DrawImportantInfo() {
             ImGui::Spacing();
             ImGui::TextColored(ui::colors::TEXT_DIMMED, "Collecting data...");
         }
+        ImGui::Unindent();  // Unindent content
     }
+    ui::colors::PopNestedHeaderColors();  // Restore default header colors
+    ImGui::Unindent();  // Unindent nested header section
 }
 
 

@@ -1,6 +1,14 @@
 /**
  * UI Colors for Display Commander
- * Centralized color definitions for consistent theming across the UI
+ * Centralized color definitions for consistent theming across the UI.
+ *
+ * Visual hierarchy (section depths, indentation rules, and how these colors
+ * should be applied) is documented in `docs/UI_STYLE_GUIDE.md`.
+ * Whenever you add or change UI sections (including NGX counters and other
+ * nested menus), please follow that style guide for:
+ *  - Depth 0 / 1 / 2 layout
+ *  - Indent / Unindent usage
+ *  - Which semantic text/icon colors to use
  */
 #pragma once
 
@@ -86,6 +94,18 @@ constexpr ImVec4 STATUS_INACTIVE = ImVec4(0.8f, 0.8f, 0.8f, 1.0f);    // Inactiv
 constexpr ImVec4 STATUS_STARTING = ImVec4(1.0f, 0.5f, 0.0f, 1.0f);    // Starting/loading (orange)
 
 // ============================================================================
+// Header Colors (for nested CollapsingHeaders - Depth 1)
+// ============================================================================
+
+// Nested header background (slightly different from default to show hierarchy)
+constexpr ImVec4 HEADER_NESTED_BG = ImVec4(0.15f, 0.15f, 0.18f, 1.0f);      // Darker background for nested headers
+constexpr ImVec4 HEADER_NESTED_BG_HOVERED = ImVec4(0.20f, 0.20f, 0.25f, 1.0f);  // Hovered state
+constexpr ImVec4 HEADER_NESTED_BG_ACTIVE = ImVec4(0.25f, 0.25f, 0.30f, 1.0f);   // Active/pressed state
+
+// Nested header text color (uses TEXT_LABEL for visual distinction)
+constexpr ImVec4 HEADER_NESTED_TEXT = TEXT_LABEL;  // Light blue for nested headers
+
+// ============================================================================
 // Helper Functions
 // ============================================================================
 
@@ -108,6 +128,19 @@ inline void PushIconColor(const ImVec4& color) {
 
 inline void PopIconColor() {
     ImGui::PopStyleColor();
+}
+
+// Apply nested header colors (for Depth 1 CollapsingHeaders inside Depth 0 sections)
+// This makes nested headers visually distinct from parent headers
+inline void PushNestedHeaderColors() {
+    ImGui::PushStyleColor(ImGuiCol_Header, HEADER_NESTED_BG);
+    ImGui::PushStyleColor(ImGuiCol_HeaderHovered, HEADER_NESTED_BG_HOVERED);
+    ImGui::PushStyleColor(ImGuiCol_HeaderActive, HEADER_NESTED_BG_ACTIVE);
+    ImGui::PushStyleColor(ImGuiCol_Text, HEADER_NESTED_TEXT);
+}
+
+inline void PopNestedHeaderColors() {
+    ImGui::PopStyleColor(4);  // Pop 4 colors: Header, HeaderHovered, HeaderActive, Text
 }
 
 }  // namespace ui::colors

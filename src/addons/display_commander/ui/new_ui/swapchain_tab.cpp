@@ -4,6 +4,7 @@
 #include "../../hooks/api_hooks.hpp"
 #include "../../hooks/ngx_hooks.hpp"
 #include "../../res/forkawesome.h"
+#include "../../res/ui_colors.hpp"
 #include "../../settings/main_tab_settings.hpp"
 #include "../../settings/swapchain_tab_settings.hpp"
 #include "../../swapchain_events_power_saving.hpp"
@@ -152,6 +153,11 @@ void AutoApplyTrigger() {
     }
 }
 
+// Forward declarations
+void DrawDLSSGSummaryContent();
+void DrawDLSSPresetOverrideContent();
+void DrawDLSSSettings();
+
 void DrawSwapchainTab(reshade::api::effect_runtime* runtime) {
     ImGui::Text("Swapchain Tab - DXGI Information");
 
@@ -160,9 +166,7 @@ void DrawSwapchainTab(reshade::api::effect_runtime* runtime) {
     ImGui::Spacing();
     DrawSwapchainEventCounters();
     ImGui::Spacing();
-    DrawDLSSGSummary();
-    ImGui::Spacing();
-    DrawDLSSPresetOverride();
+    DrawDLSSSettings();
     ImGui::Spacing();
     DrawNGXParameters();
     ImGui::Spacing();
@@ -261,9 +265,13 @@ void DrawSwapchainWrapperStats() {
 }
 
 void DrawSwapchainEventCounters() {
-
+    // Swapchain Event Counters Section (see docs/UI_STYLE_GUIDE.md for depth/indent rules)
+    // Depth 1: Nested subsection with indentation and distinct colors
+    ImGui::Indent();  // Indent nested header
+    ui::colors::PushNestedHeaderColors();  // Apply distinct colors for nested header
     if (ImGui::CollapsingHeader("Swapchain Event Counters", ImGuiTreeNodeFlags_None)) {
-        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Event Counters (Green = Working, Red = Not Working)");
+        ImGui::Indent();  // Indent content inside subsection
+        ImGui::TextColored(ui::colors::TEXT_INFO, "Event Counters (Green = Working, Red = Not Working)");
         ImGui::Separator();
 
         // Display each event counter with color coding
@@ -273,6 +281,7 @@ void DrawSwapchainEventCounters() {
         // Helper function to display event category
         auto displayEventCategory = [&](const char* name, const auto& event_array, const auto& event_names_map,
                                         ImVec4 header_color) {
+            ui::colors::PushNestedHeaderColors();  // Apply distinct colors for nested category headers
             if (ImGui::CollapsingHeader(name, ImGuiTreeNodeFlags_DefaultOpen)) {
                 ImGui::Indent();
 
@@ -294,6 +303,7 @@ void DrawSwapchainEventCounters() {
                 ImGui::TextColored(header_color, "Total %s: %u", name, category_total);
                 ImGui::Unindent();
             }
+            ui::colors::PopNestedHeaderColors();  // Restore default header colors
         };
 
         // ReShade Events
@@ -436,10 +446,11 @@ void DrawSwapchainEventCounters() {
                              ImVec4(1.0f, 0.8f, 0.6f, 1.0f));
 
         ImGui::Separator();
-        ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "Total Events: %u", total_events);
+        ImGui::TextColored(ui::colors::TEXT_INFO, "Total Events: %u", total_events);
 
         // NVAPI Event Counters Section
         ImGui::Spacing();
+        ui::colors::PushNestedHeaderColors();  // Apply distinct colors for nested NVAPI header
         if (ImGui::CollapsingHeader("NVAPI Event Counters", ImGuiTreeNodeFlags_DefaultOpen)) {
             // NVAPI event mapping
             static const std::vector<std::pair<NvapiEventIndex, const char*>> nvapi_event_mapping = {
@@ -509,71 +520,98 @@ void DrawSwapchainEventCounters() {
 
             // Show NVAPI status message
             if (nvapi_total_events > 0) {
-                ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Status: NVAPI events are working correctly");
+                ImGui::TextColored(ui::colors::TEXT_SUCCESS, "Status: NVAPI events are working correctly");
             } else {
-                ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Status: No NVAPI events detected");
+                ImGui::TextColored(ui::colors::TEXT_WARNING, "Status: No NVAPI events detected");
             }
         }
+        ui::colors::PopNestedHeaderColors();  // Restore default header colors
 
         // Show status message
         if (total_events > 0) {
-            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Status: Swapchain events are working correctly");
+            ImGui::TextColored(ui::colors::TEXT_SUCCESS, "Status: Swapchain events are working correctly");
         } else {
-            ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f),
+            ImGui::TextColored(ui::colors::TEXT_ERROR,
                                "Status: No swapchain events detected - check if addon is properly loaded");
         }
+        ImGui::Unindent();  // Unindent content
     }
+    ui::colors::PopNestedHeaderColors();  // Restore default header colors
+    ImGui::Unindent();  // Unindent nested header section
 
-    // NGX Counters Section
+    // NGX Counters Section (see docs/UI_STYLE_GUIDE.md for depth/indent rules)
+    // Depth 0: Main section header
     if (ImGui::CollapsingHeader("NGX Counters", ImGuiTreeNodeFlags_DefaultOpen)) {
-        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "NVIDIA NGX Function Call Counters");
+        ImGui::TextColored(ui::colors::TEXT_SUCCESS, "NVIDIA NGX Function Call Counters");
         ImGui::Separator();
 
+        // Depth 1: Nested subsections with indentation and distinct colors
         // Parameter functions
+        ImGui::Indent();  // Indent nested headers
+        ui::colors::PushNestedHeaderColors();  // Apply distinct colors for nested headers
         if (ImGui::CollapsingHeader("Parameter Functions", ImGuiTreeNodeFlags_DefaultOpen)) {
-            ImGui::Indent();
-            ImGui::Text("SetF: %u", g_ngx_counters.parameter_setf_count.load());
-            ImGui::Text("SetD: %u", g_ngx_counters.parameter_setd_count.load());
-            ImGui::Text("SetI: %u", g_ngx_counters.parameter_seti_count.load());
-            ImGui::Text("SetUI: %u", g_ngx_counters.parameter_setui_count.load());
-            ImGui::Text("SetULL: %u", g_ngx_counters.parameter_setull_count.load());
-            ImGui::Text("GetI: %u", g_ngx_counters.parameter_geti_count.load());
-            ImGui::Text("GetUI: %u", g_ngx_counters.parameter_getui_count.load());
-            ImGui::Text("GetULL: %u", g_ngx_counters.parameter_getull_count.load());
-            ImGui::Text("GetVoidPointer: %u", g_ngx_counters.parameter_getvoidpointer_count.load());
-            ImGui::Unindent();
+            ImGui::Indent();  // Indent content inside subsection
+            ImGui::TextColored(ui::colors::TEXT_VALUE, "SetF: %u", g_ngx_counters.parameter_setf_count.load());
+            ImGui::TextColored(ui::colors::TEXT_VALUE, "SetD: %u", g_ngx_counters.parameter_setd_count.load());
+            ImGui::TextColored(ui::colors::TEXT_VALUE, "SetI: %u", g_ngx_counters.parameter_seti_count.load());
+            ImGui::TextColored(ui::colors::TEXT_VALUE, "SetUI: %u", g_ngx_counters.parameter_setui_count.load());
+            ImGui::TextColored(ui::colors::TEXT_VALUE, "SetULL: %u", g_ngx_counters.parameter_setull_count.load());
+            ImGui::TextColored(ui::colors::TEXT_VALUE, "GetI: %u", g_ngx_counters.parameter_geti_count.load());
+            ImGui::TextColored(ui::colors::TEXT_VALUE, "GetUI: %u", g_ngx_counters.parameter_getui_count.load());
+            ImGui::TextColored(ui::colors::TEXT_VALUE, "GetULL: %u", g_ngx_counters.parameter_getull_count.load());
+            ImGui::TextColored(ui::colors::TEXT_VALUE, "GetVoidPointer: %u",
+                               g_ngx_counters.parameter_getvoidpointer_count.load());
+            ImGui::Unindent();  // Unindent content
         }
+        ui::colors::PopNestedHeaderColors();  // Restore default header colors
 
         // D3D12 Feature Management
+        ui::colors::PushNestedHeaderColors();
         if (ImGui::CollapsingHeader("D3D12 Feature Management", ImGuiTreeNodeFlags_DefaultOpen)) {
             ImGui::Indent();
-            ImGui::Text("Init: %u", g_ngx_counters.d3d12_init_count.load());
-            ImGui::Text("Init Ext: %u", g_ngx_counters.d3d12_init_ext_count.load());
-            ImGui::Text("Init ProjectID: %u", g_ngx_counters.d3d12_init_projectid_count.load());
-            ImGui::Text("CreateFeature: %u", g_ngx_counters.d3d12_createfeature_count.load());
-            ImGui::Text("ReleaseFeature: %u", g_ngx_counters.d3d12_releasefeature_count.load());
-            ImGui::Text("EvaluateFeature: %u", g_ngx_counters.d3d12_evaluatefeature_count.load());
-            ImGui::Text("GetParameters: %u", g_ngx_counters.d3d12_getparameters_count.load());
-            ImGui::Text("AllocateParameters: %u", g_ngx_counters.d3d12_allocateparameters_count.load());
+            ImGui::TextColored(ui::colors::TEXT_VALUE, "Init: %u", g_ngx_counters.d3d12_init_count.load());
+            ImGui::TextColored(ui::colors::TEXT_VALUE, "Init Ext: %u", g_ngx_counters.d3d12_init_ext_count.load());
+            ImGui::TextColored(ui::colors::TEXT_VALUE, "Init ProjectID: %u",
+                               g_ngx_counters.d3d12_init_projectid_count.load());
+            ImGui::TextColored(ui::colors::TEXT_VALUE, "CreateFeature: %u",
+                               g_ngx_counters.d3d12_createfeature_count.load());
+            ImGui::TextColored(ui::colors::TEXT_VALUE, "ReleaseFeature: %u",
+                               g_ngx_counters.d3d12_releasefeature_count.load());
+            ImGui::TextColored(ui::colors::TEXT_VALUE, "EvaluateFeature: %u",
+                               g_ngx_counters.d3d12_evaluatefeature_count.load());
+            ImGui::TextColored(ui::colors::TEXT_VALUE, "GetParameters: %u",
+                               g_ngx_counters.d3d12_getparameters_count.load());
+            ImGui::TextColored(ui::colors::TEXT_VALUE, "AllocateParameters: %u",
+                               g_ngx_counters.d3d12_allocateparameters_count.load());
             ImGui::Unindent();
         }
+        ui::colors::PopNestedHeaderColors();
 
         // D3D11 Feature Management
+        ui::colors::PushNestedHeaderColors();
         if (ImGui::CollapsingHeader("D3D11 Feature Management", ImGuiTreeNodeFlags_DefaultOpen)) {
             ImGui::Indent();
-            ImGui::Text("Init: %u", g_ngx_counters.d3d11_init_count.load());
-            ImGui::Text("Init Ext: %u", g_ngx_counters.d3d11_init_ext_count.load());
-            ImGui::Text("Init ProjectID: %u", g_ngx_counters.d3d11_init_projectid_count.load());
-            ImGui::Text("CreateFeature: %u", g_ngx_counters.d3d11_createfeature_count.load());
-            ImGui::Text("ReleaseFeature: %u", g_ngx_counters.d3d11_releasefeature_count.load());
-            ImGui::Text("EvaluateFeature: %u", g_ngx_counters.d3d11_evaluatefeature_count.load());
-            ImGui::Text("GetParameters: %u", g_ngx_counters.d3d11_getparameters_count.load());
-            ImGui::Text("AllocateParameters: %u", g_ngx_counters.d3d11_allocateparameters_count.load());
+            ImGui::TextColored(ui::colors::TEXT_VALUE, "Init: %u", g_ngx_counters.d3d11_init_count.load());
+            ImGui::TextColored(ui::colors::TEXT_VALUE, "Init Ext: %u", g_ngx_counters.d3d11_init_ext_count.load());
+            ImGui::TextColored(ui::colors::TEXT_VALUE, "Init ProjectID: %u",
+                               g_ngx_counters.d3d11_init_projectid_count.load());
+            ImGui::TextColored(ui::colors::TEXT_VALUE, "CreateFeature: %u",
+                               g_ngx_counters.d3d11_createfeature_count.load());
+            ImGui::TextColored(ui::colors::TEXT_VALUE, "ReleaseFeature: %u",
+                               g_ngx_counters.d3d11_releasefeature_count.load());
+            ImGui::TextColored(ui::colors::TEXT_VALUE, "EvaluateFeature: %u",
+                               g_ngx_counters.d3d11_evaluatefeature_count.load());
+            ImGui::TextColored(ui::colors::TEXT_VALUE, "GetParameters: %u",
+                               g_ngx_counters.d3d11_getparameters_count.load());
+            ImGui::TextColored(ui::colors::TEXT_VALUE, "AllocateParameters: %u",
+                               g_ngx_counters.d3d11_allocateparameters_count.load());
             ImGui::Unindent();
         }
+        ui::colors::PopNestedHeaderColors();
+        ImGui::Unindent();  // Unindent nested headers section
 
         ImGui::Separator();
-        ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "Total NGX Calls: %u", g_ngx_counters.total_count.load());
+        ImGui::TextColored(ui::colors::TEXT_INFO, "Total NGX Calls: %u", g_ngx_counters.total_count.load());
 
         // Reset button
         if (ImGui::Button("Reset NGX Counters")) {
@@ -583,9 +621,9 @@ void DrawSwapchainEventCounters() {
         // Show status message
         uint32_t total_ngx_calls = g_ngx_counters.total_count.load();
         if (total_ngx_calls > 0) {
-            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Status: NGX functions are being called");
+            ImGui::TextColored(ui::colors::TEXT_SUCCESS, "Status: NGX functions are being called");
         } else {
-            ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Status: No NGX calls detected yet");
+            ImGui::TextColored(ui::colors::TEXT_DIMMED, "Status: No NGX calls detected yet");
         }
     }
 
@@ -866,10 +904,53 @@ void DrawNGXParameters() {
 
 }
 
-void DrawDLSSGSummary() {
+// Draw DLSS Settings section with nested subheaders (see docs/UI_STYLE_GUIDE.md for depth/indent rules)
+void DrawDLSSSettings() {
+    // Depth 0: Main section header
+    if (ImGui::CollapsingHeader("DLSS Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::TextColored(ui::colors::TEXT_DEFAULT, "DLSS/DLSS-G/Ray Reconstruction Configuration");
+        ImGui::Separator();
 
+        // Depth 1: Nested subsections with indentation and distinct colors
+        ImGui::Indent();  // Indent nested headers
+
+        // DLSS/DLSS-G/RR Summary subsection
+        ui::colors::PushNestedHeaderColors();  // Apply distinct colors for nested header
+        if (ImGui::CollapsingHeader("DLSS/DLSS-G/RR Summary", ImGuiTreeNodeFlags_DefaultOpen)) {
+            ImGui::Indent();  // Indent content inside subsection
+            DrawDLSSGSummaryContent();
+            ImGui::Unindent();  // Unindent content
+        }
+        ui::colors::PopNestedHeaderColors();  // Restore default header colors
+
+        ImGui::Spacing();
+
+        // DLSS Preset Override subsection
+        ui::colors::PushNestedHeaderColors();  // Apply distinct colors for nested header
+        if (ImGui::CollapsingHeader("DLSS Preset Override", ImGuiTreeNodeFlags_None)) {
+            ImGui::Indent();  // Indent content inside subsection
+            DrawDLSSPresetOverrideContent();
+            ImGui::Unindent();  // Unindent content
+        }
+        ui::colors::PopNestedHeaderColors();  // Restore default header colors
+
+        ImGui::Unindent();  // Unindent nested headers section
+    }
+}
+
+void DrawDLSSGSummary() {
+    // Legacy function - kept for backward compatibility
+    // Now shows the old separate header format
     if (ImGui::CollapsingHeader("DLSS/DLSS-G/RR Summary", ImGuiTreeNodeFlags_DefaultOpen)) {
-        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "DLSS/DLSS-G/Ray Reconstruction Status Overview");
+        ImGui::Indent();
+        DrawDLSSGSummaryContent();
+        ImGui::Unindent();
+    }
+}
+
+void DrawDLSSGSummaryContent() {
+    // Content of the DLSS/DLSS-G/RR Summary section
+        ImGui::TextColored(ui::colors::TEXT_INFO, "DLSS/DLSS-G/Ray Reconstruction Status Overview");
         ImGui::Separator();
 
         DLSSGSummary summary = GetDLSSGSummary();
@@ -1047,9 +1128,8 @@ void DrawDLSSGSummary() {
         }
 
         if (summary.ofa_enabled == "Yes") {
-            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "NVIDIA Optical Flow Accelerator (OFA) is enabled!");
+            ImGui::TextColored(ui::colors::TEXT_SUCCESS, "NVIDIA Optical Flow Accelerator (OFA) is enabled!");
         }
-    }
 }
 
 void DrawDxgiCompositionInfo() {
@@ -1127,11 +1207,14 @@ void DrawSwapchainInfo(reshade::api::effect_runtime* runtime) {
     // todo replace g_last_swapchain_ptr_unsafe with runtime->get_device()->get_native()
     // runtime->get_device()->get_native();
 
-    // reshade runtimes list:
+    // ReShade Runtimes Section (see docs/UI_STYLE_GUIDE.md for depth/indent rules)
+    // Depth 0: Main section header
     if (ImGui::CollapsingHeader("ReShade Runtimes", ImGuiTreeNodeFlags_DefaultOpen)) {
-        ImGui::Text("ReShade runtimes count: %zu", g_reshade_runtimes.size());
+        ImGui::TextColored(ui::colors::TEXT_DEFAULT, "ReShade runtimes count: %zu", g_reshade_runtimes.size());
+        ImGui::Separator();
 
-
+        // Depth 1: Nested subsections with indentation and distinct colors
+        ImGui::Indent();  // Indent nested headers
         for (size_t i = 0; i < g_reshade_runtimes.size(); ++i) {
             auto* runtime = g_reshade_runtimes[i];
 
@@ -1140,8 +1223,9 @@ void DrawSwapchainInfo(reshade::api::effect_runtime* runtime) {
             ss << "Runtime " << i << " (0x" << std::hex << std::uppercase << reinterpret_cast<uintptr_t>(runtime)
                << ")";
             std::string runtime_header = ss.str();
+            ui::colors::PushNestedHeaderColors();  // Apply distinct colors for nested headers
             if (ImGui::CollapsingHeader(runtime_header.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
-                ImGui::Indent();
+                ImGui::Indent();  // Indent content inside subsection
 
                 // Basic runtime info
                 ImGui::Text("Address: 0x%p", runtime);
@@ -1173,6 +1257,7 @@ void DrawSwapchainInfo(reshade::api::effect_runtime* runtime) {
                                     buffer_ss << "Backbuffer " << j << " (0x" << std::hex << std::uppercase
                                               << back_buffer.handle << ")";
                                     std::string buffer_header = buffer_ss.str();
+                                    ui::colors::PushNestedHeaderColors();  // Apply distinct colors for nested backbuffer headers
                                     if (ImGui::CollapsingHeader(buffer_header.c_str())) {
                                         ImGui::Indent();
 
@@ -1368,26 +1453,29 @@ void DrawSwapchainInfo(reshade::api::effect_runtime* runtime) {
 
                                         // Current buffer indicator
                                         if (j == current_back_buffer_index) {
-                                            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f),
+                                            ImGui::TextColored(ui::colors::TEXT_SUCCESS,
                                                                "*** CURRENT BUFFER ***");
                                         }
 
                                         ImGui::Unindent();
                                     }
+                                    ui::colors::PopNestedHeaderColors();  // Restore default header colors
                                 }
                             } catch (...) {
-                                ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f),
+                                ImGui::TextColored(ui::colors::TEXT_ERROR,
                                                    "Backbuffer %d: Error querying resource", j);
                             }
                         }
                     } else {
-                        ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "Device not available for resource queries");
+                        ImGui::TextColored(ui::colors::TEXT_ERROR, "Device not available for resource queries");
                     }
                 }
 
-                ImGui::Unindent();
+                ImGui::Unindent();  // Unindent content
             }
+            ui::colors::PopNestedHeaderColors();  // Restore default header colors
         }
+        ImGui::Unindent();  // Unindent nested headers section
     }
 
     // Window Information section
@@ -1908,13 +1996,20 @@ const char* GetDXGIColorSpaceString(DXGI_COLOR_SPACE_TYPE color_space) {
 }
 
 void DrawDLSSPresetOverride() {
-
+    // Legacy function - kept for backward compatibility
+    // Now shows the old separate header format
     if (ImGui::CollapsingHeader("DLSS Preset Override", ImGuiTreeNodeFlags_None)) {
-        ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== DLSS Preset Override ===");
+        ImGui::Indent();
+        DrawDLSSPresetOverrideContent();
+        ImGui::Unindent();
+    }
+}
 
-        // Warning about experimental nature
-        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f),
-                           ICON_FK_WARNING " EXPERIMENTAL FEATURE - May require alt-tab to apply changes!");
+void DrawDLSSPresetOverrideContent() {
+    // Content of the DLSS Preset Override section
+    // Warning about experimental nature
+    ImGui::TextColored(ui::colors::TEXT_WARNING,
+                       ICON_FK_WARNING " EXPERIMENTAL FEATURE - May require alt-tab to apply changes!");
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip(
                 "This feature overrides DLSS presets at runtime.\nChanges may require alt-tabbing out and back into "
@@ -2107,7 +2202,6 @@ void DrawDLSSPresetOverride() {
                     model_profile.rr_ultra_quality_preset);
             }
         }
-    }
 }
 
 }  // namespace ui::new_ui

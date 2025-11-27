@@ -355,21 +355,36 @@ void NVSDK_CONV NVSDK_NGX_Parameter_SetF_Detour(NVSDK_NGX_Parameter* InParameter
     g_ngx_counters.parameter_setf_count.fetch_add(1);
     g_ngx_counters.total_count.fetch_add(1);
 
-    // Store parameter in thread-safe storage
+    // Store parameter in thread-safe storage (store original game value)
     if (InName != nullptr) {
         g_ngx_parameters.update_float(std::string(InName), InValue);
+    }
+
+    // Check for override value
+    float override_value = InValue;
+    bool has_override = false;
+    if (InName != nullptr) {
+        float override_val;
+        if (g_ngx_parameter_overrides.get_as_float(std::string(InName), override_val)) {
+            override_value = override_val;
+            has_override = true;
+        }
     }
 
     // Log the call (first few times only)
     static int log_count = 0;
     if (log_count < 60) {
-        LogInfo("NGX Parameter SetF called - Name: %s, Value: %f", InName ? InName : "null", InValue);
+        if (has_override) {
+            LogInfo("NGX Parameter SetF called - Name: %s, Game Value: %f, Override: %f", InName ? InName : "null", InValue, override_value);
+        } else {
+            LogInfo("NGX Parameter SetF called - Name: %s, Value: %f", InName ? InName : "null", InValue);
+        }
         log_count++;
     }
 
-    // Call original function
+    // Call original function with override value if present
     if (NVSDK_NGX_Parameter_SetF_Original != nullptr) {
-        NVSDK_NGX_Parameter_SetF_Original(InParameter, InName, InValue);
+        NVSDK_NGX_Parameter_SetF_Original(InParameter, InName, override_value);
     }
 }
 
@@ -379,21 +394,36 @@ void NVSDK_CONV NVSDK_NGX_Parameter_SetD_Detour(NVSDK_NGX_Parameter* InParameter
     g_ngx_counters.parameter_setd_count.fetch_add(1);
     g_ngx_counters.total_count.fetch_add(1);
 
-    // Store parameter in thread-safe storage
+    // Store parameter in thread-safe storage (store original game value)
     if (InName != nullptr) {
         g_ngx_parameters.update_double(std::string(InName), InValue);
+    }
+
+    // Check for override value
+    double override_value = InValue;
+    bool has_override = false;
+    if (InName != nullptr) {
+        double override_val;
+        if (g_ngx_parameter_overrides.get_as_double(std::string(InName), override_val)) {
+            override_value = override_val;
+            has_override = true;
+        }
     }
 
     // Log the call (first few times only)
     static int log_count = 0;
     if (log_count < 60) {
-        LogInfo("NGX Parameter SetD called - Name: %s, Value: %f", InName ? InName : "null", InValue);
+        if (has_override) {
+            LogInfo("NGX Parameter SetD called - Name: %s, Game Value: %f, Override: %f", InName ? InName : "null", InValue, override_value);
+        } else {
+            LogInfo("NGX Parameter SetD called - Name: %s, Value: %f", InName ? InName : "null", InValue);
+        }
         log_count++;
     }
 
-    // Call original function
+    // Call original function with override value if present
     if (NVSDK_NGX_Parameter_SetD_Original != nullptr) {
-        NVSDK_NGX_Parameter_SetD_Original(InParameter, InName, InValue);
+        NVSDK_NGX_Parameter_SetD_Original(InParameter, InName, override_value);
     }
 }
 
@@ -436,21 +466,37 @@ void NVSDK_CONV NVSDK_NGX_Parameter_SetI_Detour(NVSDK_NGX_Parameter* InParameter
         }
     }
 
-    // Store parameter in thread-safe storage
+    // Store parameter in thread-safe storage (store original game value before override check)
+    int original_value = InValue;
     if (InName != nullptr) {
-        g_ngx_parameters.update_int(std::string(InName), InValue);
+        g_ngx_parameters.update_int(std::string(InName), original_value);
+    }
+
+    // Check for override value (after DLSS preset override logic)
+    int override_value = InValue;
+    bool has_override = false;
+    if (InName != nullptr) {
+        int override_val;
+        if (g_ngx_parameter_overrides.get_as_int(std::string(InName), override_val)) {
+            override_value = override_val;
+            has_override = true;
+        }
     }
 
     // Log the call (first few times only)
     static int log_count = 0;
     if (log_count < 60) {
-        LogInfo("NGX Parameter SetI called - Name: %s, Value: %d", InName ? InName : "null", InValue);
+        if (has_override) {
+            LogInfo("NGX Parameter SetI called - Name: %s, Game Value: %d, Override: %d", InName ? InName : "null", original_value, override_value);
+        } else {
+            LogInfo("NGX Parameter SetI called - Name: %s, Value: %d", InName ? InName : "null", InValue);
+        }
         log_count++;
     }
 
-    // Call original function
+    // Call original function with override value if present
     if (NVSDK_NGX_Parameter_SetI_Original != nullptr) {
-        NVSDK_NGX_Parameter_SetI_Original(InParameter, InName, InValue);
+        NVSDK_NGX_Parameter_SetI_Original(InParameter, InName, override_value);
     }
 }
 
@@ -494,21 +540,37 @@ void NVSDK_CONV NVSDK_NGX_Parameter_SetUI_Detour(NVSDK_NGX_Parameter* InParamete
         }
     }
 
-    // Store parameter in thread-safe storage
+    // Store parameter in thread-safe storage (store original game value before override check)
+    unsigned int original_value = InValue;
     if (InName != nullptr) {
-        g_ngx_parameters.update_uint(std::string(InName), InValue);
+        g_ngx_parameters.update_uint(std::string(InName), original_value);
+    }
+
+    // Check for override value (after DLSS preset override logic)
+    unsigned int override_value = InValue;
+    bool has_override = false;
+    if (InName != nullptr) {
+        unsigned int override_val;
+        if (g_ngx_parameter_overrides.get_as_uint(std::string(InName), override_val)) {
+            override_value = override_val;
+            has_override = true;
+        }
     }
 
     // Log the call (first few times only)
     static int log_count = 0;
     if (log_count < 60) {
-        LogInfo("NGX Parameter SetUI called - Name: %s, Value: %u", InName ? InName : "null", InValue);
+        if (has_override) {
+            LogInfo("NGX Parameter SetUI called - Name: %s, Game Value: %u, Override: %u", InName ? InName : "null", original_value, override_value);
+        } else {
+            LogInfo("NGX Parameter SetUI called - Name: %s, Value: %u", InName ? InName : "null", InValue);
+        }
         log_count++;
     }
 
-    // Call original function
+    // Call original function with override value if present
     if (NVSDK_NGX_Parameter_SetUI_Original != nullptr) {
-        NVSDK_NGX_Parameter_SetUI_Original(InParameter, InName, InValue);
+        NVSDK_NGX_Parameter_SetUI_Original(InParameter, InName, override_value);
     }
 }
 
@@ -519,21 +581,36 @@ void NVSDK_CONV NVSDK_NGX_Parameter_SetULL_Detour(NVSDK_NGX_Parameter* InParamet
     g_ngx_counters.parameter_setull_count.fetch_add(1);
     g_ngx_counters.total_count.fetch_add(1);
 
-    // Store parameter in thread-safe storage
+    // Store parameter in thread-safe storage (store original game value)
     if (InName != nullptr) {
         g_ngx_parameters.update_ull(std::string(InName), InValue);
+    }
+
+    // Check for override value
+    unsigned long long override_value = InValue;
+    bool has_override = false;
+    if (InName != nullptr) {
+        uint64_t override_val;
+        if (g_ngx_parameter_overrides.get_as_ull(std::string(InName), override_val)) {
+            override_value = override_val;
+            has_override = true;
+        }
     }
 
     // Log the call (first few times only)
     static int log_count = 0;
     if (log_count < 60) {
-        LogInfo("NGX Parameter SetULL called - Name: %s, Value: %llu", InName ? InName : "null", InValue);
+        if (has_override) {
+            LogInfo("NGX Parameter SetULL called - Name: %s, Game Value: %llu, Override: %llu", InName ? InName : "null", InValue, override_value);
+        } else {
+            LogInfo("NGX Parameter SetULL called - Name: %s, Value: %llu", InName ? InName : "null", InValue);
+        }
         log_count++;
     }
 
-    // Call original function
+    // Call original function with override value if present
     if (NVSDK_NGX_Parameter_SetULL_Original != nullptr) {
-        NVSDK_NGX_Parameter_SetULL_Original(InParameter, InName, InValue);
+        NVSDK_NGX_Parameter_SetULL_Original(InParameter, InName, override_value);
     }
 }
 
@@ -1051,6 +1128,8 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_GetParameters_Detour(NVSDK_NGX_Param
 
     if (ret == NVSDK_NGX_Result_Success && InParameters != nullptr && *InParameters != nullptr) {
         HookNGXParameterVTable(*InParameters);
+        // Store parameter object for direct API calls
+        g_last_ngx_parameter.store(*InParameters);
         // Apply DLSS preset parameters during initialization
         ApplyDLSSPresetParameters(*InParameters);
     }
@@ -1072,6 +1151,8 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_AllocateParameters_Detour(NVSDK_NGX_
 
     if (ret == NVSDK_NGX_Result_Success && InParameters != nullptr && *InParameters != nullptr) {
         HookNGXParameterVTable(*InParameters);
+        // Store parameter object for direct API calls
+        g_last_ngx_parameter.store(*InParameters);
         // Apply DLSS preset parameters during initialization
         ApplyDLSSPresetParameters(*InParameters);
     }
@@ -1093,6 +1174,8 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_GetParameters_Detour(NVSDK_NGX_Param
 
     if (ret == NVSDK_NGX_Result_Success && InParameters != nullptr && *InParameters != nullptr) {
         HookNGXParameterVTable(*InParameters);
+        // Store parameter object for direct API calls
+        g_last_ngx_parameter.store(*InParameters);
         // Apply DLSS preset parameters during initialization
         ApplyDLSSPresetParameters(*InParameters);
     }
@@ -1114,6 +1197,8 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_AllocateParameters_Detour(NVSDK_NGX_
 
     if (ret == NVSDK_NGX_Result_Success && InParameters != nullptr && *InParameters != nullptr) {
         HookNGXParameterVTable(*InParameters);
+        // Store parameter object for direct API calls
+        g_last_ngx_parameter.store(*InParameters);
         // Apply DLSS preset parameters during initialization
         ApplyDLSSPresetParameters(*InParameters);
     }
@@ -1305,4 +1390,56 @@ std::string GetEnabledFeaturesSummary() {
     }
 
     return result;
+}
+
+// Force apply NGX parameter override via API call
+bool ApplyNGXParameterOverride(const char* param_name, const char* param_type) {
+    if (param_name == nullptr || param_type == nullptr) {
+        return false;
+    }
+
+    NVSDK_NGX_Parameter* param_obj = g_last_ngx_parameter.load();
+    if (param_obj == nullptr) {
+        return false;
+    }
+
+    ParameterValue current_override;
+    if (!g_ngx_parameter_overrides.get(std::string(param_name), current_override)) {
+        return false;
+    }
+
+    std::string type_str = param_type;
+    if (type_str == "float") {
+        if (NVSDK_NGX_Parameter_SetF_Original != nullptr) {
+            NVSDK_NGX_Parameter_SetF_Original(param_obj, param_name, current_override.get_as_float());
+            LogInfo("NGX Parameter Applied via API: %s = %f", param_name, current_override.get_as_float());
+            return true;
+        }
+    } else if (type_str == "double") {
+        if (NVSDK_NGX_Parameter_SetD_Original != nullptr) {
+            NVSDK_NGX_Parameter_SetD_Original(param_obj, param_name, current_override.get_as_double());
+            LogInfo("NGX Parameter Applied via API: %s = %f", param_name, current_override.get_as_double());
+            return true;
+        }
+    } else if (type_str == "int") {
+        if (NVSDK_NGX_Parameter_SetI_Original != nullptr) {
+            NVSDK_NGX_Parameter_SetI_Original(param_obj, param_name, current_override.get_as_int());
+            LogInfo("NGX Parameter Applied via API: %s = %d", param_name, current_override.get_as_int());
+            return true;
+        }
+    } else if (type_str == "uint") {
+        if (NVSDK_NGX_Parameter_SetUI_Original != nullptr) {
+            NVSDK_NGX_Parameter_SetUI_Original(param_obj, param_name, current_override.get_as_uint());
+            LogInfo("NGX Parameter Applied via API: %s = %u", param_name, current_override.get_as_uint());
+            return true;
+        }
+    } else if (type_str == "ull") {
+        if (NVSDK_NGX_Parameter_SetULL_Original != nullptr) {
+            NVSDK_NGX_Parameter_SetULL_Original(param_obj, param_name, current_override.get_as_ull());
+            LogInfo("NGX Parameter Applied via API: %s = %llu", param_name, current_override.get_as_ull());
+            return true;
+        }
+    }
+
+    return false;
 }

@@ -25,3 +25,6 @@ std::string GetEnabledFeaturesSummary();
 
 // NGX preset management functions
 void ResetNGXPresetInitialization();
+
+// Force apply NGX parameter override via API call
+bool ApplyNGXParameterOverride(const char* param_name, const char* param_type);

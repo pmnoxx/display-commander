@@ -28,6 +28,9 @@
 // NVAPI types
 #include "../../../external/nvapi/nvapi.h"
 
+// Forward declarations for NGX types
+struct NVSDK_NGX_Parameter;
+
 // Fake NVAPI manager
 #include "nvapi/fake_nvapi_manager.hpp"
 
@@ -245,6 +248,17 @@ public:
     // Get parameter count (thread-safe)
     size_t size() const {
         return data_.load()->size();
+    }
+
+    // Remove parameter (thread-safe)
+    void remove(const std::string& key) {
+        auto current_data = data_.load();
+        if (current_data->find(key) == current_data->end()) {
+            return; // Key doesn't exist
+        }
+        auto new_data = std::make_shared<std::unordered_map<std::string, ParameterValue>>(*current_data);
+        new_data->erase(key);
+        data_.store(new_data);
     }
 
     // Clear all parameters (thread-safe)
@@ -1035,6 +1049,8 @@ extern std::atomic<bool> g_ray_reconstruction_enabled; // Ray Reconstruction ena
 
 // NGX Parameter Storage (unified thread-safe atomic shared_ptr hashmap)
 extern UnifiedParameterMap g_ngx_parameters; // Unified NGX parameters supporting all types
+extern UnifiedParameterMap g_ngx_parameter_overrides; // NGX parameter overrides (user-defined values to replace game values)
+extern std::atomic<NVSDK_NGX_Parameter*> g_last_ngx_parameter; // Last NGX parameter object for direct API calls
 
 // NGX Counters structure for tracking NGX function calls
 struct NGXCounters {

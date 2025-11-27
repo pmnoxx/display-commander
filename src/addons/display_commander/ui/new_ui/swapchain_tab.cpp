@@ -18,6 +18,7 @@
 #include <array>
 #include <cctype>
 #include <map>
+#include <unordered_map>
 #include <reshade_imgui.hpp>
 #include <sstream>
 #include <vector>
@@ -811,17 +812,23 @@ void DrawNGXParameters() {
             ImGui::Spacing();
 
             // Create a table-like display
-            ImGui::Columns(3, "NGXParameters", true);
-            ImGui::SetColumnWidth(0, 750);  // Parameter name (increased for long names)
-            ImGui::SetColumnWidth(1, 80);   // Type
-            ImGui::SetColumnWidth(2, 150);  // Value
+            ImGui::Columns(5, "NGXParameters", true);
+            ImGui::SetColumnWidth(0, 500);  // Parameter name
+            ImGui::SetColumnWidth(1, 80);    // Type
+            ImGui::SetColumnWidth(2, 150);   // Value (game value)
+            ImGui::SetColumnWidth(3, 150);   // Override value
+            ImGui::SetColumnWidth(4, 600);   // Actions (wider for buttons)
 
             // Header
             ImGui::TextColored(ImVec4(1.0f, 1.0f, 1.0f, 1.0f), "Parameter Name");
             ImGui::NextColumn();
             ImGui::TextColored(ImVec4(1.0f, 1.0f, 1.0f, 1.0f), "Type");
             ImGui::NextColumn();
-            ImGui::TextColored(ImVec4(1.0f, 1.0f, 1.0f, 1.0f), "Value");
+            ImGui::TextColored(ImVec4(1.0f, 1.0f, 1.0f, 1.0f), "Game Value");
+            ImGui::NextColumn();
+            ImGui::TextColored(ImVec4(1.0f, 1.0f, 1.0f, 1.0f), "Override");
+            ImGui::NextColumn();
+            ImGui::TextColored(ImVec4(1.0f, 1.0f, 1.0f, 1.0f), "Actions");
             ImGui::NextColumn();
             ImGui::Separator();
 
@@ -845,6 +852,134 @@ void DrawNGXParameters() {
                 ImGui::TextColored(param.color, "%s", param.type.c_str());
                 ImGui::NextColumn();
                 ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "%s", param.value.c_str());
+                ImGui::NextColumn();
+
+                // Check if override exists
+                bool has_override = false;
+                std::string override_value_str = "-";
+                ParameterValue override_value;
+                if (g_ngx_parameter_overrides.get(param.name, override_value)) {
+                    has_override = true;
+                    switch (override_value.type) {
+                        case ParameterValue::FLOAT: {
+                            char buffer[32];
+                            snprintf(buffer, sizeof(buffer), "%.6f", override_value.get_as_float());
+                            override_value_str = std::string(buffer);
+                            break;
+                        }
+                        case ParameterValue::DOUBLE: {
+                            char buffer[32];
+                            snprintf(buffer, sizeof(buffer), "%.6f", override_value.get_as_double());
+                            override_value_str = std::string(buffer);
+                            break;
+                        }
+                        case ParameterValue::INT:
+                            override_value_str = std::to_string(override_value.get_as_int());
+                            break;
+                        case ParameterValue::UINT:
+                            override_value_str = std::to_string(override_value.get_as_uint());
+                            break;
+                        case ParameterValue::ULL:
+                            override_value_str = std::to_string(override_value.get_as_ull());
+                            break;
+                        default:
+                            override_value_str = "unknown";
+                            break;
+                    }
+                }
+
+                // Display override value (highlighted if active)
+                if (has_override) {
+                    ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "%s", override_value_str.c_str());
+                } else {
+                    ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "%s", override_value_str.c_str());
+                }
+                ImGui::NextColumn();
+
+                // Action buttons
+                ImGui::PushID(param.name.c_str());
+
+                // Input field for override value
+                ImGui::SetNextItemWidth(120);
+                if (has_override) {
+                    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.0f, 0.3f, 0.0f, 1.0f)); // Green tint for active override
+                }
+
+                // Create input field based on type
+                bool value_updated = false;
+                if (param.type == "float" || param.type == "double") {
+                    float float_val = has_override ? (param.type == "float" ? override_value.get_as_float() : static_cast<float>(override_value.get_as_double())) : 0.0f;
+                    if (ImGui::InputFloat("##OverrideInput", &float_val, 0.0f, 0.0f, "%.6f", ImGuiInputTextFlags_EnterReturnsTrue)) {
+                        if (param.type == "float") {
+                            g_ngx_parameter_overrides.update_float(param.name, float_val);
+                        } else {
+                            g_ngx_parameter_overrides.update_double(param.name, static_cast<double>(float_val));
+                        }
+                        LogInfo("NGX Parameter Override Set: %s = %f", param.name.c_str(), float_val);
+                        value_updated = true;
+                    }
+                } else if (param.type == "int") {
+                    int int_val = has_override ? override_value.get_as_int() : 0;
+                    if (ImGui::InputInt("##OverrideInput", &int_val, 0, 0, ImGuiInputTextFlags_EnterReturnsTrue)) {
+                        g_ngx_parameter_overrides.update_int(param.name, int_val);
+                        LogInfo("NGX Parameter Override Set: %s = %d", param.name.c_str(), int_val);
+                        value_updated = true;
+                    }
+                } else if (param.type == "uint") {
+                    unsigned int uint_val = has_override ? override_value.get_as_uint() : 0;
+                    int int_val = static_cast<int>(uint_val);
+                    if (ImGui::InputInt("##OverrideInput", &int_val, 0, 0, ImGuiInputTextFlags_EnterReturnsTrue)) {
+                        if (int_val >= 0) {
+                            g_ngx_parameter_overrides.update_uint(param.name, static_cast<unsigned int>(int_val));
+                            LogInfo("NGX Parameter Override Set: %s = %u", param.name.c_str(), static_cast<unsigned int>(int_val));
+                            value_updated = true;
+                        }
+                    }
+                } else if (param.type == "ull") {
+                    uint64_t ull_val = has_override ? override_value.get_as_ull() : 0;
+                    char ull_str[32];
+                    snprintf(ull_str, sizeof(ull_str), "%llu", ull_val);
+                    if (ImGui::InputText("##OverrideInput", ull_str, sizeof(ull_str), ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CharsDecimal)) {
+                        uint64_t new_val = strtoull(ull_str, nullptr, 10);
+                        g_ngx_parameter_overrides.update_ull(param.name, new_val);
+                        LogInfo("NGX Parameter Override Set: %s = %llu", param.name.c_str(), new_val);
+                        value_updated = true;
+                    }
+                }
+
+                if (has_override) {
+                    ImGui::PopStyleColor();
+                }
+
+                // Buttons on new line for better visibility
+                ImGui::SameLine();
+                if (ImGui::Button("Apply", ImVec2(100, 0))) {
+                    // Force call NGX API to set the value immediately
+                    if (ApplyNGXParameterOverride(param.name.c_str(), param.type.c_str())) {
+                        LogInfo("NGX Parameter Applied: %s", param.name.c_str());
+                    } else {
+                        LogInfo("NGX Parameter Apply failed: %s (no override or parameter object)", param.name.c_str());
+                    }
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("Set", ImVec2(100, 0))) {
+                    // Set override to current game value
+                    auto all_params_map = g_ngx_parameters.get_all();
+                    if (all_params_map) {
+                        auto it = all_params_map->find(param.name);
+                        if (it != all_params_map->end()) {
+                            g_ngx_parameter_overrides.update(param.name, it->second);
+                            LogInfo("NGX Parameter Override Set: %s", param.name.c_str());
+                        }
+                    }
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("Clear", ImVec2(100, 0))) {
+                    // Remove override
+                    g_ngx_parameter_overrides.remove(param.name);
+                    LogInfo("NGX Parameter Override Cleared: %s", param.name.c_str());
+                }
+                ImGui::PopID();
                 ImGui::NextColumn();
                 displayed_count++;
             }

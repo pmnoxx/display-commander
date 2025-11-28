@@ -8,6 +8,8 @@
 #include "../../settings/main_tab_settings.hpp"
 #include "../../settings/experimental_tab_settings.hpp"
 #include "../../hooks/windows_hooks/windows_message_hooks.hpp"
+#include "../../res/forkawesome.h"
+#include "../../res/ui_colors.hpp"
 #include "settings_wrapper.hpp"
 #include "imgui.h"
 
@@ -22,6 +24,54 @@ namespace ui::new_ui {
 namespace {
 // Hotkey definitions array (data-driven approach)
 std::vector<HotkeyDefinition> g_hotkey_definitions;
+
+// Draw a single hotkey entry in the table
+void DrawHotkeyEntry(HotkeyDefinition& def, ui::new_ui::StringSetting& setting, int index) {
+    ImGui::TableNextRow();
+
+    // Hotkey Name
+    ImGui::TableNextColumn();
+    ImGui::Text("%s", def.name.c_str());
+    if (ImGui::IsItemHovered() && !def.description.empty()) {
+        ImGui::SetTooltip("%s", def.description.c_str());
+    }
+
+    // Shortcut Input
+    ImGui::TableNextColumn();
+    std::string current_value = setting.GetValue();
+    char buffer[256] = {0};
+    strncpy_s(buffer, sizeof(buffer), current_value.c_str(), _TRUNCATE);
+
+    ImGui::SetNextItemWidth(-1); // Use full column width
+    if (ImGui::InputText(("##HotkeyInput" + std::to_string(index)).c_str(), buffer, sizeof(buffer))) {
+        std::string new_value(buffer);
+        setting.SetValue(new_value);
+        def.parsed = ParseHotkeyString(new_value);
+    }
+
+    // Status
+    ImGui::TableNextColumn();
+    if (def.parsed.IsValid()) {
+        ui::colors::PushIconColor(ui::colors::ICON_SUCCESS);
+        ImGui::Text(ICON_FK_OK " Active");
+        ui::colors::PopIconColor();
+    } else if (!current_value.empty()) {
+        ui::colors::PushIconColor(ui::colors::ICON_WARNING);
+        ImGui::Text(ICON_FK_WARNING " Invalid");
+        ui::colors::PopIconColor();
+    } else {
+        ui::colors::PushIconColor(ui::colors::ICON_DISABLED);
+        ImGui::Text(ICON_FK_MINUS " Disabled");
+        ui::colors::PopIconColor();
+    }
+
+    // Reset to default button
+    ImGui::TableNextColumn();
+    if (ImGui::Button(("Reset##" + def.id).c_str())) {
+        setting.SetValue(def.default_shortcut);
+        def.parsed = ParseHotkeyString(def.default_shortcut);
+    }
+}
 }  // namespace
 
 // Initialize hotkey definitions with default values
@@ -427,69 +477,42 @@ void DrawHotkeysTab() {
         g_hotkey_definitions[9].parsed = ParseHotkeyString(settings.hotkey_volume_up.GetValue());
         g_hotkey_definitions[10].parsed = ParseHotkeyString(settings.hotkey_volume_down.GetValue());
 
-        // Draw each hotkey configuration
-        for (size_t i = 0; i < g_hotkey_definitions.size(); ++i) {
-            auto& def = g_hotkey_definitions[i];
+        // Create a table for hotkeys
+        if (ImGui::BeginTable("HotkeysTable", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable)) {
+            ImGui::TableSetupColumn("Hotkey Name", ImGuiTableColumnFlags_WidthStretch);
+            ImGui::TableSetupColumn("Shortcut", ImGuiTableColumnFlags_WidthFixed, 250.0f);
+            ImGui::TableSetupColumn("Status", ImGuiTableColumnFlags_WidthFixed, 150.0f);
+            ImGui::TableSetupColumn("Actions", ImGuiTableColumnFlags_WidthFixed, 80.0f);
+            ImGui::TableHeadersRow();
 
-            // Get corresponding setting
-            StringSetting* setting_ptr = nullptr;
-            switch (i) {
-                case 0: setting_ptr = &settings.hotkey_mute_unmute; break;
-                case 1: setting_ptr = &settings.hotkey_background_toggle; break;
-                case 2: if (enabled_experimental_features) setting_ptr = &settings.hotkey_timeslowdown; break;
-                case 3: setting_ptr = &settings.hotkey_adhd_toggle; break;
-                case 4: if (enabled_experimental_features) setting_ptr = &settings.hotkey_autoclick; break;
-                case 5: setting_ptr = &settings.hotkey_input_blocking; break;
-                case 6: setting_ptr = &settings.hotkey_display_commander_ui; break;
-                case 7: setting_ptr = &settings.hotkey_performance_overlay; break;
-                case 8: setting_ptr = &settings.hotkey_stopwatch; break;
-                case 9: setting_ptr = &settings.hotkey_volume_up; break;
-                case 10: setting_ptr = &settings.hotkey_volume_down; break;
-                default: setting_ptr = nullptr; break;
+            // Draw each hotkey configuration
+            for (size_t i = 0; i < g_hotkey_definitions.size(); ++i) {
+                auto& def = g_hotkey_definitions[i];
+
+                // Get corresponding setting
+                settings::StringSetting* setting_ptr = nullptr;
+                switch (i) {
+                    case 0: setting_ptr = &settings.hotkey_mute_unmute; break;
+                    case 1: setting_ptr = &settings.hotkey_background_toggle; break;
+                    case 2: if (enabled_experimental_features) setting_ptr = &settings.hotkey_timeslowdown; break;
+                    case 3: setting_ptr = &settings.hotkey_adhd_toggle; break;
+                    case 4: if (enabled_experimental_features) setting_ptr = &settings.hotkey_autoclick; break;
+                    case 5: setting_ptr = &settings.hotkey_input_blocking; break;
+                    case 6: setting_ptr = &settings.hotkey_display_commander_ui; break;
+                    case 7: setting_ptr = &settings.hotkey_performance_overlay; break;
+                    case 8: setting_ptr = &settings.hotkey_stopwatch; break;
+                    case 9: setting_ptr = &settings.hotkey_volume_up; break;
+                    case 10: setting_ptr = &settings.hotkey_volume_down; break;
+                    default: setting_ptr = nullptr; break;
+                }
+
+                if (setting_ptr == nullptr) continue;
+
+                ui::new_ui::StringSetting& setting = *setting_ptr;
+                DrawHotkeyEntry(def, setting, static_cast<int>(i));
             }
 
-            if (!setting_ptr) continue;
-
-            StringSetting& setting = *setting_ptr;
-
-            ImGui::Text("%s", def.name.c_str());
-            if (ImGui::IsItemHovered() && !def.description.empty()) {
-                ImGui::SetTooltip("%s", def.description.c_str());
-            }
-            ImGui::SameLine();
-
-            // Input field for hotkey string
-            std::string current_value = setting.GetValue();
-            char buffer[256] = {0};
-            strncpy_s(buffer, sizeof(buffer), current_value.c_str(), _TRUNCATE);
-
-            ImGui::SetNextItemWidth(200);
-            if (ImGui::InputText(("##" + def.id).c_str(), buffer, sizeof(buffer))) {
-                std::string new_value(buffer);
-                setting.SetValue(new_value);
-                def.parsed = ParseHotkeyString(new_value);
-            }
-
-            // Show formatted display
-            if (def.parsed.IsValid()) {
-                ImGui::SameLine();
-                ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "(%s)", FormatHotkeyString(def.parsed).c_str());
-            } else if (!current_value.empty()) {
-                ImGui::SameLine();
-                ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f), "(invalid)");
-            } else {
-                ImGui::SameLine();
-                ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "(disabled)");
-            }
-
-            // Reset to default button
-            ImGui::SameLine();
-            if (ImGui::SmallButton(("Reset##" + def.id).c_str())) {
-                setting.SetValue(def.default_shortcut);
-                def.parsed = ParseHotkeyString(def.default_shortcut);
-            }
-
-            ImGui::Spacing();
+            ImGui::EndTable();
         }
 
         ImGui::Spacing();

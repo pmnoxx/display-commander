@@ -196,6 +196,7 @@ static const std::array<HookInfo, HOOK_COUNT> g_hook_info = {{
     {"XInputGetState", DllGroup::XINPUT1_4},
     {"XInputGetStateEx", DllGroup::XINPUT1_4},
     {"XInputSetState", DllGroup::XINPUT1_4},
+    {"XInputGetCapabilities", DllGroup::XINPUT1_4},
 
     // kernel32.dll hooks
     {"Sleep", DllGroup::KERNEL32},

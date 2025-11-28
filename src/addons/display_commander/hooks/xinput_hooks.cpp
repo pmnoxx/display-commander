@@ -22,6 +22,14 @@
 #define XINPUT_GAMEPAD_GUIDE 0x0400
 #endif
 
+// Device type and subtype constants (not always defined in standard XInput headers)
+#ifndef XINPUT_DEVTYPE_GAMEPAD
+#define XINPUT_DEVTYPE_GAMEPAD 0x01
+#endif
+#ifndef XINPUT_DEVSUBTYPE_GAMEPAD
+#define XINPUT_DEVSUBTYPE_GAMEPAD 0x01
+#endif
+
 namespace display_commanderhooks {
 
 
@@ -30,6 +38,7 @@ XInputGetState_pfn XInputGetState_Direct = nullptr;
 XInputGetStateEx_pfn XInputGetStateEx_Direct = nullptr;
 XInputSetState_pfn XInputSetState_Direct = nullptr;
 XInputGetBatteryInformation_pfn XInputGetBatteryInformation_Direct = nullptr;
+XInputGetCapabilities_pfn XInputGetCapabilities_Direct = nullptr;
 
 // Hook state
 static std::atomic<bool> g_xinput_hooks_installed{false};
@@ -44,6 +53,7 @@ const std::array<const char*, 5> xinput_modules = {
 std::array<XInputGetStateEx_pfn, 5> original_xinput_get_state_ex_procs = {};
 std::array<XInputGetState_pfn, 5> original_xinput_get_state_procs = {};
 std::array<XInputSetState_pfn, 5> original_xinput_set_state_procs = {};
+std::array<XInputGetCapabilities_pfn, 5> original_xinput_get_capabilities_procs = {};
 
 // Packet number tracking for each controller (0-3)
 static std::array<DWORD, 4> g_packet_numbers = {};
@@ -428,6 +438,66 @@ DWORD WINAPI XInputSetState_Detour(DWORD dwUserIndex, XINPUT_VIBRATION *pVibrati
     return result;
 }
 
+// Hooked XInputGetCapabilities function
+DWORD WINAPI XInputGetCapabilities_Detour(DWORD dwUserIndex, DWORD dwFlags, XINPUT_CAPABILITIES *pCapabilities) {
+    if (pCapabilities == nullptr) {
+        return ERROR_INVALID_PARAMETER;
+    }
+    if (XInputGetCapabilities_Direct == nullptr) {
+        return ERROR_DEVICE_NOT_CONNECTED;
+    }
+
+    // Track hook call statistics
+    g_hook_stats[HOOK_XInputGetCapabilities].increment_total();
+
+    // Get shared state to check settings
+    auto shared_state = display_commander::widgets::xinput_widget::XInputWidget::GetSharedState();
+
+    // Check if override state is set - if so, spoof controller connection for controller 0
+    bool should_spoof_connection = g_auto_click_enabled.load() && dwUserIndex == 0;
+
+    // Check if DualSense to XInput conversion is enabled
+    bool dualsense_enabled = shared_state && shared_state->enable_dualsense_xinput.load();
+
+    // If DS to XInput is enabled and DualSense is available, or spoofing is enabled, fake connected state
+    bool should_fake_connection = false;
+    if (dualsense_enabled && display_commander::hooks::IsDualSenseAvailable()) {
+        should_fake_connection = true;
+    } else if (should_spoof_connection) {
+        should_fake_connection = true;
+    }
+
+    // If we should fake connection, return fake capabilities
+    if (should_fake_connection) {
+        // Initialize fake capabilities structure
+        ZeroMemory(pCapabilities, sizeof(XINPUT_CAPABILITIES));
+
+        // Set standard gamepad type and subtype
+        pCapabilities->Type = XINPUT_DEVTYPE_GAMEPAD;
+        pCapabilities->SubType = XINPUT_DEVSUBTYPE_GAMEPAD;
+        pCapabilities->Flags = 0; // No special flags
+
+        // Initialize gamepad structure (all buttons available)
+        ZeroMemory(&pCapabilities->Gamepad, sizeof(XINPUT_GAMEPAD));
+
+        // Initialize vibration structure (vibration supported)
+        pCapabilities->Vibration.wLeftMotorSpeed = 0;
+        pCapabilities->Vibration.wRightMotorSpeed = 0;
+
+        g_hook_stats[HOOK_XInputGetCapabilities].increment_unsuppressed();
+        return ERROR_SUCCESS;
+    }
+
+    // Otherwise, call the original function
+    DWORD result = XInputGetCapabilities_Direct(dwUserIndex, dwFlags, pCapabilities);
+
+    if (result == ERROR_SUCCESS) {
+        g_hook_stats[HOOK_XInputGetCapabilities].increment_unsuppressed();
+    }
+
+    return result;
+}
+
 bool InstallXInputHooks() {
     // Check if XInput hooks should be suppressed
     if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(display_commanderhooks::HookType::XINPUT)) {
@@ -550,8 +620,28 @@ bool InstallXInputHooks() {
                 XInputSetState_Direct = (XInputSetState_pfn)GetProcAddress(xinput_module, "XInputSetState");
             }
             XInputGetBatteryInformation_Direct = (XInputGetBatteryInformation_pfn)GetProcAddress(xinput_module, "XInputGetBatteryInformation");
+            XInputGetCapabilities_Direct = (XInputGetCapabilities_pfn)GetProcAddress(xinput_module, "XInputGetCapabilities");
         }
 
+        // Hook XInputGetCapabilities
+        FARPROC xinput_get_capabilities_proc = GetProcAddress(xinput_module, "XInputGetCapabilities");
+        if (xinput_get_capabilities_proc != nullptr) {
+            LogInfo("Found XInputGetCapabilities in %s at: 0x%p", module_name, xinput_get_capabilities_proc);
+
+            if (MH_CreateHook(xinput_get_capabilities_proc, XInputGetCapabilities_Detour, reinterpret_cast<LPVOID *>(&original_xinput_get_capabilities_procs[idx])) == MH_OK) {
+                if (update) {
+                    XInputGetCapabilities_Direct = original_xinput_get_capabilities_procs[idx];
+                }
+                if (MH_EnableHook(xinput_get_capabilities_proc) == MH_OK) {
+                    LogInfo("Successfully hooked XInputGetCapabilities in %s", module_name);
+                } else {
+                    MH_RemoveHook(xinput_get_capabilities_proc);
+                }
+            }
+        } else if (update) {
+            // Fallback: get function pointer directly if hooking failed
+            XInputGetCapabilities_Direct = (XInputGetCapabilities_pfn)GetProcAddress(xinput_module, "XInputGetCapabilities");
+        }
 
         any_success = true;
     }

@@ -6,6 +6,7 @@
 #include "../../hooks/xinput_hooks.hpp"
 #include "../../hooks/hook_suppression_manager.hpp"
 #include "../../hooks/timeslowdown_hooks.hpp"
+#include "../../hooks/windows_hooks/windows_message_hooks.hpp"
 #include "../../res/ui_colors.hpp"
 #include "../../config/display_commander_config.hpp"
 #include "../../settings/experimental_tab_settings.hpp"
@@ -408,6 +409,22 @@ void XInputWidget::DrawEventCounters() {
             ImGui::Text("XInputGetStateEx Rate: %.1f Hz (%.2f ms)", getstateex_rate_hz, getstateex_update_ns / 1000000.0);
         } else {
             ImGui::TextColored(ui::colors::TEXT_DIMMED, "XInputGetStateEx Rate: No data");
+        }
+
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::TextColored(ui::colors::TEXT_DEFAULT, "XInputGetCapabilities Hook Statistics");
+
+        // Display hook statistics for XInputGetCapabilities
+        const auto &capabilities_stats = display_commanderhooks::GetHookStats(display_commanderhooks::HOOK_XInputGetCapabilities);
+        uint64_t capabilities_total_calls = capabilities_stats.total_calls.load();
+        uint64_t capabilities_unsuppressed_calls = capabilities_stats.unsuppressed_calls.load();
+        uint64_t capabilities_suppressed_calls = capabilities_total_calls - capabilities_unsuppressed_calls;
+
+        ImGui::Text("XInputGetCapabilities_Detour Calls: %llu", capabilities_total_calls);
+        ImGui::Text("XInputGetCapabilities_Original Calls: %llu", capabilities_unsuppressed_calls);
+        if (capabilities_suppressed_calls > 0) {
+            ImGui::TextColored(ui::colors::TEXT_DIMMED, "Suppressed Calls: %llu", capabilities_suppressed_calls);
         }
 
         // Reset button

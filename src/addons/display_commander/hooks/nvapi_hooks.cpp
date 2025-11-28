@@ -166,10 +166,21 @@ NvAPI_Status __cdecl NvAPI_D3D_SetSleepMode_Detour(IUnknown *pDev, NV_SET_SLEEP_
     // Log the call (first few times only)
     static int log_count = 0;
     if (log_count < 3) {
-        LogInfo("NVAPI SetSleepMode called - LowLatency: %d, Boost: %d, UseMarkers: %d",
-                pSetSleepModeParams ? pSetSleepModeParams->bLowLatencyMode : -1,
-                pSetSleepModeParams ? pSetSleepModeParams->bLowLatencyBoost : -1,
-                pSetSleepModeParams ? pSetSleepModeParams->bUseMarkersToOptimize : -1);
+        if (pSetSleepModeParams != nullptr) {
+            float fps_limit = 0.0f;
+            if (pSetSleepModeParams->minimumIntervalUs > 0) {
+                fps_limit = 1000000.0f / static_cast<float>(pSetSleepModeParams->minimumIntervalUs);
+            }
+            LogInfo("NVAPI SetSleepMode called - Version: %u, LowLatency: %d, Boost: %d, UseMarkers: %d, MinimumIntervalUs: %u (%.2f FPS limit)",
+                    pSetSleepModeParams->version,
+                    pSetSleepModeParams->bLowLatencyMode,
+                    pSetSleepModeParams->bLowLatencyBoost,
+                    pSetSleepModeParams->bUseMarkersToOptimize,
+                    pSetSleepModeParams->minimumIntervalUs,
+                    fps_limit);
+        } else {
+            LogInfo("NVAPI SetSleepMode called - pSetSleepModeParams is nullptr");
+        }
         log_count++;
     }
     if (!IsNativeReflexActive()) {

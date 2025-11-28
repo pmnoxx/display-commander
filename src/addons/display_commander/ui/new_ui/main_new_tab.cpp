@@ -772,9 +772,7 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
             LogInfo("Mipmap LOD bias set to %.2f", lod_bias);
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
-                "Adjusts the mipmap level of detail bias. Positive values use higher quality mipmaps (sharper but more expensive), "
-                "negative values use lower quality mipmaps (blurrier but faster). Only applies to non-shadow samplers.");
+            ImGui::SetTooltip("Use a small (i.e. -0.6'ish) negative LOD bias to sharpen DLSS and FSR games");
         }
 
         // Reset button for LOD bias

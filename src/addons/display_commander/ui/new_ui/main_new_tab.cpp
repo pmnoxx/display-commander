@@ -2532,16 +2532,6 @@ void DrawImportantInfo() {
         }
         ImGui::NextColumn();
 
-        // Show Display Commander UI Control
-        bool show_display_commander_ui = settings::g_mainTabSettings.show_display_commander_ui.GetValue();
-        if (ImGui::Checkbox("Show Display Commander UI", &show_display_commander_ui)) {
-            settings::g_mainTabSettings.show_display_commander_ui.SetValue(show_display_commander_ui);
-        }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Shows the Display Commander UI overlay in the main ReShade overlay.\nShortcut: Ctrl+Shift+Delete");
-        }
-        ImGui::NextColumn();
-
         // GPU Measurement Enable/Disable Control
         bool gpu_measurement = settings::g_mainTabSettings.gpu_measurement_enabled.GetValue() != 0;
         if (ImGui::Checkbox("Show latency", &gpu_measurement)) {

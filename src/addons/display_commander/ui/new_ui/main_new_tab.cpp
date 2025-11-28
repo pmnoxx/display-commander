@@ -443,6 +443,17 @@ void DrawAdvancedSettings() {
 void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
     // Load saved settings once and sync legacy globals
 
+    // Config save failure warning at the top
+    auto config_save_failure_path = g_config_save_failure_path.load();
+    if (config_save_failure_path != nullptr && !config_save_failure_path->empty()) {
+        ImGui::Spacing();
+        ImGui::TextColored(ui::colors::TEXT_ERROR, ICON_FK_WARNING " Error: Failed to save config to %s", config_save_failure_path->c_str());
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("The configuration file could not be saved. Check file permissions and disk space.");
+        }
+        ImGui::Spacing();
+    }
+
     // Version and build information at the top
    // if (ImGui::CollapsingHeader("Display Commander", ImGuiTreeNodeFlags_DefaultOpen))
    {

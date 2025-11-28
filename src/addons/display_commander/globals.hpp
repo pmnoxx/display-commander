@@ -672,6 +672,9 @@ extern std::atomic<std::shared_ptr<const std::vector<MonitorInfo>>> g_monitors;
 extern std::atomic<std::shared_ptr<const std::string>> g_hdr10_override_status;
 extern std::atomic<std::shared_ptr<const std::string>> g_hdr10_override_timestamp;
 
+// Config save failure tracking
+extern std::atomic<std::shared_ptr<const std::string>> g_config_save_failure_path;
+
 // Helper function for updating HDR10 override status atomically
 void UpdateHdr10OverrideStatus(const std::string& status);
 

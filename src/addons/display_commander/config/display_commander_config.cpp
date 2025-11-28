@@ -3,6 +3,7 @@
 #include "../utils/logging.hpp"
 #include "../utils/display_commander_logger.hpp"
 #include "../utils/srwlock_wrapper.hpp"
+#include "../globals.hpp"
 #include <fstream>
 #include <sstream>
 #include <filesystem>
@@ -338,12 +339,18 @@ void DisplayCommanderConfigManager::SaveConfig(const char* reason) {
 
     EnsureConfigFileExists();
     if (config_file_->SaveToFile(config_path_)) {
+        // Clear any previous save failure state
+        g_config_save_failure_path.store(nullptr);
+
         if (reason != nullptr && reason[0] != '\0') {
             LogInfo("DisplayCommanderConfigManager: Saved config to %s (reason: %s)", config_path_.c_str(), reason);
         } else {
             LogInfo("DisplayCommanderConfigManager: Saved config to %s", config_path_.c_str());
         }
     } else {
+        // Set save failure state for UI display
+        g_config_save_failure_path.store(std::make_shared<const std::string>(config_path_));
+
         if (reason != nullptr && reason[0] != '\0') {
             LogError("DisplayCommanderConfigManager: Failed to save config to %s (reason: %s)", config_path_.c_str(), reason);
         } else {

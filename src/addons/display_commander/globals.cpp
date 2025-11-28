@@ -223,6 +223,9 @@ std::atomic<std::shared_ptr<const std::string>> g_hdr10_override_status{std::mak
 // Use UpdateHdr10OverrideTimestamp() to update, or g_hdr10_override_timestamp.load()->c_str() to read
 std::atomic<std::shared_ptr<const std::string>> g_hdr10_override_timestamp{std::make_shared<std::string>("Never")};
 
+// Config save failure path (thread-safe, updated by config manager, read by UI thread)
+std::atomic<std::shared_ptr<const std::string>> g_config_save_failure_path{nullptr};
+
 // Monitor labels cache removed - UI now uses GetDisplayInfoForUI() directly for better reliability
 
 // Keyboard Shortcut Settings (moved to earlier in file)

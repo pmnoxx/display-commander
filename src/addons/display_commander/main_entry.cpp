@@ -368,10 +368,41 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
         // Calculate average
         if (sample_count > 0 && total_time >= 1.0) {
             auto average_fps = sample_count / total_time;
-            if (settings::g_mainTabSettings.show_labels.GetValue()) {
-                ImGui::Text("%.1f fps", average_fps);
+
+            // Check if native FPS should be shown
+            bool show_native_fps = settings::g_mainTabSettings.show_native_fps.GetValue();
+            if (show_native_fps) {
+                // Calculate native FPS from native Reflex sleep interval
+                LONGLONG native_sleep_ns_smooth = ::g_sleep_reflex_native_ns_smooth.load();
+                double native_fps = 0.0;
+
+                // Only calculate if we have valid native sleep data (> 0 and reasonable)
+                if (native_sleep_ns_smooth > 0 && native_sleep_ns_smooth < 1 * utils::SEC_TO_NS) {
+                    native_fps = static_cast<double>(utils::SEC_TO_NS) / static_cast<double>(native_sleep_ns_smooth);
+                }
+
+                // Display dual format: native FPS / regular FPS
+                if (native_fps > 0.0) {
+                    if (settings::g_mainTabSettings.show_labels.GetValue()) {
+                        ImGui::Text("%.1f / %.1f fps", native_fps, average_fps);
+                    } else {
+                        ImGui::Text("%.1f / %.1f", native_fps, average_fps);
+                    }
+                } else {
+                    // No valid native FPS data, show regular FPS only
+                    if (settings::g_mainTabSettings.show_labels.GetValue()) {
+                        ImGui::Text("%.1f fps", average_fps);
+                    } else {
+                        ImGui::Text("%.1f", average_fps);
+                    }
+                }
             } else {
-                ImGui::Text("%.1f", average_fps);
+                // Regular FPS display
+                if (settings::g_mainTabSettings.show_labels.GetValue()) {
+                    ImGui::Text("%.1f fps", average_fps);
+                } else {
+                    ImGui::Text("%.1f", average_fps);
+                }
             }
         }
     }

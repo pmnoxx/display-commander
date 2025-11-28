@@ -88,6 +88,7 @@ enum HookIndex {
     HOOK_XInputGetState,
     HOOK_XInputGetStateEx,
     HOOK_XInputSetState,
+    HOOK_XInputGetCapabilities,
 
     // kernel32.dll hooks (38-44)
     HOOK_Sleep,

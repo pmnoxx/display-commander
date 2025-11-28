@@ -2502,6 +2502,16 @@ void DrawImportantInfo() {
         }
         ImGui::NextColumn();
 
+        // Show Native FPS
+        bool show_native_fps = settings::g_mainTabSettings.show_native_fps.GetValue();
+        if (ImGui::Checkbox("Native FPS", &show_native_fps)) {
+            settings::g_mainTabSettings.show_native_fps.SetValue(show_native_fps);
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Shows native FPS (calculated from native Reflex sleep calls) alongside regular FPS in format: XX.X / YY.Y fps");
+        }
+        ImGui::NextColumn();
+
         // Show Refresh Rate
         bool show_refresh_rate = settings::g_mainTabSettings.show_refresh_rate.GetValue();
         if (ImGui::Checkbox("Refresh Rate", &show_refresh_rate)) {

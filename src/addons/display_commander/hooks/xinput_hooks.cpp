@@ -440,15 +440,16 @@ DWORD WINAPI XInputSetState_Detour(DWORD dwUserIndex, XINPUT_VIBRATION *pVibrati
 
 // Hooked XInputGetCapabilities function
 DWORD WINAPI XInputGetCapabilities_Detour(DWORD dwUserIndex, DWORD dwFlags, XINPUT_CAPABILITIES *pCapabilities) {
+    // Track hook call statistics (do this first to verify hook is being called)
+    g_hook_stats[HOOK_XInputGetCapabilities].increment_total();
+
     if (pCapabilities == nullptr) {
         return ERROR_INVALID_PARAMETER;
     }
     if (XInputGetCapabilities_Direct == nullptr) {
+        LogErrorThrottled(10, "XInputGetCapabilities_Detour called but XInputGetCapabilities_Direct is nullptr");
         return ERROR_DEVICE_NOT_CONNECTED;
     }
-
-    // Track hook call statistics
-    g_hook_stats[HOOK_XInputGetCapabilities].increment_total();
 
     // Get shared state to check settings
     auto shared_state = display_commander::widgets::xinput_widget::XInputWidget::GetSharedState();
@@ -632,15 +633,25 @@ bool InstallXInputHooks() {
                 if (update) {
                     XInputGetCapabilities_Direct = original_xinput_get_capabilities_procs[idx];
                 }
-                if (MH_EnableHook(xinput_get_capabilities_proc) == MH_OK) {
+                MH_STATUS enable_result = MH_EnableHook(xinput_get_capabilities_proc);
+                if (enable_result == MH_OK) {
                     LogInfo("Successfully hooked XInputGetCapabilities in %s", module_name);
                 } else {
+                    LogError("Failed to enable XInputGetCapabilities hook in %s: %d", module_name, enable_result);
                     MH_RemoveHook(xinput_get_capabilities_proc);
                 }
+            } else {
+                LogError("Failed to create XInputGetCapabilities hook in %s", module_name);
             }
-        } else if (update) {
-            // Fallback: get function pointer directly if hooking failed
-            XInputGetCapabilities_Direct = (XInputGetCapabilities_pfn)GetProcAddress(xinput_module, "XInputGetCapabilities");
+        } else {
+            LogInfo("XInputGetCapabilities not found in %s (may not be exported by name)", module_name);
+            if (update) {
+                // Fallback: try to get function pointer directly (might work if function exists but not exported by name)
+                XInputGetCapabilities_Direct = (XInputGetCapabilities_pfn)GetProcAddress(xinput_module, "XInputGetCapabilities");
+                if (XInputGetCapabilities_Direct == nullptr) {
+                    LogInfo("XInputGetCapabilities function pointer also not available in %s", module_name);
+                }
+            }
         }
 
         any_success = true;

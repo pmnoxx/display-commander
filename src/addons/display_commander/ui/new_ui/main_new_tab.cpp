@@ -2147,24 +2147,24 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
 void DrawAudioSettings() {
     // Audio Volume slider
     float volume = s_audio_volume_percent.load();
-    if (ImGui::SliderFloat("Audio Volume (%)", &volume, 0.0f, 100.0f, "%.0f%%")) {
+    if (ImGui::SliderFloat("Game Volume (%)", &volume, 0.0f, 100.0f, "%.0f%%")) {
         s_audio_volume_percent.store(volume);
 
         // Apply immediately only if Auto-apply is enabled
         if (settings::g_mainTabSettings.audio_volume_auto_apply.GetValue()) {
             if (::SetVolumeForCurrentProcess(volume)) {
                 std::ostringstream oss;
-                oss << "Audio volume changed to " << static_cast<int>(volume) << "%";
+                oss << "Game volume changed to " << static_cast<int>(volume) << "%";
                 LogInfo(oss.str().c_str());
             } else {
                 std::ostringstream oss;
-                oss << "Failed to set audio volume to " << static_cast<int>(volume) << "%";
+                oss << "Failed to set game volume to " << static_cast<int>(volume) << "%";
                 LogWarn(oss.str().c_str());
             }
         }
     }
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Master audio volume control (0-100%%)");
+        ImGui::SetTooltip("Game audio volume control (0-100%%). When at 100%%, volume adjustments will affect system volume instead.");
     }
     // Auto-apply checkbox next to Audio Volume
     ImGui::SameLine();
@@ -2173,6 +2173,18 @@ void DrawAudioSettings() {
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Auto-apply volume changes when adjusting the slider.");
+    }
+
+    // System Volume display (read-only, updated automatically)
+    float system_volume = 0.0f;
+    if (::GetSystemVolume(&system_volume)) {
+        s_system_volume_percent.store(system_volume);
+    } else {
+        system_volume = s_system_volume_percent.load();
+    }
+    ImGui::Text("System Volume: %.0f%%", system_volume);
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("System master volume. Automatically adjusted when game volume is at 100%%.");
     }
 
     // Audio Mute checkbox

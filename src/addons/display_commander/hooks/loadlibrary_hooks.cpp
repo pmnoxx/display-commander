@@ -768,7 +768,7 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
     // dxgi.dll
     if (lowerModuleName.find(L"dxgi.dll") != std::wstring::npos) {
         LogInfo("Installing DXGI hooks for module: %ws", moduleName.c_str());
-        if (InstallDxgiHooks()) {
+        if (InstallDxgiHooks(hModule)) {
             LogInfo("DXGI hooks installed successfully");
         } else {
             LogError("Failed to install DXGI hooks");
@@ -782,7 +782,7 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
     else if (lowerModuleName.find(L"sl.interposer.dll") != std::wstring::npos) {
         // Check if Streamline loading is enabled
         LogInfo("Installing Streamline hooks for module: %ws", moduleName.c_str());
-        if (InstallStreamlineHooks()) {
+        if (InstallStreamlineHooks(hModule)) {
             LogInfo("Streamline hooks installed successfully");
         } else {
             LogError("Failed to install Streamline hooks");
@@ -792,7 +792,7 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
     // XInput hooks
     else if (lowerModuleName.find(L"xinput") != std::wstring::npos) {
         LogInfo("Installing XInput hooks for module: %ws", moduleName.c_str());
-        if (InstallXInputHooks()) {
+        if (InstallXInputHooks(hModule)) {
             LogInfo("XInput hooks installed successfully");
         } else {
             LogError("Failed to install XInput hooks");
@@ -803,7 +803,7 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
     else if (lowerModuleName.find(L"windows.gaming.input") != std::wstring::npos ||
     lowerModuleName.find(L"gameinput") != std::wstring::npos) {
         LogInfo("Installing Windows.Gaming.Input hooks for module: %ws", moduleName.c_str());
-        if (InstallWindowsGamingInputHooks()) {
+        if (InstallWindowsGamingInputHooks(hModule)) {
             LogInfo("Windows.Gaming.Input hooks installed successfully");
         } else {
             LogError("Failed to install Windows.Gaming.Input hooks");
@@ -814,7 +814,7 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
     else if (lowerModuleName.find(L"nvapi64.dll") != std::wstring::npos) {
         // Check if nvapi64 loading is enabled
         LogInfo("Installing NVAPI hooks for module: %ws", moduleName.c_str());
-        if (InstallNVAPIHooks()) {
+        if (InstallNVAPIHooks(hModule)) {
             LogInfo("NVAPI hooks installed successfully");
         } else {
             LogError("Failed to install NVAPI hooks");
@@ -824,7 +824,7 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
     else if (lowerModuleName.find(L"_nvngx.dll") != std::wstring::npos) {
         // Check if _nvngx loading is enabled
             LogInfo("Installing NGX hooks for module: %ws", moduleName.c_str());
-            if (InstallNGXHooks()) {
+            if (InstallNGXHooks(hModule)) {
                 LogInfo("NGX hooks installed successfully");
             } else {
                 LogError("Failed to install NGX hooks");

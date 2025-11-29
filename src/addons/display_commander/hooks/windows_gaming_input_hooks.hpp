@@ -21,7 +21,7 @@ extern std::atomic<bool> g_wgi_hooks_installed;
 HRESULT WINAPI RoGetActivationFactory_Detour(HSTRING activatableClassId, REFIID iid, void **factory);
 
 // Hook management functions
-bool InstallWindowsGamingInputHooks();
+bool InstallWindowsGamingInputHooks(HMODULE module = nullptr);
 void UninstallWindowsGamingInputHooks();
 
 } // namespace display_commanderhooks

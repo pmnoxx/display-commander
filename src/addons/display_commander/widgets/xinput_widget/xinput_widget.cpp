@@ -129,7 +129,7 @@ void XInputWidget::DrawSettings() {
         bool enable_hooks = !suppress_hooks;
         if (ImGui::Checkbox("Enable XInput Hooks", &enable_hooks)) {
             settings::g_hook_suppression_settings.suppress_xinput_hooks.SetValue(!enable_hooks);
-            display_commanderhooks::InstallXInputHooks();
+            display_commanderhooks::InstallXInputHooks(nullptr);
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Enable XInput API hooks for input processing and remapping");

@@ -314,7 +314,7 @@ NvAPI_Status __cdecl NvAPI_D3D_GetLatency_Detour(IUnknown *pDev, NV_LATENCY_RESU
 }
 
 // Install NVAPI hooks
-bool InstallNVAPIHooks() {
+bool InstallNVAPIHooks(HMODULE nvapi_module) {
     if (!settings::g_developerTabSettings.load_nvapi64.GetValue()) {
         LogInfo("NVAPI hooks not installed - load_nvapi64 is disabled");
         return false;
@@ -327,10 +327,13 @@ bool InstallNVAPIHooks() {
     }
 
     // Follow Special-K's approach: get NvAPI_QueryInterface first, then use it to get other functions
-    HMODULE nvapi_dll = GetModuleHandleA("nvapi64.dll");
-    if (!nvapi_dll) {
-        LogInfo("NVAPI hooks: nvapi64.dll not loaded");
-        return false;
+    HMODULE nvapi_dll = nvapi_module;
+    if (nvapi_dll == nullptr) {
+        nvapi_dll = GetModuleHandleA("nvapi64.dll");
+        if (!nvapi_dll) {
+            LogInfo("NVAPI hooks: nvapi64.dll not loaded");
+            return false;
+        }
     }
 
     // Get NvAPI_QueryInterface function (this is the key function that Special-K uses)

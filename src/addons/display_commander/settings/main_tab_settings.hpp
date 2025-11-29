@@ -19,6 +19,7 @@ extern std::atomic<bool> s_force_vsync_on;
 extern std::atomic<bool> s_force_vsync_off;
 extern std::atomic<bool> s_prevent_tearing;
 extern std::atomic<float> s_audio_volume_percent;
+extern std::atomic<float> s_system_volume_percent;
 extern std::atomic<bool> s_audio_mute;
 extern std::atomic<bool> s_mute_in_background;
 extern std::atomic<bool> s_mute_in_background_if_other_audio;

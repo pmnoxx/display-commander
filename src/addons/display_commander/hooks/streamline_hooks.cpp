@@ -160,7 +160,7 @@ void InitializePreventSLUpgradeInterface() {
     }
 }
 
-bool InstallStreamlineHooks() {
+bool InstallStreamlineHooks(HMODULE streamline_module) {
     if (!settings::g_developerTabSettings.load_streamline.GetValue()) {
         LogInfo("Streamline hooks not installed - load_streamline is disabled");
         return false;
@@ -173,10 +173,13 @@ bool InstallStreamlineHooks() {
     }
 
     // Check if Streamline DLLs are loaded
-    HMODULE sl_interposer = GetModuleHandleW(L"sl.interposer.dll");
+    HMODULE sl_interposer = streamline_module;
     if (sl_interposer == nullptr) {
-        LogInfo("Streamline not detected - sl.interposer.dll not loaded");
-        return false;
+        sl_interposer = GetModuleHandleW(L"sl.interposer.dll");
+        if (sl_interposer == nullptr) {
+            LogInfo("Streamline not detected - sl.interposer.dll not loaded");
+            return false;
+        }
     }
 
     static bool g_streamline_hooks_installed = false;

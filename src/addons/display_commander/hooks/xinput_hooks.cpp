@@ -499,7 +499,7 @@ DWORD WINAPI XInputGetCapabilities_Detour(DWORD dwUserIndex, DWORD dwFlags, XINP
     return result;
 }
 
-bool InstallXInputHooks() {
+bool InstallXInputHooks(HMODULE xinput_module) {
     // Check if XInput hooks should be suppressed
     if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(display_commanderhooks::HookType::XINPUT)) {
         LogInfo("XInput hooks installation suppressed by user setting");
@@ -522,8 +522,8 @@ bool InstallXInputHooks() {
     bool any_success = false;
     for (size_t idx = 0; idx < std::size(xinput_modules); ++idx) {
         const char *module_name = xinput_modules[idx];
-        HMODULE xinput_module = GetModuleHandleA(module_name);
-        if (xinput_module == nullptr) {
+        HMODULE current_module = GetModuleHandleA(module_name);
+        if (current_module == nullptr) {
             any_success = true;
             break;
         }

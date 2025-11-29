@@ -79,7 +79,7 @@ HRESULT WINAPI D3D12CreateDevice_Detour(IUnknown* pAdapter, D3D_FEATURE_LEVEL Mi
 // Hook management
 bool InstallApiHooks();
 bool InstallWindowsApiHooks();
-bool InstallDxgiHooks();
+bool InstallDxgiHooks(HMODULE dxgi_module = nullptr);
 bool InstallD3DDeviceHooks();
 void UninstallApiHooks();
 

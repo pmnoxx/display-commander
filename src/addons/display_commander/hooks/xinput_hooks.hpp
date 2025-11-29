@@ -28,7 +28,7 @@ DWORD WINAPI XInputSetState_Detour(DWORD dwUserIndex, XINPUT_VIBRATION *pVibrati
 DWORD WINAPI XInputGetCapabilities_Detour(DWORD dwUserIndex, DWORD dwFlags, XINPUT_CAPABILITIES *pCapabilities);
 
 // Hook management
-bool InstallXInputHooks();
+bool InstallXInputHooks(HMODULE xinput_module = nullptr);
 
 // Helper functions for thumbstick processing
 void ApplyThumbstickProcessing(XINPUT_STATE *pState, float left_max_input, float right_max_input, float left_min_output,

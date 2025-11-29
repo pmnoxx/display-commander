@@ -31,5 +31,5 @@ NvAPI_Status NvAPI_D3D_SetLatencyMarker_Direct(IUnknown *pDev, NV_LATENCY_MARKER
 NvAPI_Status NvAPI_D3D_GetLatency_Direct(IUnknown *pDev, NV_LATENCY_RESULT_PARAMS *pGetLatencyParams);
 
 // Hook management
-bool InstallNVAPIHooks();
+bool InstallNVAPIHooks(HMODULE nvapi_module = nullptr);
 void UninstallNVAPIHooks();

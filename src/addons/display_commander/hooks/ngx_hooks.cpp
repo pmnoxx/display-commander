@@ -1207,7 +1207,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_AllocateParameters_Detour(NVSDK_NGX_
 }
 
 // Install NGX hooks
-bool InstallNGXHooks() {
+bool InstallNGXHooks(HMODULE ngx_module) {
     if (!settings::g_developerTabSettings.load_nvngx.GetValue()) {
         LogInfo("NGX hooks not installed - load_nvngx is disabled");
         return false;
@@ -1221,10 +1221,13 @@ bool InstallNGXHooks() {
     }
 
     // Check if NGX DLLs are loaded
-    HMODULE ngx_dll = GetModuleHandleA("_nvngx.dll");
-    if (!ngx_dll) {
-        LogInfo("NGX hooks: _nvngx.dll not loaded");
-        return false;
+    HMODULE ngx_dll = ngx_module;
+    if (ngx_dll == nullptr) {
+        ngx_dll = GetModuleHandleA("_nvngx.dll");
+        if (!ngx_dll) {
+            LogInfo("NGX hooks: _nvngx.dll not loaded");
+            return false;
+        }
     }
 
     static bool g_ngx_hooks_installed = false;

@@ -17,6 +17,7 @@ std::atomic<bool> s_force_vsync_on{false};
 std::atomic<bool> s_force_vsync_off{false};
 std::atomic<bool> s_prevent_tearing{false};
 std::atomic<float> s_audio_volume_percent{100.f};
+std::atomic<float> s_system_volume_percent{100.f};
 std::atomic<bool> s_audio_mute{false};
 std::atomic<bool> s_mute_in_background{false};
 std::atomic<bool> s_mute_in_background_if_other_audio{false};

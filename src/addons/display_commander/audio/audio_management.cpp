@@ -8,6 +8,7 @@
 #include "../globals.hpp"
 #include <Functiondiscoverykeys_devpkey.h>
 #include <mmdeviceapi.h>
+#include <endpointvolume.h>
 #include <propvarutil.h>
 #include <sstream>
 #include <thread>
@@ -562,6 +563,19 @@ bool AdjustVolumeForCurrentProcess(float percent_change) {
     // Clamp to valid range
     new_volume = (std::max)(0.0f, (std::min)(new_volume, 100.0f));
 
+    // If game volume is at 100% and we're trying to increase, start increasing system volume instead
+    bool adjusted_system_volume = false;
+    if (new_volume >= 100.0f && percent_change > 0.0f && current_volume >= 100.0f) {
+        // Game volume is already at max, adjust system volume instead
+        float current_system_volume = 0.0f;
+        if (GetSystemVolume(&current_system_volume)) {
+            adjusted_system_volume = AdjustSystemVolume(percent_change);
+            if (adjusted_system_volume) {
+                s_system_volume_percent.store(current_system_volume + percent_change);
+            }
+        }
+    }
+
     if (SetVolumeForCurrentProcess(new_volume)) {
         // Update stored value
         s_audio_volume_percent.store(new_volume);
@@ -579,8 +593,12 @@ bool AdjustVolumeForCurrentProcess(float percent_change) {
         g_action_notification.store(notification);
 
         std::ostringstream oss;
-        oss << "Volume adjusted by " << (percent_change >= 0.0f ? "+" : "") << percent_change
-            << "% to " << new_volume << "%";
+        if (adjusted_system_volume) {
+            oss << "Game volume at 100%, system volume adjusted by " << (percent_change >= 0.0f ? "+" : "") << percent_change << "%";
+        } else {
+            oss << "Volume adjusted by " << (percent_change >= 0.0f ? "+" : "") << percent_change
+                << "% to " << new_volume << "%";
+        }
         LogInfo(oss.str().c_str());
         return true;
     }
@@ -783,4 +801,119 @@ void RunBackgroundAudioMonitor() {
         // Background FPS limit handling moved to fps_limiter module
         std::this_thread::sleep_for(std::chrono::milliseconds(300));
     }
+}
+
+bool SetSystemVolume(float volume_0_100) {
+    float clamped = (std::max)(0.0f, (std::min)(volume_0_100, 100.0f));
+    const float scalar = clamped / 100.0f;
+    HRESULT hr = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+    const bool did_init = SUCCEEDED(hr);
+    if (!did_init && hr != RPC_E_CHANGED_MODE) {
+        LogWarn("CoInitializeEx failed for system volume control");
+        return false;
+    }
+
+    bool success = false;
+    IMMDeviceEnumerator *device_enumerator = nullptr;
+    IMMDevice *device = nullptr;
+    IAudioEndpointVolume *endpoint_volume = nullptr;
+
+    do {
+        hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL, IID_PPV_ARGS(&device_enumerator));
+        if (FAILED(hr) || device_enumerator == nullptr)
+            break;
+        hr = device_enumerator->GetDefaultAudioEndpoint(eRender, eMultimedia, &device);
+        if (FAILED(hr) || device == nullptr)
+            break;
+        hr = device->Activate(__uuidof(IAudioEndpointVolume), CLSCTX_ALL, nullptr,
+                              reinterpret_cast<void **>(&endpoint_volume));
+        if (FAILED(hr) || endpoint_volume == nullptr)
+            break;
+        hr = endpoint_volume->SetMasterVolumeLevelScalar(scalar, nullptr);
+        success = SUCCEEDED(hr);
+    } while (false);
+
+    if (endpoint_volume != nullptr)
+        endpoint_volume->Release();
+    if (device != nullptr)
+        device->Release();
+    if (device_enumerator != nullptr)
+        device_enumerator->Release();
+    if (did_init && hr != RPC_E_CHANGED_MODE)
+        CoUninitialize();
+
+    if (success) {
+        std::ostringstream oss;
+        oss << "System volume set to " << clamped << "%";
+        LogInfo(oss.str().c_str());
+    }
+    return success;
+}
+
+bool GetSystemVolume(float *volume_0_100_out) {
+    if (volume_0_100_out == nullptr) {
+        return false;
+    }
+
+    HRESULT hr = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+    const bool did_init = SUCCEEDED(hr);
+    if (!did_init && hr != RPC_E_CHANGED_MODE) {
+        LogWarn("CoInitializeEx failed for system volume query");
+        return false;
+    }
+
+    bool success = false;
+    IMMDeviceEnumerator *device_enumerator = nullptr;
+    IMMDevice *device = nullptr;
+    IAudioEndpointVolume *endpoint_volume = nullptr;
+
+    do {
+        hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL, IID_PPV_ARGS(&device_enumerator));
+        if (FAILED(hr) || device_enumerator == nullptr)
+            break;
+        hr = device_enumerator->GetDefaultAudioEndpoint(eRender, eMultimedia, &device);
+        if (FAILED(hr) || device == nullptr)
+            break;
+        hr = device->Activate(__uuidof(IAudioEndpointVolume), CLSCTX_ALL, nullptr,
+                              reinterpret_cast<void **>(&endpoint_volume));
+        if (FAILED(hr) || endpoint_volume == nullptr)
+            break;
+        float scalar = 0.0f;
+        if (SUCCEEDED(endpoint_volume->GetMasterVolumeLevelScalar(&scalar))) {
+            *volume_0_100_out = scalar * 100.0f;
+            success = true;
+        }
+    } while (false);
+
+    if (endpoint_volume != nullptr)
+        endpoint_volume->Release();
+    if (device != nullptr)
+        device->Release();
+    if (device_enumerator != nullptr)
+        device_enumerator->Release();
+    if (did_init && hr != RPC_E_CHANGED_MODE)
+        CoUninitialize();
+
+    return success;
+}
+
+bool AdjustSystemVolume(float percent_change) {
+    float current_volume = 0.0f;
+    if (!GetSystemVolume(&current_volume)) {
+        return false;
+    }
+
+    float new_volume = current_volume + percent_change;
+    // Clamp to valid range
+    new_volume = (std::max)(0.0f, (std::min)(new_volume, 100.0f));
+
+    if (SetSystemVolume(new_volume)) {
+        std::ostringstream oss;
+        oss << "System volume adjusted by " << (percent_change >= 0.0f ? "+" : "") << percent_change
+            << "% to " << new_volume << "%";
+        LogInfo(oss.str().c_str());
+        return true;
+    }
+
+    return false;
 }

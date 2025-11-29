@@ -177,26 +177,28 @@ std::vector<std::string> GenerateStackTraceInternal(CONTEXT* context_ptr) {
             nullptr
         );
 
-        if (result == FALSE || stack_frame.AddrPC.Offset == 0) {
+        if (result == FALSE) {
             break;
         }
 
-        // Format the stack frame
         std::ostringstream frame_info;
         frame_info << "[" << std::setfill('0') << std::setw(2) << frame_count << "] ";
+        if (stack_frame.AddrPC.Offset != 0) {
+            // Format the stack frame
 
-        // Get module name
-        std::string module_name = GetModuleName(process, stack_frame.AddrPC.Offset);
-        frame_info << module_name << "!";
+            // Get module name
+            std::string module_name = GetModuleName(process, stack_frame.AddrPC.Offset);
+            frame_info << module_name << "!";
 
-        // Get symbol name
-        std::string symbol_name = GetSymbolName(process, stack_frame.AddrPC.Offset);
-        frame_info << symbol_name;
+            // Get symbol name
+            std::string symbol_name = GetSymbolName(process, stack_frame.AddrPC.Offset);
+            frame_info << symbol_name;
 
-        // Get source info
-        std::string source_info = GetSourceInfo(process, stack_frame.AddrPC.Offset);
-        if (source_info != "Unknown") {
-            frame_info << " (" << source_info << ")";
+            // Get source info
+            std::string source_info = GetSourceInfo(process, stack_frame.AddrPC.Offset);
+            if (source_info != "Unknown") {
+                frame_info << " (" << source_info << ")";
+            }
         }
 
         // Add address

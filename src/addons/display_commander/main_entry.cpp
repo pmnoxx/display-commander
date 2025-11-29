@@ -372,12 +372,18 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
             // Check if native FPS should be shown
             bool show_native_fps = settings::g_mainTabSettings.show_native_fps.GetValue();
             if (show_native_fps) {
+                // Check if native Reflex was updated within the last 5 seconds
+                uint64_t last_sleep_timestamp = ::g_nvapi_last_sleep_timestamp_ns.load();
+                uint64_t current_time = utils::get_now_ns();
+                bool is_recent = (last_sleep_timestamp > 0) &&
+                                (current_time - last_sleep_timestamp) < (5 * utils::SEC_TO_NS);
+
                 // Calculate native FPS from native Reflex sleep interval
                 LONGLONG native_sleep_ns_smooth = ::g_sleep_reflex_native_ns_smooth.load();
                 double native_fps = 0.0;
 
-                // Only calculate if we have valid native sleep data (> 0 and reasonable)
-                if (native_sleep_ns_smooth > 0 && native_sleep_ns_smooth < 1 * utils::SEC_TO_NS) {
+                // Only calculate if we have valid native sleep data (> 0 and reasonable) and it's recent
+                if (is_recent && native_sleep_ns_smooth > 0 && native_sleep_ns_smooth < 1 * utils::SEC_TO_NS) {
                     native_fps = static_cast<double>(utils::SEC_TO_NS) / static_cast<double>(native_sleep_ns_smooth);
                 }
 

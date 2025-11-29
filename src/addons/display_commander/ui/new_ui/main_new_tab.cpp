@@ -2475,8 +2475,7 @@ void DrawImportantInfo() {
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip(
                 "Shows a performance monitoring widget in the main ReShade overlay with frame time graph, "
-                "FPS counter, and other performance metrics. Demonstrates reshade_overlay event usage.\n"
-                "Shortcut: Ctrl+O");
+                "FPS counter, and other performance metrics. Demonstrates reshade_overlay event usage.");
         }
 
         // Grid layout for overlay display checkboxes (4 columns)

@@ -2175,16 +2175,26 @@ void DrawAudioSettings() {
         ImGui::SetTooltip("Auto-apply volume changes when adjusting the slider.");
     }
 
-    // System Volume display (read-only, updated automatically)
+    // System Volume slider (controls system master volume directly)
     float system_volume = 0.0f;
     if (::GetSystemVolume(&system_volume)) {
         s_system_volume_percent.store(system_volume);
     } else {
         system_volume = s_system_volume_percent.load();
     }
-    ImGui::Text("System Volume: %.0f%%", system_volume);
+    if (ImGui::SliderFloat("System Volume (%)", &system_volume, 0.0f, 100.0f, "%.0f%%")) {
+        s_system_volume_percent.store(system_volume);
+        if (!::SetSystemVolume(system_volume)) {
+            std::ostringstream oss;
+            oss << "Failed to set system volume to " << static_cast<int>(system_volume) << "%";
+            LogWarn(oss.str().c_str());
+        }
+    }
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("System master volume. Automatically adjusted when game volume is at 100%%.");
+        ImGui::SetTooltip(
+            "System master volume control (0-100%%). This adjusts the Windows system volume for the default output "
+            "device.\n"
+            "Note: System volume may also be adjusted automatically when game volume is at 100%% and you increase it.");
     }
 
     // Audio Mute checkbox

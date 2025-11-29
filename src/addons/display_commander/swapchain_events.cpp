@@ -459,7 +459,7 @@ void QueryDxgiCompositionState(IDXGISwapChain *dxgi_swapchain) {
     // Periodically refresh colorspace and enumerate devices (approx every 4
     // seconds at 60fps = 240 frames)
     static int present_after_counter = 0;
-    if (present_after_counter % 256 == 1) {
+    if (present_after_counter % 256 == 0) {
         // Compute DXGI composition state and log on change
         DxgiBypassMode mode = GetIndependentFlipState(dxgi_swapchain);
 

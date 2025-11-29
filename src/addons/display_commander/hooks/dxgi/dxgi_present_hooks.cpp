@@ -381,9 +381,11 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain *This, UI
     }
 
     DeviceTypeDC device_type = DeviceTypeDC::DX10;
-    IUnknown* device = nullptr;
+    Microsoft::WRL::ComPtr<IUnknown> device;
     {
-        This->GetDevice(IID_PPV_ARGS(&device));
+        IUnknown* device_raw = nullptr;
+        This->GetDevice(IID_PPV_ARGS(&device_raw));
+        device = device_raw;
         if (device) {
             // Try to determine if it's D3D11 or D3D12
             Microsoft::WRL::ComPtr<ID3D11Device> d3d11_device;
@@ -455,7 +457,8 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain *This, UI
     // (before flush_command_queue) for more accurate timing
 
     // Get device from swapchain for latency manager
-    ::OnPresentUpdateAfter2(device, device_type);
+    ::OnPresentUpdateAfter2(device.Get(), device_type);
+
     return res;
 }
 
@@ -466,10 +469,12 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1 *This, 
     if (expected_swapchain != nullptr && reinterpret_cast<IDXGISwapChain*>(This) != expected_swapchain) {
         return IDXGISwapChain_Present1_Original(This, SyncInterval, PresentFlags, pPresentParameters);
     }
-    IUnknown* device = nullptr;
     DeviceTypeDC device_type = DeviceTypeDC::DX10; // Default to DX11 for DXGI
+    Microsoft::WRL::ComPtr<IUnknown> device;
     {
-        This->GetDevice(IID_PPV_ARGS(&device));
+        IUnknown* device_raw = nullptr;
+        This->GetDevice(IID_PPV_ARGS(&device_raw));
+        device = device_raw;
         if (device) {
             // Try to determine if it's D3D11 or D3D12
             Microsoft::WRL::ComPtr<ID3D10Device> d3d10_device;
@@ -540,7 +545,8 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1 *This, 
 //   dx11_proxy::DX11ProxyManager::GetInstance().CopyThreadLoop();
 
     // Get device from swapchain for latency manager
-    ::OnPresentUpdateAfter2(device, device_type);
+    ::OnPresentUpdateAfter2(device.Get(), device_type);
+
     return res;
 }
 

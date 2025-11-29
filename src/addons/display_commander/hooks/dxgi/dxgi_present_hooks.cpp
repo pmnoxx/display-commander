@@ -418,8 +418,6 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain *This, UI
         }
     }
 
-    // Query DXGI composition state (moved from ReShade present events)
-    ::QueryDxgiCompositionState(This);
 
     ::OnPresentFlags2(&Flags, device_type);
 
@@ -436,31 +434,27 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain *This, UI
 
     dx11_proxy::DX11ProxyManager::GetInstance().CopyFrameFromGameThread(This);
 
-
-    // Call original function
-    if (IDXGISwapChain_Present_Original != nullptr) {
-        auto res= IDXGISwapChain_Present_Original(This, SyncInterval, Flags);
-
-        // Signal refresh rate monitoring thread (after DWM flush)
-        ::dxgi::fps_limiter::SignalRefreshRateMonitor();
-
-        if (g_last_present_update_swapchain.load() == This) {
-            dx11_proxy::DX11ProxyManager::GetInstance().CopyThreadLoop2();
-        }
-
-        // Note: GPU completion measurement is now enqueued earlier in OnPresentUpdateBefore
-        // (before flush_command_queue) for more accurate timing
-
-        // Get device from swapchain for latency manager
-        ::OnPresentUpdateAfter2(device, device_type);
-        return res;
+    if  (IDXGISwapChain_Present_Original == nullptr) {
+        LogError("IDXGISwapChain_Present_Detour: IDXGISwapChain_Present_Original is null");
+        return This->Present(SyncInterval, Flags);
     }
-    // Fallback to direct call if hook failed
-    auto res= This->Present(SyncInterval, Flags);
+
+    auto res= IDXGISwapChain_Present_Original(This, SyncInterval, Flags);
+
+    // Query DXGI composition state (moved from ReShade present events)
+    ::QueryDxgiCompositionState(This);
+
+    // Signal refresh rate monitoring thread (after DWM flush)
+    ::dxgi::fps_limiter::SignalRefreshRateMonitor();
+
+    if (g_last_present_update_swapchain.load() == This) {
+        dx11_proxy::DX11ProxyManager::GetInstance().CopyThreadLoop2();
+    }
 
     // Note: GPU completion measurement is now enqueued earlier in OnPresentUpdateBefore
     // (before flush_command_queue) for more accurate timing
 
+    // Get device from swapchain for latency manager
     ::OnPresentUpdateAfter2(device, device_type);
     return res;
 }
@@ -513,9 +507,6 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1 *This, 
         }
     }
 
-    // Query DXGI composition state (moved from ReShade present events)
-    ::QueryDxgiCompositionState(This);
-
     ::OnPresentFlags2(&PresentFlags, device_type);
 
     // Record per-frame FPS sample for background aggregation
@@ -531,29 +522,24 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1 *This, 
 
     dx11_proxy::DX11ProxyManager::GetInstance().CopyFrameFromGameThread(This);
 
-    // Call original function
-    if (IDXGISwapChain_Present1_Original != nullptr) {
-        auto res= IDXGISwapChain_Present1_Original(This, SyncInterval, PresentFlags, pPresentParameters);
-
-
-        // Signal refresh rate monitoring thread (after DWM flush)
-        ::dxgi::fps_limiter::SignalRefreshRateMonitor();
-
-        // Note: GPU completion measurement is now enqueued earlier in OnPresentUpdateBefore
-        // (before flush_command_queue) for more accurate timing
-    //   dx11_proxy::DX11ProxyManager::GetInstance().CopyThreadLoop();
-
-        // Get device from swapchain for latency manager
-        ::OnPresentUpdateAfter2(device, device_type);
-        return res;
+    if  (IDXGISwapChain_Present1_Original == nullptr) {
+        LogError("IDXGISwapChain_Present1_Detour: IDXGISwapChain_Present1_Original is null");
+        return This->Present1(SyncInterval, PresentFlags, pPresentParameters);
     }
 
-    // Fallback to direct call if hook failed
-    auto res= This->Present1(SyncInterval, PresentFlags, pPresentParameters);
+    auto res = IDXGISwapChain_Present1_Original(This, SyncInterval, PresentFlags, pPresentParameters);
+
+    // Query DXGI composition state (moved from ReShade present events)
+    ::QueryDxgiCompositionState(This);
+
+    // Signal refresh rate monitoring thread (after DWM flush)
+    ::dxgi::fps_limiter::SignalRefreshRateMonitor();
 
     // Note: GPU completion measurement is now enqueued earlier in OnPresentUpdateBefore
     // (before flush_command_queue) for more accurate timing
+//   dx11_proxy::DX11ProxyManager::GetInstance().CopyThreadLoop();
 
+    // Get device from swapchain for latency manager
     ::OnPresentUpdateAfter2(device, device_type);
     return res;
 }

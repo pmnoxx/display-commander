@@ -1094,42 +1094,26 @@ void InputRemapper::execute_action(const std::string &action_name) {
             current_volume = ::s_audio_volume_percent.load();
         }
 
-        float new_volume = 0.0f;
+        float percent_change = 0.0f;
         if (current_volume <= 0.0f) {
             // Special case: if at 0%, jump to 1%
-            new_volume = 1.0f;
+            percent_change = 1.0f;
         } else {
             // Calculate relative 20% increase (multiply by 1.2) for stability
-            new_volume = current_volume * 1.2f;
+            float new_volume = current_volume * 1.2f;
             // Ensure minimum 1% absolute change
             float min_new_volume = current_volume + 1.0f;
             if (new_volume < min_new_volume) {
                 new_volume = min_new_volume;
             }
+            percent_change = new_volume - current_volume;
         }
 
-        // Clamp to valid range
-        new_volume = (std::max)(0.0f, (std::min)(new_volume, 100.0f));
-
-        if (SetVolumeForCurrentProcess(new_volume)) {
-            // Update stored value
-            ::s_audio_volume_percent.store(new_volume);
-
-            // Update overlay display tracking (legacy, for backward compatibility)
-            ::g_volume_change_time_ns.store(utils::get_now_ns());
-            ::g_volume_display_value.store(new_volume);
-
-            // Trigger action notification for overlay display
-            ActionNotification notification;
-            notification.type = ActionNotificationType::Volume;
-            notification.timestamp_ns = utils::get_now_ns();
-            notification.float_value = new_volume;
-            notification.bool_value = false;
-            ::g_action_notification.store(notification);
-
-            float change = new_volume - current_volume;
+        // Use AdjustVolumeForCurrentProcess which handles system volume when game volume is at 100%
+        if (AdjustVolumeForCurrentProcess(percent_change)) {
+            float new_volume = ::s_audio_volume_percent.load();
             LogInfo("InputRemapper::execute_action() - Volume increased from %.1f%% to %.1f%% (change: +%.1f%%)",
-                   current_volume, new_volume, change);
+                   current_volume, new_volume, percent_change);
         } else {
             LogError("InputRemapper::execute_action() - Failed to increase volume");
         }
@@ -1153,29 +1137,13 @@ void InputRemapper::execute_action(const std::string &action_name) {
         if (new_volume > max_new_volume) {
             new_volume = max_new_volume;
         }
+        float percent_change = new_volume - current_volume;
 
-        // Clamp to valid range
-        new_volume = (std::max)(0.0f, (std::min)(new_volume, 100.0f));
-
-        if (SetVolumeForCurrentProcess(new_volume)) {
-            // Update stored value
-            ::s_audio_volume_percent.store(new_volume);
-
-            // Update overlay display tracking (legacy, for backward compatibility)
-            ::g_volume_change_time_ns.store(utils::get_now_ns());
-            ::g_volume_display_value.store(new_volume);
-
-            // Trigger action notification for overlay display
-            ActionNotification notification;
-            notification.type = ActionNotificationType::Volume;
-            notification.timestamp_ns = utils::get_now_ns();
-            notification.float_value = new_volume;
-            notification.bool_value = false;
-            ::g_action_notification.store(notification);
-
-            float change = new_volume - current_volume;
+        // Use AdjustVolumeForCurrentProcess which handles system volume when game volume is at 100%
+        if (AdjustVolumeForCurrentProcess(percent_change)) {
+            float final_volume = ::s_audio_volume_percent.load();
             LogInfo("InputRemapper::execute_action() - Volume decreased from %.1f%% to %.1f%% (change: %.1f%%)",
-                   current_volume, new_volume, change);
+                   current_volume, final_volume, percent_change);
         } else {
             LogError("InputRemapper::execute_action() - Failed to decrease volume");
         }

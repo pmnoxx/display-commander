@@ -13,6 +13,11 @@ void RunBackgroundAudioMonitor();
 // Returns true if any other process has an active, unmuted session with volume > 0
 bool IsOtherAppPlayingAudio();
 
+// System volume management functions (master volume for the audio endpoint)
+bool SetSystemVolume(float volume_0_100);
+bool GetSystemVolume(float *volume_0_100_out);
+bool AdjustSystemVolume(float percent_change);
+
 // Audio output device helpers (per-application routing using Windows Audio Policy)
 // - device_names_utf8: Friendly names for ImGui display
 // - device_ids:        Stable WASAPI endpoint IDs (IMMDevice::GetId)

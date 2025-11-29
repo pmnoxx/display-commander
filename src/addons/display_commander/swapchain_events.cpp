@@ -300,7 +300,7 @@ void DoInitializationWithHwnd(HWND hwnd) {
     }
 
     // Install XInput hooks
-    display_commanderhooks::InstallXInputHooks();
+    display_commanderhooks::InstallXInputHooks(nullptr);
 
     LogInfo("DoInitialization: Starting initialization with HWND: 0x%p", hwnd);
 
@@ -366,7 +366,7 @@ void DoInitializationWithHwnd(HWND hwnd) {
     }
 
     // Install Streamline hooks
-    if (InstallStreamlineHooks()) {
+    if (InstallStreamlineHooks(nullptr)) {
         LogInfo("Streamline hooks installed successfully");
     } else {
         LogInfo("Streamline hooks not installed (Streamline not detected)");

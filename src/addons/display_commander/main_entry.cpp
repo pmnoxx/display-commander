@@ -440,35 +440,43 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
     }
 
     if (show_volume) {
-        // Get current volume
+        // Get current game volume
         float current_volume = 0.0f;
         if (!GetVolumeForCurrentProcess(&current_volume)) {
             // If we can't get current volume, use stored value
             current_volume = s_audio_volume_percent.load();
         }
 
+        // Get current system volume
+        float system_volume = 0.0f;
+        if (!GetSystemVolume(&system_volume)) {
+            system_volume = s_system_volume_percent.load();
+        } else {
+            s_system_volume_percent.store(system_volume);
+        }
+
         // Check if audio is muted
         bool is_muted = g_muted_applied.load();
 
-        // Display volume percentage
+        // Display game volume and system volume
         if (settings::g_mainTabSettings.show_labels.GetValue()) {
             if (is_muted) {
-                ImGui::Text("%.0f%% vol muted", current_volume);
+                ImGui::Text("%.0f%% vol / %.0f%% sys muted", current_volume, system_volume);
             } else {
-                ImGui::Text("%.0f%% vol", current_volume);
+                ImGui::Text("%.0f%% vol / %.0f%% sys", current_volume, system_volume);
             }
         } else {
             if (is_muted) {
-                ImGui::Text("%.0f%% muted", current_volume);
+                ImGui::Text("%.0f%% / %.0f%% muted", current_volume, system_volume);
             } else {
-                ImGui::Text("%.0f%%", current_volume);
+                ImGui::Text("%.0f%% / %.0f%%", current_volume, system_volume);
             }
         }
         if (ImGui::IsItemHovered() && show_tooltips) {
             if (is_muted) {
-                ImGui::SetTooltip("Audio Volume: %.0f%% (Muted)", current_volume);
+                ImGui::SetTooltip("Game Volume: %.0f%% | System Volume: %.0f%% (Muted)", current_volume, system_volume);
             } else {
-                ImGui::SetTooltip("Audio Volume: %.0f%%", current_volume);
+                ImGui::SetTooltip("Game Volume: %.0f%% | System Volume: %.0f%%", current_volume, system_volume);
             }
         }
     }

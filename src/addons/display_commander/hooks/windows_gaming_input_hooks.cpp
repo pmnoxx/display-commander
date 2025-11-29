@@ -148,7 +148,7 @@ HRESULT WINAPI RoGetActivationFactory_Detour(HSTRING activatableClassId, REFIID 
     }
 }
 
-bool InstallWindowsGamingInputHooks() {
+bool InstallWindowsGamingInputHooks(HMODULE module) {
     if (g_wgi_hooks_installed.load()) {
         LogInfo("Windows.Gaming.Input hooks already installed");
         return true;
@@ -163,6 +163,7 @@ bool InstallWindowsGamingInputHooks() {
     // MinHook is already initialized by API hooks, so we don't need to initialize it again
 
     // Get the address of RoGetActivationFactory from combase.dll
+    // Note: The passed module is typically windows.gaming.input.dll, but we need combase.dll
     HMODULE combase_module = GetModuleHandleA("combase.dll");
     if (!combase_module) {
         LogError("Failed to get combase.dll module handle");

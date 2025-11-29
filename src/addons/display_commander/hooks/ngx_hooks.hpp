@@ -1,5 +1,6 @@
 #pragma once
 
+#include <windows.h>
 #include <cstdint>
 #include <string>
 
@@ -7,7 +8,7 @@
 struct NVSDK_NGX_Parameter;
 
 // NGX hook functions
-bool InstallNGXHooks();
+bool InstallNGXHooks(HMODULE ngx_module = nullptr);
 void CleanupNGXHooks();
 
 // Internal vtable hooking function

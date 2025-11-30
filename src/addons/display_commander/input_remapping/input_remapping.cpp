@@ -166,6 +166,16 @@ void InputRemapper::add_default_chord_type(DefaultChordType chord_type) {
         hold_mode = true;    // ensure release handler runs
         chord_mode = false;  // no Guide chord for Guide itself
         break;
+    case DefaultChordType::SystemVolumeUp:
+        button = XINPUT_GAMEPAD_RIGHT_THUMB;
+        action_name = "increase system volume";
+        log_name = "Home + Right Thumbstick = Increase System Volume";
+        break;
+    case DefaultChordType::SystemVolumeDown:
+        button = XINPUT_GAMEPAD_LEFT_THUMB;
+        action_name = "decrease system volume";
+        log_name = "Home + Left Thumbstick = Decrease System Volume";
+        break;
     default:
         return;
     }
@@ -223,6 +233,12 @@ void InputRemapper::remove_default_chord_type(DefaultChordType chord_type) {
     case DefaultChordType::DisplayCommanderUI:
         target_button = XINPUT_GAMEPAD_LEFT_SHOULDER;
         break;
+    case DefaultChordType::SystemVolumeUp:
+        target_button = XINPUT_GAMEPAD_RIGHT_THUMB;
+        break;
+    case DefaultChordType::SystemVolumeDown:
+        target_button = XINPUT_GAMEPAD_LEFT_THUMB;
+        break;
     default:
         return;
     }
@@ -261,6 +277,8 @@ void InputRemapper::add_default_chords() {
     add_default_chord_type(DefaultChordType::PerformanceOverlay);
     add_default_chord_type(DefaultChordType::Screenshot);
     add_default_chord_type(DefaultChordType::DisplayCommanderUI);
+    add_default_chord_type(DefaultChordType::SystemVolumeUp);
+    add_default_chord_type(DefaultChordType::SystemVolumeDown);
 
     // Add experimental game speed chords only if experimental features are enabled
     if (enabled_experimental_features) {
@@ -277,6 +295,8 @@ void InputRemapper::remove_default_chords() {
     remove_default_chord_type(DefaultChordType::PerformanceOverlay);
     remove_default_chord_type(DefaultChordType::Screenshot);
     remove_default_chord_type(DefaultChordType::DisplayCommanderUI);
+    remove_default_chord_type(DefaultChordType::SystemVolumeUp);
+    remove_default_chord_type(DefaultChordType::SystemVolumeDown);
 
     // Remove experimental game speed chords (only if they exist)
     remove_default_chord_type(DefaultChordType::IncreaseGameSpeed);
@@ -1184,6 +1204,67 @@ void InputRemapper::execute_action(const std::string &action_name) {
         settings::g_mainTabSettings.show_display_commander_ui.SetValue(new_state);
         trigger_action_notification("Display Commander UI " + std::string(new_state ? "On" : "Off"));
         LogInfo("InputRemapper::execute_action() - Display Commander UI %s via action", new_state ? "enabled" : "disabled");
+    } else if (action_name == "increase system volume") {
+        // Increase system volume by relative 20% (multiply by 1.2), minimum 1% change
+        float current_volume = 0.0f;
+        if (!GetSystemVolume(&current_volume)) {
+            // If we can't get current system volume, use stored value or default
+            current_volume = ::s_system_volume_percent.load();
+        }
+
+        float percent_change = 0.0f;
+        if (current_volume <= 0.0f) {
+            // Special case: if at 0%, jump to 1%
+            percent_change = 1.0f;
+        } else {
+            // Calculate relative 20% increase (multiply by 1.2) for stability
+            float new_volume = current_volume * 1.2f;
+            // Ensure minimum 1% absolute change
+            float min_new_volume = current_volume + 1.0f;
+            if (new_volume < min_new_volume) {
+                new_volume = min_new_volume;
+            }
+            percent_change = new_volume - current_volume;
+        }
+
+        if (AdjustSystemVolume(percent_change)) {
+            float new_volume = 0.0f;
+            GetSystemVolume(&new_volume);
+            LogInfo("InputRemapper::execute_action() - System volume increased from %.1f%% to %.1f%% (change: +%.1f%%)",
+                   current_volume, new_volume, percent_change);
+        } else {
+            LogError("InputRemapper::execute_action() - Failed to increase system volume");
+        }
+    } else if (action_name == "decrease system volume") {
+        // Decrease system volume by relative 20% (divide by 1.2), minimum 1% change
+        float current_volume = 0.0f;
+        if (!GetSystemVolume(&current_volume)) {
+            // If we can't get current system volume, use stored value or default
+            current_volume = ::s_system_volume_percent.load();
+        }
+
+        if (current_volume <= 0.0f) {
+            // Already at 0%, can't go lower
+            return;
+        }
+
+        // Calculate relative 20% decrease (divide by 1.2) for stability
+        float new_volume = current_volume / 1.2f;
+        // Ensure minimum 1% absolute change
+        float max_new_volume = current_volume - 1.0f;
+        if (new_volume > max_new_volume) {
+            new_volume = max_new_volume;
+        }
+        float percent_change = new_volume - current_volume;
+
+        if (AdjustSystemVolume(percent_change)) {
+            float final_volume = 0.0f;
+            GetSystemVolume(&final_volume);
+            LogInfo("InputRemapper::execute_action() - System volume decreased from %.1f%% to %.1f%% (change: %.1f%%)",
+                   current_volume, final_volume, percent_change);
+        } else {
+            LogError("InputRemapper::execute_action() - Failed to decrease system volume");
+        }
     } else {
         LogError("InputRemapper::execute_action() - Unknown action: %s", action_name.c_str());
     }
@@ -1204,6 +1285,6 @@ std::string get_remap_type_name(RemapType type) {
 }
 
 std::vector<std::string> get_available_actions() {
-    return {"screenshot", "time slowdown toggle", "performance overlay toggle", "mute/unmute audio", "increase volume", "decrease volume", "increase game speed", "decrease game speed", "display commander ui toggle"};
+    return {"screenshot", "time slowdown toggle", "performance overlay toggle", "mute/unmute audio", "increase volume", "decrease volume", "increase system volume", "decrease system volume", "increase game speed", "decrease game speed", "display commander ui toggle"};
 }
 } // namespace display_commander::input_remapping

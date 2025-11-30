@@ -169,7 +169,7 @@ void InitializeHotkeyDefinitions() {
         {
             "display_commander_ui",
             "Display Commander UI Toggle",
-            "ctrl+shift+backspace",
+            "end",
             "Toggle the Display Commander UI overlay",
             []() {
                 bool current_state = settings::g_mainTabSettings.show_display_commander_ui.GetValue();

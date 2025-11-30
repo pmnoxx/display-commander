@@ -10,6 +10,7 @@ namespace settings {
 using ui::new_ui::BoolSetting;
 using ui::new_ui::BoolSettingRef;
 using ui::new_ui::FloatSettingRef;
+using ui::new_ui::IntSetting;
 using ui::new_ui::IntSettingRef;
 using ui::new_ui::SettingBase;
 
@@ -65,6 +66,9 @@ class DeveloperTabSettings {
 
     // Safemode setting
     BoolSetting safemode;
+
+    // DLL loading delay setting (milliseconds)
+    IntSetting dll_loading_delay_ms;
 
     // ReShade LoadFromDllMain setting
     BoolSetting load_from_dll_main;

@@ -187,6 +187,20 @@ void DrawDeveloperSettings() {
             "This setting requires a game restart to take effect.");
     }
 
+    // DLL loading delay setting
+    int delay_ms = settings::g_developerTabSettings.dll_loading_delay_ms.GetValue();
+    if (ImGui::SliderInt("DLL Loading Delay (ms)", &delay_ms, 0, 10000, delay_ms == 0 ? "No delay" : "%d ms")) {
+        settings::g_developerTabSettings.dll_loading_delay_ms.SetValue(delay_ms);
+        LogInfo("DLL loading delay set to %d ms", delay_ms);
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip(
+            "Delay before installing LoadLibrary hooks (in milliseconds).\n"
+            "This can help with compatibility issues by allowing other DLLs to load first.\n"
+            "Set to 0 to disable delay.\n\n"
+            "This setting requires a game restart to take effect.");
+    }
+
     // Suppress MinHook setting
     if (CheckboxSetting(settings::g_developerTabSettings.suppress_minhook, "Suppress MinHook Initialization")) {
         LogInfo("Suppress MinHook setting changed to: %s",

@@ -16,7 +16,9 @@ HotkeysTabSettings::HotkeysTabSettings()
       hotkey_performance_overlay("HotkeyPerformanceOverlay", "ctrl+shift+o", "DisplayCommander"),
       hotkey_stopwatch("HotkeyStopwatch", "ctrl+shift+s", "DisplayCommander"),
       hotkey_volume_up("HotkeyVolumeUp", "ctrl+shift+up", "DisplayCommander"),
-      hotkey_volume_down("HotkeyVolumeDown", "ctrl+shift+down", "DisplayCommander") {}
+      hotkey_volume_down("HotkeyVolumeDown", "ctrl+shift+down", "DisplayCommander"),
+      hotkey_system_volume_up("HotkeySystemVolumeUp", "ctrl+alt+up", "DisplayCommander"),
+      hotkey_system_volume_down("HotkeySystemVolumeDown", "ctrl+alt+down", "DisplayCommander") {}
 
 void HotkeysTabSettings::LoadAll() {
     // Get all settings for smart logging
@@ -43,12 +45,15 @@ void HotkeysTabSettings::SaveAll() {
     hotkey_stopwatch.Save();
     hotkey_volume_up.Save();
     hotkey_volume_down.Save();
+    hotkey_system_volume_up.Save();
+    hotkey_system_volume_down.Save();
 }
 
 std::vector<ui::new_ui::SettingBase*> HotkeysTabSettings::GetAllSettings() {
     return {&enable_hotkeys, &hotkey_mute_unmute, &hotkey_background_toggle, &hotkey_timeslowdown,
             &hotkey_adhd_toggle, &hotkey_autoclick, &hotkey_input_blocking, &hotkey_display_commander_ui,
-            &hotkey_performance_overlay, &hotkey_stopwatch, &hotkey_volume_up, &hotkey_volume_down};
+            &hotkey_performance_overlay, &hotkey_stopwatch, &hotkey_volume_up, &hotkey_volume_down,
+            &hotkey_system_volume_up, &hotkey_system_volume_down};
 }
 
 }  // namespace settings

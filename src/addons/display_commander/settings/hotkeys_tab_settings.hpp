@@ -38,6 +38,8 @@ class HotkeysTabSettings {
     StringSetting hotkey_stopwatch;
     StringSetting hotkey_volume_up;
     StringSetting hotkey_volume_down;
+    StringSetting hotkey_system_volume_up;
+    StringSetting hotkey_system_volume_down;
 
     // Get all settings for bulk operations
     std::vector<SettingBase*> GetAllSettings();

@@ -86,5 +86,3 @@
 - Custom FPS limiter integration and background limit
 - Basic window mode/resolution controls and monitor targeting
 - NVIDIA Reflex toggle and status display
-
-

@@ -12,7 +12,7 @@ HotkeysTabSettings::HotkeysTabSettings()
       hotkey_adhd_toggle("HotkeyAdhdToggle", "ctrl+shift+d", "DisplayCommander"),
       hotkey_autoclick("HotkeyAutoclick", "", "DisplayCommander"),
       hotkey_input_blocking("HotkeyInputBlocking", "", "DisplayCommander"),
-      hotkey_display_commander_ui("HotkeyDisplayCommanderUi", "ctrl+shift+backspace", "DisplayCommander"),
+      hotkey_display_commander_ui("HotkeyDisplayCommanderUi", "end", "DisplayCommander"),
       hotkey_performance_overlay("HotkeyPerformanceOverlay", "ctrl+shift+o", "DisplayCommander"),
       hotkey_stopwatch("HotkeyStopwatch", "ctrl+shift+s", "DisplayCommander"),
       hotkey_volume_up("HotkeyVolumeUp", "ctrl+shift+up", "DisplayCommander"),

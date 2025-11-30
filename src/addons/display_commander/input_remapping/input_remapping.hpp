@@ -30,6 +30,8 @@ enum class DefaultChordType : int {
     IncreaseGameSpeed = 5,
     DecreaseGameSpeed = 6,
     DisplayCommanderUI = 7,
+    SystemVolumeUp = 8,
+    SystemVolumeDown = 9,
     Count
 };
 

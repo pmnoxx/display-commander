@@ -754,13 +754,23 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
         // Max Anisotropy Override
         // Only affects existing anisotropic filters
         int max_aniso = settings::g_mainTabSettings.max_anisotropy.GetValue();
-        if (ImGui::SliderInt("Anisotropic Level", &max_aniso, 0, 16, max_aniso == 0 ? "Disabled" : "%dx")) {
+        if (ImGui::SliderInt("Anisotropic Level", &max_aniso, 0, 16, max_aniso == 0 ? "Game default" : "%dx")) {
             settings::g_mainTabSettings.max_anisotropy.SetValue(max_aniso);
             LogInfo("Max anisotropy set to %d", max_aniso);
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Override maximum anisotropic filtering level (1-16) for existing anisotropic filters.\n"
-                              "Set to 0 to disable override. Only affects samplers that already use anisotropic filtering.");
+                              "Set to 0 (Game default) to preserve the game's original AF settings.\n"
+                              "Only affects samplers that already use anisotropic filtering.");
+        }
+
+        // Reset button for Anisotropic Level
+        if (max_aniso != 0) {
+            ImGui::SameLine();
+            if (ImGui::Button("Game Default")) {
+                settings::g_mainTabSettings.max_anisotropy.SetValue(0);
+                LogInfo("Max anisotropy reset to game default");
+            }
         }
 
         ImGui::Spacing();

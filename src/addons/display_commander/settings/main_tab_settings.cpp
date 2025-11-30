@@ -106,7 +106,7 @@ MainTabSettings::MainTabSettings()
       upgrade_compare_min_mag_mip_linear("upgrade_compare_min_mag_mip_linear", false, "DisplayCommander"),
       upgrade_min_mag_linear_mip_point("upgrade_min_mag_linear_mip_point", true, "DisplayCommander"),
       upgrade_compare_min_mag_linear_mip_point("upgrade_compare_min_mag_linear_mip_point", false, "DisplayCommander"),
-      max_anisotropy("max_anisotropy", 16, 1, 16, "DisplayCommander"),
+      max_anisotropy("max_anisotropy", 0, 0, 16, "DisplayCommander"),
       force_mipmap_lod_bias("force_mipmap_lod_bias", 0.0f, -5.0f, 5.0f, "DisplayCommander") {
 
     // Initialize the all_settings_ vector

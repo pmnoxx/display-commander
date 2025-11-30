@@ -1062,6 +1062,16 @@ void HandleSafemode() {
     // Developer settings already loaded at startup
     bool safemode_enabled = settings::g_developerTabSettings.safemode.GetValue();
 
+    // Apply DLL loading delay if configured
+    int delay_ms = settings::g_developerTabSettings.dll_loading_delay_ms.GetValue();
+    if (delay_ms > 0) {
+        LogInfo("DLL loading delay: waiting %d ms before installing LoadLibrary hooks", delay_ms);
+        Sleep(delay_ms);
+        LogInfo("DLL loading delay complete, proceeding with initialization");
+    }
+    // rewrite settings::g_developerTabSettings.dll_loading_delay_ms
+    settings::g_developerTabSettings.dll_loading_delay_ms.SetValue(settings::g_developerTabSettings.dll_loading_delay_ms.GetValue());
+
     if (safemode_enabled) {
         LogInfo(
             "Safemode enabled - disabling auto-apply settings, continue rendering, FPS limiter, XInput hooks, MinHook "

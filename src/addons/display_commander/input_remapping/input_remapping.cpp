@@ -13,6 +13,7 @@
 #include "../settings/main_tab_settings.hpp"
 #include "../settings/experimental_tab_settings.hpp"
 #include "../audio/audio_management.hpp"
+#include "../adhd_multi_monitor/adhd_simple_api.hpp"
 #include <reshade.hpp>
 
 namespace display_commander::input_remapping {
@@ -497,13 +498,6 @@ void InputRemapper::load_settings() {
                 }
             }
         }
-    } else {
-        // Load default remappings if no saved settings
-        add_button_remap(ButtonRemap(XINPUT_GAMEPAD_A, VK_SPACE, "Space", true, KeyboardInputMethod::SendInput, true));
-        add_button_remap(
-            ButtonRemap(XINPUT_GAMEPAD_B, VK_ESCAPE, "Escape", true, KeyboardInputMethod::SendInput, false));
-        add_button_remap(ButtonRemap(XINPUT_GAMEPAD_X, VK_F1, "F1", true, KeyboardInputMethod::SendInput, false));
-        add_button_remap(ButtonRemap(XINPUT_GAMEPAD_Y, VK_F2, "F2", true, KeyboardInputMethod::SendInput, false));
     }
 
     LogInfo("InputRemapper::load_settings() - Loaded %zu remappings", _remappings.size());
@@ -1282,7 +1276,6 @@ void InputRemapper::execute_action(const std::string &action_name) {
             new_volume = max_new_volume;
         }
         float percent_change = new_volume - current_volume;
-
         if (AdjustSystemVolume(percent_change)) {
             float final_volume = 0.0f;
             GetSystemVolume(&final_volume);
@@ -1291,6 +1284,14 @@ void InputRemapper::execute_action(const std::string &action_name) {
         } else {
             LogError("InputRemapper::execute_action() - Failed to decrease system volume");
         }
+    } else if (action_name == "adhd toggle" || action_name == "adhd multi-monitor toggle") {
+        // Toggle ADHD Multi-Monitor Mode
+        bool current_state = settings::g_mainTabSettings.adhd_multi_monitor_enabled.GetValue();
+        bool new_state = !current_state;
+        settings::g_mainTabSettings.adhd_multi_monitor_enabled.SetValue(new_state);
+        adhd_multi_monitor::api::SetEnabled(new_state);
+        trigger_action_notification("ADHD Multi-Monitor Mode " + std::string(new_state ? "On" : "Off"));
+        LogInfo("InputRemapper::execute_action() - ADHD Multi-Monitor Mode %s via action", new_state ? "enabled" : "disabled");
     } else {
         LogError("InputRemapper::execute_action() - Unknown action: %s", action_name.c_str());
     }
@@ -1311,6 +1312,6 @@ std::string get_remap_type_name(RemapType type) {
 }
 
 std::vector<std::string> get_available_actions() {
-    return {"screenshot", "time slowdown toggle", "performance overlay toggle", "mute/unmute audio", "increase volume", "decrease volume", "increase system volume", "decrease system volume", "increase game speed", "decrease game speed", "display commander ui toggle"};
+    return {"screenshot", "time slowdown toggle", "performance overlay toggle", "mute/unmute audio", "increase volume", "decrease volume", "increase system volume", "decrease system volume", "increase game speed", "decrease game speed", "display commander ui toggle", "adhd toggle"};
 }
 } // namespace display_commander::input_remapping

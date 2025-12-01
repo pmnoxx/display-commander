@@ -695,6 +695,30 @@ int InputRemapper::get_vk_code_from_name(const std::string &name) const {
         return VK_F11;
     if (name == "F12")
         return VK_F12;
+    if (name == "F13")
+        return VK_F13;
+    if (name == "F14")
+        return VK_F14;
+    if (name == "F15")
+        return VK_F15;
+    if (name == "F16")
+        return VK_F16;
+    if (name == "F17")
+        return VK_F17;
+    if (name == "F18")
+        return VK_F18;
+    if (name == "F19")
+        return VK_F19;
+    if (name == "F20")
+        return VK_F20;
+    if (name == "F21")
+        return VK_F21;
+    if (name == "F22")
+        return VK_F22;
+    if (name == "F23")
+        return VK_F23;
+    if (name == "F24")
+        return VK_F24;
     if (name == "~")
         return VK_OEM_3; // Tilde key
     if (name == "A")
@@ -985,9 +1009,11 @@ std::vector<std::string> get_available_gamepad_buttons() {
 std::vector<std::string> get_available_keyboard_keys() {
     return {"Space", "Enter", "Escape", "Tab", "Shift", "Ctrl", "Alt", "F1",  "F2", "F3",
             "F4",    "F5",    "F6",     "F7",  "F8",    "F9",   "F10", "F11", "F12",
-            "~",     "A",     "B",      "C",   "D",     "E",    "F",   "G",   "H",
-            "I",     "J",     "K",      "L",   "M",     "N",    "O",   "P",   "Q",
-            "R",     "S",     "T",      "U",   "V",     "W",    "X",   "Y",   "Z"};
+            "F13",   "F14",   "F15",    "F16", "F17",   "F18",  "F19", "F20", "F21",
+            "F22",   "F23",   "F24",    "~",   "A",     "B",    "C",   "D",   "E",
+            "F",     "G",     "H",      "I",   "J",     "K",    "L",   "M",   "N",
+            "O",     "P",     "Q",      "R",   "S",     "T",    "U",   "V",   "W",
+            "X",     "Y",     "Z"};
 }
 
 void InputRemapper::increment_trigger_count(WORD gamepad_button) {

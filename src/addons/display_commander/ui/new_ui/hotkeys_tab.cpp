@@ -441,10 +441,10 @@ ParsedHotkey ParseHotkeyString(const std::string& shortcut) {
     } else if (key_str == "right") {
         result.key_code = VK_RIGHT;
     } else if (key_str.length() >= 2 && (key_str[0] == 'f' || key_str[0] == 'F')) {
-        // Handle F followed by numbers (e.g., "f1", "f12")
+        // Handle F followed by numbers (e.g., "f1", "f24")
         try {
             int fn_num = std::stoi(key_str.substr(1));
-            if (fn_num >= 1 && fn_num <= 12) {
+            if (fn_num >= 1 && fn_num <= 24) {
                 result.key_code = VK_F1 + (fn_num - 1);
             }
         } catch (...) {
@@ -487,7 +487,7 @@ std::string FormatHotkeyString(const ParsedHotkey& hotkey) {
         oss << static_cast<char>(std::tolower(hotkey.key_code));
     } else if (hotkey.key_code == VK_BACK) {
         oss << "backspace";
-    } else if (hotkey.key_code >= VK_F1 && hotkey.key_code <= VK_F12) {
+    } else if (hotkey.key_code >= VK_F1 && hotkey.key_code <= VK_F24) {
         oss << "f" << (hotkey.key_code - VK_F1 + 1);
     } else {
         oss << "key" << hotkey.key_code;

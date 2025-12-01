@@ -80,7 +80,7 @@ void InitializeHotkeyDefinitions() {
         {
             "mute_unmute",
             "Mute/Unmute Audio",
-            "ctrl+m",
+            "ctrl+shift+m",
             "Toggle audio mute state",
             []() {
                 bool new_mute_state = !settings::g_mainTabSettings.audio_mute.GetValue();
@@ -129,7 +129,7 @@ void InitializeHotkeyDefinitions() {
         {
             "adhd_toggle",
             "ADHD Multi-Monitor Mode",
-            "ctrl+d",
+            "ctrl+shift+d",
             "Toggle ADHD Multi-Monitor Mode",
             []() {
                 bool current_state = settings::g_mainTabSettings.adhd_multi_monitor_enabled.GetValue();
@@ -183,7 +183,7 @@ void InitializeHotkeyDefinitions() {
         {
             "performance_overlay",
             "Performance Overlay Toggle",
-            "ctrl+o",
+            "ctrl+shift+o",
             "Toggle the performance overlay",
             []() {
                 bool current_state = settings::g_mainTabSettings.show_test_overlay.GetValue();
@@ -197,7 +197,7 @@ void InitializeHotkeyDefinitions() {
         {
             "stopwatch",
             "Stopwatch Start/Pause",
-            "ctrl+s",
+            "ctrl+shift+s",
             "Start or pause the stopwatch (2-state toggle)",
             []() {
                 bool is_running = g_stopwatch_running.load();

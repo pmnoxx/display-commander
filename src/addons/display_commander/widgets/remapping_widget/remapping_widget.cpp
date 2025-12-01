@@ -650,58 +650,82 @@ int RemappingWidget::GetKeyboardVkFromIndex(int index) const {
     case 18:
         return VK_F12;
     case 19:
-        return VK_OEM_3; // Tilde key
+        return VK_F13;
     case 20:
-        return 'A';
+        return VK_F14;
     case 21:
-        return 'B';
+        return VK_F15;
     case 22:
-        return 'C';
+        return VK_F16;
     case 23:
-        return 'D';
+        return VK_F17;
     case 24:
-        return 'E';
+        return VK_F18;
     case 25:
-        return 'F';
+        return VK_F19;
     case 26:
-        return 'G';
+        return VK_F20;
     case 27:
-        return 'H';
+        return VK_F21;
     case 28:
-        return 'I';
+        return VK_F22;
     case 29:
-        return 'J';
+        return VK_F23;
     case 30:
-        return 'K';
+        return VK_F24;
     case 31:
-        return 'L';
+        return VK_OEM_3; // Tilde key
     case 32:
-        return 'M';
+        return 'A';
     case 33:
-        return 'N';
+        return 'B';
     case 34:
-        return 'O';
+        return 'C';
     case 35:
-        return 'P';
+        return 'D';
     case 36:
-        return 'Q';
+        return 'E';
     case 37:
-        return 'R';
+        return 'F';
     case 38:
-        return 'S';
+        return 'G';
     case 39:
-        return 'T';
+        return 'H';
     case 40:
-        return 'U';
+        return 'I';
     case 41:
-        return 'V';
+        return 'J';
     case 42:
-        return 'W';
+        return 'K';
     case 43:
-        return 'X';
+        return 'L';
     case 44:
-        return 'Y';
+        return 'M';
     case 45:
+        return 'N';
+    case 46:
+        return 'O';
+    case 47:
+        return 'P';
+    case 48:
+        return 'Q';
+    case 49:
+        return 'R';
+    case 50:
+        return 'S';
+    case 51:
+        return 'T';
+    case 52:
+        return 'U';
+    case 53:
+        return 'V';
+    case 54:
+        return 'W';
+    case 55:
+        return 'X';
+    case 56:
+        return 'Y';
+    case 57:
         return 'Z';
     default:
         return 0;

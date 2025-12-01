@@ -12,6 +12,7 @@ using ui::new_ui::BoolSettingRef;
 using ui::new_ui::FloatSettingRef;
 using ui::new_ui::IntSetting;
 using ui::new_ui::IntSettingRef;
+using ui::new_ui::StringSetting;
 using ui::new_ui::SettingBase;
 
 // Developer tab settings manager
@@ -69,6 +70,9 @@ class DeveloperTabSettings {
 
     // DLL loading delay setting (milliseconds)
     IntSetting dll_loading_delay_ms;
+
+    // DLLs to load before Display Commander (comma-separated list)
+    StringSetting dlls_to_load_before;
 
     // ReShade LoadFromDllMain setting
     BoolSetting load_from_dll_main;

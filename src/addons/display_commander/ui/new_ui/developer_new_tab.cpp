@@ -17,6 +17,8 @@
 #include <atomic>
 #include <set>
 #include <algorithm>
+#include <string>
+#include <cstring>
 
 #include <dxgi1_6.h>
 #include <wrl/client.h>
@@ -184,6 +186,23 @@ void DrawDeveloperSettings() {
             "- Auto-apply refresh rate changes\n"
             "- Apply display settings at start\n"
             "- FPS limiter mode (set to disabled)\n\n"
+            "This setting requires a game restart to take effect.");
+    }
+
+    // DLLs to load before Display Commander
+    std::string dlls_to_load = settings::g_developerTabSettings.dlls_to_load_before.GetValue();
+    char dlls_buffer[512] = {0};
+    strncpy_s(dlls_buffer, sizeof(dlls_buffer), dlls_to_load.c_str(), _TRUNCATE);
+    if (ImGui::InputText("DLLs to Load Before Display Commander", dlls_buffer, sizeof(dlls_buffer))) {
+        settings::g_developerTabSettings.dlls_to_load_before.SetValue(std::string(dlls_buffer));
+        LogInfo("DLLs to load before set to: %s", dlls_buffer);
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip(
+            "Comma or semicolon-separated list of DLL names to wait for before Display Commander continues initialization.\n"
+            "Example: dll1.dll, dll2.dll, dll3.dll or dll1.dll; dll2.dll; dll3.dll\n"
+            "Display Commander will wait for each DLL to be loaded (up to 30 seconds per DLL) before proceeding.\n"
+            "This happens before the DLL loading delay.\n\n"
             "This setting requires a game restart to take effect.");
     }
 

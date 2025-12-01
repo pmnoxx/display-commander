@@ -34,7 +34,10 @@
 #include <psapi.h>
 #include <shlobj.h>
 #include <wrl/client.h>
+#include <algorithm>
 #include <cstring>
+#include <sstream>
+#include <string>
 #include <reshade.hpp>
 
 // Forward declarations for ReShade event handlers
@@ -1061,6 +1064,57 @@ bool CheckReShadeVersionCompatibility() {
 void HandleSafemode() {
     // Developer settings already loaded at startup
     bool safemode_enabled = settings::g_developerTabSettings.safemode.GetValue();
+
+    // Wait for DLLs to load before Display Commander
+    std::string dlls_to_load = settings::g_developerTabSettings.dlls_to_load_before.GetValue();
+    if (!dlls_to_load.empty()) {
+        LogInfo("Waiting for DLLs to load before Display Commander: %s", dlls_to_load.c_str());
+
+        // Replace semicolons with commas to support both separators
+        std::replace(dlls_to_load.begin(), dlls_to_load.end(), ';', ',');
+
+        // Parse comma-separated DLL list
+        std::istringstream iss(dlls_to_load);
+        std::string dll_name;
+        const int max_wait_time_ms = 30000; // Maximum 30 seconds per DLL
+        const int check_interval_ms = 100;   // Check every 100ms
+
+        while (std::getline(iss, dll_name, ',')) {
+            // Trim whitespace
+            dll_name.erase(0, dll_name.find_first_not_of(" \t\n\r"));
+            dll_name.erase(dll_name.find_last_not_of(" \t\n\r") + 1);
+
+            if (dll_name.empty()) {
+                continue;
+            }
+
+            // Convert to wide string for GetModuleHandleW
+            std::wstring w_dll_name(dll_name.begin(), dll_name.end());
+
+            LogInfo("Waiting for DLL to load: %s", dll_name.c_str());
+
+            // Wait for DLL to be loaded (with timeout per DLL)
+            int waited_ms = 0;
+            bool dll_loaded = false;
+            while (waited_ms < max_wait_time_ms) {
+                HMODULE hMod = GetModuleHandleW(w_dll_name.c_str());
+                if (hMod != nullptr) {
+                    LogInfo("DLL loaded successfully: %s (0x%p)", dll_name.c_str(), hMod);
+                    dll_loaded = true;
+                    break;
+                }
+
+                Sleep(check_interval_ms);
+                waited_ms += check_interval_ms;
+            }
+
+            if (!dll_loaded) {
+                LogWarn("Timeout waiting for DLL to load: %s (waited %d ms)", dll_name.c_str(), waited_ms);
+            }
+        }
+
+        LogInfo("Finished waiting for DLLs to load");
+    }
 
     // Apply DLL loading delay if configured
     int delay_ms = settings::g_developerTabSettings.dll_loading_delay_ms.GetValue();

@@ -25,6 +25,7 @@
 #include "ui/new_ui/main_new_tab.hpp"
 #include "ui/new_ui/new_ui_main.hpp"
 #include "res/forkawesome.h"
+#include "res/ui_colors.hpp"
 #include "utils/logging.hpp"
 #include "utils/timing.hpp"
 #include "version.hpp"
@@ -303,6 +304,7 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
     // Check which overlay components are enabled
     bool show_fps_counter = settings::g_mainTabSettings.show_fps_counter.GetValue();
     bool show_refresh_rate = settings::g_mainTabSettings.show_refresh_rate.GetValue();
+    bool show_vrr_status = settings::g_mainTabSettings.show_vrr_status.GetValue();
     bool show_volume = settings::g_mainTabSettings.show_volume.GetValue();
     bool show_gpu_measurement = (settings::g_mainTabSettings.gpu_measurement_enabled.GetValue() != 0);
     bool show_frame_time_graph = settings::g_mainTabSettings.show_frame_time_graph.GetValue();
@@ -444,6 +446,48 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
             } else {
                 ImGui::Text("%.1f", cached_refresh_rate);
             }
+        }
+    }
+
+    if (show_vrr_status) {
+        static bool cached_vrr_active = false;
+        static LONGLONG last_update_ns = 0;
+        static LONGLONG last_valid_sample_ns = 0;
+        static dxgi::fps_limiter::RefreshRateStats cached_stats{};
+        const LONGLONG update_interval_ns = 100 * utils::NS_TO_MS;  // 100ms in nanoseconds
+        const LONGLONG sample_timeout_ns = 1000 * utils::NS_TO_MS;  // 1 second in nanoseconds
+
+        LONGLONG now_ns = utils::get_now_ns();
+
+        // Update cached value every 100ms
+        if (now_ns - last_update_ns >= update_interval_ns) {
+            auto stats = dxgi::fps_limiter::GetRefreshRateStats();
+            if (stats.is_valid && stats.sample_count > 0) {
+                // VRR is active if refresh rate varies (max > min + 1.0 Hz threshold)
+                cached_vrr_active = (stats.max_rate > stats.min_rate + 2.0);
+                cached_stats = stats;
+                last_update_ns = now_ns;
+                last_valid_sample_ns = now_ns;
+            }
+        }
+
+        // Check if we got a sample within the last 1 second
+        bool has_recent_sample = (now_ns - last_valid_sample_ns) < sample_timeout_ns;
+
+        // Display VRR status
+        if (cached_stats.all_last_20_within_1s && cached_stats.samples_below_threshold_last_10s >= 2) {
+            ImGui::TextColored(ui::colors::TEXT_SUCCESS, "VRR: On");
+        } else {
+            ImGui::TextColored(ui::colors::TEXT_DIMMED, "VRR: Off");
+        }
+
+        // Display debugging parameters below VRR status
+        if (has_recent_sample && cached_stats.is_valid) {
+            ImGui::TextColored(ui::colors::TEXT_DIMMED, "  Fixed: %.2f Hz", cached_stats.fixed_refresh_hz);
+            ImGui::TextColored(ui::colors::TEXT_DIMMED, "  Threshold: %.2f Hz", cached_stats.threshold_hz);
+            ImGui::TextColored(ui::colors::TEXT_DIMMED, "  Total samples (10s): %u", cached_stats.total_samples_last_10s);
+            ImGui::TextColored(ui::colors::TEXT_DIMMED, "  Below threshold: %u", cached_stats.samples_below_threshold_last_10s);
+            ImGui::TextColored(ui::colors::TEXT_DIMMED, "  Last 20 within 1s: %s", cached_stats.all_last_20_within_1s ? "Yes" : "No");
         }
     }
 

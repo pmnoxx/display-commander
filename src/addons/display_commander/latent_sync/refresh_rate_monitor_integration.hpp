@@ -30,6 +30,11 @@ struct RefreshRateStats {
     double max_rate;
     uint32_t sample_count;
     bool is_valid;
+    bool all_last_20_within_1s;
+    double fixed_refresh_hz;
+    double threshold_hz;
+    uint32_t total_samples_last_10s;
+    uint32_t samples_below_threshold_last_10s;
     std::string status;
 };
 

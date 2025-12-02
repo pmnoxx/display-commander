@@ -41,6 +41,17 @@ public:
     std::string GetStatusString() const;
     bool IsDataValid() const { return m_sample_count.load() > 0; }
 
+    // Check if all last 20 samples were within 1 second
+    bool AreLast20SamplesWithin1Second() const;
+
+    // Count total samples within last 10 seconds
+    uint32_t CountTotalSamplesLast10Seconds() const;
+
+    // Count samples within last 10 seconds that are > 0 and X below fixed refresh rate
+    // where X = fFixedRefreshHz - (fFixedRefreshHz * fFixedRefreshHz) / 3600.0f
+    // This simplifies to: count samples where sample > 0 && sample < (fFixedRefreshHz^2) / 3600.0
+    uint32_t CountSamplesBelowThreshold(double fixed_refresh_hz) const;
+
     // Iterate through recent samples (lock-free, thread-safe)
     // The callback is called for each sample. Data may be slightly stale during iteration.
     template<typename Callback>
@@ -57,13 +68,13 @@ public:
         if (count < RECENT_SAMPLES_SIZE) {
             // Buffer not full yet, iterate from start
             for (size_t i = 0; i < count; ++i) {
-                callback(m_recent_samples[i]);
+                callback(m_recent_samples[i].refresh_rate);
             }
         } else {
             // Buffer is full, iterate starting from write_index (oldest)
             for (size_t i = 0; i < RECENT_SAMPLES_SIZE; ++i) {
                 size_t idx = (write_index + i) % RECENT_SAMPLES_SIZE;
-                callback(m_recent_samples[idx]);
+                callback(m_recent_samples[idx].refresh_rate);
             }
         }
     }
@@ -91,9 +102,15 @@ private:
     std::atomic<double> m_max_refresh_rate{0.0};
     std::atomic<uint32_t> m_sample_count{0};
 
-    // Rolling window of last 256 samples for min/max calculation (fixed-size circular buffer)
-    static constexpr size_t RECENT_SAMPLES_SIZE = 256;
-    std::array<double, RECENT_SAMPLES_SIZE> m_recent_samples{};
+    // Sample structure to store both refresh rate and timestamp
+    struct Sample {
+        double refresh_rate;
+        LONGLONG timestamp_ns;
+    };
+
+    // Rolling window of last 1024 samples for min/max calculation (fixed-size circular buffer)
+    static constexpr size_t RECENT_SAMPLES_SIZE = 1024;
+    std::array<Sample, RECENT_SAMPLES_SIZE> m_recent_samples{};
     std::atomic<size_t> m_recent_samples_write_index{0}; // Current write position in circular buffer
     std::atomic<size_t> m_recent_samples_count{0}; // Number of valid samples (0-256)
 

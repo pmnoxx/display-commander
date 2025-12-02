@@ -44,10 +44,10 @@ std::atomic<bool> g_wgi_hooks_installed{false};
 
 HRESULT WINAPI RoGetActivationFactory_Detour(HSTRING activatableClassId, REFIID iid, void **factory) {
     std::string guid_str = IIDToGUIDString(iid);
-    LogInfo("RoGetActivationFactory called with IID: (%lu, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u)", iid.Data1,
-            iid.Data2, iid.Data3, iid.Data4[0], iid.Data4[1], iid.Data4[2], iid.Data4[3], iid.Data4[4], iid.Data4[5],
-            iid.Data4[6], iid.Data4[7]);
-    LogInfo(" => GUID: %s", guid_str.c_str());
+  //  LogInfo("RoGetActivationFactory called with IID: (%lu, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u)", iid.Data1,
+   //         iid.Data2, iid.Data3, iid.Data4[0], iid.Data4[1], iid.Data4[2], iid.Data4[3], iid.Data4[4], iid.Data4[5],
+    //        iid.Data4[6], iid.Data4[7]);
+    //LogInfo(" => GUID: %s", guid_str.c_str());
 
     // Switch statement to handle all Windows.Gaming.Input ABI interfaces
     if (iid == ABI::Windows::Gaming::Input::IID_IArcadeStick) {
@@ -138,12 +138,12 @@ HRESULT WINAPI RoGetActivationFactory_Detour(HSTRING activatableClassId, REFIID 
         return RoGetActivationFactory_Original(activatableClassId, iid, factory);
     } else {
         // Log all unhandled IID calls for debugging
-        std::string guid_str = IIDToGUIDString(iid);
-        LogInfo("RoGetActivationFactory - UNHANDLED IID: (%lu, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u)", iid.Data1,
-                iid.Data2, iid.Data3, iid.Data4[0], iid.Data4[1], iid.Data4[2], iid.Data4[3], iid.Data4[4],
-                iid.Data4[5], iid.Data4[6], iid.Data4[7]);
-        LogInfo(" => GUID: %s", guid_str.c_str());
-        LogInfo(" => Calling original function for non-Windows.Gaming.Input interface");
+       std::string guid_str = IIDToGUIDString(iid);
+      //  LogInfo("RoGetActivationFactory - UNHANDLED IID: (%lu, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u)", iid.Data1,
+       //         iid.Data2, iid.Data3, iid.Data4[0], iid.Data4[1], iid.Data4[2], iid.Data4[3], iid.Data4[4],
+       //         iid.Data4[5], iid.Data4[6], iid.Data4[7]);
+      //  LogInfo(" => GUID: %s", guid_str.c_str());
+      //  LogInfo(" => Calling original function for non-Windows.Gaming.Input interface");
         return RoGetActivationFactory_Original(activatableClassId, iid, factory);
     }
 }

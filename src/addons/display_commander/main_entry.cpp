@@ -110,6 +110,11 @@ void OnRegisterOverlayDisplayCommander(reshade::api::effect_runtime* runtime) {
 #ifdef TRY_CATCH_BLOCKS
     __try {
 #endif
+        const bool show_display_commander_ui = settings::g_mainTabSettings.show_display_commander_ui.GetValue();
+        // Avoid displaying UI twice
+        if (show_display_commander_ui) {
+            return;
+        }
         // Update UI draw time for auto-click optimization
         if (enabled_experimental_features) {
             autoclick::UpdateLastUIDrawTime();
@@ -247,7 +252,7 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
         ImGui::SetNextWindowSize(ImVec2(fixed_width, 0.0f), ImGuiCond_Always);
         ImGui::Begin("Display Commander", nullptr,
                      ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoResize);
-
+/*
         // Custom title bar with close button
         float titlebar_height = ImGui::GetTextLineHeight() + (ImGui::GetStyle().FramePadding.y * 2.0f);
         ImGui::BeginChild("##titlebar", ImVec2(0, titlebar_height), false,
@@ -268,7 +273,7 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
         }
 
         ImGui::EndChild();
-
+*/
         // Save window position when it changes
         ImVec2 current_pos = ImGui::GetWindowPos();
         if (current_pos.x != saved_x || current_pos.y != saved_y) {

@@ -1,5 +1,7 @@
+#include "refresh_rate_monitor_integration.hpp"
 #include "refresh_rate_monitor.hpp"
 #include "../utils/logging.hpp"
+#include "../display_cache.hpp"
 #include <memory>
 #include <string>
 #include <windows.h>
@@ -51,22 +53,16 @@ double GetSmoothedRefreshRate() {
     return g_refresh_rate_monitor->GetSmoothedRefreshRate();
 }
 
-// Function to get refresh rate statistics
-struct RefreshRateStats {
-    double current_rate;
-    double smoothed_rate;
-    double min_rate;
-    double max_rate;
-    uint32_t sample_count;
-    bool is_valid;
-    std::string status;
-};
-
 RefreshRateStats GetRefreshRateStats() {
     RefreshRateStats stats{};
 
     if (!g_refresh_rate_monitor) {
         stats.status = "Not initialized";
+        stats.all_last_20_within_1s = false;
+        stats.fixed_refresh_hz = 0.0;
+        stats.threshold_hz = 0.0;
+        stats.total_samples_last_10s = 0;
+        stats.samples_below_threshold_last_10s = 0;
         return stats;
     }
 
@@ -76,6 +72,54 @@ RefreshRateStats GetRefreshRateStats() {
     stats.max_rate = g_refresh_rate_monitor->GetMaxRefreshRate();
     stats.sample_count = g_refresh_rate_monitor->GetSampleCount();
     stats.is_valid = g_refresh_rate_monitor->IsDataValid();
+    stats.all_last_20_within_1s = g_refresh_rate_monitor->AreLast20SamplesWithin1Second();
+
+    // Count total samples within last 10 seconds
+    stats.total_samples_last_10s = g_refresh_rate_monitor->CountTotalSamplesLast10Seconds();
+
+    // Get fixed refresh rate from display cache (try primary display first, then display 0)
+    double fixed_refresh_hz = 0.0;
+    if (display_cache::g_displayCache.IsInitialized()) {
+        display_cache::RationalRefreshRate refresh_rate;
+        // Try to get refresh rate from primary display or display 0
+        if (display_cache::g_displayCache.GetCurrentRefreshRate(0, refresh_rate)) {
+            fixed_refresh_hz = refresh_rate.ToHz();
+        } else {
+            // Try to find primary display
+            auto displays = display_cache::g_displayCache.GetDisplays();
+            if (displays && !displays->empty()) {
+                // Find primary display
+                for (size_t i = 0; i < displays->size(); ++i) {
+                    const auto& display = (*displays)[i];
+                    if (display && display->is_primary) {
+                        if (display_cache::g_displayCache.GetCurrentRefreshRate(i, refresh_rate)) {
+                            fixed_refresh_hz = refresh_rate.ToHz();
+                            break;
+                        }
+                    }
+                }
+                // If no primary found, use first display
+                if (fixed_refresh_hz == 0.0 && displays->size() > 0) {
+                    if (display_cache::g_displayCache.GetCurrentRefreshRate(0, refresh_rate)) {
+                        fixed_refresh_hz = refresh_rate.ToHz();
+                    }
+                }
+            }
+        }
+    }
+
+    stats.fixed_refresh_hz = fixed_refresh_hz;
+
+    // Calculate threshold: fixed_refresh_hz - X
+    // where X = fFixedRefreshHz - (fFixedRefreshHz * fFixedRefreshHz) / 3600.0f
+    if (fixed_refresh_hz > 0.0) {
+        stats.threshold_hz = fixed_refresh_hz - ((fixed_refresh_hz * fixed_refresh_hz) / 3600.0);
+        stats.samples_below_threshold_last_10s = g_refresh_rate_monitor->CountSamplesBelowThreshold(fixed_refresh_hz);
+    } else {
+        stats.threshold_hz = 0.0;
+        stats.samples_below_threshold_last_10s = 0;
+    }
+
     stats.status = g_refresh_rate_monitor->GetStatusString();
 
     return stats;

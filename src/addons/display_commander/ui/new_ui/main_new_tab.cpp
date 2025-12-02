@@ -2553,6 +2553,16 @@ void DrawImportantInfo() {
         }
         ImGui::NextColumn();
 
+        // Show VRR Status
+        bool show_vrr_status = settings::g_mainTabSettings.show_vrr_status.GetValue();
+        if (ImGui::Checkbox("VRR Status", &show_vrr_status)) {
+            settings::g_mainTabSettings.show_vrr_status.SetValue(show_vrr_status);
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Shows whether Variable Refresh Rate (VRR) is active in the performance overlay.");
+        }
+        ImGui::NextColumn();
+
         // Show CPU Usage
         bool show_cpu_usage = settings::g_mainTabSettings.show_cpu_usage.GetValue();
         if (ImGui::Checkbox("CPU Usage", &show_cpu_usage)) {

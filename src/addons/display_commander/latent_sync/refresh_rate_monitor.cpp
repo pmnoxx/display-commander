@@ -8,6 +8,7 @@
 #include <limits>
 #include <sstream>
 #include <iomanip>
+#include <vector>
 
 #pragma comment(lib, "dwmapi.lib")
 
@@ -171,12 +172,14 @@ void RefreshRateMonitor::ProcessFrameStatistics(DXGI_FRAME_STATISTICS& stats) {
                 m_smoothed_refresh_rate = new_smoothed;
 
                 // Update rolling window of last 256 samples (circular buffer, lock-free)
+                LONGLONG sample_timestamp_ns = current_time;
                 for (size_t i = 0; i < present_refresh_count_diff; ++i) {
                     // Get current write position
                     size_t write_idx = m_recent_samples_write_index.load(std::memory_order_relaxed);
 
-                    // Write to current position
-                    m_recent_samples[write_idx] = refresh_rate;
+                    // Write to current position (both refresh rate and timestamp)
+                    m_recent_samples[write_idx].refresh_rate = refresh_rate;
+                    m_recent_samples[write_idx].timestamp_ns = sample_timestamp_ns;
 
                     // Advance write index (circular)
                     size_t new_write_idx = (write_idx + 1) % RECENT_SAMPLES_SIZE;
@@ -199,15 +202,15 @@ void RefreshRateMonitor::ProcessFrameStatistics(DXGI_FRAME_STATISTICS& stats) {
                         if (count < RECENT_SAMPLES_SIZE) {
                             // Buffer not full yet, check samples from 0 to count
                             for (size_t i = 0; i < count; ++i) {
-                                if (m_recent_samples[i] < min_val) min_val = m_recent_samples[i];
-                                if (m_recent_samples[i] > max_val) max_val = m_recent_samples[i];
+                                if (m_recent_samples[i].refresh_rate < min_val) min_val = m_recent_samples[i].refresh_rate;
+                                if (m_recent_samples[i].refresh_rate > max_val) max_val = m_recent_samples[i].refresh_rate;
                             }
                         } else {
                             // Buffer is full, iterate starting from write_index (oldest)
                             for (size_t i = 0; i < RECENT_SAMPLES_SIZE; ++i) {
                                 size_t idx = (write_idx + i) % RECENT_SAMPLES_SIZE;
-                                if (m_recent_samples[idx] < min_val) min_val = m_recent_samples[idx];
-                                if (m_recent_samples[idx] > max_val) max_val = m_recent_samples[idx];
+                                if (m_recent_samples[idx].refresh_rate < min_val) min_val = m_recent_samples[idx].refresh_rate;
+                                if (m_recent_samples[idx].refresh_rate > max_val) max_val = m_recent_samples[idx].refresh_rate;
                             }
                         }
 
@@ -289,6 +292,155 @@ std::string RefreshRateMonitor::GetStatusString() const {
     oss << " | Samples: " << samples;
 
     return oss.str();
+}
+
+bool RefreshRateMonitor::AreLast20SamplesWithin1Second() const {
+    constexpr size_t CHECK_COUNT = 20;
+    constexpr LONGLONG ONE_SECOND_NS = 1000000000LL; // 1 second in nanoseconds
+
+    // Snapshot atomic values for lock-free iteration
+    size_t count = m_recent_samples_count.load(std::memory_order_acquire);
+    size_t write_index = m_recent_samples_write_index.load(std::memory_order_acquire);
+
+    if (count == 0) {
+        return false;
+    }
+
+    // Determine how many samples to check (up to 20, or all available if less than 20)
+    size_t samples_to_check = (count < CHECK_COUNT) ? count : CHECK_COUNT;
+
+    // Collect the last N samples (most recent)
+    std::vector<LONGLONG> timestamps;
+    timestamps.reserve(samples_to_check);
+
+    if (count < RECENT_SAMPLES_SIZE) {
+        // Buffer not full yet, get last N samples from the end
+        size_t start_idx = (count >= samples_to_check) ? (count - samples_to_check) : 0;
+        for (size_t i = start_idx; i < count; ++i) {
+            timestamps.push_back(m_recent_samples[i].timestamp_ns);
+        }
+    } else {
+        // Buffer is full, get last N samples (newest are just before write_index)
+        // write_index points to where the next write will happen, so newest is at (write_index - 1)
+        for (size_t i = 0; i < samples_to_check; ++i) {
+            // Calculate index: go backwards from write_index (newest first)
+            size_t idx = (write_index + RECENT_SAMPLES_SIZE - 1 - i) % RECENT_SAMPLES_SIZE;
+            timestamps.push_back(m_recent_samples[idx].timestamp_ns);
+        }
+    }
+
+    if (timestamps.size() < 2) {
+        return false; // Need at least 2 samples to check time difference
+    }
+
+    // Check if all timestamps are within 1 second of each other
+    // Find min and max timestamps
+    LONGLONG min_timestamp = timestamps[0];
+    LONGLONG max_timestamp = timestamps[0];
+    for (LONGLONG ts : timestamps) {
+        if (ts < min_timestamp) min_timestamp = ts;
+        if (ts > max_timestamp) max_timestamp = ts;
+    }
+
+    // Check if the time span is within 1 second
+    LONGLONG time_span_ns = max_timestamp - min_timestamp;
+    return time_span_ns <= ONE_SECOND_NS;
+}
+
+uint32_t RefreshRateMonitor::CountTotalSamplesLast10Seconds() const {
+    constexpr LONGLONG TEN_SECONDS_NS = 10000000000LL; // 10 seconds in nanoseconds
+
+    // Get current time
+    LONGLONG now_ns = utils::get_now_ns();
+    LONGLONG cutoff_time_ns = now_ns - TEN_SECONDS_NS;
+
+    // Snapshot atomic values for lock-free iteration
+    size_t count = m_recent_samples_count.load(std::memory_order_acquire);
+    size_t write_index = m_recent_samples_write_index.load(std::memory_order_acquire);
+
+    if (count == 0) {
+        return 0;
+    }
+
+    uint32_t total_samples = 0;
+
+    // Iterate through samples within the last 10 seconds
+    if (count < RECENT_SAMPLES_SIZE) {
+        // Buffer not full yet, iterate from start
+        for (size_t i = 0; i < count; ++i) {
+            const Sample& sample = m_recent_samples[i];
+            // Check if sample is within last 10 seconds
+            if (sample.timestamp_ns >= cutoff_time_ns) {
+                total_samples++;
+            }
+        }
+    } else {
+        // Buffer is full, iterate starting from write_index (oldest)
+        for (size_t i = 0; i < RECENT_SAMPLES_SIZE; ++i) {
+            size_t idx = (write_index + i) % RECENT_SAMPLES_SIZE;
+            const Sample& sample = m_recent_samples[idx];
+            // Check if sample is within last 10 seconds
+            if (sample.timestamp_ns >= cutoff_time_ns) {
+                total_samples++;
+            }
+        }
+    }
+
+    return total_samples;
+}
+
+uint32_t RefreshRateMonitor::CountSamplesBelowThreshold(double fixed_refresh_hz) const {
+    constexpr LONGLONG TEN_SECONDS_NS = 10000000000LL; // 10 seconds in nanoseconds
+
+    if (fixed_refresh_hz <= 0.0) {
+        return 0;
+    }
+
+    double threshold = fixed_refresh_hz - ((fixed_refresh_hz * fixed_refresh_hz) / 3600.0);
+
+    // Get current time
+    LONGLONG now_ns = utils::get_now_ns();
+    LONGLONG cutoff_time_ns = now_ns - TEN_SECONDS_NS;
+
+    // Snapshot atomic values for lock-free iteration
+    size_t count = m_recent_samples_count.load(std::memory_order_acquire);
+    size_t write_index = m_recent_samples_write_index.load(std::memory_order_acquire);
+
+    if (count == 0) {
+        return 0;
+    }
+
+    uint32_t matching_samples = 0;
+
+    // Iterate through samples within the last 10 seconds
+    if (count < RECENT_SAMPLES_SIZE) {
+        // Buffer not full yet, iterate from start
+        for (size_t i = 0; i < count; ++i) {
+            const Sample& sample = m_recent_samples[i];
+            // Check if sample is within last 10 seconds
+            if (sample.timestamp_ns >= cutoff_time_ns) {
+                // Check if sample is > 0 and < threshold
+                if (sample.refresh_rate > 0.0 && sample.refresh_rate < threshold) {
+                    matching_samples++;
+                }
+            }
+        }
+    } else {
+        // Buffer is full, iterate starting from write_index (oldest)
+        for (size_t i = 0; i < RECENT_SAMPLES_SIZE; ++i) {
+            size_t idx = (write_index + i) % RECENT_SAMPLES_SIZE;
+            const Sample& sample = m_recent_samples[idx];
+            // Check if sample is within last 10 seconds
+            if (sample.timestamp_ns >= cutoff_time_ns) {
+                // Check if sample is > 0 and < threshold
+                if (sample.refresh_rate > 0.0 && sample.refresh_rate < threshold) {
+                    matching_samples++;
+                }
+            }
+        }
+    }
+
+    return matching_samples;
 }
 
 void RefreshRateMonitor::MonitoringThread() {

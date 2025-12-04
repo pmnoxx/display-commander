@@ -2563,6 +2563,16 @@ void DrawImportantInfo() {
         }
         ImGui::NextColumn();
 
+        // VRR Debug Mode
+        bool vrr_debug_mode = settings::g_mainTabSettings.vrr_debug_mode.GetValue();
+        if (ImGui::Checkbox("VRR Debug Mode", &vrr_debug_mode)) {
+            settings::g_mainTabSettings.vrr_debug_mode.SetValue(vrr_debug_mode);
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Shows detailed VRR debugging parameters (Fixed Hz, Threshold, Samples, etc.) in the performance overlay.");
+        }
+        ImGui::NextColumn();
+
         // Show CPU Usage
         bool show_cpu_usage = settings::g_mainTabSettings.show_cpu_usage.GetValue();
         if (ImGui::Checkbox("CPU Usage", &show_cpu_usage)) {

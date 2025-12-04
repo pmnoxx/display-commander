@@ -167,7 +167,7 @@ void RefreshRateMonitor::ProcessFrameStatistics(DXGI_FRAME_STATISTICS& stats) {
 
                 // Update smoothed refresh rate (exponential moving average)
                 double current_smoothed = m_smoothed_refresh_rate.load();
-                double alpha = 1; // Smoothing factor
+                double alpha = 0.2; // Smoothing factor
                 double new_smoothed = (current_smoothed * (1.0 - alpha)) + (refresh_rate * alpha);
                 m_smoothed_refresh_rate = new_smoothed;
 

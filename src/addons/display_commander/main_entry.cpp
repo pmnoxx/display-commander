@@ -449,7 +449,9 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
         }
     }
 
-    if (show_vrr_status) {
+    bool show_vrr_debug_mode = settings::g_mainTabSettings.vrr_debug_mode.GetValue();
+
+    if (show_vrr_status || show_vrr_debug_mode) {
         static bool cached_vrr_active = false;
         static LONGLONG last_update_ns = 0;
         static LONGLONG last_valid_sample_ns = 0;
@@ -474,15 +476,17 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
         // Check if we got a sample within the last 1 second
         bool has_recent_sample = (now_ns - last_valid_sample_ns) < sample_timeout_ns;
 
-        // Display VRR status
-        if (cached_stats.all_last_20_within_1s && cached_stats.samples_below_threshold_last_10s >= 2) {
-            ImGui::TextColored(ui::colors::TEXT_SUCCESS, "VRR: On");
-        } else {
-            ImGui::TextColored(ui::colors::TEXT_DIMMED, "VRR: Off");
+        // Display VRR status (only if show_vrr_status is enabled)
+        if (show_vrr_status) {
+            if (cached_stats.all_last_20_within_1s && cached_stats.samples_below_threshold_last_10s >= 2) {
+                ImGui::TextColored(ui::colors::TEXT_SUCCESS, "VRR: On");
+            } else {
+                ImGui::TextColored(ui::colors::TEXT_DIMMED, "VRR: Off");
+            }
         }
 
-        // Display debugging parameters below VRR status
-        if (has_recent_sample && cached_stats.is_valid) {
+        // Display debugging parameters below VRR status (only if vrr_debug_mode is enabled)
+        if (show_vrr_debug_mode && has_recent_sample && cached_stats.is_valid) {
             ImGui::TextColored(ui::colors::TEXT_DIMMED, "  Fixed: %.2f Hz", cached_stats.fixed_refresh_hz);
             ImGui::TextColored(ui::colors::TEXT_DIMMED, "  Threshold: %.2f Hz", cached_stats.threshold_hz);
             ImGui::TextColored(ui::colors::TEXT_DIMMED, "  Total samples (10s): %u", cached_stats.total_samples_last_10s);

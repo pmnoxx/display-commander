@@ -4,9 +4,9 @@ ReShade Display Commander is a ReShade addon that provides in-game control over 
 
 Note: Applying window operations from the main thread can crash some apps. This addon performs them on a background thread.
 
-**✅ Version Requirement**: This addon requires **stable ReShade 6.5.1** or later. The addon is now fully compatible with stable ReShade releases.
+**✅ Version Requirement**: This addon requires **stable ReShade 6.6.2** or later. The addon is now fully compatible with stable ReShade releases.
 
-**Latest stable release**: [Latest Release](https://github.com/pmnoxx/reshade-display-commander/releases) - Compatible with ReShade 6.5.1
+**Latest stable release**: [Latest Release](https://github.com/pmnoxx/reshade-display-commander/releases) - Compatible with ReShade 6.6.2
 
 ## 📥 Latest Builds
 
@@ -40,19 +40,19 @@ For a comprehensive list of known issues and bugs, see [KNOWN_BUGS.md](KNOWN_BUG
 
 ## Requirements
 
-- Windows with **stable ReShade 6.5.1** or later
+- Windows with **stable ReShade 6.6.2** or later
 - The addon matching your game architecture: `.addon64` for 64-bit, `.addon32` for 32-bit
 
 ## Installation
 
-**Prerequisites**: You must have **stable ReShade 6.5.1** or later installed.
+**Prerequisites**: You must have **stable ReShade 6.6.2** or later installed.
 
 1. Download a prebuilt addon from Releases (CI uploads artifacts for both x64 and x86), or build from source.
 2. Copy the file `zzz_display_commander.addon64` (or `.addon32` for 32-bit) to the folder where ReShade is loaded for your game (the same folder as the ReShade runtime, e.g., `dxgi.dll`).
    - Alternatively, place it into your global ReShade installation directory (for example `D:\\Program Files\\ReShade`).
 3. Launch the game, open the ReShade overlay (Home by default), go to the Add-ons tab, and locate "Display Commander".
 
-**Note**: For the latest stable release compatible with ReShade 6.5.1, download from [Latest Release](https://github.com/pmnoxx/reshade-display-commander/releases).
+**Note**: For the latest stable release compatible with ReShade 6.6.2, download from [Latest Release](https://github.com/pmnoxx/reshade-display-commander/releases).
 
 ## Usage
 

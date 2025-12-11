@@ -377,6 +377,7 @@ void DoInitializationWithHwnd(HWND hwnd) {
     LogInfo("Keyboard tracking system initialized");
 }
 
+
 std::atomic<LONGLONG> g_present_start_time_ns{0};
 std::atomic<LONGLONG> g_present_duration_ns{0};
 
@@ -384,6 +385,7 @@ std::atomic<LONGLONG> g_present_duration_ns{0};
 std::atomic<LONGLONG> g_submit_start_time_ns{0};
 
 // Present after end time tracking
+std::atomic<LONGLONG> g_frame_time_ns{0};
 std::atomic<LONGLONG> g_sim_start_ns{0};
 
 // Simulation duration tracking
@@ -440,6 +442,7 @@ void HandleEndRenderSubmit() {
 void HandleOnPresentEnd() {
     LONGLONG now_ns = utils::get_now_ns();
 
+    g_frame_time_ns.store(now_ns - g_sim_start_ns.load());
     g_sim_start_ns.store(now_ns);
     g_submit_start_time_ns.store(0);
 
@@ -958,7 +961,17 @@ void OnPresentUpdateAfter2(void* native_device, DeviceTypeDC device_type) {
     // (moved from continuous monitoring thread to avoid accessing
     // g_last_swapchain_ptr_unsafe from background thread)
     // NVIDIA Reflex: SIMULATION_END marker (minimal) and Sleep
-    if (settings::g_developerTabSettings.reflex_enable.GetValue()) {
+    // Optionally delay enabling Reflex for the first N frames
+    const bool delay_first_500_frames =
+        settings::g_developerTabSettings.reflex_delay_first_500_frames.GetValue();
+    const uint64_t current_frame_id = g_global_frame_id.load();
+
+    bool should_enable_reflex = settings::g_developerTabSettings.reflex_enable.GetValue();
+    if (delay_first_500_frames && current_frame_id < 500) {
+        should_enable_reflex = false;
+    }
+
+    if (should_enable_reflex) {
         s_reflex_enable_current_frame.store(true);
         if (native_device && g_latencyManager->Initialize(native_device, device_type)) {
             // Apply sleep mode opportunistically each frame to reflect current

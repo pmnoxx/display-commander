@@ -57,6 +57,7 @@ class DeveloperTabSettings {
     // Minimal NVIDIA Reflex controls
     BoolSettingRef reflex_auto_configure;
     BoolSetting reflex_enable;
+   BoolSetting reflex_delay_first_500_frames;
     BoolSetting reflex_low_latency;
     BoolSetting reflex_boost;
     BoolSetting reflex_use_markers;

@@ -22,6 +22,7 @@
 #include "../../utils/logging.hpp"
 #include "../../utils/overlay_window_detector.hpp"
 #include "../../globals.hpp"
+#include "../../swapchain_events.hpp"
 #include "imgui.h"
 #include "settings_wrapper.hpp"
 #include "utils/timing.hpp"
@@ -97,7 +98,7 @@ void DrawFrameTimeGraph() {
     avg_frame_time /= static_cast<float>(frame_times.size());
 
     // Calculate average FPS from average frame time
-    float avg_fps = (avg_frame_time > 0.0f) ? (1000.0f / avg_frame_time) : 0.0f;
+    float avg_fps = (avg_frame_time > 0.0f) ? (1.0f / avg_frame_time) : 0.0f;
 
     // Display statistics
     ImGui::Text("Min: %.2f ms | Max: %.2f ms | Avg: %.2f ms | FPS(avg): %.1f",
@@ -2736,6 +2737,15 @@ void DrawImportantInfo() {
         oss.clear();
         oss << "Present Duration: " << std::fixed << std::setprecision(3)
             << (1.0 * ::g_present_duration_ns.load() / utils::NS_TO_MS) << " ms";
+        ImGui::TextUnformatted(oss.str().c_str());
+        ImGui::SameLine();
+        ImGui::TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
+
+        // Frame Duration Display
+        oss.str("");
+        oss.clear();
+        oss << "Frame Duration: " << std::fixed << std::setprecision(3)
+            << (1.0 * ::g_frame_time_ns.load() / utils::NS_TO_MS) << " ms";
         ImGui::TextUnformatted(oss.str().c_str());
         ImGui::SameLine();
         ImGui::TextColored(ui::colors::TEXT_VALUE, "(smoothed)");

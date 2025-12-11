@@ -51,6 +51,7 @@ DeveloperTabSettings::DeveloperTabSettings()
       reflex_auto_configure("ReflexAutoConfigure", s_reflex_auto_configure, s_reflex_auto_configure.load(),
                             "DisplayCommander"),
       reflex_enable("ReflexEnable", false, "DisplayCommander"),
+      reflex_delay_first_500_frames("ReflexDelayFirst500Frames", true, "DisplayCommander"),
       reflex_low_latency("ReflexLowLatency", true, "DisplayCommander"),
       reflex_boost("ReflexBoost", true, "DisplayCommander"),
       reflex_use_markers("ReflexUseMarkers", false, "DisplayCommander"),
@@ -124,7 +125,7 @@ std::vector<ui::new_ui::SettingBase*> DeveloperTabSettings::GetAllSettings() {
             //&enable_d3d9e_upgrade,
             &nvapi_auto_enable_enabled,
 
-            &reflex_auto_configure, &reflex_enable, &reflex_low_latency, &reflex_boost, &reflex_use_markers,
+            &reflex_auto_configure, &reflex_enable, &reflex_delay_first_500_frames, &reflex_low_latency, &reflex_boost, &reflex_use_markers,
             &reflex_generate_markers, &reflex_enable_sleep, &reflex_logging, &reflex_supress_native,
 
             &enable_hotkeys, &enable_mute_unmute_shortcut, &enable_background_toggle_shortcut, &enable_timeslowdown_shortcut,

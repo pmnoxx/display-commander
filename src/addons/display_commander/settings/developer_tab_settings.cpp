@@ -79,7 +79,6 @@ DeveloperTabSettings::DeveloperTabSettings()
       enable_performance_overlay_shortcut("EnablePerformanceOverlayShortcut", s_enable_performance_overlay_shortcut,
                                            s_enable_performance_overlay_shortcut.load(), "DisplayCommander"),
       safemode("Safemode", false, "DisplayCommander.Safemode"),
-      suppress_ngx_update_feature("SuppressNgxUpdateFeature", false, "DisplayCommander"),
       dll_loading_delay_ms("DllLoadingDelayMs", 0, 0, 10000, "DisplayCommander"),
       dlls_to_load_before("DllsToLoadBefore", "", "DisplayCommander"),
       load_from_dll_main("LoadFromDllMain", true, "DisplayCommander"),
@@ -107,7 +106,6 @@ void DeveloperTabSettings::SaveAll() {
     prevent_fullscreen.Save();
     enable_hotkeys.Save();
     safemode.Save();
-    suppress_ngx_update_feature.Save();
     load_from_dll_main.Save();
     load_streamline.Save();
     load_nvngx.Save();
@@ -132,7 +130,7 @@ std::vector<ui::new_ui::SettingBase*> DeveloperTabSettings::GetAllSettings() {
 
             &enable_hotkeys, &enable_mute_unmute_shortcut, &enable_background_toggle_shortcut, &enable_timeslowdown_shortcut,
             &enable_adhd_toggle_shortcut, &enable_autoclick_shortcut, &enable_input_blocking_shortcut, &enable_display_commander_ui_shortcut, &enable_performance_overlay_shortcut,
-            &safemode, &suppress_ngx_update_feature, &dll_loading_delay_ms, &dlls_to_load_before, &load_from_dll_main, &load_streamline,
+            &safemode, &dll_loading_delay_ms, &dlls_to_load_before, &load_from_dll_main, &load_streamline,
             &load_nvngx, &load_nvapi64, &fake_nvapi_enabled, &suppress_minhook, &debug_layer_enabled,
             &debug_break_on_severity, &auto_hide_discord_overlay};
 }

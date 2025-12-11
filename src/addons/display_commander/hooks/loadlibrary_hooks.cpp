@@ -774,10 +774,23 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
             LogError("Failed to install DXGI hooks");
         }
     }
-    // d3d11.dll - D3D11 hooks will be installed via vtable hooking when device is created
-    // This is handled in swapchain initialization (swapchain_events.cpp)
+    // d3d11.dll
     else if (lowerModuleName.find(L"d3d11.dll") != std::wstring::npos) {
-        LogInfo("D3D11 hooks will be installed via vtable when device is created");
+        LogInfo("Installing D3D11 device hooks for module: %ws", moduleName.c_str());
+        if (InstallD3D11DeviceHooks(hModule)) {
+            LogInfo("D3D11 device hooks installed successfully");
+        } else {
+            LogError("Failed to install D3D11 device hooks");
+        }
+    }
+    // d3d12.dll
+    else if (lowerModuleName.find(L"d3d12.dll") != std::wstring::npos) {
+        LogInfo("Installing D3D12 device hooks for module: %ws", moduleName.c_str());
+        if (InstallD3D12DeviceHooks(hModule)) {
+            LogInfo("D3D12 device hooks installed successfully");
+        } else {
+            LogError("Failed to install D3D12 device hooks");
+        }
     }
     else if (lowerModuleName.find(L"sl.interposer.dll") != std::wstring::npos) {
         // Check if Streamline loading is enabled

@@ -131,6 +131,7 @@ void RecordFrameTime(FrameTimeMode reason = FrameTimeMode::kPresent);
 // ============================================================================
 
 // Present after end time tracking (simulation start time)
+extern std::atomic<LONGLONG> g_frame_time_ns;
 extern std::atomic<LONGLONG> g_sim_start_ns;
 
 // ============================================================================

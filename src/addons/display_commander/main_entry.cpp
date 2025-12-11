@@ -553,35 +553,63 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
     if (show_cpu_usage) {
         // Calculate CPU usage: (sim_duration / frame_time) * 100%
         // Get most recent frame time from performance ring buffer
-        const uint32_t head = ::g_perf_ring_head.load(std::memory_order_acquire);
-        if (head > 0) {
-            const uint32_t last_idx = (head - 1) & (::kPerfRingCapacity - 1);
-            const ::PerfSample& last_sample = ::g_perf_ring[last_idx];
+     //   const uint32_t head = ::g_perf_ring_head.load(std::memory_order_acquire);
+     // //  if (head > 0) {
+       //     const uint32_t last_idx = (head - 1) & (::kPerfRingCapacity - 1);
+        //    const ::PerfSample& last_sample = ::g_perf_ring[last_idx];
 
-            if (last_sample.dt > 0.0f) {
+       //     if (last_sample.dt > 0.0f) {
                 // Get simulation duration in nanoseconds
-                LONGLONG sim_duration_ns = ::g_simulation_duration_ns.load();
+           //     LONGLONG sim_duration_ns = ::g_simulation_duration_ns.load();
+            //    LONGLONG reshade_overhead_duration_ns = ::g_reshade_overhead_duration_ns.load();
 
-                if (sim_duration_ns > 0) {
-                    // Convert frame time from seconds to nanoseconds
-                    LONGLONG frame_time_ns = static_cast<LONGLONG>(last_sample.dt * utils::SEC_TO_NS);
+        // missing time spend in onpresent
+        // missing native reflex time
+        LONGLONG cpu_time_ns = ::g_frame_time_ns.load() - fps_sleep_after_on_present_ns.load() - fps_sleep_before_on_present_ns.load();
 
-                    // Calculate CPU usage percentage: (sim_duration / frame_time) * 100
-                    double cpu_usage_percent =
-                        (static_cast<double>(sim_duration_ns) / static_cast<double>(frame_time_ns)) * 100.0;
+        LONGLONG frame_time_ns = ::g_frame_time_ns.load();
 
-                    // Clamp to 0-100%
-                    if (cpu_usage_percent < 0.0) cpu_usage_percent = 0.0;
-                    if (cpu_usage_percent > 100.0) cpu_usage_percent = 100.0;
+        if (cpu_time_ns > 0 && frame_time_ns > 0) {
+            // Calculate CPU usage percentage: (sim_duration / frame_time) * 100
+            double cpu_usage_percent =
+                (static_cast<double>(cpu_time_ns) / static_cast<double>(frame_time_ns)) * 100.0;
 
-                    if (settings::g_mainTabSettings.show_labels.GetValue()) {
-                        ImGui::Text("%.1f%% cpu", cpu_usage_percent);
-                    } else {
-                        ImGui::Text("%.1f%%", cpu_usage_percent);
-                    }
-                }
+            // Clamp to 0-100%
+            if (cpu_usage_percent < 0.0) cpu_usage_percent = 0.0;
+            if (cpu_usage_percent > 100.0) cpu_usage_percent = 100.0;
+
+            // Apply exponential smoothing with alpha 0.1
+            static double smoothed_cpu_usage = cpu_usage_percent;
+            const double alpha = 0.05;
+            smoothed_cpu_usage = (1.0 - alpha) * smoothed_cpu_usage + alpha * cpu_usage_percent;
+
+            // Track last 32 CPU usage values for max calculation
+            static constexpr size_t kCpuUsageHistorySize = 64;
+            static double cpu_usage_history[kCpuUsageHistorySize] = {};
+            static size_t cpu_usage_history_index = 0;
+            static size_t cpu_usage_history_count = 0;
+
+            // Add current value to history
+            cpu_usage_history[cpu_usage_history_index] = cpu_usage_percent;
+            cpu_usage_history_index = (cpu_usage_history_index + 1) % kCpuUsageHistorySize;
+            if (cpu_usage_history_count < kCpuUsageHistorySize) {
+                cpu_usage_history_count++;
+            }
+
+            // Find maximum from last 32 frames
+            double max_cpu_usage = cpu_usage_percent;
+            for (size_t i = 0; i < cpu_usage_history_count; ++i) {
+                max_cpu_usage = (std::max)(max_cpu_usage, cpu_usage_history[i]);
+            }
+
+            if (settings::g_mainTabSettings.show_labels.GetValue()) {
+                ImGui::Text("%.1f%% cpu (max: %.1f%%)", smoothed_cpu_usage, max_cpu_usage);
+            } else {
+                ImGui::Text("%.1f%% (max: %.1f%%)", smoothed_cpu_usage, max_cpu_usage);
             }
         }
+      //      }
+    //    }
     }
 
     // Show stopwatch

@@ -496,12 +496,24 @@ void DrawNvapiSettings() {
 
         bool reflex_auto_configure = settings::g_developerTabSettings.reflex_auto_configure.GetValue();
         bool reflex_enable = settings::g_developerTabSettings.reflex_enable.GetValue();
+        bool reflex_delay_first_500_frames = settings::g_developerTabSettings.reflex_delay_first_500_frames.GetValue();
 
         bool reflex_low_latency = settings::g_developerTabSettings.reflex_low_latency.GetValue();
         bool reflex_boost = settings::g_developerTabSettings.reflex_boost.GetValue();
         bool reflex_use_markers = settings::g_developerTabSettings.reflex_use_markers.GetValue();
         bool reflex_generate_markers = settings::g_developerTabSettings.reflex_generate_markers.GetValue();
         bool reflex_enable_sleep = settings::g_developerTabSettings.reflex_enable_sleep.GetValue();
+
+
+        if (ImGui::Checkbox("Delay Reflex for first 500 frames", &reflex_delay_first_500_frames)) {
+            settings::g_developerTabSettings.reflex_delay_first_500_frames.SetValue(reflex_delay_first_500_frames);
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip(
+                "When enabled, NVIDIA Reflex integration will not be activated\n"
+                "until after the first 500 frames of the game (g_global_frame_id >= 500),\n"
+                "even if 'Enable Reflex' or auto-configure would normally turn it on.");
+        }
 
         if (ImGui::Checkbox("Auto Configure Reflex", &reflex_auto_configure)) {
             settings::g_developerTabSettings.reflex_auto_configure.SetValue(reflex_auto_configure);
@@ -510,11 +522,6 @@ void DrawNvapiSettings() {
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Automatically configure Reflex settings on startup");
         }
-        if (reflex_auto_configure) {
-            ImGui::BeginDisabled();
-            ImGui::Text("Auto-configure is handled by continuous monitoring");
-        }
-
         if (ImGui::Checkbox("Enable Reflex", &reflex_enable)) {
             settings::g_developerTabSettings.reflex_enable.SetValue(reflex_enable);
         }
@@ -522,7 +529,6 @@ void DrawNvapiSettings() {
             ImGui::EndDisabled();
             ImGui::Text("Auto-configure is handled by continuous monitoring");
         }
-
         if (reflex_enable) {
             if (ImGui::Checkbox("Low Latency Mode", &reflex_low_latency)) {
                 settings::g_developerTabSettings.reflex_low_latency.SetValue(reflex_low_latency);

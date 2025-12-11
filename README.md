@@ -111,7 +111,7 @@ GitHub Actions builds x64 and x86 on pushes and PRs and uploads the resulting `.
 
 ## Troubleshooting
 
-- **"Addon not loading" or "Compatibility issues"**: Ensure you're using stable ReShade 6.5.1 or later. Download the latest release from [Latest Release](https://github.com/pmnoxx/reshade-display-commander/releases).
+- **"Addon not loading" or "Compatibility issues"**: Ensure you're using stable ReShade 6.6.2 or later. Download the latest release from [Latest Release](https://github.com/pmnoxx/reshade-display-commander/releases).
 - "This project requires the Ninja generator": Configure with `-G Ninja` (or `"Ninja Multi-Config"` for the 32-bit example above).
 - "Missing submodule: external/reshade": Run `git submodule update --init --recursive`.
 - "NVAPI libs not found ...": Optional; only NVAPI-based features will be unavailable.

@@ -69,10 +69,6 @@ class DeveloperTabSettings {
     // Safemode setting
     BoolSetting safemode;
 
-    // NGX / hook-related safety toggles
-    // Suppress NVSDK_NGX_UpdateFeature calls (dangerous, can cause instability)
-    BoolSetting suppress_ngx_update_feature;
-
     // DLL loading delay setting (milliseconds)
     IntSetting dll_loading_delay_ms;
 

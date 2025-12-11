@@ -1029,14 +1029,6 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_UpdateFeature_Detour(const NVSDK_NGX_Appli
         }
     }
 
-    // Optional suppression of NVSDK_NGX_UpdateFeature for niche crash workarounds
-    // NOTE: Skipping this call can easily cause instability or crashes in some games.
-    if (settings::g_developerTabSettings.suppress_ngx_update_feature.GetValue()) {
-        LogInfo("NGX UpdateFeature call suppressed by developer setting (SuppressNgxUpdateFeature=true)");
-        // Pretend success to avoid triggering game error paths while keeping NGX untouched.
-        return NVSDK_NGX_Result_Success;
-    }
-
     if (NVSDK_NGX_UpdateFeature_Original != nullptr) {
         return NVSDK_NGX_UpdateFeature_Original(ApplicationId, FeatureID);
     }

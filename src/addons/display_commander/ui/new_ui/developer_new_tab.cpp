@@ -220,6 +220,21 @@ void DrawDeveloperSettings() {
             "This setting requires a game restart to take effect.");
     }
 
+    // NGX UpdateFeature suppression (dangerous niche feature)
+    bool suppress_ngx_update_feature = settings::g_developerTabSettings.suppress_ngx_update_feature.GetValue();
+    if (ImGui::Checkbox("Suppress NGX UpdateFeature calls (dangerous)", &suppress_ngx_update_feature)) {
+        settings::g_developerTabSettings.suppress_ngx_update_feature.SetValue(suppress_ngx_update_feature);
+        LogInfo("SuppressNgxUpdateFeature setting changed to: %s",
+                suppress_ngx_update_feature ? "enabled" : "disabled");
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip(
+            "When enabled, NVSDK_NGX_UpdateFeature will NOT be forwarded to the NGX SDK.\n"
+            "- This is a niche crash-workaround option for specific problematic games.\n"
+            "- Skipping updates can leave NGX / DLSS in an inconsistent state and may cause crashes or corruption.\n"
+            "Use only for debugging, and turn it OFF for normal gameplay.");
+    }
+
     // Suppress MinHook setting
     if (CheckboxSetting(settings::g_developerTabSettings.suppress_minhook, "Suppress MinHook Initialization")) {
         LogInfo("Suppress MinHook setting changed to: %s",

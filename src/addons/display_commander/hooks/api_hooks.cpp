@@ -642,6 +642,14 @@ HRESULT WINAPI D3D12CreateDevice_Detour(IUnknown* pAdapter, D3D_FEATURE_LEVEL Mi
 }
 
 bool InstallDxgiHooks(HMODULE dxgi_module) {
+    // Check if this module is ReShade's proxy by checking for ReShade exports
+    FARPROC reshade_register = GetProcAddress(dxgi_module, "ReShadeRegisterAddon");
+    FARPROC reshade_unregister = GetProcAddress(dxgi_module, "ReShadeUnregisterAddon");
+    if (reshade_register != nullptr && reshade_unregister != nullptr) {
+        LogInfo("Skipping DXGI hooks installation - detected ReShade proxy module (0x%p)", dxgi_module);
+        return true;
+    }
+
     static bool dxgi_hooks_installed = false;
     if (dxgi_hooks_installed) {
         LogInfo("DXGI hooks already installed");
@@ -670,24 +678,7 @@ bool InstallDxgiHooks(HMODULE dxgi_module) {
         LogInfo("MinHook initialized successfully for DXGI hooks");
     }
 
-    /*
-    // Get dxgi.dll module handle if not provided
-    if (dxgi_module == nullptr) {
-        dxgi_module = GetModuleHandleW(L"dxgi.dll");
-        if (dxgi_module == nullptr) {
-            LogError("Failed to get dxgi.dll module handle");
-            return false;
-        }
-    }*/
 
-    // Check if this module is ReShade's proxy by checking for ReShade exports
-    FARPROC reshade_register = GetProcAddress(dxgi_module, "ReShadeRegisterAddon");
-    FARPROC reshade_unregister = GetProcAddress(dxgi_module, "ReShadeUnregisterAddon");
-    if (reshade_register != nullptr && reshade_unregister != nullptr) {
-        LogInfo("Skipping DXGI hooks installation - detected ReShade proxy module (0x%p)", dxgi_module);
-        dxgi_hooks_installed = true; // Mark as installed to prevent retry
-        return true;
-    }
 
     display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(
         display_commanderhooks::HookType::DXGI_FACTORY);

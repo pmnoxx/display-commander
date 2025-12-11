@@ -7,8 +7,8 @@ Display Commander now includes a comprehensive version check system that detects
 ## How It Works
 
 ### API Version Requirements
-- **Required API Version**: 17 (ReShade 6.5.1+)
-- **Minimum ReShade Version**: 6.5.1
+- **Required API Version**: 17 (ReShade 6.6.2+)
+- **Minimum ReShade Version**: 6.6.2
 - **Detection Method**: Attempts to register with ReShade using API version 17
 
 ### Error Handling Flow
@@ -23,16 +23,16 @@ Display Commander now includes a comprehensive version check system that detects
 When ReShade version is incompatible, users see:
 
 ```
-Display Commander requires ReShade 6.5.1 or newer.
+Display Commander requires ReShade 6.6.2 or newer.
 
 ERROR DETAILS:
-• Required API Version: 17 (ReShade 6.5.1+)
+• Required API Version: 17 (ReShade 6.6.2+)
 • Your ReShade Version: 16 or older
 • Status: Incompatible
 
 SOLUTION:
 1. Download the latest ReShade from: https://reshade.me/
-2. Install ReShade 6.5.1 or newer
+2. Install ReShade 6.6.2 or newer
 3. Restart your game to load the updated ReShade
 
 This addon uses advanced features that require the newer ReShade API.
@@ -42,9 +42,9 @@ This addon uses advanced features that require the newer ReShade API.
 
 The system provides detailed logging:
 
-- **Success**: `"ReShade addon registration successful - API version 17 supported (ReShade 6.5.1+)"`
+- **Success**: `"ReShade addon registration successful - API version 17 supported (ReShade 6.6.2+)"`
 - **Failure**: `"ReShade addon registration failed - this usually indicates an API version mismatch"`
-- **Details**: `"Display Commander requires ReShade 6.5.1+ (API version 17) but detected older version"`
+- **Details**: `"Display Commander requires ReShade 6.6.2+ (API version 17) but detected older version"`
 
 ## Implementation Details
 

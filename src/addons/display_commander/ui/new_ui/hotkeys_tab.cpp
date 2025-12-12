@@ -8,6 +8,7 @@
 #include "../../settings/main_tab_settings.hpp"
 #include "../../settings/experimental_tab_settings.hpp"
 #include "../../hooks/windows_hooks/windows_message_hooks.hpp"
+#include "../../input_remapping/input_remapping.hpp"
 #include "../../res/forkawesome.h"
 #include "../../res/ui_colors.hpp"
 #include "settings_wrapper.hpp"
@@ -200,23 +201,7 @@ void InitializeHotkeyDefinitions() {
             "ctrl+shift+s",
             "Start or pause the stopwatch (2-state toggle)",
             []() {
-                bool is_running = g_stopwatch_running.load();
-                LONGLONG now_ns = utils::get_now_ns();
-
-                if (is_running) {
-                    // Running -> Pause: Save current elapsed time
-                    LONGLONG start_time_ns = g_stopwatch_start_time_ns.load();
-                    LONGLONG current_elapsed_ns = now_ns - start_time_ns;
-                    g_stopwatch_elapsed_time_ns.store(current_elapsed_ns);
-                    g_stopwatch_running.store(false);
-                    LogInfo("Stopwatch paused via hotkey");
-                } else {
-                    // Paused -> Running: Reset to 0 and start fresh
-                    g_stopwatch_start_time_ns.store(now_ns);
-                    g_stopwatch_elapsed_time_ns.store(0);
-                    g_stopwatch_running.store(true);
-                    LogInfo("Stopwatch started/resumed via hotkey (reset to 0)");
-                }
+                display_commander::input_remapping::ToggleStopwatch();
             }
         },
         {

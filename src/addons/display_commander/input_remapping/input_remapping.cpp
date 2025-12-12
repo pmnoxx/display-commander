@@ -1061,6 +1061,27 @@ void InputRemapper::apply_gamepad_remapping(DWORD user_index, XINPUT_STATE *stat
     }
 }
 
+// Shared function to toggle stopwatch (used by both hotkeys and gamepad actions)
+void ToggleStopwatch() {
+    bool is_running = g_stopwatch_running.load();
+    LONGLONG now_ns = utils::get_now_ns();
+
+    if (is_running) {
+        // Running -> Pause: Save current elapsed time
+        LONGLONG start_time_ns = g_stopwatch_start_time_ns.load();
+        LONGLONG current_elapsed_ns = now_ns - start_time_ns;
+        g_stopwatch_elapsed_time_ns.store(current_elapsed_ns);
+        g_stopwatch_running.store(false);
+        LogInfo("Stopwatch paused");
+    } else {
+        // Paused -> Running: Reset to 0 and start fresh
+        g_stopwatch_start_time_ns.store(now_ns);
+        g_stopwatch_elapsed_time_ns.store(0);
+        g_stopwatch_running.store(true);
+        LogInfo("Stopwatch started/resumed (reset to 0)");
+    }
+}
+
 void InputRemapper::execute_action(const std::string &action_name) {
     // Helper function to trigger generic action notification
     auto trigger_action_notification = [](const std::string &name) {
@@ -1292,6 +1313,12 @@ void InputRemapper::execute_action(const std::string &action_name) {
         adhd_multi_monitor::api::SetEnabled(new_state);
         trigger_action_notification("ADHD Multi-Monitor Mode " + std::string(new_state ? "On" : "Off"));
         LogInfo("InputRemapper::execute_action() - ADHD Multi-Monitor Mode %s via action", new_state ? "enabled" : "disabled");
+    } else if (action_name == "stopwatch toggle" || action_name == "stopwatch start/pause") {
+        // Toggle stopwatch (start/pause)
+        ToggleStopwatch();
+        bool is_running = g_stopwatch_running.load();
+        trigger_action_notification("Stopwatch " + std::string(is_running ? "Started" : "Paused"));
+        LogInfo("InputRemapper::execute_action() - Stopwatch %s via action", is_running ? "started" : "paused");
     } else {
         LogError("InputRemapper::execute_action() - Unknown action: %s", action_name.c_str());
     }
@@ -1312,6 +1339,6 @@ std::string get_remap_type_name(RemapType type) {
 }
 
 std::vector<std::string> get_available_actions() {
-    return {"screenshot", "time slowdown toggle", "performance overlay toggle", "mute/unmute audio", "increase volume", "decrease volume", "increase system volume", "decrease system volume", "increase game speed", "decrease game speed", "display commander ui toggle", "adhd toggle"};
+    return {"screenshot", "time slowdown toggle", "performance overlay toggle", "mute/unmute audio", "increase volume", "decrease volume", "increase system volume", "decrease system volume", "increase game speed", "decrease game speed", "display commander ui toggle", "adhd toggle", "stopwatch toggle"};
 }
 } // namespace display_commander::input_remapping

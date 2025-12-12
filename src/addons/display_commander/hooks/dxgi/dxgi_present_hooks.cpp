@@ -238,18 +238,9 @@ namespace {
 } // namespace
 
 // Public API wrapper that works with ReShade swapchain
-void EnqueueGPUCompletion(reshade::api::swapchain* swapchain, reshade::api::command_queue* command_queue) {
+void EnqueueGPUCompletion(reshade::api::swapchain* swapchain, IDXGISwapChain* dxgi_swapchain, reshade::api::command_queue* command_queue = nullptr) {
     if (swapchain == nullptr) {
         g_gpu_fence_failure_reason.store("Failed to get swapchain from swapchain, swapchain is nullptr");
-        return;
-    }
-
-    // Get native DXGI swapchain handle from ReShade swapchain
-    IDXGISwapChain* dxgi_swapchain = reinterpret_cast<IDXGISwapChain*>(swapchain->get_native());
-    if (dxgi_swapchain == nullptr) {
-
-        g_gpu_fence_failure_reason.store("Failed to get IDXGISwapChain device from swapchain");
-
         return;
     }
 

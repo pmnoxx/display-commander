@@ -251,4 +251,7 @@ std::vector<std::string> get_available_keyboard_input_methods();
 std::vector<std::string> get_available_gamepad_buttons();
 std::vector<std::string> get_available_keyboard_keys();
 std::vector<std::string> get_available_actions();
+
+// Shared action functions (can be called from hotkeys or gamepad actions)
+void ToggleStopwatch();
 } // namespace display_commander::input_remapping

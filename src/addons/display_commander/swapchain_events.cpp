@@ -1191,18 +1191,32 @@ void OnPresentUpdateBefore(reshade::api::command_queue * command_queue, reshade:
     // Auto set color space if enabled
     AutoSetColorSpace(swapchain);
 
-    // Record the native DXGI swapchain for Present detour filtering
-    if (swapchain->get_device()->get_api() == reshade::api::device_api::d3d12 ||
-        swapchain->get_device()->get_api() == reshade::api::device_api::d3d11 ||
-        swapchain->get_device()->get_api() == reshade::api::device_api::d3d10) {
-        IDXGISwapChain* dxgi_swapchain = reinterpret_cast<IDXGISwapChain*>(swapchain->get_native());
-        if (dxgi_swapchain != nullptr) {
-            display_commanderhooks::dxgi::RecordPresentUpdateSwapchain(dxgi_swapchain);
+    auto api = swapchain->get_device()->get_api();
+
+    if (api == reshade::api::device_api::d3d12) {
+        auto *id3d12device   = reinterpret_cast<ID3D12Device *>(swapchain->get_native());
+        Microsoft::WRL::ComPtr<IDXGISwapChain> dxgi_swapchain{};
+        if (id3d12device != nullptr && SUCCEEDED(id3d12device->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain)))) {
+            display_commanderhooks::dxgi::RecordPresentUpdateSwapchain(dxgi_swapchain.Get());
+        }
+    }
+    else if (api == reshade::api::device_api::d3d11) {
+        auto *id3d11device   = reinterpret_cast<ID3D11Device *>(swapchain->get_native());
+        Microsoft::WRL::ComPtr<IDXGISwapChain> dxgi_swapchain{};
+        if (id3d11device != nullptr && SUCCEEDED(id3d11device->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain)))) {
+            display_commanderhooks::dxgi::RecordPresentUpdateSwapchain(dxgi_swapchain.Get());
+        }
+    }
+    else if (api == reshade::api::device_api::d3d10) {
+        auto *id3d10device   = reinterpret_cast<ID3D10Device *>(swapchain->get_native());
+        Microsoft::WRL::ComPtr<IDXGISwapChain> dxgi_swapchain{};
+        if (id3d10device != nullptr && SUCCEEDED(id3d10device->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain)))) {
+            display_commanderhooks::dxgi::RecordPresentUpdateSwapchain(dxgi_swapchain.Get());
         }
     }
 
     // Record the native D3D9 device for Present detour filtering
-    if (swapchain->get_device()->get_api() == reshade::api::device_api::d3d9) {
+    if (api == reshade::api::device_api::d3d9) {
         IDirect3DDevice9* d3d9_device = reinterpret_cast<IDirect3DDevice9*>(swapchain->get_device()->get_native());
         if (d3d9_device != nullptr) {
             display_commanderhooks::d3d9::RecordPresentUpdateDevice(d3d9_device);
@@ -1223,13 +1237,18 @@ void OnPresentUpdateBefore(reshade::api::command_queue * command_queue, reshade:
 
     // Enqueue GPU completion measurement BEFORE flush for accurate timing
     // This captures the full GPU workload including the flush operation
-    if (swapchain->get_device()->get_api() == reshade::api::device_api::d3d11 ||
-        swapchain->get_device()->get_api() == reshade::api::device_api::d3d12) {
-        EnqueueGPUCompletion(swapchain, command_queue);
-    } else {
-        g_sim_start_ns_for_measurement.store(g_sim_start_ns.load());
-        g_present_update_after2_called.store(false);
-        g_gpu_completion_callback_finished.store(false);
+    if (api == reshade::api::device_api::d3d11) {
+        auto *id3d11device   = reinterpret_cast<ID3D11Device *>(swapchain->get_native());
+        Microsoft::WRL::ComPtr<IDXGISwapChain> dxgi_swapchain{};
+        if (id3d11device != nullptr && SUCCEEDED(id3d11device->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain)))) {
+            EnqueueGPUCompletion(swapchain, dxgi_swapchain.Get(), command_queue);
+        }
+    } else if (api == reshade::api::device_api::d3d12) {
+        auto *id3d12device   = reinterpret_cast<ID3D12Device *>(swapchain->get_native());
+        Microsoft::WRL::ComPtr<IDXGISwapChain> dxgi_swapchain{};
+        if (id3d12device != nullptr && SUCCEEDED(id3d12device->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain)))) {
+            EnqueueGPUCompletion(swapchain, dxgi_swapchain.Get(), command_queue);
+        }
     }
 
     flush_command_queue_with_command_queue(command_queue); // Flush command queue before addons start processing

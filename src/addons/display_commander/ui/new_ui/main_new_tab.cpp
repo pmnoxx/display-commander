@@ -861,29 +861,6 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
 
         ImGui::Spacing();
 
-        // Enable Default Chords checkbox
-        if (CheckboxSetting(settings::g_mainTabSettings.enable_default_chords, "Enable Default Gamepad Chords")) {
-            // Re-initialize default chords if enabled, or remove them if disabled
-            auto &remapper = display_commander::input_remapping::InputRemapper::get_instance();
-            if (settings::g_mainTabSettings.enable_default_chords.GetValue()) {
-                remapper.add_default_chords();
-                LogInfo("Default chords enabled and added");
-            } else {
-                // Remove only default chords (not user-customized ones)
-                remapper.remove_default_chords();
-                LogInfo("Default chords disabled and removed");
-            }
-        }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Enable default gamepad chords:\n"
-                             "- Home + D-Pad Up: Increase Volume\n"
-                             "- Home + D-Pad Down: Decrease Volume\n"
-                             "- Home + Right Shoulder: Mute/Unmute Audio\n"
-                             "- Home + Menu: Toggle Performance Overlay\n"
-                             "- Home + View: Take Screenshot\n\n"
-                             "These chords are added to the input remapping system and can be customized.");
-        }
-
         // Home button behavior for Display Commander UI
         bool require_solo_press = settings::g_mainTabSettings.guide_button_solo_ui_toggle_only.GetValue();
         if (ImGui::Checkbox("Require Home-only press to toggle Display Commander UI", &require_solo_press)) {

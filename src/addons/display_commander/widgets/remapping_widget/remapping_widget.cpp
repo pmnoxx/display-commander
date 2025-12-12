@@ -2,6 +2,8 @@
 #include "../../utils.hpp"
 #include "../../utils/logging.hpp"
 #include "../../config/display_commander_config.hpp"
+#include "../../settings/main_tab_settings.hpp"
+#include "../../ui/new_ui/settings_wrapper.hpp"
 
 #include <reshade_imgui.hpp>
 
@@ -117,6 +119,30 @@ void RemappingWidget::DrawRemappingSettings() {
             ImGui::SetTooltip("When enabled, blocks all gamepad input to the game (except home button) while home button is pressed.\n"
                              "This prevents accidental button presses while using shortcuts.\n"
                              "Remapping system will still work normally.");
+        }
+
+        ImGui::Spacing();
+
+        // Enable Default Chords checkbox
+        if (ui::new_ui::CheckboxSetting(settings::g_mainTabSettings.enable_default_chords, "Enable Default Gamepad Chords")) {
+            // Re-initialize default chords if enabled, or remove them if disabled
+            if (settings::g_mainTabSettings.enable_default_chords.GetValue()) {
+                remapper.add_default_chords();
+                LogInfo("Default chords enabled and added");
+            } else {
+                // Remove only default chords (not user-customized ones)
+                remapper.remove_default_chords();
+                LogInfo("Default chords disabled and removed");
+            }
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Enable default gamepad chords:\n"
+                             "- Home + D-Pad Up: Increase Volume\n"
+                             "- Home + D-Pad Down: Decrease Volume\n"
+                             "- Home + Right Shoulder: Mute/Unmute Audio\n"
+                             "- Home + Menu: Toggle Performance Overlay\n"
+                             "- Home + View: Take Screenshot\n\n"
+                             "These chords are added to the input remapping system and can be customized.");
         }
 
         // Show statistics

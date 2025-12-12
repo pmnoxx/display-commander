@@ -219,7 +219,7 @@ class InputRemapper {
 
     // Settings
     std::atomic<bool> _remapping_enabled{false};
-    std::atomic<bool> _block_input_on_home_button{false}; // Block gamepad input to game when home button is pressed
+    std::atomic<bool> _block_input_on_home_button{true}; // Block gamepad input to game when home button is pressed
     std::atomic<bool> _initialized{false};
     KeyboardInputMethod _default_input_method{KeyboardInputMethod::SendInput};
 

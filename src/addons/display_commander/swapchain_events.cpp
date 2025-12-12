@@ -259,20 +259,6 @@ void hookToSwapChain(reshade::api::swapchain *swapchain) {
             }
             return;
         }
-        #if 0
-        if (api == reshade::api::device_api::d3d12 || api == reshade::api::device_api::d3d11) {
-            if (auto *dxgi_swapchain = reinterpret_cast<IDXGISwapChain *>(swapchain->get_native())) {
-                if (display_commanderhooks::dxgi::HookSwapchain(dxgi_swapchain)) {
-                    LogInfo("Successfully hooked DXGI Present calls for swapchain: 0x%p", dxgi_swapchain);
-                } else {
-                    LogWarn("Failed to hook DXGI Present calls for swapchain: 0x%p", dxgi_swapchain);
-                }
-            } else {
-                LogWarn("Could not get DXGI swapchain from ReShade swapchain for Present "
-                        "hooking");
-            }
-        }
-        #endif
         // Try to hook DX9 Present calls if this is a DX9 device
         // Get the underlying DX9 device from the ReShade device
         if (api == reshade::api::device_api::d3d9) {

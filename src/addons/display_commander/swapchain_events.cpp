@@ -107,6 +107,9 @@ void OnDestroyDevice(reshade::api::device *device) {
     // Clean up NGX handle tracking
     CleanupNGXHooks();
 
+    // Clean up GPU measurement fences
+    display_commanderhooks::dxgi::CleanupGPUMeasurementFences();
+
     /*
     if (g_last_swapchain_ptr_unsafe.load() != nullptr) {
         reshade::api::swapchain *swapchain = reinterpret_cast<reshade::api::swapchain *>(g_last_swapchain_ptr_unsafe.load());

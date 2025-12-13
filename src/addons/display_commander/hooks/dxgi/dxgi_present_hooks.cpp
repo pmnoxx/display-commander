@@ -41,6 +41,7 @@ extern std::atomic<LONGLONG> g_sim_start_ns;
 // GPU completion measurement state
 namespace {
     struct GPUMeasurementState {
+        // TODO: caused reshade to report not cleaned up state
         Microsoft::WRL::ComPtr<ID3D11Fence> d3d11_fence;
         Microsoft::WRL::ComPtr<ID3D12Fence> d3d12_fence;
         HANDLE event_handle = nullptr;
@@ -233,6 +234,31 @@ namespace {
             return;
         } else {
             g_gpu_fence_failure_reason.store("Failed to get device from swapchain");
+        }
+    }
+
+    // Cleanup function to reset fences and state when device is destroyed
+    void CleanupGPUMeasurementState() {
+        if (g_gpu_state.initialized.load()) {
+            LogInfo("Cleaning up GPU measurement fences on device destruction");
+
+            // Reset fences (ComPtr will automatically release references)
+            g_gpu_state.d3d11_fence.Reset();
+            g_gpu_state.d3d12_fence.Reset();
+
+            // Close event handle if it exists
+            if (g_gpu_state.event_handle != nullptr) {
+                CloseHandle(g_gpu_state.event_handle);
+                g_gpu_state.event_handle = nullptr;
+            }
+
+            // Reset state flags
+            g_gpu_state.fence_value.store(0);
+            g_gpu_state.initialized.store(false);
+            g_gpu_state.is_d3d12.store(false);
+            g_gpu_state.initialization_attempted.store(false);
+
+            LogInfo("GPU measurement fences cleaned up successfully");
         }
     }
 } // namespace
@@ -1750,6 +1776,11 @@ void ClearAllTrackedSwapchains() {
 
 bool HasTrackedSwapchains() {
     return g_swapchainTrackingManager.HasTrackedSwapchains();
+}
+
+// Cleanup GPU measurement fences when device is destroyed
+void CleanupGPUMeasurementFences() {
+    ::CleanupGPUMeasurementState();
 }
 
 } // namespace display_commanderhooks::dxgi

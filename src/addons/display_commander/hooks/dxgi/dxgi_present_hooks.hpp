@@ -199,4 +199,7 @@ void ClearAllTrackedSwapchains();
 bool HasTrackedSwapchains();
 
 bool HookSwapchainNative(IDXGISwapChain *swapchain);
+
+// Cleanup GPU measurement fences when device is destroyed
+void CleanupGPUMeasurementFences();
 } // namespace display_commanderhooks::dxgi

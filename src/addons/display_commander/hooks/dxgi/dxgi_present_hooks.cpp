@@ -374,10 +374,8 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain *This, UI
     DeviceTypeDC device_type = DeviceTypeDC::DX10;
     Microsoft::WRL::ComPtr<IUnknown> device;
     {
-        IUnknown* device_raw = nullptr;
-        This->GetDevice(IID_PPV_ARGS(&device_raw));
-        device = device_raw;
-        if (device) {
+        This->GetDevice(IID_PPV_ARGS(&device));
+        if (device != nullptr) {
             // Try to determine if it's D3D11 or D3D12
             Microsoft::WRL::ComPtr<ID3D11Device> d3d11_device;
             Microsoft::WRL::ComPtr<ID3D12Device> d3d12_device;
@@ -463,10 +461,8 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1 *This, 
     DeviceTypeDC device_type = DeviceTypeDC::DX10; // Default to DX11 for DXGI
     Microsoft::WRL::ComPtr<IUnknown> device;
     {
-        IUnknown* device_raw = nullptr;
-        This->GetDevice(IID_PPV_ARGS(&device_raw));
-        device = device_raw;
-        if (device) {
+        This->GetDevice(IID_PPV_ARGS(&device));
+        if (device != nullptr) {
             // Try to determine if it's D3D11 or D3D12
             Microsoft::WRL::ComPtr<ID3D10Device> d3d10_device;
             Microsoft::WRL::ComPtr<ID3D11Device> d3d11_device;

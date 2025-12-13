@@ -217,7 +217,6 @@ LONG WINAPI SetWindowLongA_Detour(HWND hWnd, int nIndex, LONG dwNewLong) {
 LONG WINAPI SetWindowLongW_Detour(HWND hWnd, int nIndex, LONG dwNewLong) {
     g_display_settings_hook_counters[DISPLAY_SETTINGS_HOOK_SETWINDOWLONGW].fetch_add(1);
     g_display_settings_hook_total_count.fetch_add(1);
-
     // Check if fullscreen prevention is enabled
     if (hWnd == g_game_window) {
         ModifyWindowStyle(nIndex, dwNewLong, settings::g_developerTabSettings.prevent_always_on_top.GetValue());
@@ -437,12 +436,12 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain_Detour(IDXGIAdapter* pAdapter, D3D_
     // Setup D3D11 debug info queue if debug layer is enabled and device creation was successful
     if (SUCCEEDED(hr) && ppDevice && *ppDevice && settings::g_developerTabSettings.debug_layer_enabled.GetValue()) {
         ID3D11Device* device = static_cast<ID3D11Device*>(*ppDevice);
-        ID3D11Debug* debug_device = nullptr;
+        Microsoft::WRL::ComPtr<ID3D11Debug> debug_device;
         HRESULT debug_hr = device->QueryInterface(IID_PPV_ARGS(&debug_device));
-        if (SUCCEEDED(debug_hr) && debug_device != nullptr) {
-            ID3D11InfoQueue* info_queue = nullptr;
+        if (SUCCEEDED(debug_hr)) {
+            Microsoft::WRL::ComPtr<ID3D11InfoQueue> info_queue;
             HRESULT info_hr = debug_device->QueryInterface(IID_PPV_ARGS(&info_queue));
-            if (SUCCEEDED(info_hr) && info_queue != nullptr) {
+            if (SUCCEEDED(info_hr)) {
                 // Only set break on severity if the setting is enabled
                 if (settings::g_developerTabSettings.debug_break_on_severity.GetValue()) {
                     info_queue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_ERROR, true);
@@ -454,11 +453,9 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain_Detour(IDXGIAdapter* pAdapter, D3D_
                 } else {
                     LogInfo("  D3D11 debug info queue configured (SetBreakOnSeverity disabled)");
                 }
-                info_queue->Release();
             } else {
                 LogWarn("  Failed to get D3D11 info queue: 0x%08X", info_hr);
             }
-            debug_device->Release();
         } else {
             LogWarn("  Failed to get D3D11 debug device: 0x%08X", debug_hr);
         }
@@ -529,12 +526,12 @@ HRESULT WINAPI D3D11CreateDevice_Detour(IDXGIAdapter* pAdapter, D3D_DRIVER_TYPE 
     // Setup D3D11 debug info queue if debug layer is enabled and device creation was successful
     if (SUCCEEDED(hr) && ppDevice && *ppDevice && settings::g_developerTabSettings.debug_layer_enabled.GetValue()) {
         ID3D11Device* device = static_cast<ID3D11Device*>(*ppDevice);
-        ID3D11Debug* debug_device = nullptr;
+        Microsoft::WRL::ComPtr<ID3D11Debug> debug_device;
         HRESULT debug_hr = device->QueryInterface(IID_PPV_ARGS(&debug_device));
-        if (SUCCEEDED(debug_hr) && debug_device != nullptr) {
-            ID3D11InfoQueue* info_queue = nullptr;
+        if (SUCCEEDED(debug_hr)) {
+            Microsoft::WRL::ComPtr<ID3D11InfoQueue> info_queue;
             HRESULT info_hr = debug_device->QueryInterface(IID_PPV_ARGS(&info_queue));
-            if (SUCCEEDED(info_hr) && info_queue != nullptr) {
+            if (SUCCEEDED(info_hr)) {
                 // Only set break on severity if the setting is enabled
                 if (settings::g_developerTabSettings.debug_break_on_severity.GetValue()) {
                     info_queue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_ERROR, true);
@@ -546,11 +543,9 @@ HRESULT WINAPI D3D11CreateDevice_Detour(IDXGIAdapter* pAdapter, D3D_DRIVER_TYPE 
                 } else {
                     LogInfo("  D3D11 debug info queue configured (SetBreakOnSeverity disabled)");
                 }
-                info_queue->Release();
             } else {
                 LogWarn("  Failed to get D3D11 info queue: 0x%08X", info_hr);
             }
-            debug_device->Release();
         } else {
             LogWarn("  Failed to get D3D11 debug device: 0x%08X", debug_hr);
         }
@@ -600,12 +595,11 @@ HRESULT WINAPI D3D12CreateDevice_Detour(IUnknown* pAdapter, D3D_FEATURE_LEVEL Mi
             auto D3D12GetDebugInterface = reinterpret_cast<decltype(&::D3D12GetDebugInterface)>(
                 GetProcAddress(d3d12_module, "D3D12GetDebugInterface"));
             if (D3D12GetDebugInterface != nullptr) {
-                ID3D12Debug* debug_controller = nullptr;
+                Microsoft::WRL::ComPtr<ID3D12Debug> debug_controller;
                 HRESULT debug_hr = D3D12GetDebugInterface(IID_PPV_ARGS(&debug_controller));
                 if (SUCCEEDED(debug_hr) && debug_controller != nullptr) {
                     debug_controller->EnableDebugLayer();
                     LogInfo("  D3D12 debug layer enabled successfully");
-                    debug_controller->Release();
                 } else {
                     LogWarn("  Failed to enable D3D12 debug layer: 0x%08X", debug_hr);
                 }
@@ -619,9 +613,9 @@ HRESULT WINAPI D3D12CreateDevice_Detour(IUnknown* pAdapter, D3D_FEATURE_LEVEL Mi
         // Setup debug interface to break on any warnings/errors (similar to DX12_ENABLE_DEBUG_LAYER)
         if (SUCCEEDED(hr) && ppDevice && *ppDevice) {
             ID3D12Device* device = static_cast<ID3D12Device*>(*ppDevice);
-            ID3D12InfoQueue* info_queue = nullptr;
+            Microsoft::WRL::ComPtr<ID3D12InfoQueue> info_queue;
             HRESULT info_hr = device->QueryInterface(IID_PPV_ARGS(&info_queue));
-            if (SUCCEEDED(info_hr) && info_queue != nullptr) {
+            if (SUCCEEDED(info_hr)) {
                 // Only set break on severity if the setting is enabled
                 if (settings::g_developerTabSettings.debug_break_on_severity.GetValue()) {
                     info_queue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, true);
@@ -633,7 +627,6 @@ HRESULT WINAPI D3D12CreateDevice_Detour(IUnknown* pAdapter, D3D_FEATURE_LEVEL Mi
                 } else {
                     LogInfo("  D3D12 debug info queue configured (SetBreakOnSeverity disabled)");
                 }
-                info_queue->Release();
             } else {
                 LogWarn("  Failed to get D3D12 info queue: 0x%08X", info_hr);
             }

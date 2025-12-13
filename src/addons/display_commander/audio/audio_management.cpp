@@ -293,10 +293,9 @@ bool SetMuteForCurrentProcess(bool mute, bool trigger_notification) {
                 DWORD pid = 0;
                 session_control2->GetProcessId(&pid);
                 if (pid == target_pid) {
-                    ISimpleAudioVolume *simple_volume = nullptr;
-                    if (SUCCEEDED(session_control->QueryInterface(&simple_volume)) && simple_volume != nullptr) {
+                    Microsoft::WRL::ComPtr<ISimpleAudioVolume> simple_volume;
+                    if (SUCCEEDED(session_control->QueryInterface(IID_PPV_ARGS(&simple_volume))) && simple_volume != nullptr) {
                         simple_volume->SetMute(mute ? TRUE : FALSE, nullptr);
-                        simple_volume->Release();
                         success = true;
                     }
                 }

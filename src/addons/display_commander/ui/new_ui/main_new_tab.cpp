@@ -1355,7 +1355,8 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                         ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f), ICON_FK_WARNING " Warning: Native Reflex is not sleeping recently - may indicate issues! (FIXME)");
                     }
                 } else {
-                    ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), ICON_FK_OK " Injected Reflex: ACTIVE Native Frame Pacing: OFF");
+                    bool native_fp = settings::g_mainTabSettings.native_frame_pacing.GetValue();
+                    ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), ICON_FK_OK " Injected Reflex: ACTIVE Native Frame Pacing: %s", native_fp ? "ON" : "OFF");
                     double injected_ns = static_cast<double>(g_sleep_reflex_injected_ns_smooth.load());
                     double calls_per_second = injected_ns <= 0 ? -1 : 1000000000.0 / injected_ns;
                     ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Injected Reflex: %.2f times/sec (%.1f ms interval)", calls_per_second, injected_ns / 1000000.0);
@@ -1404,13 +1405,15 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
 
         // Show warning for non-implemented low latency mode
         if (current_item == static_cast<int>(FpsLimiterMode::kNonReflexLowLatency)) {
-            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Native Frame Pacing: OFF");
+            bool native_fp = settings::g_mainTabSettings.native_frame_pacing.GetValue();
+            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Native Frame Pacing: %s", native_fp ? "ON" : "OFF");
             ImGui::TextColored(ui::colors::TEXT_WARNING, ICON_FK_WARNING " Non-Reflex Low Latency Mode not implemented yet");
         }
 
         // Present Pacing Delay slider (persisted)
         if (current_item == static_cast<int>(FpsLimiterMode::kOnPresentSync)) {
-            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Native Frame Pacing: OFF");
+            bool native_fp = settings::g_mainTabSettings.native_frame_pacing.GetValue();
+            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Native Frame Pacing: %s", native_fp ? "ON" : "OFF");
 
             ImGui::TextColored(ui::colors::TEXT_HIGHLIGHT, "Present Pacing Delay:");
             ImGui::SameLine();

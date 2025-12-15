@@ -13,6 +13,54 @@
 
 namespace display_commanderhooks {
 
+namespace {
+// Helper function to track present statistics (shared between Present and Present1)
+void TrackPresentStatistics(
+    SwapChainWrapperStats* stats,
+    std::atomic<uint64_t>& last_time_ns,
+    std::atomic<uint64_t>& total_calls,
+    std::atomic<double>& smoothed_fps) {
+
+    uint64_t now_ns = utils::get_now_ns();
+    uint64_t last_time = last_time_ns.exchange(now_ns, std::memory_order_acq_rel);
+
+    total_calls.fetch_add(1, std::memory_order_relaxed);
+
+    // Calculate FPS using rolling average and record frame time
+    if (last_time > 0) {
+        uint64_t delta_ns = now_ns - last_time;
+        // Only update if time delta is reasonable (ignore if > 1 second)
+        if (delta_ns < utils::SEC_TO_NS && delta_ns > 0) {
+            // Calculate instantaneous FPS from delta time
+            double delta_seconds = static_cast<double>(delta_ns) / utils::SEC_TO_NS;
+            double instant_fps = 1.0 / delta_seconds;
+
+            // Smooth the FPS using rolling average
+            double old_fps = smoothed_fps.load(std::memory_order_acquire);
+            double new_fps = UpdateRollingAverage(instant_fps, old_fps);
+            smoothed_fps.store(new_fps, std::memory_order_release);
+        }
+    }
+
+    // Track combined frame time (either Present or Present1 represents a frame submission)
+    uint64_t last_combined = stats->last_present_combined_time_ns.load(std::memory_order_acquire);
+    if (last_combined == 0 || (now_ns - last_combined) >= 1000ULL) {
+        // Record frame time if significant time has passed (avoid double counting when both Present/Present1 called)
+        uint64_t expected = last_combined;
+        if (stats->last_present_combined_time_ns.compare_exchange_strong(expected, now_ns, std::memory_order_acq_rel)) {
+            if (last_combined > 0) {
+                uint64_t combined_delta_ns = now_ns - last_combined;
+                if (combined_delta_ns < utils::SEC_TO_NS && combined_delta_ns > 0) {
+                    float frame_time_ms = static_cast<float>(combined_delta_ns) / utils::NS_TO_MS;
+                    uint32_t head = stats->frame_time_head.fetch_add(1, std::memory_order_acq_rel);
+                    stats->frame_times[head & (kSwapchainFrameTimeCapacity - 1)] = frame_time_ms;
+                }
+            }
+        }
+    }
+}
+} // anonymous namespace
+
 // Helper function to create a swapchain wrapper from any swapchain interface
 IDXGISwapChain4* CreateSwapChainWrapper(IDXGISwapChain* swapchain, SwapChainHook hookType) {
     if (swapchain == nullptr) {
@@ -98,43 +146,7 @@ STDMETHODIMP DXGISwapChain4Wrapper::Present(UINT SyncInterval, UINT Flags) {
         ? &g_swapchain_wrapper_stats_proxy
         : &g_swapchain_wrapper_stats_native;
 
-    uint64_t now_ns = utils::get_now_ns();
-    uint64_t last_time_ns = stats->last_present_time_ns.exchange(now_ns, std::memory_order_acq_rel);
-
-    stats->total_present_calls.fetch_add(1, std::memory_order_relaxed);
-
-    // Calculate FPS using rolling average and record frame time
-    if (last_time_ns > 0) {
-        uint64_t delta_ns = now_ns - last_time_ns;
-        // Only update if time delta is reasonable (ignore if > 1 second)
-        if (delta_ns < utils::SEC_TO_NS && delta_ns > 0) {
-            // Calculate instantaneous FPS from delta time
-            double delta_seconds = static_cast<double>(delta_ns) / utils::SEC_TO_NS;
-            double instant_fps = 1.0 / delta_seconds;
-
-            // Smooth the FPS using rolling average
-            double old_fps = stats->smoothed_present_fps.load(std::memory_order_acquire);
-            double new_fps = UpdateRollingAverage(instant_fps, old_fps);
-            stats->smoothed_present_fps.store(new_fps, std::memory_order_release);
-        }
-    }
-
-    // Track combined frame time (either Present or Present1 represents a frame submission)
-    uint64_t last_combined = stats->last_present_combined_time_ns.load(std::memory_order_acquire);
-    if (last_combined == 0 || (now_ns - last_combined) >= 1000ULL) {
-        // Record frame time if significant time has passed (avoid double counting when both Present/Present1 called)
-        uint64_t expected = last_combined;
-        if (stats->last_present_combined_time_ns.compare_exchange_strong(expected, now_ns, std::memory_order_acq_rel)) {
-            if (last_combined > 0) {
-                uint64_t combined_delta_ns = now_ns - last_combined;
-                if (combined_delta_ns < utils::SEC_TO_NS && combined_delta_ns > 0) {
-                    float frame_time_ms = static_cast<float>(combined_delta_ns) / utils::NS_TO_MS;
-                    uint32_t head = stats->frame_time_head.fetch_add(1, std::memory_order_acq_rel);
-                    stats->frame_times[head & (kSwapchainFrameTimeCapacity - 1)] = frame_time_ms;
-                }
-            }
-        }
-    }
+    TrackPresentStatistics(stats, stats->last_present_time_ns, stats->total_present_calls, stats->smoothed_present_fps);
 
     return m_originalSwapChain->Present(SyncInterval, Flags);
 }
@@ -198,43 +210,7 @@ STDMETHODIMP DXGISwapChain4Wrapper::Present1(UINT SyncInterval, UINT PresentFlag
         ? &g_swapchain_wrapper_stats_proxy
         : &g_swapchain_wrapper_stats_native;
 
-    uint64_t now_ns = utils::get_now_ns();
-    uint64_t last_time_ns = stats->last_present1_time_ns.exchange(now_ns, std::memory_order_acq_rel);
-
-    stats->total_present1_calls.fetch_add(1, std::memory_order_relaxed);
-
-    // Calculate FPS using rolling average
-    if (last_time_ns > 0) {
-        uint64_t delta_ns = now_ns - last_time_ns;
-        // Only update if time delta is reasonable (ignore if > 1 second)
-        if (delta_ns < utils::SEC_TO_NS && delta_ns > 0) {
-            // Calculate instantaneous FPS from delta time
-            double delta_seconds = static_cast<double>(delta_ns) / utils::SEC_TO_NS;
-            double instant_fps = 1.0 / delta_seconds;
-
-            // Smooth the FPS using rolling average
-            double old_fps = stats->smoothed_present1_fps.load(std::memory_order_acquire);
-            double new_fps = UpdateRollingAverage(instant_fps, old_fps);
-            stats->smoothed_present1_fps.store(new_fps, std::memory_order_release);
-        }
-    }
-
-    // Track combined frame time (either Present or Present1 represents a frame submission)
-    uint64_t last_combined = stats->last_present_combined_time_ns.load(std::memory_order_acquire);
-    if (last_combined == 0 || (now_ns - last_combined) >= 1000ULL) {
-        // Record frame time if significant time has passed (avoid double counting when both Present/Present1 called)
-        uint64_t expected = last_combined;
-        if (stats->last_present_combined_time_ns.compare_exchange_strong(expected, now_ns, std::memory_order_acq_rel)) {
-            if (last_combined > 0) {
-                uint64_t combined_delta_ns = now_ns - last_combined;
-                if (combined_delta_ns < utils::SEC_TO_NS && combined_delta_ns > 0) {
-                    float frame_time_ms = static_cast<float>(combined_delta_ns) / utils::NS_TO_MS;
-                    uint32_t head = stats->frame_time_head.fetch_add(1, std::memory_order_acq_rel);
-                    stats->frame_times[head & (kSwapchainFrameTimeCapacity - 1)] = frame_time_ms;
-                }
-            }
-        }
-    }
+    TrackPresentStatistics(stats, stats->last_present1_time_ns, stats->total_present1_calls, stats->smoothed_present1_fps);
 
     return m_originalSwapChain->Present1(SyncInterval, PresentFlags, pPresentParameters);
 }

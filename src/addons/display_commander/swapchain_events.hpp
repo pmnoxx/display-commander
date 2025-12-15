@@ -42,7 +42,7 @@ void OnPresentUpdateBefore(reshade::api::command_queue *queue, reshade::api::swa
                            const reshade::api::rect *source_rect, const reshade::api::rect *dest_rect,
                            uint32_t dirty_rect_count, const reshade::api::rect *dirty_rects);
 void OnPresentUpdateAfter2(void* native_device, DeviceTypeDC device_type);
-void OnPresentFlags2(uint32_t *present_flags, DeviceTypeDC device_type);
+void OnPresentFlags2(uint32_t *present_flags, DeviceTypeDC device_type, bool from_present_detour = true);
 
 // Auto color space helper
 void AutoSetColorSpace(reshade::api::swapchain *swapchain);

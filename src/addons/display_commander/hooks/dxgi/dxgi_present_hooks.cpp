@@ -387,178 +387,159 @@ namespace {
 
     // Track the last native swapchain used in OnPresentUpdateBefore
     std::atomic<IDXGISwapChain*> g_last_present_update_swapchain{nullptr};
+
+    // Helper structure to hold common present logic state
+    struct PresentCommonState {
+        DeviceTypeDC device_type = DeviceTypeDC::DX10;
+        Microsoft::WRL::ComPtr<IUnknown> device;
+        IDXGISwapChain* base_swapchain = nullptr;
+    };
+
+    // Helper function for common Present/Present1 logic before calling original
+    template<typename SwapChainType>
+    PresentCommonState HandlePresentBefore(
+        SwapChainType* This,
+        IDXGISwapChain* baseSwapChain,
+        bool checkD3D10) {
+
+        PresentCommonState state;
+        state.base_swapchain = baseSwapChain;
+
+        {
+            This->GetDevice(IID_PPV_ARGS(&state.device));
+            if (state.device != nullptr) {
+                // Try to determine if it's D3D11 or D3D12
+                Microsoft::WRL::ComPtr<ID3D11Device> d3d11_device;
+                Microsoft::WRL::ComPtr<ID3D12Device> d3d12_device;
+                if (SUCCEEDED(state.device->QueryInterface(IID_PPV_ARGS(&d3d11_device)))) {
+                    state.device_type = DeviceTypeDC::DX11;
+                } else if (SUCCEEDED(state.device->QueryInterface(IID_PPV_ARGS(&d3d12_device)))) {
+                    state.device_type = DeviceTypeDC::DX12;
+                } else if (checkD3D10) {
+                    Microsoft::WRL::ComPtr<ID3D10Device> d3d10_device;
+                    if (SUCCEEDED(state.device->QueryInterface(IID_PPV_ARGS(&d3d10_device)))) {
+                        state.device_type = DeviceTypeDC::DX10;
+                    }
+                }
+            }
+        }
+
+        // Prevent always on top for swapchain window if enabled
+        if (settings::g_developerTabSettings.prevent_always_on_top.GetValue()) {
+            HWND swapchain_hwnd = g_last_swapchain_hwnd.load();
+            if (swapchain_hwnd && IsWindow(swapchain_hwnd)) {
+                // Remove always on top styles from the window
+                LONG_PTR current_style = GetWindowLongPtrW(swapchain_hwnd, GWL_EXSTYLE);
+                if (current_style & (WS_EX_TOPMOST | WS_EX_TOOLWINDOW)) {
+                    LONG_PTR new_style = current_style & ~(WS_EX_TOPMOST | WS_EX_TOOLWINDOW);
+                    SetWindowLongPtrW(swapchain_hwnd, GWL_EXSTYLE, new_style);
+                    // Only log occasionally to avoid spam
+                    static std::atomic<int> prevent_always_on_top_log_count{0};
+                    if (prevent_always_on_top_log_count.fetch_add(1) < 3) {
+                        LogInfo("Present detour: Prevented always on top for window 0x%p", swapchain_hwnd);
+                    }
+                }
+            }
+        }
+
+        // Record per-frame FPS sample for background aggregation
+        RecordFrameTime(FrameTimeMode::kPresent);
+
+        // Get and cache frame statistics for refresh rate monitoring
+        DXGI_FRAME_STATISTICS stats = {};
+        if (SUCCEEDED(This->GetFrameStatistics(&stats))) {
+            // Use memory_order_release to ensure the shared_ptr is fully constructed before other threads see it
+            g_cached_frame_stats.store(std::make_shared<DXGI_FRAME_STATISTICS>(stats), std::memory_order_release);
+            ::dxgi::fps_limiter::ProcessFrameStatistics(stats);
+        }
+
+        dx11_proxy::DX11ProxyManager::GetInstance().CopyFrameFromGameThread(baseSwapChain);
+
+        return state;
+    }
+
+    // Helper function for common Present/Present1 logic after calling original
+    void HandlePresentAfter(
+        IDXGISwapChain* baseSwapChain,
+        const PresentCommonState& state,
+        bool callCopyThreadLoop2) {
+
+        // Query DXGI composition state (moved from ReShade present events)
+        ::QueryDxgiCompositionState(baseSwapChain);
+
+        // Signal refresh rate monitoring thread (after DWM flush)
+        ::dxgi::fps_limiter::SignalRefreshRateMonitor();
+
+        if (callCopyThreadLoop2 && g_last_present_update_swapchain.load() == baseSwapChain) {
+            dx11_proxy::DX11ProxyManager::GetInstance().CopyThreadLoop2();
+        }
+
+        // Note: GPU completion measurement is now enqueued earlier in OnPresentUpdateBefore
+        // (before flush_command_queue) for more accurate timing
+
+        // Get device from swapchain for latency manager
+        ::OnPresentUpdateAfter2(state.device.Get(), state.device_type);
+    }
 } // namespace
 
 // Hooked IDXGISwapChain::Present function
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain *This, UINT SyncInterval, UINT Flags) {
-    // Skip if this is not the swapchain used by OnPresentUpdateBefore
+    // Early return if swapchain doesn't match
     IDXGISwapChain* expected_swapchain = g_last_present_update_swapchain.load();
     if (expected_swapchain != nullptr && This != expected_swapchain) {
         return IDXGISwapChain_Present_Original(This, SyncInterval, Flags);
-    }
-
-    DeviceTypeDC device_type = DeviceTypeDC::DX10;
-    Microsoft::WRL::ComPtr<IUnknown> device;
-    {
-        This->GetDevice(IID_PPV_ARGS(&device));
-        if (device != nullptr) {
-            // Try to determine if it's D3D11 or D3D12
-            Microsoft::WRL::ComPtr<ID3D11Device> d3d11_device;
-            Microsoft::WRL::ComPtr<ID3D12Device> d3d12_device;
-            if (SUCCEEDED(device->QueryInterface(IID_PPV_ARGS(&d3d11_device)))) {
-                device_type = DeviceTypeDC::DX11;
-            } else if (SUCCEEDED(device->QueryInterface(IID_PPV_ARGS(&d3d12_device)))) {
-                device_type = DeviceTypeDC::DX12;
-            }
-        }
     }
 
     // Increment DXGI Present counter
     g_dxgi_core_event_counters[DXGI_CORE_EVENT_PRESENT].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
-    // Prevent always on top for swapchain window if enabled
-    if (settings::g_developerTabSettings.prevent_always_on_top.GetValue()) {
-        HWND swapchain_hwnd = g_last_swapchain_hwnd.load();
-        if (swapchain_hwnd && IsWindow(swapchain_hwnd)) {
-            // Remove always on top styles from the window
-            LONG_PTR current_style = GetWindowLongPtrW(swapchain_hwnd, GWL_EXSTYLE);
-            if (current_style & (WS_EX_TOPMOST | WS_EX_TOOLWINDOW)) {
-                LONG_PTR new_style = current_style & ~(WS_EX_TOPMOST | WS_EX_TOOLWINDOW);
-                SetWindowLongPtrW(swapchain_hwnd, GWL_EXSTYLE, new_style);
-                // Only log occasionally to avoid spam
-                static std::atomic<int> prevent_always_on_top_log_count{0};
-                if (prevent_always_on_top_log_count.fetch_add(1) < 3) {
-                    LogInfo("IDXGISwapChain_Present_Detour: Prevented always on top for window 0x%p", swapchain_hwnd);
-                }
-            }
-        }
-    }
+    // Handle common before logic
+    auto state = HandlePresentBefore(This, This, false);
 
+    ::OnPresentFlags2(&Flags, state.device_type);
 
-    ::OnPresentFlags2(&Flags, device_type);
-
-    // Record per-frame FPS sample for background aggregation
-    RecordFrameTime(FrameTimeMode::kPresent);
-
-    // Get and cache frame statistics for refresh rate monitoring
-    DXGI_FRAME_STATISTICS stats = {};
-    if (SUCCEEDED(This->GetFrameStatistics(&stats))) {
-        // Use memory_order_release to ensure the shared_ptr is fully constructed before other threads see it
-        g_cached_frame_stats.store(std::make_shared<DXGI_FRAME_STATISTICS>(stats), std::memory_order_release);
-        ::dxgi::fps_limiter::ProcessFrameStatistics(stats);
-    }
-
-    dx11_proxy::DX11ProxyManager::GetInstance().CopyFrameFromGameThread(This);
-
-    if  (IDXGISwapChain_Present_Original == nullptr) {
+    if (IDXGISwapChain_Present_Original == nullptr) {
         LogError("IDXGISwapChain_Present_Detour: IDXGISwapChain_Present_Original is null");
         return This->Present(SyncInterval, Flags);
     }
 
-    auto res= IDXGISwapChain_Present_Original(This, SyncInterval, Flags);
+    auto res = IDXGISwapChain_Present_Original(This, SyncInterval, Flags);
 
-    // Query DXGI composition state (moved from ReShade present events)
-    ::QueryDxgiCompositionState(This);
-
-    // Signal refresh rate monitoring thread (after DWM flush)
-    ::dxgi::fps_limiter::SignalRefreshRateMonitor();
-
-    if (g_last_present_update_swapchain.load() == This) {
-        dx11_proxy::DX11ProxyManager::GetInstance().CopyThreadLoop2();
-    }
-
-    // Note: GPU completion measurement is now enqueued earlier in OnPresentUpdateBefore
-    // (before flush_command_queue) for more accurate timing
-
-    // Get device from swapchain for latency manager
-    ::OnPresentUpdateAfter2(device.Get(), device_type);
+    // Handle common after logic
+    HandlePresentAfter(This, state, true);
 
     return res;
 }
 
 // Hooked IDXGISwapChain1::Present1 function
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1 *This, UINT SyncInterval, UINT PresentFlags, const DXGI_PRESENT_PARAMETERS *pPresentParameters) {
-    // Skip if this is not the swapchain used by OnPresentUpdateBefore
+    IDXGISwapChain* baseSwapChain = reinterpret_cast<IDXGISwapChain*>(This);
+
+    // Early return if swapchain doesn't match
     IDXGISwapChain* expected_swapchain = g_last_present_update_swapchain.load();
-    if (expected_swapchain != nullptr && reinterpret_cast<IDXGISwapChain*>(This) != expected_swapchain) {
+    if (expected_swapchain != nullptr && baseSwapChain != expected_swapchain) {
         return IDXGISwapChain_Present1_Original(This, SyncInterval, PresentFlags, pPresentParameters);
-    }
-    DeviceTypeDC device_type = DeviceTypeDC::DX10; // Default to DX11 for DXGI
-    Microsoft::WRL::ComPtr<IUnknown> device;
-    {
-        This->GetDevice(IID_PPV_ARGS(&device));
-        if (device != nullptr) {
-            // Try to determine if it's D3D11 or D3D12
-            Microsoft::WRL::ComPtr<ID3D10Device> d3d10_device;
-            Microsoft::WRL::ComPtr<ID3D11Device> d3d11_device;
-            Microsoft::WRL::ComPtr<ID3D12Device> d3d12_device;
-            if (SUCCEEDED(device->QueryInterface(IID_PPV_ARGS(&d3d11_device)))) {
-                device_type = DeviceTypeDC::DX11;
-            } else if (SUCCEEDED(device->QueryInterface(IID_PPV_ARGS(&d3d12_device)))) {
-                device_type = DeviceTypeDC::DX12;
-            } else if (SUCCEEDED(device->QueryInterface(IID_PPV_ARGS(&d3d10_device)))) {
-                device_type = DeviceTypeDC::DX10;
-            }
-        }
     }
 
     // Increment DXGI Present1 counter
     g_dxgi_sc1_event_counters[DXGI_SC1_EVENT_PRESENT1].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
-    // Prevent always on top for swapchain window if enabled
-    if (settings::g_developerTabSettings.prevent_always_on_top.GetValue()) {
-        HWND swapchain_hwnd = g_last_swapchain_hwnd.load();
-        if (swapchain_hwnd && IsWindow(swapchain_hwnd)) {
-            // Remove always on top styles from the window
-            LONG_PTR current_style = GetWindowLongPtrW(swapchain_hwnd, GWL_EXSTYLE);
-            if (current_style & (WS_EX_TOPMOST | WS_EX_TOOLWINDOW)) {
-                LONG_PTR new_style = current_style & ~(WS_EX_TOPMOST | WS_EX_TOOLWINDOW);
-                SetWindowLongPtrW(swapchain_hwnd, GWL_EXSTYLE, new_style);
-                // Only log occasionally to avoid spam
-                static std::atomic<int> prevent_always_on_top_log_count_present1{0};
-                if (prevent_always_on_top_log_count_present1.fetch_add(1) < 3) {
-                    LogInfo("IDXGISwapChain_Present1_Detour: Prevented always on top for window 0x%p", swapchain_hwnd);
-                }
-            }
-        }
-    }
+    // Handle common before logic (with D3D10 check enabled)
+    auto state = HandlePresentBefore(This, baseSwapChain, true);
 
-    ::OnPresentFlags2(&PresentFlags, device_type);
+    ::OnPresentFlags2(&PresentFlags, state.device_type);
 
-    // Record per-frame FPS sample for background aggregation
-    RecordFrameTime(FrameTimeMode::kPresent);
-
-    // Get and cache frame statistics for refresh rate monitoring
-    DXGI_FRAME_STATISTICS stats = {};
-    if (SUCCEEDED(This->GetFrameStatistics(&stats))) {
-        // Use memory_order_release to ensure the shared_ptr is fully constructed before other threads see it
-        g_cached_frame_stats.store(std::make_shared<DXGI_FRAME_STATISTICS>(stats), std::memory_order_release);
-        ::dxgi::fps_limiter::ProcessFrameStatistics(stats);
-    }
-
-    dx11_proxy::DX11ProxyManager::GetInstance().CopyFrameFromGameThread(This);
-
-    if  (IDXGISwapChain_Present1_Original == nullptr) {
+    if (IDXGISwapChain_Present1_Original == nullptr) {
         LogError("IDXGISwapChain_Present1_Detour: IDXGISwapChain_Present1_Original is null");
         return This->Present1(SyncInterval, PresentFlags, pPresentParameters);
     }
 
     auto res = IDXGISwapChain_Present1_Original(This, SyncInterval, PresentFlags, pPresentParameters);
 
-    // Query DXGI composition state (moved from ReShade present events)
-    ::QueryDxgiCompositionState(This);
-
-    // Signal refresh rate monitoring thread (after DWM flush)
-    ::dxgi::fps_limiter::SignalRefreshRateMonitor();
-
-    // Note: GPU completion measurement is now enqueued earlier in OnPresentUpdateBefore
-    // (before flush_command_queue) for more accurate timing
-//   dx11_proxy::DX11ProxyManager::GetInstance().CopyThreadLoop();
-
-    // Get device from swapchain for latency manager
-    ::OnPresentUpdateAfter2(device.Get(), device_type);
+    // Handle common after logic (without CopyThreadLoop2 for Present1)
+    HandlePresentAfter(baseSwapChain, state, false);
 
     return res;
 }

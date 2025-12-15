@@ -9,6 +9,7 @@
 #include "hooks/d3d11/d3d11_hooks.hpp"
 #include "hooks/dxgi/dxgi_present_hooks.hpp"
 #include "hooks/dxgi/dxgi_gpu_completion.hpp"
+#include "hooks/dxgi_factory_wrapper.hpp"
 #include "hooks/window_proc_hooks.hpp"
 #include "hooks/streamline_hooks.hpp"
 #include "hooks/windows_hooks/windows_message_hooks.hpp"
@@ -995,26 +996,6 @@ void OnPresentUpdateAfter2(void* native_device, DeviceTypeDC device_type) {
     RecordFrameTime(FrameTimeMode::kFrameBegin);
 }
 
-void flush_command_queue_with_command_queue(reshade::api::command_queue *command_queue) {
-    if (ShouldBackgroundSuppressOperation())
-        return;
-
-    command_queue->flush_immediate_command_list();
-}
-
-void flush_command_queue() {
-    if (ShouldBackgroundSuppressOperation())
-        return;
-
-    reshade::api::effect_runtime* runtime = GetFirstReShadeRuntime();
-
-    if (runtime != nullptr) {
-        runtime->get_command_queue()->flush_immediate_command_list();
-    } else {
-        LogError("flush_command_queue failed: no ReShade runtime available");
-    }
-}
-
 float GetTargetFps() {
     // Use background flag computed by monitoring thread; avoid
     // GetForegroundWindow here
@@ -1031,12 +1012,13 @@ float GetTargetFps() {
     return target_fps;
 }
 
-void HandleFpsLimiter() {
+void HandleFpsLimiter(bool from_present_detour) {
     LONGLONG handle_fps_limiter_start_time_ns = utils::get_now_ns();
     float target_fps = GetTargetFps();
     late_amount_ns.store(0);
     if (target_fps > 0.0f || s_fps_limiter_mode.load() == FpsLimiterMode::kLatentSync) {
-        flush_command_queue();
+        // Note: Command queue flushing is now handled in OnPresentUpdateBefore using native DirectX APIs
+        // No need to flush here anymore
 
         // Call FPS Limiter on EVERY frame (not throttled)
         switch (s_fps_limiter_mode.load()) {
@@ -1084,7 +1066,7 @@ void HandleFpsLimiter() {
     g_present_start_time_ns.store(handle_fps_limiter_start_end_time_ns);
 
     LONGLONG handle_fps_limiter_start_duration_ns =
-        handle_fps_limiter_start_end_time_ns - handle_fps_limiter_start_time_ns;
+        max(1, handle_fps_limiter_start_end_time_ns - handle_fps_limiter_start_time_ns);
     fps_sleep_before_on_present_ns.store(
         UpdateRollingAverage(handle_fps_limiter_start_duration_ns, fps_sleep_before_on_present_ns.load()));
 }
@@ -1245,6 +1227,8 @@ void OnPresentUpdateBefore(reshade::api::command_queue * command_queue, reshade:
         Microsoft::WRL::ComPtr<IDXGISwapChain> dxgi_swapchain{};
         if (id3d11device != nullptr && SUCCEEDED(id3d11device->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain)))) {
             EnqueueGPUCompletion(swapchain, dxgi_swapchain.Get(), command_queue);
+            // Flush command queue using native DirectX APIs (DX11 only) - don't rely on ReShade runtime
+            display_commanderhooks::FlushCommandQueueFromSwapchain(dxgi_swapchain.Get(), DeviceTypeDC::DX11);
         }
     } else if (api == reshade::api::device_api::d3d12) {
         auto *id3d12device   = reinterpret_cast<ID3D12Device *>(swapchain->get_native());
@@ -1253,9 +1237,6 @@ void OnPresentUpdateBefore(reshade::api::command_queue * command_queue, reshade:
             EnqueueGPUCompletion(swapchain, dxgi_swapchain.Get(), command_queue);
         }
     }
-
-    flush_command_queue_with_command_queue(command_queue); // Flush command queue before addons start processing
-                           // to reduce rendering latency caused by reshade
 
     // Increment event counter
     g_reshade_event_counters[RESHADE_EVENT_PRESENT_UPDATE_BEFORE].fetch_add(1);
@@ -1295,7 +1276,7 @@ bool OnBindPipeline(reshade::api::command_list *cmd_list, reshade::api::pipeline
 }
 
 // Present flags callback to strip DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING
-void OnPresentFlags2(uint32_t *present_flags, DeviceTypeDC api_type) {
+void OnPresentFlags2(uint32_t *present_flags, DeviceTypeDC api_type, bool from_present_detour) {
     // Increment event counter
     g_reshade_event_counters[RESHADE_EVENT_PRESENT_FLAGS].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
@@ -1320,7 +1301,7 @@ void OnPresentFlags2(uint32_t *present_flags, DeviceTypeDC api_type) {
         }
     }
 
-    HandleFpsLimiter();
+    HandleFpsLimiter(from_present_detour);
 
     if (s_reflex_enable_current_frame.load()) {
         if (settings::g_developerTabSettings.reflex_generate_markers.GetValue()) {

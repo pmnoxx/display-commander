@@ -3,6 +3,8 @@
 #include "../globals.hpp"
 #include "../utils/timing.hpp"
 #include "../utils/general_utils.hpp"
+#include "../swapchain_events.hpp"
+#include "../settings/main_tab_settings.hpp"
 #include "dxgi/dxgi_present_hooks.hpp"
 #include <dxgi.h>
 #include <dxgi1_2.h>
@@ -10,10 +12,34 @@
 #include <dxgi1_4.h>
 #include <dxgi1_5.h>
 #include <dxgi1_6.h>
+#include <d3d11.h>
+#include <d3d12.h>
 
 namespace display_commanderhooks {
 
+// Helper function to flush command queue from swapchain using native DirectX APIs (DX11 only)
+void FlushCommandQueueFromSwapchain(IDXGISwapChain* swapchain, DeviceTypeDC device_type) {
+    if (swapchain == nullptr) {
+        return;
+    }
+
+    if (device_type == DeviceTypeDC::DX11) {
+        // For D3D11: Get device, get immediate context, flush it
+        Microsoft::WRL::ComPtr<ID3D11Device> d3d11_device;
+        HRESULT hr = swapchain->GetDevice(IID_PPV_ARGS(&d3d11_device));
+        if (SUCCEEDED(hr) && d3d11_device) {
+            Microsoft::WRL::ComPtr<ID3D11DeviceContext> immediate_context;
+            d3d11_device->GetImmediateContext(&immediate_context);
+            if (immediate_context) {
+                immediate_context->Flush();
+            }
+        }
+    }
+    // For DX12, DX10 and other APIs, no flush needed or not applicable
+}
+
 namespace {
+
 // Helper function to track present statistics (shared between Present and Present1)
 void TrackPresentStatistics(
     SwapChainWrapperStats* stats,
@@ -141,6 +167,9 @@ STDMETHODIMP DXGISwapChain4Wrapper::GetDevice(REFIID riid, void **ppDevice) {
 
 // IDXGISwapChain methods - delegate to original
 STDMETHODIMP DXGISwapChain4Wrapper::Present(UINT SyncInterval, UINT Flags) {
+    // Mark that Present has been called at least once
+    g_swapchain_wrapper_present_called.store(true, std::memory_order_relaxed);
+
     // Track statistics
     SwapChainWrapperStats* stats = (m_swapChainHookType == SwapChainHook::Proxy)
         ? &g_swapchain_wrapper_stats_proxy
@@ -148,7 +177,27 @@ STDMETHODIMP DXGISwapChain4Wrapper::Present(UINT SyncInterval, UINT Flags) {
 
     TrackPresentStatistics(stats, stats->last_present_time_ns, stats->total_present_calls, stats->smoothed_present_fps);
 
-    return m_originalSwapChain->Present(SyncInterval, Flags);
+    // For native swapchains, execute common present logic (HandlePresentBefore/OnPresentFlags2/HandlePresentAfter)
+    // This avoids duplicate execution in the detour functions
+    // Only execute if native frame pacing is enabled
+    display_commanderhooks::dxgi::PresentCommonState state;
+    Microsoft::WRL::ComPtr<IDXGISwapChain> baseSwapChain;
+    auto native_frame_pacing = settings::g_mainTabSettings.native_frame_pacing.GetValue();
+    auto flagsCopy = Flags; // to fix crash
+    if (m_swapChainHookType == SwapChainHook::Native && native_frame_pacing) {
+        if (SUCCEEDED(QueryInterface(IID_PPV_ARGS(&baseSwapChain)))) {
+            state = display_commanderhooks::dxgi::HandlePresentBefore(this, baseSwapChain.Get(), false);
+            OnPresentFlags2(&flagsCopy, state.device_type, false); // Called from wrapper, not present_detour
+        }
+    }
+
+    HRESULT res = m_originalSwapChain->Present(SyncInterval, Flags);
+
+    if (m_swapChainHookType == SwapChainHook::Native && native_frame_pacing && baseSwapChain.Get() != nullptr) {
+       display_commanderhooks::dxgi::HandlePresentAfter(baseSwapChain.Get(), state);
+    }
+
+    return res;
 }
 
 STDMETHODIMP DXGISwapChain4Wrapper::GetBuffer(UINT Buffer, REFIID riid, void **ppSurface) {
@@ -205,6 +254,9 @@ STDMETHODIMP DXGISwapChain4Wrapper::GetCoreWindow(REFIID refiid, void **ppUnk) {
 }
 
 STDMETHODIMP DXGISwapChain4Wrapper::Present1(UINT SyncInterval, UINT PresentFlags, const DXGI_PRESENT_PARAMETERS *pPresentParameters) {
+    // Mark that Present1 has been called at least once
+    g_swapchain_wrapper_present_called.store(true, std::memory_order_relaxed);
+
     // Track statistics
     SwapChainWrapperStats* stats = (m_swapChainHookType == SwapChainHook::Proxy)
         ? &g_swapchain_wrapper_stats_proxy
@@ -212,7 +264,30 @@ STDMETHODIMP DXGISwapChain4Wrapper::Present1(UINT SyncInterval, UINT PresentFlag
 
     TrackPresentStatistics(stats, stats->last_present1_time_ns, stats->total_present1_calls, stats->smoothed_present1_fps);
 
-    return m_originalSwapChain->Present1(SyncInterval, PresentFlags, pPresentParameters);
+    // For native swapchains, execute common present logic (HandlePresentBefore/OnPresentFlags2/HandlePresentAfter)
+    // This avoids duplicate execution in the detour functions
+    // Only execute if native frame pacing is enabled
+    display_commanderhooks::dxgi::PresentCommonState state;
+    Microsoft::WRL::ComPtr<IDXGISwapChain> baseSwapChain;
+    auto native_frame_pacing = settings::g_mainTabSettings.native_frame_pacing.GetValue();
+    auto flagsCopy = PresentFlags; // to fix crash
+    if (m_swapChainHookType == SwapChainHook::Native && native_frame_pacing) {
+        if (SUCCEEDED(QueryInterface(IID_PPV_ARGS(&baseSwapChain)))) {
+            state = display_commanderhooks::dxgi::HandlePresentBefore(this, baseSwapChain.Get(), true); // Present1 needs D3D10 check
+            OnPresentFlags2(&flagsCopy, state.device_type, false); // Called from wrapper, not present_detour
+
+            // Flush command queue from swapchain using native DirectX APIs
+            FlushCommandQueueFromSwapchain(baseSwapChain.Get(), state.device_type);
+        }
+    }
+
+    HRESULT res = m_originalSwapChain->Present1(SyncInterval, PresentFlags, pPresentParameters);
+
+    if (m_swapChainHookType == SwapChainHook::Native && native_frame_pacing && baseSwapChain.Get() != nullptr) {
+        display_commanderhooks::dxgi::HandlePresentAfter(baseSwapChain.Get(), state);
+    }
+
+    return res;
 }
 
 STDMETHODIMP_(BOOL) DXGISwapChain4Wrapper::IsTemporaryMonoSupported() {

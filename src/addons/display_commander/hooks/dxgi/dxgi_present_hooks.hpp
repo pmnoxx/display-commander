@@ -7,8 +7,10 @@
 #include <dxgi1_4.h>
 #include <dxgi1_5.h>
 #include <dxgi1_6.h>
+#include <wrl/client.h>
 
 #include <vector>
+#include "../../globals.hpp"
 
 /*
  * IDXGISwapChain VTable Layout Reference
@@ -202,4 +204,23 @@ bool HookSwapchainNative(IDXGISwapChain *swapchain);
 
 // Cleanup GPU measurement fences when device is destroyed
 void CleanupGPUMeasurementFences();
+
+// Helper structure to hold common present logic state
+struct PresentCommonState {
+    DeviceTypeDC device_type = DeviceTypeDC::DX10;
+    Microsoft::WRL::ComPtr<IUnknown> device;
+    IDXGISwapChain* base_swapchain = nullptr;
+};
+
+// Helper function for common Present/Present1 logic before calling original
+template<typename SwapChainType>
+PresentCommonState HandlePresentBefore(
+    SwapChainType* This,
+    IDXGISwapChain* baseSwapChain,
+    bool checkD3D10);
+
+// Helper function for common Present/Present1 logic after calling original
+void HandlePresentAfter(
+    IDXGISwapChain* baseSwapChain,
+    const PresentCommonState& state);
 } // namespace display_commanderhooks::dxgi

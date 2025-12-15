@@ -3,6 +3,7 @@
 #include <dxgi1_6.h>
 #include <wrl/client.h>
 #include <atomic>
+#include "../globals.hpp"
 
 namespace display_commanderhooks {
 
@@ -175,5 +176,8 @@ private:
 
 // Helper function to create a swapchain wrapper
 IDXGISwapChain4* CreateSwapChainWrapper(IDXGISwapChain* swapchain, SwapChainHook hookType);
+
+// Helper function to flush command queue from swapchain using native DirectX APIs (DX11 only)
+void FlushCommandQueueFromSwapchain(IDXGISwapChain* swapchain, DeviceTypeDC device_type);
 
 } // namespace display_commanderhooks

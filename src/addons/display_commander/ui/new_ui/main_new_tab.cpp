@@ -1675,6 +1675,18 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                 ImGui::SetTooltip("Prevents tearing by clearing DXGI tearing flags and preferring sync.");
             }
 
+            ImGui::Spacing();
+            bool native_fp = settings::g_mainTabSettings.native_frame_pacing.GetValue();
+            if (ImGui::Checkbox("Native Frame Pacing", &native_fp)) {
+                settings::g_mainTabSettings.native_frame_pacing.SetValue(native_fp);
+                LogInfo(native_fp ? "Native Frame Pacing enabled" : "Native Frame Pacing disabled");
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Enables native swapchain frame pacing logic in DXGISwapChain4Wrapper.\n"
+                                "When enabled, common present logic (frame statistics, refresh rate monitoring, etc.)\n"
+                                "is executed in the wrapper for native swapchains, avoiding duplicate execution in detour functions.");
+            }
+
             int current_api = g_last_reshade_device_api.load();
             bool is_d3d9 = current_api == static_cast<int>(reshade::api::device_api::d3d9);
             bool is_dxgi = g_last_reshade_device_api.load() == static_cast<int>(reshade::api::device_api::d3d10)

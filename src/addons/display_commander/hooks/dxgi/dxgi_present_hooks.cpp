@@ -418,24 +418,6 @@ PresentCommonState HandlePresentBefore(
         }
     }
 
-    // Prevent always on top for swapchain window if enabled
-    if (settings::g_developerTabSettings.prevent_always_on_top.GetValue()) {
-        HWND swapchain_hwnd = g_last_swapchain_hwnd.load();
-        if (swapchain_hwnd && IsWindow(swapchain_hwnd)) {
-            // Remove always on top styles from the window
-            LONG_PTR current_style = GetWindowLongPtrW(swapchain_hwnd, GWL_EXSTYLE);
-            if (current_style & (WS_EX_TOPMOST | WS_EX_TOOLWINDOW)) {
-                LONG_PTR new_style = current_style & ~(WS_EX_TOPMOST | WS_EX_TOOLWINDOW);
-                SetWindowLongPtrW(swapchain_hwnd, GWL_EXSTYLE, new_style);
-                // Only log occasionally to avoid spam
-                static std::atomic<int> prevent_always_on_top_log_count{0};
-                if (prevent_always_on_top_log_count.fetch_add(1) < 3) {
-                    LogInfo("Present detour: Prevented always on top for window 0x%p", swapchain_hwnd);
-                }
-            }
-        }
-    }
-
     // Record per-frame FPS sample for background aggregation
     RecordFrameTime(FrameTimeMode::kPresent);
 

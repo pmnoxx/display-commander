@@ -334,6 +334,7 @@ struct GlobalWindowState {
     int target_y = 0;
     int target_w = 0;
     int target_h = 0;
+    RECT wr_current = {0, 0, 0, 0};
     bool needs_resize = false;
     bool needs_move = false;
     bool style_changed = false;

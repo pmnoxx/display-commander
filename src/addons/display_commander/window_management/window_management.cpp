@@ -171,6 +171,7 @@ void CalculateWindowState(HWND hwnd, const char* reason) {
         local_state.target_h = min(local_state.target_h, mr.bottom - mr.top);
 
         // Check if any changes are actually needed
+        local_state.wr_current = wr_current;
         local_state.needs_resize = (local_state.target_w != (wr_current.right - wr_current.left))
                                    || (local_state.target_h != (wr_current.bottom - wr_current.top));
         local_state.needs_move = (local_state.target_x != wr_current.left) || (local_state.target_y != wr_current.top);
@@ -296,11 +297,15 @@ void ApplyWindowChange(HWND hwnd, const char* reason, bool force_apply) {
                         scaling_percentage_width = 1.0f;
                         scaling_percentage_height = 1.0f;
                     }
-                    LogInfo("ApplyWindowChange: Windows Display Scaling - Width: %.0f%%, Height: %.0f%%",
-                           scaling_percentage_width, scaling_percentage_height);
+                    LogInfo("ApplyWindowChange: Windows Display Scaling - Width: %.2f%%, Height: %.2f%%",
+                           100.0f * scaling_percentage_width, 100.0f * scaling_percentage_height);
                     float scaling_percentage = (static_cast<float>(system_dpi_x) / 96.0f) * 100.0f;
                     LogInfo("ApplyWindowChange: Windows Display Scaling - DPI: %d, Scaling: %.0f%%",
                            system_dpi_x, scaling_percentage);
+                    // local_state.wr_current
+                    LogInfo("ApplyWindowChange: width %d -> %d height %d -> %d x: %d -> %d y: %d -> %d",
+                           s.wr_current.right - s.wr_current.left, s.target_w, s.wr_current.bottom - s.wr_current.top, s.target_h,
+                           s.wr_current.left, s.target_x, s.wr_current.top, s.target_y);
                     LogInfo("ApplyWindowChange: Virtual Resolution: %dx%d, Physical Resolution: %dx%d",
                            virtual_width, virtual_height, physical_width, physical_height);
 

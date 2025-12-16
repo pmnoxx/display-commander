@@ -262,6 +262,51 @@ bool ShouldApplyHook(const char *hook_name) {
     return ShouldApplyHookById(id);
 }
 
+// Apply timeslowdown to a QPC value and return the spoofed value
+LONGLONG ApplyTimeslowdownToQPC(LONGLONG original_qpc) {
+    // Get current state atomically
+    auto current_state = g_timeslowdown_state.load();
+
+    // if time slow down is enabled, or was enabled before, then apply the time slow down
+    if (current_state->original_quad_ts > 0 || settings::g_experimentalTabSettings.timeslowdown_enabled.GetValue()) {
+        LONGLONG now_qpc = original_qpc;
+        float new_multiplier = settings::g_experimentalTabSettings.timeslowdown_enabled.GetValue()
+                                   ? settings::g_experimentalTabSettings.timeslowdown_multiplier.GetValue()
+                                   : 1.0f;
+
+        // Check if we need to update state
+        bool needs_update = (current_state->original_quad_ts == 0) || (current_state->multiplier != new_multiplier);
+
+        if (needs_update) {
+            // Create new state with updated values
+            auto new_state = std::make_shared<TimeslowdownState>(*current_state);
+
+            if (new_state->original_quad_ts == 0) {
+                new_state->original_quad_ts = now_qpc;
+                new_state->original_quad_value = now_qpc;
+            } else if (current_state->multiplier != new_multiplier) {
+                new_state->original_quad_value =
+                    current_state->original_quad_value +
+                    (now_qpc - current_state->original_quad_ts) * current_state->multiplier;
+                new_state->original_quad_ts = now_qpc;
+            }
+
+            new_state->multiplier = new_multiplier;
+
+            // Atomically update the state
+            g_timeslowdown_state.store(new_state);
+            current_state = new_state;
+        }
+
+        // Apply timeslowdown calculation
+        return current_state->original_quad_value +
+               (now_qpc - current_state->original_quad_ts) * current_state->multiplier;
+    }
+
+    // Return original value if timeslowdown is not applicable
+    return original_qpc;
+}
+
 // Hooked QueryPerformanceCounter function
 BOOL WINAPI QueryPerformanceCounter_Detour(LARGE_INTEGER *lpPerformanceCount) {
     g_qpc_call_count.fetch_add(1, std::memory_order_relaxed);
@@ -347,37 +392,8 @@ BOOL WINAPI QueryPerformanceCounter_Detour(LARGE_INTEGER *lpPerformanceCount) {
     // if time slow down is enabled, or was enabled before, then apply the time slow down
     if (current_state->original_quad_ts > 0 || settings::g_experimentalTabSettings.timeslowdown_enabled.GetValue()) {
         LONGLONG now_qpc = lpPerformanceCount->QuadPart;
-        float new_multiplier = settings::g_experimentalTabSettings.timeslowdown_enabled.GetValue()
-                                   ? settings::g_experimentalTabSettings.timeslowdown_multiplier.GetValue()
-                                   : 1.0f;
-
-        // Check if we need to update state
-        bool needs_update = (current_state->original_quad_ts == 0) || (current_state->multiplier != new_multiplier);
-
-        if (needs_update) {
-            // Create new state with updated values
-            auto new_state = std::make_shared<TimeslowdownState>(*current_state);
-
-            if (new_state->original_quad_ts == 0) {
-                new_state->original_quad_ts = now_qpc;
-                new_state->original_quad_value = now_qpc;
-            } else if (current_state->multiplier != new_multiplier) {
-                new_state->original_quad_value =
-                    current_state->original_quad_value +
-                    (now_qpc - current_state->original_quad_ts) * current_state->multiplier;
-                new_state->original_quad_ts = now_qpc;
-            }
-
-            new_state->multiplier = new_multiplier;
-
-            // Atomically update the state
-            g_timeslowdown_state.store(new_state);
-            current_state = new_state;
-        }
-
-        // Apply timeslowdown calculation
-        lpPerformanceCount->QuadPart = current_state->original_quad_value +
-                                        (now_qpc - current_state->original_quad_ts) * current_state->multiplier;
+        LONGLONG spoofed_qpc = ApplyTimeslowdownToQPC(now_qpc);
+        lpPerformanceCount->QuadPart = spoofed_qpc;
     }
 
     return true;

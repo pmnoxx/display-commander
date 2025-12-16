@@ -733,24 +733,42 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
         // Time Slowdown
         if (display_commanderhooks::IsTimeslowdownEnabled()) {
             float multiplier = display_commanderhooks::GetTimeslowdownMultiplier();
+
+            // Calculate QPC difference in seconds
+            double qpc_difference_seconds = 0.0;
+            if (display_commanderhooks::QueryPerformanceCounter_Original &&
+                display_commanderhooks::QueryPerformanceFrequency_Original) {
+                LARGE_INTEGER frequency;
+                if (display_commanderhooks::QueryPerformanceFrequency_Original(&frequency) && frequency.QuadPart > 0) {
+                    LARGE_INTEGER original_qpc;
+                    if (display_commanderhooks::QueryPerformanceCounter_Original(&original_qpc)) {
+                        LONGLONG spoofed_qpc = display_commanderhooks::ApplyTimeslowdownToQPC(original_qpc.QuadPart);
+                        double original_qpc_seconds = static_cast<double>(original_qpc.QuadPart) / static_cast<double>(frequency.QuadPart);
+                        double spoofed_qpc_seconds = static_cast<double>(spoofed_qpc) / static_cast<double>(frequency.QuadPart);
+                        qpc_difference_seconds = spoofed_qpc_seconds - original_qpc_seconds;
+                    }
+                }
+            }
+
             if (first_feature) {
                 if (settings::g_mainTabSettings.show_labels.GetValue()) {
-                    snprintf(feature_text, sizeof(feature_text), "%.2fx TS", multiplier);
+                    snprintf(feature_text, sizeof(feature_text), "%.2fx TS (%+.1fs)", multiplier, qpc_difference_seconds);
                 } else {
-                    snprintf(feature_text, sizeof(feature_text), "%.2fx", multiplier);
+                    snprintf(feature_text, sizeof(feature_text), "%.2fx (%+.1fs)", multiplier, qpc_difference_seconds);
                 }
-                snprintf(tooltip_text, sizeof(tooltip_text), "Time Slowdown: %.2fx multiplier", multiplier);
+                snprintf(tooltip_text, sizeof(tooltip_text), "Time Slowdown: %.2fx multiplier, QPC diff: %+.1f s",
+                         multiplier, qpc_difference_seconds);
                 first_feature = false;
             } else {
                 size_t len = strlen(feature_text);
                 if (settings::g_mainTabSettings.show_labels.GetValue()) {
-                    snprintf(feature_text + len, sizeof(feature_text) - len, ", %.2fx TS", multiplier);
+                    snprintf(feature_text + len, sizeof(feature_text) - len, ", %.2fx TS (%+.1fs)", multiplier, qpc_difference_seconds);
                 } else {
-                    snprintf(feature_text + len, sizeof(feature_text) - len, ", %.2fx", multiplier);
+                    snprintf(feature_text + len, sizeof(feature_text) - len, ", %.2fx (%+.1fs)", multiplier, qpc_difference_seconds);
                 }
                 len = strlen(tooltip_text);
-                snprintf(tooltip_text + len, sizeof(tooltip_text) - len, " | Time Slowdown: %.2fx multiplier",
-                         multiplier);
+                snprintf(tooltip_text + len, sizeof(tooltip_text) - len, " | Time Slowdown: %.2fx multiplier, QPC diff: %+.1f s",
+                         multiplier, qpc_difference_seconds);
             }
         }
 

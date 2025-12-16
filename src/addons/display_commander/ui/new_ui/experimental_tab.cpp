@@ -1043,46 +1043,58 @@ void DrawTimeSlowdownControls() {
         ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Max Time Multiplier: %.0fx",
                            settings::g_experimentalTabSettings.timeslowdown_max_multiplier.GetValue());
 
-        // Time comparison display
+        // QPC comparison display
         ImGui::Spacing();
-        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Time Comparison:");
+        ImGui::Separator();
+        ImGui::Spacing();
+        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "QPC Comparison:");
 
-        // Get both real and spoofed time
-        LONGLONG real_time_ns = utils::get_real_time_ns();
-        LONGLONG spoofed_time_ns = utils::get_now_ns();
-        LONGLONG time_difference_ns = spoofed_time_ns - real_time_ns;
+        if (display_commanderhooks::QueryPerformanceCounter_Original && display_commanderhooks::QueryPerformanceFrequency_Original) {
+            // Get QPC frequency
+            LARGE_INTEGER frequency;
+            if (display_commanderhooks::QueryPerformanceFrequency_Original(&frequency) && frequency.QuadPart > 0) {
+                // Get original QPC value
+                LARGE_INTEGER original_qpc;
+                if (display_commanderhooks::QueryPerformanceCounter_Original(&original_qpc)) {
+                    // Apply timeslowdown to get spoofed QPC value
+                    LONGLONG spoofed_qpc = display_commanderhooks::ApplyTimeslowdownToQPC(original_qpc.QuadPart);
 
-        // Convert to more readable units
-        double real_time_ms = real_time_ns / 1000000.0;
-        double spoofed_time_ms = spoofed_time_ns / 1000000.0;
-        double time_difference_ms = time_difference_ns / 1000000.0;
+                    // Convert QPC ticks to seconds
+                    double original_qpc_seconds = static_cast<double>(original_qpc.QuadPart) / static_cast<double>(frequency.QuadPart);
+                    double spoofed_qpc_seconds = static_cast<double>(spoofed_qpc) / static_cast<double>(frequency.QuadPart);
+                    double qpc_difference_seconds = spoofed_qpc_seconds - original_qpc_seconds;
 
-        // Calculate percentage difference
-        double percentage_diff = 0.0;
-        if (real_time_ns > 0) {
-            percentage_diff = static_cast<double>(time_difference_ns) / real_time_ns * 100.0;
-        }
+                    // Display the comparison
+                    ImGui::TextColored(ImVec4(0.6f, 1.0f, 0.6f, 1.0f), "  Original QPC: %.1f s", original_qpc_seconds);
+                    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.6f, 1.0f), "  Spoofed QPC: %.1f s", spoofed_qpc_seconds);
 
-        // Display the comparison
-        ImGui::TextColored(ImVec4(0.6f, 1.0f, 0.6f, 1.0f), "  Real Time: %.3f ms", real_time_ms);
-        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.6f, 1.0f), "  Spoofed Time: %.3f ms", spoofed_time_ms);
+                    // Color code the difference based on magnitude
+                    ImVec4 qpc_diff_color;
+                    double abs_diff_seconds = abs(qpc_difference_seconds);
+                    if (abs_diff_seconds < 0.001) {
+                        qpc_diff_color = ImVec4(0.6f, 1.0f, 0.6f, 1.0f); // Green for minimal difference
+                    } else if (abs_diff_seconds < 0.01) {
+                        qpc_diff_color = ImVec4(1.0f, 1.0f, 0.6f, 1.0f); // Yellow for small difference
+                    } else {
+                        qpc_diff_color = ImVec4(1.0f, 0.6f, 0.6f, 1.0f); // Red for significant difference
+                    }
 
-        // Color code the difference based on magnitude
-        ImVec4 diff_color;
-        if (abs(percentage_diff) < 0.1) {
-            diff_color = ImVec4(0.6f, 1.0f, 0.6f, 1.0f); // Green for minimal difference
-        } else if (abs(percentage_diff) < 1.0) {
-            diff_color = ImVec4(1.0f, 1.0f, 0.6f, 1.0f); // Yellow for small difference
+                    ImGui::TextColored(qpc_diff_color, "  Difference: %+.1f s", qpc_difference_seconds);
+
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::SetTooltip("Shows the difference between original QueryPerformanceCounter value and spoofed value.\n"
+                                         "This directly compares what QueryPerformanceCounter_Original returns vs what ApplyTimeslowdownToQPC returns.\n"
+                                         "Positive values mean the spoofed time is ahead of original time.\n"
+                                         "Negative values mean the spoofed time is behind original time.");
+                    }
+                } else {
+                    ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.6f, 1.0f), "  Failed to get QPC value");
+                }
+            } else {
+                ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.6f, 1.0f), "  Failed to get QPC frequency");
+            }
         } else {
-            diff_color = ImVec4(1.0f, 0.6f, 0.6f, 1.0f); // Red for significant difference
-        }
-
-        ImGui::TextColored(diff_color, "  Difference: %+.3f ms (%+.2f%%)", time_difference_ms, percentage_diff);
-
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Shows the difference between real system time and time as seen by the game.\n"
-                             "Positive values mean the game sees time as faster than real time.\n"
-                             "Negative values mean the game sees time as slower than real time.");
+            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "  QPC hooks not available");
         }
 
         // Show hook status

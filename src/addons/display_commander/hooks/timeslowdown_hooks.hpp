@@ -119,4 +119,7 @@ void SetQPCModuleEnabled(HMODULE hModule, bool enabled);
 void LoadQPCEnabledModulesFromSettings(const std::string& enabled_modules_str);
 std::string SaveQPCEnabledModulesToSettings();
 
+// Apply timeslowdown to a QPC value and return the spoofed value
+LONGLONG ApplyTimeslowdownToQPC(LONGLONG original_qpc);
+
 } // namespace display_commanderhooks

@@ -468,7 +468,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain *This, UI
     g_swapchain_event_total_count.fetch_add(1);
 
     // Skip common present logic if wrapper is handling it
-    bool skip_common_logic = g_swapchain_wrapper_present_called.load(std::memory_order_acquire);
+    bool skip_common_logic = g_swapchain_wrapper_present_called.load(std::memory_order_acquire) && settings::g_mainTabSettings.native_frame_pacing.GetValue();
 
     PresentCommonState state;
     if (!skip_common_logic) {
@@ -508,7 +508,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1 *This, 
     g_swapchain_event_total_count.fetch_add(1);
 
     // Skip common present logic if wrapper is handling it
-    bool skip_common_logic = g_swapchain_wrapper_present_called.load(std::memory_order_acquire);
+    bool skip_common_logic = g_swapchain_wrapper_present_called.load(std::memory_order_acquire) && settings::g_mainTabSettings.native_frame_pacing.GetValue();
 
     PresentCommonState state;
     if (!skip_common_logic) {
@@ -746,17 +746,6 @@ HRESULT STDMETHODCALLTYPE IDXGIFactory_CreateSwapChain_Detour(IDXGIFactory *This
         createswapchain_log_count++;
     }
 
-    // Prevent always on top for swapchain window if enabled
-    if (settings::g_developerTabSettings.prevent_always_on_top.GetValue() && pDesc != nullptr && pDesc->OutputWindow) {
-        // Remove always on top styles from the window
-        LONG_PTR current_style = GetWindowLongPtrW(pDesc->OutputWindow, GWL_EXSTYLE);
-        if (current_style & (WS_EX_TOPMOST | WS_EX_TOOLWINDOW)) {
-            LONG_PTR new_style = current_style & ~(WS_EX_TOPMOST | WS_EX_TOOLWINDOW);
-            SetWindowLongPtrW(pDesc->OutputWindow, GWL_EXSTYLE, new_style);
-            LogInfo("IDXGIFactory_CreateSwapChain_Detour: Prevented always on top for swapchain window 0x%p", pDesc->OutputWindow);
-        }
-    }
-
     // Call original function
     if (IDXGIFactory_CreateSwapChain_Original != nullptr) {
         HRESULT hr = IDXGIFactory_CreateSwapChain_Original(This, pDevice, pDesc, ppSwapChain);
@@ -869,16 +858,6 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetHwnd_Detour(IDXGISwapChain1 *This, H
 
     HRESULT hr = IDXGISwapChain_GetHwnd_Original(This, pHwnd);
 
-    // Prevent always on top for the returned window handle if enabled
-    if (SUCCEEDED(hr) && settings::g_developerTabSettings.prevent_always_on_top.GetValue() && pHwnd && *pHwnd) {
-        // Remove always on top styles from the window
-        LONG_PTR current_style = GetWindowLongPtrW(*pHwnd, GWL_EXSTYLE);
-        if (current_style & (WS_EX_TOPMOST | WS_EX_TOOLWINDOW)) {
-            LONG_PTR new_style = current_style & ~(WS_EX_TOPMOST | WS_EX_TOOLWINDOW);
-            SetWindowLongPtrW(*pHwnd, GWL_EXSTYLE, new_style);
-            LogInfo("IDXGISwapChain_GetHwnd_Detour: Prevented always on top for window 0x%p", *pHwnd);
-        }
-    }
 
     return hr;
 }

@@ -1328,9 +1328,25 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                     ImGui::SetTooltip("DLSS-G is enabled. Reflex FPS Limiter should be used instead of this mode.");
                 }
             }
+
+        }
+        if (current_item == static_cast<int>(FpsLimiterMode::kOnPresentSync)) {
+            // Check if we're running on D3D9 and show warning
+            int current_api = g_last_reshade_device_api.load();
+            if (current_api == static_cast<int>(reshade::api::device_api::d3d9)) {
+                ImGui::TextColored(ui::colors::TEXT_WARNING, ICON_FK_WARNING " Warning: Reflex does not work with Direct3D 9");
+            } else {
+                bool enable_reflex = settings::g_mainTabSettings.onpresent_sync_enable_reflex.GetValue();
+                if (ImGui::Checkbox("Enable Reflex alongside OnPresentSync", &enable_reflex)) {
+                    settings::g_mainTabSettings.onpresent_sync_enable_reflex.SetValue(enable_reflex);
+                }
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip("Enable NVIDIA Reflex alongside OnPresentSync FPS limiter. Reflex will run at +0.5%% FPS limit for better latency reduction.");
+                }
+            }
         }
 
-        if (current_item == static_cast<int>(FpsLimiterMode::kReflex)) {
+        if (current_item == static_cast<int>(FpsLimiterMode::kReflex) || (current_item == static_cast<int>(FpsLimiterMode::kOnPresentSync) && settings::g_mainTabSettings.onpresent_sync_enable_reflex.GetValue())) {
             // Check if we're running on D3D9 and show warning
             int current_api = g_last_reshade_device_api.load();
             if (current_api == static_cast<int>(reshade::api::device_api::d3d9)) {

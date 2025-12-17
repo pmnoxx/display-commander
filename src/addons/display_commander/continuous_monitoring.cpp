@@ -47,7 +47,8 @@ void HandleReflexAutoConfigure() {
     bool is_native_reflex_active = IsNativeReflexActive(now_ns);
 
     bool is_reflex_mode =
-        static_cast<FpsLimiterMode>(settings::g_mainTabSettings.fps_limiter_mode.GetValue()) == FpsLimiterMode::kReflex;
+        static_cast<FpsLimiterMode>(settings::g_mainTabSettings.fps_limiter_mode.GetValue()) == FpsLimiterMode::kReflex
+        || (static_cast<FpsLimiterMode>(settings::g_mainTabSettings.fps_limiter_mode.GetValue()) == FpsLimiterMode::kOnPresentSync && settings::g_mainTabSettings.onpresent_sync_enable_reflex.GetValue());
 
     // Get current settings
     bool reflex_enable = settings::g_developerTabSettings.reflex_enable.GetValue();

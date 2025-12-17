@@ -56,11 +56,11 @@ void DrawStreamlineTab() {
     ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "DLSS Frame Generation Information:");
     ImGui::Separator();
 
-    bool dlls_g_loaded = g_dlls_g_loaded.load();
-    ImGui::Text("DLSS-G Loaded: %s", dlls_g_loaded ? "Yes" : "No");
+    bool dlss_g_loaded = g_dlss_g_loaded.load();
+    ImGui::Text("DLSS-G Loaded: %s", dlss_g_loaded ? "Yes" : "No");
 
-    if (dlls_g_loaded) {
-        auto version_ptr = g_dlls_g_version.load();
+    if (dlss_g_loaded) {
+        auto version_ptr = g_dlss_g_version.load();
         if (version_ptr) {
             ImGui::Text("DLSS-G Version: %s", version_ptr->c_str());
         } else {

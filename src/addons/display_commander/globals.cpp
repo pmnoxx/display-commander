@@ -360,9 +360,9 @@ std::atomic<LONGLONG> g_gpu_late_time_ns{0};  // GPU late time (0 if GPU finishe
 // NVIDIA Reflex minimal controls (disabled by default)
 
 
-// DLLS-G (DLSS Frame Generation) status
-std::atomic<bool> g_dlls_g_loaded{false};
-std::atomic<std::shared_ptr<const std::string>> g_dlls_g_version{std::make_shared<const std::string>("Unknown")};
+// DLSS-G (DLSS Frame Generation) status
+std::atomic<bool> g_dlss_g_loaded{false};
+std::atomic<std::shared_ptr<const std::string>> g_dlss_g_version{std::make_shared<const std::string>("Unknown")};
 
 // NGX Feature status tracking (set in CreateFeature detours)
 std::atomic<bool> g_dlss_enabled{false};          // DLSS Super Resolution enabled

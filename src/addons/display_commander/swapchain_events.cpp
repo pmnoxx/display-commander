@@ -956,7 +956,12 @@ void OnPresentUpdateAfter2(void* native_device, DeviceTypeDC device_type) {
         settings::g_developerTabSettings.reflex_delay_first_500_frames.GetValue();
     const uint64_t current_frame_id = g_global_frame_id.load();
 
-    bool should_enable_reflex = settings::g_developerTabSettings.reflex_enable.GetValue();
+    // Enable Reflex if:
+    // 1. Developer tab Reflex is enabled, OR
+    // 2. OnPresentSync mode is selected AND onpresent_sync_enable_reflex is enabled
+    bool should_enable_reflex = settings::g_developerTabSettings.reflex_enable.GetValue() ||
+                                 (s_fps_limiter_mode.load() == FpsLimiterMode::kOnPresentSync &&
+                                  settings::g_mainTabSettings.onpresent_sync_enable_reflex.GetValue());
     if (delay_first_500_frames && current_frame_id < 500) {
         should_enable_reflex = false;
     }
@@ -1039,8 +1044,14 @@ void HandleFpsLimiter(bool from_present_detour) {
             if (dxgi::fps_limiter::g_customFpsLimiter) {
                 auto &limiter = dxgi::fps_limiter::g_customFpsLimiter;
                 if (target_fps > 0.0f) {
+                    if (settings::g_mainTabSettings.onpresent_sync_enable_reflex.GetValue()) {
+                        target_fps *= 0.995f; // Subtract 0.5%
+                    }
                     limiter->LimitFrameRate(target_fps);
                 }
+            }
+            if (settings::g_mainTabSettings.onpresent_sync_enable_reflex.GetValue()) {
+                s_reflex_auto_configure.store(true);
             }
             break;
         }

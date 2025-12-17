@@ -1320,12 +1320,12 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
             ImGui::SetTooltip("Choose limiter: OnPresent Frame Synchronizer (synchronized frame display timing) or VBlank Scanline Sync\n\nOnPresent Frame Synchronizer adds latency as it delays frame display time to be more consistent - it prioritizes starting frame processing at the same time.\n\nVBlank Scanline Sync synchronizes frame presentation with monitor refresh cycles for smooth frame pacing without VSync.");
         }
         if (current_item == static_cast<int>(FpsLimiterMode::kOnPresentSync) || current_item == static_cast<int>(FpsLimiterMode::kLatentSync) || current_item == static_cast<int>(FpsLimiterMode::kNonReflexLowLatency)) {
-            // if dlls-g is enabled warn that reflex fps limiter should be used, because this mode isn't aware of native frames
+            // if DLSS-G is enabled warn that reflex fps limiter should be used, because this mode isn't aware of native frames
 
             if (g_dlssg_enabled.load()) {
-                ImGui::TextColored(ui::colors::TEXT_WARNING, ICON_FK_WARNING " Warning: DLLS-G is enabled. Reflex FPS Limiter should be used instead of this mode.");
+                ImGui::TextColored(ui::colors::TEXT_WARNING, ICON_FK_WARNING " Warning: DLSS-G is enabled. Reflex FPS Limiter should be used instead of this mode.");
                 if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip("DLLS-G is enabled. Reflex FPS Limiter should be used instead of this mode.");
+                    ImGui::SetTooltip("DLSS-G is enabled. Reflex FPS Limiter should be used instead of this mode.");
                 }
             }
         }

@@ -26,7 +26,8 @@ enum class HookType {
     OPENGL,
     HID_SUPPRESSION,
     NVAPI,
-    PROCESS_EXIT
+    PROCESS_EXIT,
+    WINDOW_PROC
 };
 
 // Hook suppression manager

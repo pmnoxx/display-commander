@@ -4,19 +4,22 @@
  */
 
 #include "window_proc_hooks.hpp"
+#include "hook_suppression_manager.hpp"
 #include "../exit_handler.hpp"
 #include "../globals.hpp"
 #include "../utils/logging.hpp"
 #include "../ui/new_ui/window_info_tab.hpp"
+#include "../utils/srwlock_wrapper.hpp"
 #include <atomic>
-
+#include <map>
 
 namespace display_commanderhooks {
 
 // Global variables for hook state
 static std::atomic<bool> g_hooks_installed{false};
 static HWND g_target_window = nullptr;
-static WNDPROC g_original_window_proc = nullptr;
+static SRWLOCK g_window_proc_map_lock = SRWLOCK_INIT;
+static std::map<HWND, WNDPROC> g_original_window_proc;
 
 // Hooked window procedure
 LRESULT CALLBACK WindowProc_Detour(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
@@ -206,42 +209,61 @@ LRESULT CALLBACK WindowProc_Detour(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
     ui::new_ui::AddMessageToHistoryIfKnown(uMsg, wParam, lParam, false);
 
     // Call the original window procedure
-    if (g_original_window_proc) {
-        return CallWindowProc(g_original_window_proc, hwnd, uMsg, wParam, lParam);
+    WNDPROC original_proc = nullptr;
+    {
+        utils::SRWLockShared lock(g_window_proc_map_lock);
+        auto it = g_original_window_proc.find(hwnd);
+        if (it != g_original_window_proc.end()) {
+            original_proc = it->second;
+        }
+    }
+
+    if (original_proc) {
+        return CallWindowProc(original_proc, hwnd, uMsg, wParam, lParam);
     }
 
     // Fallback to default window procedure
     return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
 
-bool InstallWindowProcHooks(HWND g_target_window) {
-    LogInfo("InstallWindowProcHooks called");
+bool InstallWindowProcHooks(HWND target_hwnd) {
+    LogInfo("InstallWindowProcHooks called for HWND: 0x%p", target_hwnd);
 
-    if (g_hooks_installed.load()) {
-        LogInfo("Window procedure hooks already installed");
-        return true;
+    // Check if window proc hooks should be suppressed
+    if (HookSuppressionManager::GetInstance().ShouldSuppressHook(display_commanderhooks::HookType::WINDOW_PROC)) {
+        LogInfo("Window procedure hooks installation suppressed by user setting");
+        return false;
     }
 
-    if (g_target_window == nullptr) {
+    if (target_hwnd == nullptr) {
         LogError("No target window set for window procedure hooks");
         return false;
     }
 
-    if (!IsWindow(g_target_window)) {
-        LogError("Target window is not valid - HWND: 0x%p", g_target_window);
+    if (!IsWindow(target_hwnd)) {
+        LogError("Target window is not valid - HWND: 0x%p", target_hwnd);
         return false;
     }
 
+    // Check if this window is already hooked
+    {
+        utils::SRWLockShared lock(g_window_proc_map_lock);
+        if (g_original_window_proc.find(target_hwnd) != g_original_window_proc.end()) {
+            LogInfo("Window procedure hooks already installed for HWND: 0x%p", target_hwnd);
+            return true;
+        }
+    }
+
     // Get the current window procedure
-    g_original_window_proc = (WNDPROC)GetWindowLongPtr(g_target_window, GWLP_WNDPROC);
-    if (g_original_window_proc == nullptr) {
-        LogError("Failed to get original window procedure for window - HWND: 0x%p", g_target_window);
+    WNDPROC current_proc = (WNDPROC)GetWindowLongPtr(target_hwnd, GWLP_WNDPROC);
+    if (current_proc == nullptr) {
+        LogError("Failed to get original window procedure for window - HWND: 0x%p", target_hwnd);
         return false;
     }
 
     // Use SetWindowLongPtr to replace the window procedure instead of MinHook
     // This is more reliable for window procedures as they can be system procedures
-    WNDPROC new_proc = (WNDPROC)SetWindowLongPtr(g_target_window, GWLP_WNDPROC, (LONG_PTR)WindowProc_Detour);
+    WNDPROC new_proc = (WNDPROC)SetWindowLongPtr(target_hwnd, GWLP_WNDPROC, (LONG_PTR)WindowProc_Detour);
     if (new_proc == nullptr) {
         DWORD error = GetLastError();
         LogError("Failed to set window procedure - Error: %lu (0x%lx)", error, error);
@@ -249,10 +271,16 @@ bool InstallWindowProcHooks(HWND g_target_window) {
     }
 
     // Store the original procedure for restoration
-    g_original_window_proc = new_proc;
+    {
+        utils::SRWLockExclusive lock(g_window_proc_map_lock);
+        g_original_window_proc[target_hwnd] = new_proc;
+    }
 
     g_hooks_installed.store(true);
-    LogInfo("Window procedure hooks installed successfully for window - HWND: 0x%p", g_target_window);
+    LogInfo("Window procedure hooks installed successfully for window - HWND: 0x%p", target_hwnd);
+
+    // Mark window proc hooks as installed
+    HookSuppressionManager::GetInstance().MarkHookInstalled(display_commanderhooks::HookType::WINDOW_PROC);
 
     // Debug: Show current continue rendering state
     bool current_state = s_continue_rendering.load();
@@ -267,20 +295,27 @@ void UninstallWindowProcHooks() {
         return;
     }
 
-    // Restore the original window procedure
-    if (g_target_window && g_original_window_proc) {
-        WNDPROC restored_proc =
-            (WNDPROC)SetWindowLongPtr(g_target_window, GWLP_WNDPROC, (LONG_PTR)g_original_window_proc);
-        if (restored_proc == nullptr) {
-            DWORD error = GetLastError();
-            LogWarn("Failed to restore original window procedure - Error: %lu (0x%lx)", error, error);
-        } else {
-            LogInfo("Original window procedure restored successfully");
+    // Restore all original window procedures
+    {
+        utils::SRWLockExclusive lock(g_window_proc_map_lock);
+        for (auto it = g_original_window_proc.begin(); it != g_original_window_proc.end(); ++it) {
+            HWND hwnd = it->first;
+            WNDPROC original_proc = it->second;
+
+            if (hwnd && IsWindow(hwnd) && original_proc) {
+                WNDPROC restored_proc = (WNDPROC)SetWindowLongPtr(hwnd, GWLP_WNDPROC, (LONG_PTR)original_proc);
+                if (restored_proc == nullptr) {
+                    DWORD error = GetLastError();
+                    LogWarn("Failed to restore original window procedure for HWND: 0x%p - Error: %lu (0x%lx)", hwnd, error, error);
+                } else {
+                    LogInfo("Original window procedure restored successfully for HWND: 0x%p", hwnd);
+                }
+            }
         }
+        g_original_window_proc.clear();
     }
 
     // Clean up
-    g_original_window_proc = nullptr;
     g_target_window = nullptr;
 
     g_hooks_installed.store(false);

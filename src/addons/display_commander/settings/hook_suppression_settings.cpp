@@ -28,6 +28,7 @@ HookSuppressionSettings::HookSuppressionSettings()
     , suppress_hid_suppression_hooks("HidSuppressionHooks", true, "DisplayCommander.HookSuppression")  // BLACKLISTED: Experimental feature
     , suppress_nvapi_hooks("NvapiHooks", false, "DisplayCommander.HookSuppression")
     , suppress_process_exit_hooks("ProcessExitHooks", false, "DisplayCommander.HookSuppression")
+    , suppress_window_proc_hooks("WindowProcHooks", false, "DisplayCommander.HookSuppression")
     , dxgi_factory_hooks_installed("DxgiFactoryHooks", false, "DisplayCommander.HooksInstalled")
     , dxgi_swapchain_hooks_installed("DxgiSwapchainHooks", false, "DisplayCommander.HooksInstalled")
     , d3d_device_hooks_installed("D3DDeviceHooks", false, "DisplayCommander.HooksInstalled")
@@ -49,6 +50,7 @@ HookSuppressionSettings::HookSuppressionSettings()
     , hid_suppression_hooks_installed("HidSuppressionHooks", false, "DisplayCommander.HooksInstalled")
     , nvapi_hooks_installed("NvapiHooks", false, "DisplayCommander.HooksInstalled")
     , process_exit_hooks_installed("ProcessExitHooks", false, "DisplayCommander.HooksInstalled")
+    , window_proc_hooks_installed("WindowProcHooks", false, "DisplayCommander.HooksInstalled")
 {
     // Initialize the all_settings_ vector
     all_settings_ = {
@@ -73,6 +75,7 @@ HookSuppressionSettings::HookSuppressionSettings()
         &suppress_hid_suppression_hooks,
         &suppress_nvapi_hooks,
         &suppress_process_exit_hooks,
+        &suppress_window_proc_hooks,
         &dxgi_factory_hooks_installed,
         &dxgi_swapchain_hooks_installed,
         &d3d_device_hooks_installed,
@@ -94,6 +97,7 @@ HookSuppressionSettings::HookSuppressionSettings()
         &hid_suppression_hooks_installed,
         &nvapi_hooks_installed,
         &process_exit_hooks_installed,
+        &window_proc_hooks_installed,
     };
 }
 

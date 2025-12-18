@@ -1009,6 +1009,51 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
                                cpu_cores_value > 1 ? "s" : "");
         }
 
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        // Process Priority Control
+        // Get current process priority for display
+        HANDLE process_handle = GetCurrentProcess();
+        DWORD current_priority_class = GetPriorityClass(process_handle);
+
+        // Display current priority
+        const char* current_priority_str = "Unknown";
+        if (current_priority_class != 0) {
+            switch (current_priority_class) {
+                case BELOW_NORMAL_PRIORITY_CLASS: current_priority_str = "Below Normal"; break;
+                case NORMAL_PRIORITY_CLASS:       current_priority_str = "Normal"; break;
+                case ABOVE_NORMAL_PRIORITY_CLASS: current_priority_str = "Above Normal"; break;
+                case HIGH_PRIORITY_CLASS:         current_priority_str = "High"; break;
+                case REALTIME_PRIORITY_CLASS:     current_priority_str = "Realtime"; break;
+                default:                          current_priority_str = "Unknown"; break;
+            }
+        } else {
+            current_priority_str = "Normal (default)";
+        }
+
+        ImGui::Text("Process Priority");
+        ImGui::SameLine();
+        ImGui::TextColored(ui::colors::TEXT_DIMMED, "(Current: %s)", current_priority_str);
+
+        if (ComboSettingEnumRefWrapper(settings::g_mainTabSettings.process_priority, "Priority Class")) {
+            ProcessPriority priority_value =
+                static_cast<ProcessPriority>(settings::g_mainTabSettings.process_priority.GetValue());
+            LogInfo("Process priority changed to %d", static_cast<int>(priority_value));
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip(
+                "Controls the process priority class for the game:\n\n"
+                "- Default (No Change): Use system default priority\n"
+                "- Below Normal: Lower priority than normal\n"
+                "- Normal: Standard priority (default)\n"
+                "- Above Normal: Higher priority than normal\n"
+                "- High: High priority (use with caution)\n"
+                "- Realtime: Realtime priority (use with extreme caution)\n\n"
+                "Note: Changes take effect immediately. High/Realtime priority may affect system stability.");
+        }
+
         ImGui::Unindent();
     }
 

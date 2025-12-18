@@ -29,7 +29,6 @@ std::atomic<bool> s_no_present_in_background{false};
 std::atomic<ScreensaverMode> s_screensaver_mode{ScreensaverMode::kDefault};
 std::atomic<FrameTimeMode> s_frame_time_mode{FrameTimeMode::kPresent};
 std::atomic<int> s_cpu_cores{0}; // 0 = default (no change), max = all cores
-std::atomic<ProcessPriority> s_process_priority{ProcessPriority::kDefault}; // Default = no change
 
 namespace settings {
 
@@ -67,8 +66,6 @@ MainTabSettings::MainTabSettings()
       no_render_in_background("no_render_in_background", s_no_render_in_background, s_no_render_in_background.load(), "DisplayCommander"),
       no_present_in_background("no_present_in_background", s_no_present_in_background, s_no_present_in_background.load(), "DisplayCommander"),
       cpu_cores("cpu_cores", s_cpu_cores, 0, 0, 64, "DisplayCommander"), // Max will be set dynamically based on CPU count
-      process_priority("process_priority", s_process_priority, static_cast<int>(ProcessPriority::kDefault),
-                       {"Default (No Change)", "Below Normal", "Normal", "Above Normal", "High", "Realtime"}, "DisplayCommander"),
       show_test_overlay("show_test_overlay", false, "DisplayCommander"),
       show_fps_counter("show_fps_counter", true, "DisplayCommander"),
       show_native_fps("show_native_fps", false, "DisplayCommander"),
@@ -148,8 +145,6 @@ MainTabSettings::MainTabSettings()
         &gamepad_input_blocking,
         &no_render_in_background,
         &no_present_in_background,
-        &cpu_cores,
-        &process_priority,
         &show_test_overlay,
         &show_fps_counter,
         &show_native_fps,

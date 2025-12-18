@@ -194,6 +194,7 @@ class IntSettingRef : public SettingBase {
     int GetDefaultValue() const { return default_value_; }
     int GetMin() const { return min_; }
     int GetMax() const { return max_; }
+    void SetMax(int new_max) { max_ = new_max; }
 
     // Direct access to the referenced atomic value for performance-critical code
     std::atomic<int> &GetAtomic() { return external_ref_.get(); }

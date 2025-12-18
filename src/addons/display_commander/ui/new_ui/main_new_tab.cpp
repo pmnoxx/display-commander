@@ -2,42 +2,43 @@
 #include "../../addon.hpp"
 #include "../../adhd_multi_monitor/adhd_simple_api.hpp"
 #include "../../audio/audio_management.hpp"
+#include "../../globals.hpp"
+#include "../../hooks/api_hooks.hpp"
+#include "../../hooks/loadlibrary_hooks.hpp"
+#include "../../hooks/nvapi_hooks.hpp"
+#include "../../hooks/window_proc_hooks.hpp"
+#include "../../hooks/windows_hooks/windows_message_hooks.hpp"
+#include "../../input_remapping/input_remapping.hpp"
 #include "../../latent_sync/latent_sync_limiter.hpp"
 #include "../../latent_sync/refresh_rate_monitor_integration.hpp"
+#include "../../nvapi/reflex_manager.hpp"
 #include "../../performance_types.hpp"
+#include "../../res/forkawesome.h"
+#include "../../res/ui_colors.hpp"
 #include "../../settings/developer_tab_settings.hpp"
 #include "../../settings/experimental_tab_settings.hpp"
 #include "../../settings/main_tab_settings.hpp"
-#include "../../input_remapping/input_remapping.hpp"
-#include "../../widgets/resolution_widget/resolution_widget.hpp"
-#include "../../nvapi/reflex_manager.hpp"
-#include "../../hooks/nvapi_hooks.hpp"
-#include "../../hooks/loadlibrary_hooks.hpp"
-#include "../../hooks/windows_hooks/windows_message_hooks.hpp"
-#include "../../hooks/window_proc_hooks.hpp"
-#include "../../hooks/api_hooks.hpp"
-#include "../../res/forkawesome.h"
-#include "../../res/ui_colors.hpp"
+#include "../../swapchain_events.hpp"
 #include "../../utils.hpp"
 #include "../../utils/logging.hpp"
 #include "../../utils/overlay_window_detector.hpp"
-#include "../../globals.hpp"
-#include "../../swapchain_events.hpp"
+#include "../../widgets/resolution_widget/resolution_widget.hpp"
 #include "imgui.h"
 #include "settings_wrapper.hpp"
 #include "utils/timing.hpp"
 #include "version.hpp"
 
-#include <reshade_imgui.hpp>
-#include <minwindef.h>
-#include <shellapi.h>
-#include <dxgi.h>
 #include <d3d9.h>
 #include <d3d9types.h>
+#include <dxgi.h>
+#include <minwindef.h>
+#include <shellapi.h>
+#include <reshade_imgui.hpp>
 
 // Define IID for IDirect3DDevice9 if not already defined
 #ifndef IID_IDirect3DDevice9
-EXTERN_C const GUID IID_IDirect3DDevice9 = {0xd0223b96, 0xbf7a, 0x43fd, {0x92, 0xbd, 0xa4, 0x3b, 0x8d, 0x82, 0x9a, 0x7b}};
+EXTERN_C const GUID IID_IDirect3DDevice9 = {
+    0xd0223b96, 0xbf7a, 0x43fd, {0x92, 0xbd, 0xa4, 0x3b, 0x8d, 0x82, 0x9a, 0x7b}};
 #endif
 
 #include <algorithm>
@@ -46,6 +47,9 @@ EXTERN_C const GUID IID_IDirect3DDevice9 = {0xd0223b96, 0xbf7a, 0x43fd, {0x92, 0
 #include <iomanip>
 #include <sstream>
 #include <thread>
+
+// Minimum CPU cores that can be selected (excludes 1-5)
+static constexpr int MIN_CPU_CORES_SELECTABLE = 6;
 
 namespace ui::new_ui {
 
@@ -56,14 +60,15 @@ std::atomic<bool> s_restart_needed_vsync_tearing{false};
 // Helper function to check if injected Reflex is active
 bool DidNativeReflexSleepRecently(uint64_t now_ns) {
     auto last_injected_call = g_nvapi_last_sleep_timestamp_ns.load();
-    return last_injected_call > 0 && (now_ns - last_injected_call) < utils::SEC_TO_NS; // 1s in nanoseconds
+    return last_injected_call > 0 && (now_ns - last_injected_call) < utils::SEC_TO_NS;  // 1s in nanoseconds
 }
 }  // anonymous namespace
 
 void DrawFrameTimeGraph() {
     // Get frame time data from the performance ring buffer
     const uint32_t head = ::g_perf_ring_head.load(std::memory_order_acquire);
-    const uint32_t count = (head > static_cast<uint32_t>(::kPerfRingCapacity)) ? static_cast<uint32_t>(::kPerfRingCapacity) : head;
+    const uint32_t count =
+        (head > static_cast<uint32_t>(::kPerfRingCapacity)) ? static_cast<uint32_t>(::kPerfRingCapacity) : head;
 
     if (count == 0) {
         ImGui::TextColored(ui::colors::TEXT_DIMMED, "No frame time data available yet...");
@@ -79,7 +84,7 @@ void DrawFrameTimeGraph() {
     for (uint32_t i = start; i < head; ++i) {
         const ::PerfSample& sample = ::g_perf_ring[i & (::kPerfRingCapacity - 1)];
         if (sample.dt > 0.0f) {
-            frame_times.push_back(sample.dt); // Convert FPS to frame time in ms
+            frame_times.push_back(sample.dt);  // Convert FPS to frame time in ms
         }
     }
 
@@ -101,14 +106,15 @@ void DrawFrameTimeGraph() {
     float avg_fps = (avg_frame_time > 0.0f) ? (1.0f / avg_frame_time) : 0.0f;
 
     // Display statistics
-    ImGui::Text("Min: %.2f ms | Max: %.2f ms | Avg: %.2f ms | FPS(avg): %.1f",
-                min_frame_time, max_frame_time, avg_frame_time, avg_fps);
+    ImGui::Text("Min: %.2f ms | Max: %.2f ms | Avg: %.2f ms | FPS(avg): %.1f", min_frame_time, max_frame_time,
+                avg_frame_time, avg_fps);
 
     // Create overlay text with current frame time
     std::string overlay_text = "Frame Time: " + std::to_string(frame_times.back()).substr(0, 4) + " ms";
 
     // Add sim-to-display latency if GPU measurement is enabled and we have valid data
-    if (settings::g_mainTabSettings.gpu_measurement_enabled.GetValue() != 0 && ::g_sim_to_display_latency_ns.load() > 0) {
+    if (settings::g_mainTabSettings.gpu_measurement_enabled.GetValue() != 0
+        && ::g_sim_to_display_latency_ns.load() > 0) {
         double sim_to_display_ms = (1.0 * ::g_sim_to_display_latency_ns.load() / utils::NS_TO_MS);
         overlay_text += " | Sim-to-Display Lat: " + std::to_string(sim_to_display_ms).substr(0, 4) + " ms";
 
@@ -118,24 +124,20 @@ void DrawFrameTimeGraph() {
     }
 
     // Set graph size and scale
-    ImVec2 graph_size = ImVec2(-1.0f, 200.0f); // Full width, 200px height
-    float scale_min = 0.0f; // Always start from 0ms
-    float scale_max = max(avg_frame_time * 10.f, max_frame_time + 2.0f); // Add some padding
+    ImVec2 graph_size = ImVec2(-1.0f, 200.0f);                            // Full width, 200px height
+    float scale_min = 0.0f;                                               // Always start from 0ms
+    float scale_max = max(avg_frame_time * 10.f, max_frame_time + 2.0f);  // Add some padding
 
     // Draw the frame time graph
-    ImGui::PlotLines("Frame Time (ms)",
-                     frame_times.data(),
-                     static_cast<int>(frame_times.size()),
-                     0, // values_offset
-                     overlay_text.c_str(),
-                     scale_min,
-                     scale_max,
-                     graph_size);
+    ImGui::PlotLines("Frame Time (ms)", frame_times.data(), static_cast<int>(frame_times.size()),
+                     0,  // values_offset
+                     overlay_text.c_str(), scale_min, scale_max, graph_size);
 
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Frame time graph showing recent frame times in milliseconds.\n"
-                         "Lower values = higher FPS, smoother gameplay.\n"
-                         "Spikes indicate frame drops or stuttering.");
+        ImGui::SetTooltip(
+            "Frame time graph showing recent frame times in milliseconds.\n"
+            "Lower values = higher FPS, smoother gameplay.\n"
+            "Spikes indicate frame drops or stuttering.");
     }
 
     // Frame Time Mode Selector
@@ -152,11 +154,12 @@ void DrawFrameTimeGraph() {
     }
 
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Select which timing events to record for the frame time graph:\n"
-                         "- Present-to-Present: Records time between Present calls\n"
-                         "- Frame Begin-to-Frame Begin: Records time between frame begin events\n"
-                         "- Display Timing: Records when frames are actually displayed (based on GPU completion)\n"
-                         "  Note: Display Timing requires GPU measurement to be enabled");
+        ImGui::SetTooltip(
+            "Select which timing events to record for the frame time graph:\n"
+            "- Present-to-Present: Records time between Present calls\n"
+            "- Frame Begin-to-Frame Begin: Records time between frame begin events\n"
+            "- Display Timing: Records when frames are actually displayed (based on GPU completion)\n"
+            "  Note: Display Timing requires GPU measurement to be enabled");
     }
 }
 
@@ -165,7 +168,7 @@ void DrawRefreshRateFrameTimesGraph(bool show_tooltips) {
     // Convert refresh rates to frame times (ms) - lock-free iteration
     static std::vector<float> frame_times;
     frame_times.clear();
-    frame_times.reserve(256); // Reserve for max samples
+    frame_times.reserve(256);  // Reserve for max samples
 
     ::dxgi::fps_limiter::ForEachRefreshRateSample([&](double rate) {
         if (rate > 0.0) {
@@ -175,7 +178,7 @@ void DrawRefreshRateFrameTimesGraph(bool show_tooltips) {
     });
 
     if (frame_times.empty()) {
-        return; // Don't show anything if no valid data
+        return;  // Don't show anything if no valid data
     }
 
     // Calculate statistics for the graph
@@ -187,39 +190,36 @@ void DrawRefreshRateFrameTimesGraph(bool show_tooltips) {
     avg_frame_time /= static_cast<float>(frame_times.size());
 
     // Fixed width for overlay (compact)
-    ImVec2 graph_size = ImVec2(300.0f, 60.0f); // Fixed 300px width, 60px height
+    ImVec2 graph_size = ImVec2(300.0f, 60.0f);  // Fixed 300px width, 60px height
     float scale_min = 0.0f;
-    float scale_max = max(avg_frame_time * 5.0f, max_frame_time + 2.0f); // Add some padding but less aggressive
+    float scale_max = max(avg_frame_time * 5.0f, max_frame_time + 2.0f);  // Add some padding but less aggressive
 
     // Create overlay text with current refresh rate frame time
-   //.. std::string overlay_text = "Refresh Frame Time: " + std::to_string(frame_times.back()).substr(0, 4) + " ms";
-   // overlay_text += " | Avg: " + std::to_string(avg_frame_time).substr(0, 4) + " ms";
+    //.. std::string overlay_text = "Refresh Frame Time: " + std::to_string(frame_times.back()).substr(0, 4) + " ms";
+    // overlay_text += " | Avg: " + std::to_string(avg_frame_time).substr(0, 4) + " ms";
 
     // Draw chart background with transparency
     float chart_alpha = settings::g_mainTabSettings.overlay_chart_alpha.GetValue();
     ImVec4 bg_color = ImGui::GetStyle().Colors[ImGuiCol_FrameBg];
-    bg_color.w *= chart_alpha; // Apply transparency to background
+    bg_color.w *= chart_alpha;  // Apply transparency to background
 
     // Push style color so PlotLines uses the transparent background
     ImGui::PushStyleColor(ImGuiCol_FrameBg, bg_color);
 
     // Draw compact refresh rate frame time graph (line stays fully opaque)
-    ImGui::PlotLines("##RefreshRateFrameTime",
-                     frame_times.data(),
-                     static_cast<int>(frame_times.size()),
-                     0, // values_offset
-                     nullptr, // overlay_text - no text for compact version
-                     scale_min,
-                     scale_max,
-                     graph_size);
+    ImGui::PlotLines("##RefreshRateFrameTime", frame_times.data(), static_cast<int>(frame_times.size()),
+                     0,        // values_offset
+                     nullptr,  // overlay_text - no text for compact version
+                     scale_min, scale_max, graph_size);
 
     // Restore original style color
     ImGui::PopStyleColor();
 
     if (ImGui::IsItemHovered() && show_tooltips) {
-        ImGui::SetTooltip("Refresh rate frame time graph showing display refresh intervals in milliseconds.\n"
-                         "Lower values = higher refresh rate.\n"
-                         "Spikes indicate refresh rate variations (VRR, power management, etc.).");
+        ImGui::SetTooltip(
+            "Refresh rate frame time graph showing display refresh intervals in milliseconds.\n"
+            "Lower values = higher refresh rate.\n"
+            "Spikes indicate refresh rate variations (VRR, power management, etc.).");
     }
 }
 
@@ -227,10 +227,11 @@ void DrawRefreshRateFrameTimesGraph(bool show_tooltips) {
 void DrawFrameTimeGraphOverlay(bool show_tooltips) {
     // Get frame time data from the performance ring buffer
     const uint32_t head = ::g_perf_ring_head.load(std::memory_order_acquire);
-    const uint32_t count = (head > static_cast<uint32_t>(::kPerfRingCapacity)) ? static_cast<uint32_t>(::kPerfRingCapacity) : head;
+    const uint32_t count =
+        (head > static_cast<uint32_t>(::kPerfRingCapacity)) ? static_cast<uint32_t>(::kPerfRingCapacity) : head;
 
     if (count == 0) {
-        return; // Don't show anything if no data
+        return;  // Don't show anything if no data
     }
     const uint32_t samples_to_display = min(count, 256u);
 
@@ -241,11 +242,11 @@ void DrawFrameTimeGraphOverlay(bool show_tooltips) {
 
     for (uint32_t i = 0; i < samples_to_display; ++i) {
         const ::PerfSample& sample = ::g_perf_ring[(head - samples_to_display + i) & (::kPerfRingCapacity - 1)];
-        frame_times.push_back(1000.0 * sample.dt); // Convert FPS to frame time in ms
+        frame_times.push_back(1000.0 * sample.dt);  // Convert FPS to frame time in ms
     }
 
     if (frame_times.empty()) {
-        return; // Don't show anything if no valid data
+        return;  // Don't show anything if no valid data
     }
 
     // Calculate statistics for the graph
@@ -257,33 +258,30 @@ void DrawFrameTimeGraphOverlay(bool show_tooltips) {
     avg_frame_time /= static_cast<float>(frame_times.size());
 
     // Fixed width for overlay (compact)
-    ImVec2 graph_size = ImVec2(300.0f, 60.0f); // Fixed 300px width, 60px height
+    ImVec2 graph_size = ImVec2(300.0f, 60.0f);  // Fixed 300px width, 60px height
     float scale_min = 0.0f;
-    float scale_max = max(avg_frame_time * 5.0f, max_frame_time + 2.0f); // Add some padding but less aggressive
+    float scale_max = max(avg_frame_time * 5.0f, max_frame_time + 2.0f);  // Add some padding but less aggressive
 
     // Draw chart background with transparency
     float chart_alpha = settings::g_mainTabSettings.overlay_chart_alpha.GetValue();
     ImVec4 bg_color = ImGui::GetStyle().Colors[ImGuiCol_FrameBg];
-    bg_color.w *= chart_alpha; // Apply transparency to background
+    bg_color.w *= chart_alpha;  // Apply transparency to background
 
     // Push style color so PlotLines uses the transparent background
     ImGui::PushStyleColor(ImGuiCol_FrameBg, bg_color);
 
     // Draw compact frame time graph (line stays fully opaque)
-    ImGui::PlotLines("##FrameTime",
-                     frame_times.data(),
-                     static_cast<int>(frame_times.size()),
-                     0, // values_offset
-                     nullptr, // overlay_text - no text for compact version
-                     scale_min,
-                     scale_max,
-                     graph_size);
+    ImGui::PlotLines("##FrameTime", frame_times.data(), static_cast<int>(frame_times.size()),
+                     0,        // values_offset
+                     nullptr,  // overlay_text - no text for compact version
+                     scale_min, scale_max, graph_size);
 
     // Restore original style color
     ImGui::PopStyleColor();
 
     if (ImGui::IsItemHovered() && show_tooltips) {
-        ImGui::SetTooltip("Frame time graph (last 256 frames)\nAvg: %.2f ms | Max: %.2f ms", avg_frame_time, max_frame_time);
+        ImGui::SetTooltip("Frame time graph (last 256 frames)\nAvg: %.2f ms | Max: %.2f ms", avg_frame_time,
+                          max_frame_time);
     }
 }
 
@@ -334,7 +332,6 @@ void InitMainNewTab() {
 }
 
 void DrawAdvancedSettings() {
-
     // Advanced Settings Control
     {
         bool advanced_settings = settings::g_mainTabSettings.advanced_settings_enabled.GetValue();
@@ -374,28 +371,32 @@ void DrawAdvancedSettings() {
     ImGui::Indent();
 
     if (CheckboxSetting(settings::g_mainTabSettings.show_developer_tab, "Show Developer Tab")) {
-        LogInfo("Show Developer tab %s", settings::g_mainTabSettings.show_developer_tab.GetValue() ? "enabled" : "disabled");
+        LogInfo("Show Developer tab %s",
+                settings::g_mainTabSettings.show_developer_tab.GetValue() ? "enabled" : "disabled");
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Shows the Developer tab even when 'Show All Tabs' is disabled.");
     }
 
     if (CheckboxSetting(settings::g_mainTabSettings.show_window_info_tab, "Show Window Info Tab")) {
-        LogInfo("Show Window Info tab %s", settings::g_mainTabSettings.show_window_info_tab.GetValue() ? "enabled" : "disabled");
+        LogInfo("Show Window Info tab %s",
+                settings::g_mainTabSettings.show_window_info_tab.GetValue() ? "enabled" : "disabled");
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Shows the Window Info tab even when 'Show All Tabs' is disabled.");
     }
 
     if (CheckboxSetting(settings::g_mainTabSettings.show_swapchain_tab, "Show Swapchain Tab")) {
-        LogInfo("Show Swapchain tab %s", settings::g_mainTabSettings.show_swapchain_tab.GetValue() ? "enabled" : "disabled");
+        LogInfo("Show Swapchain tab %s",
+                settings::g_mainTabSettings.show_swapchain_tab.GetValue() ? "enabled" : "disabled");
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Shows the Swapchain tab even when 'Show All Tabs' is disabled.");
     }
 
     if (CheckboxSetting(settings::g_mainTabSettings.show_important_info_tab, "Show Important Info Tab")) {
-        LogInfo("Show Important Info tab %s", settings::g_mainTabSettings.show_important_info_tab.GetValue() ? "enabled" : "disabled");
+        LogInfo("Show Important Info tab %s",
+                settings::g_mainTabSettings.show_important_info_tab.GetValue() ? "enabled" : "disabled");
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Shows the Important Info tab even when 'Show All Tabs' is disabled.");
@@ -409,28 +410,32 @@ void DrawAdvancedSettings() {
     }
 
     if (CheckboxSetting(settings::g_mainTabSettings.show_remapping_tab, "Show Remapping Tab")) {
-        LogInfo("Show Remapping tab %s", settings::g_mainTabSettings.show_remapping_tab.GetValue() ? "enabled" : "disabled");
+        LogInfo("Show Remapping tab %s",
+                settings::g_mainTabSettings.show_remapping_tab.GetValue() ? "enabled" : "disabled");
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Shows the Controller Remapping tab even when 'Show All Tabs' is disabled.");
     }
 
     if (CheckboxSetting(settings::g_mainTabSettings.show_hook_stats_tab, "Show Hook Statistics Tab")) {
-        LogInfo("Show Hook Statistics tab %s", settings::g_mainTabSettings.show_hook_stats_tab.GetValue() ? "enabled" : "disabled");
+        LogInfo("Show Hook Statistics tab %s",
+                settings::g_mainTabSettings.show_hook_stats_tab.GetValue() ? "enabled" : "disabled");
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Shows the Hook Statistics tab even when 'Show All Tabs' is disabled.");
     }
 
     if (CheckboxSetting(settings::g_mainTabSettings.show_streamline_tab, "Show Streamline Tab")) {
-        LogInfo("Show Streamline tab %s", settings::g_mainTabSettings.show_streamline_tab.GetValue() ? "enabled" : "disabled");
+        LogInfo("Show Streamline tab %s",
+                settings::g_mainTabSettings.show_streamline_tab.GetValue() ? "enabled" : "disabled");
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Shows the Streamline tab even when 'Show All Tabs' is disabled.");
     }
 
     if (CheckboxSetting(settings::g_mainTabSettings.show_experimental_tab, "Show Experimental Tab")) {
-        LogInfo("Show Experimental tab %s", settings::g_mainTabSettings.show_experimental_tab.GetValue() ? "enabled" : "disabled");
+        LogInfo("Show Experimental tab %s",
+                settings::g_mainTabSettings.show_experimental_tab.GetValue() ? "enabled" : "disabled");
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Shows the Experimental tab even when 'Show All Tabs' is disabled.");
@@ -448,7 +453,8 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
     auto config_save_failure_path = g_config_save_failure_path.load();
     if (config_save_failure_path != nullptr && !config_save_failure_path->empty()) {
         ImGui::Spacing();
-        ImGui::TextColored(ui::colors::TEXT_ERROR, ICON_FK_WARNING " Error: Failed to save config to %s", config_save_failure_path->c_str());
+        ImGui::TextColored(ui::colors::TEXT_ERROR, ICON_FK_WARNING " Error: Failed to save config to %s",
+                           config_save_failure_path->c_str());
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("The configuration file could not be saved. Check file permissions and disk space.");
         }
@@ -456,9 +462,10 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
     }
 
     // Version and build information at the top
-   // if (ImGui::CollapsingHeader("Display Commander", ImGuiTreeNodeFlags_DefaultOpen))
-   {
-        ImGui::TextColored(ui::colors::TEXT_DEFAULT, "Version: %s | Build: %s %s", DISPLAY_COMMANDER_VERSION_STRING, DISPLAY_COMMANDER_BUILD_DATE, DISPLAY_COMMANDER_BUILD_TIME);
+    // if (ImGui::CollapsingHeader("Display Commander", ImGuiTreeNodeFlags_DefaultOpen))
+    {
+        ImGui::TextColored(ui::colors::TEXT_DEFAULT, "Version: %s | Build: %s %s", DISPLAY_COMMANDER_VERSION_STRING,
+                           DISPLAY_COMMANDER_BUILD_DATE, DISPLAY_COMMANDER_BUILD_TIME);
 
         // Display current graphics API with feature level/version
         int api_value = g_last_reshade_device_api.load();
@@ -467,9 +474,8 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
             uint32_t api_version = g_last_api_version.load();
             ImGui::SameLine();
 
-
             if (api == reshade::api::device_api::d3d9 && s_d3d9e_upgrade_successful.load()) {
-                api_version = 0x9100; // due to reshade's bug.
+                api_version = 0x9100;  // due to reshade's bug.
             }
 
             // Display API with version/feature level if available
@@ -499,20 +505,25 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
         uint32_t gamma_control_calls = g_dxgi_output_event_counters[DXGI_OUTPUT_EVENT_SETGAMMACONTROL].load();
         if (gamma_control_calls > 0) {
             ImGui::Spacing();
-            ImGui::TextColored(ui::colors::TEXT_WARNING, ICON_FK_WARNING " WARNING: Game is using gamma control (SetGammaControl called %u times)", gamma_control_calls);
+            ImGui::TextColored(ui::colors::TEXT_WARNING,
+                               ICON_FK_WARNING
+                               " WARNING: Game is using gamma control (SetGammaControl called %u times)",
+                               gamma_control_calls);
             LogInfo("TODO: Implement supressing SetGammaControl calls feature.");
             if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("The game is actively modifying display gamma settings. This may affect color accuracy and HDR functionality. Check the Swapchain tab for more details.");
+                ImGui::SetTooltip(
+                    "The game is actively modifying display gamma settings. This may affect color accuracy and HDR "
+                    "functionality. Check the Swapchain tab for more details.");
             }
             ImGui::Spacing();
         }
 
         // NVIDIA Ansel/Camera SDK Warning (check for all possible DLL names)
-        bool ansel_loaded = display_commanderhooks::IsModuleLoaded(L"NvAnselSDK.dll") ||
-                        display_commanderhooks::IsModuleLoaded(L"AnselSDK64.dll") ||
-                        display_commanderhooks::IsModuleLoaded(L"NvCameraSDK64.dll") ||
-                        display_commanderhooks::IsModuleLoaded(L"NvCameraAPI64.dll") ||
-                        display_commanderhooks::IsModuleLoaded(L"GFExperienceCore.dll");
+        bool ansel_loaded = display_commanderhooks::IsModuleLoaded(L"NvAnselSDK.dll")
+                            || display_commanderhooks::IsModuleLoaded(L"AnselSDK64.dll")
+                            || display_commanderhooks::IsModuleLoaded(L"NvCameraSDK64.dll")
+                            || display_commanderhooks::IsModuleLoaded(L"NvCameraAPI64.dll")
+                            || display_commanderhooks::IsModuleLoaded(L"GFExperienceCore.dll");
 
         // Also check full paths in case modules are stored with full paths instead of just filenames
         if (!ansel_loaded) {
@@ -520,19 +531,21 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
             for (const auto& module : loaded_modules) {
                 std::wstring module_name_lower = module.moduleName;
                 std::wstring module_path_lower = module.fullPath;
-                std::transform(module_name_lower.begin(), module_name_lower.end(), module_name_lower.begin(), ::towlower);
-                std::transform(module_path_lower.begin(), module_path_lower.end(), module_path_lower.begin(), ::towlower);
+                std::transform(module_name_lower.begin(), module_name_lower.end(), module_name_lower.begin(),
+                               ::towlower);
+                std::transform(module_path_lower.begin(), module_path_lower.end(), module_path_lower.begin(),
+                               ::towlower);
 
-                if (module_name_lower.find(L"anselsdk64.dll") != std::wstring::npos ||
-                    module_name_lower.find(L"nvanselsdk.dll") != std::wstring::npos ||
-                    module_name_lower.find(L"nvcamerasdk64.dll") != std::wstring::npos ||
-                    module_name_lower.find(L"nvcameraapi64.dll") != std::wstring::npos ||
-                    module_name_lower.find(L"gfexperiencecore.dll") != std::wstring::npos ||
-                    module_path_lower.find(L"anselsdk64.dll") != std::wstring::npos ||
-                    module_path_lower.find(L"nvanselsdk.dll") != std::wstring::npos ||
-                    module_path_lower.find(L"nvcamerasdk64.dll") != std::wstring::npos ||
-                    module_path_lower.find(L"nvcameraapi64.dll") != std::wstring::npos ||
-                    module_path_lower.find(L"gfexperiencecore.dll") != std::wstring::npos) {
+                if (module_name_lower.find(L"anselsdk64.dll") != std::wstring::npos
+                    || module_name_lower.find(L"nvanselsdk.dll") != std::wstring::npos
+                    || module_name_lower.find(L"nvcamerasdk64.dll") != std::wstring::npos
+                    || module_name_lower.find(L"nvcameraapi64.dll") != std::wstring::npos
+                    || module_name_lower.find(L"gfexperiencecore.dll") != std::wstring::npos
+                    || module_path_lower.find(L"anselsdk64.dll") != std::wstring::npos
+                    || module_path_lower.find(L"nvanselsdk.dll") != std::wstring::npos
+                    || module_path_lower.find(L"nvcamerasdk64.dll") != std::wstring::npos
+                    || module_path_lower.find(L"nvcameraapi64.dll") != std::wstring::npos
+                    || module_path_lower.find(L"gfexperiencecore.dll") != std::wstring::npos) {
                     ansel_loaded = true;
                     break;
                 }
@@ -542,12 +555,14 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
         // Debug logging for Ansel detection
         static bool debug_logged = false;
         if (!debug_logged) {
-            LogInfo("Ansel detection check: NvAnselSDK.dll=%s, AnselSDK64.dll=%s, NvCameraSDK64.dll=%s, NvCameraAPI64.dll=%s, GFExperienceCore.dll=%s",
-                    display_commanderhooks::IsModuleLoaded(L"NvAnselSDK.dll") ? "YES" : "NO",
-                    display_commanderhooks::IsModuleLoaded(L"AnselSDK64.dll") ? "YES" : "NO",
-                    display_commanderhooks::IsModuleLoaded(L"NvCameraSDK64.dll") ? "YES" : "NO",
-                    display_commanderhooks::IsModuleLoaded(L"NvCameraAPI64.dll") ? "YES" : "NO",
-                    display_commanderhooks::IsModuleLoaded(L"GFExperienceCore.dll") ? "YES" : "NO");
+            LogInfo(
+                "Ansel detection check: NvAnselSDK.dll=%s, AnselSDK64.dll=%s, NvCameraSDK64.dll=%s, "
+                "NvCameraAPI64.dll=%s, GFExperienceCore.dll=%s",
+                display_commanderhooks::IsModuleLoaded(L"NvAnselSDK.dll") ? "YES" : "NO",
+                display_commanderhooks::IsModuleLoaded(L"AnselSDK64.dll") ? "YES" : "NO",
+                display_commanderhooks::IsModuleLoaded(L"NvCameraSDK64.dll") ? "YES" : "NO",
+                display_commanderhooks::IsModuleLoaded(L"NvCameraAPI64.dll") ? "YES" : "NO",
+                display_commanderhooks::IsModuleLoaded(L"GFExperienceCore.dll") ? "YES" : "NO");
 
             LogInfo("Fallback Ansel detection result: %s", ansel_loaded ? "YES" : "NO");
 
@@ -557,31 +572,38 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
             for (const auto& module : loaded_modules) {
                 // Check if module name contains Ansel, Camera, or GFExperience (case insensitive)
                 std::wstring module_name_lower = module.moduleName;
-                std::transform(module_name_lower.begin(), module_name_lower.end(), module_name_lower.begin(), ::towlower);
+                std::transform(module_name_lower.begin(), module_name_lower.end(), module_name_lower.begin(),
+                               ::towlower);
 
-                if (module_name_lower.find(L"ansel") != std::wstring::npos ||
-                    module_name_lower.find(L"camera") != std::wstring::npos ||
-                    module_name_lower.find(L"gfexperience") != std::wstring::npos) {
-                    LogInfo("Found Ansel/Camera related module: %S (path: %S)",
-                            module.moduleName.c_str(), module.fullPath.c_str());
+                if (module_name_lower.find(L"ansel") != std::wstring::npos
+                    || module_name_lower.find(L"camera") != std::wstring::npos
+                    || module_name_lower.find(L"gfexperience") != std::wstring::npos) {
+                    LogInfo("Found Ansel/Camera related module: %S (path: %S)", module.moduleName.c_str(),
+                            module.fullPath.c_str());
                 }
             }
             debug_logged = true;
         }
 
-
         if (ansel_loaded) {
             ImGui::Spacing();
             bool skip_ansel = settings::g_mainTabSettings.skip_ansel_loading.GetValue();
             if (skip_ansel) {
-                ImGui::TextColored(ui::colors::TEXT_WARNING, ICON_FK_WARNING " WARNING: NVIDIA Ansel/Camera SDK is loaded (Skip enabled but already loaded)");
+                ImGui::TextColored(ui::colors::TEXT_WARNING, ICON_FK_WARNING
+                                   " WARNING: NVIDIA Ansel/Camera SDK is loaded (Skip enabled but already loaded)");
                 if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip("NVIDIA Ansel/Camera SDK was already loaded before the skip setting could take effect. Restart the game to apply the skip setting.");
+                    ImGui::SetTooltip(
+                        "NVIDIA Ansel/Camera SDK was already loaded before the skip setting could take effect. Restart "
+                        "the game to apply the skip setting.");
                 }
             } else {
-                ImGui::TextColored(ui::colors::TEXT_WARNING, ICON_FK_WARNING " WARNING: NVIDIA Ansel/Camera SDK is loaded");
+                ImGui::TextColored(ui::colors::TEXT_WARNING,
+                                   ICON_FK_WARNING " WARNING: NVIDIA Ansel/Camera SDK is loaded");
                 if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip("NVIDIA Ansel/Camera SDK is loaded (NvAnselSDK.dll, AnselSDK64.dll, NvCameraSDK64.dll, NvCameraAPI64.dll, or GFExperienceCore.dll). This may interfere with display settings and HDR functionality. Enable 'Skip Loading Ansel Libraries' to prevent this.");
+                    ImGui::SetTooltip(
+                        "NVIDIA Ansel/Camera SDK is loaded (NvAnselSDK.dll, AnselSDK64.dll, NvCameraSDK64.dll, "
+                        "NvCameraAPI64.dll, or GFExperienceCore.dll). This may interfere with display settings and HDR "
+                        "functionality. Enable 'Skip Loading Ansel Libraries' to prevent this.");
                 }
             }
             ImGui::Spacing();
@@ -595,7 +617,9 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
                 LogInfo("Skip Ansel loading %s", skip_ansel ? "enabled" : "disabled");
             }
             if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("Prevents Ansel-related DLLs from being loaded by the game. This can help avoid conflicts with display settings and HDR functionality. Requires restart to take effect.");
+                ImGui::SetTooltip(
+                    "Prevents Ansel-related DLLs from being loaded by the game. This can help avoid conflicts with "
+                    "display settings and HDR functionality. Requires restart to take effect.");
             }
 
             if (skip_ansel) {
@@ -649,7 +673,8 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
             ImGui::TextColored(ui::colors::TEXT_DIMMED, "(D3D12: %u)", d3d12_count);
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Total number of CreateSamplerState (D3D11) and CreateSampler (D3D12) calls intercepted.");
+            ImGui::SetTooltip(
+                "Total number of CreateSamplerState (D3D11) and CreateSampler (D3D12) calls intercepted.");
         }
 
         // Show statistics if we have any calls
@@ -738,7 +763,7 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
                 for (int i = 0; i < MAX_ANISOTROPY_LEVELS; ++i) {
                     uint32_t count = g_sampler_anisotropy_level_counters[i].load();
                     if (count > 0) {
-                        int level = i + 1; // Convert from 0-based index to 1-based level
+                        int level = i + 1;  // Convert from 0-based index to 1-based level
                         ImGui::Text("  %dx: %u", level, count);
                     }
                 }
@@ -760,9 +785,10 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
             LogInfo("Max anisotropy set to %d", max_aniso);
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Override maximum anisotropic filtering level (1-16) for existing anisotropic filters.\n"
-                              "Set to 0 (Game default) to preserve the game's original AF settings.\n"
-                              "Only affects samplers that already use anisotropic filtering.");
+            ImGui::SetTooltip(
+                "Override maximum anisotropic filtering level (1-16) for existing anisotropic filters.\n"
+                "Set to 0 (Game default) to preserve the game's original AF settings.\n"
+                "Only affects samplers that already use anisotropic filtering.");
         }
 
         // Reset button for Anisotropic Level
@@ -796,7 +822,8 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
         }
 
         ImGui::Spacing();
-        ImGui::TextColored(ui::colors::TEXT_WARNING, ICON_FK_WARNING " Game restart may be required for changes to take full effect.");
+        ImGui::TextColored(ui::colors::TEXT_WARNING,
+                           ICON_FK_WARNING " Game restart may be required for changes to take full effect.");
 
         ImGui::Unindent();
     }
@@ -830,7 +857,8 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
         // Second line: Selectors
         if (ui::new_ui::ComboSettingEnumRefWrapper(settings::g_mainTabSettings.keyboard_input_blocking, "##Keyboard")) {
             // Restore cursor clipping when input blocking is disabled
-            if (settings::g_mainTabSettings.keyboard_input_blocking.GetValue() == static_cast<int>(InputBlockingMode::kDisabled)) {
+            if (settings::g_mainTabSettings.keyboard_input_blocking.GetValue()
+                == static_cast<int>(InputBlockingMode::kDisabled)) {
                 display_commanderhooks::RestoreClipCursor();
             }
         }
@@ -842,7 +870,8 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
 
         if (ui::new_ui::ComboSettingEnumRefWrapper(settings::g_mainTabSettings.mouse_input_blocking, "##Mouse")) {
             // Restore cursor clipping when input blocking is disabled
-            if (settings::g_mainTabSettings.mouse_input_blocking.GetValue() == static_cast<int>(InputBlockingMode::kDisabled)) {
+            if (settings::g_mainTabSettings.mouse_input_blocking.GetValue()
+                == static_cast<int>(InputBlockingMode::kDisabled)) {
                 display_commanderhooks::RestoreClipCursor();
             }
         }
@@ -857,7 +886,7 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
             ImGui::SetTooltip("Controls gamepad input blocking behavior.");
         }
 
-        ImGui::Columns(1); // Reset to single column
+        ImGui::Columns(1);  // Reset to single column
 
         ImGui::Spacing();
 
@@ -899,6 +928,92 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
 
     ImGui::Spacing();
 
+    // CPU Control Section
+    if (ImGui::CollapsingHeader("CPU Control", ImGuiTreeNodeFlags_None)) {
+        ImGui::Indent();
+
+        // Get CPU core count for display
+        SYSTEM_INFO sys_info = {};
+        GetSystemInfo(&sys_info);
+        DWORD max_cores = sys_info.dwNumberOfProcessors;
+
+        // Update maximum if needed
+        settings::UpdateCpuCoresMaximum();
+
+        int cpu_cores_value = settings::g_mainTabSettings.cpu_cores.GetValue();
+        int max_cores_int = static_cast<int>(max_cores);
+
+        // Clamp invalid values (1 to MIN_CPU_CORES_SELECTABLE-1) to MIN_CPU_CORES_SELECTABLE or 0
+        if (cpu_cores_value > 0 && cpu_cores_value < MIN_CPU_CORES_SELECTABLE) {
+            cpu_cores_value = MIN_CPU_CORES_SELECTABLE;
+            settings::g_mainTabSettings.cpu_cores.SetValue(cpu_cores_value);
+            s_cpu_cores.store(cpu_cores_value);
+        }
+
+        // Use actual CPU cores value in slider, but we'll handle invalid values (1-5) by clamping
+        // Slider range: 0, then MIN_CPU_CORES_SELECTABLE to max_cores_int
+        int slider_min = 0;
+        int slider_max = max_cores_int;
+
+        // Create label for slider
+        std::string slider_label = "CPU Cores";
+        if (cpu_cores_value == 0) {
+            slider_label += " (Default - No Change)";
+        } else if (cpu_cores_value == max_cores_int) {
+            slider_label += " (All Cores)";
+        } else {
+            slider_label += " (" + std::to_string(cpu_cores_value) + " Core" + (cpu_cores_value > 1 ? "s" : "") + ")";
+        }
+
+        // Format string for slider display
+        const char* format_str = (cpu_cores_value == 0) ? "Default" : "%d";
+
+        // Use a temporary variable for the slider to handle invalid values
+        int slider_temp_value = cpu_cores_value;
+
+        if (ImGui::SliderInt(slider_label.c_str(), &slider_temp_value, slider_min, slider_max, format_str)) {
+            // Clamp invalid values (1 to MIN_CPU_CORES_SELECTABLE-1) to MIN_CPU_CORES_SELECTABLE
+            int new_cpu_cores_value = slider_temp_value;
+            if (new_cpu_cores_value > 0 && new_cpu_cores_value < MIN_CPU_CORES_SELECTABLE) {
+                new_cpu_cores_value = MIN_CPU_CORES_SELECTABLE;
+            }
+
+            settings::g_mainTabSettings.cpu_cores.SetValue(new_cpu_cores_value);
+            s_cpu_cores.store(new_cpu_cores_value);
+            LogInfo("CPU cores set to %d (0 = default/no change)", new_cpu_cores_value);
+            cpu_cores_value = new_cpu_cores_value;  // Update for display below
+        }
+
+        // Show tooltip for slider
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip(
+                "Controls CPU core affinity for the game process:\n\n"
+                "- 0 (Default): No change to process affinity\n"
+                "- %d-%d: Limit game to use specified number of CPU cores\n\n"
+                "Note: Changes take effect immediately. Game restart may be required for full effect.",
+                MIN_CPU_CORES_SELECTABLE, max_cores_int);
+        }
+
+        // Show actual CPU cores value next to slider for clarity
+        if (cpu_cores_value > 0) {
+            ImGui::SameLine();
+            ImGui::TextColored(ui::colors::TEXT_DIMMED, "= %d core%s", cpu_cores_value, cpu_cores_value > 1 ? "s" : "");
+        }
+
+        // Display current status
+        ImGui::Spacing();
+        if (cpu_cores_value == 0) {
+            ImGui::TextColored(ui::colors::TEXT_DIMMED, ICON_FK_FILE " No CPU affinity change (using default)");
+        } else {
+            ImGui::TextColored(ui::colors::TEXT_SUCCESS, ICON_FK_OK " CPU affinity set to %d core%s", cpu_cores_value,
+                               cpu_cores_value > 1 ? "s" : "");
+        }
+
+        ImGui::Unindent();
+    }
+
+    ImGui::Spacing();
+
     // Window Controls Section
     DrawWindowControls();
 
@@ -927,7 +1042,8 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
                 ImGui::Spacing();
 
                 // Create a table-like display
-                if (ImGui::BeginTable("OverlayWindows", 6, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable)) {
+                if (ImGui::BeginTable("OverlayWindows", 6,
+                                      ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable)) {
                     ImGui::TableSetupColumn("Window Title", ImGuiTableColumnFlags_WidthStretch);
                     ImGui::TableSetupColumn("Process", ImGuiTableColumnFlags_WidthStretch);
                     ImGui::TableSetupColumn("PID", ImGuiTableColumnFlags_WidthFixed, 80.0f);
@@ -941,16 +1057,18 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
 
                         // Window Title
                         ImGui::TableSetColumnIndex(0);
-                        std::string title_utf8 = overlay.window_title.empty() ?
-                            "(No Title)" :
-                            std::string(overlay.window_title.begin(), overlay.window_title.end());
+                        std::string title_utf8 =
+                            overlay.window_title.empty()
+                                ? "(No Title)"
+                                : std::string(overlay.window_title.begin(), overlay.window_title.end());
                         ImGui::TextUnformatted(title_utf8.c_str());
 
                         // Process Name
                         ImGui::TableSetColumnIndex(1);
-                        std::string process_utf8 = overlay.process_name.empty() ?
-                            "(Unknown)" :
-                            std::string(overlay.process_name.begin(), overlay.process_name.end());
+                        std::string process_utf8 =
+                            overlay.process_name.empty()
+                                ? "(Unknown)"
+                                : std::string(overlay.process_name.begin(), overlay.process_name.end());
                         ImGui::TextUnformatted(process_utf8.c_str());
 
                         // PID
@@ -970,9 +1088,8 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
                         // Overlapping Area
                         ImGui::TableSetColumnIndex(4);
                         if (overlay.overlaps_game) {
-                            ImGui::Text("%ld px (%.1f%%)",
-                                       overlay.overlapping_area_pixels,
-                                       overlay.overlapping_area_percent);
+                            ImGui::Text("%ld px (%.1f%%)", overlay.overlapping_area_pixels,
+                                        overlay.overlapping_area_percent);
                         } else {
                             ImGui::TextColored(ui::colors::TEXT_DIMMED, "No overlap");
                         }
@@ -998,9 +1115,10 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
         }
 
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Shows all visible windows that overlap with the game window.\n"
-                             "Windows can be above or below the game in Z-order.\n"
-                             "Overlapping windows may cause performance issues.");
+            ImGui::SetTooltip(
+                "Shows all visible windows that overlap with the game window.\n"
+                "Windows can be above or below the game in Z-order.\n"
+                "Overlapping windows may cause performance issues.");
         }
 
         ImGui::Unindent();
@@ -1164,7 +1282,7 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
 
         // Find current selection by device ID
         std::string current_device_id = settings::g_mainTabSettings.selected_extended_display_device_id.GetValue();
-        int selected_index = 0; // Default to first display
+        int selected_index = 0;  // Default to first display
         for (size_t i = 0; i < display_info.size(); ++i) {
             if (display_info[i].extended_device_id == current_device_id) {
                 selected_index = static_cast<int>(i);
@@ -1194,7 +1312,6 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
             }
             ImGui::SetTooltip("%s", tooltip_text.c_str());
         }
-
     }
 
     // Window Mode dropdown (with persistent setting)
@@ -1281,12 +1398,10 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
     // FPS Limiter Mode
     {
         const char* items[] = {
-            "Disabled",
-            "NVIDIA Reflex (low latency mode + boost) VRR DX11/DX12 (DLSS-FG aware)",
+            "Disabled", "NVIDIA Reflex (low latency mode + boost) VRR DX11/DX12 (DLSS-FG aware)",
             "Sync frame Present/Start Time (adds latency to offer more consistent frame timing) VRR/Non-VRR",
             "Sync to Display Refresh Rate (fraction of monitor refresh rate) Non-VRR",
-            "Non-Reflex Low Latency Mode (not implemented) VRR"
-        };
+            "Non-Reflex Low Latency Mode (not implemented) VRR"};
 
         int current_item = settings::g_mainTabSettings.fps_limiter_mode.GetValue();
         int prev_item = current_item;
@@ -1317,47 +1432,62 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
 
         // Custom rendering for grayed out option
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Choose limiter: OnPresent Frame Synchronizer (synchronized frame display timing) or VBlank Scanline Sync\n\nOnPresent Frame Synchronizer adds latency as it delays frame display time to be more consistent - it prioritizes starting frame processing at the same time.\n\nVBlank Scanline Sync synchronizes frame presentation with monitor refresh cycles for smooth frame pacing without VSync.");
+            ImGui::SetTooltip(
+                "Choose limiter: OnPresent Frame Synchronizer (synchronized frame display timing) or VBlank Scanline "
+                "Sync\n\nOnPresent Frame Synchronizer adds latency as it delays frame display time to be more "
+                "consistent - it prioritizes starting frame processing at the same time.\n\nVBlank Scanline Sync "
+                "synchronizes frame presentation with monitor refresh cycles for smooth frame pacing without VSync.");
         }
-        if (current_item == static_cast<int>(FpsLimiterMode::kOnPresentSync) || current_item == static_cast<int>(FpsLimiterMode::kLatentSync) || current_item == static_cast<int>(FpsLimiterMode::kNonReflexLowLatency)) {
-            // if DLSS-G is enabled warn that reflex fps limiter should be used, because this mode isn't aware of native frames
+        if (current_item == static_cast<int>(FpsLimiterMode::kOnPresentSync)
+            || current_item == static_cast<int>(FpsLimiterMode::kLatentSync)
+            || current_item == static_cast<int>(FpsLimiterMode::kNonReflexLowLatency)) {
+            // if DLSS-G is enabled warn that reflex fps limiter should be used, because this mode isn't aware of native
+            // frames
 
             if (g_dlssg_enabled.load()) {
-                ImGui::TextColored(ui::colors::TEXT_WARNING, ICON_FK_WARNING " Warning: DLSS-G is enabled. Reflex FPS Limiter should be used instead of this mode.");
+                ImGui::TextColored(
+                    ui::colors::TEXT_WARNING, ICON_FK_WARNING
+                    " Warning: DLSS-G is enabled. Reflex FPS Limiter should be used instead of this mode.");
                 if (ImGui::IsItemHovered()) {
                     ImGui::SetTooltip("DLSS-G is enabled. Reflex FPS Limiter should be used instead of this mode.");
                 }
             }
-
         }
         if (current_item == static_cast<int>(FpsLimiterMode::kOnPresentSync)) {
             // Check if we're running on D3D9 and show warning
             int current_api = g_last_reshade_device_api.load();
             if (current_api == static_cast<int>(reshade::api::device_api::d3d9)) {
-                ImGui::TextColored(ui::colors::TEXT_WARNING, ICON_FK_WARNING " Warning: Reflex does not work with Direct3D 9");
+                ImGui::TextColored(ui::colors::TEXT_WARNING,
+                                   ICON_FK_WARNING " Warning: Reflex does not work with Direct3D 9");
             } else {
                 bool enable_reflex = settings::g_mainTabSettings.onpresent_sync_enable_reflex.GetValue();
                 if (ImGui::Checkbox("Enable Reflex alongside OnPresentSync", &enable_reflex)) {
                     settings::g_mainTabSettings.onpresent_sync_enable_reflex.SetValue(enable_reflex);
                 }
                 if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip("Enable NVIDIA Reflex alongside OnPresentSync FPS limiter. Reflex will run at +0.5%% FPS limit for better latency reduction.");
+                    ImGui::SetTooltip(
+                        "Enable NVIDIA Reflex alongside OnPresentSync FPS limiter. Reflex will run at +0.5%% FPS limit "
+                        "for better latency reduction.");
                 }
             }
         }
 
-        if (current_item == static_cast<int>(FpsLimiterMode::kReflex) || (current_item == static_cast<int>(FpsLimiterMode::kOnPresentSync) && settings::g_mainTabSettings.onpresent_sync_enable_reflex.GetValue())) {
+        if (current_item == static_cast<int>(FpsLimiterMode::kReflex)
+            || (current_item == static_cast<int>(FpsLimiterMode::kOnPresentSync)
+                && settings::g_mainTabSettings.onpresent_sync_enable_reflex.GetValue())) {
             // Check if we're running on D3D9 and show warning
             int current_api = g_last_reshade_device_api.load();
             if (current_api == static_cast<int>(reshade::api::device_api::d3d9)) {
-                ImGui::TextColored(ui::colors::TEXT_WARNING, ICON_FK_WARNING " Warning: Reflex does not work with Direct3D 9");
+                ImGui::TextColored(ui::colors::TEXT_WARNING,
+                                   ICON_FK_WARNING " Warning: Reflex does not work with Direct3D 9");
             } else {
                 uint64_t now_ns = utils::get_now_ns();
 
                 // Show Native Reflex status only when streamline is used
                 if (g_swapchain_wrapper_present_called.load(std::memory_order_acquire)) {
                     if (IsNativeReflexActive(now_ns)) {
-                        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), ICON_FK_OK " Native Reflex: ACTIVE Native Frame Pacing: ON");
+                        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f),
+                                           ICON_FK_OK " Native Reflex: ACTIVE Native Frame Pacing: ON");
                         if (ImGui::IsItemHovered()) {
                             ImGui::SetTooltip(
                                 "The game has native Reflex support and is actively using it. "
@@ -1365,36 +1495,47 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                         }
                         double native_ns = static_cast<double>(g_sleep_reflex_native_ns_smooth.load());
                         double calls_per_second = native_ns <= 0 ? -1 : 1000000000.0 / native_ns;
-                        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Native Reflex: %.2f times/sec (%.1f ms interval)", calls_per_second, native_ns / 1000000.0);
+                        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f),
+                                           "Native Reflex: %.2f times/sec (%.1f ms interval)", calls_per_second,
+                                           native_ns / 1000000.0);
                         if (ImGui::IsItemHovered()) {
                             double raw_ns = static_cast<double>(g_sleep_reflex_native_ns.load());
-                            ImGui::SetTooltip("Smoothed interval using rolling average. Raw: %.1f ms", raw_ns / 1000000.0);
+                            ImGui::SetTooltip("Smoothed interval using rolling average. Raw: %.1f ms",
+                                              raw_ns / 1000000.0);
                         }
                         if (!DidNativeReflexSleepRecently(now_ns)) {
-                            ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f), ICON_FK_WARNING " Warning: Native Reflex is not sleeping recently - may indicate issues! (FIXME)");
+                            ImGui::TextColored(
+                                ImVec4(1.0f, 0.6f, 0.0f, 1.0f), ICON_FK_WARNING
+                                " Warning: Native Reflex is not sleeping recently - may indicate issues! (FIXME)");
                         }
                     } else {
                         bool native_fp = settings::g_mainTabSettings.native_frame_pacing.GetValue();
-                        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), ICON_FK_OK " Injected Reflex: ACTIVE Native Frame Pacing: %s", native_fp ? "ON" : "OFF");
+                        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f),
+                                           ICON_FK_OK " Injected Reflex: ACTIVE Native Frame Pacing: %s",
+                                           native_fp ? "ON" : "OFF");
                         double injected_ns = static_cast<double>(g_sleep_reflex_injected_ns_smooth.load());
                         double calls_per_second = injected_ns <= 0 ? -1 : 1000000000.0 / injected_ns;
-                        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Injected Reflex: %.2f times/sec (%.1f ms interval)", calls_per_second, injected_ns / 1000000.0);
+                        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f),
+                                           "Injected Reflex: %.2f times/sec (%.1f ms interval)", calls_per_second,
+                                           injected_ns / 1000000.0);
                         if (ImGui::IsItemHovered()) {
                             double raw_ns = static_cast<double>(g_sleep_reflex_injected_ns.load());
-                            ImGui::SetTooltip("Smoothed interval using rolling average. Raw: %.1f ms", raw_ns / 1000000.0);
+                            ImGui::SetTooltip("Smoothed interval using rolling average. Raw: %.1f ms",
+                                              raw_ns / 1000000.0);
                         }
-
 
                         // Warn if both native and injected reflex are running simultaneously
                         if (DidNativeReflexSleepRecently(now_ns)) {
-                            ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f), ICON_FK_WARNING " Warning: Both native and injected Reflex are active - this may cause conflicts! (FIXME)");
+                            ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f), ICON_FK_WARNING
+                                               " Warning: Both native and injected Reflex are active - this may cause "
+                                               "conflicts! (FIXME)");
                         }
                     }
                 }
 
                 // Show Boost checkbox for both native and injected Reflex
                 ImGui::Spacing();
-                #if 0
+#if 0
                 bool reflex_low_latency = settings::g_developerTabSettings.reflex_low_latency.GetValue();
                 if (ImGui::Checkbox("Low Latency Mode", &reflex_low_latency)) {
                     settings::g_developerTabSettings.reflex_low_latency.SetValue(reflex_low_latency);
@@ -1403,22 +1544,27 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                     ImGui::SetTooltip("Enables NVIDIA Reflex Low Latency Mode to reduce input lag and system latency.\nThis helps improve responsiveness in competitive gaming scenarios.");
                 }
                 ImGui::SameLine();
-                #endif
+#endif
                 bool reflex_boost = settings::g_developerTabSettings.reflex_boost.GetValue();
                 if (ImGui::Checkbox("Boost", &reflex_boost)) {
                     settings::g_developerTabSettings.reflex_boost.SetValue(reflex_boost);
                 }
                 if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip("Enables NVIDIA Reflex Boost mode for maximum latency reduction.\nThis mode may increase GPU power consumption but provides the lowest possible input lag.");
+                    ImGui::SetTooltip(
+                        "Enables NVIDIA Reflex Boost mode for maximum latency reduction.\nThis mode may increase GPU "
+                        "power consumption but provides the lowest possible input lag.");
                 }
             }
             if (IsNativeReflexActive() || settings::g_developerTabSettings.reflex_supress_native.GetValue()) {
                 ImGui::SameLine();
-                if (CheckboxSetting(settings::g_developerTabSettings.reflex_supress_native, ICON_FK_WARNING " Suppress Native Reflex (WIP)")) {
-                    LogInfo("Suppress Native Reflex %s", settings::g_developerTabSettings.reflex_supress_native.GetValue() ? "enabled" : "disabled");
+                if (CheckboxSetting(settings::g_developerTabSettings.reflex_supress_native,
+                                    ICON_FK_WARNING " Suppress Native Reflex (WIP)")) {
+                    LogInfo("Suppress Native Reflex %s",
+                            settings::g_developerTabSettings.reflex_supress_native.GetValue() ? "enabled" : "disabled");
                 }
                 if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip("Override the game's native Reflex implementation with the addon's injected version.");
+                    ImGui::SetTooltip(
+                        "Override the game's native Reflex implementation with the addon's injected version.");
                 }
             }
         }
@@ -1427,7 +1573,8 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
         if (current_item == static_cast<int>(FpsLimiterMode::kNonReflexLowLatency)) {
             bool native_fp = settings::g_mainTabSettings.native_frame_pacing.GetValue();
             ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Native Frame Pacing: %s", native_fp ? "ON" : "OFF");
-            ImGui::TextColored(ui::colors::TEXT_WARNING, ICON_FK_WARNING " Non-Reflex Low Latency Mode not implemented yet");
+            ImGui::TextColored(ui::colors::TEXT_WARNING,
+                               ICON_FK_WARNING " Non-Reflex Low Latency Mode not implemented yet");
         }
 
         // Present Pacing Delay slider (persisted)
@@ -1440,11 +1587,11 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
             ImGui::TextColored(ui::colors::TEXT_DIMMED, "Improves frame timing consistency");
 
             ImGui::TextColored(ui::colors::TEXT_SUBTLE,
-                            "Adds a small delay after present to smooth frame pacing and reduce stuttering");
+                               "Adds a small delay after present to smooth frame pacing and reduce stuttering");
 
             float current_delay = settings::g_mainTabSettings.present_pacing_delay_percentage.GetValue();
             if (SliderFloatSettingRef(settings::g_mainTabSettings.present_pacing_delay_percentage,
-                                "Present Pacing Delay", "%.1f%%")) {
+                                      "Present Pacing Delay", "%.1f%%")) {
                 // The setting is automatically synced via FloatSettingRef
             }
             if (ImGui::IsItemHovered()) {
@@ -1485,7 +1632,8 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
         // VBlank Sync Divisor (only visible if latent sync mode is selected)
         int current_divisor = settings::g_mainTabSettings.vblank_sync_divisor.GetValue();
         int temp_divisor = current_divisor;
-        if (ImGui::SliderInt("VBlank Sync Divisor (controls FPS limit as fraction of monitor refresh rate)", &temp_divisor, 0, 8, "%d")) {
+        if (ImGui::SliderInt("VBlank Sync Divisor (controls FPS limit as fraction of monitor refresh rate)",
+                             &temp_divisor, 0, 8, "%d")) {
             settings::g_mainTabSettings.vblank_sync_divisor.SetValue(temp_divisor);
             s_vblank_sync_divisor.store(temp_divisor);
         }
@@ -1551,8 +1699,9 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
 
     // FPS Limit slider (persisted)
 
-    bool fps_limit_enabled = s_fps_limiter_mode.load() != FpsLimiterMode::kDisabled && s_fps_limiter_mode.load() != FpsLimiterMode::kLatentSync || settings::g_developerTabSettings.reflex_enable.GetValue();
-
+    bool fps_limit_enabled = s_fps_limiter_mode.load() != FpsLimiterMode::kDisabled
+                                 && s_fps_limiter_mode.load() != FpsLimiterMode::kLatentSync
+                             || settings::g_developerTabSettings.reflex_enable.GetValue();
 
     {
         if (!fps_limit_enabled) {
@@ -1561,7 +1710,8 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
 
         float current_value = settings::g_mainTabSettings.fps_limit.GetValue();
         const char* fmt = (current_value > 0.0f) ? "%.3f FPS" : "No Limit";
-        if (SliderFloatSettingRef(settings::g_mainTabSettings.fps_limit, "FPS Limit", fmt)) {}
+        if (SliderFloatSettingRef(settings::g_mainTabSettings.fps_limit, "FPS Limit", fmt)) {
+        }
 
         auto cur_limit = settings::g_mainTabSettings.fps_limit.GetValue();
         if (cur_limit > 0.0f && cur_limit < 10.0f) {
@@ -1583,9 +1733,9 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
 
         if (show_warning) {
             ImGui::Spacing();
-            ImGui::TextColored(ui::colors::TEXT_WARNING,
-                ICON_FK_WARNING " Warning: FPS limiting is enabled but SWAPCHAIN_EVENT_PRESENT_FLAGS events are 0. "
-                "FPS limiting may not work properly.");
+            ImGui::TextColored(ui::colors::TEXT_WARNING, ICON_FK_WARNING
+                               " Warning: FPS limiting is enabled but SWAPCHAIN_EVENT_PRESENT_FLAGS events are 0. "
+                               "FPS limiting may not work properly.");
             if (ImGui::IsItemHovered()) {
                 ImGui::SetTooltip("SWAPCHAIN_EVENT_PRESENT_FLAGS events are required for FPS limiting.");
             }
@@ -1633,7 +1783,6 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
 
         ImGui::Spacing();
 
-
         // Background FPS Limit slider (persisted)
         {
             if (!fps_limit_enabled) {
@@ -1642,14 +1791,17 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
 
             float current_bg = settings::g_mainTabSettings.fps_limit_background.GetValue();
             const char* fmt_bg = (current_bg > 0.0f) ? "%.0f FPS" : "No Limit";
-            if (SliderFloatSettingRef(settings::g_mainTabSettings.fps_limit_background, "Background FPS Limit", fmt_bg)) {}
+            if (SliderFloatSettingRef(settings::g_mainTabSettings.fps_limit_background, "Background FPS Limit",
+                                      fmt_bg)) {
+            }
 
             if (!fps_limit_enabled) {
                 ImGui::EndDisabled();
             }
             if (ImGui::IsItemHovered()) {
                 ImGui::SetTooltip(
-                    "FPS cap when the game window is not in the foreground. Now uses the new Custom FPS Limiter system.");
+                    "FPS cap when the game window is not in the foreground. Now uses the new Custom FPS Limiter "
+                    "system.");
             }
         }
         if (ImGui::CollapsingHeader("VSync & Tearing", ImGuiTreeNodeFlags_DefaultOpen)) {
@@ -1692,7 +1844,8 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
             if (ImGui::Checkbox("Prevent Tearing", &prevent_t)) {
                 settings::g_mainTabSettings.prevent_tearing.SetValue(prevent_t);
                 // s_prevent_tearing is automatically synced via BoolSettingRef
-                LogInfo(prevent_t ? "Prevent Tearing enabled (tearing flags will be cleared)" : "Prevent Tearing disabled");
+                LogInfo(prevent_t ? "Prevent Tearing enabled (tearing flags will be cleared)"
+                                  : "Prevent Tearing disabled");
             }
             if (ImGui::IsItemHovered()) {
                 ImGui::SetTooltip("Prevents tearing by clearing DXGI tearing flags and preferring sync.");
@@ -1706,21 +1859,23 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                     LogInfo(native_fp ? "Native Frame Pacing enabled" : "Native Frame Pacing disabled");
                 }
                 if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip("Apply pacing to native frames when using DLSS Frame Generation.\n"
-                                    "When enabled, the FPS limiter paces the game's internal framerate (native frames)\n"
-                                    "instead of generated frames. This helps maintain proper frame timing with Frame Gen enabled.");
+                    ImGui::SetTooltip(
+                        "Apply pacing to native frames when using DLSS Frame Generation.\n"
+                        "When enabled, the FPS limiter paces the game's internal framerate (native frames)\n"
+                        "instead of generated frames. This helps maintain proper frame timing with Frame Gen enabled.");
                 }
             }
 
             int current_api = g_last_reshade_device_api.load();
             bool is_d3d9 = current_api == static_cast<int>(reshade::api::device_api::d3d9);
             bool is_dxgi = g_last_reshade_device_api.load() == static_cast<int>(reshade::api::device_api::d3d10)
-            || current_api == static_cast<int>(reshade::api::device_api::d3d11)
-            || current_api == static_cast<int>(reshade::api::device_api::d3d12);
+                           || current_api == static_cast<int>(reshade::api::device_api::d3d11)
+                           || current_api == static_cast<int>(reshade::api::device_api::d3d12);
             bool enable_flip = settings::g_developerTabSettings.enable_flip_chain.GetValue();
 
-            bool is_flip = g_last_swapchain_desc.load() && (g_last_swapchain_desc.load()->present_mode == DXGI_SWAP_EFFECT_FLIP_DISCARD
-                || g_last_swapchain_desc.load()->present_mode == DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL);
+            bool is_flip = g_last_swapchain_desc.load()
+                           && (g_last_swapchain_desc.load()->present_mode == DXGI_SWAP_EFFECT_FLIP_DISCARD
+                               || g_last_swapchain_desc.load()->present_mode == DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL);
             static bool has_been_enabled = false;
             has_been_enabled |= is_dxgi && (enable_flip || !is_flip);
 
@@ -1734,9 +1889,10 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                     LogInfo(enable_flip ? "Enable Flip Chain enabled" : "Enable Flip Chain disabled");
                 }
                 if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip("Forces games to use flip model swap chains (FLIP_DISCARD) for better performance.\n"
-                                    "This setting requires a game restart to take effect.\n"
-                                    "Only works with DirectX 10/11/12 (DXGI) games.");
+                    ImGui::SetTooltip(
+                        "Forces games to use flip model swap chains (FLIP_DISCARD) for better performance.\n"
+                        "This setting requires a game restart to take effect.\n"
+                        "Only works with DirectX 10/11/12 (DXGI) games.");
                 }
             }
 
@@ -1746,7 +1902,8 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                 bool enable_d9ex_with_flip = settings::g_experimentalTabSettings.d3d9_flipex_enabled.GetValue();
                 if (ImGui::Checkbox("Enable Flip State (requires restart)", &enable_d9ex_with_flip)) {
                     settings::g_experimentalTabSettings.d3d9_flipex_enabled.SetValue(enable_d9ex_with_flip);
-                    LogInfo(enable_d9ex_with_flip ? "Enable D9EX with Flip Model enabled" : "Enable D9EX with Flip Model disabled");
+                    LogInfo(enable_d9ex_with_flip ? "Enable D9EX with Flip Model enabled"
+                                                  : "Enable D9EX with Flip Model disabled");
                 }
             }
 
@@ -1774,8 +1931,8 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                 std::string present_mode_name = "Unknown";
 
                 if (is_d3d9) {
-                    // dx9 device
-                    #if 0
+// dx9 device
+#if 0
                     IDirect3DDevice9* d3d9_device = nullptr;
                     IDirect3DSwapChain9* swap_chain = nullptr;
                     HRESULT hr = d3d9_device->GetSwapChain(0, &swap_chain);
@@ -1792,23 +1949,23 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                     if (d3d9_device != nullptr) {
                         d3d9_device->Release();
                     }
-                    #endif
+#endif
 
                     if (desc.present_mode == D3DSWAPEFFECT_FLIPEX) {
                         present_mode_name = "FLIPEX (Flip Model)";
-                        present_mode_color = ImVec4(0.0f, 1.0f, 0.0f, 1.0f); // Green
+                        present_mode_color = ImVec4(0.0f, 1.0f, 0.0f, 1.0f);  // Green
                     } else if (desc.present_mode == D3DSWAPEFFECT_DISCARD) {
                         present_mode_name = "DISCARD (Traditional)";
-                        present_mode_color = ImVec4(1.0f, 0.8f, 0.0f, 1.0f); // Orange
+                        present_mode_color = ImVec4(1.0f, 0.8f, 0.0f, 1.0f);  // Orange
                     } else if (desc.present_mode == D3DSWAPEFFECT_FLIP) {
                         present_mode_name = "FLIP (Traditional)";
-                        present_mode_color = ImVec4(1.0f, 0.8f, 0.0f, 1.0f); // Orange
+                        present_mode_color = ImVec4(1.0f, 0.8f, 0.0f, 1.0f);  // Orange
                     } else if (desc.present_mode == D3DSWAPEFFECT_COPY) {
                         present_mode_name = "COPY (Traditional)";
-                        present_mode_color = ImVec4(1.0f, 0.8f, 0.0f, 1.0f); // Orange
-                    } else if (desc.present_mode == D3DSWAPEFFECT_OVERLAY)  {
+                        present_mode_color = ImVec4(1.0f, 0.8f, 0.0f, 1.0f);  // Orange
+                    } else if (desc.present_mode == D3DSWAPEFFECT_OVERLAY) {
                         present_mode_name = "OVERLAY (Traditional)";
-                        present_mode_color = ImVec4(1.0f, 0.8f, 0.0f, 1.0f); // Orange
+                        present_mode_color = ImVec4(1.0f, 0.8f, 0.0f, 1.0f);  // Orange
                     } else {
                         present_mode_name = "Unknown";
                         present_mode_color = ui::colors::TEXT_ERROR;
@@ -1820,16 +1977,17 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
 
                     ImVec4 flip_color;
                     if (flip_state == DxgiBypassMode::kComposed) {
-                        flip_color = ui::colors::FLIP_COMPOSED; // Red - bad
-                    } else if (flip_state == DxgiBypassMode::kOverlay || flip_state == DxgiBypassMode::kIndependentFlip) {
-                        flip_color = ui::colors::FLIP_INDEPENDENT; // Green - good
-                    } else if (flip_state == DxgiBypassMode::kQueryFailedSwapchainNull ||
-                               flip_state == DxgiBypassMode::kQueryFailedNoSwapchain1 ||
-                               flip_state == DxgiBypassMode::kQueryFailedNoMedia ||
-                               flip_state == DxgiBypassMode::kQueryFailedNoStats) {
-                        flip_color = ui::colors::TEXT_ERROR; // Red - query failed
+                        flip_color = ui::colors::FLIP_COMPOSED;  // Red - bad
+                    } else if (flip_state == DxgiBypassMode::kOverlay
+                               || flip_state == DxgiBypassMode::kIndependentFlip) {
+                        flip_color = ui::colors::FLIP_INDEPENDENT;  // Green - good
+                    } else if (flip_state == DxgiBypassMode::kQueryFailedSwapchainNull
+                               || flip_state == DxgiBypassMode::kQueryFailedNoSwapchain1
+                               || flip_state == DxgiBypassMode::kQueryFailedNoMedia
+                               || flip_state == DxgiBypassMode::kQueryFailedNoStats) {
+                        flip_color = ui::colors::TEXT_ERROR;  // Red - query failed
                     } else {
-                        flip_color = ui::colors::FLIP_UNKNOWN; // Yellow - unknown/unset
+                        flip_color = ui::colors::FLIP_UNKNOWN;  // Yellow - unknown/unset
                     }
                     const char* flip_state_str = "Unknown";
                     switch (flip_state) {
@@ -1839,11 +1997,14 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                         case DxgiBypassMode::kIndependentFlip:          flip_state_str = "iFlip"; break;
                         case DxgiBypassMode::kQueryFailedSwapchainNull: flip_state_str = "Query Failed: Null"; break;
                         case DxgiBypassMode::kQueryFailedNoMedia:       flip_state_str = "Query Failed: No Media"; break;
-                        case DxgiBypassMode::kQueryFailedNoSwapchain1:  flip_state_str = "Query Failed: No Swapchain1"; break;
-                        case DxgiBypassMode::kQueryFailedNoStats:       flip_state_str = "Query Failed: No Stats"; break;
+                        case DxgiBypassMode::kQueryFailedNoSwapchain1:
+                            flip_state_str = "Query Failed: No Swapchain1";
+                            break;
+                        case DxgiBypassMode::kQueryFailedNoStats: flip_state_str = "Query Failed: No Stats"; break;
                         case DxgiBypassMode::kUnknown:
-                        default:                                        {
-                            if (desc.present_mode == DXGI_SWAP_EFFECT_FLIP_DISCARD || desc.present_mode == DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL) {
+                        default:                                  {
+                            if (desc.present_mode == DXGI_SWAP_EFFECT_FLIP_DISCARD
+                                || desc.present_mode == DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL) {
                                 flip_state_str = "Unknown";
                             } else {
                                 flip_state_str = "Unavailable";
@@ -1865,7 +2026,8 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                     static bool discord_overlay_visible = false;
 
                     if (current_time - last_discord_check > 1000) {  // Check every second
-                        discord_overlay_visible = display_commander::utils::IsWindowWithTitleVisible(L"Discord Overlay");
+                        discord_overlay_visible =
+                            display_commander::utils::IsWindowWithTitleVisible(L"Discord Overlay");
                         last_discord_check = current_time;
                     }
 
@@ -1875,26 +2037,26 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                         ImGui::Text(ICON_FK_WARNING " Discord Overlay");
                         ui::colors::PopIconColor();
                         if (ImGui::IsItemHovered()) {
-                            ImGui::SetTooltip("Discord Overlay is visible and may prevent MPO iFlip.\n"
-                                            "It can prevent Independent Flip mode and increase latency.\n"
-                                            "Consider disabling it or setting AllowWindowedMode=true in Special-K.");
+                            ImGui::SetTooltip(
+                                "Discord Overlay is visible and may prevent MPO iFlip.\n"
+                                "It can prevent Independent Flip mode and increase latency.\n"
+                                "Consider disabling it or setting AllowWindowedMode=true in Special-K.");
                         }
                     }
 
                 } else if (is_dxgi) {
-
                     if (desc.present_mode == DXGI_SWAP_EFFECT_FLIP_DISCARD) {
                         present_mode_name = "FLIP_DISCARD (Flip Model)";
-                        present_mode_color = ImVec4(0.0f, 1.0f, 0.0f, 1.0f); // Green
+                        present_mode_color = ImVec4(0.0f, 1.0f, 0.0f, 1.0f);  // Green
                     } else if (desc.present_mode == DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL) {
                         present_mode_name = "FLIP_SEQUENTIAL (Flip Model)";
-                        present_mode_color = ImVec4(0.0f, 1.0f, 0.0f, 1.0f); // Green
+                        present_mode_color = ImVec4(0.0f, 1.0f, 0.0f, 1.0f);  // Green
                     } else if (desc.present_mode == DXGI_SWAP_EFFECT_DISCARD) {
                         present_mode_name = "DISCARD (Traditional)";
-                        present_mode_color = ImVec4(1.0f, 0.8f, 0.0f, 1.0f); // Orange
+                        present_mode_color = ImVec4(1.0f, 0.8f, 0.0f, 1.0f);  // Orange
                     } else if (desc.present_mode == DXGI_SWAP_EFFECT_SEQUENTIAL) {
                         present_mode_name = "SEQUENTIAL (Traditional)";
-                        present_mode_color = ImVec4(1.0f, 0.8f, 0.0f, 1.0f); // Orange
+                        present_mode_color = ImVec4(1.0f, 0.8f, 0.0f, 1.0f);  // Orange
                     } else {
                         present_mode_name = "Unknown";
                         present_mode_color = ui::colors::TEXT_ERROR;
@@ -1925,11 +2087,14 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                             }
                             break;
                         }
-                        case DxgiBypassMode::kQueryFailedNoSwapchain1:  flip_state_str = "Query Failed: No Swapchain1"; break;
-                        case DxgiBypassMode::kQueryFailedNoStats:       flip_state_str = "Query Failed: No Stats"; break;
+                        case DxgiBypassMode::kQueryFailedNoSwapchain1:
+                            flip_state_str = "Query Failed: No Swapchain1";
+                            break;
+                        case DxgiBypassMode::kQueryFailedNoStats: flip_state_str = "Query Failed: No Stats"; break;
                         case DxgiBypassMode::kUnknown:
-                        default:                                        {
-                            if (desc.present_mode == DXGI_SWAP_EFFECT_FLIP_DISCARD || desc.present_mode == DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL) {
+                        default:                                  {
+                            if (desc.present_mode == DXGI_SWAP_EFFECT_FLIP_DISCARD
+                                || desc.present_mode == DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL) {
                                 flip_state_str = "Unknown";
                             } else {
                                 flip_state_str = "Unavailable";
@@ -1940,16 +2105,17 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
 
                     ImVec4 flip_color;
                     if (flip_state == DxgiBypassMode::kComposed) {
-                        flip_color = ui::colors::FLIP_COMPOSED; // Red - bad
-                    } else if (flip_state == DxgiBypassMode::kOverlay || flip_state == DxgiBypassMode::kIndependentFlip) {
-                        flip_color = ui::colors::FLIP_INDEPENDENT; // Green - good
-                    } else if (flip_state == DxgiBypassMode::kQueryFailedSwapchainNull ||
-                               flip_state == DxgiBypassMode::kQueryFailedNoSwapchain1 ||
-                               flip_state == DxgiBypassMode::kQueryFailedNoMedia ||
-                               flip_state == DxgiBypassMode::kQueryFailedNoStats) {
-                        flip_color = ui::colors::TEXT_ERROR; // Red - query failed
+                        flip_color = ui::colors::FLIP_COMPOSED;  // Red - bad
+                    } else if (flip_state == DxgiBypassMode::kOverlay
+                               || flip_state == DxgiBypassMode::kIndependentFlip) {
+                        flip_color = ui::colors::FLIP_INDEPENDENT;  // Green - good
+                    } else if (flip_state == DxgiBypassMode::kQueryFailedSwapchainNull
+                               || flip_state == DxgiBypassMode::kQueryFailedNoSwapchain1
+                               || flip_state == DxgiBypassMode::kQueryFailedNoMedia
+                               || flip_state == DxgiBypassMode::kQueryFailedNoStats) {
+                        flip_color = ui::colors::TEXT_ERROR;  // Red - query failed
                     } else {
-                        flip_color = ui::colors::FLIP_UNKNOWN; // Yellow - unknown/unset
+                        flip_color = ui::colors::FLIP_UNKNOWN;  // Yellow - unknown/unset
                     }
 
                     ImGui::TextColored(flip_color, "Status: %s", flip_state_str);
@@ -1976,18 +2142,14 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                             RECT window_rect = {};
                             RECT client_rect = {};
                             if (GetWindowRect(game_window, &window_rect) && GetClientRect(game_window, &client_rect)) {
-                                ImGui::Text("Window Rect: (%ld, %ld) to (%ld, %ld)",
-                                          window_rect.left, window_rect.top,
-                                          window_rect.right, window_rect.bottom);
-                                ImGui::Text("Window Size: %ld x %ld",
-                                          window_rect.right - window_rect.left,
-                                          window_rect.bottom - window_rect.top);
-                                ImGui::Text("Client Rect: (%ld, %ld) to (%ld, %ld)",
-                                          client_rect.left, client_rect.top,
-                                          client_rect.right, client_rect.bottom);
-                                ImGui::Text("Client Size: %ld x %ld",
-                                          client_rect.right - client_rect.left,
-                                          client_rect.bottom - client_rect.top);
+                                ImGui::Text("Window Rect: (%ld, %ld) to (%ld, %ld)", window_rect.left, window_rect.top,
+                                            window_rect.right, window_rect.bottom);
+                                ImGui::Text("Window Size: %ld x %ld", window_rect.right - window_rect.left,
+                                            window_rect.bottom - window_rect.top);
+                                ImGui::Text("Client Rect: (%ld, %ld) to (%ld, %ld)", client_rect.left, client_rect.top,
+                                            client_rect.right, client_rect.bottom);
+                                ImGui::Text("Client Size: %ld x %ld", client_rect.right - client_rect.left,
+                                            client_rect.bottom - client_rect.top);
                             }
 
                             // Window flags
@@ -2017,18 +2179,21 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                             // Backbuffer vs window size comparison
                             ImGui::Separator();
                             ImGui::TextColored(ui::colors::TEXT_LABEL, "Size Comparison:");
-                            ImGui::Text("Backbuffer: %ux%u", desc.back_buffer.texture.width, desc.back_buffer.texture.height);
+                            ImGui::Text("Backbuffer: %ux%u", desc.back_buffer.texture.width,
+                                        desc.back_buffer.texture.height);
                             if (GetWindowRect(game_window, &window_rect)) {
                                 long window_width = window_rect.right - window_rect.left;
                                 long window_height = window_rect.bottom - window_rect.top;
                                 ImGui::Text("Window: %ldx%ld", window_width, window_height);
 
-                                bool size_matches = (static_cast<long>(desc.back_buffer.texture.width) == window_width &&
-                                                   static_cast<long>(desc.back_buffer.texture.height) == window_height);
+                                bool size_matches =
+                                    (static_cast<long>(desc.back_buffer.texture.width) == window_width
+                                     && static_cast<long>(desc.back_buffer.texture.height) == window_height);
                                 if (size_matches) {
                                     ImGui::TextColored(ui::colors::TEXT_SUCCESS, "  Sizes match");
                                 } else {
-                                    ImGui::TextColored(ui::colors::TEXT_WARNING, "  Sizes differ (may cause Composed Flip)");
+                                    ImGui::TextColored(ui::colors::TEXT_WARNING,
+                                                       "  Sizes differ (may cause Composed Flip)");
                                 }
                             }
 
@@ -2040,23 +2205,25 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                                 MONITORINFOEXW monitor_info = {};
                                 monitor_info.cbSize = sizeof(MONITORINFOEXW);
                                 if (GetMonitorInfoW(monitor, &monitor_info)) {
-                                    ImGui::Text("Monitor Rect: (%ld, %ld) to (%ld, %ld)",
-                                              monitor_info.rcMonitor.left, monitor_info.rcMonitor.top,
-                                              monitor_info.rcMonitor.right, monitor_info.rcMonitor.bottom);
+                                    ImGui::Text("Monitor Rect: (%ld, %ld) to (%ld, %ld)", monitor_info.rcMonitor.left,
+                                                monitor_info.rcMonitor.top, monitor_info.rcMonitor.right,
+                                                monitor_info.rcMonitor.bottom);
                                     long monitor_width = monitor_info.rcMonitor.right - monitor_info.rcMonitor.left;
                                     long monitor_height = monitor_info.rcMonitor.bottom - monitor_info.rcMonitor.top;
                                     ImGui::Text("Monitor Size: %ld x %ld", monitor_width, monitor_height);
 
                                     // Check if window covers entire monitor
                                     if (GetWindowRect(game_window, &window_rect)) {
-                                        bool covers_monitor = (window_rect.left == monitor_info.rcMonitor.left &&
-                                                             window_rect.top == monitor_info.rcMonitor.top &&
-                                                             window_rect.right == monitor_info.rcMonitor.right &&
-                                                             window_rect.bottom == monitor_info.rcMonitor.bottom);
+                                        bool covers_monitor = (window_rect.left == monitor_info.rcMonitor.left
+                                                               && window_rect.top == monitor_info.rcMonitor.top
+                                                               && window_rect.right == monitor_info.rcMonitor.right
+                                                               && window_rect.bottom == monitor_info.rcMonitor.bottom);
                                         if (covers_monitor) {
-                                            ImGui::TextColored(ui::colors::TEXT_SUCCESS, "  Window covers entire monitor");
+                                            ImGui::TextColored(ui::colors::TEXT_SUCCESS,
+                                                               "  Window covers entire monitor");
                                         } else {
-                                            ImGui::TextColored(ui::colors::TEXT_WARNING, "  Window does not cover entire monitor");
+                                            ImGui::TextColored(ui::colors::TEXT_WARNING,
+                                                               "  Window does not cover entire monitor");
                                         }
                                     }
                                 }
@@ -2066,7 +2233,8 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                         // Detailed explanation for Composed Flip
                         if (flip_state == DxgiBypassMode::kComposed) {
                             ImGui::Separator();
-                            ImGui::TextColored(ui::colors::FLIP_COMPOSED, "  - Composed Flip (Red): Desktop Window Manager composition mode");
+                            ImGui::TextColored(ui::colors::FLIP_COMPOSED,
+                                               "  - Composed Flip (Red): Desktop Window Manager composition mode");
                             ImGui::Text("    Higher latency, not ideal for gaming");
                             ImGui::Spacing();
                             ImGui::TextColored(ui::colors::TEXT_LABEL, "Why Composed Flip?");
@@ -2079,27 +2247,34 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                             ImGui::BulletText("Or use borderless fullscreen with exact resolution match");
                             ImGui::BulletText("Ensure no overlays or DWM effects are active");
                         } else if (flip_state == DxgiBypassMode::kOverlay) {
-                            ImGui::TextColored(ui::colors::FLIP_INDEPENDENT, "  - MPO Independent Flip (Green): Modern hardware overlay plane");
+                            ImGui::TextColored(ui::colors::FLIP_INDEPENDENT,
+                                               "  - MPO Independent Flip (Green): Modern hardware overlay plane");
                             ImGui::Text("    Best performance and lowest latency");
                         } else if (flip_state == DxgiBypassMode::kIndependentFlip) {
-                            ImGui::TextColored(ui::colors::FLIP_INDEPENDENT, "  - Independent Flip (Green): Legacy direct flip mode");
+                            ImGui::TextColored(ui::colors::FLIP_INDEPENDENT,
+                                               "  - Independent Flip (Green): Legacy direct flip mode");
                             ImGui::Text("    Good performance and low latency");
                         } else if (flip_state == DxgiBypassMode::kQueryFailedSwapchainNull) {
                             ImGui::TextColored(ui::colors::TEXT_ERROR, "  - Query Failed: Swapchain is null");
                             ImGui::Text("    Cannot determine flip state - swapchain not available");
                         } else if (flip_state == DxgiBypassMode::kQueryFailedNoMedia) {
                             if (GetModuleHandleA("sl.interposer.dll") != nullptr) {
-                                ImGui::TextColored(ui::colors::TEXT_ERROR,  ICON_FK_WARNING "  - Streamline Interposer detected - Flip State Query not supported");
+                                ImGui::TextColored(
+                                    ui::colors::TEXT_ERROR, ICON_FK_WARNING
+                                    "  - Streamline Interposer detected - Flip State Query not supported");
                                 ImGui::Text("    Cannot determine flip state - call after at least one Present");
                             } else {
-                                ImGui::TextColored(ui::colors::TEXT_ERROR, "  • Query Failed: GetFrameStatisticsMedia failed");
+                                ImGui::TextColored(ui::colors::TEXT_ERROR,
+                                                   "  • Query Failed: GetFrameStatisticsMedia failed");
                                 ImGui::Text("    Cannot determine flip state - call after at least one Present");
                             }
                         } else if (flip_state == DxgiBypassMode::kQueryFailedNoStats) {
-                            ImGui::TextColored(ui::colors::TEXT_ERROR, "  • Query Failed: GetFrameStatisticsMedia failed");
+                            ImGui::TextColored(ui::colors::TEXT_ERROR,
+                                               "  • Query Failed: GetFrameStatisticsMedia failed");
                             ImGui::Text("    Cannot determine flip state - call after at least one Present");
                         } else if (flip_state == DxgiBypassMode::kQueryFailedNoSwapchain1) {
-                            ImGui::TextColored(ui::colors::TEXT_ERROR, "  • Query Failed: IDXGISwapChain1 not available");
+                            ImGui::TextColored(ui::colors::TEXT_ERROR,
+                                               "  • Query Failed: IDXGISwapChain1 not available");
                             ImGui::Text("    Cannot determine flip state - SwapChain1 interface not supported");
                         } else if (flip_state == DxgiBypassMode::kUnset) {
                             ImGui::TextColored(ui::colors::FLIP_UNKNOWN, "  • Flip state not yet queried");
@@ -2111,15 +2286,24 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
 
                         // Back buffer information
                         ImGui::Text("Back Buffer Count: %u", desc.back_buffer_count);
-                        ImGui::Text("Back Buffer Size: %ux%u", desc.back_buffer.texture.width, desc.back_buffer.texture.height);
+                        ImGui::Text("Back Buffer Size: %ux%u", desc.back_buffer.texture.width,
+                                    desc.back_buffer.texture.height);
 
                         // Format information
                         const char* format_name = "Unknown";
                         switch (desc.back_buffer.texture.format) {
-                            case reshade::api::format::r10g10b10a2_unorm: format_name = "R10G10B10A2_UNORM (HDR 10-bit)"; break;
-                            case reshade::api::format::r16g16b16a16_float: format_name = "R16G16B16A16_FLOAT (HDR 16-bit)"; break;
-                            case reshade::api::format::r8g8b8a8_unorm: format_name = "R8G8B8A8_UNORM (SDR 8-bit)"; break;
-                            case reshade::api::format::b8g8r8a8_unorm: format_name = "B8G8R8A8_UNORM (SDR 8-bit)"; break;
+                            case reshade::api::format::r10g10b10a2_unorm:
+                                format_name = "R10G10B10A2_UNORM (HDR 10-bit)";
+                                break;
+                            case reshade::api::format::r16g16b16a16_float:
+                                format_name = "R16G16B16A16_FLOAT (HDR 16-bit)";
+                                break;
+                            case reshade::api::format::r8g8b8a8_unorm:
+                                format_name = "R8G8B8A8_UNORM (SDR 8-bit)";
+                                break;
+                            case reshade::api::format::b8g8r8a8_unorm:
+                                format_name = "B8G8R8A8_UNORM (SDR 8-bit)";
+                                break;
                             default: format_name = "Unknown Format"; break;
                         }
                         ImGui::Text("Back Buffer Format: %s", format_name);
@@ -2161,12 +2345,13 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
             } else {
                 ImGui::TextColored(ui::colors::TEXT_DIMMED, "No swapchain information available");
                 if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip("No game detected or swapchain not yet created.\nThis information will appear once a game is running.");
+                    ImGui::SetTooltip(
+                        "No game detected or swapchain not yet created.\nThis information will appear once a game is "
+                        "running.");
                 }
             }
         }
     }
-
 }
 
 void DrawAudioSettings() {
@@ -2189,7 +2374,9 @@ void DrawAudioSettings() {
         }
     }
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Game audio volume control (0-100%%). When at 100%%, volume adjustments will affect system volume instead.");
+        ImGui::SetTooltip(
+            "Game audio volume control (0-100%%). When at 100%%, volume adjustments will affect system volume "
+            "instead.");
     }
     // Auto-apply checkbox next to Audio Volume
     ImGui::SameLine();
@@ -2242,7 +2429,6 @@ void DrawAudioSettings() {
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Manually mute/unmute audio.");
     }
-
 
     // Mute in Background checkbox (disabled if Mute is ON)
     bool mute_in_bg = s_mute_in_background.load();
@@ -2309,7 +2495,7 @@ void DrawAudioSettings() {
 
     static std::vector<std::string> s_audio_device_names;
     static std::vector<std::wstring> s_audio_device_ids;
-    static int s_selected_audio_device_index = 0; // 0 = System Default, 1..N = devices
+    static int s_selected_audio_device_index = 0;  // 0 = System Default, 1..N = devices
     static bool s_audio_devices_initialized = false;
 
     // Refresh device list on first use or when user clicks refresh
@@ -2341,9 +2527,9 @@ void DrawAudioSettings() {
         s_audio_devices_initialized = true;
     }
 
-    const char *current_label = "System Default";
-    if (s_selected_audio_device_index > 0 &&
-        static_cast<size_t>(s_selected_audio_device_index - 1) < s_audio_device_names.size()) {
+    const char* current_label = "System Default";
+    if (s_selected_audio_device_index > 0
+        && static_cast<size_t>(s_selected_audio_device_index - 1) < s_audio_device_names.size()) {
         current_label = s_audio_device_names[s_selected_audio_device_index - 1].c_str();
     }
 
@@ -2397,7 +2583,6 @@ void DrawAudioSettings() {
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Re-scan active audio output devices (use after plugging/unplugging audio hardware).");
     }
-
 }
 
 void DrawWindowControls() {
@@ -2456,7 +2641,8 @@ void DrawWindowControls() {
             HINSTANCE result = ShellExecuteA(nullptr, "explore", game_folder.c_str(), nullptr, nullptr, SW_SHOW);
 
             if (reinterpret_cast<intptr_t>(result) <= 32) {
-                LogError("Failed to open game folder: %s (Error: %ld)", game_folder.c_str(), reinterpret_cast<intptr_t>(result));
+                LogError("Failed to open game folder: %s (Error: %ld)", game_folder.c_str(),
+                         reinterpret_cast<intptr_t>(result));
             } else {
                 LogInfo("Successfully opened game folder: %s", game_folder.c_str());
             }
@@ -2482,7 +2668,7 @@ void DrawWindowControls() {
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Restore the minimized game window.");
     }
-    #if 0
+#if 0
 
     ImGui::SameLine();
     // Maximize Window Button
@@ -2510,8 +2696,6 @@ void DrawWindowControls() {
 }
 
 void DrawImportantInfo() {
-
-
     // Test Overlay Control
     {
         bool show_test_overlay = settings::g_mainTabSettings.show_test_overlay.GetValue();
@@ -2554,7 +2738,9 @@ void DrawImportantInfo() {
             settings::g_mainTabSettings.show_native_fps.SetValue(show_native_fps);
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Shows native FPS (calculated from native Reflex sleep calls) alongside regular FPS in format: XX.X / YY.Y fps");
+            ImGui::SetTooltip(
+                "Shows native FPS (calculated from native Reflex sleep calls) alongside regular FPS in format: XX.X / "
+                "YY.Y fps");
         }
         ImGui::NextColumn();
 
@@ -2584,7 +2770,9 @@ void DrawImportantInfo() {
             settings::g_mainTabSettings.vrr_debug_mode.SetValue(vrr_debug_mode);
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Shows detailed VRR debugging parameters (Fixed Hz, Threshold, Samples, etc.) in the performance overlay.");
+            ImGui::SetTooltip(
+                "Shows detailed VRR debugging parameters (Fixed Hz, Threshold, Samples, etc.) in the performance "
+                "overlay.");
         }
         ImGui::NextColumn();
 
@@ -2670,24 +2858,27 @@ void DrawImportantInfo() {
             ImGui::SetTooltip("Shows the current audio volume percentage in the overlay.");
         }
 
-        ImGui::Columns(1); // Reset to single column
+        ImGui::Columns(1);  // Reset to single column
 
         ImGui::Spacing();
         // Overlay background transparency slider
-        if (SliderFloatSetting(settings::g_mainTabSettings.overlay_background_alpha, "Overlay Background Transparency", "%.2f")) {
+        if (SliderFloatSetting(settings::g_mainTabSettings.overlay_background_alpha, "Overlay Background Transparency",
+                               "%.2f")) {
             // Setting is automatically saved by SliderFloatSetting
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Controls the transparency of the overlay background. 0.0 = fully transparent, 1.0 = fully opaque.");
+            ImGui::SetTooltip(
+                "Controls the transparency of the overlay background. 0.0 = fully transparent, 1.0 = fully opaque.");
         }
         // Overlay chart transparency slider
         if (SliderFloatSetting(settings::g_mainTabSettings.overlay_chart_alpha, "Frame Chart Transparency", "%.2f")) {
             // Setting is automatically saved by SliderFloatSetting
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Controls the transparency of the frame time and refresh rate chart backgrounds. 0.0 = fully transparent, 1.0 = fully opaque. Chart lines remain fully visible.");
+            ImGui::SetTooltip(
+                "Controls the transparency of the frame time and refresh rate chart backgrounds. 0.0 = fully "
+                "transparent, 1.0 = fully opaque. Chart lines remain fully visible.");
         }
-
     }
 
     ImGui::Spacing();
@@ -2714,7 +2905,7 @@ void DrawImportantInfo() {
 
     // Frame Time Graph Section (see docs/UI_STYLE_GUIDE.md for depth/indent rules)
     // Depth 1: Nested subsection with indentation and distinct colors
-    ImGui::Indent();  // Indent nested header
+    ImGui::Indent();                       // Indent nested header
     ui::colors::PushNestedHeaderColors();  // Apply distinct colors for nested header
     if (ImGui::CollapsingHeader("Frame Time Graph", ImGuiTreeNodeFlags_DefaultOpen)) {
         ImGui::Indent();  // Indent content inside subsection
@@ -2799,7 +2990,9 @@ void DrawImportantInfo() {
                 ImGui::SameLine();
                 ImGui::TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
                 if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip("How much later GPU completion finishes compared to Present\n0 ms = GPU finished before Present\n>0 ms = GPU finished after Present (GPU is late)");
+                    ImGui::SetTooltip(
+                        "How much later GPU completion finishes compared to Present\n0 ms = GPU finished before "
+                        "Present\n>0 ms = GPU finished after Present (GPU is late)");
                 }
             }
         }
@@ -2826,7 +3019,7 @@ void DrawImportantInfo() {
         oss.clear();
         oss << "Reshade Overhead Duration: " << std::fixed << std::setprecision(3)
             << ((1.0 * ::g_reshade_overhead_duration_ns.load() - ::fps_sleep_before_on_present_ns.load()
-                - ::fps_sleep_after_on_present_ns.load())
+                 - ::fps_sleep_after_on_present_ns.load())
                 / utils::NS_TO_MS)
             << " ms";
         ImGui::TextUnformatted(oss.str().c_str());
@@ -2869,8 +3062,8 @@ void DrawImportantInfo() {
 
             static double sim_start_to_present_latency_ms = 0.0;
             sim_start_to_present_latency_ms = (sim_start_to_present_latency_ms * 0.99 + latency_ms * 0.01);
-            oss << "Sim Start to Present Latency: " << std::fixed << std::setprecision(3) << sim_start_to_present_latency_ms
-                << " ms";
+            oss << "Sim Start to Present Latency: " << std::fixed << std::setprecision(3)
+                << sim_start_to_present_latency_ms << " ms";
             ImGui::TextUnformatted(oss.str().c_str());
             ImGui::SameLine();
             ImGui::TextColored(ui::colors::TEXT_HIGHLIGHT, "(frame_time - sleep_duration)");
@@ -2905,10 +3098,10 @@ void DrawImportantInfo() {
         } else if (flip_state == DxgiBypassMode::kOverlay || flip_state == DxgiBypassMode::kIndependentFlip) {
             // Independent Flip modes - Green
             ImGui::TextColored(ui::colors::FLIP_INDEPENDENT, "%s", oss.str().c_str());
-        } else if (flip_state == DxgiBypassMode::kQueryFailedSwapchainNull ||
-                   flip_state == DxgiBypassMode::kQueryFailedNoSwapchain1 ||
-                   flip_state == DxgiBypassMode::kQueryFailedNoMedia ||
-                   flip_state == DxgiBypassMode::kQueryFailedNoStats) {
+        } else if (flip_state == DxgiBypassMode::kQueryFailedSwapchainNull
+                   || flip_state == DxgiBypassMode::kQueryFailedNoSwapchain1
+                   || flip_state == DxgiBypassMode::kQueryFailedNoMedia
+                   || flip_state == DxgiBypassMode::kQueryFailedNoStats) {
             // Query Failed - Red
             ImGui::TextColored(ui::colors::TEXT_ERROR, "%s", oss.str().c_str());
         } else {
@@ -2980,9 +3173,8 @@ void DrawImportantInfo() {
         ImGui::Unindent();  // Unindent content
     }
     ui::colors::PopNestedHeaderColors();  // Restore default header colors
-    ImGui::Unindent();  // Unindent nested header section
+    ImGui::Unindent();                    // Unindent nested header section
 }
-
 
 void DrawAdhdMultiMonitorControls(bool hasBlackCurtainSetting) {
     // Check if multiple monitors are available
@@ -2997,7 +3189,7 @@ void DrawAdhdMultiMonitorControls(bool hasBlackCurtainSetting) {
     bool adhdEnabled = settings::g_mainTabSettings.adhd_multi_monitor_enabled.GetValue();
     if (ImGui::Checkbox("ADHD Multi-Monitor Mode", &adhdEnabled)) {
         settings::g_mainTabSettings.adhd_multi_monitor_enabled.SetValue(adhdEnabled);
-        //adhd_multi_monitor::api::SetEnabled(adhdEnabled);
+        // adhd_multi_monitor::api::SetEnabled(adhdEnabled);
         LogInfo("ADHD Multi-Monitor Mode %s", adhdEnabled ? "enabled" : "disabled");
     }
 

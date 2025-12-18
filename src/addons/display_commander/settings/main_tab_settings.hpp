@@ -28,6 +28,7 @@ extern std::atomic<InputBlockingMode> s_mouse_input_blocking;
 extern std::atomic<InputBlockingMode> s_gamepad_input_blocking;
 extern std::atomic<bool> s_no_render_in_background;
 extern std::atomic<bool> s_no_present_in_background;
+extern std::atomic<int> s_cpu_cores;
 
 namespace settings {
 
@@ -87,6 +88,9 @@ class MainTabSettings {
     // Render Blocking (Background) Settings
     ui::new_ui::BoolSettingRef no_render_in_background;
     ui::new_ui::BoolSettingRef no_present_in_background;
+
+    // CPU Settings
+    ui::new_ui::IntSettingRef cpu_cores;
 
     // Test Overlay Settings
     ui::new_ui::BoolSetting show_test_overlay;
@@ -164,6 +168,7 @@ std::string GetDisplayDeviceIdFromWindow(HWND hwnd);
 void SaveGameWindowDisplayDeviceId(HWND hwnd);
 void UpdateTargetDisplayFromGameWindow();
 void UpdateFpsLimitMaximums();
+void UpdateCpuCoresMaximum();
 
 } // namespace settings
 

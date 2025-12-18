@@ -28,6 +28,7 @@ std::atomic<bool> s_no_render_in_background{false};
 std::atomic<bool> s_no_present_in_background{false};
 std::atomic<ScreensaverMode> s_screensaver_mode{ScreensaverMode::kDefault};
 std::atomic<FrameTimeMode> s_frame_time_mode{FrameTimeMode::kPresent};
+std::atomic<int> s_cpu_cores{0}; // 0 = default (no change), max = all cores
 
 namespace settings {
 
@@ -64,6 +65,7 @@ MainTabSettings::MainTabSettings()
       gamepad_input_blocking("gamepad_input_blocking", s_gamepad_input_blocking, static_cast<int>(InputBlockingMode::kDisabled), {"Disabled", "Enabled", "Enabled (in background)"}, "DisplayCommander"),
       no_render_in_background("no_render_in_background", s_no_render_in_background, s_no_render_in_background.load(), "DisplayCommander"),
       no_present_in_background("no_present_in_background", s_no_present_in_background, s_no_present_in_background.load(), "DisplayCommander"),
+      cpu_cores("cpu_cores", s_cpu_cores, 0, 0, 64, "DisplayCommander"), // Max will be set dynamically based on CPU count
       show_test_overlay("show_test_overlay", false, "DisplayCommander"),
       show_fps_counter("show_fps_counter", true, "DisplayCommander"),
       show_native_fps("show_native_fps", false, "DisplayCommander"),
@@ -199,6 +201,8 @@ void MainTabSettings::LoadSettings() {
     // Apply ADHD Multi-Monitor Mode settings after loading
     adhd_multi_monitor::api::SetEnabled(adhd_multi_monitor_enabled.GetValue());
 
+    // Update CPU cores maximum based on system CPU count
+    UpdateCpuCoresMaximum();
 
     LogInfo("MainTabSettings::LoadSettings() completed");
 }
@@ -276,6 +280,19 @@ void UpdateFpsLimitMaximums() {
 
         LogInfo("Updated FPS limit maximum %.1f->%.1f FPS (based on max monitor refresh rate of %.1f Hz)", old_fps, max_fps,
                 max_refresh_rate);
+    }
+}
+
+// Function to get CPU core count and update CPU cores setting maximum
+void UpdateCpuCoresMaximum() {
+    SYSTEM_INFO sys_info = {};
+    GetSystemInfo(&sys_info);
+    DWORD cpu_count = sys_info.dwNumberOfProcessors;
+
+    // Update the maximum value for CPU cores setting
+    if (g_mainTabSettings.cpu_cores.GetMax() != static_cast<int>(cpu_count)) {
+        g_mainTabSettings.cpu_cores.SetMax(static_cast<int>(cpu_count));
+        LogInfo("Updated CPU cores maximum to %lu cores", cpu_count);
     }
 }
 

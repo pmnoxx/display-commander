@@ -46,6 +46,7 @@ class HookSuppressionSettings {
     BoolSetting suppress_hid_suppression_hooks;
     BoolSetting suppress_nvapi_hooks;
     BoolSetting suppress_process_exit_hooks;
+    BoolSetting suppress_window_proc_hooks;
 
     // Auto-detection settings (set to 1 when hooks are successfully installed)
     BoolSetting dxgi_factory_hooks_installed;
@@ -69,6 +70,7 @@ class HookSuppressionSettings {
     BoolSetting hid_suppression_hooks_installed;
     BoolSetting nvapi_hooks_installed;
     BoolSetting process_exit_hooks_installed;
+    BoolSetting window_proc_hooks_installed;
 
   private:
     std::vector<SettingBase *> all_settings_;

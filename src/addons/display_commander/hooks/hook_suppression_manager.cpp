@@ -53,6 +53,8 @@ bool HookSuppressionManager::ShouldSuppressHook(HookType hookType) {
             return settings::g_hook_suppression_settings.suppress_nvapi_hooks.GetValue();
         case HookType::PROCESS_EXIT:
             return settings::g_hook_suppression_settings.suppress_process_exit_hooks.GetValue();
+        case HookType::WINDOW_PROC:
+            return settings::g_hook_suppression_settings.suppress_window_proc_hooks.GetValue();
         default:
             LogError("HookSuppressionManager::ShouldSuppressHook - Invalid hook type: %d", static_cast<int>(hookType));
             return false;
@@ -187,6 +189,12 @@ void HookSuppressionManager::MarkHookInstalled(HookType hookType) {
                 settings::g_hook_suppression_settings.suppress_process_exit_hooks.SetValue(false);
             }
             break;
+        case HookType::WINDOW_PROC:
+            if (!settings::g_hook_suppression_settings.window_proc_hooks_installed.GetValue()) {
+                settings::g_hook_suppression_settings.window_proc_hooks_installed.SetValue(true);
+                settings::g_hook_suppression_settings.suppress_window_proc_hooks.SetValue(false);
+            }
+            break;
 
         default:
 
@@ -241,6 +249,8 @@ std::string HookSuppressionManager::GetSuppressionSettingName(HookType hookType)
             return "SuppressNvapiHooks";
         case HookType::PROCESS_EXIT:
             return "SuppressProcessExitHooks";
+        case HookType::WINDOW_PROC:
+            return "SuppressWindowProcHooks";
         default:
             LogError("HookSuppressionManager::GetSuppressionSettingName - Invalid hook type: %d", static_cast<int>(hookType));
             return "";
@@ -291,6 +301,8 @@ std::string HookSuppressionManager::GetInstallationSettingName(HookType hookType
             return "NvapiHooksInstalled";
         case HookType::PROCESS_EXIT:
             return "ProcessExitHooksInstalled";
+        case HookType::WINDOW_PROC:
+            return "WindowProcHooksInstalled";
         default:
             LogError("HookSuppressionManager::GetInstallationSettingName - Invalid hook type: %d", static_cast<int>(hookType));
             return "";
@@ -341,6 +353,8 @@ bool HookSuppressionManager::WasHookInstalled(HookType hookType) {
             return settings::g_hook_suppression_settings.nvapi_hooks_installed.GetValue();
         case HookType::PROCESS_EXIT:
             return settings::g_hook_suppression_settings.process_exit_hooks_installed.GetValue();
+        case HookType::WINDOW_PROC:
+            return settings::g_hook_suppression_settings.window_proc_hooks_installed.GetValue();
         default:
             LogError("HookSuppressionManager::WasHookInstalled - Invalid hook type: %d", static_cast<int>(hookType));
             return false;
@@ -391,6 +405,8 @@ std::string HookSuppressionManager::GetHookTypeName(HookType hookType) {
             return "NVAPI";
         case HookType::PROCESS_EXIT:
             return "Process Exit";
+        case HookType::WINDOW_PROC:
+            return "Window Procedure";
         default:
             LogError("HookSuppressionManager::GetHookTypeName - Invalid hook type: %d", static_cast<int>(hookType));
             return "Unknown";

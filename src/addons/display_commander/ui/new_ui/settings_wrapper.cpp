@@ -876,6 +876,10 @@ template bool ComboSettingEnumRefWrapper<WindowMode>(ComboSettingEnumRef<WindowM
 template class ComboSettingEnumRef<InputBlockingMode>;
 template bool ComboSettingEnumRefWrapper<InputBlockingMode>(ComboSettingEnumRef<InputBlockingMode> &setting, const char *label);
 
+// Explicit template instantiations for ProcessPriority
+template class ComboSettingEnumRef<ProcessPriority>;
+template bool ComboSettingEnumRefWrapper<ProcessPriority>(ComboSettingEnumRef<ProcessPriority> &setting, const char *label);
+
 // Note: LogLevel uses explicit specializations for methods, but we still need to instantiate
 // the class template itself (for constructor and other non-specialized members)
 template class ComboSettingEnumRef<LogLevel>;

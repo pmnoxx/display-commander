@@ -10,6 +10,7 @@
 #include "settings/developer_tab_settings.hpp"
 #include "settings/experimental_tab_settings.hpp"
 #include "settings/main_tab_settings.hpp"
+#include "performance_types.hpp"
 #include "ui/new_ui/swapchain_tab.hpp"
 #include "ui/new_ui/hotkeys_tab.hpp"
 #include "utils/logging.hpp"
@@ -405,6 +406,71 @@ void ContinuousMonitoringThread() {
                         }
                     } else {
                         LogError("Failed to get process affinity mask: %lu", GetLastError());
+                    }
+                }
+            }
+
+            // Apply process priority if configured
+            {
+                static ProcessPriority last_process_priority = ProcessPriority::kDefault;
+                ProcessPriority process_priority = static_cast<ProcessPriority>(settings::g_mainTabSettings.process_priority.GetValue());
+
+                if (process_priority != last_process_priority) {
+                    last_process_priority = process_priority;
+
+                    HANDLE process_handle = GetCurrentProcess();
+                    DWORD priority_class = 0;
+
+                    // Map ProcessPriority enum to Windows priority class
+                    switch (process_priority) {
+                        case ProcessPriority::kDefault:
+                            // Don't change priority (keep current)
+                            priority_class = 0;
+                            break;
+                        case ProcessPriority::kBelowNormal:
+                            priority_class = BELOW_NORMAL_PRIORITY_CLASS;
+                            break;
+                        case ProcessPriority::kNormal:
+                            priority_class = NORMAL_PRIORITY_CLASS;
+                            break;
+                        case ProcessPriority::kAboveNormal:
+                            priority_class = ABOVE_NORMAL_PRIORITY_CLASS;
+                            break;
+                        case ProcessPriority::kHigh:
+                            priority_class = HIGH_PRIORITY_CLASS;
+                            break;
+                        case ProcessPriority::kRealtime:
+                            priority_class = REALTIME_PRIORITY_CLASS;
+                            break;
+                    }
+
+                    if (priority_class != 0) {
+                        if (SetPriorityClass(process_handle, priority_class)) {
+                            const char* priority_name = "Unknown";
+                            switch (priority_class) {
+                                case BELOW_NORMAL_PRIORITY_CLASS:
+                                    priority_name = "Below Normal";
+                                    break;
+                                case NORMAL_PRIORITY_CLASS:
+                                    priority_name = "Normal";
+                                    break;
+                                case ABOVE_NORMAL_PRIORITY_CLASS:
+                                    priority_name = "Above Normal";
+                                    break;
+                                case HIGH_PRIORITY_CLASS:
+                                    priority_name = "High";
+                                    break;
+                                case REALTIME_PRIORITY_CLASS:
+                                    priority_name = "Realtime";
+                                    break;
+                            }
+                            LogInfo("Process priority set to %s", priority_name);
+                        } else {
+                            LogError("Failed to set process priority: %lu", GetLastError());
+                        }
+                    } else {
+                        // Default: no change
+                        LogInfo("Process priority set to default (no change)");
                     }
                 }
             }

@@ -29,6 +29,7 @@ extern std::atomic<InputBlockingMode> s_gamepad_input_blocking;
 extern std::atomic<bool> s_no_render_in_background;
 extern std::atomic<bool> s_no_present_in_background;
 extern std::atomic<int> s_cpu_cores;
+extern std::atomic<ProcessPriority> s_process_priority;
 
 namespace settings {
 
@@ -91,6 +92,7 @@ class MainTabSettings {
 
     // CPU Settings
     ui::new_ui::IntSettingRef cpu_cores;
+    ui::new_ui::ComboSettingEnumRef<ProcessPriority> process_priority;
 
     // Test Overlay Settings
     ui::new_ui::BoolSetting show_test_overlay;
@@ -171,6 +173,3 @@ void UpdateFpsLimitMaximums();
 void UpdateCpuCoresMaximum();
 
 } // namespace settings
-
-
-

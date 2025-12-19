@@ -1567,6 +1567,18 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                         "Override the game's native Reflex implementation with the addon's injected version.");
                 }
             }
+
+            // Suppress Reflex Sleep checkbox
+            ImGui::Spacing();
+            if (CheckboxSetting(settings::g_mainTabSettings.suppress_reflex_sleep, "Suppress Reflex Sleep")) {
+                LogInfo("Suppress Reflex Sleep %s",
+                        settings::g_mainTabSettings.suppress_reflex_sleep.GetValue() ? "enabled" : "disabled");
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip(
+                    "Suppresses both native Reflex sleep calls (from the game) and injected Reflex sleep calls.\n"
+                    "This prevents Reflex from sleeping the CPU, which may help with certain compatibility issues.");
+            }
         }
 
         // Show warning for non-implemented low latency mode

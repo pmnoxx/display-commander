@@ -128,6 +128,11 @@ bool ReflexManager::Sleep() {
     if (!initialized_.load(std::memory_order_acquire) || d3d_device_ == nullptr)
         return false;
 
+    // Check if Reflex sleep suppression is enabled
+    if (settings::g_mainTabSettings.suppress_reflex_sleep.GetValue()) {
+        return true; // Return success without actually calling sleep
+    }
+
     const auto st = NvAPI_D3D_Sleep_Direct(d3d_device_);
     return st == NVAPI_OK;
 }

@@ -5,6 +5,7 @@
 #include "../globals.hpp"
 #include "../../../external/nvapi/nvapi_interface.h"
 #include "../settings/developer_tab_settings.hpp"
+#include "../settings/main_tab_settings.hpp"
 #include "hook_suppression_manager.hpp"
 
 #include <MinHook.h>
@@ -274,6 +275,11 @@ NvAPI_Status __cdecl NvAPI_D3D_Sleep_Detour(IUnknown *pDev) {
         }
         last_call = now;
     }
+    // Check if Reflex sleep suppression is enabled
+    if (settings::g_mainTabSettings.suppress_reflex_sleep.GetValue()) {
+        return NVAPI_OK;
+    }
+
     if (!IsNativeReflexActive()) {
         return NVAPI_OK;
     }

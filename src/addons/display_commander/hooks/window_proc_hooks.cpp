@@ -27,7 +27,7 @@ LRESULT CALLBACK WindowProc_Detour(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
     bool continue_rendering_enabled = s_continue_rendering.load();
 
     static bool sent_activate = false;
-    if (g_target_window == hwnd && !sent_activate) {
+    if (continue_rendering_enabled && g_target_window == hwnd && !sent_activate) {
         SendFakeActivationMessages(hwnd);
         sent_activate = true;
     }

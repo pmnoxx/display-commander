@@ -304,6 +304,7 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
     bool show_fps_counter = settings::g_mainTabSettings.show_fps_counter.GetValue();
     bool show_refresh_rate = settings::g_mainTabSettings.show_refresh_rate.GetValue();
     bool show_vrr_status = settings::g_mainTabSettings.show_vrr_status.GetValue();
+    bool show_flip_status = settings::g_mainTabSettings.show_flip_status.GetValue();
     bool show_volume = settings::g_mainTabSettings.show_volume.GetValue();
     bool show_gpu_measurement = (settings::g_mainTabSettings.gpu_measurement_enabled.GetValue() != 0);
     bool show_frame_time_graph = settings::g_mainTabSettings.show_frame_time_graph.GetValue();
@@ -491,6 +492,43 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
             ImGui::TextColored(ui::colors::TEXT_DIMMED, "  Total samples (10s): %u", cached_stats.total_samples_last_10s);
             ImGui::TextColored(ui::colors::TEXT_DIMMED, "  Below threshold: %u", cached_stats.samples_below_threshold_last_10s);
             ImGui::TextColored(ui::colors::TEXT_DIMMED, "  Last 20 within 1s: %s", cached_stats.all_last_20_within_1s ? "Yes" : "No");
+        }
+    }
+
+    if (show_flip_status) {
+        // Get current API to determine flip state
+        int current_api = 0;  // Default to 0 if runtime/device not available
+        if (runtime != nullptr && runtime->get_device() != nullptr) {
+            current_api = static_cast<int>(runtime->get_device()->get_api());
+        }
+
+        DxgiBypassMode flip_state = GetFlipStateForAPI(current_api);
+        const char* flip_state_str = DxgiBypassModeToString(flip_state);
+
+        // Color code based on flip state
+        ImVec4 flip_color;
+        if (flip_state == DxgiBypassMode::kComposed) {
+            flip_color = ui::colors::FLIP_COMPOSED;  // Red - bad
+        } else if (flip_state == DxgiBypassMode::kOverlay || flip_state == DxgiBypassMode::kIndependentFlip) {
+            flip_color = ui::colors::FLIP_INDEPENDENT;  // Green - good
+        } else if (flip_state == DxgiBypassMode::kQueryFailedSwapchainNull
+                   || flip_state == DxgiBypassMode::kQueryFailedNoSwapchain1
+                   || flip_state == DxgiBypassMode::kQueryFailedNoMedia
+                   || flip_state == DxgiBypassMode::kQueryFailedNoStats) {
+            flip_color = ui::colors::TEXT_ERROR;  // Red - query failed
+        } else {
+            flip_color = ui::colors::FLIP_UNKNOWN;  // Yellow - unknown/unset
+        }
+
+        // Display flip status with appropriate color
+        if (settings::g_mainTabSettings.show_labels.GetValue()) {
+            ImGui::TextColored(flip_color, "Flip: %s", flip_state_str);
+        } else {
+            ImGui::TextColored(flip_color, "%s", flip_state_str);
+        }
+
+        if (ImGui::IsItemHovered() && show_tooltips) {
+            ImGui::SetTooltip("DXGI Flip Mode: %s", flip_state_str);
         }
     }
 

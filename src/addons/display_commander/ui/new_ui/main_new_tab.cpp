@@ -2776,6 +2776,16 @@ void DrawImportantInfo() {
         }
         ImGui::NextColumn();
 
+        // Show Flip Status
+        bool show_flip_status = settings::g_mainTabSettings.show_flip_status.GetValue();
+        if (ImGui::Checkbox("Flip Status", &show_flip_status)) {
+            settings::g_mainTabSettings.show_flip_status.SetValue(show_flip_status);
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Shows the DXGI flip mode status (Composed, Independent Flip, MPO Overlay) in the performance overlay.");
+        }
+        ImGui::NextColumn();
+
         // VRR Debug Mode
         bool vrr_debug_mode = settings::g_mainTabSettings.vrr_debug_mode.GetValue();
         if (ImGui::Checkbox("VRR Debug Mode", &vrr_debug_mode)) {

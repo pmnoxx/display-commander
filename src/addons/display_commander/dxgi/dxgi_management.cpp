@@ -1,6 +1,10 @@
 #include "../addon.hpp"
 #include "../utils/logging.hpp"
 
+// Forward declaration for Streamline's base interface retrieval
+// GUID: ADEC44E2-61F0-45C3-AD9F-1B37379284FF
+struct DECLSPEC_UUID("ADEC44E2-61F0-45C3-AD9F-1B37379284FF") StreamlineRetrieveBaseInterface : IUnknown {};
+
 DxgiBypassMode GetIndependentFlipState(IDXGISwapChain *dxgi_swapchain) {
     if (dxgi_swapchain == nullptr) {
         LogDebug("DXGI IF state: swapchain is null");
@@ -43,10 +47,54 @@ DxgiBypassMode GetIndependentFlipState(IDXGISwapChain *dxgi_swapchain) {
                 }
             }
             if (log_count < 10) {
-                LogDebug("DXGI IF state: QI IDXGISwapChainMedia failed hr=0x%x", hr);
+                LogDebug("DXGI IF state: QI IDXGISwapChainMedia failed hr=0x%x, attempting Streamline base interface fallback", hr);
                 log_count++;
             }
-            return DxgiBypassMode::kQueryFailedNoMedia;
+
+            // Fallback: Try to retrieve base interface if this is a Streamline proxy
+            // StreamlineRetrieveBaseInterface returns m_base which is IDXGISwapChain* directly
+            Microsoft::WRL::ComPtr<IDXGISwapChain> base_swapchain;
+            Microsoft::WRL::ComPtr<IUnknown> base_unknown;
+            if (SUCCEEDED(dxgi_swapchain->QueryInterface(__uuidof(StreamlineRetrieveBaseInterface), reinterpret_cast<void**>(base_unknown.GetAddressOf())))) {
+                // StreamlineRetrieveBaseInterface returns the base IDXGISwapChain* directly
+                // Query it as IDXGISwapChain (it already is, but we need to get the ComPtr)
+                if (SUCCEEDED(base_unknown->QueryInterface(IID_PPV_ARGS(&base_swapchain)))) {
+                    // Query IDXGISwapChain1 from base swapchain
+                    Microsoft::WRL::ComPtr<IDXGISwapChain1> base_sc1;
+                    if (SUCCEEDED(base_swapchain->QueryInterface(IID_PPV_ARGS(&base_sc1)))) {
+                        // Retry IDXGISwapChainMedia query on base interface
+                        hr = base_sc1->QueryInterface(IID_PPV_ARGS(&media));
+                        if (SUCCEEDED(hr) && media != nullptr) {
+                            if (log_count < 10) {
+                                LogDebug("DXGI IF state: Successfully retrieved IDXGISwapChainMedia from Streamline base interface");
+                                log_count++;
+                            }
+                            // Continue with media interface successfully obtained
+                        } else {
+                            if (log_count < 10) {
+                                LogDebug("DXGI IF state: QI IDXGISwapChainMedia on base interface also failed hr=0x%x", hr);
+                                log_count++;
+                            }
+                            return DxgiBypassMode::kQueryFailedNoMedia;
+                        }
+                    } else {
+                        if (log_count < 10) {
+                            LogDebug("DXGI IF state: Failed to query IDXGISwapChain1 from base interface");
+                            log_count++;
+                        }
+                        return DxgiBypassMode::kQueryFailedNoMedia;
+                    }
+                } else {
+                    if (log_count < 10) {
+                        LogDebug("DXGI IF state: Failed to query IDXGISwapChain from Streamline base interface");
+                        log_count++;
+                    }
+                    return DxgiBypassMode::kQueryFailedNoMedia;
+                }
+            } else {
+                // Not a Streamline proxy, or base interface retrieval failed
+                return DxgiBypassMode::kQueryFailedNoMedia;
+            }
         }
     }
 

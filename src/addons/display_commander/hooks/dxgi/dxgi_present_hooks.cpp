@@ -438,7 +438,7 @@ void HandlePresentAfter(
     const PresentCommonState& state) {
 
     // Query DXGI composition state (moved from ReShade present events)
-    ::QueryDxgiCompositionState(baseSwapChain);
+    //::QueryDxgiCompositionState(baseSwapChain);
 
     // Signal refresh rate monitoring thread (after DWM flush)
   //  ::dxgi::fps_limiter::SignalRefreshRateMonitor();
@@ -488,6 +488,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain *This, UI
         // Handle common after logic
         HandlePresentAfter(This, state);
     }
+    ::QueryDxgiCompositionState(This);
     ::dxgi::fps_limiter::SignalRefreshRateMonitor();
 
     return res;
@@ -528,6 +529,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1 *This, 
         // Handle common after logic
         HandlePresentAfter(baseSwapChain, state);
     }
+    ::QueryDxgiCompositionState(This);
     ::dxgi::fps_limiter::SignalRefreshRateMonitor();
 
 

@@ -229,6 +229,12 @@ LRESULT CALLBACK WindowProc_Detour(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
 bool InstallWindowProcHooks(HWND target_hwnd) {
     LogInfo("InstallWindowProcHooks called for HWND: 0x%p", target_hwnd);
 
+    // Only install hooks if continue rendering is enabled
+    if (!s_continue_rendering.load()) {
+        LogInfo("Window procedure hooks installation skipped - continue rendering is disabled");
+        return false;
+    }
+
     // Check if window proc hooks should be suppressed
     if (HookSuppressionManager::GetInstance().ShouldSuppressHook(display_commanderhooks::HookType::WINDOW_PROC)) {
         LogInfo("Window procedure hooks installation suppressed by user setting");

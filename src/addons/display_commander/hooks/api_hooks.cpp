@@ -340,7 +340,7 @@ HRESULT WINAPI CreateDXGIFactory_Detour(REFIID riid, void** ppFactory) {
     // If successful and we got a factory, hook it
     if (SUCCEEDED(hr) && ppFactory != nullptr && *ppFactory != nullptr) {
         IDXGIFactory* factory = static_cast<IDXGIFactory*>(*ppFactory);
-        LogInfo("CreateDXGIFactory succeeded, hooking factory: 0x%p", factory);
+        LogInfo("CreateDXGIFactory succeeded, factory: 0x%p", factory);
         display_commanderhooks::dxgi::HookFactory(factory);  // crashes Returnal
     }
 

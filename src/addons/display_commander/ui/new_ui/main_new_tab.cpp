@@ -1726,6 +1726,21 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
         }
     }
 
+    if (g_swapchain_wrapper_present_called.load(std::memory_order_acquire)) {
+        ImGui::Spacing();
+        bool native_fp = settings::g_mainTabSettings.native_frame_pacing.GetValue();
+        if (ImGui::Checkbox("Native Frame Pacing", &native_fp)) {
+            settings::g_mainTabSettings.native_frame_pacing.SetValue(native_fp);
+            LogInfo(native_fp ? "Native Frame Pacing enabled" : "Native Frame Pacing disabled");
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip(
+                "Apply pacing to native frames when using DLSS Frame Generation.\n"
+                "When enabled, the FPS limiter paces the game's internal framerate (native frames)\n"
+                "instead of generated frames. This helps maintain proper frame timing with Frame Gen enabled.");
+        }
+    }
+
     ImGui::Spacing();
 
     // FPS Limit slider (persisted)
@@ -1880,21 +1895,6 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
             }
             if (ImGui::IsItemHovered()) {
                 ImGui::SetTooltip("Prevents tearing by clearing DXGI tearing flags and preferring sync.");
-            }
-
-            if (g_swapchain_wrapper_present_called.load(std::memory_order_acquire)) {
-                ImGui::Spacing();
-                bool native_fp = settings::g_mainTabSettings.native_frame_pacing.GetValue();
-                if (ImGui::Checkbox("Native Frame Pacing", &native_fp)) {
-                    settings::g_mainTabSettings.native_frame_pacing.SetValue(native_fp);
-                    LogInfo(native_fp ? "Native Frame Pacing enabled" : "Native Frame Pacing disabled");
-                }
-                if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip(
-                        "Apply pacing to native frames when using DLSS Frame Generation.\n"
-                        "When enabled, the FPS limiter paces the game's internal framerate (native frames)\n"
-                        "instead of generated frames. This helps maintain proper frame timing with Frame Gen enabled.");
-                }
             }
 
             int current_api = g_last_reshade_device_api.load();

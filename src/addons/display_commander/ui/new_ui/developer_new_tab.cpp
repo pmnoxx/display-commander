@@ -475,15 +475,13 @@ void DrawNvapiSettings() {
             ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), ICON_FK_OK " Native Reflex: ACTIVE Native Frame Pacing: ON");
             if (ImGui::IsItemHovered()) {
                 ImGui::SetTooltip(
-                    "The game has native Reflex support and is actively using it. "
-                    "Do not enable addon Reflex features to avoid conflicts.");
+                    "The game has native Reflex support and is actively using it. ");
             }
         } else {
             ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), ICON_FK_MINUS " Native Reflex: INACTIVE Native Frame Pacing: OFF");
             if (ImGui::IsItemHovered()) {
                 ImGui::SetTooltip(
-                    "No native Reflex activity detected. "
-                    "The game may not have Reflex support or it is disabled.");
+                    "No native Reflex activity detected. ");
             }
         }
         ImGui::Spacing();

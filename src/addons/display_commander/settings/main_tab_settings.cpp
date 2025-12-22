@@ -46,7 +46,7 @@ MainTabSettings::MainTabSettings()
       fps_limit("fps_limit", s_fps_limit, 0.0f, 0.0f, 240.0f, "DisplayCommander"),
       fps_limit_background("fps_limit_background", s_fps_limit_background, 30.0f, 0.0f, 240.0f, "DisplayCommander"),
       present_pacing_delay_percentage("present_pacing_delay_percentage", s_present_pacing_delay_percentage, 0.0f, 0.0f,
-                                      100.0f, "DisplayCommander"),
+                                      80.0f, "DisplayCommander"),
       onpresent_sync_enable_reflex("onpresent_sync_enable_reflex", false, "DisplayCommander"),
       suppress_reflex_sleep("suppress_reflex_sleep", false, "DisplayCommander"),
       force_vsync_on("force_vsync_on", s_force_vsync_on, s_force_vsync_on.load(), "DisplayCommander"),

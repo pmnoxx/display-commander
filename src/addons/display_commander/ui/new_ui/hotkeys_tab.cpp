@@ -395,6 +395,8 @@ ParsedHotkey ParseHotkeyString(const std::string& shortcut) {
     if (key_str.length() == 1 && key_str[0] >= 'a' && key_str[0] <= 'z') {
         // Single letter key
         result.key_code = std::toupper(static_cast<unsigned char>(key_str[0]));
+    } else if (key_str == "`" || key_str == "backtick" || key_str == "grave") {
+        result.key_code = VK_OEM_3;
     } else if (key_str == "backspace") {
         result.key_code = VK_BACK;
     } else if (key_str == "tab") {
@@ -470,6 +472,8 @@ std::string FormatHotkeyString(const ParsedHotkey& hotkey) {
     // Format key name
     if (hotkey.key_code >= 'A' && hotkey.key_code <= 'Z') {
         oss << static_cast<char>(std::tolower(hotkey.key_code));
+    } else if (hotkey.key_code == VK_OEM_3) {
+        oss << "`";
     } else if (hotkey.key_code == VK_BACK) {
         oss << "backspace";
     } else if (hotkey.key_code >= VK_F1 && hotkey.key_code <= VK_F24) {

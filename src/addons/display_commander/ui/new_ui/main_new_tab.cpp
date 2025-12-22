@@ -1509,8 +1509,7 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                                            ICON_FK_OK " Native Reflex: ACTIVE Native Frame Pacing: ON");
                         if (ImGui::IsItemHovered()) {
                             ImGui::SetTooltip(
-                                "The game has native Reflex support and is actively using it. "
-                                "Do not enable addon Reflex features to avoid conflicts.");
+                                "The game has native Reflex support and is actively using it. ");
                         }
                         double native_ns = static_cast<double>(g_sleep_reflex_native_ns_smooth.load());
                         double calls_per_second = native_ns <= 0 ? -1 : 1000000000.0 / native_ns;
@@ -1740,7 +1739,6 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                 "instead of generated frames. This helps maintain proper frame timing with Frame Gen enabled.");
         }
     }
-
     ImGui::Spacing();
 
     // FPS Limit slider (persisted)

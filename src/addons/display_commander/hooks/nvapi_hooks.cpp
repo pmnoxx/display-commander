@@ -276,7 +276,8 @@ NvAPI_Status __cdecl NvAPI_D3D_Sleep_Detour(IUnknown *pDev) {
         last_call = now;
     }
     // Check if Reflex sleep suppression is enabled
-    if (settings::g_mainTabSettings.suppress_reflex_sleep.GetValue()) {
+    if (settings::g_mainTabSettings.suppress_reflex_sleep.GetValue() ||
+    settings::g_mainTabSettings.fps_limiter_mode.GetValue() == static_cast<int>(FpsLimiterMode::kOnPresentSync)) {
         return NVAPI_OK;
     }
 

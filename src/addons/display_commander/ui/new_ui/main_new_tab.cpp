@@ -1587,7 +1587,7 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
             }
         }
 
-        if (current_item == static_cast<int>(FpsLimiterMode::kReflex) {
+        if (current_item == static_cast<int>(FpsLimiterMode::kReflex)) {
             // Suppress Reflex Sleep checkbox
             ImGui::Spacing();
             if (CheckboxSetting(settings::g_mainTabSettings.suppress_reflex_sleep, "Suppress Reflex Sleep")) {

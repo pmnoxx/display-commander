@@ -1585,7 +1585,9 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                         "Override the game's native Reflex implementation with the addon's injected version.");
                 }
             }
+        }
 
+        if (current_item == static_cast<int>(FpsLimiterMode::kReflex) {
             // Suppress Reflex Sleep checkbox
             ImGui::Spacing();
             if (CheckboxSetting(settings::g_mainTabSettings.suppress_reflex_sleep, "Suppress Reflex Sleep")) {

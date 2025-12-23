@@ -308,7 +308,7 @@ bool SetLoadFromDllMain(bool enabled) {
     const char* value = enabled ? "1" : "0";
 
     try {
-        reshade::set_config_value(nullptr, "GENERAL", "LoadFromDllMain", value);
+        //reshade::set_config_value(nullptr, "ADDON", "LoadFromDllMain", value);
         LogInfo("Set LoadFromDllMain to %s in ReShade configuration", value);
         return true;
     } catch (...) {

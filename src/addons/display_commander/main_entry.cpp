@@ -959,7 +959,7 @@ void OverrideReShadeSettings() {
     LogInfo("ReShade settings override - LoadFromDllMain current ReShade value: %d", current_reshade_value);
 
     // Set LoadFromDllMain to the value from DisplayCommander.ini
-    reshade::set_config_value(nullptr, "ADDON", "LoadFromDllMain", load_from_dll_main_from_display_commander);
+    //reshade::set_config_value(nullptr, "ADDON", "LoadFromDllMain", load_from_dll_main_from_display_commander);
     LogInfo("ReShade settings override - LoadFromDllMain set to %d (from DisplayCommander.ini)",
             load_from_dll_main_from_display_commander);
 

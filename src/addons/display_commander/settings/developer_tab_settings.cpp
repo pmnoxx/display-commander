@@ -53,7 +53,7 @@ DeveloperTabSettings::DeveloperTabSettings()
       reflex_enable("ReflexEnable", false, "DisplayCommander"),
       reflex_delay_first_500_frames("ReflexDelayFirst500Frames", true, "DisplayCommander"),
       reflex_low_latency("ReflexLowLatency", true, "DisplayCommander"),
-      reflex_boost("ReflexBoost", true, "DisplayCommander"),
+      reflex_boost("ReflexBoost", false, "DisplayCommander"),
       reflex_use_markers("ReflexUseMarkers", false, "DisplayCommander"),
       reflex_generate_markers("ReflexGenerateMarkers", false, "DisplayCommander"),
       reflex_enable_sleep("ReflexEnableSleep", false, "DisplayCommander"),

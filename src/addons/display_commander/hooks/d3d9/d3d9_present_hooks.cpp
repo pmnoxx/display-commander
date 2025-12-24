@@ -148,9 +148,14 @@ bool HookD3D9Present(IDirect3DDevice9 *device) {
         LogInfo("HookD3D9Present: hooks already installed");
         return true;
     }
+    Microsoft::WRL::ComPtr<IDirect3DDevice9Ex> device9ex;
+    if (FAILED(device->QueryInterface(IID_PPV_ARGS(&device9ex)))) {
+        LogWarn("HookD3D9Present: failed to query IDirect3DDevice9Ex interface from device");
+        return false;
+    }
 
     // Get the vtable from the device
-    void **vtable = *reinterpret_cast<void ***>(device);
+    void **vtable = *reinterpret_cast<void ***>(device9ex.Get());
     if (vtable == nullptr) {
         LogWarn("HookD3D9Present: failed to get vtable from device");
         return false;

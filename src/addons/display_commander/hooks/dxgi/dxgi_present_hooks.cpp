@@ -1078,8 +1078,6 @@ bool HookIDXGIOutput(IDXGIOutput *output) {
         return true;
     }
 
-    // Get the vtable
-    void **vtable = *(void ***)output;
 
     // IDXGIOutput vtable layout:
     // [0-2]   IUnknown methods
@@ -1099,53 +1097,53 @@ bool HookIDXGIOutput(IDXGIOutput *output) {
     // [19]    IDXGIOutput::GetFrameStatistics
 
     LogInfo("Hooking IDXGIOutput methods");
-
-    // Hook SetGammaControl (index 15)
-    if (IsVTableEntryValid(vtable, 15)) {
-        if (MH_CreateHook(vtable[15], IDXGIOutput_SetGammaControl_Detour, (LPVOID *)&IDXGIOutput_SetGammaControl_Original) != MH_OK) {
-            LogError("Failed to create IDXGIOutput::SetGammaControl hook");
-        } else {
-            LogInfo("IDXGIOutput::SetGammaControl hook created successfully");
-        }
-    }
-
-    // Hook GetGammaControl (index 16)
-    if (IsVTableEntryValid(vtable, 16)) {
-        if (MH_CreateHook(vtable[16], IDXGIOutput_GetGammaControl_Detour, (LPVOID *)&IDXGIOutput_GetGammaControl_Original) != MH_OK) {
-            LogError("Failed to create IDXGIOutput::GetGammaControl hook");
-        } else {
-            LogInfo("IDXGIOutput::GetGammaControl hook created successfully");
-        }
-    }
-
-    // Hook GetDesc (index 8)
-    if (IsVTableEntryValid(vtable, 8)) {
-        if (MH_CreateHook(vtable[8], IDXGIOutput_GetDesc_Detour, (LPVOID *)&IDXGIOutput_GetDesc_Original) != MH_OK) {
-            LogError("Failed to create IDXGIOutput::GetDesc hook");
-        } else {
-            LogInfo("IDXGIOutput::GetDesc hook created successfully");
-        }
-    }
-
     // Hook IDXGIOutput6::GetDesc1 (index 27) - for HDR hiding
     // First, QueryInterface for IDXGIOutput6 to get the extended interface
     Microsoft::WRL::ComPtr<IDXGIOutput6> output6;
     if (SUCCEEDED(output->QueryInterface(IID_PPV_ARGS(&output6))) && output6 != nullptr) {
         void **output6_vtable = *(void ***)output6.Get();
 
-        // IDXGIOutput6::GetDesc1 is at index 27 in the vtable
-        if (IsVTableEntryValid(output6_vtable, 27)) {
-            if (MH_CreateHook(output6_vtable[27], IDXGIOutput6_GetDesc1_Detour, (LPVOID *)&IDXGIOutput6_GetDesc1_Original) != MH_OK) {
-                LogError("Failed to create IDXGIOutput6::GetDesc1 hook");
-            } else {
-                if (MH_EnableHook(output6_vtable[27]) != MH_OK) {
-                    LogError("Failed to enable IDXGIOutput6::GetDesc1 hook");
-                } else {
-                    LogInfo("IDXGIOutput6::GetDesc1 hook created and enabled successfully");
-                }
-            }
+        if (MH_CreateHook(output6_vtable[8], IDXGIOutput_GetDesc_Detour, (LPVOID *)&IDXGIOutput_GetDesc_Original) != MH_OK) {
+            LogError("Failed to create IDXGIOutput::GetDesc hook");
         } else {
-            LogWarn("IDXGIOutput6::GetDesc1 vtable entry (index 27) is not valid");
+            LogInfo("IDXGIOutput::GetDesc hook created successfully");
+        }
+        if (MH_EnableHook(output6_vtable[8]) != MH_OK) {
+            LogError("Failed to enable IDXGIOutput::GetDesc hook");
+        } else {
+            LogInfo("IDXGIOutput::GetDesc hook created and enabled successfully");
+        }
+
+        if (MH_CreateHook(output6_vtable[15], IDXGIOutput_SetGammaControl_Detour, (LPVOID *)&IDXGIOutput_SetGammaControl_Original) != MH_OK) {
+            LogError("Failed to create IDXGIOutput::SetGammaControl hook");
+        } else {
+            LogInfo("IDXGIOutput::SetGammaControl hook created successfully");
+        }
+        if (MH_EnableHook(output6_vtable[15]) != MH_OK) {
+            LogError("Failed to enable IDXGIOutput::SetGammaControl hook");
+        } else {
+            LogInfo("IDXGIOutput::SetGammaControl hook created and enabled successfully");
+        }
+
+        if (MH_CreateHook(output6_vtable[16], IDXGIOutput_GetGammaControl_Detour, (LPVOID *)&IDXGIOutput_GetGammaControl_Original) != MH_OK) {
+            LogError("Failed to create IDXGIOutput::GetGammaControl hook");
+        } else {
+            LogInfo("IDXGIOutput::GetGammaControl hook created successfully");
+        }
+        if (MH_EnableHook(output6_vtable[16]) != MH_OK) {
+            LogError("Failed to enable IDXGIOutput::GetGammaControl hook");
+        } else {
+            LogInfo("IDXGIOutput::GetGammaControl hook created and enabled successfully");
+        }
+
+        if (MH_CreateHook(output6_vtable[27], IDXGIOutput6_GetDesc1_Detour, (LPVOID *)&IDXGIOutput6_GetDesc1_Original) != MH_OK) {
+            LogError("Failed to create IDXGIOutput6::GetDesc1 hook");
+        } else {
+            if (MH_EnableHook(output6_vtable[27]) != MH_OK) {
+                LogError("Failed to enable IDXGIOutput6::GetDesc1 hook");
+            } else {
+                LogInfo("IDXGIOutput6::GetDesc1 hook created and enabled successfully");
+            }
         }
     } else {
         LogInfo("IDXGIOutput6 interface not available, skipping GetDesc1 hook");

@@ -939,29 +939,27 @@ void OverrideReShadeSettings() {
     reshade::set_config_value(nullptr, "GENERAL", "CheckForUpdates", 0);
     LogInfo("ReShade settings override - CheckForUpdates set to 0 (disabled)");
 
-    // Read LoadFromDllMain value from DisplayCommander.ini
-    int32_t load_from_dll_main_from_display_commander = 1;  // Default to 1 if not found
-    bool found_in_display_commander = display_commander::config::get_config_value(
-        "DisplayCommander", "LoadFromDllMain", load_from_dll_main_from_display_commander);
+    // Check if we've already set LoadFromDllMain to 0 at least once
+    bool load_from_dll_main_set_once = false;
+    display_commander::config::get_config_value("DisplayCommander", "LoadFromDllMainSetOnce", load_from_dll_main_set_once);
 
-    if (found_in_display_commander) {
-        LogInfo("ReShade settings override - LoadFromDllMain value from DisplayCommander.ini: %d",
-                load_from_dll_main_from_display_commander);
+    if (!load_from_dll_main_set_once) {
+        // Get current value from ReShade.ini for logging
+        int32_t current_reshade_value = 0;
+        reshade::get_config_value(nullptr, "ADDON", "LoadFromDllMain", current_reshade_value);
+        LogInfo("ReShade settings override - LoadFromDllMain current ReShade value: %d", current_reshade_value);
+
+        // Set LoadFromDllMain to 0 (first time only)
+        reshade::set_config_value(nullptr, "ADDON", "LoadFromDllMain", 0);
+        LogInfo("ReShade settings override - LoadFromDllMain set to 0 (first time)");
+
+        // Mark that we've set it at least once
+        display_commander::config::set_config_value("DisplayCommander", "LoadFromDllMainSetOnce", true);
+        display_commander::config::save_config("LoadFromDllMainSetOnce flag set");
+        LogInfo("ReShade settings override - LoadFromDllMainSetOnce flag saved to DisplayCommander config");
     } else {
-        LogInfo(
-            "ReShade settings override - LoadFromDllMain not found in DisplayCommander.ini, using default value: %d",
-            load_from_dll_main_from_display_commander);
+        LogInfo("ReShade settings override - LoadFromDllMain already set to 0 previously, skipping");
     }
-
-    // Get current value from ReShade.ini for logging
-    int32_t current_reshade_value = 0;
-    reshade::get_config_value(nullptr, "ADDON", "LoadFromDllMain", current_reshade_value);
-    LogInfo("ReShade settings override - LoadFromDllMain current ReShade value: %d", current_reshade_value);
-
-    // Set LoadFromDllMain to the value from DisplayCommander.ini
-    reshade::set_config_value(nullptr, "ADDON", "LoadFromDllMain", 0);
-    LogInfo("ReShade settings override - LoadFromDllMain set to %d (from DisplayCommander.ini)",
-            load_from_dll_main_from_display_commander);
 
     LogInfo("ReShade settings override completed successfully");
 }

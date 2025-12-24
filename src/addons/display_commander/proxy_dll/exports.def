@@ -1,0 +1,23 @@
+EXPORTS
+	; d3d11.dll exports
+	D3D11CreateDevice PRIVATE
+	D3D11CreateDeviceAndSwapChain PRIVATE
+	D3D11On12CreateDevice PRIVATE
+
+	; d3d12.dll exports
+	D3D12CreateDevice @101 PRIVATE
+	D3D12GetDebugInterface @102 PRIVATE
+	D3D12CreateRootSignatureDeserializer @107 PRIVATE
+	D3D12CreateVersionedRootSignatureDeserializer @108 PRIVATE
+	D3D12EnableExperimentalFeatures @110 PRIVATE
+	D3D12GetInterface @111 PRIVATE
+	D3D12SerializeRootSignature PRIVATE
+	D3D12SerializeVersionedRootSignature PRIVATE
+
+	; dxgi.dll exports
+	CreateDXGIFactory PRIVATE
+	CreateDXGIFactory1 PRIVATE
+	CreateDXGIFactory2 PRIVATE
+	DXGIGetDebugInterface1 PRIVATE
+	DXGIDeclareAdapterRemovalSupport PRIVATE
+

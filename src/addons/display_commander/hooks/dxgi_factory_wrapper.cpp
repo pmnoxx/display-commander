@@ -674,4 +674,240 @@ bool DXGIFactoryWrapper::ShouldInterceptSwapChainCreation() const {
     return m_slGetNativeInterface != nullptr && m_slUpgradeInterface != nullptr;
 }
 
+// Helper function to create an output wrapper
+IDXGIOutput6* CreateOutputWrapper(IDXGIOutput* output) {
+    if (output == nullptr) {
+        LogWarn("CreateOutputWrapper: output is null");
+        return nullptr;
+    }
+
+    // Try to query for IDXGIOutput6
+    Microsoft::WRL::ComPtr<IDXGIOutput6> output6;
+    if (FAILED(output->QueryInterface(IID_PPV_ARGS(&output6)))) {
+        LogWarn("CreateOutputWrapper: Failed to query IDXGIOutput6 interface");
+        return nullptr;
+    }
+
+    LogInfo("CreateOutputWrapper: Creating wrapper for output: 0x%p", output);
+    return new IDXGIOutput6Wrapper(output6.Get());
+}
+
+// IDXGIOutput6Wrapper implementation
+IDXGIOutput6Wrapper::IDXGIOutput6Wrapper(IDXGIOutput6* originalOutput)
+    : m_originalOutput(originalOutput), m_refCount(1) {
+    LogInfo("IDXGIOutput6Wrapper: Created wrapper for IDXGIOutput6");
+}
+
+STDMETHODIMP IDXGIOutput6Wrapper::QueryInterface(REFIID riid, void **ppvObject) {
+    if (ppvObject == nullptr)
+        return E_POINTER;
+
+    // Support all output interfaces
+    if (riid == IID_IUnknown || riid == __uuidof(IDXGIObject) || riid == __uuidof(IDXGIDeviceSubObject) ||
+        riid == __uuidof(IDXGIOutput) || riid == __uuidof(IDXGIOutput1) || riid == __uuidof(IDXGIOutput2) ||
+        riid == __uuidof(IDXGIOutput3) || riid == __uuidof(IDXGIOutput4) || riid == __uuidof(IDXGIOutput5) ||
+        riid == __uuidof(IDXGIOutput6)) {
+        *ppvObject = static_cast<IDXGIOutput6 *>(this);
+        AddRef();
+        return S_OK;
+    }
+
+    return m_originalOutput->QueryInterface(riid, ppvObject);
+}
+
+STDMETHODIMP_(ULONG) IDXGIOutput6Wrapper::AddRef() {
+    return InterlockedIncrement(&m_refCount);
+}
+
+STDMETHODIMP_(ULONG) IDXGIOutput6Wrapper::Release() {
+    ULONG refCount = InterlockedDecrement(&m_refCount);
+    if (refCount == 0) {
+        LogInfo("IDXGIOutput6Wrapper: Releasing wrapper");
+        delete this;
+    }
+    return refCount;
+}
+
+// IDXGIObject methods - delegate to original
+STDMETHODIMP IDXGIOutput6Wrapper::SetPrivateData(REFGUID Name, UINT DataSize, const void *pData) {
+    return m_originalOutput->SetPrivateData(Name, DataSize, pData);
+}
+
+STDMETHODIMP IDXGIOutput6Wrapper::SetPrivateDataInterface(REFGUID Name, const IUnknown *pUnknown) {
+    return m_originalOutput->SetPrivateDataInterface(Name, pUnknown);
+}
+
+STDMETHODIMP IDXGIOutput6Wrapper::GetPrivateData(REFGUID Name, UINT *pDataSize, void *pData) {
+    return m_originalOutput->GetPrivateData(Name, pDataSize, pData);
+}
+
+STDMETHODIMP IDXGIOutput6Wrapper::GetParent(REFIID riid, void **ppParent) {
+    return m_originalOutput->GetParent(riid, ppParent);
+}
+
+// IDXGIDeviceSubObject methods - delegate to original
+// Note: GetDevice is inherited through IDXGIOutput -> IDXGIDeviceSubObject
+STDMETHODIMP IDXGIOutput6Wrapper::GetDevice(REFIID riid, void **ppDevice) {
+    // Query for IDXGIDeviceSubObject to call GetDevice
+    Microsoft::WRL::ComPtr<IDXGIDeviceSubObject> deviceSubObject;
+    if (SUCCEEDED(m_originalOutput->QueryInterface(IID_PPV_ARGS(&deviceSubObject)))) {
+        return deviceSubObject->GetDevice(riid, ppDevice);
+    }
+    return E_FAIL;
+}
+
+// IDXGIOutput methods - override the ones we care about
+STDMETHODIMP IDXGIOutput6Wrapper::GetDesc(DXGI_OUTPUT_DESC *pDesc) {
+    // Increment counter
+    g_dxgi_output_event_counters[DXGI_OUTPUT_EVENT_GETDESC].fetch_add(1);
+    g_swapchain_event_total_count.fetch_add(1);
+
+    // Log the GetDesc call (only on first few calls to avoid spam)
+    static int getdesc_log_count = 0;
+    if (getdesc_log_count < 3) {
+        LogInfo("IDXGIOutput::GetDesc called");
+        getdesc_log_count++;
+    }
+
+    return m_originalOutput->GetDesc(pDesc);
+}
+
+STDMETHODIMP IDXGIOutput6Wrapper::GetDisplayModeList(DXGI_FORMAT EnumFormat, UINT Flags, UINT *pNumModes, DXGI_MODE_DESC *pDesc) {
+    return m_originalOutput->GetDisplayModeList(EnumFormat, Flags, pNumModes, pDesc);
+}
+
+STDMETHODIMP IDXGIOutput6Wrapper::FindClosestMatchingMode(const DXGI_MODE_DESC *pModeToMatch, DXGI_MODE_DESC *pClosestMatch, IUnknown *pConcernedDevice) {
+    return m_originalOutput->FindClosestMatchingMode(pModeToMatch, pClosestMatch, pConcernedDevice);
+}
+
+STDMETHODIMP IDXGIOutput6Wrapper::WaitForVBlank() {
+    return m_originalOutput->WaitForVBlank();
+}
+
+STDMETHODIMP IDXGIOutput6Wrapper::TakeOwnership(IUnknown *pDevice, BOOL Exclusive) {
+    return m_originalOutput->TakeOwnership(pDevice, Exclusive);
+}
+
+STDMETHODIMP_(void) IDXGIOutput6Wrapper::ReleaseOwnership() {
+    m_originalOutput->ReleaseOwnership();
+}
+
+STDMETHODIMP IDXGIOutput6Wrapper::GetGammaControlCapabilities(DXGI_GAMMA_CONTROL_CAPABILITIES *pGammaCaps) {
+    return m_originalOutput->GetGammaControlCapabilities(pGammaCaps);
+}
+
+STDMETHODIMP IDXGIOutput6Wrapper::SetGammaControl(const DXGI_GAMMA_CONTROL *pArray) {
+    // Increment counter
+    g_dxgi_output_event_counters[DXGI_OUTPUT_EVENT_SETGAMMACONTROL].fetch_add(1);
+    g_swapchain_event_total_count.fetch_add(1);
+
+    // Log the SetGammaControl call (only on first few calls to avoid spam)
+    static int setgammacontrol_log_count = 0;
+    if (setgammacontrol_log_count < 3) {
+        LogInfo("IDXGIOutput::SetGammaControl called");
+        setgammacontrol_log_count++;
+    }
+
+    return m_originalOutput->SetGammaControl(pArray);
+}
+
+STDMETHODIMP IDXGIOutput6Wrapper::GetGammaControl(DXGI_GAMMA_CONTROL *pArray) {
+    // Increment counter
+    g_dxgi_output_event_counters[DXGI_OUTPUT_EVENT_GETGAMMACONTROL].fetch_add(1);
+    g_swapchain_event_total_count.fetch_add(1);
+
+    // Log the GetGammaControl call (only on first few calls to avoid spam)
+    static int getgammacontrol_log_count = 0;
+    if (getgammacontrol_log_count < 3) {
+        LogInfo("IDXGIOutput::GetGammaControl called");
+        getgammacontrol_log_count++;
+    }
+
+    return m_originalOutput->GetGammaControl(pArray);
+}
+
+STDMETHODIMP IDXGIOutput6Wrapper::SetDisplaySurface(IDXGISurface *pScanoutSurface) {
+    return m_originalOutput->SetDisplaySurface(pScanoutSurface);
+}
+
+STDMETHODIMP IDXGIOutput6Wrapper::GetDisplaySurfaceData(IDXGISurface *pDestination) {
+    return m_originalOutput->GetDisplaySurfaceData(pDestination);
+}
+
+STDMETHODIMP IDXGIOutput6Wrapper::GetFrameStatistics(DXGI_FRAME_STATISTICS *pStats) {
+    return m_originalOutput->GetFrameStatistics(pStats);
+}
+
+// IDXGIOutput1 methods - delegate to original
+STDMETHODIMP IDXGIOutput6Wrapper::GetDisplayModeList1(DXGI_FORMAT EnumFormat, UINT Flags, UINT *pNumModes, DXGI_MODE_DESC1 *pDesc) {
+    return m_originalOutput->GetDisplayModeList1(EnumFormat, Flags, pNumModes, pDesc);
+}
+
+STDMETHODIMP IDXGIOutput6Wrapper::FindClosestMatchingMode1(const DXGI_MODE_DESC1 *pModeToMatch, DXGI_MODE_DESC1 *pClosestMatch, IUnknown *pConcernedDevice) {
+    return m_originalOutput->FindClosestMatchingMode1(pModeToMatch, pClosestMatch, pConcernedDevice);
+}
+
+STDMETHODIMP IDXGIOutput6Wrapper::GetDisplaySurfaceData1(IDXGIResource *pDestination) {
+    return m_originalOutput->GetDisplaySurfaceData1(pDestination);
+}
+
+STDMETHODIMP IDXGIOutput6Wrapper::DuplicateOutput(IUnknown *pDevice, IDXGIOutputDuplication **ppOutputDuplication) {
+    return m_originalOutput->DuplicateOutput(pDevice, ppOutputDuplication);
+}
+
+// IDXGIOutput2 methods - delegate to original
+STDMETHODIMP_(BOOL) IDXGIOutput6Wrapper::SupportsOverlays() {
+    return m_originalOutput->SupportsOverlays();
+}
+
+// IDXGIOutput3 methods - delegate to original
+STDMETHODIMP IDXGIOutput6Wrapper::CheckOverlaySupport(DXGI_FORMAT EnumFormat, IUnknown *pConcernedDevice, UINT *pFlags) {
+    return m_originalOutput->CheckOverlaySupport(EnumFormat, pConcernedDevice, pFlags);
+}
+
+// IDXGIOutput4 methods - delegate to original
+STDMETHODIMP IDXGIOutput6Wrapper::CheckOverlayColorSpaceSupport(DXGI_FORMAT Format, DXGI_COLOR_SPACE_TYPE ColorSpace, IUnknown *pConcernedDevice, UINT *pFlags) {
+    // Query for IDXGIOutput4 to call CheckOverlayColorSpaceSupport
+    Microsoft::WRL::ComPtr<IDXGIOutput4> output4;
+    if (SUCCEEDED(m_originalOutput->QueryInterface(IID_PPV_ARGS(&output4)))) {
+        return output4->CheckOverlayColorSpaceSupport(Format, ColorSpace, pConcernedDevice, pFlags);
+    }
+    return E_FAIL;
+}
+
+// IDXGIOutput5 methods - delegate to original
+STDMETHODIMP IDXGIOutput6Wrapper::DuplicateOutput1(IUnknown *pDevice, UINT Flags, UINT SupportedFormatsCount, const DXGI_FORMAT *pSupportedFormats, IDXGIOutputDuplication **ppOutputDuplication) {
+    return m_originalOutput->DuplicateOutput1(pDevice, Flags, SupportedFormatsCount, pSupportedFormats, ppOutputDuplication);
+}
+
+// IDXGIOutput6 methods - override GetDesc1 for HDR hiding
+STDMETHODIMP IDXGIOutput6Wrapper::GetDesc1(DXGI_OUTPUT_DESC1 *pDesc) {
+    if (pDesc == nullptr) {
+        return DXGI_ERROR_INVALID_CALL;
+    }
+
+    // Call original function
+    HRESULT hr = m_originalOutput->GetDesc1(pDesc);
+
+    // Hide HDR capabilities if enabled (similar to Special-K's approach)
+    if (SUCCEEDED(hr) && pDesc != nullptr && s_hide_hdr_capabilities.load()) {
+        // Change HDR10 color space to sRGB to hide HDR support
+        if (pDesc->ColorSpace == DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020) {
+            pDesc->ColorSpace = DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
+
+            static int hdr_hidden_log_count = 0;
+            if (hdr_hidden_log_count < 3) {
+                LogInfo("HDR hiding: IDXGIOutput6::GetDesc1 - hiding HDR10 color space, forcing to sRGB");
+                hdr_hidden_log_count++;
+            }
+        }
+    }
+
+    return hr;
+}
+
+STDMETHODIMP IDXGIOutput6Wrapper::CheckHardwareCompositionSupport(UINT *pFlags) {
+    return m_originalOutput->CheckHardwareCompositionSupport(pFlags);
+}
+
 } // namespace display_commanderhooks

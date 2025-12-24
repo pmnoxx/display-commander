@@ -174,6 +174,75 @@ private:
     bool ShouldInterceptSwapChainCreation() const;
 };
 
+/**
+ * IDXGIOutput6Wrapper - A wrapper for IDXGIOutput6 that intercepts output methods
+ *
+ * This wrapper proxies all output operations and allows intercepting methods like
+ * GetDesc, SetGammaControl, GetGammaControl, and GetDesc1 for HDR hiding and other features.
+ */
+class IDXGIOutput6Wrapper : public IDXGIOutput6 {
+private:
+    Microsoft::WRL::ComPtr<IDXGIOutput6> m_originalOutput;
+    volatile LONG m_refCount;
+
+public:
+    explicit IDXGIOutput6Wrapper(IDXGIOutput6* originalOutput);
+    virtual ~IDXGIOutput6Wrapper() = default;
+
+    // IUnknown methods
+    STDMETHOD(QueryInterface)(REFIID riid, void **ppvObject) override;
+    STDMETHOD_(ULONG, AddRef)() override;
+    STDMETHOD_(ULONG, Release)() override;
+
+    // IDXGIObject methods
+    STDMETHOD(SetPrivateData)(REFGUID Name, UINT DataSize, const void *pData) override;
+    STDMETHOD(SetPrivateDataInterface)(REFGUID Name, const IUnknown *pUnknown) override;
+    STDMETHOD(GetPrivateData)(REFGUID Name, UINT *pDataSize, void *pData) override;
+    STDMETHOD(GetParent)(REFIID riid, void **ppParent) override;
+
+    // IDXGIDeviceSubObject methods
+    STDMETHOD(GetDevice)(REFIID riid, void **ppDevice);
+
+    // IDXGIOutput methods
+    STDMETHOD(GetDesc)(DXGI_OUTPUT_DESC *pDesc) override;
+    STDMETHOD(GetDisplayModeList)(DXGI_FORMAT EnumFormat, UINT Flags, UINT *pNumModes, DXGI_MODE_DESC *pDesc) override;
+    STDMETHOD(FindClosestMatchingMode)(const DXGI_MODE_DESC *pModeToMatch, DXGI_MODE_DESC *pClosestMatch, IUnknown *pConcernedDevice) override;
+    STDMETHOD(WaitForVBlank)() override;
+    STDMETHOD(TakeOwnership)(IUnknown *pDevice, BOOL Exclusive) override;
+    STDMETHOD_(void, ReleaseOwnership)() override;
+    STDMETHOD(GetGammaControlCapabilities)(DXGI_GAMMA_CONTROL_CAPABILITIES *pGammaCaps) override;
+    STDMETHOD(SetGammaControl)(const DXGI_GAMMA_CONTROL *pArray) override;
+    STDMETHOD(GetGammaControl)(DXGI_GAMMA_CONTROL *pArray) override;
+    STDMETHOD(SetDisplaySurface)(IDXGISurface *pScanoutSurface) override;
+    STDMETHOD(GetDisplaySurfaceData)(IDXGISurface *pDestination) override;
+    STDMETHOD(GetFrameStatistics)(DXGI_FRAME_STATISTICS *pStats) override;
+
+    // IDXGIOutput1 methods
+    STDMETHOD(GetDisplayModeList1)(DXGI_FORMAT EnumFormat, UINT Flags, UINT *pNumModes, DXGI_MODE_DESC1 *pDesc) override;
+    STDMETHOD(FindClosestMatchingMode1)(const DXGI_MODE_DESC1 *pModeToMatch, DXGI_MODE_DESC1 *pClosestMatch, IUnknown *pConcernedDevice) override;
+    STDMETHOD(GetDisplaySurfaceData1)(IDXGIResource *pDestination) override;
+    STDMETHOD(DuplicateOutput)(IUnknown *pDevice, IDXGIOutputDuplication **ppOutputDuplication) override;
+
+    // IDXGIOutput2 methods
+    STDMETHOD_(BOOL, SupportsOverlays)() override;
+
+    // IDXGIOutput3 methods
+    STDMETHOD(CheckOverlaySupport)(DXGI_FORMAT EnumFormat, IUnknown *pConcernedDevice, UINT *pFlags) override;
+
+    // IDXGIOutput4 methods
+    STDMETHOD(CheckOverlayColorSpaceSupport)(DXGI_FORMAT Format, DXGI_COLOR_SPACE_TYPE ColorSpace, IUnknown *pConcernedDevice, UINT *pFlags) override;
+
+    // IDXGIOutput5 methods
+    STDMETHOD(DuplicateOutput1)(IUnknown *pDevice, UINT Flags, UINT SupportedFormatsCount, const DXGI_FORMAT *pSupportedFormats, IDXGIOutputDuplication **ppOutputDuplication) override;
+
+    // IDXGIOutput6 methods
+    STDMETHOD(GetDesc1)(DXGI_OUTPUT_DESC1 *pDesc) override;
+    STDMETHOD(CheckHardwareCompositionSupport)(UINT *pFlags) override;
+};
+
+// Helper function to create an output wrapper
+IDXGIOutput6* CreateOutputWrapper(IDXGIOutput* output);
+
 // Helper function to create a swapchain wrapper
 IDXGISwapChain4* CreateSwapChainWrapper(IDXGISwapChain* swapchain, SwapChainHook hookType);
 

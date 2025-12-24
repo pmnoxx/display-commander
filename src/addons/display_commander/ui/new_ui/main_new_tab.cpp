@@ -461,6 +461,7 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
         ImGui::Spacing();
     }
 
+    #if 0
     // LoadFromDllMain warning
     int32_t load_from_dll_main_value = 0;
     if (reshade::get_config_value(nullptr, "ADDON", "LoadFromDllMain", load_from_dll_main_value) && load_from_dll_main_value == 1) {
@@ -474,6 +475,7 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
         }
         ImGui::Spacing();
     }
+    #endif
 
     // Version and build information at the top
     // if (ImGui::CollapsingHeader("Display Commander", ImGuiTreeNodeFlags_DefaultOpen))

@@ -461,6 +461,20 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
         ImGui::Spacing();
     }
 
+    // LoadFromDllMain warning
+    int32_t load_from_dll_main_value = 0;
+    if (reshade::get_config_value(nullptr, "ADDON", "LoadFromDllMain", load_from_dll_main_value) && load_from_dll_main_value == 1) {
+        ImGui::Spacing();
+        ImGui::TextColored(ui::colors::TEXT_WARNING,
+                           ICON_FK_WARNING " WARNING: LoadFromDllMain is set to 1 in ReShade configuration");
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip(
+                "LoadFromDllMain=1 can cause compatibility issues with some games and addons. "
+                "Consider disabling it in the Developer tab or ReShade.ini if you experience problems.");
+        }
+        ImGui::Spacing();
+    }
+
     // Version and build information at the top
     // if (ImGui::CollapsingHeader("Display Commander", ImGuiTreeNodeFlags_DefaultOpen))
     {

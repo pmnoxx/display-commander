@@ -282,35 +282,6 @@ void EnqueueGPUCompletion(reshade::api::swapchain* swapchain, IDXGISwapChain* dx
 
 namespace display_commanderhooks::dxgi {
 
-// Helper function to detect swapchain interface version
-int GetSwapchainInterfaceVersion(IDXGISwapChain* swapchain) {
-    // Try IDXGISwapChain4 first (highest version)
-    Microsoft::WRL::ComPtr<IDXGISwapChain4> swapchain4{};
-    if (SUCCEEDED(swapchain->QueryInterface(IID_PPV_ARGS(&swapchain4)))) {
-        return 4;
-    }
-
-    // Try IDXGISwapChain3
-    Microsoft::WRL::ComPtr<IDXGISwapChain3> swapchain3{};
-    if (SUCCEEDED(swapchain->QueryInterface(IID_PPV_ARGS(&swapchain3)))) {
-        return 3;
-    }
-
-    // Try IDXGISwapChain2
-    Microsoft::WRL::ComPtr<IDXGISwapChain2> swapchain2{};
-    if (SUCCEEDED(swapchain->QueryInterface(IID_PPV_ARGS(&swapchain2)))) {
-        return 2;
-    }
-
-    // Try IDXGISwapChain1
-    Microsoft::WRL::ComPtr<IDXGISwapChain1> swapchain1{};
-    if (SUCCEEDED(swapchain->QueryInterface(IID_PPV_ARGS(&swapchain1)))) {
-        return 1;
-    }
-
-    // Base IDXGISwapChain
-    return 0;
-}
 
 // Helper function to safely check if vtable entry exists
 bool IsVTableEntryValid(void** vtable, int index) {
@@ -1213,8 +1184,16 @@ bool HookSwapchain(IDXGISwapChain *swapchain) {
     g_hooked_swapchain = swapchain;
     g_swapchainTrackingManager.AddSwapchain(swapchain);
 
-    // Get the vtable
-    void **vtable = *(void ***)swapchain;
+    // Query for IDXGISwapChain4 before getting vtable
+    Microsoft::WRL::ComPtr<IDXGISwapChain4> swapchain4;
+    HRESULT hr = swapchain->QueryInterface(IID_PPV_ARGS(&swapchain4));
+    if (FAILED(hr) || swapchain4 == nullptr) {
+        LogError("Failed to query IDXGISwapChain4 interface (HRESULT: 0x%08X). Swapchain hooking aborted.", hr);
+        return false;
+    }
+
+    // Get the vtable from IDXGISwapChain4
+    void **vtable = *(void ***)swapchain4.Get();
 /*
 | Index | Interface | Method | Description |
 |-------|-----------|--------|-------------|
@@ -1274,9 +1253,7 @@ bool HookSwapchain(IDXGISwapChain *swapchain) {
 
     display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(display_commanderhooks::HookType::DXGI_SWAPCHAIN);
 
-    // Detect swapchain interface version for safe vtable access
-    int interfaceVersion = GetSwapchainInterfaceVersion(swapchain);
-    LogInfo("Detected swapchain interface version: %d", interfaceVersion);
+    LogInfo("IDXGISwapChain4 interface confirmed, hooking all swapchain methods");
 
     // ============================================================================
     // GROUP 0: IDXGISwapChain (Base Interface) - Indices 8-17
@@ -1341,7 +1318,7 @@ bool HookSwapchain(IDXGISwapChain *swapchain) {
     // ============================================================================
     // GROUP 1: IDXGISwapChain1 (Extended Interface) - Indices 18-28
     // ============================================================================
-    if (interfaceVersion >= 1) {
+    {
         LogInfo("Hooking IDXGISwapChain1 methods (indices 18-28)");
 
         // Hook GetDesc1 (index 18) - Critical for IDXGISwapChain1
@@ -1406,14 +1383,12 @@ bool HookSwapchain(IDXGISwapChain *swapchain) {
                 LogError("Failed to create IDXGISwapChain1::GetRotation hook");
             }
         }
-    } else {
-        LogInfo("Skipping IDXGISwapChain1 methods - interface not supported");
     }
 
     // ============================================================================
     // GROUP 2: IDXGISwapChain2 (Extended Interface) - Indices 29-35
     // ============================================================================
-    if (interfaceVersion >= 2) {
+    {
         LogInfo("Hooking IDXGISwapChain2 methods (indices 29-35)");
 
         // Hook IDXGISwapChain2 methods (29-35)
@@ -1452,14 +1427,12 @@ bool HookSwapchain(IDXGISwapChain *swapchain) {
                 LogError("Failed to create IDXGISwapChain2::GetMatrixTransform hook");
             }
         }
-    } else {
-        LogInfo("Skipping IDXGISwapChain2 methods - interface not supported");
     }
 
     // ============================================================================
     // GROUP 3: IDXGISwapChain3 (Extended Interface) - Indices 36-39
     // ============================================================================
-    if (interfaceVersion >= 3) {
+    {
         LogInfo("Hooking IDXGISwapChain3 methods (indices 36-39)");
 
         // Hook IDXGISwapChain3 methods (36-39) with extra safety for high indices
@@ -1487,14 +1460,12 @@ bool HookSwapchain(IDXGISwapChain *swapchain) {
                 LogError("Failed to create IDXGISwapChain3::ResizeBuffers1 hook");
             }
         }
-    } else {
-        LogInfo("Skipping IDXGISwapChain3 methods - interface not supported");
     }
 
     // ============================================================================
     // GROUP 4: IDXGISwapChain4 (Extended Interface) - Indices 40+
     // ============================================================================
-    if (interfaceVersion >= 4) {
+    {
         LogInfo("Hooking IDXGISwapChain4 methods (indices 40+)");
 
         // Hook SetHDRMetaData (index 40) - HDR metadata setting
@@ -1504,16 +1475,14 @@ bool HookSwapchain(IDXGISwapChain *swapchain) {
                 // Don't return false, this is not critical for basic functionality
             }
         }
-    } else {
-        LogInfo("Skipping IDXGISwapChain4 methods - interface not supported");
     }
 
     // ============================================================================
-    // ENABLE ALL HOOKS - Organized by Interface Version
+    // ENABLE ALL HOOKS
     // ============================================================================
     LogInfo("Enabling all created hooks...");
 
-    // Enable GROUP 0: IDXGISwapChain hooks (always enabled)
+    // Enable GROUP 0: IDXGISwapChain hooks
     if (IsVTableEntryValid(vtable, 8) && MH_EnableHook(vtable[8]) != MH_OK) {
         LogError("Failed to enable IDXGISwapChain::Present hook");
     }
@@ -1528,103 +1497,38 @@ bool HookSwapchain(IDXGISwapChain *swapchain) {
     if (IsVTableEntryValid(vtable, 16)) MH_EnableHook(vtable[16]);
     if (IsVTableEntryValid(vtable, 17)) MH_EnableHook(vtable[17]);
 
+    // Enable GROUP 1: IDXGISwapChain1 hooks
+    if (IsVTableEntryValid(vtable, 18)) MH_EnableHook(vtable[18]);
+    if (IsVTableEntryValid(vtable, 19)) MH_EnableHook(vtable[19]);
+    if (IsVTableEntryValid(vtable, 20)) MH_EnableHook(vtable[20]);
+    if (IsVTableEntryValid(vtable, 21)) MH_EnableHook(vtable[21]);
+    if (IsVTableEntryValid(vtable, 22)) MH_EnableHook(vtable[22]);
+    if (IsVTableEntryValid(vtable, 23)) MH_EnableHook(vtable[23]);
+    if (IsVTableEntryValid(vtable, 24)) MH_EnableHook(vtable[24]);
+    if (IsVTableEntryValid(vtable, 25)) MH_EnableHook(vtable[25]);
+    if (IsVTableEntryValid(vtable, 26)) MH_EnableHook(vtable[26]);
+    if (IsVTableEntryValid(vtable, 27)) MH_EnableHook(vtable[27]);
+    if (IsVTableEntryValid(vtable, 28)) MH_EnableHook(vtable[28]);
 
-    // Enable GROUP 1: IDXGISwapChain1 hooks (if supported)
-    if (interfaceVersion >= 1) {
-        if (IsVTableEntryValid(vtable, 18)) MH_EnableHook(vtable[18]);
-        if (IsVTableEntryValid(vtable, 19)) MH_EnableHook(vtable[19]);
-        if (IsVTableEntryValid(vtable, 20)) MH_EnableHook(vtable[20]);
-        if (IsVTableEntryValid(vtable, 21)) MH_EnableHook(vtable[21]);
-        if (IsVTableEntryValid(vtable, 22)) MH_EnableHook(vtable[22]);
-        if (IsVTableEntryValid(vtable, 23)) MH_EnableHook(vtable[23]);
-        if (IsVTableEntryValid(vtable, 24)) MH_EnableHook(vtable[24]);
-        if (IsVTableEntryValid(vtable, 25)) MH_EnableHook(vtable[25]);
-        if (IsVTableEntryValid(vtable, 26)) MH_EnableHook(vtable[26]);
-        if (IsVTableEntryValid(vtable, 27)) MH_EnableHook(vtable[27]);
-        if (IsVTableEntryValid(vtable, 28)) MH_EnableHook(vtable[28]);
-    }
+    // Enable GROUP 2: IDXGISwapChain2 hooks
+    if (IsVTableEntryValid(vtable, 29)) MH_EnableHook(vtable[29]);
+    if (IsVTableEntryValid(vtable, 30)) MH_EnableHook(vtable[30]);
+    if (IsVTableEntryValid(vtable, 31)) MH_EnableHook(vtable[31]);
+    if (IsVTableEntryValid(vtable, 32)) MH_EnableHook(vtable[32]);
+    if (IsVTableEntryValid(vtable, 33)) MH_EnableHook(vtable[33]);
+    if (IsVTableEntryValid(vtable, 34)) MH_EnableHook(vtable[34]);
+    if (IsVTableEntryValid(vtable, 35)) MH_EnableHook(vtable[35]);
 
-    // Enable GROUP 2: IDXGISwapChain2 hooks (if supported)
-    if (interfaceVersion >= 2) {
-        if (IsVTableEntryValid(vtable, 29)) MH_EnableHook(vtable[29]);
-        if (IsVTableEntryValid(vtable, 30)) MH_EnableHook(vtable[30]);
-        if (IsVTableEntryValid(vtable, 31)) MH_EnableHook(vtable[31]);
-        if (IsVTableEntryValid(vtable, 32)) MH_EnableHook(vtable[32]);
-        if (IsVTableEntryValid(vtable, 33)) MH_EnableHook(vtable[33]);
-        if (IsVTableEntryValid(vtable, 34)) MH_EnableHook(vtable[34]);
-        if (IsVTableEntryValid(vtable, 35)) MH_EnableHook(vtable[35]);
-    }
+    // Enable GROUP 3: IDXGISwapChain3 hooks
+    if (IsVTableEntryValid(vtable, 36)) MH_EnableHook(vtable[36]);
+    if (IsVTableEntryValid(vtable, 37)) MH_EnableHook(vtable[37]);
+    if (IsVTableEntryValid(vtable, 38)) MH_EnableHook(vtable[38]);
+    if (IsVTableEntryValid(vtable, 39)) MH_EnableHook(vtable[39]);
 
-    // Enable GROUP 3: IDXGISwapChain3 hooks (if supported)
-    if (interfaceVersion >= 3) {
-        if (IsVTableEntryValid(vtable, 36)) MH_EnableHook(vtable[36]);
-        if (IsVTableEntryValid(vtable, 37)) MH_EnableHook(vtable[37]);
-        if (IsVTableEntryValid(vtable, 38)) MH_EnableHook(vtable[38]);
-        if (IsVTableEntryValid(vtable, 39)) MH_EnableHook(vtable[39]);
-    }
+    // Enable GROUP 4: IDXGISwapChain4 hooks
+    if (IsVTableEntryValid(vtable, 40)) MH_EnableHook(vtable[40]);
 
-    // Enable GROUP 4: IDXGISwapChain4 hooks (if supported)
-    if (interfaceVersion >= 4) {
-        if (IsVTableEntryValid(vtable, 40)) MH_EnableHook(vtable[40]);
-    }
-
-    // ============================================================================
-    // BUILD SUCCESS MESSAGE - Organized by Interface Version
-    // ============================================================================
-    std::string hook_message = "Successfully hooked DXGI methods for interface version " + std::to_string(interfaceVersion) + ": ";
-
-    // GROUP 0: IDXGISwapChain methods
-    hook_message += "Present, GetDesc";
-    if (IsVTableEntryValid(vtable, 9)) hook_message += ", GetBuffer";
-    if (IsVTableEntryValid(vtable, 10)) hook_message += ", SetFullscreenState";
-    if (IsVTableEntryValid(vtable, 11)) hook_message += ", GetFullscreenState";
-    if (IsVTableEntryValid(vtable, 13)) hook_message += ", ResizeBuffers";
-    if (IsVTableEntryValid(vtable, 14)) hook_message += ", ResizeTarget";
-    if (IsVTableEntryValid(vtable, 15)) hook_message += ", GetContainingOutput";
-    if (IsVTableEntryValid(vtable, 16)) hook_message += ", GetFrameStatistics";
-    if (IsVTableEntryValid(vtable, 17)) hook_message += ", GetLastPresentCount";
-
-    // GROUP 1: IDXGISwapChain1 methods
-    if (interfaceVersion >= 1) {
-        if (IsVTableEntryValid(vtable, 18)) hook_message += ", GetDesc1";
-        if (IsVTableEntryValid(vtable, 19)) hook_message += ", GetFullscreenDesc";
-        if (IsVTableEntryValid(vtable, 20)) hook_message += ", GetHwnd";
-        if (IsVTableEntryValid(vtable, 21)) hook_message += ", GetCoreWindow";
-        if (IsVTableEntryValid(vtable, 22)) hook_message += ", Present1";
-        if (IsVTableEntryValid(vtable, 23)) hook_message += ", IsTemporaryMonoSupported";
-        if (IsVTableEntryValid(vtable, 24)) hook_message += ", GetRestrictToOutput";
-        if (IsVTableEntryValid(vtable, 25)) hook_message += ", SetBackgroundColor";
-        if (IsVTableEntryValid(vtable, 26)) hook_message += ", GetBackgroundColor";
-        if (IsVTableEntryValid(vtable, 27)) hook_message += ", SetRotation";
-        if (IsVTableEntryValid(vtable, 28)) hook_message += ", GetRotation";
-    }
-
-    // GROUP 2: IDXGISwapChain2 methods
-    if (interfaceVersion >= 2) {
-        if (IsVTableEntryValid(vtable, 29)) hook_message += ", SetSourceSize";
-        if (IsVTableEntryValid(vtable, 30)) hook_message += ", GetSourceSize";
-        if (IsVTableEntryValid(vtable, 31)) hook_message += ", SetMaximumFrameLatency";
-        if (IsVTableEntryValid(vtable, 32)) hook_message += ", GetMaximumFrameLatency";
-        if (IsVTableEntryValid(vtable, 33)) hook_message += ", GetFrameLatencyWaitableObject";
-        if (IsVTableEntryValid(vtable, 34)) hook_message += ", SetMatrixTransform";
-        if (IsVTableEntryValid(vtable, 35)) hook_message += ", GetMatrixTransform";
-    }
-
-    // GROUP 3: IDXGISwapChain3 methods
-    if (interfaceVersion >= 3) {
-        if (IsVTableEntryValid(vtable, 36)) hook_message += ", GetCurrentBackBufferIndex";
-        if (IsVTableEntryValid(vtable, 37)) hook_message += ", CheckColorSpaceSupport";
-        if (IsVTableEntryValid(vtable, 38)) hook_message += ", SetColorSpace1";
-        if (IsVTableEntryValid(vtable, 39)) hook_message += ", ResizeBuffers1";
-    }
-
-    // GROUP 4: IDXGISwapChain4 methods
-    if (interfaceVersion >= 4) {
-        if (IsVTableEntryValid(vtable, 40)) hook_message += ", SetHDRMetaData";
-    }
-
-    hook_message += " for swapchain: 0x%p";
-    LogInfo(hook_message.c_str(), swapchain);
+    LogInfo("Successfully hooked IDXGISWAPCHAIN4 for swapchain: %x%p", swapchain);
 
     return true;
 }

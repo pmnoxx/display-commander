@@ -1132,15 +1132,60 @@ bool HookSwapchain(IDXGISwapChain *swapchain) {
     g_swapchainTrackingManager.AddSwapchain(swapchain);
 
     // Query for IDXGISwapChain4 before getting vtable
+
+    Microsoft::WRL::ComPtr<IDXGISwapChain1> swapchain1;
+    Microsoft::WRL::ComPtr<IDXGISwapChain2> swapchain2;
+    Microsoft::WRL::ComPtr<IDXGISwapChain3> swapchain3;
     Microsoft::WRL::ComPtr<IDXGISwapChain4> swapchain4;
-    HRESULT hr = swapchain->QueryInterface(IID_PPV_ARGS(&swapchain4));
-    if (FAILED(hr) || swapchain4 == nullptr) {
-        LogError("Failed to query IDXGISwapChain4 interface (HRESULT: 0x%08X). Swapchain hooking aborted.", hr);
-        return false;
-    }
+    auto vtable_version = 0;
 
     // Get the vtable from IDXGISwapChain4
-    void **vtable = *(void ***)swapchain4.Get();
+    void **vtable = nullptr;
+
+    if (vtable == nullptr) {
+        HRESULT hr = swapchain->QueryInterface(IID_PPV_ARGS(&swapchain4));
+        if (SUCCEEDED(hr)) {
+            vtable_version = 4;
+            vtable = *(void ***)swapchain4.Get();
+        } else {
+            LogError("Failed to query IDXGISwapChain4 interface (HRESULT: 0x%08X). Swapchain hooking aborted.", hr);
+        }
+    }
+    if (vtable == nullptr) {
+        HRESULT hr = swapchain->QueryInterface(IID_PPV_ARGS(&swapchain3));
+        if (SUCCEEDED(hr)) {
+            vtable_version = 3;
+            vtable = *(void ***)swapchain3.Get();
+        } else {
+            LogError("Failed to query IDXGISwapChain3 interface (HRESULT: 0x%08X). Swapchain hooking aborted.", hr);
+        }
+    }
+
+    if (vtable == nullptr) {
+        HRESULT hr = swapchain->QueryInterface(IID_PPV_ARGS(&swapchain2));
+        if (SUCCEEDED(hr)) {
+            vtable_version = 2;
+            vtable = *(void ***)swapchain2.Get();
+        } else {
+            LogError("Failed to query IDXGISwapChain2 interface (HRESULT: 0x%08X). Swapchain hooking aborted.", hr);
+        }
+    }
+
+    if (vtable == nullptr) {
+        HRESULT hr = swapchain->QueryInterface(IID_PPV_ARGS(&swapchain1));
+        if (SUCCEEDED(hr)) {
+            vtable_version = 1;
+            vtable = *(void ***)swapchain1.Get();
+        } else {
+            LogError("Failed to query IDXGISwapChain1 interface (HRESULT: 0x%08X). Swapchain hooking aborted.", hr);
+        }
+    }
+
+    if (vtable == nullptr) {
+        vtable_version = 0;
+        vtable = *(void ***)swapchain;
+    }
+    LogInfo("Hooking swapchain vtable version: %d", vtable_version);
 /*
 | Index | Interface | Method | Description |
 |-------|-----------|--------|-------------|
@@ -1242,7 +1287,7 @@ bool HookSwapchain(IDXGISwapChain *swapchain) {
     // ============================================================================
     // GROUP 1: IDXGISwapChain1 (Extended Interface) - Indices 18-28
     // ============================================================================
-    {
+    if (vtable_version >= 1) {
         LogInfo("Hooking IDXGISwapChain1 methods (indices 18-28)");
 
         // Hook GetDesc1 (index 18) - Critical for IDXGISwapChain1
@@ -1289,7 +1334,7 @@ bool HookSwapchain(IDXGISwapChain *swapchain) {
     // ============================================================================
     // GROUP 2: IDXGISwapChain2 (Extended Interface) - Indices 29-35
     // ============================================================================
-    {
+    if (vtable_version >= 2) {
         LogInfo("Hooking IDXGISwapChain2 methods (indices 29-35)");
 
         // Hook IDXGISwapChain2 methods (29-35)
@@ -1319,7 +1364,7 @@ bool HookSwapchain(IDXGISwapChain *swapchain) {
     // ============================================================================
     // GROUP 3: IDXGISwapChain3 (Extended Interface) - Indices 36-39
     // ============================================================================
-    {
+    if (vtable_version >= 3) {
         LogInfo("Hooking IDXGISwapChain3 methods (indices 36-39)");
 
         // Hook IDXGISwapChain3 methods (36-39)
@@ -1344,7 +1389,7 @@ bool HookSwapchain(IDXGISwapChain *swapchain) {
     // ============================================================================
     // GROUP 4: IDXGISwapChain4 (Extended Interface) - Indices 40+
     // ============================================================================
-    {
+    if (vtable_version >= 4) {
         LogInfo("Hooking IDXGISwapChain4 methods (indices 40+)");
 
         // Hook SetHDRMetaData (index 40) - HDR metadata setting

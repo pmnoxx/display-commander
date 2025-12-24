@@ -188,8 +188,6 @@ HRESULT STDMETHODCALLTYPE IDXGIOutput_GetDesc_Detour(IDXGIOutput *This, DXGI_OUT
 // Hooked IDXGIOutput6 functions
 HRESULT STDMETHODCALLTYPE IDXGIOutput6_GetDesc1_Detour(IDXGIOutput6 *This, DXGI_OUTPUT_DESC1 *pDesc);
 
-// IDXGIOutput hooking function
-bool HookIDXGIOutput(IDXGIOutput *output);
 
 // Swapchain tracking management functions
 bool IsSwapchainTracked(IDXGISwapChain *swapchain);

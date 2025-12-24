@@ -777,6 +777,17 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetFullscreenState_Detour(IDXGISwapChai
         *pFullscreen = g_last_set_fullscreen_state.load();
     }
 
+    // Return proxy wrapper instead of hooking vtable
+    if (SUCCEEDED(hr) && ppTarget && *ppTarget) {
+        IDXGIOutput* originalOutput = *ppTarget;
+        IDXGIOutput6* wrappedOutput = display_commanderhooks::CreateOutputWrapper(originalOutput);
+        if (wrappedOutput != nullptr) {
+            // Release the original output and replace with wrapper
+            originalOutput->Release();
+            *ppTarget = wrappedOutput;
+        }
+    }
+
     return hr;
 }
 
@@ -798,9 +809,15 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetContainingOutput_Detour(IDXGISwapCha
 
     HRESULT hr = IDXGISwapChain_GetContainingOutput_Original(This, ppOutput);
 
-    // Hook the IDXGIOutput if we successfully got one
+    // Return proxy wrapper instead of hooking vtable
     if (SUCCEEDED(hr) && ppOutput && *ppOutput) {
-        HookIDXGIOutput(*ppOutput);
+        IDXGIOutput* originalOutput = *ppOutput;
+        IDXGIOutput6* wrappedOutput = display_commanderhooks::CreateOutputWrapper(originalOutput);
+        if (wrappedOutput != nullptr) {
+            // Release the original output and replace with wrapper
+            originalOutput->Release();
+            *ppOutput = wrappedOutput;
+        }
     }
 
     return hr;
@@ -850,7 +867,21 @@ BOOL STDMETHODCALLTYPE IDXGISwapChain_IsTemporaryMonoSupported_Detour(IDXGISwapC
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetRestrictToOutput_Detour(IDXGISwapChain1 *This, IDXGIOutput **ppRestrictToOutput) {
     g_dxgi_sc1_event_counters[DXGI_SC1_EVENT_GETRESTRICTTOOUTPUT].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
-    return IDXGISwapChain_GetRestrictToOutput_Original(This, ppRestrictToOutput);
+
+    HRESULT hr = IDXGISwapChain_GetRestrictToOutput_Original(This, ppRestrictToOutput);
+
+    // Return proxy wrapper instead of hooking vtable
+    if (SUCCEEDED(hr) && ppRestrictToOutput && *ppRestrictToOutput) {
+        IDXGIOutput* originalOutput = *ppRestrictToOutput;
+        IDXGIOutput6* wrappedOutput = display_commanderhooks::CreateOutputWrapper(originalOutput);
+        if (wrappedOutput != nullptr) {
+            // Release the original output and replace with wrapper
+            originalOutput->Release();
+            *ppRestrictToOutput = wrappedOutput;
+        }
+    }
+
+    return hr;
 }
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetBackgroundColor_Detour(IDXGISwapChain1 *This, const DXGI_RGBA *pColor) {
@@ -1066,92 +1097,6 @@ namespace {
     std::atomic<bool> g_dxgi_output_hooks_installed{false};
 } // namespace
 
-// Hook IDXGIOutput methods
-bool HookIDXGIOutput(IDXGIOutput *output) {
-    if (true) {
-        return true;
-    }
-    if (!output) {
-        return false;
-    }
-
-    // Check if we already hooked this output
-    static std::atomic<bool> output_hooked{false};
-    if (output_hooked.load()) {
-        return true;
-    }
-
-
-    // IDXGIOutput vtable layout:
-    // [0-2]   IUnknown methods
-    // [3-5]   IDXGIObject methods
-    // [6-7]   IDXGIDeviceSubObject methods
-    // [8]     IDXGIOutput::GetDesc
-    // [9]     IDXGIOutput::GetDisplayModeList
-    // [10]    IDXGIOutput::FindClosestMatchingMode
-    // [11]    IDXGIOutput::WaitForVBlank
-    // [12]    IDXGIOutput::TakeOwnership
-    // [13]    IDXGIOutput::ReleaseOwnership
-    // [14]    IDXGIOutput::GetGammaControlCapabilities
-    // [15]    IDXGIOutput::SetGammaControl
-    // [16]    IDXGIOutput::GetGammaControl
-    // [17]    IDXGIOutput::SetDisplaySurface
-    // [18]    IDXGIOutput::GetDisplaySurfaceData
-    // [19]    IDXGIOutput::GetFrameStatistics
-
-    LogInfo("Hooking IDXGIOutput methods");
-    // Hook IDXGIOutput6::GetDesc1 (index 27) - for HDR hiding
-    // First, QueryInterface for IDXGIOutput6 to get the extended interface
-    Microsoft::WRL::ComPtr<IDXGIOutput6> output6;
-    if (SUCCEEDED(output->QueryInterface(IID_PPV_ARGS(&output6))) && output6 != nullptr) {
-        void **output6_vtable = *(void ***)output6.Get();
-
-        if (MH_CreateHook(output6_vtable[8], IDXGIOutput_GetDesc_Detour, (LPVOID *)&IDXGIOutput_GetDesc_Original) != MH_OK) {
-            LogError("Failed to create IDXGIOutput::GetDesc hook");
-        } else {
-            LogInfo("IDXGIOutput::GetDesc hook created successfully");
-        }
-        if (MH_EnableHook(output6_vtable[8]) != MH_OK) {
-            LogError("Failed to enable IDXGIOutput::GetDesc hook");
-        } else {
-            LogInfo("IDXGIOutput::GetDesc hook created and enabled successfully");
-        }
-
-        if (!CreateAndEnableHook(output6_vtable[15], IDXGIOutput_SetGammaControl_Detour, (LPVOID *)&IDXGIOutput_SetGammaControl_Original, "IDXGIOutput::SetGammaControl")) {
-            LogError("Failed to create and enable IDXGIOutput::SetGammaControl hook");
-        } else {
-            LogInfo("IDXGIOutput::SetGammaControl hook created and enabled successfully");
-        }
-
-        if (MH_CreateHook(output6_vtable[16], IDXGIOutput_GetGammaControl_Detour, (LPVOID *)&IDXGIOutput_GetGammaControl_Original) != MH_OK) {
-            LogError("Failed to create IDXGIOutput::GetGammaControl hook");
-        } else {
-            LogInfo("IDXGIOutput::GetGammaControl hook created successfully");
-        }
-        if (MH_EnableHook(output6_vtable[16]) != MH_OK) {
-            LogError("Failed to enable IDXGIOutput::GetGammaControl hook");
-        } else {
-            LogInfo("IDXGIOutput::GetGammaControl hook created and enabled successfully");
-        }
-
-        if (MH_CreateHook(output6_vtable[27], IDXGIOutput6_GetDesc1_Detour, (LPVOID *)&IDXGIOutput6_GetDesc1_Original) != MH_OK) {
-            LogError("Failed to create IDXGIOutput6::GetDesc1 hook");
-        } else {
-            if (MH_EnableHook(output6_vtable[27]) != MH_OK) {
-                LogError("Failed to enable IDXGIOutput6::GetDesc1 hook");
-            } else {
-                LogInfo("IDXGIOutput6::GetDesc1 hook created and enabled successfully");
-            }
-        }
-    } else {
-        LogInfo("IDXGIOutput6 interface not available, skipping GetDesc1 hook");
-    }
-
-    output_hooked.store(true);
-    g_dxgi_output_hooks_installed.store(true);
-
-    return true;
-}
 
 // VTable hooking functions
 bool HookFactoryVTable(IDXGIFactory *factory);

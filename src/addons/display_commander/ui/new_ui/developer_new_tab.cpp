@@ -108,6 +108,7 @@ void DrawFeaturesEnabledByDefault() {
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Prevents windows from becoming always on top, even if they are moved or resized.");
     }
+    #if 0
     // LoadFromDllMain setting
     if (CheckboxSetting(settings::g_developerTabSettings.load_from_dll_main, "LoadFromDllMain (ReShade) (requires restart)")) {
         LogInfo("LoadFromDllMain setting changed to: %s",
@@ -122,6 +123,7 @@ void DrawFeaturesEnabledByDefault() {
             "When enabled, ReShade will load from DllMain instead of the normal loading process.\n"
             "This setting requires a game restart to take effect.");
     }
+    #endif
     #if 0
 
     // Load Streamline setting

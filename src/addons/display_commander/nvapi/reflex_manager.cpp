@@ -88,7 +88,7 @@ bool ReflexManager::ApplySleepMode(bool low_latency, bool boost, bool use_marker
     params.version = NV_SET_SLEEP_MODE_PARAMS_VER;
     params.bLowLatencyMode = low_latency ? NV_TRUE : NV_FALSE;
     params.bLowLatencyBoost = boost ? NV_TRUE : NV_FALSE;
-    params.bUseMarkersToOptimize = (use_markers ? NV_TRUE : NV_FALSE);
+    params.bUseMarkersToOptimize = NV_FALSE;
     params.minimumIntervalUs =
         fps_limit > 0.0f ? (UINT)(round(1000000.0 / fps_limit)) : 0;
 

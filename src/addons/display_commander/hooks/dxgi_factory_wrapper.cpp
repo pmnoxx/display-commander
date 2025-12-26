@@ -676,6 +676,12 @@ bool DXGIFactoryWrapper::ShouldInterceptSwapChainCreation() const {
 
 // Helper function to create an output wrapper
 IDXGIOutput6* CreateOutputWrapper(IDXGIOutput* output) {
+    // TODO: (fixme), this is wrong way to do it, there is memory leak here
+    // don't do anything if hide native hdr is disabled
+    if (!s_hide_hdr_capabilities.load()) {
+        return nullptr;
+    }
+
     if (output == nullptr) {
         LogWarn("CreateOutputWrapper: output is null");
         return nullptr;

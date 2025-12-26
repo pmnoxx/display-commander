@@ -1471,21 +1471,6 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                 "consistent - it prioritizes starting frame processing at the same time.\n\nVBlank Scanline Sync "
                 "synchronizes frame presentation with monitor refresh cycles for smooth frame pacing without VSync.");
         }
-        if (current_item == static_cast<int>(FpsLimiterMode::kOnPresentSync)
-            || current_item == static_cast<int>(FpsLimiterMode::kLatentSync)
-            || current_item == static_cast<int>(FpsLimiterMode::kNonReflexLowLatency)) {
-            // if DLSS-G is enabled warn that reflex fps limiter should be used, because this mode isn't aware of native
-            // frames
-
-            if (g_dlssg_enabled.load()) {
-                ImGui::TextColored(
-                    ui::colors::TEXT_WARNING, ICON_FK_WARNING
-                    " Warning: DLSS-G is enabled. Reflex FPS Limiter should be used instead of this mode.");
-                if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip("DLSS-G is enabled. Reflex FPS Limiter should be used instead of this mode.");
-                }
-            }
-        }
         if (current_item == static_cast<int>(FpsLimiterMode::kOnPresentSync)) {
             // Check if we're running on D3D9 and show warning
             int current_api = g_last_reshade_device_api.load();

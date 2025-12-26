@@ -950,7 +950,7 @@ void OverrideReShadeSettings() {
         LogInfo("ReShade settings override - LoadFromDllMain current ReShade value: %d", current_reshade_value);
 
         // Set LoadFromDllMain to 0 (first time only)
-        reshade::set_config_value(nullptr, "ADDON", "LoadFromDllMain", 0);
+        //reshade::set_config_value(nullptr, "ADDON", "LoadFromDllMain", 0);
         LogInfo("ReShade settings override - LoadFromDllMain set to 0 (first time)");
 
         // Mark that we've set it at least once

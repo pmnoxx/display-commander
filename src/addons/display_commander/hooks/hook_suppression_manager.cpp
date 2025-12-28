@@ -1,6 +1,7 @@
 #include "hook_suppression_manager.hpp"
 #include "../settings/hook_suppression_settings.hpp"
 #include "../utils/logging.hpp"
+#include <set>
 
 namespace display_commanderhooks {
 
@@ -9,7 +10,149 @@ HookSuppressionManager& HookSuppressionManager::GetInstance() {
     return instance;
 }
 
+namespace {
+// Helper function to get the setting reference for a hook type
+ui::new_ui::SettingBase* GetSuppressionSetting(HookType hookType) {
+    switch (hookType) {
+        case HookType::DXGI_FACTORY:
+            return &settings::g_hook_suppression_settings.suppress_dxgi_factory_hooks;
+        case HookType::DXGI_SWAPCHAIN:
+            return &settings::g_hook_suppression_settings.suppress_dxgi_swapchain_hooks;
+        case HookType::D3D_DEVICE:
+            return &settings::g_hook_suppression_settings.suppress_d3d_device_hooks;
+        case HookType::XINPUT:
+            return &settings::g_hook_suppression_settings.suppress_xinput_hooks;
+        case HookType::DINPUT:
+            return &settings::g_hook_suppression_settings.suppress_dinput_hooks;
+        case HookType::STREAMLINE:
+            return &settings::g_hook_suppression_settings.suppress_streamline_hooks;
+        case HookType::NGX:
+            return &settings::g_hook_suppression_settings.suppress_ngx_hooks;
+        case HookType::WINDOWS_GAMING_INPUT:
+            return &settings::g_hook_suppression_settings.suppress_windows_gaming_input_hooks;
+        case HookType::HID:
+            return &settings::g_hook_suppression_settings.suppress_hid_hooks;
+        case HookType::API:
+            return &settings::g_hook_suppression_settings.suppress_api_hooks;
+        case HookType::WINDOW_API:
+            return &settings::g_hook_suppression_settings.suppress_window_api_hooks;
+        case HookType::SLEEP:
+            return &settings::g_hook_suppression_settings.suppress_sleep_hooks;
+        case HookType::TIMESLOWDOWN:
+            return &settings::g_hook_suppression_settings.suppress_timeslowdown_hooks;
+        case HookType::DEBUG_OUTPUT:
+            return &settings::g_hook_suppression_settings.suppress_debug_output_hooks;
+        case HookType::LOADLIBRARY:
+            return &settings::g_hook_suppression_settings.suppress_loadlibrary_hooks;
+        case HookType::DISPLAY_SETTINGS:
+            return &settings::g_hook_suppression_settings.suppress_display_settings_hooks;
+        case HookType::WINDOWS_MESSAGE:
+            return &settings::g_hook_suppression_settings.suppress_windows_message_hooks;
+        case HookType::OPENGL:
+            return &settings::g_hook_suppression_settings.suppress_opengl_hooks;
+        case HookType::HID_SUPPRESSION:
+            return &settings::g_hook_suppression_settings.suppress_hid_suppression_hooks;
+        case HookType::NVAPI:
+            return &settings::g_hook_suppression_settings.suppress_nvapi_hooks;
+        case HookType::PROCESS_EXIT:
+            return &settings::g_hook_suppression_settings.suppress_process_exit_hooks;
+        case HookType::WINDOW_PROC:
+            return &settings::g_hook_suppression_settings.suppress_window_proc_hooks;
+        default:
+            return nullptr;
+    }
+}
+} // anonymous namespace
+
 bool HookSuppressionManager::ShouldSuppressHook(HookType hookType) {
+    // Log suppression hint once per hook type (only if setting is not already enabled)
+    static std::set<HookType> logged_hook_types;
+    if (!logged_hook_types.contains(hookType)) {
+        ui::new_ui::SettingBase* setting = GetSuppressionSetting(hookType);
+        if (setting != nullptr) {
+            // Get current value to check if already suppressed
+            bool current_value = false;
+            switch (hookType) {
+                case HookType::DXGI_FACTORY:
+                    current_value = settings::g_hook_suppression_settings.suppress_dxgi_factory_hooks.GetValue();
+                    break;
+                case HookType::DXGI_SWAPCHAIN:
+                    current_value = settings::g_hook_suppression_settings.suppress_dxgi_swapchain_hooks.GetValue();
+                    break;
+                case HookType::D3D_DEVICE:
+                    current_value = settings::g_hook_suppression_settings.suppress_d3d_device_hooks.GetValue();
+                    break;
+                case HookType::XINPUT:
+                    current_value = settings::g_hook_suppression_settings.suppress_xinput_hooks.GetValue();
+                    break;
+                case HookType::DINPUT:
+                    current_value = settings::g_hook_suppression_settings.suppress_dinput_hooks.GetValue();
+                    break;
+                case HookType::STREAMLINE:
+                    current_value = settings::g_hook_suppression_settings.suppress_streamline_hooks.GetValue();
+                    break;
+                case HookType::NGX:
+                    current_value = settings::g_hook_suppression_settings.suppress_ngx_hooks.GetValue();
+                    break;
+                case HookType::WINDOWS_GAMING_INPUT:
+                    current_value = settings::g_hook_suppression_settings.suppress_windows_gaming_input_hooks.GetValue();
+                    break;
+                case HookType::HID:
+                    current_value = settings::g_hook_suppression_settings.suppress_hid_hooks.GetValue();
+                    break;
+                case HookType::API:
+                    current_value = settings::g_hook_suppression_settings.suppress_api_hooks.GetValue();
+                    break;
+                case HookType::WINDOW_API:
+                    current_value = settings::g_hook_suppression_settings.suppress_window_api_hooks.GetValue();
+                    break;
+                case HookType::SLEEP:
+                    current_value = settings::g_hook_suppression_settings.suppress_sleep_hooks.GetValue();
+                    break;
+                case HookType::TIMESLOWDOWN:
+                    current_value = settings::g_hook_suppression_settings.suppress_timeslowdown_hooks.GetValue();
+                    break;
+                case HookType::DEBUG_OUTPUT:
+                    current_value = settings::g_hook_suppression_settings.suppress_debug_output_hooks.GetValue();
+                    break;
+                case HookType::LOADLIBRARY:
+                    current_value = settings::g_hook_suppression_settings.suppress_loadlibrary_hooks.GetValue();
+                    break;
+                case HookType::DISPLAY_SETTINGS:
+                    current_value = settings::g_hook_suppression_settings.suppress_display_settings_hooks.GetValue();
+                    break;
+                case HookType::WINDOWS_MESSAGE:
+                    current_value = settings::g_hook_suppression_settings.suppress_windows_message_hooks.GetValue();
+                    break;
+                case HookType::OPENGL:
+                    current_value = settings::g_hook_suppression_settings.suppress_opengl_hooks.GetValue();
+                    break;
+                case HookType::HID_SUPPRESSION:
+                    current_value = settings::g_hook_suppression_settings.suppress_hid_suppression_hooks.GetValue();
+                    break;
+                case HookType::NVAPI:
+                    current_value = settings::g_hook_suppression_settings.suppress_nvapi_hooks.GetValue();
+                    break;
+                case HookType::PROCESS_EXIT:
+                    current_value = settings::g_hook_suppression_settings.suppress_process_exit_hooks.GetValue();
+                    break;
+                case HookType::WINDOW_PROC:
+                    current_value = settings::g_hook_suppression_settings.suppress_window_proc_hooks.GetValue();
+                    break;
+                default:
+                    break;
+            }
+
+            if (!current_value) {
+                LogInfo("To suppress %s hooks, set %s=1 in [%s] section of DisplayCommander.ini",
+                        GetHookTypeName(hookType).c_str(),
+                        setting->GetKey().c_str(),
+                        setting->GetSection().c_str());
+            }
+            logged_hook_types.insert(hookType);
+        }
+    }
+
     switch (hookType) {
         case HookType::DXGI_FACTORY:
             return settings::g_hook_suppression_settings.suppress_dxgi_factory_hooks.GetValue();

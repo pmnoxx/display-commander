@@ -200,6 +200,13 @@ void ApplyWindowChange(HWND hwnd, const char* reason, bool force_apply) {
         return;
     }
 
+    // Log suppression hint once (only if setting is not already enabled)
+    static bool suppression_hint_logged = false;
+    if (!suppression_hint_logged && !settings::g_developerTabSettings.suppress_window_changes.GetValue()) {
+        LogInfo("To suppress ApplyWindowChange, set SuppressWindowChanges=1 in [DisplayCommander] section of DisplayCommander.ini");
+        suppression_hint_logged = true;
+    }
+
     // First calculate the desired window state
     CalculateWindowState(hwnd, reason);
 

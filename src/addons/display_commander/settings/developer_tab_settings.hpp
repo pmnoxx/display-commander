@@ -103,6 +103,9 @@ class DeveloperTabSettings {
     // Window management compatibility setting
     BoolSetting suppress_window_changes;
 
+    // PresentMon ETW tracing setting
+    BoolSetting enable_presentmon_tracing;
+
     // Get all settings for bulk operations
     std::vector<SettingBase*> GetAllSettings();
 };

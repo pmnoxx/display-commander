@@ -12,6 +12,7 @@
 #include "latency/latency_manager.hpp"
 #include "latent_sync/refresh_rate_monitor_integration.hpp"
 #include "nvapi/nvapi_fullscreen_prevention.hpp"
+#include "presentmon/presentmon_manager.hpp"
 #include "process_exit_hooks.hpp"
 #include "settings/developer_tab_settings.hpp"
 #include "settings/experimental_tab_settings.hpp"
@@ -1340,6 +1341,11 @@ void DoInitializationWithoutHwnd(HMODULE h_module, DWORD fdw_reason) {
 
     HandleSafemode();
 
+    // Initialize PresentMon if enabled
+    if (settings::g_developerTabSettings.enable_presentmon_tracing.GetValue()) {
+        presentmon::g_presentMonManager.StartWorker();
+    }
+
     // Pin the module to prevent premature unload
     HMODULE pinned_module = nullptr;
     if (GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_PIN,
@@ -1521,6 +1527,9 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
 
             // Clean up fake NVAPI
             nvapi::g_fakeNvapiManager.Cleanup();
+
+            // Clean up PresentMon
+            presentmon::g_presentMonManager.StopWorker();
 
             // Note: reshade::unregister_addon() will automatically unregister all events and overlays
             // registered by this add-on, so manual unregistration is not needed and can cause issues

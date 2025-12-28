@@ -19,6 +19,7 @@
 #include "../../settings/experimental_tab_settings.hpp"
 #include "../../settings/main_tab_settings.hpp"
 #include "../../swapchain_events.hpp"
+#include "../../presentmon/presentmon_manager.hpp"
 #include "../../utils.hpp"
 #include "../../utils/logging.hpp"
 #include "../../utils/overlay_window_detector.hpp"
@@ -2343,6 +2344,133 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                         ImGui::Text("Fullscreen: %s", desc.fullscreen_state ? "Yes" : "No");
                         if (desc.fullscreen_state && desc.fullscreen_refresh_rate > 0) {
                             ImGui::Text("Refresh Rate: %.2f Hz", desc.fullscreen_refresh_rate);
+                        }
+
+                        // PresentMon Flip State (separate from DXGI query)
+                        ImGui::Separator();
+                        ImGui::Spacing();
+                        if (ImGui::CollapsingHeader("PresentMon ETW Flip State & Debug Info", ImGuiTreeNodeFlags_DefaultOpen)) {
+                            ImGui::Indent();
+
+                            presentmon::PresentMonFlipState pm_flip_state;
+                            presentmon::PresentMonDebugInfo pm_debug_info;
+                            bool has_pm_flip_state = presentmon::g_presentMonManager.GetFlipState(pm_flip_state);
+                            presentmon::g_presentMonManager.GetDebugInfo(pm_debug_info);
+
+                            // PresentMon Flip State
+                            ImGui::TextColored(ui::colors::TEXT_LABEL, "PresentMon Flip State:");
+                            if (has_pm_flip_state) {
+                                const char* pm_flip_str = DxgiBypassModeToString(pm_flip_state.flip_mode);
+                                ImVec4 pm_flip_color;
+                                if (pm_flip_state.flip_mode == DxgiBypassMode::kComposed) {
+                                    pm_flip_color = ui::colors::FLIP_COMPOSED;
+                                } else if (pm_flip_state.flip_mode == DxgiBypassMode::kOverlay
+                                          || pm_flip_state.flip_mode == DxgiBypassMode::kIndependentFlip) {
+                                    pm_flip_color = ui::colors::FLIP_INDEPENDENT;
+                                } else {
+                                    pm_flip_color = ui::colors::FLIP_UNKNOWN;
+                                }
+
+                                ImGui::TextColored(pm_flip_color, "  %s", pm_flip_str);
+                                if (!pm_flip_state.present_mode_str.empty()) {
+                                    ImGui::Text("  Mode: %s", pm_flip_state.present_mode_str.c_str());
+                                }
+                                if (!pm_flip_state.debug_info.empty()) {
+                                    ImGui::TextColored(ui::colors::TEXT_DIMMED, "  Info: %s", pm_flip_state.debug_info.c_str());
+                                }
+
+                                // Show age of data
+                                LONGLONG now_ns = utils::get_now_ns();
+                                LONGLONG age_ns = now_ns - static_cast<LONGLONG>(pm_flip_state.last_update_time);
+                                double age_ms = static_cast<double>(age_ns) / 1000000.0;
+                                if (age_ms < 1000.0) {
+                                    ImGui::TextColored(ui::colors::TEXT_SUCCESS, "  Age: %.1f ms", age_ms);
+                                } else {
+                                    ImGui::TextColored(ui::colors::TEXT_WARNING, "  Age: %.1f s (stale)", age_ms / 1000.0);
+                                }
+                            } else {
+                                ImGui::TextColored(ui::colors::TEXT_DIMMED, "  No flip state data available");
+                                ImGui::TextColored(ui::colors::TEXT_DIMMED, "  Waiting for a PresentMode-like ETW property/event");
+                                if (!pm_debug_info.last_present_mode_value.empty()) {
+                                    ImGui::TextColored(ui::colors::TEXT_DIMMED, "  Last PresentMode-like: %s", pm_debug_info.last_present_mode_value.c_str());
+                                }
+                            }
+
+                            ImGui::Spacing();
+
+                            // PresentMon Debug Info
+                            ImGui::TextColored(ui::colors::TEXT_LABEL, "PresentMon Debug Info:");
+
+                            // Thread status
+                            ImGui::Text("  Thread Status: %s", pm_debug_info.thread_status.c_str());
+                            if (pm_debug_info.is_running) {
+                                ImGui::SameLine();
+                                ImGui::TextColored(ui::colors::TEXT_SUCCESS, ICON_FK_OK);
+                            } else {
+                                ImGui::SameLine();
+                                ImGui::TextColored(ui::colors::TEXT_ERROR, ICON_FK_CANCEL);
+                            }
+
+                            // ETW Session status
+                            ImGui::Text("  ETW Session: %s", pm_debug_info.etw_session_status.c_str());
+                            if (pm_debug_info.etw_session_active) {
+                                ImGui::SameLine();
+                                ImGui::TextColored(ui::colors::TEXT_SUCCESS, ICON_FK_OK);
+                            } else {
+                                ImGui::SameLine();
+                                ImGui::TextColored(ui::colors::TEXT_WARNING, ICON_FK_WARNING);
+                            }
+
+                            // Events processed
+                            if (pm_debug_info.events_processed > 0) {
+                                ImGui::Text("  Events Processed: %llu", pm_debug_info.events_processed);
+                                if (pm_debug_info.events_lost > 0) {
+                                    ImGui::TextColored(ui::colors::TEXT_WARNING, "  Events Lost: %llu", pm_debug_info.events_lost);
+                                }
+
+                                // Last event time
+                                if (pm_debug_info.last_event_time > 0) {
+                                    LONGLONG now_ns = utils::get_now_ns();
+                                    LONGLONG age_ns = now_ns - static_cast<LONGLONG>(pm_debug_info.last_event_time);
+                                    double age_ms = static_cast<double>(age_ns) / 1000000.0;
+                                    if (age_ms < 1000.0) {
+                                        ImGui::TextColored(ui::colors::TEXT_SUCCESS, "  Last Event: %.1f ms ago", age_ms);
+                                    } else {
+                                        ImGui::TextColored(ui::colors::TEXT_WARNING, "  Last Event: %.1f s ago", age_ms / 1000.0);
+                                    }
+                                }
+                            } else {
+                                ImGui::TextColored(ui::colors::TEXT_DIMMED, "  Events Processed: 0 (ETW not active)");
+                            }
+
+                            // Error information
+                            if (!pm_debug_info.last_error.empty()) {
+                                ImGui::Spacing();
+                                ImGui::TextColored(ui::colors::TEXT_ERROR, "  Error: %s", pm_debug_info.last_error.c_str());
+                            }
+
+                            // Why PresentMon might not be working
+                            ImGui::Spacing();
+                            ImGui::Separator();
+                            ImGui::TextColored(ui::colors::TEXT_LABEL, "Troubleshooting:");
+
+                            if (!pm_debug_info.is_running) {
+                                ImGui::BulletText("PresentMon thread is not running");
+                                ImGui::BulletText("Check Developer tab -> Enable PresentMon ETW Tracing");
+                            } else if (!pm_debug_info.etw_session_active) {
+                                ImGui::BulletText("ETW session is not active");
+                                ImGui::BulletText("You may need admin or Performance Log Users group membership");
+                            } else if (pm_debug_info.events_processed == 0) {
+                                ImGui::BulletText("No events processed yet");
+                                ImGui::BulletText("ETW session may need time to initialize");
+                            } else if (pm_debug_info.events_lost > 0) {
+                                ImGui::BulletText("Events are being lost - ETW buffer may be too small");
+                                ImGui::BulletText("Check Windows Event Viewer for ETW errors");
+                            } else {
+                                ImGui::BulletText("PresentMon appears to be working correctly");
+                            }
+
+                            ImGui::Unindent();
                         }
 
                         // Present flags (for DXGI)

@@ -2,6 +2,7 @@
 #include "../../globals.hpp"
 #include "../../nvapi/fake_nvapi_manager.hpp"
 #include "../../nvapi/nvapi_fullscreen_prevention.hpp"
+#include "../../presentmon/presentmon_manager.hpp"
 #include "../../res/forkawesome.h"
 #include "../../res/ui_colors.hpp"
 #include "../../settings/developer_tab_settings.hpp"
@@ -264,6 +265,296 @@ void DrawDeveloperSettings() {
             "When enabled, ApplyWindowChange will not be called automatically.\n"
             "This is a compatibility feature for cases where automatic window management causes issues.\n\n"
             "Default: disabled (window changes are applied automatically).");
+    }
+
+    ImGui::Spacing();
+
+    // PresentMon ETW Tracing setting
+    if (CheckboxSetting(settings::g_developerTabSettings.enable_presentmon_tracing, "Enable PresentMon ETW Tracing")) {
+        LogInfo("PresentMon ETW tracing setting changed to: %s",
+                settings::g_developerTabSettings.enable_presentmon_tracing.GetValue() ? "enabled" : "disabled");
+
+        // Start or stop PresentMon based on setting
+        if (settings::g_developerTabSettings.enable_presentmon_tracing.GetValue()) {
+            presentmon::g_presentMonManager.StartWorker();
+        } else {
+            presentmon::g_presentMonManager.StopWorker();
+        }
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip(
+            "Enable PresentMon ETW (Event Tracing for Windows) tracing for presentation tracking.\n"
+            "Similar to Special-K's PresentMon integration.\n\n"
+            "FEATURES:\n"
+            "- Tracks presentation timing and frame pacing\n"
+            "- Provides latency and flip information\n"
+            "- Useful for VRR indicator on D3D12 games\n"
+            "- Required for accurate presentation stats on non-NVIDIA hardware\n\n"
+            "STATUS:\n"
+            "- ETW session is started in a background thread\n"
+            "- Flip mode is best-effort (depends on ETW provider fields)\n"
+            "- Default: enabled\n\n"
+            "Note: Requires appropriate Windows permissions for ETW tracing.");
+    }
+
+    // Show PresentMon status
+    if (presentmon::g_presentMonManager.IsRunning()) {
+        ImGui::SameLine();
+        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), ICON_FK_OK " ACTIVE");
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("PresentMon worker thread is currently running.");
+        }
+
+        // Show detailed debug info when active in developer tab
+        ImGui::Indent();
+        presentmon::PresentMonFlipState pm_flip_state;
+        presentmon::PresentMonDebugInfo pm_debug_info;
+        bool has_pm_flip_state = presentmon::g_presentMonManager.GetFlipState(pm_flip_state);
+        presentmon::g_presentMonManager.GetDebugInfo(pm_debug_info);
+
+        ImGui::TextColored(ui::colors::TEXT_LABEL, "ETW Status:");
+        ImGui::SameLine();
+        ImGui::Text("%s", pm_debug_info.etw_session_status.c_str());
+
+        if (!pm_debug_info.last_error.empty()) {
+            ImGui::TextColored(ui::colors::TEXT_ERROR, "Last Error: %s", pm_debug_info.last_error.c_str());
+        }
+
+        ImGui::TextColored(ui::colors::TEXT_LABEL, "Events:");
+        ImGui::SameLine();
+        ImGui::Text("%llu (pid=%llu)",
+                    static_cast<unsigned long long>(pm_debug_info.events_processed),
+                    static_cast<unsigned long long>(pm_debug_info.events_processed_for_current_pid));
+
+        ImGui::TextColored(ui::colors::TEXT_LABEL, "Last Event PID:");
+        ImGui::SameLine();
+        ImGui::Text("%u", static_cast<unsigned int>(pm_debug_info.last_event_pid));
+
+        ImGui::TextColored(ui::colors::TEXT_LABEL, "Providers:");
+        ImGui::SameLine();
+        ImGui::Text("DxgKrnl=%llu, DXGI=%llu, DWM=%llu",
+                    static_cast<unsigned long long>(pm_debug_info.events_dxgkrnl),
+                    static_cast<unsigned long long>(pm_debug_info.events_dxgi),
+                    static_cast<unsigned long long>(pm_debug_info.events_dwm));
+
+        if (!pm_debug_info.last_graphics_provider.empty()) {
+            ImGui::TextColored(ui::colors::TEXT_LABEL, "Last Graphics Event:");
+            ImGui::SameLine();
+            ImGui::Text("%s | id=%u | pid=%u",
+                        pm_debug_info.last_graphics_provider.c_str(),
+                        static_cast<unsigned int>(pm_debug_info.last_graphics_event_id),
+                        static_cast<unsigned int>(pm_debug_info.last_graphics_event_pid));
+        }
+        if (!pm_debug_info.last_graphics_provider_name.empty() || !pm_debug_info.last_graphics_event_name.empty()) {
+            ImGui::TextColored(ui::colors::TEXT_LABEL, "Graphics Schema:");
+            ImGui::SameLine();
+            ImGui::Text("%s :: %s",
+                        pm_debug_info.last_graphics_provider_name.empty() ? "(unknown provider)" : pm_debug_info.last_graphics_provider_name.c_str(),
+                        pm_debug_info.last_graphics_event_name.empty() ? "(unknown event)" : pm_debug_info.last_graphics_event_name.c_str());
+        }
+        ImGui::TextColored(ui::colors::TEXT_LABEL, "Graphics Props:");
+        ImGui::SameLine();
+        if (!pm_debug_info.last_graphics_props.empty()) {
+            ImGui::TextWrapped("%s", pm_debug_info.last_graphics_props.c_str());
+        } else {
+            ImGui::TextColored(ui::colors::TEXT_DIMMED, "(none)");
+        }
+
+        if (!pm_debug_info.last_provider.empty()) {
+            ImGui::TextColored(ui::colors::TEXT_LABEL, "Last Event:");
+            ImGui::SameLine();
+            ImGui::Text("%s | id=%u", pm_debug_info.last_provider.c_str(), static_cast<unsigned int>(pm_debug_info.last_event_id));
+        }
+        if (!pm_debug_info.last_provider_name.empty() || !pm_debug_info.last_event_name.empty()) {
+            ImGui::TextColored(ui::colors::TEXT_LABEL, "Schema:");
+            ImGui::SameLine();
+            ImGui::Text("%s :: %s",
+                        pm_debug_info.last_provider_name.empty() ? "(unknown provider)" : pm_debug_info.last_provider_name.c_str(),
+                        pm_debug_info.last_event_name.empty() ? "(unknown event)" : pm_debug_info.last_event_name.c_str());
+        }
+        if (!pm_debug_info.last_interesting_props.empty()) {
+            ImGui::TextColored(ui::colors::TEXT_LABEL, "Props:");
+            ImGui::SameLine();
+            ImGui::TextWrapped("%s", pm_debug_info.last_interesting_props.c_str());
+        }
+        if (!pm_debug_info.last_present_mode_value.empty()) {
+            ImGui::TextColored(ui::colors::TEXT_LABEL, "Last PresentMode:");
+            ImGui::SameLine();
+            ImGui::Text("%s", pm_debug_info.last_present_mode_value.c_str());
+        }
+
+        if (has_pm_flip_state) {
+            ImGui::TextColored(ui::colors::TEXT_LABEL, "Flip Mode:");
+            ImGui::SameLine();
+            ImGui::Text("%s", pm_flip_state.present_mode_str.c_str());
+        } else {
+            ImGui::TextColored(ui::colors::TEXT_DIMMED, "Flip Mode: (No data yet)");
+        }
+
+        // DWM Flip Compatibility (separate from flip-state)
+        presentmon::PresentMonFlipCompatibility pm_flip_compat;
+        if (presentmon::g_presentMonManager.GetFlipCompatibility(pm_flip_compat)) {
+            ImGui::Spacing();
+            if (ImGui::CollapsingHeader("Flip Compatibility (DWM)", ImGuiTreeNodeFlags_DefaultOpen)) {
+                ImGui::Indent();
+
+                // Age
+                LONGLONG now_ns = utils::get_now_ns();
+                double age_ms =
+                    static_cast<double>(now_ns - static_cast<LONGLONG>(pm_flip_compat.last_update_time_ns)) / 1000000.0;
+                ImGui::TextColored(ui::colors::TEXT_DIMMED, "Last update: %.1f ms ago", age_ms);
+
+                ImGui::Text("surfaceLuid: 0x%llx", static_cast<unsigned long long>(pm_flip_compat.surface_luid));
+                ImGui::Text("Surface: %ux%u  PixelFormat=%u  ColorSpace=%u  Flags=0x%x",
+                            pm_flip_compat.surface_width, pm_flip_compat.surface_height,
+                            pm_flip_compat.pixel_format, pm_flip_compat.color_space, pm_flip_compat.flags);
+
+                auto show_bool = [](const char* label, bool v) {
+                    ImGui::Text("%s: %s", label, v ? "Yes" : "No");
+                };
+
+                show_bool("IsDirectFlipCompatible", pm_flip_compat.is_direct_flip_compatible);
+                show_bool("IsAdvancedDirectFlipCompatible", pm_flip_compat.is_advanced_direct_flip_compatible);
+                show_bool("IsOverlayCompatible", pm_flip_compat.is_overlay_compatible);
+                show_bool("IsOverlayRequired", pm_flip_compat.is_overlay_required);
+                show_bool("fNoOverlappingContent", pm_flip_compat.no_overlapping_content);
+
+                ImGui::Spacing();
+                if (ImGui::CollapsingHeader("Recent surfaces (last 10s)", ImGuiTreeNodeFlags_DefaultOpen)) {
+                    std::vector<presentmon::PresentMonSurfaceCompatibilitySummary> surfaces;
+                    presentmon::g_presentMonManager.GetRecentFlipCompatibilitySurfaces(surfaces, 10000);
+
+                    ImGui::TextColored(ui::colors::TEXT_DIMMED, "Surfaces: %d", static_cast<int>(surfaces.size()));
+
+                    if (ImGui::BeginTable("##pm_surfaces", 10,
+                                          ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders | ImGuiTableFlags_SizingFixedFit
+                                              | ImGuiTableFlags_ScrollY,
+                                          ImVec2(0, 260))) {
+                        ImGui::TableSetupColumn("Age(ms)");
+                        ImGui::TableSetupColumn("surfaceLuid");
+                        ImGui::TableSetupColumn("hwnd");
+                        ImGui::TableSetupColumn("WxH");
+                        ImGui::TableSetupColumn("PF");
+                        ImGui::TableSetupColumn("CS");
+                        ImGui::TableSetupColumn("Flags");
+                        ImGui::TableSetupColumn("Direct");
+                        ImGui::TableSetupColumn("Overlay");
+                        ImGui::TableSetupColumn("Count");
+                        ImGui::TableHeadersRow();
+
+                        for (const auto& s : surfaces) {
+                            const double age_ms =
+                                static_cast<double>(now_ns - static_cast<LONGLONG>(s.last_update_time_ns)) / 1000000.0;
+
+                            ImGui::TableNextRow();
+
+                            ImGui::TableSetColumnIndex(0);
+                            ImGui::Text("%.0f", age_ms);
+
+                            ImGui::TableSetColumnIndex(1);
+                            ImGui::Text("0x%llx", static_cast<unsigned long long>(s.surface_luid));
+
+                            ImGui::TableSetColumnIndex(2);
+                            if (s.hwnd != 0) {
+                                ImGui::Text("0x%llx", static_cast<unsigned long long>(s.hwnd));
+                            } else {
+                                ImGui::TextColored(ui::colors::TEXT_DIMMED, "(unknown)");
+                            }
+
+                            ImGui::TableSetColumnIndex(3);
+                            ImGui::Text("%ux%u", s.surface_width, s.surface_height);
+
+                            ImGui::TableSetColumnIndex(4);
+                            ImGui::Text("%u", s.pixel_format);
+
+                            ImGui::TableSetColumnIndex(5);
+                            ImGui::Text("%u", s.color_space);
+
+                            ImGui::TableSetColumnIndex(6);
+                            ImGui::Text("0x%x", s.flags);
+
+                            ImGui::TableSetColumnIndex(7);
+                            ImGui::Text("%s%s",
+                                        s.is_direct_flip_compatible ? "Y" : "N",
+                                        s.is_advanced_direct_flip_compatible ? " (adv)" : "");
+
+                            ImGui::TableSetColumnIndex(8);
+                            ImGui::Text("%s%s",
+                                        s.is_overlay_compatible ? "Y" : "N",
+                                        s.is_overlay_required ? " (req)" : "");
+
+                            ImGui::TableSetColumnIndex(9);
+                            ImGui::Text("%llu", static_cast<unsigned long long>(s.count));
+                        }
+
+                        ImGui::EndTable();
+                    }
+                }
+
+                ImGui::Unindent();
+            }
+        }
+
+        ImGui::Spacing();
+        if (ImGui::CollapsingHeader("ETW Event Type Explorer (Debug)", ImGuiTreeNodeFlags_None)) {
+            static bool s_graphics_only = true;
+            ImGui::Checkbox("Graphics-only (DxgKrnl/DXGI/DWM)", &s_graphics_only);
+
+            std::vector<presentmon::PresentMonEventTypeSummary> types;
+            presentmon::g_presentMonManager.GetEventTypeSummaries(types, s_graphics_only);
+
+            ImGui::TextColored(ui::colors::TEXT_DIMMED, "Cached event types: %d", static_cast<int>(types.size()));
+
+            if (ImGui::BeginTable("##pm_event_types", 7, ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders | ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_ScrollY, ImVec2(0, 2220))) {
+                ImGui::TableSetupColumn("Count");
+                ImGui::TableSetupColumn("Provider");
+                ImGui::TableSetupColumn("EventId");
+                ImGui::TableSetupColumn("Task");
+                ImGui::TableSetupColumn("Op");
+                ImGui::TableSetupColumn("Keyword");
+                ImGui::TableSetupColumn("Props", ImGuiTableColumnFlags_WidthFixed, 600.0f);
+                ImGui::TableHeadersRow();
+
+                const int max_rows = 200;
+                int rows = 0;
+                for (const auto& t : types) {
+                    if (rows++ >= max_rows) break;
+                    ImGui::TableNextRow();
+
+                    ImGui::TableSetColumnIndex(0);
+                    ImGui::Text("%llu", static_cast<unsigned long long>(t.count));
+
+                    ImGui::TableSetColumnIndex(1);
+                    if (!t.provider_name.empty()) {
+                        ImGui::Text("%s", t.provider_name.c_str());
+                    } else {
+                        ImGui::Text("%s", t.provider_guid.c_str());
+                    }
+                    if (!t.event_name.empty() && ImGui::IsItemHovered()) {
+                        ImGui::SetTooltip("%s", t.event_name.c_str());
+                    }
+
+                    ImGui::TableSetColumnIndex(2);
+                    ImGui::Text("%u", static_cast<unsigned int>(t.event_id));
+
+                    ImGui::TableSetColumnIndex(3);
+                    ImGui::Text("%u", static_cast<unsigned int>(t.task));
+
+                    ImGui::TableSetColumnIndex(4);
+                    ImGui::Text("%u", static_cast<unsigned int>(t.opcode));
+
+                    ImGui::TableSetColumnIndex(5);
+                    ImGui::Text("0x%llx", static_cast<unsigned long long>(t.keyword));
+
+                    ImGui::TableSetColumnIndex(6);
+                    ImGui::TextWrapped("%s", t.props.empty() ? "(no schema/props)" : t.props.c_str());
+                }
+
+                ImGui::EndTable();
+            }
+        }
+
+        ImGui::Unindent();
     }
 
     ImGui::Spacing();

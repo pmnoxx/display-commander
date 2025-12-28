@@ -253,6 +253,21 @@ void DrawDeveloperSettings() {
 
     ImGui::Spacing();
 
+    // Suppress Window Changes setting
+    if (CheckboxSetting(settings::g_developerTabSettings.suppress_window_changes, "Suppress Window Changes")) {
+        LogInfo("Suppress Window Changes setting changed to: %s",
+                settings::g_developerTabSettings.suppress_window_changes.GetValue() ? "enabled" : "disabled");
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip(
+            "Suppresses automatic window position, size, and style changes from continuous monitoring.\n"
+            "When enabled, ApplyWindowChange will not be called automatically.\n"
+            "This is a compatibility feature for cases where automatic window management causes issues.\n\n"
+            "Default: disabled (window changes are applied automatically).");
+    }
+
+    ImGui::Spacing();
+
     // Debug Layer checkbox with warning
     ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f), ICON_FK_WARNING);
     ImGui::SameLine();

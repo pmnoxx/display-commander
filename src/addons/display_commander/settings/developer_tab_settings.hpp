@@ -100,6 +100,9 @@ class DeveloperTabSettings {
     // Discord Overlay auto-hide setting
     BoolSetting auto_hide_discord_overlay;
 
+    // Window management compatibility setting
+    BoolSetting suppress_window_changes;
+
     // Get all settings for bulk operations
     std::vector<SettingBase*> GetAllSettings();
 };

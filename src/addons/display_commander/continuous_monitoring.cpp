@@ -134,7 +134,10 @@ void check_is_background() {
         }
 
         // Apply window changes - the function will automatically determine what needs to be changed
-        ApplyWindowChange(hwnd, "continuous_monitoring_auto_fix");
+        // Skip if suppress_window_changes is enabled (compatibility feature)
+        if (!settings::g_developerTabSettings.suppress_window_changes.GetValue()) {
+            ApplyWindowChange(hwnd, "continuous_monitoring_auto_fix");
+        }
 
         if (s_background_feature_enabled.load()) {
             // Only create/update background window if main window has focus

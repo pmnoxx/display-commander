@@ -89,7 +89,8 @@ DeveloperTabSettings::DeveloperTabSettings()
       suppress_minhook("SuppressMinhook", false, "DisplayCommander"),
       debug_layer_enabled("DebugLayerEnabled", false, "DisplayCommander"),
       debug_break_on_severity("DebugBreakOnSeverity", false, "DisplayCommander"),
-      auto_hide_discord_overlay("AutoHideDiscordOverlay", true, "DisplayCommander") {}
+      auto_hide_discord_overlay("AutoHideDiscordOverlay", true, "DisplayCommander"),
+      suppress_window_changes("SuppressWindowChanges", false, "DisplayCommander") {}
 
 void DeveloperTabSettings::LoadAll() {
     // Get all settings for smart logging
@@ -115,6 +116,7 @@ void DeveloperTabSettings::SaveAll() {
     debug_layer_enabled.Save();
     debug_break_on_severity.Save();
     auto_hide_discord_overlay.Save();
+    suppress_window_changes.Save();
 
     // All Ref classes automatically save when values change
 }
@@ -132,7 +134,7 @@ std::vector<ui::new_ui::SettingBase*> DeveloperTabSettings::GetAllSettings() {
             &enable_adhd_toggle_shortcut, &enable_autoclick_shortcut, &enable_input_blocking_shortcut, &enable_display_commander_ui_shortcut, &enable_performance_overlay_shortcut,
             &safemode, &dll_loading_delay_ms, &dlls_to_load_before, &load_from_dll_main, &load_streamline,
             &load_nvngx, &load_nvapi64, &fake_nvapi_enabled, &suppress_minhook, &debug_layer_enabled,
-            &debug_break_on_severity, &auto_hide_discord_overlay};
+            &debug_break_on_severity, &auto_hide_discord_overlay, &suppress_window_changes};
 }
 
 }  // namespace settings

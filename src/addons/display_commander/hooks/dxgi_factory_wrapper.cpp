@@ -2,6 +2,7 @@
 #include "../utils/logging.hpp"
 #include "../globals.hpp"
 #include "../utils/timing.hpp"
+#include "../utils/perf_measurement.hpp"
 #include "../utils/general_utils.hpp"
 #include "../swapchain_events.hpp"
 #include "../settings/main_tab_settings.hpp"
@@ -46,6 +47,8 @@ void TrackPresentStatistics(
     std::atomic<uint64_t>& last_time_ns,
     std::atomic<uint64_t>& total_calls,
     std::atomic<double>& smoothed_fps) {
+
+    perf_measurement::ScopedTimer perf_timer(perf_measurement::Metric::TrackPresentStatistics);
 
     uint64_t now_ns = utils::get_now_ns();
     uint64_t last_time = last_time_ns.exchange(now_ns, std::memory_order_acq_rel);

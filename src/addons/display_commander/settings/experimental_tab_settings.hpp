@@ -135,6 +135,15 @@ class ExperimentalTabSettings {
     BoolSetting rand_s_hook_enabled;
     IntSetting rand_s_hook_value;
 
+    // Performance measurement (profiling) - default off
+    BoolSetting performance_measurement_enabled;
+    // Per-metric toggles (default on)
+    BoolSetting perf_measure_overlay_enabled;
+    BoolSetting perf_measure_handle_present_before_enabled;
+    BoolSetting perf_measure_track_present_statistics_enabled;
+    BoolSetting perf_measure_on_present_flags2_enabled;
+    BoolSetting perf_measure_handle_present_after_enabled;
+
   private:
     std::vector<SettingBase *> all_settings_;
 };

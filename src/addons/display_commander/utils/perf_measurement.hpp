@@ -4,7 +4,6 @@
 #include "../settings/experimental_tab_settings.hpp"
 #include "timing.hpp"
 
-#include <array>
 #include <atomic>
 #include <cstdint>
 
@@ -16,6 +15,8 @@ enum class Metric : std::uint8_t {
     TrackPresentStatistics,
     OnPresentFlags2,
     HandlePresentAfter,
+    FlushCommandQueueFromSwapchain,
+    EnqueueGPUCompletion,
     Count
 };
 
@@ -23,6 +24,7 @@ struct Snapshot {
     std::uint64_t samples = 0;
     std::uint64_t total_ns = 0;
     std::uint64_t last_ns = 0;
+    std::uint64_t max_ns = 0;
 };
 
 // Master enable (default off). When false, no QPC reads and no atomic updates are performed.
@@ -42,6 +44,36 @@ inline bool IsMetricEnabled(Metric metric) {
         return settings::g_experimentalTabSettings.perf_measure_on_present_flags2_enabled.GetAtomic().load(std::memory_order_relaxed);
     case Metric::HandlePresentAfter:
         return settings::g_experimentalTabSettings.perf_measure_handle_present_after_enabled.GetAtomic().load(std::memory_order_relaxed);
+    case Metric::FlushCommandQueueFromSwapchain:
+        return settings::g_experimentalTabSettings.perf_measure_flush_command_queue_from_swapchain_enabled.GetAtomic().load(std::memory_order_relaxed);
+    case Metric::EnqueueGPUCompletion:
+        return settings::g_experimentalTabSettings.perf_measure_enqueue_gpu_completion_enabled.GetAtomic().load(std::memory_order_relaxed);
+    default:
+        return false;
+    }
+}
+
+// Suppression (debug) - optional. When enabled, selected functions will early-out to help isolate performance cost.
+inline bool IsSuppressionEnabled() {
+    return settings::g_experimentalTabSettings.performance_suppression_enabled.GetAtomic().load(std::memory_order_relaxed);
+}
+
+inline bool IsMetricSuppressed(Metric metric) {
+    switch (metric) {
+    case Metric::Overlay:
+        return settings::g_experimentalTabSettings.perf_suppress_overlay.GetAtomic().load(std::memory_order_relaxed);
+    case Metric::HandlePresentBefore:
+        return settings::g_experimentalTabSettings.perf_suppress_handle_present_before.GetAtomic().load(std::memory_order_relaxed);
+    case Metric::TrackPresentStatistics:
+        return settings::g_experimentalTabSettings.perf_suppress_track_present_statistics.GetAtomic().load(std::memory_order_relaxed);
+    case Metric::OnPresentFlags2:
+        return settings::g_experimentalTabSettings.perf_suppress_on_present_flags2.GetAtomic().load(std::memory_order_relaxed);
+    case Metric::HandlePresentAfter:
+        return settings::g_experimentalTabSettings.perf_suppress_handle_present_after.GetAtomic().load(std::memory_order_relaxed);
+    case Metric::FlushCommandQueueFromSwapchain:
+        return settings::g_experimentalTabSettings.perf_suppress_flush_command_queue_from_swapchain.GetAtomic().load(std::memory_order_relaxed);
+    case Metric::EnqueueGPUCompletion:
+        return settings::g_experimentalTabSettings.perf_suppress_enqueue_gpu_completion.GetAtomic().load(std::memory_order_relaxed);
     default:
         return false;
     }

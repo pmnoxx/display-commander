@@ -266,6 +266,13 @@ namespace {
 
 // Public API wrapper that works with ReShade swapchain
 void EnqueueGPUCompletion(reshade::api::swapchain* swapchain, IDXGISwapChain* dxgi_swapchain, reshade::api::command_queue* command_queue = nullptr) {
+    if (perf_measurement::IsSuppressionEnabled() &&
+        perf_measurement::IsMetricSuppressed(perf_measurement::Metric::EnqueueGPUCompletion)) {
+        return;
+    }
+
+    perf_measurement::ScopedTimer perf_timer(perf_measurement::Metric::EnqueueGPUCompletion);
+
     if (swapchain == nullptr) {
         g_gpu_fence_failure_reason.store("Failed to get swapchain from swapchain, swapchain is nullptr");
         return;
@@ -368,6 +375,13 @@ PresentCommonState HandlePresentBefore(
     IDXGISwapChain* baseSwapChain,
     bool checkD3D10) {
 
+    if (perf_measurement::IsSuppressionEnabled() &&
+        perf_measurement::IsMetricSuppressed(perf_measurement::Metric::HandlePresentBefore)) {
+        PresentCommonState suppressed_state;
+        suppressed_state.base_swapchain = baseSwapChain;
+        return suppressed_state;
+    }
+
     perf_measurement::ScopedTimer perf_timer(perf_measurement::Metric::HandlePresentBefore);
 
     PresentCommonState state;
@@ -410,6 +424,11 @@ PresentCommonState HandlePresentBefore(
 void HandlePresentAfter(
     IDXGISwapChain* baseSwapChain,
     const PresentCommonState& state) {
+
+    if (perf_measurement::IsSuppressionEnabled() &&
+        perf_measurement::IsMetricSuppressed(perf_measurement::Metric::HandlePresentAfter)) {
+        return;
+    }
 
     perf_measurement::ScopedTimer perf_timer(perf_measurement::Metric::HandlePresentAfter);
 

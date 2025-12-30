@@ -1289,6 +1289,11 @@ bool OnBindPipeline(reshade::api::command_list *cmd_list, reshade::api::pipeline
 
 // Present flags callback to strip DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING
 void OnPresentFlags2(uint32_t *present_flags, DeviceTypeDC api_type, bool from_present_detour) {
+    if (perf_measurement::IsSuppressionEnabled() &&
+        perf_measurement::IsMetricSuppressed(perf_measurement::Metric::OnPresentFlags2)) {
+        return;
+    }
+
     perf_measurement::ScopedTimer perf_timer(perf_measurement::Metric::OnPresentFlags2);
 
     // Increment event counter

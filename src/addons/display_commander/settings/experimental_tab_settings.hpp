@@ -143,6 +143,19 @@ class ExperimentalTabSettings {
     BoolSetting perf_measure_track_present_statistics_enabled;
     BoolSetting perf_measure_on_present_flags2_enabled;
     BoolSetting perf_measure_handle_present_after_enabled;
+    BoolSetting perf_measure_flush_command_queue_from_swapchain_enabled;
+    BoolSetting perf_measure_enqueue_gpu_completion_enabled;
+
+    // Performance suppression (debug) - default off
+    // WARNING: Suppressing these functions changes behavior and can break features; intended for short debugging sessions.
+    BoolSetting performance_suppression_enabled;
+    BoolSetting perf_suppress_overlay;
+    BoolSetting perf_suppress_handle_present_before;
+    BoolSetting perf_suppress_track_present_statistics;
+    BoolSetting perf_suppress_on_present_flags2;
+    BoolSetting perf_suppress_handle_present_after;
+    BoolSetting perf_suppress_flush_command_queue_from_swapchain;
+    BoolSetting perf_suppress_enqueue_gpu_completion;
 
   private:
     std::vector<SettingBase *> all_settings_;

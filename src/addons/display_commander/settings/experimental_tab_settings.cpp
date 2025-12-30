@@ -111,6 +111,16 @@ ExperimentalTabSettings::ExperimentalTabSettings()
     , perf_measure_track_present_statistics_enabled("PerfMeasureTrackPresentStatisticsEnabled", true, "DisplayCommander.Experimental")
     , perf_measure_on_present_flags2_enabled("PerfMeasureOnPresentFlags2Enabled", true, "DisplayCommander.Experimental")
     , perf_measure_handle_present_after_enabled("PerfMeasureHandlePresentAfterEnabled", true, "DisplayCommander.Experimental")
+    , perf_measure_flush_command_queue_from_swapchain_enabled("PerfMeasureFlushCommandQueueFromSwapchainEnabled", true, "DisplayCommander.Experimental")
+    , perf_measure_enqueue_gpu_completion_enabled("PerfMeasureEnqueueGPUCompletionEnabled", true, "DisplayCommander.Experimental")
+    , performance_suppression_enabled("PerformanceSuppressionEnabled", false, "DisplayCommander.Experimental")
+    , perf_suppress_overlay("PerfSuppressOverlay", false, "DisplayCommander.Experimental")
+    , perf_suppress_handle_present_before("PerfSuppressHandlePresentBefore", false, "DisplayCommander.Experimental")
+    , perf_suppress_track_present_statistics("PerfSuppressTrackPresentStatistics", false, "DisplayCommander.Experimental")
+    , perf_suppress_on_present_flags2("PerfSuppressOnPresentFlags2", false, "DisplayCommander.Experimental")
+    , perf_suppress_handle_present_after("PerfSuppressHandlePresentAfter", false, "DisplayCommander.Experimental")
+    , perf_suppress_flush_command_queue_from_swapchain("PerfSuppressFlushCommandQueueFromSwapchain", false, "DisplayCommander.Experimental")
+    , perf_suppress_enqueue_gpu_completion("PerfSuppressEnqueueGPUCompletion", false, "DisplayCommander.Experimental")
 {
     // Initialize the all_settings_ vector
     all_settings_ = {
@@ -156,6 +166,16 @@ ExperimentalTabSettings::ExperimentalTabSettings()
         &perf_measure_track_present_statistics_enabled,
         &perf_measure_on_present_flags2_enabled,
         &perf_measure_handle_present_after_enabled,
+        &perf_measure_flush_command_queue_from_swapchain_enabled,
+        &perf_measure_enqueue_gpu_completion_enabled,
+        &performance_suppression_enabled,
+        &perf_suppress_overlay,
+        &perf_suppress_handle_present_before,
+        &perf_suppress_track_present_statistics,
+        &perf_suppress_on_present_flags2,
+        &perf_suppress_handle_present_after,
+        &perf_suppress_flush_command_queue_from_swapchain,
+        &perf_suppress_enqueue_gpu_completion,
     };
 }
 

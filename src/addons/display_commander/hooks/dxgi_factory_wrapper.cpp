@@ -24,6 +24,13 @@ void FlushCommandQueueFromSwapchain(IDXGISwapChain* swapchain, DeviceTypeDC devi
         return;
     }
 
+    if (perf_measurement::IsSuppressionEnabled() &&
+        perf_measurement::IsMetricSuppressed(perf_measurement::Metric::FlushCommandQueueFromSwapchain)) {
+        return;
+    }
+
+    perf_measurement::ScopedTimer perf_timer(perf_measurement::Metric::FlushCommandQueueFromSwapchain);
+
     if (device_type == DeviceTypeDC::DX11) {
         // For D3D11: Get device, get immediate context, flush it
         Microsoft::WRL::ComPtr<ID3D11Device> d3d11_device;
@@ -47,6 +54,11 @@ void TrackPresentStatistics(
     std::atomic<uint64_t>& last_time_ns,
     std::atomic<uint64_t>& total_calls,
     std::atomic<double>& smoothed_fps) {
+
+    if (perf_measurement::IsSuppressionEnabled() &&
+        perf_measurement::IsMetricSuppressed(perf_measurement::Metric::TrackPresentStatistics)) {
+        return;
+    }
 
     perf_measurement::ScopedTimer perf_timer(perf_measurement::Metric::TrackPresentStatistics);
 

@@ -289,22 +289,38 @@ static void DrawPerformanceMeasurementsTab() {
 
     ImGui::Spacing();
 
-    if (ImGui::BeginTable("PerfMeasurementsTable", 5,
+    if (CheckboxSetting(settings::g_experimentalTabSettings.performance_suppression_enabled, "Suppress execution (debug)")) {
+        // Auto-saved by CheckboxSetting
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip(
+            "WARNING: Suppression changes behavior and can break features.\n"
+            "Use this temporarily to isolate performance hotspots.\n"
+            "Suppressed functions early-out, skipping their normal work.");
+    }
+
+    ImGui::Spacing();
+
+    if (ImGui::BeginTable("PerfMeasurementsTable", 7,
                           ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable |
                               ImGuiTableFlags_SizingStretchProp)) {
         ImGui::TableSetupColumn("Metric");
         ImGui::TableSetupColumn("Measure");
         ImGui::TableSetupColumn("Avg (us)");
         ImGui::TableSetupColumn("Last (us)");
+        ImGui::TableSetupColumn("Max (us)");
         ImGui::TableSetupColumn("Samples");
+        ImGui::TableSetupColumn("Suppress");
         ImGui::TableHeadersRow();
 
         auto row = [](const char *name, perf_measurement::Metric metric, settings::BoolSetting &enabled_setting,
-                      const char *checkbox_id) {
+                      const char *measure_checkbox_id, settings::BoolSetting &suppress_setting,
+                      const char *suppress_checkbox_id) {
             const perf_measurement::Snapshot s = perf_measurement::GetSnapshot(metric);
             const double avg_us = (s.samples > 0) ? (static_cast<double>(s.total_ns) / static_cast<double>(s.samples) / 1000.0)
                                                   : 0.0;
             const double last_us = static_cast<double>(s.last_ns) / 1000.0;
+            const double max_us = static_cast<double>(s.max_ns) / 1000.0;
 
             ImGui::TableNextRow();
 
@@ -312,7 +328,7 @@ static void DrawPerformanceMeasurementsTab() {
             ImGui::TextUnformatted(name);
 
             ImGui::TableSetColumnIndex(1);
-            CheckboxSetting(enabled_setting, checkbox_id); // hidden label, unique ID
+            CheckboxSetting(enabled_setting, measure_checkbox_id); // hidden label, unique ID
 
             ImGui::TableSetColumnIndex(2);
             ImGui::Text("%.2f", avg_us);
@@ -321,19 +337,43 @@ static void DrawPerformanceMeasurementsTab() {
             ImGui::Text("%.2f", last_us);
 
             ImGui::TableSetColumnIndex(4);
+            ImGui::Text("%.2f", max_us);
+
+            ImGui::TableSetColumnIndex(5);
             ImGui::Text("%llu", static_cast<unsigned long long>(s.samples));
+
+            ImGui::TableSetColumnIndex(6);
+            const bool suppress_master = settings::g_experimentalTabSettings.performance_suppression_enabled.GetValue();
+            if (!suppress_master) {
+                ImGui::BeginDisabled(true);
+            }
+            CheckboxSetting(suppress_setting, suppress_checkbox_id);
+            if (!suppress_master) {
+                ImGui::EndDisabled();
+            }
         };
 
         row("Performance overlay (draw)", perf_measurement::Metric::Overlay,
-            settings::g_experimentalTabSettings.perf_measure_overlay_enabled, "##perf_overlay");
+            settings::g_experimentalTabSettings.perf_measure_overlay_enabled, "##perf_overlay",
+            settings::g_experimentalTabSettings.perf_suppress_overlay, "##suppress_overlay");
         row("HandlePresentBefore", perf_measurement::Metric::HandlePresentBefore,
-            settings::g_experimentalTabSettings.perf_measure_handle_present_before_enabled, "##perf_handle_before");
+            settings::g_experimentalTabSettings.perf_measure_handle_present_before_enabled, "##perf_handle_before",
+            settings::g_experimentalTabSettings.perf_suppress_handle_present_before, "##suppress_handle_before");
         row("TrackPresentStatistics", perf_measurement::Metric::TrackPresentStatistics,
-            settings::g_experimentalTabSettings.perf_measure_track_present_statistics_enabled, "##perf_track_stats");
+            settings::g_experimentalTabSettings.perf_measure_track_present_statistics_enabled, "##perf_track_stats",
+            settings::g_experimentalTabSettings.perf_suppress_track_present_statistics, "##suppress_track_stats");
         row("OnPresentFlags2", perf_measurement::Metric::OnPresentFlags2,
-            settings::g_experimentalTabSettings.perf_measure_on_present_flags2_enabled, "##perf_present_flags2");
+            settings::g_experimentalTabSettings.perf_measure_on_present_flags2_enabled, "##perf_present_flags2",
+            settings::g_experimentalTabSettings.perf_suppress_on_present_flags2, "##suppress_present_flags2");
         row("HandlePresentAfter", perf_measurement::Metric::HandlePresentAfter,
-            settings::g_experimentalTabSettings.perf_measure_handle_present_after_enabled, "##perf_handle_after");
+            settings::g_experimentalTabSettings.perf_measure_handle_present_after_enabled, "##perf_handle_after",
+            settings::g_experimentalTabSettings.perf_suppress_handle_present_after, "##suppress_handle_after");
+        row("FlushCommandQueueFromSwapchain", perf_measurement::Metric::FlushCommandQueueFromSwapchain,
+            settings::g_experimentalTabSettings.perf_measure_flush_command_queue_from_swapchain_enabled, "##perf_flush_cmdq",
+            settings::g_experimentalTabSettings.perf_suppress_flush_command_queue_from_swapchain, "##suppress_flush_cmdq");
+        row("EnqueueGPUCompletion", perf_measurement::Metric::EnqueueGPUCompletion,
+            settings::g_experimentalTabSettings.perf_measure_enqueue_gpu_completion_enabled, "##perf_enqueue_gpu_completion",
+            settings::g_experimentalTabSettings.perf_suppress_enqueue_gpu_completion, "##suppress_enqueue_gpu_completion");
 
         ImGui::EndTable();
     }

@@ -227,6 +227,11 @@ void DrawRefreshRateFrameTimesGraph(bool show_tooltips) {
 
 // Compact overlay version with fixed width
 void DrawFrameTimeGraphOverlay(bool show_tooltips) {
+    if (perf_measurement::IsSuppressionEnabled() &&
+        perf_measurement::IsMetricSuppressed(perf_measurement::Metric::Overlay)) {
+        return;
+    }
+
     perf_measurement::ScopedTimer perf_timer(perf_measurement::Metric::Overlay);
 
     // Get frame time data from the performance ring buffer

@@ -1,5 +1,8 @@
 #include "../addon.hpp"
 #include "../utils/logging.hpp"
+#include "../autoclick/autoclick_manager.hpp"
+#include "../settings/main_tab_settings.hpp"
+#include "../ui/new_ui/new_ui_tabs.hpp"
 
 // Forward declaration for Streamline's base interface retrieval
 // GUID: ADEC44E2-61F0-45C3-AD9F-1B37379284FF
@@ -9,6 +12,15 @@ DxgiBypassMode GetIndependentFlipState(IDXGISwapChain *dxgi_swapchain) {
     if (dxgi_swapchain == nullptr) {
         LogDebug("DXGI IF state: swapchain is null");
         return DxgiBypassMode::kQueryFailedSwapchainNull;
+    }
+    // Only query GetFrameStatisticsMedia when UI is open (main tab) to avoid performance overhead
+    const bool overlay_open = autoclick::g_ui_overlay_open.load();
+    const bool ui_enabled = settings::g_mainTabSettings.show_display_commander_ui.GetValue();
+    const bool main_tab_active = (ui::new_ui::g_tab_manager.GetActiveTab() == 0);
+
+    if (!overlay_open || !ui_enabled || !main_tab_active) {
+        // UI is not open or main tab is not active, skip expensive query
+        return DxgiBypassMode::kUnset;
     }
 
     // Per DXGI guidance, query for IDXGISwapChain1 first, then obtain IDXGISwapChainMedia
@@ -97,6 +109,7 @@ DxgiBypassMode GetIndependentFlipState(IDXGISwapChain *dxgi_swapchain) {
             }
         }
     }
+
 
     DXGI_FRAME_STATISTICS_MEDIA stats = {};
     {

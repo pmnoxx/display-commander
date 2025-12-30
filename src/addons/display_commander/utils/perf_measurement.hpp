@@ -12,6 +12,9 @@ namespace perf_measurement {
 enum class Metric : std::uint8_t {
     Overlay = 0,
     HandlePresentBefore,
+    HandlePresentBefore_DeviceQuery,
+    HandlePresentBefore_RecordFrameTime,
+    HandlePresentBefore_FrameStatistics,
     TrackPresentStatistics,
     OnPresentFlags2,
     HandlePresentAfter,
@@ -38,6 +41,12 @@ inline bool IsMetricEnabled(Metric metric) {
         return settings::g_experimentalTabSettings.perf_measure_overlay_enabled.GetAtomic().load(std::memory_order_relaxed);
     case Metric::HandlePresentBefore:
         return settings::g_experimentalTabSettings.perf_measure_handle_present_before_enabled.GetAtomic().load(std::memory_order_relaxed);
+    case Metric::HandlePresentBefore_DeviceQuery:
+        return settings::g_experimentalTabSettings.perf_measure_handle_present_before_device_query_enabled.GetAtomic().load(std::memory_order_relaxed);
+    case Metric::HandlePresentBefore_RecordFrameTime:
+        return settings::g_experimentalTabSettings.perf_measure_handle_present_before_record_frame_time_enabled.GetAtomic().load(std::memory_order_relaxed);
+    case Metric::HandlePresentBefore_FrameStatistics:
+        return settings::g_experimentalTabSettings.perf_measure_handle_present_before_frame_statistics_enabled.GetAtomic().load(std::memory_order_relaxed);
     case Metric::TrackPresentStatistics:
         return settings::g_experimentalTabSettings.perf_measure_track_present_statistics_enabled.GetAtomic().load(std::memory_order_relaxed);
     case Metric::OnPresentFlags2:
@@ -64,6 +73,12 @@ inline bool IsMetricSuppressed(Metric metric) {
         return settings::g_experimentalTabSettings.perf_suppress_overlay.GetAtomic().load(std::memory_order_relaxed);
     case Metric::HandlePresentBefore:
         return settings::g_experimentalTabSettings.perf_suppress_handle_present_before.GetAtomic().load(std::memory_order_relaxed);
+    case Metric::HandlePresentBefore_DeviceQuery:
+        return settings::g_experimentalTabSettings.perf_suppress_handle_present_before_device_query.GetAtomic().load(std::memory_order_relaxed);
+    case Metric::HandlePresentBefore_RecordFrameTime:
+        return settings::g_experimentalTabSettings.perf_suppress_handle_present_before_record_frame_time.GetAtomic().load(std::memory_order_relaxed);
+    case Metric::HandlePresentBefore_FrameStatistics:
+        return settings::g_experimentalTabSettings.perf_suppress_handle_present_before_frame_statistics.GetAtomic().load(std::memory_order_relaxed);
     case Metric::TrackPresentStatistics:
         return settings::g_experimentalTabSettings.perf_suppress_track_present_statistics.GetAtomic().load(std::memory_order_relaxed);
     case Metric::OnPresentFlags2:

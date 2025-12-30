@@ -140,6 +140,9 @@ class ExperimentalTabSettings {
     // Per-metric toggles (default on)
     BoolSetting perf_measure_overlay_enabled;
     BoolSetting perf_measure_handle_present_before_enabled;
+    BoolSetting perf_measure_handle_present_before_device_query_enabled;
+    BoolSetting perf_measure_handle_present_before_record_frame_time_enabled;
+    BoolSetting perf_measure_handle_present_before_frame_statistics_enabled;
     BoolSetting perf_measure_track_present_statistics_enabled;
     BoolSetting perf_measure_on_present_flags2_enabled;
     BoolSetting perf_measure_handle_present_after_enabled;
@@ -151,6 +154,9 @@ class ExperimentalTabSettings {
     BoolSetting performance_suppression_enabled;
     BoolSetting perf_suppress_overlay;
     BoolSetting perf_suppress_handle_present_before;
+    BoolSetting perf_suppress_handle_present_before_device_query;
+    BoolSetting perf_suppress_handle_present_before_record_frame_time;
+    BoolSetting perf_suppress_handle_present_before_frame_statistics;
     BoolSetting perf_suppress_track_present_statistics;
     BoolSetting perf_suppress_on_present_flags2;
     BoolSetting perf_suppress_handle_present_after;

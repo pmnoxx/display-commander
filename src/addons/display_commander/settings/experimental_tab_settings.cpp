@@ -108,6 +108,9 @@ ExperimentalTabSettings::ExperimentalTabSettings()
     , performance_measurement_enabled("PerformanceMeasurementEnabled", false, "DisplayCommander.Experimental")
     , perf_measure_overlay_enabled("PerfMeasureOverlayEnabled", true, "DisplayCommander.Experimental")
     , perf_measure_handle_present_before_enabled("PerfMeasureHandlePresentBeforeEnabled", true, "DisplayCommander.Experimental")
+    , perf_measure_handle_present_before_device_query_enabled("PerfMeasureHandlePresentBeforeDeviceQueryEnabled", true, "DisplayCommander.Experimental")
+    , perf_measure_handle_present_before_record_frame_time_enabled("PerfMeasureHandlePresentBeforeRecordFrameTimeEnabled", true, "DisplayCommander.Experimental")
+    , perf_measure_handle_present_before_frame_statistics_enabled("PerfMeasureHandlePresentBeforeFrameStatisticsEnabled", true, "DisplayCommander.Experimental")
     , perf_measure_track_present_statistics_enabled("PerfMeasureTrackPresentStatisticsEnabled", true, "DisplayCommander.Experimental")
     , perf_measure_on_present_flags2_enabled("PerfMeasureOnPresentFlags2Enabled", true, "DisplayCommander.Experimental")
     , perf_measure_handle_present_after_enabled("PerfMeasureHandlePresentAfterEnabled", true, "DisplayCommander.Experimental")
@@ -116,6 +119,9 @@ ExperimentalTabSettings::ExperimentalTabSettings()
     , performance_suppression_enabled("PerformanceSuppressionEnabled", false, "DisplayCommander.Experimental")
     , perf_suppress_overlay("PerfSuppressOverlay", false, "DisplayCommander.Experimental")
     , perf_suppress_handle_present_before("PerfSuppressHandlePresentBefore", false, "DisplayCommander.Experimental")
+    , perf_suppress_handle_present_before_device_query("PerfSuppressHandlePresentBeforeDeviceQuery", false, "DisplayCommander.Experimental")
+    , perf_suppress_handle_present_before_record_frame_time("PerfSuppressHandlePresentBeforeRecordFrameTime", false, "DisplayCommander.Experimental")
+    , perf_suppress_handle_present_before_frame_statistics("PerfSuppressHandlePresentBeforeFrameStatistics", false, "DisplayCommander.Experimental")
     , perf_suppress_track_present_statistics("PerfSuppressTrackPresentStatistics", false, "DisplayCommander.Experimental")
     , perf_suppress_on_present_flags2("PerfSuppressOnPresentFlags2", false, "DisplayCommander.Experimental")
     , perf_suppress_handle_present_after("PerfSuppressHandlePresentAfter", false, "DisplayCommander.Experimental")
@@ -163,6 +169,9 @@ ExperimentalTabSettings::ExperimentalTabSettings()
         &performance_measurement_enabled,
         &perf_measure_overlay_enabled,
         &perf_measure_handle_present_before_enabled,
+        &perf_measure_handle_present_before_device_query_enabled,
+        &perf_measure_handle_present_before_record_frame_time_enabled,
+        &perf_measure_handle_present_before_frame_statistics_enabled,
         &perf_measure_track_present_statistics_enabled,
         &perf_measure_on_present_flags2_enabled,
         &perf_measure_handle_present_after_enabled,
@@ -171,6 +180,9 @@ ExperimentalTabSettings::ExperimentalTabSettings()
         &performance_suppression_enabled,
         &perf_suppress_overlay,
         &perf_suppress_handle_present_before,
+        &perf_suppress_handle_present_before_device_query,
+        &perf_suppress_handle_present_before_record_frame_time,
+        &perf_suppress_handle_present_before_frame_statistics,
         &perf_suppress_track_present_statistics,
         &perf_suppress_on_present_flags2,
         &perf_suppress_handle_present_after,

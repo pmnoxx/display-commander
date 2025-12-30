@@ -359,6 +359,15 @@ static void DrawPerformanceMeasurementsTab() {
         row("HandlePresentBefore", perf_measurement::Metric::HandlePresentBefore,
             settings::g_experimentalTabSettings.perf_measure_handle_present_before_enabled, "##perf_handle_before",
             settings::g_experimentalTabSettings.perf_suppress_handle_present_before, "##suppress_handle_before");
+        row("  └─ Device Query", perf_measurement::Metric::HandlePresentBefore_DeviceQuery,
+            settings::g_experimentalTabSettings.perf_measure_handle_present_before_device_query_enabled, "##perf_handle_before_device_query",
+            settings::g_experimentalTabSettings.perf_suppress_handle_present_before_device_query, "##suppress_handle_before_device_query");
+        row("  └─ RecordFrameTime", perf_measurement::Metric::HandlePresentBefore_RecordFrameTime,
+            settings::g_experimentalTabSettings.perf_measure_handle_present_before_record_frame_time_enabled, "##perf_handle_before_record_frame_time",
+            settings::g_experimentalTabSettings.perf_suppress_handle_present_before_record_frame_time, "##suppress_handle_before_record_frame_time");
+        row("  └─ Frame Statistics", perf_measurement::Metric::HandlePresentBefore_FrameStatistics,
+            settings::g_experimentalTabSettings.perf_measure_handle_present_before_frame_statistics_enabled, "##perf_handle_before_frame_statistics",
+            settings::g_experimentalTabSettings.perf_suppress_handle_present_before_frame_statistics, "##suppress_handle_before_frame_statistics");
         row("TrackPresentStatistics", perf_measurement::Metric::TrackPresentStatistics,
             settings::g_experimentalTabSettings.perf_measure_track_present_statistics_enabled, "##perf_track_stats",
             settings::g_experimentalTabSettings.perf_suppress_track_present_statistics, "##suppress_track_stats");

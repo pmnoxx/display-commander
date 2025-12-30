@@ -10,6 +10,8 @@
 #include "../../settings/developer_tab_settings.hpp"
 #include "../../latent_sync/refresh_rate_monitor_integration.hpp"
 #include "../hook_suppression_manager.hpp"
+#include "../../autoclick/autoclick_manager.hpp"
+#include "../../ui/new_ui/new_ui_tabs.hpp"
 
 #include <MinHook.h>
 #include <dwmapi.h>
@@ -388,33 +390,63 @@ PresentCommonState HandlePresentBefore(
     state.base_swapchain = baseSwapChain;
 
     {
-        This->GetDevice(IID_PPV_ARGS(&state.device));
-        if (state.device != nullptr) {
-            // Try to determine if it's D3D11 or D3D12
-            Microsoft::WRL::ComPtr<ID3D11Device> d3d11_device;
-            Microsoft::WRL::ComPtr<ID3D12Device> d3d12_device;
-            if (SUCCEEDED(state.device->QueryInterface(IID_PPV_ARGS(&d3d11_device)))) {
-                state.device_type = DeviceTypeDC::DX11;
-            } else if (SUCCEEDED(state.device->QueryInterface(IID_PPV_ARGS(&d3d12_device)))) {
-                state.device_type = DeviceTypeDC::DX12;
-            } else if (checkD3D10) {
-                Microsoft::WRL::ComPtr<ID3D10Device> d3d10_device;
-                if (SUCCEEDED(state.device->QueryInterface(IID_PPV_ARGS(&d3d10_device)))) {
-                    state.device_type = DeviceTypeDC::DX10;
+        const bool suppress_section =
+            perf_measurement::IsSuppressionEnabled() &&
+            perf_measurement::IsMetricSuppressed(perf_measurement::Metric::HandlePresentBefore_DeviceQuery);
+        if (!suppress_section) {
+            perf_measurement::ScopedTimer device_query_timer(perf_measurement::Metric::HandlePresentBefore_DeviceQuery);
+            This->GetDevice(IID_PPV_ARGS(&state.device));
+            if (state.device != nullptr) {
+                // Try to determine if it's D3D11 or D3D12
+                Microsoft::WRL::ComPtr<ID3D11Device> d3d11_device;
+                Microsoft::WRL::ComPtr<ID3D12Device> d3d12_device;
+                if (SUCCEEDED(state.device->QueryInterface(IID_PPV_ARGS(&d3d11_device)))) {
+                    state.device_type = DeviceTypeDC::DX11;
+                } else if (SUCCEEDED(state.device->QueryInterface(IID_PPV_ARGS(&d3d12_device)))) {
+                    state.device_type = DeviceTypeDC::DX12;
+                } else if (checkD3D10) {
+                    Microsoft::WRL::ComPtr<ID3D10Device> d3d10_device;
+                    if (SUCCEEDED(state.device->QueryInterface(IID_PPV_ARGS(&d3d10_device)))) {
+                        state.device_type = DeviceTypeDC::DX10;
+                    }
                 }
             }
         }
     }
 
     // Record per-frame FPS sample for background aggregation
-    RecordFrameTime(FrameTimeMode::kPresent);
+    {
+        const bool suppress_section =
+            perf_measurement::IsSuppressionEnabled() &&
+            perf_measurement::IsMetricSuppressed(perf_measurement::Metric::HandlePresentBefore_RecordFrameTime);
+        if (!suppress_section) {
+            perf_measurement::ScopedTimer record_frame_time_timer(perf_measurement::Metric::HandlePresentBefore_RecordFrameTime);
+            RecordFrameTime(FrameTimeMode::kPresent);
+        }
+    }
 
     // Get and cache frame statistics for refresh rate monitoring
-    DXGI_FRAME_STATISTICS stats = {};
-    if (SUCCEEDED(This->GetFrameStatistics(&stats))) {
-        // Use memory_order_release to ensure the shared_ptr is fully constructed before other threads see it
-        g_cached_frame_stats.store(std::make_shared<DXGI_FRAME_STATISTICS>(stats), std::memory_order_release);
-        ::dxgi::fps_limiter::ProcessFrameStatistics(stats);
+    // Only query GetFrameStatistics when UI is open (main tab) to avoid performance overhead
+    {
+        const bool suppress_section =
+            perf_measurement::IsSuppressionEnabled() &&
+            perf_measurement::IsMetricSuppressed(perf_measurement::Metric::HandlePresentBefore_FrameStatistics);
+
+        // Check if UI is open and main tab is active
+        const bool overlay_open = autoclick::g_ui_overlay_open.load();
+        const bool ui_enabled = settings::g_mainTabSettings.show_display_commander_ui.GetValue();
+        const bool main_tab_active = (ui::new_ui::g_tab_manager.GetActiveTab() == 0);
+        const bool should_query_stats = overlay_open && ui_enabled && main_tab_active;
+
+        if (!suppress_section && should_query_stats) {
+            perf_measurement::ScopedTimer frame_stats_timer(perf_measurement::Metric::HandlePresentBefore_FrameStatistics);
+            DXGI_FRAME_STATISTICS stats = {};
+            if (SUCCEEDED(This->GetFrameStatistics(&stats))) {
+                // Use memory_order_release to ensure the shared_ptr is fully constructed before other threads see it
+                g_cached_frame_stats.store(std::make_shared<DXGI_FRAME_STATISTICS>(stats), std::memory_order_release);
+                ::dxgi::fps_limiter::ProcessFrameStatistics(stats);
+            }
+        }
     }
 
     return state;

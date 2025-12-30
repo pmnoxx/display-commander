@@ -4,6 +4,7 @@
 #include "../../swapchain_events.hpp"
 #include "../../utils/general_utils.hpp"
 #include "../../utils/logging.hpp"
+#include "../../utils/perf_measurement.hpp"
 #include "../../globals.hpp"
 #include "../../settings/main_tab_settings.hpp"
 #include "../../settings/developer_tab_settings.hpp"
@@ -367,6 +368,8 @@ PresentCommonState HandlePresentBefore(
     IDXGISwapChain* baseSwapChain,
     bool checkD3D10) {
 
+    perf_measurement::ScopedTimer perf_timer(perf_measurement::Metric::HandlePresentBefore);
+
     PresentCommonState state;
     state.base_swapchain = baseSwapChain;
 
@@ -407,6 +410,8 @@ PresentCommonState HandlePresentBefore(
 void HandlePresentAfter(
     IDXGISwapChain* baseSwapChain,
     const PresentCommonState& state) {
+
+    perf_measurement::ScopedTimer perf_timer(perf_measurement::Metric::HandlePresentAfter);
 
     // Query DXGI composition state (moved from ReShade present events)
     //::QueryDxgiCompositionState(baseSwapChain);

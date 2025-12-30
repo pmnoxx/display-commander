@@ -22,6 +22,7 @@
 #include "../../presentmon/presentmon_manager.hpp"
 #include "../../utils.hpp"
 #include "../../utils/logging.hpp"
+#include "../../utils/perf_measurement.hpp"
 #include "../../utils/overlay_window_detector.hpp"
 #include "../../widgets/resolution_widget/resolution_widget.hpp"
 #include "imgui.h"
@@ -226,6 +227,8 @@ void DrawRefreshRateFrameTimesGraph(bool show_tooltips) {
 
 // Compact overlay version with fixed width
 void DrawFrameTimeGraphOverlay(bool show_tooltips) {
+    perf_measurement::ScopedTimer perf_timer(perf_measurement::Metric::Overlay);
+
     // Get frame time data from the performance ring buffer
     const uint32_t head = ::g_perf_ring_head.load(std::memory_order_acquire);
     const uint32_t count =
@@ -795,7 +798,7 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
         // Max Anisotropy Override
         // Only affects existing anisotropic filters
         int max_aniso = settings::g_mainTabSettings.max_anisotropy.GetValue();
-        if (ImGui::SliderInt("Anisotropic Level", &max_aniso, 0, 16, max_aniso == 0 ? "Game default" : "%dx")) {
+        if (ImGui::SliderInt("Anisotropic Level", &max_aniso, 0, 16, max_aniso == 0 ? "Game Default" : "%dx")) {
             settings::g_mainTabSettings.max_anisotropy.SetValue(max_aniso);
             LogInfo("Max anisotropy set to %d", max_aniso);
         }
@@ -809,7 +812,7 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
         // Reset button for Anisotropic Level
         if (max_aniso != 0) {
             ImGui::SameLine();
-            if (ImGui::Button("Game Default")) {
+            if (ImGui::Button("Game Default##Anisotropic Level")) {
                 settings::g_mainTabSettings.max_anisotropy.SetValue(0);
                 LogInfo("Max anisotropy reset to game default");
             }
@@ -830,7 +833,7 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
         // Reset button for LOD bias
         if (lod_bias != 0.0f) {
             ImGui::SameLine();
-            if (ImGui::Button("Game Default")) {
+            if (ImGui::Button("Game Default##Mipmap LOD Bias")) {
                 settings::g_mainTabSettings.force_mipmap_lod_bias.SetValue(0.0f);
                 LogInfo("Mipmap LOD bias reset to game default");
             }

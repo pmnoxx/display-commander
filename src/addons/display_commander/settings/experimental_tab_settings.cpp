@@ -105,6 +105,12 @@ ExperimentalTabSettings::ExperimentalTabSettings()
     , rand_hook_value("RandHookValue", 0, INT_MIN, INT_MAX, "DisplayCommander.Experimental")
     , rand_s_hook_enabled("Rand_sHookEnabled", false, "DisplayCommander.Experimental")
     , rand_s_hook_value("Rand_sHookValue", 0, 0, UINT_MAX, "DisplayCommander.Experimental")
+    , performance_measurement_enabled("PerformanceMeasurementEnabled", false, "DisplayCommander.Experimental")
+    , perf_measure_overlay_enabled("PerfMeasureOverlayEnabled", true, "DisplayCommander.Experimental")
+    , perf_measure_handle_present_before_enabled("PerfMeasureHandlePresentBeforeEnabled", true, "DisplayCommander.Experimental")
+    , perf_measure_track_present_statistics_enabled("PerfMeasureTrackPresentStatisticsEnabled", true, "DisplayCommander.Experimental")
+    , perf_measure_on_present_flags2_enabled("PerfMeasureOnPresentFlags2Enabled", true, "DisplayCommander.Experimental")
+    , perf_measure_handle_present_after_enabled("PerfMeasureHandlePresentAfterEnabled", true, "DisplayCommander.Experimental")
 {
     // Initialize the all_settings_ vector
     all_settings_ = {
@@ -144,6 +150,12 @@ ExperimentalTabSettings::ExperimentalTabSettings()
         &rand_hook_value,
         &rand_s_hook_enabled,
         &rand_s_hook_value,
+        &performance_measurement_enabled,
+        &perf_measure_overlay_enabled,
+        &perf_measure_handle_present_before_enabled,
+        &perf_measure_track_present_statistics_enabled,
+        &perf_measure_on_present_flags2_enabled,
+        &perf_measure_handle_present_after_enabled,
     };
 }
 

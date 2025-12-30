@@ -37,6 +37,7 @@
 #include "utils/general_utils.hpp"
 #include "utils/logging.hpp"
 #include "utils/timing.hpp"
+#include "utils/perf_measurement.hpp"
 #include "widgets/xinput_widget/xinput_widget.hpp"
 #include "widgets/dualsense_widget/dualsense_widget.hpp"
 
@@ -1288,6 +1289,8 @@ bool OnBindPipeline(reshade::api::command_list *cmd_list, reshade::api::pipeline
 
 // Present flags callback to strip DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING
 void OnPresentFlags2(uint32_t *present_flags, DeviceTypeDC api_type, bool from_present_detour) {
+    perf_measurement::ScopedTimer perf_timer(perf_measurement::Metric::OnPresentFlags2);
+
     // Increment event counter
     g_reshade_event_counters[RESHADE_EVENT_PRESENT_FLAGS].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);

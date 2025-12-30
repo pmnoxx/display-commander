@@ -16,6 +16,7 @@
 #include "../../widgets/dualsense_widget/dualsense_widget.hpp"
 #include "../../utils/logging.hpp"
 #include "../../utils/timing.hpp"
+#include "../../utils/perf_measurement.hpp"
 #include "../../utils/stack_trace.hpp"
 
 #include <windows.h>
@@ -27,6 +28,8 @@
 #include <cstdlib>
 
 namespace ui::new_ui {
+
+static void DrawPerformanceMeasurementsTab();
 
 // Initialize experimental tab
 void InitExperimentalTab() {
@@ -73,13 +76,18 @@ void InitExperimentalTab() {
 
 
 void DrawExperimentalTab() {
-    ImGui::Text("Experimental Tab - Advanced Features");
-    ImGui::Separator();
-
-    if (ImGui::CollapsingHeader("Direct3D 9 FLIPEX Upgrade", ImGuiTreeNodeFlags_None)) {
-        DrawD3D9FlipExControls();
+    if (!ImGui::BeginTabBar("ExperimentalSubTabs")) {
+        return;
     }
-    ImGui::Spacing();
+
+    if (ImGui::BeginTabItem("Features")) {
+        ImGui::Text("Experimental Tab - Advanced Features");
+        ImGui::Separator();
+
+        if (ImGui::CollapsingHeader("Direct3D 9 FLIPEX Upgrade", ImGuiTreeNodeFlags_None)) {
+            DrawD3D9FlipExControls();
+        }
+        ImGui::Spacing();
 
 
     if (enabled_experimental_features) {
@@ -240,12 +248,98 @@ void DrawExperimentalTab() {
 
     ImGui::Spacing();
 
-    // DLL Blocking (Experimental)
-    if (enabled_experimental_features) {
-        if (ImGui::CollapsingHeader("DLL Blocking", ImGuiTreeNodeFlags_None)) {
-            DrawDLLBlockingControls();
+        // DLL Blocking (Experimental)
+        if (enabled_experimental_features) {
+            if (ImGui::CollapsingHeader("DLL Blocking", ImGuiTreeNodeFlags_None)) {
+                DrawDLLBlockingControls();
+            }
         }
+
+        ImGui::EndTabItem();
     }
+
+    if (ImGui::BeginTabItem("Performance")) {
+        DrawPerformanceMeasurementsTab();
+        ImGui::EndTabItem();
+    }
+
+    ImGui::EndTabBar();
+}
+
+static void DrawPerformanceMeasurementsTab() {
+    ImGui::Text("Performance Measurements");
+    ImGui::Separator();
+
+    if (CheckboxSetting(settings::g_experimentalTabSettings.performance_measurement_enabled, "Performance measurement")) {
+        // Auto-saved by CheckboxSetting
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip(
+            "When enabled, measures CPU time spent in selected internal hot-path functions.\n"
+            "When disabled, timing code does not run (no QPC reads, no stat updates).");
+    }
+
+    ImGui::SameLine();
+    if (ImGui::Button("Reset stats")) {
+        perf_measurement::ResetAll();
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Reset all performance measurement counters (samples, totals, last).");
+    }
+
+    ImGui::Spacing();
+
+    if (ImGui::BeginTable("PerfMeasurementsTable", 5,
+                          ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable |
+                              ImGuiTableFlags_SizingStretchProp)) {
+        ImGui::TableSetupColumn("Metric");
+        ImGui::TableSetupColumn("Measure");
+        ImGui::TableSetupColumn("Avg (us)");
+        ImGui::TableSetupColumn("Last (us)");
+        ImGui::TableSetupColumn("Samples");
+        ImGui::TableHeadersRow();
+
+        auto row = [](const char *name, perf_measurement::Metric metric, settings::BoolSetting &enabled_setting,
+                      const char *checkbox_id) {
+            const perf_measurement::Snapshot s = perf_measurement::GetSnapshot(metric);
+            const double avg_us = (s.samples > 0) ? (static_cast<double>(s.total_ns) / static_cast<double>(s.samples) / 1000.0)
+                                                  : 0.0;
+            const double last_us = static_cast<double>(s.last_ns) / 1000.0;
+
+            ImGui::TableNextRow();
+
+            ImGui::TableSetColumnIndex(0);
+            ImGui::TextUnformatted(name);
+
+            ImGui::TableSetColumnIndex(1);
+            CheckboxSetting(enabled_setting, checkbox_id); // hidden label, unique ID
+
+            ImGui::TableSetColumnIndex(2);
+            ImGui::Text("%.2f", avg_us);
+
+            ImGui::TableSetColumnIndex(3);
+            ImGui::Text("%.2f", last_us);
+
+            ImGui::TableSetColumnIndex(4);
+            ImGui::Text("%llu", static_cast<unsigned long long>(s.samples));
+        };
+
+        row("Performance overlay (draw)", perf_measurement::Metric::Overlay,
+            settings::g_experimentalTabSettings.perf_measure_overlay_enabled, "##perf_overlay");
+        row("HandlePresentBefore", perf_measurement::Metric::HandlePresentBefore,
+            settings::g_experimentalTabSettings.perf_measure_handle_present_before_enabled, "##perf_handle_before");
+        row("TrackPresentStatistics", perf_measurement::Metric::TrackPresentStatistics,
+            settings::g_experimentalTabSettings.perf_measure_track_present_statistics_enabled, "##perf_track_stats");
+        row("OnPresentFlags2", perf_measurement::Metric::OnPresentFlags2,
+            settings::g_experimentalTabSettings.perf_measure_on_present_flags2_enabled, "##perf_present_flags2");
+        row("HandlePresentAfter", perf_measurement::Metric::HandlePresentAfter,
+            settings::g_experimentalTabSettings.perf_measure_handle_present_after_enabled, "##perf_handle_after");
+
+        ImGui::EndTable();
+    }
+
+    ImGui::Spacing();
+    ImGui::TextDisabled("Tip: Enable master measurement first, then disable individual metrics to reduce overhead.");
 }
 
 

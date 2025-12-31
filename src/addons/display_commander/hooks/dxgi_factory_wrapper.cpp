@@ -404,18 +404,19 @@ STDMETHODIMP DXGIFactoryWrapper::QueryInterface(REFIID riid, void **ppvObject) {
 }
 
 STDMETHODIMP_(ULONG) DXGIFactoryWrapper::AddRef() {
-    return InterlockedIncrement(&m_refCount);
+    return m_originalFactory->AddRef();
+    //return InterlockedIncrement(&m_refCount);
 }
 
 STDMETHODIMP_(ULONG) DXGIFactoryWrapper::Release() {
-    ULONG refCount = InterlockedDecrement(&m_refCount);
+    ULONG refCount = m_originalFactory->Release();
+    //ULONG refCount = InterlockedDecrement(&m_refCount);
     if (refCount == 0) {
-        m_originalFactory->AddRef();
-        ULONG originalRefCount = m_originalFactory->Release();
-        LogInfo("DXGIFactoryWrapper: Releasing wrapper, original factory ref count: %lu", originalRefCount);
+        LogInfo("DXGIFactoryWrapper: Releasing wrapper, original factory ref count: %lu", refCount);
         delete this;
     }
     return refCount;
+    //return refCount;
 }
 
 // IDXGIObject methods - delegate to original
@@ -698,11 +699,12 @@ STDMETHODIMP IDXGIOutput6Wrapper::QueryInterface(REFIID riid, void **ppvObject) 
 }
 
 STDMETHODIMP_(ULONG) IDXGIOutput6Wrapper::AddRef() {
-    return InterlockedIncrement(&m_refCount);
+    return m_originalOutput->AddRef();
+    //return InterlockedIncrement(&m_refCount);
 }
 
 STDMETHODIMP_(ULONG) IDXGIOutput6Wrapper::Release() {
-    ULONG refCount = InterlockedDecrement(&m_refCount);
+    ULONG refCount = m_originalOutput->Release();
     if (refCount == 0) {
         LogInfo("IDXGIOutput6Wrapper: Releasing wrapper");
         delete this;

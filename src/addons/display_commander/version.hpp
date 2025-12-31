@@ -7,7 +7,7 @@
 
 // Version numbers (major.minor.patch)
 #define DISPLAY_COMMANDER_VERSION_MAJOR 0
-#define DISPLAY_COMMANDER_VERSION_MINOR 9
+#define DISPLAY_COMMANDER_VERSION_MINOR 10
 #define DISPLAY_COMMANDER_VERSION_PATCH 0
 
 // Build number from git commit count (set by CMake)
@@ -24,7 +24,7 @@
 #define STRINGIFY_(x) #x
 
 // Version string (includes build number)
-#define DISPLAY_COMMANDER_VERSION_STRING_MAJOR_MINOR_PATCH "0.9.0"
+#define DISPLAY_COMMANDER_VERSION_STRING_MAJOR_MINOR_PATCH "0.10.0"
 #define DISPLAY_COMMANDER_VERSION_STRING DISPLAY_COMMANDER_VERSION_STRING_MAJOR_MINOR_PATCH "." DISPLAY_COMMANDER_VERSION_BUILD_STRING
 
 // Build date and time (automatically set by CMake)

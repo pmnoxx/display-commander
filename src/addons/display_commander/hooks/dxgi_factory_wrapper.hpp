@@ -97,7 +97,7 @@ public:
  */
 class DXGIFactoryWrapper : public IDXGIFactory7 {
 private:
-    Microsoft::WRL::ComPtr<IDXGIFactory7> m_originalFactory;
+    IDXGIFactory7* m_originalFactory;
     volatile LONG m_refCount;
     SwapChainHook m_swapChainHookType;
 

@@ -20,6 +20,7 @@ enum class Metric : std::uint8_t {
     HandlePresentAfter,
     FlushCommandQueueFromSwapchain,
     EnqueueGPUCompletion,
+    GetIndependentFlipState,
     Count
 };
 
@@ -57,6 +58,8 @@ inline bool IsMetricEnabled(Metric metric) {
         return settings::g_experimentalTabSettings.perf_measure_flush_command_queue_from_swapchain_enabled.GetAtomic().load(std::memory_order_relaxed);
     case Metric::EnqueueGPUCompletion:
         return settings::g_experimentalTabSettings.perf_measure_enqueue_gpu_completion_enabled.GetAtomic().load(std::memory_order_relaxed);
+    case Metric::GetIndependentFlipState:
+        return settings::g_experimentalTabSettings.perf_measure_get_independent_flip_state_enabled.GetAtomic().load(std::memory_order_relaxed);
     default:
         return false;
     }
@@ -89,6 +92,8 @@ inline bool IsMetricSuppressed(Metric metric) {
         return settings::g_experimentalTabSettings.perf_suppress_flush_command_queue_from_swapchain.GetAtomic().load(std::memory_order_relaxed);
     case Metric::EnqueueGPUCompletion:
         return settings::g_experimentalTabSettings.perf_suppress_enqueue_gpu_completion.GetAtomic().load(std::memory_order_relaxed);
+    case Metric::GetIndependentFlipState:
+        return settings::g_experimentalTabSettings.perf_suppress_get_independent_flip_state.GetAtomic().load(std::memory_order_relaxed);
     default:
         return false;
     }

@@ -23,7 +23,7 @@ enum class SwapChainHook {
  */
 class DXGISwapChain4Wrapper : public IDXGISwapChain4 {
 private:
-    Microsoft::WRL::ComPtr<IDXGISwapChain4> m_originalSwapChain;
+    IDXGISwapChain4* m_originalSwapChain; // RefCount should be equal to 1
     volatile LONG m_refCount;
     SwapChainHook m_swapChainHookType;
 

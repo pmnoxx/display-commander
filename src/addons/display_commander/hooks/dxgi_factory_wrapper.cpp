@@ -158,6 +158,10 @@ STDMETHODIMP_(ULONG) DXGISwapChain4Wrapper::Release() {
         LogInfo("DXGISwapChain4Wrapper: Releasing wrapper, original swapchain ref count: %lu", originalRefCount);
         // Note: m_originalSwapChain (ComPtr) will automatically release the original swap chain
         // when the wrapper is destroyed via its destructor
+        if (originalRefCount >= 2) {
+            // CreateSwapChainForHwnd returns 2 references to the swapchain, COM adds one
+            m_originalSwapChain->Release();
+        }
         delete this;
     }
     return refCount;

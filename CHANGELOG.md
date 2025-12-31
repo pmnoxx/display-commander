@@ -1,4 +1,4 @@
-## v0.10.0 (2025-01-XX)
+## v0.10.0 (2026-01-XX)
 
 - **Performance monitoring** - Added experimental Performance tab with detailed timing measurements for overlay draw, present handlers, and frame statistics
 - **PresentMon integration** - Added PresentMon thread support with comprehensive debug information and frame analysis

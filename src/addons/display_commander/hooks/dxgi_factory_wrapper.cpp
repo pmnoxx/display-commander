@@ -146,22 +146,14 @@ STDMETHODIMP DXGISwapChain4Wrapper::QueryInterface(REFIID riid, void **ppvObject
 }
 
 STDMETHODIMP_(ULONG) DXGISwapChain4Wrapper::AddRef() {
-    return InterlockedIncrement(&m_refCount);
+    return m_originalSwapChain->AddRef();
 }
 
 STDMETHODIMP_(ULONG) DXGISwapChain4Wrapper::Release() {
-    ULONG refCount = InterlockedDecrement(&m_refCount);
+    ULONG refCount = m_originalSwapChain->Release();
+
+    LogInfo("DXGISwapChain4Wrapper: Releasing wrapper, original swapchain ref count: %lu", refCount);
     if (refCount == 0) {
-        LogInfo("DXGISwapChain4Wrapper: Releasing wrapper");
-        m_originalSwapChain->AddRef();
-        ULONG originalRefCount = m_originalSwapChain->Release();
-        LogInfo("DXGISwapChain4Wrapper: Releasing wrapper, original swapchain ref count: %lu", originalRefCount);
-        // Note: m_originalSwapChain (ComPtr) will automatically release the original swap chain
-        // when the wrapper is destroyed via its destructor
-        if (originalRefCount >= 2) {
-            // CreateSwapChainForHwnd returns 2 references to the swapchain, COM adds one
-            m_originalSwapChain->Release();
-        }
         delete this;
     }
     return refCount;

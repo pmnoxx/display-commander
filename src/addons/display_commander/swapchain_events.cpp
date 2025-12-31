@@ -213,6 +213,14 @@ void hookToSwapChain(reshade::api::swapchain *swapchain) {
         }
 
         if (api == reshade::api::device_api::d3d11) {
+            Microsoft::WRL::ComPtr<ID3D11Device> d3d11device;
+            if (SUCCEEDED(((IUnknown *)swapchain->get_native())->QueryInterface(IID_PPV_ARGS(&d3d11device)))) {
+                if (display_commanderhooks::HookD3D11Device(d3d11device.Get())) {
+                    LogInfo("Successfully hooked D3D11 device: 0x%p", d3d11device.Get());
+                } else {
+                    LogWarn("Failed to hook D3D11 device: 0x%p", d3d11device.Get());
+                }
+            }
             auto *id3d11device   = reinterpret_cast<ID3D11Device *>(swapchain->get_native());
 
             // Hook D3D11 Device

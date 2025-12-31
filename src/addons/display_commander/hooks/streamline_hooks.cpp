@@ -97,40 +97,37 @@ int slUpgradeInterface_Detour(void** baseInterface) {
     bool prevent_slupgrade_interface = g_prevent_slupgrade_interface.load();
     LogInfo("prevent_slupgrade_interface: %d", static_cast<int>(prevent_slupgrade_interface));
 
-    auto* unknown = static_cast<IUnknown*>(*baseInterface);
 
     if (slUpgradeInterface_Original == nullptr) {
         return -1; // Error if original not available
     }
+    auto result = slUpgradeInterface_Original(baseInterface);
+    auto* unknown = static_cast<IUnknown*>(*baseInterface);
 
     Microsoft::WRL::ComPtr<IDXGIFactory7> dxgi_factory7;
     if (SUCCEEDED(unknown->QueryInterface(IID_PPV_ARGS(&dxgi_factory7))) && dxgi_factory7 != nullptr) {
         LogInfo("[slUpgradeInterface] Found IDXGIFactory7 interface");
 
-        auto* factory_wrapper = new display_commanderhooks::DXGIFactoryWrapper(dxgi_factory7.Get(), display_commanderhooks::SwapChainHook::Proxy);
-        factory_wrapper->SetSLGetNativeInterface(slGetNativeInterface_Original);
-        factory_wrapper->SetSLUpgradeInterface(slUpgradeInterface_Original);
+        //auto* factory_wrapper = dxgi_factory7.Get();
+        //new display_commanderhooks::DXGIFactoryWrapper(dxgi_factory7.Get(), display_commanderhooks::SwapChainHook::Proxy);
+        //..factory_wrapper->SetSLGetNativeInterface(slGetNativeInterface_Original);
+        //..factory_wrapper->SetSLUpgradeInterface(slUpgradeInterface_Original);
 
-        slUpgradeInterface_Original(reinterpret_cast<void**>(&factory_wrapper));
-        if (dxgi_factory7 == nullptr) {
-          LogError("slUpgradeInterface() - dxgi_factory7 became null after slUpgradeInterface_Original call");
-          HRESULT hr = slUpgradeInterface_Original(baseInterface);
-          return hr;
-        }
 
+
+        LogInfo("[slUpgradeInterface] Found IDXGIFactory7 interface");
         // Create wrapper to ensure it doesn't pass active queue for swapchain creation
-        auto* factory_wrapper2 = new display_commanderhooks::DXGIFactoryWrapper(factory_wrapper, display_commanderhooks::SwapChainHook::Native);
+        auto* factory_wrapper2 = new display_commanderhooks::DXGIFactoryWrapper(dxgi_factory7.Get(), display_commanderhooks::SwapChainHook::Native);
         factory_wrapper2->SetSLGetNativeInterface(slGetNativeInterface_Original);
         factory_wrapper2->SetSLUpgradeInterface(slUpgradeInterface_Original);
         // TODO(user): Set command queue map when available
 
         *baseInterface = factory_wrapper2;
 
-        // ComPtr will automatically release when it goes out of scope
-        return 0;
-    }
 
-    return slUpgradeInterface_Original(baseInterface);
+        // ComPtr will automatically release when it goes out of scope
+    }
+    return result;
 }
 
 // Initialize config-driven prevent_slupgrade_interface flag

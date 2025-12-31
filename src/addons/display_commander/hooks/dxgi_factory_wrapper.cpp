@@ -153,6 +153,11 @@ STDMETHODIMP_(ULONG) DXGISwapChain4Wrapper::Release() {
     ULONG refCount = InterlockedDecrement(&m_refCount);
     if (refCount == 0) {
         LogInfo("DXGISwapChain4Wrapper: Releasing wrapper");
+        m_originalSwapChain->AddRef();
+        ULONG originalRefCount = m_originalSwapChain->Release();
+        LogInfo("DXGISwapChain4Wrapper: Releasing wrapper, original swapchain ref count: %lu", originalRefCount);
+        // Note: m_originalSwapChain (ComPtr) will automatically release the original swap chain
+        // when the wrapper is destroyed via its destructor
         delete this;
     }
     return refCount;
@@ -409,7 +414,9 @@ STDMETHODIMP_(ULONG) DXGIFactoryWrapper::AddRef() {
 STDMETHODIMP_(ULONG) DXGIFactoryWrapper::Release() {
     ULONG refCount = InterlockedDecrement(&m_refCount);
     if (refCount == 0) {
-        LogInfo("DXGIFactoryWrapper: Releasing wrapper");
+        m_originalFactory->AddRef();
+        ULONG originalRefCount = m_originalFactory->Release();
+        LogInfo("DXGIFactoryWrapper: Releasing wrapper, original factory ref count: %lu", originalRefCount);
         delete this;
     }
     return refCount;
@@ -464,10 +471,7 @@ STDMETHODIMP DXGIFactoryWrapper::CreateSwapChain(IUnknown *pDevice, DXGI_SWAP_CH
             // Create wrapper instead of hooking
             IDXGISwapChain4* wrappedSwapChain = CreateSwapChainWrapper(swapchain, m_swapChainHookType);
             if (wrappedSwapChain != nullptr) {
-                // Release the original swapchain and replace with wrapper
-                swapchain->Release();
                 *ppSwapChain = wrappedSwapChain;
-                wrappedSwapChain->AddRef();
             }
         }
     }
@@ -511,20 +515,7 @@ STDMETHODIMP DXGIFactoryWrapper::CreateSwapChainForHwnd(IUnknown *pDevice, HWND 
             Microsoft::WRL::ComPtr<IDXGISwapChain> baseSwapchain;
             if (SUCCEEDED(swapchain->QueryInterface(IID_PPV_ARGS(&baseSwapchain)))) {
                 IDXGISwapChain4* wrappedSwapChain = CreateSwapChainWrapper(baseSwapchain.Get(), m_swapChainHookType);
-                if (wrappedSwapChain != nullptr) {
-                    // Release the original swapchain and replace with wrapper
-                    swapchain->Release();
-                    // Query wrapper for IDXGISwapChain1
-                    Microsoft::WRL::ComPtr<IDXGISwapChain1> swapChain1;
-                    if (SUCCEEDED(wrappedSwapChain->QueryInterface(IID_PPV_ARGS(&swapChain1)))) {
-                        *ppSwapChain = swapChain1.Detach();
-                    } else {
-                        // Fallback: keep original if query fails
-                        wrappedSwapChain->Release();
-                        *ppSwapChain = swapchain;
-                        swapchain->AddRef();
-                    }
-                }
+                *ppSwapChain = wrappedSwapChain;
             }
         }
     }
@@ -550,20 +541,7 @@ STDMETHODIMP DXGIFactoryWrapper::CreateSwapChainForCoreWindow(IUnknown *pDevice,
             Microsoft::WRL::ComPtr<IDXGISwapChain> baseSwapchain;
             if (SUCCEEDED(swapchain->QueryInterface(IID_PPV_ARGS(&baseSwapchain)))) {
                 IDXGISwapChain4* wrappedSwapChain = CreateSwapChainWrapper(baseSwapchain.Get(), m_swapChainHookType);
-                if (wrappedSwapChain != nullptr) {
-                    // Release the original swapchain and replace with wrapper
-                    swapchain->Release();
-                    // Query wrapper for IDXGISwapChain1
-                    Microsoft::WRL::ComPtr<IDXGISwapChain1> swapChain1;
-                    if (SUCCEEDED(wrappedSwapChain->QueryInterface(IID_PPV_ARGS(&swapChain1)))) {
-                        *ppSwapChain = swapChain1.Detach();
-                    } else {
-                        // Fallback: keep original if query fails
-                        wrappedSwapChain->Release();
-                        *ppSwapChain = swapchain;
-                        swapchain->AddRef();
-                    }
-                }
+                *ppSwapChain = wrappedSwapChain;
             }
         }
     }
@@ -617,20 +595,7 @@ STDMETHODIMP DXGIFactoryWrapper::CreateSwapChainForComposition(IUnknown *pDevice
             Microsoft::WRL::ComPtr<IDXGISwapChain> baseSwapchain;
             if (SUCCEEDED(swapchain->QueryInterface(IID_PPV_ARGS(&baseSwapchain)))) {
                 IDXGISwapChain4* wrappedSwapChain = CreateSwapChainWrapper(baseSwapchain.Get(), m_swapChainHookType);
-                if (wrappedSwapChain != nullptr) {
-                    // Release the original swapchain and replace with wrapper
-                    swapchain->Release();
-                    // Query wrapper for IDXGISwapChain1
-                    Microsoft::WRL::ComPtr<IDXGISwapChain1> swapChain1;
-                    if (SUCCEEDED(wrappedSwapChain->QueryInterface(IID_PPV_ARGS(&swapChain1)))) {
-                        *ppSwapChain = swapChain1.Detach();
-                    } else {
-                        // Fallback: keep original if query fails
-                        wrappedSwapChain->Release();
-                        *ppSwapChain = swapchain;
-                        swapchain->AddRef();
-                    }
-                }
+                *ppSwapChain = wrappedSwapChain;
             }
         }
     }

@@ -1,3 +1,24 @@
+## v0.10.0 (2025-01-XX)
+
+- **Performance monitoring** - Added experimental Performance tab with detailed timing measurements for overlay draw, present handlers, and frame statistics
+- **PresentMon integration** - Added PresentMon thread support with comprehensive debug information and frame analysis
+- **System volume control** - Added system volume slider and hotkeys for volume up/down control
+- **CPU management** - Added UI to set CPU affinity (number of cores used) and process priority adjustment
+- **Native frame pacing** - Added native frame pacing feature for frame generation to all FPS limiters
+- **DLL loading enhancements** - Added "Load DLL Early" option, DllsToLoadBefore, and DllLoadingDelayMs settings for better compatibility
+- **Window management improvements** - Added SuppressWindowChanges config setting to fix black screen issues in games with DPI scaling
+- **VRR debugging** - Added VRR debug mode to performance overlay for variable refresh rate monitoring
+- **Hotkey expansion** - Added support for F13-F24 hotkeys, system volume controls, and gamepad shortcuts
+- **ReShade 6.6.2 support** - Updated requirements to ReShade 6.6.2 with improved compatibility
+- **Hooking improvements** - Enhanced hooking to d3d11.dll, d3d12.dll, and dxgi.dll with better ReShade integration
+- **XInput enhancements** - Improved XInput support for multiple libraries and added XInputGetCapabilities hooks
+- **Reflex improvements** - Fixed reflex boost mode, improved reflex sleep suppression, and better integration with frame limiters
+- **Memory leak fixes** - Fixed multiple memory leaks in DXGI swapchain hooks and reference counting
+- **Stability fixes** - Fixed crashes in WuWa, DNA games, Yakuza 4 Remastered, and various other games
+- **Swapchain improvements** - Fixed reference counting issues, improved GetIndependentFlipState measurement, and better swapchain wrapper handling
+- **UI enhancements** - Improved hotkeys UI, added gamepad chord support, and various UI cleanup and organization improvements
+- **Streamline integration** - Improved Streamline upgrade interface integration and NGX parameter adjustment API
+
 ## v0.9.0 (2025-10-18)
 
 - **FPS limiter enhancements** - Added fps limiter for DLSS-g through native reflex

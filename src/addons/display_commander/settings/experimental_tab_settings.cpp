@@ -116,6 +116,7 @@ ExperimentalTabSettings::ExperimentalTabSettings()
     , perf_measure_handle_present_after_enabled("PerfMeasureHandlePresentAfterEnabled", true, "DisplayCommander.Experimental")
     , perf_measure_flush_command_queue_from_swapchain_enabled("PerfMeasureFlushCommandQueueFromSwapchainEnabled", true, "DisplayCommander.Experimental")
     , perf_measure_enqueue_gpu_completion_enabled("PerfMeasureEnqueueGPUCompletionEnabled", true, "DisplayCommander.Experimental")
+    , perf_measure_get_independent_flip_state_enabled("PerfMeasureGetIndependentFlipStateEnabled", true, "DisplayCommander.Experimental")
     , performance_suppression_enabled("PerformanceSuppressionEnabled", false, "DisplayCommander.Experimental")
     , perf_suppress_overlay("PerfSuppressOverlay", false, "DisplayCommander.Experimental")
     , perf_suppress_handle_present_before("PerfSuppressHandlePresentBefore", false, "DisplayCommander.Experimental")
@@ -127,6 +128,7 @@ ExperimentalTabSettings::ExperimentalTabSettings()
     , perf_suppress_handle_present_after("PerfSuppressHandlePresentAfter", false, "DisplayCommander.Experimental")
     , perf_suppress_flush_command_queue_from_swapchain("PerfSuppressFlushCommandQueueFromSwapchain", false, "DisplayCommander.Experimental")
     , perf_suppress_enqueue_gpu_completion("PerfSuppressEnqueueGPUCompletion", false, "DisplayCommander.Experimental")
+    , perf_suppress_get_independent_flip_state("PerfSuppressGetIndependentFlipState", false, "DisplayCommander.Experimental")
 {
     // Initialize the all_settings_ vector
     all_settings_ = {
@@ -177,6 +179,7 @@ ExperimentalTabSettings::ExperimentalTabSettings()
         &perf_measure_handle_present_after_enabled,
         &perf_measure_flush_command_queue_from_swapchain_enabled,
         &perf_measure_enqueue_gpu_completion_enabled,
+        &perf_measure_get_independent_flip_state_enabled,
         &performance_suppression_enabled,
         &perf_suppress_overlay,
         &perf_suppress_handle_present_before,
@@ -188,6 +191,7 @@ ExperimentalTabSettings::ExperimentalTabSettings()
         &perf_suppress_handle_present_after,
         &perf_suppress_flush_command_queue_from_swapchain,
         &perf_suppress_enqueue_gpu_completion,
+        &perf_suppress_get_independent_flip_state,
     };
 }
 

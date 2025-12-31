@@ -148,6 +148,7 @@ class ExperimentalTabSettings {
     BoolSetting perf_measure_handle_present_after_enabled;
     BoolSetting perf_measure_flush_command_queue_from_swapchain_enabled;
     BoolSetting perf_measure_enqueue_gpu_completion_enabled;
+    BoolSetting perf_measure_get_independent_flip_state_enabled;
 
     // Performance suppression (debug) - default off
     // WARNING: Suppressing these functions changes behavior and can break features; intended for short debugging sessions.
@@ -162,6 +163,7 @@ class ExperimentalTabSettings {
     BoolSetting perf_suppress_handle_present_after;
     BoolSetting perf_suppress_flush_command_queue_from_swapchain;
     BoolSetting perf_suppress_enqueue_gpu_completion;
+    BoolSetting perf_suppress_get_independent_flip_state;
 
   private:
     std::vector<SettingBase *> all_settings_;

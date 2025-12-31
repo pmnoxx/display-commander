@@ -578,7 +578,7 @@ void PresentMonManager::RequestStopEtw() {
     // Stop session; ignore errors (may already be stopped)
     EVENT_TRACE_PROPERTIES props = {};
     props.Wnode.BufferSize = sizeof(EVENT_TRACE_PROPERTIES);
-    ControlTraceW(reinterpret_cast<TRACEHANDLE>(sh), m_session_name, &props, EVENT_TRACE_CONTROL_STOP);
+    ControlTraceW(static_cast<TRACEHANDLE>(sh), m_session_name, &props, EVENT_TRACE_CONTROL_STOP);
 }
 
 void WINAPI PresentMonManager::EtwEventRecordCallback(PEVENT_RECORD event_record) {

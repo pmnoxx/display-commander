@@ -146,17 +146,19 @@ STDMETHODIMP DXGISwapChain4Wrapper::QueryInterface(REFIID riid, void **ppvObject
 }
 
 STDMETHODIMP_(ULONG) DXGISwapChain4Wrapper::AddRef() {
-    return m_originalSwapChain->AddRef();
+    InterlockedIncrement(&m_refCount);
+    return m_refCount;
 }
 
 STDMETHODIMP_(ULONG) DXGISwapChain4Wrapper::Release() {
-    ULONG refCount = m_originalSwapChain->Release();
+    InterlockedDecrement(&m_refCount);
 
-    LogInfo("DXGISwapChain4Wrapper: Releasing wrapper, original swapchain ref count: %lu", refCount);
-    if (refCount == 0) {
+    if (m_refCount == 0) {
+        LogInfo("DXGISwapChain4Wrapper: Releasing wrapper, original swapchain ref count: %lu", m_refCount);
+        m_originalSwapChain->Release();
         delete this;
     }
-    return refCount;
+    return m_refCount;
 }
 
 // IDXGIObject methods - delegate to original
@@ -202,7 +204,7 @@ STDMETHODIMP DXGISwapChain4Wrapper::Present(UINT SyncInterval, UINT Flags) {
     auto flagsCopy = Flags; // to fix crash
     if (m_swapChainHookType == SwapChainHook::Native && native_frame_pacing) {
         if (SUCCEEDED(QueryInterface(IID_PPV_ARGS(&baseSwapChain)))) {
-            state = display_commanderhooks::dxgi::HandlePresentBefore(this, baseSwapChain.Get(), false);
+            state = display_commanderhooks::dxgi::HandlePresentBefore(this, baseSwapChain.Get());
             OnPresentFlags2(&flagsCopy, state.device_type, false); // Called from wrapper, not present_detour
 
             // Flush command queue from swapchain using native DirectX APIs
@@ -292,7 +294,7 @@ STDMETHODIMP DXGISwapChain4Wrapper::Present1(UINT SyncInterval, UINT PresentFlag
     auto flagsCopy = PresentFlags; // to fix crash
     if (m_swapChainHookType == SwapChainHook::Native && native_frame_pacing) {
         if (SUCCEEDED(QueryInterface(IID_PPV_ARGS(&baseSwapChain)))) {
-            state = display_commanderhooks::dxgi::HandlePresentBefore(this, baseSwapChain.Get(), true); // Present1 needs D3D10 check
+            state = display_commanderhooks::dxgi::HandlePresentBefore(this, baseSwapChain.Get()); // Present1 needs D3D10 check
             OnPresentFlags2(&flagsCopy, state.device_type, false); // Called from wrapper, not present_detour
 
             // Flush command queue from swapchain using native DirectX APIs
@@ -407,19 +409,21 @@ STDMETHODIMP DXGIFactoryWrapper::QueryInterface(REFIID riid, void **ppvObject) {
 }
 
 STDMETHODIMP_(ULONG) DXGIFactoryWrapper::AddRef() {
-    return m_originalFactory->AddRef();
+    InterlockedIncrement(&m_refCount);
+    return m_refCount;
     //return InterlockedIncrement(&m_refCount);
 }
 
 STDMETHODIMP_(ULONG) DXGIFactoryWrapper::Release() {
-    ULONG refCount = m_originalFactory->Release();
-    //ULONG refCount = InterlockedDecrement(&m_refCount);
-    if (refCount == 0) {
-        LogInfo("DXGIFactoryWrapper: Releasing wrapper, original factory ref count: %lu", refCount);
+
+    InterlockedDecrement(&m_refCount);
+
+    if (m_refCount == 0) {
+        LogInfo("DXGIFactoryWrapper: Releasing wrapper, original factory ref count: %lu", m_refCount);
+        m_originalFactory->Release();
         delete this;
     }
-    return refCount;
-    //return refCount;
+    return m_refCount;
 }
 
 // IDXGIObject methods - delegate to original

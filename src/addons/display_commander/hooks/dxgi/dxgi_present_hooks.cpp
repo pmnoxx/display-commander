@@ -374,20 +374,17 @@ namespace {
 template<typename SwapChainType>
 PresentCommonState HandlePresentBefore(
     SwapChainType* This,
-    IDXGISwapChain* baseSwapChain,
-    bool checkD3D10) {
+    IDXGISwapChain* baseSwapChain) {
 
     if (perf_measurement::IsSuppressionEnabled() &&
         perf_measurement::IsMetricSuppressed(perf_measurement::Metric::HandlePresentBefore)) {
         PresentCommonState suppressed_state;
-        suppressed_state.base_swapchain = baseSwapChain;
         return suppressed_state;
     }
 
     perf_measurement::ScopedTimer perf_timer(perf_measurement::Metric::HandlePresentBefore);
 
     PresentCommonState state;
-    state.base_swapchain = baseSwapChain;
 
     {
         const bool suppress_section =
@@ -404,11 +401,8 @@ PresentCommonState HandlePresentBefore(
                     state.device_type = DeviceTypeDC::DX11;
                 } else if (SUCCEEDED(state.device->QueryInterface(IID_PPV_ARGS(&d3d12_device)))) {
                     state.device_type = DeviceTypeDC::DX12;
-                } else if (checkD3D10) {
-                    Microsoft::WRL::ComPtr<ID3D10Device> d3d10_device;
-                    if (SUCCEEDED(state.device->QueryInterface(IID_PPV_ARGS(&d3d10_device)))) {
-                        state.device_type = DeviceTypeDC::DX10;
-                    }
+                } else {
+                    state.device_type = DeviceTypeDC::DX10;
                 }
             }
         }
@@ -476,9 +470,9 @@ void HandlePresentAfter(
 }
 
 // Explicit template instantiations
-template PresentCommonState HandlePresentBefore<IDXGISwapChain>(IDXGISwapChain*, IDXGISwapChain*, bool);
-template PresentCommonState HandlePresentBefore<IDXGISwapChain1>(IDXGISwapChain1*, IDXGISwapChain*, bool);
-template PresentCommonState HandlePresentBefore<display_commanderhooks::DXGISwapChain4Wrapper>(display_commanderhooks::DXGISwapChain4Wrapper*, IDXGISwapChain*, bool);
+template PresentCommonState HandlePresentBefore<IDXGISwapChain>(IDXGISwapChain*, IDXGISwapChain*);
+template PresentCommonState HandlePresentBefore<IDXGISwapChain1>(IDXGISwapChain1*, IDXGISwapChain*);
+template PresentCommonState HandlePresentBefore<display_commanderhooks::DXGISwapChain4Wrapper>(display_commanderhooks::DXGISwapChain4Wrapper*, IDXGISwapChain*);
 
 // Hooked IDXGISwapChain::Present function
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain *This, UINT SyncInterval, UINT Flags) {
@@ -498,7 +492,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain *This, UI
     PresentCommonState state;
     if (!skip_common_logic) {
         // Handle common before logic
-        state = HandlePresentBefore(This, This, false);
+        state = HandlePresentBefore(This, This);
         ::OnPresentFlags2(&Flags, state.device_type, true); // Called from present_detour
     }
     display_commanderhooks::dxgi::HandlePresentBefore2<IDXGISwapChain>(This);
@@ -540,7 +534,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1 *This, 
     PresentCommonState state;
     if (!skip_common_logic) {
         // Handle common before logic (with D3D10 check enabled)
-        state = HandlePresentBefore(This, baseSwapChain, true);
+        state = HandlePresentBefore(This, baseSwapChain);
         ::OnPresentFlags2(&PresentFlags, state.device_type, true); // Called from present_detour
     }
     display_commanderhooks::dxgi::HandlePresentBefore2<IDXGISwapChain1>(This);

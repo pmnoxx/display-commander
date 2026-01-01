@@ -204,6 +204,9 @@ STDMETHODIMP DXGISwapChain4Wrapper::Present(UINT SyncInterval, UINT Flags) {
         if (SUCCEEDED(QueryInterface(IID_PPV_ARGS(&baseSwapChain)))) {
             state = display_commanderhooks::dxgi::HandlePresentBefore(this, baseSwapChain.Get(), false);
             OnPresentFlags2(&flagsCopy, state.device_type, false); // Called from wrapper, not present_detour
+
+            // Flush command queue from swapchain using native DirectX APIs
+            FlushCommandQueueFromSwapchain(baseSwapChain.Get(), state.device_type);
         }
     }
 

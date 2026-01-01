@@ -414,6 +414,10 @@ PresentCommonState HandlePresentBefore(
         }
     }
 
+    return state;
+}
+
+template<typename SwapChainType> void HandlePresentBefore2(SwapChainType* This) {
     // Record per-frame FPS sample for background aggregation
     {
         const bool suppress_section =
@@ -433,12 +437,8 @@ PresentCommonState HandlePresentBefore(
             perf_measurement::IsMetricSuppressed(perf_measurement::Metric::HandlePresentBefore_FrameStatistics);
 
         // Check if UI is open and main tab is active
-        const bool overlay_open = autoclick::g_ui_overlay_open.load();
-        const bool ui_enabled = settings::g_mainTabSettings.show_display_commander_ui.GetValue();
-        const bool main_tab_active = (ui::new_ui::g_tab_manager.GetActiveTab() == 0);
-        const bool should_query_stats = overlay_open && ui_enabled && main_tab_active;
 
-        if (!suppress_section && should_query_stats) {
+        if (!suppress_section) {
             perf_measurement::ScopedTimer frame_stats_timer(perf_measurement::Metric::HandlePresentBefore_FrameStatistics);
             DXGI_FRAME_STATISTICS stats = {};
             if (SUCCEEDED(This->GetFrameStatistics(&stats))) {
@@ -448,8 +448,6 @@ PresentCommonState HandlePresentBefore(
             }
         }
     }
-
-    return state;
 }
 
 // Helper function for common Present/Present1 logic after calling original
@@ -503,6 +501,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain *This, UI
         state = HandlePresentBefore(This, This, false);
         ::OnPresentFlags2(&Flags, state.device_type, true); // Called from present_detour
     }
+    display_commanderhooks::dxgi::HandlePresentBefore2<IDXGISwapChain>(This);
 
     if (IDXGISwapChain_Present_Original == nullptr) {
         LogError("IDXGISwapChain_Present_Detour: IDXGISwapChain_Present_Original is null");
@@ -544,6 +543,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1 *This, 
         state = HandlePresentBefore(This, baseSwapChain, true);
         ::OnPresentFlags2(&PresentFlags, state.device_type, true); // Called from present_detour
     }
+    display_commanderhooks::dxgi::HandlePresentBefore2<IDXGISwapChain1>(This);
 
     if (IDXGISwapChain_Present1_Original == nullptr) {
         LogError("IDXGISwapChain_Present1_Detour: IDXGISwapChain_Present1_Original is null");

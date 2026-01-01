@@ -207,15 +207,13 @@ void CleanupGPUMeasurementFences();
 struct PresentCommonState {
     DeviceTypeDC device_type = DeviceTypeDC::DX10;
     Microsoft::WRL::ComPtr<IUnknown> device;
-    IDXGISwapChain* base_swapchain = nullptr;
 };
 
 // Helper function for common Present/Present1 logic before calling original
 template<typename SwapChainType>
 PresentCommonState HandlePresentBefore(
     SwapChainType* This,
-    IDXGISwapChain* baseSwapChain,
-    bool checkD3D10);
+    IDXGISwapChain* baseSwapChain);
 
 template<typename SwapChainType>
 void HandlePresentBefore2(SwapChainType* This);

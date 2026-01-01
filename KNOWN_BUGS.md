@@ -1,41 +1,40 @@
 # Known Bugs
 
-This document tracks known issues and bugs in the Display Commander addon. These are confirmed problems that need to be addressed in future releases.
+## Game Compatibility Issues
 
-## Critical Issues
+### Silent Hill 2 Remake
+**Current Behavior:** Game crashes on launch or during gameplay when Display Commander addon is active.
 
-### 1. Auto-restore on Exit Not Working
-**Status:** Confirmed
-**Severity:** Medium
-**Description:** The "Auto-restore on exit" feature is not functioning properly. When exiting a game, the display resolution remains at 4K instead of being restored to the original resolution.
-**Expected Behavior:** Display should automatically restore to the original resolution when the game exits.
-**Current Behavior:** Display stays at 4K resolution after game exit.
+## Workarounds
 
-### 2. Auto-apply Changes Options Not Working
-**Status:** Confirmed
-**Severity:** Medium
-**Description:** While the "Auto-apply changes" feature itself works, two specific options within this feature are not functioning properly. The resolution changes do work correctly.
-**Expected Behavior:** All auto-apply options should work when enabled.
-**Current Behavior:** Some auto-apply options are not being applied automatically.
+### Prevent Window Resizing
+To prevent Display Commander from resizing or moving the game window, add or modify in the `[DisplayCommander]` section:
+```ini
+[DisplayCommander]
+SuppressWindowChanges=1
+```
 
-### 3. FPS Option Buttons Missing
-**Status:** Confirmed
-**Severity:** Medium
-**Description:** In recent builds, the FPS option buttons are missing from the interface. This appears to be a UI rendering issue.
-**Workaround:** Navigate to the "Window Info" tab and then back to the "Main" tab to restore the FPS option buttons.
-**Expected Behavior:** FPS option buttons should be visible and functional on the Main tab.
-**Current Behavior:** FPS option buttons are not visible until the workaround is applied.
+### Crashes
+Setting hook suppression settings to 1 may help prevent crashes. Add or modify the following section:
+```ini
+[DisplayCommander.HookSuppression]
+DxgiSwapchainHooks=1 # most likely to cause issues
+D3DDeviceHooks=1 # 2nd ost likely
+WindowApiHooks=1
+ProcessExitHooks=1
+SleepHooks=1
+LoadLibraryHooks=1
+DInputHooks=1
+OpenGLHooks=1
+DisplaySettingsHooks=1
+NvapiHooks=1
+StreamlineHooks=1
+NGXHooks=1
+XInputHooks=1
+HidHooks=1
+TimeslowdownHooks=1
+```
 
-## Bug Reporting
+Setting these values to 1 suppresses the corresponding hooks, which can help avoid compatibility issues with this game.
 
-If you encounter additional bugs or issues, please report them with the following information:
-- Description of the bug
-- Steps to reproduce
-- Expected behavior
-- Actual behavior
-- System information (if relevant)
-
-## Fix Priority
-
-1. **High Priority:** Auto-restore on exit and auto-apply options (affects core functionality)
-2. **Medium Priority:** FPS option buttons UI issue (affects user experience)
+###

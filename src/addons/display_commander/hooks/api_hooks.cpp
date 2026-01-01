@@ -642,7 +642,10 @@ HRESULT WINAPI D3D12CreateDevice_Detour(IUnknown* pAdapter, D3D_FEATURE_LEVEL Mi
     return hr;
 }
 
-bool InstallDxgiHooks(HMODULE dxgi_module) {
+bool InstallDxgiFactoryHooks(HMODULE dxgi_module) {
+    if (true) {
+        return true;
+    }
     // Check if this module is ReShade's proxy by checking for ReShade exports
     FARPROC reshade_register = GetProcAddress(dxgi_module, "ReShadeRegisterAddon");
     FARPROC reshade_unregister = GetProcAddress(dxgi_module, "ReShadeUnregisterAddon");

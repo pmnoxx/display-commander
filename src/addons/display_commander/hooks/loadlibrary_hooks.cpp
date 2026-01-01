@@ -768,7 +768,7 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
     // dxgi.dll
     if (lowerModuleName.find(L"dxgi.dll") != std::wstring::npos) {
         LogInfo("Installing DXGI hooks for module: %ws", moduleName.c_str());
-        if (InstallDxgiHooks(hModule)) {
+        if (InstallDxgiFactoryHooks(hModule)) {
             LogInfo("DXGI hooks installed successfully");
         } else {
             LogError("Failed to install DXGI hooks");

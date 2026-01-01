@@ -213,8 +213,8 @@ void HookSuppressionManager::MarkHookInstalled(HookType hookType) {
             }
             break;
         case HookType::DXGI_SWAPCHAIN:
-            if (!settings::g_hook_suppression_settings.suppress_dxgi_swapchain_hooks.GetValue()) {
-                settings::g_hook_suppression_settings.suppress_dxgi_swapchain_hooks.SetValue(true);
+            if (!settings::g_hook_suppression_settings.dxgi_swapchain_hooks_installed.GetValue()) {
+                settings::g_hook_suppression_settings.dxgi_swapchain_hooks_installed.SetValue(true);
                 settings::g_hook_suppression_settings.suppress_dxgi_swapchain_hooks.SetValue(false);
             }
             break;

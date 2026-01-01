@@ -217,6 +217,9 @@ PresentCommonState HandlePresentBefore(
     IDXGISwapChain* baseSwapChain,
     bool checkD3D10);
 
+template<typename SwapChainType>
+void HandlePresentBefore2(SwapChainType* This);
+
 // Helper function for common Present/Present1 logic after calling original
 void HandlePresentAfter(
     IDXGISwapChain* baseSwapChain,

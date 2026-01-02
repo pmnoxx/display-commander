@@ -518,7 +518,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain *This, UI
         HandlePresentAfter(This, state);
     }
     ::QueryDxgiCompositionState(This);
-    ::dxgi::fps_limiter::SignalRefreshRateMonitor();
+    //::dxgi::fps_limiter::SignalRefreshRateMonitor();
 
     return res;
 }
@@ -560,7 +560,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1 *This, 
         HandlePresentAfter(baseSwapChain, state);
     }
     ::QueryDxgiCompositionState(This);
-    ::dxgi::fps_limiter::SignalRefreshRateMonitor();
+    //::dxgi::fps_limiter::SignalRefreshRateMonitor();
 
 
     return res;

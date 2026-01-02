@@ -444,6 +444,10 @@ uint32_t RefreshRateMonitor::CountSamplesBelowThreshold(double fixed_refresh_hz)
 }
 
 void RefreshRateMonitor::MonitoringThread() {
+    if (true) {
+        // disabled for now
+        return;
+    }
     LogInfo("Refresh rate monitoring thread: entering main loop");
     LogInfo("Refresh rate monitoring thread: STARTED - measuring actual refresh rate via WaitForVBlank");
 

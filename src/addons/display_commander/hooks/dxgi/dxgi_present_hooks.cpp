@@ -422,7 +422,9 @@ template<typename SwapChainType> void HandlePresentBefore2(SwapChainType* This) 
             RecordFrameTime(FrameTimeMode::kPresent);
         }
     }
-
+    // Getting refresh rate data is disabled for now, it breaks nvidia overlay stats
+    // TODO: consider fixing this
+    /*
     // Get and cache frame statistics for refresh rate monitoring
     // Only query GetFrameStatistics when UI is open (main tab) to avoid performance overhead
     {
@@ -430,9 +432,16 @@ template<typename SwapChainType> void HandlePresentBefore2(SwapChainType* This) 
             perf_measurement::IsSuppressionEnabled() &&
             perf_measurement::IsMetricSuppressed(perf_measurement::Metric::HandlePresentBefore_FrameStatistics);
 
+
+        // overlay is open and vrr status is enabled or display commander's UI has been opened within last 1s
+
+        auto frames_ago_ui_opened = g_global_frame_id.load() - g_last_ui_drawn_frame_id.load();
+        bool should_query_frame_stats = settings::g_mainTabSettings.show_test_overlay.GetValue() && settings::g_mainTabSettings.show_vrr_status.GetValue()
+            || frames_ago_ui_opened >= 0 && frames_ago_ui_opened < 30;
+
         // Check if UI is open and main tab is active
 
-        if (!suppress_section) {
+        if (!suppress_section && should_query_frame_stats) {
             perf_measurement::ScopedTimer frame_stats_timer(perf_measurement::Metric::HandlePresentBefore_FrameStatistics);
             DXGI_FRAME_STATISTICS stats = {};
             if (SUCCEEDED(This->GetFrameStatistics(&stats))) {
@@ -441,7 +450,7 @@ template<typename SwapChainType> void HandlePresentBefore2(SwapChainType* This) 
                 ::dxgi::fps_limiter::ProcessFrameStatistics(stats);
             }
         }
-    }
+    }*/
 }
 
 // Helper function for common Present/Present1 logic after calling original

@@ -211,6 +211,8 @@ void hookToSwapChain(reshade::api::swapchain *swapchain) {
 
                 if (settings::g_experimentalTabSettings.reuse_swap_chain_experimental_enabled.GetValue()) {
 
+
+                    /*
                     if (global_dxgi_swapchain.load() == nullptr) {
                         // Release old swapchain reference if any
                         dxgi_swapchain->AddRef();
@@ -219,7 +221,7 @@ void hookToSwapChain(reshade::api::swapchain *swapchain) {
                             // This shouldn't happen, but just in case
                             LogError("Failed to exchange global swapchain reference: 0x%p", old_swapchain);
                         }
-                    }
+                    }*/
 
                     // Store new swapchain reference
                     LogInfo("Stored global swapchain reference: 0x%p", dxgi_swapchain.Get());
@@ -756,6 +758,7 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
 }
 
 bool OnCreateSwapchainCapture(reshade::api::device_api api, reshade::api::swapchain_desc &desc, void *hwnd) {
+    /*
     IDXGISwapChain* old_swapchain = global_dxgi_swapchain.exchange(nullptr, std::memory_order_release);
 
     // while statistics is used, we need to wait
@@ -774,6 +777,7 @@ bool OnCreateSwapchainCapture(reshade::api::device_api api, reshade::api::swapch
         LogInfo("Released old global swapchain reference: 0x%p", old_swapchain);
     }
 
+    */
 
     auto res = OnCreateSwapchainCapture2(api, desc, hwnd);
 

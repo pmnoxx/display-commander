@@ -469,7 +469,7 @@ void HandlePresentAfter(
     //::QueryDxgiCompositionState(baseSwapChain);
 
     // Signal refresh rate monitoring thread (after DWM flush)
-  //  ::dxgi::fps_limiter::SignalRefreshRateMonitor();
+ //   ::dxgi::fps_limiter::SignalRefreshRateMonitor();
 
     // Note: GPU completion measurement is now enqueued earlier in OnPresentUpdateBefore
     // (before flush_command_queue) for more accurate timing
@@ -518,7 +518,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain *This, UI
         HandlePresentAfter(This, state);
     }
     ::QueryDxgiCompositionState(This);
-    //::dxgi::fps_limiter::SignalRefreshRateMonitor();
+    ::dxgi::fps_limiter::SignalRefreshRateMonitor();
 
     return res;
 }
@@ -560,7 +560,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1 *This, 
         HandlePresentAfter(baseSwapChain, state);
     }
     ::QueryDxgiCompositionState(This);
-    //::dxgi::fps_limiter::SignalRefreshRateMonitor();
+    ::dxgi::fps_limiter::SignalRefreshRateMonitor();
 
 
     return res;

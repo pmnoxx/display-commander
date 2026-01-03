@@ -81,6 +81,7 @@ ExperimentalTabSettings::ExperimentalTabSettings()
     , qpc_enabled_modules("QPCEnabledModules", "", "DisplayCommander.Experimental")
     , dlss_indicator_enabled("DlssIndicatorEnabled", false, "DisplayCommander.Experimental")
     , d3d9_flipex_enabled("D3D9FlipExEnabled", false, "DisplayCommander.Experimental")
+    , reuse_swap_chain_experimental_enabled("ReuseSwapChainExperimentalEnabled", true, "DisplayCommander.Experimental")
     , enable_flip_chain_enabled("EnableFlipChainEnabled", false, "DisplayCommander.Experimental")
     , suppress_dinput_hooks("SuppressDInputHooks", false, "DisplayCommander.Experimental")
     , hid_suppression_enabled("HIDSuppressionEnabled", false, "DisplayCommander.Experimental")
@@ -148,6 +149,7 @@ ExperimentalTabSettings::ExperimentalTabSettings()
         &qpc_enabled_modules,
         &dlss_indicator_enabled,
         &d3d9_flipex_enabled,
+        &reuse_swap_chain_experimental_enabled,
         &enable_flip_chain_enabled,
         &suppress_dinput_hooks,
         &hid_suppression_enabled, &hid_suppression_dualsense_only, &hid_suppression_block_readfile,

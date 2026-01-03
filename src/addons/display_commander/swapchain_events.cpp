@@ -199,53 +199,39 @@ void hookToSwapChain(reshade::api::swapchain *swapchain) {
 
         // Hook DXGI Present calls for this swapchain
         // Get the underlying DXGI swapchain from the ReShade swapchain
+        LogInfo("OnInitSwapchain: api: %d", api);
 
-        if (api == reshade::api::device_api::d3d10) {
-            auto *id3d10device   = reinterpret_cast<ID3D10Device *>(swapchain->get_native());
+        if (api == reshade::api::device_api::d3d10 || api == reshade::api::device_api::d3d11 || api == reshade::api::device_api::d3d12) {
+            auto *iunknown   = reinterpret_cast<IUnknown *>(swapchain->get_native());
             Microsoft::WRL::ComPtr<IDXGISwapChain> dxgi_swapchain{};
-            if (SUCCEEDED(id3d10device->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain)))) {
+            if (SUCCEEDED(iunknown->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain)))) {
                 if (display_commanderhooks::dxgi::HookSwapchain(dxgi_swapchain.Get())) {
-                    LogInfo("Successfully hooked DXGI Present calls for swapchain: 0x%p", id3d10device);
+                    LogInfo("Successfully hooked DXGI Present calls for swapchain: 0x%p", iunknown);
                 }
-            }
-            return;
-        }
 
-        if (api == reshade::api::device_api::d3d11) {
-            auto *id3d11device   = reinterpret_cast<ID3D11Device *>(swapchain->get_native());
-            // Note: Sampler state hooks are now handled via ReShade's create_sampler event
-            // No need for vtable hooking since ReShade's proxy device intercepts all calls
+                if (settings::g_experimentalTabSettings.reuse_swap_chain_experimental_enabled.GetValue()) {
 
-            // query IDXGISwapChain interface
-            Microsoft::WRL::ComPtr<IDXGISwapChain> dxgi_swapchain{};
-            if (SUCCEEDED(id3d11device->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain)))) {
-                if (display_commanderhooks::dxgi::HookSwapchain(dxgi_swapchain.Get())) {
-                    LogInfo("Successfully hooked DXGI Present calls for swapchain: 0x%p", dxgi_swapchain.Get());
-                } else {
-                    LogWarn("Failed to hook DXGI Present calls for swapchain: 0x%p", dxgi_swapchain.Get());
+                    if (global_dxgi_swapchain.load() == nullptr) {
+                        // Release old swapchain reference if any
+                        dxgi_swapchain->AddRef();
+                        IDXGISwapChain* old_swapchain = global_dxgi_swapchain.exchange(dxgi_swapchain.Get(), std::memory_order_acq_rel);
+                        if (old_swapchain != nullptr) {
+                            // This shouldn't happen, but just in case
+                            LogError("Failed to exchange global swapchain reference: 0x%p", old_swapchain);
+                        }
+                    }
+
+                    // Store new swapchain reference
+                    LogInfo("Stored global swapchain reference: 0x%p", dxgi_swapchain.Get());
                 }
-            }
-
-            return;
-        }
-
-        if (api == reshade::api::device_api::d3d12) {
-            auto *id3d12device   = reinterpret_cast<ID3D12Device *>(swapchain->get_native());
-
-            // query IDXGISwapChain interface
-            Microsoft::WRL::ComPtr<IDXGISwapChain> dxgi_swapchain{};
-            if (SUCCEEDED(id3d12device->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain)))) {
-                if (display_commanderhooks::dxgi::HookSwapchain(dxgi_swapchain.Get())) {
-                    LogInfo("Successfully hooked DXGI Present calls for swapchain: 0x%p", dxgi_swapchain.Get());
-                } else {
-                    LogWarn("Failed to hook DXGI Present calls for swapchain: 0x%p", dxgi_swapchain.Get());
-                }
+            } else {
+                LogError("Failed to query interface for swapchain: 0x%p", iunknown);
             }
             return;
         }
         // Try to hook DX9 Present calls if this is a DX9 device
         // Get the underlying DX9 device from the ReShade device
-        if (api == reshade::api::device_api::d3d9) {
+        else if (api == reshade::api::device_api::d3d9) {
             if (auto *device = swapchain->get_device()) {
                 // do query instead
                 if (auto *d3d9_device = reinterpret_cast<IDirect3DDevice9 *>(device->get_native())) {
@@ -258,6 +244,8 @@ void hookToSwapChain(reshade::api::swapchain *swapchain) {
                     LogInfo("Could not get DX9 device from ReShade device for Present hooking");
                 }
             }
+        } else {
+            LogError("Unsupported API: %d", api);
         }
     }
 }
@@ -768,6 +756,24 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
 }
 
 bool OnCreateSwapchainCapture(reshade::api::device_api api, reshade::api::swapchain_desc &desc, void *hwnd) {
+    IDXGISwapChain* old_swapchain = global_dxgi_swapchain.exchange(nullptr, std::memory_order_release);
+
+    // while statistics is used, we need to wait
+    // atomic
+
+    while (global_dxgi_swapchain_inuse.load()) {
+        Sleep(1);
+    }
+
+    if (old_swapchain != nullptr) {
+        HRESULT hr = old_swapchain->Release();
+        if (old_swapchain->Release() != 0) {
+            global_dxgi_swapchain.exchange(old_swapchain, std::memory_order_acq_rel);
+            old_swapchain->AddRef(); // to do fix this race condition
+        }
+        LogInfo("Released old global swapchain reference: 0x%p", old_swapchain);
+    }
+
 
     auto res = OnCreateSwapchainCapture2(api, desc, hwnd);
 
@@ -785,6 +791,13 @@ void OnInitSwapchain(reshade::api::swapchain *swapchain, bool resize) {
     if (swapchain == nullptr) {
         LogDebug("OnInitSwapchain: swapchain is null");
         return;
+    }
+    {
+        static int log_count = 0;
+        if (log_count < 3) {
+            LogInfo("OnInitSwapchain: swapchain: 0x%p", swapchain);
+            log_count++;
+        }
     }
 
     // Increment event counter
@@ -806,7 +819,7 @@ void OnInitSwapchain(reshade::api::swapchain *swapchain, bool resize) {
         return;
     }
     // how to check
-    hookToSwapChain(swapchain);
+    //hookToSwapChain(swapchain);
 
     // Capture the render thread ID when swapchain is created
     // This is called on the thread that creates the swapchain, which is typically the render thread

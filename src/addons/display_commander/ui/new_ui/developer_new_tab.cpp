@@ -75,6 +75,13 @@ void DrawDeveloperNewTab() {
 
     ImGui::Spacing();
 
+    // New Experimental Features Section
+    if (ImGui::CollapsingHeader("New Experimental Features", ImGuiTreeNodeFlags_None)) {
+        DrawNewExperimentalFeatures();
+    }
+
+    ImGui::Spacing();
+
     // Debug Tools Section
     if (ImGui::CollapsingHeader("Debug Tools", ImGuiTreeNodeFlags_None)) {
         ImGui::Indent();
@@ -1118,6 +1125,40 @@ void DrawNvapiSettings() {
 
 }
 
+
+void DrawNewExperimentalFeatures() {
+    ImGui::Indent();
+
+    // Warning tip
+    ImGui::TextColored(ui::colors::TEXT_WARNING, ICON_FK_WARNING " Tip: Turn off if this causes crashes");
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("These experimental features are under active development.\n"
+                         "If you experience crashes or instability, disable them immediately.");
+    }
+
+    ImGui::Spacing();
+
+    // Reuse swap chain experimental feature
+    if (CheckboxSetting(settings::g_experimentalTabSettings.reuse_swap_chain_experimental_enabled, "Reuse Swap Chain")) {
+        LogInfo("Reuse swap chain experimental feature %s",
+                settings::g_experimentalTabSettings.reuse_swap_chain_experimental_enabled.GetValue() ? "enabled" : "disabled");
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Store a global reference to the DXGI swapchain.\n"
+                         "This allows other parts of the codebase to access the swapchain.\n"
+                         "WARNING: Experimental feature - may cause crashes. Turn off if issues occur.");
+    }
+
+    // Display current swapchain pointer if available
+    IDXGISwapChain* current_swapchain = global_dxgi_swapchain.load(std::memory_order_acquire);
+    if (current_swapchain != nullptr) {
+        ImGui::TextColored(ui::colors::TEXT_DEFAULT, "Current swapchain: 0x%p", current_swapchain);
+    } else {
+        ImGui::TextColored(ui::colors::TEXT_DIMMED, "No swapchain stored");
+    }
+
+    ImGui::Unindent();
+}
 
 void DrawReShadeGlobalConfigSettings() {
     ImGui::Indent();

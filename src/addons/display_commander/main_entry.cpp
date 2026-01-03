@@ -1341,11 +1341,13 @@ void DoInitializationWithoutHwnd(HMODULE h_module, DWORD fdw_reason) {
 
     HandleSafemode();
 
+    /*
+
     // Initialize PresentMon if enabled
     if (settings::g_developerTabSettings.enable_presentmon_tracing.GetValue()) {
         presentmon::g_presentMonManager.StartWorker();
     }
-
+*/
     // Pin the module to prevent premature unload
     HMODULE pinned_module = nullptr;
     if (GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_PIN,

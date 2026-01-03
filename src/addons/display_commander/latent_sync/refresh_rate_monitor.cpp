@@ -272,6 +272,7 @@ bool RefreshRateMonitor::GetCurrentVBlankTime(DXGI_FRAME_STATISTICS& stats) {
         }
         hr = global_dxgi_swapchain_ptr->GetFrameStatistics(&stats);
         if (SUCCEEDED(hr)) {
+            global_dxgi_swapchain_inuse.store(false, std::memory_order_release);
             found = true;
         } else {
             return false;
@@ -466,6 +467,9 @@ uint32_t RefreshRateMonitor::CountSamplesBelowThreshold(double fixed_refresh_hz)
 }
 
 void RefreshRateMonitor::MonitoringThread() {
+    if (true) {
+        return;
+    }
     LogInfo("Refresh rate monitoring thread: entering main loop");
     LogInfo("Refresh rate monitoring thread: STARTED - measuring actual refresh rate via WaitForVBlank");
 

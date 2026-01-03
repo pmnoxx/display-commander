@@ -29,6 +29,9 @@ void DrawKeyboardShortcutsSettings();
 // Draw ReShade global config settings section
 void DrawReShadeGlobalConfigSettings();
 
+// Draw new experimental features section
+void DrawNewExperimentalFeatures();
+
 // Initialize developer tab
 void InitDeveloperNewTab();
 

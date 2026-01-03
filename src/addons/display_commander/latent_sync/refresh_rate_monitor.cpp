@@ -134,12 +134,12 @@ void RefreshRateMonitor::ProcessFrameStatistics(DXGI_FRAME_STATISTICS& stats) {
 
     // Get current frame statistics (should now be accurate after DWM flush)
        // DXGI_FRAME_STATISTICS stats = {};
-     //   if (!GetCurrentVBlankTime(stats)) {
+        if (!GetCurrentVBlankTime(stats)) {
       //      // If we can't get frame statistics, skip this sample
      //       LogError("Failed to get frame statistics - skipping sample");
             //  std::this_thread::sleep_for(std::chrono::milliseconds(1));
-     //       return;
-     //   }
+            return;
+        }
 
         // Extract time from frame statistics
         LONGLONG current_time = stats.SyncQPCTime.QuadPart * utils::QPC_TO_NS;
@@ -148,7 +148,7 @@ void RefreshRateMonitor::ProcessFrameStatistics(DXGI_FRAME_STATISTICS& stats) {
         // Calculate present refresh count difference
         uint64_t present_refresh_count_diff = current_present_refresh_count - m_last_present_refresh_count;
 
-        if (present_refresh_count_diff == 0) {
+        if (present_refresh_count_diff <= 0) {
             return;
         }
         //m_last_vblank_time = stats.SyncQPCTime.QuadPart * utils::QPC_TO_NS;
@@ -158,7 +158,7 @@ void RefreshRateMonitor::ProcessFrameStatistics(DXGI_FRAME_STATISTICS& stats) {
             LONGLONG duration_ns = (current_time - m_last_vblank_time) / present_refresh_count_diff;
             double duration_seconds = duration_ns / 1e9;
 
-            if (duration_seconds > 0.0) {
+            if (duration_seconds > 0.0 && duration_ns >= 1000) { // 1000ns is the minimum time between vblank events
                 // Calculate refresh rate
                 double refresh_rate = static_cast<double>(1) / duration_seconds;
 
@@ -239,27 +239,49 @@ bool RefreshRateMonitor::GetCurrentVBlankTime(DXGI_FRAME_STATISTICS& stats) {
     // Use memory_order_acquire to ensure we see the latest value and proper synchronization
     // The local variable 'cached_stats' keeps the shared_ptr alive during dereference,
     // preventing the object from being destroyed by another thread between load and dereference
-    auto cached_stats = g_cached_frame_stats.load(std::memory_order_acquire);
+ /*   auto cached_stats = g_cached_frame_stats.load(std::memory_order_acquire);
     if (cached_stats != nullptr) {
         // Copy the stats - cached_stats keeps the shared_ptr alive during this operation
         stats = *cached_stats;
         return true;
     }
-/*
+*/
+    global_dxgi_swapchain_inuse.store(true, std::memory_order_release);
     // Fallback: try to get swapchain from tracked swapchains
     // Iterate through all tracked swapchains while holding the lock
     bool found = false;
-    g_swapchainTrackingManager.ForEachTrackedSwapchain([&](IDXGISwapChain* swapchain) {
-        if (swapchain != nullptr && !found) {
-            HRESULT hr = swapchain->GetFrameStatistics(&stats);
-            if (SUCCEEDED(hr)) {
-                found = true;
-            }
+    auto global_dxgi_swapchain_ptr = global_dxgi_swapchain.load(std::memory_order_acquire);
+
+    if (global_dxgi_swapchain_ptr != nullptr) {
+        // dxgi_output from swapchain
+        IDXGIOutput* dxgi_output = nullptr;
+        HRESULT hr = global_dxgi_swapchain_ptr->GetContainingOutput(&dxgi_output);
+        if (FAILED(hr)) {
+            LogError("GetContainingOutput failed with HRESULT: 0x%08X", hr);
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            return false;
         }
-    });
-*/
+
+        // Wait for vblank using IDXGIOutput::WaitForVBlank
+        hr = dxgi_output->WaitForVBlank();
+        if (FAILED(hr)) {
+            LogError("WaitForVBlank failed with HRESULT: 0x%08X", hr);
+            // Continue trying, but sleep a bit to avoid busy waiting
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            return false;
+        }
+        hr = global_dxgi_swapchain_ptr->GetFrameStatistics(&stats);
+        if (SUCCEEDED(hr)) {
+            found = true;
+        } else {
+            return false;
+        }
+    }
+
+    global_dxgi_swapchain_inuse.store(false, std::memory_order_release);
+
     // Return true if we found a valid swapchain with frame statistics, false otherwise
-    return false;
+    return found;
 }
 
 std::string RefreshRateMonitor::GetStatusString() const {
@@ -444,10 +466,6 @@ uint32_t RefreshRateMonitor::CountSamplesBelowThreshold(double fixed_refresh_hz)
 }
 
 void RefreshRateMonitor::MonitoringThread() {
-    if (true) {
-        // disabled for now
-        return;
-    }
     LogInfo("Refresh rate monitoring thread: entering main loop");
     LogInfo("Refresh rate monitoring thread: STARTED - measuring actual refresh rate via WaitForVBlank");
 
@@ -499,15 +517,9 @@ void RefreshRateMonitor::MonitoringThread() {
             }
 
             DwmFlush();
-            // Wait for vblank using IDXGIOutput::WaitForVBlank
-            HRESULT hr = m_dxgi_output->WaitForVBlank();
-            if (FAILED(hr)) {
-                LogError("WaitForVBlank failed with HRESULT: 0x%08X", hr);
-                // Continue trying, but sleep a bit to avoid busy waiting
-                std::this_thread::sleep_for(std::chrono::milliseconds(1));
-                continue;
-            }
 
+            DXGI_FRAME_STATISTICS stats = {};
+            ProcessFrameStatistics(stats);
 
 
         } catch (const std::exception& e) {

@@ -137,6 +137,8 @@ std::atomic<uint32_t> g_last_api_version{0};
 std::atomic<std::shared_ptr<reshade::api::swapchain_desc>> g_last_swapchain_desc{nullptr};
 std::atomic<uint64_t> g_init_apply_generation{0};
 std::atomic<HWND> g_last_swapchain_hwnd{nullptr};
+std::atomic<IDXGISwapChain*> global_dxgi_swapchain{nullptr};
+std::atomic<bool> global_dxgi_swapchain_inuse{false};
 std::atomic<bool> g_shutdown{false};
 std::atomic<bool> g_muted_applied{false};
 

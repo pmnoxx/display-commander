@@ -565,6 +565,8 @@ extern std::atomic<uint32_t> g_last_api_version; // Store API version/feature le
 extern std::atomic<std::shared_ptr<reshade::api::swapchain_desc>> g_last_swapchain_desc; // Store last swapchain description
 extern std::atomic<uint64_t> g_init_apply_generation;
 extern std::atomic<HWND> g_last_swapchain_hwnd;
+extern std::atomic<IDXGISwapChain*> global_dxgi_swapchain; // Global reference to DXGI swapchain (experimental)
+extern std::atomic<bool> global_dxgi_swapchain_inuse;
 extern std::atomic<bool> g_shutdown;
 extern std::atomic<bool> g_muted_applied;
 

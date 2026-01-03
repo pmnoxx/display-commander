@@ -115,6 +115,8 @@ class MainTabSettings {
     ui::new_ui::BoolSetting show_playtime;
     ui::new_ui::FloatSetting overlay_background_alpha;
     ui::new_ui::FloatSetting overlay_chart_alpha;
+    ui::new_ui::FloatSetting overlay_graph_scale;
+    ui::new_ui::FloatSetting overlay_graph_max_scale;
 
     // GPU Measurement Settings
     ui::new_ui::IntSetting gpu_measurement_enabled;

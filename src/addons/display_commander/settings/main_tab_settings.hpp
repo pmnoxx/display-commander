@@ -110,6 +110,7 @@ class MainTabSettings {
     ui::new_ui::BoolSetting show_refresh_rate_frame_times;
     ui::new_ui::BoolSetting show_volume;
     ui::new_ui::BoolSetting show_cpu_usage;
+    ui::new_ui::BoolSetting show_fg_mode;
     ui::new_ui::BoolSetting show_stopwatch;
     ui::new_ui::BoolSetting show_playtime;
     ui::new_ui::FloatSetting overlay_background_alpha;

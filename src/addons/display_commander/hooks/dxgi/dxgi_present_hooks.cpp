@@ -1467,7 +1467,7 @@ bool HookSwapchain(IDXGISwapChain *swapchain) {
 bool HookFactoryVTable(IDXGIFactory *factory) {
     if (true) {
         LogInfo("DXGI factory hooking suppressed by user setting");
-        return false;
+        return true;
     }
     if (factory == nullptr) {
         return false;

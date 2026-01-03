@@ -2958,7 +2958,17 @@ void DrawImportantInfo() {
             settings::g_mainTabSettings.show_cpu_usage.SetValue(show_cpu_usage);
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Shows CPU usage as a percentage: (sim duration / frame time) * 100%");
+            ImGui::SetTooltip("Shows CPU usage as a percentage: (sim duration / frame time) * 100%%");
+        }
+        ImGui::NextColumn();
+
+        // Show DLSS-FG Mode
+        bool show_fg_mode = settings::g_mainTabSettings.show_fg_mode.GetValue();
+        if (ImGui::Checkbox("FG Mode", &show_fg_mode)) {
+            settings::g_mainTabSettings.show_fg_mode.SetValue(show_fg_mode);
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Shows DLSS Frame Generation mode (OFF / 2x / 3x / 4x) in the performance overlay.");
         }
         ImGui::NextColumn();
 

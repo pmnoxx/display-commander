@@ -6,8 +6,6 @@
 #include "nvapi_hooks.hpp"
 #include "ngx_hooks.hpp"
 #include "streamline_hooks.hpp"
-#include "d3d11/d3d11_hooks.hpp"
-#include "../utils.hpp"
 #include "../utils/general_utils.hpp"
 #include "../utils/logging.hpp"
 #include "../settings/streamline_tab_settings.hpp"

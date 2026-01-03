@@ -128,7 +128,7 @@ void DrawFrameTimeGraph() {
     // Set graph size and scale
     ImVec2 graph_size = ImVec2(-1.0f, 200.0f);                            // Full width, 200px height
     float scale_min = 0.0f;                                               // Always start from 0ms
-    float scale_max = max(avg_frame_time * 10.f, max_frame_time + 2.0f);  // Add some padding
+    float scale_max = avg_frame_time * 4.f;  // Add some padding
 
     // Draw the frame time graph
     ImGui::PlotLines("Frame Time (ms)", frame_times.data(), static_cast<int>(frame_times.size()),
@@ -194,7 +194,7 @@ void DrawRefreshRateFrameTimesGraph(bool show_tooltips) {
     // Fixed width for overlay (compact)
     ImVec2 graph_size = ImVec2(300.0f, 60.0f);  // Fixed 300px width, 60px height
     float scale_min = 0.0f;
-    float scale_max = max(avg_frame_time * 5.0f, max_frame_time + 2.0f);  // Add some padding but less aggressive
+    float scale_max = avg_frame_time * 4.0f;  // Add some padding but less aggressive
 
     // Create overlay text with current refresh rate frame time
     //.. std::string overlay_text = "Refresh Frame Time: " + std::to_string(frame_times.back()).substr(0, 4) + " ms";
@@ -269,7 +269,7 @@ void DrawFrameTimeGraphOverlay(bool show_tooltips) {
     // Fixed width for overlay (compact)
     ImVec2 graph_size = ImVec2(300.0f, 60.0f);  // Fixed 300px width, 60px height
     float scale_min = 0.0f;
-    float scale_max = max(avg_frame_time * 5.0f, max_frame_time + 2.0f);  // Add some padding but less aggressive
+    float scale_max = avg_frame_time * 4.0f;  // Add some padding but less aggressive
 
     // Draw chart background with transparency
     float chart_alpha = settings::g_mainTabSettings.overlay_chart_alpha.GetValue();

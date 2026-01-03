@@ -238,7 +238,7 @@ void DrawSwapchainWrapperStats() {
                     // Set graph size and scale
                     ImVec2 graph_size = ImVec2(-1.0f, 150.0f); // Full width, 150px height
                     float scale_min = 0.0f;
-                    float scale_max = (std::max)(avg_ft * 3.0f, max_ft + 2.0f);
+                    float scale_max = avg_ft * 4.0f;
 
                     // Draw the frame time graph
                     std::string graph_label = std::string("##FrameTime") + type_name;

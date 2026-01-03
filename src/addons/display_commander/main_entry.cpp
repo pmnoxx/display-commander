@@ -545,10 +545,14 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
         if (show_vrr_status) {
             // Prefer NVAPI when available; fall back to the existing DXGI heuristic otherwise.
             if (cached_nvapi_ok) {
-                if (cached_nvapi_vrr.is_display_in_vrr_mode || cached_nvapi_vrr.is_vrr_enabled) {
+                if (cached_nvapi_vrr.is_display_in_vrr_mode && cached_nvapi_vrr.is_vrr_enabled) {
                     ImGui::TextColored(ui::colors::TEXT_SUCCESS, "VRR: On");
-                } else if (cached_nvapi_vrr.is_vrr_requested) {
-                    ImGui::TextColored(ui::colors::TEXT_WARNING, "VRR: Req");
+                } else if (cached_nvapi_vrr.is_display_in_vrr_mode) {
+                    ImGui::TextColored(ui::colors::TEXT_WARNING, "VRR: Off, Active");
+                } else if (cached_nvapi_vrr.is_vrr_enabled) {
+                    ImGui::TextColored(ui::colors::TEXT_WARNING, "VRR: Enabled, Not Active");
+                }  else if (cached_nvapi_vrr.is_vrr_requested) {
+                    ImGui::TextColored(ui::colors::TEXT_WARNING, "VRR: Requested");
                 } else {
                     ImGui::TextColored(ui::colors::TEXT_DIMMED, "VRR: Off");
                 }
@@ -588,6 +592,12 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
                                    (int)cached_nvapi_vrr.is_vrr_requested,
                                    (int)cached_nvapi_vrr.is_vrr_possible,
                                    (int)cached_nvapi_vrr.is_display_in_vrr_mode);
+                // Show which field is causing "VRR: On" to display
+                if (cached_nvapi_vrr.is_display_in_vrr_mode) {
+                    ImGui::TextColored(ui::colors::TEXT_DIMMED, "  -> Display is in VRR mode (authoritative)");
+                } else if (cached_nvapi_vrr.is_vrr_enabled) {
+                    ImGui::TextColored(ui::colors::TEXT_DIMMED, "  -> VRR enabled (fallback)");
+                }
             }
         }
     }

@@ -191,10 +191,12 @@ void DrawRefreshRateFrameTimesGraph(bool show_tooltips) {
     }
     avg_frame_time /= static_cast<float>(frame_times.size());
 
-    // Fixed width for overlay (compact)
-    ImVec2 graph_size = ImVec2(300.0f, 60.0f);  // Fixed 300px width, 60px height
+    // Fixed width for overlay (compact) - apply user scale
+    float graph_scale = settings::g_mainTabSettings.overlay_graph_scale.GetValue();
+    ImVec2 graph_size = ImVec2(300.0f * graph_scale, 60.0f * graph_scale);  // Scaled width and height
     float scale_min = 0.0f;
-    float scale_max = avg_frame_time * 4.0f;  // Add some padding but less aggressive
+    float max_scale = settings::g_mainTabSettings.overlay_graph_max_scale.GetValue();
+    float scale_max = avg_frame_time * max_scale;  // User-configurable max scale multiplier
 
     // Create overlay text with current refresh rate frame time
     //.. std::string overlay_text = "Refresh Frame Time: " + std::to_string(frame_times.back()).substr(0, 4) + " ms";
@@ -266,10 +268,12 @@ void DrawFrameTimeGraphOverlay(bool show_tooltips) {
     }
     avg_frame_time /= static_cast<float>(frame_times.size());
 
-    // Fixed width for overlay (compact)
-    ImVec2 graph_size = ImVec2(300.0f, 60.0f);  // Fixed 300px width, 60px height
+    // Fixed width for overlay (compact) - apply user scale
+    float graph_scale = settings::g_mainTabSettings.overlay_graph_scale.GetValue();
+    ImVec2 graph_size = ImVec2(300.0f * graph_scale, 60.0f * graph_scale);  // Scaled width and height
     float scale_min = 0.0f;
-    float scale_max = avg_frame_time * 4.0f;  // Add some padding but less aggressive
+    float max_scale = settings::g_mainTabSettings.overlay_graph_max_scale.GetValue();
+    float scale_max = avg_frame_time * max_scale;  // User-configurable max scale multiplier
 
     // Draw chart background with transparency
     float chart_alpha = settings::g_mainTabSettings.overlay_chart_alpha.GetValue();
@@ -3064,6 +3068,26 @@ void DrawImportantInfo() {
             ImGui::SetTooltip(
                 "Controls the transparency of the frame time and refresh rate chart backgrounds. 0.0 = fully "
                 "transparent, 1.0 = fully opaque. Chart lines remain fully visible.");
+        }
+        // Overlay graph scale slider
+        if (SliderFloatSetting(settings::g_mainTabSettings.overlay_graph_scale, "Graph Size Scale", "%.1fx")) {
+            // Setting is automatically saved by SliderFloatSetting
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip(
+                "Controls the size of the frame time and refresh rate graphs in the overlay. "
+                "1.0x = default size (300x60px), 4.0x = maximum size (1200x240px).");
+        }
+        // Overlay graph max scale slider
+        if (SliderFloatSetting(settings::g_mainTabSettings.overlay_graph_max_scale, "Graph Max Value Scale", "%.1fx")) {
+            // Setting is automatically saved by SliderFloatSetting
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip(
+                "Controls the maximum Y-axis value for the frame time and refresh rate graphs. "
+                "The graph will scale from 0ms to (average frame time × this multiplier). "
+                "Lower values (2x-4x) show more detail for normal frame times. "
+                "Higher values (6x-10x) accommodate frame time spikes without clipping.");
         }
     }
 

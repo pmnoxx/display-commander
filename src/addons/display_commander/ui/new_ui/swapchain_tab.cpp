@@ -11,6 +11,7 @@
 #include "../../utils/general_utils.hpp"
 #include "../../utils/logging.hpp"
 #include "../../utils/timing.hpp"
+#include "../../nvapi/vrr_status.hpp"
 
 #include <dxgi1_6.h>
 #include <wrl/client.h>
@@ -1729,6 +1730,29 @@ void DrawSwapchainInfo(reshade::api::effect_runtime* runtime) {
                     } else {
                         ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f),
                                            "  " ICON_FK_WARNING " Display does not support VRR");
+                    }
+
+                    // NVAPI VRR status (NVIDIA only). This complements the DXGI capability flag above.
+                    nvapi::VrrStatus vrr_status{};
+                    const bool nvapi_ok = nvapi::TryQueryVrrStatusFromDxgiOutputDeviceName(output_desc.DeviceName, vrr_status);
+
+                    if (!vrr_status.nvapi_initialized) {
+                        ImGui::Text("  NVAPI VRR Status: Unavailable (NVAPI init failed or no NVIDIA device)");
+                    } else if (!vrr_status.display_id_resolved) {
+                        ImGui::Text("  NVAPI VRR Status: Unavailable (could not map display name)");
+                        if (!vrr_status.nvapi_display_name.empty()) {
+                            ImGui::Text("    NVAPI Display Name: %s", vrr_status.nvapi_display_name.c_str());
+                        }
+                    } else if (!nvapi_ok) {
+                        ImGui::Text("  NVAPI VRR Status: Query failed (status=%d)", (int)vrr_status.query_status);
+                        ImGui::Text("    DisplayId: %u", vrr_status.display_id);
+                    } else {
+                        ImGui::Text("  NVAPI VRR Status:");
+                        ImGui::Text("    DisplayId: %u", vrr_status.display_id);
+                        ImGui::Text("    Enabled: %s", vrr_status.is_vrr_enabled ? "Yes" : "No");
+                        ImGui::Text("    Requested: %s", vrr_status.is_vrr_requested ? "Yes" : "No");
+                        ImGui::Text("    Possible: %s", vrr_status.is_vrr_possible ? "Yes" : "No");
+                        ImGui::Text("    Display in VRR Mode: %s", vrr_status.is_display_in_vrr_mode ? "Yes" : "No");
                     }
                 } else {
                     ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "Failed to get output description");

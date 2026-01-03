@@ -28,10 +28,12 @@
 #include "res/ui_colors.hpp"
 #include "utils/logging.hpp"
 #include "utils/timing.hpp"
+#include "nvapi/vrr_status.hpp"
 #include "version.hpp"
 #include "widgets/dualsense_widget/dualsense_widget.hpp"
 
 #include <d3d11.h>
+#include <dxgi1_6.h>
 #include <psapi.h>
 #include <shlobj.h>
 #include <wrl/client.h>
@@ -56,6 +58,40 @@ void DetectMultipleReShadeVersions();
 
 // Forward declaration for safemode function
 void HandleSafemode();
+
+static bool TryGetDxgiOutputDeviceNameFromLastSwapchain(wchar_t out_device_name[32]) {
+    if (out_device_name == nullptr)
+        return false;
+
+    out_device_name[0] = L'\0';
+
+    auto *swapchain_ptr = reinterpret_cast<reshade::api::swapchain *>(g_last_swapchain_ptr_unsafe.load(std::memory_order_acquire));
+    if (swapchain_ptr == nullptr)
+        return false;
+
+    auto *unknown = reinterpret_cast<IUnknown *>(swapchain_ptr->get_native());
+    if (unknown == nullptr)
+        return false;
+
+    Microsoft::WRL::ComPtr<IDXGISwapChain> dxgi_swapchain;
+    if (FAILED(unknown->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain))) || dxgi_swapchain == nullptr)
+        return false;
+
+    Microsoft::WRL::ComPtr<IDXGIOutput> output;
+    if (FAILED(dxgi_swapchain->GetContainingOutput(&output)) || output == nullptr)
+        return false;
+
+    Microsoft::WRL::ComPtr<IDXGIOutput6> output6;
+    if (FAILED(output->QueryInterface(IID_PPV_ARGS(&output6))) || output6 == nullptr)
+        return false;
+
+    DXGI_OUTPUT_DESC1 desc1 = {};
+    if (FAILED(output6->GetDesc1(&desc1)))
+        return false;
+
+    wcsncpy_s(out_device_name, 32, desc1.DeviceName, _TRUNCATE);
+    return out_device_name[0] != L'\0';
+}
 
 // Function to parse version string and check if it's 6.6.2 or above
 bool IsVersion662OrAbove(const std::string& version_str) {
@@ -310,6 +346,7 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
     bool show_gpu_measurement = (settings::g_mainTabSettings.gpu_measurement_enabled.GetValue() != 0);
     bool show_frame_time_graph = settings::g_mainTabSettings.show_frame_time_graph.GetValue();
     bool show_cpu_usage = settings::g_mainTabSettings.show_cpu_usage.GetValue();
+    bool show_fg_mode = settings::g_mainTabSettings.show_fg_mode.GetValue();
     bool show_enabledfeatures = display_commanderhooks::IsTimeslowdownEnabled() || ::g_auto_click_enabled.load();
 
     ImGui::SetNextWindowPos(ImVec2(10.0f, 10.0f), ImGuiCond_Always);
@@ -460,6 +497,13 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
         const LONGLONG update_interval_ns = 100 * utils::NS_TO_MS;  // 100ms in nanoseconds
         const LONGLONG sample_timeout_ns = 1000 * utils::NS_TO_MS;  // 1 second in nanoseconds
 
+        // NVAPI VRR (more authoritative on NVIDIA). Cache it to keep overlay overhead low.
+        static bool cached_nvapi_ok = false;
+        static nvapi::VrrStatus cached_nvapi_vrr{};
+        static LONGLONG last_nvapi_update_ns = 0;
+        static wchar_t cached_output_device_name[32] = {};
+        const LONGLONG nvapi_update_interval_ns = 1000 * utils::NS_TO_MS;  // 1s in nanoseconds
+
         LONGLONG now_ns = utils::get_now_ns();
 
         // Update cached value every 100ms
@@ -477,12 +521,43 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
         // Check if we got a sample within the last 1 second
         bool has_recent_sample = (now_ns - last_valid_sample_ns) < sample_timeout_ns;
 
+        // Update NVAPI VRR once per second (if we can resolve the current output device name).
+        if (now_ns - last_nvapi_update_ns >= nvapi_update_interval_ns) {
+            wchar_t output_device_name[32] = {};
+            if (TryGetDxgiOutputDeviceNameFromLastSwapchain(output_device_name)) {
+                // If output changed, force refresh.
+                if (wcscmp(output_device_name, cached_output_device_name) != 0) {
+                    wcsncpy_s(cached_output_device_name, 32, output_device_name, _TRUNCATE);
+                }
+
+                nvapi::VrrStatus vrr{};
+                cached_nvapi_ok = nvapi::TryQueryVrrStatusFromDxgiOutputDeviceName(cached_output_device_name, vrr);
+                cached_nvapi_vrr = vrr;
+            } else {
+                cached_nvapi_ok = false;
+                cached_nvapi_vrr = nvapi::VrrStatus{};
+                cached_output_device_name[0] = L'\0';
+            }
+            last_nvapi_update_ns = now_ns;
+        }
+
         // Display VRR status (only if show_vrr_status is enabled)
         if (show_vrr_status) {
-            if (cached_stats.all_last_20_within_1s && cached_stats.samples_below_threshold_last_10s >= 2) {
-                ImGui::TextColored(ui::colors::TEXT_SUCCESS, "VRR: On");
+            // Prefer NVAPI when available; fall back to the existing DXGI heuristic otherwise.
+            if (cached_nvapi_ok) {
+                if (cached_nvapi_vrr.is_display_in_vrr_mode || cached_nvapi_vrr.is_vrr_enabled) {
+                    ImGui::TextColored(ui::colors::TEXT_SUCCESS, "VRR: On");
+                } else if (cached_nvapi_vrr.is_vrr_requested) {
+                    ImGui::TextColored(ui::colors::TEXT_WARNING, "VRR: Req");
+                } else {
+                    ImGui::TextColored(ui::colors::TEXT_DIMMED, "VRR: Off");
+                }
             } else {
-                ImGui::TextColored(ui::colors::TEXT_DIMMED, "VRR: Off");
+                if (cached_stats.all_last_20_within_1s && cached_stats.samples_below_threshold_last_10s >= 2) {
+                    ImGui::TextColored(ui::colors::TEXT_SUCCESS, "VRR: On");
+                } else {
+                    ImGui::TextColored(ui::colors::TEXT_DIMMED, "VRR: Off");
+                }
             }
         }
 
@@ -494,11 +569,33 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
             ImGui::TextColored(ui::colors::TEXT_DIMMED, "  Below threshold: %u", cached_stats.samples_below_threshold_last_10s);
             ImGui::TextColored(ui::colors::TEXT_DIMMED, "  Last 20 within 1s: %s", cached_stats.all_last_20_within_1s ? "Yes" : "No");
         }
+
+        // NVAPI debug info (optional, shown only in VRR debug mode)
+        if (show_vrr_debug_mode) {
+            if (!cached_nvapi_vrr.nvapi_initialized) {
+                ImGui::TextColored(ui::colors::TEXT_DIMMED, "  NVAPI: Unavailable");
+            } else if (!cached_nvapi_vrr.display_id_resolved) {
+                ImGui::TextColored(ui::colors::TEXT_DIMMED, "  NVAPI: No displayId (st=%d)", (int)cached_nvapi_vrr.resolve_status);
+                if (!cached_nvapi_vrr.nvapi_display_name.empty()) {
+                    ImGui::TextColored(ui::colors::TEXT_DIMMED, "  NVAPI Name: %s", cached_nvapi_vrr.nvapi_display_name.c_str());
+                }
+            } else if (!cached_nvapi_ok) {
+                ImGui::TextColored(ui::colors::TEXT_DIMMED, "  NVAPI: Query failed (st=%d)", (int)cached_nvapi_vrr.query_status);
+                ImGui::TextColored(ui::colors::TEXT_DIMMED, "  NVAPI DisplayId: %u", cached_nvapi_vrr.display_id);
+            } else {
+                ImGui::TextColored(ui::colors::TEXT_DIMMED, "  NVAPI: enabled=%d req=%d poss=%d in_mode=%d",
+                                   (int)cached_nvapi_vrr.is_vrr_enabled,
+                                   (int)cached_nvapi_vrr.is_vrr_requested,
+                                   (int)cached_nvapi_vrr.is_vrr_possible,
+                                   (int)cached_nvapi_vrr.is_display_in_vrr_mode);
+            }
+        }
     }
 
     if (show_flip_status) {
         // Get current API to determine flip state
-        int current_api = 0;  // Default to 0 if runtime/device not available
+        int current_api
+        = 0;  // Default to 0 if runtime/device not available
         if (runtime != nullptr && runtime->get_device() != nullptr) {
             current_api = static_cast<int>(runtime->get_device()->get_api());
         }
@@ -530,6 +627,28 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
 
         if (ImGui::IsItemHovered() && show_tooltips) {
             ImGui::SetTooltip("DXGI Flip Mode: %s", flip_state_str);
+        }
+    }
+
+    if (show_fg_mode) {
+        const DLSSGSummary dlssg_summary = GetDLSSGSummary();
+
+        // Only show the 4 requested buckets: OFF / 2x / 3x / 4x
+        const char* fg_mode_display = "OFF";
+        if (dlssg_summary.dlss_g_active) {
+            if (dlssg_summary.fg_mode == "2x" || dlssg_summary.fg_mode == "3x" || dlssg_summary.fg_mode == "4x") {
+                fg_mode_display = dlssg_summary.fg_mode.c_str();
+            }
+        }
+
+        if (strcmp(fg_mode_display, "OFF") == 0) {
+            ImGui::TextColored(ui::colors::TEXT_DIMMED, "FG: OFF");
+        } else {
+            ImGui::Text("FG: %s", fg_mode_display);
+        }
+
+        if (ImGui::IsItemHovered() && show_tooltips) {
+            ImGui::SetTooltip("DLSS-FG detected mode: %s", dlssg_summary.fg_mode.c_str());
         }
     }
 

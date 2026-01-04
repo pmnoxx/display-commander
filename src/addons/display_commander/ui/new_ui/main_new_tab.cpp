@@ -2124,7 +2124,7 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                         case DxgiBypassMode::kQueryFailedSwapchainNull: flip_state_str = "Query Failed: Null"; break;
                         case DxgiBypassMode::kQueryFailedNoMedia:       {
                             if (GetModuleHandleA("sl.interposer.dll") != nullptr) {
-                                flip_state_str = "(Streamline Interposer detected - Flip State Query not supported)";
+                                flip_state_str = "(needs rewrite to support streamline in dx12)";
                             } else {
                                 flip_state_str = "Query Failed: No Media";
                             }

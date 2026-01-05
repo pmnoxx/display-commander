@@ -5,6 +5,8 @@
 #include "../../utils/general_utils.hpp"
 #include "../../utils/logging.hpp"
 #include "../../utils/perf_measurement.hpp"
+#include "../../utils/detour_call_tracker.hpp"
+#include "../../utils/timing.hpp"
 #include "../../globals.hpp"
 #include "../../settings/main_tab_settings.hpp"
 #include "../../settings/developer_tab_settings.hpp"
@@ -485,6 +487,7 @@ template PresentCommonState HandlePresentBefore<display_commanderhooks::DXGISwap
 
 // Hooked IDXGISwapChain::Present function
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain *This, UINT SyncInterval, UINT Flags) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     // Early return if swapchain doesn't match
     IDXGISwapChain* expected_swapchain = g_last_present_update_swapchain.load();
     if (expected_swapchain != nullptr && This != expected_swapchain) {
@@ -525,6 +528,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain *This, UI
 
 // Hooked IDXGISwapChain1::Present1 function
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1 *This, UINT SyncInterval, UINT PresentFlags, const DXGI_PRESENT_PARAMETERS *pPresentParameters) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     IDXGISwapChain* baseSwapChain = reinterpret_cast<IDXGISwapChain*>(This);
 
     // Early return if swapchain doesn't match
@@ -568,7 +572,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1 *This, 
 
 // Hooked IDXGISwapChain::GetDesc function
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetDesc_Detour(IDXGISwapChain *This, DXGI_SWAP_CHAIN_DESC *pDesc) {
-
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     // Increment DXGI GetDesc counter
     g_dxgi_core_event_counters[DXGI_CORE_EVENT_GETDESC].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
@@ -636,6 +640,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetDesc_Detour(IDXGISwapChain *This, DX
 
 // Hooked IDXGISwapChain1::GetDesc1 function
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetDesc1_Detour(IDXGISwapChain1 *This, DXGI_SWAP_CHAIN_DESC1 *pDesc) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     // Increment DXGI GetDesc1 counter
     g_dxgi_sc1_event_counters[DXGI_SC1_EVENT_GETDESC1].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
@@ -702,6 +707,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetDesc1_Detour(IDXGISwapChain1 *This, 
 
 // Hooked IDXGISwapChain3::CheckColorSpaceSupport function
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_CheckColorSpaceSupport_Detour(IDXGISwapChain3 *This, DXGI_COLOR_SPACE_TYPE ColorSpace, UINT *pColorSpaceSupport) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     // Increment DXGI CheckColorSpaceSupport counter
     g_dxgi_sc3_event_counters[DXGI_SC3_EVENT_CHECKCOLORSPACESUPPORT].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
@@ -765,6 +771,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_CheckColorSpaceSupport_Detour(IDXGISwap
 
 // Hooked IDXGIFactory::CreateSwapChain function
 HRESULT STDMETHODCALLTYPE IDXGIFactory_CreateSwapChain_Detour(IDXGIFactory *This, IUnknown *pDevice, DXGI_SWAP_CHAIN_DESC *pDesc, IDXGISwapChain **ppSwapChain) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     // Increment DXGI Factory CreateSwapChain counter
     g_dxgi_factory_event_counters[DXGI_FACTORY_EVENT_CREATESWAPCHAIN].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
@@ -798,6 +805,7 @@ HRESULT STDMETHODCALLTYPE IDXGIFactory_CreateSwapChain_Detour(IDXGIFactory *This
 
 // Additional DXGI detour functions
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetBuffer_Detour(IDXGISwapChain *This, UINT Buffer, REFIID riid, void **ppSurface) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_core_event_counters[DXGI_CORE_EVENT_GETBUFFER].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
     return IDXGISwapChain_GetBuffer_Original(This, Buffer, riid, ppSurface);
@@ -806,8 +814,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetBuffer_Detour(IDXGISwapChain *This, 
 std::atomic<int> g_last_set_fullscreen_state{-1}; // -1 for not set, 0 for false, 1 for true
 std::atomic<IDXGIOutput*> g_last_set_fullscreen_target{nullptr};
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetFullscreenState_Detour(IDXGISwapChain *This, BOOL Fullscreen, IDXGIOutput *pTarget) {
-
-
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_core_event_counters[DXGI_CORE_EVENT_SETFULLSCREENSTATE].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
@@ -827,6 +834,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetFullscreenState_Detour(IDXGISwapChai
 }
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetFullscreenState_Detour(IDXGISwapChain *This, BOOL *pFullscreen, IDXGIOutput **ppTarget) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_core_event_counters[DXGI_CORE_EVENT_GETFULLSCREENSTATE].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
     auto hr = IDXGISwapChain_GetFullscreenState_Original(This, pFullscreen, ppTarget);
@@ -851,18 +859,21 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetFullscreenState_Detour(IDXGISwapChai
 }
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_ResizeBuffers_Detour(IDXGISwapChain *This, UINT BufferCount, UINT Width, UINT Height, DXGI_FORMAT NewFormat, UINT SwapChainFlags) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_core_event_counters[DXGI_CORE_EVENT_RESIZEBUFFERS].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
     return IDXGISwapChain_ResizeBuffers_Original(This, BufferCount, Width, Height, NewFormat, SwapChainFlags);
 }
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_ResizeTarget_Detour(IDXGISwapChain *This, const DXGI_MODE_DESC *pNewTargetParameters) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_core_event_counters[DXGI_CORE_EVENT_RESIZETARGET].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
     return IDXGISwapChain_ResizeTarget_Original(This, pNewTargetParameters);
 }
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetContainingOutput_Detour(IDXGISwapChain *This, IDXGIOutput **ppOutput) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_core_event_counters[DXGI_CORE_EVENT_GETCONTAININGOUTPUT].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
@@ -883,12 +894,14 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetContainingOutput_Detour(IDXGISwapCha
 }
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetFrameStatistics_Detour(IDXGISwapChain *This, DXGI_FRAME_STATISTICS *pStats) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_core_event_counters[DXGI_CORE_EVENT_GETFRAMESTATISTICS].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
     return IDXGISwapChain_GetFrameStatistics_Original(This, pStats);
 }
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetLastPresentCount_Detour(IDXGISwapChain *This, UINT *pLastPresentCount) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_core_event_counters[DXGI_CORE_EVENT_GETLASTPRESENTCOUNT].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
     return IDXGISwapChain_GetLastPresentCount_Original(This, pLastPresentCount);
@@ -896,12 +909,14 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetLastPresentCount_Detour(IDXGISwapCha
 
 // IDXGISwapChain1 detour functions
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetFullscreenDesc_Detour(IDXGISwapChain1 *This, DXGI_SWAP_CHAIN_FULLSCREEN_DESC *pDesc) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_sc1_event_counters[DXGI_SC1_EVENT_GETFULLSCREENDESC].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
     return IDXGISwapChain_GetFullscreenDesc_Original(This, pDesc);
 }
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetHwnd_Detour(IDXGISwapChain1 *This, HWND *pHwnd) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_sc1_event_counters[DXGI_SC1_EVENT_GETHWND].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
@@ -912,18 +927,21 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetHwnd_Detour(IDXGISwapChain1 *This, H
 }
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetCoreWindow_Detour(IDXGISwapChain1 *This, REFIID refiid, void **ppUnk) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_sc1_event_counters[DXGI_SC1_EVENT_GETCOREWINDOW].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
     return IDXGISwapChain_GetCoreWindow_Original(This, refiid, ppUnk);
 }
 
 BOOL STDMETHODCALLTYPE IDXGISwapChain_IsTemporaryMonoSupported_Detour(IDXGISwapChain1 *This) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_sc1_event_counters[DXGI_SC1_EVENT_ISTEMPORARYMONOSUPPORTED].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
     return IDXGISwapChain_IsTemporaryMonoSupported_Original(This);
 }
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetRestrictToOutput_Detour(IDXGISwapChain1 *This, IDXGIOutput **ppRestrictToOutput) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_sc1_event_counters[DXGI_SC1_EVENT_GETRESTRICTTOOUTPUT].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
@@ -944,24 +962,28 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetRestrictToOutput_Detour(IDXGISwapCha
 }
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetBackgroundColor_Detour(IDXGISwapChain1 *This, const DXGI_RGBA *pColor) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_sc1_event_counters[DXGI_SC1_EVENT_SETBACKGROUNDCOLOR].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
     return IDXGISwapChain_SetBackgroundColor_Original(This, pColor);
 }
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetBackgroundColor_Detour(IDXGISwapChain1 *This, DXGI_RGBA *pColor) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_sc1_event_counters[DXGI_SC1_EVENT_GETBACKGROUNDCOLOR].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
     return IDXGISwapChain_GetBackgroundColor_Original(This, pColor);
 }
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetRotation_Detour(IDXGISwapChain1 *This, DXGI_MODE_ROTATION Rotation) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_sc1_event_counters[DXGI_SC1_EVENT_SETROTATION].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
     return IDXGISwapChain_SetRotation_Original(This, Rotation);
 }
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetRotation_Detour(IDXGISwapChain1 *This, DXGI_MODE_ROTATION *pRotation) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_sc1_event_counters[DXGI_SC1_EVENT_GETROTATION].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
     return IDXGISwapChain_GetRotation_Original(This, pRotation);
@@ -969,42 +991,49 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetRotation_Detour(IDXGISwapChain1 *Thi
 
 // IDXGISwapChain2 detour functions
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetSourceSize_Detour(IDXGISwapChain2 *This, UINT Width, UINT Height) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_sc2_event_counters[DXGI_SC2_EVENT_SETSOURCESIZE].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
     return IDXGISwapChain_SetSourceSize_Original(This, Width, Height);
 }
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetSourceSize_Detour(IDXGISwapChain2 *This, UINT *pWidth, UINT *pHeight) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_sc2_event_counters[DXGI_SC2_EVENT_GETSOURCESIZE].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
     return IDXGISwapChain_GetSourceSize_Original(This, pWidth, pHeight);
 }
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetMaximumFrameLatency_Detour(IDXGISwapChain2 *This, UINT MaxLatency) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_sc2_event_counters[DXGI_SC2_EVENT_SETMAXIMUMFRAMELATENCY].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
     return IDXGISwapChain_SetMaximumFrameLatency_Original(This, MaxLatency);
 }
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetMaximumFrameLatency_Detour(IDXGISwapChain2 *This, UINT *pMaxLatency) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_sc2_event_counters[DXGI_SC2_EVENT_GETMAXIMUMFRAMELATENCY].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
     return IDXGISwapChain_GetMaximumFrameLatency_Original(This, pMaxLatency);
 }
 
 HANDLE STDMETHODCALLTYPE IDXGISwapChain_GetFrameLatencyWaitableObject_Detour(IDXGISwapChain2 *This) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_sc2_event_counters[DXGI_SC2_EVENT_GETFRAMELATENCYWAIABLEOBJECT].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
     return IDXGISwapChain_GetFrameLatencyWaitableObject_Original(This);
 }
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetMatrixTransform_Detour(IDXGISwapChain2 *This, const DXGI_MATRIX_3X2_F *pMatrix) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_sc2_event_counters[DXGI_SC2_EVENT_SETMATRIXTRANSFORM].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
     return IDXGISwapChain_SetMatrixTransform_Original(This, pMatrix);
 }
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetMatrixTransform_Detour(IDXGISwapChain2 *This, DXGI_MATRIX_3X2_F *pMatrix) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_sc2_event_counters[DXGI_SC2_EVENT_GETMATRIXTRANSFORM].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
     return IDXGISwapChain_GetMatrixTransform_Original(This, pMatrix);
@@ -1012,18 +1041,21 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetMatrixTransform_Detour(IDXGISwapChai
 
 // IDXGISwapChain3 detour functions
 UINT STDMETHODCALLTYPE IDXGISwapChain_GetCurrentBackBufferIndex_Detour(IDXGISwapChain3 *This) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_sc3_event_counters[DXGI_SC3_EVENT_GETCURRENTBACKBUFFERINDEX].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
     return IDXGISwapChain_GetCurrentBackBufferIndex_Original(This);
 }
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetColorSpace1_Detour(IDXGISwapChain3 *This, DXGI_COLOR_SPACE_TYPE ColorSpace) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_sc3_event_counters[DXGI_SC3_EVENT_SETCOLORSPACE1].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
     return IDXGISwapChain_SetColorSpace1_Original(This, ColorSpace);
 }
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_ResizeBuffers1_Detour(IDXGISwapChain3 *This, UINT BufferCount, UINT Width, UINT Height, DXGI_FORMAT Format, UINT SwapChainFlags, const UINT *pCreationNodeMask, IUnknown *const *ppPresentQueue) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_sc3_event_counters[DXGI_SC3_EVENT_RESIZEBUFFERS1].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
     return IDXGISwapChain_ResizeBuffers1_Original(This, BufferCount, Width, Height, Format, SwapChainFlags, pCreationNodeMask, ppPresentQueue);
@@ -1031,6 +1063,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_ResizeBuffers1_Detour(IDXGISwapChain3 *
 
 // IDXGISwapChain4 detour functions
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetHDRMetaData_Detour(IDXGISwapChain4 *This, DXGI_HDR_METADATA_TYPE Type, UINT Size, void *pMetaData) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     // Increment DXGI SetHDRMetaData counter
     g_dxgi_sc4_event_counters[DXGI_SC4_EVENT_SETHDRMETADATA].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
@@ -1053,6 +1086,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetHDRMetaData_Detour(IDXGISwapChain4 *
 
 // Hooked IDXGIOutput functions
 HRESULT STDMETHODCALLTYPE IDXGIOutput_SetGammaControl_Detour(IDXGIOutput *This, const DXGI_GAMMA_CONTROL *pArray) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     // Increment DXGI Output SetGammaControl counter
     g_dxgi_output_event_counters[DXGI_OUTPUT_EVENT_SETGAMMACONTROL].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
@@ -1074,6 +1108,7 @@ HRESULT STDMETHODCALLTYPE IDXGIOutput_SetGammaControl_Detour(IDXGIOutput *This, 
 }
 
 HRESULT STDMETHODCALLTYPE IDXGIOutput_GetGammaControl_Detour(IDXGIOutput *This, DXGI_GAMMA_CONTROL *pArray) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     // Increment DXGI Output GetGammaControl counter
     g_dxgi_output_event_counters[DXGI_OUTPUT_EVENT_GETGAMMACONTROL].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
@@ -1095,6 +1130,7 @@ HRESULT STDMETHODCALLTYPE IDXGIOutput_GetGammaControl_Detour(IDXGIOutput *This, 
 }
 
 HRESULT STDMETHODCALLTYPE IDXGIOutput_GetDesc_Detour(IDXGIOutput *This, DXGI_OUTPUT_DESC *pDesc) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     // Increment DXGI Output GetDesc counter
     g_dxgi_output_event_counters[DXGI_OUTPUT_EVENT_GETDESC].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
@@ -1117,6 +1153,7 @@ HRESULT STDMETHODCALLTYPE IDXGIOutput_GetDesc_Detour(IDXGIOutput *This, DXGI_OUT
 
 // Hooked IDXGIOutput6::GetDesc1 function
 HRESULT STDMETHODCALLTYPE IDXGIOutput6_GetDesc1_Detour(IDXGIOutput6 *This, DXGI_OUTPUT_DESC1 *pDesc) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     if (pDesc == nullptr) {
         return DXGI_ERROR_INVALID_CALL;
     }

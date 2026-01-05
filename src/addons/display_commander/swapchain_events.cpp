@@ -37,6 +37,7 @@
 #include "utils/logging.hpp"
 #include "utils/timing.hpp"
 #include "utils/perf_measurement.hpp"
+#include "utils/detour_call_tracker.hpp"
 #include "widgets/xinput_widget/xinput_widget.hpp"
 #include "widgets/dualsense_widget/dualsense_widget.hpp"
 
@@ -66,6 +67,7 @@ std::atomic<bool> g_initialized_with_hwnd{false};
 // ============================================================================
 
 bool OnCreateDevice(reshade::api::device_api api, uint32_t& api_version) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     // Check if D3D9 upgrade is enabled
     if (!settings::g_experimentalTabSettings.d3d9_flipex_enabled.GetValue()) {
         LogInfo("D3D9 to D3D9Ex upgrade disabled");
@@ -99,6 +101,7 @@ bool OnCreateDevice(reshade::api::device_api api, uint32_t& api_version) {
 }
 
 void OnDestroyDevice(reshade::api::device *device) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     if (device == nullptr) {
         return;
     }
@@ -136,6 +139,7 @@ void OnDestroyDevice(reshade::api::device *device) {
 }
 
 void OnDestroyEffectRuntime(reshade::api::effect_runtime *runtime) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     if (runtime == nullptr) {
         return;
     }
@@ -492,6 +496,7 @@ static reshade::api::format GetFormatFromComboValue(int combo_value) {
 
 // Capture sync interval during create_swapchain
 bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapchain_desc &desc, void *hwnd) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     // Don't reset counters on swapchain creation - let them accumulate throughout the session
 
     // Increment event counter
@@ -758,6 +763,7 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
 }
 
 bool OnCreateSwapchainCapture(reshade::api::device_api api, reshade::api::swapchain_desc &desc, void *hwnd) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     /*
     IDXGISwapChain* old_swapchain = global_dxgi_swapchain.exchange(nullptr, std::memory_order_release);
 
@@ -792,6 +798,7 @@ bool OnCreateSwapchainCapture(reshade::api::device_api api, reshade::api::swapch
 
 
 void OnInitSwapchain(reshade::api::swapchain *swapchain, bool resize) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     if (swapchain == nullptr) {
         LogDebug("OnInitSwapchain: swapchain is null");
         return;
@@ -1160,6 +1167,7 @@ void AutoSetColorSpace(reshade::api::swapchain *swapchain) {
 void OnPresentUpdateBefore(reshade::api::command_queue * command_queue, reshade::api::swapchain *swapchain,
                            const reshade::api::rect * /*source_rect*/, const reshade::api::rect * /*dest_rect*/,
                            uint32_t /*dirty_rect_count*/, const reshade::api::rect * /*dirty_rects*/) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     if (swapchain == nullptr) {
         return;
     }
@@ -1271,6 +1279,7 @@ void OnPresentUpdateBefore(reshade::api::command_queue * command_queue, reshade:
 
 bool OnBindPipeline(reshade::api::command_list *cmd_list, reshade::api::pipeline_stage stages,
                     reshade::api::pipeline pipeline) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     // Increment event counter
     g_reshade_event_counters[RESHADE_EVENT_BIND_PIPELINE].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
@@ -1332,6 +1341,7 @@ void OnPresentFlags2(uint32_t *present_flags, DeviceTypeDC api_type, bool from_p
 // formats
 bool OnCreateResource(reshade::api::device *device, reshade::api::resource_desc &desc,
                       reshade::api::subresource_data * /*initial_data*/, reshade::api::resource_usage /*usage*/) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     bool modified = false;
 
     // Only handle 2D textures
@@ -1397,6 +1407,7 @@ bool OnCreateResource(reshade::api::device *device, reshade::api::resource_desc 
 
 // Sampler creation event handler to override mipmap bias and anisotropic filtering
 bool OnCreateSampler(reshade::api::device *device, reshade::api::sampler_desc &desc) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     if (device == nullptr) {
         return false;
     }
@@ -1571,6 +1582,7 @@ bool OnCreateSampler(reshade::api::device *device, reshade::api::sampler_desc &d
 // buffer resolution and texture format upgrades
 bool OnCreateResourceView(reshade::api::device *device, reshade::api::resource resource,
                           reshade::api::resource_usage usage_type, reshade::api::resource_view_desc &desc) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     bool modified = false;
 
     if (!device)
@@ -1621,6 +1633,7 @@ bool OnCreateResourceView(reshade::api::device *device, reshade::api::resource r
 // Viewport event handler to scale viewports for buffer resolution upgrade
 void OnSetViewport(reshade::api::command_list *cmd_list, uint32_t first, uint32_t count,
                    const reshade::api::viewport *viewports) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     // Only handle viewport scaling if buffer resolution upgrade is enabled
     if (!settings::g_experimentalTabSettings.buffer_resolution_upgrade_enabled.GetValue()) {
         return; // No modification needed
@@ -1660,6 +1673,7 @@ void OnSetViewport(reshade::api::command_list *cmd_list, uint32_t first, uint32_
 // resolution upgrade
 void OnSetScissorRects(reshade::api::command_list *cmd_list, uint32_t first, uint32_t count,
                        const reshade::api::rect *rects) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     // Only handle scissor scaling if buffer resolution upgrade is enabled
     if (!settings::g_experimentalTabSettings.buffer_resolution_upgrade_enabled.GetValue()) {
         return; // No modification needed

@@ -8,6 +8,8 @@
 #include "streamline_hooks.hpp"
 #include "../utils/general_utils.hpp"
 #include "../utils/logging.hpp"
+#include "../utils/detour_call_tracker.hpp"
+#include "../utils/timing.hpp"
 #include "../settings/streamline_tab_settings.hpp"
 #include "../settings/developer_tab_settings.hpp"
 #include "../settings/experimental_tab_settings.hpp"
@@ -168,6 +170,7 @@ std::wstring ExtractModuleName(const std::wstring& fullPath) {
 
 // Hooked LoadLibraryA function
 HMODULE WINAPI LoadLibraryA_Detour(LPCSTR lpLibFileName) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     std::string timestamp = GetCurrentTimestamp();
     std::string dll_name = lpLibFileName ? lpLibFileName : "NULL";
 
@@ -261,6 +264,7 @@ HMODULE WINAPI LoadLibraryA_Detour(LPCSTR lpLibFileName) {
 
 // Hooked LoadLibraryW function
 HMODULE WINAPI LoadLibraryW_Detour(LPCWSTR lpLibFileName) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     std::string timestamp = GetCurrentTimestamp();
     std::string dll_name = lpLibFileName ? WideToNarrow(lpLibFileName) : "NULL";
 
@@ -354,6 +358,7 @@ HMODULE WINAPI LoadLibraryW_Detour(LPCWSTR lpLibFileName) {
 
 // Hooked LoadLibraryExA function
 HMODULE WINAPI LoadLibraryExA_Detour(LPCSTR lpLibFileName, HANDLE hFile, DWORD dwFlags) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     std::string timestamp = GetCurrentTimestamp();
     std::string dll_name = lpLibFileName ? lpLibFileName : "NULL";
 
@@ -461,6 +466,7 @@ HMODULE WINAPI LoadLibraryExA_Detour(LPCSTR lpLibFileName, HANDLE hFile, DWORD d
 
 // Hooked LoadLibraryExW function
 HMODULE WINAPI LoadLibraryExW_Detour(LPCWSTR lpLibFileName, HANDLE hFile, DWORD dwFlags) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     std::string timestamp = GetCurrentTimestamp();
     std::string dll_name = lpLibFileName ? WideToNarrow(lpLibFileName) : "NULL";
 

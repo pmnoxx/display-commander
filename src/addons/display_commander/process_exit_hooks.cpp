@@ -2,11 +2,14 @@
 #include "exit_handler.hpp"
 #include "globals.hpp"
 #include "utils/stack_trace.hpp"
+#include "utils/detour_call_tracker.hpp"
+#include "utils/timing.hpp"
 #include "dbghelp_loader.hpp"
 #include "version.hpp"
 #include <atomic>
 #include <cstdlib>
 #include <sstream>
+#include <string>
 #include <vector>
 #include <ctime>
 #include <windows.h>
@@ -291,6 +294,30 @@ LONG WINAPI UnhandledExceptionHandler(EXCEPTION_POINTERS *exception_info) {
         mem_details << "System Memory Load: " << mem_status.dwMemoryLoad << "%";
         exit_handler::WriteToDebugLog(mem_details.str());
     }
+
+    // Print recent detour calls information
+    uint64_t crash_timestamp_ns = utils::get_real_time_ns(); // Use real time to avoid spoofed timers
+    std::string recent_detour_info = detour_call_tracker::FormatRecentDetourCalls(crash_timestamp_ns, 256);
+    exit_handler::WriteToDebugLog("=== RECENT DETOUR CALLS ===");
+
+    // Split multi-line string and write each line separately
+    if (!recent_detour_info.empty()) {
+        std::istringstream iss(recent_detour_info);
+        std::string line;
+        while (std::getline(iss, line)) {
+            // Remove any trailing carriage return
+            if (!line.empty() && line.back() == '\r') {
+                line.pop_back();
+            }
+            if (!line.empty()) {
+                exit_handler::WriteToDebugLog(line);
+            }
+        }
+    } else {
+        exit_handler::WriteToDebugLog("Recent Detour Calls: <none recorded>");
+    }
+
+    exit_handler::WriteToDebugLog("=== END RECENT DETOUR CALLS ===");
 
     // Print stack trace to DbgView using exception context
     exit_handler::WriteToDebugLog("=== GENERATING STACK TRACE ===");

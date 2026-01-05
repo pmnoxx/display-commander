@@ -25,7 +25,6 @@ static std::map<HWND, WNDPROC> g_original_window_proc;
 LRESULT CALLBACK WindowProc_Detour(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     // Check if continue rendering is enabled
     bool continue_rendering_enabled = s_continue_rendering.load();
-
     static bool sent_activate = false;
     if (continue_rendering_enabled && g_target_window == hwnd && !sent_activate) {
         SendFakeActivationMessages(hwnd);

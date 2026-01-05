@@ -28,6 +28,7 @@
 #include "res/ui_colors.hpp"
 #include "utils/logging.hpp"
 #include "utils/timing.hpp"
+#include "utils/detour_call_tracker.hpp"
 #include "nvapi/vrr_status.hpp"
 #include "version.hpp"
 #include "widgets/dualsense_widget/dualsense_widget.hpp"
@@ -144,6 +145,7 @@ struct ReShadeDetectionDebugInfo {
 ReShadeDetectionDebugInfo g_reshade_debug_info;
 namespace {
 void OnRegisterOverlayDisplayCommander(reshade::api::effect_runtime* runtime) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
 #ifdef TRY_CATCH_BLOCKS
     __try {
 #endif
@@ -176,6 +178,7 @@ void OnRegisterOverlayDisplayCommander(reshade::api::effect_runtime* runtime) {
 
 // ReShade effect runtime event handler for input blocking
 void OnInitEffectRuntime(reshade::api::effect_runtime* runtime) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
 #ifdef TRY_CATCH_BLOCKS
     __try {
 #endif
@@ -215,6 +218,7 @@ void OnInitEffectRuntime(reshade::api::effect_runtime* runtime) {
 
 // ReShade overlay event handler for input blocking
 bool OnReShadeOverlayOpen(reshade::api::effect_runtime* runtime, bool open, reshade::api::input_source source) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     // store last frame id, when UI was opened
     g_last_ui_drawn_frame_id.store(g_global_frame_id.load());
 
@@ -248,6 +252,7 @@ enum class CursorState {
 
 // Test callback for reshade_overlay event
 void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     const bool show_display_commander_ui = settings::g_mainTabSettings.show_display_commander_ui.GetValue();
     const bool show_tooltips = show_display_commander_ui; // only show tooltips if the UI is visible
 

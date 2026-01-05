@@ -26,6 +26,7 @@ bool OnBindPipeline(reshade::api::command_list *cmd_list, reshade::api::pipeline
 // Device lifecycle hooks
 bool OnCreateDevice(reshade::api::device_api api, uint32_t& api_version);
 void OnDestroyDevice(reshade::api::device *device);
+void OnInitDevice(reshade::api::device *device);
 
 // Effect runtime lifecycle hooks
 void OnDestroyEffectRuntime(reshade::api::effect_runtime *runtime);
@@ -33,6 +34,7 @@ void OnDestroyEffectRuntime(reshade::api::effect_runtime *runtime);
 // Swapchain lifecycle hooks
 void OnInitSwapchain(reshade::api::swapchain *swapchain, bool resize);
 bool OnCreateSwapchainCapture(reshade::api::device_api api, reshade::api::swapchain_desc &desc, void *hwnd);
+void OnDestroySwapchain(reshade::api::swapchain *swapchain, bool resize);
 
 // Centralized initialization method
 void DoInitializationWithHwnd(HWND hwnd);
@@ -53,6 +55,7 @@ bool OnCreateResource(reshade::api::device *device, reshade::api::resource_desc 
 bool OnCreateResourceView(reshade::api::device *device, reshade::api::resource resource,
                           reshade::api::resource_usage usage_type, reshade::api::resource_view_desc &desc);
 bool OnCreateSampler(reshade::api::device *device, reshade::api::sampler_desc &desc);
+void OnDestroyResource(reshade::api::device *device, reshade::api::resource resource);
 void OnSetViewport(reshade::api::command_list *cmd_list, uint32_t first, uint32_t count,
                    const reshade::api::viewport *viewports);
 void OnSetScissorRects(reshade::api::command_list *cmd_list, uint32_t first, uint32_t count,

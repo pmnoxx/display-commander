@@ -952,6 +952,7 @@ LRESULT WINAPI DispatchMessageW_Detour(const MSG *lpMsg) {
 // Hooked GetRawInputData function
 UINT WINAPI GetRawInputData_Detour(HRAWINPUT hRawInput, UINT uiCommand, LPVOID pData, PUINT pcbSize,
                                    UINT cbSizeHeader) {
+
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Track total calls
     g_hook_stats[HOOK_GetRawInputData].increment_total();

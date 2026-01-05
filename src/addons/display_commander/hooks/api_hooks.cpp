@@ -5,6 +5,8 @@
 #include "../settings/developer_tab_settings.hpp"
 #include "../utils/general_utils.hpp"
 #include "../utils/logging.hpp"
+#include "../utils/detour_call_tracker.hpp"
+#include "../utils/timing.hpp"
 #include "debug_output_hooks.hpp"
 #include "dinput_hooks.hpp"
 #include "display_settings_hooks.hpp"
@@ -60,6 +62,7 @@ bool HWNDBelongsToCurrentProcess(HWND hwnd) {
 
 // Hooked GetFocus function
 HWND WINAPI GetFocus_Detour() {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     auto hwnd = GetFocus_Original ? GetFocus_Original() : GetFocus();
 
     if (HWNDBelongsToCurrentProcess(hwnd)) {
@@ -83,6 +86,7 @@ HWND WINAPI GetForegroundWindow_Direct() {
 
 // Hooked GetForegroundWindow function
 HWND WINAPI GetForegroundWindow_Detour() {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     auto hwnd = GetForegroundWindow_Direct();
 
     if (HWNDBelongsToCurrentProcess(hwnd)) {
@@ -103,6 +107,7 @@ HWND WINAPI GetForegroundWindow_Detour() {
 
 // Hooked GetActiveWindow function
 HWND WINAPI GetActiveWindow_Detour() {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     auto hwnd = GetActiveWindow_Original ? GetActiveWindow_Original() : GetActiveWindow();
 
     if (HWNDBelongsToCurrentProcess(hwnd)) {
@@ -133,6 +138,7 @@ HWND WINAPI GetActiveWindow_Detour() {
 
 // Hooked GetGUIThreadInfo function
 BOOL WINAPI GetGUIThreadInfo_Detour(DWORD idThread, PGUITHREADINFO pgui) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     if (s_continue_rendering.load() && g_game_window.load() != nullptr && IsWindow(g_game_window.load())) {
         // Call original function first
         BOOL result =
@@ -169,6 +175,7 @@ BOOL WINAPI GetGUIThreadInfo_Detour(DWORD idThread, PGUITHREADINFO pgui) {
 
 // Hooked SetThreadExecutionState function
 EXECUTION_STATE WINAPI SetThreadExecutionState_Detour(EXECUTION_STATE esFlags) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     // Track total calls
     g_hook_stats[HOOK_SetThreadExecutionState].increment_total();
 
@@ -190,6 +197,7 @@ EXECUTION_STATE WINAPI SetThreadExecutionState_Detour(EXECUTION_STATE esFlags) {
 
 // Hooked SetWindowLongPtrW function
 LONG_PTR WINAPI SetWindowLongPtrW_Detour(HWND hWnd, int nIndex, LONG_PTR dwNewLong) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     // Only process if prevent_always_on_top is enabled
     if (hWnd == g_game_window) {
         ModifyWindowStyle(nIndex, dwNewLong, settings::g_developerTabSettings.prevent_always_on_top.GetValue());
@@ -201,6 +209,7 @@ LONG_PTR WINAPI SetWindowLongPtrW_Detour(HWND hWnd, int nIndex, LONG_PTR dwNewLo
 
 // Hooked SetWindowLongA function
 LONG WINAPI SetWindowLongA_Detour(HWND hWnd, int nIndex, LONG dwNewLong) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     g_display_settings_hook_counters[DISPLAY_SETTINGS_HOOK_SETWINDOWLONGA].fetch_add(1);
     g_display_settings_hook_total_count.fetch_add(1);
 
@@ -215,6 +224,7 @@ LONG WINAPI SetWindowLongA_Detour(HWND hWnd, int nIndex, LONG dwNewLong) {
 
 // Hooked SetWindowLongW function
 LONG WINAPI SetWindowLongW_Detour(HWND hWnd, int nIndex, LONG dwNewLong) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     g_display_settings_hook_counters[DISPLAY_SETTINGS_HOOK_SETWINDOWLONGW].fetch_add(1);
     g_display_settings_hook_total_count.fetch_add(1);
     // Check if fullscreen prevention is enabled
@@ -227,6 +237,7 @@ LONG WINAPI SetWindowLongW_Detour(HWND hWnd, int nIndex, LONG dwNewLong) {
 
 // Hooked SetWindowLongPtrA function
 LONG_PTR WINAPI SetWindowLongPtrA_Detour(HWND hWnd, int nIndex, LONG_PTR dwNewLong) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     g_display_settings_hook_counters[DISPLAY_SETTINGS_HOOK_SETWINDOWLONGPTRA].fetch_add(1);
     g_display_settings_hook_total_count.fetch_add(1);
 
@@ -243,6 +254,7 @@ LONG_PTR WINAPI SetWindowLongPtrA_Detour(HWND hWnd, int nIndex, LONG_PTR dwNewLo
 
 // Hooked SetWindowPos function
 BOOL WINAPI SetWindowPos_Detour(HWND hWnd, HWND hWndInsertAfter, int X, int Y, int cx, int cy, UINT uFlags) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     // Only process if prevent_always_on_top is enabled
     if (hWnd == g_game_window && settings::g_developerTabSettings.prevent_always_on_top.GetValue() && hWndInsertAfter != HWND_NOTOPMOST) {
         hWndInsertAfter = HWND_NOTOPMOST;
@@ -294,6 +306,7 @@ void RestoreShowCursor() {
 
 // Hooked SetCursor function
 HCURSOR WINAPI SetCursor_Detour(HCURSOR hCursor) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     // Store the cursor value atomically
     s_last_cursor_value.store(hCursor);
     if (ShouldBlockMouseInput()) {
@@ -312,6 +325,7 @@ int WINAPI ShowCursor_Direct(BOOL bShow) {
 
 // Hooked ShowCursor function
 int WINAPI ShowCursor_Detour(BOOL bShow) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     s_last_show_cursor_arg.store(bShow);
 
     if (ShouldBlockMouseInput()) {
@@ -329,6 +343,7 @@ int WINAPI ShowCursor_Detour(BOOL bShow) {
 
 // Hooked CreateDXGIFactory function
 HRESULT WINAPI CreateDXGIFactory_Detour(REFIID riid, void** ppFactory) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     // Increment counter
     g_dxgi_factory_event_counters[DXGI_FACTORY_EVENT_CREATEFACTORY].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
@@ -349,6 +364,7 @@ HRESULT WINAPI CreateDXGIFactory_Detour(REFIID riid, void** ppFactory) {
 
 // Hooked CreateDXGIFactory1 function
 HRESULT WINAPI CreateDXGIFactory1_Detour(REFIID riid, void** ppFactory) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     // Increment counter
     g_dxgi_factory_event_counters[DXGI_FACTORY_EVENT_CREATEFACTORY1].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
@@ -375,6 +391,7 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain_Detour(IDXGIAdapter* pAdapter, D3D_
                                                     IDXGISwapChain** ppSwapChain, ID3D11Device** ppDevice,
                                                     D3D_FEATURE_LEVEL* pFeatureLevel,
                                                     ID3D11DeviceContext** ppImmediateContext) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     LogInfo("=== D3D11CreateDeviceAndSwapChain Called ===");
     LogInfo("  pAdapter: 0x%p", pAdapter);
     LogInfo("  DriverType: %d", DriverType);
@@ -487,6 +504,7 @@ HRESULT WINAPI D3D11CreateDevice_Detour(IDXGIAdapter* pAdapter, D3D_DRIVER_TYPE 
                                         const D3D_FEATURE_LEVEL* pFeatureLevels, UINT FeatureLevels,
                                         UINT SDKVersion, ID3D11Device** ppDevice,
                                         D3D_FEATURE_LEVEL* pFeatureLevel, ID3D11DeviceContext** ppImmediateContext) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     LogInfo("=== D3D11CreateDevice Called ===");
     LogInfo("  pAdapter: 0x%p", pAdapter);
     LogInfo("  DriverType: %d", DriverType);
@@ -571,6 +589,7 @@ HRESULT WINAPI D3D11CreateDevice_Detour(IDXGIAdapter* pAdapter, D3D_DRIVER_TYPE 
 // Hooked D3D12CreateDevice function
 HRESULT WINAPI D3D12CreateDevice_Detour(IUnknown* pAdapter, D3D_FEATURE_LEVEL MinimumFeatureLevel, REFIID riid,
                                         void** ppDevice) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     LogInfo("=== D3D12CreateDevice Called ===");
     LogInfo("  pAdapter: 0x%p", pAdapter);
     LogInfo("  MinimumFeatureLevel: 0x%04X", MinimumFeatureLevel);

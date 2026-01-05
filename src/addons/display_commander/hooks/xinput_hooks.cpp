@@ -5,6 +5,7 @@
 #include "../input_remapping/input_remapping.hpp"
 #include "../utils/general_utils.hpp"
 #include "../utils/timing.hpp"
+#include "../utils/detour_call_tracker.hpp"
 #include "../widgets/xinput_widget/xinput_widget.hpp"
 #include "../swapchain_events.hpp"
 #include "windows_hooks/windows_message_hooks.hpp"
@@ -400,6 +401,7 @@ static DWORD ProcessXInputGetState(DWORD dwUserIndex, XINPUT_STATE *pState, Hook
 
 // Hooked XInputGetState function
 DWORD WINAPI XInputGetState_Detour(DWORD dwUserIndex, XINPUT_STATE *pState) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     if (pState == nullptr) {
         return ERROR_INVALID_PARAMETER;
     }
@@ -435,6 +437,7 @@ DWORD WINAPI XInputGetState_Detour(DWORD dwUserIndex, XINPUT_STATE *pState) {
 
 // Hooked XInputGetStateEx function
 DWORD WINAPI XInputGetStateEx_Detour(DWORD dwUserIndex, XINPUT_STATE *pState) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     if (pState == nullptr) {
         return ERROR_INVALID_PARAMETER;
     }
@@ -456,6 +459,7 @@ DWORD WINAPI XInputGetStateEx_Detour(DWORD dwUserIndex, XINPUT_STATE *pState) {
 
 // Hooked XInputSetState function
 DWORD WINAPI XInputSetState_Detour(DWORD dwUserIndex, XINPUT_VIBRATION *pVibration) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     if (pVibration == nullptr) {
         return ERROR_INVALID_PARAMETER;
     }
@@ -503,6 +507,7 @@ DWORD WINAPI XInputSetState_Detour(DWORD dwUserIndex, XINPUT_VIBRATION *pVibrati
 
 // Hooked XInputGetCapabilities function
 DWORD WINAPI XInputGetCapabilities_Detour(DWORD dwUserIndex, DWORD dwFlags, XINPUT_CAPABILITIES *pCapabilities) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     // Track hook call statistics (do this first to verify hook is being called)
     g_hook_stats[HOOK_XInputGetCapabilities].increment_total();
 

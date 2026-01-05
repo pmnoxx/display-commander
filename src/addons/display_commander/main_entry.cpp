@@ -47,6 +47,15 @@
 // Forward declarations for ReShade event handlers
 void OnInitEffectRuntime(reshade::api::effect_runtime* runtime);
 bool OnReShadeOverlayOpen(reshade::api::effect_runtime* runtime, bool open, reshade::api::input_source source);
+// Note: OnInitDevice, OnDestroySwapchain, OnDestroyResource are declared in swapchain_events.hpp
+void OnInitCommandList(reshade::api::command_list *cmd_list);
+void OnDestroyCommandList(reshade::api::command_list *cmd_list);
+void OnInitCommandQueue(reshade::api::command_queue *queue);
+void OnDestroyCommandQueue(reshade::api::command_queue *queue);
+void OnExecuteCommandList(reshade::api::command_queue *queue, reshade::api::command_list *cmd_list);
+void OnFinishPresent(reshade::api::command_queue *queue, reshade::api::swapchain *swapchain);
+void OnReShadeBeginEffects(reshade::api::effect_runtime *runtime, reshade::api::command_list *cmd_list, reshade::api::resource_view rtv, reshade::api::resource_view rtv_srgb);
+void OnReShadeFinishEffects(reshade::api::effect_runtime *runtime, reshade::api::command_list *cmd_list, reshade::api::resource_view rtv, reshade::api::resource_view rtv_srgb);
 
 // Forward declaration for ReShade settings override
 void OverrideReShadeSettings();
@@ -177,6 +186,78 @@ void OnRegisterOverlayDisplayCommander(reshade::api::effect_runtime* runtime) {
 }  // namespace
 
 // ReShade effect runtime event handler for input blocking
+void OnInitCommandList(reshade::api::command_list *cmd_list) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
+    // Command list initialization tracking
+    if (cmd_list == nullptr) {
+        return;
+    }
+    // Add any initialization logic here if needed
+}
+
+void OnDestroyCommandList(reshade::api::command_list *cmd_list) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
+    // Command list destruction tracking
+    if (cmd_list == nullptr) {
+        return;
+    }
+    // Add any cleanup logic here if needed
+}
+
+void OnInitCommandQueue(reshade::api::command_queue *queue) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
+    // Command queue initialization tracking
+    if (queue == nullptr) {
+        return;
+    }
+    // Add any initialization logic here if needed
+}
+
+void OnDestroyCommandQueue(reshade::api::command_queue *queue) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
+    // Command queue destruction tracking
+    if (queue == nullptr) {
+        return;
+    }
+    // Add any cleanup logic here if needed
+}
+
+void OnExecuteCommandList(reshade::api::command_queue *queue, reshade::api::command_list *cmd_list) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
+    // Command list execution tracking
+    if (queue == nullptr || cmd_list == nullptr) {
+        return;
+    }
+    // Add any tracking logic here if needed
+}
+
+void OnFinishPresent(reshade::api::command_queue *queue, reshade::api::swapchain *swapchain) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
+    // Present completion tracking
+    if (queue == nullptr || swapchain == nullptr) {
+        return;
+    }
+    // Add any tracking logic here if needed
+}
+
+void OnReShadeBeginEffects(reshade::api::effect_runtime *runtime, reshade::api::command_list *cmd_list, reshade::api::resource_view rtv, reshade::api::resource_view rtv_srgb) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
+    // ReShade effects begin tracking
+    if (runtime == nullptr || cmd_list == nullptr) {
+        return;
+    }
+    // Add any tracking logic here if needed
+}
+
+void OnReShadeFinishEffects(reshade::api::effect_runtime *runtime, reshade::api::command_list *cmd_list, reshade::api::resource_view rtv, reshade::api::resource_view rtv_srgb) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
+    // ReShade effects finish tracking
+    if (runtime == nullptr || cmd_list == nullptr) {
+        return;
+    }
+    // Add any tracking logic here if needed
+}
+
 void OnInitEffectRuntime(reshade::api::effect_runtime* runtime) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
 #ifdef TRY_CATCH_BLOCKS
@@ -1543,6 +1624,25 @@ void DoInitializationWithoutHwnd(HMODULE h_module, DWORD fdw_reason) {
     // These operations are handled differently in ReShade
     // Register device destroy event for restore-on-exit
     reshade::register_event<reshade::addon_event::destroy_device>(OnDestroyDevice);
+    reshade::register_event<reshade::addon_event::init_device>(OnInitDevice);
+
+    // Register command list/queue lifecycle events
+    reshade::register_event<reshade::addon_event::init_command_list>(OnInitCommandList);
+    reshade::register_event<reshade::addon_event::destroy_command_list>(OnDestroyCommandList);
+    reshade::register_event<reshade::addon_event::init_command_queue>(OnInitCommandQueue);
+    reshade::register_event<reshade::addon_event::destroy_command_queue>(OnDestroyCommandQueue);
+    reshade::register_event<reshade::addon_event::execute_command_list>(OnExecuteCommandList);
+
+    // Register swapchain/resource lifecycle events
+    reshade::register_event<reshade::addon_event::destroy_swapchain>(OnDestroySwapchain);
+    reshade::register_event<reshade::addon_event::destroy_resource>(OnDestroyResource);
+
+    // Register present completion event
+    reshade::register_event<reshade::addon_event::finish_present>(OnFinishPresent);
+
+    // Register ReShade effect rendering events
+    reshade::register_event<reshade::addon_event::reshade_begin_effects>(OnReShadeBeginEffects);
+    reshade::register_event<reshade::addon_event::reshade_finish_effects>(OnReShadeFinishEffects);
 
     // Install process-exit safety hooks to restore display on abnormal exits
     process_exit_hooks::Initialize();

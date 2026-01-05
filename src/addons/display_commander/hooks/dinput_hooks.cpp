@@ -4,6 +4,8 @@
 #include "../globals.hpp"
 #include "../utils/general_utils.hpp"
 #include "../utils/logging.hpp"
+#include "../utils/detour_call_tracker.hpp"
+#include "../utils/timing.hpp"
 #include "../utils/srwlock_wrapper.hpp"
 #include "../utils/timing.hpp"
 #include "../settings/experimental_tab_settings.hpp"
@@ -94,6 +96,7 @@ void ClearDInputDevices() {
 
 // DirectInput8Create detour
 HRESULT WINAPI DirectInput8Create_Detour(HINSTANCE hinst, DWORD dwVersion, REFIID riidltf, LPVOID *ppvOut, LPUNKNOWN punkOuter) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     // Track total calls
     g_hook_stats[HOOK_DInput8CreateDevice].increment_total();
 
@@ -121,6 +124,7 @@ HRESULT WINAPI DirectInput8Create_Detour(HINSTANCE hinst, DWORD dwVersion, REFII
 
 // DirectInputCreateA detour
 HRESULT WINAPI DirectInputCreateA_Detour(HINSTANCE hinst, DWORD dwVersion, LPDIRECTINPUTA *ppDI, LPUNKNOWN punkOuter) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     // Track total calls
     g_hook_stats[HOOK_DInputCreateDevice].increment_total();
 
@@ -147,6 +151,7 @@ HRESULT WINAPI DirectInputCreateA_Detour(HINSTANCE hinst, DWORD dwVersion, LPDIR
 
 // DirectInputCreateW detour
 HRESULT WINAPI DirectInputCreateW_Detour(HINSTANCE hinst, DWORD dwVersion, LPDIRECTINPUTW *ppDI, LPUNKNOWN punkOuter) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     // Track total calls
     g_hook_stats[HOOK_DInputCreateDevice].increment_total();
 
@@ -285,6 +290,7 @@ void UninstallDirectInputHooks() {
 #if 0
 // DirectInput Device State Hook Functions
 HRESULT WINAPI DInputDevice_GetDeviceState_Detour(LPVOID pDevice, DWORD cbData, LPVOID lpvData) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     // Get the original function from the device hook
     utils::SRWLockExclusive lock(g_dinput_device_hooks_mutex);
     auto it = g_dinput_device_hooks.find(pDevice);
@@ -332,6 +338,7 @@ HRESULT WINAPI DInputDevice_GetDeviceState_Detour(LPVOID pDevice, DWORD cbData, 
 }
 
 HRESULT WINAPI DInputDevice_GetDeviceData_Detour(LPVOID pDevice, DWORD cbObjectData, LPDIDEVICEOBJECTDATA rgdod, LPDWORD pdwInOut, DWORD dwFlags) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     // Get the original function from the device hook
     utils::SRWLockExclusive lock(g_dinput_device_hooks_mutex);
     auto it = g_dinput_device_hooks.find(pDevice);

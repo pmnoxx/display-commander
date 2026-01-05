@@ -2,6 +2,7 @@
 #include "../utils/logging.hpp"
 #include "../globals.hpp"
 #include "../utils/timing.hpp"
+#include "../utils/detour_call_tracker.hpp"
 #include "../utils/perf_measurement.hpp"
 #include "../utils/general_utils.hpp"
 #include "../swapchain_events.hpp"
@@ -125,6 +126,7 @@ IDXGISwapChain4* CreateSwapChainWrapper(IDXGISwapChain* swapchain, SwapChainHook
 // DXGISwapChain4Wrapper implementation
 DXGISwapChain4Wrapper::DXGISwapChain4Wrapper(IDXGISwapChain4* originalSwapChain, SwapChainHook hookType)
     : m_originalSwapChain(originalSwapChain), m_refCount(1), m_swapChainHookType(hookType) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     const char* hookTypeName = (hookType == SwapChainHook::Proxy) ? "Proxy" : "Native";
     LogInfo("DXGISwapChain4Wrapper: Created wrapper for IDXGISwapChain4 (hookType: %s)", hookTypeName);
 }
@@ -185,6 +187,7 @@ STDMETHODIMP DXGISwapChain4Wrapper::GetDevice(REFIID riid, void **ppDevice) {
 
 // IDXGISwapChain methods - delegate to original
 STDMETHODIMP DXGISwapChain4Wrapper::Present(UINT SyncInterval, UINT Flags) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     // Mark that Present has been called at least once
     g_swapchain_wrapper_present_called.store(true, std::memory_order_relaxed);
 
@@ -275,6 +278,7 @@ STDMETHODIMP DXGISwapChain4Wrapper::GetCoreWindow(REFIID refiid, void **ppUnk) {
 }
 
 STDMETHODIMP DXGISwapChain4Wrapper::Present1(UINT SyncInterval, UINT PresentFlags, const DXGI_PRESENT_PARAMETERS *pPresentParameters) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     // Mark that Present1 has been called at least once
     g_swapchain_wrapper_present_called.store(true, std::memory_order_relaxed);
 

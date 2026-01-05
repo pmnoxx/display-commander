@@ -100,6 +100,15 @@ bool OnCreateDevice(reshade::api::device_api api, uint32_t& api_version) {
     return true;
 }
 
+void OnInitDevice(reshade::api::device *device) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
+    // Device initialization tracking
+    if (device == nullptr) {
+        return;
+    }
+    // Add any initialization logic here if needed
+}
+
 void OnDestroyDevice(reshade::api::device *device) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     if (device == nullptr) {
@@ -797,6 +806,15 @@ bool OnCreateSwapchainCapture(reshade::api::device_api api, reshade::api::swapch
 }
 
 
+void OnDestroySwapchain(reshade::api::swapchain *swapchain, bool resize) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
+    if (swapchain == nullptr) {
+        return;
+    }
+    // Swapchain destruction tracking
+    // Add any cleanup logic here if needed
+}
+
 void OnInitSwapchain(reshade::api::swapchain *swapchain, bool resize) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     if (swapchain == nullptr) {
@@ -1339,6 +1357,15 @@ void OnPresentFlags2(uint32_t *present_flags, DeviceTypeDC api_type, bool from_p
 
 // Resource creation event handler to upgrade buffer resolutions and texture
 // formats
+void OnDestroyResource(reshade::api::device *device, reshade::api::resource resource) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
+    if (device == nullptr) {
+        return;
+    }
+    // Resource destruction tracking
+    // Add any cleanup logic here if needed
+}
+
 bool OnCreateResource(reshade::api::device *device, reshade::api::resource_desc &desc,
                       reshade::api::subresource_data * /*initial_data*/, reshade::api::resource_usage /*usage*/) {
     RECORD_DETOUR_CALL(utils::get_now_ns());

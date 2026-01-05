@@ -774,6 +774,17 @@ UINT WINAPI GetRawInputBuffer_Detour(PRAWINPUT pData, PUINT pcbSize, UINT cbSize
         UINT processed_count = 0;
 
         for (UINT i = 0; i < result; ++i) {
+            // CRITICAL: Save the original size BEFORE any modifications
+            // This size is needed to correctly advance to the next RAWINPUT block
+            const UINT original_size = current->header.dwSize;
+
+            // Validate that we have a valid size (safety check)
+            if (original_size < sizeof(RAWINPUTHEADER) || original_size > 1024) {
+                // Invalid size, skip this block to avoid crash
+                LogError("GetRawInputBuffer: Invalid dwSize %u, skipping block", original_size);
+                break;
+            }
+
             // Check if this input should be replaced
             bool should_replace = false;
 
@@ -793,7 +804,7 @@ UINT WINAPI GetRawInputBuffer_Detour(PRAWINPUT pData, PUINT pcbSize, UINT cbSize
                     } else {
                         // This is a key DOWN event, block it by replacing with neutral data
                         current->header.dwType = RIM_TYPEKEYBOARD;
-                        current->header.dwSize = sizeof(RAWINPUT);
+                        // Preserve original size - don't modify it
                         current->data.keyboard.MakeCode = 0; // No scan code
                         current->data.keyboard.Flags = 0;    // Neutral flags - no key event
                         current->data.keyboard.Reserved = 0;
@@ -811,7 +822,7 @@ UINT WINAPI GetRawInputBuffer_Detour(PRAWINPUT pData, PUINT pcbSize, UINT cbSize
                     } else {
                         // This is a mouse DOWN event or movement, block it
                         current->header.dwType = RIM_TYPEMOUSE;
-                        current->header.dwSize = sizeof(RAWINPUT);
+                        // Preserve original size - don't modify it
                         current->data.mouse.usFlags = 0;
                         current->data.mouse.usButtonFlags = 0;
                         current->data.mouse.usButtonData = 0;
@@ -823,8 +834,10 @@ UINT WINAPI GetRawInputBuffer_Detour(PRAWINPUT pData, PUINT pcbSize, UINT cbSize
                 }
             }
 
-            // Move to next input
-            current = (PRAWINPUT)((PBYTE)current + current->header.dwSize);
+            // Move to next input using the ORIGINAL size (before any modifications)
+            // Align to 8-byte boundary (required for RAWINPUT structures)
+            UINT aligned_size = (original_size + 7) & ~7;
+            current = (PRAWINPUT)((PBYTE)current + aligned_size);
             processed_count++;
         }
 
@@ -940,7 +953,7 @@ UINT WINAPI GetRawInputData_Detour(HRAWINPUT hRawInput, UINT uiCommand, LPVOID p
                 } else {
                     // This is a key DOWN event, block it by replacing with neutral data
                     rawInput->header.dwType = RIM_TYPEKEYBOARD;
-                    rawInput->header.dwSize = sizeof(RAWINPUT);
+                  //  rawInput->header.dwSize = sizeof(RAWINPUT);
                     rawInput->data.keyboard.MakeCode = 0; // No scan code
                     rawInput->data.keyboard.Flags = 0;    // Neutral flags - no key event
                     rawInput->data.keyboard.Reserved = 0;
@@ -957,7 +970,7 @@ UINT WINAPI GetRawInputData_Detour(HRAWINPUT hRawInput, UINT uiCommand, LPVOID p
                 } else {
                     // This is a mouse DOWN event or movement, block it
                     rawInput->header.dwType = RIM_TYPEMOUSE;
-                    rawInput->header.dwSize = sizeof(RAWINPUT);
+                   // rawInput->header.dwSize = sizeof(RAWINPUT);
                     rawInput->data.mouse.usFlags = 0;
                     rawInput->data.mouse.usButtonFlags = 0;
                     rawInput->data.mouse.usButtonData = 0;

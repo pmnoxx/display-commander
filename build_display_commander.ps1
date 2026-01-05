@@ -3,7 +3,8 @@
 
 param(
     [string]$BuildType = "RelWithDebInfo",
-    [switch]$Experimental
+    [switch]$Experimental,
+    [switch]$DebugSymbols
 )
 
 Write-Host "Building Display Commander addon with configuration: $BuildType..." -ForegroundColor Green
@@ -23,6 +24,11 @@ if ($Experimental) {
 } else {
     $cmakeArgs += "-DEXPERIMENTAL_FEATURES=OFF"
     Write-Host "Experimental features: DISABLED" -ForegroundColor Gray
+}
+
+if ($DebugSymbols) {
+    $cmakeArgs += "-DFORCE_DEBUG_SYMBOLS=ON"
+    Write-Host "Debug symbols: FORCED" -ForegroundColor Yellow
 }
 
 # Configure and build only the display commander addon

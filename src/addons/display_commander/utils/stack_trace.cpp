@@ -5,6 +5,7 @@
 #include <sstream>
 #include <iomanip>
 #include <tlhelp32.h>
+#include <cstring>
 
 namespace stack_trace {
 
@@ -115,7 +116,32 @@ std::vector<std::string> GenerateStackTraceInternal(CONTEXT* context_ptr) {
     // Initialize symbol handler if not already done
     static bool symbols_initialized = false;
     if (!symbols_initialized) {
-        if (dbghelp_loader::SymInitialize_Original) {
+        if (dbghelp_loader::SymInitialize_Original && dbghelp_loader::SymSetOptions_Original) {
+            // Set symbol options for better symbol resolution
+            // SYMOPT_UNDNAME: Undecorate C++ names
+            // SYMOPT_DEFERRED_LOADS: Load symbols on demand
+            // SYMOPT_INCLUDE_32BIT_MODULES: Include 32-bit modules in 64-bit process
+            // SYMOPT_LOAD_LINES: Load line number information
+            DWORD sym_options = SYMOPT_UNDNAME | SYMOPT_DEFERRED_LOADS | SYMOPT_INCLUDE_32BIT_MODULES | SYMOPT_LOAD_LINES;
+            dbghelp_loader::SymSetOptions_Original(sym_options);
+
+            // Get the directory where the DLL is located to help DbgHelp find the PDB
+            char module_path[MAX_PATH] = {};
+            HMODULE current_module = nullptr;
+            if (GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                                   reinterpret_cast<LPCSTR>(&GenerateStackTraceInternal), &current_module)) {
+                if (GetModuleFileNameA(current_module, module_path, MAX_PATH)) {
+                    // Extract directory path
+                    char* last_slash = strrchr(module_path, '\\');
+                    if (last_slash) {
+                        *last_slash = '\0';
+                    }
+                }
+            }
+
+            // Initialize with symbol path including the DLL directory
+            // nullptr as second parameter uses default symbol path + current directory
+            // TRUE means we want to load symbols for all modules
             if (dbghelp_loader::SymInitialize_Original(process, nullptr, TRUE) != FALSE) {
                 symbols_initialized = true;
             }

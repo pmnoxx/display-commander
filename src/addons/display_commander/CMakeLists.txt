@@ -49,12 +49,19 @@ if(MSVC)
   # Explicitly enable debug symbols for all build types (especially RelWithDebInfo)
   # /Zi generates full debug information in a program database (PDB)
   # /DEBUG generates debug information for the linker
-  target_compile_options(zzz_display_commander PRIVATE
-    $<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>:/Zi>
-  )
-  target_link_options(zzz_display_commander PRIVATE
-    $<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>:/DEBUG>
-  )
+  # If FORCE_DEBUG_SYMBOLS is set, enable symbols for all configurations including Release
+  if(FORCE_DEBUG_SYMBOLS)
+    target_compile_options(zzz_display_commander PRIVATE /Zi)
+    target_link_options(zzz_display_commander PRIVATE /DEBUG)
+    message(STATUS "Debug symbols forced for all build types")
+  else()
+    target_compile_options(zzz_display_commander PRIVATE
+      $<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>:/Zi>
+    )
+    target_link_options(zzz_display_commander PRIVATE
+      $<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>:/DEBUG>
+    )
+  endif()
 
   # Ensure PDB file is placed alongside the DLL for easier debugging
   set_target_properties(zzz_display_commander PROPERTIES

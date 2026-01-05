@@ -117,8 +117,6 @@ TranslateMessage_pfn TranslateMessage_Original = nullptr;
 DispatchMessageA_pfn DispatchMessageA_Original = nullptr;
 DispatchMessageW_pfn DispatchMessageW_Original = nullptr;
 GetRawInputData_pfn GetRawInputData_Original = nullptr;
-RegisterRawInputDevices_pfn RegisterRawInputDevices_Original = nullptr;
-GetRawInputDeviceList_pfn GetRawInputDeviceList_Original = nullptr;
 DefRawInputProc_pfn DefRawInputProc_Original = nullptr;
 VkKeyScan_pfn VkKeyScan_Original = nullptr;
 VkKeyScanEx_pfn VkKeyScanEx_Original = nullptr;
@@ -172,8 +170,6 @@ static const std::array<HookInfo, HOOK_COUNT> g_hook_info = {{
     {"DispatchMessageA", DllGroup::USER32},
     {"DispatchMessageW", DllGroup::USER32},
     {"GetRawInputData", DllGroup::USER32},
-    {"RegisterRawInputDevices", DllGroup::USER32},
-    {"GetRawInputDeviceList", DllGroup::USER32},
     {"DefRawInputProc", DllGroup::USER32},
     {"VkKeyScan", DllGroup::USER32},
     {"VkKeyScanEx", DllGroup::USER32},
@@ -980,51 +976,7 @@ UINT WINAPI GetRawInputData_Detour(HRAWINPUT hRawInput, UINT uiCommand, LPVOID p
     return result;
 }
 
-// Hooked RegisterRawInputDevices function
-BOOL WINAPI RegisterRawInputDevices_Detour(PCRAWINPUTDEVICE pRawInputDevices, UINT uiNumDevices, UINT cbSize) {
-    // Track total calls
-    g_hook_stats[HOOK_RegisterRawInputDevices].increment_total();
 
-    // Log raw input device registration for debugging
-    if (pRawInputDevices != nullptr && uiNumDevices > 0) {
-        LogInfo("RegisterRawInputDevices called: %u devices", uiNumDevices);
-        for (UINT i = 0; i < uiNumDevices; ++i) {
-            LogInfo("  Device %u: UsagePage=0x%04X, Usage=0x%04X, Flags=0x%08X, hwndTarget=0x%p", i,
-                    pRawInputDevices[i].usUsagePage, pRawInputDevices[i].usUsage, pRawInputDevices[i].dwFlags,
-                    pRawInputDevices[i].hwndTarget);
-        }
-    }
-
-    // Track unsuppressed calls (when we call the original function)
-    g_hook_stats[HOOK_RegisterRawInputDevices].increment_unsuppressed();
-
-    // Call original function
-    return RegisterRawInputDevices_Original ? RegisterRawInputDevices_Original(pRawInputDevices, uiNumDevices, cbSize)
-                                            : RegisterRawInputDevices(pRawInputDevices, uiNumDevices, cbSize);
-}
-
-// Hooked GetRawInputDeviceList function
-UINT WINAPI GetRawInputDeviceList_Detour(PRAWINPUTDEVICELIST pRawInputDeviceList, PUINT puiNumDevices, UINT cbSize) {
-    g_hook_stats[HOOK_GetRawInputDeviceList].increment_total();
-
-    // Call original function
-    UINT result = GetRawInputDeviceList_Original ? GetRawInputDeviceList_Original(pRawInputDeviceList, puiNumDevices, cbSize)
-                                                  : GetRawInputDeviceList(pRawInputDeviceList, puiNumDevices, cbSize);
-
-    if (result != (UINT)-1) {
-        g_hook_stats[HOOK_GetRawInputDeviceList].increment_unsuppressed();
-
-        // Log device list information
-        if (pRawInputDeviceList != nullptr && puiNumDevices != nullptr) {
-            LogInfo("GetRawInputDeviceList returned %u devices", *puiNumDevices);
-            for (UINT i = 0; i < *puiNumDevices; ++i) {
-                LogInfo("Device %u: Handle=%p, Type=%u", i, pRawInputDeviceList[i].hDevice, pRawInputDeviceList[i].dwType);
-            }
-        }
-    }
-
-    return result;
-}
 
 // Hooked DefRawInputProc function
 LRESULT WINAPI DefRawInputProc_Detour(PRAWINPUT paRawInput, INT nInput, UINT cbSizeHeader) {
@@ -1602,18 +1554,6 @@ bool InstallWindowsMessageHooks() {
         LogError("Failed to create and enable GetRawInputData hook");
     }
 
-    // Hook RegisterRawInputDevices
-    if (!CreateAndEnableHook(RegisterRawInputDevices, RegisterRawInputDevices_Detour,
-                             (LPVOID *)&RegisterRawInputDevices_Original, "RegisterRawInputDevices")) {
-        LogError("Failed to create and enable RegisterRawInputDevices hook");
-    }
-
-    // Hook GetRawInputDeviceList
-    if (!CreateAndEnableHook(GetRawInputDeviceList, GetRawInputDeviceList_Detour,
-                             (LPVOID *)&GetRawInputDeviceList_Original, "GetRawInputDeviceList")) {
-        LogError("Failed to create and enable GetRawInputDeviceList hook");
-    }
-
     // Hook DefRawInputProc
     if (!CreateAndEnableHook(DefRawInputProc, DefRawInputProc_Detour,
                              (LPVOID *)&DefRawInputProc_Original, "DefRawInputProc")) {
@@ -1751,8 +1691,6 @@ void UninstallWindowsMessageHooks() {
     MH_RemoveHook(DispatchMessageA);
     MH_RemoveHook(DispatchMessageW);
     MH_RemoveHook(GetRawInputData);
-    MH_RemoveHook(RegisterRawInputDevices);
-    MH_RemoveHook(GetRawInputDeviceList);
     MH_RemoveHook(DefRawInputProc);
     MH_RemoveHook(VkKeyScan);
     MH_RemoveHook(VkKeyScanEx);
@@ -1790,8 +1728,6 @@ void UninstallWindowsMessageHooks() {
     DispatchMessageA_Original = nullptr;
     DispatchMessageW_Original = nullptr;
     GetRawInputData_Original = nullptr;
-    RegisterRawInputDevices_Original = nullptr;
-    GetRawInputDeviceList_Original = nullptr;
     DefRawInputProc_Original = nullptr;
     VkKeyScan_Original = nullptr;
     VkKeyScanEx_Original = nullptr;

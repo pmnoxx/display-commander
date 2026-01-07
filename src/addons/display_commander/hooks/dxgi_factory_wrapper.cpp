@@ -118,7 +118,7 @@ IDXGISwapChain4* CreateSwapChainWrapper(IDXGISwapChain* swapchain, SwapChainHook
         return nullptr;
     }
 
-    const char* hookTypeName = (hookType == SwapChainHook::Proxy) ? "Proxy" : "Native";
+    const char* hookTypeName = (hookType == SwapChainHook::Proxy) ? "Proxy" : (hookType == SwapChainHook::NativeRaw) ? "NativeRaw" : "Native";
     LogInfo("CreateSwapChainWrapper: Creating wrapper for swapchain: 0x%p (hookType: %s)", swapchain, hookTypeName);
 
     return new DXGISwapChain4Wrapper(swapChain4.Get(), hookType);
@@ -128,7 +128,7 @@ IDXGISwapChain4* CreateSwapChainWrapper(IDXGISwapChain* swapchain, SwapChainHook
 DXGISwapChain4Wrapper::DXGISwapChain4Wrapper(IDXGISwapChain4* originalSwapChain, SwapChainHook hookType)
     : m_originalSwapChain(originalSwapChain), m_refCount(1), m_swapChainHookType(hookType) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
-    const char* hookTypeName = (hookType == SwapChainHook::Proxy) ? "Proxy" : "Native";
+    const char* hookTypeName = (hookType == SwapChainHook::Proxy) ? "Proxy" : (hookType == SwapChainHook::NativeRaw) ? "NativeRaw" : "Native";
     LogInfo("DXGISwapChain4Wrapper: Created wrapper for IDXGISwapChain4 (hookType: %s)", hookTypeName);
 }
 
@@ -402,7 +402,7 @@ STDMETHODIMP DXGISwapChain4Wrapper::SetHDRMetaData(DXGI_HDR_METADATA_TYPE Type, 
 
 DXGIFactoryWrapper::DXGIFactoryWrapper(IDXGIFactory7* originalFactory, SwapChainHook hookType)
     : m_originalFactory(originalFactory), m_refCount(1), m_swapChainHookType(hookType), m_slGetNativeInterface(nullptr), m_slUpgradeInterface(nullptr), m_commandQueueMap(nullptr) {
-    const char* hookTypeName = (hookType == SwapChainHook::Proxy) ? "Proxy" : "Native";
+    const char* hookTypeName = (hookType == SwapChainHook::Proxy) ? "Proxy" : (hookType == SwapChainHook::NativeRaw) ? "NativeRaw" : "Native";
     LogInfo("DXGIFactoryWrapper: Created wrapper for IDXGIFactory7 (hookType: %s)", hookTypeName);
 }
 

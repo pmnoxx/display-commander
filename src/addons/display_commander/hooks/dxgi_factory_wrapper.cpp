@@ -16,6 +16,17 @@
 #include <dxgi1_6.h>
 #include <d3d11.h>
 #include <d3d12.h>
+#include <initguid.h>
+
+// Custom IID for DXGIFactoryWrapper interface
+// {A1B2C3D4-E5F6-4789-A012-B345C678D909}
+DEFINE_GUID(IID_IDXGIFactoryWrapper,
+    0xa1b2c3d4, 0xe5f6, 0x4789, 0xa0, 0x12, 0xb3, 0x45, 0xc6, 0x78, 0xd9, 0x09);
+
+// Custom IID for DXGISwapChain4Wrapper interface
+// {B2C3D4E5-F6A7-4890-B123-C456D789E013}
+DEFINE_GUID(IID_IDXGISwapChain4Wrapper,
+    0xb2c3d4e5, 0xf6a7, 0x4890, 0xb1, 0x23, 0xc4, 0x56, 0xd7, 0x89, 0xe0, 0x13);
 
 namespace display_commanderhooks {
 
@@ -111,6 +122,16 @@ IDXGISwapChain4* CreateSwapChainWrapper(IDXGISwapChain* swapchain, SwapChainHook
         return nullptr;
     }
 
+    // Check if swapchain is already wrapped
+    DXGISwapChain4Wrapper* existingWrapper = QuerySwapChainWrapper(swapchain);
+    if (existingWrapper != nullptr) {
+        const char* hookTypeName = (hookType == SwapChainHook::Proxy) ? "Proxy" : (hookType == SwapChainHook::NativeRaw) ? "NativeRaw" : "Native";
+        LogError("CreateSwapChainWrapper: Swapchain 0x%p is already wrapped, returning existing wrapper (requested hookType: %s)", swapchain, hookTypeName);
+        // AddRef since we're returning it (caller expects to own the reference)
+        //existingWrapper->AddRef();
+        //return existingWrapper;
+    }
+
     // Try to query for IDXGISwapChain4
     Microsoft::WRL::ComPtr<IDXGISwapChain4> swapChain4;
     if (FAILED(swapchain->QueryInterface(IID_PPV_ARGS(&swapChain4)))) {
@@ -135,6 +156,13 @@ DXGISwapChain4Wrapper::DXGISwapChain4Wrapper(IDXGISwapChain4* originalSwapChain,
 STDMETHODIMP DXGISwapChain4Wrapper::QueryInterface(REFIID riid, void **ppvObject) {
     if (ppvObject == nullptr)
         return E_POINTER;
+
+    // Support querying for the wrapper interface itself
+    if (riid == IID_IDXGISwapChain4Wrapper) {
+        *ppvObject = static_cast<DXGISwapChain4Wrapper *>(this);
+        AddRef();
+        return S_OK;
+    }
 
     // Support all swapchain interfaces
     if (riid == IID_IUnknown || riid == __uuidof(IDXGIObject) || riid == __uuidof(IDXGIDeviceSubObject) ||
@@ -219,6 +247,8 @@ STDMETHODIMP DXGISwapChain4Wrapper::Present(UINT SyncInterval, UINT Flags) {
             // Flush command queue from swapchain using native DirectX APIs
             FlushCommandQueueFromSwapchain(baseSwapChain.Get(), state.device_type);
         }
+        // Record native frame time for frames shown to display
+        RecordNativeFrameTime();
     }
 
     HRESULT res = m_originalSwapChain->Present(SyncInterval, Flags);
@@ -314,6 +344,8 @@ STDMETHODIMP DXGISwapChain4Wrapper::Present1(UINT SyncInterval, UINT PresentFlag
             // Flush command queue from swapchain using native DirectX APIs
             FlushCommandQueueFromSwapchain(baseSwapChain.Get(), state.device_type);
         }
+        // Record native frame time for frames shown to display
+        RecordNativeFrameTime();
     }
 
     HRESULT res = m_originalSwapChain->Present1(SyncInterval, PresentFlags, pPresentParameters);
@@ -410,6 +442,13 @@ STDMETHODIMP DXGIFactoryWrapper::QueryInterface(REFIID riid, void **ppvObject) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     if (ppvObject == nullptr)
         return E_POINTER;
+
+    // Support querying for the wrapper interface itself
+    if (riid == IID_IDXGIFactoryWrapper) {
+        *ppvObject = static_cast<DXGIFactoryWrapper *>(this);
+        AddRef();
+        return S_OK;
+    }
 
     if (riid == IID_IUnknown || riid == __uuidof(IDXGIObject) || riid == __uuidof(IDXGIDeviceSubObject) ||
         riid == __uuidof(IDXGIFactory) || riid == __uuidof(IDXGIFactory1) || riid == __uuidof(IDXGIFactory2) ||
@@ -916,6 +955,34 @@ STDMETHODIMP IDXGIOutput6Wrapper::GetDesc1(DXGI_OUTPUT_DESC1 *pDesc) {
 
 STDMETHODIMP IDXGIOutput6Wrapper::CheckHardwareCompositionSupport(UINT *pFlags) {
     return m_originalOutput->CheckHardwareCompositionSupport(pFlags);
+}
+
+// Helper function to check if a factory is a DXGIFactoryWrapper
+DXGIFactoryWrapper* QueryFactoryWrapper(IDXGIFactory* factory) {
+    if (factory == nullptr) {
+        return nullptr;
+    }
+
+    DXGIFactoryWrapper* wrapper = nullptr;
+    if (SUCCEEDED(factory->QueryInterface(IID_IDXGIFactoryWrapper, reinterpret_cast<void**>(&wrapper)))) {
+        return wrapper;
+    }
+
+    return nullptr;
+}
+
+// Helper function to check if a swapchain is a DXGISwapChain4Wrapper
+DXGISwapChain4Wrapper* QuerySwapChainWrapper(IUnknown* swapchain) {
+    if (swapchain == nullptr) {
+        return nullptr;
+    }
+
+    DXGISwapChain4Wrapper* wrapper = nullptr;
+    if (SUCCEEDED(swapchain->QueryInterface(IID_IDXGISwapChain4Wrapper, reinterpret_cast<void**>(&wrapper)))) {
+        return wrapper;
+    }
+
+    return nullptr;
 }
 
 } // namespace display_commanderhooks

@@ -431,6 +431,7 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
     bool show_volume = settings::g_mainTabSettings.show_volume.GetValue();
     bool show_gpu_measurement = (settings::g_mainTabSettings.gpu_measurement_enabled.GetValue() != 0);
     bool show_frame_time_graph = settings::g_mainTabSettings.show_frame_time_graph.GetValue();
+    bool show_native_frame_time_graph = settings::g_mainTabSettings.show_native_frame_time_graph.GetValue();
     bool show_cpu_usage = settings::g_mainTabSettings.show_cpu_usage.GetValue();
     bool show_fg_mode = settings::g_mainTabSettings.show_fg_mode.GetValue();
     bool show_enabledfeatures = display_commanderhooks::IsTimeslowdownEnabled() || ::g_auto_click_enabled.load();
@@ -481,16 +482,15 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
     }
 
     if (show_fps_counter) {
-        const uint32_t head = ::g_perf_ring_head.load(std::memory_order_acquire);
+        const uint32_t count = ::g_perf_ring.GetCount();
         double total_time = 0.0;
 
         // Iterate through samples from the last second
         uint32_t sample_count = 0;
 
         // Iterate backwards through the ring buffer up to 1 second
-        for (uint32_t i = 0; i < ::kPerfRingCapacity; ++i) {
-            uint32_t idx = (head - 1 - i) & (::kPerfRingCapacity - 1);
-            const ::PerfSample& sample = ::g_perf_ring[idx];
+        for (uint32_t i = 0; i < count && i < ::kPerfRingCapacity; ++i) {
+            const ::PerfSample& sample = ::g_perf_ring.GetSample(i);
 
             // not enough data yet
             if (sample.dt == 0.0f || total_time >= 1.0) break;
@@ -1053,6 +1053,10 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
 
     if (show_frame_time_graph) {
         ui::new_ui::DrawFrameTimeGraphOverlay(show_tooltips);
+    }
+
+    if (show_native_frame_time_graph) {
+        ui::new_ui::DrawNativeFrameTimeGraphOverlay(show_tooltips);
     }
 
     if (settings::g_mainTabSettings.show_refresh_rate_frame_times.GetValue()) {

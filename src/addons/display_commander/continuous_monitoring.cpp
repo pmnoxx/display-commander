@@ -223,17 +223,16 @@ void every1s_checks() {
 
     // Aggregate FPS/frametime metrics and publish shared text once per second
     {
-        extern std::atomic<uint32_t> g_perf_ring_head;
-        extern PerfSample g_perf_ring[kPerfRingCapacity];
+        extern utils::LockFreeRingBuffer<PerfSample, kPerfRingCapacity> g_perf_ring;
         extern std::atomic<double> g_perf_time_seconds;
         extern std::atomic<bool> g_perf_reset_requested;
         extern std::atomic<std::shared_ptr<const std::string>> g_perf_text_shared;
 
         const double now_s = g_perf_time_seconds.load(std::memory_order_acquire);
 
-        // Handle reset: clear samples efficiently by advancing head and zeroing text
+        // Handle reset: clear samples efficiently by resetting ring buffer and zeroing text
         if (g_perf_reset_requested.exchange(false, std::memory_order_acq_rel)) {
-            g_perf_ring_head.store(0, std::memory_order_release);
+            g_perf_ring.Reset();
         }
 
         // Copy samples since last reset into local vectors for computation
@@ -241,12 +240,9 @@ void every1s_checks() {
         std::vector<float> frame_times_ms;
         fps_values.reserve(2048);
         frame_times_ms.reserve(2048);
-        const uint32_t head = g_perf_ring_head.load(std::memory_order_acquire);
-        const uint32_t count =
-            (head > static_cast<uint32_t>(kPerfRingCapacity)) ? static_cast<uint32_t>(kPerfRingCapacity) : head;
-        const uint32_t start = head - count;
-        for (uint32_t i = start; i < head; ++i) {
-            const PerfSample& s = g_perf_ring[i & (kPerfRingCapacity - 1)];
+        const uint32_t count = g_perf_ring.GetCount();
+        for (uint32_t i = 0; i < count; ++i) {
+            const PerfSample& s = g_perf_ring.GetSample(i);
             if (s.dt > 0.0f) {
                 fps_values.push_back(1.0f / s.dt);
                 frame_times_ms.push_back(1000.0f * s.dt);

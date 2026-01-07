@@ -365,7 +365,7 @@ HRESULT WINAPI CreateDXGIFactory_Detour(REFIID riid, void** ppFactory) {
 
             // Create wrapper for the factory (wrapper takes ownership, doesn't AddRef)
             display_commanderhooks::DXGIFactoryWrapper* wrapper =
-                new display_commanderhooks::DXGIFactoryWrapper(factory7.Get(), display_commanderhooks::SwapChainHook::Native);
+                new display_commanderhooks::DXGIFactoryWrapper(factory7.Get(), display_commanderhooks::SwapChainHook::NativeRaw);
 
             // Release the original factory reference from the original function
             static_cast<IUnknown*>(*ppFactory)->Release();
@@ -388,7 +388,7 @@ HRESULT WINAPI CreateDXGIFactory_Detour(REFIID riid, void** ppFactory) {
 
                     // Create wrapper
                     display_commanderhooks::DXGIFactoryWrapper* wrapper =
-                        new display_commanderhooks::DXGIFactoryWrapper(factory7_from_1.Get(), display_commanderhooks::SwapChainHook::Native);
+                        new display_commanderhooks::DXGIFactoryWrapper(factory7_from_1.Get(), display_commanderhooks::SwapChainHook::NativeRaw);
 
                     // Release the original factory reference
                     static_cast<IUnknown*>(*ppFactory)->Release();
@@ -431,7 +431,7 @@ HRESULT WINAPI CreateDXGIFactory1_Detour(REFIID riid, void** ppFactory) {
 
             // Create wrapper for the factory (wrapper takes ownership, doesn't AddRef)
             display_commanderhooks::DXGIFactoryWrapper* wrapper =
-                new display_commanderhooks::DXGIFactoryWrapper(factory7.Get(), display_commanderhooks::SwapChainHook::Native);
+                new display_commanderhooks::DXGIFactoryWrapper(factory7.Get(), display_commanderhooks::SwapChainHook::NativeRaw);
 
             // Release the original factory reference from the original function
             static_cast<IUnknown*>(*ppFactory)->Release();
@@ -454,7 +454,7 @@ HRESULT WINAPI CreateDXGIFactory1_Detour(REFIID riid, void** ppFactory) {
 
                     // Create wrapper
                     display_commanderhooks::DXGIFactoryWrapper* wrapper =
-                        new display_commanderhooks::DXGIFactoryWrapper(factory7_from_1.Get(), display_commanderhooks::SwapChainHook::Native);
+                        new display_commanderhooks::DXGIFactoryWrapper(factory7_from_1.Get(), display_commanderhooks::SwapChainHook::NativeRaw);
 
                     // Release the original factory reference
                     static_cast<IUnknown*>(*ppFactory)->Release();

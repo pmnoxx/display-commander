@@ -1262,6 +1262,7 @@ extern SwapChainWrapperStats g_swapchain_wrapper_stats_native;
 
 // Track if DXGISwapChain4Wrapper::Present or Present1 has been called at least once
 extern std::atomic<bool> g_swapchain_wrapper_present_called;
+extern std::atomic<bool> g_swapchain_wrapper_present1_called;
 
 // Continuous monitoring functions
 void StartContinuousMonitoring();

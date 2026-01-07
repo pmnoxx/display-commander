@@ -458,7 +458,8 @@ template<typename SwapChainType> void HandlePresentBefore2(SwapChainType* This) 
 // Helper function for common Present/Present1 logic after calling original
 void HandlePresentAfter(
     IDXGISwapChain* baseSwapChain,
-    const PresentCommonState& state) {
+    const PresentCommonState& state,
+    bool from_wrapper) {
 
     if (perf_measurement::IsSuppressionEnabled() &&
         perf_measurement::IsMetricSuppressed(perf_measurement::Metric::HandlePresentAfter)) {
@@ -477,7 +478,7 @@ void HandlePresentAfter(
     // (before flush_command_queue) for more accurate timing
 
     // Get device from swapchain for latency manager
-    ::OnPresentUpdateAfter2(state.device.Get(), state.device_type);
+    ::OnPresentUpdateAfter2(state.device.Get(), state.device_type, from_wrapper);
 }
 
 // Explicit template instantiations
@@ -505,7 +506,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain *This, UI
     if (!skip_common_logic) {
         // Handle common before logic
         state = HandlePresentBefore(This, This);
-        ::OnPresentFlags2(&Flags, state.device_type, true); // Called from present_detour
+        ::OnPresentFlags2(&Flags, state.device_type, true, false); // Called from present_detour
     }
     display_commanderhooks::dxgi::HandlePresentBefore2<IDXGISwapChain>(This);
 
@@ -518,7 +519,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain *This, UI
 
     if (!skip_common_logic) {
         // Handle common after logic
-        HandlePresentAfter(This, state);
+        HandlePresentAfter(This, state, false);
     }
     ::QueryDxgiCompositionState(This);
     ::dxgi::fps_limiter::SignalRefreshRateMonitor();
@@ -548,7 +549,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1 *This, 
     if (!skip_common_logic) {
         // Handle common before logic (with D3D10 check enabled)
         state = HandlePresentBefore(This, baseSwapChain);
-        ::OnPresentFlags2(&PresentFlags, state.device_type, true); // Called from present_detour
+        ::OnPresentFlags2(&PresentFlags, state.device_type, true, false); // Called from present_detour
     }
     display_commanderhooks::dxgi::HandlePresentBefore2<IDXGISwapChain1>(This);
 
@@ -561,7 +562,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1 *This, 
 
     if (!skip_common_logic) {
         // Handle common after logic
-        HandlePresentAfter(baseSwapChain, state);
+        HandlePresentAfter(baseSwapChain, state, false);
     }
     ::QueryDxgiCompositionState(This);
     ::dxgi::fps_limiter::SignalRefreshRateMonitor();

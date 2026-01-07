@@ -894,7 +894,7 @@ LONGLONG TimerPresentPacingDelayEnd(LONGLONG start_ns) {
     return end_ns;
 }
 
-void OnPresentUpdateAfter2(void* native_device, DeviceTypeDC device_type) {
+void OnPresentUpdateAfter2(void* native_device, DeviceTypeDC device_type, bool from_wrapper) {
     // Track render thread ID
     DWORD current_thread_id = GetCurrentThreadId();
     DWORD previous_render_thread_id = g_render_thread_id.load();
@@ -1039,10 +1039,24 @@ float GetTargetFps() {
     return target_fps;
 }
 
-void HandleFpsLimiter(bool from_present_detour) {
+void HandleFpsLimiter(bool from_present_detour, bool from_wrapper = false) {
     LONGLONG handle_fps_limiter_start_time_ns = utils::get_now_ns();
     float target_fps = GetTargetFps();
     late_amount_ns.store(0);
+
+    if (from_wrapper) {
+        // TODO optimize GetDLSSGSummary call by replacing with simplified function
+        const DLSSGSummary dlssg_summary = GetDLSSGSummary();
+        if (dlssg_summary.dlss_g_active) {
+            if (dlssg_summary.fg_mode == "2x") {
+                target_fps /= 2.0f;
+            } else if (dlssg_summary.fg_mode == "3x") {
+                target_fps /= 3.0f;
+            } else if (dlssg_summary.fg_mode == "4x") {
+                target_fps /= 4.0f;
+            }
+        }
+    }
     if (target_fps > 0.0f || s_fps_limiter_mode.load() == FpsLimiterMode::kLatentSync) {
         // Note: Command queue flushing is now handled in OnPresentUpdateBefore using native DirectX APIs
         // No need to flush here anymore
@@ -1311,7 +1325,7 @@ bool OnBindPipeline(reshade::api::command_list *cmd_list, reshade::api::pipeline
 }
 
 // Present flags callback to strip DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING
-void OnPresentFlags2(uint32_t *present_flags, DeviceTypeDC api_type, bool from_present_detour) {
+void OnPresentFlags2(uint32_t *present_flags, DeviceTypeDC api_type, bool from_present_detour, bool from_wrapper) {
     if (perf_measurement::IsSuppressionEnabled() &&
         perf_measurement::IsMetricSuppressed(perf_measurement::Metric::OnPresentFlags2)) {
         return;
@@ -1343,7 +1357,7 @@ void OnPresentFlags2(uint32_t *present_flags, DeviceTypeDC api_type, bool from_p
         }
     }
 
-    HandleFpsLimiter(from_present_detour);
+    HandleFpsLimiter(from_present_detour, from_wrapper);
 
     if (s_reflex_enable_current_frame.load()) {
         if (settings::g_developerTabSettings.reflex_generate_markers.GetValue()) {

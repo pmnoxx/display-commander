@@ -110,7 +110,9 @@ int slUpgradeInterface_Detour(void** baseInterface) {
     auto result = slUpgradeInterface_Original(baseInterface);
     auto* unknown = static_cast<IUnknown*>(*baseInterface);
 
+    Microsoft::WRL::ComPtr<IDXGIFactory> dxgi_factory;
     Microsoft::WRL::ComPtr<IDXGIFactory7> dxgi_factory7;
+    Microsoft::WRL::ComPtr<IDXGISwapChain> dxgi_swapchain;
     if (SUCCEEDED(unknown->QueryInterface(IID_PPV_ARGS(&dxgi_factory7))) && dxgi_factory7 != nullptr) {
         LogInfo("[slUpgradeInterface] Found IDXGIFactory7 interface");
 
@@ -137,6 +139,12 @@ int slUpgradeInterface_Detour(void** baseInterface) {
 
 
         // ComPtr will automatically release when it goes out of scope
+    } else if (SUCCEEDED(unknown->QueryInterface(IID_PPV_ARGS(&dxgi_factory))) && dxgi_factory != nullptr) {
+        LogError("[slUpgradeInterface] Found IDXGIFactory interface not hooked TODO");
+    } else if (SUCCEEDED(unknown->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain))) && dxgi_swapchain != nullptr) {
+        LogError("[slUpgradeInterface] IDXGISwapChain interface not hooked TODO");
+    } else {
+        LogError("[slUpgradeInterface] Unknown interface not hooked TODO");
     }
     return result;
 }

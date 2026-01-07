@@ -105,6 +105,7 @@ void TrackPresentStatistics(
 
 // Helper function to create a swapchain wrapper from any swapchain interface
 IDXGISwapChain4* CreateSwapChainWrapper(IDXGISwapChain* swapchain, SwapChainHook hookType) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     if (swapchain == nullptr) {
         LogWarn("CreateSwapChainWrapper: swapchain is null");
         return nullptr;
@@ -148,11 +149,13 @@ STDMETHODIMP DXGISwapChain4Wrapper::QueryInterface(REFIID riid, void **ppvObject
 }
 
 STDMETHODIMP_(ULONG) DXGISwapChain4Wrapper::AddRef() {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     InterlockedIncrement(&m_refCount);
     return m_refCount;
 }
 
 STDMETHODIMP_(ULONG) DXGISwapChain4Wrapper::Release() {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     InterlockedDecrement(&m_refCount);
 
     if (m_refCount == 0) {
@@ -397,6 +400,7 @@ DXGIFactoryWrapper::DXGIFactoryWrapper(IDXGIFactory7* originalFactory, SwapChain
 }
 
 STDMETHODIMP DXGIFactoryWrapper::QueryInterface(REFIID riid, void **ppvObject) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     if (ppvObject == nullptr)
         return E_POINTER;
 
@@ -413,13 +417,14 @@ STDMETHODIMP DXGIFactoryWrapper::QueryInterface(REFIID riid, void **ppvObject) {
 }
 
 STDMETHODIMP_(ULONG) DXGIFactoryWrapper::AddRef() {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     InterlockedIncrement(&m_refCount);
     return m_refCount;
     //return InterlockedIncrement(&m_refCount);
 }
 
 STDMETHODIMP_(ULONG) DXGIFactoryWrapper::Release() {
-
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     InterlockedDecrement(&m_refCount);
 
     if (m_refCount == 0) {
@@ -862,6 +867,7 @@ STDMETHODIMP IDXGIOutput6Wrapper::CheckOverlaySupport(DXGI_FORMAT EnumFormat, IU
 
 // IDXGIOutput4 methods - delegate to original
 STDMETHODIMP IDXGIOutput6Wrapper::CheckOverlayColorSpaceSupport(DXGI_FORMAT Format, DXGI_COLOR_SPACE_TYPE ColorSpace, IUnknown *pConcernedDevice, UINT *pFlags) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     // Query for IDXGIOutput4 to call CheckOverlayColorSpaceSupport
     Microsoft::WRL::ComPtr<IDXGIOutput4> output4;
     if (SUCCEEDED(m_originalOutput->QueryInterface(IID_PPV_ARGS(&output4)))) {

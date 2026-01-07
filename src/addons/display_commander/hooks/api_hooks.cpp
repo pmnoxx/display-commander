@@ -11,6 +11,7 @@
 #include "dinput_hooks.hpp"
 #include "display_settings_hooks.hpp"
 #include "dxgi/dxgi_present_hooks.hpp"
+#include "dxgi_factory_wrapper.hpp"
 #include "globals.hpp"
 #include "hook_suppression_manager.hpp"
 #include "loadlibrary_hooks.hpp"
@@ -21,6 +22,7 @@
 #include "timeslowdown_hooks.hpp"
 #include "windows_gaming_input_hooks.hpp"
 #include "windows_hooks/windows_message_hooks.hpp"
+#include <wrl/client.h>
 
 // External reference to screensaver mode setting
 extern std::atomic<ScreensaverMode> s_screensaver_mode;
@@ -352,11 +354,56 @@ HRESULT WINAPI CreateDXGIFactory_Detour(REFIID riid, void** ppFactory) {
     HRESULT hr =
         CreateDXGIFactory_Original ? CreateDXGIFactory_Original(riid, ppFactory) : CreateDXGIFactory(riid, ppFactory);
 
-    // If successful and we got a factory, hook it
+    // If successful and we got a factory, wrap it with our proxy
     if (SUCCEEDED(hr) && ppFactory != nullptr && *ppFactory != nullptr) {
-       // IDXGIFactory* factory = static_cast<IDXGIFactory*>(*ppFactory);
-      //  LogInfo("CreateDXGIFactory succeeded, factory: 0x%p", factory);
-      //  //..display_commanderhooks::dxgi::HookFactory(factory);  // crashes Returnal
+        // Try to query for IDXGIFactory7 (highest version)
+        Microsoft::WRL::ComPtr<IDXGIFactory7> factory7;
+        if (SUCCEEDED(static_cast<IUnknown*>(*ppFactory)->QueryInterface(IID_PPV_ARGS(&factory7)))) {
+            // AddRef the factory so wrapper can take ownership (wrapper doesn't AddRef in constructor)
+            // This ensures the factory stays alive when ComPtr releases and when we release the original
+            factory7->AddRef();
+
+            // Create wrapper for the factory (wrapper takes ownership, doesn't AddRef)
+            display_commanderhooks::DXGIFactoryWrapper* wrapper =
+                new display_commanderhooks::DXGIFactoryWrapper(factory7.Get(), display_commanderhooks::SwapChainHook::Native);
+
+            // Release the original factory reference from the original function
+            static_cast<IUnknown*>(*ppFactory)->Release();
+
+            // Replace with wrapper (wrapper already has refcount of 1 from constructor)
+            *ppFactory = wrapper;
+            // No need to AddRef - wrapper constructor sets refcount to 1
+            // When ComPtr goes out of scope, it will release its ref, but wrapper's AddRef keeps it alive
+
+            LogInfo("CreateDXGIFactory: Created factory wrapper for IDXGIFactory7: 0x%p", wrapper);
+        } else {
+            // Try IDXGIFactory1 as fallback (CreateDXGIFactory should return at least IDXGIFactory1)
+            Microsoft::WRL::ComPtr<IDXGIFactory1> factory1;
+            if (SUCCEEDED(static_cast<IUnknown*>(*ppFactory)->QueryInterface(IID_PPV_ARGS(&factory1)))) {
+                // Query for IDXGIFactory7 through factory1
+                Microsoft::WRL::ComPtr<IDXGIFactory7> factory7_from_1;
+                if (SUCCEEDED(factory1.As(&factory7_from_1))) {
+                    // AddRef the factory so wrapper can take ownership
+                    factory7_from_1->AddRef();
+
+                    // Create wrapper
+                    display_commanderhooks::DXGIFactoryWrapper* wrapper =
+                        new display_commanderhooks::DXGIFactoryWrapper(factory7_from_1.Get(), display_commanderhooks::SwapChainHook::Native);
+
+                    // Release the original factory reference
+                    static_cast<IUnknown*>(*ppFactory)->Release();
+
+                    // Replace with wrapper
+                    *ppFactory = wrapper;
+
+                    LogInfo("CreateDXGIFactory: Created factory wrapper for IDXGIFactory7 (via IDXGIFactory1): 0x%p", wrapper);
+                } else {
+                    LogWarn("CreateDXGIFactory: Factory does not support IDXGIFactory7, skipping wrapper creation");
+                }
+            } else {
+                LogWarn("CreateDXGIFactory: Failed to query IDXGIFactory1, skipping wrapper creation");
+            }
+        }
     }
 
     return hr;
@@ -373,11 +420,56 @@ HRESULT WINAPI CreateDXGIFactory1_Detour(REFIID riid, void** ppFactory) {
     HRESULT hr = CreateDXGIFactory1_Original ? CreateDXGIFactory1_Original(riid, ppFactory)
                                              : CreateDXGIFactory1(riid, ppFactory);
 
-    // If successful and we got a factory, hook it
+    // If successful and we got a factory, wrap it with our proxy
     if (SUCCEEDED(hr) && ppFactory != nullptr && *ppFactory != nullptr) {
-        //IDXGIFactory* factory = static_cast<IDXGIFactory*>(*ppFactory);
-        //LogInfo("CreateDXGIFactory1 succeeded, hooking factory: 0x%p", factory);
-        //display_commanderhooks::dxgi::HookFactory(factory);  // crashes Returnal
+        // Try to query for IDXGIFactory7 (highest version)
+        Microsoft::WRL::ComPtr<IDXGIFactory7> factory7;
+        if (SUCCEEDED(static_cast<IUnknown*>(*ppFactory)->QueryInterface(IID_PPV_ARGS(&factory7)))) {
+            // AddRef the factory so wrapper can take ownership (wrapper doesn't AddRef in constructor)
+            // This ensures the factory stays alive when ComPtr releases and when we release the original
+            factory7->AddRef();
+
+            // Create wrapper for the factory (wrapper takes ownership, doesn't AddRef)
+            display_commanderhooks::DXGIFactoryWrapper* wrapper =
+                new display_commanderhooks::DXGIFactoryWrapper(factory7.Get(), display_commanderhooks::SwapChainHook::Native);
+
+            // Release the original factory reference from the original function
+            static_cast<IUnknown*>(*ppFactory)->Release();
+
+            // Replace with wrapper (wrapper already has refcount of 1 from constructor)
+            *ppFactory = wrapper;
+            // No need to AddRef - wrapper constructor sets refcount to 1
+            // When ComPtr goes out of scope, it will release its ref, but wrapper's AddRef keeps it alive
+
+            LogInfo("CreateDXGIFactory1: Created factory wrapper for IDXGIFactory7: 0x%p", wrapper);
+        } else {
+            // Try IDXGIFactory1 as fallback
+            Microsoft::WRL::ComPtr<IDXGIFactory1> factory1;
+            if (SUCCEEDED(static_cast<IUnknown*>(*ppFactory)->QueryInterface(IID_PPV_ARGS(&factory1)))) {
+                // Query for IDXGIFactory7 through factory1
+                Microsoft::WRL::ComPtr<IDXGIFactory7> factory7_from_1;
+                if (SUCCEEDED(factory1.As(&factory7_from_1))) {
+                    // AddRef the factory so wrapper can take ownership
+                    factory7_from_1->AddRef();
+
+                    // Create wrapper
+                    display_commanderhooks::DXGIFactoryWrapper* wrapper =
+                        new display_commanderhooks::DXGIFactoryWrapper(factory7_from_1.Get(), display_commanderhooks::SwapChainHook::Native);
+
+                    // Release the original factory reference
+                    static_cast<IUnknown*>(*ppFactory)->Release();
+
+                    // Replace with wrapper
+                    *ppFactory = wrapper;
+
+                    LogInfo("CreateDXGIFactory1: Created factory wrapper for IDXGIFactory7 (via IDXGIFactory1): 0x%p", wrapper);
+                } else {
+                    LogWarn("CreateDXGIFactory1: Factory does not support IDXGIFactory7, skipping wrapper creation");
+                }
+            } else {
+                LogWarn("CreateDXGIFactory1: Failed to query IDXGIFactory1, skipping wrapper creation");
+            }
+        }
     }
 
     return hr;
@@ -662,9 +754,7 @@ HRESULT WINAPI D3D12CreateDevice_Detour(IUnknown* pAdapter, D3D_FEATURE_LEVEL Mi
 }
 
 bool InstallDxgiFactoryHooks(HMODULE dxgi_module) {
-    if (true) {
-        return true;
-    }
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     // Check if this module is ReShade's proxy by checking for ReShade exports
     FARPROC reshade_register = GetProcAddress(dxgi_module, "ReShadeRegisterAddon");
     FARPROC reshade_unregister = GetProcAddress(dxgi_module, "ReShadeUnregisterAddon");

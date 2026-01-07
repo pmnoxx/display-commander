@@ -1615,16 +1615,20 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
 
         // Show warning for non-implemented low latency mode
         if (current_item == static_cast<int>(FpsLimiterMode::kNonReflexLowLatency)) {
-            bool native_fp = settings::g_mainTabSettings.native_frame_pacing.GetValue();
-            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Native Frame Pacing: %s", native_fp ? "ON" : "OFF");
+            if (g_swapchain_wrapper_present_called.load(std::memory_order_acquire)) {
+                bool native_fp = settings::g_mainTabSettings.native_frame_pacing.GetValue();
+                ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Native Frame Pacing: %s", native_fp ? "ON" : "OFF");
+            }
             ImGui::TextColored(ui::colors::TEXT_WARNING,
                                ICON_FK_WARNING " Non-Reflex Low Latency Mode not implemented yet");
         }
 
         // Present Pacing Delay slider (persisted)
         if (current_item == static_cast<int>(FpsLimiterMode::kOnPresentSync)) {
-            bool native_fp = settings::g_mainTabSettings.native_frame_pacing.GetValue();
-            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Native Frame Pacing: %s", native_fp ? "ON" : "OFF");
+            if (g_swapchain_wrapper_present_called.load(std::memory_order_acquire)) {
+                bool native_fp = settings::g_mainTabSettings.native_frame_pacing.GetValue();
+                ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Native Frame Pacing: %s", native_fp ? "ON" : "OFF");
+            }
 
             ImGui::TextColored(ui::colors::TEXT_HIGHLIGHT, "Present Pacing Delay:");
             ImGui::SameLine();

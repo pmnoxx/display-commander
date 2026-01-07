@@ -12,7 +12,8 @@ namespace display_commanderhooks {
  */
 enum class SwapChainHook {
     Proxy,  // Proxy swapchain (ReShade wrapper)
-    Native  // Native swapchain (game's original)
+    Native,  // Native swapchain (game's original)
+    NativeRaw  // Native swapchain (game's original) without any hooks
 };
 
 /**
@@ -102,7 +103,7 @@ private:
     SwapChainHook m_swapChainHookType;
 
 public:
-    explicit DXGIFactoryWrapper(IDXGIFactory7* originalFactory, SwapChainHook hookType = SwapChainHook::Native);
+    explicit DXGIFactoryWrapper(IDXGIFactory7* originalFactory, SwapChainHook hookType);
     virtual ~DXGIFactoryWrapper() = default;
 
     // IUnknown methods

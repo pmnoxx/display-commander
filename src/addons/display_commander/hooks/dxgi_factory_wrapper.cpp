@@ -191,6 +191,9 @@ STDMETHODIMP DXGISwapChain4Wrapper::GetDevice(REFIID riid, void **ppDevice) {
 // IDXGISwapChain methods - delegate to original
 STDMETHODIMP DXGISwapChain4Wrapper::Present(UINT SyncInterval, UINT Flags) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
+    if (m_swapChainHookType == SwapChainHook::NativeRaw) {
+        return m_originalSwapChain->Present(SyncInterval, Flags);
+    }
     // Mark that Present has been called at least once
     g_swapchain_wrapper_present_called.store(true, std::memory_order_relaxed);
 
@@ -211,7 +214,7 @@ STDMETHODIMP DXGISwapChain4Wrapper::Present(UINT SyncInterval, UINT Flags) {
     if (m_swapChainHookType == SwapChainHook::Native && native_frame_pacing) {
         if (SUCCEEDED(QueryInterface(IID_PPV_ARGS(&baseSwapChain)))) {
             state = display_commanderhooks::dxgi::HandlePresentBefore(this, baseSwapChain.Get());
-            OnPresentFlags2(&flagsCopy, state.device_type, false); // Called from wrapper, not present_detour
+            OnPresentFlags2(&flagsCopy, state.device_type, false, true); // Called from wrapper, not present_detour
 
             // Flush command queue from swapchain using native DirectX APIs
             FlushCommandQueueFromSwapchain(baseSwapChain.Get(), state.device_type);
@@ -221,7 +224,7 @@ STDMETHODIMP DXGISwapChain4Wrapper::Present(UINT SyncInterval, UINT Flags) {
     HRESULT res = m_originalSwapChain->Present(SyncInterval, Flags);
 
     if (m_swapChainHookType == SwapChainHook::Native && native_frame_pacing && baseSwapChain.Get() != nullptr) {
-       display_commanderhooks::dxgi::HandlePresentAfter(baseSwapChain.Get(), state);
+       display_commanderhooks::dxgi::HandlePresentAfter(baseSwapChain.Get(), state, true);
     }
 
     return res;
@@ -282,8 +285,12 @@ STDMETHODIMP DXGISwapChain4Wrapper::GetCoreWindow(REFIID refiid, void **ppUnk) {
 
 STDMETHODIMP DXGISwapChain4Wrapper::Present1(UINT SyncInterval, UINT PresentFlags, const DXGI_PRESENT_PARAMETERS *pPresentParameters) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
+    if (m_swapChainHookType == SwapChainHook::NativeRaw) {
+        return m_originalSwapChain->Present1(SyncInterval, PresentFlags, pPresentParameters);
+    }
     // Mark that Present1 has been called at least once
     g_swapchain_wrapper_present_called.store(true, std::memory_order_relaxed);
+    g_swapchain_wrapper_present1_called.store(true, std::memory_order_relaxed);
 
     // Track statistics
     SwapChainWrapperStats* stats = (m_swapChainHookType == SwapChainHook::Proxy)
@@ -302,7 +309,7 @@ STDMETHODIMP DXGISwapChain4Wrapper::Present1(UINT SyncInterval, UINT PresentFlag
     if (m_swapChainHookType == SwapChainHook::Native && native_frame_pacing) {
         if (SUCCEEDED(QueryInterface(IID_PPV_ARGS(&baseSwapChain)))) {
             state = display_commanderhooks::dxgi::HandlePresentBefore(this, baseSwapChain.Get()); // Present1 needs D3D10 check
-            OnPresentFlags2(&flagsCopy, state.device_type, false); // Called from wrapper, not present_detour
+            OnPresentFlags2(&flagsCopy, state.device_type, false, true); // Called from wrapper, not present_detour
 
             // Flush command queue from swapchain using native DirectX APIs
             FlushCommandQueueFromSwapchain(baseSwapChain.Get(), state.device_type);
@@ -312,7 +319,7 @@ STDMETHODIMP DXGISwapChain4Wrapper::Present1(UINT SyncInterval, UINT PresentFlag
     HRESULT res = m_originalSwapChain->Present1(SyncInterval, PresentFlags, pPresentParameters);
 
     if (m_swapChainHookType == SwapChainHook::Native && native_frame_pacing && baseSwapChain.Get() != nullptr) {
-        display_commanderhooks::dxgi::HandlePresentAfter(baseSwapChain.Get(), state);
+        display_commanderhooks::dxgi::HandlePresentAfter(baseSwapChain.Get(), state, true);
     }
 
     return res;

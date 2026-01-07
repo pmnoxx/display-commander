@@ -719,6 +719,7 @@ SwapChainWrapperStats g_swapchain_wrapper_stats_native;
 
 // Track if DXGISwapChain4Wrapper::Present or Present1 has been called at least once
 std::atomic<bool> g_swapchain_wrapper_present_called{false};
+std::atomic<bool> g_swapchain_wrapper_present1_called{false};
 
 // Cached frame statistics (updated in present detour, read by monitoring thread)
 std::atomic<std::shared_ptr<DXGI_FRAME_STATISTICS>> g_cached_frame_stats{nullptr};

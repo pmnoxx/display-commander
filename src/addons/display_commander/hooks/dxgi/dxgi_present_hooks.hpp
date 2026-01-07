@@ -221,5 +221,6 @@ void HandlePresentBefore2(SwapChainType* This);
 // Helper function for common Present/Present1 logic after calling original
 void HandlePresentAfter(
     IDXGISwapChain* baseSwapChain,
-    const PresentCommonState& state);
+    const PresentCommonState& state,
+    bool from_wrapper);
 } // namespace display_commanderhooks::dxgi

@@ -729,21 +729,10 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
         const DLSSGSummary dlssg_summary = GetDLSSGSummary();
 
         // Only show the 4 requested buckets: OFF / 2x / 3x / 4x
-        const char* fg_mode_display = "OFF";
-        if (dlssg_summary.dlss_g_active) {
-            if (dlssg_summary.fg_mode == "2x" || dlssg_summary.fg_mode == "3x" || dlssg_summary.fg_mode == "4x") {
-                fg_mode_display = dlssg_summary.fg_mode.c_str();
-            }
-        }
-
-        if (strcmp(fg_mode_display, "OFF") == 0) {
-            ImGui::TextColored(ui::colors::TEXT_DIMMED, "FG: OFF");
+        if (dlssg_summary.dlss_g_active && (dlssg_summary.fg_mode == "2x" || dlssg_summary.fg_mode == "3x" || dlssg_summary.fg_mode == "4x")) {
+            ImGui::Text("FG: %s", dlssg_summary.fg_mode.c_str());
         } else {
-            ImGui::Text("FG: %s", fg_mode_display);
-        }
-
-        if (ImGui::IsItemHovered() && show_tooltips) {
-            ImGui::SetTooltip("DLSS-FG detected mode: %s", dlssg_summary.fg_mode.c_str());
+            ImGui::TextColored(ui::colors::TEXT_DIMMED, "FG: OFF");
         }
     }
 

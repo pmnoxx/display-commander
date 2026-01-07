@@ -61,7 +61,7 @@ BOOL WINAPI wglSwapBuffers_Detour(HDC hdc) {
     HandleOpenGLGPUCompletion();
 
     // Call OnPresentUpdateAfter2 after the present
-    OnPresentUpdateAfter2(hdc, DeviceTypeDC::OpenGL);
+    OnPresentUpdateAfter2(hdc, DeviceTypeDC::OpenGL, false);
 
 
     return result;

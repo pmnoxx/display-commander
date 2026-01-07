@@ -5,6 +5,14 @@
 #include <atomic>
 #include "../globals.hpp"
 
+// Custom IID for DXGIFactoryWrapper interface
+// {A1B2C3D4-E5F6-4789-A012-B345C678D909}
+extern "C" const GUID IID_IDXGIFactoryWrapper;
+
+// Custom IID for DXGISwapChain4Wrapper interface
+// {B2C3D4E5-F6A7-4890-B123-C456D789E012}
+extern "C" const GUID IID_IDXGISwapChain4Wrapper;
+
 namespace display_commanderhooks {
 
 /**
@@ -36,6 +44,9 @@ public:
     STDMETHOD(QueryInterface)(REFIID riid, void **ppvObject) override;
     STDMETHOD_(ULONG, AddRef)() override;
     STDMETHOD_(ULONG, Release)() override;
+
+    // Helper method to get the original swapchain (for advanced use cases)
+    IDXGISwapChain4* GetOriginalSwapChain() const { return m_originalSwapChain; }
 
     // IDXGIObject methods
     STDMETHOD(SetPrivateData)(REFGUID Name, UINT DataSize, const void *pData) override;
@@ -165,6 +176,9 @@ public:
     void SetSLUpgradeInterface(void* slUpgradeInterface);
     void SetCommandQueueMap(void* commandQueueMap);
 
+    // Helper method to get the original factory (for advanced use cases)
+    IDXGIFactory7* GetOriginalFactory() const { return m_originalFactory; }
+
 private:
     // Streamline integration pointers
     void* m_slGetNativeInterface;
@@ -249,5 +263,27 @@ IDXGISwapChain4* CreateSwapChainWrapper(IDXGISwapChain* swapchain, SwapChainHook
 
 // Helper function to flush command queue from swapchain using native DirectX APIs (DX11 only)
 void FlushCommandQueueFromSwapchain(IDXGISwapChain* swapchain, DeviceTypeDC device_type);
+
+// Helper function to check if a factory is a DXGIFactoryWrapper
+// Returns the wrapper if it is one, nullptr otherwise
+// Usage example:
+//   IDXGIFactory* factory = ...;
+//   DXGIFactoryWrapper* wrapper = QueryFactoryWrapper(factory);
+//   if (wrapper != nullptr) {
+//       // This is a wrapped factory
+//       IDXGIFactory7* original = wrapper->GetOriginalFactory();
+//   }
+DXGIFactoryWrapper* QueryFactoryWrapper(IDXGIFactory* factory);
+
+// Helper function to check if a swapchain is a DXGISwapChain4Wrapper
+// Returns the wrapper if it is one, nullptr otherwise
+// Usage example:
+//   IDXGISwapChain* swapchain = ...;
+//   DXGISwapChain4Wrapper* wrapper = QuerySwapChainWrapper(swapchain);
+//   if (wrapper != nullptr) {
+//       // This is a wrapped swapchain
+//       IDXGISwapChain4* original = wrapper->GetOriginalSwapChain();
+//   }
+DXGISwapChain4Wrapper* QuerySwapChainWrapper(IUnknown* swapchain);
 
 } // namespace display_commanderhooks

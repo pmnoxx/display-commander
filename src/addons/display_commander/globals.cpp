@@ -199,11 +199,14 @@ std::atomic<FpsLimiterMode> s_fps_limiter_mode{FpsLimiterMode::kDisabled};
 // VBlank Sync Divisor (like VSync /2 /3 /4) - 0 to 8, default 1 (0 = off)
 
 // Performance stats (FPS/frametime) shared state
-std::atomic<uint32_t> g_perf_ring_head{0};
-PerfSample g_perf_ring[kPerfRingCapacity] = {};
+// Uses abstracted ring buffer structure
+utils::LockFreeRingBuffer<PerfSample, kPerfRingCapacity> g_perf_ring;
 std::atomic<double> g_perf_time_seconds{0.0};
 std::atomic<bool> g_perf_reset_requested{false};
 std::atomic<std::shared_ptr<const std::string>> g_perf_text_shared{std::make_shared<const std::string>("")};
+
+// Native frame time ring buffer (for frames shown to display via native swapchain Present)
+utils::LockFreeRingBuffer<PerfSample, kPerfRingCapacity> g_native_frame_time_ring;
 
 // Volume overlay display tracking
 std::atomic<LONGLONG> g_volume_change_time_ns{0};

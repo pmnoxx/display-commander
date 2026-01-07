@@ -635,12 +635,20 @@ extern std::atomic<FpsLimiterMode> s_fps_limiter_mode;
 #define FPS_LIMITER_INJECTION_FALLBACK1              1
 #define FPS_LIMITER_INJECTION_FALLBACK2              2
 
+// Lock-free ring buffer for recent FPS samples (60s window at ~240 Hz -> 14400 max)
+constexpr size_t kPerfRingCapacity = 65536;
+
 // Performance stats (FPS/frametime) shared state
-extern std::atomic<uint32_t> g_perf_ring_head;
-extern PerfSample g_perf_ring[];
+// Uses abstracted ring buffer structure
+#include "utils/ring_buffer.hpp"
+extern utils::LockFreeRingBuffer<PerfSample, kPerfRingCapacity> g_perf_ring;
 extern std::atomic<double> g_perf_time_seconds;
 extern std::atomic<bool> g_perf_reset_requested;
 extern std::atomic<std::shared_ptr<const std::string>> g_perf_text_shared;
+
+// Native frame time ring buffer (for frames shown to display via native swapchain Present)
+// Uses abstracted ring buffer structure
+extern utils::LockFreeRingBuffer<PerfSample, kPerfRingCapacity> g_native_frame_time_ring;
 
 // Volume overlay display tracking
 extern std::atomic<LONGLONG> g_volume_change_time_ns;
@@ -664,9 +672,6 @@ struct ActionNotification {
 };
 
 extern std::atomic<ActionNotification> g_action_notification;
-
-// Lock-free ring buffer for recent FPS samples (60s window at ~240 Hz -> 14400 max)
-constexpr size_t kPerfRingCapacity = 65536;
 
 // Vector variables
 extern std::atomic<std::shared_ptr<const std::vector<MonitorInfo>>> g_monitors;

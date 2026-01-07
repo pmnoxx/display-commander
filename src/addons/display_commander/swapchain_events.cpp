@@ -982,8 +982,7 @@ void OnPresentUpdateAfter2(void* native_device, DeviceTypeDC device_type, bool f
     // 1. Developer tab Reflex is enabled, OR
     // 2. OnPresentSync mode is selected AND onpresent_sync_enable_reflex is enabled
     bool should_enable_reflex = settings::g_developerTabSettings.reflex_enable.GetValue() ||
-                                 (s_fps_limiter_mode.load() == FpsLimiterMode::kOnPresentSync &&
-                                  settings::g_mainTabSettings.onpresent_sync_enable_reflex.GetValue());
+                                 (s_fps_limiter_mode.load() == FpsLimiterMode::kOnPresentSync);
     if (delay_first_500_frames && current_frame_id < 500) {
         should_enable_reflex = false;
     }
@@ -994,10 +993,12 @@ void OnPresentUpdateAfter2(void* native_device, DeviceTypeDC device_type, bool f
             // Apply sleep mode opportunistically each frame to reflect current
             // toggles
             float target_fps = GetTargetFps();
+            if (s_fps_limiter_mode.load() == FpsLimiterMode::kOnPresentSync)
+                target_fps *= 1.005f;
             g_latencyManager->ApplySleepMode(settings::g_developerTabSettings.reflex_low_latency.GetValue(),
                                              settings::g_developerTabSettings.reflex_boost.GetValue(),
                                              settings::g_developerTabSettings.reflex_use_markers.GetValue(), target_fps);
-            if (settings::g_developerTabSettings.reflex_enable_sleep.GetValue()) {
+            if (settings::g_developerTabSettings.reflex_enable_sleep.GetValue() && s_fps_limiter_mode.load() == FpsLimiterMode::kReflex) {
                 g_latencyManager->Sleep();
             }
         }

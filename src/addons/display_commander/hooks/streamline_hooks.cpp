@@ -119,11 +119,16 @@ int slUpgradeInterface_Detour(void** baseInterface) {
         //..factory_wrapper->SetSLGetNativeInterface(slGetNativeInterface_Original);
         //..factory_wrapper->SetSLUpgradeInterface(slUpgradeInterface_Original);
 
-
+        // AddRef the factory so wrapper can take ownership
+        dxgi_factory7->AddRef();
 
         LogInfo("[slUpgradeInterface] Found IDXGIFactory7 interface");
         // Create wrapper to ensure it doesn't pass active queue for swapchain creation
         auto* factory_wrapper2 = new display_commanderhooks::DXGIFactoryWrapper(dxgi_factory7.Get(), display_commanderhooks::SwapChainHook::Native);
+
+        // Release the original factory reference
+        unknown->Release();
+
         factory_wrapper2->SetSLGetNativeInterface(slGetNativeInterface_Original);
         factory_wrapper2->SetSLUpgradeInterface(slUpgradeInterface_Original);
         // TODO(user): Set command queue map when available

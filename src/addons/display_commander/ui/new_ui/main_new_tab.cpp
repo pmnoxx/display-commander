@@ -68,9 +68,7 @@ bool DidNativeReflexSleepRecently(uint64_t now_ns) {
 
 void DrawFrameTimeGraph() {
     // Get frame time data from the performance ring buffer
-    const uint32_t head = ::g_perf_ring_head.load(std::memory_order_acquire);
-    const uint32_t count =
-        (head > static_cast<uint32_t>(::kPerfRingCapacity)) ? static_cast<uint32_t>(::kPerfRingCapacity) : head;
+    const uint32_t count = ::g_perf_ring.GetCount();
 
     if (count == 0) {
         ImGui::TextColored(ui::colors::TEXT_DIMMED, "No frame time data available yet...");
@@ -80,11 +78,11 @@ void DrawFrameTimeGraph() {
     // Collect frame times for the graph (last 300 samples for smooth display)
     static std::vector<float> frame_times;
     frame_times.clear();
-    frame_times.reserve(min(count, 300u));
+    const uint32_t samples_to_collect = min(count, 300u);
+    frame_times.reserve(samples_to_collect);
 
-    const uint32_t start = head - min(count, 300u);
-    for (uint32_t i = start; i < head; ++i) {
-        const ::PerfSample& sample = ::g_perf_ring[i & (::kPerfRingCapacity - 1)];
+    for (uint32_t i = 0; i < samples_to_collect; ++i) {
+        const ::PerfSample& sample = ::g_perf_ring.GetSample(i);
         if (sample.dt > 0.0f) {
             frame_times.push_back(sample.dt);  // Convert FPS to frame time in ms
         }
@@ -165,6 +163,78 @@ void DrawFrameTimeGraph() {
     }
 }
 
+// Draw native frame time graph (for frames shown to display via native swapchain Present)
+void DrawNativeFrameTimeGraph() {
+    // Check if native frame pacing is enabled
+    if (!settings::g_mainTabSettings.native_frame_pacing.GetValue()) {
+        ImGui::TextColored(ui::colors::TEXT_DIMMED, "Native frame time graph requires native frame pacing to be enabled.");
+        return;
+    }
+
+    // Get native frame time data from the ring buffer
+    const uint32_t count = ::g_native_frame_time_ring.GetCount();
+
+    if (count == 0) {
+        ImGui::TextColored(ui::colors::TEXT_DIMMED, "No native frame time data available yet...");
+        return;
+    }
+
+    // Collect frame times for the graph (last 300 samples for smooth display)
+    static std::vector<float> frame_times;
+    frame_times.clear();
+    const uint32_t samples_to_collect = min(count, 300u);
+    frame_times.reserve(samples_to_collect);
+
+    for (uint32_t i = 0; i < samples_to_collect; ++i) {
+        const ::PerfSample& sample = ::g_native_frame_time_ring.GetSample(i);
+        if (sample.dt > 0.0f) {
+            frame_times.push_back(1000.0 * sample.dt);  // Convert to frame time in ms
+        }
+    }
+
+    if (frame_times.empty()) {
+        ImGui::TextColored(ui::colors::TEXT_DIMMED, "No valid native frame time data available...");
+        return;
+    }
+
+    // Calculate statistics for the graph
+    float min_frame_time = *std::ranges::min_element(frame_times);
+    float max_frame_time = *std::ranges::max_element(frame_times);
+    float avg_frame_time = 0.0f;
+    for (float ft : frame_times) {
+        avg_frame_time += ft;
+    }
+    avg_frame_time /= static_cast<float>(frame_times.size());
+
+    // Calculate average FPS from average frame time
+    float avg_fps = (avg_frame_time > 0.0f) ? (1000.0f / avg_frame_time) : 0.0f;
+
+    // Display statistics
+    ImGui::Text("Min: %.2f ms | Max: %.2f ms | Avg: %.2f ms | FPS(avg): %.1f", min_frame_time, max_frame_time,
+                avg_frame_time, avg_fps);
+
+    // Create overlay text with current frame time
+    std::string overlay_text = "Native Frame Time: " + std::to_string(frame_times.back()).substr(0, 4) + " ms";
+
+    // Set graph size and scale
+    ImVec2 graph_size = ImVec2(-1.0f, 200.0f);                            // Full width, 200px height
+    float scale_min = 0.0f;                                               // Always start from 0ms
+    float scale_max = avg_frame_time * 4.f;  // Add some padding
+
+    // Draw the native frame time graph
+    ImGui::PlotLines("Native Frame Time (ms)", frame_times.data(), static_cast<int>(frame_times.size()),
+                     0,  // values_offset
+                     overlay_text.c_str(), scale_min, scale_max, graph_size);
+
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip(
+            "Native frame time graph showing frames actually shown to display via native swapchain Present.\n"
+            "This tracks frames when native frame pacing is enabled.\n"
+            "Lower values = higher FPS, smoother gameplay.\n"
+            "Spikes indicate frame drops or stuttering.");
+    }
+}
+
 // Draw refresh rate frame times graph (display refresh intervals)
 void DrawRefreshRateFrameTimesGraph(bool show_tooltips) {
     // Convert refresh rates to frame times (ms) - lock-free iteration
@@ -237,9 +307,7 @@ void DrawFrameTimeGraphOverlay(bool show_tooltips) {
     perf_measurement::ScopedTimer perf_timer(perf_measurement::Metric::Overlay);
 
     // Get frame time data from the performance ring buffer
-    const uint32_t head = ::g_perf_ring_head.load(std::memory_order_acquire);
-    const uint32_t count =
-        (head > static_cast<uint32_t>(::kPerfRingCapacity)) ? static_cast<uint32_t>(::kPerfRingCapacity) : head;
+    const uint32_t count = ::g_perf_ring.GetCount();
 
     if (count == 0) {
         return;  // Don't show anything if no data
@@ -252,7 +320,7 @@ void DrawFrameTimeGraphOverlay(bool show_tooltips) {
     frame_times.reserve(samples_to_display);
 
     for (uint32_t i = 0; i < samples_to_display; ++i) {
-        const ::PerfSample& sample = ::g_perf_ring[(head - samples_to_display + i) & (::kPerfRingCapacity - 1)];
+        const ::PerfSample& sample = ::g_perf_ring.GetSample(i);
         frame_times.push_back(1000.0 * sample.dt);  // Convert FPS to frame time in ms
     }
 
@@ -294,6 +362,77 @@ void DrawFrameTimeGraphOverlay(bool show_tooltips) {
 
     if (ImGui::IsItemHovered() && show_tooltips) {
         ImGui::SetTooltip("Frame time graph (last 256 frames)\nAvg: %.2f ms | Max: %.2f ms", avg_frame_time,
+                          max_frame_time);
+    }
+}
+
+// Compact overlay version for native frame times (frames shown to display via native swapchain Present)
+void DrawNativeFrameTimeGraphOverlay(bool show_tooltips) {
+    if (perf_measurement::IsSuppressionEnabled() &&
+        perf_measurement::IsMetricSuppressed(perf_measurement::Metric::Overlay)) {
+        return;
+    }
+
+    perf_measurement::ScopedTimer perf_timer(perf_measurement::Metric::Overlay);
+
+    // Get native frame time data from the ring buffer
+    const uint32_t count = ::g_native_frame_time_ring.GetCount();
+
+    if (count == 0) {
+        return;  // Don't show anything if no data
+    }
+    const uint32_t samples_to_display = min(count, 256u);
+
+    // Collect frame times for the graph (last 256 samples for compact display)
+    static std::vector<float> frame_times;
+    frame_times.clear();
+    frame_times.reserve(samples_to_display);
+
+    for (uint32_t i = 0; i < samples_to_display; ++i) {
+        const ::PerfSample& sample = ::g_native_frame_time_ring.GetSample(i);
+        if (sample.dt > 0.0f) {
+            frame_times.push_back(1000.0 * sample.dt);  // Convert to frame time in ms
+        }
+    }
+
+    if (frame_times.empty()) {
+        return;  // Don't show anything if no valid data
+    }
+
+    // Calculate statistics for the graph
+    float max_frame_time = *std::ranges::max_element(frame_times);
+    float avg_frame_time = 0.0f;
+    for (float ft : frame_times) {
+        avg_frame_time += ft;
+    }
+    avg_frame_time /= static_cast<float>(frame_times.size());
+
+    // Fixed width for overlay (compact) - apply user scale
+    float graph_scale = settings::g_mainTabSettings.overlay_graph_scale.GetValue();
+    ImVec2 graph_size = ImVec2(300.0f * graph_scale, 60.0f * graph_scale);  // Scaled width and height
+    float scale_min = 0.0f;
+    float max_scale = settings::g_mainTabSettings.overlay_graph_max_scale.GetValue();
+    float scale_max = avg_frame_time * max_scale;  // User-configurable max scale multiplier
+
+    // Draw chart background with transparency
+    float chart_alpha = settings::g_mainTabSettings.overlay_chart_alpha.GetValue();
+    ImVec4 bg_color = ImGui::GetStyle().Colors[ImGuiCol_FrameBg];
+    bg_color.w *= chart_alpha;  // Apply transparency to background
+
+    // Push style color so PlotLines uses the transparent background
+    ImGui::PushStyleColor(ImGuiCol_FrameBg, bg_color);
+
+    // Draw compact native frame time graph (line stays fully opaque)
+    ImGui::PlotLines("##NativeFrameTime", frame_times.data(), static_cast<int>(frame_times.size()),
+                     0,        // values_offset
+                     nullptr,  // overlay_text - no text for compact version
+                     scale_min, scale_max, graph_size);
+
+    // Restore original style color
+    ImGui::PopStyleColor();
+
+    if (ImGui::IsItemHovered() && show_tooltips) {
+        ImGui::SetTooltip("Native frame time graph (last 256 frames)\nAvg: %.2f ms | Max: %.2f ms", avg_frame_time,
                           max_frame_time);
     }
 }
@@ -3033,6 +3172,16 @@ void DrawImportantInfo() {
         }
         ImGui::NextColumn();
 
+        // Show Native Frame Time Graph Control
+        bool show_native_frame_time_graph = settings::g_mainTabSettings.show_native_frame_time_graph.GetValue();
+        if (ImGui::Checkbox("Show native frame time graph", &show_native_frame_time_graph)) {
+            settings::g_mainTabSettings.show_native_frame_time_graph.SetValue(show_native_frame_time_graph);
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Shows a graph of native frame times (frames shown to display via native swapchain Present) in the overlay.\nOnly available when native frame pacing is enabled.");
+        }
+        ImGui::NextColumn();
+
         // Show Refresh Rate Frame Times Graph Control
         bool show_refresh_rate_frame_times = settings::g_mainTabSettings.show_refresh_rate_frame_times.GetValue();
         if (ImGui::Checkbox("Show refresh rate frame times", &show_refresh_rate_frame_times)) {
@@ -3149,6 +3298,21 @@ void DrawImportantInfo() {
 
         DrawFrameTimeGraph();
 
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        // Native Frame Time Graph
+        ImGui::Text("Native Frame Time Graph");
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Shows frame times for frames actually displayed via native swapchain Present when native frame pacing is enabled.");
+        }
+        ImGui::Spacing();
+
+        DrawNativeFrameTimeGraph();
+
+        ImGui::Spacing();
+
         std::ostringstream oss;
 
         // Present Duration Display
@@ -3262,10 +3426,9 @@ void DrawImportantInfo() {
         oss.clear();
         // Calculate latency: frame_time - sleep duration after onPresent
         float current_fps = 0.0f;
-        const uint32_t head = ::g_perf_ring_head.load(std::memory_order_acquire);
-        if (head > 0) {
-            const uint32_t last_idx = (head - 1) & (::kPerfRingCapacity - 1);
-            const ::PerfSample& last_sample = ::g_perf_ring[last_idx];
+        const uint32_t count = ::g_perf_ring.GetCount();
+        if (count > 0) {
+            const ::PerfSample& last_sample = ::g_perf_ring.GetSample(0);
             current_fps = 1.0f / last_sample.dt;
         }
 

@@ -216,8 +216,15 @@ void hookToSwapChain(reshade::api::swapchain *swapchain) {
 
         if (api == reshade::api::device_api::d3d10 || api == reshade::api::device_api::d3d11 || api == reshade::api::device_api::d3d12) {
             auto *iunknown   = reinterpret_cast<IUnknown *>(swapchain->get_native());
+
+            display_commanderhooks::DXGISwapChain4Wrapper* wrapper = display_commanderhooks::QuerySwapChainWrapper(iunknown);
+            if (wrapper != nullptr) {
+                LogError("TODO: Handle DXGISwapChain4Wrapper already wrapped swapchain: 0x%p", wrapper);
+            }
+
             Microsoft::WRL::ComPtr<IDXGISwapChain> dxgi_swapchain{};
             if (SUCCEEDED(iunknown->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain)))) {
+
                 if (display_commanderhooks::dxgi::HookSwapchain(dxgi_swapchain.Get())) {
                     LogInfo("Successfully hooked DXGI Present calls for swapchain: 0x%p", iunknown);
                 }
@@ -460,10 +467,21 @@ void RecordFrameTime(FrameTimeMode reason) {
     g_perf_time_seconds.store(elapsed, std::memory_order_release);
     const double dt = elapsed;
     if (dt > 0.0) {
-        uint32_t idx = g_perf_ring_head.fetch_add(1, std::memory_order_acq_rel);
-        g_perf_ring[idx & (kPerfRingCapacity - 1)] = PerfSample{.dt=static_cast<float>(dt)};
+        PerfSample sample{.dt = static_cast<float>(dt)};
+        g_perf_ring.Record(sample);
         previous_ns = now_ns;
+    }
+}
 
+void RecordNativeFrameTime() {
+    static LONGLONG previous_ns = utils::get_now_ns();
+    LONGLONG now_ns = utils::get_now_ns();
+    const double elapsed = static_cast<double>(now_ns - previous_ns) / static_cast<double>(utils::SEC_TO_NS);
+    const double dt = elapsed;
+    if (dt > 0.0) {
+        PerfSample sample{.dt = static_cast<float>(dt)};
+        g_native_frame_time_ring.Record(sample);
+        previous_ns = now_ns;
     }
 }
 
@@ -869,10 +887,9 @@ LONGLONG TimerPresentPacingDelayStart() {
     float delay_percentage = s_present_pacing_delay_percentage.load();
     if (delay_percentage > 0.0f) {
         // Calculate frame time from the most recent performance sample
-        const uint32_t head = g_perf_ring_head.load(std::memory_order_acquire);
-        if (head > 0) {
-            const uint32_t last_idx = (head - 1) & (kPerfRingCapacity - 1);
-            const PerfSample &last_sample = g_perf_ring[last_idx];
+        const uint32_t count = g_perf_ring.GetCount();
+        if (count > 0) {
+            const PerfSample &last_sample = g_perf_ring.GetSample(0);
             if (last_sample.dt > 0.0f) {
                 // Convert FPS to frame time in milliseconds, then to nanoseconds
                 float frame_time_ms = 1000.0f * last_sample.dt;

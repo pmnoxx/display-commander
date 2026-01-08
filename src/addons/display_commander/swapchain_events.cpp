@@ -1010,8 +1010,13 @@ void OnPresentUpdateAfter2(void* native_device, DeviceTypeDC device_type, bool f
             // Apply sleep mode opportunistically each frame to reflect current
             // toggles
             float target_fps = GetTargetFps();
-            if (s_fps_limiter_mode.load() == FpsLimiterMode::kOnPresentSync)
-                target_fps *= 1.005f;
+            if (s_fps_limiter_mode.load() == FpsLimiterMode::kOnPresentSync) {
+                if ( settings::g_mainTabSettings.onpresent_sync_enable_reflex.GetValue()) {
+                    target_fps *= 1.005f;
+                } else {
+                    target_fps = 0.0f;
+                }
+            }
             g_latencyManager->ApplySleepMode(settings::g_developerTabSettings.reflex_low_latency.GetValue(),
                                              settings::g_developerTabSettings.reflex_boost.GetValue(),
                                              settings::g_developerTabSettings.reflex_use_markers.GetValue(), target_fps);

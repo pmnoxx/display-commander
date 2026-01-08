@@ -1631,7 +1631,7 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                                    ICON_FK_WARNING " Warning: Reflex does not work with Direct3D 9");
             } else {
                 bool enable_reflex = settings::g_mainTabSettings.onpresent_sync_enable_reflex.GetValue();
-                if (ImGui::Checkbox("Enable Reflex alongside OnPresentSync", &enable_reflex)) {
+                if (ImGui::Checkbox("Enable Reflex as fps limiter", &enable_reflex)) {
                     settings::g_mainTabSettings.onpresent_sync_enable_reflex.SetValue(enable_reflex);
                 }
                 if (ImGui::IsItemHovered()) {
@@ -1672,11 +1672,11 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                             ImGui::SetTooltip("Smoothed interval using rolling average. Raw: %.1f ms",
                                               raw_ns / 1000000.0);
                         }
-                        if (!DidNativeReflexSleepRecently(now_ns)) {
-                            ImGui::TextColored(
-                                ImVec4(1.0f, 0.6f, 0.0f, 1.0f), ICON_FK_WARNING
-                                " Warning: Native Reflex is not sleeping recently - may indicate issues! (FIXME)");
-                        }
+                        //   if (!DidNativeReflexSleepRecently(now_ns)) {
+                        //     ImGui::TextColored(
+                        //         ImVec4(1.0f, 0.6f, 0.0f, 1.0f), ICON_FK_WARNING
+                        //      " Warning: Native Reflex is not sleeping recently - may indicate issues! (FIXME)");
+                        // }
                     } else {
                         bool native_fp = settings::g_mainTabSettings.native_frame_pacing.GetValue();
                         ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f),

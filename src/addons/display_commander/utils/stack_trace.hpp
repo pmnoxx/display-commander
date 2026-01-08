@@ -14,13 +14,6 @@ std::vector<std::string> GenerateStackTrace();
 // Returns it as a vector of strings
 std::vector<std::string> GenerateStackTrace(CONTEXT* context);
 
-// Generate a stack trace and write it to DbgView using OutputDebugString
-// Uses current context
-void PrintStackTraceToDbgView();
-
-// Generate a stack trace from a specific context and write it to DbgView
-void PrintStackTraceToDbgView(CONTEXT* context);
-
 // Generate a stack trace and return it as a single formatted string
 // Uses current context
 std::string GetStackTraceString();

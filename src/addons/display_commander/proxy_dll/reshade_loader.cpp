@@ -48,9 +48,6 @@ namespace {
 				log_file.flush();
 				log_file.close();
 			}
-
-			// Also output to debug console
-			OutputDebugStringA(log_entry.str().c_str());
 		} catch (...) {
 			// Ignore errors to prevent crashes during logging
 			OutputDebugStringA("DisplayCommander: Error writing to log file\n");

@@ -1654,7 +1654,6 @@ void DoInitializationWithoutHwnd(HMODULE h_module, DWORD fdw_reason) {
 BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
     switch (fdw_reason) {
         case DLL_PROCESS_ATTACH: {
-            OutputDebugStringA("DisplayCommander: DLL_PROCESS_ATTACH\n");
             g_shutdown.store(false);
 
             if (g_dll_initialization_complete.load()) {
@@ -1662,10 +1661,8 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
                 return FALSE;
             }
 
-            OutputDebugStringA("DisplayCommander: About to register addon\n");
             if (!reshade::register_addon(h_module)) {
                 // Registration failed - likely due to API version mismatch
-                OutputDebugStringA("DisplayCommander: ReShade addon registration FAILED\n");
                 LogError("ReShade addon registration failed - this usually indicates an API version mismatch");
                 LogError("Display Commander requires ReShade 6.6.2+ (API version 17) but detected older version");
 
@@ -1675,7 +1672,6 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             }
 
             DetectMultipleReShadeVersions();
-            OutputDebugStringA("DisplayCommander: ReShade addon registration SUCCESS\n");
 
             // Registration successful - log version compatibility
             LogInfo("Display Commander v%s - ReShade addon registration successful (API version 17 supported)",
@@ -1693,14 +1689,11 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
 
             // Detect multiple ReShade versions AFTER successful registration to avoid interference
             // This prevents our module scanning from interfering with ReShade's internal module detection
-            OutputDebugStringA("DisplayCommander: About to detect ReShade modules\n");
 
             // Store module handle for pinning
             g_hmodule = h_module;
 
-            OutputDebugStringA("DisplayCommander: About to call DoInitializationWithoutHwnd\n");
             DoInitializationWithoutHwnd(h_module, fdw_reason);
-            OutputDebugStringA("DisplayCommander: DoInitializationWithoutHwnd completed\n");
 
             break;
         }

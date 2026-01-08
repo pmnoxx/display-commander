@@ -21,10 +21,6 @@ void WriteToDebugLog(const std::string &message) {
 
         // Also write to ReShade log for comprehensive coverage
         reshade::log::message(reshade::log::level::info, message.c_str());
-
-        // Also output to DbgView for immediate visibility (similar to Special-K)
-        OutputDebugStringA(message.c_str());
-        OutputDebugStringA("\n");
     } catch (...) {
         // Ignore any errors during logging to prevent crashes
     }

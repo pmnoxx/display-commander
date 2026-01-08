@@ -1520,19 +1520,6 @@ void DrawDeveloperTools() {
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Triggers a debugger breakpoint. Useful for attaching a debugger at a specific moment.\nWARNING: Will crash if no debugger is attached!");
     }
-
-    ImGui::SameLine();
-
-    // Stack Trace Test Button
-    if (ImGui::Button("Test Stack Trace")) {
-        LogInfo("Stack trace test triggered by user");
-        stack_trace::PrintStackTraceToDbgView();
-        LogInfo("Stack trace printed to DbgView - check DebugView application");
-    }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Generates and prints a stack trace to DbgView.\nUseful for testing stack trace functionality.\nMake sure DebugView is running to see the output!");
-    }
-
     ImGui::SameLine();
 
     // Test Crash Handler Button

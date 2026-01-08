@@ -81,10 +81,10 @@ void DisplayCommanderLogger::WriteToFile(const std::string& formatted_message) {
             log_file.flush(); // Force flush to ensure data is written
             log_file.close();
         }
-
-        // Also output to debug console for development
-        OutputDebugStringA(formatted_message.c_str());
     } catch (...) {
+        OutputDebugStringA(
+            "DisplayCommander: Error writing to log file"
+        );
         // Ignore any errors during logging to prevent crashes
     }
 }

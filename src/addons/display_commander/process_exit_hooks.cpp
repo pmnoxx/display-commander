@@ -329,9 +329,6 @@ LONG WINAPI UnhandledExceptionHandler(EXCEPTION_POINTERS *exception_info) {
     // Generate stack trace using exception context
     auto stack_trace = stack_trace::GenerateStackTrace(exception_context);
 
-    // Print to DbgView frame by frame
-    stack_trace::PrintStackTraceToDbgView(exception_context);
-
     // Also log stack trace to file frame by frame to avoid truncation
     exit_handler::WriteToDebugLog("=== STACK TRACE ===");
     for (const auto& frame : stack_trace) {

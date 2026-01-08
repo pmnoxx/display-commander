@@ -79,7 +79,6 @@ static bool mwaitx_support_checked = false;
 bool supports_mwaitx(void) {
     if (mwaitx_support_checked)
         return mwaitx_supported_cached;
-    mwaitx_supported_cached = true;
     auto handler = AddVectoredExceptionHandler(1, [](_EXCEPTION_POINTERS *ExceptionInfo) -> LONG {
         if (ExceptionInfo->ExceptionRecord->ExceptionCode == EXCEPTION_ILLEGAL_INSTRUCTION) {
             mwaitx_supported_cached = false;
@@ -93,7 +92,12 @@ bool supports_mwaitx(void) {
 
         return EXCEPTION_CONTINUE_EXECUTION;
     });
+    if (handler == nullptr) {
+        LogError("Failed to add vectored exception handler");
+        return false;
+    }
 
+    mwaitx_supported_cached = true;
     static __declspec(align(64)) uint64_t monitor = 0ULL;
     _mm_monitorx(&monitor, 0, 0);
     _mm_mwaitx(0x2, 0, 1);

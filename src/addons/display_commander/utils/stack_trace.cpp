@@ -246,38 +246,6 @@ std::vector<std::string> GenerateStackTrace(CONTEXT* context) {
     return GenerateStackTraceInternal(context);
 }
 
-void PrintStackTraceToDbgView() {
-    PrintStackTraceToDbgView(nullptr);
-}
-
-void PrintStackTraceToDbgView(CONTEXT* context) {
-    try {
-        auto stack_trace = GenerateStackTraceInternal(context);
-
-        // Print header
-        OutputDebugStringA("=== STACK TRACE ===\n");
-
-        // Print each frame
-        for (const auto& frame : stack_trace) {
-            OutputDebugStringA((frame + "\n").c_str());
-        }
-
-        // Print footer
-        OutputDebugStringA("=== END STACK TRACE ===\n");
-
-        // Check and print nvngx_update.exe status
-        if (IsNvngxUpdateRunning()) {
-            OutputDebugStringA("=== NVNGX UPDATE STATUS ===\n");
-            OutputDebugStringA("nvngx_update.exe is currently running\n");
-            OutputDebugStringA("=== END NVNGX UPDATE STATUS ===\n");
-        }
-
-    } catch (...) {
-        OutputDebugStringA("=== STACK TRACE ERROR ===\n");
-        OutputDebugStringA("Exception occurred while generating stack trace\n");
-        OutputDebugStringA("=== END STACK TRACE ===\n");
-    }
-}
 
 std::string GetStackTraceString() {
     return GetStackTraceString(nullptr);

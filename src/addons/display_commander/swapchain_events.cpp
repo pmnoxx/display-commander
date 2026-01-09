@@ -217,10 +217,10 @@ void hookToSwapChain(reshade::api::swapchain *swapchain) {
         if (api == reshade::api::device_api::d3d10 || api == reshade::api::device_api::d3d11 || api == reshade::api::device_api::d3d12) {
             auto *iunknown   = reinterpret_cast<IUnknown *>(swapchain->get_native());
 
-            display_commanderhooks::DXGISwapChain4Wrapper* wrapper = display_commanderhooks::QuerySwapChainWrapper(iunknown);
-            if (wrapper != nullptr) {
-                LogError("TODO: Handle DXGISwapChain4Wrapper already wrapped swapchain: 0x%p", wrapper);
-            }
+            //display_commanderhooks::DXGISwapChain4Wrapper* wrapper = display_commanderhooks::QuerySwapChainWrapper(iunknown);
+            //if (wrapper != nullptr) {
+            //    LogError("TODO: Handle DXGISwapChain4Wrapper already wrapped swapchain: 0x%p", wrapper);
+            //}
 
             Microsoft::WRL::ComPtr<IDXGISwapChain> dxgi_swapchain{};
             if (SUCCEEDED(iunknown->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain)))) {

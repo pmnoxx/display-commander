@@ -167,6 +167,9 @@ class ExperimentalTabSettings {
     BoolSetting perf_suppress_enqueue_gpu_completion;
     BoolSetting perf_suppress_get_independent_flip_state;
 
+    // PCLStats ETW reporting (NVIDIA latency overlay compatibility)
+    BoolSetting pclstats_etw_enabled;
+
   private:
     std::vector<SettingBase *> all_settings_;
 };

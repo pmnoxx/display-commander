@@ -16,7 +16,9 @@ enum class LatencyMarkerType {
     RENDERSUBMIT_END,
     PRESENT_START,
     PRESENT_END,
-    INPUT_SAMPLE
+    INPUT_SAMPLE,
+    // Special marker used by NVIDIA PCLStats consumers to trigger periodic “heartbeat” sampling.
+    PC_LATENCY_PING
 };
 
 // Latency technology types

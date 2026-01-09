@@ -5,6 +5,7 @@
 #include "../utils/logging.hpp"
 #include "utils/timing.hpp"
 #include "../hooks/nvapi_hooks.hpp"
+#include "../latency/pclstats_etw.hpp"
 
 // Minimal helper to pull the native D3D device pointer from ReShade device
 static IUnknown *GetNativeD3DDeviceFromReshade(reshade::api::device *device) {
@@ -121,6 +122,9 @@ bool ReflexManager::SetMarker(NV_LATENCY_MARKER_TYPE marker) {
         // Don't spam logs each frame; minimal warning level
         return false;
     }
+
+    // Emit PCLStats marker (ETW) using the same marker type / frame id we sent to NVAPI.
+    latency::pclstats_etw::EmitMarker(static_cast<uint32_t>(marker), static_cast<uint64_t>(mp.frameID));
     return true;
 }
 

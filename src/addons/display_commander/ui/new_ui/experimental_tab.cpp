@@ -18,6 +18,7 @@
 #include "../../utils/timing.hpp"
 #include "../../utils/perf_measurement.hpp"
 #include "../../utils/stack_trace.hpp"
+#include "../../latency/pclstats_etw.hpp"
 
 #include <windows.h>
 #include <psapi.h>
@@ -30,6 +31,7 @@
 namespace ui::new_ui {
 
 static void DrawPerformanceMeasurementsTab();
+static void DrawPCLStatsEtwControls();
 
 // Initialize experimental tab
 void InitExperimentalTab() {
@@ -70,6 +72,9 @@ void InitExperimentalTab() {
 
     // Apply DirectInput hook suppression setting
     s_suppress_dinput_hooks.store(settings::g_experimentalTabSettings.suppress_dinput_hooks.GetValue());
+
+    // Apply PCLStats ETW reporting setting
+    latency::pclstats_etw::SetUserEnabled(settings::g_experimentalTabSettings.pclstats_etw_enabled.GetValue());
 
     LogInfo("InitExperimentalTab() - Experimental tab settings loaded and applied to hook system");
 }
@@ -212,6 +217,12 @@ void DrawExperimentalTab() {
     // Draw HID suppression controls
     if (ImGui::CollapsingHeader("HID Suppression", ImGuiTreeNodeFlags_None)) {
         DrawHIDSuppression();
+    }
+    ImGui::Spacing();
+
+    // Draw PCLStats ETW reporting controls
+    if (ImGui::CollapsingHeader("PCLStats ETW Reporting", ImGuiTreeNodeFlags_None)) {
+        DrawPCLStatsEtwControls();
     }
     ImGui::Spacing();
 
@@ -467,6 +478,10 @@ void CleanupExperimentalTab() {
         g_auto_click_enabled.store(false);
         LogInfo("Experimental tab cleanup: Auto-click disabled (thread will sleep)");
     }
+
+    // Shutdown PCLStats ETW reporting
+    latency::pclstats_etw::Shutdown();
+    LogInfo("Experimental tab cleanup: PCLStats ETW reporting shut down");
 }
 
 void DrawBackbufferFormatOverride() {
@@ -1693,6 +1708,372 @@ void DrawDeveloperTools() {
     ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Use it to test our SetUnhandledExceptionFilter spoofing and crash logging system.");
     ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), ICON_FK_WARNING " DANGER: Unload ReShade DLL button will attempt to unload ReShade from memory!");
     ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), "This is extremely dangerous and will likely crash the game if ReShade is in use!");
+}
+
+void DrawPCLStatsEtwControls() {
+    ImGui::TextColored(ImVec4(0.9f, 0.9f, 0.9f, 1.0f), "PCLStats ETW Reporting");
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Generate PCLStats ETW events for NVIDIA latency overlay compatibility.\n"
+                         "Emits latency markers via ETW (Event Tracing for Windows) that NVIDIA tools can consume.\n"
+                         "Based on Special K's PCLStats implementation.");
+    }
+    ImGui::Spacing();
+
+    // Warning about experimental nature
+    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), ICON_FK_WARNING " EXPERIMENTAL FEATURE");
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("This feature generates ETW events compatible with NVIDIA's latency overlay.\n"
+                         "It will automatically disable if the game uses native Reflex to avoid conflicts.");
+    }
+    ImGui::Spacing();
+
+    // Enable/disable checkbox
+    if (CheckboxSetting(settings::g_experimentalTabSettings.pclstats_etw_enabled, "Enable PCLStats ETW Reporting")) {
+        latency::pclstats_etw::SetUserEnabled(settings::g_experimentalTabSettings.pclstats_etw_enabled.GetValue());
+        LogInfo("PCLStats ETW reporting %s",
+                settings::g_experimentalTabSettings.pclstats_etw_enabled.GetValue() ? "enabled" : "disabled");
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Enable/disable PCLStats ETW marker generation.\n"
+                         "When enabled, latency markers are emitted via ETW for NVIDIA overlay compatibility.\n"
+                         "Automatically disabled if game uses native Reflex.");
+    }
+
+    ImGui::Spacing();
+
+    // Status information
+    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Status:");
+    if (g_native_reflex_detected.load(std::memory_order_acquire)) {
+        ImGui::SameLine();
+        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.0f, 1.0f), "Disabled (Native Reflex detected)");
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("PCLStats reporting is disabled because the game uses native Reflex.\n"
+                             "This prevents duplicate/conflicting marker reporting.");
+        }
+    } else if (settings::g_experimentalTabSettings.pclstats_etw_enabled.GetValue()) {
+        ImGui::SameLine();
+        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Active");
+    } else {
+        ImGui::SameLine();
+        ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Inactive");
+    }
+
+    ImGui::Spacing();
+    ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Provider: PCLStatsTraceLoggingProvider");
+    ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Event: PCLStatsEvent (Marker: UInt32, FrameID: UInt64)");
+
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::Spacing();
+
+    // Debug/Statistics section
+    if (ImGui::CollapsingHeader("Debug & Statistics", ImGuiTreeNodeFlags_DefaultOpen)) {
+        auto stats = latency::pclstats_etw::GetDebugStats();
+
+        // State information
+        ImGui::TextColored(ImVec4(0.9f, 0.9f, 0.9f, 1.0f), "State:");
+        ImGui::Indent();
+        ImGui::Text("User Enabled: %s", stats.user_enabled ? "Yes" : "No");
+        ImGui::Text("Provider Registered: %s", stats.provider_registered ? "Yes" : "No");
+        if (stats.provider_registered) {
+            if (stats.registration_status == 0) {
+                ImGui::SameLine();
+                ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), ICON_FK_OK);
+            } else {
+                ImGui::SameLine();
+                ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "(Status: 0x%08X)", stats.registration_status);
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip("Registration returned error code. Check Windows error codes.");
+                }
+            }
+        }
+        ImGui::Text("ETW Enabled (by consumer): %s", stats.etw_enabled ? "Yes" : "No");
+        if (stats.etw_enabled) {
+            ImGui::SameLine();
+            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), ICON_FK_OK " Consumer active!");
+        }
+        ImGui::Text("Ping Thread Running: %s", stats.ping_thread_running ? "Yes" : "No");
+        ImGui::Text("Native Reflex Detected: %s", stats.native_reflex_detected ? "Yes" : "No");
+        ImGui::Unindent();
+
+        ImGui::Spacing();
+
+        // Statistics
+        ImGui::TextColored(ImVec4(0.9f, 0.9f, 0.9f, 1.0f), "Statistics:");
+        ImGui::Indent();
+        ImGui::Text("Events Emitted: %llu", stats.events_emitted);
+        ImGui::Text("Ping Signals Generated: %llu", stats.ping_signals_generated);
+        ImGui::Text("Ping Signals Consumed: %llu", stats.ping_signals_consumed);
+        ImGui::Text("Last Marker Type: %u", stats.last_marker_type);
+        ImGui::Text("Last Frame ID: %llu", stats.last_frame_id);
+        ImGui::Unindent();
+
+        ImGui::Spacing();
+
+        // Lifecycle Events
+        ImGui::TextColored(ImVec4(0.9f, 0.9f, 0.9f, 1.0f), "Lifecycle Events:");
+        ImGui::Indent();
+        if (stats.init_events_sent > 0) {
+            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), ICON_FK_OK " PCLStatsInit sent: %llu time(s)", stats.init_events_sent);
+            if (stats.last_init_event_time_ns > 0) {
+                uint64_t now_ns = utils::get_now_ns();
+                uint64_t elapsed_ms = (now_ns - stats.last_init_event_time_ns) / 1000000;
+                ImGui::Text("  Last sent: %llu ms ago", elapsed_ms);
+            }
+        } else {
+            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), ICON_FK_WARNING " PCLStatsInit NOT sent yet!");
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("PCLStatsInit event is critical for NVIDIA overlay to discover the provider.\n"
+                                 "It should be sent when the provider is registered.");
+            }
+        }
+        ImGui::Text("PCLStatsShutdown sent: %llu", stats.shutdown_events_sent);
+        ImGui::Text("PCLStatsFlags sent: %llu", stats.flags_events_sent);
+        ImGui::Unindent();
+
+        ImGui::Spacing();
+
+        // Marker type breakdown
+        ImGui::TextColored(ImVec4(0.9f, 0.9f, 0.9f, 1.0f), "Markers by Type:");
+        if (ImGui::BeginTable("MarkerTypes", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable)) {
+            ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_WidthFixed, 80.0f);
+            ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthStretch);
+            ImGui::TableSetupColumn("Count", ImGuiTableColumnFlags_WidthFixed, 100.0f);
+            ImGui::TableSetupColumn("Required", ImGuiTableColumnFlags_WidthFixed, 80.0f);
+            ImGui::TableHeadersRow();
+
+            // Marker type definitions (matching NV_LATENCY_MARKER_TYPE)
+            struct MarkerInfo {
+                uint32_t type;
+                const char* name;
+                bool required_for_overlay;
+            };
+            const MarkerInfo marker_info[] = {
+                {0, "SIMULATION_START", true},
+                {1, "SIMULATION_END", true},
+                {2, "RENDERSUBMIT_START", true},
+                {3, "RENDERSUBMIT_END", true},
+                {4, "PRESENT_START", false},
+                {5, "PRESENT_END", false},
+                {6, "INPUT_SAMPLE", false}, // Deprecated
+                {7, "TRIGGER_FLASH", false},
+                {8, "PC_LATENCY_PING", true}, // Required for PCL/AV stats
+                {9, "OOB_RENDERSUBMIT_START", false},
+                {10, "OOB_RENDERSUBMIT_END", false},
+                {11, "OOB_PRESENT_START", false},
+                {12, "OOB_PRESENT_END", false},
+                {13, "CONTROLLER_INPUT_SAMPLE", false},
+            };
+
+            for (const auto& info : marker_info) {
+                ImGui::TableNextRow();
+                ImGui::TableNextColumn();
+                ImGui::Text("%u", info.type);
+                ImGui::TableNextColumn();
+                ImGui::Text("%s", info.name);
+                ImGui::TableNextColumn();
+                uint64_t count = (info.type < 16) ? stats.marker_counts[info.type] : 0;
+                if (count > 0) {
+                    ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "%llu", count);
+                } else {
+                    ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "0");
+                }
+                ImGui::TableNextColumn();
+                if (info.required_for_overlay) {
+                    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), ICON_FK_WARNING " Yes");
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::SetTooltip("This marker type is required for NVIDIA overlay latency stats.");
+                    }
+                } else {
+                    ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "No");
+                }
+            }
+
+            ImGui::EndTable();
+        }
+
+        ImGui::Spacing();
+        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Note: Required markers must be sent for NVIDIA overlay to show PCL/AV stats.");
+
+        ImGui::Spacing();
+
+        // Marker history (first 100 markers)
+        ImGui::TextColored(ImVec4(0.9f, 0.9f, 0.9f, 1.0f), "Marker History (First 100):");
+        auto history = latency::pclstats_etw::GetMarkerHistory();
+        if (history.empty()) {
+            ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "No markers recorded yet.");
+        } else {
+            // Get marker type names for display
+            static const char* marker_names[] = {
+                "SIMULATION_START", "SIMULATION_END", "RENDERSUBMIT_START", "RENDERSUBMIT_END",
+                "PRESENT_START", "PRESENT_END", "INPUT_SAMPLE", "TRIGGER_FLASH",
+                "PC_LATENCY_PING", "OOB_RENDERSUBMIT_START", "OOB_RENDERSUBMIT_END",
+                "OOB_PRESENT_START", "OOB_PRESENT_END", "CONTROLLER_INPUT_SAMPLE", "", ""
+            };
+
+            uint64_t first_timestamp = history.empty() ? 0 : history[0].timestamp_ns;
+            uint64_t now_ns = utils::get_now_ns();
+
+            ImGui::Text("Showing %zu marker(s)", history.size());
+            if (history.size() >= 100) {
+                ImGui::SameLine();
+                ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.0f, 1.0f), "(History full - showing first 100)");
+            }
+
+            // Create scrollable table
+            if (ImGui::BeginTable("MarkerHistory", 4,
+                ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable |
+                ImGuiTableFlags_ScrollY | ImGuiTableFlags_SizingStretchProp,
+                ImVec2(0.0f, ImGui::GetTextLineHeightWithSpacing() * 10))) {
+                ImGui::TableSetupColumn("#", ImGuiTableColumnFlags_WidthFixed, 40.0f);
+                ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_WidthFixed, 180.0f);
+                ImGui::TableSetupColumn("Frame ID", ImGuiTableColumnFlags_WidthFixed, 100.0f);
+                ImGui::TableSetupColumn("Time", ImGuiTableColumnFlags_WidthStretch);
+                ImGui::TableHeadersRow();
+
+                for (size_t i = 0; i < history.size(); i++) {
+                    const auto& entry = history[i];
+                    ImGui::TableNextRow();
+
+                    // Index
+                    ImGui::TableNextColumn();
+                    ImGui::Text("%zu", i + 1);
+
+                    // Type
+                    ImGui::TableNextColumn();
+                    if (entry.marker_type < 14) {
+                        ImGui::Text("%u - %s", entry.marker_type, marker_names[entry.marker_type]);
+                    } else {
+                        ImGui::Text("%u - Unknown", entry.marker_type);
+                    }
+
+                    // Frame ID
+                    ImGui::TableNextColumn();
+                    ImGui::Text("%llu", entry.frame_id);
+
+                    // Time (relative to first marker and absolute)
+                    ImGui::TableNextColumn();
+                    if (first_timestamp > 0) {
+                        uint64_t relative_ms = (entry.timestamp_ns - first_timestamp) / 1000000;
+                        uint64_t ago_ms = (now_ns - entry.timestamp_ns) / 1000000;
+                        ImGui::Text("+%llu ms (%.2f s ago)", relative_ms, ago_ms / 1000.0f);
+                    } else {
+                        ImGui::Text("N/A");
+                    }
+                }
+
+                ImGui::EndTable();
+            }
+        }
+
+        ImGui::Spacing();
+
+        // Troubleshooting info
+        ImGui::TextColored(ImVec4(0.9f, 0.9f, 0.9f, 1.0f), "Troubleshooting:");
+        ImGui::Indent();
+        if (!stats.user_enabled) {
+            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), ICON_FK_WARNING " Feature is disabled in settings");
+        } else if (stats.native_reflex_detected) {
+            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), ICON_FK_WARNING " Disabled: Native Reflex detected");
+        } else if (!stats.provider_registered) {
+            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), ICON_FK_WARNING " Provider not registered");
+        } else if (!stats.etw_enabled) {
+            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), ICON_FK_WARNING " ETW provider not enabled by consumer");
+            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "  → NVIDIA overlay may not be running or listening");
+            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "  → Try opening NVIDIA overlay (Alt+Z) to enable ETW session");
+        } else if (stats.events_emitted == 0) {
+            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), ICON_FK_WARNING " No events emitted yet");
+            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "  → Waiting for Reflex markers from game");
+        } else {
+            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), ICON_FK_OK " Events are being emitted");
+        }
+        ImGui::Unindent();
+
+        ImGui::Spacing();
+
+        // Test buttons
+        if (ImGui::Button("Emit Test Marker")) {
+            latency::pclstats_etw::EmitTestMarker();
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Manually emit a test PCLStatsEvent marker.\n"
+                             "Useful for verifying ETW provider is working.");
+        }
+
+        ImGui::SameLine();
+        if (ImGui::Button("Re-Emit Init Event")) {
+            latency::pclstats_etw::ReEmitInitEvent();
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Re-emit PCLStatsInit event.\n"
+                             "This helps NVIDIA overlay discover the provider.\n"
+                             "Try this if overlay doesn't detect PCLStats.");
+        }
+
+        ImGui::SameLine();
+        if (ImGui::Button("Reset Statistics")) {
+            // Note: We don't have a reset function yet, but we can add one if needed
+            // For now, just log that stats are cumulative
+            LogInfo("[PCLStats] Statistics are cumulative. Restart addon to reset.");
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Statistics are cumulative.\nRestart the addon to reset counters.");
+        }
+
+        ImGui::Spacing();
+        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.0f, 1.0f), ICON_FK_WARNING " If overlay still doesn't show stats:");
+        ImGui::Indent();
+        ImGui::BulletText("Try clicking 'Re-Emit Init Event' button");
+        ImGui::BulletText("Restart NVIDIA overlay (close and reopen Alt+Z)");
+        ImGui::BulletText("Verify provider GUID matches: {0D216F06-82A6-4D49-BC4F-8F38AE56EFAB}");
+        ImGui::BulletText("Check Windows Event Viewer for ETW errors");
+        ImGui::BulletText("Ensure NVIDIA overlay has 'Performance Overlay' enabled");
+        ImGui::Unindent();
+
+        ImGui::Spacing();
+        ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Note: TraceLogging providers are dynamic and won't appear in");
+        ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Get-WinEvent -ListProvider until a consumer enables them.");
+        ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "This is normal behavior - check 'ETW Enabled' status above.");
+
+        ImGui::Spacing();
+        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.0f, 1.0f), ICON_FK_WARNING " If overlay shows 0ms PCL/AV:");
+        ImGui::Indent();
+        ImGui::BulletText("Verify PC_LATENCY_PING (type 8) count > 0 in marker table");
+        ImGui::BulletText("PC_LATENCY_PING must use same FrameID as SIMULATION_START");
+        ImGui::BulletText("Check that all required markers (0,1,2,3,8) have counts > 0");
+        ImGui::BulletText("Ensure markers are sent in correct order per frame");
+        ImGui::BulletText("Frame IDs must be consistent across all markers in a frame");
+        ImGui::Unindent();
+
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        // Event Viewer instructions
+        ImGui::TextColored(ImVec4(0.9f, 0.9f, 0.9f, 1.0f), "How to Check Windows Event Viewer:");
+        ImGui::Indent();
+        ImGui::BulletText("Press Win+R, type: eventvwr.msc");
+        ImGui::BulletText("Navigate to: Windows Logs -> Application");
+        ImGui::BulletText("Look for errors/warnings mentioning:");
+        ImGui::Indent();
+        ImGui::TextColored(ImVec4(0.7f, 0.7f, 1.0f, 1.0f), "  - PCLStatsTraceLoggingProvider");
+        ImGui::TextColored(ImVec4(0.7f, 0.7f, 1.0f, 1.0f), "  - GUID: {0D216F06-82A6-4D49-BC4F-8F38AE56EFAB}");
+        ImGui::TextColored(ImVec4(0.7f, 0.7f, 1.0f, 1.0f), "  - ETW, Event Tracing, or TraceLogging errors");
+        ImGui::Unindent();
+        ImGui::BulletText("Also check: Applications and Services Logs ->");
+        ImGui::Indent();
+        ImGui::Text("  Microsoft -> Windows -> Diagnostics-Performance");
+        ImGui::Unindent();
+        ImGui::Unindent();
+
+        ImGui::Spacing();
+        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.0f, 1.0f), ICON_FK_WARNING " Common ETW Issues:");
+        ImGui::Indent();
+        ImGui::BulletText("Access Denied: Run game as Administrator");
+        ImGui::BulletText("Provider not found: Provider not registered correctly");
+        ImGui::BulletText("Session not active: NVIDIA overlay not running/listening");
+        ImGui::Unindent();
+    }
 }
 
 void DrawHIDSuppression() {

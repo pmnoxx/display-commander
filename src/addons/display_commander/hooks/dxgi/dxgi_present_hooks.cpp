@@ -1195,9 +1195,6 @@ namespace {
 } // namespace
 
 
-// VTable hooking functions
-bool HookFactoryVTable(IDXGIFactory *factory);
-
 
 bool HookSwapchainNative(IDXGISwapChain *swapchain) {
 
@@ -1500,73 +1497,6 @@ bool HookSwapchain(IDXGISwapChain *swapchain) {
 
     return true;
 }
-
-// Hook a specific factory's vtable
-bool HookFactoryVTable(IDXGIFactory *factory) {
-    if (true) {
-        LogInfo("DXGI factory hooking suppressed by user setting");
-        return true;
-    }
-    if (factory == nullptr) {
-        return false;
-    }
-
-    // Check if we've already hooked the CreateSwapChain vtable
-    if (g_createswapchain_vtable_hooked.load()) {
-        LogInfo("IDXGIFactory::CreateSwapChain vtable already hooked, skipping");
-        return true;
-    }
-
-    // Get the vtable
-    void **vtable = *(void ***)factory;
-
-    /*
-     * IDXGIFactory VTable Layout Reference
-     * ===================================
-     *
-     * IDXGIFactory inherits from IDXGIObject, which inherits from IUnknown.
-     * The vtable contains all methods from the inheritance chain.
-     *
-     * VTable Indices 0-5:
-     * [0-2]   IUnknown methods (QueryInterface, AddRef, Release)
-     * [3-5]   IDXGIObject methods (SetPrivateData, SetPrivateDataInterface, GetPrivateData)
-     * [6]     IDXGIObject methods (GetParent)
-     * [7-11]  IDXGIFactory methods (EnumAdapters, MakeWindowAssociation, GetWindowAssociation, CreateSwapChain, CreateSoftwareAdapter)
-     *
-     * CreateSwapChain is at index 10 in the IDXGIFactory vtable.
-     */
-
-    // Hook CreateSwapChain (index 10 in IDXGIFactory vtable)
-    if (vtable[10] != nullptr) {
-        LogInfo("Attempting to hook IDXGIFactory::CreateSwapChain at vtable[10] = 0x%p", vtable[10]);
-
-        // Check if we've already set the original function pointer (indicates already hooked)
-        if (IDXGIFactory_CreateSwapChain_Original != nullptr) {
-            LogWarn("IDXGIFactory::CreateSwapChain already hooked, skipping");
-            g_createswapchain_vtable_hooked.store(true);
-            return true; // Consider this success since it's already hooked
-        }
-
-        if (!CreateAndEnableHook(vtable[10], IDXGIFactory_CreateSwapChain_Detour, (LPVOID *)&IDXGIFactory_CreateSwapChain_Original, "IDXGIFactory::CreateSwapChain")) {
-            LogError("Failed to create and enable IDXGIFactory::CreateSwapChain hook");
-
-            return false;
-        }
-
-        LogInfo("Successfully hooked IDXGIFactory::CreateSwapChain for factory: 0x%p", factory);
-        g_createswapchain_vtable_hooked.store(true);
-        return true;
-    }
-
-    LogError("IDXGIFactory::CreateSwapChain method not found in vtable");
-    return false;
-}
-
-// Public function to hook a factory when it's created
-bool HookFactory(IDXGIFactory *factory) {
-    return HookFactoryVTable(factory);
-}
-
 
 // Record the native swapchain used in OnPresentUpdateBefore
 void RecordPresentUpdateSwapchain(IDXGISwapChain *swapchain) {

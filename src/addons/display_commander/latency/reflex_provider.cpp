@@ -59,6 +59,8 @@ NV_LATENCY_MARKER_TYPE ReflexProvider::ConvertMarkerType(LatencyMarkerType marke
         return PRESENT_END;
     case LatencyMarkerType::INPUT_SAMPLE:
         return INPUT_SAMPLE;
+    case LatencyMarkerType::PC_LATENCY_PING:
+        return PC_LATENCY_PING;
     default:
         return SIMULATION_START; // Fallback
     }

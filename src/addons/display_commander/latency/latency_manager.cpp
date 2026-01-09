@@ -4,6 +4,7 @@
 #include "../utils/logging.hpp"
 #include "../utils/timing.hpp"
 #include "reflex_provider.hpp"
+#include "pclstats_etw.hpp"
 
 // Forward declaration to avoid circular dependency
 extern float GetTargetFps();
@@ -110,6 +111,21 @@ bool LatencyManager::SetMarker(LatencyMarkerType marker) {
         return result;
     }
 
+    // Special-K style: on SIMULATION_START, optionally inject PC_LATENCY_PING when signaled.
+    // This is gated inside pclstats_etw (user enable + ETW provider enable + not Reflex-native).
+    // CRITICAL: Special K sends PC_LATENCY_PING through NVAPI first, which then gets emitted via ETW.
+    // This ensures proper correlation and timing for PCL/AV stats calculation.
+    if (marker == LatencyMarkerType::SIMULATION_START) {
+        if (latency::pclstats_etw::ConsumePingSignal()) {
+            // Send PC_LATENCY_PING through NVAPI (like Special K does via setLatencyMarkerNV).
+            // This will go through ReflexManager::SetMarker which:
+            // 1. Sends to NVAPI (for driver correlation)
+            // 2. Emits via ETW with the same frame ID (for overlay stats)
+            // The frame ID is already set correctly in SetMarker from g_global_frame_id.
+            (void)provider_->SetMarker(LatencyMarkerType::PC_LATENCY_PING);
+        }
+    }
+
     switch (marker) {
         case LatencyMarkerType::SIMULATION_START:
             g_reflex_marker_simulation_start_count.fetch_add(1, std::memory_order_relaxed);
@@ -131,6 +147,8 @@ bool LatencyManager::SetMarker(LatencyMarkerType marker) {
             break;
         case LatencyMarkerType::INPUT_SAMPLE:
             g_reflex_marker_input_sample_count.fetch_add(1, std::memory_order_relaxed);
+            break;
+        case LatencyMarkerType::PC_LATENCY_PING:
             break;
     }
     return result;

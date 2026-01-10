@@ -4,7 +4,7 @@
 #include <algorithm>
 #include <string>
 
-// Detect if Display Commander is being loaded as a proxy DLL (dxgi.dll, d3d11.dll, or d3d12.dll)
+// Detect if Display Commander is being loaded as a proxy DLL (dxgi.dll, d3d11.dll, d3d12.dll, or version.dll)
 // This checks the name of the Display Commander DLL itself, not the executable
 inline bool IsProxyDllMode(HMODULE h_module = nullptr)
 {
@@ -31,8 +31,8 @@ inline bool IsProxyDllMode(HMODULE h_module = nullptr)
 	// Convert to lowercase for comparison
 	std::transform(module_name.begin(), module_name.end(), module_name.begin(), ::towlower);
 
-	// Check if we're being loaded as dxgi.dll, d3d11.dll, or d3d12.dll
-	return module_name == L"dxgi.dll" || module_name == L"d3d11.dll" || module_name == L"d3d12.dll";
+	// Check if we're being loaded as dxgi.dll, d3d11.dll, d3d12.dll, or version.dll
+	return module_name == L"dxgi.dll" || module_name == L"d3d11.dll" || module_name == L"d3d12.dll" || module_name == L"version.dll";
 }
 
 // Get the module name (stem) to determine which proxy DLL we are

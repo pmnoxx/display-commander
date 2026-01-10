@@ -39,6 +39,7 @@
 #include <dxgi1_6.h>
 #include <psapi.h>
 #include <shlobj.h>
+#include <winver.h>
 #include <wrl/client.h>
 #include <algorithm>
 #include <cstring>

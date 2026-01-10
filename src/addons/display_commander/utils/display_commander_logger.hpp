@@ -35,6 +35,9 @@ public:
     // Shutdown logger (waits for background thread to finish)
     void Shutdown();
 
+    // Flush all queued logs to disk (waits for queue to be empty and flushes file buffers)
+    void FlushLogs();
+
 private:
     DisplayCommanderLogger();
     ~DisplayCommanderLogger();
@@ -74,5 +77,6 @@ void LogInfo(const char* msg, ...);
 void LogWarning(const char* msg, ...);
 void LogError(const char* msg, ...);
 void Shutdown();
+void FlushLogs();
 
 } // namespace display_commander::logger

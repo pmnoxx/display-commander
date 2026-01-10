@@ -21,3 +21,21 @@ EXPORTS
 	DXGIGetDebugInterface1 PRIVATE
 	DXGIDeclareAdapterRemovalSupport PRIVATE
 
+	; version.dll exports
+	GetFileVersionInfoA PRIVATE
+	GetFileVersionInfoByHandle PRIVATE
+	GetFileVersionInfoExA PRIVATE
+	GetFileVersionInfoExW PRIVATE
+	GetFileVersionInfoSizeA PRIVATE
+	GetFileVersionInfoSizeExA PRIVATE
+	GetFileVersionInfoSizeExW PRIVATE
+	GetFileVersionInfoSizeW PRIVATE
+	GetFileVersionInfoW PRIVATE
+	VerFindFileA PRIVATE
+	VerFindFileW PRIVATE
+	VerInstallFileA PRIVATE
+	VerInstallFileW PRIVATE
+	VerLanguageNameA PRIVATE
+	VerLanguageNameW PRIVATE
+	VerQueryValueA PRIVATE
+	VerQueryValueW PRIVATE

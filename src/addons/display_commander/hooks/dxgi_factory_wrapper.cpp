@@ -228,12 +228,12 @@ STDMETHODIMP DXGISwapChain4Wrapper::Present(UINT SyncInterval, UINT Flags) {
 
     // For native swapchains, execute common present logic (HandlePresentBefore/OnPresentFlags2/HandlePresentAfter)
     // This avoids duplicate execution in the detour functions
-    // Only execute if native frame pacing is enabled
+    // Only execute if limit real frames is enabled
     display_commanderhooks::dxgi::PresentCommonState state;
     Microsoft::WRL::ComPtr<IDXGISwapChain> baseSwapChain;
-    auto native_frame_pacing = settings::g_mainTabSettings.native_frame_pacing.GetValue();
+    auto limit_real_frames = settings::g_mainTabSettings.limit_real_frames.GetValue();
     auto flagsCopy = Flags; // to fix crash
-    if (m_swapChainHookType == SwapChainHook::Native && native_frame_pacing) {
+    if (m_swapChainHookType == SwapChainHook::Native && limit_real_frames) {
         if (SUCCEEDED(QueryInterface(IID_PPV_ARGS(&baseSwapChain)))) {
             state = display_commanderhooks::dxgi::HandlePresentBefore(this, baseSwapChain.Get());
             OnPresentFlags2(&flagsCopy, state.device_type, false, true); // Called from wrapper, not present_detour
@@ -247,7 +247,7 @@ STDMETHODIMP DXGISwapChain4Wrapper::Present(UINT SyncInterval, UINT Flags) {
 
     HRESULT res = m_originalSwapChain->Present(SyncInterval, Flags);
 
-    if (m_swapChainHookType == SwapChainHook::Native && native_frame_pacing && baseSwapChain.Get() != nullptr) {
+    if (m_swapChainHookType == SwapChainHook::Native && limit_real_frames && baseSwapChain.Get() != nullptr) {
        display_commanderhooks::dxgi::HandlePresentAfter(baseSwapChain.Get(), state, true);
     }
 
@@ -325,12 +325,12 @@ STDMETHODIMP DXGISwapChain4Wrapper::Present1(UINT SyncInterval, UINT PresentFlag
 
     // For native swapchains, execute common present logic (HandlePresentBefore/OnPresentFlags2/HandlePresentAfter)
     // This avoids duplicate execution in the detour functions
-    // Only execute if native frame pacing is enabled
+    // Only execute if limit real frames is enabled
     display_commanderhooks::dxgi::PresentCommonState state;
     Microsoft::WRL::ComPtr<IDXGISwapChain> baseSwapChain;
-    auto native_frame_pacing = settings::g_mainTabSettings.native_frame_pacing.GetValue();
+    auto limit_real_frames = settings::g_mainTabSettings.limit_real_frames.GetValue();
     auto flagsCopy = PresentFlags; // to fix crash
-    if (m_swapChainHookType == SwapChainHook::Native && native_frame_pacing) {
+    if (m_swapChainHookType == SwapChainHook::Native && limit_real_frames) {
         if (SUCCEEDED(QueryInterface(IID_PPV_ARGS(&baseSwapChain)))) {
             state = display_commanderhooks::dxgi::HandlePresentBefore(this, baseSwapChain.Get()); // Present1 needs D3D10 check
             OnPresentFlags2(&flagsCopy, state.device_type, false, true); // Called from wrapper, not present_detour
@@ -344,7 +344,7 @@ STDMETHODIMP DXGISwapChain4Wrapper::Present1(UINT SyncInterval, UINT PresentFlag
 
     HRESULT res = m_originalSwapChain->Present1(SyncInterval, PresentFlags, pPresentParameters);
 
-    if (m_swapChainHookType == SwapChainHook::Native && native_frame_pacing && baseSwapChain.Get() != nullptr) {
+    if (m_swapChainHookType == SwapChainHook::Native && limit_real_frames && baseSwapChain.Get() != nullptr) {
         display_commanderhooks::dxgi::HandlePresentAfter(baseSwapChain.Get(), state, true);
     }
 

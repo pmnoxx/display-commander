@@ -130,7 +130,7 @@ void QueryDxgiCompositionState(IDXGISwapChain *dxgi_swapchain);
 void RecordFrameTime(FrameTimeMode reason = FrameTimeMode::kPresent);
 
 // Record native frame time (for frames shown to display via native swapchain Present)
-// Similar to RecordFrameTime but specifically for native frames when native_frame_pacing is enabled
+// Similar to RecordFrameTime but specifically for native frames when limit_real_frames is enabled
 void RecordNativeFrameTime();
 
 // ============================================================================

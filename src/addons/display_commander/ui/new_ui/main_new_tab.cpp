@@ -165,9 +165,9 @@ void DrawFrameTimeGraph() {
 
 // Draw native frame time graph (for frames shown to display via native swapchain Present)
 void DrawNativeFrameTimeGraph() {
-    // Check if native frame pacing is enabled
-    if (!settings::g_mainTabSettings.native_frame_pacing.GetValue()) {
-        ImGui::TextColored(ui::colors::TEXT_DIMMED, "Native frame time graph requires native frame pacing to be enabled.");
+    // Check if limit real frames is enabled
+    if (!settings::g_mainTabSettings.limit_real_frames.GetValue()) {
+        ImGui::TextColored(ui::colors::TEXT_DIMMED, "Native frame time graph requires limit real frames to be enabled.");
         return;
     }
 
@@ -229,7 +229,7 @@ void DrawNativeFrameTimeGraph() {
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip(
             "Native frame time graph showing frames actually shown to display via native swapchain Present.\n"
-            "This tracks frames when native frame pacing is enabled.\n"
+            "This tracks frames when limit real frames is enabled.\n"
             "Lower values = higher FPS, smoother gameplay.\n"
             "Spikes indicate frame drops or stuttering.");
     }
@@ -1658,7 +1658,7 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                 if (g_swapchain_wrapper_present_called.load(std::memory_order_acquire)) {
                     if (IsNativeReflexActive(now_ns)) {
                         ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f),
-                                           ICON_FK_OK " Native Reflex: ACTIVE Native Frame Pacing: ON");
+                                           ICON_FK_OK " Native Reflex: ACTIVE Limit Real Frames: ON");
                         if (ImGui::IsItemHovered()) {
                             ImGui::SetTooltip(
                                 "The game has native Reflex support and is actively using it. ");
@@ -1679,10 +1679,10 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                         //      " Warning: Native Reflex is not sleeping recently - may indicate issues! (FIXME)");
                         // }
                     } else {
-                        bool native_fp = settings::g_mainTabSettings.native_frame_pacing.GetValue();
+                        bool limit_real = settings::g_mainTabSettings.limit_real_frames.GetValue();
                         ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f),
-                                           ICON_FK_OK " Injected Reflex: ACTIVE Native Frame Pacing: %s",
-                                           native_fp ? "ON" : "OFF");
+                                           ICON_FK_OK " Injected Reflex: ACTIVE Limit Real Frames: %s",
+                                           limit_real ? "ON" : "OFF");
                         double injected_ns = static_cast<double>(g_sleep_reflex_injected_ns_smooth.load());
                         double calls_per_second = injected_ns <= 0 ? -1 : 1000000000.0 / injected_ns;
                         ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f),
@@ -1756,8 +1756,8 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
         // Show warning for non-implemented low latency mode
         if (current_item == static_cast<int>(FpsLimiterMode::kNonReflexLowLatency)) {
             if (g_swapchain_wrapper_present_called.load(std::memory_order_acquire)) {
-                bool native_fp = settings::g_mainTabSettings.native_frame_pacing.GetValue();
-                ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Native Frame Pacing: %s", native_fp ? "ON" : "OFF");
+                bool limit_real = settings::g_mainTabSettings.limit_real_frames.GetValue();
+                ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Limit Real Frames: %s", limit_real ? "ON" : "OFF");
             }
             ImGui::TextColored(ui::colors::TEXT_WARNING,
                                ICON_FK_WARNING " Non-Reflex Low Latency Mode not implemented yet");
@@ -1766,8 +1766,8 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
         // Present Pacing Delay slider (persisted)
         if (current_item == static_cast<int>(FpsLimiterMode::kOnPresentSync)) {
             if (g_swapchain_wrapper_present_called.load(std::memory_order_acquire)) {
-                bool native_fp = settings::g_mainTabSettings.native_frame_pacing.GetValue();
-                ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Native Frame Pacing: %s", native_fp ? "ON" : "OFF");
+                bool limit_real = settings::g_mainTabSettings.limit_real_frames.GetValue();
+                ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Limit Real Frames: %s", limit_real ? "ON" : "OFF");
             }
 
             ImGui::TextColored(ui::colors::TEXT_HIGHLIGHT, "Present Pacing Delay:");
@@ -1885,15 +1885,15 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
 
     if (g_swapchain_wrapper_present_called.load(std::memory_order_acquire)) {
         ImGui::Spacing();
-        bool native_fp = settings::g_mainTabSettings.native_frame_pacing.GetValue();
-        if (ImGui::Checkbox("Native Frame Pacing", &native_fp)) {
-            settings::g_mainTabSettings.native_frame_pacing.SetValue(native_fp);
-            LogInfo(native_fp ? "Native Frame Pacing enabled" : "Native Frame Pacing disabled");
+        bool limit_real = settings::g_mainTabSettings.limit_real_frames.GetValue();
+        if (ImGui::Checkbox("Limit Real Frames", &limit_real)) {
+            settings::g_mainTabSettings.limit_real_frames.SetValue(limit_real);
+            LogInfo(limit_real ? "Limit Real Frames enabled" : "Limit Real Frames disabled");
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip(
-                "Apply pacing to native frames when using DLSS Frame Generation.\n"
-                "When enabled, the FPS limiter paces the game's internal framerate (native frames)\n"
+                "Limit real frames when using DLSS Frame Generation.\n"
+                "When enabled, the FPS limiter limits the game's internal framerate (real frames)\n"
                 "instead of generated frames. This helps maintain proper frame timing with Frame Gen enabled.");
         }
     }
@@ -3179,7 +3179,7 @@ void DrawImportantInfo() {
             settings::g_mainTabSettings.show_native_frame_time_graph.SetValue(show_native_frame_time_graph);
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Shows a graph of native frame times (frames shown to display via native swapchain Present) in the overlay.\nOnly available when native frame pacing is enabled.");
+            ImGui::SetTooltip("Shows a graph of native frame times (frames shown to display via native swapchain Present) in the overlay.\nOnly available when limit real frames is enabled.");
         }
         ImGui::NextColumn();
 
@@ -3306,7 +3306,7 @@ void DrawImportantInfo() {
         // Native Frame Time Graph
         ImGui::Text("Native Frame Time Graph");
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Shows frame times for frames actually displayed via native swapchain Present when native frame pacing is enabled.");
+            ImGui::SetTooltip("Shows frame times for frames actually displayed via native swapchain Present when limit real frames is enabled.");
         }
         ImGui::Spacing();
 

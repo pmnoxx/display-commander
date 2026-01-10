@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <atomic>
 #include "../utils/srwlock_wrapper.hpp"
 
 namespace display_commander::config {
@@ -43,6 +44,12 @@ public:
     // Get config file path
     std::string GetConfigPath() const;
 
+    // Set auto-flush logs mode (enables immediate flushing during startup)
+    void SetAutoFlushLogs(bool enabled);
+
+    // Get auto-flush logs mode
+    bool GetAutoFlushLogs() const;
+
 private:
     DisplayCommanderConfigManager() = default;
     ~DisplayCommanderConfigManager() = default;
@@ -56,6 +63,7 @@ private:
     std::string config_path_;
     mutable SRWLOCK config_mutex_ = SRWLOCK_INIT;
     bool initialized_ = false;
+    std::atomic<bool> auto_flush_logs_ = false;
 };
 
 // Global functions that replace reshade::get_config_value and reshade::set_config_value

@@ -1702,28 +1702,55 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             if (GetModuleFileNameW(h_module, module_path, MAX_PATH) > 0) {
                 std::filesystem::path module_file_path(module_path);
                 std::wstring module_name = module_file_path.stem().wstring();
+                std::wstring module_name_full = module_file_path.filename().wstring();
 
                 // Convert to lowercase for comparison
                 std::transform(module_name.begin(), module_name.end(), module_name.begin(), ::towlower);
+                std::transform(module_name_full.begin(), module_name_full.end(), module_name_full.begin(), ::towlower);
 
-                // Check if we're loaded as dxgi.dll, d3d11.dll, or d3d12.dll
-                const bool is_dxgi = (_wcsicmp(module_name.c_str(), L"dxgi") == 0);
-                const bool is_d3d11 = (_wcsicmp(module_name.c_str(), L"d3d11") == 0);
-                const bool is_d3d12 = (_wcsicmp(module_name.c_str(), L"d3d12") == 0);
+                // Debug: Print module name to debug output
+                int module_utf8_size = WideCharToMultiByte(CP_UTF8, 0, module_name_full.c_str(), -1, nullptr, 0, nullptr, nullptr);
+                if (module_utf8_size > 0) {
+                    std::string module_name_utf8(module_utf8_size - 1, '\0');
+                    WideCharToMultiByte(CP_UTF8, 0, module_name_full.c_str(), -1, module_name_utf8.data(), module_utf8_size, nullptr, nullptr);
+                    char debug_msg[512];
+                    snprintf(debug_msg, sizeof(debug_msg), "[DisplayCommander] DEBUG: module_name_full='%s', module_name (stem)='%ws'\n",
+                             module_name_utf8.c_str(), module_name.c_str());
+                    OutputDebugStringA(debug_msg);
+                }
 
-                if (is_dxgi) {
-                    entry_point = L"dxgi.dll";
-                    OutputDebugStringA("[DisplayCommander] Entry point detected: dxgi.dll (proxy mode)\n");
-                    LogInfo("Display Commander loaded as dxgi.dll proxy - DXGI functions will be forwarded to system dxgi.dll");
-                } else if (is_d3d11) {
-                    entry_point = L"d3d11.dll";
-                    OutputDebugStringA("[DisplayCommander] Entry point detected: d3d11.dll (proxy mode)\n");
-                    LogInfo("Display Commander loaded as d3d11.dll proxy - D3D11 functions will be forwarded to system d3d11.dll");
-                } else if (is_d3d12) {
-                    entry_point = L"d3d12.dll";
-                    OutputDebugStringA("[DisplayCommander] Entry point detected: d3d12.dll (proxy mode)\n");
-                    LogInfo("Display Commander loaded as d3d12.dll proxy - D3D12 functions will be forwarded to system d3d12.dll");
-                } else {
+                // List of proxy DLL names to check
+                struct ProxyDllInfo {
+                    const wchar_t* name;
+                    const wchar_t* entry_point;
+                    const char* debug_msg;
+                    const char* log_msg;
+                };
+
+                const ProxyDllInfo proxy_dlls[] = {
+                    { L"dxgi", L"dxgi.dll", "[DisplayCommander] Entry point detected: dxgi.dll (proxy mode)\n",
+                      "Display Commander loaded as dxgi.dll proxy - DXGI functions will be forwarded to system dxgi.dll" },
+                    { L"d3d11", L"d3d11.dll", "[DisplayCommander] Entry point detected: d3d11.dll (proxy mode)\n",
+                      "Display Commander loaded as d3d11.dll proxy - D3D11 functions will be forwarded to system d3d11.dll" },
+                    { L"d3d12", L"d3d12.dll", "[DisplayCommander] Entry point detected: d3d12.dll (proxy mode)\n",
+                      "Display Commander loaded as d3d12.dll proxy - D3D12 functions will be forwarded to system d3d12.dll" },
+                    { L"version", L"version.dll", "[DisplayCommander] Entry point detected: version.dll (proxy mode)\n",
+                      "Display Commander loaded as version.dll proxy - Version functions will be forwarded to system version.dll" }
+                };
+
+                // Check if we're loaded as any proxy DLL
+                bool found_proxy = false;
+                for (const auto& proxy : proxy_dlls) {
+                    if (_wcsicmp(module_name.c_str(), proxy.name) == 0) {
+                        entry_point = proxy.entry_point;
+                        OutputDebugStringA(proxy.debug_msg);
+                        LogInfo("%s", proxy.log_msg);
+                        found_proxy = true;
+                        break;
+                    }
+                }
+
+                if (!found_proxy) {
                     entry_point = L"addon";
                     // Convert module_name to UTF-8 for debug output
                     int module_utf8_size = WideCharToMultiByte(CP_UTF8, 0, module_name.c_str(), -1, nullptr, 0, nullptr, nullptr);

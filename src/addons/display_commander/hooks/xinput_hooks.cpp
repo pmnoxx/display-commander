@@ -399,174 +399,6 @@ static DWORD ProcessXInputGetState(DWORD dwUserIndex, XINPUT_STATE *pState, Hook
     return result;
 }
 
-// Hooked XInputGetState function
-DWORD WINAPI XInputGetState_Detour(DWORD dwUserIndex, XINPUT_STATE *pState) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
-    if (pState == nullptr) {
-        return ERROR_INVALID_PARAMETER;
-    }
-    if (XInputGetStateEx_Direct == nullptr || XInputGetState_Direct == nullptr) {
-        return ERROR_DEVICE_NOT_CONNECTED;
-    }
-
-    // Static state for fallback logic
-    static bool tried_get_state_ex = false;
-    static bool use_get_state_ex = false;
-
-    // Get shared state for timing field access
-    auto shared_state = display_commander::widgets::xinput_widget::XInputWidget::GetSharedState();
-    if (!shared_state) {
-        return ERROR_DEVICE_NOT_CONNECTED;
-    }
-
-    // Lambda to call original function with fallback logic
-    auto call_original = [&](DWORD user_index, XINPUT_STATE *state) -> DWORD {
-        DWORD result = use_get_state_ex ? XInputGetStateEx_Direct(user_index, state) : XInputGetState_Direct(user_index, state);
-        if (result == ERROR_SUCCESS) {
-            if (!tried_get_state_ex) {
-                tried_get_state_ex = true;
-                use_get_state_ex = XInputGetStateEx_Direct(user_index, state) == ERROR_SUCCESS;
-            }
-        }
-        return result;
-    };
-
-    return ProcessXInputGetState(dwUserIndex, pState, HOOK_XInputGetState,
-                                  shared_state->xinput_getstate_update_ns, "GetState", call_original);
-}
-
-// Hooked XInputGetStateEx function
-DWORD WINAPI XInputGetStateEx_Detour(DWORD dwUserIndex, XINPUT_STATE *pState) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
-    if (pState == nullptr) {
-        return ERROR_INVALID_PARAMETER;
-    }
-
-    // Get shared state for timing field access
-    auto shared_state = display_commander::widgets::xinput_widget::XInputWidget::GetSharedState();
-    if (!shared_state) {
-        return ERROR_DEVICE_NOT_CONNECTED;
-    }
-
-    // Lambda to call original function directly
-    auto call_original = [](DWORD user_index, XINPUT_STATE *state) -> DWORD {
-        return XInputGetStateEx_Direct != nullptr ? XInputGetStateEx_Direct(user_index, state) : ERROR_DEVICE_NOT_CONNECTED;
-    };
-
-    return ProcessXInputGetState(dwUserIndex, pState, HOOK_XInputGetStateEx,
-                                  shared_state->xinput_getstateex_update_ns, "GetStateEx", call_original);
-}
-
-// Hooked XInputSetState function
-DWORD WINAPI XInputSetState_Detour(DWORD dwUserIndex, XINPUT_VIBRATION *pVibration) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
-    if (pVibration == nullptr) {
-        return ERROR_INVALID_PARAMETER;
-    }
-    if (XInputSetState_Direct == nullptr) {
-        return ERROR_DEVICE_NOT_CONNECTED;
-    }
-
-    // Track hook call statistics
-    g_hook_stats[HOOK_XInputSetState].increment_total();
-
-    // Get vibration amplification setting
-    auto shared_state = display_commander::widgets::xinput_widget::XInputWidget::GetSharedState();
-    float amplification = 1.0f;
-    if (shared_state) {
-        amplification = shared_state->vibration_amplification.load();
-    }
-
-    // Apply amplification if enabled (amplification != 1.0)
-    XINPUT_VIBRATION vibration = *pVibration;
-    if (amplification != 1.0f) {
-        // Convert WORD (0-65535) to float, apply amplification, clamp, and convert back
-        float left_speed = static_cast<float>(vibration.wLeftMotorSpeed);
-        float right_speed = static_cast<float>(vibration.wRightMotorSpeed);
-
-        left_speed *= amplification;
-        right_speed *= amplification;
-
-        // Clamp to valid range (0-65535)
-        left_speed = (left_speed < 0.0f) ? 0.0f : (left_speed > 65535.0f) ? 65535.0f : left_speed;
-        right_speed = (right_speed < 0.0f) ? 0.0f : (right_speed > 65535.0f) ? 65535.0f : right_speed;
-
-        vibration.wLeftMotorSpeed = static_cast<WORD>(left_speed);
-        vibration.wRightMotorSpeed = static_cast<WORD>(right_speed);
-    }
-
-    // Call original function with amplified vibration
-    DWORD result = XInputSetState_Direct(dwUserIndex, &vibration);
-
-    if (result == ERROR_SUCCESS) {
-        g_hook_stats[HOOK_XInputSetState].increment_unsuppressed();
-    }
-
-    return result;
-}
-
-// Hooked XInputGetCapabilities function
-DWORD WINAPI XInputGetCapabilities_Detour(DWORD dwUserIndex, DWORD dwFlags, XINPUT_CAPABILITIES *pCapabilities) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
-    // Track hook call statistics (do this first to verify hook is being called)
-    g_hook_stats[HOOK_XInputGetCapabilities].increment_total();
-
-    if (pCapabilities == nullptr) {
-        return ERROR_INVALID_PARAMETER;
-    }
-    if (XInputGetCapabilities_Direct == nullptr) {
-        LogErrorThrottled(10, "XInputGetCapabilities_Detour called but XInputGetCapabilities_Direct is nullptr");
-        return ERROR_DEVICE_NOT_CONNECTED;
-    }
-
-    // Get shared state to check settings
-    auto shared_state = display_commander::widgets::xinput_widget::XInputWidget::GetSharedState();
-
-    // Check if override state is set - if so, spoof controller connection for controller 0
-    bool should_spoof_connection = g_auto_click_enabled.load() && dwUserIndex == 0;
-
-    // Check if DualSense to XInput conversion is enabled
-    bool dualsense_enabled = shared_state && shared_state->enable_dualsense_xinput.load();
-
-    // If DS to XInput is enabled and DualSense is available, or spoofing is enabled, fake connected state
-    bool should_fake_connection = false;
-    if (dualsense_enabled && display_commander::hooks::IsDualSenseAvailable()) {
-        should_fake_connection = true;
-    } else if (should_spoof_connection) {
-        should_fake_connection = true;
-    }
-
-    // If we should fake connection, return fake capabilities
-    if (should_fake_connection) {
-        // Initialize fake capabilities structure
-        ZeroMemory(pCapabilities, sizeof(XINPUT_CAPABILITIES));
-
-        // Set standard gamepad type and subtype
-        pCapabilities->Type = XINPUT_DEVTYPE_GAMEPAD;
-        pCapabilities->SubType = XINPUT_DEVSUBTYPE_GAMEPAD;
-        pCapabilities->Flags = 0; // No special flags
-
-        // Initialize gamepad structure (all buttons available)
-        ZeroMemory(&pCapabilities->Gamepad, sizeof(XINPUT_GAMEPAD));
-
-        // Initialize vibration structure (vibration supported)
-        pCapabilities->Vibration.wLeftMotorSpeed = 0;
-        pCapabilities->Vibration.wRightMotorSpeed = 0;
-
-        g_hook_stats[HOOK_XInputGetCapabilities].increment_unsuppressed();
-        return ERROR_SUCCESS;
-    }
-
-    // Otherwise, call the original function
-    DWORD result = XInputGetCapabilities_Direct(dwUserIndex, dwFlags, pCapabilities);
-
-    if (result == ERROR_SUCCESS) {
-        g_hook_stats[HOOK_XInputGetCapabilities].increment_unsuppressed();
-    }
-
-    return result;
-}
-
 // Per-module implementation helpers used by the per-DLL detours.
 // These route calls to the correct original function for the specific xinput DLL.
 static DWORD WINAPI XInputGetState_Detour_Impl(size_t module_index, DWORD dwUserIndex, XINPUT_STATE *pState) {
@@ -602,14 +434,6 @@ static DWORD WINAPI XInputGetState_Detour_Impl(size_t module_index, DWORD dwUser
             return get_state(user_index, state);
         }
 
-        // Ultimate fallback to global direct pointers (if for some reason module-specific pointers are missing)
-        if (XInputGetStateEx_Direct != nullptr) {
-            return XInputGetStateEx_Direct(user_index, state);
-        }
-        if (XInputGetState_Direct != nullptr) {
-            return XInputGetState_Direct(user_index, state);
-        }
-
         return ERROR_DEVICE_NOT_CONNECTED;
     };
 
@@ -639,11 +463,6 @@ static DWORD WINAPI XInputGetStateEx_Detour_Impl(size_t module_index, DWORD dwUs
         // Prefer the module-specific XInputGetStateEx if available
         if (get_state_ex != nullptr) {
             return get_state_ex(user_index, state);
-        }
-
-        // Fallback to the global direct pointer (first discovered module)
-        if (XInputGetStateEx_Direct != nullptr) {
-            return XInputGetStateEx_Direct(user_index, state);
         }
 
         return ERROR_DEVICE_NOT_CONNECTED;
@@ -691,10 +510,6 @@ static DWORD WINAPI XInputSetState_Detour_Impl(size_t module_index, DWORD dwUser
         set_state = original_xinput_set_state_procs[module_index];
     }
     if (set_state == nullptr) {
-        set_state = XInputSetState_Direct;
-    }
-
-    if (set_state == nullptr) {
         return ERROR_DEVICE_NOT_CONNECTED;
     }
 
@@ -719,9 +534,6 @@ static DWORD WINAPI XInputGetCapabilities_Detour_Impl(size_t module_index, DWORD
     XInputGetCapabilities_pfn get_capabilities = nullptr;
     if (module_index < original_xinput_get_capabilities_procs.size()) {
         get_capabilities = original_xinput_get_capabilities_procs[module_index];
-    }
-    if (get_capabilities == nullptr) {
-        get_capabilities = XInputGetCapabilities_Direct;
     }
 
     if (get_capabilities == nullptr) {

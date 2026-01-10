@@ -32,6 +32,8 @@
 #include "nvapi/vrr_status.hpp"
 #include "version.hpp"
 #include "widgets/dualsense_widget/dualsense_widget.hpp"
+#include "proxy_dll/proxy_detection.hpp"
+#include <filesystem>
 
 #include <d3d11.h>
 #include <dxgi1_6.h>
@@ -1656,6 +1658,9 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
         case DLL_PROCESS_ATTACH: {
             g_shutdown.store(false);
 
+            LoadLibraryA("Reshade64.dll");
+            LoadLibraryA("Reshade32.dll");
+
             if (g_dll_initialization_complete.load()) {
                 LogError("DLLMain(DisplayCommander) already initialized");
                 return FALSE;
@@ -1684,6 +1689,79 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             // Initialize DisplayCommander config system before handling safemode
             display_commander::config::DisplayCommanderConfigManager::GetInstance().Initialize();
             LogInfo("DisplayCommander config system initialized");
+
+            // Detect if we're loaded as a proxy DLL (dxgi.dll, d3d11.dll, d3d12.dll)
+            // Similar to how ReShade detects this
+            // Log to debug viewer early since log file may not be available yet
+            OutputDebugStringA("[DisplayCommander] DllMain: DLL_PROCESS_ATTACH - Starting entry point detection\n");
+
+            WCHAR module_path[MAX_PATH];
+            std::wstring entry_point = L"addon";
+            if (GetModuleFileNameW(h_module, module_path, MAX_PATH) > 0) {
+                std::filesystem::path module_file_path(module_path);
+                std::wstring module_name = module_file_path.stem().wstring();
+
+                // Convert to lowercase for comparison
+                std::transform(module_name.begin(), module_name.end(), module_name.begin(), ::towlower);
+
+                // Check if we're loaded as dxgi.dll, d3d11.dll, or d3d12.dll
+                const bool is_dxgi = (_wcsicmp(module_name.c_str(), L"dxgi") == 0);
+                const bool is_d3d11 = (_wcsicmp(module_name.c_str(), L"d3d11") == 0);
+                const bool is_d3d12 = (_wcsicmp(module_name.c_str(), L"d3d12") == 0);
+
+                if (is_dxgi) {
+                    entry_point = L"dxgi.dll";
+                    OutputDebugStringA("[DisplayCommander] Entry point detected: dxgi.dll (proxy mode)\n");
+                    LogInfo("Display Commander loaded as dxgi.dll proxy - DXGI functions will be forwarded to system dxgi.dll");
+                } else if (is_d3d11) {
+                    entry_point = L"d3d11.dll";
+                    OutputDebugStringA("[DisplayCommander] Entry point detected: d3d11.dll (proxy mode)\n");
+                    LogInfo("Display Commander loaded as d3d11.dll proxy - D3D11 functions will be forwarded to system d3d11.dll");
+                } else if (is_d3d12) {
+                    entry_point = L"d3d12.dll";
+                    OutputDebugStringA("[DisplayCommander] Entry point detected: d3d12.dll (proxy mode)\n");
+                    LogInfo("Display Commander loaded as d3d12.dll proxy - D3D12 functions will be forwarded to system d3d12.dll");
+                } else {
+                    entry_point = L"addon";
+                    // Convert module_name to UTF-8 for debug output
+                    int module_utf8_size = WideCharToMultiByte(CP_UTF8, 0, module_name.c_str(), -1, nullptr, 0, nullptr, nullptr);
+                    if (module_utf8_size > 0) {
+                        std::string module_name_utf8(module_utf8_size - 1, '\0');
+                        WideCharToMultiByte(CP_UTF8, 0, module_name.c_str(), -1, module_name_utf8.data(), module_utf8_size, nullptr, nullptr);
+                        char debug_msg[512];
+                        snprintf(debug_msg, sizeof(debug_msg), "[DisplayCommander] Entry point detected: addon (module: %s)\n", module_name_utf8.c_str());
+                        OutputDebugStringA(debug_msg);
+                    } else {
+                        OutputDebugStringA("[DisplayCommander] Entry point detected: addon\n");
+                    }
+                    LogInfo("Display Commander loaded as ReShade addon (module: %ws)", module_name.c_str());
+                }
+            } else {
+                OutputDebugStringA("[DisplayCommander] Entry point detection: Failed to get module filename\n");
+            }
+
+            // Log entry point to DisplayCommander.ini
+            // Convert wide string to UTF-8
+            int utf8_size = WideCharToMultiByte(CP_UTF8, 0, entry_point.c_str(), -1, nullptr, 0, nullptr, nullptr);
+            if (utf8_size > 0) {
+                std::string entry_point_utf8(utf8_size - 1, '\0'); // -1 to exclude null terminator
+                WideCharToMultiByte(CP_UTF8, 0, entry_point.c_str(), -1, entry_point_utf8.data(), utf8_size, nullptr, nullptr);
+                display_commander::config::set_config_value("DisplayCommander", "EntryPoint", entry_point_utf8);
+                display_commander::config::save_config("Entry point detection");
+                char debug_msg[512];
+                snprintf(debug_msg, sizeof(debug_msg), "[DisplayCommander] Entry point logged to DisplayCommander.ini: EntryPoint=%s\n", entry_point_utf8.c_str());
+                OutputDebugStringA(debug_msg);
+                LogInfo("Entry point logged to DisplayCommander.ini: %s", entry_point_utf8.c_str());
+            } else {
+                // Fallback to simple conversion if UTF-8 conversion fails
+                std::string entry_point_utf8(entry_point.begin(), entry_point.end());
+                display_commander::config::set_config_value("DisplayCommander", "EntryPoint", entry_point_utf8);
+                display_commander::config::save_config("Entry point detection");
+                char debug_msg[512];
+                snprintf(debug_msg, sizeof(debug_msg), "[DisplayCommander] Entry point logged to DisplayCommander.ini: EntryPoint=%s\n", entry_point_utf8.c_str());
+                OutputDebugStringA(debug_msg);
+                LogInfo("Entry point logged to DisplayCommander.ini: %s", entry_point_utf8.c_str());
+            }
 
             // Handle safemode after config system is initialized
 

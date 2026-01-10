@@ -1,8 +1,8 @@
 #include "logging.hpp"
 #include "../globals.hpp"
+#include "display_commander_logger.hpp"
 
 #include <cstdio>
-#include <reshade.hpp>
 
 // Logging function implementations
 void LogInfo(const char *msg, ...) {
@@ -16,7 +16,7 @@ void LogInfo(const char *msg, ...) {
     char buffer[1024];
     vsnprintf(buffer, sizeof(buffer), msg, args);
     va_end(args);
-    reshade::log::message(reshade::log::level::info, buffer);
+    display_commander::logger::LogInfo(buffer);
 }
 
 void LogWarn(const char *msg, ...) {
@@ -30,7 +30,7 @@ void LogWarn(const char *msg, ...) {
     char buffer[1024];
     vsnprintf(buffer, sizeof(buffer), msg, args);
     va_end(args);
-    reshade::log::message(reshade::log::level::warning, buffer);
+    display_commander::logger::LogWarning(buffer);
 }
 
 void LogError(const char *msg, ...) {
@@ -40,7 +40,7 @@ void LogError(const char *msg, ...) {
     char buffer[1024];
     vsnprintf(buffer, sizeof(buffer), msg, args);
     va_end(args);
-    reshade::log::message(reshade::log::level::error, buffer);
+    display_commander::logger::LogError(buffer);
 }
 
 void LogDebug(const char *msg, ...) {
@@ -54,7 +54,7 @@ void LogDebug(const char *msg, ...) {
     char buffer[1024];
     vsnprintf(buffer, sizeof(buffer), msg, args);
     va_end(args);
-    reshade::log::message(reshade::log::level::debug, buffer);
+    display_commander::logger::LogDebug(buffer);
 }
 
 // Helper function to convert LogLevel to string

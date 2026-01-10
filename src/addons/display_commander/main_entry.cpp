@@ -28,6 +28,7 @@
 #include "res/ui_colors.hpp"
 #include "utils/logging.hpp"
 #include "utils/timing.hpp"
+#include "utils/display_commander_logger.hpp"
 #include "utils/detour_call_tracker.hpp"
 #include "nvapi/vrr_status.hpp"
 #include "version.hpp"
@@ -1830,6 +1831,9 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
 
             // Clean up PresentMon
             presentmon::g_presentMonManager.StopWorker();
+
+            // Shutdown DisplayCommander logger (must be last to capture all cleanup messages)
+            display_commander::logger::Shutdown();
 
             // Note: reshade::unregister_addon() will automatically unregister all events and overlays
             // registered by this add-on, so manual unregistration is not needed and can cause issues

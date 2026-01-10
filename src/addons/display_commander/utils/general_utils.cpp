@@ -26,12 +26,18 @@ namespace {
     PFN_VerQueryValueW s_VerQueryValueW = nullptr;
 
     // Load version.dll and get function pointers
+    // Always load from System32 to avoid circular dependency when Display Commander is loaded as version.dll
     bool LoadVersionDLL() {
         if (s_version_dll != nullptr) {
             return true;  // Already loaded
         }
 
-        s_version_dll = LoadLibraryW(L"version.dll");
+        // Load from System32 to avoid loading ourselves if we're loaded as version.dll
+        WCHAR system_path[MAX_PATH];
+        GetSystemDirectoryW(system_path, MAX_PATH);
+        std::wstring version_path = std::wstring(system_path) + L"\\version.dll";
+
+        s_version_dll = LoadLibraryW(version_path.c_str());
         if (s_version_dll == nullptr) {
             return false;
         }

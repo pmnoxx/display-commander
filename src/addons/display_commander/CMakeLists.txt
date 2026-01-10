@@ -170,3 +170,9 @@ endif()
 set_target_properties(zzz_display_commander PROPERTIES
   SUFFIX "${TARGET_SUFFIX}"
 )
+
+# Link exports.def file for proxy DLL exports (dxgi.dll, d3d11.dll, d3d12.dll)
+# CMake automatically handles .def files for MSVC when added as a source
+target_sources(zzz_display_commander PRIVATE
+  ${CMAKE_CURRENT_LIST_DIR}/proxy_dll/exports.def
+)

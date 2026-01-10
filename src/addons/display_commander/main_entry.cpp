@@ -1658,7 +1658,22 @@ void DoInitializationWithoutHwnd(HMODULE h_module, DWORD fdw_reason) {
 BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
     switch (fdw_reason) {
         case DLL_PROCESS_ATTACH: {
+            display_commander::config::DisplayCommanderConfigManager::GetInstance().Initialize();
+            display_commander::config::DisplayCommanderConfigManager::GetInstance().SetAutoFlushLogs(true);
             g_shutdown.store(false);
+
+            // Print command line arguments when running with rundll32.exe
+            LPSTR command_line = GetCommandLineA();
+            if (command_line != nullptr && command_line[0] != '\0') {
+                OutputDebugStringA("[DisplayCommander] Command line: ");
+                OutputDebugStringA(command_line);
+                OutputDebugStringA("\n");
+                LogInfo("Command line arguments: %s", command_line);
+                return TRUE;
+            } else {
+                OutputDebugStringA("[DisplayCommander] Command line: (empty)\n");
+                LogInfo("Command line arguments: (empty)");
+            }
 
             LoadLibraryA("Reshade64.dll");
             LoadLibraryA("Reshade32.dll");
@@ -1689,7 +1704,6 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             LogInfo("Display Commander overlay registered");
 
             // Initialize DisplayCommander config system before handling safemode
-            display_commander::config::DisplayCommanderConfigManager::GetInstance().Initialize();
             LogInfo("DisplayCommander config system initialized");
 
             // Detect if we're loaded as a proxy DLL (dxgi.dll, d3d11.dll, d3d12.dll)
@@ -1801,6 +1815,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             g_hmodule = h_module;
 
             DoInitializationWithoutHwnd(h_module, fdw_reason);
+            display_commander::config::DisplayCommanderConfigManager::GetInstance().SetAutoFlushLogs(false);
 
             break;
         }
@@ -1889,3 +1904,44 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
 
 // CONTINUOUS RENDERING THREAD REMOVED - Focus spoofing is now handled by Win32 hooks
 // This provides a much cleaner and more effective solution
+
+// RunDLL entry point for rundll32.exe compatibility
+// Allows calling: rundll32.exe zzz_display_commander.addon64,RunDLL_DllMain arg1 arg2 arg3
+extern "C" __declspec(dllexport) void CALLBACK RunDLL_DllMain(HWND hwnd, HINSTANCE hInst, LPSTR lpszCmdLine, int nCmdShow) {
+    UNREFERENCED_PARAMETER(hwnd);
+    UNREFERENCED_PARAMETER(hInst);
+    UNREFERENCED_PARAMETER(nCmdShow);
+
+    // Initialize config system for logging
+    display_commander::config::DisplayCommanderConfigManager::GetInstance().Initialize();
+    display_commander::config::DisplayCommanderConfigManager::GetInstance().SetAutoFlushLogs(true);
+
+    // Print command line arguments
+    if (lpszCmdLine != nullptr && lpszCmdLine[0] != '\0') {
+        OutputDebugStringA("[DisplayCommander] RunDLL_DllMain called with arguments: ");
+        OutputDebugStringA(lpszCmdLine);
+        OutputDebugStringA("\n");
+        LogInfo("RunDLL_DllMain called with arguments: %s", lpszCmdLine);
+    } else {
+        OutputDebugStringA("[DisplayCommander] RunDLL_DllMain called with no arguments\n");
+        LogInfo("RunDLL_DllMain called with no arguments");
+    }
+
+    // Also print full command line
+    LPSTR command_line = GetCommandLineA();
+    if (command_line != nullptr && command_line[0] != '\0') {
+        OutputDebugStringA("[DisplayCommander] Full command line: ");
+        OutputDebugStringA(command_line);
+        OutputDebugStringA("\n");
+        LogInfo("Full command line: %s", command_line);
+    }
+    display_commander::logger::FlushLogs();
+    display_commander::logger::Shutdown();
+}
+
+// RunDLL entry point for injection/testing (alias for RunDLL_DllMain)
+// Allows calling: rundll32.exe zzz_display_commander.addon64,RunDLL_Inject arg1 arg2 arg3
+extern "C" __declspec(dllexport) void CALLBACK Inject(HWND hwnd, HINSTANCE hInst, LPSTR lpszCmdLine, int nCmdShow) {
+    // Just call RunDLL_DllMain with the same parameters
+    RunDLL_DllMain(hwnd, hInst, lpszCmdLine, nCmdShow);
+}

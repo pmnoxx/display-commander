@@ -1,5 +1,6 @@
 #include "exit_handler.hpp"
 #include "display_restore.hpp"
+#include "config/display_commander_config.hpp"
 #include "utils.hpp"
 #include "utils/logging.hpp"
 #include "utils/display_commander_logger.hpp"
@@ -27,6 +28,8 @@ void WriteToDebugLog(const std::string &message) {
 }
 
 void OnHandleExit(ExitSource source, const std::string &message) {
+    display_commander::config::DisplayCommanderConfigManager::GetInstance().SetAutoFlushLogs(true);
+    display_commander::logger::FlushLogs();
     // Use atomic compare_exchange to ensure only one thread handles exit
     bool expected = false;
     // Format the exit message
@@ -44,6 +47,8 @@ void OnHandleExit(ExitSource source, const std::string &message) {
 
     // Best-effort display restoration on any exit
     display_restore::RestoreAllIfEnabled();
+
+    // Flush all logs before exit to ensure all messages are written to disk
 }
 
 const char *GetExitSourceString(ExitSource source) {

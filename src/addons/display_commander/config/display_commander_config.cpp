@@ -363,6 +363,18 @@ std::string DisplayCommanderConfigManager::GetConfigPath() const {
     return config_path_;
 }
 
+void DisplayCommanderConfigManager::SetAutoFlushLogs(bool enabled) {
+    auto_flush_logs_.store(enabled);
+    if (enabled) {
+        // Immediately flush logs when auto-flush is enabled
+        display_commander::logger::FlushLogs();
+    }
+}
+
+bool DisplayCommanderConfigManager::GetAutoFlushLogs() const {
+    return auto_flush_logs_.load();
+}
+
 void DisplayCommanderConfigManager::EnsureConfigFileExists() {
     if (config_path_.empty()) {
         config_path_ = GetConfigFilePath();

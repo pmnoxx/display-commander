@@ -1,4 +1,5 @@
 #include "display_commander_logger.hpp"
+#include "srwlock_wrapper.hpp"
 #include <sstream>
 #include <iomanip>
 #include <cstdarg>
@@ -90,6 +91,38 @@ void DisplayCommanderLogger::LogWarning(const std::string& message) {
 
 void DisplayCommanderLogger::LogError(const std::string& message) {
     Log(LogLevel::Error, message);
+}
+
+void DisplayCommanderLogger::FlushLogs() {
+    if (!initialized_.load()) {
+        return;
+    }
+
+    // Wait for queue to be empty (with timeout)
+    const int max_wait_iterations = 50; // 5 seconds total (50 * 100ms)
+    for (int i = 0; i < max_wait_iterations; ++i) {
+        bool queue_empty = false;
+        {
+            utils::SRWLockShared lock(queue_lock_);
+            queue_empty = message_queue_.empty();
+        }
+
+        if (queue_empty) {
+            break;
+        }
+
+        // Signal the logger thread to process messages
+        if (queue_event_ != nullptr) {
+            SetEvent(queue_event_);
+        }
+
+        Sleep(100); // Wait 100ms before checking again
+    }
+
+    // Flush file buffers
+    if (file_handle_ != INVALID_HANDLE_VALUE) {
+        FlushFileBuffers(file_handle_);
+    }
 }
 
 void DisplayCommanderLogger::Shutdown() {
@@ -342,6 +375,10 @@ void LogError(const char* msg, ...) {
 
 void Shutdown() {
     DisplayCommanderLogger::GetInstance().Shutdown();
+}
+
+void FlushLogs() {
+    DisplayCommanderLogger::GetInstance().FlushLogs();
 }
 
 } // namespace display_commander::logger

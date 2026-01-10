@@ -1,6 +1,7 @@
 #include "logging.hpp"
 #include "../globals.hpp"
 #include "display_commander_logger.hpp"
+#include "../config/display_commander_config.hpp"
 
 #include <cstdio>
 
@@ -17,6 +18,11 @@ void LogInfo(const char *msg, ...) {
     vsnprintf(buffer, sizeof(buffer), msg, args);
     va_end(args);
     display_commander::logger::LogInfo(buffer);
+
+    // Auto-flush if enabled
+    if (display_commander::config::DisplayCommanderConfigManager::GetInstance().GetAutoFlushLogs()) {
+        display_commander::logger::FlushLogs();
+    }
 }
 
 void LogWarn(const char *msg, ...) {
@@ -31,6 +37,11 @@ void LogWarn(const char *msg, ...) {
     vsnprintf(buffer, sizeof(buffer), msg, args);
     va_end(args);
     display_commander::logger::LogWarning(buffer);
+
+    // Auto-flush if enabled
+    if (display_commander::config::DisplayCommanderConfigManager::GetInstance().GetAutoFlushLogs()) {
+        display_commander::logger::FlushLogs();
+    }
 }
 
 void LogError(const char *msg, ...) {
@@ -41,6 +52,11 @@ void LogError(const char *msg, ...) {
     vsnprintf(buffer, sizeof(buffer), msg, args);
     va_end(args);
     display_commander::logger::LogError(buffer);
+
+    // Auto-flush if enabled
+    if (display_commander::config::DisplayCommanderConfigManager::GetInstance().GetAutoFlushLogs()) {
+        display_commander::logger::FlushLogs();
+    }
 }
 
 void LogDebug(const char *msg, ...) {
@@ -55,6 +71,11 @@ void LogDebug(const char *msg, ...) {
     vsnprintf(buffer, sizeof(buffer), msg, args);
     va_end(args);
     display_commander::logger::LogDebug(buffer);
+
+    // Auto-flush if enabled
+    if (display_commander::config::DisplayCommanderConfigManager::GetInstance().GetAutoFlushLogs()) {
+        display_commander::logger::FlushLogs();
+    }
 }
 
 // Helper function to convert LogLevel to string

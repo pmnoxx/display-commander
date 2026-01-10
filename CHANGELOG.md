@@ -4,7 +4,7 @@
 - **PresentMon integration** - Added PresentMon thread support with comprehensive debug information and frame analysis
 - **System volume control** - Added system volume slider and hotkeys for volume up/down control
 - **CPU management** - Added UI to set CPU affinity (number of cores used) and process priority adjustment
-- **Native frame pacing** - Added native frame pacing feature for frame generation to all FPS limiters
+- **Limit real frames** - Added limit real frames feature for frame generation to all FPS limiters
 - **DLL loading enhancements** - Added "Load DLL Early" option, DllsToLoadBefore, and DllLoadingDelayMs settings for better compatibility
 - **Window management improvements** - Added SuppressWindowChanges config setting to fix black screen issues in games with DPI scaling
 - **VRR debugging** - Added VRR debug mode to performance overlay for variable refresh rate monitoring

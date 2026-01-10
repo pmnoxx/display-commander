@@ -787,13 +787,13 @@ void DrawNvapiSettings() {
         // Native Reflex Status Indicator
         bool is_native_reflex_active = IsNativeReflexActive(now_ns);
         if (is_native_reflex_active) {
-            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), ICON_FK_OK " Native Reflex: ACTIVE Native Frame Pacing: ON");
+            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), ICON_FK_OK " Native Reflex: ACTIVE Limit Real Frames: ON");
             if (ImGui::IsItemHovered()) {
                 ImGui::SetTooltip(
                     "The game has native Reflex support and is actively using it. ");
             }
         } else {
-            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), ICON_FK_MINUS " Native Reflex: INACTIVE Native Frame Pacing: OFF");
+            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), ICON_FK_MINUS " Native Reflex: INACTIVE Limit Real Frames: OFF");
             if (ImGui::IsItemHovered()) {
                 ImGui::SetTooltip(
                     "No native Reflex activity detected. ");

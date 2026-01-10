@@ -500,7 +500,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain *This, UI
     g_swapchain_event_total_count.fetch_add(1);
 
     // Skip common present logic if wrapper is handling it
-    bool skip_common_logic = g_swapchain_wrapper_present_called.load(std::memory_order_acquire) && settings::g_mainTabSettings.native_frame_pacing.GetValue();
+    bool skip_common_logic = g_swapchain_wrapper_present_called.load(std::memory_order_acquire) && settings::g_mainTabSettings.limit_real_frames.GetValue();
 
     PresentCommonState state;
     if (!skip_common_logic) {
@@ -543,7 +543,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1 *This, 
     g_swapchain_event_total_count.fetch_add(1);
 
     // Skip common present logic if wrapper is handling it
-    bool skip_common_logic = g_swapchain_wrapper_present_called.load(std::memory_order_acquire) && settings::g_mainTabSettings.native_frame_pacing.GetValue();
+    bool skip_common_logic = g_swapchain_wrapper_present_called.load(std::memory_order_acquire) && settings::g_mainTabSettings.limit_real_frames.GetValue();
 
     PresentCommonState state;
     if (!skip_common_logic) {

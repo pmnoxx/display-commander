@@ -630,22 +630,27 @@ bool InstallXInputHooks(HMODULE xinput_module) {
     // Try to hook ALL loaded XInput modules
     for (size_t idx = 0; idx < std::size(xinput_modules); ++idx) {
         const char *module_name = xinput_modules[idx];
-        HMODULE xinput_module = GetModuleHandleA(module_name);
-        if (xinput_module == nullptr) {
+        HMODULE tmp_xinput_module = GetModuleHandleA(module_name);
+        if (tmp_xinput_module == nullptr) {
             LogInfo("XInput module %s not found", module_name);
             continue;
         }
         if (hooked_modules[idx]) {
+            min_set_value = idx;
             LogInfo("XInput module %s already hooked", module_name);
             any_success = true;
+            continue;
+        }
+        if (tmp_xinput_module != xinput_module) {
             continue;
         }
         LogInfo("XInput module %s found", module_name);
         hooked_modules[idx] = true;
 
-        bool update = min_set_value == -1 || min_set_value > idx;
-        if (update) {
-            min_set_value = idx;
+        bool update = false;
+        if (min_set_value == 1) {
+           update = true;
+           min_set_value = idx;
         }
 
         // Hook XInputGetState

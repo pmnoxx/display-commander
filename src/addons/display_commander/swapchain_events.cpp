@@ -280,7 +280,7 @@ void DoInitializationWithHwnd(HWND hwnd) {
     }
 
     // Install XInput hooks
-    display_commanderhooks::InstallXInputHooks(nullptr);
+    // display_commanderhooks::InstallXInputHooks(nullptr);
 
     LogInfo("DoInitialization: Starting initialization with HWND: 0x%p", hwnd);
 

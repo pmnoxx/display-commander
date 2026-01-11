@@ -95,3 +95,32 @@ void LogCurrentLogLevel() {
     LogLevel current_level = g_min_log_level.load();
     LogError("Current logging level: %s (value: %d)", LogLevelToString(current_level), static_cast<int>(current_level));
 }
+
+// Direct logging functions that use LogInfo/LogWarn/LogError
+// These are safe during DLLMain as they use the buffered ostream logger
+void LogInfoDirect(const char *msg, ...) {
+    va_list args;
+    va_start(args, msg);
+    char buffer[1024];
+    vsnprintf(buffer, sizeof(buffer), msg, args);
+    va_end(args);
+    LogInfo("%s", buffer);
+}
+
+void LogWarnDirect(const char *msg, ...) {
+    va_list args;
+    va_start(args, msg);
+    char buffer[1024];
+    vsnprintf(buffer, sizeof(buffer), msg, args);
+    va_end(args);
+    LogWarn("%s", buffer);
+}
+
+void LogErrorDirect(const char *msg, ...) {
+    va_list args;
+    va_start(args, msg);
+    char buffer[1024];
+    vsnprintf(buffer, sizeof(buffer), msg, args);
+    va_end(args);
+    LogError("%s", buffer);
+}

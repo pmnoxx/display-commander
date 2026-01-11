@@ -4,7 +4,6 @@
 #include "../globals.hpp"
 #include <dxgi.h>
 #include <dwmapi.h>
-#include <iostream>
 #include <limits>
 #include <sstream>
 #include <iomanip>
@@ -14,7 +13,7 @@
 
 // Simple logging wrapper to avoid dependency issues
 namespace {
-void LogMessage(const std::string &msg) { std::cout << "[RefreshRateMonitor] " << msg << '\n'; }
+void LogMessage(const std::string &msg) { LogInfo("[RefreshRateMonitor] %s", msg.c_str()); }
 } // namespace
 
 namespace dxgi::fps_limiter {

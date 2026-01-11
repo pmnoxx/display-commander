@@ -31,6 +31,7 @@
 #include "utils/display_commander_logger.hpp"
 #include "utils/detour_call_tracker.hpp"
 #include "utils/srwlock_wrapper.hpp"
+#include "utils/platform_api_detector.hpp"
 #include <set>
 #include <thread>
 #include "nvapi/vrr_status.hpp"
@@ -1905,6 +1906,8 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             // don't call register_addon if reshade is not loaded to prevent crash
             if (!g_reshade_loaded.load()) {
                 OutputDebugStringA("ReShade not loaded");
+                // Detect and log platform APIs (Steam, Epic, GOG, etc.)
+                display_commander::utils::DetectAndLogPlatformAPIs();
                 return TRUE;
             }
             // Detect multiple Display Commander instances - refuse to load if multiple versions found

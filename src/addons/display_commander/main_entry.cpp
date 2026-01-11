@@ -73,6 +73,10 @@ bool CheckReShadeVersionCompatibility();
 // Forward declaration for multiple ReShade detection
 void DetectMultipleReShadeVersions();
 
+// Forward declaration for multiple Display Commander detection
+// Returns true if multiple versions detected (should refuse to load), false otherwise
+bool DetectMultipleDisplayCommanderVersions();
+
 // Forward declaration for safemode function
 void HandleSafemode();
 
@@ -1321,6 +1325,158 @@ void DetectMultipleReShadeVersions() {
     }
 }
 
+// Function to detect multiple Display Commander versions by scanning all modules
+// Returns true if multiple versions detected (should refuse to load), false otherwise
+bool DetectMultipleDisplayCommanderVersions() {
+    // Type definition for the version export function
+    typedef const char* (*GetDisplayCommanderVersionFunc)();
+
+    HMODULE modules[1024];
+    DWORD num_modules = 0;
+
+    // Use K32EnumProcessModules for safe enumeration
+    if (K32EnumProcessModules(GetCurrentProcess(), modules, sizeof(modules), &num_modules) == 0) {
+        DWORD error = GetLastError();
+        // Use OutputDebugStringA since logging might not be initialized yet
+        char error_msg[256];
+        snprintf(error_msg, sizeof(error_msg),
+            "[DisplayCommander] Failed to enumerate process modules for Display Commander detection: %lu\n", error);
+        OutputDebugStringA(error_msg);
+        return false; // Can't detect, so allow loading
+    }
+
+    if (num_modules > sizeof(modules)) {
+        num_modules = static_cast<DWORD>(sizeof(modules));
+    }
+
+    int dc_module_count = 0;
+    HMODULE current_module = g_hmodule;
+
+    // Use OutputDebugStringA for early detection logging
+    char scan_msg[256];
+    snprintf(scan_msg, sizeof(scan_msg),
+        "[DisplayCommander] === Display Commander Module Detection ===\n");
+    OutputDebugStringA(scan_msg);
+    snprintf(scan_msg, sizeof(scan_msg),
+        "[DisplayCommander] Scanning %u modules for Display Commander...\n",
+        static_cast<unsigned int>(num_modules / sizeof(HMODULE)));
+    OutputDebugStringA(scan_msg);
+
+    for (DWORD i = 0; i < num_modules / sizeof(HMODULE); ++i) {
+        HMODULE module = modules[i];
+        if (module == nullptr) continue;
+
+        // Skip the current module (ourselves)
+        if (module == current_module) {
+            continue;
+        }
+
+        // Check if this module has GetDisplayCommanderVersion export
+        GetDisplayCommanderVersionFunc version_func =
+            reinterpret_cast<GetDisplayCommanderVersionFunc>(GetProcAddress(module, "GetDisplayCommanderVersion"));
+
+        if (version_func != nullptr) {
+            dc_module_count++;
+
+            // Get module file path for logging
+            wchar_t module_path[MAX_PATH];
+            DWORD path_length = GetModuleFileNameW(module, module_path, MAX_PATH);
+
+            char narrow_path[MAX_PATH] = "(path unavailable)";
+            if (path_length > 0) {
+                // Convert wide string to narrow string for logging
+                WideCharToMultiByte(CP_UTF8, 0, module_path, -1, narrow_path, MAX_PATH, nullptr, nullptr);
+            }
+
+            // Get version string from the other instance
+            const char* other_version = version_func();
+            const char* current_version = DISPLAY_COMMANDER_VERSION_STRING;
+
+            // Log to debug output
+            char found_msg[512];
+            snprintf(found_msg, sizeof(found_msg),
+                "[DisplayCommander] Found Display Commander module #%d: 0x%p - %s\n",
+                dc_module_count, module, narrow_path);
+            OutputDebugStringA(found_msg);
+            snprintf(found_msg, sizeof(found_msg),
+                "[DisplayCommander]   Other version: %s\n",
+                other_version ? other_version : "(unknown)");
+            OutputDebugStringA(found_msg);
+            snprintf(found_msg, sizeof(found_msg),
+                "[DisplayCommander]   Current version: %s\n",
+                current_version);
+            OutputDebugStringA(found_msg);
+
+            // Compare versions (simple string comparison - assumes semantic versioning)
+            if (other_version != nullptr) {
+                // Store the other version in our global atomic for UI display
+                extern std::atomic<std::shared_ptr<const std::string>> g_other_dc_version_detected;
+                auto version_str = std::make_shared<const std::string>(other_version);
+                g_other_dc_version_detected.store(version_str);
+
+                // Try to notify the other instance about multiple versions
+                typedef void (*NotifyMultipleVersionsFunc)(const char*);
+                NotifyMultipleVersionsFunc notify_func =
+                    reinterpret_cast<NotifyMultipleVersionsFunc>(GetProcAddress(module, "NotifyDisplayCommanderMultipleVersions"));
+
+                if (notify_func != nullptr) {
+                    // Call the notification function on the other instance with our version
+                    notify_func(current_version);
+                    OutputDebugStringA("[DisplayCommander] Notified other instance of multiple versions.\n");
+                }
+
+                // Log to ReShade's log as error (exception to the rule) if ReShade is available
+                char error_msg[512];
+                snprintf(error_msg, sizeof(error_msg),
+                    "[Display Commander] ERROR: Multiple Display Commander instances detected! "
+                    "Other instance: v%s at %s, Current instance: v%s. "
+                    "Refusing to load to prevent conflicts. Please ensure only one version is loaded.",
+                    other_version, narrow_path, current_version);
+
+                // Use reshade::log::message with error level (exception to the rule)
+                // This might not be available yet, but try anyway
+                try {
+                    reshade::log::message(reshade::log::level::error, error_msg);
+                } catch (...) {
+                    // If ReShade logging isn't available yet, just use debug output
+                    OutputDebugStringA(error_msg);
+                    OutputDebugStringA("\n");
+                }
+
+                // Also log to debug output
+                OutputDebugStringA("[DisplayCommander] ERROR: Multiple Display Commander instances detected!\n");
+                snprintf(found_msg, sizeof(found_msg),
+                    "[DisplayCommander]   Other instance: v%s at %s\n",
+                    other_version, narrow_path);
+                OutputDebugStringA(found_msg);
+                snprintf(found_msg, sizeof(found_msg),
+                    "[DisplayCommander]   Current instance: v%s\n",
+                    current_version);
+                OutputDebugStringA(found_msg);
+                OutputDebugStringA("[DisplayCommander] Refusing to load to prevent conflicts.\n");
+            }
+        }
+    }
+
+    // Log completion
+    char complete_msg[256];
+    snprintf(complete_msg, sizeof(complete_msg),
+        "[DisplayCommander] === Display Commander Detection Complete ===\n");
+    OutputDebugStringA(complete_msg);
+    snprintf(complete_msg, sizeof(complete_msg),
+        "[DisplayCommander] Total Display Commander modules found: %d (excluding current)\n",
+        dc_module_count);
+    OutputDebugStringA(complete_msg);
+
+    if (dc_module_count > 0) {
+        OutputDebugStringA("[DisplayCommander] WARNING: Multiple Display Commander versions detected! Refusing to load.\n");
+        return true; // Multiple versions detected - refuse to load
+    }
+
+    OutputDebugStringA("[DisplayCommander] Single Display Commander instance detected - no conflicts.\n");
+    return false; // No conflicts - allow loading
+}
+
 // Version compatibility check function
 bool CheckReShadeVersionCompatibility() {
     static bool first_time = true;
@@ -1751,6 +1907,11 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
                 OutputDebugStringA("ReShade not loaded");
                 return TRUE;
             }
+            // Detect multiple Display Commander instances - refuse to load if multiple versions found
+            if (DetectMultipleDisplayCommanderVersions()) {
+                OutputDebugStringA("[DisplayCommander] Multiple Display Commander instances detected - refusing to load.\n");
+                return FALSE; // Refuse to load
+            }
 
             if (!reshade::register_addon(h_module)) {
                 // Registration failed - likely due to API version mismatch
@@ -1763,6 +1924,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             OutputDebugStringA("ReShade 111111");
 
             DetectMultipleReShadeVersions();
+
 
             // Registration successful - log version compatibility
             LogInfoDirect("Display Commander v%s - ReShade addon registration successful (API version 17 supported)",

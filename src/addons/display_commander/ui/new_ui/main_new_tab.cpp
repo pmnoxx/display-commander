@@ -627,6 +627,23 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
         ImGui::Spacing();
     }
 
+    // Multiple Display Commander versions warning
+    auto other_dc_version = g_other_dc_version_detected.load();
+    if (other_dc_version != nullptr && !other_dc_version->empty()) {
+        ImGui::Spacing();
+        ImGui::TextColored(ui::colors::TEXT_ERROR,
+                           ICON_FK_WARNING " ERROR: Multiple Display Commander versions detected!");
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip(
+                "Another Display Commander instance (v%s) is loaded in this process. "
+                "This may cause conflicts and unexpected behavior. Please ensure only one version is loaded.",
+                other_dc_version->c_str());
+        }
+        ImGui::SameLine();
+        ImGui::TextColored(ui::colors::TEXT_ERROR, "Other version: v%s", other_dc_version->c_str());
+        ImGui::Spacing();
+    }
+
     // Version and build information at the top
     // if (ImGui::CollapsingHeader("Display Commander", ImGuiTreeNodeFlags_DefaultOpen))
     {

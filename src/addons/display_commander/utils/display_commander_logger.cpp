@@ -13,15 +13,10 @@ DisplayCommanderLogger& DisplayCommanderLogger::GetInstance() {
 }
 
 DisplayCommanderLogger::DisplayCommanderLogger() {
-    queue_event_ = CreateEventW(nullptr, FALSE, FALSE, nullptr);
 }
 
 DisplayCommanderLogger::~DisplayCommanderLogger() {
     Shutdown();
-    if (queue_event_ != nullptr) {
-        CloseHandle(queue_event_);
-        queue_event_ = nullptr;
-    }
 }
 
 void DisplayCommanderLogger::Initialize(const std::string& log_path) {
@@ -38,19 +33,9 @@ void DisplayCommanderLogger::Initialize(const std::string& log_path) {
         std::filesystem::create_directories(log_dir);
     }
 
-    // Open log file and keep handle open
+    // Open log file with buffered ostream
     if (!OpenLogFile()) {
         OutputDebugStringA("DisplayCommander: Failed to open log file\n");
-        initialized_ = false;
-        return;
-    }
-
-    // Start background logger thread
-    shutdown_requested_ = false;
-    logger_thread_ = CreateThread(nullptr, 0, LoggerThreadProc, this, 0, nullptr);
-    if (logger_thread_ == nullptr) {
-        OutputDebugStringA("DisplayCommander: Failed to create logger thread\n");
-        CloseLogFile();
         initialized_ = false;
         return;
     }
@@ -66,14 +51,10 @@ void DisplayCommanderLogger::Log(LogLevel level, const std::string& message) {
 
     std::string formatted_message = FormatMessage(level, message);
 
-    // Add to queue (thread-safe)
-    AcquireSRWLockExclusive(&queue_lock_);
-    message_queue_.push(std::move(formatted_message));
-    ReleaseSRWLockExclusive(&queue_lock_);
-
-    // Signal the logger thread
-    if (queue_event_ != nullptr) {
-        SetEvent(queue_event_);
+    // Write directly to buffered stream (thread-safe)
+    {
+        utils::SRWLockExclusive lock(write_lock_);
+        WriteToFile(formatted_message);
     }
 }
 
@@ -98,30 +79,12 @@ void DisplayCommanderLogger::FlushLogs() {
         return;
     }
 
-    // Wait for queue to be empty (with timeout)
-    const int max_wait_iterations = 50; // 5 seconds total (50 * 100ms)
-    for (int i = 0; i < max_wait_iterations; ++i) {
-        bool queue_empty = false;
-        {
-            utils::SRWLockShared lock(queue_lock_);
-            queue_empty = message_queue_.empty();
+    // Flush ostream buffer
+    {
+        utils::SRWLockExclusive lock(write_lock_);
+        if (log_file_.is_open()) {
+            log_file_.flush();
         }
-
-        if (queue_empty) {
-            break;
-        }
-
-        // Signal the logger thread to process messages
-        if (queue_event_ != nullptr) {
-            SetEvent(queue_event_);
-        }
-
-        Sleep(100); // Wait 100ms before checking again
-    }
-
-    // Flush file buffers
-    if (file_handle_ != INVALID_HANDLE_VALUE) {
-        FlushFileBuffers(file_handle_);
     }
 }
 
@@ -131,148 +94,49 @@ void DisplayCommanderLogger::Shutdown() {
         return; // Already shut down or never initialized
     }
 
-    // Signal shutdown
-    shutdown_requested_ = true;
-    if (queue_event_ != nullptr) {
-        SetEvent(queue_event_);
-    }
-
-    // Wait for logger thread to finish (with timeout)
-    if (logger_thread_ != nullptr) {
-        WaitForSingleObject(logger_thread_, 5000); // 5 second timeout
-        CloseHandle(logger_thread_);
-        logger_thread_ = nullptr;
-    }
-
     // Write final log entry, flush, and close file
-    if (file_handle_ != INVALID_HANDLE_VALUE) {
-        std::string shutdown_msg = FormatMessage(LogLevel::Info, "DisplayCommander Logger shutting down");
-        WriteToFile(shutdown_msg);
-
-        // Explicitly flush all buffers before closing
-        FlushFileBuffers(file_handle_);
-
-        CloseLogFile();
+    {
+        utils::SRWLockExclusive lock(write_lock_);
+        if (log_file_.is_open()) {
+            std::string shutdown_msg = FormatMessage(LogLevel::Info, "DisplayCommander Logger shutting down");
+            log_file_ << shutdown_msg;
+            log_file_.flush();
+            CloseLogFile();
+        }
     }
 }
 
-DWORD WINAPI DisplayCommanderLogger::LoggerThreadProc(LPVOID lpParam) {
-    DisplayCommanderLogger* logger = static_cast<DisplayCommanderLogger*>(lpParam);
-    logger->LoggerThreadMain();
-    return 0;
-}
-
-void DisplayCommanderLogger::LoggerThreadMain() {
-    while (!shutdown_requested_.load()) {
-        // Wait for messages or timeout
-        DWORD wait_result = WaitForSingleObject(queue_event_, 100); // 100ms timeout
-
-        // Process all queued messages
-        while (true) {
-            std::string message;
-            {
-                AcquireSRWLockExclusive(&queue_lock_);
-                if (message_queue_.empty()) {
-                    ReleaseSRWLockExclusive(&queue_lock_);
-                    break;
-                }
-                message = std::move(message_queue_.front());
-                message_queue_.pop();
-                ReleaseSRWLockExclusive(&queue_lock_);
-            }
-
-            // Write to file (file handle is kept open)
-            WriteToFile(message);
-        }
-
-        // If shutdown was requested and queue is empty, exit
-        if (shutdown_requested_.load()) {
-            AcquireSRWLockExclusive(&queue_lock_);
-            bool queue_empty = message_queue_.empty();
-            ReleaseSRWLockExclusive(&queue_lock_);
-            if (queue_empty) {
-                break;
-            }
-        }
-    }
-
-    // Process any remaining messages before exit
-    while (true) {
-        std::string message;
-        {
-            AcquireSRWLockExclusive(&queue_lock_);
-            if (message_queue_.empty()) {
-                ReleaseSRWLockExclusive(&queue_lock_);
-                break;
-            }
-            message = std::move(message_queue_.front());
-            message_queue_.pop();
-            ReleaseSRWLockExclusive(&queue_lock_);
-        }
-        WriteToFile(message);
-    }
-
-    // Flush all buffers before thread exits
-    if (file_handle_ != INVALID_HANDLE_VALUE) {
-        FlushFileBuffers(file_handle_);
-    }
-}
 
 bool DisplayCommanderLogger::OpenLogFile() {
-    if (file_handle_ != INVALID_HANDLE_VALUE) {
+    if (log_file_.is_open()) {
         return true; // Already open
     }
 
-    // Convert string path to wide string
-    std::wstring wide_path(log_path_.begin(), log_path_.end());
+    // Open log file for writing (append mode, binary mode for CRLF handling)
+    log_file_.open(log_path_, std::ios::app | std::ios::binary);
 
-    // Open log file for writing (append mode, share read access, flush on write)
-    // Similar to ReShade's approach but with OPEN_ALWAYS instead of CREATE_ALWAYS
-    file_handle_ = CreateFileW(
-        wide_path.c_str(),
-        GENERIC_WRITE,
-        FILE_SHARE_READ,
-        nullptr,
-        OPEN_ALWAYS,  // Open existing or create new
-        FILE_ATTRIBUTE_NORMAL | FILE_FLAG_WRITE_THROUGH,
-        nullptr
-    );
-
-    if (file_handle_ == INVALID_HANDLE_VALUE) {
+    if (!log_file_.is_open()) {
         return false;
     }
-
-    // Move to end of file for append mode
-    SetFilePointer(file_handle_, 0, nullptr, FILE_END);
 
     return true;
 }
 
 void DisplayCommanderLogger::CloseLogFile() {
-    if (file_handle_ != INVALID_HANDLE_VALUE) {
-        // Flush all buffers before closing
-        FlushFileBuffers(file_handle_);
-        CloseHandle(file_handle_);
-        file_handle_ = INVALID_HANDLE_VALUE;
+    if (log_file_.is_open()) {
+        log_file_.flush();
+        log_file_.close();
     }
 }
 
 void DisplayCommanderLogger::WriteToFile(const std::string& formatted_message) {
-    if (file_handle_ == INVALID_HANDLE_VALUE) {
+    if (!log_file_.is_open()) {
         return;
     }
 
-    DWORD written = 0;
-    WriteFile(
-        file_handle_,
-        formatted_message.data(),
-        static_cast<DWORD>(formatted_message.size()),
-        &written,
-        nullptr
-    );
-
-    // Flush file buffers
-    FlushFileBuffers(file_handle_);
+    // Write to buffered ostream
+    log_file_ << formatted_message;
+    // Note: We don't flush here for performance - FlushLogs() can be called explicitly
 }
 
 std::string DisplayCommanderLogger::FormatMessage(LogLevel level, const std::string& message) {

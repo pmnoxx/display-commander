@@ -156,6 +156,10 @@ struct ReShadeDetectionDebugInfo {
 
 // Global debug information storage
 ReShadeDetectionDebugInfo g_reshade_debug_info;
+
+// Store entry point detected in DLLMain for saving after initialization
+static std::string g_entry_point_to_save;
+
 namespace {
 void OnRegisterOverlayDisplayCommander(reshade::api::effect_runtime* runtime) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
@@ -1531,8 +1535,18 @@ void HandleSafemode() {
 }
 
 void DoInitializationWithoutHwnd(HMODULE h_module, DWORD fdw_reason) {
-    // Initialize QPC timing constants based on actual frequency
-    utils::initialize_qpc_timing_constants();
+    // Initialize config system now (safe to start threads here, after DLLMain)
+    display_commander::config::DisplayCommanderConfigManager::GetInstance().Initialize();
+    display_commander::config::DisplayCommanderConfigManager::GetInstance().SetAutoFlushLogs(true);
+
+    // Save entry point to config now that config system is initialized
+    // (entry point was detected in DLLMain but couldn't be saved then)
+    if (!g_entry_point_to_save.empty()) {
+        display_commander::config::set_config_value("DisplayCommander", "EntryPoint", g_entry_point_to_save);
+        display_commander::config::save_config("Entry point detection");
+        LogInfo("Entry point logged to DisplayCommander.ini: %s", g_entry_point_to_save.c_str());
+    }
+
 
     // Setup high-resolution timer for maximum precision
     if (utils::setup_high_resolution_timer()) {
@@ -1552,13 +1566,6 @@ void DoInitializationWithoutHwnd(HMODULE h_module, DWORD fdw_reason) {
 
     HandleSafemode();
 
-    /*
-
-    // Initialize PresentMon if enabled
-    if (settings::g_developerTabSettings.enable_presentmon_tracing.GetValue()) {
-        presentmon::g_presentMonManager.StartWorker();
-    }
-*/
     // Pin the module to prevent premature unload
     HMODULE pinned_module = nullptr;
     if (GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_PIN,
@@ -1658,10 +1665,11 @@ void DoInitializationWithoutHwnd(HMODULE h_module, DWORD fdw_reason) {
 BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
     switch (fdw_reason) {
         case DLL_PROCESS_ATTACH: {
-            display_commander::config::DisplayCommanderConfigManager::GetInstance().Initialize();
-            display_commander::config::DisplayCommanderConfigManager::GetInstance().SetAutoFlushLogs(true);
+            // Don't initialize config system here - it starts a thread which is unsafe during DLLMain
+            // Initialize() will be called later in DoInitializationWithoutHwnd
             g_shutdown.store(false);
 
+            /*
             // Print command line arguments when running with rundll32.exe
             LPSTR command_line = GetCommandLineA();
             if (command_line != nullptr && command_line[0] != '\0') {
@@ -1675,18 +1683,19 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
                 LogInfo("Command line arguments: (empty)");
             }
 
+            */
             LoadLibraryA("Reshade64.dll");
             LoadLibraryA("Reshade32.dll");
 
             if (g_dll_initialization_complete.load()) {
-                LogError("DLLMain(DisplayCommander) already initialized");
+                LogErrorDirect("DLLMain(DisplayCommander) already initialized");
                 return FALSE;
             }
 
             if (!reshade::register_addon(h_module)) {
                 // Registration failed - likely due to API version mismatch
-                LogError("ReShade addon registration failed - this usually indicates an API version mismatch");
-                LogError("Display Commander requires ReShade 6.6.2+ (API version 17) but detected older version");
+                LogErrorDirect("ReShade addon registration failed - this usually indicates an API version mismatch");
+                LogErrorDirect("Display Commander requires ReShade 6.6.2+ (API version 17) but detected older version");
 
                 DetectMultipleReShadeVersions();
                 CheckReShadeVersionCompatibility();
@@ -1696,15 +1705,12 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             DetectMultipleReShadeVersions();
 
             // Registration successful - log version compatibility
-            LogInfo("Display Commander v%s - ReShade addon registration successful (API version 17 supported)",
+            LogInfoDirect("Display Commander v%s - ReShade addon registration successful (API version 17 supported)",
                     DISPLAY_COMMANDER_VERSION_STRING);
 
             // Register overlay early so it appears as a tab by default
             reshade::register_overlay("Display Commander", OnRegisterOverlayDisplayCommander);
-            LogInfo("Display Commander overlay registered");
-
-            // Initialize DisplayCommander config system before handling safemode
-            LogInfo("DisplayCommander config system initialized");
+            LogInfoDirect("Display Commander overlay registered");
 
             // Detect if we're loaded as a proxy DLL (dxgi.dll, d3d11.dll, d3d12.dll)
             // Similar to how ReShade detects this
@@ -1758,7 +1764,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
                     if (_wcsicmp(module_name.c_str(), proxy.name) == 0) {
                         entry_point = proxy.entry_point;
                         OutputDebugStringA(proxy.debug_msg);
-                        LogInfo("%s", proxy.log_msg);
+                        LogInfoDirect("%s", proxy.log_msg);
                         found_proxy = true;
                         break;
                     }
@@ -1777,34 +1783,31 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
                     } else {
                         OutputDebugStringA("[DisplayCommander] Entry point detected: addon\n");
                     }
-                    LogInfo("Display Commander loaded as ReShade addon (module: %ws)", module_name.c_str());
+                    LogInfoDirect("Display Commander loaded as ReShade addon (module: %ws)", module_name.c_str());
                 }
             } else {
                 OutputDebugStringA("[DisplayCommander] Entry point detection: Failed to get module filename\n");
             }
 
-            // Log entry point to DisplayCommander.ini
+            // Store entry point for logging later (after config system is initialized)
             // Convert wide string to UTF-8
+            std::string entry_point_utf8;
             int utf8_size = WideCharToMultiByte(CP_UTF8, 0, entry_point.c_str(), -1, nullptr, 0, nullptr, nullptr);
             if (utf8_size > 0) {
-                std::string entry_point_utf8(utf8_size - 1, '\0'); // -1 to exclude null terminator
+                entry_point_utf8.resize(utf8_size - 1); // -1 to exclude null terminator
                 WideCharToMultiByte(CP_UTF8, 0, entry_point.c_str(), -1, entry_point_utf8.data(), utf8_size, nullptr, nullptr);
-                display_commander::config::set_config_value("DisplayCommander", "EntryPoint", entry_point_utf8);
-                display_commander::config::save_config("Entry point detection");
-                char debug_msg[512];
-                snprintf(debug_msg, sizeof(debug_msg), "[DisplayCommander] Entry point logged to DisplayCommander.ini: EntryPoint=%s\n", entry_point_utf8.c_str());
-                OutputDebugStringA(debug_msg);
-                LogInfo("Entry point logged to DisplayCommander.ini: %s", entry_point_utf8.c_str());
             } else {
                 // Fallback to simple conversion if UTF-8 conversion fails
-                std::string entry_point_utf8(entry_point.begin(), entry_point.end());
-                display_commander::config::set_config_value("DisplayCommander", "EntryPoint", entry_point_utf8);
-                display_commander::config::save_config("Entry point detection");
-                char debug_msg[512];
-                snprintf(debug_msg, sizeof(debug_msg), "[DisplayCommander] Entry point logged to DisplayCommander.ini: EntryPoint=%s\n", entry_point_utf8.c_str());
-                OutputDebugStringA(debug_msg);
-                LogInfo("Entry point logged to DisplayCommander.ini: %s", entry_point_utf8.c_str());
+                entry_point_utf8 = std::string(entry_point.begin(), entry_point.end());
             }
+
+            // Store entry point in a global variable to be saved later
+            g_entry_point_to_save = entry_point_utf8;
+
+            char debug_msg[512];
+            snprintf(debug_msg, sizeof(debug_msg), "[DisplayCommander] Entry point detected: %s (will be saved after initialization)\n", entry_point_utf8.c_str());
+            OutputDebugStringA(debug_msg);
+            LogInfoDirect("Entry point detected: %s (will be saved after initialization)", entry_point_utf8.c_str());
 
             // Handle safemode after config system is initialized
 
@@ -1813,9 +1816,11 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
 
             // Store module handle for pinning
             g_hmodule = h_module;
+            // Initialize QPC timing constants based on actual frequency
+            utils::initialize_qpc_timing_constants();
 
             DoInitializationWithoutHwnd(h_module, fdw_reason);
-            display_commander::config::DisplayCommanderConfigManager::GetInstance().SetAutoFlushLogs(false);
+            //display_commander::config::DisplayCommanderConfigManager::GetInstance().SetAutoFlushLogs(false);
 
             break;
         }

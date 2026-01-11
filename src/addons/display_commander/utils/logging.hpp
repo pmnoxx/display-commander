@@ -11,6 +11,12 @@ void LogDebug(const char *msg, ...);
 // Log current logging level (always logs, even if logging is disabled)
 void LogCurrentLogLevel();
 
+// Direct logging functions that use LogInfo/LogWarn/LogError
+// These are safe during DLLMain as they use the buffered ostream logger
+void LogInfoDirect(const char *msg, ...);
+void LogWarnDirect(const char *msg, ...);
+void LogErrorDirect(const char *msg, ...);
+
 // Throttled error logging macro
 // Usage: LogErrorThrottled(10, "Error message %d", value);
 // This will only log the error up to 10 times per call site

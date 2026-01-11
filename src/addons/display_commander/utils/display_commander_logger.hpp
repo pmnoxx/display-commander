@@ -2,7 +2,7 @@
 
 #include <windows.h>
 #include <string>
-#include <queue>
+#include <fstream>
 #include <atomic>
 
 namespace display_commander::logger {
@@ -15,7 +15,7 @@ enum class LogLevel {
     Error
 };
 
-// Thread-safe logger class with background thread and persistent file handle
+// Thread-safe logger class with buffered ostream
 class DisplayCommanderLogger {
 public:
     static DisplayCommanderLogger& GetInstance();
@@ -23,7 +23,7 @@ public:
     // Initialize logger with log file path
     void Initialize(const std::string& log_path);
 
-    // Log a message with specified level (thread-safe, queues message)
+    // Log a message with specified level (thread-safe, writes to buffered stream)
     void Log(LogLevel level, const std::string& message);
 
     // Convenience methods
@@ -32,10 +32,10 @@ public:
     void LogWarning(const std::string& message);
     void LogError(const std::string& message);
 
-    // Shutdown logger (waits for background thread to finish)
+    // Shutdown logger (flushes and closes file)
     void Shutdown();
 
-    // Flush all queued logs to disk (waits for queue to be empty and flushes file buffers)
+    // Flush buffered logs to disk
     void FlushLogs();
 
 private:
@@ -45,10 +45,6 @@ private:
     DisplayCommanderLogger(const DisplayCommanderLogger&) = delete;
     DisplayCommanderLogger& operator=(const DisplayCommanderLogger&) = delete;
 
-    // Background thread function
-    static DWORD WINAPI LoggerThreadProc(LPVOID lpParam);
-    void LoggerThreadMain();
-
     // Internal methods
     bool OpenLogFile();
     void CloseLogFile();
@@ -57,17 +53,11 @@ private:
     std::string GetLogLevelString(LogLevel level);
 
     std::string log_path_;
-    HANDLE file_handle_ = INVALID_HANDLE_VALUE;
+    std::ofstream log_file_;
 
     // Thread synchronization
     std::atomic<bool> initialized_ = false;
-    std::atomic<bool> shutdown_requested_ = false;
-    HANDLE logger_thread_ = nullptr;
-    HANDLE queue_event_ = nullptr;  // Signaled when new messages arrive
-
-    // Message queue (protected by queue_lock_)
-    SRWLOCK queue_lock_ = SRWLOCK_INIT;
-    std::queue<std::string> message_queue_;
+    SRWLOCK write_lock_ = SRWLOCK_INIT;  // Protects file writes
 };
 
 // Global convenience functions

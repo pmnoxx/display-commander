@@ -30,6 +30,9 @@
 #include "utils/timing.hpp"
 #include "utils/display_commander_logger.hpp"
 #include "utils/detour_call_tracker.hpp"
+#include "utils/srwlock_wrapper.hpp"
+#include <set>
+#include <thread>
 #include "nvapi/vrr_status.hpp"
 #include "version.hpp"
 #include "widgets/dualsense_widget/dualsense_widget.hpp"
@@ -1662,9 +1665,32 @@ void DoInitializationWithoutHwnd(HMODULE h_module, DWORD fdw_reason) {
     OverrideReShadeSettings();
 }
 
+std::atomic<bool> g_reshade_loaded(false);
+
+// Named event name for injection tracking (shared across processes)
+// Defined here so it's available in DllMain
+constexpr const wchar_t* INJECTION_ACTIVE_EVENT_NAME = L"Local\\DisplayCommander_InjectionActive";
+
 BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
     switch (fdw_reason) {
         case DLL_PROCESS_ATTACH: {
+            g_hmodule = h_module;
+            // with pid
+            OutputDebugStringA(std::format("DLL_PROCESS_ATTACH PID: {}", GetCurrentProcessId()).c_str());
+            // Print command line arguments when running with rundll32.exe
+            LPSTR command_line = GetCommandLineA();
+            if (command_line != nullptr && command_line[0] != '\0') {
+                OutputDebugStringA("[DisplayCommander] Command line: ");
+                OutputDebugStringA(command_line);
+                OutputDebugStringA("\n");
+                // run32dll
+                if (strstr(command_line, "rundll32") != nullptr) {
+                    OutputDebugStringA("Run32DLL command line detected");
+                    return TRUE;
+                }
+            } else {
+                OutputDebugStringA("[DisplayCommander] Command line: (empty)\n");
+            }
             // Don't initialize config system here - it starts a thread which is unsafe during DLLMain
             // Initialize() will be called later in DoInitializationWithoutHwnd
             g_shutdown.store(false);
@@ -1684,23 +1710,54 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             }
 
             */
-            LoadLibraryA("Reshade64.dll");
-            LoadLibraryA("Reshade32.dll");
+            // TODO: if file exists, load it
+            // check if reshade is loaded by going through all modules and checking if ReShadeRegisterAddon is present
+            HMODULE modules[1024];
+            DWORD num_modules_bytes = 0;
+            if (K32EnumProcessModules(GetCurrentProcess(), modules, sizeof(modules), &num_modules_bytes) != 0) {
+                DWORD num_modules = (std::min<DWORD>)(num_modules_bytes / sizeof(HMODULE),
+                                             static_cast<DWORD>(sizeof(modules) / sizeof(HMODULE)));
 
-            if (g_dll_initialization_complete.load()) {
-                LogErrorDirect("DLLMain(DisplayCommander) already initialized");
-                return FALSE;
+                // check for method named ReShadeRegisterAddon
+                for (DWORD i = 0; i < num_modules; i++) {
+                    if (modules[i] == nullptr) continue;
+                    FARPROC register_func = GetProcAddress(modules[i], "ReShadeRegisterAddon");
+                    if (register_func != nullptr) {
+                        g_reshade_loaded.store(true);
+                        break;
+                    }
+                }
+            }
+            #ifdef _WIN64
+            if (std::filesystem::exists("Reshade64.dll") && !g_reshade_loaded.load()) {
+                if (LoadLibraryA("Reshade64.dll") != nullptr) {
+                    g_reshade_loaded.store(true);
+                    OutputDebugStringA("Reshade64.dll loaded successfully");
+                }
+            }
+            #else
+            if (std::filesystem::exists("Reshade32.dll") && !g_reshade_loaded.load()) {
+                if (LoadLibraryA("Reshade32.dll") != nullptr) {
+                    g_reshade_loaded.store(true);
+                    OutputDebugStringA("Reshade32.dll loaded successfully");
+                }
+            }
+            #endif
+            // don't call register_addon if reshade is not loaded to prevent crash
+            if (!g_reshade_loaded.load()) {
+                OutputDebugStringA("ReShade not loaded");
+                return TRUE;
             }
 
             if (!reshade::register_addon(h_module)) {
                 // Registration failed - likely due to API version mismatch
-                LogErrorDirect("ReShade addon registration failed - this usually indicates an API version mismatch");
-                LogErrorDirect("Display Commander requires ReShade 6.6.2+ (API version 17) but detected older version");
 
-                DetectMultipleReShadeVersions();
-                CheckReShadeVersionCompatibility();
-                return FALSE;
+                //DetectMultipleReShadeVersions();
+                //CheckReShadeVersionCompatibility();
+                OutputDebugStringA("ReShade 0000000");
+                return TRUE;
             }
+            OutputDebugStringA("ReShade 111111");
 
             DetectMultipleReShadeVersions();
 
@@ -1815,7 +1872,6 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             // This prevents our module scanning from interfering with ReShade's internal module detection
 
             // Store module handle for pinning
-            g_hmodule = h_module;
             // Initialize QPC timing constants based on actual frequency
             utils::initialize_qpc_timing_constants();
 
@@ -1834,6 +1890,9 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
         }
 
         case DLL_PROCESS_DETACH:
+            if (!g_reshade_loaded.load()) {
+                return TRUE;
+            }
             LogInfo("DLL_PROCESS_DETACH: DLL process detach");
             g_shutdown.store(true);
 
@@ -1910,38 +1969,121 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
 // CONTINUOUS RENDERING THREAD REMOVED - Focus spoofing is now handled by Win32 hooks
 // This provides a much cleaner and more effective solution
 
+// Auto-injection state
+namespace {
+    HHOOK g_cbt_hook = nullptr;
+    std::atomic<LONGLONG> g_injection_start_time(0);
+    std::atomic<bool> g_injection_active(false);
+    constexpr LONGLONG INJECTION_DURATION_NS = 30LL * 1000000000LL; // 30 seconds in nanoseconds
+
+    // Named event to signal injection is active (shared across processes)
+    HANDLE g_injection_active_event = nullptr;
+
+    // Simple function to check if a PID was injected (by checking for named event)
+    bool IsPidInjected(DWORD pid) {
+        wchar_t pid_event_name[64];
+        swprintf_s(pid_event_name, L"Local\\DisplayCommander_Injected_%lu", pid);
+        HANDLE hEvent = OpenEventW(SYNCHRONIZE, FALSE, pid_event_name);
+        if (hEvent != nullptr) {
+            CloseHandle(hEvent);
+            return true;
+        }
+        return false;
+    }
+} // namespace
+
+
+// CBT Hook procedure - called when windows are created
+// This is just for NOTIFICATION - the actual DLL injection happens automatically
+// when SetWindowsHookEx is called with dwThreadId=0 (system-wide hook).
+// Windows automatically loads the DLL into target processes when hook events occur.
+// This callback runs in the TARGET process after the DLL is already loaded.
+LRESULT CALLBACK CBTProc(int nCode, WPARAM wParam, LPARAM lParam) {
+    OutputDebugStringA(std::format("CBTProc PID: {}", GetCurrentProcessId()).c_str());
+    if (nCode < 0) {
+        return CallNextHookEx(g_cbt_hook, nCode, wParam, lParam);
+    }
+
+    return CallNextHookEx(g_cbt_hook, nCode, wParam, lParam);
+}
+
+// Cleanup thread to remove hook after 30 seconds
+void StartInjectionCleanupThread() {
+    std::thread([]() {
+        Sleep(30000); // 30 seconds
+
+        if (g_cbt_hook != nullptr) {
+            UnhookWindowsHookEx(g_cbt_hook);
+            g_cbt_hook = nullptr;
+            g_injection_active.store(false, std::memory_order_release);
+            g_injection_start_time.store(0, std::memory_order_release);
+
+            // Signal that injection is no longer active
+            if (g_injection_active_event != nullptr) {
+                ResetEvent(g_injection_active_event);
+                CloseHandle(g_injection_active_event);
+                g_injection_active_event = nullptr;
+            }
+
+            // Note: Injected process events will be cleaned up automatically when processes exit
+        }
+    }).detach();
+}
+
 // RunDLL entry point for rundll32.exe compatibility
-// Allows calling: rundll32.exe zzz_display_commander.addon64,RunDLL_DllMain arg1 arg2 arg3
+// Allows calling: rundll32.exe zzz_display_commander.addon64,RunDLL_DllMain
+// This installs a system-wide CBT hook - Windows automatically loads the DLL into
+// all processes when CBT events occur (window creation, etc.). The hook installation
+// itself is the injection mechanism. CBTProc is just for notification.
 extern "C" __declspec(dllexport) void CALLBACK RunDLL_DllMain(HWND hwnd, HINSTANCE hInst, LPSTR lpszCmdLine, int nCmdShow) {
     UNREFERENCED_PARAMETER(hwnd);
     UNREFERENCED_PARAMETER(hInst);
+    UNREFERENCED_PARAMETER(lpszCmdLine);
     UNREFERENCED_PARAMETER(nCmdShow);
+
+    OutputDebugStringA(std::format("RunDLL_DllMain PID: {}", GetCurrentProcessId()).c_str());
 
     // Initialize config system for logging
     display_commander::config::DisplayCommanderConfigManager::GetInstance().Initialize();
     display_commander::config::DisplayCommanderConfigManager::GetInstance().SetAutoFlushLogs(true);
 
-    // Print command line arguments
-    if (lpszCmdLine != nullptr && lpszCmdLine[0] != '\0') {
-        OutputDebugStringA("[DisplayCommander] RunDLL_DllMain called with arguments: ");
-        OutputDebugStringA(lpszCmdLine);
-        OutputDebugStringA("\n");
-        LogInfo("RunDLL_DllMain called with arguments: %s", lpszCmdLine);
-    } else {
-        OutputDebugStringA("[DisplayCommander] RunDLL_DllMain called with no arguments\n");
-        LogInfo("RunDLL_DllMain called with no arguments");
+    // Check if hook is already active
+    if (g_injection_active.load(std::memory_order_acquire)) {
+        OutputDebugStringA("Auto-injection already active, restarting timer");
+        // Restart the timer
+        g_injection_start_time.store(utils::get_now_ns(), std::memory_order_release);
+
+        // Note: Injected process events will be cleaned up automatically when processes exit
+        return;
     }
 
-    // Also print full command line
-    LPSTR command_line = GetCommandLineA();
-    if (command_line != nullptr && command_line[0] != '\0') {
-        OutputDebugStringA("[DisplayCommander] Full command line: ");
-        OutputDebugStringA(command_line);
-        OutputDebugStringA("\n");
-        LogInfo("Full command line: %s", command_line);
+    // Install global CBT hook (thread ID 0 = system-wide)
+    // This automatically injects the DLL into all processes when CBT events occur
+    // The hook installation itself IS the injection mechanism - Windows loads the DLL automatically
+    g_cbt_hook = SetWindowsHookEx(WH_CBT, CBTProc, g_hmodule, 0);
+
+    if (g_cbt_hook == nullptr) {
+        DWORD error = GetLastError();
+        OutputDebugStringA(std::format("Failed to install CBT hook for auto-injection - Error: {} (0x{:X})", error, error).c_str());
+        return;
     }
-    display_commander::logger::FlushLogs();
-    display_commander::logger::Shutdown();
+
+    // Mark injection as active and record start time
+    g_injection_active.store(true, std::memory_order_release);
+    g_injection_start_time.store(utils::get_now_ns(), std::memory_order_release);
+
+    // Create named event to signal injection is active (shared across processes)
+    g_injection_active_event = CreateEventW(nullptr, TRUE, TRUE, INJECTION_ACTIVE_EVENT_NAME);
+    if (g_injection_active_event == nullptr) {
+        DWORD error = GetLastError();
+        OutputDebugStringA(std::format("Failed to create injection active event - Error: {} (0x{:X})", error, error).c_str());
+    }
+
+    OutputDebugStringA("Auto-injection started: CBT hook installed, will inject into all new processes for 30 seconds");
+
+    // Start cleanup thread
+    StartInjectionCleanupThread();
+    Sleep(30000); // 30 seconds
 }
 
 // RunDLL entry point for injection/testing (alias for RunDLL_DllMain)

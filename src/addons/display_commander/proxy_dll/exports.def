@@ -39,3 +39,6 @@ EXPORTS
 	VerLanguageNameW PRIVATE
 	VerQueryValueA PRIVATE
 	VerQueryValueW PRIVATE
+
+	; Display addon
+	Inject

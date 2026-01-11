@@ -683,6 +683,9 @@ extern std::atomic<std::shared_ptr<const std::string>> g_hdr10_override_timestam
 // Config save failure tracking
 extern std::atomic<std::shared_ptr<const std::string>> g_config_save_failure_path;
 
+// Multiple Display Commander versions detection
+extern std::atomic<std::shared_ptr<const std::string>> g_other_dc_version_detected;
+
 // Helper function for updating HDR10 override status atomically
 void UpdateHdr10OverrideStatus(const std::string& status);
 

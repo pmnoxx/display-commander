@@ -10,6 +10,7 @@
 #include "../utils/logging.hpp"
 #include "../utils/detour_call_tracker.hpp"
 #include "../utils/timing.hpp"
+#include "../utils/platform_api_detector.hpp"
 #include "../settings/streamline_tab_settings.hpp"
 #include "../settings/developer_tab_settings.hpp"
 #include "../settings/experimental_tab_settings.hpp"
@@ -763,6 +764,20 @@ bool IsModuleLoaded(const std::wstring& moduleName) {
 
 void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
     LogInfo("Module loaded: %ws (0x%p)", moduleName.c_str(), hModule);
+
+    // Detect platform API from DLL name
+    using namespace display_commander::utils;
+    PlatformAPI api = DetectPlatformAPIFromDLLName(moduleName);
+    if (api != PlatformAPI::None) {
+        const char* api_name = GetPlatformAPIName(api);
+        char dll_name_ansi[MAX_PATH];
+        WideCharToMultiByte(CP_ACP, 0, moduleName.c_str(), -1,
+                           dll_name_ansi, MAX_PATH, nullptr, nullptr);
+        char msg[512];
+        snprintf(msg, sizeof(msg), "[DisplayCommander] Platform API detected: %s (%s)",
+                api_name, dll_name_ansi);
+        OutputDebugStringA(msg);
+    }
 
     // Convert to lowercase for case-insensitive comparison
     std::wstring lowerModuleName = moduleName;

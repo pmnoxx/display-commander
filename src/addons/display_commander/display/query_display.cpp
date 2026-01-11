@@ -5,9 +5,6 @@
 #include <dxgi.h>
 #include <wingdi.h>
 
-#include <iostream>
-#include <sstream>
-
 // Helper methods for calculated values
 double DisplayTimingInfo::GetPixelClockMHz() const { return static_cast<double>(pixel_clock_hz) / 1000000.0; }
 
@@ -130,24 +127,21 @@ std::vector<DisplayTimingInfo> QueryDisplayTimingInfo() {
                 timing_info.gdi_device_name = L"UNKNOWN";
             }
 
-            // Log the device information for debugging
-            {
-                std::ostringstream oss;
-                oss << "QueryDisplayTimingInfo: Found display [path_idx=" << path_idx << "]:";
-                oss << "\n    display_name: '" << WideCharToUTF8(timing_info.display_name) << "'";
-                oss << "\n    device_path: '" << WideCharToUTF8(timing_info.device_path) << "'";
-                oss << "\n    gdi_device_name: '" << WideCharToUTF8(timing_info.gdi_device_name) << "'";
-                oss << "\n    adapter_id: " << timing_info.adapter_id;
-                oss << "\n    target_id: " << timing_info.target_id;
-                std::cout << "[QueryDisplay] " << oss.str() << std::endl;
-            }
+            // Log the device information for debugging (Debug level to respect log level setting)
+            LogDebug("[QueryDisplay] QueryDisplayTimingInfo: Found display [path_idx=%u]:\n    display_name: '%s'\n    device_path: '%s'\n    gdi_device_name: '%s'\n    adapter_id: %u\n    target_id: %u",
+                path_idx,
+                WideCharToUTF8(timing_info.display_name).c_str(),
+                WideCharToUTF8(timing_info.device_path).c_str(),
+                WideCharToUTF8(timing_info.gdi_device_name).c_str(),
+                timing_info.adapter_id,
+                timing_info.target_id);
         } else {
             timing_info.display_name = L"UNKNOWN";
             timing_info.device_path = L"UNKNOWN";
             timing_info.gdi_device_name = L"UNKNOWN";
             timing_info.connector_instance = UINT32_MAX;
 
-            std::cout << "[QueryDisplay] QueryDisplayTimingInfo: Failed to get device info for display" << std::endl;
+            LogDebug("[QueryDisplay] QueryDisplayTimingInfo: Failed to get device info for display");
         }
 
         results.push_back(timing_info);

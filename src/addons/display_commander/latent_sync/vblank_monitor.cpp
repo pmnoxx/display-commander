@@ -5,7 +5,6 @@
 #include "../utils/logging.hpp"
 #include "utils/timing.hpp"
 #include <dxgi1_6.h>
-#include <iostream>
 #include <sstream>
 #include <winnt.h>
 
@@ -22,7 +21,7 @@ extern std::atomic<double> correction_lines_delta;
 
 // Simple logging wrapper to avoid dependency issues
 namespace {
-void LogMessage(const std::string &msg) { std::cout << "[VBlankMonitor] " << msg << std::endl; }
+void LogMessage(const std::string &msg) { LogInfo("[VBlankMonitor] %s", msg.c_str()); }
 } // namespace
 
 namespace dxgi::fps_limiter {

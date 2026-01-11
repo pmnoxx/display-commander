@@ -1718,25 +1718,28 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
                 DWORD num_modules = (std::min<DWORD>)(num_modules_bytes / sizeof(HMODULE),
                                              static_cast<DWORD>(sizeof(modules) / sizeof(HMODULE)));
 
+
+
                 // check for method named ReShadeRegisterAddon
                 for (DWORD i = 0; i < num_modules; i++) {
                     if (modules[i] == nullptr) continue;
                     FARPROC register_func = GetProcAddress(modules[i], "ReShadeRegisterAddon");
                     if (register_func != nullptr) {
                         g_reshade_loaded.store(true);
+                        OutputDebugStringA("ReShadeRegisterAddon found");
                         break;
                     }
                 }
             }
             #ifdef _WIN64
-            if (std::filesystem::exists("Reshade64.dll") && !g_reshade_loaded.load()) {
+            if (!g_reshade_loaded.load()) {
                 if (LoadLibraryA("Reshade64.dll") != nullptr) {
                     g_reshade_loaded.store(true);
                     OutputDebugStringA("Reshade64.dll loaded successfully");
                 }
             }
             #else
-            if (std::filesystem::exists("Reshade32.dll") && !g_reshade_loaded.load()) {
+            if (!g_reshade_loaded.load()) {
                 if (LoadLibraryA("Reshade32.dll") != nullptr) {
                     g_reshade_loaded.store(true);
                     OutputDebugStringA("Reshade32.dll loaded successfully");

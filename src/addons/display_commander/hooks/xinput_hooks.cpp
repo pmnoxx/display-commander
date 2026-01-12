@@ -1,22 +1,22 @@
 #include "xinput_hooks.hpp"
-#include "hook_suppression_manager.hpp"
-#include "../utils/logging.hpp"
-#include "dualsense_hooks.hpp"
-#include "../input_remapping/input_remapping.hpp"
-#include "../utils/general_utils.hpp"
-#include "../utils/timing.hpp"
-#include "../utils/detour_call_tracker.hpp"
-#include "../widgets/xinput_widget/xinput_widget.hpp"
-#include "../swapchain_events.hpp"
-#include "windows_hooks/windows_message_hooks.hpp"
-#include "../settings/main_tab_settings.hpp"
-#include "../globals.hpp"
 #include <MinHook.h>
 #include <array>
-#include <string>
-#include <vector>
 #include <cmath>
 #include <functional>
+#include <string>
+#include <vector>
+#include "../globals.hpp"
+#include "../input_remapping/input_remapping.hpp"
+#include "../settings/main_tab_settings.hpp"
+#include "../swapchain_events.hpp"
+#include "../utils/detour_call_tracker.hpp"
+#include "../utils/general_utils.hpp"
+#include "../utils/logging.hpp"
+#include "../utils/timing.hpp"
+#include "../widgets/xinput_widget/xinput_widget.hpp"
+#include "dualsense_hooks.hpp"
+#include "hook_suppression_manager.hpp"
+#include "windows_hooks/windows_message_hooks.hpp"
 
 // Guide button constant (not defined in standard XInput headers)
 #ifndef XINPUT_GAMEPAD_GUIDE
@@ -32,7 +32,6 @@
 #endif
 
 namespace display_commanderhooks {
-
 
 // XInput function pointers for direct calls
 XInputGetState_pfn XInputGetState_Direct = nullptr;
@@ -50,7 +49,6 @@ const std::array<const char*, 5> xinput_modules = {
     "xinput1_4.dll", "xinput1_3.dll", "xinput1_2.dll", "xinput1_1.dll", "xinput9_1_0.dll",
 };
 
-
 std::array<XInputGetStateEx_pfn, 5> original_xinput_get_state_ex_procs = {};
 std::array<XInputGetState_pfn, 5> original_xinput_get_state_procs = {};
 std::array<XInputSetState_pfn, 5> original_xinput_set_state_procs = {};
@@ -60,86 +58,116 @@ std::array<XInputGetCapabilities_pfn, 5> original_xinput_get_capabilities_procs 
 static std::array<DWORD, 4> g_packet_numbers = {};
 
 // Forward declarations for per-module detour helpers
-static DWORD WINAPI XInputGetState_Detour_Impl(size_t module_index, DWORD dwUserIndex, XINPUT_STATE *pState);
-static DWORD WINAPI XInputGetStateEx_Detour_Impl(size_t module_index, DWORD dwUserIndex, XINPUT_STATE *pState);
-static DWORD WINAPI XInputSetState_Detour_Impl(size_t module_index, DWORD dwUserIndex, XINPUT_VIBRATION *pVibration);
+static DWORD WINAPI XInputGetState_Detour_Impl(size_t module_index, DWORD dwUserIndex, XINPUT_STATE* pState);
+static DWORD WINAPI XInputGetStateEx_Detour_Impl(size_t module_index, DWORD dwUserIndex, XINPUT_STATE* pState);
+static DWORD WINAPI XInputSetState_Detour_Impl(size_t module_index, DWORD dwUserIndex, XINPUT_VIBRATION* pVibration);
 static DWORD WINAPI XInputGetCapabilities_Detour_Impl(size_t module_index, DWORD dwUserIndex, DWORD dwFlags,
-                                                      XINPUT_CAPABILITIES *pCapabilities);
+                                                      XINPUT_CAPABILITIES* pCapabilities);
 
 // Per-module detour entry points (these are what MinHook will install for each DLL)
-static DWORD WINAPI XInputGetState_Detour_Module0(DWORD dwUserIndex, XINPUT_STATE *pState) { return XInputGetState_Detour_Impl(0, dwUserIndex, pState); }
-static DWORD WINAPI XInputGetState_Detour_Module1(DWORD dwUserIndex, XINPUT_STATE *pState) { return XInputGetState_Detour_Impl(1, dwUserIndex, pState); }
-static DWORD WINAPI XInputGetState_Detour_Module2(DWORD dwUserIndex, XINPUT_STATE *pState) { return XInputGetState_Detour_Impl(2, dwUserIndex, pState); }
-static DWORD WINAPI XInputGetState_Detour_Module3(DWORD dwUserIndex, XINPUT_STATE *pState) { return XInputGetState_Detour_Impl(3, dwUserIndex, pState); }
-static DWORD WINAPI XInputGetState_Detour_Module4(DWORD dwUserIndex, XINPUT_STATE *pState) { return XInputGetState_Detour_Impl(4, dwUserIndex, pState); }
+static DWORD WINAPI XInputGetState_Detour_Module0(DWORD dwUserIndex, XINPUT_STATE* pState) {
+    return XInputGetState_Detour_Impl(0, dwUserIndex, pState);
+}
+static DWORD WINAPI XInputGetState_Detour_Module1(DWORD dwUserIndex, XINPUT_STATE* pState) {
+    return XInputGetState_Detour_Impl(1, dwUserIndex, pState);
+}
+static DWORD WINAPI XInputGetState_Detour_Module2(DWORD dwUserIndex, XINPUT_STATE* pState) {
+    return XInputGetState_Detour_Impl(2, dwUserIndex, pState);
+}
+static DWORD WINAPI XInputGetState_Detour_Module3(DWORD dwUserIndex, XINPUT_STATE* pState) {
+    return XInputGetState_Detour_Impl(3, dwUserIndex, pState);
+}
+static DWORD WINAPI XInputGetState_Detour_Module4(DWORD dwUserIndex, XINPUT_STATE* pState) {
+    return XInputGetState_Detour_Impl(4, dwUserIndex, pState);
+}
 
-static DWORD WINAPI XInputGetStateEx_Detour_Module0(DWORD dwUserIndex, XINPUT_STATE *pState) { return XInputGetStateEx_Detour_Impl(0, dwUserIndex, pState); }
-static DWORD WINAPI XInputGetStateEx_Detour_Module1(DWORD dwUserIndex, XINPUT_STATE *pState) { return XInputGetStateEx_Detour_Impl(1, dwUserIndex, pState); }
-static DWORD WINAPI XInputGetStateEx_Detour_Module2(DWORD dwUserIndex, XINPUT_STATE *pState) { return XInputGetStateEx_Detour_Impl(2, dwUserIndex, pState); }
-static DWORD WINAPI XInputGetStateEx_Detour_Module3(DWORD dwUserIndex, XINPUT_STATE *pState) { return XInputGetStateEx_Detour_Impl(3, dwUserIndex, pState); }
-static DWORD WINAPI XInputGetStateEx_Detour_Module4(DWORD dwUserIndex, XINPUT_STATE *pState) { return XInputGetStateEx_Detour_Impl(4, dwUserIndex, pState); }
+static DWORD WINAPI XInputGetStateEx_Detour_Module0(DWORD dwUserIndex, XINPUT_STATE* pState) {
+    return XInputGetStateEx_Detour_Impl(0, dwUserIndex, pState);
+}
+static DWORD WINAPI XInputGetStateEx_Detour_Module1(DWORD dwUserIndex, XINPUT_STATE* pState) {
+    return XInputGetStateEx_Detour_Impl(1, dwUserIndex, pState);
+}
+static DWORD WINAPI XInputGetStateEx_Detour_Module2(DWORD dwUserIndex, XINPUT_STATE* pState) {
+    return XInputGetStateEx_Detour_Impl(2, dwUserIndex, pState);
+}
+static DWORD WINAPI XInputGetStateEx_Detour_Module3(DWORD dwUserIndex, XINPUT_STATE* pState) {
+    return XInputGetStateEx_Detour_Impl(3, dwUserIndex, pState);
+}
+static DWORD WINAPI XInputGetStateEx_Detour_Module4(DWORD dwUserIndex, XINPUT_STATE* pState) {
+    return XInputGetStateEx_Detour_Impl(4, dwUserIndex, pState);
+}
 
-static DWORD WINAPI XInputSetState_Detour_Module0(DWORD dwUserIndex, XINPUT_VIBRATION *pVibration) { return XInputSetState_Detour_Impl(0, dwUserIndex, pVibration); }
-static DWORD WINAPI XInputSetState_Detour_Module1(DWORD dwUserIndex, XINPUT_VIBRATION *pVibration) { return XInputSetState_Detour_Impl(1, dwUserIndex, pVibration); }
-static DWORD WINAPI XInputSetState_Detour_Module2(DWORD dwUserIndex, XINPUT_VIBRATION *pVibration) { return XInputSetState_Detour_Impl(2, dwUserIndex, pVibration); }
-static DWORD WINAPI XInputSetState_Detour_Module3(DWORD dwUserIndex, XINPUT_VIBRATION *pVibration) { return XInputSetState_Detour_Impl(3, dwUserIndex, pVibration); }
-static DWORD WINAPI XInputSetState_Detour_Module4(DWORD dwUserIndex, XINPUT_VIBRATION *pVibration) { return XInputSetState_Detour_Impl(4, dwUserIndex, pVibration); }
+static DWORD WINAPI XInputSetState_Detour_Module0(DWORD dwUserIndex, XINPUT_VIBRATION* pVibration) {
+    return XInputSetState_Detour_Impl(0, dwUserIndex, pVibration);
+}
+static DWORD WINAPI XInputSetState_Detour_Module1(DWORD dwUserIndex, XINPUT_VIBRATION* pVibration) {
+    return XInputSetState_Detour_Impl(1, dwUserIndex, pVibration);
+}
+static DWORD WINAPI XInputSetState_Detour_Module2(DWORD dwUserIndex, XINPUT_VIBRATION* pVibration) {
+    return XInputSetState_Detour_Impl(2, dwUserIndex, pVibration);
+}
+static DWORD WINAPI XInputSetState_Detour_Module3(DWORD dwUserIndex, XINPUT_VIBRATION* pVibration) {
+    return XInputSetState_Detour_Impl(3, dwUserIndex, pVibration);
+}
+static DWORD WINAPI XInputSetState_Detour_Module4(DWORD dwUserIndex, XINPUT_VIBRATION* pVibration) {
+    return XInputSetState_Detour_Impl(4, dwUserIndex, pVibration);
+}
 
-static DWORD WINAPI XInputGetCapabilities_Detour_Module0(DWORD dwUserIndex, DWORD dwFlags, XINPUT_CAPABILITIES *pCapabilities) { return XInputGetCapabilities_Detour_Impl(0, dwUserIndex, dwFlags, pCapabilities); }
-static DWORD WINAPI XInputGetCapabilities_Detour_Module1(DWORD dwUserIndex, DWORD dwFlags, XINPUT_CAPABILITIES *pCapabilities) { return XInputGetCapabilities_Detour_Impl(1, dwUserIndex, dwFlags, pCapabilities); }
-static DWORD WINAPI XInputGetCapabilities_Detour_Module2(DWORD dwUserIndex, DWORD dwFlags, XINPUT_CAPABILITIES *pCapabilities) { return XInputGetCapabilities_Detour_Impl(2, dwUserIndex, dwFlags, pCapabilities); }
-static DWORD WINAPI XInputGetCapabilities_Detour_Module3(DWORD dwUserIndex, DWORD dwFlags, XINPUT_CAPABILITIES *pCapabilities) { return XInputGetCapabilities_Detour_Impl(3, dwUserIndex, dwFlags, pCapabilities); }
-static DWORD WINAPI XInputGetCapabilities_Detour_Module4(DWORD dwUserIndex, DWORD dwFlags, XINPUT_CAPABILITIES *pCapabilities) { return XInputGetCapabilities_Detour_Impl(4, dwUserIndex, dwFlags, pCapabilities); }
+static DWORD WINAPI XInputGetCapabilities_Detour_Module0(DWORD dwUserIndex, DWORD dwFlags,
+                                                         XINPUT_CAPABILITIES* pCapabilities) {
+    return XInputGetCapabilities_Detour_Impl(0, dwUserIndex, dwFlags, pCapabilities);
+}
+static DWORD WINAPI XInputGetCapabilities_Detour_Module1(DWORD dwUserIndex, DWORD dwFlags,
+                                                         XINPUT_CAPABILITIES* pCapabilities) {
+    return XInputGetCapabilities_Detour_Impl(1, dwUserIndex, dwFlags, pCapabilities);
+}
+static DWORD WINAPI XInputGetCapabilities_Detour_Module2(DWORD dwUserIndex, DWORD dwFlags,
+                                                         XINPUT_CAPABILITIES* pCapabilities) {
+    return XInputGetCapabilities_Detour_Impl(2, dwUserIndex, dwFlags, pCapabilities);
+}
+static DWORD WINAPI XInputGetCapabilities_Detour_Module3(DWORD dwUserIndex, DWORD dwFlags,
+                                                         XINPUT_CAPABILITIES* pCapabilities) {
+    return XInputGetCapabilities_Detour_Impl(3, dwUserIndex, dwFlags, pCapabilities);
+}
+static DWORD WINAPI XInputGetCapabilities_Detour_Module4(DWORD dwUserIndex, DWORD dwFlags,
+                                                         XINPUT_CAPABILITIES* pCapabilities) {
+    return XInputGetCapabilities_Detour_Impl(4, dwUserIndex, dwFlags, pCapabilities);
+}
 
 static const std::array<decltype(&XInputGetState_Detour_Module0), 5> xinput_get_state_detours = {
-    XInputGetState_Detour_Module0,
-    XInputGetState_Detour_Module1,
-    XInputGetState_Detour_Module2,
-    XInputGetState_Detour_Module3,
-    XInputGetState_Detour_Module4,
+    XInputGetState_Detour_Module0, XInputGetState_Detour_Module1, XInputGetState_Detour_Module2,
+    XInputGetState_Detour_Module3, XInputGetState_Detour_Module4,
 };
 
 static const std::array<decltype(&XInputGetStateEx_Detour_Module0), 5> xinput_get_state_ex_detours = {
-    XInputGetStateEx_Detour_Module0,
-    XInputGetStateEx_Detour_Module1,
-    XInputGetStateEx_Detour_Module2,
-    XInputGetStateEx_Detour_Module3,
-    XInputGetStateEx_Detour_Module4,
+    XInputGetStateEx_Detour_Module0, XInputGetStateEx_Detour_Module1, XInputGetStateEx_Detour_Module2,
+    XInputGetStateEx_Detour_Module3, XInputGetStateEx_Detour_Module4,
 };
 
 static const std::array<decltype(&XInputSetState_Detour_Module0), 5> xinput_set_state_detours = {
-    XInputSetState_Detour_Module0,
-    XInputSetState_Detour_Module1,
-    XInputSetState_Detour_Module2,
-    XInputSetState_Detour_Module3,
-    XInputSetState_Detour_Module4,
+    XInputSetState_Detour_Module0, XInputSetState_Detour_Module1, XInputSetState_Detour_Module2,
+    XInputSetState_Detour_Module3, XInputSetState_Detour_Module4,
 };
 
 static const std::array<decltype(&XInputGetCapabilities_Detour_Module0), 5> xinput_get_capabilities_detours = {
-    XInputGetCapabilities_Detour_Module0,
-    XInputGetCapabilities_Detour_Module1,
-    XInputGetCapabilities_Detour_Module2,
-    XInputGetCapabilities_Detour_Module3,
-    XInputGetCapabilities_Detour_Module4,
+    XInputGetCapabilities_Detour_Module0, XInputGetCapabilities_Detour_Module1, XInputGetCapabilities_Detour_Module2,
+    XInputGetCapabilities_Detour_Module3, XInputGetCapabilities_Detour_Module4,
 };
-
 
 // Initialize XInput function pointers for direct calls
 static void InitializeXInputDirectFunctions() {
     if (XInputSetState_Direct != nullptr || XInputGetBatteryInformation_Direct != nullptr) {
-        return; // Already initialized
+        return;  // Already initialized
     }
-    for (const char *module_name : xinput_modules) {
+    for (const char* module_name : xinput_modules) {
         HMODULE xinput_module = LoadLibraryA(module_name);
         if (xinput_module != nullptr) {
-
             break;
         } else {
             LogInfo("XInput module: %s not found", module_name);
         }
     }
 }
-
 
 float recenter(float value, float center) {
     auto new_value = value - center;
@@ -148,12 +176,11 @@ float recenter(float value, float center) {
 }
 
 // Helper function to apply max input, min output, deadzone, and center calibration to thumbstick values
-void ApplyThumbstickProcessing(XINPUT_STATE *pState, float left_max_input, float right_max_input, float left_min_output,
-                               float right_min_output, float left_deadzone, float right_deadzone,
-                               float left_center_x, float left_center_y, float right_center_x, float right_center_y,
-                               bool left_circular, bool right_circular) {
-    if (!pState)
-        return;
+void ApplyThumbstickProcessing(XINPUT_STATE* pState, float left_max_input, float right_max_input, float left_min_output,
+                               float right_min_output, float left_deadzone, float right_deadzone, float left_center_x,
+                               float left_center_y, float right_center_x, float right_center_y, bool left_circular,
+                               bool right_circular) {
+    if (!pState) return;
 
     // Process left stick
     float lx = ShortToFloat(pState->Gamepad.sThumbLX);
@@ -195,11 +222,17 @@ void ApplyThumbstickProcessing(XINPUT_STATE *pState, float left_max_input, float
 }
 
 // Helper function containing shared logic for XInputGetState and XInputGetStateEx
-static DWORD ProcessXInputGetState(DWORD dwUserIndex, XINPUT_STATE *pState, HookIndex hook_index,
-                                    std::atomic<uint64_t> &update_ns_field, const char *error_function_name,
-                                    const std::function<DWORD(DWORD, XINPUT_STATE *)> &call_original_func) {
+static DWORD ProcessXInputGetState(DWORD dwUserIndex, XINPUT_STATE* pState, HookIndex hook_index,
+                                   std::atomic<uint64_t>& update_ns_field, const char* error_function_name,
+                                   const std::function<DWORD(DWORD, XINPUT_STATE*)>& call_original_func) {
     // Track hook call statistics
     g_hook_stats[hook_index].increment_total();
+
+    // Check if gamepad input should be suppressed
+    if (display_commanderhooks::ShouldBlockGamepadInput()) {
+        // Return failure to indicate controller is not connected
+        return ERROR_DEVICE_NOT_CONNECTED;
+    }
 
     // Measure timing for smooth call rate calculation
     auto shared_state = display_commander::widgets::xinput_widget::XInputWidget::GetSharedState();
@@ -210,7 +243,7 @@ static DWORD ProcessXInputGetState(DWORD dwUserIndex, XINPUT_STATE *pState, Hook
         if (last_call_time > 0) {
             uint64_t time_since_last_call_ns = current_time_ns - last_call_time;
             // Only update if time since last call is reasonable (ignore if > 1000ms)
-            if (time_since_last_call_ns < 1 * utils::SEC_TO_NS) { // 1 second in nanoseconds
+            if (time_since_last_call_ns < 1 * utils::SEC_TO_NS) {  // 1 second in nanoseconds
                 uint64_t old_update_ns = update_ns_field.load();
                 uint64_t new_update_ns = UpdateRollingAverage(time_since_last_call_ns, old_update_ns);
                 update_ns_field.store(new_update_ns);
@@ -242,7 +275,7 @@ static DWORD ProcessXInputGetState(DWORD dwUserIndex, XINPUT_STATE *pState, Hook
         // Initialize fake gamepad state (all zeros)
         ZeroMemory(&pState->Gamepad, sizeof(XINPUT_GAMEPAD));
         // Packet number will be set just before return
-        result = ERROR_SUCCESS; // Spoof as connected
+        result = ERROR_SUCCESS;  // Spoof as connected
         did_spoof_connection = true;
     }
 
@@ -250,7 +283,6 @@ static DWORD ProcessXInputGetState(DWORD dwUserIndex, XINPUT_STATE *pState, Hook
     if (result != ERROR_SUCCESS) {
         result = call_original_func(dwUserIndex, pState);
     }
-
 
     // Override packet number with our tracked value just before returning
     if (dwUserIndex < 4) {
@@ -264,7 +296,8 @@ static DWORD ProcessXInputGetState(DWORD dwUserIndex, XINPUT_STATE *pState, Hook
     if (result == ERROR_SUCCESS) {
         // Mark controller as connected in shared state
         if (shared_state && dwUserIndex < XUSER_MAX_COUNT) {
-            shared_state->controller_connected[dwUserIndex] = display_commander::widgets::xinput_widget::ControllerState::Connected;
+            shared_state->controller_connected[dwUserIndex] =
+                display_commander::widgets::xinput_widget::ControllerState::Connected;
         }
         // Store the frame ID when XInput is successfully detected
         uint64_t current_frame_id = g_global_frame_id.load();
@@ -331,10 +364,8 @@ static DWORD ProcessXInputGetState(DWORD dwUserIndex, XINPUT_STATE *pState, Hook
             float right_max_input = shared_state->right_stick_max_input.load();
             float left_min_output = shared_state->left_stick_min_output.load();
             float right_min_output = shared_state->right_stick_min_output.load();
-            float left_deadzone =
-                shared_state->left_stick_deadzone.load() / 100.0f; // Convert percentage to decimal
-            float right_deadzone =
-                shared_state->right_stick_deadzone.load() / 100.0f; // Convert percentage to decimal
+            float left_deadzone = shared_state->left_stick_deadzone.load() / 100.0f;    // Convert percentage to decimal
+            float right_deadzone = shared_state->right_stick_deadzone.load() / 100.0f;  // Convert percentage to decimal
 
             float left_center_x = shared_state->left_stick_center_x.load();
             float left_center_y = shared_state->left_stick_center_y.load();
@@ -345,8 +376,8 @@ static DWORD ProcessXInputGetState(DWORD dwUserIndex, XINPUT_STATE *pState, Hook
             bool right_circular = shared_state->right_stick_circular.load();
 
             ApplyThumbstickProcessing(pState, left_max_input, right_max_input, left_min_output, right_min_output,
-                                      left_deadzone, right_deadzone, left_center_x, left_center_y, right_center_x, right_center_y,
-                                      left_circular, right_circular);
+                                      left_deadzone, right_deadzone, left_center_x, left_center_y, right_center_x,
+                                      right_center_y, left_circular, right_circular);
         }
 
         // Process input remapping before updating state
@@ -354,7 +385,7 @@ static DWORD ProcessXInputGetState(DWORD dwUserIndex, XINPUT_STATE *pState, Hook
 
         // Block gamepad input to game when home button is pressed (if enabled)
         // This prevents accidental button presses while using shortcuts
-        auto &remapper = display_commander::input_remapping::InputRemapper::get_instance();
+        auto& remapper = display_commander::input_remapping::InputRemapper::get_instance();
         if (remapper.is_block_input_on_home_button() && (pState->Gamepad.wButtons & XINPUT_GAMEPAD_GUIDE) != 0) {
             // Clear all buttons except home button (so remapping can still work)
             WORD home_button_state = pState->Gamepad.wButtons & XINPUT_GAMEPAD_GUIDE;
@@ -388,11 +419,13 @@ static DWORD ProcessXInputGetState(DWORD dwUserIndex, XINPUT_STATE *pState, Hook
         if (dwUserIndex < XUSER_MAX_COUNT) {
             auto shared_state = display_commander::widgets::xinput_widget::XInputWidget::GetSharedState();
             if (shared_state) {
-                shared_state->controller_connected[dwUserIndex] = display_commander::widgets::xinput_widget::ControllerState::Unconnected;
+                shared_state->controller_connected[dwUserIndex] =
+                    display_commander::widgets::xinput_widget::ControllerState::Unconnected;
             }
         }
         if (dwUserIndex == 0) {
-            LogErrorThrottled(10, "XXX XInput Controller %lu: %s failed with error %lu (Perhaps disable steam input?)", dwUserIndex, error_function_name, result);
+            LogErrorThrottled(10, "XXX XInput Controller %lu: %s failed with error %lu (Perhaps disable steam input?)",
+                              dwUserIndex, error_function_name, result);
         }
     }
 
@@ -401,7 +434,7 @@ static DWORD ProcessXInputGetState(DWORD dwUserIndex, XINPUT_STATE *pState, Hook
 
 // Per-module implementation helpers used by the per-DLL detours.
 // These route calls to the correct original function for the specific xinput DLL.
-static DWORD WINAPI XInputGetState_Detour_Impl(size_t module_index, DWORD dwUserIndex, XINPUT_STATE *pState) {
+static DWORD WINAPI XInputGetState_Detour_Impl(size_t module_index, DWORD dwUserIndex, XINPUT_STATE* pState) {
     if (pState == nullptr) {
         return ERROR_INVALID_PARAMETER;
     }
@@ -413,7 +446,7 @@ static DWORD WINAPI XInputGetState_Detour_Impl(size_t module_index, DWORD dwUser
     }
 
     // Lambda to call original function for the specific module, with sensible fallbacks
-    auto call_original = [module_index](DWORD user_index, XINPUT_STATE *state) -> DWORD {
+    auto call_original = [module_index](DWORD user_index, XINPUT_STATE* state) -> DWORD {
         XInputGetStateEx_pfn get_state_ex = nullptr;
         XInputGetState_pfn get_state = nullptr;
 
@@ -437,11 +470,11 @@ static DWORD WINAPI XInputGetState_Detour_Impl(size_t module_index, DWORD dwUser
         return ERROR_DEVICE_NOT_CONNECTED;
     };
 
-    return ProcessXInputGetState(dwUserIndex, pState, HOOK_XInputGetState,
-                                 shared_state->xinput_getstate_update_ns, "GetState", call_original);
+    return ProcessXInputGetState(dwUserIndex, pState, HOOK_XInputGetState, shared_state->xinput_getstate_update_ns,
+                                 "GetState", call_original);
 }
 
-static DWORD WINAPI XInputGetStateEx_Detour_Impl(size_t module_index, DWORD dwUserIndex, XINPUT_STATE *pState) {
+static DWORD WINAPI XInputGetStateEx_Detour_Impl(size_t module_index, DWORD dwUserIndex, XINPUT_STATE* pState) {
     if (pState == nullptr) {
         return ERROR_INVALID_PARAMETER;
     }
@@ -453,7 +486,7 @@ static DWORD WINAPI XInputGetStateEx_Detour_Impl(size_t module_index, DWORD dwUs
     }
 
     // Lambda to call original function for the specific module, with sensible fallbacks
-    auto call_original = [module_index](DWORD user_index, XINPUT_STATE *state) -> DWORD {
+    auto call_original = [module_index](DWORD user_index, XINPUT_STATE* state) -> DWORD {
         XInputGetStateEx_pfn get_state_ex = nullptr;
 
         if (module_index < original_xinput_get_state_ex_procs.size()) {
@@ -468,17 +501,23 @@ static DWORD WINAPI XInputGetStateEx_Detour_Impl(size_t module_index, DWORD dwUs
         return ERROR_DEVICE_NOT_CONNECTED;
     };
 
-    return ProcessXInputGetState(dwUserIndex, pState, HOOK_XInputGetStateEx,
-                                 shared_state->xinput_getstateex_update_ns, "GetStateEx", call_original);
+    return ProcessXInputGetState(dwUserIndex, pState, HOOK_XInputGetStateEx, shared_state->xinput_getstateex_update_ns,
+                                 "GetStateEx", call_original);
 }
 
-static DWORD WINAPI XInputSetState_Detour_Impl(size_t module_index, DWORD dwUserIndex, XINPUT_VIBRATION *pVibration) {
+static DWORD WINAPI XInputSetState_Detour_Impl(size_t module_index, DWORD dwUserIndex, XINPUT_VIBRATION* pVibration) {
     if (pVibration == nullptr) {
         return ERROR_INVALID_PARAMETER;
     }
 
     // Track hook call statistics
     g_hook_stats[HOOK_XInputSetState].increment_total();
+
+    // Check if gamepad input should be suppressed
+    if (display_commanderhooks::ShouldBlockGamepadInput()) {
+        // Return failure to indicate controller is not connected
+        return ERROR_DEVICE_NOT_CONNECTED;
+    }
 
     // Get vibration amplification setting
     auto shared_state = display_commander::widgets::xinput_widget::XInputWidget::GetSharedState();
@@ -523,12 +562,19 @@ static DWORD WINAPI XInputSetState_Detour_Impl(size_t module_index, DWORD dwUser
     return result;
 }
 
-static DWORD WINAPI XInputGetCapabilities_Detour_Impl(size_t module_index, DWORD dwUserIndex, DWORD dwFlags, XINPUT_CAPABILITIES *pCapabilities) {
+static DWORD WINAPI XInputGetCapabilities_Detour_Impl(size_t module_index, DWORD dwUserIndex, DWORD dwFlags,
+                                                      XINPUT_CAPABILITIES* pCapabilities) {
     // Track hook statistics (do this first to verify hook is being called)
     g_hook_stats[HOOK_XInputGetCapabilities].increment_total();
 
     if (pCapabilities == nullptr) {
         return ERROR_INVALID_PARAMETER;
+    }
+
+    // Check if gamepad input should be suppressed
+    if (display_commanderhooks::ShouldBlockGamepadInput()) {
+        // Return failure to indicate controller is not connected
+        return ERROR_DEVICE_NOT_CONNECTED;
     }
 
     XInputGetCapabilities_pfn get_capabilities = nullptr;
@@ -566,7 +612,7 @@ static DWORD WINAPI XInputGetCapabilities_Detour_Impl(size_t module_index, DWORD
         // Set standard gamepad type and subtype
         pCapabilities->Type = XINPUT_DEVTYPE_GAMEPAD;
         pCapabilities->SubType = XINPUT_DEVSUBTYPE_GAMEPAD;
-        pCapabilities->Flags = 0; // No special flags
+        pCapabilities->Flags = 0;  // No special flags
 
         // Initialize gamepad structure (all buttons available)
         ZeroMemory(&pCapabilities->Gamepad, sizeof(XINPUT_GAMEPAD));
@@ -591,7 +637,8 @@ static DWORD WINAPI XInputGetCapabilities_Detour_Impl(size_t module_index, DWORD
 
 bool InstallXInputHooks(HMODULE xinput_module) {
     // Check if XInput hooks should be suppressed
-    if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(display_commanderhooks::HookType::XINPUT)) {
+    if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(
+            display_commanderhooks::HookType::XINPUT)) {
         LogInfo("XInput hooks installation suppressed by user setting");
         return false;
     }
@@ -611,7 +658,7 @@ bool InstallXInputHooks(HMODULE xinput_module) {
 
     bool any_success = false;
     for (size_t idx = 0; idx < std::size(xinput_modules); ++idx) {
-        const char *module_name = xinput_modules[idx];
+        const char* module_name = xinput_modules[idx];
         HMODULE current_module = GetModuleHandleA(module_name);
         if (current_module == nullptr) {
             any_success = true;
@@ -623,13 +670,13 @@ bool InstallXInputHooks(HMODULE xinput_module) {
         return false;
     }
 
-    //InitializeXInputDirectFunctions();
+    // InitializeXInputDirectFunctions();
 
     static int min_set_value = -1;
 
     // Try to hook ALL loaded XInput modules
     for (size_t idx = 0; idx < std::size(xinput_modules); ++idx) {
-        const char *module_name = xinput_modules[idx];
+        const char* module_name = xinput_modules[idx];
         HMODULE tmp_xinput_module = GetModuleHandleA(module_name);
         if (tmp_xinput_module == nullptr) {
             LogInfo("XInput module %s not found", module_name);
@@ -649,8 +696,8 @@ bool InstallXInputHooks(HMODULE xinput_module) {
 
         bool update = false;
         if (min_set_value == 1) {
-           update = true;
-           min_set_value = idx;
+            update = true;
+            min_set_value = idx;
         }
 
         // Hook XInputGetState
@@ -658,8 +705,9 @@ bool InstallXInputHooks(HMODULE xinput_module) {
         if (xinput_get_state_proc != nullptr) {
             LogInfo("Found XInputGetState in %s at: 0x%p", module_name, xinput_get_state_proc);
 
-            if (MH_CreateHook(xinput_get_state_proc, xinput_get_state_detours[idx], reinterpret_cast<LPVOID *>(&original_xinput_get_state_procs[idx])) ==
-            MH_OK) {
+            if (MH_CreateHook(xinput_get_state_proc, xinput_get_state_detours[idx],
+                              reinterpret_cast<LPVOID*>(&original_xinput_get_state_procs[idx]))
+                == MH_OK) {
                 if (update) {
                     XInputGetState_Direct = original_xinput_get_state_procs[idx];
                 }
@@ -672,13 +720,13 @@ bool InstallXInputHooks(HMODULE xinput_module) {
         }
 
         // Hook XInputGetStateEx (ordinal 100) - this is what many games actually use
-        FARPROC xinput_get_state_ex_proc = GetProcAddress(xinput_module, (LPCSTR)100); // Ordinal 100
+        FARPROC xinput_get_state_ex_proc = GetProcAddress(xinput_module, (LPCSTR)100);  // Ordinal 100
         if (xinput_get_state_ex_proc != nullptr) {
-            LogInfo("Found XInputGetStateEx (ordinal 100) in %s at: 0x%p", module_name,
-                    xinput_get_state_ex_proc);
+            LogInfo("Found XInputGetStateEx (ordinal 100) in %s at: 0x%p", module_name, xinput_get_state_ex_proc);
 
             if (MH_CreateHook(xinput_get_state_ex_proc, xinput_get_state_ex_detours[idx],
-                                reinterpret_cast<LPVOID *>(&original_xinput_get_state_ex_procs[idx])) == MH_OK) {
+                              reinterpret_cast<LPVOID*>(&original_xinput_get_state_ex_procs[idx]))
+                == MH_OK) {
                 if (MH_EnableHook(xinput_get_state_ex_proc) == MH_OK) {
                     if (update) {
                         XInputGetStateEx_Direct = original_xinput_get_state_ex_procs[idx];
@@ -695,8 +743,9 @@ bool InstallXInputHooks(HMODULE xinput_module) {
         if (xinput_set_state_proc != nullptr) {
             LogInfo("Found XInputSetState in %s at: 0x%p", module_name, xinput_set_state_proc);
 
-            if (MH_CreateHook(xinput_set_state_proc, xinput_set_state_detours[idx], reinterpret_cast<LPVOID *>(&original_xinput_set_state_procs[idx])) ==
-            MH_OK) {
+            if (MH_CreateHook(xinput_set_state_proc, xinput_set_state_detours[idx],
+                              reinterpret_cast<LPVOID*>(&original_xinput_set_state_procs[idx]))
+                == MH_OK) {
                 if (update) {
                     XInputSetState_Direct = original_xinput_set_state_procs[idx];
                 }
@@ -715,8 +764,10 @@ bool InstallXInputHooks(HMODULE xinput_module) {
             if (XInputSetState_Direct == nullptr) {
                 XInputSetState_Direct = (XInputSetState_pfn)GetProcAddress(xinput_module, "XInputSetState");
             }
-            XInputGetBatteryInformation_Direct = (XInputGetBatteryInformation_pfn)GetProcAddress(xinput_module, "XInputGetBatteryInformation");
-            XInputGetCapabilities_Direct = (XInputGetCapabilities_pfn)GetProcAddress(xinput_module, "XInputGetCapabilities");
+            XInputGetBatteryInformation_Direct =
+                (XInputGetBatteryInformation_pfn)GetProcAddress(xinput_module, "XInputGetBatteryInformation");
+            XInputGetCapabilities_Direct =
+                (XInputGetCapabilities_pfn)GetProcAddress(xinput_module, "XInputGetCapabilities");
         }
 
         // Hook XInputGetCapabilities
@@ -724,7 +775,9 @@ bool InstallXInputHooks(HMODULE xinput_module) {
         if (xinput_get_capabilities_proc != nullptr) {
             LogInfo("Found XInputGetCapabilities in %s at: 0x%p", module_name, xinput_get_capabilities_proc);
 
-            if (MH_CreateHook(xinput_get_capabilities_proc, xinput_get_capabilities_detours[idx], reinterpret_cast<LPVOID *>(&original_xinput_get_capabilities_procs[idx])) == MH_OK) {
+            if (MH_CreateHook(xinput_get_capabilities_proc, xinput_get_capabilities_detours[idx],
+                              reinterpret_cast<LPVOID*>(&original_xinput_get_capabilities_procs[idx]))
+                == MH_OK) {
                 if (update) {
                     XInputGetCapabilities_Direct = original_xinput_get_capabilities_procs[idx];
                 }
@@ -741,8 +794,10 @@ bool InstallXInputHooks(HMODULE xinput_module) {
         } else {
             LogInfo("XInputGetCapabilities not found in %s (may not be exported by name)", module_name);
             if (update) {
-                // Fallback: try to get function pointer directly (might work if function exists but not exported by name)
-                XInputGetCapabilities_Direct = (XInputGetCapabilities_pfn)GetProcAddress(xinput_module, "XInputGetCapabilities");
+                // Fallback: try to get function pointer directly (might work if function exists but not exported by
+                // name)
+                XInputGetCapabilities_Direct =
+                    (XInputGetCapabilities_pfn)GetProcAddress(xinput_module, "XInputGetCapabilities");
                 if (XInputGetCapabilities_Direct == nullptr) {
                     LogInfo("XInputGetCapabilities function pointer also not available in %s", module_name);
                 }
@@ -755,10 +810,11 @@ bool InstallXInputHooks(HMODULE xinput_module) {
         g_xinput_hooks_installed.store(true);
 
         // Mark XInput hooks as installed
-        display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(display_commanderhooks::HookType::XINPUT);
+        display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(
+            display_commanderhooks::HookType::XINPUT);
     }
 
     return any_success;
 }
 
-} // namespace display_commanderhooks
+}  // namespace display_commanderhooks

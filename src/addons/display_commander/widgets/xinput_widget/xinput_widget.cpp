@@ -1,22 +1,21 @@
 #include "xinput_widget.hpp"
-#include "../../globals.hpp"
-#include "../../utils/logging.hpp"
-#include "../../utils/general_utils.hpp"
-#include "../../utils/srwlock_wrapper.hpp"
-#include "../../hooks/xinput_hooks.hpp"
-#include "../../hooks/hook_suppression_manager.hpp"
-#include "../../hooks/timeslowdown_hooks.hpp"
-#include "../../hooks/windows_hooks/windows_message_hooks.hpp"
-#include "../../res/ui_colors.hpp"
-#include "../../config/display_commander_config.hpp"
-#include "../../settings/experimental_tab_settings.hpp"
-#include "../../settings/hook_suppression_settings.hpp"
+#include <windows.h>
 #include <algorithm>
 #include <reshade_imgui.hpp>
 #include <sstream>
 #include <vector>
-#include <windows.h>
-
+#include "../../config/display_commander_config.hpp"
+#include "../../globals.hpp"
+#include "../../hooks/hook_suppression_manager.hpp"
+#include "../../hooks/timeslowdown_hooks.hpp"
+#include "../../hooks/windows_hooks/windows_message_hooks.hpp"
+#include "../../hooks/xinput_hooks.hpp"
+#include "../../res/ui_colors.hpp"
+#include "../../settings/experimental_tab_settings.hpp"
+#include "../../settings/hook_suppression_settings.hpp"
+#include "../../utils/general_utils.hpp"
+#include "../../utils/logging.hpp"
+#include "../../utils/srwlock_wrapper.hpp"
 
 namespace display_commander::widgets::xinput_widget {
 
@@ -38,7 +37,6 @@ std::unique_ptr<XInputWidget> g_xinput_widget = nullptr;
 XInputWidget::XInputWidget() {
     // Initialize shared state if not already done
     if (!g_shared_state) {
-
         // Initialize controller states
         for (int i = 0; i < XUSER_MAX_COUNT; ++i) {
             ZeroMemory(&g_shared_state->controller_states[i], sizeof(XINPUT_STATE));
@@ -55,8 +53,7 @@ XInputWidget::XInputWidget() {
 }
 
 void XInputWidget::Initialize() {
-    if (is_initialized_)
-        return;
+    if (is_initialized_) return;
 
     LogInfo("XInputWidget::Initialize() - Starting XInput widget initialization");
 
@@ -68,8 +65,7 @@ void XInputWidget::Initialize() {
 }
 
 void XInputWidget::Cleanup() {
-    if (!is_initialized_)
-        return;
+    if (!is_initialized_) return;
 
     // Save settings
     SaveSettings();
@@ -125,7 +121,8 @@ void XInputWidget::DrawSettings() {
 
     if (ImGui::CollapsingHeader("Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
         // Enable XInput hooks (using HookSuppressionManager)
-        bool suppress_hooks = display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(display_commanderhooks::HookType::XINPUT);
+        bool suppress_hooks = display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(
+            display_commanderhooks::HookType::XINPUT);
         bool enable_hooks = !suppress_hooks;
         if (ImGui::Checkbox("Enable XInput Hooks", &enable_hooks)) {
             settings::g_hook_suppression_settings.suppress_xinput_hooks.SetValue(!enable_hooks);
@@ -136,7 +133,6 @@ void XInputWidget::DrawSettings() {
         }
 
         ImGui::Spacing();
-
 
         // Swap A/B buttons
         bool swap_buttons = g_shared_state->swap_a_b_buttons.load();
@@ -165,7 +161,9 @@ void XInputWidget::DrawSettings() {
             LogInfo("HID suppression %s", hid_suppression ? "enabled" : "disabled");
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Suppress HID input reading for games to prevent them from detecting controllers.\nUseful for preventing games from interfering with controller input handling.");
+            ImGui::SetTooltip(
+                "Suppress HID input reading for games to prevent them from detecting controllers.\nUseful for "
+                "preventing games from interfering with controller input handling.");
         }
 
         // HID CreateFile counters
@@ -176,7 +174,9 @@ void XInputWidget::DrawSettings() {
         ImGui::Text("HID CreateFile Total: %llu", hid_total);
         ImGui::Text("HID CreateFile DualSense: %llu", hid_dualsense);
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Shows how many times the game tried to open HID devices via CreateFile.\nDualSense counter shows specifically DualSense controller access attempts.");
+            ImGui::SetTooltip(
+                "Shows how many times the game tried to open HID devices via CreateFile.\nDualSense counter shows "
+                "specifically DualSense controller access attempts.");
         }
 
         // Left stick deadzone setting
@@ -210,8 +210,9 @@ void XInputWidget::DrawSettings() {
             SaveSettings();
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("How much stick movement is needed for full output (70%% = 70%% stick movement = 100%% "
-                              "output, 100%% = normal)");
+            ImGui::SetTooltip(
+                "How much stick movement is needed for full output (70%% = 70%% stick movement = 100%% "
+                "output, 100%% = normal)");
         }
 
         // Right stick sensitivity setting
@@ -223,8 +224,9 @@ void XInputWidget::DrawSettings() {
             SaveSettings();
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("How much stick movement is needed for full output (70%% = 70%% stick movement = 100%% "
-                              "output, 100%% = normal)");
+            ImGui::SetTooltip(
+                "How much stick movement is needed for full output (70%% = 70%% stick movement = 100%% "
+                "output, 100%% = normal)");
         }
 
         // Left stick remove game's deadzone setting
@@ -396,7 +398,7 @@ void XInputWidget::DrawEventCounters() {
         // Display smooth call rate for XInputGetState
         uint64_t getstate_update_ns = g_shared_state->xinput_getstate_update_ns.load();
         if (getstate_update_ns > 0) {
-            double getstate_rate_hz = 1000000000.0 / getstate_update_ns; // Convert ns to Hz
+            double getstate_rate_hz = 1000000000.0 / getstate_update_ns;  // Convert ns to Hz
             ImGui::Text("XInputGetState Rate: %.1f Hz (%.2f ms)", getstate_rate_hz, getstate_update_ns / 1000000.0);
         } else {
             ImGui::TextColored(ui::colors::TEXT_DIMMED, "XInputGetState Rate: No data");
@@ -405,8 +407,9 @@ void XInputWidget::DrawEventCounters() {
         // Display smooth call rate for XInputGetStateEx
         uint64_t getstateex_update_ns = g_shared_state->xinput_getstateex_update_ns.load();
         if (getstateex_update_ns > 0) {
-            double getstateex_rate_hz = 1000000000.0 / getstateex_update_ns; // Convert ns to Hz
-            ImGui::Text("XInputGetStateEx Rate: %.1f Hz (%.2f ms)", getstateex_rate_hz, getstateex_update_ns / 1000000.0);
+            double getstateex_rate_hz = 1000000000.0 / getstateex_update_ns;  // Convert ns to Hz
+            ImGui::Text("XInputGetStateEx Rate: %.1f Hz (%.2f ms)", getstateex_rate_hz,
+                        getstateex_update_ns / 1000000.0);
         } else {
             ImGui::TextColored(ui::colors::TEXT_DIMMED, "XInputGetStateEx Rate: No data");
         }
@@ -416,7 +419,8 @@ void XInputWidget::DrawEventCounters() {
         ImGui::TextColored(ui::colors::TEXT_DEFAULT, "XInputGetCapabilities Hook Statistics");
 
         // Display hook statistics for XInputGetCapabilities
-        const auto &capabilities_stats = display_commanderhooks::GetHookStats(display_commanderhooks::HOOK_XInputGetCapabilities);
+        const auto& capabilities_stats =
+            display_commanderhooks::GetHookStats(display_commanderhooks::HOOK_XInputGetCapabilities);
         uint64_t capabilities_total_calls = capabilities_stats.total_calls.load();
         uint64_t capabilities_unsuppressed_calls = capabilities_stats.unsuppressed_calls.load();
         uint64_t capabilities_suppressed_calls = capabilities_total_calls - capabilities_unsuppressed_calls;
@@ -544,7 +548,7 @@ void XInputWidget::DrawControllerState() {
 
     // Get controller state (thread-safe read)
     utils::SRWLockShared lock(g_shared_state->state_lock);
-    const XINPUT_STATE &state = g_shared_state->controller_states[selected_controller_];
+    const XINPUT_STATE& state = g_shared_state->controller_states[selected_controller_];
     ControllerState controller_state = g_shared_state->controller_connected[selected_controller_];
 
     if (controller_state == ControllerState::Uninitialized) {
@@ -598,12 +602,12 @@ void XInputWidget::DrawControllerState() {
     ImGui::Unindent();
 }
 
-void XInputWidget::DrawButtonStates(const XINPUT_GAMEPAD &gamepad) {
+void XInputWidget::DrawButtonStates(const XINPUT_GAMEPAD& gamepad) {
     if (ImGui::CollapsingHeader("Buttons", ImGuiTreeNodeFlags_DefaultOpen)) {
         // Create a grid of buttons
         const struct {
             WORD mask;
-            const char *name;
+            const char* name;
         } buttons[] = {
             {XINPUT_GAMEPAD_A, "A"},
             {XINPUT_GAMEPAD_B, "B"},
@@ -670,14 +674,14 @@ void XInputWidget::DrawButtonStates(const XINPUT_GAMEPAD &gamepad) {
     }
 }
 
-void XInputWidget::DrawStickStates(const XINPUT_GAMEPAD &gamepad) {
+void XInputWidget::DrawStickStates(const XINPUT_GAMEPAD& gamepad) {
     if (ImGui::CollapsingHeader("Analog Sticks", ImGuiTreeNodeFlags_DefaultOpen)) {
         float left_max_input = g_shared_state->left_stick_max_input.load();
         float right_max_input = g_shared_state->right_stick_max_input.load();
         float left_min_output = g_shared_state->left_stick_min_output.load();
         float right_min_output = g_shared_state->right_stick_min_output.load();
-        float left_deadzone = g_shared_state->left_stick_deadzone.load() / 100.0f;   // Convert percentage to decimal
-        float right_deadzone = g_shared_state->right_stick_deadzone.load() / 100.0f; // Convert percentage to decimal
+        float left_deadzone = g_shared_state->left_stick_deadzone.load() / 100.0f;    // Convert percentage to decimal
+        float right_deadzone = g_shared_state->right_stick_deadzone.load() / 100.0f;  // Convert percentage to decimal
 
         // Left stick
         ImGui::Text("Left Stick:");
@@ -700,14 +704,16 @@ void XInputWidget::DrawStickStates(const XINPUT_GAMEPAD &gamepad) {
             ProcessStickInputSquare(lx_final, ly_final, left_deadzone, left_max_input, left_min_output);
         }
 
-        ImGui::Text("X: %.3f (Raw) -> %.3f (Recentered) -> %.3f (Final) [Raw: %d]", lx, lx_recentered, lx_final, gamepad.sThumbLX);
-        ImGui::Text("Y: %.3f (Raw) -> %.3f (Recentered) -> %.3f (Final) [Raw: %d]", ly, ly_recentered, ly_final, gamepad.sThumbLY);
+        ImGui::Text("X: %.3f (Raw) -> %.3f (Recentered) -> %.3f (Final) [Raw: %d]", lx, lx_recentered, lx_final,
+                    gamepad.sThumbLX);
+        ImGui::Text("Y: %.3f (Raw) -> %.3f (Recentered) -> %.3f (Final) [Raw: %d]", ly, ly_recentered, ly_final,
+                    gamepad.sThumbLY);
 
         // Visual representation
         ImGui::Text("Position:");
         ImVec2 canvas_pos = ImGui::GetCursorScreenPos();
         ImVec2 canvas_size = ImVec2(100, 100);
-        ImDrawList *draw_list = ImGui::GetWindowDrawList();
+        ImDrawList* draw_list = ImGui::GetWindowDrawList();
 
         // Draw circle
         ImVec2 center = ImVec2(canvas_pos.x + canvas_size.x * 0.5f, canvas_pos.y + canvas_size.y * 0.5f);
@@ -747,8 +753,10 @@ void XInputWidget::DrawStickStates(const XINPUT_GAMEPAD &gamepad) {
             ProcessStickInputSquare(rx_final, ry_final, right_deadzone, right_max_input, right_min_output);
         }
 
-        ImGui::Text("X: %.3f (Raw) -> %.3f (Recentered) -> %.3f (Final) [Raw: %d]", rx, rx_recentered, rx_final, gamepad.sThumbRX);
-        ImGui::Text("Y: %.3f (Raw) -> %.3f (Recentered) -> %.3f (Final) [Raw: %d]", ry, ry_recentered, ry_final, gamepad.sThumbRY);
+        ImGui::Text("X: %.3f (Raw) -> %.3f (Recentered) -> %.3f (Final) [Raw: %d]", rx, rx_recentered, rx_final,
+                    gamepad.sThumbRX);
+        ImGui::Text("Y: %.3f (Raw) -> %.3f (Recentered) -> %.3f (Final) [Raw: %d]", ry, ry_recentered, ry_final,
+                    gamepad.sThumbRY);
 
         // Visual representation for right stick
         ImGui::Text("Position:");
@@ -798,7 +806,7 @@ void XInputWidget::DrawStickStatesExtended(float left_deadzone, float left_max_i
             // For radial deadzone visualization, simulate moving stick from center to edge
             // This shows the magnitude transformation (radial deadzone preserves direction)
             float x = input_values[i];
-            float y = 0.0f; // Move along X axis for simplicity
+            float y = 0.0f;  // Move along X axis for simplicity
 
             // Left stick - apply processing based on mode
             float lx_test = x;
@@ -809,7 +817,7 @@ void XInputWidget::DrawStickStatesExtended(float left_deadzone, float left_max_i
             } else {
                 ProcessStickInputSquare(lx_test, ly_test, left_deadzone, left_max_input, left_min_output);
             }
-            left_curve_y[i] = std::sqrt(lx_test * lx_test + ly_test * ly_test); // Show output magnitude
+            left_curve_y[i] = std::sqrt(lx_test * lx_test + ly_test * ly_test);  // Show output magnitude
 
             // Right stick - apply processing based on mode
             float rx_test = x;
@@ -820,7 +828,7 @@ void XInputWidget::DrawStickStatesExtended(float left_deadzone, float left_max_i
             } else {
                 ProcessStickInputSquare(rx_test, ry_test, right_deadzone, right_max_input, right_min_output);
             }
-            right_curve_y[i] = std::sqrt(rx_test * rx_test + ry_test * ry_test); // Show output magnitude
+            right_curve_y[i] = std::sqrt(rx_test * rx_test + ry_test * ry_test);  // Show output magnitude
 
             left_curve_x[i] = static_cast<float>(i);
             right_curve_x[i] = static_cast<float>(i);
@@ -836,7 +844,7 @@ void XInputWidget::DrawStickStatesExtended(float left_deadzone, float left_max_i
                          ImVec2(-1, 150));
 
         // Add reference lines
-        ImDrawList *draw_list = ImGui::GetWindowDrawList();
+        ImDrawList* draw_list = ImGui::GetWindowDrawList();
         ImVec2 plot_pos = ImGui::GetItemRectMin();
         ImVec2 plot_size = ImGui::GetItemRectSize();
 
@@ -896,14 +904,15 @@ void XInputWidget::DrawStickStatesExtended(float left_deadzone, float left_max_i
         ImGui::SameLine();
         ImGui::TextColored(ui::colors::ICON_ANALYSIS, "Cyan = Min Output (Horizontal)");
         ImGui::Spacing();
-        ImGui::TextColored(ui::colors::TEXT_DIMMED, "Note: Radial deadzone preserves stick direction (circular deadzone)");
+        ImGui::TextColored(ui::colors::TEXT_DIMMED,
+                           "Note: Radial deadzone preserves stick direction (circular deadzone)");
         ImGui::Spacing();
         ImGui::TextColored(ui::colors::TEXT_DIMMED, "X-axis: Input (0.0 to 1.0) - Positive side only");
         ImGui::TextColored(ui::colors::TEXT_DIMMED, "Y-axis: Output (-1.0 to 1.0)");
     }
 }
 
-void XInputWidget::DrawTriggerStates(const XINPUT_GAMEPAD &gamepad) {
+void XInputWidget::DrawTriggerStates(const XINPUT_GAMEPAD& gamepad) {
     if (ImGui::CollapsingHeader("Triggers", ImGuiTreeNodeFlags_DefaultOpen)) {
         // Left trigger
         ImGui::Text("Left Trigger: %u/255 (%.1f%%)", gamepad.bLeftTrigger,
@@ -936,75 +945,74 @@ void XInputWidget::DrawBatteryStatus(int controller_index) {
             return;
         }
 
-        const XINPUT_BATTERY_INFORMATION &battery = g_shared_state->battery_info[controller_index];
+        const XINPUT_BATTERY_INFORMATION& battery = g_shared_state->battery_info[controller_index];
 
         // Battery type
         std::string battery_type_str;
         ImVec4 type_color(1.0f, 1.0f, 1.0f, 1.0f);
 
         switch (battery.BatteryType) {
-        case BATTERY_TYPE_DISCONNECTED:
-            battery_type_str = "Disconnected";
-            type_color = ui::colors::TEXT_DIMMED;
-            break;
-        case BATTERY_TYPE_WIRED:
-            battery_type_str = "Wired (No Battery)";
-            type_color = ui::colors::TEXT_INFO;
-            break;
-        case BATTERY_TYPE_ALKALINE:
-            battery_type_str = "Alkaline Battery";
-            type_color = ui::colors::TEXT_VALUE;
-            break;
-        case BATTERY_TYPE_NIMH:
-            battery_type_str = "NiMH Battery";
-            type_color = ui::colors::STATUS_ACTIVE;
-            break;
-        case BATTERY_TYPE_UNKNOWN:
-            battery_type_str = "Unknown Battery Type";
-            type_color = ui::colors::TEXT_DIMMED;
-            break;
-        default:
-            battery_type_str = "Unknown";
-            type_color = ui::colors::TEXT_DIMMED;
-            break;
+            case BATTERY_TYPE_DISCONNECTED:
+                battery_type_str = "Disconnected";
+                type_color = ui::colors::TEXT_DIMMED;
+                break;
+            case BATTERY_TYPE_WIRED:
+                battery_type_str = "Wired (No Battery)";
+                type_color = ui::colors::TEXT_INFO;
+                break;
+            case BATTERY_TYPE_ALKALINE:
+                battery_type_str = "Alkaline Battery";
+                type_color = ui::colors::TEXT_VALUE;
+                break;
+            case BATTERY_TYPE_NIMH:
+                battery_type_str = "NiMH Battery";
+                type_color = ui::colors::STATUS_ACTIVE;
+                break;
+            case BATTERY_TYPE_UNKNOWN:
+                battery_type_str = "Unknown Battery Type";
+                type_color = ui::colors::TEXT_DIMMED;
+                break;
+            default:
+                battery_type_str = "Unknown";
+                type_color = ui::colors::TEXT_DIMMED;
+                break;
         }
 
         ImGui::TextColored(type_color, "Type: %s", battery_type_str.c_str());
 
         // Battery level (only show for devices with actual batteries)
-        if (battery.BatteryType != BATTERY_TYPE_DISCONNECTED && battery.BatteryType != BATTERY_TYPE_UNKNOWN &&
-            battery.BatteryType != BATTERY_TYPE_WIRED) {
-
+        if (battery.BatteryType != BATTERY_TYPE_DISCONNECTED && battery.BatteryType != BATTERY_TYPE_UNKNOWN
+            && battery.BatteryType != BATTERY_TYPE_WIRED) {
             std::string level_str;
             ImVec4 level_color(1.0f, 1.0f, 1.0f, 1.0f);
             float level_progress = 0.0f;
 
             switch (battery.BatteryLevel) {
-            case BATTERY_LEVEL_EMPTY:
-                level_str = "Empty";
-                level_color = ui::colors::ICON_CRITICAL;
-                level_progress = 0.0f;
-                break;
-            case BATTERY_LEVEL_LOW:
-                level_str = "Low";
-                level_color = ui::colors::ICON_ORANGE;
-                level_progress = 0.25f;
-                break;
-            case BATTERY_LEVEL_MEDIUM:
-                level_str = "Medium";
-                level_color = ui::colors::TEXT_VALUE;
-                level_progress = 0.5f;
-                break;
-            case BATTERY_LEVEL_FULL:
-                level_str = "Full";
-                level_color = ui::colors::STATUS_ACTIVE;
-                level_progress = 1.0f;
-                break;
-            default:
-                level_str = "Unknown";
-                level_color = ui::colors::TEXT_DIMMED;
-                level_progress = 0.0f;
-                break;
+                case BATTERY_LEVEL_EMPTY:
+                    level_str = "Empty";
+                    level_color = ui::colors::ICON_CRITICAL;
+                    level_progress = 0.0f;
+                    break;
+                case BATTERY_LEVEL_LOW:
+                    level_str = "Low";
+                    level_color = ui::colors::ICON_ORANGE;
+                    level_progress = 0.25f;
+                    break;
+                case BATTERY_LEVEL_MEDIUM:
+                    level_str = "Medium";
+                    level_color = ui::colors::TEXT_VALUE;
+                    level_progress = 0.5f;
+                    break;
+                case BATTERY_LEVEL_FULL:
+                    level_str = "Full";
+                    level_color = ui::colors::STATUS_ACTIVE;
+                    level_progress = 1.0f;
+                    break;
+                default:
+                    level_str = "Unknown";
+                    level_color = ui::colors::TEXT_DIMMED;
+                    level_progress = 0.0f;
+                    break;
             }
 
             ImGui::TextColored(level_color, "Level: %s", level_str.c_str());
@@ -1024,38 +1032,22 @@ void XInputWidget::DrawBatteryStatus(int controller_index) {
 
 std::string XInputWidget::GetButtonName(WORD button) const {
     switch (button) {
-    case XINPUT_GAMEPAD_A:
-        return "A";
-    case XINPUT_GAMEPAD_B:
-        return "B";
-    case XINPUT_GAMEPAD_X:
-        return "X";
-    case XINPUT_GAMEPAD_Y:
-        return "Y";
-    case XINPUT_GAMEPAD_LEFT_SHOULDER:
-        return "LB";
-    case XINPUT_GAMEPAD_RIGHT_SHOULDER:
-        return "RB";
-    case XINPUT_GAMEPAD_BACK:
-        return "View";
-    case XINPUT_GAMEPAD_START:
-        return "Menu";
-    case XINPUT_GAMEPAD_GUIDE:
-        return "Home";
-    case XINPUT_GAMEPAD_LEFT_THUMB:
-        return "LS";
-    case XINPUT_GAMEPAD_RIGHT_THUMB:
-        return "RS";
-    case XINPUT_GAMEPAD_DPAD_UP:
-        return "D-Up";
-    case XINPUT_GAMEPAD_DPAD_DOWN:
-        return "D-Down";
-    case XINPUT_GAMEPAD_DPAD_LEFT:
-        return "D-Left";
-    case XINPUT_GAMEPAD_DPAD_RIGHT:
-        return "D-Right";
-    default:
-        return "Unknown";
+        case XINPUT_GAMEPAD_A:              return "A";
+        case XINPUT_GAMEPAD_B:              return "B";
+        case XINPUT_GAMEPAD_X:              return "X";
+        case XINPUT_GAMEPAD_Y:              return "Y";
+        case XINPUT_GAMEPAD_LEFT_SHOULDER:  return "LB";
+        case XINPUT_GAMEPAD_RIGHT_SHOULDER: return "RB";
+        case XINPUT_GAMEPAD_BACK:           return "View";
+        case XINPUT_GAMEPAD_START:          return "Menu";
+        case XINPUT_GAMEPAD_GUIDE:          return "Home";
+        case XINPUT_GAMEPAD_LEFT_THUMB:     return "LS";
+        case XINPUT_GAMEPAD_RIGHT_THUMB:    return "RS";
+        case XINPUT_GAMEPAD_DPAD_UP:        return "D-Up";
+        case XINPUT_GAMEPAD_DPAD_DOWN:      return "D-Down";
+        case XINPUT_GAMEPAD_DPAD_LEFT:      return "D-Left";
+        case XINPUT_GAMEPAD_DPAD_RIGHT:     return "D-Right";
+        default:                            return "Unknown";
     }
 }
 
@@ -1068,14 +1060,10 @@ std::string XInputWidget::GetControllerStatus(int controller_index) const {
     utils::SRWLockShared lock(g_shared_state->state_lock);
     ControllerState state = g_shared_state->controller_connected[controller_index];
     switch (state) {
-        case ControllerState::Uninitialized:
-            return "Uninitialized";
-        case ControllerState::Connected:
-            return "Connected";
-        case ControllerState::Unconnected:
-            return "Disconnected";
-        default:
-            return "Unknown";
+        case ControllerState::Uninitialized: return "Uninitialized";
+        case ControllerState::Connected:     return "Connected";
+        case ControllerState::Unconnected:   return "Disconnected";
+        default:                             return "Unknown";
     }
 }
 
@@ -1090,117 +1078,136 @@ void XInputWidget::LoadSettings() {
 
     // Load DualSense to XInput conversion setting
     bool dualsense_xinput;
-    if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "EnableDualSenseXInput", dualsense_xinput)) {
+    if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "EnableDualSenseXInput",
+                                                    dualsense_xinput)) {
         g_shared_state->enable_dualsense_xinput.store(dualsense_xinput);
     }
 
     // Load left stick sensitivity setting
     float left_max_input;
-    if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "LeftStickSensitivity", left_max_input)) {
+    if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "LeftStickSensitivity",
+                                                    left_max_input)) {
         g_shared_state->left_stick_max_input.store(left_max_input);
     }
 
     // Load right stick sensitivity setting
     float right_max_input;
-    if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "RightStickSensitivity", right_max_input)) {
+    if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "RightStickSensitivity",
+                                                    right_max_input)) {
         g_shared_state->right_stick_max_input.store(right_max_input);
     }
 
     // Load left stick min input setting
     float left_deadzone;
-    if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "LeftStickMinInput", left_deadzone)) {
+    if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "LeftStickMinInput",
+                                                    left_deadzone)) {
         g_shared_state->left_stick_deadzone.store(left_deadzone);
     }
 
     // Load right stick min input setting
     float right_deadzone;
-    if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "RightStickMinInput", right_deadzone)) {
+    if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "RightStickMinInput",
+                                                    right_deadzone)) {
         g_shared_state->right_stick_deadzone.store(right_deadzone);
     }
 
     // Load left stick max output setting
     float left_min_output;
-    if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "LeftStickMaxOutput", left_min_output)) {
+    if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "LeftStickMaxOutput",
+                                                    left_min_output)) {
         g_shared_state->left_stick_min_output.store(left_min_output);
     }
 
     // Load right stick max output setting
     float right_min_output;
-    if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "RightStickMaxOutput", right_min_output)) {
+    if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "RightStickMaxOutput",
+                                                    right_min_output)) {
         g_shared_state->right_stick_min_output.store(right_min_output);
     }
 
     // Load stick center calibration settings
     float left_center_x;
-    if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "LeftStickCenterX", left_center_x)) {
+    if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "LeftStickCenterX",
+                                                    left_center_x)) {
         g_shared_state->left_stick_center_x.store(left_center_x);
     }
 
     float left_center_y;
-    if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "LeftStickCenterY", left_center_y)) {
+    if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "LeftStickCenterY",
+                                                    left_center_y)) {
         g_shared_state->left_stick_center_y.store(left_center_y);
     }
 
     float right_center_x;
-    if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "RightStickCenterX", right_center_x)) {
+    if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "RightStickCenterX",
+                                                    right_center_x)) {
         g_shared_state->right_stick_center_x.store(right_center_x);
     }
 
     float right_center_y;
-    if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "RightStickCenterY", right_center_y)) {
+    if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "RightStickCenterY",
+                                                    right_center_y)) {
         g_shared_state->right_stick_center_y.store(right_center_y);
     }
 
     // Load vibration amplification setting
     float vibration_amp;
-    if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "VibrationAmplification", vibration_amp)) {
+    if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "VibrationAmplification",
+                                                    vibration_amp)) {
         g_shared_state->vibration_amplification.store(vibration_amp);
     }
 
     // Load stick processing mode settings
     bool left_circular;
-    if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "LeftStickCircular", left_circular)) {
+    if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "LeftStickCircular",
+                                                    left_circular)) {
         g_shared_state->left_stick_circular.store(left_circular);
     }
 
     bool right_circular;
-    if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "RightStickCircular", right_circular)) {
+    if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "RightStickCircular",
+                                                    right_circular)) {
         g_shared_state->right_stick_circular.store(right_circular);
     }
 
     // Load autofire settings
     bool autofire_enabled;
-    if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "AutofireEnabled", autofire_enabled)) {
+    if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "AutofireEnabled",
+                                                    autofire_enabled)) {
         g_shared_state->autofire_enabled.store(autofire_enabled);
     }
 
     // Load autofire frame settings (backward compatibility: try old name first, then new names)
     uint32_t autofire_frame_interval;
-    if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "AutofireFrameInterval", autofire_frame_interval)) {
+    if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "AutofireFrameInterval",
+                                                    autofire_frame_interval)) {
         // Migrate old setting to new format (use as hold_down, set hold_up to same value)
         g_shared_state->autofire_hold_down_frames.store(autofire_frame_interval);
         g_shared_state->autofire_hold_up_frames.store(autofire_frame_interval);
     } else {
         // Load new settings
         uint32_t hold_down_frames;
-        if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "AutofireHoldDownFrames", hold_down_frames)) {
+        if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "AutofireHoldDownFrames",
+                                                        hold_down_frames)) {
             g_shared_state->autofire_hold_down_frames.store(hold_down_frames);
         }
         uint32_t hold_up_frames;
-        if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "AutofireHoldUpFrames", hold_up_frames)) {
+        if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "AutofireHoldUpFrames",
+                                                        hold_up_frames)) {
             g_shared_state->autofire_hold_up_frames.store(hold_up_frames);
         }
     }
 
     // Load autofire button list
     std::string autofire_buttons_str;
-    if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "AutofireButtons", autofire_buttons_str)) {
+    if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "AutofireButtons",
+                                                    autofire_buttons_str)) {
         // Parse comma-separated list of button masks
         std::istringstream iss(autofire_buttons_str);
         std::string token;
         while (std::getline(iss, token, ',')) {
             try {
-                WORD button_mask = static_cast<WORD>(std::stoul(token, nullptr, 16)); // Parse as hex
+                WORD button_mask = static_cast<WORD>(std::stoul(token, nullptr, 16));  // Parse as hex
                 AddAutofireButton(button_mask);
             } catch (...) {
                 // Ignore invalid entries
@@ -1210,7 +1217,8 @@ void XInputWidget::LoadSettings() {
 
     // Load autofire trigger list
     std::string autofire_triggers_str;
-    if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "AutofireTriggers", autofire_triggers_str)) {
+    if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "AutofireTriggers",
+                                                    autofire_triggers_str)) {
         // Parse comma-separated list of trigger types (LT, RT)
         std::istringstream iss(autofire_triggers_str);
         std::string token;
@@ -1234,74 +1242,75 @@ void XInputWidget::LoadSettings() {
 void XInputWidget::SaveSettings() {
     // Save swap A/B buttons setting
     display_commander::config::set_config_value("DisplayCommander.XInputWidget", "SwapABButtons",
-                              g_shared_state->swap_a_b_buttons.load());
+                                                g_shared_state->swap_a_b_buttons.load());
 
     // Save DualSense to XInput conversion setting
     display_commander::config::set_config_value("DisplayCommander.XInputWidget", "EnableDualSenseXInput",
-                              g_shared_state->enable_dualsense_xinput.load());
+                                                g_shared_state->enable_dualsense_xinput.load());
 
     // Save left stick sensitivity setting
     display_commander::config::set_config_value("DisplayCommander.XInputWidget", "LeftStickSensitivity",
-                              g_shared_state->left_stick_max_input.load());
+                                                g_shared_state->left_stick_max_input.load());
 
     // Save right stick sensitivity setting
     display_commander::config::set_config_value("DisplayCommander.XInputWidget", "RightStickSensitivity",
-                              g_shared_state->right_stick_max_input.load());
+                                                g_shared_state->right_stick_max_input.load());
 
     // Save left stick min input setting
     display_commander::config::set_config_value("DisplayCommander.XInputWidget", "LeftStickMinInput",
-                              g_shared_state->left_stick_deadzone.load());
+                                                g_shared_state->left_stick_deadzone.load());
 
     // Save right stick min input setting
     display_commander::config::set_config_value("DisplayCommander.XInputWidget", "RightStickMinInput",
-                              g_shared_state->right_stick_deadzone.load());
+                                                g_shared_state->right_stick_deadzone.load());
 
     // Save left stick max output setting
     display_commander::config::set_config_value("DisplayCommander.XInputWidget", "LeftStickMaxOutput",
-                              g_shared_state->left_stick_min_output.load());
+                                                g_shared_state->left_stick_min_output.load());
 
     // Save right stick max output setting
     display_commander::config::set_config_value("DisplayCommander.XInputWidget", "RightStickMaxOutput",
-                              g_shared_state->right_stick_min_output.load());
+                                                g_shared_state->right_stick_min_output.load());
 
     // Save stick center calibration settings
     display_commander::config::set_config_value("DisplayCommander.XInputWidget", "LeftStickCenterX",
-                              g_shared_state->left_stick_center_x.load());
+                                                g_shared_state->left_stick_center_x.load());
 
     display_commander::config::set_config_value("DisplayCommander.XInputWidget", "LeftStickCenterY",
-                              g_shared_state->left_stick_center_y.load());
+                                                g_shared_state->left_stick_center_y.load());
 
     display_commander::config::set_config_value("DisplayCommander.XInputWidget", "RightStickCenterX",
-                              g_shared_state->right_stick_center_x.load());
+                                                g_shared_state->right_stick_center_x.load());
 
     display_commander::config::set_config_value("DisplayCommander.XInputWidget", "RightStickCenterY",
-                              g_shared_state->right_stick_center_y.load());
+                                                g_shared_state->right_stick_center_y.load());
 
     // Save vibration amplification setting
     display_commander::config::set_config_value("DisplayCommander.XInputWidget", "VibrationAmplification",
-                              g_shared_state->vibration_amplification.load());
+                                                g_shared_state->vibration_amplification.load());
 
     // Save stick processing mode settings
     display_commander::config::set_config_value("DisplayCommander.XInputWidget", "LeftStickCircular",
-                              g_shared_state->left_stick_circular.load());
+                                                g_shared_state->left_stick_circular.load());
 
     display_commander::config::set_config_value("DisplayCommander.XInputWidget", "RightStickCircular",
-                              g_shared_state->right_stick_circular.load());
+                                                g_shared_state->right_stick_circular.load());
 
     // Save autofire settings
     display_commander::config::set_config_value("DisplayCommander.XInputWidget", "AutofireEnabled",
-                              g_shared_state->autofire_enabled.load());
+                                                g_shared_state->autofire_enabled.load());
 
-    display_commander::config::set_config_value("DisplayCommander.XInputWidget", "AutofireHoldDownFrames",
-                              static_cast<uint32_t>(g_shared_state->autofire_hold_down_frames.load()));
+    display_commander::config::set_config_value(
+        "DisplayCommander.XInputWidget", "AutofireHoldDownFrames",
+        static_cast<uint32_t>(g_shared_state->autofire_hold_down_frames.load()));
     display_commander::config::set_config_value("DisplayCommander.XInputWidget", "AutofireHoldUpFrames",
-                              static_cast<uint32_t>(g_shared_state->autofire_hold_up_frames.load()));
+                                                static_cast<uint32_t>(g_shared_state->autofire_hold_up_frames.load()));
 
     // Save autofire button list as comma-separated hex values
     utils::SRWLockExclusive lock(g_shared_state->autofire_lock);
 
     std::string autofire_buttons_str;
-    for (const auto &af_button : g_shared_state->autofire_buttons) {
+    for (const auto& af_button : g_shared_state->autofire_buttons) {
         if (!autofire_buttons_str.empty()) {
             autofire_buttons_str += ",";
         }
@@ -1310,11 +1319,12 @@ void XInputWidget::SaveSettings() {
         autofire_buttons_str += hex_str;
     }
 
-    display_commander::config::set_config_value("DisplayCommander.XInputWidget", "AutofireButtons", autofire_buttons_str);
+    display_commander::config::set_config_value("DisplayCommander.XInputWidget", "AutofireButtons",
+                                                autofire_buttons_str);
 
     // Save autofire trigger list as comma-separated trigger names (LT, RT)
     std::string autofire_triggers_str;
-    for (const auto &af_trigger : g_shared_state->autofire_triggers) {
+    for (const auto& af_trigger : g_shared_state->autofire_triggers) {
         if (!autofire_triggers_str.empty()) {
             autofire_triggers_str += ",";
         }
@@ -1325,7 +1335,8 @@ void XInputWidget::SaveSettings() {
         }
     }
 
-    display_commander::config::set_config_value("DisplayCommander.XInputWidget", "AutofireTriggers", autofire_triggers_str);
+    display_commander::config::set_config_value("DisplayCommander.XInputWidget", "AutofireTriggers",
+                                                autofire_triggers_str);
 }
 
 std::shared_ptr<XInputSharedState> XInputWidget::GetSharedState() { return g_shared_state; }
@@ -1362,7 +1373,7 @@ void DrawXInputWidget() {
 }
 
 // Global functions for hooks to use
-void UpdateXInputState(DWORD user_index, const XINPUT_STATE *state) {
+void UpdateXInputState(DWORD user_index, const XINPUT_STATE* state) {
     auto shared_state = XInputWidget::GetSharedState();
     if (!shared_state || user_index >= XUSER_MAX_COUNT || !state) {
         return;
@@ -1381,10 +1392,9 @@ void UpdateXInputState(DWORD user_index, const XINPUT_STATE *state) {
     shared_state->total_events.fetch_add(1);
 }
 
-void IncrementEventCounter(const std::string &event_type) {
+void IncrementEventCounter(const std::string& event_type) {
     auto shared_state = XInputWidget::GetSharedState();
-    if (!shared_state)
-        return;
+    if (!shared_state) return;
 
     if (event_type == "button") {
         shared_state->button_events.fetch_add(1);
@@ -1403,10 +1413,12 @@ void XInputWidget::TestLeftMotor() {
     }
 
     XINPUT_VIBRATION vibration = {};
-    vibration.wLeftMotorSpeed = 65535; // Maximum intensity
-    vibration.wRightMotorSpeed = 0;    // Right motor off
+    vibration.wLeftMotorSpeed = 65535;  // Maximum intensity
+    vibration.wRightMotorSpeed = 0;     // Right motor off
 
-    DWORD result = display_commanderhooks::XInputSetState_Direct ? display_commanderhooks::XInputSetState_Direct(selected_controller_, &vibration) : ERROR_DEVICE_NOT_CONNECTED;
+    DWORD result = display_commanderhooks::XInputSetState_Direct
+                       ? display_commanderhooks::XInputSetState_Direct(selected_controller_, &vibration)
+                       : ERROR_DEVICE_NOT_CONNECTED;
     if (result == ERROR_SUCCESS) {
         LogInfo("XInputWidget::TestLeftMotor() - Left motor test started for controller %d", selected_controller_);
     } else {
@@ -1422,10 +1434,12 @@ void XInputWidget::TestRightMotor() {
     }
 
     XINPUT_VIBRATION vibration = {};
-    vibration.wLeftMotorSpeed = 0;      // Left motor off
-    vibration.wRightMotorSpeed = 65535; // Maximum intensity
+    vibration.wLeftMotorSpeed = 0;       // Left motor off
+    vibration.wRightMotorSpeed = 65535;  // Maximum intensity
 
-    DWORD result = display_commanderhooks::XInputSetState_Direct ? display_commanderhooks::XInputSetState_Direct(selected_controller_, &vibration) : ERROR_DEVICE_NOT_CONNECTED;
+    DWORD result = display_commanderhooks::XInputSetState_Direct
+                       ? display_commanderhooks::XInputSetState_Direct(selected_controller_, &vibration)
+                       : ERROR_DEVICE_NOT_CONNECTED;
     if (result == ERROR_SUCCESS) {
         LogInfo("XInputWidget::TestRightMotor() - Right motor test started for controller %d", selected_controller_);
     } else {
@@ -1441,10 +1455,12 @@ void XInputWidget::StopVibration() {
     }
 
     XINPUT_VIBRATION vibration = {};
-    vibration.wLeftMotorSpeed = 0; // Both motors off
+    vibration.wLeftMotorSpeed = 0;  // Both motors off
     vibration.wRightMotorSpeed = 0;
 
-    DWORD result = display_commanderhooks::XInputSetState_Direct ? display_commanderhooks::XInputSetState_Direct(selected_controller_, &vibration) : ERROR_DEVICE_NOT_CONNECTED;
+    DWORD result = display_commanderhooks::XInputSetState_Direct
+                       ? display_commanderhooks::XInputSetState_Direct(selected_controller_, &vibration)
+                       : ERROR_DEVICE_NOT_CONNECTED;
     if (result == ERROR_SUCCESS) {
         LogInfo("XInputWidget::StopVibration() - Vibration stopped for controller %d", selected_controller_);
     } else {
@@ -1453,12 +1469,10 @@ void XInputWidget::StopVibration() {
     }
 }
 
-
 void CheckAndHandleScreenshot() {
     try {
         auto shared_state = XInputWidget::GetSharedState();
-        if (!shared_state)
-            return;
+        if (!shared_state) return;
 
         // Check if screenshot should be triggered
         if (shared_state->trigger_screenshot.load()) {
@@ -1466,7 +1480,7 @@ void CheckAndHandleScreenshot() {
             shared_state->trigger_screenshot.store(false);
 
             // Get the ReShade runtime instance
-            reshade::api::effect_runtime *runtime = GetFirstReShadeRuntime();
+            reshade::api::effect_runtime* runtime = GetFirstReShadeRuntime();
 
             if (runtime != nullptr) {
                 // Use PrintScreen key simulation to trigger ReShade's built-in screenshot system
@@ -1477,8 +1491,8 @@ void CheckAndHandleScreenshot() {
                     // Simulate PrintScreen key press to trigger ReShade's screenshot
                     INPUT input = {};
                     input.type = INPUT_KEYBOARD;
-                    input.ki.wVk = VK_SNAPSHOT; // PrintScreen key
-                    input.ki.dwFlags = 0;       // Key down
+                    input.ki.wVk = VK_SNAPSHOT;  // PrintScreen key
+                    input.ki.dwFlags = 0;        // Key down
 
                     // Send key down
                     UINT result = SendInput(1, &input, sizeof(INPUT));
@@ -1498,7 +1512,7 @@ void CheckAndHandleScreenshot() {
 
                     LogInfo("XXX PrintScreen key simulation completed successfully");
 
-                } catch (const std::exception &e) {
+                } catch (const std::exception& e) {
                     LogError("XXX Exception in PrintScreen simulation: %s", e.what());
                 } catch (...) {
                     LogError("XXX Unknown exception in PrintScreen simulation");
@@ -1507,7 +1521,7 @@ void CheckAndHandleScreenshot() {
                 LogError("XXX ReShade runtime not available for screenshot");
             }
         }
-    } catch (const std::exception &e) {
+    } catch (const std::exception& e) {
         LogError("XXX Exception in CheckAndHandleScreenshot: %s", e.what());
     } catch (...) {
         LogError("XXX Unknown exception in CheckAndHandleScreenshot");
@@ -1529,13 +1543,16 @@ void UpdateBatteryStatus(DWORD user_index) {
     auto current_time = GetOriginalTickCount64();
     auto last_update = shared_state->last_battery_update_times[user_index].load();
 
-    if (current_time - last_update < 5000) { // 5 seconds
+    if (current_time - last_update < 5000) {  // 5 seconds
         return;
     }
 
     // Update battery information for gamepad
     XINPUT_BATTERY_INFORMATION battery_info = {};
-    DWORD result = display_commanderhooks::XInputGetBatteryInformation_Direct ? display_commanderhooks::XInputGetBatteryInformation_Direct(user_index, BATTERY_DEVTYPE_GAMEPAD, &battery_info) : ERROR_DEVICE_NOT_CONNECTED;
+    DWORD result = display_commanderhooks::XInputGetBatteryInformation_Direct
+                       ? display_commanderhooks::XInputGetBatteryInformation_Direct(user_index, BATTERY_DEVTYPE_GAMEPAD,
+                                                                                    &battery_info)
+                       : ERROR_DEVICE_NOT_CONNECTED;
 
     if (result == ERROR_SUCCESS) {
         shared_state->battery_info[user_index] = battery_info;
@@ -1579,7 +1596,7 @@ void XInputWidget::DrawDualSenseReport(int controller_index) {
 
         // Display basic device info
         ImGui::TextColored(ui::colors::STATUS_ACTIVE, "Device: %s",
-                          device.device_name.empty() ? "DualSense Controller" : device.device_name.c_str());
+                           device.device_name.empty() ? "DualSense Controller" : device.device_name.c_str());
         ImGui::Text("Connection: %s", device.connection_type.c_str());
         ImGui::Text("Vendor ID: 0x%04X", device.vendor_id);
         ImGui::Text("Product ID: 0x%04X", device.product_id);
@@ -1630,7 +1647,8 @@ void XInputWidget::DrawDualSenseReport(int controller_index) {
                     ImGui::NextColumn();
 
                     // D-pad
-                    const char* dpad_names[] = {"Up", "Up-Right", "Right", "Down-Right", "Down", "Down-Left", "Left", "Up-Left", "None"};
+                    const char* dpad_names[] = {"Up",        "Up-Right", "Right",   "Down-Right", "Down",
+                                                "Down-Left", "Left",     "Up-Left", "None"};
                     ImGui::Text("D-Pad: %s", dpad_names[static_cast<int>(sk_data.DPad)]);
                     ImGui::NextColumn();
                     ImGui::Text("Sequence: %d", sk_data.SeqNo);
@@ -1680,7 +1698,8 @@ void XInputWidget::DrawDualSenseReport(int controller_index) {
                     ImGui::NextColumn();
 
                     // Edge controller buttons
-                    if (sk_data.ButtonLeftFunction || sk_data.ButtonRightFunction || sk_data.ButtonLeftPaddle || sk_data.ButtonRightPaddle) {
+                    if (sk_data.ButtonLeftFunction || sk_data.ButtonRightFunction || sk_data.ButtonLeftPaddle
+                        || sk_data.ButtonRightPaddle) {
                         ImGui::Text("Left Function: %s", sk_data.ButtonLeftFunction ? "PRESSED" : "Released");
                         ImGui::NextColumn();
                         ImGui::Text("Right Function: %s", sk_data.ButtonRightFunction ? "PRESSED" : "Released");
@@ -1797,11 +1816,11 @@ void XInputWidget::DrawAutofireSettings() {
             // When disabling autofire, reset all autofire button and trigger states
             if (!autofire_enabled) {
                 utils::SRWLockExclusive lock(shared_state->autofire_lock);
-                for (auto &af_button : shared_state->autofire_buttons) {
+                for (auto& af_button : shared_state->autofire_buttons) {
                     af_button.is_holding_down.store(true);
                     af_button.phase_start_frame_id.store(0);
                 }
-                for (auto &af_trigger : shared_state->autofire_triggers) {
+                for (auto& af_trigger : shared_state->autofire_triggers) {
                     af_trigger.is_holding_down.store(true);
                     af_trigger.phase_start_frame_id.store(0);
                 }
@@ -1810,7 +1829,9 @@ void XInputWidget::DrawAutofireSettings() {
             SaveSettings();
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Enable autofire for selected buttons. When a button is held, it will cycle between hold down and hold up phases.");
+            ImGui::SetTooltip(
+                "Enable autofire for selected buttons. When a button is held, it will cycle between hold down and hold "
+                "up phases.");
         }
 
         if (autofire_enabled) {
@@ -1825,7 +1846,8 @@ void XInputWidget::DrawAutofireSettings() {
 
             // Input field for precise control
             ImGui::SetNextItemWidth(80);
-            if (ImGui::InputInt("##HoldDownFramesInput", &hold_down_frames_int, 1, 5, ImGuiInputTextFlags_EnterReturnsTrue)) {
+            if (ImGui::InputInt("##HoldDownFramesInput", &hold_down_frames_int, 1, 5,
+                                ImGuiInputTextFlags_EnterReturnsTrue)) {
                 if (hold_down_frames_int < 1) {
                     hold_down_frames_int = 1;
                 } else if (hold_down_frames_int > 1000) {
@@ -1840,7 +1862,7 @@ void XInputWidget::DrawAutofireSettings() {
 
             // Slider for quick adjustment (1-60 range for common use)
             int slider_value_down = hold_down_frames_int;
-            if (slider_value_down > 60) slider_value_down = 60; // Clamp for slider display
+            if (slider_value_down > 60) slider_value_down = 60;  // Clamp for slider display
             if (ImGui::SliderInt("##HoldDownFramesSlider", &slider_value_down, 1, 60, "%d frames")) {
                 shared_state->autofire_hold_down_frames.store(static_cast<uint32_t>(slider_value_down));
                 SaveSettings();
@@ -1860,7 +1882,8 @@ void XInputWidget::DrawAutofireSettings() {
 
             // Input field for precise control
             ImGui::SetNextItemWidth(80);
-            if (ImGui::InputInt("##HoldUpFramesInput", &hold_up_frames_int, 1, 5, ImGuiInputTextFlags_EnterReturnsTrue)) {
+            if (ImGui::InputInt("##HoldUpFramesInput", &hold_up_frames_int, 1, 5,
+                                ImGuiInputTextFlags_EnterReturnsTrue)) {
                 if (hold_up_frames_int < 1) {
                     hold_up_frames_int = 1;
                 } else if (hold_up_frames_int > 1000) {
@@ -1875,7 +1898,7 @@ void XInputWidget::DrawAutofireSettings() {
 
             // Slider for quick adjustment (1-60 range for common use)
             int slider_value_up = hold_up_frames_int;
-            if (slider_value_up > 60) slider_value_up = 60; // Clamp for slider display
+            if (slider_value_up > 60) slider_value_up = 60;  // Clamp for slider display
             if (ImGui::SliderInt("##HoldUpFramesSlider", &slider_value_up, 1, 60, "%d frames")) {
                 shared_state->autofire_hold_up_frames.store(static_cast<uint32_t>(slider_value_up));
                 SaveSettings();
@@ -1887,7 +1910,9 @@ void XInputWidget::DrawAutofireSettings() {
             // Show effective rate information
             uint32_t total_cycle_frames = hold_down_frames + hold_up_frames;
             if (total_cycle_frames > 0) {
-                ImGui::TextColored(ui::colors::TEXT_DIMMED, "  Cycle: %u frames total | At 60 FPS: ~%.1f cycles/sec | At 120 FPS: ~%.1f cycles/sec",
+                ImGui::TextColored(
+                    ui::colors::TEXT_DIMMED,
+                    "  Cycle: %u frames total | At 60 FPS: ~%.1f cycles/sec | At 120 FPS: ~%.1f cycles/sec",
                     total_cycle_frames, 60.0f / total_cycle_frames, 120.0f / total_cycle_frames);
             }
 
@@ -1898,7 +1923,7 @@ void XInputWidget::DrawAutofireSettings() {
             // Button selection checkboxes
             const struct {
                 WORD mask;
-                const char *name;
+                const char* name;
             } buttons[] = {
                 {XINPUT_GAMEPAD_A, "A"},
                 {XINPUT_GAMEPAD_B, "B"},
@@ -1919,7 +1944,7 @@ void XInputWidget::DrawAutofireSettings() {
             // Helper lambda to check if button exists (thread-safe)
             auto is_autofire_button = [&shared_state](WORD button_mask) -> bool {
                 utils::SRWLockShared lock(shared_state->autofire_lock);
-                for (const auto &af_button : shared_state->autofire_buttons) {
+                for (const auto& af_button : shared_state->autofire_buttons) {
                     if (af_button.button_mask == button_mask) {
                         return true;
                     }
@@ -1938,29 +1963,33 @@ void XInputWidget::DrawAutofireSettings() {
                         {
                             // Acquire lock only for modification
                             utils::SRWLockExclusive lock(shared_state->autofire_lock);
-                        if (is_enabled1) {
+                            if (is_enabled1) {
                                 // Add button
-                            bool exists = false;
-                            for (const auto &af_button : shared_state->autofire_buttons) {
-                                if (af_button.button_mask == buttons[i].mask) {
-                                    exists = true;
-                                    break;
+                                bool exists = false;
+                                for (const auto& af_button : shared_state->autofire_buttons) {
+                                    if (af_button.button_mask == buttons[i].mask) {
+                                        exists = true;
+                                        break;
+                                    }
                                 }
-                            }
-                            if (!exists) {
-                                shared_state->autofire_buttons.push_back(XInputSharedState::AutofireButton(buttons[i].mask));
-                                LogInfo("XInputWidget::DrawAutofireSettings() - Added autofire for button 0x%04X", buttons[i].mask);
-                            }
-                        } else {
+                                if (!exists) {
+                                    shared_state->autofire_buttons.push_back(
+                                        XInputSharedState::AutofireButton(buttons[i].mask));
+                                    LogInfo("XInputWidget::DrawAutofireSettings() - Added autofire for button 0x%04X",
+                                            buttons[i].mask);
+                                }
+                            } else {
                                 // Remove button
-                            auto it = std::remove_if(shared_state->autofire_buttons.begin(), shared_state->autofire_buttons.end(),
-                                                    [&buttons, i](const XInputSharedState::AutofireButton &af_button) {
-                                                        return af_button.button_mask == buttons[i].mask;
-                                                    });
-                            shared_state->autofire_buttons.erase(it, shared_state->autofire_buttons.end());
-                            LogInfo("XInputWidget::DrawAutofireSettings() - Removed autofire for button 0x%04X", buttons[i].mask);
-                        }
-                        } // Lock released here
+                                auto it = std::remove_if(
+                                    shared_state->autofire_buttons.begin(), shared_state->autofire_buttons.end(),
+                                    [&buttons, i](const XInputSharedState::AutofireButton& af_button) {
+                                        return af_button.button_mask == buttons[i].mask;
+                                    });
+                                shared_state->autofire_buttons.erase(it, shared_state->autofire_buttons.end());
+                                LogInfo("XInputWidget::DrawAutofireSettings() - Removed autofire for button 0x%04X",
+                                        buttons[i].mask);
+                            }
+                        }  // Lock released here
                         SaveSettings();
                     }
 
@@ -1970,29 +1999,33 @@ void XInputWidget::DrawAutofireSettings() {
                         {
                             // Acquire lock only for modification
                             utils::SRWLockExclusive lock(shared_state->autofire_lock);
-                        if (is_enabled2) {
+                            if (is_enabled2) {
                                 // Add button
-                            bool exists = false;
-                            for (const auto &af_button : shared_state->autofire_buttons) {
-                                if (af_button.button_mask == buttons[i + 1].mask) {
-                                    exists = true;
-                                    break;
+                                bool exists = false;
+                                for (const auto& af_button : shared_state->autofire_buttons) {
+                                    if (af_button.button_mask == buttons[i + 1].mask) {
+                                        exists = true;
+                                        break;
+                                    }
                                 }
-                            }
-                            if (!exists) {
-                                shared_state->autofire_buttons.push_back(XInputSharedState::AutofireButton(buttons[i + 1].mask));
-                                LogInfo("XInputWidget::DrawAutofireSettings() - Added autofire for button 0x%04X", buttons[i + 1].mask);
-                            }
-                        } else {
+                                if (!exists) {
+                                    shared_state->autofire_buttons.push_back(
+                                        XInputSharedState::AutofireButton(buttons[i + 1].mask));
+                                    LogInfo("XInputWidget::DrawAutofireSettings() - Added autofire for button 0x%04X",
+                                            buttons[i + 1].mask);
+                                }
+                            } else {
                                 // Remove button
-                            auto it = std::remove_if(shared_state->autofire_buttons.begin(), shared_state->autofire_buttons.end(),
-                                                    [&buttons, i](const XInputSharedState::AutofireButton &af_button) {
-                                                        return af_button.button_mask == buttons[i + 1].mask;
-                                                    });
-                            shared_state->autofire_buttons.erase(it, shared_state->autofire_buttons.end());
-                            LogInfo("XInputWidget::DrawAutofireSettings() - Removed autofire for button 0x%04X", buttons[i + 1].mask);
-                        }
-                        } // Lock released here
+                                auto it = std::remove_if(
+                                    shared_state->autofire_buttons.begin(), shared_state->autofire_buttons.end(),
+                                    [&buttons, i](const XInputSharedState::AutofireButton& af_button) {
+                                        return af_button.button_mask == buttons[i + 1].mask;
+                                    });
+                                shared_state->autofire_buttons.erase(it, shared_state->autofire_buttons.end());
+                                LogInfo("XInputWidget::DrawAutofireSettings() - Removed autofire for button 0x%04X",
+                                        buttons[i + 1].mask);
+                            }
+                        }  // Lock released here
                         SaveSettings();
                     }
                 } else {
@@ -2002,29 +2035,33 @@ void XInputWidget::DrawAutofireSettings() {
                         {
                             // Acquire lock only for modification
                             utils::SRWLockExclusive lock(shared_state->autofire_lock);
-                        if (is_enabled) {
+                            if (is_enabled) {
                                 // Add button
-                            bool exists = false;
-                            for (const auto &af_button : shared_state->autofire_buttons) {
-                                if (af_button.button_mask == buttons[i].mask) {
-                                    exists = true;
-                                    break;
+                                bool exists = false;
+                                for (const auto& af_button : shared_state->autofire_buttons) {
+                                    if (af_button.button_mask == buttons[i].mask) {
+                                        exists = true;
+                                        break;
+                                    }
                                 }
-                            }
-                            if (!exists) {
-                                shared_state->autofire_buttons.push_back(XInputSharedState::AutofireButton(buttons[i].mask));
-                                LogInfo("XInputWidget::DrawAutofireSettings() - Added autofire for button 0x%04X", buttons[i].mask);
-                            }
-                        } else {
+                                if (!exists) {
+                                    shared_state->autofire_buttons.push_back(
+                                        XInputSharedState::AutofireButton(buttons[i].mask));
+                                    LogInfo("XInputWidget::DrawAutofireSettings() - Added autofire for button 0x%04X",
+                                            buttons[i].mask);
+                                }
+                            } else {
                                 // Remove button
-                            auto it = std::remove_if(shared_state->autofire_buttons.begin(), shared_state->autofire_buttons.end(),
-                                                    [&buttons, i](const XInputSharedState::AutofireButton &af_button) {
-                                                        return af_button.button_mask == buttons[i].mask;
-                                                    });
-                            shared_state->autofire_buttons.erase(it, shared_state->autofire_buttons.end());
-                            LogInfo("XInputWidget::DrawAutofireSettings() - Removed autofire for button 0x%04X", buttons[i].mask);
-                        }
-                        } // Lock released here
+                                auto it = std::remove_if(
+                                    shared_state->autofire_buttons.begin(), shared_state->autofire_buttons.end(),
+                                    [&buttons, i](const XInputSharedState::AutofireButton& af_button) {
+                                        return af_button.button_mask == buttons[i].mask;
+                                    });
+                                shared_state->autofire_buttons.erase(it, shared_state->autofire_buttons.end());
+                                LogInfo("XInputWidget::DrawAutofireSettings() - Removed autofire for button 0x%04X",
+                                        buttons[i].mask);
+                            }
+                        }  // Lock released here
                         SaveSettings();
                     }
                 }
@@ -2078,7 +2115,7 @@ void XInputWidget::AddAutofireButton(WORD button_mask) {
 
     // Check if button already exists
     bool exists = false;
-    for (const auto &af_button : shared_state->autofire_buttons) {
+    for (const auto& af_button : shared_state->autofire_buttons) {
         if (af_button.button_mask == button_mask) {
             exists = true;
             break;
@@ -2102,9 +2139,9 @@ void XInputWidget::RemoveAutofireButton(WORD button_mask) {
 
     // Remove button from list
     auto it = std::remove_if(shared_state->autofire_buttons.begin(), shared_state->autofire_buttons.end(),
-                              [button_mask](const XInputSharedState::AutofireButton &af_button) {
-                                  return af_button.button_mask == button_mask;
-                              });
+                             [button_mask](const XInputSharedState::AutofireButton& af_button) {
+                                 return af_button.button_mask == button_mask;
+                             });
     shared_state->autofire_buttons.erase(it, shared_state->autofire_buttons.end());
 
     LogInfo("XInputWidget::RemoveAutofireButton() - Removed autofire for button 0x%04X", button_mask);
@@ -2120,7 +2157,7 @@ bool XInputWidget::IsAutofireButton(WORD button_mask) const {
     utils::SRWLockExclusive lock(shared_state->autofire_lock);
 
     bool found = false;
-    for (const auto &af_button : shared_state->autofire_buttons) {
+    for (const auto& af_button : shared_state->autofire_buttons) {
         if (af_button.button_mask == button_mask) {
             found = true;
             break;
@@ -2141,7 +2178,7 @@ void XInputWidget::AddAutofireTrigger(XInputSharedState::TriggerType trigger_typ
 
     // Check if trigger already exists
     bool exists = false;
-    for (const auto &af_trigger : shared_state->autofire_triggers) {
+    for (const auto& af_trigger : shared_state->autofire_triggers) {
         if (af_trigger.trigger_type == trigger_type) {
             exists = true;
             break;
@@ -2166,9 +2203,9 @@ void XInputWidget::RemoveAutofireTrigger(XInputSharedState::TriggerType trigger_
 
     // Remove trigger from list
     auto it = std::remove_if(shared_state->autofire_triggers.begin(), shared_state->autofire_triggers.end(),
-                              [trigger_type](const XInputSharedState::AutofireTrigger &af_trigger) {
-                                  return af_trigger.trigger_type == trigger_type;
-                              });
+                             [trigger_type](const XInputSharedState::AutofireTrigger& af_trigger) {
+                                 return af_trigger.trigger_type == trigger_type;
+                             });
     shared_state->autofire_triggers.erase(it, shared_state->autofire_triggers.end());
 
     LogInfo("XInputWidget::RemoveAutofireTrigger() - Removed autofire for trigger %s",
@@ -2185,7 +2222,7 @@ bool XInputWidget::IsAutofireTrigger(XInputSharedState::TriggerType trigger_type
     utils::SRWLockShared lock(shared_state->autofire_lock);
 
     bool found = false;
-    for (const auto &af_trigger : shared_state->autofire_triggers) {
+    for (const auto& af_trigger : shared_state->autofire_triggers) {
         if (af_trigger.trigger_type == trigger_type) {
             found = true;
             break;
@@ -2196,7 +2233,7 @@ bool XInputWidget::IsAutofireTrigger(XInputSharedState::TriggerType trigger_type
 }
 
 // Global function for hooks to use
-void ProcessAutofire(DWORD user_index, XINPUT_STATE *pState) {
+void ProcessAutofire(DWORD user_index, XINPUT_STATE* pState) {
     if (!pState) {
         return;
     }
@@ -2211,11 +2248,11 @@ void ProcessAutofire(DWORD user_index, XINPUT_STATE *pState) {
     if (!autofire_enabled) {
         // When autofire is disabled, reset all autofire button and trigger states to prevent stale state
         utils::SRWLockExclusive lock(shared_state->autofire_lock);
-        for (auto &af_button : shared_state->autofire_buttons) {
+        for (auto& af_button : shared_state->autofire_buttons) {
             af_button.is_holding_down.store(true);
             af_button.phase_start_frame_id.store(0);
         }
-        for (auto &af_trigger : shared_state->autofire_triggers) {
+        for (auto& af_trigger : shared_state->autofire_triggers) {
             af_trigger.is_holding_down.store(true);
             af_trigger.phase_start_frame_id.store(0);
         }
@@ -2236,7 +2273,7 @@ void ProcessAutofire(DWORD user_index, XINPUT_STATE *pState) {
     BYTE original_right_trigger = pState->Gamepad.bRightTrigger;
 
     // Process each autofire button directly from shared state
-    for (auto &af_button : shared_state->autofire_buttons) {
+    for (auto& af_button : shared_state->autofire_buttons) {
         WORD button_mask = af_button.button_mask;
         bool is_pressed = (original_buttons & button_mask) != 0;
 
@@ -2290,10 +2327,10 @@ void ProcessAutofire(DWORD user_index, XINPUT_STATE *pState) {
     // Process each autofire trigger directly from shared state
     // Use threshold of 30 to avoid accidental activation from slight trigger pressure
     const BYTE trigger_threshold = 30;
-    for (auto &af_trigger : shared_state->autofire_triggers) {
+    for (auto& af_trigger : shared_state->autofire_triggers) {
         BYTE original_trigger_value = (af_trigger.trigger_type == XInputSharedState::TriggerType::LeftTrigger)
-                                       ? original_left_trigger
-                                       : original_right_trigger;
+                                          ? original_left_trigger
+                                          : original_right_trigger;
         bool is_pressed = original_trigger_value > trigger_threshold;
 
         if (is_pressed) {
@@ -2360,4 +2397,4 @@ void ProcessAutofire(DWORD user_index, XINPUT_STATE *pState) {
     }
 }
 
-} // namespace display_commander::widgets::xinput_widget
+}  // namespace display_commander::widgets::xinput_widget

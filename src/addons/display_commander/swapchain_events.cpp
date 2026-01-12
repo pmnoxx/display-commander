@@ -6,26 +6,27 @@
 #include "gpu_completion_monitoring.hpp"
 #include "hooks/api_hooks.hpp"
 #include "hooks/d3d9/d3d9_present_hooks.hpp"
-#include "hooks/dxgi/dxgi_present_hooks.hpp"
 #include "hooks/dxgi/dxgi_gpu_completion.hpp"
+#include "hooks/dxgi/dxgi_present_hooks.hpp"
 #include "hooks/dxgi_factory_wrapper.hpp"
-#include "hooks/window_proc_hooks.hpp"
+#include "hooks/hid_additional_hooks.hpp"
+#include "hooks/hid_suppression_hooks.hpp"
+#include "hooks/ngx_hooks.hpp"
 #include "hooks/streamline_hooks.hpp"
+#include "hooks/timeslowdown_hooks.hpp"
+#include "hooks/window_proc_hooks.hpp"
 #include "hooks/windows_hooks/windows_message_hooks.hpp"
 #include "hooks/xinput_hooks.hpp"
-#include "hooks/hid_suppression_hooks.hpp"
-#include "hooks/hid_additional_hooks.hpp"
-#include "hooks/ngx_hooks.hpp"
-#include "hooks/timeslowdown_hooks.hpp"
 #include "input_remapping/input_remapping.hpp"
 #include "latency/latency_manager.hpp"
 #include "latent_sync/latent_sync_limiter.hpp"
 #include "latent_sync/refresh_rate_monitor_integration.hpp"
 #include "nvapi/nvapi_fullscreen_prevention.hpp"
 #include "performance_types.hpp"
+#include "settings/developer_tab_settings.hpp"
 #include "settings/experimental_tab_settings.hpp"
 #include "settings/main_tab_settings.hpp"
-#include "settings/developer_tab_settings.hpp"
+
 
 #include <d3d11.h>
 #include <dxgi.h>
@@ -33,34 +34,35 @@
 #include "swapchain_events_power_saving.hpp"
 #include "ui/new_ui/experimental_tab.hpp"
 #include "ui/new_ui/new_ui_main.hpp"
+#include "utils/detour_call_tracker.hpp"
 #include "utils/general_utils.hpp"
 #include "utils/logging.hpp"
-#include "utils/timing.hpp"
 #include "utils/perf_measurement.hpp"
-#include "utils/detour_call_tracker.hpp"
-#include "widgets/xinput_widget/xinput_widget.hpp"
+#include "utils/timing.hpp"
 #include "widgets/dualsense_widget/dualsense_widget.hpp"
+#include "widgets/xinput_widget/xinput_widget.hpp"
+
 
 #include <d3d9.h>
 #include <dxgi.h>
 #include <dxgi1_4.h>
 #include <minwindef.h>
 
-#include <atomic>
-#include <sstream>
-#include <set>
 #include <algorithm>
+#include <atomic>
 #include <cmath>
+#include <set>
+#include <sstream>
+
 
 std::atomic<int> target_width = 3840;
 std::atomic<int> target_height = 2160;
 
 bool is_target_resolution(int width, int height) {
-    return width >= 1280 && width <= target_width.load() && height >= 720 && height <= target_height.load() &&
-           width * 9 == height * 16;
+    return width >= 1280 && width <= target_width.load() && height >= 720 && height <= target_height.load()
+           && width * 9 == height * 16;
 }
 std::atomic<bool> g_initialized_with_hwnd{false};
-
 
 // ============================================================================
 // D3D9 to D3D9Ex Upgrade Handler
@@ -89,7 +91,7 @@ bool OnCreateDevice(reshade::api::device_api api, uint32_t& api_version) {
         LogInfo("D3D9Ex already detected, no upgrade needed");
         s_d3d9e_upgrade_successful.store(true);
         // return false; // correct behavior, but reshade's bug, where it doesnt' report d3d9ex version
-        return true; // true to fix reshade's bug, where it doesnt' report d3d9ex version
+        return true;  // true to fix reshade's bug, where it doesnt' report d3d9ex version
     }
 
     // Upgrade D3D9 (0x9000) to D3D9Ex (0x9100)
@@ -100,7 +102,7 @@ bool OnCreateDevice(reshade::api::device_api api, uint32_t& api_version) {
     return true;
 }
 
-void OnInitDevice(reshade::api::device *device) {
+void OnInitDevice(reshade::api::device* device) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Device initialization tracking
     if (device == nullptr) {
@@ -109,7 +111,7 @@ void OnInitDevice(reshade::api::device *device) {
     // Add any initialization logic here if needed
 }
 
-void OnDestroyDevice(reshade::api::device *device) {
+void OnDestroyDevice(reshade::api::device* device) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     if (device == nullptr) {
         return;
@@ -125,8 +127,8 @@ void OnDestroyDevice(reshade::api::device *device) {
 
     /*
     if (g_last_swapchain_ptr_unsafe.load() != nullptr) {
-        reshade::api::swapchain *swapchain = reinterpret_cast<reshade::api::swapchain *>(g_last_swapchain_ptr_unsafe.load());
-        if (swapchain != nullptr && swapchain->get_device() == device) {
+        reshade::api::swapchain *swapchain = reinterpret_cast<reshade::api::swapchain
+    *>(g_last_swapchain_ptr_unsafe.load()); if (swapchain != nullptr && swapchain->get_device() == device) {
 
                 LogInfo("Clearing global swapchain reference swapchain: %p", swapchain);
                 g_last_swapchain_ptr_unsafe.store(nullptr);
@@ -147,7 +149,7 @@ void OnDestroyDevice(reshade::api::device *device) {
     //     LogInfo("Device cleanup completed");
 }
 
-void OnDestroyEffectRuntime(reshade::api::effect_runtime *runtime) {
+void OnDestroyEffectRuntime(reshade::api::effect_runtime* runtime) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     if (runtime == nullptr) {
         return;
@@ -166,14 +168,14 @@ void OnDestroyEffectRuntime(reshade::api::effect_runtime *runtime) {
     LogInfo("Effect runtime cleanup completed");
 }
 
-void hookToSwapChain(reshade::api::swapchain *swapchain) {
+void hookToSwapChain(reshade::api::swapchain* swapchain) {
     HWND hwnd = static_cast<HWND>(swapchain->get_hwnd());
     if (hwnd == g_proxy_hwnd) {
         return;
     }
-    static std::set<reshade::api::swapchain *> hooked_swapchains;
+    static std::set<reshade::api::swapchain*> hooked_swapchains;
 
-    static reshade::api::swapchain *last_swapchain = nullptr;
+    static reshade::api::swapchain* last_swapchain = nullptr;
     if (last_swapchain == swapchain || swapchain == nullptr || swapchain->get_hwnd() == nullptr) {
         return;
     }
@@ -184,7 +186,7 @@ void hookToSwapChain(reshade::api::swapchain *swapchain) {
     last_swapchain = swapchain;
 
     //..static bool initialized = false;
-    //if (initialized || swapchain == nullptr || swapchain->get_hwnd() == nullptr) {
+    // if (initialized || swapchain == nullptr || swapchain->get_hwnd() == nullptr) {
     //    return;
     //
     LogInfo("onInitSwapChain: swapchain: 0x%p", swapchain);
@@ -214,30 +216,28 @@ void hookToSwapChain(reshade::api::swapchain *swapchain) {
         // Get the underlying DXGI swapchain from the ReShade swapchain
         LogInfo("OnInitSwapchain: api: %d", api);
 
-        if (api == reshade::api::device_api::d3d10 || api == reshade::api::device_api::d3d11 || api == reshade::api::device_api::d3d12) {
-            auto *iunknown   = reinterpret_cast<IUnknown *>(swapchain->get_native());
+        if (api == reshade::api::device_api::d3d10 || api == reshade::api::device_api::d3d11
+            || api == reshade::api::device_api::d3d12) {
+            auto* iunknown = reinterpret_cast<IUnknown*>(swapchain->get_native());
 
-            //display_commanderhooks::DXGISwapChain4Wrapper* wrapper = display_commanderhooks::QuerySwapChainWrapper(iunknown);
-            //if (wrapper != nullptr) {
-            //    LogError("TODO: Handle DXGISwapChain4Wrapper already wrapped swapchain: 0x%p", wrapper);
-            //}
+            // display_commanderhooks::DXGISwapChain4Wrapper* wrapper =
+            // display_commanderhooks::QuerySwapChainWrapper(iunknown); if (wrapper != nullptr) {
+            //     LogError("TODO: Handle DXGISwapChain4Wrapper already wrapped swapchain: 0x%p", wrapper);
+            // }
 
             Microsoft::WRL::ComPtr<IDXGISwapChain> dxgi_swapchain{};
             if (SUCCEEDED(iunknown->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain)))) {
-
                 if (display_commanderhooks::dxgi::HookSwapchain(dxgi_swapchain.Get())) {
                     LogInfo("Successfully hooked DXGI Present calls for swapchain: 0x%p", iunknown);
                 }
 
                 if (settings::g_experimentalTabSettings.reuse_swap_chain_experimental_enabled.GetValue()) {
-
-
                     /*
                     if (global_dxgi_swapchain.load() == nullptr) {
                         // Release old swapchain reference if any
                         dxgi_swapchain->AddRef();
-                        IDXGISwapChain* old_swapchain = global_dxgi_swapchain.exchange(dxgi_swapchain.Get(), std::memory_order_acq_rel);
-                        if (old_swapchain != nullptr) {
+                        IDXGISwapChain* old_swapchain = global_dxgi_swapchain.exchange(dxgi_swapchain.Get(),
+                    std::memory_order_acq_rel); if (old_swapchain != nullptr) {
                             // This shouldn't happen, but just in case
                             LogError("Failed to exchange global swapchain reference: 0x%p", old_swapchain);
                         }
@@ -254,9 +254,9 @@ void hookToSwapChain(reshade::api::swapchain *swapchain) {
         // Try to hook DX9 Present calls if this is a DX9 device
         // Get the underlying DX9 device from the ReShade device
         else if (api == reshade::api::device_api::d3d9) {
-            if (auto *device = swapchain->get_device()) {
+            if (auto* device = swapchain->get_device()) {
                 // do query instead
-                if (auto *d3d9_device = reinterpret_cast<IDirect3DDevice9 *>(device->get_native())) {
+                if (auto* d3d9_device = reinterpret_cast<IDirect3DDevice9*>(device->get_native())) {
                     if (display_commanderhooks::d3d9::HookD3D9Present(d3d9_device)) {
                         LogInfo("Successfully hooked DX9 Present calls for device: 0x%p", d3d9_device);
                     } else {
@@ -276,11 +276,11 @@ void hookToSwapChain(reshade::api::swapchain *swapchain) {
 void DoInitializationWithHwnd(HWND hwnd) {
     bool expected = false;
     if (!g_initialized_with_hwnd.compare_exchange_strong(expected, true)) {
-        return; // Already initialized
+        return;  // Already initialized
     }
 
     // Install XInput hooks
-    // display_commanderhooks::InstallXInputHooks(nullptr);
+    display_commanderhooks::InstallXInputHooks(nullptr);
 
     LogInfo("DoInitialization: Starting initialization with HWND: 0x%p", hwnd);
 
@@ -356,7 +356,6 @@ void DoInitializationWithHwnd(HWND hwnd) {
     display_commanderhooks::keyboard_tracker::Initialize();
     LogInfo("Keyboard tracking system initialized");
 }
-
 
 std::atomic<LONGLONG> g_present_start_time_ns{0};
 std::atomic<LONGLONG> g_present_duration_ns{0};
@@ -434,7 +433,7 @@ void HandleOnPresentEnd() {
 }
 
 // Query DXGI composition state - should only be called from DXGI present hooks
-void QueryDxgiCompositionState(IDXGISwapChain *dxgi_swapchain) {
+void QueryDxgiCompositionState(IDXGISwapChain* dxgi_swapchain) {
     if (dxgi_swapchain == nullptr) {
         return;
     }
@@ -458,7 +457,7 @@ void RecordFrameTime(FrameTimeMode reason) {
 
     // Only record if the call reason matches the selected mode
     if (reason != frame_time_mode) {
-        return; // Skip recording for this call reason
+        return;  // Skip recording for this call reason
     }
 
     static LONGLONG previous_ns = utils::get_now_ns();
@@ -490,39 +489,28 @@ float GetSyncIntervalCoefficient(float sync_interval_value) {
     // Map sync interval values to their corresponding coefficients
     // 3 = V-Sync (1x), 4 = V-Sync 2x, 5 = V-Sync 3x, 6 = V-Sync 4x
     switch (static_cast<int>(sync_interval_value)) {
-    case 0:
-        return 0.0f; // App Controlled
-    case 1:
-        return 0.0f; // No-VSync
-    case 2:
-        return 1.0f; // V-Sync
-    case 3:
-        return 2.0f; // V-Sync 2x
-    case 4:
-        return 3.0f; // V-Sync 3x
-    case 5:
-        return 4.0f; // V-Sync 4x
-    default:
-        return 1.0f; // Fallback
+        case 0:  return 0.0f;  // App Controlled
+        case 1:  return 0.0f;  // No-VSync
+        case 2:  return 1.0f;  // V-Sync
+        case 3:  return 2.0f;  // V-Sync 2x
+        case 4:  return 3.0f;  // V-Sync 3x
+        case 5:  return 4.0f;  // V-Sync 4x
+        default: return 1.0f;  // Fallback
     }
 }
 
 // Convert ComboSetting value to reshade::api::format
 static reshade::api::format GetFormatFromComboValue(int combo_value) {
     switch (combo_value) {
-    case 0:
-        return reshade::api::format::r8g8b8a8_unorm; // R8G8B8A8_UNORM
-    case 1:
-        return reshade::api::format::r10g10b10a2_unorm; // R10G10B10A2_UNORM
-    case 2:
-        return reshade::api::format::r16g16b16a16_float; // R16G16B16A16_FLOAT
-    default:
-        return reshade::api::format::r8g8b8a8_unorm; // Default fallback
+        case 0:  return reshade::api::format::r8g8b8a8_unorm;      // R8G8B8A8_UNORM
+        case 1:  return reshade::api::format::r10g10b10a2_unorm;   // R10G10B10A2_UNORM
+        case 2:  return reshade::api::format::r16g16b16a16_float;  // R16G16B16A16_FLOAT
+        default: return reshade::api::format::r8g8b8a8_unorm;      // Default fallback
     }
 }
 
 // Capture sync interval during create_swapchain
-bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapchain_desc &desc, void *hwnd) {
+bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapchain_desc& desc, void* hwnd) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Don't reset counters on swapchain creation - let them accumulate throughout the session
 
@@ -530,15 +518,15 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
     g_reshade_event_counters[RESHADE_EVENT_CREATE_SWAPCHAIN_CAPTURE].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
-    if (hwnd == nullptr)
-        return false;
+    if (hwnd == nullptr) return false;
 
     // Initialize if not already done
     DoInitializationWithHwnd(static_cast<HWND>(hwnd));
 
     // Check if this is a supported API (D3D9, D3D10, D3D11, D3D12)
     const bool is_d3d9 = (api == reshade::api::device_api::d3d9);
-    const bool is_dxgi = (api == reshade::api::device_api::d3d12 || api == reshade::api::device_api::d3d11 || api == reshade::api::device_api::d3d10);
+    const bool is_dxgi = (api == reshade::api::device_api::d3d12 || api == reshade::api::device_api::d3d11
+                          || api == reshade::api::device_api::d3d10);
 
     // D3D9 FLIPEX upgrade logic (only for D3D9)
     if (is_d3d9) {
@@ -559,24 +547,24 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
             LogInfo(oss.str().c_str());
         }
 
-
         bool modified = false;
         if (desc.fullscreen_state && settings::g_developerTabSettings.prevent_fullscreen.GetValue()) {
             if (!settings::g_developerTabSettings.prevent_fullscreen.GetValue()) {
                 LogWarn("D3D9: Fullscreen state change blocked by developer settings");
                 return false;
             }
-            LogInfo("D3D9: Changed fullscreen state from %s to %s", desc.fullscreen_state ? "YES" : "NO", desc.fullscreen_state ? "NO" : "YES");
+            LogInfo("D3D9: Changed fullscreen state from %s to %s", desc.fullscreen_state ? "YES" : "NO",
+                    desc.fullscreen_state ? "NO" : "YES");
             desc.fullscreen_state = false;
             modified = true;
         }
 
         // Apply FLIPEX if all requirements are met
-        if (settings::g_experimentalTabSettings.d3d9_flipex_enabled.GetValue() && desc.present_mode != D3DSWAPEFFECT_FLIPEX) {
-
+        if (settings::g_experimentalTabSettings.d3d9_flipex_enabled.GetValue()
+            && desc.present_mode != D3DSWAPEFFECT_FLIPEX) {
             if (desc.back_buffer_count < 3) {
                 LogInfo("D3D9 FLIPEX: Increasing back buffer count from %u to 2 (required for FLIPEX)",
-                       desc.back_buffer_count);
+                        desc.back_buffer_count);
                 desc.back_buffer_count = 3;
                 modified = true;
             }
@@ -586,8 +574,8 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
             }
             assert(desc.back_buffer_count >= 2);
             LogInfo("D3D9 FLIPEX: Upgrading swap effect from %u to FLIPEX (5)", desc.present_mode);
-            LogInfo("D3D9 FLIPEX: Full-screen: %s, Back buffers: %u",
-                   desc.fullscreen_state ? "YES" : "NO", desc.back_buffer_count);
+            LogInfo("D3D9 FLIPEX: Full-screen: %s, Back buffers: %u", desc.fullscreen_state ? "YES" : "NO",
+                    desc.back_buffer_count);
 
             desc.present_mode = D3DSWAPEFFECT_FLIPEX;
             if (desc.sync_interval != D3DPRESENT_INTERVAL_IMMEDIATE) {
@@ -597,7 +585,7 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
             }
             if ((desc.present_flags & D3DPRESENT_DONOTFLIP) != 0) {
                 LogInfo("D3D9 FLIPEX: Stripping D3DPRESENT_DONOTFLIP flag");
-                desc.present_flags &= ~D3DPRESENT_DONOTFLIP; // only fullscreen mode is supported
+                desc.present_flags &= ~D3DPRESENT_DONOTFLIP;  // only fullscreen mode is supported
                 modified = true;
             }
             if ((desc.present_flags & D3DPRESENTFLAG_LOCKABLE_BACKBUFFER) != 0) {
@@ -621,17 +609,14 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
             static std::atomic<int> flipex_upgrade_count{0};
             flipex_upgrade_count.fetch_add(1);
             LogInfo("D3D9 FLIPEX: Successfully applied FLIPEX swap effect (upgrade count: %d)",
-                   flipex_upgrade_count.load());
+                    flipex_upgrade_count.load());
         } else {
             LogInfo("D3D9 FLIPEX: FLIPEX cannot be applied. Present mode is %u", desc.present_mode);
             // FLIPEX cannot be applied, set to false
             g_used_flipex.store(false);
         }
         return modified;
-    }
-    else if (is_dxgi) {
-
-
+    } else if (is_dxgi) {
         // Apply sync interval setting if enabled
         bool modified = false;
 
@@ -639,17 +624,16 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
         uint32_t prev_present_flags = desc.present_flags;
         uint32_t prev_back_buffer_count = desc.back_buffer_count;
         uint32_t prev_present_mode = desc.present_mode;
-        const bool is_flip =
-            (desc.present_mode == DXGI_SWAP_EFFECT_FLIP_DISCARD || desc.present_mode == DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL);
-
+        const bool is_flip = (desc.present_mode == DXGI_SWAP_EFFECT_FLIP_DISCARD
+                              || desc.present_mode == DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL);
 
         // Explicit VSYNC overrides take precedence over generic sync-interval
         // dropdown (applies to all APIs)
         if (s_force_vsync_on.load()) {
-            desc.sync_interval = 1; // VSYNC on
+            desc.sync_interval = 1;  // VSYNC on
             modified = true;
         } else if (s_force_vsync_off.load()) {
-            desc.sync_interval = 0; // VSYNC off
+            desc.sync_interval = 0;  // VSYNC off
             modified = true;
         }
 
@@ -659,10 +643,10 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
             modified = true;
         }
 
-
         // Enable flip chain if enabled (experimental feature) - forces flip model
-        if (!is_flip && (settings::g_experimentalTabSettings.enable_flip_chain_enabled.GetValue()
-                         || s_enable_flip_chain.load())) {
+        if (!is_flip
+            && (settings::g_experimentalTabSettings.enable_flip_chain_enabled.GetValue()
+                || s_enable_flip_chain.load())) {
             // Check if current present mode is NOT a flip model
 
             if (desc.back_buffer_count < 3) {
@@ -723,7 +707,8 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
             oss << "Back Buffers: " << prev_back_buffer_count << " -> " << desc.back_buffer_count;
 
             if (is_dxgi) {
-                oss << ", Device Creation Flags: 0x" << std::hex << prev_present_flags << " -> 0x" << desc.present_flags;
+                oss << ", Device Creation Flags: 0x" << std::hex << prev_present_flags << " -> 0x"
+                    << desc.present_flags;
             }
 
             oss << " BackBufferCount: " << prev_back_buffer_count << " -> " << desc.back_buffer_count;
@@ -781,7 +766,7 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
             }
 
             LogInfo(oss.str().c_str());
-            return modified; // return true if we modified the desc
+            return modified;  // return true if we modified the desc
         }
     }
 
@@ -789,7 +774,7 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
     return false;
 }
 
-bool OnCreateSwapchainCapture(reshade::api::device_api api, reshade::api::swapchain_desc &desc, void *hwnd) {
+bool OnCreateSwapchainCapture(reshade::api::device_api api, reshade::api::swapchain_desc& desc, void* hwnd) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     /*
     IDXGISwapChain* old_swapchain = global_dxgi_swapchain.exchange(nullptr, std::memory_order_release);
@@ -823,8 +808,7 @@ bool OnCreateSwapchainCapture(reshade::api::device_api api, reshade::api::swapch
     return res;
 }
 
-
-void OnDestroySwapchain(reshade::api::swapchain *swapchain, bool resize) {
+void OnDestroySwapchain(reshade::api::swapchain* swapchain, bool resize) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     if (swapchain == nullptr) {
         return;
@@ -833,7 +817,7 @@ void OnDestroySwapchain(reshade::api::swapchain *swapchain, bool resize) {
     // Add any cleanup logic here if needed
 }
 
-void OnInitSwapchain(reshade::api::swapchain *swapchain, bool resize) {
+void OnInitSwapchain(reshade::api::swapchain* swapchain, bool resize) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     if (swapchain == nullptr) {
         LogDebug("OnInitSwapchain: swapchain is null");
@@ -860,13 +844,14 @@ void OnInitSwapchain(reshade::api::swapchain *swapchain, bool resize) {
     if (first_runtime != nullptr && first_runtime->get_hwnd() != hwnd) {
         static int log_count = 0;
         if (log_count < 100) {
-            LogInfo("Invalid Runtime HWND OnPresentUpdateBefore - First ReShade runtime: 0x%p, hwnd: 0x%p", first_runtime, hwnd);
+            LogInfo("Invalid Runtime HWND OnPresentUpdateBefore - First ReShade runtime: 0x%p, hwnd: 0x%p",
+                    first_runtime, hwnd);
             log_count++;
         }
         return;
     }
     // how to check
-    //hookToSwapChain(swapchain);
+    // hookToSwapChain(swapchain);
 
     // Capture the render thread ID when swapchain is created
     // This is called on the thread that creates the swapchain, which is typically the render thread
@@ -889,7 +874,7 @@ LONGLONG TimerPresentPacingDelayStart() {
         // Calculate frame time from the most recent performance sample
         const uint32_t count = g_perf_ring.GetCount();
         if (count > 0) {
-            const PerfSample &last_sample = g_perf_ring.GetSample(0);
+            const PerfSample& last_sample = g_perf_ring.GetSample(0);
             if (last_sample.dt > 0.0f) {
                 // Convert FPS to frame time in milliseconds, then to nanoseconds
                 float frame_time_ms = 1000.0f * last_sample.dt;
@@ -968,8 +953,9 @@ void OnPresentUpdateAfter2(void* native_device, DeviceTypeDC device_type, bool f
         }
     }
 
-    LONGLONG g_present_duration_new_ns = (now_ns - g_present_start_time_ns.load()); // Convert QPC ticks to seconds (QPC
-                                                                                     // frequency is typically 10MHz)
+    LONGLONG g_present_duration_new_ns =
+        (now_ns - g_present_start_time_ns.load());  // Convert QPC ticks to seconds (QPC
+                                                    // frequency is typically 10MHz)
     g_present_duration_ns.store(UpdateRollingAverage(g_present_duration_new_ns, g_present_duration_ns.load()));
 
     // GPU completion measurement (non-blocking check)
@@ -978,7 +964,7 @@ void OnPresentUpdateAfter2(void* native_device, DeviceTypeDC device_type, bool f
 
     // Mark Present end for latent sync limiter timing
     if (dxgi::latent_sync::g_latentSyncManager) {
-        auto &latent = dxgi::latent_sync::g_latentSyncManager->GetLatentLimiter();
+        auto& latent = dxgi::latent_sync::g_latentSyncManager->GetLatentLimiter();
         latent.OnPresentEnd();
     }
     auto start_ns = TimerPresentPacingDelayStart();
@@ -991,15 +977,14 @@ void OnPresentUpdateAfter2(void* native_device, DeviceTypeDC device_type, bool f
     // g_last_swapchain_ptr_unsafe from background thread)
     // NVIDIA Reflex: SIMULATION_END marker (minimal) and Sleep
     // Optionally delay enabling Reflex for the first N frames
-    const bool delay_first_500_frames =
-        settings::g_developerTabSettings.reflex_delay_first_500_frames.GetValue();
+    const bool delay_first_500_frames = settings::g_developerTabSettings.reflex_delay_first_500_frames.GetValue();
     const uint64_t current_frame_id = g_global_frame_id.load();
 
     // Enable Reflex if:
     // 1. Developer tab Reflex is enabled, OR
     // 2. OnPresentSync mode is selected AND onpresent_sync_enable_reflex is enabled
-    bool should_enable_reflex = settings::g_developerTabSettings.reflex_enable.GetValue() ||
-                                 (s_fps_limiter_mode.load() == FpsLimiterMode::kOnPresentSync);
+    bool should_enable_reflex = settings::g_developerTabSettings.reflex_enable.GetValue()
+                                || (s_fps_limiter_mode.load() == FpsLimiterMode::kOnPresentSync);
     if (delay_first_500_frames && current_frame_id < 500) {
         should_enable_reflex = false;
     }
@@ -1011,7 +996,7 @@ void OnPresentUpdateAfter2(void* native_device, DeviceTypeDC device_type, bool f
             // toggles
             float target_fps = GetTargetFps();
             if (s_fps_limiter_mode.load() == FpsLimiterMode::kOnPresentSync) {
-                if ( settings::g_mainTabSettings.onpresent_sync_enable_reflex.GetValue()) {
+                if (settings::g_mainTabSettings.onpresent_sync_enable_reflex.GetValue()) {
                     target_fps *= 1.005f;
                 } else {
                     target_fps = 0.0f;
@@ -1019,8 +1004,10 @@ void OnPresentUpdateAfter2(void* native_device, DeviceTypeDC device_type, bool f
             }
             g_latencyManager->ApplySleepMode(settings::g_developerTabSettings.reflex_low_latency.GetValue(),
                                              settings::g_developerTabSettings.reflex_boost.GetValue(),
-                                             settings::g_developerTabSettings.reflex_use_markers.GetValue(), target_fps);
-            if (settings::g_developerTabSettings.reflex_enable_sleep.GetValue() && s_fps_limiter_mode.load() == FpsLimiterMode::kReflex) {
+                                             settings::g_developerTabSettings.reflex_use_markers.GetValue(),
+                                             target_fps);
+            if (settings::g_developerTabSettings.reflex_enable_sleep.GetValue()
+                && s_fps_limiter_mode.load() == FpsLimiterMode::kReflex) {
                 g_latencyManager->Sleep();
             }
         }
@@ -1032,7 +1019,6 @@ void OnPresentUpdateAfter2(void* native_device, DeviceTypeDC device_type, bool f
     }
 
     g_global_frame_id.fetch_add(1);
-
 
     if (s_reflex_enable_current_frame.load()) {
         if (settings::g_developerTabSettings.reflex_generate_markers.GetValue()) {
@@ -1086,49 +1072,49 @@ void HandleFpsLimiter(bool from_present_detour, bool from_wrapper = false) {
 
         // Call FPS Limiter on EVERY frame (not throttled)
         switch (s_fps_limiter_mode.load()) {
-        case FpsLimiterMode::kDisabled: {
-            // No FPS limiting - do nothing
-            break;
-        }
-        case FpsLimiterMode::kReflex: {
-            if (!s_reflex_auto_configure.load()) {
-                s_reflex_auto_configure.store(true);
+            case FpsLimiterMode::kDisabled: {
+                // No FPS limiting - do nothing
+                break;
             }
-            // Reflex mode - auto-configuration is handled when mode is selected
-            // Reflex manages frame rate limiting internally
-            break;
-        }
-        case FpsLimiterMode::kOnPresentSync: {
-            // Use FPS limiter manager for OnPresent Frame Synchronizer mode
-            if (dxgi::fps_limiter::g_customFpsLimiter) {
-                auto &limiter = dxgi::fps_limiter::g_customFpsLimiter;
-                if (target_fps > 0.0f) {
-                    if (settings::g_mainTabSettings.onpresent_sync_enable_reflex.GetValue()) {
-                        target_fps *= 0.995f; // Subtract 0.5%
+            case FpsLimiterMode::kReflex: {
+                if (!s_reflex_auto_configure.load()) {
+                    s_reflex_auto_configure.store(true);
+                }
+                // Reflex mode - auto-configuration is handled when mode is selected
+                // Reflex manages frame rate limiting internally
+                break;
+            }
+            case FpsLimiterMode::kOnPresentSync: {
+                // Use FPS limiter manager for OnPresent Frame Synchronizer mode
+                if (dxgi::fps_limiter::g_customFpsLimiter) {
+                    auto& limiter = dxgi::fps_limiter::g_customFpsLimiter;
+                    if (target_fps > 0.0f) {
+                        if (settings::g_mainTabSettings.onpresent_sync_enable_reflex.GetValue()) {
+                            target_fps *= 0.995f;  // Subtract 0.5%
+                        }
+                        limiter->LimitFrameRate(target_fps);
                     }
-                    limiter->LimitFrameRate(target_fps);
                 }
-            }
-            if (settings::g_mainTabSettings.onpresent_sync_enable_reflex.GetValue()) {
-                s_reflex_auto_configure.store(true);
-            }
-            break;
-        }
-        case FpsLimiterMode::kLatentSync: {
-            // Use latent sync manager for VBlank Scanline Sync mode
-            if (dxgi::latent_sync::g_latentSyncManager) {
-                auto &latent = dxgi::latent_sync::g_latentSyncManager->GetLatentLimiter();
-                if (target_fps > 0.0f) {
-                    latent.LimitFrameRate();
+                if (settings::g_mainTabSettings.onpresent_sync_enable_reflex.GetValue()) {
+                    s_reflex_auto_configure.store(true);
                 }
+                break;
             }
-            break;
-        }
-        case FpsLimiterMode::kNonReflexLowLatency: {
-            // Non-Reflex Low Latency Mode not implemented yet - treat as disabled
-            LogInfo("FPS Limiter: Non-Reflex Low Latency Mode - Not implemented yet");
-            break;
-        }
+            case FpsLimiterMode::kLatentSync: {
+                // Use latent sync manager for VBlank Scanline Sync mode
+                if (dxgi::latent_sync::g_latentSyncManager) {
+                    auto& latent = dxgi::latent_sync::g_latentSyncManager->GetLatentLimiter();
+                    if (target_fps > 0.0f) {
+                        latent.LimitFrameRate();
+                    }
+                }
+                break;
+            }
+            case FpsLimiterMode::kNonReflexLowLatency: {
+                // Non-Reflex Low Latency Mode not implemented yet - treat as disabled
+                LogInfo("FPS Limiter: Non-Reflex Low Latency Mode - Not implemented yet");
+                break;
+            }
         }
     }
 
@@ -1142,7 +1128,7 @@ void HandleFpsLimiter(bool from_present_detour, bool from_wrapper = false) {
 }
 
 // Helper function to automatically set color space based on format
-void AutoSetColorSpace(reshade::api::swapchain *swapchain) {
+void AutoSetColorSpace(reshade::api::swapchain* swapchain) {
     if (!s_auto_colorspace.load()) {
         return;
     }
@@ -1162,20 +1148,20 @@ void AutoSetColorSpace(reshade::api::swapchain *swapchain) {
     std::string color_space_name;
 
     if (format == reshade::api::format::r10g10b10a2_unorm) {
-        color_space = DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020; // HDR10
+        color_space = DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020;  // HDR10
         reshade_color_space = reshade::api::color_space::hdr10_st2084;
         color_space_name = "HDR10 (ST2084)";
     } else if (format == reshade::api::format::r16g16b16a16_float) {
-        color_space = DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709; // scRGB
+        color_space = DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709;  // scRGB
         reshade_color_space = reshade::api::color_space::extended_srgb_linear;
         color_space_name = "scRGB (Linear)";
     } else if (format == reshade::api::format::r8g8b8a8_unorm) {
-        color_space = DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709; // sRGB
+        color_space = DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;  // sRGB
         reshade_color_space = reshade::api::color_space::srgb_nonlinear;
         color_space_name = "sRGB (Non-linear)";
     } else {
         LogError("AutoSetColorSpace: Unsupported format %d", static_cast<int>(format));
-        return; // Unsupported format
+        return;  // Unsupported format
     }
 
     auto* unknown = reinterpret_cast<IUnknown*>(swapchain->get_native());
@@ -1219,9 +1205,9 @@ void AutoSetColorSpace(reshade::api::swapchain *swapchain) {
     }
 }
 // Update composition state after presents (required for valid stats)
-void OnPresentUpdateBefore(reshade::api::command_queue * command_queue, reshade::api::swapchain *swapchain,
-                           const reshade::api::rect * /*source_rect*/, const reshade::api::rect * /*dest_rect*/,
-                           uint32_t /*dirty_rect_count*/, const reshade::api::rect * /*dirty_rects*/) {
+void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::api::swapchain* swapchain,
+                           const reshade::api::rect* /*source_rect*/, const reshade::api::rect* /*dest_rect*/,
+                           uint32_t /*dirty_rect_count*/, const reshade::api::rect* /*dirty_rects*/) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     if (swapchain == nullptr) {
         return;
@@ -1236,7 +1222,8 @@ void OnPresentUpdateBefore(reshade::api::command_queue * command_queue, reshade:
     if (first_runtime != nullptr && first_runtime->get_hwnd() != hwnd) {
         static int log_count = 0;
         if (log_count < 100) {
-            LogInfo("Invalid Runtime HWND OnPresentUpdateBefore - First ReShade runtime: 0x%p, hwnd: 0x%p", first_runtime, hwnd);
+            LogInfo("Invalid Runtime HWND OnPresentUpdateBefore - First ReShade runtime: 0x%p, hwnd: 0x%p",
+                    first_runtime, hwnd);
             log_count++;
         }
         return;
@@ -1250,21 +1237,19 @@ void OnPresentUpdateBefore(reshade::api::command_queue * command_queue, reshade:
     auto api = swapchain->get_device()->get_api();
 
     if (api == reshade::api::device_api::d3d12) {
-        auto *id3d12device   = reinterpret_cast<ID3D12Device *>(swapchain->get_native());
+        auto* id3d12device = reinterpret_cast<ID3D12Device*>(swapchain->get_native());
         Microsoft::WRL::ComPtr<IDXGISwapChain> dxgi_swapchain{};
         if (id3d12device != nullptr && SUCCEEDED(id3d12device->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain)))) {
             display_commanderhooks::dxgi::RecordPresentUpdateSwapchain(dxgi_swapchain.Get());
         }
-    }
-    else if (api == reshade::api::device_api::d3d11) {
-        auto *id3d11device   = reinterpret_cast<ID3D11Device *>(swapchain->get_native());
+    } else if (api == reshade::api::device_api::d3d11) {
+        auto* id3d11device = reinterpret_cast<ID3D11Device*>(swapchain->get_native());
         Microsoft::WRL::ComPtr<IDXGISwapChain> dxgi_swapchain{};
         if (id3d11device != nullptr && SUCCEEDED(id3d11device->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain)))) {
             display_commanderhooks::dxgi::RecordPresentUpdateSwapchain(dxgi_swapchain.Get());
         }
-    }
-    else if (api == reshade::api::device_api::d3d10) {
-        auto *id3d10device   = reinterpret_cast<ID3D10Device *>(swapchain->get_native());
+    } else if (api == reshade::api::device_api::d3d10) {
+        auto* id3d10device = reinterpret_cast<ID3D10Device*>(swapchain->get_native());
         Microsoft::WRL::ComPtr<IDXGISwapChain> dxgi_swapchain{};
         if (id3d10device != nullptr && SUCCEEDED(id3d10device->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain)))) {
             display_commanderhooks::dxgi::RecordPresentUpdateSwapchain(dxgi_swapchain.Get());
@@ -1294,7 +1279,7 @@ void OnPresentUpdateBefore(reshade::api::command_queue * command_queue, reshade:
     // Enqueue GPU completion measurement BEFORE flush for accurate timing
     // This captures the full GPU workload including the flush operation
     if (api == reshade::api::device_api::d3d11) {
-        auto *id3d11device   = reinterpret_cast<ID3D11Device *>(swapchain->get_native());
+        auto* id3d11device = reinterpret_cast<ID3D11Device*>(swapchain->get_native());
         Microsoft::WRL::ComPtr<IDXGISwapChain> dxgi_swapchain{};
         if (id3d11device != nullptr && SUCCEEDED(id3d11device->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain)))) {
             EnqueueGPUCompletion(swapchain, dxgi_swapchain.Get(), command_queue);
@@ -1302,7 +1287,7 @@ void OnPresentUpdateBefore(reshade::api::command_queue * command_queue, reshade:
             display_commanderhooks::FlushCommandQueueFromSwapchain(dxgi_swapchain.Get(), DeviceTypeDC::DX11);
         }
     } else if (api == reshade::api::device_api::d3d12) {
-        auto *id3d12device   = reinterpret_cast<ID3D12Device *>(swapchain->get_native());
+        auto* id3d12device = reinterpret_cast<ID3D12Device*>(swapchain->get_native());
         Microsoft::WRL::ComPtr<IDXGISwapChain> dxgi_swapchain{};
         if (id3d12device != nullptr && SUCCEEDED(id3d12device->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain)))) {
             EnqueueGPUCompletion(swapchain, dxgi_swapchain.Get(), command_queue);
@@ -1316,8 +1301,8 @@ void OnPresentUpdateBefore(reshade::api::command_queue * command_queue, reshade:
     // Check for XInput screenshot trigger
     display_commander::widgets::xinput_widget::CheckAndHandleScreenshot();
 
-
-    auto should_block_mouse_and_keyboard_input = display_commanderhooks::ShouldBlockMouseInput() && display_commanderhooks::ShouldBlockKeyboardInput();
+    auto should_block_mouse_and_keyboard_input =
+        display_commanderhooks::ShouldBlockMouseInput() && display_commanderhooks::ShouldBlockKeyboardInput();
 
     // Check if app is in background and block input for next frame if so
     if (should_block_mouse_and_keyboard_input) {
@@ -1329,10 +1314,9 @@ void OnPresentUpdateBefore(reshade::api::command_queue * command_queue, reshade:
 
     // Note: DXGI composition state query moved to QueryDxgiCompositionState()
     // and is now called only from DXGI present hooks
-
 }
 
-bool OnBindPipeline(reshade::api::command_list *cmd_list, reshade::api::pipeline_stage stages,
+bool OnBindPipeline(reshade::api::command_list* cmd_list, reshade::api::pipeline_stage stages,
                     reshade::api::pipeline pipeline) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Increment event counter
@@ -1341,16 +1325,16 @@ bool OnBindPipeline(reshade::api::command_list *cmd_list, reshade::api::pipeline
 
     // Power saving: skip pipeline binding in background if enabled
     if (s_suppress_binding_in_background.load() && ShouldBackgroundSuppressOperation()) {
-        return true; // Skip the pipeline binding
+        return true;  // Skip the pipeline binding
     }
 
-    return false; // Don't skip the pipeline binding
+    return false;  // Don't skip the pipeline binding
 }
 
 // Present flags callback to strip DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING
-void OnPresentFlags2(uint32_t *present_flags, DeviceTypeDC api_type, bool from_present_detour, bool from_wrapper) {
-    if (perf_measurement::IsSuppressionEnabled() &&
-        perf_measurement::IsMetricSuppressed(perf_measurement::Metric::OnPresentFlags2)) {
+void OnPresentFlags2(uint32_t* present_flags, DeviceTypeDC api_type, bool from_present_detour, bool from_wrapper) {
+    if (perf_measurement::IsSuppressionEnabled()
+        && perf_measurement::IsMetricSuppressed(perf_measurement::Metric::OnPresentFlags2)) {
         return;
     }
 
@@ -1360,8 +1344,7 @@ void OnPresentFlags2(uint32_t *present_flags, DeviceTypeDC api_type, bool from_p
     g_reshade_event_counters[RESHADE_EVENT_PRESENT_FLAGS].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
-    if (api_type == DeviceTypeDC::DX11 || api_type == DeviceTypeDC::DX12 || api_type == DeviceTypeDC::DX10)
-    {
+    if (api_type == DeviceTypeDC::DX11 || api_type == DeviceTypeDC::DX12 || api_type == DeviceTypeDC::DX10) {
         // Always strip DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING flag
         if (s_prevent_tearing.load() && *present_flags & DXGI_PRESENT_ALLOW_TEARING) {
             *present_flags &= ~DXGI_PRESENT_ALLOW_TEARING;
@@ -1369,13 +1352,13 @@ void OnPresentFlags2(uint32_t *present_flags, DeviceTypeDC api_type, bool from_p
             // Log the flag removal for debugging
             std::ostringstream oss;
             oss << "Device Creation Flags callback: Stripped "
-                "DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING, new flags: 0x"
+                   "DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING, new flags: 0x"
                 << std::hex << *present_flags;
             LogInfo(oss.str().c_str());
         }
         // Don't block presents if continue rendering is enabled
-        if (s_no_present_in_background.load() && g_app_in_background.load(std::memory_order_acquire) &&
-            !s_continue_rendering.load()) {
+        if (s_no_present_in_background.load() && g_app_in_background.load(std::memory_order_acquire)
+            && !s_continue_rendering.load()) {
             *present_flags = DXGI_PRESENT_DO_NOT_SEQUENCE;
         }
     }
@@ -1391,10 +1374,9 @@ void OnPresentFlags2(uint32_t *present_flags, DeviceTypeDC api_type, bool from_p
     }
 }
 
-
 // Resource creation event handler to upgrade buffer resolutions and texture
 // formats
-void OnDestroyResource(reshade::api::device *device, reshade::api::resource resource) {
+void OnDestroyResource(reshade::api::device* device, reshade::api::resource resource) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     if (device == nullptr) {
         return;
@@ -1403,18 +1385,18 @@ void OnDestroyResource(reshade::api::device *device, reshade::api::resource reso
     // Add any cleanup logic here if needed
 }
 
-bool OnCreateResource(reshade::api::device *device, reshade::api::resource_desc &desc,
-                      reshade::api::subresource_data * /*initial_data*/, reshade::api::resource_usage /*usage*/) {
+bool OnCreateResource(reshade::api::device* device, reshade::api::resource_desc& desc,
+                      reshade::api::subresource_data* /*initial_data*/, reshade::api::resource_usage /*usage*/) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     bool modified = false;
 
     // Only handle 2D textures
     if (desc.type != reshade::api::resource_type::texture_2d) {
-        return false; // No modification needed
+        return false;  // No modification needed
     }
 
     if (!is_target_resolution(desc.texture.width, desc.texture.height)) {
-        return false; // No modification needed
+        return false;  // No modification needed
     }
 
     // Handle buffer resolution upgrade if enabled
@@ -1436,25 +1418,23 @@ bool OnCreateResource(reshade::api::device *device, reshade::api::resource_desc 
 
     if (settings::g_experimentalTabSettings.texture_format_upgrade_enabled.GetValue()) {
         reshade::api::format original_format = desc.texture.format;
-        reshade::api::format target_format = reshade::api::format::r16g16b16a16_float; // RGB16A16
+        reshade::api::format target_format = reshade::api::format::r16g16b16a16_float;  // RGB16A16
 
         // Only upgrade certain formats to RGB16A16
         bool should_upgrade_format = false;
         switch (original_format) {
-        case reshade::api::format::r8g8b8a8_typeless:
-        case reshade::api::format::r8g8b8a8_unorm_srgb:
-        case reshade::api::format::r8g8b8a8_unorm:
-        case reshade::api::format::b8g8r8a8_unorm:
-        case reshade::api::format::r8g8b8a8_snorm:
-        case reshade::api::format::b8g8r8a8_typeless:
-        case reshade::api::format::r8g8b8a8_uint:
-        case reshade::api::format::r8g8b8a8_sint:
-            should_upgrade_format = true;
-            break;
-        default:
-            // Don't upgrade formats that are already high precision or special
-            // formats
-            break;
+            case reshade::api::format::r8g8b8a8_typeless:
+            case reshade::api::format::r8g8b8a8_unorm_srgb:
+            case reshade::api::format::r8g8b8a8_unorm:
+            case reshade::api::format::b8g8r8a8_unorm:
+            case reshade::api::format::r8g8b8a8_snorm:
+            case reshade::api::format::b8g8r8a8_typeless:
+            case reshade::api::format::r8g8b8a8_uint:
+            case reshade::api::format::r8g8b8a8_sint:       should_upgrade_format = true; break;
+            default:
+                // Don't upgrade formats that are already high precision or special
+                // formats
+                break;
         }
 
         if (should_upgrade_format && original_format != target_format) {
@@ -1470,7 +1450,7 @@ bool OnCreateResource(reshade::api::device *device, reshade::api::resource_desc 
 }
 
 // Sampler creation event handler to override mipmap bias and anisotropic filtering
-bool OnCreateSampler(reshade::api::device *device, reshade::api::sampler_desc &desc) {
+bool OnCreateSampler(reshade::api::device* device, reshade::api::sampler_desc& desc) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     if (device == nullptr) {
         return false;
@@ -1519,9 +1499,7 @@ bool OnCreateSampler(reshade::api::device *device, reshade::api::sampler_desc &d
         case reshade::api::filter_mode::compare_anisotropic:
             g_sampler_filter_mode_counters[SAMPLER_FILTER_COMPARISON_ANISOTROPIC].fetch_add(1);
             break;
-        default:
-            g_sampler_filter_mode_counters[SAMPLER_FILTER_OTHER].fetch_add(1);
-            break;
+        default: g_sampler_filter_mode_counters[SAMPLER_FILTER_OTHER].fetch_add(1); break;
     }
 
     // Track original address mode (BEFORE overrides) - use U coordinate as representative
@@ -1542,21 +1520,20 @@ bool OnCreateSampler(reshade::api::device *device, reshade::api::sampler_desc &d
         case reshade::api::texture_address_mode::mirror_once:
             g_sampler_address_mode_counters[SAMPLER_ADDRESS_MIRROR_ONCE].fetch_add(1);
             break;
-        default:
-            break;
+        default: break;
     }
 
     // Track original anisotropy level (BEFORE overrides) - only for anisotropic filters
     float original_max_anisotropy = desc.max_anisotropy;
-    if (original_filter == reshade::api::filter_mode::anisotropic ||
-        original_filter == reshade::api::filter_mode::compare_anisotropic ||
-        original_filter == reshade::api::filter_mode::min_mag_anisotropic_mip_point ||
-        original_filter == reshade::api::filter_mode::compare_min_mag_anisotropic_mip_point) {
+    if (original_filter == reshade::api::filter_mode::anisotropic
+        || original_filter == reshade::api::filter_mode::compare_anisotropic
+        || original_filter == reshade::api::filter_mode::min_mag_anisotropic_mip_point
+        || original_filter == reshade::api::filter_mode::compare_min_mag_anisotropic_mip_point) {
         // Clamp to valid range (1-16) and convert to index (level 1 = index 0, level 16 = index 15)
         int anisotropy_level = static_cast<int>(std::round(original_max_anisotropy));
         if (anisotropy_level < 1) anisotropy_level = 1;
         if (anisotropy_level > 16) anisotropy_level = 16;
-        int index = anisotropy_level - 1; // Convert to 0-based index
+        int index = anisotropy_level - 1;  // Convert to 0-based index
         if (index >= 0 && index < MAX_ANISOTROPY_LEVELS) {
             g_sampler_anisotropy_level_counters[index].fetch_add(1);
         }
@@ -1578,7 +1555,7 @@ bool OnCreateSampler(reshade::api::device *device, reshade::api::sampler_desc &d
         // Determine target max_anisotropy: use main tab setting if set, otherwise default to 16
         int target_anisotropy = settings::g_mainTabSettings.max_anisotropy.GetValue();
         if (target_anisotropy <= 0) {
-            target_anisotropy = 16; // Default to 16x if not set
+            target_anisotropy = 16;  // Default to 16x if not set
         }
         float target_anisotropy_float = static_cast<float>(target_anisotropy);
 
@@ -1619,8 +1596,7 @@ bool OnCreateSampler(reshade::api::device *device, reshade::api::sampler_desc &d
                 }
                 break;
 
-            default:
-                break;
+            default: break;
         }
     }
 
@@ -1634,8 +1610,7 @@ bool OnCreateSampler(reshade::api::device *device, reshade::api::sampler_desc &d
                 desc.max_anisotropy = static_cast<float>(settings::g_mainTabSettings.max_anisotropy.GetValue());
                 modified = true;
                 break;
-            default:
-                break;
+            default: break;
         }
     }
 
@@ -1644,49 +1619,48 @@ bool OnCreateSampler(reshade::api::device *device, reshade::api::sampler_desc &d
 
 // Resource view creation event handler to upgrade render target views for
 // buffer resolution and texture format upgrades
-bool OnCreateResourceView(reshade::api::device *device, reshade::api::resource resource,
-                          reshade::api::resource_usage usage_type, reshade::api::resource_view_desc &desc) {
+bool OnCreateResourceView(reshade::api::device* device, reshade::api::resource resource,
+                          reshade::api::resource_usage usage_type, reshade::api::resource_view_desc& desc) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     bool modified = false;
 
-    if (!device)
-        return false;
+    if (!device) return false;
 
     reshade::api::resource_desc resource_desc = device->get_resource_desc(resource);
 
     if (resource_desc.type != reshade::api::resource_type::texture_2d) {
-        return false; // No modification needed
+        return false;  // No modification needed
     }
 
     if (!is_target_resolution(resource_desc.texture.width, resource_desc.texture.height)) {
-        return false; // No modification needed
+        return false;  // No modification needed
     }
 
     if (settings::g_experimentalTabSettings.texture_format_upgrade_enabled.GetValue()) {
         reshade::api::format resource_format = resource_desc.texture.format;
-        reshade::api::format target_format = reshade::api::format::r16g16b16a16_float; // RGB16A16
+        reshade::api::format target_format = reshade::api::format::r16g16b16a16_float;  // RGB16A16
 
         if (resource_format == target_format) {
             reshade::api::format original_view_format = desc.format;
 
             switch (original_view_format) {
-            case reshade::api::format::r8g8b8a8_typeless:
-            case reshade::api::format::r8g8b8a8_unorm_srgb:
-            case reshade::api::format::r8g8b8a8_unorm:
-            case reshade::api::format::b8g8r8a8_unorm:
-            case reshade::api::format::r8g8b8a8_snorm:
-            case reshade::api::format::r8g8b8a8_uint:
-            case reshade::api::format::r8g8b8a8_sint:
-                desc.format = target_format;
+                case reshade::api::format::r8g8b8a8_typeless:
+                case reshade::api::format::r8g8b8a8_unorm_srgb:
+                case reshade::api::format::r8g8b8a8_unorm:
+                case reshade::api::format::b8g8r8a8_unorm:
+                case reshade::api::format::r8g8b8a8_snorm:
+                case reshade::api::format::r8g8b8a8_uint:
+                case reshade::api::format::r8g8b8a8_sint:
+                    desc.format = target_format;
 
-                LogInfo("ZZZ Resource view format upgrade: %d -> %d (RGB16A16)", static_cast<int>(original_view_format),
-                        static_cast<int>(target_format));
+                    LogInfo("ZZZ Resource view format upgrade: %d -> %d (RGB16A16)",
+                            static_cast<int>(original_view_format), static_cast<int>(target_format));
 
-                return true;
-            default:
-                // Don't upgrade view formats that are already high precision or special
-                // formats
-                break;
+                    return true;
+                default:
+                    // Don't upgrade view formats that are already high precision or special
+                    // formats
+                    break;
             }
         }
     }
@@ -1695,34 +1669,32 @@ bool OnCreateResourceView(reshade::api::device *device, reshade::api::resource r
 }
 
 // Viewport event handler to scale viewports for buffer resolution upgrade
-void OnSetViewport(reshade::api::command_list *cmd_list, uint32_t first, uint32_t count,
-                   const reshade::api::viewport *viewports) {
+void OnSetViewport(reshade::api::command_list* cmd_list, uint32_t first, uint32_t count,
+                   const reshade::api::viewport* viewports) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Only handle viewport scaling if buffer resolution upgrade is enabled
     if (!settings::g_experimentalTabSettings.buffer_resolution_upgrade_enabled.GetValue()) {
-        return; // No modification needed
+        return;  // No modification needed
     }
 
     // Get the current backbuffer to determine if we need to scale
-    auto *device = cmd_list->get_device();
-    if (!device)
-        return;
+    auto* device = cmd_list->get_device();
+    if (!device) return;
 
     // Create scaled viewports only for matching dimensions
     std::vector<reshade::api::viewport> scaled_viewports(viewports, viewports + count);
-    for (auto &viewport : scaled_viewports) {
-
+    for (auto& viewport : scaled_viewports) {
         // Only scale viewports that match the source resolution
         if (is_target_resolution(viewport.width, viewport.height)) {
             double scale_width = target_width.load() / viewport.width;
             double scale_height = target_height.load() / viewport.height;
             viewport = {
-                static_cast<float>(viewport.x * scale_width),       // x
-                static_cast<float>(viewport.y * scale_height),      // y
-                static_cast<float>(viewport.width * scale_width),   // width (1280 -> 1280*scale)
-                static_cast<float>(viewport.height * scale_height), // height (720 -> 720*scale)
-                viewport.min_depth,                                 // min_depth
-                viewport.max_depth                                  // max_depth
+                static_cast<float>(viewport.x * scale_width),        // x
+                static_cast<float>(viewport.y * scale_height),       // y
+                static_cast<float>(viewport.width * scale_width),    // width (1280 -> 1280*scale)
+                static_cast<float>(viewport.height * scale_height),  // height (720 -> 720*scale)
+                viewport.min_depth,                                  // min_depth
+                viewport.max_depth                                   // max_depth
             };
             LogInfo("ZZZ Viewport scaling: %d,%d %dx%d -> %d,%d %dx%d", viewport.x, viewport.y, viewport.width,
                     viewport.height, viewport.x, viewport.y, viewport.width, viewport.height);
@@ -1735,12 +1707,12 @@ void OnSetViewport(reshade::api::command_list *cmd_list, uint32_t first, uint32_
 
 // Scissor rectangle event handler to scale scissor rectangles for buffer
 // resolution upgrade
-void OnSetScissorRects(reshade::api::command_list *cmd_list, uint32_t first, uint32_t count,
-                       const reshade::api::rect *rects) {
+void OnSetScissorRects(reshade::api::command_list* cmd_list, uint32_t first, uint32_t count,
+                       const reshade::api::rect* rects) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Only handle scissor scaling if buffer resolution upgrade is enabled
     if (!settings::g_experimentalTabSettings.buffer_resolution_upgrade_enabled.GetValue()) {
-        return; // No modification needed
+        return;  // No modification needed
     }
 
     int mode = settings::g_experimentalTabSettings.buffer_resolution_upgrade_mode.GetValue();
@@ -1749,16 +1721,16 @@ void OnSetScissorRects(reshade::api::command_list *cmd_list, uint32_t first, uin
     // Create scaled scissor rectangles only for matching dimensions
     std::vector<reshade::api::rect> scaled_rects(rects, rects + count);
 
-    for (auto &rect : scaled_rects) {
+    for (auto& rect : scaled_rects) {
         // Only scale scissor rectangles that match the source resolution
         if (is_target_resolution(rect.right - rect.left, rect.bottom - rect.top)) {
             double scale_width = target_width.load() / (rect.right - rect.left);
             double scale_height = target_height.load() / (rect.bottom - rect.top);
             rect = {
-                static_cast<int32_t>(round(rect.left * scale_width)),   // left
-                static_cast<int32_t>(round(rect.top * scale_height)),   // top
-                static_cast<int32_t>(round(rect.right * scale_width)),  // right
-                static_cast<int32_t>(round(rect.bottom * scale_height)) // bottom
+                static_cast<int32_t>(round(rect.left * scale_width)),    // left
+                static_cast<int32_t>(round(rect.top * scale_height)),    // top
+                static_cast<int32_t>(round(rect.right * scale_width)),   // right
+                static_cast<int32_t>(round(rect.bottom * scale_height))  // bottom
             };
 
             LogInfo("ZZZ Scissor scaling: %d,%d %dx%d -> %d,%d %dx%d", rect.left, rect.top, rect.right - rect.left,
@@ -1770,4 +1742,5 @@ void OnSetScissorRects(reshade::api::command_list *cmd_list, uint32_t first, uin
     cmd_list->bind_scissor_rects(first, count, scaled_rects.data());
 }
 
-// OnSetFullscreenState function removed - fullscreen prevention now handled directly in IDXGISwapChain_SetFullscreenState_Detour
+// OnSetFullscreenState function removed - fullscreen prevention now handled directly in
+// IDXGISwapChain_SetFullscreenState_Detour

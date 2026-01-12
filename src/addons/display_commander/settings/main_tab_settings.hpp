@@ -1,12 +1,11 @@
 #pragma once
 
-#include "../ui/new_ui/settings_wrapper.hpp"
 #include "../performance_types.hpp"
+#include "../ui/new_ui/settings_wrapper.hpp"
 #include "globals.hpp"
 
 #include <atomic>
 #include <vector>
-
 
 // Forward declarations for atomic variables used by main tab settings
 extern std::atomic<bool> s_background_feature_enabled;
@@ -34,7 +33,7 @@ namespace settings {
 
 // Settings manager for the main tab
 class MainTabSettings {
-  public:
+   public:
     MainTabSettings();
     ~MainTabSettings() = default;
 
@@ -42,7 +41,7 @@ class MainTabSettings {
     void LoadSettings();
 
     // Get all settings for loading
-    std::vector<ui::new_ui::SettingBase *> GetAllSettings();
+    std::vector<ui::new_ui::SettingBase*> GetAllSettings();
 
     // Display Settings
     ui::new_ui::ComboSettingEnumRef<WindowMode> window_mode;
@@ -149,7 +148,7 @@ class MainTabSettings {
     ui::new_ui::BoolSetting show_hook_stats_tab;
     ui::new_ui::BoolSetting show_streamline_tab;
     ui::new_ui::BoolSetting show_experimental_tab;
-    ui::new_ui::BoolSetting show_addons_tab;
+    ui::new_ui::BoolSetting show_reshade_tab;
 
     // Ansel Control
     ui::new_ui::BoolSetting skip_ansel_loading;
@@ -163,8 +162,8 @@ class MainTabSettings {
     ui::new_ui::IntSetting max_anisotropy;
     ui::new_ui::FloatSetting force_mipmap_lod_bias;
 
-  private:
-    std::vector<ui::new_ui::SettingBase *> all_settings_;
+   private:
+    std::vector<ui::new_ui::SettingBase*> all_settings_;
 };
 
 // Global instance
@@ -177,4 +176,4 @@ void UpdateTargetDisplayFromGameWindow();
 void UpdateFpsLimitMaximums();
 void UpdateCpuCoresMaximum();
 
-} // namespace settings
+}  // namespace settings

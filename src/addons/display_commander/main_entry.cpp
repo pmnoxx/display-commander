@@ -25,6 +25,7 @@
 #include "settings/experimental_tab_settings.hpp"
 #include "settings/hook_suppression_settings.hpp"
 #include "settings/main_tab_settings.hpp"
+#include "settings/reshade_tab_settings.hpp"
 #include "swapchain_events.hpp"
 #include "swapchain_events_power_saving.hpp"
 #include "ui/monitor_settings/monitor_settings.hpp"
@@ -1172,9 +1173,11 @@ void OverrideReShadeSettings() {
     reshade::set_config_value(nullptr, "GENERAL", "CheckForUpdates", 0);
     LogInfo("ReShade settings override - CheckForUpdates set to 0 (disabled)");
 
-    // Disable clock display
-    reshade::set_config_value(nullptr, "OVERLAY", "ShowClock", 0);
-    LogInfo("ReShade settings override - ShowClock set to 0 (disabled)");
+    // Disable clock display (if setting is enabled)
+    if (settings::g_reshadeTabSettings.suppress_reshade_clock.GetValue()) {
+        reshade::set_config_value(nullptr, "OVERLAY", "ShowClock", 0);
+        LogInfo("ReShade settings override - ShowClock set to 0 (disabled)");
+    }
 
     // Check if we've already set LoadFromDllMain to 0 at least once
     bool load_from_dll_main_set_once = false;

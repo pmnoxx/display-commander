@@ -1468,7 +1468,7 @@ bool DetectMultipleDisplayCommanderVersions() {
     if (dc_module_count > 0) {
         OutputDebugStringA(
             "[DisplayCommander] WARNING: Multiple Display Commander versions detected! Refusing to load.\n");
-        return true;  // Multiple versions detected - refuse to load
+        // return true;  // Multiple versions detected - refuse to load
     }
 
     OutputDebugStringA("[DisplayCommander] Single Display Commander instance detected - no conflicts.\n");
@@ -1952,7 +1952,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
                     if (_wcsicmp(module_name.c_str(), proxy.name) == 0) {
                         entry_point = proxy.entry_point;
                         OutputDebugStringA(proxy.debug_msg);
-                        LogInfoDirect("%s", proxy.log_msg);
+                        // LogInfoDirect("%s", proxy.log_msg);
                         found_proxy = true;
                         break;
                     }
@@ -1975,7 +1975,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
                     } else {
                         OutputDebugStringA("[DisplayCommander] Entry point detected: addon\n");
                     }
-                    LogInfoDirect("Display Commander loaded as ReShade addon (module: %ws)", module_name.c_str());
+                    // LogInfoDirect("Display Commander loaded as ReShade addon (module: %ws)", module_name.c_str());
                 }
             } else {
                 OutputDebugStringA("[DisplayCommander] Entry point detection: Failed to get module filename\n");

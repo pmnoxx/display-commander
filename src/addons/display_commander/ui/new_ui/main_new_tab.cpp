@@ -24,6 +24,7 @@
 #include "../../utils/logging.hpp"
 #include "../../utils/perf_measurement.hpp"
 #include "../../utils/overlay_window_detector.hpp"
+#include "../../utils/platform_api_detector.hpp"
 #include "../../widgets/resolution_widget/resolution_widget.hpp"
 #include "imgui.h"
 #include "settings_wrapper.hpp"
@@ -667,6 +668,37 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
                 ImGui::TextColored(ui::colors::TEXT_LABEL, "| Graphics API: %s", api_string.c_str());
             } else {
                 ImGui::TextColored(ui::colors::TEXT_LABEL, "| Graphics API: %s", GetDeviceApiString(api));
+            }
+        }
+
+        // Display detected platform APIs (Steam, Epic, GOG, etc.)
+        {
+            using namespace display_commander::utils;
+            static std::vector<PlatformAPI> cached_detected_apis;
+            static DWORD last_check_time = 0;
+            DWORD current_time = GetTickCount();
+
+            // Update cached list every 2 seconds to avoid performance impact
+            if (current_time - last_check_time > 2000) {
+                cached_detected_apis = GetDetectedPlatformAPIs();
+                last_check_time = current_time;
+            }
+
+            if (!cached_detected_apis.empty()) {
+                ImGui::SameLine();
+                ImGui::TextColored(ui::colors::TEXT_LABEL, "| Platform: ");
+                ImGui::SameLine();
+
+                // Display all detected platforms, comma-separated
+                for (size_t i = 0; i < cached_detected_apis.size(); ++i) {
+                    const char* api_name = GetPlatformAPIName(cached_detected_apis[i]);
+                    ImGui::TextColored(ui::colors::TEXT_HIGHLIGHT, "%s", api_name);
+                    if (i < cached_detected_apis.size() - 1) {
+                        ImGui::SameLine();
+                        ImGui::TextColored(ui::colors::TEXT_DIMMED, ", ");
+                        ImGui::SameLine();
+                    }
+                }
             }
         }
 

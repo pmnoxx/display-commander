@@ -11,6 +11,7 @@
 #include "swapchain_tab.hpp"
 #include "window_info_tab.hpp"
 #include "hotkeys_tab.hpp"
+#include "addons_tab.hpp"
 #include <reshade_imgui.hpp>
 #include <winbase.h>
 
@@ -80,6 +81,8 @@ void TabManager::Draw(reshade::api::effect_runtime* runtime) {
                 tab_enabled = settings::g_mainTabSettings.show_streamline_tab.GetValue();
             } else if (tab_id == "experimental") {
                 tab_enabled = settings::g_mainTabSettings.show_experimental_tab.GetValue();
+            } else if (tab_id == "addons") {
+                tab_enabled = settings::g_mainTabSettings.show_addons_tab.GetValue();
             }
 
             // Show tab if individual setting is enabled OR "Show All Tabs" is enabled
@@ -133,6 +136,8 @@ void TabManager::Draw(reshade::api::effect_runtime* runtime) {
                     tab_enabled = settings::g_mainTabSettings.show_streamline_tab.GetValue();
                 } else if (tab_id == "experimental") {
                     tab_enabled = settings::g_mainTabSettings.show_experimental_tab.GetValue();
+                } else if (tab_id == "addons") {
+                    tab_enabled = settings::g_mainTabSettings.show_addons_tab.GetValue();
                 }
 
                 // Show tab if individual setting is enabled OR "Show All Tabs" is enabled
@@ -167,6 +172,7 @@ void InitializeNewUI() {
     ui::new_ui::InitDeveloperNewTab();
     ui::new_ui::InitSwapchainTab();
     ui::new_ui::InitHotkeysTab();
+    ui::new_ui::InitAddonsTab();
 
     // Initialize XInput widget
     display_commander::widgets::xinput_widget::InitializeXInputWidget();
@@ -285,6 +291,17 @@ void InitializeNewUI() {
             LogError("Unknown error drawing experimental tab");
         }
     }, true); // Experimental tab is advanced
+
+    // Add addons tab
+    g_tab_manager.AddTab("Addons", "addons", [](reshade::api::effect_runtime* runtime) {
+        try {
+            ui::new_ui::DrawAddonsTab();
+        } catch (const std::exception &e) {
+            LogError("Error drawing addons tab: %s", e.what());
+        } catch (...) {
+            LogError("Unknown error drawing addons tab");
+        }
+    }, true); // Addons tab is advanced
 }
 
 // Draw the new UI

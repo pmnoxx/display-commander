@@ -149,6 +149,7 @@ class MainTabSettings {
     ui::new_ui::BoolSetting show_hook_stats_tab;
     ui::new_ui::BoolSetting show_streamline_tab;
     ui::new_ui::BoolSetting show_experimental_tab;
+    ui::new_ui::BoolSetting show_addons_tab;
 
     // Ansel Control
     ui::new_ui::BoolSetting skip_ansel_loading;
@@ -177,6 +178,3 @@ void UpdateFpsLimitMaximums();
 void UpdateCpuCoresMaximum();
 
 } // namespace settings
-
-
-

@@ -47,6 +47,7 @@
 #include <winver.h>
 #include <wrl/client.h>
 #include <algorithm>
+#include <cctype>
 #include <cstring>
 #include <reshade.hpp>
 #include <sstream>
@@ -1189,6 +1190,116 @@ void OverrideReShadeSettings() {
         LogInfo("ReShade settings override - LoadFromDllMainSetOnce flag saved to DisplayCommander config");
     } else {
         LogInfo("ReShade settings override - LoadFromDllMain already set to 0 previously, skipping");
+    }
+
+    // Add Display Commander ReShade paths to EffectSearchPaths and TextureSearchPaths
+    {
+        wchar_t documents_path[MAX_PATH];
+        if (SUCCEEDED(SHGetFolderPathW(nullptr, CSIDL_MYDOCUMENTS, nullptr, SHGFP_TYPE_CURRENT, documents_path))) {
+            std::filesystem::path documents_dir(documents_path);
+            std::filesystem::path dc_base_dir = documents_dir / L"Display Commander" / L"Reshade";
+            std::filesystem::path shaders_dir = dc_base_dir / L"Shaders";
+            std::filesystem::path textures_dir = dc_base_dir / L"Textures";
+
+            // Create directories if they don't exist
+            try {
+                std::error_code ec;
+                std::filesystem::create_directories(shaders_dir, ec);
+                if (ec) {
+                    LogWarn("Failed to create shaders directory: %ls (error: %s)", shaders_dir.c_str(),
+                            ec.message().c_str());
+                } else {
+                    LogInfo("Created/verified shaders directory: %ls", shaders_dir.c_str());
+                }
+
+                std::filesystem::create_directories(textures_dir, ec);
+                if (ec) {
+                    LogWarn("Failed to create textures directory: %ls (error: %s)", textures_dir.c_str(),
+                            ec.message().c_str());
+                } else {
+                    LogInfo("Created/verified textures directory: %ls", textures_dir.c_str());
+                }
+            } catch (const std::exception& e) {
+                LogWarn("Exception while creating directories: %s", e.what());
+            }
+
+            // Helper function to add path to search paths if not already present
+            auto addPathToSearchPaths = [](const char* section, const char* key,
+                                           const std::filesystem::path& path_to_add) -> bool {
+                char buffer[4096] = {0};
+                size_t buffer_size = sizeof(buffer);
+
+                // Read current paths
+                std::vector<std::string> existing_paths;
+                if (reshade::get_config_value(nullptr, section, key, buffer, &buffer_size)) {
+                    // Parse null-terminated string array
+                    const char* ptr = buffer;
+                    while (*ptr != '\0' && ptr < buffer + buffer_size) {
+                        std::string path(ptr);
+                        if (!path.empty()) {
+                            existing_paths.push_back(path);
+                        }
+                        ptr += path.length() + 1;
+                    }
+                }
+
+                // Convert path to string (use backslashes, add \** for recursive search)
+                std::string path_str = path_to_add.string();
+                path_str += "\\**";
+
+                // Helper to normalize path for comparison (remove \** suffix if present)
+                auto normalizeForComparison = [](const std::string& path) -> std::string {
+                    std::string normalized = path;
+                    // Remove trailing \** if present
+                    if (normalized.length() >= 3 && normalized.substr(normalized.length() - 3) == "\\**") {
+                        normalized = normalized.substr(0, normalized.length() - 3);
+                    }
+                    return normalized;
+                };
+
+                // Check if path already exists (case-insensitive comparison)
+                bool path_exists = false;
+                std::string normalized_path = normalizeForComparison(path_str);
+                for (const auto& existing_path : existing_paths) {
+                    std::string normalized_existing = normalizeForComparison(existing_path);
+                    // Case-insensitive comparison (check length first, then content)
+                    if (normalized_path.length() == normalized_existing.length()
+                        && std::equal(normalized_path.begin(), normalized_path.end(), normalized_existing.begin(),
+                                      [](char a, char b) { return std::tolower(a) == std::tolower(b); })) {
+                        path_exists = true;
+                        break;
+                    }
+                }
+
+                // Add path if it doesn't exist
+                if (!path_exists) {
+                    existing_paths.push_back(path_str);
+
+                    // Combine paths with null terminators
+                    std::string combined;
+                    for (const auto& path : existing_paths) {
+                        combined += path;
+                        combined += '\0';
+                    }
+
+                    // Write back to ReShade config (use array version for null-terminated strings)
+                    reshade::set_config_value(nullptr, section, key, combined.c_str(), combined.size());
+                    LogInfo("Added path to ReShade %s::%s: %s", section, key, path_str.c_str());
+                    return true;
+                } else {
+                    LogInfo("Path already exists in ReShade %s::%s: %s", section, key, normalized_path.c_str());
+                    return false;
+                }
+            };
+
+            // Add shaders path to EffectSearchPaths
+            addPathToSearchPaths("GENERAL", "EffectSearchPaths", shaders_dir);
+
+            // Add textures path to TextureSearchPaths
+            addPathToSearchPaths("GENERAL", "TextureSearchPaths", textures_dir);
+        } else {
+            LogWarn("Failed to get Documents folder path, skipping ReShade path configuration");
+        }
     }
 
     LogInfo("ReShade settings override completed successfully");

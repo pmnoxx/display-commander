@@ -84,6 +84,9 @@ bool DetectMultipleDisplayCommanderVersions();
 // Forward declaration for safemode function
 void HandleSafemode();
 
+// Forward declaration for loading addons from Plugins directory
+void LoadAddonsFromPluginsDirectory();
+
 static bool TryGetDxgiOutputDeviceNameFromLastSwapchain(wchar_t out_device_name[32]) {
     if (out_device_name == nullptr) return false;
 
@@ -1169,6 +1172,10 @@ void OverrideReShadeSettings() {
     reshade::set_config_value(nullptr, "GENERAL", "CheckForUpdates", 0);
     LogInfo("ReShade settings override - CheckForUpdates set to 0 (disabled)");
 
+    // Disable clock display
+    reshade::set_config_value(nullptr, "OVERLAY", "ShowClock", 0);
+    LogInfo("ReShade settings override - ShowClock set to 0 (disabled)");
+
     // Check if we've already set LoadFromDllMain to 0 at least once
     bool load_from_dll_main_set_once = false;
     display_commander::config::get_config_value("DisplayCommander", "LoadFromDllMainSetOnce",
@@ -1303,6 +1310,100 @@ void OverrideReShadeSettings() {
     }
 
     LogInfo("ReShade settings override completed successfully");
+}
+
+// ReShade loaded status (declared here so it's available to LoadAddonsFromPluginsDirectory)
+std::atomic<bool> g_reshade_loaded(false);
+
+// Function to load all .addon64/.addon32 files from Documents\Display Commander\Reshade\Addons
+void LoadAddonsFromPluginsDirectory() {
+    wchar_t documents_path[MAX_PATH];
+    if (FAILED(SHGetFolderPathW(nullptr, CSIDL_MYDOCUMENTS, nullptr, SHGFP_TYPE_CURRENT, documents_path))) {
+        LogWarn("Failed to get Documents folder path, skipping addon loading from Addons directory");
+        return;
+    }
+
+    std::filesystem::path documents_dir(documents_path);
+    std::filesystem::path addons_dir = documents_dir / L"Display Commander" / L"Reshade" / L"Addons";
+
+    // Create Addons directory if it doesn't exist
+    try {
+        std::error_code ec;
+        std::filesystem::create_directories(addons_dir, ec);
+        if (ec) {
+            LogWarn("Failed to create Addons directory: %ls (error: %s)", addons_dir.c_str(), ec.message().c_str());
+            return;
+        } else {
+            LogInfo("Created/verified Addons directory: %ls", addons_dir.c_str());
+        }
+    } catch (const std::exception& e) {
+        LogWarn("Exception while creating Addons directory: %s", e.what());
+        return;
+    }
+
+    // Check if ReShade is loaded before attempting to load addons
+    if (!g_reshade_loaded.load()) {
+        LogInfo("ReShade not loaded yet, skipping addon loading from Addons directory");
+        return;
+    }
+
+    // Iterate through all files in the Addons directory
+    try {
+        std::error_code ec;
+        int loaded_count = 0;
+        int failed_count = 0;
+
+        for (const auto& entry : std::filesystem::directory_iterator(
+                 addons_dir, std::filesystem::directory_options::skip_permission_denied, ec)) {
+            if (ec) {
+                LogWarn("Error accessing Addons directory: %s", ec.message().c_str());
+                continue;
+            }
+
+            if (!entry.is_regular_file()) {
+                continue;
+            }
+
+            const auto& path = entry.path();
+            const auto extension = path.extension();
+
+            // Check for .addon64 (64-bit) or .addon32 (32-bit) extensions
+            if (extension != L".addon64" && extension != L".addon32") {
+                continue;
+            }
+
+            // Only load architecture-appropriate addons
+#ifdef _WIN64
+            if (extension != L".addon64") {
+                continue;
+            }
+#else
+            if (extension != L".addon32") {
+                continue;
+            }
+#endif
+
+            LogInfo("Loading addon from Addons directory: %ls", path.c_str());
+
+            // Use LoadLibraryExW with search flags similar to ReShade's addon_manager
+            HMODULE module = LoadLibraryExW(path.c_str(), nullptr,
+                                            LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_DEFAULT_DIRS);
+            if (module == nullptr) {
+                DWORD error_code = GetLastError();
+                LogError("Failed to load addon from '%ls' (error: %lu)", path.c_str(), error_code);
+                failed_count++;
+            } else {
+                LogInfo("Successfully loaded addon from '%ls'", path.c_str());
+                loaded_count++;
+            }
+        }
+
+        if (loaded_count > 0 || failed_count > 0) {
+            LogInfo("Addon loading from Addons directory completed: %d loaded, %d failed", loaded_count, failed_count);
+        }
+    } catch (const std::exception& e) {
+        LogWarn("Exception while loading addons from Addons directory: %s", e.what());
+    }
 }
 
 // Function to detect multiple ReShade versions by scanning all modules
@@ -1930,8 +2031,6 @@ void DoInitializationWithoutHwnd(HMODULE h_module, DWORD fdw_reason) {
     OverrideReShadeSettings();
 }
 
-std::atomic<bool> g_reshade_loaded(false);
-
 // Named event name for injection tracking (shared across processes)
 // Defined here so it's available in DllMain
 constexpr const wchar_t* INJECTION_ACTIVE_EVENT_NAME = L"Local\\DisplayCommander_InjectionActive";
@@ -2259,6 +2358,9 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             // Register overlay early so it appears as a tab by default
             reshade::register_overlay("Display Commander", OnRegisterOverlayDisplayCommander);
             LogInfoDirect("Display Commander overlay registered");
+
+            // Load addons from Plugins directory
+            LoadAddonsFromPluginsDirectory();
 
             // Detect if we're loaded as a proxy DLL (dxgi.dll, d3d11.dll, d3d12.dll)
             // Similar to how ReShade detects this

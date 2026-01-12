@@ -9,6 +9,7 @@
 #include "settings/streamline_tab_settings.hpp"
 #include "settings/hotkeys_tab_settings.hpp"
 #include "settings/hook_suppression_settings.hpp"
+#include "settings/reshade_tab_settings.hpp"
 #include "utils.hpp"
 #include "utils/general_utils.hpp"
 #include "utils/logging.hpp"
@@ -414,6 +415,7 @@ SwapchainTabSettings g_swapchainTabSettings;
 StreamlineTabSettings g_streamlineTabSettings;
 HotkeysTabSettings g_hotkeysTabSettings;
 HookSuppressionSettings g_hook_suppression_settings;
+ReShadeTabSettings g_reshadeTabSettings;
 // Function to load all settings at startup
 void LoadAllSettingsAtStartup() {
     g_developerTabSettings.LoadAll();
@@ -423,6 +425,7 @@ void LoadAllSettingsAtStartup() {
     g_streamlineTabSettings.LoadAll();
     g_hotkeysTabSettings.LoadAll();
     g_hook_suppression_settings.LoadAll();
+    g_reshadeTabSettings.LoadAll();
     LogInfo("All settings loaded at startup");
 }
 

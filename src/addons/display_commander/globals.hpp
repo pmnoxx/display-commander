@@ -754,6 +754,7 @@ class SwapchainTabSettings;
 class StreamlineTabSettings;
 class HotkeysTabSettings;
 class HookSuppressionSettings;
+class ReShadeTabSettings;
 extern ExperimentalTabSettings g_experimentalTabSettings;
 extern DeveloperTabSettings g_developerTabSettings;
 extern MainTabSettings g_mainTabSettings;
@@ -761,6 +762,7 @@ extern HotkeysTabSettings g_hotkeysTabSettings;
 extern SwapchainTabSettings g_swapchainTabSettings;
 extern StreamlineTabSettings g_streamlineTabSettings;
 extern settings::HookSuppressionSettings g_hook_suppression_settings;
+extern ReShadeTabSettings g_reshadeTabSettings;
 
 // Function to load all settings at startup
 void LoadAllSettingsAtStartup();
@@ -1276,5 +1278,3 @@ extern std::atomic<bool> g_swapchain_wrapper_present1_called;
 void StartContinuousMonitoring();
 void StopContinuousMonitoring();
 void HandleReflexAutoConfigure();
-
-

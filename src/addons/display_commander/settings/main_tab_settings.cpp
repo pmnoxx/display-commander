@@ -7,12 +7,12 @@
 #include <windows.h>
 
 // Atomic variables used by main tab settings
-std::atomic<bool> s_background_feature_enabled{false}; // Disabled by default
+std::atomic<bool> s_background_feature_enabled{false};  // Disabled by default
 std::atomic<int> s_scanline_offset{0};
 std::atomic<int> s_vblank_sync_divisor{1};
 std::atomic<float> s_fps_limit{0.f};
 std::atomic<float> s_fps_limit_background{30.f};
-std::atomic<float> s_present_pacing_delay_percentage{0.0f}; // Default to 0% (no delay)
+std::atomic<float> s_present_pacing_delay_percentage{0.0f};  // Default to 0% (no delay)
 std::atomic<bool> s_force_vsync_on{false};
 std::atomic<bool> s_force_vsync_off{false};
 std::atomic<bool> s_prevent_tearing{false};
@@ -28,19 +28,27 @@ std::atomic<bool> s_no_render_in_background{false};
 std::atomic<bool> s_no_present_in_background{false};
 std::atomic<ScreensaverMode> s_screensaver_mode{ScreensaverMode::kDefault};
 std::atomic<FrameTimeMode> s_frame_time_mode{FrameTimeMode::kPresent};
-std::atomic<int> s_cpu_cores{0}; // 0 = default (no change), max = all cores
+std::atomic<int> s_cpu_cores{0};  // 0 = default (no change), max = all cores
 
 namespace settings {
 
 MainTabSettings::MainTabSettings()
-    : window_mode("window_mode", s_window_mode, static_cast<int>(WindowMode::kFullscreen), {"Borderless Fullscreen", "Borderless Windowed (Aspect Ratio)"}, "DisplayCommander"),
+    : window_mode("window_mode", s_window_mode, static_cast<int>(WindowMode::kFullscreen),
+                  {"Borderless Fullscreen", "Borderless Windowed (Aspect Ratio)"}, "DisplayCommander"),
       aspect_index("aspect_index", 3, {"3:2", "4:3", "16:10", "16:9", "19:9", "19.5:9", "21:9", "32:9"},
-                   "DisplayCommander"), // Default to 16:9
-      window_aspect_width("aspect_width", s_aspect_width, 0, {"Display Width", "3840", "2560", "1920", "1600", "1280", "1080", "900", "720"}, "DisplayCommander"),
-      background_feature("background_feature", s_background_feature_enabled, s_background_feature_enabled.load(), "DisplayCommander"),
+                   "DisplayCommander"),  // Default to 16:9
+      window_aspect_width("aspect_width", s_aspect_width, 0,
+                          {"Display Width", "3840", "2560", "1920", "1600", "1280", "1080", "900", "720"},
+                          "DisplayCommander"),
+      background_feature("background_feature", s_background_feature_enabled, s_background_feature_enabled.load(),
+                         "DisplayCommander"),
       alignment("alignment", 0, {"Center", "Top Left", "Top Right", "Bottom Left", "Bottom Right"}, "DisplayCommander"),
       fps_limiter_mode("fps_limiter_mode", 0,
-                       {"Disabled", "Reflex (low latency)", "Sync to Sim Start Time (adds latency to offer more consistent frame timing)", "Sync to Display Refresh Rate (fraction of monitor refresh rate)", "Non-Reflex Low Latency Mode (not implemented)"}, "DisplayCommander"),
+                       {"Disabled", "Reflex (low latency)",
+                        "Sync to Sim Start Time (adds latency to offer more consistent frame timing)",
+                        "Sync to Display Refresh Rate (fraction of monitor refresh rate)",
+                        "Non-Reflex Low Latency Mode (not implemented)"},
+                       "DisplayCommander"),
       scanline_offset("scanline_offset", s_scanline_offset, 0, -1000, 1000, "DisplayCommander"),
       vblank_sync_divisor("vblank_sync_divisor", s_vblank_sync_divisor, 1, 0, 8, "DisplayCommander"),
       fps_limit("fps_limit", s_fps_limit, 0.0f, 0.0f, 240.0f, "DisplayCommander"),
@@ -56,17 +64,26 @@ MainTabSettings::MainTabSettings()
       audio_volume_percent("audio_volume_percent", s_audio_volume_percent, 100.0f, 0.0f, 100.0f, "DisplayCommander"),
       audio_mute("audio_mute", s_audio_mute, s_audio_mute.load(), "DisplayCommander"),
       mute_in_background("mute_in_background", s_mute_in_background, s_mute_in_background.load(), "DisplayCommander"),
-      mute_in_background_if_other_audio("mute_in_background_if_other_audio", s_mute_in_background_if_other_audio, s_mute_in_background_if_other_audio.load(),
-                                        "DisplayCommander"),
+      mute_in_background_if_other_audio("mute_in_background_if_other_audio", s_mute_in_background_if_other_audio,
+                                        s_mute_in_background_if_other_audio.load(), "DisplayCommander"),
       audio_volume_auto_apply("audio_volume_auto_apply", true, "DisplayCommander"),
       enable_default_chords("enable_default_chords", true, "DisplayCommander"),
       guide_button_solo_ui_toggle_only("guide_button_solo_ui_toggle_only", true, "DisplayCommander"),
-      keyboard_input_blocking("keyboard_input_blocking", s_keyboard_input_blocking, static_cast<int>(InputBlockingMode::kEnabledInBackground), {"Disabled", "Enabled", "Enabled (in background)"}, "DisplayCommander"),
-      mouse_input_blocking("mouse_input_blocking", s_mouse_input_blocking, static_cast<int>(InputBlockingMode::kEnabledInBackground), {"Disabled", "Enabled", "Enabled (in background)", "Enabled (when XInput detected)"}, "DisplayCommander"),
-      gamepad_input_blocking("gamepad_input_blocking", s_gamepad_input_blocking, static_cast<int>(InputBlockingMode::kDisabled), {"Disabled", "Enabled", "Enabled (in background)"}, "DisplayCommander"),
-      no_render_in_background("no_render_in_background", s_no_render_in_background, s_no_render_in_background.load(), "DisplayCommander"),
-      no_present_in_background("no_present_in_background", s_no_present_in_background, s_no_present_in_background.load(), "DisplayCommander"),
-      cpu_cores("cpu_cores", s_cpu_cores, 0, 0, 64, "DisplayCommander"), // Max will be set dynamically based on CPU count
+      keyboard_input_blocking("keyboard_input_blocking", s_keyboard_input_blocking,
+                              static_cast<int>(InputBlockingMode::kEnabledInBackground),
+                              {"Disabled", "Enabled", "Enabled (in background)"}, "DisplayCommander"),
+      mouse_input_blocking(
+          "mouse_input_blocking", s_mouse_input_blocking, static_cast<int>(InputBlockingMode::kEnabledInBackground),
+          {"Disabled", "Enabled", "Enabled (in background)", "Enabled (when XInput detected)"}, "DisplayCommander"),
+      gamepad_input_blocking("gamepad_input_blocking", s_gamepad_input_blocking,
+                             static_cast<int>(InputBlockingMode::kDisabled),
+                             {"Disabled", "Enabled", "Enabled (in background)"}, "DisplayCommander"),
+      no_render_in_background("no_render_in_background", s_no_render_in_background, s_no_render_in_background.load(),
+                              "DisplayCommander"),
+      no_present_in_background("no_present_in_background", s_no_present_in_background,
+                               s_no_present_in_background.load(), "DisplayCommander"),
+      cpu_cores("cpu_cores", s_cpu_cores, 0, 0, 64,
+                "DisplayCommander"),  // Max will be set dynamically based on CPU count
       show_test_overlay("show_test_overlay", false, "DisplayCommander"),
       show_fps_counter("show_fps_counter", true, "DisplayCommander"),
       show_native_fps("show_native_fps", false, "DisplayCommander"),
@@ -99,10 +116,12 @@ MainTabSettings::MainTabSettings()
       screensaver_mode("screensaver_mode", s_screensaver_mode, static_cast<int>(ScreensaverMode::kDefault),
                        {"Default (no change)", "Disable when Focused", "Disable"}, "DisplayCommander"),
       frame_time_mode("frame_time_mode", s_frame_time_mode, static_cast<int>(FrameTimeMode::kPresent),
-                      {"Frame Present Time", "Frame Start Time (input)", "Frame Display Time later (Present or GPU Completion whichever comes later)"}, "DisplayCommander"),
+                      {"Frame Present Time", "Frame Start Time (input)",
+                       "Frame Display Time later (Present or GPU Completion whichever comes later)"},
+                      "DisplayCommander"),
       advanced_settings_enabled("advanced_settings_enabled", false, "DisplayCommander"),
-      log_level("log_level", g_min_log_level, 0,
-                {"Log everything", "Info", "Warning", "Error Only"}, "DisplayCommander"),
+      log_level("log_level", g_min_log_level, 0, {"Log everything", "Info", "Warning", "Error Only"},
+                "DisplayCommander"),
       show_developer_tab("show_developer_tab", false, "DisplayCommander"),
       show_window_info_tab("show_window_info_tab", false, "DisplayCommander"),
       show_swapchain_tab("show_swapchain_tab", false, "DisplayCommander"),
@@ -112,7 +131,7 @@ MainTabSettings::MainTabSettings()
       show_hook_stats_tab("show_hook_stats_tab", false, "DisplayCommander"),
       show_streamline_tab("show_streamline_tab", false, "DisplayCommander"),
       show_experimental_tab("show_experimental_tab", false, "DisplayCommander"),
-      show_addons_tab("show_addons_tab", false, "DisplayCommander"),
+      show_reshade_tab("show_reshade_tab", false, "DisplayCommander"),
       skip_ansel_loading("skip_ansel_loading", false, "DisplayCommander"),
       force_anisotropic_filtering("force_anisotropic_filtering", false, "DisplayCommander"),
       upgrade_min_mag_mip_linear("upgrade_min_mag_mip_linear", true, "DisplayCommander"),
@@ -121,7 +140,6 @@ MainTabSettings::MainTabSettings()
       upgrade_compare_min_mag_linear_mip_point("upgrade_compare_min_mag_linear_mip_point", false, "DisplayCommander"),
       max_anisotropy("max_anisotropy", 0, 0, 16, "DisplayCommander"),
       force_mipmap_lod_bias("force_mipmap_lod_bias", 0.0f, -5.0f, 5.0f, "DisplayCommander") {
-
     // Initialize the all_settings_ vector
     all_settings_ = {
         &window_mode,
@@ -194,7 +212,7 @@ MainTabSettings::MainTabSettings()
         &show_hook_stats_tab,
         &show_streamline_tab,
         &show_experimental_tab,
-        &show_addons_tab,
+        &show_reshade_tab,
         &skip_ansel_loading,
         &force_anisotropic_filtering,
         &upgrade_min_mag_mip_linear,
@@ -220,16 +238,14 @@ void MainTabSettings::LoadSettings() {
     LogInfo("MainTabSettings::LoadSettings() completed");
 }
 
-std::vector<ui::new_ui::SettingBase *> MainTabSettings::GetAllSettings() { return all_settings_; }
+std::vector<ui::new_ui::SettingBase*> MainTabSettings::GetAllSettings() { return all_settings_; }
 
 // Helper function to convert wstring to string
-std::string WStringToString(const std::wstring &wstr) {
-    if (wstr.empty())
-        return std::string();
+std::string WStringToString(const std::wstring& wstr) {
+    if (wstr.empty()) return std::string();
 
     int size = WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), -1, nullptr, 0, nullptr, nullptr);
-    if (size <= 0)
-        return std::string();
+    if (size <= 0) return std::string();
 
     std::string result(size - 1, '\0');
     WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), -1, &result[0], size, nullptr, nullptr);
@@ -262,7 +278,6 @@ void SaveGameWindowDisplayDeviceId(HWND hwnd) {
     LogInfo(oss.str().c_str());
 }
 
-
 // Function to update the target display setting with current game window
 void UpdateTargetDisplayFromGameWindow() {
     // Get the game window from the API hooks
@@ -291,8 +306,8 @@ void UpdateFpsLimitMaximums() {
         g_mainTabSettings.fps_limit.SetMax(max_fps);
         g_mainTabSettings.fps_limit_background.SetMax(max_fps);
 
-        LogInfo("Updated FPS limit maximum %.1f->%.1f FPS (based on max monitor refresh rate of %.1f Hz)", old_fps, max_fps,
-                max_refresh_rate);
+        LogInfo("Updated FPS limit maximum %.1f->%.1f FPS (based on max monitor refresh rate of %.1f Hz)", old_fps,
+                max_fps, max_refresh_rate);
     }
 }
 
@@ -309,4 +324,4 @@ void UpdateCpuCoresMaximum() {
     }
 }
 
-} // namespace settings
+}  // namespace settings

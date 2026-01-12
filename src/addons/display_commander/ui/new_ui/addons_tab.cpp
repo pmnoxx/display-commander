@@ -3,18 +3,26 @@
 #include <reshade.hpp>
 #include "../../res/forkawesome.h"
 #include "../../res/ui_colors.hpp"
+#include "../../settings/reshade_tab_settings.hpp"
+#include "../../utils/general_utils.hpp"
 #include "../../utils/logging.hpp"
+#include "../../utils/reshade_global_config.hpp"
 
+#include <psapi.h>
 #include <ShlObj.h>
 #include <Windows.h>
 #include <algorithm>
 #include <atomic>
 #include <filesystem>
+#include <set>
 #include <sstream>
 #include <string>
 #include <vector>
 
 namespace ui::new_ui {
+
+// Forward declaration
+void DrawReShadeGlobalConfigSettings();
 
 namespace {
 // Global addon list
@@ -29,6 +37,112 @@ std::filesystem::path GetGlobalAddonsDirectory() {
     }
     std::filesystem::path documents_dir(documents_path);
     return documents_dir / L"Display Commander" / L"Reshade" / L"Addons";
+}
+
+// Get the shaders directory path
+std::filesystem::path GetShadersDirectory() {
+    wchar_t documents_path[MAX_PATH];
+    if (FAILED(SHGetFolderPathW(nullptr, CSIDL_MYDOCUMENTS, nullptr, SHGFP_TYPE_CURRENT, documents_path))) {
+        return std::filesystem::path();
+    }
+    std::filesystem::path documents_dir(documents_path);
+    return documents_dir / L"Display Commander" / L"Reshade" / L"Shaders";
+}
+
+// Get the textures directory path
+std::filesystem::path GetTexturesDirectory() {
+    wchar_t documents_path[MAX_PATH];
+    if (FAILED(SHGetFolderPathW(nullptr, CSIDL_MYDOCUMENTS, nullptr, SHGFP_TYPE_CURRENT, documents_path))) {
+        return std::filesystem::path();
+    }
+    std::filesystem::path documents_dir(documents_path);
+    return documents_dir / L"Display Commander" / L"Reshade" / L"Textures";
+}
+
+// Get the Documents folder path
+std::filesystem::path GetDocumentsDirectory() {
+    wchar_t documents_path[MAX_PATH];
+    if (FAILED(SHGetFolderPathW(nullptr, CSIDL_MYDOCUMENTS, nullptr, SHGFP_TYPE_CURRENT, documents_path))) {
+        return std::filesystem::path();
+    }
+    return std::filesystem::path(documents_path);
+}
+
+// Check if Reshade64.dll exists in Documents folder
+bool Reshade64DllExists() {
+    std::filesystem::path documents_dir = GetDocumentsDirectory();
+    if (documents_dir.empty()) {
+        return false;
+    }
+    std::filesystem::path reshade64_path = documents_dir / L"Reshade64.dll";
+    return std::filesystem::exists(reshade64_path);
+}
+
+// Check if Reshade32.dll exists in Documents folder
+bool Reshade32DllExists() {
+    std::filesystem::path documents_dir = GetDocumentsDirectory();
+    if (documents_dir.empty()) {
+        return false;
+    }
+    std::filesystem::path reshade32_path = documents_dir / L"Reshade32.dll";
+    return std::filesystem::exists(reshade32_path);
+}
+
+// Get Reshade64.dll version from Documents folder
+std::string GetReshade64Version() {
+    std::filesystem::path documents_dir = GetDocumentsDirectory();
+    if (documents_dir.empty()) {
+        return "";
+    }
+    std::filesystem::path reshade64_path = documents_dir / L"Reshade64.dll";
+    if (!std::filesystem::exists(reshade64_path)) {
+        return "";
+    }
+    return GetDLLVersionString(reshade64_path.wstring());
+}
+
+// Get Reshade32.dll version from Documents folder
+std::string GetReshade32Version() {
+    std::filesystem::path documents_dir = GetDocumentsDirectory();
+    if (documents_dir.empty()) {
+        return "";
+    }
+    std::filesystem::path reshade32_path = documents_dir / L"Reshade32.dll";
+    if (!std::filesystem::exists(reshade32_path)) {
+        return "";
+    }
+    return GetDLLVersionString(reshade32_path.wstring());
+}
+
+// Find currently loaded ReShade module and get its version
+std::string GetLoadedReShadeVersion() {
+    HMODULE modules[1024];
+    DWORD num_modules = 0;
+    HANDLE process = GetCurrentProcess();
+
+    if (K32EnumProcessModules(process, modules, sizeof(modules), &num_modules) == 0) {
+        return "";
+    }
+
+    DWORD module_count = num_modules / sizeof(HMODULE);
+    for (DWORD i = 0; i < module_count; i++) {
+        wchar_t module_path[MAX_PATH];
+        if (GetModuleFileNameW(modules[i], module_path, MAX_PATH) == 0) {
+            continue;
+        }
+
+        std::wstring module_name = std::filesystem::path(module_path).filename().wstring();
+        std::transform(module_name.begin(), module_name.end(), module_name.begin(), ::towlower);
+
+        if (module_name == L"reshade64.dll" || module_name == L"reshade32.dll") {
+            std::string version = GetDLLVersionString(module_path);
+            if (!version.empty() && version != "Unknown") {
+                return version;
+            }
+        }
+    }
+
+    return "";
 }
 
 // Get disabled addons from ReShade config
@@ -231,143 +345,644 @@ void InitAddonsTab() {
 void RefreshAddonList() { g_addon_list_dirty.store(true); }
 
 void DrawAddonsTab() {
-    ImGui::Text("Global Addons Management");
+    ImGui::Text("ReShade Management");
     ImGui::Separator();
     ImGui::Spacing();
 
-    // Check if we need to refresh
-    if (g_addon_list_dirty.load()) {
-        RefreshAddonListInternal();
-        g_addon_list_dirty.store(false);
+    // Addons Subsection
+    if (ImGui::CollapsingHeader("Addons", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::Spacing();
+
+        // Check if we need to refresh
+        if (g_addon_list_dirty.load()) {
+            RefreshAddonListInternal();
+            g_addon_list_dirty.store(false);
+        }
+
+        // Refresh button
+        ui::colors::PushIconColor(ui::colors::ICON_ACTION);
+        if (ImGui::Button(ICON_FK_REFRESH " Refresh")) {
+            RefreshAddonList();
+        }
+        ui::colors::PopIconColor();
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Refresh the list of available addons");
+        }
+
+        ImGui::SameLine();
+
+        // Open Addons Folder button
+        ui::colors::PushIconColor(ui::colors::ICON_ACTION);
+        if (ImGui::Button(ICON_FK_FOLDER_OPEN " Open Addons Folder")) {
+            std::filesystem::path addons_dir = GetGlobalAddonsDirectory();
+
+            // Create directory if it doesn't exist
+            if (!std::filesystem::exists(addons_dir)) {
+                try {
+                    std::filesystem::create_directories(addons_dir);
+                } catch (const std::exception& e) {
+                    LogError("Failed to create addons directory: %s", e.what());
+                }
+            }
+
+            if (std::filesystem::exists(addons_dir)) {
+                std::string addons_dir_str = addons_dir.string();
+                HINSTANCE result = ShellExecuteA(nullptr, "explore", addons_dir_str.c_str(), nullptr, nullptr, SW_SHOW);
+
+                if (reinterpret_cast<intptr_t>(result) <= 32) {
+                    LogError("Failed to open addons folder: %s (Error: %ld)", addons_dir_str.c_str(),
+                             reinterpret_cast<intptr_t>(result));
+                } else {
+                    LogInfo("Opened addons folder: %s", addons_dir_str.c_str());
+                }
+            }
+        }
+        ui::colors::PopIconColor();
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Open the global addons directory in Windows Explorer");
+        }
+
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        // Display addon list
+        if (g_addon_list.empty()) {
+            ImGui::TextColored(ui::colors::TEXT_DIMMED, "No addons found in global directory.");
+            ImGui::Spacing();
+            ImGui::TextWrapped("Addons should be placed in: %s", GetGlobalAddonsDirectory().string().c_str());
+        } else {
+            // Create table for addon list
+            if (ImGui::BeginTable("AddonsTable", 4,
+                                  ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable)) {
+                ImGui::TableSetupColumn("Enabled", ImGuiTableColumnFlags_WidthFixed, 80.0f);
+                ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthStretch);
+                ImGui::TableSetupColumn("File", ImGuiTableColumnFlags_WidthFixed, 200.0f);
+                ImGui::TableSetupColumn("Actions", ImGuiTableColumnFlags_WidthFixed, 100.0f);
+                ImGui::TableHeadersRow();
+
+                for (size_t i = 0; i < g_addon_list.size(); ++i) {
+                    auto& addon = g_addon_list[i];
+
+                    ImGui::TableNextRow();
+
+                    // Enabled checkbox
+                    ImGui::TableNextColumn();
+                    bool enabled = addon.is_enabled;
+                    if (ImGui::Checkbox(("##Enabled" + std::to_string(i)).c_str(), &enabled)) {
+                        SetAddonEnabled(addon.name, addon.file_name, enabled);
+                        addon.is_enabled = enabled;
+                        g_addon_list_dirty.store(true);
+                    }
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::SetTooltip("%s this addon", enabled ? "Disable" : "Enable");
+                    }
+
+                    // Name
+                    ImGui::TableNextColumn();
+                    ImGui::Text("%s", addon.name.c_str());
+                    if (!addon.description.empty() && ImGui::IsItemHovered()) {
+                        ImGui::SetTooltip("%s", addon.description.c_str());
+                    }
+
+                    // File name
+                    ImGui::TableNextColumn();
+                    ImGui::TextColored(ui::colors::TEXT_DIMMED, "%s", addon.file_name.c_str());
+
+                    // Actions (Open Folder button)
+                    ImGui::TableNextColumn();
+                    std::string folder_button_id = "Folder##" + std::to_string(i);
+                    if (ImGui::Button(folder_button_id.c_str())) {
+                        std::filesystem::path addon_path(addon.file_path);
+                        std::filesystem::path folder_path = addon_path.parent_path();
+
+                        if (std::filesystem::exists(folder_path)) {
+                            std::string folder_str = folder_path.string();
+                            HINSTANCE result =
+                                ShellExecuteA(nullptr, "explore", folder_str.c_str(), nullptr, nullptr, SW_SHOW);
+
+                            if (reinterpret_cast<intptr_t>(result) <= 32) {
+                                LogError("Failed to open folder: %s (Error: %ld)", folder_str.c_str(),
+                                         reinterpret_cast<intptr_t>(result));
+                            } else {
+                                LogInfo("Opened folder: %s", folder_str.c_str());
+                            }
+                        }
+                    }
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::SetTooltip("Open the folder containing this addon");
+                    }
+                }
+
+                ImGui::EndTable();
+            }
+
+            ImGui::Spacing();
+            ImGui::Separator();
+            ImGui::Spacing();
+
+            // Info text
+            ImGui::TextColored(ui::colors::TEXT_DIMMED,
+                               "Note: Changes to addon enabled/disabled state require a game restart to take effect.");
+            ImGui::TextColored(ui::colors::TEXT_DIMMED, "Addons directory: %s",
+                               GetGlobalAddonsDirectory().string().c_str());
+        }
     }
 
-    // Refresh button
-    ui::colors::PushIconColor(ui::colors::ICON_ACTION);
-    if (ImGui::Button(ICON_FK_REFRESH " Refresh")) {
-        RefreshAddonList();
+    ImGui::Spacing();
+
+    // Shaders Subsection
+    if (ImGui::CollapsingHeader("Shaders", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::Spacing();
+
+        // Open Shaders Folder button
+        ui::colors::PushIconColor(ui::colors::ICON_ACTION);
+        if (ImGui::Button(ICON_FK_FOLDER_OPEN " Open Shaders Folder")) {
+            std::filesystem::path shaders_dir = GetShadersDirectory();
+
+            // Create directory if it doesn't exist
+            if (!std::filesystem::exists(shaders_dir)) {
+                try {
+                    std::filesystem::create_directories(shaders_dir);
+                } catch (const std::exception& e) {
+                    LogError("Failed to create shaders directory: %s", e.what());
+                }
+            }
+
+            if (std::filesystem::exists(shaders_dir)) {
+                std::string shaders_dir_str = shaders_dir.string();
+                HINSTANCE result =
+                    ShellExecuteA(nullptr, "explore", shaders_dir_str.c_str(), nullptr, nullptr, SW_SHOW);
+
+                if (reinterpret_cast<intptr_t>(result) <= 32) {
+                    LogError("Failed to open shaders folder: %s (Error: %ld)", shaders_dir_str.c_str(),
+                             reinterpret_cast<intptr_t>(result));
+                } else {
+                    LogInfo("Opened shaders folder: %s", shaders_dir_str.c_str());
+                }
+            }
+        }
+        ui::colors::PopIconColor();
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Open the shaders directory in Windows Explorer");
+        }
+
+        ImGui::SameLine();
+
+        // Open Textures Folder button
+        ui::colors::PushIconColor(ui::colors::ICON_ACTION);
+        if (ImGui::Button(ICON_FK_FOLDER_OPEN " Open Textures Folder")) {
+            std::filesystem::path textures_dir = GetTexturesDirectory();
+
+            // Create directory if it doesn't exist
+            if (!std::filesystem::exists(textures_dir)) {
+                try {
+                    std::filesystem::create_directories(textures_dir);
+                } catch (const std::exception& e) {
+                    LogError("Failed to create textures directory: %s", e.what());
+                }
+            }
+
+            if (std::filesystem::exists(textures_dir)) {
+                std::string textures_dir_str = textures_dir.string();
+                HINSTANCE result =
+                    ShellExecuteA(nullptr, "explore", textures_dir_str.c_str(), nullptr, nullptr, SW_SHOW);
+
+                if (reinterpret_cast<intptr_t>(result) <= 32) {
+                    LogError("Failed to open textures folder: %s (Error: %ld)", textures_dir_str.c_str(),
+                             reinterpret_cast<intptr_t>(result));
+                } else {
+                    LogInfo("Opened textures folder: %s", textures_dir_str.c_str());
+                }
+            }
+        }
+        ui::colors::PopIconColor();
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Open the textures directory in Windows Explorer");
+        }
+
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        // Info text
+        ImGui::TextColored(ui::colors::TEXT_DIMMED, "Shaders directory: %s", GetShadersDirectory().string().c_str());
+        ImGui::TextColored(ui::colors::TEXT_DIMMED, "Textures directory: %s", GetTexturesDirectory().string().c_str());
     }
-    ui::colors::PopIconColor();
+
+    ImGui::Spacing();
+
+    // ReShade Config Subsection
+    if (ImGui::CollapsingHeader("ReShade Config", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::Spacing();
+
+        // Suppress ReShade Clock setting
+        bool suppress_clock = settings::g_reshadeTabSettings.suppress_reshade_clock.GetValue();
+        if (ImGui::Checkbox("Suppress ReShade Clock", &suppress_clock)) {
+            settings::g_reshadeTabSettings.suppress_reshade_clock.SetValue(suppress_clock);
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip(
+                "When enabled, suppresses ReShade's clock setting by setting ShowClock to 0.\n"
+                "When disabled, does nothing (ReShade's clock setting is not modified).");
+        }
+
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        // Info text
+        ImGui::TextColored(ui::colors::TEXT_DIMMED,
+                           "Note: Changes to ReShade config settings may require a game restart to take effect.");
+    }
+
+    // Global ReShade Subsection (only show if ReShade DLL exists in Documents)
+    bool reshade64_exists = Reshade64DllExists();
+    bool reshade32_exists = Reshade32DllExists();
+
+    if (reshade64_exists || reshade32_exists) {
+        ImGui::Spacing();
+
+        if (ImGui::CollapsingHeader("Global ReShade", ImGuiTreeNodeFlags_DefaultOpen)) {
+            ImGui::Spacing();
+
+            // Show status for each DLL with version
+            if (reshade64_exists) {
+                std::string version = GetReshade64Version();
+                if (!version.empty() && version != "Unknown") {
+                    ImGui::TextColored(ui::colors::TEXT_SUCCESS, ICON_FK_OK " Reshade64.dll found (v%s)",
+                                       version.c_str());
+                } else {
+                    ImGui::TextColored(ui::colors::TEXT_SUCCESS, ICON_FK_OK " Reshade64.dll found");
+                }
+            }
+            if (reshade32_exists) {
+                std::string version = GetReshade32Version();
+                if (!version.empty() && version != "Unknown") {
+                    ImGui::TextColored(ui::colors::TEXT_SUCCESS, ICON_FK_OK " Reshade32.dll found (v%s)",
+                                       version.c_str());
+                } else {
+                    ImGui::TextColored(ui::colors::TEXT_SUCCESS, ICON_FK_OK " Reshade32.dll found");
+                }
+            }
+
+            // Show currently loaded ReShade version
+            std::string loaded_version = GetLoadedReShadeVersion();
+            if (!loaded_version.empty()) {
+                ImGui::Spacing();
+                ImGui::TextColored(ui::colors::TEXT_DEFAULT, ICON_FK_OK " Currently loaded ReShade: v%s",
+                                   loaded_version.c_str());
+            }
+
+            ImGui::Spacing();
+
+            // Open Documents Folder button
+            ui::colors::PushIconColor(ui::colors::ICON_ACTION);
+            if (ImGui::Button(ICON_FK_FOLDER_OPEN " Open Documents Folder")) {
+                std::filesystem::path documents_dir = GetDocumentsDirectory();
+
+                if (!documents_dir.empty() && std::filesystem::exists(documents_dir)) {
+                    std::string documents_dir_str = documents_dir.string();
+                    HINSTANCE result =
+                        ShellExecuteA(nullptr, "explore", documents_dir_str.c_str(), nullptr, nullptr, SW_SHOW);
+
+                    if (reinterpret_cast<intptr_t>(result) <= 32) {
+                        LogError("Failed to open Documents folder: %s (Error: %ld)", documents_dir_str.c_str(),
+                                 reinterpret_cast<intptr_t>(result));
+                    } else {
+                        LogInfo("Opened Documents folder: %s", documents_dir_str.c_str());
+                    }
+                }
+            }
+            ui::colors::PopIconColor();
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Open the Documents folder in Windows Explorer");
+            }
+
+            ImGui::Spacing();
+            ImGui::Separator();
+            ImGui::Spacing();
+
+            // Info text
+            ImGui::TextColored(ui::colors::TEXT_DIMMED, "Documents directory: %s",
+                               GetDocumentsDirectory().string().c_str());
+        }
+    }
+
+    ImGui::Spacing();
+
+    // Global ReShade Settings Subsection
+    if (ImGui::CollapsingHeader("Global ReShade Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
+        DrawReShadeGlobalConfigSettings();
+    }
+}
+
+void DrawReShadeGlobalConfigSettings() {
+    ImGui::Indent();
+
+    static utils::ReShadeGlobalSettings currentSettings;
+    static utils::ReShadeGlobalSettings globalSettings;
+    static bool initialLoadDone = false;
+    static std::string statusMessage;
+    static ImVec4 statusColor = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
+
+    // Auto-load settings on first run
+    if (!initialLoadDone) {
+        // Always load current settings
+        utils::ReadCurrentReShadeSettings(currentSettings);
+
+        // Try to load global settings (may not exist, which is fine)
+        utils::LoadGlobalSettings(globalSettings);
+
+        initialLoadDone = true;
+        LogInfo("Auto-loaded ReShade settings for comparison");
+    }
+
+    ImGui::TextWrapped(
+        "Manage global ReShade settings (EffectSearchPaths, TextureSearchPaths, keyboard shortcuts, etc.).");
+    ImGui::TextWrapped("Copy settings between current game and global profile.");
+
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::Spacing();
+
+    // Display current ReShade.ini path info
+    std::filesystem::path dcConfigPath = utils::GetDisplayCommanderConfigPath();
+    std::string dcConfigPathStr = dcConfigPath.string();
+    ImGui::TextColored(ui::colors::TEXT_DIMMED, "Global profile location:");
+    ImGui::Indent();
+    ImGui::TextWrapped("%s", dcConfigPathStr.c_str());
+    ImGui::Unindent();
+
+    ImGui::Spacing();
+
+    // Compare button
+    ImGui::TextColored(ui::colors::TEXT_DEFAULT, "Configuration comparison:");
+
+    if (ImGui::Button("Compare local config vs global config")) {
+        // Reload both settings for fresh comparison
+        bool currentLoaded = utils::ReadCurrentReShadeSettings(currentSettings);
+        bool globalLoaded = utils::LoadGlobalSettings(globalSettings);
+
+        if (currentLoaded && globalLoaded) {
+            statusMessage = ICON_FK_OK " Reloaded both configurations for comparison";
+            statusColor = ui::colors::TEXT_SUCCESS;
+            LogInfo("Reloaded both current and global settings for comparison");
+        } else if (currentLoaded) {
+            statusMessage = ICON_FK_WARNING " Reloaded current settings, global profile not found";
+            statusColor = ui::colors::TEXT_WARNING;
+            LogInfo("Reloaded current settings, global profile not found");
+        } else if (globalLoaded) {
+            statusMessage = ICON_FK_WARNING " Reloaded global profile, current settings failed to load";
+            statusColor = ui::colors::TEXT_WARNING;
+            LogInfo("Reloaded global settings, current settings failed to load");
+        } else {
+            statusMessage = ICON_FK_CANCEL " Failed to reload both configurations";
+            statusColor = ui::colors::TEXT_ERROR;
+            LogInfo("Failed to reload both configurations");
+        }
+    }
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Refresh the list of available addons");
+        ImGui::SetTooltip(
+            "Reload and compare current game's ReShade settings with global profile\n(Useful if you edited either "
+            "ReShade.ini or DisplayCommander.ini manually)");
+    }
+
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::Spacing();
+
+    // Unified comparison view (see docs/UI_STYLE_GUIDE.md for depth/indent rules)
+    // Depth 1: Nested subsection with indentation and distinct colors
+    ImGui::Indent();                       // Indent nested header
+    ui::colors::PushNestedHeaderColors();  // Apply distinct colors for nested header
+    if (ImGui::CollapsingHeader("Configuration Comparison", ImGuiTreeNodeFlags_None)) {
+        ImGui::Indent();  // Indent content inside subsection
+        ImGui::TextColored(ui::colors::TEXT_DEFAULT,
+                           "Shows differences between local (current game) and global configurations:");
+        ImGui::Spacing();
+
+        bool anyChanges = false;
+
+        // Go through all sections in both settings
+        std::set<std::string> allSections;
+        for (const auto& [section, _] : currentSettings.additional_settings) {
+            allSections.insert(section);
+        }
+        for (const auto& [section, _] : globalSettings.additional_settings) {
+            allSections.insert(section);
+        }
+
+        for (const auto& section : allSections) {
+            ImGui::TextColored(ui::colors::TEXT_LABEL, "[%s]", section.c_str());
+            ImGui::Indent();
+
+            auto currentSectionIt = currentSettings.additional_settings.find(section);
+            auto globalSectionIt = globalSettings.additional_settings.find(section);
+
+            // Get all keys in this section
+            std::set<std::string> allKeys;
+            if (currentSectionIt != currentSettings.additional_settings.end()) {
+                for (const auto& [key, _] : currentSectionIt->second) {
+                    allKeys.insert(key);
+                }
+            }
+            if (globalSectionIt != globalSettings.additional_settings.end()) {
+                for (const auto& [key, _] : globalSectionIt->second) {
+                    allKeys.insert(key);
+                }
+            }
+
+            bool sectionHasChanges = false;
+            for (const auto& key : allKeys) {
+                std::string currentValue;
+                std::string globalValue;
+
+                if (currentSectionIt != currentSettings.additional_settings.end()) {
+                    auto keyIt = currentSectionIt->second.find(key);
+                    if (keyIt != currentSectionIt->second.end()) {
+                        currentValue = keyIt->second;
+                    }
+                }
+
+                if (globalSectionIt != globalSettings.additional_settings.end()) {
+                    auto keyIt = globalSectionIt->second.find(key);
+                    if (keyIt != globalSectionIt->second.end()) {
+                        globalValue = keyIt->second;
+                    }
+                }
+
+                if (currentValue != globalValue) {
+                    sectionHasChanges = true;
+                    anyChanges = true;
+                    ImGui::TextColored(ui::colors::TEXT_LABEL, "%s:", key.c_str());
+                    ImGui::Indent();
+
+                    // Show both values side by side for better comparison
+                    ImGui::TextColored(ui::colors::TEXT_DIMMED, "Local:  ");
+                    ImGui::SameLine();
+                    if (currentValue.empty()) {
+                        ImGui::TextColored(ui::colors::TEXT_SUBTLE, "(empty)");
+                    } else {
+                        ImGui::TextColored(ui::colors::TEXT_SUCCESS, "%s", currentValue.c_str());
+                    }
+
+                    ImGui::TextColored(ui::colors::TEXT_DIMMED, "Global: ");
+                    ImGui::SameLine();
+                    if (globalValue.empty()) {
+                        ImGui::TextColored(ui::colors::TEXT_SUBTLE, "(empty)");
+                    } else {
+                        ImGui::TextColored(ui::colors::TEXT_WARNING, "%s", globalValue.c_str());
+                    }
+
+                    ImGui::Unindent();
+                }
+            }
+
+            if (!sectionHasChanges) {
+                ImGui::TextColored(ui::colors::TEXT_SUCCESS, "No differences");
+            }
+
+            ImGui::Unindent();
+            ImGui::Spacing();
+        }
+
+        if (!anyChanges) {
+            ImGui::TextColored(ui::colors::TEXT_SUCCESS, "All settings are identical!");
+        }
+
+        ImGui::Spacing();
+        ImGui::TextColored(ui::colors::TEXT_DIMMED,
+                           "Legend: Local = Current game settings, Global = DisplayCommander.ini profile");
+        ImGui::Unindent();  // Unindent content
+    }
+    ui::colors::PopNestedHeaderColors();  // Restore default header colors
+    ImGui::Unindent();                    // Unindent nested header section
+
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::Spacing();
+
+    // Action buttons
+    ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.6f, 1.0f), "Actions:");
+    ImGui::Spacing();
+
+    // Apply current -> global
+    if (ImGui::Button("Apply: Current -> Global")) {
+        // Refresh current settings before saving
+        utils::ReadCurrentReShadeSettings(currentSettings);
+
+        if (utils::SaveGlobalSettings(currentSettings)) {
+            statusMessage = ICON_FK_OK " Copied current settings to global profile";
+            statusColor = ui::colors::TEXT_SUCCESS;
+            LogInfo("Saved current settings to global profile");
+
+            // Reload global settings to reflect changes
+            utils::LoadGlobalSettings(globalSettings);
+        } else {
+            statusMessage = ICON_FK_CANCEL " Failed to save to global profile";
+            statusColor = ui::colors::TEXT_ERROR;
+            LogInfo("Failed to save to global profile");
+        }
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Copy current game's ReShade settings to global profile\n(Overwrites DisplayCommander.ini)");
     }
 
     ImGui::SameLine();
 
-    // Open Addons Folder button
-    ui::colors::PushIconColor(ui::colors::ICON_ACTION);
-    if (ImGui::Button(ICON_FK_FOLDER_OPEN " Open Addons Folder")) {
-        std::filesystem::path addons_dir = GetGlobalAddonsDirectory();
+    // Apply global -> current
+    if (ImGui::Button("Apply: Global -> Current")) {
+        // Refresh global settings before applying
+        if (utils::LoadGlobalSettings(globalSettings)) {
+            if (utils::WriteCurrentReShadeSettings(globalSettings)) {
+                statusMessage = ICON_FK_OK " Applied global profile to current game";
+                statusColor = ui::colors::TEXT_SUCCESS;
+                LogInfo("Applied global settings to current ReShade.ini");
 
-        // Create directory if it doesn't exist
-        if (!std::filesystem::exists(addons_dir)) {
-            try {
-                std::filesystem::create_directories(addons_dir);
-            } catch (const std::exception& e) {
-                LogError("Failed to create addons directory: %s", e.what());
-            }
-        }
-
-        if (std::filesystem::exists(addons_dir)) {
-            std::string addons_dir_str = addons_dir.string();
-            HINSTANCE result = ShellExecuteA(nullptr, "explore", addons_dir_str.c_str(), nullptr, nullptr, SW_SHOW);
-
-            if (reinterpret_cast<intptr_t>(result) <= 32) {
-                LogError("Failed to open addons folder: %s (Error: %ld)", addons_dir_str.c_str(),
-                         reinterpret_cast<intptr_t>(result));
+                // Reload current settings to reflect changes
+                utils::ReadCurrentReShadeSettings(currentSettings);
             } else {
-                LogInfo("Opened addons folder: %s", addons_dir_str.c_str());
+                statusMessage = ICON_FK_CANCEL " Failed to apply global settings";
+                statusColor = ui::colors::TEXT_ERROR;
+                LogInfo("Failed to apply global settings");
             }
+        } else {
+            statusMessage = ICON_FK_CANCEL " No global profile found (create one first)";
+            statusColor = ui::colors::TEXT_WARNING;
+            LogInfo("No global settings file found");
         }
     }
-    ui::colors::PopIconColor();
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Open the global addons directory in Windows Explorer");
+        ImGui::SetTooltip(
+            "Apply global profile to current game's ReShade settings\n(Overwrites current game's ReShade.ini)");
+    }
+    // warn requires pressing reload button on Home page in reshade for settings to be visible
+    ImGui::TextColored(ImVec4(1.0f, 0.7f, 0.0f, 1.0f),
+                       "Warning: Requires pressing 'RELOAD' button on Home page in ReShade for settings to be visible");
+
+    // Status message
+    if (!statusMessage.empty()) {
+        ImGui::Spacing();
+        ImGui::TextColored(statusColor, "%s", statusMessage.c_str());
     }
 
     ImGui::Spacing();
     ImGui::Separator();
     ImGui::Spacing();
 
-    // Display addon list
-    if (g_addon_list.empty()) {
-        ImGui::TextColored(ui::colors::TEXT_DIMMED, "No addons found in global directory.");
-        ImGui::Spacing();
-        ImGui::TextWrapped("Addons should be placed in: %s", GetGlobalAddonsDirectory().string().c_str());
-        return;
-    }
-
-    // Create table for addon list
-    if (ImGui::BeginTable("AddonsTable", 4,
-                          ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable)) {
-        ImGui::TableSetupColumn("Enabled", ImGuiTableColumnFlags_WidthFixed, 80.0f);
-        ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthStretch);
-        ImGui::TableSetupColumn("File", ImGuiTableColumnFlags_WidthFixed, 200.0f);
-        ImGui::TableSetupColumn("Actions", ImGuiTableColumnFlags_WidthFixed, 100.0f);
-        ImGui::TableHeadersRow();
-
-        for (size_t i = 0; i < g_addon_list.size(); ++i) {
-            auto& addon = g_addon_list[i];
-
-            ImGui::TableNextRow();
-
-            // Enabled checkbox
-            ImGui::TableNextColumn();
-            bool enabled = addon.is_enabled;
-            if (ImGui::Checkbox(("##Enabled" + std::to_string(i)).c_str(), &enabled)) {
-                SetAddonEnabled(addon.name, addon.file_name, enabled);
-                addon.is_enabled = enabled;
-                g_addon_list_dirty.store(true);
-            }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("%s this addon", enabled ? "Disable" : "Enable");
-            }
-
-            // Name
-            ImGui::TableNextColumn();
-            ImGui::Text("%s", addon.name.c_str());
-            if (!addon.description.empty() && ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("%s", addon.description.c_str());
-            }
-
-            // File name
-            ImGui::TableNextColumn();
-            ImGui::TextColored(ui::colors::TEXT_DIMMED, "%s", addon.file_name.c_str());
-
-            // Actions (Open Folder button)
-            ImGui::TableNextColumn();
-            std::string folder_button_id = "Folder##" + std::to_string(i);
-            if (ImGui::Button(folder_button_id.c_str())) {
-                std::filesystem::path addon_path(addon.file_path);
-                std::filesystem::path folder_path = addon_path.parent_path();
-
-                if (std::filesystem::exists(folder_path)) {
-                    std::string folder_str = folder_path.string();
-                    HINSTANCE result = ShellExecuteA(nullptr, "explore", folder_str.c_str(), nullptr, nullptr, SW_SHOW);
-
-                    if (reinterpret_cast<intptr_t>(result) <= 32) {
-                        LogError("Failed to open folder: %s (Error: %ld)", folder_str.c_str(),
-                                 reinterpret_cast<intptr_t>(result));
-                    } else {
-                        LogInfo("Opened folder: %s", folder_str.c_str());
-                    }
+    // View current settings
+    if (ImGui::TreeNode("View Current Game Settings")) {
+        for (const auto& [section, keys_values] : currentSettings.additional_settings) {
+            ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "[%s]", section.c_str());
+            if (keys_values.empty()) {
+                ImGui::Indent();
+                ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "(empty)");
+                ImGui::Unindent();
+            } else {
+                for (const auto& [key, value] : keys_values) {
+                    ImGui::Indent();
+                    ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "%s:", key.c_str());
+                    ImGui::SameLine();
+                    ImGui::TextWrapped("%s", value.c_str());
+                    ImGui::Unindent();
                 }
             }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("Open the folder containing this addon");
+            ImGui::Spacing();
+        }
+
+        ImGui::TreePop();
+    }
+
+    // View global settings
+    if (ImGui::TreeNode("View Global Profile")) {
+        if (globalSettings.additional_settings.empty()) {
+            ImGui::TextColored(ImVec4(1.0f, 0.7f, 0.0f, 1.0f),
+                               "No global profile found. Create one using 'Apply: Current → Global'.");
+        } else {
+            for (const auto& [section, keys_values] : globalSettings.additional_settings) {
+                ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "[%s]", section.c_str());
+                if (keys_values.empty()) {
+                    ImGui::Indent();
+                    ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "(empty)");
+                    ImGui::Unindent();
+                } else {
+                    for (const auto& [key, value] : keys_values) {
+                        ImGui::Indent();
+                        ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "%s:", key.c_str());
+                        ImGui::SameLine();
+                        ImGui::TextWrapped("%s", value.c_str());
+                        ImGui::Unindent();
+                    }
+                }
+                ImGui::Spacing();
             }
         }
 
-        ImGui::EndTable();
+        ImGui::TreePop();
     }
 
-    ImGui::Spacing();
-    ImGui::Separator();
-    ImGui::Spacing();
-
-    // Info text
-    ImGui::TextColored(ui::colors::TEXT_DIMMED,
-                       "Note: Changes to addon enabled/disabled state require a game restart to take effect.");
-    ImGui::TextColored(ui::colors::TEXT_DIMMED, "Addons directory: %s", GetGlobalAddonsDirectory().string().c_str());
+    ImGui::Unindent();
 }
 
 }  // namespace ui::new_ui

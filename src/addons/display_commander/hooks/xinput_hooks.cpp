@@ -228,12 +228,6 @@ static DWORD ProcessXInputGetState(DWORD dwUserIndex, XINPUT_STATE* pState, Hook
     // Track hook call statistics
     g_hook_stats[hook_index].increment_total();
 
-    // Check if gamepad input should be suppressed
-    if (display_commanderhooks::ShouldBlockGamepadInput()) {
-        // Return failure to indicate controller is not connected
-        return ERROR_DEVICE_NOT_CONNECTED;
-    }
-
     // Measure timing for smooth call rate calculation
     auto shared_state = display_commander::widgets::xinput_widget::XInputWidget::GetSharedState();
     if (shared_state && dwUserIndex == 0) {
@@ -405,6 +399,20 @@ static DWORD ProcessXInputGetState(DWORD dwUserIndex, XINPUT_STATE* pState, Hook
         // Process autofire
         display_commander::widgets::xinput_widget::ProcessAutofire(dwUserIndex, pState);
 
+        // Check if gamepad input should be suppressed - zero out all input if so
+        if (display_commanderhooks::ShouldBlockGamepadInput()) {
+            // Clear all buttons
+            pState->Gamepad.wButtons = 0;
+            // Clear stick inputs
+            pState->Gamepad.sThumbLX = 0;
+            pState->Gamepad.sThumbLY = 0;
+            pState->Gamepad.sThumbRX = 0;
+            pState->Gamepad.sThumbRY = 0;
+            // Clear trigger inputs
+            pState->Gamepad.bLeftTrigger = 0;
+            pState->Gamepad.bRightTrigger = 0;
+        }
+
         // Track unsuppressed call (input was processed)
         g_hook_stats[hook_index].increment_unsuppressed();
 
@@ -513,10 +521,11 @@ static DWORD WINAPI XInputSetState_Detour_Impl(size_t module_index, DWORD dwUser
     // Track hook call statistics
     g_hook_stats[HOOK_XInputSetState].increment_total();
 
-    // Check if gamepad input should be suppressed
+    // Check if gamepad input should be suppressed - suppress vibration if so
     if (display_commanderhooks::ShouldBlockGamepadInput()) {
-        // Return failure to indicate controller is not connected
-        return ERROR_DEVICE_NOT_CONNECTED;
+        // Return success but don't actually send vibration (suppress it)
+        g_hook_stats[HOOK_XInputSetState].increment_unsuppressed();
+        return ERROR_SUCCESS;
     }
 
     // Get vibration amplification setting
@@ -569,12 +578,6 @@ static DWORD WINAPI XInputGetCapabilities_Detour_Impl(size_t module_index, DWORD
 
     if (pCapabilities == nullptr) {
         return ERROR_INVALID_PARAMETER;
-    }
-
-    // Check if gamepad input should be suppressed
-    if (display_commanderhooks::ShouldBlockGamepadInput()) {
-        // Return failure to indicate controller is not connected
-        return ERROR_DEVICE_NOT_CONNECTED;
     }
 
     XInputGetCapabilities_pfn get_capabilities = nullptr;
@@ -677,8 +680,8 @@ bool InstallXInputHooks(HMODULE xinput_module) {
     // Try to hook ALL loaded XInput modules
     for (size_t idx = 0; idx < std::size(xinput_modules); ++idx) {
         const char* module_name = xinput_modules[idx];
-        HMODULE tmp_xinput_module = GetModuleHandleA(module_name);
-        if (tmp_xinput_module == nullptr) {
+        HMODULE xinput_module = GetModuleHandleA(module_name);
+        if (xinput_module == nullptr) {
             LogInfo("XInput module %s not found", module_name);
             continue;
         }
@@ -686,9 +689,6 @@ bool InstallXInputHooks(HMODULE xinput_module) {
             min_set_value = idx;
             LogInfo("XInput module %s already hooked", module_name);
             any_success = true;
-            continue;
-        }
-        if (tmp_xinput_module != xinput_module) {
             continue;
         }
         LogInfo("XInput module %s found", module_name);

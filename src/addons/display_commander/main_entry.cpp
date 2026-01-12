@@ -1908,7 +1908,136 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
                 OutputDebugStringA("ReShade not loaded");
                 // Detect and log platform APIs (Steam, Epic, GOG, etc.)
                 display_commander::utils::DetectAndLogPlatformAPIs();
-                return TRUE;
+
+                // Check if any platform was detected
+                std::vector<display_commander::utils::PlatformAPI> detected_platforms =
+                    display_commander::utils::GetDetectedPlatformAPIs();
+
+                OutputDebugStringA("Detected platforms: ");
+                for (size_t i = 0; i < detected_platforms.size(); ++i) {
+                    if (i > 0) OutputDebugStringA(", ");
+                    OutputDebugStringA(display_commander::utils::GetPlatformAPIName(detected_platforms[i]));
+                }
+                OutputDebugStringA("\n");
+
+                // Only try Documents folder and show message box if platform detected
+                if (!detected_platforms.empty()) {
+                    // Try to find Reshade DLL in Documents folder
+                    wchar_t documents_path[MAX_PATH];
+
+                    if (SUCCEEDED(SHGetFolderPathW(nullptr, CSIDL_MYDOCUMENTS, nullptr, SHGFP_TYPE_CURRENT, documents_path))) {
+                        std::filesystem::path documents_dir(documents_path);
+                        #ifdef _WIN64
+                        std::filesystem::path reshade_path = documents_dir / L"Reshade64.dll";
+                        const char* dll_name = "Reshade64.dll";
+                        #else
+                        std::filesystem::path reshade_path = documents_dir / L"Reshade32.dll";
+                        const char* dll_name = "Reshade32.dll";
+                        #endif
+
+                        if (std::filesystem::exists(reshade_path)) {
+                            // Get absolute/canonical path
+                            std::error_code ec;
+                            std::filesystem::path absolute_path = std::filesystem::canonical(reshade_path, ec);
+                            if (ec) {
+                                // Fallback to absolute path if canonical fails
+                                absolute_path = std::filesystem::absolute(reshade_path, ec);
+                                if (ec) {
+                                    absolute_path = reshade_path; // Last resort
+                                }
+                            }
+
+                            // Check if DLL is already loaded (by filename, not full path)
+                            std::wstring dll_filename = absolute_path.filename().wstring();
+                            HMODULE already_loaded = GetModuleHandleW(dll_filename.c_str());
+                            if (already_loaded != nullptr) {
+                                g_reshade_loaded.store(true);
+                                char msg[512];
+                                char path_narrow[MAX_PATH];
+                                WideCharToMultiByte(CP_ACP, 0, absolute_path.c_str(), -1,
+                                                  path_narrow, MAX_PATH, nullptr, nullptr);
+                                snprintf(msg, sizeof(msg), "%s already loaded from Documents folder: %s",
+                                        dll_name, path_narrow);
+                                OutputDebugStringA(msg);
+                            } else {
+                                // Try to load from Documents folder
+                                HMODULE reshade_module = LoadLibraryW(absolute_path.c_str());
+                                if (reshade_module != nullptr) {
+                                    g_reshade_loaded.store(true);
+                                    char msg[512];
+                                    char path_narrow[MAX_PATH];
+                                    WideCharToMultiByte(CP_ACP, 0, absolute_path.c_str(), -1,
+                                                      path_narrow, MAX_PATH, nullptr, nullptr);
+                                    snprintf(msg, sizeof(msg), "%s loaded successfully from Documents folder: %s",
+                                            dll_name, path_narrow);
+                                    OutputDebugStringA(msg);
+                                } else {
+                                    DWORD error = GetLastError();
+
+                                    // Get detailed error message
+                                    wchar_t error_msg[512] = {0};
+                                    DWORD msg_len = FormatMessageW(
+                                        FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+                                        nullptr, error, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+                                        error_msg, sizeof(error_msg) / sizeof(wchar_t), nullptr);
+
+                                    char msg[1024];
+                                    char path_narrow[MAX_PATH];
+                                    WideCharToMultiByte(CP_ACP, 0, absolute_path.c_str(), -1,
+                                                      path_narrow, MAX_PATH, nullptr, nullptr);
+
+                                    if (msg_len > 0) {
+                                        // Remove trailing newlines from error message
+                                        while (msg_len > 0 && (error_msg[msg_len - 1] == L'\n' || error_msg[msg_len - 1] == L'\r')) {
+                                            error_msg[--msg_len] = L'\0';
+                                        }
+                                        char error_msg_narrow[512];
+                                        WideCharToMultiByte(CP_ACP, 0, error_msg, -1,
+                                                          error_msg_narrow, sizeof(error_msg_narrow), nullptr, nullptr);
+                                        snprintf(msg, sizeof(msg), "Failed to load %s from Documents folder (error %lu: %s): %s",
+                                                dll_name, error, error_msg_narrow, path_narrow);
+                                    } else {
+                                        snprintf(msg, sizeof(msg), "Failed to load %s from Documents folder (error: %lu): %s",
+                                                dll_name, error, path_narrow);
+                                    }
+                                    OutputDebugStringA(msg);
+                                }
+                            }
+                        }
+                    } else {
+                        MessageBoxA(nullptr, "ReShade not found in Documents folder", "Display Commander - ReShade Not Found",
+                                    MB_OK | MB_ICONWARNING | MB_TOPMOST);
+                        return TRUE;
+                    }
+
+                    // If still not loaded, show message box
+                    if (!g_reshade_loaded.load()) {
+                        std::string platform_names;
+                        for (size_t i = 0; i < detected_platforms.size(); ++i) {
+                            if (i > 0) platform_names += ", ";
+                            platform_names += display_commander::utils::GetPlatformAPIName(detected_platforms[i]);
+                        }
+
+                        #ifdef _WIN64
+                        const char* dll_name_msg = "ReShade64.dll";
+                        #else
+                        const char* dll_name_msg = "Reshade32.dll";
+                        #endif
+
+                        std::string message = "Display Commander detected a game platform (" + platform_names + ") but ReShade was not found.\n\n";
+                        message += "ReShade is required for Display Commander to function.\n\n";
+                        message += "Please ensure " + std::string(dll_name_msg) + " is either:\n";
+                        message += "1. In the game's installation folder, or\n";
+                        message += "2. In your Documents folder\n\n";
+                        message += "Download ReShade from: https://reshade.me/";
+
+                        MessageBoxA(nullptr, message.c_str(), "Display Commander - ReShade Not Found",
+                                    MB_OK | MB_ICONWARNING | MB_TOPMOST);
+                        return TRUE;
+                    }
+                } else {
+                    return TRUE;
+                }
             }
             // Detect multiple Display Commander instances - refuse to load if multiple versions found
             if (DetectMultipleDisplayCommanderVersions()) {

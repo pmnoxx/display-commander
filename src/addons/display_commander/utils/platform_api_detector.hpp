@@ -2,6 +2,7 @@
 
 #include <windows.h>
 #include <string>
+#include <vector>
 
 namespace display_commander::utils {
 
@@ -28,5 +29,8 @@ const char* GetPlatformAPIName(PlatformAPI api);
 
 // Detect platform APIs from loaded modules and output results
 void DetectAndLogPlatformAPIs();
+
+// Get list of detected platform APIs from currently loaded modules
+std::vector<PlatformAPI> GetDetectedPlatformAPIs();
 
 } // namespace display_commander::utils

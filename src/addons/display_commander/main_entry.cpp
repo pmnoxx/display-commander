@@ -1,3 +1,6 @@
+#include <filesystem>
+#include <set>
+#include <thread>
 #include "addon.hpp"
 #include "audio/audio_management.hpp"
 #include "autoclick/autoclick_manager.hpp"
@@ -12,8 +15,12 @@
 #include "latency/latency_manager.hpp"
 #include "latent_sync/refresh_rate_monitor_integration.hpp"
 #include "nvapi/nvapi_fullscreen_prevention.hpp"
+#include "nvapi/vrr_status.hpp"
 #include "presentmon/presentmon_manager.hpp"
 #include "process_exit_hooks.hpp"
+#include "proxy_dll/proxy_detection.hpp"
+#include "res/forkawesome.h"
+#include "res/ui_colors.hpp"
 #include "settings/developer_tab_settings.hpp"
 #include "settings/experimental_tab_settings.hpp"
 #include "settings/hook_suppression_settings.hpp"
@@ -24,21 +31,14 @@
 #include "ui/new_ui/experimental_tab.hpp"
 #include "ui/new_ui/main_new_tab.hpp"
 #include "ui/new_ui/new_ui_main.hpp"
-#include "res/forkawesome.h"
-#include "res/ui_colors.hpp"
-#include "utils/logging.hpp"
-#include "utils/timing.hpp"
-#include "utils/display_commander_logger.hpp"
 #include "utils/detour_call_tracker.hpp"
-#include "utils/srwlock_wrapper.hpp"
+#include "utils/display_commander_logger.hpp"
+#include "utils/logging.hpp"
 #include "utils/platform_api_detector.hpp"
-#include <set>
-#include <thread>
-#include "nvapi/vrr_status.hpp"
+#include "utils/srwlock_wrapper.hpp"
+#include "utils/timing.hpp"
 #include "version.hpp"
 #include "widgets/dualsense_widget/dualsense_widget.hpp"
-#include "proxy_dll/proxy_detection.hpp"
-#include <filesystem>
 
 #include <d3d11.h>
 #include <dxgi1_6.h>
@@ -48,22 +48,24 @@
 #include <wrl/client.h>
 #include <algorithm>
 #include <cstring>
+#include <reshade.hpp>
 #include <sstream>
 #include <string>
-#include <reshade.hpp>
 
 // Forward declarations for ReShade event handlers
 void OnInitEffectRuntime(reshade::api::effect_runtime* runtime);
 bool OnReShadeOverlayOpen(reshade::api::effect_runtime* runtime, bool open, reshade::api::input_source source);
 // Note: OnInitDevice, OnDestroySwapchain, OnDestroyResource are declared in swapchain_events.hpp
-void OnInitCommandList(reshade::api::command_list *cmd_list);
-void OnDestroyCommandList(reshade::api::command_list *cmd_list);
-void OnInitCommandQueue(reshade::api::command_queue *queue);
-void OnDestroyCommandQueue(reshade::api::command_queue *queue);
-void OnExecuteCommandList(reshade::api::command_queue *queue, reshade::api::command_list *cmd_list);
-void OnFinishPresent(reshade::api::command_queue *queue, reshade::api::swapchain *swapchain);
-void OnReShadeBeginEffects(reshade::api::effect_runtime *runtime, reshade::api::command_list *cmd_list, reshade::api::resource_view rtv, reshade::api::resource_view rtv_srgb);
-void OnReShadeFinishEffects(reshade::api::effect_runtime *runtime, reshade::api::command_list *cmd_list, reshade::api::resource_view rtv, reshade::api::resource_view rtv_srgb);
+void OnInitCommandList(reshade::api::command_list* cmd_list);
+void OnDestroyCommandList(reshade::api::command_list* cmd_list);
+void OnInitCommandQueue(reshade::api::command_queue* queue);
+void OnDestroyCommandQueue(reshade::api::command_queue* queue);
+void OnExecuteCommandList(reshade::api::command_queue* queue, reshade::api::command_list* cmd_list);
+void OnFinishPresent(reshade::api::command_queue* queue, reshade::api::swapchain* swapchain);
+void OnReShadeBeginEffects(reshade::api::effect_runtime* runtime, reshade::api::command_list* cmd_list,
+                           reshade::api::resource_view rtv, reshade::api::resource_view rtv_srgb);
+void OnReShadeFinishEffects(reshade::api::effect_runtime* runtime, reshade::api::command_list* cmd_list,
+                            reshade::api::resource_view rtv, reshade::api::resource_view rtv_srgb);
 
 // Forward declaration for ReShade settings override
 void OverrideReShadeSettings();
@@ -82,34 +84,28 @@ bool DetectMultipleDisplayCommanderVersions();
 void HandleSafemode();
 
 static bool TryGetDxgiOutputDeviceNameFromLastSwapchain(wchar_t out_device_name[32]) {
-    if (out_device_name == nullptr)
-        return false;
+    if (out_device_name == nullptr) return false;
 
     out_device_name[0] = L'\0';
 
-    auto *swapchain_ptr = reinterpret_cast<reshade::api::swapchain *>(g_last_swapchain_ptr_unsafe.load(std::memory_order_acquire));
-    if (swapchain_ptr == nullptr)
-        return false;
+    auto* swapchain_ptr =
+        reinterpret_cast<reshade::api::swapchain*>(g_last_swapchain_ptr_unsafe.load(std::memory_order_acquire));
+    if (swapchain_ptr == nullptr) return false;
 
-    auto *unknown = reinterpret_cast<IUnknown *>(swapchain_ptr->get_native());
-    if (unknown == nullptr)
-        return false;
+    auto* unknown = reinterpret_cast<IUnknown*>(swapchain_ptr->get_native());
+    if (unknown == nullptr) return false;
 
     Microsoft::WRL::ComPtr<IDXGISwapChain> dxgi_swapchain;
-    if (FAILED(unknown->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain))) || dxgi_swapchain == nullptr)
-        return false;
+    if (FAILED(unknown->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain))) || dxgi_swapchain == nullptr) return false;
 
     Microsoft::WRL::ComPtr<IDXGIOutput> output;
-    if (FAILED(dxgi_swapchain->GetContainingOutput(&output)) || output == nullptr)
-        return false;
+    if (FAILED(dxgi_swapchain->GetContainingOutput(&output)) || output == nullptr) return false;
 
     Microsoft::WRL::ComPtr<IDXGIOutput6> output6;
-    if (FAILED(output->QueryInterface(IID_PPV_ARGS(&output6))) || output6 == nullptr)
-        return false;
+    if (FAILED(output->QueryInterface(IID_PPV_ARGS(&output6))) || output6 == nullptr) return false;
 
     DXGI_OUTPUT_DESC1 desc1 = {};
-    if (FAILED(output6->GetDesc1(&desc1)))
-        return false;
+    if (FAILED(output6->GetDesc1(&desc1))) return false;
 
     wcsncpy_s(out_device_name, 32, desc1.DeviceName, _TRUNCATE);
     return out_device_name[0] != L'\0';
@@ -202,7 +198,7 @@ void OnRegisterOverlayDisplayCommander(reshade::api::effect_runtime* runtime) {
 }  // namespace
 
 // ReShade effect runtime event handler for input blocking
-void OnInitCommandList(reshade::api::command_list *cmd_list) {
+void OnInitCommandList(reshade::api::command_list* cmd_list) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Command list initialization tracking
     if (cmd_list == nullptr) {
@@ -211,7 +207,7 @@ void OnInitCommandList(reshade::api::command_list *cmd_list) {
     // Add any initialization logic here if needed
 }
 
-void OnDestroyCommandList(reshade::api::command_list *cmd_list) {
+void OnDestroyCommandList(reshade::api::command_list* cmd_list) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Command list destruction tracking
     if (cmd_list == nullptr) {
@@ -220,7 +216,7 @@ void OnDestroyCommandList(reshade::api::command_list *cmd_list) {
     // Add any cleanup logic here if needed
 }
 
-void OnInitCommandQueue(reshade::api::command_queue *queue) {
+void OnInitCommandQueue(reshade::api::command_queue* queue) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Command queue initialization tracking
     if (queue == nullptr) {
@@ -229,7 +225,7 @@ void OnInitCommandQueue(reshade::api::command_queue *queue) {
     // Add any initialization logic here if needed
 }
 
-void OnDestroyCommandQueue(reshade::api::command_queue *queue) {
+void OnDestroyCommandQueue(reshade::api::command_queue* queue) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Command queue destruction tracking
     if (queue == nullptr) {
@@ -238,7 +234,7 @@ void OnDestroyCommandQueue(reshade::api::command_queue *queue) {
     // Add any cleanup logic here if needed
 }
 
-void OnExecuteCommandList(reshade::api::command_queue *queue, reshade::api::command_list *cmd_list) {
+void OnExecuteCommandList(reshade::api::command_queue* queue, reshade::api::command_list* cmd_list) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Command list execution tracking
     if (queue == nullptr || cmd_list == nullptr) {
@@ -247,7 +243,7 @@ void OnExecuteCommandList(reshade::api::command_queue *queue, reshade::api::comm
     // Add any tracking logic here if needed
 }
 
-void OnFinishPresent(reshade::api::command_queue *queue, reshade::api::swapchain *swapchain) {
+void OnFinishPresent(reshade::api::command_queue* queue, reshade::api::swapchain* swapchain) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Present completion tracking
     if (queue == nullptr || swapchain == nullptr) {
@@ -256,7 +252,8 @@ void OnFinishPresent(reshade::api::command_queue *queue, reshade::api::swapchain
     // Add any tracking logic here if needed
 }
 
-void OnReShadeBeginEffects(reshade::api::effect_runtime *runtime, reshade::api::command_list *cmd_list, reshade::api::resource_view rtv, reshade::api::resource_view rtv_srgb) {
+void OnReShadeBeginEffects(reshade::api::effect_runtime* runtime, reshade::api::command_list* cmd_list,
+                           reshade::api::resource_view rtv, reshade::api::resource_view rtv_srgb) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // ReShade effects begin tracking
     if (runtime == nullptr || cmd_list == nullptr) {
@@ -265,7 +262,8 @@ void OnReShadeBeginEffects(reshade::api::effect_runtime *runtime, reshade::api::
     // Add any tracking logic here if needed
 }
 
-void OnReShadeFinishEffects(reshade::api::effect_runtime *runtime, reshade::api::command_list *cmd_list, reshade::api::resource_view rtv, reshade::api::resource_view rtv_srgb) {
+void OnReShadeFinishEffects(reshade::api::effect_runtime* runtime, reshade::api::command_list* cmd_list,
+                            reshade::api::resource_view rtv, reshade::api::resource_view rtv_srgb) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // ReShade effects finish tracking
     if (runtime == nullptr || cmd_list == nullptr) {
@@ -342,16 +340,16 @@ namespace {
 
 // Cursor state machine for tracking cursor visibility
 enum class CursorState {
-    Unknown,    // Initial/unknown state
-    Visible,    // Cursor is visible (UI is open)
-    Hidden      // Cursor is hidden (UI is closed)
+    Unknown,  // Initial/unknown state
+    Visible,  // Cursor is visible (UI is open)
+    Hidden    // Cursor is hidden (UI is closed)
 };
 
 // Test callback for reshade_overlay event
 void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     const bool show_display_commander_ui = settings::g_mainTabSettings.show_display_commander_ui.GetValue();
-    const bool show_tooltips = show_display_commander_ui; // only show tooltips if the UI is visible
+    const bool show_tooltips = show_display_commander_ui;  // only show tooltips if the UI is visible
 
     static CursorState last_cursor_state = CursorState::Unknown;
 
@@ -389,30 +387,29 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
         }
 
         ImGui::SetNextWindowSize(ImVec2(fixed_width, 0.0f), ImGuiCond_Always);
-        ImGui::Begin("Display Commander", nullptr,
-                     ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoResize);
-/*
-        // Custom title bar with close button
-        float titlebar_height = ImGui::GetTextLineHeight() + (ImGui::GetStyle().FramePadding.y * 2.0f);
-        ImGui::BeginChild("##titlebar", ImVec2(0, titlebar_height), false,
-                          ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+        ImGui::Begin("Display Commander", nullptr, ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoResize);
+        /*
+                // Custom title bar with close button
+                float titlebar_height = ImGui::GetTextLineHeight() + (ImGui::GetStyle().FramePadding.y * 2.0f);
+                ImGui::BeginChild("##titlebar", ImVec2(0, titlebar_height), false,
+                                  ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
 
-        // Title text
-        ImGui::Text("Display Commander");
-        ImGui::SameLine();
+                // Title text
+                ImGui::Text("Display Commander");
+                ImGui::SameLine();
 
-        // Close button aligned to the right
-        float button_size = ImGui::GetTextLineHeight() + (ImGui::GetStyle().FramePadding.x * 2.0f);
-        ImGui::SetCursorPosX(ImGui::GetWindowWidth() - button_size);
-        if (ImGui::Button(ICON_FK_CANCEL, ImVec2(button_size, titlebar_height))) {
-            settings::g_mainTabSettings.show_display_commander_ui.SetValue(false);
-        }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Close");
-        }
+                // Close button aligned to the right
+                float button_size = ImGui::GetTextLineHeight() + (ImGui::GetStyle().FramePadding.x * 2.0f);
+                ImGui::SetCursorPosX(ImGui::GetWindowWidth() - button_size);
+                if (ImGui::Button(ICON_FK_CANCEL, ImVec2(button_size, titlebar_height))) {
+                    settings::g_mainTabSettings.show_display_commander_ui.SetValue(false);
+                }
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip("Close");
+                }
 
-        ImGui::EndChild();
-*/
+                ImGui::EndChild();
+        */
         // Save window position when it changes
         ImVec2 current_pos = ImGui::GetWindowPos();
         if (current_pos.x != saved_x || current_pos.y != saved_y) {
@@ -428,7 +425,7 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
     } else {
         if (last_cursor_state != CursorState::Hidden) {
             last_cursor_state = CursorState::Hidden;
-        // Hide cursor when overlay is closed (same approach as ReShade)
+            // Hide cursor when overlay is closed (same approach as ReShade)
             ImGuiIO& io = ImGui::GetIO();
             io.MouseDrawCursor = false;
         }
@@ -525,8 +522,8 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
                 // Check if native Reflex was updated within the last 5 seconds
                 uint64_t last_sleep_timestamp = ::g_nvapi_last_sleep_timestamp_ns.load();
                 uint64_t current_time = utils::get_now_ns();
-                bool is_recent = (last_sleep_timestamp > 0) &&
-                                (current_time - last_sleep_timestamp) < (5 * utils::SEC_TO_NS);
+                bool is_recent =
+                    (last_sleep_timestamp > 0) && (current_time - last_sleep_timestamp) < (5 * utils::SEC_TO_NS);
 
                 // Calculate native FPS from native Reflex sleep interval
                 LONGLONG native_sleep_ns_smooth = ::g_sleep_reflex_native_ns_smooth.load();
@@ -670,9 +667,12 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
         if (show_vrr_debug_mode && has_recent_sample && cached_stats.is_valid) {
             ImGui::TextColored(ui::colors::TEXT_DIMMED, "  Fixed: %.2f Hz", cached_stats.fixed_refresh_hz);
             ImGui::TextColored(ui::colors::TEXT_DIMMED, "  Threshold: %.2f Hz", cached_stats.threshold_hz);
-            ImGui::TextColored(ui::colors::TEXT_DIMMED, "  Total samples (10s): %u", cached_stats.total_samples_last_10s);
-            ImGui::TextColored(ui::colors::TEXT_DIMMED, "  Below threshold: %u", cached_stats.samples_below_threshold_last_10s);
-            ImGui::TextColored(ui::colors::TEXT_DIMMED, "  Last 20 within 1s: %s", cached_stats.all_last_20_within_1s ? "Yes" : "No");
+            ImGui::TextColored(ui::colors::TEXT_DIMMED, "  Total samples (10s): %u",
+                               cached_stats.total_samples_last_10s);
+            ImGui::TextColored(ui::colors::TEXT_DIMMED, "  Below threshold: %u",
+                               cached_stats.samples_below_threshold_last_10s);
+            ImGui::TextColored(ui::colors::TEXT_DIMMED, "  Last 20 within 1s: %s",
+                               cached_stats.all_last_20_within_1s ? "Yes" : "No");
         }
 
         // NVAPI debug info (optional, shown only in VRR debug mode)
@@ -680,19 +680,20 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
             if (!cached_nvapi_vrr.nvapi_initialized) {
                 ImGui::TextColored(ui::colors::TEXT_DIMMED, "  NVAPI: Unavailable");
             } else if (!cached_nvapi_vrr.display_id_resolved) {
-                ImGui::TextColored(ui::colors::TEXT_DIMMED, "  NVAPI: No displayId (st=%d)", (int)cached_nvapi_vrr.resolve_status);
+                ImGui::TextColored(ui::colors::TEXT_DIMMED, "  NVAPI: No displayId (st=%d)",
+                                   (int)cached_nvapi_vrr.resolve_status);
                 if (!cached_nvapi_vrr.nvapi_display_name.empty()) {
-                    ImGui::TextColored(ui::colors::TEXT_DIMMED, "  NVAPI Name: %s", cached_nvapi_vrr.nvapi_display_name.c_str());
+                    ImGui::TextColored(ui::colors::TEXT_DIMMED, "  NVAPI Name: %s",
+                                       cached_nvapi_vrr.nvapi_display_name.c_str());
                 }
             } else if (!cached_nvapi_ok) {
-                ImGui::TextColored(ui::colors::TEXT_DIMMED, "  NVAPI: Query failed (st=%d)", (int)cached_nvapi_vrr.query_status);
+                ImGui::TextColored(ui::colors::TEXT_DIMMED, "  NVAPI: Query failed (st=%d)",
+                                   (int)cached_nvapi_vrr.query_status);
                 ImGui::TextColored(ui::colors::TEXT_DIMMED, "  NVAPI DisplayId: %u", cached_nvapi_vrr.display_id);
             } else {
                 ImGui::TextColored(ui::colors::TEXT_DIMMED, "  NVAPI: enabled=%d req=%d poss=%d in_mode=%d",
-                                   (int)cached_nvapi_vrr.is_vrr_enabled,
-                                   (int)cached_nvapi_vrr.is_vrr_requested,
-                                   (int)cached_nvapi_vrr.is_vrr_possible,
-                                   (int)cached_nvapi_vrr.is_display_in_vrr_mode);
+                                   (int)cached_nvapi_vrr.is_vrr_enabled, (int)cached_nvapi_vrr.is_vrr_requested,
+                                   (int)cached_nvapi_vrr.is_vrr_possible, (int)cached_nvapi_vrr.is_display_in_vrr_mode);
                 // Show which field is causing "VRR: On" to display
                 if (cached_nvapi_vrr.is_display_in_vrr_mode) {
                     ImGui::TextColored(ui::colors::TEXT_DIMMED, "  -> Display is in VRR mode (authoritative)");
@@ -705,8 +706,7 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
 
     if (show_flip_status) {
         // Get current API to determine flip state
-        int current_api
-        = 0;  // Default to 0 if runtime/device not available
+        int current_api = 0;  // Default to 0 if runtime/device not available
         if (runtime != nullptr && runtime->get_device() != nullptr) {
             current_api = static_cast<int>(runtime->get_device()->get_api());
         }
@@ -745,7 +745,8 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
         const DLSSGSummary dlssg_summary = GetDLSSGSummary();
 
         // Only show the 4 requested buckets: OFF / 2x / 3x / 4x
-        if (dlssg_summary.dlss_g_active && (dlssg_summary.fg_mode == "2x" || dlssg_summary.fg_mode == "3x" || dlssg_summary.fg_mode == "4x")) {
+        if (dlssg_summary.dlss_g_active
+            && (dlssg_summary.fg_mode == "2x" || dlssg_summary.fg_mode == "3x" || dlssg_summary.fg_mode == "4x")) {
             ImGui::Text("FG: %s", dlssg_summary.fg_mode.c_str());
         } else {
             ImGui::TextColored(ui::colors::TEXT_DIMMED, "FG: OFF");
@@ -810,26 +811,26 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
     if (show_cpu_usage) {
         // Calculate CPU usage: (sim_duration / frame_time) * 100%
         // Get most recent frame time from performance ring buffer
-     //   const uint32_t head = ::g_perf_ring_head.load(std::memory_order_acquire);
-     // //  if (head > 0) {
-       //     const uint32_t last_idx = (head - 1) & (::kPerfRingCapacity - 1);
+        //   const uint32_t head = ::g_perf_ring_head.load(std::memory_order_acquire);
+        // //  if (head > 0) {
+        //     const uint32_t last_idx = (head - 1) & (::kPerfRingCapacity - 1);
         //    const ::PerfSample& last_sample = ::g_perf_ring[last_idx];
 
-       //     if (last_sample.dt > 0.0f) {
-                // Get simulation duration in nanoseconds
-           //     LONGLONG sim_duration_ns = ::g_simulation_duration_ns.load();
-            //    LONGLONG reshade_overhead_duration_ns = ::g_reshade_overhead_duration_ns.load();
+        //     if (last_sample.dt > 0.0f) {
+        // Get simulation duration in nanoseconds
+        //     LONGLONG sim_duration_ns = ::g_simulation_duration_ns.load();
+        //    LONGLONG reshade_overhead_duration_ns = ::g_reshade_overhead_duration_ns.load();
 
         // missing time spend in onpresent
         // missing native reflex time
-        LONGLONG cpu_time_ns = ::g_frame_time_ns.load() - fps_sleep_after_on_present_ns.load() - fps_sleep_before_on_present_ns.load();
+        LONGLONG cpu_time_ns =
+            ::g_frame_time_ns.load() - fps_sleep_after_on_present_ns.load() - fps_sleep_before_on_present_ns.load();
 
         LONGLONG frame_time_ns = ::g_frame_time_ns.load();
 
         if (cpu_time_ns > 0 && frame_time_ns > 0) {
             // Calculate CPU usage percentage: (sim_duration / frame_time) * 100
-            double cpu_usage_percent =
-                (static_cast<double>(cpu_time_ns) / static_cast<double>(frame_time_ns)) * 100.0;
+            double cpu_usage_percent = (static_cast<double>(cpu_time_ns) / static_cast<double>(frame_time_ns)) * 100.0;
 
             // Clamp to 0-100%
             if (cpu_usage_percent < 0.0) cpu_usage_percent = 0.0;
@@ -865,8 +866,8 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
                 ImGui::Text("%.1f%% (max: %.1f%%)", smoothed_cpu_usage, max_cpu_usage);
             }
         }
-      //      }
-    //    }
+        //      }
+        //    }
     }
 
     // Show stopwatch
@@ -911,61 +912,60 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
     if (notification.type != ActionNotificationType::None) {
         LONGLONG now_ns = utils::get_now_ns();
         LONGLONG elapsed_ns = now_ns - notification.timestamp_ns;
-        const LONGLONG display_duration_ns = 10 * utils::SEC_TO_NS; // 10 seconds
+        const LONGLONG display_duration_ns = 10 * utils::SEC_TO_NS;  // 10 seconds
 
         if (elapsed_ns < display_duration_ns) {
             // Display based on notification type
             switch (notification.type) {
-            case ActionNotificationType::Volume: {
-                float volume_value = notification.float_value;
-                bool is_muted = g_muted_applied.load();
-                if (settings::g_mainTabSettings.show_labels.GetValue()) {
-                    if (is_muted) {
-                        ImGui::Text("%.0f%% vol muted", volume_value);
+                case ActionNotificationType::Volume: {
+                    float volume_value = notification.float_value;
+                    bool is_muted = g_muted_applied.load();
+                    if (settings::g_mainTabSettings.show_labels.GetValue()) {
+                        if (is_muted) {
+                            ImGui::Text("%.0f%% vol muted", volume_value);
+                        } else {
+                            ImGui::Text("%.0f%% vol", volume_value);
+                        }
                     } else {
-                        ImGui::Text("%.0f%% vol", volume_value);
+                        if (is_muted) {
+                            ImGui::Text("%.0f%% muted", volume_value);
+                        } else {
+                            ImGui::Text("%.0f%%", volume_value);
+                        }
                     }
-                } else {
-                    if (is_muted) {
-                        ImGui::Text("%.0f%% muted", volume_value);
+                    if (ImGui::IsItemHovered() && show_tooltips) {
+                        if (is_muted) {
+                            ImGui::SetTooltip("Audio Volume: %.0f%% (Muted)", volume_value);
+                        } else {
+                            ImGui::SetTooltip("Audio Volume: %.0f%%", volume_value);
+                        }
+                    }
+                    break;
+                }
+                case ActionNotificationType::Mute: {
+                    bool mute_state = notification.bool_value;
+                    if (settings::g_mainTabSettings.show_labels.GetValue()) {
+                        ImGui::Text("%s", mute_state ? "Muted" : "Unmuted");
                     } else {
-                        ImGui::Text("%.0f%%", volume_value);
+                        ImGui::Text("%s", mute_state ? "Muted" : "Unmuted");
                     }
+                    if (ImGui::IsItemHovered() && show_tooltips) {
+                        ImGui::SetTooltip("Audio: %s", mute_state ? "Muted" : "Unmuted");
+                    }
+                    break;
                 }
-                if (ImGui::IsItemHovered() && show_tooltips) {
-                    if (is_muted) {
-                        ImGui::SetTooltip("Audio Volume: %.0f%% (Muted)", volume_value);
+                case ActionNotificationType::GenericAction: {
+                    if (settings::g_mainTabSettings.show_labels.GetValue()) {
+                        ImGui::Text("%s", notification.action_name);
                     } else {
-                        ImGui::SetTooltip("Audio Volume: %.0f%%", volume_value);
+                        ImGui::Text("%s", notification.action_name);
                     }
+                    if (ImGui::IsItemHovered() && show_tooltips) {
+                        ImGui::SetTooltip("Gamepad Action: %s", notification.action_name);
+                    }
+                    break;
                 }
-                break;
-            }
-            case ActionNotificationType::Mute: {
-                bool mute_state = notification.bool_value;
-                if (settings::g_mainTabSettings.show_labels.GetValue()) {
-                    ImGui::Text("%s", mute_state ? "Muted" : "Unmuted");
-                } else {
-                    ImGui::Text("%s", mute_state ? "Muted" : "Unmuted");
-                }
-                if (ImGui::IsItemHovered() && show_tooltips) {
-                    ImGui::SetTooltip("Audio: %s", mute_state ? "Muted" : "Unmuted");
-                }
-                break;
-            }
-            case ActionNotificationType::GenericAction: {
-                if (settings::g_mainTabSettings.show_labels.GetValue()) {
-                    ImGui::Text("%s", notification.action_name);
-                } else {
-                    ImGui::Text("%s", notification.action_name);
-                }
-                if (ImGui::IsItemHovered() && show_tooltips) {
-                    ImGui::SetTooltip("Gamepad Action: %s", notification.action_name);
-                }
-                break;
-            }
-            default:
-                break;
+                default: break;
             }
         } else {
             // Clear the notification after display duration expires
@@ -994,15 +994,17 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
 
             // Calculate QPC difference in seconds
             double qpc_difference_seconds = 0.0;
-            if (display_commanderhooks::QueryPerformanceCounter_Original &&
-                display_commanderhooks::QueryPerformanceFrequency_Original) {
+            if (display_commanderhooks::QueryPerformanceCounter_Original
+                && display_commanderhooks::QueryPerformanceFrequency_Original) {
                 LARGE_INTEGER frequency;
                 if (display_commanderhooks::QueryPerformanceFrequency_Original(&frequency) && frequency.QuadPart > 0) {
                     LARGE_INTEGER original_qpc;
                     if (display_commanderhooks::QueryPerformanceCounter_Original(&original_qpc)) {
                         LONGLONG spoofed_qpc = display_commanderhooks::ApplyTimeslowdownToQPC(original_qpc.QuadPart);
-                        double original_qpc_seconds = static_cast<double>(original_qpc.QuadPart) / static_cast<double>(frequency.QuadPart);
-                        double spoofed_qpc_seconds = static_cast<double>(spoofed_qpc) / static_cast<double>(frequency.QuadPart);
+                        double original_qpc_seconds =
+                            static_cast<double>(original_qpc.QuadPart) / static_cast<double>(frequency.QuadPart);
+                        double spoofed_qpc_seconds =
+                            static_cast<double>(spoofed_qpc) / static_cast<double>(frequency.QuadPart);
                         qpc_difference_seconds = spoofed_qpc_seconds - original_qpc_seconds;
                     }
                 }
@@ -1010,7 +1012,8 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
 
             if (first_feature) {
                 if (settings::g_mainTabSettings.show_labels.GetValue()) {
-                    snprintf(feature_text, sizeof(feature_text), "%.2fx TS (%+.1fs)", multiplier, qpc_difference_seconds);
+                    snprintf(feature_text, sizeof(feature_text), "%.2fx TS (%+.1fs)", multiplier,
+                             qpc_difference_seconds);
                 } else {
                     snprintf(feature_text, sizeof(feature_text), "%.2fx (%+.1fs)", multiplier, qpc_difference_seconds);
                 }
@@ -1020,13 +1023,15 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
             } else {
                 size_t len = strlen(feature_text);
                 if (settings::g_mainTabSettings.show_labels.GetValue()) {
-                    snprintf(feature_text + len, sizeof(feature_text) - len, ", %.2fx TS (%+.1fs)", multiplier, qpc_difference_seconds);
+                    snprintf(feature_text + len, sizeof(feature_text) - len, ", %.2fx TS (%+.1fs)", multiplier,
+                             qpc_difference_seconds);
                 } else {
-                    snprintf(feature_text + len, sizeof(feature_text) - len, ", %.2fx (%+.1fs)", multiplier, qpc_difference_seconds);
+                    snprintf(feature_text + len, sizeof(feature_text) - len, ", %.2fx (%+.1fs)", multiplier,
+                             qpc_difference_seconds);
                 }
                 len = strlen(tooltip_text);
-                snprintf(tooltip_text + len, sizeof(tooltip_text) - len, " | Time Slowdown: %.2fx multiplier, QPC diff: %+.1f s",
-                         multiplier, qpc_difference_seconds);
+                snprintf(tooltip_text + len, sizeof(tooltip_text) - len,
+                         " | Time Slowdown: %.2fx multiplier, QPC diff: %+.1f s", multiplier, qpc_difference_seconds);
             }
         }
 
@@ -1165,7 +1170,8 @@ void OverrideReShadeSettings() {
 
     // Check if we've already set LoadFromDllMain to 0 at least once
     bool load_from_dll_main_set_once = false;
-    display_commander::config::get_config_value("DisplayCommander", "LoadFromDllMainSetOnce", load_from_dll_main_set_once);
+    display_commander::config::get_config_value("DisplayCommander", "LoadFromDllMainSetOnce",
+                                                load_from_dll_main_set_once);
 
     if (!load_from_dll_main_set_once) {
         // Get current value from ReShade.ini for logging
@@ -1174,7 +1180,7 @@ void OverrideReShadeSettings() {
         LogInfo("ReShade settings override - LoadFromDllMain current ReShade value: %d", current_reshade_value);
 
         // Set LoadFromDllMain to 0 (first time only)
-        //reshade::set_config_value(nullptr, "ADDON", "LoadFromDllMain", 0);
+        // reshade::set_config_value(nullptr, "ADDON", "LoadFromDllMain", 0);
         LogInfo("ReShade settings override - LoadFromDllMain set to 0 (first time)");
 
         // Mark that we've set it at least once
@@ -1341,9 +1347,10 @@ bool DetectMultipleDisplayCommanderVersions() {
         // Use OutputDebugStringA since logging might not be initialized yet
         char error_msg[256];
         snprintf(error_msg, sizeof(error_msg),
-            "[DisplayCommander] Failed to enumerate process modules for Display Commander detection: %lu\n", error);
+                 "[DisplayCommander] Failed to enumerate process modules for Display Commander detection: %lu\n",
+                 error);
         OutputDebugStringA(error_msg);
-        return false; // Can't detect, so allow loading
+        return false;  // Can't detect, so allow loading
     }
 
     if (num_modules > sizeof(modules)) {
@@ -1355,12 +1362,10 @@ bool DetectMultipleDisplayCommanderVersions() {
 
     // Use OutputDebugStringA for early detection logging
     char scan_msg[256];
-    snprintf(scan_msg, sizeof(scan_msg),
-        "[DisplayCommander] === Display Commander Module Detection ===\n");
+    snprintf(scan_msg, sizeof(scan_msg), "[DisplayCommander] === Display Commander Module Detection ===\n");
     OutputDebugStringA(scan_msg);
-    snprintf(scan_msg, sizeof(scan_msg),
-        "[DisplayCommander] Scanning %u modules for Display Commander...\n",
-        static_cast<unsigned int>(num_modules / sizeof(HMODULE)));
+    snprintf(scan_msg, sizeof(scan_msg), "[DisplayCommander] Scanning %u modules for Display Commander...\n",
+             static_cast<unsigned int>(num_modules / sizeof(HMODULE)));
     OutputDebugStringA(scan_msg);
 
     for (DWORD i = 0; i < num_modules / sizeof(HMODULE); ++i) {
@@ -1395,17 +1400,13 @@ bool DetectMultipleDisplayCommanderVersions() {
 
             // Log to debug output
             char found_msg[512];
-            snprintf(found_msg, sizeof(found_msg),
-                "[DisplayCommander] Found Display Commander module #%d: 0x%p - %s\n",
-                dc_module_count, module, narrow_path);
+            snprintf(found_msg, sizeof(found_msg), "[DisplayCommander] Found Display Commander module #%d: 0x%p - %s\n",
+                     dc_module_count, module, narrow_path);
             OutputDebugStringA(found_msg);
-            snprintf(found_msg, sizeof(found_msg),
-                "[DisplayCommander]   Other version: %s\n",
-                other_version ? other_version : "(unknown)");
+            snprintf(found_msg, sizeof(found_msg), "[DisplayCommander]   Other version: %s\n",
+                     other_version ? other_version : "(unknown)");
             OutputDebugStringA(found_msg);
-            snprintf(found_msg, sizeof(found_msg),
-                "[DisplayCommander]   Current version: %s\n",
-                current_version);
+            snprintf(found_msg, sizeof(found_msg), "[DisplayCommander]   Current version: %s\n", current_version);
             OutputDebugStringA(found_msg);
 
             // Compare versions (simple string comparison - assumes semantic versioning)
@@ -1417,8 +1418,8 @@ bool DetectMultipleDisplayCommanderVersions() {
 
                 // Try to notify the other instance about multiple versions
                 typedef void (*NotifyMultipleVersionsFunc)(const char*);
-                NotifyMultipleVersionsFunc notify_func =
-                    reinterpret_cast<NotifyMultipleVersionsFunc>(GetProcAddress(module, "NotifyDisplayCommanderMultipleVersions"));
+                NotifyMultipleVersionsFunc notify_func = reinterpret_cast<NotifyMultipleVersionsFunc>(
+                    GetProcAddress(module, "NotifyDisplayCommanderMultipleVersions"));
 
                 if (notify_func != nullptr) {
                     // Call the notification function on the other instance with our version
@@ -1429,10 +1430,10 @@ bool DetectMultipleDisplayCommanderVersions() {
                 // Log to ReShade's log as error (exception to the rule) if ReShade is available
                 char error_msg[512];
                 snprintf(error_msg, sizeof(error_msg),
-                    "[Display Commander] ERROR: Multiple Display Commander instances detected! "
-                    "Other instance: v%s at %s, Current instance: v%s. "
-                    "Refusing to load to prevent conflicts. Please ensure only one version is loaded.",
-                    other_version, narrow_path, current_version);
+                         "[Display Commander] ERROR: Multiple Display Commander instances detected! "
+                         "Other instance: v%s at %s, Current instance: v%s. "
+                         "Refusing to load to prevent conflicts. Please ensure only one version is loaded.",
+                         other_version, narrow_path, current_version);
 
                 // Use reshade::log::message with error level (exception to the rule)
                 // This might not be available yet, but try anyway
@@ -1446,13 +1447,10 @@ bool DetectMultipleDisplayCommanderVersions() {
 
                 // Also log to debug output
                 OutputDebugStringA("[DisplayCommander] ERROR: Multiple Display Commander instances detected!\n");
-                snprintf(found_msg, sizeof(found_msg),
-                    "[DisplayCommander]   Other instance: v%s at %s\n",
-                    other_version, narrow_path);
+                snprintf(found_msg, sizeof(found_msg), "[DisplayCommander]   Other instance: v%s at %s\n",
+                         other_version, narrow_path);
                 OutputDebugStringA(found_msg);
-                snprintf(found_msg, sizeof(found_msg),
-                    "[DisplayCommander]   Current instance: v%s\n",
-                    current_version);
+                snprintf(found_msg, sizeof(found_msg), "[DisplayCommander]   Current instance: v%s\n", current_version);
                 OutputDebugStringA(found_msg);
                 OutputDebugStringA("[DisplayCommander] Refusing to load to prevent conflicts.\n");
             }
@@ -1461,21 +1459,20 @@ bool DetectMultipleDisplayCommanderVersions() {
 
     // Log completion
     char complete_msg[256];
-    snprintf(complete_msg, sizeof(complete_msg),
-        "[DisplayCommander] === Display Commander Detection Complete ===\n");
+    snprintf(complete_msg, sizeof(complete_msg), "[DisplayCommander] === Display Commander Detection Complete ===\n");
     OutputDebugStringA(complete_msg);
     snprintf(complete_msg, sizeof(complete_msg),
-        "[DisplayCommander] Total Display Commander modules found: %d (excluding current)\n",
-        dc_module_count);
+             "[DisplayCommander] Total Display Commander modules found: %d (excluding current)\n", dc_module_count);
     OutputDebugStringA(complete_msg);
 
     if (dc_module_count > 0) {
-        OutputDebugStringA("[DisplayCommander] WARNING: Multiple Display Commander versions detected! Refusing to load.\n");
-        return true; // Multiple versions detected - refuse to load
+        OutputDebugStringA(
+            "[DisplayCommander] WARNING: Multiple Display Commander versions detected! Refusing to load.\n");
+        return true;  // Multiple versions detected - refuse to load
     }
 
     OutputDebugStringA("[DisplayCommander] Single Display Commander instance detected - no conflicts.\n");
-    return false; // No conflicts - allow loading
+    return false;  // No conflicts - allow loading
 }
 
 // Version compatibility check function
@@ -1586,7 +1583,7 @@ void HandleSafemode() {
         // Parse comma-separated DLL list
         std::istringstream iss(dlls_to_load);
         std::string dll_name;
-        const int max_wait_time_ms = 30000; // Maximum 30 seconds per DLL
+        const int max_wait_time_ms = 30000;  // Maximum 30 seconds per DLL
         const int check_interval_ms = 100;   // Check every 100ms
 
         while (std::getline(iss, dll_name, ',')) {
@@ -1634,7 +1631,8 @@ void HandleSafemode() {
         LogInfo("DLL loading delay complete, proceeding with initialization");
     }
     // rewrite settings::g_developerTabSettings.dll_loading_delay_ms
-    settings::g_developerTabSettings.dll_loading_delay_ms.SetValue(settings::g_developerTabSettings.dll_loading_delay_ms.GetValue());
+    settings::g_developerTabSettings.dll_loading_delay_ms.SetValue(
+        settings::g_developerTabSettings.dll_loading_delay_ms.GetValue());
 
     if (safemode_enabled) {
         LogInfo(
@@ -1706,7 +1704,6 @@ void DoInitializationWithoutHwnd(HMODULE h_module, DWORD fdw_reason) {
         display_commander::config::save_config("Entry point detection");
         LogInfo("Entry point logged to DisplayCommander.ini: %s", g_entry_point_to_save.c_str());
     }
-
 
     // Setup high-resolution timer for maximum precision
     if (utils::setup_high_resolution_timer()) {
@@ -1873,9 +1870,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             DWORD num_modules_bytes = 0;
             if (K32EnumProcessModules(GetCurrentProcess(), modules, sizeof(modules), &num_modules_bytes) != 0) {
                 DWORD num_modules = (std::min<DWORD>)(num_modules_bytes / sizeof(HMODULE),
-                                             static_cast<DWORD>(sizeof(modules) / sizeof(HMODULE)));
-
-
+                                                      static_cast<DWORD>(sizeof(modules) / sizeof(HMODULE)));
 
                 // check for method named ReShadeRegisterAddon
                 for (DWORD i = 0; i < num_modules; i++) {
@@ -1888,21 +1883,104 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
                     }
                 }
             }
-            #ifdef _WIN64
+#ifdef _WIN64
             if (!g_reshade_loaded.load()) {
                 if (LoadLibraryA("Reshade64.dll") != nullptr) {
                     g_reshade_loaded.store(true);
                     OutputDebugStringA("Reshade64.dll loaded successfully");
                 }
             }
-            #else
+#else
             if (!g_reshade_loaded.load()) {
                 if (LoadLibraryA("Reshade32.dll") != nullptr) {
                     g_reshade_loaded.store(true);
                     OutputDebugStringA("Reshade32.dll loaded successfully");
                 }
             }
-            #endif
+#endif
+            WCHAR module_path[MAX_PATH];
+            std::wstring entry_point = L"addon";
+            bool found_proxy = false;
+            if (GetModuleFileNameW(h_module, module_path, MAX_PATH) > 0) {
+                std::filesystem::path module_file_path(module_path);
+                std::wstring module_name = module_file_path.stem().wstring();
+                std::wstring module_name_full = module_file_path.filename().wstring();
+
+                // Convert to lowercase for comparison
+                std::transform(module_name.begin(), module_name.end(), module_name.begin(), ::towlower);
+                std::transform(module_name_full.begin(), module_name_full.end(), module_name_full.begin(), ::towlower);
+
+                // Debug: Print module name to debug output
+                int module_utf8_size =
+                    WideCharToMultiByte(CP_UTF8, 0, module_name_full.c_str(), -1, nullptr, 0, nullptr, nullptr);
+                if (module_utf8_size > 0) {
+                    std::string module_name_utf8(module_utf8_size - 1, '\0');
+                    WideCharToMultiByte(CP_UTF8, 0, module_name_full.c_str(), -1, module_name_utf8.data(),
+                                        module_utf8_size, nullptr, nullptr);
+                    char debug_msg[512];
+                    snprintf(debug_msg, sizeof(debug_msg),
+                             "[DisplayCommander] DEBUG: module_name_full='%s', module_name (stem)='%ws'\n",
+                             module_name_utf8.c_str(), module_name.c_str());
+                    OutputDebugStringA(debug_msg);
+                }
+
+                // List of proxy DLL names to check
+                struct ProxyDllInfo {
+                    const wchar_t* name;
+                    const wchar_t* entry_point;
+                    const char* debug_msg;
+                    const char* log_msg;
+                };
+
+                const ProxyDllInfo proxy_dlls[] = {
+                    {L"dxgi", L"dxgi.dll", "[DisplayCommander] Entry point detected: dxgi.dll (proxy mode)\n",
+                     "Display Commander loaded as dxgi.dll proxy - DXGI functions will be forwarded to system "
+                     "dxgi.dll"},
+                    {L"d3d11", L"d3d11.dll", "[DisplayCommander] Entry point detected: d3d11.dll (proxy mode)\n",
+                     "Display Commander loaded as d3d11.dll proxy - D3D11 functions will be forwarded to system "
+                     "d3d11.dll"},
+                    {L"d3d12", L"d3d12.dll", "[DisplayCommander] Entry point detected: d3d12.dll (proxy mode)\n",
+                     "Display Commander loaded as d3d12.dll proxy - D3D12 functions will be forwarded to system "
+                     "d3d12.dll"},
+                    {L"version", L"version.dll", "[DisplayCommander] Entry point detected: version.dll (proxy mode)\n",
+                     "Display Commander loaded as version.dll proxy - Version functions will be forwarded to "
+                     "system "
+                     "version.dll"}};
+
+                // Check if we're loaded as any proxy DLL
+                for (const auto& proxy : proxy_dlls) {
+                    if (_wcsicmp(module_name.c_str(), proxy.name) == 0) {
+                        entry_point = proxy.entry_point;
+                        OutputDebugStringA(proxy.debug_msg);
+                        LogInfoDirect("%s", proxy.log_msg);
+                        found_proxy = true;
+                        break;
+                    }
+                }
+
+                if (!found_proxy) {
+                    entry_point = L"addon";
+                    // Convert module_name to UTF-8 for debug output
+                    int module_utf8_size =
+                        WideCharToMultiByte(CP_UTF8, 0, module_name.c_str(), -1, nullptr, 0, nullptr, nullptr);
+                    if (module_utf8_size > 0) {
+                        std::string module_name_utf8(module_utf8_size - 1, '\0');
+                        WideCharToMultiByte(CP_UTF8, 0, module_name.c_str(), -1, module_name_utf8.data(),
+                                            module_utf8_size, nullptr, nullptr);
+                        char debug_msg[512];
+                        snprintf(debug_msg, sizeof(debug_msg),
+                                 "[DisplayCommander] Entry point detected: addon (module: %s)\n",
+                                 module_name_utf8.c_str());
+                        OutputDebugStringA(debug_msg);
+                    } else {
+                        OutputDebugStringA("[DisplayCommander] Entry point detected: addon\n");
+                    }
+                    LogInfoDirect("Display Commander loaded as ReShade addon (module: %ws)", module_name.c_str());
+                }
+            } else {
+                OutputDebugStringA("[DisplayCommander] Entry point detection: Failed to get module filename\n");
+            }
+
             // don't call register_addon if reshade is not loaded to prevent crash
             if (!g_reshade_loaded.load()) {
                 OutputDebugStringA("ReShade not loaded");
@@ -1919,21 +1997,21 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
                     OutputDebugStringA(display_commander::utils::GetPlatformAPIName(detected_platforms[i]));
                 }
                 OutputDebugStringA("\n");
-
                 // Only try Documents folder and show message box if platform detected
-                if (!detected_platforms.empty()) {
+                if (!detected_platforms.empty() || found_proxy) {
                     // Try to find Reshade DLL in Documents folder
                     wchar_t documents_path[MAX_PATH];
 
-                    if (SUCCEEDED(SHGetFolderPathW(nullptr, CSIDL_MYDOCUMENTS, nullptr, SHGFP_TYPE_CURRENT, documents_path))) {
+                    if (SUCCEEDED(SHGetFolderPathW(nullptr, CSIDL_MYDOCUMENTS, nullptr, SHGFP_TYPE_CURRENT,
+                                                   documents_path))) {
                         std::filesystem::path documents_dir(documents_path);
-                        #ifdef _WIN64
+#ifdef _WIN64
                         std::filesystem::path reshade_path = documents_dir / L"Reshade64.dll";
                         const char* dll_name = "Reshade64.dll";
-                        #else
+#else
                         std::filesystem::path reshade_path = documents_dir / L"Reshade32.dll";
                         const char* dll_name = "Reshade32.dll";
-                        #endif
+#endif
 
                         if (std::filesystem::exists(reshade_path)) {
                             // Get absolute/canonical path
@@ -1943,7 +2021,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
                                 // Fallback to absolute path if canonical fails
                                 absolute_path = std::filesystem::absolute(reshade_path, ec);
                                 if (ec) {
-                                    absolute_path = reshade_path; // Last resort
+                                    absolute_path = reshade_path;  // Last resort
                                 }
                             }
 
@@ -1954,10 +2032,10 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
                                 g_reshade_loaded.store(true);
                                 char msg[512];
                                 char path_narrow[MAX_PATH];
-                                WideCharToMultiByte(CP_ACP, 0, absolute_path.c_str(), -1,
-                                                  path_narrow, MAX_PATH, nullptr, nullptr);
-                                snprintf(msg, sizeof(msg), "%s already loaded from Documents folder: %s",
-                                        dll_name, path_narrow);
+                                WideCharToMultiByte(CP_ACP, 0, absolute_path.c_str(), -1, path_narrow, MAX_PATH,
+                                                    nullptr, nullptr);
+                                snprintf(msg, sizeof(msg), "%s already loaded from Documents folder: %s", dll_name,
+                                         path_narrow);
                                 OutputDebugStringA(msg);
                             } else {
                                 // Try to load from Documents folder
@@ -1966,47 +2044,51 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
                                     g_reshade_loaded.store(true);
                                     char msg[512];
                                     char path_narrow[MAX_PATH];
-                                    WideCharToMultiByte(CP_ACP, 0, absolute_path.c_str(), -1,
-                                                      path_narrow, MAX_PATH, nullptr, nullptr);
+                                    WideCharToMultiByte(CP_ACP, 0, absolute_path.c_str(), -1, path_narrow, MAX_PATH,
+                                                        nullptr, nullptr);
                                     snprintf(msg, sizeof(msg), "%s loaded successfully from Documents folder: %s",
-                                            dll_name, path_narrow);
+                                             dll_name, path_narrow);
                                     OutputDebugStringA(msg);
                                 } else {
                                     DWORD error = GetLastError();
 
                                     // Get detailed error message
                                     wchar_t error_msg[512] = {0};
-                                    DWORD msg_len = FormatMessageW(
-                                        FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-                                        nullptr, error, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-                                        error_msg, sizeof(error_msg) / sizeof(wchar_t), nullptr);
+                                    DWORD msg_len =
+                                        FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+                                                       nullptr, error, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+                                                       error_msg, sizeof(error_msg) / sizeof(wchar_t), nullptr);
 
                                     char msg[1024];
                                     char path_narrow[MAX_PATH];
-                                    WideCharToMultiByte(CP_ACP, 0, absolute_path.c_str(), -1,
-                                                      path_narrow, MAX_PATH, nullptr, nullptr);
+                                    WideCharToMultiByte(CP_ACP, 0, absolute_path.c_str(), -1, path_narrow, MAX_PATH,
+                                                        nullptr, nullptr);
 
                                     if (msg_len > 0) {
                                         // Remove trailing newlines from error message
-                                        while (msg_len > 0 && (error_msg[msg_len - 1] == L'\n' || error_msg[msg_len - 1] == L'\r')) {
+                                        while (
+                                            msg_len > 0
+                                            && (error_msg[msg_len - 1] == L'\n' || error_msg[msg_len - 1] == L'\r')) {
                                             error_msg[--msg_len] = L'\0';
                                         }
                                         char error_msg_narrow[512];
-                                        WideCharToMultiByte(CP_ACP, 0, error_msg, -1,
-                                                          error_msg_narrow, sizeof(error_msg_narrow), nullptr, nullptr);
-                                        snprintf(msg, sizeof(msg), "Failed to load %s from Documents folder (error %lu: %s): %s",
-                                                dll_name, error, error_msg_narrow, path_narrow);
+                                        WideCharToMultiByte(CP_ACP, 0, error_msg, -1, error_msg_narrow,
+                                                            sizeof(error_msg_narrow), nullptr, nullptr);
+                                        snprintf(msg, sizeof(msg),
+                                                 "Failed to load %s from Documents folder (error %lu: %s): %s",
+                                                 dll_name, error, error_msg_narrow, path_narrow);
                                     } else {
-                                        snprintf(msg, sizeof(msg), "Failed to load %s from Documents folder (error: %lu): %s",
-                                                dll_name, error, path_narrow);
+                                        snprintf(msg, sizeof(msg),
+                                                 "Failed to load %s from Documents folder (error: %lu): %s", dll_name,
+                                                 error, path_narrow);
                                     }
                                     OutputDebugStringA(msg);
                                 }
                             }
                         }
                     } else {
-                        MessageBoxA(nullptr, "ReShade not found in Documents folder", "Display Commander - ReShade Not Found",
-                                    MB_OK | MB_ICONWARNING | MB_TOPMOST);
+                        MessageBoxA(nullptr, "ReShade not found in Documents folder",
+                                    "Display Commander - ReShade Not Found", MB_OK | MB_ICONWARNING | MB_TOPMOST);
                         return TRUE;
                     }
 
@@ -2018,13 +2100,14 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
                             platform_names += display_commander::utils::GetPlatformAPIName(detected_platforms[i]);
                         }
 
-                        #ifdef _WIN64
+#ifdef _WIN64
                         const char* dll_name_msg = "ReShade64.dll";
-                        #else
+#else
                         const char* dll_name_msg = "Reshade32.dll";
-                        #endif
+#endif
 
-                        std::string message = "Display Commander detected a game platform (" + platform_names + ") but ReShade was not found.\n\n";
+                        std::string message = "Display Commander detected a game platform (" + platform_names
+                                              + ") but ReShade was not found.\n\n";
                         message += "ReShade is required for Display Commander to function.\n\n";
                         message += "Please ensure " + std::string(dll_name_msg) + " is either:\n";
                         message += "1. In the game's installation folder, or\n";
@@ -2041,15 +2124,16 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             }
             // Detect multiple Display Commander instances - refuse to load if multiple versions found
             if (DetectMultipleDisplayCommanderVersions()) {
-                OutputDebugStringA("[DisplayCommander] Multiple Display Commander instances detected - refusing to load.\n");
-                return FALSE; // Refuse to load
+                OutputDebugStringA(
+                    "[DisplayCommander] Multiple Display Commander instances detected - refusing to load.\n");
+                return FALSE;  // Refuse to load
             }
 
             if (!reshade::register_addon(h_module)) {
                 // Registration failed - likely due to API version mismatch
 
-                //DetectMultipleReShadeVersions();
-                //CheckReShadeVersionCompatibility();
+                // DetectMultipleReShadeVersions();
+                // CheckReShadeVersionCompatibility();
                 OutputDebugStringA("ReShade 0000000");
                 return TRUE;
             }
@@ -2057,10 +2141,9 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
 
             DetectMultipleReShadeVersions();
 
-
             // Registration successful - log version compatibility
             LogInfoDirect("Display Commander v%s - ReShade addon registration successful (API version 17 supported)",
-                    DISPLAY_COMMANDER_VERSION_STRING);
+                          DISPLAY_COMMANDER_VERSION_STRING);
 
             // Register overlay early so it appears as a tab by default
             reshade::register_overlay("Display Commander", OnRegisterOverlayDisplayCommander);
@@ -2071,85 +2154,14 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             // Log to debug viewer early since log file may not be available yet
             OutputDebugStringA("[DisplayCommander] DllMain: DLL_PROCESS_ATTACH - Starting entry point detection\n");
 
-            WCHAR module_path[MAX_PATH];
-            std::wstring entry_point = L"addon";
-            if (GetModuleFileNameW(h_module, module_path, MAX_PATH) > 0) {
-                std::filesystem::path module_file_path(module_path);
-                std::wstring module_name = module_file_path.stem().wstring();
-                std::wstring module_name_full = module_file_path.filename().wstring();
-
-                // Convert to lowercase for comparison
-                std::transform(module_name.begin(), module_name.end(), module_name.begin(), ::towlower);
-                std::transform(module_name_full.begin(), module_name_full.end(), module_name_full.begin(), ::towlower);
-
-                // Debug: Print module name to debug output
-                int module_utf8_size = WideCharToMultiByte(CP_UTF8, 0, module_name_full.c_str(), -1, nullptr, 0, nullptr, nullptr);
-                if (module_utf8_size > 0) {
-                    std::string module_name_utf8(module_utf8_size - 1, '\0');
-                    WideCharToMultiByte(CP_UTF8, 0, module_name_full.c_str(), -1, module_name_utf8.data(), module_utf8_size, nullptr, nullptr);
-                    char debug_msg[512];
-                    snprintf(debug_msg, sizeof(debug_msg), "[DisplayCommander] DEBUG: module_name_full='%s', module_name (stem)='%ws'\n",
-                             module_name_utf8.c_str(), module_name.c_str());
-                    OutputDebugStringA(debug_msg);
-                }
-
-                // List of proxy DLL names to check
-                struct ProxyDllInfo {
-                    const wchar_t* name;
-                    const wchar_t* entry_point;
-                    const char* debug_msg;
-                    const char* log_msg;
-                };
-
-                const ProxyDllInfo proxy_dlls[] = {
-                    { L"dxgi", L"dxgi.dll", "[DisplayCommander] Entry point detected: dxgi.dll (proxy mode)\n",
-                      "Display Commander loaded as dxgi.dll proxy - DXGI functions will be forwarded to system dxgi.dll" },
-                    { L"d3d11", L"d3d11.dll", "[DisplayCommander] Entry point detected: d3d11.dll (proxy mode)\n",
-                      "Display Commander loaded as d3d11.dll proxy - D3D11 functions will be forwarded to system d3d11.dll" },
-                    { L"d3d12", L"d3d12.dll", "[DisplayCommander] Entry point detected: d3d12.dll (proxy mode)\n",
-                      "Display Commander loaded as d3d12.dll proxy - D3D12 functions will be forwarded to system d3d12.dll" },
-                    { L"version", L"version.dll", "[DisplayCommander] Entry point detected: version.dll (proxy mode)\n",
-                      "Display Commander loaded as version.dll proxy - Version functions will be forwarded to system version.dll" }
-                };
-
-                // Check if we're loaded as any proxy DLL
-                bool found_proxy = false;
-                for (const auto& proxy : proxy_dlls) {
-                    if (_wcsicmp(module_name.c_str(), proxy.name) == 0) {
-                        entry_point = proxy.entry_point;
-                        OutputDebugStringA(proxy.debug_msg);
-                        LogInfoDirect("%s", proxy.log_msg);
-                        found_proxy = true;
-                        break;
-                    }
-                }
-
-                if (!found_proxy) {
-                    entry_point = L"addon";
-                    // Convert module_name to UTF-8 for debug output
-                    int module_utf8_size = WideCharToMultiByte(CP_UTF8, 0, module_name.c_str(), -1, nullptr, 0, nullptr, nullptr);
-                    if (module_utf8_size > 0) {
-                        std::string module_name_utf8(module_utf8_size - 1, '\0');
-                        WideCharToMultiByte(CP_UTF8, 0, module_name.c_str(), -1, module_name_utf8.data(), module_utf8_size, nullptr, nullptr);
-                        char debug_msg[512];
-                        snprintf(debug_msg, sizeof(debug_msg), "[DisplayCommander] Entry point detected: addon (module: %s)\n", module_name_utf8.c_str());
-                        OutputDebugStringA(debug_msg);
-                    } else {
-                        OutputDebugStringA("[DisplayCommander] Entry point detected: addon\n");
-                    }
-                    LogInfoDirect("Display Commander loaded as ReShade addon (module: %ws)", module_name.c_str());
-                }
-            } else {
-                OutputDebugStringA("[DisplayCommander] Entry point detection: Failed to get module filename\n");
-            }
-
             // Store entry point for logging later (after config system is initialized)
             // Convert wide string to UTF-8
             std::string entry_point_utf8;
             int utf8_size = WideCharToMultiByte(CP_UTF8, 0, entry_point.c_str(), -1, nullptr, 0, nullptr, nullptr);
             if (utf8_size > 0) {
-                entry_point_utf8.resize(utf8_size - 1); // -1 to exclude null terminator
-                WideCharToMultiByte(CP_UTF8, 0, entry_point.c_str(), -1, entry_point_utf8.data(), utf8_size, nullptr, nullptr);
+                entry_point_utf8.resize(utf8_size - 1);  // -1 to exclude null terminator
+                WideCharToMultiByte(CP_UTF8, 0, entry_point.c_str(), -1, entry_point_utf8.data(), utf8_size, nullptr,
+                                    nullptr);
             } else {
                 // Fallback to simple conversion if UTF-8 conversion fails
                 entry_point_utf8 = std::string(entry_point.begin(), entry_point.end());
@@ -2159,7 +2171,9 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             g_entry_point_to_save = entry_point_utf8;
 
             char debug_msg[512];
-            snprintf(debug_msg, sizeof(debug_msg), "[DisplayCommander] Entry point detected: %s (will be saved after initialization)\n", entry_point_utf8.c_str());
+            snprintf(debug_msg, sizeof(debug_msg),
+                     "[DisplayCommander] Entry point detected: %s (will be saved after initialization)\n",
+                     entry_point_utf8.c_str());
             OutputDebugStringA(debug_msg);
             LogInfoDirect("Entry point detected: %s (will be saved after initialization)", entry_point_utf8.c_str());
 
@@ -2173,7 +2187,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             utils::initialize_qpc_timing_constants();
 
             DoInitializationWithoutHwnd(h_module, fdw_reason);
-            //display_commander::config::DisplayCommanderConfigManager::GetInstance().SetAutoFlushLogs(false);
+            // display_commander::config::DisplayCommanderConfigManager::GetInstance().SetAutoFlushLogs(false);
 
             break;
         }
@@ -2268,27 +2282,26 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
 
 // Auto-injection state
 namespace {
-    HHOOK g_cbt_hook = nullptr;
-    std::atomic<LONGLONG> g_injection_start_time(0);
-    std::atomic<bool> g_injection_active(false);
-    constexpr LONGLONG INJECTION_DURATION_NS = 30LL * 1000000000LL; // 30 seconds in nanoseconds
+HHOOK g_cbt_hook = nullptr;
+std::atomic<LONGLONG> g_injection_start_time(0);
+std::atomic<bool> g_injection_active(false);
+constexpr LONGLONG INJECTION_DURATION_NS = 30LL * 1000000000LL;  // 30 seconds in nanoseconds
 
-    // Named event to signal injection is active (shared across processes)
-    HANDLE g_injection_active_event = nullptr;
+// Named event to signal injection is active (shared across processes)
+HANDLE g_injection_active_event = nullptr;
 
-    // Simple function to check if a PID was injected (by checking for named event)
-    bool IsPidInjected(DWORD pid) {
-        wchar_t pid_event_name[64];
-        swprintf_s(pid_event_name, L"Local\\DisplayCommander_Injected_%lu", pid);
-        HANDLE hEvent = OpenEventW(SYNCHRONIZE, FALSE, pid_event_name);
-        if (hEvent != nullptr) {
-            CloseHandle(hEvent);
-            return true;
-        }
-        return false;
+// Simple function to check if a PID was injected (by checking for named event)
+bool IsPidInjected(DWORD pid) {
+    wchar_t pid_event_name[64];
+    swprintf_s(pid_event_name, L"Local\\DisplayCommander_Injected_%lu", pid);
+    HANDLE hEvent = OpenEventW(SYNCHRONIZE, FALSE, pid_event_name);
+    if (hEvent != nullptr) {
+        CloseHandle(hEvent);
+        return true;
     }
-} // namespace
-
+    return false;
+}
+}  // namespace
 
 // CBT Hook procedure - called when windows are created
 // This is just for NOTIFICATION - the actual DLL injection happens automatically
@@ -2307,7 +2320,7 @@ LRESULT CALLBACK CBTProc(int nCode, WPARAM wParam, LPARAM lParam) {
 // Cleanup thread to remove hook after 30 seconds
 void StartInjectionCleanupThread() {
     std::thread([]() {
-        Sleep(30000); // 30 seconds
+        Sleep(30000);  // 30 seconds
 
         if (g_cbt_hook != nullptr) {
             UnhookWindowsHookEx(g_cbt_hook);
@@ -2332,7 +2345,8 @@ void StartInjectionCleanupThread() {
 // This installs a system-wide CBT hook - Windows automatically loads the DLL into
 // all processes when CBT events occur (window creation, etc.). The hook installation
 // itself is the injection mechanism. CBTProc is just for notification.
-extern "C" __declspec(dllexport) void CALLBACK RunDLL_DllMain(HWND hwnd, HINSTANCE hInst, LPSTR lpszCmdLine, int nCmdShow) {
+extern "C" __declspec(dllexport) void CALLBACK RunDLL_DllMain(HWND hwnd, HINSTANCE hInst, LPSTR lpszCmdLine,
+                                                              int nCmdShow) {
     UNREFERENCED_PARAMETER(hwnd);
     UNREFERENCED_PARAMETER(hInst);
     UNREFERENCED_PARAMETER(lpszCmdLine);
@@ -2361,7 +2375,8 @@ extern "C" __declspec(dllexport) void CALLBACK RunDLL_DllMain(HWND hwnd, HINSTAN
 
     if (g_cbt_hook == nullptr) {
         DWORD error = GetLastError();
-        OutputDebugStringA(std::format("Failed to install CBT hook for auto-injection - Error: {} (0x{:X})", error, error).c_str());
+        OutputDebugStringA(
+            std::format("Failed to install CBT hook for auto-injection - Error: {} (0x{:X})", error, error).c_str());
         return;
     }
 
@@ -2373,14 +2388,15 @@ extern "C" __declspec(dllexport) void CALLBACK RunDLL_DllMain(HWND hwnd, HINSTAN
     g_injection_active_event = CreateEventW(nullptr, TRUE, TRUE, INJECTION_ACTIVE_EVENT_NAME);
     if (g_injection_active_event == nullptr) {
         DWORD error = GetLastError();
-        OutputDebugStringA(std::format("Failed to create injection active event - Error: {} (0x{:X})", error, error).c_str());
+        OutputDebugStringA(
+            std::format("Failed to create injection active event - Error: {} (0x{:X})", error, error).c_str());
     }
 
     OutputDebugStringA("Auto-injection started: CBT hook installed, will inject into all new processes for 30 seconds");
 
     // Start cleanup thread
     StartInjectionCleanupThread();
-    Sleep(30000); // 30 seconds
+    Sleep(30000);  // 30 seconds
 }
 
 // RunDLL entry point for injection/testing (alias for RunDLL_DllMain)

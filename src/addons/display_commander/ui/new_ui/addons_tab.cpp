@@ -75,7 +75,7 @@ bool Reshade64DllExists() {
     if (documents_dir.empty()) {
         return false;
     }
-    std::filesystem::path reshade64_path = documents_dir / L"Reshade64.dll";
+    std::filesystem::path reshade64_path = documents_dir / L"Display Commander" / L"Reshade" / L"Reshade64.dll";
     return std::filesystem::exists(reshade64_path);
 }
 
@@ -85,7 +85,7 @@ bool Reshade32DllExists() {
     if (documents_dir.empty()) {
         return false;
     }
-    std::filesystem::path reshade32_path = documents_dir / L"Reshade32.dll";
+    std::filesystem::path reshade32_path = documents_dir / L"Display Commander" / L"Reshade" / L"Reshade32.dll";
     return std::filesystem::exists(reshade32_path);
 }
 
@@ -95,7 +95,7 @@ std::string GetReshade64Version() {
     if (documents_dir.empty()) {
         return "";
     }
-    std::filesystem::path reshade64_path = documents_dir / L"Reshade64.dll";
+    std::filesystem::path reshade64_path = documents_dir / L"Display Commander" / L"Reshade" / L"Reshade64.dll";
     if (!std::filesystem::exists(reshade64_path)) {
         return "";
     }
@@ -108,7 +108,7 @@ std::string GetReshade32Version() {
     if (documents_dir.empty()) {
         return "";
     }
-    std::filesystem::path reshade32_path = documents_dir / L"Reshade32.dll";
+    std::filesystem::path reshade32_path = documents_dir / L"Display Commander" / L"Reshade" / L"Reshade32.dll";
     if (!std::filesystem::exists(reshade32_path)) {
         return "";
     }

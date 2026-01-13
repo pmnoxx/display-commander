@@ -1,83 +1,80 @@
 #include "general_utils.hpp"
-#include "logging.hpp"
-#include "globals.hpp"
-#include "settings/developer_tab_settings.hpp"
-#include "../hooks/hook_suppression_manager.hpp"
-#include <algorithm>
-#include <vector>
-#include <cstdio>
-#include <string>
-#include <sstream>
-#include <reshade.hpp>
-#include <MinHook.h>
 #include <d3d9.h>
+#include <MinHook.h>
+#include <algorithm>
+#include <cstdio>
+#include <reshade.hpp>
+#include <sstream>
+#include <string>
+#include <vector>
+#include "../hooks/hook_suppression_manager.hpp"
+#include "globals.hpp"
+#include "logging.hpp"
+#include "settings/developer_tab_settings.hpp"
 
 // Version.dll dynamic loading
 namespace {
-    HMODULE s_version_dll = nullptr;
+HMODULE s_version_dll = nullptr;
 
-    // Function pointers for version.dll functions
-    typedef DWORD (WINAPI *PFN_GetFileVersionInfoSizeW)(LPCWSTR lptstrFilename, LPDWORD lpdwHandle);
-    typedef BOOL (WINAPI *PFN_GetFileVersionInfoW)(LPCWSTR lptstrFilename, DWORD dwHandle, DWORD dwLen, LPVOID lpData);
-    typedef BOOL (WINAPI *PFN_VerQueryValueW)(LPCVOID pBlock, LPCWSTR lpSubBlock, LPVOID *lplpBuffer, PUINT puLen);
+// Function pointers for version.dll functions
+typedef DWORD(WINAPI* PFN_GetFileVersionInfoSizeW)(LPCWSTR lptstrFilename, LPDWORD lpdwHandle);
+typedef BOOL(WINAPI* PFN_GetFileVersionInfoW)(LPCWSTR lptstrFilename, DWORD dwHandle, DWORD dwLen, LPVOID lpData);
+typedef BOOL(WINAPI* PFN_VerQueryValueW)(LPCVOID pBlock, LPCWSTR lpSubBlock, LPVOID* lplpBuffer, PUINT puLen);
 
-    PFN_GetFileVersionInfoSizeW s_GetFileVersionInfoSizeW = nullptr;
-    PFN_GetFileVersionInfoW s_GetFileVersionInfoW = nullptr;
-    PFN_VerQueryValueW s_VerQueryValueW = nullptr;
+PFN_GetFileVersionInfoSizeW s_GetFileVersionInfoSizeW = nullptr;
+PFN_GetFileVersionInfoW s_GetFileVersionInfoW = nullptr;
+PFN_VerQueryValueW s_VerQueryValueW = nullptr;
 
-    // Load version.dll and get function pointers
-    // Always load from System32 to avoid circular dependency when Display Commander is loaded as version.dll
-    bool LoadVersionDLL() {
-        if (s_version_dll != nullptr) {
-            return true;  // Already loaded
-        }
-
-        // Load from System32 to avoid loading ourselves if we're loaded as version.dll
-        WCHAR system_path[MAX_PATH];
-        GetSystemDirectoryW(system_path, MAX_PATH);
-        std::wstring version_path = std::wstring(system_path) + L"\\version.dll";
-
-        s_version_dll = LoadLibraryW(version_path.c_str());
-        if (s_version_dll == nullptr) {
-            return false;
-        }
-
-        // Get function pointers
-        s_GetFileVersionInfoSizeW = reinterpret_cast<PFN_GetFileVersionInfoSizeW>(
-            GetProcAddress(s_version_dll, "GetFileVersionInfoSizeW"));
-        s_GetFileVersionInfoW = reinterpret_cast<PFN_GetFileVersionInfoW>(
-            GetProcAddress(s_version_dll, "GetFileVersionInfoW"));
-        s_VerQueryValueW = reinterpret_cast<PFN_VerQueryValueW>(
-            GetProcAddress(s_version_dll, "VerQueryValueW"));
-
-        // Check if all functions were loaded successfully
-        if (s_GetFileVersionInfoSizeW == nullptr ||
-            s_GetFileVersionInfoW == nullptr ||
-            s_VerQueryValueW == nullptr) {
-            FreeLibrary(s_version_dll);
-            s_version_dll = nullptr;
-            s_GetFileVersionInfoSizeW = nullptr;
-            s_GetFileVersionInfoW = nullptr;
-            s_VerQueryValueW = nullptr;
-            return false;
-        }
-
-        return true;
+// Load version.dll and get function pointers
+// Always load from System32 to avoid circular dependency when Display Commander is loaded as version.dll
+bool LoadVersionDLL() {
+    if (s_version_dll != nullptr) {
+        return true;  // Already loaded
     }
+
+    // Load from System32 to avoid loading ourselves if we're loaded as version.dll
+    WCHAR system_path[MAX_PATH];
+    GetSystemDirectoryW(system_path, MAX_PATH);
+    std::wstring version_path = std::wstring(system_path) + L"\\version.dll";
+
+    s_version_dll = LoadLibraryW(version_path.c_str());
+    if (s_version_dll == nullptr) {
+        return false;
+    }
+
+    // Get function pointers
+    s_GetFileVersionInfoSizeW =
+        reinterpret_cast<PFN_GetFileVersionInfoSizeW>(GetProcAddress(s_version_dll, "GetFileVersionInfoSizeW"));
+    s_GetFileVersionInfoW =
+        reinterpret_cast<PFN_GetFileVersionInfoW>(GetProcAddress(s_version_dll, "GetFileVersionInfoW"));
+    s_VerQueryValueW = reinterpret_cast<PFN_VerQueryValueW>(GetProcAddress(s_version_dll, "VerQueryValueW"));
+
+    // Check if all functions were loaded successfully
+    if (s_GetFileVersionInfoSizeW == nullptr || s_GetFileVersionInfoW == nullptr || s_VerQueryValueW == nullptr) {
+        FreeLibrary(s_version_dll);
+        s_version_dll = nullptr;
+        s_GetFileVersionInfoSizeW = nullptr;
+        s_GetFileVersionInfoW = nullptr;
+        s_VerQueryValueW = nullptr;
+        return false;
+    }
+
+    return true;
+}
 }  // anonymous namespace
 
 // Constant definitions
-const int WIDTH_OPTIONS[] = {0, 1280, 1366, 1600, 1920, 2560, 3440, 3840}; // 0 = current monitor width
-const int HEIGHT_OPTIONS[] = {0, 720, 900, 1080, 1200, 1440, 1600, 2160};  // 0 = current monitor height
+const int WIDTH_OPTIONS[] = {0, 1280, 1366, 1600, 1920, 2560, 3440, 3840};  // 0 = current monitor width
+const int HEIGHT_OPTIONS[] = {0, 720, 900, 1080, 1200, 1440, 1600, 2160};   // 0 = current monitor height
 const AspectRatio ASPECT_OPTIONS[] = {
-    {3, 2},    // 1.5:1
-    {4, 3},    // 1.333:1
-    {16, 10},  // 1.6:1
-    {16, 9},   // 1.778:1
-    {19, 9},   // 2.111:1
-    {195, 90}, // 2.167:1 (19.5:9)
-    {21, 9},   // 2.333:1
-    {32, 9},   // 3.556:1
+    {3, 2},     // 1.5:1
+    {4, 3},     // 1.333:1
+    {16, 10},   // 1.6:1
+    {16, 9},    // 1.778:1
+    {19, 9},    // 2.111:1
+    {195, 90},  // 2.167:1 (19.5:9)
+    {21, 9},    // 2.333:1
+    {32, 9},    // 3.556:1
 };
 
 // Helper function implementations
@@ -93,7 +90,7 @@ AspectRatio GetAspectByIndex(AspectRatioType aspect_type) {
     if (index >= 0 && index < 8) {
         return ASPECT_OPTIONS[index];
     }
-    return {16, 9}; // Default to 16:9
+    return {16, 9};  // Default to 16:9
 }
 
 // Helper function to get the actual width value based on the dropdown selection
@@ -103,23 +100,23 @@ int GetAspectWidthValue(int display_width) {
     // Width options: 0=Display Width, 1=3840, 2=2560, 3=1920, 4=1600, 5=1280, 6=1080, 7=900, 8=720
     int selected_width;
     switch (width_index) {
-        case 0: selected_width = display_width; break;  // Display Width
-        case 1: selected_width = 3840; break;
-        case 2: selected_width = 2560; break;
-        case 3: selected_width = 1920; break;
-        case 4: selected_width = 1600; break;
-        case 5: selected_width = 1280; break;
-        case 6: selected_width = 1080; break;
-        case 7: selected_width = 900; break;
-        case 8: selected_width = 720; break;
-        default: selected_width = display_width; break; // Fallback to display width
+        case 0:  selected_width = display_width; break;  // Display Width
+        case 1:  selected_width = 3840; break;
+        case 2:  selected_width = 2560; break;
+        case 3:  selected_width = 1920; break;
+        case 4:  selected_width = 1600; break;
+        case 5:  selected_width = 1280; break;
+        case 6:  selected_width = 1080; break;
+        case 7:  selected_width = 900; break;
+        case 8:  selected_width = 720; break;
+        default: selected_width = display_width; break;  // Fallback to display width
     }
 
     // Ensure the selected width doesn't exceed the display width
     return min(selected_width, display_width);
 }
 
-void ComputeDesiredSize(int display_width, int display_height, int &out_w, int &out_h) {
+void ComputeDesiredSize(int display_width, int display_height, int& out_w, int& out_h) {
     if (s_window_mode.load() == WindowMode::kFullscreen) {
         // kFullscreen: Borderless Fullscreen - use current monitor dimensions
         out_w = display_width;
@@ -140,7 +137,7 @@ void ComputeDesiredSize(int display_width, int display_height, int &out_w, int &
     out_w = want_w;
     out_h = want_w * ar.h / ar.w;
 
-    //LogInfo("ComputeDesiredSize: out_w=%d, out_h=%d (width_index=%d)", out_w, out_h, s_aspect_width.load());
+    // LogInfo("ComputeDesiredSize: out_w=%d, out_h=%d (width_index=%d)", out_w, out_h, s_aspect_width.load());
 }
 
 // Monitor enumeration callback
@@ -152,7 +149,7 @@ BOOL CALLBACK MonitorEnumProc(HMONITOR hmon, HDC hdc, LPRECT rect, LPARAM lparam
         MonitorInfo monitor_info;
         monitor_info.handle = hmon;
         monitor_info.info = info;
-        auto *monitors = reinterpret_cast<std::vector<MonitorInfo> *>(lparam);
+        auto* monitors = reinterpret_cast<std::vector<MonitorInfo>*>(lparam);
         if (monitors) {
             monitors->push_back(monitor_info);
         }
@@ -163,7 +160,7 @@ BOOL CALLBACK MonitorEnumProc(HMONITOR hmon, HDC hdc, LPRECT rect, LPARAM lparam
 
 // XInput processing functions
 // Process stick input with radial deadzone (preserves direction)
-void ProcessStickInputRadial(float &x, float &y, float deadzone, float max_input, float min_output) {
+void ProcessStickInputRadial(float& x, float& y, float deadzone, float max_input, float min_output) {
     // Calculate magnitude (distance from center)
     float magnitude = std::sqrt(x * x + y * y);
 
@@ -199,7 +196,7 @@ void ProcessStickInputRadial(float &x, float &y, float deadzone, float max_input
 }
 
 // Process stick input with square deadzone (processes X and Y axes separately)
-void ProcessStickInputSquare(float &x, float &y, float deadzone, float max_input, float min_output) {
+void ProcessStickInputSquare(float& x, float& y, float deadzone, float max_input, float min_output) {
     // Process X axis independently
     float abs_x = std::abs(x);
     float sign_x = (x >= 0.0f) ? 1.0f : -1.0f;
@@ -304,20 +301,13 @@ std::string GetDLLVersionString(const std::wstring& dllPath) {
 // Convert device API enum to readable string
 const char* GetDeviceApiString(reshade::api::device_api api) {
     switch (api) {
-        case reshade::api::device_api::d3d9:
-            return "Direct3D 9";
-        case reshade::api::device_api::d3d10:
-            return "Direct3D 10";
-        case reshade::api::device_api::d3d11:
-            return "Direct3D 11";
-        case reshade::api::device_api::d3d12:
-            return "Direct3D 12";
-        case reshade::api::device_api::opengl:
-            return "OpenGL";
-        case reshade::api::device_api::vulkan:
-            return "Vulkan";
-        default:
-            return "Unknown";
+        case reshade::api::device_api::d3d9:   return "Direct3D 9";
+        case reshade::api::device_api::d3d10:  return "Direct3D 10";
+        case reshade::api::device_api::d3d11:  return "Direct3D 11";
+        case reshade::api::device_api::d3d12:  return "Direct3D 12";
+        case reshade::api::device_api::opengl: return "OpenGL";
+        case reshade::api::device_api::vulkan: return "Vulkan";
+        default:                               return "Unknown";
     }
 }
 
@@ -375,9 +365,7 @@ std::string GetDeviceApiVersionString(reshade::api::device_api api, uint32_t api
             snprintf(buffer, sizeof(buffer), "Vulkan %d.%d", major, minor);
             break;
         }
-        default:
-            snprintf(buffer, sizeof(buffer), "Unknown");
-            break;
+        default: snprintf(buffer, sizeof(buffer), "Unknown"); break;
     }
 
     return std::string(buffer);
@@ -386,7 +374,8 @@ std::string GetDeviceApiVersionString(reshade::api::device_api api, uint32_t api
 // MinHook wrapper function that combines CreateHook and EnableHook with proper error handling
 bool CreateAndEnableHook(LPVOID ptarget, LPVOID pdetour, LPVOID* ppOriginal, const char* hookName) {
     if (ptarget == nullptr || pdetour == nullptr) {
-        LogError("CreateAndEnableHook: Invalid parameters for hook '%s' ptarget: %p, pdetour: %p", hookName != nullptr ? hookName : "Unknown", ptarget, pdetour);
+        LogError("CreateAndEnableHook: Invalid parameters for hook '%s' ptarget: %p, pdetour: %p",
+                 hookName != nullptr ? hookName : "Unknown", ptarget, pdetour);
         return false;
     }
 
@@ -422,12 +411,14 @@ bool CreateAndEnableHook(LPVOID ptarget, LPVOID pdetour, LPVOID* ppOriginal, con
 MH_STATUS SafeInitializeMinHook(display_commanderhooks::HookType hookType) {
     // Check if MinHook initialization is suppressed
     if (settings::g_developerTabSettings.suppress_minhook.GetValue()) {
-        LogInfo("MinHook initialization suppressed by suppress_minhook setting for %s hooks", display_commanderhooks::HookSuppressionManager::GetInstance().GetHookTypeName(hookType).c_str());
-        return MH_ERROR_ALREADY_INITIALIZED; // Return this to indicate "already initialized" to avoid errors
+        LogInfo("MinHook initialization suppressed by suppress_minhook setting for %s hooks",
+                display_commanderhooks::HookSuppressionManager::GetInstance().GetHookTypeName(hookType).c_str());
+        return MH_ERROR_ALREADY_INITIALIZED;  // Return this to indicate "already initialized" to avoid errors
     }
     static bool minhook_initialized = false;
     if (minhook_initialized) {
-        LogInfo("MinHook already initialized, proceeding with %s hooks", display_commanderhooks::HookSuppressionManager::GetInstance().GetHookTypeName(hookType).c_str());
+        LogInfo("MinHook already initialized, proceeding with %s hooks",
+                display_commanderhooks::HookSuppressionManager::GetInstance().GetHookTypeName(hookType).c_str());
         return MH_OK;
     }
     minhook_initialized = true;
@@ -435,11 +426,14 @@ MH_STATUS SafeInitializeMinHook(display_commanderhooks::HookType hookType) {
     // Initialize MinHook (only if not already initialized)
     MH_STATUS init_status = MH_Initialize();
     if (init_status != MH_OK && init_status != MH_ERROR_ALREADY_INITIALIZED) {
-        LogError("Failed to initialize MinHook for %s hooks - Status: %d", display_commanderhooks::HookSuppressionManager::GetInstance().GetHookTypeName(hookType).c_str(), init_status);
+        LogError("Failed to initialize MinHook for %s hooks - Status: %d",
+                 display_commanderhooks::HookSuppressionManager::GetInstance().GetHookTypeName(hookType).c_str(),
+                 init_status);
         return init_status;
     }
 
-    LogInfo("MinHook initialized successfully for %s hooks", display_commanderhooks::HookSuppressionManager::GetInstance().GetHookTypeName(hookType).c_str());
+    LogInfo("MinHook initialized successfully for %s hooks",
+            display_commanderhooks::HookSuppressionManager::GetInstance().GetHookTypeName(hookType).c_str());
     return init_status;
 }
 
@@ -451,7 +445,8 @@ std::filesystem::path GetAddonDirectory() {
     static int dummy = 0;
     HMODULE hModule = nullptr;
     if (GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
-                          reinterpret_cast<LPCSTR>(&dummy), &hModule) != 0) {
+                           reinterpret_cast<LPCSTR>(&dummy), &hModule)
+        != 0) {
         GetModuleFileNameA(hModule, module_path, MAX_PATH);
     } else {
         // Fallback to current directory
@@ -462,7 +457,8 @@ std::filesystem::path GetAddonDirectory() {
 }
 
 // Helper function to check if a version is between two version ranges (inclusive)
-bool isBetween(int major, int minor, int patch, int minMajor, int minMinor, int minPatch, int maxMajor, int maxMinor, int maxPatch) {
+bool isBetween(int major, int minor, int patch, int minMajor, int minMinor, int minPatch, int maxMajor, int maxMinor,
+               int maxPatch) {
     // Convert version to comparable integer (major * 10000 + minor * 100 + patch)
     int version = (major * 10000) + (minor * 100) + patch;
     int minVersion = (minMajor * 10000) + (minMinor * 100) + minPatch;
@@ -509,7 +505,7 @@ std::string GetSupportedDLSSSRPresets(int major, int minor, int patch) {
 std::string GetSupportedDLSSRRPresets(int major, int minor, int patch) {
     // Ray Reconstruction was introduced in DLSS 3.5.0+
     if (!isBetween(major, minor, patch, 3, 5, 0, 999, 999, 999)) {
-        return ""; // For older versions, RR is not supported
+        return "";  // For older versions, RR is not supported
     }
 
     // 3.5.0-310.3.999: RR supports A, B, C, D, E presets
@@ -624,18 +620,16 @@ std::vector<std::string> GetDLSSPresetOptions(const std::string& supportedPreset
 // Convert DLSS preset string to integer value
 int GetDLSSPresetValue(const std::string& presetString) {
     if (presetString == "Game Default") {
-        return -1; // No override - don't change anything
-    }
-    else if (presetString == "DLSS Default") {
-        return 0; // Use DLSS default (value 0)
-    }
-    else if (presetString.substr(0, 7) == "Preset ") {
+        return -1;  // No override - don't change anything
+    } else if (presetString == "DLSS Default") {
+        return 0;  // Use DLSS default (value 0)
+    } else if (presetString.substr(0, 7) == "Preset ") {
         // Extract the preset letter (e.g., "Preset A" -> "A")
         std::string presetLetter = presetString.substr(7);
         if (presetLetter.length() == 1) {
             char letter = presetLetter[0];
             if (letter >= 'A' && letter <= 'Z') {
-                return letter - 'A' + 1; // A=1, B=2, C=3, etc.
+                return letter - 'A' + 1;  // A=1, B=2, C=3, etc.
             }
         }
     }
@@ -654,22 +648,16 @@ void TestDLSSPresetSupport() {
         const char* description;
     };
 
-    TestVersion test_versions[] = {
-        {3, 1, 29, "Before preset E introduction"},
-        {3, 1, 30, "Preset E introduced"},
-        {3, 6, 99, "Before preset F introduction"},
-        {3, 7, 0, "Preset F introduced"},
-        {3, 8, 10, "Special case: only E,F"},
-        {3, 8, 11, "After special case"},
-        {310, 1, 99, "Before preset K introduction"},
-        {310, 2, 0, "Preset K introduced"},
-        {310, 3, 0, "Latest with all presets"}
-    };
+    TestVersion test_versions[] = {{3, 1, 29, "Before preset E introduction"},   {3, 1, 30, "Preset E introduced"},
+                                   {3, 6, 99, "Before preset F introduction"},   {3, 7, 0, "Preset F introduced"},
+                                   {3, 8, 10, "Special case: only E,F"},         {3, 8, 11, "After special case"},
+                                   {310, 1, 99, "Before preset K introduction"}, {310, 2, 0, "Preset K introduced"},
+                                   {310, 3, 0, "Latest with all presets"}};
 
     for (const auto& test : test_versions) {
         std::string presets = GetSupportedDLSSSRPresets(test.major, test.minor, test.patch);
-        LogInfo("Version %d.%d.%d (%s): Presets [%s]",
-                test.major, test.minor, test.patch, test.description, presets.c_str());
+        LogInfo("Version %d.%d.%d (%s): Presets [%s]", test.major, test.minor, test.patch, test.description,
+                presets.c_str());
     }
 
     LogInfo("=== End DLSS Preset Support Test ===");
@@ -678,11 +666,11 @@ void TestDLSSPresetSupport() {
 // D3D9 present mode and flags string conversion functions
 const char* D3DSwapEffectToString(uint32_t swapEffect) {
     switch (swapEffect) {
-        case 1: return "D3DSWAPEFFECT_DISCARD";
-        case 2: return "D3DSWAPEFFECT_FLIP";
-        case 3: return "D3DSWAPEFFECT_COPY";
-        case 4: return "D3DSWAPEFFECT_OVERLAY";
-        case 5: return "D3DSWAPEFFECT_FLIPEX";
+        case 1:  return "D3DSWAPEFFECT_DISCARD";
+        case 2:  return "D3DSWAPEFFECT_FLIP";
+        case 3:  return "D3DSWAPEFFECT_COPY";
+        case 4:  return "D3DSWAPEFFECT_OVERLAY";
+        case 5:  return "D3DSWAPEFFECT_FLIPEX";
         default: return "UNKNOWN_SWAP_EFFECT";
     }
 }
@@ -746,17 +734,37 @@ std::string GetCurrentProcessName() {
 
 bool IsGameInNvapiAutoEnableList(const std::string& processName) {
     // List of supported games for NVAPI auto-enable
-    static const std::vector<std::string> supportedGames = {
-        "armoredcore6", "ac6", "armoredcorevi", "acvi",
-        "dmc5", "devilmaycry5", "devilmaycryv",
-        "eldenring", "elden_ring",
-        "hitman", "hitman3", "hitmaniii",
-        "re2", "residentevil2", "resident_evil_2", "re2remake",
-        "re3", "residentevil3", "resident_evil_3", "re3remake",
-        "re7", "residentevil7", "resident_evil_7", "re7biohazard",
-        "re8", "residentevil8", "resident_evil_8", "re8village",
-        "sekiro", "sekiroshadowsdietwice", "sekiro_shadows_die_twice"
-    };
+    static const std::vector<std::string> supportedGames = {"armoredcore6",
+                                                            "ac6",
+                                                            "armoredcorevi",
+                                                            "acvi",
+                                                            "dmc5",
+                                                            "devilmaycry5",
+                                                            "devilmaycryv",
+                                                            "eldenring",
+                                                            "elden_ring",
+                                                            "hitman",
+                                                            "hitman3",
+                                                            "hitmaniii",
+                                                            "re2",
+                                                            "residentevil2",
+                                                            "resident_evil_2",
+                                                            "re2remake",
+                                                            "re3",
+                                                            "residentevil3",
+                                                            "resident_evil_3",
+                                                            "re3remake",
+                                                            "re7",
+                                                            "residentevil7",
+                                                            "resident_evil_7",
+                                                            "re7biohazard",
+                                                            "re8",
+                                                            "residentevil8",
+                                                            "resident_evil_8",
+                                                            "re8village",
+                                                            "sekiro",
+                                                            "sekiroshadowsdietwice",
+                                                            "sekiro_shadows_die_twice"};
 
     // Convert process name to lowercase for case-insensitive comparison
     std::string lowerProcessName = processName;
@@ -787,10 +795,8 @@ std::string GetNvapiAutoEnableGameStatus() {
 HMODULE GetCallingDLL(LPCVOID pReturn) {
     HMODULE hCallingMod = nullptr;
 
-    GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT |
-                        GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
-                        static_cast<const wchar_t*>(pReturn),
-                        &hCallingMod);
+    GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT | GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
+                       static_cast<const wchar_t*>(pReturn), &hCallingMod);
 
     return hCallingMod;
 }

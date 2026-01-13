@@ -1,13 +1,13 @@
 #include "addons_tab.hpp"
 #include <imgui.h>
 #include <reshade.hpp>
+#include "../../config/display_commander_config.hpp"
 #include "../../res/forkawesome.h"
 #include "../../res/ui_colors.hpp"
 #include "../../settings/reshade_tab_settings.hpp"
 #include "../../utils/general_utils.hpp"
 #include "../../utils/logging.hpp"
 #include "../../utils/reshade_global_config.hpp"
-#include "../../config/display_commander_config.hpp"
 
 #include <psapi.h>
 #include <ShlObj.h>
@@ -203,10 +203,8 @@ void SetAddonEnabled(const std::string& addon_name, const std::string& addon_fil
 
     // Remove existing entry if present
     enabled_list.erase(std::remove_if(enabled_list.begin(), enabled_list.end(),
-                                      [&](const std::string& entry) {
-                                          return entry == identifier;
-                                      }),
-                      enabled_list.end());
+                                      [&](const std::string& entry) { return entry == identifier; }),
+                       enabled_list.end());
 
     // Add to enabled list if enabling
     if (enabled) {
@@ -490,8 +488,9 @@ void DrawAddonsTab() {
             ImGui::Spacing();
 
             // Info text
-            ImGui::TextColored(ui::colors::TEXT_DIMMED,
-                               "Note: Addons are disabled by default. Enable addons to load them on next game restart.");
+            ImGui::TextColored(
+                ui::colors::TEXT_DIMMED,
+                "Note: Addons are disabled by default. Enable addons to load them on next game restart.");
             ImGui::TextColored(ui::colors::TEXT_DIMMED,
                                "Changes to addon enabled/disabled state require a game restart to take effect.");
             ImGui::TextColored(ui::colors::TEXT_DIMMED, "Addons directory: %s",

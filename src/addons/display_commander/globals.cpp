@@ -1,28 +1,31 @@
 #include "globals.hpp"
+#include <algorithm>
+#include "../../../external/nvapi/nvapi.h"
 #include "background_window.hpp"
 #include "dxgi/custom_fps_limiter.hpp"
 #include "latency/latency_manager.hpp"
 #include "settings/developer_tab_settings.hpp"
 #include "settings/experimental_tab_settings.hpp"
-#include "settings/main_tab_settings.hpp"
-#include "settings/swapchain_tab_settings.hpp"
-#include "settings/streamline_tab_settings.hpp"
-#include "settings/hotkeys_tab_settings.hpp"
 #include "settings/hook_suppression_settings.hpp"
+#include "settings/hotkeys_tab_settings.hpp"
+#include "settings/main_tab_settings.hpp"
 #include "settings/reshade_tab_settings.hpp"
+#include "settings/streamline_tab_settings.hpp"
+#include "settings/swapchain_tab_settings.hpp"
 #include "utils.hpp"
 #include "utils/general_utils.hpp"
 #include "utils/logging.hpp"
 #include "utils/srwlock_wrapper.hpp"
-#include <algorithm>
-#include "../../../external/nvapi/nvapi.h"
+
 
 #include <d3d11.h>
-#include <reshade.hpp>
 #include <wrl/client.h>
+#include <reshade.hpp>
 
-#include <atomic>
+
 #include <array>
+#include <atomic>
+
 
 // Global variables
 // UI mode removed - now using new tab system
@@ -34,25 +37,23 @@ std::atomic<bool> g_dll_initialization_complete{false};
 HMODULE g_hmodule = nullptr;
 
 // Shared DXGI factory to avoid redundant CreateDXGIFactory calls
-std::atomic<Microsoft::WRL::ComPtr<IDXGIFactory1> *> g_shared_dxgi_factory{nullptr};
+std::atomic<Microsoft::WRL::ComPtr<IDXGIFactory1>*> g_shared_dxgi_factory{nullptr};
 
 // Window settings
-std::atomic<WindowMode> s_window_mode{WindowMode::kFullscreen}; // kFullscreen = Borderless Fullscreen (default),
-                                                                // kAspectRatio = Borderless Windowed (Aspect Ratio)
+std::atomic<WindowMode> s_window_mode{WindowMode::kFullscreen};  // kFullscreen = Borderless Fullscreen (default),
+                                                                 // kAspectRatio = Borderless Windowed (Aspect Ratio)
 
-std::atomic<AspectRatioType> s_aspect_index{AspectRatioType::k16_9}; // Default to 16:9
-std::atomic<int> s_aspect_width{0}; // 0 = Display Width, 1 = 3840, 2 = 2560, etc.
+std::atomic<AspectRatioType> s_aspect_index{AspectRatioType::k16_9};  // Default to 16:9
+std::atomic<int> s_aspect_width{0};                                   // 0 = Display Width, 1 = 3840, 2 = 2560, etc.
 
 // Window alignment when repositioning is needed (0 = Center, 1 = Top Left, 2 = Top Right, 3 = Bottom Left, 4 = Bottom
 // Right)
-std::atomic<WindowAlignment> s_window_alignment{WindowAlignment::kCenter}; // default to center (slot 0)
-
+std::atomic<WindowAlignment> s_window_alignment{WindowAlignment::kCenter};  // default to center (slot 0)
 
 // NVAPI Fullscreen Prevention
 
-
 // Mouse position spoofing for auto-click sequences
-std::atomic<bool> s_spoof_mouse_position{false}; // disabled by default
+std::atomic<bool> s_spoof_mouse_position{false};  // disabled by default
 std::atomic<int> s_spoofed_mouse_x{0};
 std::atomic<int> s_spoofed_mouse_y{0};
 
@@ -80,7 +81,7 @@ std::atomic<DxgiBypassMode> s_dxgi_composition_state{DxgiBypassMode::kUnset};
 // Continue rendering in background
 
 // DirectInput hook suppression
-std::atomic<bool> s_suppress_dinput_hooks{false}; // Disabled by default
+std::atomic<bool> s_suppress_dinput_hooks{false};  // Disabled by default
 
 // Logging level control (default to Debug = everything logged)
 std::atomic<LogLevel> g_min_log_level{LogLevel::Debug};
@@ -91,16 +92,15 @@ std::atomic<LogLevel> g_min_log_level{LogLevel::Debug};
 
 // Present blocking in background
 
-
 // Hide HDR capabilities from applications
 
 // D3D9 to D3D9Ex upgrade
-//std::atomic<bool> s_enable_d3d9e_upgrade{true}; // Enabled by default
-std::atomic<bool> s_d3d9e_upgrade_successful{false}; // Track if upgrade was successful
-std::atomic<bool> g_used_flipex{false}; // Track if FLIPEX is currently being used
+// std::atomic<bool> s_enable_d3d9e_upgrade{true}; // Enabled by default
+std::atomic<bool> s_d3d9e_upgrade_successful{false};  // Track if upgrade was successful
+std::atomic<bool> g_used_flipex{false};               // Track if FLIPEX is currently being used
 
 // ReShade runtimes for input blocking (multiple runtimes support)
-std::vector<reshade::api::effect_runtime *> g_reshade_runtimes;
+std::vector<reshade::api::effect_runtime*> g_reshade_runtimes;
 SRWLOCK g_reshade_runtimes_lock = SRWLOCK_INIT;
 
 // Prevent always on top behavior
@@ -108,31 +108,31 @@ SRWLOCK g_reshade_runtimes_lock = SRWLOCK_INIT;
 // Background feature - show black window behind game when not fullscreen
 
 // Desktop Resolution Override
-std::atomic<int> s_selected_monitor_index{0}; // Primary monitor by default
+std::atomic<int> s_selected_monitor_index{0};  // Primary monitor by default
 
 // Display Tab Enhanced Settings
-std::atomic<int> s_selected_resolution_index{0};   // Default to first available resolution
-std::atomic<int> s_selected_refresh_rate_index{0}; // Default to first available refresh rate
+std::atomic<int> s_selected_resolution_index{0};    // Default to first available resolution
+std::atomic<int> s_selected_refresh_rate_index{0};  // Default to first available refresh rate
 
-std::atomic<bool> s_initial_auto_selection_done{false}; // Track if we've done initial auto-selection
+std::atomic<bool> s_initial_auto_selection_done{false};  // Track if we've done initial auto-selection
 
 // Auto-restore resolution on game close
-std::atomic<bool> s_auto_restore_resolution_on_close{true}; // Enabled by default
+std::atomic<bool> s_auto_restore_resolution_on_close{true};  // Enabled by default
 
 // Auto-apply resolution and refresh rate changes
-std::atomic<bool> s_auto_apply_resolution_change{false};   // Disabled by default
-std::atomic<bool> s_auto_apply_refresh_rate_change{false}; // Disabled by default
+std::atomic<bool> s_auto_apply_resolution_change{false};    // Disabled by default
+std::atomic<bool> s_auto_apply_refresh_rate_change{false};  // Disabled by default
 
 // Apply display settings at game start
-std::atomic<bool> s_apply_display_settings_at_start{false}; // Disabled by default
+std::atomic<bool> s_apply_display_settings_at_start{false};  // Disabled by default
 
 // Track if resolution was successfully applied at least once
-std::atomic<bool> s_resolution_applied_at_least_once{false}; // Disabled by default
+std::atomic<bool> s_resolution_applied_at_least_once{false};  // Disabled by default
 
 // Atomic variables
 std::atomic<int> g_comp_query_counter{0};
 std::atomic<DxgiBypassMode> g_comp_last_logged{DxgiBypassMode::kUnset};
-std::atomic<void*> g_last_swapchain_ptr_unsafe{nullptr}; // TODO: unsafe remove later
+std::atomic<void*> g_last_swapchain_ptr_unsafe{nullptr};  // TODO: unsafe remove later
 std::atomic<int> g_last_reshade_device_api{0};
 std::atomic<uint32_t> g_last_api_version{0};
 std::atomic<std::shared_ptr<reshade::api::swapchain_desc>> g_last_swapchain_desc{nullptr};
@@ -190,10 +190,12 @@ std::atomic<int> g_last_backbuffer_height{0};
 // Background/foreground state (updated by monitoring thread)
 std::atomic<bool> g_app_in_background{false};
 
-// FPS limiter mode: 0 = Disabled, 1 = Reflex, 2 = OnPresentSync, 3 = OnPresentSyncLowLatency, 4 = VBlank Scanline Sync (VBlank)
+// FPS limiter mode: 0 = Disabled, 1 = Reflex, 2 = OnPresentSync, 3 = OnPresentSyncLowLatency, 4 = VBlank Scanline Sync
+// (VBlank)
 std::atomic<FpsLimiterMode> s_fps_limiter_mode{FpsLimiterMode::kDisabled};
 
-// FPS limiter injection timing: 0 = Default (Direct DX9/10/11/12), 1 = Fallback(1) (Through ReShade), 2 = Fallback(2) (Through ReShade)
+// FPS limiter injection timing: 0 = Default (Direct DX9/10/11/12), 1 = Fallback(1) (Through ReShade), 2 = Fallback(2)
+// (Through ReShade)
 
 // Scanline offset
 
@@ -214,7 +216,8 @@ std::atomic<LONGLONG> g_volume_change_time_ns{0};
 std::atomic<float> g_volume_display_value{0.0f};
 
 // Action notification system for overlay display
-std::atomic<ActionNotification> g_action_notification{ActionNotification{ActionNotificationType::None, 0, 0.0f, false, {0}}};
+std::atomic<ActionNotification> g_action_notification{
+    ActionNotification{ActionNotificationType::None, 0, 0.0f, false, {0}}};
 
 // Vector variables
 std::atomic<std::shared_ptr<const std::vector<MonitorInfo>>> g_monitors{std::make_shared<std::vector<MonitorInfo>>()};
@@ -251,12 +254,12 @@ std::atomic<LONGLONG> g_stopwatch_elapsed_time_ns{0};
 std::atomic<LONGLONG> g_game_start_time_ns{0};
 
 // Helper function for updating HDR10 override status atomically
-void UpdateHdr10OverrideStatus(const std::string &status) {
+void UpdateHdr10OverrideStatus(const std::string& status) {
     g_hdr10_override_status.store(std::make_shared<std::string>(status));
 }
 
 // Helper function for updating HDR10 override timestamp atomically
-void UpdateHdr10OverrideTimestamp(const std::string &timestamp) {
+void UpdateHdr10OverrideTimestamp(const std::string& timestamp) {
     g_hdr10_override_timestamp.store(std::make_shared<std::string>(timestamp));
 }
 
@@ -283,10 +286,10 @@ Microsoft::WRL::ComPtr<IDXGIFactory1> GetSharedDXGIFactory() {
     }
 
     // Try to store the new factory atomically
-    Microsoft::WRL::ComPtr<IDXGIFactory1> *expected = nullptr;
+    Microsoft::WRL::ComPtr<IDXGIFactory1>* expected = nullptr;
     if (g_shared_dxgi_factory.compare_exchange_strong(expected, new_factory_ptr.get())) {
         LogInfo("Shared DXGI factory created successfully");
-        (void)new_factory_ptr.release(); // Don't delete, it's now managed by the atomic
+        (void)new_factory_ptr.release();  // Don't delete, it's now managed by the atomic
         return *g_shared_dxgi_factory.load();
     } else {
         // Another thread created the factory first, use the existing one
@@ -324,21 +327,22 @@ std::array<std::atomic<uint32_t>, NUM_SAMPLER_ADDRESS_MODES> g_sampler_address_m
 std::array<std::atomic<uint32_t>, MAX_ANISOTROPY_LEVELS> g_sampler_anisotropy_level_counters = {};
 
 // NVAPI event counters - separate from swapchain events
-std::array<std::atomic<uint32_t>, NUM_NVAPI_EVENTS> g_nvapi_event_counters = {}; // Array for NVAPI events
+std::array<std::atomic<uint32_t>, NUM_NVAPI_EVENTS> g_nvapi_event_counters = {};  // Array for NVAPI events
 
 // NVAPI sleep timestamp tracking
-std::atomic<uint64_t> g_nvapi_last_sleep_timestamp_ns{0}; // Last NVAPI_D3D_Sleep call timestamp in nanoseconds
-std::atomic<bool> g_native_reflex_detected{false}; // Native Reflex detected via SetLatencyMarker calls
+std::atomic<uint64_t> g_nvapi_last_sleep_timestamp_ns{0};  // Last NVAPI_D3D_Sleep call timestamp in nanoseconds
+std::atomic<bool> g_native_reflex_detected{false};         // Native Reflex detected via SetLatencyMarker calls
 
-std::atomic<uint32_t> g_swapchain_event_total_count{0}; // Total events across all types
+std::atomic<uint32_t> g_swapchain_event_total_count{0};  // Total events across all types
 
 // OpenGL hook counters
-std::array<std::atomic<uint64_t>, NUM_OPENGL_HOOKS> g_opengl_hook_counters = {}; // Array for all OpenGL hook events
-std::atomic<uint64_t> g_opengl_hook_total_count{0}; // Total OpenGL hook events across all types
+std::array<std::atomic<uint64_t>, NUM_OPENGL_HOOKS> g_opengl_hook_counters = {};  // Array for all OpenGL hook events
+std::atomic<uint64_t> g_opengl_hook_total_count{0};  // Total OpenGL hook events across all types
 
 // Display settings hook counters
-std::array<std::atomic<uint64_t>, NUM_DISPLAY_SETTINGS_HOOKS> g_display_settings_hook_counters = {}; // Array for all display settings hook events
-std::atomic<uint64_t> g_display_settings_hook_total_count{0}; // Total display settings hook events across all types
+std::array<std::atomic<uint64_t>, NUM_DISPLAY_SETTINGS_HOOKS> g_display_settings_hook_counters =
+    {};                                                        // Array for all display settings hook events
+std::atomic<uint64_t> g_display_settings_hook_total_count{0};  // Total display settings hook events across all types
 
 // Present pacing delay as percentage of frame time - 0% to 100%
 // This adds a delay after present to improve frame pacing and reduce CPU usage
@@ -349,34 +353,34 @@ std::atomic<LONGLONG> late_amount_ns{0};
 
 // GPU completion measurement using EnqueueSetEvent
 std::atomic<HANDLE> g_gpu_completion_event{nullptr};  // Event handle for GPU completion measurement
-std::atomic<LONGLONG> g_gpu_completion_time_ns{0};  // Last measured GPU completion time
-std::atomic<LONGLONG> g_gpu_duration_ns{0};  // Last measured GPU duration (smoothed)
+std::atomic<LONGLONG> g_gpu_completion_time_ns{0};    // Last measured GPU completion time
+std::atomic<LONGLONG> g_gpu_duration_ns{0};           // Last measured GPU duration (smoothed)
 
 // GPU completion failure tracking
-std::atomic<const char*> g_gpu_fence_failure_reason{nullptr};  // Reason why GPU fence creation/usage failed (nullptr if no failure)
+std::atomic<const char*> g_gpu_fence_failure_reason{
+    nullptr};  // Reason why GPU fence creation/usage failed (nullptr if no failure)
 
 // Sim-start-to-display latency measurement
 std::atomic<LONGLONG> g_sim_start_ns_for_measurement{0};  // g_sim_start_ns captured when EnqueueGPUCompletion is called
 std::atomic<bool> g_present_update_after2_called{false};  // Tracks if OnPresentUpdateAfter2 was called
 std::atomic<bool> g_gpu_completion_callback_finished{false};  // Tracks if GPU completion callback finished
-std::atomic<LONGLONG> g_sim_to_display_latency_ns{0};  // Measured sim-start-to-display latency (smoothed)
+std::atomic<LONGLONG> g_sim_to_display_latency_ns{0};         // Measured sim-start-to-display latency (smoothed)
 
 // GPU late time measurement (how much later GPU finishes compared to OnPresentUpdateAfter2)
-std::atomic<LONGLONG> g_present_update_after2_time_ns{0};  // Time when OnPresentUpdateAfter2 was called
+std::atomic<LONGLONG> g_present_update_after2_time_ns{0};    // Time when OnPresentUpdateAfter2 was called
 std::atomic<LONGLONG> g_gpu_completion_callback_time_ns{0};  // Time when GPU completion callback finished
 std::atomic<LONGLONG> g_gpu_late_time_ns{0};  // GPU late time (0 if GPU finished first, otherwise difference)
 
 // NVIDIA Reflex minimal controls (disabled by default)
-
 
 // DLSS-G (DLSS Frame Generation) status
 std::atomic<bool> g_dlss_g_loaded{false};
 std::atomic<std::shared_ptr<const std::string>> g_dlss_g_version{std::make_shared<const std::string>("Unknown")};
 
 // NGX Feature status tracking (set in CreateFeature detours)
-std::atomic<bool> g_dlss_enabled{false};          // DLSS Super Resolution enabled
-std::atomic<bool> g_dlssg_enabled{false};         // DLSS Frame Generation enabled
-std::atomic<bool> g_ray_reconstruction_enabled{false}; // Ray Reconstruction enabled
+std::atomic<bool> g_dlss_enabled{false};                // DLSS Super Resolution enabled
+std::atomic<bool> g_dlssg_enabled{false};               // DLSS Frame Generation enabled
+std::atomic<bool> g_ray_reconstruction_enabled{false};  // Ray Reconstruction enabled
 
 // NVAPI SetSleepMode tracking
 std::atomic<std::shared_ptr<NV_SET_SLEEP_MODE_PARAMS>> g_last_nvapi_sleep_mode_params{nullptr};
@@ -405,7 +409,6 @@ std::atomic<uint32_t> g_reflex_marker_input_sample_count{0};
 // DX11 Proxy HWND for filtering
 HWND g_proxy_hwnd = nullptr;
 
-
 // Experimental tab settings global instance
 namespace settings {
 ExperimentalTabSettings g_experimentalTabSettings;
@@ -429,7 +432,7 @@ void LoadAllSettingsAtStartup() {
     LogInfo("All settings loaded at startup");
 }
 
-} // namespace settings
+}  // namespace settings
 
 // Fake NVAPI manager global instance
 nvapi::FakeNvapiManager g_fakeNvapiManager;
@@ -466,8 +469,8 @@ DLSSGSummary GetDLSSGSummary() {
     }
 
     // Calculate scaling ratio
-    if (has_internal_width && has_internal_height && has_output_width && has_output_height &&
-        internal_width > 0 && internal_height > 0) {
+    if (has_internal_width && has_internal_height && has_output_width && has_output_height && internal_width > 0
+        && internal_height > 0) {
         float scale_x = static_cast<float>(output_width) / internal_width;
         char buffer[32];
         snprintf(buffer, sizeof(buffer), "%.2fx", scale_x);
@@ -478,27 +481,25 @@ DLSSGSummary GetDLSSGSummary() {
     unsigned int perf_quality;
     if (g_ngx_parameters.get_as_uint("PerfQualityValue", perf_quality)) {
         switch (perf_quality) {
-            case 0: // NVSDK_NGX_PerfQuality_Value_MaxPerf
+            case 0:  // NVSDK_NGX_PerfQuality_Value_MaxPerf
                 summary.quality_preset = "Performance";
                 break;
-            case 1: // NVSDK_NGX_PerfQuality_Value_Balanced
+            case 1:  // NVSDK_NGX_PerfQuality_Value_Balanced
                 summary.quality_preset = "Balanced";
                 break;
-            case 2: // NVSDK_NGX_PerfQuality_Value_MaxQuality
+            case 2:  // NVSDK_NGX_PerfQuality_Value_MaxQuality
                 summary.quality_preset = "Quality";
                 break;
-            case 3: // NVSDK_NGX_PerfQuality_Value_UltraPerformance
+            case 3:  // NVSDK_NGX_PerfQuality_Value_UltraPerformance
                 summary.quality_preset = "Ultra Performance";
                 break;
-            case 4: // NVSDK_NGX_PerfQuality_Value_UltraQuality
+            case 4:  // NVSDK_NGX_PerfQuality_Value_UltraQuality
                 summary.quality_preset = "Ultra Quality";
                 break;
-            case 5: // NVSDK_NGX_PerfQuality_Value_DLAA
+            case 5:  // NVSDK_NGX_PerfQuality_Value_DLAA
                 summary.quality_preset = "DLAA";
                 break;
-            default:
-                summary.quality_preset = "Unknown";
-                break;
+            default: summary.quality_preset = "Unknown"; break;
         }
     }
 

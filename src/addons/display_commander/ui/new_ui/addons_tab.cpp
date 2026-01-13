@@ -114,35 +114,50 @@ std::string GetReshade32Version() {
     return GetDLLVersionString(reshade32_path.wstring());
 }
 
-// Find currently loaded ReShade module and get its version
-std::string GetLoadedReShadeVersion() {
+// Find all currently loaded ReShade modules by checking for ReShadeRegisterAddon export
+std::vector<std::pair<std::string, std::string>> GetLoadedReShadeVersions() {
+    std::vector<std::pair<std::string, std::string>> results;  // {module_path, version}
+
     HMODULE modules[1024];
     DWORD num_modules = 0;
     HANDLE process = GetCurrentProcess();
 
     if (K32EnumProcessModules(process, modules, sizeof(modules), &num_modules) == 0) {
-        return "";
+        return results;
     }
 
     DWORD module_count = num_modules / sizeof(HMODULE);
     for (DWORD i = 0; i < module_count; i++) {
+        // Check if this module has the ReShadeRegisterAddon export (used by addons)
+        FARPROC register_func = GetProcAddress(modules[i], "ReShadeRegisterAddon");
+        if (register_func == nullptr) {
+            continue;
+        }
+
+        // This is a ReShade module, get its path and version
         wchar_t module_path[MAX_PATH];
         if (GetModuleFileNameW(modules[i], module_path, MAX_PATH) == 0) {
             continue;
         }
 
-        std::wstring module_name = std::filesystem::path(module_path).filename().wstring();
-        std::transform(module_name.begin(), module_name.end(), module_name.begin(), ::towlower);
-
-        if (module_name == L"reshade64.dll" || module_name == L"reshade32.dll") {
-            std::string version = GetDLLVersionString(module_path);
-            if (!version.empty() && version != "Unknown") {
-                return version;
-            }
+        std::string version = GetDLLVersionString(module_path);
+        if (version.empty() || version == "Unknown") {
+            version = "Unknown";
         }
+
+        std::string module_path_str;
+        int size_needed = WideCharToMultiByte(CP_UTF8, 0, module_path, -1, nullptr, 0, nullptr, nullptr);
+        if (size_needed > 0) {
+            module_path_str.resize(size_needed - 1);
+            WideCharToMultiByte(CP_UTF8, 0, module_path, -1, module_path_str.data(), size_needed, nullptr, nullptr);
+        } else {
+            module_path_str = "(path unavailable)";
+        }
+
+        results.push_back({module_path_str, version});
     }
 
-    return "";
+    return results;
 }
 
 // Get disabled addons from ReShade config
@@ -626,12 +641,22 @@ void DrawAddonsTab() {
                 }
             }
 
-            // Show currently loaded ReShade version
-            std::string loaded_version = GetLoadedReShadeVersion();
-            if (!loaded_version.empty()) {
+            // Show currently loaded ReShade versions (found by checking for ReShadeRegisterAddon export)
+            std::vector<std::pair<std::string, std::string>> loaded_reshade = GetLoadedReShadeVersions();
+            if (!loaded_reshade.empty()) {
                 ImGui::Spacing();
-                ImGui::TextColored(ui::colors::TEXT_DEFAULT, ICON_FK_OK " Currently loaded ReShade: v%s",
-                                   loaded_version.c_str());
+                ImGui::TextColored(ui::colors::TEXT_DEFAULT, "Currently loaded ReShade modules:");
+                ImGui::Indent();
+                for (const auto& [module_path, version] : loaded_reshade) {
+                    std::filesystem::path path_obj(module_path);
+                    std::string module_name = path_obj.filename().string();
+                    ImGui::TextColored(ui::colors::TEXT_DEFAULT, ICON_FK_OK " %s (v%s)", module_name.c_str(),
+                                       version.c_str());
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::SetTooltip("%s", module_path.c_str());
+                    }
+                }
+                ImGui::Unindent();
             }
 
             ImGui::Spacing();

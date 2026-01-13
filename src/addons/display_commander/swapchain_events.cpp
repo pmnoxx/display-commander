@@ -27,7 +27,6 @@
 #include "settings/experimental_tab_settings.hpp"
 #include "settings/main_tab_settings.hpp"
 
-
 #include <d3d11.h>
 #include <dxgi.h>
 #include "swapchain_events.hpp"
@@ -42,7 +41,6 @@
 #include "widgets/dualsense_widget/dualsense_widget.hpp"
 #include "widgets/xinput_widget/xinput_widget.hpp"
 
-
 #include <d3d9.h>
 #include <dxgi.h>
 #include <dxgi1_4.h>
@@ -53,7 +51,6 @@
 #include <cmath>
 #include <set>
 #include <sstream>
-
 
 std::atomic<int> target_width = 3840;
 std::atomic<int> target_height = 2160;
@@ -869,20 +866,22 @@ void OnInitSwapchain(reshade::api::swapchain* swapchain, bool resize) {
 HANDLE g_timer_handle = nullptr;
 LONGLONG TimerPresentPacingDelayStart() {
     LONGLONG start_ns = utils::get_now_ns();
-    float delay_percentage = s_present_pacing_delay_percentage.load();
-    if (delay_percentage > 0.0f) {
-        // Calculate frame time from the most recent performance sample
-        const uint32_t count = g_perf_ring.GetCount();
-        if (count > 0) {
-            const PerfSample& last_sample = g_perf_ring.GetSample(0);
-            if (last_sample.dt > 0.0f) {
-                // Convert FPS to frame time in milliseconds, then to nanoseconds
-                float frame_time_ms = 1000.0f * last_sample.dt;
-                float delay_ms = frame_time_ms * (delay_percentage / 100.0f);
-                LONGLONG delta_ns = static_cast<LONGLONG>(delay_ms * utils::NS_TO_MS);
-                delta_ns -= late_amount_ns.load();
-                if (delta_ns > 0) {
-                    utils::wait_until_ns(utils::get_now_ns() + delta_ns, g_timer_handle);
+    if (settings::g_mainTabSettings.frame_time_mode.GetValue() == static_cast<int>(FrameTimeMode::kPresent)) {
+        float delay_percentage = s_present_pacing_delay_percentage.load();
+        if (delay_percentage > 0.0f) {
+            // Calculate frame time from the most recent performance sample
+            const uint32_t count = g_perf_ring.GetCount();
+            if (count > 0) {
+                const PerfSample& last_sample = g_perf_ring.GetSample(0);
+                if (last_sample.dt > 0.0f) {
+                    // Convert FPS to frame time in milliseconds, then to nanoseconds
+                    float frame_time_ms = 1000.0f * last_sample.dt;
+                    float delay_ms = frame_time_ms * (delay_percentage / 100.0f);
+                    LONGLONG delta_ns = static_cast<LONGLONG>(delay_ms * utils::NS_TO_MS);
+                    delta_ns -= late_amount_ns.load();
+                    if (delta_ns > 0) {
+                        utils::wait_until_ns(utils::get_now_ns() + delta_ns, g_timer_handle);
+                    }
                 }
             }
         }

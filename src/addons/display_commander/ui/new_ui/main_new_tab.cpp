@@ -13,17 +13,17 @@
 #include "../../latent_sync/refresh_rate_monitor_integration.hpp"
 #include "../../nvapi/reflex_manager.hpp"
 #include "../../performance_types.hpp"
+#include "../../presentmon/presentmon_manager.hpp"
 #include "../../res/forkawesome.h"
 #include "../../res/ui_colors.hpp"
 #include "../../settings/developer_tab_settings.hpp"
 #include "../../settings/experimental_tab_settings.hpp"
 #include "../../settings/main_tab_settings.hpp"
 #include "../../swapchain_events.hpp"
-#include "../../presentmon/presentmon_manager.hpp"
 #include "../../utils.hpp"
 #include "../../utils/logging.hpp"
-#include "../../utils/perf_measurement.hpp"
 #include "../../utils/overlay_window_detector.hpp"
+#include "../../utils/perf_measurement.hpp"
 #include "../../utils/platform_api_detector.hpp"
 #include "../../widgets/resolution_widget/resolution_widget.hpp"
 #include "imgui.h"
@@ -125,9 +125,9 @@ void DrawFrameTimeGraph() {
     }
 
     // Set graph size and scale
-    ImVec2 graph_size = ImVec2(-1.0f, 200.0f);                            // Full width, 200px height
-    float scale_min = 0.0f;                                               // Always start from 0ms
-    float scale_max = avg_frame_time * 4.f;  // Add some padding
+    ImVec2 graph_size = ImVec2(-1.0f, 200.0f);  // Full width, 200px height
+    float scale_min = 0.0f;                     // Always start from 0ms
+    float scale_max = avg_frame_time * 4.f;     // Add some padding
 
     // Draw the frame time graph
     ImGui::PlotLines("Frame Time (ms)", frame_times.data(), static_cast<int>(frame_times.size()),
@@ -168,7 +168,8 @@ void DrawFrameTimeGraph() {
 void DrawNativeFrameTimeGraph() {
     // Check if limit real frames is enabled
     if (!settings::g_mainTabSettings.limit_real_frames.GetValue()) {
-        ImGui::TextColored(ui::colors::TEXT_DIMMED, "Native frame time graph requires limit real frames to be enabled.");
+        ImGui::TextColored(ui::colors::TEXT_DIMMED,
+                           "Native frame time graph requires limit real frames to be enabled.");
         return;
     }
 
@@ -218,9 +219,9 @@ void DrawNativeFrameTimeGraph() {
     std::string overlay_text = "Native Frame Time: " + std::to_string(frame_times.back()).substr(0, 4) + " ms";
 
     // Set graph size and scale
-    ImVec2 graph_size = ImVec2(-1.0f, 200.0f);                            // Full width, 200px height
-    float scale_min = 0.0f;                                               // Always start from 0ms
-    float scale_max = avg_frame_time * 4.f;  // Add some padding
+    ImVec2 graph_size = ImVec2(-1.0f, 200.0f);  // Full width, 200px height
+    float scale_min = 0.0f;                     // Always start from 0ms
+    float scale_max = avg_frame_time * 4.f;     // Add some padding
 
     // Draw the native frame time graph
     ImGui::PlotLines("Native Frame Time (ms)", frame_times.data(), static_cast<int>(frame_times.size()),
@@ -300,8 +301,8 @@ void DrawRefreshRateFrameTimesGraph(bool show_tooltips) {
 
 // Compact overlay version with fixed width
 void DrawFrameTimeGraphOverlay(bool show_tooltips) {
-    if (perf_measurement::IsSuppressionEnabled() &&
-        perf_measurement::IsMetricSuppressed(perf_measurement::Metric::Overlay)) {
+    if (perf_measurement::IsSuppressionEnabled()
+        && perf_measurement::IsMetricSuppressed(perf_measurement::Metric::Overlay)) {
         return;
     }
 
@@ -369,8 +370,8 @@ void DrawFrameTimeGraphOverlay(bool show_tooltips) {
 
 // Compact overlay version for native frame times (frames shown to display via native swapchain Present)
 void DrawNativeFrameTimeGraphOverlay(bool show_tooltips) {
-    if (perf_measurement::IsSuppressionEnabled() &&
-        perf_measurement::IsMetricSuppressed(perf_measurement::Metric::Overlay)) {
+    if (perf_measurement::IsSuppressionEnabled()
+        && perf_measurement::IsMetricSuppressed(perf_measurement::Metric::Overlay)) {
         return;
     }
 
@@ -616,7 +617,8 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
 
     // LoadFromDllMain warning
     int32_t load_from_dll_main_value = 0;
-    if (reshade::get_config_value(nullptr, "ADDON", "LoadFromDllMain", load_from_dll_main_value) && load_from_dll_main_value == 1) {
+    if (reshade::get_config_value(nullptr, "ADDON", "LoadFromDllMain", load_from_dll_main_value)
+        && load_from_dll_main_value == 1) {
         ImGui::Spacing();
         ImGui::TextColored(ui::colors::TEXT_WARNING,
                            ICON_FK_WARNING " WARNING: LoadFromDllMain is set to 1 in ReShade configuration");
@@ -1631,12 +1633,9 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
 
     // FPS Limiter Mode
     {
-        const char* items[] = {
-            "Default",
-            "NVIDIA Reflex (low latency mode + boost) VRR DX11/DX12 (DLSS-FG aware)",
-            "Disabled",
-            "Sync to Display Refresh Rate (fraction of monitor refresh rate) Non-VRR",
-            "Non-Reflex Low Latency Mode (not implemented) VRR"};
+        const char* items[] = {"Default", "NVIDIA Reflex (low latency mode + boost) VRR DX11/DX12 (DLSS-FG aware)",
+                               "Disabled", "Sync to Display Refresh Rate (fraction of monitor refresh rate) Non-VRR",
+                               "Non-Reflex Low Latency Mode (not implemented) VRR"};
 
         int current_item = settings::g_mainTabSettings.fps_limiter_mode.GetValue();
         int prev_item = current_item;
@@ -1709,8 +1708,7 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                         ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f),
                                            ICON_FK_OK " Native Reflex: ACTIVE Limit Real Frames: ON");
                         if (ImGui::IsItemHovered()) {
-                            ImGui::SetTooltip(
-                                "The game has native Reflex support and is actively using it. ");
+                            ImGui::SetTooltip("The game has native Reflex support and is actively using it. ");
                         }
                         double native_ns = static_cast<double>(g_sleep_reflex_native_ns_smooth.load());
                         double calls_per_second = native_ns <= 0 ? -1 : 1000000000.0 / native_ns;
@@ -2554,7 +2552,8 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                         // PresentMon Flip State (separate from DXGI query)
                         ImGui::Separator();
                         ImGui::Spacing();
-                        if (ImGui::CollapsingHeader("PresentMon ETW Flip State & Debug Info", ImGuiTreeNodeFlags_DefaultOpen)) {
+                        if (ImGui::CollapsingHeader("PresentMon ETW Flip State & Debug Info",
+                                                    ImGuiTreeNodeFlags_DefaultOpen)) {
                             ImGui::Indent();
 
                             presentmon::PresentMonFlipState pm_flip_state;
@@ -2570,7 +2569,7 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                                 if (pm_flip_state.flip_mode == DxgiBypassMode::kComposed) {
                                     pm_flip_color = ui::colors::FLIP_COMPOSED;
                                 } else if (pm_flip_state.flip_mode == DxgiBypassMode::kOverlay
-                                          || pm_flip_state.flip_mode == DxgiBypassMode::kIndependentFlip) {
+                                           || pm_flip_state.flip_mode == DxgiBypassMode::kIndependentFlip) {
                                     pm_flip_color = ui::colors::FLIP_INDEPENDENT;
                                 } else {
                                     pm_flip_color = ui::colors::FLIP_UNKNOWN;
@@ -2581,7 +2580,8 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                                     ImGui::Text("  Mode: %s", pm_flip_state.present_mode_str.c_str());
                                 }
                                 if (!pm_flip_state.debug_info.empty()) {
-                                    ImGui::TextColored(ui::colors::TEXT_DIMMED, "  Info: %s", pm_flip_state.debug_info.c_str());
+                                    ImGui::TextColored(ui::colors::TEXT_DIMMED, "  Info: %s",
+                                                       pm_flip_state.debug_info.c_str());
                                 }
 
                                 // Show age of data
@@ -2591,13 +2591,16 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                                 if (age_ms < 1000.0) {
                                     ImGui::TextColored(ui::colors::TEXT_SUCCESS, "  Age: %.1f ms", age_ms);
                                 } else {
-                                    ImGui::TextColored(ui::colors::TEXT_WARNING, "  Age: %.1f s (stale)", age_ms / 1000.0);
+                                    ImGui::TextColored(ui::colors::TEXT_WARNING, "  Age: %.1f s (stale)",
+                                                       age_ms / 1000.0);
                                 }
                             } else {
                                 ImGui::TextColored(ui::colors::TEXT_DIMMED, "  No flip state data available");
-                                ImGui::TextColored(ui::colors::TEXT_DIMMED, "  Waiting for a PresentMode-like ETW property/event");
+                                ImGui::TextColored(ui::colors::TEXT_DIMMED,
+                                                   "  Waiting for a PresentMode-like ETW property/event");
                                 if (!pm_debug_info.last_present_mode_value.empty()) {
-                                    ImGui::TextColored(ui::colors::TEXT_DIMMED, "  Last PresentMode-like: %s", pm_debug_info.last_present_mode_value.c_str());
+                                    ImGui::TextColored(ui::colors::TEXT_DIMMED, "  Last PresentMode-like: %s",
+                                                       pm_debug_info.last_present_mode_value.c_str());
                                 }
                             }
 
@@ -2630,7 +2633,8 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                             if (pm_debug_info.events_processed > 0) {
                                 ImGui::Text("  Events Processed: %llu", pm_debug_info.events_processed);
                                 if (pm_debug_info.events_lost > 0) {
-                                    ImGui::TextColored(ui::colors::TEXT_WARNING, "  Events Lost: %llu", pm_debug_info.events_lost);
+                                    ImGui::TextColored(ui::colors::TEXT_WARNING, "  Events Lost: %llu",
+                                                       pm_debug_info.events_lost);
                                 }
 
                                 // Last event time
@@ -2639,9 +2643,11 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                                     LONGLONG age_ns = now_ns - static_cast<LONGLONG>(pm_debug_info.last_event_time);
                                     double age_ms = static_cast<double>(age_ns) / 1000000.0;
                                     if (age_ms < 1000.0) {
-                                        ImGui::TextColored(ui::colors::TEXT_SUCCESS, "  Last Event: %.1f ms ago", age_ms);
+                                        ImGui::TextColored(ui::colors::TEXT_SUCCESS, "  Last Event: %.1f ms ago",
+                                                           age_ms);
                                     } else {
-                                        ImGui::TextColored(ui::colors::TEXT_WARNING, "  Last Event: %.1f s ago", age_ms / 1000.0);
+                                        ImGui::TextColored(ui::colors::TEXT_WARNING, "  Last Event: %.1f s ago",
+                                                           age_ms / 1000.0);
                                     }
                                 }
                             } else {
@@ -2651,7 +2657,8 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                             // Error information
                             if (!pm_debug_info.last_error.empty()) {
                                 ImGui::Spacing();
-                                ImGui::TextColored(ui::colors::TEXT_ERROR, "  Error: %s", pm_debug_info.last_error.c_str());
+                                ImGui::TextColored(ui::colors::TEXT_ERROR, "  Error: %s",
+                                                   pm_debug_info.last_error.c_str());
                             }
 
                             // Why PresentMon might not be working
@@ -3133,7 +3140,9 @@ void DrawImportantInfo() {
             settings::g_mainTabSettings.show_flip_status.SetValue(show_flip_status);
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Shows the DXGI flip mode status (Composed, Independent Flip, MPO Overlay) in the performance overlay.");
+            ImGui::SetTooltip(
+                "Shows the DXGI flip mode status (Composed, Independent Flip, MPO Overlay) in the performance "
+                "overlay.");
         }
         ImGui::NextColumn();
 
@@ -3228,7 +3237,9 @@ void DrawImportantInfo() {
             settings::g_mainTabSettings.show_native_frame_time_graph.SetValue(show_native_frame_time_graph);
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Shows a graph of native frame times (frames shown to display via native swapchain Present) in the overlay.\nOnly available when limit real frames is enabled.");
+            ImGui::SetTooltip(
+                "Shows a graph of native frame times (frames shown to display via native swapchain Present) in the "
+                "overlay.\nOnly available when limit real frames is enabled.");
         }
         ImGui::NextColumn();
 
@@ -3355,7 +3366,9 @@ void DrawImportantInfo() {
         // Native Frame Time Graph
         ImGui::Text("Native Frame Time Graph");
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Shows frame times for frames actually displayed via native swapchain Present when limit real frames is enabled.");
+            ImGui::SetTooltip(
+                "Shows frame times for frames actually displayed via native swapchain Present when limit real frames "
+                "is enabled.");
         }
         ImGui::Spacing();
 

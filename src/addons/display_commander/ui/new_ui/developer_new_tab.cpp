@@ -7,19 +7,19 @@
 #include "../../res/ui_colors.hpp"
 #include "../../settings/developer_tab_settings.hpp"
 #include "../../settings/experimental_tab_settings.hpp"
-#include "../../utils/logging.hpp"
-#include "../../utils/reshade_global_config.hpp"
 #include "../../utils/general_utils.hpp"
+#include "../../utils/logging.hpp"
 #include "../../utils/process_window_enumerator.hpp"
+#include "../../utils/reshade_global_config.hpp"
 #include "imgui.h"
 #include "settings_wrapper.hpp"
 
-
-#include <atomic>
-#include <set>
 #include <algorithm>
-#include <string>
+#include <atomic>
 #include <cstring>
+#include <set>
+#include <string>
+
 
 #include <dxgi1_6.h>
 #include <wrl/client.h>
@@ -84,8 +84,9 @@ void DrawDeveloperNewTab() {
             LogInfo("Button handler: Process and window enumeration function returned");
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Enumerates all running processes and their windows, logging detailed information to the log file.\n"
-                             "Useful for debugging overlay detection and window management issues.");
+            ImGui::SetTooltip(
+                "Enumerates all running processes and their windows, logging detailed information to the log file.\n"
+                "Useful for debugging overlay detection and window management issues.");
         }
 
         ImGui::Unindent();
@@ -108,7 +109,7 @@ void DrawFeaturesEnabledByDefault() {
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Prevents windows from becoming always on top, even if they are moved or resized.");
     }
-    #if 0
+#if 0
     // LoadFromDllMain setting
     if (CheckboxSetting(settings::g_developerTabSettings.load_from_dll_main, "LoadFromDllMain (ReShade) (requires restart)")) {
         LogInfo("LoadFromDllMain setting changed to: %s",
@@ -123,8 +124,8 @@ void DrawFeaturesEnabledByDefault() {
             "When enabled, ReShade will load from DllMain instead of the normal loading process.\n"
             "This setting requires a game restart to take effect.");
     }
-    #endif
-    #if 0
+#endif
+#if 0
 
     // Load Streamline setting
     if (CheckboxSetting(settings::g_developerTabSettings.load_streamline, "Hook Streamline SDK (sl.interposer.dll)")) {
@@ -167,7 +168,7 @@ void DrawFeaturesEnabledByDefault() {
 
 
     ImGui::Spacing();
-    #endif
+#endif
 
     ImGui::Unindent();
 }
@@ -201,7 +202,8 @@ void DrawDeveloperSettings() {
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip(
-            "Comma or semicolon-separated list of DLL names to wait for before Display Commander continues initialization.\n"
+            "Comma or semicolon-separated list of DLL names to wait for before Display Commander continues "
+            "initialization.\n"
             "Example: dll1.dll, dll2.dll, dll3.dll or dll1.dll; dll2.dll; dll3.dll\n"
             "Display Commander will wait for each DLL to be loaded (up to 30 seconds per DLL) before proceeding.\n"
             "This happens before the DLL loading delay.\n\n"
@@ -321,8 +323,7 @@ void DrawDeveloperSettings() {
 
         ImGui::TextColored(ui::colors::TEXT_LABEL, "Events:");
         ImGui::SameLine();
-        ImGui::Text("%llu (pid=%llu)",
-                    static_cast<unsigned long long>(pm_debug_info.events_processed),
+        ImGui::Text("%llu (pid=%llu)", static_cast<unsigned long long>(pm_debug_info.events_processed),
                     static_cast<unsigned long long>(pm_debug_info.events_processed_for_current_pid));
 
         ImGui::TextColored(ui::colors::TEXT_LABEL, "Last Event PID:");
@@ -331,25 +332,26 @@ void DrawDeveloperSettings() {
 
         ImGui::TextColored(ui::colors::TEXT_LABEL, "Providers:");
         ImGui::SameLine();
-        ImGui::Text("DxgKrnl=%llu, DXGI=%llu, DWM=%llu",
-                    static_cast<unsigned long long>(pm_debug_info.events_dxgkrnl),
+        ImGui::Text("DxgKrnl=%llu, DXGI=%llu, DWM=%llu", static_cast<unsigned long long>(pm_debug_info.events_dxgkrnl),
                     static_cast<unsigned long long>(pm_debug_info.events_dxgi),
                     static_cast<unsigned long long>(pm_debug_info.events_dwm));
 
         if (!pm_debug_info.last_graphics_provider.empty()) {
             ImGui::TextColored(ui::colors::TEXT_LABEL, "Last Graphics Event:");
             ImGui::SameLine();
-            ImGui::Text("%s | id=%u | pid=%u",
-                        pm_debug_info.last_graphics_provider.c_str(),
+            ImGui::Text("%s | id=%u | pid=%u", pm_debug_info.last_graphics_provider.c_str(),
                         static_cast<unsigned int>(pm_debug_info.last_graphics_event_id),
                         static_cast<unsigned int>(pm_debug_info.last_graphics_event_pid));
         }
         if (!pm_debug_info.last_graphics_provider_name.empty() || !pm_debug_info.last_graphics_event_name.empty()) {
             ImGui::TextColored(ui::colors::TEXT_LABEL, "Graphics Schema:");
             ImGui::SameLine();
-            ImGui::Text("%s :: %s",
-                        pm_debug_info.last_graphics_provider_name.empty() ? "(unknown provider)" : pm_debug_info.last_graphics_provider_name.c_str(),
-                        pm_debug_info.last_graphics_event_name.empty() ? "(unknown event)" : pm_debug_info.last_graphics_event_name.c_str());
+            ImGui::Text(
+                "%s :: %s",
+                pm_debug_info.last_graphics_provider_name.empty() ? "(unknown provider)"
+                                                                  : pm_debug_info.last_graphics_provider_name.c_str(),
+                pm_debug_info.last_graphics_event_name.empty() ? "(unknown event)"
+                                                               : pm_debug_info.last_graphics_event_name.c_str());
         }
         ImGui::TextColored(ui::colors::TEXT_LABEL, "Graphics Props:");
         ImGui::SameLine();
@@ -362,14 +364,17 @@ void DrawDeveloperSettings() {
         if (!pm_debug_info.last_provider.empty()) {
             ImGui::TextColored(ui::colors::TEXT_LABEL, "Last Event:");
             ImGui::SameLine();
-            ImGui::Text("%s | id=%u", pm_debug_info.last_provider.c_str(), static_cast<unsigned int>(pm_debug_info.last_event_id));
+            ImGui::Text("%s | id=%u", pm_debug_info.last_provider.c_str(),
+                        static_cast<unsigned int>(pm_debug_info.last_event_id));
         }
         if (!pm_debug_info.last_provider_name.empty() || !pm_debug_info.last_event_name.empty()) {
             ImGui::TextColored(ui::colors::TEXT_LABEL, "Schema:");
             ImGui::SameLine();
-            ImGui::Text("%s :: %s",
-                        pm_debug_info.last_provider_name.empty() ? "(unknown provider)" : pm_debug_info.last_provider_name.c_str(),
-                        pm_debug_info.last_event_name.empty() ? "(unknown event)" : pm_debug_info.last_event_name.c_str());
+            ImGui::Text(
+                "%s :: %s",
+                pm_debug_info.last_provider_name.empty() ? "(unknown provider)"
+                                                         : pm_debug_info.last_provider_name.c_str(),
+                pm_debug_info.last_event_name.empty() ? "(unknown event)" : pm_debug_info.last_event_name.c_str());
         }
         if (!pm_debug_info.last_interesting_props.empty()) {
             ImGui::TextColored(ui::colors::TEXT_LABEL, "Props:");
@@ -404,13 +409,11 @@ void DrawDeveloperSettings() {
                 ImGui::TextColored(ui::colors::TEXT_DIMMED, "Last update: %.1f ms ago", age_ms);
 
                 ImGui::Text("surfaceLuid: 0x%llx", static_cast<unsigned long long>(pm_flip_compat.surface_luid));
-                ImGui::Text("Surface: %ux%u  PixelFormat=%u  ColorSpace=%u  Flags=0x%x",
-                            pm_flip_compat.surface_width, pm_flip_compat.surface_height,
-                            pm_flip_compat.pixel_format, pm_flip_compat.color_space, pm_flip_compat.flags);
+                ImGui::Text("Surface: %ux%u  PixelFormat=%u  ColorSpace=%u  Flags=0x%x", pm_flip_compat.surface_width,
+                            pm_flip_compat.surface_height, pm_flip_compat.pixel_format, pm_flip_compat.color_space,
+                            pm_flip_compat.flags);
 
-                auto show_bool = [](const char* label, bool v) {
-                    ImGui::Text("%s: %s", label, v ? "Yes" : "No");
-                };
+                auto show_bool = [](const char* label, bool v) { ImGui::Text("%s: %s", label, v ? "Yes" : "No"); };
 
                 show_bool("IsDirectFlipCompatible", pm_flip_compat.is_direct_flip_compatible);
                 show_bool("IsAdvancedDirectFlipCompatible", pm_flip_compat.is_advanced_direct_flip_compatible);
@@ -426,8 +429,8 @@ void DrawDeveloperSettings() {
                     ImGui::TextColored(ui::colors::TEXT_DIMMED, "Surfaces: %d", static_cast<int>(surfaces.size()));
 
                     if (ImGui::BeginTable("##pm_surfaces", 10,
-                                          ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders | ImGuiTableFlags_SizingFixedFit
-                                              | ImGuiTableFlags_ScrollY,
+                                          ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders
+                                              | ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_ScrollY,
                                           ImVec2(0, 260))) {
                         ImGui::TableSetupColumn("Age(ms)");
                         ImGui::TableSetupColumn("surfaceLuid");
@@ -473,13 +476,11 @@ void DrawDeveloperSettings() {
                             ImGui::Text("0x%x", s.flags);
 
                             ImGui::TableSetColumnIndex(7);
-                            ImGui::Text("%s%s",
-                                        s.is_direct_flip_compatible ? "Y" : "N",
+                            ImGui::Text("%s%s", s.is_direct_flip_compatible ? "Y" : "N",
                                         s.is_advanced_direct_flip_compatible ? " (adv)" : "");
 
                             ImGui::TableSetColumnIndex(8);
-                            ImGui::Text("%s%s",
-                                        s.is_overlay_compatible ? "Y" : "N",
+                            ImGui::Text("%s%s", s.is_overlay_compatible ? "Y" : "N",
                                         s.is_overlay_required ? " (req)" : "");
 
                             ImGui::TableSetColumnIndex(9);
@@ -504,7 +505,10 @@ void DrawDeveloperSettings() {
 
             ImGui::TextColored(ui::colors::TEXT_DIMMED, "Cached event types: %d", static_cast<int>(types.size()));
 
-            if (ImGui::BeginTable("##pm_event_types", 7, ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders | ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_ScrollY, ImVec2(0, 2220))) {
+            if (ImGui::BeginTable("##pm_event_types", 7,
+                                  ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders | ImGuiTableFlags_SizingFixedFit
+                                      | ImGuiTableFlags_ScrollY,
+                                  ImVec2(0, 2220))) {
                 ImGui::TableSetupColumn("Count");
                 ImGui::TableSetupColumn("Provider");
                 ImGui::TableSetupColumn("EventId");
@@ -568,23 +572,24 @@ void DrawDeveloperSettings() {
                 settings::g_developerTabSettings.debug_layer_enabled.GetValue() ? "enabled" : "disabled");
     }
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip(
-            ICON_FK_WARNING " WARNING: Debug Layer Setup Required " ICON_FK_WARNING "\n\n"
-            "REQUIREMENTS:\n"
-            "- Windows 11 SDK must be installed\n"
-            "- Download: https://developer.microsoft.com/en-us/windows/downloads/windows-sdk/\n"
-            "- Install 'Graphics Tools' and 'Debugging Tools for Windows'\n\n"
-            "SETUP STEPS:\n"
-            "1. Install Windows 11 SDK with Graphics Tools\n"
-            "2. Run DbgView.exe as Administrator\n"
-            "3. Enable this setting\n"
-            "4. RESTART THE GAME for changes to take effect\n\n"
-            "FEATURES:\n"
-            "- D3D11: Adds D3D11_CREATE_DEVICE_DEBUG flag\n"
-            "- D3D12: Enables debug layer via D3D12GetDebugInterface\n"
-            "- Breaks on all severity levels (ERROR, WARNING, INFO)\n"
-            "- Debug output appears in DbgView\n\n"
-            ICON_FK_WARNING " May significantly impact performance when enabled!");
+        ImGui::SetTooltip(ICON_FK_WARNING
+                          " WARNING: Debug Layer Setup Required " ICON_FK_WARNING
+                          "\n\n"
+                          "REQUIREMENTS:\n"
+                          "- Windows 11 SDK must be installed\n"
+                          "- Download: https://developer.microsoft.com/en-us/windows/downloads/windows-sdk/\n"
+                          "- Install 'Graphics Tools' and 'Debugging Tools for Windows'\n\n"
+                          "SETUP STEPS:\n"
+                          "1. Install Windows 11 SDK with Graphics Tools\n"
+                          "2. Run DbgView.exe as Administrator\n"
+                          "3. Enable this setting\n"
+                          "4. RESTART THE GAME for changes to take effect\n\n"
+                          "FEATURES:\n"
+                          "- D3D11: Adds D3D11_CREATE_DEVICE_DEBUG flag\n"
+                          "- D3D12: Enables debug layer via D3D12GetDebugInterface\n"
+                          "- Breaks on all severity levels (ERROR, WARNING, INFO)\n"
+                          "- Debug output appears in DbgView\n\n" ICON_FK_WARNING
+                          " May significantly impact performance when enabled!");
     }
 
     // Show status when debug layer is enabled
@@ -604,7 +609,8 @@ void DrawDeveloperSettings() {
     // SetBreakOnSeverity checkbox (only shown when debug layer is enabled)
     if (settings::g_developerTabSettings.debug_layer_enabled.GetValue()) {
         ImGui::Indent();
-        if (CheckboxSetting(settings::g_developerTabSettings.debug_break_on_severity, "SetBreakOnSeverity (All Levels)")) {
+        if (CheckboxSetting(settings::g_developerTabSettings.debug_break_on_severity,
+                            "SetBreakOnSeverity (All Levels)")) {
             LogInfo("Debug break on severity setting changed to: %s",
                     settings::g_developerTabSettings.debug_break_on_severity.GetValue() ? "enabled" : "disabled");
         }
@@ -669,9 +675,6 @@ void DrawHdrDisplaySettings() {
             "Applied automatically in presentBefore.");
     }
 
-
-
-
     // Show upgrade status
     if (s_d3d9e_upgrade_successful.load()) {
         ImGui::Indent();
@@ -699,13 +702,14 @@ void DrawHdrDisplaySettings() {
 void DrawNvapiSettings() {
     uint64_t now_ns = utils::get_now_ns();
 
-
     if (IsGameInNvapiAutoEnableList(GetCurrentProcessName())) {
         if (ImGui::CollapsingHeader("NVAPI Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
             ImGui::Indent();
             // NVAPI Auto-enable checkbox
-            if (CheckboxSetting(settings::g_developerTabSettings.nvapi_auto_enable_enabled, "Enable NVAPI Auto-enable for Games")) {
-                s_nvapi_auto_enable_enabled.store(settings::g_developerTabSettings.nvapi_auto_enable_enabled.GetValue());
+            if (CheckboxSetting(settings::g_developerTabSettings.nvapi_auto_enable_enabled,
+                                "Enable NVAPI Auto-enable for Games")) {
+                s_nvapi_auto_enable_enabled.store(
+                    settings::g_developerTabSettings.nvapi_auto_enable_enabled.GetValue());
                 LogInfo("NVAPI Auto-enable setting changed to: %s",
                         settings::g_developerTabSettings.nvapi_auto_enable_enabled.GetValue() ? "true" : "false");
             }
@@ -725,7 +729,8 @@ void DrawNvapiSettings() {
                 }
                 // Warning about Alt+Enter requirement
                 ImGui::Spacing();
-                ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), ICON_FK_WARNING " Warning: Requires pressing Alt+Enter once");
+                ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f),
+                                   ICON_FK_WARNING " Warning: Requires pressing Alt+Enter once");
                 if (ImGui::IsItemHovered()) {
                     ImGui::SetTooltip(
                         "Press Alt-Enter to enable HDR.\n"
@@ -733,7 +738,8 @@ void DrawNvapiSettings() {
                 }
 
             } else {
-                ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), ICON_FK_CANCEL " Current Game: %s", gameStatus.c_str());
+                ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), ICON_FK_CANCEL " Current Game: %s",
+                                   gameStatus.c_str());
                 if (ImGui::IsItemHovered()) {
                     ImGui::SetTooltip("This game is not in the NVAPI auto-enable supported games list.");
                 }
@@ -755,7 +761,6 @@ void DrawNvapiSettings() {
                     "- Resident Evil 8\n"
                     "- Sekiro: Shadows Die Twice");
             }
-
 
             // Display restart warning if needed
             if (s_restart_needed_nvapi.load()) {
@@ -779,16 +784,16 @@ void DrawNvapiSettings() {
         // Native Reflex Status Indicator
         bool is_native_reflex_active = IsNativeReflexActive(now_ns);
         if (is_native_reflex_active) {
-            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), ICON_FK_OK " Native Reflex: ACTIVE Limit Real Frames: ON");
+            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f),
+                               ICON_FK_OK " Native Reflex: ACTIVE Limit Real Frames: ON");
             if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip(
-                    "The game has native Reflex support and is actively using it. ");
+                ImGui::SetTooltip("The game has native Reflex support and is actively using it. ");
             }
         } else {
-            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), ICON_FK_MINUS " Native Reflex: INACTIVE Limit Real Frames: OFF");
+            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f),
+                               ICON_FK_MINUS " Native Reflex: INACTIVE Limit Real Frames: OFF");
             if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip(
-                    "No native Reflex activity detected. ");
+                ImGui::SetTooltip("No native Reflex activity detected. ");
             }
         }
         ImGui::Spacing();
@@ -808,7 +813,6 @@ void DrawNvapiSettings() {
         bool reflex_use_markers = settings::g_developerTabSettings.reflex_use_markers.GetValue();
         bool reflex_generate_markers = settings::g_developerTabSettings.reflex_generate_markers.GetValue();
         bool reflex_enable_sleep = settings::g_developerTabSettings.reflex_enable_sleep.GetValue();
-
 
         if (ImGui::Checkbox("Delay Reflex for first 500 frames", &reflex_delay_first_500_frames)) {
             settings::g_developerTabSettings.reflex_delay_first_500_frames.SetValue(reflex_delay_first_500_frames);
@@ -860,9 +864,9 @@ void DrawNvapiSettings() {
             // Warning about enabling Reflex when game already has it
             if (is_native_reflex_active && settings::g_developerTabSettings.reflex_generate_markers.GetValue()) {
                 ImGui::SameLine();
-                ImGui::TextColored(
-                    ImVec4(1.0f, 0.6f, 0.0f, 1.0f), ICON_FK_WARNING
-                    " Warning: Do not enable 'Generate Reflex Markers' if the game already has built-in Reflex support!");
+                ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f), ICON_FK_WARNING
+                                   " Warning: Do not enable 'Generate Reflex Markers' if the game already has built-in "
+                                   "Reflex support!");
             }
 
             if (ImGui::Checkbox("Enable Reflex Sleep Mode", &reflex_enable_sleep)) {
@@ -870,9 +874,9 @@ void DrawNvapiSettings() {
             }
             if (is_native_reflex_active && settings::g_developerTabSettings.reflex_enable_sleep.GetValue()) {
                 ImGui::SameLine();
-                ImGui::TextColored(
-                    ImVec4(1.0f, 0.6f, 0.0f, 1.0f), ICON_FK_WARNING
-                    " Warning: Do not enable 'Enable Reflex Sleep Mode' if the game already has built-in Reflex support!");
+                ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f), ICON_FK_WARNING
+                                   " Warning: Do not enable 'Enable Reflex Sleep Mode' if the game already has "
+                                   "built-in Reflex support!");
             }
             if (ImGui::IsItemHovered()) {
                 ImGui::SetTooltip("Enable Reflex sleep mode calls (disabled by default for safety).");
@@ -945,8 +949,7 @@ void DrawNvapiSettings() {
             ImGui::Unindent();
 
             ImGui::Spacing();
-            ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f),
-                               "These counters help debug Reflex FPS limiter issues.");
+            ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "These counters help debug Reflex FPS limiter issues.");
             if (ImGui::IsItemHovered()) {
                 ImGui::SetTooltip(
                     "Marker counts show which specific markers are being set:\n"
@@ -966,7 +969,8 @@ void DrawNvapiSettings() {
             // Native Reflex Counters
             uint32_t native_sleep_count = ::g_nvapi_event_counters[NVAPI_EVENT_D3D_SLEEP].load();
             uint32_t native_set_sleep_mode_count = ::g_nvapi_event_counters[NVAPI_EVENT_D3D_SET_SLEEP_MODE].load();
-            uint32_t native_set_latency_marker_count = ::g_nvapi_event_counters[NVAPI_EVENT_D3D_SET_LATENCY_MARKER].load();
+            uint32_t native_set_latency_marker_count =
+                ::g_nvapi_event_counters[NVAPI_EVENT_D3D_SET_LATENCY_MARKER].load();
             uint32_t native_get_latency_count = ::g_nvapi_event_counters[NVAPI_EVENT_D3D_GET_LATENCY].load();
             LONGLONG native_sleep_ns = ::g_sleep_reflex_native_ns.load();
             LONGLONG native_sleep_ns_smooth = ::g_sleep_reflex_native_ns_smooth.load();
@@ -976,11 +980,11 @@ void DrawNvapiSettings() {
             ImGui::Text("NvAPI_D3D_Sleep calls: %u", native_sleep_count);
             if (native_sleep_count > 0 && native_sleep_ns_smooth > 0) {
                 double native_calls_per_second = 1000000000.0 / static_cast<double>(native_sleep_ns_smooth);
-                ImGui::Text("Native Sleep Rate: %.2f times/sec (%.1f ms interval)",
-                           native_calls_per_second, native_sleep_ns_smooth / 1000000.0);
+                ImGui::Text("Native Sleep Rate: %.2f times/sec (%.1f ms interval)", native_calls_per_second,
+                            native_sleep_ns_smooth / 1000000.0);
                 if (ImGui::IsItemHovered()) {
                     ImGui::SetTooltip("Smoothed interval using rolling average. Raw: %.1f ms",
-                                    native_sleep_ns > 0 ? native_sleep_ns / 1000000.0 : 0.0);
+                                      native_sleep_ns > 0 ? native_sleep_ns / 1000000.0 : 0.0);
                 }
             }
             ImGui::Text("NvAPI_D3D_SetSleepMode calls: %u", native_set_sleep_mode_count);
@@ -1032,7 +1036,8 @@ void DrawNvapiSettings() {
 
     // Fake NVAPI Settings
     ImGui::Spacing();
-    if (ImGui::CollapsingHeader("AntiLag 2 / XeLL support (fakenvapi / custom nvapi64.dll)", ImGuiTreeNodeFlags_DefaultOpen)) {
+    if (ImGui::CollapsingHeader("AntiLag 2 / XeLL support (fakenvapi / custom nvapi64.dll)",
+                                ImGuiTreeNodeFlags_DefaultOpen)) {
         ImGui::Indent();
         ImGui::TextColored(ui::colors::TEXT_WARNING, "Load AL2/AL+/XeLL through nvapi64.dll");
 
@@ -1042,13 +1047,12 @@ void DrawNvapiSettings() {
             settings::g_developerTabSettings.fake_nvapi_enabled.Save();
             s_restart_needed_nvapi.store(true);
         }
-         if (ImGui::IsItemHovered()) {
-             ImGui::SetTooltip(
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip(
                 "AntiLag 2, Vulkan AntiLag+ or XeLL are automatically selected when available.\n"
                 "Add nvapi64.dll to the addon directory (rename fakenvapi.dll if needed).\n\n"
-                "Downlaod from here: https://github.com/emoose/fakenvapi\n"
-             );
-         }
+                "Downlaod from here: https://github.com/emoose/fakenvapi\n");
+        }
 
         // Fake NVAPI Status
         auto stats = nvapi::g_fakeNvapiManager.GetStatistics();
@@ -1056,7 +1060,8 @@ void DrawNvapiSettings() {
 
         // Show warning if fakenvapi.dll is found (needs renaming)
         if (fake_nvapi_enabled && stats.fakenvapi_dll_found) {
-            ImGui::TextColored(ui::colors::TEXT_WARNING, ICON_FK_WARNING " Warning: fakenvapi.dll found - rename to nvapi64.dll");
+            ImGui::TextColored(ui::colors::TEXT_WARNING,
+                               ICON_FK_WARNING " Warning: fakenvapi.dll found - rename to nvapi64.dll");
             if (ImGui::IsItemHovered()) {
                 ImGui::SetTooltip(
                     "fakenvapi.dll was found in the addon directory.\n"
@@ -1075,31 +1080,36 @@ void DrawNvapiSettings() {
             ImGui::TextColored(ui::colors::TEXT_DIMMED, "Status: %s", status_msg.c_str());
         }
 
-    // Statistics (see docs/UI_STYLE_GUIDE.md for depth/indent rules)
-    // Depth 2: Nested subsection with indentation and distinct colors
-    ImGui::Indent();  // Indent nested header
-    ui::colors::PushNestedHeaderColors();  // Apply distinct colors for nested header
-    if (ImGui::CollapsingHeader("Fake NVAPI Statistics", ImGuiTreeNodeFlags_None)) {
-        ImGui::Indent();  // Indent content inside subsection
-        ImGui::TextColored(ui::colors::TEXT_DEFAULT, "nvapi64.dll loaded before DC: %s", stats.was_nvapi64_loaded_before_dc ? "Yes" : "No");
-        ImGui::TextColored(ui::colors::TEXT_DEFAULT, "nvapi64.dll currently loaded: %s", stats.is_nvapi64_loaded ? "Yes" : "No");
-        ImGui::TextColored(ui::colors::TEXT_DEFAULT, "libxell.dll loaded: %s", stats.is_libxell_loaded ? "Yes" : "No");
-        ImGui::TextColored(ui::colors::TEXT_DEFAULT, "Fake NVAPI Loaded: %s", stats.fake_nvapi_loaded ? "Yes" : "No");
-        ImGui::TextColored(ui::colors::TEXT_DEFAULT, "Override Enabled: %s", stats.override_enabled ? "Yes" : "No");
+        // Statistics (see docs/UI_STYLE_GUIDE.md for depth/indent rules)
+        // Depth 2: Nested subsection with indentation and distinct colors
+        ImGui::Indent();                       // Indent nested header
+        ui::colors::PushNestedHeaderColors();  // Apply distinct colors for nested header
+        if (ImGui::CollapsingHeader("Fake NVAPI Statistics", ImGuiTreeNodeFlags_None)) {
+            ImGui::Indent();  // Indent content inside subsection
+            ImGui::TextColored(ui::colors::TEXT_DEFAULT, "nvapi64.dll loaded before DC: %s",
+                               stats.was_nvapi64_loaded_before_dc ? "Yes" : "No");
+            ImGui::TextColored(ui::colors::TEXT_DEFAULT, "nvapi64.dll currently loaded: %s",
+                               stats.is_nvapi64_loaded ? "Yes" : "No");
+            ImGui::TextColored(ui::colors::TEXT_DEFAULT, "libxell.dll loaded: %s",
+                               stats.is_libxell_loaded ? "Yes" : "No");
+            ImGui::TextColored(ui::colors::TEXT_DEFAULT, "Fake NVAPI Loaded: %s",
+                               stats.fake_nvapi_loaded ? "Yes" : "No");
+            ImGui::TextColored(ui::colors::TEXT_DEFAULT, "Override Enabled: %s", stats.override_enabled ? "Yes" : "No");
 
-        if (stats.fakenvapi_dll_found) {
-            ImGui::TextColored(ui::colors::TEXT_WARNING, ICON_FK_WARNING ": fakenvapi.dll found: Yes (needs renaming to nvapi64.dll)");
-        } else {
-            ImGui::TextColored(ui::colors::TEXT_DEFAULT, "fakenvapi.dll found: No");
-        }
+            if (stats.fakenvapi_dll_found) {
+                ImGui::TextColored(ui::colors::TEXT_WARNING,
+                                   ICON_FK_WARNING ": fakenvapi.dll found: Yes (needs renaming to nvapi64.dll)");
+            } else {
+                ImGui::TextColored(ui::colors::TEXT_DEFAULT, "fakenvapi.dll found: No");
+            }
 
             if (!stats.last_error.empty()) {
-            ImGui::TextColored(ui::colors::TEXT_ERROR, "Last Error: %s", stats.last_error.c_str());
+                ImGui::TextColored(ui::colors::TEXT_ERROR, "Last Error: %s", stats.last_error.c_str());
             }
-        ImGui::Unindent();  // Unindent content
+            ImGui::Unindent();  // Unindent content
         }
-    ui::colors::PopNestedHeaderColors();  // Restore default header colors
-    ImGui::Unindent();  // Unindent nested header section
+        ui::colors::PopNestedHeaderColors();  // Restore default header colors
+        ImGui::Unindent();                    // Unindent nested header section
 
         // Warning about experimental nature
         ImGui::Spacing();
@@ -1114,9 +1124,7 @@ void DrawNvapiSettings() {
         }
         ImGui::Unindent();
     }
-
 }
-
 
 void DrawNewExperimentalFeatures() {
     ImGui::Indent();
@@ -1124,21 +1132,25 @@ void DrawNewExperimentalFeatures() {
     // Warning tip
     ImGui::TextColored(ui::colors::TEXT_WARNING, ICON_FK_WARNING " Tip: Turn off if this causes crashes");
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("These experimental features are under active development.\n"
-                         "If you experience crashes or instability, disable them immediately.");
+        ImGui::SetTooltip(
+            "These experimental features are under active development.\n"
+            "If you experience crashes or instability, disable them immediately.");
     }
 
     ImGui::Spacing();
 
     // Reuse swap chain experimental feature
-    if (CheckboxSetting(settings::g_experimentalTabSettings.reuse_swap_chain_experimental_enabled, "Reuse Swap Chain")) {
+    if (CheckboxSetting(settings::g_experimentalTabSettings.reuse_swap_chain_experimental_enabled,
+                        "Reuse Swap Chain")) {
         LogInfo("Reuse swap chain experimental feature %s",
-                settings::g_experimentalTabSettings.reuse_swap_chain_experimental_enabled.GetValue() ? "enabled" : "disabled");
+                settings::g_experimentalTabSettings.reuse_swap_chain_experimental_enabled.GetValue() ? "enabled"
+                                                                                                     : "disabled");
     }
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Store a global reference to the DXGI swapchain.\n"
-                         "This allows other parts of the codebase to access the swapchain.\n"
-                         "WARNING: Experimental feature - may cause crashes. Turn off if issues occur.");
+        ImGui::SetTooltip(
+            "Store a global reference to the DXGI swapchain.\n"
+            "This allows other parts of the codebase to access the swapchain.\n"
+            "WARNING: Experimental feature - may cause crashes. Turn off if issues occur.");
     }
 
     // Display current swapchain pointer if available
@@ -1151,7 +1163,5 @@ void DrawNewExperimentalFeatures() {
 
     ImGui::Unindent();
 }
-
-
 
 }  // namespace ui::new_ui

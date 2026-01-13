@@ -34,4 +34,4 @@ void DrawNewExperimentalFeatures();
 // Initialize developer tab
 void InitDeveloperNewTab();
 
-} // namespace ui::new_ui
+}  // namespace ui::new_ui

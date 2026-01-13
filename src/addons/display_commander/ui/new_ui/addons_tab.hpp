@@ -1,8 +1,8 @@
 #pragma once
 
+#include <filesystem>
 #include <string>
 #include <vector>
-#include <filesystem>
 
 namespace ui::new_ui {
 
@@ -14,7 +14,7 @@ struct AddonInfo {
     std::string description;
     std::string author;
     bool is_enabled = true;
-    bool is_loaded = false;  // Whether it's currently loaded by ReShade
+    bool is_loaded = false;   // Whether it's currently loaded by ReShade
     bool is_external = true;  // Whether it's an external addon (not built-in)
 };
 
@@ -27,4 +27,4 @@ void DrawAddonsTab();
 // Refresh the addon list
 void RefreshAddonList();
 
-} // namespace ui::new_ui
+}  // namespace ui::new_ui

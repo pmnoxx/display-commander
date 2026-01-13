@@ -7,6 +7,7 @@
 #include "../../utils/general_utils.hpp"
 #include "../../utils/logging.hpp"
 #include "../../utils/reshade_global_config.hpp"
+#include "../../config/display_commander_config.hpp"
 
 #include <psapi.h>
 #include <ShlObj.h>
@@ -160,74 +161,33 @@ std::vector<std::pair<std::string, std::string>> GetLoadedReShadeVersions() {
     return results;
 }
 
-// Get disabled addons from ReShade config
-std::vector<std::string> GetDisabledAddons() {
-    std::vector<std::string> disabled_addons;
+// Get enabled addons from DisplayCommander config (whitelist approach)
+std::vector<std::string> GetEnabledAddons() {
+    std::vector<std::string> enabled_addons;
 
-    // Read DisabledAddons from ReShade config
-    // ReShade stores this as a comma-separated list or multiple entries
-    char buffer[4096] = {0};
-    size_t buffer_size = sizeof(buffer);
+    // Read EnabledAddons from DisplayCommander config
+    display_commander::config::get_config_value("ADDONS", "EnabledAddons", enabled_addons);
 
-    if (reshade::get_config_value(nullptr, "ADDON", "DisabledAddons", buffer, &buffer_size)) {
-        // Parse comma-separated list
-        std::string disabled_str(buffer);
-        std::stringstream ss(disabled_str);
-        std::string item;
-
-        while (std::getline(ss, item, ',')) {
-            // Trim whitespace
-            item.erase(0, item.find_first_not_of(" \t"));
-            item.erase(item.find_last_not_of(" \t") + 1);
-            if (!item.empty()) {
-                disabled_addons.push_back(item);
-            }
-        }
-    }
-
-    return disabled_addons;
+    return enabled_addons;
 }
 
-// Set disabled addons in ReShade config
-void SetDisabledAddons(const std::vector<std::string>& disabled_addons) {
-    if (disabled_addons.empty()) {
-        // Clear the setting if no addons are disabled
-        reshade::set_config_value(nullptr, "ADDON", "DisabledAddons", "");
-        return;
-    }
-
-    // Join with commas
-    std::stringstream ss;
-    for (size_t i = 0; i < disabled_addons.size(); ++i) {
-        if (i > 0) ss << ",";
-        ss << disabled_addons[i];
-    }
-
-    std::string disabled_str = ss.str();
-    reshade::set_config_value(nullptr, "ADDON", "DisabledAddons", disabled_str.c_str());
+// Set enabled addons in DisplayCommander config
+void SetEnabledAddons(const std::vector<std::string>& enabled_addons) {
+    display_commander::config::set_config_value("ADDONS", "EnabledAddons", enabled_addons);
+    display_commander::config::save_config("Addon enabled state changed");
 }
 
-// Check if an addon is disabled
-bool IsAddonDisabled(const std::string& addon_name, const std::string& addon_file) {
-    std::vector<std::string> disabled = GetDisabledAddons();
+// Check if an addon is enabled (whitelist approach - default is disabled)
+bool IsAddonEnabled(const std::string& addon_name, const std::string& addon_file) {
+    std::vector<std::string> enabled = GetEnabledAddons();
 
-    for (const auto& disabled_entry : disabled) {
-        // ReShade supports two formats:
-        // 1. Just the name: "AddonName"
-        // 2. Name with file: "AddonName@filename.addon64"
-        size_t at_pos = disabled_entry.find('@');
-        if (at_pos == std::string::npos) {
-            // Just name match
-            if (disabled_entry == addon_name) {
-                return true;
-            }
-        } else {
-            // Name@file format
-            std::string disabled_name = disabled_entry.substr(0, at_pos);
-            std::string disabled_file = disabled_entry.substr(at_pos + 1);
-            if (disabled_name == addon_name && disabled_file == addon_file) {
-                return true;
-            }
+    // Create identifier in format "name@file"
+    std::string identifier = addon_name + "@" + addon_file;
+
+    // Check if this addon is in the enabled list
+    for (const auto& enabled_entry : enabled) {
+        if (enabled_entry == identifier) {
+            return true;
         }
     }
 
@@ -236,30 +196,24 @@ bool IsAddonDisabled(const std::string& addon_name, const std::string& addon_fil
 
 // Enable or disable an addon
 void SetAddonEnabled(const std::string& addon_name, const std::string& addon_file, bool enabled) {
-    std::vector<std::string> disabled = GetDisabledAddons();
+    std::vector<std::string> enabled_list = GetEnabledAddons();
+
+    // Create identifier in format "name@file"
+    std::string identifier = addon_name + "@" + addon_file;
 
     // Remove existing entry if present
-    disabled.erase(std::remove_if(disabled.begin(), disabled.end(),
-                                  [&](const std::string& entry) {
-                                      size_t at_pos = entry.find('@');
-                                      if (at_pos == std::string::npos) {
-                                          return entry == addon_name;
-                                      } else {
-                                          std::string entry_name = entry.substr(0, at_pos);
-                                          std::string entry_file = entry.substr(at_pos + 1);
-                                          return entry_name == addon_name && entry_file == addon_file;
-                                      }
-                                  }),
-                   disabled.end());
+    enabled_list.erase(std::remove_if(enabled_list.begin(), enabled_list.end(),
+                                      [&](const std::string& entry) {
+                                          return entry == identifier;
+                                      }),
+                      enabled_list.end());
 
-    // Add to disabled list if disabling
-    if (!enabled) {
-        // Use name@file format for specificity
-        std::string disabled_entry = addon_name + "@" + addon_file;
-        disabled.push_back(disabled_entry);
+    // Add to enabled list if enabling
+    if (enabled) {
+        enabled_list.push_back(identifier);
     }
 
-    SetDisabledAddons(disabled);
+    SetEnabledAddons(enabled_list);
     g_addon_list_dirty.store(true);
 }
 
@@ -310,7 +264,7 @@ void ScanGlobalAddonsDirectory(std::vector<AddonInfo>& addons) {
             info.author = "Unknown";
             info.is_external = true;
             info.is_loaded = false;  // We'll check this against ReShade's list
-            info.is_enabled = !IsAddonDisabled(info.name, info.file_name);
+            info.is_enabled = IsAddonEnabled(info.name, info.file_name);
 
             addons.push_back(info);
         }
@@ -382,6 +336,45 @@ void DrawAddonsTab() {
         ui::colors::PopIconColor();
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Refresh the list of available addons");
+        }
+
+        ImGui::SameLine();
+
+        // Enable All button
+        ui::colors::PushIconColor(ui::colors::ICON_ACTION);
+        if (ImGui::Button(ICON_FK_OK " Enable All")) {
+            std::vector<std::string> enabled_list;
+            for (const auto& addon : g_addon_list) {
+                std::string identifier = addon.name + "@" + addon.file_name;
+                enabled_list.push_back(identifier);
+            }
+            SetEnabledAddons(enabled_list);
+            // Update local state
+            for (auto& addon : g_addon_list) {
+                addon.is_enabled = true;
+            }
+            g_addon_list_dirty.store(true);
+        }
+        ui::colors::PopIconColor();
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Enable all addons");
+        }
+
+        ImGui::SameLine();
+
+        // Disable All button
+        ui::colors::PushIconColor(ui::colors::ICON_ACTION);
+        if (ImGui::Button(ICON_FK_CANCEL " Disable All")) {
+            SetEnabledAddons(std::vector<std::string>());
+            // Update local state
+            for (auto& addon : g_addon_list) {
+                addon.is_enabled = false;
+            }
+            g_addon_list_dirty.store(true);
+        }
+        ui::colors::PopIconColor();
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Disable all addons");
         }
 
         ImGui::SameLine();
@@ -498,7 +491,9 @@ void DrawAddonsTab() {
 
             // Info text
             ImGui::TextColored(ui::colors::TEXT_DIMMED,
-                               "Note: Changes to addon enabled/disabled state require a game restart to take effect.");
+                               "Note: Addons are disabled by default. Enable addons to load them on next game restart.");
+            ImGui::TextColored(ui::colors::TEXT_DIMMED,
+                               "Changes to addon enabled/disabled state require a game restart to take effect.");
             ImGui::TextColored(ui::colors::TEXT_DIMMED, "Addons directory: %s",
                                GetGlobalAddonsDirectory().string().c_str());
         }

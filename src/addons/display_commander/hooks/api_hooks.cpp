@@ -2,10 +2,11 @@
 #include <d3d11.h>
 #include <d3d12.h>
 #include <MinHook.h>
+#include <wrl/client.h>
 #include "../settings/developer_tab_settings.hpp"
+#include "../utils/detour_call_tracker.hpp"
 #include "../utils/general_utils.hpp"
 #include "../utils/logging.hpp"
-#include "../utils/detour_call_tracker.hpp"
 #include "../utils/timing.hpp"
 #include "debug_output_hooks.hpp"
 #include "dinput_hooks.hpp"
@@ -22,7 +23,6 @@
 #include "timeslowdown_hooks.hpp"
 #include "windows_gaming_input_hooks.hpp"
 #include "windows_hooks/windows_message_hooks.hpp"
-#include <wrl/client.h>
 
 // External reference to screensaver mode setting
 extern std::atomic<ScreensaverMode> s_screensaver_mode;
@@ -77,7 +77,6 @@ HWND WINAPI GetFocus_Detour() {
         return g_game_window;
     }
 
-
     // Call original function
     return hwnd;
 }
@@ -94,7 +93,6 @@ HWND WINAPI GetForegroundWindow_Detour() {
     if (HWNDBelongsToCurrentProcess(hwnd)) {
         return hwnd;
     }
-
 
     if (s_continue_rendering.load() && g_game_window.load() != nullptr && IsWindow(g_game_window.load())) {
         // Return the game window even when it's not in foreground
@@ -244,12 +242,12 @@ LONG_PTR WINAPI SetWindowLongPtrA_Detour(HWND hWnd, int nIndex, LONG_PTR dwNewLo
     g_display_settings_hook_total_count.fetch_add(1);
 
     // Check if fullscreen prevention is enabled
-   // if (settings::g_developerTabSettings.prevent_fullscreen.GetValue()) {
-        // Prevent window style changes that enable fullscreen
+    // if (settings::g_developerTabSettings.prevent_fullscreen.GetValue()) {
+    // Prevent window style changes that enable fullscreen
     if (hWnd == g_game_window) {
         ModifyWindowStyle(nIndex, dwNewLong, settings::g_developerTabSettings.prevent_always_on_top.GetValue());
     }
-   // }
+    // }
 
     return SetWindowLongPtrA_Original(hWnd, nIndex, dwNewLong);
 }
@@ -258,7 +256,8 @@ LONG_PTR WINAPI SetWindowLongPtrA_Detour(HWND hWnd, int nIndex, LONG_PTR dwNewLo
 BOOL WINAPI SetWindowPos_Detour(HWND hWnd, HWND hWndInsertAfter, int X, int Y, int cx, int cy, UINT uFlags) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Only process if prevent_always_on_top is enabled
-    if (hWnd == g_game_window && settings::g_developerTabSettings.prevent_always_on_top.GetValue() && hWndInsertAfter != HWND_NOTOPMOST) {
+    if (hWnd == g_game_window && settings::g_developerTabSettings.prevent_always_on_top.GetValue()
+        && hWndInsertAfter != HWND_NOTOPMOST) {
         hWndInsertAfter = HWND_NOTOPMOST;
         // uFlags |= SWP_FRAMECHANGED; perhaphs not needed
         /*
@@ -364,8 +363,8 @@ HRESULT WINAPI CreateDXGIFactory_Detour(REFIID riid, void** ppFactory) {
             factory7->AddRef();
 
             // Create wrapper for the factory (wrapper takes ownership, doesn't AddRef)
-            display_commanderhooks::DXGIFactoryWrapper* wrapper =
-                new display_commanderhooks::DXGIFactoryWrapper(factory7.Get(), display_commanderhooks::SwapChainHook::NativeRaw);
+            display_commanderhooks::DXGIFactoryWrapper* wrapper = new display_commanderhooks::DXGIFactoryWrapper(
+                factory7.Get(), display_commanderhooks::SwapChainHook::NativeRaw);
 
             // Release the original factory reference from the original function
             static_cast<IUnknown*>(*ppFactory)->Release();
@@ -377,32 +376,7 @@ HRESULT WINAPI CreateDXGIFactory_Detour(REFIID riid, void** ppFactory) {
 
             LogInfo("CreateDXGIFactory: Created factory wrapper for IDXGIFactory7: 0x%p", wrapper);
         } else {
-            // Try IDXGIFactory1 as fallback (CreateDXGIFactory should return at least IDXGIFactory1)
-            Microsoft::WRL::ComPtr<IDXGIFactory1> factory1;
-            if (SUCCEEDED(static_cast<IUnknown*>(*ppFactory)->QueryInterface(IID_PPV_ARGS(&factory1)))) {
-                // Query for IDXGIFactory7 through factory1
-                Microsoft::WRL::ComPtr<IDXGIFactory7> factory7_from_1;
-                if (SUCCEEDED(factory1.As(&factory7_from_1))) {
-                    // AddRef the factory so wrapper can take ownership
-                    factory7_from_1->AddRef();
-
-                    // Create wrapper
-                    display_commanderhooks::DXGIFactoryWrapper* wrapper =
-                        new display_commanderhooks::DXGIFactoryWrapper(factory7_from_1.Get(), display_commanderhooks::SwapChainHook::NativeRaw);
-
-                    // Release the original factory reference
-                    static_cast<IUnknown*>(*ppFactory)->Release();
-
-                    // Replace with wrapper
-                    *ppFactory = wrapper;
-
-                    LogInfo("CreateDXGIFactory: Created factory wrapper for IDXGIFactory7 (via IDXGIFactory1): 0x%p", wrapper);
-                } else {
-                    LogWarn("CreateDXGIFactory: Factory does not support IDXGIFactory7, skipping wrapper creation");
-                }
-            } else {
-                LogWarn("CreateDXGIFactory: Failed to query IDXGIFactory1, skipping wrapper creation");
-            }
+            LogWarn("CreateDXGIFactory: Failed to query IDXGIFactory7, skipping wrapper creation");
         }
     }
 
@@ -430,8 +404,8 @@ HRESULT WINAPI CreateDXGIFactory1_Detour(REFIID riid, void** ppFactory) {
             factory7->AddRef();
 
             // Create wrapper for the factory (wrapper takes ownership, doesn't AddRef)
-            display_commanderhooks::DXGIFactoryWrapper* wrapper =
-                new display_commanderhooks::DXGIFactoryWrapper(factory7.Get(), display_commanderhooks::SwapChainHook::NativeRaw);
+            display_commanderhooks::DXGIFactoryWrapper* wrapper = new display_commanderhooks::DXGIFactoryWrapper(
+                factory7.Get(), display_commanderhooks::SwapChainHook::NativeRaw);
 
             // Release the original factory reference from the original function
             static_cast<IUnknown*>(*ppFactory)->Release();
@@ -443,32 +417,7 @@ HRESULT WINAPI CreateDXGIFactory1_Detour(REFIID riid, void** ppFactory) {
 
             LogInfo("CreateDXGIFactory1: Created factory wrapper for IDXGIFactory7: 0x%p", wrapper);
         } else {
-            // Try IDXGIFactory1 as fallback
-            Microsoft::WRL::ComPtr<IDXGIFactory1> factory1;
-            if (SUCCEEDED(static_cast<IUnknown*>(*ppFactory)->QueryInterface(IID_PPV_ARGS(&factory1)))) {
-                // Query for IDXGIFactory7 through factory1
-                Microsoft::WRL::ComPtr<IDXGIFactory7> factory7_from_1;
-                if (SUCCEEDED(factory1.As(&factory7_from_1))) {
-                    // AddRef the factory so wrapper can take ownership
-                    factory7_from_1->AddRef();
-
-                    // Create wrapper
-                    display_commanderhooks::DXGIFactoryWrapper* wrapper =
-                        new display_commanderhooks::DXGIFactoryWrapper(factory7_from_1.Get(), display_commanderhooks::SwapChainHook::NativeRaw);
-
-                    // Release the original factory reference
-                    static_cast<IUnknown*>(*ppFactory)->Release();
-
-                    // Replace with wrapper
-                    *ppFactory = wrapper;
-
-                    LogInfo("CreateDXGIFactory1: Created factory wrapper for IDXGIFactory7 (via IDXGIFactory1): 0x%p", wrapper);
-                } else {
-                    LogWarn("CreateDXGIFactory1: Factory does not support IDXGIFactory7, skipping wrapper creation");
-                }
-            } else {
-                LogWarn("CreateDXGIFactory1: Failed to query IDXGIFactory1, skipping wrapper creation");
-            }
+            LogWarn("CreateDXGIFactory1: Failed to query IDXGIFactory7, skipping wrapper creation");
         }
     }
 
@@ -591,11 +540,10 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain_Detour(IDXGIAdapter* pAdapter, D3D_
 }
 
 // Hooked D3D11CreateDevice function
-HRESULT WINAPI D3D11CreateDevice_Detour(IDXGIAdapter* pAdapter, D3D_DRIVER_TYPE DriverType,
-                                        HMODULE Software, UINT Flags,
-                                        const D3D_FEATURE_LEVEL* pFeatureLevels, UINT FeatureLevels,
-                                        UINT SDKVersion, ID3D11Device** ppDevice,
-                                        D3D_FEATURE_LEVEL* pFeatureLevel, ID3D11DeviceContext** ppImmediateContext) {
+HRESULT WINAPI D3D11CreateDevice_Detour(IDXGIAdapter* pAdapter, D3D_DRIVER_TYPE DriverType, HMODULE Software,
+                                        UINT Flags, const D3D_FEATURE_LEVEL* pFeatureLevels, UINT FeatureLevels,
+                                        UINT SDKVersion, ID3D11Device** ppDevice, D3D_FEATURE_LEVEL* pFeatureLevel,
+                                        ID3D11DeviceContext** ppImmediateContext) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     LogInfo("=== D3D11CreateDevice Called ===");
     LogInfo("  pAdapter: 0x%p", pAdapter);
@@ -625,11 +573,10 @@ HRESULT WINAPI D3D11CreateDevice_Detour(IDXGIAdapter* pAdapter, D3D_DRIVER_TYPE 
     }
 
     // Call original function with modified flags
-    HRESULT hr = D3D11CreateDevice_Original
-                     ? D3D11CreateDevice_Original(pAdapter, DriverType, Software, modifiedFlags,
-                                                 pFeatureLevels, FeatureLevels, SDKVersion, ppDevice,
-                                                 pFeatureLevel, ppImmediateContext)
-                     : E_FAIL;  // D3D11CreateDevice not available
+    HRESULT hr = D3D11CreateDevice_Original ? D3D11CreateDevice_Original(pAdapter, DriverType, Software, modifiedFlags,
+                                                                         pFeatureLevels, FeatureLevels, SDKVersion,
+                                                                         ppDevice, pFeatureLevel, ppImmediateContext)
+                                            : E_FAIL;  // D3D11CreateDevice not available
 
     LogInfo("  Result: 0x%08X (%s)", hr, SUCCEEDED(hr) ? "SUCCESS" : "FAILED");
 
@@ -883,12 +830,11 @@ bool InstallD3D11DeviceHooks(HMODULE d3d11_module) {
     }
 
     // Hook D3D11CreateDevice
-    auto D3D11CreateDevice_sys = reinterpret_cast<decltype(&D3D11CreateDevice)>(
-        GetProcAddress(d3d11_module, "D3D11CreateDevice"));
+    auto D3D11CreateDevice_sys =
+        reinterpret_cast<decltype(&D3D11CreateDevice)>(GetProcAddress(d3d11_module, "D3D11CreateDevice"));
     if (D3D11CreateDevice_sys != nullptr) {
         if (!CreateAndEnableHook(D3D11CreateDevice_sys, D3D11CreateDevice_Detour,
-                                 reinterpret_cast<LPVOID*>(&D3D11CreateDevice_Original),
-                                 "D3D11CreateDevice")) {
+                                 reinterpret_cast<LPVOID*>(&D3D11CreateDevice_Original), "D3D11CreateDevice")) {
             LogError("Failed to create and enable D3D11CreateDevice hook");
             return false;
         }
@@ -1014,14 +960,14 @@ bool InstallWindowsApiHooks() {
     }
 
     // Hook SetWindowLongA
-    if (!CreateAndEnableHook(SetWindowLongA, SetWindowLongA_Detour,
-                             reinterpret_cast<LPVOID*>(&SetWindowLongA_Original), "SetWindowLongA")) {
+    if (!CreateAndEnableHook(SetWindowLongA, SetWindowLongA_Detour, reinterpret_cast<LPVOID*>(&SetWindowLongA_Original),
+                             "SetWindowLongA")) {
         LogError("Failed to create and enable SetWindowLongA hook");
     }
 
     // Hook SetWindowLongW
-    if (!CreateAndEnableHook(SetWindowLongW, SetWindowLongW_Detour,
-                             reinterpret_cast<LPVOID*>(&SetWindowLongW_Original), "SetWindowLongW")) {
+    if (!CreateAndEnableHook(SetWindowLongW, SetWindowLongW_Detour, reinterpret_cast<LPVOID*>(&SetWindowLongW_Original),
+                             "SetWindowLongW")) {
         LogError("Failed to create and enable SetWindowLongW hook");
     }
 
@@ -1180,8 +1126,8 @@ void UninstallApiHooks() {
             MH_RemoveHook(D3D11CreateDeviceAndSwapChain_sys);
         }
 
-        auto D3D11CreateDevice_sys = reinterpret_cast<decltype(&D3D11CreateDevice)>(
-            GetProcAddress(d3d11_module, "D3D11CreateDevice"));
+        auto D3D11CreateDevice_sys =
+            reinterpret_cast<decltype(&D3D11CreateDevice)>(GetProcAddress(d3d11_module, "D3D11CreateDevice"));
         if (D3D11CreateDevice_sys != nullptr) {
             MH_RemoveHook(D3D11CreateDevice_sys);
         }

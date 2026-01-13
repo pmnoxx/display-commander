@@ -53,6 +53,7 @@
 #include <reshade.hpp>
 #include <sstream>
 #include <string>
+#include <vector>
 
 // Forward declarations for ReShade event handlers
 void OnInitEffectRuntime(reshade::api::effect_runtime* runtime);
@@ -1318,7 +1319,25 @@ void OverrideReShadeSettings() {
 // ReShade loaded status (declared here so it's available to LoadAddonsFromPluginsDirectory)
 std::atomic<bool> g_reshade_loaded(false);
 
-// Function to load all .addon64/.addon32 files from Documents\Display Commander\Reshade\Addons
+// Helper function to check if an addon is enabled (whitelist approach)
+static bool IsAddonEnabledForLoading(const std::string& addon_name, const std::string& addon_file) {
+    std::vector<std::string> enabled_addons;
+    display_commander::config::get_config_value("ADDONS", "EnabledAddons", enabled_addons);
+
+    // Create identifier in format "name@file"
+    std::string identifier = addon_name + "@" + addon_file;
+
+    // Check if this addon is in the enabled list
+    for (const auto& enabled_entry : enabled_addons) {
+        if (enabled_entry == identifier) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+// Function to load enabled .addon64/.addon32 files from Documents\Display Commander\Reshade\Addons
 void LoadAddonsFromPluginsDirectory() {
     wchar_t documents_path[MAX_PATH];
     if (FAILED(SHGetFolderPathW(nullptr, CSIDL_MYDOCUMENTS, nullptr, SHGFP_TYPE_CURRENT, documents_path))) {
@@ -1355,6 +1374,7 @@ void LoadAddonsFromPluginsDirectory() {
         std::error_code ec;
         int loaded_count = 0;
         int failed_count = 0;
+        int skipped_count = 0;
 
         for (const auto& entry : std::filesystem::directory_iterator(
                  addons_dir, std::filesystem::directory_options::skip_permission_denied, ec)) {
@@ -1386,7 +1406,18 @@ void LoadAddonsFromPluginsDirectory() {
             }
 #endif
 
-            LogInfo("Loading addon from Addons directory: %ls", path.c_str());
+            // Get addon name and file name
+            std::string addon_name = path.stem().string();
+            std::string addon_file = path.filename().string();
+
+            // Check if addon is enabled (whitelist approach - default is disabled)
+            if (!IsAddonEnabledForLoading(addon_name, addon_file)) {
+                LogInfo("Skipping disabled addon: %ls", path.c_str());
+                skipped_count++;
+                continue;
+            }
+
+            LogInfo("Loading enabled addon from Addons directory: %ls", path.c_str());
 
             // Use LoadLibraryExW with search flags similar to ReShade's addon_manager
             HMODULE module = LoadLibraryExW(path.c_str(), nullptr,
@@ -1401,8 +1432,9 @@ void LoadAddonsFromPluginsDirectory() {
             }
         }
 
-        if (loaded_count > 0 || failed_count > 0) {
-            LogInfo("Addon loading from Addons directory completed: %d loaded, %d failed", loaded_count, failed_count);
+        if (loaded_count > 0 || failed_count > 0 || skipped_count > 0) {
+            LogInfo("Addon loading from Addons directory completed: %d loaded, %d failed, %d skipped (disabled)",
+                    loaded_count, failed_count, skipped_count);
         }
     } catch (const std::exception& e) {
         LogWarn("Exception while loading addons from Addons directory: %s", e.what());

@@ -1339,6 +1339,7 @@ static bool IsAddonEnabledForLoading(const std::string& addon_name, const std::s
 
 // Function to load enabled .addon64/.addon32 files from Documents\Display Commander\Reshade\Addons
 void LoadAddonsFromPluginsDirectory() {
+    OutputDebugStringA("Loading addons from Addons directory");
     wchar_t documents_path[MAX_PATH];
     if (FAILED(SHGetFolderPathW(nullptr, CSIDL_MYDOCUMENTS, nullptr, SHGFP_TYPE_CURRENT, documents_path))) {
         LogWarn("Failed to get Documents folder path, skipping addon loading from Addons directory");
@@ -1368,6 +1369,7 @@ void LoadAddonsFromPluginsDirectory() {
         LogInfo("ReShade not loaded yet, skipping addon loading from Addons directory");
         return;
     }
+    OutputDebugStringA("ReShade loaded, attempting to load addons from Addons directory");
 
     // Iterate through all files in the Addons directory
     try {
@@ -2409,9 +2411,6 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             reshade::register_overlay("Display Commander", OnRegisterOverlayDisplayCommander);
             LogInfoDirect("Display Commander overlay registered");
 
-            // Load addons from Plugins directory
-            LoadAddonsFromPluginsDirectory();
-
             // Detect if we're loaded as a proxy DLL (dxgi.dll, d3d11.dll, d3d12.dll)
             // Similar to how ReShade detects this
             // Log to debug viewer early since log file may not be available yet
@@ -2452,6 +2451,8 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             DoInitializationWithoutHwnd(h_module, fdw_reason);
             // display_commander::config::DisplayCommanderConfigManager::GetInstance().SetAutoFlushLogs(false);
 
+            // Load addons from Plugins directory
+            LoadAddonsFromPluginsDirectory();
             break;
         }
         case DLL_THREAD_ATTACH: {

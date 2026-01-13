@@ -69,6 +69,50 @@ std::filesystem::path GetDocumentsDirectory() {
     return std::filesystem::path(documents_path);
 }
 
+// Get the Reshade directory path (where reshade64.dll/reshade32.dll are located)
+std::filesystem::path GetReshadeDirectory() {
+    wchar_t documents_path[MAX_PATH];
+    if (FAILED(SHGetFolderPathW(nullptr, CSIDL_MYDOCUMENTS, nullptr, SHGFP_TYPE_CURRENT, documents_path))) {
+        return std::filesystem::path();
+    }
+    std::filesystem::path documents_dir(documents_path);
+    return documents_dir / L"Display Commander" / L"Reshade";
+}
+
+// Convert full path to path relative to Documents (masks username)
+// Example: "C:\Users\Piotr\Documents\Display Commander\Reshade" -> "Documents\Display Commander\Reshade"
+std::string GetPathRelativeToDocuments(const std::filesystem::path& full_path) {
+    std::filesystem::path documents_dir = GetDocumentsDirectory();
+    if (documents_dir.empty()) {
+        return full_path.string();
+    }
+
+    // Convert to strings and normalize path separators to backslashes for Windows
+    std::string full_str = full_path.string();
+    std::string docs_str = documents_dir.string();
+    std::replace(full_str.begin(), full_str.end(), '/', '\\');
+    std::replace(docs_str.begin(), docs_str.end(), '/', '\\');
+
+    // Check if full_path is exactly Documents directory
+    if (full_str == docs_str) {
+        return "Documents";
+    }
+
+    // Check if full_path is within Documents directory
+    if (full_str.length() > docs_str.length()) {
+        // Check if it starts with docs_str followed by a path separator
+        if (full_str.substr(0, docs_str.length()) == docs_str && (full_str[docs_str.length()] == '\\')) {
+            // Remove the documents_dir part and the leading path separator
+            std::string relative = full_str.substr(docs_str.length() + 1);
+            // Prepend "Documents" to maintain clarity
+            return "Documents\\" + relative;
+        }
+    }
+
+    // Path is not under Documents, return original
+    return full_path.string();
+}
+
 // Check if Reshade64.dll exists in Documents folder
 bool Reshade64DllExists() {
     std::filesystem::path documents_dir = GetDocumentsDirectory();
@@ -416,14 +460,15 @@ void DrawAddonsTab() {
         if (g_addon_list.empty()) {
             ImGui::TextColored(ui::colors::TEXT_DIMMED, "No addons found in global directory.");
             ImGui::Spacing();
-            ImGui::TextWrapped("Addons should be placed in: %s", GetGlobalAddonsDirectory().string().c_str());
+            ImGui::TextWrapped("Addons should be placed in: %s",
+                               GetPathRelativeToDocuments(GetGlobalAddonsDirectory()).c_str());
         } else {
             // Create table for addon list
             if (ImGui::BeginTable("AddonsTable", 4,
                                   ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable)) {
-                ImGui::TableSetupColumn("Enabled", ImGuiTableColumnFlags_WidthFixed, 80.0f);
+                ImGui::TableSetupColumn("Enabled", ImGuiTableColumnFlags_WidthFixed, 160.0f);
                 ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthStretch);
-                ImGui::TableSetupColumn("File", ImGuiTableColumnFlags_WidthFixed, 200.0f);
+                ImGui::TableSetupColumn("File", ImGuiTableColumnFlags_WidthFixed, 500.0f);
                 ImGui::TableSetupColumn("Actions", ImGuiTableColumnFlags_WidthFixed, 100.0f);
                 ImGui::TableHeadersRow();
 
@@ -494,7 +539,7 @@ void DrawAddonsTab() {
             ImGui::TextColored(ui::colors::TEXT_DIMMED,
                                "Changes to addon enabled/disabled state require a game restart to take effect.");
             ImGui::TextColored(ui::colors::TEXT_DIMMED, "Addons directory: %s",
-                               GetGlobalAddonsDirectory().string().c_str());
+                               GetPathRelativeToDocuments(GetGlobalAddonsDirectory()).c_str());
         }
     }
 
@@ -575,8 +620,10 @@ void DrawAddonsTab() {
         ImGui::Spacing();
 
         // Info text
-        ImGui::TextColored(ui::colors::TEXT_DIMMED, "Shaders directory: %s", GetShadersDirectory().string().c_str());
-        ImGui::TextColored(ui::colors::TEXT_DIMMED, "Textures directory: %s", GetTexturesDirectory().string().c_str());
+        ImGui::TextColored(ui::colors::TEXT_DIMMED, "Shaders directory: %s",
+                           GetPathRelativeToDocuments(GetShadersDirectory()).c_str());
+        ImGui::TextColored(ui::colors::TEXT_DIMMED, "Textures directory: %s",
+                           GetPathRelativeToDocuments(GetTexturesDirectory()).c_str());
     }
 
     ImGui::Spacing();
@@ -647,7 +694,8 @@ void DrawAddonsTab() {
                     ImGui::TextColored(ui::colors::TEXT_DEFAULT, ICON_FK_OK " %s (v%s)", module_name.c_str(),
                                        version.c_str());
                     if (ImGui::IsItemHovered()) {
-                        ImGui::SetTooltip("%s", module_path.c_str());
+                        std::filesystem::path module_path_obj(module_path);
+                        ImGui::SetTooltip("%s", GetPathRelativeToDocuments(module_path_obj).c_str());
                     }
                 }
                 ImGui::Unindent();
@@ -655,27 +703,37 @@ void DrawAddonsTab() {
 
             ImGui::Spacing();
 
-            // Open Documents Folder button
+            // Open Reshade Folder button
             ui::colors::PushIconColor(ui::colors::ICON_ACTION);
-            if (ImGui::Button(ICON_FK_FOLDER_OPEN " Open Documents Folder")) {
-                std::filesystem::path documents_dir = GetDocumentsDirectory();
+            if (ImGui::Button(ICON_FK_FOLDER_OPEN " Open Reshade Folder")) {
+                std::filesystem::path reshade_dir = GetReshadeDirectory();
 
-                if (!documents_dir.empty() && std::filesystem::exists(documents_dir)) {
-                    std::string documents_dir_str = documents_dir.string();
+                // Create directory if it doesn't exist
+                if (!std::filesystem::exists(reshade_dir)) {
+                    try {
+                        std::filesystem::create_directories(reshade_dir);
+                    } catch (const std::exception& e) {
+                        LogError("Failed to create Reshade directory: %s", e.what());
+                    }
+                }
+
+                if (!reshade_dir.empty() && std::filesystem::exists(reshade_dir)) {
+                    std::string reshade_dir_str = reshade_dir.string();
                     HINSTANCE result =
-                        ShellExecuteA(nullptr, "explore", documents_dir_str.c_str(), nullptr, nullptr, SW_SHOW);
+                        ShellExecuteA(nullptr, "explore", reshade_dir_str.c_str(), nullptr, nullptr, SW_SHOW);
 
                     if (reinterpret_cast<intptr_t>(result) <= 32) {
-                        LogError("Failed to open Documents folder: %s (Error: %ld)", documents_dir_str.c_str(),
+                        LogError("Failed to open Reshade folder: %s (Error: %ld)", reshade_dir_str.c_str(),
                                  reinterpret_cast<intptr_t>(result));
                     } else {
-                        LogInfo("Opened Documents folder: %s", documents_dir_str.c_str());
+                        LogInfo("Opened Reshade folder: %s", reshade_dir_str.c_str());
                     }
                 }
             }
             ui::colors::PopIconColor();
             if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("Open the Documents folder in Windows Explorer");
+                ImGui::SetTooltip(
+                    "Open the Reshade folder (containing reshade64.dll/reshade32.dll) in Windows Explorer");
             }
 
             ImGui::Spacing();
@@ -683,8 +741,8 @@ void DrawAddonsTab() {
             ImGui::Spacing();
 
             // Info text
-            ImGui::TextColored(ui::colors::TEXT_DIMMED, "Documents directory: %s",
-                               GetDocumentsDirectory().string().c_str());
+            ImGui::TextColored(ui::colors::TEXT_DIMMED, "Reshade directory: %s",
+                               GetPathRelativeToDocuments(GetReshadeDirectory()).c_str());
         }
     }
 

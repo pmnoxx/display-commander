@@ -2250,11 +2250,12 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
                     if (SUCCEEDED(SHGetFolderPathW(nullptr, CSIDL_MYDOCUMENTS, nullptr, SHGFP_TYPE_CURRENT,
                                                    documents_path))) {
                         std::filesystem::path documents_dir(documents_path);
+                        std::filesystem::path dc_reshade_dir = documents_dir / L"Display Commander" / L"Reshade";
 #ifdef _WIN64
-                        std::filesystem::path reshade_path = documents_dir / L"Reshade64.dll";
+                        std::filesystem::path reshade_path = dc_reshade_dir / L"Reshade64.dll";
                         const char* dll_name = "Reshade64.dll";
 #else
-                        std::filesystem::path reshade_path = documents_dir / L"Reshade32.dll";
+                        std::filesystem::path reshade_path = dc_reshade_dir / L"Reshade32.dll";
                         const char* dll_name = "Reshade32.dll";
 #endif
 
@@ -2351,12 +2352,26 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
                         const char* dll_name_msg = "Reshade32.dll";
 #endif
 
+                        // Get Documents folder path with Display Commander subdirectory
+                        std::string documents_path_str = "your Documents folder";
+                        wchar_t documents_path[MAX_PATH];
+                        if (SUCCEEDED(SHGetFolderPathW(nullptr, CSIDL_MYDOCUMENTS, nullptr, SHGFP_TYPE_CURRENT,
+                                                       documents_path))) {
+                            std::filesystem::path documents_dir(documents_path);
+                            std::filesystem::path dc_reshade_dir = documents_dir / L"Display Commander" / L"Reshade";
+                            // Convert wide string to narrow string
+                            char documents_path_narrow[MAX_PATH];
+                            WideCharToMultiByte(CP_ACP, 0, dc_reshade_dir.c_str(), -1, documents_path_narrow, MAX_PATH,
+                                                nullptr, nullptr);
+                            documents_path_str = documents_path_narrow;
+                        }
+
                         std::string message = "Display Commander detected a game platform (" + platform_names
                                               + ") but ReShade was not found.\n\n";
                         message += "ReShade is required for Display Commander to function.\n\n";
                         message += "Please ensure " + std::string(dll_name_msg) + " is either:\n";
                         message += "1. In the game's installation folder, or\n";
-                        message += "2. In your Documents folder\n\n";
+                        message += "2. In " + documents_path_str + "\n\n";
                         message += "Download ReShade from: https://reshade.me/";
 
                         MessageBoxA(nullptr, message.c_str(), "Display Commander - ReShade Not Found",

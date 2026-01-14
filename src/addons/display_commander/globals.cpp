@@ -17,15 +17,12 @@
 #include "utils/logging.hpp"
 #include "utils/srwlock_wrapper.hpp"
 
-
 #include <d3d11.h>
 #include <wrl/client.h>
 #include <reshade.hpp>
 
-
 #include <array>
 #include <atomic>
-
 
 // Global variables
 // UI mode removed - now using new tab system

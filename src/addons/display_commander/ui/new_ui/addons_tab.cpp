@@ -40,6 +40,9 @@ std::atomic<bool> g_shader_packages_loading(false);
 std::atomic<bool> g_shader_packages_loaded(false);
 std::string g_shader_packages_error;
 
+// Warning dialog state for addon enable/disable
+std::atomic<bool> g_show_addon_restart_warning(false);
+
 // Get the global addons directory path
 std::filesystem::path GetGlobalAddonsDirectory() {
     wchar_t documents_path[MAX_PATH];
@@ -608,6 +611,8 @@ void DownloadShaderPackagesList() {
 void InitAddonsTab() {
     // Initial refresh
     RefreshAddonListInternal();
+    // Reset warning flag on initialization (game restart)
+    g_show_addon_restart_warning.store(false);
 }
 
 void RefreshAddonList() { g_addon_list_dirty.store(true); }
@@ -875,6 +880,7 @@ void DrawAddonsTab() {
                 addon.is_enabled = true;
             }
             g_addon_list_dirty.store(true);
+            g_show_addon_restart_warning.store(true);
         }
         ui::colors::PopIconColor();
         if (ImGui::IsItemHovered()) {
@@ -892,6 +898,7 @@ void DrawAddonsTab() {
                 addon.is_enabled = false;
             }
             g_addon_list_dirty.store(true);
+            g_show_addon_restart_warning.store(true);
         }
         ui::colors::PopIconColor();
         if (ImGui::IsItemHovered()) {
@@ -963,6 +970,7 @@ void DrawAddonsTab() {
                         SetAddonEnabled(addon.name, addon.file_name, enabled);
                         addon.is_enabled = enabled;
                         g_addon_list_dirty.store(true);
+                        g_show_addon_restart_warning.store(true);
                     }
                     if (ImGui::IsItemHovered()) {
                         ImGui::SetTooltip("%s this addon", enabled ? "Disable" : "Enable");
@@ -1010,6 +1018,13 @@ void DrawAddonsTab() {
             ImGui::Spacing();
             ImGui::Separator();
             ImGui::Spacing();
+
+            // Warning message for addon enable/disable
+            if (g_show_addon_restart_warning.load()) {
+                ImGui::TextColored(ui::colors::TEXT_WARNING,
+                                   ICON_FK_WARNING " Warning: Game restart required for addon changes to take effect.");
+                ImGui::Spacing();
+            }
 
             // Info text
             ImGui::TextColored(

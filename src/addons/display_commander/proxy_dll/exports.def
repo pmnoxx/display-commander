@@ -41,6 +41,6 @@ EXPORTS
 	VerQueryValueW PRIVATE
 
 	; Display addon
-	Inject30
+	Service30
 	Start
 	Stop

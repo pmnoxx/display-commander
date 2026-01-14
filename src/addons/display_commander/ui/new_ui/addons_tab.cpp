@@ -12,12 +12,15 @@
 #include <psapi.h>
 #include <ShlObj.h>
 #include <Windows.h>
+#include <WinInet.h>
 #include <algorithm>
 #include <atomic>
 #include <filesystem>
+#include <mutex>
 #include <set>
 #include <sstream>
 #include <string>
+#include <thread>
 #include <vector>
 
 namespace ui::new_ui {
@@ -29,6 +32,13 @@ namespace {
 // Global addon list
 std::vector<AddonInfo> g_addon_list;
 std::atomic<bool> g_addon_list_dirty(true);  // Set to true to trigger refresh
+
+// Global shader packages list
+std::vector<ShaderPackageInfo> g_shader_packages;
+std::mutex g_shader_packages_mutex;
+std::atomic<bool> g_shader_packages_loading(false);
+std::atomic<bool> g_shader_packages_loaded(false);
+std::string g_shader_packages_error;
 
 // Get the global addons directory path
 std::filesystem::path GetGlobalAddonsDirectory() {
@@ -346,6 +356,253 @@ void RefreshAddonListInternal() {
     std::sort(g_addon_list.begin(), g_addon_list.end(),
               [](const AddonInfo& a, const AddonInfo& b) { return a.name < b.name; });
 }
+
+// RAII wrapper for WinInet handles
+struct ScopedInternetHandle {
+    HINTERNET handle;
+    ScopedInternetHandle(HINTERNET h) : handle(h) {}
+    ~ScopedInternetHandle() {
+        if (handle != nullptr) {
+            InternetCloseHandle(handle);
+        }
+    }
+    operator HINTERNET() const { return handle; }
+};
+
+// Download text content from URL using WinInet
+bool DownloadTextFromUrl(const std::string& url, std::string& content) {
+    content.clear();
+
+    // Convert URL to wide string
+    int url_len = MultiByteToWideChar(CP_UTF8, 0, url.c_str(), -1, nullptr, 0);
+    if (url_len <= 0) {
+        return false;
+    }
+    std::vector<wchar_t> url_wide(url_len);
+    MultiByteToWideChar(CP_UTF8, 0, url.c_str(), -1, url_wide.data(), url_len);
+
+    // Open internet session
+    ScopedInternetHandle session =
+        InternetOpenW(L"DisplayCommander", INTERNET_OPEN_TYPE_PRECONFIG, nullptr, nullptr, 0);
+    if (session.handle == nullptr) {
+        return false;
+    }
+
+    // Open URL
+    ScopedInternetHandle request =
+        InternetOpenUrlW(session, url_wide.data(), nullptr, 0,
+                         INTERNET_FLAG_RELOAD | INTERNET_FLAG_PRAGMA_NOCACHE | INTERNET_FLAG_NO_CACHE_WRITE, 0);
+    if (request.handle == nullptr) {
+        return false;
+    }
+
+    // Set timeouts (5 seconds)
+    DWORD timeout = 5000;
+    InternetSetOption(request, INTERNET_OPTION_CONNECT_TIMEOUT, &timeout, sizeof(timeout));
+    InternetSetOption(request, INTERNET_OPTION_RECEIVE_TIMEOUT, &timeout, sizeof(timeout));
+
+    // Read response
+    char buffer[4096];
+    DWORD bytes_read = 0;
+    while (InternetReadFile(request, buffer, sizeof(buffer) - 1, &bytes_read) && bytes_read > 0) {
+        buffer[bytes_read] = '\0';
+        content += buffer;
+    }
+
+    return !content.empty();
+}
+
+// Parse comma-separated values from INI
+std::vector<std::string> ParseCommaSeparatedValues(const std::string& value) {
+    std::vector<std::string> result;
+    std::stringstream ss(value);
+    std::string item;
+    while (std::getline(ss, item, ',')) {
+        // Trim whitespace
+        item.erase(0, item.find_first_not_of(" \t"));
+        item.erase(item.find_last_not_of(" \t") + 1);
+        if (!item.empty()) {
+            result.push_back(item);
+        }
+    }
+    return result;
+}
+
+// Extract GitHub repository URL from download URL
+// Example: https://github.com/crosire/reshade-shaders/archive/slim.zip -> https://github.com/crosire/reshade-shaders
+std::string ExtractGitHubRepoUrl(const std::string& download_url) {
+    if (download_url.empty()) {
+        return "";
+    }
+
+    // Check if it's a GitHub URL
+    size_t github_pos = download_url.find("github.com/");
+    if (github_pos == std::string::npos) {
+        return "";
+    }
+
+    // Find the start of the repository path (after github.com/)
+    size_t repo_start = github_pos + 11;  // Length of "github.com/"
+
+    // Find the end of the repository path (before /archive, /releases, /tree, etc.)
+    // First, find owner (everything up to first /)
+    size_t owner_end = download_url.find('/', repo_start);
+    if (owner_end == std::string::npos) {
+        // No owner/repo separator found
+        return "";
+    }
+
+    // Find repo name (everything up to next / or end)
+    size_t repo_end = download_url.find('/', owner_end + 1);
+    if (repo_end == std::string::npos) {
+        // No trailing path, use the rest
+        repo_end = download_url.length();
+    } else {
+        // Check if the next segment is a GitHub path pattern we should ignore
+        std::string next_segment = download_url.substr(repo_end);
+        if (next_segment.find("/archive/") == 0 || next_segment.find("/releases/") == 0
+            || next_segment.find("/tree/") == 0 || next_segment.find("/blob/") == 0
+            || next_segment.find("/raw/") == 0) {
+            // Stop here, this is the repository URL
+        } else {
+            // Might be part of repo name (e.g., nested repo), include it
+            repo_end = download_url.length();
+        }
+    }
+
+    // Extract owner/repo
+    std::string repo_path = download_url.substr(repo_start, repo_end - repo_start);
+
+    // Construct the repository URL
+    return "https://github.com/" + repo_path;
+}
+
+// Parse INI file content and extract shader packages
+bool ParseEffectPackagesIni(const std::string& ini_content, std::vector<ShaderPackageInfo>& packages) {
+    packages.clear();
+
+    std::stringstream ss(ini_content);
+    std::string line;
+    std::string current_section;
+    ShaderPackageInfo current_package;
+
+    while (std::getline(ss, line)) {
+        // Trim whitespace
+        line.erase(0, line.find_first_not_of(" \t\r\n"));
+        line.erase(line.find_last_not_of(" \t\r\n") + 1);
+
+        // Skip empty lines and comments
+        if (line.empty() || line[0] == ';' || line[0] == '#') {
+            continue;
+        }
+
+        // Check for section header [section_name]
+        if (line[0] == '[' && line.back() == ']') {
+            // Save previous package if valid
+            if (!current_section.empty() && !current_package.name.empty()) {
+                packages.push_back(current_package);
+            }
+
+            // Start new package
+            current_section = line.substr(1, line.length() - 2);
+            current_package = ShaderPackageInfo();
+            current_package.name = current_section;
+            continue;
+        }
+
+        // Parse key=value pair
+        size_t equal_pos = line.find('=');
+        if (equal_pos == std::string::npos) {
+            continue;
+        }
+
+        std::string key = line.substr(0, equal_pos);
+        std::string value = line.substr(equal_pos + 1);
+
+        // Trim key and value
+        key.erase(0, key.find_first_not_of(" \t"));
+        key.erase(key.find_last_not_of(" \t") + 1);
+        value.erase(0, value.find_first_not_of(" \t"));
+        value.erase(value.find_last_not_of(" \t") + 1);
+
+        // Map keys to package fields
+        if (key == "PackageName") {
+            current_package.name = value;
+        } else if (key == "PackageDescription") {
+            current_package.description = value;
+        } else if (key == "DownloadUrl") {
+            current_package.download_url = value;
+        } else if (key == "RepositoryUrl") {
+            current_package.repository_url = value;
+        } else if (key == "InstallPath") {
+            current_package.install_path = value;
+        } else if (key == "TextureInstallPath") {
+            current_package.texture_install_path = value;
+        } else if (key == "Required") {
+            current_package.required = (value == "1");
+        } else if (key == "Enabled") {
+            current_package.enabled = (value == "1");
+        } else if (key == "EffectFiles") {
+            current_package.effect_files = ParseCommaSeparatedValues(value);
+        } else if (key == "DenyEffectFiles") {
+            current_package.deny_effect_files = ParseCommaSeparatedValues(value);
+        }
+    }
+
+    // Save last package if valid
+    if (!current_section.empty() && !current_package.name.empty()) {
+        packages.push_back(current_package);
+    }
+
+    return !packages.empty();
+}
+
+// Download and parse shader packages list
+void DownloadShaderPackagesList() {
+    if (g_shader_packages_loading.load()) {
+        return;  // Already loading
+    }
+
+    g_shader_packages_loading.store(true);
+    g_shader_packages_error.clear();
+
+    // Run download in background thread
+    std::thread download_thread([]() {
+        std::string ini_content;
+        const std::string url = "https://raw.githubusercontent.com/crosire/reshade-shaders/list/EffectPackages.ini";
+
+        LogInfo("Downloading shader packages list from: %s", url.c_str());
+
+        if (!DownloadTextFromUrl(url, ini_content)) {
+            g_shader_packages_error = "Failed to download packages list. Check your internet connection.";
+            LogError("Failed to download shader packages list");
+            g_shader_packages_loading.store(false);
+            return;
+        }
+
+        LogInfo("Downloaded %zu bytes of packages list", ini_content.size());
+
+        std::vector<ShaderPackageInfo> packages;
+        if (!ParseEffectPackagesIni(ini_content, packages)) {
+            g_shader_packages_error = "Failed to parse packages list.";
+            LogError("Failed to parse shader packages INI");
+            g_shader_packages_loading.store(false);
+            return;
+        }
+
+        // Update global list
+        {
+            std::lock_guard<std::mutex> lock(g_shader_packages_mutex);
+            g_shader_packages = std::move(packages);
+        }
+
+        LogInfo("Successfully loaded %zu shader packages", g_shader_packages.size());
+        g_shader_packages_loaded.store(true);
+        g_shader_packages_loading.store(false);
+    });
+
+    download_thread.detach();
+}
 }  // namespace
 
 void InitAddonsTab() {
@@ -360,8 +617,230 @@ void DrawAddonsTab() {
     ImGui::Separator();
     ImGui::Spacing();
 
+    // Check available reshade shaders section
+    if (ImGui::CollapsingHeader("Check available reshade shaders", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::Spacing();
+
+        // Query Available Packages button
+        ui::colors::PushIconColor(ui::colors::ICON_ACTION);
+        bool is_loading = g_shader_packages_loading.load();
+        if (is_loading) {
+            ImGui::BeginDisabled();
+        }
+        if (ImGui::Button(ICON_FK_REFRESH " Query Available Packages")) {
+            DownloadShaderPackagesList();
+        }
+        if (is_loading) {
+            ImGui::EndDisabled();
+        }
+        ui::colors::PopIconColor();
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Download and display list of available shader packages from ReShade repository");
+        }
+
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        // Show loading status
+        if (g_shader_packages_loading.load()) {
+            ImGui::TextColored(ui::colors::TEXT_WARNING, ICON_FK_REFRESH " Loading packages list...");
+        }
+
+        // Show error if any
+        if (!g_shader_packages_error.empty()) {
+            ImGui::TextColored(ui::colors::TEXT_ERROR, ICON_FK_CANCEL " %s", g_shader_packages_error.c_str());
+        }
+
+        // Display packages list if loaded
+        if (g_shader_packages_loaded.load()) {
+            std::lock_guard<std::mutex> lock(g_shader_packages_mutex);
+
+            if (g_shader_packages.empty()) {
+                ImGui::TextColored(ui::colors::TEXT_DIMMED, "No packages found in the list.");
+            } else {
+                ImGui::TextColored(ui::colors::TEXT_SUCCESS,
+                                   ICON_FK_OK " Found %zu available packages:", g_shader_packages.size());
+                ImGui::Spacing();
+
+                // Create table for packages
+                if (ImGui::BeginTable("PackagesTable", 4,
+                                      ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable
+                                          | ImGuiTableFlags_ScrollY)) {
+                    ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthStretch);
+                    ImGui::TableSetupColumn("Description", ImGuiTableColumnFlags_WidthStretch);
+                    ImGui::TableSetupColumn("Repository", ImGuiTableColumnFlags_WidthFixed, 100.0f);
+                    ImGui::TableSetupColumn("Download", ImGuiTableColumnFlags_WidthFixed, 100.0f);
+                    ImGui::TableSetupScrollFreeze(0, 1);  // Freeze header row
+                    ImGui::TableHeadersRow();
+
+                    for (size_t i = 0; i < g_shader_packages.size(); ++i) {
+                        const auto& package = g_shader_packages[i];
+
+                        ImGui::TableNextRow();
+
+                        // Name
+                        ImGui::TableNextColumn();
+                        ImGui::Text("%s", package.name.c_str());
+
+                        // Description
+                        ImGui::TableNextColumn();
+                        if (!package.description.empty()) {
+                            ImGui::TextWrapped("%s", package.description.c_str());
+                        } else {
+                            ImGui::TextColored(ui::colors::TEXT_DIMMED, "(no description)");
+                        }
+
+                        // Repository button
+                        ImGui::TableNextColumn();
+                        std::string repo_url;
+                        if (!package.repository_url.empty()) {
+                            repo_url = package.repository_url;
+                        } else if (!package.download_url.empty()) {
+                            repo_url = ExtractGitHubRepoUrl(package.download_url);
+                        }
+
+                        if (!repo_url.empty()) {
+                            std::string repo_button_id = "GitHub##" + std::to_string(i);
+                            if (ImGui::Button(repo_button_id.c_str())) {
+                                // Open repository URL in browser
+                                HINSTANCE result =
+                                    ShellExecuteA(nullptr, "open", repo_url.c_str(), nullptr, nullptr, SW_SHOW);
+                                if (reinterpret_cast<intptr_t>(result) <= 32) {
+                                    LogError("Failed to open repository URL: %s", repo_url.c_str());
+                                } else {
+                                    LogInfo("Opened repository URL: %s", repo_url.c_str());
+                                }
+                            }
+                            if (ImGui::IsItemHovered()) {
+                                ImGui::SetTooltip("Open GitHub repository: %s", repo_url.c_str());
+                            }
+                        } else {
+                            ImGui::TextColored(ui::colors::TEXT_DIMMED, "N/A");
+                        }
+
+                        // Download button
+                        ImGui::TableNextColumn();
+                        if (!package.download_url.empty()) {
+                            std::string button_id = "Download##" + std::to_string(i);
+                            if (ImGui::Button(button_id.c_str())) {
+                                // Open download URL in browser
+                                std::string url = package.download_url;
+                                HINSTANCE result =
+                                    ShellExecuteA(nullptr, "open", url.c_str(), nullptr, nullptr, SW_SHOW);
+                                if (reinterpret_cast<intptr_t>(result) <= 32) {
+                                    LogError("Failed to open URL: %s", url.c_str());
+                                } else {
+                                    LogInfo("Opened download URL: %s", url.c_str());
+                                }
+                            }
+                            if (ImGui::IsItemHovered()) {
+                                ImGui::SetTooltip("Download URL: %s", package.download_url.c_str());
+                            }
+                        } else {
+                            ImGui::TextColored(ui::colors::TEXT_DIMMED, "N/A");
+                        }
+                    }
+
+                    ImGui::EndTable();
+                }
+
+                ImGui::Spacing();
+                ImGui::TextColored(ui::colors::TEXT_DIMMED,
+                                   "Note: Click 'Download' to open the package download URL in your browser.");
+            }
+        }
+    }
+
+    ImGui::Spacing();
+
     // Addons Subsection
     if (ImGui::CollapsingHeader("Addons", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::Spacing();
+
+        // Popular addons subsection
+        ImGui::Indent();
+        ui::colors::PushNestedHeaderColors();
+        if (ImGui::CollapsingHeader("Popular addons", ImGuiTreeNodeFlags_None)) {
+            ImGui::Indent();
+            ImGui::Spacing();
+
+            ImGui::TextWrapped("Popular ReShade addons with links to their GitHub repositories:");
+            ImGui::Spacing();
+
+            // List of popular addons
+            struct PopularAddon {
+                const char* name;
+                const char* description;
+                const char* github_url;
+            };
+
+            static const PopularAddon kPopularAddons[] = {
+                {"RenoDX", "Rewrites DirectX shaders to fix native HDR and provide user controls",
+                 "https://github.com/clshortfuse/renodx"},
+                {"Luma", "DX11 games modding framework based on ReShade Addon system (HDR, DLSS support)",
+                 "https://github.com/Filoppi/Luma-Framework"},
+                {"OptiScaler", "Bridges upscaling/frame gen across GPUs. Supports DLSS2+/XeSS/FSR2+ inputs",
+                 "https://github.com/optiscaler/OptiScaler"},
+                {"Fakenvapi", "Fake NVIDIA API for AMD/Intel GPUs (part of OptiScaler)",
+                 "https://github.com/optiscaler/OptiScaler/wiki/Fakenvapi"},
+                {"REFramework", "Modding framework for Capcom RE Engine games (Lua scripting, VR support)",
+                 "https://github.com/praydog/REFramework"},
+                {"ReshadeEffectShaderToggler", "Apply ReShade effects to render targets based on key presses",
+                 "https://github.com/4lex4nder/ReshadeEffectShaderToggler"},
+            };
+
+            // Create table for popular addons
+            if (ImGui::BeginTable("PopularAddonsTable", 3,
+                                  ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable)) {
+                ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthFixed, 200.0f);
+                ImGui::TableSetupColumn("Description", ImGuiTableColumnFlags_WidthStretch);
+                ImGui::TableSetupColumn("GitHub", ImGuiTableColumnFlags_WidthFixed, 100.0f);
+                ImGui::TableHeadersRow();
+
+                for (size_t i = 0; i < sizeof(kPopularAddons) / sizeof(kPopularAddons[0]); ++i) {
+                    const auto& addon = kPopularAddons[i];
+
+                    ImGui::TableNextRow();
+
+                    // Name
+                    ImGui::TableNextColumn();
+                    ImGui::Text("%s", addon.name);
+
+                    // Description
+                    ImGui::TableNextColumn();
+                    ImGui::TextWrapped("%s", addon.description);
+
+                    // GitHub button
+                    ImGui::TableNextColumn();
+                    std::string button_id = "Open##" + std::to_string(i);
+                    if (ImGui::Button(button_id.c_str())) {
+                        HINSTANCE result = ShellExecuteA(nullptr, "open", addon.github_url, nullptr, nullptr, SW_SHOW);
+                        if (reinterpret_cast<intptr_t>(result) <= 32) {
+                            LogError("Failed to open GitHub URL: %s", addon.github_url);
+                        } else {
+                            LogInfo("Opened GitHub URL: %s", addon.github_url);
+                        }
+                    }
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::SetTooltip("Open GitHub repository: %s", addon.github_url);
+                    }
+                }
+
+                ImGui::EndTable();
+            }
+
+            ImGui::Spacing();
+            ImGui::TextColored(ui::colors::TEXT_DIMMED,
+                               "Note: Click 'Open' to visit the addon's GitHub repository page.");
+
+            ImGui::Unindent();
+        }
+        ui::colors::PopNestedHeaderColors();
+        ImGui::Unindent();
+
+        ImGui::Spacing();
+        ImGui::Separator();
         ImGui::Spacing();
 
         // Check if we need to refresh

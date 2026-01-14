@@ -2221,13 +2221,27 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             }
 #ifdef _WIN64
             if (!g_reshade_loaded.load()) {
+                // Set environment variable to disable ReShade loading check
+                SetEnvironmentVariableW(L"RESHADE_DISABLE_LOADING_CHECK", L"1");
                 if (LoadLibraryA("Reshade64.dll") != nullptr) {
                     g_reshade_loaded.store(true);
                     OutputDebugStringA("Reshade64.dll loaded successfully");
+                } else {
+                    // if file exists
+                    if (std::filesystem::exists("Reshade64.dll")) {
+                        DWORD error = GetLastError();
+                        OutputDebugStringA("Reshade64.dll could not be loaded");
+                        OutputDebugStringA(std::to_string(error).c_str());
+                        std::string error_msg =
+                            "Reshade64.dll could not be loaded: Error code: " + std::to_string(error);
+                        MessageBoxA(nullptr, error_msg.c_str(), error_msg.c_str(), MB_OK | MB_ICONWARNING | MB_TOPMOST);
+                    }
                 }
             }
 #else
             if (!g_reshade_loaded.load()) {
+                // Set environment variable to disable ReShade loading check
+                SetEnvironmentVariableW(L"RESHADE_DISABLE_LOADING_CHECK", L"1");
                 if (LoadLibraryA("Reshade32.dll") != nullptr) {
                     g_reshade_loaded.store(true);
                     OutputDebugStringA("Reshade32.dll loaded successfully");
@@ -2389,6 +2403,8 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
                                          path_narrow);
                                 OutputDebugStringA(msg);
                             } else {
+                                // Set environment variable to disable ReShade loading check
+                                SetEnvironmentVariableW(L"RESHADE_DISABLE_LOADING_CHECK", L"1");
                                 // Try to load from Documents folder
                                 HMODULE reshade_module = LoadLibraryW(absolute_path.c_str());
                                 if (reshade_module != nullptr) {
@@ -2434,8 +2450,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
                                                  error, path_narrow);
                                     }
                                     OutputDebugStringA(msg);
-                                    MessageBoxA(nullptr, msg, "Display Commander - Failed to load ReShade",
-                                                MB_OK | MB_ICONWARNING | MB_TOPMOST);
+                                    MessageBoxA(nullptr, msg, msg, MB_OK | MB_ICONWARNING | MB_TOPMOST);
                                     return FALSE;
                                 }
                             }
@@ -2816,8 +2831,8 @@ extern "C" __declspec(dllexport) void CALLBACK RunDLL_DllMain(HWND hwnd, HINSTAN
 }
 
 // RunDLL entry point for 30-second injection
-// Allows calling: rundll32.exe zzz_display_commander.addon64,Inject30
-extern "C" __declspec(dllexport) void CALLBACK Inject30(HWND hwnd, HINSTANCE hInst, LPSTR lpszCmdLine, int nCmdShow) {
+// Allows calling: rundll32.exe zzz_display_commander.addon64,Service30
+extern "C" __declspec(dllexport) void CALLBACK Service30(HWND hwnd, HINSTANCE hInst, LPSTR lpszCmdLine, int nCmdShow) {
     UNREFERENCED_PARAMETER(hwnd);
     UNREFERENCED_PARAMETER(hInst);
     UNREFERENCED_PARAMETER(lpszCmdLine);

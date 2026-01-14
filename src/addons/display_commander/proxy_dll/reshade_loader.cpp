@@ -81,6 +81,9 @@ HMODULE LoadReShadeDll()
 		return nullptr;
 	}
 
+	// Set environment variable to disable ReShade loading check
+	SetEnvironmentVariableW(L"RESHADE_DISABLE_LOADING_CHECK", L"1");
+
 	// Load the ReShade DLL
 	HMODULE reshade_module = LoadLibraryW(reshade_path.c_str());
 	if (reshade_module == nullptr) {
@@ -96,4 +99,3 @@ HMODULE LoadReShadeDll()
 	WriteToLogFile(msg.str(), "INFO");
 	return reshade_module;
 }
-

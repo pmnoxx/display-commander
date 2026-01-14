@@ -343,4 +343,31 @@ std::vector<PlatformAPI> GetDetectedPlatformAPIs() {
     return std::vector<PlatformAPI>(detected_apis.begin(), detected_apis.end());
 }
 
+bool TestWhitelist(const std::wstring& executable_path) {
+    if (executable_path.empty()) {
+        return false;
+    }
+
+    // Convert to lowercase for case-insensitive comparison
+    std::wstring lower_path = executable_path;
+    std::transform(lower_path.begin(), lower_path.end(), lower_path.begin(), ::towlower);
+
+    // Check for SteamApps (Steam games)
+    if (lower_path.find(L"steamapps") != std::wstring::npos) {
+        return true;
+    }
+
+    // Check for common game store patterns
+    if (lower_path.find(L"epic games") != std::wstring::npos || lower_path.find(L"gog games") != std::wstring::npos
+        || lower_path.find(L"xbox games") != std::wstring::npos || lower_path.find(L"ubisoft") != std::wstring::npos
+        || lower_path.find(L"origin games") != std::wstring::npos) {
+        return true;
+    }
+
+    // TODO: Add support for reading from whitelist.ini file similar to Special K
+    // For now, we use hardcoded patterns
+
+    return false;
+}
+
 }  // namespace display_commander::utils

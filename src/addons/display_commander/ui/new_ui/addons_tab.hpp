@@ -1,9 +1,9 @@
 #pragma once
 
+#include <atomic>
 #include <filesystem>
 #include <string>
 #include <vector>
-#include <atomic>
 
 namespace ui::new_ui {
 

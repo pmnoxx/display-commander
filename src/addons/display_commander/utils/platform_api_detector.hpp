@@ -7,19 +7,7 @@
 namespace display_commander::utils {
 
 // Platform API types
-enum class PlatformAPI {
-    None,
-    Steam,
-    Epic,
-    GOG,
-    Xbox,
-    Origin,
-    Uplay,
-    BattleNet,
-    Bethesda,
-    Rockstar,
-    Unknown
-};
+enum class PlatformAPI { None, Steam, Epic, GOG, Xbox, Origin, Uplay, BattleNet, Bethesda, Rockstar, Unknown };
 
 // Convert DLL name to platform API enum
 PlatformAPI DetectPlatformAPIFromDLLName(const std::wstring& dll_name);
@@ -33,4 +21,7 @@ void DetectAndLogPlatformAPIs();
 // Get list of detected platform APIs from currently loaded modules
 std::vector<PlatformAPI> GetDetectedPlatformAPIs();
 
-} // namespace display_commander::utils
+// Check if executable path matches whitelist patterns
+bool TestWhitelist(const std::wstring& executable_path);
+
+}  // namespace display_commander::utils

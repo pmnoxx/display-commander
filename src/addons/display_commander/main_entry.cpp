@@ -1586,6 +1586,8 @@ void DetectMultipleReShadeVersions() {
 bool DetectMultipleDisplayCommanderVersions() {
     // Type definition for the version export function
     typedef const char* (*GetDisplayCommanderVersionFunc)();
+    // Type definition for the load timestamp export function
+    typedef LONGLONG (*GetLoadedNsFunc)();
 
     HMODULE modules[1024];
     DWORD num_modules = 0;
@@ -1608,6 +1610,8 @@ bool DetectMultipleDisplayCommanderVersions() {
 
     int dc_module_count = 0;
     HMODULE current_module = g_hmodule;
+    LONGLONG current_load_time_ns = g_dll_load_time_ns.load(std::memory_order_acquire);
+    bool should_refuse_load = false;
 
     // Use OutputDebugStringA for early detection logging
     char scan_msg[256];
@@ -1615,6 +1619,9 @@ bool DetectMultipleDisplayCommanderVersions() {
     OutputDebugStringA(scan_msg);
     snprintf(scan_msg, sizeof(scan_msg), "[DisplayCommander] Scanning %u modules for Display Commander...\n",
              static_cast<unsigned int>(num_modules / sizeof(HMODULE)));
+    OutputDebugStringA(scan_msg);
+    snprintf(scan_msg, sizeof(scan_msg), "[DisplayCommander] Current instance load time: %lld ns\n",
+             current_load_time_ns);
     OutputDebugStringA(scan_msg);
 
     for (DWORD i = 0; i < num_modules / sizeof(HMODULE); ++i) {
@@ -1647,6 +1654,15 @@ bool DetectMultipleDisplayCommanderVersions() {
             const char* other_version = version_func();
             const char* current_version = DISPLAY_COMMANDER_VERSION_STRING;
 
+            // Get load timestamp from the other instance
+            GetLoadedNsFunc loaded_ns_func = reinterpret_cast<GetLoadedNsFunc>(GetProcAddress(module, "LoadedNs"));
+            LONGLONG other_load_time_ns = 0;
+            bool has_load_time = false;
+            if (loaded_ns_func != nullptr) {
+                other_load_time_ns = loaded_ns_func();
+                has_load_time = (other_load_time_ns > 0);
+            }
+
             // Log to debug output
             char found_msg[512];
             snprintf(found_msg, sizeof(found_msg), "[DisplayCommander] Found Display Commander module #%d: 0x%p - %s\n",
@@ -1657,6 +1673,36 @@ bool DetectMultipleDisplayCommanderVersions() {
             OutputDebugStringA(found_msg);
             snprintf(found_msg, sizeof(found_msg), "[DisplayCommander]   Current version: %s\n", current_version);
             OutputDebugStringA(found_msg);
+
+            if (has_load_time) {
+                snprintf(found_msg, sizeof(found_msg), "[DisplayCommander]   Other load time: %lld ns\n",
+                         other_load_time_ns);
+                OutputDebugStringA(found_msg);
+                snprintf(found_msg, sizeof(found_msg), "[DisplayCommander]   Current load time: %lld ns\n",
+                         current_load_time_ns);
+                OutputDebugStringA(found_msg);
+
+                // Compare load timestamps to determine which DLL was loaded first
+                if (other_load_time_ns < current_load_time_ns) {
+                    // Other instance was loaded first - we should refuse to load
+                    snprintf(
+                        found_msg, sizeof(found_msg),
+                        "[DisplayCommander]   Conflict resolution: Other instance loaded first (difference: %lld ns). "
+                        "Refusing to load current instance.\n",
+                        current_load_time_ns - other_load_time_ns);
+                    OutputDebugStringA(found_msg);
+                } else {
+                    // We were loaded first - allow loading but notify the other instance
+                    snprintf(found_msg, sizeof(found_msg),
+                             "[DisplayCommander]   Conflict resolution: Current instance loaded first (difference: "
+                             "%lld ns). "
+                             "Allowing current instance to load.\n",
+                             other_load_time_ns - current_load_time_ns);
+                    OutputDebugStringA(found_msg);
+                }
+            } else {
+                OutputDebugStringA("[DisplayCommander]   Load timestamp not available from other instance.\n");
+            }
 
             // Compare versions (simple string comparison - assumes semantic versioning)
             if (other_version != nullptr) {
@@ -1676,32 +1722,59 @@ bool DetectMultipleDisplayCommanderVersions() {
                     OutputDebugStringA("[DisplayCommander] Notified other instance of multiple versions.\n");
                 }
 
-                // Log to ReShade's log as error (exception to the rule) if ReShade is available
-                char error_msg[512];
-                snprintf(error_msg, sizeof(error_msg),
-                         "[Display Commander] ERROR: Multiple Display Commander instances detected! "
-                         "Other instance: v%s at %s, Current instance: v%s. "
-                         "Refusing to load to prevent conflicts. Please ensure only one version is loaded.",
-                         other_version, narrow_path, current_version);
+                // Resolve conflict based on load timestamps
+                bool instance_should_refuse = false;
+                if (has_load_time) {
+                    // If other instance was loaded first, refuse to load
+                    if (other_load_time_ns < current_load_time_ns) {
+                        instance_should_refuse = true;
+                        should_refuse_load = true;  // Set global flag
+                    }
+                } /* else {
+                    // If we can't determine load order, it will be set to greater value than current instance
+                    instance_should_refuse = true;
+                    should_refuse_load = true;  // Set global flag
+                }*/
 
-                // Use reshade::log::message with error level (exception to the rule)
-                // This might not be available yet, but try anyway
-                try {
-                    reshade::log::message(reshade::log::level::error, error_msg);
-                } catch (...) {
-                    // If ReShade logging isn't available yet, just use debug output
-                    OutputDebugStringA(error_msg);
-                    OutputDebugStringA("\n");
+                if (instance_should_refuse) {
+                    // Log to ReShade's log as error (exception to the rule) if ReShade is available
+                    char error_msg[512];
+                    if (has_load_time) {
+                        snprintf(
+                            error_msg, sizeof(error_msg),
+                            "[Display Commander] ERROR: Multiple Display Commander instances detected! "
+                            "Other instance: v%s at %s (loaded at %lld ns), Current instance: v%s (loaded at %lld ns). "
+                            "Other instance was loaded first - refusing to load current instance to prevent conflicts.",
+                            other_version, narrow_path, other_load_time_ns, current_version, current_load_time_ns);
+                    } else {
+                        snprintf(error_msg, sizeof(error_msg),
+                                 "[Display Commander] ERROR: Multiple Display Commander instances detected! "
+                                 "Other instance: v%s at %s, Current instance: v%s. "
+                                 "Cannot determine load order - refusing to load to prevent conflicts. Please ensure "
+                                 "only one version is loaded.",
+                                 other_version, narrow_path, current_version);
+                    }
+
+                    // Use reshade::log::message with error level (exception to the rule)
+                    // This might not be available yet, but try anyway
+                    try {
+                        reshade::log::message(reshade::log::level::error, error_msg);
+                    } catch (...) {
+                        // If ReShade logging isn't available yet, just use debug output
+                        OutputDebugStringA(error_msg);
+                        OutputDebugStringA("\n");
+                    }
+
+                    // Also log to debug output
+                    OutputDebugStringA("[DisplayCommander] ERROR: Multiple Display Commander instances detected!\n");
+                    snprintf(found_msg, sizeof(found_msg), "[DisplayCommander]   Other instance: v%s at %s\n",
+                             other_version, narrow_path);
+                    OutputDebugStringA(found_msg);
+                    snprintf(found_msg, sizeof(found_msg), "[DisplayCommander]   Current instance: v%s\n",
+                             current_version);
+                    OutputDebugStringA(found_msg);
+                    OutputDebugStringA("[DisplayCommander] Refusing to load to prevent conflicts.\n");
                 }
-
-                // Also log to debug output
-                OutputDebugStringA("[DisplayCommander] ERROR: Multiple Display Commander instances detected!\n");
-                snprintf(found_msg, sizeof(found_msg), "[DisplayCommander]   Other instance: v%s at %s\n",
-                         other_version, narrow_path);
-                OutputDebugStringA(found_msg);
-                snprintf(found_msg, sizeof(found_msg), "[DisplayCommander]   Current instance: v%s\n", current_version);
-                OutputDebugStringA(found_msg);
-                OutputDebugStringA("[DisplayCommander] Refusing to load to prevent conflicts.\n");
             }
         }
     }
@@ -1714,14 +1787,22 @@ bool DetectMultipleDisplayCommanderVersions() {
              "[DisplayCommander] Total Display Commander modules found: %d (excluding current)\n", dc_module_count);
     OutputDebugStringA(complete_msg);
 
-    if (dc_module_count > 0) {
+    if (should_refuse_load) {
         OutputDebugStringA(
             "[DisplayCommander] WARNING: Multiple Display Commander versions detected! Refusing to load.\n");
-        // return true;  // Multiple versions detected - refuse to load
+        return true;  // Multiple versions detected and we should refuse - refuse to load
     }
 
-    OutputDebugStringA("[DisplayCommander] Single Display Commander instance detected - no conflicts.\n");
-    return false;  // No conflicts - allow loading
+    if (dc_module_count > 0) {
+        // Other instances found but we were loaded first - allow loading
+        OutputDebugStringA(
+            "[DisplayCommander] INFO: Multiple Display Commander versions detected, but current instance was loaded "
+            "first. Allowing load.\n");
+    } else {
+        OutputDebugStringA("[DisplayCommander] Single Display Commander instance detected - no conflicts.\n");
+    }
+
+    return false;  // No conflicts or we were loaded first - allow loading
 }
 
 // Version compatibility check function
@@ -2071,13 +2152,21 @@ void DoInitializationWithoutHwnd(HMODULE h_module, DWORD fdw_reason) {
 // Named event name for injection tracking (shared across processes)
 // Defined here so it's available in DllMain
 constexpr const wchar_t* INJECTION_ACTIVE_EVENT_NAME = L"Local\\DisplayCommander_InjectionActive";
+constexpr const wchar_t* INJECTION_STOP_EVENT_NAME = L"Local\\DisplayCommander_InjectionStop";
 
 BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
     switch (fdw_reason) {
         case DLL_PROCESS_ATTACH: {
+            // Record load timestamp as early as possible for conflict resolution
             g_hmodule = h_module;
-            // with pid
-            OutputDebugStringA(std::format("DLL_PROCESS_ATTACH PID: {}", GetCurrentProcessId()).c_str());
+            g_dll_load_time_ns.store(utils::get_now_ns(), std::memory_order_release);
+
+            // Detect multiple Display Commander instances - refuse to load if multiple versions found
+            if (DetectMultipleDisplayCommanderVersions()) {
+                OutputDebugStringA(
+                    "[DisplayCommander] Multiple Display Commander instances detected - refusing to load.\n");
+                return FALSE;  // Refuse to load
+            }
             // Print command line arguments when running with rundll32.exe
             LPSTR command_line = GetCommandLineA();
             if (command_line != nullptr && command_line[0] != '\0') {
@@ -2244,8 +2333,22 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
                     OutputDebugStringA(display_commander::utils::GetPlatformAPIName(detected_platforms[i]));
                 }
                 OutputDebugStringA("\n");
-                // Only try Documents folder and show message box if platform detected
-                if (!detected_platforms.empty() || found_proxy) {
+
+                // Get executable path for whitelist check
+                WCHAR executable_path[MAX_PATH] = {0};
+                bool whitelist = false;
+                if (GetModuleFileNameW(nullptr, executable_path, MAX_PATH) > 0) {
+                    OutputDebugStringA("Executable path: ");
+                    char executable_path_narrow[MAX_PATH];
+                    WideCharToMultiByte(CP_ACP, 0, executable_path, -1, executable_path_narrow, MAX_PATH, nullptr,
+                                        nullptr);
+                    OutputDebugStringA(executable_path_narrow);
+                    OutputDebugStringA("\n");
+                    whitelist = display_commander::utils::TestWhitelist(executable_path);
+                }
+
+                // Only try Documents folder and show message box if platform detected, proxy found, or whitelisted
+                if (!detected_platforms.empty() || found_proxy || whitelist) {
                     // Try to find Reshade DLL in Documents folder
                     wchar_t documents_path[MAX_PATH];
 
@@ -2331,13 +2434,16 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
                                                  error, path_narrow);
                                     }
                                     OutputDebugStringA(msg);
+                                    MessageBoxA(nullptr, msg, "Display Commander - Failed to load ReShade",
+                                                MB_OK | MB_ICONWARNING | MB_TOPMOST);
+                                    return FALSE;
                                 }
                             }
                         }
                     } else {
                         MessageBoxA(nullptr, "ReShade not found in Documents folder",
                                     "Display Commander - ReShade Not Found", MB_OK | MB_ICONWARNING | MB_TOPMOST);
-                        return TRUE;
+                        return FALSE;
                     }
 
                     // If still not loaded, show message box
@@ -2378,17 +2484,11 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
 
                         MessageBoxA(nullptr, message.c_str(), "Display Commander - ReShade Not Found",
                                     MB_OK | MB_ICONWARNING | MB_TOPMOST);
-                        return TRUE;
+                        return FALSE;
                     }
                 } else {
-                    return TRUE;
+                    return FALSE;
                 }
-            }
-            // Detect multiple Display Commander instances - refuse to load if multiple versions found
-            if (DetectMultipleDisplayCommanderVersions()) {
-                OutputDebugStringA(
-                    "[DisplayCommander] Multiple Display Commander instances detected - refusing to load.\n");
-                return FALSE;  // Refuse to load
             }
 
             if (!reshade::register_addon(h_module)) {
@@ -2397,7 +2497,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
                 // DetectMultipleReShadeVersions();
                 // CheckReShadeVersionCompatibility();
                 OutputDebugStringA("ReShade 0000000");
-                return TRUE;
+                return FALSE;
             }
             OutputDebugStringA("ReShade 111111");
 
@@ -2553,6 +2653,7 @@ constexpr LONGLONG INJECTION_DURATION_NS = 30LL * 1000000000LL;  // 30 seconds i
 
 // Named event to signal injection is active (shared across processes)
 HANDLE g_injection_active_event = nullptr;
+HANDLE g_injection_stop_event = nullptr;
 
 // Simple function to check if a PID was injected (by checking for named event)
 bool IsPidInjected(DWORD pid) {
@@ -2573,50 +2674,59 @@ bool IsPidInjected(DWORD pid) {
 // Windows automatically loads the DLL into target processes when hook events occur.
 // This callback runs in the TARGET process after the DLL is already loaded.
 LRESULT CALLBACK CBTProc(int nCode, WPARAM wParam, LPARAM lParam) {
-    OutputDebugStringA(std::format("CBTProc PID: {}", GetCurrentProcessId()).c_str());
+    // if nCode is less than 0, return the next hook
     if (nCode < 0) {
         return CallNextHookEx(g_cbt_hook, nCode, wParam, lParam);
     }
+    OutputDebugStringA(std::format("CBTProc PID: {}", GetCurrentProcessId()).c_str());
 
     return CallNextHookEx(g_cbt_hook, nCode, wParam, lParam);
+}
+
+// Function to stop injection manually
+void StopInjectionInternal() {
+    // Signal stop event to notify any running Start process
+    HANDLE stop_event = OpenEventW(EVENT_MODIFY_STATE, FALSE, INJECTION_STOP_EVENT_NAME);
+    if (stop_event != nullptr) {
+        SetEvent(stop_event);
+        CloseHandle(stop_event);
+    }
+
+    if (g_cbt_hook != nullptr) {
+        UnhookWindowsHookEx(g_cbt_hook);
+        g_cbt_hook = nullptr;
+        g_injection_active.store(false, std::memory_order_release);
+        g_injection_start_time.store(0, std::memory_order_release);
+
+        // Signal that injection is no longer active
+        if (g_injection_active_event != nullptr) {
+            ResetEvent(g_injection_active_event);
+            CloseHandle(g_injection_active_event);
+            g_injection_active_event = nullptr;
+        }
+
+        // Close stop event if we own it
+        if (g_injection_stop_event != nullptr) {
+            CloseHandle(g_injection_stop_event);
+            g_injection_stop_event = nullptr;
+        }
+
+        OutputDebugStringA("Auto-injection stopped: CBT hook removed");
+    }
 }
 
 // Cleanup thread to remove hook after 30 seconds
 void StartInjectionCleanupThread() {
     std::thread([]() {
         Sleep(30000);  // 30 seconds
-
-        if (g_cbt_hook != nullptr) {
-            UnhookWindowsHookEx(g_cbt_hook);
-            g_cbt_hook = nullptr;
-            g_injection_active.store(false, std::memory_order_release);
-            g_injection_start_time.store(0, std::memory_order_release);
-
-            // Signal that injection is no longer active
-            if (g_injection_active_event != nullptr) {
-                ResetEvent(g_injection_active_event);
-                CloseHandle(g_injection_active_event);
-                g_injection_active_event = nullptr;
-            }
-
-            // Note: Injected process events will be cleaned up automatically when processes exit
-        }
+        StopInjectionInternal();
     }).detach();
 }
 
-// RunDLL entry point for rundll32.exe compatibility
-// Allows calling: rundll32.exe zzz_display_commander.addon64,RunDLL_DllMain
-// This installs a system-wide CBT hook - Windows automatically loads the DLL into
-// all processes when CBT events occur (window creation, etc.). The hook installation
-// itself is the injection mechanism. CBTProc is just for notification.
-extern "C" __declspec(dllexport) void CALLBACK RunDLL_DllMain(HWND hwnd, HINSTANCE hInst, LPSTR lpszCmdLine,
-                                                              int nCmdShow) {
-    UNREFERENCED_PARAMETER(hwnd);
-    UNREFERENCED_PARAMETER(hInst);
-    UNREFERENCED_PARAMETER(lpszCmdLine);
-    UNREFERENCED_PARAMETER(nCmdShow);
-
-    OutputDebugStringA(std::format("RunDLL_DllMain PID: {}", GetCurrentProcessId()).c_str());
+// Internal function to start injection with optional duration limit
+void StartInjectionInternal(bool forever) {
+    OutputDebugStringA(
+        std::format("StartInjectionInternal PID: {}, forever: {}", GetCurrentProcessId(), forever).c_str());
 
     // Initialize config system for logging
     display_commander::config::DisplayCommanderConfigManager::GetInstance().Initialize();
@@ -2627,8 +2737,6 @@ extern "C" __declspec(dllexport) void CALLBACK RunDLL_DllMain(HWND hwnd, HINSTAN
         OutputDebugStringA("Auto-injection already active, restarting timer");
         // Restart the timer
         g_injection_start_time.store(utils::get_now_ns(), std::memory_order_release);
-
-        // Note: Injected process events will be cleaned up automatically when processes exit
         return;
     }
 
@@ -2656,16 +2764,86 @@ extern "C" __declspec(dllexport) void CALLBACK RunDLL_DllMain(HWND hwnd, HINSTAN
             std::format("Failed to create injection active event - Error: {} (0x{:X})", error, error).c_str());
     }
 
-    OutputDebugStringA("Auto-injection started: CBT hook installed, will inject into all new processes for 30 seconds");
+    if (forever) {
+        // Create stop event for signaling from other processes
+        g_injection_stop_event = CreateEventW(nullptr, TRUE, FALSE, INJECTION_STOP_EVENT_NAME);
+        if (g_injection_stop_event == nullptr) {
+            DWORD error = GetLastError();
+            OutputDebugStringA(
+                std::format("Failed to create injection stop event - Error: {} (0x{:X})", error, error).c_str());
+        }
 
-    // Start cleanup thread
-    StartInjectionCleanupThread();
-    Sleep(30000);  // 30 seconds
+        OutputDebugStringA(
+            "Auto-injection started: CBT hook installed, will inject into all new processes indefinitely");
+        // Keep process alive to maintain the hook
+        // The hook will remain active as long as this process is running
+        // Check for stop signal periodically
+        while (g_injection_active.load(std::memory_order_acquire)) {
+            // Check if stop event was signaled (from another process calling Stop)
+            if (g_injection_stop_event != nullptr) {
+                DWORD wait_result = WaitForSingleObject(g_injection_stop_event, 1000);
+                if (wait_result == WAIT_OBJECT_0) {
+                    OutputDebugStringA("Stop signal received, stopping injection");
+                    StopInjectionInternal();
+                    break;
+                }
+            } else {
+                Sleep(1000);  // Sleep in 1-second intervals if stop event creation failed
+            }
+        }
+    } else {
+        OutputDebugStringA(
+            "Auto-injection started: CBT hook installed, will inject into all new processes for 30 seconds");
+        // Start cleanup thread
+        StartInjectionCleanupThread();
+        Sleep(30000);  // 30 seconds
+    }
 }
 
-// RunDLL entry point for injection/testing (alias for RunDLL_DllMain)
-// Allows calling: rundll32.exe zzz_display_commander.addon64,RunDLL_Inject arg1 arg2 arg3
-extern "C" __declspec(dllexport) void CALLBACK Inject(HWND hwnd, HINSTANCE hInst, LPSTR lpszCmdLine, int nCmdShow) {
-    // Just call RunDLL_DllMain with the same parameters
-    RunDLL_DllMain(hwnd, hInst, lpszCmdLine, nCmdShow);
+// RunDLL entry point for rundll32.exe compatibility
+// Allows calling: rundll32.exe zzz_display_commander.addon64,RunDLL_DllMain
+// This installs a system-wide CBT hook - Windows automatically loads the DLL into
+// all processes when CBT events occur (window creation, etc.). The hook installation
+// itself is the injection mechanism. CBTProc is just for notification.
+extern "C" __declspec(dllexport) void CALLBACK RunDLL_DllMain(HWND hwnd, HINSTANCE hInst, LPSTR lpszCmdLine,
+                                                              int nCmdShow) {
+    UNREFERENCED_PARAMETER(hwnd);
+    UNREFERENCED_PARAMETER(hInst);
+    UNREFERENCED_PARAMETER(lpszCmdLine);
+    UNREFERENCED_PARAMETER(nCmdShow);
+
+    StartInjectionInternal(false);  // 30 seconds
+}
+
+// RunDLL entry point for 30-second injection
+// Allows calling: rundll32.exe zzz_display_commander.addon64,Inject30
+extern "C" __declspec(dllexport) void CALLBACK Inject30(HWND hwnd, HINSTANCE hInst, LPSTR lpszCmdLine, int nCmdShow) {
+    UNREFERENCED_PARAMETER(hwnd);
+    UNREFERENCED_PARAMETER(hInst);
+    UNREFERENCED_PARAMETER(lpszCmdLine);
+    UNREFERENCED_PARAMETER(nCmdShow);
+
+    StartInjectionInternal(false);  // 30 seconds
+}
+
+// RunDLL entry point for indefinite injection service
+// Allows calling: rundll32.exe zzz_display_commander.addon64,Start
+extern "C" __declspec(dllexport) void CALLBACK Start(HWND hwnd, HINSTANCE hInst, LPSTR lpszCmdLine, int nCmdShow) {
+    UNREFERENCED_PARAMETER(hwnd);
+    UNREFERENCED_PARAMETER(hInst);
+    UNREFERENCED_PARAMETER(lpszCmdLine);
+    UNREFERENCED_PARAMETER(nCmdShow);
+
+    StartInjectionInternal(true);  // Forever
+}
+
+// RunDLL entry point to stop injection service
+// Allows calling: rundll32.exe zzz_display_commander.addon64,Stop
+extern "C" __declspec(dllexport) void CALLBACK Stop(HWND hwnd, HINSTANCE hInst, LPSTR lpszCmdLine, int nCmdShow) {
+    UNREFERENCED_PARAMETER(hwnd);
+    UNREFERENCED_PARAMETER(hInst);
+    UNREFERENCED_PARAMETER(lpszCmdLine);
+    UNREFERENCED_PARAMETER(nCmdShow);
+
+    StopInjectionInternal();
 }

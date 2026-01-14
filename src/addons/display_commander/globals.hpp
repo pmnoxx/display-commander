@@ -10,20 +10,19 @@
 
 #include <d3d11.h>
 #include <dxgi.h>
-#include <reshade_imgui.hpp>
 #include <winnt.h>
 #include <wrl/client.h>
+#include <reshade_imgui.hpp>
 
-
-#include <atomic>
 #include <array>
+#include <atomic>
 #include <cstdint>
 #include <memory>
 #include <string>
 #include <thread>
-#include <vector>
 #include <unordered_map>
 #include <unordered_set>
+#include <vector>
 
 // NVAPI types
 #include "../../../external/nvapi/nvapi.h"
@@ -48,14 +47,7 @@ constexpr bool enabled_experimental_features = true;
 constexpr bool enabled_experimental_features = false;
 #endif
 
-
-enum class DeviceTypeDC {
-    DX9,
-    DX10,
-    DX11,
-    DX12,
-    OpenGL
-};
+enum class DeviceTypeDC { DX9, DX10, DX11, DX12, OpenGL };
 
 // Log level enum matching ReShade's log levels
 enum class LogLevel {
@@ -95,66 +87,67 @@ struct ParameterValue {
     // Type conversion methods
     int get_as_int() const {
         switch (type) {
-            case INT: return int_val;
-            case UINT: return static_cast<int>(uint_val);
-            case FLOAT: return static_cast<int>(float_val);
+            case INT:    return int_val;
+            case UINT:   return static_cast<int>(uint_val);
+            case FLOAT:  return static_cast<int>(float_val);
             case DOUBLE: return static_cast<int>(double_val);
-            case ULL: return static_cast<int>(ull_val);
-            default: return 0;
+            case ULL:    return static_cast<int>(ull_val);
+            default:     return 0;
         }
     }
 
     unsigned int get_as_uint() const {
         switch (type) {
-            case INT: return static_cast<unsigned int>(int_val);
-            case UINT: return uint_val;
-            case FLOAT: return static_cast<unsigned int>(float_val);
+            case INT:    return static_cast<unsigned int>(int_val);
+            case UINT:   return uint_val;
+            case FLOAT:  return static_cast<unsigned int>(float_val);
             case DOUBLE: return static_cast<unsigned int>(double_val);
-            case ULL: return static_cast<unsigned int>(ull_val);
-            default: return 0;
+            case ULL:    return static_cast<unsigned int>(ull_val);
+            default:     return 0;
         }
     }
 
     float get_as_float() const {
         switch (type) {
-            case INT: return static_cast<float>(int_val);
-            case UINT: return static_cast<float>(uint_val);
-            case FLOAT: return float_val;
+            case INT:    return static_cast<float>(int_val);
+            case UINT:   return static_cast<float>(uint_val);
+            case FLOAT:  return float_val;
             case DOUBLE: return static_cast<float>(double_val);
-            case ULL: return static_cast<float>(ull_val);
-            default: return 0.0f;
+            case ULL:    return static_cast<float>(ull_val);
+            default:     return 0.0f;
         }
     }
 
     double get_as_double() const {
         switch (type) {
-            case INT: return static_cast<double>(int_val);
-            case UINT: return static_cast<double>(uint_val);
-            case FLOAT: return static_cast<double>(float_val);
+            case INT:    return static_cast<double>(int_val);
+            case UINT:   return static_cast<double>(uint_val);
+            case FLOAT:  return static_cast<double>(float_val);
             case DOUBLE: return double_val;
-            case ULL: return static_cast<double>(ull_val);
-            default: return 0.0;
+            case ULL:    return static_cast<double>(ull_val);
+            default:     return 0.0;
         }
     }
 
     uint64_t get_as_ull() const {
         switch (type) {
-            case INT: return static_cast<uint64_t>(int_val);
-            case UINT: return static_cast<uint64_t>(uint_val);
-            case FLOAT: return static_cast<uint64_t>(float_val);
+            case INT:    return static_cast<uint64_t>(int_val);
+            case UINT:   return static_cast<uint64_t>(uint_val);
+            case FLOAT:  return static_cast<uint64_t>(float_val);
             case DOUBLE: return static_cast<uint64_t>(double_val);
-            case ULL: return ull_val;
-            default: return 0;
+            case ULL:    return ull_val;
+            default:     return 0;
         }
     }
 };
 
 // Unified atomic parameter storage system
 class UnifiedParameterMap {
-private:
-    std::atomic<std::shared_ptr<std::unordered_map<std::string, ParameterValue>>> data_ = std::make_shared<std::unordered_map<std::string, ParameterValue>>();
+   private:
+    std::atomic<std::shared_ptr<std::unordered_map<std::string, ParameterValue>>> data_ =
+        std::make_shared<std::unordered_map<std::string, ParameterValue>>();
 
-public:
+   public:
     UnifiedParameterMap() {}
 
     // Update parameter value (thread-safe)
@@ -241,20 +234,16 @@ public:
     }
 
     // Get all parameters (thread-safe)
-    std::shared_ptr<std::unordered_map<std::string, ParameterValue>> get_all() const {
-        return data_.load();
-    }
+    std::shared_ptr<std::unordered_map<std::string, ParameterValue>> get_all() const { return data_.load(); }
 
     // Get parameter count (thread-safe)
-    size_t size() const {
-        return data_.load()->size();
-    }
+    size_t size() const { return data_.load()->size(); }
 
     // Remove parameter (thread-safe)
     void remove(const std::string& key) {
         auto current_data = data_.load();
         if (current_data->find(key) == current_data->end()) {
-            return; // Key doesn't exist
+            return;  // Key doesn't exist
         }
         auto new_data = std::make_shared<std::unordered_map<std::string, ParameterValue>>(*current_data);
         new_data->erase(key);
@@ -262,9 +251,7 @@ public:
     }
 
     // Clear all parameters (thread-safe)
-    void clear() {
-        data_.store(std::make_shared<std::unordered_map<std::string, ParameterValue>>());
-    }
+    void clear() { data_.store(std::make_shared<std::unordered_map<std::string, ParameterValue>>()); }
 };
 
 // DLL initialization state
@@ -284,18 +271,24 @@ Microsoft::WRL::ComPtr<IDXGIFactory1> GetSharedDXGIFactory();
 
 // Enums
 enum class DxgiBypassMode : std::uint8_t {
-    kUnset,                    // Initial state, not yet queried
-    kUnknown,                  // Query succeeded but unknown composition mode
-    kComposed,                 // Composed presentation mode
-    kOverlay,                  // Hardware overlay (MPO) presentation mode
-    kIndependentFlip,          // Independent flip presentation mode
-    kQueryFailedSwapchainNull, // Query failed: swapchain is null
-    kQueryFailedNoSwapchain1,  // Query failed: IDXGISwapChain1 not available
-    kQueryFailedNoMedia,       // Query failed: IDXGISwapChainMedia not available
-    kQueryFailedNoStats        // Query failed: GetFrameStatisticsMedia failed
+    kUnset,                     // Initial state, not yet queried
+    kUnknown,                   // Query succeeded but unknown composition mode
+    kComposed,                  // Composed presentation mode
+    kOverlay,                   // Hardware overlay (MPO) presentation mode
+    kIndependentFlip,           // Independent flip presentation mode
+    kQueryFailedSwapchainNull,  // Query failed: swapchain is null
+    kQueryFailedNoSwapchain1,   // Query failed: IDXGISwapChain1 not available
+    kQueryFailedNoMedia,        // Query failed: IDXGISwapChainMedia not available
+    kQueryFailedNoStats         // Query failed: GetFrameStatisticsMedia failed
 };
 enum class WindowStyleMode : std::uint8_t { KEEP, BORDERLESS, OVERLAPPED_WINDOW };
-enum class FpsLimiterMode : std::uint8_t { kOnPresentSync = 0, kReflex = 1, kDisabled = 2, kLatentSync = 3, kNonReflexLowLatency = 4 };
+enum class FpsLimiterMode : std::uint8_t {
+    kOnPresentSync = 0,
+    kReflex = 1,
+    kDisabled = 2,
+    kLatentSync = 3,
+    kNonReflexLowLatency = 4
+};
 enum class WindowMode : std::uint8_t { kFullscreen = 0, kAspectRatio = 1 };
 enum class AspectRatioType : std::uint8_t {
     k3_2 = 0,     // 3:2
@@ -323,10 +316,10 @@ enum class ScreensaverMode : std::uint8_t {
 };
 
 enum class InputBlockingMode : std::uint8_t {
-    kDisabled = 0,              // Disabled
-    kEnabled = 1,               // Always enabled
-    kEnabledInBackground = 2,   // Only enabled when in background
-    kEnabledWhenXInputDetected = 3 // Enabled when XInput gamepad is detected
+    kDisabled = 0,                  // Disabled
+    kEnabled = 1,                   // Always enabled
+    kEnabledInBackground = 2,       // Only enabled when in background
+    kEnabledWhenXInputDetected = 3  // Enabled when XInput gamepad is detected
 };
 
 // Structures
@@ -379,11 +372,11 @@ struct GlobalWindowState {
 
 // Swapchain tracking manager for thread-safe swapchain management
 class SwapchainTrackingManager {
-private:
+   private:
     std::unordered_set<IDXGISwapChain*> hooked_swapchains_;
     mutable SRWLOCK lock_;
 
-public:
+   public:
     SwapchainTrackingManager() : lock_(SRWLOCK_INIT) {}
 
     // Add a swapchain to the tracked set
@@ -396,7 +389,7 @@ public:
 
         // Check if already tracked
         if (hooked_swapchains_.find(swapchain) != hooked_swapchains_.end()) {
-            return false; // Already tracked
+            return false;  // Already tracked
         }
 
         hooked_swapchains_.insert(swapchain);
@@ -417,7 +410,7 @@ public:
             return true;
         }
 
-        return false; // Not found
+        return false;  // Not found
     }
 
     // Check if a swapchain is being tracked
@@ -456,7 +449,7 @@ public:
 
     // Iterate through all tracked swapchains while holding the lock
     // The callback is called for each swapchain while the lock is held
-    template<typename Callback>
+    template <typename Callback>
     void ForEachTrackedSwapchain(Callback&& callback) const {
         utils::SRWLockShared lock(lock_);
         for (IDXGISwapChain* swapchain : hooked_swapchains_) {
@@ -467,7 +460,7 @@ public:
 
 // Performance stats structure
 struct PerfSample {
-    //double timestamp_seconds;
+    // double timestamp_seconds;
     float dt;
 };
 
@@ -496,13 +489,12 @@ extern std::atomic<WindowMode> s_window_mode;
 extern std::atomic<AspectRatioType> s_aspect_index;
 extern std::atomic<int> s_aspect_width;
 
-
 // Auto color space setting
 
 // Hide HDR capabilities from applications
 
 // D3D9 to D3D9Ex upgrade
-//extern std::atomic<bool> s_enable_d3d9e_upgrade;
+// extern std::atomic<bool> s_enable_d3d9e_upgrade;
 extern std::atomic<bool> s_d3d9e_upgrade_successful;
 extern std::atomic<bool> g_used_flipex;
 
@@ -562,13 +554,15 @@ size_t GetReShadeRuntimeCount();
 // Atomic variables
 extern std::atomic<int> g_comp_query_counter;
 extern std::atomic<DxgiBypassMode> g_comp_last_logged;
-extern std::atomic<void*> g_last_swapchain_ptr_unsafe; // Using void* to avoid reshade dependency // TODO: unsafe remove later
-extern std::atomic<int> g_last_reshade_device_api; // Store device API type
-extern std::atomic<uint32_t> g_last_api_version; // Store API version/feature level (e.g., D3D_FEATURE_LEVEL_11_1)
-extern std::atomic<std::shared_ptr<reshade::api::swapchain_desc>> g_last_swapchain_desc; // Store last swapchain description
+extern std::atomic<void*>
+    g_last_swapchain_ptr_unsafe;  // Using void* to avoid reshade dependency // TODO: unsafe remove later
+extern std::atomic<int> g_last_reshade_device_api;  // Store device API type
+extern std::atomic<uint32_t> g_last_api_version;    // Store API version/feature level (e.g., D3D_FEATURE_LEVEL_11_1)
+extern std::atomic<std::shared_ptr<reshade::api::swapchain_desc>>
+    g_last_swapchain_desc;  // Store last swapchain description
 extern std::atomic<uint64_t> g_init_apply_generation;
 extern std::atomic<HWND> g_last_swapchain_hwnd;
-extern std::atomic<IDXGISwapChain*> global_dxgi_swapchain; // Global reference to DXGI swapchain (experimental)
+extern std::atomic<IDXGISwapChain*> global_dxgi_swapchain;  // Global reference to DXGI swapchain (experimental)
 extern std::atomic<bool> global_dxgi_swapchain_inuse;
 extern std::atomic<bool> g_shutdown;
 extern std::atomic<bool> g_muted_applied;
@@ -633,10 +627,11 @@ extern std::atomic<bool> g_app_in_background;
 // FPS limiter mode: 0 = Disabled, 1 = OnPresentSync, 2 = OnPresentSyncLowLatency, 3 = VBlank Scanline Sync (VBlank)
 extern std::atomic<FpsLimiterMode> s_fps_limiter_mode;
 
-// FPS limiter injection timing: 0 = Default (Direct DX9/10/11/12), 1 = Fallback(1) (Through ReShade), 2 = Fallback(2) (Through ReShade)
-#define FPS_LIMITER_INJECTION_DEFAULT                0
-#define FPS_LIMITER_INJECTION_FALLBACK1              1
-#define FPS_LIMITER_INJECTION_FALLBACK2              2
+// FPS limiter injection timing: 0 = Default (Direct DX9/10/11/12), 1 = Fallback(1) (Through ReShade), 2 = Fallback(2)
+// (Through ReShade)
+#define FPS_LIMITER_INJECTION_DEFAULT   0
+#define FPS_LIMITER_INJECTION_FALLBACK1 1
+#define FPS_LIMITER_INJECTION_FALLBACK2 2
 
 // Lock-free ring buffer for recent FPS samples (60s window at ~240 Hz -> 14400 max)
 constexpr size_t kPerfRingCapacity = 65536;
@@ -669,8 +664,8 @@ enum class ActionNotificationType {
 struct ActionNotification {
     ActionNotificationType type;
     LONGLONG timestamp_ns;
-    float float_value;  // For volume percentage
-    bool bool_value;    // For mute state
+    float float_value;     // For volume percentage
+    bool bool_value;       // For mute state
     char action_name[64];  // For generic actions (fixed-size array for atomic compatibility)
 };
 
@@ -718,7 +713,6 @@ extern std::thread g_monitoring_thread;
 
 // Render thread tracking
 extern std::atomic<DWORD> g_render_thread_id;
-
 
 // DirectInput hook suppression
 extern std::atomic<bool> s_suppress_dinput_hooks;
@@ -913,10 +907,7 @@ enum DxgiFactoryEventIndex {
 };
 
 // DXGI SwapChain4 Methods (73)
-enum DxgiSwapChain4EventIndex {
-    DXGI_SC4_EVENT_SETHDRMETADATA,
-    NUM_DXGI_SC4_EVENTS
-};
+enum DxgiSwapChain4EventIndex { DXGI_SC4_EVENT_SETHDRMETADATA, NUM_DXGI_SC4_EVENTS };
 
 // DXGI Output Methods (74-76)
 enum DxgiOutputEventIndex {
@@ -927,10 +918,7 @@ enum DxgiOutputEventIndex {
 };
 
 // DirectX 9 Methods (77)
-enum Dx9EventIndex {
-    DX9_EVENT_PRESENT,
-    NUM_DX9_EVENTS
-};
+enum Dx9EventIndex { DX9_EVENT_PRESENT, NUM_DX9_EVENTS };
 
 // Streamline Methods (75-78)
 enum StreamlineEventIndex {
@@ -1015,17 +1003,18 @@ extern std::array<std::atomic<uint32_t>, NUM_NVAPI_EVENTS> g_nvapi_event_counter
 
 // NVAPI sleep timestamp tracking
 extern std::atomic<uint64_t> g_nvapi_last_sleep_timestamp_ns;  // Last NVAPI_D3D_Sleep call timestamp in nanoseconds
-extern std::atomic<bool> g_native_reflex_detected;  // Native Reflex detected via SetLatencyMarker calls
-extern std::atomic<uint32_t> g_swapchain_event_total_count;   // Total events across all types
-
+extern std::atomic<bool> g_native_reflex_detected;             // Native Reflex detected via SetLatencyMarker calls
+extern std::atomic<uint32_t> g_swapchain_event_total_count;    // Total events across all types
 
 // OpenGL hook counters
 extern std::array<std::atomic<uint64_t>, NUM_OPENGL_HOOKS> g_opengl_hook_counters;  // Array for all OpenGL hook events
-extern std::atomic<uint64_t> g_opengl_hook_total_count;   // Total OpenGL hook events across all types
+extern std::atomic<uint64_t> g_opengl_hook_total_count;  // Total OpenGL hook events across all types
 
 // Display settings hook counters
-extern std::array<std::atomic<uint64_t>, NUM_DISPLAY_SETTINGS_HOOKS> g_display_settings_hook_counters;  // Array for all display settings hook events
-extern std::atomic<uint64_t> g_display_settings_hook_total_count;   // Total display settings hook events across all types
+extern std::array<std::atomic<uint64_t>, NUM_DISPLAY_SETTINGS_HOOKS>
+    g_display_settings_hook_counters;  // Array for all display settings hook events
+extern std::atomic<uint64_t>
+    g_display_settings_hook_total_count;  // Total display settings hook events across all types
 
 // Unsorted TODO: Add in correct order above
 extern std::atomic<LONGLONG> g_present_start_time_ns;
@@ -1035,41 +1024,42 @@ extern std::atomic<LONGLONG> g_present_start_time_ns;
 extern std::atomic<LONGLONG> late_amount_ns;
 
 // GPU completion measurement using EnqueueSetEvent
-extern std::atomic<HANDLE> g_gpu_completion_event;  // Event handle for GPU completion measurement
+extern std::atomic<HANDLE> g_gpu_completion_event;      // Event handle for GPU completion measurement
 extern std::atomic<LONGLONG> g_gpu_completion_time_ns;  // Last measured GPU completion time
-extern std::atomic<LONGLONG> g_gpu_duration_ns;  // Last measured GPU duration (smoothed)
+extern std::atomic<LONGLONG> g_gpu_duration_ns;         // Last measured GPU duration (smoothed)
 
 // GPU completion failure tracking
-extern std::atomic<const char*> g_gpu_fence_failure_reason;  // Reason why GPU fence creation/usage failed (nullptr if no failure)
+extern std::atomic<const char*>
+    g_gpu_fence_failure_reason;  // Reason why GPU fence creation/usage failed (nullptr if no failure)
 
 // Sim-start-to-display latency measurement
-extern std::atomic<LONGLONG> g_sim_start_ns_for_measurement;  // g_sim_start_ns captured when EnqueueGPUCompletion is called
+extern std::atomic<LONGLONG>
+    g_sim_start_ns_for_measurement;                       // g_sim_start_ns captured when EnqueueGPUCompletion is called
 extern std::atomic<bool> g_present_update_after2_called;  // Tracks if OnPresentUpdateAfter2 was called
 extern std::atomic<bool> g_gpu_completion_callback_finished;  // Tracks if GPU completion callback finished
-extern std::atomic<LONGLONG> g_sim_to_display_latency_ns;  // Measured sim-start-to-display latency (smoothed)
+extern std::atomic<LONGLONG> g_sim_to_display_latency_ns;     // Measured sim-start-to-display latency (smoothed)
 
 // GPU late time measurement (how much later GPU finishes compared to OnPresentUpdateAfter2)
-extern std::atomic<LONGLONG> g_present_update_after2_time_ns;  // Time when OnPresentUpdateAfter2 was called
+extern std::atomic<LONGLONG> g_present_update_after2_time_ns;    // Time when OnPresentUpdateAfter2 was called
 extern std::atomic<LONGLONG> g_gpu_completion_callback_time_ns;  // Time when GPU completion callback finished
 extern std::atomic<LONGLONG> g_gpu_late_time_ns;  // GPU late time (0 if GPU finished first, otherwise difference)
 
 // NVIDIA Reflex minimal controls
-
-
 
 // DLSS-G (DLSS Frame Generation) status
 extern std::atomic<bool> g_dlss_g_loaded;                                 // DLSS-G loaded status
 extern std::atomic<std::shared_ptr<const std::string>> g_dlss_g_version;  // DLSS-G version string
 
 // NGX Feature status tracking (set in CreateFeature detours)
-extern std::atomic<bool> g_dlss_enabled;          // DLSS Super Resolution enabled
-extern std::atomic<bool> g_dlssg_enabled;         // DLSS Frame Generation enabled
-extern std::atomic<bool> g_ray_reconstruction_enabled; // Ray Reconstruction enabled
+extern std::atomic<bool> g_dlss_enabled;                // DLSS Super Resolution enabled
+extern std::atomic<bool> g_dlssg_enabled;               // DLSS Frame Generation enabled
+extern std::atomic<bool> g_ray_reconstruction_enabled;  // Ray Reconstruction enabled
 
 // NGX Parameter Storage (unified thread-safe atomic shared_ptr hashmap)
-extern UnifiedParameterMap g_ngx_parameters; // Unified NGX parameters supporting all types
-extern UnifiedParameterMap g_ngx_parameter_overrides; // NGX parameter overrides (user-defined values to replace game values)
-extern std::atomic<NVSDK_NGX_Parameter*> g_last_ngx_parameter; // Last NGX parameter object for direct API calls
+extern UnifiedParameterMap g_ngx_parameters;  // Unified NGX parameters supporting all types
+extern UnifiedParameterMap
+    g_ngx_parameter_overrides;  // NGX parameter overrides (user-defined values to replace game values)
+extern std::atomic<NVSDK_NGX_Parameter*> g_last_ngx_parameter;  // Last NGX parameter object for direct API calls
 
 // NGX Counters structure for tracking NGX function calls
 struct NGXCounters {
@@ -1108,17 +1098,33 @@ struct NGXCounters {
     std::atomic<uint32_t> total_count;
 
     // Constructor to initialize all counters to 0
-    NGXCounters() :
-        parameter_setf_count(0), parameter_setd_count(0), parameter_seti_count(0),
-        parameter_setui_count(0), parameter_setull_count(0), parameter_geti_count(0),
-        parameter_getui_count(0), parameter_getull_count(0), parameter_getvoidpointer_count(0),
-        d3d12_init_count(0), d3d12_init_ext_count(0), d3d12_init_projectid_count(0),
-        d3d12_createfeature_count(0), d3d12_releasefeature_count(0), d3d12_evaluatefeature_count(0),
-        d3d12_getparameters_count(0), d3d12_allocateparameters_count(0),
-        d3d11_init_count(0), d3d11_init_ext_count(0), d3d11_init_projectid_count(0),
-        d3d11_createfeature_count(0), d3d11_releasefeature_count(0), d3d11_evaluatefeature_count(0),
-        d3d11_getparameters_count(0), d3d11_allocateparameters_count(0),
-        total_count(0) {}
+    NGXCounters()
+        : parameter_setf_count(0),
+          parameter_setd_count(0),
+          parameter_seti_count(0),
+          parameter_setui_count(0),
+          parameter_setull_count(0),
+          parameter_geti_count(0),
+          parameter_getui_count(0),
+          parameter_getull_count(0),
+          parameter_getvoidpointer_count(0),
+          d3d12_init_count(0),
+          d3d12_init_ext_count(0),
+          d3d12_init_projectid_count(0),
+          d3d12_createfeature_count(0),
+          d3d12_releasefeature_count(0),
+          d3d12_evaluatefeature_count(0),
+          d3d12_getparameters_count(0),
+          d3d12_allocateparameters_count(0),
+          d3d11_init_count(0),
+          d3d11_init_ext_count(0),
+          d3d11_init_projectid_count(0),
+          d3d11_createfeature_count(0),
+          d3d11_releasefeature_count(0),
+          d3d11_evaluatefeature_count(0),
+          d3d11_getparameters_count(0),
+          d3d11_allocateparameters_count(0),
+          total_count(0) {}
 
     // Reset all counters to 0
     void reset() {
@@ -1205,7 +1211,8 @@ DLSSGSummary GetDLSSGSummary();
 DLSSModelProfile GetDLSSModelProfile();
 
 // NVAPI SetSleepMode tracking
-extern std::atomic<std::shared_ptr<NV_SET_SLEEP_MODE_PARAMS>> g_last_nvapi_sleep_mode_params;  // Last SetSleepMode parameters
+extern std::atomic<std::shared_ptr<NV_SET_SLEEP_MODE_PARAMS>>
+    g_last_nvapi_sleep_mode_params;                             // Last SetSleepMode parameters
 extern std::atomic<IUnknown*> g_last_nvapi_sleep_mode_dev_ptr;  // Last device pointer for SetSleepMode
 
 // NVAPI Reflex timing tracking
@@ -1216,23 +1223,21 @@ extern std::atomic<LONGLONG> g_sleep_reflex_native_ns_smooth;
 // Smoothed (rolling average) time between injected Reflex sleep calls
 extern std::atomic<LONGLONG> g_sleep_reflex_injected_ns_smooth;
 
-//g_nvapi_last_sleep_timestamp_ns
+// g_nvapi_last_sleep_timestamp_ns
 
 // Helper function to check if native Reflex is active
 // Now detects native Reflex only via SetLatencyMarker calls (following Special-K approach)
 inline bool IsNativeReflexActive(uint64_t now_ns) {
-    (void)now_ns; // Unused parameter, kept for backward compatibility
+    (void)now_ns;  // Unused parameter, kept for backward compatibility
     return g_native_reflex_detected.load() && !settings::g_developerTabSettings.reflex_supress_native.GetValue();
 }
 // Backward-compatible overload (calls the above with current time)
-inline bool IsNativeReflexActive() {
-    return IsNativeReflexActive(utils::get_now_ns());
-}
+inline bool IsNativeReflexActive() { return IsNativeReflexActive(utils::get_now_ns()); }
 
 // Reflex debug counters
-extern std::atomic<uint32_t> g_reflex_sleep_count;          // Total Sleep calls
-extern std::atomic<uint32_t> g_reflex_apply_sleep_mode_count; // Total ApplySleepMode calls
-extern std::atomic<LONGLONG> g_reflex_sleep_duration_ns;    // Rolling average sleep duration in nanoseconds
+extern std::atomic<uint32_t> g_reflex_sleep_count;             // Total Sleep calls
+extern std::atomic<uint32_t> g_reflex_apply_sleep_mode_count;  // Total ApplySleepMode calls
+extern std::atomic<LONGLONG> g_reflex_sleep_duration_ns;       // Rolling average sleep duration in nanoseconds
 
 // Individual marker type counters
 extern std::atomic<uint32_t> g_reflex_marker_simulation_start_count;
@@ -1259,14 +1264,14 @@ constexpr size_t kSwapchainFrameTimeCapacity = 256;
 struct SwapChainWrapperStats {
     std::atomic<uint64_t> total_present_calls{0};
     std::atomic<uint64_t> total_present1_calls{0};
-    std::atomic<uint64_t> last_present_time_ns{0};  // Last Present call time in nanoseconds
+    std::atomic<uint64_t> last_present_time_ns{0};   // Last Present call time in nanoseconds
     std::atomic<uint64_t> last_present1_time_ns{0};  // Last Present1 call time in nanoseconds
-    std::atomic<double> smoothed_present_fps{0.0};  // Smoothed FPS for Present (calls per second)
+    std::atomic<double> smoothed_present_fps{0.0};   // Smoothed FPS for Present (calls per second)
     std::atomic<double> smoothed_present1_fps{0.0};  // Smoothed FPS for Present1 (calls per second)
 
     // Frame time ring buffer (stores frame times in milliseconds)
-    std::atomic<uint32_t> frame_time_head{0};  // Ring buffer head index
-    float frame_times[kSwapchainFrameTimeCapacity];  // Frame times in ms (array of floats)
+    std::atomic<uint32_t> frame_time_head{0};                // Ring buffer head index
+    float frame_times[kSwapchainFrameTimeCapacity];          // Frame times in ms (array of floats)
     std::atomic<uint64_t> last_present_combined_time_ns{0};  // Last call time for any Present/Present1
 };
 

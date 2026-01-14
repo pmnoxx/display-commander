@@ -1,4 +1,6 @@
+#include <array>
 #include <filesystem>
+#include <iostream>
 #include <set>
 #include <thread>
 #include "addon.hpp"
@@ -45,6 +47,7 @@
 #include <dxgi1_6.h>
 #include <psapi.h>
 #include <shlobj.h>
+#include <tlhelp32.h>
 #include <winver.h>
 #include <wrl/client.h>
 #include <algorithm>
@@ -1318,6 +1321,7 @@ void OverrideReShadeSettings() {
 
 // ReShade loaded status (declared here so it's available to LoadAddonsFromPluginsDirectory)
 std::atomic<bool> g_reshade_loaded(false);
+std::atomic<bool> g_wait_and_inject_stop(false);
 
 // Helper function to check if an addon is enabled (whitelist approach)
 static bool IsAddonEnabledForLoading(const std::string& addon_name, const std::string& addon_file) {
@@ -2815,6 +2819,306 @@ void StartInjectionInternal(bool forever) {
     }
 }
 
+// Helper structure for LoadLibrary injection
+struct loading_data {
+    WCHAR load_path[MAX_PATH] = L"";
+    decltype(&GetLastError) GetLastError = nullptr;
+    decltype(&LoadLibraryW) LoadLibraryW = nullptr;
+    const WCHAR env_var_name[30] = L"RESHADE_DISABLE_LOADING_CHECK";
+    const WCHAR env_var_value[2] = L"1";
+    decltype(&SetEnvironmentVariableW) SetEnvironmentVariableW = nullptr;
+};
+
+// Loading thread function that runs in the target process
+// Sets environment variable and then loads the DLL
+static DWORD WINAPI LoadingThreadFunc(loading_data* arg) {
+    arg->SetEnvironmentVariableW(arg->env_var_name, arg->env_var_value);
+    if (arg->LoadLibraryW(arg->load_path) == NULL) {
+        return arg->GetLastError();
+    }
+    return ERROR_SUCCESS;
+}
+
+// Helper function to get ReShade DLL path based on architecture
+static std::wstring GetReShadeDllPath(bool is_wow64) {
+    wchar_t documents_path[MAX_PATH];
+    if (FAILED(SHGetFolderPathW(nullptr, CSIDL_MYDOCUMENTS, nullptr, SHGFP_TYPE_CURRENT, documents_path))) {
+        return L"";
+    }
+
+    std::filesystem::path documents_dir(documents_path);
+    std::filesystem::path dc_reshade_dir = documents_dir / L"Display Commander" / L"Reshade";
+
+    std::filesystem::path reshade_path;
+#ifdef _WIN64
+    reshade_path = is_wow64 ? (dc_reshade_dir / L"Reshade32.dll") : (dc_reshade_dir / L"Reshade64.dll");
+#else
+    reshade_path = dc_reshade_dir / L"Reshade32.dll";
+#endif
+
+    if (std::filesystem::exists(reshade_path)) {
+        std::error_code ec;
+        std::filesystem::path absolute_path = std::filesystem::canonical(reshade_path, ec);
+        if (ec) {
+            absolute_path = std::filesystem::absolute(reshade_path, ec);
+            if (ec) {
+                absolute_path = reshade_path;
+            }
+        }
+        return absolute_path.wstring();
+    }
+
+    return L"";
+}
+
+// Helper function to inject ReShade DLL into a process using LoadLibrary
+static bool InjectIntoProcess(DWORD pid, const std::wstring& dll_path) {
+    // Open target process
+    HANDLE remote_process = OpenProcess(
+        PROCESS_CREATE_THREAD | PROCESS_VM_OPERATION | PROCESS_VM_READ | PROCESS_VM_WRITE | PROCESS_QUERY_INFORMATION,
+        FALSE, pid);
+
+    if (remote_process == nullptr) {
+        DWORD error = GetLastError();
+        OutputDebugStringA(
+            std::format("Failed to open target process (PID {}): Error {} (0x{:X})", pid, error, error).c_str());
+        return false;
+    }
+
+    // Check process architecture
+    BOOL remote_is_wow64 = FALSE;
+    IsWow64Process(remote_process, &remote_is_wow64);
+
+#ifdef _WIN64
+    if (remote_is_wow64 != FALSE) {
+        CloseHandle(remote_process);
+        OutputDebugStringA(
+            std::format("Process architecture mismatch: 32-bit process, but injector is 64-bit (PID {})", pid).c_str());
+        return false;
+    }
+#else
+    if (remote_is_wow64 == FALSE) {
+        CloseHandle(remote_process);
+        OutputDebugStringA(
+            std::format("Process architecture mismatch: 64-bit process, but injector is 32-bit (PID {})", pid).c_str());
+        return false;
+    }
+#endif
+
+    // Setup loading data
+    loading_data arg;
+    wcscpy_s(arg.load_path, dll_path.c_str());
+    arg.GetLastError = GetLastError;
+    arg.LoadLibraryW = LoadLibraryW;
+    arg.SetEnvironmentVariableW = SetEnvironmentVariableW;
+
+    // Allocate memory in target process
+    LPVOID load_param =
+        VirtualAllocEx(remote_process, nullptr, sizeof(arg), MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+    if (load_param == nullptr) {
+        DWORD error = GetLastError();
+        OutputDebugStringA(
+            std::format("Failed to allocate memory in target process (PID {}): Error {} (0x{:X})", pid, error, error)
+                .c_str());
+        CloseHandle(remote_process);
+        return false;
+    }
+
+    // Write loading data to target process
+    if (!WriteProcessMemory(remote_process, load_param, &arg, sizeof(arg), nullptr)) {
+        DWORD error = GetLastError();
+        OutputDebugStringA(
+            std::format("Failed to write loading data to target process (PID {}): Error {} (0x{:X})", pid, error, error)
+                .c_str());
+        VirtualFreeEx(remote_process, load_param, 0, MEM_RELEASE);
+        CloseHandle(remote_process);
+        return false;
+    }
+
+    // Note: To set RESHADE_DISABLE_LOADING_CHECK in target process, we would need to inject
+    // the LoadingThreadFunc code. For now, we use direct LoadLibrary injection.
+    // The environment variable can be set in the target process environment before starting it.
+
+    // Execute LoadLibrary in target process
+    HANDLE load_thread = CreateRemoteThread(
+        remote_process, nullptr, 0, reinterpret_cast<LPTHREAD_START_ROUTINE>(arg.LoadLibraryW), load_param, 0, nullptr);
+
+    if (load_thread == nullptr) {
+        DWORD error = GetLastError();
+        OutputDebugStringA(std::format("Failed to create remote thread in target process (PID {}): Error {} (0x{:X})",
+                                       pid, error, error)
+                               .c_str());
+        VirtualFreeEx(remote_process, load_param, 0, MEM_RELEASE);
+        CloseHandle(remote_process);
+        return false;
+    }
+
+    // Wait for loading to finish
+    WaitForSingleObject(load_thread, INFINITE);
+
+    // Check if injection was successful
+    DWORD exit_code;
+    bool success = false;
+    if (GetExitCodeThread(load_thread, &exit_code) && exit_code != NULL) {
+        success = true;
+        OutputDebugStringA(std::format("Successfully injected ReShade into process (PID {})", pid).c_str());
+    } else {
+        OutputDebugStringA(
+            std::format("Failed to inject Display Commander into process (PID {}): LoadLibrary returned NULL", pid)
+                .c_str());
+    }
+
+    // Cleanup
+    CloseHandle(load_thread);
+    VirtualFreeEx(remote_process, load_param, 0, MEM_RELEASE);
+    CloseHandle(remote_process);
+
+    return success;
+}
+
+// Wait for a process with given exe name to start, then inject ReShade DLL
+// Waits forever and injects into every new process that starts with the given exe name
+// Uses the same injection method as StartAndInject (InjectIntoProcess with LoadLibrary)
+static void WaitForProcessAndInject(const std::wstring& exe_name) {
+    // Reset stop flag when starting
+    g_wait_and_inject_stop.store(false);
+
+    OutputDebugStringA(std::format("Waiting for process: {} (will inject into all new instances)",
+                                   std::string(exe_name.begin(), exe_name.end()))
+                           .c_str());
+
+    // Use array-based tracking like ReShade does (more efficient than set for PIDs)
+    // PIDs are typically in the range 0-65535, so this array covers most cases
+    std::array<bool, 65536> process_seen = {};
+
+    // First, enumerate existing processes to mark them as seen
+    HANDLE initial_snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    if (initial_snapshot != INVALID_HANDLE_VALUE) {
+        PROCESSENTRY32W process_entry = {};
+        process_entry.dwSize = sizeof(PROCESSENTRY32W);
+        if (Process32FirstW(initial_snapshot, &process_entry)) {
+            int existing_count = 0;
+            do {
+                if (_wcsicmp(process_entry.szExeFile, exe_name.c_str()) == 0) {
+                    DWORD pid = process_entry.th32ProcessID;
+                    if (pid < process_seen.size()) {
+                        process_seen[pid] = true;
+                        existing_count++;
+                    }
+                }
+            } while (Process32NextW(initial_snapshot, &process_entry));
+
+            if (existing_count > 0) {
+                OutputDebugStringA(std::format("Found {} existing process(es) with name '{}', will wait for new ones",
+                                               existing_count, std::string(exe_name.begin(), exe_name.end()))
+                                       .c_str());
+                std::cout << "Found " << existing_count << " existing process(es) with name '"
+                          << std::string(exe_name.begin(), exe_name.end()) << "', will wait for new ones" << std::endl;
+            }
+        }
+        CloseHandle(initial_snapshot);
+    }
+
+    // Wait forever and inject into every new process
+    while (!g_wait_and_inject_stop.load()) {
+        // Create process snapshot
+        HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+        if (snapshot == INVALID_HANDLE_VALUE) {
+            Sleep(10);  // Very short sleep before retrying (like ReShade)
+            continue;
+        }
+
+        PROCESSENTRY32W process_entry = {};
+        process_entry.dwSize = sizeof(PROCESSENTRY32W);
+
+        // Check all processes to find new ones matching our target
+        if (Process32FirstW(snapshot, &process_entry)) {
+            do {
+                DWORD pid = process_entry.th32ProcessID;
+                // Debug: Convert process name to narrow string for logging
+                int process_name_size =
+                    WideCharToMultiByte(CP_ACP, 0, process_entry.szExeFile, -1, nullptr, 0, nullptr, nullptr);
+                if (process_name_size > 0) {
+                    std::vector<char> process_name_buf(process_name_size);
+                    WideCharToMultiByte(CP_ACP, 0, process_entry.szExeFile, -1, process_name_buf.data(),
+                                        process_name_size, nullptr, nullptr);
+                    if (!process_seen[pid]) {
+                        OutputDebugStringA(std::format("Checking process: {} (PID {})", process_name_buf.data(),
+                                                       process_entry.th32ProcessID)
+                                               .c_str());
+                    }
+                }
+
+                // Check if this process matches our target
+                if (_wcsicmp(process_entry.szExeFile, exe_name.c_str()) == 0) {
+                    // Skip if PID is out of range (shouldn't happen, but be safe)
+                    if (pid >= process_seen.size()) {
+                        continue;
+                    }
+
+                    // Only inject into processes we haven't seen before (new processes)
+                    if (!process_seen[pid]) {
+                        process_seen[pid] = true;  // Mark as seen immediately to avoid duplicate injection attempts
+
+                        OutputDebugStringA(std::format("Found new process: {} (PID {})",
+                                                       std::string(exe_name.begin(), exe_name.end()), pid)
+                                               .c_str());
+                        std::cout << "Found new process: " << std::string(exe_name.begin(), exe_name.end()) << " (PID "
+                                  << pid << ")" << std::endl;
+
+                        // Wait a bit for the process to initialize (same as StartAndInject)
+                        // Sleep(500);
+
+                        // Check process architecture (same as StartAndInject)
+                        BOOL is_wow64 = FALSE;
+                        HANDLE h_process = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, pid);
+                        if (h_process != nullptr) {
+                            IsWow64Process(h_process, &is_wow64);
+                            CloseHandle(h_process);
+                        }
+
+                        // Get ReShade DLL path (same as StartAndInject)
+                        std::wstring dll_path = GetReShadeDllPath(is_wow64 != FALSE);
+                        if (dll_path.empty()) {
+                            OutputDebugStringA(
+                                std::format("Failed to find ReShade DLL path for process (PID {}), continuing to wait",
+                                            pid)
+                                    .c_str());
+                            std::cout << "Failed to find ReShade DLL path for process (PID " << pid
+                                      << "), continuing to wait" << std::endl;
+                            // Continue waiting - don't return on error
+                            continue;
+                        }
+
+                        // Inject into the process using the same method as StartAndInject
+                        bool success = InjectIntoProcess(pid, dll_path);
+                        if (success) {
+                            OutputDebugStringA(std::format("Successfully injected into process (PID {})", pid).c_str());
+                            std::cout << "Successfully injected into process (PID " << pid << ")" << std::endl;
+                        } else {
+                            OutputDebugStringA(
+                                std::format("Failed to inject into process (PID {}), continuing to wait", pid).c_str());
+                            std::cout << "Failed to inject into process (PID " << pid << "), continuing to wait"
+                                      << std::endl;
+                        }
+                        // Continue waiting for more processes - never return
+                    }
+                }
+                process_seen[pid] = true;
+            } while (Process32NextW(snapshot, &process_entry));
+        }
+
+        CloseHandle(snapshot);
+
+        // Don't sleep (or sleep very little) to catch new processes quickly, like ReShade does
+        // ReShade's comment: "don't sleep to make sure we catch all new processes"
+        Sleep(10);  // Very short sleep to avoid 100% CPU usage
+    }
+
+    OutputDebugStringA("WaitForProcessAndInject: Stopped");
+    std::cout << "WaitForProcessAndInject: Stopped" << std::endl;
+}
+
 // RunDLL entry point for rundll32.exe compatibility
 // Allows calling: rundll32.exe zzz_display_commander.addon64,RunDLL_DllMain
 // This installs a system-wide CBT hook - Windows automatically loads the DLL into
@@ -2860,5 +3164,162 @@ extern "C" __declspec(dllexport) void CALLBACK Stop(HWND hwnd, HINSTANCE hInst, 
     UNREFERENCED_PARAMETER(lpszCmdLine);
     UNREFERENCED_PARAMETER(nCmdShow);
 
+    // Stop WaitAndInject if it's running
+    g_wait_and_inject_stop.store(true);
+    OutputDebugStringA("Stop: Signaled WaitAndInject to stop");
+
     StopInjectionInternal();
+}
+
+// RunDLL entry point to start a game and inject into it
+// Allows calling: rundll32.exe zzz_display_commander.addon64,StartAndInject "C:\Path\To\game.exe"
+// The exe path should be passed as a command line argument
+extern "C" __declspec(dllexport) void CALLBACK StartAndInject(HWND hwnd, HINSTANCE hInst, LPSTR lpszCmdLine,
+                                                              int nCmdShow) {
+    UNREFERENCED_PARAMETER(hwnd);
+    UNREFERENCED_PARAMETER(hInst);
+    UNREFERENCED_PARAMETER(nCmdShow);
+
+    // Initialize config system for logging
+    display_commander::config::DisplayCommanderConfigManager::GetInstance().Initialize();
+    display_commander::config::DisplayCommanderConfigManager::GetInstance().SetAutoFlushLogs(true);
+
+    // Parse exe path from command line
+    std::string exe_path_ansi;
+    if (lpszCmdLine != nullptr && strlen(lpszCmdLine) > 0) {
+        // Remove quotes if present
+        exe_path_ansi = lpszCmdLine;
+        if (exe_path_ansi.length() >= 2 && exe_path_ansi.front() == '"' && exe_path_ansi.back() == '"') {
+            exe_path_ansi = exe_path_ansi.substr(1, exe_path_ansi.length() - 2);
+        }
+    }
+
+    if (exe_path_ansi.empty()) {
+        OutputDebugStringA(
+            "StartAndInject: No exe path provided. Usage: rundll32.exe zzz_display_commander.addon64,StartAndInject "
+            "\"C:\\Path\\To\\game.exe\"");
+        return;
+    }
+
+    // Convert to wide string
+    int size_needed = MultiByteToWideChar(CP_ACP, 0, exe_path_ansi.c_str(), -1, nullptr, 0);
+    if (size_needed <= 0) {
+        OutputDebugStringA("StartAndInject: Failed to convert exe path to wide string");
+        return;
+    }
+
+    std::vector<wchar_t> exe_path_wide(size_needed);
+    MultiByteToWideChar(CP_ACP, 0, exe_path_ansi.c_str(), -1, exe_path_wide.data(), size_needed);
+    std::wstring exe_path(exe_path_wide.data());
+
+    // Check if file exists
+    if (!std::filesystem::exists(exe_path)) {
+        OutputDebugStringA(std::format("StartAndInject: Exe file not found: {}", exe_path_ansi).c_str());
+        return;
+    }
+
+    OutputDebugStringA(std::format("StartAndInject: Starting process: {}", exe_path_ansi).c_str());
+
+    // Start the process
+    STARTUPINFOW si = {};
+    PROCESS_INFORMATION pi = {};
+    si.cb = sizeof(si);
+
+    std::wstring command_line = L"\"" + exe_path + L"\"";
+
+    if (!CreateProcessW(nullptr, command_line.data(), nullptr, nullptr, FALSE, 0, nullptr, nullptr, &si, &pi)) {
+        DWORD error = GetLastError();
+        OutputDebugStringA(
+            std::format("StartAndInject: Failed to start process: Error {} (0x{:X})", error, error).c_str());
+        return;
+    }
+
+    // Close thread handle (we only need process handle)
+    CloseHandle(pi.hThread);
+
+    OutputDebugStringA(std::format("StartAndInject: Process started (PID {})", pi.dwProcessId).c_str());
+
+    // Wait a bit for the process to initialize
+    Sleep(500);
+
+    // Check process architecture
+    BOOL is_wow64 = FALSE;
+    IsWow64Process(pi.hProcess, &is_wow64);
+
+    // Get ReShade DLL path
+    std::wstring dll_path = GetReShadeDllPath(is_wow64 != FALSE);
+    if (dll_path.empty()) {
+        OutputDebugStringA("StartAndInject: Failed to find ReShade DLL path");
+        CloseHandle(pi.hProcess);
+        return;
+    }
+
+    // Inject into the process
+    bool success = InjectIntoProcess(pi.dwProcessId, dll_path);
+
+    CloseHandle(pi.hProcess);
+
+    if (success) {
+        OutputDebugStringA(
+            std::format("StartAndInject: Successfully started and injected into process (PID {})", pi.dwProcessId)
+                .c_str());
+    } else {
+        OutputDebugStringA(
+            std::format("StartAndInject: Failed to inject into process (PID {})", pi.dwProcessId).c_str());
+    }
+}
+
+// RunDLL entry point to wait for process and inject
+// Allows calling: rundll32.exe zzz_display_commander.addon64,WaitAndInject "game.exe"
+// The exe name should be passed as a command line argument
+extern "C" __declspec(dllexport) void CALLBACK WaitAndInject(HWND hwnd, HINSTANCE hInst, LPSTR lpszCmdLine,
+                                                             int nCmdShow) {
+    UNREFERENCED_PARAMETER(hwnd);
+    UNREFERENCED_PARAMETER(hInst);
+    UNREFERENCED_PARAMETER(nCmdShow);
+
+    // Initialize config system for logging
+    display_commander::config::DisplayCommanderConfigManager::GetInstance().Initialize();
+    display_commander::config::DisplayCommanderConfigManager::GetInstance().SetAutoFlushLogs(true);
+
+    // Parse exe name from command line
+    std::string exe_name_ansi;
+    if (lpszCmdLine != nullptr && strlen(lpszCmdLine) > 0) {
+        // Remove quotes if present
+        exe_name_ansi = lpszCmdLine;
+        if (exe_name_ansi.length() >= 2 && exe_name_ansi.front() == '"' && exe_name_ansi.back() == '"') {
+            exe_name_ansi = exe_name_ansi.substr(1, exe_name_ansi.length() - 2);
+        }
+    }
+
+    if (exe_name_ansi.empty()) {
+        OutputDebugStringA(
+            "WaitAndInject: No exe name provided. Usage: rundll32.exe zzz_display_commander.addon64,WaitAndInject "
+            "\"game.exe\"");
+        return;
+    }
+
+    // Convert to wide string
+    int size_needed = MultiByteToWideChar(CP_ACP, 0, exe_name_ansi.c_str(), -1, nullptr, 0);
+    if (size_needed <= 0) {
+        OutputDebugStringA("WaitAndInject: Failed to convert exe name to wide string");
+        return;
+    }
+
+    std::vector<wchar_t> exe_name_wide(size_needed);
+    MultiByteToWideChar(CP_ACP, 0, exe_name_ansi.c_str(), -1, exe_name_wide.data(), size_needed);
+    std::wstring exe_name(exe_name_wide.data());
+
+    // Extract just the filename if a path was provided (e.g., ".\BPSR_STREAM.exe" -> "BPSR_STREAM.exe")
+    std::filesystem::path exe_path(exe_name);
+    std::wstring exe_name_only = exe_path.filename().wstring();
+
+    OutputDebugStringA(std::format("WaitAndInject: Waiting for process: {} (comparing against: {})", exe_name_ansi,
+                                   std::string(exe_name_only.begin(), exe_name_only.end()))
+                           .c_str());
+    std::cout << "WaitAndInject: Waiting for process: " << exe_name_ansi
+              << " (comparing against: " << std::string(exe_name_only.begin(), exe_name_only.end()) << ")" << std::endl;
+
+    // Wait forever and inject into every new process that starts
+    WaitForProcessAndInject(exe_name_only);
 }

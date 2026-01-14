@@ -97,8 +97,9 @@ target_include_directories(zzz_display_commander
 # HID libraries are needed for HID device enumeration and management
 # DXGI library is needed for DXGI interface IIDs
 # ETW libraries (tdh/advapi32) are needed for PresentMon-style tracing
+# WinInet library is needed for HTTP downloads (shader packages list)
 # Note: Some toolchains (e.g. clang-cl without full Windows SDK lib path) may not have evntrace.lib on the link path.
-target_link_libraries(zzz_display_commander PRIVATE version setupapi hid dxgi tdh advapi32)
+target_link_libraries(zzz_display_commander PRIVATE version setupapi hid dxgi tdh advapi32 wininet)
 
 # NVAPI static linking (official NVIDIA NVAPI layout: x86/ and amd64/)
 # NVIDIA recommends static linking - these are static libraries that act as shims

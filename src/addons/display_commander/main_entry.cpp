@@ -173,7 +173,6 @@ ReShadeDetectionDebugInfo g_reshade_debug_info;
 // Store entry point detected in DLLMain for saving after initialization
 static std::string g_entry_point_to_save;
 
-namespace {
 void OnRegisterOverlayDisplayCommander(reshade::api::effect_runtime* runtime) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
 #ifdef TRY_CATCH_BLOCKS
@@ -203,7 +202,6 @@ void OnRegisterOverlayDisplayCommander(reshade::api::effect_runtime* runtime) {
         LogError("Exception occurred during Continuous Monitoring: 0x%x", GetExceptionCode());
     }
 #endif
-}
 }  // namespace
 
 // ReShade effect runtime event handler for input blocking
@@ -2165,6 +2163,10 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
 
             // Detect multiple Display Commander instances - refuse to load if multiple versions found
             if (DetectMultipleDisplayCommanderVersions()) {
+                // log to reshade log
+                reshade::log::message(
+                    reshade::log::level::error,
+                    "[DisplayCommander] Multiple Display Commander instances detected - refusing to load.");
                 OutputDebugStringA(
                     "[DisplayCommander] Multiple Display Commander instances detected - refusing to load.\n");
                 return FALSE;  // Refuse to load
@@ -2523,8 +2525,10 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             DetectMultipleReShadeVersions();
 
             // Registration successful - log version compatibility
-            LogInfoDirect("Display Commander v%s - ReShade addon registration successful (API version 17 supported)",
-                          DISPLAY_COMMANDER_VERSION_STRING);
+            LogInfoDirect(
+                "Display Commander v%s - ReShade addon registration successful (API version 17 supported)g_hmodule: "
+                "0x%p",
+                DISPLAY_COMMANDER_VERSION_STRING, g_hmodule);
 
             // Register overlay early so it appears as a tab by default
             reshade::register_overlay("Display Commander", OnRegisterOverlayDisplayCommander);

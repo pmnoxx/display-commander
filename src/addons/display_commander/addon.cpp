@@ -43,11 +43,17 @@ extern "C" __declspec(dllexport) void NotifyDisplayCommanderMultipleVersions(con
 // Used to resolve conflicts when multiple DLLs are loaded at the same time
 extern "C" __declspec(dllexport) LONGLONG LoadedNs() { return g_dll_load_time_ns.load(std::memory_order_acquire); }
 
+/*
 // Export addon initialization function
-extern "C" __declspec(dllexport) void AddonInit() {
+extern "C" __declspec(dllexport) bool AddonInit(HMODULE addon_module, HMODULE reshade_module) {
     // print current module
-    LogInfo("Display Commander addon initialized g_hmodule: 0x%p", g_hmodule);
 
-    // reshade::register_addon(g_hmodule);
-    // reshade::register_overlay("Display Commander", OnRegisterOverlayDisplayCommander);
+    static bool initialized = false;
+    if (!initialized) {
+        return true;
+    }
+    initialized = true;
+    LogInfo("Display Commander addon initialized g_hmodule: 0x%p", g_hmodule);
+    return true;
 }
+*/

@@ -1,15 +1,15 @@
 #include "version_check.hpp"
-#include "../version.hpp"
+#include <ShlObj.h>
 #include <Windows.h>
 #include <WinInet.h>
-#include <ShlObj.h>
-#include <sstream>
-#include <thread>
+#include <cctype>
+#include <chrono>
 #include <filesystem>
 #include <fstream>
+#include <sstream>
+#include <thread>
 #include <vector>
-#include <chrono>
-#include <cctype>
+#include "../version.hpp"
 
 namespace display_commander::utils::version_check {
 
@@ -25,9 +25,7 @@ struct ScopedInternetHandle {
     }
     ScopedInternetHandle(const ScopedInternetHandle&) = delete;
     ScopedInternetHandle& operator=(const ScopedInternetHandle&) = delete;
-    ScopedInternetHandle(ScopedInternetHandle&& other) noexcept : handle(other.handle) {
-        other.handle = nullptr;
-    }
+    ScopedInternetHandle(ScopedInternetHandle&& other) noexcept : handle(other.handle) { other.handle = nullptr; }
     ScopedInternetHandle& operator=(ScopedInternetHandle&& other) noexcept {
         if (this != &other) {
             if (handle != nullptr) {
@@ -143,7 +141,8 @@ bool DownloadBinaryFromUrl(const std::string& url, const std::filesystem::path& 
 }
 
 // Parse JSON to extract version and download URLs from GitHub API response
-bool ParseGitHubReleaseJson(const std::string& json, std::string& version, std::string& url_64, std::string& url_32, std::string& build_number) {
+bool ParseGitHubReleaseJson(const std::string& json, std::string& version, std::string& url_64, std::string& url_32,
+                            std::string& build_number) {
     version.clear();
     url_64.clear();
     url_32.clear();
@@ -176,7 +175,7 @@ bool ParseGitHubReleaseJson(const std::string& json, std::string& version, std::
 
     // Try to extract build number from tag_name if it has 4 components (e.g., "v0.10.0.1162")
     build_number = ExtractBuildNumber(version);
-    
+
     // If not found in tag, try to extract from "name" field (release name)
     if (build_number.empty()) {
         size_t name_pos = json.find("\"name\"");
@@ -187,14 +186,15 @@ bool ParseGitHubReleaseJson(const std::string& json, std::string& version, std::
                 if (name_quote_start != std::string::npos) {
                     size_t name_quote_end = json.find('"', name_quote_start + 1);
                     if (name_quote_end != std::string::npos) {
-                        std::string release_name = json.substr(name_quote_start + 1, name_quote_end - name_quote_start - 1);
+                        std::string release_name =
+                            json.substr(name_quote_start + 1, name_quote_end - name_quote_start - 1);
                         // Try to find build number in release name (e.g., "v0.10.0.1162" or "Build 1162")
                         build_number = ExtractBuildNumber(release_name);
                         if (build_number.empty()) {
                             // Look for "Build 1162" pattern
                             size_t build_pos = release_name.find("Build ");
                             if (build_pos != std::string::npos) {
-                                size_t build_start = build_pos + 6; // Length of "Build "
+                                size_t build_start = build_pos + 6;  // Length of "Build "
                                 size_t build_end = release_name.find_first_not_of("0123456789", build_start);
                                 if (build_end == std::string::npos) {
                                     build_end = release_name.length();
@@ -247,9 +247,7 @@ bool ParseGitHubReleaseJson(const std::string& json, std::string& version, std::
 
 }  // anonymous namespace
 
-VersionCheckState& GetVersionCheckState() {
-    return g_version_check_state;
-}
+VersionCheckState& GetVersionCheckState() { return g_version_check_state; }
 
 int CompareVersions(const std::string& v1, const std::string& v2) {
     std::string clean_v1 = ParseVersionString(v1);
@@ -339,13 +337,13 @@ void CheckForUpdates() {
                 if (!latest_version.empty()) {
                     auto* version_str = new std::string(latest_version);
                     state.latest_version.store(version_str);
-                    
+
                     // Store build number if found
                     if (!build_number.empty()) {
                         auto* build_str = new std::string(build_number);
                         state.build_number.store(build_str);
                     }
-                    
+
                     // If URLs are missing, try to find them in assets array
                     if (url_64.empty() && url_32.empty()) {
                         // Look for assets array and find download URLs there
@@ -353,7 +351,8 @@ void CheckForUpdates() {
                         if (assets_pos != std::string::npos) {
                             // Look for browser_download_url in assets
                             size_t url_search = assets_pos;
-                            while ((url_search = json_response.find("\"browser_download_url\"", url_search)) != std::string::npos) {
+                            while ((url_search = json_response.find("\"browser_download_url\"", url_search))
+                                   != std::string::npos) {
                                 size_t url_colon = json_response.find(':', url_search);
                                 if (url_colon == std::string::npos) {
                                     break;
@@ -366,7 +365,8 @@ void CheckForUpdates() {
                                 if (url_quote_end == std::string::npos) {
                                     break;
                                 }
-                                std::string url = json_response.substr(url_quote_start + 1, url_quote_end - url_quote_start - 1);
+                                std::string url =
+                                    json_response.substr(url_quote_start + 1, url_quote_end - url_quote_start - 1);
                                 if (url.find(".addon64") != std::string::npos && url_64.empty()) {
                                     url_64 = url;
                                 } else if (url.find(".addon32") != std::string::npos && url_32.empty()) {
@@ -374,11 +374,11 @@ void CheckForUpdates() {
                                 }
                                 url_search = url_quote_end + 1;
                                 if (url_search >= json_response.length()) break;
-                                if (!url_64.empty() && !url_32.empty()) break; // Found both, stop searching
+                                if (!url_64.empty() && !url_32.empty()) break;  // Found both, stop searching
                             }
                         }
                     }
-                    
+
                     // Store URLs if found
                     if (!url_64.empty()) {
                         auto* url_str = new std::string(url_64);
@@ -388,7 +388,7 @@ void CheckForUpdates() {
                         auto* url_str = new std::string(url_32);
                         state.download_url_32.store(url_str);
                     }
-                    
+
                     // Store URLs if found (only if not already stored)
                     if (!url_64.empty() && state.download_url_64.load() == nullptr) {
                         auto* url_str = new std::string(url_64);
@@ -398,17 +398,17 @@ void CheckForUpdates() {
                         auto* url_str = new std::string(url_32);
                         state.download_url_32.store(url_str);
                     }
-                    
+
                     // If we have version but no URLs, show warning but don't fail completely
-                    if (url_64.empty() && url_32.empty() && 
-                        state.download_url_64.load() == nullptr && state.download_url_32.load() == nullptr) {
+                    if (url_64.empty() && url_32.empty() && state.download_url_64.load() == nullptr
+                        && state.download_url_32.load() == nullptr) {
                         auto* error = new std::string("Version found but download URLs not available");
                         state.error_message.store(error);
                     } else {
                         // Clear any previous error if we have URLs now
                         state.error_message.store(nullptr);
                     }
-                    
+
                     // Continue with version comparison even if URLs are missing
                     // (URLs might be available from previous check)
                 } else {
@@ -426,11 +426,12 @@ void CheckForUpdates() {
                 auto* version_str = new std::string(latest_version);
                 state.latest_version.store(version_str);
             }
-            
+
             // Store build number if found, otherwise try to use current build if versions match
             // Always prefer using current build number if versions match (same release)
             if (!latest_version.empty()) {
-                std::string current_version_str = ParseVersionString(DISPLAY_COMMANDER_VERSION_STRING_MAJOR_MINOR_PATCH);
+                std::string current_version_str =
+                    ParseVersionString(DISPLAY_COMMANDER_VERSION_STRING_MAJOR_MINOR_PATCH);
                 if (current_version_str == latest_version) {
                     // Same release - use current build number
                     std::string current_build = DISPLAY_COMMANDER_VERSION_BUILD_STRING;
@@ -455,7 +456,8 @@ void CheckForUpdates() {
 
             // Compare with current version
             if (!latest_version.empty()) {
-                std::string current_version_str = ParseVersionString(DISPLAY_COMMANDER_VERSION_STRING_MAJOR_MINOR_PATCH);
+                std::string current_version_str =
+                    ParseVersionString(DISPLAY_COMMANDER_VERSION_STRING_MAJOR_MINOR_PATCH);
                 int comparison = CompareVersions(current_version_str, latest_version);
 
                 if (comparison < 0) {
@@ -487,7 +489,7 @@ std::string ExtractBuildNumber(const std::string& version_str) {
     if (last_dot == std::string::npos) {
         return "";
     }
-    
+
     std::string potential_build = version_str.substr(last_dot + 1);
     // Check if it's a number
     bool is_number = !potential_build.empty();
@@ -497,7 +499,7 @@ std::string ExtractBuildNumber(const std::string& version_str) {
             break;
         }
     }
-    
+
     if (is_number) {
         return potential_build;
     }
@@ -516,14 +518,14 @@ std::string FormatBuildNumber(const std::string& build_str) {
             auto ms_timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
             timestamp_mod = ms_timestamp % 1000000;
             if (timestamp_mod == 0) {
-                timestamp_mod = 1; // Ensure it's never 000000
+                timestamp_mod = 1;  // Ensure it's never 000000
             }
         }
         char buffer[16];
         snprintf(buffer, sizeof(buffer), "%06lld", timestamp_mod);
         return std::string(buffer);
     }
-    
+
     // Try to parse as number and format as 6 digits
     try {
         int build_num = std::stoi(build_str);
@@ -552,8 +554,9 @@ bool DownloadUpdate(bool is_64bit, const std::string& build_number) {
     }
 
     std::string url = *url_ptr;
-    
-    // Get build number - try from parameter, then from stored build number, then from version string, then use current build if versions match
+
+    // Get build number - try from parameter, then from stored build number, then from version string, then use current
+    // build if versions match
     std::string build_num = build_number;
     if (build_num.empty()) {
         std::string* stored_build_ptr = state.build_number.load();
@@ -565,7 +568,7 @@ bool DownloadUpdate(bool is_64bit, const std::string& build_number) {
             if (latest_version_ptr != nullptr) {
                 build_num = ExtractBuildNumber(*latest_version_ptr);
             }
-            
+
             // If still empty and versions match, use current build number
             if (build_num.empty() && latest_version_ptr != nullptr) {
                 std::string current_version = ParseVersionString(DISPLAY_COMMANDER_VERSION_STRING_MAJOR_MINOR_PATCH);
@@ -575,19 +578,19 @@ bool DownloadUpdate(bool is_64bit, const std::string& build_number) {
             }
         }
     }
-    
+
     // Format as 6 digits
     std::string formatted_build = FormatBuildNumber(build_num);
-    
+
     // Create filename: zzz_display_commander_BUILD.addon64/32
     auto download_dir = GetDownloadDirectory();
     if (download_dir.empty()) {
         return false;
     }
-    
+
     std::string filename = "zzz_display_commander_" + formatted_build + (is_64bit ? ".addon64" : ".addon32");
     std::filesystem::path download_path = download_dir / filename;
-    
+
     return DownloadBinaryFromUrl(url, download_path);
 }
 

@@ -1,20 +1,20 @@
 #include "updates_tab.hpp"
-#include "../../utils/version_check.hpp"
-#include "../../version.hpp"
-#include "../../res/forkawesome.h"
-#include "../../res/ui_colors.hpp"
-#include "../../utils/logging.hpp"
-#include <imgui.h>
-#include <reshade.hpp>
-#include <filesystem>
-#include <string>
-#include <vector>
-#include <thread>
-#include <chrono>
-#include <ctime>
 #include <Windows.h>
 #include <ShlObj.h>
 #include <shellapi.h>
+#include <imgui.h>
+#include <reshade.hpp>
+#include <chrono>
+#include <ctime>
+#include <filesystem>
+#include <string>
+#include <thread>
+#include <vector>
+#include "../../res/forkawesome.h"
+#include "../../res/ui_colors.hpp"
+#include "../../utils/logging.hpp"
+#include "../../utils/version_check.hpp"
+#include "../../version.hpp"
 
 namespace ui::new_ui {
 
@@ -35,13 +35,13 @@ std::string ExtractBuildFromFilename(const std::string& filename) {
     if (prefix_pos == std::string::npos) {
         return "";
     }
-    
-    size_t build_start = prefix_pos + 22; // Length of "zzz_display_commander_"
+
+    size_t build_start = prefix_pos + 22;  // Length of "zzz_display_commander_"
     size_t build_end = filename.find(".addon", build_start);
     if (build_end == std::string::npos) {
         return "";
     }
-    
+
     return filename.substr(build_start, build_end - build_start);
 }
 
@@ -60,9 +60,9 @@ std::vector<DownloadedUpdateInfo> GetDownloadedUpdates() {
             if (!entry.is_regular_file()) {
                 continue;
             }
-            
+
             std::string filename = entry.path().filename().string();
-            
+
             // Check if it matches our pattern
             bool is_64bit = false;
             if (filename.find("zzz_display_commander_") == 0) {
@@ -71,15 +71,15 @@ std::vector<DownloadedUpdateInfo> GetDownloadedUpdates() {
                 } else if (filename.find(".addon32") != std::string::npos) {
                     is_64bit = false;
                 } else {
-                    continue; // Not a valid addon file
+                    continue;  // Not a valid addon file
                 }
-                
+
                 DownloadedUpdateInfo info;
                 info.file_path = entry.path();
                 info.is_64bit = is_64bit;
                 info.last_write_time = std::filesystem::last_write_time(entry.path());
                 info.file_size = std::filesystem::file_size(entry.path());
-                
+
                 // Extract build number from filename
                 std::string build_str = ExtractBuildFromFilename(filename);
                 if (!build_str.empty()) {
@@ -87,7 +87,7 @@ std::vector<DownloadedUpdateInfo> GetDownloadedUpdates() {
                 } else {
                     info.version = "Unknown";
                 }
-                
+
                 updates.push_back(info);
             }
         }
@@ -99,8 +99,8 @@ std::vector<DownloadedUpdateInfo> GetDownloadedUpdates() {
 }
 
 // Find latest downloaded version for each architecture
-void GetLatestDownloadedVersions(const std::vector<DownloadedUpdateInfo>& updates,
-                                  DownloadedUpdateInfo* latest_64, DownloadedUpdateInfo* latest_32) {
+void GetLatestDownloadedVersions(const std::vector<DownloadedUpdateInfo>& updates, DownloadedUpdateInfo* latest_64,
+                                 DownloadedUpdateInfo* latest_32) {
     if (latest_64 != nullptr) {
         *latest_64 = DownloadedUpdateInfo{};
         latest_64->version = "";
@@ -109,17 +109,17 @@ void GetLatestDownloadedVersions(const std::vector<DownloadedUpdateInfo>& update
         *latest_32 = DownloadedUpdateInfo{};
         latest_32->version = "";
     }
-    
+
     for (const auto& update : updates) {
         if (update.version == "Unknown") {
-            continue; // Skip files without version info
+            continue;  // Skip files without version info
         }
-        
+
         DownloadedUpdateInfo* target = update.is_64bit ? latest_64 : latest_32;
         if (target == nullptr) {
             continue;
         }
-        
+
         // Compare versions (build numbers as strings, but they should be numeric)
         if (target->version.empty() || update.version > target->version) {
             *target = update;
@@ -165,8 +165,8 @@ void OpenFolderInExplorer(const std::filesystem::path& folder_path) {
 
 // Compare current version with downloaded version
 bool IsDownloadedVersionNewer(const std::string& downloaded_version) {
-    std::string current_version = display_commander::utils::version_check::ParseVersionString(
-        DISPLAY_COMMANDER_VERSION_STRING_MAJOR_MINOR_PATCH);
+    std::string current_version =
+        display_commander::utils::version_check::ParseVersionString(DISPLAY_COMMANDER_VERSION_STRING_MAJOR_MINOR_PATCH);
     int comparison = display_commander::utils::version_check::CompareVersions(current_version, downloaded_version);
     return comparison < 0;  // Downloaded version is newer
 }
@@ -174,11 +174,11 @@ bool IsDownloadedVersionNewer(const std::string& downloaded_version) {
 }  // anonymous namespace
 
 void DrawUpdatesTab() {
+    using display_commander::utils::version_check::CheckForUpdates;
+    using display_commander::utils::version_check::DownloadUpdate;
+    using display_commander::utils::version_check::GetDownloadDirectory;
     using display_commander::utils::version_check::GetVersionCheckState;
     using display_commander::utils::version_check::VersionComparison;
-    using display_commander::utils::version_check::GetDownloadDirectory;
-    using display_commander::utils::version_check::DownloadUpdate;
-    using display_commander::utils::version_check::CheckForUpdates;
 
     ImGui::Spacing();
     ImGui::TextColored(ui::colors::TEXT_DEFAULT, "Update Management");
@@ -198,7 +198,8 @@ void DrawUpdatesTab() {
 
     // Show version status
     if (status == VersionComparison::UpdateAvailable && latest_version_ptr != nullptr) {
-        ImGui::TextColored(ui::colors::TEXT_WARNING, ICON_FK_WARNING " New version available: v%s", latest_version_ptr->c_str());
+        ImGui::TextColored(ui::colors::TEXT_WARNING, ICON_FK_WARNING " New version available: v%s",
+                           latest_version_ptr->c_str());
     } else if (status == VersionComparison::UpToDate) {
         ImGui::TextColored(ui::colors::TEXT_SUCCESS, ICON_FK_OK " You are running the latest version");
         if (latest_version_ptr != nullptr) {
@@ -221,12 +222,12 @@ void DrawUpdatesTab() {
     // Download buttons - show whenever we have download URLs available
     std::string* download_url_64 = state.download_url_64.load();
     std::string* download_url_32 = state.download_url_32.load();
-    
-    if ((download_url_64 != nullptr && !download_url_64->empty()) || 
-        (download_url_32 != nullptr && !download_url_32->empty())) {
+
+    if ((download_url_64 != nullptr && !download_url_64->empty())
+        || (download_url_32 != nullptr && !download_url_32->empty())) {
         ImGui::Text("Download latest version:");
         ImGui::Spacing();
-        
+
         if (download_url_64 != nullptr && !download_url_64->empty()) {
             if (ImGui::Button("Download 64-bit")) {
                 std::thread download_thread([]() {
@@ -241,12 +242,12 @@ void DrawUpdatesTab() {
             if (ImGui::IsItemHovered()) {
                 auto download_dir = GetDownloadDirectory();
                 std::string download_path_str = download_dir.string();
-                ImGui::SetTooltip("Download 64-bit version to:\n%s\nFilename: zzz_display_commander_BUILD.addon64", 
-                                 download_path_str.c_str());
+                ImGui::SetTooltip("Download 64-bit version to:\n%s\nFilename: zzz_display_commander_BUILD.addon64",
+                                  download_path_str.c_str());
             }
             ImGui::SameLine();
         }
-        
+
         if (download_url_32 != nullptr && !download_url_32->empty()) {
             if (ImGui::Button("Download 32-bit")) {
                 std::thread download_thread([]() {
@@ -261,8 +262,8 @@ void DrawUpdatesTab() {
             if (ImGui::IsItemHovered()) {
                 auto download_dir = GetDownloadDirectory();
                 std::string download_path_str = download_dir.string();
-                ImGui::SetTooltip("Download 32-bit version to:\n%s\nFilename: zzz_display_commander_BUILD.addon32", 
-                                 download_path_str.c_str());
+                ImGui::SetTooltip("Download 32-bit version to:\n%s\nFilename: zzz_display_commander_BUILD.addon32",
+                                  download_path_str.c_str());
             }
         }
         ImGui::Spacing();
@@ -288,29 +289,31 @@ void DrawUpdatesTab() {
     // Latest downloaded versions section
     ImGui::TextColored(ui::colors::TEXT_DEFAULT, "Latest Downloaded Versions");
     ImGui::Spacing();
-    
+
     auto downloaded_updates = GetDownloadedUpdates();
     DownloadedUpdateInfo latest_64, latest_32;
     GetLatestDownloadedVersions(downloaded_updates, &latest_64, &latest_32);
-    
+
     // Show latest 64-bit
     if (!latest_64.version.empty() && latest_64.version != "Unknown") {
         ImGui::Text("64-bit: Build %s", latest_64.version.c_str());
         ImGui::SameLine();
-        ImGui::TextColored(ui::colors::TEXT_DIMMED, "(%s, %s)", FormatFileSize(latest_64.file_size).c_str(), FormatFileTime(latest_64.last_write_time).c_str());
+        ImGui::TextColored(ui::colors::TEXT_DIMMED, "(%s, %s)", FormatFileSize(latest_64.file_size).c_str(),
+                           FormatFileTime(latest_64.last_write_time).c_str());
     } else {
         ImGui::TextColored(ui::colors::TEXT_DIMMED, "64-bit: No downloaded version");
     }
-    
+
     // Show latest 32-bit
     if (!latest_32.version.empty() && latest_32.version != "Unknown") {
         ImGui::Text("32-bit: Build %s", latest_32.version.c_str());
         ImGui::SameLine();
-        ImGui::TextColored(ui::colors::TEXT_DIMMED, "(%s, %s)", FormatFileSize(latest_32.file_size).c_str(), FormatFileTime(latest_32.last_write_time).c_str());
+        ImGui::TextColored(ui::colors::TEXT_DIMMED, "(%s, %s)", FormatFileSize(latest_32.file_size).c_str(),
+                           FormatFileTime(latest_32.last_write_time).c_str());
     } else {
         ImGui::TextColored(ui::colors::TEXT_DIMMED, "32-bit: No downloaded version");
     }
-    
+
     ImGui::Spacing();
     ImGui::Separator();
     ImGui::Spacing();
@@ -322,9 +325,11 @@ void DrawUpdatesTab() {
     if (downloaded_updates.empty()) {
         ImGui::TextColored(ui::colors::TEXT_DIMMED, "No downloaded updates found in Documents\\Display Commander");
         ImGui::Spacing();
-        ImGui::TextColored(ui::colors::TEXT_DIMMED, "Downloaded updates will appear here after downloading from the Main tab or this tab.");
+        ImGui::TextColored(ui::colors::TEXT_DIMMED,
+                           "Downloaded updates will appear here after downloading from the Main tab or this tab.");
     } else {
-        if (ImGui::BeginTable("DownloadedUpdates", 6, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable)) {
+        if (ImGui::BeginTable("DownloadedUpdates", 6,
+                              ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable)) {
             ImGui::TableSetupColumn("Architecture", ImGuiTableColumnFlags_WidthFixed, 100.0f);
             ImGui::TableSetupColumn("Build", ImGuiTableColumnFlags_WidthFixed, 100.0f);
             ImGui::TableSetupColumn("File", ImGuiTableColumnFlags_WidthStretch);
@@ -370,9 +375,9 @@ void DrawUpdatesTab() {
                 if (ImGui::IsItemHovered()) {
                     ImGui::SetTooltip("Open folder containing the downloaded file");
                 }
-                
+
                 ImGui::SameLine();
-                
+
                 std::string delete_label = ICON_FK_CANCEL "##Delete" + filename;
                 ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.7f, 0.2f, 0.2f, 1.0f));
                 ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.9f, 0.3f, 0.3f, 1.0f));
@@ -425,11 +430,11 @@ void DrawUpdatesTab() {
     // Check for both architectures
     ImGui::TextColored(ui::colors::TEXT_DEFAULT, "Architecture Information");
     ImGui::Spacing();
-    #ifdef _WIN64
+#ifdef _WIN64
     ImGui::Text("Current build: 64-bit");
-    #else
+#else
     ImGui::Text("Current build: 32-bit");
-    #endif
+#endif
     ImGui::TextColored(ui::colors::TEXT_DIMMED, "Note: Both 64-bit and 32-bit versions can be downloaded and stored.");
 }
 

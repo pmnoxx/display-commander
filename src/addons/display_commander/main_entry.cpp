@@ -2028,8 +2028,6 @@ void HandleSafemode() {
 
 void DoInitializationWithoutHwnd(HMODULE h_module, DWORD fdw_reason) {
     // Initialize config system now (safe to start threads here, after DLLMain)
-    display_commander::config::DisplayCommanderConfigManager::GetInstance().Initialize();
-    display_commander::config::DisplayCommanderConfigManager::GetInstance().SetAutoFlushLogs(true);
 
     // Save entry point to config now that config system is initialized
     // (entry point was detected in DLLMain but couldn't be saved then)
@@ -2518,6 +2516,8 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
                 OutputDebugStringA("ReShade 0000000");
                 return FALSE;
             }
+            display_commander::config::DisplayCommanderConfigManager::GetInstance().Initialize();
+            display_commander::config::DisplayCommanderConfigManager::GetInstance().SetAutoFlushLogs(true);
             OutputDebugStringA("ReShade 111111");
 
             DetectMultipleReShadeVersions();

@@ -2,10 +2,15 @@
 #include <windows.h>
 #include <atomic>
 #include <memory>
+#include <reshade.hpp>
 #include <string>
 #include "globals.hpp"
+#include "utils/logging.hpp"
 #include "utils/timing.hpp"
 #include "version.hpp"
+
+// Forward declaration
+void OnRegisterOverlayDisplayCommander(reshade::api::effect_runtime* runtime);
 
 // Export addon information
 extern "C" __declspec(dllexport) constexpr const char* NAME = "Display Commander";
@@ -37,3 +42,12 @@ extern "C" __declspec(dllexport) void NotifyDisplayCommanderMultipleVersions(con
 // Export function to get the DLL load timestamp in nanoseconds
 // Used to resolve conflicts when multiple DLLs are loaded at the same time
 extern "C" __declspec(dllexport) LONGLONG LoadedNs() { return g_dll_load_time_ns.load(std::memory_order_acquire); }
+
+// Export addon initialization function
+extern "C" __declspec(dllexport) void AddonInit() {
+    // print current module
+    LogInfo("Display Commander addon initialized g_hmodule: 0x%p", g_hmodule);
+
+    // reshade::register_addon(g_hmodule);
+    // reshade::register_overlay("Display Commander", OnRegisterOverlayDisplayCommander);
+}

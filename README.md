@@ -6,16 +6,18 @@ Note: Applying window operations from the main thread can crash some apps. This 
 
 **✅ Version Requirement**: This addon requires **stable ReShade 6.6.2** or later. The addon is now fully compatible with stable ReShade releases.
 
-**Latest stable release**: [Latest Release](https://github.com/pmnoxx/reshade-display-commander/releases) - Compatible with ReShade 6.6.2
+**Latest stable release**: [Latest Release](https://github.com/pmnoxx/display-commander/releases) - Compatible with ReShade 6.6.2
 
 ## 📥 Latest Builds
 
 | Architecture | Download |
 |-------------|----------|
-| **x64 (64-bit)** | [zzz_display_commander.addon64](../../releases/latest/download/zzz_display_commander.addon64) |
-| **x86 (32-bit)** | [zzz_display_commander.addon32](../../releases/latest/download/zzz_display_commander.addon32) |
+| **x64 (64-bit)** | [zzz_display_commander.addon64](https://github.com/pmnoxx/display-commander/releases/latest/download/zzz_display_commander.addon64) |
+| **x86 (32-bit)** | [zzz_display_commander.addon32](https://github.com/pmnoxx/display-commander/releases/latest/download/zzz_display_commander.addon32) |
 
-**🔄 Nightly Builds**: For the latest development builds, check [Nightly Releases](../../releases/tag/nightly).
+**🔄 Nightly Builds**: For the latest development builds, check [Nightly Releases](https://github.com/pmnoxx/display-commander/releases/tag/nightly).
+
+**🔨 Latest Successful Build**: Download artifacts from the [latest successful workflow run](https://github.com/pmnoxx/display-commander/actions/workflows/build.yml?query=branch%3Amain+is%3Asuccess) (requires GitHub account for artifact downloads).
 
 ## Features
 
@@ -52,7 +54,7 @@ For a comprehensive list of known issues and bugs, see [KNOWN_BUGS.md](KNOWN_BUG
    - Alternatively, place it into your global ReShade installation directory (for example `D:\\Program Files\\ReShade`).
 3. Launch the game, open the ReShade overlay (Home by default), go to the Add-ons tab, and locate "Display Commander".
 
-**Note**: For the latest stable release compatible with ReShade 6.6.2, download from [Latest Release](https://github.com/pmnoxx/reshade-display-commander/releases).
+**Note**: For the latest stable release compatible with ReShade 6.6.2, download from [Latest Release](https://github.com/pmnoxx/display-commander/releases).
 
 ## Usage
 
@@ -111,7 +113,7 @@ GitHub Actions builds x64 and x86 on pushes and PRs and uploads the resulting `.
 
 ## Troubleshooting
 
-- **"Addon not loading" or "Compatibility issues"**: Ensure you're using stable ReShade 6.6.2 or later. Download the latest release from [Latest Release](https://github.com/pmnoxx/reshade-display-commander/releases).
+- **"Addon not loading" or "Compatibility issues"**: Ensure you're using stable ReShade 6.6.2 or later. Download the latest release from [Latest Release](https://github.com/pmnoxx/display-commander/releases).
 - "This project requires the Ninja generator": Configure with `-G Ninja` (or `"Ninja Multi-Config"` for the 32-bit example above).
 - "Missing submodule: external/reshade": Run `git submodule update --init --recursive`.
 - "NVAPI libs not found ...": Optional; only NVAPI-based features will be unavailable.
@@ -128,7 +130,7 @@ Need help? Check out our [Support Guide](SUPPORT.md) for detailed information on
 **Quick Support Links:**
 - **HDR Den Discord**: [Join our community](https://discord.com/invite/WJ9YZctPND)
 - **Support Thread**: [Display Commander Support](https://discord.com/channels/1161035767917850784/1403983735031857162)
-- **GitHub Issues**: [Report bugs or request features](https://github.com/pmnoxx/reshade-display-commander/issues)
+- **GitHub Issues**: [Report bugs or request features](https://github.com/pmnoxx/display-commander/issues)
 
 The HDR Den Discord community is the best place to get real-time help, discuss features, and connect with other users.
 

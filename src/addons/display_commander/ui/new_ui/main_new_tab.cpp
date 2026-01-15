@@ -25,6 +25,7 @@
 #include "../../utils/overlay_window_detector.hpp"
 #include "../../utils/perf_measurement.hpp"
 #include "../../utils/platform_api_detector.hpp"
+#include "../../utils/version_check.hpp"
 #include "../../widgets/resolution_widget/resolution_widget.hpp"
 #include "imgui.h"
 #include "settings_wrapper.hpp"
@@ -652,6 +653,77 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
     {
         ImGui::TextColored(ui::colors::TEXT_DEFAULT, "Version: %s | Build: %s %s", DISPLAY_COMMANDER_VERSION_STRING,
                            DISPLAY_COMMANDER_BUILD_DATE, DISPLAY_COMMANDER_BUILD_TIME);
+
+        // Version check and update UI
+        {
+            using namespace display_commander::utils::version_check;
+            auto& state = GetVersionCheckState();
+
+            // Check for updates on first load (only once)
+            static bool initial_check_done = false;
+            if (!initial_check_done && !state.checking.load()) {
+                CheckForUpdates();
+                initial_check_done = true;
+            }
+
+            ImGui::SameLine();
+            ImGui::Spacing();
+            ImGui::SameLine();
+
+            VersionComparison status = state.status.load();
+            std::string* latest_version_ptr = state.latest_version.load();
+            std::string* error_ptr = state.error_message.load();
+
+            if (status == VersionComparison::Checking) {
+                ImGui::TextColored(ui::colors::TEXT_DIMMED, ICON_FK_REFRESH " Checking for updates...");
+            } else if (status == VersionComparison::UpdateAvailable && latest_version_ptr != nullptr) {
+                ImGui::TextColored(ui::colors::TEXT_WARNING, ICON_FK_WARNING " Update available: v%s", latest_version_ptr->c_str());
+                ImGui::SameLine();
+
+                // Determine if we're 64-bit or 32-bit (simplified check - you may want to improve this)
+                #ifdef _WIN64
+                bool is_64bit = true;
+                #else
+                bool is_64bit = false;
+                #endif
+
+                std::string* download_url = is_64bit ? state.download_url_64.load() : state.download_url_32.load();
+                if (download_url != nullptr && !download_url->empty()) {
+                    if (ImGui::Button("Download")) {
+                        // Run download in background thread
+                        std::thread download_thread([is_64bit]() {
+                            if (DownloadUpdate(is_64bit)) {
+                                LogInfo("Update downloaded successfully");
+                            } else {
+                                LogError("Failed to download update");
+                            }
+                        });
+                        download_thread.detach();
+                    }
+                    if (ImGui::IsItemHovered()) {
+                        auto download_dir = GetDownloadDirectory();
+                        std::string download_path_str = download_dir.string();
+                        ImGui::SetTooltip("Download will be saved to:\n%s\nFilename: zzz_display_commander_BUILD.addon%s", 
+                                         download_path_str.c_str(), is_64bit ? "64" : "32");
+                    }
+                }
+            } else if (status == VersionComparison::UpToDate) {
+                ImGui::TextColored(ui::colors::TEXT_SUCCESS, ICON_FK_OK " Up to date");
+            } else if (status == VersionComparison::CheckFailed && error_ptr != nullptr) {
+                ImGui::TextColored(ui::colors::TEXT_ERROR, ICON_FK_WARNING " Check failed: %s", error_ptr->c_str());
+            }
+
+            // Manual check button
+            ImGui::SameLine();
+            if (ImGui::SmallButton(ICON_FK_REFRESH)) {
+                if (!state.checking.load()) {
+                    CheckForUpdates();
+                }
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Check for updates");
+            }
+        }
 
         // Display current graphics API with feature level/version
         int api_value = g_last_reshade_device_api.load();

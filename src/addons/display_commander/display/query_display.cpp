@@ -1,6 +1,7 @@
 #include "query_display.hpp"
-#include "../utils/logging.hpp"
 #include <windows.h>
+#include "../utils/logging.hpp"
+
 
 #include <dxgi.h>
 #include <wingdi.h>
@@ -128,13 +129,13 @@ std::vector<DisplayTimingInfo> QueryDisplayTimingInfo() {
             }
 
             // Log the device information for debugging (Debug level to respect log level setting)
-            LogDebug("[QueryDisplay] QueryDisplayTimingInfo: Found display [path_idx=%u]:\n    display_name: '%s'\n    device_path: '%s'\n    gdi_device_name: '%s'\n    adapter_id: %u\n    target_id: %u",
-                path_idx,
+            /*LogDebug("[QueryDisplay] QueryDisplayTimingInfo: Found display [path_idx=%u]:\n    display_name: '%s'\n
+               device_path: '%s'\n    gdi_device_name: '%s'\n    adapter_id: %u\n    target_id: %u", path_idx,
                 WideCharToUTF8(timing_info.display_name).c_str(),
                 WideCharToUTF8(timing_info.device_path).c_str(),
                 WideCharToUTF8(timing_info.gdi_device_name).c_str(),
                 timing_info.adapter_id,
-                timing_info.target_id);
+                timing_info.target_id);*/
         } else {
             timing_info.display_name = L"UNKNOWN";
             timing_info.device_path = L"UNKNOWN";
@@ -279,10 +280,12 @@ bool GetCurrentDisplaySettingsQueryConfig(HMONITOR monitor, int& width, int& hei
         if (first_time_log) {
             std::string device_name_str = WideCharToUTF8(mi.szDevice);
             LogInfo(
-                "[GetCurrentDisplaySettingsQueryConfig] monitor: %s, adapter_id: %d/%d, display_res: %dx%d, desktop_res: %dx%d, refresh: %d/%d, "
+                "[GetCurrentDisplaySettingsQueryConfig] monitor: %s, adapter_id: %d/%d, display_res: %dx%d, "
+                "desktop_res: %dx%d, refresh: %d/%d, "
                 "refresh_denominator: %d source_mode.infoType: %d",
-                device_name_str.c_str(), path.sourceInfo.adapterId.LowPart, path.sourceInfo.adapterId.HighPart, desktop_width, desktop_height,  width, height, refresh_numerator, refresh_denominator, source_mode.infoType
-            );
+                device_name_str.c_str(), path.sourceInfo.adapterId.LowPart, path.sourceInfo.adapterId.HighPart,
+                desktop_width, desktop_height, width, height, refresh_numerator, refresh_denominator,
+                source_mode.infoType);
         }
 
         return true;

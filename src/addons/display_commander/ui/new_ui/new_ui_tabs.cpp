@@ -13,6 +13,7 @@
 #include "main_new_tab.hpp"
 #include "streamline_tab.hpp"
 #include "swapchain_tab.hpp"
+#include "updates_tab.hpp"
 #include "window_info_tab.hpp"
 
 namespace ui::new_ui {
@@ -340,6 +341,20 @@ void InitializeNewUI() {
             }
         },
         true);  // ReShade tab is advanced
+
+    // Add updates tab
+    g_tab_manager.AddTab(
+        "Updates", "updates",
+        [](reshade::api::effect_runtime* runtime) {
+            try {
+                ui::new_ui::DrawUpdatesTab();
+            } catch (const std::exception& e) {
+                LogError("Error drawing updates tab: %s", e.what());
+            } catch (...) {
+                LogError("Unknown error drawing updates tab");
+            }
+        },
+        false);  // Updates tab is not advanced (always visible)
 }
 
 // Draw the new UI

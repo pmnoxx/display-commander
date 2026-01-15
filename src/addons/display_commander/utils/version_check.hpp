@@ -1,23 +1,23 @@
 #pragma once
 
-#include <string>
 #include <atomic>
 #include <filesystem>
+#include <string>
 
 namespace display_commander::utils::version_check {
 
 // Version comparison result
 enum class VersionComparison {
-    UpToDate,      // Current version is up to date
-    UpdateAvailable, // Newer version available
-    CheckFailed,   // Failed to check for updates
-    Checking       // Currently checking
+    UpToDate,         // Current version is up to date
+    UpdateAvailable,  // Newer version available
+    CheckFailed,      // Failed to check for updates
+    Checking          // Currently checking
 };
 
 // Version check state
 struct VersionCheckState {
     std::atomic<VersionComparison> status{VersionComparison::CheckFailed};
-    std::atomic<std::string*> latest_version{nullptr};  // e.g., "0.10.1"
+    std::atomic<std::string*> latest_version{nullptr};   // e.g., "0.10.1"
     std::atomic<std::string*> build_number{nullptr};     // Build number from release (e.g., "1162")
     std::atomic<std::string*> download_url_64{nullptr};  // URL for 64-bit download
     std::atomic<std::string*> download_url_32{nullptr};  // URL for 32-bit download

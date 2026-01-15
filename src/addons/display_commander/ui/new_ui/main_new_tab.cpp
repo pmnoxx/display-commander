@@ -677,15 +677,16 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
             if (status == VersionComparison::Checking) {
                 ImGui::TextColored(ui::colors::TEXT_DIMMED, ICON_FK_REFRESH " Checking for updates...");
             } else if (status == VersionComparison::UpdateAvailable && latest_version_ptr != nullptr) {
-                ImGui::TextColored(ui::colors::TEXT_WARNING, ICON_FK_WARNING " Update available: v%s", latest_version_ptr->c_str());
+                ImGui::TextColored(ui::colors::TEXT_WARNING, ICON_FK_WARNING " Update available: v%s",
+                                   latest_version_ptr->c_str());
                 ImGui::SameLine();
 
-                // Determine if we're 64-bit or 32-bit (simplified check - you may want to improve this)
-                #ifdef _WIN64
+// Determine if we're 64-bit or 32-bit (simplified check - you may want to improve this)
+#ifdef _WIN64
                 bool is_64bit = true;
-                #else
+#else
                 bool is_64bit = false;
-                #endif
+#endif
 
                 std::string* download_url = is_64bit ? state.download_url_64.load() : state.download_url_32.load();
                 if (download_url != nullptr && !download_url->empty()) {
@@ -703,8 +704,9 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
                     if (ImGui::IsItemHovered()) {
                         auto download_dir = GetDownloadDirectory();
                         std::string download_path_str = download_dir.string();
-                        ImGui::SetTooltip("Download will be saved to:\n%s\nFilename: zzz_display_commander_BUILD.addon%s", 
-                                         download_path_str.c_str(), is_64bit ? "64" : "32");
+                        ImGui::SetTooltip(
+                            "Download will be saved to:\n%s\nFilename: zzz_display_commander_BUILD.addon%s",
+                            download_path_str.c_str(), is_64bit ? "64" : "32");
                     }
                 }
             } else if (status == VersionComparison::UpToDate) {

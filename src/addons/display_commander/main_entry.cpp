@@ -2169,6 +2169,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
                     "[DisplayCommander] Multiple Display Commander instances detected - refusing to load.");
                 OutputDebugStringA(
                     "[DisplayCommander] Multiple Display Commander instances detected - refusing to load.\n");
+                g_process_attached.store(true);
                 return FALSE;  // Refuse to load
             }
             // Print command line arguments when running with rundll32.exe
@@ -2180,6 +2181,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
                 // run32dll
                 if (strstr(command_line, "rundll32") != nullptr) {
                     OutputDebugStringA("Run32DLL command line detected");
+                    g_process_attached.store(true);
                     return TRUE;
                 }
             } else {
@@ -2455,6 +2457,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
                                     }
                                     OutputDebugStringA(msg);
                                     MessageBoxA(nullptr, msg, msg, MB_OK | MB_ICONWARNING | MB_TOPMOST);
+                                    g_process_attached.store(true);
                                     return FALSE;
                                 }
                             }
@@ -2462,6 +2465,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
                     } else {
                         MessageBoxA(nullptr, "ReShade not found in Documents folder",
                                     "Display Commander - ReShade Not Found", MB_OK | MB_ICONWARNING | MB_TOPMOST);
+                        g_process_attached.store(true);
                         return FALSE;
                     }
 
@@ -2503,9 +2507,11 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
 
                         MessageBoxA(nullptr, message.c_str(), "Display Commander - ReShade Not Found",
                                     MB_OK | MB_ICONWARNING | MB_TOPMOST);
+                        g_process_attached.store(true);
                         return FALSE;
                     }
                 } else {
+                    g_process_attached.store(true);
                     return FALSE;
                 }
             }
@@ -2516,6 +2522,32 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
                 // DetectMultipleReShadeVersions();
                 // CheckReShadeVersionCompatibility();
                 OutputDebugStringA("ReShade 0000000");
+
+                {
+                    // log g_module handle
+                    char msg[512];
+                    snprintf(msg, sizeof(msg), "g_module handle: 0x%p", g_hmodule);
+                    reshade::log::message(reshade::log::level::info, msg);
+                }
+                // list all loaded modules to reshade and g_hmodule
+                HMODULE modules[1024];
+                DWORD num_modules_bytes = 0;
+                if (K32EnumProcessModules(GetCurrentProcess(), modules, sizeof(modules), &num_modules_bytes) != 0) {
+                    DWORD num_modules = (std::min<DWORD>)(num_modules_bytes / sizeof(HMODULE),
+                                                          static_cast<DWORD>(sizeof(modules) / sizeof(HMODULE)));
+                    for (DWORD i = 0; i < num_modules; i++) {
+                        char msg[512];
+                        // print module handle and name
+                        wchar_t module_name[MAX_PATH];
+                        if (GetModuleFileNameW(modules[i], module_name, MAX_PATH) > 0) {
+                            snprintf(msg, sizeof(msg), "Module %lu: 0x%p %ws", i, modules[i], module_name);
+                        } else {
+                            snprintf(msg, sizeof(msg), "Module %lu: 0x%p (failed to get name)", i, modules[i]);
+                        }
+                        reshade::log::message(reshade::log::level::info, msg);
+                    }
+                }
+                g_process_attached.store(true);
                 return FALSE;
             }
             display_commander::config::DisplayCommanderConfigManager::GetInstance().Initialize();
@@ -2527,8 +2559,8 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             // Registration successful - log version compatibility
             LogInfoDirect(
                 "Display Commander v%s - ReShade addon registration successful (API version 17 supported)g_hmodule: "
-                "0x%p",
-                DISPLAY_COMMANDER_VERSION_STRING, g_hmodule);
+                "0x%p current module: 0x%p",
+                DISPLAY_COMMANDER_VERSION_STRING, g_hmodule, GetModuleHandleA(nullptr));
 
             // Register overlay early so it appears as a tab by default
             reshade::register_overlay("Display Commander", OnRegisterOverlayDisplayCommander);
@@ -2576,6 +2608,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
 
             // Load addons from Plugins directory
             LoadAddonsFromPluginsDirectory();
+            g_process_attached.store(true);
             break;
         }
         case DLL_THREAD_ATTACH: {

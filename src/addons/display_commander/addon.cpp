@@ -43,7 +43,6 @@ extern "C" __declspec(dllexport) void NotifyDisplayCommanderMultipleVersions(con
 // Used to resolve conflicts when multiple DLLs are loaded at the same time
 extern "C" __declspec(dllexport) LONGLONG LoadedNs() { return g_dll_load_time_ns.load(std::memory_order_acquire); }
 
-/*
 // Export addon initialization function
 extern "C" __declspec(dllexport) bool AddonInit(HMODULE addon_module, HMODULE reshade_module) {
     // print current module
@@ -54,6 +53,11 @@ extern "C" __declspec(dllexport) bool AddonInit(HMODULE addon_module, HMODULE re
     }
     initialized = true;
     LogInfo("Display Commander addon initialized g_hmodule: 0x%p", g_hmodule);
+    // log to reshade
+    reshade::log::message(reshade::log::level::info, "Display Commander addon initialized pt1");
+    while (!g_process_attached.load(std::memory_order_acquire)) {
+        Sleep(1);
+    }
+    reshade::log::message(reshade::log::level::info, "Display Commander addon initialized pt2");
     return true;
 }
-*/

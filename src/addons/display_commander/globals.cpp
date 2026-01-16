@@ -30,6 +30,9 @@
 // DLL initialization state - prevents DXGI calls during DllMain
 std::atomic<bool> g_dll_initialization_complete{false};
 
+// Process attach state - tracks when DLL_PROCESS_ATTACH has completed
+std::atomic<bool> g_process_attached{false};
+
 // Module handle for pinning/unpinning
 HMODULE g_hmodule = nullptr;
 

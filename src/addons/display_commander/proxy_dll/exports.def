@@ -46,4 +46,4 @@ EXPORTS
 	Stop
 	StartAndInject
 	WaitAndInject
-	; AddonInit
+	AddonInit

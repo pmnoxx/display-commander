@@ -257,6 +257,9 @@ class UnifiedParameterMap {
 // DLL initialization state
 extern std::atomic<bool> g_dll_initialization_complete;
 
+// Process attach state - tracks when DLL_PROCESS_ATTACH has completed
+extern std::atomic<bool> g_process_attached;
+
 // Module handle for pinning/unpinning
 extern HMODULE g_hmodule;
 

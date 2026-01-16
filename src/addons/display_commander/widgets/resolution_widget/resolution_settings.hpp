@@ -114,9 +114,17 @@ class ResolutionSettingsManager {
     bool GetAutoApply() const { return auto_apply_.load(); }
     void SetAutoApply(bool enabled);
 
+    // Auto-apply on start settings
+    bool GetAutoApplyOnStart() const { return auto_apply_on_start_.load(); }
+    void SetAutoApplyOnStart(bool enabled);
+    int GetAutoApplyOnStartDelay() const { return auto_apply_on_start_delay_.load(); }
+    void SetAutoApplyOnStartDelay(int delay_seconds);
+
   private:
     std::array<std::unique_ptr<DisplayResolutionSettings>, MAX_DISPLAYS> display_settings_;
     std::atomic<bool> auto_apply_{false};
+    std::atomic<bool> auto_apply_on_start_{false};
+    std::atomic<int> auto_apply_on_start_delay_{10}; // Default 10 seconds
 
     void InitializeDisplaySettings();
 };

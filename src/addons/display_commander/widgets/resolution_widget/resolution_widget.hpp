@@ -27,6 +27,12 @@ class ResolutionWidget {
     // Cleanup the widget (call at shutdown)
     void Cleanup();
 
+    // Apply current selection (public for auto-apply on start)
+    bool ApplyCurrentSelection();
+    
+    // Prepare widget for auto-apply (ensures initialization and settings are loaded)
+    void PrepareForAutoApply();
+
    private:
     // UI state
     int selected_display_index_ = 0;
@@ -45,6 +51,7 @@ class ResolutionWidget {
     void DrawRefreshRateSelector();
     void DrawActionButtons();
     void DrawAutoApplyCheckbox();
+    void DrawAutoApplyOnStart();
     void DrawOriginalSettingsInfo();
     void DrawAutoRestoreCheckbox();
     void DrawDebugMenu();
@@ -55,7 +62,6 @@ class ResolutionWidget {
     void RefreshRefreshRateData();
 
     // Apply resolution changes
-    bool ApplyCurrentSelection();
     bool TryApplyResolution(int display_index, const ResolutionData& resolution, const ResolutionData& refresh);
 
     // Helper functions

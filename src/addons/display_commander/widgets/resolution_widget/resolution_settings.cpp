@@ -158,6 +158,25 @@ void ResolutionSettingsManager::LoadAll() {
         LogInfo("ResolutionSettingsManager::LoadAll() - AutoApplyResolution not found, using default: false");
     }
 
+    // Load auto-apply on start setting
+    bool loaded_auto_apply_on_start;
+    if (display_commander::config::get_config_value("DisplayCommander", "AutoApplyResolutionOnStart", loaded_auto_apply_on_start)) {
+        auto_apply_on_start_.store(loaded_auto_apply_on_start);
+        LogInfo("ResolutionSettingsManager::LoadAll() - Loaded AutoApplyResolutionOnStart: %s",
+                loaded_auto_apply_on_start ? "true" : "false");
+    } else {
+        LogInfo("ResolutionSettingsManager::LoadAll() - AutoApplyResolutionOnStart not found, using default: false");
+    }
+
+    // Load auto-apply on start delay setting
+    int loaded_delay;
+    if (display_commander::config::get_config_value("DisplayCommander", "AutoApplyResolutionOnStartDelay", loaded_delay)) {
+        auto_apply_on_start_delay_.store(loaded_delay);
+        LogInfo("ResolutionSettingsManager::LoadAll() - Loaded AutoApplyResolutionOnStartDelay: %d", loaded_delay);
+    } else {
+        LogInfo("ResolutionSettingsManager::LoadAll() - AutoApplyResolutionOnStartDelay not found, using default: 10");
+    }
+
     // Load all display settings
     for (int i = 0; i < MAX_DISPLAYS; ++i) {
         if (display_settings_[i]) {
@@ -174,6 +193,10 @@ void ResolutionSettingsManager::LoadAll() {
 void ResolutionSettingsManager::SaveAll() {
     // Save auto-apply setting
     display_commander::config::set_config_value("DisplayCommander", "AutoApplyResolution", auto_apply_.load());
+
+    // Save auto-apply on start settings
+    display_commander::config::set_config_value("DisplayCommander", "AutoApplyResolutionOnStart", auto_apply_on_start_.load());
+    display_commander::config::set_config_value("DisplayCommander", "AutoApplyResolutionOnStartDelay", auto_apply_on_start_delay_.load());
 
     // Save all display settings
     for (auto &settings : display_settings_) {
@@ -231,6 +254,25 @@ void ResolutionSettingsManager::SetAutoApply(bool enabled) {
     display_commander::config::set_config_value("DisplayCommander", "AutoApplyResolution", enabled);
     LogInfo("ResolutionSettingsManager::SetAutoApply() - Saved AutoApplyResolution=%s to Reshade settings",
             enabled ? "true" : "false");
+}
+
+void ResolutionSettingsManager::SetAutoApplyOnStart(bool enabled) {
+    auto_apply_on_start_.store(enabled);
+    // Save to Reshade settings immediately
+    display_commander::config::set_config_value("DisplayCommander", "AutoApplyResolutionOnStart", enabled);
+    LogInfo("ResolutionSettingsManager::SetAutoApplyOnStart() - Saved AutoApplyResolutionOnStart=%s to Reshade settings",
+            enabled ? "true" : "false");
+}
+
+void ResolutionSettingsManager::SetAutoApplyOnStartDelay(int delay_seconds) {
+    // Clamp delay to reasonable range (1-300 seconds)
+    if (delay_seconds < 1) delay_seconds = 1;
+    if (delay_seconds > 300) delay_seconds = 300;
+    auto_apply_on_start_delay_.store(delay_seconds);
+    // Save to Reshade settings immediately
+    display_commander::config::set_config_value("DisplayCommander", "AutoApplyResolutionOnStartDelay", delay_seconds);
+    LogInfo("ResolutionSettingsManager::SetAutoApplyOnStartDelay() - Saved AutoApplyResolutionOnStartDelay=%d to Reshade settings",
+            delay_seconds);
 }
 
 // Global functions

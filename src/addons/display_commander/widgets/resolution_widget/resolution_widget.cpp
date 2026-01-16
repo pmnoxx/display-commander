@@ -114,6 +114,10 @@ void ResolutionWidget::OnDraw() {
     DrawAutoApplyCheckbox();
     ImGui::Spacing();
 
+    // Auto-apply on start
+    DrawAutoApplyOnStart();
+    ImGui::Spacing();
+
     // Auto-restore checkbox
     DrawAutoRestoreCheckbox();
     ImGui::SameLine();
@@ -156,6 +160,32 @@ void ResolutionWidget::DrawAutoApplyCheckbox() {
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Automatically apply resolution changes when selections are made");
+    }
+}
+
+void ResolutionWidget::DrawAutoApplyOnStart() {
+    bool auto_apply_on_start = g_resolution_settings->GetAutoApplyOnStart();
+    if (ImGui::Checkbox("Auto-apply on game start", &auto_apply_on_start)) {
+        g_resolution_settings->SetAutoApplyOnStart(auto_apply_on_start);
+        LogInfo("ResolutionWidget::DrawAutoApplyOnStart() - Auto-apply on start set to: %s",
+                auto_apply_on_start ? "true" : "false");
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Automatically apply resolution changes after a delay when the game starts");
+    }
+    
+    if (auto_apply_on_start) {
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(120.0f);
+        int delay = g_resolution_settings->GetAutoApplyOnStartDelay();
+        if (ImGui::InputInt("##delay_seconds", &delay, 1, 5, ImGuiInputTextFlags_EnterReturnsTrue)) {
+            g_resolution_settings->SetAutoApplyOnStartDelay(delay);
+        }
+        ImGui::SameLine();
+        ImGui::Text("s delay");
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Delay in seconds before applying resolution on game start (1-300 seconds)");
+        }
     }
 }
 
@@ -579,6 +609,33 @@ bool ResolutionWidget::ApplyCurrentSelection() {
     const ResolutionData& refresh = refresh_data_[selected_refresh_index_];
 
     return TryApplyResolution(actual_display, resolution, refresh);
+}
+
+void ResolutionWidget::PrepareForAutoApply() {
+    // Ensure widget is initialized
+    if (!is_initialized_) {
+        Initialize();
+    }
+
+    if (!g_resolution_settings) {
+        return;
+    }
+
+    // Refresh display data if needed
+    if (needs_refresh_) {
+        RefreshDisplayData();
+        needs_refresh_ = false;
+    }
+
+    // Update selection from saved settings if not already done
+    if (!settings_applied_to_ui_) {
+        UpdateCurrentSelectionFromSettings();
+        settings_applied_to_ui_ = true;
+    }
+
+    // Ensure resolution and refresh rate data are loaded
+    RefreshResolutionData();
+    RefreshRefreshRateData();
 }
 
 bool ResolutionWidget::TryApplyResolution(int display_index, const ResolutionData& resolution,

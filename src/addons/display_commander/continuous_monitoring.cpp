@@ -15,6 +15,8 @@
 #include "utils/logging.hpp"
 #include "utils/timing.hpp"
 #include "utils/overlay_window_detector.hpp"
+#include "widgets/resolution_widget/resolution_widget.hpp"
+#include "widgets/resolution_widget/resolution_settings.hpp"
 
 #include <algorithm>
 #include <chrono>
@@ -443,6 +445,43 @@ void ContinuousMonitoringThread() {
 
                 // Call auto-apply HDR metadata trigger
                 ui::new_ui::AutoApplyTrigger();
+
+                // Auto-apply resolution on game start
+                static bool auto_apply_on_start_done = false;
+                namespace res_widget = display_commander::widgets::resolution_widget;
+                if (!auto_apply_on_start_done && res_widget::g_resolution_settings) {
+                    if (res_widget::g_resolution_settings->GetAutoApplyOnStart()) {
+                        LONGLONG game_start_time_ns = g_game_start_time_ns.load();
+                        if (game_start_time_ns > 0) {
+                            int delay_seconds = res_widget::g_resolution_settings->GetAutoApplyOnStartDelay();
+                            LONGLONG elapsed_ns = now_ns - game_start_time_ns;
+                            LONGLONG delay_ns = static_cast<LONGLONG>(delay_seconds) * utils::SEC_TO_NS;
+                            
+                            if (elapsed_ns >= delay_ns) {
+                                LogInfo("Auto-apply on start: %lld seconds elapsed (delay: %d), applying resolution",
+                                        elapsed_ns / utils::SEC_TO_NS, delay_seconds);
+                                
+                                // Apply resolution using the resolution widget
+                                if (res_widget::g_resolution_widget) {
+                                    // Prepare widget (ensures initialization and settings are loaded)
+                                    res_widget::g_resolution_widget->PrepareForAutoApply();
+                                    
+                                    // Apply the resolution
+                                    bool success = res_widget::g_resolution_widget->ApplyCurrentSelection();
+                                    if (success) {
+                                        LogInfo("Auto-apply on start: Successfully applied resolution");
+                                    } else {
+                                        LogWarn("Auto-apply on start: Failed to apply resolution");
+                                    }
+                                } else {
+                                    LogWarn("Auto-apply on start: Resolution widget not available");
+                                }
+                                
+                                auto_apply_on_start_done = true;
+                            }
+                        }
+                    }
+                }
             }
         }
 #ifdef TRY_CATCH_BLOCKS

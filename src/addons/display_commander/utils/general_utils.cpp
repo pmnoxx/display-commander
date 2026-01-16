@@ -117,6 +117,13 @@ int GetAspectWidthValue(int display_width) {
 }
 
 void ComputeDesiredSize(int display_width, int display_height, int& out_w, int& out_h) {
+    if (s_window_mode.load() == WindowMode::kNoChanges) {
+        // kNoChanges: No changes mode - return current display dimensions (shouldn't be called, but defensive check)
+        out_w = display_width;
+        out_h = display_height;
+        return;
+    }
+
     if (s_window_mode.load() == WindowMode::kFullscreen) {
         // kFullscreen: Borderless Fullscreen - use current monitor dimensions
         out_w = display_width;

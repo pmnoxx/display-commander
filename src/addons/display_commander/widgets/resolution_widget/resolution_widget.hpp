@@ -1,10 +1,11 @@
 #pragma once
 
-#include "resolution_settings.hpp"
 #include <imgui.h>
 #include <memory>
 #include <string>
 #include <vector>
+#include "resolution_settings.hpp"
+
 
 // Forward declaration for Windows types
 typedef long long LONGLONG;
@@ -13,7 +14,7 @@ namespace display_commander::widgets::resolution_widget {
 
 // Resolution widget class
 class ResolutionWidget {
-  public:
+   public:
     ResolutionWidget();
     ~ResolutionWidget() = default;
 
@@ -26,7 +27,7 @@ class ResolutionWidget {
     // Cleanup the widget (call at shutdown)
     void Cleanup();
 
-  private:
+   private:
     // UI state
     int selected_display_index_ = 0;
     int selected_resolution_index_ = 0;
@@ -46,6 +47,7 @@ class ResolutionWidget {
     void DrawAutoApplyCheckbox();
     void DrawOriginalSettingsInfo();
     void DrawAutoRestoreCheckbox();
+    void DrawDebugMenu();
 
     // Data management
     void RefreshDisplayData();
@@ -54,7 +56,7 @@ class ResolutionWidget {
 
     // Apply resolution changes
     bool ApplyCurrentSelection();
-    bool TryApplyResolution(int display_index, const ResolutionData &resolution, const ResolutionData &refresh);
+    bool TryApplyResolution(int display_index, const ResolutionData& resolution, const ResolutionData& refresh);
 
     // Helper functions
     std::string GetDisplayName(int display_index) const;
@@ -107,4 +109,4 @@ void InitializeResolutionWidget();
 void CleanupResolutionWidget();
 void DrawResolutionWidget();
 
-} // namespace display_commander::widgets::resolution_widget
+}  // namespace display_commander::widgets::resolution_widget

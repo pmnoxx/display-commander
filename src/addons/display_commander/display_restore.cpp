@@ -2,6 +2,7 @@
 #include "display_cache.hpp"
 #include "display_initial_state.hpp"
 #include "globals.hpp"
+#include "hooks/display_settings_hooks.hpp"
 #include "utils.hpp"
 #include "utils/logging.hpp"
 #include <atomic>
@@ -69,12 +70,13 @@ bool ApplyModeForDevice(const std::wstring &extended_device_id, const OriginalMo
     } else {
         dm.dmDisplayFrequency = static_cast<DWORD>(hz + 0.5);
     }
-    // Try with CDS_UPDATEREGISTRY as fallback
-    LogInfo("ApplyModeForDevice() - ChangeDisplaySettingsExW: %S", extended_device_id.c_str());
-    LONG res = ChangeDisplaySettingsExW(extended_device_id.c_str(), &dm, nullptr, 0, nullptr);
+    // Use ChangeDisplaySettingsExW_Direct to bypass fullscreen prevention hooks
+    // This is necessary because we want to restore resolution even if fullscreen prevention is enabled
+    LogInfo("ApplyModeForDevice() - ChangeDisplaySettingsExW_Direct: %S", extended_device_id.c_str());
+    LONG res = ChangeDisplaySettingsExW_Direct(extended_device_id.c_str(), &dm, nullptr, 0, nullptr);
     if (res == DISP_CHANGE_SUCCESSFUL)
         return true;
-    res = ChangeDisplaySettingsExW(extended_device_id.c_str(), &dm, nullptr, CDS_UPDATEREGISTRY, nullptr);
+    res = ChangeDisplaySettingsExW_Direct(extended_device_id.c_str(), &dm, nullptr, CDS_UPDATEREGISTRY, nullptr);
     return res == DISP_CHANGE_SUCCESSFUL;
 }
 
@@ -92,14 +94,20 @@ void MarkOriginalForMonitor(HMONITOR monitor) {
 
 void MarkOriginalForDeviceName(const std::wstring &device_name) {
     auto current_data = s_data.load();
-    if (current_data->device_to_original.find(device_name) != current_data->device_to_original.end())
+    if (current_data->device_to_original.find(device_name) != current_data->device_to_original.end()) {
+        LogInfo("MarkOriginalForDeviceName: Original mode already captured for device %S, skipping", device_name.c_str());
         return;
+    }
 
     OriginalMode mode{};
     if (GetCurrentForDevice(device_name, mode)) {
         auto new_data = std::make_shared<DisplayRestoreData>(*current_data);
         new_data->device_to_original.emplace(device_name, mode);
         s_data.store(new_data);
+        LogInfo("MarkOriginalForDeviceName: Captured original mode for device %S: %dx%d @ %u/%u",
+                device_name.c_str(), mode.width, mode.height, mode.refresh_num, mode.refresh_den);
+    } else {
+        LogError("MarkOriginalForDeviceName: Failed to get current state for device %S", device_name.c_str());
     }
 }
 
@@ -125,15 +133,25 @@ void MarkDeviceChangedByDeviceName(const std::wstring &device_name) {
     auto current_data = s_data.load();
     auto new_data = std::make_shared<DisplayRestoreData>(*current_data);
 
-    // Ensure we have original captured first
+    // Ensure we have original captured first (only if not already captured)
+    // Note: This should normally be called AFTER MarkOriginalForDeviceName, but we keep this
+    // as a safety fallback. However, if the original wasn't captured before the change,
+    // this will capture the NEW state as original, which is incorrect.
     if (new_data->device_to_original.find(device_name) == new_data->device_to_original.end()) {
+        LogWarn("MarkDeviceChangedByDeviceName: Original mode not captured for device %S before marking as changed. "
+                "This may result in incorrect restore behavior.", device_name.c_str());
         OriginalMode mode{};
         if (GetCurrentForDevice(device_name, mode)) {
             new_data->device_to_original.emplace(device_name, mode);
+            LogInfo("MarkDeviceChangedByDeviceName: Captured current state as original for device %S: %dx%d @ %u/%u",
+                    device_name.c_str(), mode.width, mode.height, mode.refresh_num, mode.refresh_den);
+        } else {
+            LogError("MarkDeviceChangedByDeviceName: Failed to get current state for device %S", device_name.c_str());
         }
     }
     new_data->devices_changed.insert(device_name);
     s_data.store(new_data);
+    LogInfo("MarkDeviceChangedByDeviceName: Marked device %S as changed", device_name.c_str());
 }
 
 // (ApplyModeForDevice is in anonymous namespace above)
@@ -169,13 +187,24 @@ void RestoreAll() {
 }
 
 void RestoreAllIfEnabled() {
-    if (!::s_auto_restore_resolution_on_close)
+    if (!::s_auto_restore_resolution_on_close) {
+        LogInfo("RestoreAllIfEnabled: Auto-restore is disabled, skipping restore");
         return;
+    }
     // Only restore if resolution was successfully applied at least once
     if (!::s_resolution_applied_at_least_once.load()) {
         LogInfo("RestoreAllIfEnabled: Skipping restore because resolution was never applied");
         return;
     }
+    
+    auto current_data = s_data.load();
+    if (current_data->devices_changed.empty()) {
+        LogInfo("RestoreAllIfEnabled: No devices were marked as changed, nothing to restore");
+        return;
+    }
+    
+    LogInfo("RestoreAllIfEnabled: Found %zu devices marked as changed, proceeding with restore", 
+            current_data->devices_changed.size());
     RestoreAll();
 }
 
@@ -188,6 +217,20 @@ void Clear() {
 bool HasAnyChanges() {
     auto current_data = s_data.load();
     return ::s_auto_restore_resolution_on_close && !current_data->devices_changed.empty();
+}
+
+bool WasDeviceChangedByDeviceName(const std::wstring &device_name) {
+    auto current_data = s_data.load();
+    return current_data->devices_changed.find(device_name) != current_data->devices_changed.end();
+}
+
+bool WasDeviceChangedByDisplayIndex(int display_index) {
+    if (display_index < 0)
+        return false;
+    const auto *disp = display_cache::g_displayCache.GetDisplay(static_cast<size_t>(display_index));
+    if (disp == nullptr)
+        return false;
+    return WasDeviceChangedByDeviceName(disp->simple_device_id);
 }
 
 bool RestoreDisplayByDeviceName(const std::wstring &device_name) {

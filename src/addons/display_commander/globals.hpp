@@ -289,7 +289,7 @@ enum class FpsLimiterMode : std::uint8_t {
     kLatentSync = 3,
     kNonReflexLowLatency = 4
 };
-enum class WindowMode : std::uint8_t { kFullscreen = 0, kAspectRatio = 1 };
+enum class WindowMode : std::uint8_t { kNoChanges = 0, kFullscreen = 1, kAspectRatio = 2 };
 enum class AspectRatioType : std::uint8_t {
     k3_2 = 0,     // 3:2
     k4_3 = 1,     // 4:3

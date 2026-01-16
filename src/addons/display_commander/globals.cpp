@@ -40,7 +40,8 @@ std::atomic<LONGLONG> g_dll_load_time_ns{0};
 std::atomic<Microsoft::WRL::ComPtr<IDXGIFactory1>*> g_shared_dxgi_factory{nullptr};
 
 // Window settings
-std::atomic<WindowMode> s_window_mode{WindowMode::kFullscreen};  // kFullscreen = Borderless Fullscreen (default),
+std::atomic<WindowMode> s_window_mode{WindowMode::kNoChanges};  // kNoChanges = No changes mode (default),
+                                                                 // kFullscreen = Borderless Fullscreen,
                                                                  // kAspectRatio = Borderless Windowed (Aspect Ratio)
 
 std::atomic<AspectRatioType> s_aspect_index{AspectRatioType::k16_9};  // Default to 16:9

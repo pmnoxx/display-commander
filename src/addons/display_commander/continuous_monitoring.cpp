@@ -136,8 +136,9 @@ void check_is_background() {
         }
 
         // Apply window changes - the function will automatically determine what needs to be changed
-        // Skip if suppress_window_changes is enabled (compatibility feature)
-        if (!settings::g_developerTabSettings.suppress_window_changes.GetValue()) {
+        // Skip if suppress_window_changes is enabled (compatibility feature) or if window mode is kNoChanges
+        if (!settings::g_developerTabSettings.suppress_window_changes.GetValue() &&
+            s_window_mode.load() != WindowMode::kNoChanges) {
             ApplyWindowChange(hwnd, "continuous_monitoring_auto_fix");
         }
 
@@ -456,16 +457,16 @@ void ContinuousMonitoringThread() {
                             int delay_seconds = res_widget::g_resolution_settings->GetAutoApplyOnStartDelay();
                             LONGLONG elapsed_ns = now_ns - game_start_time_ns;
                             LONGLONG delay_ns = static_cast<LONGLONG>(delay_seconds) * utils::SEC_TO_NS;
-                            
+
                             if (elapsed_ns >= delay_ns) {
                                 LogInfo("Auto-apply on start: %lld seconds elapsed (delay: %d), applying resolution",
                                         elapsed_ns / utils::SEC_TO_NS, delay_seconds);
-                                
+
                                 // Apply resolution using the resolution widget
                                 if (res_widget::g_resolution_widget) {
                                     // Prepare widget (ensures initialization and settings are loaded)
                                     res_widget::g_resolution_widget->PrepareForAutoApply();
-                                    
+
                                     // Apply the resolution
                                     bool success = res_widget::g_resolution_widget->ApplyCurrentSelection();
                                     if (success) {
@@ -476,7 +477,7 @@ void ContinuousMonitoringThread() {
                                 } else {
                                     LogWarn("Auto-apply on start: Resolution widget not available");
                                 }
-                                
+
                                 auto_apply_on_start_done = true;
                             }
                         }

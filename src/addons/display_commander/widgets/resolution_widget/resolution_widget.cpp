@@ -173,7 +173,7 @@ void ResolutionWidget::DrawAutoApplyOnStart() {
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Automatically apply resolution changes after a delay when the game starts");
     }
-    
+
     if (auto_apply_on_start) {
         ImGui::SameLine();
         ImGui::SetNextItemWidth(120.0f);
@@ -1129,7 +1129,49 @@ std::string ResolutionWidget::FormatOriginalSettingsString() const {
 void ResolutionWidget::DrawOriginalSettingsInfo() {
     ImGui::TextColored(ImVec4(0.7f, 0.9f, 0.7f, 1.0f), "Original Settings:");
     ImGui::SameLine();
-    ImGui::Text("%s", FormatOriginalSettingsString().c_str());
+
+    // Get the currently selected display
+    int actual_display = GetActualDisplayIndex();
+    const auto* display = display_cache::g_displayCache.GetDisplay(actual_display);
+
+    if (!display) {
+        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "No display selected");
+        return;
+    }
+
+    // Get initial state for this display
+    const auto* initial_state =
+        display_initial_state::g_initialDisplayState.GetInitialStateForDevice(display->simple_device_id);
+
+    if (!initial_state) {
+        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Not recorded");
+        return;
+    }
+
+    // Format refresh rate
+    std::string refresh_str = "";
+    if (initial_state->refresh_numerator > 0 && initial_state->refresh_denominator > 0) {
+        double refresh_hz = static_cast<double>(initial_state->refresh_numerator)
+                            / static_cast<double>(initial_state->refresh_denominator);
+        std::ostringstream oss;
+        oss << std::fixed << std::setprecision(6) << refresh_hz;
+        refresh_str = oss.str();
+
+        // Remove trailing zeros and decimal point if not needed
+        refresh_str.erase(refresh_str.find_last_not_of('0') + 1, std::string::npos);
+        if (refresh_str.back() == '.') {
+            refresh_str.pop_back();
+        }
+        refresh_str = "@" + refresh_str + "Hz";
+    }
+
+    std::string device_id = WideCharToUTF8(display->simple_device_id);
+    std::string primary_text = initial_state->is_primary ? " Primary" : "";
+
+    std::string original_settings_str = "[" + device_id + "] " + std::to_string(initial_state->width) + "x"
+                                        + std::to_string(initial_state->height) + refresh_str + primary_text;
+
+    ImGui::Text("%s", original_settings_str.c_str());
 }
 
 void ResolutionWidget::DrawAutoRestoreCheckbox() {
@@ -1170,11 +1212,18 @@ void ResolutionWidget::DrawDebugMenu() {
         return;
     }
 
+    // Determine which display will be targeted for auto-apply on start (if enabled)
+    int target_display_index = -1;
+    if (g_resolution_settings && g_resolution_settings->GetAutoApplyOnStart()) {
+        target_display_index = GetActualDisplayIndex();
+    }
+
     // Create table header
-    if (ImGui::BeginTable("DisplayDebugTable", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
+    if (ImGui::BeginTable("DisplayDebugTable", 5, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
         ImGui::TableSetupColumn("Display", ImGuiTableColumnFlags_WidthFixed, 200.0f);
         ImGui::TableSetupColumn("Initial Resolution/Refresh", ImGuiTableColumnFlags_WidthFixed, 250.0f);
         ImGui::TableSetupColumn("Applied Change", ImGuiTableColumnFlags_WidthFixed, 120.0f);
+        ImGui::TableSetupColumn("Auto-Apply Target", ImGuiTableColumnFlags_WidthFixed, 150.0f);
         ImGui::TableSetupColumn("Current Resolution/Refresh", ImGuiTableColumnFlags_WidthStretch);
         ImGui::TableHeadersRow();
 
@@ -1234,8 +1283,16 @@ void ResolutionWidget::DrawDebugMenu() {
                 ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "False");
             }
 
-            // Current resolution/refresh rate
+            // Auto-apply target status
             ImGui::TableSetColumnIndex(3);
+            if (target_display_index >= 0 && static_cast<size_t>(target_display_index) == i) {
+                ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "Yes (On Start)");
+            } else {
+                ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "No");
+            }
+
+            // Current resolution/refresh rate
+            ImGui::TableSetColumnIndex(4);
             double current_refresh_hz = display->current_refresh_rate.ToHz();
             std::ostringstream current_oss;
             current_oss << display->width << "x" << display->height;
@@ -1279,6 +1336,9 @@ void ResolutionWidget::DrawDebugMenu() {
 
     ImGui::TextWrapped("Initial Resolution/Refresh: Resolution and refresh rate recorded on startup");
     ImGui::TextWrapped("Applied Change: True if a resolution change was applied to this display");
+    ImGui::TextWrapped(
+        "Auto-Apply Target: Shows which display will have resolution change applied on game start (if auto-apply on "
+        "start is enabled)");
     ImGui::TextWrapped("Current Resolution/Refresh: Current display resolution and refresh rate");
 
     ImGui::End();

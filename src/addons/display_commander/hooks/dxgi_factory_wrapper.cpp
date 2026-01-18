@@ -1,32 +1,30 @@
 #include "dxgi_factory_wrapper.hpp"
-#include "../utils/logging.hpp"
-#include "../globals.hpp"
-#include "../utils/timing.hpp"
-#include "../utils/detour_call_tracker.hpp"
-#include "../utils/perf_measurement.hpp"
-#include "../utils/general_utils.hpp"
-#include "../swapchain_events.hpp"
-#include "../settings/main_tab_settings.hpp"
-#include "dxgi/dxgi_present_hooks.hpp"
+#include <d3d11.h>
+#include <d3d12.h>
 #include <dxgi.h>
 #include <dxgi1_2.h>
 #include <dxgi1_3.h>
 #include <dxgi1_4.h>
 #include <dxgi1_5.h>
 #include <dxgi1_6.h>
-#include <d3d11.h>
-#include <d3d12.h>
 #include <initguid.h>
+#include "../globals.hpp"
+#include "../settings/main_tab_settings.hpp"
+#include "../swapchain_events.hpp"
+#include "../utils/detour_call_tracker.hpp"
+#include "../utils/general_utils.hpp"
+#include "../utils/logging.hpp"
+#include "../utils/perf_measurement.hpp"
+#include "../utils/timing.hpp"
+#include "dxgi/dxgi_present_hooks.hpp"
 
 // Custom IID for DXGIFactoryWrapper interface
 // {A1B2C3D4-E5F6-4789-A012-B345C678D909}
-DEFINE_GUID(IID_IDXGIFactoryWrapper,
-    0xa1b2c3d4, 0xe5f6, 0x4789, 0xa0, 0x12, 0xb3, 0x45, 0xc6, 0x78, 0xd9, 0x09);
+DEFINE_GUID(IID_IDXGIFactoryWrapper, 0xa1b2c3d4, 0xe5f6, 0x4789, 0xa0, 0x12, 0xb3, 0x45, 0xc6, 0x78, 0xd9, 0x09);
 
 // Custom IID for DXGISwapChain4Wrapper interface
 // {B2C3D4E5-F6A7-4890-B123-C456D789E013}
-DEFINE_GUID(IID_IDXGISwapChain4Wrapper,
-    0xb2c3d4e5, 0xf6a7, 0x4890, 0xb1, 0x23, 0xc4, 0x56, 0xd7, 0x89, 0xe0, 0x13);
+DEFINE_GUID(IID_IDXGISwapChain4Wrapper, 0xb2c3d4e5, 0xf6a7, 0x4890, 0xb1, 0x23, 0xc4, 0x56, 0xd7, 0x89, 0xe0, 0x13);
 
 namespace display_commanderhooks {
 
@@ -36,8 +34,8 @@ void FlushCommandQueueFromSwapchain(IDXGISwapChain* swapchain, DeviceTypeDC devi
         return;
     }
 
-    if (perf_measurement::IsSuppressionEnabled() &&
-        perf_measurement::IsMetricSuppressed(perf_measurement::Metric::FlushCommandQueueFromSwapchain)) {
+    if (perf_measurement::IsSuppressionEnabled()
+        && perf_measurement::IsMetricSuppressed(perf_measurement::Metric::FlushCommandQueueFromSwapchain)) {
         return;
     }
 
@@ -61,14 +59,10 @@ void FlushCommandQueueFromSwapchain(IDXGISwapChain* swapchain, DeviceTypeDC devi
 namespace {
 
 // Helper function to track present statistics (shared between Present and Present1)
-void TrackPresentStatistics(
-    SwapChainWrapperStats* stats,
-    std::atomic<uint64_t>& last_time_ns,
-    std::atomic<uint64_t>& total_calls,
-    std::atomic<double>& smoothed_fps) {
-
-    if (perf_measurement::IsSuppressionEnabled() &&
-        perf_measurement::IsMetricSuppressed(perf_measurement::Metric::TrackPresentStatistics)) {
+void TrackPresentStatistics(SwapChainWrapperStats* stats, std::atomic<uint64_t>& last_time_ns,
+                            std::atomic<uint64_t>& total_calls, std::atomic<double>& smoothed_fps) {
+    if (perf_measurement::IsSuppressionEnabled()
+        && perf_measurement::IsMetricSuppressed(perf_measurement::Metric::TrackPresentStatistics)) {
         return;
     }
 
@@ -112,7 +106,7 @@ void TrackPresentStatistics(
         }
     }
 }
-} // anonymous namespace
+}  // anonymous namespace
 
 // Helper function to create a swapchain wrapper from any swapchain interface
 IDXGISwapChain4* CreateSwapChainWrapper(IDXGISwapChain4* swapchain4, SwapChainHook hookType) {
@@ -123,17 +117,19 @@ IDXGISwapChain4* CreateSwapChainWrapper(IDXGISwapChain4* swapchain4, SwapChainHo
     }
 
     // Check if swapchain is already wrapped
-    //DXGISwapChain4Wrapper* existingWrapper = QuerySwapChainWrapper(swapchain4);
-    //if (existingWrapper != nullptr) {
-    //    const char* hookTypeName = (hookType == SwapChainHook::Proxy) ? "Proxy" : (hookType == SwapChainHook::NativeRaw) ? "NativeRaw" : "Native";
-    //    LogError("CreateSwapChainWrapper: Swapchain 0x%p is already wrapped, returning existing wrapper (requested hookType: %s)", swapchain4, hookTypeName);
-        // AddRef since we're returning it (caller expects to own the reference)
-        //existingWrapper->AddRef();
-        //return existingWrapper;
+    // DXGISwapChain4Wrapper* existingWrapper = QuerySwapChainWrapper(swapchain4);
+    // if (existingWrapper != nullptr) {
+    //    const char* hookTypeName = (hookType == SwapChainHook::Proxy) ? "Proxy" : (hookType ==
+    //    SwapChainHook::NativeRaw) ? "NativeRaw" : "Native"; LogError("CreateSwapChainWrapper: Swapchain 0x%p is
+    //    already wrapped, returning existing wrapper (requested hookType: %s)", swapchain4, hookTypeName);
+    // AddRef since we're returning it (caller expects to own the reference)
+    // existingWrapper->AddRef();
+    // return existingWrapper;
     //}
 
-
-    const char* hookTypeName = (hookType == SwapChainHook::Proxy) ? "Proxy" : (hookType == SwapChainHook::NativeRaw) ? "NativeRaw" : "Native";
+    const char* hookTypeName = (hookType == SwapChainHook::Proxy)       ? "Proxy"
+                               : (hookType == SwapChainHook::NativeRaw) ? "NativeRaw"
+                                                                        : "Native";
     LogInfo("CreateSwapChainWrapper: Creating wrapper for swapchain: 0x%p (hookType: %s)", swapchain4, hookTypeName);
 
     return new DXGISwapChain4Wrapper(swapchain4, hookType);
@@ -143,26 +139,27 @@ IDXGISwapChain4* CreateSwapChainWrapper(IDXGISwapChain4* swapchain4, SwapChainHo
 DXGISwapChain4Wrapper::DXGISwapChain4Wrapper(IDXGISwapChain4* originalSwapChain, SwapChainHook hookType)
     : m_originalSwapChain(originalSwapChain), m_refCount(1), m_swapChainHookType(hookType) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
-    const char* hookTypeName = (hookType == SwapChainHook::Proxy) ? "Proxy" : (hookType == SwapChainHook::NativeRaw) ? "NativeRaw" : "Native";
+    const char* hookTypeName = (hookType == SwapChainHook::Proxy)       ? "Proxy"
+                               : (hookType == SwapChainHook::NativeRaw) ? "NativeRaw"
+                                                                        : "Native";
     LogInfo("DXGISwapChain4Wrapper: Created wrapper for IDXGISwapChain4 (hookType: %s)", hookTypeName);
 }
 
-STDMETHODIMP DXGISwapChain4Wrapper::QueryInterface(REFIID riid, void **ppvObject) {
-    if (ppvObject == nullptr)
-        return E_POINTER;
+STDMETHODIMP DXGISwapChain4Wrapper::QueryInterface(REFIID riid, void** ppvObject) {
+    if (ppvObject == nullptr) return E_POINTER;
 
     // Support querying for the wrapper interface itself
     if (riid == IID_IDXGISwapChain4Wrapper) {
-        *ppvObject = static_cast<DXGISwapChain4Wrapper *>(this);
+        *ppvObject = static_cast<DXGISwapChain4Wrapper*>(this);
         AddRef();
         return S_OK;
     }
 
     // Support all swapchain interfaces
-    if (riid == IID_IUnknown || riid == __uuidof(IDXGIObject) || riid == __uuidof(IDXGIDeviceSubObject) ||
-        riid == __uuidof(IDXGISwapChain) || riid == __uuidof(IDXGISwapChain1) || riid == __uuidof(IDXGISwapChain2) ||
-        riid == __uuidof(IDXGISwapChain3) || riid == __uuidof(IDXGISwapChain4)) {
-        *ppvObject = static_cast<IDXGISwapChain4 *>(this);
+    if (riid == IID_IUnknown || riid == __uuidof(IDXGIObject) || riid == __uuidof(IDXGIDeviceSubObject)
+        || riid == __uuidof(IDXGISwapChain) || riid == __uuidof(IDXGISwapChain1) || riid == __uuidof(IDXGISwapChain2)
+        || riid == __uuidof(IDXGISwapChain3) || riid == __uuidof(IDXGISwapChain4)) {
+        *ppvObject = static_cast<IDXGISwapChain4*>(this);
         AddRef();
         return S_OK;
     }
@@ -189,24 +186,24 @@ STDMETHODIMP_(ULONG) DXGISwapChain4Wrapper::Release() {
 }
 
 // IDXGIObject methods - delegate to original
-STDMETHODIMP DXGISwapChain4Wrapper::SetPrivateData(REFGUID Name, UINT DataSize, const void *pData) {
+STDMETHODIMP DXGISwapChain4Wrapper::SetPrivateData(REFGUID Name, UINT DataSize, const void* pData) {
     return m_originalSwapChain->SetPrivateData(Name, DataSize, pData);
 }
 
-STDMETHODIMP DXGISwapChain4Wrapper::SetPrivateDataInterface(REFGUID Name, const IUnknown *pUnknown) {
+STDMETHODIMP DXGISwapChain4Wrapper::SetPrivateDataInterface(REFGUID Name, const IUnknown* pUnknown) {
     return m_originalSwapChain->SetPrivateDataInterface(Name, pUnknown);
 }
 
-STDMETHODIMP DXGISwapChain4Wrapper::GetPrivateData(REFGUID Name, UINT *pDataSize, void *pData) {
+STDMETHODIMP DXGISwapChain4Wrapper::GetPrivateData(REFGUID Name, UINT* pDataSize, void* pData) {
     return m_originalSwapChain->GetPrivateData(Name, pDataSize, pData);
 }
 
-STDMETHODIMP DXGISwapChain4Wrapper::GetParent(REFIID riid, void **ppParent) {
+STDMETHODIMP DXGISwapChain4Wrapper::GetParent(REFIID riid, void** ppParent) {
     return m_originalSwapChain->GetParent(riid, ppParent);
 }
 
 // IDXGIDeviceSubObject methods - delegate to original
-STDMETHODIMP DXGISwapChain4Wrapper::GetDevice(REFIID riid, void **ppDevice) {
+STDMETHODIMP DXGISwapChain4Wrapper::GetDevice(REFIID riid, void** ppDevice) {
     return m_originalSwapChain->GetDevice(riid, ppDevice);
 }
 
@@ -220,9 +217,8 @@ STDMETHODIMP DXGISwapChain4Wrapper::Present(UINT SyncInterval, UINT Flags) {
     g_swapchain_wrapper_present_called.store(true, std::memory_order_relaxed);
 
     // Track statistics
-    SwapChainWrapperStats* stats = (m_swapChainHookType == SwapChainHook::Proxy)
-        ? &g_swapchain_wrapper_stats_proxy
-        : &g_swapchain_wrapper_stats_native;
+    SwapChainWrapperStats* stats = (m_swapChainHookType == SwapChainHook::Proxy) ? &g_swapchain_wrapper_stats_proxy
+                                                                                 : &g_swapchain_wrapper_stats_native;
 
     TrackPresentStatistics(stats, stats->last_present_time_ns, stats->total_present_calls, stats->smoothed_present_fps);
 
@@ -232,11 +228,11 @@ STDMETHODIMP DXGISwapChain4Wrapper::Present(UINT SyncInterval, UINT Flags) {
     display_commanderhooks::dxgi::PresentCommonState state;
     Microsoft::WRL::ComPtr<IDXGISwapChain> baseSwapChain;
     auto limit_real_frames = settings::g_mainTabSettings.limit_real_frames.GetValue();
-    auto flagsCopy = Flags; // to fix crash
+    auto flagsCopy = Flags;  // to fix crash
     if (m_swapChainHookType == SwapChainHook::Native && limit_real_frames) {
         if (SUCCEEDED(QueryInterface(IID_PPV_ARGS(&baseSwapChain)))) {
-            state = display_commanderhooks::dxgi::HandlePresentBefore(this, baseSwapChain.Get());
-            OnPresentFlags2(&flagsCopy, state.device_type, false, true); // Called from wrapper, not present_detour
+            state = display_commanderhooks::dxgi::HandlePresentBefore(this);
+            OnPresentFlags2(&flagsCopy, state.device_type, false, true);  // Called from wrapper, not present_detour
 
             // Flush command queue from swapchain using native DirectX APIs
             FlushCommandQueueFromSwapchain(baseSwapChain.Get(), state.device_type);
@@ -248,66 +244,64 @@ STDMETHODIMP DXGISwapChain4Wrapper::Present(UINT SyncInterval, UINT Flags) {
     HRESULT res = m_originalSwapChain->Present(SyncInterval, Flags);
 
     if (m_swapChainHookType == SwapChainHook::Native && limit_real_frames && baseSwapChain.Get() != nullptr) {
-       display_commanderhooks::dxgi::HandlePresentAfter(baseSwapChain.Get(), state, true);
+        display_commanderhooks::dxgi::HandlePresentAfter(baseSwapChain.Get(), state, true);
     }
 
     return res;
 }
 
-STDMETHODIMP DXGISwapChain4Wrapper::GetBuffer(UINT Buffer, REFIID riid, void **ppSurface) {
+STDMETHODIMP DXGISwapChain4Wrapper::GetBuffer(UINT Buffer, REFIID riid, void** ppSurface) {
     return m_originalSwapChain->GetBuffer(Buffer, riid, ppSurface);
 }
 
-STDMETHODIMP DXGISwapChain4Wrapper::SetFullscreenState(BOOL Fullscreen, IDXGIOutput *pTarget) {
+STDMETHODIMP DXGISwapChain4Wrapper::SetFullscreenState(BOOL Fullscreen, IDXGIOutput* pTarget) {
     return m_originalSwapChain->SetFullscreenState(Fullscreen, pTarget);
 }
 
-STDMETHODIMP DXGISwapChain4Wrapper::GetFullscreenState(BOOL *pFullscreen, IDXGIOutput **ppTarget) {
+STDMETHODIMP DXGISwapChain4Wrapper::GetFullscreenState(BOOL* pFullscreen, IDXGIOutput** ppTarget) {
     return m_originalSwapChain->GetFullscreenState(pFullscreen, ppTarget);
 }
 
-STDMETHODIMP DXGISwapChain4Wrapper::GetDesc(DXGI_SWAP_CHAIN_DESC *pDesc) {
-    return m_originalSwapChain->GetDesc(pDesc);
-}
+STDMETHODIMP DXGISwapChain4Wrapper::GetDesc(DXGI_SWAP_CHAIN_DESC* pDesc) { return m_originalSwapChain->GetDesc(pDesc); }
 
-STDMETHODIMP DXGISwapChain4Wrapper::ResizeBuffers(UINT BufferCount, UINT Width, UINT Height, DXGI_FORMAT Format, UINT SwapChainFlags) {
+STDMETHODIMP DXGISwapChain4Wrapper::ResizeBuffers(UINT BufferCount, UINT Width, UINT Height, DXGI_FORMAT Format,
+                                                  UINT SwapChainFlags) {
     return m_originalSwapChain->ResizeBuffers(BufferCount, Width, Height, Format, SwapChainFlags);
 }
 
-STDMETHODIMP DXGISwapChain4Wrapper::ResizeTarget(const DXGI_MODE_DESC *pNewTargetParameters) {
+STDMETHODIMP DXGISwapChain4Wrapper::ResizeTarget(const DXGI_MODE_DESC* pNewTargetParameters) {
     return m_originalSwapChain->ResizeTarget(pNewTargetParameters);
 }
 
-STDMETHODIMP DXGISwapChain4Wrapper::GetContainingOutput(IDXGIOutput **ppOutput) {
+STDMETHODIMP DXGISwapChain4Wrapper::GetContainingOutput(IDXGIOutput** ppOutput) {
     return m_originalSwapChain->GetContainingOutput(ppOutput);
 }
 
-STDMETHODIMP DXGISwapChain4Wrapper::GetFrameStatistics(DXGI_FRAME_STATISTICS *pStats) {
+STDMETHODIMP DXGISwapChain4Wrapper::GetFrameStatistics(DXGI_FRAME_STATISTICS* pStats) {
     return m_originalSwapChain->GetFrameStatistics(pStats);
 }
 
-STDMETHODIMP DXGISwapChain4Wrapper::GetLastPresentCount(UINT *pLastPresentCount) {
+STDMETHODIMP DXGISwapChain4Wrapper::GetLastPresentCount(UINT* pLastPresentCount) {
     return m_originalSwapChain->GetLastPresentCount(pLastPresentCount);
 }
 
 // IDXGISwapChain1 methods - delegate to original
-STDMETHODIMP DXGISwapChain4Wrapper::GetDesc1(DXGI_SWAP_CHAIN_DESC1 *pDesc) {
+STDMETHODIMP DXGISwapChain4Wrapper::GetDesc1(DXGI_SWAP_CHAIN_DESC1* pDesc) {
     return m_originalSwapChain->GetDesc1(pDesc);
 }
 
-STDMETHODIMP DXGISwapChain4Wrapper::GetFullscreenDesc(DXGI_SWAP_CHAIN_FULLSCREEN_DESC *pDesc) {
+STDMETHODIMP DXGISwapChain4Wrapper::GetFullscreenDesc(DXGI_SWAP_CHAIN_FULLSCREEN_DESC* pDesc) {
     return m_originalSwapChain->GetFullscreenDesc(pDesc);
 }
 
-STDMETHODIMP DXGISwapChain4Wrapper::GetHwnd(HWND *pHwnd) {
-    return m_originalSwapChain->GetHwnd(pHwnd);
-}
+STDMETHODIMP DXGISwapChain4Wrapper::GetHwnd(HWND* pHwnd) { return m_originalSwapChain->GetHwnd(pHwnd); }
 
-STDMETHODIMP DXGISwapChain4Wrapper::GetCoreWindow(REFIID refiid, void **ppUnk) {
+STDMETHODIMP DXGISwapChain4Wrapper::GetCoreWindow(REFIID refiid, void** ppUnk) {
     return m_originalSwapChain->GetCoreWindow(refiid, ppUnk);
 }
 
-STDMETHODIMP DXGISwapChain4Wrapper::Present1(UINT SyncInterval, UINT PresentFlags, const DXGI_PRESENT_PARAMETERS *pPresentParameters) {
+STDMETHODIMP DXGISwapChain4Wrapper::Present1(UINT SyncInterval, UINT PresentFlags,
+                                             const DXGI_PRESENT_PARAMETERS* pPresentParameters) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     if (m_swapChainHookType == SwapChainHook::NativeRaw) {
         return m_originalSwapChain->Present1(SyncInterval, PresentFlags, pPresentParameters);
@@ -317,11 +311,11 @@ STDMETHODIMP DXGISwapChain4Wrapper::Present1(UINT SyncInterval, UINT PresentFlag
     g_swapchain_wrapper_present1_called.store(true, std::memory_order_relaxed);
 
     // Track statistics
-    SwapChainWrapperStats* stats = (m_swapChainHookType == SwapChainHook::Proxy)
-        ? &g_swapchain_wrapper_stats_proxy
-        : &g_swapchain_wrapper_stats_native;
+    SwapChainWrapperStats* stats = (m_swapChainHookType == SwapChainHook::Proxy) ? &g_swapchain_wrapper_stats_proxy
+                                                                                 : &g_swapchain_wrapper_stats_native;
 
-    TrackPresentStatistics(stats, stats->last_present1_time_ns, stats->total_present1_calls, stats->smoothed_present1_fps);
+    TrackPresentStatistics(stats, stats->last_present1_time_ns, stats->total_present1_calls,
+                           stats->smoothed_present1_fps);
 
     // For native swapchains, execute common present logic (HandlePresentBefore/OnPresentFlags2/HandlePresentAfter)
     // This avoids duplicate execution in the detour functions
@@ -329,11 +323,11 @@ STDMETHODIMP DXGISwapChain4Wrapper::Present1(UINT SyncInterval, UINT PresentFlag
     display_commanderhooks::dxgi::PresentCommonState state;
     Microsoft::WRL::ComPtr<IDXGISwapChain> baseSwapChain;
     auto limit_real_frames = settings::g_mainTabSettings.limit_real_frames.GetValue();
-    auto flagsCopy = PresentFlags; // to fix crash
+    auto flagsCopy = PresentFlags;  // to fix crash
     if (m_swapChainHookType == SwapChainHook::Native && limit_real_frames) {
         if (SUCCEEDED(QueryInterface(IID_PPV_ARGS(&baseSwapChain)))) {
-            state = display_commanderhooks::dxgi::HandlePresentBefore(this, baseSwapChain.Get()); // Present1 needs D3D10 check
-            OnPresentFlags2(&flagsCopy, state.device_type, false, true); // Called from wrapper, not present_detour
+            state = display_commanderhooks::dxgi::HandlePresentBefore(this);  // Present1 needs D3D10 check
+            OnPresentFlags2(&flagsCopy, state.device_type, false, true);      // Called from wrapper, not present_detour
 
             // Flush command queue from swapchain using native DirectX APIs
             FlushCommandQueueFromSwapchain(baseSwapChain.Get(), state.device_type);
@@ -355,15 +349,15 @@ STDMETHODIMP_(BOOL) DXGISwapChain4Wrapper::IsTemporaryMonoSupported() {
     return m_originalSwapChain->IsTemporaryMonoSupported();
 }
 
-STDMETHODIMP DXGISwapChain4Wrapper::GetRestrictToOutput(IDXGIOutput **ppRestrictToOutput) {
+STDMETHODIMP DXGISwapChain4Wrapper::GetRestrictToOutput(IDXGIOutput** ppRestrictToOutput) {
     return m_originalSwapChain->GetRestrictToOutput(ppRestrictToOutput);
 }
 
-STDMETHODIMP DXGISwapChain4Wrapper::SetBackgroundColor(const DXGI_RGBA *pColor) {
+STDMETHODIMP DXGISwapChain4Wrapper::SetBackgroundColor(const DXGI_RGBA* pColor) {
     return m_originalSwapChain->SetBackgroundColor(pColor);
 }
 
-STDMETHODIMP DXGISwapChain4Wrapper::GetBackgroundColor(DXGI_RGBA *pColor) {
+STDMETHODIMP DXGISwapChain4Wrapper::GetBackgroundColor(DXGI_RGBA* pColor) {
     return m_originalSwapChain->GetBackgroundColor(pColor);
 }
 
@@ -371,7 +365,7 @@ STDMETHODIMP DXGISwapChain4Wrapper::SetRotation(DXGI_MODE_ROTATION Rotation) {
     return m_originalSwapChain->SetRotation(Rotation);
 }
 
-STDMETHODIMP DXGISwapChain4Wrapper::GetRotation(DXGI_MODE_ROTATION *pRotation) {
+STDMETHODIMP DXGISwapChain4Wrapper::GetRotation(DXGI_MODE_ROTATION* pRotation) {
     return m_originalSwapChain->GetRotation(pRotation);
 }
 
@@ -380,7 +374,7 @@ STDMETHODIMP DXGISwapChain4Wrapper::SetSourceSize(UINT Width, UINT Height) {
     return m_originalSwapChain->SetSourceSize(Width, Height);
 }
 
-STDMETHODIMP DXGISwapChain4Wrapper::GetSourceSize(UINT *pWidth, UINT *pHeight) {
+STDMETHODIMP DXGISwapChain4Wrapper::GetSourceSize(UINT* pWidth, UINT* pHeight) {
     return m_originalSwapChain->GetSourceSize(pWidth, pHeight);
 }
 
@@ -388,7 +382,7 @@ STDMETHODIMP DXGISwapChain4Wrapper::SetMaximumFrameLatency(UINT MaxLatency) {
     return m_originalSwapChain->SetMaximumFrameLatency(MaxLatency);
 }
 
-STDMETHODIMP DXGISwapChain4Wrapper::GetMaximumFrameLatency(UINT *pMaxLatency) {
+STDMETHODIMP DXGISwapChain4Wrapper::GetMaximumFrameLatency(UINT* pMaxLatency) {
     return m_originalSwapChain->GetMaximumFrameLatency(pMaxLatency);
 }
 
@@ -396,11 +390,11 @@ STDMETHODIMP_(HANDLE) DXGISwapChain4Wrapper::GetFrameLatencyWaitableObject() {
     return m_originalSwapChain->GetFrameLatencyWaitableObject();
 }
 
-STDMETHODIMP DXGISwapChain4Wrapper::SetMatrixTransform(const DXGI_MATRIX_3X2_F *pMatrix) {
+STDMETHODIMP DXGISwapChain4Wrapper::SetMatrixTransform(const DXGI_MATRIX_3X2_F* pMatrix) {
     return m_originalSwapChain->SetMatrixTransform(pMatrix);
 }
 
-STDMETHODIMP DXGISwapChain4Wrapper::GetMatrixTransform(DXGI_MATRIX_3X2_F *pMatrix) {
+STDMETHODIMP DXGISwapChain4Wrapper::GetMatrixTransform(DXGI_MATRIX_3X2_F* pMatrix) {
     return m_originalSwapChain->GetMatrixTransform(pMatrix);
 }
 
@@ -409,7 +403,7 @@ STDMETHODIMP_(UINT) DXGISwapChain4Wrapper::GetCurrentBackBufferIndex() {
     return m_originalSwapChain->GetCurrentBackBufferIndex();
 }
 
-STDMETHODIMP DXGISwapChain4Wrapper::CheckColorSpaceSupport(DXGI_COLOR_SPACE_TYPE ColorSpace, UINT *pColorSpaceSupport) {
+STDMETHODIMP DXGISwapChain4Wrapper::CheckColorSpaceSupport(DXGI_COLOR_SPACE_TYPE ColorSpace, UINT* pColorSpaceSupport) {
     return m_originalSwapChain->CheckColorSpaceSupport(ColorSpace, pColorSpaceSupport);
 }
 
@@ -417,38 +411,47 @@ STDMETHODIMP DXGISwapChain4Wrapper::SetColorSpace1(DXGI_COLOR_SPACE_TYPE ColorSp
     return m_originalSwapChain->SetColorSpace1(ColorSpace);
 }
 
-STDMETHODIMP DXGISwapChain4Wrapper::ResizeBuffers1(UINT BufferCount, UINT Width, UINT Height, DXGI_FORMAT Format, UINT SwapChainFlags, const UINT *pNodeMask, IUnknown *const *ppPresentQueue) {
-    return m_originalSwapChain->ResizeBuffers1(BufferCount, Width, Height, Format, SwapChainFlags, pNodeMask, ppPresentQueue);
+STDMETHODIMP DXGISwapChain4Wrapper::ResizeBuffers1(UINT BufferCount, UINT Width, UINT Height, DXGI_FORMAT Format,
+                                                   UINT SwapChainFlags, const UINT* pNodeMask,
+                                                   IUnknown* const* ppPresentQueue) {
+    return m_originalSwapChain->ResizeBuffers1(BufferCount, Width, Height, Format, SwapChainFlags, pNodeMask,
+                                               ppPresentQueue);
 }
 
 // IDXGISwapChain4 methods - delegate to original
-STDMETHODIMP DXGISwapChain4Wrapper::SetHDRMetaData(DXGI_HDR_METADATA_TYPE Type, UINT Size, void *pMetaData) {
+STDMETHODIMP DXGISwapChain4Wrapper::SetHDRMetaData(DXGI_HDR_METADATA_TYPE Type, UINT Size, void* pMetaData) {
     return m_originalSwapChain->SetHDRMetaData(Type, Size, pMetaData);
 }
 
 DXGIFactoryWrapper::DXGIFactoryWrapper(IDXGIFactory7* originalFactory, SwapChainHook hookType)
-    : m_originalFactory(originalFactory), m_refCount(1), m_swapChainHookType(hookType), m_slGetNativeInterface(nullptr), m_slUpgradeInterface(nullptr), m_commandQueueMap(nullptr) {
-    const char* hookTypeName = (hookType == SwapChainHook::Proxy) ? "Proxy" : (hookType == SwapChainHook::NativeRaw) ? "NativeRaw" : "Native";
+    : m_originalFactory(originalFactory),
+      m_refCount(1),
+      m_swapChainHookType(hookType),
+      m_slGetNativeInterface(nullptr),
+      m_slUpgradeInterface(nullptr),
+      m_commandQueueMap(nullptr) {
+    const char* hookTypeName = (hookType == SwapChainHook::Proxy)       ? "Proxy"
+                               : (hookType == SwapChainHook::NativeRaw) ? "NativeRaw"
+                                                                        : "Native";
     LogInfo("DXGIFactoryWrapper: Created wrapper for IDXGIFactory7 (hookType: %s)", hookTypeName);
 }
 
-STDMETHODIMP DXGIFactoryWrapper::QueryInterface(REFIID riid, void **ppvObject) {
+STDMETHODIMP DXGIFactoryWrapper::QueryInterface(REFIID riid, void** ppvObject) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
-    if (ppvObject == nullptr)
-        return E_POINTER;
+    if (ppvObject == nullptr) return E_POINTER;
 
     // Support querying for the wrapper interface itself
     if (riid == IID_IDXGIFactoryWrapper) {
-        *ppvObject = static_cast<DXGIFactoryWrapper *>(this);
+        *ppvObject = static_cast<DXGIFactoryWrapper*>(this);
         AddRef();
         return S_OK;
     }
 
-    if (riid == IID_IUnknown || riid == __uuidof(IDXGIObject) || riid == __uuidof(IDXGIDeviceSubObject) ||
-        riid == __uuidof(IDXGIFactory) || riid == __uuidof(IDXGIFactory1) || riid == __uuidof(IDXGIFactory2) ||
-        riid == __uuidof(IDXGIFactory3) || riid == __uuidof(IDXGIFactory4) || riid == __uuidof(IDXGIFactory5) ||
-        riid == __uuidof(IDXGIFactory6) || riid == __uuidof(IDXGIFactory7)) {
-        *ppvObject = static_cast<IDXGIFactory7 *>(this);
+    if (riid == IID_IUnknown || riid == __uuidof(IDXGIObject) || riid == __uuidof(IDXGIDeviceSubObject)
+        || riid == __uuidof(IDXGIFactory) || riid == __uuidof(IDXGIFactory1) || riid == __uuidof(IDXGIFactory2)
+        || riid == __uuidof(IDXGIFactory3) || riid == __uuidof(IDXGIFactory4) || riid == __uuidof(IDXGIFactory5)
+        || riid == __uuidof(IDXGIFactory6) || riid == __uuidof(IDXGIFactory7)) {
+        *ppvObject = static_cast<IDXGIFactory7*>(this);
         AddRef();
         return S_OK;
     }
@@ -460,7 +463,7 @@ STDMETHODIMP_(ULONG) DXGIFactoryWrapper::AddRef() {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     InterlockedIncrement(&m_refCount);
     return m_refCount;
-    //return InterlockedIncrement(&m_refCount);
+    // return InterlockedIncrement(&m_refCount);
 }
 
 STDMETHODIMP_(ULONG) DXGIFactoryWrapper::Release() {
@@ -476,26 +479,26 @@ STDMETHODIMP_(ULONG) DXGIFactoryWrapper::Release() {
 }
 
 // IDXGIObject methods - delegate to original
-STDMETHODIMP DXGIFactoryWrapper::SetPrivateData(REFGUID Name, UINT DataSize, const void *pData) {
+STDMETHODIMP DXGIFactoryWrapper::SetPrivateData(REFGUID Name, UINT DataSize, const void* pData) {
     return m_originalFactory->SetPrivateData(Name, DataSize, pData);
 }
 
-STDMETHODIMP DXGIFactoryWrapper::SetPrivateDataInterface(REFGUID Name, const IUnknown *pUnknown) {
+STDMETHODIMP DXGIFactoryWrapper::SetPrivateDataInterface(REFGUID Name, const IUnknown* pUnknown) {
     return m_originalFactory->SetPrivateDataInterface(Name, pUnknown);
 }
 
-STDMETHODIMP DXGIFactoryWrapper::GetPrivateData(REFGUID Name, UINT *pDataSize, void *pData) {
+STDMETHODIMP DXGIFactoryWrapper::GetPrivateData(REFGUID Name, UINT* pDataSize, void* pData) {
     return m_originalFactory->GetPrivateData(Name, pDataSize, pData);
 }
 
-STDMETHODIMP DXGIFactoryWrapper::GetParent(REFIID riid, void **ppParent) {
+STDMETHODIMP DXGIFactoryWrapper::GetParent(REFIID riid, void** ppParent) {
     return m_originalFactory->GetParent(riid, ppParent);
 }
 
 // IDXGIDeviceSubObject methods - GetDevice is not part of IDXGIFactory7
 
 // IDXGIFactory methods - delegate to original
-STDMETHODIMP DXGIFactoryWrapper::EnumAdapters(UINT Adapter, IDXGIAdapter **ppAdapter) {
+STDMETHODIMP DXGIFactoryWrapper::EnumAdapters(UINT Adapter, IDXGIAdapter** ppAdapter) {
     return m_originalFactory->EnumAdapters(Adapter, ppAdapter);
 }
 
@@ -503,11 +506,12 @@ STDMETHODIMP DXGIFactoryWrapper::MakeWindowAssociation(HWND WindowHandle, UINT F
     return m_originalFactory->MakeWindowAssociation(WindowHandle, Flags);
 }
 
-STDMETHODIMP DXGIFactoryWrapper::GetWindowAssociation(HWND *pWindowHandle) {
+STDMETHODIMP DXGIFactoryWrapper::GetWindowAssociation(HWND* pWindowHandle) {
     return m_originalFactory->GetWindowAssociation(pWindowHandle);
 }
 
-STDMETHODIMP DXGIFactoryWrapper::CreateSwapChain(IUnknown *pDevice, DXGI_SWAP_CHAIN_DESC *pDesc, IDXGISwapChain **ppSwapChain) {
+STDMETHODIMP DXGIFactoryWrapper::CreateSwapChain(IUnknown* pDevice, DXGI_SWAP_CHAIN_DESC* pDesc,
+                                                 IDXGISwapChain** ppSwapChain) {
     LogInfo("DXGIFactoryWrapper::CreateSwapChain called");
 
     if (ShouldInterceptSwapChainCreation()) {
@@ -517,7 +521,7 @@ STDMETHODIMP DXGIFactoryWrapper::CreateSwapChain(IUnknown *pDevice, DXGI_SWAP_CH
 
     auto result = m_originalFactory->CreateSwapChain(pDevice, pDesc, ppSwapChain);
     if (SUCCEEDED(result)) {
-        auto *swapchain = *ppSwapChain;
+        auto* swapchain = *ppSwapChain;
         if (swapchain != nullptr) {
             LogInfo("DXGIFactoryWrapper::CreateSwapChain succeeded swapchain: 0x%p", swapchain);
 
@@ -539,25 +543,26 @@ STDMETHODIMP DXGIFactoryWrapper::CreateSwapChain(IUnknown *pDevice, DXGI_SWAP_CH
     return result;
 }
 
-STDMETHODIMP DXGIFactoryWrapper::CreateSoftwareAdapter(HMODULE Module, IDXGIAdapter **ppAdapter) {
+STDMETHODIMP DXGIFactoryWrapper::CreateSoftwareAdapter(HMODULE Module, IDXGIAdapter** ppAdapter) {
     return m_originalFactory->CreateSoftwareAdapter(Module, ppAdapter);
 }
 
 // IDXGIFactory1 methods - delegate to original
-STDMETHODIMP DXGIFactoryWrapper::EnumAdapters1(UINT Adapter, IDXGIAdapter1 **ppAdapter) {
+STDMETHODIMP DXGIFactoryWrapper::EnumAdapters1(UINT Adapter, IDXGIAdapter1** ppAdapter) {
     return m_originalFactory->EnumAdapters1(Adapter, ppAdapter);
 }
 
-STDMETHODIMP_(BOOL) DXGIFactoryWrapper::IsCurrent() {
-    return m_originalFactory->IsCurrent();
-}
+STDMETHODIMP_(BOOL) DXGIFactoryWrapper::IsCurrent() { return m_originalFactory->IsCurrent(); }
 
 // IDXGIFactory2 methods - delegate to original
 STDMETHODIMP_(BOOL) DXGIFactoryWrapper::IsWindowedStereoEnabled() {
     return m_originalFactory->IsWindowedStereoEnabled();
 }
 
-STDMETHODIMP DXGIFactoryWrapper::CreateSwapChainForHwnd(IUnknown *pDevice, HWND hWnd, const DXGI_SWAP_CHAIN_DESC1 *pDesc, const DXGI_SWAP_CHAIN_FULLSCREEN_DESC *pFullscreenDesc, IDXGIOutput *pRestrictToOutput, IDXGISwapChain1 **ppSwapChain) {
+STDMETHODIMP DXGIFactoryWrapper::CreateSwapChainForHwnd(IUnknown* pDevice, HWND hWnd,
+                                                        const DXGI_SWAP_CHAIN_DESC1* pDesc,
+                                                        const DXGI_SWAP_CHAIN_FULLSCREEN_DESC* pFullscreenDesc,
+                                                        IDXGIOutput* pRestrictToOutput, IDXGISwapChain1** ppSwapChain) {
     LogInfo("DXGIFactoryWrapper::CreateSwapChainForHwnd called");
 
     if (ShouldInterceptSwapChainCreation()) {
@@ -565,9 +570,10 @@ STDMETHODIMP DXGIFactoryWrapper::CreateSwapChainForHwnd(IUnknown *pDevice, HWND 
         // TODO(user): Implement swapchain interception logic
     }
 
-    auto result = m_originalFactory->CreateSwapChainForHwnd(pDevice, hWnd, pDesc, pFullscreenDesc, pRestrictToOutput, ppSwapChain);
+    auto result = m_originalFactory->CreateSwapChainForHwnd(pDevice, hWnd, pDesc, pFullscreenDesc, pRestrictToOutput,
+                                                            ppSwapChain);
     if (SUCCEEDED(result)) {
-        auto *swapchain = *ppSwapChain;
+        auto* swapchain = *ppSwapChain;
         if (swapchain != nullptr) {
             LogInfo("DXGIFactoryWrapper::CreateSwapChainForHwnd succeeded swapchain: 0x%p", swapchain);
 
@@ -586,7 +592,10 @@ STDMETHODIMP DXGIFactoryWrapper::CreateSwapChainForHwnd(IUnknown *pDevice, HWND 
     return result;
 }
 
-STDMETHODIMP DXGIFactoryWrapper::CreateSwapChainForCoreWindow(IUnknown *pDevice, IUnknown *pWindow, const DXGI_SWAP_CHAIN_DESC1 *pDesc, IDXGIOutput *pRestrictToOutput, IDXGISwapChain1 **ppSwapChain) {
+STDMETHODIMP DXGIFactoryWrapper::CreateSwapChainForCoreWindow(IUnknown* pDevice, IUnknown* pWindow,
+                                                              const DXGI_SWAP_CHAIN_DESC1* pDesc,
+                                                              IDXGIOutput* pRestrictToOutput,
+                                                              IDXGISwapChain1** ppSwapChain) {
     LogInfo("DXGIFactoryWrapper::CreateSwapChainForCoreWindow called");
 
     if (ShouldInterceptSwapChainCreation()) {
@@ -594,9 +603,10 @@ STDMETHODIMP DXGIFactoryWrapper::CreateSwapChainForCoreWindow(IUnknown *pDevice,
         // TODO(user): Implement swapchain interception logic
     }
 
-    auto result = m_originalFactory->CreateSwapChainForCoreWindow(pDevice, pWindow, pDesc, pRestrictToOutput, ppSwapChain);
+    auto result =
+        m_originalFactory->CreateSwapChainForCoreWindow(pDevice, pWindow, pDesc, pRestrictToOutput, ppSwapChain);
     if (SUCCEEDED(result)) {
-        auto *swapchain = *ppSwapChain;
+        auto* swapchain = *ppSwapChain;
         if (swapchain != nullptr) {
             LogInfo("DXGIFactoryWrapper::CreateSwapChainForCoreWindow succeeded swapchain: 0x%p", swapchain);
 
@@ -615,15 +625,15 @@ STDMETHODIMP DXGIFactoryWrapper::CreateSwapChainForCoreWindow(IUnknown *pDevice,
     return result;
 }
 
-STDMETHODIMP DXGIFactoryWrapper::GetSharedResourceAdapterLuid(HANDLE hResource, LUID *pLuid) {
+STDMETHODIMP DXGIFactoryWrapper::GetSharedResourceAdapterLuid(HANDLE hResource, LUID* pLuid) {
     return m_originalFactory->GetSharedResourceAdapterLuid(hResource, pLuid);
 }
 
-STDMETHODIMP DXGIFactoryWrapper::RegisterStereoStatusWindow(HWND WindowHandle, UINT wMsg, DWORD *pdwCookie) {
+STDMETHODIMP DXGIFactoryWrapper::RegisterStereoStatusWindow(HWND WindowHandle, UINT wMsg, DWORD* pdwCookie) {
     return m_originalFactory->RegisterStereoStatusWindow(WindowHandle, wMsg, pdwCookie);
 }
 
-STDMETHODIMP DXGIFactoryWrapper::RegisterStereoStatusEvent(HANDLE hEvent, DWORD *pdwCookie) {
+STDMETHODIMP DXGIFactoryWrapper::RegisterStereoStatusEvent(HANDLE hEvent, DWORD* pdwCookie) {
     return m_originalFactory->RegisterStereoStatusEvent(hEvent, pdwCookie);
 }
 
@@ -631,11 +641,11 @@ STDMETHODIMP_(void) DXGIFactoryWrapper::UnregisterStereoStatus(DWORD dwCookie) {
     m_originalFactory->UnregisterStereoStatus(dwCookie);
 }
 
-STDMETHODIMP DXGIFactoryWrapper::RegisterOcclusionStatusWindow(HWND WindowHandle, UINT wMsg, DWORD *pdwCookie) {
+STDMETHODIMP DXGIFactoryWrapper::RegisterOcclusionStatusWindow(HWND WindowHandle, UINT wMsg, DWORD* pdwCookie) {
     return m_originalFactory->RegisterOcclusionStatusWindow(WindowHandle, wMsg, pdwCookie);
 }
 
-STDMETHODIMP DXGIFactoryWrapper::RegisterOcclusionStatusEvent(HANDLE hEvent, DWORD *pdwCookie) {
+STDMETHODIMP DXGIFactoryWrapper::RegisterOcclusionStatusEvent(HANDLE hEvent, DWORD* pdwCookie) {
     return m_originalFactory->RegisterOcclusionStatusEvent(hEvent, pdwCookie);
 }
 
@@ -643,7 +653,9 @@ STDMETHODIMP_(void) DXGIFactoryWrapper::UnregisterOcclusionStatus(DWORD dwCookie
     m_originalFactory->UnregisterOcclusionStatus(dwCookie);
 }
 
-STDMETHODIMP DXGIFactoryWrapper::CreateSwapChainForComposition(IUnknown *pDevice, const DXGI_SWAP_CHAIN_DESC1 *pDesc, IDXGIOutput *pRestrictToOutput, IDXGISwapChain1 **ppSwapChain) {
+STDMETHODIMP DXGIFactoryWrapper::CreateSwapChainForComposition(IUnknown* pDevice, const DXGI_SWAP_CHAIN_DESC1* pDesc,
+                                                               IDXGIOutput* pRestrictToOutput,
+                                                               IDXGISwapChain1** ppSwapChain) {
     LogInfo("DXGIFactoryWrapper::CreateSwapChainForComposition called");
 
     if (ShouldInterceptSwapChainCreation()) {
@@ -653,7 +665,7 @@ STDMETHODIMP DXGIFactoryWrapper::CreateSwapChainForComposition(IUnknown *pDevice
 
     auto result = m_originalFactory->CreateSwapChainForComposition(pDevice, pDesc, pRestrictToOutput, ppSwapChain);
     if (SUCCEEDED(result)) {
-        auto *swapchain = *ppSwapChain;
+        auto* swapchain = *ppSwapChain;
         if (swapchain != nullptr) {
             LogInfo("DXGIFactoryWrapper::CreateSwapChainForComposition succeeded swapchain: 0x%p", swapchain);
 
@@ -673,31 +685,31 @@ STDMETHODIMP DXGIFactoryWrapper::CreateSwapChainForComposition(IUnknown *pDevice
 }
 
 // IDXGIFactory3 methods - delegate to original
-STDMETHODIMP_(UINT) DXGIFactoryWrapper::GetCreationFlags() {
-    return m_originalFactory->GetCreationFlags();
-}
+STDMETHODIMP_(UINT) DXGIFactoryWrapper::GetCreationFlags() { return m_originalFactory->GetCreationFlags(); }
 
 // IDXGIFactory4 methods - delegate to original
-STDMETHODIMP DXGIFactoryWrapper::EnumAdapterByLuid(LUID AdapterLuid, REFIID riid, void **ppvAdapter) {
+STDMETHODIMP DXGIFactoryWrapper::EnumAdapterByLuid(LUID AdapterLuid, REFIID riid, void** ppvAdapter) {
     return m_originalFactory->EnumAdapterByLuid(AdapterLuid, riid, ppvAdapter);
 }
 
-STDMETHODIMP DXGIFactoryWrapper::EnumWarpAdapter(REFIID riid, void **ppvAdapter) {
+STDMETHODIMP DXGIFactoryWrapper::EnumWarpAdapter(REFIID riid, void** ppvAdapter) {
     return m_originalFactory->EnumWarpAdapter(riid, ppvAdapter);
 }
 
 // IDXGIFactory5 methods - delegate to original
-STDMETHODIMP DXGIFactoryWrapper::CheckFeatureSupport(DXGI_FEATURE Feature, void *pFeatureSupportData, UINT FeatureSupportDataSize) {
+STDMETHODIMP DXGIFactoryWrapper::CheckFeatureSupport(DXGI_FEATURE Feature, void* pFeatureSupportData,
+                                                     UINT FeatureSupportDataSize) {
     return m_originalFactory->CheckFeatureSupport(Feature, pFeatureSupportData, FeatureSupportDataSize);
 }
 
 // IDXGIFactory6 methods - delegate to original
-STDMETHODIMP DXGIFactoryWrapper::EnumAdapterByGpuPreference(UINT Adapter, DXGI_GPU_PREFERENCE GpuPreference, REFIID riid, void **ppvAdapter) {
+STDMETHODIMP DXGIFactoryWrapper::EnumAdapterByGpuPreference(UINT Adapter, DXGI_GPU_PREFERENCE GpuPreference,
+                                                            REFIID riid, void** ppvAdapter) {
     return m_originalFactory->EnumAdapterByGpuPreference(Adapter, GpuPreference, riid, ppvAdapter);
 }
 
 // IDXGIFactory7 methods - delegate to original
-STDMETHODIMP DXGIFactoryWrapper::RegisterAdaptersChangedEvent(HANDLE hEvent, DWORD *pdwCookie) {
+STDMETHODIMP DXGIFactoryWrapper::RegisterAdaptersChangedEvent(HANDLE hEvent, DWORD* pdwCookie) {
     return m_originalFactory->RegisterAdaptersChangedEvent(hEvent, pdwCookie);
 }
 
@@ -710,13 +722,9 @@ void DXGIFactoryWrapper::SetSLGetNativeInterface(void* slGetNativeInterface) {
     m_slGetNativeInterface = slGetNativeInterface;
 }
 
-void DXGIFactoryWrapper::SetSLUpgradeInterface(void* slUpgradeInterface) {
-    m_slUpgradeInterface = slUpgradeInterface;
-}
+void DXGIFactoryWrapper::SetSLUpgradeInterface(void* slUpgradeInterface) { m_slUpgradeInterface = slUpgradeInterface; }
 
-void DXGIFactoryWrapper::SetCommandQueueMap(void* commandQueueMap) {
-    m_commandQueueMap = commandQueueMap;
-}
+void DXGIFactoryWrapper::SetCommandQueueMap(void* commandQueueMap) { m_commandQueueMap = commandQueueMap; }
 
 bool DXGIFactoryWrapper::ShouldInterceptSwapChainCreation() const {
     // Check if Streamline integration is enabled
@@ -756,16 +764,15 @@ IDXGIOutput6Wrapper::IDXGIOutput6Wrapper(IDXGIOutput6* originalOutput)
     LogInfo("IDXGIOutput6Wrapper: Created wrapper for IDXGIOutput6");
 }
 
-STDMETHODIMP IDXGIOutput6Wrapper::QueryInterface(REFIID riid, void **ppvObject) {
-    if (ppvObject == nullptr)
-        return E_POINTER;
+STDMETHODIMP IDXGIOutput6Wrapper::QueryInterface(REFIID riid, void** ppvObject) {
+    if (ppvObject == nullptr) return E_POINTER;
 
     // Support all output interfaces
-    if (riid == IID_IUnknown || riid == __uuidof(IDXGIObject) || riid == __uuidof(IDXGIDeviceSubObject) ||
-        riid == __uuidof(IDXGIOutput) || riid == __uuidof(IDXGIOutput1) || riid == __uuidof(IDXGIOutput2) ||
-        riid == __uuidof(IDXGIOutput3) || riid == __uuidof(IDXGIOutput4) || riid == __uuidof(IDXGIOutput5) ||
-        riid == __uuidof(IDXGIOutput6)) {
-        *ppvObject = static_cast<IDXGIOutput6 *>(this);
+    if (riid == IID_IUnknown || riid == __uuidof(IDXGIObject) || riid == __uuidof(IDXGIDeviceSubObject)
+        || riid == __uuidof(IDXGIOutput) || riid == __uuidof(IDXGIOutput1) || riid == __uuidof(IDXGIOutput2)
+        || riid == __uuidof(IDXGIOutput3) || riid == __uuidof(IDXGIOutput4) || riid == __uuidof(IDXGIOutput5)
+        || riid == __uuidof(IDXGIOutput6)) {
+        *ppvObject = static_cast<IDXGIOutput6*>(this);
         AddRef();
         return S_OK;
     }
@@ -775,7 +782,7 @@ STDMETHODIMP IDXGIOutput6Wrapper::QueryInterface(REFIID riid, void **ppvObject) 
 
 STDMETHODIMP_(ULONG) IDXGIOutput6Wrapper::AddRef() {
     return m_originalOutput->AddRef();
-    //return InterlockedIncrement(&m_refCount);
+    // return InterlockedIncrement(&m_refCount);
 }
 
 STDMETHODIMP_(ULONG) IDXGIOutput6Wrapper::Release() {
@@ -788,25 +795,25 @@ STDMETHODIMP_(ULONG) IDXGIOutput6Wrapper::Release() {
 }
 
 // IDXGIObject methods - delegate to original
-STDMETHODIMP IDXGIOutput6Wrapper::SetPrivateData(REFGUID Name, UINT DataSize, const void *pData) {
+STDMETHODIMP IDXGIOutput6Wrapper::SetPrivateData(REFGUID Name, UINT DataSize, const void* pData) {
     return m_originalOutput->SetPrivateData(Name, DataSize, pData);
 }
 
-STDMETHODIMP IDXGIOutput6Wrapper::SetPrivateDataInterface(REFGUID Name, const IUnknown *pUnknown) {
+STDMETHODIMP IDXGIOutput6Wrapper::SetPrivateDataInterface(REFGUID Name, const IUnknown* pUnknown) {
     return m_originalOutput->SetPrivateDataInterface(Name, pUnknown);
 }
 
-STDMETHODIMP IDXGIOutput6Wrapper::GetPrivateData(REFGUID Name, UINT *pDataSize, void *pData) {
+STDMETHODIMP IDXGIOutput6Wrapper::GetPrivateData(REFGUID Name, UINT* pDataSize, void* pData) {
     return m_originalOutput->GetPrivateData(Name, pDataSize, pData);
 }
 
-STDMETHODIMP IDXGIOutput6Wrapper::GetParent(REFIID riid, void **ppParent) {
+STDMETHODIMP IDXGIOutput6Wrapper::GetParent(REFIID riid, void** ppParent) {
     return m_originalOutput->GetParent(riid, ppParent);
 }
 
 // IDXGIDeviceSubObject methods - delegate to original
 // Note: GetDevice is inherited through IDXGIOutput -> IDXGIDeviceSubObject
-STDMETHODIMP IDXGIOutput6Wrapper::GetDevice(REFIID riid, void **ppDevice) {
+STDMETHODIMP IDXGIOutput6Wrapper::GetDevice(REFIID riid, void** ppDevice) {
     // Query for IDXGIDeviceSubObject to call GetDevice
     Microsoft::WRL::ComPtr<IDXGIDeviceSubObject> deviceSubObject;
     if (SUCCEEDED(m_originalOutput->QueryInterface(IID_PPV_ARGS(&deviceSubObject)))) {
@@ -816,7 +823,7 @@ STDMETHODIMP IDXGIOutput6Wrapper::GetDevice(REFIID riid, void **ppDevice) {
 }
 
 // IDXGIOutput methods - override the ones we care about
-STDMETHODIMP IDXGIOutput6Wrapper::GetDesc(DXGI_OUTPUT_DESC *pDesc) {
+STDMETHODIMP IDXGIOutput6Wrapper::GetDesc(DXGI_OUTPUT_DESC* pDesc) {
     // Increment counter
     g_dxgi_output_event_counters[DXGI_OUTPUT_EVENT_GETDESC].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
@@ -831,31 +838,29 @@ STDMETHODIMP IDXGIOutput6Wrapper::GetDesc(DXGI_OUTPUT_DESC *pDesc) {
     return m_originalOutput->GetDesc(pDesc);
 }
 
-STDMETHODIMP IDXGIOutput6Wrapper::GetDisplayModeList(DXGI_FORMAT EnumFormat, UINT Flags, UINT *pNumModes, DXGI_MODE_DESC *pDesc) {
+STDMETHODIMP IDXGIOutput6Wrapper::GetDisplayModeList(DXGI_FORMAT EnumFormat, UINT Flags, UINT* pNumModes,
+                                                     DXGI_MODE_DESC* pDesc) {
     return m_originalOutput->GetDisplayModeList(EnumFormat, Flags, pNumModes, pDesc);
 }
 
-STDMETHODIMP IDXGIOutput6Wrapper::FindClosestMatchingMode(const DXGI_MODE_DESC *pModeToMatch, DXGI_MODE_DESC *pClosestMatch, IUnknown *pConcernedDevice) {
+STDMETHODIMP IDXGIOutput6Wrapper::FindClosestMatchingMode(const DXGI_MODE_DESC* pModeToMatch,
+                                                          DXGI_MODE_DESC* pClosestMatch, IUnknown* pConcernedDevice) {
     return m_originalOutput->FindClosestMatchingMode(pModeToMatch, pClosestMatch, pConcernedDevice);
 }
 
-STDMETHODIMP IDXGIOutput6Wrapper::WaitForVBlank() {
-    return m_originalOutput->WaitForVBlank();
-}
+STDMETHODIMP IDXGIOutput6Wrapper::WaitForVBlank() { return m_originalOutput->WaitForVBlank(); }
 
-STDMETHODIMP IDXGIOutput6Wrapper::TakeOwnership(IUnknown *pDevice, BOOL Exclusive) {
+STDMETHODIMP IDXGIOutput6Wrapper::TakeOwnership(IUnknown* pDevice, BOOL Exclusive) {
     return m_originalOutput->TakeOwnership(pDevice, Exclusive);
 }
 
-STDMETHODIMP_(void) IDXGIOutput6Wrapper::ReleaseOwnership() {
-    m_originalOutput->ReleaseOwnership();
-}
+STDMETHODIMP_(void) IDXGIOutput6Wrapper::ReleaseOwnership() { m_originalOutput->ReleaseOwnership(); }
 
-STDMETHODIMP IDXGIOutput6Wrapper::GetGammaControlCapabilities(DXGI_GAMMA_CONTROL_CAPABILITIES *pGammaCaps) {
+STDMETHODIMP IDXGIOutput6Wrapper::GetGammaControlCapabilities(DXGI_GAMMA_CONTROL_CAPABILITIES* pGammaCaps) {
     return m_originalOutput->GetGammaControlCapabilities(pGammaCaps);
 }
 
-STDMETHODIMP IDXGIOutput6Wrapper::SetGammaControl(const DXGI_GAMMA_CONTROL *pArray) {
+STDMETHODIMP IDXGIOutput6Wrapper::SetGammaControl(const DXGI_GAMMA_CONTROL* pArray) {
     // Increment counter
     g_dxgi_output_event_counters[DXGI_OUTPUT_EVENT_SETGAMMACONTROL].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
@@ -870,7 +875,7 @@ STDMETHODIMP IDXGIOutput6Wrapper::SetGammaControl(const DXGI_GAMMA_CONTROL *pArr
     return m_originalOutput->SetGammaControl(pArray);
 }
 
-STDMETHODIMP IDXGIOutput6Wrapper::GetGammaControl(DXGI_GAMMA_CONTROL *pArray) {
+STDMETHODIMP IDXGIOutput6Wrapper::GetGammaControl(DXGI_GAMMA_CONTROL* pArray) {
     // Increment counter
     g_dxgi_output_event_counters[DXGI_OUTPUT_EVENT_GETGAMMACONTROL].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
@@ -885,47 +890,49 @@ STDMETHODIMP IDXGIOutput6Wrapper::GetGammaControl(DXGI_GAMMA_CONTROL *pArray) {
     return m_originalOutput->GetGammaControl(pArray);
 }
 
-STDMETHODIMP IDXGIOutput6Wrapper::SetDisplaySurface(IDXGISurface *pScanoutSurface) {
+STDMETHODIMP IDXGIOutput6Wrapper::SetDisplaySurface(IDXGISurface* pScanoutSurface) {
     return m_originalOutput->SetDisplaySurface(pScanoutSurface);
 }
 
-STDMETHODIMP IDXGIOutput6Wrapper::GetDisplaySurfaceData(IDXGISurface *pDestination) {
+STDMETHODIMP IDXGIOutput6Wrapper::GetDisplaySurfaceData(IDXGISurface* pDestination) {
     return m_originalOutput->GetDisplaySurfaceData(pDestination);
 }
 
-STDMETHODIMP IDXGIOutput6Wrapper::GetFrameStatistics(DXGI_FRAME_STATISTICS *pStats) {
+STDMETHODIMP IDXGIOutput6Wrapper::GetFrameStatistics(DXGI_FRAME_STATISTICS* pStats) {
     return m_originalOutput->GetFrameStatistics(pStats);
 }
 
 // IDXGIOutput1 methods - delegate to original
-STDMETHODIMP IDXGIOutput6Wrapper::GetDisplayModeList1(DXGI_FORMAT EnumFormat, UINT Flags, UINT *pNumModes, DXGI_MODE_DESC1 *pDesc) {
+STDMETHODIMP IDXGIOutput6Wrapper::GetDisplayModeList1(DXGI_FORMAT EnumFormat, UINT Flags, UINT* pNumModes,
+                                                      DXGI_MODE_DESC1* pDesc) {
     return m_originalOutput->GetDisplayModeList1(EnumFormat, Flags, pNumModes, pDesc);
 }
 
-STDMETHODIMP IDXGIOutput6Wrapper::FindClosestMatchingMode1(const DXGI_MODE_DESC1 *pModeToMatch, DXGI_MODE_DESC1 *pClosestMatch, IUnknown *pConcernedDevice) {
+STDMETHODIMP IDXGIOutput6Wrapper::FindClosestMatchingMode1(const DXGI_MODE_DESC1* pModeToMatch,
+                                                           DXGI_MODE_DESC1* pClosestMatch, IUnknown* pConcernedDevice) {
     return m_originalOutput->FindClosestMatchingMode1(pModeToMatch, pClosestMatch, pConcernedDevice);
 }
 
-STDMETHODIMP IDXGIOutput6Wrapper::GetDisplaySurfaceData1(IDXGIResource *pDestination) {
+STDMETHODIMP IDXGIOutput6Wrapper::GetDisplaySurfaceData1(IDXGIResource* pDestination) {
     return m_originalOutput->GetDisplaySurfaceData1(pDestination);
 }
 
-STDMETHODIMP IDXGIOutput6Wrapper::DuplicateOutput(IUnknown *pDevice, IDXGIOutputDuplication **ppOutputDuplication) {
+STDMETHODIMP IDXGIOutput6Wrapper::DuplicateOutput(IUnknown* pDevice, IDXGIOutputDuplication** ppOutputDuplication) {
     return m_originalOutput->DuplicateOutput(pDevice, ppOutputDuplication);
 }
 
 // IDXGIOutput2 methods - delegate to original
-STDMETHODIMP_(BOOL) IDXGIOutput6Wrapper::SupportsOverlays() {
-    return m_originalOutput->SupportsOverlays();
-}
+STDMETHODIMP_(BOOL) IDXGIOutput6Wrapper::SupportsOverlays() { return m_originalOutput->SupportsOverlays(); }
 
 // IDXGIOutput3 methods - delegate to original
-STDMETHODIMP IDXGIOutput6Wrapper::CheckOverlaySupport(DXGI_FORMAT EnumFormat, IUnknown *pConcernedDevice, UINT *pFlags) {
+STDMETHODIMP IDXGIOutput6Wrapper::CheckOverlaySupport(DXGI_FORMAT EnumFormat, IUnknown* pConcernedDevice,
+                                                      UINT* pFlags) {
     return m_originalOutput->CheckOverlaySupport(EnumFormat, pConcernedDevice, pFlags);
 }
 
 // IDXGIOutput4 methods - delegate to original
-STDMETHODIMP IDXGIOutput6Wrapper::CheckOverlayColorSpaceSupport(DXGI_FORMAT Format, DXGI_COLOR_SPACE_TYPE ColorSpace, IUnknown *pConcernedDevice, UINT *pFlags) {
+STDMETHODIMP IDXGIOutput6Wrapper::CheckOverlayColorSpaceSupport(DXGI_FORMAT Format, DXGI_COLOR_SPACE_TYPE ColorSpace,
+                                                                IUnknown* pConcernedDevice, UINT* pFlags) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Query for IDXGIOutput4 to call CheckOverlayColorSpaceSupport
     Microsoft::WRL::ComPtr<IDXGIOutput4> output4;
@@ -936,12 +943,15 @@ STDMETHODIMP IDXGIOutput6Wrapper::CheckOverlayColorSpaceSupport(DXGI_FORMAT Form
 }
 
 // IDXGIOutput5 methods - delegate to original
-STDMETHODIMP IDXGIOutput6Wrapper::DuplicateOutput1(IUnknown *pDevice, UINT Flags, UINT SupportedFormatsCount, const DXGI_FORMAT *pSupportedFormats, IDXGIOutputDuplication **ppOutputDuplication) {
-    return m_originalOutput->DuplicateOutput1(pDevice, Flags, SupportedFormatsCount, pSupportedFormats, ppOutputDuplication);
+STDMETHODIMP IDXGIOutput6Wrapper::DuplicateOutput1(IUnknown* pDevice, UINT Flags, UINT SupportedFormatsCount,
+                                                   const DXGI_FORMAT* pSupportedFormats,
+                                                   IDXGIOutputDuplication** ppOutputDuplication) {
+    return m_originalOutput->DuplicateOutput1(pDevice, Flags, SupportedFormatsCount, pSupportedFormats,
+                                              ppOutputDuplication);
 }
 
 // IDXGIOutput6 methods - override GetDesc1 for HDR hiding
-STDMETHODIMP IDXGIOutput6Wrapper::GetDesc1(DXGI_OUTPUT_DESC1 *pDesc) {
+STDMETHODIMP IDXGIOutput6Wrapper::GetDesc1(DXGI_OUTPUT_DESC1* pDesc) {
     if (pDesc == nullptr) {
         return DXGI_ERROR_INVALID_CALL;
     }
@@ -966,7 +976,7 @@ STDMETHODIMP IDXGIOutput6Wrapper::GetDesc1(DXGI_OUTPUT_DESC1 *pDesc) {
     return hr;
 }
 
-STDMETHODIMP IDXGIOutput6Wrapper::CheckHardwareCompositionSupport(UINT *pFlags) {
+STDMETHODIMP IDXGIOutput6Wrapper::CheckHardwareCompositionSupport(UINT* pFlags) {
     return m_originalOutput->CheckHardwareCompositionSupport(pFlags);
 }
 
@@ -998,4 +1008,4 @@ DXGISwapChain4Wrapper* QuerySwapChainWrapper(IUnknown* swapchain) {
     return nullptr;
 }
 
-} // namespace display_commanderhooks
+}  // namespace display_commanderhooks

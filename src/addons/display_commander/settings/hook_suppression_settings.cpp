@@ -25,6 +25,7 @@ HookSuppressionSettings::HookSuppressionSettings()
     , suppress_display_settings_hooks("DisplaySettingsHooks", false, "DisplayCommander.HookSuppression")
     , suppress_windows_message_hooks("WindowsMessageHooks", false, "DisplayCommander.HookSuppression")
     , suppress_opengl_hooks("OpenGLHooks", false, "DisplayCommander.HookSuppression")
+    , suppress_vulkan_hooks("VulkanHooks", false, "DisplayCommander.HookSuppression")
     , suppress_hid_suppression_hooks("HidSuppressionHooks", true, "DisplayCommander.HookSuppression")  // BLACKLISTED: Experimental feature
     , suppress_nvapi_hooks("NvapiHooks", false, "DisplayCommander.HookSuppression")
     , suppress_process_exit_hooks("ProcessExitHooks", false, "DisplayCommander.HookSuppression")
@@ -47,6 +48,7 @@ HookSuppressionSettings::HookSuppressionSettings()
     , display_settings_hooks_installed("DisplaySettingsHooks", false, "DisplayCommander.HooksInstalled")
     , windows_message_hooks_installed("WindowsMessageHooks", false, "DisplayCommander.HooksInstalled")
     , opengl_hooks_installed("OpenGLHooks", false, "DisplayCommander.HooksInstalled")
+    , vulkan_hooks_installed("VulkanHooks", false, "DisplayCommander.HooksInstalled")
     , hid_suppression_hooks_installed("HidSuppressionHooks", false, "DisplayCommander.HooksInstalled")
     , nvapi_hooks_installed("NvapiHooks", false, "DisplayCommander.HooksInstalled")
     , process_exit_hooks_installed("ProcessExitHooks", false, "DisplayCommander.HooksInstalled")
@@ -72,6 +74,7 @@ HookSuppressionSettings::HookSuppressionSettings()
         &suppress_display_settings_hooks,
         &suppress_windows_message_hooks,
         &suppress_opengl_hooks,
+        &suppress_vulkan_hooks,
         &suppress_hid_suppression_hooks,
         &suppress_nvapi_hooks,
         &suppress_process_exit_hooks,
@@ -94,6 +97,7 @@ HookSuppressionSettings::HookSuppressionSettings()
         &display_settings_hooks_installed,
         &windows_message_hooks_installed,
         &opengl_hooks_installed,
+        &vulkan_hooks_installed,
         &hid_suppression_hooks_installed,
         &nvapi_hooks_installed,
         &process_exit_hooks_installed,

@@ -894,6 +894,10 @@ LONGLONG TimerPresentPacingDelayEnd(LONGLONG start_ns) {
     return end_ns;
 }
 
+void OnPresentUpdateAfter(reshade::api::command_queue* queue, reshade::api::swapchain* swapchain) {
+    // Empty for now
+}
+
 void OnPresentUpdateAfter2(void* native_device, DeviceTypeDC device_type, bool from_wrapper) {
     // Track render thread ID
     DWORD current_thread_id = GetCurrentThreadId();
@@ -1311,6 +1315,12 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
         if (runtime != nullptr) {
             runtime->block_input_next_frame();
         }
+    }
+
+    // vulkan fps limiter
+    if (api == reshade::api::device_api::vulkan) {
+        uint32_t present_flags = 0;
+        OnPresentFlags2(&present_flags, DeviceTypeDC::Vulkan, true, false);  // Called from present_detour
     }
 
     // Note: DXGI composition state query moved to QueryDxgiCompositionState()

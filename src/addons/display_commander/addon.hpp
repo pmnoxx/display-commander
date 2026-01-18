@@ -1,22 +1,22 @@
 #pragma once
 
 #define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-#include <windef.h>
 #include <dxgi1_3.h>
 #include <dxgi1_6.h>
+#include <windef.h>
+#include <windows.h>
 #include <wrl/client.h>
 #include <reshade_imgui.hpp>
 
 #include <cstdint>
 #include <vector>
 
-#include "utils.hpp"
 #include "globals.hpp"
+#include "utils.hpp"
 
 // WASAPI per-app volume control
-#include <mmdeviceapi.h>
 #include <audiopolicy.h>
+#include <mmdeviceapi.h>
 
 // Audio management functions
 bool SetMuteForCurrentProcess(bool mute, bool trigger_notification);
@@ -25,8 +25,6 @@ void RunBackgroundAudioMonitor();
 
 // Forward declarations that depend on enums
 DxgiBypassMode GetIndependentFlipState(IDXGISwapChain* dxgi_swapchain);
-
-
 
 // Command list and queue lifecycle hooks (declared in swapchain_events.hpp)
 
@@ -39,7 +37,8 @@ bool ShouldApplyWindowedForBackbuffer(int desired_w, int desired_h);
 void StartContinuousMonitoring();
 void StopContinuousMonitoring();
 void ContinuousMonitoringThread();
-bool NeedsWindowAdjustment(HWND hwnd, int& out_width, int& out_height, int& out_pos_x, int& out_pos_y, WindowStyleMode& out_style_mode);
+bool NeedsWindowAdjustment(HWND hwnd, int& out_width, int& out_height, int& out_pos_x, int& out_pos_y,
+                           WindowStyleMode& out_style_mode);
 
 // CONTINUOUS RENDERING FUNCTIONS REMOVED - Focus spoofing is now handled by Win32 hooks
 
@@ -48,3 +47,6 @@ bool NeedsWindowAdjustment(HWND hwnd, int& out_width, int& out_height, int& out_
 // Note: GetIndependentFlipState is implemented in the .cpp file as it's complex
 
 // Power saving settings and swapchain utilities (declared in swapchain_events.hpp)
+
+// Initialization functions
+void DoInitializationWithoutHwnd(HMODULE h_module);

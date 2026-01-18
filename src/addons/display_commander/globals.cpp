@@ -44,8 +44,8 @@ std::atomic<Microsoft::WRL::ComPtr<IDXGIFactory1>*> g_shared_dxgi_factory{nullpt
 
 // Window settings
 std::atomic<WindowMode> s_window_mode{WindowMode::kNoChanges};  // kNoChanges = No changes mode (default),
-                                                                 // kFullscreen = Borderless Fullscreen,
-                                                                 // kAspectRatio = Borderless Windowed (Aspect Ratio)
+                                                                // kFullscreen = Borderless Fullscreen,
+                                                                // kAspectRatio = Borderless Windowed (Aspect Ratio)
 
 std::atomic<AspectRatioType> s_aspect_index{AspectRatioType::k16_9};  // Default to 16:9
 std::atomic<int> s_aspect_width{0};                                   // 0 = Display Width, 1 = 3840, 2 = 2560, etc.
@@ -104,8 +104,14 @@ std::atomic<bool> s_d3d9e_upgrade_successful{false};  // Track if upgrade was su
 std::atomic<bool> g_used_flipex{false};               // Track if FLIPEX is currently being used
 
 // ReShade runtimes for input blocking (multiple runtimes support)
+// TODO: clear this vector OnReshadeUnload to fix F.E.A.R with DXVK
+// 1. Reshade loads
+// 2. Display Commander loads
+// 3. Reshade Unloads - needs to clean up OnReshadeUnload
+// 4. Reshade loads again without unloading Display Commander
 std::vector<reshade::api::effect_runtime*> g_reshade_runtimes;
 SRWLOCK g_reshade_runtimes_lock = SRWLOCK_INIT;
+HMODULE g_reshade_module = nullptr;
 
 // Prevent always on top behavior
 
@@ -711,7 +717,7 @@ reshade::api::effect_runtime* GetFirstReShadeRuntime() {
         return nullptr;
     }
 
-    return g_reshade_runtimes[0];
+    return g_reshade_runtimes.back();
 }
 
 std::vector<reshade::api::effect_runtime*> GetAllReShadeRuntimes() {
@@ -722,6 +728,12 @@ std::vector<reshade::api::effect_runtime*> GetAllReShadeRuntimes() {
 size_t GetReShadeRuntimeCount() {
     utils::SRWLockShared lock(g_reshade_runtimes_lock);
     return g_reshade_runtimes.size();
+}
+
+void OnReshadeUnload() {
+    utils::SRWLockExclusive lock(g_reshade_runtimes_lock);
+    g_reshade_runtimes.clear();
+    LogInfo("OnReshadeUnload: Cleared all ReShade runtimes");
 }
 
 // NGX preset initialization tracking

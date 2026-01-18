@@ -1,30 +1,30 @@
 #include "loadlibrary_hooks.hpp"
-#include "hook_suppression_manager.hpp"
-#include "api_hooks.hpp"
-#include "xinput_hooks.hpp"
-#include "windows_gaming_input_hooks.hpp"
-#include "nvapi_hooks.hpp"
-#include "ngx_hooks.hpp"
-#include "streamline_hooks.hpp"
-#include "../utils/general_utils.hpp"
-#include "../utils/logging.hpp"
-#include "../utils/detour_call_tracker.hpp"
-#include "../utils/timing.hpp"
-#include "../utils/platform_api_detector.hpp"
-#include "../settings/streamline_tab_settings.hpp"
+#include <MinHook.h>
+#include <algorithm>
+#include <chrono>
+#include <filesystem>
+#include <iomanip>
+#include <set>
+#include <sstream>
+#include <unordered_set>
+#include "../globals.hpp"
 #include "../settings/developer_tab_settings.hpp"
 #include "../settings/experimental_tab_settings.hpp"
 #include "../settings/main_tab_settings.hpp"
-#include "../globals.hpp"
+#include "../settings/streamline_tab_settings.hpp"
+#include "../utils/detour_call_tracker.hpp"
+#include "../utils/general_utils.hpp"
+#include "../utils/logging.hpp"
+#include "../utils/platform_api_detector.hpp"
+#include "../utils/timing.hpp"
+#include "api_hooks.hpp"
+#include "hook_suppression_manager.hpp"
+#include "ngx_hooks.hpp"
+#include "nvapi_hooks.hpp"
+#include "streamline_hooks.hpp"
 #include "utils/srwlock_wrapper.hpp"
-#include <MinHook.h>
-#include <chrono>
-#include <iomanip>
-#include <sstream>
-#include <filesystem>
-#include <unordered_set>
-#include <set>
-#include <algorithm>
+#include "windows_gaming_input_hooks.hpp"
+#include "xinput_hooks.hpp"
 
 namespace display_commanderhooks {
 
@@ -44,14 +44,8 @@ bool ShouldBlockAnselDLL(const std::wstring& dll_path) {
 
     // List of Ansel-related DLLs to block
     static const std::vector<std::wstring> ansel_dlls = {
-        L"nvanselsdk.dll",
-        L"anselsdk64.dll",
-        L"nvcamerasdk64.dll",
-        L"nvcameraapi64.dll",
-        L"gfexperiencecore.dll",
-        L"nvcamera64.dll",
-        L"nvcamera32.dll"
-    };
+        L"nvanselsdk.dll",       L"anselsdk64.dll", L"nvcamerasdk64.dll", L"nvcameraapi64.dll",
+        L"gfexperiencecore.dll", L"nvcamera64.dll", L"nvcamera32.dll"};
 
     // Check if the DLL is in the Ansel list
     for (const auto& ansel_dll : ansel_dlls) {
@@ -88,11 +82,9 @@ std::wstring GetDLSSOverridePath(const std::wstring& dll_path) {
     // Check which DLL is being loaded and if override is enabled
     if (filename == L"nvngx_dlss.dll" && settings::g_streamlineTabSettings.dlss_override_dlss.GetValue()) {
         return w_override_folder + L"\\nvngx_dlss.dll";
-    }
-    else if (filename == L"nvngx_dlssd.dll" && settings::g_streamlineTabSettings.dlss_override_dlss_fg.GetValue()) {
+    } else if (filename == L"nvngx_dlssd.dll" && settings::g_streamlineTabSettings.dlss_override_dlss_fg.GetValue()) {
         return w_override_folder + L"\\nvngx_dlssd.dll";
-    }
-    else if (filename == L"nvngx_dlssg.dll" && settings::g_streamlineTabSettings.dlss_override_dlss_rr.GetValue()) {
+    } else if (filename == L"nvngx_dlssg.dll" && settings::g_streamlineTabSettings.dlss_override_dlss_rr.GetValue()) {
         return w_override_folder + L"\\nvngx_dlssg.dll";
     }
 
@@ -104,6 +96,8 @@ LoadLibraryA_pfn LoadLibraryA_Original = nullptr;
 LoadLibraryW_pfn LoadLibraryW_Original = nullptr;
 LoadLibraryExA_pfn LoadLibraryExA_Original = nullptr;
 LoadLibraryExW_pfn LoadLibraryExW_Original = nullptr;
+FreeLibrary_pfn FreeLibrary_Original = nullptr;
+FreeLibraryAndExitThread_pfn FreeLibraryAndExitThread_Original = nullptr;
 
 // Hook state
 static std::atomic<bool> g_loadlibrary_hooks_installed{false};
@@ -124,8 +118,7 @@ static SRWLOCK g_blocked_dlls_srwlock = SRWLOCK_INIT;
 std::string GetCurrentTimestamp() {
     auto now = std::chrono::system_clock::now();
     auto time_t = std::chrono::system_clock::to_time_t(now);
-    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-        now.time_since_epoch()) % 1000;
+    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()) % 1000;
 
     std::stringstream ss;
     struct tm timeinfo;
@@ -153,8 +146,7 @@ FILETIME GetModuleFileTime(HMODULE hModule) {
     FILETIME ft = {0};
     wchar_t modulePath[MAX_PATH];
     if (GetModuleFileNameW(hModule, modulePath, MAX_PATH)) {
-        HANDLE hFile = CreateFileW(modulePath, GENERIC_READ, FILE_SHARE_READ,
-                                nullptr, OPEN_EXISTING, 0, nullptr);
+        HANDLE hFile = CreateFileW(modulePath, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0, nullptr);
         if (hFile != INVALID_HANDLE_VALUE) {
             GetFileTime(hFile, nullptr, nullptr, &ft);
             CloseHandle(hFile);
@@ -182,7 +174,7 @@ HMODULE WINAPI LoadLibraryA_Detour(LPCSTR lpLibFileName) {
         std::wstring w_dll_name = std::wstring(dll_name.begin(), dll_name.end());
         if (ShouldBlockAnselDLL(w_dll_name)) {
             LogInfo("[%s] Ansel Block: Blocking %s from loading", timestamp.c_str(), dll_name.c_str());
-            return nullptr; // Return nullptr to indicate failure to load
+            return nullptr;  // Return nullptr to indicate failure to load
         }
     }
 
@@ -191,7 +183,7 @@ HMODULE WINAPI LoadLibraryA_Detour(LPCSTR lpLibFileName) {
         std::wstring w_dll_name = std::wstring(dll_name.begin(), dll_name.end());
         if (ShouldBlockDLL(w_dll_name)) {
             LogInfo("[%s] DLL Block: Blocking %s from loading", timestamp.c_str(), dll_name.c_str());
-            return nullptr; // Return nullptr to indicate failure to load
+            return nullptr;  // Return nullptr to indicate failure to load
         }
     }
 
@@ -207,15 +199,18 @@ HMODULE WINAPI LoadLibraryA_Detour(LPCSTR lpLibFileName) {
             if (std::filesystem::exists(override_path)) {
                 std::string narrow_override_path = WideToNarrow(override_path);
                 actual_lib_file_name = narrow_override_path.c_str();
-                LogInfo("[%s] DLSS Override: Redirecting %s to %s", timestamp.c_str(), dll_name.c_str(), narrow_override_path.c_str());
+                LogInfo("[%s] DLSS Override: Redirecting %s to %s", timestamp.c_str(), dll_name.c_str(),
+                        narrow_override_path.c_str());
             } else {
-                LogInfo("[%s] DLSS Override: Override file not found: %s", timestamp.c_str(), WideToNarrow(override_path).c_str());
+                LogInfo("[%s] DLSS Override: Override file not found: %s", timestamp.c_str(),
+                        WideToNarrow(override_path).c_str());
             }
         }
     }
 
     // Call original function with potentially overridden path
-    HMODULE result = LoadLibraryA_Original ? LoadLibraryA_Original(actual_lib_file_name) : LoadLibraryA(actual_lib_file_name);
+    HMODULE result =
+        LoadLibraryA_Original ? LoadLibraryA_Original(actual_lib_file_name) : LoadLibraryA(actual_lib_file_name);
 
     if (result) {
         LogInfo("[%s] LoadLibraryA success: %s -> HMODULE: 0x%p", timestamp.c_str(), dll_name.c_str(), result);
@@ -248,8 +243,8 @@ HMODULE WINAPI LoadLibraryA_Detour(LPCSTR lpLibFileName) {
                 g_loaded_modules.push_back(moduleInfo);
                 g_module_handles.insert(result);
 
-                LogInfo("Added new module to tracking: %s (0x%p, %u bytes)",
-                        dll_name.c_str(), moduleInfo.baseAddress, moduleInfo.sizeOfImage);
+                LogInfo("Added new module to tracking: %s (0x%p, %u bytes)", dll_name.c_str(), moduleInfo.baseAddress,
+                        moduleInfo.sizeOfImage);
 
                 // Call the module loaded callback
                 OnModuleLoaded(moduleInfo.moduleName, result);
@@ -276,7 +271,7 @@ HMODULE WINAPI LoadLibraryW_Detour(LPCWSTR lpLibFileName) {
         std::wstring w_dll_name = lpLibFileName;
         if (ShouldBlockAnselDLL(w_dll_name)) {
             LogInfo("[%s] Ansel Block: Blocking %s from loading", timestamp.c_str(), dll_name.c_str());
-            return nullptr; // Return nullptr to indicate failure to load
+            return nullptr;  // Return nullptr to indicate failure to load
         }
     }
 
@@ -285,7 +280,7 @@ HMODULE WINAPI LoadLibraryW_Detour(LPCWSTR lpLibFileName) {
         std::wstring w_dll_name = lpLibFileName;
         if (ShouldBlockDLL(w_dll_name)) {
             LogInfo("[%s] DLL Block: Blocking %s from loading", timestamp.c_str(), dll_name.c_str());
-            return nullptr; // Return nullptr to indicate failure to load
+            return nullptr;  // Return nullptr to indicate failure to load
         }
     }
 
@@ -301,15 +296,18 @@ HMODULE WINAPI LoadLibraryW_Detour(LPCWSTR lpLibFileName) {
             // Check if override file exists
             if (std::filesystem::exists(override_path)) {
                 actual_lib_file_name = override_path.c_str();
-                LogInfo("[%s] DLSS Override: Redirecting %s to %s", timestamp.c_str(), dll_name.c_str(), WideToNarrow(override_path).c_str());
+                LogInfo("[%s] DLSS Override: Redirecting %s to %s", timestamp.c_str(), dll_name.c_str(),
+                        WideToNarrow(override_path).c_str());
             } else {
-                LogInfo("[%s] DLSS Override: Override file not found: %s", timestamp.c_str(), WideToNarrow(override_path).c_str());
+                LogInfo("[%s] DLSS Override: Override file not found: %s", timestamp.c_str(),
+                        WideToNarrow(override_path).c_str());
             }
         }
     }
 
     // Call original function with potentially overridden path
-    HMODULE result = LoadLibraryW_Original ? LoadLibraryW_Original(actual_lib_file_name) : LoadLibraryW(actual_lib_file_name);
+    HMODULE result =
+        LoadLibraryW_Original ? LoadLibraryW_Original(actual_lib_file_name) : LoadLibraryW(actual_lib_file_name);
 
     if (result) {
         LogInfo("[%s] LoadLibraryW success: %s -> HMODULE: 0x%p", timestamp.c_str(), dll_name.c_str(), result);
@@ -342,8 +340,8 @@ HMODULE WINAPI LoadLibraryW_Detour(LPCWSTR lpLibFileName) {
                 g_loaded_modules.push_back(moduleInfo);
                 g_module_handles.insert(result);
 
-                LogInfo("Added new module to tracking: %s (0x%p, %u bytes)",
-                        dll_name.c_str(), moduleInfo.baseAddress, moduleInfo.sizeOfImage);
+                LogInfo("Added new module to tracking: %s (0x%p, %u bytes)", dll_name.c_str(), moduleInfo.baseAddress,
+                        moduleInfo.sizeOfImage);
 
                 // Call the module loaded callback
                 OnModuleLoaded(moduleInfo.moduleName, result);
@@ -363,15 +361,15 @@ HMODULE WINAPI LoadLibraryExA_Detour(LPCSTR lpLibFileName, HANDLE hFile, DWORD d
     std::string timestamp = GetCurrentTimestamp();
     std::string dll_name = lpLibFileName ? lpLibFileName : "NULL";
 
-    LogInfo("[%s] LoadLibraryExA called: %s, hFile: 0x%p, dwFlags: 0x%08X",
-            timestamp.c_str(), dll_name.c_str(), hFile, dwFlags);
+    LogInfo("[%s] LoadLibraryExA called: %s, hFile: 0x%p, dwFlags: 0x%08X", timestamp.c_str(), dll_name.c_str(), hFile,
+            dwFlags);
 
     // Check for Ansel blocking
     if (lpLibFileName) {
         std::wstring w_dll_name = std::wstring(dll_name.begin(), dll_name.end());
         if (ShouldBlockAnselDLL(w_dll_name)) {
             LogInfo("[%s] Ansel Block: Blocking %s from loading", timestamp.c_str(), dll_name.c_str());
-            return nullptr; // Return nullptr to indicate failure to load
+            return nullptr;  // Return nullptr to indicate failure to load
         }
     }
 
@@ -380,7 +378,7 @@ HMODULE WINAPI LoadLibraryExA_Detour(LPCSTR lpLibFileName, HANDLE hFile, DWORD d
         std::wstring w_dll_name = std::wstring(dll_name.begin(), dll_name.end());
         if (ShouldBlockDLL(w_dll_name)) {
             LogInfo("[%s] DLL Block: Blocking %s from loading", timestamp.c_str(), dll_name.c_str());
-            return nullptr; // Return nullptr to indicate failure to load
+            return nullptr;  // Return nullptr to indicate failure to load
         }
     }
 
@@ -396,17 +394,18 @@ HMODULE WINAPI LoadLibraryExA_Detour(LPCSTR lpLibFileName, HANDLE hFile, DWORD d
             if (std::filesystem::exists(override_path)) {
                 std::string narrow_override_path = WideToNarrow(override_path);
                 actual_lib_file_name = narrow_override_path.c_str();
-                LogInfo("[%s] DLSS Override: Redirecting %s to %s", timestamp.c_str(), dll_name.c_str(), narrow_override_path.c_str());
+                LogInfo("[%s] DLSS Override: Redirecting %s to %s", timestamp.c_str(), dll_name.c_str(),
+                        narrow_override_path.c_str());
             } else {
-                LogInfo("[%s] DLSS Override: Override file not found: %s", timestamp.c_str(), WideToNarrow(override_path).c_str());
+                LogInfo("[%s] DLSS Override: Override file not found: %s", timestamp.c_str(),
+                        WideToNarrow(override_path).c_str());
             }
         }
     }
 
     // Call original function with potentially overridden path
-    HMODULE result = LoadLibraryExA_Original ?
-        LoadLibraryExA_Original(actual_lib_file_name, hFile, dwFlags) :
-        LoadLibraryExA(actual_lib_file_name, hFile, dwFlags);
+    HMODULE result = LoadLibraryExA_Original ? LoadLibraryExA_Original(actual_lib_file_name, hFile, dwFlags)
+                                             : LoadLibraryExA(actual_lib_file_name, hFile, dwFlags);
 
     if (result) {
         LogInfo("[%s] LoadLibraryExA success: %s -> HMODULE: 0x%p", timestamp.c_str(), dll_name.c_str(), result);
@@ -450,8 +449,8 @@ HMODULE WINAPI LoadLibraryExA_Detour(LPCSTR lpLibFileName, HANDLE hFile, DWORD d
                 g_loaded_modules.push_back(moduleInfo);
                 g_module_handles.insert(result);
 
-                LogInfo("Added new module to tracking: %s (0x%p, %u bytes)",
-                        dll_name.c_str(), moduleInfo.baseAddress, moduleInfo.sizeOfImage);
+                LogInfo("Added new module to tracking: %s (0x%p, %u bytes)", dll_name.c_str(), moduleInfo.baseAddress,
+                        moduleInfo.sizeOfImage);
 
                 // Call the module loaded callback
                 OnModuleLoaded(moduleInfo.moduleName, result);
@@ -471,15 +470,15 @@ HMODULE WINAPI LoadLibraryExW_Detour(LPCWSTR lpLibFileName, HANDLE hFile, DWORD 
     std::string timestamp = GetCurrentTimestamp();
     std::string dll_name = lpLibFileName ? WideToNarrow(lpLibFileName) : "NULL";
 
-    LogInfo("[%s] LoadLibraryExW called: %s, hFile: 0x%p, dwFlags: 0x%08X",
-            timestamp.c_str(), dll_name.c_str(), hFile, dwFlags);
+    LogInfo("[%s] LoadLibraryExW called: %s, hFile: 0x%p, dwFlags: 0x%08X", timestamp.c_str(), dll_name.c_str(), hFile,
+            dwFlags);
 
     // Check for Ansel blocking
     if (lpLibFileName) {
         std::wstring w_dll_name = lpLibFileName;
         if (ShouldBlockAnselDLL(w_dll_name)) {
             LogInfo("[%s] Ansel Block: Blocking %s from loading", timestamp.c_str(), dll_name.c_str());
-            return nullptr; // Return nullptr to indicate failure to load
+            return nullptr;  // Return nullptr to indicate failure to load
         }
     }
 
@@ -488,7 +487,7 @@ HMODULE WINAPI LoadLibraryExW_Detour(LPCWSTR lpLibFileName, HANDLE hFile, DWORD 
         std::wstring w_dll_name = lpLibFileName;
         if (ShouldBlockDLL(w_dll_name)) {
             LogInfo("[%s] DLL Block: Blocking %s from loading", timestamp.c_str(), dll_name.c_str());
-            return nullptr; // Return nullptr to indicate failure to load
+            return nullptr;  // Return nullptr to indicate failure to load
         }
     }
 
@@ -504,17 +503,18 @@ HMODULE WINAPI LoadLibraryExW_Detour(LPCWSTR lpLibFileName, HANDLE hFile, DWORD 
             // Check if override file exists
             if (std::filesystem::exists(override_path)) {
                 actual_lib_file_name = override_path.c_str();
-                LogInfo("[%s] DLSS Override: Redirecting %s to %s", timestamp.c_str(), dll_name.c_str(), WideToNarrow(override_path).c_str());
+                LogInfo("[%s] DLSS Override: Redirecting %s to %s", timestamp.c_str(), dll_name.c_str(),
+                        WideToNarrow(override_path).c_str());
             } else {
-                LogInfo("[%s] DLSS Override: Override file not found: %s", timestamp.c_str(), WideToNarrow(override_path).c_str());
+                LogInfo("[%s] DLSS Override: Override file not found: %s", timestamp.c_str(),
+                        WideToNarrow(override_path).c_str());
             }
         }
     }
 
     // Call original function with potentially overridden path
-    HMODULE result = LoadLibraryExW_Original ?
-        LoadLibraryExW_Original(actual_lib_file_name, hFile, dwFlags) :
-        LoadLibraryExW(actual_lib_file_name, hFile, dwFlags);
+    HMODULE result = LoadLibraryExW_Original ? LoadLibraryExW_Original(actual_lib_file_name, hFile, dwFlags)
+                                             : LoadLibraryExW(actual_lib_file_name, hFile, dwFlags);
 
     if (result) {
         LogInfo("[%s] LoadLibraryExW success: %s -> HMODULE: 0x%p", timestamp.c_str(), dll_name.c_str(), result);
@@ -548,8 +548,8 @@ HMODULE WINAPI LoadLibraryExW_Detour(LPCWSTR lpLibFileName, HANDLE hFile, DWORD 
                 g_loaded_modules.push_back(moduleInfo);
                 g_module_handles.insert(result);
 
-                LogInfo("Added new module to tracking: %s (0x%p, %u bytes)",
-                        dll_name.c_str(), moduleInfo.baseAddress, moduleInfo.sizeOfImage);
+                LogInfo("Added new module to tracking: %s (0x%p, %u bytes)", dll_name.c_str(), moduleInfo.baseAddress,
+                        moduleInfo.sizeOfImage);
 
                 // Call the module loaded callback
                 OnModuleLoaded(moduleInfo.moduleName, result);
@@ -563,6 +563,46 @@ HMODULE WINAPI LoadLibraryExW_Detour(LPCWSTR lpLibFileName, HANDLE hFile, DWORD 
     return result;
 }
 
+// Hooked FreeLibrary function
+BOOL WINAPI FreeLibrary_Detour(HMODULE hLibModule) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
+
+    // Check if this is the ReShade module being unloaded
+    bool is_reshade_module = (hLibModule != nullptr && hLibModule == g_reshade_module);
+
+    // Call original function first to get the result
+    BOOL result = FreeLibrary_Original ? FreeLibrary_Original(hLibModule) : FreeLibrary(hLibModule);
+
+    // Only clear if refcount reached 0 (result is FALSE) and it's the ReShade module
+    if (is_reshade_module && result == FALSE) {
+        LogInfo("FreeLibrary: Detected ReShade module unload (refcount reached 0) (0x%p)", hLibModule);
+        OnReshadeUnload();
+        g_reshade_module = nullptr;
+    }
+
+    return result;
+}
+
+// Hooked FreeLibraryAndExitThread function
+VOID WINAPI FreeLibraryAndExitThread_Detour(HMODULE hLibModule, DWORD dwExitCode) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
+
+    // Check if this is the ReShade module being unloaded
+    // FreeLibraryAndExitThread always unloads the module (doesn't check refcount)
+    if (hLibModule != nullptr && hLibModule == g_reshade_module) {
+        LogInfo("FreeLibraryAndExitThread: Detected ReShade module unload (0x%p)", hLibModule);
+        OnReshadeUnload();
+        g_reshade_module = nullptr;
+    }
+
+    // Call original function (this function never returns)
+    if (FreeLibraryAndExitThread_Original) {
+        FreeLibraryAndExitThread_Original(hLibModule, dwExitCode);
+    } else {
+        FreeLibraryAndExitThread(hLibModule, dwExitCode);
+    }
+}
+
 bool InstallLoadLibraryHooks() {
     if (g_loadlibrary_hooks_installed.load()) {
         LogInfo("LoadLibrary hooks already installed");
@@ -570,7 +610,8 @@ bool InstallLoadLibraryHooks() {
     }
 
     // Check if LoadLibrary hooks should be suppressed
-    if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(display_commanderhooks::HookType::LOADLIBRARY)) {
+    if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(
+            display_commanderhooks::HookType::LOADLIBRARY)) {
         LogInfo("LoadLibrary hooks installation suppressed by user setting");
         return false;
     }
@@ -581,7 +622,8 @@ bool InstallLoadLibraryHooks() {
         settings::g_experimentalTabSettings.blocked_dlls.Load();
         if (!settings::g_experimentalTabSettings.blocked_dlls.GetValue().empty()) {
             LoadBlockedDLLsFromSettings(settings::g_experimentalTabSettings.blocked_dlls.GetValue());
-            LogInfo("Loaded blocked DLLs list: %s", settings::g_experimentalTabSettings.blocked_dlls.GetValue().c_str());
+            LogInfo("Loaded blocked DLLs list: %s",
+                    settings::g_experimentalTabSettings.blocked_dlls.GetValue().c_str());
         } else {
             LogInfo("No blocked DLLs configured");
         }
@@ -639,14 +681,29 @@ bool InstallLoadLibraryHooks() {
     }
 
     // Hook LoadLibraryExA
-    if (!CreateAndEnableHook(LoadLibraryExA, LoadLibraryExA_Detour, (LPVOID*)&LoadLibraryExA_Original, "LoadLibraryExA")) {
+    if (!CreateAndEnableHook(LoadLibraryExA, LoadLibraryExA_Detour, (LPVOID*)&LoadLibraryExA_Original,
+                             "LoadLibraryExA")) {
         LogError("Failed to create and enable LoadLibraryExA hook");
         return false;
     }
 
     // Hook LoadLibraryExW
-    if (!CreateAndEnableHook(LoadLibraryExW, LoadLibraryExW_Detour, (LPVOID*)&LoadLibraryExW_Original, "LoadLibraryExW")) {
+    if (!CreateAndEnableHook(LoadLibraryExW, LoadLibraryExW_Detour, (LPVOID*)&LoadLibraryExW_Original,
+                             "LoadLibraryExW")) {
         LogError("Failed to create and enable LoadLibraryExW hook");
+        return false;
+    }
+
+    // Hook FreeLibrary
+    if (!CreateAndEnableHook(FreeLibrary, FreeLibrary_Detour, (LPVOID*)&FreeLibrary_Original, "FreeLibrary")) {
+        LogError("Failed to create and enable FreeLibrary hook");
+        return false;
+    }
+
+    // Hook FreeLibraryAndExitThread
+    if (!CreateAndEnableHook(FreeLibraryAndExitThread, FreeLibraryAndExitThread_Detour,
+                             (LPVOID*)&FreeLibraryAndExitThread_Original, "FreeLibraryAndExitThread")) {
+        LogError("Failed to create and enable FreeLibraryAndExitThread hook");
         return false;
     }
 
@@ -654,7 +711,8 @@ bool InstallLoadLibraryHooks() {
     LogInfo("LoadLibrary hooks installed successfully");
 
     // Mark LoadLibrary hooks as installed
-    display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(display_commanderhooks::HookType::LOADLIBRARY);
+    display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(
+        display_commanderhooks::HookType::LOADLIBRARY);
 
     return true;
 }
@@ -673,6 +731,8 @@ void UninstallLoadLibraryHooks() {
     MH_RemoveHook(LoadLibraryW);
     MH_RemoveHook(LoadLibraryExA);
     MH_RemoveHook(LoadLibraryExW);
+    MH_RemoveHook(FreeLibrary);
+    MH_RemoveHook(FreeLibraryAndExitThread);
 
     // Uninstall library-specific hooks
     UninstallNVAPIHooks();
@@ -682,6 +742,8 @@ void UninstallLoadLibraryHooks() {
     LoadLibraryW_Original = nullptr;
     LoadLibraryExA_Original = nullptr;
     LoadLibraryExW_Original = nullptr;
+    FreeLibrary_Original = nullptr;
+    FreeLibraryAndExitThread_Original = nullptr;
 
     g_loadlibrary_hooks_installed.store(false);
     LogInfo("LoadLibrary hooks uninstalled successfully");
@@ -735,9 +797,8 @@ bool EnumerateLoadedModules() {
         g_loaded_modules.push_back(moduleInfo);
         g_module_handles.insert(hModules[i]);
 
-        LogInfo("Module %lu: %ws (0x%p, %u bytes)",
-                i, moduleInfo.moduleName.c_str(),
-                moduleInfo.baseAddress, moduleInfo.sizeOfImage);
+        LogInfo("Module %lu: %ws (0x%p, %u bytes)", i, moduleInfo.moduleName.c_str(), moduleInfo.baseAddress,
+                moduleInfo.sizeOfImage);
 
         // Call the module loaded callback for existing modules
         OnModuleLoaded(moduleInfo.moduleName, hModules[i]);
@@ -771,18 +832,15 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
     if (api != PlatformAPI::None) {
         const char* api_name = GetPlatformAPIName(api);
         char dll_name_ansi[MAX_PATH];
-        WideCharToMultiByte(CP_ACP, 0, moduleName.c_str(), -1,
-                           dll_name_ansi, MAX_PATH, nullptr, nullptr);
+        WideCharToMultiByte(CP_ACP, 0, moduleName.c_str(), -1, dll_name_ansi, MAX_PATH, nullptr, nullptr);
         char msg[512];
-        snprintf(msg, sizeof(msg), "[DisplayCommander] Platform API detected: %s (%s)",
-                api_name, dll_name_ansi);
+        snprintf(msg, sizeof(msg), "[DisplayCommander] Platform API detected: %s (%s)", api_name, dll_name_ansi);
         OutputDebugStringA(msg);
     }
 
     // Convert to lowercase for case-insensitive comparison
     std::wstring lowerModuleName = moduleName;
     std::transform(lowerModuleName.begin(), lowerModuleName.end(), lowerModuleName.begin(), ::towlower);
-
 
     // dxgi.dll
     if (lowerModuleName.find(L"dxgi.dll") != std::wstring::npos) {
@@ -810,8 +868,7 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
         } else {
             LogError("Failed to install D3D12 device hooks");
         }
-    }
-    else if (lowerModuleName.find(L"sl.interposer.dll") != std::wstring::npos) {
+    } else if (lowerModuleName.find(L"sl.interposer.dll") != std::wstring::npos) {
         // Check if Streamline loading is enabled
         LogInfo("Installing Streamline hooks for module: %ws", moduleName.c_str());
         if (InstallStreamlineHooks(hModule)) {
@@ -832,8 +889,8 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
     }
 
     // Windows.Gaming.Input hooks
-    else if (lowerModuleName.find(L"windows.gaming.input") != std::wstring::npos ||
-    lowerModuleName.find(L"gameinput") != std::wstring::npos) {
+    else if (lowerModuleName.find(L"windows.gaming.input") != std::wstring::npos
+             || lowerModuleName.find(L"gameinput") != std::wstring::npos) {
         LogInfo("Installing Windows.Gaming.Input hooks for module: %ws", moduleName.c_str());
         if (InstallWindowsGamingInputHooks(hModule)) {
             LogInfo("Windows.Gaming.Input hooks installed successfully");
@@ -855,12 +912,12 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
     // NGX hooks
     else if (lowerModuleName.find(L"_nvngx.dll") != std::wstring::npos) {
         // Check if _nvngx loading is enabled
-            LogInfo("Installing NGX hooks for module: %ws", moduleName.c_str());
-            if (InstallNGXHooks(hModule)) {
-                LogInfo("NGX hooks installed successfully");
-            } else {
-                LogError("Failed to install NGX hooks");
-            }
+        LogInfo("Installing NGX hooks for module: %ws", moduleName.c_str());
+        if (InstallNGXHooks(hModule)) {
+            LogInfo("NGX hooks installed successfully");
+        } else {
+            LogError("Failed to install NGX hooks");
+        }
     }
 
     // Generic logging for other modules
@@ -944,7 +1001,8 @@ void LoadBlockedDLLsFromSettings(const std::string& blocked_dlls_str) {
             std::string narrow_filename(filename.begin(), filename.end());
             if (filename != wdll_name) {
                 std::string narrow_original(wdll_name.begin(), wdll_name.end());
-                LogInfo("Blocked DLL: Extracted filename '%s' from path '%s'", narrow_filename.c_str(), narrow_original.c_str());
+                LogInfo("Blocked DLL: Extracted filename '%s' from path '%s'", narrow_filename.c_str(),
+                        narrow_original.c_str());
             } else {
                 LogInfo("Blocked DLL: '%s'", narrow_filename.c_str());
             }
@@ -991,11 +1049,11 @@ bool CanBlockDLL(const ModuleInfo& module_info) {
     std::wstring lower_name = module_info.moduleName;
     std::transform(lower_name.begin(), lower_name.end(), lower_name.begin(), ::towlower);
     if (lower_name.find(L"display_commander") != std::wstring::npos) {
-        return false; // Can't block Display Commander itself
+        return false;  // Can't block Display Commander itself
     }
 
     // Modules loaded after hooks were installed can be blocked
     return true;
 }
 
-} // namespace display_commanderhooks
+}  // namespace display_commanderhooks

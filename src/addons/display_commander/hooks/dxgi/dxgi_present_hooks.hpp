@@ -33,68 +33,99 @@
 namespace display_commanderhooks::dxgi {
 
 // Function pointer types for DXGI Present functions
-using IDXGISwapChain_Present_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGISwapChain *This, UINT SyncInterval, UINT Flags);
+using IDXGISwapChain_Present_pfn = HRESULT(STDMETHODCALLTYPE*)(IDXGISwapChain* This, UINT SyncInterval, UINT Flags);
 
 // Function pointer types for DXGI Present1 functions (IDXGISwapChain1)
-using IDXGISwapChain_Present1_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGISwapChain1 *This, UINT SyncInterval, UINT PresentFlags, const DXGI_PRESENT_PARAMETERS *pPresentParameters);
+using IDXGISwapChain_Present1_pfn = HRESULT(STDMETHODCALLTYPE*)(IDXGISwapChain1* This, UINT SyncInterval,
+                                                                UINT PresentFlags,
+                                                                const DXGI_PRESENT_PARAMETERS* pPresentParameters);
 
 // Function pointer types for DXGI GetDesc functions
-using IDXGISwapChain_GetDesc_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGISwapChain *This, DXGI_SWAP_CHAIN_DESC *pDesc);
+using IDXGISwapChain_GetDesc_pfn = HRESULT(STDMETHODCALLTYPE*)(IDXGISwapChain* This, DXGI_SWAP_CHAIN_DESC* pDesc);
 
 // Function pointer types for DXGI GetDesc1 functions (IDXGISwapChain1)
-using IDXGISwapChain_GetDesc1_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGISwapChain1 *This, DXGI_SWAP_CHAIN_DESC1 *pDesc);
+using IDXGISwapChain_GetDesc1_pfn = HRESULT(STDMETHODCALLTYPE*)(IDXGISwapChain1* This, DXGI_SWAP_CHAIN_DESC1* pDesc);
 
 // Function pointer types for DXGI CheckColorSpaceSupport functions (IDXGISwapChain3)
-using IDXGISwapChain_CheckColorSpaceSupport_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGISwapChain3 *This, DXGI_COLOR_SPACE_TYPE ColorSpace, UINT *pColorSpaceSupport);
+using IDXGISwapChain_CheckColorSpaceSupport_pfn = HRESULT(STDMETHODCALLTYPE*)(IDXGISwapChain3* This,
+                                                                              DXGI_COLOR_SPACE_TYPE ColorSpace,
+                                                                              UINT* pColorSpaceSupport);
 
 // Function pointer types for DXGI Factory CreateSwapChain functions
-using IDXGIFactory_CreateSwapChain_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGIFactory *This, IUnknown *pDevice, DXGI_SWAP_CHAIN_DESC *pDesc, IDXGISwapChain **ppSwapChain);
+using IDXGIFactory_CreateSwapChain_pfn = HRESULT(STDMETHODCALLTYPE*)(IDXGIFactory* This, IUnknown* pDevice,
+                                                                     DXGI_SWAP_CHAIN_DESC* pDesc,
+                                                                     IDXGISwapChain** ppSwapChain);
 
 // Additional function pointer types for DXGI methods
-using IDXGISwapChain_GetBuffer_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGISwapChain *This, UINT Buffer, REFIID riid, void **ppSurface);
-using IDXGISwapChain_SetFullscreenState_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGISwapChain *This, BOOL Fullscreen, IDXGIOutput *pTarget);
-using IDXGISwapChain_GetFullscreenState_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGISwapChain *This, BOOL *pFullscreen, IDXGIOutput **ppTarget);
-using IDXGISwapChain_ResizeBuffers_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGISwapChain *This, UINT BufferCount, UINT Width, UINT Height, DXGI_FORMAT NewFormat, UINT SwapChainFlags);
-using IDXGISwapChain_ResizeTarget_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGISwapChain *This, const DXGI_MODE_DESC *pNewTargetParameters);
-using IDXGISwapChain_GetContainingOutput_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGISwapChain *This, IDXGIOutput **ppOutput);
-using IDXGISwapChain_GetFrameStatistics_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGISwapChain *This, DXGI_FRAME_STATISTICS *pStats);
-using IDXGISwapChain_GetLastPresentCount_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGISwapChain *This, UINT *pLastPresentCount);
+using IDXGISwapChain_GetBuffer_pfn = HRESULT(STDMETHODCALLTYPE*)(IDXGISwapChain* This, UINT Buffer, REFIID riid,
+                                                                 void** ppSurface);
+using IDXGISwapChain_SetFullscreenState_pfn = HRESULT(STDMETHODCALLTYPE*)(IDXGISwapChain* This, BOOL Fullscreen,
+                                                                          IDXGIOutput* pTarget);
+using IDXGISwapChain_GetFullscreenState_pfn = HRESULT(STDMETHODCALLTYPE*)(IDXGISwapChain* This, BOOL* pFullscreen,
+                                                                          IDXGIOutput** ppTarget);
+using IDXGISwapChain_ResizeBuffers_pfn = HRESULT(STDMETHODCALLTYPE*)(IDXGISwapChain* This, UINT BufferCount, UINT Width,
+                                                                     UINT Height, DXGI_FORMAT NewFormat,
+                                                                     UINT SwapChainFlags);
+using IDXGISwapChain_ResizeTarget_pfn = HRESULT(STDMETHODCALLTYPE*)(IDXGISwapChain* This,
+                                                                    const DXGI_MODE_DESC* pNewTargetParameters);
+using IDXGISwapChain_GetContainingOutput_pfn = HRESULT(STDMETHODCALLTYPE*)(IDXGISwapChain* This,
+                                                                           IDXGIOutput** ppOutput);
+using IDXGISwapChain_GetFrameStatistics_pfn = HRESULT(STDMETHODCALLTYPE*)(IDXGISwapChain* This,
+                                                                          DXGI_FRAME_STATISTICS* pStats);
+using IDXGISwapChain_GetLastPresentCount_pfn = HRESULT(STDMETHODCALLTYPE*)(IDXGISwapChain* This,
+                                                                           UINT* pLastPresentCount);
 
 // IDXGISwapChain1 function pointer types
-using IDXGISwapChain_GetFullscreenDesc_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGISwapChain1 *This, DXGI_SWAP_CHAIN_FULLSCREEN_DESC *pDesc);
-using IDXGISwapChain_GetHwnd_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGISwapChain1 *This, HWND *pHwnd);
-using IDXGISwapChain_GetCoreWindow_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGISwapChain1 *This, REFIID refiid, void **ppUnk);
-using IDXGISwapChain_IsTemporaryMonoSupported_pfn = BOOL(STDMETHODCALLTYPE *)(IDXGISwapChain1 *This);
-using IDXGISwapChain_GetRestrictToOutput_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGISwapChain1 *This, IDXGIOutput **ppRestrictToOutput);
-using IDXGISwapChain_SetBackgroundColor_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGISwapChain1 *This, const DXGI_RGBA *pColor);
-using IDXGISwapChain_GetBackgroundColor_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGISwapChain1 *This, DXGI_RGBA *pColor);
-using IDXGISwapChain_SetRotation_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGISwapChain1 *This, DXGI_MODE_ROTATION Rotation);
-using IDXGISwapChain_GetRotation_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGISwapChain1 *This, DXGI_MODE_ROTATION *pRotation);
+using IDXGISwapChain_GetFullscreenDesc_pfn = HRESULT(STDMETHODCALLTYPE*)(IDXGISwapChain1* This,
+                                                                         DXGI_SWAP_CHAIN_FULLSCREEN_DESC* pDesc);
+using IDXGISwapChain_GetHwnd_pfn = HRESULT(STDMETHODCALLTYPE*)(IDXGISwapChain1* This, HWND* pHwnd);
+using IDXGISwapChain_GetCoreWindow_pfn = HRESULT(STDMETHODCALLTYPE*)(IDXGISwapChain1* This, REFIID refiid,
+                                                                     void** ppUnk);
+using IDXGISwapChain_IsTemporaryMonoSupported_pfn = BOOL(STDMETHODCALLTYPE*)(IDXGISwapChain1* This);
+using IDXGISwapChain_GetRestrictToOutput_pfn = HRESULT(STDMETHODCALLTYPE*)(IDXGISwapChain1* This,
+                                                                           IDXGIOutput** ppRestrictToOutput);
+using IDXGISwapChain_SetBackgroundColor_pfn = HRESULT(STDMETHODCALLTYPE*)(IDXGISwapChain1* This,
+                                                                          const DXGI_RGBA* pColor);
+using IDXGISwapChain_GetBackgroundColor_pfn = HRESULT(STDMETHODCALLTYPE*)(IDXGISwapChain1* This, DXGI_RGBA* pColor);
+using IDXGISwapChain_SetRotation_pfn = HRESULT(STDMETHODCALLTYPE*)(IDXGISwapChain1* This, DXGI_MODE_ROTATION Rotation);
+using IDXGISwapChain_GetRotation_pfn = HRESULT(STDMETHODCALLTYPE*)(IDXGISwapChain1* This,
+                                                                   DXGI_MODE_ROTATION* pRotation);
 
 // IDXGISwapChain2 function pointer types
-using IDXGISwapChain_SetSourceSize_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGISwapChain2 *This, UINT Width, UINT Height);
-using IDXGISwapChain_GetSourceSize_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGISwapChain2 *This, UINT *pWidth, UINT *pHeight);
-using IDXGISwapChain_SetMaximumFrameLatency_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGISwapChain2 *This, UINT MaxLatency);
-using IDXGISwapChain_GetMaximumFrameLatency_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGISwapChain2 *This, UINT *pMaxLatency);
-using IDXGISwapChain_GetFrameLatencyWaitableObject_pfn = HANDLE(STDMETHODCALLTYPE *)(IDXGISwapChain2 *This);
-using IDXGISwapChain_SetMatrixTransform_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGISwapChain2 *This, const DXGI_MATRIX_3X2_F *pMatrix);
-using IDXGISwapChain_GetMatrixTransform_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGISwapChain2 *This, DXGI_MATRIX_3X2_F *pMatrix);
+using IDXGISwapChain_SetSourceSize_pfn = HRESULT(STDMETHODCALLTYPE*)(IDXGISwapChain2* This, UINT Width, UINT Height);
+using IDXGISwapChain_GetSourceSize_pfn = HRESULT(STDMETHODCALLTYPE*)(IDXGISwapChain2* This, UINT* pWidth,
+                                                                     UINT* pHeight);
+using IDXGISwapChain_SetMaximumFrameLatency_pfn = HRESULT(STDMETHODCALLTYPE*)(IDXGISwapChain2* This, UINT MaxLatency);
+using IDXGISwapChain_GetMaximumFrameLatency_pfn = HRESULT(STDMETHODCALLTYPE*)(IDXGISwapChain2* This, UINT* pMaxLatency);
+using IDXGISwapChain_GetFrameLatencyWaitableObject_pfn = HANDLE(STDMETHODCALLTYPE*)(IDXGISwapChain2* This);
+using IDXGISwapChain_SetMatrixTransform_pfn = HRESULT(STDMETHODCALLTYPE*)(IDXGISwapChain2* This,
+                                                                          const DXGI_MATRIX_3X2_F* pMatrix);
+using IDXGISwapChain_GetMatrixTransform_pfn = HRESULT(STDMETHODCALLTYPE*)(IDXGISwapChain2* This,
+                                                                          DXGI_MATRIX_3X2_F* pMatrix);
 
 // IDXGISwapChain3 function pointer types
-using IDXGISwapChain_GetCurrentBackBufferIndex_pfn = UINT(STDMETHODCALLTYPE *)(IDXGISwapChain3 *This);
-using IDXGISwapChain_SetColorSpace1_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGISwapChain3 *This, DXGI_COLOR_SPACE_TYPE ColorSpace);
-using IDXGISwapChain_ResizeBuffers1_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGISwapChain3 *This, UINT BufferCount, UINT Width, UINT Height, DXGI_FORMAT Format, UINT SwapChainFlags, const UINT *pCreationNodeMask, IUnknown *const *ppPresentQueue);
+using IDXGISwapChain_GetCurrentBackBufferIndex_pfn = UINT(STDMETHODCALLTYPE*)(IDXGISwapChain3* This);
+using IDXGISwapChain_SetColorSpace1_pfn = HRESULT(STDMETHODCALLTYPE*)(IDXGISwapChain3* This,
+                                                                      DXGI_COLOR_SPACE_TYPE ColorSpace);
+using IDXGISwapChain_ResizeBuffers1_pfn = HRESULT(STDMETHODCALLTYPE*)(IDXGISwapChain3* This, UINT BufferCount,
+                                                                      UINT Width, UINT Height, DXGI_FORMAT Format,
+                                                                      UINT SwapChainFlags,
+                                                                      const UINT* pCreationNodeMask,
+                                                                      IUnknown* const* ppPresentQueue);
 
 // IDXGISwapChain4 function pointer types
-using IDXGISwapChain_SetHDRMetaData_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGISwapChain4 *This, DXGI_HDR_METADATA_TYPE Type, UINT Size, void *pMetaData);
+using IDXGISwapChain_SetHDRMetaData_pfn = HRESULT(STDMETHODCALLTYPE*)(IDXGISwapChain4* This,
+                                                                      DXGI_HDR_METADATA_TYPE Type, UINT Size,
+                                                                      void* pMetaData);
 
 // IDXGIOutput function pointer types
-using IDXGIOutput_SetGammaControl_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGIOutput *This, const DXGI_GAMMA_CONTROL *pArray);
-using IDXGIOutput_GetGammaControl_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGIOutput *This, DXGI_GAMMA_CONTROL *pArray);
-using IDXGIOutput_GetDesc_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGIOutput *This, DXGI_OUTPUT_DESC *pDesc);
+using IDXGIOutput_SetGammaControl_pfn = HRESULT(STDMETHODCALLTYPE*)(IDXGIOutput* This,
+                                                                    const DXGI_GAMMA_CONTROL* pArray);
+using IDXGIOutput_GetGammaControl_pfn = HRESULT(STDMETHODCALLTYPE*)(IDXGIOutput* This, DXGI_GAMMA_CONTROL* pArray);
+using IDXGIOutput_GetDesc_pfn = HRESULT(STDMETHODCALLTYPE*)(IDXGIOutput* This, DXGI_OUTPUT_DESC* pDesc);
 
 // IDXGIOutput6 function pointer types
-using IDXGIOutput6_GetDesc1_pfn = HRESULT(STDMETHODCALLTYPE *)(IDXGIOutput6 *This, DXGI_OUTPUT_DESC1 *pDesc);
+using IDXGIOutput6_GetDesc1_pfn = HRESULT(STDMETHODCALLTYPE*)(IDXGIOutput6* This, DXGI_OUTPUT_DESC1* pDesc);
 
 // Original function pointers
 extern IDXGISwapChain_Present_pfn IDXGISwapChain_Present_Original;
@@ -151,54 +182,59 @@ extern IDXGIOutput_GetDesc_pfn IDXGIOutput_GetDesc_Original;
 extern IDXGIOutput6_GetDesc1_pfn IDXGIOutput6_GetDesc1_Original;
 
 // Hooked DXGI Present functions
-HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain *This, UINT SyncInterval, UINT Flags);
+HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain* This, UINT SyncInterval, UINT Flags);
 
 // Hooked DXGI Present1 functions (IDXGISwapChain1)
-HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1 *This, UINT SyncInterval, UINT PresentFlags, const DXGI_PRESENT_PARAMETERS *pPresentParameters);
+HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1* This, UINT SyncInterval, UINT PresentFlags,
+                                                         const DXGI_PRESENT_PARAMETERS* pPresentParameters);
 
 // Hooked DXGI GetDesc functions
-HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetDesc_Detour(IDXGISwapChain *This, DXGI_SWAP_CHAIN_DESC *pDesc);
+HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetDesc_Detour(IDXGISwapChain* This, DXGI_SWAP_CHAIN_DESC* pDesc);
 
 // Hooked DXGI GetDesc1 functions (IDXGISwapChain1)
-HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetDesc1_Detour(IDXGISwapChain1 *This, DXGI_SWAP_CHAIN_DESC1 *pDesc);
+HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetDesc1_Detour(IDXGISwapChain1* This, DXGI_SWAP_CHAIN_DESC1* pDesc);
 
 // Hooked DXGI CheckColorSpaceSupport functions (IDXGISwapChain3)
-HRESULT STDMETHODCALLTYPE IDXGISwapChain_CheckColorSpaceSupport_Detour(IDXGISwapChain3 *This, DXGI_COLOR_SPACE_TYPE ColorSpace, UINT *pColorSpaceSupport);
+HRESULT STDMETHODCALLTYPE IDXGISwapChain_CheckColorSpaceSupport_Detour(IDXGISwapChain3* This,
+                                                                       DXGI_COLOR_SPACE_TYPE ColorSpace,
+                                                                       UINT* pColorSpaceSupport);
 
 // Hooked DXGI SetHDRMetaData functions (IDXGISwapChain4)
-HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetHDRMetaData_Detour(IDXGISwapChain4 *This, DXGI_HDR_METADATA_TYPE Type, UINT Size, void *pMetaData);
+HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetHDRMetaData_Detour(IDXGISwapChain4* This, DXGI_HDR_METADATA_TYPE Type,
+                                                               UINT Size, void* pMetaData);
 
 // Hooked DXGI Factory CreateSwapChain functions
-HRESULT STDMETHODCALLTYPE IDXGIFactory_CreateSwapChain_Detour(IDXGIFactory *This, IUnknown *pDevice, DXGI_SWAP_CHAIN_DESC *pDesc, IDXGISwapChain **ppSwapChain);
+HRESULT STDMETHODCALLTYPE IDXGIFactory_CreateSwapChain_Detour(IDXGIFactory* This, IUnknown* pDevice,
+                                                              DXGI_SWAP_CHAIN_DESC* pDesc,
+                                                              IDXGISwapChain** ppSwapChain);
 
 // Hook a specific swapchain when it's created
-bool HookSwapchain(IDXGISwapChain *swapchain);
+bool HookSwapchain(IDXGISwapChain* swapchain);
 
 // Hook a specific factory when it's created
-bool HookFactory(IDXGIFactory *factory);
+bool HookFactory(IDXGIFactory* factory);
 
 // Record the native swapchain used in OnPresentUpdateBefore
-void RecordPresentUpdateSwapchain(IDXGISwapChain *swapchain);
+void RecordPresentUpdateSwapchain(IDXGISwapChain* swapchain);
 
 // Hooked IDXGIOutput functions
-HRESULT STDMETHODCALLTYPE IDXGIOutput_SetGammaControl_Detour(IDXGIOutput *This, const DXGI_GAMMA_CONTROL *pArray);
-HRESULT STDMETHODCALLTYPE IDXGIOutput_GetGammaControl_Detour(IDXGIOutput *This, DXGI_GAMMA_CONTROL *pArray);
-HRESULT STDMETHODCALLTYPE IDXGIOutput_GetDesc_Detour(IDXGIOutput *This, DXGI_OUTPUT_DESC *pDesc);
+HRESULT STDMETHODCALLTYPE IDXGIOutput_SetGammaControl_Detour(IDXGIOutput* This, const DXGI_GAMMA_CONTROL* pArray);
+HRESULT STDMETHODCALLTYPE IDXGIOutput_GetGammaControl_Detour(IDXGIOutput* This, DXGI_GAMMA_CONTROL* pArray);
+HRESULT STDMETHODCALLTYPE IDXGIOutput_GetDesc_Detour(IDXGIOutput* This, DXGI_OUTPUT_DESC* pDesc);
 
 // Hooked IDXGIOutput6 functions
-HRESULT STDMETHODCALLTYPE IDXGIOutput6_GetDesc1_Detour(IDXGIOutput6 *This, DXGI_OUTPUT_DESC1 *pDesc);
-
+HRESULT STDMETHODCALLTYPE IDXGIOutput6_GetDesc1_Detour(IDXGIOutput6* This, DXGI_OUTPUT_DESC1* pDesc);
 
 // Swapchain tracking management functions
-bool IsSwapchainTracked(IDXGISwapChain *swapchain);
-bool AddSwapchainToTracking(IDXGISwapChain *swapchain);
-bool RemoveSwapchainFromTracking(IDXGISwapChain *swapchain);
+bool IsSwapchainTracked(IDXGISwapChain* swapchain);
+bool AddSwapchainToTracking(IDXGISwapChain* swapchain);
+bool RemoveSwapchainFromTracking(IDXGISwapChain* swapchain);
 std::vector<IDXGISwapChain*> GetAllTrackedSwapchains();
 size_t GetTrackedSwapchainCount();
 void ClearAllTrackedSwapchains();
 bool HasTrackedSwapchains();
 
-bool HookSwapchainNative(IDXGISwapChain *swapchain);
+bool HookSwapchainNative(IDXGISwapChain* swapchain);
 
 // Cleanup GPU measurement fences when device is destroyed
 void CleanupGPUMeasurementFences();
@@ -210,17 +246,11 @@ struct PresentCommonState {
 };
 
 // Helper function for common Present/Present1 logic before calling original
-template<typename SwapChainType>
-PresentCommonState HandlePresentBefore(
-    SwapChainType* This,
-    IDXGISwapChain* baseSwapChain);
+template <typename SwapChainType>
+PresentCommonState HandlePresentBefore(SwapChainType* This);
 
-template<typename SwapChainType>
-void HandlePresentBefore2(SwapChainType* This);
+void HandlePresentBefore2();
 
 // Helper function for common Present/Present1 logic after calling original
-void HandlePresentAfter(
-    IDXGISwapChain* baseSwapChain,
-    const PresentCommonState& state,
-    bool from_wrapper);
-} // namespace display_commanderhooks::dxgi
+void HandlePresentAfter(IDXGISwapChain* baseSwapChain, const PresentCommonState& state, bool from_wrapper);
+}  // namespace display_commanderhooks::dxgi

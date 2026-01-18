@@ -43,6 +43,7 @@ class HookSuppressionSettings {
     BoolSetting suppress_display_settings_hooks;
     BoolSetting suppress_windows_message_hooks;
     BoolSetting suppress_opengl_hooks;
+    BoolSetting suppress_vulkan_hooks;
     BoolSetting suppress_hid_suppression_hooks;
     BoolSetting suppress_nvapi_hooks;
     BoolSetting suppress_process_exit_hooks;
@@ -67,6 +68,7 @@ class HookSuppressionSettings {
     BoolSetting display_settings_hooks_installed;
     BoolSetting windows_message_hooks_installed;
     BoolSetting opengl_hooks_installed;
+    BoolSetting vulkan_hooks_installed;
     BoolSetting hid_suppression_hooks_installed;
     BoolSetting nvapi_hooks_installed;
     BoolSetting process_exit_hooks_installed;

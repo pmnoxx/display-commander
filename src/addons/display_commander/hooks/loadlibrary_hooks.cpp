@@ -25,6 +25,7 @@
 #include "utils/srwlock_wrapper.hpp"
 #include "windows_gaming_input_hooks.hpp"
 #include "xinput_hooks.hpp"
+#include "vulkan_hooks.hpp"
 
 namespace display_commanderhooks {
 
@@ -885,6 +886,15 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
             LogInfo("XInput hooks installed successfully");
         } else {
             LogError("Failed to install XInput hooks");
+        }
+    }
+    // Vulkan hooks
+    else if (lowerModuleName.find(L"vulkan-1.dll") != std::wstring::npos) {
+        LogInfo("Installing Vulkan hooks for module: %ws", moduleName.c_str());
+        if (InstallVulkanHooks(hModule)) {
+            LogInfo("Vulkan hooks installed successfully");
+        } else {
+            LogError("Failed to install Vulkan hooks");
         }
     }
 

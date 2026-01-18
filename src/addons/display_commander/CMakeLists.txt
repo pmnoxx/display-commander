@@ -90,6 +90,7 @@ target_include_directories(zzz_display_commander
     ${CMAKE_CURRENT_LIST_DIR}/../../../external/nvapi              # official NVIDIA NVAPI headers (nvapi.h, NvApiDriverSettings.h)
     ${CMAKE_CURRENT_LIST_DIR}/../../../external/nvidia-dlss/include # official NVIDIA DLSS/NGX headers
     ${CMAKE_CURRENT_LIST_DIR}/../../../external/minhook/include    # MinHook headers
+    ${CMAKE_CURRENT_LIST_DIR}/../../../external/vulkan-headers/include # official Khronos Vulkan headers
 )
 
 # System libraries removed (xinput, dinput8, winmm, dbghelp) to avoid DLL dependency issues - they are loaded dynamically

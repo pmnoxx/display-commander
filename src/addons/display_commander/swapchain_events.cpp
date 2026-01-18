@@ -23,6 +23,7 @@
 #include "latent_sync/refresh_rate_monitor_integration.hpp"
 #include "nvapi/nvapi_fullscreen_prevention.hpp"
 #include "performance_types.hpp"
+#include "reshade_api_device.hpp"
 #include "settings/developer_tab_settings.hpp"
 #include "settings/experimental_tab_settings.hpp"
 #include "settings/main_tab_settings.hpp"
@@ -190,7 +191,7 @@ void hookToSwapChain(reshade::api::swapchain* swapchain) {
 
     // Store the current swapchain for UI access
     g_last_reshade_device_api.store(static_cast<int>(swapchain->get_device()->get_api()));
-    g_last_swapchain_ptr_unsafe.store(static_cast<void*>(swapchain));
+    //..g_last_swapchain_ptr_unsafe.store(static_cast<void*>(swapchain));
 
     // Query and store API version/feature level
     uint32_t api_version = 0;
@@ -253,16 +254,14 @@ void hookToSwapChain(reshade::api::swapchain* swapchain) {
         else if (api == reshade::api::device_api::d3d9) {
             if (auto* device = swapchain->get_device()) {
                 // do query instead
-                if (auto* d3d9_device = reinterpret_cast<IDirect3DDevice9*>(device->get_native())) {
-                    if (display_commanderhooks::d3d9::HookD3D9Present(d3d9_device)) {
-                        LogInfo("Successfully hooked DX9 Present calls for device: 0x%p", d3d9_device);
-                    } else {
-                        LogInfo("DX9 Present hooking not available for device: 0x%p (may not be DX9)", d3d9_device);
-                    }
-                } else {
-                    LogInfo("Could not get DX9 device from ReShade device for Present hooking");
+                IUnknown* iunknown = reinterpret_cast<IUnknown*>(device->get_native());
+                Microsoft::WRL::ComPtr<IDirect3DDevice9> d3d9_device = nullptr;
+                if (iunknown != nullptr && SUCCEEDED(iunknown->QueryInterface(IID_PPV_ARGS(&d3d9_device)))) {
+                    display_commanderhooks::d3d9::RecordPresentUpdateDevice(d3d9_device.Get());
                 }
             }
+        } else if (api == reshade::api::device_api::vulkan) {
+            LogInfo("Vulkan API detected, not supported yet");
         } else {
             LogError("Unsupported API: %d", api);
         }
@@ -1236,30 +1235,33 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
     auto api = swapchain->get_device()->get_api();
 
     if (api == reshade::api::device_api::d3d12) {
-        auto* id3d12device = reinterpret_cast<ID3D12Device*>(swapchain->get_native());
+        IUnknown* iunknown = reinterpret_cast<IUnknown*>(swapchain->get_native());
         Microsoft::WRL::ComPtr<IDXGISwapChain> dxgi_swapchain{};
-        if (id3d12device != nullptr && SUCCEEDED(id3d12device->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain)))) {
+        if (iunknown != nullptr && SUCCEEDED(iunknown->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain)))) {
             display_commanderhooks::dxgi::RecordPresentUpdateSwapchain(dxgi_swapchain.Get());
         }
     } else if (api == reshade::api::device_api::d3d11) {
-        auto* id3d11device = reinterpret_cast<ID3D11Device*>(swapchain->get_native());
+        IUnknown* iunknown = reinterpret_cast<IUnknown*>(swapchain->get_native());
         Microsoft::WRL::ComPtr<IDXGISwapChain> dxgi_swapchain{};
-        if (id3d11device != nullptr && SUCCEEDED(id3d11device->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain)))) {
+        if (iunknown != nullptr && SUCCEEDED(iunknown->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain)))) {
             display_commanderhooks::dxgi::RecordPresentUpdateSwapchain(dxgi_swapchain.Get());
         }
     } else if (api == reshade::api::device_api::d3d10) {
-        auto* id3d10device = reinterpret_cast<ID3D10Device*>(swapchain->get_native());
+        IUnknown* iunknown = reinterpret_cast<IUnknown*>(swapchain->get_native());
         Microsoft::WRL::ComPtr<IDXGISwapChain> dxgi_swapchain{};
-        if (id3d10device != nullptr && SUCCEEDED(id3d10device->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain)))) {
+        if (iunknown != nullptr && SUCCEEDED(iunknown->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain)))) {
             display_commanderhooks::dxgi::RecordPresentUpdateSwapchain(dxgi_swapchain.Get());
         }
     }
 
     // Record the native D3D9 device for Present detour filtering
     if (api == reshade::api::device_api::d3d9) {
-        IDirect3DDevice9* d3d9_device = reinterpret_cast<IDirect3DDevice9*>(swapchain->get_device()->get_native());
-        if (d3d9_device != nullptr) {
-            display_commanderhooks::d3d9::RecordPresentUpdateDevice(d3d9_device);
+        // query don't assume
+        IUnknown* iunknown = reinterpret_cast<IUnknown*>(swapchain->get_device()->get_native());
+
+        Microsoft::WRL::ComPtr<IDirect3DDevice9> d3d9_device = nullptr;
+        if (iunknown != nullptr && SUCCEEDED(iunknown->QueryInterface(IID_PPV_ARGS(&d3d9_device)))) {
+            display_commanderhooks::d3d9::RecordPresentUpdateDevice(d3d9_device.Get());
         }
     }
 
@@ -1278,17 +1280,17 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
     // Enqueue GPU completion measurement BEFORE flush for accurate timing
     // This captures the full GPU workload including the flush operation
     if (api == reshade::api::device_api::d3d11) {
-        auto* id3d11device = reinterpret_cast<ID3D11Device*>(swapchain->get_native());
+        IUnknown* iunknown = reinterpret_cast<IUnknown*>(swapchain->get_native());
         Microsoft::WRL::ComPtr<IDXGISwapChain> dxgi_swapchain{};
-        if (id3d11device != nullptr && SUCCEEDED(id3d11device->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain)))) {
+        if (iunknown != nullptr && SUCCEEDED(iunknown->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain)))) {
             EnqueueGPUCompletion(swapchain, dxgi_swapchain.Get(), command_queue);
             // Flush command queue using native DirectX APIs (DX11 only) - don't rely on ReShade runtime
             display_commanderhooks::FlushCommandQueueFromSwapchain(dxgi_swapchain.Get(), DeviceTypeDC::DX11);
         }
     } else if (api == reshade::api::device_api::d3d12) {
-        auto* id3d12device = reinterpret_cast<ID3D12Device*>(swapchain->get_native());
+        IUnknown* iunknown = reinterpret_cast<IUnknown*>(swapchain->get_native());
         Microsoft::WRL::ComPtr<IDXGISwapChain> dxgi_swapchain{};
-        if (id3d12device != nullptr && SUCCEEDED(id3d12device->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain)))) {
+        if (iunknown != nullptr && SUCCEEDED(iunknown->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain)))) {
             EnqueueGPUCompletion(swapchain, dxgi_swapchain.Get(), command_queue);
         }
     }

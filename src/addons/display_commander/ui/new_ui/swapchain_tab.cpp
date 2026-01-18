@@ -3,6 +3,7 @@
 #include "../../globals.hpp"
 #include "../../hooks/api_hooks.hpp"
 #include "../../hooks/ngx_hooks.hpp"
+#include "../../nvapi/vrr_status.hpp"
 #include "../../res/forkawesome.h"
 #include "../../res/ui_colors.hpp"
 #include "../../settings/main_tab_settings.hpp"
@@ -11,7 +12,6 @@
 #include "../../utils/general_utils.hpp"
 #include "../../utils/logging.hpp"
 #include "../../utils/timing.hpp"
-#include "../../nvapi/vrr_status.hpp"
 
 #include <dxgi1_6.h>
 #include <wrl/client.h>
@@ -19,9 +19,9 @@
 #include <array>
 #include <cctype>
 #include <map>
-#include <unordered_map>
 #include <reshade_imgui.hpp>
 #include <sstream>
+#include <unordered_map>
 #include <vector>
 
 namespace ui::new_ui {
@@ -229,27 +229,22 @@ void DrawSwapchainWrapperStats() {
                     float avg_fps = (avg_ft > 0.0f) ? (1000.0f / avg_ft) : 0.0f;
 
                     // Display statistics
-                    ImGui::Text("  Frame Time: Min: %.2f ms | Max: %.2f ms | Avg: %.2f ms | FPS: %.1f",
-                                min_ft, max_ft, avg_ft, avg_fps);
+                    ImGui::Text("  Frame Time: Min: %.2f ms | Max: %.2f ms | Avg: %.2f ms | FPS: %.1f", min_ft, max_ft,
+                                avg_ft, avg_fps);
 
                     // Create overlay text
                     std::string overlay_text = "Frame Time: " + std::to_string(frame_times.back()).substr(0, 4) + " ms";
 
                     // Set graph size and scale
-                    ImVec2 graph_size = ImVec2(-1.0f, 150.0f); // Full width, 150px height
+                    ImVec2 graph_size = ImVec2(-1.0f, 150.0f);  // Full width, 150px height
                     float scale_min = 0.0f;
                     float scale_max = avg_ft * 4.0f;
 
                     // Draw the frame time graph
                     std::string graph_label = std::string("##FrameTime") + type_name;
-                    ImGui::PlotLines(graph_label.c_str(),
-                                     frame_times.data(),
-                                     static_cast<int>(frame_times.size()),
-                                     0, // values_offset
-                                     overlay_text.c_str(),
-                                     scale_min,
-                                     scale_max,
-                                     graph_size);
+                    ImGui::PlotLines(graph_label.c_str(), frame_times.data(), static_cast<int>(frame_times.size()),
+                                     0,  // values_offset
+                                     overlay_text.c_str(), scale_min, scale_max, graph_size);
                 } else {
                     ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "  No frame time data available yet...");
                 }
@@ -269,7 +264,7 @@ void DrawSwapchainWrapperStats() {
 void DrawSwapchainEventCounters() {
     // Swapchain Event Counters Section (see docs/UI_STYLE_GUIDE.md for depth/indent rules)
     // Depth 1: Nested subsection with indentation and distinct colors
-    ImGui::Indent();  // Indent nested header
+    ImGui::Indent();                       // Indent nested header
     ui::colors::PushNestedHeaderColors();  // Apply distinct colors for nested header
     if (ImGui::CollapsingHeader("Swapchain Event Counters", ImGuiTreeNodeFlags_None)) {
         ImGui::Indent();  // Indent content inside subsection
@@ -539,7 +534,7 @@ void DrawSwapchainEventCounters() {
         ImGui::Unindent();  // Unindent content
     }
     ui::colors::PopNestedHeaderColors();  // Restore default header colors
-    ImGui::Unindent();  // Unindent nested header section
+    ImGui::Unindent();                    // Unindent nested header section
 
     // NGX Counters Section (see docs/UI_STYLE_GUIDE.md for depth/indent rules)
     // Depth 0: Main section header
@@ -549,7 +544,7 @@ void DrawSwapchainEventCounters() {
 
         // Depth 1: Nested subsections with indentation and distinct colors
         // Parameter functions
-        ImGui::Indent();  // Indent nested headers
+        ImGui::Indent();                       // Indent nested headers
         ui::colors::PushNestedHeaderColors();  // Apply distinct colors for nested headers
         if (ImGui::CollapsingHeader("Parameter Functions", ImGuiTreeNodeFlags_DefaultOpen)) {
             ImGui::Indent();  // Indent content inside subsection
@@ -728,7 +723,6 @@ void DrawSwapchainEventCounters() {
 }
 
 void DrawNGXParameters() {
-
     if (ImGui::CollapsingHeader("NGX Parameters", ImGuiTreeNodeFlags_None)) {
         ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "NGX Parameter Values (Live from Game)");
         ImGui::Separator();
@@ -815,10 +809,10 @@ void DrawNGXParameters() {
             // Create a table-like display
             ImGui::Columns(5, "NGXParameters", true);
             ImGui::SetColumnWidth(0, 500);  // Parameter name
-            ImGui::SetColumnWidth(1, 80);    // Type
-            ImGui::SetColumnWidth(2, 150);   // Value (game value)
-            ImGui::SetColumnWidth(3, 150);   // Override value
-            ImGui::SetColumnWidth(4, 600);   // Actions (wider for buttons)
+            ImGui::SetColumnWidth(1, 80);   // Type
+            ImGui::SetColumnWidth(2, 150);  // Value (game value)
+            ImGui::SetColumnWidth(3, 150);  // Override value
+            ImGui::SetColumnWidth(4, 600);  // Actions (wider for buttons)
 
             // Header
             ImGui::TextColored(ImVec4(1.0f, 1.0f, 1.0f, 1.0f), "Parameter Name");
@@ -883,9 +877,7 @@ void DrawNGXParameters() {
                         case ParameterValue::ULL:
                             override_value_str = std::to_string(override_value.get_as_ull());
                             break;
-                        default:
-                            override_value_str = "unknown";
-                            break;
+                        default: override_value_str = "unknown"; break;
                     }
                 }
 
@@ -903,14 +895,19 @@ void DrawNGXParameters() {
                 // Input field for override value
                 ImGui::SetNextItemWidth(120);
                 if (has_override) {
-                    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.0f, 0.3f, 0.0f, 1.0f)); // Green tint for active override
+                    ImGui::PushStyleColor(ImGuiCol_FrameBg,
+                                          ImVec4(0.0f, 0.3f, 0.0f, 1.0f));  // Green tint for active override
                 }
 
                 // Create input field based on type
                 bool value_updated = false;
                 if (param.type == "float" || param.type == "double") {
-                    float float_val = has_override ? (param.type == "float" ? override_value.get_as_float() : static_cast<float>(override_value.get_as_double())) : 0.0f;
-                    if (ImGui::InputFloat("##OverrideInput", &float_val, 0.0f, 0.0f, "%.6f", ImGuiInputTextFlags_EnterReturnsTrue)) {
+                    float float_val = has_override
+                                          ? (param.type == "float" ? override_value.get_as_float()
+                                                                   : static_cast<float>(override_value.get_as_double()))
+                                          : 0.0f;
+                    if (ImGui::InputFloat("##OverrideInput", &float_val, 0.0f, 0.0f, "%.6f",
+                                          ImGuiInputTextFlags_EnterReturnsTrue)) {
                         if (param.type == "float") {
                             g_ngx_parameter_overrides.update_float(param.name, float_val);
                         } else {
@@ -932,7 +929,8 @@ void DrawNGXParameters() {
                     if (ImGui::InputInt("##OverrideInput", &int_val, 0, 0, ImGuiInputTextFlags_EnterReturnsTrue)) {
                         if (int_val >= 0) {
                             g_ngx_parameter_overrides.update_uint(param.name, static_cast<unsigned int>(int_val));
-                            LogInfo("NGX Parameter Override Set: %s = %u", param.name.c_str(), static_cast<unsigned int>(int_val));
+                            LogInfo("NGX Parameter Override Set: %s = %u", param.name.c_str(),
+                                    static_cast<unsigned int>(int_val));
                             value_updated = true;
                         }
                     }
@@ -940,7 +938,8 @@ void DrawNGXParameters() {
                     uint64_t ull_val = has_override ? override_value.get_as_ull() : 0;
                     char ull_str[32];
                     snprintf(ull_str, sizeof(ull_str), "%llu", ull_val);
-                    if (ImGui::InputText("##OverrideInput", ull_str, sizeof(ull_str), ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CharsDecimal)) {
+                    if (ImGui::InputText("##OverrideInput", ull_str, sizeof(ull_str),
+                                         ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CharsDecimal)) {
                         uint64_t new_val = strtoull(ull_str, nullptr, 10);
                         g_ngx_parameter_overrides.update_ull(param.name, new_val);
                         LogInfo("NGX Parameter Override Set: %s = %llu", param.name.c_str(), new_val);
@@ -1037,7 +1036,6 @@ void DrawNGXParameters() {
             ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), ICON_FK_OK " NGX parameter hooks are working correctly");
         }
     }
-
 }
 
 // Draw DLSS Settings section with nested subheaders (see docs/UI_STYLE_GUIDE.md for depth/indent rules)
@@ -1086,186 +1084,184 @@ void DrawDLSSGSummary() {
 
 void DrawDLSSGSummaryContent() {
     // Content of the DLSS/DLSS-G/RR Summary section
-        ImGui::TextColored(ui::colors::TEXT_INFO, "DLSS/DLSS-G/Ray Reconstruction Status Overview");
-        ImGui::Separator();
+    ImGui::TextColored(ui::colors::TEXT_INFO, "DLSS/DLSS-G/Ray Reconstruction Status Overview");
+    ImGui::Separator();
 
-        DLSSGSummary summary = GetDLSSGSummary();
+    DLSSGSummary summary = GetDLSSGSummary();
 
-        // Create a two-column layout for the summary
-        ImGui::Columns(2, "DLSSGSummaryColumns", false);
-        ImGui::SetColumnWidth(0, 300);  // Label column
-        ImGui::SetColumnWidth(1, 350);  // Value column
+    // Create a two-column layout for the summary
+    ImGui::Columns(2, "DLSSGSummaryColumns", false);
+    ImGui::SetColumnWidth(0, 300);  // Label column
+    ImGui::SetColumnWidth(1, 350);  // Value column
 
-        // Status indicators
-        ImGui::Text("DLSS Active:");
-        ImGui::NextColumn();
-        ImGui::TextColored(summary.dlss_active ? ImVec4(0.0f, 1.0f, 0.0f, 1.0f) : ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "%s",
-                           summary.dlss_active ? "Yes" : "No");
-        ImGui::NextColumn();
+    // Status indicators
+    ImGui::Text("DLSS Active:");
+    ImGui::NextColumn();
+    ImGui::TextColored(summary.dlss_active ? ImVec4(0.0f, 1.0f, 0.0f, 1.0f) : ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "%s",
+                       summary.dlss_active ? "Yes" : "No");
+    ImGui::NextColumn();
 
-        ImGui::Text("DLSS-G Active:");
-        ImGui::NextColumn();
-        ImGui::TextColored(summary.dlss_g_active ? ImVec4(0.0f, 1.0f, 0.0f, 1.0f) : ImVec4(1.0f, 0.0f, 0.0f, 1.0f),
-                           "%s", summary.dlss_g_active ? "Yes" : "No");
-        ImGui::NextColumn();
+    ImGui::Text("DLSS-G Active:");
+    ImGui::NextColumn();
+    ImGui::TextColored(summary.dlss_g_active ? ImVec4(0.0f, 1.0f, 0.0f, 1.0f) : ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "%s",
+                       summary.dlss_g_active ? "Yes" : "No");
+    ImGui::NextColumn();
 
-        ImGui::Text("Ray Reconstruction:");
-        ImGui::NextColumn();
-        ImGui::TextColored(
-            summary.ray_reconstruction_active ? ImVec4(0.0f, 1.0f, 0.0f, 1.0f) : ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "%s",
-            summary.ray_reconstruction_active ? "Yes" : "No");
-        ImGui::NextColumn();
+    ImGui::Text("Ray Reconstruction:");
+    ImGui::NextColumn();
+    ImGui::TextColored(
+        summary.ray_reconstruction_active ? ImVec4(0.0f, 1.0f, 0.0f, 1.0f) : ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "%s",
+        summary.ray_reconstruction_active ? "Yes" : "No");
+    ImGui::NextColumn();
 
-        ImGui::Text("FG Mode:");
-        ImGui::NextColumn();
-        // Color code based on FG mode
-        ImVec4 fg_color = ImVec4(0.8f, 0.8f, 0.8f, 1.0f);  // Default gray
-        if (summary.fg_mode == "2x") {
-            fg_color = ImVec4(0.0f, 1.0f, 0.0f, 1.0f);  // Green for 2x
-        } else if (summary.fg_mode == "3x") {
-            fg_color = ImVec4(1.0f, 1.0f, 0.0f, 1.0f);  // Yellow for 3x
-        } else if (summary.fg_mode == "4x") {
-            fg_color = ImVec4(1.0f, 0.5f, 0.0f, 1.0f);  // Orange for 4x
-        } else if (summary.fg_mode.find("x") != std::string::npos) {
-            fg_color = ImVec4(1.0f, 0.0f, 1.0f, 1.0f);  // Magenta for higher modes
-        } else if (summary.fg_mode == "Disabled") {
-            fg_color = ImVec4(1.0f, 0.0f, 0.0f, 1.0f);  // Red for disabled
-        } else if (summary.fg_mode == "Unknown") {
-            fg_color = ImVec4(0.5f, 0.5f, 0.5f, 1.0f);  // Gray for unknown
-        }
-        ImGui::TextColored(fg_color, "%s", summary.fg_mode.c_str());
-        ImGui::NextColumn();
+    ImGui::Text("FG Mode:");
+    ImGui::NextColumn();
+    // Color code based on FG mode
+    ImVec4 fg_color = ImVec4(0.8f, 0.8f, 0.8f, 1.0f);  // Default gray
+    if (summary.fg_mode == "2x") {
+        fg_color = ImVec4(0.0f, 1.0f, 0.0f, 1.0f);  // Green for 2x
+    } else if (summary.fg_mode == "3x") {
+        fg_color = ImVec4(1.0f, 1.0f, 0.0f, 1.0f);  // Yellow for 3x
+    } else if (summary.fg_mode == "4x") {
+        fg_color = ImVec4(1.0f, 0.5f, 0.0f, 1.0f);  // Orange for 4x
+    } else if (summary.fg_mode.find("x") != std::string::npos) {
+        fg_color = ImVec4(1.0f, 0.0f, 1.0f, 1.0f);  // Magenta for higher modes
+    } else if (summary.fg_mode == "Disabled") {
+        fg_color = ImVec4(1.0f, 0.0f, 0.0f, 1.0f);  // Red for disabled
+    } else if (summary.fg_mode == "Unknown") {
+        fg_color = ImVec4(0.5f, 0.5f, 0.5f, 1.0f);  // Gray for unknown
+    }
+    ImGui::TextColored(fg_color, "%s", summary.fg_mode.c_str());
+    ImGui::NextColumn();
 
-        // DLL Version information
-        ImGui::Text("DLSS DLL Version:");
-        ImGui::NextColumn();
-        ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "%s", summary.dlss_dll_version.c_str());
-        ImGui::SameLine();
-        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), " [%s]", summary.supported_dlss_presets.c_str());
-        ImGui::NextColumn();
+    // DLL Version information
+    ImGui::Text("DLSS DLL Version:");
+    ImGui::NextColumn();
+    ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "%s", summary.dlss_dll_version.c_str());
+    ImGui::SameLine();
+    ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), " [%s]", summary.supported_dlss_presets.c_str());
+    ImGui::NextColumn();
 
-        ImGui::Text("DLSS-G DLL Version:");
-        ImGui::NextColumn();
-        ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "%s", summary.dlssg_dll_version.c_str());
-        ImGui::NextColumn();
+    ImGui::Text("DLSS-G DLL Version:");
+    ImGui::NextColumn();
+    ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "%s", summary.dlssg_dll_version.c_str());
+    ImGui::NextColumn();
 
-        if (summary.dlssd_dll_version != "Not loaded") {
-            ImGui::Text("DLSS-D DLL Version:");
-            ImGui::NextColumn();
-            ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "%s", summary.dlssd_dll_version.c_str());
-            ImGui::NextColumn();
-        }
+    if (summary.dlssd_dll_version != "Not loaded") {
+        ImGui::Text("DLSS-D DLL Version:");
+        ImGui::NextColumn();
+        ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "%s", summary.dlssd_dll_version.c_str());
+        ImGui::NextColumn();
+    }
 
-        ImGui::Separator();
+    ImGui::Separator();
 
-        // Resolution information
-        ImGui::Text("Internal Resolution:");
-        ImGui::NextColumn();
-        ImGui::Text("%s", summary.internal_resolution.c_str());
-        ImGui::NextColumn();
+    // Resolution information
+    ImGui::Text("Internal Resolution:");
+    ImGui::NextColumn();
+    ImGui::Text("%s", summary.internal_resolution.c_str());
+    ImGui::NextColumn();
 
-        ImGui::Text("Output Resolution:");
-        ImGui::NextColumn();
-        ImGui::Text("%s", summary.output_resolution.c_str());
-        ImGui::NextColumn();
+    ImGui::Text("Output Resolution:");
+    ImGui::NextColumn();
+    ImGui::Text("%s", summary.output_resolution.c_str());
+    ImGui::NextColumn();
 
-        ImGui::Text("Scaling Ratio:");
-        ImGui::NextColumn();
-        ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "%s", summary.scaling_ratio.c_str());
-        ImGui::NextColumn();
+    ImGui::Text("Scaling Ratio:");
+    ImGui::NextColumn();
+    ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "%s", summary.scaling_ratio.c_str());
+    ImGui::NextColumn();
 
-        ImGui::Text("Quality Preset:");
-        ImGui::NextColumn();
-        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "%s", summary.quality_preset.c_str());
-        ImGui::NextColumn();
+    ImGui::Text("Quality Preset:");
+    ImGui::NextColumn();
+    ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "%s", summary.quality_preset.c_str());
+    ImGui::NextColumn();
 
-        ImGui::Separator();
+    ImGui::Separator();
 
-        // Camera and rendering settings
-        ImGui::Text("Aspect Ratio:");
-        ImGui::NextColumn();
-        ImGui::Text("%s", summary.aspect_ratio.c_str());
-        ImGui::NextColumn();
+    // Camera and rendering settings
+    ImGui::Text("Aspect Ratio:");
+    ImGui::NextColumn();
+    ImGui::Text("%s", summary.aspect_ratio.c_str());
+    ImGui::NextColumn();
 
-        ImGui::Text("FOV:");
-        ImGui::NextColumn();
-        ImGui::Text("%s", summary.fov.c_str());
-        ImGui::NextColumn();
+    ImGui::Text("FOV:");
+    ImGui::NextColumn();
+    ImGui::Text("%s", summary.fov.c_str());
+    ImGui::NextColumn();
 
-        ImGui::Text("Jitter Offset:");
-        ImGui::NextColumn();
-        ImGui::Text("%s", summary.jitter_offset.c_str());
-        ImGui::NextColumn();
+    ImGui::Text("Jitter Offset:");
+    ImGui::NextColumn();
+    ImGui::Text("%s", summary.jitter_offset.c_str());
+    ImGui::NextColumn();
 
-        ImGui::Text("Exposure:");
-        ImGui::NextColumn();
-        ImGui::Text("%s", summary.exposure.c_str());
-        ImGui::NextColumn();
+    ImGui::Text("Exposure:");
+    ImGui::NextColumn();
+    ImGui::Text("%s", summary.exposure.c_str());
+    ImGui::NextColumn();
 
-        ImGui::Text("Sharpness:");
-        ImGui::NextColumn();
-        ImGui::Text("%s", summary.sharpness.c_str());
-        ImGui::NextColumn();
+    ImGui::Text("Sharpness:");
+    ImGui::NextColumn();
+    ImGui::Text("%s", summary.sharpness.c_str());
+    ImGui::NextColumn();
 
-        ImGui::Separator();
+    ImGui::Separator();
 
-        // Technical settings
-        ImGui::Text("Depth Inverted:");
-        ImGui::NextColumn();
-        ImGui::TextColored(
-            summary.depth_inverted == "Yes" ? ImVec4(1.0f, 0.5f, 0.0f, 1.0f) : ImVec4(0.5f, 1.0f, 0.5f, 1.0f), "%s",
-            summary.depth_inverted.c_str());
-        ImGui::NextColumn();
+    // Technical settings
+    ImGui::Text("Depth Inverted:");
+    ImGui::NextColumn();
+    ImGui::TextColored(
+        summary.depth_inverted == "Yes" ? ImVec4(1.0f, 0.5f, 0.0f, 1.0f) : ImVec4(0.5f, 1.0f, 0.5f, 1.0f), "%s",
+        summary.depth_inverted.c_str());
+    ImGui::NextColumn();
 
-        ImGui::Text("HDR Enabled:");
-        ImGui::NextColumn();
-        ImGui::TextColored(
-            summary.hdr_enabled == "Yes" ? ImVec4(0.0f, 1.0f, 0.0f, 1.0f) : ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "%s",
-            summary.hdr_enabled.c_str());
-        ImGui::NextColumn();
+    ImGui::Text("HDR Enabled:");
+    ImGui::NextColumn();
+    ImGui::TextColored(summary.hdr_enabled == "Yes" ? ImVec4(0.0f, 1.0f, 0.0f, 1.0f) : ImVec4(0.8f, 0.8f, 0.8f, 1.0f),
+                       "%s", summary.hdr_enabled.c_str());
+    ImGui::NextColumn();
 
-        ImGui::Text("Motion Vectors:");
-        ImGui::NextColumn();
-        ImGui::TextColored(
-            summary.motion_vectors_included == "Yes" ? ImVec4(0.0f, 1.0f, 0.0f, 1.0f) : ImVec4(1.0f, 0.0f, 0.0f, 1.0f),
-            "%s", summary.motion_vectors_included.c_str());
-        ImGui::NextColumn();
+    ImGui::Text("Motion Vectors:");
+    ImGui::NextColumn();
+    ImGui::TextColored(
+        summary.motion_vectors_included == "Yes" ? ImVec4(0.0f, 1.0f, 0.0f, 1.0f) : ImVec4(1.0f, 0.0f, 0.0f, 1.0f),
+        "%s", summary.motion_vectors_included.c_str());
+    ImGui::NextColumn();
 
-        ImGui::Text("Frame Time Delta:");
-        ImGui::NextColumn();
-        ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "%s", summary.frame_time_delta.c_str());
-        ImGui::NextColumn();
+    ImGui::Text("Frame Time Delta:");
+    ImGui::NextColumn();
+    ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "%s", summary.frame_time_delta.c_str());
+    ImGui::NextColumn();
 
-        ImGui::Text("Tonemapper Type:");
-        ImGui::NextColumn();
-        ImGui::Text("%s", summary.tonemapper_type.c_str());
-        ImGui::NextColumn();
+    ImGui::Text("Tonemapper Type:");
+    ImGui::NextColumn();
+    ImGui::Text("%s", summary.tonemapper_type.c_str());
+    ImGui::NextColumn();
 
-        ImGui::Text("Optical Flow Accelerator:");
-        ImGui::NextColumn();
-        ImGui::TextColored(
-            summary.ofa_enabled == "Yes" ? ImVec4(0.0f, 1.0f, 0.0f, 1.0f) : ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "%s",
-            summary.ofa_enabled.c_str());
-        ImGui::NextColumn();
+    ImGui::Text("Optical Flow Accelerator:");
+    ImGui::NextColumn();
+    ImGui::TextColored(summary.ofa_enabled == "Yes" ? ImVec4(0.0f, 1.0f, 0.0f, 1.0f) : ImVec4(1.0f, 0.0f, 0.0f, 1.0f),
+                       "%s", summary.ofa_enabled.c_str());
+    ImGui::NextColumn();
 
-        ImGui::Columns(1);  // Reset columns
+    ImGui::Columns(1);  // Reset columns
 
-        // Add some helpful information
-        ImGui::Spacing();
-        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f),
-                           "Note: Values update in real-time as the game calls NGX functions");
+    // Add some helpful information
+    ImGui::Spacing();
+    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f),
+                       "Note: Values update in real-time as the game calls NGX functions");
 
-        if (summary.dlss_g_active) {
-            ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "DLSS Frame Generation is currently active!");
-        }
+    if (summary.dlss_g_active) {
+        ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "DLSS Frame Generation is currently active!");
+    }
 
-        if (summary.ray_reconstruction_active) {
-            ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "Ray Reconstruction is currently active!");
-        }
+    if (summary.ray_reconstruction_active) {
+        ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "Ray Reconstruction is currently active!");
+    }
 
-        if (summary.ofa_enabled == "Yes") {
-            ImGui::TextColored(ui::colors::TEXT_SUCCESS, "NVIDIA Optical Flow Accelerator (OFA) is enabled!");
-        }
+    if (summary.ofa_enabled == "Yes") {
+        ImGui::TextColored(ui::colors::TEXT_SUCCESS, "NVIDIA Optical Flow Accelerator (OFA) is enabled!");
+    }
 }
 
 void DrawDxgiCompositionInfo() {
@@ -1318,27 +1314,18 @@ void DrawDxgiCompositionInfo() {
 
 void DrawSwapchainInfo(reshade::api::effect_runtime* runtime) {
     auto api = runtime->get_device()->get_api();
-    auto native = runtime->get_native();
+    IUnknown* iunknown = reinterpret_cast<IUnknown*>(runtime->get_native());
 
     Microsoft::WRL::ComPtr<IDXGISwapChain> dxgi_swapchain0 = nullptr;
-    if (api == reshade::api::device_api::d3d10) {
-        auto *id3d10device = reinterpret_cast<ID3D10Device *>(native);
-        id3d10device->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain0));
-    }
-    else if (api == reshade::api::device_api::d3d11) {
-        auto *id3d11device = reinterpret_cast<ID3D11Device *>(native);
-        id3d11device->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain0));
-    }
-    else if (api == reshade::api::device_api::d3d12) {
-        auto *id3d12device = reinterpret_cast<ID3D12Device *>(native);
-        id3d12device->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain0));
+    if (api == reshade::api::device_api::d3d10 || api == reshade::api::device_api::d3d11
+        || api == reshade::api::device_api::d3d12) {
+        iunknown->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain0));
     }
     Microsoft::WRL::ComPtr<IDXGISwapChain1> dxgi_swapchain = nullptr;
 
     if (dxgi_swapchain0 != nullptr) {
         dxgi_swapchain0->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain));
     }
-
 
     // todo replace g_last_swapchain_ptr_unsafe with runtime->get_device()->get_native()
     // runtime->get_device()->get_native();
@@ -1393,7 +1380,8 @@ void DrawSwapchainInfo(reshade::api::effect_runtime* runtime) {
                                     buffer_ss << "Backbuffer " << j << " (0x" << std::hex << std::uppercase
                                               << back_buffer.handle << ")";
                                     std::string buffer_header = buffer_ss.str();
-                                    ui::colors::PushNestedHeaderColors();  // Apply distinct colors for nested backbuffer headers
+                                    ui::colors::PushNestedHeaderColors();  // Apply distinct colors for nested
+                                                                           // backbuffer headers
                                     if (ImGui::CollapsingHeader(buffer_header.c_str())) {
                                         ImGui::Indent();
 
@@ -1589,8 +1577,7 @@ void DrawSwapchainInfo(reshade::api::effect_runtime* runtime) {
 
                                         // Current buffer indicator
                                         if (j == current_back_buffer_index) {
-                                            ImGui::TextColored(ui::colors::TEXT_SUCCESS,
-                                                               "*** CURRENT BUFFER ***");
+                                            ImGui::TextColored(ui::colors::TEXT_SUCCESS, "*** CURRENT BUFFER ***");
                                         }
 
                                         ImGui::Unindent();
@@ -1598,8 +1585,7 @@ void DrawSwapchainInfo(reshade::api::effect_runtime* runtime) {
                                     ui::colors::PopNestedHeaderColors();  // Restore default header colors
                                 }
                             } catch (...) {
-                                ImGui::TextColored(ui::colors::TEXT_ERROR,
-                                                   "Backbuffer %d: Error querying resource", j);
+                                ImGui::TextColored(ui::colors::TEXT_ERROR, "Backbuffer %d: Error querying resource", j);
                             }
                         }
                     } else {
@@ -1646,11 +1632,10 @@ void DrawSwapchainInfo(reshade::api::effect_runtime* runtime) {
         ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "No active swapchain detected");
         return;
     }
-    if (is_dxgi && ImGui::CollapsingHeader("Swapchain Information", ImGuiTreeNodeFlags_DefaultOpen) ) {
+    if (is_dxgi && ImGui::CollapsingHeader("Swapchain Information", ImGuiTreeNodeFlags_DefaultOpen)) {
         // warning this tab may crash
 
         // Get the current swapchain from global variable
-
 
         // Get swapchain description
         DXGI_SWAP_CHAIN_DESC1 desc1 = {};
@@ -1734,7 +1719,8 @@ void DrawSwapchainInfo(reshade::api::effect_runtime* runtime) {
 
                     // NVAPI VRR status (NVIDIA only). This complements the DXGI capability flag above.
                     nvapi::VrrStatus vrr_status{};
-                    const bool nvapi_ok = nvapi::TryQueryVrrStatusFromDxgiOutputDeviceName(output_desc.DeviceName, vrr_status);
+                    const bool nvapi_ok =
+                        nvapi::TryQueryVrrStatusFromDxgiOutputDeviceName(output_desc.DeviceName, vrr_status);
 
                     if (!vrr_status.nvapi_initialized) {
                         ImGui::Text("  NVAPI VRR Status: Unavailable (NVAPI init failed or no NVIDIA device)");
@@ -2169,198 +2155,195 @@ void DrawDLSSPresetOverrideContent() {
     // Warning about experimental nature
     ImGui::TextColored(ui::colors::TEXT_WARNING,
                        ICON_FK_WARNING " EXPERIMENTAL FEATURE - May require alt-tab to apply changes!");
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
-                "This feature overrides DLSS presets at runtime.\nChanges may require alt-tabbing out and back into "
-                "the game to take effect.\nUse with caution as it may cause rendering issues in some games.");
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip(
+            "This feature overrides DLSS presets at runtime.\nChanges may require alt-tabbing out and back into "
+            "the game to take effect.\nUse with caution as it may cause rendering issues in some games.");
+    }
+
+    ImGui::Spacing();
+
+    // Enable/disable checkbox
+    if (CheckboxSetting(settings::g_swapchainTabSettings.dlss_preset_override_enabled, "Enable DLSS Preset Override")) {
+        LogInfo("DLSS preset override %s",
+                settings::g_swapchainTabSettings.dlss_preset_override_enabled.GetValue() ? "enabled" : "disabled");
+        // Reset NGX preset initialization when override is enabled/disabled
+        ResetNGXPresetInitialization();
+    }
+
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip(
+            "Override DLSS presets at runtime using NGX parameter interception.\nThis works similar to Special-K's "
+            "DLSS preset override feature.");
+    }
+
+    // Preset selection (only enabled when override is enabled)
+    if (settings::g_swapchainTabSettings.dlss_preset_override_enabled.GetValue()) {
+        ImGui::Spacing();
+
+        // DLSS Super Resolution preset - Dynamic based on supported presets
+        DLSSGSummary summary = GetDLSSGSummary();
+        std::vector<std::string> preset_options = GetDLSSPresetOptions(summary.supported_dlss_presets);
+
+        // Convert to const char* array for ImGui
+        std::vector<const char*> preset_cstrs;
+        preset_cstrs.reserve(preset_options.size());
+        for (const auto& option : preset_options) {
+            preset_cstrs.push_back(option.c_str());
+        }
+
+        if (!summary.ray_reconstruction_active) {
+            // Find current selection
+            std::string current_value = settings::g_swapchainTabSettings.dlss_sr_preset_override.GetValue();
+            int current_selection = 0;
+            for (size_t i = 0; i < preset_options.size(); ++i) {
+                if (current_value == preset_options[i]) {
+                    current_selection = static_cast<int>(i);
+                    break;
+                }
+            }
+
+            if (ImGui::Combo("DLSS Super Resolution Preset", &current_selection, preset_cstrs.data(),
+                             static_cast<int>(preset_cstrs.size()))) {
+                settings::g_swapchainTabSettings.dlss_sr_preset_override.SetValue(preset_options[current_selection]);
+                LogInfo("DLSS SR preset changed to %s (index %d)", preset_options[current_selection].c_str(),
+                        current_selection);
+                // Reset NGX preset initialization so new preset will be applied on next initialization
+                ResetNGXPresetInitialization();
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip(
+                    "Select the DLSS Super Resolution preset to override.\nGame Default = no override (don't "
+                    "change anything)\nDLSS Default = set value to 0\nPreset A = 1, Preset B = 2, etc.\nOnly "
+                    "presets supported by your DLSS version are shown.");
+            }
+        } else {
+            // DLSS Ray Reconstruction preset - Dynamic based on supported RR presets
+            std::vector<std::string> rr_preset_options = GetDLSSPresetOptions(summary.supported_dlss_rr_presets);
+
+            // Convert to const char* array for ImGui
+            std::vector<const char*> rr_preset_cstrs;
+            rr_preset_cstrs.reserve(rr_preset_options.size());
+            for (const auto& option : rr_preset_options) {
+                rr_preset_cstrs.push_back(option.c_str());
+            }
+
+            // Find current selection
+            std::string current_rr_value = settings::g_swapchainTabSettings.dlss_rr_preset_override.GetValue();
+            int current_rr_selection = 0;
+            for (size_t i = 0; i < rr_preset_options.size(); ++i) {
+                if (current_rr_value == rr_preset_options[i]) {
+                    current_rr_selection = static_cast<int>(i);
+                    break;
+                }
+            }
+
+            if (ImGui::Combo("DLSS Ray Reconstruction Preset", &current_rr_selection, rr_preset_cstrs.data(),
+                             static_cast<int>(rr_preset_cstrs.size()))) {
+                settings::g_swapchainTabSettings.dlss_rr_preset_override.SetValue(
+                    rr_preset_options[current_rr_selection]);
+                LogInfo("DLSS RR preset changed to %s (index %d)", rr_preset_options[current_rr_selection].c_str(),
+                        current_rr_selection);
+                // Reset NGX preset initialization so new preset will be applied on next initialization
+                ResetNGXPresetInitialization();
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip(
+                    "Select the DLSS Ray Reconstruction preset to override.\nGame Default = no override (don't "
+                    "change anything)\nDLSS Default = set value to 0\nPreset A = 1, Preset B = 2, Preset C = 3, "
+                    "Preset D = 4, Preset E = 5, etc.\nA, B, C, D, E presets are supported for Ray Reconstruction "
+                    "(version dependent).");
+            }
         }
 
         ImGui::Spacing();
 
-        // Enable/disable checkbox
-        if (CheckboxSetting(settings::g_swapchainTabSettings.dlss_preset_override_enabled,
-                            "Enable DLSS Preset Override")) {
-            LogInfo("DLSS preset override %s",
-                    settings::g_swapchainTabSettings.dlss_preset_override_enabled.GetValue() ? "enabled" : "disabled");
-            // Reset NGX preset initialization when override is enabled/disabled
-            ResetNGXPresetInitialization();
+        // Show current settings summary
+        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Current Settings:");
+        if (!summary.ray_reconstruction_active) {
+            ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  DLSS SR Preset: %s",
+                               settings::g_swapchainTabSettings.dlss_sr_preset_override.GetValue().c_str());
+        } else {
+            ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  DLSS RR Preset: %s",
+                               settings::g_swapchainTabSettings.dlss_rr_preset_override.GetValue().c_str());
+        }
+        ImGui::Spacing();
+        ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "Note: Preset values are mapped as follows:");
+        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "  Game Default = no override (don't change anything)");
+        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "  DLSS Default = set value to 0");
+        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "  Preset A = 1, Preset B = 2, etc.");
+        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "  SR presets supported by your DLSS version: %s",
+                           summary.supported_dlss_presets.c_str());
+        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "  RR presets supported by your DLSS version: %s",
+                           summary.supported_dlss_rr_presets.c_str());
+        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f),
+                           "  These values override the corresponding NGX parameter values.");
+    }
+
+    // DLSS Model Profile display
+    DLSSModelProfile model_profile = GetDLSSModelProfile();
+    if (model_profile.is_valid) {
+        ImGui::Spacing();
+        ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "DLSS Model Profile:");
+
+        // Get current quality preset to determine which values to show
+        DLSSGSummary summary = GetDLSSGSummary();
+        std::string current_quality = summary.quality_preset;
+        int sr_preset_value = 0;
+        int rr_preset_value = 0;
+
+        // Determine which preset values to display based on current quality preset
+        if (current_quality == "Quality") {
+            sr_preset_value = model_profile.sr_quality_preset;
+            rr_preset_value = model_profile.rr_quality_preset;
+        } else if (current_quality == "Balanced") {
+            sr_preset_value = model_profile.sr_balanced_preset;
+            rr_preset_value = model_profile.rr_balanced_preset;
+        } else if (current_quality == "Performance") {
+            sr_preset_value = model_profile.sr_performance_preset;
+            rr_preset_value = model_profile.rr_performance_preset;
+        } else if (current_quality == "Ultra Performance") {
+            sr_preset_value = model_profile.sr_ultra_performance_preset;
+            rr_preset_value = model_profile.rr_ultra_performance_preset;
+        } else if (current_quality == "Ultra Quality") {
+            sr_preset_value = model_profile.sr_ultra_quality_preset;
+            rr_preset_value = model_profile.rr_ultra_quality_preset;
+        } else if (current_quality == "DLAA") {
+            sr_preset_value = model_profile.sr_dlaa_preset;
+            rr_preset_value = 0;  // DLAA doesn't have RR equivalent
+        } else {
+            // Default to Quality if unknown
+            sr_preset_value = model_profile.sr_quality_preset;
+            rr_preset_value = model_profile.rr_quality_preset;
         }
 
+        if (!summary.ray_reconstruction_active) {
+            // Display current preset values
+            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "  Super Resolution (%s): %d", current_quality.c_str(),
+                               sr_preset_value);
+        } else {
+            // Display current preset values
+            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "  Ray Reconstruction (%s): %d", current_quality.c_str(),
+                               rr_preset_value);
+        }
+
+        // Show all values in tooltip
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip(
-                "Override DLSS presets at runtime using NGX parameter interception.\nThis works similar to Special-K's "
-                "DLSS preset override feature.");
+                "All DLSS Model Profile Values:\n"
+                "Super Resolution:\n"
+                "  Quality: %d, Balanced: %d, Performance: %d\n"
+                "  Ultra Performance: %d, Ultra Quality: %d, DLAA: %d\n"
+                "Ray Reconstruction:\n"
+                "  Quality: %d, Balanced: %d, Performance: %d\n"
+                "  Ultra Performance: %d, Ultra Quality: %d",
+                model_profile.sr_quality_preset, model_profile.sr_balanced_preset, model_profile.sr_performance_preset,
+                model_profile.sr_ultra_performance_preset, model_profile.sr_ultra_quality_preset,
+                model_profile.sr_dlaa_preset, model_profile.rr_quality_preset, model_profile.rr_balanced_preset,
+                model_profile.rr_performance_preset, model_profile.rr_ultra_performance_preset,
+                model_profile.rr_ultra_quality_preset);
         }
-
-        // Preset selection (only enabled when override is enabled)
-        if (settings::g_swapchainTabSettings.dlss_preset_override_enabled.GetValue()) {
-            ImGui::Spacing();
-
-            // DLSS Super Resolution preset - Dynamic based on supported presets
-            DLSSGSummary summary = GetDLSSGSummary();
-            std::vector<std::string> preset_options = GetDLSSPresetOptions(summary.supported_dlss_presets);
-
-            // Convert to const char* array for ImGui
-            std::vector<const char*> preset_cstrs;
-            preset_cstrs.reserve(preset_options.size());
-            for (const auto& option : preset_options) {
-                preset_cstrs.push_back(option.c_str());
-            }
-
-            if (!summary.ray_reconstruction_active) {
-                // Find current selection
-                std::string current_value = settings::g_swapchainTabSettings.dlss_sr_preset_override.GetValue();
-                int current_selection = 0;
-                for (size_t i = 0; i < preset_options.size(); ++i) {
-                    if (current_value == preset_options[i]) {
-                        current_selection = static_cast<int>(i);
-                        break;
-                    }
-                }
-
-                if (ImGui::Combo("DLSS Super Resolution Preset", &current_selection, preset_cstrs.data(),
-                                 static_cast<int>(preset_cstrs.size()))) {
-                    settings::g_swapchainTabSettings.dlss_sr_preset_override.SetValue(
-                        preset_options[current_selection]);
-                    LogInfo("DLSS SR preset changed to %s (index %d)", preset_options[current_selection].c_str(),
-                            current_selection);
-                    // Reset NGX preset initialization so new preset will be applied on next initialization
-                    ResetNGXPresetInitialization();
-                }
-                if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip(
-                        "Select the DLSS Super Resolution preset to override.\nGame Default = no override (don't "
-                        "change anything)\nDLSS Default = set value to 0\nPreset A = 1, Preset B = 2, etc.\nOnly "
-                        "presets supported by your DLSS version are shown.");
-                }
-            } else {
-                // DLSS Ray Reconstruction preset - Dynamic based on supported RR presets
-                std::vector<std::string> rr_preset_options = GetDLSSPresetOptions(summary.supported_dlss_rr_presets);
-
-                // Convert to const char* array for ImGui
-                std::vector<const char*> rr_preset_cstrs;
-                rr_preset_cstrs.reserve(rr_preset_options.size());
-                for (const auto& option : rr_preset_options) {
-                    rr_preset_cstrs.push_back(option.c_str());
-                }
-
-                // Find current selection
-                std::string current_rr_value = settings::g_swapchainTabSettings.dlss_rr_preset_override.GetValue();
-                int current_rr_selection = 0;
-                for (size_t i = 0; i < rr_preset_options.size(); ++i) {
-                    if (current_rr_value == rr_preset_options[i]) {
-                        current_rr_selection = static_cast<int>(i);
-                        break;
-                    }
-                }
-
-                if (ImGui::Combo("DLSS Ray Reconstruction Preset", &current_rr_selection, rr_preset_cstrs.data(),
-                                 static_cast<int>(rr_preset_cstrs.size()))) {
-                    settings::g_swapchainTabSettings.dlss_rr_preset_override.SetValue(
-                        rr_preset_options[current_rr_selection]);
-                    LogInfo("DLSS RR preset changed to %s (index %d)", rr_preset_options[current_rr_selection].c_str(),
-                            current_rr_selection);
-                    // Reset NGX preset initialization so new preset will be applied on next initialization
-                    ResetNGXPresetInitialization();
-                }
-                if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip(
-                        "Select the DLSS Ray Reconstruction preset to override.\nGame Default = no override (don't "
-                        "change anything)\nDLSS Default = set value to 0\nPreset A = 1, Preset B = 2, Preset C = 3, "
-                        "Preset D = 4, Preset E = 5, etc.\nA, B, C, D, E presets are supported for Ray Reconstruction "
-                        "(version dependent).");
-                }
-            }
-
-            ImGui::Spacing();
-
-            // Show current settings summary
-            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Current Settings:");
-            if (!summary.ray_reconstruction_active) {
-                ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  DLSS SR Preset: %s",
-                                   settings::g_swapchainTabSettings.dlss_sr_preset_override.GetValue().c_str());
-            } else {
-                ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  DLSS RR Preset: %s",
-                                   settings::g_swapchainTabSettings.dlss_rr_preset_override.GetValue().c_str());
-            }
-            ImGui::Spacing();
-            ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "Note: Preset values are mapped as follows:");
-            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "  Game Default = no override (don't change anything)");
-            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "  DLSS Default = set value to 0");
-            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "  Preset A = 1, Preset B = 2, etc.");
-            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "  SR presets supported by your DLSS version: %s",
-                               summary.supported_dlss_presets.c_str());
-            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "  RR presets supported by your DLSS version: %s",
-                               summary.supported_dlss_rr_presets.c_str());
-            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f),
-                               "  These values override the corresponding NGX parameter values.");
-        }
-
-        // DLSS Model Profile display
-        DLSSModelProfile model_profile = GetDLSSModelProfile();
-        if (model_profile.is_valid) {
-            ImGui::Spacing();
-            ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "DLSS Model Profile:");
-
-            // Get current quality preset to determine which values to show
-            DLSSGSummary summary = GetDLSSGSummary();
-            std::string current_quality = summary.quality_preset;
-            int sr_preset_value = 0;
-            int rr_preset_value = 0;
-
-            // Determine which preset values to display based on current quality preset
-            if (current_quality == "Quality") {
-                sr_preset_value = model_profile.sr_quality_preset;
-                rr_preset_value = model_profile.rr_quality_preset;
-            } else if (current_quality == "Balanced") {
-                sr_preset_value = model_profile.sr_balanced_preset;
-                rr_preset_value = model_profile.rr_balanced_preset;
-            } else if (current_quality == "Performance") {
-                sr_preset_value = model_profile.sr_performance_preset;
-                rr_preset_value = model_profile.rr_performance_preset;
-            } else if (current_quality == "Ultra Performance") {
-                sr_preset_value = model_profile.sr_ultra_performance_preset;
-                rr_preset_value = model_profile.rr_ultra_performance_preset;
-            } else if (current_quality == "Ultra Quality") {
-                sr_preset_value = model_profile.sr_ultra_quality_preset;
-                rr_preset_value = model_profile.rr_ultra_quality_preset;
-            } else if (current_quality == "DLAA") {
-                sr_preset_value = model_profile.sr_dlaa_preset;
-                rr_preset_value = 0;  // DLAA doesn't have RR equivalent
-            } else {
-                // Default to Quality if unknown
-                sr_preset_value = model_profile.sr_quality_preset;
-                rr_preset_value = model_profile.rr_quality_preset;
-            }
-
-            if (!summary.ray_reconstruction_active) {
-                // Display current preset values
-                ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "  Super Resolution (%s): %d",
-                                   current_quality.c_str(), sr_preset_value);
-            } else {
-                // Display current preset values
-                ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "  Ray Reconstruction (%s): %d",
-                                   current_quality.c_str(), rr_preset_value);
-            }
-
-            // Show all values in tooltip
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip(
-                    "All DLSS Model Profile Values:\n"
-                    "Super Resolution:\n"
-                    "  Quality: %d, Balanced: %d, Performance: %d\n"
-                    "  Ultra Performance: %d, Ultra Quality: %d, DLAA: %d\n"
-                    "Ray Reconstruction:\n"
-                    "  Quality: %d, Balanced: %d, Performance: %d\n"
-                    "  Ultra Performance: %d, Ultra Quality: %d",
-                    model_profile.sr_quality_preset, model_profile.sr_balanced_preset,
-                    model_profile.sr_performance_preset, model_profile.sr_ultra_performance_preset,
-                    model_profile.sr_ultra_quality_preset, model_profile.sr_dlaa_preset,
-                    model_profile.rr_quality_preset, model_profile.rr_balanced_preset,
-                    model_profile.rr_performance_preset, model_profile.rr_ultra_performance_preset,
-                    model_profile.rr_ultra_quality_preset);
-            }
-        }
+    }
 }
 
 }  // namespace ui::new_ui

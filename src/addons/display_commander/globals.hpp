@@ -47,7 +47,7 @@ constexpr bool enabled_experimental_features = true;
 constexpr bool enabled_experimental_features = false;
 #endif
 
-enum class DeviceTypeDC { DX9, DX10, DX11, DX12, OpenGL };
+enum class DeviceTypeDC { DX9, DX10, DX11, DX12, OpenGL, Vulkan };
 
 // Log level enum matching ReShade's log levels
 enum class LogLevel {

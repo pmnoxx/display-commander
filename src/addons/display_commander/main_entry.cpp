@@ -2024,7 +2024,7 @@ void HandleSafemode() {
     }
 }
 
-void DoInitializationWithoutHwnd(HMODULE h_module, DWORD fdw_reason) {
+void DoInitializationWithoutHwndSafe(HMODULE h_module) {
     // Initialize config system now (safe to start threads here, after DLLMain)
 
     // Save entry point to config now that config system is initialized
@@ -2042,7 +2042,7 @@ void DoInitializationWithoutHwnd(HMODULE h_module, DWORD fdw_reason) {
         LogWarn("Failed to setup high-resolution timer");
     }
 
-    LogInfo("DLLMain (DisplayCommander) %lld %d h_module: 0x%p", utils::get_now_ns(), fdw_reason,
+    LogInfo("DLLMain (DisplayCommander) %lld h_module: 0x%p", utils::get_now_ns(),
             reinterpret_cast<uintptr_t>(h_module));
 
     // Load all settings at startup
@@ -2063,7 +2063,21 @@ void DoInitializationWithoutHwnd(HMODULE h_module, DWORD fdw_reason) {
         DWORD error = GetLastError();
         LogWarn("Failed to pin module: 0x%p, Error: %lu", h_module, error);
     }
+    // Install process-exit safety hooks to restore display on abnormal exits
+    process_exit_hooks::Initialize();
 
+    LogInfo("DLL initialization complete - DXGI calls now enabled");
+
+    // Install API hooks for continue rendering
+    LogInfo("DLL_THREAD_ATTACH: Installing API hooks...");
+    display_commanderhooks::InstallApiHooks();
+
+    g_dll_initialization_complete.store(true);
+    // Override ReShade settings early to set tutorial as viewed and disable auto updates
+    OverrideReShadeSettings();
+}
+
+void DoInitializationWithoutHwnd(HMODULE h_module) {
     // Register reshade_overlay event for test code
     reshade::register_event<reshade::addon_event::reshade_overlay>(OnReShadeOverlayTest);
 
@@ -2134,19 +2148,6 @@ void DoInitializationWithoutHwnd(HMODULE h_module, DWORD fdw_reason) {
     // Register ReShade effect rendering events
     reshade::register_event<reshade::addon_event::reshade_begin_effects>(OnReShadeBeginEffects);
     reshade::register_event<reshade::addon_event::reshade_finish_effects>(OnReShadeFinishEffects);
-
-    // Install process-exit safety hooks to restore display on abnormal exits
-    process_exit_hooks::Initialize();
-
-    LogInfo("DLL initialization complete - DXGI calls now enabled");
-
-    // Install API hooks for continue rendering
-    LogInfo("DLL_THREAD_ATTACH: Installing API hooks...");
-    display_commanderhooks::InstallApiHooks();
-
-    g_dll_initialization_complete.store(true);
-    // Override ReShade settings early to set tutorial as viewed and disable auto updates
-    OverrideReShadeSettings();
 }
 
 // Named event name for injection tracking (shared across processes)
@@ -2207,7 +2208,8 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
 
             */
             // TODO: if file exists, load it
-            // check if reshade is loaded by going through all modules and checking if ReShadeRegisterAddon is present
+            // check if reshade is loaded by going through all modules and checking if ReShadeRegisterAddon is
+            // present
             HMODULE modules[1024];
             DWORD num_modules_bytes = 0;
             if (K32EnumProcessModules(GetCurrentProcess(), modules, sizeof(modules), &num_modules_bytes) != 0) {
@@ -2603,7 +2605,8 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             // Initialize QPC timing constants based on actual frequency
             utils::initialize_qpc_timing_constants();
 
-            DoInitializationWithoutHwnd(h_module, fdw_reason);
+            DoInitializationWithoutHwndSafe(h_module);
+            DoInitializationWithoutHwnd(h_module);
             // display_commander::config::DisplayCommanderConfigManager::GetInstance().SetAutoFlushLogs(false);
 
             // Load addons from Plugins directory

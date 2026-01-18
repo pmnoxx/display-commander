@@ -45,19 +45,14 @@ extern "C" __declspec(dllexport) LONGLONG LoadedNs() { return g_dll_load_time_ns
 
 // Export addon initialization function
 extern "C" __declspec(dllexport) bool AddonInit(HMODULE addon_module, HMODULE reshade_module) {
-    // print current module
+    // Store ReShade module handle for unload detection
+    g_reshade_module = reshade_module;
+    LogInfo("AddonInit: Stored ReShade module handle: 0x%p", reshade_module);
 
-    static bool initialized = false;
-    if (!initialized) {
-        return true;
-    }
-    initialized = true;
-    LogInfo("Display Commander addon initialized g_hmodule: 0x%p", g_hmodule);
-    // log to reshade
-    reshade::log::message(reshade::log::level::info, "Display Commander addon initialized pt1");
-    while (!g_process_attached.load(std::memory_order_acquire)) {
-        Sleep(1);
-    }
-    reshade::log::message(reshade::log::level::info, "Display Commander addon initialized pt2");
+    reshade::unregister_addon(addon_module);
+    reshade::register_addon(addon_module);
+    reshade::unregister_overlay("Display Commander", OnRegisterOverlayDisplayCommander);
+    reshade::register_overlay("Display Commander", OnRegisterOverlayDisplayCommander);
+    DoInitializationWithoutHwnd(addon_module);
     return true;
 }

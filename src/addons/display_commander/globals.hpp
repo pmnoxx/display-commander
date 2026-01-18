@@ -540,11 +540,13 @@ extern std::atomic<bool> g_auto_click_enabled;
 // ReShade Integration
 extern std::vector<reshade::api::effect_runtime*> g_reshade_runtimes;
 extern SRWLOCK g_reshade_runtimes_lock;
+extern HMODULE g_reshade_module;
 extern void (*g_custom_fps_limiter_callback)();
 
 // ReShade runtime management functions
 void AddReShadeRuntime(reshade::api::effect_runtime* runtime);
 void RemoveReShadeRuntime(reshade::api::effect_runtime* runtime);
+void OnReshadeUnload();
 reshade::api::effect_runtime* GetFirstReShadeRuntime();
 std::vector<reshade::api::effect_runtime*> GetAllReShadeRuntimes();
 size_t GetReShadeRuntimeCount();

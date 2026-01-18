@@ -1,13 +1,13 @@
 #include "sleep_hooks.hpp"
-#include "hook_suppression_manager.hpp"
+#include <MinHook.h>
+#include <windows.h>
 #include "../globals.hpp"
 #include "../settings/experimental_tab_settings.hpp"
 #include "../utils.hpp"
 #include "../utils/general_utils.hpp"
 #include "../utils/logging.hpp"
+#include "hook_suppression_manager.hpp"
 #include "windows_hooks/windows_message_hooks.hpp"
-#include <MinHook.h>
-#include <windows.h>
 
 // Removed unused headers
 
@@ -77,7 +77,6 @@ void WINAPI Sleep_Detour(DWORD dwMilliseconds) {
     }
 }
 
-
 // Hooked SleepEx function
 DWORD WINAPI SleepEx_Detour(DWORD dwMilliseconds, BOOL bAlertable) {
     // Track total calls
@@ -135,8 +134,8 @@ DWORD WINAPI WaitForSingleObject_Detour(HANDLE hHandle, DWORD dwMilliseconds) {
 
     DWORD modified_duration = dwMilliseconds;
 
-    if (settings::g_experimentalTabSettings.sleep_hook_enabled.GetValue() && dwMilliseconds > 0 &&
-        dwMilliseconds != INFINITE) {
+    if (settings::g_experimentalTabSettings.sleep_hook_enabled.GetValue() && dwMilliseconds > 0
+        && dwMilliseconds != INFINITE) {
         {
             // Apply sleep multiplier
             float multiplier = settings::g_experimentalTabSettings.sleep_multiplier.GetValue();
@@ -180,14 +179,14 @@ DWORD WINAPI WaitForSingleObject_Detour(HANDLE hHandle, DWORD dwMilliseconds) {
 }
 
 // Hooked WaitForMultipleObjects function
-DWORD WINAPI WaitForMultipleObjects_Detour(DWORD nCount, const HANDLE *lpHandles, BOOL bWaitAll, DWORD dwMilliseconds) {
+DWORD WINAPI WaitForMultipleObjects_Detour(DWORD nCount, const HANDLE* lpHandles, BOOL bWaitAll, DWORD dwMilliseconds) {
     // Track total calls
     g_hook_stats[HOOK_WaitForMultipleObjects].increment_total();
 
     DWORD modified_duration = dwMilliseconds;
 
-    if (settings::g_experimentalTabSettings.sleep_hook_enabled.GetValue() && dwMilliseconds > 0 &&
-        dwMilliseconds != INFINITE) {
+    if (settings::g_experimentalTabSettings.sleep_hook_enabled.GetValue() && dwMilliseconds > 0
+        && dwMilliseconds != INFINITE) {
         {
             // Apply sleep multiplier
             float multiplier = settings::g_experimentalTabSettings.sleep_multiplier.GetValue();
@@ -232,13 +231,14 @@ DWORD WINAPI WaitForMultipleObjects_Detour(DWORD nCount, const HANDLE *lpHandles
 
 // Install sleep hooks
 bool InstallSleepHooks() {
-    if (DISABLE_SLEEP_HOOKS) {
+    if (DISABLE_SLEEP_HOOKS || true) {
         LogInfo("Sleep hooks are disabled via DISABLE_SLEEP_HOOKS constant");
-        return true; // Return success but don't install hooks
+        return true;  // Return success but don't install hooks
     }
 
     // Check if Sleep hooks should be suppressed
-    if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(display_commanderhooks::HookType::SLEEP)) {
+    if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(
+            display_commanderhooks::HookType::SLEEP)) {
         LogInfo("Sleep hooks installation suppressed by user setting");
         return false;
     }
@@ -257,26 +257,27 @@ bool InstallSleepHooks() {
     }
 
     // Hook Sleep
-    if (!CreateAndEnableHook(Sleep, Sleep_Detour, (LPVOID *)&Sleep_Original, "Sleep")) {
+    if (!CreateAndEnableHook(Sleep, Sleep_Detour, (LPVOID*)&Sleep_Original, "Sleep")) {
         LogError("Failed to create and enable Sleep hook");
         return false;
     }
 
     // Hook SleepEx
-    if (!CreateAndEnableHook(SleepEx, SleepEx_Detour, (LPVOID *)&SleepEx_Original, "SleepEx")) {
+    if (!CreateAndEnableHook(SleepEx, SleepEx_Detour, (LPVOID*)&SleepEx_Original, "SleepEx")) {
         LogError("Failed to create and enable SleepEx hook");
         return false;
     }
 
     // Hook WaitForSingleObject
-    if (!CreateAndEnableHook(WaitForSingleObject, WaitForSingleObject_Detour, (LPVOID *)&WaitForSingleObject_Original, "WaitForSingleObject")) {
+    if (!CreateAndEnableHook(WaitForSingleObject, WaitForSingleObject_Detour, (LPVOID*)&WaitForSingleObject_Original,
+                             "WaitForSingleObject")) {
         LogError("Failed to create and enable WaitForSingleObject hook");
         return false;
     }
 
     // Hook WaitForMultipleObjects
     if (!CreateAndEnableHook(WaitForMultipleObjects, WaitForMultipleObjects_Detour,
-                             (LPVOID *)&WaitForMultipleObjects_Original, "WaitForMultipleObjects")) {
+                             (LPVOID*)&WaitForMultipleObjects_Original, "WaitForMultipleObjects")) {
         LogError("Failed to create and enable WaitForMultipleObjects hook");
         return false;
     }
@@ -284,7 +285,8 @@ bool InstallSleepHooks() {
     LogInfo("Sleep hooks installed successfully");
 
     // Mark Sleep hooks as installed
-    display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(display_commanderhooks::HookType::SLEEP);
+    display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(
+        display_commanderhooks::HookType::SLEEP);
 
     return true;
 }
@@ -317,4 +319,4 @@ void UninstallSleepHooks() {
     LogInfo("Sleep hooks uninstalled");
 }
 
-} // namespace display_commanderhooks
+}  // namespace display_commanderhooks

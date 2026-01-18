@@ -14,6 +14,8 @@ using LoadLibraryA_pfn = HMODULE(WINAPI *)(LPCSTR);
 using LoadLibraryW_pfn = HMODULE(WINAPI *)(LPCWSTR);
 using LoadLibraryExA_pfn = HMODULE(WINAPI *)(LPCSTR, HANDLE, DWORD);
 using LoadLibraryExW_pfn = HMODULE(WINAPI *)(LPCWSTR, HANDLE, DWORD);
+using FreeLibrary_pfn = BOOL(WINAPI *)(HMODULE);
+using FreeLibraryAndExitThread_pfn = VOID(WINAPI *)(HMODULE, DWORD);
 
 // Module information structure
 struct ModuleInfo {
@@ -37,12 +39,16 @@ extern LoadLibraryA_pfn LoadLibraryA_Original;
 extern LoadLibraryW_pfn LoadLibraryW_Original;
 extern LoadLibraryExA_pfn LoadLibraryExA_Original;
 extern LoadLibraryExW_pfn LoadLibraryExW_Original;
+extern FreeLibrary_pfn FreeLibrary_Original;
+extern FreeLibraryAndExitThread_pfn FreeLibraryAndExitThread_Original;
 
 // Hooked LoadLibrary functions
 HMODULE WINAPI LoadLibraryA_Detour(LPCSTR lpLibFileName);
 HMODULE WINAPI LoadLibraryW_Detour(LPCWSTR lpLibFileName);
 HMODULE WINAPI LoadLibraryExA_Detour(LPCSTR lpLibFileName, HANDLE hFile, DWORD dwFlags);
 HMODULE WINAPI LoadLibraryExW_Detour(LPCWSTR lpLibFileName, HANDLE hFile, DWORD dwFlags);
+BOOL WINAPI FreeLibrary_Detour(HMODULE hLibModule);
+VOID WINAPI FreeLibraryAndExitThread_Detour(HMODULE hLibModule, DWORD dwExitCode);
 
 // Hook management
 bool InstallLoadLibraryHooks();

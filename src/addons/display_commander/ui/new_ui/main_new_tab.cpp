@@ -1469,106 +1469,103 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
     }
 }
 
-void DrawQuickResolutionChanger() {
+void DrawQuickFpsLimitChanger() {
     // Quick-set buttons based on current monitor refresh rate
     {
-        double refresh_hz;
-        {
-            auto window_state = ::g_window_state.load();
-            refresh_hz = window_state->current_monitor_refresh_rate.ToHz();
-        }
+        auto window_state = ::g_window_state.load();
+        double refresh_hz = window_state->current_monitor_refresh_rate.ToHz();
         int y = static_cast<int>(std::round(refresh_hz));
-        if (y > 0) {
-            bool first = true;
-            const float selected_epsilon = 0.0001f;
-            // Add No Limit button at the beginning
-            {
-                bool selected =
-                    (std::fabs(settings::g_mainTabSettings.fps_limit.GetValue() - 0.0f) <= selected_epsilon);
-                if (selected) {
-                    ui::colors::PushSelectedButtonColors();
-                }
-                if (ImGui::Button("No Limit")) {
-                    settings::g_mainTabSettings.fps_limit.SetValue(0.0f);
-                }
-                if (selected) {
-                    ui::colors::PopSelectedButtonColors();
-                }
+        if (y <= 0) {
+            ImGui::TextColored(ui::colors::TEXT_DIMMED, "Quick fps limit changer not working: TODO FIXME");
+            return;
+        }
+        bool first = true;
+        const float selected_epsilon = 0.0001f;
+        // Add No Limit button at the beginning
+        {
+            bool selected = (std::fabs(settings::g_mainTabSettings.fps_limit.GetValue() - 0.0f) <= selected_epsilon);
+            if (selected) {
+                ui::colors::PushSelectedButtonColors();
             }
-            first = false;
-            for (int x = 1; x <= 15; ++x) {
-                if (y % x == 0) {
-                    int candidate_rounded = y / x;
-                    float candidate_precise = refresh_hz / x;
-                    if (candidate_rounded >= 30) {
-                        if (!first) ImGui::SameLine();
-                        first = false;
-                        std::string label = std::to_string(candidate_rounded);
-                        {
-                            bool selected =
-                                (std::fabs(settings::g_mainTabSettings.fps_limit.GetValue() - candidate_precise)
-                                 <= selected_epsilon);
-                            if (selected) {
-                                ui::colors::PushSelectedButtonColors();
-                            }
-                            if (ImGui::Button(label.c_str())) {
-                                float target_fps = candidate_precise;
-                                settings::g_mainTabSettings.fps_limit.SetValue(target_fps);
-                            }
-                            if (selected) {
-                                ui::colors::PopSelectedButtonColors();
-                            }
-                            // Add tooltip showing the precise calculation
-                            if (ImGui::IsItemHovered()) {
-                                std::ostringstream tooltip_oss;
-                                tooltip_oss.setf(std::ios::fixed);
-                                tooltip_oss << std::setprecision(3);
-                                tooltip_oss << "FPS = " << refresh_hz << " ÷ " << x << " = " << candidate_precise
-                                            << " FPS\n\n";
-                                tooltip_oss << "Creates a smooth frame rate that divides evenly\n";
-                                tooltip_oss << "into the monitor's refresh rate.";
-                                ImGui::SetTooltip("%s", tooltip_oss.str().c_str());
-                            }
+            if (ImGui::Button("No Limit")) {
+                settings::g_mainTabSettings.fps_limit.SetValue(0.0f);
+            }
+            if (selected) {
+                ui::colors::PopSelectedButtonColors();
+            }
+        }
+        first = false;
+        for (int x = 1; x <= 15; ++x) {
+            if (y % x == 0) {
+                int candidate_rounded = y / x;
+                float candidate_precise = refresh_hz / x;
+                if (candidate_rounded >= 30) {
+                    if (!first) ImGui::SameLine();
+                    first = false;
+                    std::string label = std::to_string(candidate_rounded);
+                    {
+                        bool selected = (std::fabs(settings::g_mainTabSettings.fps_limit.GetValue() - candidate_precise)
+                                         <= selected_epsilon);
+                        if (selected) {
+                            ui::colors::PushSelectedButtonColors();
+                        }
+                        if (ImGui::Button(label.c_str())) {
+                            float target_fps = candidate_precise;
+                            settings::g_mainTabSettings.fps_limit.SetValue(target_fps);
+                        }
+                        if (selected) {
+                            ui::colors::PopSelectedButtonColors();
+                        }
+                        // Add tooltip showing the precise calculation
+                        if (ImGui::IsItemHovered()) {
+                            std::ostringstream tooltip_oss;
+                            tooltip_oss.setf(std::ios::fixed);
+                            tooltip_oss << std::setprecision(3);
+                            tooltip_oss << "FPS = " << refresh_hz << " ÷ " << x << " = " << candidate_precise
+                                        << " FPS\n\n";
+                            tooltip_oss << "Creates a smooth frame rate that divides evenly\n";
+                            tooltip_oss << "into the monitor's refresh rate.";
+                            ImGui::SetTooltip("%s", tooltip_oss.str().c_str());
                         }
                     }
                 }
             }
-            // Add Gsync Cap button at the end
-            if (!first) {
-                ImGui::SameLine();
+        }
+        // Add Gsync Cap button at the end
+        if (!first) {
+            ImGui::SameLine();
+        }
+
+        {
+            // Gsync formula: refresh_hz - (refresh_hz * refresh_hz / 3600)
+            double gsync_target = refresh_hz - (refresh_hz * refresh_hz / 3600.0);
+            float precise_target = static_cast<float>(gsync_target);
+            if (precise_target < 1.0f) precise_target = 1.0f;
+            bool selected =
+                (std::fabs(settings::g_mainTabSettings.fps_limit.GetValue() - precise_target) <= selected_epsilon);
+
+            if (selected) {
+                ui::colors::PushSelectedButtonColors();
             }
-
-            {
-                // Gsync formula: refresh_hz - (refresh_hz * refresh_hz / 3600)
-                double gsync_target = refresh_hz - (refresh_hz * refresh_hz / 3600.0);
-                float precise_target = static_cast<float>(gsync_target);
-                if (precise_target < 1.0f) precise_target = 1.0f;
-                bool selected =
-                    (std::fabs(settings::g_mainTabSettings.fps_limit.GetValue() - precise_target) <= selected_epsilon);
-
-                if (selected) {
-                    ui::colors::PushSelectedButtonColors();
-                }
-                if (ImGui::Button("Gsync Cap")) {
-                    double precise_target = gsync_target;  // do not round on apply
-                    float target_fps = static_cast<float>(precise_target < 1.0 ? 1.0 : precise_target);
-                    settings::g_mainTabSettings.fps_limit.SetValue(target_fps);
-                }
-                if (selected) {
-                    ui::colors::PopSelectedButtonColors();
-                }
-                // Add tooltip explaining the Gsync formula
-                if (ImGui::IsItemHovered()) {
-                    std::ostringstream tooltip_oss;
-                    tooltip_oss.setf(std::ios::fixed);
-                    tooltip_oss << std::setprecision(3);
-                    tooltip_oss << "Gsync Cap: FPS = " << refresh_hz << " - (" << refresh_hz << "² / 3600)\n";
-                    tooltip_oss << "= " << refresh_hz << " - " << (refresh_hz * refresh_hz / 3600.0) << " = "
-                                << gsync_target << " FPS\n\n";
-                    tooltip_oss << "Creates a ~0.3ms frame time buffer to optimize latency\n";
-                    tooltip_oss << "and prevent tearing, similar to NVIDIA Reflex Low Latency Mode.";
-                    ImGui::SetTooltip("%s", tooltip_oss.str().c_str());
-                }
+            if (ImGui::Button("VRR Cap")) {
+                double precise_target = gsync_target;  // do not round on apply
+                float target_fps = static_cast<float>(precise_target < 1.0 ? 1.0 : precise_target);
+                settings::g_mainTabSettings.fps_limit.SetValue(target_fps);
+            }
+            if (selected) {
+                ui::colors::PopSelectedButtonColors();
+            }
+            // Add tooltip explaining the Gsync formula
+            if (ImGui::IsItemHovered()) {
+                std::ostringstream tooltip_oss;
+                tooltip_oss.setf(std::ios::fixed);
+                tooltip_oss << std::setprecision(3);
+                tooltip_oss << "Gsync Cap: FPS = " << refresh_hz << " - (" << refresh_hz << "² / 3600)\n";
+                tooltip_oss << "= " << refresh_hz << " - " << (refresh_hz * refresh_hz / 3600.0) << " = "
+                            << gsync_target << " FPS\n\n";
+                tooltip_oss << "Creates a ~0.3ms frame time buffer to optimize latency\n";
+                tooltip_oss << "and prevent tearing, similar to NVIDIA Reflex Low Latency Mode.";
+                ImGui::SetTooltip("%s", tooltip_oss.str().c_str());
             }
         }
     }
@@ -2097,7 +2094,7 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
             if (!fps_limit_enabled) {
                 ImGui::BeginDisabled();
             }
-            DrawQuickResolutionChanger();
+            DrawQuickFpsLimitChanger();
 
             if (!fps_limit_enabled) {
                 ImGui::EndDisabled();

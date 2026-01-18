@@ -1,22 +1,22 @@
 #include "dxgi_present_hooks.hpp"
-#include "../dxgi_factory_wrapper.hpp"
+#include "../../autoclick/autoclick_manager.hpp"
+#include "../../globals.hpp"
+#include "../../latent_sync/refresh_rate_monitor_integration.hpp"
 #include "../../performance_types.hpp"
+#include "../../settings/developer_tab_settings.hpp"
+#include "../../settings/main_tab_settings.hpp"
 #include "../../swapchain_events.hpp"
+#include "../../ui/new_ui/new_ui_tabs.hpp"
+#include "../../utils/detour_call_tracker.hpp"
 #include "../../utils/general_utils.hpp"
 #include "../../utils/logging.hpp"
 #include "../../utils/perf_measurement.hpp"
-#include "../../utils/detour_call_tracker.hpp"
 #include "../../utils/timing.hpp"
-#include "../../globals.hpp"
-#include "../../settings/main_tab_settings.hpp"
-#include "../../settings/developer_tab_settings.hpp"
-#include "../../latent_sync/refresh_rate_monitor_integration.hpp"
+#include "../dxgi_factory_wrapper.hpp"
 #include "../hook_suppression_manager.hpp"
-#include "../../autoclick/autoclick_manager.hpp"
-#include "../../ui/new_ui/new_ui_tabs.hpp"
 
-#include <MinHook.h>
 #include <dwmapi.h>
+#include <MinHook.h>
 
 #include <d3d11_4.h>
 #include <d3d12.h>
@@ -45,233 +45,234 @@ extern std::atomic<LONGLONG> g_sim_start_ns;
 
 // GPU completion measurement state
 namespace {
-    struct GPUMeasurementState {
-        // TODO: caused reshade to report not cleaned up state
-        Microsoft::WRL::ComPtr<ID3D11Fence> d3d11_fence;
-        Microsoft::WRL::ComPtr<ID3D12Fence> d3d12_fence;
-        HANDLE event_handle = nullptr;
-        std::atomic<uint64_t> fence_value{0};
-        std::atomic<bool> initialized{false};
-        std::atomic<bool> is_d3d12{false};
-        std::atomic<bool> initialization_attempted{false};
+struct GPUMeasurementState {
+    // TODO: caused reshade to report not cleaned up state
+    Microsoft::WRL::ComPtr<ID3D11Fence> d3d11_fence;
+    Microsoft::WRL::ComPtr<ID3D12Fence> d3d12_fence;
+    HANDLE event_handle = nullptr;
+    std::atomic<uint64_t> fence_value{0};
+    std::atomic<bool> initialized{false};
+    std::atomic<bool> is_d3d12{false};
+    std::atomic<bool> initialization_attempted{false};
 
-        ~GPUMeasurementState() {
-            if (event_handle != nullptr) {
-                CloseHandle(event_handle);
-                event_handle = nullptr;
-            }
-        }
-    };
-
-    GPUMeasurementState g_gpu_state;
-
-    // Helper function to enqueue GPU completion measurement for D3D11
-    void EnqueueGPUCompletionD3D11(IDXGISwapChain* swapchain) {
-        if (settings::g_mainTabSettings.gpu_measurement_enabled.GetValue() == 0) {
-            g_gpu_fence_failure_reason.store("GPU measurement disabled");
-            return;
-        }
-
-        Microsoft::WRL::ComPtr<ID3D11Device> device;
-        HRESULT hr = swapchain->GetDevice(IID_PPV_ARGS(&device));
-        if (FAILED(hr)) {
-            g_gpu_fence_failure_reason.store("D3D11: Failed to get device from swapchain");
-            return;
-        }
-
-        // Try to get ID3D11Device5 for fence support
-        Microsoft::WRL::ComPtr<ID3D11Device5> device5;
-        hr = device.As(&device5);
-        if (FAILED(hr)) {
-            g_gpu_fence_failure_reason.store("D3D11: ID3D11Device5 not supported (requires D3D11.3+ / Windows 10+)");
-            return; // Fences require D3D11.3+ (Windows 10+)
-        }
-
-        // Initialize fence on first use
-        if (!g_gpu_state.initialized.load() && !g_gpu_state.initialization_attempted.load()) {
-            g_gpu_state.initialization_attempted.store(true);
-
-            hr = device5->CreateFence(0, D3D11_FENCE_FLAG_NONE, IID_PPV_ARGS(&g_gpu_state.d3d11_fence));
-            if (FAILED(hr)) {
-                g_gpu_fence_failure_reason.store("D3D11: CreateFence failed (driver may not support fences)");
-                return;
-            }
-
-            g_gpu_state.event_handle = CreateEventW(nullptr, FALSE, FALSE, nullptr);
-            if (g_gpu_state.event_handle == nullptr) {
-                g_gpu_state.d3d11_fence.Reset();
-                g_gpu_fence_failure_reason.store("D3D11: Failed to create event handle");
-                return;
-            }
-
-            g_gpu_state.is_d3d12.store(false);
-            g_gpu_state.initialized.store(true);
-          //  g_gpu_fence_failure_reason.store("success!!!"); // Clear failure reason on success
-        }
-
-        if (!static_cast<bool>(g_gpu_state.d3d11_fence)) {
-            g_gpu_fence_failure_reason.store("D3D11: Fence not initialized");
-            return;
-        }
-
-        // Get immediate context and signal fence
-        Microsoft::WRL::ComPtr<ID3D11DeviceContext> context;
-        device->GetImmediateContext(&context);
-
-        Microsoft::WRL::ComPtr<ID3D11DeviceContext4> context4;
-        hr = context.As(&context4);
-        if (FAILED(hr)) {
-            g_gpu_fence_failure_reason.store("D3D11: ID3D11DeviceContext4 not supported (requires D3D11.3+)");
-            return;
-        }
-
-        uint64_t signal_value = g_gpu_state.fence_value.fetch_add(1) + 1;
-
-        // Signal the fence from GPU
-        hr = context4->Signal(g_gpu_state.d3d11_fence.Get(), signal_value);
-        if (FAILED(hr)) {
-            g_gpu_fence_failure_reason.store("D3D11: Failed to signal fence");
-            return;
-        }
-
-        // Set event to trigger when fence reaches this value
-        hr = g_gpu_state.d3d11_fence->SetEventOnCompletion(signal_value, g_gpu_state.event_handle);
-        if (FAILED(hr)) {
-            g_gpu_fence_failure_reason.store("D3D11: SetEventOnCompletion failed");
-            return;
-        }
-
-        // Store the event handle for external threads to wait on
-        g_gpu_completion_event.store(g_gpu_state.event_handle);
-        g_gpu_fence_failure_reason.store(nullptr); // Clear failure reason on success
-    }
-
-    // Helper function to enqueue GPU completion measurement for D3D12
-    void EnqueueGPUCompletionD3D12(IDXGISwapChain* swapchain, ID3D12CommandQueue* command_queue) {
-        if (settings::g_mainTabSettings.gpu_measurement_enabled.GetValue() == 0) {
-            return;
-        }
-
-        Microsoft::WRL::ComPtr<ID3D12Device> device;
-        HRESULT hr = swapchain->GetDevice(IID_PPV_ARGS(&device));
-        if (FAILED(hr)) {
-            g_gpu_fence_failure_reason.store("D3D12: Failed to get device from swapchain");
-            return;
-        }
-
-        // Initialize fence on first use
-        if (!g_gpu_state.initialized.load() && !g_gpu_state.initialization_attempted.load()) {
-            g_gpu_state.initialization_attempted.store(true);
-
-            hr = device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&g_gpu_state.d3d12_fence));
-            if (FAILED(hr)) {
-                g_gpu_fence_failure_reason.store("D3D12: CreateFence failed");
-                return;
-            }
-
-            g_gpu_state.event_handle = CreateEventW(nullptr, FALSE, FALSE, nullptr);
-            if (g_gpu_state.event_handle == nullptr) {
-                g_gpu_state.d3d12_fence.Reset();
-                g_gpu_fence_failure_reason.store("D3D12: Failed to create event handle");
-                return;
-            }
-
-            g_gpu_state.is_d3d12.store(true);
-            g_gpu_state.initialized.store(true);
-        }
-
-        if (!static_cast<bool>(g_gpu_state.d3d12_fence)) {
-            g_gpu_fence_failure_reason.store("D3D12: Fence not initialized");
-            return;
-        }
-
-        // Check if command queue is available
-        if (command_queue == nullptr) {
-            g_gpu_fence_failure_reason.store("D3D12: Command queue not provided (cannot signal fence)");
-            return;
-        }
-
-        // Increment fence value and signal it on the command queue
-        uint64_t signal_value = g_gpu_state.fence_value.fetch_add(1) + 1;
-
-        // Set event to trigger when fence reaches this value
-        hr = g_gpu_state.d3d12_fence->SetEventOnCompletion(signal_value, g_gpu_state.event_handle);
-        if (FAILED(hr)) {
-            g_gpu_fence_failure_reason.store("D3D12: SetEventOnCompletion failed");
-            return;
-        }
-
-        // Signal the fence on the command queue
-        // This will be signaled when the GPU completes all work up to this point
-        hr = command_queue->Signal(g_gpu_state.d3d12_fence.Get(), signal_value);
-        if (FAILED(hr)) {
-            g_gpu_fence_failure_reason.store("D3D12: Failed to signal fence on command queue");
-            return;
-        }
-
-        // Store the event handle for external threads to wait on
-        g_gpu_completion_event.store(g_gpu_state.event_handle);
-        g_gpu_fence_failure_reason.store(nullptr); // Clear failure reason on success
-    }
-
-    // Helper function to enqueue GPU completion measurement (auto-detects API)
-    void EnqueueGPUCompletionInternal(IDXGISwapChain* swapchain, ID3D12CommandQueue* command_queue) {
-        if (swapchain == nullptr) {
-            g_gpu_fence_failure_reason.store("Failed to get device from swapchain");
-            return;
-        }
-        // Capture g_sim_start_ns for sim-to-display latency measurement
-        // Reset tracking flags for this frame
-        g_sim_start_ns_for_measurement.store(g_sim_start_ns.load());
-        g_present_update_after2_called.store(false);
-        g_gpu_completion_callback_finished.store(false);
-
-        // Try D3D12 first
-
-        // Try D3D11
-        Microsoft::WRL::ComPtr<ID3D11Device> d3d11_device;
-        Microsoft::WRL::ComPtr<ID3D12Device> d3d12_device;
-        if (SUCCEEDED(swapchain->GetDevice(IID_PPV_ARGS(&d3d12_device)))) {
-            EnqueueGPUCompletionD3D12(swapchain, command_queue);
-            return;
-        } else if (SUCCEEDED(swapchain->GetDevice(IID_PPV_ARGS(&d3d11_device)))) {
-            EnqueueGPUCompletionD3D11(swapchain);
-            return;
-        } else {
-            g_gpu_fence_failure_reason.store("Failed to get device from swapchain");
+    ~GPUMeasurementState() {
+        if (event_handle != nullptr) {
+            CloseHandle(event_handle);
+            event_handle = nullptr;
         }
     }
+};
 
-    // Cleanup function to reset fences and state when device is destroyed
-    void CleanupGPUMeasurementState() {
-        if (g_gpu_state.initialized.load()) {
-            LogInfo("Cleaning up GPU measurement fences on device destruction");
+GPUMeasurementState g_gpu_state;
 
-            // Reset fences (ComPtr will automatically release references)
+// Helper function to enqueue GPU completion measurement for D3D11
+void EnqueueGPUCompletionD3D11(IDXGISwapChain* swapchain) {
+    if (settings::g_mainTabSettings.gpu_measurement_enabled.GetValue() == 0) {
+        g_gpu_fence_failure_reason.store("GPU measurement disabled");
+        return;
+    }
+
+    Microsoft::WRL::ComPtr<ID3D11Device> device;
+    HRESULT hr = swapchain->GetDevice(IID_PPV_ARGS(&device));
+    if (FAILED(hr)) {
+        g_gpu_fence_failure_reason.store("D3D11: Failed to get device from swapchain");
+        return;
+    }
+
+    // Try to get ID3D11Device5 for fence support
+    Microsoft::WRL::ComPtr<ID3D11Device5> device5;
+    hr = device.As(&device5);
+    if (FAILED(hr)) {
+        g_gpu_fence_failure_reason.store("D3D11: ID3D11Device5 not supported (requires D3D11.3+ / Windows 10+)");
+        return;  // Fences require D3D11.3+ (Windows 10+)
+    }
+
+    // Initialize fence on first use
+    if (!g_gpu_state.initialized.load() && !g_gpu_state.initialization_attempted.load()) {
+        g_gpu_state.initialization_attempted.store(true);
+
+        hr = device5->CreateFence(0, D3D11_FENCE_FLAG_NONE, IID_PPV_ARGS(&g_gpu_state.d3d11_fence));
+        if (FAILED(hr)) {
+            g_gpu_fence_failure_reason.store("D3D11: CreateFence failed (driver may not support fences)");
+            return;
+        }
+
+        g_gpu_state.event_handle = CreateEventW(nullptr, FALSE, FALSE, nullptr);
+        if (g_gpu_state.event_handle == nullptr) {
             g_gpu_state.d3d11_fence.Reset();
-            g_gpu_state.d3d12_fence.Reset();
-
-            // Close event handle if it exists
-            if (g_gpu_state.event_handle != nullptr) {
-                CloseHandle(g_gpu_state.event_handle);
-                g_gpu_state.event_handle = nullptr;
-            }
-
-            // Reset state flags
-            g_gpu_state.fence_value.store(0);
-            g_gpu_state.initialized.store(false);
-            g_gpu_state.is_d3d12.store(false);
-            g_gpu_state.initialization_attempted.store(false);
-
-            LogInfo("GPU measurement fences cleaned up successfully");
+            g_gpu_fence_failure_reason.store("D3D11: Failed to create event handle");
+            return;
         }
+
+        g_gpu_state.is_d3d12.store(false);
+        g_gpu_state.initialized.store(true);
+        //  g_gpu_fence_failure_reason.store("success!!!"); // Clear failure reason on success
     }
-} // namespace
+
+    if (!static_cast<bool>(g_gpu_state.d3d11_fence)) {
+        g_gpu_fence_failure_reason.store("D3D11: Fence not initialized");
+        return;
+    }
+
+    // Get immediate context and signal fence
+    Microsoft::WRL::ComPtr<ID3D11DeviceContext> context;
+    device->GetImmediateContext(&context);
+
+    Microsoft::WRL::ComPtr<ID3D11DeviceContext4> context4;
+    hr = context.As(&context4);
+    if (FAILED(hr)) {
+        g_gpu_fence_failure_reason.store("D3D11: ID3D11DeviceContext4 not supported (requires D3D11.3+)");
+        return;
+    }
+
+    uint64_t signal_value = g_gpu_state.fence_value.fetch_add(1) + 1;
+
+    // Signal the fence from GPU
+    hr = context4->Signal(g_gpu_state.d3d11_fence.Get(), signal_value);
+    if (FAILED(hr)) {
+        g_gpu_fence_failure_reason.store("D3D11: Failed to signal fence");
+        return;
+    }
+
+    // Set event to trigger when fence reaches this value
+    hr = g_gpu_state.d3d11_fence->SetEventOnCompletion(signal_value, g_gpu_state.event_handle);
+    if (FAILED(hr)) {
+        g_gpu_fence_failure_reason.store("D3D11: SetEventOnCompletion failed");
+        return;
+    }
+
+    // Store the event handle for external threads to wait on
+    g_gpu_completion_event.store(g_gpu_state.event_handle);
+    g_gpu_fence_failure_reason.store(nullptr);  // Clear failure reason on success
+}
+
+// Helper function to enqueue GPU completion measurement for D3D12
+void EnqueueGPUCompletionD3D12(IDXGISwapChain* swapchain, ID3D12CommandQueue* command_queue) {
+    if (settings::g_mainTabSettings.gpu_measurement_enabled.GetValue() == 0) {
+        return;
+    }
+
+    Microsoft::WRL::ComPtr<ID3D12Device> device;
+    HRESULT hr = swapchain->GetDevice(IID_PPV_ARGS(&device));
+    if (FAILED(hr)) {
+        g_gpu_fence_failure_reason.store("D3D12: Failed to get device from swapchain");
+        return;
+    }
+
+    // Initialize fence on first use
+    if (!g_gpu_state.initialized.load() && !g_gpu_state.initialization_attempted.load()) {
+        g_gpu_state.initialization_attempted.store(true);
+
+        hr = device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&g_gpu_state.d3d12_fence));
+        if (FAILED(hr)) {
+            g_gpu_fence_failure_reason.store("D3D12: CreateFence failed");
+            return;
+        }
+
+        g_gpu_state.event_handle = CreateEventW(nullptr, FALSE, FALSE, nullptr);
+        if (g_gpu_state.event_handle == nullptr) {
+            g_gpu_state.d3d12_fence.Reset();
+            g_gpu_fence_failure_reason.store("D3D12: Failed to create event handle");
+            return;
+        }
+
+        g_gpu_state.is_d3d12.store(true);
+        g_gpu_state.initialized.store(true);
+    }
+
+    if (!static_cast<bool>(g_gpu_state.d3d12_fence)) {
+        g_gpu_fence_failure_reason.store("D3D12: Fence not initialized");
+        return;
+    }
+
+    // Check if command queue is available
+    if (command_queue == nullptr) {
+        g_gpu_fence_failure_reason.store("D3D12: Command queue not provided (cannot signal fence)");
+        return;
+    }
+
+    // Increment fence value and signal it on the command queue
+    uint64_t signal_value = g_gpu_state.fence_value.fetch_add(1) + 1;
+
+    // Set event to trigger when fence reaches this value
+    hr = g_gpu_state.d3d12_fence->SetEventOnCompletion(signal_value, g_gpu_state.event_handle);
+    if (FAILED(hr)) {
+        g_gpu_fence_failure_reason.store("D3D12: SetEventOnCompletion failed");
+        return;
+    }
+
+    // Signal the fence on the command queue
+    // This will be signaled when the GPU completes all work up to this point
+    hr = command_queue->Signal(g_gpu_state.d3d12_fence.Get(), signal_value);
+    if (FAILED(hr)) {
+        g_gpu_fence_failure_reason.store("D3D12: Failed to signal fence on command queue");
+        return;
+    }
+
+    // Store the event handle for external threads to wait on
+    g_gpu_completion_event.store(g_gpu_state.event_handle);
+    g_gpu_fence_failure_reason.store(nullptr);  // Clear failure reason on success
+}
+
+// Helper function to enqueue GPU completion measurement (auto-detects API)
+void EnqueueGPUCompletionInternal(IDXGISwapChain* swapchain, ID3D12CommandQueue* command_queue) {
+    if (swapchain == nullptr) {
+        g_gpu_fence_failure_reason.store("Failed to get device from swapchain");
+        return;
+    }
+    // Capture g_sim_start_ns for sim-to-display latency measurement
+    // Reset tracking flags for this frame
+    g_sim_start_ns_for_measurement.store(g_sim_start_ns.load());
+    g_present_update_after2_called.store(false);
+    g_gpu_completion_callback_finished.store(false);
+
+    // Try D3D12 first
+
+    // Try D3D11
+    Microsoft::WRL::ComPtr<ID3D11Device> d3d11_device;
+    Microsoft::WRL::ComPtr<ID3D12Device> d3d12_device;
+    if (SUCCEEDED(swapchain->GetDevice(IID_PPV_ARGS(&d3d12_device)))) {
+        EnqueueGPUCompletionD3D12(swapchain, command_queue);
+        return;
+    } else if (SUCCEEDED(swapchain->GetDevice(IID_PPV_ARGS(&d3d11_device)))) {
+        EnqueueGPUCompletionD3D11(swapchain);
+        return;
+    } else {
+        g_gpu_fence_failure_reason.store("Failed to get device from swapchain");
+    }
+}
+
+// Cleanup function to reset fences and state when device is destroyed
+void CleanupGPUMeasurementState() {
+    if (g_gpu_state.initialized.load()) {
+        LogInfo("Cleaning up GPU measurement fences on device destruction");
+
+        // Reset fences (ComPtr will automatically release references)
+        g_gpu_state.d3d11_fence.Reset();
+        g_gpu_state.d3d12_fence.Reset();
+
+        // Close event handle if it exists
+        if (g_gpu_state.event_handle != nullptr) {
+            CloseHandle(g_gpu_state.event_handle);
+            g_gpu_state.event_handle = nullptr;
+        }
+
+        // Reset state flags
+        g_gpu_state.fence_value.store(0);
+        g_gpu_state.initialized.store(false);
+        g_gpu_state.is_d3d12.store(false);
+        g_gpu_state.initialization_attempted.store(false);
+
+        LogInfo("GPU measurement fences cleaned up successfully");
+    }
+}
+}  // namespace
 
 // Public API wrapper that works with ReShade swapchain
-void EnqueueGPUCompletion(reshade::api::swapchain* swapchain, IDXGISwapChain* dxgi_swapchain, reshade::api::command_queue* command_queue = nullptr) {
-    if (perf_measurement::IsSuppressionEnabled() &&
-        perf_measurement::IsMetricSuppressed(perf_measurement::Metric::EnqueueGPUCompletion)) {
+void EnqueueGPUCompletion(reshade::api::swapchain* swapchain, IDXGISwapChain* dxgi_swapchain,
+                          reshade::api::command_queue* command_queue = nullptr) {
+    if (perf_measurement::IsSuppressionEnabled()
+        && perf_measurement::IsMetricSuppressed(perf_measurement::Metric::EnqueueGPUCompletion)) {
         return;
     }
 
@@ -294,19 +295,18 @@ void EnqueueGPUCompletion(reshade::api::swapchain* swapchain, IDXGISwapChain* dx
 
 namespace display_commanderhooks::dxgi {
 
-
 // Helper function to safely check if vtable entry exists
 bool IsVTableEntryValid(void** vtable, int index) {
     if (!vtable) return false;
 
     // Basic bounds check - most swapchains should have at least 18 entries (IDXGISwapChain1)
     // but we'll be conservative and check for null
-  //  __try {
-        return vtable[index] != nullptr;
-  //  }
- //   __except(EXCEPTION_EXECUTE_HANDLER) {
-//        return false;
- //   }
+    //  __try {
+    return vtable[index] != nullptr;
+    //  }
+    //   __except(EXCEPTION_EXECUTE_HANDLER) {
+    //        return false;
+    //   }
 }
 
 // Original function pointers
@@ -365,21 +365,18 @@ IDXGIOutput6_GetDesc1_pfn IDXGIOutput6_GetDesc1_Original = nullptr;
 
 // Hook state and swapchain tracking
 namespace {
-    std::atomic<bool> g_dxgi_present_hooks_installed{false};
-    std::atomic<bool> g_createswapchain_vtable_hooked{false};
+std::atomic<bool> g_dxgi_present_hooks_installed{false};
+std::atomic<bool> g_createswapchain_vtable_hooked{false};
 
-    // Track the last native swapchain used in OnPresentUpdateBefore
-    std::atomic<IDXGISwapChain*> g_last_present_update_swapchain{nullptr};
-} // namespace
+// Track the last native swapchain used in OnPresentUpdateBefore
+std::atomic<IDXGISwapChain*> g_last_present_update_swapchain{nullptr};
+}  // namespace
 
 // Helper function for common Present/Present1 logic before calling original
-template<typename SwapChainType>
-PresentCommonState HandlePresentBefore(
-    SwapChainType* This,
-    IDXGISwapChain* baseSwapChain) {
-
-    if (perf_measurement::IsSuppressionEnabled() &&
-        perf_measurement::IsMetricSuppressed(perf_measurement::Metric::HandlePresentBefore)) {
+template <typename SwapChainType>
+PresentCommonState HandlePresentBefore(SwapChainType* This) {
+    if (perf_measurement::IsSuppressionEnabled()
+        && perf_measurement::IsMetricSuppressed(perf_measurement::Metric::HandlePresentBefore)) {
         PresentCommonState suppressed_state;
         return suppressed_state;
     }
@@ -390,8 +387,8 @@ PresentCommonState HandlePresentBefore(
 
     {
         const bool suppress_section =
-            perf_measurement::IsSuppressionEnabled() &&
-            perf_measurement::IsMetricSuppressed(perf_measurement::Metric::HandlePresentBefore_DeviceQuery);
+            perf_measurement::IsSuppressionEnabled()
+            && perf_measurement::IsMetricSuppressed(perf_measurement::Metric::HandlePresentBefore_DeviceQuery);
         if (!suppress_section) {
             perf_measurement::ScopedTimer device_query_timer(perf_measurement::Metric::HandlePresentBefore_DeviceQuery);
             This->GetDevice(IID_PPV_ARGS(&state.device));
@@ -413,14 +410,15 @@ PresentCommonState HandlePresentBefore(
     return state;
 }
 
-template<typename SwapChainType> void HandlePresentBefore2(SwapChainType* This) {
+void HandlePresentBefore2() {
     // Record per-frame FPS sample for background aggregation
     {
         const bool suppress_section =
-            perf_measurement::IsSuppressionEnabled() &&
-            perf_measurement::IsMetricSuppressed(perf_measurement::Metric::HandlePresentBefore_RecordFrameTime);
+            perf_measurement::IsSuppressionEnabled()
+            && perf_measurement::IsMetricSuppressed(perf_measurement::Metric::HandlePresentBefore_RecordFrameTime);
         if (!suppress_section) {
-            perf_measurement::ScopedTimer record_frame_time_timer(perf_measurement::Metric::HandlePresentBefore_RecordFrameTime);
+            perf_measurement::ScopedTimer record_frame_time_timer(
+                perf_measurement::Metric::HandlePresentBefore_RecordFrameTime);
             RecordFrameTime(FrameTimeMode::kPresent);
         }
     }
@@ -438,14 +436,15 @@ template<typename SwapChainType> void HandlePresentBefore2(SwapChainType* This) 
         // overlay is open and vrr status is enabled or display commander's UI has been opened within last 1s
 
         auto frames_ago_ui_opened = g_global_frame_id.load() - g_last_ui_drawn_frame_id.load();
-        bool should_query_frame_stats = settings::g_mainTabSettings.show_test_overlay.GetValue() && settings::g_mainTabSettings.show_vrr_status.GetValue()
+        bool should_query_frame_stats = settings::g_mainTabSettings.show_test_overlay.GetValue() &&
+    settings::g_mainTabSettings.show_vrr_status.GetValue()
             || frames_ago_ui_opened >= 0 && frames_ago_ui_opened < 30;
 
         // Check if UI is open and main tab is active
 
         if (!suppress_section && should_query_frame_stats) {
-            perf_measurement::ScopedTimer frame_stats_timer(perf_measurement::Metric::HandlePresentBefore_FrameStatistics);
-            DXGI_FRAME_STATISTICS stats = {};
+            perf_measurement::ScopedTimer
+    frame_stats_timer(perf_measurement::Metric::HandlePresentBefore_FrameStatistics); DXGI_FRAME_STATISTICS stats = {};
             if (SUCCEEDED(This->GetFrameStatistics(&stats))) {
                 // Use memory_order_release to ensure the shared_ptr is fully constructed before other threads see it
                 g_cached_frame_stats.store(std::make_shared<DXGI_FRAME_STATISTICS>(stats), std::memory_order_release);
@@ -456,13 +455,9 @@ template<typename SwapChainType> void HandlePresentBefore2(SwapChainType* This) 
 }
 
 // Helper function for common Present/Present1 logic after calling original
-void HandlePresentAfter(
-    IDXGISwapChain* baseSwapChain,
-    const PresentCommonState& state,
-    bool from_wrapper) {
-
-    if (perf_measurement::IsSuppressionEnabled() &&
-        perf_measurement::IsMetricSuppressed(perf_measurement::Metric::HandlePresentAfter)) {
+void HandlePresentAfter(IDXGISwapChain* baseSwapChain, const PresentCommonState& state, bool from_wrapper) {
+    if (perf_measurement::IsSuppressionEnabled()
+        && perf_measurement::IsMetricSuppressed(perf_measurement::Metric::HandlePresentAfter)) {
         return;
     }
 
@@ -472,7 +467,7 @@ void HandlePresentAfter(
     //::QueryDxgiCompositionState(baseSwapChain);
 
     // Signal refresh rate monitoring thread (after DWM flush)
- //   ::dxgi::fps_limiter::SignalRefreshRateMonitor();
+    //   ::dxgi::fps_limiter::SignalRefreshRateMonitor();
 
     // Note: GPU completion measurement is now enqueued earlier in OnPresentUpdateBefore
     // (before flush_command_queue) for more accurate timing
@@ -482,12 +477,13 @@ void HandlePresentAfter(
 }
 
 // Explicit template instantiations
-template PresentCommonState HandlePresentBefore<IDXGISwapChain>(IDXGISwapChain*, IDXGISwapChain*);
-template PresentCommonState HandlePresentBefore<IDXGISwapChain1>(IDXGISwapChain1*, IDXGISwapChain*);
-template PresentCommonState HandlePresentBefore<display_commanderhooks::DXGISwapChain4Wrapper>(display_commanderhooks::DXGISwapChain4Wrapper*, IDXGISwapChain*);
+template PresentCommonState HandlePresentBefore<IDXGISwapChain>(IDXGISwapChain*);
+template PresentCommonState HandlePresentBefore<IDXGISwapChain1>(IDXGISwapChain1*);
+template PresentCommonState HandlePresentBefore<display_commanderhooks::DXGISwapChain4Wrapper>(
+    display_commanderhooks::DXGISwapChain4Wrapper*);
 
 // Hooked IDXGISwapChain::Present function
-HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain *This, UINT SyncInterval, UINT Flags) {
+HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain* This, UINT SyncInterval, UINT Flags) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Early return if swapchain doesn't match
     IDXGISwapChain* expected_swapchain = g_last_present_update_swapchain.load();
@@ -500,15 +496,16 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain *This, UI
     g_swapchain_event_total_count.fetch_add(1);
 
     // Skip common present logic if wrapper is handling it
-    bool skip_common_logic = g_swapchain_wrapper_present_called.load(std::memory_order_acquire) && settings::g_mainTabSettings.limit_real_frames.GetValue();
+    bool skip_common_logic = g_swapchain_wrapper_present_called.load(std::memory_order_acquire)
+                             && settings::g_mainTabSettings.limit_real_frames.GetValue();
 
     PresentCommonState state;
     if (!skip_common_logic) {
         // Handle common before logic
-        state = HandlePresentBefore(This, This);
-        ::OnPresentFlags2(&Flags, state.device_type, true, false); // Called from present_detour
+        state = HandlePresentBefore(This);
+        ::OnPresentFlags2(&Flags, state.device_type, true, false);  // Called from present_detour
     }
-    display_commanderhooks::dxgi::HandlePresentBefore2<IDXGISwapChain>(This);
+    display_commanderhooks::dxgi::HandlePresentBefore2();
 
     if (IDXGISwapChain_Present_Original == nullptr) {
         LogError("IDXGISwapChain_Present_Detour: IDXGISwapChain_Present_Original is null");
@@ -528,7 +525,8 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain *This, UI
 }
 
 // Hooked IDXGISwapChain1::Present1 function
-HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1 *This, UINT SyncInterval, UINT PresentFlags, const DXGI_PRESENT_PARAMETERS *pPresentParameters) {
+HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1* This, UINT SyncInterval, UINT PresentFlags,
+                                                         const DXGI_PRESENT_PARAMETERS* pPresentParameters) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     IDXGISwapChain* baseSwapChain = reinterpret_cast<IDXGISwapChain*>(This);
 
@@ -543,15 +541,16 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1 *This, 
     g_swapchain_event_total_count.fetch_add(1);
 
     // Skip common present logic if wrapper is handling it
-    bool skip_common_logic = g_swapchain_wrapper_present_called.load(std::memory_order_acquire) && settings::g_mainTabSettings.limit_real_frames.GetValue();
+    bool skip_common_logic = g_swapchain_wrapper_present_called.load(std::memory_order_acquire)
+                             && settings::g_mainTabSettings.limit_real_frames.GetValue();
 
     PresentCommonState state;
     if (!skip_common_logic) {
         // Handle common before logic (with D3D10 check enabled)
-        state = HandlePresentBefore(This, baseSwapChain);
-        ::OnPresentFlags2(&PresentFlags, state.device_type, true, false); // Called from present_detour
+        state = HandlePresentBefore(This);
+        ::OnPresentFlags2(&PresentFlags, state.device_type, true, false);  // Called from present_detour
     }
-    display_commanderhooks::dxgi::HandlePresentBefore2<IDXGISwapChain1>(This);
+    display_commanderhooks::dxgi::HandlePresentBefore2();
 
     if (IDXGISwapChain_Present1_Original == nullptr) {
         LogError("IDXGISwapChain_Present1_Detour: IDXGISwapChain_Present1_Original is null");
@@ -567,12 +566,11 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1 *This, 
     ::QueryDxgiCompositionState(This);
     ::dxgi::fps_limiter::SignalRefreshRateMonitor();
 
-
     return res;
 }
 
 // Hooked IDXGISwapChain::GetDesc function
-HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetDesc_Detour(IDXGISwapChain *This, DXGI_SWAP_CHAIN_DESC *pDesc) {
+HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetDesc_Detour(IDXGISwapChain* This, DXGI_SWAP_CHAIN_DESC* pDesc) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Increment DXGI GetDesc counter
     g_dxgi_core_event_counters[DXGI_CORE_EVENT_GETDESC].fetch_add(1);
@@ -581,57 +579,57 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetDesc_Detour(IDXGISwapChain *This, DX
     // Call original function
     if (IDXGISwapChain_GetDesc_Original != nullptr) {
         HRESULT hr = IDXGISwapChain_GetDesc_Original(This, pDesc);
-/*
-        // Hide HDR capabilities if enabled
-        if (SUCCEEDED(hr) && pDesc != nullptr && s_hide_hdr_capabilities.load()) {
-            // Check if the format is HDR-capable and hide it
-            bool is_hdr_format = false;
-            switch (pDesc->BufferDesc.Format) {
-                case DXGI_FORMAT_R10G10B10A2_UNORM:     // 10-bit HDR (commonly used for HDR10)
-                case DXGI_FORMAT_R11G11B10_FLOAT:        // 11-bit HDR (HDR11)
-                case DXGI_FORMAT_R16G16B16A16_FLOAT:    // 16-bit HDR (HDR16)
-                case DXGI_FORMAT_R32G32B32A32_FLOAT:    // 32-bit HDR (HDR32)
-                case DXGI_FORMAT_R16G16B16A16_UNORM:    // 16-bit HDR (alternative)
-                case DXGI_FORMAT_R9G9B9E5_SHAREDEXP:    // 9-bit HDR (shared exponent)
-                    is_hdr_format = true;
-                    break;
-                default:
-                    break;
-            }
+        /*
+                // Hide HDR capabilities if enabled
+                if (SUCCEEDED(hr) && pDesc != nullptr && s_hide_hdr_capabilities.load()) {
+                    // Check if the format is HDR-capable and hide it
+                    bool is_hdr_format = false;
+                    switch (pDesc->BufferDesc.Format) {
+                        case DXGI_FORMAT_R10G10B10A2_UNORM:     // 10-bit HDR (commonly used for HDR10)
+                        case DXGI_FORMAT_R11G11B10_FLOAT:        // 11-bit HDR (HDR11)
+                        case DXGI_FORMAT_R16G16B16A16_FLOAT:    // 16-bit HDR (HDR16)
+                        case DXGI_FORMAT_R32G32B32A32_FLOAT:    // 32-bit HDR (HDR32)
+                        case DXGI_FORMAT_R16G16B16A16_UNORM:    // 16-bit HDR (alternative)
+                        case DXGI_FORMAT_R9G9B9E5_SHAREDEXP:    // 9-bit HDR (shared exponent)
+                            is_hdr_format = true;
+                            break;
+                        default:
+                            break;
+                    }
 
-            if (is_hdr_format) {
-                // Force to SDR format
-                pDesc->BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+                    if (is_hdr_format) {
+                        // Force to SDR format
+                        pDesc->BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 
-                static int hdr_format_hidden_log_count = 0;
-                if (hdr_format_hidden_log_count < 3) {
-                    LogInfo("HDR hiding: GetDesc - hiding HDR format %d, forcing to R8G8B8A8_UNORM",
-                           static_cast<int>(pDesc->BufferDesc.Format));
-                    hdr_format_hidden_log_count++;
+                        static int hdr_format_hidden_log_count = 0;
+                        if (hdr_format_hidden_log_count < 3) {
+                            LogInfo("HDR hiding: GetDesc - hiding HDR format %d, forcing to R8G8B8A8_UNORM",
+                                   static_cast<int>(pDesc->BufferDesc.Format));
+                            hdr_format_hidden_log_count++;
+                        }
+                    }
+
+                    // Remove HDR-related flags
+                    if ((pDesc->Flags & DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING) != 0) {
+                        // Keep tearing flag but remove any HDR-specific flags
+                        pDesc->Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
+                    } else {
+                        pDesc->Flags = 0;
+                    }
                 }
-            }
 
-            // Remove HDR-related flags
-            if ((pDesc->Flags & DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING) != 0) {
-                // Keep tearing flag but remove any HDR-specific flags
-                pDesc->Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
-            } else {
-                pDesc->Flags = 0;
-            }
-        }
-
-        // Log the description if successful (only on first few calls to avoid spam)
-        if (SUCCEEDED(hr) && pDesc != nullptr) {
-            static int getdesc_log_count = 0;
-            if (getdesc_log_count < 3) {
-                LogInfo("SwapChain Desc - Width: %u, Height: %u, Format: %u, RefreshRate: %u/%u, BufferCount: %u",
-                       pDesc->BufferDesc.Width, pDesc->BufferDesc.Height, pDesc->BufferDesc.Format,
-                       pDesc->BufferDesc.RefreshRate.Numerator, pDesc->BufferDesc.RefreshRate.Denominator,
-                       pDesc->BufferCount);
-                getdesc_log_count++;
-            }
-        }
-*/
+                // Log the description if successful (only on first few calls to avoid spam)
+                if (SUCCEEDED(hr) && pDesc != nullptr) {
+                    static int getdesc_log_count = 0;
+                    if (getdesc_log_count < 3) {
+                        LogInfo("SwapChain Desc - Width: %u, Height: %u, Format: %u, RefreshRate: %u/%u, BufferCount:
+           %u", pDesc->BufferDesc.Width, pDesc->BufferDesc.Height, pDesc->BufferDesc.Format,
+                               pDesc->BufferDesc.RefreshRate.Numerator, pDesc->BufferDesc.RefreshRate.Denominator,
+                               pDesc->BufferCount);
+                        getdesc_log_count++;
+                    }
+                }
+        */
         return hr;
     }
 
@@ -640,7 +638,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetDesc_Detour(IDXGISwapChain *This, DX
 }
 
 // Hooked IDXGISwapChain1::GetDesc1 function
-HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetDesc1_Detour(IDXGISwapChain1 *This, DXGI_SWAP_CHAIN_DESC1 *pDesc) {
+HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetDesc1_Detour(IDXGISwapChain1* This, DXGI_SWAP_CHAIN_DESC1* pDesc) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Increment DXGI GetDesc1 counter
     g_dxgi_sc1_event_counters[DXGI_SC1_EVENT_GETDESC1].fetch_add(1);
@@ -649,56 +647,55 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetDesc1_Detour(IDXGISwapChain1 *This, 
     // Call original function
     if (IDXGISwapChain_GetDesc1_Original != nullptr) {
         HRESULT hr = IDXGISwapChain_GetDesc1_Original(This, pDesc);
-/*
-        // Hide HDR capabilities if enabled
-        if (SUCCEEDED(hr) && pDesc != nullptr && s_hide_hdr_capabilities.load()) {
-            // Check if the format is HDR-capable and hide it
-            bool is_hdr_format = false;
-            switch (pDesc->Format) {
-                case DXGI_FORMAT_R10G10B10A2_UNORM:     // 10-bit HDR (commonly used for HDR10)
-                case DXGI_FORMAT_R11G11B10_FLOAT:        // 11-bit HDR (HDR11)
-                case DXGI_FORMAT_R16G16B16A16_FLOAT:    // 16-bit HDR (HDR16)
-                case DXGI_FORMAT_R32G32B32A32_FLOAT:    // 32-bit HDR (HDR32)
-                case DXGI_FORMAT_R16G16B16A16_UNORM:    // 16-bit HDR (alternative)
-                case DXGI_FORMAT_R9G9B9E5_SHAREDEXP:    // 9-bit HDR (shared exponent)
-                    is_hdr_format = true;
-                    break;
-                default:
-                    break;
-            }
+        /*
+                // Hide HDR capabilities if enabled
+                if (SUCCEEDED(hr) && pDesc != nullptr && s_hide_hdr_capabilities.load()) {
+                    // Check if the format is HDR-capable and hide it
+                    bool is_hdr_format = false;
+                    switch (pDesc->Format) {
+                        case DXGI_FORMAT_R10G10B10A2_UNORM:     // 10-bit HDR (commonly used for HDR10)
+                        case DXGI_FORMAT_R11G11B10_FLOAT:        // 11-bit HDR (HDR11)
+                        case DXGI_FORMAT_R16G16B16A16_FLOAT:    // 16-bit HDR (HDR16)
+                        case DXGI_FORMAT_R32G32B32A32_FLOAT:    // 32-bit HDR (HDR32)
+                        case DXGI_FORMAT_R16G16B16A16_UNORM:    // 16-bit HDR (alternative)
+                        case DXGI_FORMAT_R9G9B9E5_SHAREDEXP:    // 9-bit HDR (shared exponent)
+                            is_hdr_format = true;
+                            break;
+                        default:
+                            break;
+                    }
 
-            if (is_hdr_format) {
-                // Force to SDR format
-                pDesc->Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+                    if (is_hdr_format) {
+                        // Force to SDR format
+                        pDesc->Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 
-                static int hdr_format_hidden_log_count = 0;
-                if (hdr_format_hidden_log_count < 3) {
-                    LogInfo("HDR hiding: GetDesc1 - hiding HDR format %d, forcing to R8G8B8A8_UNORM",
-                            static_cast<int>(pDesc->Format));
-                    hdr_format_hidden_log_count++;
+                        static int hdr_format_hidden_log_count = 0;
+                        if (hdr_format_hidden_log_count < 3) {
+                            LogInfo("HDR hiding: GetDesc1 - hiding HDR format %d, forcing to R8G8B8A8_UNORM",
+                                    static_cast<int>(pDesc->Format));
+                            hdr_format_hidden_log_count++;
+                        }
+                    }
+
+                    // Remove HDR-related flags
+                    if ((pDesc->Flags & DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING) != 0) {
+                        // Keep tearing flag but remove any HDR-specific flags
+                        pDesc->Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
+                    } else {
+                        pDesc->Flags = 0;
+                    }
                 }
-            }
 
-            // Remove HDR-related flags
-            if ((pDesc->Flags & DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING) != 0) {
-                // Keep tearing flag but remove any HDR-specific flags
-                pDesc->Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
-            } else {
-                pDesc->Flags = 0;
-            }
-        }
-
-        // Log the description if successful (only on first few calls to avoid spam)
-        if (SUCCEEDED(hr) && pDesc != nullptr) {
-            static int getdesc1_log_count = 0;
-            if (getdesc1_log_count < 3) {
-                LogInfo("SwapChain Desc1 - Width: %u, Height: %u, Format: %u, BufferCount: %u, SwapEffect: %u, Scaling: %u",
-                       pDesc->Width, pDesc->Height, pDesc->Format,
-                       pDesc->BufferCount, pDesc->SwapEffect, pDesc->Scaling);
-                getdesc1_log_count++;
-            }
-        }
-*/
+                // Log the description if successful (only on first few calls to avoid spam)
+                if (SUCCEEDED(hr) && pDesc != nullptr) {
+                    static int getdesc1_log_count = 0;
+                    if (getdesc1_log_count < 3) {
+                        LogInfo("SwapChain Desc1 - Width: %u, Height: %u, Format: %u, BufferCount: %u, SwapEffect: %u,
+           Scaling: %u", pDesc->Width, pDesc->Height, pDesc->Format, pDesc->BufferCount, pDesc->SwapEffect,
+           pDesc->Scaling); getdesc1_log_count++;
+                    }
+                }
+        */
         return hr;
     }
 
@@ -707,7 +704,9 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetDesc1_Detour(IDXGISwapChain1 *This, 
 }
 
 // Hooked IDXGISwapChain3::CheckColorSpaceSupport function
-HRESULT STDMETHODCALLTYPE IDXGISwapChain_CheckColorSpaceSupport_Detour(IDXGISwapChain3 *This, DXGI_COLOR_SPACE_TYPE ColorSpace, UINT *pColorSpaceSupport) {
+HRESULT STDMETHODCALLTYPE IDXGISwapChain_CheckColorSpaceSupport_Detour(IDXGISwapChain3* This,
+                                                                       DXGI_COLOR_SPACE_TYPE ColorSpace,
+                                                                       UINT* pColorSpaceSupport) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Increment DXGI CheckColorSpaceSupport counter
     g_dxgi_sc3_event_counters[DXGI_SC3_EVENT_CHECKCOLORSPACESUPPORT].fetch_add(1);
@@ -729,15 +728,14 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_CheckColorSpaceSupport_Detour(IDXGISwap
             // Check if this is an HDR color space
             bool is_hdr_colorspace = false;
             switch (ColorSpace) {
-                case DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709:      // HDR10
-                case DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020:   // HDR10
-                case DXGI_COLOR_SPACE_RGB_STUDIO_G2084_NONE_P2020: // HDR10
-                case DXGI_COLOR_SPACE_RGB_STUDIO_G22_NONE_P709:    // HDR10
-                case DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709:      // HDR10
+                case DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709:       // HDR10
+                case DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020:    // HDR10
+                case DXGI_COLOR_SPACE_RGB_STUDIO_G2084_NONE_P2020:  // HDR10
+                case DXGI_COLOR_SPACE_RGB_STUDIO_G22_NONE_P709:     // HDR10
+                case DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709:       // HDR10
                     is_hdr_colorspace = true;
                     break;
-                default:
-                    break;
+                default: break;
             }
 
             if (is_hdr_colorspace) {
@@ -747,7 +745,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_CheckColorSpaceSupport_Detour(IDXGISwap
                 static int hdr_hidden_log_count = 0;
                 if (hdr_hidden_log_count < 3) {
                     LogInfo("HDR hiding: CheckColorSpaceSupport for HDR ColorSpace %d - hiding support",
-                           static_cast<int>(ColorSpace));
+                            static_cast<int>(ColorSpace));
                     hdr_hidden_log_count++;
                 }
             }
@@ -757,8 +755,8 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_CheckColorSpaceSupport_Detour(IDXGISwap
         if (SUCCEEDED(hr) && pColorSpaceSupport != nullptr) {
             static int checkcolorspace_result_log_count = 0;
             if (checkcolorspace_result_log_count < 3) {
-                LogInfo("CheckColorSpaceSupport result: ColorSpace %d support = 0x%x",
-                       static_cast<int>(ColorSpace), *pColorSpaceSupport);
+                LogInfo("CheckColorSpaceSupport result: ColorSpace %d support = 0x%x", static_cast<int>(ColorSpace),
+                        *pColorSpaceSupport);
                 checkcolorspace_result_log_count++;
             }
         }
@@ -771,7 +769,9 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_CheckColorSpaceSupport_Detour(IDXGISwap
 }
 
 // Hooked IDXGIFactory::CreateSwapChain function
-HRESULT STDMETHODCALLTYPE IDXGIFactory_CreateSwapChain_Detour(IDXGIFactory *This, IUnknown *pDevice, DXGI_SWAP_CHAIN_DESC *pDesc, IDXGISwapChain **ppSwapChain) {
+HRESULT STDMETHODCALLTYPE IDXGIFactory_CreateSwapChain_Detour(IDXGIFactory* This, IUnknown* pDevice,
+                                                              DXGI_SWAP_CHAIN_DESC* pDesc,
+                                                              IDXGISwapChain** ppSwapChain) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Increment DXGI Factory CreateSwapChain counter
     g_dxgi_factory_event_counters[DXGI_FACTORY_EVENT_CREATESWAPCHAIN].fetch_add(1);
@@ -780,9 +780,11 @@ HRESULT STDMETHODCALLTYPE IDXGIFactory_CreateSwapChain_Detour(IDXGIFactory *This
     // Log the swapchain creation parameters (only on first few calls to avoid spam)
     static int createswapchain_log_count = 0;
     if (createswapchain_log_count < 3 && pDesc != nullptr) {
-        LogInfo("IDXGIFactory::CreateSwapChain - Width: %u, Height: %u, Format: %u, BufferCount: %u, SwapEffect: %u, Windowed: %s",
-               pDesc->BufferDesc.Width, pDesc->BufferDesc.Height, pDesc->BufferDesc.Format,
-               pDesc->BufferCount, pDesc->SwapEffect, pDesc->Windowed ? "true" : "false");
+        LogInfo(
+            "IDXGIFactory::CreateSwapChain - Width: %u, Height: %u, Format: %u, BufferCount: %u, SwapEffect: %u, "
+            "Windowed: %s",
+            pDesc->BufferDesc.Width, pDesc->BufferDesc.Height, pDesc->BufferDesc.Format, pDesc->BufferCount,
+            pDesc->SwapEffect, pDesc->Windowed ? "true" : "false");
         createswapchain_log_count++;
     }
 
@@ -805,16 +807,18 @@ HRESULT STDMETHODCALLTYPE IDXGIFactory_CreateSwapChain_Detour(IDXGIFactory *This
 }
 
 // Additional DXGI detour functions
-HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetBuffer_Detour(IDXGISwapChain *This, UINT Buffer, REFIID riid, void **ppSurface) {
+HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetBuffer_Detour(IDXGISwapChain* This, UINT Buffer, REFIID riid,
+                                                          void** ppSurface) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_core_event_counters[DXGI_CORE_EVENT_GETBUFFER].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
     return IDXGISwapChain_GetBuffer_Original(This, Buffer, riid, ppSurface);
 }
 
-std::atomic<int> g_last_set_fullscreen_state{-1}; // -1 for not set, 0 for false, 1 for true
+std::atomic<int> g_last_set_fullscreen_state{-1};  // -1 for not set, 0 for false, 1 for true
 std::atomic<IDXGIOutput*> g_last_set_fullscreen_target{nullptr};
-HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetFullscreenState_Detour(IDXGISwapChain *This, BOOL Fullscreen, IDXGIOutput *pTarget) {
+HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetFullscreenState_Detour(IDXGISwapChain* This, BOOL Fullscreen,
+                                                                   IDXGIOutput* pTarget) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_core_event_counters[DXGI_CORE_EVENT_SETFULLSCREENSTATE].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
@@ -834,7 +838,8 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetFullscreenState_Detour(IDXGISwapChai
     return IDXGISwapChain_SetFullscreenState_Original(This, Fullscreen, pTarget);
 }
 
-HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetFullscreenState_Detour(IDXGISwapChain *This, BOOL *pFullscreen, IDXGIOutput **ppTarget) {
+HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetFullscreenState_Detour(IDXGISwapChain* This, BOOL* pFullscreen,
+                                                                   IDXGIOutput** ppTarget) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_core_event_counters[DXGI_CORE_EVENT_GETFULLSCREENSTATE].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
@@ -859,21 +864,23 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetFullscreenState_Detour(IDXGISwapChai
     return hr;
 }
 
-HRESULT STDMETHODCALLTYPE IDXGISwapChain_ResizeBuffers_Detour(IDXGISwapChain *This, UINT BufferCount, UINT Width, UINT Height, DXGI_FORMAT NewFormat, UINT SwapChainFlags) {
+HRESULT STDMETHODCALLTYPE IDXGISwapChain_ResizeBuffers_Detour(IDXGISwapChain* This, UINT BufferCount, UINT Width,
+                                                              UINT Height, DXGI_FORMAT NewFormat, UINT SwapChainFlags) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_core_event_counters[DXGI_CORE_EVENT_RESIZEBUFFERS].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
     return IDXGISwapChain_ResizeBuffers_Original(This, BufferCount, Width, Height, NewFormat, SwapChainFlags);
 }
 
-HRESULT STDMETHODCALLTYPE IDXGISwapChain_ResizeTarget_Detour(IDXGISwapChain *This, const DXGI_MODE_DESC *pNewTargetParameters) {
+HRESULT STDMETHODCALLTYPE IDXGISwapChain_ResizeTarget_Detour(IDXGISwapChain* This,
+                                                             const DXGI_MODE_DESC* pNewTargetParameters) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_core_event_counters[DXGI_CORE_EVENT_RESIZETARGET].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
     return IDXGISwapChain_ResizeTarget_Original(This, pNewTargetParameters);
 }
 
-HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetContainingOutput_Detour(IDXGISwapChain *This, IDXGIOutput **ppOutput) {
+HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetContainingOutput_Detour(IDXGISwapChain* This, IDXGIOutput** ppOutput) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_core_event_counters[DXGI_CORE_EVENT_GETCONTAININGOUTPUT].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
@@ -894,14 +901,15 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetContainingOutput_Detour(IDXGISwapCha
     return hr;
 }
 
-HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetFrameStatistics_Detour(IDXGISwapChain *This, DXGI_FRAME_STATISTICS *pStats) {
+HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetFrameStatistics_Detour(IDXGISwapChain* This,
+                                                                   DXGI_FRAME_STATISTICS* pStats) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_core_event_counters[DXGI_CORE_EVENT_GETFRAMESTATISTICS].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
     return IDXGISwapChain_GetFrameStatistics_Original(This, pStats);
 }
 
-HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetLastPresentCount_Detour(IDXGISwapChain *This, UINT *pLastPresentCount) {
+HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetLastPresentCount_Detour(IDXGISwapChain* This, UINT* pLastPresentCount) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_core_event_counters[DXGI_CORE_EVENT_GETLASTPRESENTCOUNT].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
@@ -909,39 +917,40 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetLastPresentCount_Detour(IDXGISwapCha
 }
 
 // IDXGISwapChain1 detour functions
-HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetFullscreenDesc_Detour(IDXGISwapChain1 *This, DXGI_SWAP_CHAIN_FULLSCREEN_DESC *pDesc) {
+HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetFullscreenDesc_Detour(IDXGISwapChain1* This,
+                                                                  DXGI_SWAP_CHAIN_FULLSCREEN_DESC* pDesc) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_sc1_event_counters[DXGI_SC1_EVENT_GETFULLSCREENDESC].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
     return IDXGISwapChain_GetFullscreenDesc_Original(This, pDesc);
 }
 
-HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetHwnd_Detour(IDXGISwapChain1 *This, HWND *pHwnd) {
+HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetHwnd_Detour(IDXGISwapChain1* This, HWND* pHwnd) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_sc1_event_counters[DXGI_SC1_EVENT_GETHWND].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
     HRESULT hr = IDXGISwapChain_GetHwnd_Original(This, pHwnd);
 
-
     return hr;
 }
 
-HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetCoreWindow_Detour(IDXGISwapChain1 *This, REFIID refiid, void **ppUnk) {
+HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetCoreWindow_Detour(IDXGISwapChain1* This, REFIID refiid, void** ppUnk) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_sc1_event_counters[DXGI_SC1_EVENT_GETCOREWINDOW].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
     return IDXGISwapChain_GetCoreWindow_Original(This, refiid, ppUnk);
 }
 
-BOOL STDMETHODCALLTYPE IDXGISwapChain_IsTemporaryMonoSupported_Detour(IDXGISwapChain1 *This) {
+BOOL STDMETHODCALLTYPE IDXGISwapChain_IsTemporaryMonoSupported_Detour(IDXGISwapChain1* This) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_sc1_event_counters[DXGI_SC1_EVENT_ISTEMPORARYMONOSUPPORTED].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
     return IDXGISwapChain_IsTemporaryMonoSupported_Original(This);
 }
 
-HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetRestrictToOutput_Detour(IDXGISwapChain1 *This, IDXGIOutput **ppRestrictToOutput) {
+HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetRestrictToOutput_Detour(IDXGISwapChain1* This,
+                                                                    IDXGIOutput** ppRestrictToOutput) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_sc1_event_counters[DXGI_SC1_EVENT_GETRESTRICTTOOUTPUT].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
@@ -962,28 +971,28 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetRestrictToOutput_Detour(IDXGISwapCha
     return hr;
 }
 
-HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetBackgroundColor_Detour(IDXGISwapChain1 *This, const DXGI_RGBA *pColor) {
+HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetBackgroundColor_Detour(IDXGISwapChain1* This, const DXGI_RGBA* pColor) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_sc1_event_counters[DXGI_SC1_EVENT_SETBACKGROUNDCOLOR].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
     return IDXGISwapChain_SetBackgroundColor_Original(This, pColor);
 }
 
-HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetBackgroundColor_Detour(IDXGISwapChain1 *This, DXGI_RGBA *pColor) {
+HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetBackgroundColor_Detour(IDXGISwapChain1* This, DXGI_RGBA* pColor) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_sc1_event_counters[DXGI_SC1_EVENT_GETBACKGROUNDCOLOR].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
     return IDXGISwapChain_GetBackgroundColor_Original(This, pColor);
 }
 
-HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetRotation_Detour(IDXGISwapChain1 *This, DXGI_MODE_ROTATION Rotation) {
+HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetRotation_Detour(IDXGISwapChain1* This, DXGI_MODE_ROTATION Rotation) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_sc1_event_counters[DXGI_SC1_EVENT_SETROTATION].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
     return IDXGISwapChain_SetRotation_Original(This, Rotation);
 }
 
-HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetRotation_Detour(IDXGISwapChain1 *This, DXGI_MODE_ROTATION *pRotation) {
+HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetRotation_Detour(IDXGISwapChain1* This, DXGI_MODE_ROTATION* pRotation) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_sc1_event_counters[DXGI_SC1_EVENT_GETROTATION].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
@@ -991,49 +1000,50 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetRotation_Detour(IDXGISwapChain1 *Thi
 }
 
 // IDXGISwapChain2 detour functions
-HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetSourceSize_Detour(IDXGISwapChain2 *This, UINT Width, UINT Height) {
+HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetSourceSize_Detour(IDXGISwapChain2* This, UINT Width, UINT Height) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_sc2_event_counters[DXGI_SC2_EVENT_SETSOURCESIZE].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
     return IDXGISwapChain_SetSourceSize_Original(This, Width, Height);
 }
 
-HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetSourceSize_Detour(IDXGISwapChain2 *This, UINT *pWidth, UINT *pHeight) {
+HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetSourceSize_Detour(IDXGISwapChain2* This, UINT* pWidth, UINT* pHeight) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_sc2_event_counters[DXGI_SC2_EVENT_GETSOURCESIZE].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
     return IDXGISwapChain_GetSourceSize_Original(This, pWidth, pHeight);
 }
 
-HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetMaximumFrameLatency_Detour(IDXGISwapChain2 *This, UINT MaxLatency) {
+HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetMaximumFrameLatency_Detour(IDXGISwapChain2* This, UINT MaxLatency) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_sc2_event_counters[DXGI_SC2_EVENT_SETMAXIMUMFRAMELATENCY].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
     return IDXGISwapChain_SetMaximumFrameLatency_Original(This, MaxLatency);
 }
 
-HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetMaximumFrameLatency_Detour(IDXGISwapChain2 *This, UINT *pMaxLatency) {
+HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetMaximumFrameLatency_Detour(IDXGISwapChain2* This, UINT* pMaxLatency) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_sc2_event_counters[DXGI_SC2_EVENT_GETMAXIMUMFRAMELATENCY].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
     return IDXGISwapChain_GetMaximumFrameLatency_Original(This, pMaxLatency);
 }
 
-HANDLE STDMETHODCALLTYPE IDXGISwapChain_GetFrameLatencyWaitableObject_Detour(IDXGISwapChain2 *This) {
+HANDLE STDMETHODCALLTYPE IDXGISwapChain_GetFrameLatencyWaitableObject_Detour(IDXGISwapChain2* This) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_sc2_event_counters[DXGI_SC2_EVENT_GETFRAMELATENCYWAIABLEOBJECT].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
     return IDXGISwapChain_GetFrameLatencyWaitableObject_Original(This);
 }
 
-HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetMatrixTransform_Detour(IDXGISwapChain2 *This, const DXGI_MATRIX_3X2_F *pMatrix) {
+HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetMatrixTransform_Detour(IDXGISwapChain2* This,
+                                                                   const DXGI_MATRIX_3X2_F* pMatrix) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_sc2_event_counters[DXGI_SC2_EVENT_SETMATRIXTRANSFORM].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
     return IDXGISwapChain_SetMatrixTransform_Original(This, pMatrix);
 }
 
-HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetMatrixTransform_Detour(IDXGISwapChain2 *This, DXGI_MATRIX_3X2_F *pMatrix) {
+HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetMatrixTransform_Detour(IDXGISwapChain2* This, DXGI_MATRIX_3X2_F* pMatrix) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_sc2_event_counters[DXGI_SC2_EVENT_GETMATRIXTRANSFORM].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
@@ -1041,29 +1051,35 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetMatrixTransform_Detour(IDXGISwapChai
 }
 
 // IDXGISwapChain3 detour functions
-UINT STDMETHODCALLTYPE IDXGISwapChain_GetCurrentBackBufferIndex_Detour(IDXGISwapChain3 *This) {
+UINT STDMETHODCALLTYPE IDXGISwapChain_GetCurrentBackBufferIndex_Detour(IDXGISwapChain3* This) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_sc3_event_counters[DXGI_SC3_EVENT_GETCURRENTBACKBUFFERINDEX].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
     return IDXGISwapChain_GetCurrentBackBufferIndex_Original(This);
 }
 
-HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetColorSpace1_Detour(IDXGISwapChain3 *This, DXGI_COLOR_SPACE_TYPE ColorSpace) {
+HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetColorSpace1_Detour(IDXGISwapChain3* This,
+                                                               DXGI_COLOR_SPACE_TYPE ColorSpace) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_sc3_event_counters[DXGI_SC3_EVENT_SETCOLORSPACE1].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
     return IDXGISwapChain_SetColorSpace1_Original(This, ColorSpace);
 }
 
-HRESULT STDMETHODCALLTYPE IDXGISwapChain_ResizeBuffers1_Detour(IDXGISwapChain3 *This, UINT BufferCount, UINT Width, UINT Height, DXGI_FORMAT Format, UINT SwapChainFlags, const UINT *pCreationNodeMask, IUnknown *const *ppPresentQueue) {
+HRESULT STDMETHODCALLTYPE IDXGISwapChain_ResizeBuffers1_Detour(IDXGISwapChain3* This, UINT BufferCount, UINT Width,
+                                                               UINT Height, DXGI_FORMAT Format, UINT SwapChainFlags,
+                                                               const UINT* pCreationNodeMask,
+                                                               IUnknown* const* ppPresentQueue) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_sc3_event_counters[DXGI_SC3_EVENT_RESIZEBUFFERS1].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
-    return IDXGISwapChain_ResizeBuffers1_Original(This, BufferCount, Width, Height, Format, SwapChainFlags, pCreationNodeMask, ppPresentQueue);
+    return IDXGISwapChain_ResizeBuffers1_Original(This, BufferCount, Width, Height, Format, SwapChainFlags,
+                                                  pCreationNodeMask, ppPresentQueue);
 }
 
 // IDXGISwapChain4 detour functions
-HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetHDRMetaData_Detour(IDXGISwapChain4 *This, DXGI_HDR_METADATA_TYPE Type, UINT Size, void *pMetaData) {
+HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetHDRMetaData_Detour(IDXGISwapChain4* This, DXGI_HDR_METADATA_TYPE Type,
+                                                               UINT Size, void* pMetaData) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Increment DXGI SetHDRMetaData counter
     g_dxgi_sc4_event_counters[DXGI_SC4_EVENT_SETHDRMETADATA].fetch_add(1);
@@ -1086,7 +1102,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetHDRMetaData_Detour(IDXGISwapChain4 *
 }
 
 // Hooked IDXGIOutput functions
-HRESULT STDMETHODCALLTYPE IDXGIOutput_SetGammaControl_Detour(IDXGIOutput *This, const DXGI_GAMMA_CONTROL *pArray) {
+HRESULT STDMETHODCALLTYPE IDXGIOutput_SetGammaControl_Detour(IDXGIOutput* This, const DXGI_GAMMA_CONTROL* pArray) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Increment DXGI Output SetGammaControl counter
     g_dxgi_output_event_counters[DXGI_OUTPUT_EVENT_SETGAMMACONTROL].fetch_add(1);
@@ -1108,7 +1124,7 @@ HRESULT STDMETHODCALLTYPE IDXGIOutput_SetGammaControl_Detour(IDXGIOutput *This, 
     return This->SetGammaControl(pArray);
 }
 
-HRESULT STDMETHODCALLTYPE IDXGIOutput_GetGammaControl_Detour(IDXGIOutput *This, DXGI_GAMMA_CONTROL *pArray) {
+HRESULT STDMETHODCALLTYPE IDXGIOutput_GetGammaControl_Detour(IDXGIOutput* This, DXGI_GAMMA_CONTROL* pArray) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Increment DXGI Output GetGammaControl counter
     g_dxgi_output_event_counters[DXGI_OUTPUT_EVENT_GETGAMMACONTROL].fetch_add(1);
@@ -1130,7 +1146,7 @@ HRESULT STDMETHODCALLTYPE IDXGIOutput_GetGammaControl_Detour(IDXGIOutput *This, 
     return This->GetGammaControl(pArray);
 }
 
-HRESULT STDMETHODCALLTYPE IDXGIOutput_GetDesc_Detour(IDXGIOutput *This, DXGI_OUTPUT_DESC *pDesc) {
+HRESULT STDMETHODCALLTYPE IDXGIOutput_GetDesc_Detour(IDXGIOutput* This, DXGI_OUTPUT_DESC* pDesc) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Increment DXGI Output GetDesc counter
     g_dxgi_output_event_counters[DXGI_OUTPUT_EVENT_GETDESC].fetch_add(1);
@@ -1153,7 +1169,7 @@ HRESULT STDMETHODCALLTYPE IDXGIOutput_GetDesc_Detour(IDXGIOutput *This, DXGI_OUT
 }
 
 // Hooked IDXGIOutput6::GetDesc1 function
-HRESULT STDMETHODCALLTYPE IDXGIOutput6_GetDesc1_Detour(IDXGIOutput6 *This, DXGI_OUTPUT_DESC1 *pDesc) {
+HRESULT STDMETHODCALLTYPE IDXGIOutput6_GetDesc1_Detour(IDXGIOutput6* This, DXGI_OUTPUT_DESC1* pDesc) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     if (pDesc == nullptr) {
         return DXGI_ERROR_INVALID_CALL;
@@ -1187,26 +1203,24 @@ HRESULT STDMETHODCALLTYPE IDXGIOutput6_GetDesc1_Detour(IDXGIOutput6 *This, DXGI_
 
 // Global variables to track hooked swapchains
 namespace {
-    // Legacy variables - kept for compatibility but will be replaced by SwapchainTrackingManager
-    IDXGISwapChain *g_hooked_swapchain = nullptr;
+// Legacy variables - kept for compatibility but will be replaced by SwapchainTrackingManager
+IDXGISwapChain* g_hooked_swapchain = nullptr;
 
-    // Track hooked IDXGIOutput objects to avoid duplicate hooking
-    std::atomic<bool> g_dxgi_output_hooks_installed{false};
-} // namespace
+// Track hooked IDXGIOutput objects to avoid duplicate hooking
+std::atomic<bool> g_dxgi_output_hooks_installed{false};
+}  // namespace
 
-
-
-bool HookSwapchainNative(IDXGISwapChain *swapchain) {
-
+bool HookSwapchainNative(IDXGISwapChain* swapchain) {
     LogInfo("Hooking swapchain native: 0x%p (WIP - Not implemented)", swapchain);
 
     return true;
 }
 
 // Hook a specific swapchain's vtable
-bool HookSwapchain(IDXGISwapChain *swapchain) {
+bool HookSwapchain(IDXGISwapChain* swapchain) {
     // Check if LoadLibrary hooks should be suppressed
-    if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(display_commanderhooks::HookType::DXGI_SWAPCHAIN)) {
+    if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(
+            display_commanderhooks::HookType::DXGI_SWAPCHAIN)) {
         LogInfo("HookSwapchain installation suppressed by user setting");
         return false;
     }
@@ -1234,13 +1248,13 @@ bool HookSwapchain(IDXGISwapChain *swapchain) {
     auto vtable_version = 0;
 
     // Get the vtable from IDXGISwapChain4
-    void **vtable = nullptr;
+    void** vtable = nullptr;
 
     if (vtable == nullptr) {
         HRESULT hr = swapchain->QueryInterface(IID_PPV_ARGS(&swapchain4));
         if (SUCCEEDED(hr)) {
             vtable_version = 4;
-            vtable = *(void ***)swapchain4.Get();
+            vtable = *(void***)swapchain4.Get();
         } else {
             LogError("Failed to query IDXGISwapChain4 interface (HRESULT: 0x%08X). Swapchain hooking aborted.", hr);
         }
@@ -1249,7 +1263,7 @@ bool HookSwapchain(IDXGISwapChain *swapchain) {
         HRESULT hr = swapchain->QueryInterface(IID_PPV_ARGS(&swapchain3));
         if (SUCCEEDED(hr)) {
             vtable_version = 3;
-            vtable = *(void ***)swapchain3.Get();
+            vtable = *(void***)swapchain3.Get();
         } else {
             LogError("Failed to query IDXGISwapChain3 interface (HRESULT: 0x%08X). Swapchain hooking aborted.", hr);
         }
@@ -1259,7 +1273,7 @@ bool HookSwapchain(IDXGISwapChain *swapchain) {
         HRESULT hr = swapchain->QueryInterface(IID_PPV_ARGS(&swapchain2));
         if (SUCCEEDED(hr)) {
             vtable_version = 2;
-            vtable = *(void ***)swapchain2.Get();
+            vtable = *(void***)swapchain2.Get();
         } else {
             LogError("Failed to query IDXGISwapChain2 interface (HRESULT: 0x%08X). Swapchain hooking aborted.", hr);
         }
@@ -1269,7 +1283,7 @@ bool HookSwapchain(IDXGISwapChain *swapchain) {
         HRESULT hr = swapchain->QueryInterface(IID_PPV_ARGS(&swapchain1));
         if (SUCCEEDED(hr)) {
             vtable_version = 1;
-            vtable = *(void ***)swapchain1.Get();
+            vtable = *(void***)swapchain1.Get();
         } else {
             LogError("Failed to query IDXGISwapChain1 interface (HRESULT: 0x%08X). Swapchain hooking aborted.", hr);
         }
@@ -1277,51 +1291,51 @@ bool HookSwapchain(IDXGISwapChain *swapchain) {
 
     if (vtable == nullptr) {
         vtable_version = 0;
-        vtable = *(void ***)swapchain;
+        vtable = *(void***)swapchain;
     }
     LogInfo("Hooking swapchain vtable version: %d", vtable_version);
-/*
-| Index | Interface | Method | Description |
-|-------|-----------|--------|-------------|
-| 0-2 | IUnknown | QueryInterface, AddRef, Release | Base COM interface methods |
-| 3-5 | IDXGIObject | SetPrivateData, SetPrivateDataInterface, GetPrivateData | Object private data management |
-| 6 | IDXGIObject | GetParent | Get parent object |
-| 7 | IDXGIDeviceSubObject | GetDevice | Get associated device |
-| 8 | IDXGISwapChain | Present | Present frame to screen |
-| 9 | IDXGISwapChain | GetBuffer | Get back buffer |
-| 10 | IDXGISwapChain | SetFullscreenState | Set fullscreen state |
-| 11 | IDXGISwapChain | GetFullscreenState | Get fullscreen state |
-| 12 | IDXGISwapChain | GetDesc | Get swapchain description |
-| 13 | IDXGISwapChain | ResizeBuffers | Resize back buffers |
-| 14 | IDXGISwapChain | ResizeTarget | Resize target window |
-| 15 | IDXGISwapChain | GetContainingOutput | Get containing output |
-| 16 | IDXGISwapChain | GetFrameStatistics | Get frame statistics |
-| 17 | IDXGISwapChain | GetLastPresentCount | Get last present count | // IDXGISwapChain up to index 17
-| 18 | IDXGISwapChain1 | GetDesc1 | Get swapchain description (v1) | // IDXGISwapChain1 18
-| 19 | IDXGISwapChain1 | GetFullscreenDesc | Get fullscreen description |
-| 20 | IDXGISwapChain1 | GetHwnd | Get window handle |
-| 21 | IDXGISwapChain1 | GetCoreWindow | Get core window |
-| 22 | IDXGISwapChain1 | Present1 | Present with parameters | // ok
-| 23 | IDXGISwapChain1 | IsTemporaryMonoSupported | Check mono support |
-| 24 | IDXGISwapChain1 | GetRestrictToOutput | Get restricted output |
-| 25 | IDXGISwapChain1 | SetBackgroundColor | Set background color |
-| 26 | IDXGISwapChain1 | GetBackgroundColor | Get background color |
-| 27 | IDXGISwapChain1 | SetRotation | Set rotation |
-| 28 | IDXGISwapChain1 | GetRotation | Get rotation | // 28 IDXGISwapChain1
-| 29 | IDXGISwapChain2 | SetSourceSize | Set source size | // 29 IDXGISwapChain2
-| 30 | IDXGISwapChain2 | GetSourceSize | Get source size |
-| 31 | IDXGISwapChain2 | SetMaximumFrameLatency | Set max frame latency |
-| 32 | IDXGISwapChain2 | GetMaximumFrameLatency | Get max frame latency |
-| 33 | IDXGISwapChain2 | GetFrameLatencyWaitableObject | Get latency waitable object |
-| 34 | IDXGISwapChain2 | SetMatrixTransform | Set matrix transform |
-| 35 | IDXGISwapChain2 | GetMatrixTransform | Get matrix transform | // 35 IDXGISwapChain2
-| **36** | **IDXGISwapChain3** | **GetCurrentBackBufferIndex** | **Get current back buffer index** |
-| **37** | **IDXGISwapChain3** | **CheckColorSpaceSupport** | **Check color space support** ⭐ |
-| **38** | **IDXGISwapChain3** | **SetColorSpace1** | **Set color space** |
-| **39** | **IDXGISwapChain3** | **ResizeBuffers1** | **Resize buffers with parameters** |
-*/
+    /*
+    | Index | Interface | Method | Description |
+    |-------|-----------|--------|-------------|
+    | 0-2 | IUnknown | QueryInterface, AddRef, Release | Base COM interface methods |
+    | 3-5 | IDXGIObject | SetPrivateData, SetPrivateDataInterface, GetPrivateData | Object private data management |
+    | 6 | IDXGIObject | GetParent | Get parent object |
+    | 7 | IDXGIDeviceSubObject | GetDevice | Get associated device |
+    | 8 | IDXGISwapChain | Present | Present frame to screen |
+    | 9 | IDXGISwapChain | GetBuffer | Get back buffer |
+    | 10 | IDXGISwapChain | SetFullscreenState | Set fullscreen state |
+    | 11 | IDXGISwapChain | GetFullscreenState | Get fullscreen state |
+    | 12 | IDXGISwapChain | GetDesc | Get swapchain description |
+    | 13 | IDXGISwapChain | ResizeBuffers | Resize back buffers |
+    | 14 | IDXGISwapChain | ResizeTarget | Resize target window |
+    | 15 | IDXGISwapChain | GetContainingOutput | Get containing output |
+    | 16 | IDXGISwapChain | GetFrameStatistics | Get frame statistics |
+    | 17 | IDXGISwapChain | GetLastPresentCount | Get last present count | // IDXGISwapChain up to index 17
+    | 18 | IDXGISwapChain1 | GetDesc1 | Get swapchain description (v1) | // IDXGISwapChain1 18
+    | 19 | IDXGISwapChain1 | GetFullscreenDesc | Get fullscreen description |
+    | 20 | IDXGISwapChain1 | GetHwnd | Get window handle |
+    | 21 | IDXGISwapChain1 | GetCoreWindow | Get core window |
+    | 22 | IDXGISwapChain1 | Present1 | Present with parameters | // ok
+    | 23 | IDXGISwapChain1 | IsTemporaryMonoSupported | Check mono support |
+    | 24 | IDXGISwapChain1 | GetRestrictToOutput | Get restricted output |
+    | 25 | IDXGISwapChain1 | SetBackgroundColor | Set background color |
+    | 26 | IDXGISwapChain1 | GetBackgroundColor | Get background color |
+    | 27 | IDXGISwapChain1 | SetRotation | Set rotation |
+    | 28 | IDXGISwapChain1 | GetRotation | Get rotation | // 28 IDXGISwapChain1
+    | 29 | IDXGISwapChain2 | SetSourceSize | Set source size | // 29 IDXGISwapChain2
+    | 30 | IDXGISwapChain2 | GetSourceSize | Get source size |
+    | 31 | IDXGISwapChain2 | SetMaximumFrameLatency | Set max frame latency |
+    | 32 | IDXGISwapChain2 | GetMaximumFrameLatency | Get max frame latency |
+    | 33 | IDXGISwapChain2 | GetFrameLatencyWaitableObject | Get latency waitable object |
+    | 34 | IDXGISwapChain2 | SetMatrixTransform | Set matrix transform |
+    | 35 | IDXGISwapChain2 | GetMatrixTransform | Get matrix transform | // 35 IDXGISwapChain2
+    | **36** | **IDXGISwapChain3** | **GetCurrentBackBufferIndex** | **Get current back buffer index** |
+    | **37** | **IDXGISwapChain3** | **CheckColorSpaceSupport** | **Check color space support** ⭐ |
+    | **38** | **IDXGISwapChain3** | **SetColorSpace1** | **Set color space** |
+    | **39** | **IDXGISwapChain3** | **ResizeBuffers1** | **Resize buffers with parameters** |
+    */
 
-    //minhook initialization
+    // minhook initialization
     MH_STATUS init_status = SafeInitializeMinHook(display_commanderhooks::HookType::DXGI_SWAPCHAIN);
     if (init_status != MH_OK && init_status != MH_ERROR_ALREADY_INITIALIZED) {
         LogError("Failed to initialize MinHook for DXGI hooks - Status: %d", init_status);
@@ -1331,7 +1345,8 @@ bool HookSwapchain(IDXGISwapChain *swapchain) {
         LogInfo("MinHook already initialized, proceeding with DXGI hooks");
     }
 
-    display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(display_commanderhooks::HookType::DXGI_SWAPCHAIN);
+    display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(
+        display_commanderhooks::HookType::DXGI_SWAPCHAIN);
 
     LogInfo("IDXGISwapChain4 interface confirmed, hooking all swapchain methods");
 
@@ -1340,41 +1355,55 @@ bool HookSwapchain(IDXGISwapChain *swapchain) {
     // ============================================================================
     LogInfo("Hooking IDXGISwapChain methods (indices 8-17)");
 
-
     // Hook Present (index 8) - Critical method, always present
-    if (!CreateAndEnableHook(vtable[8], IDXGISwapChain_Present_Detour, (LPVOID *)&IDXGISwapChain_Present_Original, "IDXGISwapChain::Present")) {
+    if (!CreateAndEnableHook(vtable[8], IDXGISwapChain_Present_Detour, (LPVOID*)&IDXGISwapChain_Present_Original,
+                             "IDXGISwapChain::Present")) {
         LogError("Failed to create and enable IDXGISwapChain::Present hook");
         return false;
     }
 
     // Hook other IDXGISwapChain methods (9-11, 13-17)
-    if (!CreateAndEnableHook(vtable[9], IDXGISwapChain_GetBuffer_Detour, (LPVOID *)&IDXGISwapChain_GetBuffer_Original, "IDXGISwapChain::GetBuffer")) {
+    if (!CreateAndEnableHook(vtable[9], IDXGISwapChain_GetBuffer_Detour, (LPVOID*)&IDXGISwapChain_GetBuffer_Original,
+                             "IDXGISwapChain::GetBuffer")) {
         LogError("Failed to create and enable IDXGISwapChain::GetBuffer hook");
     }
-    if (!CreateAndEnableHook(vtable[10], IDXGISwapChain_SetFullscreenState_Detour, (LPVOID *)&IDXGISwapChain_SetFullscreenState_Original, "IDXGISwapChain::SetFullscreenState")) {
+    if (!CreateAndEnableHook(vtable[10], IDXGISwapChain_SetFullscreenState_Detour,
+                             (LPVOID*)&IDXGISwapChain_SetFullscreenState_Original,
+                             "IDXGISwapChain::SetFullscreenState")) {
         LogError("Failed to create and enable IDXGISwapChain::SetFullscreenState hook");
     }
-    if (!CreateAndEnableHook(vtable[11], IDXGISwapChain_GetFullscreenState_Detour, (LPVOID *)&IDXGISwapChain_GetFullscreenState_Original, "IDXGISwapChain::GetFullscreenState")) {
+    if (!CreateAndEnableHook(vtable[11], IDXGISwapChain_GetFullscreenState_Detour,
+                             (LPVOID*)&IDXGISwapChain_GetFullscreenState_Original,
+                             "IDXGISwapChain::GetFullscreenState")) {
         LogError("Failed to create and enable IDXGISwapChain::GetFullscreenState hook");
     }
     // Hook GetDesc (index 12) - Always present in base interface
-    if (!CreateAndEnableHook(vtable[12], IDXGISwapChain_GetDesc_Detour, (LPVOID *)&IDXGISwapChain_GetDesc_Original, "IDXGISwapChain::GetDesc")) {
+    if (!CreateAndEnableHook(vtable[12], IDXGISwapChain_GetDesc_Detour, (LPVOID*)&IDXGISwapChain_GetDesc_Original,
+                             "IDXGISwapChain::GetDesc")) {
         LogError("Failed to create and enable IDXGISwapChain::GetDesc hook");
         // Don't return false, this is not critical
     }
-    if (!CreateAndEnableHook(vtable[13], IDXGISwapChain_ResizeBuffers_Detour, (LPVOID *)&IDXGISwapChain_ResizeBuffers_Original, "IDXGISwapChain::ResizeBuffers")) {
+    if (!CreateAndEnableHook(vtable[13], IDXGISwapChain_ResizeBuffers_Detour,
+                             (LPVOID*)&IDXGISwapChain_ResizeBuffers_Original, "IDXGISwapChain::ResizeBuffers")) {
         LogError("Failed to create and enable IDXGISwapChain::ResizeBuffers hook");
     }
-    if (!CreateAndEnableHook(vtable[14], IDXGISwapChain_ResizeTarget_Detour, (LPVOID *)&IDXGISwapChain_ResizeTarget_Original, "IDXGISwapChain::ResizeTarget")) {
+    if (!CreateAndEnableHook(vtable[14], IDXGISwapChain_ResizeTarget_Detour,
+                             (LPVOID*)&IDXGISwapChain_ResizeTarget_Original, "IDXGISwapChain::ResizeTarget")) {
         LogError("Failed to create and enable IDXGISwapChain::ResizeTarget hook");
     }
-    if (!CreateAndEnableHook(vtable[15], IDXGISwapChain_GetContainingOutput_Detour, (LPVOID *)&IDXGISwapChain_GetContainingOutput_Original, "IDXGISwapChain::GetContainingOutput")) {
+    if (!CreateAndEnableHook(vtable[15], IDXGISwapChain_GetContainingOutput_Detour,
+                             (LPVOID*)&IDXGISwapChain_GetContainingOutput_Original,
+                             "IDXGISwapChain::GetContainingOutput")) {
         LogError("Failed to create and enable IDXGISwapChain::GetContainingOutput hook");
     }
-    if (!CreateAndEnableHook(vtable[16], IDXGISwapChain_GetFrameStatistics_Detour, (LPVOID *)&IDXGISwapChain_GetFrameStatistics_Original, "IDXGISwapChain::GetFrameStatistics")) {
+    if (!CreateAndEnableHook(vtable[16], IDXGISwapChain_GetFrameStatistics_Detour,
+                             (LPVOID*)&IDXGISwapChain_GetFrameStatistics_Original,
+                             "IDXGISwapChain::GetFrameStatistics")) {
         LogError("Failed to create and enable IDXGISwapChain::GetFrameStatistics hook");
     }
-    if (!CreateAndEnableHook(vtable[17], IDXGISwapChain_GetLastPresentCount_Detour, (LPVOID *)&IDXGISwapChain_GetLastPresentCount_Original, "IDXGISwapChain::GetLastPresentCount")) {
+    if (!CreateAndEnableHook(vtable[17], IDXGISwapChain_GetLastPresentCount_Detour,
+                             (LPVOID*)&IDXGISwapChain_GetLastPresentCount_Original,
+                             "IDXGISwapChain::GetLastPresentCount")) {
         LogError("Failed to create and enable IDXGISwapChain::GetLastPresentCount hook");
     }
 
@@ -1385,42 +1414,58 @@ bool HookSwapchain(IDXGISwapChain *swapchain) {
         LogInfo("Hooking IDXGISwapChain1 methods (indices 18-28)");
 
         // Hook GetDesc1 (index 18) - Critical for IDXGISwapChain1
-        if (!CreateAndEnableHook(vtable[18], IDXGISwapChain_GetDesc1_Detour, (LPVOID *)&IDXGISwapChain_GetDesc1_Original, "IDXGISwapChain1::GetDesc1")) {
+        if (!CreateAndEnableHook(vtable[18], IDXGISwapChain_GetDesc1_Detour, (LPVOID*)&IDXGISwapChain_GetDesc1_Original,
+                                 "IDXGISwapChain1::GetDesc1")) {
             LogError("Failed to create and enable IDXGISwapChain1::GetDesc1 hook");
             return false;
         }
 
         // Hook other IDXGISwapChain1 methods (19-21, 23-28)
-        if (!CreateAndEnableHook(vtable[19], IDXGISwapChain_GetFullscreenDesc_Detour, (LPVOID *)&IDXGISwapChain_GetFullscreenDesc_Original, "IDXGISwapChain1::GetFullscreenDesc")) {
+        if (!CreateAndEnableHook(vtable[19], IDXGISwapChain_GetFullscreenDesc_Detour,
+                                 (LPVOID*)&IDXGISwapChain_GetFullscreenDesc_Original,
+                                 "IDXGISwapChain1::GetFullscreenDesc")) {
             LogError("Failed to create and enable IDXGISwapChain1::GetFullscreenDesc hook");
         }
-        if (!CreateAndEnableHook(vtable[20], IDXGISwapChain_GetHwnd_Detour, (LPVOID *)&IDXGISwapChain_GetHwnd_Original, "IDXGISwapChain1::GetHwnd")) {
+        if (!CreateAndEnableHook(vtable[20], IDXGISwapChain_GetHwnd_Detour, (LPVOID*)&IDXGISwapChain_GetHwnd_Original,
+                                 "IDXGISwapChain1::GetHwnd")) {
             LogError("Failed to create and enable IDXGISwapChain1::GetHwnd hook");
         }
-        if (!CreateAndEnableHook(vtable[21], IDXGISwapChain_GetCoreWindow_Detour, (LPVOID *)&IDXGISwapChain_GetCoreWindow_Original, "IDXGISwapChain1::GetCoreWindow")) {
+        if (!CreateAndEnableHook(vtable[21], IDXGISwapChain_GetCoreWindow_Detour,
+                                 (LPVOID*)&IDXGISwapChain_GetCoreWindow_Original, "IDXGISwapChain1::GetCoreWindow")) {
             LogError("Failed to create and enable IDXGISwapChain1::GetCoreWindow hook");
         }
 
         // Hook Present1 (index 22) - Critical for IDXGISwapChain1
-        if (!CreateAndEnableHook(vtable[22], IDXGISwapChain_Present1_Detour, (LPVOID *)&IDXGISwapChain_Present1_Original, "IDXGISwapChain1::Present1")) {
+        if (!CreateAndEnableHook(vtable[22], IDXGISwapChain_Present1_Detour, (LPVOID*)&IDXGISwapChain_Present1_Original,
+                                 "IDXGISwapChain1::Present1")) {
             LogError("Failed to create and enable IDXGISwapChain1::Present1 hook");
         }
-        if (!CreateAndEnableHook(vtable[23], IDXGISwapChain_IsTemporaryMonoSupported_Detour, (LPVOID *)&IDXGISwapChain_IsTemporaryMonoSupported_Original, "IDXGISwapChain1::IsTemporaryMonoSupported")) {
+        if (!CreateAndEnableHook(vtable[23], IDXGISwapChain_IsTemporaryMonoSupported_Detour,
+                                 (LPVOID*)&IDXGISwapChain_IsTemporaryMonoSupported_Original,
+                                 "IDXGISwapChain1::IsTemporaryMonoSupported")) {
             LogError("Failed to create and enable IDXGISwapChain1::IsTemporaryMonoSupported hook");
         }
-        if (!CreateAndEnableHook(vtable[24], IDXGISwapChain_GetRestrictToOutput_Detour, (LPVOID *)&IDXGISwapChain_GetRestrictToOutput_Original, "IDXGISwapChain1::GetRestrictToOutput")) {
+        if (!CreateAndEnableHook(vtable[24], IDXGISwapChain_GetRestrictToOutput_Detour,
+                                 (LPVOID*)&IDXGISwapChain_GetRestrictToOutput_Original,
+                                 "IDXGISwapChain1::GetRestrictToOutput")) {
             LogError("Failed to create and enable IDXGISwapChain1::GetRestrictToOutput hook");
         }
-        if (!CreateAndEnableHook(vtable[25], IDXGISwapChain_SetBackgroundColor_Detour, (LPVOID *)&IDXGISwapChain_SetBackgroundColor_Original, "IDXGISwapChain1::SetBackgroundColor")) {
+        if (!CreateAndEnableHook(vtable[25], IDXGISwapChain_SetBackgroundColor_Detour,
+                                 (LPVOID*)&IDXGISwapChain_SetBackgroundColor_Original,
+                                 "IDXGISwapChain1::SetBackgroundColor")) {
             LogError("Failed to create and enable IDXGISwapChain1::SetBackgroundColor hook");
         }
-        if (!CreateAndEnableHook(vtable[26], IDXGISwapChain_GetBackgroundColor_Detour, (LPVOID *)&IDXGISwapChain_GetBackgroundColor_Original, "IDXGISwapChain1::GetBackgroundColor")) {
+        if (!CreateAndEnableHook(vtable[26], IDXGISwapChain_GetBackgroundColor_Detour,
+                                 (LPVOID*)&IDXGISwapChain_GetBackgroundColor_Original,
+                                 "IDXGISwapChain1::GetBackgroundColor")) {
             LogError("Failed to create and enable IDXGISwapChain1::GetBackgroundColor hook");
         }
-        if (!CreateAndEnableHook(vtable[27], IDXGISwapChain_SetRotation_Detour, (LPVOID *)&IDXGISwapChain_SetRotation_Original, "IDXGISwapChain1::SetRotation")) {
+        if (!CreateAndEnableHook(vtable[27], IDXGISwapChain_SetRotation_Detour,
+                                 (LPVOID*)&IDXGISwapChain_SetRotation_Original, "IDXGISwapChain1::SetRotation")) {
             LogError("Failed to create and enable IDXGISwapChain1::SetRotation hook");
         }
-        if (!CreateAndEnableHook(vtable[28], IDXGISwapChain_GetRotation_Detour, (LPVOID *)&IDXGISwapChain_GetRotation_Original, "IDXGISwapChain1::GetRotation")) {
+        if (!CreateAndEnableHook(vtable[28], IDXGISwapChain_GetRotation_Detour,
+                                 (LPVOID*)&IDXGISwapChain_GetRotation_Original, "IDXGISwapChain1::GetRotation")) {
             LogError("Failed to create and enable IDXGISwapChain1::GetRotation hook");
         }
     }
@@ -1432,25 +1477,37 @@ bool HookSwapchain(IDXGISwapChain *swapchain) {
         LogInfo("Hooking IDXGISwapChain2 methods (indices 29-35)");
 
         // Hook IDXGISwapChain2 methods (29-35)
-        if (!CreateAndEnableHook(vtable[29], IDXGISwapChain_SetSourceSize_Detour, (LPVOID *)&IDXGISwapChain_SetSourceSize_Original, "IDXGISwapChain2::SetSourceSize")) {
+        if (!CreateAndEnableHook(vtable[29], IDXGISwapChain_SetSourceSize_Detour,
+                                 (LPVOID*)&IDXGISwapChain_SetSourceSize_Original, "IDXGISwapChain2::SetSourceSize")) {
             LogError("Failed to create and enable IDXGISwapChain2::SetSourceSize hook");
         }
-        if (!CreateAndEnableHook(vtable[30], IDXGISwapChain_GetSourceSize_Detour, (LPVOID *)&IDXGISwapChain_GetSourceSize_Original, "IDXGISwapChain2::GetSourceSize")) {
+        if (!CreateAndEnableHook(vtable[30], IDXGISwapChain_GetSourceSize_Detour,
+                                 (LPVOID*)&IDXGISwapChain_GetSourceSize_Original, "IDXGISwapChain2::GetSourceSize")) {
             LogError("Failed to create and enable IDXGISwapChain2::GetSourceSize hook");
         }
-        if (!CreateAndEnableHook(vtable[31], IDXGISwapChain_SetMaximumFrameLatency_Detour, (LPVOID *)&IDXGISwapChain_SetMaximumFrameLatency_Original, "IDXGISwapChain2::SetMaximumFrameLatency")) {
+        if (!CreateAndEnableHook(vtable[31], IDXGISwapChain_SetMaximumFrameLatency_Detour,
+                                 (LPVOID*)&IDXGISwapChain_SetMaximumFrameLatency_Original,
+                                 "IDXGISwapChain2::SetMaximumFrameLatency")) {
             LogError("Failed to create and enable IDXGISwapChain2::SetMaximumFrameLatency hook");
         }
-        if (!CreateAndEnableHook(vtable[32], IDXGISwapChain_GetMaximumFrameLatency_Detour, (LPVOID *)&IDXGISwapChain_GetMaximumFrameLatency_Original, "IDXGISwapChain2::GetMaximumFrameLatency")) {
+        if (!CreateAndEnableHook(vtable[32], IDXGISwapChain_GetMaximumFrameLatency_Detour,
+                                 (LPVOID*)&IDXGISwapChain_GetMaximumFrameLatency_Original,
+                                 "IDXGISwapChain2::GetMaximumFrameLatency")) {
             LogError("Failed to create and enable IDXGISwapChain2::GetMaximumFrameLatency hook");
         }
-        if (!CreateAndEnableHook(vtable[33], IDXGISwapChain_GetFrameLatencyWaitableObject_Detour, (LPVOID *)&IDXGISwapChain_GetFrameLatencyWaitableObject_Original, "IDXGISwapChain2::GetFrameLatencyWaitableObject")) {
+        if (!CreateAndEnableHook(vtable[33], IDXGISwapChain_GetFrameLatencyWaitableObject_Detour,
+                                 (LPVOID*)&IDXGISwapChain_GetFrameLatencyWaitableObject_Original,
+                                 "IDXGISwapChain2::GetFrameLatencyWaitableObject")) {
             LogError("Failed to create and enable IDXGISwapChain2::GetFrameLatencyWaitableObject hook");
         }
-        if (!CreateAndEnableHook(vtable[34], IDXGISwapChain_SetMatrixTransform_Detour, (LPVOID *)&IDXGISwapChain_SetMatrixTransform_Original, "IDXGISwapChain2::SetMatrixTransform")) {
+        if (!CreateAndEnableHook(vtable[34], IDXGISwapChain_SetMatrixTransform_Detour,
+                                 (LPVOID*)&IDXGISwapChain_SetMatrixTransform_Original,
+                                 "IDXGISwapChain2::SetMatrixTransform")) {
             LogError("Failed to create and enable IDXGISwapChain2::SetMatrixTransform hook");
         }
-        if (!CreateAndEnableHook(vtable[35], IDXGISwapChain_GetMatrixTransform_Detour, (LPVOID *)&IDXGISwapChain_GetMatrixTransform_Original, "IDXGISwapChain2::GetMatrixTransform")) {
+        if (!CreateAndEnableHook(vtable[35], IDXGISwapChain_GetMatrixTransform_Detour,
+                                 (LPVOID*)&IDXGISwapChain_GetMatrixTransform_Original,
+                                 "IDXGISwapChain2::GetMatrixTransform")) {
             LogError("Failed to create and enable IDXGISwapChain2::GetMatrixTransform hook");
         }
     }
@@ -1462,20 +1519,26 @@ bool HookSwapchain(IDXGISwapChain *swapchain) {
         LogInfo("Hooking IDXGISwapChain3 methods (indices 36-39)");
 
         // Hook IDXGISwapChain3 methods (36-39)
-        if (!CreateAndEnableHook(vtable[36], IDXGISwapChain_GetCurrentBackBufferIndex_Detour, (LPVOID *)&IDXGISwapChain_GetCurrentBackBufferIndex_Original, "IDXGISwapChain3::GetCurrentBackBufferIndex")) {
+        if (!CreateAndEnableHook(vtable[36], IDXGISwapChain_GetCurrentBackBufferIndex_Detour,
+                                 (LPVOID*)&IDXGISwapChain_GetCurrentBackBufferIndex_Original,
+                                 "IDXGISwapChain3::GetCurrentBackBufferIndex")) {
             LogError("Failed to create and enable IDXGISwapChain3::GetCurrentBackBufferIndex hook");
         }
 
         // Hook CheckColorSpaceSupport (index 37)
-        if (!CreateAndEnableHook(vtable[37], IDXGISwapChain_CheckColorSpaceSupport_Detour, (LPVOID *)&IDXGISwapChain_CheckColorSpaceSupport_Original, "IDXGISwapChain3::CheckColorSpaceSupport")) {
+        if (!CreateAndEnableHook(vtable[37], IDXGISwapChain_CheckColorSpaceSupport_Detour,
+                                 (LPVOID*)&IDXGISwapChain_CheckColorSpaceSupport_Original,
+                                 "IDXGISwapChain3::CheckColorSpaceSupport")) {
             LogError("Failed to create and enable IDXGISwapChain3::CheckColorSpaceSupport hook");
             // Don't return false, this is not critical for basic functionality
         }
 
-        if (!CreateAndEnableHook(vtable[38], IDXGISwapChain_SetColorSpace1_Detour, (LPVOID *)&IDXGISwapChain_SetColorSpace1_Original, "IDXGISwapChain3::SetColorSpace1")) {
+        if (!CreateAndEnableHook(vtable[38], IDXGISwapChain_SetColorSpace1_Detour,
+                                 (LPVOID*)&IDXGISwapChain_SetColorSpace1_Original, "IDXGISwapChain3::SetColorSpace1")) {
             LogError("Failed to create and enable IDXGISwapChain3::SetColorSpace1 hook");
         }
-        if (!CreateAndEnableHook(vtable[39], IDXGISwapChain_ResizeBuffers1_Detour, (LPVOID *)&IDXGISwapChain_ResizeBuffers1_Original, "IDXGISwapChain3::ResizeBuffers1")) {
+        if (!CreateAndEnableHook(vtable[39], IDXGISwapChain_ResizeBuffers1_Detour,
+                                 (LPVOID*)&IDXGISwapChain_ResizeBuffers1_Original, "IDXGISwapChain3::ResizeBuffers1")) {
             LogError("Failed to create and enable IDXGISwapChain3::ResizeBuffers1 hook");
         }
     }
@@ -1487,7 +1550,8 @@ bool HookSwapchain(IDXGISwapChain *swapchain) {
         LogInfo("Hooking IDXGISwapChain4 methods (indices 40+)");
 
         // Hook SetHDRMetaData (index 40) - HDR metadata setting
-        if (!CreateAndEnableHook(vtable[40], IDXGISwapChain_SetHDRMetaData_Detour, (LPVOID *)&IDXGISwapChain_SetHDRMetaData_Original, "IDXGISwapChain4::SetHDRMetaData")) {
+        if (!CreateAndEnableHook(vtable[40], IDXGISwapChain_SetHDRMetaData_Detour,
+                                 (LPVOID*)&IDXGISwapChain_SetHDRMetaData_Original, "IDXGISwapChain4::SetHDRMetaData")) {
             LogError("Failed to create and enable IDXGISwapChain4::SetHDRMetaData hook");
             // Don't return false, this is not critical for basic functionality
         }
@@ -1499,42 +1563,26 @@ bool HookSwapchain(IDXGISwapChain *swapchain) {
 }
 
 // Record the native swapchain used in OnPresentUpdateBefore
-void RecordPresentUpdateSwapchain(IDXGISwapChain *swapchain) {
-    g_last_present_update_swapchain.store(swapchain);
-}
+void RecordPresentUpdateSwapchain(IDXGISwapChain* swapchain) { g_last_present_update_swapchain.store(swapchain); }
 
 // Swapchain tracking management functions
-bool IsSwapchainTracked(IDXGISwapChain *swapchain) {
-    return g_swapchainTrackingManager.IsSwapchainTracked(swapchain);
-}
+bool IsSwapchainTracked(IDXGISwapChain* swapchain) { return g_swapchainTrackingManager.IsSwapchainTracked(swapchain); }
 
-bool AddSwapchainToTracking(IDXGISwapChain *swapchain) {
-    return g_swapchainTrackingManager.AddSwapchain(swapchain);
-}
+bool AddSwapchainToTracking(IDXGISwapChain* swapchain) { return g_swapchainTrackingManager.AddSwapchain(swapchain); }
 
-bool RemoveSwapchainFromTracking(IDXGISwapChain *swapchain) {
+bool RemoveSwapchainFromTracking(IDXGISwapChain* swapchain) {
     return g_swapchainTrackingManager.RemoveSwapchain(swapchain);
 }
 
-std::vector<IDXGISwapChain*> GetAllTrackedSwapchains() {
-    return g_swapchainTrackingManager.GetAllTrackedSwapchains();
-}
+std::vector<IDXGISwapChain*> GetAllTrackedSwapchains() { return g_swapchainTrackingManager.GetAllTrackedSwapchains(); }
 
-size_t GetTrackedSwapchainCount() {
-    return g_swapchainTrackingManager.GetTrackedSwapchainCount();
-}
+size_t GetTrackedSwapchainCount() { return g_swapchainTrackingManager.GetTrackedSwapchainCount(); }
 
-void ClearAllTrackedSwapchains() {
-    g_swapchainTrackingManager.ClearAll();
-}
+void ClearAllTrackedSwapchains() { g_swapchainTrackingManager.ClearAll(); }
 
-bool HasTrackedSwapchains() {
-    return g_swapchainTrackingManager.HasTrackedSwapchains();
-}
+bool HasTrackedSwapchains() { return g_swapchainTrackingManager.HasTrackedSwapchains(); }
 
 // Cleanup GPU measurement fences when device is destroyed
-void CleanupGPUMeasurementFences() {
-    ::CleanupGPUMeasurementState();
-}
+void CleanupGPUMeasurementFences() { ::CleanupGPUMeasurementState(); }
 
-} // namespace display_commanderhooks::dxgi
+}  // namespace display_commanderhooks::dxgi

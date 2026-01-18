@@ -41,6 +41,7 @@
 #include "utils/timing.hpp"
 #include "widgets/dualsense_widget/dualsense_widget.hpp"
 #include "widgets/xinput_widget/xinput_widget.hpp"
+#include "window_management/window_management.hpp"
 
 #include <d3d9.h>
 #include <dxgi.h>
@@ -860,6 +861,13 @@ void OnInitSwapchain(reshade::api::swapchain* swapchain, bool resize) {
     if (g_game_start_time_ns.compare_exchange_strong(expected, now_ns)) {
         LogInfo("Game start time recorded: %lld ns", now_ns);
     }
+
+    // For Vulkan, calculate window state to populate monitor refresh rate
+    // (DXGI APIs get this through HandlePresentBefore, but Vulkan doesn't use that path)
+    reshade::api::device_api api = swapchain->get_device()->get_api();
+    if (api == reshade::api::device_api::vulkan) {
+        CalculateWindowState(hwnd, "OnInitSwapchain_Vulkan");
+    }
 }
 
 HANDLE g_timer_handle = nullptr;
@@ -895,6 +903,11 @@ LONGLONG TimerPresentPacingDelayEnd(LONGLONG start_ns) {
 }
 
 void OnPresentUpdateAfter(reshade::api::command_queue* queue, reshade::api::swapchain* swapchain) {
+    reshade::api::device_api api = swapchain->get_device()->get_api();
+    if (api == reshade::api::device_api::vulkan) {
+        display_commanderhooks::dxgi::PresentCommonState state;
+        HandlePresentAfter(nullptr, state, false);
+    }
     // Empty for now
 }
 
@@ -1321,6 +1334,7 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
     if (api == reshade::api::device_api::vulkan) {
         uint32_t present_flags = 0;
         OnPresentFlags2(&present_flags, DeviceTypeDC::Vulkan, true, false);  // Called from present_detour
+        display_commanderhooks::dxgi::HandlePresentBefore2();
     }
 
     // Note: DXGI composition state query moved to QueryDxgiCompositionState()

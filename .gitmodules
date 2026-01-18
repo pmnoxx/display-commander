@@ -22,3 +22,6 @@
 [submodule "external/nvidia-dlss"]
 	path = external/nvidia-dlss
 	url = https://github.com/NVIDIA/DLSS.git
+[submodule "external/vulkan-headers"]
+	path = external/vulkan-headers
+	url = https://github.com/KhronosGroup/Vulkan-Headers.git

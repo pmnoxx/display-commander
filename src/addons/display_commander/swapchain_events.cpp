@@ -862,12 +862,8 @@ void OnInitSwapchain(reshade::api::swapchain* swapchain, bool resize) {
         LogInfo("Game start time recorded: %lld ns", now_ns);
     }
 
-    // For Vulkan, calculate window state to populate monitor refresh rate
-    // (DXGI APIs get this through HandlePresentBefore, but Vulkan doesn't use that path)
-    reshade::api::device_api api = swapchain->get_device()->get_api();
-    if (api == reshade::api::device_api::vulkan) {
-        CalculateWindowState(hwnd, "OnInitSwapchain_Vulkan");
-    }
+    // needed for quick fps limit selector to work // TODO rework this later
+    CalculateWindowState(hwnd, "OnInitSwapchain");
 }
 
 HANDLE g_timer_handle = nullptr;

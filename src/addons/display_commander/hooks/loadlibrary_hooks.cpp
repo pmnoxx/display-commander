@@ -23,9 +23,9 @@
 #include "nvapi_hooks.hpp"
 #include "streamline_hooks.hpp"
 #include "utils/srwlock_wrapper.hpp"
+#include "vulkan_hooks.hpp"
 #include "windows_gaming_input_hooks.hpp"
 #include "xinput_hooks.hpp"
-#include "vulkan_hooks.hpp"
 
 namespace display_commanderhooks {
 

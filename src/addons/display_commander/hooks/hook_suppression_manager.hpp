@@ -33,7 +33,7 @@ enum class HookType {
 
 // Hook suppression manager
 class HookSuppressionManager {
-public:
+   public:
     static HookSuppressionManager& GetInstance();
 
     // Check if a specific hook type should be suppressed
@@ -54,11 +54,11 @@ public:
     // Get the human-readable name for a hook type
     std::string GetHookTypeName(HookType hookType);
 
-private:
+   private:
     HookSuppressionManager() = default;
     ~HookSuppressionManager() = default;
     HookSuppressionManager(const HookSuppressionManager&) = delete;
     HookSuppressionManager& operator=(const HookSuppressionManager&) = delete;
 };
 
-} // namespace display_commanderhooks
+}  // namespace display_commanderhooks

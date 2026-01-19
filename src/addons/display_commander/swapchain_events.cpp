@@ -1328,6 +1328,7 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
 
     // vulkan fps limiter
     if (api == reshade::api::device_api::vulkan) {
+        command_queue->flush_immediate_command_list();
         uint32_t present_flags = 0;
         OnPresentFlags2(&present_flags, DeviceTypeDC::Vulkan, true, false);  // Called from present_detour
         display_commanderhooks::dxgi::HandlePresentBefore2();

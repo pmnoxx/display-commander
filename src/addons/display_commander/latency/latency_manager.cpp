@@ -283,3 +283,29 @@ std::unique_ptr<ILatencyProvider> LatencyManager::CreateProvider(LatencyTechnolo
         default:                      LogWarn("LatencyManager: No latency technology specified"); return nullptr;
     }
 }
+
+void LatencyManager::UpdateCachedSleepStatus() {
+    if (!IsInitialized() || !provider_) {
+        g_reflex_sleep_status_low_latency_enabled.store(false, std::memory_order_release);
+        return;
+    }
+
+    NV_GET_SLEEP_STATUS_PARAMS sleep_status = {};
+    sleep_status.version = NV_GET_SLEEP_STATUS_PARAMS_VER;
+
+    if (provider_->GetSleepStatus(&sleep_status)) {
+        bool low_latency_enabled = (sleep_status.bLowLatencyMode == NV_TRUE);
+        g_reflex_sleep_status_low_latency_enabled.store(low_latency_enabled, std::memory_order_release);
+        g_reflex_sleep_status_last_update_ns.store(utils::get_now_ns(), std::memory_order_release);
+    } else {
+        g_reflex_sleep_status_low_latency_enabled.store(false, std::memory_order_release);
+    }
+}
+
+bool LatencyManager::GetSleepStatus(NV_GET_SLEEP_STATUS_PARAMS* status_params) {
+    if (!IsInitialized() || !provider_ || status_params == nullptr) {
+        return false;
+    }
+
+    return provider_->GetSleepStatus(status_params);
+}

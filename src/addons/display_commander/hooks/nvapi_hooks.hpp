@@ -10,6 +10,7 @@ using NvAPI_D3D_SetSleepMode_pfn = NvAPI_Status (__cdecl *)(__in IUnknown *pDev,
 using NvAPI_D3D_Sleep_pfn = NvAPI_Status (__cdecl *)(__in IUnknown *pDev);
 using NvAPI_D3D_SetLatencyMarker_pfn = NvAPI_Status (__cdecl *)(__in IUnknown *pDev, __in NV_LATENCY_MARKER_PARAMS *pSetLatencyMarkerParams);
 using NvAPI_D3D_GetLatency_pfn = NvAPI_Status (__cdecl *)(__in IUnknown *pDev, __in NV_LATENCY_RESULT_PARAMS *pGetLatencyParams);
+using NvAPI_D3D_GetSleepStatus_pfn = NvAPI_Status (__cdecl *)(__in IUnknown *pDev, __in NV_GET_SLEEP_STATUS_PARAMS *pGetSleepStatusParams);
 
 // NVAPI QueryInterface function type (returns void*, takes only ordinal)
 using NvAPI_QueryInterface_pfn = void* (__cdecl *)(NvU32);
@@ -29,6 +30,7 @@ NvAPI_Status NvAPI_D3D_SetSleepMode_Direct(IUnknown *pDev, NV_SET_SLEEP_MODE_PAR
 NvAPI_Status NvAPI_D3D_Sleep_Direct(IUnknown *pDev);
 NvAPI_Status NvAPI_D3D_SetLatencyMarker_Direct(IUnknown *pDev, NV_LATENCY_MARKER_PARAMS *pSetLatencyMarkerParams);
 NvAPI_Status NvAPI_D3D_GetLatency_Direct(IUnknown *pDev, NV_LATENCY_RESULT_PARAMS *pGetLatencyParams);
+NvAPI_Status NvAPI_D3D_GetSleepStatus_Direct(IUnknown *pDev, NV_GET_SLEEP_STATUS_PARAMS *pGetSleepStatusParams);
 
 // Hook management
 bool InstallNVAPIHooks(HMODULE nvapi_module = nullptr);

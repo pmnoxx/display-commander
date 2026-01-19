@@ -136,6 +136,19 @@ bool ReflexManager::Sleep() {
     return st == NVAPI_OK;
 }
 
+bool ReflexManager::GetSleepStatus(NV_GET_SLEEP_STATUS_PARAMS* status_params) {
+    if (!initialized_.load(std::memory_order_acquire) || d3d_device_ == nullptr || status_params == nullptr) {
+        return false;
+    }
+
+    // Initialize the structure
+    *status_params = {};
+    status_params->version = NV_GET_SLEEP_STATUS_PARAMS_VER;
+
+    const auto st = NvAPI_D3D_GetSleepStatus_Direct(d3d_device_, status_params);
+    return st == NVAPI_OK;
+}
+
 // params may be nullptr if no parameters were stored
 void ReflexManager::RestoreSleepMode(IUnknown* d3d_device_, NV_SET_SLEEP_MODE_PARAMS* params) {
     // unsted for params == nullptr

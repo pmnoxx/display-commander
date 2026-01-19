@@ -1402,6 +1402,17 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
             g_latencyManager->SetMarker(RENDERSUBMIT_END);
         }
     }
+
+    // Update cached Reflex sleep status periodically (every ~500ms)
+    static LONGLONG last_sleep_status_update_ns = 0;
+    const LONGLONG sleep_status_update_interval_ns = 500 * utils::NS_TO_MS;  // 500ms
+    LONGLONG now_ns = utils::get_now_ns();
+    if (now_ns - last_sleep_status_update_ns >= sleep_status_update_interval_ns) {
+        if (g_latencyManager && g_latencyManager->IsInitialized()) {
+            g_latencyManager->UpdateCachedSleepStatus();
+        }
+        last_sleep_status_update_ns = now_ns;
+    }
     // Always flush command queue before present to reduce latency
     g_flush_before_present_time_ns.store(utils::get_now_ns());
 

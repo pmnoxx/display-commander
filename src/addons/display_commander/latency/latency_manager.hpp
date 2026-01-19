@@ -43,6 +43,9 @@ class ILatencyProvider {
     virtual bool ApplySleepMode(bool low_latency, bool boost, bool use_markers, float fps_limit) = 0;
     virtual bool Sleep() = 0;
 
+    // Get sleep status (optional, returns false if not supported)
+    virtual bool GetSleepStatus(NV_GET_SLEEP_STATUS_PARAMS* status_params) { (void)status_params; return false; }
+
     // Technology-specific info
     virtual LatencyTechnology GetTechnology() const = 0;
     virtual const char* GetTechnologyName() const = 0;
@@ -84,6 +87,12 @@ class LatencyManager {
     // Technology info
     LatencyTechnology GetCurrentTechnology() const;
     const char* GetCurrentTechnologyName() const;
+
+    // Update cached sleep status (called periodically)
+    void UpdateCachedSleepStatus();
+
+    // Get full sleep status (for UI display)
+    bool GetSleepStatus(NV_GET_SLEEP_STATUS_PARAMS* status_params);
 
     // Switch between technologies at runtime
     bool SwitchTechnology(LatencyTechnology technology, reshade::api::device* device);

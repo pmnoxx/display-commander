@@ -1239,6 +1239,10 @@ extern std::atomic<LONGLONG> g_sleep_reflex_native_ns_smooth;
 // Smoothed (rolling average) time between injected Reflex sleep calls
 extern std::atomic<LONGLONG> g_sleep_reflex_injected_ns_smooth;
 
+// Cached Reflex sleep status (updated periodically, read by UI)
+extern std::atomic<bool> g_reflex_sleep_status_low_latency_enabled;  // Low latency mode enabled
+extern std::atomic<LONGLONG> g_reflex_sleep_status_last_update_ns;   // Last update timestamp
+
 // g_nvapi_last_sleep_timestamp_ns
 
 // Helper function to check if native Reflex is active

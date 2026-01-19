@@ -1,5 +1,6 @@
 #include "developer_new_tab.hpp"
 #include "../../globals.hpp"
+#include "../../latency/latency_manager.hpp"
 #include "../../nvapi/fake_nvapi_manager.hpp"
 #include "../../nvapi/nvapi_fullscreen_prevention.hpp"
 #include "../../presentmon/presentmon_manager.hpp"
@@ -19,7 +20,6 @@
 #include <cstring>
 #include <set>
 #include <string>
-
 
 #include <dxgi1_6.h>
 #include <wrl/client.h>
@@ -891,6 +891,82 @@ void DrawNvapiSettings() {
             }
             if (ImGui::IsItemHovered()) {
                 ImGui::SetTooltip("Enable detailed logging of Reflex marker operations for debugging purposes.");
+            }
+        }
+
+        // Reflex Sleep Status Section
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        if (ImGui::CollapsingHeader("Reflex Sleep Status", ImGuiTreeNodeFlags_DefaultOpen)) {
+            // Try to get sleep status from latency manager
+            NV_GET_SLEEP_STATUS_PARAMS sleep_status = {};
+            sleep_status.version = NV_GET_SLEEP_STATUS_PARAMS_VER;
+
+            bool status_available = false;
+
+            // Use latency manager to get sleep status if initialized
+            if (g_latencyManager && g_latencyManager->IsInitialized()) {
+                status_available = g_latencyManager->GetSleepStatus(&sleep_status);
+            }
+
+            if (status_available) {
+                ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Current Reflex Status:");
+                ImGui::Indent();
+
+                // Low Latency Mode status
+                bool low_latency_enabled = (sleep_status.bLowLatencyMode == NV_TRUE);
+                ImGui::TextColored(
+                    low_latency_enabled ? ImVec4(0.0f, 1.0f, 0.0f, 1.0f) : ImVec4(0.7f, 0.7f, 0.7f, 1.0f),
+                    "Low Latency Mode: %s", low_latency_enabled ? "ENABLED" : "DISABLED");
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip(
+                        "Indicates whether NVIDIA Reflex Low Latency Mode is currently active in the driver.");
+                }
+
+                // Fullscreen VRR status
+                bool fs_vrr = (sleep_status.bFsVrr == NV_TRUE);
+                ImGui::Text("Fullscreen VRR: %s", fs_vrr ? "ENABLED" : "DISABLED");
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip(
+                        "Indicates if fullscreen GSYNC or GSYNC Compatible mode is active (valid only when app is in "
+                        "foreground).");
+                }
+
+                // Control Panel VSYNC Override
+                bool cpl_vsync_on = (sleep_status.bCplVsyncOn == NV_TRUE);
+                ImGui::Text("Control Panel VSYNC Override: %s", cpl_vsync_on ? "ON" : "OFF");
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip("Indicates if NVIDIA Control Panel is overriding VSYNC settings.");
+                }
+
+                // Sleep interval
+                if (sleep_status.sleepIntervalUs > 0) {
+                    float fps_limit = 1000000.0f / static_cast<float>(sleep_status.sleepIntervalUs);
+                    ImGui::Text("Sleep Interval: %u us (%.2f FPS limit)", sleep_status.sleepIntervalUs, fps_limit);
+                } else {
+                    ImGui::Text("Sleep Interval: Not set");
+                }
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip("Latest sleep interval in microseconds (inverse of FPS limit).");
+                }
+
+                // Game Sleep status
+                bool use_game_sleep = (sleep_status.bUseGameSleep == NV_TRUE);
+                ImGui::Text("Game Sleep Calls: %s", use_game_sleep ? "ACTIVE" : "INACTIVE");
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip("Indicates if NvAPI_D3D_Sleep() is being called by the game or addon.");
+                }
+
+                ImGui::Unindent();
+            } else {
+                ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Sleep status not available");
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip(
+                        "Sleep status requires an initialized DirectX 11/12 device and NVIDIA GPU with Reflex "
+                        "support.");
+                }
             }
         }
 

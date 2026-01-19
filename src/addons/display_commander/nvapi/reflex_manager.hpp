@@ -36,6 +36,9 @@ class ReflexManager {
     // Optional: driver sleep call (minimal usage)
     bool Sleep();
 
+    // Get current sleep status (low latency mode, VRR, etc.)
+    bool GetSleepStatus(NV_GET_SLEEP_STATUS_PARAMS* status_params);
+
     // Restore sleep mode to default settings
     static void RestoreSleepMode(IUnknown *d3d_device_, NV_SET_SLEEP_MODE_PARAMS *params);
 

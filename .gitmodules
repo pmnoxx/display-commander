@@ -9,7 +9,7 @@
 
 [submodule "external/Streamline"]
 	path = external/Streamline
-	url = https://github.com/NVIDIA/Streamline
+	url = https://github.com/NVIDIA-RTX/Streamline
 [submodule "external/nvapi"]
 	path = external/nvapi
 	url = https://github.com/NVIDIA/nvapi

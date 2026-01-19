@@ -1028,6 +1028,14 @@ extern std::atomic<LONGLONG> g_present_start_time_ns;
 
 extern std::atomic<LONGLONG> late_amount_ns;
 
+// OnPresentSync delay_bias state variables
+extern std::atomic<float> g_onpresent_sync_delay_bias;            // Current delay_bias value (0.0 - 1.0)
+extern std::atomic<LONGLONG> g_onpresent_sync_frame_time_ns;      // Current frame time in nanoseconds
+extern std::atomic<LONGLONG> g_onpresent_sync_last_frame_end_ns;  // When last frame ended (for frame pacing)
+extern std::atomic<LONGLONG> g_onpresent_sync_frame_start_ns;     // When current frame started processing
+extern std::atomic<LONGLONG> g_onpresent_sync_pre_sleep_ns;       // Actual pre-sleep time applied (for debugging)
+extern std::atomic<LONGLONG> g_onpresent_sync_post_sleep_ns;      // Actual post-sleep time applied (for debugging)
+
 // GPU completion measurement using EnqueueSetEvent
 extern std::atomic<HANDLE> g_gpu_completion_event;      // Event handle for GPU completion measurement
 extern std::atomic<LONGLONG> g_gpu_completion_time_ns;  // Last measured GPU completion time

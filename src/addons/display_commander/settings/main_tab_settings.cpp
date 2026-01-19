@@ -60,8 +60,9 @@ MainTabSettings::MainTabSettings()
       suppress_reflex_sleep("suppress_reflex_sleep", false, "DisplayCommander"),
       onpresent_sync_low_latency_ratio(
           "onpresent_sync_low_latency_ratio", 0,
-          {"100% Display / 0% Input (default)", "75% Display / 25% Input", "50% Display / 50% Input",
-           "25% Display / 75% Input", "0% Display / 100% Input"},
+          {"100% Display / 0% Input (default)", "87.5% Display / 12.5% Input", "75% Display / 25% Input",
+           "62.5% Display / 37.5% Input", "50% Display / 50% Input", "37.5% Display / 62.5% Input",
+           "25% Display / 75% Input", "12.5% Display / 87.5% Input", "0% Display / 100% Input"},
           "DisplayCommander"),  // Default to 100% Display / 0% Input (current behavior)
       force_vsync_on("force_vsync_on", s_force_vsync_on, s_force_vsync_on.load(), "DisplayCommander"),
       force_vsync_off("force_vsync_off", s_force_vsync_off, s_force_vsync_off.load(), "DisplayCommander"),

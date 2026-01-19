@@ -361,6 +361,14 @@ std::atomic<uint64_t> g_display_settings_hook_total_count{0};  // Total display 
 
 std::atomic<LONGLONG> late_amount_ns{0};
 
+// OnPresentSync delay_bias state variables
+std::atomic<float> g_onpresent_sync_delay_bias{0.0f};
+std::atomic<LONGLONG> g_onpresent_sync_frame_time_ns{0};
+std::atomic<LONGLONG> g_onpresent_sync_last_frame_end_ns{0};
+std::atomic<LONGLONG> g_onpresent_sync_frame_start_ns{0};
+std::atomic<LONGLONG> g_onpresent_sync_pre_sleep_ns{0};
+std::atomic<LONGLONG> g_onpresent_sync_post_sleep_ns{0};
+
 // GPU completion measurement using EnqueueSetEvent
 std::atomic<HANDLE> g_gpu_completion_event{nullptr};  // Event handle for GPU completion measurement
 std::atomic<LONGLONG> g_gpu_completion_time_ns{0};    // Last measured GPU completion time

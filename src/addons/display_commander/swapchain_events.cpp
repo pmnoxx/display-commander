@@ -396,8 +396,8 @@ void HandleRenderStartAndEndTimes() {
             if (s_reflex_enable_current_frame.load()) {
                 if (settings::g_developerTabSettings.reflex_generate_markers.GetValue()) {
                     if (g_latencyManager->IsInitialized()) {
-                        g_latencyManager->SetMarker(LatencyMarkerType::SIMULATION_END);
-                        g_latencyManager->SetMarker(LatencyMarkerType::RENDERSUBMIT_START);
+                        g_latencyManager->SetMarker(SIMULATION_END);
+                        g_latencyManager->SetMarker(RENDERSUBMIT_START);
                     }
                 }
             }
@@ -974,7 +974,7 @@ void OnPresentUpdateAfter2(void* native_device, DeviceTypeDC device_type, bool f
     if (s_reflex_enable_current_frame.load()) {
         if (settings::g_developerTabSettings.reflex_generate_markers.GetValue()) {
             if (g_latencyManager->IsInitialized()) {
-                g_latencyManager->SetMarker(LatencyMarkerType::PRESENT_END);
+                g_latencyManager->SetMarker(PRESENT_END);
             }
         }
     }
@@ -1079,7 +1079,7 @@ void OnPresentUpdateAfter2(void* native_device, DeviceTypeDC device_type, bool f
 
     if (s_reflex_enable_current_frame.load()) {
         if (settings::g_developerTabSettings.reflex_generate_markers.GetValue()) {
-            g_latencyManager->SetMarker(LatencyMarkerType::SIMULATION_START);
+            g_latencyManager->SetMarker(SIMULATION_START);
         }
     }
 
@@ -1399,7 +1399,7 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
     // NVIDIA Reflex: RENDERSUBMIT_END marker (minimal)
     if (s_reflex_enable_current_frame.load()) {
         if (settings::g_developerTabSettings.reflex_generate_markers.GetValue()) {
-            g_latencyManager->SetMarker(LatencyMarkerType::RENDERSUBMIT_END);
+            g_latencyManager->SetMarker(RENDERSUBMIT_END);
         }
     }
     // Always flush command queue before present to reduce latency
@@ -1505,7 +1505,7 @@ void OnPresentFlags2(uint32_t* present_flags, DeviceTypeDC api_type, bool from_p
     if (s_reflex_enable_current_frame.load()) {
         if (settings::g_developerTabSettings.reflex_generate_markers.GetValue()) {
             if (g_latencyManager->IsInitialized()) {
-                g_latencyManager->SetMarker(LatencyMarkerType::PRESENT_START);
+                g_latencyManager->SetMarker(PRESENT_START);
             }
         }
     }

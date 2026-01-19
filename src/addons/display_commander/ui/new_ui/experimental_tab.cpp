@@ -19,6 +19,7 @@
 #include "../../utils/perf_measurement.hpp"
 #include "../../utils/stack_trace.hpp"
 #include "../../latency/pclstats_etw.hpp"
+#include "../../latency/pclstats_logger.hpp"
 
 #include <windows.h>
 #include <psapi.h>
@@ -75,6 +76,12 @@ void InitExperimentalTab() {
 
     // Apply PCLStats ETW reporting setting
     latency::pclstats_etw::SetUserEnabled(settings::g_experimentalTabSettings.pclstats_etw_enabled.GetValue());
+
+    // Initialize PCLStats logger
+    latency::pclstats_logger::Initialize();
+
+    // Apply PCLStats log file setting
+    latency::pclstats_logger::SetLoggingEnabled(settings::g_experimentalTabSettings.pclstats_log_file_enabled.GetValue());
 
     LogInfo("InitExperimentalTab() - Experimental tab settings loaded and applied to hook system");
 }
@@ -482,6 +489,10 @@ void CleanupExperimentalTab() {
     // Shutdown PCLStats ETW reporting
     latency::pclstats_etw::Shutdown();
     LogInfo("Experimental tab cleanup: PCLStats ETW reporting shut down");
+
+    // Shutdown PCLStats logger
+    latency::pclstats_logger::Shutdown();
+    LogInfo("Experimental tab cleanup: PCLStats logger shut down");
 }
 
 void DrawBackbufferFormatOverride() {
@@ -1737,6 +1748,36 @@ void DrawPCLStatsEtwControls() {
         ImGui::SetTooltip("Enable/disable PCLStats ETW marker generation.\n"
                          "When enabled, latency markers are emitted via ETW for NVIDIA overlay compatibility.\n"
                          "Automatically disabled if game uses native Reflex.");
+    }
+
+    ImGui::Spacing();
+
+    // Log file checkbox
+    if (CheckboxSetting(settings::g_experimentalTabSettings.pclstats_log_file_enabled, "Enable PCLStats Log File")) {
+        latency::pclstats_logger::SetLoggingEnabled(settings::g_experimentalTabSettings.pclstats_log_file_enabled.GetValue());
+        LogInfo("PCLStats log file %s",
+                settings::g_experimentalTabSettings.pclstats_log_file_enabled.GetValue() ? "enabled" : "disabled");
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Enable/disable logging of all PCLStats events to a file.\n"
+                         "Logs all events matching the marker ID used for NVIDIA overlay.\n"
+                         "File: DisplayCommander_PCLStats.log\n"
+                         "Default: OFF");
+    }
+
+    // Show log file status and path
+    if (settings::g_experimentalTabSettings.pclstats_log_file_enabled.GetValue()) {
+        ImGui::Indent();
+        auto logger_stats = latency::pclstats_logger::GetStats();
+        ImGui::TextColored(ImVec4(0.7f, 0.7f, 1.0f, 1.0f), "Log File: %s", latency::pclstats_logger::GetLogFilePath().c_str());
+        ImGui::Text("Events Logged: %llu", logger_stats.total_events_logged);
+        if (logger_stats.file_write_errors > 0) {
+            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "Write Errors: %llu", logger_stats.file_write_errors);
+        }
+        if (!logger_stats.is_file_open) {
+            ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), ICON_FK_WARNING " Log file not open!");
+        }
+        ImGui::Unindent();
     }
 
     ImGui::Spacing();

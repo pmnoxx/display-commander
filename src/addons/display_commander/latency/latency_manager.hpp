@@ -8,18 +8,9 @@
 // Forward declarations
 class ReflexManager;
 
-// Latency marker types for different technologies
-enum class LatencyMarkerType {
-    SIMULATION_START,
-    SIMULATION_END,
-    RENDERSUBMIT_START,
-    RENDERSUBMIT_END,
-    PRESENT_START,
-    PRESENT_END,
-    INPUT_SAMPLE,
-    // Special marker used by NVIDIA PCLStats consumers to trigger periodic “heartbeat” sampling.
-    PC_LATENCY_PING
-};
+// Use NVAPI marker type directly to avoid conversion bugs
+// Since only NVIDIA Reflex is implemented, we use NV_LATENCY_MARKER_TYPE directly
+using LatencyMarkerType = NV_LATENCY_MARKER_TYPE;
 
 // Latency technology types
 enum class LatencyTechnology { None, NVIDIA_Reflex, AMD_AntiLag2, Intel_XeSS };
@@ -36,15 +27,14 @@ struct LatencyConfig {
 
 // Abstract base class for latency management
 class ILatencyProvider {
-  public:
+   public:
     virtual ~ILatencyProvider() = default;
 
     // Core lifecycle
-    virtual bool Initialize(reshade::api::device *device) = 0;
+    virtual bool Initialize(reshade::api::device* device) = 0;
     virtual bool InitializeNative(void* native_device, DeviceTypeDC device_type) = 0;
     virtual void Shutdown() = 0;
     virtual bool IsInitialized() const = 0;
-
 
     // Markers for frame timing
     virtual bool SetMarker(LatencyMarkerType marker) = 0;
@@ -55,20 +45,21 @@ class ILatencyProvider {
 
     // Technology-specific info
     virtual LatencyTechnology GetTechnology() const = 0;
-    virtual const char *GetTechnologyName() const = 0;
+    virtual const char* GetTechnologyName() const = 0;
 };
 
 // Main latency manager that abstracts different technologies
 class LatencyManager {
-  public:
+   public:
     LatencyManager();
     ~LatencyManager();
 
     // Initialize with a specific technology
-    bool Initialize(reshade::api::device *device, LatencyTechnology technology = LatencyTechnology::NVIDIA_Reflex);
+    bool Initialize(reshade::api::device* device, LatencyTechnology technology = LatencyTechnology::NVIDIA_Reflex);
 
     // Initialize with native device (alternative to ReShade device)
-    bool Initialize(void* native_device, DeviceTypeDC device_type, LatencyTechnology technology = LatencyTechnology::NVIDIA_Reflex);
+    bool Initialize(void* native_device, DeviceTypeDC device_type,
+                    LatencyTechnology technology = LatencyTechnology::NVIDIA_Reflex);
 
     // Shutdown current provider
     void Shutdown();
@@ -87,18 +78,18 @@ class LatencyManager {
     bool Sleep();
 
     // Configuration
-    void SetConfig(const LatencyConfig &config);
+    void SetConfig(const LatencyConfig& config);
     LatencyConfig GetConfig() const;
 
     // Technology info
     LatencyTechnology GetCurrentTechnology() const;
-    const char *GetCurrentTechnologyName() const;
+    const char* GetCurrentTechnologyName() const;
 
     // Switch between technologies at runtime
-    bool SwitchTechnology(LatencyTechnology technology, reshade::api::device *device);
+    bool SwitchTechnology(LatencyTechnology technology, reshade::api::device* device);
     bool SwitchTechnologyNative(LatencyTechnology technology, void* native_device, DeviceTypeDC device_type);
 
-  private:
+   private:
     std::unique_ptr<ILatencyProvider> provider_;
     LatencyConfig config_;
     std::atomic<bool> initialized_{false};

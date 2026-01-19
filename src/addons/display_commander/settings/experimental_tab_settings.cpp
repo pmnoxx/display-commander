@@ -131,6 +131,7 @@ ExperimentalTabSettings::ExperimentalTabSettings()
     , perf_suppress_enqueue_gpu_completion("PerfSuppressEnqueueGPUCompletion", false, "DisplayCommander.Experimental")
     , perf_suppress_get_independent_flip_state("PerfSuppressGetIndependentFlipState", false, "DisplayCommander.Experimental")
     , pclstats_etw_enabled("PclStatsEtwEnabled", false, "DisplayCommander.Experimental")
+    , pclstats_log_file_enabled("PclStatsLogFileEnabled", false, "DisplayCommander.Experimental")
 {
     // Initialize the all_settings_ vector
     all_settings_ = {
@@ -196,6 +197,7 @@ ExperimentalTabSettings::ExperimentalTabSettings()
         &perf_suppress_enqueue_gpu_completion,
         &perf_suppress_get_independent_flip_state,
         &pclstats_etw_enabled,
+        &pclstats_log_file_enabled,
     };
 }
 

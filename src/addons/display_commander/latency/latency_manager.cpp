@@ -3,8 +3,8 @@
 #include "../utils.hpp"
 #include "../utils/logging.hpp"
 #include "../utils/timing.hpp"
-#include "reflex_provider.hpp"
 #include "pclstats_etw.hpp"
+#include "reflex_provider.hpp"
 
 // Forward declaration to avoid circular dependency
 extern float GetTargetFps();
@@ -12,12 +12,11 @@ extern float GetTargetFps();
 // Namespace alias for cleaner code
 namespace timing = utils;
 
-
 LatencyManager::LatencyManager() = default;
 
 LatencyManager::~LatencyManager() { Shutdown(); }
 
-bool LatencyManager::Initialize(reshade::api::device *device, LatencyTechnology technology) {
+bool LatencyManager::Initialize(reshade::api::device* device, LatencyTechnology technology) {
     if (initialized_.load(std::memory_order_acquire)) {
         // Already initialized, check if we need to switch technology
         if (config_.technology != technology) {
@@ -85,7 +84,7 @@ bool LatencyManager::Initialize(void* native_device, DeviceTypeDC device_type, L
 
 void LatencyManager::Shutdown() {
     if (!initialized_.exchange(false, std::memory_order_release)) {
-        return; // Already shutdown
+        return;  // Already shutdown
     }
 
     if (provider_) {
@@ -93,7 +92,7 @@ void LatencyManager::Shutdown() {
         provider_.reset();
     }
 
-    config_ = LatencyConfig{}; // Reset config
+    config_ = LatencyConfig{};  // Reset config
     LogInfo("LatencyManager: Shutdown complete");
 }
 
@@ -115,48 +114,35 @@ bool LatencyManager::SetMarker(LatencyMarkerType marker) {
     // This is gated inside pclstats_etw (user enable + ETW provider enable + not Reflex-native).
     // CRITICAL: Special K sends PC_LATENCY_PING through NVAPI first, which then gets emitted via ETW.
     // This ensures proper correlation and timing for PCL/AV stats calculation.
-    if (marker == LatencyMarkerType::SIMULATION_START) {
+    if (marker == SIMULATION_START) {
         if (latency::pclstats_etw::ConsumePingSignal()) {
             // Send PC_LATENCY_PING through NVAPI (like Special K does via setLatencyMarkerNV).
             // This will go through ReflexManager::SetMarker which:
             // 1. Sends to NVAPI (for driver correlation)
             // 2. Emits via ETW with the same frame ID (for overlay stats)
             // The frame ID is already set correctly in SetMarker from g_global_frame_id.
-            (void)provider_->SetMarker(LatencyMarkerType::PC_LATENCY_PING);
+            (void)provider_->SetMarker(PC_LATENCY_PING);
         }
     }
 
     switch (marker) {
-        case LatencyMarkerType::SIMULATION_START:
-            g_reflex_marker_simulation_start_count.fetch_add(1, std::memory_order_relaxed);
-            break;
-        case LatencyMarkerType::SIMULATION_END:
-            g_reflex_marker_simulation_end_count.fetch_add(1, std::memory_order_relaxed);
-            break;
-        case LatencyMarkerType::RENDERSUBMIT_START:
+        case SIMULATION_START: g_reflex_marker_simulation_start_count.fetch_add(1, std::memory_order_relaxed); break;
+        case SIMULATION_END:   g_reflex_marker_simulation_end_count.fetch_add(1, std::memory_order_relaxed); break;
+        case RENDERSUBMIT_START:
             g_reflex_marker_rendersubmit_start_count.fetch_add(1, std::memory_order_relaxed);
             break;
-        case LatencyMarkerType::RENDERSUBMIT_END:
-            g_reflex_marker_rendersubmit_end_count.fetch_add(1, std::memory_order_relaxed);
-            break;
-        case LatencyMarkerType::PRESENT_START:
-            g_reflex_marker_present_start_count.fetch_add(1, std::memory_order_relaxed);
-            break;
-        case LatencyMarkerType::PRESENT_END:
-            g_reflex_marker_present_end_count.fetch_add(1, std::memory_order_relaxed);
-            break;
-        case LatencyMarkerType::INPUT_SAMPLE:
-            g_reflex_marker_input_sample_count.fetch_add(1, std::memory_order_relaxed);
-            break;
-        case LatencyMarkerType::PC_LATENCY_PING:
-            break;
+        case RENDERSUBMIT_END: g_reflex_marker_rendersubmit_end_count.fetch_add(1, std::memory_order_relaxed); break;
+        case PRESENT_START:    g_reflex_marker_present_start_count.fetch_add(1, std::memory_order_relaxed); break;
+        case PRESENT_END:      g_reflex_marker_present_end_count.fetch_add(1, std::memory_order_relaxed); break;
+        case INPUT_SAMPLE:     g_reflex_marker_input_sample_count.fetch_add(1, std::memory_order_relaxed); break;
+        case PC_LATENCY_PING:  break;
+        default:               break;
     }
     return result;
 }
 
 bool LatencyManager::ApplySleepMode(bool low_latency, bool boost, bool use_markers, float fps_limit) {
-    if (!IsInitialized())
-        return false;
+    if (!IsInitialized()) return false;
 
     // Increment debug counter
     extern std::atomic<uint32_t> g_reflex_apply_sleep_mode_count;
@@ -166,8 +152,7 @@ bool LatencyManager::ApplySleepMode(bool low_latency, bool boost, bool use_marke
 }
 
 bool LatencyManager::Sleep() {
-    if (!IsInitialized())
-        return false;
+    if (!IsInitialized()) return false;
 
     // Increment debug counter
     extern std::atomic<uint32_t> g_reflex_sleep_count;
@@ -188,7 +173,7 @@ bool LatencyManager::Sleep() {
     return result;
 }
 
-void LatencyManager::SetConfig(const LatencyConfig &config) {
+void LatencyManager::SetConfig(const LatencyConfig& config) {
     config_ = config;
 
     // Apply configuration if initialized
@@ -202,20 +187,18 @@ void LatencyManager::SetConfig(const LatencyConfig &config) {
 LatencyConfig LatencyManager::GetConfig() const { return config_; }
 
 LatencyTechnology LatencyManager::GetCurrentTechnology() const {
-    if (!IsInitialized())
-        return LatencyTechnology::None;
+    if (!IsInitialized()) return LatencyTechnology::None;
     return provider_->GetTechnology();
 }
 
-const char *LatencyManager::GetCurrentTechnologyName() const {
-    if (!IsInitialized())
-        return "None";
+const char* LatencyManager::GetCurrentTechnologyName() const {
+    if (!IsInitialized()) return "None";
     return provider_->GetTechnologyName();
 }
 
-bool LatencyManager::SwitchTechnology(LatencyTechnology technology, reshade::api::device *device) {
+bool LatencyManager::SwitchTechnology(LatencyTechnology technology, reshade::api::device* device) {
     if (technology == config_.technology && IsInitialized()) {
-        return true; // Already using this technology
+        return true;  // Already using this technology
     }
 
     // Shutdown current provider
@@ -247,9 +230,10 @@ bool LatencyManager::SwitchTechnology(LatencyTechnology technology, reshade::api
     return true;
 }
 
-bool LatencyManager::SwitchTechnologyNative(LatencyTechnology technology, void* native_device, DeviceTypeDC device_type) {
+bool LatencyManager::SwitchTechnologyNative(LatencyTechnology technology, void* native_device,
+                                            DeviceTypeDC device_type) {
     if (technology == config_.technology && IsInitialized()) {
-        return true; // Already using this technology
+        return true;  // Already using this technology
     }
 
     // Shutdown current provider
@@ -283,22 +267,19 @@ bool LatencyManager::SwitchTechnologyNative(LatencyTechnology technology, void* 
 
 std::unique_ptr<ILatencyProvider> LatencyManager::CreateProvider(LatencyTechnology technology) {
     switch (technology) {
-    case LatencyTechnology::NVIDIA_Reflex:
-        return std::make_unique<ReflexProvider>();
+        case LatencyTechnology::NVIDIA_Reflex: return std::make_unique<ReflexProvider>();
 
-    case LatencyTechnology::AMD_AntiLag2:
-        // TODO: Implement AMD Anti-Lag 2 provider
-        LogWarn("LatencyManager: AMD Anti-Lag 2 not yet implemented");
-        return nullptr;
+        case LatencyTechnology::AMD_AntiLag2:
+            // TODO: Implement AMD Anti-Lag 2 provider
+            LogWarn("LatencyManager: AMD Anti-Lag 2 not yet implemented");
+            return nullptr;
 
-    case LatencyTechnology::Intel_XeSS:
-        // TODO: Implement Intel XeSS provider
-        LogWarn("LatencyManager: Intel XeSS not yet implemented");
-        return nullptr;
+        case LatencyTechnology::Intel_XeSS:
+            // TODO: Implement Intel XeSS provider
+            LogWarn("LatencyManager: Intel XeSS not yet implemented");
+            return nullptr;
 
-    case LatencyTechnology::None:
-    default:
-        LogWarn("LatencyManager: No latency technology specified");
-        return nullptr;
+        case LatencyTechnology::None:
+        default:                      LogWarn("LatencyManager: No latency technology specified"); return nullptr;
     }
 }

@@ -1,18 +1,19 @@
 #include "pclstats_etw.hpp"
+#include "pclstats_logger.hpp"
 
 #include "../globals.hpp"
 #include "../utils/logging.hpp"
 #include "../utils/timing.hpp"
 
-#include <TraceLoggingProvider.h>
 #include <evntrace.h>
+#include <TraceLoggingProvider.h>
 #include <windows.h>
 
 #include <atomic>
+#include <mutex>
 #include <random>
 #include <thread>
 #include <vector>
-#include <mutex>
 
 // Namespace alias for timing
 namespace timing = utils;
@@ -25,16 +26,14 @@ namespace timing = utils;
 
 namespace latency::pclstats_etw {
 
-TRACELOGGING_DEFINE_PROVIDER(
-    g_hPCLStatsComponentProvider,
-    "PCLStatsTraceLoggingProvider",
-    (0x0d216f06, 0x82a6, 0x4d49, 0xbc, 0x4f, 0x8f, 0x38, 0xae, 0x56, 0xef, 0xab));
+TRACELOGGING_DEFINE_PROVIDER(g_hPCLStatsComponentProvider, "PCLStatsTraceLoggingProvider",
+                             (0x0d216f06, 0x82a6, 0x4d49, 0xbc, 0x4f, 0x8f, 0x38, 0xae, 0x56, 0xef, 0xab));
 
 static std::atomic<bool> g_user_enabled{false};
 static std::atomic<bool> g_registered{false};
 static std::atomic<bool> g_etw_enabled{false};
 
-static std::atomic<uint32_t> g_ping_signal{0}; // 1 => signaled
+static std::atomic<uint32_t> g_ping_signal{0};  // 1 => signaled
 static std::atomic<bool> g_stop_thread{false};
 static std::thread g_ping_thread;
 
@@ -50,13 +49,13 @@ static std::atomic<uint64_t> g_marker_counts[16] = {};
 static constexpr size_t MAX_MARKER_HISTORY = 100;
 static std::vector<MarkerHistoryEntry> g_marker_history;
 static std::mutex g_marker_history_mutex;
-static std::atomic<bool> g_history_full{false}; // True when we've collected 100 markers
+static std::atomic<bool> g_history_full{false};  // True when we've collected 100 markers
 // Lifecycle event tracking
 static std::atomic<uint64_t> g_init_events_sent{0};
 static std::atomic<uint64_t> g_shutdown_events_sent{0};
 static std::atomic<uint64_t> g_flags_events_sent{0};
 static std::atomic<uint64_t> g_last_init_event_time_ns{0};
-static std::atomic<uint32_t> g_registration_status{0xFFFFFFFF}; // Invalid status until registered
+static std::atomic<uint32_t> g_registration_status{0xFFFFFFFF};  // Invalid status until registered
 
 static bool IsAllowed() {
     // Mirror Special-K behavior: don't compete with a Reflex-native game.
@@ -66,28 +65,27 @@ static bool IsAllowed() {
     return g_user_enabled.load(std::memory_order_acquire);
 }
 
-static void WINAPI ProviderCb(LPCGUID, ULONG control_code, UCHAR, ULONGLONG, ULONGLONG, PEVENT_FILTER_DESCRIPTOR, PVOID) {
+static void WINAPI ProviderCb(LPCGUID, ULONG control_code, UCHAR, ULONGLONG, ULONGLONG, PEVENT_FILTER_DESCRIPTOR,
+                              PVOID) {
     switch (control_code) {
-    case EVENT_CONTROL_CODE_ENABLE_PROVIDER:
-        g_etw_enabled.store(true, std::memory_order_release);
-        // Re-emit PCLStatsInit when consumer enables provider (helps with discovery)
-        if (g_registered.load(std::memory_order_acquire)) {
-            TraceLoggingWrite(g_hPCLStatsComponentProvider, "PCLStatsInit");
-            g_init_events_sent.fetch_add(1, std::memory_order_relaxed);
-            g_last_init_event_time_ns.store(timing::get_now_ns(), std::memory_order_relaxed);
-            LogInfo("[PCLStats] PCLStatsInit event re-emitted on ETW enable (count: %llu)", g_init_events_sent.load(std::memory_order_relaxed));
-        }
-        break;
-    case EVENT_CONTROL_CODE_DISABLE_PROVIDER:
-        g_etw_enabled.store(false, std::memory_order_release);
-        break;
-    case EVENT_CONTROL_CODE_CAPTURE_STATE:
-        // Emit PCLStatsFlags event (Special K style) - helps with state capture
-        TraceLoggingWrite(g_hPCLStatsComponentProvider, "PCLStatsFlags", TraceLoggingUInt32(0, "Flags"));
-        g_flags_events_sent.fetch_add(1, std::memory_order_relaxed);
-        break;
-    default:
-        break;
+        case EVENT_CONTROL_CODE_ENABLE_PROVIDER:
+            g_etw_enabled.store(true, std::memory_order_release);
+            // Re-emit PCLStatsInit when consumer enables provider (helps with discovery)
+            if (g_registered.load(std::memory_order_acquire)) {
+                TraceLoggingWrite(g_hPCLStatsComponentProvider, "PCLStatsInit");
+                g_init_events_sent.fetch_add(1, std::memory_order_relaxed);
+                g_last_init_event_time_ns.store(timing::get_now_ns(), std::memory_order_relaxed);
+                LogInfo("[PCLStats] PCLStatsInit event re-emitted on ETW enable (count: %llu)",
+                        g_init_events_sent.load(std::memory_order_relaxed));
+            }
+            break;
+        case EVENT_CONTROL_CODE_DISABLE_PROVIDER: g_etw_enabled.store(false, std::memory_order_release); break;
+        case EVENT_CONTROL_CODE_CAPTURE_STATE:
+            // Emit PCLStatsFlags event (Special K style) - helps with state capture
+            TraceLoggingWrite(g_hPCLStatsComponentProvider, "PCLStatsFlags", TraceLoggingUInt32(0, "Flags"));
+            g_flags_events_sent.fetch_add(1, std::memory_order_relaxed);
+            break;
+        default: break;
     }
 }
 
@@ -101,15 +99,12 @@ static void PingThreadMain() {
         // Use Win32 Sleep to avoid std::condition_variable (mutex).
         ::Sleep(static_cast<DWORD>(ms));
 
-        if (g_stop_thread.load(std::memory_order_acquire))
-            break;
+        if (g_stop_thread.load(std::memory_order_acquire)) break;
 
-        if (!IsAllowed())
-            continue;
+        if (!IsAllowed()) continue;
 
         // Only signal pings when a consumer actually enabled the provider (min overhead).
-        if (!g_etw_enabled.load(std::memory_order_acquire))
-            continue;
+        if (!g_etw_enabled.load(std::memory_order_acquire)) continue;
 
         g_ping_signal.store(1u, std::memory_order_release);
         g_ping_signals_generated.fetch_add(1, std::memory_order_relaxed);
@@ -117,8 +112,7 @@ static void PingThreadMain() {
 }
 
 static void EnsureStarted() {
-    if (g_registered.load(std::memory_order_acquire))
-        return;
+    if (g_registered.load(std::memory_order_acquire)) return;
 
     // Register provider with enable/disable callback.
     ULONG status = TraceLoggingRegisterEx(g_hPCLStatsComponentProvider, ProviderCb, nullptr);
@@ -128,7 +122,7 @@ static void EnsureStarted() {
         LogInfo("[PCLStats] Provider registered successfully (status: %lu)", status);
     } else {
         LogWarn("[PCLStats] Provider registration failed (status: %lu)", status);
-        return; // Don't proceed if registration failed
+        return;  // Don't proceed if registration failed
     }
 
     // Emit PCLStatsInit event (Special K style) - this helps NVIDIA overlay discover the provider
@@ -165,8 +159,7 @@ static void StopAndUnregister() {
 
 void SetUserEnabled(bool enabled) {
     const bool prev = g_user_enabled.exchange(enabled, std::memory_order_acq_rel);
-    if (prev == enabled)
-        return;
+    if (prev == enabled) return;
 
     if (enabled) {
         EnsureStarted();
@@ -180,15 +173,14 @@ void SetUserEnabled(bool enabled) {
 void Shutdown() { SetUserEnabled(false); }
 
 void EmitMarker(uint32_t marker, uint64_t frame_id) {
-    // Fast path: avoid TraceLoggingWrite unless enabled by both user and ETW consumer.
-    if (!IsAllowed())
-        return;
-    if (!g_etw_enabled.load(std::memory_order_acquire))
-        return;
+    // Get timestamp before any early returns
+    const uint64_t timestamp_ns = timing::get_now_ns();
 
-    TraceLoggingWrite(g_hPCLStatsComponentProvider,
-                      "PCLStatsEvent",
-                      TraceLoggingUInt32(marker, "Marker"),
+    // Fast path: avoid TraceLoggingWrite unless enabled by both user and ETW consumer.
+    if (!IsAllowed()) return;
+    if (!g_etw_enabled.load(std::memory_order_acquire)) return;
+
+    TraceLoggingWrite(g_hPCLStatsComponentProvider, "PCLStatsEvent", TraceLoggingUInt32(marker, "Marker"),
                       TraceLoggingUInt64(frame_id, "FrameID"));
 
     // Update statistics
@@ -208,13 +200,19 @@ void EmitMarker(uint32_t marker, uint64_t frame_id) {
             MarkerHistoryEntry entry;
             entry.marker_type = marker;
             entry.frame_id = frame_id;
-            entry.timestamp_ns = timing::get_now_ns();
+            entry.timestamp_ns = timestamp_ns;
             g_marker_history.push_back(entry);
 
             if (g_marker_history.size() >= MAX_MARKER_HISTORY) {
                 g_history_full.store(true, std::memory_order_release);
             }
         }
+    }
+
+    // Log to file if enabled (matches the marker ID used for NVIDIA overlay)
+    // This acts as a "listener" that captures all PCLStats events
+    if (latency::pclstats_logger::IsPCLLoggingEnabled()) {
+        latency::pclstats_logger::LogMarker(marker, frame_id, timestamp_ns);
     }
 }
 
@@ -249,7 +247,7 @@ DebugStats GetDebugStats() {
 void EmitTestMarker() {
     static uint64_t test_frame_id = 0;
     test_frame_id++;
-    EmitMarker(0, test_frame_id); // SIMULATION_START = 0
+    EmitMarker(0, test_frame_id);  // SIMULATION_START = 0
     LogInfo("[PCLStats] Test marker emitted: Marker=0 (SIMULATION_START), FrameID=%llu", test_frame_id);
 }
 
@@ -258,17 +256,16 @@ void ReEmitInitEvent() {
         TraceLoggingWrite(g_hPCLStatsComponentProvider, "PCLStatsInit");
         g_init_events_sent.fetch_add(1, std::memory_order_relaxed);
         g_last_init_event_time_ns.store(timing::get_now_ns(), std::memory_order_relaxed);
-        LogInfo("[PCLStats] PCLStatsInit event manually re-emitted (count: %llu)", g_init_events_sent.load(std::memory_order_relaxed));
+        LogInfo("[PCLStats] PCLStatsInit event manually re-emitted (count: %llu)",
+                g_init_events_sent.load(std::memory_order_relaxed));
     } else {
         LogWarn("[PCLStats] Cannot re-emit PCLStatsInit: provider not registered");
     }
 }
 
 bool ConsumePingSignal() {
-    if (!IsAllowed())
-        return false;
-    if (!g_etw_enabled.load(std::memory_order_acquire))
-        return false;
+    if (!IsAllowed()) return false;
+    if (!g_etw_enabled.load(std::memory_order_acquire)) return false;
 
     uint32_t expected = 1u;
     bool consumed = g_ping_signal.compare_exchange_strong(expected, 0u, std::memory_order_acq_rel);
@@ -280,9 +277,7 @@ bool ConsumePingSignal() {
 
 std::vector<MarkerHistoryEntry> GetMarkerHistory() {
     std::lock_guard<std::mutex> lock(g_marker_history_mutex);
-    return g_marker_history; // Return copy
+    return g_marker_history;  // Return copy
 }
 
-} // namespace latency::pclstats_etw
-
-
+}  // namespace latency::pclstats_etw

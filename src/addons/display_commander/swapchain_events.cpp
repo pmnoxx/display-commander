@@ -907,6 +907,50 @@ void OnPresentUpdateAfter(reshade::api::command_queue* queue, reshade::api::swap
     // Empty for now
 }
 
+void HandleFpsLimiterPost(bool from_present_detour, bool from_wrapper = false) {
+    float target_fps = GetTargetFps();
+
+    if (target_fps <= 0.0f) {
+        return;
+    }
+    if (s_fps_limiter_mode.load() == FpsLimiterMode::kOnPresentSync) {
+        float delay_bias = g_onpresent_sync_delay_bias.load();
+        LONGLONG frame_time_ns = g_onpresent_sync_frame_time_ns.load();
+
+        if (delay_bias > 0.0f && frame_time_ns > 0) {
+            // Calculate post-sleep time: delay_bias * frame_time
+            LONGLONG post_sleep_ns = static_cast<LONGLONG>(delay_bias * frame_time_ns);
+
+            // Account for any late amount (if we're behind schedule)
+            LONGLONG late_ns = late_amount_ns.load();
+            if (late_ns > 0) {
+                post_sleep_ns = (post_sleep_ns > late_ns) ? (post_sleep_ns - late_ns) : 0;
+            }
+
+            // Sleep after present if we have time remaining
+            if (post_sleep_ns > 0) {
+                LONGLONG post_sleep_start_ns = utils::get_now_ns();
+                LONGLONG sleep_until_ns = post_sleep_start_ns + post_sleep_ns;
+                utils::wait_until_ns(sleep_until_ns, g_timer_handle);
+                LONGLONG post_sleep_end_ns = utils::get_now_ns();
+                LONGLONG actual_post_sleep_ns = post_sleep_end_ns - post_sleep_start_ns;
+                g_onpresent_sync_post_sleep_ns.store(actual_post_sleep_ns);
+
+                // Record when this frame ended (for next frame's pre-sleep calculation)
+                g_onpresent_sync_last_frame_end_ns.store(post_sleep_end_ns);
+            } else {
+                // No post-sleep - frame ends now
+                g_onpresent_sync_last_frame_end_ns.store(utils::get_now_ns());
+                g_onpresent_sync_post_sleep_ns.store(0);
+            }
+        } else {
+            // delay_bias = 0 or no frame time - no post-sleep
+            g_onpresent_sync_last_frame_end_ns.store(utils::get_now_ns());
+            g_onpresent_sync_post_sleep_ns.store(0);
+        }
+    }
+}
+
 void OnPresentUpdateAfter2(void* native_device, DeviceTypeDC device_type, bool from_wrapper) {
     // Track render thread ID
     DWORD current_thread_id = GetCurrentThreadId();
@@ -1000,6 +1044,8 @@ void OnPresentUpdateAfter2(void* native_device, DeviceTypeDC device_type, bool f
         should_enable_reflex = false;
     }
 
+    HandleFpsLimiterPost(false, from_wrapper);
+
     if (should_enable_reflex) {
         s_reflex_enable_current_frame.store(true);
         if (native_device && g_latencyManager->Initialize(native_device, device_type)) {
@@ -1059,7 +1105,18 @@ float GetTargetFps() {
     return target_fps;
 }
 
-void HandleFpsLimiter(bool from_present_detour, bool from_wrapper = false) {
+// Helper function to convert low latency ratio index to delay_bias value
+// Ratio index: 0 = 100% Display/0% Input, 1 = 87.5%/12.5%, 2 = 75%/25%, 3 = 62.5%/37.5%,
+//              4 = 50%/50%, 5 = 37.5%/62.5%, 6 = 25%/75%, 7 = 12.5%/87.5%, 8 = 0%/100%
+// Returns delay_bias: 0.0 = 100% Display, 1.0 = 100% Input
+float GetDelayBiasFromRatio(int ratio_index) {
+    // Clamp ratio_index to valid range [0, 8]
+    ratio_index = (std::max)(0, (std::min)(8, ratio_index));
+    // Map: 0→0.0, 1→0.125, 2→0.25, 3→0.375, 4→0.5, 5→0.625, 6→0.75, 7→0.875, 8→1.0
+    return ratio_index * 0.125f;
+}
+
+void HandleFpsLimiterPre(bool from_present_detour, bool from_wrapper = false) {
     LONGLONG handle_fps_limiter_start_time_ns = utils::get_now_ns();
     float target_fps = GetTargetFps();
     late_amount_ns.store(0);
@@ -1096,16 +1153,74 @@ void HandleFpsLimiter(bool from_present_detour, bool from_wrapper = false) {
                 break;
             }
             case FpsLimiterMode::kOnPresentSync: {
-                // Use FPS limiter manager for OnPresent Frame Synchronizer mode
-                if (dxgi::fps_limiter::g_customFpsLimiter) {
-                    auto& limiter = dxgi::fps_limiter::g_customFpsLimiter;
-                    if (target_fps > 0.0f) {
-                        if (settings::g_mainTabSettings.onpresent_sync_enable_reflex.GetValue()) {
-                            target_fps *= 0.995f;  // Subtract 0.5%
-                        }
-                        limiter->LimitFrameRate(target_fps);
+                // Get delay_bias from ratio selector
+                int ratio_index = settings::g_mainTabSettings.onpresent_sync_low_latency_ratio.GetValue();
+                float delay_bias = GetDelayBiasFromRatio(ratio_index);
+
+                if (target_fps > 0.0f) {
+                    // Calculate frame time
+                    float adjusted_target_fps = target_fps;
+                    if (settings::g_mainTabSettings.onpresent_sync_enable_reflex.GetValue()) {
+                        adjusted_target_fps *= 0.995f;  // Subtract 0.5%
                     }
+                    LONGLONG frame_time_ns = static_cast<LONGLONG>(1'000'000'000.0 / adjusted_target_fps);
+
+                    // Store delay_bias and frame_time for post-sleep calculation
+                    g_onpresent_sync_delay_bias.store(delay_bias);
+                    g_onpresent_sync_frame_time_ns.store(frame_time_ns);
+
+                    // Calculate pre-sleep time: (1 - delay_bias) * frame_time
+                    // This is the time we sleep BEFORE starting frame processing
+                    LONGLONG pre_sleep_ns = static_cast<LONGLONG>((1.0f - delay_bias) * frame_time_ns);
+
+                    // Get current time and previous frame start time
+                    // KEY: Use previous frame START time, not END time, to maintain start-to-start spacing
+                    LONGLONG now_ns = utils::get_now_ns();
+                    LONGLONG previous_frame_start_ns = g_onpresent_sync_frame_start_ns.load();
+
+                    // Calculate ideal frame start time
+                    // Frames should be spaced by exactly frame_time_ns from start to start
+                    LONGLONG ideal_frame_start_ns;
+                    if (previous_frame_start_ns == 0) {
+                        // First frame - ideal start is after pre_sleep from now
+                        ideal_frame_start_ns = now_ns + pre_sleep_ns;
+                    } else {
+                        // Subsequent frame - maintain frame pacing from start to start
+                        // Ideal frame start = previous_frame_start + frame_time
+                        ideal_frame_start_ns = previous_frame_start_ns + frame_time_ns;
+                    }
+
+                    // Calculate when to sleep until: ideal_frame_start - pre_sleep
+                    // This ensures we sleep for pre_sleep_ns before the ideal frame start time
+                    LONGLONG sleep_until_ns = ideal_frame_start_ns - pre_sleep_ns;
+
+                    // Always sleep for pre_sleep_ns before starting the frame
+                    // When delay_bias = 0: pre_sleep = frame_time, so we sleep for the full frame time
+                    // When delay_bias = 1.0: pre_sleep = 0, so we start immediately
+                    LONGLONG pre_sleep_start_ns = now_ns;
+                    if (pre_sleep_ns > 0) {
+                        if (sleep_until_ns > now_ns) {
+                            // On time - sleep until calculated time (ensures we sleep for pre_sleep_ns)
+                            utils::wait_until_ns(sleep_until_ns, g_timer_handle);
+                        } else {
+                            // Late - but still sleep until ideal_frame_start_ns to maintain frame spacing
+                            // This ensures frames are always spaced by frame_time_ns from start to start
+                            utils::wait_until_ns(ideal_frame_start_ns, g_timer_handle);
+                        }
+                    }
+                    // Note: If pre_sleep_ns = 0 (delay_bias = 1.0), we start immediately
+                    LONGLONG pre_sleep_end_ns = utils::get_now_ns();
+                    LONGLONG actual_pre_sleep_ns = pre_sleep_end_ns - pre_sleep_start_ns;
+                    g_onpresent_sync_pre_sleep_ns.store(actual_pre_sleep_ns);
+
+                    // Record when frame processing actually started
+                    g_onpresent_sync_frame_start_ns.store(pre_sleep_end_ns);
+                } else {
+                    // No FPS limit - reset state
+                    g_onpresent_sync_delay_bias.store(0.0f);
+                    g_onpresent_sync_frame_time_ns.store(0);
                 }
+
                 if (settings::g_mainTabSettings.onpresent_sync_enable_reflex.GetValue()) {
                     s_reflex_auto_configure.store(true);
                 }
@@ -1385,7 +1500,7 @@ void OnPresentFlags2(uint32_t* present_flags, DeviceTypeDC api_type, bool from_p
         }
     }
 
-    HandleFpsLimiter(from_present_detour, from_wrapper);
+    HandleFpsLimiterPre(from_present_detour, from_wrapper);
 
     if (s_reflex_enable_current_frame.load()) {
         if (settings::g_developerTabSettings.reflex_generate_markers.GetValue()) {

@@ -14,7 +14,7 @@ using ui::new_ui::SettingBase;
 // Hooks with suppress_xxx_hooks = true are blacklisted by default
 // Currently blacklisted: DEBUG_OUTPUT (can be noisy), HID_SUPPRESSION (experimental)
 class HookSuppressionSettings {
-  public:
+   public:
     HookSuppressionSettings();
     ~HookSuppressionSettings() = default;
 
@@ -22,7 +22,7 @@ class HookSuppressionSettings {
     void LoadAll();
 
     // Get all settings for loading
-    std::vector<SettingBase *> GetAllSettings();
+    std::vector<SettingBase*> GetAllSettings();
 
     // Hook suppression settings
     BoolSetting suppress_dxgi_factory_hooks;
@@ -74,11 +74,11 @@ class HookSuppressionSettings {
     BoolSetting process_exit_hooks_installed;
     BoolSetting window_proc_hooks_installed;
 
-  private:
-    std::vector<SettingBase *> all_settings_;
+   private:
+    std::vector<SettingBase*> all_settings_;
 };
 
 // Global instance
 extern HookSuppressionSettings g_hook_suppression_settings;
 
-} // namespace settings
+}  // namespace settings

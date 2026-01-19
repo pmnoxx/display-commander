@@ -1759,6 +1759,25 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                         "Enable NVIDIA Reflex alongside OnPresentSync FPS limiter. Reflex will run at +0.5%% FPS limit "
                         "for better latency reduction.");
                 }
+
+                // Low Latency Ratio Selector (Experimental WIP placeholder)
+                ImGui::Spacing();
+                // ImGui::TextColored(ui::colors::TEXT_HIGHLIGHT, "Low Latency Ratio:");
+                // ImGui::SameLine();
+                if (ComboSettingWrapper(settings::g_mainTabSettings.onpresent_sync_low_latency_ratio,
+                                        "Display / Input Ratio(placeholder)")) {
+                    // Setting is automatically saved via ComboSettingWrapper
+                }
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip(
+                        "Controls the balance between display latency and input latency.\n\n"
+                        "100% Display / 0% Input: Prioritizes consistent frame timing (higher input latency)\n"
+                        "75% Display / 25% Input: Slight input latency reduction\n"
+                        "50% Display / 50% Input: Balanced approach (default)\n"
+                        "25% Display / 75% Input: Prioritizes input responsiveness\n"
+                        "0% Display / 100% Input: Maximum input responsiveness (higher display latency)\n\n"
+                        "Note: This is an experimental feature and not yet fully implemented.");
+                }
             }
         }
 

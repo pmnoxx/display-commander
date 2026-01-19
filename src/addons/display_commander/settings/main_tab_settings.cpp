@@ -34,7 +34,8 @@ namespace settings {
 
 MainTabSettings::MainTabSettings()
     : window_mode("window_mode", s_window_mode, static_cast<int>(WindowMode::kNoChanges),
-                  {"No changes mode", "Borderless Fullscreen", "Borderless Windowed (Aspect Ratio)"}, "DisplayCommander"),
+                  {"No changes mode", "Borderless Fullscreen", "Borderless Windowed (Aspect Ratio)"},
+                  "DisplayCommander"),
       aspect_index("aspect_index", 3, {"3:2", "4:3", "16:10", "16:9", "19:9", "19.5:9", "21:9", "32:9"},
                    "DisplayCommander"),  // Default to 16:9
       window_aspect_width("aspect_width", s_aspect_width, 0,
@@ -57,6 +58,11 @@ MainTabSettings::MainTabSettings()
                                       80.0f, "DisplayCommander"),
       onpresent_sync_enable_reflex("onpresent_sync_enable_reflex", false, "DisplayCommander"),
       suppress_reflex_sleep("suppress_reflex_sleep", false, "DisplayCommander"),
+      onpresent_sync_low_latency_ratio(
+          "onpresent_sync_low_latency_ratio", 0,
+          {"100% Display / 0% Input (default)", "75% Display / 25% Input", "50% Display / 50% Input",
+           "25% Display / 75% Input", "0% Display / 100% Input"},
+          "DisplayCommander"),  // Default to 100% Display / 0% Input (current behavior)
       force_vsync_on("force_vsync_on", s_force_vsync_on, s_force_vsync_on.load(), "DisplayCommander"),
       force_vsync_off("force_vsync_off", s_force_vsync_off, s_force_vsync_off.load(), "DisplayCommander"),
       prevent_tearing("prevent_tearing", s_prevent_tearing, s_prevent_tearing.load(), "DisplayCommander"),
@@ -155,6 +161,7 @@ MainTabSettings::MainTabSettings()
         &present_pacing_delay_percentage,
         &onpresent_sync_enable_reflex,
         &suppress_reflex_sleep,
+        &onpresent_sync_low_latency_ratio,
         &force_vsync_on,
         &force_vsync_off,
         &prevent_tearing,

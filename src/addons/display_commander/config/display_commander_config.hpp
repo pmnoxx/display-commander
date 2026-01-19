@@ -28,6 +28,14 @@ public:
     bool GetConfigValue(const char* section, const char* key, bool& value);
     bool GetConfigValue(const char* section, const char* key, std::vector<std::string>& values);
 
+    // Get configuration value, ensuring it exists (writes default if missing)
+    void GetConfigValueEnsureExists(const char* section, const char* key, std::string& value, const std::string& default_value);
+    void GetConfigValueEnsureExists(const char* section, const char* key, int& value, int default_value);
+    void GetConfigValueEnsureExists(const char* section, const char* key, uint32_t& value, uint32_t default_value);
+    void GetConfigValueEnsureExists(const char* section, const char* key, float& value, float default_value);
+    void GetConfigValueEnsureExists(const char* section, const char* key, double& value, double default_value);
+    void GetConfigValueEnsureExists(const char* section, const char* key, bool& value, bool default_value);
+
     // Set configuration value (compatible with reshade::set_config_value API)
     void SetConfigValue(const char* section, const char* key, const std::string& value);
     void SetConfigValue(const char* section, const char* key, const char* value);
@@ -88,5 +96,13 @@ void set_config_value(const char* section, const char* key, const std::vector<st
 
 // Save configuration to file
 void save_config(const char* reason = nullptr);
+
+// Get configuration value, ensuring it exists (writes default if missing)
+void get_config_value_ensure_exists(const char* section, const char* key, std::string& value, const std::string& default_value);
+void get_config_value_ensure_exists(const char* section, const char* key, int& value, int default_value);
+void get_config_value_ensure_exists(const char* section, const char* key, uint32_t& value, uint32_t default_value);
+void get_config_value_ensure_exists(const char* section, const char* key, float& value, float default_value);
+void get_config_value_ensure_exists(const char* section, const char* key, double& value, double default_value);
+void get_config_value_ensure_exists(const char* section, const char* key, bool& value, bool default_value);
 
 } // namespace display_commander::config

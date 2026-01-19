@@ -170,6 +170,9 @@ class ExperimentalTabSettings {
     // PCLStats ETW reporting (NVIDIA latency overlay compatibility)
     BoolSetting pclstats_etw_enabled;
 
+    // PCLStats log file (logs all PCLStats events to file)
+    BoolSetting pclstats_log_file_enabled;
+
   private:
     std::vector<SettingBase *> all_settings_;
 };

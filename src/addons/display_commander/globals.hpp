@@ -263,6 +263,9 @@ extern std::atomic<bool> g_process_attached;
 // Module handle for pinning/unpinning
 extern HMODULE g_hmodule;
 
+// Track whether module was pinned (for conditional unpinning)
+extern std::atomic<bool> g_module_pinned;
+
 // DLL load timestamp in nanoseconds (for conflict resolution)
 extern std::atomic<LONGLONG> g_dll_load_time_ns;
 

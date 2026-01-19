@@ -2053,15 +2053,26 @@ void DoInitializationWithoutHwndSafe(HMODULE h_module) {
 
     HandleSafemode();
 
-    // Pin the module to prevent premature unload
-    HMODULE pinned_module = nullptr;
-    if (GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_PIN,
-                           reinterpret_cast<LPCWSTR>(h_module), &pinned_module)
-        != 0) {
-        LogInfo("Module pinned successfully: 0x%p", pinned_module);
+    // Pin the module to prevent premature unload (unless suppressed by config)
+    bool suppress_pin_module = false;
+    display_commander::config::get_config_value_ensure_exists("DisplayCommander.Safemode", "SuppressPinModule",
+                                                              suppress_pin_module, false);
+
+    if (!suppress_pin_module) {
+        HMODULE pinned_module = nullptr;
+        if (GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_PIN,
+                               reinterpret_cast<LPCWSTR>(h_module), &pinned_module)
+            != 0) {
+            LogInfo("Module pinned successfully: 0x%p", pinned_module);
+            g_module_pinned.store(true);
+        } else {
+            DWORD error = GetLastError();
+            LogWarn("Failed to pin module: 0x%p, Error: %lu", h_module, error);
+            g_module_pinned.store(false);
+        }
     } else {
-        DWORD error = GetLastError();
-        LogWarn("Failed to pin module: 0x%p, Error: %lu", h_module, error);
+        LogInfo("Module pinning suppressed by config (SuppressPinModule=true)");
+        g_module_pinned.store(false);
     }
     // Install process-exit safety hooks to restore display on abnormal exits
     process_exit_hooks::Initialize();
@@ -2679,8 +2690,8 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             // registered by this add-on, so manual unregistration is not needed and can cause issues
             // display_restore::RestoreAllIfEnabled(); // restore display settings on exit
 
-            // Unpin the module before unregistration
-            if (g_hmodule != nullptr) {
+            // Unpin the module before unregistration (only if we actually pinned it)
+            if (g_module_pinned.load() && g_hmodule != nullptr) {
                 if (FreeLibrary(g_hmodule) != 0) {
                     LogInfo("Module unpinned successfully: 0x%p", g_hmodule);
                 } else {
@@ -2688,6 +2699,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
                     LogWarn("Failed to unpin module: 0x%p, Error: %lu", g_hmodule, error);
                 }
                 g_hmodule = nullptr;
+                g_module_pinned.store(false);
             }
 
             reshade::unregister_addon(h_module);

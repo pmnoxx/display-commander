@@ -287,6 +287,60 @@ bool DisplayCommanderConfigManager::GetConfigValue(const char* section, const ch
     return config_file_->GetValue(section != nullptr ? section : "", key != nullptr ? key : "", values);
 }
 
+void DisplayCommanderConfigManager::GetConfigValueEnsureExists(const char* section, const char* key, std::string& value, const std::string& default_value) {
+    if (!GetConfigValue(section, key, value)) {
+        // Value doesn't exist, set default and save
+        SetConfigValue(section, key, default_value);
+        SaveConfig("get_config_value_ensure_exists");
+        value = default_value;
+    }
+}
+
+void DisplayCommanderConfigManager::GetConfigValueEnsureExists(const char* section, const char* key, int& value, int default_value) {
+    if (!GetConfigValue(section, key, value)) {
+        // Value doesn't exist, set default and save
+        SetConfigValue(section, key, default_value);
+        SaveConfig("get_config_value_ensure_exists");
+        value = default_value;
+    }
+}
+
+void DisplayCommanderConfigManager::GetConfigValueEnsureExists(const char* section, const char* key, uint32_t& value, uint32_t default_value) {
+    if (!GetConfigValue(section, key, value)) {
+        // Value doesn't exist, set default and save
+        SetConfigValue(section, key, default_value);
+        SaveConfig("get_config_value_ensure_exists");
+        value = default_value;
+    }
+}
+
+void DisplayCommanderConfigManager::GetConfigValueEnsureExists(const char* section, const char* key, float& value, float default_value) {
+    if (!GetConfigValue(section, key, value)) {
+        // Value doesn't exist, set default and save
+        SetConfigValue(section, key, default_value);
+        SaveConfig("get_config_value_ensure_exists");
+        value = default_value;
+    }
+}
+
+void DisplayCommanderConfigManager::GetConfigValueEnsureExists(const char* section, const char* key, double& value, double default_value) {
+    if (!GetConfigValue(section, key, value)) {
+        // Value doesn't exist, set default and save
+        SetConfigValue(section, key, default_value);
+        SaveConfig("get_config_value_ensure_exists");
+        value = default_value;
+    }
+}
+
+void DisplayCommanderConfigManager::GetConfigValueEnsureExists(const char* section, const char* key, bool& value, bool default_value) {
+    if (!GetConfigValue(section, key, value)) {
+        // Value doesn't exist, set default and save
+        SetConfigValue(section, key, default_value);
+        SaveConfig("get_config_value_ensure_exists");
+        value = default_value;
+    }
+}
+
 void DisplayCommanderConfigManager::SetConfigValue(const char* section, const char* key, const std::string& value) {
     utils::SRWLockExclusive lock(config_mutex_);
     if (!initialized_) {
@@ -483,6 +537,30 @@ void set_config_value(const char* section, const char* key, const std::vector<st
 
 void save_config(const char* reason) {
     DisplayCommanderConfigManager::GetInstance().SaveConfig(reason);
+}
+
+void get_config_value_ensure_exists(const char* section, const char* key, std::string& value, const std::string& default_value) {
+    DisplayCommanderConfigManager::GetInstance().GetConfigValueEnsureExists(section, key, value, default_value);
+}
+
+void get_config_value_ensure_exists(const char* section, const char* key, int& value, int default_value) {
+    DisplayCommanderConfigManager::GetInstance().GetConfigValueEnsureExists(section, key, value, default_value);
+}
+
+void get_config_value_ensure_exists(const char* section, const char* key, uint32_t& value, uint32_t default_value) {
+    DisplayCommanderConfigManager::GetInstance().GetConfigValueEnsureExists(section, key, value, default_value);
+}
+
+void get_config_value_ensure_exists(const char* section, const char* key, float& value, float default_value) {
+    DisplayCommanderConfigManager::GetInstance().GetConfigValueEnsureExists(section, key, value, default_value);
+}
+
+void get_config_value_ensure_exists(const char* section, const char* key, double& value, double default_value) {
+    DisplayCommanderConfigManager::GetInstance().GetConfigValueEnsureExists(section, key, value, default_value);
+}
+
+void get_config_value_ensure_exists(const char* section, const char* key, bool& value, bool default_value) {
+    DisplayCommanderConfigManager::GetInstance().GetConfigValueEnsureExists(section, key, value, default_value);
 }
 
 } // namespace display_commander::config

@@ -36,6 +36,9 @@ std::atomic<bool> g_process_attached{false};
 // Module handle for pinning/unpinning
 HMODULE g_hmodule = nullptr;
 
+// Track whether module was pinned (for conditional unpinning)
+std::atomic<bool> g_module_pinned{false};
+
 // DLL load timestamp in nanoseconds (for conflict resolution)
 std::atomic<LONGLONG> g_dll_load_time_ns{0};
 

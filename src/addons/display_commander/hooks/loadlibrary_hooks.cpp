@@ -614,6 +614,12 @@ bool InstallLoadLibraryHooks() {
     if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(
             display_commanderhooks::HookType::LOADLIBRARY)) {
         LogInfo("LoadLibrary hooks installation suppressed by user setting");
+
+        // First, enumerate all currently loaded modules
+        LogInfo("Enumerating currently loaded modules...");
+        if (!EnumerateLoadedModules()) {
+            LogError("Failed to enumerate loaded modules, but continuing with hook installation");
+        }
         return false;
     }
 
@@ -630,12 +636,6 @@ bool InstallLoadLibraryHooks() {
         }
     } else {
         LogInfo("DLL blocking is disabled in experimental settings");
-    }
-
-    // First, enumerate all currently loaded modules
-    LogInfo("Enumerating currently loaded modules...");
-    if (!EnumerateLoadedModules()) {
-        LogError("Failed to enumerate loaded modules, but continuing with hook installation");
     }
 
     // Initialize MinHook (only if not already initialized)
@@ -696,6 +696,12 @@ bool InstallLoadLibraryHooks() {
     // Mark LoadLibrary hooks as installed
     display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(
         display_commanderhooks::HookType::LOADLIBRARY);
+
+    // First, enumerate all currently loaded modules
+    LogInfo("Enumerating currently loaded modules...");
+    if (!EnumerateLoadedModules()) {
+        LogError("Failed to enumerate loaded modules, but continuing with hook installation");
+    }
 
     return true;
 }

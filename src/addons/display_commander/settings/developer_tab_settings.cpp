@@ -6,17 +6,17 @@
 #include <atomic>
 
 // Atomic variables for developer tab settings
-std::atomic<bool> s_continue_rendering{false};            // Disabled by default
+std::atomic<bool> s_continue_rendering{false};  // Disabled by default
 std::atomic<bool> s_hide_hdr_capabilities{false};
 std::atomic<bool> s_enable_flip_chain{false};
 std::atomic<bool> s_auto_colorspace{false};
-std::atomic<bool> s_nvapi_auto_enable_enabled{true};    // enabled by default
+std::atomic<bool> s_nvapi_auto_enable_enabled{true};  // enabled by default
 
 // Reflex settings
-std::atomic<bool> s_reflex_auto_configure{false};  // Disabled by default
+std::atomic<bool> s_reflex_auto_configure{false};        // Disabled by default
 std::atomic<bool> s_reflex_enable_current_frame{false};  // Enable NVIDIA Reflex integration for current frame
-std::atomic<bool> s_reflex_supress_native{false};    // Disabled by default
-std::atomic<bool> s_enable_reflex_logging{false};    // Disabled by default
+std::atomic<bool> s_reflex_supress_native{false};        // Disabled by default
+std::atomic<bool> s_enable_reflex_logging{false};        // Disabled by default
 
 // Shortcut settings
 std::atomic<bool> s_enable_hotkeys{true};  // Enable hotkeys by default
@@ -77,7 +77,7 @@ DeveloperTabSettings::DeveloperTabSettings()
       enable_display_commander_ui_shortcut("EnableDisplayCommanderUiShortcut", s_enable_display_commander_ui_shortcut,
                                            s_enable_display_commander_ui_shortcut.load(), "DisplayCommander"),
       enable_performance_overlay_shortcut("EnablePerformanceOverlayShortcut", s_enable_performance_overlay_shortcut,
-                                           s_enable_performance_overlay_shortcut.load(), "DisplayCommander"),
+                                          s_enable_performance_overlay_shortcut.load(), "DisplayCommander"),
       safemode("Safemode", false, "DisplayCommander.Safemode"),
       dll_loading_delay_ms("DllLoadingDelayMs", 0, 0, 10000, "DisplayCommander"),
       dlls_to_load_before("DllsToLoadBefore", "", "DisplayCommander"),
@@ -86,11 +86,11 @@ DeveloperTabSettings::DeveloperTabSettings()
       load_nvngx("LoadNvngx", true, "DisplayCommander"),
       load_nvapi64("LoadNvapi64", true, "DisplayCommander"),
       fake_nvapi_enabled("FakeNvapiEnabled", false, "DisplayCommander"),
-      suppress_minhook("SuppressMinhook", false, "DisplayCommander"),
+      suppress_minhook("SuppressMinhook", false, "DisplayCommander.Safemode"),
       debug_layer_enabled("DebugLayerEnabled", false, "DisplayCommander"),
       debug_break_on_severity("DebugBreakOnSeverity", false, "DisplayCommander"),
       auto_hide_discord_overlay("AutoHideDiscordOverlay", true, "DisplayCommander"),
-      suppress_window_changes("SuppressWindowChanges", false, "DisplayCommander"),
+      suppress_window_changes("SuppressWindowChanges", false, "DisplayCommander.Safemode"),
       enable_presentmon_tracing("EnablePresentMonTracing", true, "DisplayCommander") {}
 
 void DeveloperTabSettings::LoadAll() {
@@ -124,19 +124,21 @@ void DeveloperTabSettings::SaveAll() {
 }
 
 std::vector<ui::new_ui::SettingBase*> DeveloperTabSettings::GetAllSettings() {
-    return {&prevent_fullscreen, &continue_rendering, &prevent_always_on_top,
-            &hide_hdr_capabilities, &enable_flip_chain, &auto_colorspace,
-            //&enable_d3d9e_upgrade,
-            &nvapi_auto_enable_enabled,
+    return {
+        &prevent_fullscreen, &continue_rendering, &prevent_always_on_top, &hide_hdr_capabilities, &enable_flip_chain,
+        &auto_colorspace,
+        //&enable_d3d9e_upgrade,
+        &nvapi_auto_enable_enabled,
 
-            &reflex_auto_configure, &reflex_enable, &reflex_delay_first_500_frames, &reflex_low_latency, &reflex_boost, &reflex_use_markers,
-            &reflex_generate_markers, &reflex_enable_sleep, &reflex_logging, &reflex_supress_native,
+        &reflex_auto_configure, &reflex_enable, &reflex_delay_first_500_frames, &reflex_low_latency, &reflex_boost,
+        &reflex_use_markers, &reflex_generate_markers, &reflex_enable_sleep, &reflex_logging, &reflex_supress_native,
 
-            &enable_hotkeys, &enable_mute_unmute_shortcut, &enable_background_toggle_shortcut, &enable_timeslowdown_shortcut,
-            &enable_adhd_toggle_shortcut, &enable_autoclick_shortcut, &enable_input_blocking_shortcut, &enable_display_commander_ui_shortcut, &enable_performance_overlay_shortcut,
-            &safemode, &dll_loading_delay_ms, &dlls_to_load_before, &load_from_dll_main, &load_streamline,
-            &load_nvngx, &load_nvapi64, &fake_nvapi_enabled, &suppress_minhook, &debug_layer_enabled,
-            &debug_break_on_severity, &auto_hide_discord_overlay, &suppress_window_changes, &enable_presentmon_tracing};
+        &enable_hotkeys, &enable_mute_unmute_shortcut, &enable_background_toggle_shortcut,
+        &enable_timeslowdown_shortcut, &enable_adhd_toggle_shortcut, &enable_autoclick_shortcut,
+        &enable_input_blocking_shortcut, &enable_display_commander_ui_shortcut, &enable_performance_overlay_shortcut,
+        &safemode, &dll_loading_delay_ms, &dlls_to_load_before, &load_from_dll_main, &load_streamline, &load_nvngx,
+        &load_nvapi64, &fake_nvapi_enabled, &suppress_minhook, &debug_layer_enabled, &debug_break_on_severity,
+        &auto_hide_discord_overlay, &suppress_window_changes, &enable_presentmon_tracing};
 }
 
 }  // namespace settings

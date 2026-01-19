@@ -16,6 +16,7 @@ using NvAPI_D3D_SetLatencyMarker_pfn = NvAPI_Status (__cdecl *)(__in IUnknown *p
 using NvAPI_D3D_SetSleepMode_pfn = NvAPI_Status (__cdecl *)(__in IUnknown *pDev, __in NV_SET_SLEEP_MODE_PARAMS *pSetSleepModeParams);
 using NvAPI_D3D_Sleep_pfn = NvAPI_Status (__cdecl *)(__in IUnknown *pDev);
 using NvAPI_D3D_GetLatency_pfn = NvAPI_Status (__cdecl *)(__in IUnknown *pDev, __in NV_LATENCY_RESULT_PARAMS *pGetLatencyParams);
+using NvAPI_D3D_GetSleepStatus_pfn = NvAPI_Status (__cdecl *)(__in IUnknown *pDev, __in NV_GET_SLEEP_STATUS_PARAMS *pGetSleepStatusParams);
 
 // Original function pointers
 NvAPI_Disp_GetHdrCapabilities_pfn NvAPI_Disp_GetHdrCapabilities_Original = nullptr;
@@ -246,6 +247,41 @@ NvAPI_Status NvAPI_D3D_SetLatencyMarker_Direct(IUnknown *pDev, NV_LATENCY_MARKER
 NvAPI_Status NvAPI_D3D_GetLatency_Direct(IUnknown *pDev, NV_LATENCY_RESULT_PARAMS *pGetLatencyParams) {
     if (NvAPI_D3D_GetLatency_Original != nullptr) {
         return NvAPI_D3D_GetLatency_Original(pDev, pGetLatencyParams);
+    }
+    return NVAPI_NO_IMPLEMENTATION;
+}
+
+// Direct call to NvAPI_D3D_GetSleepStatus without stats tracking
+// For internal use to query Reflex sleep status
+NvAPI_Status NvAPI_D3D_GetSleepStatus_Direct(IUnknown *pDev, NV_GET_SLEEP_STATUS_PARAMS *pGetSleepStatusParams) {
+    // Get the function dynamically using QueryInterface (not hooked, so we need to get it each time)
+    static NvAPI_D3D_GetSleepStatus_pfn get_sleep_status_func = nullptr;
+    static std::atomic<bool> initialized{false};
+
+    if (!initialized.load(std::memory_order_acquire)) {
+        HMODULE nvapi_dll = GetModuleHandleA("nvapi64.dll");
+        if (!nvapi_dll) {
+            nvapi_dll = GetModuleHandleA("nvapi.dll");
+        }
+
+        if (nvapi_dll) {
+            NvAPI_QueryInterface_pfn queryInterface =
+                reinterpret_cast<NvAPI_QueryInterface_pfn>(
+                    GetProcAddress(nvapi_dll, "nvapi_QueryInterface"));
+
+            if (queryInterface) {
+                NvU32 functionId = GetNvAPIFunctionId("NvAPI_D3D_GetSleepStatus");
+                if (functionId != 0) {
+                    get_sleep_status_func = reinterpret_cast<NvAPI_D3D_GetSleepStatus_pfn>(
+                        queryInterface(functionId));
+                }
+            }
+        }
+        initialized.store(true, std::memory_order_release);
+    }
+
+    if (get_sleep_status_func != nullptr) {
+        return get_sleep_status_func(pDev, pGetSleepStatusParams);
     }
     return NVAPI_NO_IMPLEMENTATION;
 }

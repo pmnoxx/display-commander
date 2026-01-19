@@ -18,6 +18,7 @@ class ReflexProvider : public ILatencyProvider {
     bool SetMarker(LatencyMarkerType marker) override;
     bool ApplySleepMode(bool low_latency, bool boost, bool use_markers, float fps_limit) override;
     bool Sleep() override;
+    bool GetSleepStatus(NV_GET_SLEEP_STATUS_PARAMS* status_params) override;
 
     LatencyTechnology GetTechnology() const override { return LatencyTechnology::NVIDIA_Reflex; }
     const char* GetTechnologyName() const override { return "NVIDIA Reflex"; }

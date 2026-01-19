@@ -38,3 +38,9 @@ bool ReflexProvider::Sleep() {
 
     return reflex_manager_.Sleep();
 }
+
+bool ReflexProvider::GetSleepStatus(NV_GET_SLEEP_STATUS_PARAMS* status_params) {
+    if (!IsInitialized() || status_params == nullptr) return false;
+
+    return reflex_manager_.GetSleepStatus(status_params);
+}

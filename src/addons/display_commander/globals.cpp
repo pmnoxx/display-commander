@@ -413,6 +413,10 @@ std::atomic<LONGLONG> g_sleep_reflex_native_ns{0};
 std::atomic<LONGLONG> g_sleep_reflex_native_ns_smooth{0};
 std::atomic<LONGLONG> g_sleep_reflex_injected_ns_smooth{0};
 
+// Cached Reflex sleep status (updated periodically, read by UI)
+std::atomic<bool> g_reflex_sleep_status_low_latency_enabled{false};
+std::atomic<LONGLONG> g_reflex_sleep_status_last_update_ns{0};
+
 // Reflex debug counters
 std::atomic<uint32_t> g_reflex_sleep_count{0};
 std::atomic<uint32_t> g_reflex_apply_sleep_mode_count{0};

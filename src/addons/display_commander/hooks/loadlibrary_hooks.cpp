@@ -632,24 +632,6 @@ bool InstallLoadLibraryHooks() {
         LogInfo("DLL blocking is disabled in experimental settings");
     }
 
-    // Get Display Commander's module handle for comparison
-    // Try to get it from the current module
-    HMODULE hMod = nullptr;
-    if (GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
-                           reinterpret_cast<LPCWSTR>(&InstallLoadLibraryHooks), &hMod)) {
-        g_display_commander_module = hMod;
-        LogInfo("Display Commander module handle: 0x%p", hMod);
-    } else {
-        // Fallback: try to find by name
-        g_display_commander_module = GetModuleHandleW(L"display_commander.dll");
-        if (!g_display_commander_module) {
-            g_display_commander_module = GetModuleHandleW(L"display_commander64.dll");
-        }
-        if (g_display_commander_module) {
-            LogInfo("Display Commander module found by name: 0x%p", g_display_commander_module);
-        }
-    }
-
     // First, enumerate all currently loaded modules
     LogInfo("Enumerating currently loaded modules...");
     if (!EnumerateLoadedModules()) {
@@ -826,18 +808,6 @@ bool IsModuleLoaded(const std::wstring& moduleName) {
 
 void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
     LogInfo("Module loaded: %ws (0x%p)", moduleName.c_str(), hModule);
-
-    // Detect platform API from DLL name
-    using namespace display_commander::utils;
-    PlatformAPI api = DetectPlatformAPIFromDLLName(moduleName);
-    if (api != PlatformAPI::None) {
-        const char* api_name = GetPlatformAPIName(api);
-        char dll_name_ansi[MAX_PATH];
-        WideCharToMultiByte(CP_ACP, 0, moduleName.c_str(), -1, dll_name_ansi, MAX_PATH, nullptr, nullptr);
-        char msg[512];
-        snprintf(msg, sizeof(msg), "[DisplayCommander] Platform API detected: %s (%s)", api_name, dll_name_ansi);
-        OutputDebugStringA(msg);
-    }
 
     // Convert to lowercase for case-insensitive comparison
     std::wstring lowerModuleName = moduleName;

@@ -1236,11 +1236,6 @@ void HandleFpsLimiterPre(bool from_present_detour, bool from_wrapper = false) {
                 }
                 break;
             }
-            case FpsLimiterMode::kNonReflexLowLatency: {
-                // Non-Reflex Low Latency Mode not implemented yet - treat as disabled
-                LogInfo("FPS Limiter: Non-Reflex Low Latency Mode - Not implemented yet");
-                break;
-            }
         }
     }
 

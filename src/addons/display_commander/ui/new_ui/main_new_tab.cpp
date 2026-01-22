@@ -1705,12 +1705,11 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
     // FPS Limiter Mode
     {
         const char* items[] = {"Default", "NVIDIA Reflex (low latency mode + boost) VRR DX11/DX12 (DLSS-FG aware)",
-                               "Disabled", "Sync to Display Refresh Rate (fraction of monitor refresh rate) Non-VRR",
-                               "Non-Reflex Low Latency Mode (not implemented) VRR"};
+                               "Disabled", "Sync to Display Refresh Rate (fraction of monitor refresh rate) Non-VRR"};
 
         int current_item = settings::g_mainTabSettings.fps_limiter_mode.GetValue();
         int prev_item = current_item;
-        if (ImGui::Combo("FPS Limiter Mode", &current_item, items, 5)) {
+        if (ImGui::Combo("FPS Limiter Mode", &current_item, items, 4)) {
             settings::g_mainTabSettings.fps_limiter_mode.SetValue(current_item);
             s_fps_limiter_mode.store(static_cast<FpsLimiterMode>(current_item));
             FpsLimiterMode mode = s_fps_limiter_mode.load();
@@ -1724,8 +1723,6 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                 LogInfo("FPS Limiter: OnPresent Frame Synchronizer");
             } else if (mode == FpsLimiterMode::kLatentSync) {
                 LogInfo("FPS Limiter: VBlank Scanline Sync for VSYNC-OFF or without VRR");
-            } else if (mode == FpsLimiterMode::kNonReflexLowLatency) {
-                LogInfo("FPS Limiter: Non-Reflex Low Latency Mode - Not implemented yet");
             }
 
             if (mode == FpsLimiterMode::kReflex && prev_item != static_cast<int>(FpsLimiterMode::kReflex)) {
@@ -1975,16 +1972,6 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                     "Suppresses both native Reflex sleep calls (from the game) and injected Reflex sleep calls.\n"
                     "This prevents Reflex from sleeping the CPU, which may help with certain compatibility issues.");
             }
-        }
-
-        // Show warning for non-implemented low latency mode
-        if (current_item == static_cast<int>(FpsLimiterMode::kNonReflexLowLatency)) {
-            if (g_swapchain_wrapper_present_called.load(std::memory_order_acquire)) {
-                bool limit_real = settings::g_mainTabSettings.limit_real_frames.GetValue();
-                ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Limit Real Frames: %s", limit_real ? "ON" : "OFF");
-            }
-            ImGui::TextColored(ui::colors::TEXT_WARNING,
-                               ICON_FK_WARNING " Non-Reflex Low Latency Mode not implemented yet");
         }
 
         // Present Pacing Delay slider (persisted)

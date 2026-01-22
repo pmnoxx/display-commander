@@ -6,7 +6,6 @@
 #include "../utils/srwlock_wrapper.hpp"
 #include "../utils/timing.hpp"
 
-
 #include <evntrace.h>
 #include <TraceLoggingProvider.h>
 #include <windows.h>

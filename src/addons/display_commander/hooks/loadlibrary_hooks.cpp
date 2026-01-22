@@ -27,6 +27,9 @@
 #include "windows_gaming_input_hooks.hpp"
 #include "xinput_hooks.hpp"
 
+// Declare K32EnumProcessModules (kernel32 variant, safe from DllMain)
+extern "C" BOOL WINAPI K32EnumProcessModules(HANDLE hProcess, HMODULE* lphModule, DWORD cb, LPDWORD lpcbNeeded);
+
 namespace display_commanderhooks {
 
 // Helper function to check if a DLL should be blocked (Ansel libraries)
@@ -605,6 +608,10 @@ VOID WINAPI FreeLibraryAndExitThread_Detour(HMODULE hLibModule, DWORD dwExitCode
 }
 
 bool InstallLoadLibraryHooks() {
+    if (!EnumerateLoadedModules()) {
+        LogError("Failed to enumerate loaded modules, but continuing with hook installation");
+    }
+
     if (g_loadlibrary_hooks_installed.load()) {
         LogInfo("LoadLibrary hooks already installed");
         return true;
@@ -616,10 +623,6 @@ bool InstallLoadLibraryHooks() {
         LogInfo("LoadLibrary hooks installation suppressed by user setting");
 
         // First, enumerate all currently loaded modules
-        LogInfo("Enumerating currently loaded modules...");
-        if (!EnumerateLoadedModules()) {
-            LogError("Failed to enumerate loaded modules, but continuing with hook installation");
-        }
         return false;
     }
 
@@ -697,12 +700,6 @@ bool InstallLoadLibraryHooks() {
     display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(
         display_commanderhooks::HookType::LOADLIBRARY);
 
-    // First, enumerate all currently loaded modules
-    LogInfo("Enumerating currently loaded modules...");
-    if (!EnumerateLoadedModules()) {
-        LogError("Failed to enumerate loaded modules, but continuing with hook installation");
-    }
-
     return true;
 }
 
@@ -759,6 +756,10 @@ bool EnumerateLoadedModules() {
         ModuleInfo moduleInfo;
         moduleInfo.hModule = hModules[i];
 
+        if (g_module_handles.find(hModules[i]) != g_module_handles.end()) {
+            continue;
+        }
+
         // Get module file name
         wchar_t modulePath[MAX_PATH];
         if (GetModuleFileNameW(hModules[i], modulePath, MAX_PATH)) {
@@ -812,6 +813,50 @@ bool IsModuleLoaded(const std::wstring& moduleName) {
     return false;
 }
 
+// Helper function to check if any loaded module has "reframework\plugins" in its path
+bool HasReframeworkPluginModule() {
+    HMODULE modules[1024];
+    DWORD num_modules = 0;
+
+    // Enumerate all loaded modules
+    if (K32EnumProcessModules(GetCurrentProcess(), modules, sizeof(modules), &num_modules) == 0) {
+        // If enumeration fails, fall back to checking tracked modules
+        utils::SRWLockShared lock(g_module_srwlock);
+        for (const auto& module : g_loaded_modules) {
+            if (!module.fullPath.empty()) {
+                std::wstring lowerPath = module.fullPath;
+                std::transform(lowerPath.begin(), lowerPath.end(), lowerPath.begin(), ::towlower);
+                if (lowerPath.find(L"reframework\\plugins") != std::wstring::npos) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    if (num_modules > sizeof(modules)) {
+        num_modules = static_cast<DWORD>(sizeof(modules));
+    }
+
+    // Check each module's path
+    for (DWORD i = 0; i < num_modules / sizeof(HMODULE); ++i) {
+        if (modules[i] == nullptr) {
+            continue;
+        }
+
+        wchar_t module_path[MAX_PATH];
+        if (GetModuleFileNameW(modules[i], module_path, MAX_PATH) > 0) {
+            std::wstring path(module_path);
+            std::transform(path.begin(), path.end(), path.begin(), ::towlower);
+            if (path.find(L"reframework\\plugins") != std::wstring::npos) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
 void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
     LogInfo("Module loaded: %ws (0x%p)", moduleName.c_str(), hModule);
 
@@ -821,11 +866,16 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
 
     // dxgi.dll
     if (lowerModuleName.find(L"dxgi.dll") != std::wstring::npos) {
-        LogInfo("Installing DXGI hooks for module: %ws", moduleName.c_str());
-        if (InstallDxgiFactoryHooks(hModule)) {
-            LogInfo("DXGI hooks installed successfully");
+        // Check if any module has "reframework\plugins" in its path
+        if (HasReframeworkPluginModule()) {
+            LogInfo("Skipping DXGI hooks installation - ReFramework plugin detected");
         } else {
-            LogError("Failed to install DXGI hooks");
+            LogInfo("Installing DXGI hooks for module: %ws", moduleName.c_str());
+            if (InstallDxgiFactoryHooks(hModule)) {
+                LogInfo("DXGI hooks installed successfully");
+            } else {
+                LogError("Failed to install DXGI hooks");
+            }
         }
     }
     // d3d11.dll

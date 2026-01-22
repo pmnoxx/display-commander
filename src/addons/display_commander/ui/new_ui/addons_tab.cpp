@@ -8,6 +8,7 @@
 #include "../../utils/general_utils.hpp"
 #include "../../utils/logging.hpp"
 #include "../../utils/reshade_global_config.hpp"
+#include "../../utils/srwlock_wrapper.hpp"
 
 #include <psapi.h>
 #include <ShlObj.h>
@@ -16,7 +17,6 @@
 #include <algorithm>
 #include <atomic>
 #include <filesystem>
-#include <mutex>
 #include <set>
 #include <sstream>
 #include <string>
@@ -35,7 +35,7 @@ std::atomic<bool> g_addon_list_dirty(true);  // Set to true to trigger refresh
 
 // Global shader packages list
 std::vector<ShaderPackageInfo> g_shader_packages;
-std::mutex g_shader_packages_mutex;
+SRWLOCK g_shader_packages_mutex = SRWLOCK_INIT;
 std::atomic<bool> g_shader_packages_loading(false);
 std::atomic<bool> g_shader_packages_loaded(false);
 std::string g_shader_packages_error;
@@ -595,7 +595,7 @@ void DownloadShaderPackagesList() {
 
         // Update global list
         {
-            std::lock_guard<std::mutex> lock(g_shader_packages_mutex);
+            utils::SRWLockExclusive lock(g_shader_packages_mutex);
             g_shader_packages = std::move(packages);
         }
 
@@ -659,7 +659,7 @@ void DrawAddonsTab() {
 
         // Display packages list if loaded
         if (g_shader_packages_loaded.load()) {
-            std::lock_guard<std::mutex> lock(g_shader_packages_mutex);
+            utils::SRWLockShared lock(g_shader_packages_mutex);
 
             if (g_shader_packages.empty()) {
                 ImGui::TextColored(ui::colors::TEXT_DIMMED, "No packages found in the list.");

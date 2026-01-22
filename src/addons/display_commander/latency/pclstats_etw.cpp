@@ -3,14 +3,15 @@
 
 #include "../globals.hpp"
 #include "../utils/logging.hpp"
+#include "../utils/srwlock_wrapper.hpp"
 #include "../utils/timing.hpp"
+
 
 #include <evntrace.h>
 #include <TraceLoggingProvider.h>
 #include <windows.h>
 
 #include <atomic>
-#include <mutex>
 #include <random>
 #include <thread>
 #include <vector>
@@ -48,7 +49,7 @@ static std::atomic<uint64_t> g_marker_counts[16] = {};
 // Marker history (first 100 markers)
 static constexpr size_t MAX_MARKER_HISTORY = 100;
 static std::vector<MarkerHistoryEntry> g_marker_history;
-static std::mutex g_marker_history_mutex;
+static SRWLOCK g_marker_history_mutex = SRWLOCK_INIT;
 static std::atomic<bool> g_history_full{false};  // True when we've collected 100 markers
 // Lifecycle event tracking
 static std::atomic<uint64_t> g_init_events_sent{0};
@@ -195,7 +196,7 @@ void EmitMarker(uint32_t marker, uint64_t frame_id) {
 
     // Record in history (first 100 markers only)
     if (!g_history_full.load(std::memory_order_acquire)) {
-        std::lock_guard<std::mutex> lock(g_marker_history_mutex);
+        utils::SRWLockExclusive lock(g_marker_history_mutex);
         if (g_marker_history.size() < MAX_MARKER_HISTORY) {
             MarkerHistoryEntry entry;
             entry.marker_type = marker;
@@ -276,7 +277,7 @@ bool ConsumePingSignal() {
 }
 
 std::vector<MarkerHistoryEntry> GetMarkerHistory() {
-    std::lock_guard<std::mutex> lock(g_marker_history_mutex);
+    utils::SRWLockExclusive lock(g_marker_history_mutex);
     return g_marker_history;  // Return copy
 }
 

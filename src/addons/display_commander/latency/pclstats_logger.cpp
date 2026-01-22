@@ -2,12 +2,13 @@
 
 #include "../globals.hpp"
 #include "../utils/logging.hpp"
+#include "../utils/srwlock_wrapper.hpp"
 #include "../utils/timing.hpp"
 
+#include <windows.h>
 #include <atomic>
 #include <fstream>
 #include <iomanip>
-#include <mutex>
 #include <sstream>
 
 namespace latency::pclstats_logger {
@@ -17,7 +18,7 @@ static std::atomic<uint64_t> g_total_events_logged{0};
 static std::atomic<uint64_t> g_file_write_errors{0};
 static std::atomic<bool> g_file_open{false};
 
-static std::mutex g_file_mutex;
+static SRWLOCK g_file_mutex = SRWLOCK_INIT;
 static std::ofstream g_log_file;
 static std::string g_log_file_path;
 
@@ -52,7 +53,7 @@ static std::string GetDefaultLogFilePath() {
 }
 
 void Initialize() {
-    std::lock_guard<std::mutex> lock(g_file_mutex);
+    utils::SRWLockExclusive lock(g_file_mutex);
 
     if (g_log_file.is_open()) {
         return;  // Already initialized
@@ -88,7 +89,7 @@ void Initialize() {
 }
 
 void Shutdown() {
-    std::lock_guard<std::mutex> lock(g_file_mutex);
+    utils::SRWLockExclusive lock(g_file_mutex);
 
     if (g_log_file.is_open()) {
         g_log_file << "# Logging stopped\n";
@@ -123,7 +124,7 @@ void LogMarker(uint32_t marker, uint64_t frame_id, uint64_t timestamp_ns) {
         return;
     }
 
-    std::lock_guard<std::mutex> lock(g_file_mutex);
+    utils::SRWLockExclusive lock(g_file_mutex);
 
     if (!g_file_open.load(std::memory_order_acquire) || !g_log_file.is_open()) {
         return;
@@ -156,7 +157,7 @@ void LogMarker(uint32_t marker, uint64_t frame_id, uint64_t timestamp_ns) {
 }
 
 std::string GetLogFilePath() {
-    std::lock_guard<std::mutex> lock(g_file_mutex);
+    utils::SRWLockExclusive lock(g_file_mutex);
     return g_log_file_path;
 }
 

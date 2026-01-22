@@ -271,6 +271,7 @@ void OnReShadeBeginEffects(reshade::api::effect_runtime* runtime, reshade::api::
 
 void OnReShadeFinishEffects(reshade::api::effect_runtime* runtime, reshade::api::command_list* cmd_list,
                             reshade::api::resource_view rtv, reshade::api::resource_view rtv_srgb) {
+    display_commanderhooks::InstallApiHooks();
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // ReShade effects finish tracking
     if (runtime == nullptr || cmd_list == nullptr) {
@@ -2159,6 +2160,7 @@ void DoInitializationWithoutHwnd(HMODULE h_module) {
     // Register ReShade effect rendering events
     reshade::register_event<reshade::addon_event::reshade_begin_effects>(OnReShadeBeginEffects);
     reshade::register_event<reshade::addon_event::reshade_finish_effects>(OnReShadeFinishEffects);
+    display_commanderhooks::InstallApiHooks();
 }
 
 // Named event name for injection tracking (shared across processes)

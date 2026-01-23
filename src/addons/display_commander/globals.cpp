@@ -194,6 +194,9 @@ std::atomic<uint64_t> g_last_ui_drawn_frame_id{0};
 // Global frame ID when XInput was last successfully detected
 std::atomic<uint64_t> g_last_xinput_detected_frame_id{0};
 
+// Global frame ID when NvAPI_D3D_SetSleepMode_Direct was last called
+std::atomic<uint64_t> g_last_set_sleep_mode_direct_frame_id{0};
+
 // Global Swapchain Tracking Manager instance
 SwapchainTrackingManager g_swapchainTrackingManager;
 

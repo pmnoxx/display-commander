@@ -3,6 +3,8 @@
 #include <sstream>
 #include <iomanip>
 #include <algorithm>
+#include <cstdio>
+#include <cstring>
 
 namespace detour_call_tracker {
 namespace {
@@ -16,21 +18,31 @@ constexpr size_t BUFFER_MASK = BUFFER_SIZE - 1;  // For fast modulo (BUFFER_SIZE
 // Each entry has atomic fields for lock-free concurrent access
 DetourCallEntry g_detour_buffer[BUFFER_SIZE];
 
+// String storage buffers - one per entry
+// Format: "FunctionName:123"
+// Size: function name (up to 256 chars) + ":123456" (line number) + null terminator
+char g_string_buffers[BUFFER_SIZE][512];
+
 // Atomic index for lock-free insertion
 // Incremented on each write, wraps around automatically
 std::atomic<size_t> g_write_index{0};
 
 } // anonymous namespace
 
-void RecordDetourCall(const char* function_name, uint64_t timestamp_ns) {
+void RecordDetourCall(const char* function_name, int line_number, uint64_t timestamp_ns) {
     // Get next write position (increment atomically)
     // Using relaxed ordering for maximum performance
     size_t index = g_write_index.fetch_add(1, std::memory_order_relaxed) & BUFFER_MASK;
 
+    // Format function name and line number into the string buffer for this entry
+    // Format: "FunctionName:123"
+    snprintf(g_string_buffers[index], sizeof(g_string_buffers[index]), "%s:%d", function_name, line_number);
+
     // Write entry fields with relaxed ordering
     // Each field is atomic, so writes are independent
     // Slight race condition with readers is acceptable for crash reporting
-    g_detour_buffer[index].function_name.store(function_name, std::memory_order_relaxed);
+    // Note: Each entry has its own string buffer, so concurrent writes to different indices are safe
+    g_detour_buffer[index].function_name.store(g_string_buffers[index], std::memory_order_relaxed);
     g_detour_buffer[index].timestamp_ns.store(timestamp_ns, std::memory_order_relaxed);
 }
 
@@ -125,4 +137,3 @@ std::string FormatRecentDetourCalls(uint64_t crash_timestamp_ns, size_t max_coun
 }
 
 } // namespace detour_call_tracker
-

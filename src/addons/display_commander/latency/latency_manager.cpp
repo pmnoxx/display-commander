@@ -1,10 +1,17 @@
 #include "latency_manager.hpp"
 #include "../globals.hpp"
 #include "../utils.hpp"
+#include "../utils/detour_call_tracker.hpp"
 #include "../utils/logging.hpp"
 #include "../utils/timing.hpp"
-#include "pclstats_etw.hpp"
 #include "reflex_provider.hpp"
+
+// Include Streamline PCLStats header for PCLSTATS_MARKER macro
+// Path is relative to src/addons/display_commander from external/Streamline
+#include "../../../../external/Streamline/source/plugins/sl.pcl/pclstats.h"
+
+// Define the PCLStats provider (must be in a .cpp file, not header)
+PCLSTATS_DEFINE()
 
 // Forward declaration to avoid circular dependency
 extern float GetTargetFps();
@@ -104,26 +111,22 @@ bool LatencyManager::SetMarker(LatencyMarkerType marker) {
     if (!IsInitialized()) {
         return false;
     }
+    RECORD_DETOUR_CALL(utils::get_now_ns());
 
     auto result = provider_->SetMarker(marker);
     if (!result) {
         return result;
     }
+    RECORD_DETOUR_CALL(utils::get_now_ns());
 
     // Special-K style: on SIMULATION_START, optionally inject PC_LATENCY_PING when signaled.
     // This is gated inside pclstats_etw (user enable + ETW provider enable + not Reflex-native).
     // CRITICAL: Special K sends PC_LATENCY_PING through NVAPI first, which then gets emitted via ETW.
     // This ensures proper correlation and timing for PCL/AV stats calculation.
     if (marker == SIMULATION_START) {
-        if (latency::pclstats_etw::ConsumePingSignal()) {
-            // Send PC_LATENCY_PING through NVAPI (like Special K does via setLatencyMarkerNV).
-            // This will go through ReflexManager::SetMarker which:
-            // 1. Sends to NVAPI (for driver correlation)
-            // 2. Emits via ETW with the same frame ID (for overlay stats)
-            // The frame ID is already set correctly in SetMarker from g_global_frame_id.
-            (void)provider_->SetMarker(PC_LATENCY_PING);
-        }
+        PCLSTATS_MARKER(PC_LATENCY_PING, g_global_frame_id.load(std::memory_order_acquire));
     }
+    RECORD_DETOUR_CALL(utils::get_now_ns());
 
     switch (marker) {
         case SIMULATION_START: g_reflex_marker_simulation_start_count.fetch_add(1, std::memory_order_relaxed); break;
@@ -138,6 +141,7 @@ bool LatencyManager::SetMarker(LatencyMarkerType marker) {
         case PC_LATENCY_PING:  break;
         default:               break;
     }
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     return result;
 }
 

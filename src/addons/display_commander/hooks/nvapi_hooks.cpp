@@ -1,22 +1,27 @@
 #include "nvapi_hooks.hpp"
-#include "../utils/general_utils.hpp"
-#include "../utils/logging.hpp"
-#include "../utils/timing.hpp"
-#include "../utils/detour_call_tracker.hpp"
-#include "../globals.hpp"
 #include "../../../external/nvapi/nvapi_interface.h"
+#include "../globals.hpp"
 #include "../settings/developer_tab_settings.hpp"
 #include "../settings/main_tab_settings.hpp"
+#include "../utils/detour_call_tracker.hpp"
+#include "../utils/general_utils.hpp"
+#include "../utils/logging.hpp"
+#include "../utils/srwlock_wrapper.hpp"
+#include "../utils/timing.hpp"
 #include "hook_suppression_manager.hpp"
 
 #include <MinHook.h>
 
 // Function pointer type definitions (following Special-K's approach)
-using NvAPI_D3D_SetLatencyMarker_pfn = NvAPI_Status (__cdecl *)(__in IUnknown *pDev, __in NV_LATENCY_MARKER_PARAMS *pSetLatencyMarkerParams);
-using NvAPI_D3D_SetSleepMode_pfn = NvAPI_Status (__cdecl *)(__in IUnknown *pDev, __in NV_SET_SLEEP_MODE_PARAMS *pSetSleepModeParams);
-using NvAPI_D3D_Sleep_pfn = NvAPI_Status (__cdecl *)(__in IUnknown *pDev);
-using NvAPI_D3D_GetLatency_pfn = NvAPI_Status (__cdecl *)(__in IUnknown *pDev, __in NV_LATENCY_RESULT_PARAMS *pGetLatencyParams);
-using NvAPI_D3D_GetSleepStatus_pfn = NvAPI_Status (__cdecl *)(__in IUnknown *pDev, __in NV_GET_SLEEP_STATUS_PARAMS *pGetSleepStatusParams);
+using NvAPI_D3D_SetLatencyMarker_pfn = NvAPI_Status(__cdecl*)(__in IUnknown* pDev,
+                                                              __in NV_LATENCY_MARKER_PARAMS* pSetLatencyMarkerParams);
+using NvAPI_D3D_SetSleepMode_pfn = NvAPI_Status(__cdecl*)(__in IUnknown* pDev,
+                                                          __in NV_SET_SLEEP_MODE_PARAMS* pSetSleepModeParams);
+using NvAPI_D3D_Sleep_pfn = NvAPI_Status(__cdecl*)(__in IUnknown* pDev);
+using NvAPI_D3D_GetLatency_pfn = NvAPI_Status(__cdecl*)(__in IUnknown* pDev,
+                                                        __in NV_LATENCY_RESULT_PARAMS* pGetLatencyParams);
+using NvAPI_D3D_GetSleepStatus_pfn = NvAPI_Status(__cdecl*)(__in IUnknown* pDev,
+                                                            __in NV_GET_SLEEP_STATUS_PARAMS* pGetSleepStatusParams);
 
 // Original function pointers
 NvAPI_Disp_GetHdrCapabilities_pfn NvAPI_Disp_GetHdrCapabilities_Original = nullptr;
@@ -25,23 +30,27 @@ NvAPI_D3D_SetSleepMode_pfn NvAPI_D3D_SetSleepMode_Original = nullptr;
 NvAPI_D3D_Sleep_pfn NvAPI_D3D_Sleep_Original = nullptr;
 NvAPI_D3D_GetLatency_pfn NvAPI_D3D_GetLatency_Original = nullptr;
 
+// SRWLOCK for thread-safe NVAPI hook access
+static SRWLOCK g_nvapi_lock = SRWLOCK_INIT;
+
 // Function to look up NVAPI function ID from interface table
 namespace {
-    NvU32 GetNvAPIFunctionId(const char* functionName) {
-        for (int i = 0; nvapi_interface_table[i].func != nullptr; i++) {
-            if (strcmp(nvapi_interface_table[i].func, functionName) == 0) {
-                return nvapi_interface_table[i].id;
-            }
+NvU32 GetNvAPIFunctionId(const char* functionName) {
+    for (int i = 0; nvapi_interface_table[i].func != nullptr; i++) {
+        if (strcmp(nvapi_interface_table[i].func, functionName) == 0) {
+            return nvapi_interface_table[i].id;
         }
-
-        LogInfo("NVAPI hooks: Function '%s' not found in interface table", functionName);
-        return 0;
     }
+
+    LogInfo("NVAPI hooks: Function '%s' not found in interface table", functionName);
+    return 0;
 }
+}  // namespace
 
 // Hooked NvAPI_Disp_GetHdrCapabilities function
-NvAPI_Status __cdecl NvAPI_Disp_GetHdrCapabilities_Detour(NvU32 displayId, NV_HDR_CAPABILITIES *pHdrCapabilities) {
+NvAPI_Status __cdecl NvAPI_Disp_GetHdrCapabilities_Detour(NvU32 displayId, NV_HDR_CAPABILITIES* pHdrCapabilities) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
+    utils::SRWLockExclusive lock(g_nvapi_lock);
     // Increment counter
     g_nvapi_event_counters[NVAPI_EVENT_GET_HDR_CAPABILITIES].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
@@ -49,7 +58,8 @@ NvAPI_Status __cdecl NvAPI_Disp_GetHdrCapabilities_Detour(NvU32 displayId, NV_HD
     // Log the call (first few times only)
     static int log_count = 0;
     if (log_count < 3) {
-        LogInfo("NVAPI HDR Capabilities called - DisplayId: %u s_hide_hdr_capabilities: %d", displayId, s_hide_hdr_capabilities.load());
+        LogInfo("NVAPI HDR Capabilities called - DisplayId: %u s_hide_hdr_capabilities: %d", displayId,
+                s_hide_hdr_capabilities.load());
         log_count++;
     }
 
@@ -71,7 +81,7 @@ NvAPI_Status __cdecl NvAPI_Disp_GetHdrCapabilities_Detour(NvU32 displayId, NV_HD
                 // Set all HDR-related flags to false
                 pHdrCapabilities->isST2084EotfSupported = 0;
                 pHdrCapabilities->isTraditionalHdrGammaSupported = 0;
-                pHdrCapabilities->isTraditionalSdrGammaSupported = 1; // Keep SDR support
+                pHdrCapabilities->isTraditionalSdrGammaSupported = 1;  // Keep SDR support
                 pHdrCapabilities->isHdr10PlusSupported = 0;
                 pHdrCapabilities->isHdr10PlusGamingSupported = 0;
                 pHdrCapabilities->isDolbyVisionSupported = 0;
@@ -103,15 +113,18 @@ NvAPI_Status __cdecl NvAPI_Disp_GetHdrCapabilities_Detour(NvU32 displayId, NV_HD
 }
 
 // Hooked NvAPI_D3D_SetLatencyMarker function
-NvAPI_Status __cdecl NvAPI_D3D_SetLatencyMarker_Detour(IUnknown *pDev, NV_LATENCY_MARKER_PARAMS *pSetLatencyMarkerParams) {
+NvAPI_Status __cdecl NvAPI_D3D_SetLatencyMarker_Detour(IUnknown* pDev,
+                                                       NV_LATENCY_MARKER_PARAMS* pSetLatencyMarkerParams) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
+    utils::SRWLockExclusive lock(g_nvapi_lock);
     // Increment counter
     g_nvapi_event_counters[NVAPI_EVENT_D3D_SET_LATENCY_MARKER].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
     // Filter out RTSS calls (following Special-K approach)
     // RTSS is not native Reflex, so ignore it
-    static HMODULE hModRTSS = Is64BitBuild() ? GetModuleHandleW(L"RTSSHooks64.dll") : GetModuleHandleW(L"RTSSHooks.dll");
+    static HMODULE hModRTSS =
+        Is64BitBuild() ? GetModuleHandleW(L"RTSSHooks64.dll") : GetModuleHandleW(L"RTSSHooks.dll");
 
     // Get calling module using GetCallingDLL (similar to Special-K's SK_GetCallingDLL)
     HMODULE calling_module = GetCallingDLL();
@@ -152,8 +165,9 @@ NvAPI_Status __cdecl NvAPI_D3D_SetLatencyMarker_Detour(IUnknown *pDev, NV_LATENC
 }
 
 // Hooked NvAPI_D3D_SetSleepMode function
-NvAPI_Status __cdecl NvAPI_D3D_SetSleepMode_Detour(IUnknown *pDev, NV_SET_SLEEP_MODE_PARAMS *pSetSleepModeParams) {
+NvAPI_Status __cdecl NvAPI_D3D_SetSleepMode_Detour(IUnknown* pDev, NV_SET_SLEEP_MODE_PARAMS* pSetSleepModeParams) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
+    utils::SRWLockExclusive lock(g_nvapi_lock);
     // Increment counter
     g_nvapi_event_counters[NVAPI_EVENT_D3D_SET_SLEEP_MODE].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
@@ -168,6 +182,15 @@ NvAPI_Status __cdecl NvAPI_D3D_SetSleepMode_Detour(IUnknown *pDev, NV_SET_SLEEP_
         g_last_nvapi_sleep_mode_params.store(params);
         g_last_nvapi_sleep_mode_dev_ptr.store(pDev);
     }
+    // Suppress detour if _Direct was called within the last 5 frames
+    uint64_t current_frame_id = g_global_frame_id.load();
+    uint64_t last_direct_frame_id = g_last_set_sleep_mode_direct_frame_id.load();
+    if (last_direct_frame_id > 0 && current_frame_id >= last_direct_frame_id) {
+        uint64_t frames_since_direct = current_frame_id - last_direct_frame_id;
+        if (frames_since_direct <= 5) {
+            return NVAPI_OK;
+        }
+    }
 
     // Log the call (first few times only)
     static int log_count = 0;
@@ -177,13 +200,12 @@ NvAPI_Status __cdecl NvAPI_D3D_SetSleepMode_Detour(IUnknown *pDev, NV_SET_SLEEP_
             if (pSetSleepModeParams->minimumIntervalUs > 0) {
                 fps_limit = 1000000.0f / static_cast<float>(pSetSleepModeParams->minimumIntervalUs);
             }
-            LogInfo("NVAPI SetSleepMode called - Version: %u, LowLatency: %d, Boost: %d, UseMarkers: %d, MinimumIntervalUs: %u (%.2f FPS limit)",
-                    pSetSleepModeParams->version,
-                    pSetSleepModeParams->bLowLatencyMode,
-                    pSetSleepModeParams->bLowLatencyBoost,
-                    pSetSleepModeParams->bUseMarkersToOptimize,
-                    pSetSleepModeParams->minimumIntervalUs,
-                    fps_limit);
+            LogInfo(
+                "NVAPI SetSleepMode called - Version: %u, LowLatency: %d, Boost: %d, UseMarkers: %d, "
+                "MinimumIntervalUs: %u (%.2f FPS limit)",
+                pSetSleepModeParams->version, pSetSleepModeParams->bLowLatencyMode,
+                pSetSleepModeParams->bLowLatencyBoost, pSetSleepModeParams->bUseMarkersToOptimize,
+                pSetSleepModeParams->minimumIntervalUs, fps_limit);
         } else {
             LogInfo("NVAPI SetSleepMode called - pSetSleepModeParams is nullptr");
         }
@@ -192,7 +214,6 @@ NvAPI_Status __cdecl NvAPI_D3D_SetSleepMode_Detour(IUnknown *pDev, NV_SET_SLEEP_
     if (!IsNativeReflexActive()) {
         return NVAPI_OK;
     }
-
 
     // Call original function
     if (NvAPI_D3D_SetSleepMode_Original != nullptr) {
@@ -204,7 +225,12 @@ NvAPI_Status __cdecl NvAPI_D3D_SetSleepMode_Detour(IUnknown *pDev, NV_SET_SLEEP_
 
 // Direct call to NvAPI_D3D_SetSleepMode without stats tracking
 // For internal use to avoid inflating statistics
-NvAPI_Status NvAPI_D3D_SetSleepMode_Direct(IUnknown *pDev, NV_SET_SLEEP_MODE_PARAMS *pSetSleepModeParams) {
+NvAPI_Status NvAPI_D3D_SetSleepMode_Direct(IUnknown* pDev, NV_SET_SLEEP_MODE_PARAMS* pSetSleepModeParams) {
+    utils::SRWLockExclusive lock(g_nvapi_lock);
+
+    // Track the frame when this function was called
+    g_last_set_sleep_mode_direct_frame_id.store(g_global_frame_id.load());
+
     if (NvAPI_D3D_SetSleepMode_Original != nullptr) {
         return NvAPI_D3D_SetSleepMode_Original(pDev, pSetSleepModeParams);
     }
@@ -213,7 +239,8 @@ NvAPI_Status NvAPI_D3D_SetSleepMode_Direct(IUnknown *pDev, NV_SET_SLEEP_MODE_PAR
 
 // Direct call to NvAPI_D3D_Sleep without stats tracking
 // For internal use to avoid inflating statistics
-NvAPI_Status NvAPI_D3D_Sleep_Direct(IUnknown *pDev) {
+NvAPI_Status NvAPI_D3D_Sleep_Direct(IUnknown* pDev) {
+    utils::SRWLockExclusive lock(g_nvapi_lock);
     {
         static LONGLONG last_call = 0;
         auto now = utils::get_now_ns();
@@ -235,7 +262,8 @@ NvAPI_Status NvAPI_D3D_Sleep_Direct(IUnknown *pDev) {
 
 // Direct call to NvAPI_D3D_SetLatencyMarker without stats tracking
 // For internal use to avoid inflating statistics
-NvAPI_Status NvAPI_D3D_SetLatencyMarker_Direct(IUnknown *pDev, NV_LATENCY_MARKER_PARAMS *pSetLatencyMarkerParams) {
+NvAPI_Status NvAPI_D3D_SetLatencyMarker_Direct(IUnknown* pDev, NV_LATENCY_MARKER_PARAMS* pSetLatencyMarkerParams) {
+    utils::SRWLockExclusive lock(g_nvapi_lock);
     if (NvAPI_D3D_SetLatencyMarker_Original != nullptr) {
         return NvAPI_D3D_SetLatencyMarker_Original(pDev, pSetLatencyMarkerParams);
     }
@@ -244,7 +272,8 @@ NvAPI_Status NvAPI_D3D_SetLatencyMarker_Direct(IUnknown *pDev, NV_LATENCY_MARKER
 
 // Direct call to NvAPI_D3D_GetLatency without stats tracking
 // For internal use to avoid inflating statistics
-NvAPI_Status NvAPI_D3D_GetLatency_Direct(IUnknown *pDev, NV_LATENCY_RESULT_PARAMS *pGetLatencyParams) {
+NvAPI_Status NvAPI_D3D_GetLatency_Direct(IUnknown* pDev, NV_LATENCY_RESULT_PARAMS* pGetLatencyParams) {
+    utils::SRWLockExclusive lock(g_nvapi_lock);
     if (NvAPI_D3D_GetLatency_Original != nullptr) {
         return NvAPI_D3D_GetLatency_Original(pDev, pGetLatencyParams);
     }
@@ -253,7 +282,8 @@ NvAPI_Status NvAPI_D3D_GetLatency_Direct(IUnknown *pDev, NV_LATENCY_RESULT_PARAM
 
 // Direct call to NvAPI_D3D_GetSleepStatus without stats tracking
 // For internal use to query Reflex sleep status
-NvAPI_Status NvAPI_D3D_GetSleepStatus_Direct(IUnknown *pDev, NV_GET_SLEEP_STATUS_PARAMS *pGetSleepStatusParams) {
+NvAPI_Status NvAPI_D3D_GetSleepStatus_Direct(IUnknown* pDev, NV_GET_SLEEP_STATUS_PARAMS* pGetSleepStatusParams) {
+    utils::SRWLockExclusive lock(g_nvapi_lock);
     // Get the function dynamically using QueryInterface (not hooked, so we need to get it each time)
     static NvAPI_D3D_GetSleepStatus_pfn get_sleep_status_func = nullptr;
     static std::atomic<bool> initialized{false};
@@ -266,14 +296,12 @@ NvAPI_Status NvAPI_D3D_GetSleepStatus_Direct(IUnknown *pDev, NV_GET_SLEEP_STATUS
 
         if (nvapi_dll) {
             NvAPI_QueryInterface_pfn queryInterface =
-                reinterpret_cast<NvAPI_QueryInterface_pfn>(
-                    GetProcAddress(nvapi_dll, "nvapi_QueryInterface"));
+                reinterpret_cast<NvAPI_QueryInterface_pfn>(GetProcAddress(nvapi_dll, "nvapi_QueryInterface"));
 
             if (queryInterface) {
                 NvU32 functionId = GetNvAPIFunctionId("NvAPI_D3D_GetSleepStatus");
                 if (functionId != 0) {
-                    get_sleep_status_func = reinterpret_cast<NvAPI_D3D_GetSleepStatus_pfn>(
-                        queryInterface(functionId));
+                    get_sleep_status_func = reinterpret_cast<NvAPI_D3D_GetSleepStatus_pfn>(queryInterface(functionId));
                 }
             }
         }
@@ -287,14 +315,14 @@ NvAPI_Status NvAPI_D3D_GetSleepStatus_Direct(IUnknown *pDev, NV_GET_SLEEP_STATUS
 }
 
 // Hooked NvAPI_D3D_Sleep function
-NvAPI_Status __cdecl NvAPI_D3D_Sleep_Detour(IUnknown *pDev) {
+NvAPI_Status __cdecl NvAPI_D3D_Sleep_Detour(IUnknown* pDev) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
+    utils::SRWLockExclusive lock(g_nvapi_lock);
     // Increment counter
     g_nvapi_event_counters[NVAPI_EVENT_D3D_SLEEP].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
     // Record timestamp of this sleep call
     g_nvapi_last_sleep_timestamp_ns.store(utils::get_now_ns());
-
 
     // Log the call (first few times only)
     static int log_count = 0;
@@ -317,9 +345,10 @@ NvAPI_Status __cdecl NvAPI_D3D_Sleep_Detour(IUnknown *pDev) {
         last_call = now;
     }
     // Check if Reflex sleep suppression is enabled
-    if ((settings::g_mainTabSettings.suppress_reflex_sleep.GetValue() &&
-        settings::g_mainTabSettings.fps_limiter_mode.GetValue() == static_cast<int>(FpsLimiterMode::kReflex)) ||
-        settings::g_mainTabSettings.fps_limiter_mode.GetValue() == static_cast<int>(FpsLimiterMode::kOnPresentSync)) {
+    if ((settings::g_mainTabSettings.suppress_reflex_sleep.GetValue()
+         && settings::g_mainTabSettings.fps_limiter_mode.GetValue() == static_cast<int>(FpsLimiterMode::kReflex))
+        || settings::g_mainTabSettings.fps_limiter_mode.GetValue()
+               == static_cast<int>(FpsLimiterMode::kOnPresentSync)) {
         return NVAPI_OK;
     }
 
@@ -327,11 +356,9 @@ NvAPI_Status __cdecl NvAPI_D3D_Sleep_Detour(IUnknown *pDev) {
         return NVAPI_OK;
     }
 
-
     if (settings::g_developerTabSettings.reflex_supress_native.GetValue()) {
         return NVAPI_OK;
     }
-
 
     // Call original function
     if (NvAPI_D3D_Sleep_Original != nullptr) {
@@ -342,8 +369,9 @@ NvAPI_Status __cdecl NvAPI_D3D_Sleep_Detour(IUnknown *pDev) {
 }
 
 // Hooked NvAPI_D3D_GetLatency function
-NvAPI_Status __cdecl NvAPI_D3D_GetLatency_Detour(IUnknown *pDev, NV_LATENCY_RESULT_PARAMS *pGetLatencyParams) {
+NvAPI_Status __cdecl NvAPI_D3D_GetLatency_Detour(IUnknown* pDev, NV_LATENCY_RESULT_PARAMS* pGetLatencyParams) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
+    utils::SRWLockExclusive lock(g_nvapi_lock);
     // Increment counter
     g_nvapi_event_counters[NVAPI_EVENT_D3D_GET_LATENCY].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
@@ -371,7 +399,8 @@ bool InstallNVAPIHooks(HMODULE nvapi_module) {
     }
 
     // Check if NVAPI hooks should be suppressed
-    if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(display_commanderhooks::HookType::NVAPI)) {
+    if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(
+            display_commanderhooks::HookType::NVAPI)) {
         LogInfo("NVAPI hooks installation suppressed by user setting");
         return false;
     }
@@ -388,8 +417,7 @@ bool InstallNVAPIHooks(HMODULE nvapi_module) {
 
     // Get NvAPI_QueryInterface function (this is the key function that Special-K uses)
     NvAPI_QueryInterface_pfn queryInterface =
-        reinterpret_cast<NvAPI_QueryInterface_pfn>(
-            GetProcAddress(nvapi_dll, "nvapi_QueryInterface"));
+        reinterpret_cast<NvAPI_QueryInterface_pfn>(GetProcAddress(nvapi_dll, "nvapi_QueryInterface"));
 
     if (!queryInterface) {
         LogInfo("NVAPI hooks: Failed to get nvapi_QueryInterface address");
@@ -407,8 +435,7 @@ bool InstallNVAPIHooks(HMODULE nvapi_module) {
 
     // Use QueryInterface to get the actual function address (same as Special-K)
     NvAPI_Disp_GetHdrCapabilities_pfn original_func =
-        reinterpret_cast<NvAPI_Disp_GetHdrCapabilities_pfn>(
-            queryInterface(functionId));
+        reinterpret_cast<NvAPI_Disp_GetHdrCapabilities_pfn>(queryInterface(functionId));
 
     if (!original_func) {
         LogInfo("NVAPI hooks: Failed to get NvAPI_Disp_GetHdrCapabilities via QueryInterface");
@@ -419,7 +446,8 @@ bool InstallNVAPIHooks(HMODULE nvapi_module) {
 
     // Create and enable hook
     if (!CreateAndEnableHook(original_func, NvAPI_Disp_GetHdrCapabilities_Detour,
-                            reinterpret_cast<LPVOID*>(&NvAPI_Disp_GetHdrCapabilities_Original), "NvAPI_Disp_GetHdrCapabilities")) {
+                             reinterpret_cast<LPVOID*>(&NvAPI_Disp_GetHdrCapabilities_Original),
+                             "NvAPI_Disp_GetHdrCapabilities")) {
         LogInfo("NVAPI hooks: Failed to create and enable NvAPI_Disp_GetHdrCapabilities hook");
         return false;
     }
@@ -427,26 +455,18 @@ bool InstallNVAPIHooks(HMODULE nvapi_module) {
     LogInfo("NVAPI hooks: Successfully installed NvAPI_Disp_GetHdrCapabilities hook");
 
     // Install Reflex hooks
-    const char* reflex_functions[] = {
-        "NvAPI_D3D_SetLatencyMarker",
-        "NvAPI_D3D_SetSleepMode",
-        "NvAPI_D3D_Sleep",
-        "NvAPI_D3D_GetLatency"
-    };
+    const char* reflex_functions[] = {"NvAPI_D3D_SetLatencyMarker", "NvAPI_D3D_SetSleepMode", "NvAPI_D3D_Sleep",
+                                      "NvAPI_D3D_GetLatency"};
 
     NvAPI_Status (*detour_functions[])(IUnknown*, void*) = {
-        (NvAPI_Status(*)(IUnknown*, void*))NvAPI_D3D_SetLatencyMarker_Detour,
-        (NvAPI_Status(*)(IUnknown*, void*))NvAPI_D3D_SetSleepMode_Detour,
-        (NvAPI_Status(*)(IUnknown*, void*))NvAPI_D3D_Sleep_Detour,
-        (NvAPI_Status(*)(IUnknown*, void*))NvAPI_D3D_GetLatency_Detour
-    };
+        (NvAPI_Status (*)(IUnknown*, void*))NvAPI_D3D_SetLatencyMarker_Detour,
+        (NvAPI_Status (*)(IUnknown*, void*))NvAPI_D3D_SetSleepMode_Detour,
+        (NvAPI_Status (*)(IUnknown*, void*))NvAPI_D3D_Sleep_Detour,
+        (NvAPI_Status (*)(IUnknown*, void*))NvAPI_D3D_GetLatency_Detour};
 
-    void** original_functions[] = {
-        (void**)&NvAPI_D3D_SetLatencyMarker_Original,
-        (void**)&NvAPI_D3D_SetSleepMode_Original,
-        (void**)&NvAPI_D3D_Sleep_Original,
-        (void**)&NvAPI_D3D_GetLatency_Original
-    };
+    void** original_functions[] = {(void**)&NvAPI_D3D_SetLatencyMarker_Original,
+                                   (void**)&NvAPI_D3D_SetSleepMode_Original, (void**)&NvAPI_D3D_Sleep_Original,
+                                   (void**)&NvAPI_D3D_GetLatency_Original};
 
     for (int i = 0; i < 4; i++) {
         NvU32 functionId = GetNvAPIFunctionId(reflex_functions[i]);
@@ -470,7 +490,8 @@ bool InstallNVAPIHooks(HMODULE nvapi_module) {
     }
 
     // Mark NVAPI hooks as installed
-    display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(display_commanderhooks::HookType::NVAPI);
+    display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(
+        display_commanderhooks::HookType::NVAPI);
 
     return true;
 }

@@ -3,6 +3,7 @@
 #include "../hooks/timeslowdown_hooks.hpp"
 #include "../utils.hpp"
 #include "../utils/logging.hpp"
+#include "detour_call_tracker.hpp"
 
 #include <windows.h>
 
@@ -18,7 +19,7 @@
 namespace utils {
 
 // QPC timing constants - initialized at runtime
-LONGLONG QPC_TO_NS = 100; // Default fallback value
+LONGLONG QPC_TO_NS = 100;  // Default fallback value
 LONGLONG QPC_PER_SECOND = SEC_TO_NS / QPC_TO_NS;
 LONGLONG QPC_TO_MS = NS_TO_MS / QPC_TO_NS;
 bool initialized = false;
@@ -26,8 +27,7 @@ bool initialized = false;
 // Initialize QPC timing constants based on actual QueryPerformanceCounter frequency
 // This should be called early in program initialization (e.g., DllMain)
 bool initialize_qpc_timing_constants() {
-    if (initialized)
-        return true;
+    if (initialized) return true;
     LARGE_INTEGER frequency;
     if (display_commanderhooks::QueryPerformanceFrequency_Original) {
         if (!display_commanderhooks::QueryPerformanceFrequency_Original(&frequency)) {
@@ -61,9 +61,9 @@ bool initialize_qpc_timing_constants() {
 }
 
 // Function pointer types for dynamic loading
-typedef NTSTATUS(NTAPI *ZwQueryTimerResolution_t)(PULONG MinimumResolution, PULONG MaximumResolution,
+typedef NTSTATUS(NTAPI* ZwQueryTimerResolution_t)(PULONG MinimumResolution, PULONG MaximumResolution,
                                                   PULONG CurrentResolution);
-typedef NTSTATUS(NTAPI *ZwSetTimerResolution_t)(ULONG DesiredResolution, BOOLEAN SetResolution,
+typedef NTSTATUS(NTAPI* ZwSetTimerResolution_t)(ULONG DesiredResolution, BOOLEAN SetResolution,
                                                 PULONG CurrentResolution);
 
 // Global variables for timer resolution
@@ -77,9 +77,8 @@ static bool mwaitx_supported_cached = false;
 static bool mwaitx_support_checked = false;
 
 bool supports_mwaitx(void) {
-    if (mwaitx_support_checked)
-        return mwaitx_supported_cached;
-    auto handler = AddVectoredExceptionHandler(1, [](_EXCEPTION_POINTERS *ExceptionInfo) -> LONG {
+    if (mwaitx_support_checked) return mwaitx_supported_cached;
+    auto handler = AddVectoredExceptionHandler(1, [](_EXCEPTION_POINTERS* ExceptionInfo) -> LONG {
         if (ExceptionInfo->ExceptionRecord->ExceptionCode == EXCEPTION_ILLEGAL_INSTRUCTION) {
             mwaitx_supported_cached = false;
         }
@@ -156,13 +155,21 @@ LONGLONG get_timer_resolution_qpc() { return timer_res_qpc; }
 
 // Wait until the specified QPC time is reached
 // Uses a combination of kernel waitable timers and busy waiting for precision
-void wait_until_qpc(LONGLONG target_qpc, HANDLE &timer_handle) {
+void wait_until_qpc(LONGLONG target_qpc, HANDLE& timer_handle) {
+    {
+        static bool once_setup_timer = false;
+        if (!once_setup_timer) {
+            LogInfo("setup_high_resolution_timer");
+            setup_high_resolution_timer();
+            once_setup_timer = true;
+        }
+    }
     static __declspec(align(64)) uint64_t monitor = 0ULL;
     LONGLONG current_time_qpc = get_now_qpc();
+    RECORD_DETOUR_CALL(0);
 
     // If target time has already passed, return immediately
-    if (target_qpc <= current_time_qpc)
-        return;
+    if (target_qpc <= current_time_qpc) return;
 
     // Create timer handle if it doesn't exist or is invalid
     if (reinterpret_cast<LONG_PTR>(timer_handle) < 0) {
@@ -198,6 +205,21 @@ void wait_until_qpc(LONGLONG target_qpc, HANDLE &timer_handle) {
             }
         }
     }
+    {
+        // print once timer_res_qpc
+        static bool once = false;
+        if (!once) {
+            auto timer_res_is_ms = static_cast<double>(timer_res_qpc) / QPC_TO_MS;
+            LogInfo("timer_res_qpc: %lld timer_res_is_ms: %f", timer_res_qpc, timer_res_is_ms);
+
+            if (timer_res_is_ms > 1.0) {
+                LogError("timer_res_qpc is too high!!! timer_res_is_ms: %.3fms > 1.0ms", timer_res_is_ms);
+                return;
+            }
+
+            once = true;
+        }
+    }
 
     // Busy wait for the remaining time to achieve precise timing
     // This compensates for OS scheduler inaccuracy
@@ -206,24 +228,25 @@ void wait_until_qpc(LONGLONG target_qpc, HANDLE &timer_handle) {
         while (true) {
             current_time_qpc = get_now_qpc();
             LONGLONG time_to_wait_qpc = target_qpc - current_time_qpc;
-            if (time_to_wait_qpc <= 0)
-                break;
+            if (time_to_wait_qpc <= 0) break;
 
             _mm_monitorx(&monitor, 0, 0);
-            _mm_mwaitx(0x2, 0, 240 * time_to_wait_qpc); // 2.4 GHz steamdeck
+            //
+            unsigned int ticks_to_wait = static_cast<unsigned int>((std::min)(1'000'000'000LL, 240 * time_to_wait_qpc));
+            // no more than 4ms
+            _mm_mwaitx(0x2, 0, ticks_to_wait);  // 2.4 GHz steamdeck
         }
     } else {
         while (true) {
             current_time_qpc = get_now_qpc();
-            if (current_time_qpc >= target_qpc)
-                break;
+            if (current_time_qpc >= target_qpc) break;
 
             YieldProcessor();
         }
     }
 }
 
-void wait_until_ns(LONGLONG target_ns, HANDLE &timer_handle) {
+void wait_until_ns(LONGLONG target_ns, HANDLE& timer_handle) {
     utils::wait_until_qpc(target_ns / utils::QPC_TO_NS, timer_handle);
 }
 
@@ -238,9 +261,7 @@ LONGLONG get_now_qpc() {
 }
 
 // Global timing function
-LONGLONG get_now_ns() {
-    return get_now_qpc() * utils::QPC_TO_NS;
-}
+LONGLONG get_now_ns() { return get_now_qpc() * utils::QPC_TO_NS; }
 
 // Get real time bypassing any hooks (for comparison with spoofed time)
 LONGLONG get_real_time_ns() {
@@ -250,4 +271,4 @@ LONGLONG get_real_time_ns() {
     return now_ticks.QuadPart * utils::QPC_TO_NS;
 }
 
-} // namespace utils
+}  // namespace utils

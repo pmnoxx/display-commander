@@ -1,42 +1,47 @@
 #pragma once
 
-#include <windows.h>
 #include <d3d11.h>
 #include <d3d12.h>
 #include <dxgi.h>
+#include <windows.h>
+
 
 // Forward declarations for DXGI hooks
 namespace display_commanderhooks::dxgi {
-bool HookSwapchain(IDXGISwapChain *swapchain);
-bool HookFactory(IDXGIFactory *factory);
-} // namespace display_commanderhooks::dxgi
+bool HookSwapchain(IDXGISwapChain* swapchain);
+bool HookFactory(IDXGIFactory* factory);
+}  // namespace display_commanderhooks::dxgi
 
 namespace display_commanderhooks {
 
 // Function pointer types
-using GetFocus_pfn = HWND(WINAPI *)();
-using GetForegroundWindow_pfn = HWND(WINAPI *)();
-using GetActiveWindow_pfn = HWND(WINAPI *)();
-using GetGUIThreadInfo_pfn = BOOL(WINAPI *)(DWORD, PGUITHREADINFO);
-using SetThreadExecutionState_pfn = EXECUTION_STATE(WINAPI *)(EXECUTION_STATE);
-using SetWindowLongPtrW_pfn = LONG_PTR(WINAPI *)(HWND, int, LONG_PTR);
-using SetWindowLongA_pfn = LONG(WINAPI *)(HWND, int, LONG);
-using SetWindowLongW_pfn = LONG(WINAPI *)(HWND, int, LONG);
-using SetWindowLongPtrA_pfn = LONG_PTR(WINAPI *)(HWND, int, LONG_PTR);
-using SetWindowPos_pfn = BOOL(WINAPI *)(HWND, HWND, int, int, int, int, UINT);
-using SetCursor_pfn = HCURSOR(WINAPI *)(HCURSOR);
-using ShowCursor_pfn = int(WINAPI *)(BOOL);
+using GetFocus_pfn = HWND(WINAPI*)();
+using GetForegroundWindow_pfn = HWND(WINAPI*)();
+using GetActiveWindow_pfn = HWND(WINAPI*)();
+using GetGUIThreadInfo_pfn = BOOL(WINAPI*)(DWORD, PGUITHREADINFO);
+using SetThreadExecutionState_pfn = EXECUTION_STATE(WINAPI*)(EXECUTION_STATE);
+using SetWindowLongPtrW_pfn = LONG_PTR(WINAPI*)(HWND, int, LONG_PTR);
+using SetWindowLongA_pfn = LONG(WINAPI*)(HWND, int, LONG);
+using SetWindowLongW_pfn = LONG(WINAPI*)(HWND, int, LONG);
+using SetWindowLongPtrA_pfn = LONG_PTR(WINAPI*)(HWND, int, LONG_PTR);
+using SetWindowPos_pfn = BOOL(WINAPI*)(HWND, HWND, int, int, int, int, UINT);
+using SetCursor_pfn = HCURSOR(WINAPI*)(HCURSOR);
+using ShowCursor_pfn = int(WINAPI*)(BOOL);
 
 // DXGI Factory creation function pointer types
-using CreateDXGIFactory_pfn = HRESULT(WINAPI *)(REFIID, void **);
-using CreateDXGIFactory1_pfn = HRESULT(WINAPI *)(REFIID, void **);
+using CreateDXGIFactory_pfn = HRESULT(WINAPI*)(REFIID, void**);
+using CreateDXGIFactory1_pfn = HRESULT(WINAPI*)(REFIID, void**);
 
 // D3D11 Device creation function pointer types
-using D3D11CreateDeviceAndSwapChain_pfn = HRESULT(WINAPI *)(IDXGIAdapter*, D3D_DRIVER_TYPE, HMODULE, UINT, const D3D_FEATURE_LEVEL*, UINT, UINT, const DXGI_SWAP_CHAIN_DESC*, IDXGISwapChain**, ID3D11Device**, D3D_FEATURE_LEVEL*, ID3D11DeviceContext**);
-using D3D11CreateDevice_pfn = HRESULT(WINAPI *)(IDXGIAdapter*, D3D_DRIVER_TYPE, HMODULE, UINT, const D3D_FEATURE_LEVEL*, UINT, UINT, ID3D11Device**, D3D_FEATURE_LEVEL*, ID3D11DeviceContext**);
+using D3D11CreateDeviceAndSwapChain_pfn = HRESULT(WINAPI*)(IDXGIAdapter*, D3D_DRIVER_TYPE, HMODULE, UINT,
+                                                           const D3D_FEATURE_LEVEL*, UINT, UINT,
+                                                           const DXGI_SWAP_CHAIN_DESC*, IDXGISwapChain**,
+                                                           ID3D11Device**, D3D_FEATURE_LEVEL*, ID3D11DeviceContext**);
+using D3D11CreateDevice_pfn = HRESULT(WINAPI*)(IDXGIAdapter*, D3D_DRIVER_TYPE, HMODULE, UINT, const D3D_FEATURE_LEVEL*,
+                                               UINT, UINT, ID3D11Device**, D3D_FEATURE_LEVEL*, ID3D11DeviceContext**);
 
 // D3D12 Device creation function pointer types
-using D3D12CreateDevice_pfn = HRESULT(WINAPI *)(IUnknown*, D3D_FEATURE_LEVEL, REFIID, void**);
+using D3D12CreateDevice_pfn = HRESULT(WINAPI*)(IUnknown*, D3D_FEATURE_LEVEL, REFIID, void**);
 
 // API hook function pointers
 extern GetFocus_pfn GetFocus_Original;
@@ -70,11 +75,21 @@ LONG_PTR WINAPI SetWindowLongPtrA_Detour(HWND hWnd, int nIndex, LONG_PTR dwNewLo
 BOOL WINAPI SetWindowPos_Detour(HWND hWnd, HWND hWndInsertAfter, int X, int Y, int cx, int cy, UINT uFlags);
 HCURSOR WINAPI SetCursor_Detour(HCURSOR hCursor);
 int WINAPI ShowCursor_Detour(BOOL bShow);
-HRESULT WINAPI CreateDXGIFactory_Detour(REFIID riid, void **ppFactory);
-HRESULT WINAPI CreateDXGIFactory1_Detour(REFIID riid, void **ppFactory);
-HRESULT WINAPI D3D11CreateDeviceAndSwapChain_Detour(IDXGIAdapter* pAdapter, D3D_DRIVER_TYPE DriverType, HMODULE Software, UINT Flags, const D3D_FEATURE_LEVEL* pFeatureLevels, UINT FeatureLevels, UINT SDKVersion, const DXGI_SWAP_CHAIN_DESC* pSwapChainDesc, IDXGISwapChain** ppSwapChain, ID3D11Device** ppDevice, D3D_FEATURE_LEVEL* pFeatureLevel, ID3D11DeviceContext** ppImmediateContext);
-HRESULT WINAPI D3D11CreateDevice_Detour(IDXGIAdapter* pAdapter, D3D_DRIVER_TYPE DriverType, HMODULE Software, UINT Flags, const D3D_FEATURE_LEVEL* pFeatureLevels, UINT FeatureLevels, UINT SDKVersion, ID3D11Device** ppDevice, D3D_FEATURE_LEVEL* pFeatureLevel, ID3D11DeviceContext** ppImmediateContext);
-HRESULT WINAPI D3D12CreateDevice_Detour(IUnknown* pAdapter, D3D_FEATURE_LEVEL MinimumFeatureLevel, REFIID riid, void** ppDevice);
+HRESULT WINAPI CreateDXGIFactory_Detour(REFIID riid, void** ppFactory);
+HRESULT WINAPI CreateDXGIFactory1_Detour(REFIID riid, void** ppFactory);
+HRESULT WINAPI D3D11CreateDeviceAndSwapChain_Detour(IDXGIAdapter* pAdapter, D3D_DRIVER_TYPE DriverType,
+                                                    HMODULE Software, UINT Flags,
+                                                    const D3D_FEATURE_LEVEL* pFeatureLevels, UINT FeatureLevels,
+                                                    UINT SDKVersion, const DXGI_SWAP_CHAIN_DESC* pSwapChainDesc,
+                                                    IDXGISwapChain** ppSwapChain, ID3D11Device** ppDevice,
+                                                    D3D_FEATURE_LEVEL* pFeatureLevel,
+                                                    ID3D11DeviceContext** ppImmediateContext);
+HRESULT WINAPI D3D11CreateDevice_Detour(IDXGIAdapter* pAdapter, D3D_DRIVER_TYPE DriverType, HMODULE Software,
+                                        UINT Flags, const D3D_FEATURE_LEVEL* pFeatureLevels, UINT FeatureLevels,
+                                        UINT SDKVersion, ID3D11Device** ppDevice, D3D_FEATURE_LEVEL* pFeatureLevel,
+                                        ID3D11DeviceContext** ppImmediateContext);
+HRESULT WINAPI D3D12CreateDevice_Detour(IUnknown* pAdapter, D3D_FEATURE_LEVEL MinimumFeatureLevel, REFIID riid,
+                                        void** ppDevice);
 
 // Hook management
 bool InstallApiHooks();
@@ -103,7 +118,7 @@ void RestoreSetCursor();
 void RestoreShowCursor();
 
 // Input blocking functions (forward declarations)
-bool ShouldBlockMouseInput();
-bool ShouldBlockKeyboardInput();
+bool ShouldBlockMouseInput(bool assume_foreground = false);
+bool ShouldBlockKeyboardInput(bool assume_foreground = false);
 
-} // namespace display_commanderhooks
+}  // namespace display_commanderhooks

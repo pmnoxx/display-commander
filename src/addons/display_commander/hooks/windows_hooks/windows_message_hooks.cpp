@@ -19,13 +19,13 @@ namespace display_commanderhooks {
 bool IsUIOpenedRecently() { return g_global_frame_id.load() - g_last_ui_drawn_frame_id.load() < 3; }
 
 // Helper functions for specific input types
-bool ShouldBlockKeyboardInput() {
+bool ShouldBlockKeyboardInput(bool assume_foreground) {
     // Check if Ctrl+I toggle is active
     if (s_input_blocking_toggle.load()) {
         return true;
     }
 
-    const bool is_background = g_app_in_background.load(std::memory_order_acquire);
+    const bool is_background = g_app_in_background.load(std::memory_order_acquire) && !assume_foreground;
     const InputBlockingMode mode = s_keyboard_input_blocking.load();
 
     switch (mode) {
@@ -36,13 +36,13 @@ bool ShouldBlockKeyboardInput() {
     }
 }
 
-bool ShouldBlockMouseInput() {
+bool ShouldBlockMouseInput(bool assume_foreground) {
     // Check if Ctrl+I toggle is active
     if (s_input_blocking_toggle.load()) {
         return true;
     }
 
-    const bool is_background = g_app_in_background.load(std::memory_order_acquire);
+    const bool is_background = g_app_in_background.load(std::memory_order_acquire) && !assume_foreground;
     const InputBlockingMode mode = s_mouse_input_blocking.load();
 
     switch (mode) {
@@ -261,7 +261,7 @@ bool ShouldSuppressMessage(HWND hWnd, UINT uMsg) {
             case WM_CHAR:
             case WM_SYSCHAR:
             case WM_DEADCHAR:
-            case WM_SYSDEADCHAR: return ShouldBlockKeyboardInput();
+            case WM_SYSDEADCHAR: return ShouldBlockKeyboardInput(true);
             // Mouse DOWN messages only
             case WM_LBUTTONDOWN:
             case WM_RBUTTONDOWN:
@@ -271,7 +271,7 @@ bool ShouldSuppressMessage(HWND hWnd, UINT uMsg) {
             case WM_MOUSEWHEEL:
             case WM_MOUSEHWHEEL:
             // Cursor messages
-            case WM_SETCURSOR: return ShouldBlockMouseInput();
+            case WM_SETCURSOR: return ShouldBlockMouseInput(true);
             // Allow UP events to pass through to clear stuck keys/buttons
             case WM_KEYUP:
             case WM_SYSKEYUP:
@@ -593,9 +593,12 @@ BOOL WINAPI ClipCursor_Detour(const RECT* lpRect) {
     if (settings::g_mainTabSettings.clip_cursor_enabled.GetValue()) {
         return TRUE;
     }
+    if (ShouldBlockMouseInput()) {
+        lpRect = nullptr;
+    }
     g_hook_stats[HOOK_ClipCursor].increment_unsuppressed();
     // Call original function
-    return ClipCursor_Original ? ClipCursor_Original(lpRect) : ClipCursor(lpRect);
+    return ClipCursor_Original != nullptr ? ClipCursor_Original(lpRect) : ClipCursor(lpRect);
 }
 
 // Hooked GetCursorPos function
@@ -1325,10 +1328,10 @@ HWND WINAPI SetCapture_Detour(HWND hWnd) {
     // Track total calls
     g_hook_stats[HOOK_SetCapture].increment_total();
 
-    if (hWnd != nullptr && ShouldBlockMouseInput()) {
-        ReleaseCapture();
-        return hWnd;
-    }
+    // if (hWnd != nullptr && ShouldBlockMouseInput()) {
+    //     ReleaseCapture();
+    //     return hWnd;
+    // }
 
     // Log the capture attempt
     LogDebug("SetCapture_Detour: hWnd=0x%p", hWnd);

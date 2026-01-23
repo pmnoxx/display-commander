@@ -994,7 +994,7 @@ bool InstallWindowsApiHooks() {
 
 bool InstallApiHooks() {
     if (g_api_hooks_installed.load()) {
-        LogInfo("API hooks already installed");
+        // LogInfo("API hooks already installed");
         return true;
     }
 #if 1

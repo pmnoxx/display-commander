@@ -363,6 +363,7 @@ std::atomic<uint64_t> g_display_settings_hook_total_count{0};  // Total display 
 // 0% = no delay, 100% = full frame time delay between simulation start and present
 
 std::atomic<LONGLONG> late_amount_ns{0};
+std::atomic<LONGLONG> g_post_sleep_ns{0};
 
 // OnPresentSync delay_bias state variables
 std::atomic<float> g_onpresent_sync_delay_bias{0.0f};

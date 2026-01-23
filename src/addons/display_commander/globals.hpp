@@ -1024,6 +1024,7 @@ extern std::atomic<LONGLONG> g_present_start_time_ns;
 // Present pacing delay as percentage of frame time - 0% to 100%
 
 extern std::atomic<LONGLONG> late_amount_ns;
+extern std::atomic<LONGLONG> g_post_sleep_ns;
 
 // OnPresentSync delay_bias state variables
 extern std::atomic<float> g_onpresent_sync_delay_bias;            // Current delay_bias value (0.0 - 1.0)

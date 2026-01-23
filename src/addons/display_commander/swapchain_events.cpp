@@ -914,40 +914,47 @@ void HandleFpsLimiterPost(bool from_present_detour, bool from_wrapper = false) {
         return;
     }
     if (s_fps_limiter_mode.load() == FpsLimiterMode::kOnPresentSync) {
-        float delay_bias = g_onpresent_sync_delay_bias.load();
-        LONGLONG frame_time_ns = g_onpresent_sync_frame_time_ns.load();
-
-        if (delay_bias > 0.0f && frame_time_ns > 0) {
-            // Calculate post-sleep time: delay_bias * frame_time
-            LONGLONG post_sleep_ns = static_cast<LONGLONG>(delay_bias * frame_time_ns);
-
-            // Account for any late amount (if we're behind schedule)
-            LONGLONG late_ns = late_amount_ns.load();
-            if (late_ns > 0) {
-                post_sleep_ns = (post_sleep_ns > late_ns) ? (post_sleep_ns - late_ns) : 0;
-            }
-
-            // Sleep after present if we have time remaining
-            if (post_sleep_ns > 0) {
-                LONGLONG post_sleep_start_ns = utils::get_now_ns();
-                LONGLONG sleep_until_ns = post_sleep_start_ns + post_sleep_ns;
-                utils::wait_until_ns(sleep_until_ns, g_timer_handle);
-                LONGLONG post_sleep_end_ns = utils::get_now_ns();
-                LONGLONG actual_post_sleep_ns = post_sleep_end_ns - post_sleep_start_ns;
-                g_onpresent_sync_post_sleep_ns.store(actual_post_sleep_ns);
-
-                // Record when this frame ended (for next frame's pre-sleep calculation)
-                g_onpresent_sync_last_frame_end_ns.store(post_sleep_end_ns);
-            } else {
-                // No post-sleep - frame ends now
-                g_onpresent_sync_last_frame_end_ns.store(utils::get_now_ns());
-                g_onpresent_sync_post_sleep_ns.store(0);
-            }
+        auto now = utils::get_now_ns();
+        auto sleep_until_ns = g_post_sleep_ns.load();
+        if (sleep_until_ns > now) {
+            utils::wait_until_ns(sleep_until_ns, g_timer_handle);
+            g_onpresent_sync_post_sleep_ns.store(sleep_until_ns - now);
         } else {
-            // delay_bias = 0 or no frame time - no post-sleep
-            g_onpresent_sync_last_frame_end_ns.store(utils::get_now_ns());
             g_onpresent_sync_post_sleep_ns.store(0);
         }
+        /*
+                float delay_bias = g_onpresent_sync_delay_bias.load();
+                LONGLONG frame_time_ns = g_onpresent_sync_frame_time_ns.load();
+
+                if (delay_bias > 0.0f && frame_time_ns > 0) {
+                    // Calculate post-sleep time: delay_bias * frame_time
+                    LONGLONG post_sleep_ns = static_cast<LONGLONG>(delay_bias * frame_time_ns);
+
+                    // Account for any late amount (if we're behind schedule)
+                    LONGLONG late_ns = late_amount_ns.load();
+                    post_sleep_ns = (std::max)(post_sleep_ns - late_ns, 0LL);
+
+                    // Sleep after present if we have time remaining
+                    if (post_sleep_ns > 0) {
+                        LONGLONG post_sleep_start_ns = utils::get_now_ns();
+                        LONGLONG sleep_until_ns = post_sleep_start_ns + post_sleep_ns;
+                        utils::wait_until_ns(sleep_until_ns, g_timer_handle);
+                        LONGLONG post_sleep_end_ns = utils::get_now_ns();
+                        LONGLONG actual_post_sleep_ns = post_sleep_end_ns - post_sleep_start_ns;
+                        g_onpresent_sync_post_sleep_ns.store(actual_post_sleep_ns);
+
+                        // Record when this frame ended (for next frame's pre-sleep calculation)
+                        g_onpresent_sync_last_frame_end_ns.store(post_sleep_end_ns);
+                    } else {
+                        // No post-sleep - frame ends now
+                        g_onpresent_sync_last_frame_end_ns.store(utils::get_now_ns());
+                        g_onpresent_sync_post_sleep_ns.store(0);
+                    }
+                } else {
+                    // delay_bias = 0 or no frame time - no post-sleep
+                    g_onpresent_sync_last_frame_end_ns.store(utils::get_now_ns());
+                    g_onpresent_sync_post_sleep_ns.store(0);
+                }*/
     }
 }
 
@@ -1172,6 +1179,7 @@ void HandleFpsLimiterPre(bool from_present_detour, bool from_wrapper = false) {
                     // Calculate pre-sleep time: (1 - delay_bias) * frame_time
                     // This is the time we sleep BEFORE starting frame processing
                     LONGLONG pre_sleep_ns = static_cast<LONGLONG>((1.0f - delay_bias) * frame_time_ns);
+                    LONGLONG postsleep_ns = static_cast<LONGLONG>(delay_bias * frame_time_ns);
 
                     // Get current time and previous frame start time
                     // KEY: Use previous frame START time, not END time, to maintain start-to-start spacing
@@ -1180,41 +1188,27 @@ void HandleFpsLimiterPre(bool from_present_detour, bool from_wrapper = false) {
 
                     // Calculate ideal frame start time
                     // Frames should be spaced by exactly frame_time_ns from start to start
-                    LONGLONG ideal_frame_start_ns;
-                    if (previous_frame_start_ns == 0) {
-                        // First frame - ideal start is after pre_sleep from now
-                        ideal_frame_start_ns = now_ns + pre_sleep_ns;
-                    } else {
-                        // Subsequent frame - maintain frame pacing from start to start
-                        // Ideal frame start = previous_frame_start + frame_time
-                        ideal_frame_start_ns = previous_frame_start_ns + frame_time_ns;
-                    }
-
-                    // Calculate when to sleep until: ideal_frame_start - pre_sleep
-                    // This ensures we sleep for pre_sleep_ns before the ideal frame start time
-                    LONGLONG sleep_until_ns = ideal_frame_start_ns - pre_sleep_ns;
+                    LONGLONG ideal_frame_start_ns =
+                        (std::max)(now_ns - frame_time_ns, previous_frame_start_ns + frame_time_ns);
 
                     // Always sleep for pre_sleep_ns before starting the frame
                     // When delay_bias = 0: pre_sleep = frame_time, so we sleep for the full frame time
                     // When delay_bias = 1.0: pre_sleep = 0, so we start immediately
-                    LONGLONG pre_sleep_start_ns = now_ns;
-                    if (pre_sleep_ns > 0) {
-                        if (sleep_until_ns > now_ns) {
-                            // On time - sleep until calculated time (ensures we sleep for pre_sleep_ns)
-                            utils::wait_until_ns(sleep_until_ns, g_timer_handle);
-                        } else {
-                            // Late - but still sleep until ideal_frame_start_ns to maintain frame spacing
-                            // This ensures frames are always spaced by frame_time_ns from start to start
-                            utils::wait_until_ns(ideal_frame_start_ns, g_timer_handle);
-                        }
+                    if (ideal_frame_start_ns > now_ns) {
+                        // On time - sleep until calculated time (ensures we sleep for pre_sleep_ns)
+                        utils::wait_until_ns(ideal_frame_start_ns, g_timer_handle);
+                        late_amount_ns.store(0);
+                        g_onpresent_sync_pre_sleep_ns.store(ideal_frame_start_ns - now_ns);
+                    } else {
+                        // Late - but still sleep until ideal_frame_start_ns to maintain frame spacing
+                        // This ensures frames are always spaced by frame_time_ns from start to start
+                        // utils::wait_until_ns(ideal_frame_start_ns, g_timer_handle);
+                        late_amount_ns.store(now_ns - ideal_frame_start_ns);
+                        g_onpresent_sync_pre_sleep_ns.store(0);
                     }
-                    // Note: If pre_sleep_ns = 0 (delay_bias = 1.0), we start immediately
-                    LONGLONG pre_sleep_end_ns = utils::get_now_ns();
-                    LONGLONG actual_pre_sleep_ns = pre_sleep_end_ns - pre_sleep_start_ns;
-                    g_onpresent_sync_pre_sleep_ns.store(actual_pre_sleep_ns);
-
                     // Record when frame processing actually started
-                    g_onpresent_sync_frame_start_ns.store(pre_sleep_end_ns);
+                    g_onpresent_sync_frame_start_ns.store(ideal_frame_start_ns);
+                    g_post_sleep_ns.store(ideal_frame_start_ns + postsleep_ns);
                 } else {
                     // No FPS limit - reset state
                     g_onpresent_sync_delay_bias.store(0.0f);

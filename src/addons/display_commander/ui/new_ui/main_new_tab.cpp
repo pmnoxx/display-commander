@@ -1779,7 +1779,7 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                 // ImGui::TextColored(ui::colors::TEXT_HIGHLIGHT, "Low Latency Ratio:");
                 // ImGui::SameLine();
                 if (ComboSettingWrapper(settings::g_mainTabSettings.onpresent_sync_low_latency_ratio,
-                                        "Display / Input Ratio(placeholder)")) {
+                                        "Display / Input Ratio")) {
                     // Setting is automatically saved via ComboSettingWrapper
                 }
                 if (ImGui::IsItemHovered()) {

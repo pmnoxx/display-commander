@@ -129,6 +129,11 @@ void check_is_background() {
                 display_commanderhooks::RestoreClipCursor();
                 LogInfo("Continuous monitoring: Restored cursor clipping for foreground");
 
+                // If clip cursor feature is enabled, clip cursor to game window
+                if (settings::g_mainTabSettings.clip_cursor_enabled.GetValue()) {
+                    display_commanderhooks::ClipCursorToGameWindow();
+                }
+
                 // display_commanderhooks::RestoreSetCursor();
 
                 // display_commanderhooks::RestoreShowCursor();

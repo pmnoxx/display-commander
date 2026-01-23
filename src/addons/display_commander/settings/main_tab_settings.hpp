@@ -85,6 +85,7 @@ class MainTabSettings {
     ui::new_ui::ComboSettingEnumRef<InputBlockingMode> keyboard_input_blocking;
     ui::new_ui::ComboSettingEnumRef<InputBlockingMode> mouse_input_blocking;
     ui::new_ui::ComboSettingEnumRef<InputBlockingMode> gamepad_input_blocking;
+    ui::new_ui::BoolSetting clip_cursor_enabled;
 
     // Render Blocking (Background) Settings
     ui::new_ui::BoolSettingRef no_render_in_background;

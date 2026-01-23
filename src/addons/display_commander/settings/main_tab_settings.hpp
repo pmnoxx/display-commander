@@ -13,7 +13,6 @@ extern std::atomic<int> s_scanline_offset;
 extern std::atomic<int> s_vblank_sync_divisor;
 extern std::atomic<float> s_fps_limit;
 extern std::atomic<float> s_fps_limit_background;
-extern std::atomic<float> s_present_pacing_delay_percentage;
 extern std::atomic<bool> s_force_vsync_on;
 extern std::atomic<bool> s_force_vsync_off;
 extern std::atomic<bool> s_prevent_tearing;
@@ -59,7 +58,6 @@ class MainTabSettings {
     ui::new_ui::IntSettingRef vblank_sync_divisor;
     ui::new_ui::FloatSettingRef fps_limit;
     ui::new_ui::FloatSettingRef fps_limit_background;
-    ui::new_ui::FloatSettingRef present_pacing_delay_percentage;
     ui::new_ui::BoolSetting onpresent_sync_enable_reflex;
     ui::new_ui::BoolSetting suppress_reflex_sleep;
     ui::new_ui::ComboSetting onpresent_sync_low_latency_ratio;

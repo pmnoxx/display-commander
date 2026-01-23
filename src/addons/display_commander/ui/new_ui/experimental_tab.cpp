@@ -1,31 +1,30 @@
 #include "experimental_tab.hpp"
-#include "settings_wrapper.hpp"
-#include "../../res/forkawesome.h"
 #include "../../autoclick/autoclick_manager.hpp"
 #include "../../dlss/dlss_indicator_manager.hpp"
 #include "../../globals.hpp"
 #include "../../hooks/api_hooks.hpp"
+#include "../../hooks/debug_output_hooks.hpp"
+#include "../../hooks/hid_suppression_hooks.hpp"
+#include "../../hooks/loadlibrary_hooks.hpp"
 #include "../../hooks/rand_hooks.hpp"
 #include "../../hooks/sleep_hooks.hpp"
 #include "../../hooks/timeslowdown_hooks.hpp"
-#include "../../hooks/hid_suppression_hooks.hpp"
-#include "../../hooks/debug_output_hooks.hpp"
-#include "../../hooks/loadlibrary_hooks.hpp"
+#include "../../latency/pclstats_logger.hpp"
+#include "../../res/forkawesome.h"
 #include "../../settings/experimental_tab_settings.hpp"
 #include "../../settings/main_tab_settings.hpp"
-#include "../../widgets/dualsense_widget/dualsense_widget.hpp"
 #include "../../utils/logging.hpp"
-#include "../../utils/timing.hpp"
 #include "../../utils/perf_measurement.hpp"
 #include "../../utils/stack_trace.hpp"
-#include "../../latency/pclstats_etw.hpp"
-#include "../../latency/pclstats_logger.hpp"
+#include "../../utils/timing.hpp"
+#include "../../widgets/dualsense_widget/dualsense_widget.hpp"
+#include "settings_wrapper.hpp"
 
-#include <windows.h>
 #include <psapi.h>
+#include <windows.h>
 
-#include <atomic>
 #include <algorithm>
+#include <atomic>
 #include <climits>
 #include <cstdlib>
 
@@ -41,21 +40,26 @@ void InitExperimentalTab() {
     // Apply the loaded settings to the actual hook system
     // This ensures the hook system matches the UI settings
     LogInfo("InitExperimentalTab() - Applying loaded timer hook settings to hook system");
-    display_commanderhooks::SetTimerHookTypeById(display_commanderhooks::TimerHookIdentifier::QueryPerformanceCounter,
-                                    static_cast<display_commanderhooks::TimerHookType>(
-                                        settings::g_experimentalTabSettings.query_performance_counter_hook.GetValue()));
+    display_commanderhooks::SetTimerHookTypeById(
+        display_commanderhooks::TimerHookIdentifier::QueryPerformanceCounter,
+        static_cast<display_commanderhooks::TimerHookType>(
+            settings::g_experimentalTabSettings.query_performance_counter_hook.GetValue()));
     display_commanderhooks::SetTimerHookTypeById(
         display_commanderhooks::TimerHookIdentifier::GetTickCount,
-        static_cast<display_commanderhooks::TimerHookType>(settings::g_experimentalTabSettings.get_tick_count_hook.GetValue()));
-    display_commanderhooks::SetTimerHookTypeById(display_commanderhooks::TimerHookIdentifier::GetTickCount64,
-                                    static_cast<display_commanderhooks::TimerHookType>(
-                                        settings::g_experimentalTabSettings.get_tick_count64_hook.GetValue()));
+        static_cast<display_commanderhooks::TimerHookType>(
+            settings::g_experimentalTabSettings.get_tick_count_hook.GetValue()));
+    display_commanderhooks::SetTimerHookTypeById(
+        display_commanderhooks::TimerHookIdentifier::GetTickCount64,
+        static_cast<display_commanderhooks::TimerHookType>(
+            settings::g_experimentalTabSettings.get_tick_count64_hook.GetValue()));
     display_commanderhooks::SetTimerHookTypeById(
         display_commanderhooks::TimerHookIdentifier::TimeGetTime,
-        static_cast<display_commanderhooks::TimerHookType>(settings::g_experimentalTabSettings.time_get_time_hook.GetValue()));
+        static_cast<display_commanderhooks::TimerHookType>(
+            settings::g_experimentalTabSettings.time_get_time_hook.GetValue()));
     display_commanderhooks::SetTimerHookTypeById(
         display_commanderhooks::TimerHookIdentifier::GetSystemTime,
-        static_cast<display_commanderhooks::TimerHookType>(settings::g_experimentalTabSettings.get_system_time_hook.GetValue()));
+        static_cast<display_commanderhooks::TimerHookType>(
+            settings::g_experimentalTabSettings.get_system_time_hook.GetValue()));
     display_commanderhooks::SetTimerHookTypeById(
         display_commanderhooks::TimerHookIdentifier::GetSystemTimeAsFileTime,
         static_cast<display_commanderhooks::TimerHookType>(
@@ -66,26 +70,24 @@ void InitExperimentalTab() {
             settings::g_experimentalTabSettings.get_system_time_precise_as_file_time_hook.GetValue()));
     display_commanderhooks::SetTimerHookTypeById(
         display_commanderhooks::TimerHookIdentifier::GetLocalTime,
-        static_cast<display_commanderhooks::TimerHookType>(settings::g_experimentalTabSettings.get_local_time_hook.GetValue()));
-    display_commanderhooks::SetTimerHookTypeById(display_commanderhooks::TimerHookIdentifier::NtQuerySystemTime,
-                                    static_cast<display_commanderhooks::TimerHookType>(
-                                        settings::g_experimentalTabSettings.nt_query_system_time_hook.GetValue()));
+        static_cast<display_commanderhooks::TimerHookType>(
+            settings::g_experimentalTabSettings.get_local_time_hook.GetValue()));
+    display_commanderhooks::SetTimerHookTypeById(
+        display_commanderhooks::TimerHookIdentifier::NtQuerySystemTime,
+        static_cast<display_commanderhooks::TimerHookType>(
+            settings::g_experimentalTabSettings.nt_query_system_time_hook.GetValue()));
 
     // Apply DirectInput hook suppression setting
     s_suppress_dinput_hooks.store(settings::g_experimentalTabSettings.suppress_dinput_hooks.GetValue());
-
-    // Apply PCLStats ETW reporting setting
-    latency::pclstats_etw::SetUserEnabled(settings::g_experimentalTabSettings.pclstats_etw_enabled.GetValue());
-
     // Initialize PCLStats logger
     latency::pclstats_logger::Initialize();
 
     // Apply PCLStats log file setting
-    latency::pclstats_logger::SetLoggingEnabled(settings::g_experimentalTabSettings.pclstats_log_file_enabled.GetValue());
+    latency::pclstats_logger::SetLoggingEnabled(
+        settings::g_experimentalTabSettings.pclstats_log_file_enabled.GetValue());
 
     LogInfo("InitExperimentalTab() - Experimental tab settings loaded and applied to hook system");
 }
-
 
 void DrawExperimentalTab() {
     if (!ImGui::BeginTabBar("ExperimentalSubTabs")) {
@@ -101,77 +103,50 @@ void DrawExperimentalTab() {
         }
         ImGui::Spacing();
 
+        if (enabled_experimental_features) {
+            if (ImGui::CollapsingHeader("Backbuffer Format Override", ImGuiTreeNodeFlags_None)) {
+                // Draw backbuffer format override section
+                DrawBackbufferFormatOverride();
 
-    if (enabled_experimental_features) {
-        if (ImGui::CollapsingHeader("Backbuffer Format Override", ImGuiTreeNodeFlags_None)) {
-            // Draw backbuffer format override section
-            DrawBackbufferFormatOverride();
+                ImGui::Spacing();
 
-            ImGui::Spacing();
+                // Draw buffer resolution upgrade section
+                DrawBufferResolutionUpgrade();
 
-            // Draw buffer resolution upgrade section
-            DrawBufferResolutionUpgrade();
+                ImGui::Spacing();
 
-            ImGui::Spacing();
-
-            // Draw texture format upgrade section
-            DrawTextureFormatUpgrade();
-        }
-        ImGui::Spacing();
-
-        if (ImGui::CollapsingHeader("Auto-Click Sequences", ImGuiTreeNodeFlags_None)) {
-
-            // Display current cursor position prominently at the top
-            POINT mouse_pos;
-            GetCursorPos(&mouse_pos);
-
-            ImGui::Spacing();
-            ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "=== LIVE CURSOR POSITION ===");
-            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "X: %ld  |  Y: %ld", mouse_pos.x, mouse_pos.y);
-
-            // Show game window coordinates if available
-            HWND hwnd = g_last_swapchain_hwnd.load();
-            if (hwnd && IsWindow(hwnd)) {
-                POINT client_pos = mouse_pos;
-                ScreenToClient(hwnd, &client_pos);
-                ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "Game Window: X: %ld  |  Y: %ld", client_pos.x,
-                                client_pos.y);
+                // Draw texture format upgrade section
+                DrawTextureFormatUpgrade();
             }
-
-            // Copy coordinates buttons
             ImGui::Spacing();
-            if (ImGui::Button("Copy Screen Coords")) {
-                std::string coords = std::to_string(mouse_pos.x) + ", " + std::to_string(mouse_pos.y);
-                if (OpenClipboard(nullptr)) {
-                    EmptyClipboard();
-                    HGLOBAL h_clipboard_data = GlobalAlloc(GMEM_DDESHARE, coords.length() + 1);
-                    if (h_clipboard_data) {
-                        char *pch_data = static_cast<char*>(GlobalLock(h_clipboard_data));
-                        if (pch_data) {
-                            strcpy_s(pch_data, coords.length() + 1, coords.c_str());
-                            GlobalUnlock(h_clipboard_data);
-                            SetClipboardData(CF_TEXT, h_clipboard_data);
-                        }
-                    }
-                    CloseClipboard();
-                    LogInfo("Screen coordinates copied to clipboard: %s", coords.c_str());
-                }
-            }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("Copy current screen coordinates to clipboard.");
-            }
 
-            if (hwnd && IsWindow(hwnd)) {
-                ImGui::SameLine();
-                if (ImGui::Button("Copy Game Window Coords")) {
+            if (ImGui::CollapsingHeader("Auto-Click Sequences", ImGuiTreeNodeFlags_None)) {
+                // Display current cursor position prominently at the top
+                POINT mouse_pos;
+                GetCursorPos(&mouse_pos);
+
+                ImGui::Spacing();
+                ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "=== LIVE CURSOR POSITION ===");
+                ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "X: %ld  |  Y: %ld", mouse_pos.x, mouse_pos.y);
+
+                // Show game window coordinates if available
+                HWND hwnd = g_last_swapchain_hwnd.load();
+                if (hwnd && IsWindow(hwnd)) {
                     POINT client_pos = mouse_pos;
                     ScreenToClient(hwnd, &client_pos);
-                    std::string coords = std::to_string(client_pos.x) + ", " + std::to_string(client_pos.y);
+                    ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "Game Window: X: %ld  |  Y: %ld", client_pos.x,
+                                       client_pos.y);
+                }
+
+                // Copy coordinates buttons
+                ImGui::Spacing();
+                if (ImGui::Button("Copy Screen Coords")) {
+                    std::string coords = std::to_string(mouse_pos.x) + ", " + std::to_string(mouse_pos.y);
                     if (OpenClipboard(nullptr)) {
                         EmptyClipboard();
                         HGLOBAL h_clipboard_data = GlobalAlloc(GMEM_DDESHARE, coords.length() + 1);
                         if (h_clipboard_data) {
-                            char *pch_data = static_cast<char*>(GlobalLock(h_clipboard_data));
+                            char* pch_data = static_cast<char*>(GlobalLock(h_clipboard_data));
                             if (pch_data) {
                                 strcpy_s(pch_data, coords.length() + 1, coords.c_str());
                                 GlobalUnlock(h_clipboard_data);
@@ -179,92 +154,117 @@ void DrawExperimentalTab() {
                             }
                         }
                         CloseClipboard();
-                        LogInfo("Game window coordinates copied to clipboard: %s", coords.c_str());
+                        LogInfo("Screen coordinates copied to clipboard: %s", coords.c_str());
                     }
                 }
                 if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip("Copy current game window coordinates to clipboard.");
+                    ImGui::SetTooltip("Copy current screen coordinates to clipboard.");
                 }
+
+                if (hwnd && IsWindow(hwnd)) {
+                    ImGui::SameLine();
+                    if (ImGui::Button("Copy Game Window Coords")) {
+                        POINT client_pos = mouse_pos;
+                        ScreenToClient(hwnd, &client_pos);
+                        std::string coords = std::to_string(client_pos.x) + ", " + std::to_string(client_pos.y);
+                        if (OpenClipboard(nullptr)) {
+                            EmptyClipboard();
+                            HGLOBAL h_clipboard_data = GlobalAlloc(GMEM_DDESHARE, coords.length() + 1);
+                            if (h_clipboard_data) {
+                                char* pch_data = static_cast<char*>(GlobalLock(h_clipboard_data));
+                                if (pch_data) {
+                                    strcpy_s(pch_data, coords.length() + 1, coords.c_str());
+                                    GlobalUnlock(h_clipboard_data);
+                                    SetClipboardData(CF_TEXT, h_clipboard_data);
+                                }
+                            }
+                            CloseClipboard();
+                            LogInfo("Game window coordinates copied to clipboard: %s", coords.c_str());
+                        }
+                    }
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::SetTooltip("Copy current game window coordinates to clipboard.");
+                    }
+                }
+
+                // Draw auto-click feature
+                autoclick::DrawAutoClickFeature();
+                ImGui::Separator();
+
+                // Draw mouse coordinates display
+                DrawMouseCoordinatesDisplay();
             }
+            ImGui::Spacing();
+        }
 
-        // Draw auto-click feature
-            autoclick::DrawAutoClickFeature();
-            ImGui::Separator();
+        // Draw sleep hook controls
+        if (enabled_experimental_features) {
+            if (ImGui::CollapsingHeader("Sleep Hook Controls", ImGuiTreeNodeFlags_None)) {
+                DrawSleepHookControls();
+            }
+            ImGui::Spacing();
+        }
 
-            // Draw mouse coordinates display
-            DrawMouseCoordinatesDisplay();
+        // Draw rand hook controls
+        if (enabled_experimental_features) {
+            if (ImGui::CollapsingHeader("Rand Hook Controls", ImGuiTreeNodeFlags_None)) {
+                DrawRandHookControls();
+            }
+            ImGui::Spacing();
+        }
+
+        // Draw time slowdown controls
+        if (enabled_experimental_features) {
+            if (ImGui::CollapsingHeader("Time Slowdown Controls", ImGuiTreeNodeFlags_None)) {
+                DrawTimeSlowdownControls();
+            }
+            ImGui::Spacing();
+        }
+
+        // Draw HID suppression controls
+        if (ImGui::CollapsingHeader("HID Suppression", ImGuiTreeNodeFlags_None)) {
+            DrawHIDSuppression();
         }
         ImGui::Spacing();
-    }
 
-    // Draw sleep hook controls
-    if (enabled_experimental_features) {
-        if (ImGui::CollapsingHeader("Sleep Hook Controls", ImGuiTreeNodeFlags_None)) {
-            DrawSleepHookControls();
+        // Draw PCLStats ETW reporting controls
+        if (ImGui::CollapsingHeader("PCLStats ETW Reporting", ImGuiTreeNodeFlags_None)) {
+            DrawPCLStatsEtwControls();
         }
         ImGui::Spacing();
-    }
 
-    // Draw rand hook controls
-    if (enabled_experimental_features) {
-        if (ImGui::CollapsingHeader("Rand Hook Controls", ImGuiTreeNodeFlags_None)) {
-            DrawRandHookControls();
+        // Draw DualSense widget
+        if (ImGui::CollapsingHeader("DualSense Controller Monitor", ImGuiTreeNodeFlags_None)) {
+            display_commander::widgets::dualsense_widget::DrawDualSenseWidget();
         }
         ImGui::Spacing();
-    }
 
-    // Draw time slowdown controls
-    if (enabled_experimental_features) {
-        if (ImGui::CollapsingHeader("Time Slowdown Controls", ImGuiTreeNodeFlags_None)) {
-            DrawTimeSlowdownControls();
+        // Draw developer tools
+        if (ImGui::CollapsingHeader("Developer Tools", ImGuiTreeNodeFlags_None)) {
+            DrawDeveloperTools();
         }
+
         ImGui::Spacing();
-    }
 
-    // Draw HID suppression controls
-    if (ImGui::CollapsingHeader("HID Suppression", ImGuiTreeNodeFlags_None)) {
-        DrawHIDSuppression();
-    }
-    ImGui::Spacing();
+        // Draw debug output hooks
+        if (ImGui::CollapsingHeader("Debug Output Hooks", ImGuiTreeNodeFlags_None)) {
+            DrawDebugOutputHooks();
+        }
 
-    // Draw PCLStats ETW reporting controls
-    if (ImGui::CollapsingHeader("PCLStats ETW Reporting", ImGuiTreeNodeFlags_None)) {
-        DrawPCLStatsEtwControls();
-    }
-    ImGui::Spacing();
+        ImGui::Spacing();
 
-    // Draw DualSense widget
-    if (ImGui::CollapsingHeader("DualSense Controller Monitor", ImGuiTreeNodeFlags_None)) {
-        display_commander::widgets::dualsense_widget::DrawDualSenseWidget();
-    }
-    ImGui::Spacing();
+        if (ImGui::CollapsingHeader("DLSS Indicator Controls", ImGuiTreeNodeFlags_None)) {
+            DrawDlssIndicatorControls();
+        }
 
-    // Draw developer tools
-    if (ImGui::CollapsingHeader("Developer Tools", ImGuiTreeNodeFlags_None)) {
-        DrawDeveloperTools();
-    }
+        ImGui::Spacing();
 
-    ImGui::Spacing();
+        // Anisotropic Filtering Upgrade
+        if (ImGui::CollapsingHeader("Anisotropic Filtering Upgrade", ImGuiTreeNodeFlags_None)) {
+            DrawAnisotropicFilteringUpgrade();
+        }
 
-    // Draw debug output hooks
-    if (ImGui::CollapsingHeader("Debug Output Hooks", ImGuiTreeNodeFlags_None)) {
-        DrawDebugOutputHooks();
-    }
-
-    ImGui::Spacing();
-
-    if (ImGui::CollapsingHeader("DLSS Indicator Controls", ImGuiTreeNodeFlags_None)) {
-        DrawDlssIndicatorControls();
-    }
-
-    ImGui::Spacing();
-
-    // Anisotropic Filtering Upgrade
-    if (ImGui::CollapsingHeader("Anisotropic Filtering Upgrade", ImGuiTreeNodeFlags_None)) {
-        DrawAnisotropicFilteringUpgrade();
-    }
-
-    ImGui::Spacing();
+        ImGui::Spacing();
 
         // DLL Blocking (Experimental)
         if (enabled_experimental_features) {
@@ -288,7 +288,8 @@ static void DrawPerformanceMeasurementsTab() {
     ImGui::Text("Performance Measurements");
     ImGui::Separator();
 
-    if (CheckboxSetting(settings::g_experimentalTabSettings.performance_measurement_enabled, "Performance measurement")) {
+    if (CheckboxSetting(settings::g_experimentalTabSettings.performance_measurement_enabled,
+                        "Performance measurement")) {
         // Auto-saved by CheckboxSetting
     }
     if (ImGui::IsItemHovered()) {
@@ -307,7 +308,8 @@ static void DrawPerformanceMeasurementsTab() {
 
     ImGui::Spacing();
 
-    if (CheckboxSetting(settings::g_experimentalTabSettings.performance_suppression_enabled, "Suppress execution (debug)")) {
+    if (CheckboxSetting(settings::g_experimentalTabSettings.performance_suppression_enabled,
+                        "Suppress execution (debug)")) {
         // Auto-saved by CheckboxSetting
     }
     if (ImGui::IsItemHovered()) {
@@ -320,8 +322,8 @@ static void DrawPerformanceMeasurementsTab() {
     ImGui::Spacing();
 
     if (ImGui::BeginTable("PerfMeasurementsTable", 7,
-                          ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable |
-                              ImGuiTableFlags_SizingStretchProp)) {
+                          ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable
+                              | ImGuiTableFlags_SizingStretchProp)) {
         ImGui::TableSetupColumn("Metric");
         ImGui::TableSetupColumn("Measure");
         ImGui::TableSetupColumn("Avg (us)");
@@ -331,12 +333,12 @@ static void DrawPerformanceMeasurementsTab() {
         ImGui::TableSetupColumn("Suppress");
         ImGui::TableHeadersRow();
 
-        auto row = [](const char *name, perf_measurement::Metric metric, settings::BoolSetting &enabled_setting,
-                      const char *measure_checkbox_id, settings::BoolSetting &suppress_setting,
-                      const char *suppress_checkbox_id) {
+        auto row = [](const char* name, perf_measurement::Metric metric, settings::BoolSetting& enabled_setting,
+                      const char* measure_checkbox_id, settings::BoolSetting& suppress_setting,
+                      const char* suppress_checkbox_id) {
             const perf_measurement::Snapshot s = perf_measurement::GetSnapshot(metric);
-            const double avg_us = (s.samples > 0) ? (static_cast<double>(s.total_ns) / static_cast<double>(s.samples) / 1000.0)
-                                                  : 0.0;
+            const double avg_us =
+                (s.samples > 0) ? (static_cast<double>(s.total_ns) / static_cast<double>(s.samples) / 1000.0) : 0.0;
             const double last_us = static_cast<double>(s.last_ns) / 1000.0;
             const double max_us = static_cast<double>(s.max_ns) / 1000.0;
 
@@ -346,7 +348,7 @@ static void DrawPerformanceMeasurementsTab() {
             ImGui::TextUnformatted(name);
 
             ImGui::TableSetColumnIndex(1);
-            CheckboxSetting(enabled_setting, measure_checkbox_id); // hidden label, unique ID
+            CheckboxSetting(enabled_setting, measure_checkbox_id);  // hidden label, unique ID
 
             ImGui::TableSetColumnIndex(2);
             ImGui::Text("%.2f", avg_us);
@@ -378,14 +380,20 @@ static void DrawPerformanceMeasurementsTab() {
             settings::g_experimentalTabSettings.perf_measure_handle_present_before_enabled, "##perf_handle_before",
             settings::g_experimentalTabSettings.perf_suppress_handle_present_before, "##suppress_handle_before");
         row("  └─ Device Query", perf_measurement::Metric::HandlePresentBefore_DeviceQuery,
-            settings::g_experimentalTabSettings.perf_measure_handle_present_before_device_query_enabled, "##perf_handle_before_device_query",
-            settings::g_experimentalTabSettings.perf_suppress_handle_present_before_device_query, "##suppress_handle_before_device_query");
+            settings::g_experimentalTabSettings.perf_measure_handle_present_before_device_query_enabled,
+            "##perf_handle_before_device_query",
+            settings::g_experimentalTabSettings.perf_suppress_handle_present_before_device_query,
+            "##suppress_handle_before_device_query");
         row("  └─ RecordFrameTime", perf_measurement::Metric::HandlePresentBefore_RecordFrameTime,
-            settings::g_experimentalTabSettings.perf_measure_handle_present_before_record_frame_time_enabled, "##perf_handle_before_record_frame_time",
-            settings::g_experimentalTabSettings.perf_suppress_handle_present_before_record_frame_time, "##suppress_handle_before_record_frame_time");
+            settings::g_experimentalTabSettings.perf_measure_handle_present_before_record_frame_time_enabled,
+            "##perf_handle_before_record_frame_time",
+            settings::g_experimentalTabSettings.perf_suppress_handle_present_before_record_frame_time,
+            "##suppress_handle_before_record_frame_time");
         row("  └─ Frame Statistics", perf_measurement::Metric::HandlePresentBefore_FrameStatistics,
-            settings::g_experimentalTabSettings.perf_measure_handle_present_before_frame_statistics_enabled, "##perf_handle_before_frame_statistics",
-            settings::g_experimentalTabSettings.perf_suppress_handle_present_before_frame_statistics, "##suppress_handle_before_frame_statistics");
+            settings::g_experimentalTabSettings.perf_measure_handle_present_before_frame_statistics_enabled,
+            "##perf_handle_before_frame_statistics",
+            settings::g_experimentalTabSettings.perf_suppress_handle_present_before_frame_statistics,
+            "##suppress_handle_before_frame_statistics");
         row("TrackPresentStatistics", perf_measurement::Metric::TrackPresentStatistics,
             settings::g_experimentalTabSettings.perf_measure_track_present_statistics_enabled, "##perf_track_stats",
             settings::g_experimentalTabSettings.perf_suppress_track_present_statistics, "##suppress_track_stats");
@@ -396,14 +404,18 @@ static void DrawPerformanceMeasurementsTab() {
             settings::g_experimentalTabSettings.perf_measure_handle_present_after_enabled, "##perf_handle_after",
             settings::g_experimentalTabSettings.perf_suppress_handle_present_after, "##suppress_handle_after");
         row("FlushCommandQueueFromSwapchain", perf_measurement::Metric::FlushCommandQueueFromSwapchain,
-            settings::g_experimentalTabSettings.perf_measure_flush_command_queue_from_swapchain_enabled, "##perf_flush_cmdq",
-            settings::g_experimentalTabSettings.perf_suppress_flush_command_queue_from_swapchain, "##suppress_flush_cmdq");
+            settings::g_experimentalTabSettings.perf_measure_flush_command_queue_from_swapchain_enabled,
+            "##perf_flush_cmdq", settings::g_experimentalTabSettings.perf_suppress_flush_command_queue_from_swapchain,
+            "##suppress_flush_cmdq");
         row("EnqueueGPUCompletion", perf_measurement::Metric::EnqueueGPUCompletion,
-            settings::g_experimentalTabSettings.perf_measure_enqueue_gpu_completion_enabled, "##perf_enqueue_gpu_completion",
-            settings::g_experimentalTabSettings.perf_suppress_enqueue_gpu_completion, "##suppress_enqueue_gpu_completion");
+            settings::g_experimentalTabSettings.perf_measure_enqueue_gpu_completion_enabled,
+            "##perf_enqueue_gpu_completion", settings::g_experimentalTabSettings.perf_suppress_enqueue_gpu_completion,
+            "##suppress_enqueue_gpu_completion");
         row("GetIndependentFlipState", perf_measurement::Metric::GetIndependentFlipState,
-            settings::g_experimentalTabSettings.perf_measure_get_independent_flip_state_enabled, "##perf_get_independent_flip_state",
-            settings::g_experimentalTabSettings.perf_suppress_get_independent_flip_state, "##suppress_get_independent_flip_state");
+            settings::g_experimentalTabSettings.perf_measure_get_independent_flip_state_enabled,
+            "##perf_get_independent_flip_state",
+            settings::g_experimentalTabSettings.perf_suppress_get_independent_flip_state,
+            "##suppress_get_independent_flip_state");
 
         ImGui::EndTable();
     }
@@ -411,7 +423,6 @@ static void DrawPerformanceMeasurementsTab() {
     ImGui::Spacing();
     ImGui::TextDisabled("Tip: Enable master measurement first, then disable individual metrics to reduce overhead.");
 }
-
 
 void DrawMouseCoordinatesDisplay() {
     ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== Current Cursor Position ===");
@@ -444,8 +455,8 @@ void DrawMouseCoordinatesDisplay() {
         }
 
         // Check if mouse is over the game window
-        bool mouse_over_window = (mouse_pos.x >= window_rect.left && mouse_pos.x <= window_rect.right &&
-                                  mouse_pos.y >= window_rect.top && mouse_pos.y <= window_rect.bottom);
+        bool mouse_over_window = (mouse_pos.x >= window_rect.left && mouse_pos.x <= window_rect.right
+                                  && mouse_pos.y >= window_rect.top && mouse_pos.y <= window_rect.bottom);
 
         if (mouse_over_window) {
             ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), ICON_FK_OK " Mouse is over game window");
@@ -486,10 +497,6 @@ void CleanupExperimentalTab() {
         LogInfo("Experimental tab cleanup: Auto-click disabled (thread will sleep)");
     }
 
-    // Shutdown PCLStats ETW reporting
-    latency::pclstats_etw::Shutdown();
-    LogInfo("Experimental tab cleanup: PCLStats ETW reporting shut down");
-
     // Shutdown PCLStats logger
     latency::pclstats_logger::Shutdown();
     LogInfo("Experimental tab cleanup: PCLStats logger shut down");
@@ -499,10 +506,12 @@ void DrawBackbufferFormatOverride() {
     ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== Backbuffer Format Override ===");
 
     // Warning about experimental nature
-    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), ICON_FK_WARNING " EXPERIMENTAL FEATURE - May cause compatibility issues!");
+    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f),
+                       ICON_FK_WARNING " EXPERIMENTAL FEATURE - May cause compatibility issues!");
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("This feature overrides the backbuffer format during swapchain creation.\nUse with caution "
-                          "as it may cause rendering issues or crashes in some games.");
+        ImGui::SetTooltip(
+            "This feature overrides the backbuffer format during swapchain creation.\nUse with caution "
+            "as it may cause rendering issues or crashes in some games.");
     }
 
     ImGui::Spacing();
@@ -510,9 +519,9 @@ void DrawBackbufferFormatOverride() {
     // Enable/disable checkbox
     if (CheckboxSetting(settings::g_experimentalTabSettings.backbuffer_format_override_enabled,
                         "Enable Backbuffer Format Override")) {
-        LogInfo("Backbuffer format override %s",
-                settings::g_experimentalTabSettings.backbuffer_format_override_enabled.GetValue() ? "enabled"
-                                                                                                  : "disabled");
+        LogInfo(
+            "Backbuffer format override %s",
+            settings::g_experimentalTabSettings.backbuffer_format_override_enabled.GetValue() ? "enabled" : "disabled");
     }
 
     if (ImGui::IsItemHovered()) {
@@ -532,10 +541,11 @@ void DrawBackbufferFormatOverride() {
         }
 
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Select the target backbuffer format:\n"
-                              "• R8G8B8A8_UNORM: Standard 8-bit per channel (32-bit total)\n"
-                              "• R10G10B10A2_UNORM: 10-bit RGB + 2-bit alpha (32-bit total)\n"
-                              "• R16G16B16A16_FLOAT: 16-bit HDR floating point (64-bit total)");
+            ImGui::SetTooltip(
+                "Select the target backbuffer format:\n"
+                "• R8G8B8A8_UNORM: Standard 8-bit per channel (32-bit total)\n"
+                "• R10G10B10A2_UNORM: 10-bit RGB + 2-bit alpha (32-bit total)\n"
+                "• R16G16B16A16_FLOAT: 16-bit HDR floating point (64-bit total)");
         }
 
         // Show current format info
@@ -548,10 +558,12 @@ void DrawBufferResolutionUpgrade() {
     ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== Buffer Resolution Upgrade ===");
 
     // Warning about experimental nature
-    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), ICON_FK_WARNING " EXPERIMENTAL FEATURE - May cause performance issues!");
+    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f),
+                       ICON_FK_WARNING " EXPERIMENTAL FEATURE - May cause performance issues!");
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("This feature upgrades internal buffer resolutions during resource creation.\nUse with "
-                          "caution as it may cause performance issues or rendering artifacts.");
+        ImGui::SetTooltip(
+            "This feature upgrades internal buffer resolutions during resource creation.\nUse with "
+            "caution as it may cause performance issues or rendering artifacts.");
     }
 
     ImGui::Spacing();
@@ -559,9 +571,9 @@ void DrawBufferResolutionUpgrade() {
     // Enable/disable checkbox
     if (CheckboxSetting(settings::g_experimentalTabSettings.buffer_resolution_upgrade_enabled,
                         "Enable Buffer Resolution Upgrade")) {
-        LogInfo("Buffer resolution upgrade %s",
-                settings::g_experimentalTabSettings.buffer_resolution_upgrade_enabled.GetValue() ? "enabled"
-                                                                                                 : "disabled");
+        LogInfo(
+            "Buffer resolution upgrade %s",
+            settings::g_experimentalTabSettings.buffer_resolution_upgrade_enabled.GetValue() ? "enabled" : "disabled");
     }
 
     if (ImGui::IsItemHovered()) {
@@ -589,8 +601,8 @@ void DrawBufferResolutionUpgrade() {
         }
 
         // Scale factor control (for both mode 0 and mode 1)
-        if (settings::g_experimentalTabSettings.buffer_resolution_upgrade_mode.GetValue() == 0 ||
-            settings::g_experimentalTabSettings.buffer_resolution_upgrade_mode.GetValue() == 1) {
+        if (settings::g_experimentalTabSettings.buffer_resolution_upgrade_mode.GetValue() == 0
+            || settings::g_experimentalTabSettings.buffer_resolution_upgrade_mode.GetValue() == 1) {
             ImGui::Spacing();
             ImGui::Text("Scale Factor:");
 
@@ -606,7 +618,7 @@ void DrawBufferResolutionUpgrade() {
         }
 
         // Custom resolution controls (for custom mode)
-        if (settings::g_experimentalTabSettings.buffer_resolution_upgrade_mode.GetValue() == 2) { // Custom Resolution
+        if (settings::g_experimentalTabSettings.buffer_resolution_upgrade_mode.GetValue() == 2) {  // Custom Resolution
             ImGui::Spacing();
             ImGui::Text("Target Resolution:");
 
@@ -652,10 +664,12 @@ void DrawTextureFormatUpgrade() {
     ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== Texture Format Upgrade ===");
 
     // Warning about experimental nature
-    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), ICON_FK_WARNING " EXPERIMENTAL FEATURE - May cause performance issues!");
+    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f),
+                       ICON_FK_WARNING " EXPERIMENTAL FEATURE - May cause performance issues!");
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("This feature upgrades texture formats to RGB16A16 during resource creation.\nUse with "
-                          "caution as it may cause performance issues or rendering artifacts.");
+        ImGui::SetTooltip(
+            "This feature upgrades texture formats to RGB16A16 during resource creation.\nUse with "
+            "caution as it may cause performance issues or rendering artifacts.");
     }
 
     ImGui::Spacing();
@@ -668,8 +682,9 @@ void DrawTextureFormatUpgrade() {
     }
 
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Upgrade texture formats to RGB16A16 (16-bit per channel) for textures at 720p, 1440p, and "
-                          "4K resolutions.\nRequires restart to take effect.");
+        ImGui::SetTooltip(
+            "Upgrade texture formats to RGB16A16 (16-bit per channel) for textures at 720p, 1440p, and "
+            "4K resolutions.\nRequires restart to take effect.");
     }
 
     // Show current settings info
@@ -774,8 +789,8 @@ void DrawSleepHookControls() {
 
 void DrawRandHookControls() {
     ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== Rand Hook Controls ===");
-    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f),
-                       ICON_FK_WARNING " EXPERIMENTAL FEATURE - Hooks C runtime rand() function to return constant value!");
+    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), ICON_FK_WARNING
+                       " EXPERIMENTAL FEATURE - Hooks C runtime rand() function to return constant value!");
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip(
             "This feature hooks the C runtime rand() function from msvcrt.dll or ucrtbase.dll.\n"
@@ -802,9 +817,12 @@ void DrawRandHookControls() {
             LogInfo("Rand hook value set to %d", settings::g_experimentalTabSettings.rand_hook_value.GetValue());
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Constant value that rand() will return when the hook is enabled.\n"
-                             "Range: %d (INT_MIN) to %d (INT_MAX)\n"
-                             "Note: Standard rand() returns 0 to %d (RAND_MAX), but the hook allows any int value including negatives.", INT_MIN, INT_MAX, RAND_MAX);
+            ImGui::SetTooltip(
+                "Constant value that rand() will return when the hook is enabled.\n"
+                "Range: %d (INT_MIN) to %d (INT_MAX)\n"
+                "Note: Standard rand() returns 0 to %d (RAND_MAX), but the hook allows any int value including "
+                "negatives.",
+                INT_MIN, INT_MAX, RAND_MAX);
         }
 
         ImGui::Spacing();
@@ -827,10 +845,12 @@ void DrawRandHookControls() {
                            settings::g_experimentalTabSettings.rand_hook_value.GetValue());
 
         ImGui::Spacing();
-        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), ICON_FK_WARNING " WARNING: This affects all code that uses rand()!");
+        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f),
+                           ICON_FK_WARNING " WARNING: This affects all code that uses rand()!");
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("The rand() hook affects all code in the game process that calls rand(),\n"
-                             "including game logic, AI, procedural generation, etc.");
+            ImGui::SetTooltip(
+                "The rand() hook affects all code in the game process that calls rand(),\n"
+                "including game logic, AI, procedural generation, etc.");
         }
     }
 
@@ -840,8 +860,8 @@ void DrawRandHookControls() {
 
     // Rand_s hook controls
     ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== Rand_s Hook Controls ===");
-    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f),
-                       ICON_FK_WARNING " EXPERIMENTAL FEATURE - Hooks C runtime rand_s() function to return constant value!");
+    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), ICON_FK_WARNING
+                       " EXPERIMENTAL FEATURE - Hooks C runtime rand_s() function to return constant value!");
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip(
             "This feature hooks the C runtime rand_s() function from msvcrt.dll or ucrtbase.dll.\n"
@@ -869,8 +889,10 @@ void DrawRandHookControls() {
             LogInfo("Rand_s hook value set to %u", settings::g_experimentalTabSettings.rand_s_hook_value.GetValue());
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Constant value that rand_s() will return when the hook is enabled.\n"
-                             "Range: 0 to %u (UINT_MAX)", UINT_MAX);
+            ImGui::SetTooltip(
+                "Constant value that rand_s() will return when the hook is enabled.\n"
+                "Range: 0 to %u (UINT_MAX)",
+                UINT_MAX);
         }
 
         ImGui::Spacing();
@@ -893,12 +915,14 @@ void DrawRandHookControls() {
                            settings::g_experimentalTabSettings.rand_s_hook_value.GetValue());
 
         ImGui::Spacing();
-        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), ICON_FK_WARNING " WARNING: This affects all code that uses rand_s()!");
+        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f),
+                           ICON_FK_WARNING " WARNING: This affects all code that uses rand_s()!");
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("The rand_s() hook affects all code in the game process that calls rand_s(),\n"
-                             "including game logic, AI, procedural generation, etc.\n"
-                             "Note: rand_s() is designed for cryptographically secure random numbers,\n"
-                             "so hooking it may affect security-sensitive operations.");
+            ImGui::SetTooltip(
+                "The rand_s() hook affects all code in the game process that calls rand_s(),\n"
+                "including game logic, AI, procedural generation, etc.\n"
+                "Note: rand_s() is designed for cryptographically secure random numbers,\n"
+                "so hooking it may affect security-sensitive operations.");
         }
     }
 }
@@ -908,8 +932,9 @@ void DrawTimeSlowdownControls() {
     ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f),
                        ICON_FK_WARNING " EXPERIMENTAL FEATURE - Manipulates game time via multiple timer APIs!");
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("This feature hooks multiple timer APIs to manipulate game time.\nUseful for bypassing FPS "
-                          "limits and slowing down/speeding up games that use various timing methods.");
+        ImGui::SetTooltip(
+            "This feature hooks multiple timer APIs to manipulate game time.\nUseful for bypassing FPS "
+            "limits and slowing down/speeding up games that use various timing methods.");
     }
 
     ImGui::Spacing();
@@ -926,25 +951,27 @@ void DrawTimeSlowdownControls() {
 
     // Compatibility mode checkbox
     if (CheckboxSetting(settings::g_experimentalTabSettings.timeslowdown_compatibility_mode, "Compatibility Mode")) {
-        LogInfo("Time slowdown compatibility mode %s",
-                settings::g_experimentalTabSettings.timeslowdown_compatibility_mode.GetValue() ? "enabled" : "disabled");
+        LogInfo(
+            "Time slowdown compatibility mode %s",
+            settings::g_experimentalTabSettings.timeslowdown_compatibility_mode.GetValue() ? "enabled" : "disabled");
     }
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Enable compatibility mode for time slowdown hooks. This may improve compatibility with certain games.");
+        ImGui::SetTooltip(
+            "Enable compatibility mode for time slowdown hooks. This may improve compatibility with certain games.");
     }
-	ImGui::SameLine();
-	if (ImGui::SmallButton("Reset TS")) {
-		// Reset time slowdown to defaults
-		settings::g_experimentalTabSettings.timeslowdown_enabled.SetValue(false);
+    ImGui::SameLine();
+    if (ImGui::SmallButton("Reset TS")) {
+        // Reset time slowdown to defaults
+        settings::g_experimentalTabSettings.timeslowdown_enabled.SetValue(false);
         display_commanderhooks::SetTimeslowdownEnabled(false);
         settings::g_experimentalTabSettings.timeslowdown_multiplier.SetValue(1.0f);
         display_commanderhooks::SetTimeslowdownMultiplier(1.0f);
 
-		LogInfo("Time slowdown reset: disabled and multiplier set to 1.0x");
-	}
-	if (ImGui::IsItemHovered()) {
-		ImGui::SetTooltip("Disable Time Slowdown and set multiplier to 1.0x.");
-	}
+        LogInfo("Time slowdown reset: disabled and multiplier set to 1.0x");
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Disable Time Slowdown and set multiplier to 1.0x.");
+    }
 
     if (settings::g_experimentalTabSettings.timeslowdown_enabled.GetValue()) {
         ImGui::Spacing();
@@ -984,25 +1011,33 @@ void DrawTimeSlowdownControls() {
 
         // Timer Hook Selection
         ImGui::TextColored(ImVec4(0.9f, 0.9f, 1.0f, 1.0f), "Timer Hook Selection:");
-        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Choose which timer APIs to hook (None/Enabled/Render Thread/Non-Render Thread)");
+        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f),
+                           "Choose which timer APIs to hook (None/Enabled/Render Thread/Non-Render Thread)");
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Select which timer APIs to hook for time manipulation.\n\nOptions:\n- None: Disabled\n- Enabled: Hook all threads\n- Enable Render Thread: Only hook the render thread (detected from swapchain creation)\n- Enable Non-Render Thread: Hook all threads except the render thread");
+            ImGui::SetTooltip(
+                "Select which timer APIs to hook for time manipulation.\n\nOptions:\n- None: Disabled\n- Enabled: Hook "
+                "all threads\n- Enable Render Thread: Only hook the render thread (detected from swapchain "
+                "creation)\n- Enable Non-Render Thread: Hook all threads except the render thread");
         }
 
         ImGui::Spacing();
 
         // QueryPerformanceCounter hook
-        uint64_t qpc_calls = display_commanderhooks::GetTimerHookCallCountById(display_commanderhooks::TimerHookIdentifier::QueryPerformanceCounter);
+        uint64_t qpc_calls = display_commanderhooks::GetTimerHookCallCountById(
+            display_commanderhooks::TimerHookIdentifier::QueryPerformanceCounter);
         if (ComboSettingWrapper(settings::g_experimentalTabSettings.query_performance_counter_hook,
                                 "QueryPerformanceCounter")) {
             display_commanderhooks::TimerHookType type = static_cast<display_commanderhooks::TimerHookType>(
                 settings::g_experimentalTabSettings.query_performance_counter_hook.GetValue());
-            display_commanderhooks::SetTimerHookTypeById(display_commanderhooks::TimerHookIdentifier::QueryPerformanceCounter, type);
+            display_commanderhooks::SetTimerHookTypeById(
+                display_commanderhooks::TimerHookIdentifier::QueryPerformanceCounter, type);
         }
         ImGui::SameLine();
         ImGui::Text("[%llu calls]", qpc_calls);
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("High-resolution timer used by most modern games for precise timing.\n\nThread-specific modes (Render Thread/Non-Render Thread) require swapchain initialization to detect the render thread.");
+            ImGui::SetTooltip(
+                "High-resolution timer used by most modern games for precise timing.\n\nThread-specific modes (Render "
+                "Thread/Non-Render Thread) require swapchain initialization to detect the render thread.");
         }
 
         // Display QPC calling modules with enable/disable checkboxes
@@ -1021,7 +1056,9 @@ void DrawTimeSlowdownControls() {
                 ImGui::Indent();
                 ImGui::TextColored(ImVec4(0.7f, 0.9f, 1.0f, 1.0f), "Calling Modules (%zu):", cached_modules.size());
                 if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip("DLLs/modules that have called QueryPerformanceCounter\n\nCheck/uncheck to enable/disable time slowdown for specific modules");
+                    ImGui::SetTooltip(
+                        "DLLs/modules that have called QueryPerformanceCounter\n\nCheck/uncheck to enable/disable time "
+                        "slowdown for specific modules");
                 }
 
                 // Show modules in a scrollable child window if there are many
@@ -1032,10 +1069,13 @@ void DrawTimeSlowdownControls() {
                             const std::wstring& module_name = module_pair.second;
 
                             bool enabled = display_commanderhooks::IsQPCModuleEnabled(hModule);
-                            if (ImGui::Checkbox(("##QPCModule_" + std::to_string(reinterpret_cast<uintptr_t>(hModule))).c_str(), &enabled)) {
+                            if (ImGui::Checkbox(
+                                    ("##QPCModule_" + std::to_string(reinterpret_cast<uintptr_t>(hModule))).c_str(),
+                                    &enabled)) {
                                 display_commanderhooks::SetQPCModuleEnabled(hModule, enabled);
                                 // Save enabled modules to settings
-                                std::string enabled_modules_str = display_commanderhooks::SaveQPCEnabledModulesToSettings();
+                                std::string enabled_modules_str =
+                                    display_commanderhooks::SaveQPCEnabledModulesToSettings();
                                 settings::g_experimentalTabSettings.qpc_enabled_modules.SetValue(enabled_modules_str);
                                 settings::g_experimentalTabSettings.qpc_enabled_modules.Save();
                                 LogInfo("QPC module %ls %s", module_name.c_str(), enabled ? "enabled" : "disabled");
@@ -1051,7 +1091,9 @@ void DrawTimeSlowdownControls() {
                         const std::wstring& module_name = module_pair.second;
 
                         bool enabled = display_commanderhooks::IsQPCModuleEnabled(hModule);
-                        if (ImGui::Checkbox(("##QPCModule_" + std::to_string(reinterpret_cast<uintptr_t>(hModule))).c_str(), &enabled)) {
+                        if (ImGui::Checkbox(
+                                ("##QPCModule_" + std::to_string(reinterpret_cast<uintptr_t>(hModule))).c_str(),
+                                &enabled)) {
                             display_commanderhooks::SetQPCModuleEnabled(hModule, enabled);
                             // Save enabled modules to settings
                             std::string enabled_modules_str = display_commanderhooks::SaveQPCEnabledModulesToSettings();
@@ -1069,10 +1111,13 @@ void DrawTimeSlowdownControls() {
                     std::string enabled_modules_str = display_commanderhooks::SaveQPCEnabledModulesToSettings();
                     settings::g_experimentalTabSettings.qpc_enabled_modules.SetValue(enabled_modules_str);
                     settings::g_experimentalTabSettings.qpc_enabled_modules.Save();
-                    LogInfo("QPC enabled modules saved: %s", enabled_modules_str.empty() ? "(none)" : enabled_modules_str.c_str());
+                    LogInfo("QPC enabled modules saved: %s",
+                            enabled_modules_str.empty() ? "(none)" : enabled_modules_str.c_str());
                 }
                 if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip("Save the current enabled/disabled state of all modules to settings.\nThis list will be automatically loaded on next startup.");
+                    ImGui::SetTooltip(
+                        "Save the current enabled/disabled state of all modules to settings.\nThis list will be "
+                        "automatically loaded on next startup.");
                 }
                 ImGui::SameLine();
                 if (ImGui::SmallButton("Select All##QPCModules")) {
@@ -1098,11 +1143,13 @@ void DrawTimeSlowdownControls() {
         }
 
         // GetTickCount hook
-        uint64_t gtc_calls = display_commanderhooks::GetTimerHookCallCountById(display_commanderhooks::TimerHookIdentifier::GetTickCount);
+        uint64_t gtc_calls = display_commanderhooks::GetTimerHookCallCountById(
+            display_commanderhooks::TimerHookIdentifier::GetTickCount);
         if (ComboSettingWrapper(settings::g_experimentalTabSettings.get_tick_count_hook, "GetTickCount")) {
             display_commanderhooks::TimerHookType type = static_cast<display_commanderhooks::TimerHookType>(
                 settings::g_experimentalTabSettings.get_tick_count_hook.GetValue());
-            display_commanderhooks::SetTimerHookTypeById(display_commanderhooks::TimerHookIdentifier::GetTickCount, type);
+            display_commanderhooks::SetTimerHookTypeById(display_commanderhooks::TimerHookIdentifier::GetTickCount,
+                                                         type);
         }
         ImGui::SameLine();
         ImGui::Text("[%llu calls]", gtc_calls);
@@ -1111,11 +1158,13 @@ void DrawTimeSlowdownControls() {
         }
 
         // GetTickCount64 hook
-        uint64_t gtc64_calls = display_commanderhooks::GetTimerHookCallCountById(display_commanderhooks::TimerHookIdentifier::GetTickCount64);
+        uint64_t gtc64_calls = display_commanderhooks::GetTimerHookCallCountById(
+            display_commanderhooks::TimerHookIdentifier::GetTickCount64);
         if (ComboSettingWrapper(settings::g_experimentalTabSettings.get_tick_count64_hook, "GetTickCount64")) {
             display_commanderhooks::TimerHookType type = static_cast<display_commanderhooks::TimerHookType>(
                 settings::g_experimentalTabSettings.get_tick_count64_hook.GetValue());
-            display_commanderhooks::SetTimerHookTypeById(display_commanderhooks::TimerHookIdentifier::GetTickCount64, type);
+            display_commanderhooks::SetTimerHookTypeById(display_commanderhooks::TimerHookIdentifier::GetTickCount64,
+                                                         type);
         }
         ImGui::SameLine();
         ImGui::Text("[%llu calls]", gtc64_calls);
@@ -1124,11 +1173,13 @@ void DrawTimeSlowdownControls() {
         }
 
         // timeGetTime hook
-        uint64_t tgt_calls = display_commanderhooks::GetTimerHookCallCountById(display_commanderhooks::TimerHookIdentifier::TimeGetTime);
+        uint64_t tgt_calls =
+            display_commanderhooks::GetTimerHookCallCountById(display_commanderhooks::TimerHookIdentifier::TimeGetTime);
         if (ComboSettingWrapper(settings::g_experimentalTabSettings.time_get_time_hook, "timeGetTime")) {
             display_commanderhooks::TimerHookType type = static_cast<display_commanderhooks::TimerHookType>(
                 settings::g_experimentalTabSettings.time_get_time_hook.GetValue());
-            display_commanderhooks::SetTimerHookTypeById(display_commanderhooks::TimerHookIdentifier::TimeGetTime, type);
+            display_commanderhooks::SetTimerHookTypeById(display_commanderhooks::TimerHookIdentifier::TimeGetTime,
+                                                         type);
         }
         ImGui::SameLine();
         ImGui::Text("[%llu calls]", tgt_calls);
@@ -1137,11 +1188,13 @@ void DrawTimeSlowdownControls() {
         }
 
         // GetSystemTime hook
-        uint64_t gst_calls = display_commanderhooks::GetTimerHookCallCountById(display_commanderhooks::TimerHookIdentifier::GetSystemTime);
+        uint64_t gst_calls = display_commanderhooks::GetTimerHookCallCountById(
+            display_commanderhooks::TimerHookIdentifier::GetSystemTime);
         if (ComboSettingWrapper(settings::g_experimentalTabSettings.get_system_time_hook, "GetSystemTime")) {
             display_commanderhooks::TimerHookType type = static_cast<display_commanderhooks::TimerHookType>(
                 settings::g_experimentalTabSettings.get_system_time_hook.GetValue());
-            display_commanderhooks::SetTimerHookTypeById(display_commanderhooks::TimerHookIdentifier::GetSystemTime, type);
+            display_commanderhooks::SetTimerHookTypeById(display_commanderhooks::TimerHookIdentifier::GetSystemTime,
+                                                         type);
         }
         ImGui::SameLine();
         ImGui::Text("[%llu calls]", gst_calls);
@@ -1150,12 +1203,14 @@ void DrawTimeSlowdownControls() {
         }
 
         // GetSystemTimeAsFileTime hook
-        uint64_t gst_aft_calls = display_commanderhooks::GetTimerHookCallCountById(display_commanderhooks::TimerHookIdentifier::GetSystemTimeAsFileTime);
+        uint64_t gst_aft_calls = display_commanderhooks::GetTimerHookCallCountById(
+            display_commanderhooks::TimerHookIdentifier::GetSystemTimeAsFileTime);
         if (ComboSettingWrapper(settings::g_experimentalTabSettings.get_system_time_as_file_time_hook,
                                 "GetSystemTimeAsFileTime")) {
             display_commanderhooks::TimerHookType type = static_cast<display_commanderhooks::TimerHookType>(
                 settings::g_experimentalTabSettings.get_system_time_as_file_time_hook.GetValue());
-            display_commanderhooks::SetTimerHookTypeById(display_commanderhooks::TimerHookIdentifier::GetSystemTimeAsFileTime, type);
+            display_commanderhooks::SetTimerHookTypeById(
+                display_commanderhooks::TimerHookIdentifier::GetSystemTimeAsFileTime, type);
         }
         ImGui::SameLine();
         ImGui::Text("[%llu calls]", gst_aft_calls);
@@ -1164,13 +1219,14 @@ void DrawTimeSlowdownControls() {
         }
 
         // GetSystemTimePreciseAsFileTime hook
-        uint64_t gstp_aft_calls =
-            display_commanderhooks::GetTimerHookCallCountById(display_commanderhooks::TimerHookIdentifier::GetSystemTimePreciseAsFileTime);
+        uint64_t gstp_aft_calls = display_commanderhooks::GetTimerHookCallCountById(
+            display_commanderhooks::TimerHookIdentifier::GetSystemTimePreciseAsFileTime);
         if (ComboSettingWrapper(settings::g_experimentalTabSettings.get_system_time_precise_as_file_time_hook,
                                 "GetSystemTimePreciseAsFileTime")) {
             display_commanderhooks::TimerHookType type = static_cast<display_commanderhooks::TimerHookType>(
                 settings::g_experimentalTabSettings.get_system_time_precise_as_file_time_hook.GetValue());
-            display_commanderhooks::SetTimerHookTypeById(display_commanderhooks::TimerHookIdentifier::GetSystemTimePreciseAsFileTime, type);
+            display_commanderhooks::SetTimerHookTypeById(
+                display_commanderhooks::TimerHookIdentifier::GetSystemTimePreciseAsFileTime, type);
         }
         ImGui::SameLine();
         ImGui::Text("[%llu calls]", gstp_aft_calls);
@@ -1179,11 +1235,13 @@ void DrawTimeSlowdownControls() {
         }
 
         // GetLocalTime hook
-        uint64_t glt_calls = display_commanderhooks::GetTimerHookCallCountById(display_commanderhooks::TimerHookIdentifier::GetLocalTime);
+        uint64_t glt_calls = display_commanderhooks::GetTimerHookCallCountById(
+            display_commanderhooks::TimerHookIdentifier::GetLocalTime);
         if (ComboSettingWrapper(settings::g_experimentalTabSettings.get_local_time_hook, "GetLocalTime")) {
             display_commanderhooks::TimerHookType type = static_cast<display_commanderhooks::TimerHookType>(
                 settings::g_experimentalTabSettings.get_local_time_hook.GetValue());
-            display_commanderhooks::SetTimerHookTypeById(display_commanderhooks::TimerHookIdentifier::GetLocalTime, type);
+            display_commanderhooks::SetTimerHookTypeById(display_commanderhooks::TimerHookIdentifier::GetLocalTime,
+                                                         type);
         }
         ImGui::SameLine();
         ImGui::Text("[%llu calls]", glt_calls);
@@ -1192,11 +1250,13 @@ void DrawTimeSlowdownControls() {
         }
 
         // NtQuerySystemTime hook
-        uint64_t ntqst_calls = display_commanderhooks::GetTimerHookCallCountById(display_commanderhooks::TimerHookIdentifier::NtQuerySystemTime);
+        uint64_t ntqst_calls = display_commanderhooks::GetTimerHookCallCountById(
+            display_commanderhooks::TimerHookIdentifier::NtQuerySystemTime);
         if (ComboSettingWrapper(settings::g_experimentalTabSettings.nt_query_system_time_hook, "NtQuerySystemTime")) {
             display_commanderhooks::TimerHookType type = static_cast<display_commanderhooks::TimerHookType>(
                 settings::g_experimentalTabSettings.nt_query_system_time_hook.GetValue());
-            display_commanderhooks::SetTimerHookTypeById(display_commanderhooks::TimerHookIdentifier::NtQuerySystemTime, type);
+            display_commanderhooks::SetTimerHookTypeById(display_commanderhooks::TimerHookIdentifier::NtQuerySystemTime,
+                                                         type);
         }
         ImGui::SameLine();
         ImGui::Text("[%llu calls]", ntqst_calls);
@@ -1221,7 +1281,8 @@ void DrawTimeSlowdownControls() {
         ImGui::Spacing();
         ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "QPC Comparison:");
 
-        if (display_commanderhooks::QueryPerformanceCounter_Original && display_commanderhooks::QueryPerformanceFrequency_Original) {
+        if (display_commanderhooks::QueryPerformanceCounter_Original
+            && display_commanderhooks::QueryPerformanceFrequency_Original) {
             // Get QPC frequency
             LARGE_INTEGER frequency;
             if (display_commanderhooks::QueryPerformanceFrequency_Original(&frequency) && frequency.QuadPart > 0) {
@@ -1232,8 +1293,10 @@ void DrawTimeSlowdownControls() {
                     LONGLONG spoofed_qpc = display_commanderhooks::ApplyTimeslowdownToQPC(original_qpc.QuadPart);
 
                     // Convert QPC ticks to seconds
-                    double original_qpc_seconds = static_cast<double>(original_qpc.QuadPart) / static_cast<double>(frequency.QuadPart);
-                    double spoofed_qpc_seconds = static_cast<double>(spoofed_qpc) / static_cast<double>(frequency.QuadPart);
+                    double original_qpc_seconds =
+                        static_cast<double>(original_qpc.QuadPart) / static_cast<double>(frequency.QuadPart);
+                    double spoofed_qpc_seconds =
+                        static_cast<double>(spoofed_qpc) / static_cast<double>(frequency.QuadPart);
                     double qpc_difference_seconds = spoofed_qpc_seconds - original_qpc_seconds;
 
                     // Display the comparison
@@ -1244,20 +1307,22 @@ void DrawTimeSlowdownControls() {
                     ImVec4 qpc_diff_color;
                     double abs_diff_seconds = abs(qpc_difference_seconds);
                     if (abs_diff_seconds < 0.001) {
-                        qpc_diff_color = ImVec4(0.6f, 1.0f, 0.6f, 1.0f); // Green for minimal difference
+                        qpc_diff_color = ImVec4(0.6f, 1.0f, 0.6f, 1.0f);  // Green for minimal difference
                     } else if (abs_diff_seconds < 0.01) {
-                        qpc_diff_color = ImVec4(1.0f, 1.0f, 0.6f, 1.0f); // Yellow for small difference
+                        qpc_diff_color = ImVec4(1.0f, 1.0f, 0.6f, 1.0f);  // Yellow for small difference
                     } else {
-                        qpc_diff_color = ImVec4(1.0f, 0.6f, 0.6f, 1.0f); // Red for significant difference
+                        qpc_diff_color = ImVec4(1.0f, 0.6f, 0.6f, 1.0f);  // Red for significant difference
                     }
 
                     ImGui::TextColored(qpc_diff_color, "  Difference: %+.1f s", qpc_difference_seconds);
 
                     if (ImGui::IsItemHovered()) {
-                        ImGui::SetTooltip("Shows the difference between original QueryPerformanceCounter value and spoofed value.\n"
-                                         "This directly compares what QueryPerformanceCounter_Original returns vs what ApplyTimeslowdownToQPC returns.\n"
-                                         "Positive values mean the spoofed time is ahead of original time.\n"
-                                         "Negative values mean the spoofed time is behind original time.");
+                        ImGui::SetTooltip(
+                            "Shows the difference between original QueryPerformanceCounter value and spoofed value.\n"
+                            "This directly compares what QueryPerformanceCounter_Original returns vs what "
+                            "ApplyTimeslowdownToQPC returns.\n"
+                            "Positive values mean the spoofed time is ahead of original time.\n"
+                            "Negative values mean the spoofed time is behind original time.");
                     }
                 } else {
                     ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.6f, 1.0f), "  Failed to get QPC value");
@@ -1282,7 +1347,7 @@ void DrawTimeSlowdownControls() {
 
         // Show active hooks
         ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Active Hooks:");
-        const char *hook_names[] = {"QueryPerformanceCounter",
+        const char* hook_names[] = {"QueryPerformanceCounter",
                                     "GetTickCount",
                                     "GetTickCount64",
                                     "timeGetTime",
@@ -1300,8 +1365,7 @@ void DrawTimeSlowdownControls() {
             display_commanderhooks::TimerHookIdentifier::GetSystemTimeAsFileTime,
             display_commanderhooks::TimerHookIdentifier::GetSystemTimePreciseAsFileTime,
             display_commanderhooks::TimerHookIdentifier::GetLocalTime,
-            display_commanderhooks::TimerHookIdentifier::NtQuerySystemTime
-        };
+            display_commanderhooks::TimerHookIdentifier::NtQuerySystemTime};
 
         for (int i = 0; i < 9; i++) {
             if (display_commanderhooks::IsTimerHookEnabledById(hook_identifiers[i])) {
@@ -1310,7 +1374,8 @@ void DrawTimeSlowdownControls() {
         }
 
         ImGui::Spacing();
-        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), ICON_FK_WARNING " WARNING: This affects all time-based game logic!");
+        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f),
+                           ICON_FK_WARNING " WARNING: This affects all time-based game logic!");
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Time slowdown affects all game systems that use the selected timer APIs for timing.");
         }
@@ -1329,21 +1394,22 @@ void DrawD3D9FlipExControls() {
     ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f),
                        ICON_FK_WARNING " EXPERIMENTAL FEATURE - Upgrades D3D9 games to use FLIPEX swap effect!");
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("This feature upgrades Direct3D 9 games to use the D3DSWAPEFFECT_FLIPEX swap effect.\n"
-                         "FLIPEX leverages the Desktop Window Manager (DWM) for better performance on Windows Vista+.\n"
-                         "Requirements:\n"
-                         "  - Direct3D 9Ex support (Windows Vista or later)\n"
-                         "  - Full-screen mode (not windowed)\n"
-                         "  - At least 2 back buffers\n"
-                         "  - Driver support for FLIPEX\n"
-                         "\n"
-                         "Benefits:\n"
-                         "  - Reduced input latency\n"
-                         "  - Better frame pacing\n"
-                         "  - Improved performance in full-screen mode\n"
-                         "\n"
-                         "Note: Not all games and drivers support FLIPEX. If device creation fails,\n"
-                         "disable this feature.");
+        ImGui::SetTooltip(
+            "This feature upgrades Direct3D 9 games to use the D3DSWAPEFFECT_FLIPEX swap effect.\n"
+            "FLIPEX leverages the Desktop Window Manager (DWM) for better performance on Windows Vista+.\n"
+            "Requirements:\n"
+            "  - Direct3D 9Ex support (Windows Vista or later)\n"
+            "  - Full-screen mode (not windowed)\n"
+            "  - At least 2 back buffers\n"
+            "  - Driver support for FLIPEX\n"
+            "\n"
+            "Benefits:\n"
+            "  - Reduced input latency\n"
+            "  - Better frame pacing\n"
+            "  - Improved performance in full-screen mode\n"
+            "\n"
+            "Note: Not all games and drivers support FLIPEX. If device creation fails,\n"
+            "disable this feature.");
     }
 
     ImGui::Spacing();
@@ -1354,8 +1420,9 @@ void DrawD3D9FlipExControls() {
                 settings::g_experimentalTabSettings.d3d9_flipex_enabled.GetValue() ? "enabled" : "disabled");
     }
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Enable automatic upgrade of D3D9 games to use FLIPEX swap effect for better performance.\n"
-                         "This feature requires the game to run in full-screen mode and support D3D9Ex.");
+        ImGui::SetTooltip(
+            "Enable automatic upgrade of D3D9 games to use FLIPEX swap effect for better performance.\n"
+            "This feature requires the game to run in full-screen mode and support D3D9Ex.");
     }
 
     ImGui::Spacing();
@@ -1369,7 +1436,7 @@ void DrawD3D9FlipExControls() {
         ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "  Direct3D 9");
 
         if (s_d3d9e_upgrade_successful.load()) {
-            api_version = 0x9100; // due to reshade's bug.
+            api_version = 0x9100;  // due to reshade's bug.
         }
 
         if (api_version == 0x9100) {
@@ -1402,10 +1469,12 @@ void DrawD3D9FlipExControls() {
     ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "5. Check the log file for upgrade status");
 
     ImGui::Spacing();
-    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), ICON_FK_WARNING " WARNING: If the game fails to start, disable this feature!");
+    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f),
+                       ICON_FK_WARNING " WARNING: If the game fails to start, disable this feature!");
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Some games and drivers don't support FLIPEX.\n"
-                         "If you experience crashes or black screens, disable this feature.");
+        ImGui::SetTooltip(
+            "Some games and drivers don't support FLIPEX.\n"
+            "If you experience crashes or black screens, disable this feature.");
     }
 }
 
@@ -1418,9 +1487,10 @@ void DrawDlssIndicatorControls() {
     ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f),
                        ICON_FK_WARNING " EXPERIMENTAL FEATURE - Modifies NVIDIA registry settings!");
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("This feature modifies the NVIDIA registry to enable/disable the DLSS indicator.\n"
-                         "The indicator appears in the bottom left corner when enabled.\n"
-                         "Requires administrator privileges to modify registry.");
+        ImGui::SetTooltip(
+            "This feature modifies the NVIDIA registry to enable/disable the DLSS indicator.\n"
+            "The indicator appears in the bottom left corner when enabled.\n"
+            "Requires administrator privileges to modify registry.");
     }
 
     ImGui::Spacing();
@@ -1466,8 +1536,9 @@ void DrawDlssIndicatorControls() {
         }
     }
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Generate a .reg file to enable DLSS indicator.\n"
-                         "The file will be created in the current directory.");
+        ImGui::SetTooltip(
+            "Generate a .reg file to enable DLSS indicator.\n"
+            "The file will be created in the current directory.");
     }
 
     ImGui::SameLine();
@@ -1484,8 +1555,9 @@ void DrawDlssIndicatorControls() {
         }
     }
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Generate a .reg file to disable DLSS indicator.\n"
-                         "The file will be created in the current directory.");
+        ImGui::SetTooltip(
+            "Generate a .reg file to disable DLSS indicator.\n"
+            "The file will be created in the current directory.");
     }
 
     ImGui::SameLine();
@@ -1498,8 +1570,7 @@ void DrawDlssIndicatorControls() {
             // Use ShellExecute to open the folder in Windows Explorer
             HINSTANCE result = ShellExecuteA(nullptr, "open", current_dir, nullptr, nullptr, SW_SHOWNORMAL);
             if (reinterpret_cast<INT_PTR>(result) <= 32) {
-                LogError("DLSS Indicator: Failed to open folder, error: %ld",
-                        reinterpret_cast<INT_PTR>(result));
+                LogError("DLSS Indicator: Failed to open folder, error: %ld", reinterpret_cast<INT_PTR>(result));
             } else {
                 LogInfo("DLSS Indicator: Opened folder: %s", current_dir);
             }
@@ -1516,24 +1587,32 @@ void DrawDlssIndicatorControls() {
     // Instructions
     ImGui::TextColored(ImVec4(0.6f, 0.8f, 1.0f, 1.0f), "Instructions:");
     ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "1. Generate the appropriate .reg file using the buttons above");
-    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "2. Open the folder and double-click the .reg file to apply changes");
-    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "3. Windows will prompt for administrator privileges when executing");
+    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f),
+                       "2. Open the folder and double-click the .reg file to apply changes");
+    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f),
+                       "3. Windows will prompt for administrator privileges when executing");
     ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "4. Restart your game to see the DLSS indicator");
-    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "5. The indicator appears in the bottom left corner when enabled");
+    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f),
+                       "5. The indicator appears in the bottom left corner when enabled");
 
     ImGui::Spacing();
-    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), ICON_FK_WARNING " WARNING: Registry modifications require administrator privileges!");
+    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f),
+                       ICON_FK_WARNING " WARNING: Registry modifications require administrator privileges!");
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("The registry modification requires administrator privileges.\n"
-                         "Windows will prompt for elevation when executing .reg files.");
+        ImGui::SetTooltip(
+            "The registry modification requires administrator privileges.\n"
+            "Windows will prompt for elevation when executing .reg files.");
     }
 }
 
 void DrawDeveloperTools() {
     ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== Developer Tools ===");
-    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), ICON_FK_WARNING " EXPERIMENTAL FEATURE - For debugging purposes only!");
+    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f),
+                       ICON_FK_WARNING " EXPERIMENTAL FEATURE - For debugging purposes only!");
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("These tools are for developers and debugging purposes.\nUse with caution as they can cause crashes or unexpected behavior.");
+        ImGui::SetTooltip(
+            "These tools are for developers and debugging purposes.\nUse with caution as they can cause crashes or "
+            "unexpected behavior.");
     }
 
     ImGui::Spacing();
@@ -1544,7 +1623,9 @@ void DrawDeveloperTools() {
         __debugbreak();
     }
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Triggers a debugger breakpoint. Useful for attaching a debugger at a specific moment.\nWARNING: Will crash if no debugger is attached!");
+        ImGui::SetTooltip(
+            "Triggers a debugger breakpoint. Useful for attaching a debugger at a specific moment.\nWARNING: Will "
+            "crash if no debugger is attached!");
     }
     ImGui::SameLine();
 
@@ -1553,10 +1634,13 @@ void DrawDeveloperTools() {
         LogInfo("Test crash handler triggered by user - this will cause an intentional crash!");
         // Trigger an intentional access violation to test our crash handler
         int* null_ptr = nullptr;
-        *null_ptr = 42; // This will cause an access violation and trigger our UnhandledExceptionHandler
+        *null_ptr = 42;  // This will cause an access violation and trigger our UnhandledExceptionHandler
     }
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Triggers an intentional crash to test the SetUnhandledExceptionFilter spoofing and crash logging system.\nWARNING: This will crash the application!\nUse this to verify that our exception handler is working correctly.");
+        ImGui::SetTooltip(
+            "Triggers an intentional crash to test the SetUnhandledExceptionFilter spoofing and crash logging "
+            "system.\nWARNING: This will crash the application!\nUse this to verify that our exception handler is "
+            "working correctly.");
     }
 
     ImGui::Spacing();
@@ -1622,7 +1706,7 @@ void DrawDeveloperTools() {
             // WARNING: This is very dangerous and will likely crash if ReShade is in use
             // ReShade may be pinned or have multiple references, so we need to try multiple times
             int unload_attempts = 0;
-            const int max_attempts = 100; // Safety limit
+            const int max_attempts = 100;  // Safety limit
             bool still_loaded = true;
 
             while (still_loaded && unload_attempts < max_attempts) {
@@ -1636,7 +1720,9 @@ void DrawDeveloperTools() {
                         // If we don't have the path, enumerate modules to check if it's still loaded
                         HMODULE check_modules[1024];
                         DWORD check_num_modules = 0;
-                        if (K32EnumProcessModules(GetCurrentProcess(), check_modules, sizeof(check_modules), &check_num_modules) != 0) {
+                        if (K32EnumProcessModules(GetCurrentProcess(), check_modules, sizeof(check_modules),
+                                                  &check_num_modules)
+                            != 0) {
                             for (DWORD i = 0; i < check_num_modules / sizeof(HMODULE); ++i) {
                                 if (check_modules[i] == reshade_module) {
                                     check_module = reshade_module;
@@ -1664,7 +1750,9 @@ void DrawDeveloperTools() {
                     } else {
                         HMODULE check_modules[1024];
                         DWORD check_num_modules = 0;
-                        if (K32EnumProcessModules(GetCurrentProcess(), check_modules, sizeof(check_modules), &check_num_modules) != 0) {
+                        if (K32EnumProcessModules(GetCurrentProcess(), check_modules, sizeof(check_modules),
+                                                  &check_num_modules)
+                            != 0) {
                             for (DWORD i = 0; i < check_num_modules / sizeof(HMODULE); ++i) {
                                 if (check_modules[i] == reshade_module) {
                                     check_module = reshade_module;
@@ -1676,7 +1764,8 @@ void DrawDeveloperTools() {
 
                     if (check_module != nullptr) {
                         LogError("ReShade DLL is still loaded - module may be pinned or has other references");
-                        LogWarn("The module handle 0x%p is still valid, indicating the DLL was not unloaded", reshade_module);
+                        LogWarn("The module handle 0x%p is still valid, indicating the DLL was not unloaded",
+                                reshade_module);
                     } else {
                         still_loaded = false;
                         LogWarn("ReShade DLL appears to be unloaded despite FreeLibrary failure");
@@ -1706,426 +1795,40 @@ void DrawDeveloperTools() {
         }
     }
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Attempts to unload the ReShade DLL from memory.\n"
-                         "WARNING: This is extremely dangerous and will likely crash the game!\n"
-                         "ReShade may still be in use by the game or other addons.\n"
-                         "Only use this if you understand the risks and are debugging.");
+        ImGui::SetTooltip(
+            "Attempts to unload the ReShade DLL from memory.\n"
+            "WARNING: This is extremely dangerous and will likely crash the game!\n"
+            "ReShade may still be in use by the game or other addons.\n"
+            "Only use this if you understand the risks and are debugging.");
     }
 
     ImGui::Spacing();
-    ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Note: Debugger break button will trigger a debugger breakpoint when clicked.");
-    ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Make sure you have a debugger attached before using the debugger break feature.");
-    ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.5f, 1.0f), "WARNING: Crash Handler test will intentionally crash the application!");
-    ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Use it to test our SetUnhandledExceptionFilter spoofing and crash logging system.");
-    ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), ICON_FK_WARNING " DANGER: Unload ReShade DLL button will attempt to unload ReShade from memory!");
-    ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), "This is extremely dangerous and will likely crash the game if ReShade is in use!");
-}
-
-void DrawPCLStatsEtwControls() {
-    ImGui::TextColored(ImVec4(0.9f, 0.9f, 0.9f, 1.0f), "PCLStats ETW Reporting");
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Generate PCLStats ETW events for NVIDIA latency overlay compatibility.\n"
-                         "Emits latency markers via ETW (Event Tracing for Windows) that NVIDIA tools can consume.\n"
-                         "Based on Special K's PCLStats implementation.");
-    }
-    ImGui::Spacing();
-
-    // Warning about experimental nature
-    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), ICON_FK_WARNING " EXPERIMENTAL FEATURE");
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("This feature generates ETW events compatible with NVIDIA's latency overlay.\n"
-                         "It will automatically disable if the game uses native Reflex to avoid conflicts.");
-    }
-    ImGui::Spacing();
-
-    // Enable/disable checkbox
-    if (CheckboxSetting(settings::g_experimentalTabSettings.pclstats_etw_enabled, "Enable PCLStats ETW Reporting")) {
-        latency::pclstats_etw::SetUserEnabled(settings::g_experimentalTabSettings.pclstats_etw_enabled.GetValue());
-        LogInfo("PCLStats ETW reporting %s",
-                settings::g_experimentalTabSettings.pclstats_etw_enabled.GetValue() ? "enabled" : "disabled");
-    }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Enable/disable PCLStats ETW marker generation.\n"
-                         "When enabled, latency markers are emitted via ETW for NVIDIA overlay compatibility.\n"
-                         "Automatically disabled if game uses native Reflex.");
-    }
-
-    ImGui::Spacing();
-
-    // Log file checkbox
-    if (CheckboxSetting(settings::g_experimentalTabSettings.pclstats_log_file_enabled, "Enable PCLStats Log File")) {
-        latency::pclstats_logger::SetLoggingEnabled(settings::g_experimentalTabSettings.pclstats_log_file_enabled.GetValue());
-        LogInfo("PCLStats log file %s",
-                settings::g_experimentalTabSettings.pclstats_log_file_enabled.GetValue() ? "enabled" : "disabled");
-    }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Enable/disable logging of all PCLStats events to a file.\n"
-                         "Logs all events matching the marker ID used for NVIDIA overlay.\n"
-                         "File: DisplayCommander_PCLStats.log\n"
-                         "Default: OFF");
-    }
-
-    // Show log file status and path
-    if (settings::g_experimentalTabSettings.pclstats_log_file_enabled.GetValue()) {
-        ImGui::Indent();
-        auto logger_stats = latency::pclstats_logger::GetStats();
-        ImGui::TextColored(ImVec4(0.7f, 0.7f, 1.0f, 1.0f), "Log File: %s", latency::pclstats_logger::GetLogFilePath().c_str());
-        ImGui::Text("Events Logged: %llu", logger_stats.total_events_logged);
-        if (logger_stats.file_write_errors > 0) {
-            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "Write Errors: %llu", logger_stats.file_write_errors);
-        }
-        if (!logger_stats.is_file_open) {
-            ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), ICON_FK_WARNING " Log file not open!");
-        }
-        ImGui::Unindent();
-    }
-
-    ImGui::Spacing();
-
-    // Status information
-    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Status:");
-    if (g_native_reflex_detected.load(std::memory_order_acquire)) {
-        ImGui::SameLine();
-        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.0f, 1.0f), "Disabled (Native Reflex detected)");
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("PCLStats reporting is disabled because the game uses native Reflex.\n"
-                             "This prevents duplicate/conflicting marker reporting.");
-        }
-    } else if (settings::g_experimentalTabSettings.pclstats_etw_enabled.GetValue()) {
-        ImGui::SameLine();
-        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Active");
-    } else {
-        ImGui::SameLine();
-        ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Inactive");
-    }
-
-    ImGui::Spacing();
-    ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Provider: PCLStatsTraceLoggingProvider");
-    ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Event: PCLStatsEvent (Marker: UInt32, FrameID: UInt64)");
-
-    ImGui::Spacing();
-    ImGui::Separator();
-    ImGui::Spacing();
-
-    // Debug/Statistics section
-    if (ImGui::CollapsingHeader("Debug & Statistics", ImGuiTreeNodeFlags_DefaultOpen)) {
-        auto stats = latency::pclstats_etw::GetDebugStats();
-
-        // State information
-        ImGui::TextColored(ImVec4(0.9f, 0.9f, 0.9f, 1.0f), "State:");
-        ImGui::Indent();
-        ImGui::Text("User Enabled: %s", stats.user_enabled ? "Yes" : "No");
-        ImGui::Text("Provider Registered: %s", stats.provider_registered ? "Yes" : "No");
-        if (stats.provider_registered) {
-            if (stats.registration_status == 0) {
-                ImGui::SameLine();
-                ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), ICON_FK_OK);
-            } else {
-                ImGui::SameLine();
-                ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "(Status: 0x%08X)", stats.registration_status);
-                if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip("Registration returned error code. Check Windows error codes.");
-                }
-            }
-        }
-        ImGui::Text("ETW Enabled (by consumer): %s", stats.etw_enabled ? "Yes" : "No");
-        if (stats.etw_enabled) {
-            ImGui::SameLine();
-            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), ICON_FK_OK " Consumer active!");
-        }
-        ImGui::Text("Ping Thread Running: %s", stats.ping_thread_running ? "Yes" : "No");
-        ImGui::Text("Native Reflex Detected: %s", stats.native_reflex_detected ? "Yes" : "No");
-        ImGui::Unindent();
-
-        ImGui::Spacing();
-
-        // Statistics
-        ImGui::TextColored(ImVec4(0.9f, 0.9f, 0.9f, 1.0f), "Statistics:");
-        ImGui::Indent();
-        ImGui::Text("Events Emitted: %llu", stats.events_emitted);
-        ImGui::Text("Ping Signals Generated: %llu", stats.ping_signals_generated);
-        ImGui::Text("Ping Signals Consumed: %llu", stats.ping_signals_consumed);
-        ImGui::Text("Last Marker Type: %u", stats.last_marker_type);
-        ImGui::Text("Last Frame ID: %llu", stats.last_frame_id);
-        ImGui::Unindent();
-
-        ImGui::Spacing();
-
-        // Lifecycle Events
-        ImGui::TextColored(ImVec4(0.9f, 0.9f, 0.9f, 1.0f), "Lifecycle Events:");
-        ImGui::Indent();
-        if (stats.init_events_sent > 0) {
-            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), ICON_FK_OK " PCLStatsInit sent: %llu time(s)", stats.init_events_sent);
-            if (stats.last_init_event_time_ns > 0) {
-                uint64_t now_ns = utils::get_now_ns();
-                uint64_t elapsed_ms = (now_ns - stats.last_init_event_time_ns) / 1000000;
-                ImGui::Text("  Last sent: %llu ms ago", elapsed_ms);
-            }
-        } else {
-            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), ICON_FK_WARNING " PCLStatsInit NOT sent yet!");
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("PCLStatsInit event is critical for NVIDIA overlay to discover the provider.\n"
-                                 "It should be sent when the provider is registered.");
-            }
-        }
-        ImGui::Text("PCLStatsShutdown sent: %llu", stats.shutdown_events_sent);
-        ImGui::Text("PCLStatsFlags sent: %llu", stats.flags_events_sent);
-        ImGui::Unindent();
-
-        ImGui::Spacing();
-
-        // Marker type breakdown
-        ImGui::TextColored(ImVec4(0.9f, 0.9f, 0.9f, 1.0f), "Markers by Type:");
-        if (ImGui::BeginTable("MarkerTypes", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable)) {
-            ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_WidthFixed, 80.0f);
-            ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthStretch);
-            ImGui::TableSetupColumn("Count", ImGuiTableColumnFlags_WidthFixed, 100.0f);
-            ImGui::TableSetupColumn("Required", ImGuiTableColumnFlags_WidthFixed, 80.0f);
-            ImGui::TableHeadersRow();
-
-            // Marker type definitions (matching NV_LATENCY_MARKER_TYPE)
-            struct MarkerInfo {
-                uint32_t type;
-                const char* name;
-                bool required_for_overlay;
-            };
-            const MarkerInfo marker_info[] = {
-                {0, "SIMULATION_START", true},
-                {1, "SIMULATION_END", true},
-                {2, "RENDERSUBMIT_START", true},
-                {3, "RENDERSUBMIT_END", true},
-                {4, "PRESENT_START", false},
-                {5, "PRESENT_END", false},
-                {6, "INPUT_SAMPLE", false}, // Deprecated
-                {7, "TRIGGER_FLASH", false},
-                {8, "PC_LATENCY_PING", true}, // Required for PCL/AV stats
-                {9, "OOB_RENDERSUBMIT_START", false},
-                {10, "OOB_RENDERSUBMIT_END", false},
-                {11, "OOB_PRESENT_START", false},
-                {12, "OOB_PRESENT_END", false},
-                {13, "CONTROLLER_INPUT_SAMPLE", false},
-            };
-
-            for (const auto& info : marker_info) {
-                ImGui::TableNextRow();
-                ImGui::TableNextColumn();
-                ImGui::Text("%u", info.type);
-                ImGui::TableNextColumn();
-                ImGui::Text("%s", info.name);
-                ImGui::TableNextColumn();
-                uint64_t count = (info.type < 16) ? stats.marker_counts[info.type] : 0;
-                if (count > 0) {
-                    ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "%llu", count);
-                } else {
-                    ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "0");
-                }
-                ImGui::TableNextColumn();
-                if (info.required_for_overlay) {
-                    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), ICON_FK_WARNING " Yes");
-                    if (ImGui::IsItemHovered()) {
-                        ImGui::SetTooltip("This marker type is required for NVIDIA overlay latency stats.");
-                    }
-                } else {
-                    ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "No");
-                }
-            }
-
-            ImGui::EndTable();
-        }
-
-        ImGui::Spacing();
-        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Note: Required markers must be sent for NVIDIA overlay to show PCL/AV stats.");
-
-        ImGui::Spacing();
-
-        // Marker history (first 100 markers)
-        ImGui::TextColored(ImVec4(0.9f, 0.9f, 0.9f, 1.0f), "Marker History (First 100):");
-        auto history = latency::pclstats_etw::GetMarkerHistory();
-        if (history.empty()) {
-            ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "No markers recorded yet.");
-        } else {
-            // Get marker type names for display
-            static const char* marker_names[] = {
-                "SIMULATION_START", "SIMULATION_END", "RENDERSUBMIT_START", "RENDERSUBMIT_END",
-                "PRESENT_START", "PRESENT_END", "INPUT_SAMPLE", "TRIGGER_FLASH",
-                "PC_LATENCY_PING", "OOB_RENDERSUBMIT_START", "OOB_RENDERSUBMIT_END",
-                "OOB_PRESENT_START", "OOB_PRESENT_END", "CONTROLLER_INPUT_SAMPLE", "", ""
-            };
-
-            uint64_t first_timestamp = history.empty() ? 0 : history[0].timestamp_ns;
-            uint64_t now_ns = utils::get_now_ns();
-
-            ImGui::Text("Showing %zu marker(s)", history.size());
-            if (history.size() >= 100) {
-                ImGui::SameLine();
-                ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.0f, 1.0f), "(History full - showing first 100)");
-            }
-
-            // Create scrollable table
-            if (ImGui::BeginTable("MarkerHistory", 4,
-                ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable |
-                ImGuiTableFlags_ScrollY | ImGuiTableFlags_SizingStretchProp,
-                ImVec2(0.0f, ImGui::GetTextLineHeightWithSpacing() * 10))) {
-                ImGui::TableSetupColumn("#", ImGuiTableColumnFlags_WidthFixed, 40.0f);
-                ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_WidthFixed, 180.0f);
-                ImGui::TableSetupColumn("Frame ID", ImGuiTableColumnFlags_WidthFixed, 100.0f);
-                ImGui::TableSetupColumn("Time", ImGuiTableColumnFlags_WidthStretch);
-                ImGui::TableHeadersRow();
-
-                for (size_t i = 0; i < history.size(); i++) {
-                    const auto& entry = history[i];
-                    ImGui::TableNextRow();
-
-                    // Index
-                    ImGui::TableNextColumn();
-                    ImGui::Text("%zu", i + 1);
-
-                    // Type
-                    ImGui::TableNextColumn();
-                    if (entry.marker_type < 14) {
-                        ImGui::Text("%u - %s", entry.marker_type, marker_names[entry.marker_type]);
-                    } else {
-                        ImGui::Text("%u - Unknown", entry.marker_type);
-                    }
-
-                    // Frame ID
-                    ImGui::TableNextColumn();
-                    ImGui::Text("%llu", entry.frame_id);
-
-                    // Time (relative to first marker and absolute)
-                    ImGui::TableNextColumn();
-                    if (first_timestamp > 0) {
-                        uint64_t relative_ms = (entry.timestamp_ns - first_timestamp) / 1000000;
-                        uint64_t ago_ms = (now_ns - entry.timestamp_ns) / 1000000;
-                        ImGui::Text("+%llu ms (%.2f s ago)", relative_ms, ago_ms / 1000.0f);
-                    } else {
-                        ImGui::Text("N/A");
-                    }
-                }
-
-                ImGui::EndTable();
-            }
-        }
-
-        ImGui::Spacing();
-
-        // Troubleshooting info
-        ImGui::TextColored(ImVec4(0.9f, 0.9f, 0.9f, 1.0f), "Troubleshooting:");
-        ImGui::Indent();
-        if (!stats.user_enabled) {
-            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), ICON_FK_WARNING " Feature is disabled in settings");
-        } else if (stats.native_reflex_detected) {
-            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), ICON_FK_WARNING " Disabled: Native Reflex detected");
-        } else if (!stats.provider_registered) {
-            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), ICON_FK_WARNING " Provider not registered");
-        } else if (!stats.etw_enabled) {
-            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), ICON_FK_WARNING " ETW provider not enabled by consumer");
-            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "  → NVIDIA overlay may not be running or listening");
-            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "  → Try opening NVIDIA overlay (Alt+Z) to enable ETW session");
-        } else if (stats.events_emitted == 0) {
-            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), ICON_FK_WARNING " No events emitted yet");
-            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "  → Waiting for Reflex markers from game");
-        } else {
-            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), ICON_FK_OK " Events are being emitted");
-        }
-        ImGui::Unindent();
-
-        ImGui::Spacing();
-
-        // Test buttons
-        if (ImGui::Button("Emit Test Marker")) {
-            latency::pclstats_etw::EmitTestMarker();
-        }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Manually emit a test PCLStatsEvent marker.\n"
-                             "Useful for verifying ETW provider is working.");
-        }
-
-        ImGui::SameLine();
-        if (ImGui::Button("Re-Emit Init Event")) {
-            latency::pclstats_etw::ReEmitInitEvent();
-        }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Re-emit PCLStatsInit event.\n"
-                             "This helps NVIDIA overlay discover the provider.\n"
-                             "Try this if overlay doesn't detect PCLStats.");
-        }
-
-        ImGui::SameLine();
-        if (ImGui::Button("Reset Statistics")) {
-            // Note: We don't have a reset function yet, but we can add one if needed
-            // For now, just log that stats are cumulative
-            LogInfo("[PCLStats] Statistics are cumulative. Restart addon to reset.");
-        }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Statistics are cumulative.\nRestart the addon to reset counters.");
-        }
-
-        ImGui::Spacing();
-        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.0f, 1.0f), ICON_FK_WARNING " If overlay still doesn't show stats:");
-        ImGui::Indent();
-        ImGui::BulletText("Try clicking 'Re-Emit Init Event' button");
-        ImGui::BulletText("Restart NVIDIA overlay (close and reopen Alt+Z)");
-        ImGui::BulletText("Verify provider GUID matches: {0D216F06-82A6-4D49-BC4F-8F38AE56EFAB}");
-        ImGui::BulletText("Check Windows Event Viewer for ETW errors");
-        ImGui::BulletText("Ensure NVIDIA overlay has 'Performance Overlay' enabled");
-        ImGui::Unindent();
-
-        ImGui::Spacing();
-        ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Note: TraceLogging providers are dynamic and won't appear in");
-        ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Get-WinEvent -ListProvider until a consumer enables them.");
-        ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "This is normal behavior - check 'ETW Enabled' status above.");
-
-        ImGui::Spacing();
-        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.0f, 1.0f), ICON_FK_WARNING " If overlay shows 0ms PCL/AV:");
-        ImGui::Indent();
-        ImGui::BulletText("Verify PC_LATENCY_PING (type 8) count > 0 in marker table");
-        ImGui::BulletText("PC_LATENCY_PING must use same FrameID as SIMULATION_START");
-        ImGui::BulletText("Check that all required markers (0,1,2,3,8) have counts > 0");
-        ImGui::BulletText("Ensure markers are sent in correct order per frame");
-        ImGui::BulletText("Frame IDs must be consistent across all markers in a frame");
-        ImGui::Unindent();
-
-        ImGui::Spacing();
-        ImGui::Separator();
-        ImGui::Spacing();
-
-        // Event Viewer instructions
-        ImGui::TextColored(ImVec4(0.9f, 0.9f, 0.9f, 1.0f), "How to Check Windows Event Viewer:");
-        ImGui::Indent();
-        ImGui::BulletText("Press Win+R, type: eventvwr.msc");
-        ImGui::BulletText("Navigate to: Windows Logs -> Application");
-        ImGui::BulletText("Look for errors/warnings mentioning:");
-        ImGui::Indent();
-        ImGui::TextColored(ImVec4(0.7f, 0.7f, 1.0f, 1.0f), "  - PCLStatsTraceLoggingProvider");
-        ImGui::TextColored(ImVec4(0.7f, 0.7f, 1.0f, 1.0f), "  - GUID: {0D216F06-82A6-4D49-BC4F-8F38AE56EFAB}");
-        ImGui::TextColored(ImVec4(0.7f, 0.7f, 1.0f, 1.0f), "  - ETW, Event Tracing, or TraceLogging errors");
-        ImGui::Unindent();
-        ImGui::BulletText("Also check: Applications and Services Logs ->");
-        ImGui::Indent();
-        ImGui::Text("  Microsoft -> Windows -> Diagnostics-Performance");
-        ImGui::Unindent();
-        ImGui::Unindent();
-
-        ImGui::Spacing();
-        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.0f, 1.0f), ICON_FK_WARNING " Common ETW Issues:");
-        ImGui::Indent();
-        ImGui::BulletText("Access Denied: Run game as Administrator");
-        ImGui::BulletText("Provider not found: Provider not registered correctly");
-        ImGui::BulletText("Session not active: NVIDIA overlay not running/listening");
-        ImGui::Unindent();
-    }
+    ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f),
+                       "Note: Debugger break button will trigger a debugger breakpoint when clicked.");
+    ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f),
+                       "Make sure you have a debugger attached before using the debugger break feature.");
+    ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.5f, 1.0f),
+                       "WARNING: Crash Handler test will intentionally crash the application!");
+    ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f),
+                       "Use it to test our SetUnhandledExceptionFilter spoofing and crash logging system.");
+    ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), ICON_FK_WARNING
+                       " DANGER: Unload ReShade DLL button will attempt to unload ReShade from memory!");
+    ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f),
+                       "This is extremely dangerous and will likely crash the game if ReShade is in use!");
 }
 
 void DrawHIDSuppression() {
     ImGui::TextColored(ImVec4(0.9f, 0.9f, 0.9f, 1.0f), "HID Suppression");
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Suppress HID input reading for games to prevent them from detecting controllers.\nUseful for preventing games from interfering with controller input handling.");
+        ImGui::SetTooltip(
+            "Suppress HID input reading for games to prevent them from detecting controllers.\nUseful for preventing "
+            "games from interfering with controller input handling.");
     }
 
     // Master HID suppression enable
     if (CheckboxSetting(settings::g_experimentalTabSettings.hid_suppression_enabled, "Enable HID Suppression")) {
-        LogInfo("HID suppression %s", settings::g_experimentalTabSettings.hid_suppression_enabled.GetValue() ? "enabled" : "disabled");
+        LogInfo("HID suppression %s",
+                settings::g_experimentalTabSettings.hid_suppression_enabled.GetValue() ? "enabled" : "disabled");
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Enable/disable HID input suppression for games.");
@@ -2147,7 +1850,9 @@ void DrawHIDSuppression() {
 
         // DualSense only option
         if (CheckboxSetting(settings::g_experimentalTabSettings.hid_suppression_dualsense_only, "DualSense Only")) {
-            LogInfo("HID suppression DualSense only %s", settings::g_experimentalTabSettings.hid_suppression_dualsense_only.GetValue() ? "enabled" : "disabled");
+            LogInfo(
+                "HID suppression DualSense only %s",
+                settings::g_experimentalTabSettings.hid_suppression_dualsense_only.GetValue() ? "enabled" : "disabled");
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Only suppress DualSense controllers. If disabled, suppresses all HID devices.");
@@ -2162,28 +1867,38 @@ void DrawHIDSuppression() {
         }
 
         if (CheckboxSetting(settings::g_experimentalTabSettings.hid_suppression_block_readfile, "Block ReadFile")) {
-            LogInfo("HID suppression ReadFile blocking %s", settings::g_experimentalTabSettings.hid_suppression_block_readfile.GetValue() ? "enabled" : "disabled");
+            LogInfo(
+                "HID suppression ReadFile blocking %s",
+                settings::g_experimentalTabSettings.hid_suppression_block_readfile.GetValue() ? "enabled" : "disabled");
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Block ReadFile operations on potential HID devices.");
         }
 
-        if (CheckboxSetting(settings::g_experimentalTabSettings.hid_suppression_block_getinputreport, "Block HidD_GetInputReport")) {
-            LogInfo("HID suppression HidD_GetInputReport blocking %s", settings::g_experimentalTabSettings.hid_suppression_block_getinputreport.GetValue() ? "enabled" : "disabled");
+        if (CheckboxSetting(settings::g_experimentalTabSettings.hid_suppression_block_getinputreport,
+                            "Block HidD_GetInputReport")) {
+            LogInfo("HID suppression HidD_GetInputReport blocking %s",
+                    settings::g_experimentalTabSettings.hid_suppression_block_getinputreport.GetValue() ? "enabled"
+                                                                                                        : "disabled");
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Block HidD_GetInputReport operations for games.");
         }
 
-        if (CheckboxSetting(settings::g_experimentalTabSettings.hid_suppression_block_getattributes, "Block HidD_GetAttributes")) {
-            LogInfo("HID suppression HidD_GetAttributes blocking %s", settings::g_experimentalTabSettings.hid_suppression_block_getattributes.GetValue() ? "enabled" : "disabled");
+        if (CheckboxSetting(settings::g_experimentalTabSettings.hid_suppression_block_getattributes,
+                            "Block HidD_GetAttributes")) {
+            LogInfo("HID suppression HidD_GetAttributes blocking %s",
+                    settings::g_experimentalTabSettings.hid_suppression_block_getattributes.GetValue() ? "enabled"
+                                                                                                       : "disabled");
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Block HidD_GetAttributes operations to prevent device detection.");
         }
 
         if (CheckboxSetting(settings::g_experimentalTabSettings.hid_suppression_block_createfile, "Block CreateFile")) {
-            LogInfo("HID suppression CreateFile blocking %s", settings::g_experimentalTabSettings.hid_suppression_block_createfile.GetValue() ? "enabled" : "disabled");
+            LogInfo("HID suppression CreateFile blocking %s",
+                    settings::g_experimentalTabSettings.hid_suppression_block_createfile.GetValue() ? "enabled"
+                                                                                                    : "disabled");
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Block CreateFile operations on HID device paths (\\?\\hid#).");
@@ -2193,29 +1908,48 @@ void DrawHIDSuppression() {
 
         // Show current settings summary
         ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Current Settings:");
-        ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Target: %s", settings::g_experimentalTabSettings.hid_suppression_dualsense_only.GetValue() ? "DualSense Only" : "All HID Devices");
-        ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  ReadFile: %s", settings::g_experimentalTabSettings.hid_suppression_block_readfile.GetValue() ? "Blocked" : "Allowed");
-        ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  GetInputReport: %s", settings::g_experimentalTabSettings.hid_suppression_block_getinputreport.GetValue() ? "Blocked" : "Allowed");
-        ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  GetAttributes: %s", settings::g_experimentalTabSettings.hid_suppression_block_getattributes.GetValue() ? "Blocked" : "Allowed");
-        ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  CreateFile: %s", settings::g_experimentalTabSettings.hid_suppression_block_createfile.GetValue() ? "Blocked" : "Allowed");
+        ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Target: %s",
+                           settings::g_experimentalTabSettings.hid_suppression_dualsense_only.GetValue()
+                               ? "DualSense Only"
+                               : "All HID Devices");
+        ImGui::TextColored(
+            ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  ReadFile: %s",
+            settings::g_experimentalTabSettings.hid_suppression_block_readfile.GetValue() ? "Blocked" : "Allowed");
+        ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  GetInputReport: %s",
+                           settings::g_experimentalTabSettings.hid_suppression_block_getinputreport.GetValue()
+                               ? "Blocked"
+                               : "Allowed");
+        ImGui::TextColored(
+            ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  GetAttributes: %s",
+            settings::g_experimentalTabSettings.hid_suppression_block_getattributes.GetValue() ? "Blocked" : "Allowed");
+        ImGui::TextColored(
+            ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  CreateFile: %s",
+            settings::g_experimentalTabSettings.hid_suppression_block_createfile.GetValue() ? "Blocked" : "Allowed");
 
         // Show hook status
         bool hooks_installed = renodx::hooks::AreHIDSuppressionHooksInstalled();
-        ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Hooks Status: %s", hooks_installed ? "Installed" : "Not Installed");
+        ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Hooks Status: %s",
+                           hooks_installed ? "Installed" : "Not Installed");
 
         ImGui::Spacing();
-        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), ICON_FK_WARNING " WARNING: This prevents games from reading HID input!");
+        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f),
+                           ICON_FK_WARNING " WARNING: This prevents games from reading HID input!");
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("HID suppression prevents games from reading controller input directly.\nThis may cause games to not recognize controllers or behave unexpectedly.\nUse with caution and test thoroughly.");
+            ImGui::SetTooltip(
+                "HID suppression prevents games from reading controller input directly.\nThis may cause games to not "
+                "recognize controllers or behave unexpectedly.\nUse with caution and test thoroughly.");
         }
     }
 }
 
 void DrawDebugOutputHooks() {
     ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== Debug Output Hooks ===");
-    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), ICON_FK_WARNING " EXPERIMENTAL FEATURE - Hooks OutputDebugStringA/W to log to ReShade!");
+    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f),
+                       ICON_FK_WARNING " EXPERIMENTAL FEATURE - Hooks OutputDebugStringA/W to log to ReShade!");
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("This feature hooks Windows debug output functions (OutputDebugStringA/W) and logs their output to the ReShade log file.\nUseful for debugging games that use debug output for logging or error reporting.");
+        ImGui::SetTooltip(
+            "This feature hooks Windows debug output functions (OutputDebugStringA/W) and logs their output to the "
+            "ReShade log file.\nUseful for debugging games that use debug output for logging or error reporting.");
     }
 
     ImGui::Spacing();
@@ -2226,7 +1960,9 @@ void DrawDebugOutputHooks() {
                 settings::g_experimentalTabSettings.debug_output_log_to_reshade.GetValue() ? "enabled" : "disabled");
     }
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("When enabled, debug output will be logged to ReShade.log.\nWhen disabled, debug output will only be passed through to the original functions.");
+        ImGui::SetTooltip(
+            "When enabled, debug output will be logged to ReShade.log.\nWhen disabled, debug output will only be "
+            "passed through to the original functions.");
     }
 
     // Show statistics setting
@@ -2247,11 +1983,10 @@ void DrawDebugOutputHooks() {
         auto& stats = display_commanderhooks::debug_output::GetDebugOutputStats();
 
         ImGui::Text("OutputDebugStringA calls: %llu",
-                   static_cast<unsigned long long>(stats.output_debug_string_a_calls.load()));
+                    static_cast<unsigned long long>(stats.output_debug_string_a_calls.load()));
         ImGui::Text("OutputDebugStringW calls: %llu",
-                   static_cast<unsigned long long>(stats.output_debug_string_w_calls.load()));
-        ImGui::Text("Total bytes logged: %llu",
-                   static_cast<unsigned long long>(stats.total_bytes_logged.load()));
+                    static_cast<unsigned long long>(stats.output_debug_string_w_calls.load()));
+        ImGui::Text("Total bytes logged: %llu", static_cast<unsigned long long>(stats.total_bytes_logged.load()));
 
         // Reset statistics button
         if (ImGui::Button("Reset Statistics")) {
@@ -2266,7 +2001,9 @@ void DrawDebugOutputHooks() {
     }
 
     ImGui::Spacing();
-    ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Note: This feature captures debug output from OutputDebugStringA and OutputDebugStringW calls.");
+    ImGui::TextColored(
+        ImVec4(0.7f, 0.7f, 0.7f, 1.0f),
+        "Note: This feature captures debug output from OutputDebugStringA and OutputDebugStringW calls.");
     ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Debug output will appear in ReShade.log when enabled.");
 }
 
@@ -2275,9 +2012,10 @@ void DrawAnisotropicFilteringUpgrade() {
     ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f),
                        ICON_FK_WARNING " EXPERIMENTAL FEATURE - Upgrades linear/bilinear filters to anisotropic!");
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("This feature upgrades linear and bilinear texture filters to anisotropic filtering.\n"
-                         "Anisotropic filtering improves texture quality on surfaces viewed at oblique angles.\n"
-                         "Use with caution as it may cause performance issues or rendering artifacts in some games.");
+        ImGui::SetTooltip(
+            "This feature upgrades linear and bilinear texture filters to anisotropic filtering.\n"
+            "Anisotropic filtering improves texture quality on surfaces viewed at oblique angles.\n"
+            "Use with caution as it may cause performance issues or rendering artifacts in some games.");
     }
 
     ImGui::Spacing();
@@ -2289,8 +2027,9 @@ void DrawAnisotropicFilteringUpgrade() {
                 settings::g_experimentalTabSettings.force_anisotropic_filtering.GetValue() ? "enabled" : "disabled");
     }
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Enable automatic upgrade of linear/bilinear filters to anisotropic filtering.\n"
-                         "The anisotropy level is controlled by the 'Anisotropic Level' setting in the Main tab.");
+        ImGui::SetTooltip(
+            "Enable automatic upgrade of linear/bilinear filters to anisotropic filtering.\n"
+            "The anisotropy level is controlled by the 'Anisotropic Level' setting in the Main tab.");
     }
 
     if (settings::g_experimentalTabSettings.force_anisotropic_filtering.GetValue()) {
@@ -2312,41 +2051,50 @@ void DrawAnisotropicFilteringUpgrade() {
                     settings::g_experimentalTabSettings.upgrade_min_mag_mip_linear.GetValue() ? "enabled" : "disabled");
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Upgrade trilinear filters (min_mag_mip_linear) to full anisotropic filtering.\n"
-                             "This affects textures that use linear filtering for min, mag, and mip.");
+            ImGui::SetTooltip(
+                "Upgrade trilinear filters (min_mag_mip_linear) to full anisotropic filtering.\n"
+                "This affects textures that use linear filtering for min, mag, and mip.");
         }
 
         // Upgrade compare trilinear (compare_min_mag_mip_linear) to compare anisotropic
         if (CheckboxSetting(settings::g_experimentalTabSettings.upgrade_compare_min_mag_mip_linear,
                             "Upgrade Compare Trilinear Filters")) {
             LogInfo("Upgrade compare trilinear filters %s",
-                    settings::g_experimentalTabSettings.upgrade_compare_min_mag_mip_linear.GetValue() ? "enabled" : "disabled");
+                    settings::g_experimentalTabSettings.upgrade_compare_min_mag_mip_linear.GetValue() ? "enabled"
+                                                                                                      : "disabled");
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Upgrade compare trilinear filters (compare_min_mag_mip_linear) to compare anisotropic filtering.\n"
-                             "This affects shadow samplers that use trilinear filtering.");
+            ImGui::SetTooltip(
+                "Upgrade compare trilinear filters (compare_min_mag_mip_linear) to compare anisotropic filtering.\n"
+                "This affects shadow samplers that use trilinear filtering.");
         }
 
         // Upgrade bilinear (min_mag_linear_mip_point) to anisotropic with point mip
         if (CheckboxSetting(settings::g_experimentalTabSettings.upgrade_min_mag_linear_mip_point,
                             "Upgrade Bilinear Filters")) {
             LogInfo("Upgrade bilinear filters %s",
-                    settings::g_experimentalTabSettings.upgrade_min_mag_linear_mip_point.GetValue() ? "enabled" : "disabled");
+                    settings::g_experimentalTabSettings.upgrade_min_mag_linear_mip_point.GetValue() ? "enabled"
+                                                                                                    : "disabled");
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Upgrade bilinear filters (min_mag_linear_mip_point) to anisotropic with point mip filtering.\n"
-                             "This preserves point mip filtering while upgrading min/mag to anisotropic.");
+            ImGui::SetTooltip(
+                "Upgrade bilinear filters (min_mag_linear_mip_point) to anisotropic with point mip filtering.\n"
+                "This preserves point mip filtering while upgrading min/mag to anisotropic.");
         }
 
         // Upgrade compare bilinear (compare_min_mag_linear_mip_point) to compare anisotropic with point mip
         if (CheckboxSetting(settings::g_experimentalTabSettings.upgrade_compare_min_mag_linear_mip_point,
                             "Upgrade Compare Bilinear Filters")) {
             LogInfo("Upgrade compare bilinear filters %s",
-                    settings::g_experimentalTabSettings.upgrade_compare_min_mag_linear_mip_point.GetValue() ? "enabled" : "disabled");
+                    settings::g_experimentalTabSettings.upgrade_compare_min_mag_linear_mip_point.GetValue()
+                        ? "enabled"
+                        : "disabled");
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Upgrade compare bilinear filters (compare_min_mag_linear_mip_point) to compare anisotropic with point mip.\n"
-                             "This affects shadow samplers that use bilinear filtering.");
+            ImGui::SetTooltip(
+                "Upgrade compare bilinear filters (compare_min_mag_linear_mip_point) to compare anisotropic with point "
+                "mip.\n"
+                "This affects shadow samplers that use bilinear filtering.");
         }
 
         ImGui::Spacing();
@@ -2355,14 +2103,21 @@ void DrawAnisotropicFilteringUpgrade() {
 
         // Show current settings summary
         ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Current Settings:");
-        ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Trilinear: %s",
-                           settings::g_experimentalTabSettings.upgrade_min_mag_mip_linear.GetValue() ? "Upgrade" : "Keep Original");
+        ImGui::TextColored(
+            ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Trilinear: %s",
+            settings::g_experimentalTabSettings.upgrade_min_mag_mip_linear.GetValue() ? "Upgrade" : "Keep Original");
         ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Compare Trilinear: %s",
-                           settings::g_experimentalTabSettings.upgrade_compare_min_mag_mip_linear.GetValue() ? "Upgrade" : "Keep Original");
+                           settings::g_experimentalTabSettings.upgrade_compare_min_mag_mip_linear.GetValue()
+                               ? "Upgrade"
+                               : "Keep Original");
         ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Bilinear: %s",
-                           settings::g_experimentalTabSettings.upgrade_min_mag_linear_mip_point.GetValue() ? "Upgrade" : "Keep Original");
+                           settings::g_experimentalTabSettings.upgrade_min_mag_linear_mip_point.GetValue()
+                               ? "Upgrade"
+                               : "Keep Original");
         ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Compare Bilinear: %s",
-                           settings::g_experimentalTabSettings.upgrade_compare_min_mag_linear_mip_point.GetValue() ? "Upgrade" : "Keep Original");
+                           settings::g_experimentalTabSettings.upgrade_compare_min_mag_linear_mip_point.GetValue()
+                               ? "Upgrade"
+                               : "Keep Original");
 
         // Show anisotropy level from main tab
         int aniso_level = settings::g_mainTabSettings.max_anisotropy.GetValue();
@@ -2373,15 +2128,16 @@ void DrawAnisotropicFilteringUpgrade() {
         }
 
         ImGui::Spacing();
-        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), ICON_FK_WARNING " WARNING: This may cause performance issues or rendering artifacts!");
+        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f),
+                           ICON_FK_WARNING " WARNING: This may cause performance issues or rendering artifacts!");
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Upgrading filters to anisotropic may increase GPU load and cause visual artifacts in some games.\n"
-                             "The anisotropy level is controlled by the 'Anisotropic Level' setting in the Main tab.\n"
-                             "Set it to 0 in the Main tab to disable anisotropy override (defaults to 16x when upgrading).");
+            ImGui::SetTooltip(
+                "Upgrading filters to anisotropic may increase GPU load and cause visual artifacts in some games.\n"
+                "The anisotropy level is controlled by the 'Anisotropic Level' setting in the Main tab.\n"
+                "Set it to 0 in the Main tab to disable anisotropy override (defaults to 16x when upgrading).");
         }
     }
 }
-
 
 void DrawDLLBlockingControls() {
     ImGui::Indent();
@@ -2395,14 +2151,16 @@ void DrawDLLBlockingControls() {
         if (settings::g_experimentalTabSettings.dll_blocking_enabled.GetValue()) {
             settings::g_experimentalTabSettings.blocked_dlls.Load();
             if (!settings::g_experimentalTabSettings.blocked_dlls.GetValue().empty()) {
-                display_commanderhooks::LoadBlockedDLLsFromSettings(settings::g_experimentalTabSettings.blocked_dlls.GetValue());
+                display_commanderhooks::LoadBlockedDLLsFromSettings(
+                    settings::g_experimentalTabSettings.blocked_dlls.GetValue());
             }
         }
     }
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Enable DLL blocking feature to prevent specific DLLs from loading.\n"
-                         "Blocked DLLs will be prevented from loading on next game restart.\n"
-                         ICON_FK_WARNING " EXPERIMENTAL FEATURE - Use with caution!");
+        ImGui::SetTooltip(
+            "Enable DLL blocking feature to prevent specific DLLs from loading.\n"
+            "Blocked DLLs will be prevented from loading on next game restart.\n" ICON_FK_WARNING
+            " EXPERIMENTAL FEATURE - Use with caution!");
     }
 
     if (!settings::g_experimentalTabSettings.dll_blocking_enabled.GetValue()) {
@@ -2416,9 +2174,10 @@ void DrawDLLBlockingControls() {
 
     ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "Block DLLs from Loading");
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Check the boxes below to prevent specific DLLs from loading.\n"
-                         "Blocked DLLs will be prevented from loading on next game restart.\n"
-                         "Settings are automatically saved.");
+        ImGui::SetTooltip(
+            "Check the boxes below to prevent specific DLLs from loading.\n"
+            "Blocked DLLs will be prevented from loading on next game restart.\n"
+            "Settings are automatically saved.");
     }
 
     ImGui::Spacing();
@@ -2499,21 +2258,24 @@ void DrawDLLBlockingControls() {
                     ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "%s", narrow_name.c_str());
                     if (ImGui::IsItemHovered()) {
                         std::string full_path(module.fullPath.begin(), module.fullPath.end());
-                        ImGui::SetTooltip("Cannot block: Loaded before Display Commander\nFull path: %s", full_path.c_str());
+                        ImGui::SetTooltip("Cannot block: Loaded before Display Commander\nFull path: %s",
+                                          full_path.c_str());
                     }
                 } else if (is_blocked) {
                     // Red for blocked modules
                     ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.5f, 1.0f), "%s", narrow_name.c_str());
                     if (ImGui::IsItemHovered()) {
                         std::string full_path(module.fullPath.begin(), module.fullPath.end());
-                        ImGui::SetTooltip("Blocked: Will prevent loading on next restart\nFull path: %s", full_path.c_str());
+                        ImGui::SetTooltip("Blocked: Will prevent loading on next restart\nFull path: %s",
+                                          full_path.c_str());
                     }
                 } else {
                     // Normal color for unblocked modules that can be blocked
                     ImGui::TextColored(ImVec4(0.7f, 1.0f, 0.7f, 1.0f), "%s", narrow_name.c_str());
                     if (ImGui::IsItemHovered()) {
                         std::string full_path(module.fullPath.begin(), module.fullPath.end());
-                        ImGui::SetTooltip("Can be blocked: Loaded after Display Commander\nFull path: %s", full_path.c_str());
+                        ImGui::SetTooltip("Can be blocked: Loaded after Display Commander\nFull path: %s",
+                                          full_path.c_str());
                     }
                 }
             }
@@ -2541,8 +2303,9 @@ void DrawDLLBlockingControls() {
     // Show blocked DLLs that aren't in the loaded modules list
     ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "Blocked DLLs (Not Loaded)");
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("DLLs that are blocked but haven't been loaded yet.\n"
-                         "Uncheck to allow them to load on next game restart.");
+        ImGui::SetTooltip(
+            "DLLs that are blocked but haven't been loaded yet.\n"
+            "Uncheck to allow them to load on next game restart.");
     }
 
     ImGui::Spacing();
@@ -2562,7 +2325,8 @@ void DrawDLLBlockingControls() {
                     module_name = L"<unknown>";
                 }
                 std::wstring lower_module_name = module_name;
-                std::transform(lower_module_name.begin(), lower_module_name.end(), lower_module_name.begin(), ::towlower);
+                std::transform(lower_module_name.begin(), lower_module_name.end(), lower_module_name.begin(),
+                               ::towlower);
 
                 if (lower_module_name == blocked_dll) {
                     found_in_loaded = true;
@@ -2583,7 +2347,7 @@ void DrawDLLBlockingControls() {
         // Show blocked DLLs in a scrollable child window
         if (ImGui::BeginChild("BlockedNotLoadedModules", ImVec2(0, 200), true)) {
             for (const auto& blocked_dll : blocked_not_loaded) {
-                bool is_blocked = true; // They're all blocked by definition
+                bool is_blocked = true;  // They're all blocked by definition
 
                 // Convert to narrow string for display
                 std::string narrow_name(blocked_dll.begin(), blocked_dll.end());
@@ -2606,7 +2370,8 @@ void DrawDLLBlockingControls() {
                 // Display blocked DLL name in red
                 ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.5f, 1.0f), "%s", narrow_name.c_str());
                 if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip("Blocked: Will prevent loading on next restart\nUncheck to allow this DLL to load");
+                    ImGui::SetTooltip(
+                        "Blocked: Will prevent loading on next restart\nUncheck to allow this DLL to load");
                 }
             }
         }
@@ -2616,4 +2381,16 @@ void DrawDLLBlockingControls() {
     ImGui::Unindent();
 }
 
-} // namespace ui::new_ui
+static void DrawPCLStatsEtwControls() {
+    ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "PCLStats ETW Reporting");
+    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f),
+                       ICON_FK_WARNING " PCLStats ETW reporting is now integrated via Streamline headers");
+    ImGui::Spacing();
+    ImGui::Text("PCLStats markers are automatically emitted when using PCLSTATS_MARKER macro.");
+    ImGui::Text("The provider is defined in latency_manager.cpp using PCLSTATS_DEFINE().");
+    ImGui::Spacing();
+    ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f),
+                       "Note: ETW provider enable/disable is controlled by external ETW consumers.");
+}
+
+}  // namespace ui::new_ui

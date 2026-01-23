@@ -1990,7 +1990,7 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
             if (IsNativeReflexActive() || settings::g_developerTabSettings.reflex_supress_native.GetValue()) {
                 ImGui::SameLine();
                 if (CheckboxSetting(settings::g_developerTabSettings.reflex_supress_native,
-                                    ICON_FK_WARNING " Suppress Native Reflex (WIP)")) {
+                                    ICON_FK_WARNING " Suppress Native Reflex")) {
                     LogInfo("Suppress Native Reflex %s",
                             settings::g_developerTabSettings.reflex_supress_native.GetValue() ? "enabled" : "disabled");
                 }
@@ -2015,41 +2015,11 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
             }
         }
 
-        // Present Pacing Delay slider (persisted)
+        // Limit Real Frames indicator (only visible if OnPresentSync mode is selected)
         if (current_item == static_cast<int>(FpsLimiterMode::kOnPresentSync)) {
             if (g_swapchain_wrapper_present_called.load(std::memory_order_acquire)) {
                 bool limit_real = settings::g_mainTabSettings.limit_real_frames.GetValue();
                 ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Limit Real Frames: %s", limit_real ? "ON" : "OFF");
-            }
-
-            ImGui::TextColored(ui::colors::TEXT_HIGHLIGHT, "Present Pacing Delay:");
-            ImGui::SameLine();
-            ImGui::TextColored(ui::colors::TEXT_DIMMED, "Improves frame timing consistency");
-
-            ImGui::TextColored(ui::colors::TEXT_SUBTLE,
-                               "Adds a small delay after present to smooth frame pacing and reduce stuttering");
-
-            float current_delay = settings::g_mainTabSettings.present_pacing_delay_percentage.GetValue();
-            if (SliderFloatSettingRef(settings::g_mainTabSettings.present_pacing_delay_percentage,
-                                      "Present Pacing Delay", "%.1f%%")) {
-                // The setting is automatically synced via FloatSettingRef
-            }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip(
-                    "Present Pacing Delay: Adds delay to starting next frame.\n\n"
-                    "How it reduces latency:\n"
-                    "- Allow for more time for CPU to process input.\n"
-                    "- Lower values provide more consistent frame timing.\n"
-                    "- Higher values provide lower latency but slightly less consistent timing.\n"
-                    "Range: 0%% to 100%%. Default: 0%% (1 frame time delay).\n"
-                    "Manual fine-tuning required.");
-            }
-
-            // Add question mark with tooltip for manual fine-tuning note
-            ImGui::SameLine();
-            ImGui::TextColored(ui::colors::ICON_WARNING, ICON_FK_WARNING);
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("Manual fine-tuning is needed for now");
             }
         }
     }

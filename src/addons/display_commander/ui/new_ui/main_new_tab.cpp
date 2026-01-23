@@ -1198,6 +1198,30 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
 
         ImGui::Spacing();
 
+        // Clip Cursor checkbox
+        bool clip_cursor = settings::g_mainTabSettings.clip_cursor_enabled.GetValue();
+        if (ImGui::Checkbox("Clip Cursor", &clip_cursor)) {
+            settings::g_mainTabSettings.clip_cursor_enabled.SetValue(clip_cursor);
+            // If disabling, unlock cursor immediately
+            if (!clip_cursor) {
+                display_commanderhooks::ClipCursor_Direct(nullptr);
+            } else {
+                // If enabling and game is in foreground, clip immediately
+                if (!g_app_in_background.load()) {
+                    display_commanderhooks::ClipCursorToGameWindow();
+                }
+            }
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip(
+                "Limits mouse movement to the game window when the game is in foreground.\n"
+                "Unlocks cursor when game is in background.\n\n"
+                "This fixes games which don't lock the mouse cursor, preventing focus switches\n"
+                "on multimonitor setups when moving the mouse and clicking.");
+        }
+
+        ImGui::Spacing();
+
         // Home button behavior for Display Commander UI
         bool require_solo_press = settings::g_mainTabSettings.guide_button_solo_ui_toggle_only.GetValue();
         if (ImGui::Checkbox("Require Home-only press to toggle Display Commander UI", &require_solo_press)) {

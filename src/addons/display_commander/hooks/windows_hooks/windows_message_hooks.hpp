@@ -247,6 +247,7 @@ BOOL WINAPI GetKeyboardState_Detour(PBYTE lpKeyState);
 BOOL WINAPI ClipCursor_Detour(const RECT *lpRect);
 BOOL ClipCursor_Direct(const RECT *lpRect);
 void RestoreClipCursor();
+void ClipCursorToGameWindow();
 BOOL WINAPI GetCursorPos_Detour(LPPOINT lpPoint);
 BOOL WINAPI SetCursorPos_Detour(int X, int Y);
 SHORT WINAPI GetKeyState_Detour(int vKey);

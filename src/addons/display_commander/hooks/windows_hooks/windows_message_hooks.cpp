@@ -586,6 +586,19 @@ void RestoreClipCursor() {
     }
 }
 
+// Function to clip cursor to game window rectangle
+void ClipCursorToGameWindow() {
+    HWND hwnd = g_last_swapchain_hwnd.load();
+    if (hwnd != nullptr && IsWindow(hwnd)) {
+        RECT window_rect;
+        if (GetWindowRect(hwnd, &window_rect)) {
+            ClipCursor_Direct(&window_rect);
+            LogInfo("ClipCursorToGameWindow: Clipped cursor to game window rect (%ld,%ld) to (%ld,%ld)",
+                    window_rect.left, window_rect.top, window_rect.right, window_rect.bottom);
+        }
+    }
+}
+
 // Hooked ClipCursor function
 BOOL WINAPI ClipCursor_Detour(const RECT *lpRect) {
     RECORD_DETOUR_CALL(utils::get_now_ns());

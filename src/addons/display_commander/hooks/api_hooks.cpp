@@ -310,10 +310,10 @@ HCURSOR WINAPI SetCursor_Detour(HCURSOR hCursor) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Store the cursor value atomically
     s_last_cursor_value.store(hCursor);
-    if (ShouldBlockMouseInput()) {
-        hCursor = LoadCursor(nullptr, IDC_ARROW);
-    }
-    hCursor = LoadCursor(nullptr, IDC_ARROW);
+    // if (ShouldBlockMouseInput()) {
+    //     hCursor = LoadCursor(nullptr, IDC_ARROW);
+    //  }
+    // hCursor = LoadCursor(nullptr, IDC_ARROW);
 
     // Call original function
     return SetCursor_Direct(hCursor);

@@ -121,8 +121,8 @@ void check_is_background() {
         if (settings::g_mainTabSettings.clip_cursor_enabled.GetValue()) {
             if (app_in_background) {
                 LogInfo("Continuous monitoring: App moved to BACKGROUND");
-                ReleaseCapture();
-                // Release cursor clipping when going to background
+                // ReleaseCapture();
+                //  Release cursor clipping when going to background
                 display_commanderhooks::ClipCursor_Direct(nullptr);
 
                 // Set cursor to default arrow when moving to background
@@ -140,24 +140,30 @@ void check_is_background() {
             }  // else {
             //      display_commanderhooks::RestoreClipCursor();
             //   }
+        } else {
+            if (app_in_background) {
+                display_commanderhooks::ClipCursor_Direct(nullptr);
+            } else {
+                display_commanderhooks::RestoreClipCursor();
+            }
+
+            // display_commanderhooks::RestoreSetCursor();
+
+            // display_commanderhooks::RestoreShowCursor();
         }
 
-        // display_commanderhooks::RestoreSetCursor();
+        // Apply window changes - the function will automatically determine what needs to be changed
+        // Skip if suppress_window_changes is enabled (compatibility feature) or if window mode is kNoChanges
+        if (!settings::g_developerTabSettings.suppress_window_changes.GetValue()
+            && s_window_mode.load() != WindowMode::kNoChanges) {
+            ApplyWindowChange(hwnd, "continuous_monitoring_auto_fix");
+        }
 
-        // display_commanderhooks::RestoreShowCursor();
-    }
-
-    // Apply window changes - the function will automatically determine what needs to be changed
-    // Skip if suppress_window_changes is enabled (compatibility feature) or if window mode is kNoChanges
-    if (!settings::g_developerTabSettings.suppress_window_changes.GetValue()
-        && s_window_mode.load() != WindowMode::kNoChanges) {
-        ApplyWindowChange(hwnd, "continuous_monitoring_auto_fix");
-    }
-
-    if (s_background_feature_enabled.load()) {
-        // Only create/update background window if main window has focus
-        if (current_foreground_hwnd != nullptr) {
-            g_backgroundWindowManager.UpdateBackgroundWindow(current_foreground_hwnd);
+        if (s_background_feature_enabled.load()) {
+            // Only create/update background window if main window has focus
+            if (current_foreground_hwnd != nullptr) {
+                g_backgroundWindowManager.UpdateBackgroundWindow(current_foreground_hwnd);
+            }
         }
     }
 }

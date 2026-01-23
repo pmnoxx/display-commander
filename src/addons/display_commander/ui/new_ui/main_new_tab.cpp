@@ -1167,7 +1167,7 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
             // Restore cursor clipping when input blocking is disabled
             if (settings::g_mainTabSettings.keyboard_input_blocking.GetValue()
                 == static_cast<int>(InputBlockingMode::kDisabled)) {
-                display_commanderhooks::RestoreClipCursor();
+                // display_commanderhooks::RestoreClipCursor();
             }
         }
         if (ImGui::IsItemHovered()) {
@@ -1180,7 +1180,7 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
             // Restore cursor clipping when input blocking is disabled
             if (settings::g_mainTabSettings.mouse_input_blocking.GetValue()
                 == static_cast<int>(InputBlockingMode::kDisabled)) {
-                display_commanderhooks::RestoreClipCursor();
+                // display_commanderhooks::RestoreClipCursor();
             }
         }
         if (ImGui::IsItemHovered()) {

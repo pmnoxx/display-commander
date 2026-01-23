@@ -85,7 +85,7 @@ MainTabSettings::MainTabSettings()
       gamepad_input_blocking("gamepad_input_blocking", s_gamepad_input_blocking,
                              static_cast<int>(InputBlockingMode::kDisabled),
                              {"Disabled", "Enabled", "Enabled (in background)"}, "DisplayCommander"),
-      clip_cursor_enabled("clip_cursor_enabled", true, "DisplayCommander"),
+      clip_cursor_enabled("clip_cursor_enabled", false, "DisplayCommander"),
       no_render_in_background("no_render_in_background", s_no_render_in_background, s_no_render_in_background.load(),
                               "DisplayCommander"),
       no_present_in_background("no_present_in_background", s_no_present_in_background,

@@ -867,30 +867,7 @@ void OnInitSwapchain(reshade::api::swapchain* swapchain, bool resize) {
 }
 
 HANDLE g_timer_handle = nullptr;
-LONGLONG TimerPresentPacingDelayStart() {
-    LONGLONG start_ns = utils::get_now_ns();
-    if (settings::g_mainTabSettings.frame_time_mode.GetValue() == static_cast<int>(FrameTimeMode::kPresent)) {
-        float delay_percentage = s_present_pacing_delay_percentage.load();
-        if (delay_percentage > 0.0f) {
-            // Calculate frame time from the most recent performance sample
-            const uint32_t count = g_perf_ring.GetCount();
-            if (count > 0) {
-                const PerfSample& last_sample = g_perf_ring.GetSample(0);
-                if (last_sample.dt > 0.0f) {
-                    // Convert FPS to frame time in milliseconds, then to nanoseconds
-                    float frame_time_ms = 1000.0f * last_sample.dt;
-                    float delay_ms = frame_time_ms * (delay_percentage / 100.0f);
-                    LONGLONG delta_ns = static_cast<LONGLONG>(delay_ms * utils::NS_TO_MS);
-                    delta_ns -= late_amount_ns.load();
-                    if (delta_ns > 0) {
-                        utils::wait_until_ns(utils::get_now_ns() + delta_ns, g_timer_handle);
-                    }
-                }
-            }
-        }
-    }
-    return start_ns;
-}
+LONGLONG TimerPresentPacingDelayStart() { return utils::get_now_ns(); }
 
 LONGLONG TimerPresentPacingDelayEnd(LONGLONG start_ns) {
     LONGLONG end_ns = utils::get_now_ns();
@@ -1124,13 +1101,17 @@ float GetDelayBiasFromRatio(int ratio_index) {
 }
 
 void HandleFpsLimiterPre(bool from_present_detour, bool from_wrapper = false) {
-    LONGLONG handle_fps_limiter_start_time_ns = utils::get_now_ns();
+    auto now_ns = utils::get_now_ns();
+    RECORD_DETOUR_CALL(now_ns);
+    LONGLONG handle_fps_limiter_start_time_ns = now_ns;
     float target_fps = GetTargetFps();
     late_amount_ns.store(0);
 
     if (from_wrapper) {
+        RECORD_DETOUR_CALL(now_ns);
         // TODO optimize GetDLSSGSummary call by replacing with simplified function
         const DLSSGSummary dlssg_summary = GetDLSSGSummary();
+        RECORD_DETOUR_CALL(now_ns);
         if (dlssg_summary.dlss_g_active) {
             if (dlssg_summary.fg_mode == "2x") {
                 target_fps /= 2.0f;
@@ -1142,6 +1123,7 @@ void HandleFpsLimiterPre(bool from_present_detour, bool from_wrapper = false) {
         }
     }
     if (target_fps > 0.0f || s_fps_limiter_mode.load() == FpsLimiterMode::kLatentSync) {
+        RECORD_DETOUR_CALL(now_ns);
         // Note: Command queue flushing is now handled in OnPresentUpdateBefore using native DirectX APIs
         // No need to flush here anymore
 
@@ -1164,7 +1146,8 @@ void HandleFpsLimiterPre(bool from_present_detour, bool from_wrapper = false) {
                 int ratio_index = settings::g_mainTabSettings.onpresent_sync_low_latency_ratio.GetValue();
                 float delay_bias = GetDelayBiasFromRatio(ratio_index);
 
-                if (target_fps > 0.0f) {
+                if (target_fps >= 1.0f) {
+                    RECORD_DETOUR_CALL(now_ns);
                     // Calculate frame time
                     float adjusted_target_fps = target_fps;
                     if (settings::g_mainTabSettings.onpresent_sync_enable_reflex.GetValue()) {
@@ -1179,21 +1162,21 @@ void HandleFpsLimiterPre(bool from_present_detour, bool from_wrapper = false) {
                     // Calculate pre-sleep time: (1 - delay_bias) * frame_time
                     // This is the time we sleep BEFORE starting frame processing
                     LONGLONG pre_sleep_ns = static_cast<LONGLONG>((1.0f - delay_bias) * frame_time_ns);
-                    LONGLONG postsleep_ns = static_cast<LONGLONG>(delay_bias * frame_time_ns);
+                    LONGLONG post_sleep_ns = static_cast<LONGLONG>(delay_bias * frame_time_ns);
 
                     // Get current time and previous frame start time
-                    // KEY: Use previous frame START time, not END time, to maintain start-to-start spacing
-                    LONGLONG now_ns = utils::get_now_ns();
+                    // KEY: Use previous frame START time, not END time, to maintain start-to-start spacin
                     LONGLONG previous_frame_start_ns = g_onpresent_sync_frame_start_ns.load();
 
                     // Calculate ideal frame start time
                     // Frames should be spaced by exactly frame_time_ns from start to start
                     LONGLONG ideal_frame_start_ns =
-                        (std::max)(now_ns - frame_time_ns, previous_frame_start_ns + frame_time_ns);
+                        (std::max)(now_ns - post_sleep_ns, previous_frame_start_ns + frame_time_ns);
 
                     // Always sleep for pre_sleep_ns before starting the frame
                     // When delay_bias = 0: pre_sleep = frame_time, so we sleep for the full frame time
                     // When delay_bias = 1.0: pre_sleep = 0, so we start immediately
+                    RECORD_DETOUR_CALL(now_ns);
                     if (ideal_frame_start_ns > now_ns) {
                         // On time - sleep until calculated time (ensures we sleep for pre_sleep_ns)
                         utils::wait_until_ns(ideal_frame_start_ns, g_timer_handle);
@@ -1206,9 +1189,10 @@ void HandleFpsLimiterPre(bool from_present_detour, bool from_wrapper = false) {
                         late_amount_ns.store(now_ns - ideal_frame_start_ns);
                         g_onpresent_sync_pre_sleep_ns.store(0);
                     }
+                    RECORD_DETOUR_CALL(now_ns);
                     // Record when frame processing actually started
                     g_onpresent_sync_frame_start_ns.store(ideal_frame_start_ns);
-                    g_post_sleep_ns.store(ideal_frame_start_ns + postsleep_ns);
+                    g_post_sleep_ns.store(ideal_frame_start_ns + post_sleep_ns);
                 } else {
                     // No FPS limit - reset state
                     g_onpresent_sync_delay_bias.store(0.0f);
@@ -1216,7 +1200,7 @@ void HandleFpsLimiterPre(bool from_present_detour, bool from_wrapper = false) {
                 }
 
                 if (settings::g_mainTabSettings.onpresent_sync_enable_reflex.GetValue()) {
-                    s_reflex_auto_configure.store(true);
+                    if (!s_reflex_auto_configure.load()) s_reflex_auto_configure.store(true);
                 }
                 break;
             }
@@ -1232,6 +1216,7 @@ void HandleFpsLimiterPre(bool from_present_detour, bool from_wrapper = false) {
             }
         }
     }
+    RECORD_DETOUR_CALL(utils::get_now_ns());
 
     LONGLONG handle_fps_limiter_start_end_time_ns = utils::get_now_ns();
     g_present_start_time_ns.store(handle_fps_limiter_start_end_time_ns);
@@ -1240,6 +1225,7 @@ void HandleFpsLimiterPre(bool from_present_detour, bool from_wrapper = false) {
         max(1, handle_fps_limiter_start_end_time_ns - handle_fps_limiter_start_time_ns);
     fps_sleep_before_on_present_ns.store(
         UpdateRollingAverage(handle_fps_limiter_start_duration_ns, fps_sleep_before_on_present_ns.load()));
+    RECORD_DETOUR_CALL(utils::get_now_ns());
 }
 
 // Helper function to automatically set color space based on format
@@ -1470,6 +1456,7 @@ bool OnBindPipeline(reshade::api::command_list* cmd_list, reshade::api::pipeline
 
 // Present flags callback to strip DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING
 void OnPresentFlags2(uint32_t* present_flags, DeviceTypeDC api_type, bool from_present_detour, bool from_wrapper) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     if (perf_measurement::IsSuppressionEnabled()
         && perf_measurement::IsMetricSuppressed(perf_measurement::Metric::OnPresentFlags2)) {
         return;
@@ -1501,6 +1488,7 @@ void OnPresentFlags2(uint32_t* present_flags, DeviceTypeDC api_type, bool from_p
     }
 
     HandleFpsLimiterPre(from_present_detour, from_wrapper);
+    RECORD_DETOUR_CALL(utils::get_now_ns());
 
     if (s_reflex_enable_current_frame.load()) {
         if (settings::g_developerTabSettings.reflex_generate_markers.GetValue()) {
@@ -1509,6 +1497,7 @@ void OnPresentFlags2(uint32_t* present_flags, DeviceTypeDC api_type, bool from_p
             }
         }
     }
+    RECORD_DETOUR_CALL(utils::get_now_ns());
 }
 
 // Resource creation event handler to upgrade buffer resolutions and texture

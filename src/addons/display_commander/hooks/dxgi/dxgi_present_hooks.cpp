@@ -375,6 +375,7 @@ std::atomic<IDXGISwapChain*> g_last_present_update_swapchain{nullptr};
 // Helper function for common Present/Present1 logic before calling original
 template <typename SwapChainType>
 PresentCommonState HandlePresentBefore(SwapChainType* This) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     if (perf_measurement::IsSuppressionEnabled()
         && perf_measurement::IsMetricSuppressed(perf_measurement::Metric::HandlePresentBefore)) {
         PresentCommonState suppressed_state;
@@ -411,6 +412,7 @@ PresentCommonState HandlePresentBefore(SwapChainType* This) {
 }
 
 void HandlePresentBefore2() {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     // Record per-frame FPS sample for background aggregation
     {
         const bool suppress_section =
@@ -456,6 +458,7 @@ void HandlePresentBefore2() {
 
 // Helper function for common Present/Present1 logic after calling original
 void HandlePresentAfter(IDXGISwapChain* baseSwapChain, const PresentCommonState& state, bool from_wrapper) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     if (perf_measurement::IsSuppressionEnabled()
         && perf_measurement::IsMetricSuppressed(perf_measurement::Metric::HandlePresentAfter)) {
         return;
@@ -520,6 +523,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain* This, UI
     }
     ::QueryDxgiCompositionState(This);
     ::dxgi::fps_limiter::SignalRefreshRateMonitor();
+    RECORD_DETOUR_CALL(utils::get_now_ns());
 
     return res;
 }

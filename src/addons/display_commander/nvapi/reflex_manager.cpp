@@ -1,12 +1,14 @@
 #include "reflex_manager.hpp"
 #include "../globals.hpp"
 #include "../hooks/nvapi_hooks.hpp"
-#include "../latency/pclstats_etw.hpp"
 #include "../settings/main_tab_settings.hpp"
 #include "../utils.hpp"
 #include "../utils/logging.hpp"
 #include "utils/timing.hpp"
 
+// Include Streamline PCLStats header for PCLSTATS_MARKER macro
+// Path is relative to src/addons/display_commander from external/Streamline
+#include "../../../../external/Streamline/source/plugins/sl.pcl/pclstats.h"
 // Minimal helper to pull the native D3D device pointer from ReShade device
 static IUnknown* GetNativeD3DDeviceFromReshade(reshade::api::device* device) {
     if (device == nullptr) return nullptr;
@@ -120,7 +122,7 @@ bool ReflexManager::SetMarker(NV_LATENCY_MARKER_TYPE marker) {
     }
 
     // Emit PCLStats marker (ETW) using the same marker type / frame id we sent to NVAPI.
-    latency::pclstats_etw::EmitMarker(static_cast<uint32_t>(marker), static_cast<uint64_t>(mp.frameID));
+    PCLSTATS_MARKER(static_cast<PCLSTATS_LATENCY_MARKER_TYPE>(marker), static_cast<uint64_t>(mp.frameID));
     return true;
 }
 

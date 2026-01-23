@@ -1,10 +1,11 @@
 #include "refresh_rate_monitor_integration.hpp"
-#include "refresh_rate_monitor.hpp"
-#include "../utils/logging.hpp"
-#include "../display_cache.hpp"
+#include <windows.h>
 #include <memory>
 #include <string>
-#include <windows.h>
+#include "../display_cache.hpp"
+#include "../utils/logging.hpp"
+#include "refresh_rate_monitor.hpp"
+
 
 // Example of how to integrate RefreshRateMonitor with existing code
 namespace dxgi::fps_limiter {
@@ -33,9 +34,7 @@ void StopRefreshRateMonitoring() {
 }
 
 // Function to check if monitoring is active
-bool IsRefreshRateMonitoringActive() {
-    return g_refresh_rate_monitor && g_refresh_rate_monitor->IsMonitoring();
-}
+bool IsRefreshRateMonitoringActive() { return g_refresh_rate_monitor && g_refresh_rate_monitor->IsMonitoring(); }
 
 // Function to get current measured refresh rate
 double GetCurrentMeasuredRefreshRate() {
@@ -152,4 +151,4 @@ void ProcessFrameStatistics(DXGI_FRAME_STATISTICS& stats) {
     }
 }
 
-} // namespace dxgi::fps_limiter
+}  // namespace dxgi::fps_limiter

@@ -1564,7 +1564,10 @@ void UpdateBatteryStatus(DWORD user_index) {
     } else {
         // Mark battery info as invalid if we can't get it
         shared_state->battery_info_valid[user_index] = false;
-        LogWarn("XXX Failed to get battery info for controller %lu: %lu", user_index, result);
+        static int debug_count = 0;
+        if (debug_count++ < 3) {
+            LogWarn("XXX Failed to get battery info for controller %lu: %lu", user_index, result);
+        }
     }
 }
 

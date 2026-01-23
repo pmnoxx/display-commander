@@ -22,8 +22,8 @@ struct DetourCallEntry {
 
 // Record a detour function call (thread-safe, lock-free)
 // Uses relaxed memory ordering for maximum performance
-// Function name is stored as pointer to string literal (valid for program lifetime)
-void RecordDetourCall(const char* function_name, uint64_t timestamp_ns);
+// Function name and line number are combined into a formatted string
+void RecordDetourCall(const char* function_name, int line_number, uint64_t timestamp_ns);
 
 // Get recent detour calls (up to max_count, most recent first)
 // Returns number of entries filled
@@ -37,7 +37,7 @@ std::string FormatRecentDetourCalls(uint64_t crash_timestamp_ns, size_t max_coun
 } // namespace detour_call_tracker
 
 // Macro to record detour call - pass timestamp in nanoseconds
+// Combines __FUNCTION__ and __LINE__ into a formatted string
 // Usage: RECORD_DETOUR_CALL(utils::get_now_ns())
 #define RECORD_DETOUR_CALL(timestamp_ns) \
-    detour_call_tracker::RecordDetourCall(__FUNCTION__, (1))
-
+    detour_call_tracker::RecordDetourCall(__FUNCTION__, __LINE__, (timestamp_ns))

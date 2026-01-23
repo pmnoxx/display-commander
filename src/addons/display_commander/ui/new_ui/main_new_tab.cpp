@@ -3213,6 +3213,97 @@ void DrawWindowControls() {
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Restore the minimized game window.");
     }
+
+    ImGui::SameLine();
+
+    // Open DisplayCommander.log Button
+    ui::colors::PushIconColor(ui::colors::ICON_ACTION);
+    if (ImGui::Button(ICON_FK_FILE " DisplayCommander.log")) {
+        std::thread([]() {
+            LogDebug("Open DisplayCommander.log button pressed (bg thread)");
+
+            // Get current process executable path
+            char process_path[MAX_PATH];
+            DWORD path_length = GetModuleFileNameA(nullptr, process_path, MAX_PATH);
+
+            if (path_length == 0) {
+                LogError("Failed to get current process path for log file opening");
+                return;
+            }
+
+            // Get the parent directory of the executable
+            std::string full_path(process_path);
+            size_t last_slash = full_path.find_last_of("\\/");
+
+            if (last_slash == std::string::npos) {
+                LogError("Invalid process path format: %s", full_path.c_str());
+                return;
+            }
+
+            std::string log_path = full_path.substr(0, last_slash) + "\\DisplayCommander.log";
+            LogInfo("Opening DisplayCommander.log: %s", log_path.c_str());
+
+            // Open the log file with default text editor
+            HINSTANCE result = ShellExecuteA(nullptr, "open", log_path.c_str(), nullptr, nullptr, SW_SHOW);
+
+            if (reinterpret_cast<intptr_t>(result) <= 32) {
+                LogError("Failed to open DisplayCommander.log: %s (Error: %ld)", log_path.c_str(),
+                         reinterpret_cast<intptr_t>(result));
+            } else {
+                LogInfo("Successfully opened DisplayCommander.log: %s", log_path.c_str());
+            }
+        }).detach();
+    }
+    ui::colors::PopIconColor();
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Open DisplayCommander.log in the default text editor.");
+    }
+
+    ImGui::SameLine();
+
+    // Open reshade.log Button
+    ui::colors::PushIconColor(ui::colors::ICON_ACTION);
+    if (ImGui::Button(ICON_FK_FILE " reshade.log")) {
+        std::thread([]() {
+            LogDebug("Open reshade.log button pressed (bg thread)");
+
+            // Get current process executable path
+            char process_path[MAX_PATH];
+            DWORD path_length = GetModuleFileNameA(nullptr, process_path, MAX_PATH);
+
+            if (path_length == 0) {
+                LogError("Failed to get current process path for log file opening");
+                return;
+            }
+
+            // Get the parent directory of the executable
+            std::string full_path(process_path);
+            size_t last_slash = full_path.find_last_of("\\/");
+
+            if (last_slash == std::string::npos) {
+                LogError("Invalid process path format: %s", full_path.c_str());
+                return;
+            }
+
+            std::string log_path = full_path.substr(0, last_slash) + "\\reshade.log";
+            LogInfo("Opening reshade.log: %s", log_path.c_str());
+
+            // Open the log file with default text editor
+            HINSTANCE result = ShellExecuteA(nullptr, "open", log_path.c_str(), nullptr, nullptr, SW_SHOW);
+
+            if (reinterpret_cast<intptr_t>(result) <= 32) {
+                LogError("Failed to open reshade.log: %s (Error: %ld)", log_path.c_str(),
+                         reinterpret_cast<intptr_t>(result));
+            } else {
+                LogInfo("Successfully opened reshade.log: %s", log_path.c_str());
+            }
+        }).detach();
+    }
+    ui::colors::PopIconColor();
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Open reshade.log in the default text editor.");
+    }
+
 #if 0
 
     ImGui::SameLine();

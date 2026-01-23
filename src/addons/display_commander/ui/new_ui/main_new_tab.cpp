@@ -332,12 +332,22 @@ void DrawFrameTimeGraphOverlay(bool show_tooltips) {
     }
 
     // Calculate statistics for the graph
+    float min_frame_time = *std::ranges::min_element(frame_times);
     float max_frame_time = *std::ranges::max_element(frame_times);
     float avg_frame_time = 0.0f;
     for (float ft : frame_times) {
         avg_frame_time += ft;
     }
     avg_frame_time /= static_cast<float>(frame_times.size());
+
+    // Calculate standard deviation
+    float variance = 0.0f;
+    for (float ft : frame_times) {
+        float diff = ft - avg_frame_time;
+        variance += diff * diff;
+    }
+    variance /= static_cast<float>(frame_times.size());
+    float std_deviation = std::sqrt(variance);
 
     // Fixed width for overlay (compact) - apply user scale
     float graph_scale = settings::g_mainTabSettings.overlay_graph_scale.GetValue();
@@ -362,6 +372,13 @@ void DrawFrameTimeGraphOverlay(bool show_tooltips) {
 
     // Restore original style color
     ImGui::PopStyleColor();
+
+    // Display frame time statistics if enabled
+    bool show_frame_time_stats = settings::g_mainTabSettings.show_frame_time_stats.GetValue();
+    if (show_frame_time_stats) {
+        ImGui::Text("Avg: %.2f ms | Dev: %.2f ms | Min: %.2f ms | Max: %.2f ms", avg_frame_time, std_deviation,
+                    min_frame_time, max_frame_time);
+    }
 
     if (ImGui::IsItemHovered() && show_tooltips) {
         ImGui::SetTooltip("Frame time graph (last 256 frames)\nAvg: %.2f ms | Max: %.2f ms", avg_frame_time,
@@ -3392,6 +3409,16 @@ void DrawImportantInfo() {
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Shows a graph of frame times in the overlay.");
+        }
+        ImGui::NextColumn();
+
+        // Show Frame Time Stats Control
+        bool show_frame_time_stats = settings::g_mainTabSettings.show_frame_time_stats.GetValue();
+        if (ImGui::Checkbox("Show frame time stats", &show_frame_time_stats)) {
+            settings::g_mainTabSettings.show_frame_time_stats.SetValue(show_frame_time_stats);
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Shows frame time statistics (avg, deviation, min, max) in the overlay.");
         }
         ImGui::NextColumn();
 

@@ -10,13 +10,13 @@
 #include "settings/developer_tab_settings.hpp"
 #include "settings/experimental_tab_settings.hpp"
 #include "settings/main_tab_settings.hpp"
-#include "ui/new_ui/swapchain_tab.hpp"
 #include "ui/new_ui/hotkeys_tab.hpp"
+#include "ui/new_ui/swapchain_tab.hpp"
 #include "utils/logging.hpp"
-#include "utils/timing.hpp"
 #include "utils/overlay_window_detector.hpp"
-#include "widgets/resolution_widget/resolution_widget.hpp"
+#include "utils/timing.hpp"
 #include "widgets/resolution_widget/resolution_settings.hpp"
+#include "widgets/resolution_widget/resolution_widget.hpp"
 
 #include <algorithm>
 #include <chrono>
@@ -50,7 +50,9 @@ void HandleReflexAutoConfigure() {
 
     bool is_reflex_mode =
         static_cast<FpsLimiterMode>(settings::g_mainTabSettings.fps_limiter_mode.GetValue()) == FpsLimiterMode::kReflex
-        || (static_cast<FpsLimiterMode>(settings::g_mainTabSettings.fps_limiter_mode.GetValue()) == FpsLimiterMode::kOnPresentSync && settings::g_mainTabSettings.onpresent_sync_enable_reflex.GetValue());
+        || (static_cast<FpsLimiterMode>(settings::g_mainTabSettings.fps_limiter_mode.GetValue())
+                == FpsLimiterMode::kOnPresentSync
+            && settings::g_mainTabSettings.onpresent_sync_enable_reflex.GetValue());
 
     // Get current settings
     bool reflex_enable = settings::g_developerTabSettings.reflex_enable.GetValue();
@@ -71,24 +73,26 @@ void HandleReflexAutoConfigure() {
         }
     }
 
-     if (!reflex_low_latency) {
-         settings::g_developerTabSettings.reflex_low_latency.SetValue(true);
-     }
-/*
-     if (!reflex_boost) {
-         settings::g_developerTabSettings.reflex_boost.SetValue(true);
-     } */
+    if (!reflex_low_latency) {
+        settings::g_developerTabSettings.reflex_low_latency.SetValue(true);
+    }
+    /*
+         if (!reflex_boost) {
+             settings::g_developerTabSettings.reflex_boost.SetValue(true);
+         } */
     {
         if (!settings::g_developerTabSettings.reflex_use_markers.GetValue()) {
             settings::g_developerTabSettings.reflex_use_markers.SetValue(true);
         }
     }
 
-    if (reflex_generate_markers == is_native_reflex_active && settings::g_developerTabSettings.reflex_generate_markers.GetValue() != !is_native_reflex_active) {
+    if (reflex_generate_markers == is_native_reflex_active
+        && settings::g_developerTabSettings.reflex_generate_markers.GetValue() != !is_native_reflex_active) {
         settings::g_developerTabSettings.reflex_generate_markers.SetValue(!is_native_reflex_active);
     }
 
-    if (reflex_enable_sleep == is_native_reflex_active && settings::g_developerTabSettings.reflex_enable_sleep.GetValue() != !is_native_reflex_active) {
+    if (reflex_enable_sleep == is_native_reflex_active
+        && settings::g_developerTabSettings.reflex_enable_sleep.GetValue() != !is_native_reflex_active) {
         settings::g_developerTabSettings.reflex_enable_sleep.SetValue(!is_native_reflex_active);
     }
 }
@@ -96,22 +100,25 @@ void HandleReflexAutoConfigure() {
 void check_is_background() {
     // Get the current swapchain window
     HWND hwnd = g_last_swapchain_hwnd.load();
-    if (hwnd != nullptr) {
-        // BACKGROUND DETECTION: Check if the app is in background using original GetForegroundWindow
-        HWND current_foreground_hwnd = display_commanderhooks::GetForegroundWindow_Direct();
+    if (hwnd == nullptr) {
+        return;
+    }
+    // BACKGROUND DETECTION: Check if the app is in background using original GetForegroundWindow
+    HWND current_foreground_hwnd = display_commanderhooks::GetForegroundWindow_Direct();
 
-        // current pid
-        DWORD current_pid = GetCurrentProcessId();
+    // current pid
+    DWORD current_pid = GetCurrentProcessId();
 
-        // foreground pid
-        DWORD foreground_pid = 0;
-        DWORD foreground_tid = GetWindowThreadProcessId(current_foreground_hwnd, &foreground_pid);
+    // foreground pid
+    DWORD foreground_pid = 0;
+    DWORD foreground_tid = GetWindowThreadProcessId(current_foreground_hwnd, &foreground_pid);
 
-        bool app_in_background = foreground_pid != current_pid;
+    bool app_in_background = foreground_pid != current_pid;
 
-        if (app_in_background != g_app_in_background.load()) {
-            g_app_in_background.store(app_in_background);
+    if (app_in_background != g_app_in_background.load()) {
+        g_app_in_background.store(app_in_background);
 
+        if (settings::g_mainTabSettings.clip_cursor_enabled.GetValue()) {
             if (app_in_background) {
                 LogInfo("Continuous monitoring: App moved to BACKGROUND");
                 ReleaseCapture();
@@ -126,32 +133,31 @@ void check_is_background() {
             } else {
                 LogInfo("Continuous monitoring: App moved to FOREGROUND");
                 // Restore cursor clipping when coming to foreground
-                display_commanderhooks::RestoreClipCursor();
                 LogInfo("Continuous monitoring: Restored cursor clipping for foreground");
 
                 // If clip cursor feature is enabled, clip cursor to game window
-                if (settings::g_mainTabSettings.clip_cursor_enabled.GetValue()) {
-                    display_commanderhooks::ClipCursorToGameWindow();
-                }
-
-                // display_commanderhooks::RestoreSetCursor();
-
-                // display_commanderhooks::RestoreShowCursor();
-            }
+                display_commanderhooks::ClipCursorToGameWindow();
+            }  // else {
+            //      display_commanderhooks::RestoreClipCursor();
+            //   }
         }
 
-        // Apply window changes - the function will automatically determine what needs to be changed
-        // Skip if suppress_window_changes is enabled (compatibility feature) or if window mode is kNoChanges
-        if (!settings::g_developerTabSettings.suppress_window_changes.GetValue() &&
-            s_window_mode.load() != WindowMode::kNoChanges) {
-            ApplyWindowChange(hwnd, "continuous_monitoring_auto_fix");
-        }
+        // display_commanderhooks::RestoreSetCursor();
 
-        if (s_background_feature_enabled.load()) {
-            // Only create/update background window if main window has focus
-            if (current_foreground_hwnd != nullptr) {
-                g_backgroundWindowManager.UpdateBackgroundWindow(current_foreground_hwnd);
-            }
+        // display_commanderhooks::RestoreShowCursor();
+    }
+
+    // Apply window changes - the function will automatically determine what needs to be changed
+    // Skip if suppress_window_changes is enabled (compatibility feature) or if window mode is kNoChanges
+    if (!settings::g_developerTabSettings.suppress_window_changes.GetValue()
+        && s_window_mode.load() != WindowMode::kNoChanges) {
+        ApplyWindowChange(hwnd, "continuous_monitoring_auto_fix");
+    }
+
+    if (s_background_feature_enabled.load()) {
+        // Only create/update background window if main window has focus
+        if (current_foreground_hwnd != nullptr) {
+            g_backgroundWindowManager.UpdateBackgroundWindow(current_foreground_hwnd);
         }
     }
 }
@@ -401,9 +407,11 @@ void ContinuousMonitoringThread() {
                                 // Only apply if mask is valid and different from current
                                 if (new_mask != 0 && new_mask != process_affinity_mask) {
                                     if (SetProcessAffinityMask(process_handle, new_mask)) {
-                                        LogInfo("CPU affinity set to %d core(s) (mask: 0x%llx)", cpu_cores, static_cast<unsigned long long>(new_mask));
+                                        LogInfo("CPU affinity set to %d core(s) (mask: 0x%llx)", cpu_cores,
+                                                static_cast<unsigned long long>(new_mask));
                                     } else {
-                                        LogError("Failed to set CPU affinity to %d cores: %lu", cpu_cores, GetLastError());
+                                        LogError("Failed to set CPU affinity to %d cores: %lu", cpu_cores,
+                                                 GetLastError());
                                     }
                                 }
                             } else {

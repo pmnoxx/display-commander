@@ -224,26 +224,27 @@ void wait_until_qpc(LONGLONG target_qpc, HANDLE& timer_handle) {
     // Busy wait for the remaining time to achieve precise timing
     // This compensates for OS scheduler inaccuracy
 
-    if (supports_mwaitx()) {
+    /*if (supports_mwaitx()) {
         while (true) {
             current_time_qpc = get_now_qpc();
             LONGLONG time_to_wait_qpc = target_qpc - current_time_qpc;
             if (time_to_wait_qpc <= 0) break;
 
+            // WARNING: causes crashes in Exedra/Arknights: Endfield
             _mm_monitorx(&monitor, 0, 0);
             //
             unsigned int ticks_to_wait = static_cast<unsigned int>((std::min)(1'000'000'000LL, 240 * time_to_wait_qpc));
             // no more than 4ms
             _mm_mwaitx(0x2, 0, ticks_to_wait);  // 2.4 GHz steamdeck
         }
-    } else {
-        while (true) {
-            current_time_qpc = get_now_qpc();
-            if (current_time_qpc >= target_qpc) break;
+    } else {*/
+    while (true) {
+        current_time_qpc = get_now_qpc();
+        if (current_time_qpc >= target_qpc) break;
 
-            YieldProcessor();
-        }
+        YieldProcessor();
     }
+    //  }
 }
 
 void wait_until_ns(LONGLONG target_ns, HANDLE& timer_handle) {

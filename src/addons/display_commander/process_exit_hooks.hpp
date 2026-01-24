@@ -1,7 +1,7 @@
 #pragma once
 
-#include <atomic>
 #include <windows.h>
+#include <atomic>
 
 // Simple process-exit safety hooks to ensure display restore runs on normal
 // exits and most unhandled crashes. This cannot handle hard kills

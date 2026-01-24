@@ -4,6 +4,8 @@
 #include "../../swapchain_events.hpp"
 #include "../../utils/general_utils.hpp"
 #include "../../utils/logging.hpp"
+#include "../../utils/detour_call_tracker.hpp"
+#include "../../utils/timing.hpp"
 #include "../../gpu_completion_monitoring.hpp"
 
 #include <d3d9.h>
@@ -38,6 +40,7 @@ HRESULT STDMETHODCALLTYPE IDirect3DDevice9_Present_Detour(
     HWND hDestWindowOverride,
     const RGNDATA *pDirtyRegion)
 {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     // Skip if this is not the device used by OnPresentUpdateBefore
     IDirect3DDevice9* expected_device = g_last_present_update_device.load();
     if (expected_device != nullptr && This != expected_device) {
@@ -85,6 +88,7 @@ HRESULT STDMETHODCALLTYPE IDirect3DDevice9_PresentEx_Detour(
     const RGNDATA *pDirtyRegion,
     DWORD dwFlags)
 {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     // Skip if this is not the device used by OnPresentUpdateBefore
     IDirect3DDevice9* expected_device = g_last_present_update_device.load();
     if (expected_device != nullptr && This != expected_device) {

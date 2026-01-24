@@ -443,6 +443,7 @@ static DWORD ProcessXInputGetState(DWORD dwUserIndex, XINPUT_STATE* pState, Hook
 // Per-module implementation helpers used by the per-DLL detours.
 // These route calls to the correct original function for the specific xinput DLL.
 static DWORD WINAPI XInputGetState_Detour_Impl(size_t module_index, DWORD dwUserIndex, XINPUT_STATE* pState) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     if (pState == nullptr) {
         return ERROR_INVALID_PARAMETER;
     }
@@ -483,6 +484,7 @@ static DWORD WINAPI XInputGetState_Detour_Impl(size_t module_index, DWORD dwUser
 }
 
 static DWORD WINAPI XInputGetStateEx_Detour_Impl(size_t module_index, DWORD dwUserIndex, XINPUT_STATE* pState) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     if (pState == nullptr) {
         return ERROR_INVALID_PARAMETER;
     }
@@ -514,6 +516,7 @@ static DWORD WINAPI XInputGetStateEx_Detour_Impl(size_t module_index, DWORD dwUs
 }
 
 static DWORD WINAPI XInputSetState_Detour_Impl(size_t module_index, DWORD dwUserIndex, XINPUT_VIBRATION* pVibration) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     if (pVibration == nullptr) {
         return ERROR_INVALID_PARAMETER;
     }
@@ -573,6 +576,7 @@ static DWORD WINAPI XInputSetState_Detour_Impl(size_t module_index, DWORD dwUser
 
 static DWORD WINAPI XInputGetCapabilities_Detour_Impl(size_t module_index, DWORD dwUserIndex, DWORD dwFlags,
                                                       XINPUT_CAPABILITIES* pCapabilities) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     // Track hook statistics (do this first to verify hook is being called)
     g_hook_stats[HOOK_XInputGetCapabilities].increment_total();
 

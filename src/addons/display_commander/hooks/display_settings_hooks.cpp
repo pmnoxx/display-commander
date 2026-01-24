@@ -1,6 +1,8 @@
 #include "display_settings_hooks.hpp"
 #include "../utils.hpp"
 #include "../utils/logging.hpp"
+#include "../utils/detour_call_tracker.hpp"
+#include "../utils/timing.hpp"
 #include "../globals.hpp"
 #include "../settings/developer_tab_settings.hpp"
 #include "hook_suppression_manager.hpp"
@@ -23,6 +25,7 @@ static std::atomic<bool> g_display_settings_hooks_installed{false};
 
 // Hook detour functions
 LONG WINAPI ChangeDisplaySettingsA_Detour(DEVMODEA *lpDevMode, DWORD dwFlags) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     g_display_settings_hook_counters[DISPLAY_SETTINGS_HOOK_CHANGEDISPLAYSETTINGSA].fetch_add(1);
     g_display_settings_hook_total_count.fetch_add(1);
 
@@ -36,6 +39,7 @@ LONG WINAPI ChangeDisplaySettingsA_Detour(DEVMODEA *lpDevMode, DWORD dwFlags) {
 }
 
 LONG WINAPI ChangeDisplaySettingsW_Detour(DEVMODEW *lpDevMode, DWORD dwFlags) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     g_display_settings_hook_counters[DISPLAY_SETTINGS_HOOK_CHANGEDISPLAYSETTINGSW].fetch_add(1);
     g_display_settings_hook_total_count.fetch_add(1);
 
@@ -49,6 +53,7 @@ LONG WINAPI ChangeDisplaySettingsW_Detour(DEVMODEW *lpDevMode, DWORD dwFlags) {
 }
 
 LONG WINAPI ChangeDisplaySettingsExA_Detour(LPCSTR lpszDeviceName, DEVMODEA *lpDevMode, HWND hWnd, DWORD dwFlags, LPVOID lParam) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     g_display_settings_hook_counters[DISPLAY_SETTINGS_HOOK_CHANGEDISPLAYSETTINGSEXA].fetch_add(1);
     g_display_settings_hook_total_count.fetch_add(1);
 
@@ -62,6 +67,7 @@ LONG WINAPI ChangeDisplaySettingsExA_Detour(LPCSTR lpszDeviceName, DEVMODEA *lpD
 }
 
 LONG WINAPI ChangeDisplaySettingsExW_Detour(LPCWSTR lpszDeviceName, DEVMODEW *lpDevMode, HWND hWnd, DWORD dwFlags, LPVOID lParam) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     g_display_settings_hook_counters[DISPLAY_SETTINGS_HOOK_CHANGEDISPLAYSETTINGSEXW].fetch_add(1);
     g_display_settings_hook_total_count.fetch_add(1);
 
@@ -77,6 +83,7 @@ LONG WINAPI ChangeDisplaySettingsExW_Detour(LPCWSTR lpszDeviceName, DEVMODEW *lp
 // SetWindowPos_Detour function moved to api_hooks.cpp to avoid duplicate hook creation
 
 BOOL WINAPI ShowWindow_Detour(HWND hWnd, int nCmdShow) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     g_display_settings_hook_counters[DISPLAY_SETTINGS_HOOK_SHOWWINDOW].fetch_add(1);
     g_display_settings_hook_total_count.fetch_add(1);
 

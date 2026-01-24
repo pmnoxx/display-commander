@@ -6,6 +6,8 @@
 #include "../utils.hpp"
 #include "../utils/general_utils.hpp"
 #include "../utils/logging.hpp"
+#include "../utils/detour_call_tracker.hpp"
+#include "../utils/timing.hpp"
 #include "hook_suppression_manager.hpp"
 
 // Original function pointers
@@ -46,6 +48,7 @@ void LogVulkanCall(const char* functionName, std::atomic<int>& callCount, Args..
 // Hook detour functions
 VkResult VKAPI_CALL vkCreateInstance_Detour(const VkInstanceCreateInfo* pCreateInfo,
                                             const VkAllocationCallbacks* pAllocator, VkInstance* pInstance) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     LogVulkanCall("vkCreateInstance", g_vkCreateInstance_call_count);
 
     if (pCreateInfo) {
@@ -68,6 +71,7 @@ VkResult VKAPI_CALL vkCreateInstance_Detour(const VkInstanceCreateInfo* pCreateI
 
 VkResult VKAPI_CALL vkCreateDevice_Detour(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo* pCreateInfo,
                                           const VkAllocationCallbacks* pAllocator, VkDevice* pDevice) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     LogVulkanCall("vkCreateDevice", g_vkCreateDevice_call_count);
 
     if (pCreateInfo) {
@@ -90,6 +94,7 @@ VkResult VKAPI_CALL vkCreateDevice_Detour(VkPhysicalDevice physicalDevice, const
 
 VkResult VKAPI_CALL vkCreateSwapchainKHR_Detour(VkDevice device, const VkSwapchainCreateInfoKHR* pCreateInfo,
                                                 const VkAllocationCallbacks* pAllocator, VkSwapchainKHR* pSwapchain) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     LogVulkanCall("vkCreateSwapchainKHR", g_vkCreateSwapchainKHR_call_count);
 
     if (pCreateInfo) {
@@ -112,6 +117,7 @@ VkResult VKAPI_CALL vkCreateSwapchainKHR_Detour(VkDevice device, const VkSwapcha
 }
 
 VkResult VKAPI_CALL vkQueuePresentKHR_Detour(VkQueue queue, const VkPresentInfoKHR* pPresentInfo) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     LogVulkanCall("vkQueuePresentKHR", g_vkQueuePresentKHR_call_count);
 
     if (pPresentInfo) {
@@ -137,6 +143,7 @@ VkResult VKAPI_CALL vkQueuePresentKHR_Detour(VkQueue queue, const VkPresentInfoK
 
 VkResult VKAPI_CALL vkAcquireNextImageKHR_Detour(VkDevice device, VkSwapchainKHR swapchain, uint64_t timeout,
                                                  VkSemaphore semaphore, VkFence fence, uint32_t* pImageIndex) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     LogVulkanCall("vkAcquireNextImageKHR", g_vkAcquireNextImageKHR_call_count);
 
     int count = g_vkAcquireNextImageKHR_call_count.load();
@@ -155,6 +162,7 @@ VkResult VKAPI_CALL vkAcquireNextImageKHR_Detour(VkDevice device, VkSwapchainKHR
 
 VkResult VKAPI_CALL vkQueueSubmit_Detour(VkQueue queue, uint32_t submitCount, const VkSubmitInfo* pSubmits,
                                          VkFence fence) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     LogVulkanCall("vkQueueSubmit", g_vkQueueSubmit_call_count);
 
     int count = g_vkQueueSubmit_call_count.load();
@@ -173,6 +181,7 @@ VkResult VKAPI_CALL vkQueueSubmit_Detour(VkQueue queue, uint32_t submitCount, co
 
 VkResult VKAPI_CALL vkQueueSubmit2_Detour(VkQueue queue, uint32_t submitCount, const VkSubmitInfo2* pSubmits,
                                           VkFence fence) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     LogVulkanCall("vkQueueSubmit2", g_vkQueueSubmit2_call_count);
 
     int count = g_vkQueueSubmit2_call_count.load();

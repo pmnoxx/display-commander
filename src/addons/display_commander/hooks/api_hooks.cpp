@@ -346,9 +346,6 @@ int WINAPI ShowCursor_Detour(BOOL bShow) {
 // Hooked AddVectoredExceptionHandler function
 PVOID WINAPI AddVectoredExceptionHandler_Detour(ULONG First, PVECTORED_EXCEPTION_HANDLER Handler) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
-    if (First == 1 && Handler != process_exit_hooks::UnhandledExceptionHandler) {
-        First = 2;
-    }
     // Log the call for debugging
     LogDebug("AddVectoredExceptionHandler_Detour: First=%lu, Handler=0x%p", First, Handler);
 

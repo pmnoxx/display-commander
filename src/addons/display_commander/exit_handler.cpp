@@ -4,6 +4,8 @@
 #include "utils.hpp"
 #include "utils/logging.hpp"
 #include "utils/display_commander_logger.hpp"
+#include "utils/detour_call_tracker.hpp"
+#include "utils/timing.hpp"
 #include <reshade.hpp>
 #include <atomic>
 #include <sstream>
@@ -44,6 +46,31 @@ void OnHandleExit(ExitSource source, const std::string &message) {
         return;
     }
     LogInfo("%s", exit_message.str().c_str());
+
+    // Print undestroyed guard information (crash detection)
+    // Always print count, even if 0
+    uint64_t exit_timestamp_ns = utils::get_real_time_ns();  // Use real time to avoid spoofed timers
+    std::string undestroyed_guards_info = detour_call_tracker::FormatUndestroyedGuards(exit_timestamp_ns);
+    WriteToDebugLog("=== UNDESTROYED DETOUR GUARDS (CRASH DETECTION) ===");
+
+    // Split multi-line string and write each line separately
+    if (!undestroyed_guards_info.empty()) {
+        std::istringstream iss(undestroyed_guards_info);
+        std::string line;
+        while (std::getline(iss, line)) {
+            // Remove any trailing carriage return
+            if (!line.empty() && line.back() == '\r') {
+                line.pop_back();
+            }
+            if (!line.empty()) {
+                WriteToDebugLog(line);
+            }
+        }
+    } else {
+        WriteToDebugLog("Undestroyed Detour Guards: 0");
+    }
+
+    WriteToDebugLog("=== END UNDESTROYED DETOUR GUARDS ===");
 
     // Best-effort display restoration on any exit
     display_restore::RestoreAllIfEnabled();

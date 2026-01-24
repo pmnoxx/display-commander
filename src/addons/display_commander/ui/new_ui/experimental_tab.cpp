@@ -9,7 +9,6 @@
 #include "../../hooks/rand_hooks.hpp"
 #include "../../hooks/sleep_hooks.hpp"
 #include "../../hooks/timeslowdown_hooks.hpp"
-#include "../../latency/pclstats_logger.hpp"
 #include "../../res/forkawesome.h"
 #include "../../settings/experimental_tab_settings.hpp"
 #include "../../settings/main_tab_settings.hpp"
@@ -31,7 +30,6 @@
 namespace ui::new_ui {
 
 static void DrawPerformanceMeasurementsTab();
-static void DrawPCLStatsEtwControls();
 
 // Initialize experimental tab
 void InitExperimentalTab() {
@@ -79,12 +77,6 @@ void InitExperimentalTab() {
 
     // Apply DirectInput hook suppression setting
     s_suppress_dinput_hooks.store(settings::g_experimentalTabSettings.suppress_dinput_hooks.GetValue());
-    // Initialize PCLStats logger
-    latency::pclstats_logger::Initialize();
-
-    // Apply PCLStats log file setting
-    latency::pclstats_logger::SetLoggingEnabled(
-        settings::g_experimentalTabSettings.pclstats_log_file_enabled.GetValue());
 
     LogInfo("InitExperimentalTab() - Experimental tab settings loaded and applied to hook system");
 }
@@ -224,12 +216,6 @@ void DrawExperimentalTab() {
         // Draw HID suppression controls
         if (ImGui::CollapsingHeader("HID Suppression", ImGuiTreeNodeFlags_None)) {
             DrawHIDSuppression();
-        }
-        ImGui::Spacing();
-
-        // Draw PCLStats ETW reporting controls
-        if (ImGui::CollapsingHeader("PCLStats ETW Reporting", ImGuiTreeNodeFlags_None)) {
-            DrawPCLStatsEtwControls();
         }
         ImGui::Spacing();
 
@@ -496,10 +482,6 @@ void CleanupExperimentalTab() {
         g_auto_click_enabled.store(false);
         LogInfo("Experimental tab cleanup: Auto-click disabled (thread will sleep)");
     }
-
-    // Shutdown PCLStats logger
-    latency::pclstats_logger::Shutdown();
-    LogInfo("Experimental tab cleanup: PCLStats logger shut down");
 }
 
 void DrawBackbufferFormatOverride() {
@@ -2379,18 +2361,6 @@ void DrawDLLBlockingControls() {
     }
 
     ImGui::Unindent();
-}
-
-static void DrawPCLStatsEtwControls() {
-    ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "PCLStats ETW Reporting");
-    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f),
-                       ICON_FK_WARNING " PCLStats ETW reporting is now integrated via Streamline headers");
-    ImGui::Spacing();
-    ImGui::Text("PCLStats markers are automatically emitted when using PCLSTATS_MARKER macro.");
-    ImGui::Text("The provider is defined in latency_manager.cpp using PCLSTATS_DEFINE().");
-    ImGui::Spacing();
-    ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f),
-                       "Note: ETW provider enable/disable is controlled by external ETW consumers.");
 }
 
 }  // namespace ui::new_ui

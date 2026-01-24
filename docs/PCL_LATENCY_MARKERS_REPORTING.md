@@ -197,17 +197,6 @@ Display Commander detects when games use native Reflex:
   - Prevents duplicate/conflicting marker streams
   - Mirrors Special-K's behavior
 
-## Log File Feature
-
-Display Commander includes a toggleable log file feature (default: OFF) that logs all PCLStats events:
-
-- **Location**: `DisplayCommander_PCLStats.log` in addon directory
-- **Format**: CSV-like format with timestamp, marker ID, frame ID
-- **Filtering**: Can filter by marker ID (matches ID used for NVIDIA overlay)
-- **Performance**: Minimal overhead when disabled (no file I/O)
-
-See `src/addons/display_commander/latency/pclstats_logger.cpp` for implementation.
-
 ## Debugging and Diagnostics
 
 ### Statistics Tracking

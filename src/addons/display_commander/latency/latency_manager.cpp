@@ -19,9 +19,12 @@ extern float GetTargetFps();
 // Namespace alias for cleaner code
 namespace timing = utils;
 
-LatencyManager::LatencyManager() = default;
+LatencyManager::LatencyManager() { PCLSTATS_INIT(0); }
 
-LatencyManager::~LatencyManager() { Shutdown(); }
+LatencyManager::~LatencyManager() {
+    PCLSTATS_SHUTDOWN();
+    Shutdown();
+}
 
 bool LatencyManager::Initialize(reshade::api::device* device, LatencyTechnology technology) {
     if (initialized_.load(std::memory_order_acquire)) {
@@ -123,9 +126,6 @@ bool LatencyManager::SetMarker(LatencyMarkerType marker) {
     // This is gated inside pclstats_etw (user enable + ETW provider enable + not Reflex-native).
     // CRITICAL: Special K sends PC_LATENCY_PING through NVAPI first, which then gets emitted via ETW.
     // This ensures proper correlation and timing for PCL/AV stats calculation.
-    if (marker == SIMULATION_START) {
-        PCLSTATS_MARKER(PC_LATENCY_PING, g_global_frame_id.load(std::memory_order_acquire));
-    }
     RECORD_DETOUR_CALL(utils::get_now_ns());
 
     switch (marker) {

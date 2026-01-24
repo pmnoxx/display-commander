@@ -589,7 +589,8 @@ BOOL WINAPI FreeLibrary_Detour(HMODULE hLibModule) {
 
 // Hooked FreeLibraryAndExitThread function
 VOID WINAPI FreeLibraryAndExitThread_Detour(HMODULE hLibModule, DWORD dwExitCode) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    // Record detour call but don't create guard (this function never returns, so guard would be incorrectly flagged as crash)
+    detour_call_tracker::RecordDetourCall(__FUNCTION__, __LINE__, utils::get_now_ns());
 
     // Check if this is the ReShade module being unloaded
     // FreeLibraryAndExitThread always unloads the module (doesn't check refcount)

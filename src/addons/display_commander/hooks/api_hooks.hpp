@@ -27,6 +27,7 @@ using SetWindowLongPtrA_pfn = LONG_PTR(WINAPI*)(HWND, int, LONG_PTR);
 using SetWindowPos_pfn = BOOL(WINAPI*)(HWND, HWND, int, int, int, int, UINT);
 using SetCursor_pfn = HCURSOR(WINAPI*)(HCURSOR);
 using ShowCursor_pfn = int(WINAPI*)(BOOL);
+using AddVectoredExceptionHandler_pfn = PVOID(WINAPI*)(ULONG, PVECTORED_EXCEPTION_HANDLER);
 
 // DXGI Factory creation function pointer types
 using CreateDXGIFactory_pfn = HRESULT(WINAPI*)(REFIID, void**);
@@ -56,6 +57,7 @@ extern SetWindowLongPtrA_pfn SetWindowLongPtrA_Original;
 extern SetWindowPos_pfn SetWindowPos_Original;
 extern SetCursor_pfn SetCursor_Original;
 extern ShowCursor_pfn ShowCursor_Original;
+extern AddVectoredExceptionHandler_pfn AddVectoredExceptionHandler_Original;
 extern CreateDXGIFactory_pfn CreateDXGIFactory_Original;
 extern CreateDXGIFactory1_pfn CreateDXGIFactory1_Original;
 extern D3D11CreateDeviceAndSwapChain_pfn D3D11CreateDeviceAndSwapChain_Original;
@@ -75,6 +77,7 @@ LONG_PTR WINAPI SetWindowLongPtrA_Detour(HWND hWnd, int nIndex, LONG_PTR dwNewLo
 BOOL WINAPI SetWindowPos_Detour(HWND hWnd, HWND hWndInsertAfter, int X, int Y, int cx, int cy, UINT uFlags);
 HCURSOR WINAPI SetCursor_Detour(HCURSOR hCursor);
 int WINAPI ShowCursor_Detour(BOOL bShow);
+PVOID WINAPI AddVectoredExceptionHandler_Detour(ULONG First, PVECTORED_EXCEPTION_HANDLER Handler);
 HRESULT WINAPI CreateDXGIFactory_Detour(REFIID riid, void** ppFactory);
 HRESULT WINAPI CreateDXGIFactory1_Detour(REFIID riid, void** ppFactory);
 HRESULT WINAPI D3D11CreateDeviceAndSwapChain_Detour(IDXGIAdapter* pAdapter, D3D_DRIVER_TYPE DriverType,

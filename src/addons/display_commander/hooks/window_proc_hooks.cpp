@@ -8,6 +8,8 @@
 #include "../exit_handler.hpp"
 #include "../globals.hpp"
 #include "../utils/logging.hpp"
+#include "../utils/detour_call_tracker.hpp"
+#include "../utils/timing.hpp"
 #include "../ui/new_ui/window_info_tab.hpp"
 #include "../utils/srwlock_wrapper.hpp"
 #include <atomic>
@@ -23,6 +25,7 @@ static std::map<HWND, WNDPROC> g_original_window_proc;
 
 // Hooked window procedure
 LRESULT CALLBACK WindowProc_Detour(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     // Check if continue rendering is enabled
     bool continue_rendering_enabled = s_continue_rendering.load();
     static bool sent_activate = false;

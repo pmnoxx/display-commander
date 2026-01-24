@@ -1,6 +1,8 @@
 #include "opengl_hooks.hpp"
 #include "../utils.hpp"
 #include "../utils/logging.hpp"
+#include "../utils/detour_call_tracker.hpp"
+#include "../utils/timing.hpp"
 #include "../globals.hpp"
 #include "../swapchain_events.hpp"
 #include "../performance_types.hpp"
@@ -44,6 +46,7 @@ static std::atomic<bool> g_opengl_hooks_installed{false};
 
 // Hook detour functions
 BOOL WINAPI wglSwapBuffers_Detour(HDC hdc) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     g_opengl_hook_counters[OPENGL_HOOK_WGL_SWAPBUFFERS].fetch_add(1);
     g_opengl_hook_total_count.fetch_add(1);
 
@@ -68,84 +71,98 @@ BOOL WINAPI wglSwapBuffers_Detour(HDC hdc) {
 }
 
 BOOL WINAPI wglMakeCurrent_Detour(HDC hdc, HGLRC hglrc) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     g_opengl_hook_counters[OPENGL_HOOK_WGL_MAKECURRENT].fetch_add(1);
     g_opengl_hook_total_count.fetch_add(1);
     return wglMakeCurrent_Original(hdc, hglrc);
 }
 
 HGLRC WINAPI wglCreateContext_Detour(HDC hdc) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     g_opengl_hook_counters[OPENGL_HOOK_WGL_CREATECONTEXT].fetch_add(1);
     g_opengl_hook_total_count.fetch_add(1);
     return wglCreateContext_Original(hdc);
 }
 
 BOOL WINAPI wglDeleteContext_Detour(HGLRC hglrc) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     g_opengl_hook_counters[OPENGL_HOOK_WGL_DELETECONTEXT].fetch_add(1);
     g_opengl_hook_total_count.fetch_add(1);
     return wglDeleteContext_Original(hglrc);
 }
 
 int WINAPI wglChoosePixelFormat_Detour(HDC hdc, const PIXELFORMATDESCRIPTOR *ppfd) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     g_opengl_hook_counters[OPENGL_HOOK_WGL_CHOOSEPIXELFORMAT].fetch_add(1);
     g_opengl_hook_total_count.fetch_add(1);
     return wglChoosePixelFormat_Original(hdc, ppfd);
 }
 
 BOOL WINAPI wglSetPixelFormat_Detour(HDC hdc, int iPixelFormat, const PIXELFORMATDESCRIPTOR *ppfd) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     g_opengl_hook_counters[OPENGL_HOOK_WGL_SETPIXELFORMAT].fetch_add(1);
     g_opengl_hook_total_count.fetch_add(1);
     return wglSetPixelFormat_Original(hdc, iPixelFormat, ppfd);
 }
 
 int WINAPI wglGetPixelFormat_Detour(HDC hdc) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     g_opengl_hook_counters[OPENGL_HOOK_WGL_GETPIXELFORMAT].fetch_add(1);
     g_opengl_hook_total_count.fetch_add(1);
     return wglGetPixelFormat_Original(hdc);
 }
 
 BOOL WINAPI wglDescribePixelFormat_Detour(HDC hdc, int iPixelFormat, UINT nBytes, LPPIXELFORMATDESCRIPTOR ppfd) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     g_opengl_hook_counters[OPENGL_HOOK_WGL_DESCRIBEPIXELFORMAT].fetch_add(1);
     g_opengl_hook_total_count.fetch_add(1);
     return wglDescribePixelFormat_Original(hdc, iPixelFormat, nBytes, ppfd);
 }
 
 HGLRC WINAPI wglCreateContextAttribsARB_Detour(HDC hdc, HGLRC hshareContext, const int *attribList) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     g_opengl_hook_counters[OPENGL_HOOK_WGL_CREATECONTEXTATTRIBSARB].fetch_add(1);
     g_opengl_hook_total_count.fetch_add(1);
     return wglCreateContextAttribsARB_Original(hdc, hshareContext, attribList);
 }
 
 BOOL WINAPI wglChoosePixelFormatARB_Detour(HDC hdc, const int *piAttribIList, const FLOAT *pfAttribFList, UINT nMaxFormats, int *piFormats, UINT *nNumFormats) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     g_opengl_hook_counters[OPENGL_HOOK_WGL_CHOOSEPIXELFORMATARB].fetch_add(1);
     g_opengl_hook_total_count.fetch_add(1);
     return wglChoosePixelFormatARB_Original(hdc, piAttribIList, pfAttribFList, nMaxFormats, piFormats, nNumFormats);
 }
 
 BOOL WINAPI wglGetPixelFormatAttribivARB_Detour(HDC hdc, int iPixelFormat, int iLayerPlane, UINT nAttributes, const int *piAttributes, int *piValues) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     g_opengl_hook_counters[OPENGL_HOOK_WGL_GETPIXELFORMATATTRIBIVARB].fetch_add(1);
     g_opengl_hook_total_count.fetch_add(1);
     return wglGetPixelFormatAttribivARB_Original(hdc, iPixelFormat, iLayerPlane, nAttributes, piAttributes, piValues);
 }
 
 BOOL WINAPI wglGetPixelFormatAttribfvARB_Detour(HDC hdc, int iPixelFormat, int iLayerPlane, UINT nAttributes, const int *piAttributes, FLOAT *pfValues) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     g_opengl_hook_counters[OPENGL_HOOK_WGL_GETPIXELFORMATATTRIBFVARB].fetch_add(1);
     g_opengl_hook_total_count.fetch_add(1);
     return wglGetPixelFormatAttribfvARB_Original(hdc, iPixelFormat, iLayerPlane, nAttributes, piAttributes, pfValues);
 }
 
 PROC WINAPI wglGetProcAddress_Detour(LPCSTR lpszProc) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     g_opengl_hook_counters[OPENGL_HOOK_WGL_GETPROCADDRESS].fetch_add(1);
     g_opengl_hook_total_count.fetch_add(1);
     return wglGetProcAddress_Original(lpszProc);
 }
 
 BOOL WINAPI wglSwapIntervalEXT_Detour(int interval) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     g_opengl_hook_counters[OPENGL_HOOK_WGL_SWAPINTERVALEXT].fetch_add(1);
     g_opengl_hook_total_count.fetch_add(1);
     return wglSwapIntervalEXT_Original(interval);
 }
 
 int WINAPI wglGetSwapIntervalEXT_Detour(void) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     g_opengl_hook_counters[OPENGL_HOOK_WGL_GETSWAPINTERVALEXT].fetch_add(1);
     g_opengl_hook_total_count.fetch_add(1);
     return wglGetSwapIntervalEXT_Original();

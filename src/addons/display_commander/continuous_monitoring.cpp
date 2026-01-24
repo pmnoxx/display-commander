@@ -151,19 +151,19 @@ void check_is_background() {
 
             // display_commanderhooks::RestoreShowCursor();
         }
+    }
 
-        // Apply window changes - the function will automatically determine what needs to be changed
-        // Skip if suppress_window_changes is enabled (compatibility feature) or if window mode is kNoChanges
-        if (!settings::g_developerTabSettings.suppress_window_changes.GetValue()
-            && s_window_mode.load() != WindowMode::kNoChanges) {
-            ApplyWindowChange(hwnd, "continuous_monitoring_auto_fix");
-        }
+    // Apply window changes - the function will automatically determine what needs to be changed
+    // Skip if suppress_window_changes is enabled (compatibility feature) or if window mode is kNoChanges
+    if (!settings::g_developerTabSettings.suppress_window_changes.GetValue()
+        && s_window_mode.load() != WindowMode::kNoChanges) {
+        ApplyWindowChange(hwnd, "continuous_monitoring_auto_fix");
+    }
 
-        if (s_background_feature_enabled.load()) {
-            // Only create/update background window if main window has focus
-            if (current_foreground_hwnd != nullptr) {
-                g_backgroundWindowManager.UpdateBackgroundWindow(current_foreground_hwnd);
-            }
+    if (s_background_feature_enabled.load()) {
+        // Only create/update background window if main window has focus
+        if (current_foreground_hwnd != nullptr) {
+            g_backgroundWindowManager.UpdateBackgroundWindow(current_foreground_hwnd);
         }
     }
 }

@@ -8,11 +8,11 @@
 #include "../globals.hpp"
 #include "../settings/developer_tab_settings.hpp"
 #include "../settings/swapchain_tab_settings.hpp"
+#include "../utils/detour_call_tracker.hpp"
 #include "../utils/general_utils.hpp"
 #include "../utils/logging.hpp"
-#include "../utils/detour_call_tracker.hpp"
-#include "../utils/timing.hpp"
 #include "../utils/srwlock_wrapper.hpp"
+#include "../utils/timing.hpp"
 #include "hook_suppression_manager.hpp"
 
 // NGX type definitions (minimal subset needed for hooks)
@@ -378,7 +378,8 @@ void NVSDK_CONV NVSDK_NGX_Parameter_SetF_Detour(NVSDK_NGX_Parameter* InParameter
     static int log_count = 0;
     if (log_count < 60) {
         if (has_override) {
-            LogInfo("NGX Parameter SetF called - Name: %s, Game Value: %f, Override: %f", InName ? InName : "null", InValue, override_value);
+            LogInfo("NGX Parameter SetF called - Name: %s, Game Value: %f, Override: %f", InName ? InName : "null",
+                    InValue, override_value);
         } else {
             LogInfo("NGX Parameter SetF called - Name: %s, Value: %f", InName ? InName : "null", InValue);
         }
@@ -418,7 +419,8 @@ void NVSDK_CONV NVSDK_NGX_Parameter_SetD_Detour(NVSDK_NGX_Parameter* InParameter
     static int log_count = 0;
     if (log_count < 60) {
         if (has_override) {
-            LogInfo("NGX Parameter SetD called - Name: %s, Game Value: %f, Override: %f", InName ? InName : "null", InValue, override_value);
+            LogInfo("NGX Parameter SetD called - Name: %s, Game Value: %f, Override: %f", InName ? InName : "null",
+                    InValue, override_value);
         } else {
             LogInfo("NGX Parameter SetD called - Name: %s, Value: %f", InName ? InName : "null", InValue);
         }
@@ -492,7 +494,8 @@ void NVSDK_CONV NVSDK_NGX_Parameter_SetI_Detour(NVSDK_NGX_Parameter* InParameter
     static int log_count = 0;
     if (log_count < 60) {
         if (has_override) {
-            LogInfo("NGX Parameter SetI called - Name: %s, Game Value: %d, Override: %d", InName ? InName : "null", original_value, override_value);
+            LogInfo("NGX Parameter SetI called - Name: %s, Game Value: %d, Override: %d", InName ? InName : "null",
+                    original_value, override_value);
         } else {
             LogInfo("NGX Parameter SetI called - Name: %s, Value: %d", InName ? InName : "null", InValue);
         }
@@ -567,7 +570,8 @@ void NVSDK_CONV NVSDK_NGX_Parameter_SetUI_Detour(NVSDK_NGX_Parameter* InParamete
     static int log_count = 0;
     if (log_count < 60) {
         if (has_override) {
-            LogInfo("NGX Parameter SetUI called - Name: %s, Game Value: %u, Override: %u", InName ? InName : "null", original_value, override_value);
+            LogInfo("NGX Parameter SetUI called - Name: %s, Game Value: %u, Override: %u", InName ? InName : "null",
+                    original_value, override_value);
         } else {
             LogInfo("NGX Parameter SetUI called - Name: %s, Value: %u", InName ? InName : "null", InValue);
         }
@@ -608,7 +612,8 @@ void NVSDK_CONV NVSDK_NGX_Parameter_SetULL_Detour(NVSDK_NGX_Parameter* InParamet
     static int log_count = 0;
     if (log_count < 60) {
         if (has_override) {
-            LogInfo("NGX Parameter SetULL called - Name: %s, Game Value: %llu, Override: %llu", InName ? InName : "null", InValue, override_value);
+            LogInfo("NGX Parameter SetULL called - Name: %s, Game Value: %llu, Override: %llu",
+                    InName ? InName : "null", InValue, override_value);
         } else {
             LogInfo("NGX Parameter SetULL called - Name: %s, Value: %llu", InName ? InName : "null", InValue);
         }
@@ -1018,8 +1023,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_EvaluateFeature_Detour(ID3D11DeviceC
     g_ngx_counters.d3d11_evaluatefeature_count.fetch_add(1);
     g_ngx_counters.total_count.fetch_add(1);
 
-
-    //LogInfo("NGX D3D11 EvaluateFeature called");
+    // LogInfo("NGX D3D11 EvaluateFeature called");
 
     // Hook the parameter vtable if we have parameters
     if (InParameters != nullptr) {
@@ -1228,7 +1232,12 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_AllocateParameters_Detour(NVSDK_NGX_
 }
 
 // Install NGX hooks
-bool InstallNGXHooks(HMODULE ngx_module) {
+bool InstallNGXHooks(HMODULE ngx_dll) {
+    if (ngx_dll == nullptr) {
+        LogInfo("NGX hooks: _nvngx.dll not loaded");
+        return false;
+    }
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     if (!settings::g_developerTabSettings.load_nvngx.GetValue()) {
         LogInfo("NGX hooks not installed - load_nvngx is disabled");
         return false;
@@ -1239,16 +1248,6 @@ bool InstallNGXHooks(HMODULE ngx_module) {
             display_commanderhooks::HookType::NGX)) {
         LogInfo("NGX hooks installation suppressed by user setting");
         return false;
-    }
-
-    // Check if NGX DLLs are loaded
-    HMODULE ngx_dll = ngx_module;
-    if (ngx_dll == nullptr) {
-        ngx_dll = GetModuleHandleA("_nvngx.dll");
-        if (!ngx_dll) {
-            LogInfo("NGX hooks: _nvngx.dll not loaded");
-            return false;
-        }
     }
 
     static bool g_ngx_hooks_installed = false;

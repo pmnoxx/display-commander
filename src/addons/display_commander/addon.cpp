@@ -5,6 +5,7 @@
 #include <reshade.hpp>
 #include <string>
 #include "globals.hpp"
+#include "utils/detour_call_tracker.hpp"
 #include "utils/logging.hpp"
 #include "utils/timing.hpp"
 #include "version.hpp"
@@ -45,6 +46,7 @@ extern "C" __declspec(dllexport) LONGLONG LoadedNs() { return g_dll_load_time_ns
 
 // Export addon initialization function
 extern "C" __declspec(dllexport) bool AddonInit(HMODULE addon_module, HMODULE reshade_module) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     // Store ReShade module handle for unload detection
     g_reshade_module = reshade_module;
     LogInfo("AddonInit: Stored ReShade module handle: 0x%p", reshade_module);

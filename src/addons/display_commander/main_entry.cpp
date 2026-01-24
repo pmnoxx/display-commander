@@ -2090,6 +2090,7 @@ void DoInitializationWithoutHwndSafe(HMODULE h_module) {
 }
 
 void DoInitializationWithoutHwnd(HMODULE h_module) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     // Register reshade_overlay event for test code
     reshade::register_event<reshade::addon_event::reshade_overlay>(OnReShadeOverlayTest);
 

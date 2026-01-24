@@ -1474,11 +1474,14 @@ void OnPresentFlags2(uint32_t* present_flags, DeviceTypeDC api_type, bool from_p
             *present_flags &= ~DXGI_PRESENT_ALLOW_TEARING;
 
             // Log the flag removal for debugging
-            std::ostringstream oss;
-            oss << "Device Creation Flags callback: Stripped "
-                   "DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING, new flags: 0x"
-                << std::hex << *present_flags;
-            LogInfo(oss.str().c_str());
+            static int prevent_tearing_log_count = 0;
+            if (prevent_tearing_log_count++ < 10) {
+                std::ostringstream oss;
+                oss << "Device Creation Flags callback: Stripped "
+                       "DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING, new flags: 0x"
+                    << std::hex << *present_flags;
+                LogInfo(oss.str().c_str());
+            }
         }
         // Don't block presents if continue rendering is enabled
         if (s_no_present_in_background.load() && g_app_in_background.load(std::memory_order_acquire)

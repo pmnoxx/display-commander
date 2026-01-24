@@ -1443,6 +1443,10 @@ SetUnhandledExceptionFilter_Detour(LPTOP_LEVEL_EXCEPTION_FILTER lpTopLevelExcept
     // Track total calls
     g_hook_stats[HOOK_SetUnhandledExceptionFilter].increment_total();
 
+    if (true) {
+        return NULL;
+    }
+
     // Spoof: Always install our own exception handler instead of the one passed by the game
     // This is similar to Special-K's approach - we ignore the parameter and force our handler
     // Call the original function but with our own handler instead of the game's handler

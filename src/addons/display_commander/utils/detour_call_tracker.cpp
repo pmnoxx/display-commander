@@ -1,17 +1,17 @@
 #include "detour_call_tracker.hpp"
-#include <string>
-#include <sstream>
-#include <iomanip>
 #include <algorithm>
 #include <cstdio>
 #include <cstring>
+#include <iomanip>
+#include <sstream>
+#include <string>
 
 namespace detour_call_tracker {
 namespace {
 
 // Circular buffer configuration
 // Use power-of-2 size for efficient modulo operation
-constexpr size_t BUFFER_SIZE = 1024;  // Track last 64 detour calls
+constexpr size_t BUFFER_SIZE = 1024;             // Track last 64 detour calls
 constexpr size_t BUFFER_MASK = BUFFER_SIZE - 1;  // For fast modulo (BUFFER_SIZE must be power of 2)
 
 // Circular buffer storage with atomic entries
@@ -27,7 +27,7 @@ char g_string_buffers[BUFFER_SIZE][512];
 // Incremented on each write, wraps around automatically
 std::atomic<size_t> g_write_index{0};
 
-} // anonymous namespace
+}  // anonymous namespace
 
 void RecordDetourCall(const char* function_name, int line_number, uint64_t timestamp_ns) {
     // Get next write position (increment atomically)
@@ -136,4 +136,4 @@ std::string FormatRecentDetourCalls(uint64_t crash_timestamp_ns, size_t max_coun
     return oss.str();
 }
 
-} // namespace detour_call_tracker
+}  // namespace detour_call_tracker

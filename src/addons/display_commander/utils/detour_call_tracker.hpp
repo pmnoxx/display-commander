@@ -1,9 +1,9 @@
 #pragma once
 
-#include <cstdint>
 #include <atomic>
-#include <string>
 #include <cstddef>
+#include <cstdint>
+#include <string>
 
 namespace detour_call_tracker {
 
@@ -34,10 +34,9 @@ size_t GetRecentDetourCalls(DetourCallInfo* out_entries, size_t max_count);
 // Returns formatted string for logging
 std::string FormatRecentDetourCalls(uint64_t crash_timestamp_ns, size_t max_count = 16);
 
-} // namespace detour_call_tracker
+}  // namespace detour_call_tracker
 
 // Macro to record detour call - pass timestamp in nanoseconds
 // Combines __FUNCTION__ and __LINE__ into a formatted string
 // Usage: RECORD_DETOUR_CALL(utils::get_now_ns())
-#define RECORD_DETOUR_CALL(timestamp_ns) \
-    detour_call_tracker::RecordDetourCall(__FUNCTION__, __LINE__, (timestamp_ns))
+#define RECORD_DETOUR_CALL(timestamp_ns) detour_call_tracker::RecordDetourCall(__FUNCTION__, __LINE__, (timestamp_ns))

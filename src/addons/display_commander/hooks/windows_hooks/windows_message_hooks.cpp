@@ -1444,13 +1444,15 @@ SetUnhandledExceptionFilter_Detour(LPTOP_LEVEL_EXCEPTION_FILTER lpTopLevelExcept
     g_hook_stats[HOOK_SetUnhandledExceptionFilter].increment_total();
 
     // Remember the handler passed by the game (if it's not our own handler)
-    if (lpTopLevelExceptionFilter != nullptr && 
-        lpTopLevelExceptionFilter != process_exit_hooks::UnhandledExceptionHandler) {
+    auto prev = process_exit_hooks::g_last_detour_handler.load();
+    if (lpTopLevelExceptionFilter != process_exit_hooks::UnhandledExceptionHandler) {
         process_exit_hooks::g_last_detour_handler.store(lpTopLevelExceptionFilter);
     }
+    return prev;
+    /*
 
     if (true) {
-        return NULL;
+        return prev;
     }
 
     // Spoof: Always install our own exception handler instead of the one passed by the game
@@ -1464,7 +1466,7 @@ SetUnhandledExceptionFilter_Detour(LPTOP_LEVEL_EXCEPTION_FILTER lpTopLevelExcept
 
     // All calls are suppressed by overriding the argument.
 
-    return result;
+    return result;*/
 }
 
 BOOL WINAPI IsDebuggerPresent_Detour() {

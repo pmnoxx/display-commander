@@ -1443,6 +1443,12 @@ SetUnhandledExceptionFilter_Detour(LPTOP_LEVEL_EXCEPTION_FILTER lpTopLevelExcept
     // Track total calls
     g_hook_stats[HOOK_SetUnhandledExceptionFilter].increment_total();
 
+    // Remember the handler passed by the game (if it's not our own handler)
+    if (lpTopLevelExceptionFilter != nullptr && 
+        lpTopLevelExceptionFilter != process_exit_hooks::UnhandledExceptionHandler) {
+        process_exit_hooks::g_last_detour_handler.store(lpTopLevelExceptionFilter);
+    }
+
     if (true) {
         return NULL;
     }

@@ -1,11 +1,11 @@
 #include "resolution_helpers.hpp"
-#include "globals.hpp"
-#include <cmath>
-#include <cwchar> // for wcslen
 #include <d3d11.h>
 #include <dxgi1_6.h>
 #include <wrl/client.h>
-
+#include <cmath>
+#include <cwchar>  // for wcslen
+#include "globals.hpp"
+#include "utils/logging.hpp"
 
 #pragma comment(lib, "dxgi.lib")
 #pragma comment(lib, "d3d11.lib")
@@ -24,7 +24,7 @@ bool ApplyDisplaySettingsDXGI(int monitor_index, int width, int height, UINT32 r
     EnumDisplayMonitors(
         nullptr, nullptr,
         [](HMONITOR hmon, HDC, LPRECT, LPARAM lparam) -> BOOL {
-            auto *monitors_ptr = reinterpret_cast<std::vector<HMONITOR> *>(lparam);
+            auto* monitors_ptr = reinterpret_cast<std::vector<HMONITOR>*>(lparam);
             monitors_ptr->push_back(hmon);
             return TRUE;
         },
@@ -45,19 +45,15 @@ bool ApplyDisplaySettingsDXGI(int monitor_index, int width, int height, UINT32 r
     // Find the adapter and output for our monitor
     for (UINT a = 0;; ++a) {
         ComPtr<IDXGIAdapter1> adapter;
-        if (factory->EnumAdapters1(a, &adapter) == DXGI_ERROR_NOT_FOUND)
-            break;
+        if (factory->EnumAdapters1(a, &adapter) == DXGI_ERROR_NOT_FOUND) break;
 
         for (UINT o = 0;; ++o) {
             ComPtr<IDXGIOutput> output;
-            if (adapter->EnumOutputs(o, &output) == DXGI_ERROR_NOT_FOUND)
-                break;
+            if (adapter->EnumOutputs(o, &output) == DXGI_ERROR_NOT_FOUND) break;
 
             DXGI_OUTPUT_DESC desc{};
-            if (FAILED(output->GetDesc(&desc)))
-                continue;
-            if (desc.Monitor != hmon)
-                continue;
+            if (FAILED(output->GetDesc(&desc))) continue;
+            if (desc.Monitor != hmon) continue;
 
             // Found our monitor's output! Now try to set the mode
             // We need to create a temporary swap chain to use SetFullscreenState
@@ -82,8 +78,8 @@ bool ApplyDisplaySettingsDXGI(int monitor_index, int width, int height, UINT32 r
             swap_chain_desc.SampleDesc.Count = 1;
             swap_chain_desc.SampleDesc.Quality = 0;
             swap_chain_desc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-            swap_chain_desc.OutputWindow = nullptr; // We don't need a window for this
-            swap_chain_desc.Windowed = FALSE;       // Start in fullscreen
+            swap_chain_desc.OutputWindow = nullptr;  // We don't need a window for this
+            swap_chain_desc.Windowed = FALSE;        // Start in fullscreen
             swap_chain_desc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
 
             HRESULT hr = D3D11CreateDeviceAndSwapChain(
@@ -104,6 +100,10 @@ bool ApplyDisplaySettingsDXGI(int monitor_index, int width, int height, UINT32 r
                     mode_desc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
                     mode_desc.Scaling = DXGI_MODE_SCALING_UNSPECIFIED;
 
+                    LogInfo("[ApplyDisplaySettingsDXGI] mode_desc: %d %d %d %d %d %d", mode_desc.Width,
+                            mode_desc.Height, mode_desc.Format, mode_desc.RefreshRate.Numerator,
+                            mode_desc.RefreshRate.Denominator, mode_desc.ScanlineOrdering, mode_desc.Scaling);
+
                     hr = swap_chain->ResizeTarget(&mode_desc);
                     if (SUCCEEDED(hr)) {
                         // Success! Now exit fullscreen to return to normal desktop
@@ -119,10 +119,10 @@ bool ApplyDisplaySettingsDXGI(int monitor_index, int width, int height, UINT32 r
             // If we get here, this output didn't work, try the next one
             break;
         }
-        break; // Only try the first adapter
+        break;  // Only try the first adapter
     }
 
     return false;
 }
 
-} // namespace resolution
+}  // namespace resolution

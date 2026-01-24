@@ -644,6 +644,8 @@ bool ResolutionWidget::TryApplyResolution(int display_index, const ResolutionDat
         // Both are current, nothing to apply
         return true;
     }
+    LogInfo("[TryApplyResolution] resolution: %d %d %d %d", resolution.width, resolution.height,
+            resolution.refresh_numerator, resolution.refresh_denominator);
 
     // Mark original state before applying (to capture current state for restore)
     display_restore::MarkOriginalForDisplayIndex(display_index);

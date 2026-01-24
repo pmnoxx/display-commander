@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <windows.h>
 
 // Simple process-exit safety hooks to ensure display restore runs on normal
@@ -15,6 +16,9 @@ void Initialize();
 void Shutdown();
 
 // Our custom unhandled exception handler function
-LONG WINAPI UnhandledExceptionHandler(EXCEPTION_POINTERS *exception_info);
+LONG WINAPI UnhandledExceptionHandler(EXCEPTION_POINTERS* exception_info);
 
-} // namespace process_exit_hooks
+// Last handler set via SetUnhandledExceptionFilter_Detour (not our handler)
+extern std::atomic<LPTOP_LEVEL_EXCEPTION_FILTER> g_last_detour_handler;
+
+}  // namespace process_exit_hooks

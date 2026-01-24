@@ -993,6 +993,7 @@ bool InstallWindowsApiHooks() {
 }
 
 bool InstallApiHooks() {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     if (g_api_hooks_installed.load()) {
         // LogInfo("API hooks already installed");
         return true;

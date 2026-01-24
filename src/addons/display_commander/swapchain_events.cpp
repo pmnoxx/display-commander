@@ -876,6 +876,7 @@ LONGLONG TimerPresentPacingDelayEnd(LONGLONG start_ns) {
 }
 
 void OnPresentUpdateAfter(reshade::api::command_queue* queue, reshade::api::swapchain* swapchain) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     reshade::api::device_api api = swapchain->get_device()->get_api();
     if (api == reshade::api::device_api::vulkan) {
         display_commanderhooks::dxgi::PresentCommonState state;
@@ -885,6 +886,7 @@ void OnPresentUpdateAfter(reshade::api::command_queue* queue, reshade::api::swap
 }
 
 void HandleFpsLimiterPost(bool from_present_detour, bool from_wrapper = false) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     float target_fps = GetTargetFps();
 
     if (target_fps <= 0.0f) {
@@ -936,6 +938,7 @@ void HandleFpsLimiterPost(bool from_present_detour, bool from_wrapper = false) {
 }
 
 void OnPresentUpdateAfter2(void* native_device, DeviceTypeDC device_type, bool from_wrapper) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     // Track render thread ID
     DWORD current_thread_id = GetCurrentThreadId();
     DWORD previous_render_thread_id = g_render_thread_id.load();

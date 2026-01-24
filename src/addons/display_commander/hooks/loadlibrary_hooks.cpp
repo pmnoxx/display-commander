@@ -589,7 +589,8 @@ BOOL WINAPI FreeLibrary_Detour(HMODULE hLibModule) {
 
 // Hooked FreeLibraryAndExitThread function
 VOID WINAPI FreeLibraryAndExitThread_Detour(HMODULE hLibModule, DWORD dwExitCode) {
-    // Record detour call but don't create guard (this function never returns, so guard would be incorrectly flagged as crash)
+    // Record detour call but don't create guard (this function never returns, so guard would be incorrectly flagged as
+    // crash)
     detour_call_tracker::RecordDetourCall(__FUNCTION__, __LINE__, utils::get_now_ns());
 
     // Check if this is the ReShade module being unloaded
@@ -859,6 +860,7 @@ bool HasReframeworkPluginModule() {
 }
 
 void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     LogInfo("Module loaded: %ws (0x%p)", moduleName.c_str(), hModule);
 
     // Convert to lowercase for case-insensitive comparison

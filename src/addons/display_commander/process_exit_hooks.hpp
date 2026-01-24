@@ -21,4 +21,7 @@ LONG WINAPI UnhandledExceptionHandler(EXCEPTION_POINTERS* exception_info);
 // Last handler set via SetUnhandledExceptionFilter_Detour (not our handler)
 extern std::atomic<LPTOP_LEVEL_EXCEPTION_FILTER> g_last_detour_handler;
 
+// Vectored exception handler handle (for AddVectoredExceptionHandler)
+extern PVOID g_vectored_exception_handler_handle;
+
 }  // namespace process_exit_hooks

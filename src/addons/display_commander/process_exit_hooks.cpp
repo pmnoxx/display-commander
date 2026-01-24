@@ -6,16 +6,30 @@
 #include <ctime>
 #include <sstream>
 #include <string>
+#include <unordered_set>
 #include <vector>
 #include "dbghelp_loader.hpp"
 #include "exit_handler.hpp"
 #include "globals.hpp"
 #include "utils/detour_call_tracker.hpp"
+#include "utils/srwlock_wrapper.hpp"
 #include "utils/stack_trace.hpp"
 #include "utils/timing.hpp"
 #include "version.hpp"
 
 namespace {
+
+// Track seen exception addresses to avoid duplicate logging
+SRWLOCK g_seen_exception_addresses_lock = SRWLOCK_INIT;
+std::unordered_set<uintptr_t> g_seen_exception_addresses;
+
+// Check if exception address was seen before, and record it if not
+// Returns true if address was already seen (should skip detailed logging)
+bool CheckAndRecordExceptionAddress(uintptr_t address) {
+    utils::SRWLockExclusive lock(g_seen_exception_addresses_lock);
+    auto result = g_seen_exception_addresses.insert(address);
+    return !result.second;  // true if already existed (insert failed)
+}
 
 // Helper function to print process information
 void PrintProcessInfo() {
@@ -227,6 +241,7 @@ namespace process_exit_hooks {
 
 std::atomic<bool> g_installed{false};
 std::atomic<LPTOP_LEVEL_EXCEPTION_FILTER> g_last_detour_handler{nullptr};
+PVOID g_vectored_exception_handler_handle = nullptr;
 
 void AtExitHandler() {
     // Log exit detection
@@ -238,6 +253,26 @@ LONG WINAPI UnhandledExceptionHandler(EXCEPTION_POINTERS* exception_info) {
     if (g_shutdown.load()) {
         // During shutdown, just return without doing anything to avoid crashes
         return EXCEPTION_EXECUTE_HANDLER;
+    }
+
+    // Check if we've seen this exception address before
+    uintptr_t exception_address = 0;
+    if (exception_info && exception_info->ExceptionRecord) {
+        exception_address = reinterpret_cast<uintptr_t>(exception_info->ExceptionRecord->ExceptionAddress);
+        if (CheckAndRecordExceptionAddress(exception_address)) {
+            // Address was already seen, skip detailed logging
+            // std::ostringstream skip_msg;
+            // skip_msg << "Exception at address 0x" << std::hex << std::uppercase << exception_address
+            //          << " already logged, skipping duplicate report";
+            // exit_handler::WriteToDebugLog(skip_msg.str());
+
+            // Still chain to last handler
+            LPTOP_LEVEL_EXCEPTION_FILTER last_detour_handler = g_last_detour_handler.load();
+            if (last_detour_handler != nullptr) {
+                return last_detour_handler(exception_info);
+            }
+            return EXCEPTION_EXECUTE_HANDLER;
+        }
     }
 
     // Ensure DbgHelp is loaded before attempting stack trace
@@ -342,6 +377,121 @@ LONG WINAPI UnhandledExceptionHandler(EXCEPTION_POINTERS* exception_info) {
     //  return EXCEPTION_CONTINUE_EXECUTION;
 }
 
+// Vectored exception handler - catches exceptions early and prints stack traces
+// Similar to ReShade's implementation but prints stack traces instead of minidumps
+LONG WINAPI VectoredExceptionHandler(PEXCEPTION_POINTERS ex) {
+    // Check if shutdown is in progress to avoid crashes during DLL unload
+    if (g_shutdown.load()) {
+        return EXCEPTION_CONTINUE_SEARCH;
+    }
+
+    // Ignore debugging and some common language exceptions (same filter as ReShade)
+    const DWORD code = ex->ExceptionRecord->ExceptionCode;
+    if (code == CONTROL_C_EXIT || code == 0x406D1388 /* SetThreadName */ || code == DBG_PRINTEXCEPTION_C
+        || code == DBG_PRINTEXCEPTION_WIDE_C || code == STATUS_BREAKPOINT
+        || code == 0xE0434352 /* CLR exception */ || code == 0xE06D7363 /* Visual C++ exception */
+        || ((code ^ 0xE24C4A00) <= 0xFF) /* LuaJIT exception */) {
+        return EXCEPTION_CONTINUE_SEARCH;
+    }
+
+    // Check if we've seen this exception address before
+    uintptr_t exception_address = 0;
+    if (ex && ex->ExceptionRecord) {
+        exception_address = reinterpret_cast<uintptr_t>(ex->ExceptionRecord->ExceptionAddress);
+        if (CheckAndRecordExceptionAddress(exception_address)) {
+            // Address was already seen, skip detailed logging
+            std::ostringstream skip_msg;
+            skip_msg << "Vectored exception at address 0x" << std::hex << std::uppercase << exception_address
+                     << " already logged, skipping duplicate report";
+            exit_handler::WriteToDebugLog(skip_msg.str());
+            return EXCEPTION_CONTINUE_SEARCH;
+        }
+    }
+
+    // Ensure DbgHelp is loaded before attempting stack trace
+    dbghelp_loader::LoadDbgHelp();
+
+    // Log detailed crash information
+    exit_handler::WriteToDebugLog("=== VECTORED EXCEPTION HANDLER - CRASH DETECTED ===");
+
+    // Print version information first
+    PrintVersionInfo();
+
+    // Print system information
+    PrintSystemInfo();
+
+    // Print process information
+    PrintProcessInfo();
+
+    // Log exception information
+    if (ex && ex->ExceptionRecord) {
+        std::ostringstream exception_details;
+        exception_details << "Exception Code: 0x" << std::hex << std::uppercase << ex->ExceptionRecord->ExceptionCode;
+        exit_handler::WriteToDebugLog(exception_details.str());
+
+        // Log exception flags
+        std::ostringstream flags_details;
+        flags_details << "Exception Flags: 0x" << std::hex << std::uppercase << ex->ExceptionRecord->ExceptionFlags;
+        exit_handler::WriteToDebugLog(flags_details.str());
+
+        // Log exception address
+        std::ostringstream address_details;
+        address_details << "Exception Address: 0x" << std::hex << std::uppercase
+                        << reinterpret_cast<uintptr_t>(ex->ExceptionRecord->ExceptionAddress);
+        exit_handler::WriteToDebugLog(address_details.str());
+    }
+
+    // Print recent detour calls information
+    uint64_t crash_timestamp_ns = utils::get_real_time_ns();  // Use real time to avoid spoofed timers
+    std::string recent_detour_info = detour_call_tracker::FormatRecentDetourCalls(crash_timestamp_ns, 256);
+    exit_handler::WriteToDebugLog("=== RECENT DETOUR CALLS ===");
+
+    // Split multi-line string and write each line separately
+    if (!recent_detour_info.empty()) {
+        std::istringstream iss(recent_detour_info);
+        std::string line;
+        while (std::getline(iss, line)) {
+            // Remove any trailing carriage return
+            if (!line.empty() && line.back() == '\r') {
+                line.pop_back();
+            }
+            if (!line.empty()) {
+                exit_handler::WriteToDebugLog(line);
+            }
+        }
+    } else {
+        exit_handler::WriteToDebugLog("Recent Detour Calls: <none recorded>");
+    }
+
+    exit_handler::WriteToDebugLog("=== END RECENT DETOUR CALLS ===");
+
+    // Print stack trace using exception context
+    exit_handler::WriteToDebugLog("=== GENERATING STACK TRACE ===");
+    CONTEXT* exception_context = nullptr;
+    if (ex && ex->ContextRecord) {
+        exception_context = ex->ContextRecord;
+    }
+
+    // Generate stack trace using exception context
+    auto stack_trace = stack_trace::GenerateStackTrace(exception_context);
+
+    // Log stack trace to file frame by frame to avoid truncation
+    exit_handler::WriteToDebugLog("=== STACK TRACE ===");
+    for (const auto& frame : stack_trace) {
+        exit_handler::WriteToDebugLog(frame);
+    }
+    exit_handler::WriteToDebugLog("=== END STACK TRACE ===");
+
+    // Print list of loaded modules
+    PrintLoadedModules();
+
+    // Log exit detection
+    exit_handler::OnHandleExit(exit_handler::ExitSource::UNHANDLED_EXCEPTION, "Vectored exception detected");
+
+    // Continue searching for other handlers (like SetUnhandledExceptionFilter)
+    return EXCEPTION_CONTINUE_SEARCH;
+}
+
 void Initialize() {
     bool expected = false;
     if (!g_installed.compare_exchange_strong(expected, true)) {
@@ -354,6 +504,17 @@ void Initialize() {
     // SEH unhandled exception filter for most crash scenarios
     exit_handler::WriteToDebugLog("Installing SEH unhandled exception filter");
     g_last_detour_handler = ::SetUnhandledExceptionFilter(&UnhandledExceptionHandler);
+
+    // Install vectored exception handler to catch exceptions early (before SetUnhandledExceptionFilter)
+    // This allows us to print stack traces for all crashes, similar to ReShade's approach
+    // First parameter (1) means this handler is called first (before other handlers)
+    exit_handler::WriteToDebugLog("Installing vectored exception handler");
+    g_vectored_exception_handler_handle = ::AddVectoredExceptionHandler(1, &VectoredExceptionHandler);
+    if (g_vectored_exception_handler_handle == nullptr) {
+        exit_handler::WriteToDebugLog("Failed to install vectored exception handler");
+    } else {
+        exit_handler::WriteToDebugLog("Vectored exception handler installed successfully");
+    }
 }
 
 void Shutdown() {
@@ -367,6 +528,19 @@ void Shutdown() {
 
     // Clear last detour handler
     g_last_detour_handler.store(nullptr);
+
+    // Remove vectored exception handler
+    if (g_vectored_exception_handler_handle != nullptr) {
+        ::RemoveVectoredExceptionHandler(g_vectored_exception_handler_handle);
+        g_vectored_exception_handler_handle = nullptr;
+        exit_handler::WriteToDebugLog("Vectored exception handler removed");
+    }
+
+    // Clear seen exception addresses
+    {
+        utils::SRWLockExclusive lock(g_seen_exception_addresses_lock);
+        g_seen_exception_addresses.clear();
+    }
 }
 
 }  // namespace process_exit_hooks

@@ -27,6 +27,25 @@ char g_string_buffers[BUFFER_SIZE][512];
 // Incremented on each write, wraps around automatically
 std::atomic<size_t> g_write_index{0};
 
+// Crash detection: Track active guards
+// Each guard gets a slot in this array with an atomic destroyed flag
+constexpr size_t MAX_ACTIVE_GUARDS = 512;
+constexpr size_t GUARD_MASK = MAX_ACTIVE_GUARDS - 1;  // For fast modulo (must be power of 2)
+
+struct GuardSlot {
+    std::atomic<const char*> function_name{nullptr};
+    std::atomic<int> line_number{0};
+    std::atomic<uint64_t> timestamp_ns{0};
+    std::atomic<bool> destroyed{false};
+    std::atomic<bool> in_use{false};
+};
+
+GuardSlot g_guard_slots[MAX_ACTIVE_GUARDS];
+std::atomic<size_t> g_guard_slot_index{0};
+
+// String storage for guard function names
+char g_guard_string_buffers[MAX_ACTIVE_GUARDS][512];
+
 }  // anonymous namespace
 
 void RecordDetourCall(const char* function_name, int line_number, uint64_t timestamp_ns) {
@@ -130,6 +149,113 @@ std::string FormatRecentDetourCalls(uint64_t crash_timestamp_ns, size_t max_coun
 
         if (i < count - 1) {
             oss << "\n";
+        }
+    }
+
+    return oss.str();
+}
+
+DetourCallGuard::DetourCallGuard(const char* function_name, int line_number, uint64_t timestamp_ns)
+    : function_name_(function_name), line_number_(line_number), timestamp_ns_(timestamp_ns), destroyed_flag_(nullptr) {
+    // Record the detour call
+    RecordDetourCall(function_name, line_number, timestamp_ns);
+
+    // Allocate a guard slot for crash detection
+    size_t slot_index = g_guard_slot_index.fetch_add(1, std::memory_order_relaxed) & GUARD_MASK;
+    GuardSlot& slot = g_guard_slots[slot_index];
+
+    // Format function name and line number
+    snprintf(g_guard_string_buffers[slot_index], sizeof(g_guard_string_buffers[slot_index]), "%s:%d", function_name,
+             line_number);
+
+    // Initialize slot (using relaxed ordering for performance)
+    slot.function_name.store(g_guard_string_buffers[slot_index], std::memory_order_relaxed);
+    slot.line_number.store(line_number, std::memory_order_relaxed);
+    slot.timestamp_ns.store(timestamp_ns, std::memory_order_relaxed);
+    slot.destroyed.store(false, std::memory_order_relaxed);
+    slot.in_use.store(true, std::memory_order_release);  // Release to ensure visibility
+
+    // Store pointer to destroyed flag for destructor
+    destroyed_flag_ = &slot.destroyed;
+}
+
+DetourCallGuard::~DetourCallGuard() {
+    // Mark as destroyed if we have a flag
+    if (destroyed_flag_ != nullptr) {
+        destroyed_flag_->store(true, std::memory_order_release);
+    }
+}
+
+size_t GetUndestroyedGuardCount() {
+    size_t count = 0;
+    // Scan all guard slots to find undestroyed ones
+    for (size_t i = 0; i < MAX_ACTIVE_GUARDS; ++i) {
+        GuardSlot& slot = g_guard_slots[i];
+        // Check if slot is in use and not destroyed
+        bool in_use = slot.in_use.load(std::memory_order_acquire);
+        if (in_use) {
+            bool destroyed = slot.destroyed.load(std::memory_order_acquire);
+            if (!destroyed) {
+                count++;
+            }
+        }
+    }
+    return count;
+}
+
+std::string FormatUndestroyedGuards(uint64_t crash_timestamp_ns) {
+    std::ostringstream oss;
+
+    // Collect undestroyed guards
+    UndestroyedGuardInfo undestroyed_guards[MAX_ACTIVE_GUARDS];
+    size_t count = 0;
+
+    for (size_t i = 0; i < MAX_ACTIVE_GUARDS && count < MAX_ACTIVE_GUARDS; ++i) {
+        GuardSlot& slot = g_guard_slots[i];
+        bool in_use = slot.in_use.load(std::memory_order_acquire);
+        if (in_use) {
+            bool destroyed = slot.destroyed.load(std::memory_order_acquire);
+            if (!destroyed) {
+                const char* func_name = slot.function_name.load(std::memory_order_acquire);
+                int line_number = slot.line_number.load(std::memory_order_acquire);
+                uint64_t timestamp = slot.timestamp_ns.load(std::memory_order_acquire);
+
+                if (func_name != nullptr && timestamp != 0) {
+                    undestroyed_guards[count].function_name = func_name;
+                    undestroyed_guards[count].line_number = line_number;
+                    undestroyed_guards[count].timestamp_ns = timestamp;
+                    count++;
+                }
+            }
+        }
+    }
+
+    oss << "Undestroyed Detour Guards (crashes detected): " << count;
+
+    if (count > 0) {
+        oss << "\n";
+        for (size_t i = 0; i < count; ++i) {
+            const UndestroyedGuardInfo& guard = undestroyed_guards[i];
+
+            // Calculate time difference
+            int64_t time_diff_ns = static_cast<int64_t>(crash_timestamp_ns) - static_cast<int64_t>(guard.timestamp_ns);
+            double time_diff_ms = static_cast<double>(time_diff_ns) / 1000000.0;
+            double time_diff_us = static_cast<double>(time_diff_ns) / 1000.0;
+
+            oss << "  [" << (i + 1) << "] " << guard.function_name;
+
+            if (time_diff_ns >= 0) {
+                oss << " - " << std::fixed << std::setprecision(3) << time_diff_ms << " ms before crash";
+                if (time_diff_ms < 1.0) {
+                    oss << " (" << std::setprecision(1) << time_diff_us << " us)";
+                }
+            } else {
+                oss << " - <invalid timestamp>";
+            }
+
+            if (i < count - 1) {
+                oss << "\n";
+            }
         }
     }
 

@@ -1974,7 +1974,7 @@ void HandleSafemode() {
             "Streamline loading");
 
         // Set safemode to 0 (force set to 0)
-        settings::g_developerTabSettings.safemode.SetValue(false);
+        // settings::g_developerTabSettings.safemode.SetValue(false);
         settings::g_developerTabSettings.prevent_fullscreen.SetValue(false);
         settings::g_developerTabSettings.continue_rendering.SetValue(false);
 

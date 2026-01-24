@@ -1,5 +1,6 @@
 #include "timing.hpp"
 #include "../globals.hpp"
+#include "../hooks/api_hooks.hpp"
 #include "../hooks/timeslowdown_hooks.hpp"
 #include "../utils.hpp"
 #include "../utils/logging.hpp"
@@ -78,7 +79,8 @@ static bool mwaitx_support_checked = false;
 
 bool supports_mwaitx(void) {
     if (mwaitx_support_checked) return mwaitx_supported_cached;
-    auto handler = AddVectoredExceptionHandler(1, [](_EXCEPTION_POINTERS* ExceptionInfo) -> LONG {
+    // Use original function if hook is installed, otherwise use direct call
+    PVECTORED_EXCEPTION_HANDLER handler_func = [](_EXCEPTION_POINTERS* ExceptionInfo) -> LONG {
         if (ExceptionInfo->ExceptionRecord->ExceptionCode == EXCEPTION_ILLEGAL_INSTRUCTION) {
             mwaitx_supported_cached = false;
         }
@@ -90,7 +92,11 @@ bool supports_mwaitx(void) {
 #endif
 
         return EXCEPTION_CONTINUE_EXECUTION;
-    });
+    };
+    
+    auto handler = display_commanderhooks::AddVectoredExceptionHandler_Original
+                       ? display_commanderhooks::AddVectoredExceptionHandler_Original(1, handler_func)
+                       : AddVectoredExceptionHandler(1, handler_func);
     if (handler == nullptr) {
         LogError("Failed to add vectored exception handler");
         return false;

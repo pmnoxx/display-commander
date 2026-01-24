@@ -42,6 +42,7 @@ SetWindowLongPtrA_pfn SetWindowLongPtrA_Original = nullptr;
 SetWindowPos_pfn SetWindowPos_Original = nullptr;
 SetCursor_pfn SetCursor_Original = nullptr;
 ShowCursor_pfn ShowCursor_Original = nullptr;
+AddVectoredExceptionHandler_pfn AddVectoredExceptionHandler_Original = nullptr;
 CreateDXGIFactory_pfn CreateDXGIFactory_Original = nullptr;
 CreateDXGIFactory1_pfn CreateDXGIFactory1_Original = nullptr;
 D3D11CreateDeviceAndSwapChain_pfn D3D11CreateDeviceAndSwapChain_Original = nullptr;
@@ -340,6 +341,20 @@ int WINAPI ShowCursor_Detour(BOOL bShow) {
     LogDebug("ShowCursor_Detour: bShow=%d, result=%d", bShow, result);
 
     return result;
+}
+
+// Hooked AddVectoredExceptionHandler function
+PVOID WINAPI AddVectoredExceptionHandler_Detour(ULONG First, PVECTORED_EXCEPTION_HANDLER Handler) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
+    if (First == 1 && Handler != process_exit_hooks::UnhandledExceptionHandler) {
+        First = 2;
+    }
+    // Log the call for debugging
+    LogDebug("AddVectoredExceptionHandler_Detour: First=%lu, Handler=0x%p", First, Handler);
+
+    // Call original function
+    return AddVectoredExceptionHandler_Original ? AddVectoredExceptionHandler_Original(First, Handler)
+                                                : AddVectoredExceptionHandler(First, Handler);
 }
 
 // Hooked CreateDXGIFactory function
@@ -983,6 +998,13 @@ bool InstallWindowsApiHooks() {
         LogError("Failed to create and enable SetWindowPos hook");
     }
 
+    // Hook AddVectoredExceptionHandler
+    if (!CreateAndEnableHook(AddVectoredExceptionHandler, AddVectoredExceptionHandler_Detour,
+                             reinterpret_cast<LPVOID*>(&AddVectoredExceptionHandler_Original),
+                             "AddVectoredExceptionHandler")) {
+        LogError("Failed to create and enable AddVectoredExceptionHandler hook");
+    }
+
     LogInfo("Windows API hooks installed successfully");
 
     // Mark Windows API hooks as installed
@@ -1115,6 +1137,7 @@ void UninstallApiHooks() {
     MH_RemoveHook(SetWindowPos);
     MH_RemoveHook(SetCursor);
     MH_RemoveHook(ShowCursor);
+    MH_RemoveHook(AddVectoredExceptionHandler);
     MH_RemoveHook(CreateDXGIFactory);
     MH_RemoveHook(CreateDXGIFactory1);
 
@@ -1156,6 +1179,7 @@ void UninstallApiHooks() {
     SetWindowPos_Original = nullptr;
     SetCursor_Original = nullptr;
     ShowCursor_Original = nullptr;
+    AddVectoredExceptionHandler_Original = nullptr;
     CreateDXGIFactory_Original = nullptr;
     CreateDXGIFactory1_Original = nullptr;
     D3D11CreateDeviceAndSwapChain_Original = nullptr;

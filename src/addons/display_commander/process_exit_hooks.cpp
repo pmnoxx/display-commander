@@ -1,20 +1,19 @@
 #include "process_exit_hooks.hpp"
-#include "exit_handler.hpp"
-#include "globals.hpp"
-#include "utils/stack_trace.hpp"
-#include "utils/detour_call_tracker.hpp"
-#include "utils/timing.hpp"
-#include "dbghelp_loader.hpp"
-#include "version.hpp"
+#include <psapi.h>
+#include <windows.h>
 #include <atomic>
 #include <cstdlib>
+#include <ctime>
 #include <sstream>
 #include <string>
 #include <vector>
-#include <ctime>
-#include <windows.h>
-#include <psapi.h>
-
+#include "dbghelp_loader.hpp"
+#include "exit_handler.hpp"
+#include "globals.hpp"
+#include "utils/detour_call_tracker.hpp"
+#include "utils/stack_trace.hpp"
+#include "utils/timing.hpp"
+#include "version.hpp"
 
 namespace {
 
@@ -59,11 +58,13 @@ void PrintProcessInfo() {
         // Process memory information
         HANDLE process_handle = GetCurrentProcess();
         PROCESS_MEMORY_COUNTERS_EX mem_counters = {};
-        if (GetProcessMemoryInfo(process_handle, reinterpret_cast<PROCESS_MEMORY_COUNTERS*>(&mem_counters), sizeof(mem_counters)) != 0) {
+        if (GetProcessMemoryInfo(process_handle, reinterpret_cast<PROCESS_MEMORY_COUNTERS*>(&mem_counters),
+                                 sizeof(mem_counters))
+            != 0) {
             std::ostringstream mem_msg;
             mem_msg << "Process Memory - Working Set: " << (mem_counters.WorkingSetSize / 1024 / 1024) << " MB, "
-                   << "Peak Working Set: " << (mem_counters.PeakWorkingSetSize / 1024 / 1024) << " MB, "
-                   << "Page Faults: " << mem_counters.PageFaultCount;
+                    << "Peak Working Set: " << (mem_counters.PeakWorkingSetSize / 1024 / 1024) << " MB, "
+                    << "Page Faults: " << mem_counters.PageFaultCount;
             exit_handler::WriteToDebugLog(mem_msg.str());
         }
 
@@ -81,17 +82,18 @@ void PrintSystemInfo() {
         exit_handler::WriteToDebugLog("=== SYSTEM INFORMATION ===");
 
         // OS Version (using RtlGetVersion which is safer than GetVersionEx)
-        typedef NTSTATUS (WINAPI *RtlGetVersionFunc)(OSVERSIONINFOEXW*);
+        typedef NTSTATUS(WINAPI * RtlGetVersionFunc)(OSVERSIONINFOEXW*);
         HMODULE ntdll = GetModuleHandleW(L"ntdll.dll");
         if (ntdll != nullptr) {
-            RtlGetVersionFunc rtl_get_version = reinterpret_cast<RtlGetVersionFunc>(GetProcAddress(ntdll, "RtlGetVersion"));
+            RtlGetVersionFunc rtl_get_version =
+                reinterpret_cast<RtlGetVersionFunc>(GetProcAddress(ntdll, "RtlGetVersion"));
             if (rtl_get_version != nullptr) {
                 OSVERSIONINFOEXW os_info = {};
                 os_info.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEXW);
                 if (rtl_get_version(&os_info) == 0) {
                     std::ostringstream os_msg;
                     os_msg << "OS Version: Windows " << os_info.dwMajorVersion << "." << os_info.dwMinorVersion
-                          << " Build " << os_info.dwBuildNumber;
+                           << " Build " << os_info.dwBuildNumber;
                     if (os_info.wServicePackMajor > 0) {
                         os_msg << " SP" << os_info.wServicePackMajor;
                     }
@@ -104,24 +106,13 @@ void PrintSystemInfo() {
         SYSTEM_INFO sys_info = {};
         GetSystemInfo(&sys_info);
         std::ostringstream cpu_msg;
-        cpu_msg << "CPU - Processors: " << sys_info.dwNumberOfProcessors
-               << ", Architecture: ";
+        cpu_msg << "CPU - Processors: " << sys_info.dwNumberOfProcessors << ", Architecture: ";
         switch (sys_info.wProcessorArchitecture) {
-            case PROCESSOR_ARCHITECTURE_AMD64:
-                cpu_msg << "x64";
-                break;
-            case PROCESSOR_ARCHITECTURE_INTEL:
-                cpu_msg << "x86";
-                break;
-            case PROCESSOR_ARCHITECTURE_ARM:
-                cpu_msg << "ARM";
-                break;
-            case PROCESSOR_ARCHITECTURE_ARM64:
-                cpu_msg << "ARM64";
-                break;
-            default:
-                cpu_msg << "Unknown (0x" << std::hex << sys_info.wProcessorArchitecture << ")";
-                break;
+            case PROCESSOR_ARCHITECTURE_AMD64: cpu_msg << "x64"; break;
+            case PROCESSOR_ARCHITECTURE_INTEL: cpu_msg << "x86"; break;
+            case PROCESSOR_ARCHITECTURE_ARM:   cpu_msg << "ARM"; break;
+            case PROCESSOR_ARCHITECTURE_ARM64: cpu_msg << "ARM64"; break;
+            default:                           cpu_msg << "Unknown (0x" << std::hex << sys_info.wProcessorArchitecture << ")"; break;
         }
         exit_handler::WriteToDebugLog(cpu_msg.str());
 
@@ -131,8 +122,8 @@ void PrintSystemInfo() {
         if (GlobalMemoryStatusEx(&mem_status) != 0) {
             std::ostringstream mem_msg;
             mem_msg << "System Memory - Total: " << (mem_status.ullTotalPhys / 1024 / 1024 / 1024) << " GB, "
-                   << "Available: " << (mem_status.ullAvailPhys / 1024 / 1024 / 1024) << " GB, "
-                   << "Load: " << mem_status.dwMemoryLoad << "%";
+                    << "Available: " << (mem_status.ullAvailPhys / 1024 / 1024 / 1024) << " GB, "
+                    << "Load: " << mem_status.dwMemoryLoad << "%";
             exit_handler::WriteToDebugLog(mem_msg.str());
         }
 
@@ -206,10 +197,9 @@ void PrintLoadedModules() {
                     MODULEINFO module_info = {};
                     std::ostringstream module_msg;
                     if (GetModuleInformation(process_handle, modules[i], &module_info, sizeof(module_info)) != 0) {
-                        module_msg << "  [" << i << "] " << buffer.data()
-                                  << " (Base: 0x" << std::hex << std::uppercase
-                                  << reinterpret_cast<uintptr_t>(module_info.lpBaseOfDll)
-                                  << ", Size: " << std::dec << module_info.SizeOfImage << " bytes)";
+                        module_msg << "  [" << i << "] " << buffer.data() << " (Base: 0x" << std::hex << std::uppercase
+                                   << reinterpret_cast<uintptr_t>(module_info.lpBaseOfDll) << ", Size: " << std::dec
+                                   << module_info.SizeOfImage << " bytes)";
                     } else {
                         module_msg << "  [" << i << "] " << buffer.data();
                     }
@@ -217,9 +207,8 @@ void PrintLoadedModules() {
                 }
             } else {
                 std::ostringstream module_msg;
-                module_msg << "  [" << i << "] <Unknown Module> (Handle: 0x"
-                          << std::hex << std::uppercase
-                          << reinterpret_cast<uintptr_t>(modules[i]) << ")";
+                module_msg << "  [" << i << "] <Unknown Module> (Handle: 0x" << std::hex << std::uppercase
+                           << reinterpret_cast<uintptr_t>(modules[i]) << ")";
                 exit_handler::WriteToDebugLog(module_msg.str());
             }
         }
@@ -232,19 +221,19 @@ void PrintLoadedModules() {
     }
 }
 
-} // anonymous namespace
+}  // anonymous namespace
 
 namespace process_exit_hooks {
 
 std::atomic<bool> g_installed{false};
-LPTOP_LEVEL_EXCEPTION_FILTER g_prev_filter = nullptr;
+std::atomic<LPTOP_LEVEL_EXCEPTION_FILTER> g_last_detour_handler{nullptr};
 
 void AtExitHandler() {
     // Log exit detection
     exit_handler::OnHandleExit(exit_handler::ExitSource::ATEXIT, "Normal process exit via atexit");
 }
 
-LONG WINAPI UnhandledExceptionHandler(EXCEPTION_POINTERS *exception_info) {
+LONG WINAPI UnhandledExceptionHandler(EXCEPTION_POINTERS* exception_info) {
     // Check if shutdown is in progress to avoid crashes during DLL unload
     if (g_shutdown.load()) {
         // During shutdown, just return without doing anything to avoid crashes
@@ -270,19 +259,19 @@ LONG WINAPI UnhandledExceptionHandler(EXCEPTION_POINTERS *exception_info) {
     if (exception_info && exception_info->ExceptionRecord) {
         std::ostringstream exception_details;
         exception_details << "Exception Code: 0x" << std::hex << std::uppercase
-                         << exception_info->ExceptionRecord->ExceptionCode;
+                          << exception_info->ExceptionRecord->ExceptionCode;
         exit_handler::WriteToDebugLog(exception_details.str());
 
         // Log exception flags
         std::ostringstream flags_details;
         flags_details << "Exception Flags: 0x" << std::hex << std::uppercase
-                     << exception_info->ExceptionRecord->ExceptionFlags;
+                      << exception_info->ExceptionRecord->ExceptionFlags;
         exit_handler::WriteToDebugLog(flags_details.str());
 
         // Log exception address
         std::ostringstream address_details;
         address_details << "Exception Address: 0x" << std::hex << std::uppercase
-                       << reinterpret_cast<uintptr_t>(exception_info->ExceptionRecord->ExceptionAddress);
+                        << reinterpret_cast<uintptr_t>(exception_info->ExceptionRecord->ExceptionAddress);
         exit_handler::WriteToDebugLog(address_details.str());
     }
 
@@ -296,7 +285,7 @@ LONG WINAPI UnhandledExceptionHandler(EXCEPTION_POINTERS *exception_info) {
     }
 
     // Print recent detour calls information
-    uint64_t crash_timestamp_ns = utils::get_real_time_ns(); // Use real time to avoid spoofed timers
+    uint64_t crash_timestamp_ns = utils::get_real_time_ns();  // Use real time to avoid spoofed timers
     std::string recent_detour_info = detour_call_tracker::FormatRecentDetourCalls(crash_timestamp_ns, 256);
     exit_handler::WriteToDebugLog("=== RECENT DETOUR CALLS ===");
 
@@ -342,13 +331,15 @@ LONG WINAPI UnhandledExceptionHandler(EXCEPTION_POINTERS *exception_info) {
     // Log exit detection
     exit_handler::OnHandleExit(exit_handler::ExitSource::UNHANDLED_EXCEPTION, "Unhandled exception detected");
 
-    // Chain to previous filter if any
-    // if (g_prev_filter != nullptr) {
-      //   return g_prev_filter(exception_info);
-    // }
-     return EXCEPTION_EXECUTE_HANDLER;
+    // Chain to last handler set via SetUnhandledExceptionFilter_Detour if any
+    LPTOP_LEVEL_EXCEPTION_FILTER last_detour_handler = g_last_detour_handler.load();
+    if (last_detour_handler != nullptr) {
+        return last_detour_handler(exception_info);
+    }
+
+    return EXCEPTION_EXECUTE_HANDLER;
     // assert(IsDebuggerPresent());
-   //  return EXCEPTION_CONTINUE_EXECUTION;
+    //  return EXCEPTION_CONTINUE_EXECUTION;
 }
 
 void Initialize() {
@@ -362,7 +353,7 @@ void Initialize() {
 
     // SEH unhandled exception filter for most crash scenarios
     exit_handler::WriteToDebugLog("Installing SEH unhandled exception filter");
-    g_prev_filter = ::SetUnhandledExceptionFilter(&UnhandledExceptionHandler);
+    g_last_detour_handler = ::SetUnhandledExceptionFilter(&UnhandledExceptionHandler);
 }
 
 void Shutdown() {
@@ -372,8 +363,10 @@ void Shutdown() {
     }
 
     // Restore previous unhandled exception filter
-    ::SetUnhandledExceptionFilter(g_prev_filter);
-    g_prev_filter = nullptr;
+    ::SetUnhandledExceptionFilter(g_last_detour_handler);
+
+    // Clear last detour handler
+    g_last_detour_handler.store(nullptr);
 }
 
-} // namespace process_exit_hooks
+}  // namespace process_exit_hooks

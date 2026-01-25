@@ -38,20 +38,20 @@ void InitDeveloperNewTab() {
 }
 
 void DrawDeveloperNewTab() {
-    if (ImGui::CollapsingHeader("Features Enabled By Default", ImGuiTreeNodeFlags_DefaultOpen)) {
+    if (ImGui::CollapsingHeader("Features Enabled By Default", ImGuiTreeNodeFlags_None)) {
         DrawFeaturesEnabledByDefault();
     }
     ImGui::Spacing();
 
     // Developer Settings Section
-    if (ImGui::CollapsingHeader("Developer Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
+    if (ImGui::CollapsingHeader("Developer Settings", ImGuiTreeNodeFlags_None)) {
         DrawDeveloperSettings();
     }
 
     ImGui::Spacing();
 
     // HDR and Display Settings Section
-    if (ImGui::CollapsingHeader("HDR and Display Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
+    if (ImGui::CollapsingHeader("HDR and Display Settings", ImGuiTreeNodeFlags_None)) {
         DrawHdrDisplaySettings();
     }
 
@@ -635,7 +635,7 @@ void DrawNvapiSettings() {
     uint64_t now_ns = utils::get_now_ns();
 
     if (IsGameInNvapiAutoEnableList(GetCurrentProcessName())) {
-        if (ImGui::CollapsingHeader("NVAPI Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
+        if (ImGui::CollapsingHeader("NVAPI Settings", ImGuiTreeNodeFlags_None)) {
             ImGui::Indent();
             // NVAPI Auto-enable checkbox
             if (CheckboxSetting(settings::g_developerTabSettings.nvapi_auto_enable_enabled,
@@ -711,7 +711,7 @@ void DrawNvapiSettings() {
     }
 
     // Minimal NVIDIA Reflex Controls (device runtime dependent)
-    if (ImGui::CollapsingHeader("NVIDIA Reflex (Minimal)", ImGuiTreeNodeFlags_DefaultOpen)) {
+    if (ImGui::CollapsingHeader("NVIDIA Reflex (Minimal)", ImGuiTreeNodeFlags_None)) {
         ImGui::Indent();
         // Native Reflex Status Indicator
         bool is_native_reflex_active = IsNativeReflexActive(now_ns);
@@ -831,7 +831,7 @@ void DrawNvapiSettings() {
         ImGui::Separator();
         ImGui::Spacing();
 
-        if (ImGui::CollapsingHeader("Reflex Sleep Status", ImGuiTreeNodeFlags_DefaultOpen)) {
+        if (ImGui::CollapsingHeader("Reflex Sleep Status", ImGuiTreeNodeFlags_None)) {
             // Try to get sleep status from latency manager
             NV_GET_SLEEP_STATUS_PARAMS sleep_status = {};
             sleep_status.version = NV_GET_SLEEP_STATUS_PARAMS_VER;
@@ -907,7 +907,7 @@ void DrawNvapiSettings() {
         ImGui::Separator();
         ImGui::Spacing();
 
-        if (ImGui::CollapsingHeader("Reflex Debug Counters", ImGuiTreeNodeFlags_DefaultOpen)) {
+        if (ImGui::CollapsingHeader("Reflex Debug Counters", ImGuiTreeNodeFlags_None)) {
             extern std::atomic<uint32_t> g_reflex_sleep_count;
             extern std::atomic<uint32_t> g_reflex_apply_sleep_mode_count;
             extern std::atomic<LONGLONG> g_reflex_sleep_duration_ns;
@@ -1044,8 +1044,7 @@ void DrawNvapiSettings() {
 
     // Fake NVAPI Settings
     ImGui::Spacing();
-    if (ImGui::CollapsingHeader("AntiLag 2 / XeLL support (fakenvapi / custom nvapi64.dll)",
-                                ImGuiTreeNodeFlags_DefaultOpen)) {
+    if (ImGui::CollapsingHeader("AntiLag 2 / XeLL support (fakenvapi / custom nvapi64.dll)", ImGuiTreeNodeFlags_None)) {
         ImGui::Indent();
         ImGui::TextColored(ui::colors::TEXT_WARNING, "Load AL2/AL+/XeLL through nvapi64.dll");
 

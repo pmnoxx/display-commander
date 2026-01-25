@@ -364,7 +364,7 @@ LONG WINAPI UnhandledExceptionHandler(EXCEPTION_POINTERS* exception_info) {
     PrintLoadedModules();
 
     // Log exit detection
-    exit_handler::OnHandleExit(exit_handler::ExitSource::UNHANDLED_EXCEPTION, "Unhandled exception detected");
+    // exit_handler::OnHandleExit(exit_handler::ExitSource::UNHANDLED_EXCEPTION, "Unhandled exception detected");
 
     // Chain to last handler set via SetUnhandledExceptionFilter_Detour if any
     LPTOP_LEVEL_EXCEPTION_FILTER last_detour_handler = g_last_detour_handler.load();
@@ -484,9 +484,6 @@ LONG WINAPI VectoredExceptionHandler(PEXCEPTION_POINTERS ex) {
 
     // Print list of loaded modules
     PrintLoadedModules();
-
-    // Log exit detection
-    exit_handler::OnHandleExit(exit_handler::ExitSource::UNHANDLED_EXCEPTION, "Vectored exception detected");
 
     // Continue searching for other handlers (like SetUnhandledExceptionFilter)
     return EXCEPTION_CONTINUE_SEARCH;

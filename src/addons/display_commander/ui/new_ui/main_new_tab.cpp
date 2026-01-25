@@ -28,6 +28,7 @@
 #include "../../utils/version_check.hpp"
 #include "../../widgets/resolution_widget/resolution_widget.hpp"
 #include "imgui.h"
+#include "new_ui_tabs.hpp"
 #include "settings_wrapper.hpp"
 #include "utils/timing.hpp"
 #include "version.hpp"
@@ -513,7 +514,7 @@ void DrawAdvancedSettings() {
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip(
-                "Enable advanced settings to show advanced tabs (Developer, Experimental, HID Input, etc.).\n"
+                "Enable advanced settings to show advanced tabs (Advanced, Experimental, HID Input, etc.).\n"
                 "When disabled, advanced tabs will be hidden to simplify the interface.");
         }
     }
@@ -542,75 +543,83 @@ void DrawAdvancedSettings() {
     ImGui::Text("Show Individual Tabs:");
     ImGui::Indent();
 
-    if (CheckboxSetting(settings::g_mainTabSettings.show_developer_tab, "Show Developer Tab")) {
-        LogInfo("Show Developer tab %s",
-                settings::g_mainTabSettings.show_developer_tab.GetValue() ? "enabled" : "disabled");
-    }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Shows the Developer tab even when 'Show All Tabs' is disabled.");
-    }
-
-    if (CheckboxSetting(settings::g_mainTabSettings.show_window_info_tab, "Show Window Info Tab")) {
-        LogInfo("Show Window Info tab %s",
-                settings::g_mainTabSettings.show_window_info_tab.GetValue() ? "enabled" : "disabled");
-    }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Shows the Window Info tab even when 'Show All Tabs' is disabled.");
+    if (ui::new_ui::g_tab_manager.HasTab("advanced")) {
+        if (CheckboxSetting(settings::g_mainTabSettings.show_developer_tab, "Show Advanced Tab")) {
+            LogInfo("Show Advanced tab %s",
+                    settings::g_mainTabSettings.show_developer_tab.GetValue() ? "enabled" : "disabled");
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Shows the Advanced tab even when 'Show All Tabs' is disabled.");
+        }
     }
 
-    if (CheckboxSetting(settings::g_mainTabSettings.show_swapchain_tab, "Show Swapchain Tab")) {
-        LogInfo("Show Swapchain tab %s",
-                settings::g_mainTabSettings.show_swapchain_tab.GetValue() ? "enabled" : "disabled");
-    }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Shows the Swapchain tab even when 'Show All Tabs' is disabled.");
-    }
-
-    if (CheckboxSetting(settings::g_mainTabSettings.show_important_info_tab, "Show Important Info Tab")) {
-        LogInfo("Show Important Info tab %s",
-                settings::g_mainTabSettings.show_important_info_tab.GetValue() ? "enabled" : "disabled");
-    }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Shows the Important Info tab even when 'Show All Tabs' is disabled.");
+    if (ui::new_ui::g_tab_manager.HasTab("window_info")) {
+        if (CheckboxSetting(settings::g_mainTabSettings.show_window_info_tab, "Show Window Info Tab")) {
+            LogInfo("Show Window Info tab %s",
+                    settings::g_mainTabSettings.show_window_info_tab.GetValue() ? "enabled" : "disabled");
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Shows the Window Info tab even when 'Show All Tabs' is disabled.");
+        }
     }
 
-    if (CheckboxSetting(settings::g_mainTabSettings.show_xinput_tab, "Show XInput Tab")) {
-        LogInfo("Show XInput tab %s", settings::g_mainTabSettings.show_xinput_tab.GetValue() ? "enabled" : "disabled");
-    }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Shows the XInput controller monitoring tab even when 'Show All Tabs' is disabled.");
-    }
-
-    if (CheckboxSetting(settings::g_mainTabSettings.show_remapping_tab, "Show Remapping Tab")) {
-        LogInfo("Show Remapping tab %s",
-                settings::g_mainTabSettings.show_remapping_tab.GetValue() ? "enabled" : "disabled");
-    }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Shows the Controller Remapping tab even when 'Show All Tabs' is disabled.");
+    if (ui::new_ui::g_tab_manager.HasTab("swapchain")) {
+        if (CheckboxSetting(settings::g_mainTabSettings.show_swapchain_tab, "Show Swapchain Tab")) {
+            LogInfo("Show Swapchain tab %s",
+                    settings::g_mainTabSettings.show_swapchain_tab.GetValue() ? "enabled" : "disabled");
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Shows the Swapchain tab even when 'Show All Tabs' is disabled.");
+        }
     }
 
-    if (CheckboxSetting(settings::g_mainTabSettings.show_hook_stats_tab, "Show Hook Statistics Tab")) {
-        LogInfo("Show Hook Statistics tab %s",
-                settings::g_mainTabSettings.show_hook_stats_tab.GetValue() ? "enabled" : "disabled");
-    }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Shows the Hook Statistics tab even when 'Show All Tabs' is disabled.");
-    }
-
-    if (CheckboxSetting(settings::g_mainTabSettings.show_streamline_tab, "Show Streamline Tab")) {
-        LogInfo("Show Streamline tab %s",
-                settings::g_mainTabSettings.show_streamline_tab.GetValue() ? "enabled" : "disabled");
-    }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Shows the Streamline tab even when 'Show All Tabs' is disabled.");
+    if (ui::new_ui::g_tab_manager.HasTab("important_info")) {
+        if (CheckboxSetting(settings::g_mainTabSettings.show_important_info_tab, "Show Important Info Tab")) {
+            LogInfo("Show Important Info tab %s",
+                    settings::g_mainTabSettings.show_important_info_tab.GetValue() ? "enabled" : "disabled");
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Shows the Important Info tab even when 'Show All Tabs' is disabled.");
+        }
     }
 
-    if (CheckboxSetting(settings::g_mainTabSettings.show_experimental_tab, "Show Experimental Tab")) {
-        LogInfo("Show Experimental tab %s",
-                settings::g_mainTabSettings.show_experimental_tab.GetValue() ? "enabled" : "disabled");
+    if (ui::new_ui::g_tab_manager.HasTab("controller")) {
+        if (CheckboxSetting(settings::g_mainTabSettings.show_controller_tab, "Show Controller Tab")) {
+            LogInfo("Show Controller tab %s", settings::g_mainTabSettings.show_controller_tab.GetValue() ? "enabled" : "disabled");
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Shows the Controller tab (XInput monitoring and remapping) even when 'Show All Tabs' is disabled.");
+        }
     }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Shows the Experimental tab even when 'Show All Tabs' is disabled.");
+
+    if (ui::new_ui::g_tab_manager.HasTab("hook_stats")) {
+        if (CheckboxSetting(settings::g_mainTabSettings.show_hook_stats_tab, "Show Hook Statistics Tab")) {
+            LogInfo("Show Hook Statistics tab %s",
+                    settings::g_mainTabSettings.show_hook_stats_tab.GetValue() ? "enabled" : "disabled");
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Shows the Hook Statistics tab even when 'Show All Tabs' is disabled.");
+        }
+    }
+
+    if (ui::new_ui::g_tab_manager.HasTab("streamline")) {
+        if (CheckboxSetting(settings::g_mainTabSettings.show_streamline_tab, "Show Streamline Tab")) {
+            LogInfo("Show Streamline tab %s",
+                    settings::g_mainTabSettings.show_streamline_tab.GetValue() ? "enabled" : "disabled");
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Shows the Streamline tab even when 'Show All Tabs' is disabled.");
+        }
+    }
+
+    if (ui::new_ui::g_tab_manager.HasTab("experimental")) {
+        if (CheckboxSetting(settings::g_mainTabSettings.show_experimental_tab, "Show Experimental Tab")) {
+            LogInfo("Show Experimental tab %s",
+                    settings::g_mainTabSettings.show_experimental_tab.GetValue() ? "enabled" : "disabled");
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Shows the Experimental tab even when 'Show All Tabs' is disabled.");
+        }
     }
 
     ImGui::Unindent();
@@ -643,7 +652,7 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip(
                 "LoadFromDllMain=1 can cause compatibility issues with some games and addons. "
-                "Consider disabling it in the Developer tab or ReShade.ini if you experience problems.");
+                "Consider disabling it in the Advanced tab or ReShade.ini if you experience problems.");
         }
         ImGui::Spacing();
     }
@@ -1998,7 +2007,8 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                 }
                 if (ImGui::IsItemHovered()) {
                     ImGui::SetTooltip(
-                        "Enables PCLStats ETW reporting for latency measurement.\nRequires window proc hooks to be installed.\nWorks with Reflex and OnPresent sync modes.");
+                        "Enables PCLStats ETW reporting for latency measurement.\nRequires window proc hooks to be "
+                        "installed.\nWorks with Reflex and OnPresent sync modes.");
                 }
             }
             if (IsNativeReflexActive() || settings::g_developerTabSettings.reflex_supress_native.GetValue()) {
@@ -2044,7 +2054,8 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
             }
             if (ImGui::IsItemHovered()) {
                 ImGui::SetTooltip(
-                    "Enables PCLStats ETW reporting for latency measurement.\nRequires window proc hooks to be installed.\nNote: PCL stats markers are only emitted when Reflex is enabled.");
+                    "Enables PCLStats ETW reporting for latency measurement.\nRequires window proc hooks to be "
+                    "installed.\nNote: PCL stats markers are only emitted when Reflex is enabled.");
             }
         }
 
@@ -2876,7 +2887,7 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
 
                             if (!pm_debug_info.is_running) {
                                 ImGui::BulletText("PresentMon thread is not running");
-                                ImGui::BulletText("Check Developer tab -> Enable PresentMon ETW Tracing");
+                                ImGui::BulletText("Check Advanced tab -> Enable PresentMon ETW Tracing");
                             } else if (!pm_debug_info.etw_session_active) {
                                 ImGui::BulletText("ETW session is not active");
                                 ImGui::BulletText("You may need admin or Performance Log Users group membership");

@@ -1,15 +1,15 @@
 #include "dualsense_widget.hpp"
+#include <hidsdi.h>
+#include <initguid.h>
+#include <setupapi.h>
+#include <windows.h>
+#include <cstring>
+#include <reshade_imgui.hpp>
+#include <vector>
+#include "../../hooks/dualsense_hooks.hpp"
 #include "../../utils.hpp"
 #include "../../utils/logging.hpp"
 #include "../../utils/timing.hpp"
-#include "../../hooks/dualsense_hooks.hpp"
-#include <reshade_imgui.hpp>
-#include <vector>
-#include <windows.h>
-#include <setupapi.h>
-#include <hidsdi.h>
-#include <initguid.h>
-#include <cstring>
 
 // Define GUID_DEVINTERFACE_HID if not already defined
 #ifndef GUID_DEVINTERFACE_HID
@@ -72,10 +72,6 @@ void DualSenseWidget::OnDraw() {
         ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "DualSense shared state not initialized");
         return;
     }
-
-    // Draw the DualSense widget UI
-    ImGui::TextColored(ImVec4(0.9f, 0.9f, 0.9f, 1.0f), "=== DualSense Controller Monitor ===");
-    ImGui::Spacing();
 
     // Draw settings
     DrawSettings();
@@ -150,13 +146,8 @@ void DualSenseWidget::DrawSettings() {
 
             // HID device type selection
             int hid_type = g_shared_state_ds->selected_hid_type.load();
-            const char* hid_types[] = {
-                "Auto (All Supported)",
-                "DualSense Regular Only",
-                "DualSense Edge Only",
-                "DualShock 4 Only",
-                "All Sony Controllers"
-            };
+            const char* hid_types[] = {"Auto (All Supported)", "DualSense Regular Only", "DualSense Edge Only",
+                                       "DualShock 4 Only", "All Sony Controllers"};
 
             if (ImGui::Combo("Device Type Filter", &hid_type, hid_types, 5)) {
                 g_shared_state_ds->selected_hid_type.store(hid_type);
@@ -227,7 +218,8 @@ void DualSenseWidget::DrawDeviceList() {
 
         if (devices.empty()) {
             ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "No DualSense devices detected");
-            ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Make sure your DualSense controller is connected via USB or Bluetooth");
+            ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f),
+                               "Make sure your DualSense controller is connected via USB or Bluetooth");
         } else {
             ImGui::Text("Found %zu DualSense device(s):", devices.size());
             ImGui::Spacing();
@@ -238,16 +230,14 @@ void DualSenseWidget::DrawDeviceList() {
                 ImGui::PushID(static_cast<int>(i));
 
                 // Device status indicator
-                ImVec4 status_color = device.is_connected ?
-                    ImVec4(0.0f, 1.0f, 0.0f, 1.0f) :
-                    ImVec4(0.7f, 0.7f, 0.7f, 1.0f);
+                ImVec4 status_color =
+                    device.is_connected ? ImVec4(0.0f, 1.0f, 0.0f, 1.0f) : ImVec4(0.7f, 0.7f, 0.7f, 1.0f);
 
                 ImGui::TextColored(status_color, "●");
                 ImGui::SameLine();
 
                 // Device name and basic info
-                std::string device_name = device.device_name.empty() ?
-                    "DualSense Controller" : device.device_name;
+                std::string device_name = device.device_name.empty() ? "DualSense Controller" : device.device_name;
 
                 if (g_shared_state_ds->show_connection_type.load()) {
                     device_name += " (" + device.connection_type + ")";
@@ -257,8 +247,7 @@ void DualSenseWidget::DrawDeviceList() {
                     char vid_str[16], pid_str[16];
                     sprintf_s(vid_str, "%04X", device.vendor_id);
                     sprintf_s(pid_str, "%04X", device.product_id);
-                    device_name += " [VID:0x" + std::string(vid_str) +
-                        " PID:0x" + std::string(pid_str) + "]";
+                    device_name += " [VID:0x" + std::string(vid_str) + " PID:0x" + std::string(pid_str) + "]";
                 }
 
                 if (ImGui::Selectable(device_name.c_str(), selected_device_ == static_cast<int>(i))) {
@@ -343,11 +332,11 @@ void DualSenseWidget::DrawDeviceDetails(const DualSenseDeviceInfo& device) {
     // Input report debug display
     if (device.hid_device && device.hid_device->input_report.size() > 0) {
         ImGui::Text("Input Report Size: %zu bytes", device.hid_device->input_report.size());
-        ImGui::Text("First 8 bytes: %02X %02X %02X %02X %02X %02X %02X %02X",
-                   device.hid_device->input_report[0], device.hid_device->input_report[1],
-                   device.hid_device->input_report[2], device.hid_device->input_report[3],
-                   device.hid_device->input_report[4], device.hid_device->input_report[5],
-                   device.hid_device->input_report[6], device.hid_device->input_report[7]);
+        ImGui::Text("First 8 bytes: %02X %02X %02X %02X %02X %02X %02X %02X", device.hid_device->input_report[0],
+                    device.hid_device->input_report[1], device.hid_device->input_report[2],
+                    device.hid_device->input_report[3], device.hid_device->input_report[4],
+                    device.hid_device->input_report[5], device.hid_device->input_report[6],
+                    device.hid_device->input_report[7]);
     } else {
         ImGui::Text("No input report data available");
     }
@@ -396,20 +385,23 @@ void DualSenseWidget::DrawButtonStates(const DualSenseDeviceInfo& device) {
                 bool pressed1 = IsButtonPressed(buttons, button_list[i].mask);
                 bool pressed2 = IsButtonPressed(buttons, button_list[i + 1].mask);
 
-                ImGui::PushStyleColor(ImGuiCol_Button, pressed1 ? ImVec4(0.0f, 1.0f, 0.0f, 1.0f) : ImVec4(0.3f, 0.3f, 0.3f, 1.0f));
+                ImGui::PushStyleColor(ImGuiCol_Button,
+                                      pressed1 ? ImVec4(0.0f, 1.0f, 0.0f, 1.0f) : ImVec4(0.3f, 0.3f, 0.3f, 1.0f));
                 ImGui::Button(button_list[i].name, ImVec2(60, 30));
                 ImGui::PopStyleColor();
 
                 ImGui::SameLine();
 
-                ImGui::PushStyleColor(ImGuiCol_Button, pressed2 ? ImVec4(0.0f, 1.0f, 0.0f, 1.0f) : ImVec4(0.3f, 0.3f, 0.3f, 1.0f));
+                ImGui::PushStyleColor(ImGuiCol_Button,
+                                      pressed2 ? ImVec4(0.0f, 1.0f, 0.0f, 1.0f) : ImVec4(0.3f, 0.3f, 0.3f, 1.0f));
                 ImGui::Button(button_list[i + 1].name, ImVec2(60, 30));
                 ImGui::PopStyleColor();
             } else {
                 // Single button on last row
                 bool pressed = IsButtonPressed(buttons, button_list[i].mask);
 
-                ImGui::PushStyleColor(ImGuiCol_Button, pressed ? ImVec4(0.0f, 1.0f, 0.0f, 1.0f) : ImVec4(0.3f, 0.3f, 0.3f, 1.0f));
+                ImGui::PushStyleColor(ImGuiCol_Button,
+                                      pressed ? ImVec4(0.0f, 1.0f, 0.0f, 1.0f) : ImVec4(0.3f, 0.3f, 0.3f, 1.0f));
                 ImGui::Button(button_list[i].name, ImVec2(60, 30));
                 ImGui::PopStyleColor();
             }
@@ -419,7 +411,6 @@ void DualSenseWidget::DrawButtonStates(const DualSenseDeviceInfo& device) {
 
 void DualSenseWidget::DrawStickStates(const DualSenseDeviceInfo& device) {
     if (ImGui::CollapsingHeader("Analog Sticks", ImGuiTreeNodeFlags_DefaultOpen)) {
-
         // Use XInput state (converted from Special-K DualSense data)
         SHORT leftX = device.current_state.Gamepad.sThumbLX;
         SHORT leftY = device.current_state.Gamepad.sThumbLY;
@@ -444,8 +435,10 @@ void DualSenseWidget::DrawStickStates(const DualSenseDeviceInfo& device) {
         draw_list->AddCircle(center, canvas_size.x * 0.4f, ImColor(100, 100, 100, 255), 32, 2.0f);
 
         // Draw crosshairs
-        draw_list->AddLine(ImVec2(canvas_pos.x, center.y), ImVec2(canvas_pos.x + canvas_size.x, center.y), ImColor(100, 100, 100, 255), 1.0f);
-        draw_list->AddLine(ImVec2(center.x, canvas_pos.y), ImVec2(center.x, canvas_pos.y + canvas_size.y), ImColor(100, 100, 100, 255), 1.0f);
+        draw_list->AddLine(ImVec2(canvas_pos.x, center.y), ImVec2(canvas_pos.x + canvas_size.x, center.y),
+                           ImColor(100, 100, 100, 255), 1.0f);
+        draw_list->AddLine(ImVec2(center.x, canvas_pos.y), ImVec2(center.x, canvas_pos.y + canvas_size.y),
+                           ImColor(100, 100, 100, 255), 1.0f);
 
         // Draw stick position
         ImVec2 stick_pos = ImVec2(center.x + lx * canvas_size.x * 0.4f, center.y - ly * canvas_size.y * 0.4f);
@@ -470,43 +463,40 @@ void DualSenseWidget::DrawStickStates(const DualSenseDeviceInfo& device) {
         draw_list->AddCircle(center, canvas_size.x * 0.4f, ImColor(100, 100, 100, 255), 32, 2.0f);
 
         // Draw crosshairs
-        draw_list->AddLine(ImVec2(canvas_pos.x, center.y), ImVec2(canvas_pos.x + canvas_size.x, center.y), ImColor(100, 100, 100, 255), 1.0f);
-        draw_list->AddLine(ImVec2(center.x, canvas_pos.y), ImVec2(center.x, canvas_pos.y + canvas_size.y), ImColor(100, 100, 100, 255), 1.0f);
+        draw_list->AddLine(ImVec2(canvas_pos.x, center.y), ImVec2(canvas_pos.x + canvas_size.x, center.y),
+                           ImColor(100, 100, 100, 255), 1.0f);
+        draw_list->AddLine(ImVec2(center.x, canvas_pos.y), ImVec2(center.x, canvas_pos.y + canvas_size.y),
+                           ImColor(100, 100, 100, 255), 1.0f);
 
         // Draw stick position
         stick_pos = ImVec2(center.x + rx * canvas_size.x * 0.4f, center.y - ry * canvas_size.y * 0.4f);
         draw_list->AddCircleFilled(stick_pos, 5.0f, ImColor(0, 255, 0, 255));
 
         ImGui::Dummy(canvas_size);
-
     }
 }
 
 void DualSenseWidget::DrawTriggerStates(const DualSenseDeviceInfo& device) {
     if (ImGui::CollapsingHeader("Triggers", ImGuiTreeNodeFlags_DefaultOpen)) {
-
         // Use XInput state (converted from Special-K DualSense data)
         USHORT leftTrigger = device.current_state.Gamepad.bLeftTrigger;
         USHORT rightTrigger = device.current_state.Gamepad.bRightTrigger;
 
         // Left trigger
-        ImGui::Text("Left Trigger: %u/65535 (%.1f%%)",
-                   leftTrigger,
-                   (static_cast<float>(leftTrigger) / 65535.0f) * 100.0f);
+        ImGui::Text("Left Trigger: %u/65535 (%.1f%%)", leftTrigger,
+                    (static_cast<float>(leftTrigger) / 65535.0f) * 100.0f);
 
         // Visual bar for left trigger
         float left_trigger_norm = static_cast<float>(leftTrigger) / 65535.0f;
         ImGui::ProgressBar(left_trigger_norm, ImVec2(-1, 0), "");
 
         // Right trigger
-        ImGui::Text("Right Trigger: %u/65535 (%.1f%%)",
-                   rightTrigger,
-                   (static_cast<float>(rightTrigger) / 65535.0f) * 100.0f);
+        ImGui::Text("Right Trigger: %u/65535 (%.1f%%)", rightTrigger,
+                    (static_cast<float>(rightTrigger) / 65535.0f) * 100.0f);
 
         // Visual bar for right trigger
         float right_trigger_norm = static_cast<float>(rightTrigger) / 65535.0f;
         ImGui::ProgressBar(right_trigger_norm, ImVec2(-1, 0), "");
-
     }
 }
 
@@ -523,12 +513,36 @@ void DualSenseWidget::DrawBatteryStatus(const DualSenseDeviceInfo& device) {
         float level_progress = 0.0f;
 
         switch (device.battery_level) {
-            case 0: level_str = "Empty"; level_color = ImVec4(1.0f, 0.0f, 0.0f, 1.0f); level_progress = 0.0f; break;
-            case 1: level_str = "Low"; level_color = ImVec4(1.0f, 0.5f, 0.0f, 1.0f); level_progress = 0.25f; break;
-            case 2: level_str = "Medium"; level_color = ImVec4(1.0f, 1.0f, 0.0f, 1.0f); level_progress = 0.5f; break;
-            case 3: level_str = "High"; level_color = ImVec4(0.0f, 1.0f, 0.0f, 1.0f); level_progress = 0.75f; break;
-            case 4: level_str = "Full"; level_color = ImVec4(0.0f, 1.0f, 0.0f, 1.0f); level_progress = 1.0f; break;
-            default: level_str = "Unknown"; level_color = ImVec4(0.7f, 0.7f, 0.7f, 1.0f); level_progress = 0.0f; break;
+            case 0:
+                level_str = "Empty";
+                level_color = ImVec4(1.0f, 0.0f, 0.0f, 1.0f);
+                level_progress = 0.0f;
+                break;
+            case 1:
+                level_str = "Low";
+                level_color = ImVec4(1.0f, 0.5f, 0.0f, 1.0f);
+                level_progress = 0.25f;
+                break;
+            case 2:
+                level_str = "Medium";
+                level_color = ImVec4(1.0f, 1.0f, 0.0f, 1.0f);
+                level_progress = 0.5f;
+                break;
+            case 3:
+                level_str = "High";
+                level_color = ImVec4(0.0f, 1.0f, 0.0f, 1.0f);
+                level_progress = 0.75f;
+                break;
+            case 4:
+                level_str = "Full";
+                level_color = ImVec4(0.0f, 1.0f, 0.0f, 1.0f);
+                level_progress = 1.0f;
+                break;
+            default:
+                level_str = "Unknown";
+                level_color = ImVec4(0.7f, 0.7f, 0.7f, 1.0f);
+                level_progress = 0.0f;
+                break;
         }
 
         ImGui::TextColored(level_color, "Level: %s", level_str.c_str());
@@ -559,21 +573,21 @@ void DualSenseWidget::DrawAdvancedFeatures(const DualSenseDeviceInfo& device) {
 
 std::string DualSenseWidget::GetButtonName(WORD button) const {
     switch (button) {
-        case XINPUT_GAMEPAD_A: return "A";
-        case XINPUT_GAMEPAD_B: return "B";
-        case XINPUT_GAMEPAD_X: return "X";
-        case XINPUT_GAMEPAD_Y: return "Y";
-        case XINPUT_GAMEPAD_LEFT_SHOULDER: return "LB";
+        case XINPUT_GAMEPAD_A:              return "A";
+        case XINPUT_GAMEPAD_B:              return "B";
+        case XINPUT_GAMEPAD_X:              return "X";
+        case XINPUT_GAMEPAD_Y:              return "Y";
+        case XINPUT_GAMEPAD_LEFT_SHOULDER:  return "LB";
         case XINPUT_GAMEPAD_RIGHT_SHOULDER: return "RB";
-        case XINPUT_GAMEPAD_BACK: return "View";
-        case XINPUT_GAMEPAD_START: return "Menu";
-        case XINPUT_GAMEPAD_LEFT_THUMB: return "LS";
-        case XINPUT_GAMEPAD_RIGHT_THUMB: return "RS";
-        case XINPUT_GAMEPAD_DPAD_UP: return "D-Up";
-        case XINPUT_GAMEPAD_DPAD_DOWN: return "D-Down";
-        case XINPUT_GAMEPAD_DPAD_LEFT: return "D-Left";
-        case XINPUT_GAMEPAD_DPAD_RIGHT: return "D-Right";
-        default: return "Unknown";
+        case XINPUT_GAMEPAD_BACK:           return "View";
+        case XINPUT_GAMEPAD_START:          return "Menu";
+        case XINPUT_GAMEPAD_LEFT_THUMB:     return "LS";
+        case XINPUT_GAMEPAD_RIGHT_THUMB:    return "RS";
+        case XINPUT_GAMEPAD_DPAD_UP:        return "D-Up";
+        case XINPUT_GAMEPAD_DPAD_DOWN:      return "D-Down";
+        case XINPUT_GAMEPAD_DPAD_LEFT:      return "D-Left";
+        case XINPUT_GAMEPAD_DPAD_RIGHT:     return "D-Right";
+        default:                            return "Unknown";
     }
 }
 
@@ -581,23 +595,21 @@ std::string DualSenseWidget::GetDeviceStatus(const DualSenseDeviceInfo& device) 
     return device.is_connected ? "Connected" : "Disconnected";
 }
 
-bool DualSenseWidget::IsButtonPressed(WORD buttons, WORD button) const {
-    return (buttons & button) != 0;
-}
+bool DualSenseWidget::IsButtonPressed(WORD buttons, WORD button) const { return (buttons & button) != 0; }
 
 std::string DualSenseWidget::GetConnectionTypeString(const DualSenseDeviceInfo& device) const {
     return device.connection_type;
 }
 
 std::string DualSenseWidget::GetDeviceTypeString(const DualSenseDeviceInfo& device) const {
-    if (device.vendor_id == 0x054c) { // Sony
+    if (device.vendor_id == 0x054c) {  // Sony
         switch (device.product_id) {
-            case 0x0CE6: return "DualSense Controller";           // Regular DualSense
-            case 0x0DF2: return "DualSense Edge Controller";      // DualSense Edge
+            case 0x0CE6: return "DualSense Controller";       // Regular DualSense
+            case 0x0DF2: return "DualSense Edge Controller";  // DualSense Edge
             case 0x05C4: return "DualShock 4 Controller";
             case 0x09CC: return "DualShock 4 Controller (Rev 2)";
             case 0x0BA0: return "DualShock 4 Controller (Dongle)";
-            default: return "Sony Controller";
+            default:     return "Sony Controller";
         }
     }
     return "Unknown Controller";
@@ -605,11 +617,11 @@ std::string DualSenseWidget::GetDeviceTypeString(const DualSenseDeviceInfo& devi
 
 std::string DualSenseWidget::GetHIDTypeString(int hid_type) const {
     switch (hid_type) {
-        case 0: return "Auto (All Supported)";
-        case 1: return "DualSense Regular Only";
-        case 2: return "DualSense Edge Only";
-        case 3: return "DualShock 4 Only";
-        case 4: return "All Sony Controllers";
+        case 0:  return "Auto (All Supported)";
+        case 1:  return "DualSense Regular Only";
+        case 2:  return "DualSense Edge Only";
+        case 3:  return "DualShock 4 Only";
+        case 4:  return "All Sony Controllers";
         default: return "Unknown";
     }
 }
@@ -634,7 +646,8 @@ void DualSenseWidget::LoadSettings() {
 
     // Load show connection type setting
     bool show_connection_type;
-    if (reshade::get_config_value(nullptr, "DisplayCommander.DualSenseWidget", "ShowConnectionType", show_connection_type)) {
+    if (reshade::get_config_value(nullptr, "DisplayCommander.DualSenseWidget", "ShowConnectionType",
+                                  show_connection_type)) {
         g_shared_state_ds->show_connection_type.store(show_connection_type);
     }
 
@@ -646,7 +659,8 @@ void DualSenseWidget::LoadSettings() {
 
     // Load show advanced features setting
     bool show_advanced_features;
-    if (reshade::get_config_value(nullptr, "DisplayCommander.DualSenseWidget", "ShowAdvancedFeatures", show_advanced_features)) {
+    if (reshade::get_config_value(nullptr, "DisplayCommander.DualSenseWidget", "ShowAdvancedFeatures",
+                                  show_advanced_features)) {
         g_shared_state_ds->show_advanced_features.store(show_advanced_features);
     }
 
@@ -659,34 +673,36 @@ void DualSenseWidget::LoadSettings() {
 
 void DualSenseWidget::SaveSettings() {
     // Save enable detection setting
-    reshade::set_config_value(nullptr, "DisplayCommander.DualSenseWidget", "EnableDetection", g_shared_state_ds->enable_dualsense_detection.load());
+    reshade::set_config_value(nullptr, "DisplayCommander.DualSenseWidget", "EnableDetection",
+                              g_shared_state_ds->enable_dualsense_detection.load());
 
     // Save show device IDs setting
-    reshade::set_config_value(nullptr, "DisplayCommander.DualSenseWidget", "ShowDeviceIds", g_shared_state_ds->show_device_ids.load());
+    reshade::set_config_value(nullptr, "DisplayCommander.DualSenseWidget", "ShowDeviceIds",
+                              g_shared_state_ds->show_device_ids.load());
 
     // Save show connection type setting
-    reshade::set_config_value(nullptr, "DisplayCommander.DualSenseWidget", "ShowConnectionType", g_shared_state_ds->show_connection_type.load());
+    reshade::set_config_value(nullptr, "DisplayCommander.DualSenseWidget", "ShowConnectionType",
+                              g_shared_state_ds->show_connection_type.load());
 
     // Save show battery info setting
-    reshade::set_config_value(nullptr, "DisplayCommander.DualSenseWidget", "ShowBatteryInfo", g_shared_state_ds->show_battery_info.load());
+    reshade::set_config_value(nullptr, "DisplayCommander.DualSenseWidget", "ShowBatteryInfo",
+                              g_shared_state_ds->show_battery_info.load());
 
     // Save show advanced features setting
-    reshade::set_config_value(nullptr, "DisplayCommander.DualSenseWidget", "ShowAdvancedFeatures", g_shared_state_ds->show_advanced_features.load());
+    reshade::set_config_value(nullptr, "DisplayCommander.DualSenseWidget", "ShowAdvancedFeatures",
+                              g_shared_state_ds->show_advanced_features.load());
 
     // Save HID type filter setting
-    reshade::set_config_value(nullptr, "DisplayCommander.DualSenseWidget", "HIDTypeFilter", g_shared_state_ds->selected_hid_type.load());
+    reshade::set_config_value(nullptr, "DisplayCommander.DualSenseWidget", "HIDTypeFilter",
+                              g_shared_state_ds->selected_hid_type.load());
 }
-
 
 void DualSenseWidget::UpdateDeviceStates() {
     // Update device states using HID wrapper
     display_commander::dualsense::UpdateDualSenseDeviceStates();
 }
 
-
-std::shared_ptr<DualSenseSharedState> DualSenseWidget::GetSharedState() {
-    return g_shared_state_ds;
-}
+std::shared_ptr<DualSenseSharedState> DualSenseWidget::GetSharedState() { return g_shared_state_ds; }
 
 // Global functions for integration
 void InitializeDualSenseWidget() {
@@ -724,8 +740,8 @@ void DualSenseWidget::DrawInputReport(const DualSenseDeviceInfo& device) {
         ImGui::Text("Special-K Data Size: %zu bytes", sizeof(SK_HID_DualSense_GetStateData));
 
         // Determine data offset based on connection type
-        int dataOffset = device.is_wireless ? 2 : 1; // Skip report ID and sequence for BT
-        int dataSize = device.is_wireless ? 63 : 63; // Special-K data is always 63 bytes
+        int dataOffset = device.is_wireless ? 2 : 1;  // Skip report ID and sequence for BT
+        int dataSize = device.is_wireless ? 63 : 63;  // Special-K data is always 63 bytes
 
         if (reportSize >= dataOffset + dataSize) {
             ImGui::Text("Special-K Data Offset: %d", dataOffset);
@@ -762,7 +778,8 @@ void DualSenseWidget::DrawInputReport(const DualSenseDeviceInfo& device) {
                 DrawSpecialKBitFieldRow("ButtonR1", dataOffset + 8, 1, 1, inputReport, device, "R1 button");
                 DrawSpecialKBitFieldRow("ButtonL2", dataOffset + 8, 2, 1, inputReport, device, "L2 button");
                 DrawSpecialKBitFieldRow("ButtonR2", dataOffset + 8, 3, 1, inputReport, device, "R2 button");
-                DrawSpecialKBitFieldRow("ButtonCreate", dataOffset + 8, 4, 1, inputReport, device, "Create/Share button");
+                DrawSpecialKBitFieldRow("ButtonCreate", dataOffset + 8, 4, 1, inputReport, device,
+                                        "Create/Share button");
                 DrawSpecialKBitFieldRow("ButtonOptions", dataOffset + 8, 5, 1, inputReport, device, "Options button");
                 DrawSpecialKBitFieldRow("ButtonL3", dataOffset + 8, 6, 1, inputReport, device, "L3 button");
                 DrawSpecialKBitFieldRow("ButtonR3", dataOffset + 8, 7, 1, inputReport, device, "R3 button");
@@ -772,10 +789,14 @@ void DualSenseWidget::DrawInputReport(const DualSenseDeviceInfo& device) {
                 DrawSpecialKBitFieldRow("ButtonPad", dataOffset + 9, 1, 1, inputReport, device, "Touchpad button");
                 DrawSpecialKBitFieldRow("ButtonMute", dataOffset + 9, 2, 1, inputReport, device, "Mute button");
                 DrawSpecialKBitFieldRow("UNK1", dataOffset + 9, 3, 1, inputReport, device, "Unknown bit 1");
-                DrawSpecialKBitFieldRow("ButtonLeftFunction", dataOffset + 9, 4, 1, inputReport, device, "Left Function (Edge)");
-                DrawSpecialKBitFieldRow("ButtonRightFunction", dataOffset + 9, 5, 1, inputReport, device, "Right Function (Edge)");
-                DrawSpecialKBitFieldRow("ButtonLeftPaddle", dataOffset + 9, 6, 1, inputReport, device, "Left Paddle (Edge)");
-                DrawSpecialKBitFieldRow("ButtonRightPaddle", dataOffset + 9, 7, 1, inputReport, device, "Right Paddle (Edge)");
+                DrawSpecialKBitFieldRow("ButtonLeftFunction", dataOffset + 9, 4, 1, inputReport, device,
+                                        "Left Function (Edge)");
+                DrawSpecialKBitFieldRow("ButtonRightFunction", dataOffset + 9, 5, 1, inputReport, device,
+                                        "Right Function (Edge)");
+                DrawSpecialKBitFieldRow("ButtonLeftPaddle", dataOffset + 9, 6, 1, inputReport, device,
+                                        "Left Paddle (Edge)");
+                DrawSpecialKBitFieldRow("ButtonRightPaddle", dataOffset + 9, 7, 1, inputReport, device,
+                                        "Right Paddle (Edge)");
 
                 DrawSpecialKFieldRow("UNK2", dataOffset + 10, 1, inputReport, device);
                 DrawSpecialKFieldRow("UNK_COUNTER", dataOffset + 11, 4, inputReport, device, "32-bit counter");
@@ -790,20 +811,26 @@ void DualSenseWidget::DrawInputReport(const DualSenseDeviceInfo& device) {
 
                 // Touch data (9 bytes)
                 for (int i = 0; i < 9; i++) {
-                    DrawSpecialKFieldRow(("TouchData[" + std::to_string(i) + "]").c_str(),
-                                       dataOffset + 32 + i, 1, inputReport, device);
+                    DrawSpecialKFieldRow(("TouchData[" + std::to_string(i) + "]").c_str(), dataOffset + 32 + i, 1,
+                                         inputReport, device);
                 }
 
                 // Trigger status and effects
-                DrawSpecialKBitFieldRow("TriggerRightStopLocation", dataOffset + 41, 0, 4, inputReport, device, "0-9 range");
-                DrawSpecialKBitFieldRow("TriggerRightStatus", dataOffset + 41, 4, 4, inputReport, device, "Status flags");
-                DrawSpecialKBitFieldRow("TriggerLeftStopLocation", dataOffset + 42, 0, 4, inputReport, device, "0-9 range");
-                DrawSpecialKBitFieldRow("TriggerLeftStatus", dataOffset + 42, 4, 4, inputReport, device, "Status flags");
+                DrawSpecialKBitFieldRow("TriggerRightStopLocation", dataOffset + 41, 0, 4, inputReport, device,
+                                        "0-9 range");
+                DrawSpecialKBitFieldRow("TriggerRightStatus", dataOffset + 41, 4, 4, inputReport, device,
+                                        "Status flags");
+                DrawSpecialKBitFieldRow("TriggerLeftStopLocation", dataOffset + 42, 0, 4, inputReport, device,
+                                        "0-9 range");
+                DrawSpecialKBitFieldRow("TriggerLeftStatus", dataOffset + 42, 4, 4, inputReport, device,
+                                        "Status flags");
 
                 DrawSpecialKFieldRow("HostTimestamp", dataOffset + 43, 4, inputReport, device, "32-bit timestamp");
 
-                DrawSpecialKBitFieldRow("TriggerRightEffect", dataOffset + 47, 0, 4, inputReport, device, "Active effect");
-                DrawSpecialKBitFieldRow("TriggerLeftEffect", dataOffset + 47, 4, 4, inputReport, device, "Active effect");
+                DrawSpecialKBitFieldRow("TriggerRightEffect", dataOffset + 47, 0, 4, inputReport, device,
+                                        "Active effect");
+                DrawSpecialKBitFieldRow("TriggerLeftEffect", dataOffset + 47, 4, 4, inputReport, device,
+                                        "Active effect");
 
                 DrawSpecialKFieldRow("DeviceTimeStamp", dataOffset + 48, 4, inputReport, device, "32-bit timestamp");
 
@@ -812,21 +839,27 @@ void DualSenseWidget::DrawInputReport(const DualSenseDeviceInfo& device) {
                 DrawSpecialKBitFieldRow("PowerState", dataOffset + 52, 4, 4, inputReport, device, "Power state enum");
 
                 // Connection status
-                DrawSpecialKBitFieldRow("PluggedHeadphones", dataOffset + 53, 0, 1, inputReport, device, "Headphones connected");
-                DrawSpecialKBitFieldRow("PluggedMic", dataOffset + 53, 1, 1, inputReport, device, "Microphone connected");
+                DrawSpecialKBitFieldRow("PluggedHeadphones", dataOffset + 53, 0, 1, inputReport, device,
+                                        "Headphones connected");
+                DrawSpecialKBitFieldRow("PluggedMic", dataOffset + 53, 1, 1, inputReport, device,
+                                        "Microphone connected");
                 DrawSpecialKBitFieldRow("MicMuted", dataOffset + 53, 2, 1, inputReport, device, "Microphone muted");
-                DrawSpecialKBitFieldRow("PluggedUsbData", dataOffset + 53, 3, 1, inputReport, device, "USB data connected");
-                DrawSpecialKBitFieldRow("PluggedUsbPower", dataOffset + 53, 4, 1, inputReport, device, "USB power connected");
+                DrawSpecialKBitFieldRow("PluggedUsbData", dataOffset + 53, 3, 1, inputReport, device,
+                                        "USB data connected");
+                DrawSpecialKBitFieldRow("PluggedUsbPower", dataOffset + 53, 4, 1, inputReport, device,
+                                        "USB power connected");
                 DrawSpecialKBitFieldRow("PluggedUnk1", dataOffset + 53, 5, 3, inputReport, device, "Unknown bits");
 
-                DrawSpecialKBitFieldRow("PluggedExternalMic", dataOffset + 54, 0, 1, inputReport, device, "External mic active");
-                DrawSpecialKBitFieldRow("HapticLowPassFilter", dataOffset + 54, 1, 1, inputReport, device, "Haptic filter active");
+                DrawSpecialKBitFieldRow("PluggedExternalMic", dataOffset + 54, 0, 1, inputReport, device,
+                                        "External mic active");
+                DrawSpecialKBitFieldRow("HapticLowPassFilter", dataOffset + 54, 1, 1, inputReport, device,
+                                        "Haptic filter active");
                 DrawSpecialKBitFieldRow("PluggedUnk3", dataOffset + 54, 2, 6, inputReport, device, "Unknown bits");
 
                 // AES CMAC (8 bytes)
                 for (int i = 0; i < 8; i++) {
-                    DrawSpecialKFieldRow(("AesCmac[" + std::to_string(i) + "]").c_str(),
-                                       dataOffset + 55 + i, 1, inputReport, device);
+                    DrawSpecialKFieldRow(("AesCmac[" + std::to_string(i) + "]").c_str(), dataOffset + 55 + i, 1,
+                                         inputReport, device);
                 }
 
                 ImGui::EndTable();
@@ -844,16 +877,16 @@ std::string DualSenseWidget::GetByteDescription(int offset, const std::string& c
     if (connectionType == "Bluetooth") {
         // Bluetooth report format
         switch (offset) {
-            case 0: return "Report ID";
-            case 1: return "Buttons 1";
-            case 2: return "Buttons 2";
-            case 3: return "D-Pad";
-            case 4: return "Left Stick X (low)";
-            case 5: return "Left Stick X (high)";
-            case 6: return "Left Stick Y (low)";
-            case 7: return "Left Stick Y (high)";
-            case 8: return "Right Stick X (low)";
-            case 9: return "Right Stick X (high)";
+            case 0:  return "Report ID";
+            case 1:  return "Buttons 1";
+            case 2:  return "Buttons 2";
+            case 3:  return "D-Pad";
+            case 4:  return "Left Stick X (low)";
+            case 5:  return "Left Stick X (high)";
+            case 6:  return "Left Stick Y (low)";
+            case 7:  return "Left Stick Y (high)";
+            case 8:  return "Right Stick X (low)";
+            case 9:  return "Right Stick X (high)";
             case 10: return "Right Stick Y (low)";
             case 11: return "Right Stick Y (high)";
             case 12: return "Left Trigger (low)";
@@ -927,16 +960,16 @@ std::string DualSenseWidget::GetByteDescription(int offset, const std::string& c
     } else {
         // USB report format
         switch (offset) {
-            case 0: return "Report ID";
-            case 1: return "Buttons 1";
-            case 2: return "Buttons 2";
-            case 3: return "D-Pad";
-            case 4: return "Left Stick X (low)";
-            case 5: return "Left Stick X (high)";
-            case 6: return "Left Stick Y (low)";
-            case 7: return "Left Stick Y (high)";
-            case 8: return "Right Stick X (low)";
-            case 9: return "Right Stick X (high)";
+            case 0:  return "Report ID";
+            case 1:  return "Buttons 1";
+            case 2:  return "Buttons 2";
+            case 3:  return "D-Pad";
+            case 4:  return "Left Stick X (low)";
+            case 5:  return "Left Stick X (high)";
+            case 6:  return "Left Stick Y (low)";
+            case 7:  return "Left Stick Y (high)";
+            case 8:  return "Right Stick X (low)";
+            case 9:  return "Right Stick X (high)";
             case 10: return "Right Stick Y (low)";
             case 11: return "Right Stick Y (high)";
             case 12: return "Left Trigger (low)";
@@ -996,7 +1029,8 @@ std::string DualSenseWidget::GetByteDescription(int offset, const std::string& c
     }
 }
 
-std::string DualSenseWidget::GetByteValue(const std::vector<BYTE>& inputReport, int offset, const std::string& connectionType) const {
+std::string DualSenseWidget::GetByteValue(const std::vector<BYTE>& inputReport, int offset,
+                                          const std::string& connectionType) const {
     if (offset >= inputReport.size()) return "N/A";
 
     BYTE value = inputReport[offset];
@@ -1082,15 +1116,16 @@ void DualSenseWidget::DrawRawButtonStates(const DualSenseDeviceInfo& device) {
     ImGui::Columns(3, "RawButtonColumns", false);
     for (const auto& button : button_list) {
         bool pressed = IsButtonPressed(buttons, button.mask);
-        ImGui::TextColored(pressed ? ImVec4(0.0f, 1.0f, 0.0f, 1.0f) : ImVec4(0.5f, 0.5f, 0.5f, 1.0f),
-                          "%s: %s", button.name, pressed ? "PRESSED" : "Released");
+        ImGui::TextColored(pressed ? ImVec4(0.0f, 1.0f, 0.0f, 1.0f) : ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "%s: %s",
+                           button.name, pressed ? "PRESSED" : "Released");
         ImGui::NextColumn();
     }
     ImGui::Columns(1);
 
     // D-Pad
     ImGui::Text("D-Pad:");
-    const char* dpad_directions[] = {"None", "Up", "Up-Right", "Right", "Down-Right", "Down", "Down-Left", "Left", "Up-Left"};
+    const char* dpad_directions[] = {"None", "Up",        "Up-Right", "Right",  "Down-Right",
+                                     "Down", "Down-Left", "Left",     "Up-Left"};
     ImGui::Text("Direction: %s", dpad_directions[buttons & 0x0F]);
 }
 
@@ -1127,8 +1162,10 @@ void DualSenseWidget::DrawRawStickStates(const DualSenseDeviceInfo& device) {
     draw_list->AddCircle(center, canvas_size.x * 0.4f, ImColor(100, 100, 100, 255), 32, 2.0f);
 
     // Draw crosshairs
-    draw_list->AddLine(ImVec2(canvas_pos.x, center.y), ImVec2(canvas_pos.x + canvas_size.x, center.y), ImColor(100, 100, 100, 255), 1.0f);
-    draw_list->AddLine(ImVec2(center.x, canvas_pos.y), ImVec2(center.x, canvas_pos.y + canvas_size.y), ImColor(100, 100, 100, 255), 1.0f);
+    draw_list->AddLine(ImVec2(canvas_pos.x, center.y), ImVec2(canvas_pos.x + canvas_size.x, center.y),
+                       ImColor(100, 100, 100, 255), 1.0f);
+    draw_list->AddLine(ImVec2(center.x, canvas_pos.y), ImVec2(center.x, canvas_pos.y + canvas_size.y),
+                       ImColor(100, 100, 100, 255), 1.0f);
 
     // Draw stick position
     ImVec2 stick_pos = ImVec2(center.x + lx * canvas_size.x * 0.4f, center.y - ly * canvas_size.y * 0.4f);
@@ -1156,8 +1193,10 @@ void DualSenseWidget::DrawRawStickStates(const DualSenseDeviceInfo& device) {
     draw_list->AddCircle(center, canvas_size.x * 0.4f, ImColor(100, 100, 100, 255), 32, 2.0f);
 
     // Draw crosshairs
-    draw_list->AddLine(ImVec2(canvas_pos.x, center.y), ImVec2(canvas_pos.x + canvas_size.x, center.y), ImColor(100, 100, 100, 255), 1.0f);
-    draw_list->AddLine(ImVec2(center.x, canvas_pos.y), ImVec2(center.x, canvas_pos.y + canvas_size.y), ImColor(100, 100, 100, 255), 1.0f);
+    draw_list->AddLine(ImVec2(canvas_pos.x, center.y), ImVec2(canvas_pos.x + canvas_size.x, center.y),
+                       ImColor(100, 100, 100, 255), 1.0f);
+    draw_list->AddLine(ImVec2(center.x, canvas_pos.y), ImVec2(center.x, canvas_pos.y + canvas_size.y),
+                       ImColor(100, 100, 100, 255), 1.0f);
 
     // Draw stick position
     stick_pos = ImVec2(center.x + rx * canvas_size.x * 0.4f, center.y - ry * canvas_size.y * 0.4f);
@@ -1179,16 +1218,13 @@ void DualSenseWidget::DrawRawTriggerStates(const DualSenseDeviceInfo& device) {
     // Use XInput state (converted from Special-K DualSense data)
     USHORT leftTrigger = device.current_state.Gamepad.bLeftTrigger;
 
-    ImGui::Text("Left Trigger: %u/65535 (%.1f%%)",
-               leftTrigger,
-               (static_cast<float>(leftTrigger) / 65535.0f) * 100.0f);
+    ImGui::Text("Left Trigger: %u/65535 (%.1f%%)", leftTrigger, (static_cast<float>(leftTrigger) / 65535.0f) * 100.0f);
 
     // Right trigger
     USHORT rightTrigger = device.current_state.Gamepad.bRightTrigger;
 
-    ImGui::Text("Right Trigger: %u/65535 (%.1f%%)",
-               rightTrigger,
-               (static_cast<float>(rightTrigger) / 65535.0f) * 100.0f);
+    ImGui::Text("Right Trigger: %u/65535 (%.1f%%)", rightTrigger,
+                (static_cast<float>(rightTrigger) / 65535.0f) * 100.0f);
 }
 
 void DualSenseWidget::DrawSpecialKData(const DualSenseDeviceInfo& device) {
@@ -1215,7 +1251,8 @@ void DualSenseWidget::DrawSpecialKData(const DualSenseDeviceInfo& device) {
         ImGui::NextColumn();
 
         // D-pad
-        const char* dpad_names[] = {"Up", "Up-Right", "Right", "Down-Right", "Down", "Down-Left", "Left", "Up-Left", "None"};
+        const char* dpad_names[] = {"Up",        "Up-Right", "Right",   "Down-Right", "Down",
+                                    "Down-Left", "Left",     "Up-Left", "None"};
         ImGui::Text("D-Pad: %s", dpad_names[static_cast<int>(sk_data.DPad)]);
         ImGui::NextColumn();
         ImGui::Text("Sequence: %d", sk_data.SeqNo);
@@ -1265,7 +1302,8 @@ void DualSenseWidget::DrawSpecialKData(const DualSenseDeviceInfo& device) {
         ImGui::NextColumn();
 
         // Edge controller buttons
-        if (sk_data.ButtonLeftFunction || sk_data.ButtonRightFunction || sk_data.ButtonLeftPaddle || sk_data.ButtonRightPaddle) {
+        if (sk_data.ButtonLeftFunction || sk_data.ButtonRightFunction || sk_data.ButtonLeftPaddle
+            || sk_data.ButtonRightPaddle) {
             ImGui::Text("Left Function: %s", sk_data.ButtonLeftFunction ? "PRESSED" : "Released");
             ImGui::NextColumn();
             ImGui::Text("Right Function: %s", sk_data.ButtonRightFunction ? "PRESSED" : "Released");
@@ -1383,9 +1421,11 @@ void DualSenseWidget::DrawSpecialKData(const DualSenseDeviceInfo& device) {
 }
 
 // Special-K debug helper functions
-void DualSenseWidget::DrawSpecialKFieldRow(const char* fieldName, int offset, int size, const std::vector<BYTE>& inputReport, const DualSenseDeviceInfo& device, const char* description) {
+void DualSenseWidget::DrawSpecialKFieldRow(const char* fieldName, int offset, int size,
+                                           const std::vector<BYTE>& inputReport, const DualSenseDeviceInfo& device,
+                                           const char* description) {
     if (offset + size > inputReport.size()) {
-        return; // Not enough data
+        return;  // Not enough data
     }
 
     ImGui::TableNextRow();
@@ -1435,9 +1475,11 @@ void DualSenseWidget::DrawSpecialKFieldRow(const char* fieldName, int offset, in
     ImGui::Text("%s", description ? description : "Special-K field");
 }
 
-void DualSenseWidget::DrawSpecialKBitFieldRow(const char* fieldName, int byteOffset, int bitOffset, int bitCount, const std::vector<BYTE>& inputReport, const DualSenseDeviceInfo& device, const char* description) {
+void DualSenseWidget::DrawSpecialKBitFieldRow(const char* fieldName, int byteOffset, int bitOffset, int bitCount,
+                                              const std::vector<BYTE>& inputReport, const DualSenseDeviceInfo& device,
+                                              const char* description) {
     if (byteOffset >= inputReport.size()) {
-        return; // Not enough data
+        return;  // Not enough data
     }
 
     ImGui::TableNextRow();
@@ -1475,9 +1517,7 @@ void DualSenseWidget::DrawSpecialKBitFieldRow(const char* fieldName, int byteOff
 }
 
 // Global functions for device enumeration
-void EnumerateDualSenseDevices() {
-    display_commander::dualsense::EnumerateDualSenseDevices();
-}
+void EnumerateDualSenseDevices() { display_commander::dualsense::EnumerateDualSenseDevices(); }
 
 void UpdateDualSenseDeviceStates() {
     if (g_dualsense_widget) {
@@ -1485,4 +1525,4 @@ void UpdateDualSenseDeviceStates() {
     }
 }
 
-} // namespace display_commander::widgets::dualsense_widget
+}  // namespace display_commander::widgets::dualsense_widget

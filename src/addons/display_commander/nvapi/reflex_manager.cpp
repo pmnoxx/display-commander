@@ -130,7 +130,10 @@ bool ReflexManager::SetMarker(NV_LATENCY_MARKER_TYPE marker) {
     }
 
     // Emit PCLStats marker (ETW) using the same marker type / frame id we sent to NVAPI.
-    PCLSTATS_MARKER(static_cast<PCLSTATS_LATENCY_MARKER_TYPE>(marker), static_cast<uint64_t>(mp.frameID));
+    // Only emit if PCL stats reporting is enabled
+    if (settings::g_mainTabSettings.pcl_stats_enabled.GetValue()) {
+        PCLSTATS_MARKER(static_cast<PCLSTATS_LATENCY_MARKER_TYPE>(marker), static_cast<uint64_t>(mp.frameID));
+    }
     return true;
 }
 

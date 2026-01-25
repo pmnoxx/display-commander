@@ -8,6 +8,7 @@
 #include <map>
 #include "../exit_handler.hpp"
 #include "../globals.hpp"
+#include "../settings/main_tab_settings.hpp"
 #include "../ui/new_ui/window_info_tab.hpp"
 #include "../utils/detour_call_tracker.hpp"
 #include "../utils/logging.hpp"
@@ -251,9 +252,11 @@ LRESULT CALLBACK WindowProc_Detour(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
 bool InstallWindowProcHooks(HWND target_hwnd) {
     LogInfo("InstallWindowProcHooks called for HWND: 0x%p", target_hwnd);
 
-    // Only install hooks if continue rendering is enabled
-    if (!s_continue_rendering.load()) {
-        LogInfo("Window procedure hooks installation skipped - continue rendering is disabled");
+    // Allow installation if continue rendering is enabled OR if PCL stats is enabled
+    bool continue_rendering_enabled = s_continue_rendering.load();
+    bool pcl_stats_enabled = settings::g_mainTabSettings.pcl_stats_enabled.GetValue();
+    if (!continue_rendering_enabled && !pcl_stats_enabled) {
+        LogInfo("Window procedure hooks installation skipped - continue rendering is disabled and PCL stats is disabled");
         return false;
     }
 

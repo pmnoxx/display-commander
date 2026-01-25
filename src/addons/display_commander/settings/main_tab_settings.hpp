@@ -61,6 +61,7 @@ class MainTabSettings {
     ui::new_ui::BoolSetting onpresent_sync_enable_reflex;
     ui::new_ui::BoolSetting suppress_reflex_sleep;
     ui::new_ui::ComboSetting onpresent_sync_low_latency_ratio;
+    ui::new_ui::BoolSetting pcl_stats_enabled;
 
     // VSync & Tearing
     ui::new_ui::BoolSettingRef force_vsync_on;

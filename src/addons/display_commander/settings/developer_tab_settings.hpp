@@ -12,8 +12,8 @@ using ui::new_ui::BoolSettingRef;
 using ui::new_ui::FloatSettingRef;
 using ui::new_ui::IntSetting;
 using ui::new_ui::IntSettingRef;
-using ui::new_ui::StringSetting;
 using ui::new_ui::SettingBase;
+using ui::new_ui::StringSetting;
 
 // Developer tab settings manager
 class DeveloperTabSettings {
@@ -57,7 +57,7 @@ class DeveloperTabSettings {
     // Minimal NVIDIA Reflex controls
     BoolSettingRef reflex_auto_configure;
     BoolSetting reflex_enable;
-   BoolSetting reflex_delay_first_500_frames;
+    BoolSetting reflex_delay_first_500_frames;
     BoolSetting reflex_low_latency;
     BoolSetting reflex_boost;
     BoolSetting reflex_use_markers;

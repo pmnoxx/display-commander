@@ -143,7 +143,7 @@ bool LatencyManager::SetMarker(LatencyMarkerType marker) {
             }
             break;
         }
-        case SIMULATION_END:   g_reflex_marker_simulation_end_count.fetch_add(1, std::memory_order_relaxed); break;
+        case SIMULATION_END: g_reflex_marker_simulation_end_count.fetch_add(1, std::memory_order_relaxed); break;
         case RENDERSUBMIT_START:
             g_reflex_marker_rendersubmit_start_count.fetch_add(1, std::memory_order_relaxed);
             break;

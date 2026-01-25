@@ -395,41 +395,27 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
         }
 
         ImGui::SetNextWindowSize(ImVec2(fixed_width, 0.0f), ImGuiCond_Always);
-        ImGui::Begin("Display Commander", nullptr, ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoResize);
-        /*
-                // Custom title bar with close button
-                float titlebar_height = ImGui::GetTextLineHeight() + (ImGui::GetStyle().FramePadding.y * 2.0f);
-                ImGui::BeginChild("##titlebar", ImVec2(0, titlebar_height), false,
-                                  ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+        // Use local bool for ImGui window close button - ImGui will modify this when X is clicked
+        bool window_open = true;
+        if (ImGui::Begin("Display Commander", &window_open, ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoResize)) {
+            // Save window position when it changes
+            ImVec2 current_pos = ImGui::GetWindowPos();
+            if (current_pos.x != saved_x || current_pos.y != saved_y) {
+                settings::g_mainTabSettings.display_commander_ui_window_x.SetValue(current_pos.x);
+                settings::g_mainTabSettings.display_commander_ui_window_y.SetValue(current_pos.y);
+                last_saved_x = current_pos.x;
+                last_saved_y = current_pos.y;
+            }
 
-                // Title text
-                ImGui::Text("Display Commander");
-                ImGui::SameLine();
-
-                // Close button aligned to the right
-                float button_size = ImGui::GetTextLineHeight() + (ImGui::GetStyle().FramePadding.x * 2.0f);
-                ImGui::SetCursorPosX(ImGui::GetWindowWidth() - button_size);
-                if (ImGui::Button(ICON_FK_CANCEL, ImVec2(button_size, titlebar_height))) {
-                    settings::g_mainTabSettings.show_display_commander_ui.SetValue(false);
-                }
-                if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip("Close");
-                }
-
-                ImGui::EndChild();
-        */
-        // Save window position when it changes
-        ImVec2 current_pos = ImGui::GetWindowPos();
-        if (current_pos.x != saved_x || current_pos.y != saved_y) {
-            settings::g_mainTabSettings.display_commander_ui_window_x.SetValue(current_pos.x);
-            settings::g_mainTabSettings.display_commander_ui_window_y.SetValue(current_pos.y);
-            last_saved_x = current_pos.x;
-            last_saved_y = current_pos.y;
+            // Render tabs
+            ui::new_ui::NewUISystem::GetInstance().Draw(runtime);
         }
-
-        // Render tabs
-        ui::new_ui::NewUISystem::GetInstance().Draw(runtime);
         ImGui::End();
+
+        // If window was closed via X button, update the setting
+        if (!window_open) {
+            settings::g_mainTabSettings.show_display_commander_ui.SetValue(false);
+        }
     } else {
         if (last_cursor_state != CursorState::Hidden) {
             last_cursor_state = CursorState::Hidden;
@@ -1990,7 +1976,6 @@ void HandleSafemode() {
 
         // Enable MinHook suppression
         // settings::g_developerTabSettings.suppress_minhook.SetValue(true);
-
 
         // Save the changes
         settings::g_developerTabSettings.SaveAll();

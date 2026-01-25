@@ -739,7 +739,7 @@ reshade::api::effect_runtime* GetFirstReShadeRuntime() {
         return nullptr;
     }
 
-    return g_reshade_runtimes.back();
+    return g_reshade_runtimes.front();
 }
 
 std::vector<reshade::api::effect_runtime*> GetAllReShadeRuntimes() {

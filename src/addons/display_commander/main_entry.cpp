@@ -92,33 +92,8 @@ void HandleSafemode();
 // Forward declaration for loading addons from Plugins directory
 void LoadAddonsFromPluginsDirectory();
 
-static bool TryGetDxgiOutputDeviceNameFromLastSwapchain(wchar_t out_device_name[32]) {
-    if (out_device_name == nullptr) return false;
-
-    out_device_name[0] = L'\0';
-
-    auto* swapchain_ptr =
-        reinterpret_cast<reshade::api::swapchain*>(g_last_swapchain_ptr_unsafe.load(std::memory_order_acquire));
-    if (swapchain_ptr == nullptr) return false;
-
-    auto* unknown = reinterpret_cast<IUnknown*>(swapchain_ptr->get_native());
-    if (unknown == nullptr) return false;
-
-    Microsoft::WRL::ComPtr<IDXGISwapChain> dxgi_swapchain;
-    if (FAILED(unknown->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain))) || dxgi_swapchain == nullptr) return false;
-
-    Microsoft::WRL::ComPtr<IDXGIOutput> output;
-    if (FAILED(dxgi_swapchain->GetContainingOutput(&output)) || output == nullptr) return false;
-
-    Microsoft::WRL::ComPtr<IDXGIOutput6> output6;
-    if (FAILED(output->QueryInterface(IID_PPV_ARGS(&output6))) || output6 == nullptr) return false;
-
-    DXGI_OUTPUT_DESC1 desc1 = {};
-    if (FAILED(output6->GetDesc1(&desc1))) return false;
-
-    wcsncpy_s(out_device_name, 32, desc1.DeviceName, _TRUNCATE);
-    return out_device_name[0] != L'\0';
-}
+// TryGetDxgiOutputDeviceNameFromLastSwapchain removed - VRR status is now updated
+// from OnPresentUpdateBefore with direct swapchain access to avoid unsafe global pointer usage
 
 // Function to parse version string and check if it's 6.6.2 or above
 bool IsVersion662OrAbove(const std::string& version_str) {
@@ -591,12 +566,10 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
         const LONGLONG update_interval_ns = 100 * utils::NS_TO_MS;  // 100ms in nanoseconds
         const LONGLONG sample_timeout_ns = 1000 * utils::NS_TO_MS;  // 1 second in nanoseconds
 
-        // NVAPI VRR (more authoritative on NVIDIA). Cache it to keep overlay overhead low.
-        static bool cached_nvapi_ok = false;
-        static nvapi::VrrStatus cached_nvapi_vrr{};
-        static LONGLONG last_nvapi_update_ns = 0;
-        static wchar_t cached_output_device_name[32] = {};
-        const LONGLONG nvapi_update_interval_ns = 1000 * utils::NS_TO_MS;  // 1s in nanoseconds
+        // NVAPI VRR (more authoritative on NVIDIA). Status is now updated from OnPresentUpdateBefore
+        // with direct swapchain access, so we just read the cached values here.
+        bool cached_nvapi_ok = vrr_status::cached_nvapi_ok.load();
+        nvapi::VrrStatus cached_nvapi_vrr = vrr_status::cached_nvapi_vrr;  // Copy for thread safety
 
         LONGLONG now_ns = utils::get_now_ns();
 
@@ -614,26 +587,6 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
 
         // Check if we got a sample within the last 1 second
         bool has_recent_sample = (now_ns - last_valid_sample_ns) < sample_timeout_ns;
-
-        // Update NVAPI VRR once per second (if we can resolve the current output device name).
-        if (now_ns - last_nvapi_update_ns >= nvapi_update_interval_ns) {
-            wchar_t output_device_name[32] = {};
-            if (TryGetDxgiOutputDeviceNameFromLastSwapchain(output_device_name)) {
-                // If output changed, force refresh.
-                if (wcscmp(output_device_name, cached_output_device_name) != 0) {
-                    wcsncpy_s(cached_output_device_name, 32, output_device_name, _TRUNCATE);
-                }
-
-                nvapi::VrrStatus vrr{};
-                cached_nvapi_ok = nvapi::TryQueryVrrStatusFromDxgiOutputDeviceName(cached_output_device_name, vrr);
-                cached_nvapi_vrr = vrr;
-            } else {
-                cached_nvapi_ok = false;
-                cached_nvapi_vrr = nvapi::VrrStatus{};
-                cached_output_device_name[0] = L'\0';
-            }
-            last_nvapi_update_ns = now_ns;
-        }
 
         // Display VRR status (only if show_vrr_status is enabled)
         if (show_vrr_status) {

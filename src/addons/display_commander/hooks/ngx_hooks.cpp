@@ -4,6 +4,8 @@
 #include <map>
 #include <string>
 #include <vector>
+#include <windows.h>
+#include <excpt.h>
 #include "../../../external/nvidia-dlss/include/nvsdk_ngx_defs.h"
 #include "../globals.hpp"
 #include "../settings/developer_tab_settings.hpp"
@@ -927,6 +929,98 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_Init_Ext_Detour(unsigned long long I
     return NVSDK_NGX_Result_Fail;
 }
 
+// Helper function to safely validate and log string pointer
+static bool IsValidStringPtr(const char* str, size_t max_len = 4096) {
+    if (str == nullptr) return true;  // nullptr is valid (optional parameter)
+    
+    MEMORY_BASIC_INFORMATION mbi = {};
+    if (VirtualQuery(str, &mbi, sizeof(mbi)) == 0) {
+        return false;  // Invalid pointer
+    }
+    
+    // Check if memory is readable
+    if (!(mbi.Protect & (PAGE_READONLY | PAGE_READWRITE | PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE))) {
+        return false;
+    }
+    
+    // Try to read the string safely (check for null terminator within reasonable bounds)
+    __try {
+        for (size_t i = 0; i < max_len; ++i) {
+            if (str[i] == '\0') {
+                return true;  // Found null terminator
+            }
+        }
+        return false;  // No null terminator found within max_len
+    } __except(EXCEPTION_EXECUTE_HANDLER) {
+        return false;  // Access violation when reading
+    }
+}
+
+// Helper function to safely validate and log wide string pointer
+static bool IsValidWStringPtr(const wchar_t* str, size_t max_len = 4096) {
+    if (str == nullptr) return true;  // nullptr is valid (optional parameter)
+    
+    MEMORY_BASIC_INFORMATION mbi = {};
+    if (VirtualQuery(str, &mbi, sizeof(mbi)) == 0) {
+        return false;  // Invalid pointer
+    }
+    
+    // Check if memory is readable
+    if (!(mbi.Protect & (PAGE_READONLY | PAGE_READWRITE | PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE))) {
+        return false;
+    }
+    
+    // Try to read the string safely (check for null terminator within reasonable bounds)
+    __try {
+        for (size_t i = 0; i < max_len; ++i) {
+            if (str[i] == L'\0') {
+                return true;  // Found null terminator
+            }
+        }
+        return false;  // No null terminator found within max_len
+    } __except(EXCEPTION_EXECUTE_HANDLER) {
+        return false;  // Access violation when reading
+    }
+}
+
+// Helper function to safely log string value
+static void SafeLogString(const char* name, const char* str) {
+    if (str == nullptr) {
+        LogInfo("  %s: nullptr", name);
+    } else if (IsValidStringPtr(str)) {
+        __try {
+            LogInfo("  %s: \"%s\"", name, str);
+        } __except(EXCEPTION_EXECUTE_HANDLER) {
+            LogError("  %s: <ACCESS VIOLATION when reading>", name);
+        }
+    } else {
+        LogError("  %s: <INVALID POINTER: 0x%p>", name, str);
+    }
+}
+
+// Helper function to safely log wide string value
+static void SafeLogWString(const char* name, const wchar_t* str) {
+    if (str == nullptr) {
+        LogInfo("  %s: nullptr", name);
+    } else if (IsValidWStringPtr(str)) {
+        __try {
+            // Convert to char for logging (first 256 chars max)
+            char buffer[256] = {};
+            size_t i = 0;
+            while (i < 255 && str[i] != L'\0') {
+                buffer[i] = (char)str[i];
+                ++i;
+            }
+            buffer[i] = '\0';
+            LogInfo("  %s: \"%s\"", name, buffer);
+        } __except(EXCEPTION_EXECUTE_HANDLER) {
+            LogError("  %s: <ACCESS VIOLATION when reading>", name);
+        }
+    } else {
+        LogError("  %s: <INVALID POINTER: 0x%p>", name, str);
+    }
+}
+
 // D3D11 Init ProjectID detour
 NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_Init_ProjectID_Detour(
     const char* InProjectId, NVSDK_NGX_EngineType InEngineType, const char* InEngineVersion,
@@ -937,14 +1031,122 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_Init_ProjectID_Detour(
     g_ngx_counters.d3d11_init_projectid_count.fetch_add(1);
     g_ngx_counters.total_count.fetch_add(1);
 
-    LogInfo("NGX D3D11 Init ProjectID called - ProjectId: %s", InProjectId ? InProjectId : "null");
+    LogInfo("=== NGX D3D11 Init ProjectID called ===");
+    
+    // Validate and log all arguments
+    SafeLogString("InProjectId", InProjectId);
+    LogInfo("  InEngineType: %d", InEngineType);
+    SafeLogString("InEngineVersion", InEngineVersion);
+    SafeLogWString("InApplicationDataPath", InApplicationDataPath);
+    
+    // Validate device pointer
+    if (InDevice == nullptr) {
+        LogError("  InDevice: nullptr (CRITICAL - device cannot be null!)");
+    } else {
+        MEMORY_BASIC_INFORMATION mbi = {};
+        if (VirtualQuery(InDevice, &mbi, sizeof(mbi)) == 0) {
+            LogError("  InDevice: <INVALID POINTER: 0x%p>", InDevice);
+        } else {
+            LogInfo("  InDevice: 0x%p (memory region: 0x%p, size: 0x%llx)", InDevice, mbi.BaseAddress, mbi.RegionSize);
+            // Try to validate it's actually a COM object by checking vtable
+            __try {
+                void** vftable = *(void***)InDevice;
+                if (vftable != nullptr) {
+                    MEMORY_BASIC_INFORMATION vftable_mbi = {};
+                    if (VirtualQuery(vftable, &vftable_mbi, sizeof(vftable_mbi)) != 0) {
+                        LogInfo("  InDevice vtable: 0x%p (valid)", vftable);
+                    } else {
+                        LogError("  InDevice vtable: <INVALID POINTER: 0x%p>", vftable);
+                    }
+                } else {
+                    LogError("  InDevice vtable: nullptr");
+                }
+            } __except(EXCEPTION_EXECUTE_HANDLER) {
+                LogError("  InDevice: <ACCESS VIOLATION when reading vtable>");
+            }
+        }
+    }
+    
+    // Validate FeatureCommonInfo pointer
+    if (InFeatureInfo == nullptr) {
+        LogInfo("  InFeatureInfo: nullptr");
+    } else {
+        MEMORY_BASIC_INFORMATION mbi = {};
+        if (VirtualQuery(InFeatureInfo, &mbi, sizeof(mbi)) == 0) {
+            LogError("  InFeatureInfo: <INVALID POINTER: 0x%p>", InFeatureInfo);
+        } else {
+            LogInfo("  InFeatureInfo: 0x%p (memory region: 0x%p, size: 0x%llx)", InFeatureInfo, mbi.BaseAddress, mbi.RegionSize);
+            // Try to read structure fields safely
+            __try {
+                LogInfo("  InFeatureInfo structure size check passed");
+            } __except(EXCEPTION_EXECUTE_HANDLER) {
+                LogError("  InFeatureInfo: <ACCESS VIOLATION when reading structure>");
+            }
+        }
+    }
+    
+    LogInfo("  InSDKVersion: 0x%08X", InSDKVersion);
+    LogInfo("  Original function pointer: 0x%p", NVSDK_NGX_D3D11_Init_ProjectID_Original);
 
-    if (NVSDK_NGX_D3D11_Init_ProjectID_Original != nullptr) {
-        return NVSDK_NGX_D3D11_Init_ProjectID_Original(InProjectId, InEngineType, InEngineVersion,
-                                                       InApplicationDataPath, InDevice, InFeatureInfo, InSDKVersion);
+    // Validate critical arguments before calling original function
+    bool has_errors = false;
+    
+    if (InDevice == nullptr) {
+        LogError("CRITICAL: InDevice is nullptr - NGX will crash!");
+        has_errors = true;
+    }
+    
+    if (InProjectId != nullptr && !IsValidStringPtr(InProjectId)) {
+        LogError("CRITICAL: InProjectId is an invalid pointer - NGX will crash!");
+        has_errors = true;
+    }
+    
+    if (InEngineVersion != nullptr && !IsValidStringPtr(InEngineVersion)) {
+        LogError("CRITICAL: InEngineVersion is an invalid pointer - NGX will crash!");
+        has_errors = true;
+    }
+    
+    if (InApplicationDataPath != nullptr && !IsValidWStringPtr(InApplicationDataPath)) {
+        LogError("CRITICAL: InApplicationDataPath is an invalid pointer - NGX will crash!");
+        has_errors = true;
+    }
+    
+    if (InFeatureInfo != nullptr) {
+        MEMORY_BASIC_INFORMATION mbi = {};
+        if (VirtualQuery(InFeatureInfo, &mbi, sizeof(mbi)) == 0) {
+            LogError("CRITICAL: InFeatureInfo is an invalid pointer - NGX will crash!");
+            has_errors = true;
+        }
+    }
+    
+    if (NVSDK_NGX_D3D11_Init_ProjectID_Original == nullptr) {
+        LogError("CRITICAL: Original function pointer is nullptr!");
+        return NVSDK_NGX_Result_Fail;
+    }
+    
+    if (has_errors) {
+        LogError("ABORTING NGX D3D11 Init ProjectID call due to invalid arguments");
+        return NVSDK_NGX_Result_Fail;
     }
 
-    return NVSDK_NGX_Result_Fail;
+    LogInfo("Calling original NVSDK_NGX_D3D11_Init_ProjectID function...");
+    
+    __try {
+        NVSDK_NGX_Result result = NVSDK_NGX_D3D11_Init_ProjectID_Original(InProjectId, InEngineType, InEngineVersion,
+                                                                          InApplicationDataPath, InDevice, InFeatureInfo, InSDKVersion);
+        LogInfo("NVSDK_NGX_D3D11_Init_ProjectID returned: 0x%08X", result);
+        return result;
+    } __except(EXCEPTION_EXECUTE_HANDLER) {
+        // GetExceptionCode() is a macro that's only valid in exception handlers
+        LogError("EXCEPTION in NVSDK_NGX_D3D11_Init_ProjectID: Code=0x%08X (Access Violation)", GetExceptionCode());
+        LogError("This indicates one of the arguments passed to NGX was invalid:");
+        LogError("  - InDevice: 0x%p", InDevice);
+        LogError("  - InProjectId: 0x%p", InProjectId);
+        LogError("  - InEngineVersion: 0x%p", InEngineVersion);
+        LogError("  - InApplicationDataPath: 0x%p", InApplicationDataPath);
+        LogError("  - InFeatureInfo: 0x%p", InFeatureInfo);
+        return NVSDK_NGX_Result_Fail;
+    }
 }
 
 // D3D11 CreateFeature detour

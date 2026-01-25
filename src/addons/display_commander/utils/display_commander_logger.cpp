@@ -1,9 +1,10 @@
 #include "display_commander_logger.hpp"
-#include "srwlock_wrapper.hpp"
-#include <sstream>
-#include <iomanip>
 #include <cstdarg>
+#include <exception>
 #include <filesystem>
+#include <iomanip>
+#include <sstream>
+#include "srwlock_wrapper.hpp"
 
 namespace display_commander::logger {
 
@@ -12,17 +13,14 @@ DisplayCommanderLogger& DisplayCommanderLogger::GetInstance() {
     return instance;
 }
 
-DisplayCommanderLogger::DisplayCommanderLogger() {
-}
+DisplayCommanderLogger::DisplayCommanderLogger() {}
 
-DisplayCommanderLogger::~DisplayCommanderLogger() {
-    Shutdown();
-}
+DisplayCommanderLogger::~DisplayCommanderLogger() { Shutdown(); }
 
 void DisplayCommanderLogger::Initialize(const std::string& log_path) {
     bool expected = false;
     if (!initialized_.compare_exchange_strong(expected, true)) {
-        return; // Already initialized
+        return;  // Already initialized
     }
 
     log_path_ = log_path;
@@ -58,21 +56,13 @@ void DisplayCommanderLogger::Log(LogLevel level, const std::string& message) {
     }
 }
 
-void DisplayCommanderLogger::LogDebug(const std::string& message) {
-    Log(LogLevel::Debug, message);
-}
+void DisplayCommanderLogger::LogDebug(const std::string& message) { Log(LogLevel::Debug, message); }
 
-void DisplayCommanderLogger::LogInfo(const std::string& message) {
-    Log(LogLevel::Info, message);
-}
+void DisplayCommanderLogger::LogInfo(const std::string& message) { Log(LogLevel::Info, message); }
 
-void DisplayCommanderLogger::LogWarning(const std::string& message) {
-    Log(LogLevel::Warning, message);
-}
+void DisplayCommanderLogger::LogWarning(const std::string& message) { Log(LogLevel::Warning, message); }
 
-void DisplayCommanderLogger::LogError(const std::string& message) {
-    Log(LogLevel::Error, message);
-}
+void DisplayCommanderLogger::LogError(const std::string& message) { Log(LogLevel::Error, message); }
 
 void DisplayCommanderLogger::FlushLogs() {
     if (!initialized_.load()) {
@@ -91,7 +81,7 @@ void DisplayCommanderLogger::FlushLogs() {
 void DisplayCommanderLogger::Shutdown() {
     bool expected = true;
     if (!initialized_.compare_exchange_strong(expected, false)) {
-        return; // Already shut down or never initialized
+        return;  // Already shut down or never initialized
     }
 
     // Write final log entry, flush, and close file
@@ -106,10 +96,14 @@ void DisplayCommanderLogger::Shutdown() {
     }
 }
 
-
 bool DisplayCommanderLogger::OpenLogFile() {
     if (log_file_.is_open()) {
-        return true; // Already open
+        return true;  // Already open
+    }
+
+    // Check if log rotation is needed (if file exists and is older than 8 hours)
+    if (ShouldRotateLog()) {
+        RotateLog();
     }
 
     // Open log file for writing (append mode, binary mode for CRLF handling)
@@ -146,24 +140,19 @@ std::string DisplayCommanderLogger::FormatMessage(LogLevel level, const std::str
 
     // Format timestamp (matching ReShade format: HH:MM:SS:mmm)
     std::ostringstream timestamp;
-    timestamp << std::setfill('0')
-              << std::setw(2) << time.wHour << ":"
-              << std::setw(2) << time.wMinute << ":"
-              << std::setw(2) << time.wSecond << ":"
-              << std::setw(3) << time.wMilliseconds;
+    timestamp << std::setfill('0') << std::setw(2) << time.wHour << ":" << std::setw(2) << time.wMinute << ":"
+              << std::setw(2) << time.wSecond << ":" << std::setw(3) << time.wMilliseconds;
 
     // Format the complete log line (matching ReShade format)
     std::ostringstream log_line;
-    log_line << timestamp.str()
-             << " [" << std::setw(5) << GetCurrentThreadId() << "] | "
-             << std::setw(5) << GetLogLevelString(level) << " | "
-             << message;
+    log_line << timestamp.str() << " [" << std::setw(5) << GetCurrentThreadId() << "] | " << std::setw(5)
+             << GetLogLevelString(level) << " | " << message;
 
     std::string line_string = log_line.str();
 
     // Replace all standalone LF with CRLF (like ReShade does)
     // Skip if already CRLF (check for \r before \n)
-    for (size_t offset = 0; (offset = line_string.find('\n', offset)) != std::string::npos; ) {
+    for (size_t offset = 0; (offset = line_string.find('\n', offset)) != std::string::npos;) {
         if (offset == 0 || line_string[offset - 1] != '\r') {
             // Standalone LF, replace with CRLF
             line_string.replace(offset, 1, "\r\n", 2);
@@ -196,10 +185,75 @@ std::string DisplayCommanderLogger::GetLogLevelString(LogLevel level) {
     }
 }
 
-// Global convenience functions
-void Initialize(const std::string& log_path) {
-    DisplayCommanderLogger::GetInstance().Initialize(log_path);
+bool DisplayCommanderLogger::ShouldRotateLog() {
+    // Check if log file exists
+    if (!std::filesystem::exists(log_path_)) {
+        return false;  // No file to rotate
+    }
+
+    try {
+        // Use Windows API to get file last write time
+        HANDLE hFile = CreateFileA(log_path_.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE,
+                                   nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+        if (hFile == INVALID_HANDLE_VALUE) {
+            return false;  // Can't open file, don't rotate
+        }
+
+        FILETIME ftLastWrite;
+        if (!GetFileTime(hFile, nullptr, nullptr, &ftLastWrite)) {
+            CloseHandle(hFile);
+            return false;  // Can't get file time, don't rotate
+        }
+        CloseHandle(hFile);
+
+        // Get current time
+        FILETIME ftNow;
+        GetSystemTimeAsFileTime(&ftNow);
+
+        // Convert FILETIME to ULARGE_INTEGER for comparison
+        ULARGE_INTEGER ulLastWrite, ulNow;
+        ulLastWrite.LowPart = ftLastWrite.dwLowDateTime;
+        ulLastWrite.HighPart = ftLastWrite.dwHighDateTime;
+        ulNow.LowPart = ftNow.dwLowDateTime;
+        ulNow.HighPart = ftNow.dwHighDateTime;
+
+        // Calculate difference in 100-nanosecond intervals
+        ULONGLONG diff = ulNow.QuadPart - ulLastWrite.QuadPart;
+
+        // 8 hours = 8 * 60 * 60 * 10000000 (100-nanosecond intervals)
+        constexpr ULONGLONG rotation_threshold = 8ULL * 60 * 60 * 10000000;
+
+        // Rotate if file is older than 8 hours
+        return diff >= rotation_threshold;
+    } catch (const std::exception&) {
+        // If we can't check the time, don't rotate
+        return false;
+    }
 }
+
+void DisplayCommanderLogger::RotateLog() {
+    try {
+        std::filesystem::path log_path(log_path_);
+        std::filesystem::path old_log_path = log_path;
+        old_log_path.replace_filename(log_path.filename().string() + ".old");
+
+        // Delete old log file if it exists
+        if (std::filesystem::exists(old_log_path)) {
+            std::filesystem::remove(old_log_path);
+        }
+
+        // Rename current log file to .old
+        if (std::filesystem::exists(log_path)) {
+            std::filesystem::rename(log_path, old_log_path);
+        }
+    } catch (const std::exception&) {
+        // If rotation fails, continue anyway - we'll just append to existing file
+        // This prevents crashes if file operations fail
+    }
+}
+
+// Global convenience functions
+void Initialize(const std::string& log_path) { DisplayCommanderLogger::GetInstance().Initialize(log_path); }
 
 void LogDebug(const char* msg, ...) {
     va_list args;
@@ -237,12 +291,8 @@ void LogError(const char* msg, ...) {
     DisplayCommanderLogger::GetInstance().LogError(buffer);
 }
 
-void Shutdown() {
-    DisplayCommanderLogger::GetInstance().Shutdown();
-}
+void Shutdown() { DisplayCommanderLogger::GetInstance().Shutdown(); }
 
-void FlushLogs() {
-    DisplayCommanderLogger::GetInstance().FlushLogs();
-}
+void FlushLogs() { DisplayCommanderLogger::GetInstance().FlushLogs(); }
 
-} // namespace display_commander::logger
+}  // namespace display_commander::logger

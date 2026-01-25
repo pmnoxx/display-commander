@@ -51,6 +51,8 @@ private:
     void WriteToFile(const std::string& formatted_message);
     std::string FormatMessage(LogLevel level, const std::string& message);
     std::string GetLogLevelString(LogLevel level);
+    bool ShouldRotateLog();
+    void RotateLog();
 
     std::string log_path_;
     std::ofstream log_file_;

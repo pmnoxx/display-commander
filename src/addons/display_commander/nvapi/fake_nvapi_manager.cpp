@@ -1,6 +1,6 @@
 #include "fake_nvapi_manager.hpp"
-#include "../settings/developer_tab_settings.hpp"
 #include "../globals.hpp"
+#include "../settings/developer_tab_settings.hpp"
 #include "../utils.hpp"
 #include "../utils/logging.hpp"
 #include "../utils/srwlock_wrapper.hpp"
@@ -14,9 +14,7 @@ FakeNvapiManager g_fakeNvapiManager;
 
 FakeNvapiManager::FakeNvapiManager() = default;
 
-FakeNvapiManager::~FakeNvapiManager() {
-    Cleanup();
-}
+FakeNvapiManager::~FakeNvapiManager() { Cleanup(); }
 
 bool FakeNvapiManager::Initialize() {
     if (is_active_.load()) {
@@ -97,7 +95,7 @@ std::string FakeNvapiManager::GetStatusMessage() const {
 
 FakeNvapiManager::Statistics FakeNvapiManager::GetStatistics() const {
     Statistics stats;
-    stats.was_nvapi64_loaded_before_dc = false; // Always false as requested
+    stats.was_nvapi64_loaded_before_dc = false;  // Always false as requested
     stats.is_nvapi64_loaded = (GetModuleHandleA("nvapi64.dll") != nullptr);
     stats.is_libxell_loaded = (GetModuleHandleA("libxell.dll") != nullptr);
     stats.fake_nvapi_loaded = is_active_.load();
@@ -115,10 +113,6 @@ FakeNvapiManager::Statistics FakeNvapiManager::GetStatistics() const {
 bool FakeNvapiManager::DetectNvidiaGpu() {
     // Try to load real NVAPI to detect NVIDIA GPU
     HMODULE real_nvapi = GetModuleHandleA("nvapi64.dll");
-    if (!real_nvapi) {
-        // Try to load it explicitly
-        real_nvapi = LoadLibraryA("nvapi64.dll");
-    }
 
     if (!real_nvapi) {
         LogInfo("Fake NVAPI: Real nvapi64.dll not found");
@@ -231,4 +225,4 @@ bool FakeNvapiManager::CheckFakenvapiExists() const {
     return exists;
 }
 
-} // namespace nvapi
+}  // namespace nvapi

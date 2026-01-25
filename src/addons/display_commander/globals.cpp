@@ -1,6 +1,7 @@
 #include "globals.hpp"
 #include <algorithm>
 #include "../../../external/nvapi/nvapi.h"
+#include "nvapi/vrr_status.hpp"
 #include "background_window.hpp"
 #include "dxgi/custom_fps_limiter.hpp"
 #include "latency/latency_manager.hpp"
@@ -199,6 +200,14 @@ std::atomic<uint64_t> g_last_set_sleep_mode_direct_frame_id{0};
 
 // Global Swapchain Tracking Manager instance
 SwapchainTrackingManager g_swapchainTrackingManager;
+
+// VRR Status caching (updated from OnPresentUpdateBefore with direct swapchain access)
+namespace vrr_status {
+std::atomic<bool> cached_nvapi_ok{false};
+nvapi::VrrStatus cached_nvapi_vrr{};
+std::atomic<LONGLONG> last_nvapi_update_ns{0};
+wchar_t cached_output_device_name[32] = {};
+} // namespace vrr_status
 
 // Backbuffer dimensions
 std::atomic<int> g_last_backbuffer_width{0};

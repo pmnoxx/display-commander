@@ -3441,16 +3441,6 @@ void DrawImportantInfo() {
         }
         ImGui::NextColumn();
 
-        // Show VRR Status
-        bool show_vrr_status = settings::g_mainTabSettings.show_vrr_status.GetValue();
-        if (ImGui::Checkbox("VRR Status", &show_vrr_status)) {
-            settings::g_mainTabSettings.show_vrr_status.SetValue(show_vrr_status);
-        }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Shows whether Variable Refresh Rate (VRR) is active in the performance overlay.");
-        }
-        ImGui::NextColumn();
-
         // Show Flip Status
         bool show_flip_status = settings::g_mainTabSettings.show_flip_status.GetValue();
         if (ImGui::Checkbox("Flip Status", &show_flip_status)) {
@@ -3460,6 +3450,16 @@ void DrawImportantInfo() {
             ImGui::SetTooltip(
                 "Shows the DXGI flip mode status (Composed, Independent Flip, MPO Overlay) in the performance "
                 "overlay.");
+        }
+        ImGui::NextColumn();
+
+        // Show VRR Status
+        bool show_vrr_status = settings::g_mainTabSettings.show_vrr_status.GetValue();
+        if (ImGui::Checkbox("VRR Status", &show_vrr_status)) {
+            settings::g_mainTabSettings.show_vrr_status.SetValue(show_vrr_status);
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Shows whether Variable Refresh Rate (VRR) is active in the performance overlay.");
         }
         ImGui::NextColumn();
 

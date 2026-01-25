@@ -32,6 +32,7 @@ struct NVSDK_NGX_Parameter;
 
 // Fake NVAPI manager
 #include "nvapi/fake_nvapi_manager.hpp"
+#include "nvapi/vrr_status.hpp"
 
 // Settings
 #include "settings/developer_tab_settings.hpp"
@@ -600,6 +601,14 @@ extern std::atomic<uint64_t> g_last_set_sleep_mode_direct_frame_id;
 
 // Global Swapchain Tracking Manager instance
 extern SwapchainTrackingManager g_swapchainTrackingManager;
+
+// VRR Status caching (updated from OnPresentUpdateBefore with direct swapchain access)
+namespace vrr_status {
+extern std::atomic<bool> cached_nvapi_ok;
+extern nvapi::VrrStatus cached_nvapi_vrr;
+extern std::atomic<LONGLONG> last_nvapi_update_ns;
+extern wchar_t cached_output_device_name[32];
+} // namespace vrr_status
 
 // Present duration tracking
 extern std::atomic<LONGLONG> g_present_duration_ns;

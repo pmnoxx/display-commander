@@ -1287,24 +1287,25 @@ void DrawDxgiCompositionInfo() {
         std::string format_str = "Unknown";
 
         // Get colorspace string directly from swapchain
-        std::string colorspace_str = "Unknown";
-        if (auto* swapchain_ptr = g_last_swapchain_ptr_unsafe.load()) {
-            auto* swapchain = static_cast<reshade::api::swapchain*>(swapchain_ptr);
-            auto colorspace = swapchain->get_color_space();
-            switch (colorspace) {
-                case reshade::api::color_space::unknown:              colorspace_str = "Unknown"; break;
-                case reshade::api::color_space::srgb_nonlinear:       colorspace_str = "sRGB"; break;
-                case reshade::api::color_space::extended_srgb_linear: colorspace_str = "Extended sRGB Linear"; break;
-                case reshade::api::color_space::hdr10_st2084:         colorspace_str = "HDR10 ST2084"; break;
-                case reshade::api::color_space::hdr10_hlg:            colorspace_str = "HDR10 HLG"; break;
-                default:                                              colorspace_str = "ColorSpace_" + std::to_string(static_cast<int>(colorspace)); break;
-            }
-        }
+        /*  std::string colorspace_str = "Unknown";
+          if (auto* swapchain_ptr = g_last_swapchain_ptr_unsafe.load()) {
+              auto* swapchain = static_cast<reshade::api::swapchain*>(swapchain_ptr);
+              auto colorspace = swapchain->get_color_space();
+              switch (colorspace) {
+                  case reshade::api::color_space::unknown:              colorspace_str = "Unknown"; break;
+                  case reshade::api::color_space::srgb_nonlinear:       colorspace_str = "sRGB"; break;
+                  case reshade::api::color_space::extended_srgb_linear: colorspace_str = "Extended sRGB Linear"; break;
+                  case reshade::api::color_space::hdr10_st2084:         colorspace_str = "HDR10 ST2084"; break;
+                  case reshade::api::color_space::hdr10_hlg:            colorspace_str = "HDR10 HLG"; break;
+                  default:                                              colorspace_str = "ColorSpace_" +
+          std::to_string(static_cast<int>(colorspace)); break;
+              }
+          }*/
 
         ImGui::Text("DXGI Composition: %s", mode_str);
         ImGui::Text("Backbuffer: %dx%d", g_last_backbuffer_width.load(), g_last_backbuffer_height.load());
         ImGui::Text("Format: %s", format_str.c_str());
-        ImGui::Text("Colorspace: %s", colorspace_str.c_str());
+        // ImGui::Text("Colorspace: %s", colorspace_str.c_str());
 
         // Display HDR10 override status
         ImGui::Text("HDR10 Colorspace Override: %s (Last: %s)", g_hdr10_override_status.load()->c_str(),

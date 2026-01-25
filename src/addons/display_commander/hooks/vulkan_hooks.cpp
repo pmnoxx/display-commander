@@ -4,11 +4,12 @@
 #include <array>
 #include <atomic>
 #include "../utils.hpp"
+#include "../utils/detour_call_tracker.hpp"
 #include "../utils/general_utils.hpp"
 #include "../utils/logging.hpp"
-#include "../utils/detour_call_tracker.hpp"
 #include "../utils/timing.hpp"
 #include "hook_suppression_manager.hpp"
+
 
 // Original function pointers
 PFN_vkCreateInstance vkCreateInstance_Original = nullptr;

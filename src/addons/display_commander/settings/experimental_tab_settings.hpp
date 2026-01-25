@@ -14,12 +14,12 @@ using ui::new_ui::FixedIntArraySetting;
 using ui::new_ui::FloatSetting;
 using ui::new_ui::FloatSettingRef;
 using ui::new_ui::IntSetting;
-using ui::new_ui::StringSetting;
 using ui::new_ui::SettingBase;
+using ui::new_ui::StringSetting;
 
 // Settings manager for the experimental tab
 class ExperimentalTabSettings {
-  public:
+   public:
     ExperimentalTabSettings();
     ~ExperimentalTabSettings() = default;
 
@@ -27,7 +27,7 @@ class ExperimentalTabSettings {
     void LoadAll();
 
     // Get all settings for loading
-    std::vector<SettingBase *> GetAllSettings();
+    std::vector<SettingBase*> GetAllSettings();
 
     // Master auto-click enable
     BoolSetting auto_click_enabled;
@@ -36,10 +36,10 @@ class ExperimentalTabSettings {
     BoolSetting mouse_spoofing_enabled;
 
     // Click sequences (up to 5) - using arrays for cleaner code
-    FixedIntArraySetting sequence_enabled;  // 0 = disabled, 1 = enabled
-    FixedIntArraySetting sequence_x;        // X coordinates
-    FixedIntArraySetting sequence_y;        // Y coordinates
-    FixedIntArraySetting sequence_interval; // Click intervals in ms
+    FixedIntArraySetting sequence_enabled;   // 0 = disabled, 1 = enabled
+    FixedIntArraySetting sequence_x;         // X coordinates
+    FixedIntArraySetting sequence_y;         // Y coordinates
+    FixedIntArraySetting sequence_interval;  // Click intervals in ms
 
     // Backbuffer format override settings
     BoolSetting backbuffer_format_override_enabled;
@@ -153,7 +153,8 @@ class ExperimentalTabSettings {
     BoolSetting perf_measure_get_independent_flip_state_enabled;
 
     // Performance suppression (debug) - default off
-    // WARNING: Suppressing these functions changes behavior and can break features; intended for short debugging sessions.
+    // WARNING: Suppressing these functions changes behavior and can break features; intended for short debugging
+    // sessions.
     BoolSetting performance_suppression_enabled;
     BoolSetting perf_suppress_overlay;
     BoolSetting perf_suppress_handle_present_before;
@@ -167,8 +168,8 @@ class ExperimentalTabSettings {
     BoolSetting perf_suppress_enqueue_gpu_completion;
     BoolSetting perf_suppress_get_independent_flip_state;
 
-  private:
-    std::vector<SettingBase *> all_settings_;
+   private:
+    std::vector<SettingBase*> all_settings_;
 };
 
-} // namespace settings
+}  // namespace settings

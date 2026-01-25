@@ -5,7 +5,6 @@
 #include <dxgi.h>
 #include <windows.h>
 
-
 // Forward declarations for DXGI hooks
 namespace display_commanderhooks::dxgi {
 bool HookSwapchain(IDXGISwapChain* swapchain);

@@ -1986,6 +1986,20 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                         "Enables NVIDIA Reflex Boost mode for maximum latency reduction.\nThis mode may increase GPU "
                         "power consumption but provides the lowest possible input lag.");
                 }
+                ImGui::SameLine();
+                bool pcl_stats = settings::g_mainTabSettings.pcl_stats_enabled.GetValue();
+                if (ImGui::Checkbox("PCL stats", &pcl_stats)) {
+                    settings::g_mainTabSettings.pcl_stats_enabled.SetValue(pcl_stats);
+                    // Reinstall window proc hooks if PCL stats is enabled
+                    HWND game_window = display_commanderhooks::GetGameWindow();
+                    if (game_window != nullptr && pcl_stats) {
+                        display_commanderhooks::InstallWindowProcHooks(game_window);
+                    }
+                }
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip(
+                        "Enables PCLStats ETW reporting for latency measurement.\nRequires window proc hooks to be installed.\nWorks with Reflex and OnPresent sync modes.");
+                }
             }
             if (IsNativeReflexActive() || settings::g_developerTabSettings.reflex_supress_native.GetValue()) {
                 ImGui::SameLine();
@@ -2012,6 +2026,25 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                 ImGui::SetTooltip(
                     "Suppresses both native Reflex sleep calls (from the game) and injected Reflex sleep calls.\n"
                     "This prevents Reflex from sleeping the CPU, which may help with certain compatibility issues.");
+            }
+        }
+
+        // PCL stats checkbox for OnPresentSync mode (when Reflex is not enabled)
+        if (current_item == static_cast<int>(FpsLimiterMode::kOnPresentSync)
+            && !settings::g_mainTabSettings.onpresent_sync_enable_reflex.GetValue()) {
+            ImGui::Spacing();
+            bool pcl_stats = settings::g_mainTabSettings.pcl_stats_enabled.GetValue();
+            if (ImGui::Checkbox("PCL stats", &pcl_stats)) {
+                settings::g_mainTabSettings.pcl_stats_enabled.SetValue(pcl_stats);
+                // Reinstall window proc hooks if PCL stats is enabled
+                HWND game_window = display_commanderhooks::GetGameWindow();
+                if (game_window != nullptr && pcl_stats) {
+                    display_commanderhooks::InstallWindowProcHooks(game_window);
+                }
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip(
+                    "Enables PCLStats ETW reporting for latency measurement.\nRequires window proc hooks to be installed.\nNote: PCL stats markers are only emitted when Reflex is enabled.");
             }
         }
 

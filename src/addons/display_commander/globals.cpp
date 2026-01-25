@@ -1,10 +1,10 @@
 #include "globals.hpp"
 #include <algorithm>
 #include "../../../external/nvapi/nvapi.h"
-#include "nvapi/vrr_status.hpp"
 #include "background_window.hpp"
 #include "dxgi/custom_fps_limiter.hpp"
 #include "latency/latency_manager.hpp"
+#include "nvapi/vrr_status.hpp"
 #include "settings/developer_tab_settings.hpp"
 #include "settings/experimental_tab_settings.hpp"
 #include "settings/hook_suppression_settings.hpp"
@@ -207,7 +207,7 @@ std::atomic<bool> cached_nvapi_ok{false};
 nvapi::VrrStatus cached_nvapi_vrr{};
 std::atomic<LONGLONG> last_nvapi_update_ns{0};
 wchar_t cached_output_device_name[32] = {};
-} // namespace vrr_status
+}  // namespace vrr_status
 
 // Backbuffer dimensions
 std::atomic<int> g_last_backbuffer_width{0};
@@ -499,8 +499,8 @@ DLSSGSummary GetDLSSGSummary() {
     unsigned int internal_width, internal_height, output_width, output_height;
     bool has_internal_width = g_ngx_parameters.get_as_uint("DLSS.Render.Subrect.Dimensions.Width", internal_width);
     bool has_internal_height = g_ngx_parameters.get_as_uint("DLSS.Render.Subrect.Dimensions.Height", internal_height);
-    bool has_output_width = g_ngx_parameters.get_as_uint("OutWidth", output_width);
-    bool has_output_height = g_ngx_parameters.get_as_uint("OutHeight", output_height);
+    bool has_output_width = g_ngx_parameters.get_as_uint("Width", output_width);
+    bool has_output_height = g_ngx_parameters.get_as_uint("Height", output_height);
 
     if (has_internal_width && has_internal_height) {
         summary.internal_resolution = std::to_string(internal_width) + "x" + std::to_string(internal_height);

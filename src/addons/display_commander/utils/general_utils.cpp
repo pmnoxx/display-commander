@@ -645,6 +645,21 @@ int GetDLSSPresetValue(const std::string& presetString) {
     return -1;
 }
 
+// Convert render preset number to letter string for display
+// 0 = "Default", 1 = "A", 2 = "B", ..., 15 = "O"
+std::string ConvertRenderPresetToLetter(int preset_value) {
+    if (preset_value == 0) {
+        return "Default";
+    } else if (preset_value >= 1 && preset_value <= 15) {
+        // Convert 1-15 to A-O
+        char letter = 'A' + (preset_value - 1);
+        return std::string(1, letter);
+    } else {
+        // Invalid or unknown preset value
+        return "?";
+    }
+}
+
 // Test function to demonstrate DLSS preset support (can be called for debugging)
 void TestDLSSPresetSupport() {
     LogInfo("=== DLSS Preset Support Test ===");

@@ -19,7 +19,6 @@ struct AddonInfo {
     bool is_external = true;  // Whether it's an external addon (not built-in)
 };
 
-
 // Initialize addons tab
 void InitAddonsTab();
 

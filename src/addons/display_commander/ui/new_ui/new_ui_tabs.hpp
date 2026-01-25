@@ -1,11 +1,12 @@
 #pragma once
 
+#include <imgui.h>
 #include <atomic>
 #include <functional>
-#include <imgui.h>
 #include <memory>
 #include <string>
 #include <vector>
+
 
 #include <reshade.hpp>
 
@@ -23,12 +24,13 @@ struct Tab {
 // Main tab manager class
 // Thread-safe implementation using atomic shared_ptr for copy-on-write semantics
 class TabManager {
-  public:
+   public:
     TabManager();
     ~TabManager() = default;
 
     // Add a new tab (thread-safe)
-    void AddTab(const std::string &name, const std::string &id, std::function<void(reshade::api::effect_runtime* runtime)> on_draw, bool is_advanced_tab = false);
+    void AddTab(const std::string& name, const std::string& id,
+                std::function<void(reshade::api::effect_runtime* runtime)> on_draw, bool is_advanced_tab = false);
 
     // Draw the tab bar and content (thread-safe)
     void Draw(reshade::api::effect_runtime* runtime);
@@ -42,7 +44,7 @@ class TabManager {
     // Check if a tab with the given ID exists (thread-safe)
     bool HasTab(const std::string& id) const;
 
-  private:
+   private:
     std::atomic<std::shared_ptr<const std::vector<Tab>>> tabs_;
     int active_tab_ = 0;
 };
@@ -56,4 +58,4 @@ void InitializeNewUI();
 // Draw the new UI
 void DrawNewUI(reshade::api::effect_runtime* runtime);
 
-} // namespace ui::new_ui
+}  // namespace ui::new_ui

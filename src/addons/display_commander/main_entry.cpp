@@ -36,6 +36,7 @@
 #include "ui/new_ui/new_ui_main.hpp"
 #include "utils/detour_call_tracker.hpp"
 #include "utils/display_commander_logger.hpp"
+#include "utils/general_utils.hpp"
 #include "utils/logging.hpp"
 #include "utils/platform_api_detector.hpp"
 #include "utils/srwlock_wrapper.hpp"
@@ -417,6 +418,10 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
     bool show_native_frame_time_graph = settings::g_mainTabSettings.show_native_frame_time_graph.GetValue();
     bool show_cpu_usage = settings::g_mainTabSettings.show_cpu_usage.GetValue();
     bool show_fg_mode = settings::g_mainTabSettings.show_fg_mode.GetValue();
+    bool show_dlss_internal_resolution = settings::g_mainTabSettings.show_dlss_internal_resolution.GetValue();
+    bool show_dlss_status = settings::g_mainTabSettings.show_dlss_status.GetValue();
+    bool show_dlss_quality_preset = settings::g_mainTabSettings.show_dlss_quality_preset.GetValue();
+    bool show_dlss_render_preset = settings::g_mainTabSettings.show_dlss_render_preset.GetValue();
     bool show_enabledfeatures = display_commanderhooks::IsTimeslowdownEnabled() || ::g_auto_click_enabled.load();
 
     ImGui::SetNextWindowPos(ImVec2(10.0f, 10.0f), ImGuiCond_Always);
@@ -689,15 +694,142 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
         }
     }
 
-    if (show_fg_mode) {
+    if (show_fg_mode || show_dlss_internal_resolution || show_dlss_status || show_dlss_quality_preset
+        || show_dlss_render_preset) {
         const DLSSGSummary dlssg_summary = GetDLSSGSummary();
+        auto any_dlss_active = dlssg_summary.dlss_active || dlssg_summary.ray_reconstruction_active;
 
-        // Only show the 4 requested buckets: OFF / 2x / 3x / 4x
-        if (dlssg_summary.dlss_g_active
-            && (dlssg_summary.fg_mode == "2x" || dlssg_summary.fg_mode == "3x" || dlssg_summary.fg_mode == "4x")) {
-            ImGui::Text("FG: %s", dlssg_summary.fg_mode.c_str());
-        } else {
-            ImGui::TextColored(ui::colors::TEXT_DIMMED, "FG: OFF");
+        if (show_fg_mode) {
+            // Only show the 4 requested buckets: OFF / 2x / 3x / 4x
+            if (any_dlss_active
+                && (dlssg_summary.fg_mode == "2x" || dlssg_summary.fg_mode == "3x" || dlssg_summary.fg_mode == "4x")) {
+                ImGui::Text("FG: %s", dlssg_summary.fg_mode.c_str());
+            } else {
+                ImGui::TextColored(ui::colors::TEXT_DIMMED, "FG: OFF");
+            }
+        }
+
+        if (show_dlss_internal_resolution) {
+            // Show internal resolution -> output resolution if DLSS is active and we have valid data
+            if (any_dlss_active && dlssg_summary.internal_resolution != "N/A") {
+                std::string res_text;
+                if (dlssg_summary.output_resolution != "N/A") {
+                    res_text = dlssg_summary.internal_resolution + " -> " + dlssg_summary.output_resolution;
+                } else {
+                    res_text = dlssg_summary.internal_resolution;
+                }
+                if (settings::g_mainTabSettings.show_labels.GetValue()) {
+                    ImGui::Text("DLSS Res: %s", res_text.c_str());
+                } else {
+                    ImGui::Text("%s", res_text.c_str());
+                }
+            } else {
+                ImGui::TextColored(ui::colors::TEXT_DIMMED, "DLSS Res: N/A");
+            }
+        }
+
+        if (show_dlss_status) {
+            // Show DLSS on/off status with details (Ray Reconstruction, etc.)
+            if (any_dlss_active) {
+                std::string status_text;
+                if (settings::g_mainTabSettings.show_labels.GetValue()) {
+                    status_text = "DLSS: On";
+                } else {
+                    status_text = "DLSS On";
+                }
+
+                // Add details about which DLSS feature is active
+                if (dlssg_summary.ray_reconstruction_active) {
+                    status_text += " (RR)";
+                } else if (dlssg_summary.dlss_active) {
+                    // Regular DLSS Super Resolution is active (no suffix needed)
+                }
+
+                ImGui::TextColored(ui::colors::TEXT_SUCCESS, "%s", status_text.c_str());
+            } else {
+                if (settings::g_mainTabSettings.show_labels.GetValue()) {
+                    ImGui::TextColored(ui::colors::TEXT_DIMMED, "DLSS: Off");
+                } else {
+                    ImGui::TextColored(ui::colors::TEXT_DIMMED, "DLSS Off");
+                }
+            }
+        }
+
+        if (show_dlss_quality_preset) {
+            // Show quality preset (Performance, Balanced, Quality, etc.) if DLSS is active and we have valid data
+            if (any_dlss_active && dlssg_summary.quality_preset != "N/A") {
+                if (settings::g_mainTabSettings.show_labels.GetValue()) {
+                    ImGui::Text("DLSS Quality: %s", dlssg_summary.quality_preset.c_str());
+                } else {
+                    ImGui::Text("%s", dlssg_summary.quality_preset.c_str());
+                }
+            } else {
+                ImGui::TextColored(ui::colors::TEXT_DIMMED, "DLSS Quality: N/A");
+            }
+        }
+
+        if (show_dlss_render_preset) {
+            // Show render preset (A, B, C, D, E, etc.) if DLSS is active and we have valid data
+            if (any_dlss_active) {
+                DLSSModelProfile model_profile = GetDLSSModelProfile();
+                if (model_profile.is_valid) {
+                    // Get current quality preset to determine which render preset value to show
+                    std::string current_quality = dlssg_summary.quality_preset;
+                    int render_preset_value = 0;
+
+                    // Use Ray Reconstruction presets if RR is active, otherwise use Super Resolution presets
+                    if (dlssg_summary.ray_reconstruction_active) {
+                        // Determine which Ray Reconstruction render preset value to display based on current quality
+                        // preset
+                        if (current_quality == "Quality") {
+                            render_preset_value = model_profile.rr_quality_preset;
+                        } else if (current_quality == "Balanced") {
+                            render_preset_value = model_profile.rr_balanced_preset;
+                        } else if (current_quality == "Performance") {
+                            render_preset_value = model_profile.rr_performance_preset;
+                        } else if (current_quality == "Ultra Performance") {
+                            render_preset_value = model_profile.rr_ultra_performance_preset;
+                        } else if (current_quality == "Ultra Quality") {
+                            render_preset_value = model_profile.rr_ultra_quality_preset;
+                        } else {
+                            // Default to Quality if unknown
+                            render_preset_value = model_profile.rr_quality_preset;
+                        }
+                    } else {
+                        // Determine which Super Resolution render preset value to display based on current quality
+                        // preset
+                        if (current_quality == "Quality") {
+                            render_preset_value = model_profile.sr_quality_preset;
+                        } else if (current_quality == "Balanced") {
+                            render_preset_value = model_profile.sr_balanced_preset;
+                        } else if (current_quality == "Performance") {
+                            render_preset_value = model_profile.sr_performance_preset;
+                        } else if (current_quality == "Ultra Performance") {
+                            render_preset_value = model_profile.sr_ultra_performance_preset;
+                        } else if (current_quality == "Ultra Quality") {
+                            render_preset_value = model_profile.sr_ultra_quality_preset;
+                        } else if (current_quality == "DLAA") {
+                            render_preset_value = model_profile.sr_dlaa_preset;
+                        } else {
+                            // Default to Quality if unknown
+                            render_preset_value = model_profile.sr_quality_preset;
+                        }
+                    }
+
+                    // Convert render preset number to letter string
+                    std::string render_preset_letter = ConvertRenderPresetToLetter(render_preset_value);
+
+                    if (settings::g_mainTabSettings.show_labels.GetValue()) {
+                        ImGui::Text("DLSS Render: %s", render_preset_letter.c_str());
+                    } else {
+                        ImGui::Text("%s", render_preset_letter.c_str());
+                    }
+                } else {
+                    ImGui::TextColored(ui::colors::TEXT_DIMMED, "DLSS Render: N/A");
+                }
+            } else {
+                ImGui::TextColored(ui::colors::TEXT_DIMMED, "DLSS Render: N/A");
+            }
         }
     }
 

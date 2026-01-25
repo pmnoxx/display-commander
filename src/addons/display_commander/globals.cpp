@@ -435,6 +435,9 @@ std::atomic<uint32_t> g_reflex_marker_present_start_count{0};
 std::atomic<uint32_t> g_reflex_marker_present_end_count{0};
 std::atomic<uint32_t> g_reflex_marker_input_sample_count{0};
 
+// PCLStats ping signal (edge-triggered, cleared after injection on SIMULATION_START)
+std::atomic<bool> g_pclstats_ping_signal{false};
+
 // DX11 Proxy HWND for filtering
 HWND g_proxy_hwnd = nullptr;
 

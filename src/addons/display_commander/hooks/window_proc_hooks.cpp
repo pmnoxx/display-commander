@@ -29,8 +29,9 @@ static std::map<HWND, WNDPROC> g_original_window_proc;
 LRESULT CALLBACK WindowProc_Detour(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Check if continue rendering is enabled
+    // Special-K style: set ping signal when ping message is received, inject marker on next SIMULATION_START
     if (PCLSTATS_IS_PING_MSG_ID(uMsg)) {
-        PCLSTATS_MARKER(PCLSTATS_PC_LATENCY_PING, g_global_frame_id.load(std::memory_order_acquire));
+        g_pclstats_ping_signal.store(true, std::memory_order_release);
     }
     bool continue_rendering_enabled = s_continue_rendering.load();
     if (!continue_rendering_enabled) {

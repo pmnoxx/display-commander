@@ -203,69 +203,70 @@ void hookToSwapChain(reshade::api::swapchain* swapchain) {
 
     // Schedule auto-apply even on resizes (generation counter ensures only latest
     // runs)
-    if (hwnd != nullptr) {
-        g_last_swapchain_hwnd.store(hwnd);
+    if (hwnd == nullptr) {
+        return;
+    }
+    g_last_swapchain_hwnd.store(hwnd);
 
-        // Initialize if not already done
-        DoInitializationWithHwnd(hwnd);
+    // Initialize if not already done
+    DoInitializationWithHwnd(hwnd);
 
-        auto api = swapchain->get_device()->get_api();
+    auto api = swapchain->get_device()->get_api();
 
-        // Hook DXGI Present calls for this swapchain
-        // Get the underlying DXGI swapchain from the ReShade swapchain
-        LogInfo("OnInitSwapchain: api: %d", api);
+    // Hook DXGI Present calls for this swapchain
+    // Get the underlying DXGI swapchain from the ReShade swapchain
+    LogInfo("OnInitSwapchain: api: %d", api);
 
-        if (api == reshade::api::device_api::d3d10 || api == reshade::api::device_api::d3d11
-            || api == reshade::api::device_api::d3d12) {
-            auto* iunknown = reinterpret_cast<IUnknown*>(swapchain->get_native());
+    if (api == reshade::api::device_api::d3d10 || api == reshade::api::device_api::d3d11
+        || api == reshade::api::device_api::d3d12) {
+        auto* iunknown = reinterpret_cast<IUnknown*>(swapchain->get_native());
 
-            // display_commanderhooks::DXGISwapChain4Wrapper* wrapper =
-            // display_commanderhooks::QuerySwapChainWrapper(iunknown); if (wrapper != nullptr) {
-            //     LogError("TODO: Handle DXGISwapChain4Wrapper already wrapped swapchain: 0x%p", wrapper);
-            // }
+        // display_commanderhooks::DXGISwapChain4Wrapper* wrapper =
+        // display_commanderhooks::QuerySwapChainWrapper(iunknown); if (wrapper != nullptr) {
+        //     LogError("TODO: Handle DXGISwapChain4Wrapper already wrapped swapchain: 0x%p", wrapper);
+        // }
 
-            Microsoft::WRL::ComPtr<IDXGISwapChain> dxgi_swapchain{};
-            if (SUCCEEDED(iunknown->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain)))) {
-                if (display_commanderhooks::dxgi::HookSwapchain(dxgi_swapchain.Get())) {
-                    LogInfo("Successfully hooked DXGI Present calls for swapchain: 0x%p", iunknown);
-                }
-
-                if (settings::g_experimentalTabSettings.reuse_swap_chain_experimental_enabled.GetValue()) {
-                    /*
-                    if (global_dxgi_swapchain.load() == nullptr) {
-                        // Release old swapchain reference if any
-                        dxgi_swapchain->AddRef();
-                        IDXGISwapChain* old_swapchain = global_dxgi_swapchain.exchange(dxgi_swapchain.Get(),
-                    std::memory_order_acq_rel); if (old_swapchain != nullptr) {
-                            // This shouldn't happen, but just in case
-                            LogError("Failed to exchange global swapchain reference: 0x%p", old_swapchain);
-                        }
-                    }*/
-
-                    // Store new swapchain reference
-                    LogInfo("Stored global swapchain reference: 0x%p", dxgi_swapchain.Get());
-                }
-            } else {
-                LogError("Failed to query interface for swapchain: 0x%p", iunknown);
+        Microsoft::WRL::ComPtr<IDXGISwapChain> dxgi_swapchain{};
+        if (SUCCEEDED(iunknown->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain)))) {
+            if (display_commanderhooks::dxgi::HookSwapchain(dxgi_swapchain.Get())) {
+                LogInfo("Successfully hooked DXGI Present calls for swapchain: 0x%p", iunknown);
             }
-            return;
-        }
-        // Try to hook DX9 Present calls if this is a DX9 device
-        // Get the underlying DX9 device from the ReShade device
-        else if (api == reshade::api::device_api::d3d9) {
-            if (auto* device = swapchain->get_device()) {
-                // do query instead
-                IUnknown* iunknown = reinterpret_cast<IUnknown*>(device->get_native());
-                Microsoft::WRL::ComPtr<IDirect3DDevice9> d3d9_device = nullptr;
-                if (iunknown != nullptr && SUCCEEDED(iunknown->QueryInterface(IID_PPV_ARGS(&d3d9_device)))) {
-                    display_commanderhooks::d3d9::RecordPresentUpdateDevice(d3d9_device.Get());
-                }
+
+            if (settings::g_experimentalTabSettings.reuse_swap_chain_experimental_enabled.GetValue()) {
+                /*
+                if (global_dxgi_swapchain.load() == nullptr) {
+                    // Release old swapchain reference if any
+                    dxgi_swapchain->AddRef();
+                    IDXGISwapChain* old_swapchain = global_dxgi_swapchain.exchange(dxgi_swapchain.Get(),
+                std::memory_order_acq_rel); if (old_swapchain != nullptr) {
+                        // This shouldn't happen, but just in case
+                        LogError("Failed to exchange global swapchain reference: 0x%p", old_swapchain);
+                    }
+                }*/
+
+                // Store new swapchain reference
+                LogInfo("Stored global swapchain reference: 0x%p", dxgi_swapchain.Get());
             }
-        } else if (api == reshade::api::device_api::vulkan) {
-            LogInfo("Vulkan API detected, not supported yet");
         } else {
-            LogError("Unsupported API: %d", api);
+            LogError("Failed to query interface for swapchain: 0x%p", iunknown);
         }
+        return;
+    }
+    // Try to hook DX9 Present calls if this is a DX9 device
+    // Get the underlying DX9 device from the ReShade device
+    else if (api == reshade::api::device_api::d3d9) {
+        if (auto* device = swapchain->get_device()) {
+            // do query instead
+            IUnknown* iunknown = reinterpret_cast<IUnknown*>(device->get_native());
+            Microsoft::WRL::ComPtr<IDirect3DDevice9> d3d9_device = nullptr;
+            if (iunknown != nullptr && SUCCEEDED(iunknown->QueryInterface(IID_PPV_ARGS(&d3d9_device)))) {
+                display_commanderhooks::d3d9::RecordPresentUpdateDevice(d3d9_device.Get());
+            }
+        }
+    } else if (api == reshade::api::device_api::vulkan) {
+        LogInfo("Vulkan API detected, not supported yet");
+    } else {
+        LogError("Unsupported API: %d", api);
     }
 }
 

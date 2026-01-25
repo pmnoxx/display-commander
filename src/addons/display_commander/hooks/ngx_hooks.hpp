@@ -8,7 +8,7 @@
 struct NVSDK_NGX_Parameter;
 
 // NGX hook functions
-bool InstallNGXHooks(HMODULE ngx_module = nullptr);
+bool InstallNGXHooks(HMODULE ngx_module);
 void CleanupNGXHooks();
 
 // Internal vtable hooking function

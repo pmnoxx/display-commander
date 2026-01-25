@@ -1991,16 +1991,6 @@ void HandleSafemode() {
         // Enable MinHook suppression
         // settings::g_developerTabSettings.suppress_minhook.SetValue(true);
 
-#if 0
-        // Disable Streamline loading
-        settings::g_developerTabSettings.load_streamline.SetValue(false);
-
-        // Disable _nvngx loading
-        settings::g_developerTabSettings.load_nvngx.SetValue(false);
-
-        // Disable nvapi64 loading
-        settings::g_developerTabSettings.load_nvapi64.SetValue(false);
-#endif
 
         // Save the changes
         settings::g_developerTabSettings.SaveAll();

@@ -75,18 +75,6 @@ class DeveloperTabSettings {
     // DLLs to load before Display Commander (comma-separated list)
     StringSetting dlls_to_load_before;
 
-    // ReShade LoadFromDllMain setting
-    BoolSetting load_from_dll_main;
-
-    // Streamline loading setting
-    BoolSetting load_streamline;
-
-    // NGX loading setting
-    BoolSetting load_nvngx;
-
-    // NVAPI loading setting
-    BoolSetting load_nvapi64;
-
     // Fake NVAPI setting
     BoolSetting fake_nvapi_enabled;
 

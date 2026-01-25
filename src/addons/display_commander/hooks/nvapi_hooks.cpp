@@ -393,11 +393,6 @@ NvAPI_Status __cdecl NvAPI_D3D_GetLatency_Detour(IUnknown* pDev, NV_LATENCY_RESU
 
 // Install NVAPI hooks
 bool InstallNVAPIHooks(HMODULE nvapi_module) {
-    if (!settings::g_developerTabSettings.load_nvapi64.GetValue()) {
-        LogInfo("NVAPI hooks not installed - load_nvapi64 is disabled");
-        return false;
-    }
-
     // Check if NVAPI hooks should be suppressed
     if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(
             display_commanderhooks::HookType::NVAPI)) {

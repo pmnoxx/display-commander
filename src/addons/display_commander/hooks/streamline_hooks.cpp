@@ -165,11 +165,6 @@ void InitializePreventSLUpgradeInterface() {
 }
 
 bool InstallStreamlineHooks(HMODULE streamline_module) {
-    if (!settings::g_developerTabSettings.load_streamline.GetValue()) {
-        LogInfo("Streamline hooks not installed - load_streamline is disabled");
-        return false;
-    }
-
     // Check if Streamline hooks should be suppressed
     if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(display_commanderhooks::HookType::STREAMLINE)) {
         LogInfo("Streamline hooks installation suppressed by user setting");

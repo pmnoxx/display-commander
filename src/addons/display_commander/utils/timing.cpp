@@ -93,7 +93,7 @@ bool supports_mwaitx(void) {
 
         return EXCEPTION_CONTINUE_EXECUTION;
     };
-    
+
     auto handler = display_commanderhooks::AddVectoredExceptionHandler_Original
                        ? display_commanderhooks::AddVectoredExceptionHandler_Original(1, handler_func)
                        : AddVectoredExceptionHandler(1, handler_func);

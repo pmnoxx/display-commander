@@ -1,17 +1,18 @@
 #include "opengl_hooks.hpp"
-#include "../utils.hpp"
-#include "../utils/logging.hpp"
-#include "../utils/detour_call_tracker.hpp"
-#include "../utils/timing.hpp"
-#include "../globals.hpp"
-#include "../swapchain_events.hpp"
-#include "../performance_types.hpp"
-#include "../gpu_completion_monitoring.hpp"
-#include "hook_suppression_manager.hpp"
-#include <array>
 #include <MinHook.h>
 #include <windows.h>
 #include <wingdi.h>
+#include <array>
+#include "../globals.hpp"
+#include "../gpu_completion_monitoring.hpp"
+#include "../performance_types.hpp"
+#include "../swapchain_events.hpp"
+#include "../utils.hpp"
+#include "../utils/detour_call_tracker.hpp"
+#include "../utils/logging.hpp"
+#include "../utils/timing.hpp"
+#include "hook_suppression_manager.hpp"
+
 
 // WGL function pointers (dynamically loaded)
 static wglSwapBuffers_pfn wglSwapBuffers_ptr = nullptr;
@@ -52,7 +53,7 @@ BOOL WINAPI wglSwapBuffers_Detour(HDC hdc) {
 
     // Call OnPresentFlags2 with flags = 0 (no flags for OpenGL)
     uint32_t present_flags = 0;
-    OnPresentFlags2(&present_flags, DeviceTypeDC::OpenGL, true); // Called from present_detour
+    OnPresentFlags2(&present_flags, DeviceTypeDC::OpenGL, true);  // Called from present_detour
 
     // Record per-frame FPS sample for background aggregation
     RecordFrameTime(FrameTimeMode::kPresent);
@@ -65,7 +66,6 @@ BOOL WINAPI wglSwapBuffers_Detour(HDC hdc) {
 
     // Call OnPresentUpdateAfter2 after the present
     OnPresentUpdateAfter2(hdc, DeviceTypeDC::OpenGL, false);
-
 
     return result;
 }
@@ -91,14 +91,14 @@ BOOL WINAPI wglDeleteContext_Detour(HGLRC hglrc) {
     return wglDeleteContext_Original(hglrc);
 }
 
-int WINAPI wglChoosePixelFormat_Detour(HDC hdc, const PIXELFORMATDESCRIPTOR *ppfd) {
+int WINAPI wglChoosePixelFormat_Detour(HDC hdc, const PIXELFORMATDESCRIPTOR* ppfd) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     g_opengl_hook_counters[OPENGL_HOOK_WGL_CHOOSEPIXELFORMAT].fetch_add(1);
     g_opengl_hook_total_count.fetch_add(1);
     return wglChoosePixelFormat_Original(hdc, ppfd);
 }
 
-BOOL WINAPI wglSetPixelFormat_Detour(HDC hdc, int iPixelFormat, const PIXELFORMATDESCRIPTOR *ppfd) {
+BOOL WINAPI wglSetPixelFormat_Detour(HDC hdc, int iPixelFormat, const PIXELFORMATDESCRIPTOR* ppfd) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     g_opengl_hook_counters[OPENGL_HOOK_WGL_SETPIXELFORMAT].fetch_add(1);
     g_opengl_hook_total_count.fetch_add(1);
@@ -119,28 +119,31 @@ BOOL WINAPI wglDescribePixelFormat_Detour(HDC hdc, int iPixelFormat, UINT nBytes
     return wglDescribePixelFormat_Original(hdc, iPixelFormat, nBytes, ppfd);
 }
 
-HGLRC WINAPI wglCreateContextAttribsARB_Detour(HDC hdc, HGLRC hshareContext, const int *attribList) {
+HGLRC WINAPI wglCreateContextAttribsARB_Detour(HDC hdc, HGLRC hshareContext, const int* attribList) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     g_opengl_hook_counters[OPENGL_HOOK_WGL_CREATECONTEXTATTRIBSARB].fetch_add(1);
     g_opengl_hook_total_count.fetch_add(1);
     return wglCreateContextAttribsARB_Original(hdc, hshareContext, attribList);
 }
 
-BOOL WINAPI wglChoosePixelFormatARB_Detour(HDC hdc, const int *piAttribIList, const FLOAT *pfAttribFList, UINT nMaxFormats, int *piFormats, UINT *nNumFormats) {
+BOOL WINAPI wglChoosePixelFormatARB_Detour(HDC hdc, const int* piAttribIList, const FLOAT* pfAttribFList,
+                                           UINT nMaxFormats, int* piFormats, UINT* nNumFormats) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     g_opengl_hook_counters[OPENGL_HOOK_WGL_CHOOSEPIXELFORMATARB].fetch_add(1);
     g_opengl_hook_total_count.fetch_add(1);
     return wglChoosePixelFormatARB_Original(hdc, piAttribIList, pfAttribFList, nMaxFormats, piFormats, nNumFormats);
 }
 
-BOOL WINAPI wglGetPixelFormatAttribivARB_Detour(HDC hdc, int iPixelFormat, int iLayerPlane, UINT nAttributes, const int *piAttributes, int *piValues) {
+BOOL WINAPI wglGetPixelFormatAttribivARB_Detour(HDC hdc, int iPixelFormat, int iLayerPlane, UINT nAttributes,
+                                                const int* piAttributes, int* piValues) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     g_opengl_hook_counters[OPENGL_HOOK_WGL_GETPIXELFORMATATTRIBIVARB].fetch_add(1);
     g_opengl_hook_total_count.fetch_add(1);
     return wglGetPixelFormatAttribivARB_Original(hdc, iPixelFormat, iLayerPlane, nAttributes, piAttributes, piValues);
 }
 
-BOOL WINAPI wglGetPixelFormatAttribfvARB_Detour(HDC hdc, int iPixelFormat, int iLayerPlane, UINT nAttributes, const int *piAttributes, FLOAT *pfValues) {
+BOOL WINAPI wglGetPixelFormatAttribfvARB_Detour(HDC hdc, int iPixelFormat, int iLayerPlane, UINT nAttributes,
+                                                const int* piAttributes, FLOAT* pfValues) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     g_opengl_hook_counters[OPENGL_HOOK_WGL_GETPIXELFORMATATTRIBFVARB].fetch_add(1);
     g_opengl_hook_total_count.fetch_add(1);
@@ -176,7 +179,8 @@ bool InstallOpenGLHooks() {
     }
 
     // Check if OpenGL hooks should be suppressed
-    if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(display_commanderhooks::HookType::OPENGL)) {
+    if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(
+            display_commanderhooks::HookType::OPENGL)) {
         LogInfo("OpenGL hooks installation suppressed by user setting");
         return false;
     }
@@ -200,79 +204,92 @@ bool InstallOpenGLHooks() {
     wglMakeCurrent_ptr = reinterpret_cast<wglMakeCurrent_pfn>(GetProcAddress(opengl_module, "wglMakeCurrent"));
     wglCreateContext_ptr = reinterpret_cast<wglCreateContext_pfn>(GetProcAddress(opengl_module, "wglCreateContext"));
     wglDeleteContext_ptr = reinterpret_cast<wglDeleteContext_pfn>(GetProcAddress(opengl_module, "wglDeleteContext"));
-    wglChoosePixelFormat_ptr = reinterpret_cast<wglChoosePixelFormat_pfn>(GetProcAddress(opengl_module, "wglChoosePixelFormat"));
+    wglChoosePixelFormat_ptr =
+        reinterpret_cast<wglChoosePixelFormat_pfn>(GetProcAddress(opengl_module, "wglChoosePixelFormat"));
     wglSetPixelFormat_ptr = reinterpret_cast<wglSetPixelFormat_pfn>(GetProcAddress(opengl_module, "wglSetPixelFormat"));
     wglGetPixelFormat_ptr = reinterpret_cast<wglGetPixelFormat_pfn>(GetProcAddress(opengl_module, "wglGetPixelFormat"));
-    wglDescribePixelFormat_ptr = reinterpret_cast<wglDescribePixelFormat_pfn>(GetProcAddress(opengl_module, "wglDescribePixelFormat"));
+    wglDescribePixelFormat_ptr =
+        reinterpret_cast<wglDescribePixelFormat_pfn>(GetProcAddress(opengl_module, "wglDescribePixelFormat"));
     wglGetProcAddress_ptr = reinterpret_cast<wglGetProcAddress_pfn>(GetProcAddress(opengl_module, "wglGetProcAddress"));
 
     // Check if all required functions were loaded
-    if (!wglSwapBuffers_ptr || !wglMakeCurrent_ptr || !wglCreateContext_ptr || !wglDeleteContext_ptr ||
-        !wglChoosePixelFormat_ptr || !wglSetPixelFormat_ptr || !wglGetPixelFormat_ptr ||
-        !wglDescribePixelFormat_ptr || !wglGetProcAddress_ptr) {
+    if (!wglSwapBuffers_ptr || !wglMakeCurrent_ptr || !wglCreateContext_ptr || !wglDeleteContext_ptr
+        || !wglChoosePixelFormat_ptr || !wglSetPixelFormat_ptr || !wglGetPixelFormat_ptr || !wglDescribePixelFormat_ptr
+        || !wglGetProcAddress_ptr) {
         LogError("Failed to load required WGL functions from opengl32.dll");
         return false;
     }
 
     // Hook wglSwapBuffers
-    if (!CreateAndEnableHook(wglSwapBuffers_ptr, wglSwapBuffers_Detour, (LPVOID*)&wglSwapBuffers_Original, "wglSwapBuffers")) {
+    if (!CreateAndEnableHook(wglSwapBuffers_ptr, wglSwapBuffers_Detour, (LPVOID*)&wglSwapBuffers_Original,
+                             "wglSwapBuffers")) {
         LogError("Failed to create and enable wglSwapBuffers hook");
         return false;
     }
 
     // Hook wglMakeCurrent
-    if (!CreateAndEnableHook(wglMakeCurrent_ptr, wglMakeCurrent_Detour, (LPVOID*)&wglMakeCurrent_Original, "wglMakeCurrent")) {
+    if (!CreateAndEnableHook(wglMakeCurrent_ptr, wglMakeCurrent_Detour, (LPVOID*)&wglMakeCurrent_Original,
+                             "wglMakeCurrent")) {
         LogError("Failed to create and enable wglMakeCurrent hook");
         return false;
     }
 
     // Hook wglCreateContext
-    if (!CreateAndEnableHook(wglCreateContext_ptr, wglCreateContext_Detour, (LPVOID*)&wglCreateContext_Original, "wglCreateContext")) {
+    if (!CreateAndEnableHook(wglCreateContext_ptr, wglCreateContext_Detour, (LPVOID*)&wglCreateContext_Original,
+                             "wglCreateContext")) {
         LogError("Failed to create and enable wglCreateContext hook");
         return false;
     }
 
     // Hook wglDeleteContext
-    if (!CreateAndEnableHook(wglDeleteContext_ptr, wglDeleteContext_Detour, (LPVOID*)&wglDeleteContext_Original, "wglDeleteContext")) {
+    if (!CreateAndEnableHook(wglDeleteContext_ptr, wglDeleteContext_Detour, (LPVOID*)&wglDeleteContext_Original,
+                             "wglDeleteContext")) {
         LogError("Failed to create and enable wglDeleteContext hook");
         return false;
     }
 
     // Hook wglChoosePixelFormat
-    if (!CreateAndEnableHook(wglChoosePixelFormat_ptr, wglChoosePixelFormat_Detour, (LPVOID*)&wglChoosePixelFormat_Original, "wglChoosePixelFormat")) {
+    if (!CreateAndEnableHook(wglChoosePixelFormat_ptr, wglChoosePixelFormat_Detour,
+                             (LPVOID*)&wglChoosePixelFormat_Original, "wglChoosePixelFormat")) {
         LogError("Failed to create and enable wglChoosePixelFormat hook");
         return false;
     }
 
     // Hook wglSetPixelFormat
-    if (!CreateAndEnableHook(wglSetPixelFormat_ptr, wglSetPixelFormat_Detour, (LPVOID*)&wglSetPixelFormat_Original, "wglSetPixelFormat")) {
+    if (!CreateAndEnableHook(wglSetPixelFormat_ptr, wglSetPixelFormat_Detour, (LPVOID*)&wglSetPixelFormat_Original,
+                             "wglSetPixelFormat")) {
         LogError("Failed to create and enable wglSetPixelFormat hook");
         return false;
     }
 
     // Hook wglGetPixelFormat
-    if (!CreateAndEnableHook(wglGetPixelFormat_ptr, wglGetPixelFormat_Detour, (LPVOID*)&wglGetPixelFormat_Original, "wglGetPixelFormat")) {
+    if (!CreateAndEnableHook(wglGetPixelFormat_ptr, wglGetPixelFormat_Detour, (LPVOID*)&wglGetPixelFormat_Original,
+                             "wglGetPixelFormat")) {
         LogError("Failed to create and enable wglGetPixelFormat hook");
         return false;
     }
 
     // Hook wglDescribePixelFormat
-    if (!CreateAndEnableHook(wglDescribePixelFormat_ptr, wglDescribePixelFormat_Detour, (LPVOID*)&wglDescribePixelFormat_Original, "wglDescribePixelFormat")) {
+    if (!CreateAndEnableHook(wglDescribePixelFormat_ptr, wglDescribePixelFormat_Detour,
+                             (LPVOID*)&wglDescribePixelFormat_Original, "wglDescribePixelFormat")) {
         LogError("Failed to create and enable wglDescribePixelFormat hook");
         return false;
     }
 
     // Hook wglGetProcAddress
-    if (!CreateAndEnableHook(wglGetProcAddress_ptr, wglGetProcAddress_Detour, (LPVOID*)&wglGetProcAddress_Original, "wglGetProcAddress")) {
+    if (!CreateAndEnableHook(wglGetProcAddress_ptr, wglGetProcAddress_Detour, (LPVOID*)&wglGetProcAddress_Original,
+                             "wglGetProcAddress")) {
         LogError("Failed to create and enable wglGetProcAddress hook");
         return false;
     }
 
     // Hook extension functions (these may not be available on all systems)
     // wglCreateContextAttribsARB
-    auto wglCreateContextAttribsARB_sys = reinterpret_cast<wglCreateContextAttribsARB_pfn>(wglGetProcAddress_ptr("wglCreateContextAttribsARB"));
+    auto wglCreateContextAttribsARB_sys =
+        reinterpret_cast<wglCreateContextAttribsARB_pfn>(wglGetProcAddress_ptr("wglCreateContextAttribsARB"));
     if (wglCreateContextAttribsARB_sys) {
-        if (!CreateAndEnableHook(wglCreateContextAttribsARB_sys, wglCreateContextAttribsARB_Detour, (LPVOID*)&wglCreateContextAttribsARB_Original, "wglCreateContextAttribsARB")) {
+        if (!CreateAndEnableHook(wglCreateContextAttribsARB_sys, wglCreateContextAttribsARB_Detour,
+                                 (LPVOID*)&wglCreateContextAttribsARB_Original, "wglCreateContextAttribsARB")) {
             LogWarn("Failed to create and enable wglCreateContextAttribsARB hook");
         }
     } else {
@@ -280,9 +297,11 @@ bool InstallOpenGLHooks() {
     }
 
     // wglChoosePixelFormatARB
-    auto wglChoosePixelFormatARB_sys = reinterpret_cast<wglChoosePixelFormatARB_pfn>(wglGetProcAddress_ptr("wglChoosePixelFormatARB"));
+    auto wglChoosePixelFormatARB_sys =
+        reinterpret_cast<wglChoosePixelFormatARB_pfn>(wglGetProcAddress_ptr("wglChoosePixelFormatARB"));
     if (wglChoosePixelFormatARB_sys) {
-        if (!CreateAndEnableHook(wglChoosePixelFormatARB_sys, wglChoosePixelFormatARB_Detour, (LPVOID*)&wglChoosePixelFormatARB_Original, "wglChoosePixelFormatARB")) {
+        if (!CreateAndEnableHook(wglChoosePixelFormatARB_sys, wglChoosePixelFormatARB_Detour,
+                                 (LPVOID*)&wglChoosePixelFormatARB_Original, "wglChoosePixelFormatARB")) {
             LogWarn("Failed to create and enable wglChoosePixelFormatARB hook");
         }
     } else {
@@ -290,9 +309,11 @@ bool InstallOpenGLHooks() {
     }
 
     // wglGetPixelFormatAttribivARB
-    auto wglGetPixelFormatAttribivARB_sys = reinterpret_cast<wglGetPixelFormatAttribivARB_pfn>(wglGetProcAddress_ptr("wglGetPixelFormatAttribivARB"));
+    auto wglGetPixelFormatAttribivARB_sys =
+        reinterpret_cast<wglGetPixelFormatAttribivARB_pfn>(wglGetProcAddress_ptr("wglGetPixelFormatAttribivARB"));
     if (wglGetPixelFormatAttribivARB_sys) {
-        if (!CreateAndEnableHook(wglGetPixelFormatAttribivARB_sys, wglGetPixelFormatAttribivARB_Detour, (LPVOID*)&wglGetPixelFormatAttribivARB_Original, "wglGetPixelFormatAttribivARB")) {
+        if (!CreateAndEnableHook(wglGetPixelFormatAttribivARB_sys, wglGetPixelFormatAttribivARB_Detour,
+                                 (LPVOID*)&wglGetPixelFormatAttribivARB_Original, "wglGetPixelFormatAttribivARB")) {
             LogWarn("Failed to create and enable wglGetPixelFormatAttribivARB hook");
         }
     } else {
@@ -300,9 +321,11 @@ bool InstallOpenGLHooks() {
     }
 
     // wglGetPixelFormatAttribfvARB
-    auto wglGetPixelFormatAttribfvARB_sys = reinterpret_cast<wglGetPixelFormatAttribfvARB_pfn>(wglGetProcAddress_ptr("wglGetPixelFormatAttribfvARB"));
+    auto wglGetPixelFormatAttribfvARB_sys =
+        reinterpret_cast<wglGetPixelFormatAttribfvARB_pfn>(wglGetProcAddress_ptr("wglGetPixelFormatAttribfvARB"));
     if (wglGetPixelFormatAttribfvARB_sys) {
-        if (!CreateAndEnableHook(wglGetPixelFormatAttribfvARB_sys, wglGetPixelFormatAttribfvARB_Detour, (LPVOID*)&wglGetPixelFormatAttribfvARB_Original, "wglGetPixelFormatAttribfvARB")) {
+        if (!CreateAndEnableHook(wglGetPixelFormatAttribfvARB_sys, wglGetPixelFormatAttribfvARB_Detour,
+                                 (LPVOID*)&wglGetPixelFormatAttribfvARB_Original, "wglGetPixelFormatAttribfvARB")) {
             LogWarn("Failed to create and enable wglGetPixelFormatAttribfvARB hook");
         }
     } else {
@@ -312,7 +335,8 @@ bool InstallOpenGLHooks() {
     // wglSwapIntervalEXT
     auto wglSwapIntervalEXT_sys = reinterpret_cast<wglSwapIntervalEXT_pfn>(wglGetProcAddress_ptr("wglSwapIntervalEXT"));
     if (wglSwapIntervalEXT_sys) {
-        if (!CreateAndEnableHook(wglSwapIntervalEXT_sys, wglSwapIntervalEXT_Detour, (LPVOID*)&wglSwapIntervalEXT_Original, "wglSwapIntervalEXT")) {
+        if (!CreateAndEnableHook(wglSwapIntervalEXT_sys, wglSwapIntervalEXT_Detour,
+                                 (LPVOID*)&wglSwapIntervalEXT_Original, "wglSwapIntervalEXT")) {
             LogWarn("Failed to create and enable wglSwapIntervalEXT hook");
         }
     } else {
@@ -320,9 +344,11 @@ bool InstallOpenGLHooks() {
     }
 
     // wglGetSwapIntervalEXT
-    auto wglGetSwapIntervalEXT_sys = reinterpret_cast<wglGetSwapIntervalEXT_pfn>(wglGetProcAddress_ptr("wglGetSwapIntervalEXT"));
+    auto wglGetSwapIntervalEXT_sys =
+        reinterpret_cast<wglGetSwapIntervalEXT_pfn>(wglGetProcAddress_ptr("wglGetSwapIntervalEXT"));
     if (wglGetSwapIntervalEXT_sys) {
-        if (!CreateAndEnableHook(wglGetSwapIntervalEXT_sys, wglGetSwapIntervalEXT_Detour, (LPVOID*)&wglGetSwapIntervalEXT_Original, "wglGetSwapIntervalEXT")) {
+        if (!CreateAndEnableHook(wglGetSwapIntervalEXT_sys, wglGetSwapIntervalEXT_Detour,
+                                 (LPVOID*)&wglGetSwapIntervalEXT_Original, "wglGetSwapIntervalEXT")) {
             LogWarn("Failed to create and enable wglGetSwapIntervalEXT hook");
         }
     } else {
@@ -333,7 +359,8 @@ bool InstallOpenGLHooks() {
     LogInfo("OpenGL hooks installed successfully");
 
     // Mark OpenGL hooks as installed
-    display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(display_commanderhooks::HookType::OPENGL);
+    display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(
+        display_commanderhooks::HookType::OPENGL);
 
     return true;
 }
@@ -428,6 +455,4 @@ void UninstallOpenGLHooks() {
 }
 
 // Check if hooks are installed
-bool AreOpenGLHooksInstalled() {
-    return g_opengl_hooks_installed.load();
-}
+bool AreOpenGLHooksInstalled() { return g_opengl_hooks_installed.load(); }

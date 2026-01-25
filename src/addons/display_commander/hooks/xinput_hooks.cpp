@@ -160,7 +160,7 @@ static void InitializeXInputDirectFunctions() {
         return;  // Already initialized
     }
     for (const char* module_name : xinput_modules) {
-        HMODULE xinput_module = LoadLibraryA(module_name);
+        HMODULE xinput_module = GetModuleHandleA(module_name);
         if (xinput_module != nullptr) {
             break;
         } else {

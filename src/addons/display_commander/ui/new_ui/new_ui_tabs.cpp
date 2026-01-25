@@ -249,18 +249,20 @@ void InitializeNewUI() {
         },
         true);  // Swapchain tab is not advanced
 
-    g_tab_manager.AddTab(
-        "Important Info", "important_info",
-        [](reshade::api::effect_runtime* runtime) {
-            try {
-                ui::new_ui::DrawImportantInfo();
-            } catch (const std::exception& e) {
-                LogError("Error drawing important info tab: %s", e.what());
-            } catch (...) {
-                LogError("Unknown error drawing important info tab");
-            }
-        },
-        true);  // Important Info tab is not advanced
+    if (enabled_experimental_features) {
+        g_tab_manager.AddTab(
+            "Important Info", "important_info",
+            [](reshade::api::effect_runtime* runtime) {
+                try {
+                    ui::new_ui::DrawImportantInfo();
+                } catch (const std::exception& e) {
+                    LogError("Error drawing important info tab: %s", e.what());
+                } catch (...) {
+                    LogError("Unknown error drawing important info tab");
+                }
+            },
+            true);  // Important Info tab is not advanced
+    }
 
     g_tab_manager.AddTab(
         "XInput", "xinput",
@@ -314,19 +316,21 @@ void InitializeNewUI() {
         },
         true);  // Streamline tab is advanced
 
-    // Add experimental tab conditionally based on advanced settings
-    g_tab_manager.AddTab(
-        "Experimental", "experimental",
-        [](reshade::api::effect_runtime* runtime) {
-            try {
-                ui::new_ui::DrawExperimentalTab();
-            } catch (const std::exception& e) {
-                LogError("Error drawing experimental tab: %s", e.what());
-            } catch (...) {
-                LogError("Unknown error drawing experimental tab");
-            }
-        },
-        true);  // Experimental tab is advanced
+    if (enabled_experimental_features) {
+        // Add experimental tab conditionally based on advanced settings
+        g_tab_manager.AddTab(
+            "Experimental", "experimental",
+            [](reshade::api::effect_runtime* runtime) {
+                try {
+                    ui::new_ui::DrawExperimentalTab();
+                } catch (const std::exception& e) {
+                    LogError("Error drawing experimental tab: %s", e.what());
+                } catch (...) {
+                    LogError("Unknown error drawing experimental tab");
+                }
+            },
+            true);  // Experimental tab is advanced
+    }
 
     // Add reshade tab
     g_tab_manager.AddTab(
@@ -343,18 +347,20 @@ void InitializeNewUI() {
         true);  // ReShade tab is advanced
 
     // Add updates tab
-    g_tab_manager.AddTab(
-        "Updates", "updates",
-        [](reshade::api::effect_runtime* runtime) {
-            try {
-                ui::new_ui::DrawUpdatesTab();
-            } catch (const std::exception& e) {
-                LogError("Error drawing updates tab: %s", e.what());
-            } catch (...) {
-                LogError("Unknown error drawing updates tab");
-            }
-        },
-        false);  // Updates tab is not advanced (always visible)
+    if (enabled_experimental_features) {
+        g_tab_manager.AddTab(
+            "Updates", "updates",
+            [](reshade::api::effect_runtime* runtime) {
+                try {
+                    ui::new_ui::DrawUpdatesTab();
+                } catch (const std::exception& e) {
+                    LogError("Error drawing updates tab: %s", e.what());
+                } catch (...) {
+                    LogError("Unknown error drawing updates tab");
+                }
+            },
+            false);  // Updates tab is not advanced (always visible)
+    }
 }
 
 // Draw the new UI

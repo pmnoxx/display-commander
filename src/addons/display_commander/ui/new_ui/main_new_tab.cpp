@@ -1745,8 +1745,8 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
 
     // FPS Limiter Mode
     {
-        const char* items[] = {"Default", "NVIDIA Reflex (low latency mode + boost) VRR DX11/DX12 (DLSS-FG aware)",
-                               "Disabled", "Sync to Display Refresh Rate (fraction of monitor refresh rate) Non-VRR"};
+        const char* items[] = {"Default", "NVIDIA Reflex (DX11/DX12 only, Vulkan not supported)", "Disabled",
+                               "Sync to Display Refresh Rate (fraction of monitor refresh rate) Non-VRR"};
 
         int current_item = settings::g_mainTabSettings.fps_limiter_mode.GetValue();
         int prev_item = current_item;

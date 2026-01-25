@@ -37,7 +37,7 @@ This document lists all DLL files that Display Commander loads using `LoadLibrar
 ## DirectX Proxy DLLs (from System32)
 
 ### version.dll
-- **Location**: 
+- **Location**:
   - `src/addons/display_commander/proxy_dll/version_proxy.cpp:46`
   - `src/addons/display_commander/utils/general_utils.cpp:40`
 - **Function**: `LoadVersionDll()`, `GetVersionFunction()`
@@ -62,28 +62,11 @@ This document lists all DLL files that Display Commander loads using `LoadLibrar
 - **Purpose**: Proxy DLL functionality - loads system d3d12.dll
 - **Method**: `LoadLibraryW(system32_path + L"\\d3d12.dll")`
 
-## XInput DLLs (Tried in Order)
+## XInput DLLs
 
-These are attempted in sequence until one is found:
-
-1. **xinput1_4.dll**
-2. **xinput1_3.dll**
-3. **xinput1_2.dll**
-4. **xinput1_1.dll**
-5. **xinput9_1_0.dll**
-
-- **Location**: `src/addons/display_commander/hooks/xinput_hooks.cpp:163`
-- **Function**: `InitializeXInputDirectFunctions()`
-- **Purpose**: XInput controller input functions
-- **Method**: `LoadLibraryA(module_name)` (tries each in order)
+**Note**: Display Commander does NOT load XInput DLLs. It only checks if they are already loaded using `GetModuleHandleA` in `InitializeXInputDirectFunctions()` at `src/addons/display_commander/hooks/xinput_hooks.cpp:163`. XInput DLLs are typically loaded by the game or Windows itself.
 
 ## NVAPI DLLs
-
-### nvapi64.dll (Real NVAPI Detection)
-- **Location**: `src/addons/display_commander/nvapi/fake_nvapi_manager.cpp:120`
-- **Function**: `DetectNvidiaGpu()`
-- **Purpose**: Detect if real NVIDIA GPU is present
-- **Method**: `LoadLibraryA("nvapi64.dll")` (with GetModuleHandleA check first)
 
 ### nvapi64.dll (Fake NVAPI from Addon Directory)
 - **Location**: `src/addons/display_commander/nvapi/fake_nvapi_manager.cpp:164`
@@ -114,7 +97,7 @@ These are attempted in sequence until one is found:
 - **Method**: `LoadLibraryA("Reshade32.dll")` (from current directory)
 
 ### ReShade DLL (Dynamic Path)
-- **Location**: 
+- **Location**:
   - `src/addons/display_commander/main_entry.cpp:2420`
   - `src/addons/display_commander/proxy_dll/reshade_loader.cpp:84`
 - **Function**: ReShade loading from various paths
@@ -133,7 +116,7 @@ These are attempted in sequence until one is found:
 ## Dynamic Module Loading (Function Parameters)
 
 ### Various Modules (via LoadProcCached)
-- **Location**: 
+- **Location**:
   - `src/addons/display_commander/latent_sync/latent_sync_limiter.cpp:24`
   - `src/addons/display_commander/latent_sync/vblank_monitor.hpp:97`
 - **Function**: `LoadProcCached()` helper function
@@ -157,12 +140,12 @@ These are attempted in sequence until one is found:
 - d3d12.dll
 
 ### Input DLLs
-- xinput1_4.dll, xinput1_3.dll, xinput1_2.dll, xinput1_1.dll, xinput9_1_0.dll (tried in order)
+- **None** - Display Commander does not load XInput DLLs (only checks if already loaded)
 
 ### NVIDIA DLLs
-- nvapi64.dll (real - for detection)
 - nvapi64.dll (fake - from addon directory)
 - fakenvapi.dll (fake - fallback)
+- **Note**: Real nvapi64.dll detection uses `GetModuleHandleA` (does not load the DLL)
 
 ### ReShade DLLs
 - Reshade64.dll

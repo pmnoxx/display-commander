@@ -1436,10 +1436,6 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_AllocateParameters_Detour(NVSDK_NGX_
 
 // Install NGX hooks
 bool InstallNGXHooks(HMODULE ngx_dll) {
-    if (true) {
-        LogInfo("NGX hooks: _nvngx.dll disabled for now");
-        return true;
-    }
     if (ngx_dll == nullptr) {
         LogInfo("NGX hooks: _nvngx.dll not loaded");
         return false;
@@ -1462,6 +1458,7 @@ bool InstallNGXHooks(HMODULE ngx_dll) {
 
     LogInfo("Installing NGX initialization hooks...");
 
+    /*
     // Hook NGX initialization functions
     // D3D12 Init hooks
     CreateAndEnableHook(GetProcAddress(ngx_dll, "NVSDK_NGX_D3D12_Init"),
@@ -1476,7 +1473,7 @@ bool InstallNGXHooks(HMODULE ngx_dll) {
                         reinterpret_cast<LPVOID>(NVSDK_NGX_D3D12_Init_ProjectID_Detour),
                         reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D12_Init_ProjectID_Original),
                         "NVSDK_NGX_D3D12_Init_ProjectID");
-
+*/
     CreateAndEnableHook(GetProcAddress(ngx_dll, "NVSDK_NGX_D3D12_CreateFeature"),
                         reinterpret_cast<LPVOID>(NVSDK_NGX_D3D12_CreateFeature_Detour),
                         reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D12_CreateFeature_Original),
@@ -1491,21 +1488,21 @@ bool InstallNGXHooks(HMODULE ngx_dll) {
                         reinterpret_cast<LPVOID>(NVSDK_NGX_D3D12_EvaluateFeature_Detour),
                         reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D12_EvaluateFeature_Original),
                         "NVSDK_NGX_D3D12_EvaluateFeature");
+    /*
+        // D3D11 Init hooks
+        CreateAndEnableHook(GetProcAddress(ngx_dll, "NVSDK_NGX_D3D11_Init"),
+                            reinterpret_cast<LPVOID>(NVSDK_NGX_D3D11_Init_Detour),
+                            reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D11_Init_Original), "NVSDK_NGX_D3D11_Init");
 
-    // D3D11 Init hooks
-    CreateAndEnableHook(GetProcAddress(ngx_dll, "NVSDK_NGX_D3D11_Init"),
-                        reinterpret_cast<LPVOID>(NVSDK_NGX_D3D11_Init_Detour),
-                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D11_Init_Original), "NVSDK_NGX_D3D11_Init");
+        CreateAndEnableHook(GetProcAddress(ngx_dll, "NVSDK_NGX_D3D11_Init_Ext"),
+                            reinterpret_cast<LPVOID>(NVSDK_NGX_D3D11_Init_Ext_Detour),
+                            reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D11_Init_Ext_Original), "NVSDK_NGX_D3D11_Init_Ext");
 
-    CreateAndEnableHook(GetProcAddress(ngx_dll, "NVSDK_NGX_D3D11_Init_Ext"),
-                        reinterpret_cast<LPVOID>(NVSDK_NGX_D3D11_Init_Ext_Detour),
-                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D11_Init_Ext_Original), "NVSDK_NGX_D3D11_Init_Ext");
-
-    CreateAndEnableHook(GetProcAddress(ngx_dll, "NVSDK_NGX_D3D11_Init_ProjectID"),
-                        reinterpret_cast<LPVOID>(NVSDK_NGX_D3D11_Init_ProjectID_Detour),
-                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D11_Init_ProjectID_Original),
-                        "NVSDK_NGX_D3D11_Init_ProjectID");
-
+        CreateAndEnableHook(GetProcAddress(ngx_dll, "NVSDK_NGX_D3D11_Init_ProjectID"),
+                            reinterpret_cast<LPVOID>(NVSDK_NGX_D3D11_Init_ProjectID_Detour),
+                            reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D11_Init_ProjectID_Original),
+                            "NVSDK_NGX_D3D11_Init_ProjectID");
+    */
     CreateAndEnableHook(GetProcAddress(ngx_dll, "NVSDK_NGX_D3D11_CreateFeature"),
                         reinterpret_cast<LPVOID>(NVSDK_NGX_D3D11_CreateFeature_Detour),
                         reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D11_CreateFeature_Original),
@@ -1521,11 +1518,12 @@ bool InstallNGXHooks(HMODULE ngx_dll) {
                         reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D11_EvaluateFeature_Original),
                         "NVSDK_NGX_D3D11_EvaluateFeature");
 
-    // Hook UpdateFeature function
-    CreateAndEnableHook(GetProcAddress(ngx_dll, "NVSDK_NGX_UpdateFeature"),
-                        reinterpret_cast<LPVOID>(NVSDK_NGX_UpdateFeature_Detour),
-                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_UpdateFeature_Original), "NVSDK_NGX_UpdateFeature");
-
+    /*
+// Hook UpdateFeature function
+CreateAndEnableHook(GetProcAddress(ngx_dll, "NVSDK_NGX_UpdateFeature"),
+    reinterpret_cast<LPVOID>(NVSDK_NGX_UpdateFeature_Detour),
+    reinterpret_cast<LPVOID*>(&NVSDK_NGX_UpdateFeature_Original), "NVSDK_NGX_UpdateFeature");
+*/
     // Hook NGX parameter functions to get Parameter objects
     // These functions are exported from _nvngx.dll and return Parameter objects
     // We'll hook their vtables when they're called

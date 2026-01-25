@@ -1,12 +1,12 @@
 #include "dualsense_hooks.hpp"
-#include "hid_suppression_hooks.hpp"
+#include <atomic>
+#include <chrono>
+#include <thread>
 #include "../dualsense/dualsense_hid_wrapper.hpp"
-#include "../widgets/xinput_widget/xinput_widget.hpp"
 #include "../utils/logging.hpp"
 #include "../utils/srwlock_wrapper.hpp"
-#include <atomic>
-#include <thread>
-#include <chrono>
+#include "../widgets/xinput_widget/xinput_widget.hpp"
+#include "hid_suppression_hooks.hpp"
 
 namespace display_commander::hooks {
 
@@ -27,7 +27,7 @@ static std::atomic<bool> g_dualsense_thread_running{false};
 // Initialize direct function pointers for bypassing HID suppression
 void InitializeDirectHIDFunctions() {
     if (ReadFile_Direct != nullptr) {
-        return; // Already initialized
+        return;  // Already initialized
     }
 
     // Get direct function pointers from HID suppression hooks
@@ -57,27 +57,6 @@ void InitializeDirectHIDFunctions() {
 
     LogInfo("DualSense: Direct HID functions initialized - ReadFile: %p, GetInputReport: %p, GetAttributes: %p",
             ReadFile_Direct, HidD_GetInputReport_Direct, HidD_GetAttributes_Direct);
-}
-
-// Function to check if Special-K is available and has DualSense support
-bool CheckSpecialKDualSenseSupport() {
-    // Try to load Special-K's DualSense functions
-    // This is a simplified check - in a real implementation, you'd need to
-    // dynamically load Special-K's functions or use a more sophisticated detection method
-
-    // For now, we'll assume Special-K is available if we can find its module
-    HMODULE sk_module = GetModuleHandleA("SpecialK64.dll");
-    if (sk_module == nullptr) {
-        sk_module = GetModuleHandleA("SpecialK32.dll");
-    }
-
-    if (sk_module == nullptr) {
-        return false;
-    }
-
-    // In a real implementation, you would check for specific Special-K functions here
-    // For now, we'll just return true if Special-K is loaded
-    return true;
 }
 
 // Function to read DualSense state using direct HID calls
@@ -132,9 +111,8 @@ void DualSensePollingOnce() {
 void DualSensePollingThread() {
     /*
     while (g_dualsense_thread_running.load()) {
-        if (!display_commander::widgets::xinput_widget::XInputWidget::GetSharedState()->enable_dualsense_xinput.load()) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-            continue;
+        if (!display_commander::widgets::xinput_widget::XInputWidget::GetSharedState()->enable_dualsense_xinput.load())
+    { std::this_thread::sleep_for(std::chrono::milliseconds(1000)); continue;
         }
         //LogInfo("[DUALSENSE] DualSense polling thread running");
         if (g_dualsense_available.load()) {
@@ -173,14 +151,6 @@ bool InitializeDualSenseSupport() {
     // Initialize direct HID functions for fallback
     InitializeDirectHIDFunctions();
 
-    // Check if Special-K is available (optional)
-    bool sk_available = CheckSpecialKDualSenseSupport();
-    if (sk_available) {
-        LogInfo("Special-K detected - using Special-K DualSense support");
-    } else {
-        LogInfo("Special-K not found - using direct HID reading");
-    }
-
     // Initialize DualSense states
     for (int i = 0; i < XUSER_MAX_COUNT; ++i) {
         g_dualsense_states[i] = {};
@@ -190,7 +160,6 @@ bool InitializeDualSenseSupport() {
     // Start polling thread
     g_dualsense_thread_running.store(true);
     g_dualsense_thread = std::thread(DualSensePollingThread);
-
 
     g_dualsense_available.store(true);
     g_dualsense_initialized.store(true);
@@ -221,9 +190,7 @@ void CleanupDualSenseSupport() {
     LogInfo("DualSense support cleaned up");
 }
 
-bool IsDualSenseAvailable() {
-    return g_dualsense_available.load();
-}
+bool IsDualSenseAvailable() { return g_dualsense_available.load(); }
 
 bool ConvertDualSenseToXInput(DWORD user_index, XINPUT_STATE* state) {
     if (!g_dualsense_available.load() || user_index >= XUSER_MAX_COUNT || state == nullptr) {
@@ -254,7 +221,8 @@ bool ConvertDualSenseToXInput(DWORD user_index, XINPUT_STATE* state) {
 
         // Update controller state for UI display
         shared_state->controller_states[user_index] = *state;
-        shared_state->controller_connected[user_index] = display_commander::widgets::xinput_widget::ControllerState::Connected;
+        shared_state->controller_connected[user_index] =
+            display_commander::widgets::xinput_widget::ControllerState::Connected;
         shared_state->last_packet_numbers[user_index] = state->dwPacketNumber;
         shared_state->last_update_times[user_index] = GetTickCount64();
 
@@ -265,4 +233,4 @@ bool ConvertDualSenseToXInput(DWORD user_index, XINPUT_STATE* state) {
     return true;
 }
 
-} // namespace display_commander::hooks
+}  // namespace display_commander::hooks

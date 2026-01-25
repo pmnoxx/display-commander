@@ -181,7 +181,7 @@ void OnRegisterOverlayDisplayCommander(reshade::api::effect_runtime* runtime) {
         const bool show_display_commander_ui = settings::g_mainTabSettings.show_display_commander_ui.GetValue();
         // Avoid displaying UI twice
         if (show_display_commander_ui) {
-            return;
+            settings::g_mainTabSettings.show_display_commander_ui.SetValue(false);
         }
         // Update UI draw time for auto-click optimization
         if (enabled_experimental_features) {
@@ -1114,12 +1114,11 @@ void OverrideReShadeSettings() {
         bool changed_window_config = false;
 
         // Add Display Commander window config if not present
-        if (window_config.find("[Window][Display Commander]") == std::string::npos) {
+        if (window_config.find("[Window][DC]") == std::string::npos) {
             if (!window_config.empty()) {
                 window_config.push_back('\0');
             }
-            std::string to_add =
-                "[Window][Display Commander],Pos=1017,,20,Size=1344,,1255,Collapsed=0,DockId=0x00000001,,999999,";
+            std::string to_add = "[Window][DC],Pos=1017,,20,Size=1344,,1255,Collapsed=0,DockId=0x00000001,,999999,";
             for (size_t i = 0; i < to_add.size(); i++) {
                 if (to_add[i] == ',') {
                     window_config.push_back('\0');

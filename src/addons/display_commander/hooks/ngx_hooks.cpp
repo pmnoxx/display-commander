@@ -1238,10 +1238,6 @@ bool InstallNGXHooks(HMODULE ngx_dll) {
         return false;
     }
     RECORD_DETOUR_CALL(utils::get_now_ns());
-    if (!settings::g_developerTabSettings.load_nvngx.GetValue()) {
-        LogInfo("NGX hooks not installed - load_nvngx is disabled");
-        return false;
-    }
 
     // Check if NGX hooks should be suppressed
     if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(

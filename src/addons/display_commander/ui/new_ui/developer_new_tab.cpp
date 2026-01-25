@@ -11,7 +11,6 @@
 #include "../../utils/general_utils.hpp"
 #include "../../utils/logging.hpp"
 #include "../../utils/process_window_enumerator.hpp"
-#include "../../utils/reshade_global_config.hpp"
 #include "imgui.h"
 #include "settings_wrapper.hpp"
 
@@ -34,10 +33,6 @@ void InitDeveloperNewTab() {
     static bool settings_loaded = false;
     if (!settings_loaded) {
         // Settings already loaded at startup
-
-        // Apply LoadFromDllMain setting to ReShade on startup
-        utils::SetLoadFromDllMain(settings::g_developerTabSettings.load_from_dll_main.GetValue());
-
         settings_loaded = true;
     }
 }
@@ -109,66 +104,6 @@ void DrawFeaturesEnabledByDefault() {
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Prevents windows from becoming always on top, even if they are moved or resized.");
     }
-#if 0
-    // LoadFromDllMain setting
-    if (CheckboxSetting(settings::g_developerTabSettings.load_from_dll_main, "LoadFromDllMain (ReShade) (requires restart)")) {
-        LogInfo("LoadFromDllMain setting changed to: %s",
-                settings::g_developerTabSettings.load_from_dll_main.GetValue() ? "enabled" : "disabled");
-        // Apply the setting to ReShade immediately
-        utils::SetLoadFromDllMain(settings::g_developerTabSettings.load_from_dll_main.GetValue());
-    }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip(
-            "Sets LoadFromDllMain=1 in ReShade configuration.\n"
-            "This setting controls how ReShade loads and initializes.\n"
-            "When enabled, ReShade will load from DllMain instead of the normal loading process.\n"
-            "This setting requires a game restart to take effect.");
-    }
-#endif
-#if 0
-
-    // Load Streamline setting
-    if (CheckboxSetting(settings::g_developerTabSettings.load_streamline, "Hook Streamline SDK (sl.interposer.dll)")) {
-        LogInfo("Load Streamline setting changed to: %s",
-                settings::g_developerTabSettings.load_streamline.GetValue() ? "enabled" : "disabled");
-    }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip(
-            "Controls whether to load and hook into sl.interposer.dll (Streamline SDK).\n"
-            "When enabled, Display Commander will install hooks for Streamline functions.\n"
-            "This setting is automatically disabled when safemode is enabled.\n"
-            "This setting requires a game restart to take effect.");
-    }
-
-    // Load _nvngx setting
-    if (CheckboxSetting(settings::g_developerTabSettings.load_nvngx, "Hook NVIDIA NGX SDK (_nvngx.dll)")) {
-        LogInfo("Load _nvngx setting changed to: %s",
-                settings::g_developerTabSettings.load_nvngx.GetValue() ? "enabled" : "disabled");
-    }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip(
-            "Controls whether to load and hook into _nvngx.dll (NVIDIA NGX SDK).\n"
-            "When enabled, Display Commander will install hooks for NGX functions.\n"
-            "This setting is automatically disabled when safemode is enabled.\n"
-            "This setting requires a game restart to take effect.");
-    }
-
-    // Load nvapi64 setting
-    if (CheckboxSetting(settings::g_developerTabSettings.load_nvapi64, "Hook NVIDIA API (nvapi64.dll)")) {
-        LogInfo("Load nvapi64 setting changed to: %s",
-                settings::g_developerTabSettings.load_nvapi64.GetValue() ? "enabled" : "disabled");
-    }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip(
-            "Controls whether to load and hook into nvapi64.dll (NVIDIA API).\n"
-            "When enabled, Display Commander will install hooks for NVAPI functions.\n"
-            "This setting is automatically disabled when safemode is enabled.\n"
-            "This setting requires a game restart to take effect.");
-    }
-
-
-    ImGui::Spacing();
-#endif
 
     ImGui::Unindent();
 }

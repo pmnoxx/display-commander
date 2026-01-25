@@ -113,6 +113,10 @@ class MainTabSettings {
     ui::new_ui::BoolSetting show_volume;
     ui::new_ui::BoolSetting show_cpu_usage;
     ui::new_ui::BoolSetting show_fg_mode;
+    ui::new_ui::BoolSetting show_dlss_internal_resolution;
+    ui::new_ui::BoolSetting show_dlss_status;
+    ui::new_ui::BoolSetting show_dlss_quality_preset;  // Quality preset: Performance, Balanced, Quality, etc.
+    ui::new_ui::BoolSetting show_dlss_render_preset;   // Render preset: A, B, C, D, E, etc. (letter presets)
     ui::new_ui::BoolSetting show_stopwatch;
     ui::new_ui::BoolSetting show_playtime;
     ui::new_ui::FloatSetting overlay_background_alpha;

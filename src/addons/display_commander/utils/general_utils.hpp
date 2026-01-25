@@ -65,6 +65,7 @@ std::string GetSupportedDLSSRRPresets(int major, int minor, int patch);
 std::string GetSupportedDLSSRRPresetsFromVersionString(const std::string& versionString);
 std::vector<std::string> GetDLSSPresetOptions(const std::string& supportedPresets);
 int GetDLSSPresetValue(const std::string& presetString);
+std::string ConvertRenderPresetToLetter(int preset_value); // Convert render preset number to letter (0=Default, 1=A, 2=B, etc.)
 void TestDLSSPresetSupport(); // Test function for debugging
 
 // Addon directory utilities

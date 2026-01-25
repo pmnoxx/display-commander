@@ -3495,6 +3495,46 @@ void DrawImportantInfo() {
         }
         ImGui::NextColumn();
 
+        // Show DLSS Internal Resolution
+        bool show_dlss_internal_resolution = settings::g_mainTabSettings.show_dlss_internal_resolution.GetValue();
+        if (ImGui::Checkbox("DLSS Res", &show_dlss_internal_resolution)) {
+            settings::g_mainTabSettings.show_dlss_internal_resolution.SetValue(show_dlss_internal_resolution);
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Shows DLSS internal resolution (e.g., 1920x1080) in the performance overlay.");
+        }
+        ImGui::NextColumn();
+
+        // Show DLSS Status
+        bool show_dlss_status = settings::g_mainTabSettings.show_dlss_status.GetValue();
+        if (ImGui::Checkbox("DLSS Status", &show_dlss_status)) {
+            settings::g_mainTabSettings.show_dlss_status.SetValue(show_dlss_status);
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Shows DLSS on/off status in the performance overlay.");
+        }
+        ImGui::NextColumn();
+
+        // Show DLSS Quality Preset
+        bool show_dlss_quality_preset = settings::g_mainTabSettings.show_dlss_quality_preset.GetValue();
+        if (ImGui::Checkbox("DLSS Quality Preset", &show_dlss_quality_preset)) {
+            settings::g_mainTabSettings.show_dlss_quality_preset.SetValue(show_dlss_quality_preset);
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Shows DLSS quality preset (Performance, Balanced, Quality, Ultra Performance, Ultra Quality, DLAA) in the performance overlay.");
+        }
+        ImGui::NextColumn();
+
+        // Show DLSS Render Preset
+        bool show_dlss_render_preset = settings::g_mainTabSettings.show_dlss_render_preset.GetValue();
+        if (ImGui::Checkbox("DLSS Render Preset", &show_dlss_render_preset)) {
+            settings::g_mainTabSettings.show_dlss_render_preset.SetValue(show_dlss_render_preset);
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Shows DLSS render preset (A, B, C, D, E, etc.) for the current quality mode in the performance overlay.");
+        }
+        ImGui::NextColumn();
+
         // Show Stopwatch Control
         bool show_stopwatch = settings::g_mainTabSettings.show_stopwatch.GetValue();
         if (ImGui::Checkbox("Stopwatch", &show_stopwatch)) {

@@ -53,8 +53,8 @@ extern "C" __declspec(dllexport) bool AddonInit(HMODULE addon_module, HMODULE re
 
     reshade::unregister_addon(addon_module);
     reshade::register_addon(addon_module);
-    reshade::unregister_overlay("Display Commander", OnRegisterOverlayDisplayCommander);
-    reshade::register_overlay("Display Commander", OnRegisterOverlayDisplayCommander);
+    reshade::unregister_overlay("DC", OnRegisterOverlayDisplayCommander);
+    reshade::register_overlay("DC", OnRegisterOverlayDisplayCommander);
     DoInitializationWithoutHwnd(addon_module);
     return true;
 }

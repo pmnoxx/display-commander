@@ -39,6 +39,9 @@ class TabManager {
     // Set active tab (thread-safe)
     void SetActiveTab(int tab) { active_tab_ = tab; }
 
+    // Check if a tab with the given ID exists (thread-safe)
+    bool HasTab(const std::string& id) const;
+
   private:
     std::atomic<std::shared_ptr<const std::vector<Tab>>> tabs_;
     int active_tab_ = 0;

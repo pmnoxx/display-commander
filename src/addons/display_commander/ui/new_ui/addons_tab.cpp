@@ -618,10 +618,6 @@ void InitAddonsTab() {
 void RefreshAddonList() { g_addon_list_dirty.store(true); }
 
 void DrawAddonsTab() {
-    ImGui::Text("ReShade Management");
-    ImGui::Separator();
-    ImGui::Spacing();
-
     // Check available reshade shaders section
     if (ImGui::CollapsingHeader("Check available reshade shaders", ImGuiTreeNodeFlags_DefaultOpen)) {
         ImGui::Spacing();

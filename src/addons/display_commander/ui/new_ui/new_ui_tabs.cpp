@@ -1,6 +1,7 @@
 #include "new_ui_tabs.hpp"
 #include <winbase.h>
 #include <reshade_imgui.hpp>
+#include "../../globals.hpp"
 #include "../../settings/main_tab_settings.hpp"
 #include "../../utils/logging.hpp"
 #include "../../widgets/remapping_widget/remapping_widget.hpp"
@@ -41,7 +42,50 @@ void TabManager::AddTab(const std::string& name, const std::string& id,
     tabs_.store(std::shared_ptr<const std::vector<Tab>>(new_tabs));
 }
 
+bool TabManager::HasTab(const std::string& id) const {
+    auto current_tabs = tabs_.load();
+    if (!current_tabs) {
+        return false;
+    }
+    for (const auto& tab : *current_tabs) {
+        if (tab.id == id) {
+            return true;
+        }
+    }
+    return false;
+}
+
 void TabManager::Draw(reshade::api::effect_runtime* runtime) {
+    // Check if Streamline tab should be added dynamically (if DLL loads after initialization)
+    // Check if the tab already exists
+    auto current_tabs_check = tabs_.load();
+    bool tab_exists = false;
+    if (current_tabs_check) {
+        for (const auto& tab : *current_tabs_check) {
+            if (tab.id == "streamline") {
+                tab_exists = true;
+                break;
+            }
+        }
+    }
+
+    // If tab doesn't exist, check if experimental features are enabled and DLL is loaded, then add it
+    if (!tab_exists && enabled_experimental_features && GetModuleHandleW(L"sl.interposer.dll") != nullptr) {
+        AddTab(
+            "Streamline", "streamline",
+            [](reshade::api::effect_runtime* runtime) {
+                try {
+                    ui::new_ui::DrawStreamlineTab();
+                } catch (const std::exception& e) {
+                    LogError("Error drawing streamline tab: %s", e.what());
+                } catch (...) {
+                    LogError("Unknown error drawing streamline tab");
+                }
+            },
+            true);  // Streamline tab is advanced
+        LogInfo("Streamline tab added dynamically after sl.interposer.dll loaded");
+    }
+
     // Get current tabs atomically
     auto current_tabs = tabs_.load();
 
@@ -65,7 +109,7 @@ void TabManager::Draw(reshade::api::effect_runtime* runtime) {
             const std::string& tab_id = (*current_tabs)[i].id;
 
             // Check individual tab setting or fall back to "Show All Tabs"
-            if (tab_id == "developer_new") {
+            if (tab_id == "advanced") {
                 tab_enabled = settings::g_mainTabSettings.show_developer_tab.GetValue();
             } else if (tab_id == "window_info") {
                 tab_enabled = settings::g_mainTabSettings.show_window_info_tab.GetValue();
@@ -73,10 +117,8 @@ void TabManager::Draw(reshade::api::effect_runtime* runtime) {
                 tab_enabled = settings::g_mainTabSettings.show_swapchain_tab.GetValue();
             } else if (tab_id == "important_info") {
                 tab_enabled = settings::g_mainTabSettings.show_important_info_tab.GetValue();
-            } else if (tab_id == "xinput") {
-                tab_enabled = settings::g_mainTabSettings.show_xinput_tab.GetValue();
-            } else if (tab_id == "remapping") {
-                tab_enabled = settings::g_mainTabSettings.show_remapping_tab.GetValue();
+            } else if (tab_id == "controller") {
+                tab_enabled = settings::g_mainTabSettings.show_controller_tab.GetValue();
             } else if (tab_id == "hook_stats") {
                 tab_enabled = settings::g_mainTabSettings.show_hook_stats_tab.GetValue();
             } else if (tab_id == "streamline") {
@@ -121,7 +163,7 @@ void TabManager::Draw(reshade::api::effect_runtime* runtime) {
                 const std::string& tab_id = (*current_tabs)[i].id;
 
                 // Check individual tab setting or fall back to "Show All Tabs"
-                if (tab_id == "developer_new") {
+                if (tab_id == "advanced") {
                     tab_enabled = settings::g_mainTabSettings.show_developer_tab.GetValue();
                 } else if (tab_id == "window_info") {
                     tab_enabled = settings::g_mainTabSettings.show_window_info_tab.GetValue();
@@ -129,10 +171,8 @@ void TabManager::Draw(reshade::api::effect_runtime* runtime) {
                     tab_enabled = settings::g_mainTabSettings.show_swapchain_tab.GetValue();
                 } else if (tab_id == "important_info") {
                     tab_enabled = settings::g_mainTabSettings.show_important_info_tab.GetValue();
-                } else if (tab_id == "xinput") {
-                    tab_enabled = settings::g_mainTabSettings.show_xinput_tab.GetValue();
-                } else if (tab_id == "remapping") {
-                    tab_enabled = settings::g_mainTabSettings.show_remapping_tab.GetValue();
+                } else if (tab_id == "controller") {
+                    tab_enabled = settings::g_mainTabSettings.show_controller_tab.GetValue();
                 } else if (tab_id == "hook_stats") {
                     tab_enabled = settings::g_mainTabSettings.show_hook_stats_tab.GetValue();
                 } else if (tab_id == "streamline") {
@@ -171,7 +211,7 @@ void TabManager::Draw(reshade::api::effect_runtime* runtime) {
 void InitializeNewUI() {
     LogInfo("Initializing new UI");
 
-    // Ensure settings for main and developer tabs are loaded at UI init time
+    // Ensure settings for main and advanced tabs are loaded at UI init time
     ui::new_ui::InitMainNewTab();
     ui::new_ui::InitDeveloperNewTab();
     ui::new_ui::InitSwapchainTab();
@@ -198,17 +238,17 @@ void InitializeNewUI() {
         false);  // Main tab is not advanced
 
     g_tab_manager.AddTab(
-        "Developer", "developer_new",
+        "Advanced", "advanced",
         [](reshade::api::effect_runtime* runtime) {
             try {
                 ui::new_ui::DrawDeveloperNewTab();
             } catch (const std::exception& e) {
-                LogError("Error drawing developer new tab: %s", e.what());
+                LogError("Error drawing advanced tab: %s", e.what());
             } catch (...) {
-                LogError("Unknown error drawing developer new tab");
+                LogError("Unknown error drawing advanced tab");
             }
         },
-        true);  // Developer tab is advanced
+        true);  // Advanced tab is advanced
 
     g_tab_manager.AddTab(
         "Hotkeys", "hotkeys",
@@ -223,31 +263,33 @@ void InitializeNewUI() {
         },
         false);  // Hotkeys tab is not advanced
 
-    g_tab_manager.AddTab(
-        "Window Info", "window_info",
-        [](reshade::api::effect_runtime* runtime) {
-            try {
-                ui::new_ui::DrawWindowInfoTab();
-            } catch (const std::exception& e) {
-                LogError("Error drawing window info tab: %s", e.what());
-            } catch (...) {
-                LogError("Unknown error drawing window info tab");
-            }
-        },
-        true);  // Window Info tab is not advanced
+    if (enabled_experimental_features) {
+        g_tab_manager.AddTab(
+            "Window Info", "window_info",
+            [](reshade::api::effect_runtime* runtime) {
+                try {
+                    ui::new_ui::DrawWindowInfoTab();
+                } catch (const std::exception& e) {
+                    LogError("Error drawing window info tab: %s", e.what());
+                } catch (...) {
+                    LogError("Unknown error drawing window info tab");
+                }
+            },
+            true);  // Window Info tab is not advanced
 
-    g_tab_manager.AddTab(
-        "Swapchain", "swapchain",
-        [](reshade::api::effect_runtime* runtime) {
-            try {
-                ui::new_ui::DrawSwapchainTab(runtime);
-            } catch (const std::exception& e) {
-                LogError("Error drawing swapchain tab: %s", e.what());
-            } catch (...) {
-                LogError("Unknown error drawing swapchain tab");
-            }
-        },
-        true);  // Swapchain tab is not advanced
+        g_tab_manager.AddTab(
+            "Swapchain", "swapchain",
+            [](reshade::api::effect_runtime* runtime) {
+                try {
+                    ui::new_ui::DrawSwapchainTab(runtime);
+                } catch (const std::exception& e) {
+                    LogError("Error drawing swapchain tab: %s", e.what());
+                } catch (...) {
+                    LogError("Unknown error drawing swapchain tab");
+                }
+            },
+            true);  // Swapchain tab is not advanced
+    }
 
     if (enabled_experimental_features) {
         g_tab_manager.AddTab(
@@ -265,56 +307,54 @@ void InitializeNewUI() {
     }
 
     g_tab_manager.AddTab(
-        "XInput", "xinput",
+        "Controller", "controller",
         [](reshade::api::effect_runtime* runtime) {
             try {
+                // Draw XInput widget first
                 display_commander::widgets::xinput_widget::DrawXInputWidget();
-            } catch (const std::exception& e) {
-                LogError("Error drawing XInput widget: %s", e.what());
-            } catch (...) {
-                LogError("Unknown error drawing XInput widget");
-            }
-        },
-        true);  // XInput tab is advanced
 
-    g_tab_manager.AddTab(
-        "Controller Remapping", "remapping",
-        [](reshade::api::effect_runtime* runtime) {
-            try {
+                ImGui::Spacing();
+
+                // Draw remapping widget below
                 display_commander::widgets::remapping_widget::DrawRemappingWidget();
             } catch (const std::exception& e) {
-                LogError("Error drawing remapping widget: %s", e.what());
+                LogError("Error drawing Controller tab: %s", e.what());
             } catch (...) {
-                LogError("Unknown error drawing remapping widget");
+                LogError("Unknown error drawing Controller tab");
             }
         },
-        true);  // Remapping tab is advanced
+        true);  // Controller tab is advanced
 
-    g_tab_manager.AddTab(
-        "Hook Statistics", "hook_stats",
-        [](reshade::api::effect_runtime* runtime) {
-            try {
-                ui::new_ui::DrawHookStatsTab();
-            } catch (const std::exception& e) {
-                LogError("Error drawing hook stats tab: %s", e.what());
-            } catch (...) {
-                LogError("Unknown error drawing hook stats tab");
-            }
-        },
-        true);  // Hook Statistics tab is advanced
+    if (enabled_experimental_features) {
+        g_tab_manager.AddTab(
+            "Hook Statistics", "hook_stats",
+            [](reshade::api::effect_runtime* runtime) {
+                try {
+                    ui::new_ui::DrawHookStatsTab();
+                } catch (const std::exception& e) {
+                    LogError("Error drawing hook stats tab: %s", e.what());
+                } catch (...) {
+                    LogError("Unknown error drawing hook stats tab");
+                }
+            },
+            true);  // Hook Statistics tab is advanced
+    }
 
-    g_tab_manager.AddTab(
-        "Streamline", "streamline",
-        [](reshade::api::effect_runtime* runtime) {
-            try {
-                ui::new_ui::DrawStreamlineTab();
-            } catch (const std::exception& e) {
-                LogError("Error drawing streamline tab: %s", e.what());
-            } catch (...) {
-                LogError("Unknown error drawing streamline tab");
-            }
-        },
-        true);  // Streamline tab is advanced
+    // Only add Streamline tab if experimental features are enabled and sl.interposer.dll is loaded
+    if (enabled_experimental_features && GetModuleHandleW(L"sl.interposer.dll") != nullptr) {
+        g_tab_manager.AddTab(
+            "Streamline", "streamline",
+            [](reshade::api::effect_runtime* runtime) {
+                try {
+                    ui::new_ui::DrawStreamlineTab();
+                } catch (const std::exception& e) {
+                    LogError("Error drawing streamline tab: %s", e.what());
+                } catch (...) {
+                    LogError("Unknown error drawing streamline tab");
+                }
+            },
+            true);  // Streamline tab is advanced
+    }
 
     if (enabled_experimental_features) {
         // Add experimental tab conditionally based on advanced settings

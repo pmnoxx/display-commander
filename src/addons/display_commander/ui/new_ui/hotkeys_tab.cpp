@@ -534,7 +534,7 @@ void DrawHotkeysTab() {
     ImGui::Separator();
     ImGui::Spacing();
 
-    if (ImGui::CollapsingHeader("Debug Information", ImGuiTreeNodeFlags_DefaultOpen)) {
+    if (ImGui::CollapsingHeader("Debug Information", ImGuiTreeNodeFlags_None)) {
         LONGLONG now_ns = utils::get_now_ns();
         LONGLONG last_call_age_ns = now_ns - g_hotkey_debug_info.last_call_time_ns;
         double last_call_age_ms = static_cast<double>(last_call_age_ns) / 1000000.0;

@@ -74,8 +74,6 @@ void XInputWidget::Cleanup() {
 }
 
 void XInputWidget::OnDraw() {
-    ImGui::Indent();
-
     if (!is_initialized_) {
         Initialize();
     }
@@ -85,10 +83,6 @@ void XInputWidget::OnDraw() {
         ImGui::Unindent();
         return;
     }
-
-    // Draw the XInput widget UI
-    ImGui::TextColored(ui::colors::TEXT_DEFAULT, "=== XInput Controller Monitor ===");
-    ImGui::Spacing();
 
     // Draw settings
     DrawSettings();
@@ -112,14 +106,11 @@ void XInputWidget::OnDraw() {
 
     // Draw selected controller state
     DrawControllerState();
-
-    ImGui::Unindent();
 }
 
 void XInputWidget::DrawSettings() {
-    ImGui::Indent();
-
-    if (ImGui::CollapsingHeader("Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
+    if (ImGui::CollapsingHeader("Settings", ImGuiTreeNodeFlags_None)) {
+        ImGui::Indent();
         // Enable XInput hooks (using HookSuppressionManager)
         bool suppress_hooks = display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(
             display_commanderhooks::HookType::XINPUT);
@@ -372,15 +363,13 @@ void XInputWidget::DrawSettings() {
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Reset vibration amplification to 100%% (normal)");
         }
+        ImGui::Unindent();
     }
-
-    ImGui::Unindent();
 }
 
 void XInputWidget::DrawEventCounters() {
-    ImGui::Indent();
-
-    if (ImGui::CollapsingHeader("Event Counters", ImGuiTreeNodeFlags_DefaultOpen)) {
+    if (ImGui::CollapsingHeader("Event Counters", ImGuiTreeNodeFlags_None)) {
+        ImGui::Indent();
         uint64_t total_events = g_shared_state->total_events.load();
         uint64_t button_events = g_shared_state->button_events.load();
         uint64_t stick_events = g_shared_state->stick_events.load();
@@ -443,15 +432,13 @@ void XInputWidget::DrawEventCounters() {
             g_shared_state->hid_createfile_total.store(0);
             g_shared_state->hid_createfile_dualsense.store(0);
         }
+        ImGui::Unindent();
     }
-
-    ImGui::Unindent();
 }
 
 void XInputWidget::DrawVibrationTest() {
-    ImGui::Indent();
-
-    if (ImGui::CollapsingHeader("Vibration Test", ImGuiTreeNodeFlags_DefaultOpen)) {
+    if (ImGui::CollapsingHeader("Vibration Test", ImGuiTreeNodeFlags_None)) {
+        ImGui::Indent();
         ImGui::Text("Test controller vibration motors:");
         ImGui::Spacing();
 
@@ -501,14 +488,11 @@ void XInputWidget::DrawVibrationTest() {
         ImGui::Spacing();
         ImGui::TextColored(ui::colors::TEXT_DIMMED,
                            "Note: Vibration will continue until stopped or controller disconnects");
+        ImGui::Unindent();
     }
-
-    ImGui::Unindent();
 }
 
 void XInputWidget::DrawControllerSelector() {
-    ImGui::Indent();
-
     ImGui::Text("Controller:");
     ImGui::SameLine();
 
@@ -533,13 +517,9 @@ void XInputWidget::DrawControllerSelector() {
         ImGui::EndCombo();
     }
     ImGui::PopID();
-
-    ImGui::Unindent();
 }
 
 void XInputWidget::DrawControllerState() {
-    ImGui::Indent();
-
     if (selected_controller_ < 0 || selected_controller_ >= XUSER_MAX_COUNT) {
         ImGui::TextColored(ui::colors::ICON_CRITICAL, "Invalid controller selected");
         ImGui::Unindent();
@@ -598,12 +578,11 @@ void XInputWidget::DrawControllerState() {
         ImGui::Spacing();
         DrawDualSenseReport(selected_controller_);
     }
-
-    ImGui::Unindent();
 }
 
 void XInputWidget::DrawButtonStates(const XINPUT_GAMEPAD& gamepad) {
-    if (ImGui::CollapsingHeader("Buttons", ImGuiTreeNodeFlags_DefaultOpen)) {
+    if (ImGui::CollapsingHeader("Buttons", ImGuiTreeNodeFlags_None)) {
+        ImGui::Indent();
         // Create a grid of buttons
         const struct {
             WORD mask;
@@ -671,11 +650,13 @@ void XInputWidget::DrawButtonStates(const XINPUT_GAMEPAD& gamepad) {
                 ImGui::PopStyleColor();
             }
         }
+        ImGui::Unindent();
     }
 }
 
 void XInputWidget::DrawStickStates(const XINPUT_GAMEPAD& gamepad) {
-    if (ImGui::CollapsingHeader("Analog Sticks", ImGuiTreeNodeFlags_DefaultOpen)) {
+    if (ImGui::CollapsingHeader("Analog Sticks", ImGuiTreeNodeFlags_None)) {
+        ImGui::Indent();
         float left_max_input = g_shared_state->left_stick_max_input.load();
         float right_max_input = g_shared_state->right_stick_max_input.load();
         float left_min_output = g_shared_state->left_stick_min_output.load();
@@ -782,12 +763,14 @@ void XInputWidget::DrawStickStates(const XINPUT_GAMEPAD& gamepad) {
         // Draw extended visualization with input/output curves
         DrawStickStatesExtended(left_deadzone, left_max_input, left_min_output, right_deadzone, right_max_input,
                                 right_min_output);
+        ImGui::Unindent();
     }
 }
 
 void XInputWidget::DrawStickStatesExtended(float left_deadzone, float left_max_input, float left_min_output,
                                            float right_deadzone, float right_max_input, float right_min_output) {
-    if (ImGui::CollapsingHeader("Input/Output Curves", ImGuiTreeNodeFlags_DefaultOpen)) {
+    if (ImGui::CollapsingHeader("Input/Output Curves", ImGuiTreeNodeFlags_None)) {
+        ImGui::Indent();
         ImGui::TextColored(ui::colors::TEXT_DEFAULT, "Visual representation of how stick input is processed");
         ImGui::Spacing();
 
@@ -909,11 +892,13 @@ void XInputWidget::DrawStickStatesExtended(float left_deadzone, float left_max_i
         ImGui::Spacing();
         ImGui::TextColored(ui::colors::TEXT_DIMMED, "X-axis: Input (0.0 to 1.0) - Positive side only");
         ImGui::TextColored(ui::colors::TEXT_DIMMED, "Y-axis: Output (-1.0 to 1.0)");
+        ImGui::Unindent();
     }
 }
 
 void XInputWidget::DrawTriggerStates(const XINPUT_GAMEPAD& gamepad) {
-    if (ImGui::CollapsingHeader("Triggers", ImGuiTreeNodeFlags_DefaultOpen)) {
+    if (ImGui::CollapsingHeader("Triggers", ImGuiTreeNodeFlags_None)) {
+        ImGui::Indent();
         // Left trigger
         ImGui::Text("Left Trigger: %u/255 (%.1f%%)", gamepad.bLeftTrigger,
                     (static_cast<float>(gamepad.bLeftTrigger) / 255.0f) * 100.0f);
@@ -929,6 +914,7 @@ void XInputWidget::DrawTriggerStates(const XINPUT_GAMEPAD& gamepad) {
         // Visual bar for right trigger
         float right_trigger_norm = static_cast<float>(gamepad.bRightTrigger) / 255.0f;
         ImGui::ProgressBar(right_trigger_norm, ImVec2(-1, 0), "");
+        ImGui::Unindent();
     }
 }
 
@@ -937,7 +923,8 @@ void XInputWidget::DrawBatteryStatus(int controller_index) {
         return;
     }
 
-    if (ImGui::CollapsingHeader("Battery Status", ImGuiTreeNodeFlags_DefaultOpen)) {
+    if (ImGui::CollapsingHeader("Battery Status", ImGuiTreeNodeFlags_None)) {
+        ImGui::Indent();
         bool battery_valid = g_shared_state->battery_info_valid[controller_index].load();
 
         if (!battery_valid) {
@@ -1027,6 +1014,7 @@ void XInputWidget::DrawBatteryStatus(int controller_index) {
         } else {
             ImGui::TextColored(ui::colors::TEXT_DIMMED, "Battery level not available");
         }
+        ImGui::Unindent();
     }
 }
 
@@ -1363,13 +1351,9 @@ void CleanupXInputWidget() {
 }
 
 void DrawXInputWidget() {
-    ImGui::Indent();
-
     if (g_xinput_widget) {
         g_xinput_widget->OnDraw();
     }
-
-    ImGui::Unindent();
 }
 
 // Global functions for hooks to use
@@ -1572,7 +1556,8 @@ void UpdateBatteryStatus(DWORD user_index) {
 }
 
 void XInputWidget::DrawDualSenseReport(int controller_index) {
-    if (ImGui::CollapsingHeader("DualSense Input Report", ImGuiTreeNodeFlags_DefaultOpen)) {
+    if (ImGui::CollapsingHeader("DualSense Input Report", ImGuiTreeNodeFlags_None)) {
+        ImGui::Indent();
         // Check if DualSense HID wrapper is available
         if (!display_commander::dualsense::g_dualsense_hid_wrapper) {
             ImGui::TextColored(ui::colors::TEXT_DIMMED, "DualSense HID wrapper not available");
@@ -1630,11 +1615,13 @@ void XInputWidget::DrawDualSenseReport(int controller_index) {
             ImGui::Spacing();
 
             // Display Special-K DualSense data if available
-            if (ImGui::CollapsingHeader("Special-K DualSense Data", ImGuiTreeNodeFlags_DefaultOpen)) {
+            if (ImGui::CollapsingHeader("Special-K DualSense Data", ImGuiTreeNodeFlags_None)) {
+                ImGui::Indent();
                 const auto& sk_data = device.sk_dualsense_data;
 
                 // Basic input data
-                if (ImGui::CollapsingHeader("Input Data", ImGuiTreeNodeFlags_DefaultOpen)) {
+                if (ImGui::CollapsingHeader("Input Data", ImGuiTreeNodeFlags_None)) {
+                    ImGui::Indent();
                     ImGui::Columns(2, "SKInputColumns", false);
 
                     // Sticks
@@ -1658,10 +1645,12 @@ void XInputWidget::DrawDualSenseReport(int controller_index) {
                     ImGui::NextColumn();
 
                     ImGui::Columns(1);
+                    ImGui::Unindent();
                 }
 
                 // Button states
-                if (ImGui::CollapsingHeader("Button States", ImGuiTreeNodeFlags_DefaultOpen)) {
+                if (ImGui::CollapsingHeader("Button States", ImGuiTreeNodeFlags_None)) {
+                    ImGui::Indent();
                     ImGui::Columns(3, "SKButtonColumns", false);
 
                     // Face buttons
@@ -1714,10 +1703,12 @@ void XInputWidget::DrawDualSenseReport(int controller_index) {
                     }
 
                     ImGui::Columns(1);
+                    ImGui::Unindent();
                 }
 
                 // Battery and power
                 if (ImGui::CollapsingHeader("Battery & Power")) {
+                    ImGui::Indent();
                     ImGui::Columns(2, "SKPowerColumns", false);
 
                     ImGui::Text("Battery: %d%%", sk_data.PowerPercent * 10);
@@ -1741,10 +1732,12 @@ void XInputWidget::DrawDualSenseReport(int controller_index) {
                     ImGui::NextColumn();
 
                     ImGui::Columns(1);
+                    ImGui::Unindent();
                 }
 
                 // Motion sensors
                 if (ImGui::CollapsingHeader("Motion Sensors")) {
+                    ImGui::Indent();
                     ImGui::Columns(2, "SKMotionColumns", false);
 
                     ImGui::Text("Angular Velocity X: %d", sk_data.AngularVelocityX);
@@ -1765,10 +1758,12 @@ void XInputWidget::DrawDualSenseReport(int controller_index) {
                     ImGui::NextColumn();
 
                     ImGui::Columns(1);
+                    ImGui::Unindent();
                 }
 
                 // Adaptive triggers
                 if (ImGui::CollapsingHeader("Adaptive Triggers")) {
+                    ImGui::Indent();
                     ImGui::Columns(2, "SKTriggerColumns", false);
 
                     ImGui::Text("Left Trigger Status: %d", sk_data.TriggerLeftStatus);
@@ -1785,26 +1780,30 @@ void XInputWidget::DrawDualSenseReport(int controller_index) {
                     ImGui::NextColumn();
 
                     ImGui::Columns(1);
+                    ImGui::Unindent();
                 }
 
                 // Timestamps
                 if (ImGui::CollapsingHeader("Timestamps")) {
+                    ImGui::Indent();
                     ImGui::Text("Host Timestamp: %u", sk_data.HostTimestamp);
                     ImGui::Text("Device Timestamp: %u", sk_data.DeviceTimeStamp);
                     ImGui::Text("Sensor Timestamp: %u", sk_data.SensorTimestamp);
+                    ImGui::Unindent();
                 }
+                ImGui::Unindent();
             }
         } else {
             ImGui::TextColored(ui::colors::TEXT_DIMMED, "No input report data available");
         }
+        ImGui::Unindent();
     }
 }
 
 // Autofire functions
 void XInputWidget::DrawAutofireSettings() {
-    ImGui::Indent();
-
-    if (ImGui::CollapsingHeader("Autofire Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
+    if (ImGui::CollapsingHeader("Autofire Settings", ImGuiTreeNodeFlags_None)) {
+        ImGui::Indent();
         auto shared_state = GetSharedState();
         if (!shared_state) {
             ImGui::Unindent();
@@ -2102,9 +2101,8 @@ void XInputWidget::DrawAutofireSettings() {
                 SaveSettings();
             }
         }
+        ImGui::Unindent();
     }
-
-    ImGui::Unindent();
 }
 
 void XInputWidget::AddAutofireButton(WORD button_mask) {

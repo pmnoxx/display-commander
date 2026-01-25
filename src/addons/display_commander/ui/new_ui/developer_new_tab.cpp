@@ -86,9 +86,6 @@ void DrawDeveloperNewTab() {
 
         ImGui::Unindent();
     }
-
-    ImGui::Spacing();
-    ImGui::Separator();
 }
 
 void DrawFeaturesEnabledByDefault() {

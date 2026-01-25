@@ -766,6 +766,154 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
             LogInfo(oss.str().c_str());
             return modified;  // return true if we modified the desc
         }
+    } else if (api == reshade::api::device_api::opengl) {
+        // Log swapchain description
+        {
+            std::ostringstream oss;
+            oss << "OnCreateSwapchainCapture - ";
+            oss << "API: OpenGL, ";
+            oss << "Fullscreen: " << (desc.fullscreen_state ? "YES" : "NO") << ", ";
+            oss << "Back Buffers: " << desc.back_buffer_count << ", ";
+            oss << "Present Mode: " << desc.present_mode << ", ";
+            oss << "Sync Interval: " << desc.sync_interval << ", ";
+            oss << "Present Flags: 0x" << std::hex << desc.present_flags << std::dec << ", ";
+            oss << "Back Buffer: " << desc.back_buffer.texture.width << "x" << desc.back_buffer.texture.height << ", ";
+            oss << "Back Buffer Format: " << static_cast<int>(desc.back_buffer.texture.format) << ", ";
+            oss << "Back Buffer Usage: 0x" << std::hex << static_cast<uint64_t>(desc.back_buffer.usage) << std::dec << ", ";
+            oss << "Multisample: " << desc.back_buffer.texture.samples;
+            LogInfo(oss.str().c_str());
+        }
+
+        auto modified = false;
+        uint32_t prev_sync_interval = desc.sync_interval;
+        bool prev_fullscreen_state = desc.fullscreen_state;
+        reshade::api::format prev_format = desc.back_buffer.texture.format;
+
+        if (desc.fullscreen_state && settings::g_developerTabSettings.prevent_fullscreen.GetValue()) {
+            if (!settings::g_developerTabSettings.prevent_fullscreen.GetValue()) {
+                LogWarn("OpenGL Swapchain: Fullscreen state change blocked by developer settings");
+                return false;
+            }
+            LogInfo("OpenGL Swapchain: Changed fullscreen state from %s to %s", desc.fullscreen_state ? "YES" : "NO",
+                    desc.fullscreen_state ? "NO" : "YES");
+            desc.fullscreen_state = false;
+            modified = true;
+        }
+
+        // Apply VSYNC overrides (applies to all APIs)
+        if (s_force_vsync_on.load()) {
+            desc.sync_interval = 1;  // VSYNC on
+            modified = true;
+        } else if (s_force_vsync_off.load()) {
+            desc.sync_interval = 0;  // VSYNC off
+            modified = true;
+        }
+
+        // Apply backbuffer format override if enabled (all APIs)
+        if (settings::g_experimentalTabSettings.backbuffer_format_override_enabled.GetValue()) {
+            reshade::api::format original_format = desc.back_buffer.texture.format;
+            reshade::api::format target_format =
+                GetFormatFromComboValue(settings::g_experimentalTabSettings.backbuffer_format_override.GetValue());
+
+            if (original_format != target_format) {
+                desc.back_buffer.texture.format = target_format;
+                modified = true;
+
+                // Log the format change
+                std::ostringstream format_oss;
+                format_oss << "OpenGL Backbuffer format override: " << static_cast<int>(original_format) << " -> "
+                           << static_cast<int>(target_format);
+                LogInfo("%s", format_oss.str().c_str());
+            }
+        }
+
+        // Log changes if modified
+        if (modified) {
+            std::ostringstream oss;
+            oss << "OpenGL Swapchain Creation - ";
+            oss << "Sync Interval: " << prev_sync_interval << " -> " << desc.sync_interval << ", ";
+            oss << "Fullscreen: " << (prev_fullscreen_state ? "YES" : "NO") << " -> "
+                << (desc.fullscreen_state ? "YES" : "NO") << ", ";
+            oss << "Back Buffer Format: " << static_cast<int>(prev_format) << " -> "
+                << static_cast<int>(desc.back_buffer.texture.format);
+            LogInfo(oss.str().c_str());
+        }
+
+        return modified;
+    } else if (api == reshade::api::device_api::vulkan) {
+        // Log swapchain description
+        {
+            std::ostringstream oss;
+            oss << "OnCreateSwapchainCapture - ";
+            oss << "API: Vulkan, ";
+            oss << "Fullscreen: " << (desc.fullscreen_state ? "YES" : "NO") << ", ";
+            oss << "Back Buffers: " << desc.back_buffer_count << ", ";
+            oss << "Present Mode: " << desc.present_mode << ", ";
+            oss << "Sync Interval: " << desc.sync_interval << ", ";
+            oss << "Present Flags: 0x" << std::hex << desc.present_flags << std::dec << ", ";
+            oss << "Back Buffer: " << desc.back_buffer.texture.width << "x" << desc.back_buffer.texture.height << ", ";
+            oss << "Back Buffer Format: " << static_cast<int>(desc.back_buffer.texture.format) << ", ";
+            oss << "Back Buffer Usage: 0x" << std::hex << static_cast<uint64_t>(desc.back_buffer.usage) << std::dec << ", ";
+            oss << "Multisample: " << desc.back_buffer.texture.samples;
+            LogInfo(oss.str().c_str());
+        }
+
+        auto modified = false;
+        uint32_t prev_sync_interval = desc.sync_interval;
+        bool prev_fullscreen_state = desc.fullscreen_state;
+        reshade::api::format prev_format = desc.back_buffer.texture.format;
+
+        if (desc.fullscreen_state && settings::g_developerTabSettings.prevent_fullscreen.GetValue()) {
+            if (!settings::g_developerTabSettings.prevent_fullscreen.GetValue()) {
+                LogWarn("Vulkan Swapchain: Fullscreen state change blocked by developer settings");
+                return false;
+            }
+            LogInfo("Vulkan Swapchain: Changed fullscreen state from %s to %s", desc.fullscreen_state ? "YES" : "NO",
+                    desc.fullscreen_state ? "NO" : "YES");
+            desc.fullscreen_state = false;
+            modified = true;
+        }
+
+        // Apply VSYNC overrides (applies to all APIs)
+        if (s_force_vsync_on.load()) {
+            desc.sync_interval = 1;  // VSYNC on
+            modified = true;
+        } else if (s_force_vsync_off.load()) {
+            desc.sync_interval = 0;  // VSYNC off
+            modified = true;
+        }
+
+        // Apply backbuffer format override if enabled (all APIs)
+        if (settings::g_experimentalTabSettings.backbuffer_format_override_enabled.GetValue()) {
+            reshade::api::format original_format = desc.back_buffer.texture.format;
+            reshade::api::format target_format =
+                GetFormatFromComboValue(settings::g_experimentalTabSettings.backbuffer_format_override.GetValue());
+
+            if (original_format != target_format) {
+                desc.back_buffer.texture.format = target_format;
+                modified = true;
+
+                // Log the format change
+                std::ostringstream format_oss;
+                format_oss << "Vulkan Backbuffer format override: " << static_cast<int>(original_format) << " -> "
+                           << static_cast<int>(target_format);
+                LogInfo("%s", format_oss.str().c_str());
+            }
+        }
+
+        // Log changes if modified
+        if (modified) {
+            std::ostringstream oss;
+            oss << "Vulkan Swapchain Creation - ";
+            oss << "Sync Interval: " << prev_sync_interval << " -> " << desc.sync_interval << ", ";
+            oss << "Fullscreen: " << (prev_fullscreen_state ? "YES" : "NO") << " -> "
+                << (desc.fullscreen_state ? "YES" : "NO") << ", ";
+            oss << "Back Buffer Format: " << static_cast<int>(prev_format) << " -> "
+                << static_cast<int>(desc.back_buffer.texture.format);
+            LogInfo(oss.str().c_str());
+        }
+
+        return modified;
     }
 
     LogWarn("OnCreateSwapchainCapture: Not a supported device API - %d", static_cast<int>(api));

@@ -77,7 +77,11 @@ bool LatencyManager::Initialize(void* native_device, DeviceTypeDC device_type, L
 
     // Initialize the provider with native device
     if (!provider_->InitializeNative(native_device, device_type)) {
-        LogWarn("LatencyManager: Failed to initialize provider with native device");
+        // Only log this warning once per session to avoid spam
+        static std::atomic<bool> g_init_failed_warned{false};
+        if (!g_init_failed_warned.exchange(true, std::memory_order_acq_rel)) {
+            LogWarn("LatencyManager: Failed to initialize provider with native device");
+        }
         provider_.reset();
         return false;
     }

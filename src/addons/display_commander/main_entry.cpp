@@ -362,21 +362,6 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
     static CursorState last_cursor_state = CursorState::Unknown;
 
     if (show_display_commander_ui) {
-        // Block input every frame while overlay is open
-        if (runtime != nullptr) {
-            runtime->block_input_next_frame();
-        }
-
-        last_cursor_state = CursorState::Visible;
-        // Show cursor while overlay is open (same approach as ReShade)
-        ImGuiIO& io = ImGui::GetIO();
-        io.MouseDrawCursor = true;
-
-        // Update UI draw time for auto-click optimization
-        if (enabled_experimental_features) {
-            autoclick::UpdateLastUIDrawTime();
-        }
-
         // IMGui window with fixed width and saved position
         const float fixed_width = 1600.0f;
         float saved_x = settings::g_mainTabSettings.display_commander_ui_window_x.GetValue();
@@ -397,7 +382,21 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
         ImGui::SetNextWindowSize(ImVec2(fixed_width, 0.0f), ImGuiCond_Always);
         // Use local bool for ImGui window close button - ImGui will modify this when X is clicked
         bool window_open = true;
-        if (ImGui::Begin("Display Commander", &window_open, ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoResize)) {
+        if (ImGui::Begin("Display Commander", &window_open,
+                         ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoResize)) {
+            last_cursor_state = CursorState::Visible;
+            // Show cursor while overlay is open (same approach as ReShade)
+            ImGuiIO& io = ImGui::GetIO();
+            io.MouseDrawCursor = true;
+
+            // Update UI draw time for auto-click optimization
+            if (enabled_experimental_features) {
+                autoclick::UpdateLastUIDrawTime();
+            }
+            // Block input every frame while overlay is open
+            if (runtime != nullptr) {
+                runtime->block_input_next_frame();
+            }
             // Save window position when it changes
             ImVec2 current_pos = ImGui::GetWindowPos();
             if (current_pos.x != saved_x || current_pos.y != saved_y) {
@@ -409,6 +408,8 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
 
             // Render tabs
             ui::new_ui::NewUISystem::GetInstance().Draw(runtime);
+        } else {
+            settings::g_mainTabSettings.show_display_commander_ui.SetValue(false);
         }
         ImGui::End();
 
